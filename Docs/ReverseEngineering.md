@@ -52,8 +52,8 @@ Expected decoded chunk sizes used by the loader:
 
 Important interpretation notes:
 
-- Grid data is 128x128 in file order, row by row. Public specs describe each row as right-to-left from the default rotation; the renderer currently mirrors X to produce an intuitive editor view.
-- `ALTM` values are big-endian 16-bit integers. Bits `0..4` hold the altitude step, and bit `7` marks water coverage.
+- Grid data is 128x128 in file order, row by row. The renderer now maps file X/Y directly to Unreal X/Y so Maxis road mesh orientation matches the SC2 tile ids. Earlier mirrored placement made asymmetric road/corner meshes look rotated.
+- `ALTM` values are big-endian 16-bit integers. Bits `0..4` hold the altitude step, and bit `7` marks water coverage. Procedural terrain uses `Altitude * TerrainHeightScale` for land tiles and `WaterLevel * TerrainHeightScale` for water tiles; the earlier `Altitude + 1` cube-top convention was only appropriate for placeholder cube terrain.
 - `CNAM` often starts with `0x1f` even when the actual string is shorter, so the loader reads printable ASCII bytes until null/control/non-ASCII data instead of trusting the first byte as a length.
 - `XZON` high-nibble bits are useful footprint markers for suppressing duplicate multi-tile buildings: `0xf0` means a single/full tile, `0x80` marks the top-left owner tile, `0x40` marks top-right, `0x10` marks bottom-left, and `0x20` marks bottom-right. Rendering only owner/single tiles reduced the Cape Wells original mesh placements from `6083` to `4586`.
 
@@ -171,7 +171,7 @@ Face texture notes:
 - Maxis raw V coordinates use a bottom-left origin. `FMaxisMeshReader::ConvertMaxisUVToUnreal` flips V for Unreal's top-left texture sampling while preserving out-of-range repeat values.
 - The city actor creates transient `UTexture2D` objects for direct `SIM3D.BMP` images plus atlas-cell textures, then assigns them to procedural mesh sections using Unreal's built-in `/Engine/EngineMaterials/EmissiveTexturedMaterial`.
 - The current terrain pass creates one procedural quad per SC2 tile, samples `TILED1.BMP` image `0`, and uses `XTER & 0x3f` as an 8x8 atlas index. This is a local-data implementation clue, not yet a fully proven copy of the original terrain tile selection logic.
-- Terrain vertex heights are averaged from adjacent `ALTM` tile tops so neighboring quads form sloped surfaces instead of flat cubes. Exact original slope orientation/type decoding still needs a deeper executable pass.
+- Terrain vertex heights are averaged from adjacent visible tile surfaces so neighboring quads form sloped surfaces instead of flat cubes. The terrain triangle order is reversed for Unreal front-face culling while keeping supplied normals upward. Exact original slope orientation/type decoding still needs a deeper executable pass.
 
 Validated on `CityRender.umap` construction on 2026-06-23 after the footprint, terrain mesh, and water overlay passes:
 

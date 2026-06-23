@@ -177,17 +177,18 @@ int32 AddAtlasTiles(
 
 float GetWorldGridCoordinate(int32 FileCoordinate, float TileSize, float HalfMapSize)
 {
-	return (static_cast<float>(FSimCity2000City::MapSize - FileCoordinate) * TileSize) - HalfMapSize;
+	return static_cast<float>(FileCoordinate) * TileSize - HalfMapSize;
 }
 
 float GetWorldTileCenterCoordinate(float FileCoordinate, float TileSize, float HalfMapSize)
 {
-	return (static_cast<float>(FSimCity2000City::MapSize) - FileCoordinate - 0.5f) * TileSize - HalfMapSize;
+	return (FileCoordinate + 0.5f) * TileSize - HalfMapSize;
 }
 
-float GetTerrainTopZ(const FSimCity2000Tile& Tile, float TerrainHeightScale)
+float GetTerrainSurfaceZ(const FSimCity2000City& City, const FSimCity2000Tile& Tile, float TerrainHeightScale)
 {
-	return (static_cast<float>(Tile.Altitude) + 1.0f) * TerrainHeightScale;
+	const int32 SurfaceAltitude = Tile.bWater ? City.WaterLevel : static_cast<int32>(Tile.Altitude);
+	return static_cast<float>(SurfaceAltitude) * TerrainHeightScale;
 }
 
 float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 GridY, float TerrainHeightScale)
@@ -203,7 +204,7 @@ float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 Gri
 			const int32 TileY = GridY + OffsetY;
 			if (TileX >= 0 && TileX < FSimCity2000City::MapSize && TileY >= 0 && TileY < FSimCity2000City::MapSize)
 			{
-				HeightSum += GetTerrainTopZ(City.Tiles[TileY * FSimCity2000City::MapSize + TileX], TerrainHeightScale);
+				HeightSum += GetTerrainSurfaceZ(City, City.Tiles[TileY * FSimCity2000City::MapSize + TileX], TerrainHeightScale);
 				++HeightCount;
 			}
 		}
@@ -212,7 +213,16 @@ float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 Gri
 	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
 }
 
-float GetAverageTerrainTopZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
+float GetTerrainTileCenterZ(const FSimCity2000City& City, int32 FileX, int32 FileY, float TerrainHeightScale)
+{
+	return (
+		GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale) +
+		GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale) +
+		GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale) +
+		GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale)) * 0.25f;
+}
+
+float GetAverageTerrainSurfaceZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
 {
 	float HeightSum = 0.0f;
 	int32 HeightCount = 0;
@@ -220,7 +230,7 @@ float GetAverageTerrainTopZ(const FSimCity2000City& City, int32 FileX, int32 Fil
 	{
 		for (int32 X = FileX; X < FileX + Width && X < FSimCity2000City::MapSize; ++X)
 		{
-			HeightSum += GetTerrainTopZ(City.Tiles[Y * FSimCity2000City::MapSize + X], TerrainHeightScale);
+			HeightSum += GetTerrainTileCenterZ(City, X, Y, TerrainHeightScale);
 			++HeightCount;
 		}
 	}
@@ -286,12 +296,12 @@ void AppendTerrainTile(
 		Section.Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
 	}
 
+	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart);
 	Section.Triangles.Add(VertexStart + 1);
-	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart);
-	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart + 3);
+	Section.Triangles.Add(VertexStart + 2);
 	Section.TriangleCount += 2;
 }
 
@@ -718,7 +728,7 @@ void ASimCity2000CityActor::RebuildCity()
 
 			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
 			const float WorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
-			const float TerrainTopZ = GetTerrainTopZ(Tile, TerrainHeightScale);
+			const float TerrainTopZ = GetTerrainTileCenterZ(City, FileX, FileY, TerrainHeightScale);
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
 			const bool bBuildingLikeTile = IsBuildingLikeTile(Tile.Building);
 			bool bRenderedOriginalMesh = false;
@@ -754,7 +764,7 @@ void ASimCity2000CityActor::RebuildCity()
 					{
 						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshWorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
-						const float MeshTerrainTopZ = GetAverageTerrainTopZ(City, FileX, FileY, Footprint.Width, Footprint.Height, TerrainHeightScale);
+						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, TerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 						OriginalMeshTriangleCount += AppendMaxisMeshObject(
 							*MeshObject,
