@@ -62,6 +62,40 @@ bool FSimCity2000ReferenceCityTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("ALTM chunk exists"), City.HasChunk(TEXT("ALTM")));
 	TestTrue(TEXT("XBLD chunk exists"), City.HasChunk(TEXT("XBLD")));
 
+	const FSimCity2000Tile* FlatLandTile = City.Tiles.FindByPredicate([](const FSimCity2000Tile& Tile)
+	{
+		return Tile.RawAltitude == 0x0004 && Tile.Terrain < 0x10;
+	});
+	TestNotNull(TEXT("Finds flat land ALTM sample"), FlatLandTile);
+	if (FlatLandTile != nullptr)
+	{
+		TestEqual(TEXT("Flat land base altitude"), FlatLandTile->Altitude, static_cast<uint8>(4));
+		TestEqual(TEXT("Flat land secondary altitude"), FlatLandTile->SecondaryAltitude, static_cast<uint8>(0));
+		TestFalse(TEXT("Flat land is not water"), FlatLandTile->bWater);
+	}
+
+	const FSimCity2000Tile* WaterTile = City.Tiles.FindByPredicate([](const FSimCity2000Tile& Tile)
+	{
+		return Tile.RawAltitude == 0x0082 && Tile.Terrain > 0x0F;
+	});
+	TestNotNull(TEXT("Finds water ALTM sample"), WaterTile);
+	if (WaterTile != nullptr)
+	{
+		TestEqual(TEXT("Water base altitude"), WaterTile->Altitude, static_cast<uint8>(2));
+		TestEqual(TEXT("Water secondary altitude"), WaterTile->SecondaryAltitude, static_cast<uint8>(4));
+		TestTrue(TEXT("Water flag comes from terrain code"), WaterTile->bWater);
+	}
+
+	const FSimCity2000Tile* SlopedTile = City.Tiles.FindByPredicate([](const FSimCity2000Tile& Tile)
+	{
+		return Tile.RawAltitude == 0x1408;
+	});
+	TestNotNull(TEXT("Finds sloped ALTM sample"), SlopedTile);
+	if (SlopedTile != nullptr)
+	{
+		TestEqual(TEXT("Slope bits"), SlopedTile->Slope, static_cast<uint8>(5));
+	}
+
 	return true;
 }
 

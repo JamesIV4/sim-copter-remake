@@ -53,7 +53,9 @@ Expected decoded chunk sizes used by the loader:
 Important interpretation notes:
 
 - Grid data is 128x128 in file order, row by row. The renderer now maps file X/Y directly to Unreal X/Y so Maxis road mesh orientation matches the SC2 tile ids. Earlier mirrored placement made asymmetric road/corner meshes look rotated.
-- `ALTM` values are big-endian 16-bit integers. Bits `0..4` hold the altitude step, and bit `7` marks water coverage. Procedural terrain uses `Altitude * TerrainHeightScale` for land tiles and `WaterLevel * TerrainHeightScale` for water tiles; the earlier `Altitude + 1` cube-top convention was only appropriate for placeholder cube terrain.
+- `ALTM` values are big-endian 16-bit integers. A Ghidra pass over `SimCopter.exe` confirmed the original height helper at `0x4abc20`: bits `0..4` are the base altitude, bits `5..9` are a secondary raised/water level, and bits `10..14` are slope/edge data. The helper returns the secondary level only when it is higher than the base and the matching `XTER` terrain code is greater than `0x0f`.
+- The original terrain height-map builder near `0x4abce0` stores `(height + 1) * 0x20`; city tile X/Y positions use `0x40` units. The Unreal actor therefore uses `TileSize * 0.5` while `bUseOriginalTerrainHeightScale` is enabled, which is `200` for the current `400` cm tile size.
+- Water should not be derived from `ALTM` bit `7`; that bit is part of the secondary altitude field. The renderer treats `XTER > 0x0f` as water/shore for city rendering and height selection.
 - `CNAM` often starts with `0x1f` even when the actual string is shorter, so the loader reads printable ASCII bytes until null/control/non-ASCII data instead of trusting the first byte as a length.
 - `XZON` high-nibble bits are useful footprint markers for suppressing duplicate multi-tile buildings: `0xf0` means a single/full tile, `0x80` marks the top-left owner tile, `0x40` marks top-right, `0x10` marks bottom-left, and `0x20` marks bottom-right. Rendering only owner/single tiles reduced the Cape Wells original mesh placements from `6083` to `4586`.
 
@@ -170,8 +172,9 @@ Face texture notes:
 - Raw UV values are fixed-point values scaled by `65536`. Values often extend outside `0..1`, so the renderer keeps those repeat coordinates and applies them to transient 32x32 atlas-cell textures with wrap addressing.
 - Maxis raw V coordinates use a bottom-left origin. `FMaxisMeshReader::ConvertMaxisUVToUnreal` flips V for Unreal's top-left texture sampling while preserving out-of-range repeat values.
 - The city actor creates transient `UTexture2D` objects for direct `SIM3D.BMP` images plus atlas-cell textures, then assigns them to procedural mesh sections using Unreal's built-in `/Engine/EngineMaterials/EmissiveTexturedMaterial`.
-- The current terrain pass creates one procedural quad per SC2 tile, samples `TILED1.BMP` image `0`, and uses `XTER & 0x3f` as an 8x8 atlas index. This is a local-data implementation clue, not yet a fully proven copy of the original terrain tile selection logic.
-- Terrain vertex heights are averaged from adjacent visible tile surfaces so neighboring quads form sloped surfaces instead of flat cubes. The terrain triangle order is reversed for Unreal front-face culling while keeping supplied normals upward. Exact original slope orientation/type decoding still needs a deeper executable pass.
+- `TILED1.BMP` image `0` is an 8x8 atlas. Exported cell diagnostics show bottom-origin cells `0..9` are water and cells `32+` are land/grass/sand. Direct `XTER & 0x3f` made flat land (`XTER=0`) sample water. The current mapping is `XTER < 0x10 -> XTER + 0x20`, otherwise `XTER - 0x10`.
+- The current terrain pass creates one procedural quad per SC2 tile with original per-tile top height. This removes the earlier averaged-corner ramps that mixed water and land elevations into giant diagonal faces. Exact per-corner slope decoding from `ALTM` bits `10..14` is still a follow-up.
+- The terrain triangle order is reversed for Unreal front-face culling while keeping supplied normals upward.
 
 Validated on `CityRender.umap` construction on 2026-06-23 after the footprint, terrain mesh, and water overlay passes:
 
@@ -190,7 +193,7 @@ originalTextures=389
 Next asset tasks:
 
 1. Verify current building UV orientation and terrain tile selection visually against the original game.
-2. Decode the exact original terrain slope/type rules instead of the current averaged-height approximation.
+2. Decode the exact original terrain slope/type rules from `ALTM` bits `10..14`; the current renderer uses a flat per-tile top height until those corner rules are proven.
 3. Replace or refine the old placeholder water/road fallback surfaces after terrain/road atlas behavior is confirmed.
 4. Add a diagnostics view listing missing mesh mappings, footprint decisions, and texture references.
 5. Split procedural city geometry into deterministic streaming/cache chunks for larger cities.
@@ -203,7 +206,7 @@ Mesh format sources used:
 
 ## Original Executable Quick Facts
 
-`Reference/SimCopterOriginalGame/SimCopter.exe` was inspected with `rizin`/`objdump` only. No decompilation pass has been committed yet.
+`Reference/SimCopterOriginalGame/SimCopter.exe` has been inspected with local disassembly and a Ghidra headless decompilation pass. The reusable Ghidra post-script is tracked at `Tools/Ghidra/DecompileAddresses.java`.
 
 Observed facts:
 

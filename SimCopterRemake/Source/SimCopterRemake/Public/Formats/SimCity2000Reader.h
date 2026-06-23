@@ -17,6 +17,8 @@ struct FSimCity2000Tile
 {
 	uint16 RawAltitude = 0;
 	uint8 Altitude = 0;
+	uint8 SecondaryAltitude = 0;
+	uint8 Slope = 0;
 	bool bWater = false;
 
 	uint8 Terrain = 0;
