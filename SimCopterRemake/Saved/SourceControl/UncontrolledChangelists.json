@@ -1,0 +1,16 @@
+{
+	"version": 1,
+	"changelists": [
+		{
+			"guid": "00000000000000000000000000000000",
+			"description": "Default Uncontrolled Changelist",
+			"files": [
+				"S:/Repos/sim-copter-remake/SimCopterRemake/Content/CityRender_HLODLayer_Instanced.uasset",
+				"S:/Repos/sim-copter-remake/SimCopterRemake/Content/CityRender_HLODLayer_Merged.uasset",
+				"S:/Repos/sim-copter-remake/SimCopterRemake/Content/__ExternalActors__/CityRender/3/83/B5P0OYUSACKN535ICSVMZ7.uasset",
+				"S:/Repos/sim-copter-remake/SimCopterRemake/Content/__ExternalActors__/CityRender/3/6Q/9VEK7CXJGYWOTT8CYU4G60.uasset",
+				"S:/Repos/sim-copter-remake/SimCopterRemake/Content/CityRender.umap"
+			]
+		}
+	]
+}
