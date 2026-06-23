@@ -135,8 +135,10 @@ bool PopulateCityTiles(FSimCity2000City& City, FString& OutError)
 		FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 		Tile.RawAltitude = ReadUInt16BE(*AltitudeData, TileIndex * 2);
 		Tile.Altitude = static_cast<uint8>(Tile.RawAltitude & 0x001F);
-		Tile.bWater = (Tile.RawAltitude & 0x0080) != 0;
+		Tile.SecondaryAltitude = static_cast<uint8>((Tile.RawAltitude & 0x03E0) >> 5);
+		Tile.Slope = static_cast<uint8>((Tile.RawAltitude & 0x7C00) >> 10);
 		Tile.Terrain = (*TerrainData)[TileIndex];
+		Tile.bWater = Tile.Terrain > 0x0F;
 		Tile.Building = (*BuildingData)[TileIndex];
 		Tile.Zone = (*ZoneData)[TileIndex];
 		Tile.Underground = (*UndergroundData)[TileIndex];

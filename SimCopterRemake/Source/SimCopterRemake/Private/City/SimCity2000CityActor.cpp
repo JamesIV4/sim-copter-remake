@@ -185,41 +185,27 @@ float GetWorldTileCenterCoordinate(float FileCoordinate, float TileSize, float H
 	return (FileCoordinate + 0.5f) * TileSize - HalfMapSize;
 }
 
-float GetTerrainSurfaceZ(const FSimCity2000City& City, const FSimCity2000Tile& Tile, float TerrainHeightScale)
+int32 GetOriginalTerrainHeightStep(const FSimCity2000Tile& Tile)
 {
-	const int32 SurfaceAltitude = Tile.bWater ? City.WaterLevel : static_cast<int32>(Tile.Altitude);
-	return static_cast<float>(SurfaceAltitude) * TerrainHeightScale;
+	const int32 BaseAltitude = static_cast<int32>(Tile.Altitude);
+	const int32 SecondaryAltitude = static_cast<int32>(Tile.SecondaryAltitude);
+	return (SecondaryAltitude > BaseAltitude && Tile.Terrain > 0x0F) ? SecondaryAltitude : BaseAltitude;
 }
 
-float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 GridY, float TerrainHeightScale)
+float GetTerrainSurfaceZ(const FSimCity2000Tile& Tile, float TerrainHeightScale)
 {
-	float HeightSum = 0.0f;
-	int32 HeightCount = 0;
-
-	for (int32 OffsetY = -1; OffsetY <= 0; ++OffsetY)
-	{
-		for (int32 OffsetX = -1; OffsetX <= 0; ++OffsetX)
-		{
-			const int32 TileX = GridX + OffsetX;
-			const int32 TileY = GridY + OffsetY;
-			if (TileX >= 0 && TileX < FSimCity2000City::MapSize && TileY >= 0 && TileY < FSimCity2000City::MapSize)
-			{
-				HeightSum += GetTerrainSurfaceZ(City, City.Tiles[TileY * FSimCity2000City::MapSize + TileX], TerrainHeightScale);
-				++HeightCount;
-			}
-		}
-	}
-
-	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
+	const int32 TunnelHeightOffset = (Tile.Terrain == 0x0D || Tile.Terrain == 0x0E) ? 1 : 0;
+	return static_cast<float>(GetOriginalTerrainHeightStep(Tile) + TunnelHeightOffset + 1) * TerrainHeightScale;
 }
 
 float GetTerrainTileCenterZ(const FSimCity2000City& City, int32 FileX, int32 FileY, float TerrainHeightScale)
 {
-	return (
-		GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale) +
-		GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale) +
-		GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale) +
-		GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale)) * 0.25f;
+	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return 0.0f;
+	}
+
+	return GetTerrainSurfaceZ(City.Tiles[FileY * FSimCity2000City::MapSize + FileX], TerrainHeightScale);
 }
 
 float GetAverageTerrainSurfaceZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
@@ -244,15 +230,24 @@ FVector2D GetMaxisAtlasCellUV(int32 TileIndex, float LocalU, float LocalV)
 	const int32 Column = ClampedTileIndex % FMaxisTextureReader::AtlasColumnCount;
 	const int32 RowFromBottom = ClampedTileIndex / FMaxisTextureReader::AtlasColumnCount;
 	const float CellScale = 1.0f / static_cast<float>(FMaxisTextureReader::AtlasColumnCount);
+	constexpr float LocalPixelInset = 0.5f / static_cast<float>(FMaxisTextureReader::AtlasTileSize);
+	const float InsetLocalU = FMath::Lerp(LocalPixelInset, 1.0f - LocalPixelInset, LocalU);
+	const float InsetLocalV = FMath::Lerp(LocalPixelInset, 1.0f - LocalPixelInset, LocalV);
 
 	return FVector2D(
-		(static_cast<float>(Column) + LocalU) * CellScale,
-		(static_cast<float>(FMaxisTextureReader::AtlasColumnCount - 1 - RowFromBottom) + (1.0f - LocalV)) * CellScale);
+		(static_cast<float>(Column) + InsetLocalU) * CellScale,
+		(static_cast<float>(FMaxisTextureReader::AtlasColumnCount - 1 - RowFromBottom) + (1.0f - InsetLocalV)) * CellScale);
 }
 
 int32 ResolveTerrainAtlasTileIndex(const FSimCity2000Tile& Tile)
 {
-	return static_cast<int32>(Tile.Terrain) & 0x3F;
+	const int32 TerrainCode = static_cast<int32>(Tile.Terrain);
+	if (TerrainCode < 0x10)
+	{
+		return FMath::Clamp(0x20 + TerrainCode, 0, 63);
+	}
+
+	return FMath::Clamp(TerrainCode - 0x10, 0, 63);
 }
 
 void AppendTerrainTile(
@@ -268,11 +263,12 @@ void AppendTerrainTile(
 	const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 	const int32 VertexStart = Section.Vertices.Num();
 	const int32 AtlasTileIndex = ResolveTerrainAtlasTileIndex(Tile);
+	const float TerrainZ = GetTerrainSurfaceZ(Tile, TerrainHeightScale);
 
-	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
-	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
-	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
-	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
+	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), TerrainZ);
+	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), TerrainZ);
+	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), TerrainZ);
+	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), TerrainZ);
 
 	Section.Vertices.Add(V0);
 	Section.Vertices.Add(V1);
@@ -367,12 +363,29 @@ FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 
 	return Footprint;
 }
 
+FVector RotateCityLocalVertex(const FVector& LocalVertex, int32 QuarterTurns)
+{
+	const int32 NormalizedQuarterTurns = ((QuarterTurns % 4) + 4) % 4;
+	switch (NormalizedQuarterTurns)
+	{
+	case 1:
+		return FVector(-LocalVertex.Y, LocalVertex.X, LocalVertex.Z);
+	case 2:
+		return FVector(-LocalVertex.X, -LocalVertex.Y, LocalVertex.Z);
+	case 3:
+		return FVector(LocalVertex.Y, -LocalVertex.X, LocalVertex.Z);
+	default:
+		return LocalVertex;
+	}
+}
+
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
 	const FVector& TileOrigin,
 	float MeshUnitsPerCentimeter,
 	float MeshScale,
+	int32 MeshQuarterTurns,
 	bool bRenderBackfaces,
 	bool bUseOriginalTextures,
 	const TSet<int32>& AvailableTextureKeys,
@@ -405,7 +418,7 @@ int32 AppendMaxisMeshObject(
 				continue;
 			}
 
-			const FVector LocalVertex = FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[SourceVertexIndex], MeshUnitsPerCentimeter) * MeshScale;
+			const FVector LocalVertex = RotateCityLocalVertex(FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[SourceVertexIndex], MeshUnitsPerCentimeter) * MeshScale, MeshQuarterTurns);
 			Section.Vertices.Add(TileOrigin + LocalVertex);
 			Section.UVs.Add(Face.RawUVs.IsValidIndex(FaceVertexIndex) ? FMaxisMeshReader::ConvertMaxisUVToUnreal(Face.RawUVs[FaceVertexIndex]) : FVector2D::ZeroVector);
 			Section.VertexColors.Add(FaceColor);
@@ -708,6 +721,8 @@ void ASimCity2000CityActor::RebuildCity()
 	const float HalfMapSize = FSimCity2000City::MapSize * TileSize * 0.5f;
 	const float CubeToUnrealScale = 1.0f / 100.0f;
 	const float OriginalMeshScale = OriginalMeshSourceTileSize > 0.0f ? TileSize / OriginalMeshSourceTileSize : 1.0f;
+	const float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
+	const int32 CityMeshQuarterTurns = (4 - (City.Rotation & 0x3)) & 0x3;
 
 	FOriginalMeshSectionData TerrainSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
@@ -728,7 +743,7 @@ void ASimCity2000CityActor::RebuildCity()
 
 			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
 			const float WorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
-			const float TerrainTopZ = GetTerrainTileCenterZ(City, FileX, FileY, TerrainHeightScale);
+			const float TerrainTopZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
 			const bool bBuildingLikeTile = IsBuildingLikeTile(Tile.Building);
 			bool bRenderedOriginalMesh = false;
@@ -736,7 +751,7 @@ void ASimCity2000CityActor::RebuildCity()
 
 			if (bRenderTerrain)
 			{
-				AppendTerrainTile(City, FileX, FileY, TileSize, TerrainHeightScale, HalfMapSize, TerrainSection);
+				AppendTerrainTile(City, FileX, FileY, TileSize, EffectiveTerrainHeightScale, HalfMapSize, TerrainSection);
 				++TerrainCount;
 			}
 
@@ -764,7 +779,7 @@ void ASimCity2000CityActor::RebuildCity()
 					{
 						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshWorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
-						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, TerrainHeightScale);
+						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 						OriginalMeshTriangleCount += AppendMaxisMeshObject(
 							*MeshObject,
@@ -772,6 +787,7 @@ void ASimCity2000CityActor::RebuildCity()
 							TileOrigin,
 							OriginalMeshUnitsPerCentimeter,
 							OriginalMeshScale,
+							CityMeshQuarterTurns,
 							bRenderOriginalMeshBackfaces,
 							bOriginalTexturesLoaded,
 							AvailableOriginalTextureKeys,
@@ -898,7 +914,7 @@ void ASimCity2000CityActor::RebuildCity()
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
-		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d water=%d roads=%d buildings=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d"),
+		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d water=%d roads=%d buildings=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
 		*City.CityName,
 		*ResolvedCityPath,
 		TerrainCount,
@@ -912,7 +928,8 @@ void ASimCity2000CityActor::RebuildCity()
 		LastOriginalTextureCount,
 		City.Chunks.Num(),
 		City.Rotation,
-		City.WaterLevel);
+		City.WaterLevel,
+		EffectiveTerrainHeightScale);
 }
 
 FString ASimCity2000CityActor::ResolveCityPath() const

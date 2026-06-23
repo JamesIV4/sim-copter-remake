@@ -67,8 +67,11 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "10.0"))
 	float TileSize = 400.0f;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
+	bool bUseOriginalTerrainHeightScale = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "1.0"))
-	float TerrainHeightScale = 60.0f;
+	float TerrainHeightScale = 200.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "1.0"))
 	float BuildingHeightScale = 150.0f;
