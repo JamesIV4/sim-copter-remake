@@ -52,9 +52,9 @@ Expected decoded chunk sizes used by the loader:
 
 Important interpretation notes:
 
-- Grid data is 128x128 in file order, row by row. The renderer now maps file X/Y directly to Unreal X/Y so Maxis road mesh orientation matches the SC2 tile ids. Earlier mirrored placement made asymmetric road/corner meshes look rotated.
+- Grid data is 128x128 in file order, row by row. The renderer maps file X/Y directly to Unreal X/Y, and does not apply the SC2 `MISC` rotation value as a global mesh transform. That rotation appears to be saved view/camera state. Original road-like meshes currently receive a local 180-degree correction after visual comparison in Unreal; buildings are left unrotated until directional facade evidence says otherwise.
 - `ALTM` values are big-endian 16-bit integers. A Ghidra pass over `SimCopter.exe` confirmed the original height helper at `0x4abc20`: bits `0..4` are the base altitude, bits `5..9` are a secondary raised/water level, and bits `10..14` are slope/edge data. The helper returns the secondary level only when it is higher than the base and the matching `XTER` terrain code is greater than `0x0f`.
-- The original terrain height-map builder near `0x4abce0` stores `(height + 1) * 0x20`; city tile X/Y positions use `0x40` units. The Unreal actor therefore uses `TileSize * 0.5` while `bUseOriginalTerrainHeightScale` is enabled, which is `200` for the current `400` cm tile size.
+- The original terrain height-map builder near `0x4abce0` seeds a 256x256 `tmap` from SC2 tile-center heights, stores `(height + 1) * 0x20`, then fills in-between grid points by copying or averaging neighbors. City tile X/Y positions use `0x40` units. The Unreal actor therefore uses `TileSize * 0.5` while `bUseOriginalTerrainHeightScale` is enabled, which is `200` for the current `400` cm tile size, and terrain corners are interpolated from adjacent corrected tile-center heights.
 - Water should not be derived from `ALTM` bit `7`; that bit is part of the secondary altitude field. The renderer treats `XTER > 0x0f` as water/shore for city rendering and height selection.
 - `CNAM` often starts with `0x1f` even when the actual string is shorter, so the loader reads printable ASCII bytes until null/control/non-ASCII data instead of trusting the first byte as a length.
 - `XZON` high-nibble bits are useful footprint markers for suppressing duplicate multi-tile buildings: `0xf0` means a single/full tile, `0x80` marks the top-left owner tile, `0x40` marks top-right, `0x10` marks bottom-left, and `0x20` marks bottom-right. Rendering only owner/single tiles reduced the Cape Wells original mesh placements from `6083` to `4586`.
@@ -173,8 +173,8 @@ Face texture notes:
 - Maxis raw V coordinates use a bottom-left origin. `FMaxisMeshReader::ConvertMaxisUVToUnreal` flips V for Unreal's top-left texture sampling while preserving out-of-range repeat values.
 - The city actor creates transient `UTexture2D` objects for direct `SIM3D.BMP` images plus atlas-cell textures, then assigns them to procedural mesh sections using Unreal's built-in `/Engine/EngineMaterials/EmissiveTexturedMaterial`.
 - `TILED1.BMP` image `0` is an 8x8 atlas. Exported cell diagnostics show bottom-origin cells `0..9` are water and cells `32+` are land/grass/sand. Direct `XTER & 0x3f` made flat land (`XTER=0`) sample water. The current mapping is `XTER < 0x10 -> XTER + 0x20`, otherwise `XTER - 0x10`.
-- The current terrain pass creates one procedural quad per SC2 tile with original per-tile top height. This removes the earlier averaged-corner ramps that mixed water and land elevations into giant diagonal faces. Exact per-corner slope decoding from `ALTM` bits `10..14` is still a follow-up.
-- The terrain triangle order is reversed for Unreal front-face culling while keeping supplied normals upward.
+- The current terrain pass creates one procedural quad per SC2 tile with interpolated corner heights. Unreal-facing terrain winding is `0,2,1` and `0,3,2`, while supplied normals remain upward for lighting. Mixing one reversed and one unreversed triangle made one half of each tile render differently and caused the visible triangular texture artifact.
+- Exact use of `ALTM` bits `10..14` outside the height-map pass is still a follow-up.
 
 Validated on `CityRender.umap` construction on 2026-06-23 after the footprint, terrain mesh, and water overlay passes:
 
@@ -193,7 +193,7 @@ originalTextures=389
 Next asset tasks:
 
 1. Verify current building UV orientation and terrain tile selection visually against the original game.
-2. Decode the exact original terrain slope/type rules from `ALTM` bits `10..14`; the current renderer uses a flat per-tile top height until those corner rules are proven.
+2. Decode the exact original terrain type/mask rules from `ALTM` bits `10..14` and the later `0x5bde80` terrain-mask passes.
 3. Replace or refine the old placeholder water/road fallback surfaces after terrain/road atlas behavior is confirmed.
 4. Add a diagnostics view listing missing mesh mappings, footprint decisions, and texture references.
 5. Split procedural city geometry into deterministic streaming/cache chunks for larger cities.

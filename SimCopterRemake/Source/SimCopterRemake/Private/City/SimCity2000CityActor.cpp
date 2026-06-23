@@ -208,6 +208,29 @@ float GetTerrainTileCenterZ(const FSimCity2000City& City, int32 FileX, int32 Fil
 	return GetTerrainSurfaceZ(City.Tiles[FileY * FSimCity2000City::MapSize + FileX], TerrainHeightScale);
 }
 
+float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 GridY, float TerrainHeightScale)
+{
+	// SimCopter's tmap builder seeds tile centers, then fills grid points by copying/averaging neighbors.
+	float HeightSum = 0.0f;
+	int32 HeightCount = 0;
+
+	for (int32 OffsetY = -1; OffsetY <= 0; ++OffsetY)
+	{
+		for (int32 OffsetX = -1; OffsetX <= 0; ++OffsetX)
+		{
+			const int32 TileX = GridX + OffsetX;
+			const int32 TileY = GridY + OffsetY;
+			if (TileX >= 0 && TileX < FSimCity2000City::MapSize && TileY >= 0 && TileY < FSimCity2000City::MapSize)
+			{
+				HeightSum += GetTerrainTileCenterZ(City, TileX, TileY, TerrainHeightScale);
+				++HeightCount;
+			}
+		}
+	}
+
+	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
+}
+
 float GetAverageTerrainSurfaceZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
 {
 	float HeightSum = 0.0f;
@@ -263,12 +286,11 @@ void AppendTerrainTile(
 	const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 	const int32 VertexStart = Section.Vertices.Num();
 	const int32 AtlasTileIndex = ResolveTerrainAtlasTileIndex(Tile);
-	const float TerrainZ = GetTerrainSurfaceZ(Tile, TerrainHeightScale);
 
-	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), TerrainZ);
-	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), TerrainZ);
-	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), TerrainZ);
-	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), TerrainZ);
+	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
+	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
+	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
+	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
 
 	Section.Vertices.Add(V0);
 	Section.Vertices.Add(V1);
@@ -292,8 +314,8 @@ void AppendTerrainTile(
 		Section.Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
 	}
 
-	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart);
+	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart + 1);
 	Section.Triangles.Add(VertexStart);
 	Section.Triangles.Add(VertexStart + 3);
@@ -722,7 +744,7 @@ void ASimCity2000CityActor::RebuildCity()
 	const float CubeToUnrealScale = 1.0f / 100.0f;
 	const float OriginalMeshScale = OriginalMeshSourceTileSize > 0.0f ? TileSize / OriginalMeshSourceTileSize : 1.0f;
 	const float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
-	const int32 CityMeshQuarterTurns = (4 - (City.Rotation & 0x3)) & 0x3;
+	const int32 RoadMeshQuarterTurns = 2;
 
 	FOriginalMeshSectionData TerrainSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
@@ -787,7 +809,7 @@ void ASimCity2000CityActor::RebuildCity()
 							TileOrigin,
 							OriginalMeshUnitsPerCentimeter,
 							OriginalMeshScale,
-							CityMeshQuarterTurns,
+							bRoadLikeTile ? RoadMeshQuarterTurns : 0,
 							bRenderOriginalMeshBackfaces,
 							bOriginalTexturesLoaded,
 							AvailableOriginalTextureKeys,
