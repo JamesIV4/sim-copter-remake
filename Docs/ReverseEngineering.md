@@ -55,6 +55,7 @@ Important interpretation notes:
 - Grid data is 128x128 in file order, row by row. Public specs describe each row as right-to-left from the default rotation; the renderer currently mirrors X to produce an intuitive editor view.
 - `ALTM` values are big-endian 16-bit integers. Bits `0..4` hold the altitude step, and bit `7` marks water coverage.
 - `CNAM` often starts with `0x1f` even when the actual string is shorter, so the loader reads printable ASCII bytes until null/control/non-ASCII data instead of trusting the first byte as a length.
+- `XZON` high-nibble bits are useful footprint markers for suppressing duplicate multi-tile buildings: `0xf0` means a single/full tile, `0x80` marks the top-left owner tile, `0x40` marks top-right, `0x10` marks bottom-left, and `0x20` marks bottom-right. Rendering only owner/single tiles reduced the Cape Wells original mesh placements from `6083` to `4586`.
 
 Sources used:
 
@@ -150,7 +151,7 @@ Important implementation notes:
 
 ## SimCopter Composite Bitmap Textures
 
-`SIM3D.BMP`, `SKY.BMP`, `SKYDARK.BMP`, and `TILED1.BMP` are not Windows bitmaps. They are Maxis composite bitmap files containing palette-indexed images. `SIM3D.BMP` is the main city mesh texture source, with a known SimCopter exception for texture file/index `20`, which resolves to `SKY.BMP` image `4`.
+`SIM3D.BMP`, `SKY.BMP`, `SKYDARK.BMP`, and `TILED1.BMP` are not Windows bitmaps. They are Maxis composite bitmap files containing palette-indexed images. `SIM3D.BMP` is the main city mesh texture source, with a known SimCopter exception for texture file/index `20`, which resolves to `SKY.BMP` image `4`. `TILED1.BMP` image `0` is a 256x256 terrain atlas containing water, shore, grass, sand, and related ground cells.
 
 1. 32-bit little-endian file size at byte 0.
 2. 32-bit image count at byte 8.
@@ -162,29 +163,37 @@ The palette is not stored in the composite bitmap. The three `GEO/*.MAX` files c
 
 Face texture notes:
 
+- Composite bitmap row data is stored bottom-up. The loader flips rows while expanding palette indices to Unreal texture pixels; without that flip, city building texture pages can resolve to visibly wrong atlas regions such as repeated head/icon cells.
 - Mesh face type `18` is the main textured face type for city geometry. Face type `13` appears rarely and is currently routed through the same texture path when its image index exists.
 - For face type `18`, `MaterialIndex` is the index within an 8x8 texture atlas and `TextureAtlasIndex` is the atlas texture file/index. The original viewer extracts `32x32` cells using column `MaterialIndex % 8` and row `MaterialIndex / 8`, with row `0` at the bottom of the atlas image.
 - The common city atlas pages observed so far are `2`, `20`, `39`, and `40`. Page `20` is the `SKY.BMP` image `4` exception, not `SIM3D.BMP` image `20`.
 - Raw UV values are fixed-point values scaled by `65536`. Values often extend outside `0..1`, so the renderer keeps those repeat coordinates and applies them to transient 32x32 atlas-cell textures with wrap addressing.
 - Maxis raw V coordinates use a bottom-left origin. `FMaxisMeshReader::ConvertMaxisUVToUnreal` flips V for Unreal's top-left texture sampling while preserving out-of-range repeat values.
 - The city actor creates transient `UTexture2D` objects for direct `SIM3D.BMP` images plus atlas-cell textures, then assigns them to procedural mesh sections using Unreal's built-in `/Engine/EngineMaterials/EmissiveTexturedMaterial`.
+- The current terrain pass creates one procedural quad per SC2 tile, samples `TILED1.BMP` image `0`, and uses `XTER & 0x3f` as an 8x8 atlas index. This is a local-data implementation clue, not yet a fully proven copy of the original terrain tile selection logic.
+- Terrain vertex heights are averaged from adjacent `ALTM` tile tops so neighboring quads form sloped surfaces instead of flat cubes. Exact original slope orientation/type decoding still needs a deeper executable pass.
 
-Validated on `CityRender.umap` construction on 2026-06-23:
+Validated on `CityRender.umap` construction on 2026-06-23 after the footprint, terrain mesh, and water overlay passes:
 
 ```text
-originalMeshTiles=6083
+terrain=16384
+water=0
+roads=23
+buildings=0
+originalMeshTiles=4586
 missingOriginalMeshTiles=23
-originalTriangles=729820
-texturedTriangles=277754
-originalTextures=68
+originalTriangles=422338
+texturedTriangles=147348
+originalTextures=389
 ```
 
 Next asset tasks:
 
-1. Verify UV orientation and texture page selection visually against the original game.
-2. Replace generated cube terrain with terrain surfaces matching the original SimCopter slope/road/water conventions.
-3. Add a diagnostics view listing missing mesh mappings and texture references.
-4. Split procedural city geometry into deterministic streaming/cache chunks for larger cities.
+1. Verify current building UV orientation and terrain tile selection visually against the original game.
+2. Decode the exact original terrain slope/type rules instead of the current averaged-height approximation.
+3. Replace or refine the old placeholder water/road fallback surfaces after terrain/road atlas behavior is confirmed.
+4. Add a diagnostics view listing missing mesh mappings, footprint decisions, and texture references.
+5. Split procedural city geometry into deterministic streaming/cache chunks for larger cities.
 
 Mesh format sources used:
 
@@ -204,6 +213,7 @@ Observed facts:
 - Reported compile timestamp: `Sun Dec 8 16:16:10 1996 UTC-5`.
 - Imports include `DDRAW.dll`, `DSOUND.dll`, `WINMM.dll`, `MSACM32.dll`, `smackw32.DLL`, `GDI32.dll`, `USER32.dll`, `KERNEL32.dll`, `ADVAPI32.dll`, `comdlg32.dll`, and `VERSION.dll`.
 - Strings include `FORM`, `SCDH`, `ALTM`, `XTER`, `XBLD`, `SIM3D1.MAX`, `SIM3D2.MAX`, `SIM3D3.MAX`, and `sim3d.twk`, supporting the city/asset pipeline being implemented first.
+- Additional local string/analysis probes found `TILED1.BMP`, `TileCnt`, `AltMap`, `RoadTiles`, and `SIM3D.BMP` references in the executable. These support the current focus on terrain atlas, altitude map, and road/building tile behavior before relying on broader online notes.
 
 ## Implementation Notes
 
@@ -213,7 +223,7 @@ Current code has two layers:
 - `FMaxisMeshReader`: pure parser/decoder for Maxis `.MAX` mesh packs.
 - `FMaxisMeshLibrary`: original-game asset index that maps SC2 tile ids to decoded Maxis mesh objects.
 - `FMaxisTextureReader`: pure parser/decoder for Maxis composite bitmap texture files such as `SIM3D.BMP`.
-- `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with generated terrain/water and optional original SimCopter road/building mesh geometry. Textured mesh faces use transient textures decoded from `SIM3D.BMP`; placeholder road/building instances remain as a fallback for missing mappings.
+- `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with procedural terrain, optional fallback water plates, and original SimCopter road/building mesh geometry. Textured mesh faces use transient textures decoded from `SIM3D.BMP` plus the `SKY.BMP` page-20 exception; terrain uses `TILED1.BMP` image `0` when available. Placeholder road/building instances remain as a fallback for missing mappings.
 - `AMaxisMeshDebugActor`: editor/runtime actor that renders one decoded `.MAX` mesh for inspection.
 
-The placeholder renderer is now fallback scaffolding. It still proves city parsing, orientation, tile height, and high-level tile classification, while original road/building geometry can be rendered directly from user-provided SimCopter `GEO` packs.
+The placeholder renderer is now fallback scaffolding. It still proves city parsing, orientation, tile height, and high-level tile classification, while original terrain textures and road/building geometry can be rendered directly from user-provided SimCopter assets.

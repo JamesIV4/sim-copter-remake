@@ -38,6 +38,9 @@ private:
 	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<UProceduralMeshComponent> TerrainMeshComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> WaterInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
