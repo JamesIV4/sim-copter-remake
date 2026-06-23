@@ -62,6 +62,7 @@ int32 GetMaxisFaceTextureKey(const FMaxisMeshFace& Face)
 
 constexpr int32 SimCopterSkyGroundTextureFile = 20;
 constexpr int32 SimCopterSkyGroundImageIndex = 4;
+constexpr int32 SimCopterTerrainTextureNameIndex = 100000;
 
 struct FOriginalMeshSectionData
 {
@@ -72,6 +73,14 @@ struct FOriginalMeshSectionData
 	TArray<FLinearColor> VertexColors;
 	TArray<FProcMeshTangent> Tangents;
 	int32 TriangleCount = 0;
+};
+
+struct FTileFootprint
+{
+	bool bShouldRender = true;
+	bool bSuppressedChildTile = false;
+	int32 Width = 1;
+	int32 Height = 1;
 };
 
 UTexture2D* CreateTextureFromMaxisImage(const FMaxisTextureImage& Image, UObject* Outer, int32 ImageIndex)
@@ -164,6 +173,188 @@ int32 AddAtlasTiles(
 	}
 
 	return AddedCount;
+}
+
+float GetWorldGridCoordinate(int32 FileCoordinate, float TileSize, float HalfMapSize)
+{
+	return (static_cast<float>(FSimCity2000City::MapSize - FileCoordinate) * TileSize) - HalfMapSize;
+}
+
+float GetWorldTileCenterCoordinate(float FileCoordinate, float TileSize, float HalfMapSize)
+{
+	return (static_cast<float>(FSimCity2000City::MapSize) - FileCoordinate - 0.5f) * TileSize - HalfMapSize;
+}
+
+float GetTerrainTopZ(const FSimCity2000Tile& Tile, float TerrainHeightScale)
+{
+	return (static_cast<float>(Tile.Altitude) + 1.0f) * TerrainHeightScale;
+}
+
+float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 GridY, float TerrainHeightScale)
+{
+	float HeightSum = 0.0f;
+	int32 HeightCount = 0;
+
+	for (int32 OffsetY = -1; OffsetY <= 0; ++OffsetY)
+	{
+		for (int32 OffsetX = -1; OffsetX <= 0; ++OffsetX)
+		{
+			const int32 TileX = GridX + OffsetX;
+			const int32 TileY = GridY + OffsetY;
+			if (TileX >= 0 && TileX < FSimCity2000City::MapSize && TileY >= 0 && TileY < FSimCity2000City::MapSize)
+			{
+				HeightSum += GetTerrainTopZ(City.Tiles[TileY * FSimCity2000City::MapSize + TileX], TerrainHeightScale);
+				++HeightCount;
+			}
+		}
+	}
+
+	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
+}
+
+float GetAverageTerrainTopZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
+{
+	float HeightSum = 0.0f;
+	int32 HeightCount = 0;
+	for (int32 Y = FileY; Y < FileY + Height && Y < FSimCity2000City::MapSize; ++Y)
+	{
+		for (int32 X = FileX; X < FileX + Width && X < FSimCity2000City::MapSize; ++X)
+		{
+			HeightSum += GetTerrainTopZ(City.Tiles[Y * FSimCity2000City::MapSize + X], TerrainHeightScale);
+			++HeightCount;
+		}
+	}
+
+	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
+}
+
+FVector2D GetMaxisAtlasCellUV(int32 TileIndex, float LocalU, float LocalV)
+{
+	const int32 ClampedTileIndex = FMath::Clamp(TileIndex, 0, 63);
+	const int32 Column = ClampedTileIndex % FMaxisTextureReader::AtlasColumnCount;
+	const int32 RowFromBottom = ClampedTileIndex / FMaxisTextureReader::AtlasColumnCount;
+	const float CellScale = 1.0f / static_cast<float>(FMaxisTextureReader::AtlasColumnCount);
+
+	return FVector2D(
+		(static_cast<float>(Column) + LocalU) * CellScale,
+		(static_cast<float>(FMaxisTextureReader::AtlasColumnCount - 1 - RowFromBottom) + (1.0f - LocalV)) * CellScale);
+}
+
+int32 ResolveTerrainAtlasTileIndex(const FSimCity2000Tile& Tile)
+{
+	return static_cast<int32>(Tile.Terrain) & 0x3F;
+}
+
+void AppendTerrainTile(
+	const FSimCity2000City& City,
+	int32 FileX,
+	int32 FileY,
+	float TileSize,
+	float TerrainHeightScale,
+	float HalfMapSize,
+	FOriginalMeshSectionData& Section)
+{
+	const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
+	const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
+	const int32 VertexStart = Section.Vertices.Num();
+	const int32 AtlasTileIndex = ResolveTerrainAtlasTileIndex(Tile);
+
+	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
+	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
+	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
+	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
+
+	Section.Vertices.Add(V0);
+	Section.Vertices.Add(V1);
+	Section.Vertices.Add(V2);
+	Section.Vertices.Add(V3);
+
+	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 0.0f, 1.0f));
+	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 1.0f, 1.0f));
+	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 1.0f, 0.0f));
+	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 0.0f, 0.0f));
+
+	FVector Normal = FVector::CrossProduct(V1 - V0, V2 - V0).GetSafeNormal();
+	if (Normal.IsNearlyZero())
+	{
+		Normal = FVector::UpVector;
+	}
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		Section.Normals.Add(Normal);
+		Section.VertexColors.Add(FLinearColor::White);
+		Section.Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
+	}
+
+	Section.Triangles.Add(VertexStart);
+	Section.Triangles.Add(VertexStart + 1);
+	Section.Triangles.Add(VertexStart + 2);
+	Section.Triangles.Add(VertexStart);
+	Section.Triangles.Add(VertexStart + 2);
+	Section.Triangles.Add(VertexStart + 3);
+	Section.TriangleCount += 2;
+}
+
+FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 FileX, int32 FileY)
+{
+	const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
+	const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
+	FTileFootprint Footprint;
+
+	if (Tile.Building < 0x70)
+	{
+		return Footprint;
+	}
+
+	const uint8 ZoneHigh = Tile.Zone & 0xF0;
+	const uint8 ZoneLow = Tile.Zone & 0x0F;
+	if (ZoneHigh == 0xF0)
+	{
+		return Footprint;
+	}
+
+	if ((Tile.Zone & 0x80) == 0)
+	{
+		Footprint.bShouldRender = false;
+		Footprint.bSuppressedChildTile = true;
+		return Footprint;
+	}
+
+	int32 Width = 1;
+	for (int32 X = FileX; X < FSimCity2000City::MapSize; ++X)
+	{
+		const FSimCity2000Tile& Candidate = City.Tiles[FileY * FSimCity2000City::MapSize + X];
+		if (Candidate.Building != Tile.Building || (Candidate.Zone & 0x0F) != ZoneLow)
+		{
+			break;
+		}
+
+		if ((Candidate.Zone & 0x40) != 0)
+		{
+			Width = X - FileX + 1;
+			break;
+		}
+	}
+
+	int32 Height = 1;
+	for (int32 Y = FileY; Y < FSimCity2000City::MapSize; ++Y)
+	{
+		const FSimCity2000Tile& Candidate = City.Tiles[Y * FSimCity2000City::MapSize + FileX];
+		if (Candidate.Building != Tile.Building || (Candidate.Zone & 0x0F) != ZoneLow)
+		{
+			break;
+		}
+
+		if ((Candidate.Zone & 0x10) != 0)
+		{
+			Height = Y - FileY + 1;
+			break;
+		}
+	}
+
+	Footprint.Width = Width;
+	Footprint.Height = Height;
+	return Footprint;
 }
 
 int32 AppendMaxisMeshObject(
@@ -271,6 +462,12 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	TerrainInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("TerrainInstances"));
 	TerrainInstances->SetupAttachment(SceneRoot);
 
+	TerrainMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("TerrainMeshComponent"));
+	TerrainMeshComponent->SetupAttachment(SceneRoot);
+	TerrainMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TerrainMeshComponent->SetCanEverAffectNavigation(false);
+	TerrainMeshComponent->SetCastShadow(false);
+
 	WaterInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("WaterInstances"));
 	WaterInstances->SetupAttachment(SceneRoot);
 
@@ -353,10 +550,12 @@ void ASimCity2000CityActor::RebuildCity()
 	OriginalTextureMaterials.Reset();
 
 	TerrainInstances->ClearInstances();
+	TerrainMeshComponent->ClearAllMeshSections();
 	WaterInstances->ClearInstances();
 	RoadInstances->ClearInstances();
 	BuildingInstances->ClearInstances();
 	OriginalMeshComponent->ClearAllMeshSections();
+	TerrainMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OriginalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ApplyComponentMaterial(TerrainInstances, TerrainColor);
@@ -392,8 +591,10 @@ void ASimCity2000CityActor::RebuildCity()
 	FMaxisCompositeBitmap OriginalTextures;
 	TMap<int32, UTexture2D*> OriginalTexturesByKey;
 	TSet<int32> AvailableOriginalTextureKeys;
+	UTexture2D* TerrainTexture = nullptr;
 	bool bOriginalTexturesLoaded = false;
-	if (bRenderOriginalMeshes)
+	const bool bNeedOriginalAssetPalette = bRenderOriginalMeshes || (bRenderTerrain && bRenderOriginalTextures && TexturedMaterial != nullptr);
+	if (bNeedOriginalAssetPalette)
 	{
 		FString MeshLibraryError;
 		const FString ResolvedOriginalGameRoot = ResolveOriginalGameRoot();
@@ -459,6 +660,27 @@ void ASimCity2000CityActor::RebuildCity()
 					{
 						UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not load original SimCopter sky/ground atlas: %s"), *SkyTextureError);
 					}
+
+					FMaxisCompositeBitmap TerrainTextures;
+					FString TerrainTextureError;
+					const FString TerrainTexturePath = FPaths::Combine(ResolvedOriginalGameRoot, TEXT("BMP/TILED1.BMP"));
+					if (FMaxisTextureReader::LoadCompositeBitmapFromFile(TerrainTexturePath, *SharedColorMap, TerrainTextures, TerrainTextureError))
+					{
+						const FMaxisTextureImage* TerrainImage = TerrainTextures.FindImage(0);
+						if (TerrainImage != nullptr)
+						{
+							TerrainTexture = CreateTextureFromMaxisImage(*TerrainImage, this, SimCopterTerrainTextureNameIndex);
+							if (TerrainTexture != nullptr)
+							{
+								OriginalTextureCache.Add(TerrainTexture);
+								++LastOriginalTextureCount;
+							}
+						}
+					}
+					else
+					{
+						UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not load original SimCopter terrain atlas: %s"), *TerrainTextureError);
+					}
 				}
 				else
 				{
@@ -477,7 +699,9 @@ void ASimCity2000CityActor::RebuildCity()
 	const float CubeToUnrealScale = 1.0f / 100.0f;
 	const float OriginalMeshScale = OriginalMeshSourceTileSize > 0.0f ? TileSize / OriginalMeshSourceTileSize : 1.0f;
 
+	FOriginalMeshSectionData TerrainSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
+	const bool bUseTexturedTerrainSurface = TerrainTexture != nullptr && TexturedMaterial != nullptr;
 
 	int32 TerrainCount = 0;
 	int32 WaterCount = 0;
@@ -492,22 +716,21 @@ void ASimCity2000CityActor::RebuildCity()
 			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
 			const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 
-			const float WorldX = (static_cast<float>(FSimCity2000City::MapSize - 1 - FileX) + 0.5f) * TileSize - HalfMapSize;
-			const float WorldY = (static_cast<float>(FSimCity2000City::MapSize - 1 - FileY) + 0.5f) * TileSize - HalfMapSize;
-			const float TerrainTopZ = (static_cast<float>(Tile.Altitude) + 1.0f) * TerrainHeightScale;
+			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
+			const float WorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
+			const float TerrainTopZ = GetTerrainTopZ(Tile, TerrainHeightScale);
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
 			const bool bBuildingLikeTile = IsBuildingLikeTile(Tile.Building);
 			bool bRenderedOriginalMesh = false;
+			bool bSuppressPlaceholderForFootprintChild = false;
 
 			if (bRenderTerrain)
 			{
-				const FVector TerrainScale(TileSize * CubeToUnrealScale, TileSize * CubeToUnrealScale, TerrainTopZ * CubeToUnrealScale);
-				const FTransform TerrainTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ * 0.5f), TerrainScale);
-				TerrainInstances->AddInstance(TerrainTransform);
+				AppendTerrainTile(City, FileX, FileY, TileSize, TerrainHeightScale, HalfMapSize, TerrainSection);
 				++TerrainCount;
 			}
 
-			if (bRenderWater && Tile.bWater)
+			if (bRenderWater && Tile.bWater && !bUseTexturedTerrainSurface)
 			{
 				const float WaterThickness = FMath::Max(RoadPlateHeight, 6.0f);
 				const FVector WaterScale(TileSize * CubeToUnrealScale, TileSize * CubeToUnrealScale, WaterThickness * CubeToUnrealScale);
@@ -516,36 +739,47 @@ void ASimCity2000CityActor::RebuildCity()
 				++WaterCount;
 			}
 
-			if (bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile))
+			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile))
 			{
-				const TArray<FColor>* ColorMap = nullptr;
-				const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
-				if (MeshObject != nullptr)
+				const FTileFootprint Footprint = ResolveOriginalMeshFootprint(City, FileX, FileY);
+				if (!Footprint.bShouldRender)
 				{
-					const FVector TileOrigin(WorldX, WorldY, TerrainTopZ + OriginalMeshZOffset);
-					OriginalMeshTriangleCount += AppendMaxisMeshObject(
-						*MeshObject,
-						ColorMap,
-						TileOrigin,
-						OriginalMeshUnitsPerCentimeter,
-						OriginalMeshScale,
-						bRenderOriginalMeshBackfaces,
-						bOriginalTexturesLoaded,
-						AvailableOriginalTextureKeys,
-						OriginalTexturedFaceFallbackColor,
-						OriginalMeshSections,
-						LastOriginalTexturedTriangleCount);
-					bRenderedOriginalMesh = true;
-					++LastOriginalMeshTileCount;
+					bSuppressPlaceholderForFootprintChild = Footprint.bSuppressedChildTile;
 				}
 				else
 				{
-					++LastMissingOriginalMeshTileCount;
+					const TArray<FColor>* ColorMap = nullptr;
+					const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
+					if (MeshObject != nullptr)
+					{
+						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshWorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshTerrainTopZ = GetAverageTerrainTopZ(City, FileX, FileY, Footprint.Width, Footprint.Height, TerrainHeightScale);
+						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
+						OriginalMeshTriangleCount += AppendMaxisMeshObject(
+							*MeshObject,
+							ColorMap,
+							TileOrigin,
+							OriginalMeshUnitsPerCentimeter,
+							OriginalMeshScale,
+							bRenderOriginalMeshBackfaces,
+							bOriginalTexturesLoaded,
+							AvailableOriginalTextureKeys,
+							OriginalTexturedFaceFallbackColor,
+							OriginalMeshSections,
+							LastOriginalTexturedTriangleCount);
+						bRenderedOriginalMesh = true;
+						++LastOriginalMeshTileCount;
+					}
+					else
+					{
+						++LastMissingOriginalMeshTileCount;
+					}
 				}
 			}
 
 			const bool bOriginalMeshAttemptedForThisTile = bRenderOriginalMeshes && (bRoadLikeTile || bBuildingLikeTile);
-			const bool bRenderPlaceholderForThisTile = !bOriginalMeshAttemptedForThisTile || (!bRenderedOriginalMesh && bRenderPlaceholderForMissingOriginalMeshes);
+			const bool bRenderPlaceholderForThisTile = !bOriginalMeshAttemptedForThisTile || (!bSuppressPlaceholderForFootprintChild && !bRenderedOriginalMesh && bRenderPlaceholderForMissingOriginalMeshes);
 			if (bRenderRoads && bRoadLikeTile && bRenderPlaceholderForThisTile)
 			{
 				const FVector RoadScale(TileSize * 0.92f * CubeToUnrealScale, TileSize * 0.92f * CubeToUnrealScale, RoadPlateHeight * CubeToUnrealScale);
@@ -562,6 +796,34 @@ void ASimCity2000CityActor::RebuildCity()
 				BuildingInstances->AddInstance(BuildingTransform);
 				++BuildingCount;
 			}
+		}
+	}
+
+	if (TerrainSection.Vertices.Num() > 0)
+	{
+		TerrainMeshComponent->CreateMeshSection_LinearColor(
+			0,
+			TerrainSection.Vertices,
+			TerrainSection.Triangles,
+			TerrainSection.Normals,
+			TerrainSection.UVs,
+			TerrainSection.VertexColors,
+			TerrainSection.Tangents,
+			false);
+
+		if (bUseTexturedTerrainSurface)
+		{
+			UMaterialInstanceDynamic* TerrainMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
+			if (TerrainMaterial != nullptr)
+			{
+				TerrainMaterial->SetTextureParameterValue(TEXT("Texture"), TerrainTexture);
+				OriginalTextureMaterials.Add(TerrainMaterial);
+				TerrainMeshComponent->SetMaterial(0, TerrainMaterial);
+			}
+		}
+		else if (VertexColorMaterial != nullptr)
+		{
+			TerrainMeshComponent->SetMaterial(0, VertexColorMaterial);
 		}
 	}
 

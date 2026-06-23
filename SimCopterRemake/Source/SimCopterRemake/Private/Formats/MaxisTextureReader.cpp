@@ -166,7 +166,8 @@ bool FMaxisTextureReader::LoadCompositeBitmapFromBytes(
 			for (int32 Column = 0; Column < Image.Width; ++Column)
 			{
 				const uint8 PaletteIndex = FileData[DataOffset + RowOffset + Column];
-				Image.Pixels[Row * Image.Width + Column] = ResolvePaletteColor(Palette, PaletteIndex, bFirstPaletteColorTransparent);
+				const int32 DestRow = Image.Height - 1 - Row;
+				Image.Pixels[DestRow * Image.Width + Column] = ResolvePaletteColor(Palette, PaletteIndex, bFirstPaletteColorTransparent);
 			}
 		}
 
