@@ -52,7 +52,7 @@ Expected decoded chunk sizes used by the loader:
 
 Important interpretation notes:
 
-- Grid data is 128x128 in file order, row by row. The renderer maps file X/Y directly to Unreal X/Y, and does not apply the SC2 `MISC` rotation value as a global mesh transform. That rotation appears to be saved view/camera state. Original road-like meshes currently receive a local 180-degree correction after visual comparison in Unreal; buildings are left unrotated until directional facade evidence says otherwise.
+- Grid data is 128x128 in file order, row by row. The SC2 `MISC` rotation value is saved view/camera state and is not applied as a global mesh transform. The original game applies **no per-tile rotation** to road/building/bridge meshes; orientation is baked into the selected mesh (see "City Geometry Builder" below). The renderer reproduces the game's grid-to-world mapping instead: file Y (row) maps to world Y, and file X (column) maps to a **negated** world X (the game stores `worldY = (127.5 - col) * 0x40`). With that single sign correction, the existing Maxis-to-Unreal vertex rotation lines every mesh up without any per-tile turning. The earlier blanket 180-degree road correction was a workaround for the missing column-axis negation (a reflection that no rotation can fix) and has been removed.
 - `ALTM` values are big-endian 16-bit integers. A Ghidra pass over `SimCopter.exe` confirmed the original height helper at `0x4abc20`: bits `0..4` are the base altitude, bits `5..9` are a secondary raised/water level, and bits `10..14` are slope/edge data. The helper returns the secondary level only when it is higher than the base and the matching `XTER` terrain code is greater than `0x0f`.
 - The original terrain height-map builder near `0x4abce0` seeds a 256x256 `tmap` from SC2 tile-center heights, stores `(height + 1) * 0x20`, then fills in-between grid points by copying or averaging neighbors. City tile X/Y positions use `0x40` units. The Unreal actor therefore uses `TileSize * 0.5` while `bUseOriginalTerrainHeightScale` is enabled, which is `200` for the current `400` cm tile size, and terrain corners are interpolated from adjacent corrected tile-center heights.
 - Water should not be derived from `ALTM` bit `7`; that bit is part of the secondary altitude field. The renderer treats `XTER > 0x0f` as water/shore for city rendering and height selection.
@@ -63,6 +63,22 @@ Sources used:
 
 - OpenCity2k SC2 file specification: https://github.com/OpenCity2k/SC2k-docs/blob/master/sc2%20file%20spec.md
 - David Moews' SimCity 2000 MS-DOS format notes: https://djm.cc/simcity-2000-info.txt
+
+## City Geometry Builder (decompiled)
+
+The original 3D city is assembled by `FUN_0047c0c0` in `SimCopter.exe`, confirmed by a Ghidra pass on 2026-06-23. Key facts that drive the renderer:
+
+- It zeroes a 256x256 scene-graph array at `DAT_005d9200` (indexed `[row*0x100 + col]`), then loops `row` `0..127` (outer) x `col` `0..127` (inner). For each tile it reads the XBLD building byte from grid `DAT_005910b0`, derives the footprint size with `FUN_004e4f80`, and runs a large `switch` on the tile id that selects one or more **mesh objects** via `FUN_00470571(globalIndex)`.
+- `FUN_00470571` takes a **flat global object index** spanning the three packs in order (`sim3d1.max` `0..142`, `SIM3D2.MAX` `143..286`, `SIM3D3.MAX` `287..399`). Object preprocessing in `FUN_00496180` walks the same flat range.
+- There is **no rotation anywhere**. The per-tile render struct (24 bytes) stores only: a flag, `worldX`, `height`, `worldY`, footprint size, and a linked list of object handles. Orientation is fully encoded by *which* object id the switch chooses. Roads pick a flat-vs-sloped variant by comparing the four tmap corner heights, e.g. XBLD `0x1d` -> object `0x3b` when flat or `0x1d` when sloped; `0x1e` -> `0x3c`/`0x1e`. The secondary object some road/zone tiles add (`local_28`, from `FUN_00482890` or a `rand()` pick of `0x186..0x18d`) is a decorative prop (traffic/trees), not an orientation.
+- World position (verified by `FUN_004a64d0`, which builds a position vector as `(struct+2, struct+4, struct+6)`): `worldX = (row - 127.5) * 0x40`, `up = tmap height`, `worldY = (127.5 - col) * 0x40`. The engine places each mesh with mesh-X -> worldX, mesh-Z -> worldY, mesh-Y -> up. The **column axis is negated**; the row axis is not.
+- The remake's `ConvertMaxisVertexToUnreal` is a cyclic axis permutation (determinant `+1`) that already equals the engine's mesh-to-world rotation. The only discrepancy was that the remake placed the column axis with the wrong sign, which is a reflection (determinant `-1`) that no amount of yaw can undo. `ASimCity2000CityActor` now negates world X for every pass (mesh, terrain, placeholders) and applies no per-tile rotation. Terrain quad winding/normals are flipped to compensate for the mirrored X.
+
+The grid globals used by these functions: XBLD `DAT_005910b0`, ALTM `DAT_00590d70`, XTER `DAT_00591a80`, tmap height grid `DAT_005cde80` (256x256, built by `FUN_004abce0`), terrain texture-type grid `DAT_005bde80`. Mesh/texture handles: SIM3D1 `DAT_005039b4`, SIM3D2 `DAT_005039b8`, SIM3D3 `DAT_005039bc`, SIM3D.BMP `DAT_005039ac`, all set up by the asset loader `FUN_00479bb0`.
+
+Terrain texture transitions are a **separate** subsystem, not an orientation problem. The empty-tile second pass in `FUN_0047c0c0` attaches no mesh; ground texturing is driven by the `DAT_005bde80` type grid that `FUN_004abce0` fills (values such as `0x05` land, `0x10`/`0x20` water, `0x0a` land variant) and then smooths along coastlines, before later passes turn it into blended, tmap-resolution texture cells. The remake currently does a flat per-tile `TILED1.BMP` atlas lookup with no cross-tile blending, which is why shore/transition tiles look blocky and noisy. Decoding the exact `DAT_005bde80` -> texture-cell mapping and edge blend is a follow-up.
+
+The reusable headless exploration script is tracked at `Tools/Ghidra/ReverseExplore.java`.
 
 ## SimCopter Geometry Assets
 
