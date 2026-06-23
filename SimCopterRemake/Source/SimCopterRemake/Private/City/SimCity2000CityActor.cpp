@@ -328,6 +328,42 @@ uint32 HashTerrainTile(int32 X, int32 Y, uint32 Salt)
 	return Hash;
 }
 
+uint8 ResolveOriginalTerrainDetailType(uint8 TerrainType, int32 X, int32 Y)
+{
+	uint8 DetailBase = 0;
+	switch (TerrainType)
+	{
+	case 0x10:
+		DetailBase = 0x70;
+		break;
+	case 0x20:
+		DetailBase = 0x73;
+		break;
+	case 0x30:
+		DetailBase = 0x76;
+		break;
+	case 0x40:
+		DetailBase = 0x79;
+		break;
+	case 0x60:
+		DetailBase = 0x7C;
+		break;
+	default:
+		return TerrainType;
+	}
+
+	// SimCopter uses clock-seeded MSVCRT rand() here, after terrain perturbation has consumed
+	// earlier draws. Keep the exact candidate set and probabilities, but make editor rebuilds stable.
+	const uint32 RandA = HashTerrainTile(X, Y, 0x4AD700u) & 0x7FFFu;
+	if ((RandA & 1u) == 0u)
+	{
+		return TerrainType;
+	}
+
+	const uint32 RandB = HashTerrainTile(X, Y, 0x4AD701u ^ (RandA << 1)) & 0x7FFFu;
+	return static_cast<uint8>(DetailBase + (RandB % 3u));
+}
+
 // Reproduces SimCopter's terrain texture type grid (FUN_004abce0 in SimCopter.exe).
 // The renderer uses the type code through DAT_005cde90: 0x00..0x3f select page 0x14
 // (TILED1.BMP), while 0x40..0x7f select page 0x0d (SIM3D.BMP image 13) with code-0x40.
@@ -605,12 +641,14 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	ApplyTransitionMask(0x50, [](uint8 T) { return T >= 0x40 && T < 0x50; });
 	ApplyTransitionMask(0x60, [](uint8 T) { return T >= 0x50 && T < 0x60; });
 
-	// The original follows this with a clock-seeded random-detail pass that replaces unmasked
-	// 0x10/0x20/0x30/0x40/0x60 cells with 0x70..0x7e page-0x0d detail cells. Literal use of that
-	// pass currently over-selects pale SIM3D detail cells in the remake because the preceding
-	// terrain-map perturbation passes are not fully reproduced yet. Keep the deterministic band and
-	// transition grid stable for now, and re-enable detail variants after FUN_004ad7c0/FUN_004ae530
-	// are ported.
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const int32 Index = Y * N + X;
+			Grid[Index] = ResolveOriginalTerrainDetailType(Grid[Index], X, Y);
+		}
+	}
 
 	return Grid;
 }
