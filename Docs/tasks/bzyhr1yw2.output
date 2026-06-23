@@ -1,0 +1,8 @@
+[4/4] WriteMetadata SimCopterRemakeEditor.target [NoUba]
+
+Total time in Unreal Build Accelerator local executor: 3.89 seconds
+Output binary: C:\GameDev\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe
+
+Result: Succeeded
+Total execution time: 4.64 seconds
+Trace written to file C:\Users\james\AppData\Local\UnrealBuildTool\Trace.uba with size 5.6kb

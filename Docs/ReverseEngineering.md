@@ -76,7 +76,20 @@ The original 3D city is assembled by `FUN_0047c0c0` in `SimCopter.exe`, confirme
 
 The grid globals used by these functions: XBLD `DAT_005910b0`, ALTM `DAT_00590d70`, XTER `DAT_00591a80`, tmap height grid `DAT_005cde80` (256x256, built by `FUN_004abce0`), terrain texture-type grid `DAT_005bde80`. Mesh/texture handles: SIM3D1 `DAT_005039b4`, SIM3D2 `DAT_005039b8`, SIM3D3 `DAT_005039bc`, SIM3D.BMP `DAT_005039ac`, all set up by the asset loader `FUN_00479bb0`.
 
-Terrain texture transitions are a **separate** subsystem, not an orientation problem. The empty-tile second pass in `FUN_0047c0c0` attaches no mesh; ground texturing is driven by the `DAT_005bde80` type grid that `FUN_004abce0` fills (values such as `0x05` land, `0x10`/`0x20` water, `0x0a` land variant) and then smooths along coastlines, before later passes turn it into blended, tmap-resolution texture cells. The remake currently does a flat per-tile `TILED1.BMP` atlas lookup with no cross-tile blending, which is why shore/transition tiles look blocky and noisy. Decoding the exact `DAT_005bde80` -> texture-cell mapping and edge blend is a follow-up.
+Bridges are handled the same way as roads (no rotation). `FUN_0047c0c0` cases `0x3f..0x48` dispatch bridge/causeway tiles to specific objects (`0x178..0x17b` for raised spans, `0x128`/`0x129` vs `0x17f`/`0x180` for the flat-vs-elevated suspension variants chosen by comparing tmap corner heights, and the road-on-bridge cases `0x45`/`0x46` reuse the road meshes `0x3b`/`0x1d` and `0x3c`/`0x1e` plus a detail prop `0x2c`/`0x2d`). So bridges that look wrong are a **mesh-selection** issue, not orientation: the remake's heuristic XBLD->mesh mapping does not reproduce the game's exact dispatch, so some bridge tiles get the wrong mesh or fall back to placeholder plates. The faithful fix is to transcribe the full `FUN_0047c0c0` switch (XBLD id -> flat global object index, with the flat/sloped variant rule) and resolve it through a new "object by flat global index" lookup in `FMaxisMeshLibrary` (global index spans the packs in order: `sim3d1` `0..142`, `SIM3D2` `143..286`, `SIM3D3` `287..399`). Note the public mesh-to-building CSV the current `KnownXbldMappings` uses is keyed by geometry-table index, which is **not** the same numbering as the runtime global object index, so it cannot be mixed with the dispatch table without a conversion.
+
+Terrain ground texture (decoded and implemented for the SC2 city area). The ground texture is **not** chosen by a flat `XTER` lookup. SimCopter keeps a 256x256 terrain **type grid** at `DAT_005bde80`; the first 128x128 region is seeded from the SC2 city tiles, while later terrain-map passes also operate over the generated outside area. The renderer (`FUN_004814c0`) uses the type code through `DAT_005cde90`. `FUN_004abc90` maps type codes `0x00..0x3f` to page `0x14` (the loaded `TILED1.BMP` atlas) and type codes `0x40..0x7f` to page `0x0d` (the 256x256 atlas at `SIM3D.BMP` image `13`, using `type - 0x40` as the cell). The remake currently reconstructs and renders the 128x128 SC2 city region; the generated outer `DAT_005bde80` area is a follow-up. `DAT_005bde80` is also reused for the minimap colours (`FUN_004a28e0`) and vehicle traversability (`FUN_004b10a0`).
+
+`FUN_004abce0` builds the type grid in passes that we now reproduce in `BuildTerrainTextureTypeGrid`:
+1. Classify each tile: default `0x30` (inland grass); `XTER > 0x0F` water -> `5`; XBLD `0xF8` -> `0x10`; XBLD `6..0x0D`/`0xD5`/`0xDA` -> `0x20` (wooded ground); XBLD `1..4` -> `10`/`11` (water-feature tiles, originally a `rand` coin-flip).
+2. Land (`0x30`) or near-shore (`0x20`) next to water (`5`) -> shore `0x10`.
+3. Inland grass (`0x30`) next to shore (`0x10`) -> near-shore `0x20`.
+4. Open water (`5`) next to any land (type `> 9`) -> coastal water `0`.
+5. Compare averaged terrain-map height against `min/max` thresholds to promote natural land through elevation bands: low `0x10`, mid `0x20`, normal `0x30`, high `0x40`, higher `0x50`, and peak `0x60`.
+6. For base natural bands only, add a 4-bit orthogonal-neighbor mask when a neighbor is in the next lower 16-cell band. Important: the original `DAT_005bde80` address is effectively `x * 0x100 + y`, while the remake stores `Grid[y * N + x]`. In original atlas order the bits are `1` = north/file-Y-1, `2` = east/file-X+1, `4` = south/file-Y+1, and `8` = west/file-X-1. This selects directional transition cells such as `0x31..0x3f`. Man-made/feature cells keep hard edges because they are not one of these base natural bands.
+7. The original then replaces some unmasked base natural cells with random detail variants: `0x10 -> 0x70..0x72`, `0x20 -> 0x73..0x75`, `0x30 -> 0x76..0x78`, `0x40 -> 0x79..0x7b`, and `0x60 -> 0x7c..0x7e`. The remake currently leaves this disabled in visible terrain: literal use of these page-`0x0d` detail cells produced large pale patches before the preceding terrain-map perturbation passes (`FUN_004ad7c0`/`FUN_004ae530`) were faithfully reproduced. Re-enable only after those passes and the original random seeding/page-`0x0d` detail distribution are verified.
+
+This yields the original behavior visible in captures: natural terrain blends across water/shore/grass/dirt/rock bands, while roads, buildings, and other man-made surfaces remain crisp. The original's water/coastal-water animation cycle is not yet reproduced (static frame 0 is used).
 
 The reusable headless exploration script is tracked at `Tools/Ghidra/ReverseExplore.java`.
 
@@ -188,9 +201,10 @@ Face texture notes:
 - Raw UV values are fixed-point values scaled by `65536`. Values often extend outside `0..1`, so the renderer keeps those repeat coordinates and applies them to transient 32x32 atlas-cell textures with wrap addressing.
 - Maxis raw V coordinates use a bottom-left origin. `FMaxisMeshReader::ConvertMaxisUVToUnreal` flips V for Unreal's top-left texture sampling while preserving out-of-range repeat values.
 - The city actor creates transient `UTexture2D` objects for direct `SIM3D.BMP` images plus atlas-cell textures, then assigns them to procedural mesh sections using Unreal's built-in `/Engine/EngineMaterials/EmissiveTexturedMaterial`.
-- `TILED1.BMP` image `0` is an 8x8 atlas. Exported cell diagnostics show bottom-origin cells `0..9` are water and cells `32+` are land/grass/sand. Direct `XTER & 0x3f` made flat land (`XTER=0`) sample water. The current mapping is `XTER < 0x10 -> XTER + 0x20`, otherwise `XTER - 0x10`.
+- `TILED1.BMP` image `0` is an 8x8 atlas. Exported cell diagnostics show bottom-origin cells `0..9` are water and cells `32+` are land/grass/sand. Direct `XTER & 0x3f` made flat land (`XTER=0`) sample water; terrain now uses the decompiled `DAT_005bde80` type grid instead. Type codes `0x40..0x6f` render through a second terrain mesh section using `SIM3D.BMP` image `13` as page `0x0d`; random detail codes `0x70..0x7e` are decoded in the reverse-engineering notes but not emitted by the current renderer.
+- SimCopter loads `TILED1.BMP` through `FUN_0046ce50`, ignores the row table after validating the image, and passes the raw 256x256 byte buffer to `FUN_0046cd50`. The tile pointer table uses `row = index >> 3`, `col = index & 7`, and `offset = (row * 0x100 + col) * 0x20`; terrain face setup (`FUN_00478960`) maps pixel-space UVs from `(0.5,0.5)` to `(31.5,31.5)` with the raw texture's first row on the top edge of the ground quad. The remake's terrain UV helper compensates for `FMaxisTextureReader`'s decoded top-down image layout so transition cells are not vertically flipped.
 - The current terrain pass creates one procedural quad per SC2 tile with interpolated corner heights. Unreal-facing terrain winding is `0,2,1` and `0,3,2`, while supplied normals remain upward for lighting. Mixing one reversed and one unreversed triangle made one half of each tile render differently and caused the visible triangular texture artifact.
-- Exact use of `ALTM` bits `10..14` outside the height-map pass is still a follow-up.
+- Exact use of `ALTM` bits `10..14` outside the height-map and terrain-type passes is still a follow-up.
 
 Validated on `CityRender.umap` construction on 2026-06-23 after the footprint, terrain mesh, and water overlay passes:
 
@@ -209,7 +223,7 @@ originalTextures=389
 Next asset tasks:
 
 1. Verify current building UV orientation and terrain tile selection visually against the original game.
-2. Decode the exact original terrain type/mask rules from `ALTM` bits `10..14` and the later `0x5bde80` terrain-mask passes.
+2. Decode remaining terrain-map perturbation/detail passes around `FUN_004ad7c0` and `FUN_004ae530`.
 3. Replace or refine the old placeholder water/road fallback surfaces after terrain/road atlas behavior is confirmed.
 4. Add a diagnostics view listing missing mesh mappings, footprint decisions, and texture references.
 5. Split procedural city geometry into deterministic streaming/cache chunks for larger cities.
@@ -242,7 +256,7 @@ Current code has two layers:
 - `FMaxisMeshReader`: pure parser/decoder for Maxis `.MAX` mesh packs.
 - `FMaxisMeshLibrary`: original-game asset index that maps SC2 tile ids to decoded Maxis mesh objects.
 - `FMaxisTextureReader`: pure parser/decoder for Maxis composite bitmap texture files such as `SIM3D.BMP`.
-- `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with procedural terrain, optional fallback water plates, and original SimCopter road/building mesh geometry. Textured mesh faces use transient textures decoded from `SIM3D.BMP` plus the `SKY.BMP` page-20 exception; terrain uses `TILED1.BMP` image `0` when available. Placeholder road/building instances remain as a fallback for missing mappings.
+- `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with procedural terrain, optional fallback water plates, and original SimCopter road/building mesh geometry. Textured mesh faces use transient textures decoded from `SIM3D.BMP` plus the `SKY.BMP` page-20 exception; terrain uses `TILED1.BMP` image `0` for page `0x14` and `SIM3D.BMP` image `13` for page `0x0d` when available. Placeholder road/building instances remain as a fallback for missing mappings.
 - `AMaxisMeshDebugActor`: editor/runtime actor that renders one decoded `.MAX` mesh for inspection.
 
 The placeholder renderer is now fallback scaffolding. It still proves city parsing, orientation, tile height, and high-level tile classification, while original terrain textures and road/building geometry can be rendered directly from user-provided SimCopter assets.

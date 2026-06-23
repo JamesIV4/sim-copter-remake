@@ -1,0 +1,29 @@
+Using bundled DotNet SDK version: 10.0 win-x64
+Running UnrealBuildTool: dotnet "..\..\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll" SimCopterRemakeEditor Win64 Development -Project=S:\Repos\sim-copter-remake\SimCopterRemake\SimCopterRemake.uproject -WaitMutex -NoHotReload
+Log file: C:\Users\james\AppData\Local\UnrealBuildTool\Log.txt
+Determining max actions to execute in parallel (8 physical cores, 8 logical cores)
+  Executing up to 8 processes, one per physical core
+Using 'git status' to determine working set for adaptive non-unity build (S:\Repos\sim-copter-remake).
+UbaServer - Listening on 0.0.0.0:1345
+Building SimCopterRemakeEditor...
+===== Toolchain Information =====
+Using ISPC compiler (C:\GameDev\UE_5.8\Engine\Source\ThirdParty\Intel\ISPC\bin\Windows\ispc.exe)
+  Intel(r) Implicit SPMD Program Compiler (Intel(r) ISPC), 1.24.0 (build commit  @ 20250404, LLVM 18.1.2) 
+Using Visual Studio 14.50.35725 toolchain (C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.50.35717) and Windows 10.0.26100.0 SDK (C:\Program Files (x86)\Windows Kits\10).
+[Adaptive Build] Excluded from SimCopterRemake unity file: SimCity2000CityActor.cpp
+=================================
+Using Unreal Build Accelerator local executor to run 4 action(s)
+  CPU 8 physical cores, 8 logical cores
+  Memory 31.09 GB physical, 31.49 GB/37.32 GB committed
+  UBA Storage capacity 40 GB
+[1/4] Compile [x64] SimCity2000CityActor.cpp
+[2/4] Link [x64] UnrealEditor-SimCopterRemake.lib
+[3/4] Link [x64] UnrealEditor-SimCopterRemake.dll
+[4/4] WriteMetadata SimCopterRemakeEditor.target [NoUba]
+
+Total time in Unreal Build Accelerator local executor: 4.20 seconds
+Output binary: C:\GameDev\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe
+
+Result: Succeeded
+Total execution time: 5.09 seconds
+Trace written to file C:\Users\james\AppData\Local\UnrealBuildTool\Trace.uba with size 5.6kb

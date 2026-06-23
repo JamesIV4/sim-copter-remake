@@ -1,0 +1,11 @@
+STRING @ 0050461c : loc x=%3d y=%3d  road x=%3d y=%3d d=%c  \n
+    <- 00496037  in FUN_00495700 @ 00495700
+    <- 004960a1  in FUN_00495700 @ 00495700
+    <- 0049610b  in FUN_00495700 @ 00495700
+STRING @ 00504668 : RoadGraph Struct Size = %2d, Intersections * Struct Size = %6d\n
+    <- 00495fc2  in FUN_00495700 @ 00495700
+STRING @ 005046a8 : Road      Struct Size = %2d,     RoadTiles * Struct Size = %6d\n
+    <- 00495f9b  in FUN_00495700 @ 00495700
+STRING @ 005046e9 : \nIntersections = %d\nRoadTiles     = %d\n
+    (no references)
+=== 4 strings matched 'Road' ===

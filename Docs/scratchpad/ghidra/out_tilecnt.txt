@@ -1,0 +1,349 @@
+===== FUN_00467070 @ 00467070 =====
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 FUN_00467070(void)
+
+{
+  int iVar1;
+  int *piVar2;
+  int *piVar3;
+  int iVar4;
+  short sVar5;
+  int iVar6;
+  short sVar7;
+  int iVar8;
+  
+  iVar8 = 0;
+  DAT_00591820 = 0;
+  DAT_00591860 = 0;
+  DAT_00590d70 = 0;
+  _DAT_0055d13c = 0;
+  _DAT_0055d144 = 0;
+  _DAT_0055d140 = 0;
+  _DAT_0055d14c = 0;
+  _DAT_0055d148 = 0;
+  DAT_00591094 = 0;
+  DAT_00591f50 = 0;
+  DAT_00590f80 = 0;
+  DAT_00590b70 = 0;
+  DAT_00590800 = 0;
+  DAT_00590f90 = 0;
+  DAT_00591510 = 0;
+  DAT_00591c80 = 0;
+  DAT_00591f60 = 0;
+  DAT_00590a00 = 0;
+  DAT_00591dc0 = 0;
+  DAT_00590770 = 0;
+  DAT_00591e50 = 0;
+  DAT_00591090 = 0;
+  DAT_00591d84 = 0;
+  _DAT_00590ad0 = 0;
+  DAT_00591d88 = 0;
+  DAT_00591a7c = 0;
+  DAT_00590f70 = 0;
+  DAT_005910a8 = 0;
+  DAT_00590ad4 = 0;
+  DAT_0059161c = 0;
+  DAT_005910a4 = 0;
+  DAT_00590b64 = 0;
+  DAT_005912b8 = 0;
+  DAT_005912b4 = 0;
+  DAT_00591308 = 0;
+  DAT_00591304 = 0;
+  _DAT_00590f78 = 0;
+  DAT_00591d80 = 0;
+  DAT_00590acc = 0;
+  DAT_00590f74 = 0;
+  DAT_00591a74 = 0;
+  DAT_0059206c = FUN_00468270(0x32342);
+  DAT_00591820 = FUN_00468510(DAT_0059206c,s_GraphData_004fa2b4,0xd00);
+  if (DAT_00591820 != 0) {
+    DAT_00591860 = FUN_00468510(DAT_0059206c,s_GraphMax_004fa2a8,0x40);
+    if (DAT_00591860 != 0) {
+      iVar6 = 0;
+      do {
+        *(int *)((int)&DAT_00591820 + iVar8) = DAT_00591820 + iVar6;
+        iVar1 = 0;
+        do {
+          iVar1 = iVar1 + 4;
+          *(undefined4 *)(*(int *)((int)&DAT_00591820 + iVar8) + -4 + iVar1) = 0;
+        } while (iVar1 < 0xd0);
+        iVar8 = iVar8 + 4;
+        iVar6 = iVar6 + 0xd0;
+        *(undefined4 *)(DAT_00591860 + -4 + iVar8) = 1;
+      } while (iVar6 < 0xd00);
+      *(undefined4 *)(DAT_00591860 + 0x20) = 100;
+      *(undefined4 *)(DAT_00591860 + 0x24) = 100;
+      *(undefined4 *)(DAT_00591860 + 0x2c) = 0x96;
+      *(undefined4 *)(DAT_00591860 + 0x28) = 0x5a;
+      DAT_00590d70 = FUN_00468510(DAT_0059206c,s_AltMap_004fa2a0,0x8000);
+      if (DAT_00590d70 != 0) {
+        iVar8 = 0x100;
+        piVar3 = &DAT_00590d74;
+        do {
+          piVar2 = piVar3 + 1;
+          iVar6 = DAT_00590d70 + iVar8;
+          iVar8 = iVar8 + 0x100;
+          *piVar3 = iVar6;
+          piVar3 = piVar2;
+        } while (piVar2 < &DAT_00590f70);
+        iVar8 = FUN_00468510(DAT_0059206c,s_auxPtr1_004fa298,0x4000);
+        _DAT_0055d13c = iVar8;
+        if (iVar8 != 0) {
+          piVar3 = &DAT_005910b0;
+          do {
+            *piVar3 = iVar8;
+            piVar3 = piVar3 + 1;
+            iVar8 = iVar8 + 0x80;
+          } while (piVar3 < &DAT_005912b0);
+          iVar8 = FUN_00468510(DAT_0059206c,s_auxPtr2_004fa290,0x4000);
+          _DAT_0055d144 = iVar8;
+          if (iVar8 != 0) {
+            piVar3 = &DAT_00591620;
+            do {
+              *piVar3 = iVar8;
+              piVar3 = piVar3 + 1;
+              iVar8 = iVar8 + 0x80;
+            } while (piVar3 < &DAT_00591820);
+            iVar8 = FUN_00468510(DAT_0059206c,s_auxPtr3_004fa288,0x4000);
+            _DAT_0055d140 = iVar8;
+            if (iVar8 != 0) {
+              piVar3 = &DAT_00591a80;
+              do {
+                *piVar3 = iVar8;
+                piVar3 = piVar3 + 1;
+                iVar8 = iVar8 + 0x80;
+              } while (piVar3 < &DAT_00591c80);
+              iVar8 = FUN_00468510(DAT_0059206c,s_auxPtr4_004fa280,0x4000);
+              _DAT_0055d14c = iVar8;
+              if (iVar8 != 0) {
+                piVar3 = &DAT_00591870;
+                do {
+                  *piVar3 = iVar8;
+                  piVar3 = piVar3 + 1;
+                  iVar8 = iVar8 + 0x80;
+                } while (piVar3 < &DAT_00591a70);
+                iVar8 = FUN_00468510(DAT_0059206c,s_auxPtr5_004fa278,0x4000);
+                _DAT_0055d148 = iVar8;
+                if (iVar8 != 0) {
+                  piVar3 = &DAT_00591310;
+                  do {
+                    *piVar3 = iVar8;
+                    piVar3 = piVar3 + 1;
+                    iVar8 = iVar8 + 0x80;
+                  } while (piVar3 < &DAT_00591510);
+                  DAT_00591094 = FUN_00468510(DAT_0059206c,s_auxPtr6_004fa270,0x1900);
+                  if (DAT_00591094 != 0) {
+                    DAT_00591f50 = FUN_00468510(DAT_0059206c,s_auxPtr7_004fa268,0x4b0);
+                    if (DAT_00591f50 != 0) {
+                      DAT_00590f80 = FUN_00468510(DAT_0059206c,s_auxPtr8_004fa260,0x1e0);
+                      if (DAT_00590f80 != 0) {
+                        sVar5 = 0;
+                        do {
+                          sVar7 = 0;
+                          do {
+                            iVar8 = (int)sVar7;
+                            sVar7 = sVar7 + 1;
+                            *(undefined2 *)((&DAT_00590d70)[sVar5] + iVar8 * 2) = 0;
+                            *(undefined1 *)((&DAT_00591a80)[sVar5] + iVar8) = 0;
+                            *(undefined1 *)((&DAT_005910b0)[sVar5] + iVar8) = 0;
+                            *(undefined1 *)((&DAT_00591620)[sVar5] + iVar8) = 0;
+                            *(undefined1 *)((&DAT_00591870)[sVar5] + iVar8) = 0;
+                            *(undefined1 *)((&DAT_00591310)[sVar5] + iVar8) = 0;
+                          } while (sVar7 < 0x80);
+                          sVar5 = sVar5 + 1;
+                        } while (sVar5 < 0x80);
+                        iVar8 = 0;
+                        DAT_00590b70 = FUN_00468510(DAT_0059206c,&DAT_004fa258,0x8000);
+                        if (DAT_00590b70 != 0) {
+                          DAT_00590800 = FUN_00468510(DAT_0059206c,s_BitsMap_004fa250,0x4000);
+                          if (DAT_00590800 != 0) {
+                            DAT_00590f90 = FUN_00468510(DAT_0059206c,s_TrafficMap_004fa244,0x1000);
+                            if (DAT_00590f90 != 0) {
+                              DAT_00591510 = FUN_00468510(DAT_0059206c,s_PolluteMap_004fa238,0x1000)
+                              ;
+                              if (DAT_00591510 != 0) {
+                                DAT_00591c80 = FUN_00468510(DAT_0059206c,s_ValueMap_004fa22c,0x1000)
+                                ;
+                                if (DAT_00591c80 != 0) {
+                                  DAT_00591f60 = FUN_00468510(DAT_0059206c,s_CrimeMap_004fa220,
+                                                              0x1000);
+                                  if (DAT_00591f60 != 0) {
+                                    DAT_00590a00 = FUN_00468510(DAT_0059206c,s_PoliceMap_004fa214,
+                                                                0x400);
+                                    if (DAT_00590a00 != 0) {
+                                      DAT_00591dc0 = FUN_00468510(DAT_0059206c,s_FireMap_004fa20c,
+                                                                  0x400);
+                                      if (DAT_00591dc0 != 0) {
+                                        DAT_00590770 = FUN_00468510(DAT_0059206c,s_PopMap_004fa204,
+                                                                    0x400);
+                                        if (DAT_00590770 != 0) {
+                                          DAT_00591e50 = FUN_00468510(DAT_0059206c,s_ROGMap_004fa1fc
+                                                                      ,0x400);
+                                          if (DAT_00591e50 != 0) {
+                                            iVar1 = 0;
+                                            iVar6 = 0;
+                                            do {
+                                              iVar4 = DAT_00590b70 + iVar1;
+                                              iVar1 = iVar1 + 0x100;
+                                              *(int *)((int)&DAT_00590b70 + iVar6) = iVar4;
+                                              iVar4 = DAT_00590800 + iVar8;
+                                              iVar8 = iVar8 + 0x80;
+                                              *(int *)((int)&DAT_00590800 + iVar6) = iVar4;
+                                              iVar6 = iVar6 + 4;
+                                            } while (iVar1 < 0x8000);
+                                            iVar6 = 0;
+                                            iVar8 = 0;
+                                            do {
+                                              *(int *)((int)&DAT_00590f90 + iVar8) =
+                                                   DAT_00590f90 + iVar6;
+                                              *(int *)((int)&DAT_00591510 + iVar8) =
+                                                   DAT_00591510 + iVar6;
+                                              *(int *)((int)&DAT_00591c80 + iVar8) =
+                                                   DAT_00591c80 + iVar6;
+                                              iVar1 = DAT_00591f60 + iVar6;
+                                              iVar6 = iVar6 + 0x40;
+                                              *(int *)((int)&DAT_00591f60 + iVar8) = iVar1;
+                                              iVar8 = iVar8 + 4;
+                                            } while (iVar6 < 0x1000);
+                                            iVar6 = 0;
+                                            iVar8 = 0;
+                                            do {
+                                              *(int *)((int)&DAT_00590a00 + iVar8) =
+                                                   DAT_00590a00 + iVar6;
+                                              *(int *)((int)&DAT_00591dc0 + iVar8) =
+                                                   DAT_00591dc0 + iVar6;
+                                              *(int *)((int)&DAT_00590770 + iVar8) =
+                                                   DAT_00590770 + iVar6;
+                                              iVar1 = DAT_00591e50 + iVar6;
+                                              iVar6 = iVar6 + 0x20;
+                                              *(int *)((int)&DAT_00591e50 + iVar8) = iVar1;
+                                              iVar8 = iVar8 + 4;
+                                            } while (iVar6 < 0x400);
+                                            DAT_00591090 = FUN_00468510(DAT_0059206c,
+                                                                        s_budgetList_004fa1f0,0x700)
+                                            ;
+                                            if (DAT_00591090 != 0) {
+                                              DAT_00591d84 = FUN_00468510(DAT_0059206c,
+                                                                          s_ZonePop_004fa1e8,0x20);
+                                              if (DAT_00591d84 != 0) {
+                                                _DAT_00590ad0 =
+                                                     FUN_00468510(DAT_0059206c,s_TaxPop_004fa1e0,0xc
+                                                                 );
+                                                if (_DAT_00590ad0 != 0) {
+                                                  DAT_00591d88 = FUN_00468510(DAT_0059206c,
+                                                                                                                                                            
+                                                  s_NeighborName_004fa1d0,8);
+                                                  if (DAT_00591d88 != 0) {
+                                                    DAT_00591a7c = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                
+                                                  s_NeighborValue_004fa1c0,0x10);
+                                                  if (DAT_00591a7c != 0) {
+                                                    DAT_00590f70 = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                
+                                                  s_NeighborPop_004fa1b4,0x10);
+                                                  if (DAT_00590f70 != 0) {
+                                                    DAT_005910a8 = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                
+                                                  s_NeighborFame_004fa1a4,0x10);
+                                                  if (DAT_005910a8 != 0) {
+                                                    DAT_00590ad4 = FUN_00468510(DAT_0059206c,
+                                                                                s_PopRatio_004fa198,
+                                                                                0x50);
+                                                    if (DAT_00590ad4 != 0) {
+                                                      DAT_0059161c = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                    
+                                                  s_EducateRatio_004fa188,0x50);
+                                                  if (DAT_0059161c != 0) {
+                                                    DAT_005910a4 = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                
+                                                  s_HealthRatio_004fa17c,0x50);
+                                                  if (DAT_005910a4 != 0) {
+                                                    DAT_00590b64 = FUN_00468510(DAT_0059206c,
+                                                                                s_IndDemand_004fa170
+                                                                                ,0x16);
+                                                    if (DAT_00590b64 != 0) {
+                                                      DAT_005912b8 = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                    
+                                                  s_IndRates_004fa164,0x16);
+                                                  if (DAT_005912b8 != 0) {
+                                                    DAT_005912b4 = FUN_00468510(DAT_0059206c,
+                                                                                s_IndRatio_004fa158,
+                                                                                0x2c);
+                                                    if (DAT_005912b4 != 0) {
+                                                      DAT_00591308 = FUN_00468510(DAT_0059206c,
+                                                                                  s_TileCnt_004fa150
+                                                                                  ,0x200);
+                                                      if (DAT_00591308 != 0) {
+                                                        DAT_00591304 = FUN_00468510(DAT_0059206c,
+                                                                                                                                                                        
+                                                  s_MilCnt_004fa148,0x20);
+                                                  if (DAT_00591304 != 0) {
+                                                    _DAT_00590f78 =
+                                                         FUN_00468510(DAT_0059206c,
+                                                                      s_StackPts_004fa13c,0x800);
+                                                    if (_DAT_00590f78 != 0) {
+                                                      DAT_00591d80 = FUN_00468510(DAT_0059206c,
+                                                                                  s_CityStr_004fa134
+                                                                                  ,0x21);
+                                                      if (DAT_00591d80 != 0) {
+                                                        DAT_00590f74 = FUN_00468510(DAT_0059206c,
+                                                                                    s_Paper_004fa12c
+                                                                                    ,0x1e);
+                                                        if (DAT_00590f74 != 0) {
+                                                          DAT_00591a74 = FUN_00468510(DAT_0059206c,
+                                                                                      &DAT_004fa124,
+                                                                                      0x48);
+                                                          if (DAT_00591a74 != 0) {
+                                                            DAT_00590acc = FUN_00468510(DAT_0059206c
+                                                                                        ,
+                                                  s_MiscInfo_004fa118,0x12c0);
+                                                  if (DAT_00590acc != 0) {
+                                                    return 0;
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  FUN_00468570(DAT_0059206c);
+  return 1;
+}
+
+
