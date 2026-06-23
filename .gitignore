@@ -23,6 +23,8 @@
 # Build output and temporary files
 *.log
 *.tmp
+__pycache__/
+*.pyc
 *.obj
 *.pdb
 *.ilk
