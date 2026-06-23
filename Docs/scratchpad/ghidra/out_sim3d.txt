@@ -1,0 +1,21 @@
+STRING @ 004f84a4 : SIM3D1.MAX
+    <- 00411ff9  in FUN_00411fa0 @ 00411fa0
+    <- 004f84b0  (no func)
+    <- 00479c95  in FUN_00479bb0 @ 00479bb0
+STRING @ 004f8620 : sim3d.twk
+    <- 00479be2  in FUN_00479bb0 @ 00479bb0
+    <- 0045c5a7  (no func)
+    <- 0041f76d  in FUN_0041f760 @ 0041f760
+STRING @ 00503a60 : SIM3D3
+    <- 00479d08  in FUN_00479bb0 @ 00479bb0
+STRING @ 00503a68 : SIM3D3.MAX
+    <- 00479cf3  in FUN_00479bb0 @ 00479bb0
+STRING @ 00503a74 : SIM3D2
+    <- 00479cd9  in FUN_00479bb0 @ 00479bb0
+STRING @ 00503a7c : SIM3D2.MAX
+    <- 00479cc4  in FUN_00479bb0 @ 00479bb0
+STRING @ 00503a88 : SIM3D1
+    <- 00479caa  in FUN_00479bb0 @ 00479bb0
+STRING @ 00503a90 : SIM3D.BMP
+    <- 00479c61  in FUN_00479bb0 @ 00479bb0
+=== 8 strings matched 'SIM3D' ===

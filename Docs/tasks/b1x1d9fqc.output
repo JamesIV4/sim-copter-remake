@@ -1,0 +1,30 @@
+    Disassemble                                1.140 secs
+    Disassemble Entry Points                   0.628 secs
+    Embedded Media                             0.009 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.944 secs
+    Function Start Pre Search                  0.019 secs
+    Function Start Search                      0.182 secs
+    Function Start Search After Code           0.039 secs
+    Function Start Search After Data           0.111 secs
+    Function Start Search delayed - One Time   0.001 secs
+    Non-Returning Functions - Discovered       0.260 secs
+    Non-Returning Functions - Known            0.005 secs
+    PDB Universal                              0.001 secs
+    Reference                                  0.684 secs
+    Scalar Operand References                  0.926 secs
+    Shared Return Calls                        0.233 secs
+    Stack                                      3.034 secs
+    Subroutine References                      0.590 secs
+    Subroutine References - One Time           0.006 secs
+    WindowsResourceReference                   4.667 secs
+    X86 Function Callee Purge                  0.192 secs
+    x86 Constant Reference Analyzer            3.265 secs
+-----------------------------------------------------
+     Total Time   41 secs
+-----------------------------------------------------
+ (AutoAnalysisManager)  
+INFO  REPORT: Analysis succeeded for file: file:///S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame/SimCopter.exe (HeadlessAnalyzer)  
+INFO  /SimCopter.exe: file created (james) (LocalFileSystem)  
+INFO  REPORT: Save succeeded for: /SimCopter.exe (SimCopter:/SimCopter.exe) (HeadlessAnalyzer)  
+INFO  REPORT: Import succeeded (HeadlessAnalyzer)  

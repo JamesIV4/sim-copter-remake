@@ -62,7 +62,9 @@ int32 GetMaxisFaceTextureKey(const FMaxisMeshFace& Face)
 
 constexpr int32 SimCopterSkyGroundTextureFile = 20;
 constexpr int32 SimCopterSkyGroundImageIndex = 4;
+constexpr int32 SimCopterHighTerrainAtlasImageIndex = 13;
 constexpr int32 SimCopterTerrainTextureNameIndex = 100000;
+constexpr uint8 SimCopterHighTerrainTypeBase = 0x40;
 
 struct FOriginalMeshSectionData
 {
@@ -247,30 +249,370 @@ float GetAverageTerrainSurfaceZ(const FSimCity2000City& City, int32 FileX, int32
 	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
 }
 
-FVector2D GetMaxisAtlasCellUV(int32 TileIndex, float LocalU, float LocalV)
+FVector2D GetMaxisTerrainAtlasCellUV(int32 TileIndex, float LocalU, float LocalV)
 {
 	const int32 ClampedTileIndex = FMath::Clamp(TileIndex, 0, 63);
 	const int32 Column = ClampedTileIndex % FMaxisTextureReader::AtlasColumnCount;
-	const int32 RowFromBottom = ClampedTileIndex / FMaxisTextureReader::AtlasColumnCount;
+	const int32 RawRow = ClampedTileIndex / FMaxisTextureReader::AtlasColumnCount;
+	const int32 DecodedTextureRow = FMaxisTextureReader::AtlasColumnCount - 1 - RawRow;
 	const float CellScale = 1.0f / static_cast<float>(FMaxisTextureReader::AtlasColumnCount);
 	constexpr float LocalPixelInset = 0.5f / static_cast<float>(FMaxisTextureReader::AtlasTileSize);
 	const float InsetLocalU = FMath::Lerp(LocalPixelInset, 1.0f - LocalPixelInset, LocalU);
 	const float InsetLocalV = FMath::Lerp(LocalPixelInset, 1.0f - LocalPixelInset, LocalV);
 
+	// Original terrain pages are addressed in raw top-to-bottom texture memory. The composite
+	// reader flips rows into Unreal's top-down texture layout, so mirror the atlas row but keep
+	// local V in the original terrain orientation.
 	return FVector2D(
 		(static_cast<float>(Column) + InsetLocalU) * CellScale,
-		(static_cast<float>(FMaxisTextureReader::AtlasColumnCount - 1 - RowFromBottom) + (1.0f - InsetLocalV)) * CellScale);
+		(static_cast<float>(DecodedTextureRow) + InsetLocalV) * CellScale);
 }
 
-int32 ResolveTerrainAtlasTileIndex(const FSimCity2000Tile& Tile)
+int32 GetTerrainHeightMapSample(const FSimCity2000Tile& Tile)
 {
-	const int32 TerrainCode = static_cast<int32>(Tile.Terrain);
-	if (TerrainCode < 0x10)
+	const int32 TunnelHeightOffset = (Tile.Terrain == 0x0D || Tile.Terrain == 0x0E) ? 1 : 0;
+	return (GetOriginalTerrainHeightStep(Tile) + TunnelHeightOffset + 1) * 0x20;
+}
+
+int32 GetTerrainTileCenterHeightMapSample(const FSimCity2000City& City, int32 FileX, int32 FileY)
+{
+	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize)
 	{
-		return FMath::Clamp(0x20 + TerrainCode, 0, 63);
+		return 0;
 	}
 
-	return FMath::Clamp(TerrainCode - 0x10, 0, 63);
+	return GetTerrainHeightMapSample(City.Tiles[FileY * FSimCity2000City::MapSize + FileX]);
+}
+
+int32 GetTerrainGridHeightMapSample(const FSimCity2000City& City, int32 GridX, int32 GridY)
+{
+	int32 HeightSum = 0;
+	int32 HeightCount = 0;
+
+	for (int32 OffsetY = -1; OffsetY <= 0; ++OffsetY)
+	{
+		for (int32 OffsetX = -1; OffsetX <= 0; ++OffsetX)
+		{
+			const int32 TileX = GridX + OffsetX;
+			const int32 TileY = GridY + OffsetY;
+			if (TileX >= 0 && TileX < FSimCity2000City::MapSize && TileY >= 0 && TileY < FSimCity2000City::MapSize)
+			{
+				HeightSum += GetTerrainTileCenterHeightMapSample(City, TileX, TileY);
+				++HeightCount;
+			}
+		}
+	}
+
+	return HeightCount > 0 ? HeightSum / HeightCount : 0;
+}
+
+int32 GetTerrainTileAverageHeightMapSample(const FSimCity2000City& City, int32 FileX, int32 FileY)
+{
+	return (
+		GetTerrainGridHeightMapSample(City, FileX, FileY) +
+		GetTerrainGridHeightMapSample(City, FileX + 1, FileY) +
+		GetTerrainGridHeightMapSample(City, FileX + 1, FileY + 1) +
+		GetTerrainGridHeightMapSample(City, FileX, FileY + 1)) >> 2;
+}
+
+uint32 HashTerrainTile(int32 X, int32 Y, uint32 Salt)
+{
+	uint32 Hash = static_cast<uint32>(X) * 0x8da6b343u;
+	Hash ^= static_cast<uint32>(Y) * 0xd8163841u;
+	Hash ^= Salt * 0xcb1ab31fu;
+	Hash ^= Hash >> 16;
+	Hash *= 0x7feb352du;
+	Hash ^= Hash >> 15;
+	Hash *= 0x846ca68bu;
+	Hash ^= Hash >> 16;
+	return Hash;
+}
+
+// Reproduces SimCopter's terrain texture type grid (FUN_004abce0 in SimCopter.exe).
+// The renderer uses the type code through DAT_005cde90: 0x00..0x3f select page 0x14
+// (TILED1.BMP), while 0x40..0x7f select page 0x0d (SIM3D.BMP image 13) with code-0x40.
+TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
+{
+	const int32 N = FSimCity2000City::MapSize;
+	TArray<uint8> Grid;
+	Grid.SetNumUninitialized(N * N);
+
+	int32 MinHeight = TNumericLimits<int32>::Max();
+	int32 MaxHeight = 0;
+	for (const FSimCity2000Tile& Tile : City.Tiles)
+	{
+		const int32 Height = GetTerrainHeightMapSample(Tile);
+		MinHeight = FMath::Min(MinHeight, Height);
+		MaxHeight = FMath::Max(MaxHeight, Height);
+	}
+
+	MinHeight = FMath::Max(0, MinHeight - 0x32);
+	MaxHeight += 100;
+	const int32 HeightRange = MaxHeight - MinHeight;
+	const int32 HeightBandStep = HeightRange >> 4;
+
+	auto GetGridTypeOrDefault = [&Grid, N](int32 X, int32 Y) -> uint8
+	{
+		if (X < 0 || X >= N || Y < 0 || Y >= N)
+		{
+			return 0x30;
+		}
+		return Grid[Y * N + X];
+	};
+
+	auto AnyNeighbor8Is = [&Grid, N](int32 X, int32 Y, auto Predicate) -> bool
+	{
+		for (int32 OffsetY = -1; OffsetY <= 1; ++OffsetY)
+		{
+			for (int32 OffsetX = -1; OffsetX <= 1; ++OffsetX)
+			{
+				if (OffsetX == 0 && OffsetY == 0)
+				{
+					continue;
+				}
+				const int32 NeighborX = X + OffsetX;
+				const int32 NeighborY = Y + OffsetY;
+				if (NeighborX < 0 || NeighborX >= N || NeighborY < 0 || NeighborY >= N)
+				{
+					continue;
+				}
+				if (Predicate(Grid[NeighborY * N + NeighborX]))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	};
+
+	auto AnyOrthogonalNeighborIs = [&Grid, N](int32 X, int32 Y, auto Predicate) -> bool
+	{
+		const int32 NeighborOffsets[4][2] = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
+		for (const int32* Offset : NeighborOffsets)
+		{
+			const int32 NeighborX = X + Offset[0];
+			const int32 NeighborY = Y + Offset[1];
+			if (NeighborX < 0 || NeighborX >= N || NeighborY < 0 || NeighborY >= N)
+			{
+				continue;
+			}
+			if (Predicate(Grid[NeighborY * N + NeighborX]))
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	auto AllOrthogonalNeighborsAre = [&Grid, N](int32 X, int32 Y, auto Predicate) -> bool
+	{
+		const int32 NeighborOffsets[4][2] = {{0, -1}, {0, 1}, {1, 0}, {-1, 0}};
+		for (const int32* Offset : NeighborOffsets)
+		{
+			const int32 NeighborX = X + Offset[0];
+			const int32 NeighborY = Y + Offset[1];
+			const uint8 NeighborType = (NeighborX < 0 || NeighborX >= N || NeighborY < 0 || NeighborY >= N)
+				? 0x30
+				: Grid[NeighborY * N + NeighborX];
+			if (!Predicate(NeighborType))
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const FSimCity2000Tile& Tile = City.Tiles[Y * N + X];
+			const uint8 Building = Tile.Building;
+			uint8 Type = 0x30; // inland grass/land
+			if (Building == 0 || Building > 4)
+			{
+				if ((Building < 6 || Building > 0x0D) && Building != 0xD5 && Building != 0xDA)
+				{
+					if (Building == 0xF8)
+					{
+						Type = 0x10;
+					}
+					else if (Tile.Terrain > 0x0F)
+					{
+						Type = 5; // water
+					}
+					// else stays 0x30
+				}
+				else
+				{
+					Type = 0x20; // wooded/feature ground (XBLD 6..0x0D, 0xD5, 0xDA)
+				}
+			}
+			else
+			{
+				Type = static_cast<uint8>(10 + (HashTerrainTile(X, Y, 0x1001u) & 1u));
+			}
+			Grid[Y * N + X] = Type;
+		}
+	}
+
+	for (int32 Y = 1; Y < N - 1; ++Y)
+	{
+		for (int32 X = 1; X < N - 1; ++X)
+		{
+			const uint8 Type = Grid[Y * N + X];
+			if ((Type == 0x30 || Type == 0x20) && AnyNeighbor8Is(X, Y, [](uint8 T) { return T == 5; }))
+			{
+				Grid[Y * N + X] = 0x10;
+			}
+		}
+	}
+
+	for (int32 Y = 1; Y < N - 1; ++Y)
+	{
+		for (int32 X = 1; X < N - 1; ++X)
+		{
+			if (Grid[Y * N + X] == 0x30 && AnyNeighbor8Is(X, Y, [](uint8 T) { return T == 0x10; }))
+			{
+				Grid[Y * N + X] = 0x20;
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			if (Grid[Y * N + X] == 5 && AnyNeighbor8Is(X, Y, [](uint8 T) { return T > 9; }))
+			{
+				Grid[Y * N + X] = 0;
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			if (Grid[Y * N + X] == 0x30)
+			{
+				if (AnyOrthogonalNeighborIs(X, Y, [](uint8 T) { return T == 0; }) || AverageHeight <= MinHeight + HeightBandStep * 2)
+				{
+					Grid[Y * N + X] = 0x10;
+				}
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			if (Grid[Y * N + X] == 0x30)
+			{
+				if (AnyOrthogonalNeighborIs(X, Y, [](uint8 T) { return T == 0x10; }) || AverageHeight <= MinHeight + HeightBandStep * 5)
+				{
+					Grid[Y * N + X] = 0x20;
+				}
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			if (Grid[Y * N + X] == 0x30 &&
+				AverageHeight >= MaxHeight - HeightBandStep * 6 &&
+				AllOrthogonalNeighborsAre(X, Y, [](uint8 T) { return T == 0x30 || T == 0x40; }))
+			{
+				Grid[Y * N + X] = 0x40;
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			if (Grid[Y * N + X] == 0x40 &&
+				AverageHeight >= MaxHeight - HeightBandStep * 3 &&
+				AllOrthogonalNeighborsAre(X, Y, [](uint8 T) { return T == 0x40 || T == 0x50; }))
+			{
+				Grid[Y * N + X] = 0x50;
+			}
+		}
+	}
+
+	for (int32 Y = 0; Y < N; ++Y)
+	{
+		for (int32 X = 0; X < N; ++X)
+		{
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			if (Grid[Y * N + X] == 0x50 &&
+				AverageHeight >= MaxHeight + HeightBandStep &&
+				AllOrthogonalNeighborsAre(X, Y, [](uint8 T) { return T == 0x50 || T == 0x60; }))
+			{
+				Grid[Y * N + X] = 0x60;
+			}
+		}
+	}
+
+	auto ApplyTransitionMask = [&Grid, N, &GetGridTypeOrDefault](uint8 BaseType, auto IsLowerBand)
+	{
+		for (int32 Y = 0; Y < N; ++Y)
+		{
+			for (int32 X = 0; X < N; ++X)
+			{
+				const int32 Index = Y * N + X;
+				if (Grid[Index] != BaseType)
+				{
+					continue;
+				}
+
+				uint8 Mask = 0;
+				// DAT_005bde80 is addressed as x * 0x100 + y in SimCopter. With our row-major
+				// Grid[y * N + x], the original atlas bits correspond to N/E/S/W.
+				if (IsLowerBand(GetGridTypeOrDefault(X, Y - 1)))
+				{
+					Mask |= 1;
+				}
+				if (IsLowerBand(GetGridTypeOrDefault(X + 1, Y)))
+				{
+					Mask |= 2;
+				}
+				if (IsLowerBand(GetGridTypeOrDefault(X, Y + 1)))
+				{
+					Mask |= 4;
+				}
+				if (IsLowerBand(GetGridTypeOrDefault(X - 1, Y)))
+				{
+					Mask |= 8;
+				}
+				Grid[Index] = BaseType + Mask;
+			}
+		}
+	};
+
+	ApplyTransitionMask(0x10, [](uint8 T) { return T < 10; });
+	ApplyTransitionMask(0x20, [](uint8 T) { return T >= 0x10 && T < 0x20; });
+	ApplyTransitionMask(0x30, [](uint8 T) { return T >= 0x20 && T < 0x30; });
+	ApplyTransitionMask(0x40, [](uint8 T) { return T >= 0x30 && T < 0x40; });
+	ApplyTransitionMask(0x50, [](uint8 T) { return T >= 0x40 && T < 0x50; });
+	ApplyTransitionMask(0x60, [](uint8 T) { return T >= 0x50 && T < 0x60; });
+
+	// The original follows this with a clock-seeded random-detail pass that replaces unmasked
+	// 0x10/0x20/0x30/0x40/0x60 cells with 0x70..0x7e page-0x0d detail cells. Literal use of that
+	// pass currently over-selects pale SIM3D detail cells in the remake because the preceding
+	// terrain-map perturbation passes are not fully reproduced yet. Keep the deterministic band and
+	// transition grid stable for now, and re-enable detail variants after FUN_004ad7c0/FUN_004ae530
+	// are ported.
+
+	return Grid;
 }
 
 void AppendTerrainTile(
@@ -280,30 +622,29 @@ void AppendTerrainTile(
 	float TileSize,
 	float TerrainHeightScale,
 	float HalfMapSize,
+	int32 AtlasTileIndex,
 	FOriginalMeshSectionData& Section)
 {
-	const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
-	const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 	const int32 VertexStart = Section.Vertices.Num();
-	const int32 AtlasTileIndex = ResolveTerrainAtlasTileIndex(Tile);
 
-	// World X (the file-X / column axis) is negated to match SimCopter's placement (see the mesh pass).
-	const FVector V0(-GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
-	const FVector V1(-GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
-	const FVector V2(-GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
-	const FVector V3(-GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
+	// World Y (the file-Y / row axis) is negated to match the city pass's grid-to-world mapping and
+	// global 180-degree yaw (see GetWorldTileCenterCoordinate usage in LoadAndRenderCity).
+	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
+	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
+	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
+	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
 
 	Section.Vertices.Add(V0);
 	Section.Vertices.Add(V1);
 	Section.Vertices.Add(V2);
 	Section.Vertices.Add(V3);
 
-	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 0.0f, 1.0f));
-	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 1.0f, 1.0f));
-	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 1.0f, 0.0f));
-	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 0.0f, 0.0f));
+	Section.UVs.Add(GetMaxisTerrainAtlasCellUV(AtlasTileIndex, 0.0f, 1.0f));
+	Section.UVs.Add(GetMaxisTerrainAtlasCellUV(AtlasTileIndex, 1.0f, 1.0f));
+	Section.UVs.Add(GetMaxisTerrainAtlasCellUV(AtlasTileIndex, 1.0f, 0.0f));
+	Section.UVs.Add(GetMaxisTerrainAtlasCellUV(AtlasTileIndex, 0.0f, 0.0f));
 
-	// Negating world X mirrors the quad, which reverses its winding; swap the cross-product
+	// Negating world Y mirrors the quad, which reverses its winding; swap the cross-product
 	// operands (and the triangle order below) so faces still wind up-facing.
 	FVector Normal = FVector::CrossProduct(V2 - V0, V1 - V0).GetSafeNormal();
 	if (Normal.IsNearlyZero())
@@ -392,8 +733,10 @@ FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 
 // per-tile rotation to road/building/bridge meshes. Each SC2 tile id is dispatched
 // to a specific, pre-oriented mesh object; the engine places it at the tile position
 // with mesh X->world X, mesh Z->world Y, mesh Y->up. Orientation is therefore baked
-// into the chosen mesh, and correctness comes from the grid->world axis mapping
-// (see GetWorldTileCenterCoordinate usage and the negated column axis below).
+// into the chosen mesh, and correctness comes from the grid->world axis mapping.
+// The only transform applied here is the global 180-degree yaw (negating the local
+// X/Y) that the tile placement also folds in, so the whole city faces the same way
+// as the original game.
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
@@ -432,7 +775,9 @@ int32 AppendMaxisMeshObject(
 				continue;
 			}
 
-			const FVector LocalVertex = FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[SourceVertexIndex], MeshUnitsPerCentimeter) * MeshScale;
+			const FVector ConvertedVertex = FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[SourceVertexIndex], MeshUnitsPerCentimeter) * MeshScale;
+			// Global 180-degree yaw about world up (matches the negated tile-center signs above).
+			const FVector LocalVertex(-ConvertedVertex.X, -ConvertedVertex.Y, ConvertedVertex.Z);
 			Section.Vertices.Add(TileOrigin + LocalVertex);
 			Section.UVs.Add(Face.RawUVs.IsValidIndex(FaceVertexIndex) ? FMaxisMeshReader::ConvertMaxisUVToUnreal(Face.RawUVs[FaceVertexIndex]) : FVector2D::ZeroVector);
 			Section.VertexColors.Add(FaceColor);
@@ -629,6 +974,7 @@ void ASimCity2000CityActor::RebuildCity()
 	TMap<int32, UTexture2D*> OriginalTexturesByKey;
 	TSet<int32> AvailableOriginalTextureKeys;
 	UTexture2D* TerrainTexture = nullptr;
+	UTexture2D* HighTerrainTexture = nullptr;
 	bool bOriginalTexturesLoaded = false;
 	const bool bNeedOriginalAssetPalette = bRenderOriginalMeshes || (bRenderTerrain && bRenderOriginalTextures && TexturedMaterial != nullptr);
 	if (bNeedOriginalAssetPalette)
@@ -674,6 +1020,11 @@ void ASimCity2000CityActor::RebuildCity()
 								AvailableOriginalTextureKeys,
 								OriginalTextureCache);
 						}
+					}
+
+					if (UTexture2D* const* LoadedHighTerrainTexture = OriginalTexturesByKey.Find(MakeMaxisTextureKey(0, SimCopterHighTerrainAtlasImageIndex)))
+					{
+						HighTerrainTexture = *LoadedHighTerrainTexture;
 					}
 
 					FMaxisCompositeBitmap SkyTextures;
@@ -737,9 +1088,15 @@ void ASimCity2000CityActor::RebuildCity()
 	const float OriginalMeshScale = OriginalMeshSourceTileSize > 0.0f ? TileSize / OriginalMeshSourceTileSize : 1.0f;
 	const float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
 
-	FOriginalMeshSectionData TerrainSection;
+	FOriginalMeshSectionData TerrainPage14Section;
+	FOriginalMeshSectionData TerrainPage0DSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
-	const bool bUseTexturedTerrainSurface = TerrainTexture != nullptr && TexturedMaterial != nullptr;
+	const bool bUseTexturedTerrainSurface = (TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr;
+	const bool bUseHighTerrainAtlas = HighTerrainTexture != nullptr && TexturedMaterial != nullptr;
+
+	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
+	// (the type IS the cell index). Reproduce that grid once for the whole map.
+	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City);
 
 	int32 TerrainCount = 0;
 	int32 WaterCount = 0;
@@ -754,11 +1111,14 @@ void ASimCity2000CityActor::RebuildCity()
 			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
 			const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 
-			// SimCopter negates the column axis when placing geometry: world Y = (127.5 - col) * tile.
-			// The remake's mesh->world conversion already matches the engine's rotation, so reproducing
-			// this single sign on the file-X (column) axis removes the reflection that no rotation could fix.
-			const float WorldX = -GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
-			const float WorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
+			// Grid-to-world mapping reproduced from SimCopter's city builder (FUN_0047c0c0):
+			// the game negates the column axis (world Y = (127.5 - col) * tile), which removes the
+			// reflection that no rotation could fix. On top of that we apply a global 180-degree yaw
+			// (negate world X and Y, plus the mesh-local X/Y in AppendMaxisMeshObject) so the city's
+			// absolute orientation matches the original game. The net per-tile signs below already
+			// fold both steps together.
+			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
+			const float WorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
 			const float TerrainTopZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
 			const bool bBuildingLikeTile = IsBuildingLikeTile(Tile.Building);
@@ -767,7 +1127,20 @@ void ASimCity2000CityActor::RebuildCity()
 
 			if (bRenderTerrain)
 			{
-				AppendTerrainTile(City, FileX, FileY, TileSize, EffectiveTerrainHeightScale, HalfMapSize, TerrainSection);
+				const uint8 TerrainType = TerrainTypeGrid[TileIndex];
+				const bool bUseHighPageForTile = TerrainType >= SimCopterHighTerrainTypeBase && bUseHighTerrainAtlas;
+				const int32 TerrainAtlasTileIndex = bUseHighPageForTile
+					? static_cast<int32>(TerrainType - SimCopterHighTerrainTypeBase)
+					: static_cast<int32>(TerrainType & 0x3f);
+				AppendTerrainTile(
+					City,
+					FileX,
+					FileY,
+					TileSize,
+					EffectiveTerrainHeightScale,
+					HalfMapSize,
+					TerrainAtlasTileIndex,
+					bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section);
 				++TerrainCount;
 			}
 
@@ -793,8 +1166,8 @@ void ASimCity2000CityActor::RebuildCity()
 					const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
 					if (MeshObject != nullptr)
 					{
-						const float MeshWorldX = -GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
-						const float MeshWorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshWorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 						OriginalMeshTriangleCount += AppendMaxisMeshObject(
@@ -840,10 +1213,17 @@ void ASimCity2000CityActor::RebuildCity()
 		}
 	}
 
-	if (TerrainSection.Vertices.Num() > 0)
+	int32 TerrainMeshSectionIndex = 0;
+	auto CreateTerrainSurfaceSection = [&](const FOriginalMeshSectionData& TerrainSection, UTexture2D* SurfaceTexture)
 	{
+		if (TerrainSection.Vertices.Num() == 0)
+		{
+			return;
+		}
+
+		const int32 SectionIndex = TerrainMeshSectionIndex++;
 		TerrainMeshComponent->CreateMeshSection_LinearColor(
-			0,
+			SectionIndex,
 			TerrainSection.Vertices,
 			TerrainSection.Triangles,
 			TerrainSection.Normals,
@@ -852,21 +1232,24 @@ void ASimCity2000CityActor::RebuildCity()
 			TerrainSection.Tangents,
 			false);
 
-		if (bUseTexturedTerrainSurface)
+		if (SurfaceTexture != nullptr && TexturedMaterial != nullptr)
 		{
 			UMaterialInstanceDynamic* TerrainMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
 			if (TerrainMaterial != nullptr)
 			{
-				TerrainMaterial->SetTextureParameterValue(TEXT("Texture"), TerrainTexture);
+				TerrainMaterial->SetTextureParameterValue(TEXT("Texture"), SurfaceTexture);
 				OriginalTextureMaterials.Add(TerrainMaterial);
-				TerrainMeshComponent->SetMaterial(0, TerrainMaterial);
+				TerrainMeshComponent->SetMaterial(SectionIndex, TerrainMaterial);
 			}
 		}
 		else if (VertexColorMaterial != nullptr)
 		{
-			TerrainMeshComponent->SetMaterial(0, VertexColorMaterial);
+			TerrainMeshComponent->SetMaterial(SectionIndex, VertexColorMaterial);
 		}
-	}
+	};
+
+	CreateTerrainSurfaceSection(TerrainPage14Section, TerrainTexture);
+	CreateTerrainSurfaceSection(TerrainPage0DSection, HighTerrainTexture);
 
 	int32 MeshSectionIndex = 0;
 	if (const FOriginalMeshSectionData* PaletteSection = OriginalMeshSections.Find(INDEX_NONE))

@@ -1,0 +1,19 @@
+STRING @ 004fa150 : TileCnt
+    <- 0046787f  in FUN_00467070 @ 00467070
+STRING @ 00503a1c : Unable to load tiled1 bmp\n
+    <- 00479d7e  in FUN_00479bb0 @ 00479bb0
+STRING @ 00503a38 : TILED1.BMP
+    <- 00479d4e  in FUN_00479bb0 @ 00479bb0
+STRING @ 005046a8 : Road      Struct Size = %2d,     RoadTiles * Struct Size = %6d\n
+    <- 00495f9b  in FUN_00495700 @ 00495700
+STRING @ 005046e9 : \nIntersections = %d\nRoadTiles     = %d\n
+    (no references)
+STRING @ 00633792 : Mégaphone - permet de communiquer avec les passagers de véhicules sous vous. Utile pour les urgences, le trafic ou le maintien de l'ordre public. Portée effective : 300 m.
+    (no references)
+STRING @ 006338ea : Lanceur de gaz lacrimogène - Utilisé pour le maintien de l'ordre public. Utile lors d'émeutes de vos concitoyens. Contient 10 boîtes de produit non toxique et biodégradable.
+    (no references)
+STRING @ 006461bc : Velivolo privato e servizi ausiliari.\nDotato di carrello retrattile.
+    (no references)
+STRING @ 00646ccc : Megafono - Lancia ordini alle persone ed alle auto al suolo.  Molto utile nei casi d'emergenza, nel traffico e per le missioni di tutela della legge. Portata effettiva circa 300 m.
+    (no references)
+=== 9 strings matched 'Tile' ===
