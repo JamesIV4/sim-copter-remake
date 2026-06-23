@@ -287,10 +287,11 @@ void AppendTerrainTile(
 	const int32 VertexStart = Section.Vertices.Num();
 	const int32 AtlasTileIndex = ResolveTerrainAtlasTileIndex(Tile);
 
-	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
-	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
-	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
-	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
+	// World X (the file-X / column axis) is negated to match SimCopter's placement (see the mesh pass).
+	const FVector V0(-GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
+	const FVector V1(-GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
+	const FVector V2(-GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
+	const FVector V3(-GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
 
 	Section.Vertices.Add(V0);
 	Section.Vertices.Add(V1);
@@ -302,7 +303,9 @@ void AppendTerrainTile(
 	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 1.0f, 0.0f));
 	Section.UVs.Add(GetMaxisAtlasCellUV(AtlasTileIndex, 0.0f, 0.0f));
 
-	FVector Normal = FVector::CrossProduct(V1 - V0, V2 - V0).GetSafeNormal();
+	// Negating world X mirrors the quad, which reverses its winding; swap the cross-product
+	// operands (and the triangle order below) so faces still wind up-facing.
+	FVector Normal = FVector::CrossProduct(V2 - V0, V1 - V0).GetSafeNormal();
 	if (Normal.IsNearlyZero())
 	{
 		Normal = FVector::UpVector;
@@ -315,11 +318,11 @@ void AppendTerrainTile(
 	}
 
 	Section.Triangles.Add(VertexStart);
-	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart + 1);
-	Section.Triangles.Add(VertexStart);
-	Section.Triangles.Add(VertexStart + 3);
 	Section.Triangles.Add(VertexStart + 2);
+	Section.Triangles.Add(VertexStart);
+	Section.Triangles.Add(VertexStart + 2);
+	Section.Triangles.Add(VertexStart + 3);
 	Section.TriangleCount += 2;
 }
 
@@ -385,29 +388,18 @@ FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 
 	return Footprint;
 }
 
-FVector RotateCityLocalVertex(const FVector& LocalVertex, int32 QuarterTurns)
-{
-	const int32 NormalizedQuarterTurns = ((QuarterTurns % 4) + 4) % 4;
-	switch (NormalizedQuarterTurns)
-	{
-	case 1:
-		return FVector(-LocalVertex.Y, LocalVertex.X, LocalVertex.Z);
-	case 2:
-		return FVector(-LocalVertex.X, -LocalVertex.Y, LocalVertex.Z);
-	case 3:
-		return FVector(LocalVertex.Y, -LocalVertex.X, LocalVertex.Z);
-	default:
-		return LocalVertex;
-	}
-}
-
+// The original SimCopter city builder (FUN_0047c0c0 in SimCopter.exe) applies NO
+// per-tile rotation to road/building/bridge meshes. Each SC2 tile id is dispatched
+// to a specific, pre-oriented mesh object; the engine places it at the tile position
+// with mesh X->world X, mesh Z->world Y, mesh Y->up. Orientation is therefore baked
+// into the chosen mesh, and correctness comes from the grid->world axis mapping
+// (see GetWorldTileCenterCoordinate usage and the negated column axis below).
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
 	const FVector& TileOrigin,
 	float MeshUnitsPerCentimeter,
 	float MeshScale,
-	int32 MeshQuarterTurns,
 	bool bRenderBackfaces,
 	bool bUseOriginalTextures,
 	const TSet<int32>& AvailableTextureKeys,
@@ -440,7 +432,7 @@ int32 AppendMaxisMeshObject(
 				continue;
 			}
 
-			const FVector LocalVertex = RotateCityLocalVertex(FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[SourceVertexIndex], MeshUnitsPerCentimeter) * MeshScale, MeshQuarterTurns);
+			const FVector LocalVertex = FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[SourceVertexIndex], MeshUnitsPerCentimeter) * MeshScale;
 			Section.Vertices.Add(TileOrigin + LocalVertex);
 			Section.UVs.Add(Face.RawUVs.IsValidIndex(FaceVertexIndex) ? FMaxisMeshReader::ConvertMaxisUVToUnreal(Face.RawUVs[FaceVertexIndex]) : FVector2D::ZeroVector);
 			Section.VertexColors.Add(FaceColor);
@@ -744,7 +736,6 @@ void ASimCity2000CityActor::RebuildCity()
 	const float CubeToUnrealScale = 1.0f / 100.0f;
 	const float OriginalMeshScale = OriginalMeshSourceTileSize > 0.0f ? TileSize / OriginalMeshSourceTileSize : 1.0f;
 	const float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
-	const int32 RoadMeshQuarterTurns = 2;
 
 	FOriginalMeshSectionData TerrainSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
@@ -763,7 +754,10 @@ void ASimCity2000CityActor::RebuildCity()
 			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
 			const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
 
-			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
+			// SimCopter negates the column axis when placing geometry: world Y = (127.5 - col) * tile.
+			// The remake's mesh->world conversion already matches the engine's rotation, so reproducing
+			// this single sign on the file-X (column) axis removes the reflection that no rotation could fix.
+			const float WorldX = -GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
 			const float WorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
 			const float TerrainTopZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
@@ -799,7 +793,7 @@ void ASimCity2000CityActor::RebuildCity()
 					const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
 					if (MeshObject != nullptr)
 					{
-						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshWorldX = -GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshWorldY = GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
@@ -809,7 +803,6 @@ void ASimCity2000CityActor::RebuildCity()
 							TileOrigin,
 							OriginalMeshUnitsPerCentimeter,
 							OriginalMeshScale,
-							bRoadLikeTile ? RoadMeshQuarterTurns : 0,
 							bRenderOriginalMeshBackfaces,
 							bOriginalTexturesLoaded,
 							AvailableOriginalTextureKeys,
