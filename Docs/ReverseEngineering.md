@@ -191,6 +191,143 @@ Important implementation notes:
 - The tile-id map uses the public mesh-number-to-XBLD table where available. Table-name number inference fills in static road/highway pieces that are omitted from that table, while explicit mappings take priority.
 - Some visual variants share one SC2 tile id, for example `AP221F`/`AP221`, `BR81`/`BR81F`, and `LP213`/`LP213L`. The library currently prefers the unsuffixed object as the nearest/highest-detail default.
 
+## Player Helicopter Meshes And Rotor Animation
+
+The flyable helicopters are ordinary Maxis mesh objects in the `GEO` packs - there is no
+skeletal/keyframe animation in the mesh format (the `OBJX` header bytes at `+112/+116` that
+an early reader guessed were an animation count/pointer read into the vertex block and hold
+garbage for nearly every object). Each helicopter is split into a **fuselage object plus a
+separate main-rotor object**; the original engine reproduces the rotor "animation" purely by
+spinning the rotor object about its mast each frame. A single shared `ROTORTL` tail-rotor
+object is reused by every type.
+
+Every helicopter body and rotor is fully palette-coloured (no face type 13/18 textured
+faces), so the city texture-atlas pipeline is not needed to render them - vertex colours from
+the pack `CMAP` are sufficient.
+
+Rotor objects mix two face types: the thin opaque blades are face type `15`/`19`, while the
+spinning **disc** is **face type `11`** (the wide `verts=14` polygon, palette teal on the main
+rotors and red on `ROTORTL`). The original game draws face type 11 as an alpha-blended disc -
+the near-translucent grey blur of the spinning blades - over the opaque blade geometry. The
+remake reproduces this: `FMaxisProceduralMeshBuilder::IsTranslucentFaceType` classifies face
+type 11, `BuildPaletteColoredSections` splits a rotor into an opaque blade section and a
+translucent disc section, and the pawn draws the disc section with `M_SimCopterRotorDisc`
+(an Unlit + Translucent grey material with `DiscColor`/`DiscOpacity` parameters, authored by
+`Tools/Unreal/CreateSimCopterMaterials.py`). The solid disc geometry can still serve as a
+rotor hitbox later without looking solid.
+
+`heli.twk` type name -> GEO table names (validated against the three reference packs):
+
+| Type (`heli.twk`) | Body | Main rotor |
+| --- | --- | --- |
+| `Jet Ranger` | `JETRANG` | `JETRROTR` |
+| `Hughes 500` | `HUGH500` | `H500ROTR` |
+| `Bell 212` | `BELL212` | `BELLROTR` |
+| `Schwiezer 300` | `SCWZR300` | `SCWZROTR` |
+| `Apache` | `APACHE` | `APACROTR` |
+| `Agusta` | `AGUSTA` | `AGUSROTR` |
+| `Dauphin` | `DAUPHIN` | `DAUPROTR` |
+| `MDEXPLORER` | `MDEXPLRR` | `MDEXROTR` |
+| `MD520` | `MD520` | `MD52ROTR` |
+
+Coordinate facts used by the remake:
+
+- Bodies face +Z in Maxis space, which maps to Unreal +X (the pawn's forward axis) through
+  `ConvertMaxisVertexToUnreal`, so no extra yaw is applied (unlike the 180-degree city yaw).
+- Main rotor objects are authored centred on the mast (local X = Y ~= 0, elevated in Z), so the
+  pawn spins the rotor component about its own vertical axis at the body origin.
+- `ROTORTL` is authored centred on its own hub and lies in the Unreal X-Z plane (thin in Y), so
+  it is placed near the rear of the fuselage and spun about the lateral (Y) axis.
+- The meshes are decoded at the same `OriginalMeshUnitsPerCentimeter` (`2621.44`) as the city and
+  rendered at a `0.25` display scale so the helicopter matches the city's shrunk original-mesh
+  scale (`TileSize 400 / source tile 1600`).
+
+`ASimCopterHelicopterPawn` loads these through `FMaxisMeshLibrary::FindObjectByTableName` and
+builds them with `FMaxisProceduralMeshBuilder` (a reusable, untextured/vertex-coloured section
+builder with centroid-based outward normals). Shadow objects (`SHADJETR`, `SHADRJET`, ...),
+the rope/bucket props (`BUCKET`, `HARNESS`, `BRACKET`, `CANNON`), and per-type tail-rotor mount
+offsets remain follow-ups.
+
+## Pedestrians, Traffic, And Ground Start
+
+Status on 2026-06-24: first gameplay pass in progress, with the first decompiled traffic
+route table wired into runtime movement.
+
+The original game splits ground population data across two asset families:
+
+- Vehicle meshes are regular `GEO/*.MAX` objects and can use the same `FMaxisMeshLibrary` plus
+  `FMaxisProceduralMeshBuilder` path as helicopters. Candidate moving-car objects found in
+  `SIM3D2.MAX` are `AUTO`, `AUTO2`, `AUTO3`, `AUTO4`, `AUTO5`, `AUTO6`, `CARFIRET`,
+  `CARPOLIC`, `CARROBBR`, and `CARAMBUL`.
+- Traffic vehicles are saved under a `TRAN` chunk (`0x5452414e`). The runtime object owns three
+  render subobjects and stores current tile at offsets `+0x35/+0x39`, target tile at
+  `+0x55/+0x59`, and direction bits at `+0x11`. `FUN_004b5290` is the route-step table: it maps
+  road/bridge XBLD ids to the next tile and direction bits, then rejects the step if the target is
+  not another TRAN-traversable road tile. The remake now ports this table for ids `0x2c..0x3e`,
+  `0x45..0x48`, `0x4d..0x4e`, and `0x5a..0x5b`.
+- Pedestrian behavior lives in `X/people.df`, which contains readable behavior strings such as
+  `Walk-30`, `Idle-40`, `Run a base`, `Back to car`, `tend to run away from the heli`, `Wave`,
+  `Pani`, `Dead`, and `NoMo`. The animation/resource payload is in `X/privanim.df`; local probes
+  found repeated `ARPP` records, `DgRn` records, and animation labels including `NoMo`, `DgRn`,
+  `DgSt`, `Wave`, `Pani`, and `Dead`.
+- The first visible pedestrian/player art path uses the original `BMP/PEOPLE1.BMP`. This file is a
+  normal 8-bit Windows BMP, not a Maxis composite bitmap: `324x99`, arranged as `12` character
+  columns by `3` animation rows of `27x33` pixels. Palette index `254` is the cyan transparency key.
+  `FMaxisWindowsBitmapReader` decodes it into RGBA, and runtime people render cropped original
+  frames through `M_SimCopterSpriteTexture`. Column `0` has a different non-cyan backdrop and is
+  reserved for now until the original draw flags are decoded.
+
+Relevant executable behavior found so far:
+
+- `FUN_004b10a0` is an original ground-agent placement helper. It searches outward in a spiral
+  from a requested tile until it finds a valid terrain/cell target, links the agent into the
+  `DAT_005d9200` scene cell list, and computes world position as
+  `x * 0x400000 - 0x1fe00000`, `(height + 1) * 0x200000`, and
+  `y * -0x400000 + 0x1fe00000`.
+- The helper rejects open water using the terrain type grid `DAT_005bde80` (`5..9` are treated as
+  water-like in the decompiled branch) except for special water-capable objects. The remake can
+  mirror that at gameplay scale by deriving traversability from the SC2 city tiles plus the
+  reconstructed terrain type grid.
+- `people.df` behavior strings show the original simulation already treated people as independent
+  agents that can idle, walk, panic, return to cars, run from the helicopter/spotlight, be picked
+  up, and be decommissioned when out of range.
+- `FUN_004c2f30` initializes the people runtime by loading `People.df`, seeding the person table,
+  and setting `DAT_00506444` to a sentinel/default person object. `FUN_004c4190` is the main spawn
+  configurator: it finds a free slot among 500 person objects, handles tile/object/world spawn
+  modes, marks the person active, and defaults missing animation state to `NoMo`.
+- `FUN_004ceab0` loads `PrivAnim.df`, registers animation/resource record handlers, and builds the
+  private animation tables. That payload is not interpreted yet; the current sprite animation only
+  cycles the three visible PEOPLE1 rows while movement is nonzero.
+
+Implemented first playable remake pass:
+
+1. Add reusable ground-agent actors that render palette-coloured original meshes through
+   `UProceduralMeshComponent`, expose a lightweight "janky animation" tick, and move by following
+   grid waypoints rather than full navmesh pathing.
+2. Add a city-aware population spawner that loads the active `.sc2` file, derives road and
+   pedestrian candidate tiles, and spawns/despawns agents around the player. The limits are
+   intentionally expanded beyond the 1996 game: higher active counts and a larger radius are
+   editor-tunable defaults instead of hard-coded tiny pools.
+3. Use original `GEO` vehicle meshes for traffic and original `PEOPLE1.BMP` sprite frames for
+   pedestrians and the on-foot player. Active population actors fail closed if the expected original
+   asset cannot load rather than silently showing cube stand-ins.
+4. Change the default game flow so the player starts as an on-foot pawn near a parked helicopter.
+   `F` enters the helicopter when nearby; holding `Space` starts the engine; holding `Ctrl` while
+   grounded shuts it down; once shut down and grounded, `F` exits back to the ground.
+5. Keep all old helicopter flight and mesh-loading code intact, but gate flight authority on engine
+   state so a parked helicopter can exist as an in-world vehicle rather than the default possessed
+   pawn.
+
+Remaining hard pass:
+
+1. Continue decompiling the People.df behavior VM/record format and replace the current simple
+   pedestrian waypoint wandering with the original behavior labels and state transitions.
+2. Decode `PrivAnim.df` `ARPP`/animation records so sprite frame choice comes from original animation
+   data rather than the temporary three-row movement cycle.
+3. Finish porting vehicle spawn validation from `FUN_004b74a0`/`FUN_004b7890`, including the original
+   multi-subobject follower update routines (`FUN_004b6a80`, `FUN_004b6c40`, `FUN_004b6f80`,
+   `FUN_004b7020`) for car spacing/lane offsets.
+
 ## SimCopter Composite Bitmap Textures
 
 `SIM3D.BMP`, `SKY.BMP`, `SKYDARK.BMP`, and `TILED1.BMP` are not Windows bitmaps. They are Maxis composite bitmap files containing palette-indexed images. `SIM3D.BMP` is the main city mesh texture source, with a known SimCopter exception for texture file/index `20`, which resolves to `SKY.BMP` image `4`. `TILED1.BMP` image `0` is a 256x256 terrain atlas containing water, shore, grass, sand, and related ground cells.
@@ -208,10 +345,11 @@ Face texture notes:
 - Composite bitmap row data is stored bottom-up. The loader flips rows while expanding palette indices to Unreal texture pixels; without that flip, city building texture pages can resolve to visibly wrong atlas regions such as repeated head/icon cells.
 - Mesh face type `18` is the main textured face type for city geometry. Face type `13` appears rarely and is currently routed through the same texture path when its image index exists.
 - For face type `18`, `MaterialIndex` is the index within an 8x8 texture atlas and `TextureAtlasIndex` is the atlas texture file/index. The original viewer extracts `32x32` cells using column `MaterialIndex % 8` and row `MaterialIndex / 8`, with row `0` at the bottom of the atlas image.
-- The common city atlas pages observed so far are `2`, `20`, `39`, and `40`. Page `20` is the `SKY.BMP` image `4` exception, not `SIM3D.BMP` image `20`.
-- Raw UV values are fixed-point values scaled by `65536`. Values often extend outside `0..1`, so the renderer keeps those repeat coordinates and applies them to transient 32x32 atlas-cell textures with wrap addressing.
+- The common city atlas pages observed so far are `2`, `13`, `20`, `39`, and `40`. Page `20` is the `SKY.BMP` image `4` exception, not `SIM3D.BMP` image `20`; page `13` is also reused as the high-terrain page for type codes `0x40..0x7f`.
+- Raw UV values are fixed-point values scaled by `65536`. Values often extend outside `0..1`, so the renderer keeps those repeat coordinates. In baked page-atlas mode, UV0 stores the repeating in-cell coordinates while UV1 stores the 8x8 cell column/row for `M_SimCopterCityAtlas`; in fallback mode the same UV0 values sample transient 32x32 cell textures with wrap addressing.
 - Maxis raw V coordinates use a bottom-left origin. `FMaxisMeshReader::ConvertMaxisUVToUnreal` flips V for Unreal's top-left texture sampling while preserving out-of-range repeat values.
-- The city actor creates transient `UTexture2D` objects for direct `SIM3D.BMP` images plus atlas-cell textures, then assigns them to lit project materials (`/Game/Materials/M_SimCopterLitTexture` and `/Game/Materials/M_SimCopterLitVertexColor`) through Base Color. The earlier engine emissive/debug materials made terrain and buildings appear fullbright under Unreal lighting. Both materials carry the `bUsedWithNanite` usage flag (set via the `Tools/Unreal` Python helper and committed) so they render correctly through the Nanite path without the engine having to patch the flag in at runtime.
+- The preferred city texture path is a local bake generated by `Tools/Unreal/BakeCityAtlas.py`. It decodes the user-provided original art into gitignored assets under `/Game/Generated/CityAtlas`: `MI_CityPage_<id>` instances parented to `M_SimCopterCityAtlas`, `MI_CityImage_<id>` instances for rare face type 13 direct images, and `MI_TerrainLow`/`MI_TerrainHigh` terrain instances parented to `M_SimCopterLitTexture`. Original game art remains outside source control, matching `/Reference`, while committed code/materials know how to load the generated assets when present.
+- The fallback city texture path still decodes `SIM3D.BMP`, `SKY.BMP`, and `TILED1.BMP` at rebuild time into transient `UTexture2D` objects. This keeps the renderer usable before a local bake exists, but the baked path avoids per-load slicing and fixes PIE material loss from transient texture/material bindings.
 - City terrain and decoded original mesh sections are built into transient `UStaticMesh` objects so Unreal renders them through the normal static-mesh path and builds Nanite data. This is now the only mesh path: the earlier `UProceduralMeshComponent` fallback (`TerrainMeshComponent`/`OriginalMeshComponent`), the `bUseNaniteCompatibleStaticMeshes` gate, and the never-populated `TerrainInstances` placeholder HISM were removed because the static-mesh path is the committed renderer and the dead fallbacks only added confusion to a version-controlled project. `bEnableNaniteForGeneratedStaticMeshes` still toggles Nanite on the generated static meshes. The `WaterInstances`/`RoadInstances`/`BuildingInstances` HISMs remain as colored-cube placeholders for tiles whose original mesh is missing.
 - Generated mesh face normals are oriented outward from each object's centroid. The raw Maxis winding (after `ConvertMaxisVertexToUnreal` plus the 180-degree city yaw) yields inward-facing normals for exterior faces - the same reason the terrain quad uses a reversed cross product - which left buildings and roads unlit by both the directional light and Lumen's surface cache (dark everywhere except where Lumen's screen trace faded out near the screen edges). Orienting each face normal away from the object centroid is winding-agnostic and fixes the lighting for boxy buildings, flat road plates, and cars alike.
 - Unreal 5.8's Nanite builder limits one mesh to 64 sections/material slots (`Nanite::MaxSectionArraySize`). The original city mesh can exceed that because each source texture page/cell becomes a material section, so the actor splits it into multiple sibling generated static mesh components before enabling Nanite.
@@ -220,18 +358,20 @@ Face texture notes:
 - The current terrain pass creates one procedural quad per SC2 tile with interpolated corner heights. Unreal-facing terrain winding is `0,2,1` and `0,3,2`, while supplied normals remain upward for lighting. Mixing one reversed and one unreversed triangle made one half of each tile render differently and caused the visible triangular texture artifact.
 - Exact use of `ALTM` bits `10..14` outside the height-map and terrain-type passes is still a follow-up.
 
-Validated on `CityRender.umap` construction on 2026-06-23 after the footprint, terrain mesh, and water overlay passes:
+Validated on `CityRender.umap` construction and PIE startup on 2026-06-24 after the local atlas bake:
 
 ```text
-terrain=16384
+terrain=102400
+extensionTerrain=86016
 water=0
-roads=23
+extensionWater=0
+roads=17
 buildings=0
-originalMeshTiles=4586
-missingOriginalMeshTiles=23
-originalTriangles=422338
+originalMeshTiles=4592
+missingOriginalMeshTiles=17
+originalTriangles=424522
 texturedTriangles=147348
-originalTextures=389
+originalTextures=75
 ```
 
 Next asset tasks:
@@ -291,9 +431,13 @@ Current code has two layers:
 - `FMaxisMeshReader`: pure parser/decoder for Maxis `.MAX` mesh packs.
 - `FMaxisMeshLibrary`: original-game asset index that maps SC2 tile ids to decoded Maxis mesh objects.
 - `FMaxisTextureReader`: pure parser/decoder for Maxis composite bitmap texture files such as `SIM3D.BMP`.
+- `FMaxisWindowsBitmapReader`: pure parser/decoder for normal 8-bit Windows BMP assets such as `PEOPLE1.BMP`.
 - `FSimCopterTweakReader`: pure parser for SimCopter `.twk` tuning files.
-- `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with procedural terrain, optional fallback water plates, and original SimCopter road/building mesh geometry. Textured mesh faces use transient textures decoded from `SIM3D.BMP` plus the `SKY.BMP` page-20 exception; terrain uses `TILED1.BMP` image `0` for page `0x14` and `SIM3D.BMP` image `13` for page `0x0d` when available. Placeholder road/building instances remain as a fallback for missing mappings.
+- `FSimCopterPopulationSprite`: shared helper for slicing the original PEOPLE1 sheet into runtime procedural sprite quads.
+- `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with procedural terrain, optional fallback water plates, and original SimCopter road/building mesh geometry. Textured mesh faces prefer locally baked material instances from `/Game/Generated/CityAtlas` (`SIM3D.BMP` page atlases, the `SKY.BMP` page-20 exception, direct face type 13 images, and `TILED1.BMP`/page-13 terrain); when those generated assets are absent, the actor falls back to decoding transient textures from the user-provided originals at rebuild time. Placeholder road/building instances remain as a fallback for missing mappings.
 - `AMaxisMeshDebugActor`: editor/runtime actor that renders one decoded `.MAX` mesh for inspection.
 - `ASimCopterHelicopterPawn`: runtime pawn for helicopter flight, modern camera modes, landing/collision probes, fuel/damage state, rope/bucket behavior, and searchlight controls.
+- `ASimCopterGroundAgent` and `ASimCopterTrafficSystemActor`: runtime population actors for original vehicle meshes, PEOPLE1 pedestrian sprites, and the first ported TRAN road-step table.
+- `ASimCopterOnFootPawn`: ground-start pawn that uses the original PEOPLE1 sprite path and handles `F` helicopter entry.
 
 The placeholder renderer is now fallback scaffolding. It still proves city parsing, orientation, tile height, and high-level tile classification, while original terrain textures and road/building geometry can be rendered directly from user-provided SimCopter assets.

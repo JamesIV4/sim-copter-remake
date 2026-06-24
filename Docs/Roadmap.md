@@ -55,7 +55,8 @@ Done so far:
 - `ASimCity2000CityActor` can render original SimCopter road/building meshes through a `UProceduralMeshComponent`.
 - Original mesh rendering is project-root configurable through `OriginalGameRoot`, defaulting to `../Reference/SimCopterOriginalGame`.
 - Added `FMaxisTextureReader` for Maxis composite bitmap files such as `BMP/SIM3D.BMP`.
-- The city actor can decode original `SIM3D.BMP` textures at rebuild time and bind textured mesh faces to transient `UTexture2D` sections.
+- Added a local atlas bake path for original city art: `Tools/Unreal/BakeCityAtlas.py` creates gitignored `/Game/Generated/CityAtlas` texture/material-instance assets from the user's `Reference` copy, and the city actor now prefers those saved assets for mesh and terrain textures while retaining the old transient decode as a fallback.
+- Added `M_SimCopterCityAtlas`, a page-atlas material that samples one full 8x8 source page using UV0 for in-cell repeat coordinates and UV1 for the face cell index. This eliminates hundreds of per-cell dynamic texture/material bindings and keeps textures intact in PIE.
 - Placeholder road/building blocks remain available as a fallback for missing original mesh mappings.
 - Format automation now covers the tile-id mapping layer and the `SIM3D.BMP` composite texture parser.
 
@@ -76,12 +77,31 @@ Done so far:
 - Replaced the old camera recreation plan with a new spring-arm camera approach: chase, orbit, and rescue camera modes with camera collision and lag.
 - Enabled generated city collision for terrain, original mesh geometry, and placeholder fallback geometry, with per-actor toggles.
 - Added a `SimCopterGameMode` and moved `CityRender`'s `PlayerStart` above the generated city for immediate flight testing.
+- Pulled the original helicopter fuselage + rotor meshes out of the `GEO` packs onto the pawn: `ASimCopterHelicopterPawn` now loads the per-type body and main-rotor objects (and the shared `ROTORTL` tail rotor) through `FMaxisMeshLibrary`, builds them with the reusable `FMaxisProceduralMeshBuilder`, and spins the rotor objects in place to reproduce the original animation. The placeholder cube/cylinder geometry remains as an automatic fallback when the original assets are unavailable.
 
 ## Milestone 5: Simulation And Missions
 
 - Decode relevant `.df` behavior/animation data or reimplement behavior with equivalent gameplay semantics.
 - Rebuild dispatch, traffic jams, fires, medevac, rescue, crime, transport, and career progression.
 - Integrate original WAV/SMK media through user-provided files.
+
+Ground population first pass:
+
+- Document and probe `X/people.df` plus `X/privanim.df`; behavior strings and resource markers are
+  identified, and the People.df spawn/runtime entry points have first-pass addresses. The behavior
+  VM/state table and PrivAnim record payload still need the full port.
+- Add a city-aware traffic/pedestrian spawner that reads the active SC2 city, derives road/ground
+  spawn candidates, and runs expanded active counts/radii compared with the original game's small
+  pools.
+- Render traffic cars from original `GEO` meshes (`AUTO*`, emergency/criminal vehicles). Active
+  population actors now require original asset loads; pedestrians and the on-foot player render
+  cropped frames from original `BMP/PEOPLE1.BMP` through the masked sprite material while the deeper
+  `privanim.df` animation records are decoded.
+- Route traffic cars with the decompiled `FUN_004b5290` TRAN road-step table for XBLD ids
+  `0x2c..0x3e`, `0x45..0x48`, `0x4d..0x4e`, and `0x5a..0x5b`; remaining work is original spawn
+  validation and follower/lane-offset subobject updates.
+- Start the player on foot near a parked helicopter, then support `F` enter/exit, hold `Space` to
+  start the helicopter, and hold `Ctrl` on the ground to shut the engine down.
 
 ## Milestone 6: Fidelity Pass
 

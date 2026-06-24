@@ -9,9 +9,14 @@
 
 class UCameraComponent;
 class UCapsuleComponent;
+class UMaterialInterface;
+class UProceduralMeshComponent;
+class USceneComponent;
 class USpotLightComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class ASimCopterOnFootPawn;
+class APlayerController;
 
 UENUM(BlueprintType)
 enum class ESimCopterCameraMode : uint8
@@ -159,6 +164,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool LoadTuningFromOriginalGameRoot();
 
+	// Loads the original SimCopter fuselage + rotor meshes for HelicopterTypeName from the
+	// GEO packs and binds them to the procedural mesh components. Returns false (and keeps
+	// the placeholder geometry visible) if the original assets are unavailable.
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SimCopter|Model")
+	bool LoadHelicopterMeshFromOriginalGameRoot();
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	void ResetAircraft();
 
@@ -168,9 +179,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	float GetDamageFraction() const;
 
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
+	bool CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
+	void EnterHelicopter(APlayerController* PlayerController);
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
+	bool CanExitHelicopter() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
+	void ExitHelicopter();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
+	bool IsEngineRunning() const { return bEngineRunning; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;
+
+	// Tilts with the helicopter's pitch/roll. Parents both the placeholder geometry and
+	// the original-mesh geometry so banking is shared by whichever is visible.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USceneComponent> ModelPivot;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> BodyMeshComponent;
@@ -180,6 +211,18 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> TailRotorMeshComponent;
+
+	// Original SimCopter fuselage mesh (replaces the placeholder body when loaded).
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> HeliBodyMeshComponent;
+
+	// Original SimCopter main rotor mesh; spun about the mast each frame.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> HeliMainRotorMeshComponent;
+
+	// Original SimCopter tail rotor mesh (shared ROTORTL object); spun about its hub.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> HeliTailRotorMeshComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> RopeMeshComponent;
@@ -204,6 +247,50 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	bool bLoadTuningOnBeginPlay = true;
+
+	// Loads the original fuselage/rotor meshes from the GEO packs on BeginPlay.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model")
+	bool bLoadHelicopterMeshOnBeginPlay = true;
+
+	// Renders the shared ROTORTL tail rotor at the tail and spins it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model")
+	bool bShowSeparateTailRotor = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Engine")
+	bool bEngineRunning = false;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Engine", meta = (ClampMin = "0.0"))
+	float EngineStartHoldSeconds = 0.85f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Engine", meta = (ClampMin = "0.0"))
+	float EngineShutdownHoldSeconds = 0.8f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
+	TSubclassOf<ASimCopterOnFootPawn> ExitPawnClass;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
+	FVector ExitOffset = FVector(180.0f, 175.0f, 0.0f);
+
+	// Mesh units per centimetre for the GEO packs (matches the city renderer's value).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "1.0"))
+	float ModelUnitsPerCentimeter = 2621.44f;
+
+	// Display scale applied to the loaded mesh. Defaults to 0.25 so the helicopter matches
+	// the city's original-mesh scale (TileSize 400 / source tile 1600).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.001"))
+	float ModelScale = 0.25f;
+
+	// Adds reversed triangles so faces are visible from both sides (matches the city default).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model")
+	bool bRenderModelBackfaces = true;
+
+	// Main rotor revolutions per second while the engine is running.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.0"))
+	float MainRotorRevsPerSec = 4.5f;
+
+	// Tail rotor spin speed relative to the main rotor.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.0"))
+	float TailRotorSpeedMultiplier = 3.4f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Flight")
 	FSimCopterHelicopterTypeTuning HelicopterTuning;
@@ -292,6 +379,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
 	float CameraPitchSpeedDegPerSec = 90.0f;
 
+	// How far (cm) the chase camera eases back at full forward speed. Kept small so forward
+	// flight only nudges the camera back a little instead of pulling way out.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float ChaseSpeedPullbackCm = 120.0f;
+
+	// Seconds the mouse-drag camera offset is held after the button is released before it
+	// eases back to center.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraRecenterDelaySeconds = 1.0f;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
 
@@ -314,7 +411,26 @@ protected:
 	float ForwardObstacleDistanceCm = 0.0f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	float EngineStartHoldAlpha = 0.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	float EngineShutdownHoldAlpha = 0.0f;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastTuningLoadError;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	bool bUsingOriginalMesh = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	FString LastModelLoadError;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> ModelVertexColorMaterial;
+
+	// Translucent grey material for the spinning rotor disc (Maxis face type 11).
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> RotorDiscMaterial;
 
 private:
 	FVector VelocityCmPerSec = FVector::ZeroVector;
@@ -332,9 +448,21 @@ private:
 	float CollectiveInput = 0.0f;
 	float CameraYawInput = 0.0f;
 	float CameraPitchInput = 0.0f;
+	float MouseLookYawInput = 0.0f;
+	float MouseLookPitchInput = 0.0f;
 	float RopeAdjustInput = 0.0f;
 	bool bBucketFillHeld = false;
 	bool bBucketDumpHeld = false;
+	bool bEngineStartHeld = false;
+	bool bEngineShutdownHeld = false;
+	float EngineStartHoldElapsed = 0.0f;
+	float EngineShutdownHoldElapsed = 0.0f;
+
+	// Mouse-drag camera control: the camera only follows the mouse while a mouse button is
+	// held, and recenters CameraRecenterDelaySeconds after release.
+	int32 CameraDragButtonCount = 0;
+	bool bCameraDragActive = false;
+	float CameraRecenterDelayRemaining = 0.0f;
 
 	FHitResult LastGroundHit;
 	FHitResult LastForwardProbeHit;
@@ -345,6 +473,10 @@ private:
 	void MoveCollective(float Value);
 	void LookYaw(float Value);
 	void LookPitch(float Value);
+	void MouseLookYaw(float Value);
+	void MouseLookPitch(float Value);
+	void StartCameraDrag();
+	void StopCameraDrag();
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
@@ -352,9 +484,15 @@ private:
 	void StopBucketFill();
 	void StartBucketDump();
 	void StopBucketDump();
+	void StartEngineHold();
+	void StopEngineHold();
+	void StartEngineShutdownHold();
+	void StopEngineShutdownHold();
+	void Interact();
 	void CycleCameraMode();
 	void ToggleSearchLight();
 
+	void UpdateEngineState(float DeltaSeconds);
 	void SimulateFlightStep(float DeltaSeconds);
 	void UpdateGroundProbe();
 	void UpdateForwardProbe();
@@ -368,4 +506,9 @@ private:
 	bool ProbeBucketWater(const FVector& BucketWorldLocation) const;
 	FString ResolveOriginalGameRoot() const;
 	void ApplyDerivedTuning();
+
+	// Resolves the GEO table names (fuselage + main rotor) for HelicopterTypeName.
+	// Returns false when the name is not a known flyable helicopter.
+	static bool GetHelicopterMeshNames(const FString& TypeName, FString& OutBodyName, FString& OutMainRotorName);
+	void ShowOriginalMesh(bool bUseOriginalMesh);
 };
