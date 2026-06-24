@@ -23,6 +23,12 @@ public:
 
 	const FMaxisMeshObject* FindObjectByTileId(int32 TileId, const TArray<FColor>** OutColorMap = nullptr) const;
 	const FMaxisMeshObject* FindObjectByTableName(const FString& TableName, const TArray<FColor>** OutColorMap = nullptr) const;
+
+	// Resolves a mesh object by its globally-unique object Id, reproducing the original
+	// game's FUN_00470571. The SimCopter city builder (FUN_0047c0c0) dispatches tiles -
+	// roads, bridges, etc. - to specific object Ids rather than to the heuristic XBLD
+	// table used above, so this is the exact path for those cases.
+	const FMaxisMeshObject* FindObjectByObjectId(int32 ObjectId, const TArray<FColor>** OutColorMap = nullptr) const;
 	const TArray<FColor>* GetSharedColorMap() const;
 
 	int32 GetMeshFileCount() const { return MeshFiles.Num(); }

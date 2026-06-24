@@ -400,6 +400,35 @@ const FMaxisMeshObject* FMaxisMeshLibrary::FindObjectByTableName(const FString& 
 	return nullptr;
 }
 
+const FMaxisMeshObject* FMaxisMeshLibrary::FindObjectByObjectId(int32 ObjectId, const TArray<FColor>** OutColorMap) const
+{
+	if (OutColorMap != nullptr)
+	{
+		*OutColorMap = nullptr;
+	}
+
+	// Mirrors FUN_00470571: each object across the three packs carries a globally
+	// unique Id (validated as a 0..399 bijection over the reference packs), and the
+	// runtime skips objects whose attribute-flag bit 3 marks them as duplicates.
+	for (const FMaxisMeshFile& MeshFile : MeshFiles)
+	{
+		for (const FMaxisMeshObject& Object : MeshFile.Objects)
+		{
+			if (Object.Header.Id == ObjectId && (Object.Header.AttributeFlags & 8u) == 0)
+			{
+				if (OutColorMap != nullptr)
+				{
+					*OutColorMap = &MeshFile.ColorMap;
+				}
+
+				return &Object;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
 const TArray<FColor>* FMaxisMeshLibrary::GetSharedColorMap() const
 {
 	return MeshFiles.Num() > 0 ? &MeshFiles[0].ColorMap : nullptr;
