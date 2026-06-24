@@ -315,6 +315,43 @@ int32 GetTerrainTileAverageHeightMapSample(const FSimCity2000City& City, int32 F
 		GetTerrainGridHeightMapSample(City, FileX, FileY + 1)) >> 2;
 }
 
+// Reproduces the original city builder's flat-vs-sloped test (FUN_0047c0c0): a tile is
+// flat when its four tmap corner heights match. GetTerrainGridHeightMapSample is the
+// remake's tmap-corner equivalent - the same samples the terrain quad corners use.
+bool IsOriginalTerrainTileFlat(const FSimCity2000City& City, int32 FileX, int32 FileY)
+{
+	const int32 Corner00 = GetTerrainGridHeightMapSample(City, FileX, FileY);
+	const int32 Corner10 = GetTerrainGridHeightMapSample(City, FileX + 1, FileY);
+	const int32 Corner01 = GetTerrainGridHeightMapSample(City, FileX, FileY + 1);
+	const int32 Corner11 = GetTerrainGridHeightMapSample(City, FileX + 1, FileY + 1);
+	return Corner00 == Corner10 && Corner00 == Corner01 && Corner00 == Corner11;
+}
+
+// Bridge tile dispatch transcribed from FUN_0047c0c0 (XBLD ids 0x3f..0x48). Each bridge
+// id selects a specific globally-unique mesh object Id (resolved via
+// FMaxisMeshLibrary::FindObjectByObjectId, the remake's FUN_00470571), which is what
+// encodes the correct bridge piece and orientation - the heuristic XBLD->mesh table
+// mis-selected these. Cases 0x43..0x46 pick a flat vs sloped variant from the tile's
+// corner heights. Returns INDEX_NONE for non-bridge tiles. The small detail props the
+// original layers on top (object Ids 0x2c/0x2d) are intentionally left out for now.
+int32 GetOriginalBridgeObjectId(uint8 BuildingId, bool bTileIsFlat)
+{
+	switch (BuildingId)
+	{
+	case 0x3f: return 0x178;
+	case 0x40: return 0x179;
+	case 0x41: return 0x17a;
+	case 0x42: return 0x17b;
+	case 0x43: return bTileIsFlat ? 0x128 : 0x17f;
+	case 0x44: return bTileIsFlat ? 0x129 : 0x180;
+	case 0x45: return bTileIsFlat ? 0x3b : 0x1d;
+	case 0x46: return bTileIsFlat ? 0x3c : 0x1e;
+	case 0x47: return 0x17d;
+	case 0x48: return 0x17e;
+	default: return INDEX_NONE;
+	}
+}
+
 uint32 HashTerrainTile(int32 X, int32 Y, uint32 Salt)
 {
 	uint32 Hash = static_cast<uint32>(X) * 0x8da6b343u;
@@ -789,6 +826,28 @@ int32 AppendMaxisMeshObject(
 	int32& OutTexturedTriangleCount)
 {
 	int32 AddedTriangleCount = 0;
+
+	// Orient face normals so they point away from the object's centroid. The raw
+	// Maxis winding (run through ConvertMaxisVertexToUnreal + the 180-degree yaw)
+	// yields inward-facing normals for exterior faces - the same reason the
+	// terrain quad has to use a reversed cross product to face up. Inward normals
+	// left buildings/roads unlit by both the directional light and Lumen's
+	// surface cache (dark everywhere except where Lumen's screen trace faded out
+	// at the edges). The centroid is built in the same local space the vertices
+	// are stored in, with TileOrigin folded in so it compares directly against
+	// per-face centers below.
+	FVector ObjectCenter = TileOrigin;
+	if (MeshObject.Vertices.Num() > 0)
+	{
+		FVector LocalCenter = FVector::ZeroVector;
+		for (const FMaxisMeshVertex& CentroidVertex : MeshObject.Vertices)
+		{
+			const FVector CentroidConverted = FMaxisMeshReader::ConvertMaxisVertexToUnreal(CentroidVertex, MeshUnitsPerCentimeter) * MeshScale;
+			LocalCenter += FVector(-CentroidConverted.X, -CentroidConverted.Y, CentroidConverted.Z);
+		}
+		ObjectCenter += LocalCenter / static_cast<float>(MeshObject.Vertices.Num());
+	}
+
 	for (const FMaxisMeshFace& Face : MeshObject.Faces)
 	{
 		if (Face.VertexIndices.Num() < 3)
@@ -832,9 +891,22 @@ int32 AppendMaxisMeshObject(
 			continue;
 		}
 
-		const FVector FaceNormal = FVector::CrossProduct(
+		FVector FaceNormal = FVector::CrossProduct(
 			Section.Vertices[FaceVertexStart + 1] - Section.Vertices[FaceVertexStart],
 			Section.Vertices[FaceVertexStart + 2] - Section.Vertices[FaceVertexStart]).GetSafeNormal();
+
+		// Flip the winding-derived normal to point outward (away from the object
+		// centroid) when it came out inward, so the visible exterior is lit.
+		FVector FaceCenter = FVector::ZeroVector;
+		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
+		{
+			FaceCenter += Section.Vertices[FaceVertexStart + Index];
+		}
+		FaceCenter /= static_cast<float>(FaceVertexCount);
+		if (FVector::DotProduct(FaceNormal, FaceCenter - ObjectCenter) < 0.0f)
+		{
+			FaceNormal = -FaceNormal;
+		}
 
 		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
 		{
@@ -1201,7 +1273,13 @@ void ASimCity2000CityActor::RebuildCity()
 				else
 				{
 					const TArray<FColor>* ColorMap = nullptr;
-					const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
+					// Bridges (XBLD 0x3f..0x48) are dispatched by the original builder to specific
+					// object Ids rather than through the heuristic XBLD->mesh table, so route them
+					// through the exact object-Id lookup. Everything else keeps the table mapping.
+					const int32 BridgeObjectId = GetOriginalBridgeObjectId(Tile.Building, IsOriginalTerrainTileFlat(City, FileX, FileY));
+					const FMaxisMeshObject* MeshObject = (BridgeObjectId != INDEX_NONE)
+						? MeshLibrary.FindObjectByObjectId(BridgeObjectId, &ColorMap)
+						: MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
 					if (MeshObject != nullptr)
 					{
 						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
