@@ -83,6 +83,12 @@ private:
 	bool bRenderTerrain = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
+	bool bRenderProceduralMapExtension = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "0", ClampMax = "256"))
+	int32 ProceduralMapExtensionTiles = 96;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderWater = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")

@@ -29,6 +29,65 @@ def clear_expressions(material):
         unreal.MaterialEditingLibrary.delete_material_expression(material, expression)
 
 
+# Shared shading parameters. The city is a stylized low-poly remake that still needs to
+# read well under dynamic night lighting (street lights, car headlights, the helicopter
+# spotlight), so the materials are Default Lit with:
+#   * a small SelfIllum floor so shadowed faces stay readable but stay dark enough for
+#     dynamic lights to pop at night,
+#   * a moderate Roughness so light falloff and speculars are visible without going glossy,
+#   * a low Specular so spotlights still glint without looking like wet plastic.
+# All three are exposed as scalar parameters so day<->night can be driven at runtime.
+SELF_ILLUM_DEFAULT = 0.08
+ROUGHNESS_DEFAULT = 0.65
+SPECULAR_DEFAULT = 0.3
+SHADING_GROUP = "City Shading"
+
+
+def add_scalar_parameter(material, name, default_value, sort_priority, y):
+    param = unreal.MaterialEditingLibrary.create_material_expression(
+        material,
+        unreal.MaterialExpressionScalarParameter,
+        -450,
+        y,
+    )
+    param.set_editor_property("parameter_name", name)
+    param.set_editor_property("default_value", default_value)
+    param.set_editor_property("group", SHADING_GROUP)
+    param.set_editor_property("sort_priority", sort_priority)
+    return param
+
+
+def add_shading_nodes(material, color_expression, color_output):
+    """Wires SelfIllum emissive, Roughness, and Specular onto a material whose base
+    color is driven by `color_expression`/`color_output`."""
+    self_illum = add_scalar_parameter(material, "SelfIllum", SELF_ILLUM_DEFAULT, 0, 280)
+    roughness = add_scalar_parameter(material, "Roughness", ROUGHNESS_DEFAULT, 1, 430)
+    specular = add_scalar_parameter(material, "Specular", SPECULAR_DEFAULT, 2, 580)
+
+    emissive = unreal.MaterialEditingLibrary.create_material_expression(
+        material,
+        unreal.MaterialExpressionMultiply,
+        -180,
+        250,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(
+        color_expression, color_output, emissive, "A"
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(
+        self_illum, "", emissive, "B"
+    )
+
+    unreal.MaterialEditingLibrary.connect_material_property(
+        emissive, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
+    )
+    unreal.MaterialEditingLibrary.connect_material_property(
+        roughness, "", unreal.MaterialProperty.MP_ROUGHNESS
+    )
+    unreal.MaterialEditingLibrary.connect_material_property(
+        specular, "", unreal.MaterialProperty.MP_SPECULAR
+    )
+
+
 def create_lit_texture_material():
     material = create_or_load_material("M_SimCopterLitTexture")
     clear_expressions(material)
@@ -46,6 +105,8 @@ def create_lit_texture_material():
         "RGB",
         unreal.MaterialProperty.MP_BASE_COLOR,
     )
+
+    add_shading_nodes(material, texture, "RGB")
 
     material.set_editor_property("two_sided", False)
     # The city renderer draws these materials on generated Nanite static meshes,
@@ -67,11 +128,14 @@ def create_lit_vertex_color_material():
         0,
     )
 
+    # The VertexColor node's RGB output is its default (unnamed) output pin.
     unreal.MaterialEditingLibrary.connect_material_property(
         vertex_color,
-        "RGB",
+        "",
         unreal.MaterialProperty.MP_BASE_COLOR,
     )
+
+    add_shading_nodes(material, vertex_color, "")
 
     material.set_editor_property("two_sided", False)
     # See note in create_lit_texture_material: needed for the Nanite render path.
