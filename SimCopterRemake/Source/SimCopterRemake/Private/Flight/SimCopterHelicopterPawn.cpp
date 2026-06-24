@@ -5,14 +5,21 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/SceneComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Formats/MaxisMeshLibrary.h"
+#include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/SimCopterTweakReader.h"
+#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Ground/SimCopterOnFootPawn.h"
+#include "Materials/MaterialInterface.h"
 #include "Misc/Paths.h"
+#include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterHelicopterPawn, Log, All);
@@ -73,7 +80,7 @@ bool NameSuggestsWater(const FName Name)
 ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	AutoPossessPlayer = EAutoReceiveInput::Player0;
+	AutoPossessPlayer = EAutoReceiveInput::Disabled;
 
 	CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CollisionComponent"));
 	CollisionComponent->InitCapsuleSize(95.0f, 82.0f);
@@ -84,8 +91,12 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CollisionComponent->SetCanEverAffectNavigation(false);
 	SetRootComponent(CollisionComponent);
 
+	// Shared tilt pivot so both the placeholder and the original-mesh geometry bank together.
+	ModelPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ModelPivot"));
+	ModelPivot->SetupAttachment(CollisionComponent);
+
 	BodyMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
-	BodyMeshComponent->SetupAttachment(CollisionComponent);
+	BodyMeshComponent->SetupAttachment(ModelPivot);
 	BodyMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyMeshComponent->SetCanEverAffectNavigation(false);
 	BodyMeshComponent->SetRelativeScale3D(FVector(2.1f, 0.62f, 0.38f));
@@ -104,6 +115,24 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	TailRotorMeshComponent->SetRelativeLocation(FVector(-176.0f, 0.0f, 25.0f));
 	TailRotorMeshComponent->SetRelativeScale3D(FVector(0.035f, 0.92f, 0.035f));
 
+	// Original SimCopter fuselage + rotor meshes. Hidden until the GEO assets load; the
+	// placeholder geometry above stays visible as a fallback when they are unavailable.
+	HeliBodyMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HeliBodyMesh"));
+	HeliBodyMeshComponent->SetupAttachment(ModelPivot);
+	HeliBodyMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HeliBodyMeshComponent->SetCanEverAffectNavigation(false);
+	HeliBodyMeshComponent->SetVisibility(false);
+
+	HeliMainRotorMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HeliMainRotor"));
+	HeliMainRotorMeshComponent->SetupAttachment(HeliBodyMeshComponent);
+	HeliMainRotorMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HeliMainRotorMeshComponent->SetCanEverAffectNavigation(false);
+
+	HeliTailRotorMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HeliTailRotor"));
+	HeliTailRotorMeshComponent->SetupAttachment(HeliBodyMeshComponent);
+	HeliTailRotorMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HeliTailRotorMeshComponent->SetCanEverAffectNavigation(false);
+
 	RopeMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Rope"));
 	RopeMeshComponent->SetupAttachment(CollisionComponent);
 	RopeMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -116,7 +145,7 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	BucketMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.28f, 0.22f));
 
 	SearchLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SearchLight"));
-	SearchLightComponent->SetupAttachment(BodyMeshComponent);
+	SearchLightComponent->SetupAttachment(ModelPivot);
 	SearchLightComponent->SetRelativeLocation(FVector(95.0f, 0.0f, -35.0f));
 	SearchLightComponent->SetRelativeRotation(FRotator(-35.0f, 0.0f, 0.0f));
 	SearchLightComponent->Intensity = 22000.0f;
@@ -155,7 +184,22 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 		RopeMeshComponent->SetStaticMesh(CylinderMeshFinder.Object);
 	}
 
+	// Lit vertex-colour material shared with the city renderer so the palette-coloured
+	// helicopter responds to scene lighting instead of rendering fullbright.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ModelMaterialFinder(TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor"));
+	if (ModelMaterialFinder.Succeeded())
+	{
+		ModelVertexColorMaterial = ModelMaterialFinder.Object;
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> RotorDiscMaterialFinder(TEXT("/Game/Materials/M_SimCopterRotorDisc.M_SimCopterRotorDisc"));
+	if (RotorDiscMaterialFinder.Succeeded())
+	{
+		RotorDiscMaterial = RotorDiscMaterialFinder.Object;
+	}
+
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
+	ExitPawnClass = ASimCopterOnFootPawn::StaticClass();
 	CurrentFuelGallons = HelicopterTuning.FuelGallons;
 	ApplyDerivedTuning();
 }
@@ -171,6 +215,23 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	else if (CurrentFuelGallons <= 0.0f)
 	{
 		CurrentFuelGallons = HelicopterTuning.FuelGallons;
+	}
+
+	if (bLoadHelicopterMeshOnBeginPlay)
+	{
+		LoadHelicopterMeshFromOriginalGameRoot();
+	}
+
+	// Keep the cursor free so the player can use on-screen buttons; mouse-look is only
+	// engaged while a mouse button is held (see Start/StopCameraDrag). GameAndUI routes
+	// mouse moves to the game only while the viewport is captured during a click-drag.
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		PlayerController->bShowMouseCursor = true;
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetHideCursorDuringCapture(false);
+		PlayerController->SetInputMode(InputMode);
 	}
 
 	UpdateGroundProbe();
@@ -204,6 +265,8 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAxis(TEXT("SimCopterCollective"), this, &ASimCopterHelicopterPawn::MoveCollective);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterLookYaw"), this, &ASimCopterHelicopterPawn::LookYaw);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterLookPitch"), this, &ASimCopterHelicopterPawn::LookPitch);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookYaw"), this, &ASimCopterHelicopterPawn::MouseLookYaw);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookPitch"), this, &ASimCopterHelicopterPawn::MouseLookPitch);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterCameraZoom"), this, &ASimCopterHelicopterPawn::ZoomCamera);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterRopeAdjust"), this, &ASimCopterHelicopterPawn::AdjustRope);
 
@@ -212,6 +275,13 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketFill"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketFill);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketDump);
+	PlayerInputComponent->BindAction(TEXT("SimCopterEngineStart"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartEngineHold);
+	PlayerInputComponent->BindAction(TEXT("SimCopterEngineStart"), IE_Released, this, &ASimCopterHelicopterPawn::StopEngineHold);
+	PlayerInputComponent->BindAction(TEXT("SimCopterEngineShutdown"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartEngineShutdownHold);
+	PlayerInputComponent->BindAction(TEXT("SimCopterEngineShutdown"), IE_Released, this, &ASimCopterHelicopterPawn::StopEngineShutdownHold);
+	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterHelicopterPawn::Interact);
+	PlayerInputComponent->BindAction(TEXT("SimCopterCameraDrag"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartCameraDrag);
+	PlayerInputComponent->BindAction(TEXT("SimCopterCameraDrag"), IE_Released, this, &ASimCopterHelicopterPawn::StopCameraDrag);
 	PlayerInputComponent->BindAction(TEXT("SimCopterCycleCamera"), IE_Pressed, this, &ASimCopterHelicopterPawn::CycleCameraMode);
 	PlayerInputComponent->BindAction(TEXT("SimCopterSearchLight"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleSearchLight);
 	PlayerInputComponent->BindAction(TEXT("SimCopterResetAircraft"), IE_Pressed, this, &ASimCopterHelicopterPawn::ResetAircraft);
@@ -341,12 +411,206 @@ bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
 	return true;
 }
 
+bool ASimCopterHelicopterPawn::GetHelicopterMeshNames(const FString& TypeName, FString& OutBodyName, FString& OutMainRotorName)
+{
+	// Maps the flyable helicopter type names from heli.twk to their GEO-pack table names.
+	// Each helicopter is a fuselage object plus a separate main-rotor object that the
+	// original engine spins about the mast; the meshes carry no skeletal animation.
+	struct FHelicopterMeshNames
+	{
+		const TCHAR* TypeName;
+		const TCHAR* BodyName;
+		const TCHAR* MainRotorName;
+	};
+
+	static const FHelicopterMeshNames Table[] = {
+		{ TEXT("Jet Ranger"), TEXT("JETRANG"), TEXT("JETRROTR") },
+		{ TEXT("Hughes 500"), TEXT("HUGH500"), TEXT("H500ROTR") },
+		{ TEXT("Bell 212"), TEXT("BELL212"), TEXT("BELLROTR") },
+		{ TEXT("Schwiezer 300"), TEXT("SCWZR300"), TEXT("SCWZROTR") },
+		{ TEXT("Apache"), TEXT("APACHE"), TEXT("APACROTR") },
+		{ TEXT("Agusta"), TEXT("AGUSTA"), TEXT("AGUSROTR") },
+		{ TEXT("Dauphin"), TEXT("DAUPHIN"), TEXT("DAUPROTR") },
+		{ TEXT("MDEXPLORER"), TEXT("MDEXPLRR"), TEXT("MDEXROTR") },
+		{ TEXT("MD520"), TEXT("MD520"), TEXT("MD52ROTR") },
+	};
+
+	const FString Trimmed = TypeName.TrimStartAndEnd();
+	for (const FHelicopterMeshNames& Entry : Table)
+	{
+		if (Trimmed.Equals(Entry.TypeName, ESearchCase::IgnoreCase))
+		{
+			OutBodyName = Entry.BodyName;
+			OutMainRotorName = Entry.MainRotorName;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
+{
+	bUsingOriginalMesh = bUseOriginalMesh;
+
+	if (HeliBodyMeshComponent != nullptr)
+	{
+		HeliBodyMeshComponent->SetVisibility(bUseOriginalMesh, true);
+	}
+	if (BodyMeshComponent != nullptr)
+	{
+		BodyMeshComponent->SetVisibility(!bUseOriginalMesh, true);
+	}
+}
+
+bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
+{
+	LastModelLoadError.Reset();
+
+	FString BodyName;
+	FString MainRotorName;
+	if (!GetHelicopterMeshNames(HelicopterTypeName, BodyName, MainRotorName))
+	{
+		LastModelLoadError = FString::Printf(TEXT("'%s' is not a known flyable helicopter type; keeping placeholder model."), *HelicopterTypeName);
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelLoadError);
+		ShowOriginalMesh(false);
+		return false;
+	}
+
+	const FString RootPath = ResolveOriginalGameRoot();
+	FMaxisMeshLibrary MeshLibrary;
+	FString Error;
+	if (!MeshLibrary.LoadFromOriginalGameRoot(RootPath, Error))
+	{
+		LastModelLoadError = Error;
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelLoadError);
+		ShowOriginalMesh(false);
+		return false;
+	}
+
+	const FLinearColor FallbackColor(0.6f, 0.6f, 0.62f);
+
+	auto BuildComponentMesh = [this, &FallbackColor](UProceduralMeshComponent* Component, const FMaxisMeshObject& Object, const TArray<FColor>* ColorMap, FMaxisMeshSection& OutSection)
+	{
+		FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OutSection);
+		Component->ClearAllMeshSections();
+		if (OutSection.IsEmpty())
+		{
+			return false;
+		}
+
+		Component->CreateMeshSection_LinearColor(0, OutSection.Vertices, OutSection.Triangles, OutSection.Normals, OutSection.UVs, OutSection.VertexColors, OutSection.Tangents, false);
+		if (ModelVertexColorMaterial != nullptr)
+		{
+			Component->SetMaterial(0, ModelVertexColorMaterial);
+		}
+		return true;
+	};
+
+	// Rotors split into an opaque blade section and a translucent disc section (Maxis face
+	// type 11), so the spinning disc reads as a faint grey haze instead of a solid plate.
+	auto BuildRotorMesh = [this, &FallbackColor](UProceduralMeshComponent* Component, const FMaxisMeshObject& Object, const TArray<FColor>* ColorMap)
+	{
+		FMaxisMeshSection OpaqueSection;
+		FMaxisMeshSection DiscSection;
+		FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OpaqueSection, &DiscSection);
+		Component->ClearAllMeshSections();
+		if (OpaqueSection.IsEmpty() && DiscSection.IsEmpty())
+		{
+			return false;
+		}
+
+		int32 SectionIndex = 0;
+		if (!OpaqueSection.IsEmpty())
+		{
+			Component->CreateMeshSection_LinearColor(SectionIndex, OpaqueSection.Vertices, OpaqueSection.Triangles, OpaqueSection.Normals, OpaqueSection.UVs, OpaqueSection.VertexColors, OpaqueSection.Tangents, false);
+			if (ModelVertexColorMaterial != nullptr)
+			{
+				Component->SetMaterial(SectionIndex, ModelVertexColorMaterial);
+			}
+			++SectionIndex;
+		}
+		if (!DiscSection.IsEmpty())
+		{
+			Component->CreateMeshSection_LinearColor(SectionIndex, DiscSection.Vertices, DiscSection.Triangles, DiscSection.Normals, DiscSection.UVs, DiscSection.VertexColors, DiscSection.Tangents, false);
+			UMaterialInterface* const DiscMaterial = RotorDiscMaterial != nullptr ? RotorDiscMaterial.Get() : ModelVertexColorMaterial.Get();
+			if (DiscMaterial != nullptr)
+			{
+				Component->SetMaterial(SectionIndex, DiscMaterial);
+			}
+			++SectionIndex;
+		}
+		return true;
+	};
+
+	const TArray<FColor>* BodyColorMap = nullptr;
+	const FMaxisMeshObject* BodyObject = MeshLibrary.FindObjectByTableName(BodyName, &BodyColorMap);
+	FMaxisMeshSection BodySection;
+	if (BodyObject == nullptr || !BuildComponentMesh(HeliBodyMeshComponent, *BodyObject, BodyColorMap, BodySection))
+	{
+		LastModelLoadError = FString::Printf(TEXT("Could not build helicopter body mesh '%s' from '%s'."), *BodyName, *RootPath);
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelLoadError);
+		ShowOriginalMesh(false);
+		return false;
+	}
+
+	// Sit the lowest fuselage vertex at the bottom of the collision capsule so the skids
+	// rest near the ground contact point the flight probes use.
+	const float CapsuleHalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	const float VerticalOffset = -CapsuleHalfHeight - BodySection.LocalBounds.Min.Z;
+	HeliBodyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, VerticalOffset));
+
+	// Main rotor: authored around the mast at local X=Y=0, so spinning the component about
+	// its own Z axis at the body origin sweeps the blades correctly.
+	const TArray<FColor>* MainRotorColorMap = nullptr;
+	const FMaxisMeshObject* MainRotorObject = MeshLibrary.FindObjectByTableName(MainRotorName, &MainRotorColorMap);
+	if (MainRotorObject != nullptr && BuildRotorMesh(HeliMainRotorMeshComponent, *MainRotorObject, MainRotorColorMap))
+	{
+		HeliMainRotorMeshComponent->SetRelativeLocation(FVector::ZeroVector);
+	}
+
+	// Tail rotor: the shared ROTORTL object is authored centred on its own hub, so place it
+	// near the rear tip of the fuselage and spin it about the lateral (Y) axis.
+	HeliTailRotorMeshComponent->ClearAllMeshSections();
+	if (bShowSeparateTailRotor)
+	{
+		const TArray<FColor>* TailRotorColorMap = nullptr;
+		const FMaxisMeshObject* TailRotorObject = MeshLibrary.FindObjectByTableName(TEXT("ROTORTL"), &TailRotorColorMap);
+		if (TailRotorObject != nullptr && BuildRotorMesh(HeliTailRotorMeshComponent, *TailRotorObject, TailRotorColorMap))
+		{
+			const FVector BodyMin = BodySection.LocalBounds.Min;
+			const FVector BodyMax = BodySection.LocalBounds.Max;
+			const float TailX = BodyMin.X + (BodyMax.X - BodyMin.X) * 0.05f;
+			const float TailZ = BodyMin.Z + (BodyMax.Z - BodyMin.Z) * 0.55f;
+			HeliTailRotorMeshComponent->SetRelativeLocation(FVector(TailX, 0.0f, TailZ));
+		}
+	}
+
+	ShowOriginalMesh(true);
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("Loaded SimCopter helicopter model '%s' (body '%s', rotor '%s') from '%s'."),
+		*HelicopterTypeName,
+		*BodyName,
+		*MainRotorName,
+		*RootPath);
+	return true;
+}
+
 void ASimCopterHelicopterPawn::ResetAircraft()
 {
 	VelocityCmPerSec = FVector::ZeroVector;
 	CurrentPitchDeg = 0.0f;
 	CurrentRollDeg = 0.0f;
 	CurrentYawRateDegPerSec = 0.0f;
+	bEngineRunning = false;
+	bEngineStartHeld = false;
+	bEngineShutdownHeld = false;
+	EngineStartHoldElapsed = 0.0f;
+	EngineShutdownHoldElapsed = 0.0f;
+	EngineStartHoldAlpha = 0.0f;
+	EngineShutdownHoldAlpha = 0.0f;
 	CurrentDamage = 0.0f;
 	CurrentFuelGallons = HelicopterTuning.FuelGallons;
 	BucketWaterFraction = 0.0f;
@@ -363,6 +627,73 @@ float ASimCopterHelicopterPawn::GetFuelFraction() const
 float ASimCopterHelicopterPawn::GetDamageFraction() const
 {
 	return HelicopterTuning.MaxDamage > 0 ? FMath::Clamp(CurrentDamage / static_cast<float>(HelicopterTuning.MaxDamage), 0.0f, 1.0f) : 0.0f;
+}
+
+bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const
+{
+	return FVector::DistSquared(WorldLocation, GetActorLocation()) <= FMath::Square(RadiusCm);
+}
+
+void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerController)
+{
+	if (PlayerController == nullptr)
+	{
+		return;
+	}
+
+	PlayerController->Possess(this);
+	PlayerController->bShowMouseCursor = true;
+	FInputModeGameAndUI InputMode;
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
+	PlayerController->SetInputMode(InputMode);
+}
+
+bool ASimCopterHelicopterPawn::CanExitHelicopter() const
+{
+	return bIsLanded && !bEngineRunning && GroundClearanceCm <= GroundContactTolerance + 18.0f;
+}
+
+void ASimCopterHelicopterPawn::ExitHelicopter()
+{
+	if (!CanExitHelicopter() || GetWorld() == nullptr || ExitPawnClass == nullptr)
+	{
+		return;
+	}
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController == nullptr)
+	{
+		return;
+	}
+
+	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	FVector ExitLocation =
+		GetActorLocation() +
+		YawFrame.GetUnitAxis(EAxis::X) * ExitOffset.X +
+		YawFrame.GetUnitAxis(EAxis::Y) * ExitOffset.Y;
+
+	const FVector TraceStart = ExitLocation + FVector::UpVector * 1200.0f;
+	const FVector TraceEnd = ExitLocation - FVector::UpVector * 2200.0f;
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterHelicopterExit), false, this);
+	if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	{
+		ExitLocation.Z = Hit.ImpactPoint.Z + 94.0f;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	ASimCopterOnFootPawn* OnFootPawn = GetWorld()->SpawnActor<ASimCopterOnFootPawn>(
+		ExitPawnClass,
+		ExitLocation,
+		FRotator(0.0f, GetActorRotation().Yaw, 0.0f),
+		SpawnParams);
+	if (OnFootPawn != nullptr)
+	{
+		PlayerController->Possess(OnFootPawn);
+	}
 }
 
 void ASimCopterHelicopterPawn::MovePitch(float Value)
@@ -393,6 +724,28 @@ void ASimCopterHelicopterPawn::LookYaw(float Value)
 void ASimCopterHelicopterPawn::LookPitch(float Value)
 {
 	CameraPitchInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::MouseLookYaw(float Value)
+{
+	MouseLookYawInput = Value;
+}
+
+void ASimCopterHelicopterPawn::MouseLookPitch(float Value)
+{
+	MouseLookPitchInput = Value;
+}
+
+void ASimCopterHelicopterPawn::StartCameraDrag()
+{
+	++CameraDragButtonCount;
+	bCameraDragActive = true;
+}
+
+void ASimCopterHelicopterPawn::StopCameraDrag()
+{
+	CameraDragButtonCount = FMath::Max(0, CameraDragButtonCount - 1);
+	bCameraDragActive = CameraDragButtonCount > 0;
 }
 
 void ASimCopterHelicopterPawn::ZoomCamera(float Value)
@@ -433,6 +786,38 @@ void ASimCopterHelicopterPawn::StopBucketDump()
 	bBucketDumpHeld = false;
 }
 
+void ASimCopterHelicopterPawn::StartEngineHold()
+{
+	bEngineStartHeld = true;
+}
+
+void ASimCopterHelicopterPawn::StopEngineHold()
+{
+	bEngineStartHeld = false;
+	EngineStartHoldElapsed = 0.0f;
+	EngineStartHoldAlpha = 0.0f;
+}
+
+void ASimCopterHelicopterPawn::StartEngineShutdownHold()
+{
+	bEngineShutdownHeld = true;
+}
+
+void ASimCopterHelicopterPawn::StopEngineShutdownHold()
+{
+	bEngineShutdownHeld = false;
+	EngineShutdownHoldElapsed = 0.0f;
+	EngineShutdownHoldAlpha = 0.0f;
+}
+
+void ASimCopterHelicopterPawn::Interact()
+{
+	if (CanExitHelicopter())
+	{
+		ExitHelicopter();
+	}
+}
+
 void ASimCopterHelicopterPawn::CycleCameraMode()
 {
 	switch (CameraMode)
@@ -459,13 +844,54 @@ void ASimCopterHelicopterPawn::ToggleSearchLight()
 	}
 }
 
+void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
+{
+	if (bEngineStartHeld && !bEngineRunning && CurrentFuelGallons > 0.01f && CurrentDamage < static_cast<float>(HelicopterTuning.MaxDamage))
+	{
+		EngineStartHoldElapsed += DeltaSeconds;
+		EngineStartHoldAlpha = EngineStartHoldSeconds > 0.0f ? FMath::Clamp(EngineStartHoldElapsed / EngineStartHoldSeconds, 0.0f, 1.0f) : 1.0f;
+		if (EngineStartHoldElapsed >= EngineStartHoldSeconds)
+		{
+			bEngineRunning = true;
+			EngineStartHoldElapsed = 0.0f;
+			EngineStartHoldAlpha = 0.0f;
+		}
+	}
+	else if (!bEngineStartHeld)
+	{
+		EngineStartHoldElapsed = 0.0f;
+		EngineStartHoldAlpha = 0.0f;
+	}
+
+	if (bEngineShutdownHeld && bEngineRunning && bIsLanded)
+	{
+		EngineShutdownHoldElapsed += DeltaSeconds;
+		EngineShutdownHoldAlpha = EngineShutdownHoldSeconds > 0.0f ? FMath::Clamp(EngineShutdownHoldElapsed / EngineShutdownHoldSeconds, 0.0f, 1.0f) : 1.0f;
+		if (EngineShutdownHoldElapsed >= EngineShutdownHoldSeconds)
+		{
+			bEngineRunning = false;
+			EngineShutdownHoldElapsed = 0.0f;
+			EngineShutdownHoldAlpha = 0.0f;
+			CurrentYawRateDegPerSec = 0.0f;
+			CollectiveInput = 0.0f;
+		}
+	}
+	else if (!bEngineShutdownHeld || !bIsLanded)
+	{
+		EngineShutdownHoldElapsed = 0.0f;
+		EngineShutdownHoldAlpha = 0.0f;
+	}
+}
+
 void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 {
-	const bool bFlyable = CurrentFuelGallons > 0.01f && CurrentDamage < static_cast<float>(HelicopterTuning.MaxDamage);
+	UpdateEngineState(DeltaSeconds);
+
+	const bool bFlyable = bEngineRunning && CurrentFuelGallons > 0.01f && CurrentDamage < static_cast<float>(HelicopterTuning.MaxDamage);
 	const float EffectivePitchInput = bFlyable ? PitchInput : 0.0f;
 	const float EffectiveRollInput = bFlyable ? RollInput : 0.0f;
 	const float EffectiveYawInput = bFlyable ? YawInput : 0.0f;
-	const float EffectiveCollectiveInput = bFlyable ? CollectiveInput : -0.22f;
+	const float EffectiveCollectiveInput = bFlyable ? CollectiveInput : (bIsLanded ? 0.0f : -0.22f);
 
 	const float TargetPitchDeg = -EffectivePitchInput * HelicopterTuning.MaxPitchDeg;
 	const float TargetRollDeg = EffectiveRollInput * HelicopterTuning.MaxBankDeg;
@@ -668,6 +1094,11 @@ void ASimCopterHelicopterPawn::HandleBlockingHit(const FHitResult& Hit, float De
 
 void ASimCopterHelicopterPawn::UpdateFuel(float DeltaSeconds)
 {
+	if (!bEngineRunning)
+	{
+		return;
+	}
+
 	if (CurrentFuelGallons <= 0.0f)
 	{
 		CurrentFuelGallons = 0.0f;
@@ -720,20 +1151,38 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 
 void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 {
-	if (BodyMeshComponent != nullptr)
+	if (ModelPivot != nullptr)
 	{
-		BodyMeshComponent->SetRelativeRotation(FRotator(CurrentPitchDeg, 0.0f, CurrentRollDeg));
+		ModelPivot->SetRelativeRotation(FRotator(CurrentPitchDeg, 0.0f, CurrentRollDeg));
 	}
 
-	const float RotorSpeed = CurrentFuelGallons > 0.0f ? 1680.0f : 420.0f;
+	const float RunningDegPerSec = MainRotorRevsPerSec * 360.0f;
+	const float RotorSpeed = bEngineRunning
+		? RunningDegPerSec
+		: (bEngineStartHeld && CurrentFuelGallons > 0.0f ? RunningDegPerSec * 0.35f : 0.0f);
 	RotorSpinDeg = FMath::Fmod(RotorSpinDeg + RotorSpeed * DeltaSeconds, 360.0f);
+
+	// Main rotor spins about the vertical mast (yaw); tail rotor spins about the lateral
+	// axis (pitch). Applied to both the placeholder and original-mesh rotors; only the
+	// active set is visible.
+	const FRotator MainRotorRotation(0.0f, RotorSpinDeg, 0.0f);
+	const FRotator TailRotorRotation(RotorSpinDeg * TailRotorSpeedMultiplier, 0.0f, 0.0f);
+
 	if (MainRotorMeshComponent != nullptr)
 	{
-		MainRotorMeshComponent->SetRelativeRotation(FRotator(0.0f, RotorSpinDeg, 0.0f));
+		MainRotorMeshComponent->SetRelativeRotation(MainRotorRotation);
 	}
 	if (TailRotorMeshComponent != nullptr)
 	{
-		TailRotorMeshComponent->SetRelativeRotation(FRotator(RotorSpinDeg * 2.7f, 0.0f, 0.0f));
+		TailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
+	}
+	if (HeliMainRotorMeshComponent != nullptr)
+	{
+		HeliMainRotorMeshComponent->SetRelativeRotation(MainRotorRotation);
+	}
+	if (HeliTailRotorMeshComponent != nullptr)
+	{
+		HeliTailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
 	}
 }
 
@@ -744,28 +1193,46 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		return;
 	}
 
-	CameraYawOffsetDeg += CameraYawInput * CameraYawSpeedDegPerSec * DeltaSeconds;
-	CameraPitchOffsetDeg = FMath::Clamp(CameraPitchOffsetDeg + CameraPitchInput * CameraPitchSpeedDegPerSec * DeltaSeconds, -28.0f, 18.0f);
+	// Gamepad look drives the camera continuously; mouse look only contributes while a mouse
+	// button is held (a click-drag). Dragging, then the CameraRecenterDelaySeconds window
+	// after release, holds the offset; gamepad look recenters immediately on release.
+	float YawLookInput = CameraYawInput;
+	float PitchLookInput = CameraPitchInput;
+	if (bCameraDragActive)
+	{
+		YawLookInput += MouseLookYawInput;
+		PitchLookInput += MouseLookPitchInput;
+		CameraRecenterDelayRemaining = CameraRecenterDelaySeconds;
+	}
+	else if (CameraRecenterDelayRemaining > 0.0f)
+	{
+		CameraRecenterDelayRemaining = FMath::Max(0.0f, CameraRecenterDelayRemaining - DeltaSeconds);
+	}
+
+	CameraYawOffsetDeg += YawLookInput * CameraYawSpeedDegPerSec * DeltaSeconds;
+	CameraPitchOffsetDeg = FMath::Clamp(CameraPitchOffsetDeg + PitchLookInput * CameraPitchSpeedDegPerSec * DeltaSeconds, -28.0f, 18.0f);
+
+	const bool bHoldOffset = bCameraDragActive || CameraRecenterDelayRemaining > 0.0f;
+	const bool bRecenterYaw = !bHoldOffset && FMath::IsNearlyZero(CameraYawInput, 0.01f);
+	const bool bRecenterPitch = !bHoldOffset && FMath::IsNearlyZero(CameraPitchInput, 0.01f);
 
 	const float HorizontalSpeed = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Size();
 	const float SpeedAlpha = FMath::Clamp(HorizontalSpeed / FMath::Max(1.0f, MaxForwardSpeedCmPerSec), 0.0f, 1.0f);
 	const float ActorYaw = GetActorRotation().Yaw;
 	float ViewYaw = ActorYaw;
-	float ViewPitch = ChaseCameraBasePitch - SpeedAlpha * 8.0f;
-	float ArmLength = FMath::Lerp(ChaseCameraMinDistance, ChaseCameraMaxDistance, FMath::Max(SpeedAlpha, CameraZoomAlpha));
-	FVector TargetOffset(0.0f, 0.0f, 130.0f + SpeedAlpha * 120.0f);
+	float ViewPitch = ChaseCameraBasePitch - SpeedAlpha * 4.0f;
+	float ArmLength = FMath::Lerp(ChaseCameraMinDistance, ChaseCameraMaxDistance, CameraZoomAlpha) + SpeedAlpha * ChaseSpeedPullbackCm;
+	FVector TargetOffset(0.0f, 0.0f, 130.0f + SpeedAlpha * 40.0f);
 
 	if (CameraMode == ESimCopterCameraMode::Chase)
 	{
-		if (HorizontalSpeed > 220.0f)
-		{
-			ViewYaw = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Rotation().Yaw;
-		}
-		if (FMath::IsNearlyZero(CameraYawInput, 0.01f))
+		// Keep the camera behind the helicopter for forward, reverse, and strafe: it no
+		// longer swings to face the travel direction.
+		if (bRecenterYaw)
 		{
 			CameraYawOffsetDeg = FMath::FInterpTo(CameraYawOffsetDeg, 0.0f, DeltaSeconds, 1.35f);
 		}
-		if (FMath::IsNearlyZero(CameraPitchInput, 0.01f))
+		if (bRecenterPitch)
 		{
 			CameraPitchOffsetDeg = FMath::FInterpTo(CameraPitchOffsetDeg, 0.0f, DeltaSeconds, 1.6f);
 		}
@@ -783,7 +1250,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		ViewPitch = RescueCameraPitch;
 		ArmLength = FMath::Lerp(860.0f, 1500.0f, CameraZoomAlpha);
 		TargetOffset = FVector(0.0f, 0.0f, 30.0f);
-		if (FMath::IsNearlyZero(CameraYawInput, 0.01f))
+		if (bRecenterYaw)
 		{
 			CameraYawOffsetDeg = FMath::FInterpTo(CameraYawOffsetDeg, 0.0f, DeltaSeconds, 0.8f);
 		}

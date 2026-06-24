@@ -1,0 +1,3 @@
+STRING @ 00506bdc : PrivAnim.df
+    <- 004ceb41  in FUN_004ceab0 @ 004ceab0
+=== 1 strings matched 'privanim' ===

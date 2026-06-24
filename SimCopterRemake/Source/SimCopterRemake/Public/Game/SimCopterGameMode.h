@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "SimCopterGameMode.generated.h"
 
+class ASimCopterTrafficSystemActor;
+
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCopterGameMode : public AGameModeBase
 {
@@ -13,4 +15,13 @@ class SIMCOPTERREMAKE_API ASimCopterGameMode : public AGameModeBase
 
 public:
 	ASimCopterGameMode();
+
+	virtual void BeginPlay() override;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
+	bool bSpawnTrafficSystem = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
+	TSubclassOf<ASimCopterTrafficSystemActor> TrafficSystemClass;
 };

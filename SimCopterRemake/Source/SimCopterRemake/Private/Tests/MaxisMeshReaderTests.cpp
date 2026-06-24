@@ -5,6 +5,7 @@
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
+#include "Formats/MaxisWindowsBitmapReader.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 
@@ -340,6 +341,37 @@ bool FMaxisCompositeBitmapReferenceTextureTest::RunTest(const FString& Parameter
 		TestEqual(TEXT("SKY image 4 width"), SkyGroundAtlas->Width, 256);
 		TestEqual(TEXT("SKY image 4 height"), SkyGroundAtlas->Height, 256);
 	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMaxisWindowsBitmapPeopleReferenceTest,
+	"SimCopter.Formats.MaxisTexture.ReferencePeopleWindowsBitmap",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMaxisWindowsBitmapPeopleReferenceTest::RunTest(const FString& Parameters)
+{
+	const FString OriginalGameRoot = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	const FString TexturePath = FPaths::Combine(OriginalGameRoot, TEXT("BMP/PEOPLE1.BMP"));
+	if (!FPaths::FileExists(TexturePath))
+	{
+		AddWarning(FString::Printf(TEXT("Skipping optional PEOPLE1 bitmap test because '%s' is not present."), *TexturePath));
+		return true;
+	}
+
+	FString Error;
+	FMaxisTextureImage PeopleSheet;
+	if (!TestTrue(TEXT("Loads PEOPLE1 Windows bitmap"), FMaxisWindowsBitmapReader::LoadPalettedBitmapFromFile(TexturePath, PeopleSheet, Error, 254)))
+	{
+		AddError(Error);
+		return false;
+	}
+
+	TestEqual(TEXT("PEOPLE1 width"), PeopleSheet.Width, 324);
+	TestEqual(TEXT("PEOPLE1 height"), PeopleSheet.Height, 99);
+	TestEqual(TEXT("PEOPLE1 pixels"), PeopleSheet.Pixels.Num(), 324 * 99);
+	TestEqual(TEXT("PEOPLE1 cyan chroma key alpha"), PeopleSheet.Pixels[27].A, static_cast<uint8>(0));
 
 	return true;
 }

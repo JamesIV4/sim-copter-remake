@@ -1,0 +1,15 @@
+STRING @ 004f8ff4 : sound\people\
+    <- 004327f5  (no func)
+    <- 00432800  (no func)
+    <- 004327d9  (no func)
+STRING @ 004f9840 : people1.bmp
+    <- 004538ed  in FUN_00453840 @ 00453840
+    <- 00453915  in FUN_00453840 @ 00453840
+    <- 004f9934  (no func)
+STRING @ 005064ac : People.df
+    <- 004c2f61  in FUN_004c2f30 @ 004c2f30
+STRING @ 0062a25c : Megaphone -Allows you to communicate with people and cars below. Useful in emergency, traffic and law enforcement missions. Effective range: 300 meters.
+    (no references)
+STRING @ 0062a62e : Rescue Harness - Used for picking up people in emergency situations. When you need to rescue people and you can't land then the rescue harness is the right tool for the job.
+    (no references)
+=== 5 strings matched 'people' ===

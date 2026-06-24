@@ -1,0 +1,71 @@
+STRING @ 004f8150 : \VarFileInfo\Translation
+    <- 00402a42  in FUN_004029d0 @ 004029d0
+STRING @ 0050612c : Transport Miss
+    <- 004ab23b  in FUN_004ab170 @ 004ab170
+STRING @ 0061de24 : TranslateMessage
+    (no references)
+STRING @ 00625fa6 : Translation
+    (no references)
+STRING @ 006287e0 : Transport
+    (no references)
+STRING @ 00629206 : Originally designed for the US Army.\nFirst Flight as JetRanger III: 1977.
+    (no references)
+STRING @ 0062abfc : Transport
+    (no references)
+STRING @ 0062d9b0 : Sim Transported!
+    (no references)
+STRING @ 00630ff8 : Sortir la personne transportée
+    (no references)
+STRING @ 0063192c : Transport
+    (no references)
+STRING @ 0063254c : Conçu à l'origine pour l'armée américaine.\nPremier vol comme JetRanger III : 1977.
+    (no references)
+STRING @ 0063420c : Transport
+    (no references)
+STRING @ 0063731e : Sim a été transporté !
+    (no references)
+STRING @ 0063b96c : Transport
+    (no references)
+STRING @ 0063c486 : Ursprünglich für das Militär bestimmt.\nErster Flug als JetRanger III: 1977.
+    (no references)
+STRING @ 0063decc : Transport
+    (no references)
+STRING @ 00640fb4 : Mensch in Not wegtransportiert!
+    (no references)
+STRING @ 00645b7c : Creato in origine per l'esercito USA.\nPrimo volo in versione JetRanger III: 1977.
+    (no references)
+STRING @ 0064ea28 : Transporte
+    (no references)
+STRING @ 0064f740 : Diseñado en principio para el ejército de los Estados Unidos.\nPrimer vuelo como JetRanger III: 1977.
+    (no references)
+STRING @ 006512d0 : Transporte
+    (no references)
+STRING @ 00654634 : ¡Has transportado a un Simo!
+    (no references)
+STRING @ 006553ee : Bueno, ten en cuenta que se encuentran en niveles de evolución inferiores.
+    (no references)
+STRING @ 0065884c : Transport
+    (no references)
+STRING @ 006593e6 : Oorspronkelijk ontworpen voor het Amerikaanse leger.\nEerste vlucht als JetRanger III: 1977.
+    (no references)
+STRING @ 00659b36 : Luxe bedrijfstransport en utiliteitswerk.\nStil door NOTAR-systeem.
+    (no references)
+STRING @ 00661b4e : Transport
+    (no references)
+STRING @ 00662534 : Ursprungligen konstruerad för amerikanska armén.\nFörsta flygning som JetRanger III: 1977.
+    (no references)
+STRING @ 0066289e : Träning och transport.\nÄven för besprutning av åkrar.
+    (no references)
+STRING @ 0066290a : Lättare transport och nyhetsrapportering.\nMindre version av LongRanger.
+    (no references)
+STRING @ 00662a34 : Lättare transport.\nVärldens tystaste helikopter.\n
+    (no references)
+STRING @ 00662b46 : Transport och allmännytta.\nInfällbart landningsställ med hjul.
+    (no references)
+STRING @ 00662c3c : Pamptaxi och transport.\nTyst NOTAR-prestanda.
+    (no references)
+STRING @ 00663d88 : Transport
+    (no references)
+STRING @ 00666c02 : Stadsbo har transporterats!
+    (no references)
+=== 35 strings matched 'TRAN' ===

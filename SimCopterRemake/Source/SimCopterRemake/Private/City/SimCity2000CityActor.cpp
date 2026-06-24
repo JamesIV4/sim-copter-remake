@@ -12,6 +12,7 @@
 #include "Formats/SimCity2000Reader.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -65,6 +66,8 @@ constexpr int32 SimCopterSkyGroundImageIndex = 4;
 constexpr int32 SimCopterHighTerrainAtlasImageIndex = 13;
 constexpr int32 SimCopterTerrainTextureNameIndex = 100000;
 constexpr uint8 SimCopterHighTerrainTypeBase = 0x40;
+constexpr int32 BakedAtlasPageSectionKeyFlag = 0x10000;
+constexpr int32 BakedDirectImageSectionKeyFlag = 0x20000;
 
 struct FOriginalMeshSectionData
 {
@@ -72,9 +75,25 @@ struct FOriginalMeshSectionData
 	TArray<int32> Triangles;
 	TArray<FVector> Normals;
 	TArray<FVector2D> UVs;
+	// Page-atlas mode only: per-vertex cell column/row, fed to M_SimCopterCityAtlas's TexCoord1
+	// so one full atlas page can be sampled instead of per-cell textures. Empty in legacy mode.
+	TArray<FVector2D> UV1;
 	TArray<FLinearColor> VertexColors;
 	TArray<FProcMeshTangent> Tangents;
 	int32 TriangleCount = 0;
+};
+
+struct FBakedCityAtlasMaterials
+{
+	TMap<int32, UMaterialInterface*> PageMaterials;
+	TMap<int32, UMaterialInterface*> DirectImageMaterials;
+	UMaterialInterface* TerrainLowMaterial = nullptr;
+	UMaterialInterface* TerrainHighMaterial = nullptr;
+
+	int32 NumLoadedMaterials() const
+	{
+		return PageMaterials.Num() + DirectImageMaterials.Num() + (TerrainLowMaterial != nullptr ? 1 : 0) + (TerrainHighMaterial != nullptr ? 1 : 0);
+	}
 };
 
 struct FTileFootprint
@@ -239,6 +258,105 @@ int32 AddAtlasTiles(
 	}
 
 	return AddedCount;
+}
+
+int32 MakeBakedAtlasPageSectionKey(uint8 TextureFile)
+{
+	return BakedAtlasPageSectionKeyFlag | static_cast<int32>(TextureFile);
+}
+
+int32 MakeBakedDirectImageSectionKey(uint8 ImageIndex)
+{
+	return BakedDirectImageSectionKeyFlag | static_cast<int32>(ImageIndex);
+}
+
+bool IsBakedAtlasPageSectionKey(int32 SectionKey)
+{
+	return (SectionKey & BakedAtlasPageSectionKeyFlag) != 0;
+}
+
+bool IsBakedDirectImageSectionKey(int32 SectionKey)
+{
+	return (SectionKey & BakedDirectImageSectionKeyFlag) != 0;
+}
+
+int32 GetBakedSectionAssetIndex(int32 SectionKey)
+{
+	return SectionKey & 0xff;
+}
+
+UMaterialInterface* LoadGeneratedCityAtlasMaterial(const FString& AssetName)
+{
+	const FString PackagePath = FString::Printf(TEXT("/Game/Generated/CityAtlas/%s"), *AssetName);
+	if (!FPackageName::DoesPackageExist(PackagePath))
+	{
+		return nullptr;
+	}
+
+	const FString ObjectPath = PackagePath + TEXT(".") + AssetName;
+	return LoadObject<UMaterialInterface>(nullptr, *ObjectPath);
+}
+
+FBakedCityAtlasMaterials LoadBakedCityAtlasMaterials()
+{
+	FBakedCityAtlasMaterials Materials;
+
+	for (int32 AssetIndex = 0; AssetIndex <= 255; ++AssetIndex)
+	{
+		if (UMaterialInterface* PageMaterial = LoadGeneratedCityAtlasMaterial(FString::Printf(TEXT("MI_CityPage_%d"), AssetIndex)))
+		{
+			Materials.PageMaterials.Add(AssetIndex, PageMaterial);
+		}
+
+		if (UMaterialInterface* DirectImageMaterial = LoadGeneratedCityAtlasMaterial(FString::Printf(TEXT("MI_CityImage_%d"), AssetIndex)))
+		{
+			Materials.DirectImageMaterials.Add(AssetIndex, DirectImageMaterial);
+		}
+	}
+
+	Materials.TerrainLowMaterial = LoadGeneratedCityAtlasMaterial(TEXT("MI_TerrainLow"));
+	Materials.TerrainHighMaterial = LoadGeneratedCityAtlasMaterial(TEXT("MI_TerrainHigh"));
+	return Materials;
+}
+
+void CreateOriginalMeshSection(
+	UProceduralMeshComponent* MeshComponent,
+	int32 SectionIndex,
+	const FOriginalMeshSectionData& Section,
+	bool bCreateCollision)
+{
+	if (MeshComponent == nullptr)
+	{
+		return;
+	}
+
+	if (Section.UV1.Num() == Section.Vertices.Num())
+	{
+		const TArray<FVector2D> EmptyUVs;
+		MeshComponent->CreateMeshSection_LinearColor(
+			SectionIndex,
+			Section.Vertices,
+			Section.Triangles,
+			Section.Normals,
+			Section.UVs,
+			Section.UV1,
+			EmptyUVs,
+			EmptyUVs,
+			Section.VertexColors,
+			Section.Tangents,
+			bCreateCollision);
+		return;
+	}
+
+	MeshComponent->CreateMeshSection_LinearColor(
+		SectionIndex,
+		Section.Vertices,
+		Section.Triangles,
+		Section.Normals,
+		Section.UVs,
+		Section.VertexColors,
+		Section.Tangents,
+		bCreateCollision);
 }
 
 float GetWorldGridCoordinate(int32 FileCoordinate, float TileSize, float HalfMapSize)
@@ -1620,7 +1738,9 @@ int32 AppendMaxisMeshObject(
 	float MeshScale,
 	bool bRenderBackfaces,
 	bool bUseOriginalTextures,
-	const TSet<int32>& AvailableTextureKeys,
+	const TSet<int32>& AvailableRuntimeTextureKeys,
+	const TSet<int32>& AvailableBakedAtlasPageIds,
+	const TSet<int32>& AvailableBakedDirectImageIds,
 	const FLinearColor& TexturedFaceFallbackColor,
 	TMap<int32, FOriginalMeshSectionData>& Sections,
 	int32& OutTexturedTriangleCount)
@@ -1656,13 +1776,22 @@ int32 AppendMaxisMeshObject(
 		}
 
 		const int32 TextureKey = GetMaxisFaceTextureKey(Face);
-		const bool bTexturedFace = bUseOriginalTextures && IsTexturedMaxisFace(Face.FaceType) && AvailableTextureKeys.Contains(TextureKey);
-		const int32 SectionKey = bTexturedFace ? TextureKey : INDEX_NONE;
+		const bool bAtlasCellInRange = Face.MaterialIndex < FMaxisTextureReader::AtlasColumnCount * FMaxisTextureReader::AtlasColumnCount;
+		const bool bBakedAtlasTexturedFace = bUseOriginalTextures && Face.FaceType == 18 && bAtlasCellInRange && AvailableBakedAtlasPageIds.Contains(Face.TextureAtlasIndex);
+		const bool bBakedDirectTexturedFace = bUseOriginalTextures && Face.FaceType == 13 && AvailableBakedDirectImageIds.Contains(Face.MaterialIndex);
+		const bool bRuntimeTexturedFace = bUseOriginalTextures && !bBakedAtlasTexturedFace && !bBakedDirectTexturedFace && IsTexturedMaxisFace(Face.FaceType) && AvailableRuntimeTextureKeys.Contains(TextureKey);
+		const bool bTexturedFace = bBakedAtlasTexturedFace || bBakedDirectTexturedFace || bRuntimeTexturedFace;
+		const int32 SectionKey = bBakedAtlasTexturedFace
+			? MakeBakedAtlasPageSectionKey(Face.TextureAtlasIndex)
+			: (bBakedDirectTexturedFace ? MakeBakedDirectImageSectionKey(Face.MaterialIndex) : (bRuntimeTexturedFace ? TextureKey : INDEX_NONE));
 		FOriginalMeshSectionData& Section = Sections.FindOrAdd(SectionKey);
 		const int32 FaceVertexStart = Section.Vertices.Num();
 		const FLinearColor FaceColor = bTexturedFace
 			? FLinearColor::White
 			: ResolveMaxisFaceColor(ColorMap, Face.FaceType, Face.MaterialIndex, TexturedFaceFallbackColor);
+		const int32 AtlasColumn = static_cast<int32>(Face.MaterialIndex % FMaxisTextureReader::AtlasColumnCount);
+		const int32 AtlasRawRow = static_cast<int32>(Face.MaterialIndex / FMaxisTextureReader::AtlasColumnCount);
+		const int32 AtlasDecodedRow = FMaxisTextureReader::AtlasColumnCount - 1 - AtlasRawRow;
 
 		for (int32 FaceVertexIndex = 0; FaceVertexIndex < Face.VertexIndices.Num(); ++FaceVertexIndex)
 		{
@@ -1677,6 +1806,10 @@ int32 AppendMaxisMeshObject(
 			const FVector LocalVertex(-ConvertedVertex.X, -ConvertedVertex.Y, ConvertedVertex.Z);
 			Section.Vertices.Add(TileOrigin + LocalVertex);
 			Section.UVs.Add(Face.RawUVs.IsValidIndex(FaceVertexIndex) ? FMaxisMeshReader::ConvertMaxisUVToUnreal(Face.RawUVs[FaceVertexIndex]) : FVector2D::ZeroVector);
+			if (bBakedAtlasTexturedFace)
+			{
+				Section.UV1.Add(FVector2D(static_cast<float>(AtlasColumn), static_cast<float>(AtlasDecodedRow)));
+			}
 			Section.VertexColors.Add(FaceColor);
 			Section.Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
 		}
@@ -1686,6 +1819,10 @@ int32 AppendMaxisMeshObject(
 		{
 			Section.Vertices.SetNum(FaceVertexStart);
 			Section.UVs.SetNum(FaceVertexStart);
+			if (bBakedAtlasTexturedFace)
+			{
+				Section.UV1.SetNum(FaceVertexStart);
+			}
 			Section.VertexColors.SetNum(FaceVertexStart);
 			Section.Tangents.SetNum(FaceVertexStart);
 			continue;
@@ -1899,8 +2036,21 @@ void ASimCity2000CityActor::RebuildCity()
 	TSet<int32> AvailableOriginalTextureKeys;
 	UTexture2D* TerrainTexture = nullptr;
 	UTexture2D* HighTerrainTexture = nullptr;
-	bool bOriginalTexturesLoaded = false;
-	const bool bNeedOriginalAssetPalette = bRenderOriginalMeshes || (bRenderTerrain && bRenderOriginalTextures && TexturedMaterial != nullptr);
+	const FBakedCityAtlasMaterials BakedCityAtlasMaterials = bRenderOriginalTextures ? LoadBakedCityAtlasMaterials() : FBakedCityAtlasMaterials();
+	TSet<int32> AvailableBakedAtlasPageIds;
+	TSet<int32> AvailableBakedDirectImageIds;
+	BakedCityAtlasMaterials.PageMaterials.GetKeys(AvailableBakedAtlasPageIds);
+	BakedCityAtlasMaterials.DirectImageMaterials.GetKeys(AvailableBakedDirectImageIds);
+	LastOriginalTextureCount += BakedCityAtlasMaterials.NumLoadedMaterials();
+
+	const bool bUseBakedCityMeshTextures = BakedCityAtlasMaterials.PageMaterials.Num() > 0 || BakedCityAtlasMaterials.DirectImageMaterials.Num() > 0;
+	const bool bUseBakedTerrainTextures = BakedCityAtlasMaterials.TerrainLowMaterial != nullptr || BakedCityAtlasMaterials.TerrainHighMaterial != nullptr;
+	const bool bNeedRuntimeMeshTextures = bRenderOriginalTextures && bRenderOriginalMeshes && TexturedMaterial != nullptr &&
+		(BakedCityAtlasMaterials.PageMaterials.Num() == 0 || BakedCityAtlasMaterials.DirectImageMaterials.Num() == 0);
+	const bool bNeedRuntimeTerrainTextures = bRenderOriginalTextures && bRenderTerrain && TexturedMaterial != nullptr && !bUseBakedTerrainTextures;
+	const bool bNeedRuntimeOriginalTextures = bNeedRuntimeMeshTextures || bNeedRuntimeTerrainTextures;
+	bool bOriginalTexturesLoaded = bRenderOriginalTextures && bUseBakedCityMeshTextures;
+	const bool bNeedOriginalAssetPalette = bRenderOriginalMeshes || bNeedRuntimeOriginalTextures;
 	if (bNeedOriginalAssetPalette)
 	{
 		FString MeshLibraryError;
@@ -1910,19 +2060,22 @@ void ASimCity2000CityActor::RebuildCity()
 		{
 			UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not load original SimCopter meshes: %s"), *MeshLibraryError);
 		}
-		else if (bRenderOriginalTextures && TexturedMaterial != nullptr)
+		else if (bNeedRuntimeOriginalTextures)
 		{
 			const TArray<FColor>* SharedColorMap = MeshLibrary.GetSharedColorMap();
 			if (SharedColorMap != nullptr)
 			{
 				FString TextureError;
 				const FString TexturePath = FPaths::Combine(ResolvedOriginalGameRoot, TEXT("BMP/SIM3D.BMP"));
-				bOriginalTexturesLoaded = FMaxisTextureReader::LoadCompositeBitmapFromFile(TexturePath, *SharedColorMap, OriginalTextures, TextureError);
-				if (bOriginalTexturesLoaded)
+				const bool bRuntimeOriginalTexturesLoaded = FMaxisTextureReader::LoadCompositeBitmapFromFile(TexturePath, *SharedColorMap, OriginalTextures, TextureError);
+				if (bRuntimeOriginalTexturesLoaded)
 				{
+					bOriginalTexturesLoaded = true;
 					for (int32 TextureIndex = 0; TextureIndex < OriginalTextures.Images.Num(); ++TextureIndex)
 					{
-						if (AddOriginalTexture(
+						const bool bNeedDirectImageTexture = bNeedRuntimeMeshTextures && !BakedCityAtlasMaterials.DirectImageMaterials.Contains(TextureIndex);
+						const bool bNeedHighTerrainTexture = bNeedRuntimeTerrainTextures && TextureIndex == SimCopterHighTerrainAtlasImageIndex;
+						if ((bNeedDirectImageTexture || bNeedHighTerrainTexture) && AddOriginalTexture(
 							MakeMaxisTextureKey(0, static_cast<uint8>(TextureIndex)),
 							OriginalTextures.Images[TextureIndex],
 							this,
@@ -1933,7 +2086,9 @@ void ASimCity2000CityActor::RebuildCity()
 							++LastOriginalTextureCount;
 						}
 
-						if (OriginalTextures.Images[TextureIndex].Width == FMaxisTextureReader::AtlasTileSize * FMaxisTextureReader::AtlasColumnCount &&
+						if (bNeedRuntimeMeshTextures &&
+							!BakedCityAtlasMaterials.PageMaterials.Contains(TextureIndex) &&
+							OriginalTextures.Images[TextureIndex].Width == FMaxisTextureReader::AtlasTileSize * FMaxisTextureReader::AtlasColumnCount &&
 							OriginalTextures.Images[TextureIndex].Height == FMaxisTextureReader::AtlasTileSize * FMaxisTextureReader::AtlasColumnCount)
 						{
 							LastOriginalTextureCount += AddAtlasTiles(
@@ -1954,7 +2109,9 @@ void ASimCity2000CityActor::RebuildCity()
 					FMaxisCompositeBitmap SkyTextures;
 					FString SkyTextureError;
 					const FString SkyTexturePath = FPaths::Combine(ResolvedOriginalGameRoot, TEXT("BMP/SKY.BMP"));
-					if (FMaxisTextureReader::LoadCompositeBitmapFromFile(SkyTexturePath, *SharedColorMap, SkyTextures, SkyTextureError))
+					if (bNeedRuntimeMeshTextures &&
+						!BakedCityAtlasMaterials.PageMaterials.Contains(SimCopterSkyGroundTextureFile) &&
+						FMaxisTextureReader::LoadCompositeBitmapFromFile(SkyTexturePath, *SharedColorMap, SkyTextures, SkyTextureError))
 					{
 						const FMaxisTextureImage* SkyGroundAtlas = SkyTextures.FindImage(SimCopterSkyGroundImageIndex);
 						if (SkyGroundAtlas != nullptr)
@@ -1968,7 +2125,7 @@ void ASimCity2000CityActor::RebuildCity()
 								OriginalTextureCache);
 						}
 					}
-					else
+					else if (bNeedRuntimeMeshTextures && !BakedCityAtlasMaterials.PageMaterials.Contains(SimCopterSkyGroundTextureFile))
 					{
 						UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not load original SimCopter sky/ground atlas: %s"), *SkyTextureError);
 					}
@@ -1976,7 +2133,8 @@ void ASimCity2000CityActor::RebuildCity()
 					FMaxisCompositeBitmap TerrainTextures;
 					FString TerrainTextureError;
 					const FString TerrainTexturePath = FPaths::Combine(ResolvedOriginalGameRoot, TEXT("BMP/TILED1.BMP"));
-					if (FMaxisTextureReader::LoadCompositeBitmapFromFile(TerrainTexturePath, *SharedColorMap, TerrainTextures, TerrainTextureError))
+					if (bNeedRuntimeTerrainTextures && BakedCityAtlasMaterials.TerrainLowMaterial == nullptr &&
+						FMaxisTextureReader::LoadCompositeBitmapFromFile(TerrainTexturePath, *SharedColorMap, TerrainTextures, TerrainTextureError))
 					{
 						const FMaxisTextureImage* TerrainImage = TerrainTextures.FindImage(0);
 						if (TerrainImage != nullptr)
@@ -1989,7 +2147,7 @@ void ASimCity2000CityActor::RebuildCity()
 							}
 						}
 					}
-					else
+					else if (bNeedRuntimeTerrainTextures && BakedCityAtlasMaterials.TerrainLowMaterial == nullptr)
 					{
 						UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not load original SimCopter terrain atlas: %s"), *TerrainTextureError);
 					}
@@ -2015,8 +2173,9 @@ void ASimCity2000CityActor::RebuildCity()
 	FOriginalMeshSectionData TerrainPage14Section;
 	FOriginalMeshSectionData TerrainPage0DSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
-	const bool bUseTexturedTerrainSurface = (TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr;
-	const bool bUseHighTerrainAtlas = HighTerrainTexture != nullptr && TexturedMaterial != nullptr;
+	const bool bUseTexturedTerrainSurface = BakedCityAtlasMaterials.TerrainLowMaterial != nullptr || BakedCityAtlasMaterials.TerrainHighMaterial != nullptr ||
+		((TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr);
+	const bool bUseHighTerrainAtlas = BakedCityAtlasMaterials.TerrainHighMaterial != nullptr || (HighTerrainTexture != nullptr && TexturedMaterial != nullptr);
 
 	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
 	// (the type IS the cell index). Reproduce that grid once for the whole map.
@@ -2119,6 +2278,8 @@ void ASimCity2000CityActor::RebuildCity()
 							bRenderOriginalMeshBackfaces,
 							bOriginalTexturesLoaded,
 							AvailableOriginalTextureKeys,
+							AvailableBakedAtlasPageIds,
+							AvailableBakedDirectImageIds,
 							OriginalTexturedFaceFallbackColor,
 							OriginalMeshSections,
 							LastOriginalTexturedTriangleCount);
@@ -2138,6 +2299,8 @@ void ASimCity2000CityActor::RebuildCity()
 									bRenderOriginalMeshBackfaces,
 									bOriginalTexturesLoaded,
 									AvailableOriginalTextureKeys,
+									AvailableBakedAtlasPageIds,
+									AvailableBakedDirectImageIds,
 									OriginalTexturedFaceFallbackColor,
 									OriginalMeshSections,
 									LastOriginalTexturedTriangleCount);
@@ -2230,7 +2393,7 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 
 	int32 TerrainMeshSectionIndex = 0;
-	auto CreateTerrainSurfaceSection = [&](const FOriginalMeshSectionData& TerrainSection, UTexture2D* SurfaceTexture)
+	auto CreateTerrainSurfaceSection = [&](const FOriginalMeshSectionData& TerrainSection, UMaterialInterface* SurfaceMaterial, UTexture2D* SurfaceTexture)
 	{
 		if (TerrainSection.Vertices.Num() == 0)
 		{
@@ -2248,7 +2411,11 @@ void ASimCity2000CityActor::RebuildCity()
 			TerrainSection.Tangents,
 			bEnableTerrainCollision);
 
-		if (SurfaceTexture != nullptr && TexturedMaterial != nullptr)
+		if (SurfaceMaterial != nullptr)
+		{
+			TerrainMeshComponent->SetMaterial(SectionIndex, SurfaceMaterial);
+		}
+		else if (SurfaceTexture != nullptr && TexturedMaterial != nullptr)
 		{
 			UMaterialInstanceDynamic* TerrainMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
 			if (TerrainMaterial != nullptr)
@@ -2264,22 +2431,18 @@ void ASimCity2000CityActor::RebuildCity()
 		}
 	};
 
-	CreateTerrainSurfaceSection(TerrainPage14Section, TerrainTexture);
-	CreateTerrainSurfaceSection(TerrainPage0DSection, HighTerrainTexture);
+	CreateTerrainSurfaceSection(TerrainPage14Section, BakedCityAtlasMaterials.TerrainLowMaterial, TerrainTexture);
+	CreateTerrainSurfaceSection(TerrainPage0DSection, BakedCityAtlasMaterials.TerrainHighMaterial, HighTerrainTexture);
 
 	int32 MeshSectionIndex = 0;
 	if (const FOriginalMeshSectionData* PaletteSection = OriginalMeshSections.Find(INDEX_NONE))
 	{
 		if (PaletteSection->Vertices.Num() > 0)
 		{
-			OriginalMeshComponent->CreateMeshSection_LinearColor(
+			CreateOriginalMeshSection(
+				OriginalMeshComponent,
 				MeshSectionIndex,
-				PaletteSection->Vertices,
-				PaletteSection->Triangles,
-				PaletteSection->Normals,
-				PaletteSection->UVs,
-				PaletteSection->VertexColors,
-				PaletteSection->Tangents,
+				*PaletteSection,
 				bEnableOriginalMeshCollision);
 			if (VertexColorMaterial != nullptr)
 			{
@@ -2297,28 +2460,59 @@ void ASimCity2000CityActor::RebuildCity()
 	for (const int32 TextureKey : TextureSectionKeys)
 	{
 		const FOriginalMeshSectionData* TextureSection = OriginalMeshSections.Find(TextureKey);
-		UTexture2D* const* Texture = OriginalTexturesByKey.Find(TextureKey);
-		if (TextureSection == nullptr || TextureSection->Vertices.Num() == 0 || Texture == nullptr || *Texture == nullptr || TexturedMaterial == nullptr)
+		if (TextureSection == nullptr || TextureSection->Vertices.Num() == 0)
 		{
 			continue;
 		}
 
-		OriginalMeshComponent->CreateMeshSection_LinearColor(
+		UMaterialInterface* SectionMaterial = nullptr;
+		UTexture2D* RuntimeTexture = nullptr;
+		if (IsBakedAtlasPageSectionKey(TextureKey))
+		{
+			if (UMaterialInterface* const* BakedMaterial = BakedCityAtlasMaterials.PageMaterials.Find(GetBakedSectionAssetIndex(TextureKey)))
+			{
+				SectionMaterial = *BakedMaterial;
+			}
+		}
+		else if (IsBakedDirectImageSectionKey(TextureKey))
+		{
+			if (UMaterialInterface* const* BakedMaterial = BakedCityAtlasMaterials.DirectImageMaterials.Find(GetBakedSectionAssetIndex(TextureKey)))
+			{
+				SectionMaterial = *BakedMaterial;
+			}
+		}
+		else
+		{
+			if (UTexture2D* const* Texture = OriginalTexturesByKey.Find(TextureKey))
+			{
+				RuntimeTexture = *Texture;
+			}
+		}
+
+		if (SectionMaterial == nullptr && (RuntimeTexture == nullptr || TexturedMaterial == nullptr))
+		{
+			continue;
+		}
+
+		CreateOriginalMeshSection(
+			OriginalMeshComponent,
 			MeshSectionIndex,
-			TextureSection->Vertices,
-			TextureSection->Triangles,
-			TextureSection->Normals,
-			TextureSection->UVs,
-			TextureSection->VertexColors,
-			TextureSection->Tangents,
+			*TextureSection,
 			bEnableOriginalMeshCollision);
 
-		UMaterialInstanceDynamic* TextureMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
-		if (TextureMaterial != nullptr)
+		if (SectionMaterial != nullptr)
 		{
-			TextureMaterial->SetTextureParameterValue(TEXT("Texture"), *Texture);
-			OriginalTextureMaterials.Add(TextureMaterial);
-			OriginalMeshComponent->SetMaterial(MeshSectionIndex, TextureMaterial);
+			OriginalMeshComponent->SetMaterial(MeshSectionIndex, SectionMaterial);
+		}
+		else
+		{
+			UMaterialInstanceDynamic* TextureMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
+			if (TextureMaterial != nullptr)
+			{
+				TextureMaterial->SetTextureParameterValue(TEXT("Texture"), RuntimeTexture);
+				OriginalTextureMaterials.Add(TextureMaterial);
+				OriginalMeshComponent->SetMaterial(MeshSectionIndex, TextureMaterial);
+			}
 		}
 
 		++MeshSectionIndex;
