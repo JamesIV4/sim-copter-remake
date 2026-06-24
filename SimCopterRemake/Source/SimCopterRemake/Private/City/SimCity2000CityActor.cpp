@@ -85,6 +85,70 @@ struct FTileFootprint
 	int32 Height = 1;
 };
 
+struct FOriginalBridgeDispatch
+{
+	int32 PrimaryObjectId = INDEX_NONE;
+	int32 SecondaryObjectId = INDEX_NONE;
+};
+
+struct FExtendedTerrainData
+{
+	int32 ExtensionTiles = 0;
+	int32 MinTileCoordinate = 0;
+	int32 TileGridSize = 0;
+	TArray<float> GridVertexZ;
+	TArray<uint8> TerrainTypes;
+	TArray<uint8> WaterMask;
+
+	bool IsEnabled() const
+	{
+		return ExtensionTiles > 0 && TileGridSize > FSimCity2000City::MapSize;
+	}
+
+	bool IsOriginalMapTile(int32 FileX, int32 FileY) const
+	{
+		return FileX >= 0 && FileX < FSimCity2000City::MapSize && FileY >= 0 && FileY < FSimCity2000City::MapSize;
+	}
+
+	bool ContainsTile(int32 FileX, int32 FileY) const
+	{
+		return FileX >= MinTileCoordinate && FileX < MinTileCoordinate + TileGridSize &&
+			FileY >= MinTileCoordinate && FileY < MinTileCoordinate + TileGridSize;
+	}
+
+	bool ContainsGridVertex(int32 GridX, int32 GridY) const
+	{
+		return GridX >= MinTileCoordinate && GridX <= MinTileCoordinate + TileGridSize &&
+			GridY >= MinTileCoordinate && GridY <= MinTileCoordinate + TileGridSize;
+	}
+
+	int32 GetTileIndex(int32 FileX, int32 FileY) const
+	{
+		return (FileY - MinTileCoordinate) * TileGridSize + (FileX - MinTileCoordinate);
+	}
+
+	int32 GetGridVertexIndex(int32 GridX, int32 GridY) const
+	{
+		const int32 GridSize = TileGridSize + 1;
+		return (GridY - MinTileCoordinate) * GridSize + (GridX - MinTileCoordinate);
+	}
+
+	uint8 GetTerrainType(int32 FileX, int32 FileY) const
+	{
+		return ContainsTile(FileX, FileY) ? TerrainTypes[GetTileIndex(FileX, FileY)] : 0x30;
+	}
+
+	bool IsWaterTile(int32 FileX, int32 FileY) const
+	{
+		return ContainsTile(FileX, FileY) && WaterMask[GetTileIndex(FileX, FileY)] != 0;
+	}
+
+	float GetGridVertexZ(int32 GridX, int32 GridY) const
+	{
+		return ContainsGridVertex(GridX, GridY) ? GridVertexZ[GetGridVertexIndex(GridX, GridY)] : 0.0f;
+	}
+};
+
 UTexture2D* CreateTextureFromMaxisImage(const FMaxisTextureImage& Image, UObject* Outer, int32 ImageIndex)
 {
 	if (Image.Width <= 0 || Image.Height <= 0 || Image.Pixels.Num() != Image.Width * Image.Height)
@@ -327,28 +391,66 @@ bool IsOriginalTerrainTileFlat(const FSimCity2000City& City, int32 FileX, int32 
 	return Corner00 == Corner10 && Corner00 == Corner01 && Corner00 == Corner11;
 }
 
-// Bridge tile dispatch transcribed from FUN_0047c0c0 (XBLD ids 0x3f..0x48). Each bridge
-// id selects a specific globally-unique mesh object Id (resolved via
+// Bridge/elevated-road tile dispatch transcribed from FUN_0047c0c0 (XBLD ids
+// 0x3f..0x6b). Each tile id selects one or two globally-unique mesh object Ids (resolved via
 // FMaxisMeshLibrary::FindObjectByObjectId, the remake's FUN_00470571), which is what
 // encodes the correct bridge piece and orientation - the heuristic XBLD->mesh table
-// mis-selected these. Cases 0x43..0x46 pick a flat vs sloped variant from the tile's
-// corner heights. Returns INDEX_NONE for non-bridge tiles. The small detail props the
-// original layers on top (object Ids 0x2c/0x2d) are intentionally left out for now.
-int32 GetOriginalBridgeObjectId(uint8 BuildingId, bool bTileIsFlat)
+// mis-selected these. Cases 0x43..0x46 pick a flat vs sloped primary from the tile's
+// corner heights. Some later bridge ids select an F-suffixed orientation variant from XBIT bit 1.
+FOriginalBridgeDispatch GetOriginalBridgeDispatch(uint8 BuildingId, bool bTileIsFlat, uint8 BitFlags)
 {
+	const int32 BitVariant = (BitFlags & 0x02) != 0 ? 1 : 0;
+
 	switch (BuildingId)
 	{
-	case 0x3f: return 0x178;
-	case 0x40: return 0x179;
-	case 0x41: return 0x17a;
-	case 0x42: return 0x17b;
-	case 0x43: return bTileIsFlat ? 0x128 : 0x17f;
-	case 0x44: return bTileIsFlat ? 0x129 : 0x180;
-	case 0x45: return bTileIsFlat ? 0x3b : 0x1d;
-	case 0x46: return bTileIsFlat ? 0x3c : 0x1e;
-	case 0x47: return 0x17d;
-	case 0x48: return 0x17e;
-	default: return INDEX_NONE;
+	case 0x3f: return { 0x178 };
+	case 0x40: return { 0x179 };
+	case 0x41: return { 0x17a };
+	case 0x42: return { 0x17b };
+	case 0x43: return { bTileIsFlat ? 0x128 : 0x17f };
+	case 0x44: return { bTileIsFlat ? 0x129 : 0x180 };
+	case 0x45: return { bTileIsFlat ? 0x3b : 0x1d, 0x2d };
+	case 0x46: return { bTileIsFlat ? 0x3c : 0x1e, 0x2c };
+	case 0x47: return { 0x17d };
+	case 0x48: return { 0x17e };
+	case 0x49: return { 0x0f7 };
+	case 0x4a: return { 0x0f8 };
+	case 0x4b: return { 0x0f9 };
+	case 0x4c: return { 0x0fa };
+	case 0x4d: return { 0x0f7, 0x2d };
+	case 0x4e: return { 0x0f8, 0x2c };
+	case 0x4f: return { 0x0f7 };
+	case 0x50: return { 0x0f8 };
+	case 0x51: return { 0x066 + BitVariant };
+	case 0x52: return { 0x068 + BitVariant };
+	case 0x53: return { 0x06a + BitVariant };
+	case 0x54: return { 0x06c + BitVariant };
+	case 0x55: return { 0x06e + BitVariant };
+	case 0x56: return { 0x070 + BitVariant };
+	case 0x57:
+	case 0x58:
+		return { 0x064 + BitVariant };
+	case 0x5a:
+	case 0x5b:
+		return { 0x072 + BitVariant };
+	case 0x5c: return { 0x074 + BitVariant };
+	case 0x5d: return { 0x0fb + BitVariant };
+	case 0x5e: return { 0x0fd + BitVariant };
+	case 0x5f: return { 0x0ff + BitVariant };
+	case 0x60: return { 0x101 + BitVariant };
+	case 0x61: return { 0x103 };
+	case 0x62: return { 0x104 };
+	case 0x63: return { 0x105 };
+	case 0x64: return { 0x106 };
+	case 0x65: return { 0x107 };
+	case 0x66: return { 0x108 };
+	case 0x67: return { 0x109 };
+	case 0x68: return { 0x10a };
+	case 0x69: return { 0x10b };
+	case 0x6a:
+	case 0x6b:
+		return { 0x114 + BitVariant };
+	default: return {};
 	}
 }
 
@@ -363,6 +465,273 @@ uint32 HashTerrainTile(int32 X, int32 Y, uint32 Salt)
 	Hash *= 0x846ca68bu;
 	Hash ^= Hash >> 16;
 	return Hash;
+}
+
+float HashUnitFloat(int32 X, int32 Y, uint32 Salt)
+{
+	return static_cast<float>(HashTerrainTile(X, Y, Salt) & 0x00FFFFFFu) / static_cast<float>(0x00FFFFFFu);
+}
+
+float SmoothNoise2D(float X, float Y, uint32 Salt)
+{
+	const int32 X0 = FMath::FloorToInt(X);
+	const int32 Y0 = FMath::FloorToInt(Y);
+	const int32 X1 = X0 + 1;
+	const int32 Y1 = Y0 + 1;
+	const float LocalX = X - static_cast<float>(X0);
+	const float LocalY = Y - static_cast<float>(Y0);
+	const float BlendX = LocalX * LocalX * (3.0f - 2.0f * LocalX);
+	const float BlendY = LocalY * LocalY * (3.0f - 2.0f * LocalY);
+
+	const float N00 = HashUnitFloat(X0, Y0, Salt);
+	const float N10 = HashUnitFloat(X1, Y0, Salt);
+	const float N01 = HashUnitFloat(X0, Y1, Salt);
+	const float N11 = HashUnitFloat(X1, Y1, Salt);
+	const float NX0 = FMath::Lerp(N00, N10, BlendX);
+	const float NX1 = FMath::Lerp(N01, N11, BlendX);
+	return FMath::Lerp(NX0, NX1, BlendY);
+}
+
+float FractalNoise2D(float X, float Y, uint32 Salt)
+{
+	const float Low = SmoothNoise2D(X * 0.055f, Y * 0.055f, Salt);
+	const float Mid = SmoothNoise2D(X * 0.145f + 37.0f, Y * 0.145f - 19.0f, Salt ^ 0x6bf21c11u);
+	const float High = SmoothNoise2D(X * 0.33f - 11.0f, Y * 0.33f + 23.0f, Salt ^ 0x21f0aaadu);
+	return Low * 0.58f + Mid * 0.30f + High * 0.12f;
+}
+
+uint8 GetTerrainTypeBase(uint8 TerrainType)
+{
+	if (TerrainType < 10)
+	{
+		return 5;
+	}
+
+	if (TerrainType >= 0x70 && TerrainType <= 0x72)
+	{
+		return 0x10;
+	}
+	if (TerrainType >= 0x73 && TerrainType <= 0x75)
+	{
+		return 0x20;
+	}
+	if (TerrainType >= 0x76 && TerrainType <= 0x78)
+	{
+		return 0x30;
+	}
+	if (TerrainType >= 0x79 && TerrainType <= 0x7B)
+	{
+		return 0x40;
+	}
+	if (TerrainType >= 0x7C && TerrainType <= 0x7E)
+	{
+		return 0x60;
+	}
+
+	return TerrainType & 0xF0;
+}
+
+bool IsWaterTerrainBase(uint8 TerrainBase)
+{
+	return TerrainBase < 10;
+}
+
+int32 GetLandBandIndex(uint8 TerrainBase)
+{
+	if (TerrainBase <= 0x10)
+	{
+		return 0;
+	}
+	if (TerrainBase >= 0x60)
+	{
+		return 5;
+	}
+
+	return FMath::Clamp((static_cast<int32>(TerrainBase) - 0x10) / 0x10, 0, 5);
+}
+
+uint8 GetLandBaseTypeFromBand(int32 BandIndex)
+{
+	static constexpr uint8 LandBases[] = { 0x10, 0x20, 0x30, 0x40, 0x50, 0x60 };
+	return LandBases[FMath::Clamp(BandIndex, 0, static_cast<int32>(UE_ARRAY_COUNT(LandBases)) - 1)];
+}
+
+int32 GetDistanceOutsideOriginalMap(int32 FileX, int32 FileY)
+{
+	const int32 MaxMapTile = FSimCity2000City::MapSize - 1;
+	return FMath::Max(
+		FMath::Max(FMath::Max(0, -FileX), FMath::Max(0, FileX - MaxMapTile)),
+		FMath::Max(FMath::Max(0, -FileY), FMath::Max(0, FileY - MaxMapTile)));
+}
+
+int32 GetDistanceOutsideOriginalGrid(int32 GridX, int32 GridY)
+{
+	const int32 MaxMapGrid = FSimCity2000City::MapSize;
+	return FMath::Max(
+		FMath::Max(FMath::Max(0, -GridX), FMath::Max(0, GridX - MaxMapGrid)),
+		FMath::Max(FMath::Max(0, -GridY), FMath::Max(0, GridY - MaxMapGrid)));
+}
+
+float Smooth01(float Value)
+{
+	const float ClampedValue = FMath::Clamp(Value, 0.0f, 1.0f);
+	return ClampedValue * ClampedValue * (3.0f - 2.0f * ClampedValue);
+}
+
+enum class EBoundarySide : uint8
+{
+	Top,
+	Bottom,
+	Left,
+	Right
+};
+
+struct FBoundaryProfile
+{
+	float Landness = 0.0f;
+	float LandBand = 0.0f;
+	float HeightZ = 0.0f;
+	float Weight = 0.0f;
+};
+
+void AddBoundaryProfile(
+	const FSimCity2000City& City,
+	const TArray<uint8>& InnerTerrainTypeGrid,
+	EBoundarySide Side,
+	float AlongCoordinate,
+	int32 DistanceFromSide,
+	int32 ExtensionTiles,
+	float TerrainHeightScale,
+	uint32 Salt,
+	FBoundaryProfile& Profile)
+{
+	const int32 N = FSimCity2000City::MapSize;
+	const float DistanceAlpha = ExtensionTiles > 0
+		? FMath::Clamp(static_cast<float>(DistanceFromSide) / static_cast<float>(ExtensionTiles), 0.0f, 1.0f)
+		: 0.0f;
+	const float WarpAmplitude = FMath::Min(static_cast<float>(DistanceFromSide) * 0.55f, static_cast<float>(ExtensionTiles) * 0.20f);
+	const float Warp = (FractalNoise2D(AlongCoordinate * 0.29f + static_cast<float>(DistanceFromSide) * 0.37f, AlongCoordinate * 0.11f - static_cast<float>(DistanceFromSide) * 0.23f, Salt) * 2.0f - 1.0f) * WarpAmplitude * Smooth01(DistanceAlpha);
+	const int32 Center = FMath::RoundToInt(AlongCoordinate + Warp);
+	const int32 Radius = 6;
+	const float SideWeight = 1.0f / FMath::Square(static_cast<float>(DistanceFromSide) + 1.0f);
+
+	for (int32 Offset = -Radius; Offset <= Radius; ++Offset)
+	{
+		const int32 EdgeCoordinate = FMath::Clamp(Center + Offset, 0, N - 1);
+		int32 FileX = 0;
+		int32 FileY = 0;
+		switch (Side)
+		{
+		case EBoundarySide::Top:
+			FileX = EdgeCoordinate;
+			FileY = 0;
+			break;
+		case EBoundarySide::Bottom:
+			FileX = EdgeCoordinate;
+			FileY = N - 1;
+			break;
+		case EBoundarySide::Left:
+			FileX = 0;
+			FileY = EdgeCoordinate;
+			break;
+		case EBoundarySide::Right:
+			FileX = N - 1;
+			FileY = EdgeCoordinate;
+			break;
+		}
+
+		const int32 TileIndex = FileY * N + FileX;
+		const uint8 BaseType = GetTerrainTypeBase(InnerTerrainTypeGrid[TileIndex]);
+		const bool bLand = !City.Tiles[TileIndex].bWater && !IsWaterTerrainBase(BaseType);
+		const float SampleWeight = static_cast<float>(Radius + 1 - FMath::Abs(Offset)) * SideWeight;
+		Profile.Landness += (bLand ? 1.0f : 0.0f) * SampleWeight;
+		Profile.LandBand += static_cast<float>(bLand ? GetLandBandIndex(BaseType) : 0) * SampleWeight;
+		Profile.HeightZ += GetTerrainTileCenterZ(City, FileX, FileY, TerrainHeightScale) * SampleWeight;
+		Profile.Weight += SampleWeight;
+	}
+}
+
+FBoundaryProfile NormalizeBoundaryProfile(FBoundaryProfile Profile, float DefaultHeightZ)
+{
+	if (Profile.Weight <= KINDA_SMALL_NUMBER)
+	{
+		Profile.Landness = 0.5f;
+		Profile.LandBand = 2.0f;
+		Profile.HeightZ = DefaultHeightZ;
+		return Profile;
+	}
+
+	Profile.Landness /= Profile.Weight;
+	Profile.LandBand /= Profile.Weight;
+	Profile.HeightZ /= Profile.Weight;
+	return Profile;
+}
+
+FBoundaryProfile SampleOutsideTileBoundaryProfile(
+	const FSimCity2000City& City,
+	const TArray<uint8>& InnerTerrainTypeGrid,
+	int32 FileX,
+	int32 FileY,
+	int32 ExtensionTiles,
+	float TerrainHeightScale,
+	float DefaultHeightZ)
+{
+	const int32 N = FSimCity2000City::MapSize;
+	FBoundaryProfile Profile;
+	if (FileY < 0)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Top, static_cast<float>(FileX), -FileY, ExtensionTiles, TerrainHeightScale, 0xa13f4f31u, Profile);
+	}
+	if (FileY >= N)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Bottom, static_cast<float>(FileX), FileY - N + 1, ExtensionTiles, TerrainHeightScale, 0x9d447b73u, Profile);
+	}
+	if (FileX < 0)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Left, static_cast<float>(FileY), -FileX, ExtensionTiles, TerrainHeightScale, 0x64a0dca5u, Profile);
+	}
+	if (FileX >= N)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Right, static_cast<float>(FileY), FileX - N + 1, ExtensionTiles, TerrainHeightScale, 0xcb13e839u, Profile);
+	}
+	return NormalizeBoundaryProfile(Profile, DefaultHeightZ);
+}
+
+FBoundaryProfile SampleOutsideGridBoundaryProfile(
+	const FSimCity2000City& City,
+	const TArray<uint8>& InnerTerrainTypeGrid,
+	int32 GridX,
+	int32 GridY,
+	int32 ExtensionTiles,
+	float TerrainHeightScale,
+	float DefaultHeightZ)
+{
+	const int32 N = FSimCity2000City::MapSize;
+	FBoundaryProfile Profile;
+	if (GridY < 0)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Top, static_cast<float>(GridX), -GridY, ExtensionTiles, TerrainHeightScale, 0x1f123bb5u, Profile);
+	}
+	if (GridY > N)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Bottom, static_cast<float>(GridX), GridY - N, ExtensionTiles, TerrainHeightScale, 0x34591b07u, Profile);
+	}
+	if (GridX < 0)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Left, static_cast<float>(GridY), -GridX, ExtensionTiles, TerrainHeightScale, 0x8dba174du, Profile);
+	}
+	if (GridX > N)
+	{
+		AddBoundaryProfile(City, InnerTerrainTypeGrid, EBoundarySide::Right, static_cast<float>(GridY), GridX - N, ExtensionTiles, TerrainHeightScale, 0xf2e1662bu, Profile);
+	}
+	return NormalizeBoundaryProfile(Profile, DefaultHeightZ);
+}
+
+float GetBoundaryConstraint(int32 DistanceFromMap, float BoundaryLandness, int32 ExtensionTiles)
+{
+	const float WaterPersistence = 1.0f - BoundaryLandness;
+	const float DecayTiles = static_cast<float>(ExtensionTiles) * FMath::Lerp(0.26f, 0.82f, WaterPersistence);
+	return FMath::Clamp(FMath::Exp(-static_cast<float>(DistanceFromMap) / FMath::Max(1.0f, DecayTiles)), 0.0f, 1.0f);
 }
 
 uint8 ResolveOriginalTerrainDetailType(uint8 TerrainType, int32 X, int32 Y)
@@ -690,13 +1059,421 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	return Grid;
 }
 
-void AppendTerrainTile(
+FExtendedTerrainData BuildProceduralExtendedTerrain(
 	const FSimCity2000City& City,
+	const TArray<uint8>& InnerTerrainTypeGrid,
+	int32 RequestedExtensionTiles,
+	float TerrainHeightScale)
+{
+	FExtendedTerrainData Data;
+	Data.ExtensionTiles = FMath::Clamp(RequestedExtensionTiles, 0, 256);
+	if (Data.ExtensionTiles <= 0)
+	{
+		return Data;
+	}
+
+	const int32 N = FSimCity2000City::MapSize;
+	Data.MinTileCoordinate = -Data.ExtensionTiles;
+	Data.TileGridSize = N + Data.ExtensionTiles * 2;
+	Data.TerrainTypes.SetNumUninitialized(Data.TileGridSize * Data.TileGridSize);
+	Data.WaterMask.SetNumZeroed(Data.TileGridSize * Data.TileGridSize);
+	Data.GridVertexZ.SetNumUninitialized((Data.TileGridSize + 1) * (Data.TileGridSize + 1));
+
+	TArray<uint8> BaseTypes;
+	BaseTypes.SetNumUninitialized(Data.TileGridSize * Data.TileGridSize);
+
+	float MinOriginalGridZ = TNumericLimits<float>::Max();
+	for (int32 GridY = 0; GridY <= N; ++GridY)
+	{
+		for (int32 GridX = 0; GridX <= N; ++GridX)
+		{
+			const float GridZ = GetTerrainGridVertexZ(City, GridX, GridY, TerrainHeightScale);
+			MinOriginalGridZ = FMath::Min(MinOriginalGridZ, GridZ);
+		}
+	}
+
+	float WaterZSum = 0.0f;
+	int32 WaterZCount = 0;
+	for (int32 FileY = 0; FileY < N; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < N; ++FileX)
+		{
+			const int32 TileIndex = FileY * N + FileX;
+			const uint8 BaseType = GetTerrainTypeBase(InnerTerrainTypeGrid[TileIndex]);
+			if (City.Tiles[TileIndex].bWater || IsWaterTerrainBase(BaseType))
+			{
+				WaterZSum += GetTerrainTileCenterZ(City, FileX, FileY, TerrainHeightScale);
+				++WaterZCount;
+			}
+		}
+	}
+
+	const float OceanSurfaceZ = WaterZCount > 0 ? WaterZSum / static_cast<float>(WaterZCount) : MinOriginalGridZ;
+	const float LandFloorZ = OceanSurfaceZ + TerrainHeightScale * 0.35f;
+
+	for (int32 FileY = 0; FileY < N; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < N; ++FileX)
+		{
+			const int32 ExpandedIndex = Data.GetTileIndex(FileX, FileY);
+			const int32 InnerIndex = FileY * N + FileX;
+			const uint8 BaseType = GetTerrainTypeBase(InnerTerrainTypeGrid[InnerIndex]);
+			BaseTypes[ExpandedIndex] = BaseType;
+			Data.TerrainTypes[ExpandedIndex] = InnerTerrainTypeGrid[InnerIndex];
+			Data.WaterMask[ExpandedIndex] = IsWaterTerrainBase(BaseType) ? 1 : 0;
+		}
+	}
+
+	for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+	{
+		for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+		{
+			if (Data.IsOriginalMapTile(FileX, FileY))
+			{
+				continue;
+			}
+
+			const int32 DistanceFromMap = GetDistanceOutsideOriginalMap(FileX, FileY);
+			const FBoundaryProfile BoundaryProfile = SampleOutsideTileBoundaryProfile(
+				City,
+				InnerTerrainTypeGrid,
+				FileX,
+				FileY,
+				Data.ExtensionTiles,
+				TerrainHeightScale,
+				OceanSurfaceZ);
+			const float BoundaryConstraint = GetBoundaryConstraint(DistanceFromMap, BoundaryProfile.Landness, Data.ExtensionTiles);
+			const float LargeLandNoise = FractalNoise2D(static_cast<float>(FileX) * 0.075f, static_cast<float>(FileY) * 0.075f, 0x95f2a6c7u);
+			const float CoastNoise = FractalNoise2D(static_cast<float>(FileX) * 0.19f + 41.0f, static_cast<float>(FileY) * 0.19f - 17.0f, 0xf0b84e29u);
+			const float DetailLandNoise = FractalNoise2D(static_cast<float>(FileX) * 0.46f - 23.0f, static_cast<float>(FileY) * 0.46f + 67.0f, 0x3aa927ddu);
+			const float ProceduralLandness = FMath::Clamp(LargeLandNoise * 0.58f + CoastNoise * 0.32f + DetailLandNoise * 0.10f, 0.0f, 1.0f);
+			float LandPotential = FMath::Lerp(ProceduralLandness, BoundaryProfile.Landness, BoundaryConstraint);
+			LandPotential += (DetailLandNoise - 0.5f) * 0.16f * (1.0f - BoundaryConstraint * 0.70f);
+			LandPotential = FMath::Clamp(LandPotential, 0.0f, 1.0f);
+
+			const float WaterBoundaryBias = BoundaryProfile.Landness < 0.5f ? 0.64f : 0.36f;
+			const float LandThreshold = FMath::Lerp(0.48f, WaterBoundaryBias, BoundaryConstraint);
+			bool bGeneratedWater = LandPotential < LandThreshold;
+			if (DistanceFromMap <= 2 && BoundaryProfile.Landness > 0.82f)
+			{
+				bGeneratedWater = false;
+			}
+			else if (DistanceFromMap <= 4 && BoundaryProfile.Landness < 0.18f)
+			{
+				bGeneratedWater = true;
+			}
+
+			uint8 BaseType = 5;
+			if (!bGeneratedWater)
+			{
+				const float ElevationNoise = FractalNoise2D(static_cast<float>(FileX) * 0.085f - 79.0f, static_cast<float>(FileY) * 0.085f + 113.0f, 0x6b735f41u);
+				const float RidgeNoise = FractalNoise2D(static_cast<float>(FileX) * 0.16f + 7.0f, static_cast<float>(FileY) * 0.16f - 29.0f, 0x7fb2c45du);
+				const float ProceduralBand = FMath::Clamp(0.35f + ElevationNoise * 4.35f + FMath::Max(0.0f, RidgeNoise - 0.62f) * 3.0f, 0.0f, 5.0f);
+				float Band = FMath::Lerp(ProceduralBand, BoundaryProfile.LandBand, BoundaryConstraint);
+				const float ShoreBlend = Smooth01(FMath::Clamp((LandPotential - LandThreshold) / 0.26f, 0.0f, 1.0f));
+				Band = FMath::Lerp(0.0f, Band, ShoreBlend);
+				BaseType = GetLandBaseTypeFromBand(FMath::RoundToInt(Band));
+			}
+
+			const int32 ExpandedIndex = Data.GetTileIndex(FileX, FileY);
+			BaseTypes[ExpandedIndex] = BaseType;
+			Data.TerrainTypes[ExpandedIndex] = BaseType;
+			Data.WaterMask[ExpandedIndex] = IsWaterTerrainBase(BaseType) ? 1 : 0;
+		}
+	}
+
+	auto GetClampedBaseType = [&BaseTypes, &Data](int32 FileX, int32 FileY) -> uint8
+	{
+		const int32 ClampedX = FMath::Clamp(FileX, Data.MinTileCoordinate, Data.MinTileCoordinate + Data.TileGridSize - 1);
+		const int32 ClampedY = FMath::Clamp(FileY, Data.MinTileCoordinate, Data.MinTileCoordinate + Data.TileGridSize - 1);
+		return BaseTypes[Data.GetTileIndex(ClampedX, ClampedY)];
+	};
+
+	for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+	{
+		for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+		{
+			if (Data.IsOriginalMapTile(FileX, FileY))
+			{
+				continue;
+			}
+
+			const int32 Index = Data.GetTileIndex(FileX, FileY);
+			if (IsWaterTerrainBase(BaseTypes[Index]))
+			{
+				continue;
+			}
+
+			bool bTouchesWater = false;
+			bool bNearWater = false;
+			for (int32 OffsetY = -2; OffsetY <= 2; ++OffsetY)
+			{
+				for (int32 OffsetX = -2; OffsetX <= 2; ++OffsetX)
+				{
+					if (OffsetX == 0 && OffsetY == 0)
+					{
+						continue;
+					}
+
+					const bool bNeighborWater = IsWaterTerrainBase(GetClampedBaseType(FileX + OffsetX, FileY + OffsetY));
+					bNearWater = bNearWater || bNeighborWater;
+					bTouchesWater = bTouchesWater || (bNeighborWater && FMath::Abs(OffsetX) <= 1 && FMath::Abs(OffsetY) <= 1);
+				}
+			}
+
+			if (bTouchesWater)
+			{
+				BaseTypes[Index] = 0x10;
+			}
+			else if (bNearWater)
+			{
+				BaseTypes[Index] = GetLandBaseTypeFromBand(FMath::Min(GetLandBandIndex(BaseTypes[Index]), 1));
+			}
+		}
+	}
+
+	for (int32 PassIndex = 0; PassIndex < 3; ++PassIndex)
+	{
+		TArray<uint8> AdjustedBaseTypes = BaseTypes;
+		for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+		{
+			for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+			{
+				if (Data.IsOriginalMapTile(FileX, FileY))
+				{
+					continue;
+				}
+
+				const int32 Index = Data.GetTileIndex(FileX, FileY);
+				if (IsWaterTerrainBase(BaseTypes[Index]))
+				{
+					continue;
+				}
+
+				int32 Band = GetLandBandIndex(BaseTypes[Index]);
+				const int32 NeighborOffsets[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+				for (const int32* Offset : NeighborOffsets)
+				{
+					const uint8 NeighborBaseType = GetClampedBaseType(FileX + Offset[0], FileY + Offset[1]);
+					if (IsWaterTerrainBase(NeighborBaseType))
+					{
+						Band = FMath::Min(Band, 1);
+						continue;
+					}
+
+					const int32 NeighborBand = GetLandBandIndex(NeighborBaseType);
+					Band = FMath::Clamp(Band, NeighborBand - 1, NeighborBand + 1);
+				}
+
+				AdjustedBaseTypes[Index] = GetLandBaseTypeFromBand(Band);
+			}
+		}
+		BaseTypes = MoveTemp(AdjustedBaseTypes);
+	}
+
+	for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+	{
+		for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+		{
+			if (Data.IsOriginalMapTile(FileX, FileY))
+			{
+				continue;
+			}
+
+			const int32 Index = Data.GetTileIndex(FileX, FileY);
+			Data.TerrainTypes[Index] = BaseTypes[Index];
+			Data.WaterMask[Index] = IsWaterTerrainBase(BaseTypes[Index]) ? 1 : 0;
+		}
+	}
+
+	for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+	{
+		for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+		{
+			if (Data.IsOriginalMapTile(FileX, FileY))
+			{
+				continue;
+			}
+
+			const int32 Index = Data.GetTileIndex(FileX, FileY);
+			if (!IsWaterTerrainBase(BaseTypes[Index]))
+			{
+				continue;
+			}
+
+			bool bTouchesLand = false;
+			for (int32 OffsetY = -1; OffsetY <= 1 && !bTouchesLand; ++OffsetY)
+			{
+				for (int32 OffsetX = -1; OffsetX <= 1; ++OffsetX)
+				{
+					if ((OffsetX != 0 || OffsetY != 0) && !IsWaterTerrainBase(GetClampedBaseType(FileX + OffsetX, FileY + OffsetY)))
+					{
+						bTouchesLand = true;
+						break;
+					}
+				}
+			}
+
+			Data.TerrainTypes[Index] = bTouchesLand ? 0 : 5;
+		}
+	}
+
+	auto ApplyTransitionMask = [&Data, &BaseTypes, &GetClampedBaseType](uint8 BaseType, auto IsLowerBand)
+	{
+		for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+		{
+			for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+			{
+				if (Data.IsOriginalMapTile(FileX, FileY))
+				{
+					continue;
+				}
+
+				const int32 Index = Data.GetTileIndex(FileX, FileY);
+				if (BaseTypes[Index] != BaseType)
+				{
+					continue;
+				}
+
+				uint8 Mask = 0;
+				if (IsLowerBand(GetClampedBaseType(FileX, FileY - 1)))
+				{
+					Mask |= 1;
+				}
+				if (IsLowerBand(GetClampedBaseType(FileX + 1, FileY)))
+				{
+					Mask |= 2;
+				}
+				if (IsLowerBand(GetClampedBaseType(FileX, FileY + 1)))
+				{
+					Mask |= 4;
+				}
+				if (IsLowerBand(GetClampedBaseType(FileX - 1, FileY)))
+				{
+					Mask |= 8;
+				}
+				Data.TerrainTypes[Index] = BaseType + Mask;
+			}
+		}
+	};
+
+	ApplyTransitionMask(0x10, [](uint8 T) { return T < 10; });
+	ApplyTransitionMask(0x20, [](uint8 T) { return T >= 0x10 && T < 0x20; });
+	ApplyTransitionMask(0x30, [](uint8 T) { return T >= 0x20 && T < 0x30; });
+	ApplyTransitionMask(0x40, [](uint8 T) { return T >= 0x30 && T < 0x40; });
+	ApplyTransitionMask(0x50, [](uint8 T) { return T >= 0x40 && T < 0x50; });
+	ApplyTransitionMask(0x60, [](uint8 T) { return T >= 0x50 && T < 0x60; });
+
+	for (int32 FileY = Data.MinTileCoordinate; FileY < Data.MinTileCoordinate + Data.TileGridSize; ++FileY)
+	{
+		for (int32 FileX = Data.MinTileCoordinate; FileX < Data.MinTileCoordinate + Data.TileGridSize; ++FileX)
+		{
+			if (!Data.IsOriginalMapTile(FileX, FileY))
+			{
+				const int32 Index = Data.GetTileIndex(FileX, FileY);
+				Data.TerrainTypes[Index] = ResolveOriginalTerrainDetailType(Data.TerrainTypes[Index], FileX, FileY);
+			}
+		}
+	}
+
+	for (int32 GridY = 0; GridY <= N; ++GridY)
+	{
+		for (int32 GridX = 0; GridX <= N; ++GridX)
+		{
+			Data.GridVertexZ[Data.GetGridVertexIndex(GridX, GridY)] = GetTerrainGridVertexZ(City, GridX, GridY, TerrainHeightScale);
+		}
+	}
+
+	for (int32 GridY = Data.MinTileCoordinate; GridY <= Data.MinTileCoordinate + Data.TileGridSize; ++GridY)
+	{
+		for (int32 GridX = Data.MinTileCoordinate; GridX <= Data.MinTileCoordinate + Data.TileGridSize; ++GridX)
+		{
+			if (GridX >= 0 && GridX <= N && GridY >= 0 && GridY <= N)
+			{
+				continue;
+			}
+
+			const int32 GridIndex = Data.GetGridVertexIndex(GridX, GridY);
+			const int32 DistanceFromMap = GetDistanceOutsideOriginalGrid(GridX, GridY);
+			const FBoundaryProfile BoundaryProfile = SampleOutsideGridBoundaryProfile(
+				City,
+				InnerTerrainTypeGrid,
+				GridX,
+				GridY,
+				Data.ExtensionTiles,
+				TerrainHeightScale,
+				OceanSurfaceZ);
+			const float BoundaryConstraint = GetBoundaryConstraint(DistanceFromMap, BoundaryProfile.Landness, Data.ExtensionTiles);
+			int32 AdjacentWaterCount = 0;
+			int32 AdjacentLandCount = 0;
+			float AdjacentLandBandSum = 0.0f;
+			for (int32 OffsetY = -1; OffsetY <= 0; ++OffsetY)
+			{
+				for (int32 OffsetX = -1; OffsetX <= 0; ++OffsetX)
+				{
+					const int32 TileX = GridX + OffsetX;
+					const int32 TileY = GridY + OffsetY;
+					if (!Data.ContainsTile(TileX, TileY))
+					{
+						continue;
+					}
+
+					const int32 TileIndex = Data.GetTileIndex(TileX, TileY);
+					if (Data.WaterMask[TileIndex] != 0)
+					{
+						++AdjacentWaterCount;
+					}
+					else
+					{
+						++AdjacentLandCount;
+						AdjacentLandBandSum += static_cast<float>(GetLandBandIndex(BaseTypes[TileIndex]));
+					}
+				}
+			}
+
+			const float DistanceAlpha = Data.ExtensionTiles > 0
+				? FMath::Clamp(static_cast<float>(DistanceFromMap) / static_cast<float>(Data.ExtensionTiles), 0.0f, 1.0f)
+				: 0.0f;
+			const float ShapedDistance = Smooth01(DistanceAlpha);
+			if (AdjacentWaterCount > 0 && AdjacentLandCount == 0)
+			{
+				const float OceanNoise = (FractalNoise2D(static_cast<float>(GridX) * 0.23f, static_cast<float>(GridY) * 0.23f, 0x6d912af7u) * 2.0f - 1.0f) * TerrainHeightScale * 0.025f;
+				const float ProceduralOceanZ = OceanSurfaceZ + OceanNoise;
+				Data.GridVertexZ[GridIndex] = FMath::Lerp(ProceduralOceanZ, BoundaryProfile.HeightZ, BoundaryConstraint);
+				continue;
+			}
+
+			const float LandBand = AdjacentLandCount > 0
+				? AdjacentLandBandSum / static_cast<float>(AdjacentLandCount)
+				: BoundaryProfile.LandBand;
+			const float BroadNoise = FractalNoise2D(static_cast<float>(GridX) * 0.065f, static_cast<float>(GridY) * 0.065f, 0x3398fd53u) * 2.0f - 1.0f;
+			const float MidNoise = FractalNoise2D(static_cast<float>(GridX) * 0.19f + 101.0f, static_cast<float>(GridY) * 0.19f - 47.0f, 0x44ba9871u) * 2.0f - 1.0f;
+			const float RidgeNoise = FractalNoise2D(static_cast<float>(GridX) * 0.11f - 31.0f, static_cast<float>(GridY) * 0.11f + 59.0f, 0x203b18fdu);
+			const float BaseLandZ = OceanSurfaceZ + TerrainHeightScale * (0.48f + LandBand * 0.34f);
+			const float TerrainAmplitude = TerrainHeightScale * (0.72f + LandBand * 0.14f) * FMath::Lerp(0.45f, 1.0f, ShapedDistance);
+			const float RidgeLift = FMath::Max(0.0f, RidgeNoise - 0.55f) * TerrainHeightScale * (0.65f + LandBand * 0.15f);
+			float ProceduralLandZ = BaseLandZ + (BroadNoise * 0.78f + MidNoise * 0.28f) * TerrainAmplitude + RidgeLift;
+			if (AdjacentWaterCount > 0)
+			{
+				const float ShoreMaxZ = LandFloorZ + TerrainHeightScale * (0.85f + LandBand * 0.18f);
+				ProceduralLandZ = FMath::Clamp(ProceduralLandZ, LandFloorZ, ShoreMaxZ);
+			}
+			Data.GridVertexZ[GridIndex] = FMath::Lerp(ProceduralLandZ, BoundaryProfile.HeightZ, BoundaryConstraint);
+		}
+	}
+
+	return Data;
+}
+
+void AppendTerrainTileWithHeights(
 	int32 FileX,
 	int32 FileY,
 	float TileSize,
-	float TerrainHeightScale,
 	float HalfMapSize,
+	float Z00,
+	float Z10,
+	float Z11,
+	float Z01,
 	int32 AtlasTileIndex,
 	FOriginalMeshSectionData& Section)
 {
@@ -704,10 +1481,10 @@ void AppendTerrainTile(
 
 	// World Y (the file-Y / row axis) is negated to match the city pass's grid-to-world mapping and
 	// global 180-degree yaw (see GetWorldTileCenterCoordinate usage in LoadAndRenderCity).
-	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale));
-	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale));
-	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale));
-	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale));
+	const FVector V0(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), Z00);
+	const FVector V1(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY, TileSize, HalfMapSize), Z10);
+	const FVector V2(GetWorldGridCoordinate(FileX + 1, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), Z11);
+	const FVector V3(GetWorldGridCoordinate(FileX, TileSize, HalfMapSize), -GetWorldGridCoordinate(FileY + 1, TileSize, HalfMapSize), Z01);
 
 	Section.Vertices.Add(V0);
 	Section.Vertices.Add(V1);
@@ -740,6 +1517,29 @@ void AppendTerrainTile(
 	Section.Triangles.Add(VertexStart + 2);
 	Section.Triangles.Add(VertexStart + 3);
 	Section.TriangleCount += 2;
+}
+
+void AppendTerrainTile(
+	const FSimCity2000City& City,
+	int32 FileX,
+	int32 FileY,
+	float TileSize,
+	float TerrainHeightScale,
+	float HalfMapSize,
+	int32 AtlasTileIndex,
+	FOriginalMeshSectionData& Section)
+{
+	AppendTerrainTileWithHeights(
+		FileX,
+		FileY,
+		TileSize,
+		HalfMapSize,
+		GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale),
+		GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale),
+		GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale),
+		GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale),
+		AtlasTileIndex,
+		Section);
 }
 
 FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 FileX, int32 FileY)
@@ -987,14 +1787,18 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 		SharedBaseMaterial = MaterialFinder.Object;
 	}
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VertexColorMaterialFinder(TEXT("/Engine/EngineDebugMaterials/VertexColorMaterial.VertexColorMaterial"));
+	// Project-authored lit materials replace the engine's emissive/unlit debug materials so the
+	// city responds to the scene's directional/sky lighting and to dynamic night lights (street
+	// lights, car headlights, the helicopter spotlight). Both expose a low "SelfIllum" floor plus
+	// "Roughness"/"Specular" scalar parameters so day<->night can be tuned at runtime.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VertexColorMaterialFinder(TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor"));
 	if (VertexColorMaterialFinder.Succeeded())
 	{
 		VertexColorMaterial = VertexColorMaterialFinder.Object;
 		OriginalMeshComponent->SetMaterial(0, VertexColorMaterial);
 	}
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TexturedMaterialFinder(TEXT("/Engine/EngineMaterials/EmissiveTexturedMaterial.EmissiveTexturedMaterial"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TexturedMaterialFinder(TEXT("/Game/Materials/M_SimCopterLitTexture.M_SimCopterLitTexture"));
 	if (TexturedMaterialFinder.Succeeded())
 	{
 		TexturedMaterial = TexturedMaterialFinder.Object;
@@ -1207,9 +2011,16 @@ void ASimCity2000CityActor::RebuildCity()
 	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
 	// (the type IS the cell index). Reproduce that grid once for the whole map.
 	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City);
+	const FExtendedTerrainData ExtendedTerrain = BuildProceduralExtendedTerrain(
+		City,
+		TerrainTypeGrid,
+		(bRenderTerrain && bRenderProceduralMapExtension) ? ProceduralMapExtensionTiles : 0,
+		EffectiveTerrainHeightScale);
 
 	int32 TerrainCount = 0;
+	int32 ExtensionTerrainCount = 0;
 	int32 WaterCount = 0;
+	int32 ExtensionWaterCount = 0;
 	int32 RoadCount = 0;
 	int32 BuildingCount = 0;
 	int32 OriginalMeshTriangleCount = 0;
@@ -1273,12 +2084,15 @@ void ASimCity2000CityActor::RebuildCity()
 				else
 				{
 					const TArray<FColor>* ColorMap = nullptr;
-					// Bridges (XBLD 0x3f..0x48) are dispatched by the original builder to specific
+					// Bridges and elevated roads (XBLD 0x3f..0x6b) are dispatched by the original builder to specific
 					// object Ids rather than through the heuristic XBLD->mesh table, so route them
 					// through the exact object-Id lookup. Everything else keeps the table mapping.
-					const int32 BridgeObjectId = GetOriginalBridgeObjectId(Tile.Building, IsOriginalTerrainTileFlat(City, FileX, FileY));
-					const FMaxisMeshObject* MeshObject = (BridgeObjectId != INDEX_NONE)
-						? MeshLibrary.FindObjectByObjectId(BridgeObjectId, &ColorMap)
+					const bool bUseBridgeDispatch = Tile.Building >= 0x3f && Tile.Building <= 0x6b;
+					const FOriginalBridgeDispatch BridgeDispatch = bUseBridgeDispatch
+						? GetOriginalBridgeDispatch(Tile.Building, IsOriginalTerrainTileFlat(City, FileX, FileY), Tile.BitFlags)
+						: FOriginalBridgeDispatch();
+					const FMaxisMeshObject* MeshObject = (BridgeDispatch.PrimaryObjectId != INDEX_NONE)
+						? MeshLibrary.FindObjectByObjectId(BridgeDispatch.PrimaryObjectId, &ColorMap)
 						: MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
 					if (MeshObject != nullptr)
 					{
@@ -1298,6 +2112,32 @@ void ASimCity2000CityActor::RebuildCity()
 							OriginalTexturedFaceFallbackColor,
 							OriginalMeshSections,
 							LastOriginalTexturedTriangleCount);
+
+						if (BridgeDispatch.SecondaryObjectId != INDEX_NONE)
+						{
+							const TArray<FColor>* SecondaryColorMap = nullptr;
+							const FMaxisMeshObject* SecondaryMeshObject = MeshLibrary.FindObjectByObjectId(BridgeDispatch.SecondaryObjectId, &SecondaryColorMap);
+							if (SecondaryMeshObject != nullptr)
+							{
+								OriginalMeshTriangleCount += AppendMaxisMeshObject(
+									*SecondaryMeshObject,
+									SecondaryColorMap,
+									TileOrigin,
+									OriginalMeshUnitsPerCentimeter,
+									OriginalMeshScale,
+									bRenderOriginalMeshBackfaces,
+									bOriginalTexturesLoaded,
+									AvailableOriginalTextureKeys,
+									OriginalTexturedFaceFallbackColor,
+									OriginalMeshSections,
+									LastOriginalTexturedTriangleCount);
+							}
+							else
+							{
+								UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not resolve bridge secondary object id 0x%x for XBLD 0x%x."), BridgeDispatch.SecondaryObjectId, Tile.Building);
+							}
+						}
+
 						bRenderedOriginalMesh = true;
 						++LastOriginalMeshTileCount;
 					}
@@ -1325,6 +2165,56 @@ void ASimCity2000CityActor::RebuildCity()
 				const FTransform BuildingTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + BuildingHeight * 0.5f + 4.0f), BuildingScale);
 				BuildingInstances->AddInstance(BuildingTransform);
 				++BuildingCount;
+			}
+		}
+	}
+
+	if (bRenderTerrain && ExtendedTerrain.IsEnabled())
+	{
+		for (int32 FileY = ExtendedTerrain.MinTileCoordinate; FileY < ExtendedTerrain.MinTileCoordinate + ExtendedTerrain.TileGridSize; ++FileY)
+		{
+			for (int32 FileX = ExtendedTerrain.MinTileCoordinate; FileX < ExtendedTerrain.MinTileCoordinate + ExtendedTerrain.TileGridSize; ++FileX)
+			{
+				if (ExtendedTerrain.IsOriginalMapTile(FileX, FileY))
+				{
+					continue;
+				}
+
+				const uint8 TerrainType = ExtendedTerrain.GetTerrainType(FileX, FileY);
+				const bool bUseHighPageForTile = TerrainType >= SimCopterHighTerrainTypeBase && bUseHighTerrainAtlas;
+				const int32 TerrainAtlasTileIndex = bUseHighPageForTile
+					? static_cast<int32>(TerrainType - SimCopterHighTerrainTypeBase)
+					: static_cast<int32>(TerrainType & 0x3f);
+				const float Z00 = ExtendedTerrain.GetGridVertexZ(FileX, FileY);
+				const float Z10 = ExtendedTerrain.GetGridVertexZ(FileX + 1, FileY);
+				const float Z11 = ExtendedTerrain.GetGridVertexZ(FileX + 1, FileY + 1);
+				const float Z01 = ExtendedTerrain.GetGridVertexZ(FileX, FileY + 1);
+				AppendTerrainTileWithHeights(
+					FileX,
+					FileY,
+					TileSize,
+					HalfMapSize,
+					Z00,
+					Z10,
+					Z11,
+					Z01,
+					TerrainAtlasTileIndex,
+					bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section);
+				++TerrainCount;
+				++ExtensionTerrainCount;
+
+				if (bRenderWater && ExtendedTerrain.IsWaterTile(FileX, FileY) && !bUseTexturedTerrainSurface)
+				{
+					const float WaterThickness = FMath::Max(RoadPlateHeight, 6.0f);
+					const FVector WaterScale(TileSize * CubeToUnrealScale, TileSize * CubeToUnrealScale, WaterThickness * CubeToUnrealScale);
+					const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
+					const float WorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
+					const float TerrainTopZ = (Z00 + Z10 + Z11 + Z01) * 0.25f;
+					const FTransform WaterTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + WaterThickness * 0.5f + 1.0f), WaterScale);
+					WaterInstances->AddInstance(WaterTransform);
+					++WaterCount;
+					++ExtensionWaterCount;
+				}
 			}
 		}
 	}
@@ -1428,11 +2318,13 @@ void ASimCity2000CityActor::RebuildCity()
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
-		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d water=%d roads=%d buildings=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
+		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d extensionTerrain=%d water=%d extensionWater=%d roads=%d buildings=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
 		*City.CityName,
 		*ResolvedCityPath,
 		TerrainCount,
+		ExtensionTerrainCount,
 		WaterCount,
+		ExtensionWaterCount,
 		RoadCount,
 		BuildingCount,
 		LastOriginalMeshTileCount,

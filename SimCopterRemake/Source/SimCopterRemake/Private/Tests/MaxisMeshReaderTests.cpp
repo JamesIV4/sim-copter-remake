@@ -139,6 +139,83 @@ bool FMaxisMeshLibraryTileMappingTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	struct FExpectedObjectIdMapping
+	{
+		int32 ObjectId;
+		const TCHAR* TableName;
+	};
+
+	const FExpectedObjectIdMapping ExpectedBridgeObjects[] = {
+		{ 0x1D, TEXT("RD29") },
+		{ 0x1E, TEXT("RD30") },
+		{ 0x2C, TEXT("RL44") },
+		{ 0x2D, TEXT("RL45") },
+		{ 0x3B, TEXT("RD29L") },
+		{ 0x3C, TEXT("RD30L") },
+		{ 0x128, TEXT("RD67") },
+		{ 0x129, TEXT("RD68") },
+		{ 0x178, TEXT("TL63") },
+		{ 0x179, TEXT("TL64") },
+		{ 0x17A, TEXT("TL65") },
+		{ 0x17B, TEXT("TL66") },
+		{ 0x17D, TEXT("RL71") },
+		{ 0x17E, TEXT("RL72") },
+		{ 0x17F, TEXT("RD67H") },
+		{ 0x180, TEXT("RD68H") },
+		{ 0x64, TEXT("RD87") },
+		{ 0x65, TEXT("RD87F") },
+		{ 0x66, TEXT("BR81") },
+		{ 0x67, TEXT("BR81F") },
+		{ 0x68, TEXT("BR82") },
+		{ 0x69, TEXT("BR82F") },
+		{ 0x6A, TEXT("BR83") },
+		{ 0x6B, TEXT("BR83F") },
+		{ 0x6C, TEXT("BR84") },
+		{ 0x6D, TEXT("BR84F") },
+		{ 0x6E, TEXT("BR85") },
+		{ 0x6F, TEXT("BR85F") },
+		{ 0x70, TEXT("BR86") },
+		{ 0x71, TEXT("BR86F") },
+		{ 0x72, TEXT("RL90") },
+		{ 0x73, TEXT("RL90F") },
+		{ 0x74, TEXT("WR92") },
+		{ 0x75, TEXT("WR92F") },
+		{ 0xF7, TEXT("RD73") },
+		{ 0xF8, TEXT("RD74") },
+		{ 0xF9, TEXT("RD75") },
+		{ 0xFA, TEXT("RD76") },
+		{ 0xFB, TEXT("RD93") },
+		{ 0xFC, TEXT("RD93F") },
+		{ 0xFD, TEXT("RD94") },
+		{ 0xFE, TEXT("RD94F") },
+		{ 0xFF, TEXT("RD95") },
+		{ 0x100, TEXT("RD95F") },
+		{ 0x101, TEXT("RD96") },
+		{ 0x102, TEXT("RD96F") },
+		{ 0x103, TEXT("RD97") },
+		{ 0x104, TEXT("RD98") },
+		{ 0x105, TEXT("RD99") },
+		{ 0x106, TEXT("RD100") },
+		{ 0x107, TEXT("RD101") },
+		{ 0x108, TEXT("RD102") },
+		{ 0x109, TEXT("RD103") },
+		{ 0x10A, TEXT("RD104") },
+		{ 0x10B, TEXT("RD105") },
+		{ 0x114, TEXT("RD106") },
+		{ 0x115, TEXT("RD106F") },
+	};
+
+	for (const FExpectedObjectIdMapping& Expected : ExpectedBridgeObjects)
+	{
+		const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByObjectId(Expected.ObjectId);
+		TestNotNull(FString::Printf(TEXT("Object id 0x%x resolves"), Expected.ObjectId), MeshObject);
+		if (MeshObject != nullptr)
+		{
+			TestEqual(FString::Printf(TEXT("Object id 0x%x table"), Expected.ObjectId), MeshObject->Header.TableName, FString(Expected.TableName));
+			TestEqual(FString::Printf(TEXT("Object id 0x%x header id"), Expected.ObjectId), MeshObject->Header.Id, Expected.ObjectId);
+		}
+	}
+
 	return true;
 }
 
