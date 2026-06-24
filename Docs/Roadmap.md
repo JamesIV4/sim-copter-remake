@@ -61,10 +61,21 @@ Done so far:
 
 ## Milestone 4: Flight, Camera, And Interaction
 
+Status: started.
+
 - Parse `tweak/*.twk` into runtime tuning data.
 - Implement helicopter flight using original tuning values as the baseline.
 - Recreate camera modes, landing detection, rope/bucket behavior, and collision probes.
 - Add targeted fixes for modern frame rates and input devices.
+
+Done so far:
+
+- Added a reusable SimCopter `.twk` parser for original tuning tables.
+- Added an initial playable helicopter pawn that loads `tweak/heli.twk`, applies the selected helicopter type, and implements frame-rate-stable flight integration.
+- Added landing checks, rope/bucket state, fuel/damage bookkeeping, forward/ground probes, searchlight controls, and gamepad/keyboard/mouse mappings.
+- Replaced the old camera recreation plan with a new spring-arm camera approach: chase, orbit, and rescue camera modes with camera collision and lag.
+- Enabled generated city collision for terrain, original mesh geometry, and placeholder fallback geometry, with per-actor toggles.
+- Added a `SimCopterGameMode` and moved `CityRender`'s `PlayerStart` above the generated city for immediate flight testing.
 
 ## Milestone 5: Simulation And Missions
 

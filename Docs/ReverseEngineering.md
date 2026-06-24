@@ -262,6 +262,27 @@ Observed facts:
 - Strings include `FORM`, `SCDH`, `ALTM`, `XTER`, `XBLD`, `SIM3D1.MAX`, `SIM3D2.MAX`, `SIM3D3.MAX`, and `sim3d.twk`, supporting the city/asset pipeline being implemented first.
 - Additional local string/analysis probes found `TILED1.BMP`, `TileCnt`, `AltMap`, `RoadTiles`, and `SIM3D.BMP` references in the executable. These support the current focus on terrain atlas, altitude map, and road/building tile behavior before relying on broader online notes.
 
+## Flight Tuning And Interaction
+
+Milestone 4 uses the original plain-text tweak files as behavioral data, not copied executable code. The first pass reads `tweak/heli.twk` directly at runtime through `FSimCopterTweakReader`.
+
+Important `heli.twk` facts:
+
+- The file contains sections for the flyable helicopter types listed by `sim3d.twk`: `Jet Ranger`, `Hughes 500`, `Apache`, `Bell 212`, `Schwiezer 300`, `Agusta`, `Dauphin`, `MDEXPLORER`, and `MD520`.
+- Each helicopter section is a group of numbered controls with separate label/value/data-type keys. The implementation resolves controls by label prefix rather than trusting `NumCtrl`, because the shipped helicopter sections declare `NumCtrl=14` while containing controls `0..15`.
+- Labels that explicitly say `(10 = 1 deg)` are treated as tenths of a degree. This covers max bank, slide, pitch, and landing attitude limits. Rate values are interpreted as gameplay tuning rates and converted into modern frame-rate-independent interpolation/acceleration.
+- `Heli Landing`, `Heli Ropestuff`, and `Heli Damage` provide the baseline limits for landing attitude/speed, bucket fill/dump behavior, rope load/tension, fire altitude, collision damage, repair, and fuel distance values.
+
+`camera.twk` only exposes three old chase-camera scalars. The remake intentionally does not recreate that camera behavior. `ASimCopterHelicopterPawn` uses a new Unreal spring-arm camera with camera collision/lag and three practical modes: chase, orbit, and rescue/down-look.
+
+Current implementation notes:
+
+- `ASimCopterHelicopterPawn` is a custom `APawn` with a capsule root and swept movement rather than a physics-simulated rigid body. This keeps the original arcade helicopter feel and avoids frame-rate-dependent physics drift.
+- Movement is sub-stepped to a maximum of 1/60 second per simulation step, so low and high frame rates feed the same tuning path.
+- Landing uses downward probes, attitude limits, horizontal/vertical speed limits, and generated city collision. Collision damage uses blocking hit speed against the contacted surface.
+- Rope/bucket behavior is implemented as runtime state with visible rope/bucket components. Bucket water can fill from named water collision or a configurable waterline fallback until full mission water/fire semantics exist.
+- `ASimCity2000CityActor` now exposes collision toggles for terrain, original mesh geometry, and placeholder geometry. The default is collision-enabled so flight probes and capsule sweeps interact with the generated city immediately.
+
 ## Implementation Notes
 
 Current code has two layers:
@@ -270,7 +291,9 @@ Current code has two layers:
 - `FMaxisMeshReader`: pure parser/decoder for Maxis `.MAX` mesh packs.
 - `FMaxisMeshLibrary`: original-game asset index that maps SC2 tile ids to decoded Maxis mesh objects.
 - `FMaxisTextureReader`: pure parser/decoder for Maxis composite bitmap texture files such as `SIM3D.BMP`.
+- `FSimCopterTweakReader`: pure parser for SimCopter `.twk` tuning files.
 - `ASimCity2000CityActor`: editor/runtime actor that renders a decoded city with procedural terrain, optional fallback water plates, and original SimCopter road/building mesh geometry. Textured mesh faces use transient textures decoded from `SIM3D.BMP` plus the `SKY.BMP` page-20 exception; terrain uses `TILED1.BMP` image `0` for page `0x14` and `SIM3D.BMP` image `13` for page `0x0d` when available. Placeholder road/building instances remain as a fallback for missing mappings.
 - `AMaxisMeshDebugActor`: editor/runtime actor that renders one decoded `.MAX` mesh for inspection.
+- `ASimCopterHelicopterPawn`: runtime pawn for helicopter flight, modern camera modes, landing/collision probes, fuel/damage state, rope/bucket behavior, and searchlight controls.
 
 The placeholder renderer is now fallback scaffolding. It still proves city parsing, orientation, tile height, and high-level tile classification, while original terrain textures and road/building geometry can be rendered directly from user-provided SimCopter assets.
