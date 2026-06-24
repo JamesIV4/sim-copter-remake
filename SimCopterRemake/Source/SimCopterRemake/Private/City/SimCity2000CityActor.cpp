@@ -1756,7 +1756,10 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 
 	TerrainMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("TerrainMeshComponent"));
 	TerrainMeshComponent->SetupAttachment(SceneRoot);
-	TerrainMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	TerrainMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	TerrainMeshComponent->SetCollisionObjectType(ECC_WorldStatic);
+	TerrainMeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
+	TerrainMeshComponent->bUseComplexAsSimpleCollision = true;
 	TerrainMeshComponent->SetCanEverAffectNavigation(false);
 	TerrainMeshComponent->SetCastShadow(false);
 
@@ -1771,7 +1774,10 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 
 	OriginalMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("OriginalMeshComponent"));
 	OriginalMeshComponent->SetupAttachment(SceneRoot);
-	OriginalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OriginalMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	OriginalMeshComponent->SetCollisionObjectType(ECC_WorldStatic);
+	OriginalMeshComponent->SetCollisionResponseToAllChannels(ECR_Block);
+	OriginalMeshComponent->bUseComplexAsSimpleCollision = true;
 	OriginalMeshComponent->SetCanEverAffectNavigation(false);
 	OriginalMeshComponent->SetCastShadow(false);
 
@@ -1851,8 +1857,12 @@ void ASimCity2000CityActor::RebuildCity()
 	RoadInstances->ClearInstances();
 	BuildingInstances->ClearInstances();
 	OriginalMeshComponent->ClearAllMeshSections();
-	TerrainMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	OriginalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ConfigureInstanceComponent(TerrainInstances);
+	ConfigureInstanceComponent(WaterInstances);
+	ConfigureInstanceComponent(RoadInstances);
+	ConfigureInstanceComponent(BuildingInstances);
+	TerrainMeshComponent->SetCollisionEnabled(bEnableTerrainCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	OriginalMeshComponent->SetCollisionEnabled(bEnableOriginalMeshCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 
 	ApplyComponentMaterial(TerrainInstances, TerrainColor);
 	ApplyComponentMaterial(WaterInstances, WaterColor);
@@ -2236,7 +2246,7 @@ void ASimCity2000CityActor::RebuildCity()
 			TerrainSection.UVs,
 			TerrainSection.VertexColors,
 			TerrainSection.Tangents,
-			false);
+			bEnableTerrainCollision);
 
 		if (SurfaceTexture != nullptr && TexturedMaterial != nullptr)
 		{
@@ -2270,7 +2280,7 @@ void ASimCity2000CityActor::RebuildCity()
 				PaletteSection->UVs,
 				PaletteSection->VertexColors,
 				PaletteSection->Tangents,
-				false);
+				bEnableOriginalMeshCollision);
 			if (VertexColorMaterial != nullptr)
 			{
 				OriginalMeshComponent->SetMaterial(MeshSectionIndex, VertexColorMaterial);
@@ -2301,7 +2311,7 @@ void ASimCity2000CityActor::RebuildCity()
 			TextureSection->UVs,
 			TextureSection->VertexColors,
 			TextureSection->Tangents,
-			false);
+			bEnableOriginalMeshCollision);
 
 		UMaterialInstanceDynamic* TextureMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
 		if (TextureMaterial != nullptr)
@@ -2378,7 +2388,9 @@ void ASimCity2000CityActor::ConfigureInstanceComponent(UHierarchicalInstancedSta
 	}
 
 	Component->SetStaticMesh(SharedCubeMesh);
-	Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Component->SetCollisionEnabled(bEnablePlaceholderCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	Component->SetCollisionObjectType(ECC_WorldStatic);
+	Component->SetCollisionResponseToAllChannels(ECR_Block);
 	Component->SetCanEverAffectNavigation(false);
 	Component->SetCastShadow(false);
 }

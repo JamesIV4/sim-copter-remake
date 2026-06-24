@@ -97,6 +97,15 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderBuildings = true;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
+	bool bEnableTerrainCollision = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
+	bool bEnableOriginalMeshCollision = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
+	bool bEnablePlaceholderCollision = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalMeshes = true;
 
