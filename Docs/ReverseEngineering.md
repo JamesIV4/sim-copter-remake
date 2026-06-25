@@ -216,6 +216,17 @@ translucent disc section, and the pawn draws the disc section with `M_SimCopterR
 `Tools/Unreal/CreateSimCopterMaterials.py`). The solid disc geometry can still serve as a
 rotor hitbox later without looking solid.
 
+Face type 11 is reused on **car headlights**: every `AUTO*`/`CARPOLIC`/`CARAMBUL` object has a
+short row of `ftype==11` quads at the nose (all `Y=0`, low `Z`, marching forward in `+X` well
+past the body - e.g. `AUTO`'s body ends at Unreal X~183 but its four beam cards reach X375),
+i.e. the alpha-blended headlight beams. The ground-agent vehicle build drops these (routing
+them into a discarded translucent section) and substitutes real spotlights, since rendering
+them opaque made the cars look like they had grey/blue blocks bolted to the front. By contrast
+SimCopter's **people are not in the GEO packs at all** (no person/cop/pedestrian object across
+the 400 entries - only `CARPOLIC`, a police car); the crowds come from `privanim.df` plus the
+flat `BMP/PEOPLE1.BMP` sprite, so the remake stands in a procedural low-poly box body until
+the `privanim.df` figures are decoded.
+
 `heli.twk` type name -> GEO table names (validated against the three reference packs):
 
 | Type (`heli.twk`) | Body | Main rotor |

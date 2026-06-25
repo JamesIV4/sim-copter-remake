@@ -12,6 +12,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -23,9 +24,13 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterOnFootPawn, Log, All);
 
 namespace
 {
+// Matches ASimCopterGroundAgent::PopulationWorldScale - the on-foot avatar was authored in real
+// cm and read ~4x too tall next to the 0.25x-scaled city, cars and NPC pedestrians.
+constexpr float PopulationWorldScale = 0.25f;
+
 constexpr float OnFootCapsuleRadiusCm = 38.0f;
 constexpr float OnFootCapsuleHalfHeightCm = 92.0f;
-constexpr float OnFootSpriteHeightCm = 168.0f;
+constexpr float OnFootBodyHeightCm = 184.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
 
 UMaterialInterface* LoadSpriteMaterialNoWarn()
@@ -40,7 +45,7 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CollisionComponent"));
-	CollisionComponent->InitCapsuleSize(OnFootCapsuleRadiusCm, OnFootCapsuleHalfHeightCm);
+	CollisionComponent->InitCapsuleSize(OnFootCapsuleRadiusCm * PopulationWorldScale, OnFootCapsuleHalfHeightCm * PopulationWorldScale);
 	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	CollisionComponent->SetCollisionObjectType(ECC_Pawn);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
@@ -52,22 +57,22 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	BodyProxyComponent->SetupAttachment(CollisionComponent);
 	BodyProxyComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyProxyComponent->SetCanEverAffectNavigation(false);
-	BodyProxyComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm + 86.0f));
-	BodyProxyComponent->SetRelativeScale3D(FVector(0.28f, 0.2f, 1.7f));
+	BodyProxyComponent->SetRelativeLocation(FVector(0.0f, 0.0f, (-OnFootCapsuleHalfHeightCm + 86.0f) * PopulationWorldScale));
+	BodyProxyComponent->SetRelativeScale3D(FVector(0.28f, 0.2f, 1.7f) * PopulationWorldScale);
 
 	OriginalBodySpriteComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("OriginalBodySprite"));
 	OriginalBodySpriteComponent->SetupAttachment(CollisionComponent);
 	OriginalBodySpriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OriginalBodySpriteComponent->SetCanEverAffectNavigation(false);
 	OriginalBodySpriteComponent->SetVisibility(false);
-	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm));
+	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale));
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CollisionComponent);
-	CameraBoom->TargetArmLength = 520.0f;
-	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, 82.0f);
+	CameraBoom->TargetArmLength = 520.0f * PopulationWorldScale;
+	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, 82.0f * PopulationWorldScale);
 	CameraBoom->bDoCollisionTest = true;
-	CameraBoom->ProbeSize = 16.0f;
+	CameraBoom->ProbeSize = 16.0f * PopulationWorldScale;
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 12.0f;
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitchDeg, 0.0f, 0.0f));
@@ -80,6 +85,12 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	if (CubeMeshFinder.Succeeded())
 	{
 		BodyProxyComponent->SetStaticMesh(CubeMeshFinder.Object);
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BodyMaterialFinder(TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor"));
+	if (BodyMaterialFinder.Succeeded())
+	{
+		BodyVertexColorMaterial = BodyMaterialFinder.Object;
 	}
 
 	SpriteMaterial = LoadSpriteMaterialNoWarn();
@@ -221,52 +232,34 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 		return;
 	}
 
+	// The 3D body is static geometry; give it a little walk bob/lean so it doesn't read as a
+	// rigid statue while moving (matching the NPC pedestrians' jank).
 	BodySpriteTimeSeconds += DeltaSeconds;
 	const float SpeedAlpha = FMath::Clamp(CurrentVelocityCmPerSec.Size() / FMath::Max(1.0f, WalkSpeedCmPerSec), 0.0f, 1.0f);
-	const int32 DesiredRow = SpeedAlpha > 0.12f
-		? FMath::FloorToInt(BodySpriteTimeSeconds * 8.0f) % FSimCopterPopulationSprite::People1Rows
-		: 0;
-	if (DesiredRow != BodySpriteRow)
-	{
-		BodySpriteRow = DesiredRow;
-		FSimCopterPopulationSprite::BuildPeople1FrameQuad(OriginalBodySpriteComponent, 1, BodySpriteRow, OnFootSpriteHeightCm);
-		if (SpriteMaterialInstance != nullptr)
-		{
-			OriginalBodySpriteComponent->SetMaterial(0, SpriteMaterialInstance);
-		}
-	}
+	const float Wave = FMath::Sin(BodySpriteTimeSeconds * 7.5f);
+	const float Bob = FMath::Abs(Wave) * 4.0f * SpeedAlpha * PopulationWorldScale;
+	const float Lean = Wave * 4.0f * SpeedAlpha; // degrees of roll (scale-independent)
+	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + Bob));
+	OriginalBodySpriteComponent->SetRelativeRotation(FRotator(0.0f, 0.0f, Lean));
 }
 
 void ASimCopterOnFootPawn::LoadOriginalBodySprite()
 {
-	if (OriginalBodySpriteComponent == nullptr || SpriteMaterial == nullptr)
-	{
-		SpriteMaterial = LoadSpriteMaterialNoWarn();
-		if (OriginalBodySpriteComponent == nullptr || SpriteMaterial == nullptr)
-		{
-			return;
-		}
-	}
-
-	UTexture2D* LoadedTexture = nullptr;
-	FString Error;
-	if (!FSimCopterPopulationSprite::LoadPeople1Texture(this, OriginalGameRoot.Path, LoadedTexture, Error))
-	{
-		UE_LOG(LogSimCopterOnFootPawn, Warning, TEXT("Could not load original player pedestrian sprite: %s"), *Error);
-		return;
-	}
-
-	BodySpriteTexture = LoadedTexture;
-	SpriteMaterialInstance = UMaterialInstanceDynamic::Create(SpriteMaterial, this);
-	if (SpriteMaterialInstance == nullptr)
+	if (OriginalBodySpriteComponent == nullptr)
 	{
 		return;
 	}
 
-	SpriteMaterialInstance->SetTextureParameterValue(TEXT("Texture"), BodySpriteTexture);
-	BodySpriteRow = 0;
-	FSimCopterPopulationSprite::BuildPeople1FrameQuad(OriginalBodySpriteComponent, 1, BodySpriteRow, OnFootSpriteHeightCm);
-	OriginalBodySpriteComponent->SetMaterial(0, SpriteMaterialInstance);
+	// Build the same blocky low-poly 3D body the NPC pedestrians use (the old flat sprite had
+	// "no body"). The player keeps a stable outfit for the session.
+	const int32 OutfitIndex = FSimCopterPopulationBody::ResolveOutfitIndex(this);
+	FSimCopterPopulationBody::BuildPerson(OriginalBodySpriteComponent, OutfitIndex, OnFootBodyHeightCm * PopulationWorldScale);
+
+	if (BodyVertexColorMaterial != nullptr)
+	{
+		OriginalBodySpriteComponent->SetMaterial(0, BodyVertexColorMaterial);
+	}
+
 	OriginalBodySpriteComponent->SetVisibility(true, true);
 	if (BodyProxyComponent != nullptr)
 	{

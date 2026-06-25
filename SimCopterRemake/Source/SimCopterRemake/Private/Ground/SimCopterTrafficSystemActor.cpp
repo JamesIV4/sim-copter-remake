@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterTrafficSystemActor.h"
 
+#include "City/SimCity2000CityActor.h"
 #include "Engine/World.h"
 #include "Formats/SimCity2000Reader.h"
 #include "GameFramework/PlayerController.h"
@@ -41,55 +42,252 @@ float GetTerrainTileCenterZ(const FSimCity2000City& City, int32 FileX, int32 Fil
 	return GetTerrainSurfaceZ(City.Tiles[FileY * FSimCity2000City::MapSize + FileX], TerrainHeightScale);
 }
 
-bool IsRoadLikeTile(uint8 BuildingId)
+// Surface roads only: XBLD ids 0x1D..0x2B are the RD29..RD43 road meshes. (Power lines are
+// 0x0E..0x1C / WR14..WR28, and 0x2C..0x3A are RL44..RL58 RAILS - not drivable. The previous
+// implementation matched the 0x2C..0x3E rail range, which put every car on the train tracks.)
+bool IsSurfaceRoadTile(uint8 BuildingId)
 {
-	return BuildingId >= 0x0E && BuildingId <= 0x6F;
+	return BuildingId >= 0x1D && BuildingId <= 0x2B;
 }
 
+// The shipped cities use 0x43/0x44 as road-continuity crossing/bridge pieces: 0x43 connects E/W,
+// 0x44 connects N/S. They are selected by the city actor's bridge dispatch and appear exactly where
+// road neighbours would otherwise be split by overlay/crossing infrastructure.
+bool IsRoadCrossingTile(uint8 BuildingId)
+{
+	return BuildingId == 0x43 || BuildingId == 0x44;
+}
+
+// Drivable tiles for cars: surface roads, crossing pieces, plus the elevated/bridge road ids
+// confirmed as roads by the bridge-mesh dispatch (0x45/0x46 road-on-bridge, 0x47/0x48,
+// 0x4d/0x4e, 0x5a/0x5b).
 bool IsOriginalTrafficRoadTile(uint8 BuildingId)
 {
-	return (BuildingId > 0x2B && BuildingId < 0x3F) ||
-		(BuildingId > 0x44 && BuildingId < 0x49) ||
-		(BuildingId > 0x4C && BuildingId < 0x4F) ||
-		(BuildingId > 0x59 && BuildingId < 0x5C);
+	return IsSurfaceRoadTile(BuildingId) ||
+		IsRoadCrossingTile(BuildingId) ||
+		(BuildingId >= 0x45 && BuildingId <= 0x48) ||
+		(BuildingId == 0x4D || BuildingId == 0x4E) ||
+		(BuildingId == 0x5A || BuildingId == 0x5B);
 }
 
-bool IsBuildingLikeTile(uint8 BuildingId)
+bool IsPedestrianRoadTile(uint8 BuildingId)
 {
-	return BuildingId >= 0x70;
+	return IsSurfaceRoadTile(BuildingId) || IsRoadCrossingTile(BuildingId);
 }
 
-bool IsPedestrianCandidateTile(const FSimCity2000City& City, int32 FileX, int32 FileY)
+enum ERoadOpeningMask : int32
 {
-	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	RoadOpenNorth = 1 << 0,
+	RoadOpenEast = 1 << 1,
+	RoadOpenSouth = 1 << 2,
+	RoadOpenWest = 1 << 3,
+	RoadOpenAll = RoadOpenNorth | RoadOpenEast | RoadOpenSouth | RoadOpenWest
+};
+
+int32 GetRoadOpeningMask(uint8 BuildingId)
+{
+	switch (BuildingId)
+	{
+	case 0x1D:
+	case 0x20:
+	case 0x22:
+	case 0x43:
+	case 0x45:
+		return RoadOpenEast | RoadOpenWest;
+
+	case 0x1E:
+	case 0x1F:
+	case 0x21:
+	case 0x44:
+	case 0x46:
+		return RoadOpenNorth | RoadOpenSouth;
+
+	case 0x23:
+		return RoadOpenSouth | RoadOpenWest;
+	case 0x24:
+		return RoadOpenEast | RoadOpenSouth;
+	case 0x25:
+		return RoadOpenNorth | RoadOpenEast;
+	case 0x26:
+		return RoadOpenNorth | RoadOpenWest;
+
+	case 0x27:
+		return RoadOpenNorth | RoadOpenSouth | RoadOpenWest;
+	case 0x28:
+		return RoadOpenEast | RoadOpenSouth | RoadOpenWest;
+	case 0x29:
+		return RoadOpenNorth | RoadOpenEast | RoadOpenSouth;
+	case 0x2A:
+		return RoadOpenNorth | RoadOpenEast | RoadOpenWest;
+	case 0x2B:
+		return RoadOpenAll;
+
+	default:
+		return RoadOpenAll;
+	}
+}
+
+int32 GetRoadOpeningForOffset(int32 DeltaX, int32 DeltaY)
+{
+	if (DeltaY < 0)
+	{
+		return RoadOpenNorth;
+	}
+	if (DeltaX > 0)
+	{
+		return RoadOpenEast;
+	}
+	if (DeltaY > 0)
+	{
+		return RoadOpenSouth;
+	}
+	if (DeltaX < 0)
+	{
+		return RoadOpenWest;
+	}
+	return 0;
+}
+
+int32 GetOppositeRoadOpening(int32 Opening)
+{
+	switch (Opening)
+	{
+	case RoadOpenNorth:
+		return RoadOpenSouth;
+	case RoadOpenEast:
+		return RoadOpenWest;
+	case RoadOpenSouth:
+		return RoadOpenNorth;
+	case RoadOpenWest:
+		return RoadOpenEast;
+	default:
+		return 0;
+	}
+}
+
+bool CanRoadTilesConnect(uint8 FromBuildingId, uint8 ToBuildingId, int32 DeltaX, int32 DeltaY)
+{
+	const int32 FromOpening = GetRoadOpeningForOffset(DeltaX, DeltaY);
+	if (FromOpening == 0)
 	{
 		return false;
 	}
 
+	const int32 ToOpening = GetOppositeRoadOpening(FromOpening);
+	return (GetRoadOpeningMask(FromBuildingId) & FromOpening) != 0 &&
+		(GetRoadOpeningMask(ToBuildingId) & ToOpening) != 0;
+}
+
+FVector2D GetRoadOpeningLocalDirection(int32 Opening)
+{
+	switch (Opening)
+	{
+	case RoadOpenNorth:
+		return FVector2D(0.0f, 1.0f);
+	case RoadOpenEast:
+		return FVector2D(1.0f, 0.0f);
+	case RoadOpenSouth:
+		return FVector2D(0.0f, -1.0f);
+	case RoadOpenWest:
+		return FVector2D(-1.0f, 0.0f);
+	default:
+		return FVector2D::ZeroVector;
+	}
+}
+
+bool HasRoadOpening(int32 Mask, int32 Opening)
+{
+	return (Mask & Opening) != 0;
+}
+
+int32 CountRoadOpenings(int32 Mask)
+{
+	int32 Count = 0;
+	Count += HasRoadOpening(Mask, RoadOpenNorth) ? 1 : 0;
+	Count += HasRoadOpening(Mask, RoadOpenEast) ? 1 : 0;
+	Count += HasRoadOpening(Mask, RoadOpenSouth) ? 1 : 0;
+	Count += HasRoadOpening(Mask, RoadOpenWest) ? 1 : 0;
+	return Count;
+}
+
+bool IsOppositeRoadOpeningPair(int32 Mask)
+{
+	return Mask == (RoadOpenNorth | RoadOpenSouth) || Mask == (RoadOpenEast | RoadOpenWest);
+}
+
+FVector2D GetAdjacentOpeningBisector(int32 Mask)
+{
+	FVector2D Sum = FVector2D::ZeroVector;
+	if (HasRoadOpening(Mask, RoadOpenNorth))
+	{
+		Sum += GetRoadOpeningLocalDirection(RoadOpenNorth);
+	}
+	if (HasRoadOpening(Mask, RoadOpenEast))
+	{
+		Sum += GetRoadOpeningLocalDirection(RoadOpenEast);
+	}
+	if (HasRoadOpening(Mask, RoadOpenSouth))
+	{
+		Sum += GetRoadOpeningLocalDirection(RoadOpenSouth);
+	}
+	if (HasRoadOpening(Mask, RoadOpenWest))
+	{
+		Sum += GetRoadOpeningLocalDirection(RoadOpenWest);
+	}
+	return Sum;
+}
+
+FVector2D GetRoadCenterlineLocalOffset(uint8 BuildingId, float TileSize)
+{
+	const int32 Mask = GetRoadOpeningMask(BuildingId);
+	if (CountRoadOpenings(Mask) == 2 && !IsOppositeRoadOpeningPair(Mask))
+	{
+		// RD35..RD38 are visually diagonal/curved corner road pieces. A tile-centre route makes
+		// agents stair-step from one side of the road to the other; bias the waypoint toward the
+		// corner shared by the two openings so the hop follows the road's diagonal through the tile.
+		return GetAdjacentOpeningBisector(Mask) * (TileSize * 0.25f);
+	}
+
+	return FVector2D::ZeroVector;
+}
+
+// SimCopter pedestrians walk the sidewalks that are part of the road tiles, not the empty land
+// beside them. Pull a road tile's pedestrian node toward one edge (parallel to the road) so a
+// straight road grows a continuous sidewalk while cars keep the centre line.
+FVector2D GetRoadSidewalkLocalOffset(const FSimCity2000City& City, int32 FileX, int32 FileY, float TileSize)
+{
 	const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
-	if (Tile.bWater || IsRoadLikeTile(Tile.Building) || IsBuildingLikeTile(Tile.Building))
+	const int32 Mask = GetRoadOpeningMask(Tile.Building);
+	if (CountRoadOpenings(Mask) == 2 && !IsOppositeRoadOpeningPair(Mask))
 	{
-		return false;
+		// Keep pedestrians on the same diagonal/corner side as the visible road piece. The old
+		// straight-road test alternated between X and Y offsets on these tiles, which made crowds
+		// weave back and forth across angled roads.
+		return GetAdjacentOpeningBisector(Mask) * (TileSize * 0.34f);
 	}
 
-	const int32 Offsets[4][2] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
-	for (const int32* Offset : Offsets)
+	auto IsRoadAt = [&City](int32 X, int32 Y) -> bool
 	{
-		const int32 NeighborX = FileX + Offset[0];
-		const int32 NeighborY = FileY + Offset[1];
-		if (NeighborX < 0 || NeighborX >= FSimCity2000City::MapSize || NeighborY < 0 || NeighborY >= FSimCity2000City::MapSize)
+		if (X < 0 || X >= FSimCity2000City::MapSize || Y < 0 || Y >= FSimCity2000City::MapSize)
 		{
-			continue;
+			return false;
 		}
+		return IsPedestrianRoadTile(City.Tiles[Y * FSimCity2000City::MapSize + X].Building);
+	};
 
-		const FSimCity2000Tile& Neighbor = City.Tiles[NeighborY * FSimCity2000City::MapSize + NeighborX];
-		if (IsRoadLikeTile(Neighbor.Building))
-		{
-			return true;
-		}
+	const bool bNorthSouth = IsRoadAt(FileX, FileY - 1) || IsRoadAt(FileX, FileY + 1);
+	const bool bEastWest = IsRoadAt(FileX - 1, FileY) || IsRoadAt(FileX + 1, FileY);
+	const float SidewalkInset = TileSize * 0.34f;
+
+	if (bNorthSouth && !bEastWest)
+	{
+		return FVector2D(-SidewalkInset, 0.0f); // road runs N/S -> sidewalk along local X
 	}
-
-	return false;
+	if (bEastWest && !bNorthSouth)
+	{
+		return FVector2D(0.0f, SidewalkInset); // road runs E/W -> sidewalk along local Y
+	}
+	return FVector2D::ZeroVector; // intersection / isolated tile: keep pedestrians centred
 }
 
 int32 FindNodeByTile(const TMap<FIntPoint, int32>& NodeIndexByTile, int32 FileX, int32 FileY)
@@ -101,217 +299,92 @@ int32 FindNodeByTile(const TMap<FIntPoint, int32>& NodeIndexByTile, int32 FileX,
 	return INDEX_NONE;
 }
 
-struct FOriginalTrafficStep
+int32 FindNearestNodeIndex(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& Location)
 {
-	FIntPoint TargetTile = FIntPoint::ZeroValue;
-	int32 DirectionBits = 0;
-	bool bHasStep = false;
-};
-
-FOriginalTrafficStep MakeOriginalTrafficStep(const FSimCopterGroundRouteNode& Node, int32 DeltaX, int32 DeltaY, int32 DirectionBits)
-{
-	FOriginalTrafficStep Step;
-	Step.TargetTile = FIntPoint(Node.FileX + DeltaX, Node.FileY + DeltaY);
-	Step.DirectionBits = DirectionBits;
-	Step.bHasStep = DirectionBits != 0;
-	return Step;
-}
-
-FOriginalTrafficStep OriginalTrafficNorth(const FSimCopterGroundRouteNode& Node, int32 DirectionBits = 1)
-{
-	return MakeOriginalTrafficStep(Node, 0, -1, DirectionBits);
-}
-
-FOriginalTrafficStep OriginalTrafficEast(const FSimCopterGroundRouteNode& Node, int32 DirectionBits = 2)
-{
-	return MakeOriginalTrafficStep(Node, 1, 0, DirectionBits);
-}
-
-FOriginalTrafficStep OriginalTrafficSouth(const FSimCopterGroundRouteNode& Node, int32 DirectionBits = 4)
-{
-	return MakeOriginalTrafficStep(Node, 0, 1, DirectionBits);
-}
-
-FOriginalTrafficStep OriginalTrafficWest(const FSimCopterGroundRouteNode& Node, int32 DirectionBits = 8)
-{
-	return MakeOriginalTrafficStep(Node, -1, 0, DirectionBits);
-}
-
-bool IsOriginalTrafficStepValid(
-	const FOriginalTrafficStep& Step,
-	const TMap<FIntPoint, int32>& RoadNodeIndexByTile,
-	const TArray<FSimCopterGroundRouteNode>& RoadNodes)
-{
-	if (!Step.bHasStep)
+	int32 BestIndex = INDEX_NONE;
+	float BestDistanceSq = TNumericLimits<float>::Max();
+	for (int32 Index = 0; Index < Nodes.Num(); ++Index)
 	{
-		return false;
+		const float DistanceSq = FVector::DistSquared2D(Nodes[Index].Location, Location);
+		if (DistanceSq < BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			BestIndex = Index;
+		}
 	}
-
-	if (const int32* NodeIndex = RoadNodeIndexByTile.Find(Step.TargetTile))
-	{
-		return RoadNodes.IsValidIndex(*NodeIndex) && IsOriginalTrafficRoadTile(RoadNodes[*NodeIndex].BuildingId);
-	}
-
-	return false;
+	return BestIndex;
 }
 
-FOriginalTrafficStep ChooseInitialOriginalTrafficStep(
-	const FSimCopterGroundRouteNode& Node,
+// Walk the road/sidewalk graph: from FromIndex pick a connected neighbour to drive to next.
+// Avoids immediate U-turns (excludes PrevIndex) unless at a dead-end, and prefers continuing
+// roughly straight so traffic flows down a road and only occasionally turns at intersections.
+// Because it only ever returns an adjacent graph node, agents can never leave the road network.
+int32 ChooseNextRouteNode(
+	const TArray<FSimCopterGroundRouteNode>& Nodes,
+	int32 FromIndex,
+	int32 PrevIndex,
 	FRandomStream& RandomStream)
 {
-	switch (Node.BuildingId)
+	if (!Nodes.IsValidIndex(FromIndex))
 	{
-	case 0x2C:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node) : OriginalTrafficNorth(Node);
-	case 0x2D:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficEast(Node) : OriginalTrafficWest(Node);
-	case 0x2E:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficEast(Node) : OriginalTrafficWest(Node, 0x18);
-	case 0x2F:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node) : OriginalTrafficNorth(Node, 0x11);
-	case 0x30:
-		return RandomStream.RandRange(0, 1) != 0 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node, 0x12);
-	case 0x31:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node, 0x14) : OriginalTrafficNorth(Node);
-	case 0x32:
-		return RandomStream.RandRange(0, 1) != 0 ? OriginalTrafficNorth(Node, 9) : OriginalTrafficEast(Node, 6);
-	case 0x33:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node, 0x0C) : OriginalTrafficEast(Node, 3);
-	case 0x34:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node, 6) : OriginalTrafficWest(Node, 9);
-	case 0x35:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficWest(Node, 0x0C) : OriginalTrafficNorth(Node, 3);
-	case 0x36:
-		switch (RandomStream.RandRange(0, 2))
-		{
-		case 0: return OriginalTrafficNorth(Node);
-		case 1: return OriginalTrafficEast(Node);
-		default: return OriginalTrafficWest(Node);
-		}
-	case 0x37:
-		switch (RandomStream.RandRange(0, 2))
-		{
-		case 0: return OriginalTrafficNorth(Node);
-		case 1: return OriginalTrafficSouth(Node);
-		default: return OriginalTrafficEast(Node);
-		}
-	case 0x38:
-		switch (RandomStream.RandRange(0, 2))
-		{
-		case 0: return OriginalTrafficSouth(Node);
-		case 1: return OriginalTrafficEast(Node);
-		default: return OriginalTrafficWest(Node);
-		}
-	case 0x39:
-		switch (RandomStream.RandRange(0, 2))
-		{
-		case 0: return OriginalTrafficNorth(Node);
-		case 1: return OriginalTrafficSouth(Node);
-		default: return OriginalTrafficWest(Node);
-		}
-	case 0x3A:
-		switch (RandomStream.RandRange(0, 3))
-		{
-		case 0: return OriginalTrafficNorth(Node);
-		case 1: return OriginalTrafficSouth(Node);
-		case 2: return OriginalTrafficWest(Node);
-		default: return OriginalTrafficEast(Node);
-		}
-	case 0x3B:
-		return RandomStream.RandRange(0, 1) != 0 ? OriginalTrafficWest(Node, 0x18) : OriginalTrafficEast(Node);
-	case 0x3C:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node) : OriginalTrafficNorth(Node, 0x11);
-	case 0x3D:
-		return RandomStream.RandRange(0, 1) != 0 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node, 0x12);
-	case 0x3E:
-		return RandomStream.RandRange(0, 1) == 0 ? OriginalTrafficSouth(Node, 0x14) : OriginalTrafficNorth(Node);
-	case 0x45:
-	case 0x48:
-	case 0x4D:
-		return (Node.FileY & 1) == 0 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node);
-	case 0x46:
-	case 0x47:
-	case 0x4E:
-	case 0x5A:
-	case 0x5B:
-		return (Node.FileX & 1) == 0 ? OriginalTrafficSouth(Node) : OriginalTrafficNorth(Node);
-	default:
-		return FOriginalTrafficStep();
-	}
-}
-
-FOriginalTrafficStep ChooseFallbackOriginalTrafficStep(
-	const FSimCopterGroundRouteNode& Node,
-	int32 PreviousDirectionBits,
-	FRandomStream& RandomStream)
-{
-	switch (Node.BuildingId)
-	{
-	case 0x2C:
-		return PreviousDirectionBits == 1 ? OriginalTrafficNorth(Node) : OriginalTrafficSouth(Node);
-	case 0x2D:
-		return PreviousDirectionBits == 2 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node);
-	case 0x2E:
-		return PreviousDirectionBits == 2 ? OriginalTrafficWest(Node, 0x18) : OriginalTrafficEast(Node);
-	case 0x2F:
-		return PreviousDirectionBits == 4 ? OriginalTrafficNorth(Node, 0x11) : OriginalTrafficSouth(Node);
-	case 0x30:
-		return PreviousDirectionBits == 0x18 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node, 0x12);
-	case 0x31:
-		return PreviousDirectionBits == 0x14 ? OriginalTrafficNorth(Node) : OriginalTrafficSouth(Node, 0x14);
-	case 0x32:
-		return PreviousDirectionBits == 6 ? OriginalTrafficNorth(Node, 9) : OriginalTrafficEast(Node, 6);
-	case 0x33:
-		return PreviousDirectionBits == 0x0C ? OriginalTrafficEast(Node, 3) : OriginalTrafficSouth(Node, 0x0C);
-	case 0x34:
-		return PreviousDirectionBits == 6 ? OriginalTrafficWest(Node, 9) : OriginalTrafficSouth(Node, 6);
-	case 0x35:
-		return PreviousDirectionBits == 0x0C ? OriginalTrafficNorth(Node, 3) : OriginalTrafficWest(Node, 0x0C);
-	case 0x36:
-	case 0x37:
-	case 0x38:
-	case 0x39:
-	case 0x3A:
-		return ChooseInitialOriginalTrafficStep(Node, RandomStream);
-	case 0x3B:
-		return PreviousDirectionBits == 2 ? OriginalTrafficWest(Node, 0x18) : OriginalTrafficEast(Node);
-	case 0x3C:
-		return PreviousDirectionBits == 4 ? OriginalTrafficNorth(Node, 0x11) : OriginalTrafficSouth(Node);
-	case 0x3D:
-		return PreviousDirectionBits == 0x18 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node, 0x12);
-	case 0x3E:
-		return PreviousDirectionBits == 0x14 ? OriginalTrafficNorth(Node) : OriginalTrafficSouth(Node, 0x14);
-	case 0x45:
-	case 0x48:
-	case 0x4D:
-		return (Node.FileY & 1) == 0 ? OriginalTrafficWest(Node) : OriginalTrafficEast(Node);
-	case 0x46:
-	case 0x47:
-	case 0x4E:
-	case 0x5A:
-	case 0x5B:
-		return (Node.FileX & 1) == 0 ? OriginalTrafficSouth(Node) : OriginalTrafficNorth(Node);
-	default:
-		return FOriginalTrafficStep();
-	}
-}
-
-FOriginalTrafficStep ChooseOriginalTrafficStep(
-	const FSimCopterGroundRouteNode& Node,
-	int32 PreviousDirectionBits,
-	FRandomStream& RandomStream,
-	const TMap<FIntPoint, int32>& RoadNodeIndexByTile,
-	const TArray<FSimCopterGroundRouteNode>& RoadNodes)
-{
-	const FOriginalTrafficStep InitialStep = ChooseInitialOriginalTrafficStep(Node, RandomStream);
-	if (IsOriginalTrafficStepValid(InitialStep, RoadNodeIndexByTile, RoadNodes))
-	{
-		return InitialStep;
+		return INDEX_NONE;
 	}
 
-	const int32 FallbackDirectionBits = InitialStep.DirectionBits != 0 ? InitialStep.DirectionBits : PreviousDirectionBits;
-	const FOriginalTrafficStep FallbackStep = ChooseFallbackOriginalTrafficStep(Node, FallbackDirectionBits, RandomStream);
-	return IsOriginalTrafficStepValid(FallbackStep, RoadNodeIndexByTile, RoadNodes) ? FallbackStep : FOriginalTrafficStep();
+	const FSimCopterGroundRouteNode& From = Nodes[FromIndex];
+
+	TArray<int32, TInlineAllocator<4>> Candidates;
+	for (const int32 NeighborIndex : From.Neighbors)
+	{
+		if (Nodes.IsValidIndex(NeighborIndex) && NeighborIndex != PrevIndex)
+		{
+			Candidates.Add(NeighborIndex);
+		}
+	}
+
+	// Dead-end: the only neighbour is where we came from, so allow the U-turn.
+	if (Candidates.Num() == 0)
+	{
+		for (const int32 NeighborIndex : From.Neighbors)
+		{
+			if (Nodes.IsValidIndex(NeighborIndex))
+			{
+				Candidates.Add(NeighborIndex);
+			}
+		}
+	}
+
+	if (Candidates.Num() == 0)
+	{
+		return INDEX_NONE;
+	}
+	if (Candidates.Num() == 1)
+	{
+		return Candidates[0];
+	}
+
+	// Prefer the neighbour that best continues the current heading; turn at intersections ~30%.
+	if (Nodes.IsValidIndex(PrevIndex))
+	{
+		const FVector InDirection = (From.Location - Nodes[PrevIndex].Location).GetSafeNormal2D();
+		if (!InDirection.IsNearlyZero() && RandomStream.FRand() < 0.7f)
+		{
+			int32 StraightestIndex = Candidates[0];
+			float BestDot = -2.0f;
+			for (const int32 NeighborIndex : Candidates)
+			{
+				const FVector OutDirection = (Nodes[NeighborIndex].Location - From.Location).GetSafeNormal2D();
+				const float Dot = FVector::DotProduct(InDirection, OutDirection);
+				if (Dot > BestDot)
+				{
+					BestDot = Dot;
+					StraightestIndex = NeighborIndex;
+				}
+			}
+			return StraightestIndex;
+		}
+	}
+
+	return Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
 }
 }
 
@@ -357,16 +430,63 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	UpdateAgentPool(DeltaSeconds);
 }
 
+ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() const
+{
+	if (!bUseActiveCityActor)
+	{
+		return nullptr;
+	}
+
+	if (SourceCityActor != nullptr && IsValid(SourceCityActor))
+	{
+		return SourceCityActor;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		return Cast<ASimCity2000CityActor>(UGameplayStatics::GetActorOfClass(World, ASimCity2000CityActor::StaticClass()));
+	}
+
+	return nullptr;
+}
+
 bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 {
 	LastLoadError.Reset();
+	LastCitySource.Reset();
 	RoadNodes.Reset();
 	PedestrianNodes.Reset();
 	RoadNodeIndexByTile.Reset();
 	VehicleAgents.Reset();
 	PedestrianAgents.Reset();
 
-	const FString CityPath = ResolveCityPath();
+	ActiveCityToWorldTransform = FTransform::Identity;
+	ActiveOriginalGameRootPath = ResolveOriginalGameRoot();
+	ActiveTileSize = TileSize;
+
+	float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
+	FString CityPath = ResolveCityPath();
+
+	if (const ASimCity2000CityActor* CityActor = ResolveSourceCityActor())
+	{
+		CityPath = CityActor->GetResolvedCityPath();
+		ActiveTileSize = CityActor->GetTileSize();
+		EffectiveTerrainHeightScale = CityActor->GetEffectiveTerrainHeightScale();
+		ActiveCityToWorldTransform = CityActor->GetActorTransform();
+
+		const FString CityOriginalRoot = CityActor->GetResolvedOriginalGameRoot();
+		if (!CityOriginalRoot.IsEmpty())
+		{
+			ActiveOriginalGameRootPath = CityOriginalRoot;
+		}
+
+		LastCitySource = FString::Printf(TEXT("City actor '%s'"), *CityActor->GetName());
+	}
+	else
+	{
+		LastCitySource = TEXT("Traffic actor fallback settings");
+	}
+
 	FSimCity2000City City;
 	FString Error;
 	if (CityPath.IsEmpty() || !FSimCity2000Reader::LoadCityFromFile(CityPath, City, Error))
@@ -376,8 +496,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		return false;
 	}
 
-	const float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
-	const float HalfMapSize = FSimCity2000City::MapSize * TileSize * 0.5f;
+	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
 
 	TMap<FIntPoint, int32> PedestrianIndexByTile;
 
@@ -386,29 +505,33 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
 		{
 			const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
-			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
-			const float WorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
-			const float WorldZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
+			const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
+			const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
+			const float LocalZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
 
 			if (!Tile.bWater && IsOriginalTrafficRoadTile(Tile.Building))
 			{
+				const FVector2D CenterlineOffset = GetRoadCenterlineLocalOffset(Tile.Building, ActiveTileSize);
 				const int32 NodeIndex = RoadNodes.Num();
 				FSimCopterGroundRouteNode& Node = RoadNodes.AddDefaulted_GetRef();
 				Node.FileX = FileX;
 				Node.FileY = FileY;
 				Node.BuildingId = Tile.Building;
-				Node.Location = FVector(WorldX, WorldY, WorldZ + 10.0f);
+				Node.LocalLocation = FVector(LocalX + CenterlineOffset.X, LocalY + CenterlineOffset.Y, LocalZ + 10.0f);
+				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
 				RoadNodeIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
 
-			if (IsPedestrianCandidateTile(City, FileX, FileY))
+			if (!Tile.bWater && IsPedestrianRoadTile(Tile.Building))
 			{
+				const FVector2D Sidewalk = GetRoadSidewalkLocalOffset(City, FileX, FileY, ActiveTileSize);
 				const int32 NodeIndex = PedestrianNodes.Num();
 				FSimCopterGroundRouteNode& Node = PedestrianNodes.AddDefaulted_GetRef();
 				Node.FileX = FileX;
 				Node.FileY = FileY;
 				Node.BuildingId = Tile.Building;
-				Node.Location = FVector(WorldX, WorldY, WorldZ + 10.0f);
+				Node.LocalLocation = FVector(LocalX + Sidewalk.X, LocalY + Sidewalk.Y, LocalZ + 10.0f);
+				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
 				PedestrianIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
 		}
@@ -419,8 +542,10 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	{
 		for (const int32* Offset : NeighborOffsets)
 		{
-			const int32 NeighborIndex = FindNodeByTile(RoadNodeIndexByTile, Node.FileX + Offset[0], Node.FileY + Offset[1]);
-			if (NeighborIndex != INDEX_NONE)
+			const int32 DeltaX = Offset[0];
+			const int32 DeltaY = Offset[1];
+			const int32 NeighborIndex = FindNodeByTile(RoadNodeIndexByTile, Node.FileX + DeltaX, Node.FileY + DeltaY);
+			if (NeighborIndex != INDEX_NONE && CanRoadTilesConnect(Node.BuildingId, RoadNodes[NeighborIndex].BuildingId, DeltaX, DeltaY))
 			{
 				Node.Neighbors.Add(NeighborIndex);
 			}
@@ -431,8 +556,10 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	{
 		for (const int32* Offset : NeighborOffsets)
 		{
-			const int32 NeighborIndex = FindNodeByTile(PedestrianIndexByTile, Node.FileX + Offset[0], Node.FileY + Offset[1]);
-			if (NeighborIndex != INDEX_NONE)
+			const int32 DeltaX = Offset[0];
+			const int32 DeltaY = Offset[1];
+			const int32 NeighborIndex = FindNodeByTile(PedestrianIndexByTile, Node.FileX + DeltaX, Node.FileY + DeltaY);
+			if (NeighborIndex != INDEX_NONE && CanRoadTilesConnect(Node.BuildingId, PedestrianNodes[NeighborIndex].BuildingId, DeltaX, DeltaY))
 			{
 				Node.Neighbors.Add(NeighborIndex);
 			}
@@ -445,13 +572,15 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	UE_LOG(
 		LogSimCopterTrafficSystem,
 		Display,
-		TEXT("Built SimCopter traffic spawn data from '%s': roadNodes=%d pedestrianNodes=%d maxVehicles=%d maxPedestrians=%d spawnRadius=%.0f."),
+		TEXT("Built SimCopter traffic spawn data from '%s' via %s: roadNodes=%d pedestrianNodes=%d maxVehicles=%d maxPedestrians=%d spawnRadius=%.0f tileSize=%.1f."),
 		*CityPath,
+		*LastCitySource,
 		RoadNodeCount,
 		PedestrianNodeCount,
 		MaxVehicleAgents,
 		MaxPedestrianAgents,
-		SpawnRadiusCm);
+		SpawnRadiusCm,
+		ActiveTileSize);
 
 	return true;
 }
@@ -591,67 +720,44 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 		return;
 	}
 
-	int32 BestNodeIndex = INDEX_NONE;
-	float BestDistanceSq = TNumericLimits<float>::Max();
-	const FVector AgentLocation = Agent.GetActorLocation();
-	for (int32 NodeIndex = 0; NodeIndex < Nodes.Num(); ++NodeIndex)
+	// The agent has reached (or lost) its target node; that node is the start of the next hop.
+	int32 FromIndex = Agent.GetRouteTargetNode();
+	if (!Nodes.IsValidIndex(FromIndex))
 	{
-		const float DistanceSq = FVector::DistSquared2D(Nodes[NodeIndex].Location, AgentLocation);
-		if (DistanceSq < BestDistanceSq)
+		FromIndex = FindNearestNodeIndex(Nodes, Agent.GetActorLocation());
+		if (FromIndex == INDEX_NONE)
 		{
-			BestDistanceSq = DistanceSq;
-			BestNodeIndex = NodeIndex;
+			Agent.ClearMoveTarget();
+			return;
 		}
+		Agent.SetRouteState(FromIndex, INDEX_NONE);
 	}
 
-	if (BestNodeIndex == INDEX_NONE)
+	const int32 NextIndex = ChooseNextRouteNode(Nodes, FromIndex, Agent.GetRoutePrevNode(), RandomStream);
+	if (NextIndex == INDEX_NONE)
 	{
-		Agent.ClearMoveTarget();
+		// Isolated node with no neighbours: re-seed from the nearest node so the agent isn't stuck.
+		const int32 ReseedIndex = FindNearestNodeIndex(Nodes, Agent.GetActorLocation());
+		Agent.SetRouteState(ReseedIndex, INDEX_NONE);
+		if (Nodes.IsValidIndex(ReseedIndex))
+		{
+			Agent.SetMoveTarget(Nodes[ReseedIndex].Location);
+		}
+		else
+		{
+			Agent.ClearMoveTarget();
+		}
 		return;
 	}
 
-	const FSimCopterGroundRouteNode& Node = Nodes[BestNodeIndex];
-	if (Agent.GetAgentKind() == ESimCopterGroundAgentKind::Vehicle && &Nodes == &RoadNodes)
-	{
-		const FOriginalTrafficStep OriginalStep = ChooseOriginalTrafficStep(
-			Node,
-			Agent.GetOriginalTrafficDirectionBits(),
-			RandomStream,
-			RoadNodeIndexByTile,
-			RoadNodes);
-		if (OriginalStep.bHasStep)
-		{
-			if (const int32* TargetNodeIndex = RoadNodeIndexByTile.Find(OriginalStep.TargetTile))
-			{
-				Agent.SetOriginalTrafficDirectionBits(OriginalStep.DirectionBits);
-				Agent.SetMoveTarget(RoadNodes[*TargetNodeIndex].Location);
-				return;
-			}
-		}
-	}
-
-	if (Node.Neighbors.Num() > 0 && RandomStream.FRand() < 0.84f)
-	{
-		const int32 NeighborIndex = Node.Neighbors[RandomStream.RandRange(0, Node.Neighbors.Num() - 1)];
-		const FSimCopterGroundRouteNode& Neighbor = Nodes[NeighborIndex];
-		if (Agent.GetAgentKind() == ESimCopterGroundAgentKind::Vehicle)
-		{
-			const int32 DeltaX = FMath::Clamp(Neighbor.FileX - Node.FileX, -1, 1);
-			const int32 DeltaY = FMath::Clamp(Neighbor.FileY - Node.FileY, -1, 1);
-			const int32 DirectionBits = DeltaY < 0 ? 1 : (DeltaX > 0 ? 2 : (DeltaY > 0 ? 4 : (DeltaX < 0 ? 8 : 0)));
-			Agent.SetOriginalTrafficDirectionBits(DirectionBits);
-		}
-		Agent.SetMoveTarget(Nodes[NeighborIndex].Location);
-	}
-	else
-	{
-		const int32 RandomNodeIndex = RandomStream.RandRange(0, Nodes.Num() - 1);
-		if (Agent.GetAgentKind() == ESimCopterGroundAgentKind::Vehicle)
-		{
-			Agent.SetOriginalTrafficDirectionBits(0);
-		}
-		Agent.SetMoveTarget(Nodes[RandomNodeIndex].Location);
-	}
+	// Drive to the chosen adjacent graph node; record where we came from for the next hop.
+	Agent.SetRouteState(NextIndex, FromIndex);
+	Agent.SetMoveTarget(MakeRoutePointLocation(
+		Nodes,
+		NextIndex,
+		FromIndex,
+		INDEX_NONE,
+		Agent.GetAgentKind() == ESimCopterGroundAgentKind::Vehicle));
 }
 
 bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& FocusLocation)
@@ -679,18 +785,25 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 	}
 
 	const FSimCopterGroundRouteNode& Node = Nodes[NodeIndex];
+	const int32 InitialNextIndex = ChooseNextRouteNode(Nodes, NodeIndex, INDEX_NONE, RandomStream);
+	const FVector SpawnBaseLocation = MakeRoutePointLocation(Nodes, NodeIndex, INDEX_NONE, InitialNextIndex, bVehicle);
 	FRotator SpawnRotation = FRotator::ZeroRotator;
-	if (Node.Neighbors.Num() > 0)
+	if (Nodes.IsValidIndex(InitialNextIndex))
+	{
+		const FVector Target = MakeRoutePointLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, bVehicle);
+		SpawnRotation.Yaw = (Target - SpawnBaseLocation).Rotation().Yaw;
+	}
+	else if (Node.Neighbors.Num() > 0)
 	{
 		const FVector Target = Nodes[Node.Neighbors[RandomStream.RandRange(0, Node.Neighbors.Num() - 1)]].Location;
-		SpawnRotation.Yaw = (Target - Node.Location).Rotation().Yaw;
+		SpawnRotation.Yaw = (Target - SpawnBaseLocation).Rotation().Yaw;
 	}
 	else
 	{
 		SpawnRotation.Yaw = RandomStream.FRandRange(0.0f, 360.0f);
 	}
 
-	const FVector SpawnLocation = Node.Location + FVector::UpVector * (bVehicle ? 100.0f : 92.0f);
+	const FVector SpawnLocation = SpawnBaseLocation + FVector::UpVector * (bVehicle ? 100.0f : 92.0f);
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
@@ -707,7 +820,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 	Agent->ConfigureAgent(
 		bVehicle ? ESimCopterGroundAgentKind::Vehicle : ESimCopterGroundAgentKind::Pedestrian,
 		MeshName,
-		ResolveOriginalGameRoot(),
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
 		bVehicle ? VehicleSpeedCmPerSec : PedestrianSpeedCmPerSec);
 
 	if (bRequireOriginalPopulationMeshes && !Agent->IsUsingOriginalMesh())
@@ -719,7 +832,21 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 		return false;
 	}
 
-	AssignNextTarget(*Agent, Nodes);
+	// Drop the agent onto the road/ground immediately so it is grounded on its very first frame
+	// instead of briefly hovering at the spawner's estimated terrain height.
+	Agent->SnapToGroundImmediate();
+
+	// Seed the route at the spawn node, then pick the first hop along the graph.
+	if (Nodes.IsValidIndex(InitialNextIndex))
+	{
+		Agent->SetRouteState(InitialNextIndex, NodeIndex);
+		Agent->SetMoveTarget(MakeRoutePointLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, bVehicle));
+	}
+	else
+	{
+		Agent->SetRouteState(NodeIndex, INDEX_NONE);
+		AssignNextTarget(*Agent, Nodes);
+	}
 
 	if (bVehicle)
 	{
@@ -762,4 +889,44 @@ int32 ASimCopterTrafficSystemActor::ChooseNodeNearFocus(const TArray<FSimCopterG
 	}
 
 	return BestFallbackDistanceSq <= MaxDistanceSq ? BestFallbackIndex : INDEX_NONE;
+}
+
+FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
+	const TArray<FSimCopterGroundRouteNode>& Nodes,
+	int32 PointIndex,
+	int32 PreviousIndex,
+	int32 NextIndex,
+	bool bVehicle) const
+{
+	if (!Nodes.IsValidIndex(PointIndex))
+	{
+		return GetActorLocation();
+	}
+
+	const FSimCopterGroundRouteNode& Point = Nodes[PointIndex];
+	if (!bVehicle || VehicleLaneOffsetTileFraction <= 0.0f)
+	{
+		return Point.Location;
+	}
+
+	FVector Direction = FVector::ZeroVector;
+	if (Nodes.IsValidIndex(NextIndex))
+	{
+		Direction = Nodes[NextIndex].LocalLocation - Point.LocalLocation;
+	}
+	else if (Nodes.IsValidIndex(PreviousIndex))
+	{
+		Direction = Point.LocalLocation - Nodes[PreviousIndex].LocalLocation;
+	}
+
+	Direction.Z = 0.0f;
+	Direction = Direction.GetSafeNormal();
+	if (Direction.IsNearlyZero())
+	{
+		return Point.Location;
+	}
+
+	const FVector Right = FVector::CrossProduct(FVector::UpVector, Direction).GetSafeNormal();
+	const FVector LaneLocalLocation = Point.LocalLocation + Right * (ActiveTileSize * VehicleLaneOffsetTileFraction);
+	return ActiveCityToWorldTransform.TransformPosition(LaneLocalLocation);
 }

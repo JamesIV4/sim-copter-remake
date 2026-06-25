@@ -4,12 +4,14 @@
 
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Texture2D.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -21,6 +23,12 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterGroundAgent, Log, All);
 
 namespace
 {
+// The city (and its cars/helicopters) is rendered at 0.25x of real-cm so a 400cm remake tile
+// stands in for the original 1600-unit tile. The population capsules and bodies were authored in
+// real cm, which made pedestrians (and the on-foot player) read ~4x too tall next to the shrunk
+// world. Everything visual/collision below is multiplied by this to match.
+constexpr float PopulationWorldScale = 0.25f;
+
 constexpr float VehicleCapsuleRadiusCm = 135.0f;
 constexpr float VehicleCapsuleHalfHeightCm = 82.0f;
 constexpr float PedestrianCapsuleRadiusCm = 32.0f;
@@ -29,6 +37,7 @@ constexpr float TargetStopDistanceCm = 75.0f;
 constexpr float VehicleFallbackZCm = 52.0f;
 constexpr float PedestrianFallbackZCm = 88.0f;
 constexpr float PedestrianSpriteHeightCm = 162.0f;
+constexpr float PedestrianBodyHeightCm = 176.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
 
 UMaterialInterface* LoadSpriteMaterialNoWarn()
@@ -64,6 +73,17 @@ ASimCopterGroundAgent::ASimCopterGroundAgent()
 	ProxyMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ProxyMeshComponent->SetCanEverAffectNavigation(false);
 
+	// Headlights are cheap dynamic spotlights (no shadows) - there can be many cars on screen.
+	HeadlightLeft = CreateDefaultSubobject<USpotLightComponent>(TEXT("HeadlightLeft"));
+	HeadlightLeft->SetupAttachment(VisualRoot);
+	HeadlightLeft->CastShadows = false;
+	HeadlightLeft->SetVisibility(false);
+
+	HeadlightRight = CreateDefaultSubobject<USpotLightComponent>(TEXT("HeadlightRight"));
+	HeadlightRight->SetupAttachment(VisualRoot);
+	HeadlightRight->CastShadows = false;
+	HeadlightRight->SetVisibility(false);
+
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (CubeMeshFinder.Succeeded())
 	{
@@ -88,16 +108,13 @@ void ASimCopterGroundAgent::BeginPlay()
 	Super::BeginPlay();
 
 	ApplyAgentShape();
-	if (!MeshTableName.IsEmpty())
+	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
 	{
-		if (AgentKind == ESimCopterGroundAgentKind::Pedestrian && FSimCopterPopulationSprite::IsPeople1Name(MeshTableName))
-		{
-			LoadOriginalPedestrianSpriteFromOriginalGameRoot();
-		}
-		else
-		{
-			LoadOriginalMeshFromOriginalGameRoot();
-		}
+		BuildPedestrianBody();
+	}
+	else if (!MeshTableName.IsEmpty())
+	{
+		LoadOriginalMeshFromOriginalGameRoot();
 	}
 }
 
@@ -126,19 +143,17 @@ void ASimCopterGroundAgent::ConfigureAgent(
 	AnimationPhase = FMath::FRandRange(0.0f, UE_TWO_PI);
 	ApplyAgentShape();
 
-	if (!MeshTableName.IsEmpty())
+	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
 	{
-		if (AgentKind == ESimCopterGroundAgentKind::Pedestrian && FSimCopterPopulationSprite::IsPeople1Name(MeshTableName))
-		{
-			LoadOriginalPedestrianSpriteFromOriginalGameRoot();
-		}
-		else
-		{
-			LoadOriginalMeshFromOriginalGameRoot();
-		}
+		BuildPedestrianBody();
+	}
+	else if (!MeshTableName.IsEmpty())
+	{
+		LoadOriginalMeshFromOriginalGameRoot();
 	}
 	else
 	{
+		DisableVehicleHeadlights();
 		ShowOriginalMesh(false);
 	}
 }
@@ -187,15 +202,21 @@ bool ASimCopterGroundAgent::LoadOriginalMeshFromOriginalGameRoot()
 		? FLinearColor(0.33f, 0.34f, 0.35f)
 		: FLinearColor(0.72f, 0.63f, 0.52f);
 
+	// The original cars carry translucent "headlight beam" cards (Maxis face type 11) projecting
+	// off the front of the body. Route those into a throwaway translucent section so they are
+	// dropped from the rendered vehicle - real spotlights below take their place. (Without this
+	// the single-section build renders them as opaque grey/blue blocks: the "opaque headlights".)
 	FMaxisMeshSection MeshSection;
-	FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(
+	FMaxisMeshSection DiscardedBeamSection;
+	FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
 		*MeshObject,
 		ColorMap,
 		ModelUnitsPerCentimeter,
 		ModelScale,
 		bRenderModelBackfaces,
 		FallbackColor,
-		MeshSection);
+		MeshSection,
+		&DiscardedBeamSection);
 
 	if (MeshSection.IsEmpty())
 	{
@@ -223,6 +244,16 @@ bool ASimCopterGroundAgent::LoadOriginalMeshFromOriginalGameRoot()
 	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
 	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight - MeshSection.LocalBounds.Min.Z));
 	ShowOriginalMesh(true);
+
+	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
+	{
+		ConfigureVehicleHeadlights(MeshSection.LocalBounds);
+	}
+	else
+	{
+		DisableVehicleHeadlights();
+	}
+
 	return true;
 }
 
@@ -284,6 +315,85 @@ bool ASimCopterGroundAgent::LoadOriginalPedestrianSpriteFromOriginalGameRoot()
 	return true;
 }
 
+bool ASimCopterGroundAgent::BuildPedestrianBody()
+{
+	LastMeshLoadError.Reset();
+	bUsingPedestrianSprite = false;
+	bUsingPedestrianBody = false;
+	PedestrianSpriteTexture = nullptr;
+	SpriteMaterialInstance = nullptr;
+	OriginalMeshComponent->ClearAllMeshSections();
+	DisableVehicleHeadlights();
+
+	PedestrianOutfitIndex = FSimCopterPopulationBody::ResolveOutfitIndex(this);
+	FSimCopterPopulationBody::BuildPerson(OriginalMeshComponent, PedestrianOutfitIndex, PedestrianBodyHeightCm * PopulationWorldScale);
+
+	if (VertexColorMaterial != nullptr)
+	{
+		OriginalMeshComponent->SetMaterial(0, VertexColorMaterial);
+	}
+
+	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	// Feet sit at the capsule bottom; the body is modelled from Z=0 (feet) upward.
+	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight));
+	bUsingPedestrianBody = true;
+	ShowOriginalMesh(true);
+	return true;
+}
+
+void ASimCopterGroundAgent::ConfigureVehicleHeadlights(const FBox& VehicleLocalBounds)
+{
+	if (HeadlightLeft == nullptr || HeadlightRight == nullptr)
+	{
+		return;
+	}
+
+	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	// Positions are in VisualRoot space. The car's nose is the mesh's max-X; headlights sit just
+	// above the ground at the front corners and aim forward (+X), slightly downward.
+	const float FrontX = VehicleLocalBounds.Max.X;
+	const float SideY = FMath::Max(VehicleLocalBounds.Max.Y, 10.0f) * 0.62f;
+	const float BodyHeight = VehicleLocalBounds.Max.Z - VehicleLocalBounds.Min.Z;
+	const float HeadlightZ = -HalfHeight + FMath::Clamp(BodyHeight * 0.25f, 8.0f, 30.0f);
+	const FRotator BeamRotation(-9.0f, 0.0f, 0.0f);
+
+	USpotLightComponent* Lights[2] = {HeadlightLeft, HeadlightRight};
+	const float SideSigns[2] = {-1.0f, 1.0f};
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		USpotLightComponent* Light = Lights[Index];
+		Light->SetRelativeLocation(FVector(FrontX, SideSigns[Index] * SideY, HeadlightZ));
+		Light->SetRelativeRotation(BeamRotation);
+		Light->SetIntensity(HeadlightIntensity);
+		Light->SetAttenuationRadius(HeadlightAttenuationRadiusCm);
+		Light->SetInnerConeAngle(11.0f);
+		Light->SetOuterConeAngle(26.0f);
+		Light->SetLightColor(FLinearColor(HeadlightColor));
+		Light->SetVisibility(bEnableVehicleHeadlights);
+	}
+}
+
+void ASimCopterGroundAgent::DisableVehicleHeadlights()
+{
+	if (HeadlightLeft != nullptr)
+	{
+		HeadlightLeft->SetVisibility(false);
+	}
+	if (HeadlightRight != nullptr)
+	{
+		HeadlightRight->SetVisibility(false);
+	}
+}
+
+void ASimCopterGroundAgent::SnapToGroundImmediate()
+{
+	FVector GroundedLocation;
+	if (TraceGround(GroundedLocation))
+	{
+		SetActorLocation(GroundedLocation, false);
+	}
+}
+
 void ASimCopterGroundAgent::SetMoveTarget(const FVector& NewTargetLocation)
 {
 	MoveTargetLocation = NewTargetLocation;
@@ -316,16 +426,16 @@ void ASimCopterGroundAgent::ApplyAgentShape()
 
 	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
 	{
-		CollisionComponent->SetCapsuleSize(VehicleCapsuleRadiusCm, VehicleCapsuleHalfHeightCm);
-		ProxyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -VehicleCapsuleHalfHeightCm + VehicleFallbackZCm));
-		ProxyMeshComponent->SetRelativeScale3D(FVector(2.8f, 1.25f, 0.55f));
+		CollisionComponent->SetCapsuleSize(VehicleCapsuleRadiusCm * PopulationWorldScale, VehicleCapsuleHalfHeightCm * PopulationWorldScale);
+		ProxyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, (-VehicleCapsuleHalfHeightCm + VehicleFallbackZCm) * PopulationWorldScale));
+		ProxyMeshComponent->SetRelativeScale3D(FVector(2.8f, 1.25f, 0.55f) * PopulationWorldScale);
 		MovementSpeedCmPerSec = FMath::Max(MovementSpeedCmPerSec, 520.0f);
 	}
 	else
 	{
-		CollisionComponent->SetCapsuleSize(PedestrianCapsuleRadiusCm, PedestrianCapsuleHalfHeightCm);
-		ProxyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -PedestrianCapsuleHalfHeightCm + PedestrianFallbackZCm));
-		ProxyMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.18f, 1.76f));
+		CollisionComponent->SetCapsuleSize(PedestrianCapsuleRadiusCm * PopulationWorldScale, PedestrianCapsuleHalfHeightCm * PopulationWorldScale);
+		ProxyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, (-PedestrianCapsuleHalfHeightCm + PedestrianFallbackZCm) * PopulationWorldScale));
+		ProxyMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.18f, 1.76f) * PopulationWorldScale);
 		MovementSpeedCmPerSec = FMath::Clamp(MovementSpeedCmPerSec, 130.0f, 520.0f);
 	}
 }
@@ -357,31 +467,45 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	const FRotator DesiredRotation(0.0f, DesiredDirection.Rotation().Yaw, 0.0f);
 	const FRotator NewRotation = FMath::RInterpConstantTo(CurrentRotation, DesiredRotation, DeltaSeconds, TurnRateDegPerSec);
 
-	FHitResult Hit;
-	RootComponent->MoveComponent(Delta, NewRotation.Quaternion(), true, &Hit);
-	if (Hit.IsValidBlockingHit())
-	{
-		CurrentVelocityCmPerSec = FVector::VectorPlaneProject(CurrentVelocityCmPerSec, Hit.Normal) * 0.35f;
-	}
+	// Move kinematically (no collision sweep). The route graph already keeps agents on the road
+	// network, and UpdateGroundSnap fixes the height each tick, so a swept move would only let cars
+	// jam against each other or catch on building corners and stall - exactly the "not driving"
+	// failure mode. Agents are sparse on the road grid, so the occasional overlap is acceptable.
+	RootComponent->MoveComponent(Delta, NewRotation.Quaternion(), false);
 }
 
-void ASimCopterGroundAgent::UpdateGroundSnap()
+bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const
 {
 	if (GetWorld() == nullptr || CollisionComponent == nullptr)
 	{
-		return;
+		return false;
 	}
 
 	const float HalfHeight = CollisionComponent->GetScaledCapsuleHalfHeight();
 	const FVector CurrentLocation = GetActorLocation();
-	const FVector Start = CurrentLocation + FVector::UpVector * 120.0f;
+	// Trace well above to well below the agent so placement survives any gap between the traffic
+	// spawner's terrain estimate and the city's actual rendered surface (the cause of the old
+	// hovering). The Camera channel is blocked by the city terrain/mesh but ignored by every
+	// pedestrian/vehicle/player capsule, so agents never snap onto one another.
+	const FVector Start = CurrentLocation + FVector::UpVector * GroundProbeUpCm;
 	const FVector End = CurrentLocation - FVector::UpVector * (HalfHeight + GroundProbeDistanceCm);
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterGroundAgentSnap), false, this);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
 	{
-		const FVector SnappedLocation(CurrentLocation.X, CurrentLocation.Y, Hit.ImpactPoint.Z + HalfHeight + 1.0f);
-		SetActorLocation(SnappedLocation, false);
+		OutGroundLocation = FVector(CurrentLocation.X, CurrentLocation.Y, Hit.ImpactPoint.Z + HalfHeight + 1.0f);
+		return true;
+	}
+
+	return false;
+}
+
+void ASimCopterGroundAgent::UpdateGroundSnap()
+{
+	FVector GroundedLocation;
+	if (TraceGround(GroundedLocation))
+	{
+		SetActorLocation(GroundedLocation, false);
 	}
 }
 
@@ -405,8 +529,8 @@ void ASimCopterGroundAgent::UpdateJankyAnimation(float DeltaSeconds)
 	}
 	else
 	{
-		const float Lean = Wave * 7.0f * SpeedAlpha;
-		const float Bob = FMath::Abs(Wave) * 7.0f * SpeedAlpha;
+		const float Lean = Wave * 7.0f * SpeedAlpha; // degrees of roll (scale-independent)
+		const float Bob = FMath::Abs(Wave) * 7.0f * SpeedAlpha * PopulationWorldScale;
 		VisualRoot->SetRelativeRotation(FRotator(0.0f, 0.0f, Lean));
 		VisualRoot->SetRelativeLocation(FVector(0.0f, 0.0f, Bob));
 
@@ -434,6 +558,7 @@ void ASimCopterGroundAgent::ShowOriginalMesh(bool bUseOriginalMesh)
 	if (!bUseOriginalMesh)
 	{
 		bUsingPedestrianSprite = false;
+		bUsingPedestrianBody = false;
 	}
 	if (OriginalMeshComponent != nullptr)
 	{

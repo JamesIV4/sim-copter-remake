@@ -12,6 +12,7 @@ class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UProceduralMeshComponent;
 class USceneComponent;
+class USpotLightComponent;
 class UStaticMeshComponent;
 class UTexture2D;
 
@@ -46,6 +47,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool LoadOriginalPedestrianSpriteFromOriginalGameRoot();
 
+	// Builds the procedural low-poly 3D pedestrian body (replaces the old flat sprite).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
+	bool BuildPedestrianBody();
+
+	// Immediately drops the agent onto the ground beneath it (used right after spawn so the
+	// very first frame is grounded instead of floating).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
+	void SnapToGroundImmediate();
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	void SetMoveTarget(const FVector& NewTargetLocation);
 
@@ -58,8 +68,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool IsNearMoveTarget(float DistanceCm = 90.0f) const;
 
-	void SetOriginalTrafficDirectionBits(int32 NewDirectionBits) { OriginalTrafficDirectionBits = NewDirectionBits; }
-	int32 GetOriginalTrafficDirectionBits() const { return OriginalTrafficDirectionBits; }
+	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
+	// graph node the agent is currently driving toward; PrevNode is where it came from (used to
+	// avoid immediate U-turns). INDEX_NONE means "unset / re-acquire nearest node".
+	void SetRouteState(int32 TargetNode, int32 PrevNode)
+	{
+		RouteTargetNodeIndex = TargetNode;
+		RoutePrevNodeIndex = PrevNode;
+	}
+	int32 GetRouteTargetNode() const { return RouteTargetNodeIndex; }
+	int32 GetRoutePrevNode() const { return RoutePrevNodeIndex; }
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	ESimCopterGroundAgentKind GetAgentKind() const { return AgentKind; }
@@ -79,6 +97,15 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> ProxyMeshComponent;
+
+	// Vehicle headlights. The original cars carry translucent "headlight beam" cards (Maxis
+	// face type 11) in front of the body; the remake strips those and drives real spotlights
+	// instead, so the beams light the road at night rather than rendering as opaque blocks.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USpotLightComponent> HeadlightLeft;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USpotLightComponent> HeadlightRight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Ground Agent")
 	ESimCopterGroundAgentKind AgentKind = ESimCopterGroundAgentKind::Pedestrian;
@@ -101,14 +128,34 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets")
 	bool bRenderModelBackfaces = true;
 
+	// Vehicle headlight spotlights (replace the removed translucent beam cards).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights")
+	bool bEnableVehicleHeadlights = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "0.0"))
+	float HeadlightIntensity = 9000.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "100.0"))
+	float HeadlightAttenuationRadiusCm = 1800.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights")
+	FColor HeadlightColor = FColor(255, 244, 214);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float MovementSpeedCmPerSec = 420.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float TurnRateDegPerSec = 420.0f;
 
+	// Downward reach of the ground probe, below the capsule bottom.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
-	float GroundProbeDistanceCm = 900.0f;
+	float GroundProbeDistanceCm = 4000.0f;
+
+	// How far above the agent the ground probe starts. Kept large so placement survives a
+	// mismatch between the spawner's terrain estimate and the city's actual rendered surface
+	// (the reason agents used to hover in the air).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
+	float GroundProbeUpCm = 2500.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement")
 	bool bSnapToGround = true;
@@ -145,13 +192,19 @@ private:
 	float AnimationPhase = 0.0f;
 	int32 PedestrianSpriteColumn = 0;
 	int32 PedestrianSpriteRow = INDEX_NONE;
-	int32 OriginalTrafficDirectionBits = 0;
+	int32 PedestrianOutfitIndex = 0;
+	int32 RouteTargetNodeIndex = INDEX_NONE;
+	int32 RoutePrevNodeIndex = INDEX_NONE;
 	bool bUsingPedestrianSprite = false;
+	bool bUsingPedestrianBody = false;
 
 	void ApplyAgentShape();
 	void UpdateMovement(float DeltaSeconds);
 	void UpdateGroundSnap();
 	void UpdateJankyAnimation(float DeltaSeconds);
 	void ShowOriginalMesh(bool bUseOriginalMesh);
+	void ConfigureVehicleHeadlights(const FBox& VehicleLocalBounds);
+	void DisableVehicleHeadlights();
+	bool TraceGround(FVector& OutGroundLocation) const;
 	FString ResolveOriginalGameRoot() const;
 };
