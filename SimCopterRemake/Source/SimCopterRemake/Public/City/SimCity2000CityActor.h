@@ -30,6 +30,24 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SimCopter|City")
 	void RebuildCity();
 
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	FString GetResolvedCityPath() const;
+
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	FString GetResolvedOriginalGameRoot() const;
+
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	float GetTileSize() const;
+
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	bool UsesOriginalTerrainHeightScale() const;
+
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	float GetTerrainHeightScale() const;
+
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	float GetEffectiveTerrainHeightScale() const;
+
 private:
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<USceneComponent> SceneRoot;

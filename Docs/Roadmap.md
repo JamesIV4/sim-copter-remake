@@ -94,12 +94,39 @@ Ground population first pass:
   spawn candidates, and runs expanded active counts/radii compared with the original game's small
   pools.
 - Render traffic cars from original `GEO` meshes (`AUTO*`, emergency/criminal vehicles). Active
-  population actors now require original asset loads; pedestrians and the on-foot player render
-  cropped frames from original `BMP/PEOPLE1.BMP` through the masked sprite material while the deeper
-  `privanim.df` animation records are decoded.
-- Route traffic cars with the decompiled `FUN_004b5290` TRAN road-step table for XBLD ids
-  `0x2c..0x3e`, `0x45..0x48`, `0x4d..0x4e`, and `0x5a..0x5b`; remaining work is original spawn
-  validation and follower/lane-offset subobject updates.
+  population actors require original asset loads. The original cars carry translucent "headlight
+  beam" cards (Maxis face type `11`) projecting off the nose; the remake now strips those (they
+  were rendering as opaque grey/blue blocks) and drives real `USpotLightComponent` headlights at
+  the front of each car instead (`SimCopterGroundAgent` `bEnableVehicleHeadlights`).
+- Replace the flat `BMP/PEOPLE1.BMP` pedestrian/player sprite with a procedural low-poly 3D body
+  (`FSimCopterPopulationBody`): stacked colored boxes for legs/torso/arms/head with police and
+  civilian outfit variants, drawn with `M_SimCopterLitVertexColor`. SimCopter's people are not in
+  the `GEO` packs at all - they come from `privanim.df`; until those articulated records are
+  decoded the box body reproduces the original flat-shaded "charm". The `PEOPLE1.BMP` sprite path
+  remains in `FSimCopterPopulationSprite` as a fallback.
+- Spawn/route cars on the actual surface-road tiles `0x1D..0x2B` (`RD29..RD43`) plus the elevated
+  road ids `0x45..0x48`/`0x4D..0x4E`/`0x5A..0x5B`. The earlier code matched `0x2C..0x3E`, which are
+  the `RL44..RL58` **rails** - so every car drove on the train tracks.
+- Road routing is a clean graph walk: every road tile is a node linked to its 4-neighbour road
+  tiles, and `ChooseNextRouteNode` picks a connected neighbour each hop (no U-turns except at
+  dead-ends, ~70% continue straight / ~30% turn at junctions). Agents only ever target an adjacent
+  graph node, so they cannot leave the road network. This replaced the decompiled `FUN_004b5290`
+  step table (and a buggy 16% "drive to a random far node" fallback that beelined cars off-road).
+  Agent movement is kinematic so cars never jam/stall; `UpdateGroundSnap` keeps them on the surface.
+- Curve/diagonal road tiles `0x23..0x26` now use shape-aware route-point offsets toward the corner
+  shared by the tile's two openings, so cars and pedestrians follow angled roads without zig-zagging
+  back and forth across the road width. Cars also apply a right-hand lane offset at target time.
+- Pedestrians walk the sidewalks that are part of the road tiles (surface-road tiles with a lateral
+  offset toward the road edge), not the empty land beside roads.
+- Population is rendered at the city's `0.25` world scale: pedestrian/player capsules and bodies
+  (and the on-foot camera) are multiplied by `PopulationWorldScale` so they no longer read ~4x too
+  tall next to the shrunk city and cars. Travel speeds/route nodes are unscaled.
+- Ground agents (cars and pedestrians) snap to the city collision each tick and on spawn via a
+  generous vertical probe on the **Camera** channel (the city terrain/mesh block it, agent/player
+  capsules ignore it, so agents never stack on each other). This replaced a shallow `+120cm`
+  Visibility probe that missed whenever the spawner's estimated terrain height differed from the
+  city's rendered surface - the cause of cars and pedestrians hovering in the air instead of
+  driving/walking on the roads.
 - Start the player on foot near a parked helicopter, then support `F` enter/exit, hold `Space` to
   start the helicopter, and hold `Ctrl` on the ground to shut the engine down.
 

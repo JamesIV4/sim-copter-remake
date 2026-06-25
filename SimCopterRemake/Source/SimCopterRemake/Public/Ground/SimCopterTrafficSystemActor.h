@@ -7,10 +7,12 @@
 #include "UObject/NoExportTypes.h"
 #include "SimCopterTrafficSystemActor.generated.h"
 
+class ASimCity2000CityActor;
 class ASimCopterGroundAgent;
 
 struct FSimCopterGroundRouteNode
 {
+	FVector LocalLocation = FVector::ZeroVector;
 	FVector Location = FVector::ZeroVector;
 	int32 FileX = 0;
 	int32 FileY = 0;
@@ -33,6 +35,12 @@ public:
 	bool RebuildSpawnData();
 
 protected:
+	UPROPERTY(EditInstanceOnly, Category = "SimCopter|City")
+	TObjectPtr<ASimCity2000CityActor> SourceCityActor;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bUseActiveCityActor = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City", meta = (FilePathFilter = "sc2"))
 	FFilePath CityFile;
 
@@ -84,6 +92,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float PedestrianSpeedCmPerSec = 230.0f;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0", ClampMax = "0.45"))
+	float VehicleLaneOffsetTileFraction = 0.20f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "10.0"))
 	float TileSize = 400.0f;
 
@@ -95,6 +106,9 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	FString LastLoadError;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	FString LastCitySource;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	int32 RoadNodeCount = 0;
@@ -115,9 +129,13 @@ private:
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> VehicleAgents;
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> PedestrianAgents;
 	FRandomStream RandomStream;
+	FTransform ActiveCityToWorldTransform = FTransform::Identity;
+	FString ActiveOriginalGameRootPath;
+	float ActiveTileSize = 400.0f;
 	float SpawnThinkAccumulatorSeconds = 0.0f;
 	bool bLoggedMissingPedestrianMeshes = false;
 
+	ASimCity2000CityActor* ResolveSourceCityActor() const;
 	FString ResolveCityPath() const;
 	FString ResolveOriginalGameRoot() const;
 	FVector GetPopulationFocusLocation() const;
@@ -126,4 +144,5 @@ private:
 	void AssignNextTarget(ASimCopterGroundAgent& Agent, const TArray<FSimCopterGroundRouteNode>& Nodes);
 	bool TrySpawnAgent(bool bVehicle, const FVector& FocusLocation);
 	int32 ChooseNodeNearFocus(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& FocusLocation);
+	FVector MakeRoutePointLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 PointIndex, int32 PreviousIndex, int32 NextIndex, bool bVehicle) const;
 };

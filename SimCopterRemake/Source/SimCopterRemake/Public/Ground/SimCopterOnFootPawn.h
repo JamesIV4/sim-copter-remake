@@ -54,7 +54,7 @@ protected:
 	float ParkedHelicopterSearchRadiusCm = 7000.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Ground Start")
-	FVector ParkedHelicopterOffset = FVector(520.0f, 180.0f, 0.0f);
+	FVector ParkedHelicopterOffset = FVector(160.0f, 60.0f, 0.0f);
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets")
 	FDirectoryPath OriginalGameRoot;
@@ -88,6 +88,9 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> BodySpriteTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> BodyVertexColorMaterial;
 
 private:
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;

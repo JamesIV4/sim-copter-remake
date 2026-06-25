@@ -2542,6 +2542,36 @@ void ASimCity2000CityActor::RebuildCity()
 		EffectiveTerrainHeightScale);
 }
 
+FString ASimCity2000CityActor::GetResolvedCityPath() const
+{
+	return ResolveCityPath();
+}
+
+FString ASimCity2000CityActor::GetResolvedOriginalGameRoot() const
+{
+	return ResolveOriginalGameRoot();
+}
+
+float ASimCity2000CityActor::GetTileSize() const
+{
+	return TileSize;
+}
+
+bool ASimCity2000CityActor::UsesOriginalTerrainHeightScale() const
+{
+	return bUseOriginalTerrainHeightScale;
+}
+
+float ASimCity2000CityActor::GetTerrainHeightScale() const
+{
+	return TerrainHeightScale;
+}
+
+float ASimCity2000CityActor::GetEffectiveTerrainHeightScale() const
+{
+	return bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
+}
+
 FString ASimCity2000CityActor::ResolveCityPath() const
 {
 	const FString ConfiguredPath = CityFile.FilePath.TrimStartAndEnd();
