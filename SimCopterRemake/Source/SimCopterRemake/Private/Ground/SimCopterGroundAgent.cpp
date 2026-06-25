@@ -122,6 +122,10 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	if (AvoidanceMoveTimeRemainingSeconds > 0.0f)
+	{
+		AvoidanceMoveTimeRemainingSeconds = FMath::Max(0.0f, AvoidanceMoveTimeRemainingSeconds - DeltaSeconds);
+	}
 	UpdateMovement(DeltaSeconds);
 	if (bSnapToGround)
 	{
@@ -408,6 +412,11 @@ void ASimCopterGroundAgent::ClearMoveTarget()
 
 bool ASimCopterGroundAgent::IsNearMoveTarget(float DistanceCm) const
 {
+	if (IsAvoidanceMoveActive())
+	{
+		return false;
+	}
+
 	if (!bHasMoveTarget)
 	{
 		return true;
@@ -415,6 +424,40 @@ bool ASimCopterGroundAgent::IsNearMoveTarget(float DistanceCm) const
 
 	const FVector Delta = MoveTargetLocation - GetActorLocation();
 	return FVector(Delta.X, Delta.Y, 0.0f).SizeSquared() <= FMath::Square(DistanceCm);
+}
+
+float ASimCopterGroundAgent::GetCollisionRadiusCm() const
+{
+	return CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f;
+}
+
+void ASimCopterGroundAgent::SetTrafficSpeedScale(float NewSpeedScale)
+{
+	TrafficSpeedScale = FMath::Clamp(NewSpeedScale, 0.0f, 1.75f);
+}
+
+void ASimCopterGroundAgent::AddTrafficVelocityImpulse(const FVector& ImpulseCmPerSec)
+{
+	ExternalVelocityCmPerSec += FVector(ImpulseCmPerSec.X, ImpulseCmPerSec.Y, 0.0f);
+}
+
+void ASimCopterGroundAgent::MoveByTrafficSeparation(const FVector& WorldDelta)
+{
+	if (!WorldDelta.IsNearlyZero())
+	{
+		AddActorWorldOffset(WorldDelta, false);
+		if (bSnapToGround)
+		{
+			UpdateGroundSnap();
+		}
+	}
+}
+
+void ASimCopterGroundAgent::SetAvoidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds, float SpeedMultiplier)
+{
+	AvoidanceMoveTargetLocation = NewTargetLocation;
+	AvoidanceMoveTimeRemainingSeconds = FMath::Max(0.0f, DurationSeconds);
+	AvoidanceSpeedMultiplier = FMath::Clamp(SpeedMultiplier, 0.25f, 2.5f);
 }
 
 void ASimCopterGroundAgent::ApplyAgentShape()
@@ -442,36 +485,57 @@ void ASimCopterGroundAgent::ApplyAgentShape()
 
 void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 {
-	if (!bHasMoveTarget || RootComponent == nullptr)
+	if (RootComponent == nullptr)
+	{
+		return;
+	}
+
+	const bool bUsingAvoidanceTarget = IsAvoidanceMoveActive();
+	if (!bHasMoveTarget && !bUsingAvoidanceTarget)
 	{
 		CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, 6.0f);
+		ExternalVelocityCmPerSec = FMath::VInterpTo(ExternalVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, 8.0f);
+		if (!ExternalVelocityCmPerSec.IsNearlyZero())
+		{
+			RootComponent->MoveComponent(ExternalVelocityCmPerSec * DeltaSeconds, GetActorQuat(), false);
+		}
 		return;
 	}
 
 	const FVector CurrentLocation = GetActorLocation();
-	const FVector ToTarget = MoveTargetLocation - CurrentLocation;
+	const FVector ActiveMoveTarget = bUsingAvoidanceTarget ? AvoidanceMoveTargetLocation : MoveTargetLocation;
+	const FVector ToTarget = ActiveMoveTarget - CurrentLocation;
 	const FVector FlatToTarget(ToTarget.X, ToTarget.Y, 0.0f);
 	const float DistanceToTarget = FlatToTarget.Size();
 	if (DistanceToTarget <= TargetStopDistanceCm)
 	{
-		ClearMoveTarget();
+		if (bUsingAvoidanceTarget)
+		{
+			AvoidanceMoveTimeRemainingSeconds = 0.0f;
+			AvoidanceSpeedMultiplier = 1.0f;
+		}
+		else
+		{
+			ClearMoveTarget();
+		}
 		return;
 	}
 
 	const FVector DesiredDirection = FlatToTarget / DistanceToTarget;
-	const FVector DesiredVelocity = DesiredDirection * MovementSpeedCmPerSec;
+	const float EffectiveSpeedScale = TrafficSpeedScale * (bUsingAvoidanceTarget ? AvoidanceSpeedMultiplier : 1.0f);
+	const FVector DesiredVelocity = DesiredDirection * MovementSpeedCmPerSec * EffectiveSpeedScale;
 	CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, DesiredVelocity, DeltaSeconds, AgentKind == ESimCopterGroundAgentKind::Vehicle ? 3.0f : 9.0f);
 
-	const FVector Delta = CurrentVelocityCmPerSec * DeltaSeconds;
+	const FVector Delta = (CurrentVelocityCmPerSec + ExternalVelocityCmPerSec) * DeltaSeconds;
 	const FRotator CurrentRotation = GetActorRotation();
 	const FRotator DesiredRotation(0.0f, DesiredDirection.Rotation().Yaw, 0.0f);
 	const FRotator NewRotation = FMath::RInterpConstantTo(CurrentRotation, DesiredRotation, DeltaSeconds, TurnRateDegPerSec);
 
-	// Move kinematically (no collision sweep). The route graph already keeps agents on the road
-	// network, and UpdateGroundSnap fixes the height each tick, so a swept move would only let cars
-	// jam against each other or catch on building corners and stall - exactly the "not driving"
-	// failure mode. Agents are sparse on the road grid, so the occasional overlap is acceptable.
+	// Move kinematically (no collision sweep). The traffic system handles road-following,
+	// separation, and bump responses between agents; sweeping here would make capsules catch on
+	// building corners and stall instead of continuing along the road graph.
 	RootComponent->MoveComponent(Delta, NewRotation.Quaternion(), false);
+	ExternalVelocityCmPerSec = FMath::VInterpTo(ExternalVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, 8.0f);
 }
 
 bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const

@@ -68,6 +68,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool IsNearMoveTarget(float DistanceCm = 90.0f) const;
 
+	FVector GetMoveTargetLocation() const { return MoveTargetLocation; }
+	FVector GetCurrentVelocityCmPerSec() const { return CurrentVelocityCmPerSec; }
+	float GetCollisionRadiusCm() const;
+
+	void SetTrafficSpeedScale(float NewSpeedScale);
+	void AddTrafficVelocityImpulse(const FVector& ImpulseCmPerSec);
+	void MoveByTrafficSeparation(const FVector& WorldDelta);
+	void SetAvoidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds, float SpeedMultiplier = 1.0f);
+	bool IsAvoidanceMoveActive() const { return AvoidanceMoveTimeRemainingSeconds > 0.0f; }
+
 	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
 	// graph node the agent is currently driving toward; PrevNode is where it came from (used to
 	// avoid immediate U-turns). INDEX_NONE means "unset / re-acquire nearest node".
@@ -187,7 +197,12 @@ protected:
 private:
 	FVector MoveTargetLocation = FVector::ZeroVector;
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
+	FVector ExternalVelocityCmPerSec = FVector::ZeroVector;
+	FVector AvoidanceMoveTargetLocation = FVector::ZeroVector;
 	bool bHasMoveTarget = false;
+	float TrafficSpeedScale = 1.0f;
+	float AvoidanceMoveTimeRemainingSeconds = 0.0f;
+	float AvoidanceSpeedMultiplier = 1.0f;
 	float AnimationTimeSeconds = 0.0f;
 	float AnimationPhase = 0.0f;
 	int32 PedestrianSpriteColumn = 0;

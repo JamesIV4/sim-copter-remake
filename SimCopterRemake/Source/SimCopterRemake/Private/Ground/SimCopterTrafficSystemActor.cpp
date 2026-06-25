@@ -386,6 +386,22 @@ int32 ChooseNextRouteNode(
 
 	return Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
 }
+
+FVector GetFlatSafeNormal(const FVector& Vector)
+{
+	const FVector Flat(Vector.X, Vector.Y, 0.0f);
+	return Flat.GetSafeNormal();
+}
+
+FVector GetAgentTravelDirection(const ASimCopterGroundAgent& Agent)
+{
+	const FVector VelocityDirection = GetFlatSafeNormal(Agent.GetCurrentVelocityCmPerSec());
+	if (!VelocityDirection.IsNearlyZero())
+	{
+		return VelocityDirection;
+	}
+	return GetFlatSafeNormal(Agent.GetActorForwardVector());
+}
 }
 
 ASimCopterTrafficSystemActor::ASimCopterTrafficSystemActor()
@@ -428,6 +444,7 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
+	UpdateTrafficInteractions();
 }
 
 ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() const
@@ -712,6 +729,293 @@ void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCop
 	}
 }
 
+void ASimCopterTrafficSystemActor::UpdateTrafficInteractions()
+{
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		if (ASimCopterGroundAgent* Agent = AgentPtr.Get())
+		{
+			Agent->SetTrafficSpeedScale(1.0f);
+		}
+	}
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		if (ASimCopterGroundAgent* Agent = AgentPtr.Get())
+		{
+			Agent->SetTrafficSpeedScale(1.0f);
+		}
+	}
+
+	ApplyVehicleFollowing();
+	ResolveVehicleOverlaps();
+	UpdatePedestrianAvoidance();
+}
+
+void ASimCopterTrafficSystemActor::ApplyVehicleFollowing()
+{
+	const float LookAhead = FMath::Max(VehicleFollowLookAheadCm, VehicleStopDistanceCm + 1.0f);
+	const float SlowDistance = FMath::Max(VehicleSlowDistanceCm, VehicleStopDistanceCm + 1.0f);
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+
+		const FVector VehicleLocation = Vehicle->GetActorLocation();
+		const FVector Forward = GetAgentTravelDirection(*Vehicle);
+		if (Forward.IsNearlyZero())
+		{
+			continue;
+		}
+
+		const FVector Right(-Forward.Y, Forward.X, 0.0f);
+		float ClosestForwardDistance = TNumericLimits<float>::Max();
+
+		for (TWeakObjectPtr<ASimCopterGroundAgent>& OtherPtr : VehicleAgents)
+		{
+			ASimCopterGroundAgent* Other = OtherPtr.Get();
+			if (Other == nullptr || Other == Vehicle)
+			{
+				continue;
+			}
+
+			const FVector ToOther = Other->GetActorLocation() - VehicleLocation;
+			const float ForwardDistance = FVector::DotProduct(FVector(ToOther.X, ToOther.Y, 0.0f), Forward);
+			if (ForwardDistance <= 0.0f || ForwardDistance > LookAhead)
+			{
+				continue;
+			}
+
+			const float LateralDistance = FMath::Abs(FVector::DotProduct(FVector(ToOther.X, ToOther.Y, 0.0f), Right));
+			const float SameLaneWidth = Vehicle->GetCollisionRadiusCm() + Other->GetCollisionRadiusCm() + ActiveTileSize * 0.16f;
+			if (LateralDistance > SameLaneWidth)
+			{
+				continue;
+			}
+
+			ClosestForwardDistance = FMath::Min(ClosestForwardDistance, ForwardDistance);
+		}
+
+		if (ClosestForwardDistance == TNumericLimits<float>::Max())
+		{
+			continue;
+		}
+
+		float SpeedScale = 1.0f;
+		if (ClosestForwardDistance <= VehicleStopDistanceCm)
+		{
+			SpeedScale = 0.0f;
+		}
+		else if (ClosestForwardDistance < SlowDistance)
+		{
+			const float Alpha = (ClosestForwardDistance - VehicleStopDistanceCm) / FMath::Max(1.0f, SlowDistance - VehicleStopDistanceCm);
+			SpeedScale = FMath::Lerp(0.12f, 1.0f, FMath::Clamp(Alpha, 0.0f, 1.0f));
+		}
+
+		Vehicle->SetTrafficSpeedScale(SpeedScale);
+	}
+}
+
+void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
+{
+	constexpr int32 MaxSeparationPasses = 2;
+	for (int32 PassIndex = 0; PassIndex < MaxSeparationPasses; ++PassIndex)
+	{
+		bool bResolvedAnyOverlap = false;
+		for (int32 Index = 0; Index < VehicleAgents.Num(); ++Index)
+		{
+			ASimCopterGroundAgent* A = VehicleAgents[Index].Get();
+			if (A == nullptr)
+			{
+				continue;
+			}
+
+			for (int32 OtherIndex = Index + 1; OtherIndex < VehicleAgents.Num(); ++OtherIndex)
+			{
+				ASimCopterGroundAgent* B = VehicleAgents[OtherIndex].Get();
+				if (B == nullptr)
+				{
+					continue;
+				}
+
+				const FVector Delta = B->GetActorLocation() - A->GetActorLocation();
+				const FVector FlatDelta(Delta.X, Delta.Y, 0.0f);
+				const float DistanceSq = FlatDelta.SizeSquared();
+				const float MinimumDistance = A->GetCollisionRadiusCm() + B->GetCollisionRadiusCm() + VehicleOverlapPaddingCm;
+				if (DistanceSq >= FMath::Square(MinimumDistance))
+				{
+					continue;
+				}
+
+				FVector SeparationDirection = DistanceSq > KINDA_SMALL_NUMBER
+					? FlatDelta / FMath::Sqrt(DistanceSq)
+					: GetAgentTravelDirection(*A).GetSafeNormal();
+				if (SeparationDirection.IsNearlyZero())
+				{
+					SeparationDirection = FVector::RightVector;
+				}
+
+				const float Distance = DistanceSq > KINDA_SMALL_NUMBER ? FMath::Sqrt(DistanceSq) : 0.0f;
+				const float PushDistance = FMath::Max(0.0f, MinimumDistance - Distance);
+				const FVector Push = SeparationDirection * (PushDistance * 0.5f + 0.5f);
+				A->MoveByTrafficSeparation(-Push);
+				B->MoveByTrafficSeparation(Push);
+
+				if (PassIndex == 0)
+				{
+					const FVector Impulse = SeparationDirection * VehicleBumpImpulseCmPerSec;
+					A->AddTrafficVelocityImpulse(-Impulse);
+					B->AddTrafficVelocityImpulse(Impulse);
+				}
+				A->SetTrafficSpeedScale(0.25f);
+				B->SetTrafficSpeedScale(0.25f);
+				bResolvedAnyOverlap = true;
+			}
+		}
+
+		if (!bResolvedAnyOverlap)
+		{
+			break;
+		}
+	}
+}
+
+void ASimCopterTrafficSystemActor::UpdatePedestrianAvoidance()
+{
+	const float LookAhead = FMath::Max(PedestrianCarLookAheadCm, 1.0f);
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& PedestrianPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Pedestrian = PedestrianPtr.Get();
+		if (Pedestrian == nullptr)
+		{
+			continue;
+		}
+
+		const FVector PedestrianLocation = Pedestrian->GetActorLocation();
+		float BestTimeToImpact = TNumericLimits<float>::Max();
+		FVector BestEscapeDirection = FVector::ZeroVector;
+
+		for (TWeakObjectPtr<ASimCopterGroundAgent>& VehiclePtr : VehicleAgents)
+		{
+			ASimCopterGroundAgent* Vehicle = VehiclePtr.Get();
+			if (Vehicle == nullptr)
+			{
+				continue;
+			}
+
+			const FVector VehicleLocation = Vehicle->GetActorLocation();
+			const FVector VehicleDirection = GetAgentTravelDirection(*Vehicle);
+			if (VehicleDirection.IsNearlyZero())
+			{
+				continue;
+			}
+
+			const FVector ToPedestrian = PedestrianLocation - VehicleLocation;
+			const FVector FlatToPedestrian(ToPedestrian.X, ToPedestrian.Y, 0.0f);
+			const float ForwardDistance = FVector::DotProduct(FlatToPedestrian, VehicleDirection);
+			if (ForwardDistance <= 0.0f || ForwardDistance > LookAhead)
+			{
+				continue;
+			}
+
+			const FVector VehicleRight(-VehicleDirection.Y, VehicleDirection.X, 0.0f);
+			const float SignedLateralDistance = FVector::DotProduct(FlatToPedestrian, VehicleRight);
+			const float DangerRadius = Vehicle->GetCollisionRadiusCm() + Pedestrian->GetCollisionRadiusCm() + ActiveTileSize * 0.14f;
+			if (FMath::Abs(SignedLateralDistance) > DangerRadius)
+			{
+				continue;
+			}
+
+			const float VehicleSpeed = FMath::Max(Vehicle->GetCurrentVelocityCmPerSec().Size2D(), VehicleSpeedCmPerSec * 0.35f);
+			const float TimeToImpact = ForwardDistance / VehicleSpeed;
+			if (TimeToImpact < BestTimeToImpact)
+			{
+				BestTimeToImpact = TimeToImpact;
+				const float SideSign = SignedLateralDistance >= 0.0f ? 1.0f : -1.0f;
+				BestEscapeDirection = VehicleRight * SideSign;
+			}
+		}
+
+		if (!BestEscapeDirection.IsNearlyZero())
+		{
+			FVector EscapeTarget = PedestrianLocation + BestEscapeDirection.GetSafeNormal() * PedestrianRoadEscapeDistanceCm;
+			TryFindPedestrianEscapeTarget(PedestrianLocation, BestEscapeDirection, EscapeTarget);
+			Pedestrian->SetAvoidanceMoveTarget(EscapeTarget, PedestrianAvoidanceDurationSeconds, PedestrianAvoidanceSpeedMultiplier);
+		}
+	}
+}
+
+bool ASimCopterTrafficSystemActor::IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const
+{
+	const float ClearanceCm = FMath::Max(VehicleStopDistanceCm, ActiveTileSize * 0.35f);
+	const float ClearanceSq = FMath::Square(ClearanceCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		const ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle != nullptr && FVector::DistSquared2D(Vehicle->GetActorLocation(), SpawnLocation) < ClearanceSq)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::TryFindPedestrianEscapeTarget(
+	const FVector& PedestrianLocation,
+	const FVector& EscapeDirection,
+	FVector& OutTarget) const
+{
+	const FVector FlatEscapeDirection = GetFlatSafeNormal(EscapeDirection);
+	if (FlatEscapeDirection.IsNearlyZero() || PedestrianNodes.Num() == 0)
+	{
+		return false;
+	}
+
+	const FVector DesiredEscapeTarget = PedestrianLocation + FlatEscapeDirection * PedestrianRoadEscapeDistanceCm;
+	const float MaxSearchDistanceSq = FMath::Square(FMath::Max(ActiveTileSize * 1.5f, PedestrianRoadEscapeDistanceCm * 2.5f));
+	const float MinSideProgressCm = FMath::Max(24.0f, PedestrianRoadEscapeDistanceCm * 0.25f);
+	int32 BestIndex = INDEX_NONE;
+	float BestScore = TNumericLimits<float>::Max();
+
+	for (int32 Index = 0; Index < PedestrianNodes.Num(); ++Index)
+	{
+		const FVector ToNode = PedestrianNodes[Index].Location - PedestrianLocation;
+		const FVector FlatToNode(ToNode.X, ToNode.Y, 0.0f);
+		const float DistanceSq = FlatToNode.SizeSquared();
+		if (DistanceSq > MaxSearchDistanceSq)
+		{
+			continue;
+		}
+
+		const float SideProgress = FVector::DotProduct(FlatToNode, FlatEscapeDirection);
+		if (SideProgress < MinSideProgressCm)
+		{
+			continue;
+		}
+
+		const float Score = FVector::DistSquared2D(PedestrianNodes[Index].Location, DesiredEscapeTarget);
+		if (Score < BestScore)
+		{
+			BestScore = Score;
+			BestIndex = Index;
+		}
+	}
+
+	if (!PedestrianNodes.IsValidIndex(BestIndex))
+	{
+		return false;
+	}
+
+	OutTarget = PedestrianNodes[BestIndex].Location;
+	return true;
+}
+
 void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent, const TArray<FSimCopterGroundRouteNode>& Nodes)
 {
 	if (Nodes.Num() == 0)
@@ -778,15 +1082,34 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 		return false;
 	}
 
-	const int32 NodeIndex = ChooseNodeNearFocus(Nodes, FocusLocation);
+	int32 NodeIndex = INDEX_NONE;
+	int32 InitialNextIndex = INDEX_NONE;
+	FVector SpawnBaseLocation = FVector::ZeroVector;
+	for (int32 Attempt = 0; Attempt < 18; ++Attempt)
+	{
+		const int32 CandidateNodeIndex = ChooseNodeNearFocus(Nodes, FocusLocation);
+		if (CandidateNodeIndex == INDEX_NONE)
+		{
+			return false;
+		}
+
+		const int32 CandidateNextIndex = ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream);
+		const FVector CandidateSpawnBaseLocation = MakeRoutePointLocation(Nodes, CandidateNodeIndex, INDEX_NONE, CandidateNextIndex, bVehicle);
+		if (!bVehicle || IsVehicleSpawnLocationClear(CandidateSpawnBaseLocation))
+		{
+			NodeIndex = CandidateNodeIndex;
+			InitialNextIndex = CandidateNextIndex;
+			SpawnBaseLocation = CandidateSpawnBaseLocation;
+			break;
+		}
+	}
+
 	if (NodeIndex == INDEX_NONE)
 	{
 		return false;
 	}
 
 	const FSimCopterGroundRouteNode& Node = Nodes[NodeIndex];
-	const int32 InitialNextIndex = ChooseNextRouteNode(Nodes, NodeIndex, INDEX_NONE, RandomStream);
-	const FVector SpawnBaseLocation = MakeRoutePointLocation(Nodes, NodeIndex, INDEX_NONE, InitialNextIndex, bVehicle);
 	FRotator SpawnRotation = FRotator::ZeroRotator;
 	if (Nodes.IsValidIndex(InitialNextIndex))
 	{
