@@ -95,6 +95,33 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0", ClampMax = "0.45"))
 	float VehicleLaneOffsetTileFraction = 0.20f;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float VehicleOverlapPaddingCm = 18.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float VehicleBumpImpulseCmPerSec = 180.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "1.0"))
+	float VehicleFollowLookAheadCm = 520.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "1.0"))
+	float VehicleStopDistanceCm = 145.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "1.0"))
+	float VehicleSlowDistanceCm = 430.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float PedestrianCarLookAheadCm = 700.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float PedestrianRoadEscapeDistanceCm = 190.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float PedestrianAvoidanceDurationSeconds = 1.6f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.1"))
+	float PedestrianAvoidanceSpeedMultiplier = 1.8f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "10.0"))
 	float TileSize = 400.0f;
 
@@ -141,6 +168,12 @@ private:
 	FVector GetPopulationFocusLocation() const;
 	void UpdateAgentPool(float DeltaSeconds);
 	void PruneAgentArray(TArray<TWeakObjectPtr<ASimCopterGroundAgent>>& Agents, const FVector& FocusLocation);
+	void UpdateTrafficInteractions();
+	void ApplyVehicleFollowing();
+	void ResolveVehicleOverlaps();
+	void UpdatePedestrianAvoidance();
+	bool IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const;
+	bool TryFindPedestrianEscapeTarget(const FVector& PedestrianLocation, const FVector& EscapeDirection, FVector& OutTarget) const;
 	void AssignNextTarget(ASimCopterGroundAgent& Agent, const TArray<FSimCopterGroundRouteNode>& Nodes);
 	bool TrySpawnAgent(bool bVehicle, const FVector& FocusLocation);
 	int32 ChooseNodeNearFocus(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& FocusLocation);
