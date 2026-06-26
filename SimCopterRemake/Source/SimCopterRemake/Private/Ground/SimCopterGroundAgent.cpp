@@ -126,6 +126,14 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		AvoidanceMoveTimeRemainingSeconds = FMath::Max(0.0f, AvoidanceMoveTimeRemainingSeconds - DeltaSeconds);
 	}
+	if (AvoidancePathOffsetTimeRemainingSeconds > 0.0f)
+	{
+		AvoidancePathOffsetTimeRemainingSeconds = FMath::Max(0.0f, AvoidancePathOffsetTimeRemainingSeconds - DeltaSeconds);
+	}
+	if (GuidanceMoveTargetTimeRemainingSeconds > 0.0f)
+	{
+		GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, GuidanceMoveTargetTimeRemainingSeconds - DeltaSeconds);
+	}
 	UpdateMovement(DeltaSeconds);
 	if (bSnapToGround)
 	{
@@ -401,6 +409,7 @@ void ASimCopterGroundAgent::SnapToGroundImmediate()
 void ASimCopterGroundAgent::SetMoveTarget(const FVector& NewTargetLocation)
 {
 	MoveTargetLocation = NewTargetLocation;
+	GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
 	bHasMoveTarget = true;
 }
 
@@ -408,6 +417,9 @@ void ASimCopterGroundAgent::ClearMoveTarget()
 {
 	bHasMoveTarget = false;
 	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	AvoidancePathOffsetTimeRemainingSeconds = 0.0f;
+	AvoidancePathOffsetSpeedMultiplier = 1.0f;
+	GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
 }
 
 bool ASimCopterGroundAgent::IsNearMoveTarget(float DistanceCm) const
@@ -422,7 +434,8 @@ bool ASimCopterGroundAgent::IsNearMoveTarget(float DistanceCm) const
 		return true;
 	}
 
-	const FVector Delta = MoveTargetLocation - GetActorLocation();
+	const FVector EffectiveTarget = IsAvoidancePathOffsetActive() ? MoveTargetLocation + AvoidancePathOffset : MoveTargetLocation;
+	const FVector Delta = EffectiveTarget - GetActorLocation();
 	return FVector(Delta.X, Delta.Y, 0.0f).SizeSquared() <= FMath::Square(DistanceCm);
 }
 
@@ -434,6 +447,27 @@ float ASimCopterGroundAgent::GetCollisionRadiusCm() const
 void ASimCopterGroundAgent::SetTrafficSpeedScale(float NewSpeedScale)
 {
 	TrafficSpeedScale = FMath::Clamp(NewSpeedScale, 0.0f, 1.75f);
+}
+
+void ASimCopterGroundAgent::LimitTrafficSpeedScale(float MaxSpeedScale)
+{
+	TrafficSpeedScale = FMath::Min(TrafficSpeedScale, FMath::Clamp(MaxSpeedScale, 0.0f, 1.75f));
+}
+
+void ASimCopterGroundAgent::ApplyTrafficBrake(float MaxSpeedScale, float DeltaSeconds, float BrakeRate)
+{
+	const float ClampedSpeedScale = FMath::Clamp(MaxSpeedScale, 0.0f, 1.75f);
+	LimitTrafficSpeedScale(ClampedSpeedScale);
+
+	const float BrakeAlpha = FMath::Clamp(1.0f - ClampedSpeedScale, 0.0f, 1.0f);
+	const float EffectiveBrakeRate = FMath::Max(0.0f, BrakeRate) * BrakeAlpha;
+	if (EffectiveBrakeRate <= 0.0f || DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, EffectiveBrakeRate);
+	ExternalVelocityCmPerSec = FMath::VInterpTo(ExternalVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, EffectiveBrakeRate);
 }
 
 void ASimCopterGroundAgent::AddTrafficVelocityImpulse(const FVector& ImpulseCmPerSec)
@@ -458,6 +492,19 @@ void ASimCopterGroundAgent::SetAvoidanceMoveTarget(const FVector& NewTargetLocat
 	AvoidanceMoveTargetLocation = NewTargetLocation;
 	AvoidanceMoveTimeRemainingSeconds = FMath::Max(0.0f, DurationSeconds);
 	AvoidanceSpeedMultiplier = FMath::Clamp(SpeedMultiplier, 0.25f, 2.5f);
+}
+
+void ASimCopterGroundAgent::SetAvoidancePathOffset(const FVector& NewWorldOffset, float DurationSeconds, float SpeedMultiplier)
+{
+	AvoidancePathOffset = FVector(NewWorldOffset.X, NewWorldOffset.Y, 0.0f);
+	AvoidancePathOffsetTimeRemainingSeconds = FMath::Max(0.0f, DurationSeconds);
+	AvoidancePathOffsetSpeedMultiplier = FMath::Clamp(SpeedMultiplier, 0.25f, 2.5f);
+}
+
+void ASimCopterGroundAgent::SetGuidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds)
+{
+	GuidanceMoveTargetLocation = NewTargetLocation;
+	GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, DurationSeconds);
 }
 
 void ASimCopterGroundAgent::ApplyAgentShape()
@@ -503,10 +550,25 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	}
 
 	const FVector CurrentLocation = GetActorLocation();
-	const FVector ActiveMoveTarget = bUsingAvoidanceTarget ? AvoidanceMoveTargetLocation : MoveTargetLocation;
-	const FVector ToTarget = ActiveMoveTarget - CurrentLocation;
-	const FVector FlatToTarget(ToTarget.X, ToTarget.Y, 0.0f);
-	const float DistanceToTarget = FlatToTarget.Size();
+	const bool bUsingAvoidancePathOffset = IsAvoidancePathOffsetActive();
+	bool bUsingGuidanceTarget = IsGuidanceMoveTargetActive();
+	FVector BaseMoveTarget = bUsingGuidanceTarget ? GuidanceMoveTargetLocation : MoveTargetLocation;
+	FVector ActiveMoveTarget = bUsingAvoidanceTarget
+		? AvoidanceMoveTargetLocation
+		: BaseMoveTarget + (bUsingAvoidancePathOffset ? AvoidancePathOffset : FVector::ZeroVector);
+	FVector ToTarget = ActiveMoveTarget - CurrentLocation;
+	FVector FlatToTarget(ToTarget.X, ToTarget.Y, 0.0f);
+	float DistanceToTarget = FlatToTarget.Size();
+	if (bUsingGuidanceTarget && DistanceToTarget <= TargetStopDistanceCm)
+	{
+		GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
+		bUsingGuidanceTarget = false;
+		BaseMoveTarget = MoveTargetLocation;
+		ActiveMoveTarget = MoveTargetLocation + (bUsingAvoidancePathOffset ? AvoidancePathOffset : FVector::ZeroVector);
+		ToTarget = ActiveMoveTarget - CurrentLocation;
+		FlatToTarget = FVector(ToTarget.X, ToTarget.Y, 0.0f);
+		DistanceToTarget = FlatToTarget.Size();
+	}
 	if (DistanceToTarget <= TargetStopDistanceCm)
 	{
 		if (bUsingAvoidanceTarget)
@@ -522,7 +584,9 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	}
 
 	const FVector DesiredDirection = FlatToTarget / DistanceToTarget;
-	const float EffectiveSpeedScale = TrafficSpeedScale * (bUsingAvoidanceTarget ? AvoidanceSpeedMultiplier : 1.0f);
+	const float EffectiveSpeedScale = TrafficSpeedScale * (bUsingAvoidanceTarget
+		? AvoidanceSpeedMultiplier
+		: (bUsingAvoidancePathOffset ? AvoidancePathOffsetSpeedMultiplier : 1.0f));
 	const FVector DesiredVelocity = DesiredDirection * MovementSpeedCmPerSec * EffectiveSpeedScale;
 	CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, DesiredVelocity, DeltaSeconds, AgentKind == ESimCopterGroundAgentKind::Vehicle ? 3.0f : 9.0f);
 

@@ -157,7 +157,7 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CollisionComponent);
 	CameraBoom->TargetArmLength = 900.0f;
-	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, 140.0f);
+	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, ChaseCameraTargetHeightCm);
 	CameraBoom->bDoCollisionTest = true;
 	CameraBoom->ProbeSize = 18.0f;
 	CameraBoom->bEnableCameraLag = true;
@@ -1214,7 +1214,6 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 
 	const bool bHoldOffset = bCameraDragActive || CameraRecenterDelayRemaining > 0.0f;
 	const bool bRecenterYaw = !bHoldOffset && FMath::IsNearlyZero(CameraYawInput, 0.01f);
-	const bool bRecenterPitch = !bHoldOffset && FMath::IsNearlyZero(CameraPitchInput, 0.01f);
 
 	const float HorizontalSpeed = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Size();
 	const float SpeedAlpha = FMath::Clamp(HorizontalSpeed / FMath::Max(1.0f, MaxForwardSpeedCmPerSec), 0.0f, 1.0f);
@@ -1222,7 +1221,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	float ViewYaw = ActorYaw;
 	float ViewPitch = ChaseCameraBasePitch - SpeedAlpha * 4.0f;
 	float ArmLength = FMath::Lerp(ChaseCameraMinDistance, ChaseCameraMaxDistance, CameraZoomAlpha) + SpeedAlpha * ChaseSpeedPullbackCm;
-	FVector TargetOffset(0.0f, 0.0f, 130.0f + SpeedAlpha * 40.0f);
+	FVector TargetOffset(0.0f, 0.0f, ChaseCameraTargetHeightCm + SpeedAlpha * ChaseCameraSpeedTargetLiftCm);
 
 	if (CameraMode == ESimCopterCameraMode::Chase)
 	{
@@ -1231,10 +1230,6 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		if (bRecenterYaw)
 		{
 			CameraYawOffsetDeg = FMath::FInterpTo(CameraYawOffsetDeg, 0.0f, DeltaSeconds, 1.35f);
-		}
-		if (bRecenterPitch)
-		{
-			CameraPitchOffsetDeg = FMath::FInterpTo(CameraPitchOffsetDeg, 0.0f, DeltaSeconds, 1.6f);
 		}
 	}
 	else if (CameraMode == ESimCopterCameraMode::Orbit)

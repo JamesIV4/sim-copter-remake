@@ -371,6 +371,12 @@ protected:
 	float ChaseCameraBasePitch = -14.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
+	float ChaseCameraTargetHeightCm = -130.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
+	float ChaseCameraSpeedTargetLiftCm = 20.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
 	float RescueCameraPitch = -62.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
