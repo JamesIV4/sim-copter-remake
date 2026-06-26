@@ -73,21 +73,29 @@ public:
 	float GetCollisionRadiusCm() const;
 
 	void SetTrafficSpeedScale(float NewSpeedScale);
+	void LimitTrafficSpeedScale(float MaxSpeedScale);
+	void ApplyTrafficBrake(float MaxSpeedScale, float DeltaSeconds, float BrakeRate);
 	void AddTrafficVelocityImpulse(const FVector& ImpulseCmPerSec);
 	void MoveByTrafficSeparation(const FVector& WorldDelta);
 	void SetAvoidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds, float SpeedMultiplier = 1.0f);
+	void SetAvoidancePathOffset(const FVector& NewWorldOffset, float DurationSeconds, float SpeedMultiplier = 1.0f);
+	void SetGuidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds);
 	bool IsAvoidanceMoveActive() const { return AvoidanceMoveTimeRemainingSeconds > 0.0f; }
+	bool IsAvoidancePathOffsetActive() const { return AvoidancePathOffsetTimeRemainingSeconds > 0.0f; }
+	bool IsGuidanceMoveTargetActive() const { return GuidanceMoveTargetTimeRemainingSeconds > 0.0f; }
 
 	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
 	// graph node the agent is currently driving toward; PrevNode is where it came from (used to
 	// avoid immediate U-turns). INDEX_NONE means "unset / re-acquire nearest node".
-	void SetRouteState(int32 TargetNode, int32 PrevNode)
+	void SetRouteState(int32 TargetNode, int32 PrevNode, int32 PlannedNextNode = INDEX_NONE)
 	{
 		RouteTargetNodeIndex = TargetNode;
 		RoutePrevNodeIndex = PrevNode;
+		RoutePlannedNextNodeIndex = PlannedNextNode;
 	}
 	int32 GetRouteTargetNode() const { return RouteTargetNodeIndex; }
 	int32 GetRoutePrevNode() const { return RoutePrevNodeIndex; }
+	int32 GetRoutePlannedNextNode() const { return RoutePlannedNextNodeIndex; }
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	ESimCopterGroundAgentKind GetAgentKind() const { return AgentKind; }
@@ -199,10 +207,15 @@ private:
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
 	FVector ExternalVelocityCmPerSec = FVector::ZeroVector;
 	FVector AvoidanceMoveTargetLocation = FVector::ZeroVector;
+	FVector AvoidancePathOffset = FVector::ZeroVector;
+	FVector GuidanceMoveTargetLocation = FVector::ZeroVector;
 	bool bHasMoveTarget = false;
 	float TrafficSpeedScale = 1.0f;
 	float AvoidanceMoveTimeRemainingSeconds = 0.0f;
+	float AvoidancePathOffsetTimeRemainingSeconds = 0.0f;
+	float GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
 	float AvoidanceSpeedMultiplier = 1.0f;
+	float AvoidancePathOffsetSpeedMultiplier = 1.0f;
 	float AnimationTimeSeconds = 0.0f;
 	float AnimationPhase = 0.0f;
 	int32 PedestrianSpriteColumn = 0;
@@ -210,6 +223,7 @@ private:
 	int32 PedestrianOutfitIndex = 0;
 	int32 RouteTargetNodeIndex = INDEX_NONE;
 	int32 RoutePrevNodeIndex = INDEX_NONE;
+	int32 RoutePlannedNextNodeIndex = INDEX_NONE;
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
 

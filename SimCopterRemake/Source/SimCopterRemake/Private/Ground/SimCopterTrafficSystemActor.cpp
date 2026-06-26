@@ -215,6 +215,16 @@ bool IsOppositeRoadOpeningPair(int32 Mask)
 	return Mask == (RoadOpenNorth | RoadOpenSouth) || Mask == (RoadOpenEast | RoadOpenWest);
 }
 
+bool IsAdjacentRoadCornerMask(int32 Mask)
+{
+	return CountRoadOpenings(Mask) == 2 && !IsOppositeRoadOpeningPair(Mask);
+}
+
+bool IsAdjacentRoadCornerTile(uint8 BuildingId)
+{
+	return IsAdjacentRoadCornerMask(GetRoadOpeningMask(BuildingId));
+}
+
 FVector2D GetAdjacentOpeningBisector(int32 Mask)
 {
 	FVector2D Sum = FVector2D::ZeroVector;
@@ -240,7 +250,7 @@ FVector2D GetAdjacentOpeningBisector(int32 Mask)
 FVector2D GetRoadCenterlineLocalOffset(uint8 BuildingId, float TileSize)
 {
 	const int32 Mask = GetRoadOpeningMask(BuildingId);
-	if (CountRoadOpenings(Mask) == 2 && !IsOppositeRoadOpeningPair(Mask))
+	if (IsAdjacentRoadCornerMask(Mask))
 	{
 		// RD35..RD38 are visually diagonal/curved corner road pieces. A tile-centre route makes
 		// agents stair-step from one side of the road to the other; bias the waypoint toward the
@@ -258,7 +268,7 @@ FVector2D GetRoadSidewalkLocalOffset(const FSimCity2000City& City, int32 FileX, 
 {
 	const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
 	const int32 Mask = GetRoadOpeningMask(Tile.Building);
-	if (CountRoadOpenings(Mask) == 2 && !IsOppositeRoadOpeningPair(Mask))
+	if (IsAdjacentRoadCornerMask(Mask))
 	{
 		// Keep pedestrians on the same diagonal/corner side as the visible road piece. The old
 		// straight-road test alternated between X and Y offsets on these tiles, which made crowds
@@ -288,6 +298,85 @@ FVector2D GetRoadSidewalkLocalOffset(const FSimCity2000City& City, int32 FileX, 
 		return FVector2D(0.0f, SidewalkInset); // road runs E/W -> sidewalk along local Y
 	}
 	return FVector2D::ZeroVector; // intersection / isolated tile: keep pedestrians centred
+}
+
+bool TryGetRoadOpeningLocalDirectionToNode(
+	const TArray<FSimCopterGroundRouteNode>& Nodes,
+	int32 PointIndex,
+	int32 OtherIndex,
+	FVector& OutDirection)
+{
+	if (!Nodes.IsValidIndex(PointIndex) || !Nodes.IsValidIndex(OtherIndex))
+	{
+		return false;
+	}
+
+	const FSimCopterGroundRouteNode& Point = Nodes[PointIndex];
+	const FSimCopterGroundRouteNode& Other = Nodes[OtherIndex];
+	const int32 DeltaX = Other.FileX - Point.FileX;
+	const int32 DeltaY = Other.FileY - Point.FileY;
+	if (FMath::Abs(DeltaX) + FMath::Abs(DeltaY) != 1)
+	{
+		return false;
+	}
+
+	const int32 Opening = GetRoadOpeningForOffset(DeltaX, DeltaY);
+	if ((GetRoadOpeningMask(Point.BuildingId) & Opening) == 0)
+	{
+		return false;
+	}
+
+	const FVector2D OpeningDirection = GetRoadOpeningLocalDirection(Opening);
+	OutDirection = FVector(OpeningDirection.X, OpeningDirection.Y, 0.0f);
+	return !OutDirection.IsNearlyZero();
+}
+
+bool TryGetCornerRoadTravelDirectionLocal(
+	const TArray<FSimCopterGroundRouteNode>& Nodes,
+	int32 PointIndex,
+	int32 PreviousIndex,
+	int32 NextIndex,
+	FVector& OutDirection)
+{
+	if (!Nodes.IsValidIndex(PointIndex) || !IsAdjacentRoadCornerTile(Nodes[PointIndex].BuildingId))
+	{
+		return false;
+	}
+
+	FVector PreviousOpeningDirection = FVector::ZeroVector;
+	FVector NextOpeningDirection = FVector::ZeroVector;
+	if (!TryGetRoadOpeningLocalDirectionToNode(Nodes, PointIndex, PreviousIndex, PreviousOpeningDirection) ||
+		!TryGetRoadOpeningLocalDirectionToNode(Nodes, PointIndex, NextIndex, NextOpeningDirection))
+	{
+		return false;
+	}
+
+	OutDirection = (NextOpeningDirection - PreviousOpeningDirection).GetSafeNormal();
+	return !OutDirection.IsNearlyZero();
+}
+
+FVector GetRightHandLaneSideLocalDirection(const FVector& TravelDirection)
+{
+	FVector FlatTravelDirection(TravelDirection.X, TravelDirection.Y, 0.0f);
+	FlatTravelDirection = FlatTravelDirection.GetSafeNormal();
+	if (FlatTravelDirection.IsNearlyZero())
+	{
+		return FVector::ZeroVector;
+	}
+
+	return FVector::CrossProduct(FVector::UpVector, FlatTravelDirection).GetSafeNormal();
+}
+
+bool IsRightHandTurnLocal(const FVector& IncomingDirection, const FVector& OutgoingDirection)
+{
+	const FVector Incoming = FVector(IncomingDirection.X, IncomingDirection.Y, 0.0f).GetSafeNormal();
+	const FVector Outgoing = FVector(OutgoingDirection.X, OutgoingDirection.Y, 0.0f).GetSafeNormal();
+	if (Incoming.IsNearlyZero() || Outgoing.IsNearlyZero())
+	{
+		return false;
+	}
+
+	return FVector::CrossProduct(Incoming, Outgoing).Z < -0.05f;
 }
 
 int32 FindNodeByTile(const TMap<FIntPoint, int32>& NodeIndexByTile, int32 FileX, int32 FileY)
@@ -444,7 +533,7 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
-	UpdateTrafficInteractions();
+	UpdateTrafficInteractions(DeltaSeconds);
 }
 
 ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() const
@@ -476,6 +565,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodeIndexByTile.Reset();
 	VehicleAgents.Reset();
 	PedestrianAgents.Reset();
+	VehicleTrafficStates.Reset();
 
 	ActiveCityToWorldTransform = FTransform::Identity;
 	ActiveOriginalGameRootPath = ResolveOriginalGameRoot();
@@ -729,8 +819,10 @@ void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCop
 	}
 }
 
-void ASimCopterTrafficSystemActor::UpdateTrafficInteractions()
+void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 {
+	SyncVehicleTrafficStates(DeltaSeconds);
+
 	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
 	{
 		if (ASimCopterGroundAgent* Agent = AgentPtr.Get())
@@ -747,15 +839,219 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions()
 		}
 	}
 
-	ApplyVehicleFollowing();
+	if (TrafficFlowMode == ESimCopterTrafficFlowMode::Normal)
+	{
+		ApplyTrafficLights(DeltaSeconds);
+		ApplyVehicleFollowing(NormalVehicleFollowLookAheadCm, NormalVehicleStopDistanceCm, NormalVehicleSlowDistanceCm, true, DeltaSeconds);
+	}
+	else
+	{
+		ApplyVehicleFollowing(VehicleFollowLookAheadCm, VehicleStopDistanceCm, VehicleSlowDistanceCm, false, DeltaSeconds);
+	}
+
 	ResolveVehicleOverlaps();
+	if (TrafficFlowMode == ESimCopterTrafficFlowMode::Normal)
+	{
+		UpdateVehicleBlockageRecovery();
+	}
+	ApplyVehicleLaneGuidance(DeltaSeconds);
 	UpdatePedestrianAvoidance();
 }
 
-void ASimCopterTrafficSystemActor::ApplyVehicleFollowing()
+void ASimCopterTrafficSystemActor::SyncVehicleTrafficStates(float DeltaSeconds)
 {
-	const float LookAhead = FMath::Max(VehicleFollowLookAheadCm, VehicleStopDistanceCm + 1.0f);
-	const float SlowDistance = FMath::Max(VehicleSlowDistanceCm, VehicleStopDistanceCm + 1.0f);
+	TSet<TObjectKey<ASimCopterGroundAgent>> LiveVehicleKeys;
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+
+		const TObjectKey<ASimCopterGroundAgent> VehicleKey(Vehicle);
+		LiveVehicleKeys.Add(VehicleKey);
+		FSimCopterVehicleTrafficState& State = VehicleTrafficStates.FindOrAdd(VehicleKey);
+		State.bInTrafficLightLine = false;
+		State.RecentCollisionSeconds = FMath::Max(0.0f, State.RecentCollisionSeconds - DeltaSeconds);
+		State.RecoveryCooldownSeconds = FMath::Max(0.0f, State.RecoveryCooldownSeconds - DeltaSeconds);
+		State.TrafficLightLineGraceSeconds = FMath::Max(0.0f, State.TrafficLightLineGraceSeconds - DeltaSeconds);
+		const float PreviousRecoveryBypassSeconds = State.RecoveryBypassSeconds;
+		State.RecoveryBypassSeconds = FMath::Max(0.0f, State.RecoveryBypassSeconds - DeltaSeconds);
+		State.RecoveryRejoinSeconds = FMath::Max(0.0f, State.RecoveryRejoinSeconds - DeltaSeconds);
+		if (PreviousRecoveryBypassSeconds > 0.0f && State.RecoveryBypassSeconds <= 0.0f)
+		{
+			State.RecoveryRejoinSeconds = FMath::Max(State.RecoveryRejoinSeconds, VehicleRecoveryRejoinDurationSeconds);
+		}
+		State.IntersectionCommitSeconds = FMath::Max(0.0f, State.IntersectionCommitSeconds - DeltaSeconds);
+
+		const FVector CurrentLocation = Vehicle->GetActorLocation();
+		if (!State.bInitialized)
+		{
+			State.LastLocation = CurrentLocation;
+			State.bInitialized = true;
+			continue;
+		}
+
+		const float ActualSpeedCmPerSec = DeltaSeconds > KINDA_SMALL_NUMBER
+			? FVector::Dist2D(CurrentLocation, State.LastLocation) / DeltaSeconds
+			: Vehicle->GetCurrentVelocityCmPerSec().Size2D();
+		if (Vehicle->HasMoveTarget() && ActualSpeedCmPerSec <= VehicleBlockedSpeedThresholdCmPerSec)
+		{
+			State.BlockedSeconds += DeltaSeconds;
+		}
+		else
+		{
+			State.BlockedSeconds = FMath::Max(0.0f, State.BlockedSeconds - DeltaSeconds * 2.0f);
+		}
+
+		State.LastLocation = CurrentLocation;
+	}
+
+	for (auto StateIt = VehicleTrafficStates.CreateIterator(); StateIt; ++StateIt)
+	{
+		if (!LiveVehicleKeys.Contains(StateIt.Key()))
+		{
+			StateIt.RemoveCurrent();
+		}
+	}
+}
+
+void ASimCopterTrafficSystemActor::ApplyTrafficLights(float DeltaSeconds)
+{
+	const float StopDistance = FMath::Max(1.0f, TrafficLightStopDistanceCm);
+	const float SlowDistance = FMath::Max(TrafficLightSlowDistanceCm, StopDistance + 1.0f);
+	const float QueueSlotSpacing = FMath::Max(TrafficLightQueueSlotSpacingCm, NormalVehicleMinimumFollowDistanceCm);
+	const float QueueAwarenessDistance = FMath::Max(FMath::Max(SlowDistance, TrafficLightQueueSlowDistanceCm), StopDistance + QueueSlotSpacing * 8.0f);
+	const float QueueSlotSlowDistance = FMath::Max(SlowDistance, QueueSlotSpacing * 1.5f);
+	const float GuidanceDuration = FMath::Max(VehicleLaneGuidanceDurationSeconds, DeltaSeconds * 2.0f);
+
+	struct FTrafficLightQueueVehicle
+	{
+		ASimCopterGroundAgent* Vehicle = nullptr;
+		FVector StopReferenceLocation = FVector::ZeroVector;
+		FVector ApproachDirection = FVector::ZeroVector;
+		float DistanceToIntersectionCm = 0.0f;
+	};
+
+	TMap<FIntPoint, TArray<FTrafficLightQueueVehicle>> QueuesByApproach;
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr || !Vehicle->HasMoveTarget())
+		{
+			continue;
+		}
+
+		const int32 TargetNodeIndex = Vehicle->GetRouteTargetNode();
+		const int32 PreviousNodeIndex = Vehicle->GetRoutePrevNode();
+		if (!RoadNodes.IsValidIndex(PreviousNodeIndex))
+		{
+			continue;
+		}
+
+		if (IsTrafficLightIntersectionNode(PreviousNodeIndex))
+		{
+			MarkVehicleCommittedToIntersection(*Vehicle);
+			continue;
+		}
+
+		if (!IsTrafficLightIntersectionNode(TargetNodeIndex))
+		{
+			continue;
+		}
+
+		const FVector StopReferenceLocation = MakeRoutePointLocation(RoadNodes, TargetNodeIndex, PreviousNodeIndex, INDEX_NONE, true);
+		const FVector ApproachStartLocation = MakeRoutePointLocation(RoadNodes, PreviousNodeIndex, INDEX_NONE, TargetNodeIndex, true);
+		FVector ApproachDirection = GetFlatSafeNormal(StopReferenceLocation - ApproachStartLocation);
+		if (ApproachDirection.IsNearlyZero())
+		{
+			ApproachDirection = GetFlatSafeNormal(StopReferenceLocation - Vehicle->GetActorLocation());
+		}
+		if (ApproachDirection.IsNearlyZero())
+		{
+			continue;
+		}
+
+		const FVector ToIntersection = StopReferenceLocation - Vehicle->GetActorLocation();
+		const float DistanceToIntersectionCm = FVector::DotProduct(FVector(ToIntersection.X, ToIntersection.Y, 0.0f), ApproachDirection);
+		if (DistanceToIntersectionCm > QueueAwarenessDistance)
+		{
+			continue;
+		}
+
+		const bool bGreenLight = IsTrafficLightGreenForApproach(TargetNodeIndex, PreviousNodeIndex);
+		const bool bPastStopLine = DistanceToIntersectionCm <= 90.0f;
+		if (bGreenLight || bPastStopLine)
+		{
+			MarkVehicleCommittedToIntersection(*Vehicle);
+			continue;
+		}
+
+		FTrafficLightQueueVehicle QueueVehicle;
+		QueueVehicle.Vehicle = Vehicle;
+		QueueVehicle.StopReferenceLocation = StopReferenceLocation;
+		QueueVehicle.ApproachDirection = ApproachDirection;
+		QueueVehicle.DistanceToIntersectionCm = DistanceToIntersectionCm;
+		QueuesByApproach.FindOrAdd(FIntPoint(TargetNodeIndex, PreviousNodeIndex)).Add(QueueVehicle);
+	}
+
+	for (TPair<FIntPoint, TArray<FTrafficLightQueueVehicle>>& QueuePair : QueuesByApproach)
+	{
+		TArray<FTrafficLightQueueVehicle>& Queue = QueuePair.Value;
+		Queue.Sort([](const FTrafficLightQueueVehicle& A, const FTrafficLightQueueVehicle& B)
+		{
+			return A.DistanceToIntersectionCm < B.DistanceToIntersectionCm;
+		});
+
+		for (int32 QueueIndex = 0; QueueIndex < Queue.Num(); ++QueueIndex)
+		{
+			FTrafficLightQueueVehicle& QueueVehicle = Queue[QueueIndex];
+			if (QueueVehicle.Vehicle == nullptr)
+			{
+				continue;
+			}
+
+			const float SlotDistanceFromIntersection = StopDistance + QueueSlotSpacing * QueueIndex;
+			const FVector QueueSlotLocation = QueueVehicle.StopReferenceLocation - QueueVehicle.ApproachDirection * SlotDistanceFromIntersection;
+			MarkVehicleInTrafficLightLine(*QueueVehicle.Vehicle);
+			QueueVehicle.Vehicle->SetGuidanceMoveTarget(QueueSlotLocation, GuidanceDuration);
+
+			const FVector ToSlot = QueueSlotLocation - QueueVehicle.Vehicle->GetActorLocation();
+			const float DistanceToSlotCm = FVector::DotProduct(FVector(ToSlot.X, ToSlot.Y, 0.0f), QueueVehicle.ApproachDirection);
+			float SpeedScale = 1.0f;
+			if (DistanceToSlotCm <= 0.0f)
+			{
+				SpeedScale = 0.0f;
+			}
+			else if (DistanceToSlotCm < QueueSlotSlowDistance)
+			{
+				const float Alpha = DistanceToSlotCm / FMath::Max(1.0f, QueueSlotSlowDistance);
+				SpeedScale = FMath::Pow(FMath::Clamp(Alpha, 0.0f, 1.0f), 1.45f);
+			}
+
+			QueueVehicle.Vehicle->ApplyTrafficBrake(SpeedScale, DeltaSeconds, NormalTrafficBrakeRate);
+		}
+	}
+}
+
+void ASimCopterTrafficSystemActor::ApplyVehicleFollowing(
+	float LookAheadCm,
+	float StopDistanceCm,
+	float SlowDistanceCm,
+	bool bUseNormalBraking,
+	float DeltaSeconds)
+{
+	const float StopDistance = bUseNormalBraking
+		? FMath::Max(1.0f, StopDistanceCm)
+		: StopDistanceCm;
+	const float SlowDistance = bUseNormalBraking
+		? FMath::Max(SlowDistanceCm, StopDistance + 1.0f)
+		: FMath::Max(SlowDistanceCm, StopDistance + 1.0f);
+	const float LookAhead = bUseNormalBraking
+		? FMath::Max(FMath::Max(FMath::Max(LookAheadCm, SlowDistance), VehicleRecoveryRejoinSlowDistanceCm), TrafficLightQueueSlowDistanceCm)
+		: FMath::Max(LookAheadCm, SlowDistance);
 
 	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
 	{
@@ -763,6 +1059,17 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing()
 		if (Vehicle == nullptr)
 		{
 			continue;
+		}
+
+		FSimCopterVehicleTrafficState* State = bUseNormalBraking
+			? VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle))
+			: nullptr;
+		if (bUseNormalBraking)
+		{
+			if (State != nullptr && (State->RecoveryBypassSeconds > 0.0f || State->IntersectionCommitSeconds > 0.0f))
+			{
+				continue;
+			}
 		}
 
 		const FVector VehicleLocation = Vehicle->GetActorLocation();
@@ -774,6 +1081,8 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing()
 
 		const FVector Right(-Forward.Y, Forward.X, 0.0f);
 		float ClosestForwardDistance = TNumericLimits<float>::Max();
+		ASimCopterGroundAgent* ClosestVehicleAhead = nullptr;
+		const bool bVehicleRejoining = State != nullptr && State->RecoveryRejoinSeconds > 0.0f;
 
 		for (TWeakObjectPtr<ASimCopterGroundAgent>& OtherPtr : VehicleAgents)
 		{
@@ -790,14 +1099,35 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing()
 				continue;
 			}
 
+			const FSimCopterVehicleTrafficState* OtherState = bUseNormalBraking
+				? VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Other))
+				: nullptr;
+			const bool bOtherRecovering = OtherState != nullptr &&
+				(OtherState->RecoveryBypassSeconds > 0.0f || OtherState->RecoveryRejoinSeconds > 0.0f);
+			const bool bOtherTrafficLightQueue = OtherState != nullptr &&
+				(OtherState->bInTrafficLightLine || OtherState->TrafficLightLineGraceSeconds > 0.0f) &&
+				OtherState->IntersectionCommitSeconds <= 0.0f;
 			const float LateralDistance = FMath::Abs(FVector::DotProduct(FVector(ToOther.X, ToOther.Y, 0.0f), Right));
-			const float SameLaneWidth = Vehicle->GetCollisionRadiusCm() + Other->GetCollisionRadiusCm() + ActiveTileSize * 0.16f;
+			const float BaseLaneWidth = Vehicle->GetCollisionRadiusCm() + Other->GetCollisionRadiusCm() + ActiveTileSize * 0.16f;
+			float SameLaneWidth = BaseLaneWidth;
+			if (bVehicleRejoining || bOtherRecovering)
+			{
+				SameLaneWidth = FMath::Max(SameLaneWidth, VehicleRecoveryRejoinLaneWidthCm);
+			}
+			if (bOtherTrafficLightQueue)
+			{
+				SameLaneWidth = FMath::Max(SameLaneWidth, TrafficLightQueueLaneWidthCm);
+			}
 			if (LateralDistance > SameLaneWidth)
 			{
 				continue;
 			}
 
-			ClosestForwardDistance = FMath::Min(ClosestForwardDistance, ForwardDistance);
+			if (ForwardDistance < ClosestForwardDistance)
+			{
+				ClosestForwardDistance = ForwardDistance;
+				ClosestVehicleAhead = Other;
+			}
 		}
 
 		if (ClosestForwardDistance == TNumericLimits<float>::Max())
@@ -805,18 +1135,63 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing()
 			continue;
 		}
 
-		float SpeedScale = 1.0f;
-		if (ClosestForwardDistance <= VehicleStopDistanceCm)
+		const FSimCopterVehicleTrafficState* AheadState = TrafficFlowMode == ESimCopterTrafficFlowMode::Normal && ClosestVehicleAhead != nullptr
+			? VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(ClosestVehicleAhead))
+			: nullptr;
+		const bool bFollowingTrafficLightQueue = AheadState != nullptr &&
+			(AheadState->bInTrafficLightLine || AheadState->TrafficLightLineGraceSeconds > 0.0f) &&
+			AheadState->IntersectionCommitSeconds <= 0.0f;
+		const bool bStateRejoining = State != nullptr && State->RecoveryRejoinSeconds > 0.0f;
+		const bool bAheadRecovering = AheadState != nullptr &&
+			(AheadState->RecoveryBypassSeconds > 0.0f || AheadState->RecoveryRejoinSeconds > 0.0f);
+		const bool bFollowingRecoveryRejoin = bUseNormalBraking && (bStateRejoining || bAheadRecovering);
+		const float NormalMinimumFollowDistance = bUseNormalBraking
+			? FMath::Max(StopDistance, NormalVehicleMinimumFollowDistanceCm)
+			: StopDistance;
+		float EffectiveStopDistance = bFollowingTrafficLightQueue
+			? FMath::Max(FMath::Max(StopDistance, TrafficLightQueueStopDistanceCm), NormalMinimumFollowDistance)
+			: NormalMinimumFollowDistance;
+		float EffectiveSlowDistance = bFollowingTrafficLightQueue
+			? FMath::Max(FMath::Max(SlowDistance, TrafficLightQueueSlowDistanceCm), EffectiveStopDistance + 1.0f)
+			: SlowDistance;
+		if (bFollowingRecoveryRejoin)
 		{
-			SpeedScale = 0.0f;
-		}
-		else if (ClosestForwardDistance < SlowDistance)
-		{
-			const float Alpha = (ClosestForwardDistance - VehicleStopDistanceCm) / FMath::Max(1.0f, SlowDistance - VehicleStopDistanceCm);
-			SpeedScale = FMath::Lerp(0.12f, 1.0f, FMath::Clamp(Alpha, 0.0f, 1.0f));
+			EffectiveStopDistance = FMath::Max(EffectiveStopDistance, VehicleRecoveryRejoinStopDistanceCm);
+			EffectiveSlowDistance = FMath::Max(FMath::Max(EffectiveSlowDistance, VehicleRecoveryRejoinSlowDistanceCm), EffectiveStopDistance + 1.0f);
 		}
 
-		Vehicle->SetTrafficSpeedScale(SpeedScale);
+		float SpeedScale = 1.0f;
+		if (ClosestForwardDistance <= EffectiveStopDistance)
+		{
+			SpeedScale = bFollowingTrafficLightQueue ? 0.0f : 0.18f;
+		}
+		else if (ClosestForwardDistance < EffectiveSlowDistance)
+		{
+			const float Alpha = (ClosestForwardDistance - EffectiveStopDistance) / FMath::Max(1.0f, EffectiveSlowDistance - EffectiveStopDistance);
+			const float ClampedAlpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
+			SpeedScale = bUseNormalBraking
+				? FMath::Max(bFollowingTrafficLightQueue ? 0.0f : 0.22f, FMath::Pow(ClampedAlpha, bFollowingTrafficLightQueue ? 2.0f : 0.72f))
+				: FMath::Lerp(0.12f, 1.0f, ClampedAlpha);
+		}
+
+		if (bUseNormalBraking)
+		{
+			const float EffectiveBrakeRate = bFollowingTrafficLightQueue
+				? FMath::Max(NormalTrafficBrakeRate, TrafficLightQueueBrakeRate)
+				: NormalTrafficBrakeRate;
+			Vehicle->ApplyTrafficBrake(SpeedScale, DeltaSeconds, EffectiveBrakeRate);
+		}
+		else
+		{
+			Vehicle->LimitTrafficSpeedScale(SpeedScale);
+		}
+		if (TrafficFlowMode == ESimCopterTrafficFlowMode::Normal && ClosestVehicleAhead != nullptr)
+		{
+			if (bFollowingTrafficLightQueue)
+			{
+				MarkVehicleInTrafficLightLine(*Vehicle);
+			}
+		}
 	}
 }
 
@@ -864,6 +1239,8 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 				const FVector Push = SeparationDirection * (PushDistance * 0.5f + 0.5f);
 				A->MoveByTrafficSeparation(-Push);
 				B->MoveByTrafficSeparation(Push);
+				MarkVehicleCollision(*A);
+				MarkVehicleCollision(*B);
 
 				if (PassIndex == 0)
 				{
@@ -871,8 +1248,8 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 					A->AddTrafficVelocityImpulse(-Impulse);
 					B->AddTrafficVelocityImpulse(Impulse);
 				}
-				A->SetTrafficSpeedScale(0.25f);
-				B->SetTrafficSpeedScale(0.25f);
+				A->LimitTrafficSpeedScale(0.25f);
+				B->LimitTrafficSpeedScale(0.25f);
 				bResolvedAnyOverlap = true;
 			}
 		}
@@ -881,6 +1258,81 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 		{
 			break;
 		}
+	}
+}
+
+void ASimCopterTrafficSystemActor::UpdateVehicleBlockageRecovery()
+{
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+
+		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		const bool bCommittedToIntersection = State != nullptr && State->IntersectionCommitSeconds > 0.0f;
+		if (State == nullptr ||
+			State->RecoveryCooldownSeconds > 0.0f ||
+			(!bCommittedToIntersection && (State->bInTrafficLightLine || State->TrafficLightLineGraceSeconds > 0.0f)))
+		{
+			continue;
+		}
+
+		const bool bCommittedBlocked = bCommittedToIntersection &&
+			State->BlockedSeconds >= FMath::Min(0.45f, VehicleBlockedSecondsBeforeRecovery * 0.5f);
+		const bool bBlockedAfterCollision = State->RecentCollisionSeconds > 0.0f &&
+			State->BlockedSeconds >= VehicleBlockedSecondsBeforeRecovery;
+		const bool bLongBlockedInJam = State->BlockedSeconds >= VehicleBlockedSecondsBeforeRecovery * 2.0f;
+		if (!bCommittedBlocked && !bBlockedAfterCollision && !bLongBlockedInJam)
+		{
+			continue;
+		}
+
+		TryStartVehicleRecovery(*Vehicle, *State);
+	}
+}
+
+void ASimCopterTrafficSystemActor::ApplyVehicleLaneGuidance(float DeltaSeconds)
+{
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr || !Vehicle->HasMoveTarget())
+		{
+			continue;
+		}
+
+		const FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State != nullptr &&
+			(State->bInTrafficLightLine || State->TrafficLightLineGraceSeconds > 0.0f) &&
+			State->IntersectionCommitSeconds <= 0.0f)
+		{
+			continue;
+		}
+
+		FVector GuidanceTarget = FVector::ZeroVector;
+		float DistanceFromLane = 0.0f;
+		bool bTraversingDiagonalRoad = false;
+		if (!TryMakeVehicleLaneGuidanceTarget(*Vehicle, GuidanceTarget, DistanceFromLane, bTraversingDiagonalRoad))
+		{
+			continue;
+		}
+
+		const float OffLaneDistance = FMath::Max(VehicleRoadContainmentDistanceCm, ActiveTileSize * 0.55f);
+		const bool bNeedsImmediateLaneReturn = !bTraversingDiagonalRoad && DistanceFromLane > OffLaneDistance;
+		if (bNeedsImmediateLaneReturn)
+		{
+			Vehicle->SetAvoidancePathOffset(FVector::ZeroVector, 0.0f);
+			if (FSimCopterVehicleTrafficState* MutableState = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle)))
+			{
+				MutableState->RecoveryRejoinSeconds = 0.0f;
+			}
+		}
+
+		const float GuidanceDuration = FMath::Max(VehicleLaneGuidanceDurationSeconds, DeltaSeconds * 2.0f);
+		Vehicle->SetGuidanceMoveTarget(GuidanceTarget, GuidanceDuration);
 	}
 }
 
@@ -898,7 +1350,7 @@ void ASimCopterTrafficSystemActor::UpdatePedestrianAvoidance()
 
 		const FVector PedestrianLocation = Pedestrian->GetActorLocation();
 		float BestTimeToImpact = TNumericLimits<float>::Max();
-		FVector BestEscapeDirection = FVector::ZeroVector;
+		FVector BestCarAvoidanceDirection = FVector::ZeroVector;
 
 		for (TWeakObjectPtr<ASimCopterGroundAgent>& VehiclePtr : VehicleAgents)
 		{
@@ -937,15 +1389,44 @@ void ASimCopterTrafficSystemActor::UpdatePedestrianAvoidance()
 			{
 				BestTimeToImpact = TimeToImpact;
 				const float SideSign = SignedLateralDistance >= 0.0f ? 1.0f : -1.0f;
-				BestEscapeDirection = VehicleRight * SideSign;
+				BestCarAvoidanceDirection = VehicleRight * SideSign;
 			}
 		}
 
-		if (!BestEscapeDirection.IsNearlyZero())
+		if (!BestCarAvoidanceDirection.IsNearlyZero())
 		{
-			FVector EscapeTarget = PedestrianLocation + BestEscapeDirection.GetSafeNormal() * PedestrianRoadEscapeDistanceCm;
-			TryFindPedestrianEscapeTarget(PedestrianLocation, BestEscapeDirection, EscapeTarget);
-			Pedestrian->SetAvoidanceMoveTarget(EscapeTarget, PedestrianAvoidanceDurationSeconds, PedestrianAvoidanceSpeedMultiplier);
+			FVector RouteDirection = GetFlatSafeNormal(Pedestrian->GetMoveTargetLocation() - PedestrianLocation);
+			if (RouteDirection.IsNearlyZero())
+			{
+				RouteDirection = GetAgentTravelDirection(*Pedestrian);
+			}
+			if (RouteDirection.IsNearlyZero())
+			{
+				continue;
+			}
+
+			const FVector RouteRight(-RouteDirection.Y, RouteDirection.X, 0.0f);
+			FVector AwayFromRoadCenter = FVector::ZeroVector;
+			const bool bHasRoadCenterDirection = TryGetPedestrianAwayFromRoadCenterDirection(*Pedestrian, AwayFromRoadCenter);
+			const FVector CandidateDirections[2] = {RouteRight, -RouteRight};
+			FVector BestOffsetDirection = CandidateDirections[0];
+			float BestScore = -TNumericLimits<float>::Max();
+			for (const FVector& CandidateDirection : CandidateDirections)
+			{
+				const float CarAvoidanceScore = FVector::DotProduct(CandidateDirection, BestCarAvoidanceDirection.GetSafeNormal());
+				const float RoadCenterScore = bHasRoadCenterDirection ? FVector::DotProduct(CandidateDirection, AwayFromRoadCenter) : 0.0f;
+				const float Score = CarAvoidanceScore + RoadCenterScore * 1.5f;
+				if (Score > BestScore)
+				{
+					BestScore = Score;
+					BestOffsetDirection = CandidateDirection;
+				}
+			}
+
+			Pedestrian->SetAvoidancePathOffset(
+				BestOffsetDirection.GetSafeNormal() * PedestrianRoadEscapeDistanceCm,
+				PedestrianAvoidanceDurationSeconds,
+				PedestrianAvoidanceSpeedMultiplier);
 		}
 	}
 }
@@ -1016,6 +1497,399 @@ bool ASimCopterTrafficSystemActor::TryFindPedestrianEscapeTarget(
 	return true;
 }
 
+bool ASimCopterTrafficSystemActor::TryGetPedestrianAwayFromRoadCenterDirection(
+	const ASimCopterGroundAgent& Pedestrian,
+	FVector& OutAwayDirection) const
+{
+	const FVector PedestrianLocation = Pedestrian.GetActorLocation();
+	const int32 RouteNodeCandidates[2] = {Pedestrian.GetRouteTargetNode(), Pedestrian.GetRoutePrevNode()};
+	FVector BestRoadCenter = FVector::ZeroVector;
+	float BestDistanceSq = TNumericLimits<float>::Max();
+
+	for (const int32 PedestrianNodeIndex : RouteNodeCandidates)
+	{
+		if (!PedestrianNodes.IsValidIndex(PedestrianNodeIndex))
+		{
+			continue;
+		}
+
+		const FSimCopterGroundRouteNode& PedestrianNode = PedestrianNodes[PedestrianNodeIndex];
+		const int32* RoadNodeIndex = RoadNodeIndexByTile.Find(FIntPoint(PedestrianNode.FileX, PedestrianNode.FileY));
+		if (RoadNodeIndex == nullptr || !RoadNodes.IsValidIndex(*RoadNodeIndex))
+		{
+			continue;
+		}
+
+		const FVector RoadCenter = RoadNodes[*RoadNodeIndex].Location;
+		const float DistanceSq = FVector::DistSquared2D(PedestrianLocation, RoadCenter);
+		if (DistanceSq < BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			BestRoadCenter = RoadCenter;
+		}
+	}
+
+	if (BestDistanceSq == TNumericLimits<float>::Max())
+	{
+		const int32 NearestRoadNodeIndex = FindNearestNodeIndex(RoadNodes, PedestrianLocation);
+		if (!RoadNodes.IsValidIndex(NearestRoadNodeIndex))
+		{
+			return false;
+		}
+
+		BestRoadCenter = RoadNodes[NearestRoadNodeIndex].Location;
+	}
+
+	OutAwayDirection = GetFlatSafeNormal(PedestrianLocation - BestRoadCenter);
+	return !OutAwayDirection.IsNearlyZero();
+}
+
+bool ASimCopterTrafficSystemActor::IsTrafficLightIntersectionNode(int32 NodeIndex) const
+{
+	if (!RoadNodes.IsValidIndex(NodeIndex))
+	{
+		return false;
+	}
+
+	const FSimCopterGroundRouteNode& Node = RoadNodes[NodeIndex];
+	return Node.Neighbors.Num() >= 3 || CountRoadOpenings(GetRoadOpeningMask(Node.BuildingId)) >= 3;
+}
+
+bool ASimCopterTrafficSystemActor::IsTrafficLightGreenForApproach(int32 IntersectionNodeIndex, int32 PreviousNodeIndex) const
+{
+	if (!RoadNodes.IsValidIndex(IntersectionNodeIndex) || !RoadNodes.IsValidIndex(PreviousNodeIndex))
+	{
+		return true;
+	}
+
+	const FSimCopterGroundRouteNode& IntersectionNode = RoadNodes[IntersectionNodeIndex];
+	const FSimCopterGroundRouteNode& PreviousNode = RoadNodes[PreviousNodeIndex];
+	const int32 DeltaX = IntersectionNode.FileX - PreviousNode.FileX;
+	const int32 DeltaY = IntersectionNode.FileY - PreviousNode.FileY;
+	const bool bEastWestApproach = FMath::Abs(DeltaX) >= FMath::Abs(DeltaY);
+	const float PhaseSeconds = FMath::Max(0.5f, TrafficLightPhaseSeconds);
+	const float WorldTimeSeconds = GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0f;
+	const int32 StaggeredPhaseOffset = bStaggerTrafficLightPhases
+		? (FMath::Abs(IntersectionNode.FileX * 17 + IntersectionNode.FileY * 31) & 1)
+		: 0;
+	const int32 PhaseIndex = FMath::FloorToInt(WorldTimeSeconds / PhaseSeconds) + StaggeredPhaseOffset;
+	const bool bEastWestGreen = (PhaseIndex % 2) == 0;
+	return bEastWestGreen == bEastWestApproach;
+}
+
+void ASimCopterTrafficSystemActor::MarkVehicleInTrafficLightLine(ASimCopterGroundAgent& Vehicle)
+{
+	FSimCopterVehicleTrafficState& State = VehicleTrafficStates.FindOrAdd(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	State.bInTrafficLightLine = true;
+	State.TrafficLightLineGraceSeconds = FMath::Max(State.TrafficLightLineGraceSeconds, TrafficLightLineGraceDurationSeconds);
+}
+
+void ASimCopterTrafficSystemActor::MarkVehicleCommittedToIntersection(ASimCopterGroundAgent& Vehicle)
+{
+	FSimCopterVehicleTrafficState& State = VehicleTrafficStates.FindOrAdd(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	State.IntersectionCommitSeconds = FMath::Max(State.IntersectionCommitSeconds, TrafficLightIntersectionCommitDurationSeconds);
+	State.bInTrafficLightLine = false;
+	State.TrafficLightLineGraceSeconds = 0.0f;
+}
+
+void ASimCopterTrafficSystemActor::MarkVehicleCollision(ASimCopterGroundAgent& Vehicle)
+{
+	FSimCopterVehicleTrafficState& State = VehicleTrafficStates.FindOrAdd(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	State.RecentCollisionSeconds = FMath::Max(State.RecentCollisionSeconds, VehicleCollisionMemorySeconds);
+	if (State.RecoveryCooldownSeconds > 0.0f)
+	{
+		State.RecoveryRejoinSeconds = FMath::Max(State.RecoveryRejoinSeconds, VehicleRecoveryRejoinDurationSeconds);
+	}
+}
+
+bool ASimCopterTrafficSystemActor::TryStartVehicleRecovery(ASimCopterGroundAgent& Vehicle, FSimCopterVehicleTrafficState& State)
+{
+	FVector ForwardDirection = GetFlatSafeNormal(Vehicle.GetMoveTargetLocation() - Vehicle.GetActorLocation());
+	if (ForwardDirection.IsNearlyZero())
+	{
+		ForwardDirection = GetAgentTravelDirection(Vehicle);
+	}
+	if (ForwardDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	ASimCopterGroundAgent* BlockingVehicle = FindClosestBlockingVehicle(Vehicle, ForwardDirection);
+	const FVector BypassDirection = ChooseVehicleBypassDirection(Vehicle, BlockingVehicle, ForwardDirection);
+	if (BypassDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	const FVector ReverseDirection = -ForwardDirection;
+	const float BackUpDistance = FMath::Max(0.0f, VehicleRecoveryBackUpDistanceCm);
+	if (BackUpDistance > 0.0f)
+	{
+		Vehicle.MoveByTrafficSeparation(ReverseDirection * BackUpDistance);
+	}
+
+	Vehicle.AddTrafficVelocityImpulse(ReverseDirection * VehicleRecoveryReverseImpulseCmPerSec);
+	const FVector DesiredBypassOffset = BypassDirection * VehicleRecoveryBypassOffsetCm;
+	const FVector SafeBypassOffset = IsVehicleTraversingDiagonalRoadTile(Vehicle)
+		? DesiredBypassOffset
+		: MakeVehicleRoadSafePathOffset(Vehicle.GetMoveTargetLocation(), DesiredBypassOffset);
+	Vehicle.SetAvoidancePathOffset(
+		SafeBypassOffset,
+		VehicleRecoveryBypassDurationSeconds,
+		VehicleRecoveryBypassSpeedMultiplier);
+	State.BlockedSeconds = 0.0f;
+	State.RecentCollisionSeconds = 0.0f;
+	State.RecoveryCooldownSeconds = VehicleRecoveryCooldownSeconds;
+	State.RecoveryBypassSeconds = VehicleRecoveryBypassDurationSeconds;
+	State.RecoveryRejoinSeconds = 0.0f;
+	return true;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindClosestBlockingVehicle(
+	const ASimCopterGroundAgent& Vehicle,
+	const FVector& ForwardDirection) const
+{
+	const FVector VehicleLocation = Vehicle.GetActorLocation();
+	const FVector Forward = GetFlatSafeNormal(ForwardDirection);
+	if (Forward.IsNearlyZero())
+	{
+		return nullptr;
+	}
+
+	const FVector Right(-Forward.Y, Forward.X, 0.0f);
+	const float LookAhead = FMath::Max(VehicleRecoveryBlockerLookAheadCm, VehicleRecoveryBypassOffsetCm * 2.0f);
+	float BestForwardDistance = TNumericLimits<float>::Max();
+	ASimCopterGroundAgent* BestVehicle = nullptr;
+
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& OtherPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Other = OtherPtr.Get();
+		if (Other == nullptr || Other == &Vehicle)
+		{
+			continue;
+		}
+
+		const FVector ToOther = Other->GetActorLocation() - VehicleLocation;
+		const FVector FlatToOther(ToOther.X, ToOther.Y, 0.0f);
+		const float ForwardDistance = FVector::DotProduct(FlatToOther, Forward);
+		if (ForwardDistance < -Vehicle.GetCollisionRadiusCm() || ForwardDistance > LookAhead)
+		{
+			continue;
+		}
+
+		const float LateralDistance = FMath::Abs(FVector::DotProduct(FlatToOther, Right));
+		const float BlockingWidth = Vehicle.GetCollisionRadiusCm() + Other->GetCollisionRadiusCm() + VehicleRecoveryBypassOffsetCm * 0.75f;
+		if (LateralDistance > BlockingWidth)
+		{
+			continue;
+		}
+
+		if (ForwardDistance < BestForwardDistance)
+		{
+			BestForwardDistance = ForwardDistance;
+			BestVehicle = Other;
+		}
+	}
+
+	return BestVehicle;
+}
+
+FVector ASimCopterTrafficSystemActor::ChooseVehicleBypassDirection(
+	const ASimCopterGroundAgent& Vehicle,
+	const ASimCopterGroundAgent* BlockingVehicle,
+	const FVector& ForwardDirection) const
+{
+	const FVector Forward = GetFlatSafeNormal(ForwardDirection);
+	if (Forward.IsNearlyZero())
+	{
+		return FVector::ZeroVector;
+	}
+
+	const FVector Right(-Forward.Y, Forward.X, 0.0f);
+	const FVector VehicleLocation = Vehicle.GetActorLocation();
+	const float BypassOffset = FMath::Max(VehicleRecoveryBypassOffsetCm, ActiveTileSize * 0.28f);
+	const float ProbeDistance = FMath::Max(VehicleRecoveryBlockerLookAheadCm, BypassOffset * 2.5f);
+	const FVector CandidateDirections[2] = {Right, -Right};
+	const bool bTraversingDiagonalRoad = IsVehicleTraversingDiagonalRoadTile(Vehicle);
+	float BestScore = -TNumericLimits<float>::Max();
+	FVector BestDirection = CandidateDirections[0];
+
+	for (const FVector& CandidateDirection : CandidateDirections)
+	{
+		float Score = 0.0f;
+		const FVector CandidateCenter = VehicleLocation + CandidateDirection * BypassOffset + Forward * (ProbeDistance * 0.45f);
+		if (!bTraversingDiagonalRoad)
+		{
+			const FVector RoadClampedCandidateCenter = ClampVehicleLocationToRoadNetwork(CandidateCenter);
+			const float OffRoadDistance = FVector::Dist2D(CandidateCenter, RoadClampedCandidateCenter);
+			if (OffRoadDistance > KINDA_SMALL_NUMBER)
+			{
+				Score -= 500.0f + OffRoadDistance * 2.0f;
+			}
+		}
+
+		for (const TWeakObjectPtr<ASimCopterGroundAgent>& OtherPtr : VehicleAgents)
+		{
+			const ASimCopterGroundAgent* Other = OtherPtr.Get();
+			if (Other == nullptr || Other == &Vehicle)
+			{
+				continue;
+			}
+
+			const FVector ToOther = Other->GetActorLocation() - VehicleLocation;
+			const FVector FlatToOther(ToOther.X, ToOther.Y, 0.0f);
+			const float ForwardDistance = FVector::DotProduct(FlatToOther, Forward);
+			if (ForwardDistance < -VehicleRecoveryBackUpDistanceCm || ForwardDistance > ProbeDistance)
+			{
+				continue;
+			}
+
+			const float SideDistance = FVector::DotProduct(FlatToOther, CandidateDirection);
+			const float DistanceFromBypassLane = FMath::Abs(SideDistance - BypassOffset);
+			const float CombinedRadius = Vehicle.GetCollisionRadiusCm() + Other->GetCollisionRadiusCm() + VehicleOverlapPaddingCm;
+			if (DistanceFromBypassLane < CombinedRadius + ActiveTileSize * 0.1f)
+			{
+				const float DistancePenalty = 1.0f - FMath::Clamp(DistanceFromBypassLane / FMath::Max(1.0f, CombinedRadius + ActiveTileSize * 0.1f), 0.0f, 1.0f);
+				const float ForwardPenalty = 1.0f - FMath::Clamp(FMath::Abs(ForwardDistance - ProbeDistance * 0.45f) / FMath::Max(1.0f, ProbeDistance), 0.0f, 1.0f);
+				Score -= 100.0f * DistancePenalty * FMath::Max(0.25f, ForwardPenalty);
+			}
+		}
+
+		if (BlockingVehicle != nullptr)
+		{
+			const FVector ToBlocker = BlockingVehicle->GetActorLocation() - VehicleLocation;
+			const FVector FlatToBlocker(ToBlocker.X, ToBlocker.Y, 0.0f);
+			const float BlockerSide = FVector::DotProduct(FlatToBlocker, CandidateDirection);
+			Score += BlockerSide < 0.0f ? 25.0f : -25.0f;
+		}
+
+		Score -= FVector::DistSquared2D(CandidateCenter, VehicleLocation + Forward * (ProbeDistance * 0.45f)) * 0.00005f;
+		if (Score > BestScore)
+		{
+			BestScore = Score;
+			BestDirection = CandidateDirection;
+		}
+	}
+
+	return BestDirection.GetSafeNormal();
+}
+
+bool ASimCopterTrafficSystemActor::TryMakeVehicleLaneGuidanceTarget(
+	const ASimCopterGroundAgent& Vehicle,
+	FVector& OutTarget,
+	float& OutDistanceFromLane,
+	bool& bOutTraversingDiagonalRoad) const
+{
+	OutTarget = FVector::ZeroVector;
+	OutDistanceFromLane = 0.0f;
+	bOutTraversingDiagonalRoad = false;
+
+	const int32 TargetIndex = Vehicle.GetRouteTargetNode();
+	const int32 PreviousIndex = Vehicle.GetRoutePrevNode();
+	const int32 NextIndex = Vehicle.GetRoutePlannedNextNode();
+	if (!RoadNodes.IsValidIndex(TargetIndex) || !RoadNodes.IsValidIndex(PreviousIndex))
+	{
+		return false;
+	}
+
+	bOutTraversingDiagonalRoad = DoesVehicleRouteTouchDiagonalRoadTile(TargetIndex, PreviousIndex, NextIndex);
+
+	const FVector SegmentStart = MakeRoutePointLocation(RoadNodes, PreviousIndex, INDEX_NONE, TargetIndex, true);
+	const FVector SegmentEnd = MakeRoutePointLocation(RoadNodes, TargetIndex, PreviousIndex, NextIndex, true);
+	FVector Segment = SegmentEnd - SegmentStart;
+	Segment.Z = 0.0f;
+	const float SegmentLength = Segment.Size();
+	if (SegmentLength <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const FVector SegmentDirection = Segment / SegmentLength;
+	const FVector VehicleLocation = Vehicle.GetActorLocation();
+	FVector ToVehicle = VehicleLocation - SegmentStart;
+	ToVehicle.Z = 0.0f;
+	const float AlongSegment = FVector::DotProduct(ToVehicle, SegmentDirection);
+	const float ClampedAlongSegment = FMath::Clamp(AlongSegment, 0.0f, SegmentLength);
+	FVector ClosestLanePoint = SegmentStart + SegmentDirection * ClampedAlongSegment;
+	ClosestLanePoint.Z = VehicleLocation.Z;
+	OutDistanceFromLane = FVector::Dist2D(VehicleLocation, ClosestLanePoint);
+
+	const float OffLaneDistance = FMath::Max(VehicleRoadContainmentDistanceCm, ActiveTileSize * 0.55f);
+	const float BaseLookAhead = FMath::Max(VehicleLaneGuidanceLookAheadCm, ActiveTileSize * 0.25f);
+	const bool bNeedsImmediateLaneReturn = !bOutTraversingDiagonalRoad && OutDistanceFromLane > OffLaneDistance;
+	const float EffectiveLookAhead = bNeedsImmediateLaneReturn
+		? FMath::Clamp(BaseLookAhead * 0.45f, 80.0f, ActiveTileSize * 0.5f)
+		: BaseLookAhead;
+	const float DesiredAlongSegment = FMath::Clamp(ClampedAlongSegment + EffectiveLookAhead, 0.0f, SegmentLength);
+	OutTarget = SegmentStart + SegmentDirection * DesiredAlongSegment;
+	OutTarget.Z = SegmentEnd.Z;
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::IsVehicleTraversingDiagonalRoadTile(const ASimCopterGroundAgent& Vehicle) const
+{
+	return DoesVehicleRouteTouchDiagonalRoadTile(
+		Vehicle.GetRouteTargetNode(),
+		Vehicle.GetRoutePrevNode(),
+		Vehicle.GetRoutePlannedNextNode());
+}
+
+bool ASimCopterTrafficSystemActor::DoesVehicleRouteTouchDiagonalRoadTile(
+	int32 TargetIndex,
+	int32 PreviousIndex,
+	int32 NextIndex) const
+{
+	const int32 RouteNodeIndexes[3] = {TargetIndex, PreviousIndex, NextIndex};
+	for (const int32 RouteNodeIndex : RouteNodeIndexes)
+	{
+		if (RoadNodes.IsValidIndex(RouteNodeIndex) && IsAdjacentRoadCornerTile(RoadNodes[RouteNodeIndex].BuildingId))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+FVector ASimCopterTrafficSystemActor::ClampVehicleLocationToRoadNetwork(const FVector& Location) const
+{
+	if (RoadNodes.Num() == 0)
+	{
+		return Location;
+	}
+
+	const int32 NearestRoadNodeIndex = FindNearestNodeIndex(RoadNodes, Location);
+	if (!RoadNodes.IsValidIndex(NearestRoadNodeIndex))
+	{
+		return Location;
+	}
+
+	const FVector RoadLocation = RoadNodes[NearestRoadNodeIndex].Location;
+	FVector FlatDelta = Location - RoadLocation;
+	FlatDelta.Z = 0.0f;
+	const float MaxRoadDistance = FMath::Max(VehicleRoadContainmentDistanceCm, ActiveTileSize * 0.55f);
+	if (FlatDelta.SizeSquared() <= FMath::Square(MaxRoadDistance))
+	{
+		return Location;
+	}
+
+	FVector ClampedLocation = RoadLocation;
+	if (!FlatDelta.IsNearlyZero())
+	{
+		ClampedLocation += FlatDelta.GetSafeNormal() * MaxRoadDistance;
+	}
+	ClampedLocation.Z = Location.Z;
+	return ClampedLocation;
+}
+
+FVector ASimCopterTrafficSystemActor::MakeVehicleRoadSafePathOffset(const FVector& BaseLocation, const FVector& DesiredOffset) const
+{
+	const FVector DesiredTarget = BaseLocation + FVector(DesiredOffset.X, DesiredOffset.Y, 0.0f);
+	const FVector ClampedTarget = ClampVehicleLocationToRoadNetwork(DesiredTarget);
+	const FVector SafeOffset = ClampedTarget - BaseLocation;
+	return FVector(SafeOffset.X, SafeOffset.Y, 0.0f);
+}
+
 void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent, const TArray<FSimCopterGroundRouteNode>& Nodes)
 {
 	if (Nodes.Num() == 0)
@@ -1037,7 +1911,13 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 		Agent.SetRouteState(FromIndex, INDEX_NONE);
 	}
 
-	const int32 NextIndex = ChooseNextRouteNode(Nodes, FromIndex, Agent.GetRoutePrevNode(), RandomStream);
+	const bool bVehicle = Agent.GetAgentKind() == ESimCopterGroundAgentKind::Vehicle;
+	const int32 ApproachIndex = Agent.GetRoutePrevNode();
+	int32 NextIndex = Agent.GetRoutePlannedNextNode();
+	if (!Nodes.IsValidIndex(NextIndex) || !Nodes[FromIndex].Neighbors.Contains(NextIndex))
+	{
+		NextIndex = ChooseNextRouteNode(Nodes, FromIndex, ApproachIndex, RandomStream);
+	}
 	if (NextIndex == INDEX_NONE)
 	{
 		// Isolated node with no neighbours: re-seed from the nearest node so the agent isn't stuck.
@@ -1045,7 +1925,9 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 		Agent.SetRouteState(ReseedIndex, INDEX_NONE);
 		if (Nodes.IsValidIndex(ReseedIndex))
 		{
-			Agent.SetMoveTarget(Nodes[ReseedIndex].Location);
+			Agent.SetMoveTarget(bVehicle
+				? Nodes[ReseedIndex].Location
+				: Nodes[ReseedIndex].Location);
 		}
 		else
 		{
@@ -1054,14 +1936,18 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 		return;
 	}
 
+	const int32 PlannedNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, NextIndex, FromIndex, RandomStream) : INDEX_NONE;
+
 	// Drive to the chosen adjacent graph node; record where we came from for the next hop.
-	Agent.SetRouteState(NextIndex, FromIndex);
-	Agent.SetMoveTarget(MakeRoutePointLocation(
-		Nodes,
-		NextIndex,
-		FromIndex,
-		INDEX_NONE,
-		Agent.GetAgentKind() == ESimCopterGroundAgentKind::Vehicle));
+	Agent.SetRouteState(NextIndex, FromIndex, PlannedNextIndex);
+	if (bVehicle)
+	{
+		Agent.SetMoveTarget(MakeVehicleRouteTargetLocation(Nodes, NextIndex, FromIndex, ApproachIndex, PlannedNextIndex));
+	}
+	else
+	{
+		Agent.SetMoveTarget(MakeRoutePointLocation(Nodes, NextIndex, FromIndex, INDEX_NONE, false));
+	}
 }
 
 bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& FocusLocation)
@@ -1162,8 +2048,11 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 	// Seed the route at the spawn node, then pick the first hop along the graph.
 	if (Nodes.IsValidIndex(InitialNextIndex))
 	{
-		Agent->SetRouteState(InitialNextIndex, NodeIndex);
-		Agent->SetMoveTarget(MakeRoutePointLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, bVehicle));
+		const int32 InitialPlannedNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, InitialNextIndex, NodeIndex, RandomStream) : INDEX_NONE;
+		Agent->SetRouteState(InitialNextIndex, NodeIndex, InitialPlannedNextIndex);
+		Agent->SetMoveTarget(bVehicle
+			? MakeVehicleRouteTargetLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, InitialPlannedNextIndex)
+			: MakeRoutePointLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, false));
 	}
 	else
 	{
@@ -1214,6 +2103,86 @@ int32 ASimCopterTrafficSystemActor::ChooseNodeNearFocus(const TArray<FSimCopterG
 	return BestFallbackDistanceSq <= MaxDistanceSq ? BestFallbackIndex : INDEX_NONE;
 }
 
+FVector ASimCopterTrafficSystemActor::MakeVehicleRouteTargetLocation(
+	const TArray<FSimCopterGroundRouteNode>& Nodes,
+	int32 TargetIndex,
+	int32 PreviousIndex,
+	int32 ApproachIndex,
+	int32 LookAheadIndex) const
+{
+	const int32 BaseLookAheadIndex = Nodes.IsValidIndex(TargetIndex) && IsAdjacentRoadCornerTile(Nodes[TargetIndex].BuildingId)
+		? LookAheadIndex
+		: INDEX_NONE;
+	FVector TargetLocation = MakeRoutePointLocation(Nodes, TargetIndex, PreviousIndex, BaseLookAheadIndex, true);
+	if (Nodes.IsValidIndex(TargetIndex) &&
+		Nodes.IsValidIndex(PreviousIndex) &&
+		Nodes.IsValidIndex(LookAheadIndex))
+	{
+		FVector TargetIncomingDirection = Nodes[TargetIndex].LocalLocation - Nodes[PreviousIndex].LocalLocation;
+		FVector TargetOutgoingDirection = Nodes[LookAheadIndex].LocalLocation - Nodes[TargetIndex].LocalLocation;
+		TargetIncomingDirection.Z = 0.0f;
+		TargetOutgoingDirection.Z = 0.0f;
+		TargetIncomingDirection = TargetIncomingDirection.GetSafeNormal();
+		TargetOutgoingDirection = TargetOutgoingDirection.GetSafeNormal();
+		if (!TargetIncomingDirection.IsNearlyZero() && !TargetOutgoingDirection.IsNearlyZero())
+		{
+			const float TargetTurnDot = FVector::DotProduct(TargetIncomingDirection, TargetOutgoingDirection);
+			const FVector TargetIncomingSideways = TargetIncomingDirection -
+				TargetOutgoingDirection * FVector::DotProduct(TargetIncomingDirection, TargetOutgoingDirection);
+			const FVector TargetCounterInertiaDirection = -TargetIncomingSideways.GetSafeNormal();
+			const bool bUpcomingTurnNeedsEarlyClip = TargetTurnDot <= 0.92f &&
+				TargetTurnDot >= -0.25f &&
+				!TargetCounterInertiaDirection.IsNearlyZero() &&
+				IsRightHandTurnLocal(TargetIncomingDirection, TargetOutgoingDirection);
+			if (bUpcomingTurnNeedsEarlyClip)
+			{
+				TargetLocation = MakeRoutePointLocation(Nodes, TargetIndex, PreviousIndex, LookAheadIndex, true);
+				const FVector EarlyClipLocalOffset = TargetCounterInertiaDirection * (ActiveTileSize * VehicleRightTurnEarlyClipTileFraction);
+				TargetLocation += ActiveCityToWorldTransform.TransformVector(EarlyClipLocalOffset);
+			}
+		}
+	}
+
+	if (VehicleCornerClipTileFraction <= 0.0f ||
+		!Nodes.IsValidIndex(TargetIndex) ||
+		!Nodes.IsValidIndex(PreviousIndex) ||
+		!Nodes.IsValidIndex(ApproachIndex))
+	{
+		return TargetLocation;
+	}
+
+	FVector IncomingDirection = Nodes[PreviousIndex].LocalLocation - Nodes[ApproachIndex].LocalLocation;
+	FVector OutgoingDirection = Nodes[TargetIndex].LocalLocation - Nodes[PreviousIndex].LocalLocation;
+	IncomingDirection.Z = 0.0f;
+	OutgoingDirection.Z = 0.0f;
+	IncomingDirection = IncomingDirection.GetSafeNormal();
+	OutgoingDirection = OutgoingDirection.GetSafeNormal();
+	if (IncomingDirection.IsNearlyZero() || OutgoingDirection.IsNearlyZero())
+	{
+		return TargetLocation;
+	}
+
+	const float TurnDot = FVector::DotProduct(IncomingDirection, OutgoingDirection);
+	if (TurnDot > 0.92f || TurnDot < -0.25f)
+	{
+		return TargetLocation;
+	}
+
+	const FVector IncomingSideways = IncomingDirection - OutgoingDirection * FVector::DotProduct(IncomingDirection, OutgoingDirection);
+	const FVector CounterInertiaDirection = -IncomingSideways.GetSafeNormal();
+	if (CounterInertiaDirection.IsNearlyZero())
+	{
+		return TargetLocation;
+	}
+
+	const bool bRightHandTurn = IsRightHandTurnLocal(IncomingDirection, OutgoingDirection);
+	const float EffectiveClipFraction = bRightHandTurn
+		? VehicleRightTurnCornerClipTileFraction
+		: VehicleCornerClipTileFraction;
+	const FVector CornerClipLocalOffset = CounterInertiaDirection * (ActiveTileSize * EffectiveClipFraction);
+	return TargetLocation + ActiveCityToWorldTransform.TransformVector(CornerClipLocalOffset);
+}
+
 FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
 	const TArray<FSimCopterGroundRouteNode>& Nodes,
 	int32 PointIndex,
@@ -1233,7 +2202,11 @@ FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
 	}
 
 	FVector Direction = FVector::ZeroVector;
-	if (Nodes.IsValidIndex(NextIndex))
+	if (TryGetCornerRoadTravelDirectionLocal(Nodes, PointIndex, PreviousIndex, NextIndex, Direction))
+	{
+		// Direction already follows the tile's visual diagonal/curve from entry opening to exit opening.
+	}
+	else if (Nodes.IsValidIndex(NextIndex))
 	{
 		Direction = Nodes[NextIndex].LocalLocation - Point.LocalLocation;
 	}
@@ -1249,7 +2222,12 @@ FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
 		return Point.Location;
 	}
 
-	const FVector Right = FVector::CrossProduct(FVector::UpVector, Direction).GetSafeNormal();
-	const FVector LaneLocalLocation = Point.LocalLocation + Right * (ActiveTileSize * VehicleLaneOffsetTileFraction);
+	const FVector LaneSide = GetRightHandLaneSideLocalDirection(Direction);
+	if (LaneSide.IsNearlyZero())
+	{
+		return Point.Location;
+	}
+
+	const FVector LaneLocalLocation = Point.LocalLocation + LaneSide * (ActiveTileSize * VehicleLaneOffsetTileFraction);
 	return ActiveCityToWorldTransform.TransformPosition(LaneLocalLocation);
 }
