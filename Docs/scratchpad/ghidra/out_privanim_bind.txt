@@ -1,0 +1,17 @@
+===== FUN_004ce6c0 @ 004ce6c0 =====
+
+void FUN_004ce6c0(undefined4 param_1,undefined2 param_2)
+
+{
+  int in_ECX;
+  
+  *(undefined2 *)(in_ECX + 0xf4) = 1;
+  *(undefined2 *)(in_ECX + 4) = param_2;
+  *(undefined2 *)(in_ECX + 6) = 0;
+  *(undefined4 *)(in_ECX + 8) = 0;
+  *(undefined4 *)(in_ECX + 0x14) = param_1;
+  *(undefined2 *)(in_ECX + 8) = 0;
+  return;
+}
+
+

@@ -1,0 +1,3 @@
+STRING @ 0050445c : Heli Ropestuff
+    <- 0048a337  in FUN_00489e20 @ 00489e20
+=== 1 strings matched 'Ropestuff' ===

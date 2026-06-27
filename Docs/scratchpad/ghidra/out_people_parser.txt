@@ -1,0 +1,113 @@
+===== FUN_004cd550 @ 004cd550 =====
+
+undefined4 FUN_004cd550(undefined4 param_1)
+
+{
+  undefined4 uVar1;
+  int in_ECX;
+  
+  uVar1 = FUN_004ce2d0(param_1);
+  *(undefined4 *)(in_ECX + 0x114) = uVar1;
+  if (*(int *)(in_ECX + 0x114) != 0) {
+    *(undefined1 *)(in_ECX + 8) = 0;
+    *(undefined4 *)(in_ECX + 0x108) = 0;
+    return *(undefined4 *)(in_ECX + 0x114);
+  }
+  uVar1 = FUN_004cdb50();
+  *(undefined4 *)(in_ECX + 0x114) = uVar1;
+  return *(undefined4 *)(in_ECX + 0x114);
+}
+
+
+===== FUN_004ce4f0 @ 004ce4f0 =====
+
+bool FUN_004ce4f0(void)
+
+{
+  int in_ECX;
+  
+  return *(int *)(in_ECX + 0x108) != 0;
+}
+
+
+===== FUN_004ce9d0 @ 004ce9d0 =====
+
+void FUN_004ce9d0(void)
+
+{
+  ushort uVar1;
+  
+  if ((DAT_0058f0d8 & 0x8000) == 0) {
+    uVar1 = (short)DAT_0058f0d8 * 2;
+  }
+  else {
+    uVar1 = (short)DAT_0058f0d8 * 2 ^ 0x1bf5;
+  }
+  DAT_0058f0d8 = DAT_0058f0d8 ^ uVar1;
+  return;
+}
+
+
+===== FUN_00432ab0 @ 00432ab0 =====
+
+void FUN_00432ab0(undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  FUN_00433b20(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+===== FUN_004d16e0 @ 004d16e0 =====
+
+void FUN_004d16e0(char *param_1,byte *param_2)
+
+{
+  char cVar1;
+  int iVar2;
+  int iVar3;
+  char *pcVar4;
+  
+  iVar3 = -1;
+  pcVar4 = param_1;
+  do {
+    if (iVar3 == 0) break;
+    iVar3 = iVar3 + -1;
+    cVar1 = *pcVar4;
+    pcVar4 = pcVar4 + 1;
+  } while (cVar1 != '\0');
+  iVar2 = 0;
+  *param_2 = ~(byte)iVar3 - 1;
+  do {
+    param_2[iVar2 + 1] = param_1[iVar2];
+    iVar2 = iVar2 + 1;
+  } while (iVar2 <= (int)(uint)*param_2);
+  return;
+}
+
+
+===== FUN_004cf040 @ 004cf040 =====
+
+void FUN_004cf040(void)
+
+{
+  undefined4 *in_ECX;
+  undefined4 *unaff_FS_OFFSET;
+  undefined4 local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_10 = *unaff_FS_OFFSET;
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004cf095;
+  *unaff_FS_OFFSET = &local_10;
+  FUN_004ce220();
+  *in_ECX = &PTR_FUN_004f4f48;
+  in_ECX[0x45] = 0;
+  in_ECX[0x44] = 0;
+  *unaff_FS_OFFSET = local_10;
+  return;
+}
+
+
+No function at 004c84e0

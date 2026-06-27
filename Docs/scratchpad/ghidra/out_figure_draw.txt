@@ -1,0 +1,86 @@
+===== FUN_004ce690 @ 004ce690 =====
+
+void FUN_004ce690(byte param_1)
+
+{
+  FUN_004ce6b0();
+  if ((param_1 & 1) != 0) {
+    FUN_004d29a0();
+  }
+  return;
+}
+
+
+===== FUN_004ce7b0 @ 004ce7b0 =====
+
+bool FUN_004ce7b0(undefined4 param_1,short param_2)
+
+{
+  undefined4 *puVar1;
+  char cVar2;
+  short sVar3;
+  int iVar4;
+  short *psVar5;
+  int *in_ECX;
+  undefined2 extraout_var;
+  int *piVar6;
+  int iStack_4;
+  
+  *(undefined2 *)(in_ECX + 0x3e) = 0;
+  do {
+    iVar4 = (int)(short)in_ECX[0x3d];
+    piVar6 = in_ECX + iVar4 * 5 + -4;
+    psVar5 = (short *)(*(code *)**(undefined4 **)piVar6[4])
+                                ((short)*piVar6,
+                                 CONCAT22((short)((uint)(iVar4 * 4) >> 0x10),
+                                          *(undefined2 *)(iVar4 * 0x14 + -0xe + (int)in_ECX)));
+    if (*psVar5 < 0x100) {
+      puVar1 = (undefined4 *)*in_ECX;
+      iStack_4 = (*(code *)*puVar1)(piVar6,psVar5);
+      switch(iStack_4) {
+      case 0:
+        cVar2 = FUN_004ce8f0(0);
+        if (cVar2 == -3) {
+          (*(code *)puVar1[2])();
+        }
+        break;
+      case 1:
+        cVar2 = FUN_004ce8f0(1);
+        if (cVar2 == -3) {
+          (*(code *)puVar1[2])();
+        }
+        break;
+      default:
+        goto switchD_004ce83e_caseD_2;
+      case 3:
+        break;
+      case -1:
+        (*(code *)puVar1[2])();
+      }
+    }
+    else {
+      if (*(short *)((int)in_ECX + 0xf6) <= (short)in_ECX[0x3d]) {
+        (**(code **)(*in_ECX + 4))(1000);
+        return true;
+      }
+      if ((*(int *)(psVar5 + 2) != -1) || (piVar6 = (int *)0x0, *(int *)(psVar5 + 4) != -1)) {
+        piVar6 = (int *)(psVar5 + 2);
+      }
+      sVar3 = FUN_004ce700(0,piVar6,CONCAT22(extraout_var,*psVar5));
+      if (sVar3 == 0) {
+switchD_004ce83e_caseD_2:
+        param_2 = 1;
+      }
+    }
+    if (0x80 < (short)in_ECX[0x3e]) {
+      (**(code **)(*in_ECX + 4))(0x3ea);
+      return true;
+    }
+    if (param_2 != 0) {
+      return iStack_4 == 2;
+    }
+  } while( true );
+}
+
+
+No function at 004d4800

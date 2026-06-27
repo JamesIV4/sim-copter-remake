@@ -1,0 +1,4 @@
+References to 0058de80:
+    004c7c31  DATA  in FUN_004c7c00 @ 004c7c00
+    004c70b1  DATA  in FUN_004c7090 @ 004c7090
+    004c326b  WRITE  in FUN_004c3010 @ 004c3010

@@ -12,6 +12,9 @@
 //   func <name>...            Decompile functions by name.
 //   callers <hexaddr>         Functions that call the function containing addr.
 //   bytes <hexaddr> <count>   Hex/dword dump.
+//   disasm <hexaddr> <count>  Disassemble <count> instructions (force-disassembles raw blocks); shows call/jump targets.
+//   decompileforce <hexaddr>...  Create a function at each addr if none exists (vtable-only targets), then decompile.
+//   scan <hexbytes>           Search all memory for a byte sequence (e.g. 68564148 42); report addrs + containing func.
 
 import java.io.PrintWriter;
 import java.io.OutputStreamWriter;
@@ -28,6 +31,7 @@ import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.DataIterator;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.FunctionIterator;
+import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.mem.MemoryAccessException;
 import ghidra.program.model.symbol.Reference;
@@ -52,9 +56,12 @@ public class ReverseExplore extends GhidraScript {
 				case "strings": cmdStrings(args[2]); break;
 				case "xrefsto": cmdXrefsTo(args[2]); break;
 				case "decompile": for (int i = 2; i < args.length; i++) decompileAt(toAddr(args[i])); break;
+				case "decompileforce": for (int i = 2; i < args.length; i++) decompileForce(toAddr(args[i])); break;
 				case "func": for (int i = 2; i < args.length; i++) decompileFunc(args[i]); break;
 				case "callers": cmdCallers(args[2]); break;
-				case "bytes": cmdBytes(args[2], Integer.parseInt(args[3])); break;
+				case "bytes": cmdBytes(args[2], parseCount(args[3])); break;
+				case "disasm": cmdDisasm(args[2], parseCount(args[3])); break;
+				case "scan": cmdScan(args[2]); break;
 				default: out.println("Unknown command: " + cmd);
 			}
 		} finally {
@@ -145,6 +152,18 @@ public class ReverseExplore extends GhidraScript {
 		decompileFunction(f);
 	}
 
+	void decompileForce(Address addr) {
+		Function f = getFunctionContaining(addr);
+		if (f == null) {
+			try {
+				if (getInstructionAt(addr) == null) disassemble(addr);
+				f = createFunction(addr, null);
+			} catch (Exception e) { out.println("create failed at " + addr + ": " + e.getMessage()); }
+		}
+		if (f == null) { out.println("No function at " + addr + " (force failed)"); return; }
+		decompileFunction(f);
+	}
+
 	void decompileFunction(Function f) {
 		out.println("===== " + f.getName() + " @ " + f.getEntryPoint() + " =====");
 		DecompileResults res = dec().decompileFunction(f, 60, new ConsoleTaskMonitor());
@@ -170,6 +189,65 @@ public class ReverseExplore extends GhidraScript {
 		} catch (MemoryAccessException e) {
 			out.println("Memory access error: " + e.getMessage());
 		}
+	}
+
+	void cmdDisasm(String hex, int count) {
+		Address addr = toAddr(hex);
+		Listing listing = currentProgram.getListing();
+		for (int i = 0; i < count && addr != null; i++) {
+			Instruction insn = listing.getInstructionAt(addr);
+			if (insn == null) {
+				try { disassemble(addr); } catch (Exception e) { /* ignore */ }
+				insn = listing.getInstructionAt(addr);
+			}
+			if (insn == null) {
+				int b = 0;
+				try { b = currentProgram.getMemory().getByte(addr) & 0xff; } catch (Exception e) {}
+				out.println(addr + "  db 0x" + String.format("%02x", b) + "  (could not disassemble)");
+				addr = addr.add(1);
+				continue;
+			}
+			StringBuilder sb = new StringBuilder();
+			sb.append(addr).append("  ").append(insn.toString());
+			Address[] flows = insn.getFlows();
+			if (flows != null && flows.length > 0) {
+				sb.append("   -> ");
+				for (Address f : flows) {
+					Function fn = getFunctionContaining(f);
+					sb.append(f);
+					if (fn != null) sb.append("(").append(fn.getName()).append(")");
+					sb.append(" ");
+				}
+			}
+			out.println(sb.toString());
+			addr = insn.getMaxAddress().add(1);
+		}
+	}
+
+	void cmdScan(String hexbytes) {
+		String hs = hexbytes.replace(" ", "").replace("0x", "");
+		int n = hs.length() / 2;
+		byte[] pat = new byte[n];
+		for (int i = 0; i < n; i++) pat[i] = (byte) Integer.parseInt(hs.substring(i * 2, i * 2 + 2), 16);
+		out.println("Scanning for " + n + " bytes: " + hexbytes);
+		ghidra.program.model.mem.Memory mem = currentProgram.getMemory();
+		int hits = 0;
+		Address a = mem.getMinAddress();
+		while (a != null && hits < 200) {
+			Address found = mem.findBytes(a, pat, null, true, new ConsoleTaskMonitor());
+			if (found == null) break;
+			Function f = getFunctionContaining(found);
+			out.println("  @ " + found + (f != null ? "  in " + f.getName() + " @ " + f.getEntryPoint() : "  (no func)"));
+			hits++;
+			a = found.add(1);
+		}
+		out.println("=== " + hits + " hits ===");
+	}
+
+	int parseCount(String s) {
+		s = s.trim();
+		if (s.startsWith("0x") || s.startsWith("0X")) return Integer.parseInt(s.substring(2), 16);
+		return Integer.parseInt(s);
 	}
 
 	String escape(String s) {

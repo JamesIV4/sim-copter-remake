@@ -1,0 +1,5 @@
+Scanning for 5 bytes: 6856414842
+  @ 004d0136  in FUN_004d0100 @ 004d0100
+  @ 004d014c  in FUN_004d0100 @ 004d0100
+  @ 004d02e4  (no func)
+=== 3 hits ===
