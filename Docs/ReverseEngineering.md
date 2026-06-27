@@ -4,6 +4,18 @@
 
 The first milestone is loading SimCity 2000 `.sc2` city files and rendering them in Unreal as navigable city geometry. The runtime must read assets from a user-provided SimCopter installation instead of committing original game data into this repository.
 
+Companion documentation added for deeper code and evidence review:
+
+- `Docs/DocumentationCoverage.md` tracks what this documentation pass covered and what remains blocked on more reverse engineering.
+- `Docs/OriginalGameFileCodeWalkthrough.md` explains the original file parsers, mesh library, procedural mesh builder, tests, and probe scripts function by function.
+- `Docs/CityRenderingCodeWalkthrough.md` explains the city actor pipeline and where decompiled terrain/mesh behavior enters the renderer.
+- `Docs/GameplayCodeWalkthrough.md` explains the helicopter, ground population, traffic, on-foot pawn, game mode, and mesh debug actors.
+- `Docs/ToolingCodeWalkthrough.md` explains the Unreal bake/material scripts, read-only probes, Ghidra helpers, and build files.
+- `Docs/DecompilationWorkflow.md` explains the Ghidra scripts, scratch outputs, address ledger, and documentation loop for new reverse-engineering work.
+- `Docs/MissionsAndTweakSystem.md` decodes every `tweak/*.twk` file, the master tweak tree, the 30-city career, and the nine mission types with their full money/points scoring.
+- `Docs/OriginalGameFileFormats.md` decodes the binary `X/people.df` (global behavior file: state tables, behavior VM, person record, spawn modes, PRNG) and `X/privanim.df` (articulated figure pack) resource containers.
+- `Docs/OriginalRuntimeBehavior.md` decodes the original `TRAN` traffic steering and road graph, the `ALTM` slope bits, and the helicopter flight model (tuning binding, master tick, attitude integrator).
+
 `/Reference` is intentionally ignored by git. The local reference copy currently contains:
 
 | Folder | Files | Notes |
@@ -307,8 +319,12 @@ Relevant executable behavior found so far:
   configurator: it finds a free slot among 500 person objects, handles tile/object/world spawn
   modes, marks the person active, and defaults missing animation state to `NoMo`.
 - `FUN_004ceab0` loads `PrivAnim.df`, registers animation/resource record handlers, and builds the
-  private animation tables. That payload is not interpreted yet; the current sprite animation only
-  cycles the three visible PEOPLE1 rows while movement is nonzero.
+  private animation tables. **The container is now fully decoded** (2026-06-26 deep pass; see
+  `Docs/OriginalGameFileFormats.md` "Faithful Extraction Method" + `Tools/privanim_extract.py`):
+  section directory, 12-byte node directory, 21 figures, a 75-76-clip animation inheritance tree,
+  per-part node-defs with `(x,y,0.5)` extents, and the `ARCP` 4-byte coordinate streams. The only
+  unread sub-detail is the figure rasterization primitive (line vs filled polygon), which lives in
+  the 3D scene software engine, not the file.
 
 Implemented first playable remake pass:
 
@@ -331,10 +347,22 @@ Implemented first playable remake pass:
 
 Remaining hard pass:
 
-1. Continue decompiling the People.df behavior VM/record format and replace the current simple
-   pedestrian waypoint wandering with the original behavior labels and state transitions.
-2. Decode `PrivAnim.df` `ARPP`/animation records so sprite frame choice comes from original animation
-   data rather than the temporary three-row movement cycle.
+1. **NEXT: clean decode of the people logic (behavior VM + spawn rules) so pedestrians spawn
+   correctly and carry all the original behaviors.** This is now the top priority. The entry points
+   are known: spawn config `FUN_004c4190` (free-slot search among 500 person objects, tile/object/world
+   spawn modes, per-state animation defaulting); per-frame driver `FUN_004c6450` (runs behavior +
+   advances the animation frame, LOD-gated by `DAT_0058dc26`); and the **88-handler behavior bytecode
+   VM** dispatched by `(&DAT_0058ef78)[op]` via `FUN_004ccf20`, executed by walking each agent's
+   `BHAV` ("VAHB", `0x42484156`) resource with the IFF walker `FUN_004ce7b0` (the same walker proven
+   this pass to be a *behavior interpreter*, not a geometry drawer; `BHAV` accessor `FUN_004d0100`).
+   Decode needed: the 88 opcode handlers + bytecode grammar, the per-state table (`DAT_0058de80`
+   anim ids, loop flags), state-transition triggers (idle/walk/panic/return-to-car/flee-spotlight/
+   pickup/decommission), and the spawn weighting per city (`career.twk`). Goal: replace the remake's
+   placeholder waypoint wandering with faithful state machines + spawn rules.
+2. `PrivAnim.df` animation decode is **done** (see `Docs/OriginalGameFileFormats.md` + the
+   `Tools/privanim_extract.py` extractor): clip tree, frame counts, per-part transforms, and coord
+   streams are recovered. Remaining optional refinement: the exact draw primitive (needs the 3D
+   scene rasterizer reverse) and emitting glTF from the extracted model.
 3. Finish porting vehicle spawn validation from `FUN_004b74a0`/`FUN_004b7890`, including the original
    multi-subobject follower update routines (`FUN_004b6a80`, `FUN_004b6c40`, `FUN_004b6f80`,
    `FUN_004b7020`) for car spacing/lane offsets.
@@ -412,6 +440,17 @@ Observed facts:
 - Imports include `DDRAW.dll`, `DSOUND.dll`, `WINMM.dll`, `MSACM32.dll`, `smackw32.DLL`, `GDI32.dll`, `USER32.dll`, `KERNEL32.dll`, `ADVAPI32.dll`, `comdlg32.dll`, and `VERSION.dll`.
 - Strings include `FORM`, `SCDH`, `ALTM`, `XTER`, `XBLD`, `SIM3D1.MAX`, `SIM3D2.MAX`, `SIM3D3.MAX`, and `sim3d.twk`, supporting the city/asset pipeline being implemented first.
 - Additional local string/analysis probes found `TILED1.BMP`, `TileCnt`, `AltMap`, `RoadTiles`, and `SIM3D.BMP` references in the executable. These support the current focus on terrain atlas, altitude map, and road/building tile behavior before relying on broader online notes.
+
+## Decoded Runtime Systems And Mission Data (2026-06-26 pass)
+
+This pass decoded the previously-blocked areas. Full detail lives in the three new docs linked above; the headline discoveries:
+
+- **Missions and career** (`Docs/MissionsAndTweakSystem.md`). `sim3d.twk` is the master tweak tree (`Class` -> `Redirect`/inline). The career is 30 cities (`career.twk`, `City0..City29`), each with seven mission-type spawn weights (Fire/Crime/Rescue/Riot/Traffic/MedEvac/Transport), difficulty, day/night, a `Points Needed` win target (400 -> 3000), and `$ Earned` (500 -> 100). The nine mission types are defined inline in `sim3d.twk` `[Missions]` with full money/points scoring (Fire Miss alone has 20 controls). `fire.twk`, `figure.twk`, `camera.twk`, and `automssn.twk` are also decoded. The `fxpt` tweak data type is fixed-point (e.g. `MaxBank 426.7` = 42.67 deg).
+- **`people.df` = the "global behavior file"** (`Docs/OriginalGameFileFormats.md`). A type-`0xc` Maxis DF container (length-prefixed name + 2-entry `RSRC` directory + opaque payload). Runtime: 500 person slots, ~20 states with hardcoded animation/sequence tables, a 256-entry `XBLD`->behavior-class map (`DAT_0058e800`), an 88-handler computed-goto **behavior VM** (`DAT_0058ef78` -> `LAB_004c84e0`+`0x20`n), an 8-direction sin/cos facing table, and a dedicated 16-bit LFSR PRNG (`FUN_004ce9d0`, tap `0x1bf5`) separate from MSVCRT `rand()`. The person record and seven spawn modes are mapped.
+- **`privanim.df`** (`Docs/OriginalGameFileFormats.md`) is the articulated-figure pack: a big-endian IFF "Doug" container with sections `BODC` (body geometry), `ANIP` (a 76-clip animation inheritance tree of `ARPP` pose records), `ARCP`/`ARLU` (12-segment articulation skeleton + lookup), and `SPR#` (sprites). Pedestrian render chain decoded: person state `+0x148` -> `DAT_0058de80[state]` figure id -> `FUN_004ce630` builds a 12-segment figure -> per-frame pose draw, with `PEOPLE1.BMP` at distance. Walkable via `Tools/privanim_probe.py`. Remaining: exact `BODC`/`ARCP`/`ARPP` field semantics + skinning math.
+- **Original `TRAN` traffic** (`Docs/OriginalRuntimeBehavior.md`). Per-tile coin-flip steering (`FUN_004b5290`) over a road graph of `0x38`-byte intersections + 3-byte road tiles (`FUN_00495700`), with hospital/police/fire service registries that feed missions. Cars wander (no pathfinding); the remake's graph walk is a faithful feel, not a byte match.
+- **`ALTM` slope bits 10..14** (mask `0x7c00`) are a per-tile slope code; `== 0` means flat. The base/secondary altitude decode (`FUN_004abc20`, bits 0-4 / 5-9) is confirmed.
+- **Helicopter flight model** (`Docs/OriginalRuntimeBehavior.md`). `heli.twk`-tuned, per type a `0x5c`-byte tuning block bound by `FUN_00489e20`. Master tick `FUN_00484d20` runs the state machine and scene-graph relink; attitude integrator `FUN_00486a30` is input -> clamp to tuning max -> first-order lag (rate from PitchRate) -> integrate heading (full circle = `0xe100000`).
 
 ## Flight Tuning And Interaction
 

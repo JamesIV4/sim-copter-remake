@@ -1,0 +1,192 @@
+===== FUN_004ccf20 @ 004ccf20 =====
+
+void FUN_004ccf20(undefined4 param_1,short *param_2)
+
+{
+  int in_ECX;
+  
+  *(short *)(in_ECX + 0x1b0) = *(short *)(in_ECX + 0x1b0) + 1;
+  (*(code *)(&DAT_0058ef78)[*param_2])();
+  return;
+}
+
+
+===== FUN_004d0460 @ 004d0460 =====
+
+void FUN_004d0460(void)
+
+{
+  return;
+}
+
+
+===== FUN_004c84c0 @ 004c84c0 =====
+
+void FUN_004c84c0(void)
+
+{
+  int in_ECX;
+  
+  FUN_004ce6c0(*(undefined4 *)(in_ECX + 0x126),*(undefined2 *)(in_ECX + 0x17a));
+  return;
+}
+
+
+===== FUN_004c7cf0 @ 004c7cf0 =====
+
+void FUN_004c7cf0(byte param_1)
+
+{
+  FUN_004c8090();
+  if ((param_1 & 1) != 0) {
+    FUN_004d29a0();
+  }
+  return;
+}
+
+
+===== FUN_004cd2d0 @ 004cd2d0 =====
+
+void FUN_004cd2d0(void)
+
+{
+  return;
+}
+
+
+===== FUN_004cd2e0 @ 004cd2e0 =====
+
+short FUN_004cd2e0(undefined2 param_1,short param_2,undefined1 **param_3)
+
+{
+  short *psVar1;
+  int *in_ECX;
+  undefined1 auStack_6 [2];
+  undefined1 *puStack_4;
+  
+  if (param_3 == (undefined1 **)0x0) {
+    param_3 = &puStack_4;
+    puStack_4 = auStack_6;
+  }
+  *param_3 = (undefined1 *)0x0;
+  switch(param_1) {
+  case 0:
+  case 1:
+  case 4:
+  case 8:
+  case 10:
+  case 0xb:
+    return 0;
+  default:
+    (**(code **)(*in_ECX + 4))(8);
+    return 0;
+  case 3:
+    break;
+  case 7:
+    return param_2;
+  case 9:
+    if (param_2 < 4) {
+      psVar1 = (short *)((int)in_ECX + ((int)param_2 + (short)in_ECX[0x3d] * 10) * 2 + -8);
+      *param_3 = (undefined1 *)psVar1;
+      return *psVar1;
+    }
+    (**(code **)(*in_ECX + 4))(7);
+    return 0;
+  }
+  if (param_2 < 0x30) {
+    psVar1 = (short *)((int)in_ECX + param_2 * 2 + 0x140);
+    *param_3 = (undefined1 *)psVar1;
+    return *psVar1;
+  }
+  (**(code **)(*in_ECX + 4))(6);
+  return 0;
+}
+
+
+===== FUN_004c7d70 @ 004c7d70 =====
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_004c7d70(void)
+
+{
+  short sVar1;
+  undefined2 uVar2;
+  int iVar3;
+  int *in_ECX;
+  
+  if (*(short *)((int)in_ECX + 0x142) != 0) {
+    FUN_004c6360(0);
+    iVar3 = FUN_004ca650();
+    if (iVar3 != 0) {
+      FUN_004c6360(0);
+    }
+    if (*(short *)((int)in_ECX + 0x172) != -1) {
+      *(undefined2 *)(in_ECX + 0x5d) = 0xffff;
+      FUN_0042a310((int)(short)(*(short *)((int)in_ECX + 0x172) + 0x71));
+      (&DAT_0058dc42)[*(short *)((int)in_ECX + 0x172)] = 0;
+      *(undefined2 *)((int)in_ECX + 0x172) = 0xffff;
+    }
+    *(undefined2 *)((int)in_ECX + 0x142) = 0;
+    if ((short)in_ECX[0x52] == 0) {
+      DAT_0058dc1c = DAT_0058dc1c + -1;
+    }
+    else {
+      _DAT_0058dc1a = _DAT_0058dc1a + -1;
+    }
+    FUN_004c7910();
+    (**(code **)(*in_ECX + 0x1c))();
+  }
+  sVar1 = 0;
+  do {
+    iVar3 = (int)sVar1;
+    sVar1 = sVar1 + 1;
+    *(undefined2 *)((int)in_ECX + iVar3 * 2 + 0x140) = 0;
+  } while (sVar1 < 0x30);
+  *(undefined2 *)((int)in_ECX + 0x1c2) = *(undefined2 *)((int)in_ECX + 0x12e);
+  *(undefined2 *)((int)in_ECX + 0x14e) = *(undefined2 *)((int)in_ECX + 0x12e);
+  sVar1 = 0;
+  do {
+    iVar3 = (int)sVar1;
+    sVar1 = sVar1 + 1;
+    in_ECX[iVar3 + 0x68] = 0;
+  } while (sVar1 < 4);
+  in_ECX[0x8a] = 0x3f800000;
+  *(undefined2 *)(in_ECX + 0x42) = 0;
+  in_ECX[0x89] = 0;
+  *(undefined2 *)((int)in_ECX + 0x18e) = 0xffff;
+  in_ECX[0x88] = 0;
+  *(undefined2 *)((int)in_ECX + 0x186) = 0;
+  in_ECX[0x87] = 0;
+  *(undefined2 *)(in_ECX + 0x59) = 0;
+  *(undefined2 *)((int)in_ECX + 0x162) = 1;
+  in_ECX[0x86] = 0;
+  in_ECX[0x41] = -100;
+  *(undefined2 *)(in_ECX + 0x61) = 100;
+  *(undefined2 *)(in_ECX + 0x51) = 3;
+  *(undefined2 *)((int)in_ECX + 0x176) = 1;
+  *(undefined2 *)((int)in_ECX + 0x172) = 0xffff;
+  *(undefined2 *)(in_ECX + 0x58) = 0xffff;
+  *(undefined2 *)(in_ECX + 0x5c) = 0xffff;
+  uVar2 = FUN_004cea00(8);
+  *(undefined2 *)(in_ECX + 0x50) = uVar2;
+  *(undefined2 *)(in_ECX + 0x60) = 0x392;
+  *(undefined2 *)(in_ECX + 0x53) = 0;
+  *(undefined2 *)(in_ECX + 0x54) = 0;
+  return;
+}
+
+
+===== FUN_004ce250 @ 004ce250 =====
+
+void FUN_004ce250(byte param_1)
+
+{
+  FUN_004ce270();
+  if ((param_1 & 1) != 0) {
+    FUN_004d29a0();
+  }
+  return;
+}
+
+

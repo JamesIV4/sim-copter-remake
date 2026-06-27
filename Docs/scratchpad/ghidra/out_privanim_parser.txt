@@ -1,0 +1,42 @@
+===== FUN_004cd5a0 @ 004cd5a0 =====
+
+undefined4 FUN_004cd5a0(undefined4 param_1)
+
+{
+  undefined4 uVar1;
+  int in_ECX;
+  
+  uVar1 = FUN_004ce320(param_1);
+  *(undefined4 *)(in_ECX + 0x114) = uVar1;
+  if (*(int *)(in_ECX + 0x114) != 0) {
+    *(undefined1 *)(in_ECX + 8) = 0;
+    *(undefined4 *)(in_ECX + 0x108) = 0;
+    return *(undefined4 *)(in_ECX + 0x114);
+  }
+  uVar1 = FUN_004cdb50();
+  *(undefined4 *)(in_ECX + 0x114) = uVar1;
+  return *(undefined4 *)(in_ECX + 0x114);
+}
+
+
+===== FUN_004cd5f0 @ 004cd5f0 =====
+
+undefined4 FUN_004cd5f0(void)
+
+{
+  int iVar1;
+  int in_ECX;
+  
+  iVar1 = FUN_004ce400();
+  *(int *)(in_ECX + 0x114) = iVar1;
+  if (iVar1 == 0) {
+    if (*(int *)(in_ECX + 0x110) != 0) {
+      FUN_004cdc60();
+    }
+    *(undefined4 *)(in_ECX + 0x110) = 0;
+  }
+  return *(undefined4 *)(in_ECX + 0x114);
+}
+
+
+No function at 004c1a40

@@ -1,0 +1,76 @@
+===== FUN_004ce320 @ 004ce320 =====
+
+int FUN_004ce320(undefined4 param_1)
+
+{
+  short sVar1;
+  int iVar2;
+  int iVar3;
+  FILE *pFVar4;
+  int in_ECX;
+  char local_100 [256];
+  
+  sVar1 = FUN_004ce4f0();
+  if (sVar1 == 0) {
+    iVar2 = 0;
+    iVar3 = FUN_004ce290(param_1);
+    if (iVar3 == 0) {
+      FUN_004ce150(param_1,local_100,0x100);
+      FUN_004d1880(local_100);
+      pFVar4 = FID_conflict___wfopen(local_100,&DAT_004fa038);
+      *(FILE **)(in_ECX + 0x10c) = pFVar4;
+      if ((pFVar4 == (FILE *)0x0) || (pFVar4 == (FILE *)0xffffffff)) {
+        iVar2 = -0x32;
+      }
+      DAT_00506bd4 = DAT_00506bd4 + 1;
+      iVar3 = DAT_00506bd4;
+    }
+    else {
+      *(undefined4 *)(in_ECX + 0x10c) = *(undefined4 *)(iVar3 + 0x10c);
+      iVar3 = *(int *)(iVar3 + 0x108);
+    }
+    *(int *)(in_ECX + 0x108) = iVar3;
+    if (iVar2 == 0) {
+      FUN_004ce150(param_1,in_ECX + 8,0x100);
+    }
+    else {
+      *(undefined1 *)(in_ECX + 8) = 0;
+      *(int *)(in_ECX + 0x108) = 0;
+    }
+  }
+  else {
+    iVar2 = -0x2f;
+  }
+  return iVar2;
+}
+
+
+===== FUN_004ce400 @ 004ce400 =====
+
+void FUN_004ce400(void)
+
+{
+  short sVar1;
+  uint uVar2;
+  int iVar3;
+  int in_ECX;
+  
+  if (*(int *)(in_ECX + 0x10c) == 0) {
+    uVar2 = 0xffffffcf;
+  }
+  else {
+    sVar1 = FUN_004ce5f0();
+    uVar2 = 0;
+    if (sVar1 != 0) {
+      iVar3 = _fclose(*(FILE **)(in_ECX + 0x10c));
+      uVar2 = (iVar3 == 0) - 1 & 0xffffffce;
+    }
+  }
+  if (uVar2 == 0) {
+    *(undefined4 *)(in_ECX + 0x10c) = 0;
+    *(undefined4 *)(in_ECX + 0x108) = 0;
+  }
+  return;
+}
+
+

@@ -1,0 +1,48 @@
+===== FUN_004d0100 @ 004d0100 =====
+
+void FUN_004d0100(int *param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  undefined4 uVar1;
+  undefined4 *in_ECX;
+  
+  *in_ECX = &PTR_LAB_004f5130;
+  in_ECX[5] = param_1;
+  in_ECX[1] = param_2;
+  in_ECX[3] = 0;
+  in_ECX[4] = 0;
+  in_ECX[2] = param_3;
+  uVar1 = (**(code **)(*param_1 + 0x10))();
+  in_ECX[6] = uVar1;
+  uVar1 = FUN_00461b00(0x42484156,uVar1);
+  in_ECX[3] = uVar1;
+  uVar1 = FUN_00461b00(0x42484156,in_ECX[6]);
+  in_ECX[4] = uVar1;
+  return;
+}
+
+
+===== FUN_004d02e4 @ 004d02e4 =====
+
+void FUN_004d02e4(void)
+
+{
+  undefined1 *in_stack_00000114;
+  
+  FUN_004cd700(0x42484156);
+  FUN_004cd860();
+  *in_stack_00000114 = 0;
+  FUN_004d1720(&stack0x0000000c);
+  return;
+}
+
+
+===== FUN_004d0050 @ 004d0050 =====
+
+void FUN_004d0050(void)
+
+{
+  return;
+}
+
+

@@ -1,0 +1,45 @@
+===== FUN_004c7a50 @ 004c7a50 =====
+
+undefined1 * FUN_004c7a50(void)
+
+{
+  return &LAB_004d03f0;
+}
+
+
+===== FUN_004d0420 @ 004d0420 =====
+
+undefined2 FUN_004d0420(void)
+
+{
+  return 0x58;
+}
+
+
+===== FUN_004d0430 @ 004d0430 =====
+
+void FUN_004d0430(void)
+
+{
+  return;
+}
+
+
+===== FUN_004d0440 @ 004d0440 =====
+
+undefined2 FUN_004d0440(void)
+
+{
+  return 0;
+}
+
+
+===== FUN_004d0450 @ 004d0450 =====
+
+void FUN_004d0450(void)
+
+{
+  return;
+}
+
+

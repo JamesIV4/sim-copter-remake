@@ -1,0 +1,18 @@
+===== FUN_004ce630 @ 004ce630 =====
+
+void FUN_004ce630(short param_1,undefined2 param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  undefined4 *in_ECX;
+  undefined2 extraout_var;
+  
+  *(short *)((int)in_ECX + 0xf6) = param_1;
+  *in_ECX = &PTR_LAB_004f5068;
+  in_ECX[0x3f] = param_4;
+  FUN_004ce170(in_ECX + 1,0,param_1 * 0x14);
+  *(undefined2 *)(in_ECX + 0x3d) = 0;
+  FUN_004ce6c0(param_3,CONCAT22(extraout_var,param_2));
+  return;
+}
+
+

@@ -1,0 +1,81 @@
+===== FUN_004c7c00 @ 004c7c00 =====
+
+void FUN_004c7c00(short param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
+                 undefined4 param_5,undefined2 param_6)
+
+{
+  undefined4 *in_ECX;
+  undefined4 *unaff_FS_OFFSET;
+  undefined4 local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_10 = *unaff_FS_OFFSET;
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004c7cd8;
+  *unaff_FS_OFFSET = &local_10;
+  FUN_004ce630(0xc,CONCAT22((short)((uint)(in_ECX + 0x4c) >> 0x10),(&DAT_0058de80)[param_1]),param_2
+               ,in_ECX + 0x4c);
+  local_8 = 0;
+  FUN_004d0360(0);
+  local_8 = CONCAT31(local_8._1_3_,1);
+  *in_ECX = &PTR_LAB_004f5018;
+  in_ECX[0x73] = param_3;
+  *(undefined4 *)((int)in_ECX + 0x126) = param_2;
+  in_ECX[0x74] = param_4;
+  *(undefined2 *)((int)in_ECX + 0x12e) = param_6;
+  in_ECX[0x75] = param_5;
+  in_ECX[0x40] = &PTR_LAB_004f5000;
+  *(undefined2 *)((int)in_ECX + 0x142) = 0;
+  FUN_004c7d70();
+  FUN_004c7b30(param_6);
+  *unaff_FS_OFFSET = local_10;
+  return;
+}
+
+
+===== FUN_004c7090 @ 004c7090 =====
+
+void FUN_004c7090(int param_1)
+
+{
+  ushort uVar1;
+  int *in_ECX;
+  
+  *(undefined2 *)((int)in_ECX + 0x152) = 1;
+  *(undefined2 *)((int)in_ECX + 0x14a) = 0xfffe;
+  *(short *)(in_ECX + 0x52) = (short)param_1;
+  *(undefined2 *)((int)in_ECX + 0x17a) = (&DAT_0058de80)[param_1];
+  (**(code **)(*in_ECX + 8))();
+  *(undefined2 *)(in_ECX + 0x5b) = 0xffff;
+  switch(param_1) {
+  case 3:
+  case 10:
+  case 0xb:
+  case 0xc:
+  case 0xd:
+    *(undefined2 *)((int)in_ECX + 0x14a) = 0;
+    break;
+  case 7:
+  case 8:
+    *(undefined2 *)((int)in_ECX + 0x14a) = 1;
+  }
+  if (param_1 != 0) {
+    *(undefined2 *)(in_ECX + 0x5a) = 0;
+  }
+  else {
+    *(undefined4 *)((int)in_ECX + 0x10a) = 0xffffffff;
+    *(undefined2 *)(in_ECX + 0x5a) = 1;
+    *(undefined2 *)(in_ECX + 0x57) = 0;
+    *(undefined2 *)((int)in_ECX + 0x166) = 0;
+  }
+  uVar1 = (ushort)(param_1 != 0);
+  *(ushort *)((int)in_ECX + 0x16a) = uVar1;
+  *(ushort *)((int)in_ECX + 0x17e) = uVar1;
+  if (param_1 == 6) {
+    *(undefined2 *)((int)in_ECX + 0x18e) = 10;
+  }
+  return;
+}
+
+

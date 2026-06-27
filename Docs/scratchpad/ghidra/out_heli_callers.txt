@@ -1,0 +1,2 @@
+Callers of FUN_00489e20 @ 00489e20:
+    00479bc4  in FUN_00479bb0 @ 00479bb0
