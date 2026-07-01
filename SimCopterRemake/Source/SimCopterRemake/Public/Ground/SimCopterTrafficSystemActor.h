@@ -18,6 +18,7 @@ struct FSimCopterGroundRouteNode
 	int32 FileX = 0;
 	int32 FileY = 0;
 	uint8 BuildingId = 0;
+	int32 PeopleTileClass = INDEX_NONE;
 	TArray<int32> Neighbors;
 };
 
@@ -55,6 +56,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SimCopter|Traffic")
 	bool RebuildSpawnData();
+
+	int32 GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const;
+	bool TryGetPeopleFacingStepTarget(
+		const FVector& FromWorldLocation,
+		int32 Facing,
+		float StepDistanceCm,
+		FVector& OutWorldLocation,
+		int32& OutTileClass) const;
 
 protected:
 	UPROPERTY(EditInstanceOnly, Category = "SimCopter|City")
@@ -286,6 +295,7 @@ private:
 	TArray<FSimCopterGroundRouteNode> RoadNodes;
 	TArray<FSimCopterGroundRouteNode> PedestrianNodes;
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
+	TArray<uint8> PeopleTileClasses;
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> VehicleAgents;
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> PedestrianAgents;
 	TMap<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState> VehicleTrafficStates;
