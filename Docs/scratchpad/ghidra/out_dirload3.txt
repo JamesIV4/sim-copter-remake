@@ -1,0 +1,147 @@
+===== FUN_004cd3e0 @ 004cd3e0 =====
+
+void FUN_004cd3e0(int *param_1,short *param_2,undefined4 *param_3)
+
+{
+  DWORD DVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int in_ECX;
+  int local_30;
+  undefined4 local_2c;
+  undefined4 local_28;
+  undefined4 local_24;
+  undefined1 local_20 [4];
+  undefined1 local_1c [28];
+  
+  local_28 = 0x1c;
+  *param_1 = 0;
+  DVar1 = FUN_004ce4b0(0);
+  if (DVar1 == 0) {
+    DVar1 = FUN_004ce530(&local_24);
+    if (DVar1 == 0) {
+      DVar1 = FUN_004ce530(&local_2c);
+      if (DVar1 == 0) {
+        DVar1 = FUN_004ce530(local_20);
+        if (DVar1 == 0) {
+          DVar1 = FUN_004ce530(&local_30);
+          if (DVar1 == 0) {
+            DVar1 = FUN_004ce4b0(local_2c);
+            if (DVar1 == 0) {
+              DVar1 = FUN_004ce460(local_1c,&local_28);
+              if (DVar1 == 0) {
+                local_30 = local_30 + -0x1c;
+                *param_3 = local_24;
+                DVar1 = FUN_004ce570(param_2);
+                if (DVar1 == 0) {
+                  local_30 = local_30 + -2;
+                  *param_2 = *param_2 + 1;
+                  iVar2 = FUN_004ce070(local_30,0);
+                  *param_1 = iVar2;
+                  DVar1 = GetLastError();
+                  if (DVar1 == 0) {
+                    uVar3 = FUN_004ce0f0(*param_1);
+                    DVar1 = GetLastError();
+                    if (DVar1 == 0) {
+                      DVar1 = FUN_004ce460(uVar3,&local_30);
+                      if (DVar1 == 0) {
+                        FUN_004ce100(*param_1);
+                        *(undefined4 *)(in_ECX + 0x114) = 0;
+                        return;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  if (*param_1 != 0) {
+    FUN_004ce0d0(*param_1);
+    *param_1 = 0;
+  }
+  *(DWORD *)(in_ECX + 0x114) = DVar1;
+  return;
+}
+
+
+===== FUN_004cda40 @ 004cda40 =====
+
+void FUN_004cda40(undefined2 param_1,short param_2,undefined4 param_3,int param_4,undefined4 param_5
+                 )
+
+{
+  int in_ECX;
+  short sVar1;
+  int iVar2;
+  int iVar3;
+  short sVar4;
+  
+  *(undefined4 *)(in_ECX + 8) = param_3;
+  *(undefined2 *)(in_ECX + 4) = param_1;
+  *(short *)(in_ECX + 6) = param_2;
+  sVar4 = 0;
+  *(undefined4 *)(in_ECX + 0x18) = param_5;
+  *(undefined4 *)(in_ECX + 0x1c) = 1;
+  *(int *)(in_ECX + 0xc) = param_4;
+  sVar1 = 0;
+  iVar2 = param_4;
+  iVar3 = param_4;
+  if (0 < param_2) {
+    do {
+      sVar1 = sVar1 + 1;
+      iVar3 = iVar2 + 8;
+      FUN_004cdfe0(iVar2);
+      sVar4 = sVar4 + *(short *)(iVar2 + 4) + 1;
+      iVar2 = iVar3;
+    } while (sVar1 < *(short *)(in_ECX + 6));
+  }
+  iVar3 = iVar3 - *(int *)(in_ECX + 0xc);
+  param_4 = param_4 + iVar3;
+  *(int *)(in_ECX + 0x10) = iVar3;
+  if (0 < sVar4) {
+    do {
+      FUN_004ce010(param_4);
+      *(undefined4 *)(param_4 + 8) = 0;
+      param_4 = param_4 + 0xc;
+      sVar4 = sVar4 + -1;
+    } while (sVar4 != 0);
+  }
+  *(int *)(in_ECX + 0x14) = param_4 - *(int *)(in_ECX + 0xc);
+  return;
+}
+
+
+===== FUN_004cdae0 @ 004cdae0 =====
+
+void FUN_004cdae0(void)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  int in_ECX;
+  uint uVar4;
+  
+  iVar1 = *(int *)(in_ECX + 0x14);
+  iVar2 = *(int *)(in_ECX + 0xc);
+  for (uVar4 = *(int *)(in_ECX + 0x10) + iVar2; uVar4 < (uint)(iVar1 + iVar2); uVar4 = uVar4 + 0xc)
+  {
+    if (*(int *)(uVar4 + 8) != 0) {
+      uVar3 = FUN_004ce1d0(*(int *)(uVar4 + 8));
+      if ((uVar3 & 0x80) != 0) {
+        FUN_004ce100(*(undefined4 *)(uVar4 + 8));
+      }
+      FUN_004ce0d0(*(undefined4 *)(uVar4 + 8));
+      *(undefined4 *)(uVar4 + 8) = 0;
+    }
+  }
+  FUN_004ce100(*(undefined4 *)(in_ECX + 8));
+  FUN_004ce0d0(*(undefined4 *)(in_ECX + 8));
+  return;
+}
+
+

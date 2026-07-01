@@ -1,0 +1,211 @@
+===== FUN_004d1b60 @ 004d1b60 =====
+
+void FUN_004d1b60(undefined4 param_1,undefined4 param_2,undefined4 param_3,int param_4,
+                 undefined4 param_5,undefined4 param_6)
+
+{
+  undefined4 uVar1;
+  int in_ECX;
+  
+  *(undefined4 *)(in_ECX + 0x24) = param_5;
+  *(undefined4 *)(in_ECX + 0x28) = param_6;
+  *(undefined4 *)(in_ECX + 0x18) = param_1;
+  *(undefined4 *)(in_ECX + 0x10) = 0xffffffff;
+  *(undefined4 *)(in_ECX + 0x14) = 0xffffffff;
+  if (param_4 == 0) {
+    *(undefined4 *)(in_ECX + 0x4c) = 0;
+    *(undefined1 *)(in_ECX + 0x3c) = 0;
+  }
+  else {
+    FUN_004ce150(param_4,in_ECX + 0x3c,0x10);
+    uVar1 = FUN_004d16b0(in_ECX + 0x3c);
+    *(undefined4 *)(in_ECX + 0x4c) = uVar1;
+    FUN_004d1c90();
+  }
+  *(undefined2 *)(in_ECX + 0x20) = 0xffff;
+  FUN_004d1cf0(param_2,param_3);
+  FUN_004d1d20(0);
+  return;
+}
+
+
+===== FUN_004cdea0 @ 004cdea0 =====
+
+uint FUN_004cdea0(int param_1)
+
+{
+  uint uVar1;
+  int in_ECX;
+  uint uVar2;
+  uint uVar3;
+  
+  uVar3 = *(int *)(in_ECX + 0x10) + *(int *)(in_ECX + 0xc);
+  uVar2 = *(int *)(in_ECX + 0x14) + *(int *)(in_ECX + 0xc);
+  uVar1 = 0;
+  if (uVar3 < uVar2) {
+    while (uVar1 = uVar3, *(int *)(uVar1 + 8) != param_1) {
+      uVar3 = uVar1 + 0xc;
+      if (uVar2 <= uVar1 + 0xc) {
+        return 0;
+      }
+    }
+  }
+  return uVar1;
+}
+
+
+===== FUN_004cde50 @ 004cde50 =====
+
+undefined4 FUN_004cde50(uint param_1)
+
+{
+  uint uVar1;
+  int in_ECX;
+  undefined4 *puVar2;
+  short sVar3;
+  
+  sVar3 = *(short *)(in_ECX + 6);
+  puVar2 = *(undefined4 **)(in_ECX + 0xc);
+  while( true ) {
+    if (sVar3 < 1) {
+      return 0;
+    }
+    uVar1 = *(short *)((int)puVar2 + 6) + -2 + (int)*(undefined4 **)(in_ECX + 0xc);
+    if ((uVar1 <= param_1) && (param_1 < uVar1 + (short)(*(short *)(puVar2 + 1) + 1) * 0xc)) break;
+    sVar3 = sVar3 + -1;
+    puVar2 = puVar2 + 2;
+  }
+  return *puVar2;
+}
+
+
+===== FUN_004cdfa0 @ 004cdfa0 =====
+
+void FUN_004cdfa0(int param_1,undefined1 *param_2)
+
+{
+  int in_ECX;
+  byte *pbVar1;
+  
+  *param_2 = 0;
+  if (*(short *)(param_1 + 2) != -1) {
+    pbVar1 = (byte *)(*(int *)(in_ECX + 0x14) + *(int *)(in_ECX + 0xc) +
+                     (int)*(short *)(param_1 + 2));
+    FUN_004ce150(pbVar1,param_2,*pbVar1 + 1);
+  }
+  return;
+}
+
+
+===== FUN_004ce070 @ 004ce070 =====
+
+HLOCAL FUN_004ce070(SIZE_T param_1)
+
+{
+  HLOCAL pvVar1;
+  int iVar2;
+  
+  SetLastError(0);
+  pvVar1 = LocalAlloc(0x20,param_1);
+  if (pvVar1 != (HLOCAL)0x0) {
+    iVar2 = FUN_004ce0f0(pvVar1);
+    if (iVar2 != 0) {
+      FUN_004ce170(iVar2,0,param_1);
+      FUN_004ce100(pvVar1);
+    }
+  }
+  return pvVar1;
+}
+
+
+===== FUN_004ce0d0 @ 004ce0d0 =====
+
+void FUN_004ce0d0(HLOCAL param_1)
+
+{
+  SetLastError(0);
+  LocalFree(param_1);
+  return;
+}
+
+
+===== FUN_004d1c90 @ 004d1c90 =====
+
+void FUN_004d1c90(void)
+
+{
+  int iVar1;
+  int in_ECX;
+  int iVar2;
+  
+  if (*(int *)(in_ECX + 0x4c) != 0) {
+    FUN_004d1c40();
+    iVar2 = -1;
+    iVar1 = 0;
+    do {
+      if ((iVar2 == -1) && (*(int *)(DAT_00506c64 + iVar1 * 4) == 0)) {
+        iVar2 = iVar1;
+      }
+      iVar1 = iVar1 + 1;
+    } while (iVar1 < 0x400);
+    *(int *)(DAT_00506c64 + iVar2 * 4) = in_ECX;
+  }
+  return;
+}
+
+
+===== FUN_004ce250 @ 004ce250 =====
+
+void FUN_004ce250(byte param_1)
+
+{
+  FUN_004ce270();
+  if ((param_1 & 1) != 0) {
+    FUN_004d29a0();
+  }
+  return;
+}
+
+
+===== FUN_004ce400 @ 004ce400 =====
+
+void FUN_004ce400(void)
+
+{
+  short sVar1;
+  uint uVar2;
+  int iVar3;
+  int in_ECX;
+  
+  if (*(int *)(in_ECX + 0x10c) == 0) {
+    uVar2 = 0xffffffcf;
+  }
+  else {
+    sVar1 = FUN_004ce5f0();
+    uVar2 = 0;
+    if (sVar1 != 0) {
+      iVar3 = _fclose(*(FILE **)(in_ECX + 0x10c));
+      uVar2 = (iVar3 == 0) - 1 & 0xffffffce;
+    }
+  }
+  if (uVar2 == 0) {
+    *(undefined4 *)(in_ECX + 0x10c) = 0;
+    *(undefined4 *)(in_ECX + 0x108) = 0;
+  }
+  return;
+}
+
+
+===== FUN_004ce690 @ 004ce690 =====
+
+void FUN_004ce690(byte param_1)
+
+{
+  FUN_004ce6b0();
+  if ((param_1 & 1) != 0) {
+    FUN_004d29a0();
+  }
+  return;
+}
+
+

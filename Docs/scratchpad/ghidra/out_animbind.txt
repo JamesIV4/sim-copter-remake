@@ -1,0 +1,73 @@
+===== FUN_004ce700 @ 004ce700 =====
+
+uint FUN_004ce700(int param_1,int *param_2,undefined2 param_3)
+
+{
+  int *piVar1;
+  int iVar2;
+  uint uVar3;
+  int *in_ECX;
+  
+  if ((short)in_ECX[0x3d] < *(short *)((int)in_ECX + 0xf6)) {
+    piVar1 = in_ECX + (short)in_ECX[0x3d] * 5 + 1;
+    *(undefined2 *)piVar1 = param_3;
+    *(undefined2 *)((int)piVar1 + 2) = 0;
+    *(short *)(piVar1 + 1) = (short)in_ECX[(short)in_ECX[0x3d] * 5 + -3];
+    piVar1[1] = in_ECX[(short)in_ECX[0x3d] * 5 + -3];
+    if (param_1 == 0) {
+      param_1 = in_ECX[(short)in_ECX[0x3d] * 5];
+    }
+    piVar1[4] = param_1;
+    if (param_2 == (int *)0x0) {
+      param_2 = (int *)in_ECX[0x3f];
+    }
+    piVar1[2] = *param_2;
+    iVar2 = param_2[1];
+    piVar1[3] = iVar2;
+    *(short *)(in_ECX + 0x3d) = (short)in_ECX[0x3d] + 1;
+    return CONCAT22((short)((uint)iVar2 >> 0x10),1);
+  }
+  uVar3 = (**(code **)(*in_ECX + 4))(1000);
+  return uVar3 & 0xffff0000;
+}
+
+
+===== FUN_004c6450 @ 004c6450 =====
+
+void FUN_004c6450(void)
+
+{
+  int iVar1;
+  ushort uVar2;
+  ushort uVar3;
+  short sVar4;
+  int in_ECX;
+  
+  iVar1 = *(int *)(in_ECX + 0x1a0);
+  if (iVar1 != 0) {
+    FUN_004c9470(0,*(int *)(iVar1 + 0x18) - *(int *)(in_ECX + 0x112),
+                 *(int *)(iVar1 + 0x20) - *(int *)(in_ECX + 0x11a),
+                 *(int *)(iVar1 + 0x1c) - *(int *)(in_ECX + 0x116),1);
+    iVar1 = *(int *)(in_ECX + 0x1a0);
+    *(int *)(in_ECX + 0x112) = *(int *)(iVar1 + 0x18);
+    *(undefined4 *)(in_ECX + 0x116) = *(undefined4 *)(iVar1 + 0x1c);
+    *(undefined4 *)(in_ECX + 0x11a) = *(undefined4 *)(iVar1 + 0x20);
+  }
+  if (*(short *)(in_ECX + 0x17e) == 0) {
+    uVar3 = (short)DAT_0061a618 - *(short *)(in_ECX + 0x12a);
+    uVar2 = (short)uVar3 >> 0xf;
+    if ((DAT_0058dc26 < (short)((uVar3 ^ uVar2) - uVar2)) ||
+       (uVar3 = (short)DAT_0061a61c - *(short *)(in_ECX + 300), uVar2 = (short)uVar3 >> 0xf,
+       DAT_0058dc26 < (short)((uVar3 ^ uVar2) - uVar2))) goto LAB_004c64f1;
+  }
+  FUN_004ce7b0(0,0);
+LAB_004c64f1:
+  if (((*(short *)(in_ECX + 0x142) != 0) && (*(int *)(in_ECX + 0x224) != 0)) &&
+     (sVar4 = *(short *)(in_ECX + 0x14c) + 1, *(short *)(in_ECX + 0x14c) = sVar4,
+     *(short *)(*(int *)(*(int *)(in_ECX + 0x224) + 0x28) + 0x14) <= sVar4)) {
+    *(undefined2 *)(in_ECX + 0x14c) = 0;
+  }
+  return;
+}
+
+
