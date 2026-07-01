@@ -1,0 +1,42 @@
+===== FUN_004c2200 @ 004c2200 =====
+
+short FUN_004c2200(undefined2 param_1,undefined2 param_2,undefined4 param_3,undefined2 param_4,
+                  undefined4 param_5,undefined4 param_6,undefined4 param_7)
+
+{
+  short sVar1;
+  int *in_ECX;
+  
+  sVar1 = FUN_004c4190(param_3,0,param_4,param_5,0xffffffff,param_6,param_7);
+  if (sVar1 != 0) {
+    *(undefined2 *)(in_ECX + 0x5b) = param_1;
+    *(undefined2 *)((int)in_ECX + 0x17a) = param_2;
+    (**(code **)(*in_ECX + 8))();
+  }
+  return sVar1;
+}
+
+
+===== FUN_004c3eb0 @ 004c3eb0 =====
+
+undefined2
+FUN_004c3eb0(undefined4 param_1,undefined4 param_2,undefined2 param_3,undefined2 param_4,
+            undefined4 param_5,undefined4 param_6,undefined4 param_7)
+
+{
+  short sVar1;
+  int iVar2;
+  undefined2 uVar3;
+  
+  uVar3 = 0xffff;
+  iVar2 = FUN_004c2ef0();
+  if (iVar2 != 0) {
+    sVar1 = FUN_004c4190(param_1,param_2,param_3,param_4,param_5,param_6,param_7);
+    if (sVar1 != 0) {
+      uVar3 = *(undefined2 *)(iVar2 + 0x12e);
+    }
+  }
+  return uVar3;
+}
+
+

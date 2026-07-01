@@ -1,0 +1,3 @@
+Callers of FUN_004c2200 @ 004c2200:
+    004c21e1  in FUN_004c2150 @ 004c2150
+    004c213e  in FUN_004c20b0 @ 004c20b0

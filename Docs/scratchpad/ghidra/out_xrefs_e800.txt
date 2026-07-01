@@ -1,0 +1,3 @@
+References to 0058e800:
+    004c9294  DATA  in FUN_004c9220 @ 004c9220
+    004c3664  WRITE  in FUN_004c3010 @ 004c3010

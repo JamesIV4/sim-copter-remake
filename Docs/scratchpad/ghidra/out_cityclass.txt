@@ -1,0 +1,30 @@
+===== FUN_004c9220 @ 004c9220 =====
+
+undefined4 FUN_004c9220(ushort param_1,ushort param_2)
+
+{
+  ushort uVar1;
+  ushort uVar2;
+  
+  param_1 = param_1 & 0xff;
+  param_2 = param_2 & 0xff;
+  if ((param_1 < 0x80) && (param_2 < 0x80)) {
+    uVar2 = (ushort)*(byte *)((&DAT_005910b0)[(short)param_1] + (int)(short)param_2);
+  }
+  else {
+    uVar1 = (short)(param_1 - (short)DAT_005d91d0) >> 0xf;
+    if ((short)((param_1 - (short)DAT_005d91d0 ^ uVar1) - uVar1) < 2) {
+      uVar1 = (short)(param_2 - (short)DAT_005d91d4) >> 0xf;
+      uVar2 = 0xf6;
+      if ((short)((param_2 - (short)DAT_005d91d4 ^ uVar1) - uVar1) < 2) goto LAB_004c9285;
+    }
+    uVar2 = 0xffff;
+  }
+LAB_004c9285:
+  if (uVar2 == 0xffff) {
+    return 0xffffffff;
+  }
+  return (&DAT_0058e800)[(short)uVar2];
+}
+
+

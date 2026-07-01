@@ -1,0 +1,3 @@
+References to 0058d750:
+    004c4158  DATA  in FUN_004c40a0 @ 004c40a0
+    004c3368  WRITE  in FUN_004c3010 @ 004c3010
