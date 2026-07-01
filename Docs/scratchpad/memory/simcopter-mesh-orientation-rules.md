@@ -1,0 +1,29 @@
+---
+name: simcopter-mesh-orientation-rules
+description: How the original SimCopter.exe orients/places city tile meshes (no per-tile rotation; col axis negated)
+metadata: 
+  node_type: memory
+  type: reference
+  originSessionId: 2bd18189-b198-4105-9d35-8b3729691cf9
+---
+
+Decompiled from `Reference/SimCopterOriginalGame/SimCopter.exe` (Ghidra) on 2026-06-23.
+
+The original game applies **NO per-tile rotation** to road/building/bridge meshes. Orientation is entirely encoded by *which* mesh object is selected.
+
+- Master city builder: `FUN_0047c0c0`. Loops rows `local_30` (0..127) × cols `local_34` (0..127), reads XBLD byte `bVar2` (grid `DAT_005910b0`), computes footprint size via `FUN_004e4f80`, then a big `switch(bVar2)` dispatches each tile id to a specific global mesh-object index via `FUN_00470571(index)`. Roads pick a **flat vs sloped variant** by checking the 4 tmap corner heights (e.g. XBLD 0x1d → object 0x3b if flat, 0x1d if sloped; 0x1e → 0x3c/0x1e). `local_28` is only a random *detail prop* (traffic/trees), not a rotation.
+- Render struct (0x18 bytes) at scene graph `DAT_005d9200[row*0x100+col]`: only stores flag, worldX, height, worldY, footprint size, and a linked list of mesh-object handles. **No rotation/angle field exists.**
+- World position (confirmed via `FUN_004a64d0` which builds pos = (cell+2, cell+4, cell+6)): `worldX = (row-127.5)*0x40`, `up = tmap height`, `worldY = (127.5-col)*0x40`. Mesh placed meshX→worldX, meshZ→worldY, meshY→up (engine native, no rotation). Note `worldY` negates the column axis.
+- Grid globals: XBLD=`DAT_005910b0`, ALTM=`DAT_00590d70`, XTER=`DAT_00591a80`, tmap heightmap=`DAT_005cde80` (256x256, built by `FUN_004abce0`), terrain texture-type grid=`DAT_005bde80`. Mesh pack handles: SIM3D1=`DAT_005039b4`, SIM3D2=`DAT_005039b8`, SIM3D3=`DAT_005039bc`, SIM3D.BMP=`DAT_005039ac`; loaded by `FUN_00479bb0`. Objects addressed by a flat global index across the 3 packs (`FUN_00470571(globalIndex)`).
+
+Implication for the remake: the blanket 180° road rotation was wrong. The remake's `ConvertMaxisVertexToUnreal` (cyclic axis perm, det +1) already matches the engine's mesh→world rotation, but the remake placed a grid axis with the wrong sign — a reflection (det −1) that a 180° turn can't fix.
+
+Shipped fix in `SimCity2000CityActor.cpp` (verified visually by the user 2026-06-23): remove all per-tile rotation, make the grid→world mapping mirror-free, then bake a global 180° yaw so absolute orientation matches the original. Net signs in code: tile-center world X positive, world Y negated; mesh-local X and Y negated (the 180° yaw); terrain quad uses negated Y with swapped winding/normal (`cross(V2-V0,V1-V0)`, tris 0,1,2/0,2,3) so faces stay up.
+
+Buildings: verified the original applies NO road-facing/orientation logic. `FUN_0047c0c0` building cases (0x70+) each pick ONE fixed mesh per tile id with no neighbor check; the render struct has no rotation field. So every instance of a building model faces the same fixed way and never turns toward a road — the remake is faithful (a building facing away from its road is authentic). The user asked to match the original, so do NOT add road-orientation.
+
+Terrain ground texture: DECODED and implemented (`BuildTerrainTextureTypeGrid`). The ground cell index = a per-tile type code (`DAT_005bde80`) used directly as the `TILED1.BMP` page-0x14 cell (selected in `FUN_004814c0`; `FUN_004abc90` maps `DAT_005cde90[type]=type|0x140000`). `FUN_004abce0` builds the type grid: classify (grass 0x30 / water 5 / wooded 0x20 / XBLD-0xF8 0x10 / XBLD-1..4 10|11) then coastline passes (land→shore 0x10 by water; grass→near-shore 0x20 by shore; open-water 5→coastal-water 0 by land). Replaced the old flat `XTER+0x20` heuristic. NOT yet reproduced: water animation frame cycle and map-edge clamp (uses static frame 0).
+
+Bridges: DECODED and implemented (2026-06-24). The linchpin: `FUN_00470571(id)` is **not** a positional index — it searches the loaded object table for the object whose field at +0x44 equals `id` and whose attribute-flag bit 3 (duplicate) is clear. That `id` is the object's header Id (file offset +120). Validated against the reference packs: the three packs hold 143/144/113 = 400 objects, and their header Ids are a **bijection onto 0..399** (no duplicates) — i.e., the object Id IS a globally-unique index across all packs. So the city builder dispatches tiles to mesh *Ids*, resolved in the remake by `FMaxisMeshLibrary::FindObjectByObjectId` (mirrors `FUN_00470571`). This is a DIFFERENT numbering than the geometry-table index the `KnownXbldMappings` CSV uses (e.g. road 0x1d → object Id 0x1d sits at SIM3D1 geometry entry 60).
+
+Bridge dispatch from `FUN_0047c0c0` (XBLD→objId): 0x3f→0x178, 0x40→0x179, 0x41→0x17a, 0x42→0x17b, 0x43→flat 0x128/slope 0x17f, 0x44→flat 0x129/slope 0x180, 0x45→flat 0x3b/slope 0x1d (+prop 0x2d), 0x46→flat 0x3c/slope 0x1e (+prop 0x2c), 0x47→0x17d, 0x48→0x17e. "Flat" = the tile's 4 tmap corner heights are equal (remake: `IsOriginalTerrainTileFlat` via `GetTerrainGridHeightMapSample`). The regular sloped roads 0x1d–0x23 use the same flat-test to pick a flat variant (0x3b/0x3c/0x3d/0x3e) — the remake still uses the heuristic table for those, so roads on flat ground also have a (smaller) flat-variant follow-up available. Detail props (0x2c/0x2d, 0x186–0x18d) not yet placed. See [[simcopter-ghidra-workflow]].

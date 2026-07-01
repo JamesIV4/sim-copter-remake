@@ -1,0 +1,20 @@
+---
+name: simcopter-live-memory-rip
+description: "How to read the live SimCopter process memory to validate decompiled structures, and the gotchas"
+metadata: 
+  node_type: memory
+  type: reference
+  originSessionId: ac7bbbd4-fa8e-4787-8737-b11dd7d4b850
+---
+
+Validated 2026-06-26 against the running game. The running `SimCopter.exe` (1.0.1.3, run from `D:\Downloads\SimCopter\Extracted\SIMCOPTER\`, patched by SimCopterX v17) is **byte-identical (same SHA-256) to `Reference/SimCopterOriginalGame/SimCopter.exe`** that was decompiled in Ghidra. So the Ghidra analysis IS the running build; SimCopterX patches in-memory (note the `.detour` section), base stays `0x400000`, no ASLR. See [[simcopter-ghidra-workflow]] and [[simcopter-population-rendering]].
+
+**Read-only rip technique** (non-intrusive, no debugger, won't disturb the DirectDraw game): PowerShell `Add-Type` P/Invoke of `OpenProcess(0x10 PROCESS_VM_READ)` + `ReadProcessMemory`. Find the process with `Get-Process -Name SimCopter`. Scripts kept in session scratchpad (`rip3.ps1` walks people; `rip6`-`rip9` chase the figure graph).
+
+**Gotcha 1 - Ghidra addresses != live VAs (and live CODE is unreliable).** Ghidra's `.data`/`.rdata` addresses are offset from the loaded VAs by a **non-uniform, region-dependent delta** (~`+0x5C58` near `0x506xxx`, ~`+0x6010` near `0x58xxxx`). Calibrate per-region by scanning `0x400000..0x687000` for a known anchor: a string (`People.df` at Ghidra `0x5064ac`) or the `DAT_0058de80` anim-id table (`58 02 bc 02 bc 02 52 03 ee 02 21 03 20 03 78 05 79 05 25 03` = 600,700,700,...). Heap pointers read from memory are absolute - use as-is. **CORRECTION (2026-06-26): `.text` is NOT uniformly 1:1 under SimCopterX.** It relocates/patches code in memory non-uniformly: live `0x4ce630` != Ghidra `FUN_004ce630`, and live figure code at `0x4d4ab0` (`push 0x42484156`) maps to Ghidra `~0x4d0136` (`FUN_004d0100`), while live `0x401000` did match. So a live vtable's method pointers can land inside an unrelated Ghidra function (e.g. `_setlocale`) - **do live RE for `.data` structures only (people array, anim ids, object graph - all validated); read CODE from Ghidra (on-disk exe), which is the authority.** The on-disk exe is still SHA-256 byte-identical; SimCopterX only patches in memory.
+
+**Gotcha 2 - PowerShell aliases shadow functions.** Aliases beat functions in name resolution, so do NOT name helper functions `RI`/`RU`/`RS`/`GI`/`GU`/`GL`/`RB` (= Remove-Item/Get-Item/Get-Unique/Get-Location...). Use `ReadI`/`ReadU`/`ReadBuf`/`ToLive`. Array-of-arrays with `+=`/`,` flattens - use explicit indices.
+
+**Live-confirmed facts (people/figures):** 500-slot person pointer array `DAT_0058e030`, max index `DAT_0058dc3e`; person fields state@`+0x148`, anim@`+0x17a`, alive@`+0x142`, pos(16.16)@`+0x1cc/+0x1d0/+0x1d4`, carrier@`+0x1a0`. `state -> DAT_0058de80[state] = anim` holds exactly (0->600, 6->800). The 12x0x14 figure-segment layout is in the person (records at `person+0x04`, stride 0x14, ptr@+0x10 -> shared figure-def).
+
+**privanim.df is lazy-streaming big-endian IFF "Doug".** Live runtime objects show the chunk 4CCs byte-swapped (`PPRA`=ARPP, `ULRA`=ARLU) and an IFF reader object holding the `...\X\PrivAnim.df` path + open FILE handle; geometry is streamed on demand, NOT a resident vertex array. So for the remake, **parse the file statically** for geometry (the `BODC` TLV), don't rip runtime. Full format in `Docs/OriginalGameFileFormats.md`.

@@ -1,0 +1,15 @@
+Callers of FUN_004c3eb0 @ 004c3eb0:
+    004a7d3a  in FUN_004a7a10 @ 004a7a10
+    004a7e47  in FUN_004a7a10 @ 004a7a10
+    004a8057  in FUN_004a7a10 @ 004a7a10
+    004a829b  in FUN_004a7a10 @ 004a7a10
+    004a83a6  in FUN_004a7a10 @ 004a7a10
+    004a84bb  in FUN_004a7a10 @ 004a7a10
+    004a8577  in FUN_004a7a10 @ 004a7a10
+    004b19d1  in FUN_004b1950 @ 004b1950
+    004b8092  in FUN_004b7fd0 @ 004b7fd0
+    004c0c7b  in FUN_004c0c40 @ 004c0c40
+    004c2537  in FUN_004c2450 @ 004c2450
+    0049be00  in FUN_0049bd00 @ 0049bd00
+    004c2417  in FUN_004c2330 @ 004c2330
+    004c2a07  in FUN_004c29d0 @ 004c29d0
