@@ -13,7 +13,9 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterPopulationBody.h"
+#include "Ground/SimCopterPopulationFigure.h"
 #include "Ground/SimCopterPopulationSprite.h"
+#include "Misc/Paths.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -232,10 +234,36 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 		return;
 	}
 
-	// The 3D body is static geometry; give it a little walk bob/lean so it doesn't read as a
+	const float SpeedAlpha = FMath::Clamp(CurrentVelocityCmPerSec.Size() / FMath::Max(1.0f, WalkSpeedCmPerSec), 0.0f, 1.0f);
+
+	if (bUsingOriginalFigure)
+	{
+		// The pilot figure animates through the original clip frames - no bob/lean overlay.
+		OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale));
+		OriginalBodySpriteComponent->SetRelativeRotation(FRotator::ZeroRotator);
+
+		const bool bWalking = SpeedAlpha > 0.12f;
+		const FString Desired = bWalking ? TEXT("1Wal") : TEXT("NoMo");
+		if (Desired != FigureAnim.Mnemonic)
+		{
+			RebuildPlayerFigureClip(Desired);
+		}
+		if (FigureAnim.FrameCount > 1)
+		{
+			FigureAnim.FrameTime += DeltaSeconds * (bWalking ? 8.0f : 4.0f);
+			const int32 DesiredFrame = FMath::FloorToInt(FigureAnim.FrameTime) % FigureAnim.FrameCount;
+			if (DesiredFrame != FigureAnim.CurrentFrame)
+			{
+				FigureAnim.CurrentFrame = DesiredFrame;
+				FSimCopterPopulationFigure::ShowFrame(OriginalBodySpriteComponent, FigureAnim.FrameCount, FigureAnim.CurrentFrame, FigureAnim.bHasHeadSection);
+			}
+		}
+		return;
+	}
+
+	// The box body is static geometry; give it a little walk bob/lean so it doesn't read as a
 	// rigid statue while moving (matching the NPC pedestrians' jank).
 	BodySpriteTimeSeconds += DeltaSeconds;
-	const float SpeedAlpha = FMath::Clamp(CurrentVelocityCmPerSec.Size() / FMath::Max(1.0f, WalkSpeedCmPerSec), 0.0f, 1.0f);
 	const float Wave = FMath::Sin(BodySpriteTimeSeconds * 7.5f);
 	const float Bob = FMath::Abs(Wave) * 4.0f * SpeedAlpha * PopulationWorldScale;
 	const float Lean = Wave * 4.0f * SpeedAlpha; // degrees of roll (scale-independent)
@@ -250,8 +278,13 @@ void ASimCopterOnFootPawn::LoadOriginalBodySprite()
 		return;
 	}
 
-	// Build the same blocky low-poly 3D body the NPC pedestrians use (the old flat sprite had
-	// "no body"). The player keeps a stable outfit for the session.
+	// Preferred: the original privanim "pilot" figure with its real animation clips.
+	if (LoadOriginalBodyFigure())
+	{
+		return;
+	}
+
+	// Fallback: the blocky low-poly 3D body the NPC pedestrians used before the figure decode.
 	const int32 OutfitIndex = FSimCopterPopulationBody::ResolveOutfitIndex(this);
 	FSimCopterPopulationBody::BuildPerson(OriginalBodySpriteComponent, OutfitIndex, OnFootBodyHeightCm * PopulationWorldScale);
 
@@ -266,6 +299,122 @@ void ASimCopterOnFootPawn::LoadOriginalBodySprite()
 		BodyProxyComponent->SetVisibility(false, true);
 	}
 	bUsingOriginalBodySprite = true;
+}
+
+bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
+{
+	bUsingOriginalFigure = false;
+	if (PlayerFigureName.IsEmpty())
+	{
+		return false;
+	}
+
+	FString RootPath = OriginalGameRoot.Path.TrimStartAndEnd();
+	if (RootPath.IsEmpty())
+	{
+		return false;
+	}
+	if (FPaths::IsRelative(RootPath))
+	{
+		RootPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), RootPath));
+	}
+
+	FString Error;
+	FigureShared = FSimCopterPopulationFigure::GetShared(RootPath, Error);
+	if (!FigureShared.IsValid())
+	{
+		UE_LOG(LogSimCopterOnFootPawn, Warning, TEXT("Player figure unavailable: %s"), *Error);
+		return false;
+	}
+	FigureAnim.FigureIndex = FigureShared->Model.FindFigureIndex(PlayerFigureName);
+	if (FigureAnim.FigureIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
+	// Pilot head: the first entry of the head-image table suits the player; texture optional.
+	if (SpriteMaterial != nullptr && FigureHeadMaterialInstance == nullptr)
+	{
+		const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
+		if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[0]))
+		{
+			FigureHeadTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, *HeadImage, TEXT("SimCopterPlayerHead"));
+			if (FigureHeadTexture != nullptr)
+			{
+				FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(SpriteMaterial, this);
+				if (FigureHeadMaterialInstance != nullptr)
+				{
+					FigureHeadMaterialInstance->SetTextureParameterValue(TEXT("Texture"), FigureHeadTexture);
+				}
+			}
+		}
+	}
+
+	bUsingOriginalFigure = true;
+	if (!RebuildPlayerFigureClip(TEXT("NoMo")))
+	{
+		bUsingOriginalFigure = false;
+		return false;
+	}
+
+	OriginalBodySpriteComponent->SetVisibility(true, true);
+	if (BodyProxyComponent != nullptr)
+	{
+		BodyProxyComponent->SetVisibility(false, true);
+	}
+	bUsingOriginalBodySprite = true;
+	return true;
+}
+
+bool ASimCopterOnFootPawn::RebuildPlayerFigureClip(const FString& Mnemonic)
+{
+	if (!bUsingOriginalFigure || !FigureShared.IsValid() || !FigureShared->Model.Figures.IsValidIndex(FigureAnim.FigureIndex))
+	{
+		return false;
+	}
+	const FPrivAnimFigure& Figure = FigureShared->Model.Figures[FigureAnim.FigureIndex];
+	const FPrivAnimClip* Clip = FigureShared->Model.FindClip(Figure, Mnemonic);
+	if (Clip == nullptr)
+	{
+		Clip = FigureShared->Model.FindClip(Figure, TEXT("NoMo"));
+	}
+	if (Clip == nullptr)
+	{
+		return false;
+	}
+
+	const float HeightCm = OnFootBodyHeightCm * PopulationWorldScale;
+	const FPrivAnimClip* StandingClip = FigureShared->Model.FindClip(Figure, TEXT("1Wal"));
+	const FSimCopterPopulationFigure::FCalibration Calibration =
+		FSimCopterPopulationFigure::Calibrate(StandingClip != nullptr ? *StandingClip : *Clip, HeightCm);
+
+	FSimCopterPopulationFigure::FBuildParams Params;
+	Params.HeightCm = HeightCm;
+	Params.ClothesOffset = 0;
+	Params.bTexturedHead = FigureHeadMaterialInstance != nullptr;
+
+	if (!FSimCopterPopulationFigure::BuildClipSections(
+			OriginalBodySpriteComponent, Figure, *Clip, FigureShared->Palette, Params, Calibration, FigureAnim.bHasHeadSection))
+	{
+		return false;
+	}
+	for (int32 Frame = 0; Frame < Clip->FrameCount; ++Frame)
+	{
+		if (BodyVertexColorMaterial != nullptr)
+		{
+			OriginalBodySpriteComponent->SetMaterial(Frame * 2, BodyVertexColorMaterial);
+		}
+		OriginalBodySpriteComponent->SetMaterial(
+			Frame * 2 + 1,
+			FigureHeadMaterialInstance != nullptr ? static_cast<UMaterialInterface*>(FigureHeadMaterialInstance) : BodyVertexColorMaterial.Get());
+	}
+
+	FigureAnim.Mnemonic = Mnemonic;
+	FigureAnim.FrameCount = Clip->FrameCount;
+	FigureAnim.CurrentFrame = 0;
+	FigureAnim.FrameTime = 0.0f;
+	FSimCopterPopulationFigure::ShowFrame(OriginalBodySpriteComponent, FigureAnim.FrameCount, 0, FigureAnim.bHasHeadSection);
+	return true;
 }
 
 void ASimCopterOnFootPawn::SnapToGround()

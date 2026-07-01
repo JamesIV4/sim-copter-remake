@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Formats/MaxisTextureReader.h"
 
 class UProceduralMeshComponent;
 class UTexture2D;
@@ -10,6 +11,10 @@ class UTexture2D;
 class FSimCopterPopulationSprite
 {
 public:
+	// Creates a transient nearest-filtered BGRA texture from decoded original pixels
+	// (shared by the PEOPLE1 sprite sheet and the privanim figure head images).
+	static UTexture2D* CreateTextureFromImage(UObject* Outer, const FMaxisTextureImage& Image, const TCHAR* BaseName);
+
 	static constexpr int32 People1FrameWidth = 27;
 	static constexpr int32 People1FrameHeight = 33;
 	static constexpr int32 People1Columns = 12;
