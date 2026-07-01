@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Ground/SimCopterPopulationFigure.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterGroundAgent.generated.h"
 
@@ -50,6 +51,11 @@ public:
 	// Builds the procedural low-poly 3D pedestrian body (replaces the old flat sprite).
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool BuildPedestrianBody();
+
+	// Builds the pedestrian as an original privanim.df figure with its real animation clips
+	// (falls back to the procedural box body when the original data is unavailable).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
+	bool BuildPedestrianFigure();
 
 	// Immediately drops the agent onto the ground beneath it (used right after spawn so the
 	// very first frame is grounded instead of floating).
@@ -146,6 +152,24 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets")
 	bool bRenderModelBackfaces = true;
 
+	// Prefer the decoded privanim.df figures over the procedural box people.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Original Assets")
+	bool bUseOriginalFigures = true;
+
+	// Explicit figure to use ("pilot", "Kopp", "Elvis", ...); empty picks a stable random
+	// entry from PedestrianFigurePool.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Original Assets")
+	FString PedestrianFigureName;
+
+	// Everyday street mix; service figures (Kopp/Medik/Fireman) and easter eggs (Elvis,
+	// Nessie, Coww) can be requested explicitly by missions/spawners.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Original Assets")
+	TArray<FString> PedestrianFigurePool;
+
+	// Original-figure animation playback rate in frames per second (walk clips are 8 frames).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Animation", meta = (ClampMin = "0.1"))
+	float FigureFrameRate = 8.0f;
+
 	// Vehicle headlight spotlights (replace the removed translucent beam cards).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights")
 	bool bEnableVehicleHeadlights = true;
@@ -202,6 +226,12 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> PedestrianSpriteTexture;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> FigureHeadTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> FigureHeadMaterialInstance;
+
 private:
 	FVector MoveTargetLocation = FVector::ZeroVector;
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
@@ -226,6 +256,22 @@ private:
 	int32 RoutePlannedNextNodeIndex = INDEX_NONE;
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
+
+	// Original privanim figure state.
+	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
+	FSimCopterPopulationFigure::FCalibration FigureCalibration;
+	FString FigureMnemonic;
+	int32 FigureIndex = INDEX_NONE;
+	int32 FigureFrameCount = 0;
+	int32 FigureCurrentFrame = 0;
+	int32 FigureClothesOffset = 0;
+	int32 FigureHeadIndex = 0;
+	float FigureFrameTime = 0.0f;
+	bool bFigureHasHeadSection = false;
+	bool bUsingPedestrianFigure = false;
+
+	bool RebuildFigureClip(const FString& Mnemonic);
+	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);
 
 	void ApplyAgentShape();
 	void UpdateMovement(float DeltaSeconds);

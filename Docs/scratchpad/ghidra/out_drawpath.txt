@@ -1,0 +1,92 @@
+===== FUN_004c8090 @ 004c8090 =====
+
+void FUN_004c8090(void)
+
+{
+  undefined4 *in_ECX;
+  undefined4 *unaff_FS_OFFSET;
+  undefined4 local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_10 = *unaff_FS_OFFSET;
+  puStack_c = &LAB_004c810c;
+  *in_ECX = &PTR_FUN_004f5018;
+  in_ECX[0x40] = &PTR_FUN_004f5000;
+  *unaff_FS_OFFSET = &local_10;
+  local_8 = 0;
+  FUN_004c80e4();
+  local_8 = 0xffffffff;
+  FUN_004c8116();
+  *unaff_FS_OFFSET = local_10;
+  return;
+}
+
+
+===== FUN_004c7d10 @ 004c7d10 =====
+
+void FUN_004c7d10(void)
+
+{
+  int in_ECX;
+  
+  FUN_004c7d70();
+  FUN_004c71c0(0x13);
+  *(undefined4 *)(in_ECX + 0x234) = 0x10000;
+  *(undefined2 *)(in_ECX + 0x180) = 0x394;
+  *(undefined2 *)(in_ECX + 0x144) = 5;
+  *(undefined2 *)(in_ECX + 0x18e) = 0;
+  *(undefined4 *)(in_ECX + 0x22c) = 0;
+  *(undefined4 *)(in_ECX + 0x230) = 0;
+  *(undefined4 *)(in_ECX + 0x238) = 0;
+  *(undefined4 *)(in_ECX + 0x23c) = 0;
+  *(undefined4 *)(in_ECX + 0x240) = 0;
+  return;
+}
+
+
+===== FUN_004c7a50 @ 004c7a50 =====
+
+undefined1 * FUN_004c7a50(void)
+
+{
+  return &LAB_004d03f0;
+}
+
+
+===== FUN_004d0450 @ 004d0450 =====
+
+void FUN_004d0450(void)
+
+{
+  return;
+}
+
+
+===== FUN_004d0430 @ 004d0430 =====
+
+void FUN_004d0430(void)
+
+{
+  return;
+}
+
+
+===== FUN_004d0420 @ 004d0420 =====
+
+undefined2 FUN_004d0420(void)
+
+{
+  return 0x58;
+}
+
+
+===== FUN_004d0440 @ 004d0440 =====
+
+undefined2 FUN_004d0440(void)
+
+{
+  return 0;
+}
+
+

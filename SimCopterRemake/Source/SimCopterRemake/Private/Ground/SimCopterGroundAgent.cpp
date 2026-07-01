@@ -40,6 +40,35 @@ constexpr float PedestrianSpriteHeightCm = 162.0f;
 constexpr float PedestrianBodyHeightCm = 176.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
 
+// Small transient texture from decoded original pixels (same pattern as the PEOPLE1 sprite).
+UTexture2D* CreateFigureHeadTexture(UObject* Outer, const FMaxisTextureImage& Image)
+{
+	if (Image.Width <= 0 || Image.Height <= 0 || Image.Pixels.Num() != Image.Width * Image.Height)
+	{
+		return nullptr;
+	}
+	UTexture2D* Texture = UTexture2D::CreateTransient(Image.Width, Image.Height, PF_B8G8R8A8);
+	if (Texture == nullptr || Texture->GetPlatformData() == nullptr || Texture->GetPlatformData()->Mips.Num() == 0)
+	{
+		return nullptr;
+	}
+	if (Outer != nullptr)
+	{
+		Texture->Rename(*MakeUniqueObjectName(Outer, UTexture2D::StaticClass(), TEXT("SimCopterFigureHead")).ToString(), Outer);
+	}
+	Texture->CompressionSettings = TC_VectorDisplacementmap;
+	Texture->MipGenSettings = TMGS_NoMipmaps;
+	Texture->NeverStream = true;
+	Texture->SRGB = true;
+	Texture->Filter = TF_Nearest;
+	FTexture2DMipMap& Mip = Texture->GetPlatformData()->Mips[0];
+	void* TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
+	FMemory::Memcpy(TextureData, Image.Pixels.GetData(), Image.Pixels.Num() * sizeof(FColor));
+	Mip.BulkData.Unlock();
+	Texture->UpdateResource();
+	return Texture;
+}
+
 UMaterialInterface* LoadSpriteMaterialNoWarn()
 {
 	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, SpriteMaterialPath, nullptr, LOAD_NoWarn));
@@ -100,6 +129,12 @@ ASimCopterGroundAgent::ASimCopterGroundAgent()
 
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 	AnimationPhase = FMath::FRandRange(0.0f, UE_TWO_PI);
+
+	// Everyday street mix (service figures and easter eggs are opt-in via PedestrianFigureName).
+	PedestrianFigurePool = {
+		TEXT("fatman"), TEXT("2blonde"), TEXT("Child"), TEXT("5.5man"), TEXT("SUIT"),
+		TEXT("5man"), TEXT("SHADES"), TEXT("Blonde"), TEXT("2woman"), TEXT("Woman")};
+
 	ApplyAgentShape();
 }
 
@@ -273,6 +308,7 @@ bool ASimCopterGroundAgent::LoadOriginalPedestrianSpriteFromOriginalGameRoot()
 {
 	LastMeshLoadError.Reset();
 	bUsingPedestrianSprite = false;
+	bUsingPedestrianFigure = false;
 	PedestrianSpriteTexture = nullptr;
 	SpriteMaterialInstance = nullptr;
 	OriginalMeshComponent->ClearAllMeshSections();
@@ -329,9 +365,16 @@ bool ASimCopterGroundAgent::LoadOriginalPedestrianSpriteFromOriginalGameRoot()
 
 bool ASimCopterGroundAgent::BuildPedestrianBody()
 {
+	// Prefer the decoded original privanim.df figures; the box body is the offline fallback.
+	if (bUseOriginalFigures && BuildPedestrianFigure())
+	{
+		return true;
+	}
+
 	LastMeshLoadError.Reset();
 	bUsingPedestrianSprite = false;
 	bUsingPedestrianBody = false;
+	bUsingPedestrianFigure = false;
 	PedestrianSpriteTexture = nullptr;
 	SpriteMaterialInstance = nullptr;
 	OriginalMeshComponent->ClearAllMeshSections();
@@ -351,6 +394,169 @@ bool ASimCopterGroundAgent::BuildPedestrianBody()
 	bUsingPedestrianBody = true;
 	ShowOriginalMesh(true);
 	return true;
+}
+
+bool ASimCopterGroundAgent::BuildPedestrianFigure()
+{
+	LastMeshLoadError.Reset();
+	bUsingPedestrianSprite = false;
+	bUsingPedestrianBody = false;
+	bUsingPedestrianFigure = false;
+	PedestrianSpriteTexture = nullptr;
+	SpriteMaterialInstance = nullptr;
+	FigureHeadTexture = nullptr;
+	FigureHeadMaterialInstance = nullptr;
+	DisableVehicleHeadlights();
+
+	const FString RootPath = ResolveOriginalGameRoot();
+	if (RootPath.IsEmpty())
+	{
+		LastMeshLoadError = TEXT("Original game root is empty.");
+		return false;
+	}
+
+	FString Error;
+	FigureShared = FSimCopterPopulationFigure::GetShared(RootPath, Error);
+	if (!FigureShared.IsValid())
+	{
+		LastMeshLoadError = Error;
+		UE_LOG(LogSimCopterGroundAgent, Warning, TEXT("privanim figures unavailable: %s"), *Error);
+		return false;
+	}
+
+	// Stable per-agent choices so a pedestrian keeps its identity for its whole life.
+	const uint32 Hash = GetTypeHash(GetFName());
+	FString FigureName = PedestrianFigureName;
+	if (FigureName.IsEmpty() && PedestrianFigurePool.Num() > 0)
+	{
+		FigureName = PedestrianFigurePool[Hash % uint32(PedestrianFigurePool.Num())];
+	}
+	FigureIndex = FigureShared->Model.FindFigureIndex(FigureName);
+	if (FigureIndex == INDEX_NONE)
+	{
+		LastMeshLoadError = FString::Printf(TEXT("Figure '%s' not found in privanim.df."), *FigureName);
+		UE_LOG(LogSimCopterGroundAgent, Warning, TEXT("%s"), *LastMeshLoadError);
+		return false;
+	}
+	FigureClothesOffset = int32((Hash / 7u) % 14u);
+
+	// Head sprite: pick from the original's SIM3D.BMP head-image table.
+	const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
+	FigureHeadIndex = int32((Hash / 3u) % uint32(HeadTable.Num()));
+	if (SpriteMaterial == nullptr)
+	{
+		SpriteMaterial = LoadSpriteMaterialNoWarn();
+	}
+	if (SpriteMaterial != nullptr)
+	{
+		if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[FigureHeadIndex]))
+		{
+			FigureHeadTexture = CreateFigureHeadTexture(this, *HeadImage);
+		}
+		if (FigureHeadTexture != nullptr)
+		{
+			FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(SpriteMaterial, this);
+			if (FigureHeadMaterialInstance != nullptr)
+			{
+				FigureHeadMaterialInstance->SetTextureParameterValue(TEXT("Texture"), FigureHeadTexture);
+			}
+		}
+	}
+
+	bUsingPedestrianFigure = true; // set before the clip build so RebuildFigureClip can run
+	if (!RebuildFigureClip(TEXT("NoMo")))
+	{
+		bUsingPedestrianFigure = false;
+		return false;
+	}
+
+	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	// Feet sit at the capsule bottom; the figure is built from Z=0 (feet) upward.
+	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight));
+	ShowOriginalMesh(true);
+	return true;
+}
+
+bool ASimCopterGroundAgent::RebuildFigureClip(const FString& Mnemonic)
+{
+	if (!bUsingPedestrianFigure || !FigureShared.IsValid() || !FigureShared->Model.Figures.IsValidIndex(FigureIndex))
+	{
+		return false;
+	}
+	const FPrivAnimFigure& Figure = FigureShared->Model.Figures[FigureIndex];
+
+	const FPrivAnimClip* Clip = FigureShared->Model.FindClip(Figure, Mnemonic);
+	if (Clip == nullptr)
+	{
+		Clip = FigureShared->Model.FindClip(Figure, TEXT("NoMo"));
+	}
+	if (Clip == nullptr)
+	{
+		LastMeshLoadError = FString::Printf(TEXT("Figure '%s' has no clip for '%s'."), *Figure.Name, *Mnemonic);
+		return false;
+	}
+
+	const float HeightCm = PedestrianBodyHeightCm * PopulationWorldScale;
+	// Calibrate model units from the standing walk clip so poses like "Dead" keep their scale.
+	const FPrivAnimClip* StandingClip = FigureShared->Model.FindClip(Figure, TEXT("1Wal"));
+	FigureCalibration = FSimCopterPopulationFigure::Calibrate(StandingClip != nullptr ? *StandingClip : *Clip, HeightCm);
+
+	FSimCopterPopulationFigure::FBuildParams Params;
+	Params.HeightCm = HeightCm;
+	Params.ClothesOffset = FigureClothesOffset;
+	Params.bTexturedHead = FigureHeadMaterialInstance != nullptr;
+
+	if (!FSimCopterPopulationFigure::BuildClipSections(
+			OriginalMeshComponent, Figure, *Clip, FigureShared->Palette, Params, FigureCalibration, bFigureHasHeadSection))
+	{
+		LastMeshLoadError = FString::Printf(TEXT("Failed to build figure '%s' clip '%s'."), *Figure.Name, *Clip->Name);
+		return false;
+	}
+
+	for (int32 Frame = 0; Frame < Clip->FrameCount; ++Frame)
+	{
+		if (VertexColorMaterial != nullptr)
+		{
+			OriginalMeshComponent->SetMaterial(Frame * 2, VertexColorMaterial);
+		}
+		OriginalMeshComponent->SetMaterial(
+			Frame * 2 + 1,
+			FigureHeadMaterialInstance != nullptr ? static_cast<UMaterialInterface*>(FigureHeadMaterialInstance) : VertexColorMaterial.Get());
+	}
+
+	FigureMnemonic = Mnemonic;
+	FigureFrameCount = Clip->FrameCount;
+	FigureCurrentFrame = 0;
+	FigureFrameTime = 0.0f;
+	FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, 0, bFigureHasHeadSection);
+	return true;
+}
+
+void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha)
+{
+	// The original figures animate through whole-pose frames - no lean/bob overlay.
+	VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
+	VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+
+	const bool bWalking = SpeedAlpha > 0.12f;
+	const FString Desired = bWalking ? TEXT("1Wal") : TEXT("NoMo");
+	if (Desired != FigureMnemonic)
+	{
+		RebuildFigureClip(Desired);
+	}
+	if (FigureFrameCount <= 1)
+	{
+		return;
+	}
+
+	// Idle clips tick at half rate, matching the original's lazier off-screen cadence.
+	FigureFrameTime += DeltaSeconds * (bWalking ? FigureFrameRate : FigureFrameRate * 0.5f);
+	const int32 DesiredFrame = FMath::FloorToInt(FigureFrameTime) % FigureFrameCount;
+	if (DesiredFrame != FigureCurrentFrame)
+	{
+		FigureCurrentFrame = DesiredFrame;
+		FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, FigureCurrentFrame, bFigureHasHeadSection);
+	}
 }
 
 void ASimCopterGroundAgent::ConfigureVehicleHeadlights(const FBox& VehicleLocalBounds)
@@ -655,6 +861,10 @@ void ASimCopterGroundAgent::UpdateJankyAnimation(float DeltaSeconds)
 		VisualRoot->SetRelativeRotation(FRotator(Pitch, 0.0f, Roll));
 		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
 	}
+	else if (bUsingPedestrianFigure)
+	{
+		UpdateFigureAnimation(DeltaSeconds, SpeedAlpha);
+	}
 	else
 	{
 		const float Lean = Wave * 7.0f * SpeedAlpha; // degrees of roll (scale-independent)
@@ -687,6 +897,7 @@ void ASimCopterGroundAgent::ShowOriginalMesh(bool bUseOriginalMesh)
 	{
 		bUsingPedestrianSprite = false;
 		bUsingPedestrianBody = false;
+		bUsingPedestrianFigure = false;
 	}
 	if (OriginalMeshComponent != nullptr)
 	{
