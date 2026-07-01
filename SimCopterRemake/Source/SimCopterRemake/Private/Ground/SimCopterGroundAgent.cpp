@@ -15,6 +15,7 @@
 #include "GameFramework/Pawn.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
+#include "Ground/SimCopterTrafficSystemActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -169,6 +170,7 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	BehaviorContext = FSimCopterPersonContext();
 	// Seed the people PRNG per agent so crowds don't move in lockstep.
 	BehaviorContext.Lfsr = uint16(GetTypeHash(GetFName()) | 1);
+	BehaviorContext.Attributes[EBhavAttr::Facing] = uint16(FMath::RoundToInt(GetActorRotation().Yaw / 45.0f) & 7);
 	BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = 0;
 	BehaviorContext.Attributes[EBhavAttr::Speed] = 5;
 	BehaviorContext.ResetToState(InitialPersonState);
@@ -237,9 +239,16 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 
 int32 ASimCopterGroundAgent::GetCurrentTileClass() const
 {
-	// Class 7 = the walkable road/sidewalk class (FUN_004c9220). Pedestrians ride the sidewalk
-	// route graph, so "on the network" is a faithful stand-in until the full per-tile class map
-	// is wired to the city data.
+	if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+	{
+		const int32 TileClass = TrafficSystem->GetPeopleTileClassAtWorldLocation(GetActorLocation());
+		if (TileClass != INDEX_NONE)
+		{
+			return TileClass;
+		}
+	}
+
+	// Standalone/unit-test fallback when no traffic system owns the agent.
 	return RouteTargetNodeIndex != INDEX_NONE ? 7 : 10;
 }
 
@@ -250,9 +259,43 @@ bool ASimCopterGroundAgent::IsTileClassAllowedForState(int32 StateIndex, int32 T
 
 bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 {
-	// v1 blend: programs decide WHEN to move; the sidewalk route graph decides WHERE
-	// (keeps pedestrians on the network exactly like the original's tile-class checks).
 	bBehaviorWantsMove = true;
+	if (bHasMoveTarget && !IsNearMoveTarget(TargetStopDistanceCm + 10.0f))
+	{
+		return true;
+	}
+
+	const float SpeedAlpha = FMath::Clamp(float(Context.Attributes[EBhavAttr::Speed]) / 10.0f, 0.1f, 1.0f);
+	const float StepDistanceCm = FMath::Clamp(MovementSpeedCmPerSec * SpeedAlpha * 0.75f, 110.0f, 220.0f);
+	const int32 StartFacing = int32(Context.Attributes[EBhavAttr::Facing]) & 7;
+
+	if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+	{
+		for (int32 Turn = 0; Turn < 8; ++Turn)
+		{
+			const int32 Facing = (StartFacing + Turn) & 7;
+			FVector TargetLocation = FVector::ZeroVector;
+			int32 TargetTileClass = INDEX_NONE;
+			if (!TrafficSystem->TryGetPeopleFacingStepTarget(GetActorLocation(), Facing, StepDistanceCm, TargetLocation, TargetTileClass))
+			{
+				continue;
+			}
+			if (!IsTileClassAllowedForState(Context.Attributes[EBhavAttr::BehaviorClass], TargetTileClass))
+			{
+				continue;
+			}
+
+			Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
+			SetMoveTarget(TargetLocation);
+			return true;
+		}
+
+		return false;
+	}
+
+	const float FacingRadians = FMath::DegreesToRadians(float(StartFacing) * 45.0f);
+	const FVector FallbackTarget = GetActorLocation() + FVector(FMath::Cos(FacingRadians), FMath::Sin(FacingRadians), 0.0f) * StepDistanceCm;
+	SetMoveTarget(FallbackTarget);
 	return true;
 }
 

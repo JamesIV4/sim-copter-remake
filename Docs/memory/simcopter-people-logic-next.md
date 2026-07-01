@@ -81,3 +81,22 @@ engine FUN_004cd0d0: operands via resolver FUN_004cd2e0 (scope 7=literal, 9=fram
 op1=bind anim mnemonic, op4=bind figure, op18/19=tile-class tests (per-state list DAT_0058ec00),
 op23=speed(+0x150)+=arg clamp 0..10. Head sprites: SIM3D.BMP heads are 52x25 PANORAMAS (wrap
 around the head; UE uses an 8-side cylinder, HeadFaceU param tunes which U faces forward).
+
+**Update 2026-07-01 (city-side data wired):**
+- Build checkpoint from the previous interrupted pass is clean. Verified editor build plus
+  `SimCopter.Formats.PrivAnim.Reference`, `SimCopter.Behavior.VM.Reference`, and new
+  `SimCopter.City.PeopleRules.ClassMap` automation tests.
+- `FUN_004c9220` is now ported as `FSimCopterPeopleCityRules`: XBLD byte -> initialized
+  `DAT_0058e800` people tile class. `DAT_0058d6d0` was not an asset blob; it is initialized in
+  `FUN_004c3010`: classes 2/3/5/7 => `{PlacementMode=1, SurfaceMode=4}`, class 4 =>
+  `{1,2}`, all others => `{0,4}`.
+- Traffic system now builds a `PeopleTileClasses` grid from the active city and makes pedestrian
+  spawn candidates from original ambient state-0 classes `{13,11,10,12,7}` instead of road-only
+  sidewalk nodes. Vehicle road graph is unchanged.
+- The old pedestrian route-graph fallback is removed: traffic no longer assigns next pedestrian
+  graph targets, and `ASimCopterGroundAgent::MoveStep` now uses original facing (`(facing+2)&7`)
+  plus the city tile-class grid to choose short movement targets only when the destination class is
+  allowed by the decoded table.
+- Remaining true gaps: exact `FUN_004c02a0` in-tile spawn offset/placement semantics, ambient
+  state selection from `DAT_0058ec00`/`FUN_004c2450` instead of always starting state 0, and the
+  still-unported VM opcodes (VM test currently logs: ambient run 0 move steps; 8 unported opcodes).

@@ -4,6 +4,7 @@
 
 #include "City/SimCity2000CityActor.h"
 #include "Engine/World.h"
+#include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "GameFramework/PlayerController.h"
 #include "Ground/SimCopterGroundAgent.h"
@@ -300,6 +301,49 @@ FVector2D GetRoadSidewalkLocalOffset(const FSimCity2000City& City, int32 FileX, 
 	return FVector2D::ZeroVector; // intersection / isolated tile: keep pedestrians centred
 }
 
+FVector2D GetStableTileJitter(int32 FileX, int32 FileY, float TileSize)
+{
+	uint32 Hash = HashCombineFast(::GetTypeHash(FileX), ::GetTypeHash(FileY));
+	Hash = HashCombineFast(Hash, 0x9e3779b9u);
+	const float UnitX = float(Hash & 0xffffu) / 65535.0f;
+	const float UnitY = float((Hash >> 16) & 0xffffu) / 65535.0f;
+	const float Radius = TileSize * 0.18f;
+	return FVector2D((UnitX * 2.0f - 1.0f) * Radius, (UnitY * 2.0f - 1.0f) * Radius);
+}
+
+FVector2D GetPeopleSpawnLocalOffset(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 PeopleTileClass, float TileSize)
+{
+	const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
+	if (PeopleTileClass == 7 && IsPedestrianRoadTile(Tile.Building))
+	{
+		return GetRoadSidewalkLocalOffset(City, FileX, FileY, TileSize);
+	}
+
+	const FSimCopterPeopleSpawnPlacement Placement = FSimCopterPeopleCityRules::GetSpawnPlacementForTileClass(PeopleTileClass);
+	if (Placement.PlacementMode == 1)
+	{
+		return FVector2D::ZeroVector;
+	}
+
+	return GetStableTileJitter(FileX, FileY, TileSize);
+}
+
+FVector2D GetPeopleFacingLocalDirection(int32 Facing)
+{
+	constexpr float Diagonal = 0.70710678118f;
+	static const FVector2D OriginalDirectionByIndex[8] = {
+		FVector2D(0.0f, -1.0f),
+		FVector2D(Diagonal, -Diagonal),
+		FVector2D(1.0f, 0.0f),
+		FVector2D(Diagonal, Diagonal),
+		FVector2D(0.0f, 1.0f),
+		FVector2D(-Diagonal, Diagonal),
+		FVector2D(-1.0f, 0.0f),
+		FVector2D(-Diagonal, -Diagonal)};
+
+	return OriginalDirectionByIndex[(Facing + 2) & 7];
+}
+
 bool TryGetRoadOpeningLocalDirectionToNode(
 	const TArray<FSimCopterGroundRouteNode>& Nodes,
 	int32 PointIndex,
@@ -563,6 +607,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodes.Reset();
 	PedestrianNodes.Reset();
 	RoadNodeIndexByTile.Reset();
+	PeopleTileClasses.Reset();
 	VehicleAgents.Reset();
 	PedestrianAgents.Reset();
 	VehicleTrafficStates.Reset();
@@ -605,13 +650,16 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 
 	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
 
-	TMap<FIntPoint, int32> PedestrianIndexByTile;
+	PeopleTileClasses.SetNum(FSimCity2000City::TileCount);
 
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
 	{
 		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
 		{
 			const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
+			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
+			const int32 PeopleTileClass = FSimCopterPeopleCityRules::GetTileClassForBuildingId(Tile.Building);
+			PeopleTileClasses[TileIndex] = uint8(PeopleTileClass);
 			const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
 			const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
 			const float LocalZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
@@ -624,22 +672,23 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 				Node.FileX = FileX;
 				Node.FileY = FileY;
 				Node.BuildingId = Tile.Building;
+				Node.PeopleTileClass = PeopleTileClass;
 				Node.LocalLocation = FVector(LocalX + CenterlineOffset.X, LocalY + CenterlineOffset.Y, LocalZ + 10.0f);
 				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
 				RoadNodeIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
 
-			if (!Tile.bWater && IsPedestrianRoadTile(Tile.Building))
+			if (!Tile.bWater && FSimCopterPeopleCityRules::IsAmbientPedestrianTileClass(PeopleTileClass))
 			{
-				const FVector2D Sidewalk = GetRoadSidewalkLocalOffset(City, FileX, FileY, ActiveTileSize);
+				const FVector2D SpawnOffset = GetPeopleSpawnLocalOffset(City, FileX, FileY, PeopleTileClass, ActiveTileSize);
 				const int32 NodeIndex = PedestrianNodes.Num();
 				FSimCopterGroundRouteNode& Node = PedestrianNodes.AddDefaulted_GetRef();
 				Node.FileX = FileX;
 				Node.FileY = FileY;
 				Node.BuildingId = Tile.Building;
-				Node.LocalLocation = FVector(LocalX + Sidewalk.X, LocalY + Sidewalk.Y, LocalZ + 10.0f);
+				Node.PeopleTileClass = PeopleTileClass;
+				Node.LocalLocation = FVector(LocalX + SpawnOffset.X, LocalY + SpawnOffset.Y, LocalZ + 10.0f);
 				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
-				PedestrianIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
 		}
 	}
@@ -659,19 +708,9 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		}
 	}
 
-	for (FSimCopterGroundRouteNode& Node : PedestrianNodes)
-	{
-		for (const int32* Offset : NeighborOffsets)
-		{
-			const int32 DeltaX = Offset[0];
-			const int32 DeltaY = Offset[1];
-			const int32 NeighborIndex = FindNodeByTile(PedestrianIndexByTile, Node.FileX + DeltaX, Node.FileY + DeltaY);
-			if (NeighborIndex != INDEX_NONE && CanRoadTilesConnect(Node.BuildingId, PedestrianNodes[NeighborIndex].BuildingId, DeltaX, DeltaY))
-			{
-				Node.Neighbors.Add(NeighborIndex);
-			}
-		}
-	}
+	// Pedestrians are moved by the people.df VM using facing + tile-class checks. The nodes above
+	// are spawn candidates only; building a road-style graph here recreates the old sidewalk
+	// fallback and makes ops 13/14 meaningless.
 
 	RoadNodeCount = RoadNodes.Num();
 	PedestrianNodeCount = PedestrianNodes.Num();
@@ -690,6 +729,54 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		ActiveTileSize);
 
 	return true;
+}
+
+int32 ASimCopterTrafficSystemActor::GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const
+{
+	if (PeopleTileClasses.Num() != FSimCity2000City::TileCount || ActiveTileSize <= KINDA_SMALL_NUMBER)
+	{
+		return INDEX_NONE;
+	}
+
+	const FVector LocalLocation = ActiveCityToWorldTransform.InverseTransformPosition(WorldLocation);
+	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
+	const int32 FileX = FMath::FloorToInt((LocalLocation.X + HalfMapSize) / ActiveTileSize);
+	const int32 FileY = FMath::FloorToInt((HalfMapSize - LocalLocation.Y) / ActiveTileSize);
+	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return INDEX_NONE;
+	}
+
+	return int32(PeopleTileClasses[FileY * FSimCity2000City::MapSize + FileX]);
+}
+
+bool ASimCopterTrafficSystemActor::TryGetPeopleFacingStepTarget(
+	const FVector& FromWorldLocation,
+	int32 Facing,
+	float StepDistanceCm,
+	FVector& OutWorldLocation,
+	int32& OutTileClass) const
+{
+	OutWorldLocation = FVector::ZeroVector;
+	OutTileClass = INDEX_NONE;
+	if (PeopleTileClasses.Num() != FSimCity2000City::TileCount || StepDistanceCm <= 0.0f)
+	{
+		return false;
+	}
+
+	const FVector2D LocalDirection = GetPeopleFacingLocalDirection(Facing);
+	if (LocalDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	const FVector WorldDelta = ActiveCityToWorldTransform.TransformVector(FVector(
+		LocalDirection.X * StepDistanceCm,
+		LocalDirection.Y * StepDistanceCm,
+		0.0f));
+	OutWorldLocation = FromWorldLocation + FVector(WorldDelta.X, WorldDelta.Y, 0.0f);
+	OutTileClass = GetPeopleTileClassAtWorldLocation(OutWorldLocation);
+	return OutTileClass != INDEX_NONE;
 }
 
 FString ASimCopterTrafficSystemActor::ResolveCityPath() const
@@ -753,17 +840,6 @@ void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 			if (!Agent->HasMoveTarget() || Agent->IsNearMoveTarget())
 			{
 				AssignNextTarget(*Agent, RoadNodes);
-			}
-		}
-	}
-
-	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
-	{
-		if (ASimCopterGroundAgent* Agent = AgentPtr.Get())
-		{
-			if (!Agent->HasMoveTarget() || Agent->IsNearMoveTarget())
-			{
-				AssignNextTarget(*Agent, PedestrianNodes);
 			}
 		}
 	}
@@ -1979,8 +2055,10 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 			return false;
 		}
 
-		const int32 CandidateNextIndex = ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream);
-		const FVector CandidateSpawnBaseLocation = MakeRoutePointLocation(Nodes, CandidateNodeIndex, INDEX_NONE, CandidateNextIndex, bVehicle);
+		const int32 CandidateNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream) : INDEX_NONE;
+		const FVector CandidateSpawnBaseLocation = bVehicle
+			? MakeRoutePointLocation(Nodes, CandidateNodeIndex, INDEX_NONE, CandidateNextIndex, true)
+			: Nodes[CandidateNodeIndex].Location;
 		if (!bVehicle || IsVehicleSpawnLocationClear(CandidateSpawnBaseLocation))
 		{
 			NodeIndex = CandidateNodeIndex;
@@ -1997,12 +2075,12 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 
 	const FSimCopterGroundRouteNode& Node = Nodes[NodeIndex];
 	FRotator SpawnRotation = FRotator::ZeroRotator;
-	if (Nodes.IsValidIndex(InitialNextIndex))
+	if (bVehicle && Nodes.IsValidIndex(InitialNextIndex))
 	{
 		const FVector Target = MakeRoutePointLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, bVehicle);
 		SpawnRotation.Yaw = (Target - SpawnBaseLocation).Rotation().Yaw;
 	}
-	else if (Node.Neighbors.Num() > 0)
+	else if (bVehicle && Node.Neighbors.Num() > 0)
 	{
 		const FVector Target = Nodes[Node.Neighbors[RandomStream.RandRange(0, Node.Neighbors.Num() - 1)]].Location;
 		SpawnRotation.Yaw = (Target - SpawnBaseLocation).Rotation().Yaw;
@@ -2045,19 +2123,23 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 	// instead of briefly hovering at the spawner's estimated terrain height.
 	Agent->SnapToGroundImmediate();
 
-	// Seed the route at the spawn node, then pick the first hop along the graph.
-	if (Nodes.IsValidIndex(InitialNextIndex))
+	// Seed the route at the spawn node. Vehicles then pick the first road-graph hop; pedestrians
+	// leave movement to the original people VM and use RouteTargetNode only as spawn/debug state.
+	if (bVehicle && Nodes.IsValidIndex(InitialNextIndex))
 	{
-		const int32 InitialPlannedNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, InitialNextIndex, NodeIndex, RandomStream) : INDEX_NONE;
+		const int32 InitialPlannedNextIndex = ChooseNextRouteNode(Nodes, InitialNextIndex, NodeIndex, RandomStream);
 		Agent->SetRouteState(InitialNextIndex, NodeIndex, InitialPlannedNextIndex);
-		Agent->SetMoveTarget(bVehicle
-			? MakeVehicleRouteTargetLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, InitialPlannedNextIndex)
-			: MakeRoutePointLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, false));
+		Agent->SetMoveTarget(MakeVehicleRouteTargetLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, InitialPlannedNextIndex));
+	}
+	else if (bVehicle)
+	{
+		Agent->SetRouteState(NodeIndex, INDEX_NONE);
+		AssignNextTarget(*Agent, Nodes);
 	}
 	else
 	{
 		Agent->SetRouteState(NodeIndex, INDEX_NONE);
-		AssignNextTarget(*Agent, Nodes);
+		Agent->ClearMoveTarget();
 	}
 
 	if (bVehicle)
