@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Ground/SimCopterPopulationFigure.h"
 #include "SimCopterOnFootPawn.generated.h"
 
 class ASimCopterHelicopterPawn;
@@ -92,6 +93,16 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> BodyVertexColorMaterial;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> FigureHeadTexture;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> FigureHeadMaterialInstance;
+
+	// The player's original figure ("pilot" - you are the SimCopter pilot). Empty disables.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets")
+	FString PlayerFigureName = TEXT("pilot");
+
 private:
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
 	float MoveForwardInput = 0.0f;
@@ -104,6 +115,22 @@ private:
 	int32 BodySpriteRow = INDEX_NONE;
 	float BodySpriteTimeSeconds = 0.0f;
 	bool bUsingOriginalBodySprite = false;
+
+	// Original pilot-figure state (mirrors the ground agent's figure path).
+	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
+	struct FSimCopterFigureAnimState
+	{
+		FString Mnemonic;
+		int32 FigureIndex = INDEX_NONE;
+		int32 FrameCount = 0;
+		int32 CurrentFrame = 0;
+		float FrameTime = 0.0f;
+		bool bHasHeadSection = false;
+	} FigureAnim;
+	bool bUsingOriginalFigure = false;
+
+	bool LoadOriginalBodyFigure();
+	bool RebuildPlayerFigureClip(const FString& Mnemonic);
 
 	void MoveForward(float Value);
 	void MoveRight(float Value);

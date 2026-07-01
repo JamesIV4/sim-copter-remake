@@ -8,9 +8,7 @@
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
 
-namespace
-{
-UTexture2D* CreateTextureFromImage(const FMaxisTextureImage& Image, UObject* Outer)
+UTexture2D* FSimCopterPopulationSprite::CreateTextureFromImage(UObject* Outer, const FMaxisTextureImage& Image, const TCHAR* BaseName)
 {
 	if (Image.Width <= 0 || Image.Height <= 0 || Image.Pixels.Num() != Image.Width * Image.Height)
 	{
@@ -25,7 +23,7 @@ UTexture2D* CreateTextureFromImage(const FMaxisTextureImage& Image, UObject* Out
 
 	if (Outer != nullptr)
 	{
-		Texture->Rename(*MakeUniqueObjectName(Outer, UTexture2D::StaticClass(), TEXT("SimCopterPeople1")).ToString(), Outer);
+		Texture->Rename(*MakeUniqueObjectName(Outer, UTexture2D::StaticClass(), BaseName).ToString(), Outer);
 	}
 
 	Texture->CompressionSettings = TC_VectorDisplacementmap;
@@ -41,7 +39,6 @@ UTexture2D* CreateTextureFromImage(const FMaxisTextureImage& Image, UObject* Out
 	Texture->UpdateResource();
 
 	return Texture;
-}
 }
 
 bool FSimCopterPopulationSprite::IsPeople1Name(const FString& AssetName)
@@ -122,7 +119,7 @@ bool FSimCopterPopulationSprite::LoadPeople1Texture(
 		return false;
 	}
 
-	OutTexture = CreateTextureFromImage(Image, Outer);
+	OutTexture = CreateTextureFromImage(Outer, Image, TEXT("SimCopterPeople1"));
 	if (OutTexture == nullptr)
 	{
 		OutError = FString::Printf(TEXT("Could not create runtime texture for '%s'."), *BitmapPath);

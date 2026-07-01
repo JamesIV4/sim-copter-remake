@@ -11,8 +11,11 @@
 #include "Engine/World.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Formats/SimCopterPeopleReader.h"
+#include "GameFramework/Pawn.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
+#include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/Paths.h"
@@ -40,33 +43,30 @@ constexpr float PedestrianSpriteHeightCm = 162.0f;
 constexpr float PedestrianBodyHeightCm = 176.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
 
-// Small transient texture from decoded original pixels (same pattern as the PEOPLE1 sprite).
-UTexture2D* CreateFigureHeadTexture(UObject* Outer, const FMaxisTextureImage& Image)
+// Process-wide people.df behavior model cache (one per original-game root).
+TSharedPtr<FPeopleBehaviorModel> GetSharedBehaviorModel(const FString& RootPath)
 {
-	if (Image.Width <= 0 || Image.Height <= 0 || Image.Pixels.Num() != Image.Width * Image.Height)
+	static TMap<FString, TSharedPtr<FPeopleBehaviorModel>> Cache;
+	static TSet<FString> FailedRoots;
+	const FString Key = FPaths::ConvertRelativePathToFull(RootPath);
+	if (const TSharedPtr<FPeopleBehaviorModel>* Found = Cache.Find(Key))
+	{
+		return *Found;
+	}
+	if (FailedRoots.Contains(Key))
 	{
 		return nullptr;
 	}
-	UTexture2D* Texture = UTexture2D::CreateTransient(Image.Width, Image.Height, PF_B8G8R8A8);
-	if (Texture == nullptr || Texture->GetPlatformData() == nullptr || Texture->GetPlatformData()->Mips.Num() == 0)
+	const FString PeoplePath = FSimCopterPeopleReader::ResolvePeoplePath(RootPath);
+	TSharedPtr<FPeopleBehaviorModel> Model = MakeShared<FPeopleBehaviorModel>();
+	FString Error;
+	if (PeoplePath.IsEmpty() || !FSimCopterPeopleReader::LoadFromFile(PeoplePath, *Model, Error))
 	{
+		FailedRoots.Add(Key);
 		return nullptr;
 	}
-	if (Outer != nullptr)
-	{
-		Texture->Rename(*MakeUniqueObjectName(Outer, UTexture2D::StaticClass(), TEXT("SimCopterFigureHead")).ToString(), Outer);
-	}
-	Texture->CompressionSettings = TC_VectorDisplacementmap;
-	Texture->MipGenSettings = TMGS_NoMipmaps;
-	Texture->NeverStream = true;
-	Texture->SRGB = true;
-	Texture->Filter = TF_Nearest;
-	FTexture2DMipMap& Mip = Texture->GetPlatformData()->Mips[0];
-	void* TextureData = Mip.BulkData.Lock(LOCK_READ_WRITE);
-	FMemory::Memcpy(TextureData, Image.Pixels.GetData(), Image.Pixels.Num() * sizeof(FColor));
-	Mip.BulkData.Unlock();
-	Texture->UpdateResource();
-	return Texture;
+	Cache.Add(Key, Model);
+	return Model;
 }
 
 UMaterialInterface* LoadSpriteMaterialNoWarn()
@@ -146,10 +146,135 @@ void ASimCopterGroundAgent::BeginPlay()
 	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
 	{
 		BuildPedestrianBody();
+		StartOriginalBehavior();
 	}
 	else if (!MeshTableName.IsEmpty())
 	{
 		LoadOriginalMeshFromOriginalGameRoot();
+	}
+}
+
+void ASimCopterGroundAgent::StartOriginalBehavior()
+{
+	bBehaviorActive = false;
+	if (!bUseOriginalBehaviors || AgentKind != ESimCopterGroundAgentKind::Pedestrian)
+	{
+		return;
+	}
+	BehaviorModel = GetSharedBehaviorModel(ResolveOriginalGameRoot());
+	if (!BehaviorModel.IsValid())
+	{
+		return;
+	}
+	BehaviorContext = FSimCopterPersonContext();
+	// Seed the people PRNG per agent so crowds don't move in lockstep.
+	BehaviorContext.Lfsr = uint16(GetTypeHash(GetFName()) | 1);
+	BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = 0;
+	BehaviorContext.Attributes[EBhavAttr::Speed] = 5;
+	BehaviorContext.ResetToState(InitialPersonState);
+	bBehaviorActive = true;
+}
+
+void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
+{
+	if (!bBehaviorActive || !BehaviorModel.IsValid())
+	{
+		return;
+	}
+
+	BehaviorTickAccumulator += DeltaSeconds * BehaviorTickRate;
+	int32 Steps = FMath::FloorToInt(BehaviorTickAccumulator);
+	if (Steps <= 0)
+	{
+		return;
+	}
+	BehaviorTickAccumulator -= float(Steps);
+	Steps = FMath::Min(Steps, 4); // don't burst after hitches
+
+	bBehaviorWantsMove = false;
+	for (int32 Step = 0; Step < Steps; ++Step)
+	{
+		const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(BehaviorContext, *BehaviorModel, *this);
+		if (Result == EBhavStepResult::Stopped || BehaviorContext.bRequestDespawn)
+		{
+			// Original 'Disappear'/deactivate path: hide and let the spawner recycle us.
+			bBehaviorActive = false;
+			SetActorHiddenInGame(true);
+			SetLifeSpan(1.0f);
+			return;
+		}
+		if (Result == EBhavStepResult::Failed)
+		{
+			bBehaviorActive = false;
+			return;
+		}
+	}
+
+	// Anim binds map straight onto the figure clips (same 4-char mnemonics as ARLU).
+	if (!BehaviorContext.PendingAnimMnemonic.IsEmpty())
+	{
+		if (bUsingPedestrianFigure && BehaviorContext.PendingAnimMnemonic != FigureMnemonic)
+		{
+			RebuildFigureClip(BehaviorContext.PendingAnimMnemonic);
+		}
+		BehaviorContext.PendingAnimMnemonic.Reset();
+	}
+
+	// The program's movement intent gates the route-follow speed: speed attribute 0..10.
+	const float SpeedAlpha = bBehaviorWantsMove
+		? FMath::Clamp(float(BehaviorContext.Attributes[EBhavAttr::Speed]) / 10.0f, 0.1f, 1.0f)
+		: 0.0f;
+	SetTrafficSpeedScale(SpeedAlpha);
+
+	// Keep the facing attribute coherent with actual motion for tile/facing opcodes.
+	const FVector Velocity = GetCurrentVelocityCmPerSec();
+	if (!Velocity.IsNearlyZero(1.0f))
+	{
+		const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Velocity.Y, Velocity.X));
+		BehaviorContext.Attributes[EBhavAttr::Facing] = uint16(FMath::RoundToInt(Yaw / 45.0f) & 7);
+	}
+}
+
+int32 ASimCopterGroundAgent::GetCurrentTileClass() const
+{
+	// Class 7 = the walkable road/sidewalk class (FUN_004c9220). Pedestrians ride the sidewalk
+	// route graph, so "on the network" is a faithful stand-in until the full per-tile class map
+	// is wired to the city data.
+	return RouteTargetNodeIndex != INDEX_NONE ? 7 : 10;
+}
+
+bool ASimCopterGroundAgent::IsTileClassAllowedForState(int32 StateIndex, int32 TileClass) const
+{
+	return FSimCopterBehaviorVM::GetAllowedTileClasses(StateIndex).Contains(TileClass);
+}
+
+bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
+{
+	// v1 blend: programs decide WHEN to move; the sidewalk route graph decides WHERE
+	// (keeps pedestrians on the network exactly like the original's tile-class checks).
+	bBehaviorWantsMove = true;
+	return true;
+}
+
+bool ASimCopterGroundAgent::IsThreatNearby(const FSimCopterPersonContext& Context) const
+{
+	// FUN_004c9bc0: the player's helicopter close and low. Original radius DAT_0058dc32 is a
+	// few tiles; use ~4 remake tiles horizontally and a low-altitude gate.
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (PlayerPawn == nullptr)
+	{
+		return false;
+	}
+	const FVector Delta = PlayerPawn->GetActorLocation() - GetActorLocation();
+	return FMath::Abs(Delta.Z) < 1200.0f && Delta.SizeSquared2D() < FMath::Square(1600.0f);
+}
+
+void ASimCopterGroundAgent::OnUnknownOpcode(int32 Opcode)
+{
+	if (!ReportedUnknownOpcodes.Contains(Opcode))
+	{
+		ReportedUnknownOpcodes.Add(Opcode);
+		UE_LOG(LogSimCopterGroundAgent, Verbose, TEXT("%s: BHAV opcode %d not yet ported (passing true)."), *GetName(), Opcode);
 	}
 }
 
@@ -169,6 +294,7 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, GuidanceMoveTargetTimeRemainingSeconds - DeltaSeconds);
 	}
+	UpdateOriginalBehavior(DeltaSeconds);
 	UpdateMovement(DeltaSeconds);
 	if (bSnapToGround)
 	{
@@ -193,6 +319,7 @@ void ASimCopterGroundAgent::ConfigureAgent(
 	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
 	{
 		BuildPedestrianBody();
+		StartOriginalBehavior();
 	}
 	else if (!MeshTableName.IsEmpty())
 	{
@@ -451,7 +578,7 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 	{
 		if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[FigureHeadIndex]))
 		{
-			FigureHeadTexture = CreateFigureHeadTexture(this, *HeadImage);
+			FigureHeadTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, *HeadImage, TEXT("SimCopterFigureHead"));
 		}
 		if (FigureHeadTexture != nullptr)
 		{
@@ -539,10 +666,15 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 	VisualRoot->SetRelativeLocation(FVector::ZeroVector);
 
 	const bool bWalking = SpeedAlpha > 0.12f;
-	const FString Desired = bWalking ? TEXT("1Wal") : TEXT("NoMo");
-	if (Desired != FigureMnemonic)
+	// With the behavior VM active, clips are bound by the shipped programs (op 1); the
+	// speed-based 1Wal/NoMo switch is only the fallback for VM-less agents.
+	if (!bBehaviorActive)
 	{
-		RebuildFigureClip(Desired);
+		const FString Desired = bWalking ? TEXT("1Wal") : TEXT("NoMo");
+		if (Desired != FigureMnemonic)
+		{
+			RebuildFigureClip(Desired);
+		}
 	}
 	if (FigureFrameCount <= 1)
 	{

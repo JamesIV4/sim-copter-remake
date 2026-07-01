@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Ground/SimCopterBehaviorVM.h"
 #include "Ground/SimCopterPopulationFigure.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterGroundAgent.generated.h"
@@ -25,7 +26,7 @@ enum class ESimCopterGroundAgentKind : uint8
 };
 
 UCLASS()
-class SIMCOPTERREMAKE_API ASimCopterGroundAgent : public AActor
+class SIMCOPTERREMAKE_API ASimCopterGroundAgent : public AActor, public ISimCopterBehaviorWorld
 {
 	GENERATED_BODY()
 
@@ -170,6 +171,20 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Animation", meta = (ClampMin = "0.1"))
 	float FigureFrameRate = 8.0f;
 
+	// Run pedestrians on the original people.df behavior programs (the shipped BHAV bytecode,
+	// interpreted by FSimCopterBehaviorVM). Falls back to the waypoint wander when the data or
+	// the figure model is unavailable.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
+	bool bUseOriginalBehaviors = true;
+
+	// Behavior VM ticks per second (the original ran behavior once per sim tick).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
+	float BehaviorTickRate = 10.0f;
+
+	// Initial person state (0 = ambient pedestrian; see FPeopleBehaviorModel state table).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "20"))
+	int32 InitialPersonState = 0;
+
 	// Vehicle headlight spotlights (replace the removed translucent beam cards).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights")
 	bool bEnableVehicleHeadlights = true;
@@ -272,6 +287,24 @@ private:
 
 	bool RebuildFigureClip(const FString& Mnemonic);
 	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);
+
+	// Original behavior-VM state (pedestrians only).
+	TSharedPtr<FPeopleBehaviorModel> BehaviorModel;
+	FSimCopterPersonContext BehaviorContext;
+	float BehaviorTickAccumulator = 0.0f;
+	bool bBehaviorActive = false;
+	bool bBehaviorWantsMove = false;
+	TSet<int32> ReportedUnknownOpcodes;
+
+	void StartOriginalBehavior();
+	void UpdateOriginalBehavior(float DeltaSeconds);
+
+	// ISimCopterBehaviorWorld
+	virtual int32 GetCurrentTileClass() const override;
+	virtual bool IsTileClassAllowedForState(int32 StateIndex, int32 TileClass) const override;
+	virtual bool MoveStep(FSimCopterPersonContext& Context) override;
+	virtual bool IsThreatNearby(const FSimCopterPersonContext& Context) const override;
+	virtual void OnUnknownOpcode(int32 Opcode) override;
 
 	void ApplyAgentShape();
 	void UpdateMovement(float DeltaSeconds);
