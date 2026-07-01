@@ -104,6 +104,43 @@ void AppendCube(FMeshArrays& M, const FVector& Center, float HalfSize, const FLi
 {
 	AppendStroke(M, Center - FVector(0, 0, HalfSize * 0.001f), Center + FVector(0, 0, HalfSize * 0.001f), HalfSize, Color);
 }
+
+// Head: the original's 52x25 SIM3D.BMP head images are panoramas sampled by view angle when the
+// rotated head sprite is blitted. The remake wraps the strip around a small vertical cylinder so
+// the face shows from the front and the hair from behind.
+void AppendHeadCylinder(FMeshArrays& M, const FVector& Center, float Radius, float Height, float FaceU)
+{
+	constexpr int32 Sides = 8;
+	const float HalfH = Height * 0.5f;
+	for (int32 Side = 0; Side < Sides; ++Side)
+	{
+		// Angle 0 faces +X (agent forward); U runs so FaceU lands at the front.
+		const float Angle0 = (float(Side) / Sides) * UE_TWO_PI;
+		const float Angle1 = (float(Side + 1) / Sides) * UE_TWO_PI;
+		const FVector R0(FMath::Cos(Angle0) * Radius, FMath::Sin(Angle0) * Radius, 0.0f);
+		const FVector R1(FMath::Cos(Angle1) * Radius, FMath::Sin(Angle1) * Radius, 0.0f);
+		// The panorama's U axis wraps the head; mirror it on the +Y side so left/right read
+		// correctly, and offset by FaceU so the face fronts +X.
+		const float U0 = FMath::Fmod(FaceU + float(Side) / Sides, 1.0f);
+		const float U1 = U0 + 1.0f / Sides;
+
+		const FVector Corners[4] = {
+			Center + R0 + FVector(0, 0, HalfH),
+			Center + R1 + FVector(0, 0, HalfH),
+			Center + R1 - FVector(0, 0, HalfH),
+			Center + R0 - FVector(0, 0, HalfH)};
+		const FVector2D UVs[4] = {
+			FVector2D(U0, 0.0f), FVector2D(U1, 0.0f), FVector2D(U1, 1.0f), FVector2D(U0, 1.0f)};
+		const FVector Normal = ((R0 + R1) * 0.5f).GetSafeNormal();
+		AppendQuad(M, Corners, Normal, FLinearColor::White, false, UVs);
+	}
+	// Caps pinch to the strip's top edge (hair) / bottom edge so they blend in.
+	const FVector TopCorners[4] = {
+		Center + FVector(-Radius, -Radius, HalfH), Center + FVector(-Radius, Radius, HalfH),
+		Center + FVector(Radius, Radius, HalfH), Center + FVector(Radius, -Radius, HalfH)};
+	const FVector2D CapUVs[4] = {FVector2D(0.99f, 0.02f), FVector2D(0.99f, 0.02f), FVector2D(0.99f, 0.02f), FVector2D(0.99f, 0.02f)};
+	AppendQuad(M, TopCorners, FVector::UpVector, FLinearColor::White, false, CapUVs);
+}
 } // namespace
 
 TSharedPtr<FSimCopterPrivAnimShared> FSimCopterPopulationFigure::GetShared(const FString& OriginalGameRoot, FString& OutError)
@@ -254,7 +291,8 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 	const float ThickHalf = Params.HeightCm * Params.ThickWidthFraction * 0.5f;
 	const float ThinHalf = Params.HeightCm * Params.ThinWidthFraction * 0.5f;
 	const float DotHalf = Params.HeightCm * Params.DotSizeFraction * 0.5f;
-	const float HeadHalf = Params.HeightCm * Params.HeadSizeFraction * 0.5f;
+	const float HeadHeight = Params.HeightCm * Params.HeadHeightFraction;
+	const float HeadRadius = Params.HeightCm * Params.HeadRadiusFraction;
 
 	for (int32 Frame = 0; Frame < Clip.FrameCount; ++Frame)
 	{
@@ -286,18 +324,10 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 			{
 				if (!Params.bTexturedHead)
 				{
-					AppendCube(Body, A, HeadHalf * 0.7f, Color);
+					AppendCube(Body, A, HeadHeight * 0.4f, Color);
 					break;
 				}
-				// Forward-facing card; the original blits a rotated SIM3D.BMP head sprite here.
-				// Card top V=0 (texture rows are stored top-down after decode).
-				const FVector Center = A + FVector(ThinHalf, 0.0f, 0.0f);
-				const FVector Corners[4] = {
-					Center + FVector(0, -HeadHalf, HeadHalf),
-					Center + FVector(0, HeadHalf, HeadHalf),
-					Center + FVector(0, HeadHalf, -HeadHalf),
-					Center + FVector(0, -HeadHalf, -HeadHalf)};
-				AppendQuad(Head, Corners, FVector::ForwardVector, FLinearColor::White, true);
+				AppendHeadCylinder(Head, A, HeadRadius, HeadHeight, Params.HeadFaceU);
 				bOutHasHeadSection = true;
 				break;
 			}
