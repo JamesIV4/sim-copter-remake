@@ -133,7 +133,22 @@ The scratchpad has these notable outputs:
 - `out_heli_tuning.txt`, `out_heli_callers.txt`, `out_heli_xref.txt`, `out_heli_xref2.txt`, `out_heli_find.txt`, `out_heli_find2.txt`, `out_heli_strings.txt`: heli.twk tuning binding (`FUN_00489e20`), its caller (`FUN_00479bb0`), and the tuning-global readers that locate the flight model.
 - `out_ped_render_xrefs.txt`, `out_ped_anim.txt`, `out_figure_instantiate.txt`, `out_privanim_bind.txt`, `out_figure_vtable.txt`, `out_rendernode_vtables.txt`, `out_rendernode_vtables2.txt`, `out_figure_rendervtable.txt`: the pedestrian render chain (state -> `DAT_0058de80` anim id -> `FUN_004c7090`/`FUN_004c7c00` -> 12-segment figure `FUN_004ce630`/`FUN_004ce6c0`). Source for the `OriginalGameFileFormats.md` render-pipeline section.
 - `out_privanim_parser.txt`, `out_privanim_read.txt`, `out_privanim_chunks.txt`, `out_iff_api.txt`, `out_figure_draw.txt`, `out_figure_recordread.txt`: the `privanim.df` IFF "Doug" container - reader (`FUN_004ce320`), chunk-type register + endian fixup (`FUN_004d1ed0`, handlers `FUN_004d0090`/`FUN_004d00e0`), and the IFF node API. Source for the `privanim.df` on-disk format section.
-- 2026-06-26 deep pass (privanim full decode + draw-path trace): `out_leaf_handlers.txt`, `out_leaf_force.txt`, `out_geom_parse.txt`, `out_recordarray.txt`, `out_linkresolve.txt` (load path: loader `FUN_004ceab0`, node parse `FUN_004cfed0`/`FUN_004d18e0`, record-array `FUN_004d1a00`/`FUN_004d1df0`/`FUN_004d1b60`, link resolver `FUN_004cf8b0`); `out_figdraw_consumer.txt`, `out_figure_loop.txt`, `out_figure_vtables_full.txt`, `out_rendernode_methods.txt`, `out_fig_attach.txt`, `out_scenenode_iface.txt`, `out_disasm_4d4800.txt` (draw path: `FUN_004c6450`, `FUN_004c7c00`, the figure/render-node vtables, and the `0x4d4800` stub); `out_scan_vahb.txt`, `out_fig0100.txt`, `out_vtable_4fa190.txt`, `out_text_bytes.txt` (behavior-VM "VAHB"/`BHAV` anchor + the SimCopterX `.text` relocation caveat). Source for `Docs/OriginalGameFileFormats.md` "Faithful Extraction Method" and the `Tools/privanim_extract.py` extractor.
+- 2026-07-01 pass (privanim container decode finished + walker VM identified): `out_chunkfetch.txt`
+  (chunk get-by-index `FUN_004cd7b0`, get-by-id `FUN_004cd700`, node-dir scans), `out_chunkfetch2.txt`
+  (record-array factory `FUN_004d1b60`, name lookup `FUN_004cdfa0`, section reverse-lookup
+  `FUN_004cde50`), `out_dirload.txt`..`out_dirload4.txt` (reader open `FUN_004cd5a0`, file header
+  `FUN_004cd3e0`, directory build `FUN_004cdb50`/`FUN_004cda40`, entry byte-swaps
+  `FUN_004cdfe0`/`FUN_004ce010`, chunk file read `FUN_004cdcb0`, fread/fseek primitives),
+  `out_nodemethods.txt` (BODC/ANIP node methods, record swap handlers `FUN_004d0090`/`FUN_004d00e0`,
+  empty ARPP handler `FUN_004cea20`, ARPP row/col accessor `FUN_004cf3d0`), `out_nodevtables.txt`
+  (node subclass vtables `0x4f50b8` ANIP / `0x4f50e8` BODC), `out_figwalk.txt` (the walker VM
+  `FUN_004ce7b0` decoded: 16-bit tokens, <0x100 = opcode via vtable[0], >=0x100 = named-child link;
+  12-deep stack), `out_vm_handlers.txt` (the 88 opcode thunks at `0x4c84e0+0x20*n` with their real
+  target functions), `out_vm_ops0-6.txt` (first behavior handlers decompiled). Source for
+  `Docs/OriginalGameFileFormats.md` "Exact Container Spec" and the rewritten
+  `Tools/privanim_extract.py`.
+- 2026-06-26 deep pass (privanim full decode + draw-path trace; **container/record claims superseded
+  by the 2026-07-01 pass above**): `out_leaf_handlers.txt`, `out_leaf_force.txt`, `out_geom_parse.txt`, `out_recordarray.txt`, `out_linkresolve.txt` (load path: loader `FUN_004ceab0`, node parse `FUN_004cfed0`/`FUN_004d18e0`, record-array `FUN_004d1a00`/`FUN_004d1df0`/`FUN_004d1b60`, link resolver `FUN_004cf8b0`); `out_figdraw_consumer.txt`, `out_figure_loop.txt`, `out_figure_vtables_full.txt`, `out_rendernode_methods.txt`, `out_fig_attach.txt`, `out_scenenode_iface.txt`, `out_disasm_4d4800.txt` (draw path: `FUN_004c6450`, `FUN_004c7c00`, the figure/render-node vtables, and the `0x4d4800` stub); `out_scan_vahb.txt`, `out_fig0100.txt`, `out_vtable_4fa190.txt`, `out_text_bytes.txt` (behavior-VM "VAHB"/`BHAV` anchor + the SimCopterX `.text` relocation caveat). Source for `Docs/OriginalGameFileFormats.md` "Faithful Extraction Method" and the `Tools/privanim_extract.py` extractor.
 
 When adding new outputs, update this index or add a short "used by" note near the behavior documented in `ReverseEngineering.md`.
 
@@ -158,7 +173,7 @@ These are the main executable functions currently tied to remake code:
 | `0x004ceab0` | `FUN_004ceab0` | `PrivAnim.df` loader; registers IFF chunk types (`ARCP`/`ARLU`/`ARPP`), builds the 25x25 figure LOD table. |
 | `0x004ce320` | `FUN_004ce320` | `privanim.df` reader (`fopen` of the IFF "Doug" container; lazy by-4CC reads). |
 | `0x004d1ed0` | `FUN_004d1ed0` | Register an IFF chunk type (tag, record size, endian-fixup handler) and process its records. |
-| `0x004ce630` | `FUN_004ce630` | Figure instance ctor: 12 segments x 20-byte part records. |
+| `0x004ce630` | `FUN_004ce630` | Walker-context ctor: a **12-deep stack of 20-byte frames** (cursor `+0xf4`, depth `+0xf6`) - NOT "12 body segments"; the person object embeds the same layout. |
 | `0x004ce6c0` | `FUN_004ce6c0` | Bind a figure's animation cursor (`animId`, `frame`, `timer`, owner transform). |
 | `0x004c7090` | `FUN_004c7090` | Pedestrian state setup: writes state `+0x148` and figure anim id `DAT_0058de80[state]` to `+0x17a`. |
 | `0x004c7c00` | `FUN_004c7c00` | Attach a pedestrian render node at world coords and instantiate its figure. |
@@ -180,10 +195,23 @@ These are the main executable functions currently tied to remake code:
 | `0x004d1b60` | `FUN_004d1b60` | Record-array factory (lazy: dims start `-1`, stride at `+0x18`, bank/tag at `+0x24/+0x28`, key name at `+0x3c`). |
 | `0x004cf8b0` | `FUN_004cf8b0` | ARCP skeleton link resolver: matches `record+8` (part id) to resolve `record+0xc` (parent id) into a pointer = bone hierarchy. |
 | `0x004d1d70` | `FUN_004d1d70` | Chunk locator + lazy allocator (`(stride*cols+4)*rows+8`, `LocalAlloc` zeroed; records stream from file on demand). |
+| `0x004cd3e0` | `FUN_004cd3e0` | DF file header read: `@0 dataBase(0x100)`, `@4 dirOffset`, `@0xc dirSize`; seeds the directory load. |
+| `0x004cdb50` | `FUN_004cdb50` | Directory blob load + share-by-fileId; builds the 0x20-byte directory object (`FUN_004cda40`). |
+| `0x004cda40` | `FUN_004cda40` | Directory object build: swaps section entries (`FUN_004cdfe0`) and node entries (`FUN_004ce010`), computes node-region and string-table offsets. |
+| `0x004ce010` | `FUN_004ce010` | Node entry byte-swap; proves the 12-byte entry layout `[u16 id][u16 nameOff][u8 flags][u24 chunkOff][u32 scratch]`. |
+| `0x004cdcb0` | `FUN_004cdcb0` | Chunk file read: `fseek(dataBase+chunkOff)`, `[BE u32 len]` then payload into LocalAlloc; caches handle in entry+8. |
+| `0x004cd7b0` | `FUN_004cd7b0` | Get chunk by (tag, 1-based index) with optional per-chunk fixup callback. |
+| `0x004cd700` | `FUN_004cd700` | Get chunk by (tag, entry id) - how record arrays pair with their owner node. |
+| `0x004cdfa0` | `FUN_004cdfa0` | Node name fetch: Pascal string at stringTable + entry.nameOff. |
+| `0x004d0090` | `FUN_004d0090` | ARCP record swap: u32 name@+8, u32 parent@+0xc, f32 dims@+0x1c/+0x20/+0x24. |
+| `0x004d00e0` | `FUN_004d00e0` | ARLU record swap: two u32s = [mnemonic][clip name]. |
+| `0x004cea20` | `FUN_004cea20` | ARPP record handler - EMPTY: pose records are raw bytes (s8 segment endpoints). |
+| `0x004cf3d0` | `FUN_004cf3d0` | ANIP node accessor: ARPP record at `rowPtr[row] + col*8` (rows=frames, cols=parts). |
+| `0x004c84e0` | (thunk table) | The 88 behavior-VM opcode thunks, 0x20 bytes apart, each tail-calling the real handler (map in `out_vm_handlers.txt`). |
 | `0x00470650` | `FUN_00470650` | 16.16 fixed-point 4x4 affine matrix multiply (`out = local x parent`, bottom row forced to `[0,0,0,1.0]`). |
 | `0x004704d1` | `FUN_004704d1` | Set a scene node's current transform (copies the 16-dword matrix, calls `FUN_00470650` into `node+0x50`). |
 | `0x004c6450` | `FUN_004c6450` | Per-person, per-frame figure driver: runs behavior (`FUN_004ce7b0`) LOD-gated by `DAT_0058dc26`, advances `frame@+0x14c` (wraps at clip ARPP row count). |
-| `0x004ce7b0` | `FUN_004ce7b0` | Generic IFF chunk-tree walker; used as the **behavior bytecode interpreter** (dispatches leaf chunks to the object's `vtable[0]`). |
+| `0x004ce7b0` | `FUN_004ce7b0` | The walker VM (decoded 2026-07-01): reads 16-bit tokens; `<0x100` = opcode via `this->vtable[0]`, `>=0x100` = 4-char node name push (`FUN_004ce700`); depth-guard 0x80, stack overflow err 1000. |
 | `0x004ccf20` | `FUN_004ccf20` | People render-node `vtable[0]`: behavior VM dispatch `(&DAT_0058ef78)[op]` (the 88-handler table). |
 | `0x004c7c00` | `FUN_004c7c00` | Pedestrian render-node ctor: embeds the 12-segment figure at `node+0x4c` (`FUN_004ce630`), sets vtables `PTR_FUN_004f5018` (+0) and `PTR_LAB_004f5000` (+0x100). |
 | `0x004d0100` | `FUN_004d0100` | `BHAV`/"VAHB" (`0x42484156`) behavior-resource accessor ctor (vtable `PTR_LAB_004f5130`). |
@@ -238,7 +266,14 @@ Partially documented or probed:
 
 Fully decoded:
 
-- `X/privanim.df`: container, directories, 75-76-clip animation tree, 21 figures, per-part node-defs, and `ARCP` coord streams (`Docs/OriginalGameFileFormats.md` "Faithful Extraction Method"; `Tools/privanim_extract.py`). Only the figure rasterization primitive (in the 3D scene engine) is unread.
+- `X/privanim.df` (2026-07-01, code-derived and file-validated 437/437 chunks): header/directory/
+  string table/chunk layout; 21 named figures (`pilot`..`Woman`, incl. `Elvis`/`Nessie`); per figure
+  an `ARCP` skeleton tree (29..88 named parts with parent links + f32 dimensions), an `ARLU`
+  18-entry behavior-mnemonic->clip map (`1Wal`->`101!` etc.), and per clip `ARPP` = frames x parts
+  8-byte records, each **one line segment (two s8 xyz endpoints)** of the body wireframe per frame.
+  See `Docs/OriginalGameFileFormats.md` "Exact Container Spec"; `Tools/privanim_extract.py`.
+  Still open: how the scene engine fleshes segments into filled flat-shaded polygons (ARCP type
+  byte + dimension floats + palette), and the `DAT_0058de80` anim-id -> clip binding hop.
 
 Known major follow-ups (priority order):
 

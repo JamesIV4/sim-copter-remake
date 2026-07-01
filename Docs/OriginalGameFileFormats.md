@@ -257,56 +257,103 @@ So pedestrian rendering is: **state -> animation id (`DAT_0058de80`) -> 12-segme
 
 Still open (`Follow-up`): the 88 VM opcode handlers and bytecode grammar; the exact field *semantics* of `privanim.df` `BODC`/`ARCP`/`ARPP` records and the skinning math; and the small fixed header `u32` fields in both DF containers.
 
-## Faithful Extraction Method (2026-06-26 deep pass)
+## Exact Container Spec (2026-07-01 pass - fully code-derived, supersedes the removed 2026-06-26 section)
 
-`Confirmed.` Goal: read `privanim.df` faithfully and reproduce the figures + animations as real 3D models (skeleton + per-part geometry + keyframed clips) instead of the original software rasterizer, with no guessed offsets. The method is the project's standard validation loop:
+`Confirmed.` This pass finished the decode properly: every directory/record rule below was read out
+of the decompiled reader functions, then validated against the shipped file (437/437 record-array
+chunks parse with byte-exact sizes). It **corrects several earlier claims** (see the corrections
+list at the end). Extractor: `Tools/privanim_extract.py` (rewritten 2026-07-01); evidence:
+`out_chunkfetch.txt`, `out_chunkfetch2.txt`, `out_dirload.txt`..`out_dirload4.txt`,
+`out_nodemethods.txt`, `out_nodevtables.txt`, `out_figwalk.txt`, `out_vm_handlers.txt`,
+`out_vm_ops0-6.txt`.
 
-1. **Decompile the reader, not the bytes.** The only ground truth for a proprietary format is the code that reads it. The full load/draw path was force-decompiled (some methods are vtable-only and required creating functions at the address): loader `FUN_004ceab0`; figure-node init `FUN_004cf200`; BODC/ANIP node parse `FUN_004cfed0`/`FUN_004d18e0`; record-array factory `FUN_004d1b60` + loader `FUN_004d1a00` + row-table builder `FUN_004d1df0`; link resolver `FUN_004cf8b0`; chunk locator `FUN_004d1d70`; transform compose `FUN_00470650`; draw+advance `FUN_004c6450`; walker `FUN_004ce7b0`. Evidence files: `out_leaf_handlers.txt`, `out_leaf_force.txt`, `out_geom_parse.txt`, `out_recordarray.txt`, `out_linkresolve.txt`, `out_figdraw_consumer.txt`, `out_figure_vtables_full.txt`, `out_disasm_4d4800.txt`.
-2. **Derive the container model from that code**, then parse the file deterministically (`Tools/privanim_extract.py`).
-3. **Validate every field against the live process** (read-only `ReadProcessMemory`; see [[simcopter-live-memory-rip]]) - the game's own decoded structures are the authoritative target.
-4. **Emit glTF** (skeleton + per-part meshes + animation samplers).
+### File layout (all fields big-endian)
 
-### Container layout (deterministic; produced by `Tools/privanim_extract.py`)
+- **Header** (`FUN_004cd3e0`): `@0 u32 dataBase` (0x100 in the shipped file; it doubles as the
+  `00 00 01 00` "version" marker), `@4 u32 dirOffset`, `@8 u32` (unused by the chunk path),
+  `@0xc u32 dirSize`.
+- **Directory** at `dirOffset`: a 0x1c-byte header (copy of the file header + totals), then
+  `u16 sectionCount-1`, then a **blob** of `dirSize-0x1c-2` bytes that the game loads whole
+  (`FUN_004cdb50` -> `FUN_004cda40`):
+  - **Section entries** (`FUN_004cdfe0` swap): `sectionCount x 8` bytes `[4CC][u16 count][u16 entryOff]`.
+    Shipped file: `SPR#(0) ARPP(395) ANIP(395) ARCP(21) ARLU(21) BODC(21)`.
+  - **Node entries** (`FUN_004ce010` swap): per section, `(count+1) x 12` bytes at
+    `blob + entryOff - 2` (`FUN_004cde50`/`FUN_004cdf40`; the extra slot is a separator; index is
+    1-based): `[u16 id][u16 nameOff][u8 flags][u24 chunkOff][u32 scratch->runtime handle]`.
+    `id` is a lookup key used by `FUN_004cdee0(tag,id)`; `nameOff` indexes the string table.
+  - **String table** at `blob + sectionCount*8 + totalEntries*12`: Pascal strings
+    (`FUN_004cdfa0`). Every node has a NAME - the 21 BODC figures are
+    `pilot, swimmer, fatman, 2blonde, Child, 5.5man, Coww, SUIT, Elvis, Nessie, 5man, SHADES,
+    Kopp, Medik, Badguy, Blonde, 2DOGG, 2woman, Fireman, TubaExpert, Woman`;
+    the 395 ANIP clips are named `"101!".."495!"` (18 consecutive ids per figure:
+    pilot=101-118, swimmer=119-136, ...).
+- **Chunks** (`FUN_004cdcb0`): at `dataBase + chunkOff`: `[u32 len][payload]`, lazily loaded into a
+  `LocalAlloc` buffer and cached in the entry's last 4 bytes.
+- **Record-array payloads** (ARCP/ARLU/ARPP; `FUN_004d1a00` + `FUN_004d1df0` + `FUN_004d1d70`):
+  `[u16 recSize][u16 rows][u16 cols][2 pad][rows*4 row-pointer slots][rows*cols*recSize records]`;
+  `len == 8 + rows*4 + rows*cols*recSize` holds for all 437 chunks.
+  Registered record sizes + swap handlers (`FUN_004ceab0` -> `FUN_004d1ed0`):
+  `ARCP=0x28/FUN_004d0090`, `ARLU=8/FUN_004d00e0`, `ARPP=8/FUN_004cea20` (**empty** - ARPP is raw bytes).
+- The record arrays are found by **name key**, not by tag+index: `FUN_004cfed0` takes the figure
+  name and replaces `name[3]` with `'c'` (ARCP) / `'L'` (ARLU); `FUN_004d18e0` uses `'i'` (ARPP)
+  on the clip name. E.g. figure `pilot` -> `pilct`/`pilLt`; clip `101!` -> `101i`.
+  BODC and ANIP node payloads themselves are 4 zero bytes + 0xA3 filler (no data).
 
-- **Header @0x00**: `00 00 01 00` version; length-prefixed root name `"privanim"` at `0x30`.
-- **Section directory** (just before the node-dir marker): six 8-byte entries `[4CC][BE u16 count][BE u16 nodeDirByteOffset]`, in file order `SPR#  ARPP  ANIP  ARCP  ARLU  BODC`. In the shipped file: `SPR#(0)  ARPP(395)  ANIP(395)  ARCP(21)  ARLU(21)  BODC(21)`. So **21 figures** and **395** animation entries.
-- **Node directory**: marker `03 e8 ff ff`; node table begins at `marker+2`. Each section's entries start at `node_base + nodeDirByteOffset`, `count` of them, **12 bytes each** = `[BE u32 fileOffset][BE u32][BE u16 hash][BE u16]`. Sections are laid out `count+1` slots apart (trailing separator).
-- **Payloads** (at each `fileOffset`) are one of two shapes:
-  - **ARCP / ARPP / ANIP** -> a stream of **4-byte records** `[s8 x][s8 y][u8 z][u8 t]` (the articulated coordinate / per-frame pose stream; `t` increments by 8 and wraps), terminated by an `0xA3` filler run. Example fig0 ARCP @`0x2a60e`: `(2,6,16) (4,-6,16) (8,-5,15)...`.
-  - **ARLU / BODC** -> **40-byte node-definition records**: `+0 [BE u16 0x12][BE u16 1]  +4 (x,y,z) BE floats  +0x10 idx[4]  +0x14 flag[4]  +0x18 name[4]  +0x1c parent[4]  +0x20 tag[4]  +0x24 pad[4]`. The `name`/`parent` are 4-char node ids (`"Ne36" <- "Ne0 "`); the floats are the part's local size/offset (z is usually `0.5`). A BODC payload ends with an embedded `<id>!<mnem>` name table (`181!Dead 184!1Run 187!Thro 188!Play 189!FaCl`...).
-- **Animation clip tree**: a contiguous run of **40-byte records** carrying the literal `"ARPP"` tag at `+0xc`: `name[4] parent[4] [BE u16 a][BE u16 b] "ARPP" [BE u32 id] (x,y,z) floats trailer[8]`. **75-76 clips** in an inheritance tree rooted at `"New "` (`Ne0/Ne1/Ne2 <- New`, `Ne3/Ne4 <- Ne0`, ...). The per-state animation id (`DAT_0058de80[state]`) selects the clip; `FUN_004c6450` advances `frame@+0x14c` and loops at the clip's ARPP **row count** (the frame count).
+### Record semantics
 
-### Confirmed runtime mechanics
+- **ARCP = the skeleton/part tree** (one per figure; `1 row x nParts x 0x28`): per record
+  `+0 u8 type` (0x08/0x0b/0x0e... draw/type byte), `+1 u8 ref`, `+2 u8 sequential part index`,
+  `+3..+7 flags`, `+8 char[4] node name` (root `"New "`, then `Ne0..`), `+0xc char[4] parent name`
+  (resolved to a pointer at runtime by `FUN_004cf850`/`FUN_004cf8b0` name matching),
+  `+0x10 [u16 8][u16 8]["ARPP"][u32 1]` (pose-record link: stride 8, one per frame),
+  `+0x1c/+0x20/+0x24 f32 x3` part dimensions (e.g. `(10,7,0.5)`).
+  Part counts vary per figure: pilot=75, Child=32, Coww=88, Nessie=29.
+- **ARLU = behavior-anim -> clip binding** (one per figure; `1 x 18 x 8`): `[char[4] mnemonic]`
+  `[char[4] clip name]`: `1Wal->101!  Inju  HipH  Whoa  DgRn  NoMo  Tote  Yumm  2Gab  Dead  Slum
+  Wave  1Run  DgSt  WvNo  Thro  Play  FaCl`. These mnemonics are exactly the animation names the
+  people.df behaviors reference. Every figure has the same 18.
+- **ARPP = per-frame pose/geometry** (one per clip; `frames x nParts x 8`): each record is one body
+  part's **line segment for that frame**: `[s8 x0][s8 y0][s8 z0][u8 scratch][s8 x1][s8 y1][s8 z1]`
+  `[u8 scratch]`, z up, model-space units ~ -30..30. Segments chain end-to-end into the body
+  wireframe (spine, shoulders, hips, limbs); rendering frame 0 vs frame 4 of a `1Wal` clip shows
+  the leg swap of a walk cycle. Walk clips have 8 frames; most others 1-4.
 
-- **Record sizes/handlers** (loader `FUN_004ceab0` registering via `FUN_004d1ed0`): `ARCP`=`0x28` (`FUN_004d0090` swaps `u32@+8`, `u32@+0xc`, `u16@+0x1c/+0x20/+0x24`), `ARLU`=`8` (`FUN_004d00e0` swaps `u32@0/+4`), `ARPP`=`8`. (Earlier doc claim of a 40-byte ARPP *record* was wrong; the 40-byte blocks are the clip-table entries above.)
-- **ARCP skeleton link**: `FUN_004cf8b0` matches `record+8` (part id) to resolve `record+0xc` (parent id) -> a bone hierarchy; `record+0x1c/+0x20/+0x24` are the part pivot.
-- **Transform**: `FUN_00470650` is a 16.16 fixed-point 4x4 affine multiply (`out = local x parent`, bottom row forced to `[0,0,0,1.0]`); applied per node via `FUN_004704d1(node,xform,3)`.
-- **Lazy streaming**: `FUN_004d1d70` sizes the in-memory array `(stride*cols+4)*rows+8` and `LocalAlloc`s it zeroed; records stream from the file on demand during the walk. So there is no resident vertex buffer - geometry is read from `privanim.df` each frame.
-- **LOD**: `FUN_004c6450` only walks/draws the figure when the person is within `DAT_0058dc26`; beyond that the `PEOPLE1.BMP` sprite is used (the `figure.twk` Near/Med/Far bands).
-- **`0x4d4800` is a stub** (`push 0x19; call __amsg_exit`) - the figure base class's three "draw" vtable slots are unimplemented pure-virtuals, so the real per-leaf rasterization is in the figure subclass `vtable[0]` reached by the walker (still to pin against a live figure).
+### The walker VM (figures and behaviors share it)
 
-### Where the draw actually happens (static, 2026-06-26)
+`FUN_004ce7b0` is a token-stream interpreter with an explicit **12-deep stack of 20-byte frames**
+(`FUN_004ce630(0xc,...)` - the earlier "12-segment articulated figure" reading of that ctor was
+wrong; 12 is the walk-stack depth). It reads 16-bit tokens from node records: tokens `< 0x100` are
+**opcodes** dispatched through `this->vtable[0]`; tokens `>= 0x100` are 4-char node names -> push
+the named child node (`FUN_004ce700`). For the person object (which embeds the same walker layout:
+stack at `+4`, cursor `+0xf4`, count `+0xf6`) `vtable[0]` is `FUN_004ccf20`, the people-behavior
+dispatch `(&DAT_0058ef78)[op]`. The 88 opcode handlers are 0x20-byte thunks at
+`0x4c84e0 + 0x20*n` -> real functions (op0=`FUN_004ca750` wait-counter, op3=`FUN_004ca7d0` move
+step, op6=`FUN_004ca940` walk-toward-object, ...) - decoding them all is the Phase-4 work item.
+The full opcode->function map is in `out_vm_handlers.txt`.
 
-`Confirmed.` The pedestrian figure is **embedded inside the render node** at `+0x4c` (`FUN_004c7c00` calls `FUN_004ce630(0xc, DAT_0058de80[state], owner, renderNode+0x4c)`), and the render node carries two vtables: the primary `PTR_FUN_004f5018` at `+0` and a secondary scene-object vtable `PTR_LAB_004f5000` at `+0x100`. Tracing both:
+### Corrections to earlier sections (do not trust these older claims)
 
-- `FUN_004ce7b0` (the IFF "walker", vtable slot shared by figure + render node) is the **behavior bytecode interpreter**, not the geometry draw: dispatching a node walks its `BHAV`/`VAHB` (`0x42484156`) chunks and runs the 88-handler VM (`FUN_004ccf20` -> `(&DAT_0058ef78)[op]`). `FUN_004c6450` runs this per person per frame (LOD-gated by `DAT_0058dc26`) and advances the animation frame (wrapping at the clip's ARPP row count).
-- The figure's own three "draw" vtable slots are the `0x4d4800` pure-virtual stub, and the render node's secondary scene vtable (`PTR_LAB_004f5000` = `{0x4d0450,0x4d0430,0x4d0420,0x4d0440,0x4c7a50}`) is only metadata accessors (`return 0x58`, `return 0`, `return &LAB_004d03f0`).
-- Therefore the per-pixel rasterization is performed by the **3D scene software engine** (the `DAT_005d9200` scene graph; `FUN_004704d1`/`FUN_00470650` only set the per-node 16.16 transform). Reversing that engine is the only way to read the exact primitive opcode (line vs filled polygon) - it is a large separate subsystem, out of scope for the file decode.
-- Live-RE caveat: the running build is patched by SimCopterX, which **relocates `.text`/`.rdata` at runtime by a non-uniform delta** (verified: live `0x4ce630` != Ghidra `0x4ce630`; live figure code at `0x4d4ab0` maps to Ghidra `~0x4d0136`). So live reads are good for `.data` structures (people array, anim ids - all validated) but unreliable for reading code; the on-disk exe in Ghidra is the authority.
+1. The 2026-06-26 "ARCP coord stream -> drawable geometry" rules (`t = 8k+4` segment index,
+   pair-by-t, z-bit7 part split) were **all wrong** - artifacts of reading data at garbage offsets:
+   the old extractor treated directory-entry bytes 0-3 (`id<<16|nameOff`) as a payload offset.
+2. There is **no 40-byte "node-def" record** and **no 75-76-clip inheritance tree**: those blocks
+   were misaligned reads of ARCP part records (the `Ne##<-parent` pairs are the *skeleton* tree;
+   the `(x,y,0.5)` floats are part dimensions, not clip base transforms).
+3. `ARCP` records really are 0x28 bytes (the "stream of 4-byte records" model is dead), and the
+   swapped fields at `+0x1c/+0x20/+0x24` are **f32 dimensions**, not u16 pivots.
+4. The figure is not "12 segments x 20 bytes"; clip frame counts come from ARPP `rows`, and part
+   counts from ARCP `cols` (29..88 per figure).
+5. `people.df` shares this exact container format (same reader class), so the BHAV/behavior
+   resources can be enumerated with the same `DougFile` parser - useful for the behavior-VM decode.
 
-### ARCP coord stream -> drawable geometry (confirmed by rendering)
+### What remains for pixel-exact rendering (open)
 
-`Confirmed (2026-06-26).` The 4-byte ARCP records `[s8 x][s8 y][s8 z][u8 t]` were exported to glTF (`Tools/privanim_to_gltf.py`) and render as **recognizable line-segment human figures** (head, arms, two legs). Three rules make them display correctly:
-
-1. **`t` is a segment index, not a coordinate**: every `t == 4 (mod 8)` (`t = 8k + 4`, `k` wraps at 32). It also cleanly bounds the stream (stop when the invariant breaks).
-2. **Records pair by `t` = line segments.** Two consecutive records sharing a `t` are the two endpoints of a limb/edge. Rendering them as discrete `LINES` (not a continuous strip - that produces the "disjointed web") yields a clean wireframe figure.
-3. **The `z` byte's high bit (bit 7) splits each stream into two parts.** Records with `z < 0x80` are one part (`z` is a signed offset, ~0..47); records with `z >= 0x80` are a second part in a higher `z` band (mask the flag bit). Each part, rendered on its own, is a coherent figure/limb-group. (Open: whether the two groups are two separate pedestrian figures/LODs or upper/lower halves of one, and their exact relative offset; for visual reconstruction each part is normalized to its own origin.)
-
-`x, y, z` are signed local offsets. The BODC/ARLU node-defs additionally give each part a `(x, y, 0.5)` float extent (constant `0.5` depth = thin/flat parts) and a parent link, for the higher-level part hierarchy. Net: figures are low-poly flat **line/segment** figures, matching the "flat-shaded low-poly" look from a distance.
-
-### Path to glTF (no further RE strictly required)
-
-`Tools/privanim_extract.py` already yields a faithful, no-guess model that maps directly to glTF:
-- **Skeleton + animation**: the 75-76-clip inheritance tree (`name <- parent`, base `(x,y,z)` transform) -> glTF nodes + animation channels; per-state clip = `DAT_0058de80[state]`; frame count = clip ARPP rows.
-- **Per-part geometry**: BODC/ARLU node-defs -> a flat box/card of size `(x, y, 0.5)` per part, parented per the `"Ne##"` name links.
-- **Optional refinement**: the ARCP 4-byte coord stream as finer per-part outline geometry; its exact primitive (line vs poly) needs the 3D rasterizer reverse above, but is not required for a faithful flat-shaded reconstruction (which is what the original looked like).
+- How the engine fleshes each ARPP segment into the filled flat-shaded polygon look: the role of
+  the ARCP `type` byte (0x08/0x0b/0x0e), the `(w,h,0.5)` dimension floats, and the palette color
+  source. This lives in the scene-engine draw path reached from the render-node vtables
+  (`PTR_FUN_004f5018` slot 3 `FUN_004c7cf0`/`FUN_004c8090`), not in the file.
+- The `DAT_0058de80` per-state anim ids (600/700/750/800/850...) vs the ARPP clip names
+  (101..495): the binding goes through `FUN_004ce6c0(bank@person+0x126, animId@person+0x17a)` and
+  needs one more hop of decompilation (likely people.df's own directory ids).
+- The ARPP per-record 4th byte ("scratch") - the game registers no swap and appears not to read
+  it; confirm from the draw path.

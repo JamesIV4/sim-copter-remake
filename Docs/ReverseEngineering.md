@@ -319,12 +319,16 @@ Relevant executable behavior found so far:
   configurator: it finds a free slot among 500 person objects, handles tile/object/world spawn
   modes, marks the person active, and defaults missing animation state to `NoMo`.
 - `FUN_004ceab0` loads `PrivAnim.df`, registers animation/resource record handlers, and builds the
-  private animation tables. **The container is now fully decoded** (2026-06-26 deep pass; see
-  `Docs/OriginalGameFileFormats.md` "Faithful Extraction Method" + `Tools/privanim_extract.py`):
-  section directory, 12-byte node directory, 21 figures, a 75-76-clip animation inheritance tree,
-  per-part node-defs with `(x,y,0.5)` extents, and the `ARCP` 4-byte coordinate streams. The only
-  unread sub-detail is the figure rasterization primitive (line vs filled polygon), which lives in
-  the 3D scene software engine, not the file.
+  private animation tables. **The container is now truly decoded** (2026-07-01 pass; see
+  `Docs/OriginalGameFileFormats.md` "Exact Container Spec" + the rewritten
+  `Tools/privanim_extract.py`; validated 437/437 chunks): 21 named figures (`pilot`, `Child`,
+  `Kopp`, `Elvis`, `Nessie`, ... `Woman`), per figure an `ARCP` skeleton tree (29-88 named parts,
+  parent links, f32 dimensions) and an `ARLU` map from the 18 behavior anim mnemonics (`1Wal`,
+  `Dead`, `Wave`, ...) to clip names, and per clip `ARPP` = frames x parts 8-byte records - each
+  **one 3D line segment (two s8 xyz endpoints)** of the body wireframe for that frame. The earlier
+  2026-06-26 claims (4-byte coord streams, z-bit7 split, 75-clip inheritance tree, 12-segment
+  figure) were artifacts of a wrong directory decode and are superseded. Still unread: how the
+  scene engine fleshes segments into filled flat-shaded polygons (ARCP type byte + dims + palette).
 
 Implemented first playable remake pass:
 
@@ -359,10 +363,12 @@ Remaining hard pass:
    anim ids, loop flags), state-transition triggers (idle/walk/panic/return-to-car/flee-spotlight/
    pickup/decommission), and the spawn weighting per city (`career.twk`). Goal: replace the remake's
    placeholder waypoint wandering with faithful state machines + spawn rules.
-2. `PrivAnim.df` animation decode is **done** (see `Docs/OriginalGameFileFormats.md` + the
-   `Tools/privanim_extract.py` extractor): clip tree, frame counts, per-part transforms, and coord
-   streams are recovered. Remaining optional refinement: the exact draw primitive (needs the 3D
-   scene rasterizer reverse) and emitting glTF from the extracted model.
+2. `PrivAnim.df` decode is **done and file-validated** (2026-07-01; `Docs/OriginalGameFileFormats.md`
+   "Exact Container Spec"; rewritten `Tools/privanim_extract.py` + `Tools/privanim_to_gltf.py`):
+   21 named figures, per-figure skeleton trees, the 18-anim clip map, and per-frame per-part 3D
+   line segments (walk cycles verified visually). Remaining refinement: the scene-engine flesh/
+   fill of segments (ARCP type byte + dimension floats + palette color source) and the
+   `DAT_0058de80` anim-id -> clip-name binding hop.
 3. Finish porting vehicle spawn validation from `FUN_004b74a0`/`FUN_004b7890`, including the original
    multi-subobject follower update routines (`FUN_004b6a80`, `FUN_004b6c40`, `FUN_004b6f80`,
    `FUN_004b7020`) for car spacing/lane offsets.

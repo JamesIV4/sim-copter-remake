@@ -1,0 +1,46 @@
+===== FUN_004cdfe0 @ 004cdfe0 =====
+
+void FUN_004cdfe0(int param_1)
+
+{
+  FUN_004d1820(param_1);
+  FUN_004d1870(param_1 + 4);
+  FUN_004d1870(param_1 + 6);
+  return;
+}
+
+
+===== FUN_004ce010 @ 004ce010 =====
+
+void FUN_004ce010(int param_1)
+
+{
+  uint uVar1;
+  
+  FUN_004d1870(param_1);
+  FUN_004d1870(param_1 + 2);
+  uVar1 = *(uint *)(param_1 + 4);
+  *(uint *)(param_1 + 4) =
+       uVar1 & 0xff ^
+       ((uVar1 >> 0x10 & 0xff) << 8 | ((int)uVar1 >> 8 & 0xffU) << 0x10 | uVar1 >> 0x18) << 8;
+  return;
+}
+
+
+===== FUN_004ce570 @ 004ce570 =====
+
+int FUN_004ce570(undefined4 param_1)
+
+{
+  int iVar1;
+  undefined4 local_4;
+  
+  local_4 = 2;
+  iVar1 = FUN_004ce460(param_1,&local_4);
+  if (iVar1 == 0) {
+    FUN_004d1870(param_1);
+  }
+  return iVar1;
+}
+
+

@@ -1,264 +1,235 @@
 #!/usr/bin/env python3
 """Faithful, deterministic extractor for SimCopter ``X/privanim.df``.
 
-This is a read-only structural extractor derived entirely from the decompiled
-loader/reader (no heuristics, no guessed offsets). See
-``Docs/OriginalGameFileFormats.md`` ("privanim.df") for the evidence trail.
+REWRITTEN 2026-07-01 after fully decompiling the reader. Every rule below cites
+the decompiled function in ``SimCopter.exe`` (see
+``Docs/OriginalGameFileFormats.md`` and ``Docs/scratchpad/ghidra/out_chunkfetch*.txt``,
+``out_dirload*.txt``, ``out_nodemethods.txt``). The previous version of this
+tool guessed the directory-entry layout and read coordinate streams from wrong
+offsets; none of its "display rules" survive. This version is exact:
 
-Container model (all multi-byte fields are BIG-ENDIAN; Maxis "Doug"/IFF):
+Container ("Doug" DF, all fields BIG-ENDIAN):
+  header    FUN_004cd3e0:  @0 u32 dataBase (0x100; doubles as the version mark),
+            @4 u32 dirOffset, @8 u32 (unused here), @0xc u32 dirSize.
+  directory at dirOffset: 0x1c-byte header, u16 sectionCount-1, then a blob:
+    sections  FUN_004cda40/FUN_004cdfe0: N x 8 bytes [4CC][u16 count][u16 entryOff]
+    entries   FUN_004ce010: 12 bytes [u16 id][u16 nameOff][u8 flags][u24 chunkOff]
+              [u32 scratch]; per section (count+1) entries at blob+entryOff-2
+              (FUN_004cde50 / FUN_004cdf40; the +1 slot is a separator).
+    names     FUN_004cdfa0: Pascal strings at blob + strTabOff + nameOff, where
+              strTabOff = N*8 + totalEntries*12.
+  chunk     FUN_004cdcb0: at dataBase+chunkOff: [u32 len][payload].
+  record-array payload (ARCP/ARLU/ARPP)  FUN_004d1a00/FUN_004d1df0/FUN_004d1d70:
+            [u16 recSize][u16 rows][u16 cols][2 pad][rows*4 rowptr slots]
+            [rows*cols*recSize records];  len == 8 + rows*4 + rows*cols*recSize
+            (validated 437/437 chunks in the shipped file).
 
-  * Header at 0x00: ``00 00 01 00`` version; length-prefixed root name "privanim".
-  * Section directory: six 8-byte ``[4CC][BE u16 count][BE u16 nodeDirByteOff]``
-    entries, located just before the node-dir marker.  Sections, in file order:
-    ``SPR# ARPP ANIP ARCP ARLU BODC``.
-  * Node-dir marker ``03 e8 ff ff``; the node directory begins 2 bytes into the
-    marker (``node_base = marker + 2``).  Each section's entries start at
-    ``node_base + nodeDirByteOff`` and there are ``count`` of them, 12 bytes each:
-    ``[BE u32 fileOffset][BE u32 ?][BE u16 hash][BE u16 ?]``.  Sections are laid
-    out ``count+1`` slots apart (a trailing separator slot).
-  * Payloads (pointed to by ``fileOffset``) come in two shapes:
-      - ARCP / ARPP / ANIP  -> a stream of 4-byte records ``[s8 x][s8 y][u8 z][u8 t]``
-        (the articulated coordinate / per-frame pose stream; ``t`` steps by 8).
-        Terminated by a run of 0xA3 filler bytes.
-      - ARLU / BODC         -> 40-byte node-definition records:
-        ``+0 [BE u16 0x12][BE u16 1]  +4 (x,y,z) BE floats  +0x10 idx[4]
-          +0x14 flag[4]  +0x18 name[4]  +0x1c parent[4]  +0x20 tag[4]  +0x24 pad[4]``.
+Sections (loader FUN_004ceab0):
+  BODC  one entry per figure (21: pilot..Woman); payload is empty filler.
+        The figure's data is keyed by name: name[3]->'c' = ARCP, name[3]->'L' = ARLU
+        (FUN_004cfed0 builds both; ANIP clips use name[3]->'i' for ARPP,
+        FUN_004d18e0).
+  ARCP  per figure: 1 row x nParts x 0x28-byte part records = the skeleton tree.
+        Swap handler FUN_004d0090: BE u32 @+8 (4-char node name, root "New "),
+        BE u32 @+0xc (4-char parent name), BE u32(float) @+0x1c,+0x20,+0x24
+        (part dimensions, e.g. (10,7,0.5)). Bytes +0..+7 and +0x10..+0x1b raw:
+        +0 type/color byte, +1 ref, +2 sequential part index, +3..+5 flags,
+        +0x10 [u16 8][u16 8]"ARPP"[u32 1] = pose-record link (stride 8, 1/frame).
+        Skeleton links resolved by name matching (FUN_004cf8b0).
+  ARLU  per figure: 1 row x 18 x 8-byte records [4-char mnemonic][4-char clip
+        name], e.g. "1Wal"->"101!", "Dead"->"110!" - the behavior-anim name ->
+        clip binding (swap FUN_004d00e0 makes both halves readable u32 names).
+  ANIP  one entry per clip (395, names "101!".."495!"); payload empty filler.
+  ARPP  per clip: frames(rows) x nParts(cols) x 8-byte pose records, NO byte
+        swap (handler FUN_004cea20 is empty). Record = one part's line segment
+        for that frame: [s8 x0][s8 y0][s8 z0][u8 scratch][s8 x1][s8 y1][s8 z1]
+        [u8 scratch] (z up; chained segments form the body wireframe).
 
-Record sizes/handlers come from the loader ``FUN_004ceab0`` registering
-ARCP=0x28, ARLU=8, ARPP=8 with byte-swap handlers ``FUN_004d0090``/``FUN_004d00e0``.
-The 76-clip inheritance tree lives in the ANIP node-def records (name<-parent).
-
-Run:  python Tools/privanim_extract.py [path] [--json out.json]
+Run:  python Tools/privanim_extract.py [path] [--json out.json] [--figure NAME]
 """
 from __future__ import annotations
 import argparse, json, struct
 from pathlib import Path
 
 DEFAULT = "Reference/SimCopterOriginalGame/X/privanim.df"
-SECTION_ORDER = ("SPR#", "ARPP", "ANIP", "ARCP", "ARLU", "BODC")
-NODEDEF_SECTIONS = ("ARLU", "BODC", "ANIP")   # 40-byte name/parent/float records
-COORD_SECTIONS = ("ARCP", "ARPP")             # 4-byte coordinate/pose streams
 
 
-class Privanim:
+def _s8(b: int) -> int:
+    return b - 256 if b > 127 else b
+
+
+class DougFile:
+    """Generic Maxis "Doug" DF container reader (privanim.df, people.df)."""
+
     def __init__(self, data: bytes):
         self.d = data
         self.N = len(data)
+        self.data_base = self.u32(0)           # FUN_004cd3e0 -> dirObj+0x18
+        self.dir_off = self.u32(4)
+        self.dir_size = self.u32(12)
+        self.blob = self.dir_off + 0x1c + 2
+        n = self.u16(self.dir_off + 0x1c) + 1
+        self.sections = []
+        for i in range(n):
+            o = self.blob + i * 8
+            self.sections.append({
+                "tag": self.d[o:o + 4].decode("latin1"),
+                "count": self.u16(o + 4),
+                "entry_off": self.u16(o + 6),
+            })
+        total = sum(s["count"] + 1 for s in self.sections)
+        self.str_tab = self.blob + n * 8 + total * 12
 
-    def u16(self, o): return struct.unpack_from(">H", self.d, o)[0]
     def u32(self, o): return struct.unpack_from(">I", self.d, o)[0]
-    def f32(self, o): return struct.unpack_from(">f", self.d, o)[0]
-    def s8(self, o):  b = self.d[o]; return b - 256 if b > 127 else b
-    def name(self, o): return self.d[o:o+4].decode("latin1", "replace")
+    def u16(self, o): return struct.unpack_from(">H", self.d, o)[0]
 
-    # --- directories -------------------------------------------------------
-    def parse_sections(self):
-        # The section dir is the 6 known 4CCs back-to-back, immediately before
-        # the 03 e8 ff ff marker. Find the marker, then walk back 6*8 bytes.
-        marker = self.d.find(b"\x03\xe8\xff\xff", self.N - 0x8000)
-        if marker < 0:
-            marker = self.d.rfind(b"\x03\xe8\xff\xff")
-        secdir = marker - 6 * 8
-        secs = {}
-        for i in range(6):
-            o = secdir + i * 8
-            tag = self.name(o)
-            secs[tag] = {"count": self.u16(o + 4), "nodeoff": self.u16(o + 6),
-                         "dir_at": o}
-        self.marker = marker
-        self.node_base = marker + 2
-        self.sections = secs
-        return secs
+    def name_at(self, name_off: int) -> str:
+        o = self.str_tab + name_off
+        ln = self.d[o]
+        return self.d[o + 1:o + 1 + ln].decode("latin1", "replace")
 
-    def node_entries(self, tag):
-        s = self.sections[tag]
-        base = self.node_base + s["nodeoff"]
-        out = []
-        for k in range(s["count"]):
-            o = base + k * 12
-            out.append({
-                "i": k,
-                "off": self.u32(o),
-                "w1": self.u32(o + 4),
-                "hash": self.u16(o + 8),
-                "w3": self.u16(o + 10),
-            })
-        return out
-
-    # --- payload readers ---------------------------------------------------
-    def all_offsets_sorted(self):
-        offs = set()
-        for tag in SECTION_ORDER:
-            for e in self.node_entries(tag):
-                if 0 < e["off"] < self.N:
-                    offs.add(e["off"])
-        return sorted(offs)
-
-    def payload_end(self, start, sorted_offs):
-        # bound = next entry offset, or marker (start of directories)
-        import bisect
-        i = bisect.bisect_right(sorted_offs, start)
-        nxt = sorted_offs[i] if i < len(sorted_offs) else self.marker
-        return min(nxt, self.marker)
-
-    def read_coord_stream(self, start, end):
-        # ARCP/ARPP 4-byte records: [s8 x][s8 y][u8 z][u8 t], where every real
-        # record has t == 4 (mod 8). That invariant cleanly bounds the stream:
-        # stop at 0xA3 filler, an all-zero record, or the first t-invariant break.
-        recs = []
-        o = start
-        while o + 4 <= end:
-            b = self.d[o:o + 4]
-            if b == b"\xa3\xa3\xa3\xa3" or b == b"\x00\x00\x00\x00":
-                break
-            if (b[3] & 7) != 4:        # t-invariant break = end of coord stream
-                break
-            recs.append([self.s8(o), self.s8(o + 1), self.d[o + 2], self.d[o + 3]])
-            o += 4
-        return recs
-
-    def read_nodedefs(self, start, end):
-        recs = []
-        o = start
-        while o + 40 <= end:
-            marker = (self.u16(o), self.u16(o + 2))
-            # node-def records start with (0x12, 1); stop when that breaks
-            # (e.g. transition into an embedded name/string table).
-            if marker != (0x12, 1):
-                break
-            nm = self.name(o + 0x18)
-            if not all(32 <= ord(c) < 127 for c in nm):  # boundary/string-table record
-                break
-            recs.append({
-                "marker": marker,
-                "xyz": [round(self.f32(o + 4), 4), round(self.f32(o + 8), 4),
-                        round(self.f32(o + 12), 4)],
-                "idx": list(self.d[o + 0x10:o + 0x14]),
-                "flag": list(self.d[o + 0x14:o + 0x18]),
-                "name": self.name(o + 0x18),
-                "parent": self.name(o + 0x1c),
-                "tag": list(self.d[o + 0x20:o + 0x24]),
-            })
-            o += 40
-        return recs, o   # o = where node-defs stopped (string table start)
-
-    def parse_clip_table(self):
-        """The animation-clip inheritance tree: a contiguous run of 40-byte
-        records ``name[4] parent[4] [BE u16 a][BE u16 b] "ARPP" [BE u32 id]
-        (x,y,z) BE floats  trailer[8]``.  Located as the run of 40-byte records
-        carrying the literal ``ARPP`` tag at +0xc."""
-        first = self.d.find(b"ARPP")
-        if first < 0:
-            return []
-        start = first - 0xC          # record start = tag - 0xc
-        clips = []
-        o = start
-        while o + 40 <= self.N and self.d[o + 0xC:o + 0x10] == b"ARPP":
-            clips.append({
-                "name": self.name(o), "parent": self.name(o + 4),
-                "a": self.u16(o + 8), "b": self.u16(o + 0xA),
-                "id": self.u32(o + 0x10),
-                "xyz": [round(self.f32(o + 0x14), 4), round(self.f32(o + 0x18), 4),
-                        round(self.f32(o + 0x1C), 4)],
-                "trailer": list(self.d[o + 0x20:o + 0x28]),
-            })
-            o += 40
-        return clips
-
-    def read_name_table(self, start, end):
-        """Embedded "<id>!<mnem>" table, e.g. 173!Inju 182!Dead 185!1Run."""
-        raw = self.d[start:end]
-        out = []
-        # split on '!' boundaries: tokens are 4-char mnemonic then 3-digit id+'!'
-        i = 0
-        s = raw.decode("latin1", "replace")
-        import re
-        for m in re.finditer(r"(\d{2,4})!([ -~]{2,5}?)(?=\d{2,4}!|$)", s):
-            out.append({"id": int(m.group(1)), "mnem": m.group(2).rstrip("\x00 ")})
-        return out
-
-
-def extract(path: Path):
-    pa = Privanim(path.read_bytes())
-    secs = pa.parse_sections()
-    sorted_offs = pa.all_offsets_sorted()
-    result = {
-        "file": path.name, "size": pa.N,
-        "node_base": pa.node_base, "marker_at": pa.marker,
-        "sections": secs,
-        "figures": [], "anim_clips": [], "name_table": [],
-    }
-
-    # Animation-clip inheritance tree (contiguous 40-byte ARPP-tagged run).
-    result["anim_clips"] = pa.parse_clip_table()
-
-    # BODC defines the 21 figures (parts) + an embedded name table.
-    # Node-defs are parsed until the (0x12,1) marker breaks (string table /
-    # next section), NOT bounded by the next global offset, because the 4-byte
-    # coordinate streams interleave with these records in the file.
-    for tag in ("BODC",):
-        for e in pa.node_entries(tag):
-            if not (0 < e["off"] < pa.N):
+    def entries(self, tag: str):
+        for s in self.sections:
+            if s["tag"] != tag:
                 continue
-            defs, strstart = pa.read_nodedefs(e["off"], pa.marker)
-            names = pa.read_name_table(strstart, min(strstart + 0x800, pa.marker))
-            result["figures"].append({
-                "node": e["i"], "off": e["off"], "hash": e["hash"],
-                "parts": defs, "name_table_here": names,
+            base = self.blob + s["entry_off"] - 2
+            for k in range(s["count"]):
+                o = base + k * 12
+                yield {
+                    "index": k + 1,                       # FUN_004cdf40 is 1-based
+                    "id": self.u16(o),
+                    "name": self.name_at(self.u16(o + 2)),
+                    "flags": self.d[o + 4],
+                    "chunk_off": (self.d[o + 5] << 16) | (self.d[o + 6] << 8) | self.d[o + 7],
+                }
+
+    def entry(self, tag: str, name: str):
+        for e in self.entries(tag):
+            if e["name"] == name:
+                return e
+        raise KeyError(f"{tag} entry {name!r} not found")
+
+    def chunk(self, e):
+        """Return (payload_offset, payload_len)."""
+        at = self.data_base + e["chunk_off"]
+        return at + 4, self.u32(at)
+
+    def record_array(self, e):
+        """Parse a record-array chunk -> (rec_size, rows, cols, data_offset)."""
+        p, clen = self.chunk(e)
+        rs, rows, cols = self.u16(p), self.u16(p + 2), self.u16(p + 4)
+        expected = 8 + rows * 4 + rows * cols * rs
+        if clen != expected:
+            raise ValueError(f"{e['name']!r}: chunk len {clen:#x} != expected {expected:#x}")
+        return rs, rows, cols, p + 8 + rows * 4
+
+
+ANIM_KEY_POS = 3   # FUN_004cfed0/FUN_004d18e0 replace name[3] with 'c'/'L'/'i'
+
+
+def _key(name: str, ch: str) -> str:
+    return name[:ANIM_KEY_POS] + ch + name[ANIM_KEY_POS + 1:]
+
+
+class Privanim(DougFile):
+    def figures(self):
+        return list(self.entries("BODC"))
+
+    def skeleton(self, fig_name: str):
+        """ARCP part records for a figure: the skeleton/part tree."""
+        e = self.entry("ARCP", _key(fig_name, "c"))
+        rs, rows, cols, data = self.record_array(e)
+        assert rs == 0x28 and rows == 1, (rs, rows)
+        parts = []
+        for k in range(cols):
+            r = data + k * rs
+            b = self.d[r:r + rs]
+            parts.append({
+                "index": k,
+                "type": b[0],                # 0x08/0x0b/0x0e/... draw/type byte
+                "ref": b[1],
+                "seq": b[2],
+                "f3": list(b[3:8]),
+                "name": b[8:12].decode("latin1"),
+                "parent": b[12:16].decode("latin1"),
+                "link": [self.u16(r + 0x10), self.u16(r + 0x12),
+                         b[0x14:0x18].decode("latin1"), self.u32(r + 0x18)],
+                "dims": [round(struct.unpack_from(">f", self.d, r + 0x1c + i * 4)[0], 4)
+                         for i in range(3)],
             })
-            if names and not result["name_table"]:
-                result["name_table"] = names
+        return parts
 
-    # ARCP coordinate streams (one per figure node).
-    arcp = []
-    for e in pa.node_entries("ARCP"):
-        if not (0 < e["off"] < pa.N):
+    def clip_map(self, fig_name: str):
+        """ARLU records: behavior mnemonic -> clip name (e.g. '1Wal' -> '101!')."""
+        e = self.entry("ARLU", _key(fig_name, "L"))
+        rs, rows, cols, data = self.record_array(e)
+        assert rs == 8 and rows == 1, (rs, rows)
+        out = {}
+        for k in range(cols):
+            r = data + k * rs
+            out[self.d[r:r + 4].decode("latin1")] = self.d[r + 4:r + 8].decode("latin1")
+        return out
+
+    def clips(self):
+        return list(self.entries("ANIP"))
+
+    def clip_frames(self, clip_name: str):
+        """ARPP pose records: frames x parts line segments [(x0,y0,z0),(x1,y1,z1)]."""
+        e = self.entry("ARPP", _key(clip_name, "i"))
+        rs, rows, cols, data = self.record_array(e)
+        assert rs == 8, rs
+        frames = []
+        for f in range(rows):
+            segs = []
+            for k in range(cols):
+                r = data + (f * cols + k) * rs
+                b = self.d[r:r + 8]
+                segs.append(((_s8(b[0]), _s8(b[1]), _s8(b[2])),
+                             (_s8(b[4]), _s8(b[5]), _s8(b[6]))))
+            frames.append(segs)
+        return frames
+
+
+def extract(path: Path, fig_filter: str | None = None):
+    pa = Privanim(path.read_bytes())
+    out = {"file": path.name, "size": pa.N, "data_base": pa.data_base,
+           "sections": pa.sections, "figures": []}
+    for fe in pa.figures():
+        if fig_filter and fe["name"] != fig_filter:
             continue
-        end = pa.payload_end(e["off"], sorted_offs)
-        recs = pa.read_coord_stream(e["off"], end)
-        arcp.append({"node": e["i"], "off": e["off"], "nrec": len(recs),
-                     "records": recs})
-    result["arcp_streams"] = arcp
-    return result
+        fig = {"name": fe["name"], "skeleton": pa.skeleton(fe["name"]),
+               "clip_map": pa.clip_map(fe["name"]), "clips": {}}
+        for mnem, clip in fig["clip_map"].items():
+            fig["clips"][clip] = pa.clip_frames(clip)
+        out["figures"].append(fig)
+    return out
 
 
-def summarize(r):
-    print(f"{r['file']}  size=0x{r['size']:x}")
-    print("sections:")
-    for t in SECTION_ORDER:
-        s = r["sections"][t]
-        print(f"  {t:5} count={s['count']:5} nodeoff={s['nodeoff']:6} (0x{s['nodeoff']:x})")
-    print(f"\nanim clips (inheritance tree): {len(r['anim_clips'])}")
-    for c in r["anim_clips"][:14]:
-        print(f"  {c['name']!r:8}<-{c['parent']!r:8} id={c['id']} xyz={c['xyz']} (a={c['a']},b={c['b']})")
-    print(f"\nfigures (BODC): {len(r['figures'])}")
-    for f in r["figures"][:3]:
-        print(f"  fig node {f['node']} @0x{f['off']:x}: {len(f['parts'])} parts")
-        for p in f["parts"][:6]:
-            print(f"     {p['name']!r:8}<-{p['parent']!r:8} xyz={p['xyz']} idx={p['idx']} flag={p['flag']}")
-    print(f"\nname table (id!mnem): {len(r['name_table'])}")
-    print("  " + ", ".join(f"{n['id']}:{n['mnem']}" for n in r["name_table"][:24]))
-    print(f"\nARCP coord streams: {len(r['arcp_streams'])}")
-    for a in r["arcp_streams"][:3]:
-        print(f"  node {a['node']} @0x{a['off']:x}: {a['nrec']} records; first 6:")
-        for rec in a["records"][:6]:
-            print(f"     x={rec[0]:4} y={rec[1]:4} z={rec[2]:3} t={rec[3]:3}")
+def summarize(pa: Privanim):
+    print(f"sections: {[(s['tag'], s['count']) for s in pa.sections]}")
+    for fe in pa.figures():
+        parts = pa.skeleton(fe["name"])
+        cmap = pa.clip_map(fe["name"])
+        nframes = {c: len(pa.clip_frames(c)) for c in list(cmap.values())[:3]}
+        print(f"  {fe['name']!r:13} parts={len(parts):3} clips={len(cmap)} "
+              f"e.g. {dict(list(cmap.items())[:3])} frames={nframes}")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("path", nargs="?", default=DEFAULT)
     ap.add_argument("--json", default=None)
+    ap.add_argument("--figure", default=None)
     a = ap.parse_args()
     p = Path(a.path)
     if not p.exists():
         print(f"{p}: not found (original game data is not committed); skipping.")
         return 0
-    r = extract(p)
-    summarize(r)
+    pa = Privanim(p.read_bytes())
+    summarize(pa)
     if a.json:
-        Path(a.json).write_text(json.dumps(r, indent=1))
-        print(f"\nwrote {a.json}")
+        Path(a.json).write_text(json.dumps(extract(p, a.figure), indent=1))
+        print(f"wrote {a.json}")
     return 0
 
 

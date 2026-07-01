@@ -1,0 +1,166 @@
+===== FUN_004ce7b0 @ 004ce7b0 =====
+
+bool FUN_004ce7b0(undefined4 param_1,short param_2)
+
+{
+  undefined4 *puVar1;
+  char cVar2;
+  short sVar3;
+  int iVar4;
+  short *psVar5;
+  int *in_ECX;
+  undefined2 extraout_var;
+  int *piVar6;
+  int iStack_4;
+  
+  *(undefined2 *)(in_ECX + 0x3e) = 0;
+  do {
+    iVar4 = (int)(short)in_ECX[0x3d];
+    piVar6 = in_ECX + iVar4 * 5 + -4;
+    psVar5 = (short *)(*(code *)**(undefined4 **)piVar6[4])
+                                ((short)*piVar6,
+                                 CONCAT22((short)((uint)(iVar4 * 4) >> 0x10),
+                                          *(undefined2 *)(iVar4 * 0x14 + -0xe + (int)in_ECX)));
+    if (*psVar5 < 0x100) {
+      puVar1 = (undefined4 *)*in_ECX;
+      iStack_4 = (*(code *)*puVar1)(piVar6,psVar5);
+      switch(iStack_4) {
+      case 0:
+        cVar2 = FUN_004ce8f0(0);
+        if (cVar2 == -3) {
+          (*(code *)puVar1[2])();
+        }
+        break;
+      case 1:
+        cVar2 = FUN_004ce8f0(1);
+        if (cVar2 == -3) {
+          (*(code *)puVar1[2])();
+        }
+        break;
+      default:
+        goto switchD_004ce83e_caseD_2;
+      case 3:
+        break;
+      case -1:
+        (*(code *)puVar1[2])();
+      }
+    }
+    else {
+      if (*(short *)((int)in_ECX + 0xf6) <= (short)in_ECX[0x3d]) {
+        (**(code **)(*in_ECX + 4))(1000);
+        return true;
+      }
+      if ((*(int *)(psVar5 + 2) != -1) || (piVar6 = (int *)0x0, *(int *)(psVar5 + 4) != -1)) {
+        piVar6 = (int *)(psVar5 + 2);
+      }
+      sVar3 = FUN_004ce700(0,piVar6,CONCAT22(extraout_var,*psVar5));
+      if (sVar3 == 0) {
+switchD_004ce83e_caseD_2:
+        param_2 = 1;
+      }
+    }
+    if (0x80 < (short)in_ECX[0x3e]) {
+      (**(code **)(*in_ECX + 4))(0x3ea);
+      return true;
+    }
+    if (param_2 != 0) {
+      return iStack_4 == 2;
+    }
+  } while( true );
+}
+
+
+===== FUN_004ce6c0 @ 004ce6c0 =====
+
+void FUN_004ce6c0(undefined4 param_1,undefined2 param_2)
+
+{
+  int in_ECX;
+  
+  *(undefined2 *)(in_ECX + 0xf4) = 1;
+  *(undefined2 *)(in_ECX + 4) = param_2;
+  *(undefined2 *)(in_ECX + 6) = 0;
+  *(undefined4 *)(in_ECX + 8) = 0;
+  *(undefined4 *)(in_ECX + 0x14) = param_1;
+  *(undefined2 *)(in_ECX + 8) = 0;
+  return;
+}
+
+
+===== FUN_004cf390 @ 004cf390 =====
+
+void FUN_004cf390(void)
+
+{
+  int in_ECX;
+  
+                    /* WARNING: Could not recover jumptable at 0x004cf395. Too many branches */
+                    /* WARNING: Treating indirect jump as call */
+  (**(code **)**(undefined4 **)(in_ECX + 0x28))();
+  return;
+}
+
+
+===== FUN_004cf850 @ 004cf850 =====
+
+void FUN_004cf850(short param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int in_ECX;
+  short sVar4;
+  
+  sVar4 = 0;
+  if (0 < *(int *)(*(int *)(in_ECX + 0x28) + 0x10)) {
+    do {
+      iVar2 = **(int **)(*(int *)(in_ECX + 0x28) + 4);
+      iVar1 = iVar2 + sVar4 * 0x28;
+      iVar2 = *(int *)(iVar2 + 0xc + sVar4 * 0x28);
+      if (param_1 == 0) {
+        if (iVar2 != 0) {
+          uVar3 = *(undefined4 *)(iVar2 + 8);
+          goto LAB_004cf893;
+        }
+LAB_004cf898:
+        *(undefined4 *)(iVar1 + 0xc) = 0;
+      }
+      else {
+        if (iVar2 == 0) goto LAB_004cf898;
+        uVar3 = FUN_004cf8b0(iVar2);
+LAB_004cf893:
+        *(undefined4 *)(iVar1 + 0xc) = uVar3;
+      }
+      sVar4 = sVar4 + 1;
+    } while ((int)sVar4 < *(int *)(*(int *)(in_ECX + 0x28) + 0x10));
+  }
+  return;
+}
+
+
+===== FUN_004cf8b0 @ 004cf8b0 =====
+
+int FUN_004cf8b0(int param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int in_ECX;
+  short sVar3;
+  
+  sVar3 = 0;
+  iVar1 = *(int *)(*(int *)(in_ECX + 0x28) + 0x10);
+  if (0 < iVar1) {
+    iVar2 = **(int **)(*(int *)(in_ECX + 0x28) + 4);
+    do {
+      if (*(int *)(iVar2 + 8 + sVar3 * 0x28) == param_1) {
+        return iVar2 + sVar3 * 0x28;
+      }
+      sVar3 = sVar3 + 1;
+    } while (sVar3 < iVar1);
+  }
+  return 0;
+}
+
+
