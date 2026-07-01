@@ -64,6 +64,23 @@ holds two sections, 137 entries each:
   visual-programming tool (a SimAntics precursor). Runtime-irrelevant but confirms the
   data-driven design - the faithful remake path is to *interpret the shipped BHAV programs*.
 
+`Confirmed (VM core, 2026-07-01; out_vm_core.txt).` The 12-byte BHAV record is
+`[u16 opcode][s8 trueNext][s8 falseNext][four u16 args]`. The walker advance (`FUN_004ce8f0`)
+takes the handler's boolean result and jumps to `trueNext`/`falseNext` within the current
+program; next `-2` (0xFE) = return TRUE from this program (pop the walk stack and re-dispatch
+the result in the caller), `-1` (0xFF) = return FALSE. Handler results map: 0=advance-false,
+1=advance-true, 2=yield (resume same record next tick - e.g. the op-0 wait counter), 3=stop,
+-1=error path. Each walk-stack frame carries **ten u16 local variables** (handlers address them
+as `person - 8 + (slot + cursor*10)*2`). **Opcode 2 (`FUN_004cd0d0`) is the expression engine**:
+two operands fetched via the operand resolver (`FUN_004cd2e0`; scopes: 7=literal, 9=frame local,
+3=person attribute at `+0x140+id*2` for id<0x30, ...) combined by an operator selector
+(0 `>`  1 `<`  2 `==`  3 `+=`  4 `-=`  5 `:=`  6 `*=`  7 `/=` ...). Other sampled ops:
+0=wait-counter(local), 1=bind-anim(mnemonic via `FUN_004c68f0`), 4=bind-figure(id),
+16=`FUN_004c4e40`+stop, 18=tile-class==arg (`FUN_004c9220`), 19=tile-class in per-state list
+(`DAT_0058ec00[state*10+i]`), 20=`FUN_004c9bc0` test, 23=speed(`+0x150`) += arg clamp 0..10.
+Full handler decompiles: `out_vm_ops_00-39.txt`, `out_vm_ops_40-81.txt`; spawn/state-setup:
+`out_spawnrules.txt`.
+
 `Confirmed.` `people.df` is what the engine internally calls the "global behavior file" (the load failure path prints `Couldn't open global behavior file`). It is loaded once by `FUN_004c2f30`:
 
 ```c

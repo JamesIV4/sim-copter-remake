@@ -55,7 +55,12 @@ public:
 		float ThickWidthFraction = 0.085f;
 		float ThinWidthFraction = 0.04f;
 		float DotSizeFraction = 0.065f;
-		float HeadSizeFraction = 0.26f;
+		// The head texture is a 52x25 panorama the original wraps around the rotating head
+		// sprite; the remake wraps it around a small cylinder (face forward, hair behind).
+		float HeadHeightFraction = 0.17f;
+		float HeadRadiusFraction = 0.07f;
+		// U offset of the face within the panorama strip (tune so the face looks forward).
+		float HeadFaceU = 0.5f;
 		// Draw parts whose LOD bitmask contains this bit (bit0 = the original's nearest band).
 		uint8 LodBit = 1;
 		// When false (no head texture available) the head part is drawn as a colored cube in
