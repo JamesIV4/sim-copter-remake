@@ -146,7 +146,13 @@ The scratchpad has these notable outputs:
   12-deep stack), `out_vm_handlers.txt` (the 88 opcode thunks at `0x4c84e0+0x20*n` with their real
   target functions), `out_vm_ops0-6.txt` (first behavior handlers decompiled). Source for
   `Docs/OriginalGameFileFormats.md` "Exact Container Spec" and the rewritten
-  `Tools/privanim_extract.py`.
+  `Tools/privanim_extract.py`. Renderer trace (same day): `out_scan_224.txt` (all code touching
+  person+0x224), `out_clipbind.txt` (clip binder `FUN_004c68f0` + alt driver `FUN_004c65e0` + draw
+  setup `FUN_004c7f10`), `out_figrender.txt` (figure evaluator `FUN_004cfb30` + ARLU resolver
+  `FUN_004cf7b0`), `out_partdraw.txt` (per-part primitive dispatch `FUN_004cf8f0`, endpoint unpack
+  `FUN_004cea30`, transform `FUN_004d0520`, depth comparator `FUN_004d0060`), `out_thickline.txt`
+  (thick-line blitter `FUN_004d11d0`, head-sprite blit `FUN_004d0b70` reading SIM3D.BMP). Source
+  for the "figure renderer" doc section.
 - 2026-06-26 deep pass (privanim full decode + draw-path trace; **container/record claims superseded
   by the 2026-07-01 pass above**): `out_leaf_handlers.txt`, `out_leaf_force.txt`, `out_geom_parse.txt`, `out_recordarray.txt`, `out_linkresolve.txt` (load path: loader `FUN_004ceab0`, node parse `FUN_004cfed0`/`FUN_004d18e0`, record-array `FUN_004d1a00`/`FUN_004d1df0`/`FUN_004d1b60`, link resolver `FUN_004cf8b0`); `out_figdraw_consumer.txt`, `out_figure_loop.txt`, `out_figure_vtables_full.txt`, `out_rendernode_methods.txt`, `out_fig_attach.txt`, `out_scenenode_iface.txt`, `out_disasm_4d4800.txt` (draw path: `FUN_004c6450`, `FUN_004c7c00`, the figure/render-node vtables, and the `0x4d4800` stub); `out_scan_vahb.txt`, `out_fig0100.txt`, `out_vtable_4fa190.txt`, `out_text_bytes.txt` (behavior-VM "VAHB"/`BHAV` anchor + the SimCopterX `.text` relocation caveat). Source for `Docs/OriginalGameFileFormats.md` "Faithful Extraction Method" and the `Tools/privanim_extract.py` extractor.
 

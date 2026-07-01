@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Formats/MaxisWindowsBitmapReader.h"
 
@@ -6,18 +6,18 @@
 
 namespace
 {
-bool CanRead(const TArray<uint8>& Data, int32 Offset, int32 Size)
+bool BmpCanRead(const TArray<uint8>& Data, int32 Offset, int32 Size)
 {
 	return Offset >= 0 && Size >= 0 && Offset <= Data.Num() && Size <= Data.Num() - Offset;
 }
 
-uint16 ReadUInt16LE(const TArray<uint8>& Data, int32 Offset)
+uint16 BmpReadUInt16LE(const TArray<uint8>& Data, int32 Offset)
 {
 	return static_cast<uint16>(Data[Offset]) |
 		(static_cast<uint16>(Data[Offset + 1]) << 8);
 }
 
-uint32 ReadUInt32LE(const TArray<uint8>& Data, int32 Offset)
+uint32 BmpReadUInt32LE(const TArray<uint8>& Data, int32 Offset)
 {
 	return static_cast<uint32>(Data[Offset]) |
 		(static_cast<uint32>(Data[Offset + 1]) << 8) |
@@ -25,9 +25,9 @@ uint32 ReadUInt32LE(const TArray<uint8>& Data, int32 Offset)
 		(static_cast<uint32>(Data[Offset + 3]) << 24);
 }
 
-int32 ReadInt32LE(const TArray<uint8>& Data, int32 Offset)
+int32 BmpReadInt32LE(const TArray<uint8>& Data, int32 Offset)
 {
-	return static_cast<int32>(ReadUInt32LE(Data, Offset));
+	return static_cast<int32>(BmpReadUInt32LE(Data, Offset));
 }
 }
 
@@ -56,7 +56,7 @@ bool FMaxisWindowsBitmapReader::LoadPalettedBitmapFromBytes(
 {
 	OutImage = FMaxisTextureImage();
 
-	if (!CanRead(FileData, 0, 54))
+	if (!BmpCanRead(FileData, 0, 54))
 	{
 		OutError = FString::Printf(TEXT("'%s' is too small to be a Windows bitmap."), *SourceName);
 		return false;
@@ -68,21 +68,21 @@ bool FMaxisWindowsBitmapReader::LoadPalettedBitmapFromBytes(
 		return false;
 	}
 
-	const int32 DeclaredFileSize = ReadInt32LE(FileData, 2);
-	const int32 PixelOffset = ReadInt32LE(FileData, 10);
-	const int32 DibHeaderSize = ReadInt32LE(FileData, 14);
-	if (DeclaredFileSize != FileData.Num() || PixelOffset <= 0 || DibHeaderSize < 40 || !CanRead(FileData, 14, DibHeaderSize))
+	const int32 DeclaredFileSize = BmpReadInt32LE(FileData, 2);
+	const int32 PixelOffset = BmpReadInt32LE(FileData, 10);
+	const int32 DibHeaderSize = BmpReadInt32LE(FileData, 14);
+	if (DeclaredFileSize != FileData.Num() || PixelOffset <= 0 || DibHeaderSize < 40 || !BmpCanRead(FileData, 14, DibHeaderSize))
 	{
 		OutError = FString::Printf(TEXT("'%s' has an invalid Windows bitmap header."), *SourceName);
 		return false;
 	}
 
-	const int32 Width = ReadInt32LE(FileData, 18);
-	const int32 SignedHeight = ReadInt32LE(FileData, 22);
-	const uint16 Planes = ReadUInt16LE(FileData, 26);
-	const uint16 BitsPerPixel = ReadUInt16LE(FileData, 28);
-	const uint32 Compression = ReadUInt32LE(FileData, 30);
-	const int32 ColorsUsed = ReadInt32LE(FileData, 46);
+	const int32 Width = BmpReadInt32LE(FileData, 18);
+	const int32 SignedHeight = BmpReadInt32LE(FileData, 22);
+	const uint16 Planes = BmpReadUInt16LE(FileData, 26);
+	const uint16 BitsPerPixel = BmpReadUInt16LE(FileData, 28);
+	const uint32 Compression = BmpReadUInt32LE(FileData, 30);
+	const int32 ColorsUsed = BmpReadInt32LE(FileData, 46);
 	if (Width <= 0 || SignedHeight == 0 || FMath::Abs(SignedHeight) > 4096 || Width > 4096 || Planes != 1 || BitsPerPixel != 8 || Compression != 0)
 	{
 		OutError = FString::Printf(
@@ -100,14 +100,14 @@ bool FMaxisWindowsBitmapReader::LoadPalettedBitmapFromBytes(
 	const bool bBottomUp = SignedHeight > 0;
 	const int32 PaletteCount = ColorsUsed > 0 ? ColorsUsed : 256;
 	const int32 PaletteOffset = 14 + DibHeaderSize;
-	if (PaletteCount <= 0 || PaletteCount > 256 || !CanRead(FileData, PaletteOffset, PaletteCount * 4))
+	if (PaletteCount <= 0 || PaletteCount > 256 || !BmpCanRead(FileData, PaletteOffset, PaletteCount * 4))
 	{
 		OutError = FString::Printf(TEXT("'%s' has an invalid 8-bit palette."), *SourceName);
 		return false;
 	}
 
 	const int32 RowStride = ((Width + 3) / 4) * 4;
-	if (!CanRead(FileData, PixelOffset, RowStride * Height))
+	if (!BmpCanRead(FileData, PixelOffset, RowStride * Height))
 	{
 		OutError = FString::Printf(TEXT("'%s' pixel data is outside the file."), *SourceName);
 		return false;

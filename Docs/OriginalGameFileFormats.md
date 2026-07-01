@@ -44,6 +44,26 @@ Confirmed structure:
 
 ## `people.df` - the Global Behavior File
 
+`Confirmed (container decoded 2026-07-01).` `people.df` uses the **same Doug container format as
+privanim.df** (see "Exact Container Spec" below) and parses with the same tooling. Its directory
+holds two sections, 137 entries each:
+
+- **`BHAV`** - 137 **named behavior programs**: `Random Turn`, `Idle-5/10/20/40/80`, `Walk-30`,
+  `Check for Cops or Heli`, `cop - return to copter`, `cop - get out at station`,
+  `crim - do robbery`, `Criminal Robber`, `crim - run from cop car`, `crim - walk unspotted`,
+  `Run a base (baseball)`, `Baseball batter (sid-215)`, `Park (ambient sid-213)`,
+  `Rooftop worker (ambient person)`, `Disappear`, `update: picked up`, ... (ids 256..1499).
+  **The `DAT_0058de80` per-state table values (600/700/750/800/850...) are BHAV entry ids** -
+  each person state binds to a program, not an animation; programs bind animations internally by
+  4-char mnemonic (the ARLU names: `NoMo`, `2Gab`, `HipH`, ...).
+  Payload = `[BE u16 recordCount]` + `recordCount x 12-byte records`; each record =
+  `[u16 opcode][five u16 args]` executed by the walker VM (`FUN_004ce7b0` -> `FUN_004ccf20` ->
+  the 88-thunk table at `0x4c84e0`; full opcode->function map in `out_vm_handlers.txt`, handler
+  decompiles in `out_vm_ops_00-39.txt` / `out_vm_ops_40-81.txt`).
+- **`POSI`** - per-program editor node positions: these behaviors were authored in a Maxis
+  visual-programming tool (a SimAntics precursor). Runtime-irrelevant but confirms the
+  data-driven design - the faithful remake path is to *interpret the shipped BHAV programs*.
+
 `Confirmed.` `people.df` is what the engine internally calls the "global behavior file" (the load failure path prints `Couldn't open global behavior file`). It is loaded once by `FUN_004c2f30`:
 
 ```c
@@ -346,14 +366,68 @@ The full opcode->function map is in `out_vm_handlers.txt`.
 5. `people.df` shares this exact container format (same reader class), so the BHAV/behavior
    resources can be enumerated with the same `DougFile` parser - useful for the behavior-VM decode.
 
-### What remains for pixel-exact rendering (open)
+### The figure renderer (decoded 2026-07-01; `out_drawpath.txt`, `out_clipbind.txt`, `out_figrender.txt`, `out_partdraw.txt`, `out_thickline.txt`)
 
-- How the engine fleshes each ARPP segment into the filled flat-shaded polygon look: the role of
-  the ARCP `type` byte (0x08/0x0b/0x0e), the `(w,h,0.5)` dimension floats, and the palette color
-  source. This lives in the scene-engine draw path reached from the render-node vtables
-  (`PTR_FUN_004f5018` slot 3 `FUN_004c7cf0`/`FUN_004c8090`), not in the file.
-- The `DAT_0058de80` per-state anim ids (600/700/750/800/850...) vs the ARPP clip names
-  (101..495): the binding goes through `FUN_004ce6c0(bank@person+0x126, animId@person+0x17a)` and
-  needs one more hop of decompilation (likely people.df's own directory ids).
-- The ARPP per-record 4th byte ("scratch") - the game registers no swap and appears not to read
-  it; confirm from the draw path.
+`Confirmed.` The full draw chain per person per frame:
+
+1. **Clip binding** (`FUN_004c68f0`, called by VM opcode 1 via `FUN_004ca7a0`): behavior bytecode
+   passes a **4-char anim mnemonic** (`"1Wal"`, `"Tote"`, ...). If the bound figure
+   (`person+0x21c`, set by opcode 4 `FUN_004ca860`) is `Coww` or `2DOG`, human walk/run/tote map
+   to `DgRn` and everything else to `DgSt` (quadruped substitution). `FUN_004cf7b0` resolves the
+   mnemonic through the figure's **ARLU** table to a clip name, then finds the ANIP node with that
+   name (node+0x1c) in the ANIP bank (`DAT_00506c60`); cached at `person+0x224` (mnemonic at
+   `+0x220`). Frame counter `person+0x14c` wraps at the clip's ARPP `rows` (`FUN_004c6450` /
+   `FUN_004c65e0`).
+2. **Draw setup** (`FUN_004c7f10`): skips unless visible (`+0x152`) and clip bound. Scale =
+   `35.0 / screenDepth` (x2 in low-res mode `DAT_004f9750!=0x10`); LOD **step mask** `person+0x156`
+   from depth vs `DAT_00506428/2c/30/34` (the figure.twk Far/Med/Near boundaries): `0xffff/4/2/1`,
+   beyond far -> not drawn. Facing angle = `person+0x140 * pi/4` (8 directions) + camera yaw
+   (`DAT_0061a63c/40`). Head-texture select: `figureNode+0x30 = DAT_0058f0e0[person+0x18e]`
+   (values `4,5,0x2c..0x31,0x41..0x43` = **SIM3D.BMP image indices** - the face/head art).
+   Then `FUN_004cfb30(camYaw, facing, clipNode, frame, sx, sy, scale, stepMask, colorOff)`.
+3. **Figure evaluation** (`FUN_004cfb30`): fetch the frame's ARPP row (`rowPtr[frame]`). For each
+   ARCP part: skip if `type(+0)==0` or `(stepMask & LODmask(+4))==0` (**per-part LOD bitmask** -
+   fewer parts at distance). Unpack both endpoints `FUN_004cea30`: **(x=b0, up=b2, depth=b1)**
+   signed chars -> floats; add global feet offset `DAT_00506bf0` to the up axis. Rotate by the two
+   angles + project + scale (`FUN_004d0520`/`FUN_004d04c0`/`FUN_004d0470`) into a per-part cache
+   (`DAT_0058f100`, stride 0x12, indexed by ARCP `+2`). **Endpoint chaining**: if the part's
+   parent (+0xc resolved ptr) already transformed its endpoint, reuse it as this part's start.
+   Point-like types (8,9,0xc,0xd,0xe) transform only one endpoint. Type 9 additionally converts
+   ARPP **byte 3** to a float = the head sprite's roll angle (the only use of the 4th byte).
+   Visible parts are collected and `qsort`ed by screen depth (`FUN_004d0060`, painter's).
+4. **Per-part primitive** (`FUN_004cf8f0`), dispatch on ARCP `type`:
+   - `0xb` -> **thick line** `FUN_004d11d0` (Bresenham band, width in px clamped <26 - the fleshed
+     limb/torso strokes; width comes from the projected scale).
+   - `0xa` -> thin line `FUN_004d0f50`.
+   - `9`  -> **rotated textured head sprite** `FUN_004d0b70`: blits the SIM3D.BMP image
+     `figureNode+0x30`, rotated by facing+ARPP-byte-3, sized by the projected radius.
+   - `8`/`0xd`/`0xe` -> dots `FUN_004d06b0` (styles 1/2/0), `0xc` -> pixel `FUN_004d0650`.
+   - **Color**: ARCP byte `+3` = color index; screen palette entry = `0x24 + color*0x10`; if ARCP
+     byte `+5 == 0` the index is offset by the person's clothes-color `person+0x160` modulo 14 -
+     per-person clothing variation on a shared model.
+
+So the original look = **thick palette-colored 2D strokes per bone segment + a rotated photo-head
+sprite**, depth-sorted per part. A faithful UE reconstruction: render each type-0xb/0xa part as a
+3D capsule/ribbon along its ARPP segment (width ~ the stroke width / scale factor), type-9 as a
+camera-facing card textured with the SIM3D.BMP head image (rolled by ARPP byte 3), dots as small
+spheres; vertex-color from the palette ramp `0x24 + color*16` with the per-person offset; per-part
+LOD via the `+4` bitmask against figure.twk bands.
+
+### Live validation (2026-07-01, ORACLE PASS)
+
+`Confirmed.` `Tools/privanim_live_oracle.py` (read-only `ReadProcessMemory`; anchors on the
+`DAT_0058f0e0` head-image table, so no absolute Ghidra addresses) validated the whole decode
+against the running game: 52 live pedestrians; person fields `+0x142/+0x148/+0x14c/+0x160/+0x18e/
++0x21c/+0x220/+0x224` all consistent; a 2woman playing `NoMo` was bound to clip `412!` exactly as
+the ARLU map predicts (407=1Wal..412=NoMo); its ARPP array read `recSize=8 rows=3 cols=51`; and
+the **1224 bytes of live pose records matched the file bytes exactly**. Live 4-char name fields
+read back byte-reversed (LE u32 of the BE chars).
+
+### Remaining minor open items
+
+- The exact thick-line width expression in `FUN_004cf8f0` case 0xb (a dropped `__ftol` of the
+  projected scale; visually tune in the remake).
+- `DAT_0058de80` per-state ids (600/750/850...) are NOT ARPP clip ids; the VM binds clips by
+  mnemonic. Where those ids feed (people.df-side sequencing) belongs to the Phase-4 VM decode.
+- The ARCP `+1` (`ref`) and `+6/+7` bytes; ARCP dim floats `(w,h,0.5)` appear unused by this 2D
+  path (probably authoring-tool data).
