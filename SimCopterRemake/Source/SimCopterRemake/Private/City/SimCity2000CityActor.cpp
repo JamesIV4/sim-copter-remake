@@ -9,6 +9,7 @@
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
+#include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -105,6 +106,12 @@ struct FTileFootprint
 };
 
 struct FOriginalBridgeDispatch
+{
+	int32 PrimaryObjectId = INDEX_NONE;
+	int32 SecondaryObjectId = INDEX_NONE;
+};
+
+struct FOriginalCityObjectDispatch
 {
 	int32 PrimaryObjectId = INDEX_NONE;
 	int32 SecondaryObjectId = INDEX_NONE;
@@ -658,6 +665,241 @@ FOriginalBridgeDispatch GetOriginalBridgeDispatch(uint8 BuildingId, bool bTileIs
 		return { 0x114 + BitVariant };
 	default: return {};
 	}
+}
+
+// FUN_00482890 selects the original ground/base object for building tiles that
+// need a second scene object. The low XZON nibble chooses residential/commercial/
+// industrial base art; the building footprint size chooses 1x1..4x4.
+int32 GetOriginalBuildingBaseObjectId(uint8 Zone, int32 FootprintSize)
+{
+	const uint8 ZoneClass = Zone & 0x0F;
+	switch (FootprintSize)
+	{
+	case 1:
+		if (ZoneClass == 1 || ZoneClass == 2)
+		{
+			return 0x001;
+		}
+		if (ZoneClass == 3 || ZoneClass == 4)
+		{
+			return 0x168;
+		}
+		return 0x164;
+	case 2:
+		if (ZoneClass == 1 || ZoneClass == 2)
+		{
+			return 0x002;
+		}
+		if (ZoneClass == 3 || ZoneClass == 4)
+		{
+			return 0x169;
+		}
+		return 0x165;
+	case 3:
+		if (ZoneClass == 1 || ZoneClass == 2)
+		{
+			return 0x003;
+		}
+		return 0x16A;
+	case 4:
+		if (ZoneClass == 1 || ZoneClass == 2)
+		{
+			return 0x004;
+		}
+		if (ZoneClass == 3 || ZoneClass == 4)
+		{
+			return 0x16B;
+		}
+		return 0x167;
+	default:
+		return 0x164;
+	}
+}
+
+// Building dispatch transcribed from FUN_0047c0c0. These are runtime object Ids
+// consumed by FUN_00470571, not heuristic table indexes.
+FOriginalCityObjectDispatch GetOriginalBuildingDispatch(
+	uint8 BuildingId,
+	uint8 Zone,
+	uint8 BitFlags,
+	int32 FootprintSize,
+	int32 SavedRotation,
+	bool& bSpecialE7Placed)
+{
+	const auto WithBase = [&](int32 PrimaryObjectId) -> FOriginalCityObjectDispatch
+	{
+		return { PrimaryObjectId, GetOriginalBuildingBaseObjectId(Zone, FootprintSize) };
+	};
+	const auto RotationParityNoBase = [&](int32 ObjectWhenXbitClearMatchesRotationParity, int32 ObjectWhenDifferent) -> FOriginalCityObjectDispatch
+	{
+		// DAT_004fa9e0 is loaded from MISC dword offset 0x0008, the same field
+		// this reader exposes as City.Rotation. The original compares its low bit
+		// against whether XBIT bit 1 is clear for XBLD 0xdd and 0xdf.
+		const bool bXbitBit1Clear = (BitFlags & 0x02) == 0;
+		const bool bSavedRotationOdd = (SavedRotation & 1) != 0;
+		return { bXbitBit1Clear == bSavedRotationOdd ? ObjectWhenXbitClearMatchesRotationParity : ObjectWhenDifferent };
+	};
+
+	int32 PrimaryObjectId = INDEX_NONE;
+	switch (BuildingId)
+	{
+	case 0x70: PrimaryObjectId = 0x0AF; break;
+	case 0x71: PrimaryObjectId = 0x0B0; break;
+	case 0x72: PrimaryObjectId = 0x0B1; break;
+	case 0x73: PrimaryObjectId = 0x0B2; break;
+	case 0x74: PrimaryObjectId = 0x0B3; break;
+	case 0x75: PrimaryObjectId = 0x0B4; break;
+	case 0x76: PrimaryObjectId = 0x0B5; break;
+	case 0x77: PrimaryObjectId = 0x0B6; break;
+	case 0x78: PrimaryObjectId = 0x0B7; break;
+	case 0x79: PrimaryObjectId = 0x0B8; break;
+	case 0x7A: PrimaryObjectId = 0x0B9; break;
+	case 0x7B: PrimaryObjectId = 0x0BA; break;
+	case 0x7C: PrimaryObjectId = 0x0BB; break;
+	case 0x7D: PrimaryObjectId = 0x0BC; break;
+	case 0x7E: PrimaryObjectId = 0x0BD; break;
+	case 0x7F: PrimaryObjectId = 0x0BE; break;
+	case 0x80: PrimaryObjectId = 0x0BF; break;
+	case 0x81: PrimaryObjectId = 0x0C0; break;
+	case 0x82: PrimaryObjectId = 0x0A9; break;
+	case 0x83: PrimaryObjectId = 0x0C1; break;
+	case 0x84: PrimaryObjectId = 0x09D; break;
+	case 0x85: PrimaryObjectId = 0x0C2; break;
+	case 0x86: PrimaryObjectId = 0x0C3; break;
+	case 0x87: PrimaryObjectId = 0x09E; break;
+	case 0x88: PrimaryObjectId = 0x09A; break;
+	case 0x89: PrimaryObjectId = 0x09B; break;
+	case 0x8A: PrimaryObjectId = 0x084; break;
+	case 0x8B: PrimaryObjectId = 0x085; break;
+	case 0x8C: PrimaryObjectId = 0x0C4; break;
+	case 0x8D: PrimaryObjectId = 0x019; break;
+	case 0x8E: PrimaryObjectId = 0x01A; break;
+	case 0x8F: PrimaryObjectId = 0x0C5; break;
+	case 0x90: PrimaryObjectId = 0x0C6; break;
+	case 0x91: PrimaryObjectId = 0x080; break;
+	case 0x92: PrimaryObjectId = 0x0C7; break;
+	case 0x93: PrimaryObjectId = 0x0C8; break;
+	case 0x94: PrimaryObjectId = 0x081; break;
+	case 0x95: PrimaryObjectId = 0x0C9; break;
+	case 0x96: PrimaryObjectId = 0x005; break;
+	case 0x97: PrimaryObjectId = 0x006; break;
+	case 0x98: PrimaryObjectId = 0x00E; break;
+	case 0x99: PrimaryObjectId = 0x0CA; break;
+	case 0x9A: PrimaryObjectId = 0x00F; break;
+	case 0x9B: PrimaryObjectId = 0x010; break;
+	case 0x9C: PrimaryObjectId = 0x011; break;
+	case 0x9D: PrimaryObjectId = 0x012; break;
+	case 0x9E: PrimaryObjectId = 0x09F; break;
+	case 0x9F: PrimaryObjectId = 0x0A0; break;
+	case 0xA0: PrimaryObjectId = 0x0A1; break;
+	case 0xA1: PrimaryObjectId = 0x0A2; break;
+	case 0xA2: PrimaryObjectId = 0x0A3; break;
+	case 0xA3: PrimaryObjectId = 0x0A4; break;
+	case 0xA4: PrimaryObjectId = 0x0A5; break;
+	case 0xA5: PrimaryObjectId = 0x0A6; break;
+	case 0xA6: PrimaryObjectId = 0x0CB; break;
+	case 0xA7: PrimaryObjectId = 0x0CC; break;
+	case 0xA8: PrimaryObjectId = 0x09C; break;
+	case 0xA9: PrimaryObjectId = 0x0CD; break;
+	case 0xAA: PrimaryObjectId = 0x086; break;
+	case 0xAB: PrimaryObjectId = 0x087; break;
+	case 0xAC: PrimaryObjectId = 0x088; break;
+	case 0xAD: PrimaryObjectId = 0x089; break;
+	case 0xAE: PrimaryObjectId = 0x0CE; break;
+	case 0xAF: PrimaryObjectId = 0x00B; break;
+	case 0xB0: PrimaryObjectId = 0x0CF; break;
+	case 0xB1: PrimaryObjectId = 0x00C; break;
+	case 0xB2: PrimaryObjectId = 0x013; break;
+	case 0xB3: PrimaryObjectId = 0x0AA; break;
+	case 0xB4: PrimaryObjectId = 0x0AB; break;
+	case 0xB5: PrimaryObjectId = 0x0AC; break;
+	case 0xB6: PrimaryObjectId = 0x007; break;
+	case 0xB7: PrimaryObjectId = 0x008; break;
+	case 0xB8: PrimaryObjectId = 0x009; break;
+	case 0xB9: PrimaryObjectId = 0x0D0; break;
+	case 0xBA: PrimaryObjectId = 0x0AD; break;
+	case 0xBB: PrimaryObjectId = 0x00A; break;
+	case 0xBC: PrimaryObjectId = 0x0A7; break;
+	case 0xBD: PrimaryObjectId = 0x0D1; break;
+	case 0xBE: PrimaryObjectId = 0x0A8; break;
+	case 0xBF: PrimaryObjectId = 0x0D2; break;
+	case 0xC0: PrimaryObjectId = 0x0D3; break;
+	case 0xC1: PrimaryObjectId = 0x0D4; break;
+	case 0xC2: PrimaryObjectId = 0x0D5; break;
+	case 0xC3: PrimaryObjectId = 0x0D6; break;
+	case 0xC4: PrimaryObjectId = 0x0D7; break;
+	case 0xC5: PrimaryObjectId = 0x0D8; break;
+	case 0xC6: return { 0x0D9 };
+	case 0xC7: return { 0x0DA };
+	case 0xC8: PrimaryObjectId = 0x0DB; break;
+	case 0xC9: PrimaryObjectId = 0x0DC; break;
+	case 0xCA: PrimaryObjectId = 0x0DD; break;
+	case 0xCB: PrimaryObjectId = 0x0DE; break;
+	case 0xCC: PrimaryObjectId = 0x0DF; break;
+	case 0xCD: PrimaryObjectId = 0x0E0; break;
+	case 0xCE: PrimaryObjectId = 0x0E1; break;
+	case 0xCF: PrimaryObjectId = 0x0E2; break;
+	case 0xD0: PrimaryObjectId = 0x00D; break;
+	case 0xD1: PrimaryObjectId = 0x016; break;
+	case 0xD2: PrimaryObjectId = 0x000; break;
+	case 0xD3: PrimaryObjectId = 0x0E3; break;
+	case 0xD4: PrimaryObjectId = 0x018; break;
+	case 0xD5: return { 0x144, 0x003 };
+	case 0xD6: PrimaryObjectId = 0x01B; break;
+	case 0xD7: return { 0x082, 0x004 };
+	case 0xD8: PrimaryObjectId = 0x0E4; break;
+	case 0xD9: PrimaryObjectId = 0x0E5; break;
+	case 0xDA: return { 0x16F, 0x004 };
+	case 0xDB: PrimaryObjectId = 0x0E6; break;
+	case 0xDC: PrimaryObjectId = 0x0E7; break;
+	case 0xDD: return RotationParityNoBase(0x11B, 0x08A);
+	case 0xDE: return { 0x08B };
+	case 0xDF: return RotationParityNoBase(0x10C, 0x08C);
+	case 0xE0: PrimaryObjectId = 0x08D; break;
+	case 0xE1: PrimaryObjectId = 0x08E; break;
+	case 0xE2: PrimaryObjectId = 0x08F; break;
+	case 0xE3: PrimaryObjectId = 0x090; break;
+	case 0xE4: PrimaryObjectId = 0x091; break;
+	case 0xE5: PrimaryObjectId = 0x092; break;
+	case 0xE6: PrimaryObjectId = 0x093; break;
+	case 0xE7:
+		if (!bSpecialE7Placed)
+		{
+			bSpecialE7Placed = true;
+			return { GetOriginalBuildingBaseObjectId(Zone, FootprintSize) };
+		}
+		PrimaryObjectId = 0x094;
+		break;
+	case 0xE8: PrimaryObjectId = 0x095; break;
+	case 0xE9: PrimaryObjectId = 0x0E8; break;
+	case 0xEA: PrimaryObjectId = 0x0E9; break;
+	case 0xEB: PrimaryObjectId = 0x01C; break;
+	case 0xEC: PrimaryObjectId = 0x0EA; break;
+	case 0xED: PrimaryObjectId = 0x0EB; break;
+	case 0xEE: return { 0x0EC, 0x169 };
+	case 0xEF: return { 0x0ED, 0x169 };
+	case 0xF0: PrimaryObjectId = 0x0EE; break;
+	case 0xF1: PrimaryObjectId = 0x0EF; break;
+	case 0xF2: PrimaryObjectId = 0x0F0; break;
+	case 0xF3: PrimaryObjectId = 0x0F1; break;
+	case 0xF4: PrimaryObjectId = 0x0F2; break;
+	case 0xF5: PrimaryObjectId = 0x017; break;
+	case 0xF6: PrimaryObjectId = 0x096; break;
+	case 0xF7: PrimaryObjectId = 0x014; break;
+	case 0xF8: return { 0x0F3, 0x166 };
+	case 0xF9: PrimaryObjectId = 0x0F4; break;
+	case 0xFA: PrimaryObjectId = 0x015; break;
+	case 0xFB: PrimaryObjectId = 0x097; break;
+	case 0xFC: PrimaryObjectId = 0x0F5; break;
+	case 0xFD: PrimaryObjectId = 0x0F6; break;
+	case 0xFE: PrimaryObjectId = 0x098; break;
+	case 0xFF: PrimaryObjectId = 0x099; break;
+	default: return {};
+	}
+
+	// Ordinary building cases break into the original shared tail, which calls
+	// FUN_00482890 and links the returned base/foundation as a second object.
+	return WithBase(PrimaryObjectId);
 }
 
 uint32 HashTerrainTile(int32 X, int32 Y, uint32 Salt)
@@ -2287,6 +2529,7 @@ void ASimCity2000CityActor::RebuildCity()
 	int32 RoadCount = 0;
 	int32 BuildingCount = 0;
 	int32 OriginalMeshTriangleCount = 0;
+	bool bOriginalSpecialE7BuildingPlaced = false;
 
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
 	{
@@ -2347,15 +2590,29 @@ void ASimCity2000CityActor::RebuildCity()
 				else
 				{
 					const TArray<FColor>* ColorMap = nullptr;
-					// Bridges and elevated roads (XBLD 0x3f..0x6b) are dispatched by the original builder to specific
-					// object Ids rather than through the heuristic XBLD->mesh table, so route them
-					// through the exact object-Id lookup. Everything else keeps the table mapping.
+					// Bridges/elevated roads and buildings are dispatched by the original builder to
+					// specific object Ids rather than through the heuristic XBLD->mesh table.
 					const bool bUseBridgeDispatch = Tile.Building >= 0x3f && Tile.Building <= 0x6b;
 					const FOriginalBridgeDispatch BridgeDispatch = bUseBridgeDispatch
 						? GetOriginalBridgeDispatch(Tile.Building, IsOriginalTerrainTileFlat(ConditionedTerrainCorners, FileX, FileY), Tile.BitFlags)
 						: FOriginalBridgeDispatch();
-					const FMaxisMeshObject* MeshObject = (BridgeDispatch.PrimaryObjectId != INDEX_NONE)
-						? MeshLibrary.FindObjectByObjectId(BridgeDispatch.PrimaryObjectId, &ColorMap)
+					const FOriginalCityObjectDispatch BuildingDispatch = (!bUseBridgeDispatch && bBuildingLikeTile)
+						? GetOriginalBuildingDispatch(
+							Tile.Building,
+							Tile.Zone,
+							Tile.BitFlags,
+							FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(Tile.Building),
+							City.Rotation,
+							bOriginalSpecialE7BuildingPlaced)
+						: FOriginalCityObjectDispatch();
+					const int32 PrimaryObjectId = BridgeDispatch.PrimaryObjectId != INDEX_NONE
+						? BridgeDispatch.PrimaryObjectId
+						: BuildingDispatch.PrimaryObjectId;
+					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
+						? BridgeDispatch.SecondaryObjectId
+						: BuildingDispatch.SecondaryObjectId;
+					const FMaxisMeshObject* MeshObject = (PrimaryObjectId != INDEX_NONE)
+						? MeshLibrary.FindObjectByObjectId(PrimaryObjectId, &ColorMap)
 						: MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
 					if (MeshObject != nullptr)
 					{
@@ -2378,10 +2635,10 @@ void ASimCity2000CityActor::RebuildCity()
 							OriginalMeshSections,
 							LastOriginalTexturedTriangleCount);
 
-						if (BridgeDispatch.SecondaryObjectId != INDEX_NONE)
+						if (SecondaryObjectId != INDEX_NONE)
 						{
 							const TArray<FColor>* SecondaryColorMap = nullptr;
-							const FMaxisMeshObject* SecondaryMeshObject = MeshLibrary.FindObjectByObjectId(BridgeDispatch.SecondaryObjectId, &SecondaryColorMap);
+							const FMaxisMeshObject* SecondaryMeshObject = MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &SecondaryColorMap);
 							if (SecondaryMeshObject != nullptr)
 							{
 								OriginalMeshTriangleCount += AppendMaxisMeshObject(
@@ -2401,7 +2658,7 @@ void ASimCity2000CityActor::RebuildCity()
 							}
 							else
 							{
-								UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not resolve bridge secondary object id 0x%x for XBLD 0x%x."), BridgeDispatch.SecondaryObjectId, Tile.Building);
+								UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not resolve secondary object id 0x%x for XBLD 0x%x."), SecondaryObjectId, Tile.Building);
 							}
 						}
 

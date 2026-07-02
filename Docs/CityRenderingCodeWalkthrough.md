@@ -127,6 +127,12 @@ Important rules:
 
 This matters because the public `XBLD` heuristic table is not sufficient for bridges. Orientation is baked into object choice, so a wrong object id can look like a rotation bug.
 
+## Building Base Dispatch
+
+`GetOriginalBuildingDispatch` is transcribed from the `XBLD 0x70..0xff` half of `FUN_0047c0c0`. Building primary meshes now resolve by original runtime object id through `FUN_00470571` semantics, instead of relying on the public heuristic `XBLD` mapping table. Most building switch cases `break` into the original shared tail, which calls `FUN_00482890` and creates a secondary base/foundation object (`local_2c = 2`). Only the cases that jump directly to `LAB_0047f179` with `local_2c = 1`, or cases with explicit fixed secondary objects, bypass that default base behavior. `FUN_00482890` chooses its base from `XZON & 0x0f` and the original footprint-size table from `FUN_004e4f80`.
+
+The `0xdd` and `0xdf` branches compare whether `XBIT & 0x02` is clear against `DAT_004fa9e0 & 1`; `DAT_004fa9e0` is loaded from `MISC` dword offset `0x0008`, the saved rotation field already exposed as `City.Rotation`. The special one-time `0xe7` branch is represented with a local per-rebuild flag, matching the city-builder sweep behavior.
+
 ## Deterministic Terrain Noise
 
 The original game uses clock-seeded MSVCRT randomness for some terrain detail passes. The remake currently keeps the same candidate sets and probabilities, but uses stable hash noise so editor rebuilds are deterministic.
