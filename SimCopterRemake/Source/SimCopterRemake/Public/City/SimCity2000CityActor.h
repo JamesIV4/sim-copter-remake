@@ -70,6 +70,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<UProceduralMeshComponent> OriginalMeshComponent;
 
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<UProceduralMeshComponent> RoadMarkingMeshComponent;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City", meta = (FilePathFilter = "sc2"))
 	FFilePath CityFile;
 
@@ -111,6 +114,15 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderRoads = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
+	bool bRenderRoadMarkings = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "1.0"))
+	float RoadMarkingWidth = 5.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "0.0"))
+	float RoadMarkingZOffset = 8.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderBuildings = true;
@@ -156,6 +168,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	FLinearColor RoadColor = FLinearColor(0.05f, 0.05f, 0.045f);
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
+	FLinearColor RoadMarkingColor = FLinearColor(1.0f, 0.82f, 0.22f);
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	FLinearColor BuildingColor = FLinearColor(0.55f, 0.53f, 0.47f);
