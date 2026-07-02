@@ -11,8 +11,11 @@
 #include "Engine/World.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/Pawn.h"
+#include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -43,6 +46,24 @@ constexpr float PedestrianFallbackZCm = 88.0f;
 constexpr float PedestrianSpriteHeightCm = 162.0f;
 constexpr float PedestrianBodyHeightCm = 176.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
+
+uint16 GetPlayerBehaviorSpeedScalar(const APawn& Pawn)
+{
+	FVector Velocity = Pawn.GetVelocity();
+	float ReferenceSpeed = 1.0f;
+	if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(&Pawn))
+	{
+		Velocity = Helicopter->GetVelocityCmPerSec();
+		ReferenceSpeed = FMath::Max(1.0f, Helicopter->GetMaxForwardSpeedCmPerSec());
+	}
+	else if (const ASimCopterOnFootPawn* OnFoot = Cast<ASimCopterOnFootPawn>(&Pawn))
+	{
+		Velocity = OnFoot->GetCurrentVelocityCmPerSec();
+		ReferenceSpeed = FMath::Max(1.0f, OnFoot->GetWalkSpeedCmPerSec());
+	}
+
+	return uint16(FMath::Clamp(FMath::RoundToInt((Velocity.Size2D() / ReferenceSpeed) * 10.0f), 0, 10));
+}
 
 // Process-wide people.df behavior model cache (one per original-game root).
 TSharedPtr<FPeopleBehaviorModel> GetSharedBehaviorModel(const FString& RootPath)
@@ -171,7 +192,7 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	// Seed the people PRNG per agent so crowds don't move in lockstep.
 	BehaviorContext.Lfsr = uint16(GetTypeHash(GetFName()) | 1);
 	BehaviorContext.Attributes[EBhavAttr::Facing] = uint16(FMath::RoundToInt(GetActorRotation().Yaw / 45.0f) & 7);
-	BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = 0;
+	BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = uint16(FMath::Clamp(InitialBehaviorClass, 0, 21));
 	BehaviorContext.Attributes[EBhavAttr::Speed] = 5;
 	BehaviorContext.ResetToState(InitialPersonState);
 	bBehaviorActive = true;
@@ -179,7 +200,8 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 
 void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 {
-	if (!bBehaviorActive || !BehaviorModel.IsValid())
+	// The people VM only ever drives pedestrians; vehicles keep the road-route movement.
+	if (!bBehaviorActive || !BehaviorModel.IsValid() || AgentKind != ESimCopterGroundAgentKind::Pedestrian)
 	{
 		return;
 	}
@@ -228,13 +250,8 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		: 0.0f;
 	SetTrafficSpeedScale(SpeedAlpha);
 
-	// Keep the facing attribute coherent with actual motion for tile/facing opcodes.
-	const FVector Velocity = GetCurrentVelocityCmPerSec();
-	if (!Velocity.IsNearlyZero(1.0f))
-	{
-		const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Velocity.Y, Velocity.X));
-		BehaviorContext.Attributes[EBhavAttr::Facing] = uint16(FMath::RoundToInt(Yaw / 45.0f) & 7);
-	}
+	// Facing stays owned by the VM (MoveStep and opcode 29 write it in the original's stored
+	// convention); deriving it from world velocity would scramble that basis every tick.
 }
 
 int32 ASimCopterGroundAgent::GetCurrentTileClass() const
@@ -252,16 +269,47 @@ int32 ASimCopterGroundAgent::GetCurrentTileClass() const
 	return RouteTargetNodeIndex != INDEX_NONE ? 7 : 10;
 }
 
+bool ASimCopterGroundAgent::TryGetCurrentTileCoordinate(int32& OutFileX, int32& OutFileY) const
+{
+	if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+	{
+		return TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(GetActorLocation(), OutFileX, OutFileY);
+	}
+
+	OutFileX = INDEX_NONE;
+	OutFileY = INDEX_NONE;
+	return false;
+}
+
 bool ASimCopterGroundAgent::IsTileClassAllowedForState(int32 StateIndex, int32 TileClass) const
 {
 	return FSimCopterBehaviorVM::GetAllowedTileClasses(StateIndex).Contains(TileClass);
 }
 
+void ASimCopterGroundAgent::SetInitialBehaviorClass(int32 NewInitialBehaviorClass)
+{
+	InitialBehaviorClass = FMath::Clamp(NewInitialBehaviorClass, 0, 21);
+	// The original binds the figure from the behavior class at spawn (FUN_004c71c0): dogs,
+	// cows, Elvis and the everyday street mix all come from this one table.
+	PedestrianFigureName = FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(InitialBehaviorClass);
+	if (bBehaviorActive)
+	{
+		BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = uint16(InitialBehaviorClass);
+	}
+}
+
 bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 {
 	bBehaviorWantsMove = true;
+
+	// FUN_004c6970: every move tick rebinds the clip from the move result and speed -
+	// 0 = NoMo, 1..6 = 1Wal, 7+ = 1Run (dogs/cows remap to DgRn/DgSt in the clip bind).
+	const int32 MoveSpeed = int32(int16(Context.Attributes[EBhavAttr::Speed]));
+	const TCHAR* SpeedMnemonic = MoveSpeed <= 0 ? TEXT("NoMo") : (MoveSpeed < 7 ? TEXT("1Wal") : TEXT("1Run"));
+
 	if (bHasMoveTarget && !IsNearMoveTarget(TargetStopDistanceCm + 10.0f))
 	{
+		Context.PendingAnimMnemonic = SpeedMnemonic;
 		return true;
 	}
 
@@ -280,21 +328,28 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 			{
 				continue;
 			}
-			if (!IsTileClassAllowedForState(Context.Attributes[EBhavAttr::BehaviorClass], TargetTileClass))
+			const int32 BehaviorClass = Context.Attributes[EBhavAttr::BehaviorClass];
+			if (!IsTileClassAllowedForState(BehaviorClass, TargetTileClass) &&
+				!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
 			{
 				continue;
 			}
 
 			Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
+			Context.PendingAnimMnemonic = SpeedMnemonic;
 			SetMoveTarget(TargetLocation);
 			return true;
 		}
 
+		// Blocked on all 8 facings: the original binds the recoil clip and the walker takes
+		// the false edge (FUN_004c6970 results 2/6 -> 'Whoa').
+		Context.PendingAnimMnemonic = TEXT("Whoa");
 		return false;
 	}
 
 	const float FacingRadians = FMath::DegreesToRadians(float(StartFacing) * 45.0f);
 	const FVector FallbackTarget = GetActorLocation() + FVector(FMath::Cos(FacingRadians), FMath::Sin(FacingRadians), 0.0f) * StepDistanceCm;
+	Context.PendingAnimMnemonic = SpeedMnemonic;
 	SetMoveTarget(FallbackTarget);
 	return true;
 }
@@ -312,12 +367,38 @@ bool ASimCopterGroundAgent::IsThreatNearby(const FSimCopterPersonContext& Contex
 	return FMath::Abs(Delta.Z) < 1200.0f && Delta.SizeSquared2D() < FMath::Square(1600.0f);
 }
 
+bool ASimCopterGroundAgent::TryGetPlayerTileProbe(
+	const FSimCopterPersonContext& Context,
+	FSimCopterBehaviorPlayerTileProbe& OutProbe) const
+{
+	(void)Context;
+	OutProbe = FSimCopterBehaviorPlayerTileProbe();
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (TrafficSystem == nullptr || PlayerPawn == nullptr)
+	{
+		return false;
+	}
+
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(
+		PlayerPawn->GetActorLocation(),
+		OutProbe.FileX,
+		OutProbe.FileY))
+	{
+		return false;
+	}
+
+	OutProbe.Speed = GetPlayerBehaviorSpeedScalar(*PlayerPawn);
+	OutProbe.Facing = uint16(TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), PlayerPawn->GetActorLocation()));
+	return true;
+}
+
 void ASimCopterGroundAgent::OnUnknownOpcode(int32 Opcode)
 {
 	if (!ReportedUnknownOpcodes.Contains(Opcode))
 	{
 		ReportedUnknownOpcodes.Add(Opcode);
-		UE_LOG(LogSimCopterGroundAgent, Verbose, TEXT("%s: BHAV opcode %d not yet ported (passing true)."), *GetName(), Opcode);
+		UE_LOG(LogSimCopterGroundAgent, Verbose, TEXT("%s: BHAV opcode %d not yet ported (following false edge)."), *GetName(), Opcode);
 	}
 }
 
@@ -357,6 +438,10 @@ void ASimCopterGroundAgent::ConfigureAgent(
 	OriginalGameRoot.Path = NewOriginalGameRoot;
 	MovementSpeedCmPerSec = FMath::Max(1.0f, NewMovementSpeedCmPerSec);
 	AnimationPhase = FMath::FRandRange(0.0f, UE_TWO_PI);
+	// BeginPlay already ran with the default (pedestrian) kind; stop that behavior VM before
+	// retyping. The pedestrian branch below restarts it cleanly.
+	bBehaviorActive = false;
+	BehaviorTickAccumulator = 0.0f;
 	ApplyAgentShape();
 
 	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
@@ -385,6 +470,11 @@ bool ASimCopterGroundAgent::LoadOriginalMeshFromOriginalGameRoot()
 	LastMeshLoadError.Reset();
 	OriginalMeshComponent->ClearAllMeshSections();
 	bUsingPedestrianSprite = false;
+	// BeginPlay may have built a pedestrian figure before ConfigureAgent retyped this agent
+	// (SpawnActor runs BeginPlay with the default kind); drop that state or the behavior VM
+	// rebuilds person clips over the vehicle mesh.
+	bUsingPedestrianBody = false;
+	bUsingPedestrianFigure = false;
 
 	const FString RootPath = ResolveOriginalGameRoot();
 	if (RootPath.IsEmpty())
@@ -655,7 +745,17 @@ bool ASimCopterGroundAgent::RebuildFigureClip(const FString& Mnemonic)
 	}
 	const FPrivAnimFigure& Figure = FigureShared->Model.Figures[FigureIndex];
 
-	const FPrivAnimClip* Clip = FigureShared->Model.FindClip(Figure, Mnemonic);
+	// FUN_004c68f0: figures keyed '2DOG'/'Coww' substitute their quadruped clips -
+	// 1Wal/1Run/Tote play DgRn, everything else DgSt.
+	FString EffectiveMnemonic = Mnemonic;
+	if (Figure.Name.StartsWith(TEXT("2DOG")) || Figure.Name.StartsWith(TEXT("Coww")))
+	{
+		EffectiveMnemonic = (Mnemonic == TEXT("1Wal") || Mnemonic == TEXT("1Run") || Mnemonic == TEXT("Tote"))
+			? TEXT("DgRn")
+			: TEXT("DgSt");
+	}
+
+	const FPrivAnimClip* Clip = FigureShared->Model.FindClip(Figure, EffectiveMnemonic);
 	if (Clip == nullptr)
 	{
 		Clip = FigureShared->Model.FindClip(Figure, TEXT("NoMo"));

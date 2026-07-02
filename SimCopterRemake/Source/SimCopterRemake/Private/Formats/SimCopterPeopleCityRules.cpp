@@ -22,6 +22,17 @@ bool IsOneOf(uint8 Value, std::initializer_list<uint8> Values)
 	}
 	return false;
 }
+
+int32 RandomOffsetInExtent(int32 Extent, uint16& PeopleRandomState)
+{
+	if (Extent <= 0)
+	{
+		return 0;
+	}
+
+	const uint16 Bound = uint16(Extent * 2 - 2);
+	return Extent - int32(FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, Bound)) - 1;
+}
 }
 
 int32 FSimCopterPeopleCityRules::GetTileClassForBuildingId(uint8 BuildingId)
@@ -103,6 +114,42 @@ int32 FSimCopterPeopleCityRules::GetTileClassForBuildingId(uint8 BuildingId)
 	return 11;
 }
 
+int32 FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(uint8 BuildingId)
+{
+	if ((BuildingId >= 0x49 && BuildingId <= 0x50) || (BuildingId >= 0x61 && BuildingId <= 0x6B))
+	{
+		return 2;
+	}
+	if (BuildingId < 0x70)
+	{
+		return 1;
+	}
+
+	// DAT_004fad30[buildingId], read as signed 16-bit by FUN_004e4f80.
+	static constexpr int16 BuildingFootprintSizeById70[] = {
+		// 0x70..0x7F
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		// 0x80..0x8F
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2,
+		// 0x90..0x9F
+		2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+		// 0xA0..0xAF
+		2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
+		// 0xB0..0xBF
+		3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+		// 0xC0..0xCF
+		3, 3, 3, 3, 3, 3, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4,
+		// 0xD0..0xDF
+		3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1, 1,
+		// 0xE0..0xEF
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+		// 0xF0..0xFF
+		2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4,
+	};
+	static_assert(UE_ARRAY_COUNT(BuildingFootprintSizeById70) == 0x90);
+	return BuildingFootprintSizeById70[BuildingId - 0x70];
+}
+
 FSimCopterPeopleSpawnPlacement FSimCopterPeopleCityRules::GetSpawnPlacementForTileClass(int32 TileClass)
 {
 	FSimCopterPeopleSpawnPlacement Placement;
@@ -121,7 +168,7 @@ bool FSimCopterPeopleCityRules::IsAmbientPedestrianTileClass(int32 TileClass)
 
 const TArray<int32>& FSimCopterPeopleCityRules::GetAmbientPedestrianTileClasses()
 {
-	static const TArray<int32> Classes = {13, 11, 10, 12, 7};
+	static const TArray<int32> Classes = {12, 13, 11, 10, 5, 4, 3};
 	return Classes;
 }
 
@@ -144,4 +191,144 @@ const TArray<int32>& FSimCopterPeopleCityRules::GetAmbientStateTileClasses(int32
 	default:
 		return DefaultRow;
 	}
+}
+
+uint16 FSimCopterPeopleCityRules::NextPeopleRandomRaw(uint16& RandomState)
+{
+	const uint16 Step = (RandomState & 0x8000) != 0
+		? uint16((RandomState << 1) ^ 0x1bf5)
+		: uint16(RandomState << 1);
+	RandomState = uint16(RandomState ^ Step);
+	return Step;
+}
+
+uint16 FSimCopterPeopleCityRules::NextPeopleRandomBounded(uint16& RandomState, uint16 Bound)
+{
+	return Bound != 0 ? uint16(NextPeopleRandomRaw(RandomState) % Bound) : 0;
+}
+
+int32 FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(int32 TileClass, uint16& PeopleRandomState)
+{
+	for (int32 Attempt = 0; Attempt < 5; ++Attempt)
+	{
+		int32 CandidateClass = 0;
+		const int32 SpecialRoll = NextPeopleRandomBounded(PeopleRandomState, 0x14);
+		if (SpecialRoll == 0)
+		{
+			CandidateClass = 10;
+		}
+		else if (SpecialRoll == 1)
+		{
+			CandidateClass = 17;
+		}
+		else
+		{
+			// FUN_004c7190. DAT_0058dc3a is initialized to 65000 by FUN_004c3010; event handlers
+			// can lower it later, but the normal ambient city path starts from this value.
+			if (NextPeopleRandomBounded(PeopleRandomState, uint16(65000 >> 2)) == 0)
+			{
+				// FUN_004c7170: 60% class 20, 40% class 11.
+				CandidateClass = NextPeopleRandomBounded(PeopleRandomState, 0x14) > 0x0B ? 0x0B : 0x14;
+			}
+			else
+			{
+				CandidateClass = NextPeopleRandomBounded(PeopleRandomState, 10);
+			}
+		}
+
+		if (GetAmbientStateTileClasses(CandidateClass).Contains(TileClass))
+		{
+			return CandidateClass;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
+FString FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(int32 BehaviorClass)
+{
+	// FUN_004c71c0's switch binds the figure whose 4-char key matches; full privanim.df names
+	// here. Class 6's original key is "BLUE", which matches no privanim figure (the original
+	// leaves the body unbound); the remake substitutes SUIT so the person stays visible.
+	static const TCHAR* FigureByClass[] = {
+		TEXT("Blonde"),     // 0
+		TEXT("Woman"),      // 1
+		TEXT("2woman"),     // 2
+		TEXT("Child"),      // 3
+		TEXT("5man"),       // 4
+		TEXT("fatman"),     // 5
+		TEXT("SUIT"),       // 6 ("BLUE" in the original)
+		TEXT("SUIT"),       // 7
+		TEXT("5.5man"),     // 8
+		TEXT("SHADES"),     // 9
+		TEXT("2DOGG"),      // 10 dog
+		TEXT("2blonde"),    // 11
+		TEXT("Medik"),      // 12
+		TEXT("Fireman"),    // 13
+		TEXT("Kopp"),       // 14
+		TEXT("Badguy"),     // 15
+		TEXT("Nessie"),     // 16
+		TEXT("Coww"),       // 17 cow
+		TEXT("TubaExpert"), // 18
+		TEXT("pilot"),      // 19
+		TEXT("Elvis"),      // 20
+		TEXT("swimmer"),    // 21
+	};
+	if (BehaviorClass >= 0 && BehaviorClass < int32(UE_ARRAY_COUNT(FigureByClass)))
+	{
+		return FigureByClass[BehaviorClass];
+	}
+	return TEXT("5man");
+}
+
+FSimCopterPeopleLocalOffset FSimCopterPeopleCityRules::ChooseSpawnLocalOffset(
+	int32 FootprintSize,
+	int32 PlacementMode,
+	uint16& PeopleRandomState)
+{
+	FSimCopterPeopleLocalOffset Offset;
+	const int32 Extent = FMath::Max(0, FootprintSize) << 5;
+	if (Extent == 0)
+	{
+		return Offset;
+	}
+
+	switch (PlacementMode)
+	{
+	case 0:
+	{
+		const int32 Variable = RandomOffsetInExtent(Extent, PeopleRandomState);
+		const int32 Edge = NextPeopleRandomBounded(PeopleRandomState, 2) == 0 ? 1 - Extent : Extent - 1;
+		if (NextPeopleRandomBounded(PeopleRandomState, 2) == 0)
+		{
+			Offset.OriginalX = Edge;
+			Offset.OriginalY = Variable;
+		}
+		else
+		{
+			Offset.OriginalX = Variable;
+			Offset.OriginalY = Edge;
+		}
+		break;
+	}
+	case 1:
+		Offset.OriginalX = RandomOffsetInExtent(Extent, PeopleRandomState);
+		Offset.OriginalY = RandomOffsetInExtent(Extent, PeopleRandomState);
+		break;
+	case 2:
+	{
+		const int32 HalfExtent = Extent >> 1;
+		Offset.OriginalX = RandomOffsetInExtent(HalfExtent, PeopleRandomState);
+		Offset.OriginalY = RandomOffsetInExtent(HalfExtent, PeopleRandomState);
+		break;
+	}
+	case 3:
+		Offset.OriginalX = RandomOffsetInExtent(Extent, PeopleRandomState);
+		Offset.OriginalY = RandomOffsetInExtent(Extent, PeopleRandomState);
+		break;
+	default:
+		break;
+	}
+
+	return Offset;
 }

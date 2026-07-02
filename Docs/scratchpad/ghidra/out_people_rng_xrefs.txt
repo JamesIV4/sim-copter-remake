@@ -1,0 +1,4 @@
+References to 0058f0d8:
+    004ce9d0  READ  in FUN_004ce9d0 @ 004ce9d0
+    004ce9ef  WRITE  in FUN_004ce9d0 @ 004ce9d0
+    004ce9c4  WRITE  in FUN_004ce9c0 @ 004ce9c0

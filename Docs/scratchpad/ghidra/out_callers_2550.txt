@@ -1,0 +1,13 @@
+Callers of FUN_004c2550 @ 004c2550:
+    004c2ca2  in FUN_004c2ba0 @ 004c2ba0
+    004c2cc5  in FUN_004c2ba0 @ 004c2ba0
+    004c2cd7  in FUN_004c2ba0 @ 004c2ba0
+    004c2d3e  in FUN_004c2ba0 @ 004c2ba0
+    004c2d66  in FUN_004c2ba0 @ 004c2ba0
+    004c2d75  in FUN_004c2ba0 @ 004c2ba0
+    004c2ddc  in FUN_004c2ba0 @ 004c2ba0
+    004c2e08  in FUN_004c2ba0 @ 004c2ba0
+    004c2e13  in FUN_004c2ba0 @ 004c2ba0
+    004c2e70  in FUN_004c2ba0 @ 004c2ba0
+    004c2e93  in FUN_004c2ba0 @ 004c2ba0
+    004c2ea1  in FUN_004c2ba0 @ 004c2ba0
