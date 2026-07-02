@@ -131,6 +131,23 @@ The scratchpad has these notable outputs:
 - `out_traffic_terrain.txt`: original `TRAN` per-tile steering (`FUN_004b5290`), the road-graph dump/structures (`FUN_00495700`), and the `ALTM` altitude/slope helper (`FUN_004abc20`). Source for `OriginalRuntimeBehavior.md` traffic and slope sections.
 - `out_heli_physics.txt`: helicopter master tick (`FUN_00484d20`) and attitude integrator (`FUN_00486a30`).
 - `out_heli_tuning.txt`, `out_heli_callers.txt`, `out_heli_xref.txt`, `out_heli_xref2.txt`, `out_heli_find.txt`, `out_heli_find2.txt`, `out_heli_strings.txt`: heli.twk tuning binding (`FUN_00489e20`), its caller (`FUN_00479bb0`), and the tuning-global readers that locate the flight model.
+- 2026-07-02 pass (full flight model decode, ported to `FSimCopterFlightModel`): `out_heli_flightcore.txt`
+  (control reader `FUN_00485f50`, turbulence/fire-damage generator `FUN_00489800`, velocity
+  integrator `FUN_00486e90`, vertical/ground/landing logic `FUN_00487160`, rotor animation
+  `FUN_00487740`, doors/winch `FUN_00487bb0`, smoke/burn effects `FUN_00489ac0`),
+  `out_heli_landing.txt` (bucket drip `FUN_00488060`, rotor-wash dust `FUN_004881b0`, shadow node
+  `FUN_00485d90`, searchlight ray-march `FUN_00489250`, tile-object AABB collision `FUN_0048ad50`,
+  crash/respawn sequence `FUN_0048a8b0`), `out_heli_math.txt` (16.16 fixed mul/div
+  `FUN_0046c49d`/`FUN_0046c4bf`, Euler matrix `FUN_0047b330`, axis rotators, transpose, normalize),
+  `out_heli_terrain.txt` (terrain height + flat-flag sampler `FUN_004ae7a0`, landing-surface query
+  `FUN_00488850`, forward-vector renormalize `FUN_004882f0`, tenth-degree sin/cos `FUN_0046c4dc`,
+  fire scan `FUN_004a5c10`), `out_heli_inputfns.txt` (virtual-control reads `FUN_0041c2a0`/
+  `FUN_0041c2c0`/`FUN_0041c2e0`), `out_heli_statics.txt` (per-type static block at `0x5040e4`:
+  seats, tail-rotor offsets, NOTAR flag), `out_heli_globals.txt` (landing/rope/damage statics,
+  altitude ceiling `DAT_0050404c` = 800 units), `out_heli_fwdvec.txt` (forward basis = local +Z),
+  `out_heli_input_xref.txt`, `out_dt_xref.txt`, `out_helitick_callers.txt`. Source for
+  `Source/SimCopterRemake/{Public,Private}/Flight/SimCopterFlightModel.*` and the canonical notes
+  in `Docs/memory/simcopter-heli-flight-model.md`.
 - `out_ped_render_xrefs.txt`, `out_ped_anim.txt`, `out_figure_instantiate.txt`, `out_privanim_bind.txt`, `out_figure_vtable.txt`, `out_rendernode_vtables.txt`, `out_rendernode_vtables2.txt`, `out_figure_rendervtable.txt`: the pedestrian render chain (state -> `DAT_0058de80` anim id -> `FUN_004c7090`/`FUN_004c7c00` -> 12-segment figure `FUN_004ce630`/`FUN_004ce6c0`). Source for the `OriginalGameFileFormats.md` render-pipeline section.
 - `out_privanim_parser.txt`, `out_privanim_read.txt`, `out_privanim_chunks.txt`, `out_iff_api.txt`, `out_figure_draw.txt`, `out_figure_recordread.txt`: the `privanim.df` IFF "Doug" container - reader (`FUN_004ce320`), chunk-type register + endian fixup (`FUN_004d1ed0`, handlers `FUN_004d0090`/`FUN_004d00e0`), and the IFF node API. Source for the `privanim.df` on-disk format section.
 - 2026-07-01 pass (privanim container decode finished + walker VM identified): `out_chunkfetch.txt`
@@ -191,8 +208,21 @@ These are the main executable functions currently tied to remake code:
 | `0x004b5290` | `FUN_004b5290` | Original `TRAN` per-tile car steering (coin-flip turning, dead-end reverse). |
 | `0x00495700` | `FUN_00495700` | Road-graph debug dump; reveals `0x38`-byte intersections, 3-byte road tiles, service registries. |
 | `0x00489e20` | `FUN_00489e20` | heli.twk tuning binding (14 controls x 9 types into `0x5c`-byte blocks). |
-| `0x00484d20` | `FUN_00484d20` | Helicopter per-frame master tick (state machine, scene-graph relink, sub-steps). |
-| `0x00486a30` | `FUN_00486a30` | Helicopter attitude integrator (clamp to tuning max, first-order lag, integrate heading). |
+| `0x00484d20` | `FUN_00484d20` | Helicopter per-frame master tick (load factor, sub-steps, fuel burn, ground-impact bounce/damage); ported as `FSimCopterFlightModel::Step`. |
+| `0x00486a30` | `FUN_00486a30` | Helicopter attitude integrator: pitch clamp (+ground-proximity bonus), bank clamped to \|pitch\|+30deg, EMA lag N=((1000-PitchRate)/500)*fps (fps capped 20), heading += yawSmoothed*15*dt, bank-inherits-slide display quirk. |
+| `0x00485f50` | `FUN_00485f50` | Control reader: keys RAMP targets (pitch/slide at Ctrl6 SlideRate*load, turn at RollRate+YawRate*load), analog seeks -axis*{3,6,2}; no-input decay (1-2dt)/(1-4dt); collective +/-1; weapons/doors. |
+| `0x00489800` | `FUN_00489800` | Turbulence + fire damage: amplitude 3 healthy, +(250-fireDist)+(damage/20) otherwise; 9-sample ring buffers averaged into the attitude targets. |
+| `0x00486e90` | `FUN_00486e90` | Velocity integrator: forward speed chases smoothed pitch (1/32 per frame), slide velocity x0.488, pos += vel*dt*0.610 units; bounce timer forces speed = pitchTarget/8. |
+| `0x00487160` | `FUN_00487160` | Vertical/ground: climb ramps (2x rate, cap 4x*load), rotor spool gate 300 before lift, 800-unit AGL ceiling, neutral decay 5%/10% per frame, landing rules vs Heli Landing tweaks + flat-terrain flag, +1.2-unit settle, parked<->flying transitions. |
+| `0x00487740` | `FUN_00487740` | Rotor animation: spool +100/s flying (to 360), -50/s parked, -200/s dying; blade step min(speed*32*dt, 39.1deg)/frame; face-type-11 blur discs toggle at 300; per-type tail offsets + NOTAR hide flag. |
+| `0x00487bb0` | `FUN_00487bb0` | Doors (frames 3..0x11) and winch/bucket: fill +30 lb/frame over water, load capped at MaxLoad, water-throw on hook jerk. |
+| `0x0048ad50` | `FUN_0048ad50` | Tile-object AABB collision test -> damage event + attitude kick; fire-flagged hits set the extinguish latch `DAT_00504058`. |
+| `0x0048a8b0` | `FUN_0048a8b0` | Crash sequence: unlink, explosion + debris ring, burn timers, respawn at nearest pad. |
+| `0x004ae7a0` | `FUN_004ae7a0` | Terrain height sample (two-triangle bilinear over the 16-bit heightfield) + "locally flat" out-flag (corners within 9.0 units) used as the landing gate. |
+| `0x00488850` | `FUN_00488850` | Landing-surface query: max object top under the helicopter footprint, else terrain height. |
+| `0x004a5c10` | `FUN_004a5c10` | Fire scan on the current tile: returns helicopter height above the fire (drives fire damage + shake + AGL HUD). |
+| `0x0046c49d` | `FUN_0046c49d` | 16.16 fixed-point multiply (64-bit intermediate); `FUN_0046c4bf` = divide. |
+| `0x0046c4dc` | `FUN_0046c4dc` | Sin/cos lookup in tenth-degrees (901-entry quarter table at `0x46b530`, wrap 3600). |
 | `0x004d5490` | `FUN_004d5490` | MSVCRT random seed wrapper writing `_holdrand`; relevant to terrain detail and random behavior. |
 | `0x004cfed0` | `FUN_004cfed0` | `privanim` BODC figure-node init: builds the figure's ARCP record-array at `node+0x28` (key `name+"c"`) and ARLU at `node+0x2c` (key `name+"L"`). |
 | `0x004d18e0` | `FUN_004d18e0` | `privanim` ANIP clip-node init: builds the ARPP record-array at `node+0x28` (key `name+"i"`). |

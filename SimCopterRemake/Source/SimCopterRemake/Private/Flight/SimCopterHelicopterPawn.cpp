@@ -28,7 +28,6 @@ namespace
 {
 constexpr float MaxSubstepSeconds = 1.0f / 60.0f;
 constexpr float MaxTickSeconds = 0.1f;
-constexpr float MinImpactDamageSpeedCmPerSec = 260.0f;
 constexpr int32 MaxTweakControls = 64;
 
 bool ReadControlValue(const FSimCopterTweakSection& Section, const TCHAR* LabelPrefix, float& OutValue)
@@ -237,6 +236,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	UpdateGroundProbe();
 	UpdateForwardProbe();
 	UpdateRopeAndBucket(0.0f);
+	SeedFlightModelFromActor();
 }
 
 void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
@@ -508,9 +508,11 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 	};
 
 	// Rotors split into an opaque blade section and a translucent disc section (Maxis face
-	// type 11), so the spinning disc reads as a faint grey haze instead of a solid plate.
-	auto BuildRotorMesh = [this, &FallbackColor](UProceduralMeshComponent* Component, const FMaxisMeshObject& Object, const TArray<FColor>* ColorMap)
+	// type 11). The original engine keeps those faces hidden until the rotor reaches lift
+	// speed (RPM 300), so the disc section index is recorded for the visibility toggle.
+	auto BuildRotorMesh = [this, &FallbackColor](UProceduralMeshComponent* Component, const FMaxisMeshObject& Object, const TArray<FColor>* ColorMap, int32& OutDiscSectionIndex)
 	{
+		OutDiscSectionIndex = INDEX_NONE;
 		FMaxisMeshSection OpaqueSection;
 		FMaxisMeshSection DiscSection;
 		FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OpaqueSection, &DiscSection);
@@ -538,6 +540,8 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 			{
 				Component->SetMaterial(SectionIndex, DiscMaterial);
 			}
+			Component->SetMeshSectionVisible(SectionIndex, false);
+			OutDiscSectionIndex = SectionIndex;
 			++SectionIndex;
 		}
 		return true;
@@ -564,7 +568,8 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 	// its own Z axis at the body origin sweeps the blades correctly.
 	const TArray<FColor>* MainRotorColorMap = nullptr;
 	const FMaxisMeshObject* MainRotorObject = MeshLibrary.FindObjectByTableName(MainRotorName, &MainRotorColorMap);
-	if (MainRotorObject != nullptr && BuildRotorMesh(HeliMainRotorMeshComponent, *MainRotorObject, MainRotorColorMap))
+	MainRotorDiscSectionIndex = INDEX_NONE;
+	if (MainRotorObject != nullptr && BuildRotorMesh(HeliMainRotorMeshComponent, *MainRotorObject, MainRotorColorMap, MainRotorDiscSectionIndex))
 	{
 		HeliMainRotorMeshComponent->SetRelativeLocation(FVector::ZeroVector);
 	}
@@ -572,11 +577,12 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 	// Tail rotor: the shared ROTORTL object is authored centred on its own hub, so place it
 	// near the rear tip of the fuselage and spin it about the lateral (Y) axis.
 	HeliTailRotorMeshComponent->ClearAllMeshSections();
-	if (bShowSeparateTailRotor)
+	TailRotorDiscSectionIndex = INDEX_NONE;
+	if (bShowSeparateTailRotor && !FlightModel.Tuning.bNoTailRotor)
 	{
 		const TArray<FColor>* TailRotorColorMap = nullptr;
 		const FMaxisMeshObject* TailRotorObject = MeshLibrary.FindObjectByTableName(TEXT("ROTORTL"), &TailRotorColorMap);
-		if (TailRotorObject != nullptr && BuildRotorMesh(HeliTailRotorMeshComponent, *TailRotorObject, TailRotorColorMap))
+		if (TailRotorObject != nullptr && BuildRotorMesh(HeliTailRotorMeshComponent, *TailRotorObject, TailRotorColorMap, TailRotorDiscSectionIndex))
 		{
 			const FVector BodyMin = BodySection.LocalBounds.Min;
 			const FVector BodyMax = BodySection.LocalBounds.Max;
@@ -603,7 +609,6 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	VelocityCmPerSec = FVector::ZeroVector;
 	CurrentPitchDeg = 0.0f;
 	CurrentRollDeg = 0.0f;
-	CurrentYawRateDegPerSec = 0.0f;
 	bEngineRunning = false;
 	bEngineStartHeld = false;
 	bEngineShutdownHeld = false;
@@ -616,6 +621,7 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	BucketWaterFraction = 0.0f;
 	bIsLanded = false;
 	SetActorRotation(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	SeedFlightModelFromActor();
 	UpdateGroundProbe();
 }
 
@@ -872,8 +878,6 @@ void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 			bEngineRunning = false;
 			EngineShutdownHoldElapsed = 0.0f;
 			EngineShutdownHoldAlpha = 0.0f;
-			CurrentYawRateDegPerSec = 0.0f;
-			CollectiveInput = 0.0f;
 		}
 	}
 	else if (!bEngineShutdownHeld || !bIsLanded)
@@ -887,66 +891,243 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 {
 	UpdateEngineState(DeltaSeconds);
 
-	const bool bFlyable = bEngineRunning && CurrentFuelGallons > 0.01f && CurrentDamage < static_cast<float>(HelicopterTuning.MaxDamage);
-	const float EffectivePitchInput = bFlyable ? PitchInput : 0.0f;
-	const float EffectiveRollInput = bFlyable ? RollInput : 0.0f;
-	const float EffectiveYawInput = bFlyable ? YawInput : 0.0f;
-	const float EffectiveCollectiveInput = bFlyable ? CollectiveInput : (bIsLanded ? 0.0f : -0.22f);
-
-	const float TargetPitchDeg = -EffectivePitchInput * HelicopterTuning.MaxPitchDeg;
-	const float TargetRollDeg = EffectiveRollInput * HelicopterTuning.MaxBankDeg;
-	CurrentPitchDeg = FMath::FInterpConstantTo(CurrentPitchDeg, TargetPitchDeg, DeltaSeconds, FMath::Max(1.0f, HelicopterTuning.PitchRateDegPerSec));
-	CurrentRollDeg = FMath::FInterpConstantTo(CurrentRollDeg, TargetRollDeg, DeltaSeconds, FMath::Max(1.0f, HelicopterTuning.RollRateDegPerSec));
-
-	const float TargetYawRate = EffectiveYawInput * HelicopterTuning.MaxYawRateDegPerSec;
-	CurrentYawRateDegPerSec = FMath::FInterpConstantTo(
-		CurrentYawRateDegPerSec,
-		TargetYawRate,
-		DeltaSeconds,
-		FMath::Max(20.0f, HelicopterTuning.YawAccelDegPerSec * 3.0f));
-
-	FRotator DesiredRotation = GetActorRotation();
-	DesiredRotation.Pitch = 0.0f;
-	DesiredRotation.Roll = 0.0f;
-	DesiredRotation.Yaw += CurrentYawRateDegPerSec * DeltaSeconds;
-
-	const FRotationMatrix DesiredYawFrame(FRotator(0.0f, DesiredRotation.Yaw, 0.0f));
-	const FVector Forward = DesiredYawFrame.GetUnitAxis(EAxis::X);
-	const FVector Right = DesiredYawFrame.GetUnitAxis(EAxis::Y);
-	const float ForwardSpeedLimit = EffectivePitchInput >= 0.0f ? MaxForwardSpeedCmPerSec : MaxForwardSpeedCmPerSec * MaxReverseSpeedFraction;
-	const FVector DesiredHorizontalVelocity =
-		Forward * (EffectivePitchInput * ForwardSpeedLimit) +
-		Right * (EffectiveRollInput * MaxSlideSpeedCmPerSec);
-
-	const float LiftLoad = bRopeDeployed ? BucketWaterFraction * (RopeTuning.RopeLoadFactor / 100.0f) : 0.0f;
-	const float LoadMultiplier = FMath::Clamp(1.0f - LiftLoad * 0.32f, 0.45f, 1.0f);
-	const float HorizontalResponse = FMath::Max(1.5f, HelicopterTuning.SlideResponse / 24.0f);
-	const FVector HorizontalVelocity = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f);
-	const FVector NewHorizontalVelocity = FMath::VInterpTo(HorizontalVelocity, DesiredHorizontalVelocity * LoadMultiplier, DeltaSeconds, HorizontalResponse);
-
-	float TargetVerticalVelocity = EffectiveCollectiveInput * HelicopterTuning.ClimbRateCmPerSec * LoadMultiplier;
-	if (TargetVerticalVelocity < 0.0f)
+	if (!bFlightModelSeeded)
 	{
-		TargetVerticalVelocity *= 1.15f;
-	}
-	if (bIsLanded && EffectiveCollectiveInput <= 0.12f)
-	{
-		TargetVerticalVelocity = 0.0f;
-	}
-	VelocityCmPerSec = FVector(NewHorizontalVelocity.X, NewHorizontalVelocity.Y, FMath::FInterpTo(VelocityCmPerSec.Z, TargetVerticalVelocity, DeltaSeconds, HoverDamping));
-
-	if (bIsLanded)
-	{
-		VelocityCmPerSec.X = FMath::FInterpTo(VelocityCmPerSec.X, 0.0f, DeltaSeconds, 8.0f);
-		VelocityCmPerSec.Y = FMath::FInterpTo(VelocityCmPerSec.Y, 0.0f, DeltaSeconds, 8.0f);
+		SeedFlightModelFromActor();
 	}
 
-	MoveWithCollision(VelocityCmPerSec * DeltaSeconds, DesiredRotation, DeltaSeconds);
+	// The rope load rides along in the original weight budget (person + cargo
+	// pounds against seats*120 + MaxLoad + 30).
+	FlightModel.LoadPounds = bRopeDeployed ? FMath::RoundToInt(BucketWaterFraction * static_cast<float>(HelicopterTuning.MaxLoadPounds)) : 0;
+
+	const FSimCopterFlightInputs Inputs = BuildFlightInputs();
+	const FSimCopterFlightEnvironment Environment = BuildFlightEnvironment();
+	FlightModel.Step(DeltaSeconds, Inputs, Environment, LastFlightEvents);
+
+	ApplyFlightModelToActor(DeltaSeconds);
 	UpdateGroundProbe();
 	UpdateForwardProbe();
-	UpdateLandingState(DeltaSeconds);
-	UpdateFuel(DeltaSeconds);
 	UpdateRopeAndBucket(DeltaSeconds);
+
+	// Mirror the simulation status onto the pawn's HUD-facing state.
+	bIsLanded = FlightModel.State == ESimCopterFlightState::Parked;
+	CurrentFuelGallons = SimCopterFixed::ToFloat(FlightModel.Fuel);
+	CurrentDamage = FMath::Clamp(
+		static_cast<float>(FlightModel.Tuning.MaxDamage - FlightModel.HitPoints),
+		0.0f,
+		static_cast<float>(FlightModel.Tuning.MaxDamage));
+
+	// The original respawns a destroyed helicopter at the nearest pad; the
+	// remake has no pad registry yet, so it repairs in place where it crashed.
+	if (LastFlightEvents.bCrashed)
+	{
+		bEngineRunning = false;
+		SeedFlightModelFromActor();
+	}
+}
+
+void ASimCopterHelicopterPawn::SeedFlightModelFromActor()
+{
+	ApplyFlightTuningToModel();
+
+	const float CapsuleHalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	const FVector Location = GetActorLocation();
+	const float Unit = FMath::Max(OriginalUnitToCm, 0.01f);
+	FlightModel.ResetOnSurface(
+		SimCopterFixed::FromFloat(Location.Y / Unit),
+		SimCopterFixed::FromFloat(Location.X / Unit),
+		SimCopterFixed::FromFloat((Location.Z - CapsuleHalfHeight) / Unit) - 0x13333);
+	FlightModel.Heading = SimCopterFixed::WrapAngle(SimCopterFixed::FromFloat(FRotator::ClampAxis(GetActorRotation().Yaw) * 10.0f));
+	bFlightModelSeeded = true;
+}
+
+void ASimCopterHelicopterPawn::ApplyFlightTuningToModel()
+{
+	// Convert the tweak-derived float tuning back to the original units the
+	// decompiled model runs in: tenth-degrees, world units (tile/64), 16.16.
+	FSimCopterFlightTuning Tuning;
+	const float AngleScale = 10.0f; // degrees -> tenth-degrees
+	Tuning.MaxBank = SimCopterFixed::FromFloat(HelicopterTuning.MaxBankDeg * AngleScale);
+	Tuning.MaxSlide = SimCopterFixed::FromFloat(HelicopterTuning.MaxSlideDeg * AngleScale);
+	Tuning.MaxPitch = SimCopterFixed::FromFloat(HelicopterTuning.MaxPitchDeg * AngleScale);
+	Tuning.PitchRate = SimCopterFixed::FromFloat(HelicopterTuning.PitchRateDegPerSec * AngleScale);
+	Tuning.YawRate = SimCopterFixed::FromFloat(HelicopterTuning.YawAccelDegPerSec);
+	Tuning.RollRate = SimCopterFixed::FromFloat(HelicopterTuning.RollRateDegPerSec * AngleScale);
+	Tuning.SlideRate = SimCopterFixed::FromFloat(HelicopterTuning.SlideResponse);
+	Tuning.ClimbRate = SimCopterFixed::FromFloat(HelicopterTuning.ClimbRateCmPerSec / FMath::Max(TweakClimbToCmPerSec, 1.0f));
+	Tuning.MaxLoadPounds = HelicopterTuning.MaxLoadPounds;
+	Tuning.MaxYawRate = SimCopterFixed::FromFloat(HelicopterTuning.MaxYawRateDegPerSec);
+	Tuning.FuelRateGalPerHour = SimCopterFixed::FromFloat(HelicopterTuning.FuelRateGallonsPerHour);
+	Tuning.MaxDamage = HelicopterTuning.MaxDamage;
+	Tuning.FuelGallons = SimCopterFixed::FromFloat(HelicopterTuning.FuelGallons);
+
+	Tuning.LandMaxPitch = SimCopterFixed::FromFloat(LandingTuning.MaxPitchDeg * AngleScale);
+	Tuning.LandMaxSlide = SimCopterFixed::FromFloat(LandingTuning.MaxRollDeg * AngleScale);
+	Tuning.LandMaxSpeed = SimCopterFixed::FromFloat(LandingTuning.MaxHorizontalSpeedCmPerSec / FMath::Max(TweakSpeedToCmPerSec, 1.0f));
+	Tuning.LandMaxYSpeed = SimCopterFixed::FromFloat(LandingTuning.MaxVerticalSpeedCmPerSec / FMath::Max(TweakSpeedToCmPerSec, 1.0f));
+	Tuning.MaxDescentRate = SimCopterFixed::FromFloat(LandingTuning.MaxDescentRateCmPerSec / FMath::Max(TweakSpeedToCmPerSec, 1.0f));
+
+	Tuning.MinFireAlt = SimCopterFixed::FromFloat(DamageTuning.MinFireAltitudeCm / FMath::Max(TweakAltitudeToCm, 1.0f));
+	Tuning.MaxFireAlt = SimCopterFixed::FromFloat(DamageTuning.MaxFireAltitudeCm / FMath::Max(TweakAltitudeToCm, 1.0f));
+	Tuning.CollisionSubtract = FMath::RoundToInt(DamageTuning.CollisionDamageScale);
+
+	// Static per-type data from the executable's tuning block (DAT_005040e4 +
+	// type*0x5c): passenger seats at +0x00 and the no-tail-rotor flag at +0x38
+	// (set for the NOTAR airframes).
+	struct FHelicopterTypeStats
+	{
+		const TCHAR* TypeName;
+		int32 PassengerSeats;
+		bool bNoTailRotor;
+	};
+	static const FHelicopterTypeStats TypeStats[] = {
+		{ TEXT("Jet Ranger"), 4, false },
+		{ TEXT("Hughes 500"), 4, false },
+		{ TEXT("Apache"), 0, false },
+		{ TEXT("Bell 212"), 14, false },
+		{ TEXT("Schwiezer 300"), 2, false },
+		{ TEXT("Agusta"), 7, false },
+		{ TEXT("Dauphin"), 13, false },
+		{ TEXT("MDEXPLORER"), 7, true },
+		{ TEXT("MD520"), 4, true },
+	};
+	const FString Trimmed = HelicopterTypeName.TrimStartAndEnd();
+	for (const FHelicopterTypeStats& Stats : TypeStats)
+	{
+		if (Trimmed.Equals(Stats.TypeName, ESearchCase::IgnoreCase))
+		{
+			Tuning.PassengerSeats = Stats.PassengerSeats;
+			Tuning.bNoTailRotor = Stats.bNoTailRotor;
+			break;
+		}
+	}
+
+	FlightModel.Tuning = Tuning;
+	FlightModel.HitPoints = FMath::Min(FlightModel.HitPoints, Tuning.MaxDamage);
+	FlightModel.Fuel = FMath::Min(FlightModel.Fuel, Tuning.FuelGallons);
+}
+
+FSimCopterFlightInputs ASimCopterHelicopterPawn::BuildFlightInputs() const
+{
+	// Maps the pawn's input axes onto the original virtual controls read by
+	// FUN_00485f50. Digital axes act as the original keyboard keys, which RAMP
+	// the attitude targets (the classic trim-and-hold feel) rather than seek a
+	// stick-proportional target.
+	FSimCopterFlightInputs Inputs;
+	if (!bEngineRunning)
+	{
+		return Inputs; // controls dead; the rotor spools down in the model
+	}
+
+	constexpr float KeyThreshold = 0.25f;
+	Inputs.bPitchForwardKey = PitchInput > KeyThreshold;
+	Inputs.bPitchBackKey = PitchInput < -KeyThreshold;
+	Inputs.bTurnRightKey = RollInput > KeyThreshold;
+	Inputs.bTurnLeftKey = RollInput < -KeyThreshold;
+	Inputs.bSlideRightKey = YawInput > KeyThreshold;
+	Inputs.bSlideLeftKey = YawInput < -KeyThreshold;
+	if (CollectiveInput > KeyThreshold)
+	{
+		Inputs.ClimbCommand = 1;
+	}
+	else if (CollectiveInput < -KeyThreshold)
+	{
+		Inputs.ClimbCommand = -1;
+	}
+	return Inputs;
+}
+
+FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() const
+{
+	// Backs the original's heightfield/object queries with a downward trace,
+	// the same compromise the ground agents use: the first surface below is
+	// both the terrain and the landing surface, and building sides are handled
+	// by the movement sweep instead of tile-object boxes.
+	FSimCopterFlightEnvironment Environment;
+	const float Unit = FMath::Max(OriginalUnitToCm, 0.01f);
+	const FVector Location = GetActorLocation();
+	const int32 FallbackHeight = SimCopterFixed::FromFloat((Location.Z - 10000.0f) / Unit);
+	Environment.TerrainHeight = FallbackHeight;
+	Environment.SurfaceHeight = FallbackHeight;
+
+	if (GetWorld() == nullptr)
+	{
+		return Environment;
+	}
+
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterFlightSurface), false, this);
+	const FVector Start(Location.X, Location.Y, Location.Z + 20000.0f);
+	const FVector End(Location.X, Location.Y, Location.Z - 30000.0f);
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	{
+		const int32 SurfaceHeight = SimCopterFixed::FromFloat(Hit.ImpactPoint.Z / Unit);
+		Environment.TerrainHeight = SurfaceHeight;
+		Environment.SurfaceHeight = SurfaceHeight;
+		Environment.bTerrainFlat = Hit.ImpactNormal.Z >= LandingFlatNormalZ;
+
+		const bool bWater =
+			(Hit.GetActor() != nullptr && NameSuggestsWater(Hit.GetActor()->GetFName())) ||
+			(Hit.GetComponent() != nullptr && NameSuggestsWater(Hit.GetComponent()->GetFName())) ||
+			Hit.ImpactPoint.Z <= WaterFillWorldZ + 5.0f;
+		if (bWater)
+		{
+			// Original: tile class < 10 with nothing built - splash bounce, no
+			// landing (FUN_00487160 clears the flat flag on those tiles).
+			Environment.bHostileSurface = true;
+			Environment.bTerrainFlat = false;
+		}
+	}
+
+	return Environment;
+}
+
+void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
+{
+	if (RootComponent == nullptr)
+	{
+		return;
+	}
+
+	// Axis mapping: sim X/Z are the original world axes with forward =
+	// (sin Heading, cos Heading); placing sim Z on UE X and sim X on UE Y makes
+	// UE yaw = Heading/10 with the turn/slide signs matching the lean.
+	const float Unit = FMath::Max(OriginalUnitToCm, 0.01f);
+	const float CapsuleHalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	const FVector NewLocation(
+		SimCopterFixed::ToFloat(FlightModel.PosZ) * Unit,
+		SimCopterFixed::ToFloat(FlightModel.PosX) * Unit,
+		SimCopterFixed::ToFloat(FlightModel.Altitude) * Unit + CapsuleHalfHeight);
+	const FRotator NewRotation(0.0f, SimCopterFixed::ToFloat(FlightModel.Heading) / 10.0f, 0.0f);
+
+	FHitResult BlockingHit;
+	RootComponent->MoveComponent(NewLocation - GetActorLocation(), NewRotation.Quaternion(), true, &BlockingHit);
+	if (BlockingHit.IsValidBlockingHit() && FMath::Abs(BlockingHit.Normal.Z) < 0.6f)
+	{
+		// Hit a wall: run the original object-collision response (damage plus
+		// an attitude kick away from the motion direction and a bounce up).
+		FlightModel.NotifyObjectCollision(LastFlightEvents);
+	}
+
+	// Write the possibly blocked position back so the simulation stays in
+	// lockstep with the actor.
+	const FVector Applied = GetActorLocation();
+	FlightModel.PosZ = SimCopterFixed::FromFloat(Applied.X / Unit);
+	FlightModel.PosX = SimCopterFixed::FromFloat(Applied.Y / Unit);
+	FlightModel.Altitude = SimCopterFixed::FromFloat((Applied.Z - CapsuleHalfHeight) / Unit);
+
+	// Display attitude: the original builds the render matrix from the pitch
+	// *target* and the smoothed bank (which inherits the slide when larger).
+	CurrentPitchDeg = -SimCopterFixed::ToFloat(FlightModel.DisplayPitchTenthDeg()) / 10.0f;
+	CurrentRollDeg = -SimCopterFixed::ToFloat(FlightModel.DisplayBankTenthDeg()) / 10.0f;
+
+	// HUD/back-compat velocity in UE space. Horizontal motion integrates at
+	// 40000/65536 units per unit of speed; climb integrates directly.
+	constexpr float PositionScale = 40000.0f / 65536.0f;
+	VelocityCmPerSec = FVector(
+		SimCopterFixed::ToFloat(FlightModel.VelZ) * PositionScale * Unit,
+		SimCopterFixed::ToFloat(FlightModel.VelX) * PositionScale * Unit,
+		SimCopterFixed::ToFloat(FlightModel.ClimbSpeed) * Unit);
 }
 
 void ASimCopterHelicopterPawn::UpdateGroundProbe()
@@ -1008,111 +1189,6 @@ void ASimCopterHelicopterPawn::UpdateForwardProbe()
 	}
 }
 
-void ASimCopterHelicopterPawn::UpdateLandingState(float DeltaSeconds)
-{
-	if (!LastGroundHit.bBlockingHit || CollisionComponent == nullptr)
-	{
-		bIsLanded = false;
-		return;
-	}
-
-	const bool bTouchingSurface = GroundClearanceCm <= GroundContactTolerance;
-	const bool bSurfaceCanLand = FVector::DotProduct(LastGroundHit.ImpactNormal, FVector::UpVector) >= 0.62f;
-	const float HorizontalSpeed = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Size();
-	const float VerticalSpeed = FMath::Abs(VelocityCmPerSec.Z);
-	const float DescentSpeed = FMath::Max(0.0f, -VelocityCmPerSec.Z);
-	const bool bAttitudeSafe =
-		FMath::Abs(CurrentPitchDeg) <= LandingTuning.MaxPitchDeg &&
-		FMath::Abs(CurrentRollDeg) <= LandingTuning.MaxRollDeg;
-	const bool bSpeedSafe =
-		HorizontalSpeed <= LandingTuning.MaxHorizontalSpeedCmPerSec &&
-		VerticalSpeed <= LandingTuning.MaxVerticalSpeedCmPerSec &&
-		DescentSpeed <= LandingTuning.MaxDescentRateCmPerSec;
-
-	if (bTouchingSurface && bSurfaceCanLand && bAttitudeSafe && bSpeedSafe)
-	{
-		bIsLanded = CollectiveInput <= 0.15f;
-		if (bIsLanded)
-		{
-			const float CapsuleHalfHeight = CollisionComponent->GetScaledCapsuleHalfHeight();
-			const FVector CurrentLocation = GetActorLocation();
-			const FVector LandedLocation(CurrentLocation.X, CurrentLocation.Y, LastGroundHit.ImpactPoint.Z + CapsuleHalfHeight + 2.0f);
-			SetActorLocation(LandedLocation, false);
-			VelocityCmPerSec.Z = 0.0f;
-			CurrentPitchDeg = FMath::FInterpTo(CurrentPitchDeg, 0.0f, DeltaSeconds, 6.0f);
-			CurrentRollDeg = FMath::FInterpTo(CurrentRollDeg, 0.0f, DeltaSeconds, 6.0f);
-		}
-	}
-	else if (bIsLanded && CollectiveInput > 0.2f)
-	{
-		bIsLanded = false;
-	}
-	else if (!bTouchingSurface)
-	{
-		bIsLanded = false;
-	}
-}
-
-void ASimCopterHelicopterPawn::MoveWithCollision(const FVector& DeltaLocation, const FRotator& DesiredRotation, float DeltaSeconds)
-{
-	if (RootComponent == nullptr)
-	{
-		return;
-	}
-
-	FHitResult Hit;
-	RootComponent->MoveComponent(DeltaLocation, DesiredRotation.Quaternion(), true, &Hit);
-	if (Hit.IsValidBlockingHit())
-	{
-		HandleBlockingHit(Hit, DeltaSeconds);
-		const FVector RemainingDelta = DeltaLocation * (1.0f - Hit.Time);
-		const FVector SlideDelta = FVector::VectorPlaneProject(RemainingDelta, Hit.Normal) * 0.55f;
-		FHitResult SlideHit;
-		RootComponent->MoveComponent(SlideDelta, DesiredRotation.Quaternion(), true, &SlideHit);
-		if (SlideHit.IsValidBlockingHit())
-		{
-			HandleBlockingHit(SlideHit, DeltaSeconds);
-		}
-	}
-}
-
-void ASimCopterHelicopterPawn::HandleBlockingHit(const FHitResult& Hit, float DeltaSeconds)
-{
-	const float IntoSurfaceSpeed = FMath::Max(0.0f, -FVector::DotProduct(VelocityCmPerSec, Hit.Normal));
-	if (IntoSurfaceSpeed > MinImpactDamageSpeedCmPerSec && DeltaSeconds > 0.0f)
-	{
-		const float DamageAmount = ((IntoSurfaceSpeed - MinImpactDamageSpeedCmPerSec) / 500.0f) * DamageTuning.CollisionDamageScale;
-		CurrentDamage = FMath::Clamp(CurrentDamage + DamageAmount, 0.0f, static_cast<float>(HelicopterTuning.MaxDamage));
-	}
-
-	VelocityCmPerSec = FVector::VectorPlaneProject(VelocityCmPerSec, Hit.Normal) * 0.42f;
-	if (Hit.Normal.Z > 0.5f && VelocityCmPerSec.Z < 0.0f)
-	{
-		VelocityCmPerSec.Z = 0.0f;
-	}
-}
-
-void ASimCopterHelicopterPawn::UpdateFuel(float DeltaSeconds)
-{
-	if (!bEngineRunning)
-	{
-		return;
-	}
-
-	if (CurrentFuelGallons <= 0.0f)
-	{
-		CurrentFuelGallons = 0.0f;
-		return;
-	}
-
-	const float InputLoad = FMath::Clamp(
-		FMath::Max(FMath::Abs(PitchInput), FMath::Max(FMath::Abs(RollInput), FMath::Max(FMath::Abs(YawInput), FMath::Abs(CollectiveInput)))),
-		0.0f,
-		1.0f);
-	const float BurnMultiplier = 0.35f + InputLoad * 0.65f;
-	CurrentFuelGallons = FMath::Max(0.0f, CurrentFuelGallons - (HelicopterTuning.FuelRateGallonsPerHour / 3600.0f) * BurnMultiplier * DeltaSeconds);
-}
-
 void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 {
 	if (bRopeDeployed)
@@ -1156,17 +1232,15 @@ void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 		ModelPivot->SetRelativeRotation(FRotator(CurrentPitchDeg, 0.0f, CurrentRollDeg));
 	}
 
-	const float RunningDegPerSec = MainRotorRevsPerSec * 360.0f;
-	const float RotorSpeed = bEngineRunning
-		? RunningDegPerSec
-		: (bEngineStartHeld && CurrentFuelGallons > 0.0f ? RunningDegPerSec * 0.35f : 0.0f);
-	RotorSpinDeg = FMath::Fmod(RotorSpinDeg + RotorSpeed * DeltaSeconds, 360.0f);
-
-	// Main rotor spins about the vertical mast (yaw); tail rotor spins about the lateral
-	// axis (pitch). Applied to both the placeholder and original-mesh rotors; only the
-	// active set is visible.
-	const FRotator MainRotorRotation(0.0f, RotorSpinDeg, 0.0f);
-	const FRotator TailRotorRotation(RotorSpinDeg * TailRotorSpeedMultiplier, 0.0f, 0.0f);
+	// Rotor animation comes from the decompiled model (FUN_00487740): the
+	// blade angle advances proportionally while spooling and then strobes at a
+	// fixed 39.1 degrees per simulation step once the rotor passes 250. Both
+	// rotors share the step; the main rotor sweeps the mast (yaw), the tail
+	// rotor its lateral hub (pitch).
+	const float MainAngleDeg = SimCopterFixed::ToFloat(FlightModel.MainRotorAngle) / 10.0f;
+	const float TailAngleDeg = SimCopterFixed::ToFloat(FlightModel.TailRotorAngle) / 10.0f;
+	const FRotator MainRotorRotation(0.0f, MainAngleDeg, 0.0f);
+	const FRotator TailRotorRotation(TailAngleDeg, 0.0f, 0.0f);
 
 	if (MainRotorMeshComponent != nullptr)
 	{
@@ -1175,14 +1249,28 @@ void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 	if (TailRotorMeshComponent != nullptr)
 	{
 		TailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
+		TailRotorMeshComponent->SetVisibility(!FlightModel.Tuning.bNoTailRotor && !bUsingOriginalMesh);
 	}
 	if (HeliMainRotorMeshComponent != nullptr)
 	{
 		HeliMainRotorMeshComponent->SetRelativeRotation(MainRotorRotation);
+		if (MainRotorDiscSectionIndex != INDEX_NONE)
+		{
+			// The original toggles the face-type-11 blur faces on at lift RPM.
+			HeliMainRotorMeshComponent->SetMeshSectionVisible(MainRotorDiscSectionIndex, FlightModel.bRotorBlurDisc);
+		}
 	}
 	if (HeliTailRotorMeshComponent != nullptr)
 	{
 		HeliTailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
+		if (bUsingOriginalMesh)
+		{
+			HeliTailRotorMeshComponent->SetVisibility(bShowSeparateTailRotor && !FlightModel.Tuning.bNoTailRotor);
+		}
+		if (TailRotorDiscSectionIndex != INDEX_NONE)
+		{
+			HeliTailRotorMeshComponent->SetMeshSectionVisible(TailRotorDiscSectionIndex, FlightModel.bRotorBlurDisc);
+		}
 	}
 }
 
@@ -1298,12 +1386,11 @@ FString ASimCopterHelicopterPawn::ResolveOriginalGameRoot() const
 
 void ASimCopterHelicopterPawn::ApplyDerivedTuning()
 {
-	MaxForwardSpeedCmPerSec = FMath::Max(1200.0f, 1200.0f + HelicopterTuning.MaxPitchDeg * 86.0f);
-	MaxSlideSpeedCmPerSec = FMath::Max(650.0f, 350.0f + HelicopterTuning.MaxSlideDeg * 72.0f);
-	HelicopterTuning.SlideResponse = FMath::Max(20.0f, HelicopterTuning.SlideResponse);
-	HelicopterTuning.MaxYawRateDegPerSec = FMath::Max(5.0f, HelicopterTuning.MaxYawRateDegPerSec);
-	LandingTuning.MaxHorizontalSpeedCmPerSec = FMath::Max(100.0f, LandingTuning.MaxHorizontalSpeedCmPerSec);
-	LandingTuning.MaxVerticalSpeedCmPerSec = FMath::Max(100.0f, LandingTuning.MaxVerticalSpeedCmPerSec);
-	LandingTuning.MaxDescentRateCmPerSec = FMath::Max(100.0f, LandingTuning.MaxDescentRateCmPerSec);
+	// The original's airspeed equals the smoothed pitch in tenth-degrees; each
+	// unit of speed moves 40000/65536 world units per second (FUN_00486e90).
+	MaxForwardSpeedCmPerSec = FMath::Max(
+		1.0f,
+		HelicopterTuning.MaxPitchDeg * 10.0f * (40000.0f / 65536.0f) * OriginalUnitToCm);
 	RopeLengthCm = FMath::Clamp(RopeLengthCm, MinRopeLengthCm, MaxRopeLengthCm);
+	ApplyFlightTuningToModel();
 }
