@@ -1,0 +1,23 @@
+STRING @ 004fa244 : TrafficMap
+    <- 004674d9  in FUN_00467070 @ 00467070
+STRING @ 005060e0 : Traffic Miss
+    <- 004ab397  in FUN_004ab170 @ 004ab170
+STRING @ 00627f4c : Report Traffic (Megaphone)
+    (no references)
+STRING @ 006287c0 : Traffic
+    (no references)
+STRING @ 0062a25c : Megaphone -Allows you to communicate with people and cars below. Useful in emergency, traffic and law enforcement missions. Effective range: 300 meters.
+    (no references)
+STRING @ 0062aca0 : Traffic Jam
+    (no references)
+STRING @ 0062dc1c : You Blocked Traffic!
+    (no references)
+STRING @ 006446ba : Riporta traffico (Megafono)
+    (no references)
+STRING @ 00645014 : Traffico
+    (no references)
+STRING @ 00646ccc : Megafono - Lancia ordini alle persone ed alle auto al suolo.  Molto utile nei casi d'emergenza, nel traffico e per le missioni di tutela della legge. Portata effettiva circa 300 m.
+    (no references)
+STRING @ 0064ab3e : Hai bloccato il traffico!
+    (no references)
+=== 11 strings matched 'raffic' ===

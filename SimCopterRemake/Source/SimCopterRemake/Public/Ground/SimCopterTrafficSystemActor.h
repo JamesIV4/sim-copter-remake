@@ -32,6 +32,17 @@ enum class ESimCopterTrafficFlowMode : uint8
 	TrafficJam
 };
 
+// Which car AI drives the traffic. Original = the decoded SimCopter behavior: cars wander the
+// road graph with random turns, queue behind blockers (jams form naturally, and the player's
+// landed helicopter blocks tiles), no traffic lights. Modernized = the remake's traffic-light +
+// blockage-recovery system, kept for comparison/backup.
+UENUM(BlueprintType)
+enum class ESimCopterTrafficAiMode : uint8
+{
+	Original,
+	Modernized
+};
+
 // Lightweight whole-map population entry: the entire city is simulated as records; full agents
 // ("beamed" figures, in the original's terms) only exist near the camera. Far records render as
 // two instanced-mesh batches.
@@ -77,6 +88,7 @@ public:
 		int32& OutFileX,
 		int32& OutFileY) const;
 	int32 GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const;
+	bool TryGetTerrainWorldZAtWorldLocation(const FVector& WorldLocation, float& OutTerrainWorldZ) const;
 	int32 GetPeopleStoredFacingFromWorldLocations(
 		const FVector& FromWorldLocation,
 		const FVector& ToWorldLocation) const;
@@ -156,6 +168,17 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float VehicleRightTurnCornerClipTileFraction = 0.14f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic")
+	ESimCopterTrafficAiMode TrafficAiMode = ESimCopterTrafficAiMode::Original;
+
+	// Original mode: a car stops when the player (helicopter or on foot) blocks the lane ahead,
+	// like the original's "You Blocked Traffic!" behavior.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic", meta = (ClampMin = "0.0"))
+	float PlayerRoadBlockLookAheadCm = 700.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic", meta = (ClampMin = "0.0"))
+	float PlayerRoadBlockLaneWidthCm = 420.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic")
 	ESimCopterTrafficFlowMode TrafficFlowMode = ESimCopterTrafficFlowMode::Normal;
@@ -274,6 +297,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "1.0"))
 	float VehicleSlowDistanceCm = 430.0f;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "1.0"))
+	float VehicleIntersectionSlowDistanceCm = 620.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VehicleIntersectionCruiseSpeedScale = 0.72f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float VehicleIntersectionTurnSpeedScale = 0.44f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float VehicleIntersectionBrakeRate = 4.5f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
 	float PedestrianCarLookAheadCm = 700.0f;
 
@@ -388,9 +423,11 @@ private:
 	void UpdateAgentPool(float DeltaSeconds);
 	void PruneAgentArray(TArray<TWeakObjectPtr<ASimCopterGroundAgent>>& Agents, const FVector& FocusLocation);
 	void UpdateTrafficInteractions(float DeltaSeconds);
+	void ApplyPlayerRoadBlocking();
 	void SyncVehicleTrafficStates(float DeltaSeconds);
 	void ApplyTrafficLights(float DeltaSeconds);
 	void ApplyVehicleFollowing(float LookAheadCm, float StopDistanceCm, float SlowDistanceCm, bool bUseNormalBraking, float DeltaSeconds);
+	void ApplyIntersectionApproachSlowdown(float DeltaSeconds);
 	void ResolveVehicleOverlaps();
 	void UpdateVehicleBlockageRecovery();
 	void ApplyVehicleLaneGuidance(float DeltaSeconds);

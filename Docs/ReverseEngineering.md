@@ -114,6 +114,14 @@ Terrain ground texture (decoded and implemented for the SC2 city area). The grou
 
 This yields the original behavior visible in captures: natural terrain blends across water/shore/grass/dirt/rock bands, while roads, buildings, and other man-made surfaces remain crisp. The original's water/coastal-water animation cycle is not yet reproduced (static frame 0 is used).
 
+`FUN_004abce0` also **conditions the tmap height grid itself** before anything reads it (decoded 2026-07-02, full decompile at `Docs/scratchpad/ghidra/out_tmap_build.txt`; remake port `BuildConditionedTerrainCornerSamples` in `SimCity2000CityActor.cpp`):
+1. Seeding: tile centers store `(height step + 1) * 0x20` (ALTM bits 0-4, replaced by water alt bits 5-9 when higher and `XTER >= 0x10`; tunnels `XTER 0x0d/0x0e` add one step); in-between grid points average their neighbors, and the final 128x128 grid keeps the averaged points (one corner per tile edge crossing). Global min/max height (`DAT_005bde70`/`DAT_005ce090`, padded by `-0x32`/`+100`) are captured here for the type-grid bands.
+2. Water dip: plain-ground water tiles (`XTER > 0x0f`, XBLD not trees/parks/`0xf8`) at even/even tile coordinates lower their origin corner by 8 (a quarter step) - subtle water waviness.
+3. **Auto-flatten**: every building tile (XBLD `>= 0x70`) and every flat network tile (XBLD `0x1d`, `0x1e`, `0x23..0x2d`, `0x32..0x3a` - roads, rails, intersections, crossings) forces **all four of its tmap corners** to the tile's own ALTM sample. This is why terrain never pokes through buildings or flat roads in the original.
+4. **Raised-span ramps**: XBLD `0x3f..0x42` (raised span pieces, object ids `0x178..0x17b`) pull one corner pair a full step (`+0x20`) above the opposite edge: `0x3f` raises the two low-X corners to `corner(x+1, y) + 0x20`, `0x41` mirrors (+X side), `0x40` raises the low-Y pair to `corner(x+1, y+1) + 0x20`, `0x42` mirrors (+Y side). The terrain under the span becomes the exact wedge the model expects - no gaps under up/down sloped road pieces. The pass is one raster sweep (Y outer, X inner) whose ramp reads see earlier writes, so the port keeps the same in-order sweep.
+5. Not conditioned: bridges `0x49..0x59`, highways/onramps `0x5d..0x6b`, tunnels, and natural tiles keep the seeded terrain (bridge decks float above it by design).
+The remake threads the conditioned corner grid through `BuildTerrainTextureTypeGrid` (band averages), `BuildProceduralExtendedTerrain`, `AppendTerrainTile` (terrain quad corners), and `IsOriginalTerrainTileFlat` (bridge dispatch), all built once per `RebuildCity`.
+
 The reusable headless exploration script is tracked at `Tools/Ghidra/ReverseExplore.java`.
 
 ## SimCopter Geometry Assets

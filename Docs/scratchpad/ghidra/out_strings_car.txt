@@ -1,0 +1,257 @@
+STRING @ 004f8484 : career.bmp
+    <- 00457ccf  in FUN_00457c90 @ 00457c90
+    <- 00411d79  in FUN_00411ca0 @ 00411ca0
+    <- 004f84bc  (no func)
+    <- 004f99e4  (no func)
+    <- 00411c30  in FUN_00411be0 @ 00411be0
+STRING @ 004f8fcc : cities\career\
+    <- 00432879  (no func)
+    <- 00432884  (no func)
+    <- 0043285d  (no func)
+STRING @ 004f99b4 : career.wav
+    <- 00457f2e  in FUN_00457c90 @ 00457c90
+    <- 004f99f4  (no func)
+STRING @ 004f99c0 : carsel.wav
+    <- 00457e33  in FUN_00457c90 @ 00457c90
+    <- 004f99f0  (no func)
+STRING @ 004f99d8 : carsel.bmp
+    <- 004587b4  (no func)
+    <- 004587ba  (no func)
+    <- 004f99e8  (no func)
+STRING @ 00626bf8 : Open A SimCopter Career Game
+    (no references)
+STRING @ 00626c32 : Career Games (*.scc)?*.scc?All Files (*.*)?*.*??
+    (no references)
+STRING @ 00626cca : Save A SimCopter Career Game
+    (no references)
+STRING @ 00626d82 : New Career Game
+    (no references)
+STRING @ 00626da2 : Open Career Game
+    (no references)
+STRING @ 0062704e : Police Car
+    (no references)
+STRING @ 00627234 : power cart
+    (no references)
+STRING @ 00627408 : Artists' Office\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 00627654 : QA Office\r\n   Mike Gilmartin, Cathy Castro, Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen, Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth, Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines, Ira Katz, Joe Ellis\r\n   Ken Mace, Russell Johnson, Andy 'Mr. Fabulous' Derber, Liam Patterson\r\n   Zir-Paul Macaraeg, Fred Cooley, Mike Chan
+    (no references)
+STRING @ 0062803a : Drop Carried Person
+    (no references)
+STRING @ 00628e5e : MAX AERO\n3547 N. CAROLINA AVE.\nSIMCITY, SIMWORLD\n(707) 492-3154
+    (no references)
+STRING @ 0062978c : Utility and corporate use.\nRetractable wheeled undercarriage.
+    (no references)
+STRING @ 0062a25c : Megaphone -Allows you to communicate with people and cars below. Useful in emergency, traffic and law enforcement missions. Effective range: 300 meters.
+    (no references)
+STRING @ 0062a9f0 : Career Advancement, Award: %ld Bucks
+    (no references)
+STRING @ 0062ac88 : Burning Car
+    (no references)
+STRING @ 0062ad7e : ²Designed by\n¥Will Wright\n¥\n²Publishing Director\n¥Brian Conrad\n¥\n²Produced by\n¥Jim Siefert\n¥\n²Lead Programmer\n¥Ed Goldman\n¥\n²Programmers\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\n²Lead Artist\n¥Ocean Quigley\n¥\n²Artwork\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Art Director)\n¥\n²Music and Sound Effects\n¥Jerry Martin\n¥\n²Tekno Station\n¥Jerry Martin, synthesizers\n¥\n²Rock Station\n¥Jerry Martin, guitar\n¥
+    (no references)
+STRING @ 0062b39c : ²QA\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n²Localization\n¥Knut Grossmann\n¥\n²Additional Programming\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 0062bb94 : ²Marketing\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Manufacturing Vice\n²President of Operations\n¥Val Garcia\n¥\n²Manufacturing Manager\n¥Marty Chan\n¥\n²Manufacturing\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Package\n¥Jamie Davison Design,\n¥   Maia Graff\n¥\n²Package Illustration\n¥David Schleinkofer\n¥\n²Special Thanks\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 0062bf08 : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman\n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Uses Smacker Video Technology\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Portions Copyright 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 0062c89a : You can't open saved games in this demo. Select 'New Career Game' or 'New User Game'
+    (no references)
+STRING @ 0062c944 : In the retail version of SimCopter, you would now graduate to the next (tougher!) career level.
+    (no references)
+STRING @ 0062cd3a : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 0062da42 : Car UnJammed!
+    (no references)
+STRING @ 0062db6e : Cars Waiting!
+    (no references)
+STRING @ 0062ddce : That carbon-based biped has much sincerity of purpose.
+    (no references)
+STRING @ 0062f214 : Votre carte vidéo ne prend pas en charge SimCopter. Vous devez acquérir des pilotes ou une carte vidéo plus récents.
+    (no references)
+STRING @ 0062f8e8 : Ouvrir un jeu de carrière SimCopter
+    (no references)
+STRING @ 0062f930 : Jeux de carrière (*.scc)?*.scc?Tous fichiers (*.*)?*.*??
+    (no references)
+STRING @ 0062f9f4 : Enregistrer un jeu de carrière SimCopter
+    (no references)
+STRING @ 0062faec : Nouveau jeu carrière
+    (no references)
+STRING @ 0062fb16 : Ouvrir jeu carrière
+    (no references)
+STRING @ 00630248 : Artistes\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 00630478 : Département QA\r\n   Mike Gilmartin, Cathy Castro\r\n   Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen\r\n   Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth\r\n   Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines\r\n   Ira Katz, Joe Ellis, Ken Mace\r\n   Russell Johnson, Andy Derber\r\n   Liam Patterson, Zir-Paul Macaraeg\r\n   Fred Cooley, Mike Chan 
+    (no references)
+STRING @ 00630d0e : Carte en gros plan
+    (no references)
+STRING @ 00630d34 : Carte en plan général
+    (no references)
+STRING @ 006343c0 : Carburant
+    (no references)
+STRING @ 0063441c : ²Conçu par\n¥Will Wright\n¥\n²Directeur de publication\n¥Brian Conrad\n¥\n²Produit par \n¥Jim Siefert\n¥\n²Responsable programmation\n¥Ed Goldman\n¥\n²Programmeurs\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\n²Responsable artistique\n¥Ocean Quigley\n¥\n²Art\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Directeur de Art)\n¥\n²Musique et effets sonores\n¥Jerry Martin\n¥\n²Station Tekno\n¥Jerry Martin, synthesizers\n¥\n²Station Rock\n¥Jerry Martin, guitare\n¥
+    (no references)
+STRING @ 00634a8c : ²QA\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n²Localisation\n¥Knut Grossmann\n¥\n²Programmation supplémentaire\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 00635290 : ²Marketing\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Vice\n²Président des opérations\n¥Val Garcia\n¥\n²Responsable de la fabrication\n¥Marty Chan\n¥\n²Fabrication\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Emballage\n¥Jamie Davison Design,\n¥Maia Graff\n¥\n²Illustration de l'emballage\n¥David Schleinkofer\n¥\n²Remerciements spéciaux\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 00635612 : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman\n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Utilisation de la technologie vidéo Smacker\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Portions Copyright 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 00635c8c : Initialisation de la carte
+    (no references)
+STRING @ 00636060 : Vous ne pouvez pas ouvrir des jeux enregistrés dans cette démo. Sélectionnez 'Nouveau jeu de carrière' ou 'Nouveau jeu Utilisateur'
+    (no references)
+STRING @ 00636572 : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 00636e72 : Niveau de carburant très bas
+    (no references)
+STRING @ 0063795c : Ce bipède carbonique a un grand sens du devoir.
+    (no references)
+STRING @ 0063a250 : Büro der Graphiker\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 0063a4a8 : Qualitätskontrolle\r\n   Mike Gilmartin, Cathy Castro\r\n   Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen\r\n   Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth\r\n   Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines\r\n   Ira Katz, Joe Ellis, Ken Mace\r\n   Russell Johnson, Andy Derber\r\n   Liam Patterson, Zir-Paul Macaraeg\r\n   Fred Cooley, Mike Chan
+    (no references)
+STRING @ 0063e0b4 : ²Entwurf und Idee\n¥Will Wright\n¥\n²Leitung der Publikation\n¥Brian Conrad\n¥\n²Produktionsleitung\n¥Jim Siefert\n¥\n²Programmierleitung\n¥Ed Goldman\n¥\n²Programmierer\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\n²Graphische Leitung\n¥Ocean Quigley\n¥\n²Graphiken\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Graphik-Manager)\n¥\n²Musik und Geräuscheffekte\n¥Jerry Martin\n¥\n²Technomusik\n¥Jerry Martin, Synthesizers\n¥\n²Rockmusik\n¥Jerry Martin, Gitarre\n¥
+    (no references)
+STRING @ 0063e772 : ²Qualitätskontrolle\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n²Localization\n¥Knut Grossmann\n¥\n²Weitere Programmierer\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 0063ef88 : ²Marketing\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Produktionsleitung,\n²stellv. Geschäftsführer\n¥Val Garcia\n¥\n²Produktionsmanager\n¥Marty Chan\n¥\n²Produktion\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Verpackung\n¥Jamie Davison Design,\n¥   Maia Graff\n¥\n²Verpackungs-Illustration\n¥David Schleinkofer\n¥\n²Besonderen Dank an\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 0063f308 : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman \n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Benutzt wurde folgende Software: Smacker Video Technology\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Portions Copyright 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 006401a8 : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 0064289e : È accaduto un errore irreversibile e SimCopter verrà chiuso. Vuoi cercare di salvare l'avventura su disco?
+    (no references)
+STRING @ 00643a1a : Ufficio degli Artisti\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 00643c7a : Ufficio Qualità\r\n   Mike Gilmartin, Cathy Castro\r\n   Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen\r\n   Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth\r\n   Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines\r\n   Ira Katz, Joe Ellis, Ken Mace\r\n   Russell Johnson, Andy Derber\r\n   Liam Patterson, Zir-Paul Macaraeg\r\n   Fred Cooley, Mike Chan
+    (no references)
+STRING @ 006442a6 : Scarica tazza
+    (no references)
+STRING @ 006444cc : Zoom avanti cartina
+    (no references)
+STRING @ 006444f4 : Zoom indietro cartina
+    (no references)
+STRING @ 006461bc : Velivolo privato e servizi ausiliari.\nDotato di carrello retrattile.
+    (no references)
+STRING @ 00646330 : Motore: Textron a pistoni\nPeso a vuoto: 500 kg/1100 lbs.\nCarico: 430 kg/950 lbs.\nCapienza: 2 passeggeri\nVelocità: 150 km/h/80 kt
+    (no references)
+STRING @ 00646432 : Motore: Turbina singola Allison\nPeso a vuoto: 750 kg/1650 lbs.\nCarico: 700kg/1550 lbs.\nCapienza: 4 passeggeri\nVelocità: 220 km/h/120 kt
+    (no references)
+STRING @ 00646542 : Motore: Turbina singola Allison\nPeso a vuoto: 670 kg/1500 lbs.\nCarico: 690 kg/1500 lbs.\nCapienza: 4 passeggeri\nVelocità: 230 km/h/125 kt
+    (no references)
+STRING @ 00646654 : Motore: Turbina singola Allison\nPeso a vuoto: 720 kg/1600 lbs.\nCarico: 800 kg/1750 lbs.\nCapienza: 4 passeggeri\nVelocità: 240 km/h/130 kt
+    (no references)
+STRING @ 00646766 : Motori: Biturbina\nPeso a vuoto: 2800 kg/6300 lbs.\nCarico: 2200 kg/4900 lbs.\nCapienza: 14 passeggeri\nVelocità: 185 km/h/100 kt
+    (no references)
+STRING @ 00646862 : Motori: Biturbina\nPeso a vuoto: 1600 kg/3000 lbs.\nCarico: 1100 kg/2500 lbs.\nCapienza: 7 passeggeri\nVelocità: 280 km/h/150 kt
+    (no references)
+STRING @ 0064695c : Motori: Due turbine Turboméca\nPeso a vuoto: 2300 kg/5000 lbs.\nCarico: 2000 kg/4350 lbs.\nCapienza: 13 passeggeri\nVelocità: 280 km/h/150 kt
+    (no references)
+STRING @ 00646a70 : Motori: Due turbine PW206A\nPeso a vuoto: 1500 kg/3300 lbs.\nCarico: 1200 kg/2600 lbs.\nCapienza: 7 passeggeri\nVelocità: 275 km/h/150 kt
+    (no references)
+STRING @ 00647850 : Carburante
+    (no references)
+STRING @ 006478a4 : ² Progettato da\n¥Will Wright\n¥\n² Direttore editoriale\n¥Brian Conrad\n¥\n² Produttore\n¥Jim Siefert\n¥\n² Programmatore capo\n¥Ed Goldman\n¥\n² Programmatori\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\n² Primo artista\n¥Ocean Quigley\n¥\n² Grafica al computer\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Direttore artistico)\n¥\n²²Musica ed effetti sonori\n¥Jerry Martin\n¥\n²Radio Tekno\n¥Jerry Martin, sintetizzatori\n¥\n²Radio Rock\n¥Jerry Martin, chitarra\n¥
+    (no references)
+STRING @ 00647f02 : ²QA\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n² Localizzazione\n¥Knut Grossmann\n¥\n² Programmazione aggiuntiva\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 00648708 : ²Marketing\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Vice\n²Presidente della produzione\n¥Val Garcia\n¥\n²Manager della produzione\n¥Marty Chan\n¥\n²Produzione\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Confezione\n¥Jamie Davison Design,\n¥   Maia Graff\n¥\n²Illustrazione della confezione\n¥David Schleinkofer\n¥\n²Uno speciale ringraziamento a:\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 00648aa2 : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman\n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Utilizza Smacker Video Technology\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Parti Copyright 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 0064901e : Caricamento risorse
+    (no references)
+STRING @ 00649046 : Caricamento apparenze
+    (no references)
+STRING @ 006490d6 : Inizializzazione cartina
+    (no references)
+STRING @ 0064920c : Caricamento città
+    (no references)
+STRING @ 006499a2 : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 0064a086 : Vista dalla carlinga
+    (no references)
+STRING @ 0064a326 : Il carburante è quasi finito.
+    (no references)
+STRING @ 0064a818 : Simcittadino caricato!
+    (no references)
+STRING @ 0064ada4 : Quel bipede a base di carboidrati ha preso il suo compito sul serio.
+    (no references)
+STRING @ 0064d376 : Oficina de los dibujantes\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 0064d5d6 : Oficina de control de calidad\r\n   Mike Gilmartin, Cathy Castro\r\n   Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen\r\n   Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth\r\n   Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines\r\n   Ira Katz, Joe Ellis, Ken Mace\r\n   Russell Johnson, Andy Derber\r\n   Liam Patterson, Zir-Paul Macaraeg\r\n   Fred Cooley, Mike Chan
+    (no references)
+STRING @ 0064df0c : Acercar cámara
+    (no references)
+STRING @ 0064e204 : Acercar niebla
+    (no references)
+STRING @ 0065087c : Megáfono: Permite comunicarse con las personas y los vehículos en tierra y es muy útil en misiones de emergencia, control de tráfico y policiales. Alcance efectivo: 300 m.
+    (no references)
+STRING @ 006514f4 : ²Diseño\n¥Will Wright\n¥\n²Jefe de edición Director\n¥Brian Conrad\n¥\n²Producción\n¥Jim Siefert\n¥\n²Jefe de programación\n¥Ed Goldman\n¥\n²Programadores\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\nDibujante jefe\n¥Ocean Quigley\n¥\n²Gráficos por ordenador\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Director artístico)\n¥\nMúsica y efectos de sonido\n¥Jerry Martin\n¥\n²Estación de radio tecno\n¥Jerry Martin, sintetizadores\n¥\n² n²Estación de radio rock\n¥Jerry Martin, guitarra\n¥
+    (no references)
+STRING @ 00651bdc : ²Comprobación\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n²Traducción\n¥Knut Grossmann\n¥\n²Apoyo de programación\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 006523d6 : ²Márketing\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Vicepresidente de fabricación \n²President e de operaciones\n¥Val Garcia\n¥\n²Jefe de fabricación\n¥Marty Chan\n¥\n²Fabricación\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Diseño del paquete\n¥Jamie Davison Design,\n¥   Maia Graff\n¥\nIlustración del paquete\n¥David Schleinkofer\n¥\n²Agradecemos especialmente a\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 00652794 : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman\n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Uses Smacker Video Technology\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Copyright de las partes 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 00652d4c : Se están cargando los recursos
+    (no references)
+STRING @ 00652d8a : Se está cargando el detalle
+    (no references)
+STRING @ 00652fe8 : Se están iniciando las carreteras
+    (no references)
+STRING @ 0065374c : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 00654c0a : Tienes razón, ese bípedo carbonoxigenado tiene buen ojo.
+    (no references)
+STRING @ 00654f7c : Carece de nuestra tecnología.
+    (no references)
+STRING @ 006554dc : Es que como no es un juego violento para cargarse a todos, han puesto alguna forma de entretenimiento para los jóvenes.
+    (no references)
+STRING @ 006568d6 : Een SimCopter carrièrespel
+    (no references)
+STRING @ 0065690c : Carrièrespellen (*.scc)?*.scc?Alle bestanden (*.*)?*.*??
+    (no references)
+STRING @ 006569c8 : Een SimCopter carrièrespel opslaan
+    (no references)
+STRING @ 00656aa2 : Nieuw carrièrespel
+    (no references)
+STRING @ 00656ac8 : Carrièrespel openen
+    (no references)
+STRING @ 00657210 :  Artiestenbureau\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 0065745e :  Bureau kwaliteitszekerheid\r\n   Mike Gilmartin, Cathy Castro\r\n   Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen\r\n   Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth\r\n   Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines\r\n   Ira Katz, Joe Ellis, Ken Mace\r\n   Russell Johnson, Andy Derber\r\n   Liam Patterson, Zir-Paul Macaraeg\r\n   Fred Cooley, Mike Chan
+    (no references)
+STRING @ 0065b23e : ²Ontworpen door\n¥Will Wright\n¥\n²Uitgevend  \ndirekteur\n¥Brian Conrad\n¥\n²Producent\n¥Jim Siefert\n¥\n²Hoofdprogrammeur\n¥Ed Goldman\n¥\n²Programmeurs\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\n²Leiddinggevend artiest\n¥Ocean Quigley\n¥\n²Artwork\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Art Director)\n¥\n²Muziek en  \ngeluidseffecten\n¥Jerry Martin\n¥\n²Tekno Zender\n¥Jerry Martin, synthesizers\n¥\n²Rock Zender\n¥Jerry Martin, gitaar\n¥
+    (no references)
+STRING @ 0065b88a : ²QA\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n²Vertaling\n¥Knut Grossmann\n¥\n²Programma toevoegingen\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 0065c082 : ²Marketing\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Manufacturing Vice\n²President of Operations\n¥Val Garcia\n¥\n²Manufacturing Manager\n¥Marty Chan\n¥\n²Manufacturing\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Verpakking\n¥Jamie Davison Design,\n¥   Maia Graff\n¥\n²Verpakking illustratie\n¥David Schleinkofer\n¥\n²¥\n²Bijzondere dank aan\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 0065c410 : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman\n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Uses Smacker Video Technology\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Delen Copyright 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 0065cd40 : Je kunt geen opgeslagen spellen openen in deze demo. Selecteer 'Nieuw carrièrespel' or 'Nieuw gebruikersspel'
+    (no references)
+STRING @ 0065ce1c : In de gekochte versie van SimCopter zou je nu promoveren naar een volgend (moeilijker!) carrière-niveau.
+    (no references)
+STRING @ 0065d22a : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 00660768 :  Konstnärer\r\n   Ocean Quigley\r\n   Kevin Kraus\r\n   Rick Macaraeg\r\n   Mike Murguia\r\n   Wee Lim
+    (no references)
+STRING @ 0066099a :  Kvalitetskontroll\r\n   Mike Gilmartin, Cathy Castro\r\n   Shannon Gray, David Abrams\r\n   Tim Moore, John Ylinen\r\n   Scott Shicoff, Marc Meyer\r\n   Peter Saylor, Joe Longworth\r\n   Owen Nelson, Keith Meyer\r\n   Myka Macaraeg, Robin Hines\r\n   Ira Katz, Joe Ellis, Ken Mace\r\n   Russell Johnson, Andy Derber\r\n   Liam Patterson, Zir-Paul Macaraeg\r\n   Fred Cooley, Mike Chan
+    (no references)
+STRING @ 00663f2c : ²Utformning\n¥Will Wright\n¥\n²Utgivningschef\n¥Brian Conrad\n¥\n²Producent\n¥Jim Siefert\n¥\n²Programmeringschef\n¥Ed Goldman\n¥\n²Programmering\n¥Paul Pedriana\n¥Lon Westfall\n¥Jacques Servin\n¥\n²Konstnärlig chef\n¥Ocean Quigley\n¥\n²Datorgrafik\n¥Kevin Kraus\n¥Rick Macaraeg\n¥Mike Murguia\n¥Wee Lim\n¥Mimi Macaraeg\n¥Sharon Barr (Art Director)\n¥\n²Musik och ljudeffekter\n¥Jerry Martin\n¥\n²Teknostation\n¥Jerry Martin, synthar\n¥\n²Rockstation\n¥Jerry Martin, gitarr\n¥
+    (no references)
+STRING @ 0066454a : ²Testare\n¥Cathy Castro\n¥Shannon Gray\n¥David Abrams\n¥Tim Moore\n¥Ira Katz\n¥John Ylinen\n¥Scott Shicoff\n¥Marc Meyer\n¥Peter Saylor\n¥Joe Longworth\n¥Owen Nelson\n¥Keith Meyer\n¥Myka Macaraeg\n¥Robin Hines\n¥Joe Ellis\n¥Ken Mace\n¥Russell Johnson\n¥Andy Derber\n¥Liam Patterson\n¥Zir-Paul Macaraeg\n¥Fred Cooley\n¥Mike Chan\n¥\n²Marknadsanpassning\n¥Knut Grossmann\n¥\n²Extra programmering\n¥Kevin O'Hare\n¥James Huie\n¥Michelle Perry\n¥Jason Shankel\n¥Anthony Hobbs\n¥Mike Martak\n¥
+    (no references)
+STRING @ 00664d60 : ²Marknadsföring\n¥Robin Harper\n¥Larry Lee\n¥Lois Tilles\n¥Patrick Buechner \n¥Sally Vandershaf\n¥Karen Fagen\n¥Bryan Magers\n¥\n²Tillverkning Vice\n²verkställande direktör\n¥Val Garcia\n¥\n²Tillverkningschef\n¥Marty Chan\n¥\n²Tillverkning\n¥Kim Vincent\n¥Leo Kunkle\n¥\n²Förpackning\n¥Jamie Davison Design,\n¥   Maia Graff\n¥\n²Förpackningsillustration\n¥David Schleinkofer\n¥\n²Speciellt tack till\n¥Teresa Mizelle\n¥Charlotte Williams\n¥Joy Carchidi\n¥Joe Scirica\n¥John Csicsery\n¥
+    (no references)
+STRING @ 006650ea : Jeff Feil\n¥Nolan Erck\n¥Karen Fagen\n¥Roger Johnsen\n¥May Wong\n¥Tracy Giles\n¥Aimee West\n¥Iksoon Shin\n¥Colleen Schuman\n¥Caleb Clark\n¥Jean Siefert\n¥Cassidy Wright\n¥Joell Jones\n¥Pam Goldman\n¥Julia Gilmartin\n¥Sabrina Barton\n¥Larry Greer\n¥Brad Carchidi\n¥Nancy Barber\n¥Shannon Dawes\n¥Tom Forge\n¥John Lee\n¥Robert Camp\n¥Brian Mallari\n¥Amanda Hugankiss\n¥Natalie Attired\n¥Jeff Braun\n¥\n¥Använder Smacker Video Technology\n¥  Copyright 1994 - 1996\n¥  RAD Game Tools, Inc.\n¥Portions Copyright 1996,\n¥   Sax Software\n
+    (no references)
+STRING @ 00665eea : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+=== 123 strings matched 'Car' ===

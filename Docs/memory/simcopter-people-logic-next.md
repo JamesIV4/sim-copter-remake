@@ -204,3 +204,69 @@ around the head; UE uses an 8-side cylinder, HeadFaceU param tunes which U faces
 - Still open: density-gate port (DAT_005bde80 source - likely computable from .sc2 XPOP/density),
   bump-into-person result 5 (street chats), event/mission spawner, and the TRAFFIC (vehicle) AI
   port which is the next goal.
+
+**Update 2026-07-02 (overnight: ORIGINAL TRAFFIC/CAR SYSTEM decoded + ported; bridge fix):**
+- **The original precomputes a RoadGraph** (debug dumper FUN_00495700 writes dump_bm.txt):
+  per-column intersection lists at DAT_0051ac80 (count bytes at +0x200), intersection struct
+  0x38 bytes: +0 x, +1 y, +2 turnFlags (low nibble = NESW connects, high nibble = deadEnd),
+  +3 = highway-crossover flag (XBLD 0x69), +4 = altitude>>4, then 4 exits x 0xb bytes:
+  [0]=target intersection idx, [1]=target column, [2]=bearing, [3..4]=u16 travel cost T,
+  [5..6]=segment count, [7..a]=ptr to 3-byte segments ([0]=dir bits+flags, [1]=length,
+  [2]=extra). Builder driver FUN_00491d10 (intersection = FUN_004bb900(x,y) && (highway id or
+  both coords odd... highway 2x2 rule), exit tracing FUN_004932d0/FUN_00494550, link
+  FUN_00492fc0).
+- **Emergency routing = Dijkstra over intersections** (FUN_004bef30, binary heap at
+  DAT_0051af08, cost = summed exit T, back-pointers at +0x31/+0x32, exit dir +0x33).
+  Hospital/police/fire stations have building->nearest-road records (DAT_0051ac7c /
+  DAT_0051ac50 / DAT_0051af00, 0x10 bytes: dir, loc x/y, road x/y).
+- **Ambient cars wander with UNIFORM random turns** per tile-type transition choosers (the
+  decoded rail twin FUN_004b5290 shows the pattern: switch on XBLD, rand()%2 / %3 / &3 among
+  exits, direction bitmask at obj+0x11, next tile at +0x55/+0x59; the 0x8000 bit on the tile
+  id = raised/bridge deck flag from DAT_00590800 bit 1).
+- **Road family for cars (exact, from FUN_00495700 range checks): [0x1d,0x2b] roads,
+  [0x3f,0x46] sloped roads/power crossings, [0x49,0x59] BRIDGES, [0x5d,0x6b] onramps +
+  highways.** Bridge decks sit on bWater tiles - THE bridge bug in the remake was
+  (a) bWater rejection of road nodes and (b) bridge ids missing from the road family.
+- SC2K overlay grids all live in the sim state (FUN_00467070 allocator): TrafficMap(64x64),
+  PolluteMap, ValueMap, CrimeMap, PoliceMap/FireMap/PopMap/ROGMap(32x32), XBLD grid auxPtr1 =
+  DAT_005910b0, BitsMap = DAT_00590800 (bit 1 = raised/deck), AltMap u16 = DAT_00590d70
+  (bits 0-4 base alt, 5-9 water alt).
+- **Remake port (SimCopterTrafficSystemActor): ESimCopterTrafficAiMode {Original (default),
+  Modernized}.** Original mode = no traffic lights, no blockage recovery, uniform random
+  turns (bPreferStraight=false in ChooseNextRouteNode), queue-behind-blockers (jams), and
+  ApplyPlayerRoadBlocking (grounded player within lane look-ahead stops cars - "You Blocked
+  Traffic!"). Modernized keeps the old traffic-light system untouched. Road family + no-bWater
+  fix applied to node building (cars now cross bridges; Z comes from agent ground snap hitting
+  the bridge deck mesh). Whole-map far cars share the same graph/turn rules.
+- Not yet ported: intersection-graph Dijkstra for emergency vehicles, station->road spawn
+  records, per-segment speed byte, train system (FUN_004b5290).
+
+**Update 2026-07-02 (rooftop pedestrians: move-step Z rules decoded, FUN_004c9470):**
+- FUN_004c9470 (the per-step check called by move core FUN_004c9300) decoded to
+  Docs/scratchpad/ghidra/out_movecheck.txt. Sequence per step:
+  1. New Z := FUN_004c82c0(newX, oldZ, newY) + 0x30000 - i.e. the walker Z IS warped to the
+     walked surface each step ("warp on top of whatever you walk on").
+  2. **MAX-CLIMB GATE**: if (newZ - oldZ) > (person+0x144 << 16) the move is REJECTED with
+     result 1 (binds FaCl recoil clip; move core turns to next facing). Drop below
+     -(0x8000 + max) -> result 2 (Whoa). This is why originals never stand on buildings:
+     the surface warp exists but big climbs bounce off. Player (+0x12e == 32000) gets a
+     boosted allowance via FUN_0042de60(1) (+0x140000).
+  3. Object hit via FUN_004c9000 -> result 4 (object) or 5 (bumped person: broadcasts
+     reaction 0xd via FUN_004c1050 - street-chat trigger), 6 (attached-object collision),
+     10 (hit own bound object).
+  4. On tile change: class := FUN_004c9220; FUN_004c9cc0/FUN_004c9dc0 gates (fail -> 0xb);
+     ambient (+0x168 != 0) requires DAT_0058ec00[row=person+0x146] contains new class ->
+     else result 3; ALSO a PER-TILE OCCUPANCY CAP: count figures with flag bit3 on target
+     tile list (DAT_005d9200[x*0x100+y]+0x10) must be < DAT_0058d6d4[class*3].
+- **SCALE (critical)**: original positions are 16.16 fixed, tile = 64 units (coords = pos>>22);
+  max climb person+0x144 = 5 units (FUN_004c7d10) = 5/64 of a tile ~= 31cm at the remake's
+  400cm tile. One-story roofs at the remake scale (BuildingHeightScale 150) sit ~150cm up, so
+  any probe margin near 200cm STARTS ABOVE SMALL ROOFS and snaps peds onto them (first-fix bug).
+- Remake fix (final): pedestrian ground probe anchors at the tile's terrain Z (traffic actor
+  TryGetTerrainWorldZAtWorldLocation, new) + 40cm on building tile classes 10-13 (flat by
+  construction; margin only needs to clear curb/road detail) and +40+110cm slope headroom on
+  non-building classes (sloped parks/trees/roads rise up to half a terrain step above the
+  tile-center Z, and have no roofs). Falls back to terrain Z when the probe misses inside
+  building geometry; self-heals agents already on roofs. Vehicles keep the tall probe (bridge
+  decks). Far whole-map ped records already used TileCenterWorldZ and were never affected.
+- Still open from this decode: per-tile occupancy cap DAT_0058d6d4, bump result 5 chats.

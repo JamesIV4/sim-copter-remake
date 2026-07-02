@@ -222,6 +222,19 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float GroundProbeUpCm = 2500.0f;
 
+	// Pedestrians only: the ground probe starts this far above the tile's terrain altitude
+	// instead of high above the agent. The original's max-climb gate (person+0x144 = 5 units of
+	// a 64-unit tile) scales to ~31cm at a 400cm tile, and one-story roofs sit around ~150cm at
+	// this scale, so the probe must start well below that or it lands people on small buildings.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
+	float PedestrianGroundProbeStartAboveTerrainCm = 40.0f;
+
+	// Extra probe headroom on non-building tiles only. Buildings stand on flat terrain, but
+	// parks/trees/roads can slope, where the real surface rises up to half a terrain step above
+	// the tile-center altitude (and there is no roof to catch the probe).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float PedestrianGroundProbeSlopeHeadroomCm = 110.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement")
 	bool bSnapToGround = true;
 

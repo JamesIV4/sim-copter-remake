@@ -392,27 +392,20 @@ float GetTerrainTileCenterZ(const FSimCity2000City& City, int32 FileX, int32 Fil
 	return GetTerrainSurfaceZ(City.Tiles[FileY * FSimCity2000City::MapSize + FileX], TerrainHeightScale);
 }
 
-float GetTerrainGridVertexZ(const FSimCity2000City& City, int32 GridX, int32 GridY, float TerrainHeightScale)
+// Reads the conditioned tmap corner grid built by BuildConditionedTerrainCornerSamples.
+int32 GetConditionedTerrainCornerSample(const TArray<int16>& ConditionedCorners, int32 GridX, int32 GridY)
 {
-	// SimCopter's tmap builder seeds tile centers, then fills grid points by copying/averaging neighbors.
-	float HeightSum = 0.0f;
-	int32 HeightCount = 0;
+	constexpr int32 GridSize = FSimCity2000City::MapSize + 1;
+	const int32 ClampedX = FMath::Clamp(GridX, 0, GridSize - 1);
+	const int32 ClampedY = FMath::Clamp(GridY, 0, GridSize - 1);
+	return ConditionedCorners[ClampedY * GridSize + ClampedX];
+}
 
-	for (int32 OffsetY = -1; OffsetY <= 0; ++OffsetY)
-	{
-		for (int32 OffsetX = -1; OffsetX <= 0; ++OffsetX)
-		{
-			const int32 TileX = GridX + OffsetX;
-			const int32 TileY = GridY + OffsetY;
-			if (TileX >= 0 && TileX < FSimCity2000City::MapSize && TileY >= 0 && TileY < FSimCity2000City::MapSize)
-			{
-				HeightSum += GetTerrainTileCenterZ(City, TileX, TileY, TerrainHeightScale);
-				++HeightCount;
-			}
-		}
-	}
-
-	return HeightCount > 0 ? HeightSum / static_cast<float>(HeightCount) : 0.0f;
+float GetTerrainGridVertexZ(const TArray<int16>& ConditionedCorners, int32 GridX, int32 GridY, float TerrainHeightScale)
+{
+	// Height-map samples store (height step + 1) * 0x20 (FUN_004abce0), so one altitude step
+	// spans 0x20 sample units.
+	return static_cast<float>(GetConditionedTerrainCornerSample(ConditionedCorners, GridX, GridY)) * TerrainHeightScale / 32.0f;
 }
 
 float GetAverageTerrainSurfaceZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
@@ -488,25 +481,120 @@ int32 GetTerrainGridHeightMapSample(const FSimCity2000City& City, int32 GridX, i
 	return HeightCount > 0 ? HeightSum / HeightCount : 0;
 }
 
-int32 GetTerrainTileAverageHeightMapSample(const FSimCity2000City& City, int32 FileX, int32 FileY)
+int32 GetTerrainTileAverageHeightMapSample(const TArray<int16>& ConditionedCorners, int32 FileX, int32 FileY)
 {
 	return (
-		GetTerrainGridHeightMapSample(City, FileX, FileY) +
-		GetTerrainGridHeightMapSample(City, FileX + 1, FileY) +
-		GetTerrainGridHeightMapSample(City, FileX + 1, FileY + 1) +
-		GetTerrainGridHeightMapSample(City, FileX, FileY + 1)) >> 2;
+		GetConditionedTerrainCornerSample(ConditionedCorners, FileX, FileY) +
+		GetConditionedTerrainCornerSample(ConditionedCorners, FileX + 1, FileY) +
+		GetConditionedTerrainCornerSample(ConditionedCorners, FileX + 1, FileY + 1) +
+		GetConditionedTerrainCornerSample(ConditionedCorners, FileX, FileY + 1)) >> 2;
 }
 
 // Reproduces the original city builder's flat-vs-sloped test (FUN_0047c0c0): a tile is
-// flat when its four tmap corner heights match. GetTerrainGridHeightMapSample is the
-// remake's tmap-corner equivalent - the same samples the terrain quad corners use.
-bool IsOriginalTerrainTileFlat(const FSimCity2000City& City, int32 FileX, int32 FileY)
+// flat when its four tmap corner heights match - read from the conditioned grid, the
+// same samples the terrain quad corners use.
+bool IsOriginalTerrainTileFlat(const TArray<int16>& ConditionedCorners, int32 FileX, int32 FileY)
 {
-	const int32 Corner00 = GetTerrainGridHeightMapSample(City, FileX, FileY);
-	const int32 Corner10 = GetTerrainGridHeightMapSample(City, FileX + 1, FileY);
-	const int32 Corner01 = GetTerrainGridHeightMapSample(City, FileX, FileY + 1);
-	const int32 Corner11 = GetTerrainGridHeightMapSample(City, FileX + 1, FileY + 1);
+	const int32 Corner00 = GetConditionedTerrainCornerSample(ConditionedCorners, FileX, FileY);
+	const int32 Corner10 = GetConditionedTerrainCornerSample(ConditionedCorners, FileX + 1, FileY);
+	const int32 Corner01 = GetConditionedTerrainCornerSample(ConditionedCorners, FileX, FileY + 1);
+	const int32 Corner11 = GetConditionedTerrainCornerSample(ConditionedCorners, FileX + 1, FileY + 1);
 	return Corner00 == Corner10 && Corner00 == Corner01 && Corner00 == Corner11;
+}
+
+// FUN_004abce0's tmap conditioning, ported exactly. The seeded corner grid (averages of the
+// up-to-4 adjacent tile-center samples, matching the original's seed-then-interpolate fill)
+// is then modified in place:
+//  1. plain ground water tiles (XTER > 0x0f) at even/even tile coordinates dip their origin
+//     corner by 8 (a quarter step) - the original's subtle water waviness;
+//  2. buildings (XBLD >= 0x70) and flat network tiles {0x1d, 0x1e, 0x23..0x2d, 0x32..0x3a}
+//     (roads, rails, crossings) force all four of their corners to the tile's own ALTM
+//     sample - the auto-flatten under roads and buildings;
+//  3. raised spans 0x3f..0x42 pull their low-edge corner pair one full step (+0x20) above
+//     the opposite edge, wedging the terrain up so it meets the raised road model with no
+//     gap underneath.
+// The pass is a single raster sweep whose ramp reads see earlier writes, so it must stay a
+// sweep over a shared grid rather than a per-corner evaluation.
+TArray<int16> BuildConditionedTerrainCornerSamples(const FSimCity2000City& City)
+{
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	constexpr int32 GridSize = MapSize + 1;
+	TArray<int16> Corners;
+	Corners.SetNumUninitialized(GridSize * GridSize);
+	for (int32 GridY = 0; GridY < GridSize; ++GridY)
+	{
+		for (int32 GridX = 0; GridX < GridSize; ++GridX)
+		{
+			Corners[GridY * GridSize + GridX] = static_cast<int16>(GetTerrainGridHeightMapSample(City, GridX, GridY));
+		}
+	}
+
+	for (int32 FileY = 0; FileY < MapSize; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < MapSize; ++FileX)
+		{
+			const FSimCity2000Tile& Tile = City.Tiles[FileY * MapSize + FileX];
+			const uint8 Building = Tile.Building;
+			const bool bPlainGround = (Building == 0 || Building > 4) &&
+				(Building < 6 || Building > 0x0D) && Building != 0xD5 && Building != 0xDA && Building != 0xF8;
+			if (bPlainGround && Tile.Terrain > 0x0F && (FileX & 1) == 0 && (FileY & 1) == 0)
+			{
+				Corners[FileY * GridSize + FileX] -= 8;
+			}
+		}
+	}
+
+	const auto Set = [&Corners](int32 GridX, int32 GridY, int32 Sample)
+	{
+		Corners[GridY * GridSize + GridX] = static_cast<int16>(Sample);
+	};
+
+	for (int32 FileY = 0; FileY < MapSize; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < MapSize; ++FileX)
+		{
+			const FSimCity2000Tile& Tile = City.Tiles[FileY * MapSize + FileX];
+			const uint8 Building = Tile.Building;
+			const bool bFlatNetworkTile =
+				Building == 0x1D || Building == 0x1E ||
+				(Building >= 0x23 && Building <= 0x2D) ||
+				(Building >= 0x32 && Building <= 0x3A);
+			if (Building >= 0x70 || bFlatNetworkTile)
+			{
+				const int32 Sample = GetTerrainHeightMapSample(Tile);
+				Set(FileX, FileY, Sample);
+				Set(FileX + 1, FileY, Sample);
+				Set(FileX, FileY + 1, Sample);
+				Set(FileX + 1, FileY + 1, Sample);
+			}
+			else if (Building == 0x3F)
+			{
+				const int32 Sample = GetConditionedTerrainCornerSample(Corners, FileX + 1, FileY) + 0x20;
+				Set(FileX, FileY, Sample);
+				Set(FileX, FileY + 1, Sample);
+			}
+			else if (Building == 0x40)
+			{
+				const int32 Sample = GetConditionedTerrainCornerSample(Corners, FileX + 1, FileY + 1) + 0x20;
+				Set(FileX, FileY, Sample);
+				Set(FileX + 1, FileY, Sample);
+			}
+			else if (Building == 0x41)
+			{
+				const int32 Sample = GetConditionedTerrainCornerSample(Corners, FileX, FileY) + 0x20;
+				Set(FileX + 1, FileY, Sample);
+				Set(FileX + 1, FileY + 1, Sample);
+			}
+			else if (Building == 0x42)
+			{
+				const int32 Sample = GetConditionedTerrainCornerSample(Corners, FileX, FileY) + 0x20;
+				Set(FileX, FileY + 1, Sample);
+				Set(FileX + 1, FileY + 1, Sample);
+			}
+		}
+	}
+
+	return Corners;
 }
 
 // Bridge/elevated-road tile dispatch transcribed from FUN_0047c0c0 (XBLD ids
@@ -891,7 +979,7 @@ uint8 ResolveOriginalTerrainDetailType(uint8 TerrainType, int32 X, int32 Y)
 // Reproduces SimCopter's terrain texture type grid (FUN_004abce0 in SimCopter.exe).
 // The renderer uses the type code through DAT_005cde90: 0x00..0x3f select page 0x14
 // (TILED1.BMP), while 0x40..0x7f select page 0x0d (SIM3D.BMP image 13) with code-0x40.
-TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
+TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City, const TArray<int16>& ConditionedCorners)
 {
 	const int32 N = FSimCity2000City::MapSize;
 	TArray<uint8> Grid;
@@ -1054,7 +1142,7 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	{
 		for (int32 X = 0; X < N; ++X)
 		{
-			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(ConditionedCorners, X, Y);
 			if (Grid[Y * N + X] == 0x30)
 			{
 				if (AnyOrthogonalNeighborIs(X, Y, [](uint8 T) { return T == 0; }) || AverageHeight <= MinHeight + HeightBandStep * 2)
@@ -1069,7 +1157,7 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	{
 		for (int32 X = 0; X < N; ++X)
 		{
-			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(ConditionedCorners, X, Y);
 			if (Grid[Y * N + X] == 0x30)
 			{
 				if (AnyOrthogonalNeighborIs(X, Y, [](uint8 T) { return T == 0x10; }) || AverageHeight <= MinHeight + HeightBandStep * 5)
@@ -1084,7 +1172,7 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	{
 		for (int32 X = 0; X < N; ++X)
 		{
-			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(ConditionedCorners, X, Y);
 			if (Grid[Y * N + X] == 0x30 &&
 				AverageHeight >= MaxHeight - HeightBandStep * 6 &&
 				AllOrthogonalNeighborsAre(X, Y, [](uint8 T) { return T == 0x30 || T == 0x40; }))
@@ -1098,7 +1186,7 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	{
 		for (int32 X = 0; X < N; ++X)
 		{
-			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(ConditionedCorners, X, Y);
 			if (Grid[Y * N + X] == 0x40 &&
 				AverageHeight >= MaxHeight - HeightBandStep * 3 &&
 				AllOrthogonalNeighborsAre(X, Y, [](uint8 T) { return T == 0x40 || T == 0x50; }))
@@ -1112,7 +1200,7 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 	{
 		for (int32 X = 0; X < N; ++X)
 		{
-			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(City, X, Y);
+			const int32 AverageHeight = GetTerrainTileAverageHeightMapSample(ConditionedCorners, X, Y);
 			if (Grid[Y * N + X] == 0x50 &&
 				AverageHeight >= MaxHeight + HeightBandStep &&
 				AllOrthogonalNeighborsAre(X, Y, [](uint8 T) { return T == 0x50 || T == 0x60; }))
@@ -1179,6 +1267,7 @@ TArray<uint8> BuildTerrainTextureTypeGrid(const FSimCity2000City& City)
 
 FExtendedTerrainData BuildProceduralExtendedTerrain(
 	const FSimCity2000City& City,
+	const TArray<int16>& ConditionedCorners,
 	const TArray<uint8>& InnerTerrainTypeGrid,
 	int32 RequestedExtensionTiles,
 	float TerrainHeightScale)
@@ -1205,7 +1294,7 @@ FExtendedTerrainData BuildProceduralExtendedTerrain(
 	{
 		for (int32 GridX = 0; GridX <= N; ++GridX)
 		{
-			const float GridZ = GetTerrainGridVertexZ(City, GridX, GridY, TerrainHeightScale);
+			const float GridZ = GetTerrainGridVertexZ(ConditionedCorners, GridX, GridY, TerrainHeightScale);
 			MinOriginalGridZ = FMath::Min(MinOriginalGridZ, GridZ);
 		}
 	}
@@ -1498,7 +1587,7 @@ FExtendedTerrainData BuildProceduralExtendedTerrain(
 	{
 		for (int32 GridX = 0; GridX <= N; ++GridX)
 		{
-			Data.GridVertexZ[Data.GetGridVertexIndex(GridX, GridY)] = GetTerrainGridVertexZ(City, GridX, GridY, TerrainHeightScale);
+			Data.GridVertexZ[Data.GetGridVertexIndex(GridX, GridY)] = GetTerrainGridVertexZ(ConditionedCorners, GridX, GridY, TerrainHeightScale);
 		}
 	}
 
@@ -1638,7 +1727,7 @@ void AppendTerrainTileWithHeights(
 }
 
 void AppendTerrainTile(
-	const FSimCity2000City& City,
+	const TArray<int16>& ConditionedCorners,
 	int32 FileX,
 	int32 FileY,
 	float TileSize,
@@ -1652,10 +1741,10 @@ void AppendTerrainTile(
 		FileY,
 		TileSize,
 		HalfMapSize,
-		GetTerrainGridVertexZ(City, FileX, FileY, TerrainHeightScale),
-		GetTerrainGridVertexZ(City, FileX + 1, FileY, TerrainHeightScale),
-		GetTerrainGridVertexZ(City, FileX + 1, FileY + 1, TerrainHeightScale),
-		GetTerrainGridVertexZ(City, FileX, FileY + 1, TerrainHeightScale),
+		GetTerrainGridVertexZ(ConditionedCorners, FileX, FileY, TerrainHeightScale),
+		GetTerrainGridVertexZ(ConditionedCorners, FileX + 1, FileY, TerrainHeightScale),
+		GetTerrainGridVertexZ(ConditionedCorners, FileX + 1, FileY + 1, TerrainHeightScale),
+		GetTerrainGridVertexZ(ConditionedCorners, FileX, FileY + 1, TerrainHeightScale),
 		AtlasTileIndex,
 		Section);
 }
@@ -2177,11 +2266,16 @@ void ASimCity2000CityActor::RebuildCity()
 		((TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr);
 	const bool bUseHighTerrainAtlas = BakedCityAtlasMaterials.TerrainHighMaterial != nullptr || (HighTerrainTexture != nullptr && TexturedMaterial != nullptr);
 
+	// The original conditions the tmap corner grid before anything reads it: flatten under
+	// buildings/flat network tiles, wedge ramps under raised spans, dip water corners.
+	const TArray<int16> ConditionedTerrainCorners = BuildConditionedTerrainCornerSamples(City);
+
 	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
 	// (the type IS the cell index). Reproduce that grid once for the whole map.
-	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City);
+	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City, ConditionedTerrainCorners);
 	const FExtendedTerrainData ExtendedTerrain = BuildProceduralExtendedTerrain(
 		City,
+		ConditionedTerrainCorners,
 		TerrainTypeGrid,
 		(bRenderTerrain && bRenderProceduralMapExtension) ? ProceduralMapExtensionTiles : 0,
 		EffectiveTerrainHeightScale);
@@ -2223,7 +2317,7 @@ void ASimCity2000CityActor::RebuildCity()
 					? static_cast<int32>(TerrainType - SimCopterHighTerrainTypeBase)
 					: static_cast<int32>(TerrainType & 0x3f);
 				AppendTerrainTile(
-					City,
+					ConditionedTerrainCorners,
 					FileX,
 					FileY,
 					TileSize,
@@ -2258,7 +2352,7 @@ void ASimCity2000CityActor::RebuildCity()
 					// through the exact object-Id lookup. Everything else keeps the table mapping.
 					const bool bUseBridgeDispatch = Tile.Building >= 0x3f && Tile.Building <= 0x6b;
 					const FOriginalBridgeDispatch BridgeDispatch = bUseBridgeDispatch
-						? GetOriginalBridgeDispatch(Tile.Building, IsOriginalTerrainTileFlat(City, FileX, FileY), Tile.BitFlags)
+						? GetOriginalBridgeDispatch(Tile.Building, IsOriginalTerrainTileFlat(ConditionedTerrainCorners, FileX, FileY), Tile.BitFlags)
 						: FOriginalBridgeDispatch();
 					const FMaxisMeshObject* MeshObject = (BridgeDispatch.PrimaryObjectId != INDEX_NONE)
 						? MeshLibrary.FindObjectByObjectId(BridgeDispatch.PrimaryObjectId, &ColorMap)

@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterTrafficSystemActor.h"
 
@@ -61,16 +61,16 @@ bool IsRoadCrossingTile(uint8 BuildingId)
 	return BuildingId == 0x43 || BuildingId == 0x44;
 }
 
-// Drivable tiles for cars: surface roads, crossing pieces, plus the elevated/bridge road ids
-// confirmed as roads by the bridge-mesh dispatch (0x45/0x46 road-on-bridge, 0x47/0x48,
-// 0x4d/0x4e, 0x5a/0x5b).
+// Drivable tiles for cars: the EXACT road family the original's RoadGraph dump uses
+// (FUN_00495700 range checks): surface roads 0x1d-0x2b, sloped roads/power crossings
+// 0x3f-0x46, road BRIDGES 0x49-0x59, and onramps/highways 0x5d-0x6b. Bridge decks sit on
+// water tiles, so callers must not reject these ids for bWater.
 bool IsOriginalTrafficRoadTile(uint8 BuildingId)
 {
-	return IsSurfaceRoadTile(BuildingId) ||
-		IsRoadCrossingTile(BuildingId) ||
-		(BuildingId >= 0x45 && BuildingId <= 0x48) ||
-		(BuildingId == 0x4D || BuildingId == 0x4E) ||
-		(BuildingId == 0x5A || BuildingId == 0x5B);
+	return (BuildingId >= 0x1D && BuildingId <= 0x2B) ||
+		(BuildingId >= 0x3F && BuildingId <= 0x46) ||
+		(BuildingId >= 0x49 && BuildingId <= 0x59) ||
+		(BuildingId >= 0x5D && BuildingId <= 0x6B);
 }
 
 bool IsPedestrianRoadTile(uint8 BuildingId)
@@ -511,7 +511,8 @@ int32 ChooseNextRouteNode(
 	const TArray<FSimCopterGroundRouteNode>& Nodes,
 	int32 FromIndex,
 	int32 PrevIndex,
-	FRandomStream& RandomStream)
+	FRandomStream& RandomStream,
+	bool bPreferStraight = true)
 {
 	if (!Nodes.IsValidIndex(FromIndex))
 	{
@@ -550,8 +551,9 @@ int32 ChooseNextRouteNode(
 		return Candidates[0];
 	}
 
-	// Prefer the neighbour that best continues the current heading; turn at intersections ~30%.
-	if (Nodes.IsValidIndex(PrevIndex))
+	// Modernized mode prefers continuing straight (~30% turns). The decoded original picks
+	// uniformly among the exits (rand % candidates in the per-tile transition choosers).
+	if (bPreferStraight && Nodes.IsValidIndex(PrevIndex))
 	{
 		const FVector InDirection = (From.Location - Nodes[PrevIndex].Location).GetSafeNormal2D();
 		if (!InDirection.IsNearlyZero() && RandomStream.FRand() < 0.7f)
@@ -746,7 +748,9 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			const float LocalZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
 			TileCenterWorldZ[TileIndex] = ActiveCityToWorldTransform.TransformPosition(FVector(LocalX, LocalY, LocalZ)).Z;
 
-			if (!Tile.bWater && IsOriginalTrafficRoadTile(Tile.Building))
+			// No bWater rejection here: bridge decks (XBLD 0x49-0x59) legitimately sit on water
+			// tiles, and excluding them is exactly why cars could never cross a bridge.
+			if (IsOriginalTrafficRoadTile(Tile.Building))
 			{
 				const FVector2D CenterlineOffset = GetRoadCenterlineLocalOffset(Tile.Building, ActiveTileSize);
 				const int32 NodeIndex = RoadNodes.Num();
@@ -931,7 +935,7 @@ void ASimCopterTrafficSystemActor::BuildWholeMapPopulation()
 		for (int32 Spawn = 0; Spawn < Budget; ++Spawn)
 		{
 			const int32 NodeIndex = Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
-			const int32 NextIndex = ChooseNextRouteNode(RoadNodes, NodeIndex, INDEX_NONE, RandomStream);
+			const int32 NextIndex = ChooseNextRouteNode(RoadNodes, NodeIndex, INDEX_NONE, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
 			if (NextIndex == INDEX_NONE)
 			{
 				continue;
@@ -1042,7 +1046,7 @@ void ASimCopterTrafficSystemActor::UpdateWholeMapPopulation(float DeltaSeconds)
 			{
 				Record.Location = Target;
 				const int32 PreviousIndex = Record.RouteNextIndex;
-				Record.RouteNextIndex = ChooseNextRouteNode(RoadNodes, Record.RouteNextIndex, Record.RouteNodeIndex, RandomStream);
+				Record.RouteNextIndex = ChooseNextRouteNode(RoadNodes, Record.RouteNextIndex, Record.RouteNodeIndex, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
 				Record.RouteNodeIndex = PreviousIndex;
 			}
 			else
@@ -1099,6 +1103,23 @@ int32 ASimCopterTrafficSystemActor::GetPeopleTileClassAtWorldLocation(const FVec
 	}
 
 	return int32(PeopleTileClasses[FileY * FSimCity2000City::MapSize + FileX]);
+}
+
+bool ASimCopterTrafficSystemActor::TryGetTerrainWorldZAtWorldLocation(
+	const FVector& WorldLocation,
+	float& OutTerrainWorldZ) const
+{
+	OutTerrainWorldZ = 0.0f;
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	if (TileCenterWorldZ.Num() != FSimCity2000City::TileCount ||
+		!TryGetPeopleTileCoordinateAtWorldLocation(WorldLocation, FileX, FileY))
+	{
+		return false;
+	}
+
+	OutTerrainWorldZ = TileCenterWorldZ[FileY * FSimCity2000City::MapSize + FileX];
+	return true;
 }
 
 int32 ASimCopterTrafficSystemActor::GetPeopleStoredFacingFromWorldLocations(
@@ -1276,6 +1297,20 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 		}
 	}
 
+	if (TrafficAiMode == ESimCopterTrafficAiMode::Original)
+	{
+		// Decoded original behavior: no traffic lights and no blockage recovery. Cars queue
+		// behind whatever blocks the road (including the player), so jams form and clear the
+		// way the original's traffic-jam events expect.
+		ApplyVehicleFollowing(VehicleFollowLookAheadCm, VehicleStopDistanceCm, VehicleSlowDistanceCm, false, DeltaSeconds);
+		ApplyPlayerRoadBlocking();
+		ApplyIntersectionApproachSlowdown(DeltaSeconds);
+		ResolveVehicleOverlaps();
+		ApplyVehicleLaneGuidance(DeltaSeconds);
+		UpdatePedestrianAvoidance();
+		return;
+	}
+
 	if (TrafficFlowMode == ESimCopterTrafficFlowMode::Normal)
 	{
 		ApplyTrafficLights(DeltaSeconds);
@@ -1286,6 +1321,7 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 		ApplyVehicleFollowing(VehicleFollowLookAheadCm, VehicleStopDistanceCm, VehicleSlowDistanceCm, false, DeltaSeconds);
 	}
 
+	ApplyIntersectionApproachSlowdown(DeltaSeconds);
 	ResolveVehicleOverlaps();
 	if (TrafficFlowMode == ESimCopterTrafficFlowMode::Normal)
 	{
@@ -1293,6 +1329,46 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 	}
 	ApplyVehicleLaneGuidance(DeltaSeconds);
 	UpdatePedestrianAvoidance();
+}
+
+void ASimCopterTrafficSystemActor::ApplyPlayerRoadBlocking()
+{
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (PlayerPawn == nullptr || PlayerRoadBlockLookAheadCm <= 0.0f)
+	{
+		return;
+	}
+
+	// Only a grounded player blocks traffic; a helicopter in flight above the road does not.
+	const FVector PlayerLocation = PlayerPawn->GetActorLocation();
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr)
+		{
+			continue;
+		}
+		const FVector AgentLocation = Agent->GetActorLocation();
+		if (FMath::Abs(PlayerLocation.Z - AgentLocation.Z) > 600.0f)
+		{
+			continue;
+		}
+		const FVector Forward = Agent->GetActorForwardVector().GetSafeNormal2D();
+		const FVector ToPlayer = PlayerLocation - AgentLocation;
+		const float Ahead = FVector::DotProduct(FVector(ToPlayer.X, ToPlayer.Y, 0.0f), Forward);
+		if (Ahead < 0.0f || Ahead > PlayerRoadBlockLookAheadCm)
+		{
+			continue;
+		}
+		const float Lateral = FMath::Abs(FVector::DotProduct(
+			FVector(ToPlayer.X, ToPlayer.Y, 0.0f),
+			FVector(-Forward.Y, Forward.X, 0.0f)));
+		if (Lateral < PlayerRoadBlockLaneWidthCm * 0.5f)
+		{
+			Agent->SetTrafficSpeedScale(0.0f);
+		}
+	}
 }
 
 void ASimCopterTrafficSystemActor::SyncVehicleTrafficStates(float DeltaSeconds)
@@ -1629,6 +1705,88 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing(
 				MarkVehicleInTrafficLightLine(*Vehicle);
 			}
 		}
+	}
+}
+
+void ASimCopterTrafficSystemActor::ApplyIntersectionApproachSlowdown(float DeltaSeconds)
+{
+	const float SlowDistance = FMath::Max(VehicleIntersectionSlowDistanceCm, ActiveTileSize * 0.75f);
+	if (SlowDistance <= 1.0f)
+	{
+		return;
+	}
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr || !Vehicle->HasMoveTarget())
+		{
+			continue;
+		}
+
+		const FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State != nullptr && State->RecoveryBypassSeconds > 0.0f)
+		{
+			continue;
+		}
+
+		const int32 TargetIndex = Vehicle->GetRouteTargetNode();
+		const int32 PreviousIndex = Vehicle->GetRoutePrevNode();
+		const int32 NextIndex = Vehicle->GetRoutePlannedNextNode();
+		if (!RoadNodes.IsValidIndex(TargetIndex) || !RoadNodes.IsValidIndex(PreviousIndex))
+		{
+			continue;
+		}
+
+		const bool bIntersectionNode = IsTrafficLightIntersectionNode(TargetIndex);
+		bool bUpcomingTurn = IsAdjacentRoadCornerTile(RoadNodes[TargetIndex].BuildingId);
+		if (RoadNodes.IsValidIndex(NextIndex))
+		{
+			FVector IncomingDirection = RoadNodes[TargetIndex].LocalLocation - RoadNodes[PreviousIndex].LocalLocation;
+			FVector OutgoingDirection = RoadNodes[NextIndex].LocalLocation - RoadNodes[TargetIndex].LocalLocation;
+			IncomingDirection.Z = 0.0f;
+			OutgoingDirection.Z = 0.0f;
+			IncomingDirection = IncomingDirection.GetSafeNormal();
+			OutgoingDirection = OutgoingDirection.GetSafeNormal();
+			if (!IncomingDirection.IsNearlyZero() && !OutgoingDirection.IsNearlyZero())
+			{
+				bUpcomingTurn = bUpcomingTurn || FVector::DotProduct(IncomingDirection, OutgoingDirection) < 0.94f;
+			}
+		}
+
+		if (!bIntersectionNode && !bUpcomingTurn)
+		{
+			continue;
+		}
+
+		const FVector ApproachStartLocation = MakeRoutePointLocation(RoadNodes, PreviousIndex, INDEX_NONE, TargetIndex, true);
+		const FVector IntersectionLocation = MakeRoutePointLocation(RoadNodes, TargetIndex, PreviousIndex, NextIndex, true);
+		FVector ApproachDirection = GetFlatSafeNormal(IntersectionLocation - ApproachStartLocation);
+		if (ApproachDirection.IsNearlyZero())
+		{
+			ApproachDirection = GetFlatSafeNormal(IntersectionLocation - Vehicle->GetActorLocation());
+		}
+		if (ApproachDirection.IsNearlyZero())
+		{
+			continue;
+		}
+
+		const FVector ToIntersection = IntersectionLocation - Vehicle->GetActorLocation();
+		const float DistanceToIntersectionCm = FVector::DotProduct(FVector(ToIntersection.X, ToIntersection.Y, 0.0f), ApproachDirection);
+		if (DistanceToIntersectionCm <= 0.0f || DistanceToIntersectionCm > SlowDistance)
+		{
+			continue;
+		}
+
+		const float MinimumSpeedScale = bUpcomingTurn
+			? VehicleIntersectionTurnSpeedScale
+			: VehicleIntersectionCruiseSpeedScale;
+		const float Alpha = FMath::Clamp(DistanceToIntersectionCm / SlowDistance, 0.0f, 1.0f);
+		const float SpeedScale = FMath::Lerp(
+			FMath::Clamp(MinimumSpeedScale, 0.0f, 1.0f),
+			1.0f,
+			FMath::Pow(Alpha, 0.65f));
+		Vehicle->ApplyTrafficBrake(SpeedScale, DeltaSeconds, VehicleIntersectionBrakeRate);
 	}
 }
 
@@ -2353,7 +2511,7 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 	int32 NextIndex = Agent.GetRoutePlannedNextNode();
 	if (!Nodes.IsValidIndex(NextIndex) || !Nodes[FromIndex].Neighbors.Contains(NextIndex))
 	{
-		NextIndex = ChooseNextRouteNode(Nodes, FromIndex, ApproachIndex, RandomStream);
+		NextIndex = ChooseNextRouteNode(Nodes, FromIndex, ApproachIndex, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
 	}
 	if (NextIndex == INDEX_NONE)
 	{
@@ -2373,7 +2531,7 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 		return;
 	}
 
-	const int32 PlannedNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, NextIndex, FromIndex, RandomStream) : INDEX_NONE;
+	const int32 PlannedNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, NextIndex, FromIndex, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized) : INDEX_NONE;
 
 	// Drive to the chosen adjacent graph node; record where we came from for the next hop.
 	Agent.SetRouteState(NextIndex, FromIndex, PlannedNextIndex);
@@ -2417,7 +2575,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 			return false;
 		}
 
-		const int32 CandidateNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream) : INDEX_NONE;
+		const int32 CandidateNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized) : INDEX_NONE;
 		const int32 CandidateBehaviorClass = bVehicle
 			? 0
 			: FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(Nodes[CandidateNodeIndex].PeopleTileClass, PeopleRandomState);
@@ -2508,7 +2666,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 	// leave movement to the original people VM and use RouteTargetNode only as spawn/debug state.
 	if (bVehicle && Nodes.IsValidIndex(InitialNextIndex))
 	{
-		const int32 InitialPlannedNextIndex = ChooseNextRouteNode(Nodes, InitialNextIndex, NodeIndex, RandomStream);
+		const int32 InitialPlannedNextIndex = ChooseNextRouteNode(Nodes, InitialNextIndex, NodeIndex, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
 		Agent->SetRouteState(InitialNextIndex, NodeIndex, InitialPlannedNextIndex);
 		Agent->SetMoveTarget(MakeVehicleRouteTargetLocation(Nodes, InitialNextIndex, NodeIndex, INDEX_NONE, InitialPlannedNextIndex));
 	}
