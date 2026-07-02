@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Flight/SimCopterFlightModel.h"
 #include "GameFramework/Pawn.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterHelicopterPawn.generated.h"
@@ -197,6 +198,9 @@ public:
 	const FVector& GetVelocityCmPerSec() const { return VelocityCmPerSec; }
 	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
 
+	// The decompiled flight simulation state (read-only; for HUD and tests).
+	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;
@@ -319,17 +323,22 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "1.0"))
 	float TweakAltitudeToCm = 100.0f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "1.0"))
+	// Derived from the decompiled flight model for HUD/camera scaling: the
+	// original's airspeed equals the smoothed pitch angle in tenth-degrees, so
+	// top speed = MaxPitch * 0.610 world-units/s.
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|Flight")
 	float MaxForwardSpeedCmPerSec = 2850.0f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "1.0"))
-	float MaxReverseSpeedFraction = 0.45f;
+	// Centimetres per original world unit. The original city tile is 64 units;
+	// the remake renders tiles at 400 cm, giving 6.25 cm per unit. All flight
+	// model distances/speeds convert through this scale.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "0.01"))
+	float OriginalUnitToCm = 6.25f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "1.0"))
-	float MaxSlideSpeedCmPerSec = 1350.0f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "0.0"))
-	float HoverDamping = 2.75f;
+	// Terrain steeper than this normal (cosine) is "not flat" for landing;
+	// mirrors the original's 9-units-across-a-tile corner test (about 8 deg).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "0.5", ClampMax = "1.0"))
+	float LandingFlatNormalZ = 0.99f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision", meta = (ClampMin = "1.0"))
 	float LandingProbeDistance = 320.0f;
@@ -442,11 +451,15 @@ protected:
 	TObjectPtr<UMaterialInterface> RotorDiscMaterial;
 
 private:
+	// The decompiled original flight simulation; the pawn feeds it inputs and
+	// city geometry and mirrors its position/attitude onto the actor.
+	FSimCopterFlightModel FlightModel;
+	FSimCopterFlightEvents LastFlightEvents;
+	bool bFlightModelSeeded = false;
+
 	FVector VelocityCmPerSec = FVector::ZeroVector;
 	float CurrentPitchDeg = 0.0f;
 	float CurrentRollDeg = 0.0f;
-	float CurrentYawRateDegPerSec = 0.0f;
-	float RotorSpinDeg = 0.0f;
 	float CameraYawOffsetDeg = 0.0f;
 	float CameraPitchOffsetDeg = 0.0f;
 	float CameraZoomAlpha = 0.25f;
@@ -475,6 +488,11 @@ private:
 
 	FHitResult LastGroundHit;
 	FHitResult LastForwardProbeHit;
+
+	// Mesh sections holding the face-type-11 rotor blur discs; shown only when
+	// the rotor is at lift speed (original: RPM >= 300 toggles those faces).
+	int32 MainRotorDiscSectionIndex = INDEX_NONE;
+	int32 TailRotorDiscSectionIndex = INDEX_NONE;
 
 	void MovePitch(float Value);
 	void MoveRoll(float Value);
@@ -505,10 +523,11 @@ private:
 	void SimulateFlightStep(float DeltaSeconds);
 	void UpdateGroundProbe();
 	void UpdateForwardProbe();
-	void UpdateLandingState(float DeltaSeconds);
-	void MoveWithCollision(const FVector& DeltaLocation, const FRotator& DesiredRotation, float DeltaSeconds);
-	void HandleBlockingHit(const FHitResult& Hit, float DeltaSeconds);
-	void UpdateFuel(float DeltaSeconds);
+	void SeedFlightModelFromActor();
+	void ApplyFlightTuningToModel();
+	FSimCopterFlightInputs BuildFlightInputs() const;
+	FSimCopterFlightEnvironment BuildFlightEnvironment() const;
+	void ApplyFlightModelToActor(float DeltaSeconds);
 	void UpdateRopeAndBucket(float DeltaSeconds);
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);

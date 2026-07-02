@@ -1,0 +1,4 @@
+Callers of FUN_00484d20 @ 00484d20:
+    0047a7ff  in FUN_0047a760 @ 0047a760
+    00488fa8  in FUN_00488f90 @ 00488f90
+    004c68de  in FUN_004c6830 @ 004c6830
