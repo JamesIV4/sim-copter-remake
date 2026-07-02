@@ -1092,17 +1092,56 @@ bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const
 
 	const float HalfHeight = CollisionComponent->GetScaledCapsuleHalfHeight();
 	const FVector CurrentLocation = GetActorLocation();
+
 	// Trace well above to well below the agent so placement survives any gap between the traffic
 	// spawner's terrain estimate and the city's actual rendered surface (the cause of the old
 	// hovering). The Camera channel is blocked by the city terrain/mesh but ignored by every
 	// pedestrian/vehicle/player capsule, so agents never snap onto one another.
-	const FVector Start = CurrentLocation + FVector::UpVector * GroundProbeUpCm;
-	const FVector End = CurrentLocation - FVector::UpVector * (HalfHeight + GroundProbeDistanceCm);
+	float StartZ = CurrentLocation.Z + GroundProbeUpCm;
+	float TerrainFallbackZ = 0.0f;
+	bool bHasTerrainClamp = false;
+
+	// The original never derives a person's Z from the building model: people walk building
+	// tiles at street level (Z = tile altitude + figure.twk feet adjust). A pedestrian's probe
+	// therefore starts just above the tile's terrain altitude, below every roof, so it can pick
+	// up sidewalk/road geometry but can never snap on top of a building. Vehicles keep the tall
+	// probe (bridge decks sit far above the water tile's terrain altitude).
+	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
+	{
+		if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+		{
+			float TerrainWorldZ = 0.0f;
+			if (TrafficSystem->TryGetTerrainWorldZAtWorldLocation(CurrentLocation, TerrainWorldZ))
+			{
+				// Building tiles are flat by construction, so the walk surface is the tile
+				// altitude itself and the probe start must stay below the lowest roof. Open
+				// tiles can slope, so grant the extra headroom only there.
+				const int32 TileClass = TrafficSystem->GetPeopleTileClassAtWorldLocation(CurrentLocation);
+				const bool bBuildingTile = TileClass >= 10 && TileClass <= 13;
+				StartZ = TerrainWorldZ + PedestrianGroundProbeStartAboveTerrainCm +
+					(bBuildingTile ? 0.0f : PedestrianGroundProbeSlopeHeadroomCm);
+				TerrainFallbackZ = TerrainWorldZ;
+				bHasTerrainClamp = true;
+			}
+		}
+	}
+
+	const FVector Start(CurrentLocation.X, CurrentLocation.Y, StartZ);
+	const float EndZ = FMath::Min(CurrentLocation.Z - HalfHeight, StartZ) - GroundProbeDistanceCm;
+	const FVector End(CurrentLocation.X, CurrentLocation.Y, EndZ);
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterGroundAgentSnap), false, this);
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
 	{
 		OutGroundLocation = FVector(CurrentLocation.X, CurrentLocation.Y, Hit.ImpactPoint.Z + HalfHeight + 1.0f);
+		return true;
+	}
+
+	if (bHasTerrainClamp)
+	{
+		// Clamped probe started inside/under building geometry with no ground quad beneath:
+		// stand at the tile's terrain altitude, exactly like the original placement.
+		OutGroundLocation = FVector(CurrentLocation.X, CurrentLocation.Y, TerrainFallbackZ + HalfHeight + 1.0f);
 		return true;
 	}
 

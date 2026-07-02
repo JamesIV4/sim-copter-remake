@@ -1,0 +1,67 @@
+STRING @ 00627012 : Auto
+    (no references)
+STRING @ 00627106 : Classic Automobile
+    (no references)
+STRING @ 00627aca : Auto-Quiet
+    (no references)
+STRING @ 0062fdf8 : Auto
+    (no references)
+STRING @ 00630920 : Silence auto
+    (no references)
+STRING @ 00635d02 : Initialisation automatique
+    (no references)
+STRING @ 00639de8 : Auto
+    (no references)
+STRING @ 00639dfe : Verbrecherauto
+    (no references)
+STRING @ 00639ed8 : Klassisches Automobil
+    (no references)
+STRING @ 0063a8c6 : Autogeräusche
+    (no references)
+STRING @ 0063eb0a : Jamie Doornbos\n¥Bruce Johnson\n¥Heather Mace\n¥Mike Larson\n¥\n²Handbuch\n¥Bob Sombrio\n¥Debra Larson\n¥Stephen Goldin\n¥Laura O'Shea\n¥Michael Bremer\n¥David Caggiano\n¥Rhea Yost\n¥\n²Sprecher\n¥Bob Sombrio\n¥   (Autor/Sprecher)\n¥David Abrams\n¥Fred Bowie\n¥David Caggiano\n¥Andrea Chellew\n¥Karen Fagen\n¥Mike Gilmartin\n¥Ira Katz\n¥Ila Kriplani\n¥Leo Kunkle\n¥Jeanie Lerner\n¥Ken Mace\n¥Tim Moore\n¥Owen Nelson\n¥Laura O'Shea\n¥Genevieve Owens\n¥Liam Patterson\n¥
+    (no references)
+STRING @ 0063f98a : Auto starten
+    (no references)
+STRING @ 00641244 : Autos warten!
+    (no references)
+STRING @ 00643614 : Auto
+    (no references)
+STRING @ 00643650 : Auto Polizia
+    (no references)
+STRING @ 00643700 : Auto d'epoca
+    (no references)
+STRING @ 006440fe : Silenzio Auto.
+    (no references)
+STRING @ 00646ccc : Megafono - Lancia ordini alle persone ed alle auto al suolo.  Molto utile nei casi d'emergenza, nel traffico e per le missioni di tutela della legge. Portata effettiva circa 300 m.
+    (no references)
+STRING @ 00647752 : Auto in fiamme
+    (no references)
+STRING @ 0064913c : Inizializzazione auto
+    (no references)
+STRING @ 0064aa34 : Auto in attesa!
+    (no references)
+STRING @ 0064cebc : Automóvil
+    (no references)
+STRING @ 0064d008 : Automóvil clásico
+    (no references)
+STRING @ 006513a4 : Automóvil en llamas
+    (no references)
+STRING @ 00652eb0 : Se está iniciando el automóvil
+    (no references)
+STRING @ 00656dd4 : Auto
+    (no references)
+STRING @ 00656e14 : Politieauto
+    (no references)
+STRING @ 006578f8 : Auto-geluidloos
+    (no references)
+STRING @ 0065a622 : Megafoon - Stelt u in staat te communiceren met mensen en auto's beneden. Handig bij noodgevallen, bij het regelen van het verkeer en voor andere politietaken. Bereik: 300 m.
+    (no references)
+STRING @ 0065b104 : Brandende auto
+    (no references)
+STRING @ 0065ca60 : Initialisatie auto
+    (no references)
+STRING @ 0065dfe6 : Auto bevrijd!
+    (no references)
+STRING @ 0065e136 : Auto's wachten!
+    (no references)
+=== 33 strings matched 'Auto' ===

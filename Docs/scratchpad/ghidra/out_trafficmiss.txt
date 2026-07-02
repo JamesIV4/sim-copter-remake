@@ -1,0 +1,87 @@
+===== FUN_004ab170 @ 004ab170 =====
+
+void FUN_004ab170(void)
+
+{
+  undefined4 *local_50;
+  undefined4 *local_4c;
+  undefined4 *local_48;
+  undefined4 *local_44;
+  undefined4 *local_40;
+  undefined *local_3c;
+  undefined *local_38;
+  undefined *local_34;
+  undefined4 *local_30;
+  undefined4 *local_2c;
+  undefined4 *local_28;
+  undefined4 *local_24;
+  undefined4 *local_20;
+  undefined4 *local_1c;
+  undefined4 *local_18;
+  undefined4 *local_14;
+  undefined *local_10;
+  undefined4 *local_c;
+  undefined4 *local_8;
+  undefined4 *local_4;
+  
+  local_50 = &DAT_00505fa8;
+  local_4c = &DAT_00505fa4;
+  local_48 = &DAT_00505fb0;
+  local_44 = &DAT_00506048;
+  local_40 = &DAT_0050604c;
+  FUN_00463520(&local_50,5,s_General_Miss_00506154);
+  local_50 = &DAT_00505fcc;
+  local_4c = &DAT_00505fd0;
+  local_48 = (undefined4 *)&DAT_00505fd4;
+  local_44 = (undefined4 *)&DAT_00505fd8;
+  local_40 = (undefined4 *)&DAT_00505fdc;
+  FUN_00463520(&local_50,5,s_Riot_Miss_00506148);
+  local_50 = &DAT_00505fe0;
+  local_4c = &DAT_00505fe4;
+  local_48 = &DAT_00506090;
+  FUN_00463520(&local_50,3,s_Rescue_Miss_0050613c);
+  local_50 = &DAT_00505ff0;
+  local_4c = &DAT_00505ff4;
+  local_48 = &DAT_00506094;
+  local_44 = &DAT_0050609c;
+  FUN_00463520(&local_50,4,s_Transport_Miss_0050612c);
+  local_50 = &DAT_00505fe8;
+  local_4c = &DAT_00505fec;
+  local_48 = &DAT_00506098;
+  FUN_00463520(&local_50,3,s_Medevac_Miss_0050611c);
+  local_50 = &DAT_00505ff8;
+  local_4c = &DAT_00505ffc;
+  local_48 = &DAT_00506000;
+  local_44 = &DAT_00506004;
+  local_40 = (undefined4 *)&DAT_00506008;
+  local_3c = &DAT_0050600c;
+  local_38 = &DAT_00506010;
+  local_34 = &DAT_00506014;
+  local_30 = &DAT_00506038;
+  local_2c = &DAT_0050603c;
+  local_28 = &DAT_00506040;
+  local_24 = &DAT_00506044;
+  local_20 = &DAT_00506078;
+  local_1c = &DAT_0050607c;
+  local_18 = &DAT_00506080;
+  local_14 = &DAT_00506084;
+  local_10 = &DAT_00506088;
+  local_c = &DAT_0050608c;
+  local_8 = &DAT_005060a0;
+  local_4 = &DAT_005060a8;
+  FUN_00463520(&local_50,0x14,s_Fire_Miss_00506110);
+  local_50 = (undefined4 *)&DAT_00506018;
+  local_4c = (undefined4 *)&DAT_0050601c;
+  FUN_00463520(&local_50,2,s_Criminal_Miss_00506100);
+  local_50 = &DAT_00506020;
+  local_4c = &DAT_00506024;
+  local_48 = &DAT_00506028;
+  FUN_00463520(&local_50,3,s_Speeder_Miss_005060f0);
+  local_50 = &DAT_0050602c;
+  local_4c = &DAT_00506030;
+  local_48 = (undefined4 *)&DAT_00506034;
+  FUN_00463520(&local_50,3,s_Traffic_Miss_005060e0);
+  return;
+}
+
+
