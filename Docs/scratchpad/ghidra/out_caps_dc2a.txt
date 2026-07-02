@@ -1,0 +1,7 @@
+References to 0058dc2a:
+    004c2baa  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c2ce6  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c2d84  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c2e22  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c2eb0  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c812b  DATA  in FUN_004c8120 @ 004c8120

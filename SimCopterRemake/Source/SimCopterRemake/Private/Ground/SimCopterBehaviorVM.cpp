@@ -2,6 +2,8 @@
 
 #include "Ground/SimCopterBehaviorVM.h"
 
+#include "Formats/SimCopterPeopleCityRules.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterBehaviorVM, Log, All);
 
 namespace
@@ -127,7 +129,7 @@ EOpResult ExecOpcode(
 		return EOpResult::True;
 	case 2: // expression engine (FUN_004ca7c0 -> FUN_004cd0d0)
 		return ExecExpression(Context, Record);
-	case 3: // timed move: walk along facing while local counter runs (FUN_004ca7d0)
+	case 4: // timed move: walk along facing while local counter runs (FUN_004ca7d0)
 	{
 		uint16& Counter = Local(Record.Args[0]);
 		if (Counter == 0)
@@ -137,39 +139,103 @@ EOpResult ExecOpcode(
 		--Counter;
 		return World.MoveStep(Context) ? EOpResult::Yield : EOpResult::False;
 	}
-	case 4: // bind figure model by id (FUN_004ca860) - the remake picks figures visually
+	case 6: // bind figure model by id (FUN_004ca860) - the remake picks figures visually
 		return EOpResult::True;
-	case 5: // local0 := random(resolved operand) (FUN_004ca8e0)
+	case 7: // local[arg0] := random(resolved arg1) (FUN_004ca8e0)
 	{
-		const uint16 Bound = ResolveOperand(Context, Record.Args[3] & 0xff, Record.Args[1], nullptr);
-		Local(0) = Context.RandomBounded(FMath::Max<uint16>(Bound, 1));
+		const uint16 Bound = ResolveOperand(Context, Record.Args[2], Record.Args[1], nullptr);
+		Local(Record.Args[0]) = Context.RandomBounded(FMath::Max<uint16>(Bound, 1));
 		return EOpResult::True;
 	}
-	case 10: // deactivate person (FUN_004cb180 -> FUN_004c4e40; result 3 = stop)
+	case 13: // side-effect/event trigger (FUN_004caac0 -> FUN_004ccf50)
+		return EOpResult::True;
+	case 15: // distance/object probe used by "Check for Cops or Heli" (FUN_004cac70)
+		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
+	case 16: // deactivate person (FUN_004cb180 -> FUN_004c4e40; result 3 = stop)
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
-	case 11: // threat response probe (FUN_004cb190)
+	case 17: // threat response probe (FUN_004cb190)
 		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
-	case 13: // tile class == arg (FUN_004cb2c0 -> FUN_004c9220)
+	case 18: // face toward runtime object; absent object is a true no-op (FUN_004cb270)
+		return EOpResult::True;
+	case 19: // tile class == arg (FUN_004cb2c0 -> FUN_004c9220)
 		return World.GetCurrentTileClass() == int32(Record.Args[0]) ? EOpResult::True : EOpResult::False;
-	case 14: // tile class allowed for my behavior class (FUN_004cb300, DAT_0058d750 rows)
-		return World.IsTileClassAllowedForState(
-			Context.Attributes[EBhavAttr::BehaviorClass], World.GetCurrentTileClass())
+	case 20: // tile class allowed for my behavior class (FUN_004cb300, DAT_0058ec00 rows)
+		return FSimCopterPeopleCityRules::GetAmbientStateTileClasses(Context.Attributes[EBhavAttr::BehaviorClass])
+			.Contains(World.GetCurrentTileClass())
 			? EOpResult::True : EOpResult::False;
-	case 15: // threat nearby? (FUN_004cb360 -> FUN_004c9bc0)
+	case 21: // threat nearby? (FUN_004cb360 -> FUN_004c9bc0)
 		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
-	case 17: // speed += arg, clamped 0..10 (FUN_004cb420; person+0x150)
+	case 22: // same tile as player/camera globals; writes player speed + facing locals (FUN_004cb370)
 	{
+		int32 CurrentFileX = INDEX_NONE;
+		int32 CurrentFileY = INDEX_NONE;
+		FSimCopterBehaviorPlayerTileProbe Probe;
+		if (!World.TryGetCurrentTileCoordinate(CurrentFileX, CurrentFileY) ||
+			!World.TryGetPlayerTileProbe(Context, Probe) ||
+			CurrentFileX != Probe.FileX ||
+			CurrentFileY != Probe.FileY)
+		{
+			return EOpResult::False;
+		}
+
+		Local(Record.Args[0]) = Probe.Speed;
+		Local(Record.Args[1]) = Probe.Facing;
+		return EOpResult::True;
+	}
+	case 23: // speed += arg, clamped 0..10 (FUN_004cb420; person+0x150)
+	{
+		Context.Attributes[EBhavAttr::PreviousSpeed] = Context.Attributes[EBhavAttr::Speed];
 		const int32 NewSpeed = FMath::Clamp<int32>(
 			int32(int16(Context.Attributes[EBhavAttr::Speed])) + int16(Record.Args[0]), 0, 10);
 		Context.Attributes[EBhavAttr::Speed] = uint16(NewSpeed);
 		return EOpResult::True;
 	}
-	default:
-		// Not yet ported (semantics in out_vm_ops_*.txt). Follow the true edge so shipped
-		// programs keep flowing; log once per opcode so the gap list is visible.
-		World.OnUnknownOpcode(Record.Token);
+	case 24: // compute bearing/distance to a selected runtime object (FUN_004cb480)
+		return EOpResult::False;
+	case 27: // reaction-force side effect (FUN_004cb630); not needed by the remake movement.
 		return EOpResult::True;
+	case 28: // maybe create a rioter from a carried/context object (FUN_004cb680)
+		return EOpResult::False;
+	case 29: // facing := local[arg0] & 7 (FUN_004cb6d0)
+		Context.Attributes[EBhavAttr::Facing] = uint16(Local(Record.Args[0]) & 7);
+		return EOpResult::True;
+	case 31: // face away from a linked runtime object; no object means success (FUN_004cc240)
+		return EOpResult::True;
+	case 34: // wander out of road/invalid pedestrian tile (FUN_004cc330)
+	{
+		const int32 TileClass = World.GetCurrentTileClass();
+		if (TileClass != 7 && TileClass != 8 && TileClass != 6 && TileClass != 9 &&
+			TileClass != INDEX_NONE && TileClass != 1)
+		{
+			return EOpResult::True;
+		}
+
+		uint16& Counter = Local(Record.Args[0]);
+		if (Counter == 0)
+		{
+			return EOpResult::False;
+		}
+		--Counter;
+		return World.MoveStep(Context) ? EOpResult::Yield : EOpResult::False;
+	}
+	case 36: // face toward a runtime object class (FUN_004cc470); no matching object in this world.
+		return EOpResult::False;
+	case 57: // sound/side-effect trigger (FUN_004ccca0 -> FUN_004c5210)
+		return EOpResult::True;
+	case 59: // carried object is player helicopter? (FUN_004cce30)
+		return EOpResult::False;
+	case 70: // snap/update vertical position from ground/carried object (FUN_004cbab0)
+		return EOpResult::True;
+	case 85: // ambient audio/side-effect kick (FUN_004cc110 -> FUN_004c5210)
+		return EOpResult::True;
+	case 86: // ordinary ambient pedestrians do not match the player/carried object probe.
+		return EOpResult::False;
+	default:
+		// Not yet ported (semantics in out_vm_ops_*.txt). Follow the failure edge so a missing
+		// object/mission handler does not silently invent successful behavior.
+		World.OnUnknownOpcode(Record.Token);
+		return EOpResult::False;
 	}
 }
 } // namespace
@@ -187,23 +253,12 @@ void FSimCopterPersonContext::ResetToState(int32 StateIndex)
 
 uint16 FSimCopterPersonContext::RandomRaw()
 {
-	// FUN_004ce9d0: 16-bit Galois LFSR, tap mask 0x1bf5.
-	const uint16 Bit = Lfsr & 1;
-	Lfsr >>= 1;
-	if (Bit)
-	{
-		Lfsr ^= 0x1bf5;
-	}
-	if (Lfsr == 0)
-	{
-		Lfsr = 0x2a2a;
-	}
-	return Lfsr;
+	return FSimCopterPeopleCityRules::NextPeopleRandomRaw(Lfsr);
 }
 
 uint16 FSimCopterPersonContext::RandomBounded(uint16 Bound)
 {
-	return Bound != 0 ? RandomRaw() % Bound : 0; // FUN_004cea00
+	return FSimCopterPeopleCityRules::NextPeopleRandomBounded(Lfsr, Bound);
 }
 
 const TArray<int32>& FSimCopterBehaviorVM::GetAllowedTileClasses(int32 StateIndex)

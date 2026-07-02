@@ -3,6 +3,7 @@
 #include "Ground/SimCopterTrafficSystemActor.h"
 
 #include "City/SimCity2000CityActor.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/World.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
@@ -10,6 +11,7 @@
 #include "Ground/SimCopterGroundAgent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
+#include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterTrafficSystem, Log, All);
 
@@ -301,31 +303,65 @@ FVector2D GetRoadSidewalkLocalOffset(const FSimCity2000City& City, int32 FileX, 
 	return FVector2D::ZeroVector; // intersection / isolated tile: keep pedestrians centred
 }
 
-FVector2D GetStableTileJitter(int32 FileX, int32 FileY, float TileSize)
+struct FPeopleSceneFootprint
 {
-	uint32 Hash = HashCombineFast(::GetTypeHash(FileX), ::GetTypeHash(FileY));
-	Hash = HashCombineFast(Hash, 0x9e3779b9u);
-	const float UnitX = float(Hash & 0xffffu) / 65535.0f;
-	const float UnitY = float((Hash >> 16) & 0xffffu) / 65535.0f;
-	const float Radius = TileSize * 0.18f;
-	return FVector2D((UnitX * 2.0f - 1.0f) * Radius, (UnitY * 2.0f - 1.0f) * Radius);
-}
+	int32 OriginX = 0;
+	int32 OriginY = 0;
+	int32 Size = 1;
+};
 
-FVector2D GetPeopleSpawnLocalOffset(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 PeopleTileClass, float TileSize)
+bool TryResolvePeopleSceneFootprint(const FSimCity2000City& City, int32 FileX, int32 FileY, FPeopleSceneFootprint& OutFootprint)
 {
 	const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
-	if (PeopleTileClass == 7 && IsPedestrianRoadTile(Tile.Building))
+	const int32 FootprintSize = FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(Tile.Building);
+	if (Tile.Building >= 0x70)
 	{
-		return GetRoadSidewalkLocalOffset(City, FileX, FileY, TileSize);
+		const uint8 ZoneHigh = Tile.Zone & 0xF0;
+		if (ZoneHigh != 0xF0 && (Tile.Zone & 0x80) == 0)
+		{
+			return false;
+		}
 	}
 
-	const FSimCopterPeopleSpawnPlacement Placement = FSimCopterPeopleCityRules::GetSpawnPlacementForTileClass(PeopleTileClass);
-	if (Placement.PlacementMode == 1)
+	if (FootprintSize <= 0 ||
+		FileX + FootprintSize > FSimCity2000City::MapSize ||
+		FileY + FootprintSize > FSimCity2000City::MapSize)
 	{
-		return FVector2D::ZeroVector;
+		return false;
 	}
 
-	return GetStableTileJitter(FileX, FileY, TileSize);
+	for (int32 DeltaY = 0; DeltaY < FootprintSize; ++DeltaY)
+	{
+		for (int32 DeltaX = 0; DeltaX < FootprintSize; ++DeltaX)
+		{
+			const FSimCity2000Tile& Candidate = City.Tiles[(FileY + DeltaY) * FSimCity2000City::MapSize + FileX + DeltaX];
+			if (Candidate.Building != Tile.Building)
+			{
+				return false;
+			}
+		}
+	}
+
+	OutFootprint.OriginX = FileX;
+	OutFootprint.OriginY = FileY;
+	OutFootprint.Size = FootprintSize;
+	return true;
+}
+
+FVector MakePeopleSpawnOffsetWorld(
+	const FTransform& CityToWorldTransform,
+	float TileSize,
+	int32 FootprintSize,
+	int32 PlacementMode,
+	uint16& PeopleRandomState)
+{
+	const FSimCopterPeopleLocalOffset LocalOffset =
+		FSimCopterPeopleCityRules::ChooseSpawnLocalOffset(FootprintSize, PlacementMode, PeopleRandomState);
+	const float OriginalUnitToWorld = TileSize / 64.0f;
+	return CityToWorldTransform.TransformVector(FVector(
+		float(LocalOffset.OriginalX) * OriginalUnitToWorld,
+		float(LocalOffset.OriginalY) * OriginalUnitToWorld,
+		0.0f));
 }
 
 FVector2D GetPeopleFacingLocalDirection(int32 Facing)
@@ -342,6 +378,25 @@ FVector2D GetPeopleFacingLocalDirection(int32 Facing)
 		FVector2D(-Diagonal, -Diagonal)};
 
 	return OriginalDirectionByIndex[(Facing + 2) & 7];
+}
+
+int32 GetOriginalFacingFromLocalDelta(const FVector2D& Delta)
+{
+	const float AbsX = FMath::Abs(Delta.X);
+	const float AbsY = FMath::Abs(Delta.Y);
+	if (AbsY < AbsX * 0.5f)
+	{
+		return Delta.X < 0.0f ? 6 : 2;
+	}
+	if (AbsX < AbsY * 0.5f)
+	{
+		return Delta.Y < 0.0f ? 0 : 4;
+	}
+	if (Delta.X < 0.0f)
+	{
+		return Delta.Y < 0.0f ? 7 : 5;
+	}
+	return Delta.Y < 0.0f ? 1 : 3;
 }
 
 bool TryGetRoadOpeningLocalDirectionToNode(
@@ -544,6 +599,25 @@ ASimCopterTrafficSystemActor::ASimCopterTrafficSystemActor()
 	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/cape wells.sc2");
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
+	UStaticMesh* FarInstanceMesh = CubeMeshFinder.Succeeded() ? CubeMeshFinder.Object : nullptr;
+	const auto MakeFarInstances = [this, FarInstanceMesh](const TCHAR* Name) {
+		UInstancedStaticMeshComponent* Instances = CreateDefaultSubobject<UInstancedStaticMeshComponent>(Name);
+		Instances->SetupAttachment(RootComponent);
+		if (FarInstanceMesh != nullptr)
+		{
+			Instances->SetStaticMesh(FarInstanceMesh);
+		}
+		Instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Instances->SetCastShadow(false);
+		Instances->SetMobility(EComponentMobility::Movable);
+		return Instances;
+	};
+	FarPedestrianInstances = MakeFarInstances(TEXT("FarPedestrianInstances"));
+	FarVehicleInstances = MakeFarInstances(TEXT("FarVehicleInstances"));
+
 	VehicleMeshNames = {
 		TEXT("AUTO"),
 		TEXT("AUTO2"),
@@ -578,6 +652,7 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
+	UpdateWholeMapPopulation(DeltaSeconds);
 }
 
 ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() const
@@ -615,6 +690,11 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	ActiveCityToWorldTransform = FTransform::Identity;
 	ActiveOriginalGameRootPath = ResolveOriginalGameRoot();
 	ActiveTileSize = TileSize;
+	PeopleRandomState = uint16(RandomSeed & 0xffff);
+	if (PeopleRandomState == 0)
+	{
+		PeopleRandomState = 1;
+	}
 
 	float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
 	FString CityPath = ResolveCityPath();
@@ -651,6 +731,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
 
 	PeopleTileClasses.SetNum(FSimCity2000City::TileCount);
+	TileCenterWorldZ.SetNum(FSimCity2000City::TileCount);
 
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
 	{
@@ -663,6 +744,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
 			const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
 			const float LocalZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
+			TileCenterWorldZ[TileIndex] = ActiveCityToWorldTransform.TransformPosition(FVector(LocalX, LocalY, LocalZ)).Z;
 
 			if (!Tile.bWater && IsOriginalTrafficRoadTile(Tile.Building))
 			{
@@ -680,14 +762,29 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 
 			if (!Tile.bWater && FSimCopterPeopleCityRules::IsAmbientPedestrianTileClass(PeopleTileClass))
 			{
-				const FVector2D SpawnOffset = GetPeopleSpawnLocalOffset(City, FileX, FileY, PeopleTileClass, ActiveTileSize);
-				const int32 NodeIndex = PedestrianNodes.Num();
+				FPeopleSceneFootprint SceneFootprint;
+				if (!TryResolvePeopleSceneFootprint(City, FileX, FileY, SceneFootprint))
+				{
+					continue;
+				}
+
+				const float SceneCenterX = GetWorldTileCenterCoordinate(
+					static_cast<float>(SceneFootprint.OriginX) + (static_cast<float>(SceneFootprint.Size) - 1.0f) * 0.5f,
+					ActiveTileSize,
+					HalfMapSize);
+				const float SceneCenterY = -GetWorldTileCenterCoordinate(
+					static_cast<float>(SceneFootprint.OriginY) + (static_cast<float>(SceneFootprint.Size) - 1.0f) * 0.5f,
+					ActiveTileSize,
+					HalfMapSize);
+				const FSimCopterPeopleSpawnPlacement Placement = FSimCopterPeopleCityRules::GetSpawnPlacementForTileClass(PeopleTileClass);
 				FSimCopterGroundRouteNode& Node = PedestrianNodes.AddDefaulted_GetRef();
-				Node.FileX = FileX;
-				Node.FileY = FileY;
+				Node.FileX = SceneFootprint.OriginX;
+				Node.FileY = SceneFootprint.OriginY;
 				Node.BuildingId = Tile.Building;
 				Node.PeopleTileClass = PeopleTileClass;
-				Node.LocalLocation = FVector(LocalX + SpawnOffset.X, LocalY + SpawnOffset.Y, LocalZ + 10.0f);
+				Node.PeopleFootprintSize = SceneFootprint.Size;
+				Node.PeoplePlacementMode = Placement.PlacementMode;
+				Node.LocalLocation = FVector(SceneCenterX, SceneCenterY, LocalZ + 10.0f);
 				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
 			}
 		}
@@ -715,6 +812,8 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodeCount = RoadNodes.Num();
 	PedestrianNodeCount = PedestrianNodes.Num();
 
+	BuildWholeMapPopulation();
+
 	UE_LOG(
 		LogSimCopterTrafficSystem,
 		Display,
@@ -731,11 +830,249 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	return true;
 }
 
-int32 ASimCopterTrafficSystemActor::GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const
+void ASimCopterTrafficSystemActor::BuildWholeMapPopulation()
 {
+	WholeMapPedestrianRecords.Reset();
+	WholeMapVehicleRecords.Reset();
+	WholeMapSimAccumulatorSeconds = 0.0f;
+	if (FarPedestrianInstances != nullptr)
+	{
+		FarPedestrianInstances->ClearInstances();
+	}
+	if (FarVehicleInstances != nullptr)
+	{
+		FarVehicleInstances->ClearInstances();
+	}
+	WholeMapPedestrianRecordCount = 0;
+	WholeMapVehicleRecordCount = 0;
+
+	if (!bSimulateWholeMap || FarPedestrianInstances == nullptr || FarVehicleInstances == nullptr)
+	{
+		return;
+	}
+
+	const int32 SectorTiles = FMath::Clamp(WholeMapSectorTiles, 4, FSimCity2000City::MapSize);
+	const int32 SectorsPerSide = FMath::DivideAndRoundUp(FSimCity2000City::MapSize, SectorTiles);
+	const int32 SectorCount = SectorsPerSide * SectorsPerSide;
+	const auto SectorOfTile = [SectorTiles, SectorsPerSide](int32 FileX, int32 FileY) {
+		return (FileY / SectorTiles) * SectorsPerSide + (FileX / SectorTiles);
+	};
+
+	// Bucket spawn candidates per sector. Pedestrian scene nodes cover FootprintSize^2 tiles;
+	// road nodes cover one tile each.
+	TArray<TArray<int32>> SectorPedNodes;
+	TArray<TArray<int32>> SectorRoadNodes;
+	TArray<int32> SectorPedTileWeight;
+	SectorPedNodes.SetNum(SectorCount);
+	SectorRoadNodes.SetNum(SectorCount);
+	SectorPedTileWeight.SetNumZeroed(SectorCount);
+
+	for (int32 Index = 0; Index < PedestrianNodes.Num(); ++Index)
+	{
+		const FSimCopterGroundRouteNode& Node = PedestrianNodes[Index];
+		const int32 Sector = SectorOfTile(Node.FileX, Node.FileY);
+		SectorPedNodes[Sector].Add(Index);
+		SectorPedTileWeight[Sector] += FMath::Square(FMath::Max(1, Node.PeopleFootprintSize));
+	}
+	for (int32 Index = 0; Index < RoadNodes.Num(); ++Index)
+	{
+		const FSimCopterGroundRouteNode& Node = RoadNodes[Index];
+		SectorRoadNodes[SectorOfTile(Node.FileX, Node.FileY)].Add(Index);
+	}
+
+	// Budgets derive from each sector's actual content: a fully built-up sector gets the
+	// original's per-camera-area ambient population (figure.twk Max random ambient = 55),
+	// emptier sectors proportionally less. This is the anti-clumping guarantee.
+	const float TilesPerSector = float(SectorTiles * SectorTiles);
+	for (int32 Sector = 0; Sector < SectorCount; ++Sector)
+	{
+		if (WholeMapPedestrianRecords.Num() >= WholeMapMaxPedestrians)
+		{
+			break;
+		}
+		const TArray<int32>& Candidates = SectorPedNodes[Sector];
+		if (Candidates.Num() == 0)
+		{
+			continue;
+		}
+		const float Fullness = FMath::Clamp(float(SectorPedTileWeight[Sector]) / TilesPerSector, 0.0f, 1.0f);
+		int32 Budget = FMath::RoundToInt(float(WholeMapPedestriansPerFullSector) * Fullness);
+		Budget = FMath::Min(Budget, WholeMapMaxPedestrians - WholeMapPedestrianRecords.Num());
+		for (int32 Spawn = 0; Spawn < Budget; ++Spawn)
+		{
+			const FSimCopterGroundRouteNode& Node = PedestrianNodes[Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)]];
+			const int32 BehaviorClass =
+				FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(Node.PeopleTileClass, PeopleRandomState);
+			if (BehaviorClass == INDEX_NONE)
+			{
+				continue; // original spawn attempt failure (five rejected class rolls)
+			}
+			FSimCopterWholeMapRecord& Record = WholeMapPedestrianRecords.AddDefaulted_GetRef();
+			Record.Location = Node.Location + MakePeopleSpawnOffsetWorld(
+				ActiveCityToWorldTransform, ActiveTileSize, Node.PeopleFootprintSize, Node.PeoplePlacementMode, PeopleRandomState);
+			Record.Facing = RandomStream.RandRange(0, 7);
+			Record.BehaviorClass = BehaviorClass;
+		}
+	}
+
+	for (int32 Sector = 0; Sector < SectorCount; ++Sector)
+	{
+		if (WholeMapVehicleRecords.Num() >= WholeMapMaxVehicles)
+		{
+			break;
+		}
+		const TArray<int32>& Candidates = SectorRoadNodes[Sector];
+		if (Candidates.Num() == 0)
+		{
+			continue;
+		}
+		int32 Budget = FMath::RoundToInt(float(Candidates.Num()) * WholeMapVehiclesPerRoadTile);
+		Budget = FMath::Min(Budget, WholeMapMaxVehicles - WholeMapVehicleRecords.Num());
+		for (int32 Spawn = 0; Spawn < Budget; ++Spawn)
+		{
+			const int32 NodeIndex = Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
+			const int32 NextIndex = ChooseNextRouteNode(RoadNodes, NodeIndex, INDEX_NONE, RandomStream);
+			if (NextIndex == INDEX_NONE)
+			{
+				continue;
+			}
+			FSimCopterWholeMapRecord& Record = WholeMapVehicleRecords.AddDefaulted_GetRef();
+			Record.Location = RoadNodes[NodeIndex].Location;
+			Record.RouteNodeIndex = NodeIndex;
+			Record.RouteNextIndex = NextIndex;
+		}
+	}
+
+	// One instance per record, index-aligned; transforms are batch-updated by the far tick.
+	TArray<FTransform> InitialTransforms;
+	InitialTransforms.Reserve(WholeMapPedestrianRecords.Num());
+	for (const FSimCopterWholeMapRecord& Record : WholeMapPedestrianRecords)
+	{
+		InitialTransforms.Add(FTransform(FRotator::ZeroRotator, Record.Location + FVector(0, 0, 85.0f), FVector(0.42f, 0.42f, 1.7f)));
+	}
+	FarPedestrianInstances->AddInstances(InitialTransforms, false, true);
+
+	InitialTransforms.Reset(WholeMapVehicleRecords.Num());
+	for (const FSimCopterWholeMapRecord& Record : WholeMapVehicleRecords)
+	{
+		InitialTransforms.Add(FTransform(FRotator::ZeroRotator, Record.Location + FVector(0, 0, 52.0f), FVector(3.6f, 1.7f, 1.05f)));
+	}
+	FarVehicleInstances->AddInstances(InitialTransforms, false, true);
+
+	WholeMapPedestrianRecordCount = WholeMapPedestrianRecords.Num();
+	WholeMapVehicleRecordCount = WholeMapVehicleRecords.Num();
+	UE_LOG(LogSimCopterTrafficSystem, Display,
+		TEXT("Whole-map population: %d pedestrians, %d vehicles across %d sectors."),
+		WholeMapPedestrianRecordCount, WholeMapVehicleRecordCount, SectorCount);
+}
+
+void ASimCopterTrafficSystemActor::UpdateWholeMapPopulation(float DeltaSeconds)
+{
+	if (!bSimulateWholeMap ||
+		(WholeMapPedestrianRecords.Num() == 0 && WholeMapVehicleRecords.Num() == 0) ||
+		FarPedestrianInstances == nullptr || FarVehicleInstances == nullptr)
+	{
+		return;
+	}
+
+	WholeMapSimAccumulatorSeconds += DeltaSeconds;
+	if (WholeMapSimAccumulatorSeconds < WholeMapSimTickIntervalSeconds)
+	{
+		return;
+	}
+	const float StepSeconds = FMath::Min(WholeMapSimAccumulatorSeconds, 1.0f);
+	WholeMapSimAccumulatorSeconds = 0.0f;
+
+	const FVector FocusLocation = GetPopulationFocusLocation();
+	const float HideRadiusSq = FMath::Square(WholeMapHideRadiusCm);
+
+	// Movement-allowed classes for the ambient state: DAT_0058d750 default row (13,11,10,12,7).
+	const auto IsFarWalkable = [](int32 TileClass) {
+		return TileClass == 13 || TileClass == 11 || TileClass == 10 || TileClass == 12 || TileClass == 7;
+	};
+
+	TArray<FTransform> Transforms;
+	Transforms.Reserve(WholeMapPedestrianRecords.Num());
+	const float PedStepCm = PedestrianSpeedCmPerSec * 0.8f * StepSeconds;
+	for (FSimCopterWholeMapRecord& Record : WholeMapPedestrianRecords)
+	{
+		// Occasional wander turn, mirroring the shipped 'Random Turn' programs at a distance.
+		if (RandomStream.FRand() < 0.25f * StepSeconds)
+		{
+			Record.Facing = RandomStream.RandRange(0, 7);
+		}
+
+		FVector TargetLocation = FVector::ZeroVector;
+		int32 TargetTileClass = INDEX_NONE;
+		if (TryGetPeopleFacingStepTarget(Record.Location, Record.Facing, PedStepCm, TargetLocation, TargetTileClass) &&
+			IsFarWalkable(TargetTileClass))
+		{
+			int32 FileX = INDEX_NONE;
+			int32 FileY = INDEX_NONE;
+			if (TryGetPeopleTileCoordinateAtWorldLocation(TargetLocation, FileX, FileY))
+			{
+				TargetLocation.Z = TileCenterWorldZ[FileY * FSimCity2000City::MapSize + FileX];
+			}
+			Record.Location = TargetLocation;
+		}
+		else
+		{
+			Record.Facing = (Record.Facing + 1) & 7; // blocked: rotate like the original mover
+		}
+
+		const bool bNearCamera = FVector::DistSquared2D(Record.Location, FocusLocation) < HideRadiusSq;
+		Transforms.Add(FTransform(
+			FRotator::ZeroRotator,
+			Record.Location + FVector(0, 0, 85.0f),
+			bNearCamera ? FVector::ZeroVector : FVector(0.42f, 0.42f, 1.7f)));
+	}
+	FarPedestrianInstances->BatchUpdateInstancesTransforms(0, Transforms, true, true, true);
+
+	Transforms.Reset(WholeMapVehicleRecords.Num());
+	const float CarStepCm = VehicleSpeedCmPerSec * 0.9f * StepSeconds;
+	for (FSimCopterWholeMapRecord& Record : WholeMapVehicleRecords)
+	{
+		FRotator Rotation = FRotator::ZeroRotator;
+		if (RoadNodes.IsValidIndex(Record.RouteNextIndex))
+		{
+			const FVector Target = RoadNodes[Record.RouteNextIndex].Location;
+			const FVector ToTarget = Target - Record.Location;
+			const float Distance = ToTarget.Size2D();
+			if (Distance <= CarStepCm)
+			{
+				Record.Location = Target;
+				const int32 PreviousIndex = Record.RouteNextIndex;
+				Record.RouteNextIndex = ChooseNextRouteNode(RoadNodes, Record.RouteNextIndex, Record.RouteNodeIndex, RandomStream);
+				Record.RouteNodeIndex = PreviousIndex;
+			}
+			else
+			{
+				const FVector Direction = ToTarget / FMath::Max(Distance, 1.0f);
+				Record.Location += FVector(Direction.X, Direction.Y, 0.0f) * CarStepCm;
+				Record.Location.Z = FMath::Lerp(Record.Location.Z, Target.Z, FMath::Clamp(CarStepCm / Distance, 0.0f, 1.0f));
+			}
+			Rotation.Yaw = FMath::RadiansToDegrees(FMath::Atan2(ToTarget.Y, ToTarget.X));
+		}
+
+		const bool bNearCamera = FVector::DistSquared2D(Record.Location, FocusLocation) < HideRadiusSq;
+		Transforms.Add(FTransform(
+			Rotation,
+			Record.Location + FVector(0, 0, 52.0f),
+			bNearCamera ? FVector::ZeroVector : FVector(3.6f, 1.7f, 1.05f)));
+	}
+	FarVehicleInstances->BatchUpdateInstancesTransforms(0, Transforms, true, true, true);
+}
+
+bool ASimCopterTrafficSystemActor::TryGetPeopleTileCoordinateAtWorldLocation(
+	const FVector& WorldLocation,
+	int32& OutFileX,
+	int32& OutFileY) const
+{
+	OutFileX = INDEX_NONE;
+	OutFileY = INDEX_NONE;
 	if (PeopleTileClasses.Num() != FSimCity2000City::TileCount || ActiveTileSize <= KINDA_SMALL_NUMBER)
 	{
-		return INDEX_NONE;
+		return false;
 	}
 
 	const FVector LocalLocation = ActiveCityToWorldTransform.InverseTransformPosition(WorldLocation);
@@ -744,10 +1081,34 @@ int32 ASimCopterTrafficSystemActor::GetPeopleTileClassAtWorldLocation(const FVec
 	const int32 FileY = FMath::FloorToInt((HalfMapSize - LocalLocation.Y) / ActiveTileSize);
 	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize)
 	{
+		return false;
+	}
+
+	OutFileX = FileX;
+	OutFileY = FileY;
+	return true;
+}
+
+int32 ASimCopterTrafficSystemActor::GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const
+{
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	if (!TryGetPeopleTileCoordinateAtWorldLocation(WorldLocation, FileX, FileY))
+	{
 		return INDEX_NONE;
 	}
 
 	return int32(PeopleTileClasses[FileY * FSimCity2000City::MapSize + FileX]);
+}
+
+int32 ASimCopterTrafficSystemActor::GetPeopleStoredFacingFromWorldLocations(
+	const FVector& FromWorldLocation,
+	const FVector& ToWorldLocation) const
+{
+	const FVector FromLocal = ActiveCityToWorldTransform.InverseTransformPosition(FromWorldLocation);
+	const FVector ToLocal = ActiveCityToWorldTransform.InverseTransformPosition(ToWorldLocation);
+	const int32 OriginalFacing = GetOriginalFacingFromLocalDelta(FVector2D(ToLocal.X - FromLocal.X, ToLocal.Y - FromLocal.Y));
+	return (OriginalFacing - 2) & 7;
 }
 
 bool ASimCopterTrafficSystemActor::TryGetPeopleFacingStepTarget(
@@ -2046,6 +2407,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 
 	int32 NodeIndex = INDEX_NONE;
 	int32 InitialNextIndex = INDEX_NONE;
+	int32 InitialBehaviorClass = 0;
 	FVector SpawnBaseLocation = FVector::ZeroVector;
 	for (int32 Attempt = 0; Attempt < 18; ++Attempt)
 	{
@@ -2056,13 +2418,27 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 		}
 
 		const int32 CandidateNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream) : INDEX_NONE;
-		const FVector CandidateSpawnBaseLocation = bVehicle
+		const int32 CandidateBehaviorClass = bVehicle
+			? 0
+			: FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(Nodes[CandidateNodeIndex].PeopleTileClass, PeopleRandomState);
+		if (!bVehicle && CandidateBehaviorClass == INDEX_NONE)
+		{
+			continue;
+		}
+
+		FVector CandidateSpawnBaseLocation = bVehicle
 			? MakeRoutePointLocation(Nodes, CandidateNodeIndex, INDEX_NONE, CandidateNextIndex, true)
-			: Nodes[CandidateNodeIndex].Location;
+			: Nodes[CandidateNodeIndex].Location + MakePeopleSpawnOffsetWorld(
+				ActiveCityToWorldTransform,
+				ActiveTileSize,
+				Nodes[CandidateNodeIndex].PeopleFootprintSize,
+				Nodes[CandidateNodeIndex].PeoplePlacementMode,
+				PeopleRandomState);
 		if (!bVehicle || IsVehicleSpawnLocationClear(CandidateSpawnBaseLocation))
 		{
 			NodeIndex = CandidateNodeIndex;
 			InitialNextIndex = CandidateNextIndex;
+			InitialBehaviorClass = CandidateBehaviorClass;
 			SpawnBaseLocation = CandidateSpawnBaseLocation;
 			break;
 		}
@@ -2103,6 +2479,11 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 	const FString MeshName = bVehicle && VehicleMeshNames.Num() > 0
 		? VehicleMeshNames[RandomStream.RandRange(0, VehicleMeshNames.Num() - 1)]
 		: (!bVehicle && PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString());
+
+	if (!bVehicle)
+	{
+		Agent->SetInitialBehaviorClass(InitialBehaviorClass);
+	}
 
 	Agent->ConfigureAgent(
 		bVehicle ? ESimCopterGroundAgentKind::Vehicle : ESimCopterGroundAgentKind::Pedestrian,

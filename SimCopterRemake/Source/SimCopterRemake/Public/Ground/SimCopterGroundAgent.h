@@ -44,6 +44,9 @@ public:
 		float NewMovementSpeedCmPerSec);
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
+	void SetInitialBehaviorClass(int32 NewInitialBehaviorClass);
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool LoadOriginalMeshFromOriginalGameRoot();
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
@@ -185,6 +188,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "20"))
 	int32 InitialPersonState = 0;
 
+	// Initial behavior class at original person+0x146. Ambient city spawning chooses this from
+	// DAT_0058ec00/FUN_004c2450 while state remains 0; it also selects the figure (FUN_004c71c0).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "21"))
+	int32 InitialBehaviorClass = 0;
+
 	// Vehicle headlight spotlights (replace the removed translucent beam cards).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights")
 	bool bEnableVehicleHeadlights = true;
@@ -301,9 +309,13 @@ private:
 
 	// ISimCopterBehaviorWorld
 	virtual int32 GetCurrentTileClass() const override;
+	virtual bool TryGetCurrentTileCoordinate(int32& OutFileX, int32& OutFileY) const override;
 	virtual bool IsTileClassAllowedForState(int32 StateIndex, int32 TileClass) const override;
 	virtual bool MoveStep(FSimCopterPersonContext& Context) override;
 	virtual bool IsThreatNearby(const FSimCopterPersonContext& Context) const override;
+	virtual bool TryGetPlayerTileProbe(
+		const FSimCopterPersonContext& Context,
+		FSimCopterBehaviorPlayerTileProbe& OutProbe) const override;
 	virtual void OnUnknownOpcode(int32 Opcode) override;
 
 	void ApplyAgentShape();

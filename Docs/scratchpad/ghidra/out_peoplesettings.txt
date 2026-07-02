@@ -1,0 +1,33 @@
+===== FUN_004c8120 @ 004c8120 =====
+
+void FUN_004c8120(void)
+
+{
+  undefined4 *local_2c;
+  undefined4 *local_28;
+  undefined4 *local_24;
+  undefined4 *local_20;
+  undefined4 *local_1c;
+  undefined4 *local_18;
+  undefined2 *local_14;
+  undefined *local_10;
+  undefined2 *local_c;
+  undefined4 *local_8;
+  undefined4 *local_4;
+  
+  local_2c = &DAT_0058dc22;
+  local_28 = &DAT_0058dc2a;
+  local_24 = &DAT_00506428;
+  local_20 = &DAT_0050642c;
+  local_1c = &DAT_00506430;
+  local_18 = &DAT_00506434;
+  local_14 = &DAT_0058dc2e;
+  local_10 = &DAT_0058dc32;
+  local_c = &DAT_0058dc26;
+  local_8 = &DAT_00506bf0;
+  local_4 = &DAT_0058dc3a;
+  FUN_00463520(&local_2c,0xb,s_Figure_Parms_00506adc);
+  return;
+}
+
+

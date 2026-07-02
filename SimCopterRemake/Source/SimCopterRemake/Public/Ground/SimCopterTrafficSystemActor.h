@@ -10,6 +10,7 @@
 
 class ASimCity2000CityActor;
 class ASimCopterGroundAgent;
+class UInstancedStaticMeshComponent;
 
 struct FSimCopterGroundRouteNode
 {
@@ -19,6 +20,8 @@ struct FSimCopterGroundRouteNode
 	int32 FileY = 0;
 	uint8 BuildingId = 0;
 	int32 PeopleTileClass = INDEX_NONE;
+	int32 PeopleFootprintSize = 1;
+	int32 PeoplePlacementMode = 0;
 	TArray<int32> Neighbors;
 };
 
@@ -27,6 +30,18 @@ enum class ESimCopterTrafficFlowMode : uint8
 {
 	Normal,
 	TrafficJam
+};
+
+// Lightweight whole-map population entry: the entire city is simulated as records; full agents
+// ("beamed" figures, in the original's terms) only exist near the camera. Far records render as
+// two instanced-mesh batches.
+struct FSimCopterWholeMapRecord
+{
+	FVector Location = FVector::ZeroVector;
+	int32 Facing = 0;             // stored facing 0..7 (pedestrians)
+	int32 BehaviorClass = 0;      // pedestrians: original behavior class (figure identity)
+	int32 RouteNodeIndex = INDEX_NONE; // vehicles: previous road node
+	int32 RouteNextIndex = INDEX_NONE; // vehicles: node being driven toward
 };
 
 struct FSimCopterVehicleTrafficState
@@ -57,7 +72,14 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SimCopter|Traffic")
 	bool RebuildSpawnData();
 
+	bool TryGetPeopleTileCoordinateAtWorldLocation(
+		const FVector& WorldLocation,
+		int32& OutFileX,
+		int32& OutFileY) const;
 	int32 GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const;
+	int32 GetPeopleStoredFacingFromWorldLocations(
+		const FVector& FromWorldLocation,
+		const FVector& ToWorldLocation) const;
 	bool TryGetPeopleFacingStepTarget(
 		const FVector& FromWorldLocation,
 		int32 Facing,
@@ -264,6 +286,54 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.1"))
 	float PedestrianAvoidanceSpeedMultiplier = 1.25f;
 
+	// --- Whole-map population (remake divergence: people/traffic visible across the map) ---
+
+	// Simulate the entire city as lightweight records; near the camera the normal agent pool
+	// still provides full-detail figures/cars, far records render as instanced boxes.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map")
+	bool bSimulateWholeMap = true;
+
+	// Sector edge in tiles; budgets are computed per sector from its spawnable tile content
+	// (the decoded ambient tile classes), so dense districts get crowds and empty land none.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "4", ClampMax = "64"))
+	int32 WholeMapSectorTiles = 16;
+
+	// Pedestrians per fully built-up sector (the original ambient cap is 55 for one camera
+	// area of comparable size, from figure.twk [Figure Parms] Max random ambient).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "0"))
+	int32 WholeMapPedestriansPerFullSector = 55;
+
+	// Vehicles per road tile within a sector.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "0.0"))
+	float WholeMapVehiclesPerRoadTile = 0.12f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "0"))
+	int32 WholeMapMaxPedestrians = 4000;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "0"))
+	int32 WholeMapMaxVehicles = 1500;
+
+	// Far-record simulation cadence. Movement is advanced and instances updated at this rate.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "0.05"))
+	float WholeMapSimTickIntervalSeconds = 0.2f;
+
+	// Far instances inside this radius of the camera are hidden; the full-detail agent pool
+	// covers that zone so people/cars are not doubled up.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Whole Map", meta = (ClampMin = "0.0"))
+	float WholeMapHideRadiusCm = 24000.0f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Whole Map")
+	TObjectPtr<UInstancedStaticMeshComponent> FarPedestrianInstances;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Whole Map")
+	TObjectPtr<UInstancedStaticMeshComponent> FarVehicleInstances;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 WholeMapPedestrianRecordCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 WholeMapVehicleRecordCount = 0;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "10.0"))
 	float TileSize = 400.0f;
 
@@ -296,10 +366,15 @@ private:
 	TArray<FSimCopterGroundRouteNode> PedestrianNodes;
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
 	TArray<uint8> PeopleTileClasses;
+	TArray<float> TileCenterWorldZ;
+	TArray<FSimCopterWholeMapRecord> WholeMapPedestrianRecords;
+	TArray<FSimCopterWholeMapRecord> WholeMapVehicleRecords;
+	float WholeMapSimAccumulatorSeconds = 0.0f;
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> VehicleAgents;
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> PedestrianAgents;
 	TMap<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState> VehicleTrafficStates;
 	FRandomStream RandomStream;
+	uint16 PeopleRandomState = 1;
 	FTransform ActiveCityToWorldTransform = FTransform::Identity;
 	FString ActiveOriginalGameRootPath;
 	float ActiveTileSize = 400.0f;
@@ -337,6 +412,8 @@ private:
 	FVector ClampVehicleLocationToRoadNetwork(const FVector& Location) const;
 	FVector MakeVehicleRoadSafePathOffset(const FVector& BaseLocation, const FVector& DesiredOffset) const;
 	void AssignNextTarget(ASimCopterGroundAgent& Agent, const TArray<FSimCopterGroundRouteNode>& Nodes);
+	void BuildWholeMapPopulation();
+	void UpdateWholeMapPopulation(float DeltaSeconds);
 	bool TrySpawnAgent(bool bVehicle, const FVector& FocusLocation);
 	int32 ChooseNodeNearFocus(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& FocusLocation);
 	FVector MakeVehicleRouteTargetLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 TargetIndex, int32 PreviousIndex, int32 ApproachIndex, int32 LookAheadIndex) const;

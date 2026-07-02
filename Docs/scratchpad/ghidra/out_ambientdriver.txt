@@ -1,0 +1,55 @@
+===== FUN_004c2550 @ 004c2550 =====
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+void FUN_004c2550(undefined2 param_1,undefined2 param_2,short param_3)
+
+{
+  ushort uVar1;
+  
+  FUN_004c25b0(param_1,param_2);
+  if (DAT_0058dc1c < DAT_0058dc22) {
+    uVar1 = FUN_004cea00(CONCAT22(DAT_0058dc1c >> 0xf,0xd - _DAT_0058dc18));
+    if ((uVar1 < 3) && (0 < param_3)) {
+      do {
+        FUN_004c2450(param_1,param_2);
+        param_3 = param_3 + -1;
+      } while (param_3 != 0);
+    }
+  }
+  return;
+}
+
+
+===== FUN_004c7170 @ 004c7170 =====
+
+undefined4 FUN_004c7170(void)
+
+{
+  short sVar1;
+  undefined4 uVar2;
+  
+  sVar1 = FUN_004cea00(0x14);
+  uVar2 = 0x14;
+  if (0xb < sVar1) {
+    uVar2 = 0xb;
+  }
+  return uVar2;
+}
+
+
+===== FUN_004c92a0 @ 004c92a0 =====
+
+undefined4 FUN_004c92a0(ushort param_1,ushort param_2)
+
+{
+  byte bVar1;
+  
+  bVar1 = *(byte *)((int)&DAT_005bde80 + (param_2 & 0xff) + (param_1 & 0xff) * 0x100);
+  if ((4 < bVar1) && ((bVar1 < 5 || (9 < bVar1)))) {
+    return 0;
+  }
+  return 1;
+}
+
+

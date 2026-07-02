@@ -1,0 +1,10 @@
+===== FUN_004ce9c0 @ 004ce9c0 =====
+
+void FUN_004ce9c0(undefined4 param_1)
+
+{
+  DAT_0058f0d8 = param_1;
+  return;
+}
+
+

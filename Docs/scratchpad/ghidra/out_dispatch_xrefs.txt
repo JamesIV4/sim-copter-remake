@@ -1,0 +1,4 @@
+References to 0058ef78:
+    004c3a62  WRITE  in FUN_004c3010 @ 004c3010
+    004c3a55  WRITE  in FUN_004c3010 @ 004c3010
+    004ccf35  DATA  in FUN_004ccf20 @ 004ccf20

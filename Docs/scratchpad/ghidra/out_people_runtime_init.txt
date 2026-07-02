@@ -1,0 +1,18 @@
+===== FUN_004c2f30 @ 004c2f30 =====
+
+void FUN_004c2f30(void)
+
+{
+  _SYSTEMTIME local_114;
+  undefined1 local_104 [260];
+  
+  GetSystemTime(&local_114);
+  FUN_004ce9c0((local_114._12_4_ & 0xffff) + ((uint)local_114._12_4_ >> 0x10));
+  FUN_00432ab0(0xc,0,s_People_df_005064ac,local_104);
+  FUN_004c3010(local_104);
+  FUN_004c2fc0();
+  DAT_00506444 = FUN_004c7980();
+  return;
+}
+
+

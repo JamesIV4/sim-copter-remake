@@ -37,6 +37,7 @@ namespace EBhavAttr
 	constexpr int32 Frame = 6;       // +0x14c
 	constexpr int32 Speed = 8;       // +0x150, 0..10
 	constexpr int32 Visible = 9;     // +0x152
+	constexpr int32 PreviousSpeed = 10; // +0x154, written by op23 before speed changes
 	constexpr int32 Count = 0x30;
 }
 
@@ -54,7 +55,7 @@ struct FSimCopterPersonContext
 
 	TArray<FFrame> Stack;
 	uint16 Attributes[EBhavAttr::Count] = {};
-	uint16 Lfsr = 0x2a2a; // people PRNG state (FUN_004ce9d0, 16-bit LFSR tap 0x1bf5)
+	uint16 Lfsr = 0x2a2a; // people PRNG state (FUN_004ce9d0, left-shift xor tap 0x1bf5)
 
 	// Outputs the world/agent consumes after each tick:
 	FString PendingAnimMnemonic; // op1 bind requests ("1Wal", "NoMo", "Wave", ...)
@@ -63,10 +64,17 @@ struct FSimCopterPersonContext
 	int32 GetStateIndex() const { return Attributes[EBhavAttr::State]; }
 	void ResetToState(int32 StateIndex);
 
-	// The original's dedicated behavior PRNG: LFSR with tap 0x1bf5 (FUN_004ce9d0), modulo
-	// helper FUN_004cea00.
+	// The original's dedicated people PRNG: FUN_004ce9d0 plus modulo helper FUN_004cea00.
 	uint16 RandomRaw();
 	uint16 RandomBounded(uint16 Bound);
+};
+
+struct FSimCopterBehaviorPlayerTileProbe
+{
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	uint16 Speed = 0;
+	uint16 Facing = 0;
 };
 
 // World queries/actions the opcode handlers need; implemented by the owning agent.
@@ -78,13 +86,18 @@ public:
 	// Original tile class of the tile the person stands on (FUN_004c9220 classes; 7 = the
 	// walkable road/sidewalk class, see FUN_004c3010's per-state allowed lists).
 	virtual int32 GetCurrentTileClass() const = 0;
-	// Membership of a class in the state's allowed list (DAT_0058d750 rows).
+	virtual bool TryGetCurrentTileCoordinate(int32& OutFileX, int32& OutFileY) const { return false; }
+	// Membership of a class in the movement/spawn-mode allowed list (DAT_0058d750 rows).
 	virtual bool IsTileClassAllowedForState(int32 StateIndex, int32 TileClass) const = 0;
 	// Advance one movement step along Attributes[Facing] at Attributes[Speed].
 	// Returns false when blocked (walker follows the false edge / retries).
 	virtual bool MoveStep(FSimCopterPersonContext& Context) = 0;
 	// The original FUN_004c9bc0: is the player helicopter (or a threat) close/low?
 	virtual bool IsThreatNearby(const FSimCopterPersonContext& Context) const = 0;
+	// Original opcode 22 probe: FUN_00489610 tile globals plus DAT_005040d0 speed/facing fields.
+	virtual bool TryGetPlayerTileProbe(
+		const FSimCopterPersonContext& Context,
+		FSimCopterBehaviorPlayerTileProbe& OutProbe) const { return false; }
 
 	virtual void OnUnknownOpcode(int32 Opcode) {}
 };

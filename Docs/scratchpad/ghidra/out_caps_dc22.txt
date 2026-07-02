@@ -1,0 +1,4 @@
+References to 0058dc22:
+    004c2c23  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c256e  READ  in FUN_004c2550 @ 004c2550
+    004c8123  DATA  in FUN_004c8120 @ 004c8120

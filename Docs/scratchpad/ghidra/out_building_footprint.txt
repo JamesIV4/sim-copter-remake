@@ -1,0 +1,15 @@
+===== FUN_004e4f80 @ 004e4f80 =====
+
+int FUN_004e4f80(int param_1)
+
+{
+  if (((param_1 < 0x61) || (0x6b < param_1)) && ((param_1 < 0x49 || (0x50 < param_1)))) {
+    if (param_1 < 0x70) {
+      return 1;
+    }
+    return (int)*(short *)(&DAT_004fad30 + param_1 * 2);
+  }
+  return 2;
+}
+
+

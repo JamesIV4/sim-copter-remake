@@ -194,6 +194,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool IsEngineRunning() const { return bEngineRunning; }
 
+	const FVector& GetVelocityCmPerSec() const { return VelocityCmPerSec; }
+	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;

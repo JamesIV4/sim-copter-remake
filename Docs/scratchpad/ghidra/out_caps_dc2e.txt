@@ -1,0 +1,4 @@
+References to 0058dc2e:
+    004c2be3  READ  in FUN_004c2ba0 @ 004c2ba0
+    004c3e6d  READ  in FUN_004c3e60 @ 004c3e60
+    004c8153  DATA  in FUN_004c8120 @ 004c8120
