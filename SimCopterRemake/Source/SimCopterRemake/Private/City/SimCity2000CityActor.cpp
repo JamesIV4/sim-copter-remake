@@ -105,6 +105,14 @@ struct FTileFootprint
 	int32 Height = 1;
 };
 
+enum class ERoadOpening : uint8
+{
+	North = 1 << 0,
+	East = 1 << 1,
+	South = 1 << 2,
+	West = 1 << 3,
+};
+
 struct FOriginalBridgeDispatch
 {
 	int32 PrimaryObjectId = INDEX_NONE;
@@ -413,6 +421,21 @@ float GetTerrainGridVertexZ(const TArray<int16>& ConditionedCorners, int32 GridX
 	// Height-map samples store (height step + 1) * 0x20 (FUN_004abce0), so one altitude step
 	// spans 0x20 sample units.
 	return static_cast<float>(GetConditionedTerrainCornerSample(ConditionedCorners, GridX, GridY)) * TerrainHeightScale / 32.0f;
+}
+
+float GetTerrainGridBilinearZ(const TArray<int16>& ConditionedCorners, float GridX, float GridY, float TerrainHeightScale)
+{
+	const int32 X0 = FMath::FloorToInt(GridX);
+	const int32 Y0 = FMath::FloorToInt(GridY);
+	const int32 X1 = X0 + 1;
+	const int32 Y1 = Y0 + 1;
+	const float LocalX = FMath::Clamp(GridX - static_cast<float>(X0), 0.0f, 1.0f);
+	const float LocalY = FMath::Clamp(GridY - static_cast<float>(Y0), 0.0f, 1.0f);
+	const float Z00 = GetTerrainGridVertexZ(ConditionedCorners, X0, Y0, TerrainHeightScale);
+	const float Z10 = GetTerrainGridVertexZ(ConditionedCorners, X1, Y0, TerrainHeightScale);
+	const float Z11 = GetTerrainGridVertexZ(ConditionedCorners, X1, Y1, TerrainHeightScale);
+	const float Z01 = GetTerrainGridVertexZ(ConditionedCorners, X0, Y1, TerrainHeightScale);
+	return FMath::Lerp(FMath::Lerp(Z00, Z10, LocalX), FMath::Lerp(Z01, Z11, LocalX), LocalY);
 }
 
 float GetAverageTerrainSurfaceZ(const FSimCity2000City& City, int32 FileX, int32 FileY, int32 Width, int32 Height, float TerrainHeightScale)
@@ -1914,6 +1937,256 @@ FExtendedTerrainData BuildProceduralExtendedTerrain(
 	return Data;
 }
 
+uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
+{
+	constexpr uint8 N = static_cast<uint8>(ERoadOpening::North);
+	constexpr uint8 E = static_cast<uint8>(ERoadOpening::East);
+	constexpr uint8 S = static_cast<uint8>(ERoadOpening::South);
+	constexpr uint8 W = static_cast<uint8>(ERoadOpening::West);
+
+	switch (BuildingId)
+	{
+	case 0x1D: return E | W;
+	case 0x1E: return N | S;
+	case 0x1F: return N | S;
+	case 0x20: return E | W;
+	case 0x21: return N | S;
+	case 0x22: return E | W;
+	case 0x23: return S | W;
+	case 0x24: return E | S;
+	case 0x25: return N | E;
+	case 0x26: return N | W;
+	case 0x27: return N | S | W;
+	case 0x28: return E | S | W;
+	case 0x29: return N | E | S;
+	case 0x2A: return N | E | W;
+	case 0x2B: return N | E | S | W;
+	case 0x3F: return N | S;
+	case 0x40: return E | W;
+	case 0x41: return N | S;
+	case 0x42: return E | W;
+	case 0x43: return E | W;
+	case 0x44: return N | S;
+	case 0x45: return E | W;
+	case 0x46: return N | S;
+	case 0x49: return E | W;
+	case 0x4A: return N | S;
+	case 0x4D: return E | W;
+	case 0x4E: return N | S;
+	case 0x4F: return E | W;
+	case 0x50: return N | S;
+	default: return 0;
+	}
+}
+
+bool HasRoadOpening(uint8 OpeningMask, ERoadOpening Opening)
+{
+	return (OpeningMask & static_cast<uint8>(Opening)) != 0;
+}
+
+int32 CountRoadOpenings(uint8 OpeningMask)
+{
+	int32 Count = 0;
+	for (const ERoadOpening Opening : { ERoadOpening::North, ERoadOpening::East, ERoadOpening::South, ERoadOpening::West })
+	{
+		Count += HasRoadOpening(OpeningMask, Opening) ? 1 : 0;
+	}
+	return Count;
+}
+
+FVector2D GetRoadOpeningPoint(ERoadOpening Opening, float TileSize, float EdgeInset)
+{
+	const float Half = TileSize * 0.5f;
+	switch (Opening)
+	{
+	case ERoadOpening::North: return FVector2D(0.0f, Half - EdgeInset);
+	case ERoadOpening::East: return FVector2D(Half - EdgeInset, 0.0f);
+	case ERoadOpening::South: return FVector2D(0.0f, -Half + EdgeInset);
+	case ERoadOpening::West: return FVector2D(-Half + EdgeInset, 0.0f);
+	default: return FVector2D::ZeroVector;
+	}
+}
+
+FVector MakeRoadMarkingWorldPoint(
+	const TArray<int16>& ConditionedCorners,
+	int32 FileX,
+	int32 FileY,
+	const FVector2D& LocalPoint,
+	float TileSize,
+	float HalfMapSize,
+	float TerrainHeightScale,
+	float ZOffset)
+{
+	const float CenterX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
+	const float CenterY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
+	const float GridX = static_cast<float>(FileX) + 0.5f + LocalPoint.X / TileSize;
+	const float GridY = static_cast<float>(FileY) + 0.5f - LocalPoint.Y / TileSize;
+	return FVector(
+		CenterX + LocalPoint.X,
+		CenterY + LocalPoint.Y,
+		GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale) + ZOffset);
+}
+
+void AppendRoadMarkingSegment(
+	FOriginalMeshSectionData& Section,
+	const TArray<int16>& ConditionedCorners,
+	int32 FileX,
+	int32 FileY,
+	const FVector2D& Start,
+	const FVector2D& End,
+	float TileSize,
+	float HalfMapSize,
+	float TerrainHeightScale,
+	float ZOffset,
+	float Width,
+	const FLinearColor& Color)
+{
+	const FVector2D Delta = End - Start;
+	const float Length = Delta.Size();
+	if (Length <= KINDA_SMALL_NUMBER || Width <= 0.0f)
+	{
+		return;
+	}
+
+	const FVector2D Direction = Delta / Length;
+	const FVector2D Perp(-Direction.Y, Direction.X);
+	const float HalfWidth = Width * 0.5f;
+	const FVector2D P0 = Start + Perp * HalfWidth;
+	const FVector2D P1 = End + Perp * HalfWidth;
+	const FVector2D P2 = End - Perp * HalfWidth;
+	const FVector2D P3 = Start - Perp * HalfWidth;
+	const int32 VertexStart = Section.Vertices.Num();
+
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
+
+	Section.Triangles.Add(VertexStart);
+	Section.Triangles.Add(VertexStart + 1);
+	Section.Triangles.Add(VertexStart + 2);
+	Section.Triangles.Add(VertexStart);
+	Section.Triangles.Add(VertexStart + 2);
+	Section.Triangles.Add(VertexStart + 3);
+	Section.TriangleCount += 2;
+
+	const FProcMeshTangent Tangent(Direction.X, Direction.Y, 0.0f);
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		Section.Normals.Add(FVector::UpVector);
+		Section.UVs.Add(FVector2D(Index == 1 || Index == 2 ? 1.0f : 0.0f, Index >= 2 ? 1.0f : 0.0f));
+		Section.VertexColors.Add(Color);
+		Section.Tangents.Add(Tangent);
+	}
+}
+
+void AppendTiledDashedRoadMarkingSegment(
+	FOriginalMeshSectionData& Section,
+	const TArray<int16>& ConditionedCorners,
+	int32 FileX,
+	int32 FileY,
+	const FVector2D& Start,
+	const FVector2D& End,
+	float TileSize,
+	float HalfMapSize,
+	float TerrainHeightScale,
+	float ZOffset,
+	float Width,
+	int32 SegmentCount,
+	const FLinearColor& Color)
+{
+	const FVector2D Delta = End - Start;
+	const float Length = Delta.Size();
+	if (Length <= KINDA_SMALL_NUMBER || SegmentCount <= 0)
+	{
+		return;
+	}
+
+	constexpr float DashFillRatio = 0.52f;
+	const FVector2D Direction = Delta / Length;
+	const float Period = Length / static_cast<float>(SegmentCount);
+	const float DashLength = Period * DashFillRatio;
+	const float EndGap = (Period - DashLength) * 0.5f;
+
+	for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
+	{
+		const float SegmentStartDistance = EndGap + static_cast<float>(SegmentIndex) * Period;
+		const float SegmentEndDistance = SegmentStartDistance + DashLength;
+		AppendRoadMarkingSegment(
+			Section,
+			ConditionedCorners,
+			FileX,
+			FileY,
+			Start + Direction * SegmentStartDistance,
+			Start + Direction * SegmentEndDistance,
+			TileSize,
+			HalfMapSize,
+			TerrainHeightScale,
+			ZOffset,
+			Width,
+			Color);
+	}
+}
+
+void AppendRoadMarkingsForTile(
+	FOriginalMeshSectionData& Section,
+	const TArray<int16>& ConditionedCorners,
+	uint8 BuildingId,
+	int32 FileX,
+	int32 FileY,
+	float TileSize,
+	float HalfMapSize,
+	float TerrainHeightScale,
+	float ZOffset,
+	float Width,
+	const FLinearColor& Color)
+{
+	const uint8 Openings = GetOriginalRoadMarkingOpeningMask(BuildingId);
+	if (Openings == 0)
+	{
+		return;
+	}
+
+	const int32 OpeningCount = CountRoadOpenings(Openings);
+	if (OpeningCount != 2)
+	{
+		return;
+	}
+
+	TArray<ERoadOpening, TInlineAllocator<2>> RoadOpenings;
+	for (const ERoadOpening Opening : { ERoadOpening::North, ERoadOpening::East, ERoadOpening::South, ERoadOpening::West })
+	{
+		if (HasRoadOpening(Openings, Opening))
+		{
+			RoadOpenings.Add(Opening);
+		}
+	}
+
+	if (RoadOpenings.Num() != 2)
+	{
+		return;
+	}
+
+	const bool bOpposingOpenings =
+		(HasRoadOpening(Openings, ERoadOpening::North) && HasRoadOpening(Openings, ERoadOpening::South)) ||
+		(HasRoadOpening(Openings, ERoadOpening::East) && HasRoadOpening(Openings, ERoadOpening::West));
+	const int32 SegmentCount = bOpposingOpenings ? 2 : 1;
+	AppendTiledDashedRoadMarkingSegment(
+		Section,
+		ConditionedCorners,
+		FileX,
+		FileY,
+		GetRoadOpeningPoint(RoadOpenings[0], TileSize, 0.0f),
+		GetRoadOpeningPoint(RoadOpenings[1], TileSize, 0.0f),
+		TileSize,
+		HalfMapSize,
+		TerrainHeightScale,
+		ZOffset,
+		Width,
+		SegmentCount,
+		Color);
+}
+
 void AppendTerrainTileWithHeights(
 	int32 FileX,
 	int32 FileY,
@@ -2249,6 +2522,12 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	OriginalMeshComponent->SetCanEverAffectNavigation(false);
 	OriginalMeshComponent->SetCastShadow(false);
 
+	RoadMarkingMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RoadMarkingMeshComponent"));
+	RoadMarkingMeshComponent->SetupAttachment(SceneRoot);
+	RoadMarkingMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RoadMarkingMeshComponent->SetCanEverAffectNavigation(false);
+	RoadMarkingMeshComponent->SetCastShadow(false);
+
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (CubeMeshFinder.Succeeded())
 	{
@@ -2270,6 +2549,7 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	{
 		VertexColorMaterial = VertexColorMaterialFinder.Object;
 		OriginalMeshComponent->SetMaterial(0, VertexColorMaterial);
+		RoadMarkingMeshComponent->SetMaterial(0, VertexColorMaterial);
 	}
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TexturedMaterialFinder(TEXT("/Game/Materials/M_SimCopterLitTexture.M_SimCopterLitTexture"));
@@ -2325,12 +2605,14 @@ void ASimCity2000CityActor::RebuildCity()
 	RoadInstances->ClearInstances();
 	BuildingInstances->ClearInstances();
 	OriginalMeshComponent->ClearAllMeshSections();
+	RoadMarkingMeshComponent->ClearAllMeshSections();
 	ConfigureInstanceComponent(TerrainInstances);
 	ConfigureInstanceComponent(WaterInstances);
 	ConfigureInstanceComponent(RoadInstances);
 	ConfigureInstanceComponent(BuildingInstances);
 	TerrainMeshComponent->SetCollisionEnabled(bEnableTerrainCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	OriginalMeshComponent->SetCollisionEnabled(bEnableOriginalMeshCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+	RoadMarkingMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	ApplyComponentMaterial(TerrainInstances, TerrainColor);
 	ApplyComponentMaterial(WaterInstances, WaterColor);
@@ -2339,6 +2621,7 @@ void ASimCity2000CityActor::RebuildCity()
 	if (VertexColorMaterial != nullptr)
 	{
 		OriginalMeshComponent->SetMaterial(0, VertexColorMaterial);
+		RoadMarkingMeshComponent->SetMaterial(0, VertexColorMaterial);
 	}
 
 	const FString ResolvedCityPath = ResolveCityPath();
@@ -2503,6 +2786,7 @@ void ASimCity2000CityActor::RebuildCity()
 
 	FOriginalMeshSectionData TerrainPage14Section;
 	FOriginalMeshSectionData TerrainPage0DSection;
+	FOriginalMeshSectionData RoadMarkingSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
 	const bool bUseTexturedTerrainSurface = BakedCityAtlasMaterials.TerrainLowMaterial != nullptr || BakedCityAtlasMaterials.TerrainHighMaterial != nullptr ||
 		((TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr);
@@ -2578,6 +2862,22 @@ void ASimCity2000CityActor::RebuildCity()
 				const FTransform WaterTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + WaterThickness * 0.5f + 1.0f), WaterScale);
 				WaterInstances->AddInstance(WaterTransform);
 				++WaterCount;
+			}
+
+			if (bRenderRoadMarkings && bRenderRoads)
+			{
+				AppendRoadMarkingsForTile(
+					RoadMarkingSection,
+					ConditionedTerrainCorners,
+					Tile.Building,
+					FileX,
+					FileY,
+					TileSize,
+					HalfMapSize,
+					EffectiveTerrainHeightScale,
+					OriginalMeshZOffset + RoadMarkingZOffset,
+					RoadMarkingWidth,
+					RoadMarkingColor);
 			}
 
 			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile))
@@ -2784,6 +3084,19 @@ void ASimCity2000CityActor::RebuildCity()
 
 	CreateTerrainSurfaceSection(TerrainPage14Section, BakedCityAtlasMaterials.TerrainLowMaterial, TerrainTexture);
 	CreateTerrainSurfaceSection(TerrainPage0DSection, BakedCityAtlasMaterials.TerrainHighMaterial, HighTerrainTexture);
+
+	if (RoadMarkingSection.Vertices.Num() > 0)
+	{
+		CreateOriginalMeshSection(
+			RoadMarkingMeshComponent,
+			0,
+			RoadMarkingSection,
+			false);
+		if (VertexColorMaterial != nullptr)
+		{
+			RoadMarkingMeshComponent->SetMaterial(0, VertexColorMaterial);
+		}
+	}
 
 	int32 MeshSectionIndex = 0;
 	if (const FOriginalMeshSectionData* PaletteSection = OriginalMeshSections.Find(INDEX_NONE))

@@ -127,6 +127,10 @@ Important rules:
 
 This matters because the public `XBLD` heuristic table is not sufficient for bridges. Orientation is baked into object choice, so a wrong object id can look like a rotation bug.
 
+## Road Markings
+
+The original software renderer drew some road details as vector-thin line primitives. The remake restores the missing road-center markings as raised procedural quads in a separate non-colliding `RoadMarkingMeshComponent`. The road id is decoded through the original road-opening family for surface road ids `RD29..RD38` (`XBLD 0x1d..0x26`), linear ramp/crossing ids `0x3f..0x46`, and the simple `RD73`/`RD74` bridge-road ids (`0x49`, `0x4a`, `0x4d`, `0x4e`, `0x4f`, `0x50`). Only two-opening tiles draw a marking, while T-junctions and the four-way intersection intentionally draw none. Straight tiles use two centered dash segments and diagonal tiles use one centered dash segment. The dash period is tile-local with equal half-gaps at tile edges, so adjacent tiles create a normal dash gap without letting the marking geometry connect across the boundary.
+
 ## Building Base Dispatch
 
 `GetOriginalBuildingDispatch` is transcribed from the `XBLD 0x70..0xff` half of `FUN_0047c0c0`. Building primary meshes now resolve by original runtime object id through `FUN_00470571` semantics, instead of relying on the public heuristic `XBLD` mapping table. Most building switch cases `break` into the original shared tail, which calls `FUN_00482890` and creates a secondary base/foundation object (`local_2c = 2`). Only the cases that jump directly to `LAB_0047f179` with `local_2c = 1`, or cases with explicit fixed secondary objects, bypass that default base behavior. `FUN_00482890` chooses its base from `XZON & 0x0f` and the original footprint-size table from `FUN_004e4f80`.
