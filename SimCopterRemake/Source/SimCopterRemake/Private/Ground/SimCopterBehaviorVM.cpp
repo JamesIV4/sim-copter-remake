@@ -134,6 +134,10 @@ EOpResult ExecOpcode(
 		uint16& Counter = Local(Record.Args[0]);
 		if (Counter == 0)
 		{
+			// FUN_004ca7d0's exhausted branch still runs the post-move selector with
+			// result 8 / speed 0, which binds NoMo (FUN_004c6970 case 0/8). Without this
+			// the walk clip keeps playing while the person stands at the burst's end.
+			Context.PendingAnimMnemonic = TEXT("NoMo");
 			return EOpResult::True;
 		}
 		--Counter;

@@ -180,9 +180,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
 	bool bUseOriginalBehaviors = true;
 
-	// Behavior VM ticks per second (the original ran behavior once per sim tick).
+	// Behavior VM ticks per second. The original ran behavior once per game frame (~15fps era
+	// pacing); movement distance, walk-clip frame rate and idle durations all scale with this.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
-	float BehaviorTickRate = 10.0f;
+	float BehaviorTickRate = 15.0f;
+
+	// Original per-step vertical gates (FUN_004c9470): one behavior step may rise at most
+	// MaxStepClimb units (person+0x144 = 5) and drop at most MaxStepClimb + 0.5 units;
+	// 1 unit = tile/64 (~6.25cm at a 400cm tile). This is what stops people at building
+	// walls in the original - tile classes alone allow building tiles.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float MaxStepClimbOriginalUnits = 5.0f;
 
 	// Initial person state (0 = ambient pedestrian; see FPeopleBehaviorModel state table).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "20"))
@@ -314,11 +322,22 @@ private:
 	FSimCopterPersonContext BehaviorContext;
 	float BehaviorTickAccumulator = 0.0f;
 	bool bBehaviorActive = false;
-	bool bBehaviorWantsMove = false;
 	TSet<int32> ReportedUnknownOpcodes;
+
+	// Per-tick move command (original FUN_004c9300 semantics): each successful MoveStep renews
+	// a constant velocity that UpdateMovement integrates until the next behavior tick. There is
+	// no target seeking or deceleration - the original displaces the person every tick.
+	FVector BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	float BehaviorStepTimeRemainingSeconds = 0.0f;
+	int32 LastAppliedBehaviorFacing = INDEX_NONE;
 
 	void StartOriginalBehavior();
 	void UpdateOriginalBehavior(float DeltaSeconds);
+	void ApplyBehaviorFacingRotation();
+	void AdvanceBehaviorFigureFrames(int32 TickCount);
+	// The walked surface at a step target: highest blocking geometry at that column, falling
+	// back to the tile's terrain altitude (port of FUN_004c82c0 = max of object tops/terrain).
+	bool TryGetWalkSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const;
 
 	// ISimCopterBehaviorWorld
 	virtual int32 GetCurrentTileClass() const override;

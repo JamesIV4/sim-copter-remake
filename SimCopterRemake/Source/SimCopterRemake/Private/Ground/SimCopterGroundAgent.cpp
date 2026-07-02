@@ -193,8 +193,14 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	BehaviorContext.Lfsr = uint16(GetTypeHash(GetFName()) | 1);
 	BehaviorContext.Attributes[EBhavAttr::Facing] = uint16(FMath::RoundToInt(GetActorRotation().Yaw / 45.0f) & 7);
 	BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = uint16(FMath::Clamp(InitialBehaviorClass, 0, 21));
-	BehaviorContext.Attributes[EBhavAttr::Speed] = 5;
+	// FUN_004c7090 enables the move core's clockwise retry loop (+0x16a) for every spawned
+	// person; the move speed (+0x164) starts 0 and is assigned by the shipped programs
+	// ("movespeed := 6/8/12/16/25" expressions in people.df).
+	BehaviorContext.Attributes[EBhavAttr::AutoTurn] = 1;
 	BehaviorContext.ResetToState(InitialPersonState);
+	LastAppliedBehaviorFacing = INDEX_NONE;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
 	bBehaviorActive = true;
 }
 
@@ -215,7 +221,6 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 	BehaviorTickAccumulator -= float(Steps);
 	Steps = FMath::Min(Steps, 4); // don't burst after hitches
 
-	bBehaviorWantsMove = false;
 	for (int32 Step = 0; Step < Steps; ++Step)
 	{
 		const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(BehaviorContext, *BehaviorModel, *this);
@@ -244,14 +249,42 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		BehaviorContext.PendingAnimMnemonic.Reset();
 	}
 
-	// The program's movement intent gates the route-follow speed: speed attribute 0..10.
-	const float SpeedAlpha = bBehaviorWantsMove
-		? FMath::Clamp(float(BehaviorContext.Attributes[EBhavAttr::Speed]) / 10.0f, 0.1f, 1.0f)
-		: 0.0f;
-	SetTrafficSpeedScale(SpeedAlpha);
+	// The original driver (FUN_004c6450) advances the bound clip one frame per behavior tick,
+	// wrapping at the clip's ARPP row count - playback rate is the tick rate, not wall time.
+	AdvanceBehaviorFigureFrames(Steps);
 
-	// Facing stays owned by the VM (MoveStep and opcode 29 write it in the original's stored
-	// convention); deriving it from world velocity would scramble that basis every tick.
+	// The figure renders at the person's stored octant facing; op29/scatter turns must show
+	// even when standing, so the yaw comes from the attribute, not from velocity.
+	ApplyBehaviorFacingRotation();
+}
+
+void ASimCopterGroundAgent::ApplyBehaviorFacingRotation()
+{
+	const int32 Facing = int32(BehaviorContext.Attributes[EBhavAttr::Facing]) & 7;
+	if (Facing == LastAppliedBehaviorFacing)
+	{
+		return;
+	}
+	if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+	{
+		const FVector WorldDirection = TrafficSystem->GetPeopleFacingWorldDirection(Facing);
+		if (!WorldDirection.IsNearlyZero())
+		{
+			// The original snaps to the 45-degree heading instantly - no turn interpolation.
+			SetActorRotation(FRotator(0.0f, WorldDirection.Rotation().Yaw, 0.0f));
+			LastAppliedBehaviorFacing = Facing;
+		}
+	}
+}
+
+void ASimCopterGroundAgent::AdvanceBehaviorFigureFrames(int32 TickCount)
+{
+	if (!bUsingPedestrianFigure || FigureFrameCount <= 1 || TickCount <= 0)
+	{
+		return;
+	}
+	FigureCurrentFrame = (FigureCurrentFrame + TickCount) % FigureFrameCount;
+	FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, FigureCurrentFrame, bFigureHasHeadSection);
 }
 
 int32 ASimCopterGroundAgent::GetCurrentTileClass() const
@@ -300,58 +333,145 @@ void ASimCopterGroundAgent::SetInitialBehaviorClass(int32 NewInitialBehaviorClas
 
 bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 {
-	bBehaviorWantsMove = true;
-
 	// FUN_004c6970: every move tick rebinds the clip from the move result and speed -
 	// 0 = NoMo, 1..6 = 1Wal, 7+ = 1Run (dogs/cows remap to DgRn/DgSt in the clip bind).
-	const int32 MoveSpeed = int32(int16(Context.Attributes[EBhavAttr::Speed]));
+	// The magnitude comes from the MoveSpeed attribute (+0x164), which the shipped programs
+	// assign directly; one tick displaces octantDir * MoveSpeed / 12 original units.
+	const int32 MoveSpeed = FMath::Max(0, int32(int16(Context.Attributes[EBhavAttr::MoveSpeed])));
 	const TCHAR* SpeedMnemonic = MoveSpeed <= 0 ? TEXT("NoMo") : (MoveSpeed < 7 ? TEXT("1Wal") : TEXT("1Run"));
 
-	if (bHasMoveTarget && !IsNearMoveTarget(TargetStopDistanceCm + 10.0f))
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
 	{
+		// Standalone/unit-test agents have no city to validate against: accept the move.
 		Context.PendingAnimMnemonic = SpeedMnemonic;
 		return true;
 	}
 
-	const float SpeedAlpha = FMath::Clamp(float(Context.Attributes[EBhavAttr::Speed]) / 10.0f, 0.1f, 1.0f);
-	const float StepDistanceCm = FMath::Clamp(MovementSpeedCmPerSec * SpeedAlpha * 0.75f, 110.0f, 220.0f);
-	const int32 StartFacing = int32(Context.Attributes[EBhavAttr::Facing]) & 7;
-
-	if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+	if (MoveSpeed <= 0)
 	{
-		for (int32 Turn = 0; Turn < 8; ++Turn)
-		{
-			const int32 Facing = (StartFacing + Turn) & 7;
-			FVector TargetLocation = FVector::ZeroVector;
-			int32 TargetTileClass = INDEX_NONE;
-			if (!TrafficSystem->TryGetPeopleFacingStepTarget(GetActorLocation(), Facing, StepDistanceCm, TargetLocation, TargetTileClass))
-			{
-				continue;
-			}
-			const int32 BehaviorClass = Context.Attributes[EBhavAttr::BehaviorClass];
-			if (!IsTileClassAllowedForState(BehaviorClass, TargetTileClass) &&
-				!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
-			{
-				continue;
-			}
+		// A zero-speed move succeeds without displacement (result 0, speed 0 -> NoMo).
+		Context.PendingAnimMnemonic = SpeedMnemonic;
+		BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+		BehaviorStepTimeRemainingSeconds = 0.0f;
+		return true;
+	}
 
-			Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
-			Context.PendingAnimMnemonic = SpeedMnemonic;
-			SetMoveTarget(TargetLocation);
-			return true;
+	const float UnitCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit();
+	const float StepDistanceCm = float(MoveSpeed) / 12.0f * UnitCm;
+	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	const float CurrentFeetZ = GetActorLocation().Z - HalfHeight;
+	const float MaxClimbCm = MaxStepClimbOriginalUnits * UnitCm;
+	const float MaxDropCm = (MaxStepClimbOriginalUnits + 0.5f) * UnitCm; // -(0x8000 + max) in 16.16
+
+	const int32 StartFacing = int32(Context.Attributes[EBhavAttr::Facing]) & 7;
+	// FUN_004c9300 retries clockwise up to 8 extra facings only while +0x16a is set.
+	const int32 MaxAttempts = Context.Attributes[EBhavAttr::AutoTurn] != 0 ? 8 : 1;
+	const bool bMoveThroughWalls = Context.Attributes[EBhavAttr::MoveThroughWalls] != 0;
+	const bool bAmbient = Context.Attributes[EBhavAttr::AmbientFlag] != 0;
+	const int32 BehaviorClass = Context.Attributes[EBhavAttr::BehaviorClass];
+
+	int32 LastBlockResult = 0;
+	for (int32 Turn = 0; Turn < MaxAttempts; ++Turn)
+	{
+		const int32 Facing = (StartFacing + Turn) & 7;
+		FVector TargetLocation = FVector::ZeroVector;
+		int32 TargetTileClass = INDEX_NONE;
+		if (!TrafficSystem->TryGetPeopleFacingStepTarget(GetActorLocation(), Facing, StepDistanceCm, TargetLocation, TargetTileClass))
+		{
+			LastBlockResult = 3;
+			continue;
 		}
 
-		// Blocked on all 8 facings: the original binds the recoil clip and the walker takes
-		// the false edge (FUN_004c6970 results 2/6 -> 'Whoa').
-		Context.PendingAnimMnemonic = TEXT("Whoa");
+		// FUN_004c9470: ambient people (+0x168) may only enter tile classes from their
+		// behavior-class row (DAT_0058ec00); result 3 otherwise. Non-ambient movement keeps
+		// the pre-VM rows as a safety net (missions steer via goto-object opcodes instead).
+		if (bAmbient)
+		{
+			if (!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
+			{
+				LastBlockResult = 3;
+				continue;
+			}
+		}
+		else if (!IsTileClassAllowedForState(BehaviorClass, TargetTileClass) &&
+			!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
+		{
+			LastBlockResult = 3;
+			continue;
+		}
+
+		// The max-climb/drop gate against the walked surface (highest geometry at the target
+		// column). This - not the tile class - is what stops people at building walls: the
+		// surface there is the roof, far above the 5-unit climb allowance. BHAV 308's
+		// "move through walls" flag (+0x190) bypasses it after repeated failures.
+		if (!bMoveThroughWalls)
+		{
+			float SurfaceZ = 0.0f;
+			if (TryGetWalkSurfaceZAt(TargetLocation, SurfaceZ))
+			{
+				const float Rise = SurfaceZ - CurrentFeetZ;
+				if (Rise > MaxClimbCm)
+				{
+					LastBlockResult = 1; // FaCl recoil
+					continue;
+				}
+				if (Rise < -MaxDropCm)
+				{
+					LastBlockResult = 2; // Whoa
+					continue;
+				}
+			}
+		}
+
+		// Success: renew the constant step velocity until the next behavior tick (the ground
+		// snap performs the original's per-step warp onto the walked surface).
+		Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
+		Context.PendingAnimMnemonic = SpeedMnemonic;
+		const FVector FlatDelta(TargetLocation.X - GetActorLocation().X, TargetLocation.Y - GetActorLocation().Y, 0.0f);
+		BehaviorStepVelocityCmPerSec = FlatDelta * BehaviorTickRate;
+		BehaviorStepTimeRemainingSeconds = 1.25f / FMath::Max(BehaviorTickRate, 1.0f);
+		return true;
+	}
+
+	// Blocked on every allowed facing: bind the recoil clip for the final attempt's result,
+	// exactly like the single post-move call after FUN_004c9300's retry loop.
+	Context.PendingAnimMnemonic = LastBlockResult == 1 ? TEXT("FaCl") : (LastBlockResult == 2 ? TEXT("Whoa") : TEXT("NoMo"));
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	return false;
+}
+
+bool ASimCopterGroundAgent::TryGetWalkSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (GetWorld() == nullptr)
+	{
 		return false;
 	}
 
-	const float FacingRadians = FMath::DegreesToRadians(float(StartFacing) * 45.0f);
-	const FVector FallbackTarget = GetActorLocation() + FVector(FMath::Cos(FacingRadians), FMath::Sin(FacingRadians), 0.0f) * StepDistanceCm;
-	Context.PendingAnimMnemonic = SpeedMnemonic;
-	SetMoveTarget(FallbackTarget);
-	return true;
+	// FUN_004c82c0 returns the highest of object tops and terrain at the point, so the probe
+	// starts far above any roof and takes the first blocking hit downward. The Camera channel
+	// is blocked by city geometry but ignored by agent/player capsules.
+	const float StartZ = GetActorLocation().Z + 12000.0f;
+	const FVector Start(WorldLocation.X, WorldLocation.Y, StartZ);
+	const FVector End(WorldLocation.X, WorldLocation.Y, GetActorLocation().Z - GroundProbeDistanceCm);
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterWalkSurface), false, this);
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
+	{
+		OutSurfaceZ = Hit.ImpactPoint.Z;
+		return true;
+	}
+
+	float TerrainWorldZ = 0.0f;
+	if (TrafficSystem != nullptr && TrafficSystem->TryGetTerrainWorldZAtWorldLocation(WorldLocation, TerrainWorldZ))
+	{
+		OutSurfaceZ = TerrainWorldZ;
+		return true;
+	}
+
+	return false;
 }
 
 bool ASimCopterGroundAgent::IsThreatNearby(const FSimCopterPersonContext& Context) const
@@ -808,10 +928,14 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 	VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
 	VisualRoot->SetRelativeLocation(FVector::ZeroVector);
 
+	// With the behavior VM active, clips are bound by the programs/post-move selector and
+	// frames advance one per behavior tick (FUN_004c6450) in UpdateOriginalBehavior.
+	if (bBehaviorActive)
+	{
+		return;
+	}
+
 	const bool bWalking = SpeedAlpha > 0.12f;
-	// With the behavior VM active, clips are bound by the shipped programs (op 1); the
-	// speed-based 1Wal/NoMo switch is only the fallback for VM-less agents.
-	if (!bBehaviorActive)
 	{
 		const FString Desired = bWalking ? TEXT("1Wal") : TEXT("NoMo");
 		if (Desired != FigureMnemonic)
@@ -1015,6 +1139,30 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 {
 	if (RootComponent == nullptr)
 	{
+		return;
+	}
+
+	// Behavior-VM pedestrians move with the original per-tick model: a constant velocity
+	// renewed by each MoveStep, with no target seeking or arrival deceleration (the cause of
+	// the old stop-start pulse). Yaw is set from the stored facing attribute, not steering.
+	// Avoidance move targets (car dodges) still take over via the branch below.
+	if (bBehaviorActive && AgentKind == ESimCopterGroundAgentKind::Pedestrian && !IsAvoidanceMoveActive())
+	{
+		if (BehaviorStepTimeRemainingSeconds > 0.0f)
+		{
+			BehaviorStepTimeRemainingSeconds -= DeltaSeconds;
+			CurrentVelocityCmPerSec = BehaviorStepVelocityCmPerSec;
+		}
+		else
+		{
+			CurrentVelocityCmPerSec = FVector::ZeroVector;
+		}
+		const FVector Delta = (CurrentVelocityCmPerSec + ExternalVelocityCmPerSec) * DeltaSeconds;
+		if (!Delta.IsNearlyZero())
+		{
+			RootComponent->MoveComponent(Delta, GetActorQuat(), false);
+		}
+		ExternalVelocityCmPerSec = FMath::VInterpTo(ExternalVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, 8.0f);
 		return;
 	}
 

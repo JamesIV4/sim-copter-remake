@@ -98,6 +98,12 @@ public:
 		float StepDistanceCm,
 		FVector& OutWorldLocation,
 		int32& OutTileClass) const;
+	// One original person-unit (1/64 tile) in world centimeters - the people mover's scale
+	// (original positions are 16.16 with 64 units per tile).
+	float GetPeopleWorldCmPerOriginalUnit() const;
+	// World-space unit direction for a stored people facing octant (movement heading =
+	// (facing + 2) & 7 into the FUN_004c3010 compass table).
+	FVector GetPeopleFacingWorldDirection(int32 Facing) const;
 
 protected:
 	UPROPERTY(EditInstanceOnly, Category = "SimCopter|City")
@@ -433,6 +439,7 @@ private:
 	void ApplyVehicleLaneGuidance(float DeltaSeconds);
 	void UpdatePedestrianAvoidance();
 	bool IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const;
+	bool IsPedestrianSpawnLocationOpen(const FVector& SpawnLocation) const;
 	bool TryFindPedestrianEscapeTarget(const FVector& PedestrianLocation, const FVector& EscapeDirection, FVector& OutTarget) const;
 	bool TryGetPedestrianAwayFromRoadCenterDirection(const ASimCopterGroundAgent& Pedestrian, FVector& OutAwayDirection) const;
 	bool IsTrafficLightIntersectionNode(int32 NodeIndex) const;

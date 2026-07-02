@@ -35,9 +35,18 @@ namespace EBhavAttr
 	constexpr int32 State = 4;       // +0x148
 	constexpr int32 LoopFlag = 5;    // +0x14a
 	constexpr int32 Frame = 6;       // +0x14c
-	constexpr int32 Speed = 8;       // +0x150, 0..10
+	constexpr int32 Speed = 8;       // +0x150, 0..10 (op23's "logic" speed; compared by programs)
 	constexpr int32 Visible = 9;     // +0x152
 	constexpr int32 PreviousSpeed = 10; // +0x154, written by op23 before speed changes
+	// The actual per-tick move magnitude: FUN_004ca7d0 (op4) passes +0x164 into the move core,
+	// and the shipped programs assign it directly via expressions ("movespeed := 6/8/12/16/25").
+	// One tick's displacement is octantDir * MoveSpeed / 12 original units (FUN_004c3010 builds
+	// the direction table as unit vectors fixed-divided by 0xc0000).
+	constexpr int32 MoveSpeed = 18;  // +0x164
+	constexpr int32 AmbientFlag = 20; // +0x168; gates the DAT_0058ec00 class-row move check
+	constexpr int32 AutoTurn = 21;   // +0x16a; enables the move core's 8-facing retry loop
+	constexpr int32 MoveThroughWalls = 40; // +0x190; BHAV 308 sets it after repeated move fails
+	constexpr int32 MoveFailCounter = 41;  // +0x192
 	constexpr int32 Count = 0x30;
 }
 

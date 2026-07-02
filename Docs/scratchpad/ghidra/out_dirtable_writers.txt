@@ -1,0 +1,6 @@
+Scanning for 4 bytes: 98da5800
+  @ 004c30ef  in FUN_004c3010 @ 004c3010
+  @ 004c9335  in FUN_004c9300 @ 004c9300
+  @ 004cbe66  in FUN_004cbbc0 @ 004cbbc0
+  @ 004cc068  in FUN_004cbfd0 @ 004cbfd0
+=== 4 hits ===
