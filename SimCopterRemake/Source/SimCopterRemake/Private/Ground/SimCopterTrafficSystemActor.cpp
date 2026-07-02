@@ -1161,6 +1161,19 @@ bool ASimCopterTrafficSystemActor::TryGetPeopleFacingStepTarget(
 	return OutTileClass != INDEX_NONE;
 }
 
+float ASimCopterTrafficSystemActor::GetPeopleWorldCmPerOriginalUnit() const
+{
+	return ActiveTileSize / 64.0f;
+}
+
+FVector ASimCopterTrafficSystemActor::GetPeopleFacingWorldDirection(int32 Facing) const
+{
+	const FVector2D LocalDirection = GetPeopleFacingLocalDirection(Facing);
+	const FVector WorldDelta = ActiveCityToWorldTransform.TransformVector(
+		FVector(LocalDirection.X, LocalDirection.Y, 0.0f));
+	return FVector(WorldDelta.X, WorldDelta.Y, 0.0f).GetSafeNormal();
+}
+
 FString ASimCopterTrafficSystemActor::ResolveCityPath() const
 {
 	const FString ConfiguredPath = CityFile.FilePath.TrimStartAndEnd();
@@ -2026,6 +2039,36 @@ void ASimCopterTrafficSystemActor::UpdatePedestrianAvoidance()
 	}
 }
 
+bool ASimCopterTrafficSystemActor::IsPedestrianSpawnLocationOpen(const FVector& SpawnLocation) const
+{
+	float TerrainZ = 0.0f;
+	if (GetWorld() == nullptr || !TryGetTerrainWorldZAtWorldLocation(SpawnLocation, TerrainZ))
+	{
+		return true;
+	}
+
+	// Covered by geometry when the topmost surface at the point sits well above the tile's
+	// terrain altitude. Building tiles are flat by construction so the threshold stays near
+	// the move core's climb allowance; open tiles can slope up to half a terrain step above
+	// the tile-center altitude and have no roofs to reject.
+	const int32 TileClass = GetPeopleTileClassAtWorldLocation(SpawnLocation);
+	const bool bBuildingTile = TileClass >= 10 && TileClass <= 13;
+	const float MaxSurfaceRiseCm = bBuildingTile
+		? GetPeopleWorldCmPerOriginalUnit() * 5.0f + 60.0f
+		: 160.0f;
+
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterPedSpawnProbe), false);
+	const FVector Start(SpawnLocation.X, SpawnLocation.Y, TerrainZ + 12000.0f);
+	const FVector End(SpawnLocation.X, SpawnLocation.Y, TerrainZ - 500.0f);
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
+	{
+		return Hit.ImpactPoint.Z <= TerrainZ + MaxSurfaceRiseCm;
+	}
+
+	return true;
+}
+
 bool ASimCopterTrafficSystemActor::IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const
 {
 	const float ClearanceCm = FMath::Max(VehicleStopDistanceCm, ActiveTileSize * 0.35f);
@@ -2592,6 +2635,13 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 				Nodes[CandidateNodeIndex].PeopleFootprintSize,
 				Nodes[CandidateNodeIndex].PeoplePlacementMode,
 				PeopleRandomState);
+		// The original spawn placement rejects points covered by object geometry; without this
+		// a pedestrian dropped inside a building footprint is trapped by the move core's
+		// climb gate (every escape step sees the roof as the walked surface).
+		if (!bVehicle && !IsPedestrianSpawnLocationOpen(CandidateSpawnBaseLocation))
+		{
+			continue;
+		}
 		if (!bVehicle || IsVehicleSpawnLocationClear(CandidateSpawnBaseLocation))
 		{
 			NodeIndex = CandidateNodeIndex;

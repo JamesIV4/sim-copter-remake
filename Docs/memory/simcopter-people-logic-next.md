@@ -270,3 +270,44 @@ around the head; UE uses an 8-side cylinder, HeadFaceU param tunes which U faces
   building geometry; self-heals agents already on roofs. Vehicles keep the tall probe (bridge
   decks). Far whole-map ped records already used TileCenterWorldZ and were never affected.
 - Still open from this decode: per-tile occupancy cap DAT_0058d6d4, bump result 5 chats.
+
+**Update 2026-07-02 (movement/animation cadence + shipped ambient BHAV fully decoded; jerk /
+walk-in-place / building walk-through fixed):**
+- **Move speed is person+0x164 (attr 18), NOT op23's +0x150.** The op4 timed-move handler
+  (FUN_004ca7d0) passes +0x164 into the move core, and the shipped programs assign it directly
+  with expressions: 'Wander out of the road' 6, 'random motion' 8/12/16 (rand(4): 0 = HipH dance,
+  else n*4+4), 'Run-10' 25, flee 18, rescue/transport approach 16, 'Run laterally' 3. +0x150 is
+  the "logic" speed compared/incremented by riot programs (op23) and read for the player by op22.
+- **Per-tick displacement = octantDir * moveSpeed / 12 original units.** FUN_004c3010 builds
+  DAT_0058da98 as 16.16 unit octant vectors (compass (0,-1) start, heading = (facing+2)&7)
+  fixed-DIVIDED by 0xc0000 (12.0) via FUN_0046c4bf; FUN_004c9300 multiplies by speed<<16. No
+  target seeking, no deceleration - constant velocity per tick, instant 45-degree facing snaps.
+- **The post-move selector (FUN_004c6970) runs EVERY move tick** and rebinds the clip from
+  result+speed: 0/8 with speed 0 -> NoMo, 1-6 -> 1Wal, 7+ -> 1Run, 1 -> FaCl, 2/6/4 -> Whoa,
+  5 -> face bumped person + 2Gab/HipH. **On counter exhaustion op4 still calls it with result 8 /
+  speed 0 -> binds NoMo** - this ends walk anims when a burst stops (the remake's walking-in-place
+  bug came from missing this).
+- **Figure frames advance +1 per behavior tick** in the driver FUN_004c6450 (wrap at ARPP rows),
+  so clip playback rate == tick rate, not wall-clock.
+- **FUN_004c82c0 (walked surface) = max(object tops, terrain) at the point** (scene-cell object
+  list DAT_005d9200, else FUN_004ae7a0 terrain). With the climb gate (5 units up, 5.5 down) this
+  is what stops people at building WALLS: the surface inside a footprint is the roof. Tile-class
+  checks alone allow building tiles - the remake walked people through building interiors until
+  this gate was ported (top-down trace at the step target).
+- **Programs toggle attr 21 (+0x16a) auto-turn and attr 40 (+0x190) "move through walls"**
+  (BHAV 308 sets it after >4 move fails; fail counter attr 41). Ambient class-row gating
+  (DAT_0058ec00) applies only while attr 20 (+0x168 ambient) is set; 'Rxn: Run away' clears
+  ambient while fleeing.
+- **Shipped ambient graph (people.df BHAV 600 + subprograms, dumped via scratchpad dump_bhav.py
+  reusing Tools/privanim_extract.py DougFile):** 600 sets ambient:=1 then loops { 'Wander out of
+  the road' (op34 speed 6, scatter retries) -> 'random motion' -> riot check -> gawk hooks ->
+  1-in-12 'look for spotlight' (op22 same tile as player -> face player, bind 'Wave', wait 15,
+  restore facing) }. 'random motion' = rand(140)-tick straight walk at 8/12/16 with 1-in-4 HipH
+  dance instead; blocked -> idle rand(20)+1 + Idle-20, then facing := rand(7). 'Scatter
+  direction' = facing += rand(3)-1.
+- Remake port (this pass): MoveStep reads MoveSpeed attr, commands a per-tick constant velocity
+  (renewed each VM tick, 1.25-tick TTL; no SetMoveTarget, no arrival stop - fixes the pulse);
+  climb/drop gate via top-down ECC_Camera trace at the step target; op4 exhaustion binds NoMo;
+  frames advance per VM tick; yaw snaps from the facing attribute (op29 turns show while
+  standing); BehaviorTickRate default 15. New attrs in EBhavAttr: MoveSpeed 18, AmbientFlag 20,
+  AutoTurn 21, MoveThroughWalls 40, MoveFailCounter 41.
