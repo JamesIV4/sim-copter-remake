@@ -10,7 +10,6 @@
 
 class UCameraComponent;
 class UCapsuleComponent;
-class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UProceduralMeshComponent;
 class USceneComponent;
@@ -297,9 +296,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USpotLightComponent> SearchLightComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
-	TObjectPtr<UProceduralMeshComponent> SearchLightBeamComponent;
-
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	FDirectoryPath OriginalGameRoot;
 
@@ -388,15 +384,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "20.0"))
 	float SearchLightBeamWidthCm = 1550.0f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "1.0"))
-	float SearchLightBeamSourceWidthCm = 70.0f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.1"))
-	float SearchLightBeamVerticalScale = 0.62f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float SearchLightBeamAlpha = 0.42f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light")
 	FLinearColor SearchLightBeamColor = FLinearColor(1.0f, 0.94f, 0.58f, 1.0f);
@@ -582,9 +569,6 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> RotorDiscMaterial;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> SearchLightBeamMaterialInstance;
-
 private:
 	// The decompiled original flight simulation; the pawn feeds it inputs and
 	// city geometry and mirrors its position/attitude onto the actor.
@@ -630,12 +614,6 @@ private:
 	// the rotor is at lift speed (original: RPM >= 300 toggles those faces).
 	int32 MainRotorDiscSectionIndex = INDEX_NONE;
 	int32 TailRotorDiscSectionIndex = INDEX_NONE;
-	float CachedSearchLightBeamLengthCm = -1.0f;
-	float CachedSearchLightBeamWidthCm = -1.0f;
-	float CachedSearchLightBeamSourceWidthCm = -1.0f;
-	float CachedSearchLightBeamVerticalScale = -1.0f;
-	float CachedSearchLightBeamAlpha = -1.0f;
-	FLinearColor CachedSearchLightBeamColor = FLinearColor::Transparent;
 	TSharedPtr<SWidget> PassengerSlotsWidget;
 	TSharedPtr<SHorizontalBox> PassengerSlotsBox;
 	TSharedPtr<FSlateBrush> PassengerSlotIconBrush;
@@ -679,7 +657,6 @@ private:
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateSearchLightEffect();
-	void RebuildSearchLightBeamMesh();
 	float ResolveCameraGroundLift(
 		const FVector& BoomOrigin,
 		float ArmLength,
