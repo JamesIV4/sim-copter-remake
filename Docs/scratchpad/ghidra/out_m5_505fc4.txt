@@ -1,0 +1,6 @@
+References to 00505fc4:
+    004a6e86  READ  in FUN_004a6e60 @ 004a6e60
+    004a6e8d  READ  in FUN_004a6e60 @ 004a6e60
+    004a6e94  READ  in FUN_004a6e60 @ 004a6e60
+    004a6ea7  READ  in FUN_004a6e60 @ 004a6e60
+    004a6eb8  READ  in FUN_004a6e60 @ 004a6e60

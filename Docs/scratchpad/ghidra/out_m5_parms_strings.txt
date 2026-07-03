@@ -1,0 +1,9 @@
+STRING @ 00503b34 : Camera Parms
+    <- 0047b8a7  in FUN_0047b8a0 @ 0047b8a0
+STRING @ 00505f8c : ERIFDIFCFire Parms
+    <- 004a64d1  in FUN_004a64d0 @ 004a64d0
+    <- 004a6595  in FUN_004a64d0 @ 004a64d0
+    <- 004a67f3  in FUN_004a6770 @ 004a6770
+STRING @ 00506adc : Figure Parms
+    <- 004c8167  in FUN_004c8120 @ 004c8120
+=== 3 strings matched 'Parms' ===

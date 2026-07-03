@@ -1,0 +1,2 @@
+Callers of FUN_004a6e60 @ 004a6e60:
+    0047a80c  in FUN_0047a760 @ 0047a760

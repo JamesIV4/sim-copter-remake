@@ -1,0 +1,115 @@
+===== FUN_0049a4d0 @ 0049a4d0 =====
+
+undefined * FUN_0049a4d0(int param_1)
+
+{
+  if ((-1 < param_1) && (param_1 < 0x100)) {
+    return &DAT_00504848 + param_1 * 0x14;
+  }
+  return (undefined *)0x0;
+}
+
+
+===== FUN_004a5f60 @ 004a5f60 =====
+
+undefined4 FUN_004a5f60(int param_1,int param_2)
+
+{
+  byte bVar1;
+  
+  if ((((param_1 < 0) || (param_2 < 0)) || (0x7f < param_1)) || (0x7f < param_2)) {
+    return 0;
+  }
+  bVar1 = *(byte *)((&DAT_005910b0)[param_1] + param_2);
+  if (((((bVar1 < 0x1d) || (0x6b < bVar1)) && ((4 < bVar1 && ((bVar1 != 0xde && (bVar1 != 0xf6))))))
+      && (bVar1 != 0xd2)) && ((bVar1 != 0xd3 && (bVar1 != 0xd1)))) {
+    return 1;
+  }
+  return 0;
+}
+
+
+===== FUN_004a6860 @ 004a6860 =====
+
+undefined4 FUN_004a6860(uint param_1,uint param_2)
+
+{
+  bool bVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int local_c;
+  int local_4;
+  
+  local_4 = -1;
+  iVar3 = 0;
+  bVar1 = false;
+  iVar4 = 0;
+  do {
+    local_4 = local_4 + 1;
+    switch(local_4) {
+    case 0:
+    case 4:
+      iVar4 = 0;
+      iVar3 = iVar3 + 1;
+      local_c = -1;
+      local_4 = 0;
+      break;
+    case 1:
+      iVar4 = 1;
+      goto LAB_004a68bf;
+    case 2:
+      iVar3 = iVar3 + 1;
+      iVar4 = 0;
+      local_c = 1;
+      break;
+    case 3:
+      iVar4 = -1;
+LAB_004a68bf:
+      local_c = 0;
+    }
+    if (iVar3 == 9) {
+      bVar1 = true;
+      iVar3 = 8;
+    }
+    iVar2 = 0;
+    if (0 < iVar3) {
+      do {
+        param_1 = param_1 + iVar4;
+        param_2 = param_2 + local_c;
+        if ((*(byte *)(&DAT_005d9200)[(param_1 & 0xff) * 0x100 + (param_2 & 0xff)] & 0x20) != 0) {
+          return 1;
+        }
+        iVar2 = iVar2 + 1;
+      } while (iVar2 < iVar3);
+    }
+    if (bVar1) {
+      return 0;
+    }
+  } while( true );
+}
+
+
+===== FUN_004a01a0 @ 004a01a0 =====
+
+void FUN_004a01a0(int param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  int *piVar3;
+  
+  piVar3 = &DAT_0057f768;
+  do {
+    iVar1 = *piVar3;
+    uVar2 = *(uint *)(iVar1 + 4);
+    if ((((uVar2 & 2) != 0) && (*(int *)(iVar1 + 0x113) == param_1)) && ((uVar2 & 0x200) != 0)) {
+      *(uint *)(iVar1 + 4) = uVar2 & 0xfffffdff;
+      *(undefined4 *)(iVar1 + 0x113) = 0xffffffff;
+    }
+    piVar3 = piVar3 + 1;
+  } while (piVar3 < &DAT_0057f880);
+  return;
+}
+
+

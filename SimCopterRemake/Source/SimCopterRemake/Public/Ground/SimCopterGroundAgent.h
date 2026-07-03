@@ -192,6 +192,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
 	float MaxStepClimbOriginalUnits = 5.0f;
 
+public:
 	// Initial person state (0 = ambient pedestrian; see FPeopleBehaviorModel state table).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "20"))
 	int32 InitialPersonState = 0;
@@ -200,6 +201,9 @@ protected:
 	// DAT_0058ec00/FUN_004c2450 while state remains 0; it also selects the figure (FUN_004c71c0).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "21"))
 	int32 InitialBehaviorClass = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
+	int32 MissionEventId = INDEX_NONE;
 
 	// Vehicle headlight spotlights (replace the removed translucent beam cards).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights")

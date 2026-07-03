@@ -1,0 +1,44 @@
+STRING @ 004f8484 : career.bmp
+    <- 00457ccf  in FUN_00457c90 @ 00457c90
+    <- 00411d79  in FUN_00411ca0 @ 00411ca0
+    <- 004f84bc  (no func)
+    <- 004f99e4  (no func)
+    <- 00411c30  in FUN_00411be0 @ 00411be0
+STRING @ 004f8fcc : cities\career\
+    <- 00432879  (no func)
+    <- 00432884  (no func)
+    <- 0043285d  (no func)
+STRING @ 004f99b4 : career.wav
+    <- 00457f2e  in FUN_00457c90 @ 00457c90
+    <- 004f99f4  (no func)
+STRING @ 00626bf8 : Open A SimCopter Career Game
+    (no references)
+STRING @ 00626c32 : Career Games (*.scc)?*.scc?All Files (*.*)?*.*??
+    (no references)
+STRING @ 00626cca : Save A SimCopter Career Game
+    (no references)
+STRING @ 00626d82 : New Career Game
+    (no references)
+STRING @ 00626da2 : Open Career Game
+    (no references)
+STRING @ 0062a9f0 : Career Advancement, Award: %ld Bucks
+    (no references)
+STRING @ 0062c89a : You can't open saved games in this demo. Select 'New Career Game' or 'New User Game'
+    (no references)
+STRING @ 0062c944 : In the retail version of SimCopter, you would now graduate to the next (tougher!) career level.
+    (no references)
+STRING @ 0062cd3a : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 00636572 : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 006401a8 : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 006499a2 : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 0065374c : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 0065d22a : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+STRING @ 00665eea : The full game has these extra features:\r\n      + Ability to load and save cities and games\r\n      + Saved game preferences (preferences are \r\n           not saved in this demo version)\r\n      + Much tougher play\r\n      + A 30 city increasing difficulty career path\r\n      + Many fully-rendered videos\r\n      + Ability to load any SimCity 2000 city\r\n      + An extensive mission/flight log\r\n      + Five music radio stations with 25\r\n           tracks and over 75 commercials\r\n      + Full on-line help\r\n      + More!
+    (no references)
+=== 18 strings matched 'areer' ===

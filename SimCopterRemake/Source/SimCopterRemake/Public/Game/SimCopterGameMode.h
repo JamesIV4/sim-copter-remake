@@ -22,6 +22,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	bool bSpawnTrafficSystem = true;
 
+	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Missions")
+	bool bSpawnMissionSystem = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Missions")
+	TSubclassOf<class ASimCopterMissionSystemActor> MissionSystemClass;
+
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	TSubclassOf<ASimCopterTrafficSystemActor> TrafficSystemClass;
 };
