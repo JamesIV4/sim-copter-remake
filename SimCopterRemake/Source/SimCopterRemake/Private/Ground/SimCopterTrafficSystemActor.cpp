@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterTrafficSystemActor.h"
 
@@ -655,6 +655,107 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
 	UpdateWholeMapPopulation(DeltaSeconds);
+}
+
+bool ASimCopterTrafficSystemActor::TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY)
+{
+	TArray<ASimCopterGroundAgent*> EligibleVehicles;
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		if (ASimCopterGroundAgent* Vehicle = AgentPtr.Get())
+		{
+			if (FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle)))
+			{
+				if (!State->bMissionJammed)
+				{
+					EligibleVehicles.Add(Vehicle);
+				}
+			}
+		}
+	}
+
+	if (EligibleVehicles.Num() == 0)
+	{
+		return false;
+	}
+
+	int32 RandomIndex = FMath::RandRange(0, EligibleVehicles.Num() - 1);
+	ASimCopterGroundAgent* ChosenVehicle = EligibleVehicles[RandomIndex];
+	
+	if (FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(ChosenVehicle)))
+	{
+		State->bMissionJammed = true;
+		State->MissionEventId = EventId;
+		
+		FVector Location = ChosenVehicle->GetActorLocation();
+		FVector Relative = ActiveCityToWorldTransform.InverseTransformPositionNoScale(Location);
+		OutTileX = FMath::Clamp(FMath::FloorToInt(Relative.X / ActiveTileSize), 0, 127);
+		OutTileY = FMath::Clamp(FMath::FloorToInt(Relative.Y / ActiveTileSize), 0, 127);
+		return true;
+	}
+	return false;
+}
+
+void ASimCopterTrafficSystemActor::EndTrafficJam(int32 EventId)
+{
+	for (auto& Pair : VehicleTrafficStates)
+	{
+		if (Pair.Value.bMissionJammed && Pair.Value.MissionEventId == EventId)
+		{
+			Pair.Value.bMissionJammed = false;
+			Pair.Value.MissionEventId = INDEX_NONE;
+		}
+	}
+}
+
+bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY)
+{
+	TArray<ASimCopterGroundAgent*> EligibleVehicles;
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		if (ASimCopterGroundAgent* Vehicle = AgentPtr.Get())
+		{
+			EligibleVehicles.Add(Vehicle);
+		}
+	}
+
+	if (EligibleVehicles.Num() == 0) return false;
+	
+	ASimCopterGroundAgent* ChosenVehicle = EligibleVehicles[FMath::RandRange(0, EligibleVehicles.Num() - 1)];
+	
+	if (FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(ChosenVehicle)))
+	{
+		State->bMissionJammed = true;
+		State->MissionEventId = EventId;
+	}
+	
+	FVector Location = ChosenVehicle->GetActorLocation();
+	FVector Relative = ActiveCityToWorldTransform.InverseTransformPositionNoScale(Location);
+	OutTileX = FMath::Clamp(FMath::FloorToInt(Relative.X / ActiveTileSize), 0, 127);
+	OutTileY = FMath::Clamp(FMath::FloorToInt(Relative.Y / ActiveTileSize), 0, 127);
+	
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId)
+{
+	if (GroundAgentClass == nullptr) return false;
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	FVector Relative(TileX * ActiveTileSize + (ActiveTileSize * 0.5f), TileY * ActiveTileSize + (ActiveTileSize * 0.5f), 1000.0f);
+	FVector WorldLoc = ActiveCityToWorldTransform.TransformPositionNoScale(Relative);
+	
+	if (ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(GroundAgentClass, WorldLoc, FRotator::ZeroRotator, SpawnParams))
+	{
+		Person->InitialPersonState = PersonState;
+		if (BehaviorClass != -1) Person->InitialBehaviorClass = BehaviorClass;
+		Person->MissionEventId = EventId;
+		PedestrianAgents.Add(Person);
+		return true;
+	}
+	return false;
 }
 
 ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() const
@@ -1587,9 +1688,13 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing(
 			continue;
 		}
 
-		FSimCopterVehicleTrafficState* State = bUseNormalBraking
-			? VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle))
-			: nullptr;
+		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State != nullptr && State->bMissionJammed)
+		{
+			Vehicle->SetTrafficSpeedScale(0.0f);
+			continue;
+		}
+
 		if (bUseNormalBraking)
 		{
 			if (State != nullptr && (State->RecoveryBypassSeconds > 0.0f || State->IntersectionCommitSeconds > 0.0f))

@@ -67,6 +67,8 @@ struct FSimCopterVehicleTrafficState
 	float IntersectionCommitSeconds = 0.0f;
 	bool bInitialized = false;
 	bool bInTrafficLightLine = false;
+	bool bMissionJammed = false;
+	int32 MissionEventId = INDEX_NONE;
 };
 
 UCLASS()
@@ -421,6 +423,15 @@ private:
 	float ActiveTileSize = 400.0f;
 	float SpawnThinkAccumulatorSeconds = 0.0f;
 	bool bLoggedMissingPedestrianMeshes = false;
+
+public:
+	// Mission system hooks
+	bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY);
+	void EndTrafficJam(int32 EventId);
+	bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY);
+	bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId);
+
+
 
 	ASimCity2000CityActor* ResolveSourceCityActor() const;
 	FString ResolveCityPath() const;

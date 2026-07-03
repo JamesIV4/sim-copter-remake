@@ -1,0 +1,20 @@
+===== FUN_004681f0 @ 004681f0 =====
+
+int FUN_004681f0(int *param_1,int *param_2)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  
+  uVar3 = *param_1 - *param_2 >> 0x1f;
+  iVar1 = (*param_1 - *param_2 ^ uVar3) - uVar3;
+  uVar3 = param_1[1] - param_2[1] >> 0x1f;
+  iVar2 = (param_1[1] - param_2[1] ^ uVar3) - uVar3;
+  if (iVar2 < iVar1) {
+    return iVar2 + iVar1 * 2;
+  }
+  return iVar1 + iVar2 * 2;
+}
+
+

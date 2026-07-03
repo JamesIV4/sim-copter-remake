@@ -1,0 +1,4 @@
+References to 00506050:
+    004a9bc7  READ  in FUN_004a9a10 @ 004a9a10
+    004a9dcf  READ  in FUN_004a9a10 @ 004a9a10
+    004aa392  READ  in FUN_004aa150 @ 004aa150

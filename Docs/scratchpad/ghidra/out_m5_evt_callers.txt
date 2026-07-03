@@ -1,0 +1,22 @@
+Callers of FUN_004a7a10 @ 004a7a10:
+    0048f07f  in FUN_0048ed00 @ 0048ed00
+    00490b94  in FUN_00490690 @ 00490690
+    004910cc  in FUN_00490690 @ 00490690
+    004a4b67  in FUN_004a4ac0 @ 004a4ac0
+    0049fe0f  in FUN_0049fd00 @ 0049fd00
+    004a95e4  in FUN_004a92f0 @ 004a92f0
+    004a9664  in FUN_004a92f0 @ 004a92f0
+    004a96b5  in FUN_004a92f0 @ 004a92f0
+    004a96fc  in FUN_004a92f0 @ 004a92f0
+    004a9743  in FUN_004a92f0 @ 004a92f0
+    004a978a  in FUN_004a92f0 @ 004a92f0
+    004a9814  in FUN_004a92f0 @ 004a92f0
+    004b2f28  in FUN_004b2cd0 @ 004b2cd0
+    004b32ae  in FUN_004b2cd0 @ 004b2cd0
+    004b1db5  in FUN_004b1d20 @ 004b1d20
+    004b1e55  in FUN_004b1d20 @ 004b1d20
+    004b1f1d  in FUN_004b1d20 @ 004b1d20
+    004b1fad  in FUN_004b1d20 @ 004b1d20
+    004b205c  in FUN_004b1d20 @ 004b1d20
+    004b21bf  in FUN_004b2150 @ 004b2150
+    0047a472  in FUN_0047a240 @ 0047a240

@@ -1,0 +1,4 @@
+References to 00505f40:
+    004a4d05  READ  in FUN_004a4ac0 @ 004a4ac0
+    004a49d9  READ  in FUN_004a48e0 @ 004a48e0
+    004a5f13  DATA  in FUN_004a5f10 @ 004a5f10
