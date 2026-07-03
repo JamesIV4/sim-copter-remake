@@ -6,6 +6,81 @@
 
 using namespace SimCopterMissions;
 
+namespace
+{
+struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
+{
+	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override
+	{
+		return (TileX >= 0 && TileX < 128 && TileY >= 0 && TileY < 128) ? 0x70 : 0;
+	}
+
+	virtual int32 GetBuildingFootprintSize(int32 TileX, int32 TileY) const override
+	{
+		return 1;
+	}
+
+	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const override
+	{
+		OutTileX = 64;
+		OutTileY = 64;
+		return true;
+	}
+
+	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const override
+	{
+		OutTileX = 64;
+		OutTileY = 64;
+		return true;
+	}
+
+	virtual bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId) override
+	{
+		return true;
+	}
+
+	virtual bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY) override
+	{
+		OutTileX = 21;
+		OutTileY = 22;
+		return true;
+	}
+};
+
+FString ResolveCareerTweakPath()
+{
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/tweak/career.twk"));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/tweak/career.twk")));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/tweak/career.twk")));
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeFilename(Candidate);
+		if (FPaths::FileExists(Candidate))
+		{
+			return Candidate;
+		}
+	}
+
+	return Candidates.Last();
+}
+
+int32 CountActiveMissionsOfType(const FSimCopterMissionSystem& System, int32 TypeMask)
+{
+	int32 Count = 0;
+	for (const FSimCopterMissionRecord& Record : System.GetRecords())
+	{
+		if (Record.bActive && (Record.TypeMask & TypeMask) != 0)
+		{
+			Count++;
+		}
+	}
+	return Count;
+}
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemPRNGTest, "SimCopter.Missions.PRNGParity", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSimCopterMissionSystemPRNGTest::RunTest(const FString& Parameters)
@@ -80,6 +155,75 @@ bool FSimCopterMissionSystemSchedulerTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemMarkerCoordinateTest, "SimCopter.Missions.MarkerCoordinates", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSystemMarkerCoordinateTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 TransportEventId = System.CreateEventAt(10, 20, TYPE_Transport);
+	TestTrue(TEXT("Transport mission should be created"), TransportEventId != INDEX_NONE);
+	const FSimCopterMissionRecord* TransportRecord = System.FindRecord(TransportEventId);
+	TestNotNull(TEXT("Transport record should exist"), TransportRecord);
+	if (TransportRecord != nullptr)
+	{
+		TestTrue(TEXT("Transport destination X should be set"), TransportRecord->SecondaryX >= 0 && TransportRecord->SecondaryX < 128);
+		TestTrue(TEXT("Transport destination Y should be set"), TransportRecord->SecondaryY >= 0 && TransportRecord->SecondaryY < 128);
+		TestFalse(TEXT("Transport destination should differ from pickup"), TransportRecord->SecondaryX == TransportRecord->TileX && TransportRecord->SecondaryY == TransportRecord->TileY);
+	}
+
+	const int32 CarFireEventId = System.CreateEventAt(4, 5, TYPE_CarFireEvent);
+	TestTrue(TEXT("Car fire mission should be created"), CarFireEventId != INDEX_NONE);
+	const FSimCopterMissionRecord* CarFireRecord = System.FindRecord(CarFireEventId);
+	TestNotNull(TEXT("Car fire record should exist"), CarFireRecord);
+	if (CarFireRecord != nullptr)
+	{
+		TestEqual(TEXT("Car fire should use hook tile X"), CarFireRecord->TileX, 21);
+		TestEqual(TEXT("Car fire should use hook tile Y"), CarFireRecord->TileY, 22);
+		TestEqual(TEXT("Car fire should require one car outcome"), CarFireRecord->CarsCrashed, 1);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemTransportSchedulerTimerTest, "SimCopter.Missions.TransportSchedulerTimer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSystemTransportSchedulerTimerTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCareerCity City;
+	City.Difficulty = 0;
+	for (int32 i = 0; i < 7; ++i)
+	{
+		City.Weights[i] = 0.0f;
+	}
+	City.Weights[6] = 100.0f;
+
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+	System.SetCareerCity(City);
+
+	for (int32 Frame = 0; Frame < 1000 && CountActiveMissionsOfType(System, TYPE_Transport) == 0; ++Frame)
+	{
+		System.Tick(1.0f / 60.0f);
+	}
+
+	TestEqual(TEXT("The scheduler should create exactly one transport after the first timer trip"), CountActiveMissionsOfType(System, TYPE_Transport), 1);
+	TestEqual(TEXT("Scheduled transport should count against active missions"), System.GetActiveMissionCount(), 1);
+	TestEqual(TEXT("Scheduled transport should not count as background"), System.GetBackgroundMissionCount(), 0);
+
+	for (int32 Frame = 0; Frame < 120; ++Frame)
+	{
+		System.Tick(1.0f / 60.0f);
+	}
+
+	TestEqual(TEXT("Transport creation should re-arm the scheduler instead of spawning every frame"), CountActiveMissionsOfType(System, TYPE_Transport), 1);
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterEconomyCareerParsingTest, "SimCopter.Economy.CareerParsing", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSimCopterEconomyCareerParsingTest::RunTest(const FString& Parameters)
@@ -87,11 +231,7 @@ bool FSimCopterEconomyCareerParsingTest::RunTest(const FString& Parameters)
 	FSimCopterMissionSystem System;
 	System.Initialize(nullptr, 1);
 	
-	FString CareerPath = FPaths::ProjectContentDir() / TEXT("OriginalGame/tweak/career.twk");
-	if (!FPaths::FileExists(CareerPath))
-	{
-		CareerPath = FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/tweak/career.twk"));
-	}
+	const FString CareerPath = ResolveCareerTweakPath();
 	
 	if (!System.LoadCareerData(CareerPath))
 	{
@@ -122,11 +262,7 @@ bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 	FSimCopterMissionSystem System;
 	System.Initialize(nullptr, 1);
 	
-	FString CareerPath = FPaths::ProjectContentDir() / TEXT("OriginalGame/tweak/career.twk");
-	if (!FPaths::FileExists(CareerPath))
-	{
-		CareerPath = FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/tweak/career.twk"));
-	}
+	const FString CareerPath = ResolveCareerTweakPath();
 	
 	if (!System.LoadCareerData(CareerPath))
 	{

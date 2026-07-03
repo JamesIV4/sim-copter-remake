@@ -687,10 +687,11 @@ bool ASimCopterTrafficSystemActor::TryStartTrafficJam(int32 EventId, int32& OutT
 		State->bMissionJammed = true;
 		State->MissionEventId = EventId;
 		
-		FVector Location = ChosenVehicle->GetActorLocation();
-		FVector Relative = ActiveCityToWorldTransform.InverseTransformPositionNoScale(Location);
-		OutTileX = FMath::Clamp(FMath::FloorToInt(Relative.X / ActiveTileSize), 0, 127);
-		OutTileY = FMath::Clamp(FMath::FloorToInt(Relative.Y / ActiveTileSize), 0, 127);
+		if (!TryGetPeopleTileCoordinateAtWorldLocation(ChosenVehicle->GetActorLocation(), OutTileX, OutTileY))
+		{
+			OutTileX = 64;
+			OutTileY = 64;
+		}
 		return true;
 	}
 	return false;
@@ -729,33 +730,451 @@ bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 		State->MissionEventId = EventId;
 	}
 	
-	FVector Location = ChosenVehicle->GetActorLocation();
-	FVector Relative = ActiveCityToWorldTransform.InverseTransformPositionNoScale(Location);
-	OutTileX = FMath::Clamp(FMath::FloorToInt(Relative.X / ActiveTileSize), 0, 127);
-	OutTileY = FMath::Clamp(FMath::FloorToInt(Relative.Y / ActiveTileSize), 0, 127);
+	if (!TryGetPeopleTileCoordinateAtWorldLocation(ChosenVehicle->GetActorLocation(), OutTileX, OutTileY))
+	{
+		OutTileX = 64;
+		OutTileY = 64;
+	}
 	
 	return true;
 }
 
-bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId)
+bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId)
 {
 	if (GroundAgentClass == nullptr) return false;
-	
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	
-	FVector Relative(TileX * ActiveTileSize + (ActiveTileSize * 0.5f), TileY * ActiveTileSize + (ActiveTileSize * 0.5f), 1000.0f);
-	FVector WorldLoc = ActiveCityToWorldTransform.TransformPositionNoScale(Relative);
-	
-	if (ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(GroundAgentClass, WorldLoc, FRotator::ZeroRotator, SpawnParams))
+
+	int32 ExistingMissionPeople = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
 	{
-		Person->InitialPersonState = PersonState;
-		if (BehaviorClass != -1) Person->InitialBehaviorClass = BehaviorClass;
-		Person->MissionEventId = EventId;
-		PedestrianAgents.Add(Person);
-		return true;
+		if (const ASimCopterGroundAgent* Agent = AgentPtr.Get())
+		{
+			if (Agent->MissionEventId == EventId)
+			{
+				ExistingMissionPeople++;
+			}
+		}
 	}
-	return false;
+
+	const float GoldenAngleRadians = 2.39996323f;
+	FVector SpawnLocation = FVector::ZeroVector;
+	bool bFoundSpawnLocation = false;
+	FVector FallbackLocation = FVector::ZeroVector;
+	bool bHasFallbackLocation = false;
+
+	for (int32 Attempt = 0; Attempt < 24 && !bFoundSpawnLocation; ++Attempt)
+	{
+		const int32 CandidateIndex = ExistingMissionPeople + Attempt;
+		const int32 TileRing = Attempt / 8;
+		const int32 OffsetTileX = TileX + ((TileRing == 0) ? 0 : ((Attempt % 3) - 1));
+		const int32 OffsetTileY = TileY + ((TileRing == 0) ? 0 : (((Attempt / 3) % 3) - 1));
+
+		FVector TileCenter = FVector::ZeroVector;
+		if (!TryGetTileCenterWorldLocation(OffsetTileX, OffsetTileY, TileCenter))
+		{
+			continue;
+		}
+
+		const float Angle = float(CandidateIndex) * GoldenAngleRadians;
+		const float Radius = FMath::Min(ActiveTileSize * 0.42f, ActiveTileSize * (0.16f + 0.055f * float(CandidateIndex / 8)));
+		FVector CandidateLocation = TileCenter + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
+		CandidateLocation.Z += 92.0f;
+
+		if (!bHasFallbackLocation)
+		{
+			FallbackLocation = CandidateLocation;
+			bHasFallbackLocation = true;
+		}
+
+		if (IsPedestrianSpawnLocationOpen(CandidateLocation))
+		{
+			SpawnLocation = CandidateLocation;
+			bFoundSpawnLocation = true;
+		}
+	}
+
+	if (!bFoundSpawnLocation)
+	{
+		if (!bHasFallbackLocation)
+		{
+			return false;
+		}
+		SpawnLocation = FallbackLocation;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	const float SpawnYaw = RandomStream.FRandRange(0.0f, 360.0f);
+	ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(GroundAgentClass, SpawnLocation, FRotator(0.0f, SpawnYaw, 0.0f), SpawnParams);
+	if (Person == nullptr)
+	{
+		return false;
+	}
+
+	Person->InitialPersonState = SpawnMode;
+	if (PersonState != -1)
+	{
+		Person->SetInitialBehaviorClass(PersonState);
+	}
+
+	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
+	Person->MissionEventId = EventId;
+	Person->ConfigureAgent(
+		ESimCopterGroundAgentKind::Pedestrian,
+		MeshName,
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+		PedestrianSpeedCmPerSec);
+
+	if (bRequireOriginalPopulationMeshes && !Person->IsUsingOriginalMesh())
+	{
+		UE_LOG(LogSimCopterTrafficSystem, Warning, TEXT("Discarding mission pedestrian because original mesh '%s' could not be loaded."), *MeshName);
+		Person->Destroy();
+		return false;
+	}
+
+	Person->SnapToGroundImmediate();
+	if (SpawnMode == 6)
+	{
+		Person->SetMissionInjuredPose();
+	}
+	PedestrianAgents.Add(Person);
+	return true;
+}
+
+int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm)
+{
+	if (MaxCount <= 0)
+	{
+		return 0;
+	}
+
+	struct FMissionPickupCandidate
+	{
+		TWeakObjectPtr<ASimCopterGroundAgent> Agent;
+		float DistanceSq = 0.0f;
+	};
+
+	TArray<FMissionPickupCandidate, TInlineAllocator<16>> Candidates;
+	const float RadiusSq = FMath::Square(RadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed())
+		{
+			continue;
+		}
+
+		const FVector AgentLocation = Agent->GetActorLocation();
+		if (FMath::Abs(AgentLocation.Z - WorldLocation.Z) > MaxVerticalDeltaCm)
+		{
+			continue;
+		}
+
+		const float DistanceSq = FVector::DistSquared2D(AgentLocation, WorldLocation);
+		if (DistanceSq > RadiusSq)
+		{
+			continue;
+		}
+
+		FMissionPickupCandidate Candidate;
+		Candidate.Agent = Agent;
+		Candidate.DistanceSq = DistanceSq;
+		Candidates.Add(Candidate);
+	}
+
+	Candidates.Sort([](const FMissionPickupCandidate& Left, const FMissionPickupCandidate& Right)
+	{
+		return Left.DistanceSq < Right.DistanceSq;
+	});
+
+	int32 PickedUp = 0;
+	for (const FMissionPickupCandidate& Candidate : Candidates)
+	{
+		if (PickedUp >= MaxCount)
+		{
+			break;
+		}
+
+		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
+		{
+			Agent->MissionEventId = INDEX_NONE;
+			Agent->Destroy();
+			PickedUp++;
+		}
+	}
+
+	if (PickedUp > 0)
+	{
+		PedestrianAgents.RemoveAll([](const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr)
+		{
+			const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+			return Agent == nullptr || Agent->IsActorBeingDestroyed();
+		});
+	}
+
+	return PickedUp;
+}
+
+int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
+	int32 EventId,
+	const FVector& SearchLocation,
+	const FVector& TargetLocation,
+	int32 MaxCount,
+	float SearchRadiusCm,
+	float MaxVerticalDeltaCm,
+	float GuidanceSeconds)
+{
+	if (MaxCount <= 0)
+	{
+		return 0;
+	}
+
+	struct FMissionGuidanceCandidate
+	{
+		TWeakObjectPtr<ASimCopterGroundAgent> Agent;
+		float DistanceSq = 0.0f;
+	};
+
+	TArray<FMissionGuidanceCandidate, TInlineAllocator<16>> Candidates;
+	const float RadiusSq = FMath::Square(SearchRadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() || Agent->IsMissionCarried())
+		{
+			continue;
+		}
+
+		const FVector AgentLocation = Agent->GetActorLocation();
+		if (FMath::Abs(AgentLocation.Z - SearchLocation.Z) > MaxVerticalDeltaCm)
+		{
+			continue;
+		}
+
+		const float DistanceSq = FVector::DistSquared2D(AgentLocation, SearchLocation);
+		if (DistanceSq > RadiusSq)
+		{
+			continue;
+		}
+
+		FMissionGuidanceCandidate Candidate;
+		Candidate.Agent = Agent;
+		Candidate.DistanceSq = DistanceSq;
+		Candidates.Add(Candidate);
+	}
+
+	Candidates.Sort([](const FMissionGuidanceCandidate& Left, const FMissionGuidanceCandidate& Right)
+	{
+		return Left.DistanceSq < Right.DistanceSq;
+	});
+
+	int32 Guided = 0;
+	for (const FMissionGuidanceCandidate& Candidate : Candidates)
+	{
+		if (Guided >= MaxCount)
+		{
+			break;
+		}
+
+		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
+		{
+			Agent->SetGuidanceMoveTarget(TargetLocation, GuidanceSeconds);
+			Guided++;
+		}
+	}
+
+	return Guided;
+}
+
+int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float TouchRadiusCm, float MaxVerticalDeltaCm)
+{
+	if (MaxCount <= 0)
+	{
+		return 0;
+	}
+
+	return PickUpMissionPeopleNear(EventId, WorldLocation, MaxCount, TouchRadiusCm, MaxVerticalDeltaCm);
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm)
+{
+	ASimCopterGroundAgent* BestAgent = nullptr;
+	float BestDistanceSq = FMath::Square(RadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() || Agent->IsMissionCarried())
+		{
+			continue;
+		}
+
+		const FVector AgentLocation = Agent->GetActorLocation();
+		if (FMath::Abs(AgentLocation.Z - WorldLocation.Z) > MaxVerticalDeltaCm)
+		{
+			continue;
+		}
+
+		const float DistanceSq = FVector::DistSquared2D(AgentLocation, WorldLocation);
+		if (DistanceSq <= BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			BestAgent = Agent;
+		}
+	}
+
+	return BestAgent;
+}
+
+int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
+	int32 Count,
+	const FVector& WorldLocation,
+	int32 EventId,
+	int32 SpawnMode,
+	int32 PersonState,
+	float SpreadRadiusCm)
+{
+	if (GroundAgentClass == nullptr || Count <= 0 || GetWorld() == nullptr)
+	{
+		return 0;
+	}
+
+	int32 Spawned = 0;
+	const float ClampedSpread = FMath::Max(20.0f, SpreadRadiusCm);
+	const float GoldenAngleRadians = 2.39996323f;
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		FVector SpawnLocation = WorldLocation;
+		bool bFoundSpawnLocation = false;
+		for (int32 Attempt = 0; Attempt < 16; ++Attempt)
+		{
+			const int32 CandidateIndex = Spawned + Attempt;
+			const float Angle = float(CandidateIndex) * GoldenAngleRadians;
+			const float Radius = FMath::Min(ClampedSpread, 35.0f + 28.0f * float(CandidateIndex));
+			FVector CandidateLocation = WorldLocation + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
+			CandidateLocation.Z += 92.0f;
+			if (Attempt == 0 || IsPedestrianSpawnLocationOpen(CandidateLocation))
+			{
+				SpawnLocation = CandidateLocation;
+				bFoundSpawnLocation = true;
+				break;
+			}
+		}
+
+		if (!bFoundSpawnLocation)
+		{
+			continue;
+		}
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+		const float SpawnYaw = RandomStream.FRandRange(0.0f, 360.0f);
+		ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(GroundAgentClass, SpawnLocation, FRotator(0.0f, SpawnYaw, 0.0f), SpawnParams);
+		if (Person == nullptr)
+		{
+			continue;
+		}
+
+		Person->InitialPersonState = SpawnMode;
+		if (PersonState != -1)
+		{
+			Person->SetInitialBehaviorClass(PersonState);
+		}
+
+		const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
+		Person->MissionEventId = EventId;
+		Person->ConfigureAgent(
+			ESimCopterGroundAgentKind::Pedestrian,
+			MeshName,
+			ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+			PedestrianSpeedCmPerSec);
+
+		if (bRequireOriginalPopulationMeshes && !Person->IsUsingOriginalMesh())
+		{
+			UE_LOG(LogSimCopterTrafficSystem, Warning, TEXT("Discarding dropped pedestrian because original mesh '%s' could not be loaded."), *MeshName);
+			Person->Destroy();
+			continue;
+		}
+
+		Person->SnapToGroundImmediate();
+		if (SpawnMode == 6)
+		{
+			Person->SetMissionInjuredPose();
+		}
+		PedestrianAgents.Add(Person);
+		Spawned++;
+	}
+
+	return Spawned;
+}
+
+int32 ASimCopterTrafficSystemActor::ReleaseMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm)
+{
+	if (MaxCount <= 0)
+	{
+		return 0;
+	}
+
+	struct FMissionReleaseCandidate
+	{
+		TWeakObjectPtr<ASimCopterGroundAgent> Agent;
+		float DistanceSq = 0.0f;
+	};
+
+	TArray<FMissionReleaseCandidate, TInlineAllocator<16>> Candidates;
+	const float RadiusSq = FMath::Square(RadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() || Agent->IsMissionCarried())
+		{
+			continue;
+		}
+
+		const FVector AgentLocation = Agent->GetActorLocation();
+		if (FMath::Abs(AgentLocation.Z - WorldLocation.Z) > MaxVerticalDeltaCm)
+		{
+			continue;
+		}
+
+		const float DistanceSq = FVector::DistSquared2D(AgentLocation, WorldLocation);
+		if (DistanceSq > RadiusSq)
+		{
+			continue;
+		}
+
+		FMissionReleaseCandidate Candidate;
+		Candidate.Agent = Agent;
+		Candidate.DistanceSq = DistanceSq;
+		Candidates.Add(Candidate);
+	}
+
+	Candidates.Sort([](const FMissionReleaseCandidate& Left, const FMissionReleaseCandidate& Right)
+	{
+		return Left.DistanceSq < Right.DistanceSq;
+	});
+
+	int32 Released = 0;
+	for (const FMissionReleaseCandidate& Candidate : Candidates)
+	{
+		if (Released >= MaxCount)
+		{
+			break;
+		}
+
+		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
+		{
+			Agent->MissionEventId = INDEX_NONE;
+			Agent->InitialPersonState = 0;
+			Agent->SetInitialBehaviorClass(0);
+			Agent->ClearMissionPose();
+			Released++;
+		}
+	}
+
+	return Released;
 }
 
 ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() const
@@ -785,6 +1204,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodes.Reset();
 	PedestrianNodes.Reset();
 	RoadNodeIndexByTile.Reset();
+	XbldTileIds.Reset();
 	PeopleTileClasses.Reset();
 	VehicleAgents.Reset();
 	PedestrianAgents.Reset();
@@ -833,6 +1253,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 
 	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
 
+	XbldTileIds.SetNum(FSimCity2000City::TileCount);
 	PeopleTileClasses.SetNum(FSimCity2000City::TileCount);
 	TileCenterWorldZ.SetNum(FSimCity2000City::TileCount);
 
@@ -843,6 +1264,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
 			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
 			const int32 PeopleTileClass = FSimCopterPeopleCityRules::GetTileClassForBuildingId(Tile.Building);
+			XbldTileIds[TileIndex] = Tile.Building;
 			PeopleTileClasses[TileIndex] = uint8(PeopleTileClass);
 			const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
 			const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
@@ -1260,6 +1682,44 @@ bool ASimCopterTrafficSystemActor::TryGetPeopleFacingStepTarget(
 	OutWorldLocation = FromWorldLocation + FVector(WorldDelta.X, WorldDelta.Y, 0.0f);
 	OutTileClass = GetPeopleTileClassAtWorldLocation(OutWorldLocation);
 	return OutTileClass != INDEX_NONE;
+}
+
+int32 ASimCopterTrafficSystemActor::GetXbldTileId(int32 FileX, int32 FileY) const
+{
+	if (XbldTileIds.Num() != FSimCity2000City::TileCount ||
+		FileX < 0 || FileX >= FSimCity2000City::MapSize ||
+		FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return 0;
+	}
+
+	return int32(XbldTileIds[FileY * FSimCity2000City::MapSize + FileX]);
+}
+
+int32 ASimCopterTrafficSystemActor::GetBuildingFootprintSize(int32 FileX, int32 FileY) const
+{
+	return FMath::Max(1, FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(uint8(GetXbldTileId(FileX, FileY))));
+}
+
+bool ASimCopterTrafficSystemActor::TryGetTileCenterWorldLocation(int32 FileX, int32 FileY, FVector& OutWorldLocation) const
+{
+	OutWorldLocation = FVector::ZeroVector;
+	if (ActiveTileSize <= KINDA_SMALL_NUMBER ||
+		FileX < 0 || FileX >= FSimCity2000City::MapSize ||
+		FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return false;
+	}
+
+	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
+	const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
+	const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
+	const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
+	const float WorldZ = TileCenterWorldZ.IsValidIndex(TileIndex) ? TileCenterWorldZ[TileIndex] : 0.0f;
+
+	OutWorldLocation = ActiveCityToWorldTransform.TransformPosition(FVector(LocalX, LocalY, 0.0f));
+	OutWorldLocation.Z = WorldZ;
+	return true;
 }
 
 float ASimCopterTrafficSystemActor::GetPeopleWorldCmPerOriginalUnit() const

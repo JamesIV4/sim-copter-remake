@@ -94,6 +94,13 @@ public:
 	bool IsAvoidancePathOffsetActive() const { return AvoidancePathOffsetTimeRemainingSeconds > 0.0f; }
 	bool IsGuidanceMoveTargetActive() const { return GuidanceMoveTargetTimeRemainingSeconds > 0.0f; }
 
+	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
+	void ClearForcedPedestrianFigureClip();
+	void SetMissionInjuredPose();
+	void ClearMissionPose();
+	void SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation);
+	bool IsMissionCarried() const { return bMissionCarried; }
+
 	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
 	// graph node the agent is currently driving toward; PrevNode is where it came from (used to
 	// avoid immediate U-turns). INDEX_NONE means "unset / re-acquire nearest node".
@@ -317,6 +324,9 @@ private:
 	float FigureFrameTime = 0.0f;
 	bool bFigureHasHeadSection = false;
 	bool bUsingPedestrianFigure = false;
+	FString ForcedFigureMnemonic;
+	bool bMissionStationary = false;
+	bool bMissionCarried = false;
 
 	bool RebuildFigureClip(const FString& Mnemonic);
 	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);

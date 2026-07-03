@@ -9,18 +9,36 @@
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Formats/MaxisTextureReader.h"
+#include "Formats/MaxisWindowsBitmapReader.h"
 #include "Formats/SimCopterTweakReader.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterOnFootPawn.h"
+#include "Ground/SimCopterPopulationSprite.h"
+#include "Ground/SimCopterTrafficSystemActor.h"
+#include "Input/Reply.h"
+#include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
+#include "Styling/CoreStyle.h"
+#include "Styling/SlateBrush.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/SOverlay.h"
+#include "Widgets/Text/STextBlock.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterHelicopterPawn, Log, All);
 
@@ -231,12 +249,19 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		InputMode.SetHideCursorDuringCapture(false);
 		PlayerController->SetInputMode(InputMode);
+		EnsurePassengerSlotsWidget();
 	}
 
 	UpdateGroundProbe();
 	UpdateForwardProbe();
 	UpdateRopeAndBucket(0.0f);
 	SeedFlightModelFromActor();
+}
+
+void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	RemovePassengerSlotsWidget();
+	Super::EndPlay(EndPlayReason);
 }
 
 void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
@@ -653,11 +678,317 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetHideCursorDuringCapture(false);
 	PlayerController->SetInputMode(InputMode);
+	EnsurePassengerSlotsWidget();
 }
 
 bool ASimCopterHelicopterPawn::CanExitHelicopter() const
 {
 	return bIsLanded && !bEngineRunning && GroundClearanceCm <= GroundContactTolerance + 18.0f;
+}
+
+bool ASimCopterHelicopterPawn::CanTransferMissionPassengers() const
+{
+	return bIsLanded && GroundClearanceCm <= GroundContactTolerance + 60.0f;
+}
+
+int32 ASimCopterHelicopterPawn::GetAvailablePassengerSeats() const
+{
+	return FMath::Max(0, FlightModel.Tuning.PassengerSeats - MissionPassengerSlots.Num());
+}
+
+int32 ASimCopterHelicopterPawn::AddMissionPassengers(int32 Count)
+{
+	return AddMissionPassengersForMission(Count, INDEX_NONE, ESimCopterMissionPassengerKind::Transport);
+}
+
+int32 ASimCopterHelicopterPawn::RemoveMissionPassengers(int32 Count)
+{
+	const int32 Removed = FMath::Clamp(Count, 0, MissionPassengerSlots.Num());
+	if (Removed > 0)
+	{
+		MissionPassengerSlots.RemoveAt(FMath::Max(0, MissionPassengerSlots.Num() - Removed), Removed);
+		SyncPassengerFlightModelCount();
+		RefreshPassengerSlotsWidget();
+	}
+	return Removed;
+}
+
+int32 ASimCopterHelicopterPawn::AddMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind)
+{
+	const int32 Added = FMath::Clamp(Count, 0, GetAvailablePassengerSeats());
+	for (int32 Index = 0; Index < Added; ++Index)
+	{
+		FSimCopterMissionPassengerSlot Slot;
+		Slot.EventId = EventId;
+		Slot.Kind = Kind;
+		MissionPassengerSlots.Add(Slot);
+	}
+	if (Added > 0)
+	{
+		SyncPassengerFlightModelCount();
+		RefreshPassengerSlotsWidget();
+	}
+	return Added;
+}
+
+int32 ASimCopterHelicopterPawn::RemoveMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind)
+{
+	int32 Removed = 0;
+	for (int32 Index = MissionPassengerSlots.Num() - 1; Index >= 0 && Removed < Count; --Index)
+	{
+		const FSimCopterMissionPassengerSlot& Slot = MissionPassengerSlots[Index];
+		if (Slot.EventId == EventId && Slot.Kind == Kind)
+		{
+			MissionPassengerSlots.RemoveAt(Index);
+			Removed++;
+		}
+	}
+	if (Removed > 0)
+	{
+		SyncPassengerFlightModelCount();
+		RefreshPassengerSlotsWidget();
+	}
+	return Removed;
+}
+
+int32 ASimCopterHelicopterPawn::GetMissionPassengerCount(int32 EventId, ESimCopterMissionPassengerKind Kind) const
+{
+	int32 Count = 0;
+	for (const FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
+	{
+		if (Slot.EventId == EventId && Slot.Kind == Kind)
+		{
+			Count++;
+		}
+	}
+	return Count;
+}
+
+bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
+{
+	if (!MissionPassengerSlots.IsValidIndex(SlotIndex) || GetWorld() == nullptr)
+	{
+		return false;
+	}
+
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	const FSimCopterMissionPassengerSlot Slot = MissionPassengerSlots[SlotIndex];
+	const int32 SpawnMode = Slot.Kind == ESimCopterMissionPassengerKind::Medevac ? 6 : 0;
+	const int32 Spawned = TrafficSystem->SpawnMissionPeopleAtWorldLocation(
+		1,
+		GetPassengerDropWorldLocation(SlotIndex),
+		Slot.EventId,
+		SpawnMode,
+		-1,
+		95.0f);
+	if (Spawned <= 0)
+	{
+		return false;
+	}
+
+	MissionPassengerSlots.RemoveAt(SlotIndex);
+	SyncPassengerFlightModelCount();
+	RefreshPassengerSlotsWidget();
+	return true;
+}
+
+FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex) const
+{
+	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	const float SlotSide = (SlotIndex % 2 == 0) ? 1.0f : -1.0f;
+	const float SlotRowOffset = SlotIndex >= 0 ? float(SlotIndex / 2) * 32.0f : 0.0f;
+	FVector DropLocation =
+		GetActorLocation() +
+		YawFrame.GetUnitAxis(EAxis::Y) * (175.0f * SlotSide) -
+		YawFrame.GetUnitAxis(EAxis::X) * (35.0f + SlotRowOffset);
+
+	if (GetWorld() != nullptr)
+	{
+		const FVector TraceStart = DropLocation + FVector::UpVector * 900.0f;
+		const FVector TraceEnd = DropLocation - FVector::UpVector * 1800.0f;
+		FHitResult Hit;
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterPassengerDrop), false, this);
+		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+		{
+			DropLocation.Z = Hit.ImpactPoint.Z + 24.0f;
+		}
+	}
+
+	return DropLocation;
+}
+
+void ASimCopterHelicopterPawn::SyncPassengerFlightModelCount()
+{
+	FlightModel.Passengers = MissionPassengerSlots.Num();
+}
+
+void ASimCopterHelicopterPawn::EnsurePassengerSlotsWidget()
+{
+	if (PassengerSlotsWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	LoadPassengerSlotIconTexture();
+
+	TSharedRef<SHorizontalBox> SlotBox = SNew(SHorizontalBox);
+	PassengerSlotsBox = SlotBox;
+	PassengerSlotsWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.0f, 0.0f, 0.0f, 24.0f))
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.58f))
+			.Padding(FMargin(7.0f, 5.0f))
+			[
+				SlotBox
+			]
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(PassengerSlotsWidget.ToSharedRef(), 25);
+	RefreshPassengerSlotsWidget();
+}
+
+void ASimCopterHelicopterPawn::RemovePassengerSlotsWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && PassengerSlotsWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(PassengerSlotsWidget.ToSharedRef());
+	}
+
+	PassengerSlotsBox.Reset();
+	PassengerSlotsWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
+{
+	if (!PassengerSlotsBox.IsValid())
+	{
+		return;
+	}
+
+	PassengerSlotsBox->ClearChildren();
+	const int32 SeatCount = FMath::Max(0, GetPassengerSeatCount());
+	for (int32 SlotIndex = 0; SlotIndex < SeatCount; ++SlotIndex)
+	{
+		const bool bFull = MissionPassengerSlots.IsValidIndex(SlotIndex);
+		TSharedRef<SWidget> SlotContent =
+			SNew(STextBlock)
+			.Text(FText::FromString(bFull ? TEXT("●") : TEXT("○")))
+			.Justification(ETextJustify::Center)
+			.ColorAndOpacity(bFull ? FLinearColor(0.95f, 0.9f, 0.58f, 1.0f) : FLinearColor(0.9f, 0.95f, 1.0f, 0.92f))
+			.ShadowOffset(FVector2D(1.0f, 1.0f))
+			.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.75f))
+			.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 24));
+
+		if (bFull && PassengerSlotIconBrush.IsValid())
+		{
+			SlotContent =
+				SNew(SBox)
+				.WidthOverride(24.0f)
+				.HeightOverride(30.0f)
+				[
+					SNew(SImage)
+					.Image(PassengerSlotIconBrush.Get())
+				];
+		}
+
+		PassengerSlotsBox->AddSlot()
+		.AutoWidth()
+		.Padding(FMargin(3.0f, 0.0f))
+		[
+			SNew(SBox)
+			.WidthOverride(38.0f)
+			.HeightOverride(38.0f)
+			[
+				SNew(SButton)
+				.ContentPadding(FMargin(1.0f))
+				.ToolTipText(FText::FromString(bFull ? TEXT("Drop passenger") : TEXT("Empty seat")))
+				.ButtonColorAndOpacity(bFull ? FLinearColor(0.09f, 0.12f, 0.14f, 0.95f) : FLinearColor(0.04f, 0.06f, 0.08f, 0.78f))
+				.OnClicked(FOnClicked::CreateUObject(this, &ASimCopterHelicopterPawn::HandlePassengerSlotClicked, SlotIndex))
+				[
+					SlotContent
+				]
+			]
+		];
+	}
+}
+
+bool ASimCopterHelicopterPawn::LoadPassengerSlotIconTexture()
+{
+	if (PassengerSlotIconTexture != nullptr && PassengerSlotIconBrush.IsValid())
+	{
+		return true;
+	}
+
+	const FString PeoplePath = FSimCopterPopulationSprite::ResolvePeople1BitmapPath(ResolveOriginalGameRoot());
+	if (PeoplePath.IsEmpty())
+	{
+		return false;
+	}
+
+	FMaxisTextureImage SheetImage;
+	FString Error;
+	if (!FMaxisWindowsBitmapReader::LoadPalettedBitmapFromFile(
+			PeoplePath,
+			SheetImage,
+			Error,
+			FSimCopterPopulationSprite::People1TransparentPaletteIndex))
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("Could not load passenger slot icon from PEOPLE1.BMP: %s"), *Error);
+		return false;
+	}
+
+	constexpr int32 SourceColumn = 1;
+	constexpr int32 SourceRow = 0;
+	constexpr int32 IconWidth = FSimCopterPopulationSprite::People1FrameWidth;
+	constexpr int32 IconHeight = FSimCopterPopulationSprite::People1FrameHeight;
+	const int32 SourceX = SourceColumn * IconWidth;
+	const int32 SourceY = SourceRow * IconHeight;
+	if (SheetImage.Width < SourceX + IconWidth || SheetImage.Height < SourceY + IconHeight)
+	{
+		return false;
+	}
+
+	FMaxisTextureImage IconImage;
+	IconImage.Width = IconWidth;
+	IconImage.Height = IconHeight;
+	IconImage.Pixels.SetNumUninitialized(IconWidth * IconHeight);
+	for (int32 Y = 0; Y < IconHeight; ++Y)
+	{
+		for (int32 X = 0; X < IconWidth; ++X)
+		{
+			IconImage.Pixels[Y * IconWidth + X] = SheetImage.Pixels[(SourceY + Y) * SheetImage.Width + SourceX + X];
+		}
+	}
+
+	PassengerSlotIconTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, IconImage, TEXT("SimCopterPassengerSlotIcon"));
+	if (PassengerSlotIconTexture == nullptr)
+	{
+		return false;
+	}
+
+	PassengerSlotIconBrush = MakeShared<FSlateBrush>();
+	PassengerSlotIconBrush->SetResourceObject(PassengerSlotIconTexture);
+	PassengerSlotIconBrush->ImageSize = FVector2D(24.0f, 30.0f);
+	PassengerSlotIconBrush->DrawAs = ESlateBrushDrawType::Image;
+	return true;
+}
+
+FReply ASimCopterHelicopterPawn::HandlePassengerSlotClicked(int32 SlotIndex)
+{
+	DropPassengerAtSlot(SlotIndex);
+	return FReply::Handled();
 }
 
 void ASimCopterHelicopterPawn::ExitHelicopter()
@@ -672,6 +1003,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	{
 		return;
 	}
+	RemovePassengerSlotsWidget();
 
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	FVector ExitLocation =

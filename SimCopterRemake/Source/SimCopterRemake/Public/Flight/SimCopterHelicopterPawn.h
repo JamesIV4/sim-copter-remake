@@ -16,8 +16,13 @@ class USceneComponent;
 class USpotLightComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
+class UTexture2D;
 class ASimCopterOnFootPawn;
 class APlayerController;
+class SHorizontalBox;
+class SWidget;
+class FReply;
+struct FSlateBrush;
 
 UENUM(BlueprintType)
 enum class ESimCopterCameraMode : uint8
@@ -25,6 +30,26 @@ enum class ESimCopterCameraMode : uint8
 	Chase,
 	Orbit,
 	Rescue
+};
+
+UENUM(BlueprintType)
+enum class ESimCopterMissionPassengerKind : uint8
+{
+	Transport,
+	Medevac,
+	Rescue
+};
+
+USTRUCT(BlueprintType)
+struct SIMCOPTERREMAKE_API FSimCopterMissionPassengerSlot
+{
+	GENERATED_BODY()
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Missions")
+	int32 EventId = INDEX_NONE;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Missions")
+	ESimCopterMissionPassengerKind Kind = ESimCopterMissionPassengerKind::Transport;
 };
 
 USTRUCT(BlueprintType)
@@ -159,6 +184,7 @@ public:
 	ASimCopterHelicopterPawn();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
@@ -194,6 +220,30 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool IsEngineRunning() const { return bEngineRunning; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	bool CanTransferMissionPassengers() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	int32 GetPassengerSeatCount() const { return FlightModel.Tuning.PassengerSeats; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	int32 GetPassengerCount() const { return FlightModel.Passengers; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	int32 GetAvailablePassengerSeats() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	int32 AddMissionPassengers(int32 Count);
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	int32 RemoveMissionPassengers(int32 Count);
+
+	int32 AddMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind);
+	int32 RemoveMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind);
+	int32 GetMissionPassengerCount(int32 EventId, ESimCopterMissionPassengerKind Kind) const;
+	bool DropPassengerAtSlot(int32 SlotIndex);
+	FVector GetPassengerDropWorldLocation(int32 SlotIndex = INDEX_NONE) const;
 
 	const FVector& GetVelocityCmPerSec() const { return VelocityCmPerSec; }
 	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
@@ -277,6 +327,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
 	FVector ExitOffset = FVector(180.0f, 175.0f, 0.0f);
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Missions")
+	TArray<FSimCopterMissionPassengerSlot> MissionPassengerSlots;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> PassengerSlotIconTexture;
 
 	// Mesh units per centimetre for the GEO packs (matches the city renderer's value).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "1.0"))
@@ -493,6 +549,9 @@ private:
 	// the rotor is at lift speed (original: RPM >= 300 toggles those faces).
 	int32 MainRotorDiscSectionIndex = INDEX_NONE;
 	int32 TailRotorDiscSectionIndex = INDEX_NONE;
+	TSharedPtr<SWidget> PassengerSlotsWidget;
+	TSharedPtr<SHorizontalBox> PassengerSlotsBox;
+	TSharedPtr<FSlateBrush> PassengerSlotIconBrush;
 
 	void MovePitch(float Value);
 	void MoveRoll(float Value);
@@ -534,6 +593,12 @@ private:
 	bool ProbeBucketWater(const FVector& BucketWorldLocation) const;
 	FString ResolveOriginalGameRoot() const;
 	void ApplyDerivedTuning();
+	void SyncPassengerFlightModelCount();
+	void EnsurePassengerSlotsWidget();
+	void RemovePassengerSlotsWidget();
+	void RefreshPassengerSlotsWidget();
+	bool LoadPassengerSlotIconTexture();
+	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 
 	// Resolves the GEO table names (fuselage + main rotor) for HelicopterTypeName.
 	// Returns false when the name is not a known flyable helicopter.

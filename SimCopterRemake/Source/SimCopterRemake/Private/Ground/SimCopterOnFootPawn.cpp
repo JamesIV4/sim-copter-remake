@@ -12,9 +12,11 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationFigure.h"
 #include "Ground/SimCopterPopulationSprite.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -126,6 +128,11 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 
 	UpdateMovement(DeltaSeconds);
 	SnapToGround();
+	TryAutoEnterHelicopter();
+	if (IsActorBeingDestroyed())
+	{
+		return;
+	}
 	UpdateBodySprite(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
 }
@@ -176,7 +183,33 @@ void ASimCopterOnFootPawn::MouseLookPitch(float Value)
 
 void ASimCopterOnFootPawn::Interact()
 {
-	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(HelicopterInteractionRadiusCm);
+	TryAutoEnterHelicopter();
+}
+
+bool ASimCopterOnFootPawn::PickUpMissionPerson(ASimCopterGroundAgent* MissionPerson)
+{
+	if (MissionPerson == nullptr || CarriedMissionPerson.IsValid() || CollisionComponent == nullptr)
+	{
+		return false;
+	}
+
+	CarriedMissionPerson = MissionPerson;
+	CarriedMissionEventId = MissionPerson->MissionEventId;
+	MissionPerson->SetCarriedBy(CollisionComponent, FVector(48.0f, 0.0f, -7.0f), FRotator(0.0f, 90.0f, 88.0f));
+	return true;
+}
+
+ASimCopterGroundAgent* ASimCopterOnFootPawn::ConsumeCarriedMissionPerson()
+{
+	ASimCopterGroundAgent* MissionPerson = CarriedMissionPerson.Get();
+	CarriedMissionPerson.Reset();
+	CarriedMissionEventId = INDEX_NONE;
+	return MissionPerson;
+}
+
+void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
+{
+	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(HelicopterAutoEnterRadiusCm);
 	if (Helicopter == nullptr)
 	{
 		return;
@@ -184,6 +217,31 @@ void ASimCopterOnFootPawn::Interact()
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
+		if (CarriedMissionPerson.IsValid())
+		{
+			if (Helicopter->GetAvailablePassengerSeats() <= 0)
+			{
+				return;
+			}
+
+			const int32 EventId = CarriedMissionEventId;
+			ASimCopterGroundAgent* MissionPerson = ConsumeCarriedMissionPerson();
+			if (MissionPerson != nullptr)
+			{
+				MissionPerson->Destroy();
+			}
+
+			const int32 Boarded = Helicopter->AddMissionPassengersForMission(1, EventId, ESimCopterMissionPassengerKind::Medevac);
+			if (Boarded > 0)
+			{
+				if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
+					UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+				{
+					MissionActor->NotifyMedevacVictimBoarded(EventId, Boarded);
+				}
+			}
+		}
+
 		Helicopter->EnterHelicopter(PlayerController);
 		Destroy();
 	}
