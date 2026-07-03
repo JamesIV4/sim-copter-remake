@@ -22,6 +22,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -549,7 +550,7 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	UpdateMovement(DeltaSeconds);
 	if (bSnapToGround)
 	{
-		UpdateGroundSnap();
+		UpdateGroundSnap(DeltaSeconds);
 	}
 	UpdateJankyAnimation(DeltaSeconds);
 }
@@ -1103,7 +1104,9 @@ void ASimCopterGroundAgent::MoveByTrafficSeparation(const FVector& WorldDelta)
 		AddActorWorldOffset(WorldDelta, false);
 		if (bSnapToGround)
 		{
-			UpdateGroundSnap();
+			// Instant re-settle after a horizontal separation nudge (mostly vehicles); the per-tick
+			// UpdateGroundSnap handles pedestrian gravity.
+			UpdateGroundSnap(0.0f);
 		}
 	}
 }
@@ -1175,6 +1178,94 @@ void ASimCopterGroundAgent::ClearMissionPose()
 		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
 		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
 	}
+}
+
+void ASimCopterGroundAgent::ResumeNormalPedestrianBehavior()
+{
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian)
+	{
+		return;
+	}
+
+	bMissionStationary = false;
+	bMissionCarried = false;
+	ClearMoveTarget();
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	StartOriginalBehavior();
+}
+
+void ASimCopterGroundAgent::SetDroppedInjuredOnGround(const FVector& WorldLocation)
+{
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	bMissionCarried = false;
+	SetActorEnableCollision(true);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	if (VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
+		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+	}
+	SetActorLocation(WorldLocation, false);
+	bSnapToGround = true;
+	// Leave them lying injured on the ground, ready to be picked up again.
+	SetMissionInjuredPose();
+	SnapToGroundImmediate();
+}
+
+void ASimCopterGroundAgent::BeginPassengerFall(int32 SourceEventId, float InjuryDistanceCm)
+{
+	bPassengerFallActive = true;
+	bPassengerFallStarted = false;
+	PassengerFallStartZ = GetActorLocation().Z;
+	PassengerFallInjuryDistanceCm = FMath::Max(1.0f, InjuryDistanceCm);
+	PassengerFallSourceEventId = SourceEventId;
+	bMissionStationary = false;
+	bMissionCarried = false;
+	bSnapToGround = true;
+	bBehaviorActive = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	VerticalVelocityCmPerSec = 0.0f;
+	SetActorEnableCollision(true);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	if (VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
+		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+	}
+	SetForcedPedestrianFigureClip(TEXT("Inju"));
+}
+
+void ASimCopterGroundAgent::SetMissionScriptedMover()
+{
+	bBehaviorActive = false;
+	bMissionStationary = false;
+	bMissionCarried = false;
+	// The owner keeps a scripted mover on a chosen plane (e.g. the helicopter's landing surface),
+	// so it must not snap to the terrain underneath.
+	bSnapToGround = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	ClearForcedPedestrianFigureClip();
+	ClearMoveTarget();
+}
+
+float ASimCopterGroundAgent::GetCapsuleHalfHeightCm() const
+{
+	return CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
 }
 
 void ASimCopterGroundAgent::SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation)
@@ -1402,12 +1493,47 @@ bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const
 	return false;
 }
 
-void ASimCopterGroundAgent::UpdateGroundSnap()
+void ASimCopterGroundAgent::UpdateGroundSnap(float DeltaSeconds)
 {
 	FVector GroundedLocation;
-	if (TraceGround(GroundedLocation))
+	if (!TraceGround(GroundedLocation))
 	{
+		return;
+	}
+
+	// Vehicles keep exact instant placement (they always sit on the road/bridge surface).
+	// Pedestrians are affected by gravity: they fall onto the surface below (when spawned in the
+	// air or after walking off a ledge) and rest on it, instead of teleporting every tick.
+	const FVector CurrentLocation = GetActorLocation();
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian || CurrentLocation.Z <= GroundedLocation.Z + 1.0f)
+	{
+		VerticalVelocityCmPerSec = 0.0f;
 		SetActorLocation(GroundedLocation, false);
+		if (bPassengerFallActive)
+		{
+			const float FallDistance = FMath::Max(0.0f, PassengerFallStartZ - GroundedLocation.Z);
+			FinishPassengerFall(FallDistance);
+		}
+		return;
+	}
+
+	if (bPassengerFallActive && !bPassengerFallStarted)
+	{
+		bPassengerFallStarted = true;
+		PassengerFallStartZ = CurrentLocation.Z;
+	}
+	VerticalVelocityCmPerSec -= GravityCmPerSec2 * DeltaSeconds;
+	float NewZ = CurrentLocation.Z + VerticalVelocityCmPerSec * DeltaSeconds;
+	if (NewZ <= GroundedLocation.Z)
+	{
+		NewZ = GroundedLocation.Z;
+		VerticalVelocityCmPerSec = 0.0f;
+	}
+	SetActorLocation(FVector(CurrentLocation.X, CurrentLocation.Y, NewZ), false);
+	if (bPassengerFallActive && NewZ <= GroundedLocation.Z + 1.0f)
+	{
+		const float FallDistance = FMath::Max(0.0f, PassengerFallStartZ - GroundedLocation.Z);
+		FinishPassengerFall(FallDistance);
 	}
 }
 
@@ -1474,6 +1600,45 @@ void ASimCopterGroundAgent::ShowOriginalMesh(bool bUseOriginalMesh)
 	if (ProxyMeshComponent != nullptr)
 	{
 		ProxyMeshComponent->SetVisibility(!bUseOriginalMesh, true);
+	}
+}
+
+void ASimCopterGroundAgent::FinishPassengerFall(float FallDistanceCm)
+{
+	const int32 SourceEventId = PassengerFallSourceEventId;
+	const bool bInjuredByFall = FallDistanceCm >= PassengerFallInjuryDistanceCm;
+	bPassengerFallActive = false;
+	bPassengerFallStarted = false;
+	PassengerFallSourceEventId = INDEX_NONE;
+
+	ClearForcedPedestrianFigureClip();
+	if (bInjuredByFall)
+	{
+		SetMissionInjuredPose();
+		if (InitialPersonState != 6)
+		{
+			if (UWorld* World = GetWorld())
+			{
+				if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
+					UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass())))
+				{
+					MissionActor->ConvertDroppedTransportPassengerToMedevac(this, SourceEventId);
+				}
+			}
+		}
+	}
+	else if (InitialPersonState == 6)
+	{
+		SetMissionInjuredPose();
+	}
+	else
+	{
+		if (SourceEventId != INDEX_NONE)
+		{
+			MissionEventId = SourceEventId;
+		}
+		ClearMissionPose();
+		ResumeNormalPedestrianBehavior();
 	}
 }
 

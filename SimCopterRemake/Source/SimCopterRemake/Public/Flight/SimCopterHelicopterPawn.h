@@ -10,6 +10,7 @@
 
 class UCameraComponent;
 class UCapsuleComponent;
+class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UProceduralMeshComponent;
 class USceneComponent;
@@ -296,6 +297,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USpotLightComponent> SearchLightComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> SearchLightBeamComponent;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	FDirectoryPath OriginalGameRoot;
 
@@ -328,6 +332,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
 	FVector ExitOffset = FVector(180.0f, 175.0f, 0.0f);
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropSideOffsetCm = 175.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropForwardOffsetCm = 35.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropVerticalOffsetCm = 55.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "1.0"))
+	float PassengerFallInjuryDistanceCm = 900.0f;
+
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Missions")
 	TArray<FSimCopterMissionPassengerSlot> MissionPassengerSlots;
 
@@ -354,6 +370,36 @@ protected:
 	// Tail rotor spin speed relative to the main rotor.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.0"))
 	float TailRotorSpeedMultiplier = 3.4f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RotorDiscAlphaScale = 0.5f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light")
+	bool bSearchLightStartsEnabled = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
+	float SearchLightIntensity = 650000.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "100.0"))
+	float SearchLightRangeCm = 5200.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "100.0"))
+	float SearchLightBeamLengthCm = 4700.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "20.0"))
+	float SearchLightBeamWidthCm = 1550.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "1.0"))
+	float SearchLightBeamSourceWidthCm = 70.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.1"))
+	float SearchLightBeamVerticalScale = 0.62f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SearchLightBeamAlpha = 0.42f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light")
+	FLinearColor SearchLightBeamColor = FLinearColor(1.0f, 0.94f, 0.58f, 1.0f);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Flight")
 	FSimCopterHelicopterTypeTuning HelicopterTuning;
@@ -463,6 +509,36 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraRecenterDelaySeconds = 1.0f;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraGroundClearanceCm = 24.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
+	float CameraGroundProbeUpCm = 2000.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
+	float CameraGroundProbeDownCm = 6000.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraObstructionPaddingCm = 18.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraMinObstructedArmLengthCm = 0.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraGroundLiftHeightCm = 250.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
+	float CameraGroundLiftProbeRangeCm = 260.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraGroundLiftLerpSpeed = 7.5f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraObstructionPullInLerpSpeed = 14.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraObstructionReleaseLerpSpeed = 5.0f;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
 
@@ -506,6 +582,9 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> RotorDiscMaterial;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> SearchLightBeamMaterialInstance;
+
 private:
 	// The decompiled original flight simulation; the pawn feeds it inputs and
 	// city geometry and mirrors its position/attitude onto the actor.
@@ -519,6 +598,8 @@ private:
 	float CameraYawOffsetDeg = 0.0f;
 	float CameraPitchOffsetDeg = 0.0f;
 	float CameraZoomAlpha = 0.25f;
+	float CurrentCameraArmLengthCm = 900.0f;
+	float CurrentCameraGroundLiftCm = 0.0f;
 
 	float PitchInput = 0.0f;
 	float RollInput = 0.0f;
@@ -549,6 +630,12 @@ private:
 	// the rotor is at lift speed (original: RPM >= 300 toggles those faces).
 	int32 MainRotorDiscSectionIndex = INDEX_NONE;
 	int32 TailRotorDiscSectionIndex = INDEX_NONE;
+	float CachedSearchLightBeamLengthCm = -1.0f;
+	float CachedSearchLightBeamWidthCm = -1.0f;
+	float CachedSearchLightBeamSourceWidthCm = -1.0f;
+	float CachedSearchLightBeamVerticalScale = -1.0f;
+	float CachedSearchLightBeamAlpha = -1.0f;
+	FLinearColor CachedSearchLightBeamColor = FLinearColor::Transparent;
 	TSharedPtr<SWidget> PassengerSlotsWidget;
 	TSharedPtr<SHorizontalBox> PassengerSlotsBox;
 	TSharedPtr<FSlateBrush> PassengerSlotIconBrush;
@@ -575,6 +662,7 @@ private:
 	void StartEngineShutdownHold();
 	void StopEngineShutdownHold();
 	void Interact();
+	void UseMegaphone();
 	void CycleCameraMode();
 	void ToggleSearchLight();
 
@@ -590,6 +678,17 @@ private:
 	void UpdateRopeAndBucket(float DeltaSeconds);
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
+	void UpdateSearchLightEffect();
+	void RebuildSearchLightBeamMesh();
+	float ResolveCameraGroundLift(
+		const FVector& BoomOrigin,
+		float ArmLength,
+		const FRotator& WorldRotation,
+		float& OutRequiredLiftCm) const;
+	float ResolveCameraArmLengthForObstruction(
+		const FVector& BoomOrigin,
+		float DesiredArmLength,
+		const FRotator& WorldRotation) const;
 	bool ProbeBucketWater(const FVector& BucketWorldLocation) const;
 	FString ResolveOriginalGameRoot() const;
 	void ApplyDerivedTuning();
@@ -599,6 +698,7 @@ private:
 	void RefreshPassengerSlotsWidget();
 	bool LoadPassengerSlotIconTexture();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
+	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;
 
 	// Resolves the GEO table names (fuselage + main rotor) for HelicopterTypeName.
 	// Returns false when the name is not a known flyable helicopter.

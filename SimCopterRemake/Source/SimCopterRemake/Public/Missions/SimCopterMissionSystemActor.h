@@ -9,9 +9,30 @@
 
 class ASimCopterTrafficSystemActor;
 class ASimCopterHelicopterPawn;
+class ASimCopterGroundAgent;
+enum class ESimCopterMissionPassengerKind : uint8;
+class UMaterialInterface;
+class USoundBase;
+class USoundWave;
 class SConstraintCanvas;
+class STextBlock;
 class SVerticalBox;
 class SWidget;
+
+// One in-progress medevac unload at a hospital: an EMT ferries patients out of a landed helicopter
+// to a doorway "into" the hospital, one at a time, until the helicopter is empty.
+struct FSimCopterMedevacHandoff
+{
+	int32 EventId = INDEX_NONE;
+	TWeakObjectPtr<ASimCopterHelicopterPawn> Helicopter;
+	TWeakObjectPtr<ASimCopterGroundAgent> Emt;
+	TWeakObjectPtr<ASimCopterGroundAgent> CarriedPatient;
+	TWeakObjectPtr<AActor> Doorway;
+	FVector HeliDoorLocation = FVector::ZeroVector;
+	FVector DoorwayLocation = FVector::ZeroVector;
+	// 0 = EMT walking to the helicopter to collect a patient; 1 = carrying one to the doorway.
+	uint8 Phase = 0;
+};
 
 struct FSimCopterMissionLogEntry
 {
@@ -71,9 +92,17 @@ public:
 	virtual void EndTrafficJam(int32 EventId) override;
 	virtual bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY) override;
 	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override;
+	virtual bool TryResolveTransportSpawnTile(int32 OriginX, int32 OriginY, int32& OutTileX, int32& OutTileY) override;
 	virtual bool TrySpawnMissionPerson(int32 Mode, int32 SubState, int32 TileX, int32 TileY, int32 EventId) override;
 	void NotifyMedevacVictimBoarded(int32 EventId, int32 Count);
-	
+	void NotifyPassengerDroppedFromHelicopter(int32 EventId, ESimCopterMissionPassengerKind Kind, int32 Count);
+	bool CreatePlayerCausedMedevacForVictim(ASimCopterGroundAgent* Victim);
+	bool ConvertDroppedTransportPassengerToMedevac(ASimCopterGroundAgent* Victim, int32 SourceTransportEventId);
+
+	// Megaphone: clear the nearest in-range traffic jam from the given (helicopter) location.
+	// Returns true if a jam was cleared. Called by the helicopter pawn's megaphone key.
+	bool TryUseMegaphone(const FVector& FromWorldLocation);
+
 	// ~End ISimCopterMissionWorld Interface
 
 private:
@@ -125,6 +154,38 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "25.0"))
 	float MedevacOnFootPickupRadiusCm = 95.0f;
 
+	// How close the helicopter (with medevac patients aboard) must be to the hospital drop-off tile
+	// before the EMT comes out to unload it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
+	float MedevacHospitalHandoffRadiusCm = 1500.0f;
+
+	// How close the EMT must get to the helicopter door / the doorway to act on it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "25.0"))
+	float MedevacEmtReachRadiusCm = 130.0f;
+
+	// Distance from the helicopter to place the hospital doorway the EMT delivers patients to.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
+	float MedevacDoorwayDistanceCm = 420.0f;
+
+	// Optional dark material for the hospital doorway box; a plain box is used when unset.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions")
+	TObjectPtr<UMaterialInterface> HospitalDoorwayMaterial;
+
+	// Megaphone range (horizontal): the helicopter must be within this of a traffic jam for the
+	// megaphone prompt to show and the jam to be clearable. (Original flavor: ~300 m.)
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
+	float MegaphoneRangeCm = 7500.0f;
+
+	// Auto-detect the original game's sound folder on BeginPlay and load the mission/megaphone
+	// voice lines from it (so the sound maps below don't have to be filled in by hand).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Audio")
+	bool bAutoLoadOriginalSounds = true;
+
+	// Megaphone voice lines (auto-loaded from the original "MG_*" files); one is played at random
+	// when the megaphone is used.
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Audio")
+	TArray<TObjectPtr<USoundBase>> MegaphoneVoices;
+
 	SimCopterMissions::FSimCopterMissionSystem MissionSystem;
 	TArray<FSimCopterMissionLogEntry> MissionMessageLog;
 	TSharedPtr<SWidget> MessageLogWidget;
@@ -132,9 +193,35 @@ private:
 	TSharedPtr<SWidget> MissionMarkerWidget;
 	TSharedPtr<SConstraintCanvas> MissionMarkerCanvas;
 	TMap<int32, int32> MissionPassengersOnboard;
+	TArray<FSimCopterMedevacHandoff> MedevacHandoffs;
+
+	TSharedPtr<SWidget> MegaphonePromptWidget;
+	TSharedPtr<STextBlock> MegaphonePromptText;
+	bool bMegaphonePromptVisible = false;
+
+	// Megaphone / jam clearing.
+	bool FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const;
+	void UpdateMegaphonePrompt();
+	void EnsureMegaphonePromptWidget();
+	void RemoveMegaphonePromptWidget();
+
+	// Sound auto-setup.
+	void SetupMissionSounds();
+	FString ResolveOriginalSoundDir() const;
+	USoundWave* LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const;
 
 	ASimCopterTrafficSystemActor* ResolveTrafficSystem() const;
 	void ProcessPassengerTransfers();
+	// Runs the EMT patient-unload sequence at hospitals for landed helicopters carrying medevac
+	// patients (called each Tick, after ProcessPassengerTransfers).
+	void ProcessMedevacHospitalHandoffs(float DeltaSeconds);
+	FSimCopterMedevacHandoff* FindMedevacHandoff(int32 EventId);
+	void BeginMedevacHandoff(int32 EventId, ASimCopterHelicopterPawn* Helicopter, const FVector& HospitalCenter);
+	// Returns false when the handoff is finished/aborted and should be cleaned up.
+	bool AdvanceMedevacHandoff(FSimCopterMedevacHandoff& Handoff, float DeltaSeconds);
+	void EndMedevacHandoff(FSimCopterMedevacHandoff& Handoff);
+	void DeliverMedevacDirectly(int32 EventId, ASimCopterHelicopterPawn* Helicopter);
+	AActor* SpawnHospitalDoorway(const FVector& CenterLocation, const FRotator& Facing);
 	void GetTransferReadyHelicopters(TArray<ASimCopterHelicopterPawn*>& OutHelicopters) const;
 	void EnsureMessageLogWidget();
 	void RemoveMessageLogWidget();

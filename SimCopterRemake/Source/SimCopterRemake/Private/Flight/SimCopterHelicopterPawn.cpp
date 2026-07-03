@@ -3,6 +3,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 
 #include "Camera/CameraComponent.h"
+#include "City/SimCity2000CityActor.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SceneComponent.h"
@@ -21,11 +22,15 @@
 #include "Formats/SimCopterTweakReader.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "InputCoreTypes.h"
 #include "Input/Reply.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
@@ -165,23 +170,34 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	SearchLightComponent->SetupAttachment(ModelPivot);
 	SearchLightComponent->SetRelativeLocation(FVector(95.0f, 0.0f, -35.0f));
 	SearchLightComponent->SetRelativeRotation(FRotator(-35.0f, 0.0f, 0.0f));
-	SearchLightComponent->Intensity = 22000.0f;
-	SearchLightComponent->AttenuationRadius = 4200.0f;
+	SearchLightComponent->Intensity = SearchLightIntensity;
+	SearchLightComponent->AttenuationRadius = SearchLightRangeCm;
 	SearchLightComponent->InnerConeAngle = 8.0f;
 	SearchLightComponent->OuterConeAngle = 20.0f;
-	SearchLightComponent->SetVisibility(false);
+	SearchLightComponent->SetLightColor(SearchLightBeamColor.ToFColor(true));
+	SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
+
+	SearchLightBeamComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("SearchLightBeam"));
+	SearchLightBeamComponent->SetupAttachment(SearchLightComponent);
+	SearchLightBeamComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SearchLightBeamComponent->SetCanEverAffectNavigation(false);
+	SearchLightBeamComponent->SetCastShadow(false);
+	SearchLightBeamComponent->SetVisibility(bSearchLightStartsEnabled);
+	SearchLightBeamComponent->TranslucencySortPriority = 20;
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CollisionComponent);
 	CameraBoom->TargetArmLength = 900.0f;
 	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, ChaseCameraTargetHeightCm);
 	CameraBoom->bDoCollisionTest = true;
+	CameraBoom->ProbeChannel = ECC_Camera;
 	CameraBoom->ProbeSize = 18.0f;
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 9.5f;
 	CameraBoom->bEnableCameraRotationLag = true;
 	CameraBoom->CameraRotationLagSpeed = 8.0f;
 	CameraBoom->SetRelativeRotation(FRotator(-16.0f, 0.0f, 0.0f));
+	CurrentCameraArmLengthCm = CameraBoom->TargetArmLength;
 
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -255,6 +271,11 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	UpdateGroundProbe();
 	UpdateForwardProbe();
 	UpdateRopeAndBucket(0.0f);
+	if (SearchLightComponent != nullptr)
+	{
+		SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
+	}
+	UpdateSearchLightEffect();
 	SeedFlightModelFromActor();
 }
 
@@ -310,6 +331,10 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("SimCopterCycleCamera"), IE_Pressed, this, &ASimCopterHelicopterPawn::CycleCameraMode);
 	PlayerInputComponent->BindAction(TEXT("SimCopterSearchLight"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleSearchLight);
 	PlayerInputComponent->BindAction(TEXT("SimCopterResetAircraft"), IE_Pressed, this, &ASimCopterHelicopterPawn::ResetAircraft);
+
+	// Megaphone: talk to the cars/people below (used to clear traffic jams). Bound directly to M so
+	// no input-mapping config edit is required; the on-screen prompt shows the same key.
+	PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &ASimCopterHelicopterPawn::UseMegaphone);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
@@ -559,6 +584,10 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 		}
 		if (!DiscSection.IsEmpty())
 		{
+			for (FLinearColor& VertexColor : DiscSection.VertexColors)
+			{
+				VertexColor.A = FMath::Clamp(VertexColor.A * RotorDiscAlphaScale, 0.0f, 1.0f);
+			}
 			Component->CreateMeshSection_LinearColor(SectionIndex, DiscSection.Vertices, DiscSection.Triangles, DiscSection.Normals, DiscSection.UVs, DiscSection.VertexColors, DiscSection.Tangents, false);
 			UMaterialInterface* const DiscMaterial = RotorDiscMaterial != nullptr ? RotorDiscMaterial.Get() : ModelVertexColorMaterial.Get();
 			if (DiscMaterial != nullptr)
@@ -780,21 +809,30 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 
 	const FSimCopterMissionPassengerSlot Slot = MissionPassengerSlots[SlotIndex];
 	const int32 SpawnMode = Slot.Kind == ESimCopterMissionPassengerKind::Medevac ? 6 : 0;
-	const int32 Spawned = TrafficSystem->SpawnMissionPeopleAtWorldLocation(
-		1,
-		GetPassengerDropWorldLocation(SlotIndex),
+	ASimCopterGroundAgent* DroppedPassenger = TrafficSystem->SpawnFallingMissionPassengerAtWorldLocation(
+		GetPassengerAirDropWorldLocation(SlotIndex),
 		Slot.EventId,
 		SpawnMode,
 		-1,
-		95.0f);
-	if (Spawned <= 0)
+		PassengerFallInjuryDistanceCm);
+	if (DroppedPassenger == nullptr)
 	{
 		return false;
+	}
+	if (Slot.Kind == ESimCopterMissionPassengerKind::Transport)
+	{
+		DroppedPassenger->SetMissionPickupCreditAwarded(true);
 	}
 
 	MissionPassengerSlots.RemoveAt(SlotIndex);
 	SyncPassengerFlightModelCount();
 	RefreshPassengerSlotsWidget();
+
+	if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+	{
+		MissionActor->NotifyPassengerDroppedFromHelicopter(Slot.EventId, Slot.Kind, 1);
+	}
 	return true;
 }
 
@@ -821,6 +859,21 @@ FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex)
 	}
 
 	return DropLocation;
+}
+
+FVector ASimCopterHelicopterPawn::GetPassengerAirDropWorldLocation(int32 SlotIndex) const
+{
+	const int32 SlotCount = FMath::Max(1, MissionPassengerSlots.Num());
+	const int32 FirstRightSlot = (SlotCount + 1) / 2;
+	const bool bLeftSide = SlotIndex < FirstRightSlot;
+	const int32 SideIndex = bLeftSide ? SlotIndex : SlotIndex - FirstRightSlot;
+	const float SlotSide = bLeftSide ? -1.0f : 1.0f;
+	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+
+	return GetActorLocation() +
+		YawFrame.GetUnitAxis(EAxis::Y) * (PassengerDropSideOffsetCm * SlotSide) -
+		YawFrame.GetUnitAxis(EAxis::X) * (PassengerDropForwardOffsetCm + float(SideIndex) * 32.0f) -
+		FVector::UpVector * PassengerDropVerticalOffsetCm;
 }
 
 void ASimCopterHelicopterPawn::SyncPassengerFlightModelCount()
@@ -1156,6 +1209,19 @@ void ASimCopterHelicopterPawn::Interact()
 	}
 }
 
+void ASimCopterHelicopterPawn::UseMegaphone()
+{
+	if (GetWorld() == nullptr)
+	{
+		return;
+	}
+	if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+	{
+		MissionActor->TryUseMegaphone(GetActorLocation());
+	}
+}
+
 void ASimCopterHelicopterPawn::CycleCameraMode()
 {
 	switch (CameraMode)
@@ -1180,6 +1246,188 @@ void ASimCopterHelicopterPawn::ToggleSearchLight()
 	{
 		SearchLightComponent->ToggleVisibility();
 	}
+	UpdateSearchLightEffect();
+}
+
+void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
+{
+	if (SearchLightComponent == nullptr || SearchLightBeamComponent == nullptr)
+	{
+		return;
+	}
+
+	const float BeamLength = FMath::Max(100.0f, SearchLightBeamLengthCm);
+	const float BeamWidth = FMath::Max(20.0f, SearchLightBeamWidthCm);
+	const float BeamSourceWidth = FMath::Max(1.0f, SearchLightBeamSourceWidthCm);
+	const float BeamVerticalScale = FMath::Max(0.1f, SearchLightBeamVerticalScale);
+	const float BeamAlpha = FMath::Clamp(SearchLightBeamAlpha, 0.0f, 1.0f);
+	const float OuterConeAngleDeg = FMath::Clamp(
+		FMath::RadiansToDegrees(FMath::Atan2(BeamWidth * 0.5f, BeamLength)),
+		2.0f,
+		80.0f);
+
+	SearchLightComponent->SetIntensity(SearchLightIntensity);
+	SearchLightComponent->AttenuationRadius = FMath::Max(SearchLightRangeCm, BeamLength);
+	SearchLightComponent->OuterConeAngle = OuterConeAngleDeg;
+	SearchLightComponent->InnerConeAngle = FMath::Clamp(OuterConeAngleDeg * 0.45f, 1.0f, OuterConeAngleDeg);
+	SearchLightComponent->SetLightColor(SearchLightBeamColor.ToFColor(true));
+
+	const bool bVisible = SearchLightComponent->IsVisible();
+	SearchLightBeamComponent->SetVisibility(bVisible);
+
+	const bool bNeedsMeshRebuild =
+		!FMath::IsNearlyEqual(CachedSearchLightBeamLengthCm, BeamLength) ||
+		!FMath::IsNearlyEqual(CachedSearchLightBeamWidthCm, BeamWidth) ||
+		!FMath::IsNearlyEqual(CachedSearchLightBeamSourceWidthCm, BeamSourceWidth) ||
+		!FMath::IsNearlyEqual(CachedSearchLightBeamVerticalScale, BeamVerticalScale) ||
+		!FMath::IsNearlyEqual(CachedSearchLightBeamAlpha, BeamAlpha) ||
+		!CachedSearchLightBeamColor.Equals(SearchLightBeamColor, KINDA_SMALL_NUMBER);
+	if (bNeedsMeshRebuild)
+	{
+		RebuildSearchLightBeamMesh();
+	}
+
+	if (SearchLightBeamMaterialInstance == nullptr && RotorDiscMaterial != nullptr)
+	{
+		SearchLightBeamMaterialInstance = UMaterialInstanceDynamic::Create(RotorDiscMaterial, this);
+		SearchLightBeamComponent->SetMaterial(0, SearchLightBeamMaterialInstance);
+	}
+	else if (SearchLightBeamMaterialInstance == nullptr && ModelVertexColorMaterial != nullptr)
+	{
+		SearchLightBeamComponent->SetMaterial(0, ModelVertexColorMaterial);
+	}
+
+	if (SearchLightBeamMaterialInstance != nullptr)
+	{
+		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("Color"), SearchLightBeamColor);
+		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("TintColor"), SearchLightBeamColor);
+		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("BaseColor"), SearchLightBeamColor);
+		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("EmissiveColor"), SearchLightBeamColor * 8.0f);
+		SearchLightBeamMaterialInstance->SetScalarParameterValue(TEXT("Opacity"), BeamAlpha);
+		SearchLightBeamMaterialInstance->SetScalarParameterValue(TEXT("Alpha"), BeamAlpha);
+	}
+}
+
+void ASimCopterHelicopterPawn::RebuildSearchLightBeamMesh()
+{
+	if (SearchLightBeamComponent == nullptr)
+	{
+		return;
+	}
+
+	const float BeamLength = FMath::Max(100.0f, SearchLightBeamLengthCm);
+	const float BeamWidth = FMath::Max(20.0f, SearchLightBeamWidthCm);
+	const float BeamSourceWidth = FMath::Max(1.0f, SearchLightBeamSourceWidthCm);
+	const float BeamVerticalScale = FMath::Max(0.1f, SearchLightBeamVerticalScale);
+	const float BeamAlpha = FMath::Clamp(SearchLightBeamAlpha, 0.0f, 1.0f);
+	const FLinearColor BeamColor(
+		SearchLightBeamColor.R,
+		SearchLightBeamColor.G,
+		SearchLightBeamColor.B,
+		BeamAlpha);
+
+	constexpr int32 RingCount = 12;
+	constexpr int32 SegmentCount = 28;
+	TArray<FVector> Vertices;
+	TArray<int32> Triangles;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UVs;
+	TArray<FLinearColor> VertexColors;
+	TArray<FProcMeshTangent> Tangents;
+	Vertices.Reserve(RingCount * SegmentCount + 2);
+	Triangles.Reserve((RingCount - 1) * SegmentCount * 6 + SegmentCount * 6);
+	Normals.Reserve(RingCount * SegmentCount + 2);
+	UVs.Reserve(RingCount * SegmentCount + 2);
+	VertexColors.Reserve(RingCount * SegmentCount + 2);
+	Tangents.Reserve(RingCount * SegmentCount + 2);
+
+	for (int32 RingIndex = 0; RingIndex < RingCount; ++RingIndex)
+	{
+		const float T = static_cast<float>(RingIndex) / static_cast<float>(RingCount - 1);
+		const float RoundedGrowth = FMath::Sin(T * HALF_PI);
+		const float RadiusY = FMath::Lerp(BeamSourceWidth * 0.5f, BeamWidth * 0.5f, RoundedGrowth);
+		const float RadiusZ = RadiusY * BeamVerticalScale;
+		const float X = T * BeamLength;
+		const float RingAlpha = BeamAlpha * FMath::Lerp(1.0f, 0.46f, FMath::Pow(T, 1.35f));
+
+		for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
+		{
+			const float AngleRad = 2.0f * PI * static_cast<float>(SegmentIndex) / static_cast<float>(SegmentCount);
+			const float CosAngle = FMath::Cos(AngleRad);
+			const float SinAngle = FMath::Sin(AngleRad);
+			Vertices.Add(FVector(X, CosAngle * RadiusY, SinAngle * RadiusZ));
+			Normals.Add(FVector(0.0f, CosAngle, SinAngle).GetSafeNormal());
+			UVs.Add(FVector2D(static_cast<float>(SegmentIndex) / static_cast<float>(SegmentCount), T));
+			VertexColors.Add(FLinearColor(BeamColor.R, BeamColor.G, BeamColor.B, RingAlpha));
+			Tangents.Add(FProcMeshTangent(0.0f, -SinAngle, CosAngle));
+		}
+	}
+
+	for (int32 RingIndex = 0; RingIndex < RingCount - 1; ++RingIndex)
+	{
+		const int32 CurrentRingStart = RingIndex * SegmentCount;
+		const int32 NextRingStart = (RingIndex + 1) * SegmentCount;
+		for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
+		{
+			const int32 NextSegmentIndex = (SegmentIndex + 1) % SegmentCount;
+			const int32 A = CurrentRingStart + SegmentIndex;
+			const int32 B = CurrentRingStart + NextSegmentIndex;
+			const int32 C = NextRingStart + SegmentIndex;
+			const int32 D = NextRingStart + NextSegmentIndex;
+			Triangles.Add(A);
+			Triangles.Add(C);
+			Triangles.Add(B);
+			Triangles.Add(B);
+			Triangles.Add(C);
+			Triangles.Add(D);
+		}
+	}
+
+	const int32 StartCapIndex = Vertices.Add(FVector::ZeroVector);
+	Normals.Add(FVector(-1.0f, 0.0f, 0.0f));
+	UVs.Add(FVector2D(0.5f, 0.0f));
+	VertexColors.Add(FLinearColor(BeamColor.R, BeamColor.G, BeamColor.B, BeamAlpha * 0.8f));
+	Tangents.Add(FProcMeshTangent(0.0f, 1.0f, 0.0f));
+
+	const int32 EndCapIndex = Vertices.Add(FVector(BeamLength, 0.0f, 0.0f));
+	Normals.Add(FVector(1.0f, 0.0f, 0.0f));
+	UVs.Add(FVector2D(0.5f, 1.0f));
+	VertexColors.Add(FLinearColor(BeamColor.R, BeamColor.G, BeamColor.B, BeamAlpha * 0.32f));
+	Tangents.Add(FProcMeshTangent(0.0f, 1.0f, 0.0f));
+
+	for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
+	{
+		const int32 NextSegmentIndex = (SegmentIndex + 1) % SegmentCount;
+		Triangles.Add(StartCapIndex);
+		Triangles.Add(NextSegmentIndex);
+		Triangles.Add(SegmentIndex);
+
+		const int32 LastRingStart = (RingCount - 1) * SegmentCount;
+		Triangles.Add(EndCapIndex);
+		Triangles.Add(LastRingStart + SegmentIndex);
+		Triangles.Add(LastRingStart + NextSegmentIndex);
+	}
+
+	SearchLightBeamComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, false);
+	if (SearchLightBeamMaterialInstance != nullptr)
+	{
+		SearchLightBeamComponent->SetMaterial(0, SearchLightBeamMaterialInstance);
+	}
+	else if (RotorDiscMaterial != nullptr)
+	{
+		SearchLightBeamComponent->SetMaterial(0, RotorDiscMaterial);
+	}
+	else if (ModelVertexColorMaterial != nullptr)
+	{
+		SearchLightBeamComponent->SetMaterial(0, ModelVertexColorMaterial);
+	}
+
+	CachedSearchLightBeamLengthCm = BeamLength;
+	CachedSearchLightBeamWidthCm = BeamWidth;
+	CachedSearchLightBeamSourceWidthCm = BeamSourceWidth;
+	CachedSearchLightBeamVerticalScale = BeamVerticalScale;
+	CachedSearchLightBeamAlpha = BeamAlpha;
+	CachedSearchLightBeamColor = SearchLightBeamColor;
 }
 
 void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
@@ -1409,6 +1657,10 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 			Environment.bHostileSurface = true;
 			Environment.bTerrainFlat = false;
 		}
+		else if (bEngineShutdownHeld)
+		{
+			Environment.bTerrainFlat = true;
+		}
 	}
 
 	return Environment;
@@ -1604,6 +1856,8 @@ void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 			HeliTailRotorMeshComponent->SetMeshSectionVisible(TailRotorDiscSectionIndex, FlightModel.bRotorBlurDisc);
 		}
 	}
+
+	UpdateSearchLightEffect();
 }
 
 void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
@@ -1672,9 +1926,129 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	}
 
 	const float RelativeYaw = FRotator::NormalizeAxis(ViewYaw + CameraYawOffsetDeg - ActorYaw);
-	CameraBoom->TargetArmLength = ArmLength;
+	constexpr float MinCameraPitchDeg = -78.0f;
+	constexpr float MaxCameraPitchDeg = 2.0f;
+	const float DesiredPitchDeg = FMath::Clamp(ViewPitch + CameraPitchOffsetDeg, MinCameraPitchDeg, MaxCameraPitchDeg);
+	const float WorldYawDeg = ActorYaw + RelativeYaw;
+	const FRotator CameraWorldRotation(DesiredPitchDeg, WorldYawDeg, 0.0f);
+	const FVector UnliftedBoomOrigin = GetActorLocation() + TargetOffset;
+	float RequiredGroundLiftCm = 0.0f;
+	const float DesiredGroundLiftCm = ResolveCameraGroundLift(
+		UnliftedBoomOrigin,
+		ArmLength,
+		CameraWorldRotation,
+		RequiredGroundLiftCm);
+	CurrentCameraGroundLiftCm = FMath::Max(
+		RequiredGroundLiftCm,
+		FMath::FInterpTo(CurrentCameraGroundLiftCm, DesiredGroundLiftCm, DeltaSeconds, CameraGroundLiftLerpSpeed));
+	TargetOffset.Z += CurrentCameraGroundLiftCm;
+
+	const FVector BoomOrigin = GetActorLocation() + TargetOffset;
+	const float ObstructionSafeArmLength = ResolveCameraArmLengthForObstruction(BoomOrigin, ArmLength, CameraWorldRotation);
+	const float ArmLerpSpeed =
+		ObstructionSafeArmLength < CurrentCameraArmLengthCm
+			? CameraObstructionPullInLerpSpeed
+			: CameraObstructionReleaseLerpSpeed;
+	CurrentCameraArmLengthCm = FMath::FInterpTo(CurrentCameraArmLengthCm, ObstructionSafeArmLength, DeltaSeconds, ArmLerpSpeed);
+
+	CameraBoom->TargetArmLength = CurrentCameraArmLengthCm;
 	CameraBoom->TargetOffset = TargetOffset;
-	CameraBoom->SetRelativeRotation(FRotator(FMath::Clamp(ViewPitch + CameraPitchOffsetDeg, -78.0f, 2.0f), RelativeYaw, 0.0f));
+	CameraBoom->SetRelativeRotation(FRotator(DesiredPitchDeg, RelativeYaw, 0.0f));
+}
+
+float ASimCopterHelicopterPawn::ResolveCameraGroundLift(
+	const FVector& BoomOrigin,
+	float ArmLength,
+	const FRotator& WorldRotation,
+	float& OutRequiredLiftCm) const
+{
+	OutRequiredLiftCm = 0.0f;
+	if (GetWorld() == nullptr || ArmLength <= UE_SMALL_NUMBER)
+	{
+		return 0.0f;
+	}
+
+	const FVector DesiredCameraLocation = BoomOrigin - WorldRotation.Vector() * ArmLength;
+	const FVector TraceStart = DesiredCameraLocation + FVector::UpVector * CameraGroundProbeUpCm;
+	const FVector TraceEnd = DesiredCameraLocation - FVector::UpVector * CameraGroundProbeDownCm;
+
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraGroundProbe), false, this);
+	if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) || !Hit.bBlockingHit)
+	{
+		return 0.0f;
+	}
+
+	const float MinCameraZ = Hit.ImpactPoint.Z + CameraGroundClearanceCm;
+	const float DistanceAboveGroundCm = DesiredCameraLocation.Z - MinCameraZ;
+	OutRequiredLiftCm = FMath::Max(0.0f, -DistanceAboveGroundCm);
+	if (DistanceAboveGroundCm >= CameraGroundLiftProbeRangeCm)
+	{
+		return OutRequiredLiftCm;
+	}
+
+	const float ProximityAlpha = 1.0f - FMath::Clamp(
+		DistanceAboveGroundCm / FMath::Max(1.0f, CameraGroundLiftProbeRangeCm),
+		0.0f,
+		1.0f);
+	return FMath::Max(OutRequiredLiftCm, CameraGroundLiftHeightCm * ProximityAlpha);
+}
+
+float ASimCopterHelicopterPawn::ResolveCameraArmLengthForObstruction(
+	const FVector& BoomOrigin,
+	float DesiredArmLength,
+	const FRotator& WorldRotation) const
+{
+	if (GetWorld() == nullptr || CameraBoom == nullptr || DesiredArmLength <= UE_SMALL_NUMBER)
+	{
+		return DesiredArmLength;
+	}
+
+	const FVector DesiredCameraLocation = BoomOrigin - WorldRotation.Vector() * DesiredArmLength;
+	const float ProbeRadius = FMath::Max(1.0f, CameraBoom->ProbeSize);
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraObstructionProbe), false, this);
+	TArray<FHitResult> Hits;
+	GetWorld()->SweepMultiByChannel(
+		Hits,
+		BoomOrigin,
+		DesiredCameraLocation,
+		FQuat::Identity,
+		ECC_Camera,
+		FCollisionShape::MakeSphere(ProbeRadius),
+		QueryParams);
+
+	Hits.Sort([](const FHitResult& Left, const FHitResult& Right)
+	{
+		return Left.Distance < Right.Distance;
+	});
+
+	const FHitResult* BuildingHit = nullptr;
+	for (const FHitResult& Hit : Hits)
+	{
+		if (!Hit.bBlockingHit)
+		{
+			continue;
+		}
+
+		const ASimCity2000CityActor* CityActor = Cast<ASimCity2000CityActor>(Hit.GetActor());
+		if (CityActor == nullptr || !CityActor->IsBuildingCollisionHit(Hit.GetComponent(), Hit.ImpactPoint))
+		{
+			continue;
+		}
+
+		BuildingHit = &Hit;
+		break;
+	}
+
+	if (BuildingHit == nullptr)
+	{
+		return DesiredArmLength;
+	}
+
+	const float SafeDistance = FMath::Max(
+		CameraMinObstructedArmLengthCm,
+		BuildingHit->Distance - ProbeRadius - CameraObstructionPaddingCm);
+	return FMath::Min(DesiredArmLength, SafeDistance);
 }
 
 bool ASimCopterHelicopterPawn::ProbeBucketWater(const FVector& BucketWorldLocation) const

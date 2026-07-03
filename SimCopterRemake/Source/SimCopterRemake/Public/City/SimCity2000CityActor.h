@@ -11,6 +11,7 @@
 class UHierarchicalInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
+class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class USceneComponent;
 class UStaticMesh;
@@ -47,6 +48,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	float GetEffectiveTerrainHeightScale() const;
+
+	bool IsBuildingCollisionHit(const UPrimitiveComponent* HitComponent, const FVector& WorldLocation) const;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
@@ -213,6 +216,8 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> OriginalTextureMaterials;
+
+	TArray<uint8> BuildingTileFlags;
 
 	FString ResolveCityPath() const;
 	FString ResolveOriginalGameRoot() const;

@@ -308,6 +308,7 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionRecord
 	int32 CarsDoused = 0;         // +0xc8
 	int32 CarsBurned = 0;         // +0xcc
 	int32 CarsCleared = 0;        // +0xd0
+	bool bSuppressCompletionRewards = false;
 };
 
 // Message posted through FUN_004a89c0: {code, event id, x, y, value, silent}.
@@ -399,6 +400,12 @@ public:
 	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) { return false; }
 	virtual void EndTrafficJam(int32 EventId) {}
 	virtual bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY) { return false; }
+	virtual bool TryResolveTransportSpawnTile(int32 OriginX, int32 OriginY, int32& OutTileX, int32& OutTileY)
+	{
+		OutTileX = OriginX;
+		OutTileY = OriginY;
+		return true;
+	}
 	// Person spawns (FUN_004c3eb0 -> FUN_004c4190): spawn one person with the
 	// given placement mode/state at the tile, owned by the event. Returns
 	// false when no person slot/placement is available (original -1).
@@ -465,10 +472,20 @@ public:
 	// Convenience for the common {code, id, value} shape.
 	void PostEvent(int32 Code, int32 EventId, int32 Value, bool bSilent = false);
 
+	// Creates a medevac record for an already-spawned injured victim. Used when the player causes
+	// the injury, so completion pays no end reward.
+	int32 CreatePlayerCausedMedevacAt(int32 TileX, int32 TileY);
+
+	void AdjustVictimsPickedUp(int32 EventId, int32 Delta);
+
 	// Douse interface for the helicopter water bucket: applies Douse Points *
 	// Douse Mult to flames within Fire Radius of the 16.16 world position and
 	// removes extinguished flames with EVT_FlameDoused.
 	void DouseAt(int32 WorldX1616, int32 WorldY1616, int32 WorldZ1616);
+
+	// Megaphone: clears an active traffic-jam mission - releases the jammed cars, scores it and
+	// completes it. Returns false when the event isn't an active jam.
+	bool ClearTrafficJam(int32 EventId);
 
 	// --- state accessors ---
 	int32 GetScore() const { return Score; }
@@ -550,6 +567,8 @@ private:
 	static int32 GetLocationVoiceId(int32 TileX, int32 TileY); // FUN_004aba30
 	static const TCHAR* GetTypeDisplayName(int32 TypeMask);
 	bool FindDefaultDestinationTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;
+	// Nearest hospital tile (XBLD id 0xD1 / HO209) to the origin - the medevac drop-off.
+	bool FindNearestHospitalTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;
 
 	// FUN_004a73e0 / FUN_004aabf0.
 	void UpdateLifecycle();

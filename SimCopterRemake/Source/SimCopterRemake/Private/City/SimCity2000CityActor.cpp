@@ -2596,6 +2596,7 @@ void ASimCity2000CityActor::RebuildCity()
 	LastOriginalMeshTriangleCount = 0;
 	LastOriginalTextureCount = 0;
 	LastOriginalTexturedTriangleCount = 0;
+	BuildingTileFlags.Reset();
 	OriginalTextureCache.Reset();
 	OriginalTextureMaterials.Reset();
 
@@ -2642,6 +2643,12 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 
 	LastLoadedCityName = City.CityName;
+	BuildingTileFlags.SetNumZeroed(FSimCity2000City::TileCount);
+	const int32 TileCountToCache = FMath::Min(FSimCity2000City::TileCount, City.Tiles.Num());
+	for (int32 TileIndex = 0; TileIndex < TileCountToCache; ++TileIndex)
+	{
+		BuildingTileFlags[TileIndex] = IsBuildingLikeTile(City.Tiles[TileIndex].Building) ? 1 : 0;
+	}
 
 	FMaxisMeshLibrary MeshLibrary;
 	bool bOriginalMeshLibraryLoaded = false;
@@ -3234,6 +3241,49 @@ float ASimCity2000CityActor::GetTerrainHeightScale() const
 float ASimCity2000CityActor::GetEffectiveTerrainHeightScale() const
 {
 	return bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
+}
+
+bool ASimCity2000CityActor::IsBuildingCollisionHit(
+	const UPrimitiveComponent* HitComponent,
+	const FVector& WorldLocation) const
+{
+	if (HitComponent == nullptr)
+	{
+		return false;
+	}
+
+	if (HitComponent == BuildingInstances.Get())
+	{
+		return true;
+	}
+
+	if (HitComponent == RoadInstances.Get() ||
+		HitComponent == TerrainInstances.Get() ||
+		HitComponent == TerrainMeshComponent.Get() ||
+		HitComponent == WaterInstances.Get() ||
+		HitComponent == RoadMarkingMeshComponent.Get())
+	{
+		return false;
+	}
+
+	if (HitComponent != OriginalMeshComponent.Get() ||
+		BuildingTileFlags.Num() != FSimCity2000City::TileCount ||
+		TileSize <= UE_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	const float HalfMapSize = MapSize * TileSize * 0.5f;
+	const FVector LocalLocation = GetActorTransform().InverseTransformPosition(WorldLocation);
+	const int32 FileX = FMath::FloorToInt((LocalLocation.X + HalfMapSize) / TileSize);
+	const int32 FileY = FMath::FloorToInt((HalfMapSize - LocalLocation.Y) / TileSize);
+	if (FileX < 0 || FileX >= MapSize || FileY < 0 || FileY >= MapSize)
+	{
+		return false;
+	}
+
+	return BuildingTileFlags[FileY * MapSize + FileX] != 0;
 }
 
 FString ASimCity2000CityActor::ResolveCityPath() const
