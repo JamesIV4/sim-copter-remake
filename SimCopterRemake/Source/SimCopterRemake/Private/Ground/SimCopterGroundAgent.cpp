@@ -538,6 +538,13 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, GuidanceMoveTargetTimeRemainingSeconds - DeltaSeconds);
 	}
+	if (bMissionCarried)
+	{
+		CurrentVelocityCmPerSec = FVector::ZeroVector;
+		ExternalVelocityCmPerSec = FVector::ZeroVector;
+		UpdateJankyAnimation(DeltaSeconds);
+		return;
+	}
 	UpdateOriginalBehavior(DeltaSeconds);
 	UpdateMovement(DeltaSeconds);
 	if (bSnapToGround)
@@ -928,6 +935,15 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 	VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
 	VisualRoot->SetRelativeLocation(FVector::ZeroVector);
 
+	if (!ForcedFigureMnemonic.IsEmpty())
+	{
+		if (FigureMnemonic != ForcedFigureMnemonic)
+		{
+			RebuildFigureClip(ForcedFigureMnemonic);
+		}
+		return;
+	}
+
 	// With the behavior VM active, clips are bound by the programs/post-move selector and
 	// frames advance one per behavior tick (FUN_004c6450) in UpdateOriginalBehavior.
 	if (bBehaviorActive)
@@ -1112,6 +1128,83 @@ void ASimCopterGroundAgent::SetGuidanceMoveTarget(const FVector& NewTargetLocati
 	GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, DurationSeconds);
 }
 
+bool ASimCopterGroundAgent::SetForcedPedestrianFigureClip(const FString& Mnemonic)
+{
+	ForcedFigureMnemonic = Mnemonic;
+	if (bUsingPedestrianFigure)
+	{
+		return RebuildFigureClip(Mnemonic);
+	}
+	return false;
+}
+
+void ASimCopterGroundAgent::ClearForcedPedestrianFigureClip()
+{
+	ForcedFigureMnemonic.Reset();
+}
+
+void ASimCopterGroundAgent::SetMissionInjuredPose()
+{
+	bMissionStationary = true;
+	bBehaviorActive = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	ClearMoveTarget();
+	SetForcedPedestrianFigureClip(TEXT("Dead"));
+	if (!bUsingPedestrianFigure && VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeRotation(FRotator(0.0f, 0.0f, 86.0f));
+	}
+}
+
+void ASimCopterGroundAgent::ClearMissionPose()
+{
+	bMissionStationary = false;
+	bMissionCarried = false;
+	bSnapToGround = true;
+	ClearForcedPedestrianFigureClip();
+	SetActorEnableCollision(true);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	if (VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
+		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+	}
+}
+
+void ASimCopterGroundAgent::SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation)
+{
+	if (CarryParentComponent == nullptr)
+	{
+		return;
+	}
+
+	bMissionCarried = true;
+	bMissionStationary = true;
+	bBehaviorActive = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	ClearMoveTarget();
+	bSnapToGround = false;
+	SetActorEnableCollision(false);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	AttachToComponent(CarryParentComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	SetActorRelativeLocation(RelativeLocation);
+	SetActorRelativeRotation(RelativeRotation);
+	SetForcedPedestrianFigureClip(TEXT("Dead"));
+}
+
 void ASimCopterGroundAgent::ApplyAgentShape()
 {
 	if (CollisionComponent == nullptr || ProxyMeshComponent == nullptr)
@@ -1141,12 +1234,19 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	{
 		return;
 	}
+	if (bMissionStationary)
+	{
+		CurrentVelocityCmPerSec = FVector::ZeroVector;
+		ExternalVelocityCmPerSec = FVector::ZeroVector;
+		return;
+	}
 
 	// Behavior-VM pedestrians move with the original per-tick model: a constant velocity
 	// renewed by each MoveStep, with no target seeking or arrival deceleration (the cause of
 	// the old stop-start pulse). Yaw is set from the stored facing attribute, not steering.
 	// Avoidance move targets (car dodges) still take over via the branch below.
-	if (bBehaviorActive && AgentKind == ESimCopterGroundAgentKind::Pedestrian && !IsAvoidanceMoveActive())
+	const bool bUsingGuidanceTargetAtStart = IsGuidanceMoveTargetActive();
+	if (bBehaviorActive && AgentKind == ESimCopterGroundAgentKind::Pedestrian && !IsAvoidanceMoveActive() && !bUsingGuidanceTargetAtStart)
 	{
 		if (BehaviorStepTimeRemainingSeconds > 0.0f)
 		{
@@ -1167,7 +1267,7 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	}
 
 	const bool bUsingAvoidanceTarget = IsAvoidanceMoveActive();
-	if (!bHasMoveTarget && !bUsingAvoidanceTarget)
+	if (!bHasMoveTarget && !bUsingAvoidanceTarget && !bUsingGuidanceTargetAtStart)
 	{
 		CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, 6.0f);
 		ExternalVelocityCmPerSec = FMath::VInterpTo(ExternalVelocityCmPerSec, FVector::ZeroVector, DeltaSeconds, 8.0f);
@@ -1180,7 +1280,7 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 
 	const FVector CurrentLocation = GetActorLocation();
 	const bool bUsingAvoidancePathOffset = IsAvoidancePathOffsetActive();
-	bool bUsingGuidanceTarget = IsGuidanceMoveTargetActive();
+	bool bUsingGuidanceTarget = bUsingGuidanceTargetAtStart;
 	FVector BaseMoveTarget = bUsingGuidanceTarget ? GuidanceMoveTargetLocation : MoveTargetLocation;
 	FVector ActiveMoveTarget = bUsingAvoidanceTarget
 		? AvoidanceMoveTargetLocation
@@ -1192,6 +1292,12 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	{
 		GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
 		bUsingGuidanceTarget = false;
+		if (!bHasMoveTarget && !bUsingAvoidanceTarget)
+		{
+			CurrentVelocityCmPerSec = FVector::ZeroVector;
+			ExternalVelocityCmPerSec = FVector::ZeroVector;
+			return;
+		}
 		BaseMoveTarget = MoveTargetLocation;
 		ActiveMoveTarget = MoveTargetLocation + (bUsingAvoidancePathOffset ? AvoidancePathOffset : FVector::ZeroVector);
 		ToTarget = ActiveMoveTarget - CurrentLocation;

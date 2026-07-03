@@ -329,8 +329,10 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionUiMessage
 	int32 Kind = 0;
 	int32 EventId = -1;
 	int32 TextId = 0;
-	int32 ValueA = 0;  // completion: points; deltas: text id context
-	int32 ValueB = 0;  // completion: money; deltas: the delta amount
+	int32 ValueA = 0;  // completion/deltas: points or primary delta amount
+	int32 ValueB = 0;  // completion: money
+	int32 TypeMask = 0;
+	FString MissionName;
 	bool bNegative = false;
 };
 
@@ -547,13 +549,14 @@ private:
 	static int32 GetTypeTextId(int32 TypeMask);   // shared 0x23b..0x24b switch
 	static int32 GetLocationVoiceId(int32 TileX, int32 TileY); // FUN_004aba30
 	static const TCHAR* GetTypeDisplayName(int32 TypeMask);
+	bool FindDefaultDestinationTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;
 
 	// FUN_004a73e0 / FUN_004aabf0.
 	void UpdateLifecycle();
 	void CompleteMission(FSimCopterMissionRecord& Record); // FUN_004aabf0
 	void DeactivateRecord(int32 RecordIndex);
 	void PostNag(FSimCopterMissionRecord& Record, int32 NagCode);
-	void PostTypedUiMessage(int32 Kind, const FSimCopterMissionRecord* Record, int32 EventId, int32 ValueA, int32 ValueB, bool bNegative);
+	void PostTypedUiMessage(int32 Kind, const FSimCopterMissionRecord* Record, int32 EventId, int32 TextId, int32 ValueA, int32 ValueB, bool bNegative);
 
 	// FUN_004aa150 incremental scoring (invoked from PostEvent).
 	void PayIncremental(const FSimCopterMissionEvent& Event, int32 RecordIndex);

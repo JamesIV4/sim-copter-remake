@@ -100,6 +100,9 @@ public:
 		float StepDistanceCm,
 		FVector& OutWorldLocation,
 		int32& OutTileClass) const;
+	int32 GetXbldTileId(int32 FileX, int32 FileY) const;
+	int32 GetBuildingFootprintSize(int32 FileX, int32 FileY) const;
+	bool TryGetTileCenterWorldLocation(int32 FileX, int32 FileY, FVector& OutWorldLocation) const;
 	// One original person-unit (1/64 tile) in world centimeters - the people mover's scale
 	// (original positions are 16.16 with 64 units per tile).
 	float GetPeopleWorldCmPerOriginalUnit() const;
@@ -408,6 +411,7 @@ private:
 	TArray<FSimCopterGroundRouteNode> RoadNodes;
 	TArray<FSimCopterGroundRouteNode> PedestrianNodes;
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
+	TArray<uint8> XbldTileIds;
 	TArray<uint8> PeopleTileClasses;
 	TArray<float> TileCenterWorldZ;
 	TArray<FSimCopterWholeMapRecord> WholeMapPedestrianRecords;
@@ -429,9 +433,26 @@ public:
 	bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY);
 	void EndTrafficJam(int32 EventId);
 	bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY);
-	bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId);
-
-
+	bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId);
+	int32 PickUpMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm);
+	int32 GuideMissionPeopleToLocation(
+		int32 EventId,
+		const FVector& SearchLocation,
+		const FVector& TargetLocation,
+		int32 MaxCount,
+		float SearchRadiusCm,
+		float MaxVerticalDeltaCm,
+		float GuidanceSeconds);
+	int32 BoardMissionPeopleTouching(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float TouchRadiusCm, float MaxVerticalDeltaCm);
+	ASimCopterGroundAgent* FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm);
+	int32 SpawnMissionPeopleAtWorldLocation(
+		int32 Count,
+		const FVector& WorldLocation,
+		int32 EventId,
+		int32 SpawnMode,
+		int32 PersonState,
+		float SpreadRadiusCm);
+	int32 ReleaseMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm);
 
 	ASimCity2000CityActor* ResolveSourceCityActor() const;
 	FString ResolveCityPath() const;

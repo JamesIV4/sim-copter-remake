@@ -8,6 +8,7 @@
 #include "SimCopterOnFootPawn.generated.h"
 
 class ASimCopterHelicopterPawn;
+class ASimCopterGroundAgent;
 class UCameraComponent;
 class UCapsuleComponent;
 class UMaterialInterface;
@@ -31,6 +32,10 @@ public:
 
 	const FVector& GetCurrentVelocityCmPerSec() const { return CurrentVelocityCmPerSec; }
 	float GetWalkSpeedCmPerSec() const { return WalkSpeedCmPerSec; }
+	bool IsCarryingMissionPerson() const { return CarriedMissionPerson.IsValid(); }
+	int32 GetCarriedMissionEventId() const { return CarriedMissionEventId; }
+	bool PickUpMissionPerson(ASimCopterGroundAgent* MissionPerson);
+	ASimCopterGroundAgent* ConsumeCarriedMissionPerson();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -65,6 +70,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "100.0"))
 	float HelicopterInteractionRadiusCm = 620.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "40.0"))
+	float HelicopterAutoEnterRadiusCm = 145.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float WalkSpeedCmPerSec = 540.0f;
@@ -118,6 +126,8 @@ private:
 	int32 BodySpriteRow = INDEX_NONE;
 	float BodySpriteTimeSeconds = 0.0f;
 	bool bUsingOriginalBodySprite = false;
+	TWeakObjectPtr<ASimCopterGroundAgent> CarriedMissionPerson;
+	int32 CarriedMissionEventId = INDEX_NONE;
 
 	// Original pilot-figure state (mirrors the ground agent's figure path).
 	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
@@ -142,6 +152,7 @@ private:
 	void MouseLookYaw(float Value);
 	void MouseLookPitch(float Value);
 	void Interact();
+	void TryAutoEnterHelicopter();
 
 	void UpdateMovement(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);

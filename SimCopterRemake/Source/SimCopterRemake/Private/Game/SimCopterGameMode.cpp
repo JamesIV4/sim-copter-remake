@@ -20,24 +20,31 @@ void ASimCopterGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!bSpawnTrafficSystem || TrafficSystemClass == nullptr || GetWorld() == nullptr)
-	{
-		return;
-	}
-
-	TArray<AActor*> ExistingTrafficSystems;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), TrafficSystemClass, ExistingTrafficSystems);
-	if (ExistingTrafficSystems.Num() > 0)
+	if (GetWorld() == nullptr)
 	{
 		return;
 	}
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	GetWorld()->SpawnActor<ASimCopterTrafficSystemActor>(TrafficSystemClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
-	
+
+	if (bSpawnTrafficSystem && TrafficSystemClass != nullptr)
+	{
+		TArray<AActor*> ExistingTrafficSystems;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), TrafficSystemClass, ExistingTrafficSystems);
+		if (ExistingTrafficSystems.Num() == 0)
+		{
+			GetWorld()->SpawnActor<ASimCopterTrafficSystemActor>(TrafficSystemClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		}
+	}
+
 	if (bSpawnMissionSystem && MissionSystemClass != nullptr)
 	{
-		GetWorld()->SpawnActor<ASimCopterMissionSystemActor>(MissionSystemClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		TArray<AActor*> ExistingMissionSystems;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), MissionSystemClass, ExistingMissionSystems);
+		if (ExistingMissionSystems.Num() == 0)
+		{
+			GetWorld()->SpawnActor<ASimCopterMissionSystemActor>(MissionSystemClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		}
 	}
 }

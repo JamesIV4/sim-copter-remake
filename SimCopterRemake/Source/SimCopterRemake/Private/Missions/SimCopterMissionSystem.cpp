@@ -22,17 +22,17 @@ bool FSimCopterMissionSystem::LoadCareerData(const FString& TweakFilePath)
 		if (const FSimCopterTweakSection* Section = TweakFile.FindSection(SectionName))
 		{
 			FSimCopterCareerCity City;
-			City.Difficulty = Section->GetInt(TEXT("Ctrl0"));
-			City.Weights[0] = Section->GetInt(TEXT("Ctrl1"));
-			City.Weights[1] = Section->GetInt(TEXT("Ctrl2"));
-			City.Weights[2] = Section->GetInt(TEXT("Ctrl3"));
-			City.Weights[3] = Section->GetInt(TEXT("Ctrl4"));
-			City.Weights[4] = Section->GetInt(TEXT("Ctrl5"));
-			City.Weights[5] = Section->GetInt(TEXT("Ctrl6"));
-			City.Weights[6] = Section->GetInt(TEXT("Ctrl7"));
-			City.DayOrNight = Section->GetInt(TEXT("Ctrl8"));
-			City.PointsNeeded = Section->GetInt(TEXT("Ctrl9"));
-			City.MoneyEarned = Section->GetInt(TEXT("Ctrl10"));
+			City.Difficulty = Section->GetInt(TEXT("Ctrl0_Value"));
+			City.Weights[0] = Section->GetInt(TEXT("Ctrl1_Value"));
+			City.Weights[1] = Section->GetInt(TEXT("Ctrl2_Value"));
+			City.Weights[2] = Section->GetInt(TEXT("Ctrl3_Value"));
+			City.Weights[3] = Section->GetInt(TEXT("Ctrl4_Value"));
+			City.Weights[4] = Section->GetInt(TEXT("Ctrl5_Value"));
+			City.Weights[5] = Section->GetInt(TEXT("Ctrl6_Value"));
+			City.Weights[6] = Section->GetInt(TEXT("Ctrl7_Value"));
+			City.DayOrNight = Section->GetInt(TEXT("Ctrl8_Value"));
+			City.PointsNeeded = Section->GetInt(TEXT("Ctrl9_Value"));
+			City.MoneyEarned = Section->GetInt(TEXT("Ctrl10_Value"));
 			CareerCities.Add(City);
 		}
 	}
@@ -285,12 +285,16 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	bool bClearConsecutive = ConsecutivePlaceFailures > 0x13;
 	if (bClearConsecutive) ConsecutivePlaceFailures = 0;
 	bRerollRequested = bClearConsecutive ? 1 : 0;
-	
-	int32 TotalActive = ActiveCount + BackgroundCount;
+
+	auto ReturnCreation = [this](int32 CreatedId) -> int32
+	{
+		NoteCreationResult(CreatedId != -1);
+		return CreatedId;
+	};
 
 	if (TypeMask == TYPE_PlaneCrash)
 	{
-		return CreateEventAt(-1, -1, TypeMask);
+		return ReturnCreation(CreateEventAt(-1, -1, TypeMask));
 	}
 	else if (TypeMask == TYPE_BuildingFire)
 	{
@@ -302,7 +306,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 				if (IsFireSuitableTile(World ? World->GetXbldTileId(TX, TY) : 0))
 				{
 					int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-					if (CreatedId != -1) return CreatedId;
+					if (CreatedId != -1) return ReturnCreation(CreatedId);
 				}
 			}
 		}
@@ -318,7 +322,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 				if (XbldId > 0x6f && XbldId < 0xdc && XbldId != 0xd1 && XbldId != 0xd2 && XbldId != 0xd3)
 				{
 					int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-					if (CreatedId != -1) return CreatedId;
+					if (CreatedId != -1) return ReturnCreation(CreatedId);
 				}
 			}
 		}
@@ -331,13 +335,13 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			if (TryPickRandomTileNearCamera(TX, TY))
 			{
 				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return CreatedId;
+				if (CreatedId != -1) return ReturnCreation(CreatedId);
 			}
 		}
 	}
 	else if (TypeMask == TYPE_TrainCrash)
 	{
-		return CreateEventAt(-1, -1, TypeMask);
+		return ReturnCreation(CreateEventAt(-1, -1, TypeMask));
 	}
 	else if (TypeMask == TYPE_TrainRescue)
 	{
@@ -347,7 +351,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			if (TryPickRandomTileNearCamera(TX, TY))
 			{
 				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return CreatedId;
+				if (CreatedId != -1) return ReturnCreation(CreatedId);
 			}
 		}
 	}
@@ -359,7 +363,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			if (TryPickRandomTileNearCamera(TX, TY))
 			{
 				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return CreatedId;
+				if (CreatedId != -1) return ReturnCreation(CreatedId);
 			}
 		}
 	}
@@ -371,7 +375,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			if (TryPickRandomTileNearCamera(TX, TY))
 			{
 				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return CreatedId;
+				if (CreatedId != -1) return ReturnCreation(CreatedId);
 			}
 		}
 	}
@@ -383,7 +387,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			if (TryPickRandomTileNearCamera(TX, TY))
 			{
 				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return CreatedId;
+				if (CreatedId != -1) return ReturnCreation(CreatedId);
 			}
 		}
 	}
@@ -399,17 +403,23 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 				if ((Props & 4) != 0 && XbldId != 0xd1 && XbldId != 0xd2 && XbldId != 0xd3)
 				{
 					int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-					if (CreatedId != -1) return CreatedId;
+					if (CreatedId != -1) return ReturnCreation(CreatedId);
 				}
 			}
 		}
 	}
 	else if (TypeMask == TYPE_Ufo)
 	{
-		return CreateEventAt(-1, -1, TypeMask);
+		return ReturnCreation(CreateEventAt(-1, -1, TypeMask));
 	}
 
-	if (TotalActive < ActiveCount + BackgroundCount)
+	NoteCreationResult(false);
+	return -1;
+}
+
+void FSimCopterMissionSystem::NoteCreationResult(bool bCreated)
+{
+	if (bCreated)
 	{
 		bRerollRequested = 1;
 		ConsecutivePlaceFailures = 0;
@@ -418,17 +428,18 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	{
 		ConsecutivePlaceFailures++;
 	}
-
-	return -1;
 }
 
 uint8 FSimCopterMissionSystem::GetXbldPropertyFlags(int32 BlockId)
 {
-    // FUN_0049a4d0 translates BlockId to a pointer in the XBLD property array
-    // Xbld property table is 256 bytes long. Bit 4 (0x04) is the mission-building flag.
-    // For now we rely on the World interface or a mocked array. 
-    // We will assume World handles it if we delegate, but we need to do it here.
-    return 0; // TODO: properly expose property table from World
+	// FUN_0049a4d0 reads the XBLD property table. Until that table is ported,
+	// treat ordinary SC2 buildings as mission-capable and keep roads/ruins out.
+	const uint8 Id = static_cast<uint8>(BlockId);
+	if (Id >= 0x70 && Id < 0xdc && Id != 0xd1 && Id != 0xd2 && Id != 0xd3)
+	{
+		return 0x04;
+	}
+	return 0;
 }
 
 bool FSimCopterMissionSystem::TryPickRandomTileNearCamera(int32& OutTX, int32& OutTY)
@@ -506,18 +517,126 @@ void FSimCopterMissionSystem::AnnounceCreated(const FSimCopterMissionRecord& Rec
 	if (Record.Category == CAT_Background)
 	{
 		BackgroundCount++;
+		SpawnCountdown = EasyIntervalCache >> 1;
 	}
 	else
 	{
 		ActiveCount++;
-		SpawnCountdown = Tuning.EasyInterval;
+		SpawnCountdown = EasyIntervalCache;
 	}
+	PostTypedUiMessage(5, &Record, Record.EventId, GetTypeTextId(Record.TypeMask), 0, 0, false);
 	PostAnnouncementVoice(Record);
 }
 
 void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecord& Record)
 {
 	// Handled by UI system
+}
+
+int32 FSimCopterMissionSystem::GetTypeTextId(int32 TypeMask)
+{
+	if ((TypeMask & TYPE_Riot) != 0) return 0x23b;
+	if ((TypeMask & TYPE_FireRescue) != 0) return 0x23c;
+	if ((TypeMask & TYPE_BoatRescue) != 0) return 0x23d;
+	if ((TypeMask & TYPE_TrainRescue) != 0 || (TypeMask & TYPE_TrainCrash) != 0) return 0x23e;
+	if ((TypeMask & TYPE_Medevac) != 0) return 0x23f;
+	if ((TypeMask & TYPE_Transport) != 0) return 0x240;
+	if ((TypeMask & TYPE_BuildingFire) != 0 || (TypeMask & TYPE_PlaneCrash) != 0) return 0x241;
+	if ((TypeMask & TYPE_CarFire) != 0) return 0x248;
+	if ((TypeMask & TYPE_TrafficJam) != 0) return 0x249;
+	if ((TypeMask & TYPE_CriminalCar) != 0) return 0x244;
+	if ((TypeMask & TYPE_SpeederEvent) != 0) return 0x245;
+	if ((TypeMask & TYPE_CriminalC) != 0) return 0x246;
+	if ((TypeMask & TYPE_CriminalA) != 0) return 0x247;
+	if ((TypeMask & TYPE_Ufo) != 0) return 0x24a;
+	return 0x24b;
+}
+
+int32 FSimCopterMissionSystem::GetLocationVoiceId(int32 TileX, int32 TileY)
+{
+	return -1;
+}
+
+const TCHAR* FSimCopterMissionSystem::GetTypeDisplayName(int32 TypeMask)
+{
+	if ((TypeMask & TYPE_Riot) != 0) return TEXT("Riot");
+	if ((TypeMask & TYPE_FireRescue) != 0) return TEXT("Fire Rescue");
+	if ((TypeMask & TYPE_BoatRescue) != 0) return TEXT("Boat Rescue");
+	if ((TypeMask & TYPE_TrainRescue) != 0) return TEXT("Train Rescue");
+	if ((TypeMask & TYPE_TrainCrash) != 0) return TEXT("Train Crash");
+	if ((TypeMask & TYPE_Medevac) != 0) return TEXT("MedEvac");
+	if ((TypeMask & TYPE_Transport) != 0) return TEXT("Transport");
+	if ((TypeMask & TYPE_CarFire) != 0) return TEXT("Car Fire");
+	if ((TypeMask & TYPE_TrafficJam) != 0) return TEXT("Traffic Jam");
+	if ((TypeMask & TYPE_CriminalCar) != 0) return TEXT("Criminal Car");
+	if ((TypeMask & TYPE_SpeederEvent) != 0) return TEXT("Speeder");
+	if ((TypeMask & TYPE_CriminalC) != 0) return TEXT("Criminal");
+	if ((TypeMask & TYPE_CriminalA) != 0) return TEXT("Criminal");
+	if ((TypeMask & TYPE_PlaneCrash) != 0) return TEXT("Plane Crash");
+	if ((TypeMask & TYPE_BuildingFire) != 0) return TEXT("Building Fire");
+	if ((TypeMask & TYPE_Ufo) != 0) return TEXT("UFO");
+	return TEXT("Mission");
+}
+
+bool FSimCopterMissionSystem::FindDefaultDestinationTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const
+{
+	auto IsInBounds = [](int32 X, int32 Y) -> bool
+	{
+		return X >= 0 && X < 128 && Y >= 0 && Y < 128;
+	};
+
+	auto IsUsableDestination = [this, &IsInBounds](int32 X, int32 Y) -> bool
+	{
+		if (!IsInBounds(X, Y))
+		{
+			return false;
+		}
+
+		if (World == nullptr)
+		{
+			return true;
+		}
+
+		const int32 XbldId = World->GetXbldTileId(X, Y);
+		return (GetXbldPropertyFlags(XbldId) & 0x04) != 0;
+	};
+
+	static const FIntPoint Directions[] = {
+		FIntPoint(1, 0),
+		FIntPoint(1, 1),
+		FIntPoint(0, 1),
+		FIntPoint(-1, 1),
+		FIntPoint(-1, 0),
+		FIntPoint(-1, -1),
+		FIntPoint(0, -1),
+		FIntPoint(1, -1)
+	};
+
+	for (int32 Radius = 14; Radius <= 72; Radius += 6)
+	{
+		for (const FIntPoint& Direction : Directions)
+		{
+			const int32 CandidateX = FMath::Clamp(OriginX + Direction.X * Radius, 0, 127);
+			const int32 CandidateY = FMath::Clamp(OriginY + Direction.Y * Radius, 0, 127);
+			if ((CandidateX != OriginX || CandidateY != OriginY) && IsUsableDestination(CandidateX, CandidateY))
+			{
+				OutX = CandidateX;
+				OutY = CandidateY;
+				return true;
+			}
+		}
+	}
+
+	const int32 MirrorX = FMath::Clamp(127 - OriginX, 0, 127);
+	const int32 MirrorY = FMath::Clamp(127 - OriginY, 0, 127);
+	if (MirrorX != OriginX || MirrorY != OriginY)
+	{
+		OutX = MirrorX;
+		OutY = MirrorY;
+		return true;
+	}
+
+	return false;
 }
 
 int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
@@ -573,7 +692,7 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.Name = FString::Printf(TEXT("Transport #%d"), TypeSerials[3]);
 		TypeSerials[3]++;
-		Rec.Category = CAT_Background;
+		FindDefaultDestinationTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY);
 	}
 	else if (TypeMask == TYPE_Medevac)
 	{
@@ -594,6 +713,7 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.Name = FString::Printf(TEXT("MedEvac #%d"), TypeSerials[2]);
 		TypeSerials[2]++;
+		FindDefaultDestinationTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY);
 	}
 	else if (TypeMask == TYPE_TrainCrash)
 	{
@@ -614,6 +734,9 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
+		Rec.TileX = OutX;
+		Rec.TileY = OutY;
+		FindDefaultDestinationTile(Rec.TileX, Rec.TileY, Rec.SecondaryX, Rec.SecondaryY);
 		Rec.Name = FString::Printf(TEXT("Boat Rescue #%d"), TypeSerials[4]);
 		TypeSerials[4]++;
 	}
@@ -642,6 +765,9 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
+		Rec.TileX = OutX;
+		Rec.TileY = OutY;
+		FindDefaultDestinationTile(Rec.TileX, Rec.TileY, Rec.SecondaryX, Rec.SecondaryY);
 		Rec.Name = FString::Printf(TEXT("Train Rescue #%d"), TypeSerials[7]);
 		TypeSerials[7]++;
 	}
@@ -653,6 +779,8 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
+		Rec.TileX = OutX;
+		Rec.TileY = OutY;
 		Rec.Name = FString::Printf(TEXT("Traffic Jam #%d"), TypeSerials[8]);
 		TypeSerials[8]++;
 		Rec.Category = CAT_Background;
@@ -665,6 +793,9 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
+		Rec.TileX = OutX;
+		Rec.TileY = OutY;
+		Rec.CarsCrashed = FMath::Max(Rec.CarsCrashed, 1);
 		Rec.Name = FString::Printf(TEXT("Car Fire #%d"), TypeSerials[9]);
 		TypeSerials[9]++;
 	}
@@ -740,6 +871,7 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			if (World && World->TrySpawnMissionPerson(2, -1, TX, TY, Rec.EventId))
 			{
 				bSpawned = true;
+				Rec.RescueVictims++;
 			}
 		}
 		if (!bSpawned)
@@ -749,6 +881,7 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.Name = FString::Printf(TEXT("Fire Rescue #%d"), TypeSerials[14]);
 		TypeSerials[14]++;
+		FindDefaultDestinationTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY);
 	}
 	else if (TypeMask == TYPE_Ufo)
 	{
@@ -778,22 +911,79 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 		// Advance timer
 		Rec.TimeAccum += FrameDeltaEma;
 
+		if (Rec.Category == CAT_CompleteNow)
+		{
+			CompleteMission(Rec);
+			DeactivateRecord(i);
+			continue;
+		}
+
 		// Traffic jam expiry (90 seconds = 0x5a0000)
 		if ((Rec.TypeMask & TYPE_TrafficJam) != 0)
 		{
+			if (Rec.CarsCleared + Rec.CarsBurned >= Rec.JamCarCount && Rec.JamCarCount > 0)
+			{
+				CompleteMission(Rec);
+				DeactivateRecord(i);
+				continue;
+			}
+
 			if (Rec.TimeAccum > 0x5a0000)
 			{
 				if (World)
 				{
 					World->EndTrafficJam(Rec.EventId);
 				}
-				// CompleteMission will be handled by the core later when the cars are cleared.
-				// Wait! The original game clears the jam flag, which lets the cars drive away.
-				// Then the cars driving away clears the bounding box and the jam is considered resolved!
-				Rec.TypeMask &= ~TYPE_TrafficJam; // Prevent re-expiring. Actually, original clears bit 0 (Active bit).
-				// wait, original does puVar5[0x13] = puVar5[0x13] & 0xfffffffe; which is clearing the active bit!
 				DeactivateRecord(i); 
+				continue;
 			}
+		}
+
+		if (Rec.Category == CAT_Background || Rec.Category == CAT_ExpireSilently)
+		{
+			continue;
+		}
+
+		bool bComplete = true;
+		if ((Rec.TypeMask & TYPE_Debris) != 0 && Rec.DebrisDoused + Rec.DebrisExpired + Rec.DebrisCleared < Rec.DebrisCreated)
+		{
+			bComplete = false;
+		}
+		if ((Rec.TypeMask & TYPE_BuildingFire) != 0 && Rec.FlamesDoused + Rec.FlamesExpired < Rec.FlamesCreated)
+		{
+			bComplete = false;
+		}
+		if ((Rec.TypeMask & TYPE_Medevac) != 0 && Rec.MedevacDelivered + Rec.Casualties < Rec.MedevacVictims)
+		{
+			bComplete = false;
+		}
+		if ((Rec.TypeMask & TYPE_RescuePeople) != 0 && Rec.RescueDelivered + Rec.Casualties < Rec.RescueVictims)
+		{
+			bComplete = false;
+		}
+		if ((Rec.TypeMask & TYPE_Transport) != 0 && Rec.TransportDelivered + Rec.Casualties + Rec.PassengersLost < Rec.TransportPassengers)
+		{
+			bComplete = false;
+		}
+		if ((Rec.TypeMask & TYPE_Riot) != 0 && Rec.RiotersDispersed + Rec.Casualties + Rec.CriminalsCaught + Rec.RiotersCalmed < Rec.RiotSize)
+		{
+			bComplete = false;
+		}
+		if ((Rec.TypeMask & TYPE_CarFire) != 0 && Rec.CarsDoused + Rec.CarsBurned < Rec.CarsCrashed)
+		{
+			bComplete = false;
+		}
+		if (((Rec.TypeMask & TYPE_CriminalCar) != 0 || (Rec.TypeMask & TYPE_CriminalA) != 0 ||
+			(Rec.TypeMask & TYPE_SpeederEvent) != 0 || (Rec.TypeMask & TYPE_CriminalC) != 0) &&
+			Rec.CriminalsCaught + Rec.Casualties < Rec.TargetCount)
+		{
+			bComplete = false;
+		}
+
+		if (bComplete)
+		{
+			CompleteMission(Rec);
+			DeactivateRecord(i);
 		}
 	}
 }
@@ -917,6 +1107,157 @@ void FSimCopterMissionSystem::PostEvent(const FSimCopterMissionEvent& Event)
 {
 	int32 Idx = FindRecordIndex(Event.EventId);
 	PayIncremental(Event, Idx);
+
+	if (Idx == INDEX_NONE || !Records.IsValidIndex(Idx) || !Records[Idx].bActive)
+	{
+		return;
+	}
+
+	FSimCopterMissionRecord& Rec = Records[Idx];
+	switch (Event.Code)
+	{
+	case EVT_SetPrimaryCoords:
+		Rec.TileX = Event.X;
+		Rec.TileY = Event.Y;
+		break;
+	case EVT_FlameCreated:
+		Rec.FlamesCreated += Event.Value;
+		break;
+	case EVT_FlameDoused:
+		Rec.FlamesDoused += Event.Value;
+		break;
+	case EVT_FlameExpired:
+		Rec.FlamesExpired += Event.Value;
+		break;
+	case EVT_CellBurnedOut:
+		Rec.CellsBurnedOut += Event.Value;
+		break;
+	case EVT_StructureIgnited:
+		Rec.StructuresIgnited += Event.Value;
+		break;
+	case EVT_ObjectCaughtFire:
+		Rec.ObjectsCaughtFire += Event.Value;
+		break;
+	case EVT_DebrisCreated:
+		if ((Rec.TypeMask & (TYPE_BuildingFire | TYPE_PlaneCrash | TYPE_TrainCrash | TYPE_CarFire | TYPE_Debris)) != 0)
+		{
+			Rec.TypeMask |= TYPE_Debris;
+			Rec.DebrisCreated += Event.Value;
+		}
+		break;
+	case EVT_DebrisExpired:
+		Rec.DebrisExpired += Event.Value;
+		break;
+	case EVT_DebrisDoused:
+		Rec.DebrisDoused += Event.Value;
+		break;
+	case EVT_SetSecondaryCoords:
+		Rec.SecondaryX = Event.X;
+		Rec.SecondaryY = Event.Y;
+		break;
+	case EVT_RiotPersonAdded:
+		Rec.RiotSize += Event.Value;
+		break;
+	case EVT_MedevacVictimAdded:
+		Rec.TypeMask |= TYPE_Medevac;
+		Rec.MedevacVictims += Event.Value;
+		break;
+	case EVT_TransportPassengerAdded:
+		Rec.TypeMask |= TYPE_Transport;
+		Rec.TransportPassengers += Event.Value;
+		break;
+	case EVT_RescueVictimAdded:
+		Rec.RescueVictims += Event.Value;
+		break;
+	case EVT_Unknown0F:
+		Rec.Counter90 += Event.Value;
+		break;
+	case EVT_RescueDelivered:
+		Rec.RescueDelivered += Event.Value;
+		break;
+	case EVT_TransportDelivered:
+		Rec.TransportDelivered += Event.Value;
+		break;
+	case EVT_MedevacDelivered:
+		Rec.MedevacDelivered += Event.Value;
+		break;
+	case EVT_VictimPickedUp:
+		Rec.VictimsPickedUp += Event.Value;
+		break;
+	case EVT_RioterDispersed:
+		Rec.RiotersDispersed += Event.Value;
+		break;
+	case EVT_RioterCalmed:
+		Rec.RiotersCalmed += Event.Value;
+		break;
+	case EVT_Unknown16:
+		Rec.CounterB0 += Event.Value;
+		break;
+	case EVT_PersonDied:
+		Rec.Casualties += Event.Value;
+		break;
+	case EVT_CarCrashed:
+		Rec.CarsCrashed += Event.Value;
+		break;
+	case EVT_JamCarAdded:
+		Rec.JamCarCount += Event.Value;
+		if (Rec.Category == CAT_Background && Rec.JamCarCount >= 3)
+		{
+			Rec.Category = CAT_Active;
+			Rec.TimeAccum = 0;
+			BackgroundCount = FMath::Max(0, BackgroundCount - 1);
+			ActiveCount++;
+			PostTypedUiMessage(5, &Rec, Rec.EventId, GetTypeTextId(Rec.TypeMask), 0, 0, false);
+			PostAnnouncementVoice(Rec);
+		}
+		break;
+	case EVT_CarDoused:
+		Rec.CarsDoused += Event.Value;
+		break;
+	case EVT_CarCleared:
+		Rec.CarsCleared += Event.Value;
+		break;
+	case EVT_CarBurned:
+		Rec.CarsBurned += Event.Value;
+		break;
+	case EVT_SetCategory:
+		if (Rec.Category == CAT_Background && Event.Value != CAT_Background)
+		{
+			BackgroundCount = FMath::Max(0, BackgroundCount - 1);
+			ActiveCount++;
+		}
+		else if (Rec.Category != CAT_Background && Event.Value == CAT_Background)
+		{
+			ActiveCount = FMath::Max(0, ActiveCount - 1);
+			BackgroundCount++;
+		}
+		Rec.Category = Event.Value;
+		break;
+	case EVT_SetTertiaryCoords:
+		Rec.TertiaryX = Event.X;
+		Rec.TertiaryY = Event.Y;
+		break;
+	case EVT_PassengerLost:
+		Rec.PassengersLost += Event.Value;
+		break;
+	case EVT_DebrisCleared:
+		Rec.DebrisCleared += Event.Value;
+		break;
+	case EVT_CriminalCaught:
+		Rec.CriminalsCaught += Event.Value;
+		break;
+	case EVT_SetEndPointsScaled:
+		Rec.EndPointsScaled = Event.Value;
+		break;
+	case EVT_SetEndMoneyScaled:
+		Rec.EndMoneyScaled = Event.Value;
+		break;
+	case EVT_AdjustTargetCount:
+		Rec.TargetCount += Event.Value;
+		break;
+	default:
+		break;
+	}
 }
 
 void FSimCopterMissionSystem::PostEvent(int32 Code, int32 EventId, int32 Value, bool bSilent)
@@ -1038,8 +1379,8 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		if (EarnedCash != 0) AddCash(EarnedCash);
 
 		const FSimCopterMissionRecord* RecPtr = (RecordIndex != INDEX_NONE) ? &Records[RecordIndex] : nullptr;
-		if (EarnedPoints != 0) PostTypedUiMessage(8, RecPtr, Event.EventId, TextId, EarnedPoints, EarnedPoints < 0);
-		if (EarnedCash != 0) PostTypedUiMessage(9, RecPtr, Event.EventId, TextId, EarnedCash, EarnedCash < 0);
+		if (EarnedPoints != 0) PostTypedUiMessage(8, RecPtr, Event.EventId, TextId, EarnedPoints, 0, EarnedPoints < 0);
+		if (EarnedCash != 0) PostTypedUiMessage(9, RecPtr, Event.EventId, TextId, EarnedCash, 0, EarnedCash < 0);
 	}
 }
 
@@ -1136,7 +1477,7 @@ void FSimCopterMissionSystem::CompleteMission(FSimCopterMissionRecord& Rec)
 	if (EarnedPoints != 0) AddScore(EarnedPoints);
 	if (EarnedCash != 0) AddCash(EarnedCash);
 
-	PostTypedUiMessage(6, &Rec, Rec.EventId, EarnedPoints, EarnedCash, false);
+	PostTypedUiMessage(6, &Rec, Rec.EventId, GetTypeTextId(Rec.TypeMask), EarnedPoints, EarnedCash, EarnedPoints < 0);
 }
 
 int32 FSimCopterMissionSystem::FindRecordIndex(int32 EventId) const
@@ -1159,16 +1500,18 @@ void FSimCopterMissionSystem::AddCash(int32 Delta)
 	Cash = FMath::Max(0, Cash + Delta);
 }
 
-void FSimCopterMissionSystem::PostTypedUiMessage(int32 Kind, const FSimCopterMissionRecord* Record, int32 EventId, int32 ValueA, int32 ValueB, bool bNegative)
+void FSimCopterMissionSystem::PostTypedUiMessage(int32 Kind, const FSimCopterMissionRecord* Record, int32 EventId, int32 TextId, int32 ValueA, int32 ValueB, bool bNegative)
 {
 	if (World)
 	{
 		FSimCopterMissionUiMessage Msg;
 		Msg.Kind = Kind;
 		Msg.EventId = EventId;
-		Msg.TextId = ValueA; // The original used TextId mapping, simplified here for now
+		Msg.TextId = TextId;
 		Msg.ValueA = ValueA;
 		Msg.ValueB = ValueB;
+		Msg.TypeMask = Record != nullptr ? Record->TypeMask : 0;
+		Msg.MissionName = Record != nullptr ? Record->Name : FString();
 		Msg.bNegative = bNegative;
 		World->OnUiMessage(Msg);
 	}
@@ -1184,10 +1527,17 @@ void FSimCopterMissionSystem::DeactivateRecord(int32 RecordIndex)
 {
 	if (RecordIndex >= 0 && RecordIndex < Records.Num())
 	{
+		const int32 Category = Records[RecordIndex].Category;
 		Records[RecordIndex].bActive = false;
 		Records[RecordIndex].TypeMask = 0;
-		ActiveCount--;
-		if (ActiveCount < 0) ActiveCount = 0;
+		if (Category == CAT_Background)
+		{
+			BackgroundCount = FMath::Max(0, BackgroundCount - 1);
+		}
+		else
+		{
+			ActiveCount = FMath::Max(0, ActiveCount - 1);
+		}
 	}
 }
 
