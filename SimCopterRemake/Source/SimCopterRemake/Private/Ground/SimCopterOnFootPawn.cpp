@@ -5,13 +5,16 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "InputCoreTypes.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationFigure.h"
@@ -48,34 +51,55 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	PrimaryActorTick.bCanEverTick = true;
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
-	CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CollisionComponent"));
-	CollisionComponent->InitCapsuleSize(OnFootCapsuleRadiusCm * PopulationWorldScale, OnFootCapsuleHalfHeightCm * PopulationWorldScale);
-	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	CollisionComponent->SetCollisionObjectType(ECC_Pawn);
-	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
-	CollisionComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
-	CollisionComponent->SetCanEverAffectNavigation(false);
-	SetRootComponent(CollisionComponent);
+	// Drive the avatar with the inherited character capsule + movement component: gravity, jumping,
+	// air control and automatic step-up over curbs/road lips all come for free and robustly.
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	Capsule->InitCapsuleSize(OnFootCapsuleRadiusCm * PopulationWorldScale, OnFootCapsuleHalfHeightCm * PopulationWorldScale);
+	Capsule->SetCollisionObjectType(ECC_Pawn);
+	Capsule->SetCollisionResponseToAllChannels(ECR_Block);
+	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	Capsule->SetCanEverAffectNavigation(false);
+
+	// We render the original sprite/figure, not the default skeletal mesh.
+	if (USkeletalMeshComponent* CharacterMesh = GetMesh())
+	{
+		CharacterMesh->SetVisibility(false);
+		CharacterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->bOrientRotationToMovement = false;
+		Move->bUseControllerDesiredRotation = false;
+		Move->RotationRate = FRotator::ZeroRotator;
+		Move->bConstrainToPlane = false;
+		Move->SetWalkableFloorAngle(52.0f);
+	}
+	// We steer the avatar's yaw ourselves from the look input, not the controller rotation.
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
 
 	BodyProxyComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyProxy"));
-	BodyProxyComponent->SetupAttachment(CollisionComponent);
+	BodyProxyComponent->SetupAttachment(Capsule);
 	BodyProxyComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BodyProxyComponent->SetCanEverAffectNavigation(false);
 	BodyProxyComponent->SetRelativeLocation(FVector(0.0f, 0.0f, (-OnFootCapsuleHalfHeightCm + 86.0f) * PopulationWorldScale));
 	BodyProxyComponent->SetRelativeScale3D(FVector(0.28f, 0.2f, 1.7f) * PopulationWorldScale);
 
 	OriginalBodySpriteComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("OriginalBodySprite"));
-	OriginalBodySpriteComponent->SetupAttachment(CollisionComponent);
+	OriginalBodySpriteComponent->SetupAttachment(Capsule);
 	OriginalBodySpriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OriginalBodySpriteComponent->SetCanEverAffectNavigation(false);
 	OriginalBodySpriteComponent->SetVisibility(false);
 	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale));
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(CollisionComponent);
+	CameraBoom->SetupAttachment(Capsule);
 	CameraBoom->TargetArmLength = 520.0f * PopulationWorldScale;
 	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, 82.0f * PopulationWorldScale);
 	CameraBoom->bDoCollisionTest = true;
+	CameraBoom->ProbeChannel = ECC_Camera;
 	CameraBoom->ProbeSize = 16.0f * PopulationWorldScale;
 	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->CameraLagSpeed = 12.0f;
@@ -107,7 +131,21 @@ void ASimCopterOnFootPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SnapToGround();
+	// Apply the tunable movement settings (so editor edits take effect) and keep us walking.
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->MaxWalkSpeed = WalkSpeedCmPerSec;
+		Move->MaxAcceleration = MaxAccelerationCmPerSec2;
+		Move->BrakingDecelerationWalking = MaxAccelerationCmPerSec2;
+		Move->MaxStepHeight = MaxStepHeightCm;
+		Move->JumpZVelocity = JumpZVelocityCmPerSec;
+		Move->AirControl = AirControl;
+		Move->GravityScale = GravityScale;
+		Move->SetMovementMode(MOVE_Walking);
+	}
+	JumpMaxCount = 1;
+
+	SnapToGround(); // initial placement; the movement component keeps us grounded thereafter
 	LoadOriginalBodySprite();
 	if (bFindOrSpawnParkedHelicopterOnBeginPlay)
 	{
@@ -126,8 +164,12 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	UpdateMovement(DeltaSeconds);
-	SnapToGround();
+	if (MissionPickupCooldownSeconds > 0.0f)
+	{
+		MissionPickupCooldownSeconds = FMath::Max(0.0f, MissionPickupCooldownSeconds - DeltaSeconds);
+	}
+
+	UpdateLookYaw(DeltaSeconds);
 	TryAutoEnterHelicopter();
 	if (IsActorBeingDestroyed())
 	{
@@ -149,16 +191,33 @@ void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookPitch"), this, &ASimCopterOnFootPawn::MouseLookPitch);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterOnFootPawn::Interact);
+
+	// Drop a carried person on the ground (e.g. when the helicopter is full and you need to come
+	// back for them later). Bound directly to F so no input-mapping config edit is required.
+	PlayerInputComponent->BindKey(EKeys::F, IE_Pressed, this, &ASimCopterOnFootPawn::DropCarriedMissionPerson);
+
+	// Jump with air control (works while carrying someone - the carried person is attached to the
+	// capsule). Bound directly to Space so no input-mapping config edit is required.
+	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Released, this, &ACharacter::StopJumping);
 }
 
 void ASimCopterOnFootPawn::MoveForward(float Value)
 {
-	MoveForwardInput = FMath::Clamp(Value, -1.0f, 1.0f);
+	if (!FMath::IsNearlyZero(Value))
+	{
+		const FRotator YawRotation(0.0f, GetActorRotation().Yaw, 0.0f);
+		AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X), FMath::Clamp(Value, -1.0f, 1.0f));
+	}
 }
 
 void ASimCopterOnFootPawn::MoveRight(float Value)
 {
-	MoveRightInput = FMath::Clamp(Value, -1.0f, 1.0f);
+	if (!FMath::IsNearlyZero(Value))
+	{
+		const FRotator YawRotation(0.0f, GetActorRotation().Yaw, 0.0f);
+		AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), FMath::Clamp(Value, -1.0f, 1.0f));
+	}
 }
 
 void ASimCopterOnFootPawn::LookYaw(float Value)
@@ -186,16 +245,39 @@ void ASimCopterOnFootPawn::Interact()
 	TryAutoEnterHelicopter();
 }
 
+void ASimCopterOnFootPawn::DropCarriedMissionPerson()
+{
+	if (!CarriedMissionPerson.IsValid())
+	{
+		return;
+	}
+
+	ASimCopterGroundAgent* Patient = ConsumeCarriedMissionPerson();
+	if (Patient == nullptr)
+	{
+		return;
+	}
+
+	// Set them down just in front of the avatar (not on the player's head), still an injured
+	// pickup so they can be collected again later.
+	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	const FVector DropLocation = GetActorLocation() + YawFrame.GetUnitAxis(EAxis::X) * 60.0f;
+	Patient->SetDroppedInjuredOnGround(DropLocation);
+
+	// Don't let the auto-pickup logic re-grab them on the very next frame.
+	MissionPickupCooldownSeconds = MissionDropRepickupCooldownSeconds;
+}
+
 bool ASimCopterOnFootPawn::PickUpMissionPerson(ASimCopterGroundAgent* MissionPerson)
 {
-	if (MissionPerson == nullptr || CarriedMissionPerson.IsValid() || CollisionComponent == nullptr)
+	if (MissionPerson == nullptr || CarriedMissionPerson.IsValid() || GetCapsuleComponent() == nullptr)
 	{
 		return false;
 	}
 
 	CarriedMissionPerson = MissionPerson;
 	CarriedMissionEventId = MissionPerson->MissionEventId;
-	MissionPerson->SetCarriedBy(CollisionComponent, FVector(48.0f, 0.0f, -7.0f), FRotator(0.0f, 90.0f, 88.0f));
+	MissionPerson->SetCarriedBy(GetCapsuleComponent(), FVector(48.0f, 0.0f, -7.0f), FRotator(0.0f, 90.0f, 88.0f));
 	return true;
 }
 
@@ -247,27 +329,14 @@ void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 	}
 }
 
-void ASimCopterOnFootPawn::UpdateMovement(float DeltaSeconds)
+void ASimCopterOnFootPawn::UpdateLookYaw(float DeltaSeconds)
 {
-	if (RootComponent == nullptr)
+	// Steer the avatar (and therefore the movement/camera frame) from the look input. Works the
+	// same on the ground and mid-jump, giving air control when combined with the movement input.
+	const float YawDeltaDeg = (LookYawInput + MouseLookYawInput) * LookYawSpeedDegPerSec * DeltaSeconds;
+	if (!FMath::IsNearlyZero(YawDeltaDeg))
 	{
-		return;
-	}
-
-	const FRotator ActorRotation = GetActorRotation();
-	const FRotationMatrix YawFrame(FRotator(0.0f, ActorRotation.Yaw, 0.0f));
-	const FVector DesiredVelocity =
-		YawFrame.GetUnitAxis(EAxis::X) * (MoveForwardInput * WalkSpeedCmPerSec) +
-		YawFrame.GetUnitAxis(EAxis::Y) * (MoveRightInput * WalkSpeedCmPerSec);
-
-	CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, DesiredVelocity, DeltaSeconds, AccelerationInterpSpeed);
-	const FRotator NewRotation(0.0f, ActorRotation.Yaw + (LookYawInput + MouseLookYawInput) * LookYawSpeedDegPerSec * DeltaSeconds, 0.0f);
-
-	FHitResult Hit;
-	RootComponent->MoveComponent(CurrentVelocityCmPerSec * DeltaSeconds, NewRotation.Quaternion(), true, &Hit);
-	if (Hit.IsValidBlockingHit())
-	{
-		CurrentVelocityCmPerSec = FVector::VectorPlaneProject(CurrentVelocityCmPerSec, Hit.Normal) * 0.4f;
+		AddActorWorldRotation(FRotator(0.0f, YawDeltaDeg, 0.0f));
 	}
 }
 
@@ -279,7 +348,7 @@ void ASimCopterOnFootPawn::UpdateCamera(float DeltaSeconds)
 	}
 
 	CameraPitchDeg = FMath::Clamp(
-		CameraPitchDeg + (LookPitchInput + MouseLookPitchInput) * LookPitchSpeedDegPerSec * DeltaSeconds,
+		CameraPitchDeg - (LookPitchInput + MouseLookPitchInput) * LookPitchSpeedDegPerSec * DeltaSeconds,
 		-62.0f,
 		14.0f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitchDeg, 0.0f, 0.0f));
@@ -292,7 +361,7 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 		return;
 	}
 
-	const float SpeedAlpha = FMath::Clamp(CurrentVelocityCmPerSec.Size() / FMath::Max(1.0f, WalkSpeedCmPerSec), 0.0f, 1.0f);
+	const float SpeedAlpha = FMath::Clamp(GetVelocity().Size2D() / FMath::Max(1.0f, WalkSpeedCmPerSec), 0.0f, 1.0f);
 
 	if (bUsingOriginalFigure)
 	{
@@ -478,7 +547,8 @@ bool ASimCopterOnFootPawn::RebuildPlayerFigureClip(const FString& Mnemonic)
 void ASimCopterOnFootPawn::SnapToGround()
 {
 	FVector GroundedLocation;
-	if (CollisionComponent != nullptr && ResolveGroundedLocation(GetActorLocation(), CollisionComponent->GetScaledCapsuleHalfHeight(), GroundedLocation))
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (Capsule != nullptr && ResolveGroundedLocation(GetActorLocation(), Capsule->GetScaledCapsuleHalfHeight(), GroundedLocation))
 	{
 		SetActorLocation(GroundedLocation, false);
 	}
@@ -487,7 +557,7 @@ void ASimCopterOnFootPawn::SnapToGround()
 void ASimCopterOnFootPawn::FindOrSpawnParkedHelicopter()
 {
 	ParkedHelicopter = FindNearestHelicopter(ParkedHelicopterSearchRadiusCm);
-	if (ParkedHelicopter != nullptr || GetWorld() == nullptr || HelicopterClass == nullptr || CollisionComponent == nullptr)
+	if (ParkedHelicopter != nullptr || GetWorld() == nullptr || HelicopterClass == nullptr || GetCapsuleComponent() == nullptr)
 	{
 		return;
 	}

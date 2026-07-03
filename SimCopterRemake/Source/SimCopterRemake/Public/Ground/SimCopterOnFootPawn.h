@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
 #include "Ground/SimCopterPopulationFigure.h"
 #include "SimCopterOnFootPawn.generated.h"
 
@@ -19,7 +19,7 @@ class UStaticMeshComponent;
 class UTexture2D;
 
 UCLASS()
-class SIMCOPTERREMAKE_API ASimCopterOnFootPawn : public APawn
+class SIMCOPTERREMAKE_API ASimCopterOnFootPawn : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -30,17 +30,19 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-	const FVector& GetCurrentVelocityCmPerSec() const { return CurrentVelocityCmPerSec; }
+	// Backed by the character movement velocity (used by nearby NPCs to gauge the player's speed).
+	FVector GetCurrentVelocityCmPerSec() const { return GetVelocity(); }
 	float GetWalkSpeedCmPerSec() const { return WalkSpeedCmPerSec; }
 	bool IsCarryingMissionPerson() const { return CarriedMissionPerson.IsValid(); }
 	int32 GetCarriedMissionEventId() const { return CarriedMissionEventId; }
 	bool PickUpMissionPerson(ASimCopterGroundAgent* MissionPerson);
 	ASimCopterGroundAgent* ConsumeCarriedMissionPerson();
 
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
-	TObjectPtr<UCapsuleComponent> CollisionComponent;
+	// False for a short window after the player manually drops a person, so the auto-pickup logic
+	// does not instantly re-grab someone they just set down on the ground.
+	bool CanPickUpMissionPersonNow() const { return MissionPickupCooldownSeconds <= 0.0f; }
 
+protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> BodyProxyComponent;
 
@@ -78,10 +80,31 @@ protected:
 	float WalkSpeedCmPerSec = 540.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
-	float AccelerationInterpSpeed = 12.0f;
+	float MaxAccelerationCmPerSec2 = 3000.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float GroundProbeDistanceCm = 25000.0f;
+
+	// Tallest vertical lip the avatar walks up automatically (curbs, road/sidewalk edges). Handled
+	// by the character movement component's step-up; taller obstacles still block.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float MaxStepHeightCm = 34.0f;
+
+	// Jump launch speed (spacebar). Tuned for the 0.25x-scale world so it clears curbs and low
+	// obstacles without launching the avatar over buildings.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float JumpZVelocityCmPerSec = 320.0f;
+
+	// Horizontal control authority while airborne (0 = none, 1 = full ground control).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float AirControl = 0.65f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float GravityScale = 1.0f;
+
+	// Seconds after a manual drop during which the dropped person is not auto-picked back up.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
+	float MissionDropRepickupCooldownSeconds = 1.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
 	float LookYawSpeedDegPerSec = 155.0f;
@@ -115,9 +138,6 @@ protected:
 	FString PlayerFigureName = TEXT("pilot");
 
 private:
-	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
-	float MoveForwardInput = 0.0f;
-	float MoveRightInput = 0.0f;
 	float LookYawInput = 0.0f;
 	float LookPitchInput = 0.0f;
 	float MouseLookYawInput = 0.0f;
@@ -128,6 +148,7 @@ private:
 	bool bUsingOriginalBodySprite = false;
 	TWeakObjectPtr<ASimCopterGroundAgent> CarriedMissionPerson;
 	int32 CarriedMissionEventId = INDEX_NONE;
+	float MissionPickupCooldownSeconds = 0.0f;
 
 	// Original pilot-figure state (mirrors the ground agent's figure path).
 	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
@@ -152,9 +173,10 @@ private:
 	void MouseLookYaw(float Value);
 	void MouseLookPitch(float Value);
 	void Interact();
+	void DropCarriedMissionPerson();
 	void TryAutoEnterHelicopter();
 
-	void UpdateMovement(float DeltaSeconds);
+	void UpdateLookYaw(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateBodySprite(float DeltaSeconds);
 	void LoadOriginalBodySprite();

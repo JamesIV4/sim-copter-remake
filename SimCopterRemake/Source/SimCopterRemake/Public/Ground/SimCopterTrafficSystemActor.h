@@ -91,6 +91,8 @@ public:
 		int32& OutFileY) const;
 	int32 GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const;
 	bool TryGetTerrainWorldZAtWorldLocation(const FVector& WorldLocation, float& OutTerrainWorldZ) const;
+	bool IsWaterTile(int32 FileX, int32 FileY) const;
+	bool TryFindNearestTransportLandTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY);
 	int32 GetPeopleStoredFacingFromWorldLocations(
 		const FVector& FromWorldLocation,
 		const FVector& ToWorldLocation) const;
@@ -413,6 +415,7 @@ private:
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
 	TArray<uint8> XbldTileIds;
 	TArray<uint8> PeopleTileClasses;
+	TArray<uint8> WaterTileFlags;
 	TArray<float> TileCenterWorldZ;
 	TArray<FSimCopterWholeMapRecord> WholeMapPedestrianRecords;
 	TArray<FSimCopterWholeMapRecord> WholeMapVehicleRecords;
@@ -434,7 +437,13 @@ public:
 	void EndTrafficJam(int32 EventId);
 	bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY);
 	bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId);
-	int32 PickUpMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm);
+	int32 PickUpMissionPeopleNear(
+		int32 EventId,
+		const FVector& WorldLocation,
+		int32 MaxCount,
+		float RadiusCm,
+		float MaxVerticalDeltaCm,
+		int32* OutNewPickupCreditCount = nullptr);
 	int32 GuideMissionPeopleToLocation(
 		int32 EventId,
 		const FVector& SearchLocation,
@@ -443,7 +452,13 @@ public:
 		float SearchRadiusCm,
 		float MaxVerticalDeltaCm,
 		float GuidanceSeconds);
-	int32 BoardMissionPeopleTouching(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float TouchRadiusCm, float MaxVerticalDeltaCm);
+	int32 BoardMissionPeopleTouching(
+		int32 EventId,
+		const FVector& WorldLocation,
+		int32 MaxCount,
+		float TouchRadiusCm,
+		float MaxVerticalDeltaCm,
+		int32* OutNewPickupCreditCount = nullptr);
 	ASimCopterGroundAgent* FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm);
 	int32 SpawnMissionPeopleAtWorldLocation(
 		int32 Count,
@@ -452,7 +467,23 @@ public:
 		int32 SpawnMode,
 		int32 PersonState,
 		float SpreadRadiusCm);
+	ASimCopterGroundAgent* SpawnFallingMissionPassengerAtWorldLocation(
+		const FVector& WorldLocation,
+		int32 EventId,
+		int32 SpawnMode,
+		int32 PersonState,
+		float FallInjuryDistanceCm);
 	int32 ReleaseMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm);
+
+	// Spawns a script-driven mission agent (e.g. the hospital EMT or a patient it carries) with its
+	// feet on FeetWorldLocation and an optional privanim figure. Not added to the ambient pool -
+	// the caller owns and drives it. Returns nullptr when it could not be created.
+	ASimCopterGroundAgent* SpawnScriptedMissionAgent(
+		const FVector& FeetWorldLocation,
+		int32 EventId,
+		const FString& FigureName,
+		bool bInjuredPose,
+		float MovementSpeedScale = 1.0f);
 
 	ASimCity2000CityActor* ResolveSourceCityActor() const;
 	FString ResolveCityPath() const;
@@ -472,6 +503,9 @@ public:
 	void UpdatePedestrianAvoidance();
 	bool IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const;
 	bool IsPedestrianSpawnLocationOpen(const FVector& SpawnLocation) const;
+	// A mission victim may stand here only if it is not buried inside a building mesh, unless the
+	// tile is a road (a car-accident victim can legitimately lie on the road surface).
+	bool IsMissionGroundSpawnValid(const FVector& SpawnLocation) const;
 	bool TryFindPedestrianEscapeTarget(const FVector& PedestrianLocation, const FVector& EscapeDirection, FVector& OutTarget) const;
 	bool TryGetPedestrianAwayFromRoadCenterDirection(const ASimCopterGroundAgent& Pedestrian, FVector& OutAwayDirection) const;
 	bool IsTrafficLightIntersectionNode(int32 NodeIndex) const;

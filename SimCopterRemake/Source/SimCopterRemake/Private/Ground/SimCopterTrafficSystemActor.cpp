@@ -742,6 +742,18 @@ bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId)
 {
 	if (GroundAgentClass == nullptr) return false;
+	const bool bTransportPassenger = SpawnMode == 4;
+	if (bTransportPassenger && IsWaterTile(TileX, TileY))
+	{
+		int32 LandX = TileX;
+		int32 LandY = TileY;
+		if (!TryFindNearestTransportLandTile(TileX, TileY, LandX, LandY))
+		{
+			return false;
+		}
+		TileX = LandX;
+		TileY = LandY;
+	}
 
 	int32 ExistingMissionPeople = 0;
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
@@ -758,47 +770,65 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 
 	const float GoldenAngleRadians = 2.39996323f;
 	FVector SpawnLocation = FVector::ZeroVector;
 	bool bFoundSpawnLocation = false;
-	FVector FallbackLocation = FVector::ZeroVector;
-	bool bHasFallbackLocation = false;
 
-	for (int32 Attempt = 0; Attempt < 24 && !bFoundSpawnLocation; ++Attempt)
+	// The mission tile is usually the building itself (an injured person at an apartment/office), so
+	// searching only that tile buries victims inside the mesh. Search outward from the tile - across
+	// the building's whole footprint and a margin - and accept the first point that is not inside a
+	// building (or that is on a road). This lands victims on the building edge, the adjacent
+	// sidewalk or the street, never inside a wall.
+	const int32 FootprintSize = FMath::Clamp(GetBuildingFootprintSize(TileX, TileY), 1, 4);
+	const int32 MaxRing = FootprintSize + 2;
+	for (int32 Ring = 0; Ring <= MaxRing && !bFoundSpawnLocation; ++Ring)
 	{
-		const int32 CandidateIndex = ExistingMissionPeople + Attempt;
-		const int32 TileRing = Attempt / 8;
-		const int32 OffsetTileX = TileX + ((TileRing == 0) ? 0 : ((Attempt % 3) - 1));
-		const int32 OffsetTileY = TileY + ((TileRing == 0) ? 0 : (((Attempt / 3) % 3) - 1));
-
-		FVector TileCenter = FVector::ZeroVector;
-		if (!TryGetTileCenterWorldLocation(OffsetTileX, OffsetTileY, TileCenter))
+		for (int32 OffsetY = -Ring; OffsetY <= Ring && !bFoundSpawnLocation; ++OffsetY)
 		{
-			continue;
-		}
+			for (int32 OffsetX = -Ring; OffsetX <= Ring && !bFoundSpawnLocation; ++OffsetX)
+			{
+				// Only the new outer shell of each ring.
+				if (Ring > 0 && FMath::Abs(OffsetX) != Ring && FMath::Abs(OffsetY) != Ring)
+				{
+					continue;
+				}
 
-		const float Angle = float(CandidateIndex) * GoldenAngleRadians;
-		const float Radius = FMath::Min(ActiveTileSize * 0.42f, ActiveTileSize * (0.16f + 0.055f * float(CandidateIndex / 8)));
-		FVector CandidateLocation = TileCenter + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
-		CandidateLocation.Z += 92.0f;
+				FVector TileCenter = FVector::ZeroVector;
+				if (!TryGetTileCenterWorldLocation(TileX + OffsetX, TileY + OffsetY, TileCenter))
+				{
+					continue;
+				}
+				if (SpawnMode == 4 && IsWaterTile(TileX + OffsetX, TileY + OffsetY))
+				{
+					continue;
+				}
+				if (bTransportPassenger && IsPedestrianRoadTile(uint8(GetXbldTileId(TileX + OffsetX, TileY + OffsetY))))
+				{
+					continue;
+				}
 
-		if (!bHasFallbackLocation)
-		{
-			FallbackLocation = CandidateLocation;
-			bHasFallbackLocation = true;
-		}
-
-		if (IsPedestrianSpawnLocationOpen(CandidateLocation))
-		{
-			SpawnLocation = CandidateLocation;
-			bFoundSpawnLocation = true;
+				const int32 SampleCount = (Ring == 0) ? 6 : 3;
+				for (int32 Sample = 0; Sample < SampleCount; ++Sample)
+				{
+					const int32 CandidateIndex = ExistingMissionPeople + Ring * 4 + Sample;
+					const float Angle = bTransportPassenger ? RandomStream.FRandRange(0.0f, 2.0f * PI) : float(CandidateIndex) * GoldenAngleRadians;
+					const float Radius = bTransportPassenger
+						? ActiveTileSize * RandomStream.FRandRange(0.08f, 0.34f)
+						: ActiveTileSize * (Ring == 0 ? (0.12f + 0.05f * float(Sample)) : 0.18f);
+					FVector CandidateLocation = TileCenter + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
+					CandidateLocation.Z += 92.0f;
+					if (IsMissionGroundSpawnValid(CandidateLocation))
+					{
+						SpawnLocation = CandidateLocation;
+						bFoundSpawnLocation = true;
+						break;
+					}
+				}
+			}
 		}
 	}
 
 	if (!bFoundSpawnLocation)
 	{
-		if (!bHasFallbackLocation)
-		{
-			return false;
-		}
-		SpawnLocation = FallbackLocation;
+		// Nowhere open near the mission tile: skip rather than spawn a victim inside a building.
+		return false;
 	}
 
 	FActorSpawnParameters SpawnParams;
@@ -812,10 +842,15 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 
 		return false;
 	}
 
-	Person->InitialPersonState = SpawnMode;
+	Person->InitialPersonState = bTransportPassenger ? 0 : SpawnMode;
 	if (PersonState != -1)
 	{
 		Person->SetInitialBehaviorClass(PersonState);
+	}
+	else if (bTransportPassenger)
+	{
+		const int32 TileClass = GetPeopleTileClassAtWorldLocation(SpawnLocation);
+		Person->SetInitialBehaviorClass(FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(TileClass, PeopleRandomState));
 	}
 
 	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
@@ -842,8 +877,18 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 
 	return true;
 }
 
-int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm)
+int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
+	int32 EventId,
+	const FVector& WorldLocation,
+	int32 MaxCount,
+	float RadiusCm,
+	float MaxVerticalDeltaCm,
+	int32* OutNewPickupCreditCount)
 {
+	if (OutNewPickupCreditCount != nullptr)
+	{
+		*OutNewPickupCreditCount = 0;
+	}
 	if (MaxCount <= 0)
 	{
 		return 0;
@@ -889,6 +934,7 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(int32 EventId, const
 	});
 
 	int32 PickedUp = 0;
+	int32 NewPickupCreditCount = 0;
 	for (const FMissionPickupCandidate& Candidate : Candidates)
 	{
 		if (PickedUp >= MaxCount)
@@ -898,6 +944,11 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(int32 EventId, const
 
 		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
 		{
+			if (!Agent->HasMissionPickupCreditAwarded())
+			{
+				Agent->SetMissionPickupCreditAwarded(true);
+				NewPickupCreditCount++;
+			}
 			Agent->MissionEventId = INDEX_NONE;
 			Agent->Destroy();
 			PickedUp++;
@@ -913,6 +964,10 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(int32 EventId, const
 		});
 	}
 
+	if (OutNewPickupCreditCount != nullptr)
+	{
+		*OutNewPickupCreditCount = NewPickupCreditCount;
+	}
 	return PickedUp;
 }
 
@@ -987,14 +1042,24 @@ int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
 	return Guided;
 }
 
-int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float TouchRadiusCm, float MaxVerticalDeltaCm)
+int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(
+	int32 EventId,
+	const FVector& WorldLocation,
+	int32 MaxCount,
+	float TouchRadiusCm,
+	float MaxVerticalDeltaCm,
+	int32* OutNewPickupCreditCount)
 {
 	if (MaxCount <= 0)
 	{
+		if (OutNewPickupCreditCount != nullptr)
+		{
+			*OutNewPickupCreditCount = 0;
+		}
 		return 0;
 	}
 
-	return PickUpMissionPeopleNear(EventId, WorldLocation, MaxCount, TouchRadiusCm, MaxVerticalDeltaCm);
+	return PickUpMissionPeopleNear(EventId, WorldLocation, MaxCount, TouchRadiusCm, MaxVerticalDeltaCm, OutNewPickupCreditCount);
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm)
@@ -1044,8 +1109,9 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
 	const float GoldenAngleRadians = 2.39996323f;
 	for (int32 Index = 0; Index < Count; ++Index)
 	{
-		FVector SpawnLocation = WorldLocation;
-		bool bFoundSpawnLocation = false;
+		// Deliberate drop point (beside a landed helicopter / at a hospital); fall back to it if no
+		// scattered candidate validates, but prefer a candidate that isn't buried in a mesh.
+		FVector SpawnLocation = WorldLocation + FVector(0.0f, 0.0f, 92.0f);
 		for (int32 Attempt = 0; Attempt < 16; ++Attempt)
 		{
 			const int32 CandidateIndex = Spawned + Attempt;
@@ -1053,17 +1119,11 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
 			const float Radius = FMath::Min(ClampedSpread, 35.0f + 28.0f * float(CandidateIndex));
 			FVector CandidateLocation = WorldLocation + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
 			CandidateLocation.Z += 92.0f;
-			if (Attempt == 0 || IsPedestrianSpawnLocationOpen(CandidateLocation))
+			if (IsMissionGroundSpawnValid(CandidateLocation))
 			{
 				SpawnLocation = CandidateLocation;
-				bFoundSpawnLocation = true;
 				break;
 			}
-		}
-
-		if (!bFoundSpawnLocation)
-		{
-			continue;
 		}
 
 		FActorSpawnParameters SpawnParams;
@@ -1108,6 +1168,116 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
 	}
 
 	return Spawned;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnFallingMissionPassengerAtWorldLocation(
+	const FVector& WorldLocation,
+	int32 EventId,
+	int32 SpawnMode,
+	int32 PersonState,
+	float FallInjuryDistanceCm)
+{
+	if (GroundAgentClass == nullptr || GetWorld() == nullptr)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	const float SpawnYaw = RandomStream.FRandRange(0.0f, 360.0f);
+	ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+		GroundAgentClass,
+		WorldLocation,
+		FRotator(0.0f, SpawnYaw, 0.0f),
+		SpawnParams);
+	if (Person == nullptr)
+	{
+		return nullptr;
+	}
+
+	Person->InitialPersonState = SpawnMode;
+	if (PersonState != -1)
+	{
+		Person->SetInitialBehaviorClass(PersonState);
+	}
+
+	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
+	Person->MissionEventId = EventId;
+	Person->ConfigureAgent(
+		ESimCopterGroundAgentKind::Pedestrian,
+		MeshName,
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+		PedestrianSpeedCmPerSec);
+
+	if (bRequireOriginalPopulationMeshes && !Person->IsUsingOriginalMesh())
+	{
+		UE_LOG(LogSimCopterTrafficSystem, Warning, TEXT("Discarding falling passenger because original mesh '%s' could not be loaded."), *MeshName);
+		Person->Destroy();
+		return nullptr;
+	}
+
+	if (SpawnMode == 6)
+	{
+		Person->SetMissionInjuredPose();
+	}
+	Person->BeginPassengerFall(EventId, FallInjuryDistanceCm);
+	PedestrianAgents.Add(Person);
+	return Person;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnScriptedMissionAgent(
+	const FVector& FeetWorldLocation,
+	int32 EventId,
+	const FString& FigureName,
+	bool bInjuredPose,
+	float MovementSpeedScale)
+{
+	if (GroundAgentClass == nullptr || GetWorld() == nullptr)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+		GroundAgentClass, FeetWorldLocation, FRotator::ZeroRotator, SpawnParams);
+	if (Person == nullptr)
+	{
+		return nullptr;
+	}
+
+	Person->MissionEventId = EventId;
+	Person->InitialPersonState = bInjuredPose ? 6 : 0;
+	if (!FigureName.IsEmpty())
+	{
+		Person->SetPedestrianFigureName(FigureName);
+	}
+
+	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
+	Person->ConfigureAgent(
+		ESimCopterGroundAgentKind::Pedestrian,
+		MeshName,
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+		PedestrianSpeedCmPerSec * FMath::Max(0.1f, MovementSpeedScale));
+
+	if (bRequireOriginalPopulationMeshes && !Person->IsUsingOriginalMesh())
+	{
+		Person->Destroy();
+		return nullptr;
+	}
+
+	Person->SetMissionScriptedMover();
+	// Stand the feet on the requested plane (scripted movers don't ground-snap).
+	Person->SetActorLocation(FeetWorldLocation + FVector(0.0f, 0.0f, Person->GetCapsuleHalfHeightCm()), false);
+	if (bInjuredPose)
+	{
+		Person->SetMissionInjuredPose();
+	}
+	return Person;
 }
 
 int32 ASimCopterTrafficSystemActor::ReleaseMissionPeopleNear(int32 EventId, const FVector& WorldLocation, int32 MaxCount, float RadiusCm, float MaxVerticalDeltaCm)
@@ -1206,6 +1376,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodeIndexByTile.Reset();
 	XbldTileIds.Reset();
 	PeopleTileClasses.Reset();
+	WaterTileFlags.Reset();
 	VehicleAgents.Reset();
 	PedestrianAgents.Reset();
 	VehicleTrafficStates.Reset();
@@ -1255,6 +1426,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 
 	XbldTileIds.SetNum(FSimCity2000City::TileCount);
 	PeopleTileClasses.SetNum(FSimCity2000City::TileCount);
+	WaterTileFlags.SetNum(FSimCity2000City::TileCount);
 	TileCenterWorldZ.SetNum(FSimCity2000City::TileCount);
 
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
@@ -1266,6 +1438,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			const int32 PeopleTileClass = FSimCopterPeopleCityRules::GetTileClassForBuildingId(Tile.Building);
 			XbldTileIds[TileIndex] = Tile.Building;
 			PeopleTileClasses[TileIndex] = uint8(PeopleTileClass);
+			WaterTileFlags[TileIndex] = Tile.bWater ? 1 : 0;
 			const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
 			const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
 			const float LocalZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
@@ -1643,6 +1816,80 @@ bool ASimCopterTrafficSystemActor::TryGetTerrainWorldZAtWorldLocation(
 
 	OutTerrainWorldZ = TileCenterWorldZ[FileY * FSimCity2000City::MapSize + FileX];
 	return true;
+}
+
+bool ASimCopterTrafficSystemActor::IsWaterTile(int32 FileX, int32 FileY) const
+{
+	if (WaterTileFlags.Num() != FSimCity2000City::TileCount ||
+		FileX < 0 || FileX >= FSimCity2000City::MapSize ||
+		FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return false;
+	}
+
+	return WaterTileFlags[FileY * FSimCity2000City::MapSize + FileX] != 0;
+}
+
+bool ASimCopterTrafficSystemActor::TryFindNearestTransportLandTile(
+	int32 OriginX,
+	int32 OriginY,
+	int32& OutX,
+	int32& OutY)
+{
+	auto IsUsableTransportLandTile = [this](int32 FileX, int32 FileY, bool bRequireEmptyTile) -> bool
+	{
+		if (FileX < 0 || FileX >= FSimCity2000City::MapSize ||
+			FileY < 0 || FileY >= FSimCity2000City::MapSize ||
+			IsWaterTile(FileX, FileY))
+		{
+			return false;
+		}
+
+		const uint8 BuildingId = uint8(GetXbldTileId(FileX, FileY));
+		if (IsPedestrianRoadTile(BuildingId))
+		{
+			return false;
+		}
+		return !bRequireEmptyTile || BuildingId == 0;
+	};
+
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		const bool bRequireEmptyTile = Pass == 0;
+		for (int32 Ring = 0; Ring < FSimCity2000City::MapSize; ++Ring)
+		{
+			TArray<FIntPoint, TInlineAllocator<16>> Candidates;
+			for (int32 OffsetY = -Ring; OffsetY <= Ring; ++OffsetY)
+			{
+				for (int32 OffsetX = -Ring; OffsetX <= Ring; ++OffsetX)
+				{
+					if (Ring > 0 && FMath::Abs(OffsetX) != Ring && FMath::Abs(OffsetY) != Ring)
+					{
+						continue;
+					}
+
+					const int32 FileX = OriginX + OffsetX;
+					const int32 FileY = OriginY + OffsetY;
+					if (IsUsableTransportLandTile(FileX, FileY, bRequireEmptyTile))
+					{
+						Candidates.Add(FIntPoint(FileX, FileY));
+					}
+				}
+			}
+
+			if (Candidates.Num() > 0)
+			{
+				const FIntPoint Pick = Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
+				OutX = Pick.X;
+				OutY = Pick.Y;
+				return true;
+			}
+		}
+	}
+
+	OutX = OriginX;
+	OutY = OriginY;
+	return false;
 }
 
 int32 ASimCopterTrafficSystemActor::GetPeopleStoredFacingFromWorldLocations(
@@ -2632,6 +2879,25 @@ bool ASimCopterTrafficSystemActor::IsPedestrianSpawnLocationOpen(const FVector& 
 	}
 
 	return true;
+}
+
+bool ASimCopterTrafficSystemActor::IsMissionGroundSpawnValid(const FVector& SpawnLocation) const
+{
+	if (IsPedestrianSpawnLocationOpen(SpawnLocation))
+	{
+		return true;
+	}
+
+	// Road exception: injured people from car accidents may lie on the road surface even where the
+	// open-space probe would reject the point.
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	if (TryGetPeopleTileCoordinateAtWorldLocation(SpawnLocation, FileX, FileY))
+	{
+		return IsPedestrianRoadTile(uint8(GetXbldTileId(FileX, FileY)));
+	}
+
+	return false;
 }
 
 bool ASimCopterTrafficSystemActor::IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const

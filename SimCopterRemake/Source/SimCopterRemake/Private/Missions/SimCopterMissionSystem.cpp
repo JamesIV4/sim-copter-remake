@@ -578,6 +578,47 @@ const TCHAR* FSimCopterMissionSystem::GetTypeDisplayName(int32 TypeMask)
 	return TEXT("Mission");
 }
 
+bool FSimCopterMissionSystem::FindNearestHospitalTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const
+{
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	// HO209 = XBLD building id 209 = 0xD1 (a 3x3 hospital). Injured people are delivered here.
+	constexpr int32 HospitalXbldId = 0xD1;
+	int32 BestX = -1;
+	int32 BestY = -1;
+	int32 BestDistSq = TNumericLimits<int32>::Max();
+	for (int32 Y = 0; Y < 128; ++Y)
+	{
+		for (int32 X = 0; X < 128; ++X)
+		{
+			if (World->GetXbldTileId(X, Y) != HospitalXbldId)
+			{
+				continue;
+			}
+			const int32 Dx = X - OriginX;
+			const int32 Dy = Y - OriginY;
+			const int32 DistSq = Dx * Dx + Dy * Dy;
+			if (DistSq < BestDistSq)
+			{
+				BestDistSq = DistSq;
+				BestX = X;
+				BestY = Y;
+			}
+		}
+	}
+
+	if (BestX < 0)
+	{
+		return false;
+	}
+	OutX = BestX;
+	OutY = BestY;
+	return true;
+}
+
 bool FSimCopterMissionSystem::FindDefaultDestinationTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const
 {
 	auto IsInBounds = [](int32 X, int32 Y) -> bool
@@ -676,6 +717,14 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 	}
 	else if (TypeMask == TYPE_Transport)
 	{
+		if (World && !World->TryResolveTransportSpawnTile(TX, TY, Rec.TileX, Rec.TileY))
+		{
+			ReleaseFailedRecord(RecIndex);
+			return -1;
+		}
+		TX = Rec.TileX;
+		TY = Rec.TileY;
+
 		bool bSpawned = false;
 		for (int32 i = 0; i < 10; ++i)
 		{
@@ -713,7 +762,12 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.Name = FString::Printf(TEXT("MedEvac #%d"), TypeSerials[2]);
 		TypeSerials[2]++;
-		FindDefaultDestinationTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY);
+		// Deliver injured people to the nearest hospital; fall back to a generic mission building
+		// if the city has no hospital.
+		if (!FindNearestHospitalTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY))
+		{
+			FindDefaultDestinationTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY);
+		}
 	}
 	else if (TypeMask == TYPE_TrainCrash)
 	{
@@ -895,6 +949,47 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 
 	AnnounceCreated(Rec);
 	return Rec.EventId;
+}
+
+int32 FSimCopterMissionSystem::CreatePlayerCausedMedevacAt(int32 TileX, int32 TileY)
+{
+	const int32 RecIndex = AllocateRecord();
+	if (RecIndex == INDEX_NONE)
+	{
+		return -1;
+	}
+
+	FSimCopterMissionRecord& Rec = Records[RecIndex];
+	Rec.bActive = true;
+	Rec.TileX = TileX;
+	Rec.TileY = TileY;
+	Rec.TypeMask = TYPE_Medevac;
+	Rec.EventId = NextEventId++;
+	Rec.Category = CAT_Active;
+	Rec.MedevacVictims = 1;
+	Rec.bSuppressCompletionRewards = true;
+	Rec.Name = FString::Printf(TEXT("MedEvac #%d"), TypeSerials[2]);
+	TypeSerials[2]++;
+
+	if (!FindNearestHospitalTile(TileX, TileY, Rec.SecondaryX, Rec.SecondaryY))
+	{
+		FindDefaultDestinationTile(TileX, TileY, Rec.SecondaryX, Rec.SecondaryY);
+	}
+
+	AnnounceCreated(Rec);
+	return Rec.EventId;
+}
+
+void FSimCopterMissionSystem::AdjustVictimsPickedUp(int32 EventId, int32 Delta)
+{
+	for (FSimCopterMissionRecord& Rec : Records)
+	{
+		if (Rec.bActive && Rec.EventId == EventId)
+		{
+			Rec.VictimsPickedUp = FMath::Max(0, Rec.VictimsPickedUp + Delta);
+			return;
+		}
+	}
 }
 
 
@@ -1220,6 +1315,9 @@ void FSimCopterMissionSystem::PostEvent(const FSimCopterMissionEvent& Event)
 	case EVT_CarBurned:
 		Rec.CarsBurned += Event.Value;
 		break;
+	case EVT_PassengerLost:
+		Rec.PassengersLost += Event.Value;
+		break;
 	case EVT_SetCategory:
 		if (Rec.Category == CAT_Background && Event.Value != CAT_Background)
 		{
@@ -1236,9 +1334,6 @@ void FSimCopterMissionSystem::PostEvent(const FSimCopterMissionEvent& Event)
 	case EVT_SetTertiaryCoords:
 		Rec.TertiaryX = Event.X;
 		Rec.TertiaryY = Event.Y;
-		break;
-	case EVT_PassengerLost:
-		Rec.PassengersLost += Event.Value;
 		break;
 	case EVT_DebrisCleared:
 		Rec.DebrisCleared += Event.Value;
@@ -1279,6 +1374,7 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 
 	if (Event.bSilent) return;
 	if (RecordIndex != INDEX_NONE && Records[RecordIndex].Category == CAT_Background) return;
+	if (RecordIndex != INDEX_NONE && Records[RecordIndex].bSuppressCompletionRewards) return;
 
 	switch(Event.Code)
 	{
@@ -1470,6 +1566,12 @@ void FSimCopterMissionSystem::CompleteMission(FSimCopterMissionRecord& Rec)
 		VoiceId = 99;
 	}
 
+	if (Rec.bSuppressCompletionRewards)
+	{
+		EarnedPoints = 0;
+		EarnedCash = 0;
+	}
+
 	if (EarnedPoints < 1) VoiceId = 0x60;
 	else if (World && VoiceId != -1) World->PlayRadioVoice(VoiceId, 0x96);
 
@@ -1521,6 +1623,29 @@ const FSimCopterMissionRecord* FSimCopterMissionSystem::FindRecord(int32 EventId
 {
 	int32 Idx = FindRecordIndex(EventId);
 	return (Idx != INDEX_NONE) ? &Records[Idx] : nullptr;
+}
+
+bool FSimCopterMissionSystem::ClearTrafficJam(int32 EventId)
+{
+	const int32 Idx = FindRecordIndex(EventId);
+	if (Idx == INDEX_NONE)
+	{
+		return false;
+	}
+
+	FSimCopterMissionRecord& Rec = Records[Idx];
+	if (!Rec.bActive || (Rec.TypeMask & TYPE_TrafficJam) == 0)
+	{
+		return false;
+	}
+
+	if (World)
+	{
+		World->EndTrafficJam(EventId); // the jammed cars resume driving
+	}
+	CompleteMission(Rec);              // award Jam End money/points + announce + radio voice
+	DeactivateRecord(Idx);
+	return true;
 }
 
 void FSimCopterMissionSystem::DeactivateRecord(int32 RecordIndex)

@@ -93,13 +93,34 @@ public:
 	bool IsAvoidanceMoveActive() const { return AvoidanceMoveTimeRemainingSeconds > 0.0f; }
 	bool IsAvoidancePathOffsetActive() const { return AvoidancePathOffsetTimeRemainingSeconds > 0.0f; }
 	bool IsGuidanceMoveTargetActive() const { return GuidanceMoveTargetTimeRemainingSeconds > 0.0f; }
+	bool HasMissionPickupCreditAwarded() const { return bMissionPickupCreditAwarded; }
+	void SetMissionPickupCreditAwarded(bool bAwarded) { bMissionPickupCreditAwarded = bAwarded; }
 
 	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
 	void ClearForcedPedestrianFigureClip();
 	void SetMissionInjuredPose();
 	void ClearMissionPose();
+	void ResumeNormalPedestrianBehavior();
 	void SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation);
 	bool IsMissionCarried() const { return bMissionCarried; }
+
+	// Detach from a carrier and set the agent back down as an injured pickup at the given world
+	// location (used when the player presses drop, or a carrier releases them on the ground).
+	void SetDroppedInjuredOnGround(const FVector& WorldLocation);
+
+	// Starts a visible passenger fall from the current airborne position. When the landing impact
+	// is too large, the agent becomes an injured medevac victim owned by a new no-reward mission.
+	void BeginPassengerFall(int32 SourceEventId, float InjuryDistanceCm);
+
+	// Turns the agent into a script-driven mover: no behavior VM, no ground snapping (its owner
+	// keeps it on a chosen plane), driven purely by SetMoveTarget. Used for the hospital EMT.
+	void SetMissionScriptedMover();
+
+	// Choose the privanim figure this agent renders (e.g. "Medik"). Only takes effect before the
+	// figure is built (i.e. before ConfigureAgent).
+	void SetPedestrianFigureName(const FString& NewFigureName) { PedestrianFigureName = NewFigureName; }
+
+	float GetCapsuleHalfHeightCm() const;
 
 	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
 	// graph node the agent is currently driving toward; PrevNode is where it came from (used to
@@ -257,6 +278,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement")
 	bool bSnapToGround = true;
 
+	// Pedestrians are affected by gravity: instead of teleporting to the surface each tick they
+	// fall onto it (when spawned in the air or when they walk off a ledge). This is the downward
+	// acceleration used for that fall (vehicles keep instant placement).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float GravityCmPerSec2 = 980.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Animation")
 	bool bEnableJankyAnimation = true;
 
@@ -291,6 +318,7 @@ private:
 	FVector MoveTargetLocation = FVector::ZeroVector;
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
 	FVector ExternalVelocityCmPerSec = FVector::ZeroVector;
+	float VerticalVelocityCmPerSec = 0.0f;
 	FVector AvoidanceMoveTargetLocation = FVector::ZeroVector;
 	FVector AvoidancePathOffset = FVector::ZeroVector;
 	FVector GuidanceMoveTargetLocation = FVector::ZeroVector;
@@ -327,6 +355,12 @@ private:
 	FString ForcedFigureMnemonic;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
+	bool bMissionPickupCreditAwarded = false;
+	bool bPassengerFallActive = false;
+	bool bPassengerFallStarted = false;
+	float PassengerFallStartZ = 0.0f;
+	float PassengerFallInjuryDistanceCm = 900.0f;
+	int32 PassengerFallSourceEventId = INDEX_NONE;
 
 	bool RebuildFigureClip(const FString& Mnemonic);
 	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);
@@ -366,11 +400,12 @@ private:
 
 	void ApplyAgentShape();
 	void UpdateMovement(float DeltaSeconds);
-	void UpdateGroundSnap();
+	void UpdateGroundSnap(float DeltaSeconds);
 	void UpdateJankyAnimation(float DeltaSeconds);
 	void ShowOriginalMesh(bool bUseOriginalMesh);
 	void ConfigureVehicleHeadlights(const FBox& VehicleLocalBounds);
 	void DisableVehicleHeadlights();
 	bool TraceGround(FVector& OutGroundLocation) const;
+	void FinishPassengerFall(float FallDistanceCm);
 	FString ResolveOriginalGameRoot() const;
 };
