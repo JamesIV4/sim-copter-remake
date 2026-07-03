@@ -30,7 +30,6 @@
 #include "Input/Reply.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Kismet/GameplayStatics.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
@@ -176,14 +175,6 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	SearchLightComponent->OuterConeAngle = 20.0f;
 	SearchLightComponent->SetLightColor(SearchLightBeamColor.ToFColor(true));
 	SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
-
-	SearchLightBeamComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("SearchLightBeam"));
-	SearchLightBeamComponent->SetupAttachment(SearchLightComponent);
-	SearchLightBeamComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	SearchLightBeamComponent->SetCanEverAffectNavigation(false);
-	SearchLightBeamComponent->SetCastShadow(false);
-	SearchLightBeamComponent->SetVisibility(bSearchLightStartsEnabled);
-	SearchLightBeamComponent->TranslucencySortPriority = 20;
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CollisionComponent);
@@ -1251,16 +1242,13 @@ void ASimCopterHelicopterPawn::ToggleSearchLight()
 
 void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
 {
-	if (SearchLightComponent == nullptr || SearchLightBeamComponent == nullptr)
+	if (SearchLightComponent == nullptr)
 	{
 		return;
 	}
 
 	const float BeamLength = FMath::Max(100.0f, SearchLightBeamLengthCm);
 	const float BeamWidth = FMath::Max(20.0f, SearchLightBeamWidthCm);
-	const float BeamSourceWidth = FMath::Max(1.0f, SearchLightBeamSourceWidthCm);
-	const float BeamVerticalScale = FMath::Max(0.1f, SearchLightBeamVerticalScale);
-	const float BeamAlpha = FMath::Clamp(SearchLightBeamAlpha, 0.0f, 1.0f);
 	const float OuterConeAngleDeg = FMath::Clamp(
 		FMath::RadiansToDegrees(FMath::Atan2(BeamWidth * 0.5f, BeamLength)),
 		2.0f,
@@ -1271,163 +1259,6 @@ void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
 	SearchLightComponent->OuterConeAngle = OuterConeAngleDeg;
 	SearchLightComponent->InnerConeAngle = FMath::Clamp(OuterConeAngleDeg * 0.45f, 1.0f, OuterConeAngleDeg);
 	SearchLightComponent->SetLightColor(SearchLightBeamColor.ToFColor(true));
-
-	const bool bVisible = SearchLightComponent->IsVisible();
-	SearchLightBeamComponent->SetVisibility(bVisible);
-
-	const bool bNeedsMeshRebuild =
-		!FMath::IsNearlyEqual(CachedSearchLightBeamLengthCm, BeamLength) ||
-		!FMath::IsNearlyEqual(CachedSearchLightBeamWidthCm, BeamWidth) ||
-		!FMath::IsNearlyEqual(CachedSearchLightBeamSourceWidthCm, BeamSourceWidth) ||
-		!FMath::IsNearlyEqual(CachedSearchLightBeamVerticalScale, BeamVerticalScale) ||
-		!FMath::IsNearlyEqual(CachedSearchLightBeamAlpha, BeamAlpha) ||
-		!CachedSearchLightBeamColor.Equals(SearchLightBeamColor, KINDA_SMALL_NUMBER);
-	if (bNeedsMeshRebuild)
-	{
-		RebuildSearchLightBeamMesh();
-	}
-
-	if (SearchLightBeamMaterialInstance == nullptr && RotorDiscMaterial != nullptr)
-	{
-		SearchLightBeamMaterialInstance = UMaterialInstanceDynamic::Create(RotorDiscMaterial, this);
-		SearchLightBeamComponent->SetMaterial(0, SearchLightBeamMaterialInstance);
-	}
-	else if (SearchLightBeamMaterialInstance == nullptr && ModelVertexColorMaterial != nullptr)
-	{
-		SearchLightBeamComponent->SetMaterial(0, ModelVertexColorMaterial);
-	}
-
-	if (SearchLightBeamMaterialInstance != nullptr)
-	{
-		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("Color"), SearchLightBeamColor);
-		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("TintColor"), SearchLightBeamColor);
-		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("BaseColor"), SearchLightBeamColor);
-		SearchLightBeamMaterialInstance->SetVectorParameterValue(TEXT("EmissiveColor"), SearchLightBeamColor * 8.0f);
-		SearchLightBeamMaterialInstance->SetScalarParameterValue(TEXT("Opacity"), BeamAlpha);
-		SearchLightBeamMaterialInstance->SetScalarParameterValue(TEXT("Alpha"), BeamAlpha);
-	}
-}
-
-void ASimCopterHelicopterPawn::RebuildSearchLightBeamMesh()
-{
-	if (SearchLightBeamComponent == nullptr)
-	{
-		return;
-	}
-
-	const float BeamLength = FMath::Max(100.0f, SearchLightBeamLengthCm);
-	const float BeamWidth = FMath::Max(20.0f, SearchLightBeamWidthCm);
-	const float BeamSourceWidth = FMath::Max(1.0f, SearchLightBeamSourceWidthCm);
-	const float BeamVerticalScale = FMath::Max(0.1f, SearchLightBeamVerticalScale);
-	const float BeamAlpha = FMath::Clamp(SearchLightBeamAlpha, 0.0f, 1.0f);
-	const FLinearColor BeamColor(
-		SearchLightBeamColor.R,
-		SearchLightBeamColor.G,
-		SearchLightBeamColor.B,
-		BeamAlpha);
-
-	constexpr int32 RingCount = 12;
-	constexpr int32 SegmentCount = 28;
-	TArray<FVector> Vertices;
-	TArray<int32> Triangles;
-	TArray<FVector> Normals;
-	TArray<FVector2D> UVs;
-	TArray<FLinearColor> VertexColors;
-	TArray<FProcMeshTangent> Tangents;
-	Vertices.Reserve(RingCount * SegmentCount + 2);
-	Triangles.Reserve((RingCount - 1) * SegmentCount * 6 + SegmentCount * 6);
-	Normals.Reserve(RingCount * SegmentCount + 2);
-	UVs.Reserve(RingCount * SegmentCount + 2);
-	VertexColors.Reserve(RingCount * SegmentCount + 2);
-	Tangents.Reserve(RingCount * SegmentCount + 2);
-
-	for (int32 RingIndex = 0; RingIndex < RingCount; ++RingIndex)
-	{
-		const float T = static_cast<float>(RingIndex) / static_cast<float>(RingCount - 1);
-		const float RoundedGrowth = FMath::Sin(T * HALF_PI);
-		const float RadiusY = FMath::Lerp(BeamSourceWidth * 0.5f, BeamWidth * 0.5f, RoundedGrowth);
-		const float RadiusZ = RadiusY * BeamVerticalScale;
-		const float X = T * BeamLength;
-		const float RingAlpha = BeamAlpha * FMath::Lerp(1.0f, 0.46f, FMath::Pow(T, 1.35f));
-
-		for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
-		{
-			const float AngleRad = 2.0f * PI * static_cast<float>(SegmentIndex) / static_cast<float>(SegmentCount);
-			const float CosAngle = FMath::Cos(AngleRad);
-			const float SinAngle = FMath::Sin(AngleRad);
-			Vertices.Add(FVector(X, CosAngle * RadiusY, SinAngle * RadiusZ));
-			Normals.Add(FVector(0.0f, CosAngle, SinAngle).GetSafeNormal());
-			UVs.Add(FVector2D(static_cast<float>(SegmentIndex) / static_cast<float>(SegmentCount), T));
-			VertexColors.Add(FLinearColor(BeamColor.R, BeamColor.G, BeamColor.B, RingAlpha));
-			Tangents.Add(FProcMeshTangent(0.0f, -SinAngle, CosAngle));
-		}
-	}
-
-	for (int32 RingIndex = 0; RingIndex < RingCount - 1; ++RingIndex)
-	{
-		const int32 CurrentRingStart = RingIndex * SegmentCount;
-		const int32 NextRingStart = (RingIndex + 1) * SegmentCount;
-		for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
-		{
-			const int32 NextSegmentIndex = (SegmentIndex + 1) % SegmentCount;
-			const int32 A = CurrentRingStart + SegmentIndex;
-			const int32 B = CurrentRingStart + NextSegmentIndex;
-			const int32 C = NextRingStart + SegmentIndex;
-			const int32 D = NextRingStart + NextSegmentIndex;
-			Triangles.Add(A);
-			Triangles.Add(C);
-			Triangles.Add(B);
-			Triangles.Add(B);
-			Triangles.Add(C);
-			Triangles.Add(D);
-		}
-	}
-
-	const int32 StartCapIndex = Vertices.Add(FVector::ZeroVector);
-	Normals.Add(FVector(-1.0f, 0.0f, 0.0f));
-	UVs.Add(FVector2D(0.5f, 0.0f));
-	VertexColors.Add(FLinearColor(BeamColor.R, BeamColor.G, BeamColor.B, BeamAlpha * 0.8f));
-	Tangents.Add(FProcMeshTangent(0.0f, 1.0f, 0.0f));
-
-	const int32 EndCapIndex = Vertices.Add(FVector(BeamLength, 0.0f, 0.0f));
-	Normals.Add(FVector(1.0f, 0.0f, 0.0f));
-	UVs.Add(FVector2D(0.5f, 1.0f));
-	VertexColors.Add(FLinearColor(BeamColor.R, BeamColor.G, BeamColor.B, BeamAlpha * 0.32f));
-	Tangents.Add(FProcMeshTangent(0.0f, 1.0f, 0.0f));
-
-	for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
-	{
-		const int32 NextSegmentIndex = (SegmentIndex + 1) % SegmentCount;
-		Triangles.Add(StartCapIndex);
-		Triangles.Add(NextSegmentIndex);
-		Triangles.Add(SegmentIndex);
-
-		const int32 LastRingStart = (RingCount - 1) * SegmentCount;
-		Triangles.Add(EndCapIndex);
-		Triangles.Add(LastRingStart + SegmentIndex);
-		Triangles.Add(LastRingStart + NextSegmentIndex);
-	}
-
-	SearchLightBeamComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, false);
-	if (SearchLightBeamMaterialInstance != nullptr)
-	{
-		SearchLightBeamComponent->SetMaterial(0, SearchLightBeamMaterialInstance);
-	}
-	else if (RotorDiscMaterial != nullptr)
-	{
-		SearchLightBeamComponent->SetMaterial(0, RotorDiscMaterial);
-	}
-	else if (ModelVertexColorMaterial != nullptr)
-	{
-		SearchLightBeamComponent->SetMaterial(0, ModelVertexColorMaterial);
-	}
-
-	CachedSearchLightBeamLengthCm = BeamLength;
-	CachedSearchLightBeamWidthCm = BeamWidth;
-	CachedSearchLightBeamSourceWidthCm = BeamSourceWidth;
-	CachedSearchLightBeamVerticalScale = BeamVerticalScale;
-	CachedSearchLightBeamAlpha = BeamAlpha;
-	CachedSearchLightBeamColor = SearchLightBeamColor;
 }
 
 void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
