@@ -2262,6 +2262,45 @@ void AppendTerrainTile(
 		Section);
 }
 
+// Terrain is built as independent per-tile quads with one flat normal each, which reads as blocky
+// faceting. Weld the vertices by position across the land sections and average their (face) normals
+// so the natural terrain shades smoothly, matching the water. Vertices flagged clamped - the tiles
+// under buildings/roads - keep their flat normal so those pads stay crisp. Man-made face normals
+// still contribute to a neighbour's average, so natural ground gently eases up to a flat pad.
+FIntVector TerrainNormalWeldKey(const FVector& Position)
+{
+	return FIntVector(FMath::RoundToInt(Position.X), FMath::RoundToInt(Position.Y), FMath::RoundToInt(Position.Z));
+}
+
+void AccumulateTerrainCornerNormals(const FOriginalMeshSectionData& Section, TMap<FIntVector, FVector>& CornerNormals)
+{
+	CornerNormals.Reserve(CornerNormals.Num() + Section.Vertices.Num());
+	for (int32 Index = 0; Index < Section.Vertices.Num(); ++Index)
+	{
+		CornerNormals.FindOrAdd(TerrainNormalWeldKey(Section.Vertices[Index])) += Section.Normals[Index];
+	}
+}
+
+void ApplySmoothTerrainNormals(FOriginalMeshSectionData& Section, const TArray<uint8>& ClampFlags, const TMap<FIntVector, FVector>& CornerNormals)
+{
+	for (int32 Index = 0; Index < Section.Normals.Num(); ++Index)
+	{
+		if (ClampFlags.IsValidIndex(Index) && ClampFlags[Index] != 0)
+		{
+			continue;
+		}
+
+		if (const FVector* Summed = CornerNormals.Find(TerrainNormalWeldKey(Section.Vertices[Index])))
+		{
+			const FVector Smooth = Summed->GetSafeNormal();
+			if (!Smooth.IsNearlyZero())
+			{
+				Section.Normals[Index] = Smooth;
+			}
+		}
+	}
+}
+
 FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 FileX, int32 FileY)
 {
 	const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
@@ -2785,6 +2824,11 @@ void ASimCity2000CityActor::RebuildCity()
 	FOriginalMeshSectionData TerrainPage0DSection;
 	FOriginalMeshSectionData TerrainWaterSection;
 	FOriginalMeshSectionData RoadMarkingSection;
+	// Per-vertex "keep flat" flags for the two land terrain sections, index-aligned with their
+	// vertices. Set for tiles under buildings/roads so smooth-normal shading does not round the flat
+	// pads the conditioning creates - the terrain stays crisp where man-made surfaces sit on it.
+	TArray<uint8> TerrainPage14ClampFlags;
+	TArray<uint8> TerrainPage0DClampFlags;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
 	const bool bUseTexturedTerrainSurface = BakedCityAtlasMaterials.TerrainLowMaterial != nullptr || BakedCityAtlasMaterials.TerrainHighMaterial != nullptr ||
 		((TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr);
@@ -2889,6 +2933,17 @@ void ASimCity2000CityActor::RebuildCity()
 				if (bWaterTile)
 				{
 					AppendWaterCornerWeights(FileX, FileY);
+				}
+				else
+				{
+					// Clamp (keep flat) the terrain under buildings/roads so smooth shading leaves
+					// their flat pads crisp; natural ground (grass/trees/parks) smooths freely.
+					const uint8 ClampFlag = (bRoadLikeTile || bBuildingLikeTile) ? 1 : 0;
+					TArray<uint8>& LandClampFlags = bUseHighPageForTile ? TerrainPage0DClampFlags : TerrainPage14ClampFlags;
+					LandClampFlags.Add(ClampFlag);
+					LandClampFlags.Add(ClampFlag);
+					LandClampFlags.Add(ClampFlag);
+					LandClampFlags.Add(ClampFlag);
 				}
 				++TerrainCount;
 			}
@@ -3034,6 +3089,15 @@ void ASimCity2000CityActor::RebuildCity()
 				{
 					AppendWaterCornerWeights(FileX, FileY);
 				}
+				else
+				{
+					// The generated outer terrain is all natural ground, so it never clamps.
+					TArray<uint8>& LandClampFlags = bUseHighPageForTile ? TerrainPage0DClampFlags : TerrainPage14ClampFlags;
+					LandClampFlags.Add(0);
+					LandClampFlags.Add(0);
+					LandClampFlags.Add(0);
+					LandClampFlags.Add(0);
+				}
 				++TerrainCount;
 				++ExtensionTerrainCount;
 			}
@@ -3078,6 +3142,20 @@ void ASimCity2000CityActor::RebuildCity()
 			TerrainMeshComponent->SetMaterial(SectionIndex, VertexColorMaterial);
 		}
 	};
+
+	// Smooth the natural terrain's per-quad flat normals into averaged corner normals so it shades
+	// smoothly instead of blocky. Both land sections are welded together (shared corner positions) so
+	// the low/high atlas boundary has no shading seam; tiles under buildings/roads stay flat (clamped).
+	if (bSmoothTerrainShading)
+	{
+		check(TerrainPage14ClampFlags.Num() == TerrainPage14Section.Vertices.Num());
+		check(TerrainPage0DClampFlags.Num() == TerrainPage0DSection.Vertices.Num());
+		TMap<FIntVector, FVector> TerrainCornerNormals;
+		AccumulateTerrainCornerNormals(TerrainPage14Section, TerrainCornerNormals);
+		AccumulateTerrainCornerNormals(TerrainPage0DSection, TerrainCornerNormals);
+		ApplySmoothTerrainNormals(TerrainPage14Section, TerrainPage14ClampFlags, TerrainCornerNormals);
+		ApplySmoothTerrainNormals(TerrainPage0DSection, TerrainPage0DClampFlags, TerrainCornerNormals);
+	}
 
 	CreateTerrainSurfaceSection(TerrainPage14Section, BakedCityAtlasMaterials.TerrainLowMaterial, TerrainTexture);
 	CreateTerrainSurfaceSection(TerrainPage0DSection, BakedCityAtlasMaterials.TerrainHighMaterial, HighTerrainTexture);
@@ -3129,8 +3207,6 @@ void ASimCity2000CityActor::RebuildCity()
 			WaterMID->SetScalarParameterValue(TEXT("WaveSpeed"), WaterWaveSpeed);
 			OriginalTextureMaterials.Add(WaterMID);
 			TerrainMeshComponent->SetMaterial(WaterSectionIndex, WaterMID);
-			UE_LOG(LogSimCity2000CityActor, Warning, TEXT("[WaterWPO] applied M_SimCopterWater MID: waterVerts=%d texture=%s amp=%.1f"),
-				TerrainWaterSection.Vertices.Num(), *GetNameSafe(WaterSurfaceTexture), bAnimateWaterSurface ? WaterWaveAmplitude : 0.0f);
 		}
 		else if (BakedCityAtlasMaterials.TerrainLowMaterial != nullptr)
 		{

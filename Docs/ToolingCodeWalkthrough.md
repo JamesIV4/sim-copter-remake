@@ -72,8 +72,9 @@ Material creators:
 - `create_rotor_disc_material` creates `M_SimCopterRotorDisc`, an Unlit Translucent two-sided material for Maxis face type `11` rotor blur discs.
 - `create_sprite_texture_material` creates `M_SimCopterSpriteTexture`, a Masked Unlit two-sided material for `PEOPLE1.BMP` sprites with alpha from palette index `254`.
 - `create_lit_vertex_color_material` creates `M_SimCopterLitVertexColor`, a Default Lit vertex-color material for palette-colored meshes and procedural people.
+- `create_water_material` creates `M_SimCopterWater`, a Default Lit material that reuses the terrain-low texturing but displaces the sea vertically in the vertex shader (World Position Offset) with analytic wave normals. Shared HLSL Custom nodes (`WaterWPO`, `WaterNormal`) read world position, a `Time` node, the vertex-color-R shoreline weight, and `WaveAmplitude`/`WaveLength`/`WaveSpeed` scalar parameters. `add_custom_node` is the helper that builds a `MaterialExpressionCustom` with named inputs.
 
-The final script body ensures the directory exists and creates all five materials if missing.
+The final script body ensures the directory exists and creates all six materials if missing.
 
 ## Probe Tools
 

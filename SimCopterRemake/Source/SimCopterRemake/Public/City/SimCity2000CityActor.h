@@ -86,6 +86,11 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderTerrain = true;
 
+	// Weld and average the natural terrain's per-tile flat normals into smooth corner normals so the
+	// ground shades smoothly instead of blocky. Tiles under buildings/roads stay flat (crisp pads).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
+	bool bSmoothTerrainShading = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderProceduralMapExtension = true;
 
