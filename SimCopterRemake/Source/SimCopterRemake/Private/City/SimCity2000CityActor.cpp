@@ -2432,19 +2432,47 @@ int32 AppendMaxisMeshObject(
 			continue;
 		}
 
-		FVector FaceNormal = FVector::CrossProduct(
-			Section.Vertices[FaceVertexStart + 1] - Section.Vertices[FaceVertexStart],
-			Section.Vertices[FaceVertexStart + 2] - Section.Vertices[FaceVertexStart]).GetSafeNormal();
+		// Newell's method for the face normal. A plain cross product of the first three
+		// vertices returns a zero vector whenever those three happen to be collinear,
+		// which leaves the face with no usable normal and renders it unlit; summing over
+		// every edge is immune to that and gives the true area-weighted polygon normal.
+		FVector FaceNormal = FVector::ZeroVector;
+		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
+		{
+			const FVector& CurrentVertex = Section.Vertices[FaceVertexStart + Index];
+			const FVector& NextVertex = Section.Vertices[FaceVertexStart + ((Index + 1) % FaceVertexCount)];
+			FaceNormal.X += (CurrentVertex.Y - NextVertex.Y) * (CurrentVertex.Z + NextVertex.Z);
+			FaceNormal.Y += (CurrentVertex.Z - NextVertex.Z) * (CurrentVertex.X + NextVertex.X);
+			FaceNormal.Z += (CurrentVertex.X - NextVertex.X) * (CurrentVertex.Y + NextVertex.Y);
+		}
+		FaceNormal = FaceNormal.GetSafeNormal();
+		if (FaceNormal.IsNearlyZero())
+		{
+			FaceNormal = FVector::UpVector;
+		}
 
-		// Flip the winding-derived normal to point outward (away from the object
-		// centroid) when it came out inward, so the visible exterior is lit.
+		// Orient the normal so the visible surface is lit. Near-horizontal faces are the
+		// ground/road/roof surfaces of a city viewed from above, so they must face up toward
+		// the sky regardless of where they sit relative to the object centroid. Road asphalt
+		// sits *below* its own tile centroid (the road mesh's raised curbs/sidewalk strips
+		// pull the centroid up above the asphalt plane), so the old "outward from centroid"
+		// test flipped the asphalt to face down and left it unlit with no shadows - while the
+		// curb strips, being higher/vertical, oriented correctly and stayed lit. Only truly
+		// vertical faces (building walls) still resolve outward from the centroid.
 		FVector FaceCenter = FVector::ZeroVector;
 		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
 		{
 			FaceCenter += Section.Vertices[FaceVertexStart + Index];
 		}
 		FaceCenter /= static_cast<float>(FaceVertexCount);
-		if (FVector::DotProduct(FaceNormal, FaceCenter - ObjectCenter) < 0.0f)
+		if (FMath::Abs(FaceNormal.Z) > 0.85f)
+		{
+			if (FaceNormal.Z < 0.0f)
+			{
+				FaceNormal = -FaceNormal;
+			}
+		}
+		else if (FVector::DotProduct(FaceNormal, FaceCenter - ObjectCenter) < 0.0f)
 		{
 			FaceNormal = -FaceNormal;
 		}
