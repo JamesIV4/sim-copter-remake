@@ -2,9 +2,7 @@
 
 #include "City/SimCity2000CityActor.h"
 
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
-#include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
@@ -2515,13 +2513,12 @@ int32 AppendMaxisMeshObject(
 
 ASimCity2000CityActor::ASimCity2000CityActor()
 {
+	// The water surface undulates entirely in its material's vertex shader (World Position Offset),
+	// so the actor needs no per-frame tick.
 	PrimaryActorTick.bCanEverTick = false;
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
-
-	TerrainInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("TerrainInstances"));
-	TerrainInstances->SetupAttachment(SceneRoot);
 
 	TerrainMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("TerrainMeshComponent"));
 	TerrainMeshComponent->SetupAttachment(SceneRoot);
@@ -2531,15 +2528,6 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	TerrainMeshComponent->bUseComplexAsSimpleCollision = true;
 	TerrainMeshComponent->SetCanEverAffectNavigation(false);
 	TerrainMeshComponent->SetCastShadow(false);
-
-	WaterInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("WaterInstances"));
-	WaterInstances->SetupAttachment(SceneRoot);
-
-	RoadInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("RoadInstances"));
-	RoadInstances->SetupAttachment(SceneRoot);
-
-	BuildingInstances = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("BuildingInstances"));
-	BuildingInstances->SetupAttachment(SceneRoot);
 
 	OriginalMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("OriginalMeshComponent"));
 	OriginalMeshComponent->SetupAttachment(SceneRoot);
@@ -2555,18 +2543,6 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	RoadMarkingMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RoadMarkingMeshComponent->SetCanEverAffectNavigation(false);
 	RoadMarkingMeshComponent->SetCastShadow(false);
-
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
-	if (CubeMeshFinder.Succeeded())
-	{
-		SharedCubeMesh = CubeMeshFinder.Object;
-	}
-
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaterialFinder(TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-	if (MaterialFinder.Succeeded())
-	{
-		SharedBaseMaterial = MaterialFinder.Object;
-	}
 
 	// Project-authored lit materials replace the engine's emissive/unlit debug materials so the
 	// city responds to the scene's directional/sky lighting and to dynamic night lights (street
@@ -2586,10 +2562,14 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 		TexturedMaterial = TexturedMaterialFinder.Object;
 	}
 
-	ConfigureInstanceComponent(TerrainInstances);
-	ConfigureInstanceComponent(WaterInstances);
-	ConfigureInstanceComponent(RoadInstances);
-	ConfigureInstanceComponent(BuildingInstances);
+	// Water uses the same TILED1 texturing as the terrain, but displaces its vertices in the vertex
+	// shader (World Position Offset) and computes analytic wave normals. Shoreline verts are pinned
+	// via a per-vertex weight baked into vertex-color R (see WaterCornerWeight below).
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> WaterMaterialFinder(TEXT("/Game/Materials/M_SimCopterWater.M_SimCopterWater"));
+	if (WaterMaterialFinder.Succeeded())
+	{
+		WaterMaterial = WaterMaterialFinder.Object;
+	}
 
 	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/Demo.sc2");
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
@@ -2628,25 +2608,13 @@ void ASimCity2000CityActor::RebuildCity()
 	OriginalTextureCache.Reset();
 	OriginalTextureMaterials.Reset();
 
-	TerrainInstances->ClearInstances();
 	TerrainMeshComponent->ClearAllMeshSections();
-	WaterInstances->ClearInstances();
-	RoadInstances->ClearInstances();
-	BuildingInstances->ClearInstances();
 	OriginalMeshComponent->ClearAllMeshSections();
 	RoadMarkingMeshComponent->ClearAllMeshSections();
-	ConfigureInstanceComponent(TerrainInstances);
-	ConfigureInstanceComponent(WaterInstances);
-	ConfigureInstanceComponent(RoadInstances);
-	ConfigureInstanceComponent(BuildingInstances);
 	TerrainMeshComponent->SetCollisionEnabled(bEnableTerrainCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	OriginalMeshComponent->SetCollisionEnabled(bEnableOriginalMeshCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	RoadMarkingMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	ApplyComponentMaterial(TerrainInstances, TerrainColor);
-	ApplyComponentMaterial(WaterInstances, WaterColor);
-	ApplyComponentMaterial(RoadInstances, RoadColor);
-	ApplyComponentMaterial(BuildingInstances, BuildingColor);
 	if (VertexColorMaterial != nullptr)
 	{
 		OriginalMeshComponent->SetMaterial(0, VertexColorMaterial);
@@ -2809,22 +2777,21 @@ void ASimCity2000CityActor::RebuildCity()
 		}
 	}
 
-	TerrainInstances->PreAllocateInstancesMemory(FSimCity2000City::TileCount);
-	WaterInstances->PreAllocateInstancesMemory(FSimCity2000City::TileCount / 4);
-	RoadInstances->PreAllocateInstancesMemory(FSimCity2000City::TileCount / 4);
-	BuildingInstances->PreAllocateInstancesMemory(FSimCity2000City::TileCount / 2);
-
 	const float HalfMapSize = FSimCity2000City::MapSize * TileSize * 0.5f;
-	const float CubeToUnrealScale = 1.0f / 100.0f;
 	const float OriginalMeshScale = OriginalMeshSourceTileSize > 0.0f ? TileSize / OriginalMeshSourceTileSize : 1.0f;
 	const float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
 
 	FOriginalMeshSectionData TerrainPage14Section;
 	FOriginalMeshSectionData TerrainPage0DSection;
+	FOriginalMeshSectionData TerrainWaterSection;
 	FOriginalMeshSectionData RoadMarkingSection;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
 	const bool bUseTexturedTerrainSurface = BakedCityAtlasMaterials.TerrainLowMaterial != nullptr || BakedCityAtlasMaterials.TerrainHighMaterial != nullptr ||
 		((TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr);
+	// When enabled, water terrain quads go to their own procedural mesh section so Tick can
+	// undulate them independently of the static land surface. Gated on a textured surface: the
+	// undulation only reads well against the water texture, not the flat vertex-color fallback.
+	const bool bAnimateWater = bAnimateWaterSurface && bRenderWater && bUseTexturedTerrainSurface;
 	const bool bUseHighTerrainAtlas = BakedCityAtlasMaterials.TerrainHighMaterial != nullptr || (HighTerrainTexture != nullptr && TexturedMaterial != nullptr);
 
 	// The original conditions the tmap corner grid before anything reads it: flatten under
@@ -2841,12 +2808,47 @@ void ASimCity2000CityActor::RebuildCity()
 		(bRenderTerrain && bRenderProceduralMapExtension) ? ProceduralMapExtensionTiles : 0,
 		EffectiveTerrainHeightScale);
 
+	// Which tiles were routed into the animated water section (must match the routing used below).
+	// Original-map tiles come from the terrain type grid; outside tiles come from the extension.
+	auto IsAnimatedWaterTile = [&](int32 X, int32 Y) -> bool
+	{
+		if (X >= 0 && X < FSimCity2000City::MapSize && Y >= 0 && Y < FSimCity2000City::MapSize)
+		{
+			return IsWaterTerrainBase(TerrainTypeGrid[Y * FSimCity2000City::MapSize + X]);
+		}
+		if (ExtendedTerrain.IsEnabled() && ExtendedTerrain.ContainsTile(X, Y) && !ExtendedTerrain.IsOriginalMapTile(X, Y))
+		{
+			return ExtendedTerrain.IsWaterTile(X, Y) || IsWaterTerrainBase(ExtendedTerrain.GetTerrainType(X, Y));
+		}
+		return false;
+	};
+
+	// Per-vertex undulation weight for the water section. A grid corner is only free to move when all
+	// four tiles touching it are animated water; a corner shared with any land tile (or off the map)
+	// is pinned to its rest height so the water stays welded to the static land surface - no gaps.
+	auto WaterCornerWeight = [&](int32 GridX, int32 GridY) -> float
+	{
+		const bool bAllWater =
+			IsAnimatedWaterTile(GridX - 1, GridY - 1) &&
+			IsAnimatedWaterTile(GridX, GridY - 1) &&
+			IsAnimatedWaterTile(GridX - 1, GridY) &&
+			IsAnimatedWaterTile(GridX, GridY);
+		return bAllWater ? 1.0f : 0.0f;
+	};
+
+	// Weights are appended in lockstep with the four V0..V3 corners AppendTerrainTileWithHeights adds
+	// for each routed water tile, so this array stays index-aligned with TerrainWaterSection.Vertices.
+	TArray<float> WaterVertexWeights;
+	auto AppendWaterCornerWeights = [&](int32 FileX, int32 FileY)
+	{
+		WaterVertexWeights.Add(WaterCornerWeight(FileX, FileY));
+		WaterVertexWeights.Add(WaterCornerWeight(FileX + 1, FileY));
+		WaterVertexWeights.Add(WaterCornerWeight(FileX + 1, FileY + 1));
+		WaterVertexWeights.Add(WaterCornerWeight(FileX, FileY + 1));
+	};
+
 	int32 TerrainCount = 0;
 	int32 ExtensionTerrainCount = 0;
-	int32 WaterCount = 0;
-	int32 ExtensionWaterCount = 0;
-	int32 RoadCount = 0;
-	int32 BuildingCount = 0;
 	int32 OriginalMeshTriangleCount = 0;
 	bool bOriginalSpecialE7BuildingPlaced = false;
 
@@ -2861,15 +2863,10 @@ void ASimCity2000CityActor::RebuildCity()
 			// the game negates the column axis (world Y = (127.5 - col) * tile), which removes the
 			// reflection that no rotation could fix. On top of that we apply a global 180-degree yaw
 			// (negate world X and Y, plus the mesh-local X/Y in AppendMaxisMeshObject) so the city's
-			// absolute orientation matches the original game. The net per-tile signs below already
-			// fold both steps together.
-			const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
-			const float WorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
-			const float TerrainTopZ = GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale);
+			// absolute orientation matches the original game. The terrain/mesh append helpers below
+			// fold both steps into their per-vertex coordinates.
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
 			const bool bBuildingLikeTile = IsBuildingLikeTile(Tile.Building);
-			bool bRenderedOriginalMesh = false;
-			bool bSuppressPlaceholderForFootprintChild = false;
 
 			if (bRenderTerrain)
 			{
@@ -2878,6 +2875,8 @@ void ASimCity2000CityActor::RebuildCity()
 				const int32 TerrainAtlasTileIndex = bUseHighPageForTile
 					? static_cast<int32>(TerrainType - SimCopterHighTerrainTypeBase)
 					: static_cast<int32>(TerrainType & 0x3f);
+				// Water is always a low-page (TILED1) cell, so it never conflicts with the high page.
+				const bool bWaterTile = bAnimateWater && IsWaterTerrainBase(TerrainType);
 				AppendTerrainTile(
 					ConditionedTerrainCorners,
 					FileX,
@@ -2886,17 +2885,12 @@ void ASimCity2000CityActor::RebuildCity()
 					EffectiveTerrainHeightScale,
 					HalfMapSize,
 					TerrainAtlasTileIndex,
-					bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section);
+					bWaterTile ? TerrainWaterSection : (bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section));
+				if (bWaterTile)
+				{
+					AppendWaterCornerWeights(FileX, FileY);
+				}
 				++TerrainCount;
-			}
-
-			if (bRenderWater && Tile.bWater && !bUseTexturedTerrainSurface)
-			{
-				const float WaterThickness = FMath::Max(RoadPlateHeight, 6.0f);
-				const FVector WaterScale(TileSize * CubeToUnrealScale, TileSize * CubeToUnrealScale, WaterThickness * CubeToUnrealScale);
-				const FTransform WaterTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + WaterThickness * 0.5f + 1.0f), WaterScale);
-				WaterInstances->AddInstance(WaterTransform);
-				++WaterCount;
 			}
 
 			if (bRenderRoadMarkings && bRenderRoads)
@@ -2918,11 +2912,7 @@ void ASimCity2000CityActor::RebuildCity()
 			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile))
 			{
 				const FTileFootprint Footprint = ResolveOriginalMeshFootprint(City, FileX, FileY);
-				if (!Footprint.bShouldRender)
-				{
-					bSuppressPlaceholderForFootprintChild = Footprint.bSuppressedChildTile;
-				}
-				else
+				if (Footprint.bShouldRender)
 				{
 					const TArray<FColor>* ColorMap = nullptr;
 					// Bridges/elevated roads and buildings are dispatched by the original builder to
@@ -2997,7 +2987,6 @@ void ASimCity2000CityActor::RebuildCity()
 							}
 						}
 
-						bRenderedOriginalMesh = true;
 						++LastOriginalMeshTileCount;
 					}
 					else
@@ -3005,25 +2994,6 @@ void ASimCity2000CityActor::RebuildCity()
 						++LastMissingOriginalMeshTileCount;
 					}
 				}
-			}
-
-			const bool bOriginalMeshAttemptedForThisTile = bRenderOriginalMeshes && (bRoadLikeTile || bBuildingLikeTile);
-			const bool bRenderPlaceholderForThisTile = !bOriginalMeshAttemptedForThisTile || (!bSuppressPlaceholderForFootprintChild && !bRenderedOriginalMesh && bRenderPlaceholderForMissingOriginalMeshes);
-			if (bRenderRoads && bRoadLikeTile && bRenderPlaceholderForThisTile)
-			{
-				const FVector RoadScale(TileSize * 0.92f * CubeToUnrealScale, TileSize * 0.92f * CubeToUnrealScale, RoadPlateHeight * CubeToUnrealScale);
-				const FTransform RoadTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + RoadPlateHeight * 0.5f + 2.0f), RoadScale);
-				RoadInstances->AddInstance(RoadTransform);
-				++RoadCount;
-			}
-
-			if (bRenderBuildings && bBuildingLikeTile && bRenderPlaceholderForThisTile)
-			{
-				const float BuildingHeight = EstimateBuildingFloors(Tile.Building) * BuildingHeightScale;
-				const FVector BuildingScale(TileSize * 0.82f * CubeToUnrealScale, TileSize * 0.82f * CubeToUnrealScale, BuildingHeight * CubeToUnrealScale);
-				const FTransform BuildingTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + BuildingHeight * 0.5f + 4.0f), BuildingScale);
-				BuildingInstances->AddInstance(BuildingTransform);
-				++BuildingCount;
 			}
 		}
 	}
@@ -3044,6 +3014,7 @@ void ASimCity2000CityActor::RebuildCity()
 				const int32 TerrainAtlasTileIndex = bUseHighPageForTile
 					? static_cast<int32>(TerrainType - SimCopterHighTerrainTypeBase)
 					: static_cast<int32>(TerrainType & 0x3f);
+				const bool bWaterTile = bAnimateWater && (ExtendedTerrain.IsWaterTile(FileX, FileY) || IsWaterTerrainBase(TerrainType));
 				const float Z00 = ExtendedTerrain.GetGridVertexZ(FileX, FileY);
 				const float Z10 = ExtendedTerrain.GetGridVertexZ(FileX + 1, FileY);
 				const float Z11 = ExtendedTerrain.GetGridVertexZ(FileX + 1, FileY + 1);
@@ -3058,22 +3029,13 @@ void ASimCity2000CityActor::RebuildCity()
 					Z11,
 					Z01,
 					TerrainAtlasTileIndex,
-					bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section);
+					bWaterTile ? TerrainWaterSection : (bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section));
+				if (bWaterTile)
+				{
+					AppendWaterCornerWeights(FileX, FileY);
+				}
 				++TerrainCount;
 				++ExtensionTerrainCount;
-
-				if (bRenderWater && ExtendedTerrain.IsWaterTile(FileX, FileY) && !bUseTexturedTerrainSurface)
-				{
-					const float WaterThickness = FMath::Max(RoadPlateHeight, 6.0f);
-					const FVector WaterScale(TileSize * CubeToUnrealScale, TileSize * CubeToUnrealScale, WaterThickness * CubeToUnrealScale);
-					const float WorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
-					const float WorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
-					const float TerrainTopZ = (Z00 + Z10 + Z11 + Z01) * 0.25f;
-					const FTransform WaterTransform(FRotator::ZeroRotator, FVector(WorldX, WorldY, TerrainTopZ + WaterThickness * 0.5f + 1.0f), WaterScale);
-					WaterInstances->AddInstance(WaterTransform);
-					++WaterCount;
-					++ExtensionWaterCount;
-				}
 			}
 		}
 	}
@@ -3119,6 +3081,66 @@ void ASimCity2000CityActor::RebuildCity()
 
 	CreateTerrainSurfaceSection(TerrainPage14Section, BakedCityAtlasMaterials.TerrainLowMaterial, TerrainTexture);
 	CreateTerrainSurfaceSection(TerrainPage0DSection, BakedCityAtlasMaterials.TerrainHighMaterial, HighTerrainTexture);
+
+	// Water gets its own section using M_SimCopterWater: same TILED1 texturing as the terrain, but the
+	// vertices undulate in the vertex shader (World Position Offset) and light with analytic wave
+	// normals - no per-frame CPU work, and it animates in the editor and in game alike. The shoreline
+	// pinning weight (0 = welded to land, 1 = open water) is baked into vertex-color R for the shader.
+	if (TerrainWaterSection.Vertices.Num() > 0)
+	{
+		check(WaterVertexWeights.Num() == TerrainWaterSection.VertexColors.Num());
+		for (int32 Index = 0; Index < TerrainWaterSection.VertexColors.Num(); ++Index)
+		{
+			const float Weight = WaterVertexWeights[Index];
+			TerrainWaterSection.VertexColors[Index] = FLinearColor(Weight, Weight, Weight, 1.0f);
+		}
+
+		const int32 WaterSectionIndex = TerrainMeshSectionIndex++;
+		TerrainMeshComponent->CreateMeshSection_LinearColor(
+			WaterSectionIndex,
+			TerrainWaterSection.Vertices,
+			TerrainWaterSection.Triangles,
+			TerrainWaterSection.Normals,
+			TerrainWaterSection.UVs,
+			TerrainWaterSection.VertexColors,
+			TerrainWaterSection.Tangents,
+			bEnableTerrainCollision);
+
+		// Reuse the exact TILED1 atlas the terrain-low surface samples so the water looks identical.
+		UTexture* WaterSurfaceTexture = nullptr;
+		if (BakedCityAtlasMaterials.TerrainLowMaterial != nullptr)
+		{
+			BakedCityAtlasMaterials.TerrainLowMaterial->GetTextureParameterValue(FMaterialParameterInfo(TEXT("Texture")), WaterSurfaceTexture);
+		}
+		if (WaterSurfaceTexture == nullptr)
+		{
+			WaterSurfaceTexture = TerrainTexture;
+		}
+
+		UMaterialInstanceDynamic* WaterMID = (WaterMaterial != nullptr && WaterSurfaceTexture != nullptr)
+			? UMaterialInstanceDynamic::Create(WaterMaterial, this)
+			: nullptr;
+		if (WaterMID != nullptr)
+		{
+			WaterMID->SetTextureParameterValue(TEXT("Texture"), WaterSurfaceTexture);
+			// Amplitude 0 freezes the surface flat when animation is disabled while keeping the texture.
+			WaterMID->SetScalarParameterValue(TEXT("WaveAmplitude"), bAnimateWaterSurface ? WaterWaveAmplitude : 0.0f);
+			WaterMID->SetScalarParameterValue(TEXT("WaveLength"), WaterWaveLength);
+			WaterMID->SetScalarParameterValue(TEXT("WaveSpeed"), WaterWaveSpeed);
+			OriginalTextureMaterials.Add(WaterMID);
+			TerrainMeshComponent->SetMaterial(WaterSectionIndex, WaterMID);
+			UE_LOG(LogSimCity2000CityActor, Warning, TEXT("[WaterWPO] applied M_SimCopterWater MID: waterVerts=%d texture=%s amp=%.1f"),
+				TerrainWaterSection.Vertices.Num(), *GetNameSafe(WaterSurfaceTexture), bAnimateWaterSurface ? WaterWaveAmplitude : 0.0f);
+		}
+		else if (BakedCityAtlasMaterials.TerrainLowMaterial != nullptr)
+		{
+			TerrainMeshComponent->SetMaterial(WaterSectionIndex, BakedCityAtlasMaterials.TerrainLowMaterial);
+		}
+		else if (VertexColorMaterial != nullptr)
+		{
+			TerrainMeshComponent->SetMaterial(WaterSectionIndex, VertexColorMaterial);
+		}
+	}
 
 	if (RoadMarkingSection.Vertices.Num() > 0)
 	{
@@ -3221,15 +3243,11 @@ void ASimCity2000CityActor::RebuildCity()
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
-		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d extensionTerrain=%d water=%d extensionWater=%d roads=%d buildings=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
+		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d extensionTerrain=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
 		*City.CityName,
 		*ResolvedCityPath,
 		TerrainCount,
 		ExtensionTerrainCount,
-		WaterCount,
-		ExtensionWaterCount,
-		RoadCount,
-		BuildingCount,
 		LastOriginalMeshTileCount,
 		LastMissingOriginalMeshTileCount,
 		LastOriginalMeshTriangleCount,
@@ -3280,15 +3298,7 @@ bool ASimCity2000CityActor::IsBuildingCollisionHit(
 		return false;
 	}
 
-	if (HitComponent == BuildingInstances.Get())
-	{
-		return true;
-	}
-
-	if (HitComponent == RoadInstances.Get() ||
-		HitComponent == TerrainInstances.Get() ||
-		HitComponent == TerrainMeshComponent.Get() ||
-		HitComponent == WaterInstances.Get() ||
+	if (HitComponent == TerrainMeshComponent.Get() ||
 		HitComponent == RoadMarkingMeshComponent.Get())
 	{
 		return false;
@@ -3346,39 +3356,6 @@ FString ASimCity2000CityActor::ResolveOriginalGameRoot() const
 	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
 }
 
-void ASimCity2000CityActor::ConfigureInstanceComponent(UHierarchicalInstancedStaticMeshComponent* Component) const
-{
-	if (Component == nullptr)
-	{
-		return;
-	}
-
-	Component->SetStaticMesh(SharedCubeMesh);
-	Component->SetCollisionEnabled(bEnablePlaceholderCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
-	Component->SetCollisionObjectType(ECC_WorldStatic);
-	Component->SetCollisionResponseToAllChannels(ECR_Block);
-	Component->SetCanEverAffectNavigation(false);
-	Component->SetCastShadow(false);
-}
-
-void ASimCity2000CityActor::ApplyComponentMaterial(UHierarchicalInstancedStaticMeshComponent* Component, const FLinearColor& Color)
-{
-	if (Component == nullptr || SharedBaseMaterial == nullptr)
-	{
-		return;
-	}
-
-	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(SharedBaseMaterial, this);
-	if (Material == nullptr)
-	{
-		return;
-	}
-
-	Material->SetVectorParameterValue(TEXT("Color"), Color);
-	Material->SetVectorParameterValue(TEXT("BaseColor"), Color);
-	Component->SetMaterial(0, Material);
-}
-
 bool ASimCity2000CityActor::IsRoadLikeTile(uint8 BuildingId)
 {
 	return BuildingId >= 0x0E && BuildingId <= 0x6F;
@@ -3387,34 +3364,4 @@ bool ASimCity2000CityActor::IsRoadLikeTile(uint8 BuildingId)
 bool ASimCity2000CityActor::IsBuildingLikeTile(uint8 BuildingId)
 {
 	return BuildingId >= 0x70;
-}
-
-float ASimCity2000CityActor::EstimateBuildingFloors(uint8 BuildingId)
-{
-	if (BuildingId >= 0xFB)
-	{
-		return 16.0f;
-	}
-
-	if (BuildingId >= 0xC9 && BuildingId <= 0xCF)
-	{
-		return 5.0f;
-	}
-
-	if (BuildingId >= 0xD0)
-	{
-		return 3.5f;
-	}
-
-	if (BuildingId >= 0xAE && BuildingId <= 0xC5)
-	{
-		return 6.0f;
-	}
-
-	if (BuildingId >= 0x8C && BuildingId <= 0xAD)
-	{
-		return 3.5f;
-	}
-
-	return 1.8f;
 }
