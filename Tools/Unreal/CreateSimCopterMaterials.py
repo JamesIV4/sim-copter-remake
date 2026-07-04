@@ -266,6 +266,116 @@ def create_sprite_texture_material():
     save(f"{MATERIAL_DIR}/M_SimCopterSpriteTexture")
 
 
+def add_custom_node(material, name, code, inputs, x, y, output_type=None):
+    """Create a MaterialExpressionCustom with the given named inputs and HLSL body.
+    Returns the node; connect sources into it by input name with connect_material_expressions."""
+    node = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionCustom, x, y
+    )
+    node.set_editor_property("description", name)
+    node.set_editor_property("code", code)
+    if output_type is not None:
+        node.set_editor_property("output_type", output_type)
+    custom_inputs = []
+    for input_name in inputs:
+        ci = unreal.CustomInput()
+        ci.set_editor_property("input_name", input_name)
+        custom_inputs.append(ci)
+    node.set_editor_property("inputs", custom_inputs)
+    return node
+
+
+# The undulating sea. Same TILED1 texturing + lit shading as the terrain, but the water tiles are
+# displaced vertically in the vertex shader (World Position Offset) instead of on the CPU, so the
+# animation is effectively free and runs identically in the editor and in game. A per-vertex weight
+# (baked into vertex-color R by the city renderer: 0 = shoreline, 1 = open water) pins the coast so
+# the water stays welded to the static land mesh. The surface normal is computed analytically from
+# the derivative of the height field, so lighting ripples with the waves per-pixel.
+WATER_WAVE_INPUTS = ["WorldPos", "Time", "Weight", "Amplitude", "WaveLength", "Speed"]
+
+WATER_WAVE_PRELUDE = (
+    "float K1 = 2.0 * 3.14159265 / max(WaveLength, 1.0);\n"
+    "float K2 = K1 * 1.7;\n"
+    "float P1 = K1 * (WorldPos.x * 0.7 + WorldPos.y * 0.7) + Time * Speed;\n"
+    "float P2 = K2 * (WorldPos.x * 0.3 - WorldPos.y * 0.95) + Time * Speed * 0.8;\n"
+)
+
+WATER_WPO_CODE = (
+    WATER_WAVE_PRELUDE
+    + "float h = Weight * Amplitude * (0.6 * sin(P1) + 0.4 * sin(P2));\n"
+    + "return float3(0.0, 0.0, h);"
+)
+
+WATER_NORMAL_CODE = (
+    WATER_WAVE_PRELUDE
+    + "float amp = Weight * Amplitude;\n"
+    + "float dHdx = amp * (0.6 * cos(P1) * K1 * 0.7 + 0.4 * cos(P2) * K2 * 0.3);\n"
+    + "float dHdy = amp * (0.6 * cos(P1) * K1 * 0.7 + 0.4 * cos(P2) * K2 * (-0.95));\n"
+    + "return normalize(float3(-dHdx, -dHdy, 1.0));"
+)
+
+
+def create_water_material():
+    material = create_or_load_material("M_SimCopterWater")
+    clear_expressions(material)
+
+    # Base color / lit shading, identical to the terrain-low material so the water reads the same.
+    texture = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTextureSampleParameter2D, -400, 0
+    )
+    texture.set_editor_property("parameter_name", "Texture")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
+    )
+    add_shading_nodes(material, texture, "RGB")
+
+    # Shared wave inputs.
+    world_pos = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionWorldPosition, -1000, 700
+    )
+    time = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTime, -1000, 820
+    )
+    weight = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexColor, -1000, 920
+    )
+    amplitude = add_scalar_parameter(material, "WaveAmplitude", 28.0, 3, 1040)
+    wavelength = add_scalar_parameter(material, "WaveLength", 1100.0, 4, 1140)
+    speed = add_scalar_parameter(material, "WaveSpeed", 1.1, 5, 1240)
+
+    def wire_wave_inputs(node):
+        unreal.MaterialEditingLibrary.connect_material_expressions(world_pos, "", node, "WorldPos")
+        unreal.MaterialEditingLibrary.connect_material_expressions(time, "", node, "Time")
+        unreal.MaterialEditingLibrary.connect_material_expressions(weight, "R", node, "Weight")
+        unreal.MaterialEditingLibrary.connect_material_expressions(amplitude, "", node, "Amplitude")
+        unreal.MaterialEditingLibrary.connect_material_expressions(wavelength, "", node, "WaveLength")
+        unreal.MaterialEditingLibrary.connect_material_expressions(speed, "", node, "Speed")
+
+    wpo = add_custom_node(
+        material, "WaterWPO", WATER_WPO_CODE, WATER_WAVE_INPUTS, -650, 750,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+    )
+    wire_wave_inputs(wpo)
+    unreal.MaterialEditingLibrary.connect_material_property(
+        wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET
+    )
+
+    normal = add_custom_node(
+        material, "WaterNormal", WATER_NORMAL_CODE, WATER_WAVE_INPUTS, -650, 1050,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+    )
+    wire_wave_inputs(normal)
+    unreal.MaterialEditingLibrary.connect_material_property(
+        normal, "", unreal.MaterialProperty.MP_NORMAL
+    )
+
+    # The analytic normal is world-space, so the Normal input must not be interpreted as tangent-space.
+    material.set_editor_property("tangent_space_normal", False)
+    material.set_editor_property("two_sided", False)
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(f"{MATERIAL_DIR}/M_SimCopterWater")
+
+
 def create_lit_vertex_color_material():
     material = create_or_load_material("M_SimCopterLitVertexColor")
     clear_expressions(material)
@@ -299,3 +409,4 @@ create_if_missing("M_SimCopterLitVertexColor", create_lit_vertex_color_material)
 create_if_missing("M_SimCopterRotorDisc", create_rotor_disc_material)
 create_if_missing("M_SimCopterCityAtlas", create_city_atlas_material)
 create_if_missing("M_SimCopterSpriteTexture", create_sprite_texture_material)
+create_if_missing("M_SimCopterWater", create_water_material)

@@ -21,13 +21,13 @@ The actor is also where many decompilation findings become executable behavior:
 5. Optionally decode runtime fallback textures from `SIM3D.BMP`, `SKY.BMP`, and `TILED1.BMP`.
 6. Build the SimCopter terrain type grid from SC2 layers.
 7. Optionally generate procedural terrain outside the 128x128 original city.
-8. Loop every city tile and append terrain quads, water placeholders, original meshes, or fallback placeholder instances.
+8. Loop every city tile and append terrain quads (land, and water into its own section) plus original meshes.
 9. Build extension terrain outside the original map.
-10. Commit terrain sections to `TerrainMeshComponent`.
+10. Commit terrain sections to `TerrainMeshComponent` (land low/high pages, plus the animated water section).
 11. Commit palette and textured mesh sections to `OriginalMeshComponent`.
 12. Log counts that can be compared across rebuilds.
 
-The placeholder `TerrainInstances`, `WaterInstances`, `RoadInstances`, and `BuildingInstances` are still present as fallback scaffolding. The committed city path is the generated terrain mesh plus original mesh component.
+The committed city path is the generated terrain mesh plus the original mesh component. The old `TerrainInstances`/`WaterInstances`/`RoadInstances`/`BuildingInstances` HISM fallback/placeholder components were removed; tiles whose original mesh does not resolve (currently the flat-road variants XBLD `0x3b`–`0x3e`) simply render bare terrain plus road markings instead of a gray placeholder box. Water terrain tiles are committed to a dedicated `TerrainMeshComponent` section that `ASimCity2000CityActor::Tick`/`UpdateAnimatedWaterSurface` undulates vertically (see `Docs/ReverseEngineering.md`).
 
 ## Local Types
 

@@ -8,13 +8,11 @@
 #include "UObject/SoftObjectPath.h"
 #include "SimCity2000CityActor.generated.h"
 
-class UHierarchicalInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class USceneComponent;
-class UStaticMesh;
 class UTexture2D;
 
 UCLASS()
@@ -56,19 +54,7 @@ private:
 	TObjectPtr<USceneComponent> SceneRoot;
 
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
-	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> TerrainInstances;
-
-	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<UProceduralMeshComponent> TerrainMeshComponent;
-
-	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
-	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> WaterInstances;
-
-	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
-	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> RoadInstances;
-
-	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
-	TObjectPtr<UHierarchicalInstancedStaticMeshComponent> BuildingInstances;
 
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<UProceduralMeshComponent> OriginalMeshComponent;
@@ -97,12 +83,6 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "1.0"))
 	float TerrainHeightScale = 200.0f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "1.0"))
-	float BuildingHeightScale = 150.0f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "1.0"))
-	float RoadPlateHeight = 8.0f;
-
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderTerrain = true;
 
@@ -114,6 +94,24 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderWater = true;
+
+	// The original SimCopter water surface bobs up and down. When enabled (and the textured
+	// terrain surface is in use) the water terrain tiles are committed to their own procedural
+	// mesh section that Tick undulates with a moving sum-of-sines wave.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water")
+	bool bAnimateWaterSurface = true;
+
+	// Peak vertical displacement of the undulating water surface, in world units.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "0.0"))
+	float WaterWaveAmplitude = 28.0f;
+
+	// Distance between wave crests, in world units.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "1.0"))
+	float WaterWaveLength = 1100.0f;
+
+	// Wave travel speed multiplier (radians per second at the primary frequency).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "0.0"))
+	float WaterWaveSpeed = 1.1f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderRoads = true;
@@ -127,26 +125,17 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render", meta = (ClampMin = "0.0"))
 	float RoadMarkingZOffset = 8.0f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
-	bool bRenderBuildings = true;
-
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
 	bool bEnableTerrainCollision = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
 	bool bEnableOriginalMeshCollision = true;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
-	bool bEnablePlaceholderCollision = true;
-
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalMeshes = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalTextures = true;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
-	bool bRenderPlaceholderForMissingOriginalMeshes = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalMeshBackfaces = true;
@@ -164,19 +153,7 @@ private:
 	FLinearColor OriginalTexturedFaceFallbackColor = FLinearColor(0.62f, 0.61f, 0.57f);
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
-	FLinearColor TerrainColor = FLinearColor(0.24f, 0.38f, 0.20f);
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
-	FLinearColor WaterColor = FLinearColor(0.05f, 0.23f, 0.55f);
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
-	FLinearColor RoadColor = FLinearColor(0.05f, 0.05f, 0.045f);
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	FLinearColor RoadMarkingColor = FLinearColor(1.0f, 0.82f, 0.22f);
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
-	FLinearColor BuildingColor = FLinearColor(0.55f, 0.53f, 0.47f);
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	FString LastLoadedCityName;
@@ -200,16 +177,15 @@ private:
 	int32 LastOriginalTexturedTriangleCount = 0;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UStaticMesh> SharedCubeMesh;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInterface> SharedBaseMaterial;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> TexturedMaterial;
+
+	// Base material for the undulating water surface (M_SimCopterWater); a dynamic instance is created
+	// per rebuild to feed it the terrain water texture and the wave parameters below.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> WaterMaterial;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTexture2D>> OriginalTextureCache;
@@ -221,10 +197,7 @@ private:
 
 	FString ResolveCityPath() const;
 	FString ResolveOriginalGameRoot() const;
-	void ConfigureInstanceComponent(UHierarchicalInstancedStaticMeshComponent* Component) const;
-	void ApplyComponentMaterial(UHierarchicalInstancedStaticMeshComponent* Component, const FLinearColor& Color);
 
 	static bool IsRoadLikeTile(uint8 BuildingId);
 	static bool IsBuildingLikeTile(uint8 BuildingId);
-	static float EstimateBuildingFloors(uint8 BuildingId);
 };
