@@ -188,6 +188,46 @@ bool FSimCopterMissionSystemMarkerCoordinateTest::RunTest(const FString& Paramet
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemFireDouseTest, "SimCopter.Missions.FireDouse", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSystemFireDouseTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 FireId = System.CreateEventAt(30, 40, TYPE_BuildingFire);
+	TestTrue(TEXT("Building fire should be created"), FireId != INDEX_NONE);
+
+	const int32 InitialFlames = System.GetActiveFlameCount();
+	TestTrue(TEXT("Igniting a building should spawn flames"), InitialFlames > 0);
+
+	// Water landing away from the fire does nothing.
+	TestEqual(TEXT("Dousing an empty tile reports no flames in range"), System.DouseAtTile(0, 0), 0);
+	TestEqual(TEXT("Flames unchanged after dousing empty tile"), System.GetActiveFlameCount(), InitialFlames);
+
+	// The first douse over the fire tile should report the flames in range.
+	TestTrue(TEXT("Dousing the fire tile reports flames in range"), System.DouseAtTile(30, 40) >= InitialFlames);
+
+	// Sustained water extinguishes every flame and credits them as doused (not expired).
+	int32 Guard = 0;
+	while (System.GetActiveFlameCount() > 0 && Guard++ < 500)
+	{
+		System.DouseAtTile(30, 40);
+	}
+	TestEqual(TEXT("Sustained water extinguishes all flames"), System.GetActiveFlameCount(), 0);
+
+	const FSimCopterMissionRecord* Record = System.FindRecord(FireId);
+	TestNotNull(TEXT("Fire record should still exist"), Record);
+	if (Record != nullptr)
+	{
+		TestTrue(TEXT("Doused flames should be credited to the mission"), Record->FlamesDoused >= InitialFlames);
+		TestEqual(TEXT("No doused flame should be counted as burned out"), Record->FlamesExpired, 0);
+	}
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemTransportSchedulerTimerTest, "SimCopter.Missions.TransportSchedulerTimer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSimCopterMissionSystemTransportSchedulerTimerTest::RunTest(const FString& Parameters)

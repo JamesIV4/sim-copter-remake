@@ -478,10 +478,15 @@ public:
 
 	void AdjustVictimsPickedUp(int32 EventId, int32 Delta);
 
-	// Douse interface for the helicopter water bucket: applies Douse Points *
-	// Douse Mult to flames within Fire Radius of the 16.16 world position and
-	// removes extinguished flames with EVT_FlameDoused.
-	void DouseAt(int32 WorldX1616, int32 WorldY1616, int32 WorldZ1616);
+	// Douse interface for the helicopter water bucket: applies the Fire Parms douse rate to
+	// flames within Fire Radius of the 16.16 world position and removes extinguished flames
+	// with EVT_FlameDoused. Called each frame while the bucket is dumping. Returns the number
+	// of active flames that were in range this call (>0 means the water is hitting fire).
+	int32 DouseAt(int32 WorldX1616, int32 WorldY1616, int32 WorldZ1616);
+
+	// Tile-based douse used by the remake's bucket wiring (the flame records are tile-keyed):
+	// same effect as DouseAt but takes the burning tile directly. Returns flames in range.
+	int32 DouseAtTile(int32 TileX, int32 TileY);
 
 	// Megaphone: clears an active traffic-jam mission - releases the jammed cars, scores it and
 	// completes it. Returns false when the event isn't an active jam.

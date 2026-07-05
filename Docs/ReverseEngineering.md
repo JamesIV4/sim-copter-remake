@@ -505,3 +505,28 @@ Current code has two layers:
 - `ASimCopterOnFootPawn`: ground-start pawn that uses the original PEOPLE1 sprite path and handles `F` helicopter entry.
 
 The placeholder renderer is now fallback scaffolding. It still proves city parsing, orientation, tile height, and high-level tile classification, while original terrain textures and road/building geometry can be rendered directly from user-provided SimCopter assets.
+
+## Fire and water effect rendering (2026-07-05)
+
+Decoded from `SimCopter.exe` (outputs: `Docs/scratchpad/ghidra/out_fire_water_effects.txt`,
+`out_effect_pool_init.txt`, `out_effect_sprite_creator.txt`, alongside `out_m5_firecreate.txt`
+and `out_heli_landing.txt`). The mission/fire simulation (`FSimCopterMissionSystem`) was already
+ported; this pass added the rendering and the helicopter wiring.
+
+- **Fire is 3D GEO geometry, not sprites.** Building/car flame = `FIREPTS` (`Object.Header.Id`
+  `0x120`) — importantly a cloud of **22 single-vertex point sprites** (palette-coloured "fire
+  points"), so it must be billboarded, not triangulated. Car fire = `CARFIRET` (`0x11c`),
+  smoke/debris = `DEBRIS1..3` (`0x149..0x14b`) + `SMOKE` (`0x148`), burnt tiles = `BURNTREE`
+  (`0x14e`) / `GRUBBLE1..4` (`0x14f..0x152`). Resolve via `FMaxisMeshLibrary::FindObjectByObjectId`.
+- **Effect particles (bucket drips, douse splash, rotor wash) are flat palette-coloured,
+  camera-facing cards** (Maxis face type `0x17`) built procedurally by `FUN_0046edb0(shape,0x17)`
+  and moved by a velocity + rise over a short life (creator `FUN_0048e0b0`, tile-splat
+  `FUN_004af220`, splash column `FUN_004af100`, updater `FUN_004af3b0`/`FUN_0048ed00`). There is
+  **no sprite atlas** — the colour is a SIM3D palette index. The remake gives each card a
+  procedural radial soft-alpha so the flat quad reads as a soft puff (`M_SimCopterParticleFX`).
+- **Wind-kickback over water = the rotor wash `FUN_004881b0`:** low over a surface + above a
+  minimum altitude, scatter class-8 wash cards with a random-yaw matrix (spray over water, dust
+  over land). Ported to `ASimCopterHelicopterPawn::UpdateRotorWash`.
+- Renderers: `USimCopterFireRenderComponent` (flames, on the mission actor, polling
+  `MissionSystem.GetFlames()`) and `USimCopterParticleFXComponent` (water/dust cards, on the heli).
+  `FSimCopterMissionSystem::DouseAt`/`DouseAtTile` and the bucket dump wiring were added here.

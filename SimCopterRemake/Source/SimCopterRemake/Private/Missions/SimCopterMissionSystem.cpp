@@ -1183,6 +1183,53 @@ void FSimCopterMissionSystem::UpdateFires()
 	}
 }
 
+int32 FSimCopterMissionSystem::DouseAt(int32 WorldX1616, int32 WorldY1616, int32 /*WorldZ1616*/)
+{
+	// World units are 16.16 with a tile = 0x400000 (64.0 units), so tile = world >> 22.
+	return DouseAtTile(WorldX1616 >> 22, WorldY1616 >> 22);
+}
+
+int32 FSimCopterMissionSystem::DouseAtTile(int32 TileX, int32 TileY)
+{
+	if (ActiveFlameCount <= 0)
+	{
+		return 0;
+	}
+
+	// Fire Radius (Fire Parms, ~43.9 world units) is under one tile, but the bucket aim is
+	// coarse, so douse flames on the target tile and the immediately adjacent tiles.
+	constexpr int32 RadiusTiles = 1;
+
+	// Douse rate: ~64.0 (0x400000) flame-health per second, frame-rate independent via the
+	// sim's own smoothed frame delta. A freshly-lit flame (BurnCountdown 0x200000 = 32.0) is
+	// out after ~0.5s of sustained water. FrameDeltaEma can be 0 before the first tick.
+	const int32 DouseChunk = FrameDeltaEma > 0
+		? static_cast<int32>((static_cast<int64>(0x400000) * FrameDeltaEma) >> 16)
+		: 0x40000;
+
+	int32 InRange = 0;
+	for (int32 i = 0; i < MaxFlames; ++i)
+	{
+		FSimCopterFlame& Flame = Flames[i];
+		if (!Flame.bActive)
+		{
+			continue;
+		}
+		if (FMath::Abs(Flame.TileX - TileX) > RadiusTiles || FMath::Abs(Flame.TileY - TileY) > RadiusTiles)
+		{
+			continue;
+		}
+
+		++InRange;
+		Flame.BurnCountdown -= DouseChunk;
+		if (Flame.BurnCountdown <= 0)
+		{
+			RemoveFlame(i, /*bDoused*/ true);
+		}
+	}
+	return InRange;
+}
+
 void FSimCopterMissionSystem::SpreadFireFrom(const FSimCopterFlame& Flame)
 {
 	uint32 r = Rand.Rand();
