@@ -100,11 +100,16 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderWater = true;
 
-	// The original SimCopter water surface bobs up and down. When enabled (and the textured
-	// terrain surface is in use) the water terrain tiles are committed to their own procedural
-	// mesh section that Tick undulates with a moving sum-of-sines wave.
+	// The original SimCopter water surface bobs up and down. When enabled (and the textured terrain
+	// surface is in use) the water tiles get their own mesh section drawn with M_SimCopterWater, which
+	// displaces and lights them in the vertex shader (see Docs/ReverseEngineering.md).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water")
 	bool bAnimateWaterSurface = true;
+
+	// How many tiles it takes for the waves to ramp from calm (welded to the shore) to full open-water
+	// amplitude. Higher = gentler transition, less of a lighting seam where water meets land.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "1", ClampMax = "8"))
+	int32 WaterShoreRampTiles = 3;
 
 	// Peak vertical displacement of the undulating water surface, in world units.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "0.0"))

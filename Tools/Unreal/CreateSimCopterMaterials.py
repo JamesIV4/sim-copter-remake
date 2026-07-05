@@ -289,9 +289,13 @@ def add_custom_node(material, name, code, inputs, x, y, output_type=None):
 # displaced vertically in the vertex shader (World Position Offset) instead of on the CPU, so the
 # animation is effectively free and runs identically in the editor and in game. A per-vertex weight
 # (baked into vertex-color R by the city renderer: 0 = shoreline, 1 = open water) pins the coast so
-# the water stays welded to the static land mesh. The surface normal is computed analytically from
-# the derivative of the height field, so lighting ripples with the waves per-pixel.
+# the water stays welded to the static land mesh. The surface normal is analytic: the wave slope is
+# added ON TOP OF the mesh's rest normal (BaseNormal), which the renderer smooths and welds to the
+# land normals. So at the shore (weight 0) the water shades like the sloped ground it meets - no
+# lighting seam even where the coastline is angled - while offshore the base slope eases out to level
+# and the wave ripple takes over, so open water reads flat instead of a tilted sheet.
 WATER_WAVE_INPUTS = ["WorldPos", "Time", "Weight", "Amplitude", "WaveLength", "Speed"]
+WATER_NORMAL_INPUTS = WATER_WAVE_INPUTS + ["BaseNormal"]
 
 WATER_WAVE_PRELUDE = (
     "float K1 = 2.0 * 3.14159265 / max(WaveLength, 1.0);\n"
@@ -306,12 +310,23 @@ WATER_WPO_CODE = (
     + "return float3(0.0, 0.0, h);"
 )
 
+# Wave height gradient (dHdx, dHdy) added onto the rest surface's gradient, recovered from BaseNormal
+# (an up-facing world normal): a height field z=B has normal ~ (-dB/dx, -dB/dy, 1), so dB/dx = -Nx/Nz.
+# The base slope is faded out with distance offshore (baseFade = 1 - Weight): at the shoreline
+# (Weight 0) the full base slope is used so the water shades like the land it is welded to, but a few
+# tiles out (Weight -> 1) the base eases to flat so open water reads level instead of a tilted sheet -
+# the near-shore geometry is genuinely sloped (a height-averaging artifact), and this hides that in the
+# lighting without touching the geometry or the welded shoreline edge.
 WATER_NORMAL_CODE = (
     WATER_WAVE_PRELUDE
     + "float amp = Weight * Amplitude;\n"
     + "float dHdx = amp * (0.6 * cos(P1) * K1 * 0.7 + 0.4 * cos(P2) * K2 * 0.3);\n"
     + "float dHdy = amp * (0.6 * cos(P1) * K1 * 0.7 + 0.4 * cos(P2) * K2 * (-0.95));\n"
-    + "return normalize(float3(-dHdx, -dHdy, 1.0));"
+    + "float bz = max(BaseNormal.z, 1e-3);\n"
+    + "float baseFade = 1.0 - Weight;\n"
+    + "float baseX = (BaseNormal.x / bz) * baseFade;\n"
+    + "float baseY = (BaseNormal.y / bz) * baseFade;\n"
+    + "return normalize(float3(baseX - dHdx, baseY - dHdy, 1.0));"
 )
 
 
@@ -361,10 +376,15 @@ def create_water_material():
     )
 
     normal = add_custom_node(
-        material, "WaterNormal", WATER_NORMAL_CODE, WATER_WAVE_INPUTS, -650, 1050,
+        material, "WaterNormal", WATER_NORMAL_CODE, WATER_NORMAL_INPUTS, -650, 1050,
         unreal.CustomMaterialOutputType.CMOT_FLOAT3,
     )
     wire_wave_inputs(normal)
+    # The mesh's (smoothed, land-welded) rest normal is the base slope the waves ride on.
+    base_normal = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexNormalWS, -1000, 1360
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(base_normal, "", normal, "BaseNormal")
     unreal.MaterialEditingLibrary.connect_material_property(
         normal, "", unreal.MaterialProperty.MP_NORMAL
     )
@@ -409,4 +429,11 @@ create_if_missing("M_SimCopterLitVertexColor", create_lit_vertex_color_material)
 create_if_missing("M_SimCopterRotorDisc", create_rotor_disc_material)
 create_if_missing("M_SimCopterCityAtlas", create_city_atlas_material)
 create_if_missing("M_SimCopterSpriteTexture", create_sprite_texture_material)
-create_if_missing("M_SimCopterWater", create_water_material)
+# The water material's shader is fully defined here and still being tuned, so rebuild it every run.
+# Delete any existing asset first and recreate it fresh: reloading an existing material and clearing
+# its expressions asserts (!IsRooted in DeleteMaterialExpression) in this engine build, whereas a
+# freshly created material has no expressions to clear. The asset keeps the same /Game path, so the
+# renderer's ConstructorHelpers reference still resolves.
+if unreal.EditorAssetLibrary.does_asset_exist(f"{MATERIAL_DIR}/M_SimCopterWater"):
+    unreal.EditorAssetLibrary.delete_asset(f"{MATERIAL_DIR}/M_SimCopterWater")
+create_water_material()
