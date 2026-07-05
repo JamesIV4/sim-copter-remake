@@ -2867,17 +2867,34 @@ void ASimCity2000CityActor::RebuildCity()
 		return false;
 	};
 
-	// Per-vertex undulation weight for the water section. A grid corner is only free to move when all
-	// four tiles touching it are animated water; a corner shared with any land tile (or off the map)
-	// is pinned to its rest height so the water stays welded to the static land surface - no gaps.
+	// Per-vertex undulation weight for the water section (drives both the wave displacement and its
+	// normals via vertex-color R). A corner touching land is pinned to 0 so the water stays welded to
+	// the static land (no gaps); from there the weight ramps up to 1 over WaterShoreRampTiles tiles so
+	// the waves - and their normals - ease in gradually offshore instead of jumping at the shoreline.
+	// The hard 0->1 step used to make the lighting change starkly right where water meets land.
+	const int32 WaterShoreRamp = FMath::Clamp(WaterShoreRampTiles, 1, 8);
 	auto WaterCornerWeight = [&](int32 GridX, int32 GridY) -> float
 	{
-		const bool bAllWater =
-			IsAnimatedWaterTile(GridX - 1, GridY - 1) &&
-			IsAnimatedWaterTile(GridX, GridY - 1) &&
-			IsAnimatedWaterTile(GridX - 1, GridY) &&
-			IsAnimatedWaterTile(GridX, GridY);
-		return bAllWater ? 1.0f : 0.0f;
+		// Search the surrounding tiles for the nearest land, measured in corner-rings (0 = one of the
+		// four tiles touching the corner is land). Weight = clamp(nearestLandRing / ramp).
+		int32 NearestLandRing = WaterShoreRamp + 1;
+		for (int32 TileY = GridY - 1 - WaterShoreRamp; TileY <= GridY + WaterShoreRamp && NearestLandRing > 0; ++TileY)
+		{
+			for (int32 TileX = GridX - 1 - WaterShoreRamp; TileX <= GridX + WaterShoreRamp; ++TileX)
+			{
+				if (!IsAnimatedWaterTile(TileX, TileY))
+				{
+					const int32 RingX = FMath::Max(0, FMath::Max((GridX - 1) - TileX, TileX - GridX));
+					const int32 RingY = FMath::Max(0, FMath::Max((GridY - 1) - TileY, TileY - GridY));
+					NearestLandRing = FMath::Min(NearestLandRing, FMath::Max(RingX, RingY));
+					if (NearestLandRing == 0)
+					{
+						break;
+					}
+				}
+			}
+		}
+		return static_cast<float>(FMath::Min(NearestLandRing, WaterShoreRamp)) / static_cast<float>(WaterShoreRamp);
 	};
 
 	// Weights are appended in lockstep with the four V0..V3 corners AppendTerrainTileWithHeights adds
@@ -3144,8 +3161,10 @@ void ASimCity2000CityActor::RebuildCity()
 	};
 
 	// Smooth the natural terrain's per-quad flat normals into averaged corner normals so it shades
-	// smoothly instead of blocky. Both land sections are welded together (shared corner positions) so
-	// the low/high atlas boundary has no shading seam; tiles under buildings/roads stay flat (clamped).
+	// smoothly instead of blocky. All land sections plus the water section are welded together (shared
+	// corner positions), so the low/high atlas boundary and the shoreline have no shading seam; tiles
+	// under buildings/roads stay flat (clamped). The water section's smoothed rest normal is the base
+	// slope M_SimCopterWater rides its waves on, so sloped coastline water matches the land it meets.
 	if (bSmoothTerrainShading)
 	{
 		check(TerrainPage14ClampFlags.Num() == TerrainPage14Section.Vertices.Num());
@@ -3153,8 +3172,10 @@ void ASimCity2000CityActor::RebuildCity()
 		TMap<FIntVector, FVector> TerrainCornerNormals;
 		AccumulateTerrainCornerNormals(TerrainPage14Section, TerrainCornerNormals);
 		AccumulateTerrainCornerNormals(TerrainPage0DSection, TerrainCornerNormals);
+		AccumulateTerrainCornerNormals(TerrainWaterSection, TerrainCornerNormals);
 		ApplySmoothTerrainNormals(TerrainPage14Section, TerrainPage14ClampFlags, TerrainCornerNormals);
 		ApplySmoothTerrainNormals(TerrainPage0DSection, TerrainPage0DClampFlags, TerrainCornerNormals);
+		ApplySmoothTerrainNormals(TerrainWaterSection, TArray<uint8>(), TerrainCornerNormals);
 	}
 
 	CreateTerrainSurfaceSection(TerrainPage14Section, BakedCityAtlasMaterials.TerrainLowMaterial, TerrainTexture);
