@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterFireRenderComponent.h"
+#include "Ground/SimCopterEffectFX.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Materials/MaterialInterface.h"
@@ -132,9 +133,10 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 	TArray<FLinearColor> Colors;
 	TArray<FProcMeshTangent> Tangents;
 
-	// The original fire is a chaotic mass of dithered red/orange/yellow specks with dark grey smoke
-	// near the top, jittering every frame. Emit several sub-sprites per fire point and randomise
-	// size / offset / colour each frame for that turbulent look.
+	// The original flame is a cloud of small palette-coloured point sprites (FIREPTS) that flicker
+	// every frame. Colour each point by height through the exact SIM3D fire ramp (palette 0x10..0x1F
+	// dark-red -> amber) with hot yellow tips near the top; emit a couple of jittered sub-sprites
+	// per point for the turbulent flicker.
 	constexpr int32 SubSpritesPerPoint = 3;
 	const int32 SpriteCount = Visuals.Num() * FirePoints.Num() * SubSpritesPerPoint;
 	Vertices.Reserve(SpriteCount * 4);
@@ -176,26 +178,17 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 				// Small<->large chaos.
 				const float Half = FireSpriteHalfSizeCm * Visual.Scale * FMath::FRandRange(0.4f, 1.3f);
 
-				// Colour by height with randomness: deep red/orange low, orange mid, yellow high;
-				// dark grey smoke near the top.
+				// Colour by height through the exact SIM3D fire ramp; the hottest points near the
+				// top burn through to the bright yellow tips (palette 0x73/0x7B).
+				const float H = FMath::Clamp(HeightFrac + FMath::FRandRange(-0.12f, 0.12f), 0.0f, 1.0f);
 				FLinearColor Color;
-				const float H = FMath::Clamp(HeightFrac + FMath::FRandRange(-0.18f, 0.18f), 0.0f, 1.0f);
-				if (HeightFrac > 0.62f && FMath::FRand() < 0.45f)
+				if (H > 0.82f && FMath::FRand() < 0.5f)
 				{
-					const float Grey = FMath::FRandRange(0.12f, 0.3f);
-					Color = FLinearColor(Grey, Grey, Grey, 0.85f); // smoke
-				}
-				else if (H < 0.34f)
-				{
-					Color = FLinearColor(1.0f, FMath::FRandRange(0.15f, 0.38f), 0.03f, 0.92f);
-				}
-				else if (H < 0.66f)
-				{
-					Color = FLinearColor(1.0f, FMath::FRandRange(0.5f, 0.72f), FMath::FRandRange(0.0f, 0.12f), 0.92f);
+					Color = FMath::FRand() < 0.5f ? SimCopterEffectFX::FireTipBright(0.95f) : SimCopterEffectFX::FireTipPale(0.95f);
 				}
 				else
 				{
-					Color = FLinearColor(1.0f, FMath::FRandRange(0.82f, 0.95f), FMath::FRandRange(0.2f, 0.45f), 0.92f);
+					Color = SimCopterEffectFX::FireRamp(H, 0.95f);
 				}
 
 				const int32 Base = Vertices.Num();

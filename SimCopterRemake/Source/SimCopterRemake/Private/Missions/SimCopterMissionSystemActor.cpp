@@ -3,6 +3,8 @@
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Ground/SimCopterFireRenderComponent.h"
+#include "Ground/SimCopterParticleFX.h"
+#include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -105,6 +107,11 @@ ASimCopterMissionSystemActor::ASimCopterMissionSystemActor()
 	{
 		FlameMaterial = FlameMaterialFinder.Object;
 	}
+
+	// Rising smoke + embers above the fire (separate from the FIREPTS flame body, matching the
+	// original's SMOKE sprite + fire-trajectory embers).
+	FireSmokeComponent = CreateDefaultSubobject<USimCopterParticleFXComponent>(TEXT("FireSmoke"));
+	FireSmokeComponent->SetupAttachment(FireRenderComponent);
 }
 
 void ASimCopterMissionSystemActor::BeginPlay()
@@ -406,6 +413,14 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 		Visual.Scale = Scale;
 		Visual.FlickerSeed = static_cast<float>(Index) * 1.7f;
 		Visuals.Add(Visual);
+
+		// Rising smoke + embers above this flame. The original draws a dark SMOKE sprite above the
+		// fire and throws fire-trajectory embers; reproduce that with palette-coloured particles so
+		// the "dark grey smoke near the top" and chaotic sparks read authentically.
+		if (FireSmokeComponent != nullptr && GrowIn > 0.3f)
+		{
+			SpawnFirePlume(FlameXY, Scale, DeltaSeconds);
+		}
 	}
 
 	// Burning cars (car-fire missions): the traffic system owns which cars are alight; draw the
@@ -423,6 +438,47 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 	}
 
 	FireRenderComponent->SyncFlames(Visuals, TimeSeconds, CameraLocation);
+}
+
+void ASimCopterMissionSystemActor::SpawnFirePlume(const FVector& FlameBaseWorld, float Scale, float DeltaSeconds)
+{
+	using namespace SimCopterEffectFX;
+
+	// The flame body is ~1 m tall at full scale; smoke wells up from just above it.
+	const float FlameHeightCm = 90.0f * Scale;
+	const FVector SmokeOrigin = FlameBaseWorld + FVector(0.0f, 0.0f, FlameHeightCm);
+
+	// Dark grey smoke rising and fading (the original's SMOKE sprite above the fire). Rate scales
+	// with flame size; use the fractional accumulator so slow rates still emit smoothly.
+	FireSmokeAccumulator += DeltaSeconds * (6.0f + 6.0f * Scale);
+	const int32 SmokeCount = FMath::FloorToInt(FireSmokeAccumulator);
+	FireSmokeAccumulator -= static_cast<float>(SmokeCount);
+	for (int32 i = 0; i < SmokeCount; ++i)
+	{
+		const FVector Jitter(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(0.0f, 30.0f));
+		const FVector Vel(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(120.0f, 210.0f));
+		const float Grey = FMath::FRandRange(0.12f, 0.32f);
+		FLinearColor Smoke(Grey, Grey, Grey, FMath::FRandRange(0.55f, 0.8f));
+		const float SizeCm = FMath::FRandRange(SmokeSizeCm, WashPuffSizeCm * 0.6f) * Scale;
+		// Buoyant: a small negative "gravity" keeps it drifting upward as it thins out.
+		FireSmokeComponent->SpawnParticle(SmokeOrigin + Jitter, Vel, SizeCm, Smoke, /*Life*/ FMath::FRandRange(1.2f, 1.9f), /*Gravity*/ -40.0f);
+	}
+
+	// Chaotic embers thrown up from the flame body, arcing back down under gravity.
+	FireEmberAccumulator += DeltaSeconds * (10.0f + 14.0f * Scale);
+	const int32 EmberCount = FMath::FloorToInt(FireEmberAccumulator);
+	FireEmberAccumulator -= static_cast<float>(EmberCount);
+	for (int32 i = 0; i < EmberCount; ++i)
+	{
+		const FVector Origin = FlameBaseWorld + FVector(FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(0.0f, FlameHeightCm));
+		const FVector Vel(FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(150.0f, 300.0f));
+		const float T = FMath::FRand();
+		FLinearColor Color = (T > 0.7f)
+			? (FMath::FRand() < 0.5f ? FireTipBright(0.95f) : FireTipPale(0.95f))
+			: FireRamp(FMath::FRandRange(0.3f, 1.0f), 0.95f);
+		const float SizeCm = FMath::FRandRange(WashCardSizeCm, DebrisSizeCm) * FMath::Max(Scale, 0.5f);
+		FireSmokeComponent->SpawnParticle(Origin, Vel, SizeCm, Color, /*Life*/ FMath::FRandRange(0.5f, 0.9f), GravityCmPerSec2);
+	}
 }
 
 bool ASimCopterMissionSystemActor::TryActivatePlaneCrash(int32 EventId)

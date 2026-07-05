@@ -28,15 +28,18 @@ public:
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	// Emit one card. World = spawn point; VelocityCmPerSec = lateral drift; RiseCmPerSec = extra
-	// +Z speed; SizeCm = card half-extent; Color includes the starting alpha (faded out over life).
-	void SpawnCard(const FVector& World, const FVector& VelocityCmPerSec, float RiseCmPerSec,
-		float SizeCm, const FLinearColor& Color, float LifeSeconds);
+	// Emit one particle. World = spawn point; VelocityCmPerSec = initial velocity (all axes);
+	// SizeCm = sprite half-extent; Color includes the starting alpha (faded out over life);
+	// GravityCmPerSec2 pulls the Z velocity down each frame (the original subtracts 0x280000*dt
+	// from every particle's Z velocity - see SimCopterEffectFX::GravityCmPerSec2).
+	void SpawnParticle(const FVector& World, const FVector& VelocityCmPerSec, float SizeCm,
+		const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2 = 0.0f);
 
-	// Emit a radial ring of cards (the original splash breaks a water column into a ring of
-	// smaller type-9 particles). Count cards spread over the horizontal plane with SpeedCmPerSec.
-	void SpawnRing(const FVector& World, int32 Count, float SpeedCmPerSec, float RiseCmPerSec,
-		float SizeCm, const FLinearColor& Color, float LifeSeconds);
+	// Emit a radial ring of particles (the original splash breaks a column into a ring of smaller
+	// type-9 sub-particles - "smaller versions of the water effect"). Count particles spread over
+	// the horizontal plane with SpeedCmPerSec, given an initial +Z velocity and gravity.
+	void SpawnRing(const FVector& World, int32 Count, float SpeedCmPerSec, float InitialRiseCmPerSec,
+		float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2 = 0.0f);
 
 	bool HasActiveParticles() const { return Particles.Num() > 0; }
 
@@ -48,7 +51,7 @@ private:
 	{
 		FVector Position = FVector::ZeroVector;
 		FVector Velocity = FVector::ZeroVector;
-		float Rise = 0.0f;
+		float Gravity = 0.0f; // cm/s^2 applied to Velocity.Z each frame
 		float Size = 0.0f;
 		float Age = 0.0f;
 		float Life = 1.0f;

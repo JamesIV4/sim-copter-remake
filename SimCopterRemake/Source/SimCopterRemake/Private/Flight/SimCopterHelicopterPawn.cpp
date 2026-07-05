@@ -25,6 +25,7 @@
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterParticleFX.h"
+#include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "InputCoreTypes.h"
@@ -1633,9 +1634,9 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 			? BucketMeshComponent->GetComponentLocation()
 			: GetActorLocation();
 
-		// Visible falling water: emit many small drip specks from the bucket mouth (port of
-		// FUN_00488060, which spawns type-6 water-drip particles while the bucket empties). Small,
-		// white+blue mixed, dithered.
+		// Visible falling water: emit small drip specks from the bucket mouth (port of FUN_00488060,
+		// which spawns type-6 water-drip particles while the bucket empties). Small, pale
+		// white+blue palette specks that fall under gravity.
 		if (WaterFXComponent != nullptr)
 		{
 			DripSpawnAccumulator += DeltaSeconds * BucketDripPerSec;
@@ -1644,12 +1645,13 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 			for (int32 i = 0; i < DripCount; ++i)
 			{
 				const FVector Jitter(FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-10.0f, 10.0f));
-				const FVector Drift(FMath::FRandRange(-50.0f, 50.0f), FMath::FRandRange(-50.0f, 50.0f), -300.0f);
+				const FVector Drift(FMath::FRandRange(-40.0f, 40.0f), FMath::FRandRange(-40.0f, 40.0f), -260.0f);
 				const FLinearColor WaterColor = FMath::FRand() < 0.4f
-					? FLinearColor(0.9f, 0.94f, 1.0f, 0.7f)
-					: FLinearColor(0.4f, 0.6f, 0.9f, 0.65f);
-				const float SizeCm = FMath::FRandRange(8.0f, 16.0f);
-				WaterFXComponent->SpawnCard(BucketWorld + Jitter, Drift, /*Rise*/ -220.0f, SizeCm, WaterColor, /*Life*/ 0.6f);
+					? SimCopterEffectFX::SprayWhite(0.85f)
+					: SimCopterEffectFX::SprayBlue(0.8f);
+				const float SizeCm = FMath::FRandRange(SimCopterEffectFX::WashCardSizeCm, SimCopterEffectFX::DebrisSizeCm);
+				WaterFXComponent->SpawnParticle(BucketWorld + Jitter, Drift, SizeCm, WaterColor, /*Life*/ 0.7f,
+					SimCopterEffectFX::GravityCmPerSec2);
 			}
 		}
 
@@ -1667,9 +1669,9 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 					const float Angle = FMath::FRandRange(0.0f, 2.0f * PI);
 					const float Radius = FMath::FRandRange(0.0f, 60.0f);
 					const FVector Pos = SteamOrigin + FVector(FMath::Cos(Angle) * Radius, FMath::Sin(Angle) * Radius, 0.0f);
-					const float Grey = FMath::FRandRange(0.82f, 0.95f);
-					WaterFXComponent->SpawnCard(Pos, FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), 0.0f),
-						/*Rise*/ 150.0f, /*Size*/ FMath::FRandRange(12.0f, 22.0f), FLinearColor(Grey, Grey, Grey, 0.7f), /*Life*/ 1.0f);
+					const FVector Vel(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), 150.0f);
+					WaterFXComponent->SpawnParticle(Pos, Vel, /*Size*/ FMath::FRandRange(SimCopterEffectFX::DebrisSizeCm, SimCopterEffectFX::SmokeSizeCm),
+						SimCopterEffectFX::SprayWhite(0.75f), /*Life*/ 1.0f, /*Gravity*/ -60.0f);
 				}
 			}
 		}
@@ -1772,9 +1774,10 @@ void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
 		return;
 	}
 
-	// Many small dithered specks kicked outward in a disc under the rotor - spray (white/blue mix)
-	// over water, dust (tan/grey) over land - matching the original's dense particle ring.
-	const float RiseCm = bWater ? 120.0f : 70.0f;
+	// The original wash (FUN_004881b0 -> FUN_004af220 class 8) is the pale SMOKE puff scattered at a
+	// random-yaw offset under the rotor. It reads as white/blue spray over water and pale dust over
+	// land. We emit a handful of small palette-coloured puffs per frame; they accumulate into the
+	// dozens-of-small-particles ring the original shows, then fall away under gravity.
 	const float LifeSeconds = bWater ? 0.7f : 0.55f;
 	const float MaxRadius = 120.0f + 260.0f * Intensity;
 
@@ -1784,24 +1787,24 @@ void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
 		const float Radius = FMath::FRandRange(20.0f, MaxRadius);
 		const FVector Dir(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f);
 		const FVector SpawnPos(Location.X + Dir.X * Radius, Location.Y + Dir.Y * Radius, SurfaceZ + FMath::FRandRange(2.0f, 18.0f));
-		const FVector Velocity = Dir * FMath::FRandRange(90.0f, 220.0f);
+		const FVector Velocity = Dir * FMath::FRandRange(90.0f, 220.0f) + FVector(0, 0, FMath::FRandRange(30.0f, 110.0f));
 
+		// Pale SMOKE puff: white/blue over water, slightly warmer pale over land. Alpha lower with
+		// distance so the dither reads as airy spray.
+		const float Alpha = FMath::FRandRange(0.5f, 0.75f);
 		FLinearColor Color;
 		if (bWater)
 		{
-			// Mix white foam and blue water per speck. Low alpha = airier dither.
-			Color = FMath::FRand() < 0.45f
-				? FLinearColor(0.92f, 0.95f, 1.0f, 0.6f)
-				: FLinearColor(0.45f, 0.62f, 0.9f, 0.55f);
+			Color = FMath::FRand() < 0.5f ? SimCopterEffectFX::SprayWhite(Alpha) : SimCopterEffectFX::SprayBlue(Alpha);
 		}
 		else
 		{
-			const float G = FMath::FRandRange(0.42f, 0.6f);
-			Color = FLinearColor(G + 0.12f, G, G * 0.8f, 0.5f);
+			Color = SimCopterEffectFX::SprayWhite(Alpha * 0.9f);
 		}
 
-		const float SizeCm = FMath::FRandRange(8.0f, 20.0f);
-		WaterFXComponent->SpawnCard(SpawnPos, Velocity, RiseCm, SizeCm, Color, LifeSeconds);
+		// Small puffs (a fraction of the SMOKE sprite width), varied for chaos.
+		const float SizeCm = FMath::FRandRange(SimCopterEffectFX::DebrisSizeCm, SimCopterEffectFX::WashPuffSizeCm * 0.5f);
+		WaterFXComponent->SpawnParticle(SpawnPos, Velocity, SizeCm, Color, LifeSeconds, SimCopterEffectFX::GravityCmPerSec2);
 	}
 }
 

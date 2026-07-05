@@ -1,0 +1,33 @@
+===== FUN_0046cd20 @ 0046cd20 =====
+
+int FUN_0046cd20(int param_1,uint param_2)
+
+{
+  if ((int)param_2 >> 0x10 != 0) {
+    return *(int *)(param_1 + 0x20 + ((int)param_2 >> 0x10) * 0xc) + 0xc + (param_2 & 0xffff) * 8;
+  }
+  return *(int *)(param_1 + 0x20 + param_2 * 0xc);
+}
+
+
+===== FUN_00470571 @ 00470571 =====
+
+uint * FUN_00470571(uint param_1)
+
+{
+  uint *puVar1;
+  int *piVar2;
+  
+  piVar2 = &DAT_004fe97c;
+  while( true ) {
+    if (PTR_DAT_004fe978 <= piVar2) {
+      return (uint *)0x0;
+    }
+    puVar1 = (uint *)*piVar2;
+    if ((param_1 == puVar1[0x11]) && ((*puVar1 & 8) == 0)) break;
+    piVar2 = piVar2 + 1;
+  }
+  return puVar1;
+}
+
+
