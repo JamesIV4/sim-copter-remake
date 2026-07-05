@@ -11,6 +11,7 @@ class ASimCopterTrafficSystemActor;
 class ASimCopterHelicopterPawn;
 class ASimCopterGroundAgent;
 class USimCopterFireRenderComponent;
+class USimCopterParticleFXComponent;
 enum class ESimCopterMissionPassengerKind : uint8;
 class UMaterialInterface;
 class USoundBase;
@@ -210,6 +211,15 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire")
 	TObjectPtr<UMaterialInterface> FlameMaterial;
 
+	// Rising smoke + embers above each fire (the original draws a separate SMOKE sprite and emits
+	// fire-trajectory embers; FIREPTS itself is just the flame body).
+	UPROPERTY(Transient)
+	TObjectPtr<USimCopterParticleFXComponent> FireSmokeComponent;
+
+	// Fractional accumulators (particles per second) for the fire smoke/ember emitters.
+	float FireSmokeAccumulator = 0.0f;
+	float FireEmberAccumulator = 0.0f;
+
 	// How close the bucket water must be to a burning car to put it out.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire", meta = (ClampMin = "50.0"))
 	float CarDouseRadiusCm = 600.0f;
@@ -222,6 +232,8 @@ private:
 	// Build the per-frame flame draw list from the mission system and push it to the fire
 	// component. Converts each flame's tile to a rooftop-traced world point + growth/flicker.
 	void UpdateFireVisuals(float DeltaSeconds);
+	// Emit rising smoke + fire embers above a burning point (origin = flame base, Scale = flame size).
+	void SpawnFirePlume(const FVector& FlameBaseWorld, float Scale, float DeltaSeconds);
 	FString ResolveOriginalGameRootDir() const;
 	// Trace the rendered surface (building roof / terrain) at a world XY; returns the top Z.
 	bool TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const;

@@ -1,0 +1,5 @@
+References to 00581c40:
+    004af156  READ  in FUN_004af100 @ 004af100
+    004aed42  WRITE  in FUN_004aeba0 @ 004aeba0
+    004af490  DATA  in FUN_004af3b0 @ 004af3b0
+    004af43c  DATA  in FUN_004af3b0 @ 004af3b0

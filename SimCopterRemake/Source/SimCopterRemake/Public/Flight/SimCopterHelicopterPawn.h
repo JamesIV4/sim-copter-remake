@@ -482,10 +482,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "0.0"))
 	float RotorWashMinAltitudeCm = 60.0f;
 
-	// Small wash specks per second at full intensity (right over the surface); scales down with
-	// height. The original kicks up a dense ring of many small dithered particles, so this is high.
+	// Wash puffs per second at full intensity (right over the surface); scales down with height.
+	// The puffs are pale SMOKE-sized sprites that live ~0.6s, so this rate keeps a few dozen alive -
+	// the "dozens of small particles" ring the original shows without overcrowding.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "1.0"))
-	float RotorWashCardsPerSec = 420.0f;
+	float RotorWashCardsPerSec = 110.0f;
 
 	// Water drips emitted per second from the bucket while dumping.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "1.0"))

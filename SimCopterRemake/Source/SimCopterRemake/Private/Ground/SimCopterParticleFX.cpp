@@ -52,8 +52,8 @@ void USimCopterParticleFXComponent::OnRegister()
 	}
 }
 
-void USimCopterParticleFXComponent::SpawnCard(const FVector& World, const FVector& VelocityCmPerSec,
-	float RiseCmPerSec, float SizeCm, const FLinearColor& Color, float LifeSeconds)
+void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FVector& VelocityCmPerSec,
+	float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
 {
 	if (Particles.Num() >= MaxParticles)
 	{
@@ -62,7 +62,7 @@ void USimCopterParticleFXComponent::SpawnCard(const FVector& World, const FVecto
 	FCard Card;
 	Card.Position = World;
 	Card.Velocity = VelocityCmPerSec;
-	Card.Rise = RiseCmPerSec;
+	Card.Gravity = GravityCmPerSec2;
 	Card.Size = SizeCm;
 	Card.Life = FMath::Max(LifeSeconds, 0.05f);
 	Card.Color = Color;
@@ -70,14 +70,14 @@ void USimCopterParticleFXComponent::SpawnCard(const FVector& World, const FVecto
 }
 
 void USimCopterParticleFXComponent::SpawnRing(const FVector& World, int32 Count, float SpeedCmPerSec,
-	float RiseCmPerSec, float SizeCm, const FLinearColor& Color, float LifeSeconds)
+	float InitialRiseCmPerSec, float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
 {
 	Count = FMath::Clamp(Count, 1, 32);
 	for (int32 i = 0; i < Count; ++i)
 	{
 		const float Angle = (2.0f * PI * static_cast<float>(i)) / static_cast<float>(Count);
-		const FVector Velocity(FMath::Cos(Angle) * SpeedCmPerSec, FMath::Sin(Angle) * SpeedCmPerSec, 0.0f);
-		SpawnCard(World, Velocity, RiseCmPerSec, SizeCm, Color, LifeSeconds);
+		const FVector Velocity(FMath::Cos(Angle) * SpeedCmPerSec, FMath::Sin(Angle) * SpeedCmPerSec, InitialRiseCmPerSec);
+		SpawnParticle(World, Velocity, SizeCm, Color, LifeSeconds, GravityCmPerSec2);
 	}
 }
 
@@ -118,8 +118,10 @@ void USimCopterParticleFXComponent::TickComponent(float DeltaTime, ELevelTick Ti
 			Particles.RemoveAtSwap(i);
 			continue;
 		}
+		// Gravity acts on the vertical velocity, then integrate (matches FUN_0048ed00: subtract
+		// gravity*dt from Z velocity each frame, then advance the position by velocity*dt).
+		Card.Velocity.Z -= Card.Gravity * DeltaTime;
 		Card.Position += Card.Velocity * DeltaTime;
-		Card.Position.Z += Card.Rise * DeltaTime;
 	}
 
 	RebuildMesh(GetCameraLocation());
