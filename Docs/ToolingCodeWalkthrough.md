@@ -73,8 +73,9 @@ Material creators:
 - `create_sprite_texture_material` creates `M_SimCopterSpriteTexture`, a Masked Unlit two-sided material for `PEOPLE1.BMP` sprites with alpha from palette index `254`.
 - `create_lit_vertex_color_material` creates `M_SimCopterLitVertexColor`, a Default Lit vertex-color material for palette-colored meshes and procedural people.
 - `create_water_material` creates `M_SimCopterWater`, a Default Lit material that reuses the terrain-low texturing but displaces the sea vertically in the vertex shader (World Position Offset) with analytic wave normals. Shared HLSL Custom nodes (`WaterWPO`, `WaterNormal`) read world position, a `Time` node, the vertex-color-R shoreline weight, and `WaveAmplitude`/`WaveLength`/`WaveSpeed` scalar parameters. `add_custom_node` is the helper that builds a `MaterialExpressionCustom` with named inputs.
+- `create_terrain_material` creates `M_SimCopterTerrain`, the ground material: same terrain texturing/shading as `MI_TerrainLow`, plus a `TerrainNormalNoise` Custom node that perturbs the shading normal with three octaves of procedural value noise (fine/medium/large, each with a `NoiseAmp*`/`NoiseScale*` scalar parameter). It rides on `VertexNormalWS` (the smoothed rest normal) and is scaled by a vertex-color-R detail weight the renderer bakes to fade the noise out near the shoreline and on building/road pads. The noise gradient is analytic (one 4-corner hash per octave) and cell coords are wrapped to keep the sin-hash stable far from the origin.
 
-The final script body ensures the directory exists and creates all six materials if missing.
+`M_SimCopterWater` and `M_SimCopterTerrain` are deleted and rebuilt every run (their shaders are still being tuned); the other materials are only created if missing. The final script body ensures the directory exists and creates all seven materials.
 
 ## Probe Tools
 

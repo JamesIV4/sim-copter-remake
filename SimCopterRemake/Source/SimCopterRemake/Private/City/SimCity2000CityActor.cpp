@@ -2610,6 +2610,15 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 		WaterMaterial = WaterMaterialFinder.Object;
 	}
 
+	// Ground material with three-octave procedural detail-noise normals (see M_SimCopterTerrain). Fed
+	// the terrain-low/high texture plus the noise parameters; a per-vertex weight (vertex-color R)
+	// fades the noise out near the shoreline and on building/road pads.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TerrainMaterialFinder(TEXT("/Game/Materials/M_SimCopterTerrain.M_SimCopterTerrain"));
+	if (TerrainMaterialFinder.Succeeded())
+	{
+		TerrainMaterial = TerrainMaterialFinder.Object;
+	}
+
 	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/Demo.sc2");
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 }
@@ -2829,6 +2838,10 @@ void ASimCity2000CityActor::RebuildCity()
 	// pads the conditioning creates - the terrain stays crisp where man-made surfaces sit on it.
 	TArray<uint8> TerrainPage14ClampFlags;
 	TArray<uint8> TerrainPage0DClampFlags;
+	// Per-vertex detail-noise weight (0 near shoreline / on man-made pads, ramping to 1 over open
+	// ground), baked into the land vertex colors' R channel for M_SimCopterTerrain.
+	TArray<float> TerrainPage14DetailWeights;
+	TArray<float> TerrainPage0DDetailWeights;
 	TMap<int32, FOriginalMeshSectionData> OriginalMeshSections;
 	const bool bUseTexturedTerrainSurface = BakedCityAtlasMaterials.TerrainLowMaterial != nullptr || BakedCityAtlasMaterials.TerrainHighMaterial != nullptr ||
 		((TerrainTexture != nullptr || HighTerrainTexture != nullptr) && TexturedMaterial != nullptr);
@@ -2867,34 +2880,40 @@ void ASimCity2000CityActor::RebuildCity()
 		return false;
 	};
 
-	// Per-vertex undulation weight for the water section (drives both the wave displacement and its
-	// normals via vertex-color R). A corner touching land is pinned to 0 so the water stays welded to
-	// the static land (no gaps); from there the weight ramps up to 1 over WaterShoreRampTiles tiles so
-	// the waves - and their normals - ease in gradually offshore instead of jumping at the shoreline.
-	// The hard 0->1 step used to make the lighting change starkly right where water meets land.
-	const int32 WaterShoreRamp = FMath::Clamp(WaterShoreRampTiles, 1, 8);
-	auto WaterCornerWeight = [&](int32 GridX, int32 GridY) -> float
+	// Ramp weight for a grid corner based on its distance (in corner-rings; 0 = one of the four tiles
+	// touching the corner matches) to the nearest tile satisfying IsTargetTile: 0 at the boundary,
+	// ramping linearly to 1 at Ramp tiles away. Used for the water shoreline and the land detail fades.
+	auto CornerFadeToNearest = [&](int32 GridX, int32 GridY, int32 Ramp, auto&& IsTargetTile) -> float
 	{
-		// Search the surrounding tiles for the nearest land, measured in corner-rings (0 = one of the
-		// four tiles touching the corner is land). Weight = clamp(nearestLandRing / ramp).
-		int32 NearestLandRing = WaterShoreRamp + 1;
-		for (int32 TileY = GridY - 1 - WaterShoreRamp; TileY <= GridY + WaterShoreRamp && NearestLandRing > 0; ++TileY)
+		int32 Nearest = Ramp + 1;
+		for (int32 TileY = GridY - 1 - Ramp; TileY <= GridY + Ramp && Nearest > 0; ++TileY)
 		{
-			for (int32 TileX = GridX - 1 - WaterShoreRamp; TileX <= GridX + WaterShoreRamp; ++TileX)
+			for (int32 TileX = GridX - 1 - Ramp; TileX <= GridX + Ramp; ++TileX)
 			{
-				if (!IsAnimatedWaterTile(TileX, TileY))
+				if (IsTargetTile(TileX, TileY))
 				{
 					const int32 RingX = FMath::Max(0, FMath::Max((GridX - 1) - TileX, TileX - GridX));
 					const int32 RingY = FMath::Max(0, FMath::Max((GridY - 1) - TileY, TileY - GridY));
-					NearestLandRing = FMath::Min(NearestLandRing, FMath::Max(RingX, RingY));
-					if (NearestLandRing == 0)
+					Nearest = FMath::Min(Nearest, FMath::Max(RingX, RingY));
+					if (Nearest == 0)
 					{
 						break;
 					}
 				}
 			}
 		}
-		return static_cast<float>(FMath::Min(NearestLandRing, WaterShoreRamp)) / static_cast<float>(WaterShoreRamp);
+		return static_cast<float>(FMath::Min(Nearest, Ramp)) / static_cast<float>(Ramp);
+	};
+
+	// Per-vertex undulation weight for the water section (drives both the wave displacement and its
+	// normals via vertex-color R). A corner touching land is pinned to 0 so the water stays welded to
+	// the static land (no gaps); from there the weight ramps up to 1 over WaterShoreRampTiles tiles so
+	// the waves - and their normals - ease in gradually offshore instead of jumping at the shoreline.
+	const int32 WaterShoreRamp = FMath::Clamp(WaterShoreRampTiles, 1, 8);
+	auto WaterCornerWeight = [&](int32 GridX, int32 GridY) -> float
+	{
+		return CornerFadeToNearest(GridX, GridY, WaterShoreRamp,
+			[&](int32 X, int32 Y) { return !IsAnimatedWaterTile(X, Y); });
 	};
 
 	// Weights are appended in lockstep with the four V0..V3 corners AppendTerrainTileWithHeights adds
@@ -2906,6 +2925,41 @@ void ASimCity2000CityActor::RebuildCity()
 		WaterVertexWeights.Add(WaterCornerWeight(FileX + 1, FileY));
 		WaterVertexWeights.Add(WaterCornerWeight(FileX + 1, FileY + 1));
 		WaterVertexWeights.Add(WaterCornerWeight(FileX, FileY + 1));
+	};
+
+	// A tile is "man-made" (a flattened building/road pad) when its XBLD is road- or building-like.
+	auto IsManMadeTile = [&](int32 X, int32 Y) -> bool
+	{
+		if (X >= 0 && X < FSimCity2000City::MapSize && Y >= 0 && Y < FSimCity2000City::MapSize)
+		{
+			const uint8 Building = City.Tiles[Y * FSimCity2000City::MapSize + X].Building;
+			return IsRoadLikeTile(Building) || IsBuildingLikeTile(Building);
+		}
+		return false;
+	};
+
+	// Detail-noise weight for the land: 0 at corners touching water OR a building/road pad, ramping to
+	// 1 over TerrainNoiseWaterFadeTiles / TerrainNoisePadFadeTiles respectively (whichever is nearer
+	// wins). Fading near water keeps the shoreline normal weld undisturbed; fading near the pads eases
+	// the noise in away from those flat surfaces instead of snapping on at the tile edge.
+	const int32 DetailWaterFade = FMath::Clamp(TerrainNoiseWaterFadeTiles, 1, 8);
+	const int32 DetailPadFade = FMath::Clamp(TerrainNoisePadFadeTiles, 1, 8);
+	auto LandCornerDetailWeight = [&](int32 GridX, int32 GridY) -> float
+	{
+		const float WaterFade = CornerFadeToNearest(GridX, GridY, DetailWaterFade, IsAnimatedWaterTile);
+		const float PadFade = CornerFadeToNearest(GridX, GridY, DetailPadFade, IsManMadeTile);
+		return FMath::Min(WaterFade, PadFade);
+	};
+
+	// Appends the four V0..V3 detail weights for a land tile into the matching page's array, in lockstep
+	// with AppendTerrainTile.
+	auto AppendLandDetailWeights = [&](int32 FileX, int32 FileY, bool bUseHighPage)
+	{
+		TArray<float>& Weights = bUseHighPage ? TerrainPage0DDetailWeights : TerrainPage14DetailWeights;
+		Weights.Add(LandCornerDetailWeight(FileX, FileY));
+		Weights.Add(LandCornerDetailWeight(FileX + 1, FileY));
+		Weights.Add(LandCornerDetailWeight(FileX + 1, FileY + 1));
+		Weights.Add(LandCornerDetailWeight(FileX, FileY + 1));
 	};
 
 	int32 TerrainCount = 0;
@@ -2955,12 +3009,14 @@ void ASimCity2000CityActor::RebuildCity()
 				{
 					// Clamp (keep flat) the terrain under buildings/roads so smooth shading leaves
 					// their flat pads crisp; natural ground (grass/trees/parks) smooths freely.
-					const uint8 ClampFlag = (bRoadLikeTile || bBuildingLikeTile) ? 1 : 0;
+					const bool bManMade = bRoadLikeTile || bBuildingLikeTile;
+					const uint8 ClampFlag = bManMade ? 1 : 0;
 					TArray<uint8>& LandClampFlags = bUseHighPageForTile ? TerrainPage0DClampFlags : TerrainPage14ClampFlags;
 					LandClampFlags.Add(ClampFlag);
 					LandClampFlags.Add(ClampFlag);
 					LandClampFlags.Add(ClampFlag);
 					LandClampFlags.Add(ClampFlag);
+					AppendLandDetailWeights(FileX, FileY, bUseHighPageForTile);
 				}
 				++TerrainCount;
 			}
@@ -3114,6 +3170,7 @@ void ASimCity2000CityActor::RebuildCity()
 					LandClampFlags.Add(0);
 					LandClampFlags.Add(0);
 					LandClampFlags.Add(0);
+					AppendLandDetailWeights(FileX, FileY, bUseHighPageForTile);
 				}
 				++TerrainCount;
 				++ExtensionTerrainCount;
@@ -3140,18 +3197,52 @@ void ASimCity2000CityActor::RebuildCity()
 			TerrainSection.Tangents,
 			bEnableTerrainCollision);
 
-		if (SurfaceMaterial != nullptr)
+		// Prefer the detail-noise ground material: same TILED1 texture as the baked surface, plus the
+		// per-vertex-weighted procedural normal noise. Fall back to the plain baked/runtime materials.
+		UMaterialInstanceDynamic* NoiseMID = nullptr;
+		if (bEnableTerrainDetailNoise && TerrainMaterial != nullptr)
+		{
+			UTexture* NoiseTexture = SurfaceTexture;
+			if (NoiseTexture == nullptr && SurfaceMaterial != nullptr)
+			{
+				SurfaceMaterial->GetTextureParameterValue(FMaterialParameterInfo(TEXT("Texture")), NoiseTexture);
+			}
+			if (NoiseTexture != nullptr)
+			{
+				NoiseMID = UMaterialInstanceDynamic::Create(TerrainMaterial, this);
+			}
+			if (NoiseMID != nullptr)
+			{
+				NoiseMID->SetTextureParameterValue(TEXT("Texture"), NoiseTexture);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseAmpFine"), TerrainNoiseAmpFine);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseScaleFine"), TerrainNoiseScaleFine);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseAmpMed"), TerrainNoiseAmpMed);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseScaleMed"), TerrainNoiseScaleMed);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseAmpLarge"), TerrainNoiseAmpLarge);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseScaleLarge"), TerrainNoiseScaleLarge);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseAmpXLarge"), TerrainNoiseAmpXLarge);
+				NoiseMID->SetScalarParameterValue(TEXT("NoiseScaleXLarge"), TerrainNoiseScaleXLarge);
+				OriginalTextureMaterials.Add(NoiseMID);
+				TerrainMeshComponent->SetMaterial(SectionIndex, NoiseMID);
+			}
+		}
+
+		if (NoiseMID != nullptr)
+		{
+			// already assigned
+		}
+		else if (SurfaceMaterial != nullptr)
 		{
 			TerrainMeshComponent->SetMaterial(SectionIndex, SurfaceMaterial);
 		}
 		else if (SurfaceTexture != nullptr && TexturedMaterial != nullptr)
 		{
-			UMaterialInstanceDynamic* TerrainMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
-			if (TerrainMaterial != nullptr)
+			UMaterialInstanceDynamic* RuntimeTerrainMID = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
+			if (RuntimeTerrainMID != nullptr)
 			{
-				TerrainMaterial->SetTextureParameterValue(TEXT("Texture"), SurfaceTexture);
-				OriginalTextureMaterials.Add(TerrainMaterial);
-				TerrainMeshComponent->SetMaterial(SectionIndex, TerrainMaterial);
+				RuntimeTerrainMID->SetTextureParameterValue(TEXT("Texture"), SurfaceTexture);
+				OriginalTextureMaterials.Add(RuntimeTerrainMID);
+				TerrainMeshComponent->SetMaterial(SectionIndex, RuntimeTerrainMID);
 			}
 		}
 		else if (VertexColorMaterial != nullptr)
@@ -3176,6 +3267,25 @@ void ASimCity2000CityActor::RebuildCity()
 		ApplySmoothTerrainNormals(TerrainPage14Section, TerrainPage14ClampFlags, TerrainCornerNormals);
 		ApplySmoothTerrainNormals(TerrainPage0DSection, TerrainPage0DClampFlags, TerrainCornerNormals);
 		ApplySmoothTerrainNormals(TerrainWaterSection, TArray<uint8>(), TerrainCornerNormals);
+	}
+
+	// Bake the detail-noise weight into the land vertex colors (R) for M_SimCopterTerrain to read.
+	if (bEnableTerrainDetailNoise)
+	{
+		auto BakeDetailWeights = [](FOriginalMeshSectionData& Section, const TArray<float>& Weights)
+		{
+			if (Weights.Num() != Section.VertexColors.Num())
+			{
+				return;
+			}
+			for (int32 Index = 0; Index < Section.VertexColors.Num(); ++Index)
+			{
+				const float Weight = Weights[Index];
+				Section.VertexColors[Index] = FLinearColor(Weight, Weight, Weight, 1.0f);
+			}
+		};
+		BakeDetailWeights(TerrainPage14Section, TerrainPage14DetailWeights);
+		BakeDetailWeights(TerrainPage0DSection, TerrainPage0DDetailWeights);
 	}
 
 	CreateTerrainSurfaceSection(TerrainPage14Section, BakedCityAtlasMaterials.TerrainLowMaterial, TerrainTexture);

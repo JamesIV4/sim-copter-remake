@@ -396,6 +396,109 @@ def create_water_material():
     save(f"{MATERIAL_DIR}/M_SimCopterWater")
 
 
+# Ground detail material: same TILED1 texturing + lit shading as MI_TerrainLow/High, but it perturbs
+# the surface normal with four octaves of procedural value noise (fine / medium / large / extra large),
+# each with its own amplitude and scale, so the otherwise smooth terrain lighting gets organic relief.
+# The perturbation is added on top of the mesh's smoothed rest normal (BaseNormal = VertexNormalWS)
+# and scaled by a per-vertex weight (vertex-color R) the renderer bakes: 0 near the land/water
+# shoreline (and ramping in away from flat building/road pads) so it never disturbs the water weld or
+# the crisp pads, ramping to 1 over open ground. Value noise gives an analytic gradient (one 4-corner
+# hash per octave, no finite differences); cell coords are wrapped to keep the sin-hash stable far
+# from the origin.
+TERRAIN_NOISE_INPUTS = [
+    "WorldPos", "BaseNormal", "Weight",
+    "AmpFine", "ScaleFine", "AmpMed", "ScaleMed",
+    "AmpLarge", "ScaleLarge", "AmpXLarge", "ScaleXLarge",
+]
+
+TERRAIN_NOISE_CODE = (
+    "float amps[4] = { AmpFine, AmpMed, AmpLarge, AmpXLarge };\n"
+    "float scales[4] = { max(ScaleFine, 1.0), max(ScaleMed, 1.0), max(ScaleLarge, 1.0), max(ScaleXLarge, 1.0) };\n"
+    "float gx = 0.0;\n"
+    "float gy = 0.0;\n"
+    "const float M = 256.0;\n"
+    "[unroll] for (int o = 0; o < 4; o++)\n"
+    "{\n"
+    "    float s = scales[o];\n"
+    "    float2 p = WorldPos.xy / s;\n"
+    "    float2 ip = floor(p);\n"
+    "    float2 f = p - ip;\n"
+    "    float2 u = f * f * (3.0 - 2.0 * f);\n"
+    "    float2 du = 6.0 * f * (1.0 - f);\n"
+    "    float2 i0 = ip - floor(ip / M) * M;\n"
+    "    float2 i1 = i0 + 1.0; i1 = i1 - floor(i1 / M) * M;\n"
+    "    float a = frac(sin(dot(float2(i0.x, i0.y), float2(127.1, 311.7))) * 43758.5453);\n"
+    "    float b = frac(sin(dot(float2(i1.x, i0.y), float2(127.1, 311.7))) * 43758.5453);\n"
+    "    float c = frac(sin(dot(float2(i0.x, i1.y), float2(127.1, 311.7))) * 43758.5453);\n"
+    "    float d = frac(sin(dot(float2(i1.x, i1.y), float2(127.1, 311.7))) * 43758.5453);\n"
+    "    float abcd = a - b - c + d;\n"
+    "    float dvx = ((b - a) + abcd * u.y) * du.x;\n"
+    "    float dvy = ((c - a) + abcd * u.x) * du.y;\n"
+    "    gx += amps[o] * dvx / s;\n"
+    "    gy += amps[o] * dvy / s;\n"
+    "}\n"
+    "return normalize(BaseNormal + Weight * float3(-gx, -gy, 0.0));"
+)
+
+
+def create_terrain_material():
+    material = create_or_load_material("M_SimCopterTerrain")
+    clear_expressions(material)
+
+    # Base color / lit shading, identical to MI_TerrainLow so the ground reads the same.
+    texture = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTextureSampleParameter2D, -400, 0
+    )
+    texture.set_editor_property("parameter_name", "Texture")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
+    )
+    add_shading_nodes(material, texture, "RGB")
+
+    world_pos = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionWorldPosition, -1000, 700
+    )
+    base_normal = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexNormalWS, -1000, 820
+    )
+    weight = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexColor, -1000, 940
+    )
+    amp_fine = add_scalar_parameter(material, "NoiseAmpFine", 12.0, 3, 1060)
+    scale_fine = add_scalar_parameter(material, "NoiseScaleFine", 350.0, 4, 1140)
+    amp_med = add_scalar_parameter(material, "NoiseAmpMed", 45.0, 5, 1220)
+    scale_med = add_scalar_parameter(material, "NoiseScaleMed", 1000.0, 6, 1300)
+    amp_large = add_scalar_parameter(material, "NoiseAmpLarge", 150.0, 7, 1380)
+    scale_large = add_scalar_parameter(material, "NoiseScaleLarge", 3000.0, 8, 1460)
+    amp_xlarge = add_scalar_parameter(material, "NoiseAmpXLarge", 400.0, 9, 1540)
+    scale_xlarge = add_scalar_parameter(material, "NoiseScaleXLarge", 8000.0, 10, 1620)
+
+    noise = add_custom_node(
+        material, "TerrainNormalNoise", TERRAIN_NOISE_CODE, TERRAIN_NOISE_INPUTS, -650, 800,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(world_pos, "", noise, "WorldPos")
+    unreal.MaterialEditingLibrary.connect_material_expressions(base_normal, "", noise, "BaseNormal")
+    unreal.MaterialEditingLibrary.connect_material_expressions(weight, "R", noise, "Weight")
+    unreal.MaterialEditingLibrary.connect_material_expressions(amp_fine, "", noise, "AmpFine")
+    unreal.MaterialEditingLibrary.connect_material_expressions(scale_fine, "", noise, "ScaleFine")
+    unreal.MaterialEditingLibrary.connect_material_expressions(amp_med, "", noise, "AmpMed")
+    unreal.MaterialEditingLibrary.connect_material_expressions(scale_med, "", noise, "ScaleMed")
+    unreal.MaterialEditingLibrary.connect_material_expressions(amp_large, "", noise, "AmpLarge")
+    unreal.MaterialEditingLibrary.connect_material_expressions(scale_large, "", noise, "ScaleLarge")
+    unreal.MaterialEditingLibrary.connect_material_expressions(amp_xlarge, "", noise, "AmpXLarge")
+    unreal.MaterialEditingLibrary.connect_material_expressions(scale_xlarge, "", noise, "ScaleXLarge")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        noise, "", unreal.MaterialProperty.MP_NORMAL
+    )
+
+    # The perturbed normal is world-space, so the Normal input must not be treated as tangent-space.
+    material.set_editor_property("tangent_space_normal", False)
+    material.set_editor_property("two_sided", False)
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(f"{MATERIAL_DIR}/M_SimCopterTerrain")
+
+
 def create_lit_vertex_color_material():
     material = create_or_load_material("M_SimCopterLitVertexColor")
     clear_expressions(material)
@@ -434,6 +537,8 @@ create_if_missing("M_SimCopterSpriteTexture", create_sprite_texture_material)
 # its expressions asserts (!IsRooted in DeleteMaterialExpression) in this engine build, whereas a
 # freshly created material has no expressions to clear. The asset keeps the same /Game path, so the
 # renderer's ConstructorHelpers reference still resolves.
-if unreal.EditorAssetLibrary.does_asset_exist(f"{MATERIAL_DIR}/M_SimCopterWater"):
-    unreal.EditorAssetLibrary.delete_asset(f"{MATERIAL_DIR}/M_SimCopterWater")
+for _tuned in ("M_SimCopterWater", "M_SimCopterTerrain"):
+    if unreal.EditorAssetLibrary.does_asset_exist(f"{MATERIAL_DIR}/{_tuned}"):
+        unreal.EditorAssetLibrary.delete_asset(f"{MATERIAL_DIR}/{_tuned}")
 create_water_material()
+create_terrain_material()

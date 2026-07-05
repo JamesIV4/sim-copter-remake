@@ -91,6 +91,45 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bSmoothTerrainShading = true;
 
+	// Perturb the ground's shading normal with three octaves of procedural noise (M_SimCopterTerrain)
+	// for subtle organic relief. Faded to zero near the shoreline and on building/road pads so it does
+	// not disturb the water weld or the flat pads. Amplitudes are ~bump height, scales ~bump size (uu).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail")
+	bool bEnableTerrainDetailNoise = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "0.0"))
+	float TerrainNoiseAmpFine = 12.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "1.0"))
+	float TerrainNoiseScaleFine = 350.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "0.0"))
+	float TerrainNoiseAmpMed = 45.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "1.0"))
+	float TerrainNoiseScaleMed = 1000.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "0.0"))
+	float TerrainNoiseAmpLarge = 150.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "1.0"))
+	float TerrainNoiseScaleLarge = 3000.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "0.0"))
+	float TerrainNoiseAmpXLarge = 400.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "1.0"))
+	float TerrainNoiseScaleXLarge = 8000.0f;
+
+	// How many tiles inland the detail noise ramps from 0 (at the shoreline) up to full strength.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "1", ClampMax = "8"))
+	int32 TerrainNoiseWaterFadeTiles = 3;
+
+	// How many tiles the detail noise ramps from 0 (on building/road pads) up to full strength, so the
+	// noise eases in away from the flat pads instead of snapping on at the tile edge.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Terrain Detail", meta = (ClampMin = "1", ClampMax = "8"))
+	int32 TerrainNoisePadFadeTiles = 2;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderProceduralMapExtension = true;
 
@@ -196,6 +235,11 @@ private:
 	// per rebuild to feed it the terrain water texture and the wave parameters below.
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> WaterMaterial;
+
+	// Base material for the ground with procedural detail-noise normals (M_SimCopterTerrain); dynamic
+	// instances are created per rebuild to feed the terrain texture and the noise parameters.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> TerrainMaterial;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTexture2D>> OriginalTextureCache;
