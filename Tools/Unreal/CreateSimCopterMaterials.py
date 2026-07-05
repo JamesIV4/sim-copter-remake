@@ -499,6 +499,131 @@ def create_terrain_material():
     save(f"{MATERIAL_DIR}/M_SimCopterTerrain")
 
 
+# 4x4 ordered (Bayer) dither, keyed by absolute screen pixel position. This reproduces the
+# original SimCopter effect look: a 1996 8-bit palettized renderer faked transparency by dithering
+# solid palette pixels in an ordered pattern, so the spray/fire/water are clouds of hard-edged
+# dithered specks, not alpha-blended blobs. Alpha (0..1) sets the fraction of pixels kept.
+PARTICLE_DITHER_CODE = (
+    "float2 sp = floor(Parameters.SvPosition.xy);\n"
+    "float col = fmod(sp.x, 4.0);\n"
+    "float row = fmod(sp.y, 4.0);\n"
+    "int idx = (int)(row * 4.0 + col);\n"
+    "float bayer[16] = {0.5,8.5,2.5,10.5, 12.5,4.5,14.5,6.5, 3.5,11.5,1.5,9.5, 15.5,7.5,13.5,5.5};\n"
+    "float t = bayer[idx] / 16.0;\n"
+    "return Alpha >= t ? 1.0 : 0.0;"
+)
+
+
+def create_particle_fx_material():
+    """Default effect card: unlit, MASKED, ordered-dither transparency (the authentic original look).
+
+    Reproduces the original SimCopter effect primitives (FIREPTS point sprites + the Maxis face
+    type 0x17 effect cards): flat, palette-coloured, camera-facing, and made transparent by ORDERED
+    DITHERING in the palettized software renderer (see FUN_0046edb0 / FUN_0048e0b0). There is no
+    sprite atlas - the colour is a SIM3D palette index - so the remake writes that palette colour
+    (plus a per-card alpha) into vertex colour and the material keeps a Bayer-dithered fraction of
+    pixels (Masked blend), giving the characteristic hard dithered specks. Soft alpha blending is
+    available separately as M_SimCopterParticleFXSoft (off by default)."""
+    material = create_or_load_material("M_SimCopterParticleFX")
+
+    material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    material.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    material.set_editor_property("two_sided", True)
+
+    vertex_color = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexColor, -700, 0
+    )
+
+    boost = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -400, -160
+    )
+    boost.set_editor_property("const_b", 1.4)
+    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "RGB", boost, "A")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        boost, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
+    )
+
+    dither = add_custom_node(
+        material,
+        "Bayer4x4Dither",
+        PARTICLE_DITHER_CODE,
+        ["Alpha"],
+        -380,
+        300,
+        output_type=unreal.CustomMaterialOutputType.CMOT_FLOAT1,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "A", dither, "Alpha")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        dither, "", unreal.MaterialProperty.MP_OPACITY_MASK
+    )
+
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(f"{MATERIAL_DIR}/M_SimCopterParticleFX")
+
+
+def create_particle_fx_soft_material():
+    """Optional soft-edged effect card (translucent, radial alpha falloff). NOT the default - the
+    original used dithering, not alpha blending - but available for a softer, more modern look by
+    assigning it on the fire/particle components."""
+    material = create_or_load_material("M_SimCopterParticleFXSoft")
+
+    material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    material.set_editor_property("shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    material.set_editor_property("two_sided", True)
+
+    vertex_color = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexColor, -700, 0
+    )
+    boost = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -400, -160
+    )
+    boost.set_editor_property("const_b", 1.4)
+    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "RGB", boost, "A")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        boost, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
+    )
+
+    tex_coord = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTextureCoordinate, -700, 260
+    )
+    center = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionConstant2Vector, -700, 400
+    )
+    center.set_editor_property("r", 0.5)
+    center.set_editor_property("g", 0.5)
+    distance = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionDistance, -520, 300
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(tex_coord, "", distance, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(center, "", distance, "B")
+    scaled = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -380, 300
+    )
+    scaled.set_editor_property("const_b", 2.0)
+    unreal.MaterialEditingLibrary.connect_material_expressions(distance, "", scaled, "A")
+    inner = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionOneMinus, -250, 300
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(scaled, "", inner, "")
+    mask = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionClamp, -130, 300
+    )
+    mask.set_editor_property("min_default", 0.0)
+    mask.set_editor_property("max_default", 1.0)
+    unreal.MaterialEditingLibrary.connect_material_expressions(inner, "", mask, "")
+    opacity = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, 20, 200
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(mask, "", opacity, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "A", opacity, "B")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        opacity, "", unreal.MaterialProperty.MP_OPACITY
+    )
+
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(f"{MATERIAL_DIR}/M_SimCopterParticleFXSoft")
+
+
 def create_lit_vertex_color_material():
     material = create_or_load_material("M_SimCopterLitVertexColor")
     clear_expressions(material)
@@ -537,8 +662,10 @@ create_if_missing("M_SimCopterSpriteTexture", create_sprite_texture_material)
 # its expressions asserts (!IsRooted in DeleteMaterialExpression) in this engine build, whereas a
 # freshly created material has no expressions to clear. The asset keeps the same /Game path, so the
 # renderer's ConstructorHelpers reference still resolves.
-for _tuned in ("M_SimCopterWater", "M_SimCopterTerrain"):
+for _tuned in ("M_SimCopterWater", "M_SimCopterTerrain", "M_SimCopterParticleFX", "M_SimCopterParticleFXSoft"):
     if unreal.EditorAssetLibrary.does_asset_exist(f"{MATERIAL_DIR}/{_tuned}"):
         unreal.EditorAssetLibrary.delete_asset(f"{MATERIAL_DIR}/{_tuned}")
 create_water_material()
 create_terrain_material()
+create_particle_fx_material()
+create_particle_fx_soft_material()

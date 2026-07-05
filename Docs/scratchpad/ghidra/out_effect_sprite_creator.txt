@@ -1,0 +1,126 @@
+===== FUN_0046edb0 @ 0046edb0 =====
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+undefined4 * FUN_0046edb0(int param_1,int param_2)
+
+{
+  undefined4 *puVar1;
+  undefined4 *puVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  undefined4 *puVar6;
+  int *piVar7;
+  int *piVar8;
+  int iVar9;
+  
+  DAT_0055d1d4 = param_1 * 0x40 + 0x98;
+  puVar2 = (undefined4 *)FUN_00468380(DAT_00592068,DAT_0055d1d4);
+  if (puVar2 == (undefined4 *)0x0) {
+    _DAT_005bdb40 = 4;
+    return (undefined4 *)0x0;
+  }
+  iVar3 = FUN_00470393(puVar2);
+  uVar5 = DAT_0055d1d4;
+  if (iVar3 == 0) {
+    _DAT_005bdb40 = 9;
+    return (undefined4 *)0x0;
+  }
+  puVar6 = puVar2;
+  for (uVar4 = DAT_0055d1d4 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {
+    *puVar6 = 0;
+    puVar6 = puVar6 + 1;
+  }
+  for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {
+    *(undefined1 *)puVar6 = 0;
+    puVar6 = (undefined4 *)((int)puVar6 + 1);
+  }
+  puVar6 = puVar2 + 0x24;
+  *puVar2 = 0;
+  puVar2[1] = param_1;
+  puVar2[4] = param_1;
+  puVar2[0x11] = 0;
+  puVar2[0xc] = 0;
+  puVar2[2] = puVar6;
+  puVar1 = puVar6 + param_1 * 3;
+  puVar2[0x10] = 0;
+  iVar3 = param_1;
+  if (0 < param_1) {
+    do {
+      puVar6[2] = 0;
+      iVar3 = iVar3 + -1;
+      *puVar6 = 0;
+      puVar6[1] = 0;
+      puVar6 = puVar6 + 3;
+    } while (iVar3 != 0);
+  }
+  iVar3 = 0;
+  iVar9 = 0;
+  puVar2[0x13] = puVar1 + 2;
+  piVar7 = puVar1 + 2;
+  piVar8 = puVar1 + 0xe;
+  if (0 < param_1) {
+    do {
+      piVar7[1] = 1;
+      piVar7[2] = 0x10002;
+      piVar7[3] = iVar9;
+      piVar7[4] = param_2;
+      piVar7[9] = iVar9;
+      iVar9 = iVar9 + 1;
+      piVar7[8] = (int)puVar1;
+      *piVar7 = (int)(piVar8 + 1);
+      piVar7[7] = (int)piVar8;
+      *piVar8 = iVar3;
+      iVar3 = iVar3 + 0x10;
+      piVar7 = piVar8 + 1;
+      piVar8 = piVar8 + 0xd;
+    } while (iVar9 < param_1);
+  }
+  return puVar2;
+}
+
+
+===== FUN_0046f5a5 @ 0046f5a5 =====
+
+void FUN_0046f5a5(int param_1,int *param_2)
+
+{
+  *param_2 = param_1;
+  param_2[7] = *(int *)(param_1 + 0x28);
+  param_2[1] = *(int *)(param_1 + 4);
+  param_2[2] = *(int *)(param_1 + 8);
+  param_2[3] = *(int *)(param_1 + 0x10);
+  param_2[4] = *(int *)(param_1 + 0x24);
+  param_2[5] = param_1 + 0x30;
+  param_2[6] = param_1 + 0x30 + param_2[1] * 4;
+  return;
+}
+
+
+===== FUN_0046f5e1 @ 0046f5e1 =====
+
+void FUN_0046f5e1(int param_1,int param_2)
+
+{
+  *(undefined4 *)(param_1 + 0x28) = *(undefined4 *)(param_2 + 0x1c);
+  *(undefined4 *)(param_1 + 4) = *(undefined4 *)(param_2 + 4);
+  *(undefined4 *)(param_1 + 8) = *(undefined4 *)(param_2 + 8);
+  *(undefined4 *)(param_1 + 0x10) = *(undefined4 *)(param_2 + 0xc);
+  *(undefined4 *)(param_1 + 0x24) = *(undefined4 *)(param_2 + 0x10);
+  *(undefined4 *)(param_1 + 0x20) = *(undefined4 *)(param_2 + 0x18);
+  return;
+}
+
+
+===== FUN_0046f610 @ 0046f610 =====
+
+void FUN_0046f610(uint *param_1,int param_2)
+
+{
+  *param_1 = *param_1 & *(uint *)(&DAT_004fc04c + param_2 * 8) |
+             *(uint *)(&DAT_004fc050 + param_2 * 8);
+  return;
+}
+
+

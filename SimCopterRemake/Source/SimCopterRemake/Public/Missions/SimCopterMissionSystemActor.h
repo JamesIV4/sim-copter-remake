@@ -10,6 +10,7 @@
 class ASimCopterTrafficSystemActor;
 class ASimCopterHelicopterPawn;
 class ASimCopterGroundAgent;
+class USimCopterFireRenderComponent;
 enum class ESimCopterMissionPassengerKind : uint8;
 class UMaterialInterface;
 class USoundBase;
@@ -103,6 +104,18 @@ public:
 	// Returns true if a jam was cleared. Called by the helicopter pawn's megaphone key.
 	bool TryUseMegaphone(const FVector& FromWorldLocation);
 
+	// Debug: force-spawn a building fire (or car fire) near the camera so fire visuals and the
+	// bucket douse can be exercised without waiting for the scheduler. Invoked via the helicopter
+	// pawn's `SimForceFire` / `SimForceCarFire` console commands (the player pawn routes Exec).
+	void SimForceFire();
+	void SimForceCarFire();
+
+	// Water bucket: dump water at the given world location - extinguishes nearby fires (via the
+	// mission system's DouseAt) and spawns the visible water splash/spray. Called by the
+	// helicopter pawn while the bucket is dumping. Returns the number of tiles that had fire in
+	// range (0 if the dump hit no fire).
+	int32 DumpWaterAt(const FVector& BucketWorldLocation);
+
 	// ~End ISimCopterMissionWorld Interface
 
 private:
@@ -187,6 +200,32 @@ private:
 	TArray<TObjectPtr<USoundBase>> MegaphoneVoices;
 
 	SimCopterMissions::FSimCopterMissionSystem MissionSystem;
+
+	// Renders the original FIREPTS flame meshes for every active building flame; driven each
+	// tick from MissionSystem.GetFlames(). Also owns the burnt-rubble tile swaps.
+	UPROPERTY(Transient)
+	TObjectPtr<USimCopterFireRenderComponent> FireRenderComponent;
+
+	// Material for the flame meshes (defaults to M_SimCopterLitVertexColor, like the vehicles).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire")
+	TObjectPtr<UMaterialInterface> FlameMaterial;
+
+	// How close the bucket water must be to a burning car to put it out.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire", meta = (ClampMin = "50.0"))
+	float CarDouseRadiusCm = 600.0f;
+
+	// Cached resolved city actor (for the rendered-surface trace that seats flames on rooftops)
+	// and the original game root (for loading the flame GEO meshes once).
+	TWeakObjectPtr<AActor> ResolvedCityActor;
+	bool bFireAssetsInitialized = false;
+
+	// Build the per-frame flame draw list from the mission system and push it to the fire
+	// component. Converts each flame's tile to a rooftop-traced world point + growth/flicker.
+	void UpdateFireVisuals(float DeltaSeconds);
+	FString ResolveOriginalGameRootDir() const;
+	// Trace the rendered surface (building roof / terrain) at a world XY; returns the top Z.
+	bool TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const;
+
 	TArray<FSimCopterMissionLogEntry> MissionMessageLog;
 	TSharedPtr<SWidget> MessageLogWidget;
 	TSharedPtr<SVerticalBox> MessageLogBox;

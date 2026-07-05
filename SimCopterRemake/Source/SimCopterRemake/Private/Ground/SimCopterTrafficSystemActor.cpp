@@ -726,17 +726,70 @@ bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 	
 	if (FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(ChosenVehicle)))
 	{
+		// A burning car stops (jams) and shows flames until doused.
 		State->bMissionJammed = true;
+		State->bMissionOnFire = true;
 		State->MissionEventId = EventId;
 	}
-	
+
 	if (!TryGetPeopleTileCoordinateAtWorldLocation(ChosenVehicle->GetActorLocation(), OutTileX, OutTileY))
 	{
 		OutTileX = 64;
 		OutTileY = 64;
 	}
-	
+
 	return true;
+}
+
+void ASimCopterTrafficSystemActor::GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const
+{
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		const ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+		const FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State == nullptr || !State->bMissionOnFire)
+		{
+			continue;
+		}
+		FSimCopterBurningVehicle Burning;
+		// Stable, collision-free key distinct from the mission-system flame slot indices.
+		Burning.Key = 0x40000000 | static_cast<int32>(Vehicle->GetUniqueID() & 0x3FFFFFFF);
+		Burning.EventId = State->MissionEventId;
+		Burning.World = Vehicle->GetActorLocation();
+		Out.Add(Burning);
+	}
+}
+
+void ASimCopterTrafficSystemActor::DouseBurningVehiclesNear(const FVector& WorldLocation, float RadiusCm, TArray<int32>& OutExtinguishedEventIds)
+{
+	const float RadiusSq = RadiusCm * RadiusCm;
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State == nullptr || !State->bMissionOnFire)
+		{
+			continue;
+		}
+		if (FVector::DistSquared(Vehicle->GetActorLocation(), WorldLocation) > RadiusSq)
+		{
+			continue;
+		}
+
+		// Put the car out: it stops burning and resumes normal traffic.
+		State->bMissionOnFire = false;
+		State->bMissionJammed = false;
+		OutExtinguishedEventIds.Add(State->MissionEventId);
+		State->MissionEventId = INDEX_NONE;
+	}
 }
 
 bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId)

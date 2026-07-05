@@ -2,9 +2,11 @@
 
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Ground/SimCopterFireRenderComponent.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "City/SimCity2000CityActor.h"
 #include "Audio.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
@@ -18,6 +20,8 @@
 #include "Misc/FileHelper.h"
 #include "Sound/SoundWave.h"
 #include "Styling/CoreStyle.h"
+#include "UObject/ConstructorHelpers.h"
+#include "CollisionQueryParams.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
@@ -89,6 +93,18 @@ FLinearColor WithAlpha(FLinearColor Color, float Alpha)
 ASimCopterMissionSystemActor::ASimCopterMissionSystemActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	FireRenderComponent = CreateDefaultSubobject<USimCopterFireRenderComponent>(TEXT("FireRender"));
+	SetRootComponent(FireRenderComponent);
+
+	// FIREPTS is a cloud of palette-coloured point sprites; draw them with the emissive/translucent
+	// particle material so the flame glows like the original's flat-shaded fire points.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FlameMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterParticleFX.M_SimCopterParticleFX"));
+	if (FlameMaterialFinder.Succeeded())
+	{
+		FlameMaterial = FlameMaterialFinder.Object;
+	}
 }
 
 void ASimCopterMissionSystemActor::BeginPlay()
@@ -104,6 +120,18 @@ void ASimCopterMissionSystemActor::BeginPlay()
 	EnsureMessageLogWidget();
 	EnsureMissionMarkerWidget();
 	EnsureMegaphonePromptWidget();
+
+	// Load the FIREPTS flame mesh once (deferred so the traffic/city actors have finished their
+	// own BeginPlay asset loads first).
+	if (FireRenderComponent != nullptr && !bFireAssetsInitialized)
+	{
+		FString FireError;
+		bFireAssetsInitialized = FireRenderComponent->InitFireAssets(ResolveOriginalGameRootDir(), FlameMaterial, FireError);
+		if (!bFireAssetsInitialized)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("SimCopter fire visuals disabled: %s"), *FireError);
+		}
+	}
 }
 
 void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -128,6 +156,7 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	ProcessPassengerTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateMegaphonePrompt();
+	UpdateFireVisuals(DeltaTime);
 	MissionSystem.AdvanceCareerIfComplete();
 
 	bool bChangedLog = false;
@@ -220,6 +249,180 @@ bool ASimCopterMissionSystemActor::IsModalUiActive() const
 
 void ASimCopterMissionSystemActor::OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId)
 {
+	// The flame visuals are driven by polling MissionSystem.GetFlames() in UpdateFireVisuals, so
+	// there is nothing to place here; the ignition just makes the fire object + flames exist.
+}
+
+void ASimCopterMissionSystemActor::SimForceFire()
+{
+	const int32 EventId = MissionSystem.CreateEventOfType(SimCopterMissions::TYPE_BuildingFire);
+	UE_LOG(LogTemp, Display, TEXT("SimForceFire: created building fire event %d (active flames now %d)"),
+		EventId, MissionSystem.GetActiveFlameCount());
+}
+
+void ASimCopterMissionSystemActor::SimForceCarFire()
+{
+	const int32 EventId = MissionSystem.CreateEventOfType(SimCopterMissions::TYPE_CarFireEvent);
+	UE_LOG(LogTemp, Display, TEXT("SimForceCarFire: created car fire event %d"), EventId);
+}
+
+int32 ASimCopterMissionSystemActor::DumpWaterAt(const FVector& BucketWorldLocation)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return 0;
+	}
+
+	int32 FlamesHit = 0;
+
+	// Building fires: flame records are tile-keyed, so douse by the bucket's tile.
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(BucketWorldLocation, TileX, TileY))
+	{
+		FlamesHit += MissionSystem.DouseAtTile(TileX, TileY);
+	}
+
+	// Car fires: put out burning cars under the bucket and pay the douse/clear scoring events.
+	TArray<int32> ExtinguishedCarEvents;
+	TrafficSystem->DouseBurningVehiclesNear(BucketWorldLocation, CarDouseRadiusCm, ExtinguishedCarEvents);
+	for (int32 EventId : ExtinguishedCarEvents)
+	{
+		MissionSystem.PostEvent(SimCopterMissions::EVT_CarDoused, EventId, 1, false);
+		MissionSystem.PostEvent(SimCopterMissions::EVT_CarCleared, EventId, 1, false);
+		++FlamesHit;
+	}
+
+	return FlamesHit;
+}
+
+FString ASimCopterMissionSystemActor::ResolveOriginalGameRootDir() const
+{
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeDirectoryName(Candidate);
+		if (FPaths::DirectoryExists(Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return FString();
+}
+
+bool ASimCopterMissionSystemActor::TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const
+{
+	const UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	const FVector Start(WorldXY.X, WorldXY.Y, WorldXY.Z + 6000.0f);
+	const FVector End(WorldXY.X, WorldXY.Y, WorldXY.Z - 6000.0f);
+
+	FCollisionQueryParams Params(FName(TEXT("SimCopterFireSurface")), /*bTraceComplex*/ false, this);
+
+	FHitResult Hit;
+	if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	{
+		OutTopZ = Hit.ImpactPoint.Z;
+		return true;
+	}
+	return false;
+}
+
+void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
+{
+	if (FireRenderComponent == nullptr || !FireRenderComponent->IsReady())
+	{
+		return;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	const TArray<SimCopterMissions::FSimCopterFlame>& Flames = MissionSystem.GetFlames();
+	const float TimeSeconds = GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0f;
+
+	// Billboard the fire points toward the active camera.
+	FVector CameraLocation = GetActorLocation();
+	if (const APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		if (const APlayerCameraManager* CameraManager = PC->PlayerCameraManager)
+		{
+			CameraLocation = CameraManager->GetCameraLocation();
+		}
+	}
+
+	// Flame BurnCountdown is seeded to 0x200000 (32.0 in 16.16) and only decreases; derive a
+	// [0,1] age from it to grow the flame in fast, then taper as it burns out.
+	constexpr float FlameInitialCountdown = 2097152.0f; // 0x200000
+
+	TArray<FSimCopterFlameVisual> Visuals;
+	Visuals.Reserve(Flames.Num());
+
+	for (int32 Index = 0; Index < Flames.Num(); ++Index)
+	{
+		const SimCopterMissions::FSimCopterFlame& Flame = Flames[Index];
+		if (!Flame.bActive)
+		{
+			continue;
+		}
+
+		FVector TileCenter;
+		if (!TrafficSystem->TryGetTileCenterWorldLocation(Flame.TileX, Flame.TileY, TileCenter))
+		{
+			continue;
+		}
+
+		// Scatter the (up to 3) flames sharing a burning tile around its centre so they read as a
+		// spreading fire rather than one stacked mesh. Golden-angle placement keyed by slot.
+		const float Angle = static_cast<float>(Index) * 2.39996323f;
+		const float Radius = 55.0f + 45.0f * static_cast<float>(Index % 3);
+		FVector FlameXY = TileCenter + FVector(FMath::Cos(Angle) * Radius, FMath::Sin(Angle) * Radius, 0.0f);
+
+		float TopZ = TileCenter.Z;
+		TraceSurfaceTopZ(FlameXY, TopZ);
+		FlameXY.Z = TopZ;
+
+		const float Age01 = FMath::Clamp(1.0f - static_cast<float>(Flame.BurnCountdown) / FlameInitialCountdown, 0.0f, 1.0f);
+		const float GrowIn = FMath::SmoothStep(0.0f, 0.25f, Age01);
+		const float TaperOut = 1.0f - 0.5f * FMath::SmoothStep(0.85f, 1.0f, Age01);
+		const float Scale = FMath::Lerp(0.45f, 1.0f, GrowIn) * TaperOut;
+
+		FSimCopterFlameVisual Visual;
+		Visual.Key = Index;
+		Visual.World = FlameXY;
+		Visual.Scale = Scale;
+		Visual.FlickerSeed = static_cast<float>(Index) * 1.7f;
+		Visuals.Add(Visual);
+	}
+
+	// Burning cars (car-fire missions): the traffic system owns which cars are alight; draw the
+	// same FIREPTS flame engulfing each one.
+	TArray<FSimCopterBurningVehicle> BurningVehicles;
+	TrafficSystem->GetBurningVehicles(BurningVehicles);
+	for (const FSimCopterBurningVehicle& Burning : BurningVehicles)
+	{
+		FSimCopterFlameVisual Visual;
+		Visual.Key = Burning.Key;
+		Visual.World = Burning.World;
+		Visual.Scale = 0.8f;
+		Visual.FlickerSeed = static_cast<float>(Burning.Key & 0xFFFF) * 0.013f;
+		Visuals.Add(Visual);
+	}
+
+	FireRenderComponent->SyncFlames(Visuals, TimeSeconds, CameraLocation);
 }
 
 bool ASimCopterMissionSystemActor::TryActivatePlaneCrash(int32 EventId)

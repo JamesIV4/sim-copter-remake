@@ -24,6 +24,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
+#include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "InputCoreTypes.h"
@@ -165,6 +166,9 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	BucketMeshComponent->SetCanEverAffectNavigation(false);
 	BucketMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.28f, 0.22f));
 
+	WaterFXComponent = CreateDefaultSubobject<USimCopterParticleFXComponent>(TEXT("WaterFX"));
+	WaterFXComponent->SetupAttachment(CollisionComponent);
+
 	SearchLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SearchLight"));
 	SearchLightComponent->SetupAttachment(ModelPivot);
 	SearchLightComponent->SetRelativeLocation(FVector(95.0f, 0.0f, -35.0f));
@@ -289,6 +293,7 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 	}
 
 	UpdateVisuals(DeltaSeconds);
+	UpdateRotorWash(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
 }
 
@@ -1620,9 +1625,54 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 		bBucketFillHeld = false;
 	}
 
-	if (bBucketDumpHeld)
+	if (bBucketDumpHeld && BucketWaterFraction > 0.0f)
 	{
 		BucketWaterFraction = FMath::Clamp(BucketWaterFraction - RopeTuning.BucketDumpPerSec * DeltaSeconds, 0.0f, 1.0f);
+
+		const FVector BucketWorld = BucketMeshComponent != nullptr
+			? BucketMeshComponent->GetComponentLocation()
+			: GetActorLocation();
+
+		// Visible falling water: emit many small drip specks from the bucket mouth (port of
+		// FUN_00488060, which spawns type-6 water-drip particles while the bucket empties). Small,
+		// white+blue mixed, dithered.
+		if (WaterFXComponent != nullptr)
+		{
+			DripSpawnAccumulator += DeltaSeconds * BucketDripPerSec;
+			const int32 DripCount = FMath::Min(FMath::FloorToInt(DripSpawnAccumulator), 20);
+			DripSpawnAccumulator -= static_cast<float>(DripCount);
+			for (int32 i = 0; i < DripCount; ++i)
+			{
+				const FVector Jitter(FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-10.0f, 10.0f));
+				const FVector Drift(FMath::FRandRange(-50.0f, 50.0f), FMath::FRandRange(-50.0f, 50.0f), -300.0f);
+				const FLinearColor WaterColor = FMath::FRand() < 0.4f
+					? FLinearColor(0.9f, 0.94f, 1.0f, 0.7f)
+					: FLinearColor(0.4f, 0.6f, 0.9f, 0.65f);
+				const float SizeCm = FMath::FRandRange(8.0f, 16.0f);
+				WaterFXComponent->SpawnCard(BucketWorld + Jitter, Drift, /*Rise*/ -220.0f, SizeCm, WaterColor, /*Life*/ 0.6f);
+			}
+		}
+
+		// Douse: extinguish flames under the bucket. When water is actually hitting fire, kick up
+		// a puff of steam at the fire.
+		if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
+		{
+			const int32 FlamesHit = MissionSystem->DumpWaterAt(BucketWorld);
+			if (FlamesHit > 0 && WaterFXComponent != nullptr)
+			{
+				// Steam puff where water meets fire: a scatter of small pale specks rising.
+				const FVector SteamOrigin = BucketWorld + FVector(0, 0, -RopeLengthCm * 0.15f);
+				for (int32 i = 0; i < 6; ++i)
+				{
+					const float Angle = FMath::FRandRange(0.0f, 2.0f * PI);
+					const float Radius = FMath::FRandRange(0.0f, 60.0f);
+					const FVector Pos = SteamOrigin + FVector(FMath::Cos(Angle) * Radius, FMath::Sin(Angle) * Radius, 0.0f);
+					const float Grey = FMath::FRandRange(0.82f, 0.95f);
+					WaterFXComponent->SpawnCard(Pos, FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), 0.0f),
+						/*Rise*/ 150.0f, /*Size*/ FMath::FRandRange(12.0f, 22.0f), FLinearColor(Grey, Grey, Grey, 0.7f), /*Life*/ 1.0f);
+				}
+			}
+		}
 	}
 
 	if (RopeMeshComponent != nullptr)
@@ -1637,6 +1687,121 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 		BucketMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -RopeLengthCm - 26.0f));
 		const float BucketLoadScale = FMath::Lerp(0.8f, 1.05f, BucketWaterFraction);
 		BucketMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.28f, 0.22f * BucketLoadScale));
+	}
+}
+
+void ASimCopterHelicopterPawn::SimForceFire()
+{
+	if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
+	{
+		MissionSystem->SimForceFire();
+	}
+}
+
+void ASimCopterHelicopterPawn::SimForceCarFire()
+{
+	if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
+	{
+		MissionSystem->SimForceCarFire();
+	}
+}
+
+ASimCopterMissionSystemActor* ASimCopterHelicopterPawn::ResolveMissionSystem()
+{
+	if (CachedMissionSystem.IsValid())
+	{
+		return CachedMissionSystem.Get();
+	}
+	if (UWorld* World = GetWorld())
+	{
+		AActor* Found = UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass());
+		CachedMissionSystem = Cast<ASimCopterMissionSystemActor>(Found);
+	}
+	return CachedMissionSystem.Get();
+}
+
+void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
+{
+	// Port of FUN_004881b0: with the rotor spun up and the helicopter low over a surface (and
+	// above a minimum height so it does not fire while parked), scatter effect cards under the
+	// rotor - spray over water, dust over land - with random-yaw placement, like the original's
+	// randomly-rotated wash particles.
+	if (!bEnableRotorWash || WaterFXComponent == nullptr || !FlightModel.bRotorBlurDisc)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	const FVector Location = GetActorLocation();
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(FName(TEXT("SimCopterRotorWash")), /*bTraceComplex*/ false, this);
+	const FVector Start(Location.X, Location.Y, Location.Z + 500.0f);
+	const FVector End(Location.X, Location.Y, Location.Z - 20000.0f);
+	if (!World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) || !Hit.bBlockingHit)
+	{
+		return;
+	}
+
+	const float SurfaceZ = Hit.ImpactPoint.Z;
+	const float Height = Location.Z - SurfaceZ;
+	if (Height < RotorWashMinAltitudeCm || Height > RotorWashMaxHeightCm)
+	{
+		return;
+	}
+
+	const bool bWater =
+		(Hit.GetActor() != nullptr && NameSuggestsWater(Hit.GetActor()->GetFName())) ||
+		(Hit.GetComponent() != nullptr && NameSuggestsWater(Hit.GetComponent()->GetFName())) ||
+		Hit.ImpactPoint.Z <= WaterFillWorldZ + 5.0f;
+
+	// Intensity ramps up as the helicopter descends toward the surface (the original spawns more
+	// wash particles the closer it gets).
+	const float Range = FMath::Max(RotorWashMaxHeightCm - RotorWashMinAltitudeCm, 1.0f);
+	const float Intensity = FMath::Clamp(1.0f - (Height - RotorWashMinAltitudeCm) / Range, 0.0f, 1.0f);
+
+	RotorWashAccumulator += DeltaSeconds * RotorWashCardsPerSec * Intensity;
+	const int32 Count = FMath::Min(FMath::FloorToInt(RotorWashAccumulator), 40);
+	RotorWashAccumulator -= static_cast<float>(Count);
+	if (Count <= 0)
+	{
+		return;
+	}
+
+	// Many small dithered specks kicked outward in a disc under the rotor - spray (white/blue mix)
+	// over water, dust (tan/grey) over land - matching the original's dense particle ring.
+	const float RiseCm = bWater ? 120.0f : 70.0f;
+	const float LifeSeconds = bWater ? 0.7f : 0.55f;
+	const float MaxRadius = 120.0f + 260.0f * Intensity;
+
+	for (int32 i = 0; i < Count; ++i)
+	{
+		const float Angle = FMath::FRandRange(0.0f, 2.0f * PI);
+		const float Radius = FMath::FRandRange(20.0f, MaxRadius);
+		const FVector Dir(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f);
+		const FVector SpawnPos(Location.X + Dir.X * Radius, Location.Y + Dir.Y * Radius, SurfaceZ + FMath::FRandRange(2.0f, 18.0f));
+		const FVector Velocity = Dir * FMath::FRandRange(90.0f, 220.0f);
+
+		FLinearColor Color;
+		if (bWater)
+		{
+			// Mix white foam and blue water per speck. Low alpha = airier dither.
+			Color = FMath::FRand() < 0.45f
+				? FLinearColor(0.92f, 0.95f, 1.0f, 0.6f)
+				: FLinearColor(0.45f, 0.62f, 0.9f, 0.55f);
+		}
+		else
+		{
+			const float G = FMath::FRandRange(0.42f, 0.6f);
+			Color = FLinearColor(G + 0.12f, G, G * 0.8f, 0.5f);
+		}
+
+		const float SizeCm = FMath::FRandRange(8.0f, 20.0f);
+		WaterFXComponent->SpawnCard(SpawnPos, Velocity, RiseCm, SizeCm, Color, LifeSeconds);
 	}
 }
 

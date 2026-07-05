@@ -17,6 +17,8 @@ class USpotLightComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UTexture2D;
+class USimCopterParticleFXComponent;
+class ASimCopterMissionSystemActor;
 class ASimCopterOnFootPawn;
 class APlayerController;
 class SHorizontalBox;
@@ -287,6 +289,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> BucketMeshComponent;
 
+	// Renders the original water effects: bucket water drips + douse steam (from the bucket) and
+	// the rotor-wash "wind kickback" spray/dust under the helicopter.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USimCopterParticleFXComponent> WaterFXComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -459,6 +466,31 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Rope")
 	float WaterFillWorldZ = 0.0f;
 
+	// --- Rotor wash "wind kickback" (FUN_004881b0) ---
+	// Enable the downwash effect cards under the rotor when flying low.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash")
+	bool bEnableRotorWash = true;
+
+	// The original triggers within ~20 world units (~0x140000) of the surface top; converted at
+	// the city's 6.25 cm/unit that is ~125 cm, but the remake flies at readable altitudes, so the
+	// default is loosened for visibility.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "50.0"))
+	float RotorWashMaxHeightCm = 900.0f;
+
+	// The original also gates on a minimum absolute altitude so the wash does not fire while
+	// parked on the pad.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "0.0"))
+	float RotorWashMinAltitudeCm = 60.0f;
+
+	// Small wash specks per second at full intensity (right over the surface); scales down with
+	// height. The original kicks up a dense ring of many small dithered particles, so this is high.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "1.0"))
+	float RotorWashCardsPerSec = 420.0f;
+
+	// Water drips emitted per second from the bucket while dumping.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "1.0"))
+	float BucketDripPerSec = 90.0f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
 	ESimCopterCameraMode CameraMode = ESimCopterCameraMode::Chase;
 
@@ -596,6 +628,13 @@ private:
 	float RopeAdjustInput = 0.0f;
 	bool bBucketFillHeld = false;
 	bool bBucketDumpHeld = false;
+
+	// Cached mission actor for the bucket douse (resolved lazily via GetActorOfClass).
+	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
+	// Accumulators so drip / wash cards spawn at a steady rate independent of frame rate.
+	float DripSpawnAccumulator = 0.0f;
+	float RotorWashAccumulator = 0.0f;
+
 	bool bEngineStartHeld = false;
 	bool bEngineShutdownHeld = false;
 	float EngineStartHoldElapsed = 0.0f;
@@ -644,6 +683,12 @@ private:
 	void CycleCameraMode();
 	void ToggleSearchLight();
 
+	// Debug console commands (routed through the player pawn) to exercise the fire/water work.
+	UFUNCTION(Exec)
+	void SimForceFire();
+	UFUNCTION(Exec)
+	void SimForceCarFire();
+
 	void UpdateEngineState(float DeltaSeconds);
 	void SimulateFlightStep(float DeltaSeconds);
 	void UpdateGroundProbe();
@@ -654,6 +699,11 @@ private:
 	FSimCopterFlightEnvironment BuildFlightEnvironment() const;
 	void ApplyFlightModelToActor(float DeltaSeconds);
 	void UpdateRopeAndBucket(float DeltaSeconds);
+	// Rotor-wash "wind kickback" (port of FUN_004881b0): when the helicopter is low over a
+	// surface and above the minimum altitude, scatter effect cards under the rotor - spray over
+	// water, dust over land. Also emits the bucket douse steam accumulator.
+	void UpdateRotorWash(float DeltaSeconds);
+	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateSearchLightEffect();

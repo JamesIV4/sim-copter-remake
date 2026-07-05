@@ -68,7 +68,18 @@ struct FSimCopterVehicleTrafficState
 	bool bInitialized = false;
 	bool bInTrafficLightLine = false;
 	bool bMissionJammed = false;
+	// A car-fire mission (event mask 0x408) set this car alight. The car stays stopped and shows
+	// flame visuals (rendered by the mission actor's fire component) until doused.
+	bool bMissionOnFire = false;
 	int32 MissionEventId = INDEX_NONE;
+};
+
+// One burning car reported to the fire renderer: a stable key + its world location.
+struct FSimCopterBurningVehicle
+{
+	int32 Key = 0;
+	int32 EventId = INDEX_NONE;
+	FVector World = FVector::ZeroVector;
 };
 
 UCLASS()
@@ -436,6 +447,12 @@ public:
 	bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY);
 	void EndTrafficJam(int32 EventId);
 	bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY);
+
+	// Report every car currently on fire (for the mission actor's fire renderer).
+	void GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const;
+	// Extinguish burning cars within RadiusCm of WorldLocation (helicopter bucket dump). Appends
+	// the event ids of the cars that were put out so the caller can post the douse/scoring events.
+	void DouseBurningVehiclesNear(const FVector& WorldLocation, float RadiusCm, TArray<int32>& OutExtinguishedEventIds);
 	bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId);
 	int32 PickUpMissionPeopleNear(
 		int32 EventId,
