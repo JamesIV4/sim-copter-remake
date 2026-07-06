@@ -495,7 +495,8 @@ bool FSimCopterMissionSystem::IsFireSuitableTile(int32 XbldId)
 
 int32 FSimCopterMissionSystem::AllocateRecord()
 {
-	for (int32 i = 0; i < MaxRecords; ++i)
+	// Iterate the actual pool size (Records may have been grown past MaxRecords by a debug force).
+	for (int32 i = 0; i < Records.Num(); ++i)
 	{
 		if (!Records[i].bActive)
 		{
@@ -504,6 +505,30 @@ int32 FSimCopterMissionSystem::AllocateRecord()
 		}
 	}
 	return INDEX_NONE;
+}
+
+void FSimCopterMissionSystem::DebugEnsureFreeRecordSlot()
+{
+	for (const FSimCopterMissionRecord& Rec : Records)
+	{
+		if (!Rec.bActive) return;
+	}
+	// Pool is full: grow it so a forced mission can always allocate. Normal play never approaches
+	// MaxRecords (the scheduler caps active missions well below it), so this only affects
+	// debug-forced spawns and does not change deterministic behaviour.
+	Records.AddDefaulted(4);
+}
+
+int32 FSimCopterMissionSystem::DebugForceBuildingFire()
+{
+	DebugEnsureFreeRecordSlot();
+	return CreateEventOfType(TYPE_BuildingFire);
+}
+
+int32 FSimCopterMissionSystem::DebugForceCarFire()
+{
+	DebugEnsureFreeRecordSlot();
+	return CreateEventOfType(TYPE_CarFireEvent);
 }
 
 void FSimCopterMissionSystem::ReleaseFailedRecord(int32 RecordIndex)
@@ -1632,7 +1657,7 @@ void FSimCopterMissionSystem::CompleteMission(FSimCopterMissionRecord& Rec)
 int32 FSimCopterMissionSystem::FindRecordIndex(int32 EventId) const
 {
 	if (EventId == -1) return INDEX_NONE;
-	for (int32 i = 0; i < MaxRecords; ++i)
+	for (int32 i = 0; i < Records.Num(); ++i)
 	{
 		if (Records[i].bActive && Records[i].EventId == EventId) return i;
 	}

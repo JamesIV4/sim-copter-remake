@@ -49,10 +49,15 @@ namespace SimCopterEffectFX
 	inline FLinearColor FireTipBright(float Alpha = 1.0f) { return Palette(0xFF, 0xF0, 0x1F, Alpha); }
 	inline FLinearColor FireTipPale(float Alpha = 1.0f)   { return Palette(0xFF, 0xDA, 0x6F, Alpha); }
 
-	// Rotor-wash / spray colours (palette 0x08 pale green-white, 0x09 pale blue) - the "white and
-	// blue mixed" water look. The wash is always the pale SMOKE sprite in the original.
+	// Rotor-wash / spray colours (palette 0x08 pale green-white, 0x09 pale blue) - the water spray
+	// look, "white and blue mixed".
 	inline FLinearColor SprayWhite(float Alpha = 1.0f) { return Palette(0xC0, 0xDF, 0xC0, Alpha); }
-	inline FLinearColor SprayBlue(float Alpha = 1.0f)  { return Palette(0xA5, 0xCA, 0xF0, Alpha); }
+	inline FLinearColor SprayBlue(float Alpha = 1.0f)  { return Palette(0x6E, 0xA6, 0xE6, Alpha); }
+	inline FLinearColor WaterBlue(float Alpha = 1.0f)  { return Palette(0x3C, 0x7A, 0xD0, Alpha); }
+
+	// Kicked-up dust over land - warm tan-brown.
+	inline FLinearColor DustBrown(float Alpha = 1.0f)  { return Palette(0x9A, 0x78, 0x4E, Alpha); }
+	inline FLinearColor DustDarkBrown(float Alpha = 1.0f) { return Palette(0x6E, 0x52, 0x30, Alpha); }
 
 	// Sizes (original 16.16 sprite dimensions -> cm). These are the per-sprite full widths.
 	static constexpr float WashPuffSizeCm  = 0x140000 * Fixed1616ToCm; // 125 (SMOKE puff)

@@ -1646,9 +1646,9 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 			{
 				const FVector Jitter(FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-10.0f, 10.0f));
 				const FVector Drift(FMath::FRandRange(-40.0f, 40.0f), FMath::FRandRange(-40.0f, 40.0f), -260.0f);
-				const FLinearColor WaterColor = FMath::FRand() < 0.4f
+				const FLinearColor WaterColor = FMath::FRand() < 0.3f
 					? SimCopterEffectFX::SprayWhite(0.85f)
-					: SimCopterEffectFX::SprayBlue(0.8f);
+					: SimCopterEffectFX::WaterBlue(0.8f);
 				const float SizeCm = FMath::FRandRange(SimCopterEffectFX::WashCardSizeCm, SimCopterEffectFX::DebrisSizeCm);
 				WaterFXComponent->SpawnParticle(BucketWorld + Jitter, Drift, SizeCm, WaterColor, /*Life*/ 0.7f,
 					SimCopterEffectFX::GravityCmPerSec2);
@@ -1789,17 +1789,16 @@ void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
 		const FVector SpawnPos(Location.X + Dir.X * Radius, Location.Y + Dir.Y * Radius, SurfaceZ + FMath::FRandRange(2.0f, 18.0f));
 		const FVector Velocity = Dir * FMath::FRandRange(90.0f, 220.0f) + FVector(0, 0, FMath::FRandRange(30.0f, 110.0f));
 
-		// Pale SMOKE puff: white/blue over water, slightly warmer pale over land. Alpha lower with
-		// distance so the dither reads as airy spray.
-		const float Alpha = FMath::FRandRange(0.5f, 0.75f);
+		// Soft puff: blue/white water spray over water, tan-brown dust over land.
+		const float Alpha = FMath::FRandRange(0.5f, 0.8f);
 		FLinearColor Color;
 		if (bWater)
 		{
-			Color = FMath::FRand() < 0.5f ? SimCopterEffectFX::SprayWhite(Alpha) : SimCopterEffectFX::SprayBlue(Alpha);
+			Color = FMath::FRand() < 0.35f ? SimCopterEffectFX::SprayWhite(Alpha) : SimCopterEffectFX::SprayBlue(Alpha);
 		}
 		else
 		{
-			Color = SimCopterEffectFX::SprayWhite(Alpha * 0.9f);
+			Color = FMath::FRand() < 0.5f ? SimCopterEffectFX::DustBrown(Alpha) : SimCopterEffectFX::DustDarkBrown(Alpha);
 		}
 
 		// Small puffs (a fraction of the SMOKE sprite width), varied for chaos.
