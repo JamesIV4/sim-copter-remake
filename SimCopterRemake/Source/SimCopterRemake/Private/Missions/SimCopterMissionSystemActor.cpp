@@ -24,6 +24,7 @@
 #include "Styling/CoreStyle.h"
 #include "UObject/ConstructorHelpers.h"
 #include "CollisionQueryParams.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
@@ -99,10 +100,10 @@ ASimCopterMissionSystemActor::ASimCopterMissionSystemActor()
 	FireRenderComponent = CreateDefaultSubobject<USimCopterFireRenderComponent>(TEXT("FireRender"));
 	SetRootComponent(FireRenderComponent);
 
-	// FIREPTS is a cloud of palette-coloured point sprites; draw them with the emissive/translucent
-	// particle material so the flame glows like the original's flat-shaded fire points.
+	// FIREPTS is a cloud of palette-coloured point sprites; draw them with the smooth translucent
+	// particle material (soft radial alpha, no dithering) so the flame reads as a soft glow.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FlameMaterialFinder(
-		TEXT("/Game/Materials/M_SimCopterParticleFX.M_SimCopterParticleFX"));
+		TEXT("/Game/Materials/M_SimCopterParticleFXSoft.M_SimCopterParticleFXSoft"));
 	if (FlameMaterialFinder.Succeeded())
 	{
 		FlameMaterial = FlameMaterialFinder.Object;
@@ -127,6 +128,7 @@ void ASimCopterMissionSystemActor::BeginPlay()
 	EnsureMessageLogWidget();
 	EnsureMissionMarkerWidget();
 	EnsureMegaphonePromptWidget();
+	EnsureDebugButtonsWidget();
 
 	// Load the FIREPTS flame mesh once (deferred so the traffic/city actors have finished their
 	// own BeginPlay asset loads first).
@@ -152,6 +154,7 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 	RemoveMegaphonePromptWidget();
 	RemoveMissionMarkerWidget();
 	RemoveMessageLogWidget();
+	RemoveDebugButtonsWidget();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -262,14 +265,15 @@ void ASimCopterMissionSystemActor::OnBuildingFireIgnited(int32 TileX, int32 Tile
 
 void ASimCopterMissionSystemActor::SimForceFire()
 {
-	const int32 EventId = MissionSystem.CreateEventOfType(SimCopterMissions::TYPE_BuildingFire);
+	// Debug force: bypass the mission-record cap so a fire always spawns even with many missions up.
+	const int32 EventId = MissionSystem.DebugForceBuildingFire();
 	UE_LOG(LogTemp, Display, TEXT("SimForceFire: created building fire event %d (active flames now %d)"),
 		EventId, MissionSystem.GetActiveFlameCount());
 }
 
 void ASimCopterMissionSystemActor::SimForceCarFire()
 {
-	const int32 EventId = MissionSystem.CreateEventOfType(SimCopterMissions::TYPE_CarFireEvent);
+	const int32 EventId = MissionSystem.DebugForceCarFire();
 	UE_LOG(LogTemp, Display, TEXT("SimForceCarFire: created car fire event %d"), EventId);
 }
 
@@ -457,8 +461,9 @@ void ASimCopterMissionSystemActor::SpawnFirePlume(const FVector& FlameBaseWorld,
 	{
 		const FVector Jitter(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(0.0f, 30.0f));
 		const FVector Vel(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(120.0f, 210.0f));
-		const float Grey = FMath::FRandRange(0.12f, 0.32f);
-		FLinearColor Smoke(Grey, Grey, Grey, FMath::FRandRange(0.55f, 0.8f));
+		// Dark sooty smoke, tinted slightly warm/brown.
+		const float Grey = FMath::FRandRange(0.10f, 0.30f);
+		FLinearColor Smoke(Grey * 1.15f, Grey, Grey * 0.85f, FMath::FRandRange(0.55f, 0.8f));
 		const float SizeCm = FMath::FRandRange(SmokeSizeCm, WashPuffSizeCm * 0.6f) * Scale;
 		// Buoyant: a small negative "gravity" keeps it drifting upward as it thins out.
 		FireSmokeComponent->SpawnParticle(SmokeOrigin + Jitter, Vel, SizeCm, Smoke, /*Life*/ FMath::FRandRange(1.2f, 1.9f), /*Gravity*/ -40.0f);
@@ -1374,6 +1379,75 @@ void ASimCopterMissionSystemActor::RemoveMegaphonePromptWidget()
 	MegaphonePromptText.Reset();
 	MegaphonePromptWidget.Reset();
 	bMegaphonePromptVisible = false;
+}
+
+void ASimCopterMissionSystemActor::EnsureDebugButtonsWidget()
+{
+	if (!bShowDebugFireButtons || DebugButtonsWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	auto MakeButton = [](const FString& Label, FOnClicked InOnClicked) -> TSharedRef<SButton>
+	{
+		return SNew(SButton)
+			.OnClicked(InOnClicked)
+			.ContentPadding(FMargin(12.0f, 6.0f))
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Label))
+				.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13))
+			];
+	};
+
+	DebugButtonsWidget =
+		SNew(SBox)
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.0f, 0.0f, 18.0f, 18.0f))
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f))
+			.Padding(FMargin(6.0f))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 0.0f, 0.0f, 4.0f))
+				[
+					MakeButton(TEXT("Force Fire"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugForceFireClicked))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					MakeButton(TEXT("Force Car Fire"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugForceCarFireClicked))
+				]
+			]
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(DebugButtonsWidget.ToSharedRef(), 30);
+}
+
+void ASimCopterMissionSystemActor::RemoveDebugButtonsWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && DebugButtonsWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(DebugButtonsWidget.ToSharedRef());
+	}
+	DebugButtonsWidget.Reset();
+}
+
+FReply ASimCopterMissionSystemActor::OnDebugForceFireClicked()
+{
+	SimForceFire();
+	return FReply::Handled();
+}
+
+FReply ASimCopterMissionSystemActor::OnDebugForceCarFireClicked()
+{
+	SimForceCarFire();
+	return FReply::Handled();
 }
 
 FString ASimCopterMissionSystemActor::ResolveOriginalSoundDir() const

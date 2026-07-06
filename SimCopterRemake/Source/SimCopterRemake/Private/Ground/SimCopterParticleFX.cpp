@@ -12,10 +12,11 @@ USimCopterParticleFXComponent::USimCopterParticleFXComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
-	// Prefer the dedicated translucent card material; fall back to the lit vertex-colour material
-	// used everywhere else so cards still render (opaque) if the FX material has not been baked.
+	// Smooth translucent particle material (soft radial alpha, no dithering) - the standard
+	// particle look. Fall back to the lit vertex-colour material so cards still render if the FX
+	// material has not been baked.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FxMaterialFinder(
-		TEXT("/Game/Materials/M_SimCopterParticleFX.M_SimCopterParticleFX"));
+		TEXT("/Game/Materials/M_SimCopterParticleFXSoft.M_SimCopterParticleFXSoft"));
 	if (FxMaterialFinder.Succeeded())
 	{
 		CardMaterial = FxMaterialFinder.Object;

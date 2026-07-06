@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Input/Reply.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "SimCopterMissionSystemActor.generated.h"
 
@@ -129,6 +130,11 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI")
 	bool bShowMissionMessageLog = true;
 
+	// Debug: show on-screen buttons that force-spawn a fire / car-fire mission even when the mission
+	// pool is full (bypasses the cap). Handy for testing the fire visuals.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
+	bool bShowDebugFireButtons = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "1", ClampMax = "12"))
 	int32 MaxMessageLogEntries = 6;
 
@@ -249,6 +255,13 @@ private:
 	TSharedPtr<SWidget> MegaphonePromptWidget;
 	TSharedPtr<STextBlock> MegaphonePromptText;
 	bool bMegaphonePromptVisible = false;
+
+	// On-screen debug buttons (force fire / force car fire).
+	TSharedPtr<SWidget> DebugButtonsWidget;
+	void EnsureDebugButtonsWidget();
+	void RemoveDebugButtonsWidget();
+	FReply OnDebugForceFireClicked();
+	FReply OnDebugForceCarFireClicked();
 
 	// Megaphone / jam clearing.
 	bool FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const;

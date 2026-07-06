@@ -538,7 +538,9 @@ def create_particle_fx_material():
         material, unreal.MaterialExpressionMultiply, -400, -160
     )
     boost.set_editor_property("const_b", 1.4)
-    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "RGB", boost, "A")
+    # The VertexColor node's RGB comes from its default (unnamed) output; "RGB" is NOT a valid pin
+    # name and silently fails to connect, leaving emissive black.
+    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "", boost, "A")
     unreal.MaterialEditingLibrary.connect_material_property(
         boost, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
     )
@@ -578,7 +580,9 @@ def create_particle_fx_soft_material():
         material, unreal.MaterialExpressionMultiply, -400, -160
     )
     boost.set_editor_property("const_b", 1.4)
-    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "RGB", boost, "A")
+    # Use the VertexColor node's default (unnamed) RGB output; "RGB" is not a valid pin name and
+    # silently fails, which is what left the soft particles emitting black.
+    unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "", boost, "A")
     unreal.MaterialEditingLibrary.connect_material_property(
         boost, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
     )

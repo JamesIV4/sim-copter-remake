@@ -466,6 +466,11 @@ public:
 	int32 CreateEventOfType(int32 TypeMask);
 	int32 CreateEventAt(int32 TileX, int32 TileY, int32 TypeMask);
 
+	// Debug: force-spawn a fire mission even when the mission-record pool is full. Grows the pool
+	// on demand (normal play never fills it), so this always succeeds if a suitable tile exists.
+	int32 DebugForceBuildingFire();
+	int32 DebugForceCarFire();
+
 	// FUN_004a89c0: post a mission event (also pays incremental score/cash).
 	void PostEvent(const FSimCopterMissionEvent& Event);
 
@@ -564,6 +569,7 @@ private:
 
 	// FUN_004a7a10 helpers.
 	int32 AllocateRecord();
+	void DebugEnsureFreeRecordSlot();
 	void ReleaseFailedRecord(int32 RecordIndex);
 	int32 FindRecordIndex(int32 EventId) const;   // FUN_004a8890 walk
 	void AnnounceCreated(const FSimCopterMissionRecord& Record); // trailer of FUN_004a7a10
