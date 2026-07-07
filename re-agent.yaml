@@ -23,7 +23,9 @@ llm:
 
 backend:
   type: "ghidra-bridge"
-  cli_path: "Tools/re-agent/.venv/Scripts/ghidra-bridge.exe"
+  # Use an absolute path. PowerShell can resolve the relative path, but re-agent's
+  # Python subprocess launcher may not on Windows.
+  cli_path: "S:/Repos/sim-copter-remake/Tools/re-agent/.venv/Scripts/ghidra-bridge.exe"
   timeout_s: 60
 
 parity:
@@ -40,7 +42,10 @@ orchestrator:
   objective_control_flow_tolerance: 2
 
 output:
-  report_dir: "reports/re-agent"
+  # Durable candidate code and pass/fail state are tracked with the rest of the
+  # reverse-engineering evidence. Raw prompt/checker/live logs stay local-only
+  # under reports/re-agent/logs because they are large and noisy.
+  report_dir: "Docs/scratchpad/re-agent"
   log_dir: "reports/re-agent/logs"
-  session_file: "re-agent-progress.json"
+  session_file: "Docs/scratchpad/re-agent/re-agent-progress.json"
   format: "json"
