@@ -1,0 +1,25 @@
+# ghidra-ai-bridge config — queries the SimCopter Ghidra project without opening Ghidra.
+# Docs: Docs/ReverseEngineeringToolkit.md
+ghidra:
+  install_dir: C:/Users/james/scoop/apps/ghidra/current
+  project_dir: S:/Repos/sim-copter-remake/Docs/scratchpad/ghidra
+  project_name: SimCopter
+  program_name: SimCopter.exe
+
+paths:
+  export_dir: .ghidra-exports
+  address_map: .ghidra-exports/address_map.json
+
+# Ported UE code marks its origin with a comment: // SCHOOK: FunctionName 0x004abce0
+source:
+  root: ./SimCopterRemake/Source
+  hook_patterns:
+    - 'SCHOOK:\s*(\w+)\s+(0x[0-9A-Fa-f]+)'
+  stub_patterns: []
+  stub_markers: []
+  file_extensions: [".cpp", ".h"]
+
+# PE32, image base 0x400000; .text starts at 0x401000
+binary:
+  code_range_min: 0x00401000
+  code_range_max: 0x00600000
