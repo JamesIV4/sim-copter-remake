@@ -30,6 +30,7 @@
 /.cache
 /reports/re-agent
 /re-agent-progress.json
+/re-agent-progress.tmp
 
 # Build output and temporary files
 *.log

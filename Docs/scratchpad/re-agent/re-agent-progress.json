@@ -1,0 +1,116 @@
+{
+  "functions": {
+    "004c9cc0": {
+      "address": "0x004c9cc0",
+      "class_name": "",
+      "function_name": "FUN_004c9cc0",
+      "success": true,
+      "rounds_used": 1,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:01:54"
+    },
+    "004c2450": {
+      "address": "0x004c2450",
+      "class_name": "",
+      "function_name": "FUN_004c2450",
+      "success": true,
+      "rounds_used": 3,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:45:48"
+    },
+    "004c2550": {
+      "address": "0x004c2550",
+      "class_name": "",
+      "function_name": "0x004c2550",
+      "success": true,
+      "rounds_used": 2,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:36:32"
+    },
+    "004c25b0": {
+      "address": "0x004c25b0",
+      "class_name": "",
+      "function_name": "FUN_004c25b0",
+      "success": true,
+      "rounds_used": 2,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:41:48"
+    },
+    "004c3eb0": {
+      "address": "0x004c3eb0",
+      "class_name": "",
+      "function_name": "0x004c3eb0",
+      "success": true,
+      "rounds_used": 2,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:48:17"
+    }
+  },
+  "runs": [
+    {
+      "address": "0x004c9cc0",
+      "class_name": "",
+      "function_name": "FUN_004c9cc0",
+      "success": true,
+      "rounds_used": 1,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:01:54"
+    },
+    {
+      "address": "0x004c2450",
+      "class_name": "",
+      "function_name": "FUN_004c2450",
+      "success": false,
+      "rounds_used": 4,
+      "verdict": "FAIL",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:11:52"
+    },
+    {
+      "address": "0x004c2550",
+      "class_name": "",
+      "function_name": "0x004c2550",
+      "success": true,
+      "rounds_used": 2,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:36:32"
+    },
+    {
+      "address": "0x004c25b0",
+      "class_name": "",
+      "function_name": "FUN_004c25b0",
+      "success": true,
+      "rounds_used": 2,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:41:48"
+    },
+    {
+      "address": "0x004c2450",
+      "class_name": "",
+      "function_name": "FUN_004c2450",
+      "success": true,
+      "rounds_used": 3,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:45:48"
+    },
+    {
+      "address": "0x004c3eb0",
+      "class_name": "",
+      "function_name": "0x004c3eb0",
+      "success": true,
+      "rounds_used": 2,
+      "verdict": "PASS",
+      "parity_status": "red",
+      "timestamp": "2026-07-07T19:48:17"
+    }
+  ]
+}

@@ -121,12 +121,24 @@ $ra = "Tools/re-agent/.venv/Scripts/re-agent.exe"
 & $ra reverse --address 0x4b5290 --dry-run   # show what would run, no LLM calls
 & $ra reverse --address 0x4b5290             # single function
 & $ra parity --address 0x4abce0              # heuristic port-vs-binary check, no LLM
-& $ra status                                 # progress (re-agent-progress.json)
+& $ra status                                 # progress (Docs/scratchpad/re-agent/re-agent-progress.json)
 ```
 
-Outputs land in `reports/re-agent/` (gitignored); every LLM call is logged. The tool never touches
-git and never deletes files. Drafts it produces are starting points - they still go through the
-normal evidence rules below before anything is documented as `Confirmed`.
+Durable outputs land in `Docs/scratchpad/re-agent/` so they are tracked with the rest of the
+reverse-engineering evidence:
+
+- `Docs/scratchpad/re-agent/code/` - generated C++ candidate for each target.
+- `Docs/scratchpad/re-agent/re-agent-progress.json` - pass/fail summary by address.
+- `Docs/scratchpad/re-agent/README.md` - compact run index and notable failure notes.
+
+New generated code candidates should begin with a compact `RE_AGENT_NOTE` comment covering purpose,
+where to use/port the function, evidence, and caveats. Treat those notes as review prompts, not
+confirmed docs; promote only reviewed claims into the main documentation.
+
+Raw reverser/checker JSON and live watch transcripts stay local-only under `reports/re-agent/logs/`
+because they are large and noisy. Keep or copy a raw log into docs only when a specific run needs a
+full audit trail. Drafts are starting points - they still go through the normal evidence rules below
+before anything is documented as `Confirmed`.
 
 ### Choosing the next section
 
@@ -164,6 +176,61 @@ $ra = "Tools/re-agent/.venv/Scripts/re-agent.exe"
 # 4. Review the report and only then decide the next caller/callee.
 & $ra status
 ```
+
+To watch a run in a separate PowerShell window while also saving a log, launch it through a small
+wrapper. The important Windows details are: set the backend path to an absolute executable path and
+force Python/Codex subprocess text to UTF-8.
+
+```powershell
+Tools/re-agent/watch-re-agent.ps1 -Address 0x004c9cc0
+```
+
+The local `re-agent` venv has also been patched so the Codex provider streams `codex exec` stdout
+line-by-line instead of buffering it until the end, and the fix loop prints phase markers such as
+`[re-agent] round 1/4: starting reverse`, `starting checker`, and `objective verdict=PASS`. This
+does not expose hidden model reasoning, but it does make the live CLI transcript, phase boundaries,
+generated code, checker output, retries, and final status visible in the watch window and log.
+
+The wrapper is equivalent to:
+
+```powershell
+$repo = "S:\Repos\sim-copter-remake"
+$addr = "0x004c9cc0"
+$bridge = "$repo\Tools\re-agent\.venv\Scripts\ghidra-bridge.exe"
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$log = "$repo\reports\re-agent\logs\live-$addr-$stamp.log"
+New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
+
+$script = @"
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
+Set-Location '$repo'
+`$env:RE_AGENT_BACKEND_CLI_PATH = '$bridge'
+`$env:PYTHONUTF8 = '1'
+`$env:PYTHONIOENCODING = 'utf-8'
+`$gb = '$bridge'
+`$ra = 'Tools/re-agent/.venv/Scripts/re-agent.exe'
+`$log = '$log'
+"=== SimCopter re-agent live run: $addr ===" | Tee-Object -FilePath `$log -Append
+codex --version 2>&1 | Tee-Object -FilePath `$log -Append
+codex login status 2>&1 | Tee-Object -FilePath `$log -Append
+& `$gb decompile $addr 2>&1 | Tee-Object -FilePath `$log -Append
+& `$gb xrefs-to $addr 2>&1 | Tee-Object -FilePath `$log -Append
+& `$gb xrefs-from $addr 2>&1 | Tee-Object -FilePath `$log -Append
+& `$ra reverse --address $addr --dry-run 2>&1 | Tee-Object -FilePath `$log -Append
+& `$ra reverse --address $addr 2>&1 | Tee-Object -FilePath `$log -Append
+`$exit = `$LASTEXITCODE
+"Exit code: `$exit" | Tee-Object -FilePath `$log -Append
+& `$ra status 2>&1 | Tee-Object -FilePath `$log -Append
+Write-Host "Log saved to: $log"
+"@
+
+Start-Process powershell.exe -ArgumentList @("-NoExit", "-ExecutionPolicy", "Bypass", "-Command", $script) -WorkingDirectory $repo
+```
+
+If a run crashes during the final session save with
+`Docs/scratchpad/re-agent/re-agent-progress.tmp -> Docs/scratchpad/re-agent/re-agent-progress.json`,
+delete the stale temp file and rerun `re-agent status`. The completed reports may already be valid
+even when that final save step exits non-zero.
 
 Good first-pass targets are:
 
