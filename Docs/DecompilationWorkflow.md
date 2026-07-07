@@ -19,6 +19,190 @@ Reference/SimCopterOriginalGame/
 
 `Reference/` is intentionally ignored by git. Code and docs should describe file formats and behavior, not include original binary payloads.
 
+## Main Decode Path: ghidra-ai-bridge + re-agent
+
+As of 2026-07-07 the primary way to read the executable is the
+[ghidra-ai-bridge](https://github.com/Dryxio/ghidra-ai-bridge) query CLI over a one-time export of
+the Ghidra project, optionally driven by [auto-re-agent](https://github.com/Dryxio/auto-re-agent)
+(`re-agent`) for automated reverse/verify loops. Both are MIT-licensed Python packages installed in
+a project venv at `Tools/re-agent/.venv` (gitignored). The old `analyzeHeadless` +
+`ReverseExplore.java` flow (below) remains the fallback for capabilities the bridge lacks.
+
+Why this is the main path: every query against the export returns instantly from JSON files instead
+of paying a ~30-60s JVM/analyzeHeadless round trip, and `re-agent` adds an objective verifier
+(call-count + control-flow checks) and an 11-signal parity engine that can check our ported C++
+against the decompiled original.
+
+### Setup (already done on this machine)
+
+```powershell
+python -m venv Tools/re-agent/.venv
+Tools/re-agent/.venv/Scripts/pip install auto-re-agent "ghidra-ai-bridge[headless]"
+```
+
+Config files live at the repo root and are committed:
+
+- `ghidra-bridge.yaml` - points at the Ghidra install (scoop), the project
+  (`Docs/scratchpad/ghidra/SimCopter`), the export dir (`.ghidra-exports/`, gitignored), and the
+  source-annotation pattern.
+- `re-agent.yaml` - LLM provider (`codex`, model `gpt-5.5`), backend CLI path, verifier and
+  parity settings. Codex uses the local ChatGPT login cached by the Codex CLI; the current personal
+  Codex reasoning default is `model_reasoning_effort = "high"` in `C:\Users\james\.codex\config.toml`.
+
+Run all commands from the repo root so the YAML configs are found.
+
+### One-time export (refresh after changing the Ghidra project)
+
+```powershell
+Tools/re-agent/.venv/Scripts/ghidra-bridge.exe export all
+```
+
+This uses PyGhidra headless to dump structs, enums, vtables, strings (with xrefs), globals, and a
+decompile + caller/callee JSON per function into `.ghidra-exports/`. It takes a while (it decompiles
+every function once); afterwards all queries are instant. Re-run it only when the Ghidra project
+changes (new functions created, renames, retypes). `export decompiled` / `export strings` etc.
+refresh a single category.
+
+### Everyday queries
+
+```powershell
+$gb = "Tools/re-agent/.venv/Scripts/ghidra-bridge.exe"
+& $gb decompile 0x4abce0        # decompiled C for the function at/containing an address
+& $gb decompile FUN_004abce0    # ...or by Ghidra name
+& $gb xrefs-to 0x4ae7a0         # callers
+& $gb xrefs-from 0x484d20       # callees
+& $gb strings PrivAnim          # string search with referencing functions
+& $gb containing 0x486a35       # which function contains this address
+& $gb global 0x5040e4           # named global info + references
+& $gb search heli               # function-name search
+& $gb info                      # export statistics
+& $gb dump-asm 0x4ce7b0 out.txt # raw disassembly (needs pyghidra, slower)
+```
+
+Prefer these over `analyzeHeadless` for decompiles, xrefs, strings, and globals. Fall back to
+`ReverseExplore.java` only for what the export cannot do: `scan <hexbytes>` (byte-pattern search),
+`bytes` (raw memory dumps), `disasm`/`decompileforce` (vtable-only code Ghidra never made into
+functions - though after using `decompileforce`, re-running `export decompiled` picks the new
+function up).
+
+### Annotating ported code (parity)
+
+When porting a decompiled function into `SimCopterRemake/Source`, tag the C++ with a comment so the
+tooling can map source back to the binary:
+
+```cpp
+// SCHOOK: FlattenTerrain 0x004abce0
+void FSimCopterTerrain::FlattenTerrain(...)
+```
+
+`ghidra-bridge build-map` scans the source tree for these tags and builds
+`.ghidra-exports/address_map.json`; `re-agent parity --address 0x4abce0` then runs the 11 heuristic
+signals (call-count mismatch, missing FP ops, missing NaN handling, suspiciously short body, ...)
+comparing our port against the decompile. Treat RED/YELLOW findings as review prompts, not verdicts
+- our ports are idiomatic UE C++, not 1:1 re-hooks, so some signals will warn by design.
+
+### Automated reversal loop (re-agent)
+
+`re-agent reverse --address 0x<addr>` runs an LLM reverser/checker loop against the bridge: it
+gathers the decompile + xrefs + structs + nearby annotated source, drafts C++, has a checker model
+critique it, and gates acceptance on the objective verifier. This repo is configured to use the
+Codex CLI provider, so paid LLM calls run through the local Codex ChatGPT login. Check the login
+before a run:
+
+```powershell
+codex --version
+codex login status
+```
+
+Use it deliberately, usually one small function or caller cluster at a time:
+
+```powershell
+$ra = "Tools/re-agent/.venv/Scripts/re-agent.exe"
+& $ra reverse --address 0x4b5290 --dry-run   # show what would run, no LLM calls
+& $ra reverse --address 0x4b5290             # single function
+& $ra parity --address 0x4abce0              # heuristic port-vs-binary check, no LLM
+& $ra status                                 # progress (re-agent-progress.json)
+```
+
+Outputs land in `reports/re-agent/` (gitignored); every LLM call is logged. The tool never touches
+git and never deletes files. Drafts it produces are starting points - they still go through the
+normal evidence rules below before anything is documented as `Confirmed`.
+
+### Choosing the next section
+
+Pick targets by function address, not by a broad feature label. Broad prompts like "decode people"
+give the agent too much surface area and make review hard. Start from the project gap docs, narrow
+to one function, then walk outward through callers/callees.
+
+Useful gap sources:
+
+- `Docs/memory/MEMORY.md` - short index of active reverse-engineering goals.
+- `Docs/memory/simcopter-people-logic-next.md` - live handoff for pedestrian behavior, spawn rules,
+  figures, traffic, and the remaining people/vehicle gaps.
+- `Docs/DocumentationCoverage.md` - known documentation gaps and follow-ups.
+- `Docs/ReverseEngineering.md` - main discovery log and "Remaining hard pass" list.
+- `Docs/OriginalRuntimeBehavior.md` and `Docs/OriginalGameFileFormats.md` - confirmed vs follow-up
+  items for runtime systems and file formats.
+
+Target-selection loop:
+
+```powershell
+$gb = "Tools/re-agent/.venv/Scripts/ghidra-bridge.exe"
+$ra = "Tools/re-agent/.venv/Scripts/re-agent.exe"
+
+# 1. Find a candidate from docs, then inspect it locally.
+& $gb decompile 0x004c9cc0
+& $gb xrefs-to 0x004c9cc0
+& $gb xrefs-from 0x004c9cc0
+
+# 2. Dry-run the agent before spending model calls.
+& $ra reverse --address 0x004c9cc0 --dry-run
+
+# 3. Run exactly one bounded target.
+& $ra reverse --address 0x004c9cc0
+
+# 4. Review the report and only then decide the next caller/callee.
+& $ra status
+```
+
+Good first-pass targets are:
+
+- Small functions with a clear open note in the docs.
+- Functions with a handful of callers/callees, not giant dispatchers.
+- Callers of a known core function when the core is already understood.
+- Functions that correspond to one missing game behavior, such as a density gate, spawn selector, or
+  movement check.
+
+Avoid starting with:
+
+- Whole subsystems ("mission system", "people VM", "traffic") without an address.
+- Large dispatch tables before their leaf handlers are mapped.
+- Functions already marked `Confirmed` unless the goal is a parity check against the port.
+- Broad batches before the first single-function report has been reviewed.
+
+Current recommended queue for Codex-backed runs:
+
+```powershell
+& $ra reverse --address 0x004c9cc0   # ambient pedestrian density/tile gate; noted as not ported
+& $ra reverse --address 0x004c2450   # ambient spawn behavior-class selection
+& $ra reverse --address 0x004c9470   # per-step pedestrian move check
+& $ra reverse --address 0x004c9bc0   # related tile/person gate caller
+& $ra reverse --address 0x004bfed0   # another FUN_004c9cc0 caller, likely object/traffic interaction
+```
+
+When asking Codex to launch a run, use a compact request like:
+
+```text
+Run a dry-run for re-agent on 0x004c9cc0, inspect decompile/xrefs first, then tell me if it is safe
+to launch the paid reverse loop.
+```
+
+or:
+
+```text
+Launch re-agent for 0x004c9cc0 now, then summarize the report and suggest the next caller/callee.
+```
+
 ## Main Evidence Paths
 
 Current human-readable notes:

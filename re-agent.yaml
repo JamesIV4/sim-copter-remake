@@ -1,0 +1,46 @@
+# re-agent configuration for SimCopter decompilation.
+# Docs: Docs/ReverseEngineeringToolkit.md
+# Requires the ghidra-bridge export to exist (.ghidra-exports/) and a working
+# Codex CLI ChatGPT login (`codex login status`) for the LLM loop.
+
+project_profile:
+  # Ported UE code marks its origin with: // SCHOOK: FunctionName 0x004abce0
+  hook_patterns:
+    - 'SCHOOK:\s*(\w+)\s+(0x[0-9A-Fa-f]+)'
+  stub_patterns: []
+  stub_markers: []
+  stub_call_prefix: ""
+  class_macro: ""
+  source_root: "SimCopterRemake/Source"
+  source_extensions: [".cpp", ".h"]
+
+llm:
+  provider: "codex"
+  model: "gpt-5.5"
+  max_tokens: 8192
+  temperature: 0.0
+  timeout_s: 1800
+
+backend:
+  type: "ghidra-bridge"
+  cli_path: "Tools/re-agent/.venv/Scripts/ghidra-bridge.exe"
+  timeout_s: 60
+
+parity:
+  enabled: true
+  call_count_warn_diff: 3
+  inline_wrapper_autoskip: false
+  cache_dir: ".cache/re-agent-parity"
+
+orchestrator:
+  max_review_rounds: 4
+  max_functions_per_class: 10
+  objective_verifier_enabled: true
+  objective_call_count_tolerance: 3
+  objective_control_flow_tolerance: 2
+
+output:
+  report_dir: "reports/re-agent"
+  log_dir: "reports/re-agent/logs"
+  session_file: "re-agent-progress.json"
+  format: "json"
