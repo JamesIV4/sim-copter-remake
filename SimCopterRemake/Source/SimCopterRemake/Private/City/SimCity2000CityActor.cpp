@@ -3168,7 +3168,7 @@ void ASimCity2000CityActor::RebuildCity()
 						const float MeshWorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
-						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42));
+						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
 						OriginalMeshTriangleCount += AppendMaxisMeshObject(
 							*MeshObject,
 							ColorMap,
@@ -3222,6 +3222,232 @@ void ASimCity2000CityActor::RebuildCity()
 				}
 			}
 		}
+	}
+
+	// The WR14-WR28 meshes already contain two-point wire faces from each pole
+	// attachment to the edge of the tile. Use those faces as the source of truth:
+	// their pole-side endpoints preserve each model's direction, spacing, and
+	// attachment height (including the raised slope variants).
+	if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded)
+	{
+		struct FPowerLineMeshSpan
+		{
+			uint8 Opening = 0;
+			FVector LocalAnchor = FVector::ZeroVector;
+			FVector LocalOuter = FVector::ZeroVector;
+			FLinearColor Color = FLinearColor::Black;
+		};
+
+		TMap<uint8, TArray<FPowerLineMeshSpan>> PowerLineSpansByBuilding;
+		for (int32 BuildingId = 0x0E; BuildingId <= 0x1C; ++BuildingId)
+		{
+			const TArray<FColor>* ColorMap = nullptr;
+			const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(BuildingId, &ColorMap);
+			if (MeshObject == nullptr)
+			{
+				continue;
+			}
+
+			TArray<FPowerLineMeshSpan>& Spans = PowerLineSpansByBuilding.FindOrAdd(static_cast<uint8>(BuildingId));
+			for (const FMaxisMeshFace& Face : MeshObject->Faces)
+			{
+				if (Face.VertexIndices.Num() != 2 ||
+					!MeshObject->Vertices.IsValidIndex(Face.VertexIndices[0]) ||
+					!MeshObject->Vertices.IsValidIndex(Face.VertexIndices[1]))
+				{
+					continue;
+				}
+
+				const FVector ConvertedA = FMaxisMeshReader::ConvertMaxisVertexToUnreal(
+					MeshObject->Vertices[Face.VertexIndices[0]],
+					OriginalMeshUnitsPerCentimeter) * OriginalMeshScale;
+				const FVector ConvertedB = FMaxisMeshReader::ConvertMaxisVertexToUnreal(
+					MeshObject->Vertices[Face.VertexIndices[1]],
+					OriginalMeshUnitsPerCentimeter) * OriginalMeshScale;
+				const FVector LocalA(-ConvertedA.X, -ConvertedA.Y, ConvertedA.Z);
+				const FVector LocalB(-ConvertedB.X, -ConvertedB.Y, ConvertedB.Z);
+
+				// Face winding is not consistent across the WR models. The point
+				// nearest tile center is always the pole/crossbar attachment.
+				const bool bAIsAnchor = FVector2D(LocalA.X, LocalA.Y).SizeSquared() <
+					FVector2D(LocalB.X, LocalB.Y).SizeSquared();
+				const FVector LocalAnchor = bAIsAnchor ? LocalA : LocalB;
+				const FVector LocalOuter = bAIsAnchor ? LocalB : LocalA;
+
+				uint8 Opening = 0;
+				if (FMath::Abs(LocalOuter.X) >= FMath::Abs(LocalOuter.Y))
+				{
+					Opening = LocalOuter.X >= 0.0f
+						? static_cast<uint8>(ERoadOpening::East)
+						: static_cast<uint8>(ERoadOpening::West);
+				}
+				else
+				{
+					Opening = LocalOuter.Y >= 0.0f
+						? static_cast<uint8>(ERoadOpening::North)
+						: static_cast<uint8>(ERoadOpening::South);
+				}
+
+				FPowerLineMeshSpan& Span = Spans.AddDefaulted_GetRef();
+				Span.Opening = Opening;
+				Span.LocalAnchor = LocalAnchor;
+				Span.LocalOuter = LocalOuter;
+				Span.Color = ResolveMaxisFaceColor(
+					ColorMap,
+					Face.FaceType,
+					Face.MaterialIndex,
+					OriginalTexturedFaceFallbackColor);
+			}
+		}
+
+		auto GetOppositeOpening = [](uint8 Opening) -> uint8
+		{
+			if (Opening == static_cast<uint8>(ERoadOpening::North)) return static_cast<uint8>(ERoadOpening::South);
+			if (Opening == static_cast<uint8>(ERoadOpening::South)) return static_cast<uint8>(ERoadOpening::North);
+			if (Opening == static_cast<uint8>(ERoadOpening::East)) return static_cast<uint8>(ERoadOpening::West);
+			if (Opening == static_cast<uint8>(ERoadOpening::West)) return static_cast<uint8>(ERoadOpening::East);
+			return 0;
+		};
+
+		auto GatherOpeningSpans = [](const TArray<FPowerLineMeshSpan>* Spans, uint8 Opening)
+		{
+			TArray<const FPowerLineMeshSpan*> Result;
+			if (Spans != nullptr)
+			{
+				for (const FPowerLineMeshSpan& Span : *Spans)
+				{
+					if (Span.Opening == Opening)
+					{
+						Result.Add(&Span);
+					}
+				}
+			}
+
+			// Keep the two conductors paired by their crossbar position.
+			Result.Sort([Opening](const FPowerLineMeshSpan& A, const FPowerLineMeshSpan& B)
+			{
+				const bool bEastWest = Opening == static_cast<uint8>(ERoadOpening::East) ||
+					Opening == static_cast<uint8>(ERoadOpening::West);
+				return bEastWest
+					? A.LocalAnchor.Y < B.LocalAnchor.Y
+					: A.LocalAnchor.X < B.LocalAnchor.X;
+			});
+			return Result;
+		};
+
+		auto GetTileMeshOrigin = [&](int32 FileX, int32 FileY)
+		{
+			return FVector(
+				GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize),
+				-GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize),
+				GetAverageTerrainSurfaceZ(City, FileX, FileY, 1, 1, EffectiveTerrainHeightScale) + OriginalMeshZOffset);
+		};
+
+		const uint8 Directions[] = {
+			static_cast<uint8>(ERoadOpening::North),
+			static_cast<uint8>(ERoadOpening::East),
+			static_cast<uint8>(ERoadOpening::South),
+			static_cast<uint8>(ERoadOpening::West)
+		};
+		const int32 DX[] = { 0, 1, 0, -1 };
+		const int32 DY[] = { -1, 0, 1, 0 };
+		FOriginalMeshSectionData& Section = OriginalMeshSections.FindOrAdd(INDEX_NONE);
+		int32 AddedPowerLineTriangleCount = 0;
+
+		for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
+		{
+			for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
+			{
+				const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
+				const TArray<FPowerLineMeshSpan>* TileSpans = PowerLineSpansByBuilding.Find(Tile.Building);
+				if (TileSpans == nullptr)
+				{
+					continue;
+				}
+
+				const FVector TileOrigin = GetTileMeshOrigin(FileX, FileY);
+				for (int32 DirectionIndex = 0; DirectionIndex < UE_ARRAY_COUNT(Directions); ++DirectionIndex)
+				{
+					const uint8 Direction = Directions[DirectionIndex];
+					const TArray<const FPowerLineMeshSpan*> SourceSpans = GatherOpeningSpans(TileSpans, Direction);
+					if (SourceSpans.IsEmpty())
+					{
+						continue;
+					}
+
+					const int32 TargetX = FileX + DX[DirectionIndex];
+					const int32 TargetY = FileY + DY[DirectionIndex];
+					const bool bTargetInBounds =
+						TargetX >= 0 && TargetX < FSimCity2000City::MapSize &&
+						TargetY >= 0 && TargetY < FSimCity2000City::MapSize;
+					const TArray<FPowerLineMeshSpan>* TargetTileSpans = nullptr;
+					if (bTargetInBounds)
+					{
+						const FSimCity2000Tile& TargetTile = City.Tiles[TargetY * FSimCity2000City::MapSize + TargetX];
+						TargetTileSpans = PowerLineSpansByBuilding.Find(TargetTile.Building);
+					}
+
+					const TArray<const FPowerLineMeshSpan*> TargetSpans =
+						GatherOpeningSpans(TargetTileSpans, GetOppositeOpening(Direction));
+					if (!TargetSpans.IsEmpty())
+					{
+						// The opposite tile emits this same span while visiting north/west.
+						if (Direction == static_cast<uint8>(ERoadOpening::North) ||
+							Direction == static_cast<uint8>(ERoadOpening::West))
+						{
+							continue;
+						}
+
+						const FVector TargetOrigin = GetTileMeshOrigin(TargetX, TargetY);
+						const int32 WireCount = FMath::Min(SourceSpans.Num(), TargetSpans.Num());
+						for (int32 WireIndex = 0; WireIndex < WireCount; ++WireIndex)
+						{
+							const FVector Start = TileOrigin + SourceSpans[WireIndex]->LocalAnchor;
+							const FVector End = TargetOrigin + TargetSpans[WireIndex]->LocalAnchor;
+							const float Distance = FVector::Distance(Start, End);
+							const float SagAmount = FMath::Min(Distance * 0.1f, TileSize * 0.25f);
+							const float SegmentLength = FMath::Max(TileSize / 24.0f, 1.0f);
+							const int32 SegmentCount = FMath::Clamp(FMath::CeilToInt(Distance / SegmentLength), 16, 48);
+
+							FVector Previous = Start;
+							for (int32 SegmentIndex = 1; SegmentIndex <= SegmentCount; ++SegmentIndex)
+							{
+								const float T = static_cast<float>(SegmentIndex) / static_cast<float>(SegmentCount);
+								FVector Position = FMath::Lerp(Start, End, T);
+								Position.Z -= 4.0f * SagAmount * T * (1.0f - T);
+								Append3DVectorLine(
+									Section,
+									Previous,
+									Position,
+									SourceSpans[WireIndex]->Color,
+									5.0f,
+									false,
+									AddedPowerLineTriangleCount);
+								Previous = Position;
+							}
+						}
+					}
+					else
+					{
+						// Preserve genuine map-edge/dangling runs using the exact
+						// source-mesh segment instead of inventing another anchor.
+						for (const FPowerLineMeshSpan* SourceSpan : SourceSpans)
+						{
+							Append3DVectorLine(
+								Section,
+								TileOrigin + SourceSpan->LocalAnchor,
+								TileOrigin + SourceSpan->LocalOuter,
+								SourceSpan->Color,
+								5.0f,
+								false,
+								AddedPowerLineTriangleCount);
+						}
+					}
+				}
+			}
+		}
+
+		OriginalMeshTriangleCount += AddedPowerLineTriangleCount;
 	}
 
 	if (bRenderTerrain && ExtendedTerrain.IsEnabled())
