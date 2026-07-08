@@ -4248,12 +4248,28 @@ FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
 		return Point.Location;
 	}
 
-	const FVector LaneSide = GetRightHandLaneSideLocalDirection(Direction);
+	FVector LaneSide = GetRightHandLaneSideLocalDirection(Direction);
 	if (LaneSide.IsNearlyZero())
 	{
 		return Point.Location;
 	}
 
-	const FVector LaneLocalLocation = Point.LocalLocation + LaneSide * (ActiveTileSize * VehicleLaneOffsetTileFraction);
+	FVector PointLocalLocation = Point.LocalLocation;
+
+	if (Point.Neighbors.Num() == 1)
+	{
+		const int32 NeighborIndex = Point.Neighbors[0];
+		if (Nodes.IsValidIndex(NeighborIndex))
+		{
+			FVector DeadEndDir = Point.LocalLocation - Nodes[NeighborIndex].LocalLocation;
+			DeadEndDir.Z = 0.0f;
+			DeadEndDir = DeadEndDir.GetSafeNormal();
+
+			PointLocalLocation += DeadEndDir * (ActiveTileSize * 0.35f);
+			LaneSide = FVector::ZeroVector;
+		}
+	}
+
+	const FVector LaneLocalLocation = PointLocalLocation + LaneSide * (ActiveTileSize * VehicleLaneOffsetTileFraction);
 	return ActiveCityToWorldTransform.TransformPosition(LaneLocalLocation);
 }
