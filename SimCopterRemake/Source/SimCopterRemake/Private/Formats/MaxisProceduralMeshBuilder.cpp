@@ -32,13 +32,85 @@ void AppendFaceToSection(
 	const FLinearColor& FallbackColor,
 	FMaxisMeshSection& Section)
 {
-	if (Face.VertexIndices.Num() < 3)
+	if (Face.VertexIndices.Num() < 2)
 	{
 		return;
 	}
 
 	const int32 FaceVertexStart = Section.Vertices.Num();
 	const FLinearColor FaceColor = ResolveFaceColor(ColorMap, Face.FaceType, Face.MaterialIndex, FallbackColor);
+
+	if (Face.VertexIndices.Num() == 2)
+	{
+		const uint16 IndexA = Face.VertexIndices[0];
+		const uint16 IndexB = Face.VertexIndices[1];
+		if (!Object.Vertices.IsValidIndex(IndexA) || !Object.Vertices.IsValidIndex(IndexB))
+		{
+			return;
+		}
+
+		const FVector A = FMaxisMeshReader::ConvertMaxisVertexToUnreal(Object.Vertices[IndexA], EffectiveUnits) * Scale;
+		const FVector B = FMaxisMeshReader::ConvertMaxisVertexToUnreal(Object.Vertices[IndexB], EffectiveUnits) * Scale;
+
+		const FVector Dir = (B - A).GetSafeNormal();
+		if (Dir.IsNearlyZero())
+		{
+			return;
+		}
+
+		FVector Perp1 = FVector::CrossProduct(Dir, FVector::UpVector);
+		if (Perp1.IsNearlyZero())
+		{
+			Perp1 = FVector::CrossProduct(Dir, FVector::RightVector);
+		}
+		Perp1.Normalize();
+		const FVector Perp2 = FVector::CrossProduct(Dir, Perp1).GetSafeNormal();
+
+		const float HalfWidth = 2.5f * Scale; // 5.0f width * Scale
+
+		// Build two intersecting quads (a cross)
+		const FVector Offsets[4] = { Perp1 * HalfWidth, -Perp1 * HalfWidth, Perp2 * HalfWidth, -Perp2 * HalfWidth };
+		for (int32 QuadIndex = 0; QuadIndex < 2; ++QuadIndex)
+		{
+			const FVector& O1 = Offsets[QuadIndex * 2];
+			const FVector& O2 = Offsets[QuadIndex * 2 + 1];
+
+			const int32 VStart = Section.Vertices.Num();
+			Section.Vertices.Add(A + O1);
+			Section.Vertices.Add(B + O1);
+			Section.Vertices.Add(B + O2);
+			Section.Vertices.Add(A + O2);
+
+			for (int32 i = 0; i < 4; ++i)
+			{
+				Section.UVs.Add(FVector2D::ZeroVector);
+				Section.VertexColors.Add(FaceColor);
+				Section.Tangents.Add(FProcMeshTangent(Dir.X, Dir.Y, Dir.Z));
+				Section.LocalBounds += Section.Vertices.Last();
+				// Use outward normals for the cross
+				FVector N = (QuadIndex == 0) ? Perp1 : Perp2;
+				if (i == 2 || i == 3) N = -N;
+				Section.Normals.Add(N);
+			}
+
+			Section.Triangles.Add(VStart);
+			Section.Triangles.Add(VStart + 1);
+			Section.Triangles.Add(VStart + 2);
+			Section.Triangles.Add(VStart);
+			Section.Triangles.Add(VStart + 2);
+			Section.Triangles.Add(VStart + 3);
+
+			// Always add backfaces for lines so they are solid
+			Section.Triangles.Add(VStart);
+			Section.Triangles.Add(VStart + 2);
+			Section.Triangles.Add(VStart + 1);
+			Section.Triangles.Add(VStart);
+			Section.Triangles.Add(VStart + 3);
+			Section.Triangles.Add(VStart + 2);
+		}
+
+		return;
+	}
 
 	for (int32 FaceVertexIndex = 0; FaceVertexIndex < Face.VertexIndices.Num(); ++FaceVertexIndex)
 	{

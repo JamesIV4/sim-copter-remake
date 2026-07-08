@@ -2371,6 +2371,78 @@ FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 
 // The only transform applied here is the global 180-degree yaw (negating the local
 // X/Y) that the tile placement also folds in, so the whole city faces the same way
 // as the original game.
+void Append3DVectorLine(
+	FOriginalMeshSectionData& Section,
+	const FVector& A,
+	const FVector& B,
+	const FLinearColor& FaceColor,
+	float Width,
+	bool bBakedAtlasTexturedFace,
+	int32& AddedTriangleCount)
+{
+	const FVector Dir = (B - A).GetSafeNormal();
+	if (Dir.IsNearlyZero())
+	{
+		return;
+	}
+
+	FVector Perp1 = FVector::CrossProduct(Dir, FVector::UpVector);
+	if (Perp1.IsNearlyZero())
+	{
+		Perp1 = FVector::CrossProduct(Dir, FVector::RightVector);
+	}
+	Perp1.Normalize();
+	const FVector Perp2 = FVector::CrossProduct(Dir, Perp1).GetSafeNormal();
+
+	const float HalfWidth = Width * 0.5f;
+
+	const FVector Offsets[4] = { Perp1 * HalfWidth, -Perp1 * HalfWidth, Perp2 * HalfWidth, -Perp2 * HalfWidth };
+	for (int32 QuadIndex = 0; QuadIndex < 2; ++QuadIndex)
+	{
+		const FVector& O1 = Offsets[QuadIndex * 2];
+		const FVector& O2 = Offsets[QuadIndex * 2 + 1];
+
+		const int32 VStart = Section.Vertices.Num();
+		Section.Vertices.Add(A + O1);
+		Section.Vertices.Add(B + O1);
+		Section.Vertices.Add(B + O2);
+		Section.Vertices.Add(A + O2);
+
+		for (int32 i = 0; i < 4; ++i)
+		{
+			Section.UVs.Add(FVector2D::ZeroVector);
+			if (bBakedAtlasTexturedFace)
+			{
+				Section.UV1.Add(FVector2D::ZeroVector);
+			}
+			Section.VertexColors.Add(FaceColor);
+			Section.Tangents.Add(FProcMeshTangent(Dir.X, Dir.Y, Dir.Z));
+			
+			FVector N = (QuadIndex == 0) ? Perp1 : Perp2;
+			if (i == 2 || i == 3) N = -N;
+			Section.Normals.Add(N);
+		}
+
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 1);
+		Section.Triangles.Add(VStart + 2);
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 2);
+		Section.Triangles.Add(VStart + 3);
+		Section.TriangleCount += 2;
+		AddedTriangleCount += 2;
+
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 2);
+		Section.Triangles.Add(VStart + 1);
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 3);
+		Section.Triangles.Add(VStart + 2);
+		Section.TriangleCount += 2;
+		AddedTriangleCount += 2;
+	}
+}
+
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
@@ -2383,6 +2455,7 @@ int32 AppendMaxisMeshObject(
 	const TSet<int32>& AvailableBakedAtlasPageIds,
 	const TSet<int32>& AvailableBakedDirectImageIds,
 	const FLinearColor& TexturedFaceFallbackColor,
+	bool bBuildVectorLines,
 	TMap<int32, FOriginalMeshSectionData>& Sections,
 	int32& OutTexturedTriangleCount)
 {
@@ -2411,7 +2484,7 @@ int32 AppendMaxisMeshObject(
 
 	for (const FMaxisMeshFace& Face : MeshObject.Faces)
 	{
-		if (Face.VertexIndices.Num() < 3)
+		if (Face.VertexIndices.Num() < 2)
 		{
 			continue;
 		}
@@ -2430,6 +2503,28 @@ int32 AppendMaxisMeshObject(
 		const FLinearColor FaceColor = bTexturedFace
 			? FLinearColor::White
 			: ResolveMaxisFaceColor(ColorMap, Face.FaceType, Face.MaterialIndex, TexturedFaceFallbackColor);
+
+		if (Face.VertexIndices.Num() == 2)
+		{
+			if (bBuildVectorLines)
+			{
+				const uint16 IndexA = Face.VertexIndices[0];
+				const uint16 IndexB = Face.VertexIndices[1];
+				if (MeshObject.Vertices.IsValidIndex(IndexA) && MeshObject.Vertices.IsValidIndex(IndexB))
+				{
+					const FVector ConvertedA = FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[IndexA], MeshUnitsPerCentimeter) * MeshScale;
+					const FVector ConvertedB = FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject.Vertices[IndexB], MeshUnitsPerCentimeter) * MeshScale;
+					const FVector LocalA(-ConvertedA.X, -ConvertedA.Y, ConvertedA.Z);
+					const FVector LocalB(-ConvertedB.X, -ConvertedB.Y, ConvertedB.Z);
+					const FVector A = TileOrigin + LocalA;
+					const FVector B = TileOrigin + LocalB;
+
+					Append3DVectorLine(Section, A, B, FaceColor, 5.0f, bBakedAtlasTexturedFace, AddedTriangleCount);
+				}
+			}
+			continue;
+		}
+
 		const int32 AtlasColumn = static_cast<int32>(Face.MaterialIndex % FMaxisTextureReader::AtlasColumnCount);
 		const int32 AtlasRawRow = static_cast<int32>(Face.MaterialIndex / FMaxisTextureReader::AtlasColumnCount);
 		const int32 AtlasDecodedRow = FMaxisTextureReader::AtlasColumnCount - 1 - AtlasRawRow;
@@ -3073,6 +3168,7 @@ void ASimCity2000CityActor::RebuildCity()
 						const float MeshWorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
+						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42));
 						OriginalMeshTriangleCount += AppendMaxisMeshObject(
 							*MeshObject,
 							ColorMap,
@@ -3085,6 +3181,7 @@ void ASimCity2000CityActor::RebuildCity()
 							AvailableBakedAtlasPageIds,
 							AvailableBakedDirectImageIds,
 							OriginalTexturedFaceFallbackColor,
+							bBuildVectorLines,
 							OriginalMeshSections,
 							LastOriginalTexturedTriangleCount);
 
@@ -3106,6 +3203,7 @@ void ASimCity2000CityActor::RebuildCity()
 									AvailableBakedAtlasPageIds,
 									AvailableBakedDirectImageIds,
 									OriginalTexturedFaceFallbackColor,
+									bBuildVectorLines,
 									OriginalMeshSections,
 									LastOriginalTexturedTriangleCount);
 							}
