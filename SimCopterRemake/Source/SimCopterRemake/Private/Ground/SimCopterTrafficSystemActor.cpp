@@ -3382,6 +3382,22 @@ bool ASimCopterTrafficSystemActor::TryMakeVehicleLaneGuidanceTarget(
 
 	const FVector SegmentDirection = Segment / SegmentLength;
 	const FVector VehicleLocation = Vehicle.GetActorLocation();
+
+	if (RoadNodes.IsValidIndex(PreviousIndex) && RoadNodes[PreviousIndex].Neighbors.Num() == 1)
+	{
+		const FVector ToStart = SegmentStart - VehicleLocation;
+		const FVector CrossDirection = GetRightHandLaneSideLocalDirection(SegmentDirection);
+		const float RemainingCrossDistance = FVector::DotProduct(FVector(ToStart.X, ToStart.Y, 0.0f), CrossDirection);
+
+		if (RemainingCrossDistance > ActiveTileSize * 0.15f)
+		{
+			OutTarget = SegmentStart;
+			OutDistanceFromLane = 0.0f;
+			bOutTraversingDiagonalRoad = true;
+			return true;
+		}
+	}
+
 	FVector ToVehicle = VehicleLocation - SegmentStart;
 	ToVehicle.Z = 0.0f;
 	const float AlongSegment = FVector::DotProduct(ToVehicle, SegmentDirection);
@@ -4266,7 +4282,6 @@ FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
 			DeadEndDir = DeadEndDir.GetSafeNormal();
 
 			PointLocalLocation += DeadEndDir * (ActiveTileSize * 0.35f);
-			LaneSide = FVector::ZeroVector;
 		}
 	}
 
