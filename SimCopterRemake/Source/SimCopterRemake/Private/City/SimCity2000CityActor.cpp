@@ -2960,6 +2960,127 @@ void ASimCity2000CityActor::RebuildCity()
 		(bRenderTerrain && bRenderProceduralMapExtension) ? ProceduralMapExtensionTiles : 0,
 		EffectiveTerrainHeightScale);
 
+	// WR16-WR19 are the four directional grade-transition poles. The saved XBLD
+	// variant is normally right, but terrain conditioning can turn the underlying
+	// tile into a diagonal one-corner slope. Resolve the axis from reciprocal
+	// neighbors and the high side from the same conditioned corners rendered below.
+	auto GetPowerLineOpeningMask = [](uint8 Building) -> uint8
+	{
+		const uint8 N = static_cast<uint8>(ERoadOpening::North);
+		const uint8 E = static_cast<uint8>(ERoadOpening::East);
+		const uint8 S = static_cast<uint8>(ERoadOpening::South);
+		const uint8 W = static_cast<uint8>(ERoadOpening::West);
+		switch (Building)
+		{
+		case 0x0E: return E | W;
+		case 0x0F: return N | S;
+		case 0x10: return N | S;
+		case 0x11: return E | W;
+		case 0x12: return N | S;
+		case 0x13: return E | W;
+		case 0x14: return S | W;
+		case 0x15: return E | S;
+		case 0x16: return N | E;
+		case 0x17: return N | W;
+		case 0x18: return N | S | W;
+		case 0x19: return E | S | W;
+		case 0x1A: return N | E | S;
+		case 0x1B: return N | E | W;
+		case 0x1C: return N | E | S | W;
+		default: return 0;
+		}
+	};
+
+	auto GetOppositePowerLineOpening = [](uint8 Opening) -> uint8
+	{
+		if (Opening == static_cast<uint8>(ERoadOpening::North)) return static_cast<uint8>(ERoadOpening::South);
+		if (Opening == static_cast<uint8>(ERoadOpening::South)) return static_cast<uint8>(ERoadOpening::North);
+		if (Opening == static_cast<uint8>(ERoadOpening::East)) return static_cast<uint8>(ERoadOpening::West);
+		if (Opening == static_cast<uint8>(ERoadOpening::West)) return static_cast<uint8>(ERoadOpening::East);
+		return 0;
+	};
+
+	TArray<uint8> ResolvedPowerLineMeshIds;
+	ResolvedPowerLineMeshIds.SetNumUninitialized(FSimCity2000City::TileCount);
+	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
+		{
+			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
+			const uint8 SavedBuilding = City.Tiles[TileIndex].Building;
+			uint8 ResolvedBuilding = SavedBuilding;
+			if (SavedBuilding >= 0x10 && SavedBuilding <= 0x13)
+			{
+				const uint8 Directions[] = {
+					static_cast<uint8>(ERoadOpening::North),
+					static_cast<uint8>(ERoadOpening::East),
+					static_cast<uint8>(ERoadOpening::South),
+					static_cast<uint8>(ERoadOpening::West)
+				};
+				const int32 DX[] = { 0, 1, 0, -1 };
+				const int32 DY[] = { -1, 0, 1, 0 };
+				int32 NorthSouthScore = 0;
+				int32 EastWestScore = 0;
+				for (int32 DirectionIndex = 0; DirectionIndex < UE_ARRAY_COUNT(Directions); ++DirectionIndex)
+				{
+					const int32 NeighborX = FileX + DX[DirectionIndex];
+					const int32 NeighborY = FileY + DY[DirectionIndex];
+					if (NeighborX < 0 || NeighborX >= FSimCity2000City::MapSize ||
+						NeighborY < 0 || NeighborY >= FSimCity2000City::MapSize)
+					{
+						continue;
+					}
+
+					const uint8 NeighborBuilding =
+						City.Tiles[NeighborY * FSimCity2000City::MapSize + NeighborX].Building;
+					if ((GetPowerLineOpeningMask(NeighborBuilding) &
+						GetOppositePowerLineOpening(Directions[DirectionIndex])) == 0)
+					{
+						continue;
+					}
+
+					if (Directions[DirectionIndex] == static_cast<uint8>(ERoadOpening::North) ||
+						Directions[DirectionIndex] == static_cast<uint8>(ERoadOpening::South))
+					{
+						++NorthSouthScore;
+					}
+					else
+					{
+						++EastWestScore;
+					}
+				}
+
+				const bool bSavedNorthSouth = SavedBuilding == 0x10 || SavedBuilding == 0x12;
+				const bool bNorthSouth = NorthSouthScore == EastWestScore
+					? bSavedNorthSouth
+					: NorthSouthScore > EastWestScore;
+				const int32 CornerNW = GetConditionedTerrainCornerSample(ConditionedTerrainCorners, FileX, FileY);
+				const int32 CornerNE = GetConditionedTerrainCornerSample(ConditionedTerrainCorners, FileX + 1, FileY);
+				const int32 CornerSE = GetConditionedTerrainCornerSample(ConditionedTerrainCorners, FileX + 1, FileY + 1);
+				const int32 CornerSW = GetConditionedTerrainCornerSample(ConditionedTerrainCorners, FileX, FileY + 1);
+
+				if (bNorthSouth)
+				{
+					const int32 NorthHeight = CornerNW + CornerNE;
+					const int32 SouthHeight = CornerSW + CornerSE;
+					ResolvedBuilding = NorthHeight == SouthHeight
+						? (SavedBuilding == 0x10 || SavedBuilding == 0x12 ? SavedBuilding : 0x10)
+						: (NorthHeight > SouthHeight ? 0x10 : 0x12);
+				}
+				else
+				{
+					const int32 WestHeight = CornerNW + CornerSW;
+					const int32 EastHeight = CornerNE + CornerSE;
+					ResolvedBuilding = WestHeight == EastHeight
+						? (SavedBuilding == 0x11 || SavedBuilding == 0x13 ? SavedBuilding : 0x11)
+						: (WestHeight > EastHeight ? 0x11 : 0x13);
+				}
+			}
+
+			ResolvedPowerLineMeshIds[TileIndex] = ResolvedBuilding;
+		}
+	}
+
 	// Which tiles were routed into the animated water section (must match the routing used below).
 	// Original-map tiles come from the terrain type grid; outside tiles come from the extension.
 	auto IsAnimatedWaterTile = [&](int32 X, int32 Y) -> bool
@@ -3159,9 +3280,12 @@ void ASimCity2000CityActor::RebuildCity()
 					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
 						? BridgeDispatch.SecondaryObjectId
 						: BuildingDispatch.SecondaryObjectId;
+					const uint8 MeshTileId = Tile.Building >= 0x0E && Tile.Building <= 0x1C
+						? ResolvedPowerLineMeshIds[TileIndex]
+						: Tile.Building;
 					const FMaxisMeshObject* MeshObject = (PrimaryObjectId != INDEX_NONE)
 						? MeshLibrary.FindObjectByObjectId(PrimaryObjectId, &ColorMap)
-						: MeshLibrary.FindObjectByTileId(Tile.Building, &ColorMap);
+						: MeshLibrary.FindObjectByTileId(MeshTileId, &ColorMap);
 					if (MeshObject != nullptr)
 					{
 						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
@@ -3300,15 +3424,6 @@ void ASimCity2000CityActor::RebuildCity()
 			}
 		}
 
-		auto GetOppositeOpening = [](uint8 Opening) -> uint8
-		{
-			if (Opening == static_cast<uint8>(ERoadOpening::North)) return static_cast<uint8>(ERoadOpening::South);
-			if (Opening == static_cast<uint8>(ERoadOpening::South)) return static_cast<uint8>(ERoadOpening::North);
-			if (Opening == static_cast<uint8>(ERoadOpening::East)) return static_cast<uint8>(ERoadOpening::West);
-			if (Opening == static_cast<uint8>(ERoadOpening::West)) return static_cast<uint8>(ERoadOpening::East);
-			return 0;
-		};
-
 		auto GatherOpeningSpans = [](const TArray<FPowerLineMeshSpan>* Spans, uint8 Opening)
 		{
 			TArray<const FPowerLineMeshSpan*> Result;
@@ -3359,7 +3474,9 @@ void ASimCity2000CityActor::RebuildCity()
 			for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
 			{
 				const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
-				const TArray<FPowerLineMeshSpan>* TileSpans = PowerLineSpansByBuilding.Find(Tile.Building);
+				const uint8 ResolvedBuilding =
+					ResolvedPowerLineMeshIds[FileY * FSimCity2000City::MapSize + FileX];
+				const TArray<FPowerLineMeshSpan>* TileSpans = PowerLineSpansByBuilding.Find(ResolvedBuilding);
 				if (TileSpans == nullptr)
 				{
 					continue;
@@ -3383,12 +3500,13 @@ void ASimCity2000CityActor::RebuildCity()
 					const TArray<FPowerLineMeshSpan>* TargetTileSpans = nullptr;
 					if (bTargetInBounds)
 					{
-						const FSimCity2000Tile& TargetTile = City.Tiles[TargetY * FSimCity2000City::MapSize + TargetX];
-						TargetTileSpans = PowerLineSpansByBuilding.Find(TargetTile.Building);
+						const uint8 TargetResolvedBuilding =
+							ResolvedPowerLineMeshIds[TargetY * FSimCity2000City::MapSize + TargetX];
+						TargetTileSpans = PowerLineSpansByBuilding.Find(TargetResolvedBuilding);
 					}
 
 					const TArray<const FPowerLineMeshSpan*> TargetSpans =
-						GatherOpeningSpans(TargetTileSpans, GetOppositeOpening(Direction));
+						GatherOpeningSpans(TargetTileSpans, GetOppositePowerLineOpening(Direction));
 					if (!TargetSpans.IsEmpty())
 					{
 						// The opposite tile emits this same span while visiting north/west.
@@ -3425,22 +3543,6 @@ void ASimCity2000CityActor::RebuildCity()
 									AddedPowerLineTriangleCount);
 								Previous = Position;
 							}
-						}
-					}
-					else
-					{
-						// Preserve genuine map-edge/dangling runs using the exact
-						// source-mesh segment instead of inventing another anchor.
-						for (const FPowerLineMeshSpan* SourceSpan : SourceSpans)
-						{
-							Append3DVectorLine(
-								Section,
-								TileOrigin + SourceSpan->LocalAnchor,
-								TileOrigin + SourceSpan->LocalOuter,
-								SourceSpan->Color,
-								5.0f,
-								false,
-								AddedPowerLineTriangleCount);
 						}
 					}
 				}
