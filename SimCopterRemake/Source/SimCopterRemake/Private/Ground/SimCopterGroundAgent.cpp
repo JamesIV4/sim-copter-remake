@@ -199,10 +199,24 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	// ("movespeed := 6/8/12/16/25" expressions in people.df).
 	BehaviorContext.Attributes[EBhavAttr::AutoTurn] = 1;
 	BehaviorContext.ResetToState(InitialPersonState);
+	ResetBehaviorProgramOverride();
 	LastAppliedBehaviorFacing = INDEX_NONE;
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
 	bBehaviorActive = true;
+}
+
+void ASimCopterGroundAgent::ResetBehaviorProgramOverride()
+{
+	if (InitialBehaviorProgramId == INDEX_NONE)
+	{
+		return;
+	}
+
+	BehaviorContext.Stack.Reset();
+	FSimCopterPersonContext::FFrame Frame;
+	Frame.ProgramId = InitialBehaviorProgramId;
+	BehaviorContext.Stack.Add(Frame);
 }
 
 void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
@@ -225,6 +239,10 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 	for (int32 Step = 0; Step < Steps; ++Step)
 	{
 		const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(BehaviorContext, *BehaviorModel, *this);
+		if (Result == EBhavStepResult::Completed && InitialBehaviorProgramId != INDEX_NONE)
+		{
+			ResetBehaviorProgramOverride();
+		}
 		if (Result == EBhavStepResult::Stopped || BehaviorContext.bRequestDespawn)
 		{
 			// Original 'Disappear'/deactivate path: hide and let the spawner recycle us.
@@ -329,6 +347,25 @@ void ASimCopterGroundAgent::SetInitialBehaviorClass(int32 NewInitialBehaviorClas
 	if (bBehaviorActive)
 	{
 		BehaviorContext.Attributes[EBhavAttr::BehaviorClass] = uint16(InitialBehaviorClass);
+	}
+}
+
+void ASimCopterGroundAgent::SetInitialBehaviorProgramId(int32 NewInitialBehaviorProgramId)
+{
+	InitialBehaviorProgramId = NewInitialBehaviorProgramId > 0 ? NewInitialBehaviorProgramId : INDEX_NONE;
+	if (bBehaviorActive)
+	{
+		ResetBehaviorProgramOverride();
+	}
+}
+
+void ASimCopterGroundAgent::SetPedestrianFigureClothesOffset(int32 NewClothesOffset)
+{
+	ForcedFigureClothesOffset = FMath::Clamp(NewClothesOffset, 0, 13);
+	FigureClothesOffset = ForcedFigureClothesOffset;
+	if (bUsingPedestrianFigure)
+	{
+		RebuildFigureClip(FigureMnemonic.IsEmpty() ? TEXT("NoMo") : FigureMnemonic);
 	}
 }
 
@@ -826,7 +863,9 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 		UE_LOG(LogSimCopterGroundAgent, Warning, TEXT("%s"), *LastMeshLoadError);
 		return false;
 	}
-	FigureClothesOffset = int32((Hash / 7u) % 14u);
+	FigureClothesOffset = ForcedFigureClothesOffset != INDEX_NONE
+		? ForcedFigureClothesOffset
+		: int32((Hash / 7u) % 14u);
 
 	// Head sprite: pick from the original's SIM3D.BMP head-image table.
 	const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();

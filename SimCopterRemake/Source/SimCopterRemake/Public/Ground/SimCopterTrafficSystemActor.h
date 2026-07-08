@@ -148,6 +148,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Population", meta = (ClampMin = "0"))
 	int32 MaxPedestrianAgents = 280;
 
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "0"))
+	int32 OriginalAmbientRandomCap = 55;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "0"))
+	int32 OriginalAmbientPeriodCap = 76;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "1", ClampMax = "32"))
+	int32 OriginalAmbientScanRadiusTiles = 8;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Population", meta = (ClampMin = "1000.0"))
 	float SpawnRadiusCm = 26000.0f;
 
@@ -424,8 +433,10 @@ private:
 	TArray<FSimCopterGroundRouteNode> RoadNodes;
 	TArray<FSimCopterGroundRouteNode> PedestrianNodes;
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
+	TMap<FIntPoint, int32> PedestrianNodeIndexByTile;
 	TArray<uint8> XbldTileIds;
 	TArray<uint8> PeopleTileClasses;
+	TArray<uint8> PeopleTerrainTypes;
 	TArray<uint8> WaterTileFlags;
 	TArray<float> TileCenterWorldZ;
 	TArray<FSimCopterWholeMapRecord> WholeMapPedestrianRecords;
@@ -440,6 +451,8 @@ private:
 	FString ActiveOriginalGameRootPath;
 	float ActiveTileSize = 400.0f;
 	float SpawnThinkAccumulatorSeconds = 0.0f;
+	int32 LastAmbientScanTileX = INDEX_NONE;
+	int32 LastAmbientScanTileY = INDEX_NONE;
 	bool bLoggedMissingPedestrianMeshes = false;
 
 public:
@@ -542,6 +555,22 @@ public:
 	void BuildWholeMapPopulation();
 	void UpdateWholeMapPopulation(float DeltaSeconds);
 	bool TrySpawnAgent(bool bVehicle, const FVector& FocusLocation);
+	int32 CountAmbientPedestrians() const;
+	bool TryRunOriginalAmbientPedestrianScan(const FVector& FocusLocation, int32 MaxSpawnAttempts);
+	bool TryRunAmbientTileSpawn(int32 TileX, int32 TileY, int32 SpawnAttemptCount, int32& AttemptsRemaining);
+	bool TryGenericAmbientSpawnAtTile(int32 TileX, int32 TileY);
+	int32 TrySpawnSpecialBuildingPeople(int32 TileX, int32 TileY, int32& AttemptsRemaining);
+	bool TrySpawnOriginalPersonAtTile(
+		int32 TileX,
+		int32 TileY,
+		int32 BehaviorClass,
+		int32 InitialState,
+		int32 InitialProgramId,
+		const FVector2D* ExplicitOriginalOffset,
+		int32 ClothesOffset);
+	bool TryResolvePedestrianNodeForTile(int32 TileX, int32 TileY, int32& OutNodeIndex) const;
+	bool IsOriginalAmbientTileGateOpen(int32 TileX, int32 TileY) const;
+	bool HasAmbientPedestrianNearTile(int32 TileX, int32 TileY, float RadiusTiles) const;
 	int32 ChooseNodeNearFocus(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& FocusLocation);
 	FVector MakeVehicleRouteTargetLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 TargetIndex, int32 PreviousIndex, int32 ApproachIndex, int32 LookAheadIndex) const;
 	FVector MakeRoutePointLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 PointIndex, int32 PreviousIndex, int32 NextIndex, bool bVehicle) const;

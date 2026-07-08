@@ -364,6 +364,42 @@ FVector MakePeopleSpawnOffsetWorld(
 		0.0f));
 }
 
+FVector MakePeopleSpawnOffsetWorldFromOriginalUnits(
+	const FTransform& CityToWorldTransform,
+	float TileSize,
+	const FVector2D& OriginalOffset)
+{
+	const float OriginalUnitToWorld = TileSize / 64.0f;
+	return CityToWorldTransform.TransformVector(FVector(
+		OriginalOffset.X * OriginalUnitToWorld,
+		OriginalOffset.Y * OriginalUnitToWorld,
+		0.0f));
+}
+
+uint8 GetPeopleTerrainTypeForAmbientGate(const FSimCity2000Tile& Tile)
+{
+	if (Tile.bWater)
+	{
+		return 5;
+	}
+	if (Tile.Building >= 1 && Tile.Building <= 4)
+	{
+		return 10;
+	}
+	if (Tile.Building != 0)
+	{
+		return 0x10;
+	}
+	return Tile.Terrain == 0x0D ? 0x20 : 0x30;
+}
+
+bool IsOriginalAmbientTerrainType(uint8 TerrainType)
+{
+	// FUN_004c92a0 returns 0 for type > 9; the ambient null-person gate in FUN_004c9cc0
+	// accepts that branch after the scene-cell flag check.
+	return TerrainType > 9;
+}
+
 FVector2D GetPeopleFacingLocalDirection(int32 Facing)
 {
 	constexpr float Diagonal = 0.70710678118f;
@@ -1427,12 +1463,16 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodes.Reset();
 	PedestrianNodes.Reset();
 	RoadNodeIndexByTile.Reset();
+	PedestrianNodeIndexByTile.Reset();
 	XbldTileIds.Reset();
 	PeopleTileClasses.Reset();
+	PeopleTerrainTypes.Reset();
 	WaterTileFlags.Reset();
 	VehicleAgents.Reset();
 	PedestrianAgents.Reset();
 	VehicleTrafficStates.Reset();
+	LastAmbientScanTileX = INDEX_NONE;
+	LastAmbientScanTileY = INDEX_NONE;
 
 	ActiveCityToWorldTransform = FTransform::Identity;
 	ActiveOriginalGameRootPath = ResolveOriginalGameRoot();
@@ -1479,6 +1519,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 
 	XbldTileIds.SetNum(FSimCity2000City::TileCount);
 	PeopleTileClasses.SetNum(FSimCity2000City::TileCount);
+	PeopleTerrainTypes.SetNum(FSimCity2000City::TileCount);
 	WaterTileFlags.SetNum(FSimCity2000City::TileCount);
 	TileCenterWorldZ.SetNum(FSimCity2000City::TileCount);
 
@@ -1491,6 +1532,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			const int32 PeopleTileClass = FSimCopterPeopleCityRules::GetTileClassForBuildingId(Tile.Building);
 			XbldTileIds[TileIndex] = Tile.Building;
 			PeopleTileClasses[TileIndex] = uint8(PeopleTileClass);
+			PeopleTerrainTypes[TileIndex] = GetPeopleTerrainTypeForAmbientGate(Tile);
 			WaterTileFlags[TileIndex] = Tile.bWater ? 1 : 0;
 			const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), ActiveTileSize, HalfMapSize);
 			const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), ActiveTileSize, HalfMapSize);
@@ -1539,6 +1581,15 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 				Node.PeoplePlacementMode = Placement.PlacementMode;
 				Node.LocalLocation = FVector(SceneCenterX, SceneCenterY, LocalZ + 10.0f);
 				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
+
+				const int32 NodeIndex = PedestrianNodes.Num() - 1;
+				for (int32 DeltaY = 0; DeltaY < SceneFootprint.Size; ++DeltaY)
+				{
+					for (int32 DeltaX = 0; DeltaX < SceneFootprint.Size; ++DeltaX)
+					{
+						PedestrianNodeIndexByTile.Add(FIntPoint(SceneFootprint.OriginX + DeltaX, SceneFootprint.OriginY + DeltaY), NodeIndex);
+					}
+				}
 			}
 		}
 	}
@@ -2119,12 +2170,9 @@ void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 	}
 
 	SpawnAttemptsRemaining = MaxSpawnAttemptsPerThink;
-	while (PedestrianAgents.Num() < MaxPedestrianAgents && SpawnAttemptsRemaining-- > 0)
+	if (PedestrianAgents.Num() < MaxPedestrianAgents && CountAmbientPedestrians() < OriginalAmbientRandomCap)
 	{
-		if (!TrySpawnAgent(false, FocusLocation))
-		{
-			break;
-		}
+		TryRunOriginalAmbientPedestrianScan(FocusLocation, SpawnAttemptsRemaining);
 	}
 
 	ActiveVehicleCount = VehicleAgents.Num();
@@ -3470,6 +3518,446 @@ void ASimCopterTrafficSystemActor::AssignNextTarget(ASimCopterGroundAgent& Agent
 	{
 		Agent.SetMoveTarget(MakeRoutePointLocation(Nodes, NextIndex, FromIndex, INDEX_NONE, false));
 	}
+}
+
+int32 ASimCopterTrafficSystemActor::CountAmbientPedestrians() const
+{
+	int32 Count = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr && Agent->MissionEventId == INDEX_NONE)
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+bool ASimCopterTrafficSystemActor::TryResolvePedestrianNodeForTile(int32 TileX, int32 TileY, int32& OutNodeIndex) const
+{
+	OutNodeIndex = INDEX_NONE;
+	if (const int32* Found = PedestrianNodeIndexByTile.Find(FIntPoint(TileX, TileY)))
+	{
+		OutNodeIndex = *Found;
+		return PedestrianNodes.IsValidIndex(OutNodeIndex);
+	}
+	return false;
+}
+
+bool ASimCopterTrafficSystemActor::IsOriginalAmbientTileGateOpen(int32 TileX, int32 TileY) const
+{
+	if (PeopleTerrainTypes.Num() != FSimCity2000City::TileCount ||
+		TileX < 0 || TileX >= FSimCity2000City::MapSize ||
+		TileY < 0 || TileY >= FSimCity2000City::MapSize)
+	{
+		return false;
+	}
+
+	int32 NodeIndex = INDEX_NONE;
+	if (!TryResolvePedestrianNodeForTile(TileX, TileY, NodeIndex))
+	{
+		return false;
+	}
+
+	const uint8 TerrainType = PeopleTerrainTypes[TileY * FSimCity2000City::MapSize + TileX];
+	return IsOriginalAmbientTerrainType(TerrainType);
+}
+
+bool ASimCopterTrafficSystemActor::HasAmbientPedestrianNearTile(int32 TileX, int32 TileY, float RadiusTiles) const
+{
+	FVector TileCenter = FVector::ZeroVector;
+	if (!TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
+	{
+		return false;
+	}
+
+	const float RadiusSq = FMath::Square(FMath::Max(0.5f, RadiusTiles) * ActiveTileSize);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr &&
+			Agent->MissionEventId == INDEX_NONE &&
+			FVector::DistSquared2D(Agent->GetActorLocation(), TileCenter) <= RadiusSq)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool ASimCopterTrafficSystemActor::TryRunOriginalAmbientPedestrianScan(const FVector& FocusLocation, int32 MaxSpawnAttempts)
+{
+	if (GetWorld() == nullptr || GroundAgentClass == nullptr || PedestrianNodes.Num() == 0 || MaxSpawnAttempts <= 0)
+	{
+		return false;
+	}
+	if (PedestrianMeshNames.Num() == 0)
+	{
+		if (!bLoggedMissingPedestrianMeshes)
+		{
+			bLoggedMissingPedestrianMeshes = true;
+			UE_LOG(LogSimCopterTrafficSystem, Log, TEXT("Pedestrian spawning is paused until original pedestrian model names/frames are decoded from X/privanim.df."));
+		}
+		return false;
+	}
+	if (CountAmbientPedestrians() > OriginalAmbientPeriodCap)
+	{
+		return false;
+	}
+
+	int32 FocusTileX = INDEX_NONE;
+	int32 FocusTileY = INDEX_NONE;
+	if (!TryGetPeopleTileCoordinateAtWorldLocation(FocusLocation, FocusTileX, FocusTileY))
+	{
+		return false;
+	}
+	if (FocusTileX == LastAmbientScanTileX && FocusTileY == LastAmbientScanTileY)
+	{
+		return false;
+	}
+
+	const int32 PreviousTileX = LastAmbientScanTileX;
+	const int32 PreviousTileY = LastAmbientScanTileY;
+	LastAmbientScanTileX = FocusTileX;
+	LastAmbientScanTileY = FocusTileY;
+
+	const int32 Radius = FMath::Clamp(OriginalAmbientScanRadiusTiles, 1, FSimCity2000City::MapSize);
+	const bool bHasPreviousTile = PreviousTileX != INDEX_NONE && PreviousTileY != INDEX_NONE;
+	const int32 DeltaX = bHasPreviousTile ? FocusTileX - PreviousTileX : 0;
+	const int32 DeltaY = bHasPreviousTile ? FocusTileY - PreviousTileY : 0;
+	bool bTouchedTile = false;
+
+	auto TryTile = [this, &MaxSpawnAttempts, &bTouchedTile](int32 TileX, int32 TileY)
+	{
+		if (MaxSpawnAttempts <= 0 || CountAmbientPedestrians() > OriginalAmbientPeriodCap)
+		{
+			return;
+		}
+		bTouchedTile |= TryRunAmbientTileSpawn(TileX, TileY, 1, MaxSpawnAttempts);
+	};
+
+	if (!bHasPreviousTile || (DeltaX == 0 && DeltaY == 0))
+	{
+		for (int32 Offset = -Radius; Offset <= Radius; ++Offset)
+		{
+			TryTile(FocusTileX - Radius, FocusTileY + Offset);
+			TryTile(FocusTileX + Radius, FocusTileY + Offset);
+		}
+		for (int32 Offset = -Radius + 1; Offset <= Radius - 1; ++Offset)
+		{
+			TryTile(FocusTileX + Offset, FocusTileY - Radius);
+			TryTile(FocusTileX + Offset, FocusTileY + Radius);
+		}
+		return bTouchedTile;
+	}
+
+	if (FMath::Abs(DeltaX) >= FMath::Abs(DeltaY))
+	{
+		const int32 EdgeX = FocusTileX + (DeltaX >= 0 ? Radius : -Radius);
+		const int32 StepX = DeltaX >= 0 ? -1 : 1;
+		for (int32 OffsetY = -Radius; OffsetY <= Radius; ++OffsetY)
+		{
+			TryTile(EdgeX, FocusTileY + OffsetY);
+		}
+		for (int32 Back = 0; Back < Radius; ++Back)
+		{
+			const int32 TileX = EdgeX + Back * StepX;
+			TryTile(TileX, FocusTileY - Radius);
+			TryTile(TileX, FocusTileY + Radius);
+		}
+	}
+	else
+	{
+		const int32 EdgeY = FocusTileY + (DeltaY >= 0 ? Radius : -Radius);
+		const int32 StepY = DeltaY >= 0 ? -1 : 1;
+		for (int32 OffsetX = -Radius; OffsetX <= Radius; ++OffsetX)
+		{
+			TryTile(FocusTileX + OffsetX, EdgeY);
+		}
+		for (int32 Back = 0; Back < Radius; ++Back)
+		{
+			const int32 TileY = EdgeY + Back * StepY;
+			TryTile(FocusTileX - Radius, TileY);
+			TryTile(FocusTileX + Radius, TileY);
+		}
+	}
+
+	return bTouchedTile;
+}
+
+bool ASimCopterTrafficSystemActor::TryRunAmbientTileSpawn(int32 TileX, int32 TileY, int32 SpawnAttemptCount, int32& AttemptsRemaining)
+{
+	bool bSpawned = TrySpawnSpecialBuildingPeople(TileX, TileY, AttemptsRemaining) > 0;
+	if (AttemptsRemaining <= 0 ||
+		SpawnAttemptCount <= 0 ||
+		CountAmbientPedestrians() >= FMath::Min(OriginalAmbientRandomCap, MaxPedestrianAgents))
+	{
+		return bSpawned;
+	}
+
+	constexpr int32 InitialAmbientDetail = 0x0c;
+	const uint16 GateBound = uint16(FMath::Max(1, 0x0d - InitialAmbientDetail));
+	if (FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, GateBound) >= 3)
+	{
+		return bSpawned;
+	}
+	if (!IsOriginalAmbientTileGateOpen(TileX, TileY))
+	{
+		return bSpawned;
+	}
+
+	while (SpawnAttemptCount-- > 0 &&
+		AttemptsRemaining > 0 &&
+		CountAmbientPedestrians() < FMath::Min(OriginalAmbientRandomCap, MaxPedestrianAgents))
+	{
+		--AttemptsRemaining;
+		bSpawned |= TryGenericAmbientSpawnAtTile(TileX, TileY);
+	}
+	return bSpawned;
+}
+
+bool ASimCopterTrafficSystemActor::TryGenericAmbientSpawnAtTile(int32 TileX, int32 TileY)
+{
+	if (!IsOriginalAmbientTileGateOpen(TileX, TileY))
+	{
+		return false;
+	}
+
+	int32 NodeIndex = INDEX_NONE;
+	if (!TryResolvePedestrianNodeForTile(TileX, TileY, NodeIndex))
+	{
+		return false;
+	}
+
+	const int32 TileClass = PedestrianNodes[NodeIndex].PeopleTileClass;
+	const int32 BehaviorClass = FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(TileClass, PeopleRandomState);
+	if (BehaviorClass == INDEX_NONE)
+	{
+		return false;
+	}
+
+	return TrySpawnOriginalPersonAtTile(TileX, TileY, BehaviorClass, 0, INDEX_NONE, nullptr, INDEX_NONE);
+}
+
+int32 ASimCopterTrafficSystemActor::TrySpawnSpecialBuildingPeople(int32 TileX, int32 TileY, int32& AttemptsRemaining)
+{
+	if (AttemptsRemaining <= 0 ||
+		TileX < 0 || TileX >= FSimCity2000City::MapSize ||
+		TileY < 0 || TileY >= FSimCity2000City::MapSize)
+	{
+		return 0;
+	}
+
+	const uint8 BuildingId = uint8(GetXbldTileId(TileX, TileY));
+	if (BuildingId != 0xD1 && BuildingId != 0xD2 && BuildingId != 0xD7 && BuildingId != 0xDB)
+	{
+		return 0;
+	}
+	if (HasAmbientPedestrianNearTile(TileX, TileY, float(FMath::Max(1, GetBuildingFootprintSize(TileX, TileY)))))
+	{
+		return 0;
+	}
+
+	int32 Spawned = 0;
+	auto TryOne = [this, TileX, TileY, &AttemptsRemaining, &Spawned](
+		int32 BehaviorClass,
+		int32 InitialState,
+		int32 ProgramId,
+		const FVector2D* ExplicitOffset,
+		int32 ClothesOffset)
+	{
+		if (AttemptsRemaining <= 0 || PedestrianAgents.Num() >= MaxPedestrianAgents)
+		{
+			return;
+		}
+		--AttemptsRemaining;
+		if (TrySpawnOriginalPersonAtTile(TileX, TileY, BehaviorClass, InitialState, ProgramId, ExplicitOffset, ClothesOffset))
+		{
+			++Spawned;
+		}
+	};
+
+	auto ChooseScriptedBehaviorClass = [this, TileX, TileY]() -> int32
+	{
+		int32 NodeIndex = INDEX_NONE;
+		if (TryResolvePedestrianNodeForTile(TileX, TileY, NodeIndex))
+		{
+			const int32 Chosen = FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(PedestrianNodes[NodeIndex].PeopleTileClass, PeopleRandomState);
+			if (Chosen != INDEX_NONE)
+			{
+				return Chosen;
+			}
+		}
+		return int32(FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, 10));
+	};
+
+	switch (BuildingId)
+	{
+	case 0xD1:
+	case 0xD2:
+	{
+		int32 SpawnCount = 1;
+		if (FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, uint16(65000 >> 2)) == 0)
+		{
+			SpawnCount = int32(FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, 0x001e)) + 1;
+		}
+
+		const int32 BehaviorClass = BuildingId == 0xD1 ? 0x0c : 0x0e;
+		const int32 InitialState = BuildingId == 0xD1 ? 5 : 7;
+		while (SpawnCount-- > 0)
+		{
+			TryOne(BehaviorClass, InitialState, INDEX_NONE, nullptr, INDEX_NONE);
+		}
+		break;
+	}
+	case 0xD7:
+	{
+		const int32 BatterClothesOffset = int32(FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, 10));
+		const int32 TeamClothesOffset = int32(FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, 10));
+		const int32 BehaviorClass = ChooseScriptedBehaviorClass();
+		const FVector2D BatterOffset(70.0f, -70.0f);
+		TryOne(BehaviorClass, 0, 0x04b5, &BatterOffset, BatterClothesOffset);
+
+		const FVector2D FielderOffsets[] = {
+			FVector2D(20.0f, -70.0f),
+			FVector2D(20.0f, -20.0f),
+			FVector2D(70.0f, -20.0f),
+			FVector2D(45.0f, -45.0f),
+			FVector2D(-40.0f, -40.0f),
+			FVector2D(40.0f, 40.0f),
+			FVector2D(-40.0f, 40.0f),
+		};
+		for (const FVector2D& Offset : FielderOffsets)
+		{
+			TryOne(BehaviorClass, 0, 0x04b6, &Offset, TeamClothesOffset);
+		}
+		break;
+	}
+	case 0xDB:
+	{
+		const int32 BehaviorClass = ChooseScriptedBehaviorClass();
+		const FVector2D ParkOffset(8.0f, 32.0f);
+		TryOne(BehaviorClass, 0, 0x04b2, &ParkOffset, INDEX_NONE);
+		break;
+	}
+	default:
+		break;
+	}
+
+	return Spawned;
+}
+
+bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
+	int32 TileX,
+	int32 TileY,
+	int32 BehaviorClass,
+	int32 InitialState,
+	int32 InitialProgramId,
+	const FVector2D* ExplicitOriginalOffset,
+	int32 ClothesOffset)
+{
+	if (GetWorld() == nullptr || GroundAgentClass == nullptr || PedestrianAgents.Num() >= MaxPedestrianAgents)
+	{
+		return false;
+	}
+
+	int32 NodeIndex = INDEX_NONE;
+	if (!TryResolvePedestrianNodeForTile(TileX, TileY, NodeIndex))
+	{
+		return false;
+	}
+
+	const FSimCopterGroundRouteNode& Node = PedestrianNodes[NodeIndex];
+	FVector SpawnBaseLocation = Node.Location;
+	bool bFoundSpawnLocation = false;
+
+	if (ExplicitOriginalOffset != nullptr)
+	{
+		SpawnBaseLocation = Node.Location + MakePeopleSpawnOffsetWorldFromOriginalUnits(
+			ActiveCityToWorldTransform,
+			ActiveTileSize,
+			*ExplicitOriginalOffset);
+		bFoundSpawnLocation = IsPedestrianSpawnLocationOpen(SpawnBaseLocation);
+	}
+	else
+	{
+		for (int32 Attempt = 0; Attempt < 2; ++Attempt)
+		{
+			const FVector CandidateLocation = Node.Location + MakePeopleSpawnOffsetWorld(
+				ActiveCityToWorldTransform,
+				ActiveTileSize,
+				Node.PeopleFootprintSize,
+				Node.PeoplePlacementMode,
+				PeopleRandomState);
+			if (IsPedestrianSpawnLocationOpen(CandidateLocation))
+			{
+				SpawnBaseLocation = CandidateLocation;
+				bFoundSpawnLocation = true;
+				break;
+			}
+		}
+	}
+
+	if (!bFoundSpawnLocation)
+	{
+		return false;
+	}
+
+	int32 ResolvedBehaviorClass = BehaviorClass;
+	if (ResolvedBehaviorClass == INDEX_NONE)
+	{
+		ResolvedBehaviorClass = FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(Node.PeopleTileClass, PeopleRandomState);
+		if (ResolvedBehaviorClass == INDEX_NONE)
+		{
+			return false;
+		}
+	}
+
+	const FVector SpawnLocation = SpawnBaseLocation + FVector::UpVector * 92.0f;
+	const FRotator SpawnRotation(0.0f, RandomStream.FRandRange(0.0f, 360.0f), 0.0f);
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	ASimCopterGroundAgent* Agent = GetWorld()->SpawnActor<ASimCopterGroundAgent>(GroundAgentClass, SpawnLocation, SpawnRotation, SpawnParams);
+	if (Agent == nullptr)
+	{
+		return false;
+	}
+
+	const FString MeshName = PedestrianMeshNames.Num() > 0
+		? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)]
+		: FString();
+
+	Agent->InitialPersonState = FMath::Clamp(InitialState, 0, 20);
+	Agent->SetInitialBehaviorClass(ResolvedBehaviorClass);
+	if (InitialProgramId != INDEX_NONE)
+	{
+		Agent->SetInitialBehaviorProgramId(InitialProgramId);
+	}
+	if (ClothesOffset != INDEX_NONE)
+	{
+		Agent->SetPedestrianFigureClothesOffset(ClothesOffset);
+	}
+
+	Agent->ConfigureAgent(
+		ESimCopterGroundAgentKind::Pedestrian,
+		MeshName,
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+		PedestrianSpeedCmPerSec);
+
+	if (bRequireOriginalPopulationMeshes && !Agent->IsUsingOriginalMesh())
+	{
+		UE_LOG(LogSimCopterTrafficSystem, Warning, TEXT("Discarding pedestrian population agent because original mesh '%s' could not be loaded."), *MeshName);
+		Agent->Destroy();
+		return false;
+	}
+
+	Agent->SnapToGroundImmediate();
+	Agent->SetRouteState(NodeIndex, INDEX_NONE);
+	Agent->ClearMoveTarget();
+	PedestrianAgents.Add(Agent);
+	return true;
 }
 
 bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& FocusLocation)
