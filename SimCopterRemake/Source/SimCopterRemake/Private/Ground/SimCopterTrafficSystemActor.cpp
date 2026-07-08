@@ -4232,7 +4232,7 @@ FVector ASimCopterTrafficSystemActor::MakeRoutePointLocation(
 	{
 		// Direction already follows the tile's visual diagonal/curve from entry opening to exit opening.
 	}
-	else if (Nodes.IsValidIndex(NextIndex))
+	else if (Nodes.IsValidIndex(NextIndex) && NextIndex != PreviousIndex)
 	{
 		Direction = Nodes[NextIndex].LocalLocation - Point.LocalLocation;
 	}
