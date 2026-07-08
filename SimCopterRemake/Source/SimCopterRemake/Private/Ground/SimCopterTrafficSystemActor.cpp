@@ -2190,8 +2190,14 @@ void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCop
 			continue;
 		}
 
+		float ActiveDespawnRadiusCm = DespawnRadiusCm;
+		if (Agent->GetAgentKind() == ESimCopterGroundAgentKind::Pedestrian && Agent->MissionEventId == INDEX_NONE)
+		{
+			ActiveDespawnRadiusCm = FMath::Max(1.0f, OriginalAmbientDespawnRadiusTiles * ActiveTileSize);
+		}
+
 		const float DistanceSq = FVector::DistSquared2D(Agent->GetActorLocation(), FocusLocation);
-		if (DistanceSq > FMath::Square(DespawnRadiusCm))
+		if (DistanceSq > FMath::Square(ActiveDespawnRadiusCm))
 		{
 			Agent->Destroy();
 			Agents.RemoveAtSwap(Index);
@@ -3637,49 +3643,26 @@ bool ASimCopterTrafficSystemActor::TryRunOriginalAmbientPedestrianScan(const FVe
 		bTouchedTile |= TryRunAmbientTileSpawn(TileX, TileY, 1, MaxSpawnAttempts);
 	};
 
-	if (!bHasPreviousTile || (DeltaX == 0 && DeltaY == 0))
+	for (int32 Y = FocusTileY - Radius; Y <= FocusTileY + Radius; ++Y)
 	{
-		for (int32 Offset = -Radius; Offset <= Radius; ++Offset)
+		for (int32 X = FocusTileX - Radius; X <= FocusTileX + Radius; ++X)
 		{
-			TryTile(FocusTileX - Radius, FocusTileY + Offset);
-			TryTile(FocusTileX + Radius, FocusTileY + Offset);
-		}
-		for (int32 Offset = -Radius + 1; Offset <= Radius - 1; ++Offset)
-		{
-			TryTile(FocusTileX + Offset, FocusTileY - Radius);
-			TryTile(FocusTileX + Offset, FocusTileY + Radius);
-		}
-		return bTouchedTile;
-	}
+			bool bIsNewlyExposed = false;
+			if (!bHasPreviousTile || (DeltaX == 0 && DeltaY == 0))
+			{
+				// On initialization, only scan the perimeter to avoid popping people right next to the player.
+				bIsNewlyExposed = (X == FocusTileX - Radius || X == FocusTileX + Radius || Y == FocusTileY - Radius || Y == FocusTileY + Radius);
+			}
+			else
+			{
+				// When moving, scan any tile that entered the radius (i.e. was not in the previous radius bounds).
+				bIsNewlyExposed = (X < PreviousTileX - Radius || X > PreviousTileX + Radius || Y < PreviousTileY - Radius || Y > PreviousTileY + Radius);
+			}
 
-	if (FMath::Abs(DeltaX) >= FMath::Abs(DeltaY))
-	{
-		const int32 EdgeX = FocusTileX + (DeltaX >= 0 ? Radius : -Radius);
-		const int32 StepX = DeltaX >= 0 ? -1 : 1;
-		for (int32 OffsetY = -Radius; OffsetY <= Radius; ++OffsetY)
-		{
-			TryTile(EdgeX, FocusTileY + OffsetY);
-		}
-		for (int32 Back = 0; Back < Radius; ++Back)
-		{
-			const int32 TileX = EdgeX + Back * StepX;
-			TryTile(TileX, FocusTileY - Radius);
-			TryTile(TileX, FocusTileY + Radius);
-		}
-	}
-	else
-	{
-		const int32 EdgeY = FocusTileY + (DeltaY >= 0 ? Radius : -Radius);
-		const int32 StepY = DeltaY >= 0 ? -1 : 1;
-		for (int32 OffsetX = -Radius; OffsetX <= Radius; ++OffsetX)
-		{
-			TryTile(FocusTileX + OffsetX, EdgeY);
-		}
-		for (int32 Back = 0; Back < Radius; ++Back)
-		{
-			const int32 TileY = EdgeY + Back * StepY;
-			TryTile(FocusTileX - Radius, TileY);
-			TryTile(FocusTileX + Radius, TileY);
+			if (bIsNewlyExposed)
+			{
+				TryTile(X, Y);
+			}
 		}
 	}
 

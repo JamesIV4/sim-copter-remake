@@ -154,8 +154,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "0"))
 	int32 OriginalAmbientPeriodCap = 76;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "1", ClampMax = "32"))
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "1", ClampMax = "128"))
 	int32 OriginalAmbientScanRadiusTiles = 8;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population|Original", meta = (ClampMin = "1", ClampMax = "128"))
+	int32 OriginalAmbientDespawnRadiusTiles = 12;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Population", meta = (ClampMin = "1000.0"))
 	float SpawnRadiusCm = 26000.0f;
