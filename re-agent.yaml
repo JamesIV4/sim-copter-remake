@@ -15,8 +15,17 @@ project_profile:
   source_extensions: [".cpp", ".h"]
 
 llm:
+  # Default provider. Override per-run with `re-agent reverse --llm <choice>`:
+  #   codex          -> Codex CLI (ChatGPT login), model gpt-5.5   [default]
+  #   fable / claude -> npm Claude Code CLI (subscription login),
+  #                     model claude-fable-5 @ medium reasoning effort
+  # The `--llm` presets also set `model`/`effort`, so this block only needs to
+  # describe the default (codex) path.
   provider: "codex"
   model: "gpt-5.5"
+  # Reasoning effort for CLI providers that support it (claude-cli -> --effort).
+  # low | medium | high | xhigh | max. Ignored by the codex provider.
+  effort: "medium"
   max_tokens: 8192
   temperature: 0.0
   timeout_s: 1800

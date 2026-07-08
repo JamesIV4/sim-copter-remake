@@ -46,6 +46,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	void SetInitialBehaviorClass(int32 NewInitialBehaviorClass);
 
+	void SetInitialBehaviorProgramId(int32 NewInitialBehaviorProgramId);
+	void SetPedestrianFigureClothesOffset(int32 NewClothesOffset);
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool LoadOriginalMeshFromOriginalGameRoot();
 
@@ -230,6 +233,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "21"))
 	int32 InitialBehaviorClass = 0;
 
+	// Optional direct BHAV entry id for scripted building spawns (FUN_004c20b0 callers such as
+	// baseball batter/fielders and park ambient people).
+	int32 InitialBehaviorProgramId = INDEX_NONE;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
 	int32 MissionEventId = INDEX_NONE;
 
@@ -353,6 +360,7 @@ private:
 	bool bFigureHasHeadSection = false;
 	bool bUsingPedestrianFigure = false;
 	FString ForcedFigureMnemonic;
+	int32 ForcedFigureClothesOffset = INDEX_NONE;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
 	bool bMissionPickupCreditAwarded = false;
@@ -380,6 +388,7 @@ private:
 	int32 LastAppliedBehaviorFacing = INDEX_NONE;
 
 	void StartOriginalBehavior();
+	void ResetBehaviorProgramOverride();
 	void UpdateOriginalBehavior(float DeltaSeconds);
 	void ApplyBehaviorFacingRotation();
 	void AdvanceBehaviorFigureFrames(int32 TickCount);

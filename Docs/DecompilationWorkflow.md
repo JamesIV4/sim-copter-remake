@@ -49,6 +49,22 @@ Config files live at the repo root and are committed:
   parity settings. Codex uses the local ChatGPT login cached by the Codex CLI; the current personal
   Codex reasoning default is `model_reasoning_effort = "high"` in `C:\Users\james\.codex\config.toml`.
 
+The LLM can be switched per run with `re-agent reverse --llm <choice>` (optional; defaults to the
+configured provider, i.e. `codex`). Presets:
+
+- `--llm codex` - Codex CLI over the ChatGPT login, model `gpt-5.5` (default).
+- `--llm fable` (aliases `claude`, `claude-code`) - the **npm Claude Code CLI** (`claude -p`) over the
+  local **Claude subscription login**, model `claude-fable-5` at `medium` reasoning effort.
+
+The Claude Code path is a separate `claude-cli` provider (added to the local venv at
+`re_agent/llm/claude_cli.py` and registered in `re_agent/llm/registry.py`). It shells out to
+`claude -p --model claude-fable-5 --effort medium --output-format text --tools ""` with tools
+disabled, so the model is used purely as a text-in/text-out reverser with no repo side effects,
+mirroring how the codex provider runs `codex exec -s read-only`. It is distinct from the SDK-based
+`claude` provider (which needs an `ANTHROPIC_API_KEY`); `claude-cli` uses the subscription OAuth
+login instead. Reasoning effort is `re-agent.yaml`'s `llm.effort` (or `RE_AGENT_LLM_EFFORT`);
+`--llm fable` forces `medium`. Confirm the login with `claude --version` before a paid run.
+
 Run all commands from the repo root so the YAML configs are found.
 
 ### One-time export (refresh after changing the Ghidra project)
@@ -119,7 +135,8 @@ Use it deliberately, usually one small function or caller cluster at a time:
 ```powershell
 $ra = "Tools/re-agent/.venv/Scripts/re-agent.exe"
 & $ra reverse --address 0x4b5290 --dry-run   # show what would run, no LLM calls
-& $ra reverse --address 0x4b5290             # single function
+& $ra reverse --address 0x4b5290             # single function (default provider: codex)
+& $ra reverse --address 0x4b5290 --llm fable # single function via npm Claude Code (Fable 5, medium)
 & $ra parity --address 0x4abce0              # heuristic port-vs-binary check, no LLM
 & $ra status                                 # progress (Docs/scratchpad/re-agent/re-agent-progress.json)
 ```
@@ -186,7 +203,8 @@ Tools/re-agent/watch-re-agent.ps1 -Address 0x004c9cc0
 ```
 
 The local `re-agent` venv has also been patched so the Codex provider streams `codex exec` stdout
-line-by-line instead of buffering it until the end, and the fix loop prints phase markers such as
+line-by-line instead of buffering it until the end, feeds long prompts through stdin (`codex exec -`)
+instead of a single Windows command-line argument, and the fix loop prints phase markers such as
 `[re-agent] round 1/4: starting reverse`, `starting checker`, and `objective verdict=PASS`. This
 does not expose hidden model reasoning, but it does make the live CLI transcript, phase boundaries,
 generated code, checker output, retries, and final status visible in the watch window and log.
