@@ -1457,8 +1457,29 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 
 	const FVector Delta = (CurrentVelocityCmPerSec + ExternalVelocityCmPerSec) * DeltaSeconds;
 	const FRotator CurrentRotation = GetActorRotation();
+	
+	float DesiredPitch = 0.0f;
+	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
+	{
+		float ZAhead = CurrentLocation.Z;
+		float ZBehind = CurrentLocation.Z;
+		const float ProbeDist = 60.0f;
+		if (TryGetWalkSurfaceZAt(CurrentLocation + DesiredDirection * ProbeDist, ZAhead) &&
+			TryGetWalkSurfaceZAt(CurrentLocation - DesiredDirection * ProbeDist, ZBehind))
+		{
+			DesiredPitch = FMath::RadiansToDegrees(FMath::Atan2(ZAhead - ZBehind, ProbeDist * 2.0f));
+		}
+	}
+
 	const FRotator DesiredRotation(0.0f, DesiredDirection.Rotation().Yaw, 0.0f);
-	const FRotator NewRotation = FMath::RInterpConstantTo(CurrentRotation, DesiredRotation, DeltaSeconds, TurnRateDegPerSec);
+	FRotator NewRotation = FMath::RInterpConstantTo(CurrentRotation, DesiredRotation, DeltaSeconds, TurnRateDegPerSec);
+	
+	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
+	{
+		const FRotator CurrentPitchOnly(CurrentRotation.Pitch, 0.0f, 0.0f);
+		const FRotator DesiredPitchOnly(DesiredPitch, 0.0f, 0.0f);
+		NewRotation.Pitch = FMath::RInterpTo(CurrentPitchOnly, DesiredPitchOnly, DeltaSeconds, 24.0f).Pitch;
+	}
 
 	// Move kinematically (no collision sweep). The traffic system handles road-following,
 	// separation, and bump responses between agents; sweeping here would make capsules catch on
