@@ -2083,6 +2083,20 @@ FVector ASimCopterTrafficSystemActor::ConvertOriginalOffsetToWorld(
 		SimCopterEffectFX::OriginalOffsetToCityLocalCm(X1616, Y1616, Z1616));
 }
 
+void ASimCopterTrafficSystemActor::ConvertWorldOffsetToOriginal(
+	const FVector& WorldOffset,
+	int32& OutX1616,
+	int32& OutY1616,
+	int32& OutZ1616) const
+{
+	// Undo the actor transform, then the (X, Y-up, Z) -> (-Z, -X, Y) axis mapping that
+	// SimCopterEffectFX::OriginalOffsetToCityLocalCm applies.
+	const FVector LocalCm = ActiveCityToWorldTransform.InverseTransformVector(WorldOffset);
+	OutX1616 = static_cast<int32>(-LocalCm.Y / SimCopterEffectFX::Fixed1616ToCm);
+	OutY1616 = static_cast<int32>(LocalCm.Z / SimCopterEffectFX::Fixed1616ToCm);
+	OutZ1616 = static_cast<int32>(-LocalCm.X / SimCopterEffectFX::Fixed1616ToCm);
+}
+
 float ASimCopterTrafficSystemActor::GetPeopleWorldCmPerOriginalUnit() const
 {
 	return ActiveTileSize / 64.0f;

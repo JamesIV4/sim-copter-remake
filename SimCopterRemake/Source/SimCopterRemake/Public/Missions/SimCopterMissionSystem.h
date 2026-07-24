@@ -339,18 +339,32 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionUiMessage
 
 // One flame record: exact mirror of the original 0xa0-byte record at
 // DAT_005ce0a0 (0x8c slots). Positions are 16.16 world units.
+//
+// A flame is NOT a fire-and-forget puff. FUN_004a48e0 gives it a full
+// "TimeToLive (secs)" burn, and FUN_004a4ac0 spends that time growing the
+// flame one storey up the wall (footprint - 1 times, each step re-arming the
+// full timer) before it finally burns out. Only when the last flame of a
+// building burns out does FUN_004a5fd0 demolish it.
 struct SIMCOPTERREMAKE_API FSimCopterFlame
 {
 	bool bActive = false;         // +0x00 bit 0
-	int32 GrowthAxisFlags = 0;    // +0x00 bits 2/4/8/0x10 (visual stretch axis)
-	int32 BurnCountdown = 0;      // +0x04 (16.16 seconds)
-	int32 GrowthValue = 0;        // +0x08 (difficulty*0x14 + Douse Points at spawn)
+	int32 GrowthAxisFlags = 0;    // +0x00 bits 2/4/8/0x10 (which wall the flame climbs)
+	int32 BurnCountdown = 0;      // +0x04 (16.16 seconds to the next growth step / burn-out)
+	int32 DouseHealth1616 = 0;    // +0x08 (tier*0x14 + "Douse Points"; drained by FUN_004a50c0)
 	int32 PosX = 0, PosY = 0, PosZ = 0;          // +0x10/+0x14/+0x18 local offset
-	int32 GrowthStepsRemaining = 0;              // +0x1c
-	int32 Size1616 = 0;           // +0x0c flame visual size (0x200000 or top/size)
+	int32 GrowthStepsRemaining = 0;              // +0x1c (footprint - 1)
+	// +0x0c: one growth step, i.e. one storey. FUN_004a48e0 uses a flat 32.0
+	// units on single-cell buildings and buildingTop/footprint on larger ones,
+	// so (footprint - 1) steps climb the structure. This is NOT the flame's
+	// render size - FUN_004a47c0 gives every flame the same 0x100000 scale.
+	int32 GrowthStep1616 = 0;
+	int32 DamageCountdown = 0x8000;              // +0x88 (16.16s between FUN_004a6370 sweeps)
 	int32 WorldX = 0, WorldY = 0, WorldZ = 0;    // +0x3c/+0x40/+0x44 world position
 	int32 TileX = 0, TileY = 0;   // +0x8c/+0x90
-	int32 AttachedObjectId = 0;   // +0x94 (debris/visual object)
+	// +0x94: the cell object flagged 4 (the building structure) that the flame
+	// climbs. Zero means there is nothing to climb and the flame simply expires
+	// at the end of its first burn.
+	int32 ClimbTargetObject = 0;
 	int32 FireObjectIndex = -1;   // +0x98 (owning fire-object slot)
 	int32 EventId = -1;           // +0x9c
 };
@@ -376,6 +390,11 @@ public:
 	// --- map/tile queries ---
 	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const = 0;       // DAT_005910b0 grid
 	virtual int32 GetBuildingFootprintSize(int32 TileX, int32 TileY) const = 0; // scene cell +8
+	// FUN_004a48e0 walks the cell's display list and keeps the tallest object's
+	// top (object +0x30) so it can split the structure into footprint storeys.
+	// Return the roof height above the cell floor in 16.16 original units, and 0
+	// when the cell has no structure to climb.
+	virtual int32 GetBuildingTopHeight1616(int32 TileX, int32 TileY) const { return 0; }
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const = 0;    // DAT_0061a618/c
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const = 0;    // DAT_005040d0+0x18
 	virtual bool IsModalUiActive() const { return false; }                     // FUN_00408c30
@@ -483,14 +502,20 @@ public:
 
 	void AdjustVictimsPickedUp(int32 EventId, int32 Delta);
 
-	// Douse interface for the helicopter water bucket: applies the Fire Parms douse rate to
-	// flames within Fire Radius of the 16.16 world position and removes extinguished flames
-	// with EVT_FlameDoused. Called each frame while the bucket is dumping. Returns the number
-	// of active flames that were in range this call (>0 means the water is hitting fire).
+	// FUN_004a50c0: one water particle landing on a burning cell. Every flame in the
+	// cell has its burn countdown pushed out by 3.0s (water stalls the climb), and any
+	// flame whose local offset is within Fire Radius of the impact loses
+	// ((1 - tier) * 3 + "Douse Mult") * Strength1616 douse health; a flame driven
+	// below zero is removed with EVT_FlameDoused. Strength1616 is the original's
+	// (0x50000 - particleSize) / 0x50000 term - pass 0x10000 for a full-strength hit.
+	// Returns the number of active flames the water was in range of.
+	int32 DouseAtLocalOffset(int32 TileX, int32 TileY, int32 LocalX1616, int32 LocalZ1616, int32 Strength1616);
+
+	// World-space entry point (16.16 units, tile = 0x400000).
 	int32 DouseAt(int32 WorldX1616, int32 WorldY1616, int32 WorldZ1616);
 
-	// Tile-based douse used by the remake's bucket wiring (the flame records are tile-keyed):
-	// same effect as DouseAt but takes the burning tile directly. Returns flames in range.
+	// Whole-cell douse: a full-strength hit centred on the cell, used where the caller
+	// has no sub-cell impact point. Returns flames in range.
 	int32 DouseAtTile(int32 TileX, int32 TileY);
 
 	// Megaphone: clears an active traffic-jam mission - releases the jammed cars, scores it and
@@ -597,7 +622,15 @@ private:
 	bool SpawnFlame(int32 FireObjectIndex, int32 TileX, int32 TileY, int32 OffsetX, int32 OffsetZ, int32 AxisFlag, int32 EventId, int32 Flags); // FUN_004a48e0
 	void UpdateFires();                                  // FUN_004a4ac0
 	void SpreadFireFrom(const FSimCopterFlame& Flame);   // FUN_004a4fb0
+	void GrowFlame(int32 FlameIndex);                    // FUN_004a4ac0 growth branch
 	void RemoveFlame(int32 FlameIndex, bool bDoused);
+	// Shared tail of the expiry (FUN_004a4ac0) and douse (FUN_004a50c0) paths: drop the
+	// flame from its fire object and, when that empties the building, move the mission
+	// marker to a surviving flame of the same event.
+	void RetireFlame(int32 FlameIndex, int32 EmptyEventCode);
+	// FUN_004a48e0 / FUN_004a4ac0 spawn values, both difficulty-shifted.
+	int32 GetFlameBurnTime() const { return (1 - DifficultyTier) * 0x140000 + Tuning.FireTimeToLive; }
+	int32 GetFlameDouseHealth() const { return DifficultyTier * 0x14 + Tuning.FireDousePoints; }
 	bool HasFlameOnTile(int32 TileX, int32 TileY) const;
 	bool IsAnyFireNear(int32 TileX, int32 TileY) const;  // FUN_004a6860 spiral
 };

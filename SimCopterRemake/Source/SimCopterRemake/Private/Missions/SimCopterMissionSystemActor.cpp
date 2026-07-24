@@ -214,6 +214,37 @@ int32 ASimCopterMissionSystemActor::GetBuildingFootprintSize(int32 TileX, int32 
 	return 1;
 }
 
+int32 ASimCopterMissionSystemActor::GetBuildingTopHeight1616(int32 TileX, int32 TileY) const
+{
+	// The original reads the burning cell object's own top; the remake's equivalent is the
+	// roof of the placed building mesh, measured above the tile floor and converted back to
+	// the 16.16 original units the flame offsets use.
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return 0;
+	}
+
+	FVector TileCenter;
+	if (!TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
+	{
+		return 0;
+	}
+
+	float TopZ = TileCenter.Z;
+	if (!TraceSurfaceTopZ(TileCenter, TopZ))
+	{
+		return 0;
+	}
+
+	const float HeightCm = TopZ - TileCenter.Z;
+	if (HeightCm <= 0.0f)
+	{
+		return 0;
+	}
+	return static_cast<int32>(HeightCm / SimCopterEffectFX::Fixed1616ToCm);
+}
+
 bool ASimCopterMissionSystemActor::GetCameraTile(int32& OutTileX, int32& OutTileY) const
 {
 	if (const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
@@ -295,12 +326,23 @@ int32 ASimCopterMissionSystemActor::DumpWaterAt(const FVector& BucketWorldLocati
 
 	int32 FlamesHit = 0;
 
-	// Building fires: flame records are tile-keyed, so douse by the bucket's tile.
+	// Building fires: FUN_004a50c0 compares the water's offset inside the cell against each
+	// flame's own offset, so resolve the bucket down to that sub-tile offset rather than
+	// soaking the whole cell. One dump frame is one water particle, i.e. one full-strength hit.
 	int32 TileX = INDEX_NONE;
 	int32 TileY = INDEX_NONE;
 	if (TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(BucketWorldLocation, TileX, TileY))
 	{
-		FlamesHit += MissionSystem.DouseAtTile(TileX, TileY);
+		FVector TileCenter;
+		int32 LocalX1616 = 0;
+		int32 LocalY1616 = 0;
+		int32 LocalZ1616 = 0;
+		if (TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
+		{
+			TrafficSystem->ConvertWorldOffsetToOriginal(
+				BucketWorldLocation - TileCenter, LocalX1616, LocalY1616, LocalZ1616);
+		}
+		FlamesHit += MissionSystem.DouseAtLocalOffset(TileX, TileY, LocalX1616, LocalZ1616, 0x10000);
 	}
 
 	// Car fires: put out burning cars under the bucket and pay the douse/clear scoring events.
@@ -407,15 +449,18 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 			TileCenter +
 			TrafficSystem->ConvertOriginalOffsetToWorld(
 				Flame.PosX,
-				Flame.PosY,
+				0,
 				Flame.PosZ);
 
 		float TopZ = TileCenter.Z;
 		TraceSurfaceTopZ(FlameXY, TopZ);
-		FlameXY.Z = TopZ;
+		// PosY is the flame's own climb up the wall, one storey per FUN_004a4ac0 growth
+		// step, so it rides on top of the seated base rather than being traced away.
+		FlameXY.Z = TopZ + TrafficSystem->ConvertOriginalOffsetToWorld(0, Flame.PosY, 0).Z;
 
-		const float Scale =
-			Flame.Size1616 > 0 ? static_cast<float>(Flame.Size1616) / 65536.0f : 1.0f;
+		// FUN_004a47c0 gives every flame the same 0x100000 render scale; the record's
+		// +0x0c is the growth step, not a size.
+		constexpr float Scale = 1.0f;
 
 		FSimCopterFlameVisual Visual;
 		Visual.Key = Index;

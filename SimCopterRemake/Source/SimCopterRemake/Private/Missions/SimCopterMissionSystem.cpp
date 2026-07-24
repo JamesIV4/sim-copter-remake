@@ -736,6 +736,10 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		int32 FireObjIndex = AllocateFireObject(TX, TY);
 		if (FireObjIndex == -1 || !IgniteBuilding(FireObjIndex, TX, TY, Rec.EventId, 1))
 		{
+			if (FireObjIndex != -1)
+			{
+				FireObjects[FireObjIndex].bActive = false;
+			}
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
@@ -1125,8 +1129,95 @@ int32 FSimCopterMissionSystem::AllocateFireObject(int32 TileX, int32 TileY)
 	return -1;
 }
 
+bool FSimCopterMissionSystem::HasFlameOnTile(int32 TileX, int32 TileY) const
+{
+	// Stands in for the cell's 0x20 "burning" flag, which FUN_004a48e0 sets on the first
+	// flame and FUN_004a4ac0 / FUN_004a50c0 clear when the last one goes.
+	for (const FSimCopterFlame& Flame : Flames)
+	{
+		if (Flame.bActive && Flame.TileX == TileX && Flame.TileY == TileY)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool FSimCopterMissionSystem::IsAnyFireNear(int32 TileX, int32 TileY) const
+{
+	// FUN_004a6860 walks an outward square spiral with run lengths 1,1,2,2,...,8,8 plus a
+	// final run of 8, stopping at the first burning cell.
+	int32 X = TileX;
+	int32 Y = TileY;
+	int32 Leg = -1;
+	int32 RunLength = 0;
+	int32 StepX = 0;
+	int32 StepY = 0;
+	bool bFinalLeg = false;
+
+	while (true)
+	{
+		++Leg;
+		switch (Leg)
+		{
+		case 0:
+		case 4:
+			StepX = 0;
+			StepY = -1;
+			++RunLength;
+			Leg = 0;
+			break;
+		case 1:
+			StepX = 1;
+			StepY = 0;
+			break;
+		case 2:
+			StepX = 0;
+			StepY = 1;
+			++RunLength;
+			break;
+		case 3:
+			StepX = -1;
+			StepY = 0;
+			break;
+		}
+
+		if (RunLength == 9)
+		{
+			bFinalLeg = true;
+			RunLength = 8;
+		}
+
+		for (int32 Step = 0; Step < RunLength; ++Step)
+		{
+			X += StepX;
+			Y += StepY;
+			if (HasFlameOnTile(X, Y))
+			{
+				return true;
+			}
+		}
+
+		if (bFinalLeg)
+		{
+			return false;
+		}
+	}
+}
+
 bool FSimCopterMissionSystem::IgniteBuilding(int32 FireObjectIndex, int32 TileX, int32 TileY, int32 EventId, int32 Flags)
 {
+	// FUN_004a5340 refuses a cell that is already burning, then re-runs the same XBLD
+	// suitability test the placer used.
+	if (HasFlameOnTile(TileX, TileY))
+	{
+		return false;
+	}
+	if (!IsFireSuitableTile(World != nullptr ? World->GetXbldTileId(TileX, TileY) : 0))
+	{
+		return false;
+	}
+
 	bool bSpawned = false;
 	auto Spawn = [&](int32 OffsetX, int32 OffsetZ, int32 AxisFlag)
 	{
@@ -1195,39 +1286,133 @@ bool FSimCopterMissionSystem::IgniteBuilding(int32 FireObjectIndex, int32 TileX,
 		Spawn(0, 0x100000, 0);
 		break;
 	}
-	return bSpawned;
+
+	if (!bSpawned)
+	{
+		return false;
+	}
+
+	// Flags is the original's silent byte. FUN_004a7a10 passes 1 for the ignition that
+	// starts the mission - its flames cost the player nothing and it sizes the end award
+	// by the footprint - while FUN_004a4fb0's spread ignition passes 0, so every flame a
+	// fire spreads into docks the "Flame($)" score penalty as it appears.
+	const bool bSilent = (Flags & 1) != 0;
+	PostEvent(EVT_StructureIgnited, EventId, 1, bSilent);
+	if (bSilent)
+	{
+		PostEvent(EVT_SetEndMoneyScaled, EventId, Footprint * Tuning.FireEndMoneyPerSize, true);
+		PostEvent(EVT_SetEndPointsScaled, EventId, Footprint * Tuning.FireEndPointsPerSize, true);
+	}
+
+	if (World != nullptr)
+	{
+		World->OnBuildingFireIgnited(TileX, TileY, EventId);
+	}
+	return true;
 }
 
 bool FSimCopterMissionSystem::SpawnFlame(int32 FireObjectIndex, int32 TileX, int32 TileY, int32 OffsetX, int32 OffsetZ, int32 AxisFlag, int32 EventId, int32 Flags)
 {
+	// FUN_004a48e0 takes the first free slot and gives up when the 0x8c-slot table is full.
+	int32 SlotIndex = INDEX_NONE;
 	for (int32 i = 0; i < MaxFlames; ++i)
 	{
 		if (!Flames[i].bActive)
 		{
-			Flames[i].bActive = true;
-			Flames[i].TileX = TileX;
-			Flames[i].TileY = TileY;
-			Flames[i].EventId = EventId;
-			Flames[i].FireObjectIndex = FireObjectIndex;
-			Flames[i].BurnCountdown = 0x200000;
-			Flames[i].GrowthAxisFlags = AxisFlag;
-			Flames[i].PosX = OffsetX;
-			Flames[i].PosY = 0;
-			Flames[i].PosZ = OffsetZ;
-			Flames[i].Size1616 = 0x10000;
-			Flames[i].GrowthStepsRemaining = 0;
-			
-			PostEvent(EVT_FlameCreated, EventId, 1, false);
-			ActiveFlameCount++;
-			
-			if (FireObjectIndex != -1)
-			{
-				FireObjects[FireObjectIndex].FlameCount++;
-			}
-			return true;
+			SlotIndex = i;
+			break;
 		}
 	}
-	return false;
+	if (SlotIndex == INDEX_NONE || FireObjectIndex < 0 || !FireObjects.IsValidIndex(FireObjectIndex))
+	{
+		return false;
+	}
+
+	// The original bails when the cell's display list is empty - nothing to burn.
+	const int32 Footprint = World != nullptr ? World->GetBuildingFootprintSize(TileX, TileY) : 1;
+	if (Footprint <= 0)
+	{
+		return false;
+	}
+	// +0x94: the object flagged 4 is the building structure the flame climbs. Its top
+	// (or, with no such object, the tallest object in the cell) sets the storey height.
+	const int32 StructureTop = World != nullptr ? World->GetBuildingTopHeight1616(TileX, TileY) : 0;
+
+	FSimCopterFlame& Flame = Flames[SlotIndex];
+	Flame = FSimCopterFlame();
+	Flame.bActive = true;
+	Flame.TileX = TileX;
+	Flame.TileY = TileY;
+	Flame.EventId = EventId;
+	Flame.FireObjectIndex = FireObjectIndex;
+	Flame.GrowthAxisFlags = AxisFlag;
+	Flame.PosX = OffsetX;
+	Flame.PosY = 0;
+	Flame.PosZ = OffsetZ;
+	Flame.ClimbTargetObject = StructureTop > 0 ? 1 : 0;
+	// Single-cell buildings get a flat 32.0-unit step and never grow; larger ones split
+	// the structure into `Footprint` storeys and climb `Footprint - 1` of them.
+	Flame.GrowthStep1616 = Footprint < 2 ? 0x200000 : StructureTop / Footprint;
+	Flame.GrowthStepsRemaining = Footprint - 1;
+	Flame.DouseHealth1616 = GetFlameDouseHealth();
+	Flame.BurnCountdown = GetFlameBurnTime();
+	Flame.DamageCountdown = 0x8000;
+
+	// Flags is the original's silent byte: the mission's own ignition is free, flames
+	// created by a spreading fire are not.
+	PostEvent(EVT_FlameCreated, EventId, 1, (Flags & 1) != 0);
+	ActiveFlameCount++;
+	FireObjects[FireObjectIndex].FlameCount++;
+
+	if (World != nullptr)
+	{
+		World->OnFlameSpawned(Flame, SlotIndex);
+	}
+	return true;
+}
+
+void FSimCopterMissionSystem::RetireFlame(int32 FlameIndex, int32 EmptyEventCode)
+{
+	FSimCopterFlame& Flame = Flames[FlameIndex];
+	const int32 FireObjectIndex = Flame.FireObjectIndex;
+	if (!FireObjects.IsValidIndex(FireObjectIndex))
+	{
+		return;
+	}
+
+	FSimCopterFireObject& FireObject = FireObjects[FireObjectIndex];
+	FireObject.FlameCount--;
+	if (FireObject.FlameCount > 0)
+	{
+		return;
+	}
+
+	// The building has no flames left: the original clears the cell's 0x20 "burning"
+	// flag and reports the outcome (4 = burned out, 6 = saved by water).
+	FireObject.bActive = false;
+	PostEvent(EmptyEventCode, Flame.EventId, 1, false);
+
+	// FUN_004a4ac0 / FUN_004a50c0: if the mission marker still points at this cell,
+	// move it to a surviving flame of the same event so a spread fire keeps a marker.
+	const int32 RecordIndex = FindRecordIndex(Flame.EventId);
+	if (Records.IsValidIndex(RecordIndex) &&
+		Records[RecordIndex].TileX == Flame.TileX &&
+		Records[RecordIndex].TileY == Flame.TileY)
+	{
+		for (int32 i = 0; i < MaxFlames; ++i)
+		{
+			if (Flames[i].bActive && Flames[i].EventId == Flame.EventId)
+			{
+				FSimCopterMissionEvent Move;
+				Move.Code = EVT_SetPrimaryCoords;
+				Move.EventId = Flames[i].EventId;
+				Move.X = Flames[i].TileX;
+				Move.Y = Flames[i].TileY;
+				PostEvent(Move);
+				break;
+			}
+		}
+	}
 }
 
 void FSimCopterMissionSystem::RemoveFlame(int32 FlameIndex, bool bDoused)
@@ -1235,21 +1420,51 @@ void FSimCopterMissionSystem::RemoveFlame(int32 FlameIndex, bool bDoused)
 	if (FlameIndex < 0 || FlameIndex >= MaxFlames) return;
 	FSimCopterFlame& Flame = Flames[FlameIndex];
 	if (!Flame.bActive) return;
-	
+
+	const int32 TileX = Flame.TileX;
+	const int32 TileY = Flame.TileY;
+
 	Flame.bActive = false;
 	ActiveFlameCount--;
-	
-	int32 EvtCode = bDoused ? EVT_FlameDoused : EVT_FlameExpired;
-	PostEvent(EvtCode, Flame.EventId, 1, false);
-	
-	if (Flame.FireObjectIndex != -1)
+
+	PostEvent(bDoused ? EVT_FlameDoused : EVT_FlameExpired, Flame.EventId, 1, false);
+
+	const bool bWasLastFlame =
+		FireObjects.IsValidIndex(Flame.FireObjectIndex) && FireObjects[Flame.FireObjectIndex].FlameCount <= 1;
+
+	// EVT_CellBurnedOut (4) when the fire consumed the building, EVT_ObjectCaughtFire (6)
+	// - the "Bldg Saved" award - when water put the last flame out.
+	RetireFlame(FlameIndex, bDoused ? EVT_ObjectCaughtFire : EVT_CellBurnedOut);
+
+	if (World != nullptr)
 	{
-		FireObjects[Flame.FireObjectIndex].FlameCount--;
-		if (FireObjects[Flame.FireObjectIndex].FlameCount <= 0)
+		World->OnFlameRemoved(FlameIndex);
+		// FUN_004a5fd0: only the burn-out path demolishes the structure.
+		if (bWasLastFlame && !bDoused)
 		{
-			FireObjects[Flame.FireObjectIndex].bActive = false;
-			PostEvent(EVT_ObjectCaughtFire, Flame.EventId, 1, false);
+			World->OnBuildingBurnedDown(TileX, TileY, World->GetBuildingFootprintSize(TileX, TileY));
 		}
+	}
+}
+
+void FSimCopterMissionSystem::GrowFlame(int32 FlameIndex)
+{
+	FSimCopterFlame& Flame = Flames[FlameIndex];
+
+	// FUN_004a4ac0 offers the wall-surface query the position one storey higher; the
+	// query re-projects the horizontal axis named by the growth flags onto that wall and
+	// fails once the flame passes the top. (Footprint - 1) steps of buildingTop/footprint
+	// never reach the top, so the climb is bounded by GrowthStepsRemaining alone.
+	Flame.PosY += Flame.GrowthStep1616;
+	Flame.GrowthStepsRemaining--;
+
+	// Each storey re-arms the full burn and douse pools.
+	Flame.DouseHealth1616 = GetFlameDouseHealth();
+	Flame.BurnCountdown = GetFlameBurnTime();
+
+	if (World != nullptr)
+	{
+		World->OnFlameGrown(Flame, FlameIndex);
 	}
 }
 
@@ -1259,63 +1474,138 @@ void FSimCopterMissionSystem::UpdateFires()
 
 	for (int32 i = 0; i < MaxFlames; ++i)
 	{
-		if (Flames[i].bActive)
+		if (!Flames[i].bActive)
 		{
-			Flames[i].BurnCountdown -= FrameDeltaEma;
-			
-			if (Flames[i].BurnCountdown <= 0)
+			continue;
+		}
+
+		// People trapped in a burning mission building: once the fire is well along
+		// (under (tier * 5 + 15) * 4.0 seconds left) the original raises one 0x80010
+		// rescue per fire object, and only above difficulty tier 1.
+		if (FireObjects.IsValidIndex(Flames[i].FireObjectIndex))
+		{
+			FSimCopterFireObject& FireObject = FireObjects[Flames[i].FireObjectIndex];
+			if (!FireObject.bRescueSpawned &&
+				DifficultyTier > 1 &&
+				Flames[i].BurnCountdown < (DifficultyTier * 5 + 15) * 0x40000 &&
+				World != nullptr &&
+				(GetXbldPropertyFlags(World->GetXbldTileId(Flames[i].TileX, Flames[i].TileY)) & 4) != 0)
 			{
-				int32 r = Rand.Rand();
-				if ((r % 100) < 5) 
+				if (CreateEventAt(Flames[i].TileX, Flames[i].TileY, TYPE_FireRescue) != -1)
+				{
+					FireObject.bRescueSpawned = true;
+				}
+			}
+		}
+
+		Flames[i].BurnCountdown -= FrameDeltaEma;
+
+		if (Flames[i].BurnCountdown >= 1)
+		{
+			// FUN_004a6370(flame, 6): burn people and objects standing in the flame's
+			// bounds, at most once every 0.5 simulated seconds.
+			Flames[i].DamageCountdown -= FrameDeltaEma;
+			if (Flames[i].DamageCountdown < 1)
+			{
+				Flames[i].DamageCountdown = 0x8000;
+				if (World != nullptr)
+				{
+					World->DamageInFlameBounds(Flames[i], Flames[i].EventId);
+				}
+			}
+
+			// The spread clock is a single global accumulator advanced once per active
+			// flame per frame, so a large fire reaches the next spread roll sooner. Both
+			// the interval and the 1-in-N roll tighten with difficulty.
+			SpreadAccumulator += FrameDeltaEma;
+			if ((1 - DifficultyTier) * 0x40000 + Tuning.FireSpreadInterval < SpreadAccumulator)
+			{
+				SpreadAccumulator = 0;
+				const int32 Divisor = FMath::Max(1, (1 - DifficultyTier) * 10 + Tuning.FireSpreadProb);
+				if (Rand.Rand() % Divisor == 0)
 				{
 					SpreadFireFrom(Flames[i]);
 				}
-				RemoveFlame(i, false);
 			}
+			continue;
+		}
+
+		// The burn elapsed. Climb one storey if the structure has one left, otherwise
+		// this flame is done and may take the building with it.
+		if (Flames[i].GrowthStepsRemaining < 1)
+		{
+			RemoveFlame(i, /*bDoused*/ false);
+		}
+		else if (Flames[i].ClimbTargetObject == 0)
+		{
+			// No structure to climb: the original zeroes the remaining steps so the
+			// flame expires on the next pass.
+			Flames[i].GrowthStepsRemaining = 0;
+		}
+		else
+		{
+			GrowFlame(i);
 		}
 	}
 }
 
 int32 FSimCopterMissionSystem::DouseAt(int32 WorldX1616, int32 WorldY1616, int32 /*WorldZ1616*/)
 {
-	// World units are 16.16 with a tile = 0x400000 (64.0 units), so tile = world >> 22.
-	return DouseAtTile(WorldX1616 >> 22, WorldY1616 >> 22);
+	// World units are 16.16 with a tile = 0x400000 (64.0 units), so tile = world >> 22
+	// and the remainder is the offset from the cell origin.
+	return DouseAtLocalOffset(
+		WorldX1616 >> 22,
+		WorldY1616 >> 22,
+		WorldX1616 - ((WorldX1616 >> 22) << 22),
+		WorldY1616 - ((WorldY1616 >> 22) << 22),
+		0x10000);
 }
 
 int32 FSimCopterMissionSystem::DouseAtTile(int32 TileX, int32 TileY)
+{
+	// No sub-cell impact point available: aim at the cell origin the flame offsets are
+	// measured from. Flames further out than Fire Radius (the outer walls of a large
+	// building) still need the caller to supply a real offset.
+	return DouseAtLocalOffset(TileX, TileY, 0, 0, 0x10000);
+}
+
+int32 FSimCopterMissionSystem::DouseAtLocalOffset(int32 TileX, int32 TileY, int32 LocalX1616, int32 LocalZ1616, int32 Strength1616)
 {
 	if (ActiveFlameCount <= 0)
 	{
 		return 0;
 	}
 
-	// Fire Radius (Fire Parms, ~43.9 world units) is under one tile, but the bucket aim is
-	// coarse, so douse flames on the target tile and the immediately adjacent tiles.
-	constexpr int32 RadiusTiles = 1;
-
-	// Douse rate: ~64.0 (0x400000) flame-health per second, frame-rate independent via the
-	// sim's own smoothed frame delta. A freshly-lit flame (BurnCountdown 0x200000 = 32.0) is
-	// out after ~0.5s of sustained water. FrameDeltaEma can be 0 before the first tick.
-	const int32 DouseChunk = FrameDeltaEma > 0
-		? static_cast<int32>((static_cast<int64>(0x400000) * FrameDeltaEma) >> 16)
-		: 0x40000;
+	// FUN_004a50c0: Fire Radius, widened on the easiest tier.
+	const int32 Radius = (1 - DifficultyTier) * 0x80000 + Tuning.FireRadius;
+	// ((1 - tier) * 3 + "Douse Mult") scaled by the water particle's strength. The mult
+	// is a plain integer and the strength is 16.16, so the product is 16.16 like the
+	// health pool it drains.
+	const int32 Damage = FMath::Max(
+		0,
+		static_cast<int32>((static_cast<int64>((1 - DifficultyTier) * 3 + Tuning.FireDouseMult) * Strength1616)));
 
 	int32 InRange = 0;
 	for (int32 i = 0; i < MaxFlames; ++i)
 	{
 		FSimCopterFlame& Flame = Flames[i];
-		if (!Flame.bActive)
+		if (!Flame.bActive || Flame.TileX != TileX || Flame.TileY != TileY)
 		{
 			continue;
 		}
-		if (FMath::Abs(Flame.TileX - TileX) > RadiusTiles || FMath::Abs(Flame.TileY - TileY) > RadiusTiles)
+
+		// Water on the cell stalls every flame in it: the original pushes each burn
+		// countdown out by 3.0s before the range test, so a watched fire stops climbing.
+		Flame.BurnCountdown += 0x30000;
+
+		if (FMath::Abs(LocalX1616 - Flame.PosX) >= Radius || FMath::Abs(LocalZ1616 - Flame.PosZ) >= Radius)
 		{
 			continue;
 		}
 
 		++InRange;
-		Flame.BurnCountdown -= DouseChunk;
-		if (Flame.BurnCountdown <= 0)
+		Flame.DouseHealth1616 -= Damage;
+		if (Flame.DouseHealth1616 < 0)
 		{
 			RemoveFlame(i, /*bDoused*/ true);
 		}
@@ -1325,16 +1615,41 @@ int32 FSimCopterMissionSystem::DouseAtTile(int32 TileX, int32 TileY)
 
 void FSimCopterMissionSystem::SpreadFireFrom(const FSimCopterFlame& Flame)
 {
-	uint32 r = Rand.Rand();
-	int32 dx = ((r >> 15) & 3) - 1;
-	int32 dy = (((r >> 15) ^ ((r >> 15) & 3)) & 3) - 1; 
+	// FUN_004a4fb0 picks one of the four edge neighbours from the table at 0x00505f60:
+	// (-1,0) (1,0) (0,-1) (0,1).
+	static const int32 SpreadOffsets[4][2] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
+	const int32 Choice = Rand.Rand() & 3;
+	const int32 NewX = Flame.TileX + SpreadOffsets[Choice][0];
+	const int32 NewY = Flame.TileY + SpreadOffsets[Choice][1];
 
-	int32 NewX = Flame.TileX + dx;
-	int32 NewY = Flame.TileY + dy;
-
-	if (Flame.EventId != -1)
+	if (Flame.EventId == -1)
 	{
-		IgniteBuilding(-1, NewX, NewY, Flame.EventId, 0);
+		return;
+	}
+
+	// Skip cells that are already burning - the original walks the flame table looking
+	// for a live flame whose fire object owns this cell.
+	for (int32 i = 0; i < MaxFlames; ++i)
+	{
+		if (Flames[i].bActive &&
+			FireObjects.IsValidIndex(Flames[i].FireObjectIndex) &&
+			FireObjects[Flames[i].FireObjectIndex].TileX == NewX &&
+			FireObjects[Flames[i].FireObjectIndex].TileY == NewY)
+		{
+			return;
+		}
+	}
+
+	// The spread cell gets its own fire object, so it burns down (or is saved) on its
+	// own schedule while staying part of the same mission.
+	const int32 FireObjectIndex = AllocateFireObject(NewX, NewY);
+	if (FireObjectIndex == -1)
+	{
+		return;
+	}
+	if (!IgniteBuilding(FireObjectIndex, NewX, NewY, Flame.EventId, 0))
+	{
+		FireObjects[FireObjectIndex].bActive = false;
 	}
 }
 
