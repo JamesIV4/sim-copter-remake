@@ -143,6 +143,15 @@ original at high frame rates.
 **To close:** drive the douse from the water particles the effect system already
 spawns, passing each one's size through as the strength term.
 
+**Update 2026-07-24:** this gap is wider than written above. `FUN_00490690` is
+the only caller of `FUN_004a50c0`, and it passes the particle's **remaining
+life**, quartered for bucket water and full for cannon water — so travel time,
+not just particle size, sets how much a drop extinguishes, and the bucket must
+stop dousing directly. There is also a second delivery system (the water cannon)
+that the remake has no trace of. The full decode plan is
+`Docs/WaterGameplayDecompilePlan.md`; close this gap through step 1 there rather
+than by adjusting the strength term.
+
 ---
 
 ## 8. Roads, bridges and power lines cannot be destroyed, and cast no shadow
