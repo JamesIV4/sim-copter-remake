@@ -13,7 +13,10 @@ public class SimCopterRemake : ModuleRules
 		// a file was added. Per-file compilation keeps those helpers properly private.
 		bUseUnity = false;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "ProceduralMeshComponent" });
+		// MeshDescription/StaticMeshDescription back UStaticMesh::BuildFromMeshDescriptions, which the
+		// city build uses to turn each distinct GEO building model into a runtime static mesh so
+		// buildings can be placed as removable instances instead of baked into one merged mesh.
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "ProceduralMeshComponent", "MeshDescription", "StaticMeshDescription" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
 		

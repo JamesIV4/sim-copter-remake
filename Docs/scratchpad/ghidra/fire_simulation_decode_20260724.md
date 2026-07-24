@@ -86,6 +86,77 @@ while `FUN_004a4fb0` passes 0, so every flame a spreading fire creates docks the
 RetireFlame / SpreadFireFrom / DouseAtLocalOffset / IgniteBuilding`, pinned by
 `SimCopter.Missions.FireLifecycle`.
 
-Not ported: FUN_004a5fd0's demolition. The core posts EVT_CellBurnedOut and
-calls `ISimCopterMissionWorld::OnBuildingBurnedDown`, but no remake actor
-overrides it, so a burned-out building still stands and can be re-ignited.
+FUN_004a5fd0's demolition is wired through `OnBuildingBurnedDown` on the mission
+actor: it removes the building, clears the XBLD entry of every tile the footprint
+covered (so the ground stops reading as a building and cannot re-ignite), plays
+the collapse sound, and throws the scale-4 column plus `3 + rand % footprint`
+debris pieces on the original's yaw/pitch/speed rolls, drawn from the mission LCG
+in the same order.
+
+The rubble swap is ported too: objects **0x14f/0x150/0x151/0x152** by footprint
+size 1..4. All four resolve from the shipped GEO library, and they are built as
+instanced models up front so a collapse costs one `AddInstance`.
+
+**Every remaining gap in the fire, demolition and building work is catalogued in
+`Docs/FireAndDemolitionGaps.md`** - what is missing, what it costs, and what
+closing it needs. The largest one is repeated here because it is the one people
+will hit first.
+
+Not ported: `FUN_004a6370(flame, 0x10)`, the demolition's damage sweep. It walks
+the cell's object list at +0x10 and calls `FUN_0049a4f0(0x10, ...)` per object,
+which routes by object flag - 4 to `FUN_0048b370`, 8 (people) to `FUN_004c1050`,
+0x10 (cars) to `FUN_0049fc10`. `FUN_004c1050` then reads the behaviour id from
+`(&DAT_0058d728)[eventCode]` and drives the person's state from it.
+
+That table is not in `.ghidra-exports`, and the remake has no people-side event
+dispatch to receive the result - `DamageInFlameBounds` (the fire's ongoing mode-6
+sweep) is likewise still an empty hook. Porting mode 0x10 therefore means
+decoding `DAT_0058d728` and building that dispatch, which belongs with the
+people behaviour work rather than with demolition. Not guessed.
+
+## Making one building removable (2026-07-24)
+
+The city was one merged 509k-triangle procedural mesh with tri-mesh collision
+over the whole component, so a building had no identity to remove: dropping its
+triangles meant re-uploading a texture section and re-cooking all 509k triangles
+of collision.
+
+Buildings are now placed as instances instead. Each distinct GEO model is built
+once as a runtime `UStaticMesh` via `BuildFromMeshDescriptions` (fast path, so
+the supplied normals/tangents/colours are copied verbatim - the geometry is
+identical to what the merged path emitted, just at the origin rather than at the
+tile), its triangle mesh is cooked once into the model's body setup as
+complex-as-simple, and every placement is an instance sharing that one cook.
+
+Demo city: **107 distinct models** (103 buildings + 4 rubble), **2624
+placements**, with the reported triangle totals unchanged (509302 / 163476).
+Demolition is a `RemoveInstance` plus an `AddInstance` of the rubble - no cook,
+no buffer rebuild - and the instance's collision goes with it because instance
+bodies come from the shared body setup.
+
+Each placement is a `FSimCopterCityBuilding` record; its **building id** (index
+into the city's building array) is the stable identity, and every tile of the
+footprint maps to it. Instance indices live only inside that record.
+
+Roads, bridges and power lines stay on the merged path; only buildings can burn
+down. `bInstanceBuildingMeshes` on the city actor restores the old merged path
+(and with it disables demolition).
+
+Traps:
+- `UInstancedStaticMeshComponent::RemoveInstance` **shifts** every later instance
+  down one by default (`RemoveAt`), so stored indices go stale. The components
+  call `SetRemoveSwap()`, which makes removal displace exactly one instance - the
+  last into the freed slot - so the single displaced record is re-pointed in O(1)
+  instead of walking the component.
+- `bAllowCPUAccess` must be set on the static mesh *before* the build or the
+  runtime tri-mesh cook silently produces no collision.
+- A runtime-built static mesh keeps its `FStaticMeshRenderData` in a bare
+  `TUniquePtr`, not a UPROPERTY, and has no committed source description. World
+  duplication - which is what starting PIE does - copies the UObject but not the
+  render data, so the component still points at a mesh that can no longer draw or
+  collide. **That is why buildings rendered in the editor and vanished in PIE.**
+  `AreBuildingInstancesIntact()` tests `HasValidRenderData()` (a null check does
+  not catch it) and `BeginPlay` rebuilds when it fails.
+- The merged city mesh casts no shadow because it is one unculled 509k-triangle
+  proxy. Instanced buildings are culled per placement, so they cast and (being
+  lit) receive.

@@ -2053,6 +2053,29 @@ int32 ASimCopterTrafficSystemActor::GetBuildingFootprintSize(int32 FileX, int32 
 	return FMath::Max(1, FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(uint8(GetXbldTileId(FileX, FileY))));
 }
 
+void ASimCopterTrafficSystemActor::ClearXbldTiles(const TArray<FIntPoint>& Tiles)
+{
+	if (XbldTileIds.Num() != FSimCity2000City::TileCount)
+	{
+		return;
+	}
+
+	for (const FIntPoint& Tile : Tiles)
+	{
+		if (Tile.X < 0 || Tile.X >= FSimCity2000City::MapSize ||
+			Tile.Y < 0 || Tile.Y >= FSimCity2000City::MapSize)
+		{
+			continue;
+		}
+		XbldTileIds[Tile.Y * FSimCity2000City::MapSize + Tile.X] = 0;
+	}
+}
+
+ASimCity2000CityActor* ASimCopterTrafficSystemActor::GetCityActor() const
+{
+	return ResolveSourceCityActor();
+}
+
 bool ASimCopterTrafficSystemActor::TryGetTileCenterWorldLocation(int32 FileX, int32 FileY, FVector& OutWorldLocation) const
 {
 	OutWorldLocation = FVector::ZeroVector;

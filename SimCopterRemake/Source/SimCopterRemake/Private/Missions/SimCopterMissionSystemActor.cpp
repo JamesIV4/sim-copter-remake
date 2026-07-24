@@ -302,6 +302,83 @@ void ASimCopterMissionSystemActor::OnBuildingFireIgnited(int32 TileX, int32 Tile
 	// there is nothing to place here; the ignition just makes the fire object + flames exist.
 }
 
+void ASimCopterMissionSystemActor::OnBuildingBurnedDown(int32 TileX, int32 TileY, int32 FootprintSize)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	ASimCity2000CityActor* CityActor = TrafficSystem->GetCityActor();
+	if (CityActor == nullptr)
+	{
+		return;
+	}
+
+	// Where the rubble burst comes from, captured before the building goes.
+	FBox BuildingBounds(ForceInit);
+	const bool bHasBounds = CityActor->TryGetBuildingBoundsAtTile(TileX, TileY, BuildingBounds);
+
+	TArray<FIntPoint> ClearedTiles;
+	if (!CityActor->DemolishBuildingAtTile(TileX, TileY, ClearedTiles))
+	{
+		return;
+	}
+
+	// FUN_004a5fd0 zeroes the XBLD entry of every tile the building covered, which is what stops
+	// the tile reading as a building - including to IsFireSuitableTile, so it cannot re-ignite.
+	TrafficSystem->ClearXbldTiles(ClearedTiles);
+
+	FVector TileCenter = FVector::ZeroVector;
+	if (!TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
+	{
+		return;
+	}
+
+	const FVector BurstOrigin = bHasBounds
+		? FVector(BuildingBounds.GetCenter().X, BuildingBounds.GetCenter().Y, BuildingBounds.Min.Z)
+		: TileCenter;
+
+	PlayUiSound(4);
+
+	if (FireSmokeComponent != nullptr)
+	{
+		// FUN_004af100(cell, 0, 0x200000, 0, 4, eventId): a scale-4 column of debris off the pad.
+		FireSmokeComponent->SpawnSplashColumn(BurstOrigin, /*ScaleExponent*/ 4);
+
+		// The original throws 3 + rand % footprint pieces, each on a random heading with a steep
+		// upward pitch, drawing its yaw/pitch/speed from the mission LCG in that order.
+		SimCopterMissions::FSimCopterMsvcRand& Rand = MissionSystem.GetRand();
+		const int32 SafeFootprint = FMath::Max(1, FootprintSize);
+		const int32 DebrisCount = (Rand.Rand() % SafeFootprint) + 3;
+		// local_54 + 0x300000: the pieces leave from 48 original units above the cell floor.
+		const FVector DebrisOrigin = BurstOrigin + FVector::UpVector * (48.0f * SimCopterEffectFX::OriginalUnitToCm);
+		for (int32 Piece = 0; Piece < DebrisCount; ++Piece)
+		{
+			// rand % 0xe10 tenth-degrees of yaw, (rand % 200) + 0x28a tenth-degrees of pitch
+			// (65.0 to 84.9 degrees up), and (rand % 100) + 0x32 units per second of speed.
+			const float YawDegrees = static_cast<float>(Rand.Rand() % 3600) * 0.1f;
+			const float PitchDegrees = static_cast<float>((Rand.Rand() % 200) + 650) * 0.1f;
+			const float SpeedUnits = static_cast<float>((Rand.Rand() % 100) + 50);
+			const FVector Direction = FRotator(PitchDegrees, YawDegrees, 0.0f).Vector();
+			FireSmokeComponent->SpawnEffect(
+				ESimCopterEffectType::Debris,
+				DebrisOrigin,
+				Direction * SpeedUnits * SimCopterEffectFX::OriginalUnitToCm,
+				static_cast<float>(SafeFootprint * 2) * SimCopterEffectFX::OriginalUnitToCm);
+		}
+	}
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT("Building at tile (%d,%d) burned down: %d tiles cleared."),
+		TileX,
+		TileY,
+		ClearedTiles.Num());
+}
+
 void ASimCopterMissionSystemActor::SimForceFire()
 {
 	// Debug force: bypass the mission-record cap so a fire always spawns even with many missions up.

@@ -115,6 +115,11 @@ public:
 		int32& OutTileClass) const;
 	int32 GetXbldTileId(int32 FileX, int32 FileY) const;
 	int32 GetBuildingFootprintSize(int32 FileX, int32 FileY) const;
+	// FUN_004a5fd0 zeroes the XBLD entry of every tile a burned-down building covered, which is
+	// what stops the sim treating the cleared ground as a building (and stops fire re-igniting it).
+	void ClearXbldTiles(const TArray<FIntPoint>& Tiles);
+	// The city actor this traffic system is bound to; owns the building instances.
+	ASimCity2000CityActor* GetCityActor() const;
 	bool TryGetTileCenterWorldLocation(int32 FileX, int32 FileY, FVector& OutWorldLocation) const;
 	// Convert a source-runtime (X, Y-up, Z) 16.16 offset with the same axis mapping,
 	// city yaw, and actor transform used by the rendered city geometry.

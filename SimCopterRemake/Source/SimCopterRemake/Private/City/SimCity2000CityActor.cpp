@@ -2,7 +2,10 @@
 
 #include "City/SimCity2000CityActor.h"
 
+#include "City/SimCopterRuntimeStaticMesh.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
@@ -81,6 +84,30 @@ struct FOriginalMeshSectionData
 	TArray<FProcMeshTangent> Tangents;
 	int32 TriangleCount = 0;
 };
+
+// Identifies a distinct building model. Two tiles resolving to the same ids produce identical
+// local-space geometry - only their placement differs - so they share one static mesh and one
+// collision cook, and differ only by instance transform.
+struct FBuildingModelKey
+{
+	int32 PrimaryObjectId = INDEX_NONE;
+	int32 SecondaryObjectId = INDEX_NONE;
+	int32 MeshTileId = INDEX_NONE;
+
+	bool operator==(const FBuildingModelKey& Other) const
+	{
+		return PrimaryObjectId == Other.PrimaryObjectId &&
+			SecondaryObjectId == Other.SecondaryObjectId &&
+			MeshTileId == Other.MeshTileId;
+	}
+};
+
+uint32 GetTypeHash(const FBuildingModelKey& Key)
+{
+	return HashCombine(
+		HashCombine(::GetTypeHash(Key.PrimaryObjectId), ::GetTypeHash(Key.SecondaryObjectId)),
+		::GetTypeHash(Key.MeshTileId));
+}
 
 struct FBakedCityAtlasMaterials
 {
@@ -370,6 +397,54 @@ void CreateOriginalMeshSection(
 		Section.VertexColors,
 		Section.Tangents,
 		bCreateCollision);
+}
+
+// Converts one model's local-space sections into a runtime static mesh, one material slot per
+// section, using the same per-section material the merged path would have picked. A section whose
+// material cannot be resolved is dropped, exactly as the merged path skips it.
+UStaticMesh* BuildBuildingModelStaticMesh(
+	UObject* Outer,
+	const TMap<int32, FOriginalMeshSectionData>& Sections,
+	TFunctionRef<UMaterialInterface*(int32 SectionKey)> ResolveMaterial)
+{
+	TArray<int32> SectionKeys;
+	Sections.GetKeys(SectionKeys);
+	// Palette section first, then texture keys ascending, matching the merged mesh's order.
+	SectionKeys.Sort();
+
+	TArray<FSimCopterRuntimeMeshSection> RuntimeSections;
+	RuntimeSections.Reserve(SectionKeys.Num());
+	for (const int32 SectionKey : SectionKeys)
+	{
+		const FOriginalMeshSectionData& Source = Sections[SectionKey];
+		if (Source.Vertices.Num() == 0 || Source.Triangles.Num() < 3)
+		{
+			continue;
+		}
+
+		UMaterialInterface* Material = ResolveMaterial(SectionKey);
+		if (Material == nullptr)
+		{
+			continue;
+		}
+
+		FSimCopterRuntimeMeshSection& Runtime = RuntimeSections.AddDefaulted_GetRef();
+		Runtime.Vertices = Source.Vertices;
+		Runtime.Triangles = Source.Triangles;
+		Runtime.Normals = Source.Normals;
+		Runtime.UV0 = Source.UVs;
+		Runtime.UV1 = Source.UV1;
+		Runtime.VertexColors = Source.VertexColors;
+		Runtime.Tangents = Source.Tangents;
+		Runtime.Material = Material;
+	}
+
+	if (RuntimeSections.Num() == 0)
+	{
+		return nullptr;
+	}
+
+	return SimCopterRuntimeStaticMesh::Build(Outer, RuntimeSections, /*bWithComplexCollision*/ true);
 }
 
 float GetWorldGridCoordinate(int32 FileCoordinate, float TileSize, float HalfMapSize)
@@ -2735,6 +2810,15 @@ void ASimCity2000CityActor::BeginPlay()
 	if (bLoadOnBeginPlay)
 	{
 		RebuildCity();
+		return;
+	}
+
+	// The procedural mesh sections are serialized UPROPERTYs, so terrain, roads and props survive
+	// into a duplicated or loaded world untouched. The instanced buildings cannot, which is why
+	// they rendered in the editor and vanished in PIE - see AreBuildingInstancesIntact.
+	if (bRenderOriginalMeshes && bInstanceBuildingMeshes && !LastLoadedCityName.IsEmpty() && !AreBuildingInstancesIntact())
+	{
+		RebuildCity();
 	}
 }
 
@@ -2750,6 +2834,7 @@ void ASimCity2000CityActor::RebuildCity()
 	BuildingTileFlags.Reset();
 	OriginalTextureCache.Reset();
 	OriginalTextureMaterials.Reset();
+	ResetBuildingInstances();
 
 	TerrainMeshComponent->ClearAllMeshSections();
 	OriginalMeshComponent->ClearAllMeshSections();
@@ -3183,6 +3268,180 @@ void ASimCity2000CityActor::RebuildCity()
 	int32 OriginalMeshTriangleCount = 0;
 	bool bOriginalSpecialE7BuildingPlaced = false;
 
+	// --- Instanced buildings -------------------------------------------------------------
+	// Buildings are the only city geometry that can be destroyed, so they are placed as
+	// instances of a per-model runtime static mesh rather than baked into the shared sections.
+	// Every distinct model is built and collision-cooked exactly once here; each placement then
+	// costs a transform, and demolishing one costs a RemoveInstance.
+	const bool bUseInstancedBuildings = bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && bInstanceBuildingMeshes;
+	TileBuildingIds.Init(INDEX_NONE, FSimCity2000City::TileCount);
+
+	// One material per section key, shared by every model that uses it, so a texture is not
+	// re-instanced per building.
+	TMap<int32, UMaterialInterface*> BuildingSectionMaterials;
+	auto ResolveBuildingSectionMaterial = [&](int32 SectionKey) -> UMaterialInterface*
+	{
+		if (UMaterialInterface** Cached = BuildingSectionMaterials.Find(SectionKey))
+		{
+			return *Cached;
+		}
+
+		UMaterialInterface* Resolved = nullptr;
+		if (SectionKey == INDEX_NONE)
+		{
+			Resolved = VertexColorMaterial;
+		}
+		else if (IsBakedAtlasPageSectionKey(SectionKey))
+		{
+			if (UMaterialInterface* const* Baked = BakedCityAtlasMaterials.PageMaterials.Find(GetBakedSectionAssetIndex(SectionKey)))
+			{
+				Resolved = *Baked;
+			}
+		}
+		else if (IsBakedDirectImageSectionKey(SectionKey))
+		{
+			if (UMaterialInterface* const* Baked = BakedCityAtlasMaterials.DirectImageMaterials.Find(GetBakedSectionAssetIndex(SectionKey)))
+			{
+				Resolved = *Baked;
+			}
+		}
+		else if (TexturedMaterial != nullptr)
+		{
+			if (UTexture2D* const* Texture = OriginalTexturesByKey.Find(SectionKey))
+			{
+				if (UMaterialInstanceDynamic* TextureMaterial = UMaterialInstanceDynamic::Create(TexturedMaterial, this))
+				{
+					TextureMaterial->SetTextureParameterValue(TEXT("Texture"), *Texture);
+					OriginalTextureMaterials.Add(TextureMaterial);
+					Resolved = TextureMaterial;
+				}
+			}
+		}
+
+		BuildingSectionMaterials.Add(SectionKey, Resolved);
+		return Resolved;
+	};
+
+	TMap<FBuildingModelKey, int32> ModelComponentIndices;
+	// Per model triangle counts, so the reported totals still count every placement even though
+	// the geometry itself is only built once.
+	TArray<int32> ModelTriangleCounts;
+	TArray<int32> ModelTexturedTriangleCounts;
+	// Builds (once) and returns the instanced component for a model, or INDEX_NONE when the
+	// model has no usable geometry - in which case the caller falls back to the merged path.
+	auto ResolveBuildingModelComponent = [&](const FBuildingModelKey& Key, const FMaxisMeshObject& PrimaryObject, const TArray<FColor>* PrimaryColorMap) -> int32
+	{
+		if (const int32* Existing = ModelComponentIndices.Find(Key))
+		{
+			return *Existing;
+		}
+
+		// Build the model at the origin: the merged path's per-vertex work already folds in the
+		// global 180-degree city yaw, so the only thing a placement adds is the tile translation.
+		TMap<int32, FOriginalMeshSectionData> ModelSections;
+		int32 ModelTexturedTriangles = 0;
+		int32 ModelTriangles = 0;
+		const bool bBuildVectorLines = true; // buildings are never in the line-drawn XBLD ranges
+		ModelTriangles += AppendMaxisMeshObject(
+			PrimaryObject,
+			PrimaryColorMap,
+			FVector::ZeroVector,
+			OriginalMeshUnitsPerCentimeter,
+			OriginalMeshScale,
+			bRenderOriginalMeshBackfaces,
+			bOriginalTexturesLoaded,
+			AvailableOriginalTextureKeys,
+			AvailableBakedAtlasPageIds,
+			AvailableBakedDirectImageIds,
+			OriginalTexturedFaceFallbackColor,
+			bBuildVectorLines,
+			ModelSections,
+			ModelTexturedTriangles);
+
+		if (Key.SecondaryObjectId != INDEX_NONE)
+		{
+			const TArray<FColor>* SecondaryColorMap = nullptr;
+			if (const FMaxisMeshObject* SecondaryObject = MeshLibrary.FindObjectByObjectId(Key.SecondaryObjectId, &SecondaryColorMap))
+			{
+				ModelTriangles += AppendMaxisMeshObject(
+					*SecondaryObject,
+					SecondaryColorMap,
+					FVector::ZeroVector,
+					OriginalMeshUnitsPerCentimeter,
+					OriginalMeshScale,
+					bRenderOriginalMeshBackfaces,
+					bOriginalTexturesLoaded,
+					AvailableOriginalTextureKeys,
+					AvailableBakedAtlasPageIds,
+					AvailableBakedDirectImageIds,
+					OriginalTexturedFaceFallbackColor,
+					bBuildVectorLines,
+					ModelSections,
+					ModelTexturedTriangles);
+			}
+		}
+
+		UStaticMesh* ModelMesh = BuildBuildingModelStaticMesh(this, ModelSections, ResolveBuildingSectionMaterial);
+		if (ModelMesh == nullptr)
+		{
+			ModelComponentIndices.Add(Key, INDEX_NONE);
+			return INDEX_NONE;
+		}
+
+		UInstancedStaticMeshComponent* Component = NewObject<UInstancedStaticMeshComponent>(this);
+		Component->SetStaticMesh(ModelMesh);
+		for (int32 SlotIndex = 0; SlotIndex < ModelMesh->GetStaticMaterials().Num(); ++SlotIndex)
+		{
+			Component->SetMaterial(SlotIndex, ModelMesh->GetStaticMaterials()[SlotIndex].MaterialInterface);
+		}
+		Component->SetupAttachment(SceneRoot);
+		Component->SetCollisionEnabled(bEnableOriginalMeshCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		Component->SetCollisionObjectType(ECC_WorldStatic);
+		Component->SetCollisionResponseToAllChannels(ECR_Block);
+		Component->SetCanEverAffectNavigation(false);
+		// The merged city mesh casts no shadow because it is one unculled 509k-triangle proxy -
+		// shadowing it would mean re-rendering the whole city per light. Instanced buildings are
+		// culled and batched per placement, so they can afford to cast, and being lit they receive
+		// too. This is what puts buildings in each other's and the terrain's shadow.
+		Component->SetCastShadow(true);
+		Component->SetMobility(EComponentMobility::Movable);
+		// Removal then displaces exactly one instance - the last one into the freed slot - instead
+		// of shifting every later index down, which is what keeps demolition O(1) and keeps the
+		// per-building records repairable without walking the component.
+		Component->SetRemoveSwap();
+		Component->RegisterComponent();
+
+		const int32 ComponentIndex = BuildingInstanceComponents.Add(Component);
+		BuildingModelMeshes.Add(ModelMesh);
+		ComponentInstanceBuildings.AddDefaulted();
+		ModelTriangleCounts.Add(ModelTriangles);
+		ModelTexturedTriangleCounts.Add(ModelTexturedTriangles);
+		check(ComponentInstanceBuildings.Num() == BuildingInstanceComponents.Num());
+		ModelComponentIndices.Add(Key, ComponentIndex);
+		return ComponentIndex;
+	};
+
+	// Rubble models (original objects 0x14f..0x152, one per footprint size) are built up front so
+	// a collapse costs only an AddInstance rather than a model build mid-play.
+	if (bUseInstancedBuildings)
+	{
+		for (int32 FootprintSize = 1; FootprintSize <= 4; ++FootprintSize)
+		{
+			const int32 RubbleObjectId = 0x14e + FootprintSize;
+			const TArray<FColor>* RubbleColorMap = nullptr;
+			const FMaxisMeshObject* RubbleObject = MeshLibrary.FindObjectByObjectId(RubbleObjectId, &RubbleColorMap);
+			if (RubbleObject == nullptr)
+			{
+				UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Rubble object 0x%x not found; demolished %dx%d buildings will leave bare ground."), RubbleObjectId, FootprintSize, FootprintSize);
+				continue;
+			}
+
+			FBuildingModelKey RubbleKey;
+			RubbleKey.PrimaryObjectId = RubbleObjectId;
+			RubbleComponentIndices[FootprintSize - 1] = ResolveBuildingModelComponent(RubbleKey, *RubbleObject, RubbleColorMap);
+		}
+	}
+
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
 	{
 		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
@@ -3293,51 +3552,96 @@ void ASimCity2000CityActor::RebuildCity()
 						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
-						OriginalMeshTriangleCount += AppendMaxisMeshObject(
-							*MeshObject,
-							ColorMap,
-							TileOrigin,
-							OriginalMeshUnitsPerCentimeter,
-							OriginalMeshScale,
-							bRenderOriginalMeshBackfaces,
-							bOriginalTexturesLoaded,
-							AvailableOriginalTextureKeys,
-							AvailableBakedAtlasPageIds,
-							AvailableBakedDirectImageIds,
-							OriginalTexturedFaceFallbackColor,
-							bBuildVectorLines,
-							OriginalMeshSections,
-							LastOriginalTexturedTriangleCount);
 
-						if (SecondaryObjectId != INDEX_NONE)
+						// Buildings become instances so a single one can be removed later; roads,
+						// bridges and power lines stay baked in the shared sections.
+						int32 PlacedComponentIndex = INDEX_NONE;
+						if (bUseInstancedBuildings && bBuildingLikeTile && !bUseBridgeDispatch)
 						{
-							const TArray<FColor>* SecondaryColorMap = nullptr;
-							const FMaxisMeshObject* SecondaryMeshObject = MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &SecondaryColorMap);
-							if (SecondaryMeshObject != nullptr)
-							{
-								OriginalMeshTriangleCount += AppendMaxisMeshObject(
-									*SecondaryMeshObject,
-									SecondaryColorMap,
-									TileOrigin,
-									OriginalMeshUnitsPerCentimeter,
-									OriginalMeshScale,
-									bRenderOriginalMeshBackfaces,
-									bOriginalTexturesLoaded,
-									AvailableOriginalTextureKeys,
-									AvailableBakedAtlasPageIds,
-									AvailableBakedDirectImageIds,
-									OriginalTexturedFaceFallbackColor,
-									bBuildVectorLines,
-									OriginalMeshSections,
-									LastOriginalTexturedTriangleCount);
-							}
-							else
-							{
-								UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not resolve secondary object id 0x%x for XBLD 0x%x."), SecondaryObjectId, Tile.Building);
-							}
+							FBuildingModelKey ModelKey;
+							ModelKey.PrimaryObjectId = PrimaryObjectId;
+							ModelKey.SecondaryObjectId = SecondaryObjectId;
+							ModelKey.MeshTileId = PrimaryObjectId != INDEX_NONE ? INDEX_NONE : static_cast<int32>(MeshTileId);
+							PlacedComponentIndex = ResolveBuildingModelComponent(ModelKey, *MeshObject, ColorMap);
 						}
 
-						++LastOriginalMeshTileCount;
+						if (PlacedComponentIndex != INDEX_NONE)
+						{
+							const int32 BuildingId = Buildings.AddDefaulted();
+							FSimCopterCityBuilding& Building = Buildings[BuildingId];
+							Building.OriginTile = FIntPoint(FileX, FileY);
+							Building.FootprintTiles = FIntPoint(Footprint.Width, Footprint.Height);
+							Building.PlacementOrigin = TileOrigin;
+							Building.XbldId = Tile.Building;
+							Building.Parts.Add(AddBuildingInstance(PlacedComponentIndex, BuildingId, TileOrigin));
+
+							// Every tile the footprint covers resolves to the one building id, so
+							// demolition can be asked for with any of them.
+							for (int32 OffsetY = 0; OffsetY < Footprint.Height; ++OffsetY)
+							{
+								for (int32 OffsetX = 0; OffsetX < Footprint.Width; ++OffsetX)
+								{
+									const int32 CoveredX = FileX + OffsetX;
+									const int32 CoveredY = FileY + OffsetY;
+									if (CoveredX < FSimCity2000City::MapSize && CoveredY < FSimCity2000City::MapSize)
+									{
+										TileBuildingIds[CoveredY * FSimCity2000City::MapSize + CoveredX] = BuildingId;
+									}
+								}
+							}
+
+							OriginalMeshTriangleCount += ModelTriangleCounts[PlacedComponentIndex];
+							LastOriginalTexturedTriangleCount += ModelTexturedTriangleCounts[PlacedComponentIndex];
+							++LastOriginalMeshTileCount;
+						}
+						else
+						{
+							OriginalMeshTriangleCount += AppendMaxisMeshObject(
+								*MeshObject,
+								ColorMap,
+								TileOrigin,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								bRenderOriginalMeshBackfaces,
+								bOriginalTexturesLoaded,
+								AvailableOriginalTextureKeys,
+								AvailableBakedAtlasPageIds,
+								AvailableBakedDirectImageIds,
+								OriginalTexturedFaceFallbackColor,
+								bBuildVectorLines,
+								OriginalMeshSections,
+								LastOriginalTexturedTriangleCount);
+
+							if (SecondaryObjectId != INDEX_NONE)
+							{
+								const TArray<FColor>* SecondaryColorMap = nullptr;
+								const FMaxisMeshObject* SecondaryMeshObject = MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &SecondaryColorMap);
+								if (SecondaryMeshObject != nullptr)
+								{
+									OriginalMeshTriangleCount += AppendMaxisMeshObject(
+										*SecondaryMeshObject,
+										SecondaryColorMap,
+										TileOrigin,
+										OriginalMeshUnitsPerCentimeter,
+										OriginalMeshScale,
+										bRenderOriginalMeshBackfaces,
+										bOriginalTexturesLoaded,
+										AvailableOriginalTextureKeys,
+										AvailableBakedAtlasPageIds,
+										AvailableBakedDirectImageIds,
+										OriginalTexturedFaceFallbackColor,
+										bBuildVectorLines,
+										OriginalMeshSections,
+										LastOriginalTexturedTriangleCount);
+								}
+								else
+								{
+									UE_LOG(LogSimCity2000CityActor, Warning, TEXT("Could not resolve secondary object id 0x%x for XBLD 0x%x."), SecondaryObjectId, Tile.Building);
+								}
+							}
+
+							++LastOriginalMeshTileCount;
+						}
 					}
 					else
 					{
@@ -3872,6 +4176,14 @@ void ASimCity2000CityActor::RebuildCity()
 		++MeshSectionIndex;
 	}
 	LastOriginalMeshTriangleCount = OriginalMeshTriangleCount;
+	LastBuildingModelCount = BuildingInstanceComponents.Num();
+
+	UE_LOG(
+		LogSimCity2000CityActor,
+		Display,
+		TEXT("Instanced buildings: %d distinct models, %d placements (each model's geometry and collision built once)."),
+		LastBuildingModelCount,
+		LastBuildingInstanceCount);
 
 	UE_LOG(
 		LogSimCity2000CityActor,
@@ -3922,6 +4234,251 @@ float ASimCity2000CityActor::GetEffectiveTerrainHeightScale() const
 	return bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
 }
 
+bool ASimCity2000CityActor::AreBuildingInstancesIntact() const
+{
+	if (BuildingInstanceComponents.Num() == 0)
+	{
+		return false;
+	}
+
+	for (const UInstancedStaticMeshComponent* Component : BuildingInstanceComponents)
+	{
+		if (Component == nullptr || !Component->IsRegistered())
+		{
+			return false;
+		}
+
+		const UStaticMesh* Mesh = Component->GetStaticMesh();
+		// A building's static mesh is built at runtime with no committed source description, and
+		// its FStaticMeshRenderData is a bare TUniquePtr rather than a UPROPERTY. Duplicating a
+		// world - which is exactly what starting PIE does - copies the UObject but not that render
+		// data, so the component still points at a mesh that can no longer draw or collide. That
+		// is the failure that made buildings editor-only, and it is invisible to a null check.
+		if (Mesh == nullptr || !Mesh->HasValidRenderData())
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void ASimCity2000CityActor::ResetBuildingInstances()
+{
+	for (UInstancedStaticMeshComponent* Component : BuildingInstanceComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->DestroyComponent();
+		}
+	}
+	BuildingInstanceComponents.Reset();
+	BuildingModelMeshes.Reset();
+	Buildings.Reset();
+	TileBuildingIds.Reset();
+	ComponentInstanceBuildings.Reset();
+	for (int32& RubbleComponentIndex : RubbleComponentIndices)
+	{
+		RubbleComponentIndex = INDEX_NONE;
+	}
+	LastBuildingModelCount = 0;
+	LastBuildingInstanceCount = 0;
+}
+
+FSimCopterBuildingPart* ASimCity2000CityActor::FindBuildingPartInComponent(int32 BuildingId, int32 ComponentIndex)
+{
+	if (!Buildings.IsValidIndex(BuildingId))
+	{
+		return nullptr;
+	}
+
+	FSimCopterCityBuilding& Building = Buildings[BuildingId];
+	for (FSimCopterBuildingPart& Part : Building.Parts)
+	{
+		if (Part.ComponentIndex == ComponentIndex)
+		{
+			return &Part;
+		}
+	}
+	if (Building.RubblePart.ComponentIndex == ComponentIndex)
+	{
+		return &Building.RubblePart;
+	}
+	return nullptr;
+}
+
+FSimCopterBuildingPart ASimCity2000CityActor::AddBuildingInstance(int32 ComponentIndex, int32 BuildingId, const FVector& Origin)
+{
+	FSimCopterBuildingPart Part;
+	if (!BuildingInstanceComponents.IsValidIndex(ComponentIndex))
+	{
+		return Part;
+	}
+
+	UInstancedStaticMeshComponent* Component = BuildingInstanceComponents[ComponentIndex];
+	if (Component == nullptr)
+	{
+		return Part;
+	}
+
+	Part.ComponentIndex = ComponentIndex;
+	Part.InstanceIndex = Component->AddInstance(FTransform(Origin), /*bWorldSpace*/ false);
+	ComponentInstanceBuildings[ComponentIndex].Add(BuildingId);
+	checkf(
+		ComponentInstanceBuildings[ComponentIndex].Num() == Component->GetInstanceCount(),
+		TEXT("Building instance ownership drifted out of lockstep with its component."));
+	++LastBuildingInstanceCount;
+	return Part;
+}
+
+void ASimCity2000CityActor::RemoveBuildingInstance(FSimCopterBuildingPart& Part)
+{
+	const int32 ComponentIndex = Part.ComponentIndex;
+	const int32 InstanceIndex = Part.InstanceIndex;
+	Part.Reset();
+
+	if (!BuildingInstanceComponents.IsValidIndex(ComponentIndex) ||
+		!ComponentInstanceBuildings.IsValidIndex(ComponentIndex))
+	{
+		return;
+	}
+
+	UInstancedStaticMeshComponent* Component = BuildingInstanceComponents[ComponentIndex];
+	TArray<int32>& InstanceBuildings = ComponentInstanceBuildings[ComponentIndex];
+	if (Component == nullptr || !InstanceBuildings.IsValidIndex(InstanceIndex))
+	{
+		return;
+	}
+
+	// The instance's collision goes with it: instance bodies are built from the model's one shared
+	// body setup, so nothing is re-cooked here and no vertex buffer is rebuilt.
+	const int32 LastIndex = InstanceBuildings.Num() - 1;
+	const int32 DisplacedBuildingId = InstanceBuildings[LastIndex];
+
+	Component->RemoveInstance(InstanceIndex);
+	InstanceBuildings.RemoveAtSwap(InstanceIndex);
+
+	// The components are set to RemoveAtSwap, so exactly one instance moves: the last one drops
+	// into the freed slot. Re-point just that one rather than re-deriving the whole component.
+	if (InstanceIndex != LastIndex)
+	{
+		if (FSimCopterBuildingPart* DisplacedPart = FindBuildingPartInComponent(DisplacedBuildingId, ComponentIndex))
+		{
+			DisplacedPart->InstanceIndex = InstanceIndex;
+		}
+	}
+
+	--LastBuildingInstanceCount;
+}
+
+bool ASimCity2000CityActor::HasStandingBuildingAtTile(int32 FileX, int32 FileY) const
+{
+	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize ||
+		TileBuildingIds.Num() != FSimCity2000City::TileCount)
+	{
+		return false;
+	}
+
+	const int32 BuildingId = TileBuildingIds[FileY * FSimCity2000City::MapSize + FileX];
+	return Buildings.IsValidIndex(BuildingId) && !Buildings[BuildingId].bDemolished;
+}
+
+bool ASimCity2000CityActor::HasRubbleAtTile(int32 FileX, int32 FileY) const
+{
+	if (FileX < 0 || FileX >= FSimCity2000City::MapSize || FileY < 0 || FileY >= FSimCity2000City::MapSize ||
+		TileBuildingIds.Num() != FSimCity2000City::TileCount)
+	{
+		return false;
+	}
+
+	const int32 BuildingId = TileBuildingIds[FileY * FSimCity2000City::MapSize + FileX];
+	return Buildings.IsValidIndex(BuildingId) &&
+		Buildings[BuildingId].bDemolished &&
+		Buildings[BuildingId].RubblePart.IsValid();
+}
+
+bool ASimCity2000CityActor::TryGetBuildingBoundsAtTile(int32 FileX, int32 FileY, FBox& OutWorldBounds) const
+{
+	if (!HasStandingBuildingAtTile(FileX, FileY))
+	{
+		return false;
+	}
+
+	const FSimCopterCityBuilding& Building = Buildings[TileBuildingIds[FileY * FSimCity2000City::MapSize + FileX]];
+
+	OutWorldBounds.Init();
+	for (const FSimCopterBuildingPart& Part : Building.Parts)
+	{
+		if (!Part.IsValid() || !BuildingInstanceComponents.IsValidIndex(Part.ComponentIndex))
+		{
+			continue;
+		}
+		const UInstancedStaticMeshComponent* Component = BuildingInstanceComponents[Part.ComponentIndex];
+		if (Component == nullptr || Component->GetStaticMesh() == nullptr)
+		{
+			continue;
+		}
+
+		FTransform InstanceTransform;
+		if (Component->GetInstanceTransform(Part.InstanceIndex, InstanceTransform, /*bWorldSpace*/ true))
+		{
+			OutWorldBounds += Component->GetStaticMesh()->GetBoundingBox().TransformBy(InstanceTransform);
+		}
+	}
+	return OutWorldBounds.IsValid != 0;
+}
+
+bool ASimCity2000CityActor::DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles)
+{
+	OutClearedTiles.Reset();
+	if (!HasStandingBuildingAtTile(FileX, FileY))
+	{
+		return false;
+	}
+
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	const int32 BuildingId = TileBuildingIds[FileY * MapSize + FileX];
+	FSimCopterCityBuilding& Building = Buildings[BuildingId];
+
+	for (FSimCopterBuildingPart& Part : Building.Parts)
+	{
+		RemoveBuildingInstance(Part);
+	}
+	Building.Parts.Reset();
+	Building.bDemolished = true;
+
+	// FUN_004a5fd0 swaps the structure's geometry for the rubble model matching its footprint,
+	// so the site is left as a debris pile rather than bare ground.
+	const int32 RubbleSlot = FMath::Clamp(FMath::Max(Building.FootprintTiles.X, Building.FootprintTiles.Y), 1, 4) - 1;
+	if (RubbleComponentIndices[RubbleSlot] != INDEX_NONE)
+	{
+		Building.RubblePart = AddBuildingInstance(RubbleComponentIndices[RubbleSlot], BuildingId, Building.PlacementOrigin);
+	}
+
+	// The footprint stops being a building - it is rubble now - but the tiles keep pointing at the
+	// record so the rubble remains resolvable and a repeat demolition is a no-op.
+	for (int32 OffsetY = 0; OffsetY < Building.FootprintTiles.Y; ++OffsetY)
+	{
+		for (int32 OffsetX = 0; OffsetX < Building.FootprintTiles.X; ++OffsetX)
+		{
+			const int32 TileX = Building.OriginTile.X + OffsetX;
+			const int32 TileY = Building.OriginTile.Y + OffsetY;
+			if (TileX >= MapSize || TileY >= MapSize)
+			{
+				continue;
+			}
+			const int32 TileIndex = TileY * MapSize + TileX;
+			if (BuildingTileFlags.IsValidIndex(TileIndex))
+			{
+				BuildingTileFlags[TileIndex] = 0;
+			}
+			OutClearedTiles.Emplace(TileX, TileY);
+		}
+	}
+
+	return true;
+}
+
 bool ASimCity2000CityActor::IsBuildingCollisionHit(
 	const UPrimitiveComponent* HitComponent,
 	const FVector& WorldLocation) const
@@ -3935,6 +4492,15 @@ bool ASimCity2000CityActor::IsBuildingCollisionHit(
 		HitComponent == RoadMarkingMeshComponent.Get())
 	{
 		return false;
+	}
+
+	// An instanced building is a building by construction - it only exists while it stands.
+	for (const UInstancedStaticMeshComponent* BuildingComponent : BuildingInstanceComponents)
+	{
+		if (BuildingComponent == HitComponent)
+		{
+			return true;
+		}
 	}
 
 	if (HitComponent != OriginalMeshComponent.Get() ||
