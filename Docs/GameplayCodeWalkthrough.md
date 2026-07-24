@@ -59,7 +59,7 @@ The constructor builds the component tree:
 
 `Tick` substeps flight simulation up to a fixed maximum step, then updates visuals and camera. This keeps the arcade-style movement more stable across frame rates.
 
-`SetupPlayerInputComponent` binds flight, collective, camera, rope, bucket, engine start/shutdown, interaction, searchlight, camera cycle, camera drag, zoom, and reset controls. A persistent flight widget makes the water loop explicit: `R` deploys/stows, Page Up raises, Page Down lowers, and `G` dumps; it also shows rope length and water pounds.
+`SetupPlayerInputComponent` binds flight, collective, camera, rope, bucket, engine start/shutdown, interaction, searchlight, camera cycle, camera drag, zoom, and reset controls. A persistent flight widget makes the water loop explicit: `R` deploys/stows, Page Up raises, Page Down lowers, and either `G` or left click dumps the bucket; it also shows rope length and water pounds. The debug-button stack can switch the left-click primary equipment between the bucket and the water gun. `G` remains a dedicated bucket dump in either mode.
 
 ### Original Tuning
 

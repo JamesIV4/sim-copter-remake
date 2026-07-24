@@ -254,6 +254,13 @@ public:
 	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
 	int32 GetBucketWaterPounds() const { return BucketWaterPounds; }
 
+	// Debug-only equipment selector used until the career capability record is ported.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	void ToggleDebugWaterEquipment();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	bool IsDebugWaterCannonSelected() const { return bDebugWaterCannonSelected; }
+
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
 
@@ -624,6 +631,8 @@ private:
 	float RopeAdjustInput = 0.0f;
 	bool bBucketDumpHeld = false;
 	bool bWaterCannonHeld = false;
+	bool bPrimaryWaterUseHeld = false;
+	bool bDebugWaterCannonSelected = false;
 
 	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
@@ -672,6 +681,8 @@ private:
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
+	void StartPrimaryWaterUse();
+	void StopPrimaryWaterUse();
 	void StartBucketDump();
 	void StopBucketDump();
 	void StartWaterCannon();

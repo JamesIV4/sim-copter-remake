@@ -252,12 +252,13 @@ private:
 	TSharedPtr<STextBlock> MegaphonePromptText;
 	bool bMegaphonePromptVisible = false;
 
-	// On-screen debug buttons (force fire / force car fire).
+	// On-screen debug buttons (force fires / toggle test water equipment).
 	TSharedPtr<SWidget> DebugButtonsWidget;
 	void EnsureDebugButtonsWidget();
 	void RemoveDebugButtonsWidget();
 	FReply OnDebugForceFireClicked();
 	FReply OnDebugForceCarFireClicked();
+	FReply OnDebugToggleWaterEquipmentClicked();
 
 	// Megaphone / jam clearing.
 	bool FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const;
