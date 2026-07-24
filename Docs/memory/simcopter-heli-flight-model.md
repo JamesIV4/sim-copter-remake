@@ -72,7 +72,8 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
 
 - Terrain vs object-top heights both come from one down-trace (the ground-agent
   pattern); building **walls** use the capsule sweep → `NotifyObjectCollision`.
-- Water detection by component name / `WaterFillWorldZ`, not the density grid.
+- Water gameplay uses the city actor's retained conditioned terrain vertices
+  and terrain-class grid; class values below 10 are water.
 - No fire system yet → `FireHeightDelta = 0`; no passengers yet → seats count only
   affects the weight budget.
 - Axis map: sim Z→UE X, sim X→UE Y, UE yaw = Heading/10; slide+ = left so the

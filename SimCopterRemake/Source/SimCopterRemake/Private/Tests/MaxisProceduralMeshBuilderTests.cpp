@@ -100,8 +100,14 @@ bool FMaxisProceduralMeshBuilderHelicopterTest::RunTest(const FString& Parameter
 		return false;
 	}
 
-	// One body, one main rotor, and the shared tail rotor must all resolve and build.
-	const TCHAR* RequiredObjects[] = { TEXT("JETRANG"), TEXT("JETRROTR"), TEXT("ROTORTL") };
+	// One body, one main rotor, the shared tail rotor, and the authored water bucket
+	// must all resolve and build.
+	const TCHAR* RequiredObjects[] = {
+		TEXT("JETRANG"),
+		TEXT("JETRROTR"),
+		TEXT("ROTORTL"),
+		TEXT("BUCKET"),
+	};
 	for (const TCHAR* ObjectName : RequiredObjects)
 	{
 		const TArray<FColor>* ColorMap = nullptr;
@@ -115,6 +121,12 @@ bool FMaxisProceduralMeshBuilderHelicopterTest::RunTest(const FString& Parameter
 		FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(*Object, ColorMap, 2621.44f, 0.25f, true, FLinearColor::White, Section);
 		TestFalse(FString::Printf(TEXT("'%s' builds a non-empty section"), ObjectName), Section.IsEmpty());
 		TestTrue(FString::Printf(TEXT("'%s' triangle indices are multiples of 3"), ObjectName), Section.Triangles.Num() % 3 == 0);
+	}
+
+	const FMaxisMeshObject* BucketById = MeshLibrary.FindObjectByObjectId(0x7b);
+	if (TestNotNull(TEXT("GEO object 0x7b resolves"), BucketById))
+	{
+		TestEqual(TEXT("GEO object 0x7b is the authored BUCKET"), BucketById->Header.TableName, FString(TEXT("BUCKET")));
 	}
 
 	// Rotor discs are authored around the mast, so their bounds should be roughly centred

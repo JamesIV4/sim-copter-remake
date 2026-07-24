@@ -4,10 +4,16 @@ Scope: everything between "the player collects water" and "a fire goes out" —
 rope, bucket, water cannon, water particles, their impact resolution, the
 effects they spawn, and the UI/audio feedback around them.
 
-Status: **scoping pass complete, port not started.** This document names the
-functions that have to be decoded and says what each one answers. Nothing here
-authorises a behavioural guess: where the original is not yet readable, that is
-recorded as a blocker rather than approximated.
+Status: **core gameplay port completed 2026-07-24.** The remake now uses the
+decoded pound-based load, conditioned terrain/class grids, 20-node rope,
+type-5/type-6 fixed-point trajectories, particle-owned impact dousing, and the
+water-cannon emitter. The follow-up pass also loads the authored `BUCKET` GEO
+object, renders the rope from the fuselage attachment point, exposes
+deploy/raise/lower/dump controls in the flight HUD, keeps fire seated only on
+city geometry, and resolves water hits against the visible position of flames
+that extend beyond a large building's anchor tile. Claims below remain the
+evidence and acceptance criteria for that port; unresolved original behavior
+is still recorded as a blocker rather than approximated.
 
 Written 2026-07-24. Companion documents:
 `Docs/scratchpad/ghidra/fire_simulation_decode_20260724.md` (the fire side,
@@ -15,11 +21,30 @@ already ported), `Docs/FireAndDemolitionGaps.md` (gap 7 is the entry point for
 this work), `Docs/FireWaterDustBackwashPortPlan.md` (the effect *renderer*,
 which this plan depends on but does not duplicate).
 
+Implemented in:
+
+- `Flight/SimCopterWaterGameplay.*` for fixed-point rates, motion, impact
+  strength, fill gates, and terrain-triangle sampling;
+- `ASimCity2000CityActor` for retained conditioned gameplay grids;
+- `ASimCopterHelicopterPawn` for pounds, the rope, automatic filling, bucket
+  emission, cannon emission/recoil, load coupling, the original `BUCKET` mesh,
+  and the persistent water-control/status hint;
+- `USimCopterParticleFXComponent` and
+  `ASimCopterMissionSystemActor::ApplyWaterParticleImpact` for collision-owned
+  splashes and footprint-aware dousing;
+- `SimCopter.Water.*` automation for the verification gates that do not require
+  a manual flight scenario.
+
+Still blocked exactly as recorded in section 4: bucket-strike behavior IDs,
+career ownership of capability bits, and exact gauge/message feedback. The
+person-in-bucket loop in Tier 6 also awaits its two remaining decompiles.
+
 ---
 
-## 1. What the remake does today, and why it cannot work
+## 1. Pre-port baseline (closed by the implementation above)
 
-`ASimCopterHelicopterPawn::UpdateRopeAndBucket` is a hand-written
+At the start of this plan,
+`ASimCopterHelicopterPawn::UpdateRopeAndBucket` was a hand-written
 approximation with no counterpart in the original:
 
 - `BucketWaterFraction` is a 0..1 float advanced by `BucketFillPerSec *
@@ -56,8 +81,8 @@ become a particle emitter, and the particle system has to own the douse.
 
 Read directly out of the decompiles named in §4. Recorded here so the port does
 not re-derive it — **but each claim must still be re-checked against the
-function it came from when that function is ported.** None of it is in the
-remake yet.
+function it came from when that function is ported.** The implemented core now
+follows these values.
 
 ### 2.1 Tuning: `[Heli Ropestuff]` (heli.twk, bound by `FUN_00489e20`)
 
@@ -79,9 +104,11 @@ per-helicopter section (`DAT_005040e8 + heliType * 0x5c`).
   in a 20-node chain (`FUN_0046ec60(0x14, 0x78, DAT_00504068)`). Higher = shorter.
   `0x11` is fully stowed; the rope and its end object are hidden there.
 - `heli[0x72]` is the command: `+1`/`+2` raise, `-1`/`-2` lower, `0` idle. Two
-  attachments exist — GEO objects **`0x141` and `0x142`** — selected by whether
-  `heli[0x70]` or `heli[0x71]` is the deployed one. `heli[0x70] == 0` means the
-  bucket is on the rope, and every water interaction tests it.
+  attachments exist: GEO object **`0x7b` (`BUCKET`)** and object **`0x16d`
+  (`HARNESS`)**, selected by whether `heli[0x70]` or `heli[0x71]` is the
+  deployed one. `heli[0x70] == 0` means the bucket is on the rope, and every
+  water interaction tests it. The previously recorded `0x141`/`0x142` pair is
+  the Agusta helicopter body/rotor pair, not the rope attachments.
 - Input actions: **`0xb`/`0xc`** work the bucket rope, **`0xe`/`0xf`** the other
   attachment (gated on capability bit `DAT_00504060 & 4`), **`0xd`** dumps,
   **`0x10`** fires the cannon. All read through
@@ -187,7 +214,7 @@ exported functions and needs `analyzeHeadless` + `ReverseExplore.java`
 | `FUN_004883a0` | 20-node rope chain solve | node integration, Rope Tension / Rope Load Factor semantics, rope-vs-world collision, the spill-on-impact rule | in exports |
 | `FUN_00488060` | bucket dump | drain rate, particle spawn position/direction/speed, scatter | in exports |
 | `FUN_00484d20` | helicopter master update | call order of the above, the emitter dispatch (`heli[0x57]`), cannon speed and half-rate drain, and the **total-load → lift** calculation that couples water weight to flight | in exports |
-| `FUN_00483c20` | rope construction | 20 nodes, segment length `0x78`, sag `DAT_00504068`, the two end models `0x141`/`0x142` | in exports (decompiled 2026-07-24) |
+| `FUN_00483c20` | rope construction | 20 nodes, segment length `0x78`, sag `DAT_00504068`, and end models `0x7b` (`BUCKET`) / `0x16d` (`HARNESS`) | in exports (decompiled 2026-07-24) |
 | `FUN_00487740` | called immediately before `FUN_00487bb0` | unknown; must be read before the rope port is trusted | **needs decompile** |
 | `FUN_0046ec60` | rope node allocator | node stride and initial layout | **needs decompile** |
 
@@ -254,18 +281,21 @@ A genuine feature, currently absent, and cheap once the fill path exists.
    — the *same* table that blocks fire damage (gap 1 in
    `Docs/FireAndDemolitionGaps.md`). The rope port can land without it; the
    damage cannot. Do not invent a behaviour id.
-2. **The water gauge.** Its drawing code is not in `.ghidra-exports` at all. It
-   needs a `ReverseExplore.java` `xrefsto 0x004f9824` pass before anything can
-   be said about it, followed by `export decompiled` so the bridge picks it up.
+2. **The water gauge.** A 2026-07-24 `xrefsto 0x004f9824` pass reached
+   `FUN_00455170`, which lazily loads `WATERGGE.BMP` into the owning object at
+   `+0xbc`. That establishes the asset owner but not the gauge's drawing/value
+   consumer; the relevant vtable draw path still needs to be named and exported
+   before the original gauge can be ported. The remake now has a compact,
+   persistent status/control panel showing pounds, capacity, rope length, and
+   the `R`, Page Up, Page Down, and `G` actions; that is an explicit gameplay
+   affordance, not a claim that the original gauge has been recovered.
 3. **Helicopter capability bits.** `DAT_00504060` comes from the career record
    at `+0x48`. Which helicopters carry a cannon (`& 0x10`) and which carry the
    second rope attachment (`& 4`) needs that record's layout, which the career
    loader port covers rather than this one.
-4. **Face `0x1a` class 0 vs class 3.** Bucket and cannon water are rasterised by
-   different kernels. Until the renderer plan's Phase 0 closes, water can be
-   *simulated* correctly but not *drawn* correctly. Do not substitute a soft
-   radial quad and call the visual done — that is exactly the trap
-   `Docs/FireWaterDustBackwashPortPlan.md` was written to prevent.
+4. **Face `0x1a` class 0 vs class 3 (closed by the renderer port).** Bucket and
+   cannon water use the existing decoded selector-kernel path with class 0 and
+   class 3 respectively; no substitute radial quad was introduced.
 
 ---
 
@@ -311,3 +341,8 @@ Tier 4's spawners come along with whichever step first needs them —
   at a fire from range.
 - The existing `SimCopter.Missions.FireDouse` must keep passing — the douse
   model itself is not changing, only who calls it and with what.
+- `SimCopter.Missions.FireDouseAcrossFootprint` must prove that water landing on
+  a visible outer flame of a multi-tile building reaches the flame record still
+  owned by the building's anchor tile.
+- `SimCopter.Formats.MaxisMesh.HelicopterModel` must resolve GEO id `0x7b` as
+  `BUCKET` and build a non-empty mesh section.

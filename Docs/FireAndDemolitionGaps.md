@@ -126,31 +126,27 @@ building was destroyed" flag with a scoring or narrative consequence.
 
 ---
 
-## 7. Water strength is always full, and applied per frame
+## 7. Water strength is always full, and applied per frame (closed 2026-07-24)
 
-**Original:** `FUN_004a50c0` scales douse damage by
-`(0x50000 - particleSize) / 0x50000`, and is called once per water particle that
-lands on the burning cell.
+**Original:** `FUN_00490690` is the only caller of `FUN_004a50c0`. A type-5
+cannon particle passes its remaining life as douse strength; a type-6 bucket
+particle passes remaining life divided by four. Water-surface landings splash
+without calling the douse.
 
-**Remake:** `DumpWaterAt` calls `DouseAtLocalOffset` once per frame at full
-strength (`0x10000`) from the bucket position. The health model, radius test and
-the 3.0s burn-countdown stall are exact; only the strength term and the call
-cadence are not.
+**Remake:** the bucket and cannon now emit traveling particles. Their fixed-point
+updater owns collision, distinguishes world geometry from class-below-10 water
+terrain, and calls `ApplyWaterParticleImpact` only for a land/object hit with
+the decoded remaining-life strength. The bucket no longer douses at its own
+position. Douse range is compared in absolute source-runtime coordinates rather
+than requiring the particle's tile to equal the building's anchor tile, so
+authored flames on the outer walls of multi-tile buildings can be hit where
+they are visibly rendered.
 
-**Effect:** dousing is frame-rate dependent and slightly stronger than the
-original at high frame rates.
-
-**To close:** drive the douse from the water particles the effect system already
-spawns, passing each one's size through as the strength term.
-
-**Update 2026-07-24:** this gap is wider than written above. `FUN_00490690` is
-the only caller of `FUN_004a50c0`, and it passes the particle's **remaining
-life**, quartered for bucket water and full for cannon water — so travel time,
-not just particle size, sets how much a drop extinguishes, and the bucket must
-stop dousing directly. There is also a second delivery system (the water cannon)
-that the remake has no trace of. The full decode plan is
-`Docs/WaterGameplayDecompilePlan.md`; close this gap through step 1 there rather
-than by adjusting the strength term.
+**Verification:** `SimCopter.Water.*` covers life decay, both drag constants,
+travel-dependent strength, the 4:1 same-life ratio, water landing without a
+douse, and deterministic integration. `SimCopter.Missions.FireDouse` remains
+green; `SimCopter.Missions.FireDouseAcrossFootprint` covers the large-building
+coordinate case.
 
 ---
 

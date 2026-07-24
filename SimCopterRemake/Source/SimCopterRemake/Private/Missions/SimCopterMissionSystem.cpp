@@ -1585,20 +1585,39 @@ int32 FSimCopterMissionSystem::DouseAtLocalOffset(int32 TileX, int32 TileY, int3
 		0,
 		static_cast<int32>((static_cast<int64>((1 - DifficultyTier) * 3 + Tuning.FireDouseMult) * Strength1616)));
 
+	// A large building stores all of its flames against one anchor tile, even when authored
+	// offsets put the visible flame one or more tiles away. Compare absolute source-runtime
+	// coordinates so water landing on that visible flame still reaches it.
+	constexpr int64 TileSpan1616 = 0x400000;
+	const int64 ImpactGlobalX1616 =
+		static_cast<int64>(TileY) * TileSpan1616 + LocalX1616;
+	const int64 ImpactGlobalZ1616 =
+		-static_cast<int64>(TileX) * TileSpan1616 + LocalZ1616;
+
 	int32 InRange = 0;
 	for (int32 i = 0; i < MaxFlames; ++i)
 	{
 		FSimCopterFlame& Flame = Flames[i];
-		if (!Flame.bActive || Flame.TileX != TileX || Flame.TileY != TileY)
+		if (!Flame.bActive)
 		{
 			continue;
 		}
 
-		// Water on the cell stalls every flame in it: the original pushes each burn
-		// countdown out by 3.0s before the range test, so a watched fire stops climbing.
-		Flame.BurnCountdown += 0x30000;
+		const int64 FlameGlobalX1616 =
+			static_cast<int64>(Flame.TileY) * TileSpan1616 + Flame.PosX;
+		const int64 FlameGlobalZ1616 =
+			-static_cast<int64>(Flame.TileX) * TileSpan1616 + Flame.PosZ;
+		const int64 DeltaX1616 = FMath::Abs(ImpactGlobalX1616 - FlameGlobalX1616);
+		const int64 DeltaZ1616 = FMath::Abs(ImpactGlobalZ1616 - FlameGlobalZ1616);
 
-		if (FMath::Abs(LocalX1616 - Flame.PosX) >= Radius || FMath::Abs(LocalZ1616 - Flame.PosZ) >= Radius)
+		// Water on the spatial cell stalls every flame in it: the original pushes each burn
+		// countdown out by 3.0s before the range test, so a watched fire stops climbing.
+		if (DeltaX1616 < TileSpan1616 && DeltaZ1616 < TileSpan1616)
+		{
+			Flame.BurnCountdown += 0x30000;
+		}
+
+		if (DeltaX1616 >= Radius || DeltaZ1616 >= Radius)
 		{
 			continue;
 		}

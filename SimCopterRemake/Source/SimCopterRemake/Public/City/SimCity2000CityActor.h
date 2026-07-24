@@ -80,6 +80,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	float GetEffectiveTerrainHeightScale() const;
 
+	// Samples the same conditioned terrain triangle and terrain-class grid used to build the
+	// visible city. Terrain classes below 10 are water in the original water gameplay routines.
+	// Returns false outside the original 128x128 gameplay map or before a city has been rebuilt.
+	bool TryGetWaterGameplaySurface(
+		const FVector& WorldLocation,
+		float& OutSurfaceWorldZ,
+		uint8& OutTerrainClass,
+		FIntPoint* OutTile = nullptr) const;
+
+	bool IsTerrainCollisionComponent(const UPrimitiveComponent* HitComponent) const;
 	bool IsBuildingCollisionHit(const UPrimitiveComponent* HitComponent, const FVector& WorldLocation) const;
 
 	// FUN_004a5fd0: the building covering this tile burned down. Removes its instances - which
@@ -330,6 +340,11 @@ private:
 	TArray<TObjectPtr<UStaticMesh>> BuildingModelMeshes;
 
 	TArray<uint8> BuildingTileFlags;
+
+	// Conditioned 129x129 terrain vertices and 128x128 class grid retained for the water bucket
+	// and particle collision paths. Rendering used to discard both after RebuildCity.
+	TArray<float> WaterGameplayCornerZ;
+	TArray<uint8> WaterGameplayTerrainClasses;
 
 	// Every placed building, indexed by building id. Demolished entries stay put so their id, tile
 	// span and rubble remain resolvable.

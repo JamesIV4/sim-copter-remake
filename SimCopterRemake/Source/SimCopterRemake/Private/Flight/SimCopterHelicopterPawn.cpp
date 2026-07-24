@@ -7,6 +7,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SceneComponent.h"
+#include "Components/SplineMeshComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "DrawDebugHelpers.h"
@@ -20,6 +21,7 @@
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Formats/SimCopterTweakReader.h"
+#include "Flight/SimCopterWaterGameplay.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterGroundAgent.h"
@@ -93,11 +95,6 @@ void ReadFloatControl(const FSimCopterTweakSection& Section, const TCHAR* LabelP
 	}
 }
 
-bool NameSuggestsWater(const FName Name)
-{
-	const FString StringName = Name.ToString();
-	return StringName.Contains(TEXT("Water"), ESearchCase::IgnoreCase);
-}
 }
 
 ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
@@ -160,12 +157,40 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	RopeMeshComponent->SetupAttachment(CollisionComponent);
 	RopeMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RopeMeshComponent->SetCanEverAffectNavigation(false);
+	RopeMeshComponent->SetVisibility(false);
+
+	for (int32 SegmentIndex = 0;
+		SegmentIndex < SimCopterWaterGameplay::RopeNodeCount - 1;
+		++SegmentIndex)
+	{
+		USplineMeshComponent* Segment = CreateDefaultSubobject<USplineMeshComponent>(
+			FName(*FString::Printf(TEXT("RopeSegment%02d"), SegmentIndex)));
+		Segment->SetupAttachment(CollisionComponent);
+		Segment->SetMobility(EComponentMobility::Movable);
+		Segment->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Segment->SetCanEverAffectNavigation(false);
+		Segment->SetCastShadow(false);
+		Segment->SetForwardAxis(ESplineMeshAxis::Z, false);
+		Segment->SetVisibility(false);
+		Segment->SetHiddenInGame(true);
+		RopeSegmentComponents.Add(Segment);
+	}
 
 	BucketMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Bucket"));
 	BucketMeshComponent->SetupAttachment(CollisionComponent);
+	BucketMeshComponent->SetMobility(EComponentMobility::Movable);
 	BucketMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BucketMeshComponent->SetCanEverAffectNavigation(false);
-	BucketMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.28f, 0.22f));
+	BucketMeshComponent->SetRelativeScale3D(FVector(0.30f, 0.34f, 0.36f));
+
+	OriginalBucketMeshComponent =
+		CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("OriginalBucket"));
+	OriginalBucketMeshComponent->SetupAttachment(CollisionComponent);
+	OriginalBucketMeshComponent->SetMobility(EComponentMobility::Movable);
+	OriginalBucketMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OriginalBucketMeshComponent->SetCanEverAffectNavigation(false);
+	OriginalBucketMeshComponent->SetCastShadow(true);
+	OriginalBucketMeshComponent->SetVisibility(false);
 
 	WaterFXComponent = CreateDefaultSubobject<USimCopterParticleFXComponent>(TEXT("WaterFX"));
 	WaterFXComponent->SetupAttachment(CollisionComponent);
@@ -211,6 +236,13 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	if (CylinderMeshFinder.Succeeded())
 	{
 		RopeMeshComponent->SetStaticMesh(CylinderMeshFinder.Object);
+		for (USplineMeshComponent* Segment : RopeSegmentComponents)
+		{
+			if (Segment != nullptr)
+			{
+				Segment->SetStaticMesh(CylinderMeshFinder.Object);
+			}
+		}
 	}
 
 	// Lit vertex-colour material shared with the city renderer so the palette-coloured
@@ -219,6 +251,13 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	if (ModelMaterialFinder.Succeeded())
 	{
 		ModelVertexColorMaterial = ModelMaterialFinder.Object;
+		for (USplineMeshComponent* Segment : RopeSegmentComponents)
+		{
+			if (Segment != nullptr)
+			{
+				Segment->SetMaterial(0, ModelVertexColorMaterial);
+			}
+		}
 	}
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> RotorDiscMaterialFinder(TEXT("/Game/Materials/M_SimCopterRotorDisc.M_SimCopterRotorDisc"));
@@ -270,6 +309,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		InputMode.SetHideCursorDuringCapture(false);
 		PlayerController->SetInputMode(InputMode);
 		EnsurePassengerSlotsWidget();
+		EnsureWaterControlsWidget();
 	}
 
 	UpdateGroundProbe();
@@ -286,6 +326,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	RemovePassengerSlotsWidget();
+	RemoveWaterControlsWidget();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -322,10 +363,10 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAxis(TEXT("SimCopterRopeAdjust"), this, &ASimCopterHelicopterPawn::AdjustRope);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterToggleRope"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleRope);
-	PlayerInputComponent->BindAction(TEXT("SimCopterBucketFill"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartBucketFill);
-	PlayerInputComponent->BindAction(TEXT("SimCopterBucketFill"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketFill);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketDump);
+	PlayerInputComponent->BindAction(TEXT("SimCopterWaterCannon"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartWaterCannon);
+	PlayerInputComponent->BindAction(TEXT("SimCopterWaterCannon"), IE_Released, this, &ASimCopterHelicopterPawn::StopWaterCannon);
 	PlayerInputComponent->BindAction(TEXT("SimCopterEngineStart"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartEngineHold);
 	PlayerInputComponent->BindAction(TEXT("SimCopterEngineStart"), IE_Released, this, &ASimCopterHelicopterPawn::StopEngineHold);
 	PlayerInputComponent->BindAction(TEXT("SimCopterEngineShutdown"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartEngineShutdownHold);
@@ -421,23 +462,11 @@ bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
 
 	if (const FSimCopterTweakSection* RopeSection = TweakFile.FindSection(TEXT("Heli Ropestuff")))
 	{
-		float RawFillRate = RopeTuning.BucketFillPerSec * 100.0f;
-		if (ReadControlValue(*RopeSection, TEXT("Bucket Fill Rate"), RawFillRate))
-		{
-			RopeTuning.BucketFillPerSec = RawFillRate / 100.0f;
-		}
-		float RawDumpRate = RopeTuning.BucketDumpPerSec * 100.0f;
-		if (ReadControlValue(*RopeSection, TEXT("Bucket Dump Rate"), RawDumpRate))
-		{
-			RopeTuning.BucketDumpPerSec = RawDumpRate / 100.0f;
-		}
+		ReadFloatControl(*RopeSection, TEXT("Bucket Fill Rate"), RopeTuning.BucketFillPoundsPerFrame);
+		ReadFloatControl(*RopeSection, TEXT("Bucket Dump Rate"), RopeTuning.BucketDumpPoundsPerFrame);
 		ReadFloatControl(*RopeSection, TEXT("Rope Load Factor"), RopeTuning.RopeLoadFactor);
 		ReadFloatControl(*RopeSection, TEXT("Rope Tension"), RopeTuning.RopeTension);
-		float RawWaterThrow = RopeTuning.WaterThrowCmPerSec / TweakClimbToCmPerSec;
-		if (ReadControlValue(*RopeSection, TEXT("Water Throw"), RawWaterThrow))
-		{
-			RopeTuning.WaterThrowCmPerSec = RawWaterThrow * TweakClimbToCmPerSec;
-		}
+		ReadFloatControl(*RopeSection, TEXT("Water Throw"), RopeTuning.WaterThrow);
 		ReadFloatControl(*RopeSection, TEXT("Cannon Force"), RopeTuning.CannonForce);
 	}
 
@@ -521,6 +550,12 @@ void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
 bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 {
 	LastModelLoadError.Reset();
+	bUsingOriginalBucketMesh = false;
+	if (OriginalBucketMeshComponent != nullptr)
+	{
+		OriginalBucketMeshComponent->ClearAllMeshSections();
+		OriginalBucketMeshComponent->SetVisibility(false);
+	}
 
 	FString BodyName;
 	FString MainRotorName;
@@ -617,6 +652,28 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 		return false;
 	}
 
+	// FUN_00483c20 binds object 0x7b to the rope-end render node when the bucket
+	// attachment is selected. Load that authored BUCKET mesh instead of leaving the
+	// engine cube in place.
+	const TArray<FColor>* BucketColorMap = nullptr;
+	const FMaxisMeshObject* BucketObject =
+		MeshLibrary.FindObjectByObjectId(0x7b, &BucketColorMap);
+	FMaxisMeshSection BucketSection;
+	bUsingOriginalBucketMesh =
+		BucketObject != nullptr &&
+		BuildComponentMesh(
+			OriginalBucketMeshComponent,
+			*BucketObject,
+			BucketColorMap,
+			BucketSection);
+	if (!bUsingOriginalBucketMesh)
+	{
+		UE_LOG(
+			LogSimCopterHelicopterPawn,
+			Warning,
+			TEXT("Could not build original BUCKET mesh (GEO id 0x7b); using the fallback bucket."));
+	}
+
 	// Sit the lowest fuselage vertex at the bottom of the collision capsule so the skids
 	// rest near the ground contact point the flight probes use.
 	const float CapsuleHalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
@@ -655,10 +712,11 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 	UE_LOG(
 		LogSimCopterHelicopterPawn,
 		Display,
-		TEXT("Loaded SimCopter helicopter model '%s' (body '%s', rotor '%s') from '%s'."),
+		TEXT("Loaded SimCopter helicopter model '%s' (body '%s', rotor '%s', bucket=%s) from '%s'."),
 		*HelicopterTypeName,
 		*BodyName,
 		*MainRotorName,
+		bUsingOriginalBucketMesh ? TEXT("BUCKET/0x7b") : TEXT("fallback"),
 		*RootPath);
 	return true;
 }
@@ -677,7 +735,12 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	EngineShutdownHoldAlpha = 0.0f;
 	CurrentDamage = 0.0f;
 	CurrentFuelGallons = HelicopterTuning.FuelGallons;
+	BucketWaterPounds = 0;
 	BucketWaterFraction = 0.0f;
+	RopeFirstActiveNode = SimCopterWaterGameplay::RopeStowedFirstActiveNode;
+	bRopeDeployed = false;
+	bRopeStateInitialized = false;
+	bWaterCannonHeld = false;
 	bIsLanded = false;
 	SetActorRotation(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	SeedFlightModelFromActor();
@@ -713,6 +776,7 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	InputMode.SetHideCursorDuringCapture(false);
 	PlayerController->SetInputMode(InputMode);
 	EnsurePassengerSlotsWidget();
+	EnsureWaterControlsWidget();
 }
 
 bool ASimCopterHelicopterPawn::CanExitHelicopter() const
@@ -928,6 +992,85 @@ void ASimCopterHelicopterPawn::RemovePassengerSlotsWidget()
 	PassengerSlotsWidget.Reset();
 }
 
+void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
+{
+	if (WaterControlsWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	TSharedRef<STextBlock> ControlsText =
+		SNew(STextBlock)
+		.Justification(ETextJustify::Left)
+		.ColorAndOpacity(FLinearColor(0.91f, 0.96f, 1.0f, 0.96f))
+		.ShadowOffset(FVector2D(1.0f, 1.0f))
+		.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.9f))
+		.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 14));
+	WaterControlsText = ControlsText;
+	WaterControlsWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.0f, 0.0f, 22.0f, 22.0f))
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+			.BorderBackgroundColor(FLinearColor(0.015f, 0.035f, 0.055f, 0.76f))
+			.Padding(FMargin(10.0f, 7.0f))
+			[
+				ControlsText
+			]
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(WaterControlsWidget.ToSharedRef(), 24);
+	RefreshWaterControlsWidget();
+}
+
+void ASimCopterHelicopterPawn::RemoveWaterControlsWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && WaterControlsWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(WaterControlsWidget.ToSharedRef());
+	}
+
+	WaterControlsText.Reset();
+	WaterControlsWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
+{
+	if (!WaterControlsText.IsValid())
+	{
+		return;
+	}
+
+	const int32 CapacityPounds = FMath::Max(0, HelicopterTuning.MaxLoadPounds);
+	FString BucketState;
+	if (!bRopeDeployed)
+	{
+		BucketState = TEXT("STOWED");
+	}
+	else if (BucketWaterPounds <= 0)
+	{
+		BucketState = FString::Printf(
+			TEXT("EMPTY  |  ROPE %.1f m  |  lower into water to fill"),
+			RopeLengthCm / 100.0f);
+	}
+	else
+	{
+		BucketState = FString::Printf(
+			TEXT("%d / %d lb  |  ROPE %.1f m"),
+			BucketWaterPounds,
+			CapacityPounds,
+			RopeLengthCm / 100.0f);
+	}
+
+	WaterControlsText->SetText(FText::FromString(FString::Printf(
+		TEXT("WATER BUCKET  %s\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower   [G] dump"),
+		*BucketState)));
+}
+
 void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
 {
 	if (!PassengerSlotsBox.IsValid())
@@ -1062,6 +1205,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 		return;
 	}
 	RemovePassengerSlotsWidget();
+	RemoveWaterControlsWidget();
 
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	FVector ExitLocation =
@@ -1159,17 +1303,11 @@ void ASimCopterHelicopterPawn::AdjustRope(float Value)
 
 void ASimCopterHelicopterPawn::ToggleRope()
 {
-	bRopeDeployed = !bRopeDeployed;
-}
-
-void ASimCopterHelicopterPawn::StartBucketFill()
-{
-	bBucketFillHeld = true;
-}
-
-void ASimCopterHelicopterPawn::StopBucketFill()
-{
-	bBucketFillHeld = false;
+	RopeFirstActiveNode = bRopeDeployed
+		? SimCopterWaterGameplay::RopeStowedFirstActiveNode
+		: SimCopterWaterGameplay::RopeMinimumFirstActiveNode;
+	bRopeDeployed = RopeFirstActiveNode < SimCopterWaterGameplay::RopeStowedFirstActiveNode;
+	RefreshWaterControlsWidget();
 }
 
 void ASimCopterHelicopterPawn::StartBucketDump()
@@ -1180,6 +1318,16 @@ void ASimCopterHelicopterPawn::StartBucketDump()
 void ASimCopterHelicopterPawn::StopBucketDump()
 {
 	bBucketDumpHeld = false;
+}
+
+void ASimCopterHelicopterPawn::StartWaterCannon()
+{
+	bWaterCannonHeld = true;
+}
+
+void ASimCopterHelicopterPawn::StopWaterCannon()
+{
+	bWaterCannonHeld = false;
 }
 
 void ASimCopterHelicopterPawn::StartEngineHold()
@@ -1321,9 +1469,15 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		SeedFlightModelFromActor();
 	}
 
-	// The rope load rides along in the original weight budget (person + cargo
-	// pounds against seats*120 + MaxLoad + 30).
-	FlightModel.LoadPounds = bRopeDeployed ? FMath::RoundToInt(BucketWaterFraction * static_cast<float>(HelicopterTuning.MaxLoadPounds)) : 0;
+	// SCHOOK: HelicopterWaterLoad 0x00484d20
+	// heli[0x74] is the actual number of pounds in the attachment, not a normalized fill amount.
+	FlightModel.LoadPounds = BucketWaterPounds;
+	if (bWaterCannonHeld && bWaterCannonInstalled && BucketWaterPounds > 0)
+	{
+		FlightModel.PitchTarget -= SimCopterWaterGameplay::FixedMul(
+			SimCopterFixed::FromFloat(DeltaSeconds),
+			SimCopterFixed::FromFloat(RopeTuning.CannonForce));
+	}
 
 	const FSimCopterFlightInputs Inputs = BuildFlightInputs();
 	const FSimCopterFlightEnvironment Environment = BuildFlightEnvironment();
@@ -1494,6 +1648,29 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 		return Environment;
 	}
 
+	bool bHasTerrainGrid = false;
+	bool bWaterTerrain = false;
+	if (ASimCity2000CityActor* City = ResolveCityActor())
+	{
+		float TerrainWorldZ = 0.0f;
+		uint8 TerrainClass = 0xff;
+		FIntPoint TerrainTile = FIntPoint::ZeroValue;
+		if (City->TryGetWaterGameplaySurface(
+			Location,
+			TerrainWorldZ,
+			TerrainClass,
+			&TerrainTile))
+		{
+			bHasTerrainGrid = true;
+			Environment.TerrainHeight =
+				SimCopterFixed::FromFloat(TerrainWorldZ / Unit);
+			Environment.SurfaceHeight = Environment.TerrainHeight;
+			bWaterTerrain =
+				SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass) &&
+				!City->HasStandingBuildingAtTile(TerrainTile.X, TerrainTile.Y);
+		}
+	}
+
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterFlightSurface), false, this);
 	const FVector Start(Location.X, Location.Y, Location.Z + 20000.0f);
@@ -1501,15 +1678,14 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
 	{
 		const int32 SurfaceHeight = SimCopterFixed::FromFloat(Hit.ImpactPoint.Z / Unit);
-		Environment.TerrainHeight = SurfaceHeight;
+		if (!bHasTerrainGrid)
+		{
+			Environment.TerrainHeight = SurfaceHeight;
+		}
 		Environment.SurfaceHeight = SurfaceHeight;
 		Environment.bTerrainFlat = Hit.ImpactNormal.Z >= LandingFlatNormalZ;
 
-		const bool bWater =
-			(Hit.GetActor() != nullptr && NameSuggestsWater(Hit.GetActor()->GetFName())) ||
-			(Hit.GetComponent() != nullptr && NameSuggestsWater(Hit.GetComponent()->GetFName())) ||
-			Hit.ImpactPoint.Z <= WaterFillWorldZ + 5.0f;
-		if (bWater)
+		if (bWaterTerrain)
 		{
 			// Original: tile class < 10 with nothing built - splash bounce, no
 			// landing (FUN_00487160 clears the flat flag on those tiles).
@@ -1632,72 +1808,382 @@ void ASimCopterHelicopterPawn::UpdateForwardProbe()
 	}
 }
 
-void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
+void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 {
+	InitializeRopeState();
+	const bool bCollisionSpill = StepRopeState();
+	UpdateRopeVisuals();
+
+	const FVector BucketWorld = RopeNodeWorldPositions.Last();
+	const FVector EndDirection =
+		(RopeNodeWorldPositions.Last() - RopeNodeWorldPositions[SimCopterWaterGameplay::RopeNodeCount - 2])
+		.GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
+
+	// SCHOOK: BucketFill 0x00487bb0
+	// Filling is automatic while the active attachment is at a class-0..9 surface.
 	if (bRopeDeployed)
 	{
-		RopeLengthCm = FMath::Clamp(RopeLengthCm + RopeAdjustInput * RopeAdjustCmPerSec * DeltaSeconds, MinRopeLengthCm, MaxRopeLengthCm);
-
-		if (bBucketFillHeld && ProbeBucketWater(BucketMeshComponent != nullptr ? BucketMeshComponent->GetComponentLocation() : GetActorLocation()))
+		float SurfaceWorldZ = 0.0f;
+		uint8 TerrainClass = 0xff;
+		FIntPoint SurfaceCell = FIntPoint::ZeroValue;
+		if (ASimCity2000CityActor* City = ResolveCityActor();
+			City != nullptr &&
+			City->TryGetWaterGameplaySurface(BucketWorld, SurfaceWorldZ, TerrainClass, &SurfaceCell))
 		{
-			BucketWaterFraction = FMath::Clamp(BucketWaterFraction + RopeTuning.BucketFillPerSec * DeltaSeconds, 0.0f, 1.0f);
+			const float SafeUnit = FMath::Max(OriginalUnitToCm, 0.01f);
+			const int32 BucketHeight1616 =
+				SimCopterFixed::FromFloat(BucketWorld.Z / SafeUnit);
+			const int32 SurfaceHeight1616 =
+				SimCopterFixed::FromFloat(SurfaceWorldZ / SafeUnit);
+			if (SimCopterWaterGameplay::CanFillBucket(
+				true,
+				BucketHeight1616,
+				SurfaceHeight1616,
+				TerrainClass))
+			{
+				const int32 PreviousWaterPounds = BucketWaterPounds;
+				BucketWaterPounds = SimCopterWaterGameplay::FillBucketFrame(
+					BucketWaterPounds,
+					HelicopterTuning.MaxLoadPounds,
+					FMath::RoundToInt(RopeTuning.BucketFillPoundsPerFrame));
+				if (WaterFXComponent != nullptr)
+				{
+					const FVector SurfaceWorld(BucketWorld.X, BucketWorld.Y, SurfaceWorldZ);
+					WaterFXComponent->SpawnTilePuff(
+						SurfaceWorld,
+						3,
+						SurfaceCell.X,
+						SurfaceCell.Y);
+					if (PreviousWaterPounds < HelicopterTuning.MaxLoadPounds)
+					{
+						WaterFXComponent->SpawnTilePuff(
+							SurfaceWorld,
+							8,
+							SurfaceCell.X,
+							SurfaceCell.Y);
+					}
+				}
+			}
 		}
 	}
-	else
+
+	if (bRopeDeployed && (bBucketDumpHeld || bCollisionSpill))
 	{
-		bBucketFillHeld = false;
+		EmitBucketWaterFrame(bCollisionSpill);
 	}
+	EmitWaterCannonFrame();
 
-	if (bBucketDumpHeld && BucketWaterFraction > 0.0f)
+	BucketWaterFraction = HelicopterTuning.MaxLoadPounds > 0
+		? FMath::Clamp(
+			static_cast<float>(BucketWaterPounds) /
+				static_cast<float>(HelicopterTuning.MaxLoadPounds),
+			0.0f,
+			1.0f)
+		: 0.0f;
+	PreviousBucketWorld = BucketWorld;
+	PreviousRopeEndDirection = EndDirection;
+	RefreshWaterControlsWidget();
+}
+
+FVector ASimCopterHelicopterPawn::GetRopeAnchorWorldLocation() const
+{
+	const FTransform AnchorTransform = ModelPivot != nullptr
+		? ModelPivot->GetComponentTransform()
+		: GetActorTransform();
+	return AnchorTransform.TransformPosition(RopeAnchorOffsetCm);
+}
+
+void ASimCopterHelicopterPawn::InitializeRopeState()
+{
+	if (bRopeStateInitialized &&
+		RopeNodeWorldPositions.Num() == SimCopterWaterGameplay::RopeNodeCount)
 	{
-		BucketWaterFraction = FMath::Clamp(BucketWaterFraction - RopeTuning.BucketDumpPerSec * DeltaSeconds, 0.0f, 1.0f);
-
-		const FVector BucketWorld = BucketMeshComponent != nullptr
-			? BucketMeshComponent->GetComponentLocation()
-			: GetActorLocation();
-
-		// FUN_00488060 uses the bucket render-node basis as a unit velocity, starts eight original
-		// units below the bucket, and applies only the small extent-derived lateral variation.
-		if (WaterFXComponent != nullptr)
-		{
-			const FVector DownDirection = -GetActorUpVector();
-			const FVector RightDirection = GetActorRightVector();
-			const FVector ForwardDirection = GetActorForwardVector();
-			const FVector Extent = BucketMeshComponent != nullptr
-				? BucketMeshComponent->Bounds.BoxExtent
-				: FVector(16.0f);
-			const FVector Mouth = BucketWorld +
-				DownDirection * (8.0f * SimCopterEffectFX::OriginalUnitToCm) +
-				RightDirection * FMath::FRandRange(-Extent.Y, Extent.Y) +
-				ForwardDirection * FMath::FRandRange(-Extent.X, Extent.X);
-			WaterFXComponent->SpawnEffect(
-				ESimCopterEffectType::BucketDrip,
-				Mouth,
-				DownDirection * SimCopterEffectFX::OriginalUnitToCm,
-				15.0f * SimCopterEffectFX::OriginalUnitToCm);
-		}
-
-		// Extinguishing remains mission state. FUN_00488060 does not add the previous six-puff
-		// hand-authored steam burst.
-		if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
-		{
-			MissionSystem->DumpWaterAt(BucketWorld);
-		}
+		return;
 	}
 
+	const float SegmentLengthCm =
+		static_cast<float>(SimCopterWaterGameplay::RopeSegmentLength1616) *
+		SimCopterEffectFX::Fixed1616ToCm;
+	const FVector Anchor = GetRopeAnchorWorldLocation();
+	RopeNodeWorldPositions.SetNum(SimCopterWaterGameplay::RopeNodeCount);
+	for (int32 NodeIndex = 0; NodeIndex < RopeNodeWorldPositions.Num(); ++NodeIndex)
+	{
+		RopeNodeWorldPositions[NodeIndex] =
+			Anchor - FVector::UpVector * SegmentLengthCm * static_cast<float>(NodeIndex);
+	}
+	PreviousRopeAnchorWorld = Anchor;
+	PreviousBucketWorld = RopeNodeWorldPositions.Last();
+	PreviousRopeEndDirection = -FVector::UpVector;
+	bRopeStateInitialized = true;
+}
+
+bool ASimCopterHelicopterPawn::StepRopeState()
+{
+	if (RopeAdjustInput > 0.25f)
+	{
+		++RopeFirstActiveNode;
+	}
+	else if (RopeAdjustInput < -0.25f)
+	{
+		--RopeFirstActiveNode;
+	}
+	RopeFirstActiveNode = FMath::Clamp(
+		RopeFirstActiveNode,
+		SimCopterWaterGameplay::RopeMinimumFirstActiveNode,
+		SimCopterWaterGameplay::RopeStowedFirstActiveNode);
+	bRopeDeployed =
+		RopeFirstActiveNode < SimCopterWaterGameplay::RopeStowedFirstActiveNode;
+
+	const FVector Anchor = GetRopeAnchorWorldLocation();
+	if (!bRopeDeployed)
+	{
+		for (FVector& Node : RopeNodeWorldPositions)
+		{
+			Node = Anchor;
+		}
+		PreviousRopeAnchorWorld = Anchor;
+		return false;
+	}
+
+	// SCHOOK: RopeSimulation 0x004883a0
+	const float SegmentLengthCm =
+		static_cast<float>(SimCopterWaterGameplay::RopeSegmentLength1616) *
+		SimCopterEffectFX::Fixed1616ToCm;
+	for (int32 NodeIndex = 0; NodeIndex <= RopeFirstActiveNode; ++NodeIndex)
+	{
+		RopeNodeWorldPositions[NodeIndex] = Anchor;
+	}
+	const float LoadFraction = HelicopterTuning.MaxLoadPounds > 0
+		? static_cast<float>(BucketWaterPounds) /
+			static_cast<float>(HelicopterTuning.MaxLoadPounds)
+		: 0.0f;
+	const float LoadDivisor = FMath::Max(
+		1.0f,
+		8.0f + LoadFraction * RopeTuning.RopeLoadFactor);
+	const FVector AnchorTravel = Anchor - PreviousRopeAnchorWorld;
+	const bool bMovingFastEnoughToSpill =
+		FMath::Abs(AnchorTravel.X) + FMath::Abs(AnchorTravel.Y) >
+		SimCopterEffectFX::OriginalUnitToCm;
+	bool bBucketCollision = false;
+
+	UWorld* World = GetWorld();
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterRope), false, this);
+	const float CollisionRadiusCm = SimCopterEffectFX::OriginalUnitToCm;
+	for (int32 NodeIndex = RopeFirstActiveNode + 1;
+		NodeIndex < SimCopterWaterGameplay::RopeNodeCount;
+		++NodeIndex)
+	{
+		const FVector PreviousNode = RopeNodeWorldPositions[NodeIndex - 1];
+		FVector CurrentOffset = RopeNodeWorldPositions[NodeIndex] - Anchor;
+		const FVector PreviousOffset = PreviousNode - Anchor;
+		const FVector HorizontalDelta(
+			CurrentOffset.X - PreviousOffset.X,
+			CurrentOffset.Y - PreviousOffset.Y,
+			0.0f);
+		CurrentOffset.X -= HorizontalDelta.X * RopeTuning.RopeTension;
+		CurrentOffset.Y -= HorizontalDelta.Y * RopeTuning.RopeTension;
+		const float LoadSag = FMath::Min(
+			SegmentLengthCm,
+			(FMath::Abs(HorizontalDelta.X) + FMath::Abs(HorizontalDelta.Y)) /
+				LoadDivisor);
+		CurrentOffset.Z = PreviousOffset.Z + LoadSag - SegmentLengthCm;
+
+		FVector Desired = Anchor + CurrentOffset;
+		bool bNodeCollision = false;
+		if (World != nullptr)
+		{
+			FHitResult Hit;
+			if (World->SweepSingleByChannel(
+				Hit,
+				RopeNodeWorldPositions[NodeIndex],
+				Desired,
+				FQuat::Identity,
+				ECC_Visibility,
+				FCollisionShape::MakeSphere(CollisionRadiusCm),
+				QueryParams))
+			{
+				Desired = Hit.Location + Hit.Normal * CollisionRadiusCm;
+				bNodeCollision = true;
+			}
+		}
+
+		float SurfaceZ = 0.0f;
+		uint8 TerrainClass = 0xff;
+		if (ASimCity2000CityActor* City = ResolveCityActor();
+			City != nullptr &&
+			City->TryGetWaterGameplaySurface(Desired, SurfaceZ, TerrainClass) &&
+			Desired.Z < SurfaceZ + CollisionRadiusCm)
+		{
+			Desired.Z = SurfaceZ + CollisionRadiusCm;
+			bNodeCollision = true;
+		}
+
+		// The original resolves terrain/object penetration first, then normalizes this node back
+		// to the fixed four-unit segment length.
+		const FVector ResolvedSegment = Desired - PreviousNode;
+		Desired = PreviousNode +
+			(ResolvedSegment.IsNearlyZero()
+				? -FVector::UpVector * SegmentLengthCm
+				: ResolvedSegment.GetSafeNormal() * SegmentLengthCm);
+		RopeNodeWorldPositions[NodeIndex] = Desired;
+		bBucketCollision |=
+			bNodeCollision &&
+			bMovingFastEnoughToSpill &&
+			NodeIndex == SimCopterWaterGameplay::RopeNodeCount - 1;
+	}
+	PreviousRopeAnchorWorld = Anchor;
+	return bBucketCollision;
+}
+
+void ASimCopterHelicopterPawn::UpdateRopeVisuals()
+{
 	if (RopeMeshComponent != nullptr)
 	{
-		RopeMeshComponent->SetVisibility(bRopeDeployed);
-		RopeMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -RopeLengthCm * 0.5f));
-		RopeMeshComponent->SetRelativeScale3D(FVector(0.025f, 0.025f, RopeLengthCm / 100.0f));
+		RopeMeshComponent->SetVisibility(false);
 	}
+	const FTransform RopeTransform = CollisionComponent != nullptr
+		? CollisionComponent->GetComponentTransform()
+		: GetActorTransform();
+	for (int32 SegmentIndex = 0;
+		SegmentIndex < RopeSegmentComponents.Num();
+		++SegmentIndex)
+	{
+		USplineMeshComponent* SegmentComponent = RopeSegmentComponents[SegmentIndex];
+		if (SegmentComponent == nullptr)
+		{
+			continue;
+		}
+		const bool bVisible =
+			bRopeDeployed &&
+			SegmentIndex >= RopeFirstActiveNode &&
+			RopeNodeWorldPositions.IsValidIndex(SegmentIndex + 1);
+		SegmentComponent->SetVisibility(bVisible);
+		SegmentComponent->SetHiddenInGame(!bVisible);
+		if (!bVisible)
+		{
+			continue;
+		}
+
+		const FVector Start = RopeTransform.InverseTransformPosition(
+			RopeNodeWorldPositions[SegmentIndex]);
+		const FVector End = RopeTransform.InverseTransformPosition(
+			RopeNodeWorldPositions[SegmentIndex + 1]);
+		const FVector Tangent = End - Start;
+		SegmentComponent->SetStartScale(FVector2D(0.04f, 0.04f), false);
+		SegmentComponent->SetEndScale(FVector2D(0.04f, 0.04f), false);
+		SegmentComponent->SetStartAndEnd(Start, Tangent, End, Tangent, true);
+	}
+
+	const float SegmentLengthCm =
+		static_cast<float>(SimCopterWaterGameplay::RopeSegmentLength1616) *
+		SimCopterEffectFX::Fixed1616ToCm;
+	RopeLengthCm =
+		static_cast<float>(
+			SimCopterWaterGameplay::RopeNodeCount - 1 - RopeFirstActiveNode) *
+		SegmentLengthCm;
+
+	const FVector BucketAttachmentWorld = RopeNodeWorldPositions.Last();
+	const FVector EndDirection =
+		(RopeNodeWorldPositions.Last() -
+			RopeNodeWorldPositions[SimCopterWaterGameplay::RopeNodeCount - 2])
+		.GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
+	const FQuat BucketRotation = FQuat::FindBetweenNormals(-FVector::UpVector, EndDirection);
+
+	const bool bShowOriginalBucket = bRopeDeployed && bUsingOriginalBucketMesh;
+	if (OriginalBucketMeshComponent != nullptr)
+	{
+		OriginalBucketMeshComponent->SetVisibility(bShowOriginalBucket);
+		OriginalBucketMeshComponent->SetHiddenInGame(!bShowOriginalBucket);
+		OriginalBucketMeshComponent->SetWorldLocation(BucketAttachmentWorld);
+		OriginalBucketMeshComponent->SetWorldRotation(BucketRotation);
+		OriginalBucketMeshComponent->SetRelativeScale3D(FVector::OneVector);
+	}
+
 	if (BucketMeshComponent != nullptr)
 	{
-		BucketMeshComponent->SetVisibility(bRopeDeployed);
-		BucketMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -RopeLengthCm - 26.0f));
-		const float BucketLoadScale = FMath::Lerp(0.8f, 1.05f, BucketWaterFraction);
-		BucketMeshComponent->SetRelativeScale3D(FVector(0.28f, 0.28f, 0.22f * BucketLoadScale));
+		const bool bShowFallbackBucket = bRopeDeployed && !bUsingOriginalBucketMesh;
+		BucketMeshComponent->SetVisibility(bShowFallbackBucket);
+		BucketMeshComponent->SetHiddenInGame(!bShowFallbackBucket);
+		BucketMeshComponent->SetWorldLocation(
+			BucketAttachmentWorld + EndDirection * 18.0f);
+		BucketMeshComponent->SetWorldRotation(BucketRotation);
+		BucketMeshComponent->SetRelativeScale3D(FVector(0.30f, 0.34f, 0.36f));
 	}
+}
+
+void ASimCopterHelicopterPawn::EmitBucketWaterFrame(bool)
+{
+	if (BucketWaterPounds <= 0 || WaterFXComponent == nullptr)
+	{
+		return;
+	}
+
+	const FVector BucketWorld = RopeNodeWorldPositions.Last();
+	const FVector EndDirection =
+		(RopeNodeWorldPositions.Last() -
+			RopeNodeWorldPositions[SimCopterWaterGameplay::RopeNodeCount - 2])
+		.GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
+	const float SwingTerm = FMath::Max(
+		0.0f,
+		PreviousRopeEndDirection.Z - EndDirection.Z) * RopeTuning.WaterThrow;
+	const FVector BucketTravel = PreviousBucketWorld - BucketWorld;
+	const FVector SwingOffset(
+		BucketTravel.X * (FMath::RandBool() ? 1.0f : -1.0f) * SwingTerm,
+		BucketTravel.Y * (FMath::RandBool() ? 1.0f : -1.0f) * SwingTerm,
+		0.0f);
+	const FVector SpawnWorld =
+		BucketWorld +
+		EndDirection * (
+			static_cast<float>(SimCopterWaterGameplay::BucketEmissionOffset1616) *
+			SimCopterEffectFX::Fixed1616ToCm) +
+		SwingOffset;
+	const float SpeedCmPerSec =
+		static_cast<float>(SimCopterWaterGameplay::BucketEmissionSpeed1616) *
+		SimCopterEffectFX::Fixed1616ToCm;
+
+	BucketWaterPounds = SimCopterWaterGameplay::DumpBucketFrame(
+		BucketWaterPounds,
+		FMath::RoundToInt(RopeTuning.BucketDumpPoundsPerFrame));
+	WaterFXComponent->SpawnEffect(
+		ESimCopterEffectType::BucketDrip,
+		SpawnWorld,
+		EndDirection * SpeedCmPerSec);
+}
+
+void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
+{
+	if (!bWaterCannonHeld)
+	{
+		return;
+	}
+	if (!bWaterCannonInstalled || BucketWaterPounds <= 0)
+	{
+		return;
+	}
+	if (WaterFXComponent == nullptr)
+	{
+		return;
+	}
+
+	// SCHOOK: WaterCannonEmitter 0x00484d20
+	const FVector Direction = ModelPivot != nullptr
+		? ModelPivot->GetForwardVector().GetSafeNormal()
+		: GetActorForwardVector();
+	const FVector SpawnWorld =
+		(ModelPivot != nullptr ? ModelPivot->GetComponentLocation() : GetActorLocation()) +
+		GetActorUpVector() * (3.0f * OriginalUnitToCm);
+	const float ForwardSpeedOriginal =
+		SimCopterFixed::ToFloat(FlightModel.ForwardSpeed);
+	const float EmissionSpeedCmPerSec =
+		(ForwardSpeedOriginal + RopeTuning.CannonForce) * OriginalUnitToCm;
+
+	BucketWaterPounds = SimCopterWaterGameplay::DumpBucketFrame(
+		BucketWaterPounds,
+		SimCopterWaterGameplay::CannonPoundsPerFrame);
+	WaterFXComponent->SpawnEffect(
+		ESimCopterEffectType::Spray,
+		SpawnWorld,
+		Direction * EmissionSpeedCmPerSec);
 }
 
 void ASimCopterHelicopterPawn::SimForceFire()
@@ -1728,6 +2214,22 @@ ASimCopterMissionSystemActor* ASimCopterHelicopterPawn::ResolveMissionSystem()
 		CachedMissionSystem = Cast<ASimCopterMissionSystemActor>(Found);
 	}
 	return CachedMissionSystem.Get();
+}
+
+ASimCity2000CityActor* ASimCopterHelicopterPawn::ResolveCityActor() const
+{
+	if (CachedCityActor.IsValid())
+	{
+		return CachedCityActor.Get();
+	}
+	if (UWorld* World = GetWorld())
+	{
+		CachedCityActor = Cast<ASimCity2000CityActor>(
+			UGameplayStatics::GetActorOfClass(
+				World,
+				ASimCity2000CityActor::StaticClass()));
+	}
+	return CachedCityActor.Get();
 }
 
 void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
@@ -2014,27 +2516,21 @@ float ASimCopterHelicopterPawn::ResolveCameraArmLengthForObstruction(
 	return FMath::Min(DesiredArmLength, SafeDistance);
 }
 
-bool ASimCopterHelicopterPawn::ProbeBucketWater(const FVector& BucketWorldLocation) const
+bool ASimCopterHelicopterPawn::ProbeBucketWater(const FVector& BucketWorldLocation)
 {
-	if (GetWorld() == nullptr)
+	ASimCity2000CityActor* City = ResolveCityActor();
+	if (City == nullptr)
 	{
 		return false;
 	}
 
-	FHitResult Hit;
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterBucketWaterProbe), false, this);
-	const FVector Start = BucketWorldLocation + FVector::UpVector * 45.0f;
-	const FVector End = BucketWorldLocation - FVector::UpVector * 120.0f;
-	GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams);
-	if (Hit.bBlockingHit)
-	{
-		const bool bNamedWater =
-			(Hit.GetActor() != nullptr && NameSuggestsWater(Hit.GetActor()->GetFName())) ||
-			(Hit.GetComponent() != nullptr && NameSuggestsWater(Hit.GetComponent()->GetFName()));
-		return bNamedWater || Hit.ImpactPoint.Z <= WaterFillWorldZ + 50.0f;
-	}
-
-	return BucketWorldLocation.Z <= WaterFillWorldZ;
+	float SurfaceWorldZ = 0.0f;
+	uint8 TerrainClass = 0xff;
+	return City->TryGetWaterGameplaySurface(
+			BucketWorldLocation,
+			SurfaceWorldZ,
+			TerrainClass) &&
+		SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass);
 }
 
 FString ASimCopterHelicopterPawn::ResolveOriginalGameRoot() const
@@ -2060,6 +2556,5 @@ void ASimCopterHelicopterPawn::ApplyDerivedTuning()
 	MaxForwardSpeedCmPerSec = FMath::Max(
 		1.0f,
 		HelicopterTuning.MaxPitchDeg * 10.0f * (40000.0f / 65536.0f) * OriginalUnitToCm);
-	RopeLengthCm = FMath::Clamp(RopeLengthCm, MinRopeLengthCm, MaxRopeLengthCm);
 	ApplyFlightTuningToModel();
 }
