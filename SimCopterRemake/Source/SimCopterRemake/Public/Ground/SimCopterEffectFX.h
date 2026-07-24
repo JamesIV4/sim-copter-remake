@@ -16,10 +16,29 @@ namespace SimCopterEffectFX
 	static constexpr float OriginalUnitToCm = 6.25f;
 	static constexpr float Fixed1616ToCm = OriginalUnitToCm / 65536.0f;
 
+	// The remake's city pass applies Maxis (X, Y-up, Z) -> Unreal (Z, X, Y),
+	// followed by its verified global 180-degree city yaw. Runtime effect offsets
+	// must use the same transform as the authored city meshes they are attached to.
+	inline FVector OriginalOffsetToCityLocalCm(int32 X1616, int32 Y1616, int32 Z1616)
+	{
+		return FVector(
+			-static_cast<float>(Z1616) * Fixed1616ToCm,
+			-static_cast<float>(X1616) * Fixed1616ToCm,
+			static_cast<float>(Y1616) * Fixed1616ToCm);
+	}
+
+	inline FVector ApplyCityMeshOrientation(const FVector& ConvertedMaxisVertex)
+	{
+		return FVector(
+			-ConvertedMaxisVertex.X,
+			-ConvertedMaxisVertex.Y,
+			ConvertedMaxisVertex.Z);
+	}
+
 	// FUN_0048ed00 subtracts 0x280000 (= 40.0 units) * frameTime from each particle's Z velocity
-	// every frame, i.e. a downward acceleration of 40 units/s^2. In cm that is 250 cm/s^2; we
-	// render the arcs a touch heavier so short-lived specks visibly fall on-screen.
-	static constexpr float GravityCmPerSec2 = 40.0f * OriginalUnitToCm * 2.0f; // 500
+	// every frame, i.e. a downward acceleration of 40 units/s^2 = 250 cm/s^2.  Do not amplify
+	// this: the short original trajectories are defined by this exact acceleration.
+	static constexpr float GravityCmPerSec2 = 40.0f * OriginalUnitToCm; // 250
 
 	// Convert a raw 8-bit SIM3D palette entry (sRGB bytes) to an unlit emissive colour with an
 	// explicit dither/alpha weight. FLinearColor(FColor) sRGB-decodes the RGB so the unlit sprite

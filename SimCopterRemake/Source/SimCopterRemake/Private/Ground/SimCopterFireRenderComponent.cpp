@@ -1,15 +1,19 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterFireRenderComponent.h"
-#include "Ground/SimCopterEffectFX.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
+#include "GameFramework/PlayerController.h"
+#include "Ground/SimCopterEffectFX.h"
+#include "Ground/SimCopterEffectRasterizer.h"
+#include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 
-// FIREPTS: the original flame GEO object (SIM3D2.MAX, Object.Header.Id 0x120). Its 22 faces are
-// single-vertex point sprites - a cloud of palette-coloured fire points - not a solid mesh. Car
-// fires use the same object in the remake. See Docs/scratchpad/ghidra/out_effect_pool_init.txt.
+// FUN_004a47c0 clones FIREPTS into every flame slot. FIREPTS is a template made from face type
+// 0x1a/light type 1 markers; its raw material bytes are effect classes and must not be rendered as
+// literal VGA palette indices (that mistake produced the red/green square towers).
 namespace
 {
 	constexpr int32 FirePtsObjectId = 0x120;
@@ -48,10 +52,29 @@ bool USimCopterFireRenderComponent::InitFireAssets(const FString& OriginalGameRo
 		OutError = FString::Printf(TEXT("FIREPTS flame object (id 0x%x) not found in '%s'."), FirePtsObjectId, *OriginalGameRoot);
 		return false;
 	}
+	if (ColorMap == nullptr || ColorMap->Num() < 256)
+	{
+		OutError = TEXT("FIREPTS shared palette is missing or incomplete.");
+		return false;
+	}
+	SharedPalette = *ColorMap;
+	SelectorAtlas = FSimCopterEffectRasterizer::CreateSelectorAtlas(this, SharedPalette);
+	if (SelectorAtlas == nullptr)
+	{
+		OutError = TEXT("Could not build the original effect selector atlas.");
+		return false;
+	}
+	if (FlameMaterial != nullptr)
+	{
+		FlameMaterialInstance = UMaterialInstanceDynamic::Create(FlameMaterial, this);
+		if (FlameMaterialInstance != nullptr)
+		{
+			FlameMaterialInstance->SetTextureParameterValue(TEXT("Texture"), SelectorAtlas);
+		}
+	}
 
-	// Extract the point sprites: one per single-vertex face, positioned at its vertex and coloured
-	// by the face's SIM3D palette index (bright fire hues authored into the object).
-	const FLinearColor FallbackColor(1.0f, 0.45f, 0.06f);
+	// Extract one runtime point per marker. Face material 2 is the lower fire body and material 1
+	// is the tall smoke trail; neither is a literal on-screen red/green color.
 	FirePoints.Reset();
 	FBox PointBounds(ForceInit);
 	for (const FMaxisMeshFace& Face : FlameObject->Faces)
@@ -67,10 +90,12 @@ bool USimCopterFireRenderComponent::InitFireAssets(const FString& OriginalGameRo
 		}
 
 		FFirePoint Point;
-		Point.LocalOffset = FMaxisMeshReader::ConvertMaxisVertexToUnreal(FlameObject->Vertices[VertexIndex], ModelUnitsPerCentimeter) * FlameModelScale;
-		Point.Color = (ColorMap != nullptr && ColorMap->IsValidIndex(Face.MaterialIndex))
-			? FLinearColor((*ColorMap)[Face.MaterialIndex])
-			: FallbackColor;
+		Point.LocalOffset = SimCopterEffectFX::ApplyCityMeshOrientation(
+			FMaxisMeshReader::ConvertMaxisVertexToUnreal(
+				FlameObject->Vertices[VertexIndex],
+				ModelUnitsPerCentimeter) *
+			FlameModelScale);
+		Point.EffectClass = Face.MaterialIndex;
 		FirePoints.Add(Point);
 		PointBounds += Point.LocalOffset;
 	}
@@ -81,16 +106,13 @@ bool USimCopterFireRenderComponent::InitFireAssets(const FString& OriginalGameRo
 		return false;
 	}
 
-	// Seat the base of the point cloud at Z = 0 so the owner drops flames onto the surface, and
-	// size each sprite from the cloud extent so the points overlap into a continuous flame.
+	// Seat the base of the authored point cloud at Z = 0. The point's screen footprint is computed
+	// later by FUN_00496da0's class/depth rules; it is not inferred from these object bounds.
 	const float BaseZ = PointBounds.Min.Z;
 	for (FFirePoint& Point : FirePoints)
 	{
 		Point.LocalOffset.Z -= BaseZ;
 	}
-	const float Radius = FMath::Max(static_cast<float>(PointBounds.GetExtent().Size2D()), 1.0f);
-	FireSpriteHalfSizeCm = FMath::Clamp(Radius * 0.55f, 22.0f, 140.0f);
-	FireMaxLocalZ = FMath::Max(PointBounds.Max.Z - PointBounds.Min.Z, 1.0f);
 
 	bAssetsReady = true;
 	return true;
@@ -125,7 +147,6 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 
 	const FTransform WorldToLocal = GetComponentTransform().Inverse();
 
-	// Camera billboard basis (shared by every sprite).
 	TArray<FVector> Vertices;
 	TArray<int32> Triangles;
 	TArray<FVector> Normals;
@@ -133,95 +154,139 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 	TArray<FLinearColor> Colors;
 	TArray<FProcMeshTangent> Tangents;
 
-	// The original flame is a cloud of small palette-coloured point sprites (FIREPTS) that flicker
-	// every frame. Colour each point by height through the exact SIM3D fire ramp (palette 0x10..0x1F
-	// dark-red -> amber) with hot yellow tips near the top; emit a couple of jittered sub-sprites
-	// per point for the turbulent flicker.
-	constexpr int32 SubSpritesPerPoint = 3;
-	const int32 SpriteCount = Visuals.Num() * FirePoints.Num() * SubSpritesPerPoint;
-	Vertices.Reserve(SpriteCount * 4);
-	Triangles.Reserve(SpriteCount * 6);
-	Normals.Reserve(SpriteCount * 4);
-	UVs.Reserve(SpriteCount * 4);
-	Colors.Reserve(SpriteCount * 4);
-	Tangents.Reserve(SpriteCount * 4);
-
-	const FVector LocalNormalBase = WorldToLocal.TransformVectorNoScale(FVector::UpVector);
+	FRotator CameraRotation = (GetComponentLocation() - CameraLocation).Rotation();
+	float HorizontalFovDegrees = 78.0f;
+	float ViewAspect = 16.0f / 9.0f;
+	if (const APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		if (const APlayerCameraManager* CameraManager = PC->PlayerCameraManager)
+		{
+			CameraRotation = CameraManager->GetCameraRotation();
+			HorizontalFovDegrees = CameraManager->GetFOVAngle();
+		}
+		int32 ViewWidth = 0;
+		int32 ViewHeight = 0;
+		PC->GetViewportSize(ViewWidth, ViewHeight);
+		if (ViewHeight > 0)
+		{
+			ViewAspect = static_cast<float>(ViewWidth) / static_cast<float>(ViewHeight);
+		}
+	}
+	const FVector CameraForward = CameraRotation.Vector();
+	const FVector CameraRight = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Y);
+	const FVector CameraUp = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Z);
+	const float HorizontalTangent =
+		FMath::Tan(FMath::DegreesToRadians(HorizontalFovDegrees * 0.5f));
+	const int32 RasterFrame = FMath::FloorToInt(TimeSeconds * 20.0f);
 
 	for (const FSimCopterFlameVisual& Visual : Visuals)
 	{
-		for (const FFirePoint& Point : FirePoints)
+		for (int32 PointIndex = 0; PointIndex < FirePoints.Num(); ++PointIndex)
 		{
-			const float HeightFrac = FMath::Clamp(Point.LocalOffset.Z / FireMaxLocalZ, 0.0f, 1.0f);
-
-			for (int32 Sub = 0; Sub < SubSpritesPerPoint; ++Sub)
+			const FFirePoint& Point = FirePoints[PointIndex];
+			const FVector Center = Visual.World + Point.LocalOffset * Visual.Scale;
+			const float CameraDepth = FVector::DotProduct(Center - CameraLocation, CameraForward);
+			if (CameraDepth <= 1.0f)
 			{
-				// Chaotic per-frame jitter; upper points wander more and lift.
-				const FVector Jitter(
-					FMath::FRandRange(-18.0f, 18.0f),
-					FMath::FRandRange(-18.0f, 18.0f),
-					FMath::FRandRange(-8.0f, 26.0f) * (0.4f + HeightFrac));
-				const FVector Center = Visual.World + (Point.LocalOffset + Jitter) * Visual.Scale;
+				continue;
+			}
 
-				FVector Forward = CameraLocation - Center;
-				if (!Forward.Normalize())
-				{
-					Forward = FVector::UpVector;
-				}
-				FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
-				if (!Right.Normalize())
-				{
-					Right = FVector::RightVector;
-				}
-				const FVector Up = FVector::CrossProduct(Forward, Right).GetSafeNormal();
+			const int32 DepthScale =
+				FSimCopterEffectRasterizer::ComputeDepthScale1616(CameraDepth);
+			const FSimCopterEffectKernelMetrics Metrics =
+				FSimCopterEffectRasterizer::ComputeKernelMetrics(Point.EffectClass, DepthScale);
+			if (Metrics.Iterations <= 0)
+			{
+				continue;
+			}
 
-				// Small<->large chaos.
-				const float Half = FireSpriteHalfSizeCm * Visual.Scale * FMath::FRandRange(0.4f, 1.3f);
+			const float DitherPixelWidth =
+				2.0f * CameraDepth * HorizontalTangent /
+				FSimCopterEffectRasterizer::DitherSimulationViewportWidth;
+			const float DitherPixelHeight =
+				2.0f * CameraDepth * HorizontalTangent /
+				(ViewAspect * FSimCopterEffectRasterizer::DitherSimulationViewportHeight);
+			uint32 RandomState =
+				static_cast<uint32>(Visual.Key) * 0x9e3779b9u ^
+				static_cast<uint32>(PointIndex) * 0x85ebca6bu ^
+				static_cast<uint32>(RasterFrame) * 0xc2b2ae35u ^
+				GetTypeHash(Visual.FlickerSeed);
+			// FUN_00496da0 consumes rand()%7 to choose a background-remap row
+			// before entering the 0x10 renderer. That row is unused by its direct
+			// selector writes, but consuming the sample preserves random ordering.
+			FSimCopterEffectRasterizer::AdvanceRandom(RandomState);
 
-				// Colour by height through the exact SIM3D fire ramp; the hottest points near the
-				// top burn through to the bright yellow tips (palette 0x73/0x7B).
-				const float H = FMath::Clamp(HeightFrac + FMath::FRandRange(-0.12f, 0.12f), 0.0f, 1.0f);
-				FLinearColor Color;
-				if (H > 0.82f && FMath::FRand() < 0.5f)
-				{
-					Color = FMath::FRand() < 0.5f ? SimCopterEffectFX::FireTipBright(0.95f) : SimCopterEffectFX::FireTipPale(0.95f);
-				}
-				else
-				{
-					Color = SimCopterEffectFX::FireRamp(H, 0.95f);
-				}
-
+			for (int32 Iteration = 0; Iteration < Metrics.Iterations; ++Iteration)
+			{
+				const int32 JitterX =
+					static_cast<int32>(FSimCopterEffectRasterizer::AdvanceRandom(RandomState) %
+						static_cast<uint32>(Metrics.JitterSpanPixels)) -
+					Metrics.JitterHalfExtentPixels;
+				const int32 JitterY =
+					static_cast<int32>(FSimCopterEffectRasterizer::AdvanceRandom(RandomState) %
+						static_cast<uint32>(Metrics.JitterSpanPixels)) -
+					Metrics.JitterHalfExtentPixels;
+				const int32 Radius =
+					Metrics.MinRadius +
+					static_cast<int32>(FSimCopterEffectRasterizer::AdvanceRandom(RandomState) %
+						static_cast<uint32>(Metrics.RadiusChoiceCount));
+				const FSimCopterEffectStencilMetrics Stencil =
+					FSimCopterEffectRasterizer::GetStencilMetrics(Radius);
+				const float RasterWidth = static_cast<float>(Stencil.Width);
+				const float RasterHeight = static_cast<float>(Stencil.Height);
+				const FVector KernelCenter =
+					Center +
+					CameraRight *
+						((static_cast<float>(JitterX) + RasterWidth * 0.5f) * DitherPixelWidth) -
+					CameraUp *
+						((static_cast<float>(JitterY) + RasterHeight * 0.5f) * DitherPixelHeight);
+				const float HalfWidth = RasterWidth * DitherPixelWidth * 0.5f;
+				const float HalfHeight = RasterHeight * DitherPixelHeight * 0.5f;
 				const int32 Base = Vertices.Num();
-				Vertices.Add(WorldToLocal.TransformPosition(Center - Right * Half - Up * Half));
-				Vertices.Add(WorldToLocal.TransformPosition(Center + Right * Half - Up * Half));
-				Vertices.Add(WorldToLocal.TransformPosition(Center + Right * Half + Up * Half));
-				Vertices.Add(WorldToLocal.TransformPosition(Center - Right * Half + Up * Half));
+				Vertices.Add(WorldToLocal.TransformPosition(
+					KernelCenter - CameraRight * HalfWidth - CameraUp * HalfHeight));
+				Vertices.Add(WorldToLocal.TransformPosition(
+					KernelCenter + CameraRight * HalfWidth - CameraUp * HalfHeight));
+				Vertices.Add(WorldToLocal.TransformPosition(
+					KernelCenter + CameraRight * HalfWidth + CameraUp * HalfHeight));
+				Vertices.Add(WorldToLocal.TransformPosition(
+					KernelCenter - CameraRight * HalfWidth + CameraUp * HalfHeight));
 
-				const FProcMeshTangent Tangent(WorldToLocal.TransformVectorNoScale(Right), false);
-				for (int32 n = 0; n < 4; ++n)
+				const int32 SelectorPhase =
+					FSimCopterEffectRasterizer::ConsumeSelectorPhase(Radius);
+				const FVector2D UV0 = FSimCopterEffectRasterizer::GetAtlasUV(
+					Point.EffectClass, SelectorPhase, Radius, 0, 0);
+				const FVector2D UV1 = FSimCopterEffectRasterizer::GetAtlasUV(
+					Point.EffectClass, SelectorPhase, Radius, Stencil.Width, Stencil.Height);
+				UVs.Append({
+					FVector2D(UV0.X, UV1.Y),
+					UV1,
+					FVector2D(UV1.X, UV0.Y),
+					UV0
+				});
+				const FVector LocalNormal = WorldToLocal.TransformVectorNoScale(-CameraForward);
+				const FProcMeshTangent Tangent(
+					WorldToLocal.TransformVectorNoScale(CameraRight),
+					false);
+				for (int32 Vertex = 0; Vertex < 4; ++Vertex)
 				{
-					Normals.Add(LocalNormalBase);
-					Colors.Add(Color);
+					Normals.Add(LocalNormal);
+					Colors.Add(FLinearColor::White);
 					Tangents.Add(Tangent);
 				}
-				UVs.Add(FVector2D(0.0f, 1.0f));
-				UVs.Add(FVector2D(1.0f, 1.0f));
-				UVs.Add(FVector2D(1.0f, 0.0f));
-				UVs.Add(FVector2D(0.0f, 0.0f));
-
-				Triangles.Add(Base + 0);
-				Triangles.Add(Base + 1);
-				Triangles.Add(Base + 2);
-				Triangles.Add(Base + 0);
-				Triangles.Add(Base + 2);
-				Triangles.Add(Base + 3);
+				Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
 			}
 		}
 	}
 
-	MeshComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
-	if (FlameMaterial != nullptr)
+	if (Vertices.IsEmpty())
 	{
-		MeshComponent->SetMaterial(0, FlameMaterial);
+		MeshComponent->ClearAllMeshSections();
+		return;
+	}
+	MeshComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+	if (FlameMaterialInstance != nullptr)
+	{
+		MeshComponent->SetMaterial(0, FlameMaterialInstance);
 	}
 }

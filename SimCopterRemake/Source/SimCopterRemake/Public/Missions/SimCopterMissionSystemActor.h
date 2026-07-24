@@ -208,23 +208,18 @@ private:
 
 	SimCopterMissions::FSimCopterMissionSystem MissionSystem;
 
-	// Renders the original FIREPTS flame meshes for every active building flame; driven each
-	// tick from MissionSystem.GetFlames(). Also owns the burnt-rubble tile swaps.
+	// Renders the cloned FIREPTS fire/smoke marker effects for every active building flame; driven
+	// each tick from MissionSystem.GetFlames().
 	UPROPERTY(Transient)
 	TObjectPtr<USimCopterFireRenderComponent> FireRenderComponent;
 
-	// Material for the flame meshes (defaults to M_SimCopterLitVertexColor, like the vehicles).
+	// Material for fire/smoke point sprites (defaults to M_SimCopterParticleFXSoft).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire")
 	TObjectPtr<UMaterialInterface> FlameMaterial;
 
-	// Rising smoke + embers above each fire (the original draws a separate SMOKE sprite and emits
-	// fire-trajectory embers; FIREPTS itself is just the flame body).
+	// Rising smoke + embers above each fire from the typed effect pool.
 	UPROPERTY(Transient)
 	TObjectPtr<USimCopterParticleFXComponent> FireSmokeComponent;
-
-	// Fractional accumulators (particles per second) for the fire smoke/ember emitters.
-	float FireSmokeAccumulator = 0.0f;
-	float FireEmberAccumulator = 0.0f;
 
 	// How close the bucket water must be to a burning car to put it out.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire", meta = (ClampMin = "50.0"))

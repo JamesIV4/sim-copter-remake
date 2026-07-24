@@ -1,85 +1,542 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterParticleFX.h"
+
 #include "Camera/PlayerCameraManager.h"
+#include "Formats/MaxisMeshLibrary.h"
+#include "Formats/MaxisMeshReader.h"
 #include "GameFramework/PlayerController.h"
+#include "Ground/SimCopterEffectFX.h"
+#include "Ground/SimCopterEffectRasterizer.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
+namespace
+{
+	constexpr float Fixed1616Scale = 65536.0f;
+	constexpr float OriginalPointStepCm = 10.0f * SimCopterEffectFX::OriginalUnitToCm;
+	constexpr uint8 SplashFrames[] = { 0x0F, 0x10, 0x11, 0x12, 0x19, 0x1A, 0x1B, 0x1C, 0x1D };
+	constexpr uint8 FireTipFrames[] = { 0x73, 0x7B, 0x70, 0xEA };
+
+	int32 SecondsToFixed(float Seconds)
+	{
+		return FMath::RoundToInt(Seconds * Fixed1616Scale);
+	}
+
+	ESimCopterEffectPool PoolForType(ESimCopterEffectType Type)
+	{
+		switch (Type)
+		{
+		case ESimCopterEffectType::Smoke: return ESimCopterEffectPool::Smoke10;
+		case ESimCopterEffectType::SmallSmoke: return ESimCopterEffectPool::Geo10;
+		case ESimCopterEffectType::GeoSmoke: return ESimCopterEffectPool::Geo2;
+		case ESimCopterEffectType::Debris:
+		case ESimCopterEffectType::HeavyDebris: return ESimCopterEffectPool::Debris30;
+		case ESimCopterEffectType::RotorWash: return ESimCopterEffectPool::Wash20;
+		case ESimCopterEffectType::BuildingFireSmoke:
+		case ESimCopterEffectType::BuildingFireEmber: return ESimCopterEffectPool::Fire25;
+		default: return ESimCopterEffectPool::Trajectory70;
+		}
+	}
+
+	uint8 InitialSplatClass(ESimCopterEffectType Type, int32 MotionScale1616)
+	{
+		switch (Type)
+		{
+		case ESimCopterEffectType::Smoke:
+		case ESimCopterEffectType::GeoSmoke: return 1;
+		case ESimCopterEffectType::FireTrajectory:
+		case ESimCopterEffectType::FireTrajectoryAlt:
+		case ESimCopterEffectType::SmallSmoke:
+		case ESimCopterEffectType::SplashSubParticle: return 4;
+		case ESimCopterEffectType::Spray:
+		case ESimCopterEffectType::BucketDrip:
+		case ESimCopterEffectType::BuildingFireEmber: return 8;
+		case ESimCopterEffectType::SmallSpray: return 3;
+		case ESimCopterEffectType::BuildingFireSmoke: return 9;
+		case ESimCopterEffectType::Debris:
+		case ESimCopterEffectType::HeavyDebris: return MotionScale1616 < 0x30000 ? 4 : 1;
+		default: return 1;
+		}
+	}
+
+	const FVector SplashDirections[] = {
+		FVector(1, 0, 0), FVector(-1, 0, 0),
+		FVector(0, 1, 0), FVector(0, -1, 0),
+		FVector(0, 0, 1), FVector(0, 0, -1),
+		FVector(1, 1, 1).GetSafeNormal(), FVector(-1, -1, -1).GetSafeNormal(),
+		FVector(1, 1, -1).GetSafeNormal(), FVector(-1, -1, 1).GetSafeNormal(),
+		FVector(1, -1, 1).GetSafeNormal(), FVector(-1, 1, -1).GetSafeNormal(),
+		FVector(1, -1, -1).GetSafeNormal(), FVector(-1, 1, 1).GetSafeNormal(),
+	};
+	static_assert(UE_ARRAY_COUNT(SplashDirections) == 14);
+}
+
 USimCopterParticleFXComponent::USimCopterParticleFXComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	Slots.SetNum(GetPoolCapacity(ESimCopterEffectPool::Smoke10) + GetPoolCapacity(ESimCopterEffectPool::Geo10) +
+		GetPoolCapacity(ESimCopterEffectPool::Geo2) + GetPoolCapacity(ESimCopterEffectPool::Debris30) +
+		GetPoolCapacity(ESimCopterEffectPool::Wash20) + GetPoolCapacity(ESimCopterEffectPool::Trajectory70) +
+		GetPoolCapacity(ESimCopterEffectPool::Fire25) + GetPoolCapacity(ESimCopterEffectPool::SplashColumns20) +
+		GetPoolCapacity(ESimCopterEffectPool::TilePuffs100));
 
-	// Smooth translucent particle material (soft radial alpha, no dithering) - the standard
-	// particle look. Fall back to the lit vertex-colour material so cards still render if the FX
-	// material has not been baked.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FxMaterialFinder(
-		TEXT("/Game/Materials/M_SimCopterParticleFXSoft.M_SimCopterParticleFXSoft"));
-	if (FxMaterialFinder.Succeeded())
+		TEXT("/Game/Materials/M_SimCopterParticleFX.M_SimCopterParticleFX"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> KernelMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FallbackFinder(
+		TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor"));
+	CardMaterial = FxMaterialFinder.Succeeded() ? FxMaterialFinder.Object : FallbackFinder.Object;
+	KernelMaterial = KernelMaterialFinder.Object;
+}
+
+bool USimCopterParticleFXComponent::InitEffectAssets(const FString& OriginalGameRoot, FString& OutError)
+{
+	FMaxisMeshLibrary MeshLibrary;
+	if (!MeshLibrary.LoadFromOriginalGameRoot(OriginalGameRoot, OutError))
 	{
-		CardMaterial = FxMaterialFinder.Object;
+		return false;
 	}
-	else
+	const TArray<FColor>* Palette = MeshLibrary.GetSharedColorMap();
+	if (Palette == nullptr || Palette->Num() < 256)
 	{
-		static ConstructorHelpers::FObjectFinder<UMaterialInterface> FallbackFinder(
-			TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor"));
-		if (FallbackFinder.Succeeded())
+		OutError = TEXT("SIM3D shared palette is missing or incomplete.");
+		return false;
+	}
+	SharedPalette = *Palette;
+
+	SelectorAtlas = FSimCopterEffectRasterizer::CreateSelectorAtlas(this, SharedPalette);
+	if (SelectorAtlas == nullptr)
+	{
+		OutError = TEXT("Could not build the original effect selector atlas.");
+		return false;
+	}
+	if (KernelMaterial != nullptr)
+	{
+		KernelMaterialInstance = UMaterialInstanceDynamic::Create(KernelMaterial, this);
+		if (KernelMaterialInstance != nullptr)
 		{
-			CardMaterial = FallbackFinder.Object;
+			KernelMaterialInstance->SetTextureParameterValue(TEXT("Texture"), SelectorAtlas);
 		}
 	}
+
+	// These are the exact GEO resources cloned into the decoded effect pools. Preserve their
+	// authored point markers and polygon silhouettes instead of substituting generic cards.
+	static constexpr int32 EffectObjectIds[] = {
+		0x7c, 0xae, 0x147, 0x148, 0x149, 0x14a, 0x14b
+	};
+	GeoTemplates.Reset();
+	for (const int32 ObjectId : EffectObjectIds)
+	{
+		const TArray<FColor>* ObjectPalette = nullptr;
+		const FMaxisMeshObject* Object = MeshLibrary.FindObjectByObjectId(ObjectId, &ObjectPalette);
+		if (Object == nullptr)
+		{
+			continue;
+		}
+
+		FGeoEffectTemplate Template;
+		FBox TemplateBounds(ForceInit);
+		TArray<FVector> ConvertedVertices;
+		ConvertedVertices.Reserve(Object->Vertices.Num());
+		for (const FMaxisMeshVertex& Vertex : Object->Vertices)
+		{
+			const FVector Converted = FMaxisMeshReader::ConvertMaxisVertexToUnreal(Vertex);
+			ConvertedVertices.Add(Converted);
+			TemplateBounds += Converted;
+		}
+
+		for (const FMaxisMeshFace& Face : Object->Faces)
+		{
+			if (Face.VertexIndices.Num() == 1 &&
+				(Face.FaceType == 0x17 || Face.FaceType == 0x1a) &&
+				ConvertedVertices.IsValidIndex(Face.VertexIndices[0]))
+			{
+				FGeoEffectPoint Point;
+				Point.LocalOffset = ConvertedVertices[Face.VertexIndices[0]];
+				Point.FaceType = Face.FaceType;
+				Point.MaterialIndex = Face.MaterialIndex;
+				Template.Points.Add(Point);
+				continue;
+			}
+			if (Face.VertexIndices.Num() < 2)
+			{
+				continue;
+			}
+
+			FGeoEffectFace RuntimeFace;
+			RuntimeFace.Color =
+				ObjectPalette != nullptr && ObjectPalette->IsValidIndex(Face.MaterialIndex)
+					? FLinearColor((*ObjectPalette)[Face.MaterialIndex])
+					: FLinearColor::White;
+			for (const uint16 VertexIndex : Face.VertexIndices)
+			{
+				if (ConvertedVertices.IsValidIndex(VertexIndex))
+				{
+					RuntimeFace.Vertices.Add(ConvertedVertices[VertexIndex]);
+				}
+			}
+			if (RuntimeFace.Vertices.Num() >= 2)
+			{
+				Template.Faces.Add(MoveTemp(RuntimeFace));
+			}
+		}
+
+		if (TemplateBounds.IsValid)
+		{
+			const FVector Size = TemplateBounds.GetSize();
+			Template.SourceSpanCm = FMath::Max3(
+				static_cast<float>(Size.X),
+				static_cast<float>(Size.Y),
+				static_cast<float>(Size.Z));
+			Template.SourceSpanCm = FMath::Max(Template.SourceSpanCm, 1.0f);
+		}
+		GeoTemplates.Add(ObjectId, MoveTemp(Template));
+	}
+	return true;
 }
 
 void USimCopterParticleFXComponent::OnRegister()
 {
 	Super::OnRegister();
-
-	if (MeshComponent == nullptr)
-	{
-		MeshComponent = NewObject<UProceduralMeshComponent>(this, TEXT("ParticleCards"));
-		MeshComponent->SetupAttachment(this);
-		MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		MeshComponent->SetCanEverAffectNavigation(false);
-		MeshComponent->bUseAsyncCooking = false;
-		MeshComponent->SetCastShadow(false);
-		MeshComponent->RegisterComponent();
-		UMaterialInterface* Material = CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get();
-		if (Material != nullptr)
-		{
-			MeshComponent->SetMaterial(0, Material);
-		}
-	}
-}
-
-void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FVector& VelocityCmPerSec,
-	float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
-{
-	if (Particles.Num() >= MaxParticles)
+	if (MeshComponent != nullptr)
 	{
 		return;
 	}
-	FCard Card;
-	Card.Position = World;
-	Card.Velocity = VelocityCmPerSec;
-	Card.Gravity = GravityCmPerSec2;
-	Card.Size = SizeCm;
-	Card.Life = FMath::Max(LifeSeconds, 0.05f);
-	Card.Color = Color;
-	Particles.Add(Card);
+	MeshComponent = NewObject<UProceduralMeshComponent>(this, TEXT("TypedEffectPrimitives"));
+	MeshComponent->SetupAttachment(this);
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComponent->SetCanEverAffectNavigation(false);
+	MeshComponent->bUseAsyncCooking = false;
+	MeshComponent->SetCastShadow(false);
+	MeshComponent->RegisterComponent();
+}
+
+int32 USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool Pool)
+{
+	switch (Pool)
+	{
+	case ESimCopterEffectPool::Smoke10: return 10;
+	case ESimCopterEffectPool::Geo10: return 10;
+	case ESimCopterEffectPool::Geo2: return 2;
+	case ESimCopterEffectPool::Debris30: return 30;
+	case ESimCopterEffectPool::Wash20: return 20;
+	case ESimCopterEffectPool::Trajectory70: return 70;
+	case ESimCopterEffectPool::Fire25: return 25;
+	case ESimCopterEffectPool::SplashColumns20: return 20;
+	case ESimCopterEffectPool::TilePuffs100: return 100;
+	default: return 0;
+	}
+}
+
+int32 USimCopterParticleFXComponent::GetPointCountForType(ESimCopterEffectType Type)
+{
+	switch (Type)
+	{
+	case ESimCopterEffectType::RotorWash: return 1;
+	case ESimCopterEffectType::BuildingFireEmber: return 4;
+	case ESimCopterEffectType::FireTrajectory:
+	case ESimCopterEffectType::FireTrajectoryAlt:
+	case ESimCopterEffectType::Spray:
+	case ESimCopterEffectType::BucketDrip:
+	case ESimCopterEffectType::SmallSpray:
+	case ESimCopterEffectType::SplashSubParticle: return 3;
+	default: return 1;
+	}
+}
+
+int32 USimCopterParticleFXComponent::GetLifetime1616ForType(ESimCopterEffectType Type)
+{
+	switch (Type)
+	{
+	case ESimCopterEffectType::SmallSpray: return 0x1CCCC;
+	case ESimCopterEffectType::SplashSubParticle: return 0xE666;
+	case ESimCopterEffectType::Debris: return 0x1E0000;
+	case ESimCopterEffectType::HeavyDebris: return 0x40000;
+	case ESimCopterEffectType::RotorWash: return 0x60000;
+	case ESimCopterEffectType::BuildingFireEmber: return 0x30000;
+	default: return 0x50000;
+	}
+}
+
+float USimCopterParticleFXComponent::GetLifetimeForType(ESimCopterEffectType Type)
+{
+	return static_cast<float>(GetLifetime1616ForType(Type)) / Fixed1616Scale;
+}
+
+int32 USimCopterParticleFXComponent::GetFaceTypeForType(ESimCopterEffectType Type)
+{
+	switch (Type)
+	{
+	case ESimCopterEffectType::FireTrajectory:
+	case ESimCopterEffectType::FireTrajectoryAlt:
+	case ESimCopterEffectType::BuildingFireEmber:
+	case ESimCopterEffectType::RotorWash: return 0x17;
+	case ESimCopterEffectType::Spray:
+	case ESimCopterEffectType::BucketDrip:
+	case ESimCopterEffectType::SmallSpray:
+	case ESimCopterEffectType::SplashSubParticle: return 0x1A;
+	default: return 0;
+	}
+}
+
+float USimCopterParticleFXComponent::GetDefaultSizeCmForType(ESimCopterEffectType Type)
+{
+	switch (Type)
+	{
+	case ESimCopterEffectType::Smoke:
+	case ESimCopterEffectType::GeoSmoke: return 6.0f * SimCopterEffectFX::OriginalUnitToCm;
+	case ESimCopterEffectType::SmallSmoke:
+	case ESimCopterEffectType::Debris:
+	case ESimCopterEffectType::HeavyDebris: return 3.0f * SimCopterEffectFX::OriginalUnitToCm;
+	case ESimCopterEffectType::RotorWash: return 1.0f * SimCopterEffectFX::OriginalUnitToCm;
+	case ESimCopterEffectType::BuildingFireSmoke:
+	case ESimCopterEffectType::BuildingFireEmber: return 5.0f * SimCopterEffectFX::OriginalUnitToCm;
+	default: return 20.0f * SimCopterEffectFX::OriginalUnitToCm;
+	}
+}
+
+float USimCopterParticleFXComponent::GetTilePuffRiseSpeedCmPerSec(uint8 EffectClass)
+{
+	int32 OriginalUnitsPerSecond = 15;
+	switch (EffectClass & 0x7F)
+	{
+	case 0: OriginalUnitsPerSecond = 10; break;
+	case 1: OriginalUnitsPerSecond = 25; break;
+	case 2: OriginalUnitsPerSecond = 17; break;
+	case 3: OriginalUnitsPerSecond = 13; break;
+	case 4: OriginalUnitsPerSecond = 30; break;
+	case 5: OriginalUnitsPerSecond = 25; break;
+	case 10: OriginalUnitsPerSecond = 20; break;
+	default: break;
+	}
+	return static_cast<float>(OriginalUnitsPerSecond) * SimCopterEffectFX::OriginalUnitToCm;
+}
+
+int32 USimCopterParticleFXComponent::GetTilePuffLife1616()
+{
+	// FUN_004af220 stores the fixed countdown in slot[2]. The class switch writes
+	// slot[5], which FUN_004af3b0 multiplies by dt and adds to vertical position;
+	// those values are rise velocities, not lifetimes.
+	return 0x20000;
+}
+
+bool USimCopterParticleFXComponent::IsRotorWashEligible(float HeightCm, int32 RotorSpeed1616)
+{
+	return HeightCm < 20.0f * SimCopterEffectFX::OriginalUnitToCm && RotorSpeed1616 > 0x1180000;
+}
+
+bool USimCopterParticleFXComponent::Allocate(ESimCopterEffectPool Pool, FSimCopterEffectSlot*& OutSlot)
+{
+	int32 Used = 0;
+	for (const FSimCopterEffectSlot& Slot : Slots)
+	{
+		Used += Slot.bActive && Slot.Pool == Pool ? 1 : 0;
+	}
+	if (Used >= GetPoolCapacity(Pool))
+	{
+		return false;
+	}
+	for (FSimCopterEffectSlot& Slot : Slots)
+	{
+		if (!Slot.bActive)
+		{
+			Slot = FSimCopterEffectSlot();
+			Slot.bActive = true;
+			Slot.Pool = Pool;
+			OutSlot = &Slot;
+			return true;
+		}
+	}
+	return false;
+}
+
+FIntPoint USimCopterParticleFXComponent::GetCellForWorld(const FVector& World) const
+{
+	return FIntPoint(FMath::FloorToInt(World.X / 400.0f), FMath::FloorToInt(World.Y / 400.0f));
+}
+
+void USimCopterParticleFXComponent::ConfigureEffect(FSimCopterEffectSlot& Slot, ESimCopterEffectType Type,
+	const FVector& World, const FVector& VelocityCmPerSec, float SizeCm, const FIntPoint& Cell)
+{
+	Slot.Type = Type;
+	Slot.Position = World;
+	Slot.Velocity = VelocityCmPerSec;
+	Slot.Cell = Cell;
+	Slot.Life1616 = GetLifetime1616ForType(Type);
+	Slot.SpawnTimer1616 = Type == ESimCopterEffectType::BuildingFireSmoke ? 0x38000 :
+		(Type == ESimCopterEffectType::BuildingFireEmber ? 0x18000 : 0x8000);
+	Slot.MotionScale1616 = FMath::RoundToInt(VelocityCmPerSec.Size() / SimCopterEffectFX::OriginalUnitToCm * Fixed1616Scale);
+	Slot.PointCount = static_cast<uint8>(GetPointCountForType(Type));
+	Slot.FaceType = static_cast<uint8>(GetFaceTypeForType(Type));
+	Slot.bTrajectory = Slot.FaceType != 0;
+	Slot.bApplyGravity = true;
+	Slot.SizeCm = SizeCm > 0.0f ? SizeCm : GetDefaultSizeCmForType(Type);
+
+	switch (Type)
+	{
+	case ESimCopterEffectType::Smoke: Slot.GeoObjectId = 0xAE; break;
+	case ESimCopterEffectType::SmallSmoke: Slot.GeoObjectId = 0x147; break;
+	case ESimCopterEffectType::GeoSmoke: Slot.GeoObjectId = 0x7C; break;
+	case ESimCopterEffectType::Debris:
+	case ESimCopterEffectType::HeavyDebris:
+		Slot.GeoObjectId = 0x149 + DebrisObjectCursor;
+		DebrisObjectCursor = (DebrisObjectCursor + 1) % 3;
+		break;
+	case ESimCopterEffectType::BuildingFireSmoke: Slot.GeoObjectId = 0xAE; break;
+	default: break;
+	}
+
+	uint8 Color = 0;
+	switch (Type)
+	{
+	case ESimCopterEffectType::FireTrajectory:
+	case ESimCopterEffectType::FireTrajectoryAlt:
+		Color = FireRampCursor++;
+		if (FireRampCursor > 0x1F)
+		{
+			FireRampCursor = 0x10;
+		}
+		break;
+	case ESimCopterEffectType::Spray:
+	case ESimCopterEffectType::SmallSpray: Color = 3; break;
+	case ESimCopterEffectType::BucketDrip: Color = 0; break;
+	case ESimCopterEffectType::SplashSubParticle: Color = 5; break;
+	case ESimCopterEffectType::RotorWash: Color = 8; break;
+	case ESimCopterEffectType::BuildingFireEmber:
+		Color = FireTipFrames[FireTipCursor++ & 3];
+		break;
+	default: Color = 0; break;
+	}
+	Slot.PaletteIndex = Color;
+	for (int32 Point = 0; Point < Slot.PointCount; ++Point)
+	{
+		Slot.PointPaletteIndices[Point] = Color;
+	}
+}
+
+bool USimCopterParticleFXComponent::SpawnEffect(ESimCopterEffectType Type, const FVector& World,
+	const FVector& VelocityCmPerSec, float SizeCm, int32 CellX, int32 CellY)
+{
+	FSimCopterEffectSlot* Slot = nullptr;
+	if (!Allocate(PoolForType(Type), Slot))
+	{
+		return false;
+	}
+	const FIntPoint Cell = CellX == INDEX_NONE || CellY == INDEX_NONE ? GetCellForWorld(World) : FIntPoint(CellX, CellY);
+	ConfigureEffect(*Slot, Type, World, VelocityCmPerSec, SizeCm, Cell);
+
+	// FUN_0048e0b0 bypasses this insertion for type 8 and suppresses it for type 7.
+	if (Type != ESimCopterEffectType::RotorWash && Type != ESimCopterEffectType::SmallSpray)
+	{
+		SpawnTilePuff(World + VelocityCmPerSec * 10.0f, InitialSplatClass(Type, Slot->MotionScale1616), Cell.X, Cell.Y);
+	}
+	return true;
+}
+
+bool USimCopterParticleFXComponent::SpawnTilePuff(const FVector& World, uint8 EffectClass, int32 CellX, int32 CellY)
+{
+	FSimCopterEffectSlot* Slot = nullptr;
+	if (!Allocate(ESimCopterEffectPool::TilePuffs100, Slot))
+	{
+		return false;
+	}
+	Slot->Type = ESimCopterEffectType::Smoke;
+	Slot->Position = World;
+	Slot->Cell = CellX == INDEX_NONE || CellY == INDEX_NONE ? GetCellForWorld(World) : FIntPoint(CellX, CellY);
+	Slot->Life1616 = GetTilePuffLife1616();
+	Slot->Velocity.Z = GetTilePuffRiseSpeedCmPerSec(EffectClass);
+	Slot->SizeCm = 20.0f * SimCopterEffectFX::OriginalUnitToCm;
+	Slot->EffectClass = EffectClass;
+	Slot->PaletteIndex = EffectClass;
+	Slot->PointPaletteIndices[0] = EffectClass;
+	Slot->GeoObjectId = 0x148;
+	Slot->FaceType = 0x1a;
+	Slot->PointCount = 1;
+	return true;
+}
+
+bool USimCopterParticleFXComponent::SpawnSplashColumn(const FVector& World, int32 ScaleExponent,
+	uint8, int32 CellX, int32 CellY)
+{
+	FSimCopterEffectSlot* Slot = nullptr;
+	if (!Allocate(ESimCopterEffectPool::SplashColumns20, Slot))
+	{
+		return false;
+	}
+	Slot->Type = ESimCopterEffectType::SplashSubParticle;
+	Slot->Position = World - FVector::UpVector * (32.0f * SimCopterEffectFX::OriginalUnitToCm);
+	Slot->Cell = CellX == INDEX_NONE || CellY == INDEX_NONE ? GetCellForWorld(World) : FIntPoint(CellX, CellY);
+	Slot->SizeCm = static_cast<float>(4 << FMath::Clamp(ScaleExponent, 0, 8)) * SimCopterEffectFX::OriginalUnitToCm;
+	Slot->PaletteIndex = SplashFrames[0];
+	Slot->PointPaletteIndices[0] = SplashFrames[0];
+	Slot->FrameCursor = -1;
+	Slot->MotionScale1616 = 0x140000 << FMath::Clamp(ScaleExponent, 0, 8);
+	Slot->GeoObjectId = 0x148;
+	return true;
+}
+
+void USimCopterParticleFXComponent::SpawnHardLanding(const FVector& World, bool, int32 CellX, int32 CellY)
+{
+	SpawnTilePuff(World, 1, CellX, CellY);
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		const float YawDegrees = FMath::FRandRange(0.0f, 359.9f);
+		const float PitchDegrees = FMath::FRandRange(65.0f, 84.9f);
+		const float SpeedCmPerSec = FMath::FRandRange(50.0f, 149.0f) * SimCopterEffectFX::OriginalUnitToCm;
+		const FVector Direction = FRotator(PitchDegrees, YawDegrees, 0.0f).RotateVector(FVector::ForwardVector);
+		SpawnEffect(ESimCopterEffectType::Debris, World, Direction * SpeedCmPerSec, 0.0f, CellX, CellY);
+	}
+	SpawnSplashColumn(World, 4, 0xFF, CellX, CellY);
+}
+
+void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FVector& VelocityCmPerSec,
+	float, const FLinearColor& Color, float LifeSeconds, float)
+{
+	if (!SpawnEffect(ESimCopterEffectType::RotorWash, World, VelocityCmPerSec))
+	{
+		return;
+	}
+	for (FSimCopterEffectSlot& Slot : Slots)
+	{
+		if (Slot.bActive && Slot.Type == ESimCopterEffectType::RotorWash && Slot.Position.Equals(World))
+		{
+			Slot.Life1616 = SecondsToFixed(LifeSeconds);
+			Slot.PaletteIndex = Color.B > Color.R ? 0x09 : 0x08;
+			Slot.PointPaletteIndices[0] = Slot.PaletteIndex;
+			break;
+		}
+	}
 }
 
 void USimCopterParticleFXComponent::SpawnRing(const FVector& World, int32 Count, float SpeedCmPerSec,
 	float InitialRiseCmPerSec, float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
 {
-	Count = FMath::Clamp(Count, 1, 32);
-	for (int32 i = 0; i < Count; ++i)
+	for (int32 Index = 0; Index < FMath::Clamp(Count, 1, 32); ++Index)
 	{
-		const float Angle = (2.0f * PI * static_cast<float>(i)) / static_cast<float>(Count);
-		const FVector Velocity(FMath::Cos(Angle) * SpeedCmPerSec, FMath::Sin(Angle) * SpeedCmPerSec, InitialRiseCmPerSec);
-		SpawnParticle(World, Velocity, SizeCm, Color, LifeSeconds, GravityCmPerSec2);
+		const float Angle = 2.0f * PI * static_cast<float>(Index) / static_cast<float>(Count);
+		SpawnParticle(World, FVector(FMath::Cos(Angle) * SpeedCmPerSec, FMath::Sin(Angle) * SpeedCmPerSec,
+			InitialRiseCmPerSec), SizeCm, Color, LifeSeconds, GravityCmPerSec2);
 	}
+}
+
+bool USimCopterParticleFXComponent::HasActiveParticles() const
+{
+	return Slots.ContainsByPredicate([](const FSimCopterEffectSlot& Slot) { return Slot.bActive; });
+}
+
+int32 USimCopterParticleFXComponent::GetActiveCount(ESimCopterEffectPool Pool) const
+{
+	int32 Count = 0;
+	for (const FSimCopterEffectSlot& Slot : Slots)
+	{
+		Count += Slot.bActive && Slot.Pool == Pool ? 1 : 0;
+	}
+	return Count;
 }
 
 FVector USimCopterParticleFXComponent::GetCameraLocation() const
@@ -88,44 +545,143 @@ FVector USimCopterParticleFXComponent::GetCameraLocation() const
 	{
 		if (const APlayerController* PC = UGameplayStatics::GetPlayerController(World, 0))
 		{
-			if (const APlayerCameraManager* CameraManager = PC->PlayerCameraManager)
+			if (const APlayerCameraManager* Camera = PC->PlayerCameraManager)
 			{
-				return CameraManager->GetCameraLocation();
+				return Camera->GetCameraLocation();
 			}
 		}
 	}
 	return GetComponentLocation();
 }
 
-void USimCopterParticleFXComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void USimCopterParticleFXComponent::UpdateSplashColumns()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (Particles.Num() == 0)
+	for (FSimCopterEffectSlot& Slot : Slots)
 	{
-		if (MeshComponent != nullptr && MeshComponent->GetNumSections() > 0)
+		if (!Slot.bActive || Slot.Pool != ESimCopterEffectPool::SplashColumns20)
 		{
-			MeshComponent->ClearAllMeshSections();
-		}
-		return;
-	}
-
-	for (int32 i = Particles.Num() - 1; i >= 0; --i)
-	{
-		FCard& Card = Particles[i];
-		Card.Age += DeltaTime;
-		if (Card.Age >= Card.Life)
-		{
-			Particles.RemoveAtSwap(i);
 			continue;
 		}
-		// Gravity acts on the vertical velocity, then integrate (matches FUN_0048ed00: subtract
-		// gravity*dt from Z velocity each frame, then advance the position by velocity*dt).
-		Card.Velocity.Z -= Card.Gravity * DeltaTime;
-		Card.Position += Card.Velocity * DeltaTime;
+		++Slot.FrameCursor;
+		if (Slot.FrameCursor >= UE_ARRAY_COUNT(SplashFrames))
+		{
+			Slot.bActive = false;
+			continue;
+		}
+		Slot.PaletteIndex = SplashFrames[Slot.FrameCursor];
+		Slot.PointPaletteIndices[0] = Slot.PaletteIndex;
+		if (Slot.FrameCursor == 0 && !Slot.bBurstEmitted)
+		{
+			Slot.bBurstEmitted = true;
+			const float SpeedCmPerSec =
+				static_cast<float>(Slot.MotionScale1616) / Fixed1616Scale * SimCopterEffectFX::OriginalUnitToCm;
+			for (const FVector& Direction : SplashDirections)
+			{
+				SpawnEffect(ESimCopterEffectType::SplashSubParticle, Slot.Position,
+					Direction * SpeedCmPerSec, 0.0f, Slot.Cell.X, Slot.Cell.Y);
+			}
+		}
 	}
+}
 
+void USimCopterParticleFXComponent::EmitFireBurst(const FSimCopterEffectSlot& Source)
+{
+	FVector Direction = FVector::ForwardVector;
+	for (int32 Index = 0; Index < 24; ++Index)
+	{
+		Direction = Direction.RotateAngleAxis(240.0f, FVector::UpVector);
+		SpawnEffect(ESimCopterEffectType::BuildingFireEmber, Source.Position,
+			Direction * (60.0f * SimCopterEffectFX::OriginalUnitToCm), 0.0f, Source.Cell.X, Source.Cell.Y);
+	}
+}
+
+void USimCopterParticleFXComponent::UpdateSlots(float DeltaTime)
+{
+	const int32 Delta1616 = FMath::Max(1, SecondsToFixed(DeltaTime));
+	for (FSimCopterEffectSlot& Slot : Slots)
+	{
+		if (!Slot.bActive || Slot.Pool == ESimCopterEffectPool::SplashColumns20)
+		{
+			continue;
+		}
+		Slot.Age1616 += Delta1616;
+		Slot.Life1616 -= Delta1616;
+		if (Slot.Life1616 <= 0)
+		{
+			const bool bFireSmoke = Slot.Type == ESimCopterEffectType::BuildingFireSmoke;
+			const FVector End = Slot.Position;
+			const FIntPoint Cell = Slot.Cell;
+			Slot.bActive = false;
+			if (bFireSmoke)
+			{
+				SpawnSplashColumn(End, 3, 0xFF, Cell.X, Cell.Y);
+			}
+			continue;
+		}
+
+		if (Slot.Pool == ESimCopterEffectPool::TilePuffs100)
+		{
+			Slot.Position.Z += Slot.Velocity.Z * DeltaTime;
+			continue;
+		}
+
+		Slot.SpawnTimer1616 -= Delta1616;
+		if (Slot.Type == ESimCopterEffectType::BuildingFireSmoke &&
+			Slot.SpawnTimer1616 < 0 && !Slot.bBurstEmitted)
+		{
+			Slot.bBurstEmitted = true;
+			EmitFireBurst(Slot);
+		}
+		else if ((Slot.Type == ESimCopterEffectType::Debris || Slot.Type == ESimCopterEffectType::HeavyDebris) &&
+			Slot.SpawnTimer1616 < 0)
+		{
+			Slot.SpawnTimer1616 = 0x8000;
+			SpawnTilePuff(Slot.Position, Slot.MotionScale1616 < 0x30000 ? 4 : 1, Slot.Cell.X, Slot.Cell.Y);
+			SpawnTilePuff(Slot.Position, 5, Slot.Cell.X, Slot.Cell.Y);
+		}
+
+		if (Slot.bApplyGravity)
+		{
+			Slot.Velocity.Z -= SimCopterEffectFX::GravityCmPerSec2 * DeltaTime;
+		}
+		Slot.Position += Slot.Velocity * DeltaTime;
+		Slot.Cell = GetCellForWorld(Slot.Position);
+	}
+	UpdateSplashColumns();
+}
+
+void USimCopterParticleFXComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UpdateSlots(DeltaTime);
 	RebuildMesh(GetCameraLocation());
+}
+
+FLinearColor USimCopterParticleFXComponent::PaletteColor(uint8 PaletteIndex) const
+{
+	if (SharedPalette.IsValidIndex(PaletteIndex))
+	{
+		return FLinearColor(SharedPalette[PaletteIndex]);
+	}
+	static const FColor FireRamp[16] = {
+		FColor(0x8F,0x10,0x05), FColor(0x90,0x1A,0x05), FColor(0x9A,0x20,0x05), FColor(0x9F,0x2F,0x05),
+		FColor(0xA5,0x35,0x05), FColor(0xAA,0x3F,0x0A), FColor(0xB0,0x45,0x0A), FColor(0xB5,0x50,0x0A),
+		FColor(0xBF,0x5A,0x0A), FColor(0xC0,0x60,0x0A), FColor(0xCA,0x6F,0x0A), FColor(0xCF,0x75,0x0A),
+		FColor(0xD0,0x7F,0x0A), FColor(0xDA,0x85,0x0A), FColor(0xDF,0x90,0x0A), FColor(0xE5,0x9A,0x0A),
+	};
+	if (PaletteIndex >= 0x10 && PaletteIndex <= 0x1F)
+	{
+		return FLinearColor(FireRamp[PaletteIndex - 0x10]);
+	}
+	switch (PaletteIndex)
+	{
+	case 0x08: return FLinearColor(FColor(0xC0, 0xDF, 0xC0));
+	case 0x09: return FLinearColor(FColor(0xA5, 0xCA, 0xF0));
+	case 0x73: return FLinearColor(FColor(0xFF, 0xF0, 0x1F));
+	case 0x7B: return FLinearColor(FColor(0xFF, 0xDA, 0x6F));
+	default: return FLinearColor::White;
+	}
 }
 
 void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
@@ -134,86 +690,356 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 	{
 		return;
 	}
-	if (Particles.Num() == 0)
-	{
-		MeshComponent->ClearAllMeshSections();
-		return;
-	}
 
-	// One camera-facing quad per card, expressed in the component's local space.
+	struct FRuntimeSection
+	{
+		TArray<FVector> Vertices;
+		TArray<int32> Triangles;
+		TArray<FVector> Normals;
+		TArray<FVector2D> UVs;
+		TArray<FLinearColor> Colors;
+		TArray<FProcMeshTangent> Tangents;
+	};
+	FRuntimeSection Kernels;
+	FRuntimeSection Solids;
 	const FTransform WorldToLocal = GetComponentTransform().Inverse();
 
-	TArray<FVector> Vertices;
-	TArray<int32> Triangles;
-	TArray<FVector> Normals;
-	TArray<FVector2D> UVs;
-	TArray<FLinearColor> Colors;
-	TArray<FProcMeshTangent> Tangents;
-
-	const int32 Num = Particles.Num();
-	Vertices.Reserve(Num * 4);
-	Triangles.Reserve(Num * 6);
-	Normals.Reserve(Num * 4);
-	UVs.Reserve(Num * 4);
-	Colors.Reserve(Num * 4);
-	Tangents.Reserve(Num * 4);
-
-	for (const FCard& Card : Particles)
+	FRotator CameraRotation = (GetComponentLocation() - CameraLocation).Rotation();
+	float HorizontalFovDegrees = 78.0f;
+	float ViewAspect = 16.0f / 9.0f;
+	if (const APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
-		// Billboard basis: face the camera, keep the card roughly upright.
-		FVector Forward = (CameraLocation - Card.Position);
-		if (!Forward.Normalize())
+		if (const APlayerCameraManager* CameraManager = PC->PlayerCameraManager)
 		{
-			Forward = FVector::UpVector;
+			CameraRotation = CameraManager->GetCameraRotation();
+			HorizontalFovDegrees = CameraManager->GetFOVAngle();
 		}
-		FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
-		if (!Right.Normalize())
+		int32 ViewWidth = 0;
+		int32 ViewHeight = 0;
+		PC->GetViewportSize(ViewWidth, ViewHeight);
+		if (ViewHeight > 0)
 		{
-			Right = FVector::RightVector;
+			ViewAspect = static_cast<float>(ViewWidth) / static_cast<float>(ViewHeight);
 		}
-		const FVector Up = FVector::CrossProduct(Forward, Right).GetSafeNormal();
+	}
+	const FVector CameraForward = CameraRotation.Vector();
+	const FVector CameraRight = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Y);
+	const FVector CameraUp = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Z);
+	const float HorizontalTangent =
+		FMath::Tan(FMath::DegreesToRadians(HorizontalFovDegrees * 0.5f));
+	const int32 RasterFrame = FMath::FloorToInt(
+		(GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0f) * 20.0f);
 
-		const float LifeAlpha = 1.0f - FMath::Clamp(Card.Age / Card.Life, 0.0f, 1.0f);
-		FLinearColor Color = Card.Color;
-		Color.A *= LifeAlpha; // fade out over life (translucent material reads .A)
-
-		const float Half = Card.Size;
-		const FVector Center = Card.Position;
-		const FVector V0 = WorldToLocal.TransformPosition(Center - Right * Half - Up * Half);
-		const FVector V1 = WorldToLocal.TransformPosition(Center + Right * Half - Up * Half);
-		const FVector V2 = WorldToLocal.TransformPosition(Center + Right * Half + Up * Half);
-		const FVector V3 = WorldToLocal.TransformPosition(Center - Right * Half + Up * Half);
-
-		const int32 Base = Vertices.Num();
-		Vertices.Add(V0);
-		Vertices.Add(V1);
-		Vertices.Add(V2);
-		Vertices.Add(V3);
-
-		const FVector LocalNormal = WorldToLocal.TransformVectorNoScale(Forward);
-		for (int32 n = 0; n < 4; ++n)
+	auto AddQuad = [&WorldToLocal](
+		FRuntimeSection& Section,
+		const FVector& Center,
+		const FVector& Right,
+		const FVector& Up,
+		float HalfWidth,
+		float HalfHeight,
+		const FVector2D& UV0,
+		const FVector2D& UV1,
+		const FLinearColor& Color,
+		const FVector& Normal)
+	{
+		const int32 Base = Section.Vertices.Num();
+		Section.Vertices.Add(WorldToLocal.TransformPosition(Center - Right * HalfWidth - Up * HalfHeight));
+		Section.Vertices.Add(WorldToLocal.TransformPosition(Center + Right * HalfWidth - Up * HalfHeight));
+		Section.Vertices.Add(WorldToLocal.TransformPosition(Center + Right * HalfWidth + Up * HalfHeight));
+		Section.Vertices.Add(WorldToLocal.TransformPosition(Center - Right * HalfWidth + Up * HalfHeight));
+		Section.UVs.Append({
+			FVector2D(UV0.X, UV1.Y),
+			UV1,
+			FVector2D(UV1.X, UV0.Y),
+			UV0
+		});
+		const FVector LocalNormal = WorldToLocal.TransformVectorNoScale(Normal);
+		const FProcMeshTangent Tangent(WorldToLocal.TransformVectorNoScale(Right), false);
+		for (int32 Vertex = 0; Vertex < 4; ++Vertex)
 		{
-			Normals.Add(LocalNormal);
-			Colors.Add(Color);
-			Tangents.Add(FProcMeshTangent(WorldToLocal.TransformVectorNoScale(Right), false));
+			Section.Normals.Add(LocalNormal);
+			Section.Colors.Add(Color);
+			Section.Tangents.Add(Tangent);
 		}
-		UVs.Add(FVector2D(0.0f, 1.0f));
-		UVs.Add(FVector2D(1.0f, 1.0f));
-		UVs.Add(FVector2D(1.0f, 0.0f));
-		UVs.Add(FVector2D(0.0f, 0.0f));
+		Section.Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
+	};
 
-		Triangles.Add(Base + 0);
-		Triangles.Add(Base + 1);
-		Triangles.Add(Base + 2);
-		Triangles.Add(Base + 0);
-		Triangles.Add(Base + 2);
-		Triangles.Add(Base + 3);
+	auto GetPixelSize = [&](float CameraDepth, float& OutWidth, float& OutHeight)
+	{
+		OutWidth =
+			2.0f * CameraDepth * HorizontalTangent /
+			FSimCopterEffectRasterizer::OriginalViewportWidth;
+		OutHeight =
+			2.0f * CameraDepth * HorizontalTangent /
+			(ViewAspect * FSimCopterEffectRasterizer::OriginalViewportHeight);
+	};
+
+	auto AddFace17 = [&](const FVector& Center, uint8 PaletteIndex)
+	{
+		const float CameraDepth = FVector::DotProduct(Center - CameraLocation, CameraForward);
+		if (CameraDepth <= 1.0f)
+		{
+			return;
+		}
+		float PixelWidth = 0.0f;
+		float PixelHeight = 0.0f;
+		GetPixelSize(CameraDepth, PixelWidth, PixelHeight);
+		FLinearColor Color = PaletteColor(PaletteIndex);
+		Color.A = 1.0f;
+		AddQuad(
+			Solids,
+			Center,
+			CameraRight,
+			CameraUp,
+			PixelWidth,
+			PixelHeight,
+			FVector2D::ZeroVector,
+			FVector2D(1.0f, 1.0f),
+			Color,
+			-CameraForward);
+	};
+
+	auto AddFace1A = [&](const FVector& Center, uint8 EffectClass, uint32 RandomSeed)
+	{
+		const float CameraDepth = FVector::DotProduct(Center - CameraLocation, CameraForward);
+		if (CameraDepth <= 1.0f)
+		{
+			return;
+		}
+		const FSimCopterEffectKernelMetrics Metrics =
+			FSimCopterEffectRasterizer::ComputeKernelMetrics(
+				EffectClass,
+				FSimCopterEffectRasterizer::ComputeDepthScale1616(CameraDepth));
+		if (Metrics.Iterations <= 0)
+		{
+			return;
+		}
+		const float DitherPixelWidth =
+			2.0f * CameraDepth * HorizontalTangent /
+				FSimCopterEffectRasterizer::DitherSimulationViewportWidth;
+		const float DitherPixelHeight =
+			2.0f * CameraDepth * HorizontalTangent /
+				(ViewAspect * FSimCopterEffectRasterizer::DitherSimulationViewportHeight);
+		uint32 RandomState = RandomSeed ^ static_cast<uint32>(RasterFrame) * 0xc2b2ae35u;
+		// Preserve the source rand()%7 remap-row sample even though the 0x10
+		// selector-write path does not consume the selected remap row.
+		FSimCopterEffectRasterizer::AdvanceRandom(RandomState);
+		for (int32 Iteration = 0; Iteration < Metrics.Iterations; ++Iteration)
+		{
+			const int32 JitterX =
+				static_cast<int32>(FSimCopterEffectRasterizer::AdvanceRandom(RandomState) %
+					static_cast<uint32>(Metrics.JitterSpanPixels)) -
+				Metrics.JitterHalfExtentPixels;
+			const int32 JitterY =
+				static_cast<int32>(FSimCopterEffectRasterizer::AdvanceRandom(RandomState) %
+					static_cast<uint32>(Metrics.JitterSpanPixels)) -
+				Metrics.JitterHalfExtentPixels;
+			const int32 Radius =
+				Metrics.MinRadius +
+				static_cast<int32>(FSimCopterEffectRasterizer::AdvanceRandom(RandomState) %
+					static_cast<uint32>(Metrics.RadiusChoiceCount));
+			const FSimCopterEffectStencilMetrics Stencil =
+				FSimCopterEffectRasterizer::GetStencilMetrics(Radius);
+			const float RasterWidth = static_cast<float>(Stencil.Width);
+			const float RasterHeight = static_cast<float>(Stencil.Height);
+			const FVector KernelCenter =
+				Center +
+				CameraRight *
+					((static_cast<float>(JitterX) + RasterWidth * 0.5f) * DitherPixelWidth) -
+				CameraUp *
+					((static_cast<float>(JitterY) + RasterHeight * 0.5f) * DitherPixelHeight);
+			const int32 SelectorPhase =
+				FSimCopterEffectRasterizer::ConsumeSelectorPhase(Radius);
+			const FVector2D UV0 = FSimCopterEffectRasterizer::GetAtlasUV(
+				EffectClass, SelectorPhase, Radius, 0, 0);
+			const FVector2D UV1 = FSimCopterEffectRasterizer::GetAtlasUV(
+				EffectClass, SelectorPhase, Radius, Stencil.Width, Stencil.Height);
+			AddQuad(
+				Kernels,
+				KernelCenter,
+				CameraRight,
+				CameraUp,
+				RasterWidth * DitherPixelWidth * 0.5f,
+				RasterHeight * DitherPixelHeight * 0.5f,
+				UV0,
+				UV1,
+				FLinearColor::White,
+				-CameraForward);
+		}
+	};
+
+	auto AddGeoTemplate = [&](const FSimCopterEffectSlot& Slot, int32 RenderIndex)
+	{
+		const FGeoEffectTemplate* Template = GeoTemplates.Find(Slot.GeoObjectId);
+		if (Template == nullptr)
+		{
+			return;
+		}
+		const float TemplateScale = Slot.SizeCm / FMath::Max(Template->SourceSpanCm, 1.0f);
+		auto ToWorld = [&](const FVector& Local)
+		{
+			return Slot.Position +
+				(-CameraForward * Local.X + CameraRight * Local.Y + CameraUp * Local.Z) *
+					TemplateScale;
+		};
+
+		for (int32 PointIndex = 0; PointIndex < Template->Points.Num(); ++PointIndex)
+		{
+			const FGeoEffectPoint& Point = Template->Points[PointIndex];
+			const FVector WorldPoint = ToWorld(Point.LocalOffset);
+			if (Point.FaceType == 0x17)
+			{
+				AddFace17(WorldPoint, Point.MaterialIndex);
+			}
+			else
+			{
+				AddFace1A(
+					WorldPoint,
+					Point.MaterialIndex,
+					static_cast<uint32>(RenderIndex * 257 + PointIndex * 17));
+			}
+		}
+
+		for (const FGeoEffectFace& Face : Template->Faces)
+		{
+			if (Face.Vertices.Num() == 2)
+			{
+				const FVector A = ToWorld(Face.Vertices[0]);
+				const FVector B = ToWorld(Face.Vertices[1]);
+				const FVector Center = (A + B) * 0.5f;
+				const FVector LineUp = (B - A).GetSafeNormal();
+				const float CameraDepth =
+					FVector::DotProduct(Center - CameraLocation, CameraForward);
+				if (CameraDepth > 1.0f)
+				{
+					float PixelWidth = 0.0f;
+					float PixelHeight = 0.0f;
+					GetPixelSize(CameraDepth, PixelWidth, PixelHeight);
+					AddQuad(
+						Solids,
+						Center,
+						CameraRight,
+						LineUp,
+						PixelWidth,
+						FVector::Distance(A, B) * 0.5f,
+						FVector2D::ZeroVector,
+						FVector2D(1.0f, 1.0f),
+						Face.Color,
+						-CameraForward);
+				}
+				continue;
+			}
+
+			const int32 Base = Solids.Vertices.Num();
+			for (const FVector& LocalVertex : Face.Vertices)
+			{
+				Solids.Vertices.Add(WorldToLocal.TransformPosition(ToWorld(LocalVertex)));
+				Solids.UVs.Add(FVector2D::ZeroVector);
+				Solids.Colors.Add(Face.Color);
+				Solids.Tangents.Add(FProcMeshTangent(
+					WorldToLocal.TransformVectorNoScale(CameraRight),
+					false));
+			}
+			const FVector LocalNormal = WorldToLocal.TransformVectorNoScale(-CameraForward);
+			for (int32 Vertex = 0; Vertex < Face.Vertices.Num(); ++Vertex)
+			{
+				Solids.Normals.Add(LocalNormal);
+			}
+			for (int32 Triangle = 1; Triangle < Face.Vertices.Num() - 1; ++Triangle)
+			{
+				Solids.Triangles.Append({
+					Base,
+					Base + Triangle,
+					Base + Triangle + 1
+				});
+			}
+		}
+	};
+
+	for (int32 RenderIndex = 0; RenderIndex < Slots.Num(); ++RenderIndex)
+	{
+		const FSimCopterEffectSlot& Slot = Slots[RenderIndex];
+		if (!Slot.bActive)
+		{
+			continue;
+		}
+
+		if (Slot.FaceType == 0 && Slot.GeoObjectId != INDEX_NONE)
+		{
+			AddGeoTemplate(Slot, RenderIndex);
+			continue;
+		}
+
+		FVector TrajectoryDirection = Slot.Velocity.GetSafeNormal();
+		if (TrajectoryDirection.IsNearlyZero())
+		{
+			TrajectoryDirection = FVector::UpVector;
+		}
+		for (int32 PointIndex = 0; PointIndex < Slot.PointCount; ++PointIndex)
+		{
+			const FVector Center =
+				Slot.Position +
+				(Slot.bTrajectory
+					? TrajectoryDirection * OriginalPointStepCm * PointIndex
+					: FVector::ZeroVector);
+			if (Slot.FaceType == 0x17)
+			{
+				AddFace17(Center, Slot.PointPaletteIndices[PointIndex]);
+			}
+			else if (Slot.FaceType == 0x1a)
+			{
+				const uint8 EffectClass =
+					Slot.Pool == ESimCopterEffectPool::TilePuffs100
+						? Slot.EffectClass
+						: Slot.PointPaletteIndices[PointIndex];
+				AddFace1A(
+					Center,
+					EffectClass,
+					static_cast<uint32>(RenderIndex * 257 + PointIndex * 17));
+			}
+		}
 	}
 
-	MeshComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
-	UMaterialInterface* Material = CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get();
-	if (Material != nullptr)
+	if (Kernels.Vertices.IsEmpty())
 	{
-		MeshComponent->SetMaterial(0, Material);
+		MeshComponent->ClearMeshSection(0);
+	}
+	else
+	{
+		MeshComponent->CreateMeshSection_LinearColor(
+			0,
+			Kernels.Vertices,
+			Kernels.Triangles,
+			Kernels.Normals,
+			Kernels.UVs,
+			Kernels.Colors,
+			Kernels.Tangents,
+			false);
+		if (KernelMaterialInstance != nullptr)
+		{
+			MeshComponent->SetMaterial(0, KernelMaterialInstance);
+		}
+	}
+
+	if (Solids.Vertices.IsEmpty())
+	{
+		MeshComponent->ClearMeshSection(1);
+	}
+	else
+	{
+		MeshComponent->CreateMeshSection_LinearColor(
+			1,
+			Solids.Vertices,
+			Solids.Triangles,
+			Solids.Normals,
+			Solids.UVs,
+			Solids.Colors,
+			Solids.Tangents,
+			false);
+		if (UMaterialInterface* Material =
+			CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get())
+		{
+			MeshComponent->SetMaterial(1, Material);
+		}
 	}
 }

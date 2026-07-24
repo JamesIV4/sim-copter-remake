@@ -8,6 +8,8 @@
 
 class UProceduralMeshComponent;
 class UMaterialInterface;
+class UMaterialInstanceDynamic;
+class UTexture2D;
 
 // One flame the owner wants drawn this frame. Key is a stable per-flame id (the mission
 // system's flame slot index, or a burning-car key); World is the base-of-flame world location;
@@ -18,14 +20,13 @@ struct FSimCopterFlameVisual
 	FVector World = FVector::ZeroVector;
 	float Scale = 1.0f;
 	float FlickerSeed = 0.0f;
+	bool bVehicleFire = false;
 };
 
-// Renders the original SimCopter building/car flame (FIREPTS, GEO object id 0x120). FIREPTS is
-// not a solid mesh: its 22 "faces" are single-vertex points, i.e. a cloud of palette-coloured
-// point sprites (hence "fire points"). This component extracts those points + their SIM3D palette
-// colours once, then every tick rebuilds one procedural mesh of camera-facing, emissive,
-// translucent quads - one per point per active flame - with a per-point flicker. Faithful to the
-// original, which draws each fire point as a flat palette-coloured card.
+// Renders the original SimCopter building/car fire-point template (FIREPTS, GEO object id 0x120).
+// Its face type 26/light type 1 entries are effect/light markers: material indices 1 and 2 are
+// semantic smoke/fire classes, not literal palette colors. The original renderer expanded those
+// markers with FUN_00496da0's stochastic, palette-indexed screen-pixel kernels.
 UCLASS(ClassGroup = (SimCopter), meta = (BlueprintSpawnableComponent))
 class SIMCOPTERREMAKE_API USimCopterFireRenderComponent : public USceneComponent
 {
@@ -35,19 +36,19 @@ public:
 	USimCopterFireRenderComponent();
 
 	// Loads the GEO packs from OriginalGameRoot once and extracts the FIREPTS point cloud.
-	// InFlameMaterial should be the emissive/translucent particle material. Returns false (and
+	// InFlameMaterial should be the masked unlit sprite-texture material. Returns false (and
 	// sets OutError) if the flame object could not be read.
 	bool InitFireAssets(const FString& OriginalGameRoot, UMaterialInterface* InFlameMaterial, FString& OutError);
 	bool IsReady() const { return bAssetsReady; }
 
-	// Rebuild the drawn flames for the requested set. CameraLocation orients the billboards.
+	// Rebuild the drawn flames. CameraLocation orients the software-renderer cards.
 	void SyncFlames(const TArray<FSimCopterFlameVisual>& Visuals, float TimeSeconds, const FVector& CameraLocation);
 
 private:
 	struct FFirePoint
 	{
 		FVector LocalOffset = FVector::ZeroVector; // cm, base of the flame at Z = 0
-		FLinearColor Color = FLinearColor::White;
+		uint8 EffectClass = 0;
 	};
 
 	UPROPERTY(Transient)
@@ -55,10 +56,13 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> FlameMaterial;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> FlameMaterialInstance;
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> SelectorAtlas;
 
 	TArray<FFirePoint> FirePoints;
-	float FireSpriteHalfSizeCm = 35.0f;
-	float FireMaxLocalZ = 1.0f; // top of the fire-point cloud (cm), for the height->colour ramp
+	TArray<FColor> SharedPalette;
 	bool bAssetsReady = false;
 
 	// Matches the ground-vehicle mesh conversion so the flame reads at the city's 0.25 scale.

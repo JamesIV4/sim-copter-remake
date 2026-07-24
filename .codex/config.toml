@@ -9,3 +9,6 @@ approval_mode = "approve"
 
 [mcp_servers.unreal-mcp.tools.call_tool]
 approval_mode = "approve"
+
+[mcp_servers.unreal-engine]
+url = "http://127.0.0.1:8000/mcp"

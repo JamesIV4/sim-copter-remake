@@ -471,27 +471,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash")
 	bool bEnableRotorWash = true;
 
-	// The original triggers within ~20 world units (~0x140000) of the surface top; converted at
-	// the city's 6.25 cm/unit that is ~125 cm, but the remake flies at readable altitudes, so the
-	// default is loosened for visibility.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "50.0"))
-	float RotorWashMaxHeightCm = 900.0f;
-
-	// The original also gates on a minimum absolute altitude so the wash does not fire while
-	// parked on the pad.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "0.0"))
-	float RotorWashMinAltitudeCm = 60.0f;
-
-	// Wash puffs per second at full intensity (right over the surface); scales down with height.
-	// The puffs are pale SMOKE-sized sprites that live ~0.6s, so this rate keeps a few dozen alive -
-	// the "dozens of small particles" ring the original shows without overcrowding.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "1.0"))
-	float RotorWashCardsPerSec = 110.0f;
-
-	// Water drips emitted per second from the bucket while dumping.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|RotorWash", meta = (ClampMin = "1.0"))
-	float BucketDripPerSec = 90.0f;
-
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
 	ESimCopterCameraMode CameraMode = ESimCopterCameraMode::Chase;
 
@@ -632,10 +611,6 @@ private:
 
 	// Cached mission actor for the bucket douse (resolved lazily via GetActorOfClass).
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
-	// Accumulators so drip / wash cards spawn at a steady rate independent of frame rate.
-	float DripSpawnAccumulator = 0.0f;
-	float RotorWashAccumulator = 0.0f;
-
 	bool bEngineStartHeld = false;
 	bool bEngineShutdownHeld = false;
 	float EngineStartHoldElapsed = 0.0f;

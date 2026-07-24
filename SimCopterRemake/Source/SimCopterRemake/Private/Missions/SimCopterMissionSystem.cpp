@@ -1127,11 +1127,73 @@ int32 FSimCopterMissionSystem::AllocateFireObject(int32 TileX, int32 TileY)
 
 bool FSimCopterMissionSystem::IgniteBuilding(int32 FireObjectIndex, int32 TileX, int32 TileY, int32 EventId, int32 Flags)
 {
-	int32 NumFlames = 3; 
 	bool bSpawned = false;
-	for (int32 i = 0; i < NumFlames; ++i)
+	auto Spawn = [&](int32 OffsetX, int32 OffsetZ, int32 AxisFlag)
 	{
-		bSpawned |= SpawnFlame(FireObjectIndex, TileX, TileY, 0, 0, Flags, EventId, 0);
+		bSpawned |= SpawnFlame(
+			FireObjectIndex,
+			TileX,
+			TileY,
+			OffsetX,
+			OffsetZ,
+			AxisFlag,
+			EventId,
+			Flags);
+	};
+	auto OneIn = [&](int32 Divisor)
+	{
+		return static_cast<int32>(Rand.Rand() % static_cast<uint32>(Divisor)) == 0;
+	};
+
+	const int32 Footprint = World != nullptr ? World->GetBuildingFootprintSize(TileX, TileY) : 1;
+	switch (Footprint)
+	{
+	case 2:
+		Spawn(-0x200000, 0x300000, 2);
+		if (OneIn(10)) Spawn(0x200000, 0x300000, 2);
+		if (OneIn(5)) Spawn(-0x200000, -0x300000, 4);
+		if (OneIn(10)) Spawn(0x200000, -0x300000, 4);
+		if (OneIn(7)) Spawn(-0x300000, 0x200000, 0x10);
+		if (OneIn(10)) Spawn(0x300000, 0x200000, 8);
+		if (OneIn(6)) Spawn(-0x300000, -0x200000, 0x10);
+		if (OneIn(10)) Spawn(0x300000, -0x200000, 8);
+		break;
+	case 3:
+		Spawn(0x500000, 0x400000, 8);
+		if (OneIn(10)) Spawn(0x500000, 0, 8);
+		if (OneIn(3)) Spawn(0x500000, -0x400000, 8);
+		if (OneIn(10)) Spawn(-0x500000, 0x400000, 0x10);
+		if ((Rand.Rand() & 3u) == 0) Spawn(-0x500000, 0, 0x10);
+		if (OneIn(10)) Spawn(-0x500000, -0x400000, 0x10);
+		if (OneIn(10)) Spawn(0x400000, 0x500000, 2);
+		if ((Rand.Rand() & 7u) == 0) Spawn(0, 0x500000, 2);
+		if (OneIn(10)) Spawn(-0x400000, 0x500000, 2);
+		if (OneIn(9)) Spawn(0x400000, -0x500000, 4);
+		if (OneIn(3)) Spawn(0, -0x500000, 4);
+		Spawn(-0x400000, -0x500000, 4);
+		break;
+	case 4:
+		Spawn(0x700000, 0x600000, 8);
+		if (OneIn(3)) Spawn(0x700000, 0x200000, 8);
+		Spawn(0x700000, -0x200000, 8);
+		if (OneIn(5)) Spawn(0x700000, -0x600000, 8);
+		if (OneIn(10)) Spawn(-0x700000, 0x600000, 0x10);
+		if (OneIn(7)) Spawn(-0x700000, 0x200000, 0x10);
+		Spawn(-0x700000, -0x200000, 0x10);
+		if (OneIn(7)) Spawn(-0x700000, -0x600000, 0x10);
+		if ((Rand.Rand() & 7u) == 0) Spawn(0x600000, 0x700000, 2);
+		if (OneIn(10)) Spawn(0x200000, 0x700000, 2);
+		if (OneIn(10)) Spawn(-0x200000, 0x700000, 2);
+		if ((Rand.Rand() & 3u) == 0) Spawn(-0x600000, 0x700000, 2);
+		if (OneIn(10)) Spawn(0x600000, -0x700000, 4);
+		if (OneIn(6)) Spawn(0x200000, -0x700000, 4);
+		if (OneIn(3)) Spawn(-0x200000, -0x700000, 4);
+		Spawn(-0x600000, -0x700000, 4);
+		break;
+	default:
+		if (OneIn(10)) Spawn(0, -0x100000, 0);
+		Spawn(0, 0x100000, 0);
+		break;
 	}
 	return bSpawned;
 }
@@ -1148,6 +1210,12 @@ bool FSimCopterMissionSystem::SpawnFlame(int32 FireObjectIndex, int32 TileX, int
 			Flames[i].EventId = EventId;
 			Flames[i].FireObjectIndex = FireObjectIndex;
 			Flames[i].BurnCountdown = 0x200000;
+			Flames[i].GrowthAxisFlags = AxisFlag;
+			Flames[i].PosX = OffsetX;
+			Flames[i].PosY = 0;
+			Flames[i].PosZ = OffsetZ;
+			Flames[i].Size1616 = 0x10000;
+			Flames[i].GrowthStepsRemaining = 0;
 			
 			PostEvent(EVT_FlameCreated, EventId, 1, false);
 			ActiveFlameCount++;

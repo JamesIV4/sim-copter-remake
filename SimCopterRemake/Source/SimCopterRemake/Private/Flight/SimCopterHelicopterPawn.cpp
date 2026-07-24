@@ -250,6 +250,14 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	{
 		LoadHelicopterMeshFromOriginalGameRoot();
 	}
+	if (WaterFXComponent != nullptr)
+	{
+		FString EffectError;
+		if (!WaterFXComponent->InitEffectAssets(ResolveOriginalGameRoot(), EffectError))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("SimCopter effect palette unavailable: %s"), *EffectError);
+		}
+	}
 
 	// Keep the cursor free so the player can use on-screen buttons; mouse-look is only
 	// engaged while a mouse button is held (see Start/StopCameraDrag). GameAndUI routes
@@ -1338,8 +1346,22 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	// remake has no pad registry yet, so it repairs in place where it crashed.
 	if (LastFlightEvents.bCrashed)
 	{
+		if (WaterFXComponent != nullptr)
+		{
+			// Phase-one FUN_0048a8b0 landing effects are visual only; the flight model remains the
+			// authority for the crash/repair transition.
+			WaterFXComponent->SpawnHardLanding(GetActorLocation(), ProbeBucketWater(GetActorLocation()));
+		}
 		bEngineRunning = false;
 		SeedFlightModelFromActor();
+	}
+	else if ((LastFlightEvents.bGroundBounce || LastFlightEvents.bSplashBounce) && WaterFXComponent != nullptr)
+	{
+		// FUN_0048a8b0 enters its phase-one effect state on the hard impact itself, not only
+		// after the later destroyed-helicopter transition.
+		WaterFXComponent->SpawnHardLanding(
+			GetActorLocation(),
+			LastFlightEvents.bSplashBounce || ProbeBucketWater(GetActorLocation()));
 	}
 }
 
@@ -1634,46 +1656,32 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 			? BucketMeshComponent->GetComponentLocation()
 			: GetActorLocation();
 
-		// Visible falling water: emit small drip specks from the bucket mouth (port of FUN_00488060,
-		// which spawns type-6 water-drip particles while the bucket empties). Small, pale
-		// white+blue palette specks that fall under gravity.
+		// FUN_00488060 uses the bucket render-node basis as a unit velocity, starts eight original
+		// units below the bucket, and applies only the small extent-derived lateral variation.
 		if (WaterFXComponent != nullptr)
 		{
-			DripSpawnAccumulator += DeltaSeconds * BucketDripPerSec;
-			const int32 DripCount = FMath::Min(FMath::FloorToInt(DripSpawnAccumulator), 20);
-			DripSpawnAccumulator -= static_cast<float>(DripCount);
-			for (int32 i = 0; i < DripCount; ++i)
-			{
-				const FVector Jitter(FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-16.0f, 16.0f), FMath::FRandRange(-10.0f, 10.0f));
-				const FVector Drift(FMath::FRandRange(-40.0f, 40.0f), FMath::FRandRange(-40.0f, 40.0f), -260.0f);
-				const FLinearColor WaterColor = FMath::FRand() < 0.3f
-					? SimCopterEffectFX::SprayWhite(0.85f)
-					: SimCopterEffectFX::WaterBlue(0.8f);
-				const float SizeCm = FMath::FRandRange(SimCopterEffectFX::WashCardSizeCm, SimCopterEffectFX::DebrisSizeCm);
-				WaterFXComponent->SpawnParticle(BucketWorld + Jitter, Drift, SizeCm, WaterColor, /*Life*/ 0.7f,
-					SimCopterEffectFX::GravityCmPerSec2);
-			}
+			const FVector DownDirection = -GetActorUpVector();
+			const FVector RightDirection = GetActorRightVector();
+			const FVector ForwardDirection = GetActorForwardVector();
+			const FVector Extent = BucketMeshComponent != nullptr
+				? BucketMeshComponent->Bounds.BoxExtent
+				: FVector(16.0f);
+			const FVector Mouth = BucketWorld +
+				DownDirection * (8.0f * SimCopterEffectFX::OriginalUnitToCm) +
+				RightDirection * FMath::FRandRange(-Extent.Y, Extent.Y) +
+				ForwardDirection * FMath::FRandRange(-Extent.X, Extent.X);
+			WaterFXComponent->SpawnEffect(
+				ESimCopterEffectType::BucketDrip,
+				Mouth,
+				DownDirection * SimCopterEffectFX::OriginalUnitToCm,
+				15.0f * SimCopterEffectFX::OriginalUnitToCm);
 		}
 
-		// Douse: extinguish flames under the bucket. When water is actually hitting fire, kick up
-		// a puff of steam at the fire.
+		// Extinguishing remains mission state. FUN_00488060 does not add the previous six-puff
+		// hand-authored steam burst.
 		if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
 		{
-			const int32 FlamesHit = MissionSystem->DumpWaterAt(BucketWorld);
-			if (FlamesHit > 0 && WaterFXComponent != nullptr)
-			{
-				// Steam puff where water meets fire: a scatter of small pale specks rising.
-				const FVector SteamOrigin = BucketWorld + FVector(0, 0, -RopeLengthCm * 0.15f);
-				for (int32 i = 0; i < 6; ++i)
-				{
-					const float Angle = FMath::FRandRange(0.0f, 2.0f * PI);
-					const float Radius = FMath::FRandRange(0.0f, 60.0f);
-					const FVector Pos = SteamOrigin + FVector(FMath::Cos(Angle) * Radius, FMath::Sin(Angle) * Radius, 0.0f);
-					const FVector Vel(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), 150.0f);
-					WaterFXComponent->SpawnParticle(Pos, Vel, /*Size*/ FMath::FRandRange(SimCopterEffectFX::DebrisSizeCm, SimCopterEffectFX::SmokeSizeCm),
-						SimCopterEffectFX::SprayWhite(0.75f), /*Life*/ 1.0f, /*Gravity*/ -60.0f);
-				}
-			}
+			MissionSystem->DumpWaterAt(BucketWorld);
 		}
 	}
 
@@ -1724,10 +1732,8 @@ ASimCopterMissionSystemActor* ASimCopterHelicopterPawn::ResolveMissionSystem()
 
 void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
 {
-	// Port of FUN_004881b0: with the rotor spun up and the helicopter low over a surface (and
-	// above a minimum height so it does not fire while parked), scatter effect cards under the
-	// rotor - spray over water, dust over land - with random-yaw placement, like the original's
-	// randomly-rotated wash particles.
+	// FUN_004881b0 has one visual: a class-8 SMOKE puff.  Surface-dependent interpretation comes
+	// from the scene underneath it; do not branch into invented dust/water palettes here.
 	if (!bEnableRotorWash || WaterFXComponent == nullptr || !FlightModel.bRotorBlurDisc)
 	{
 		return;
@@ -1751,60 +1757,19 @@ void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
 
 	const float SurfaceZ = Hit.ImpactPoint.Z;
 	const float Height = Location.Z - SurfaceZ;
-	if (Height < RotorWashMinAltitudeCm || Height > RotorWashMaxHeightCm)
+
+	// +0x158 is rotor speed ([0x56]), not world altitude. The previous comparison made the
+	// near-surface and altitude gates mutually exclusive, so this effect could never fire.
+	if (!USimCopterParticleFXComponent::IsRotorWashEligible(Height, FlightModel.RotorSpeed))
 	{
 		return;
 	}
 
-	const bool bWater =
-		(Hit.GetActor() != nullptr && NameSuggestsWater(Hit.GetActor()->GetFName())) ||
-		(Hit.GetComponent() != nullptr && NameSuggestsWater(Hit.GetComponent()->GetFName())) ||
-		Hit.ImpactPoint.Z <= WaterFillWorldZ + 5.0f;
-
-	// Intensity ramps up as the helicopter descends toward the surface (the original spawns more
-	// wash particles the closer it gets).
-	const float Range = FMath::Max(RotorWashMaxHeightCm - RotorWashMinAltitudeCm, 1.0f);
-	const float Intensity = FMath::Clamp(1.0f - (Height - RotorWashMinAltitudeCm) / Range, 0.0f, 1.0f);
-
-	RotorWashAccumulator += DeltaSeconds * RotorWashCardsPerSec * Intensity;
-	const int32 Count = FMath::Min(FMath::FloorToInt(RotorWashAccumulator), 40);
-	RotorWashAccumulator -= static_cast<float>(Count);
-	if (Count <= 0)
-	{
-		return;
-	}
-
-	// The original wash (FUN_004881b0 -> FUN_004af220 class 8) is the pale SMOKE puff scattered at a
-	// random-yaw offset under the rotor. It reads as white/blue spray over water and pale dust over
-	// land. We emit a handful of small palette-coloured puffs per frame; they accumulate into the
-	// dozens-of-small-particles ring the original shows, then fall away under gravity.
-	const float LifeSeconds = bWater ? 0.7f : 0.55f;
-	const float MaxRadius = 120.0f + 260.0f * Intensity;
-
-	for (int32 i = 0; i < Count; ++i)
-	{
-		const float Angle = FMath::FRandRange(0.0f, 2.0f * PI);
-		const float Radius = FMath::FRandRange(20.0f, MaxRadius);
-		const FVector Dir(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f);
-		const FVector SpawnPos(Location.X + Dir.X * Radius, Location.Y + Dir.Y * Radius, SurfaceZ + FMath::FRandRange(2.0f, 18.0f));
-		const FVector Velocity = Dir * FMath::FRandRange(90.0f, 220.0f) + FVector(0, 0, FMath::FRandRange(30.0f, 110.0f));
-
-		// Soft puff: blue/white water spray over water, tan-brown dust over land.
-		const float Alpha = FMath::FRandRange(0.5f, 0.8f);
-		FLinearColor Color;
-		if (bWater)
-		{
-			Color = FMath::FRand() < 0.35f ? SimCopterEffectFX::SprayWhite(Alpha) : SimCopterEffectFX::SprayBlue(Alpha);
-		}
-		else
-		{
-			Color = FMath::FRand() < 0.5f ? SimCopterEffectFX::DustBrown(Alpha) : SimCopterEffectFX::DustDarkBrown(Alpha);
-		}
-
-		// Small puffs (a fraction of the SMOKE sprite width), varied for chaos.
-		const float SizeCm = FMath::FRandRange(SimCopterEffectFX::DebrisSizeCm, SimCopterEffectFX::WashPuffSizeCm * 0.5f);
-		WaterFXComponent->SpawnParticle(SpawnPos, Velocity, SizeCm, Color, LifeSeconds, SimCopterEffectFX::GravityCmPerSec2);
-	}
+	const float RandomYawDegrees = FMath::FRandRange(-150.0f, 150.0f);
+	const FVector Offset = (-GetActorRightVector()).RotateAngleAxis(RandomYawDegrees, FVector::UpVector) *
+		(32.0f * SimCopterEffectFX::OriginalUnitToCm);
+	const FVector GroundPoint(Location.X, Location.Y, SurfaceZ);
+	WaterFXComponent->SpawnTilePuff(GroundPoint + Offset, 8);
 }
 
 void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)

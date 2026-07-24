@@ -45,14 +45,15 @@ Config files live at the repo root and are committed:
 - `ghidra-bridge.yaml` - points at the Ghidra install (scoop), the project
   (`Docs/scratchpad/ghidra/SimCopter`), the export dir (`.ghidra-exports/`, gitignored), and the
   source-annotation pattern.
-- `re-agent.yaml` - LLM provider (`codex`, model `gpt-5.5`), backend CLI path, verifier and
-  parity settings. Codex uses the local ChatGPT login cached by the Codex CLI; the current personal
-  Codex reasoning default is `model_reasoning_effort = "high"` in `C:\Users\james\.codex\config.toml`.
+- `re-agent.yaml` - LLM provider (Codex Sol, `gpt-5.6-sol`, at `medium` reasoning), backend CLI
+  path, verifier and parity settings. Codex uses the local ChatGPT login cached by the Codex CLI;
+  re-agent passes the effort as a per-run CLI override, so it does not depend on the user's global
+  `C:\Users\james\.codex\config.toml` default.
 
 The LLM can be switched per run with `re-agent reverse --llm <choice>` (optional; defaults to the
 configured provider, i.e. `codex`). Presets:
 
-- `--llm codex` - Codex CLI over the ChatGPT login, model `gpt-5.5` (default).
+- `--llm codex` - Codex CLI over the ChatGPT login, model `gpt-5.6-sol` at `medium` reasoning (default).
 - `--llm fable` (aliases `claude`, `claude-code`) - the **npm Claude Code CLI** (`claude -p`) over the
   local **Claude subscription login**, model `claude-fable-5` at `medium` reasoning effort.
 
@@ -341,12 +342,14 @@ analyzeHeadless <project_dir> <project_name> -process SimCopter.exe -noanalysis 
 Supported commands:
 
 - `strings <substr>`: list defined strings containing the substring and referencing functions.
-- `xrefsto <hexaddr>`: list references to an address.
+- `xrefsto <hexaddr>...`: list references to one or more addresses.
 - `decompile <hexaddr>...`: decompile the function containing each address.
 - `func <name>...`: decompile functions by Ghidra function name.
 - `callers <hexaddr>`: list callers of the function containing an address.
 - `bytes <hexaddr> <count>`: dump bytes and little-endian dwords (count accepts decimal or `0x` hex).
 - `disasm <hexaddr> <count>`: force-disassemble raw blocks (for vtable-only code); shows call/jump targets.
+- `disasmrange <start> <end>`: force-disassemble an inclusive address range; use this for
+  optimized functions whose indirect jump targets are omitted from the normal function body.
 - `decompileforce <hexaddr>...`: create a function at the address first (for vtable-only targets Ghidra never made into functions), then decompile. Essential for figure/anim-node methods that are referenced only through vtables.
 - `scan <hexbytes>`: search all program memory for a byte sequence and report addresses + containing function. Used to locate code by an immediate constant, e.g. `scan 6856414842` finds `push 0x42484156` ("VAHB"/BHAV).
 
@@ -395,6 +398,15 @@ The scratchpad has these notable outputs:
 - `out_texslice.txt`: texture slicing/page evidence.
 - `out_rngseed.txt`: randomness/seed behavior.
 - `out_scene_refs.txt`, `out_render.txt`: scene/render references.
+- 2026-07-24 authentic effect-renderer pass:
+  `out_effect_renderer_decompile_20260724.txt` (19 live C decompiles),
+  `out_effect_face_1a_rasterizer_asm_20260724.txt` (complete
+  `FUN_00496da0` instruction range), `out_effect_face_1a_jump_tables_20260724.txt`,
+  `out_effect_renderer_dispatch_tables_20260724.txt`,
+  `out_effect_face_dispatch_wrappers_asm_20260724.txt`,
+  `out_effect_palette_producers_20260724.txt`, `out_effect_palette_tables_20260724.txt`, and
+  `out_effect_palette_xrefs_20260724.txt`. Run manifest and hashes:
+  `effect_renderer_decompile_run_20260724.md`.
 - `out_people_parser.txt`: `people.df` parse delegation (`FUN_004cd550` -> `FUN_004ce2d0`), behavior-file open check, the people LFSR PRNG (`FUN_004ce9d0`), the generic resource opener (`FUN_00433b20`), and Pascal-string helpers. Source for `OriginalGameFileFormats.md`.
 - `out_df_reader.txt`: DF resource read path and resource-type-`0xc` path resolver internals.
 - `out_traffic_terrain.txt`: original `TRAN` per-tile steering (`FUN_004b5290`), the road-graph dump/structures (`FUN_00495700`), and the `ALTM` altitude/slope helper (`FUN_004abc20`). Source for `OriginalRuntimeBehavior.md` traffic and slope sections.
