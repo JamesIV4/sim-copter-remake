@@ -7,12 +7,13 @@
 //
 // Commands:
 //   strings <substr>          List defined strings containing substr + referencing funcs.
-//   xrefsto <hexaddr>         References to an address + containing function.
+//   xrefsto <hexaddr>...      References to one or more addresses + containing function.
 //   decompile <hexaddr>...    Decompile functions containing the given addresses.
 //   func <name>...            Decompile functions by name.
 //   callers <hexaddr>         Functions that call the function containing addr.
 //   bytes <hexaddr> <count>   Hex/dword dump.
 //   disasm <hexaddr> <count>  Disassemble <count> instructions (force-disassembles raw blocks); shows call/jump targets.
+//   disasmrange <start> <end> Disassemble through an inclusive end address; shows call/jump targets.
 //   decompileforce <hexaddr>...  Create a function at each addr if none exists (vtable-only targets), then decompile.
 //   scan <hexbytes>           Search all memory for a byte sequence (e.g. 68564148 42); report addrs + containing func.
 
@@ -54,13 +55,14 @@ public class ReverseExplore extends GhidraScript {
 		try {
 			switch (cmd) {
 				case "strings": cmdStrings(args[2]); break;
-				case "xrefsto": cmdXrefsTo(args[2]); break;
+				case "xrefsto": for (int i = 2; i < args.length; i++) cmdXrefsTo(args[i]); break;
 				case "decompile": for (int i = 2; i < args.length; i++) decompileAt(toAddr(args[i])); break;
 				case "decompileforce": for (int i = 2; i < args.length; i++) decompileForce(toAddr(args[i])); break;
 				case "func": for (int i = 2; i < args.length; i++) decompileFunc(args[i]); break;
 				case "callers": cmdCallers(args[2]); break;
 				case "bytes": cmdBytes(args[2], parseCount(args[3])); break;
 				case "disasm": cmdDisasm(args[2], parseCount(args[3])); break;
+				case "disasmrange": cmdDisasmRange(args[2], args[3]); break;
 				case "scan": cmdScan(args[2]); break;
 				default: out.println("Unknown command: " + cmd);
 			}
@@ -195,6 +197,40 @@ public class ReverseExplore extends GhidraScript {
 		Address addr = toAddr(hex);
 		Listing listing = currentProgram.getListing();
 		for (int i = 0; i < count && addr != null; i++) {
+			Instruction insn = listing.getInstructionAt(addr);
+			if (insn == null) {
+				try { disassemble(addr); } catch (Exception e) { /* ignore */ }
+				insn = listing.getInstructionAt(addr);
+			}
+			if (insn == null) {
+				int b = 0;
+				try { b = currentProgram.getMemory().getByte(addr) & 0xff; } catch (Exception e) {}
+				out.println(addr + "  db 0x" + String.format("%02x", b) + "  (could not disassemble)");
+				addr = addr.add(1);
+				continue;
+			}
+			StringBuilder sb = new StringBuilder();
+			sb.append(addr).append("  ").append(insn.toString());
+			Address[] flows = insn.getFlows();
+			if (flows != null && flows.length > 0) {
+				sb.append("   -> ");
+				for (Address f : flows) {
+					Function fn = getFunctionContaining(f);
+					sb.append(f);
+					if (fn != null) sb.append("(").append(fn.getName()).append(")");
+					sb.append(" ");
+				}
+			}
+			out.println(sb.toString());
+			addr = insn.getMaxAddress().add(1);
+		}
+	}
+
+	void cmdDisasmRange(String startHex, String endHex) {
+		Address addr = toAddr(startHex);
+		Address end = toAddr(endHex);
+		Listing listing = currentProgram.getListing();
+		while (addr != null && addr.compareTo(end) <= 0) {
 			Instruction insn = listing.getInstructionAt(addr);
 			if (insn == null) {
 				try { disassemble(addr); } catch (Exception e) { /* ignore */ }

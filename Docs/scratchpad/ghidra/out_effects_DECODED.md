@@ -1,18 +1,25 @@
-# SimCopter fire / water / rotor-wash effects — complete decode (2026-07-05)
+# SimCopter fire / water / rotor-wash effect layer decode (2026-07-05)
 
-Every function that **spawns, updates, or renders** the fire/water/wash/dust/debris effects
-has been decompiled. Raw decompiles live beside this file:
+The functions that spawn and update the fire/water/wash/dust/debris effects were decompiled.
+The original software-renderer consumers were not included in this 2026-07-05 pass. A live
+follow-up pass on 2026-07-24 traced face type `0x17` to `FUN_00491520`, traced face type `0x1a`
+to `FUN_00496da0`, and captured the latter's complete optimized instruction range, jump tables,
+palette producers, and selector bytes. See `effect_renderer_decompile_run_20260724.md` and
+`effect_renderer_gap_20260724.md`. A subsequent resolution-global read established that the
+active `DAT_004f9750 == 0x10` path projects into a 560x400 gameplay viewport within a
+640x480 framebuffer; the alternate mode uses 280x200 within 320x240. See
+`effect_resolution_run_20260724.md`. Raw effect-layer decompiles live beside this file:
 `out_fire_water_effects.txt`, `out_heli_landing.txt`, `out_effect_pool_init.txt`
 (pool alloc `FUN_0048da50` + init `FUN_0048db20` + **master updater `FUN_0048ed00`**),
 `out_effect_sprite_creator.txt` (card geometry `FUN_0046edb0` + face get/set),
-`out_fx_palette_init.txt` (`FUN_004aeba0` splash/wash pool + palette-frame init;
-`FUN_00483c20` per-fire-type material setup), `out_fx_colorlookup.txt` (`FUN_0046cd20`),
+`out_fx_palette_init.txt` (`FUN_004aeba0` splash/wash pool + palette-frame init and the
+previously misidentified `FUN_00483c20`), `out_fx_colorlookup.txt` (`FUN_0046cd20`),
 `out_fx_ramp_builder.txt` (`FUN_00479bb0` global load), `out_fx_spritesize.txt`.
 
 ## 0. The single most important correction
 
 The effects are **NOT** big camera-facing dithered quads with invented colors (what the
-remake currently does). Every effect particle is one of exactly two authentic primitives:
+former approximation did). Every effect particle is one of exactly two authentic primitives:
 
 1. **A small GEO billboard** — a pre-loaded Maxis mesh (SMOKE `0x148`, a smoke variant
    `0xae`, debris `0x149/0x14a/0x14b`, …) drawn at its own small size with its own
@@ -21,10 +28,11 @@ remake currently does). Every effect particle is one of exactly two authentic pr
    procedurally by `FUN_0046edb0(N, 0x17)`, each point colored by a **SIM3D palette index**
    and moved along a path.
 
-There is **no texture atlas and no alpha blending**. Transparency is the 8-bit software
-rasterizer's business; the effect layer only ever sets a **palette index** per point and a
-**world-space size**. "Many small particles" is literally many small sprites, accumulated
-over frames from short lifetimes — not one big quad.
+There is **no texture atlas** in the effect layer. The effect layer sets a class/palette input
+and world-space size; the 8-bit software rasterizer determines the final framebuffer operation.
+Face type `0x17` is now confirmed as a direct projected point write. Face type `0x1a` reads and
+remaps existing framebuffer pixels through class- and depth-dependent kernels, so its final
+colors cannot be inferred from the raw class value alone.
 
 ## 1. Global load order (`FUN_00479bb0`)
 
@@ -33,12 +41,14 @@ over frames from short lifetimes — not one big quad.
   `FMaxisMeshLibrary::GetSharedColorMap()`.
 - `DAT_005039b4/b8/bc` = SIM3D1/2/3.MAX mesh packs, each bound to the palette via
   `FUN_0046e710(mesh, DAT_005039ac)`.
-- Then `FUN_00483c20(&fireType)` ×9 (fire-object material setup, one per fire class 0..8),
-  `FUN_004aeba0()` (splash/wash pools + palette frame tables), `FUN_0048db20()` (moving
-  particle pools).
+- Then `FUN_00483c20(&fireType)` ×9, which initializes helicopter bodies, rotors, and shadows;
+  it is not fire-material setup. `FUN_004aeba0()` initializes splash/wash pools and palette
+  frame tables, and `FUN_0048db20()` initializes the moving-particle pools.
 
-`FUN_0046cd20(palette, i)` returns palette entry `i` (`*(palette + 0x20 + i*0xc)`), i.e. the
-color for palette index `i`. So **every effect color below is a direct SIM3D palette index.**
+`FUN_0046cd20(palette, i)` returns palette entry `i` (`*(palette + 0x20 + i*0xc)`). That is
+valid for direct palette paths. Values passed to face type `0x1a` are kernel classes whose final
+pixels come from the renderer's palette-remap tables; they must not be interpreted as literal
+RGB entries.
 
 ## 2. Exact palette colors (extracted from `sim3d1.max` CMAP)
 
@@ -115,9 +125,12 @@ Finds a free slot in the type's pool, sets face type + color, life, velocity. Co
 On spawn (non-type-7) it also emits a tile splat via `FUN_004af220(cell, pos+10·vel, class)`.
 
 ### `FUN_004af220(cell, pos, class)` — tile splat / puff (SMOKE `0x148`, 100-slot pool)
-Color field = `class`. Lifetime (w5) by class: 0→0xA0000, 1→0x190000, 2→0x110000 (+ can
-trigger sound 0xB), 3→0xD0000, 4→0x1E0000, 5/10→0x190000/0x140000 (sets bit 0x10),
-default(incl. **8 = rotor wash**)→0xF0000.
+Color field = `class`. The fixed lifetime/countdown is `w2 = 0x20000` for every class.
+The class switch writes **vertical rise velocity `w5`**, not lifetime:
+0→0xA0000, 1→0x190000, 2→0x110000 (+ can trigger sound 0xB), 3→0xD0000,
+4→0x1E0000, 5/10→0x190000/0x140000 (sets bit 0x10), and
+default (including **8 = rotor wash**)→0xF0000. `FUN_004af3b0` confirms the roles by
+subtracting frame time from `w2` and integrating `w5 * frameTime` into vertical position.
 
 ### `FUN_004af100(cell,x,y,z,scale,color)` → `FUN_004af3b0` — big splash column (20-slot)
 Column visual = SMOKE `0x148` sized `4<<scale`, pushed up by −0x200000. Over its first 9
@@ -135,7 +148,8 @@ If `heliBottom − groundZ < 0x140000` (≈20u) **and** altitude `heli+0x158 > 0
 compute count `iVar3` (grows as it gets lower / with altitude), and — for the once-per-call
 spawn — build a **random-yaw** rotation (`FUN_0046cad1` + `FUN_0046cafc(rand·0x10000)`),
 rotate the fixed offset `(−heliRight)`, scale by **×0x20**, add to the ground point, then
-`FUN_004af220(cellUnderHeli, offsetPoint, 8)` — one **class-8 SMOKE puff** (life 0xF0000).
+`FUN_004af220(cellUnderHeli, offsetPoint, 8)` — one **class-8 SMOKE puff**
+(fixed life 0x20000, rise velocity 0xF0000).
 Over water vs land is **not** a color change in this function — it is always the class-8 puff;
 the SMOKE sprite reads as spray/dust against whatever it is over.
 
@@ -163,11 +177,13 @@ smoke turbulence adds random yaw each frame when age>0x40000.
 
 ## 7. Faithful-remake checklist (what to change)
 
-- Replace the big dithered quads with **small sprites**: point-string cards (1/3/4 pts) for
-  wash/splash/fire embers, and the actual SMOKE/DEBRIS GEO billboards for puffs/smoke/debris.
-- Size sprites from the 16.16 constants above (× `OriginalUnitToCm`), not arbitrary cm.
-- Color from the **SIM3D palette index** (use `GetSharedColorMap()`): fire = 0x10..0x1F ramp +
-  tips 0x73/0x7B; smoke/glow = 0x08/0x09; drip/sub-spray = the face-0x1a small indices.
+- Replace the big dithered quads with the decoded projected-point handlers: point strings
+  (1/3/4 points) for wash/splash/fire embers, and the actual SMOKE/DEBRIS GEO objects for
+  puffs/smoke/debris.
+- Derive projected coverage from the original renderer and the 16.16 size inputs, not arbitrary
+  Unreal-centimeter sprite widths.
+- Preserve direct SIM3D palette indices on face type `0x17`. For face type `0x1a`, reproduce the
+  decoded class-specific palette-remap kernel; do not look up the small class value as RGB.
 - Spawn **cadence/lifetime/gravity** from §5–6 so density accumulates the same way (one wash
   puff per frame, short lives), instead of dozens of quads per frame.
 - Wash = class-8 SMOKE puff at a random-yaw ×0x20 offset, only when <20u over ground and above

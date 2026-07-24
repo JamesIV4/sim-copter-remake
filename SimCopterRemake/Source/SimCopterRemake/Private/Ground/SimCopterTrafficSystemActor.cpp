@@ -8,6 +8,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "GameFramework/PlayerController.h"
+#include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
@@ -2071,6 +2072,15 @@ bool ASimCopterTrafficSystemActor::TryGetTileCenterWorldLocation(int32 FileX, in
 	OutWorldLocation = ActiveCityToWorldTransform.TransformPosition(FVector(LocalX, LocalY, 0.0f));
 	OutWorldLocation.Z = WorldZ;
 	return true;
+}
+
+FVector ASimCopterTrafficSystemActor::ConvertOriginalOffsetToWorld(
+	int32 X1616,
+	int32 Y1616,
+	int32 Z1616) const
+{
+	return ActiveCityToWorldTransform.TransformVector(
+		SimCopterEffectFX::OriginalOffsetToCityLocalCm(X1616, Y1616, Z1616));
 }
 
 float ASimCopterTrafficSystemActor::GetPeopleWorldCmPerOriginalUnit() const

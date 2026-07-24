@@ -513,17 +513,25 @@ Decoded from `SimCopter.exe` (outputs: `Docs/scratchpad/ghidra/out_fire_water_ef
 and `out_heli_landing.txt`). The mission/fire simulation (`FSimCopterMissionSystem`) was already
 ported; this pass added the rendering and the helicopter wiring.
 
-- **Fire is 3D GEO geometry, not sprites.** Building/car flame = `FIREPTS` (`Object.Header.Id`
-  `0x120`) — importantly a cloud of **22 single-vertex point sprites** (palette-coloured "fire
-  points"), so it must be billboarded, not triangulated. Car fire = `CARFIRET` (`0x11c`),
-  smoke/debris = `DEBRIS1..3` (`0x149..0x14b`) + `SMOKE` (`0x148`), burnt tiles = `BURNTREE`
+- **Fire uses a cloned GEO marker template.** `FUN_004a47c0` clones `FIREPTS`
+  (`Object.Header.Id` `0x120`) into every flame slot. Its 22 faces are face type `0x1a`, light
+  type `1` single-vertex effect markers; material values `1` and `2` are smoke/fire classes, not
+  literal palette colors. They must be expanded by the effect renderer rather than drawn as
+  red/green quads. `CARFIRET` (`0x11c`, object name `firetruk`) is the fire-truck vehicle model,
+  not a burning-car flame asset.
+  Smoke/debris = `DEBRIS1..3` (`0x149..0x14b`) + `SMOKE` (`0x148`), burnt tiles = `BURNTREE`
   (`0x14e`) / `GRUBBLE1..4` (`0x14f..0x152`). Resolve via `FMaxisMeshLibrary::FindObjectByObjectId`.
-- **Effect particles (bucket drips, douse splash, rotor wash) are flat palette-coloured,
-  camera-facing cards** (Maxis face type `0x17`) built procedurally by `FUN_0046edb0(shape,0x17)`
-  and moved by a velocity + rise over a short life (creator `FUN_0048e0b0`, tile-splat
-  `FUN_004af220`, splash column `FUN_004af100`, updater `FUN_004af3b0`/`FUN_0048ed00`). There is
-  **no sprite atlas** — the colour is a SIM3D palette index. The remake gives each card a
-  procedural radial soft-alpha so the flat quad reads as a soft puff (`M_SimCopterParticleFX`).
+- **Effect particles (bucket drips, douse splash, rotor wash) are palette-indexed projected
+  points**, built procedurally by `FUN_0046edb0` and moved by a velocity + rise over a short life
+  (creator `FUN_0048e0b0`, tile-splat `FUN_004af220`, splash column `FUN_004af100`, updater
+  `FUN_004af3b0`/`FUN_0048ed00`). Fresh renderer tracing on 2026-07-24 found that face type
+  `0x17` reaches `FUN_00491520`, which writes an exact 2x2 block in the normal `0x10` renderer,
+  while face type `0x1a` reaches the depth-scaled, palette-remapping kernel in
+  `FUN_00496da0`. The Unreal effect renderer uses the exact sparse write masks and selector
+  palette, presented through a 280x200 virtual low-resolution layer whose card, dots, and gaps
+  scale together to the actual viewport. The live decompilation evidence is indexed in
+  `Docs/scratchpad/ghidra/effect_renderer_decompile_run_20260724.md`; the remaining semantic
+  reconstruction and parity gate is in `effect_renderer_gap_20260724.md`.
 - **Wind-kickback over water = the rotor wash `FUN_004881b0`:** low over a surface + above a
   minimum altitude, scatter class-8 wash cards with a random-yaw matrix (spray over water, dust
   over land). Ported to `ASimCopterHelicopterPawn::UpdateRotorWash`.

@@ -1,0 +1,4 @@
+004e4fcd  MOV EAX,[0x004fc168]
+004e4fd2  MOV [0x004fc0c4],EAX
+004e4fd7  CALL 0x004e4fdd   -> 004e4fdd(FUN_004e4fdd) 
+004e4fdc  RET

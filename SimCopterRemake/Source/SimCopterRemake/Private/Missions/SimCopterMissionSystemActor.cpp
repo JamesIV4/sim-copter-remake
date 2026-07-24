@@ -100,17 +100,16 @@ ASimCopterMissionSystemActor::ASimCopterMissionSystemActor()
 	FireRenderComponent = CreateDefaultSubobject<USimCopterFireRenderComponent>(TEXT("FireRender"));
 	SetRootComponent(FireRenderComponent);
 
-	// FIREPTS is a cloud of palette-coloured point sprites; draw them with the smooth translucent
-	// particle material (soft radial alpha, no dithering) so the flame reads as a soft glow.
+	// FIREPTS is rendered through the original palette-selector texture, sampled with nearest
+	// filtering so FUN_00496da0's screen-pixel kernels remain hard edged.
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> FlameMaterialFinder(
-		TEXT("/Game/Materials/M_SimCopterParticleFXSoft.M_SimCopterParticleFXSoft"));
+		TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture"));
 	if (FlameMaterialFinder.Succeeded())
 	{
 		FlameMaterial = FlameMaterialFinder.Object;
 	}
 
-	// Rising smoke + embers above the fire (separate from the FIREPTS flame body, matching the
-	// original's SMOKE sprite + fire-trajectory embers).
+	// The typed pool owns the SMOKE and type-0xD ember death follow-up.
 	FireSmokeComponent = CreateDefaultSubobject<USimCopterParticleFXComponent>(TEXT("FireSmoke"));
 	FireSmokeComponent->SetupAttachment(FireRenderComponent);
 }
@@ -135,10 +134,19 @@ void ASimCopterMissionSystemActor::BeginPlay()
 	if (FireRenderComponent != nullptr && !bFireAssetsInitialized)
 	{
 		FString FireError;
-		bFireAssetsInitialized = FireRenderComponent->InitFireAssets(ResolveOriginalGameRootDir(), FlameMaterial, FireError);
+		const FString OriginalRoot = ResolveOriginalGameRootDir();
+		bFireAssetsInitialized = FireRenderComponent->InitFireAssets(OriginalRoot, FlameMaterial, FireError);
 		if (!bFireAssetsInitialized)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("SimCopter fire visuals disabled: %s"), *FireError);
+		}
+		if (FireSmokeComponent != nullptr)
+		{
+			FString EffectError;
+			if (!FireSmokeComponent->InitEffectAssets(OriginalRoot, EffectError))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("SimCopter fire effect palette unavailable: %s"), *EffectError);
+			}
 		}
 	}
 }
@@ -375,10 +383,6 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 		}
 	}
 
-	// Flame BurnCountdown is seeded to 0x200000 (32.0 in 16.16) and only decreases; derive a
-	// [0,1] age from it to grow the flame in fast, then taper as it burns out.
-	constexpr float FlameInitialCountdown = 2097152.0f; // 0x200000
-
 	TArray<FSimCopterFlameVisual> Visuals;
 	Visuals.Reserve(Flames.Num());
 
@@ -396,20 +400,22 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 			continue;
 		}
 
-		// Scatter the (up to 3) flames sharing a burning tile around its centre so they read as a
-		// spreading fire rather than one stacked mesh. Golden-angle placement keyed by slot.
-		const float Angle = static_cast<float>(Index) * 2.39996323f;
-		const float Radius = 55.0f + 45.0f * static_cast<float>(Index % 3);
-		FVector FlameXY = TileCenter + FVector(FMath::Cos(Angle) * Radius, FMath::Sin(Angle) * Radius, 0.0f);
+		// FUN_004a5340 stores source-runtime X/Y-up/Z offsets. Apply the same verified
+		// Maxis-to-Unreal axes and global city yaw as the building mesh; mapping these
+		// directly to Unreal XYZ rotates the planar FIREPTS cloud away from its wall.
+		FVector FlameXY =
+			TileCenter +
+			TrafficSystem->ConvertOriginalOffsetToWorld(
+				Flame.PosX,
+				Flame.PosY,
+				Flame.PosZ);
 
 		float TopZ = TileCenter.Z;
 		TraceSurfaceTopZ(FlameXY, TopZ);
 		FlameXY.Z = TopZ;
 
-		const float Age01 = FMath::Clamp(1.0f - static_cast<float>(Flame.BurnCountdown) / FlameInitialCountdown, 0.0f, 1.0f);
-		const float GrowIn = FMath::SmoothStep(0.0f, 0.25f, Age01);
-		const float TaperOut = 1.0f - 0.5f * FMath::SmoothStep(0.85f, 1.0f, Age01);
-		const float Scale = FMath::Lerp(0.45f, 1.0f, GrowIn) * TaperOut;
+		const float Scale =
+			Flame.Size1616 > 0 ? static_cast<float>(Flame.Size1616) / 65536.0f : 1.0f;
 
 		FSimCopterFlameVisual Visual;
 		Visual.Key = Index;
@@ -421,14 +427,14 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 		// Rising smoke + embers above this flame. The original draws a dark SMOKE sprite above the
 		// fire and throws fire-trajectory embers; reproduce that with palette-coloured particles so
 		// the "dark grey smoke near the top" and chaotic sparks read authentically.
-		if (FireSmokeComponent != nullptr && GrowIn > 0.3f)
+		if (FireSmokeComponent != nullptr)
 		{
 			SpawnFirePlume(FlameXY, Scale, DeltaSeconds);
 		}
 	}
 
-	// Burning cars (car-fire missions): the traffic system owns which cars are alight; draw the
-	// same FIREPTS flame engulfing each one.
+	// Burning cars use the same runtime fire-point template at a smaller scale. CARFIRET is the
+	// authored fire-truck vehicle model, not a flame mesh.
 	TArray<FSimCopterBurningVehicle> BurningVehicles;
 	TrafficSystem->GetBurningVehicles(BurningVehicles);
 	for (const FSimCopterBurningVehicle& Burning : BurningVehicles)
@@ -438,6 +444,7 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 		Visual.World = Burning.World;
 		Visual.Scale = 0.8f;
 		Visual.FlickerSeed = static_cast<float>(Burning.Key & 0xFFFF) * 0.013f;
+		Visual.bVehicleFire = true;
 		Visuals.Add(Visual);
 	}
 
@@ -446,44 +453,20 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 
 void ASimCopterMissionSystemActor::SpawnFirePlume(const FVector& FlameBaseWorld, float Scale, float DeltaSeconds)
 {
-	using namespace SimCopterEffectFX;
-
-	// The flame body is ~1 m tall at full scale; smoke wells up from just above it.
-	const float FlameHeightCm = 90.0f * Scale;
-	const FVector SmokeOrigin = FlameBaseWorld + FVector(0.0f, 0.0f, FlameHeightCm);
-
-	// Dark grey smoke rising and fading (the original's SMOKE sprite above the fire). Rate scales
-	// with flame size; use the fractional accumulator so slow rates still emit smoothly.
-	FireSmokeAccumulator += DeltaSeconds * (6.0f + 6.0f * Scale);
-	const int32 SmokeCount = FMath::FloorToInt(FireSmokeAccumulator);
-	FireSmokeAccumulator -= static_cast<float>(SmokeCount);
-	for (int32 i = 0; i < SmokeCount; ++i)
+	if (FireSmokeComponent == nullptr ||
+		FireSmokeComponent->GetActiveCount(ESimCopterEffectPool::Fire25) != 0)
 	{
-		const FVector Jitter(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(0.0f, 30.0f));
-		const FVector Vel(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(120.0f, 210.0f));
-		// Dark sooty smoke, tinted slightly warm/brown.
-		const float Grey = FMath::FRandRange(0.10f, 0.30f);
-		FLinearColor Smoke(Grey * 1.15f, Grey, Grey * 0.85f, FMath::FRandRange(0.55f, 0.8f));
-		const float SizeCm = FMath::FRandRange(SmokeSizeCm, WashPuffSizeCm * 0.6f) * Scale;
-		// Buoyant: a small negative "gravity" keeps it drifting upward as it thins out.
-		FireSmokeComponent->SpawnParticle(SmokeOrigin + Jitter, Vel, SizeCm, Smoke, /*Life*/ FMath::FRandRange(1.2f, 1.9f), /*Gravity*/ -40.0f);
+		return;
 	}
 
-	// Chaotic embers thrown up from the flame body, arcing back down under gravity.
-	FireEmberAccumulator += DeltaSeconds * (10.0f + 14.0f * Scale);
-	const int32 EmberCount = FMath::FloorToInt(FireEmberAccumulator);
-	FireEmberAccumulator -= static_cast<float>(EmberCount);
-	for (int32 i = 0; i < EmberCount; ++i)
-	{
-		const FVector Origin = FlameBaseWorld + FVector(FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(0.0f, FlameHeightCm));
-		const FVector Vel(FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(150.0f, 300.0f));
-		const float T = FMath::FRand();
-		FLinearColor Color = (T > 0.7f)
-			? (FMath::FRand() < 0.5f ? FireTipBright(0.95f) : FireTipPale(0.95f))
-			: FireRamp(FMath::FRandRange(0.3f, 1.0f), 0.95f);
-		const float SizeCm = FMath::FRandRange(WashCardSizeCm, DebrisSizeCm) * FMath::Max(Scale, 0.5f);
-		FireSmokeComponent->SpawnParticle(Origin, Vel, SizeCm, Color, /*Life*/ FMath::FRandRange(0.5f, 0.9f), GravityCmPerSec2);
-	}
+	// Type 0xC owns the entire 25-slot fire pool: after 3.5 seconds it emits exactly 24
+	// type-0xD four-point cards into the remaining slots. The former free-running random plume
+	// exhausted that pool before the decoded burst could ever occur.
+	const FVector SmokeOrigin = FlameBaseWorld + FVector::UpVector * (5.0f * SimCopterEffectFX::OriginalUnitToCm);
+	FireSmokeComponent->SpawnEffect(
+		ESimCopterEffectType::BuildingFireSmoke,
+		SmokeOrigin,
+		FVector::UpVector * SimCopterEffectFX::OriginalUnitToCm);
 }
 
 bool ASimCopterMissionSystemActor::TryActivatePlaneCrash(int32 EventId)

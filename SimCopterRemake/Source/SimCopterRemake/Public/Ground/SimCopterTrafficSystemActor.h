@@ -116,6 +116,9 @@ public:
 	int32 GetXbldTileId(int32 FileX, int32 FileY) const;
 	int32 GetBuildingFootprintSize(int32 FileX, int32 FileY) const;
 	bool TryGetTileCenterWorldLocation(int32 FileX, int32 FileY, FVector& OutWorldLocation) const;
+	// Convert a source-runtime (X, Y-up, Z) 16.16 offset with the same axis mapping,
+	// city yaw, and actor transform used by the rendered city geometry.
+	FVector ConvertOriginalOffsetToWorld(int32 X1616, int32 Y1616, int32 Z1616) const;
 	// One original person-unit (1/64 tile) in world centimeters - the people mover's scale
 	// (original positions are 16.16 with 64 units per tile).
 	float GetPeopleWorldCmPerOriginalUnit() const;
