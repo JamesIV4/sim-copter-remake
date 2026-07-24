@@ -135,7 +135,15 @@ UStaticMesh* Build(
 		return nullptr;
 	}
 
-	UStaticMesh* Mesh = NewObject<UStaticMesh>(Outer, NAME_None, RF_Transient);
+	// Fast-built runtime meshes have render buffers but no committed source MeshDescription.
+	// Duplicating one for PIE therefore creates an empty UStaticMesh that emits Bad
+	// MeshDescription and invalid Min LOD warnings during PostLoad. Leave the duplicated
+	// component's mesh reference null instead; the city actor's BeginPlay integrity check then
+	// rebuilds these meshes from the original GEO data in the PIE world.
+	UStaticMesh* Mesh = NewObject<UStaticMesh>(
+		Outer,
+		NAME_None,
+		RF_Transient | RF_DuplicateTransient);
 	Mesh->NeverStream = true;
 	// Required for the runtime triangle-mesh cook below: without it the body setup cannot read
 	// the index buffer back and complex collision silently comes out empty.

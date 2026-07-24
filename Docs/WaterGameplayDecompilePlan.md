@@ -286,9 +286,10 @@ A genuine feature, currently absent, and cheap once the fill path exists.
    `+0xbc`. That establishes the asset owner but not the gauge's drawing/value
    consumer; the relevant vtable draw path still needs to be named and exported
    before the original gauge can be ported. The remake now has a compact,
-   persistent status/control panel showing pounds, capacity, rope length, and
-   the `R`, Page Up, Page Down, `G`, and left-click actions; that is an explicit
-   gameplay affordance, not a claim that the original gauge has been recovered.
+   persistent status/control panel with a numeric water readout and capacity
+   bar shared by bucket and water-gun modes, plus rope length and the `R`, Page
+   Up, Page Down, `G`, and left-click actions; that is an explicit gameplay
+   affordance, not a claim that the original gauge has been recovered.
 3. **Helicopter capability bits.** `DAT_00504060` comes from the career record
    at `+0x48`. Which helicopters carry a cannon (`& 0x10`) and which carry the
    second rope attachment (`& 4`) needs that record's layout, which the career

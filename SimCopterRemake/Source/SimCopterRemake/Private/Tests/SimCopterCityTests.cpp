@@ -1,7 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CoreMinimal.h"
+#include "City/SimCopterRuntimeStaticMesh.h"
 #include "City/SimCity2000CityActor.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Misc/AutomationTest.h"
@@ -25,6 +28,59 @@ ASimCity2000CityActor* FindLoadedCityActor()
 	}
 	return nullptr;
 }
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCityRuntimeMeshDuplicationTest,
+	"SimCopter.City.RuntimeMeshDuplication",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCityRuntimeMeshDuplicationTest::RunTest(const FString& Parameters)
+{
+	TArray<FSimCopterRuntimeMeshSection> Sections;
+	FSimCopterRuntimeMeshSection& Section = Sections.AddDefaulted_GetRef();
+	Section.Vertices = {
+		FVector(0.0f, 0.0f, 0.0f),
+		FVector(100.0f, 0.0f, 0.0f),
+		FVector(0.0f, 100.0f, 0.0f)
+	};
+	Section.Triangles = { 0, 1, 2 };
+
+	UStaticMesh* RuntimeMesh =
+		SimCopterRuntimeStaticMesh::Build(GetTransientPackage(), Sections, false);
+	if (!TestNotNull(TEXT("A valid runtime triangle builds a static mesh"), RuntimeMesh))
+	{
+		return false;
+	}
+
+	TestTrue(TEXT("Runtime building mesh is transient"), RuntimeMesh->HasAnyFlags(RF_Transient));
+	TestTrue(
+		TEXT("Runtime building mesh is excluded from PIE duplication"),
+		RuntimeMesh->HasAnyFlags(RF_DuplicateTransient));
+
+	UInstancedStaticMeshComponent* SourceComponent =
+		NewObject<UInstancedStaticMeshComponent>(GetTransientPackage());
+	SourceComponent->SetStaticMesh(RuntimeMesh);
+	const FName DuplicateName = MakeUniqueObjectName(
+		GetTransientPackage(),
+		UInstancedStaticMeshComponent::StaticClass(),
+		TEXT("RuntimeMeshDuplicate"));
+	UInstancedStaticMeshComponent* DuplicateComponent =
+		DuplicateObject<UInstancedStaticMeshComponent>(
+			SourceComponent,
+			GetTransientPackage(),
+			DuplicateName);
+	if (!TestNotNull(TEXT("The component itself can be duplicated"), DuplicateComponent))
+	{
+		return false;
+	}
+
+	// This is the state AreBuildingInstancesIntact detects at BeginPlay. Rebuilding from GEO is
+	// valid; duplicating the fast-built mesh would instead produce the Min LOD warnings.
+	TestNull(
+		TEXT("The duplicated component does not retain an invalid runtime mesh"),
+		DuplicateComponent->GetStaticMesh());
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
