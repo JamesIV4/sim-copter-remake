@@ -155,28 +155,16 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 	TArray<FProcMeshTangent> Tangents;
 
 	FRotator CameraRotation = (GetComponentLocation() - CameraLocation).Rotation();
-	float HorizontalFovDegrees = 78.0f;
-	float ViewAspect = 16.0f / 9.0f;
 	if (const APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
 		if (const APlayerCameraManager* CameraManager = PC->PlayerCameraManager)
 		{
 			CameraRotation = CameraManager->GetCameraRotation();
-			HorizontalFovDegrees = CameraManager->GetFOVAngle();
-		}
-		int32 ViewWidth = 0;
-		int32 ViewHeight = 0;
-		PC->GetViewportSize(ViewWidth, ViewHeight);
-		if (ViewHeight > 0)
-		{
-			ViewAspect = static_cast<float>(ViewWidth) / static_cast<float>(ViewHeight);
 		}
 	}
 	const FVector CameraForward = CameraRotation.Vector();
 	const FVector CameraRight = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Y);
 	const FVector CameraUp = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Z);
-	const float HorizontalTangent =
-		FMath::Tan(FMath::DegreesToRadians(HorizontalFovDegrees * 0.5f));
 	const int32 RasterFrame = FMath::FloorToInt(TimeSeconds * 20.0f);
 
 	for (const FSimCopterFlameVisual& Visual : Visuals)
@@ -200,12 +188,10 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 				continue;
 			}
 
-			const float DitherPixelWidth =
-				2.0f * CameraDepth * HorizontalTangent /
-				FSimCopterEffectRasterizer::DitherSimulationViewportWidth;
-			const float DitherPixelHeight =
-				2.0f * CameraDepth * HorizontalTangent /
-				(ViewAspect * FSimCopterEffectRasterizer::DitherSimulationViewportHeight);
+			// One original 560x400 viewport pixel, in centimetres at this depth. The
+			// original kernels are square, so both axes share it.
+			const float PixelSizeCm =
+				FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(CameraDepth);
 			uint32 RandomState =
 				static_cast<uint32>(Visual.Key) * 0x9e3779b9u ^
 				static_cast<uint32>(PointIndex) * 0x85ebca6bu ^
@@ -234,14 +220,17 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 					FSimCopterEffectRasterizer::GetStencilMetrics(Radius);
 				const float RasterWidth = static_cast<float>(Stencil.Width);
 				const float RasterHeight = static_cast<float>(Stencil.Height);
+				// The original writes the kernel's first pixel at the jittered projected
+				// point and grows right/down, so the covered span is centred half a
+				// pixel short of the geometric middle.
 				const FVector KernelCenter =
 					Center +
 					CameraRight *
-						((static_cast<float>(JitterX) + RasterWidth * 0.5f) * DitherPixelWidth) -
+						((static_cast<float>(JitterX) + (RasterWidth - 1.0f) * 0.5f) * PixelSizeCm) -
 					CameraUp *
-						((static_cast<float>(JitterY) + RasterHeight * 0.5f) * DitherPixelHeight);
-				const float HalfWidth = RasterWidth * DitherPixelWidth * 0.5f;
-				const float HalfHeight = RasterHeight * DitherPixelHeight * 0.5f;
+						((static_cast<float>(JitterY) + (RasterHeight - 1.0f) * 0.5f) * PixelSizeCm);
+				const float HalfWidth = RasterWidth * PixelSizeCm * 0.5f;
+				const float HalfHeight = RasterHeight * PixelSizeCm * 0.5f;
 				const int32 Base = Vertices.Num();
 				Vertices.Add(WorldToLocal.TransformPosition(
 					KernelCenter - CameraRight * HalfWidth - CameraUp * HalfHeight));
