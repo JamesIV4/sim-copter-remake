@@ -119,6 +119,9 @@ public:
 	// Convert a source-runtime (X, Y-up, Z) 16.16 offset with the same axis mapping,
 	// city yaw, and actor transform used by the rendered city geometry.
 	FVector ConvertOriginalOffsetToWorld(int32 X1616, int32 Y1616, int32 Z1616) const;
+	// Inverse of ConvertOriginalOffsetToWorld: a world-space delta back to a source-runtime
+	// (X, Y-up, Z) 16.16 offset.
+	void ConvertWorldOffsetToOriginal(const FVector& WorldOffset, int32& OutX1616, int32& OutY1616, int32& OutZ1616) const;
 	// One original person-unit (1/64 tile) in world centimeters - the people mover's scale
 	// (original positions are 16.16 with 64 units per tile).
 	float GetPeopleWorldCmPerOriginalUnit() const;

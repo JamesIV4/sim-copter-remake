@@ -228,6 +228,85 @@ bool FSimCopterMissionSystemFireDouseTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemFireLifecycleTest, "SimCopter.Missions.FireLifecycle", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSystemFireLifecycleTest::RunTest(const FString& Parameters)
+{
+	// FUN_004a48e0 / FUN_004a4ac0: a flame burns for the full Fire Parms "TimeToLive
+	// (secs)" - 190.3s at difficulty tier 1 - and a fire only ends when every flame is
+	// gone. The old port used a flat 32.0s countdown, so fires vanished on their own.
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+	// Isolate the fire: no career weights means the scheduler never adds missions.
+	FSimCopterCareerCity City;
+	City.Difficulty = 0;
+	System.SetCareerCity(City);
+
+	const int32 FireId = System.CreateEventAt(30, 40, TYPE_BuildingFire);
+	TestTrue(TEXT("Building fire should be created"), FireId != INDEX_NONE);
+
+	const TArray<FSimCopterFlame>& Flames = System.GetFlames();
+	int32 FirstFlame = INDEX_NONE;
+	for (int32 i = 0; i < Flames.Num(); ++i)
+	{
+		if (Flames[i].bActive)
+		{
+			FirstFlame = i;
+			break;
+		}
+	}
+	TestTrue(TEXT("Ignition should spawn at least one flame"), FirstFlame != INDEX_NONE);
+	if (FirstFlame != INDEX_NONE)
+	{
+		TestEqual(
+			TEXT("A new flame gets the full Fire Parms TimeToLive"),
+			Flames[FirstFlame].BurnCountdown,
+			System.Tuning.FireTimeToLive);
+		TestEqual(
+			TEXT("A new flame gets tier*0x14 + Douse Points of douse health"),
+			Flames[FirstFlame].DouseHealth1616,
+			System.GetDifficultyTier() * 0x14 + System.Tuning.FireDousePoints);
+	}
+
+	// Two minutes of simulation is well past the old 32-second countdown but short of
+	// the decoded 190.3s burn, so the fire must still be alight.
+	for (int32 Step = 0; Step < 120 * 30; ++Step)
+	{
+		System.Tick(1.0f / 30.0f);
+	}
+	TestTrue(TEXT("The fire is still burning two minutes in"), System.GetActiveFlameCount() > 0);
+
+	const FSimCopterMissionRecord* Record = System.FindRecord(FireId);
+	TestNotNull(TEXT("Fire record should still exist"), Record);
+	if (Record != nullptr)
+	{
+		TestTrue(TEXT("The fire mission has not completed itself"), Record->bActive);
+		TestTrue(
+			TEXT("Some flames are still outstanding"),
+			Record->FlamesDoused + Record->FlamesExpired < Record->FlamesCreated);
+	}
+
+	// Burning out is a loss: the last flame of a building posts EVT_CellBurnedOut, never
+	// the EVT_ObjectCaughtFire "Bldg Saved" award that only water pays.
+	int32 Guard = 0;
+	while (System.GetActiveFlameCount() > 0 && Guard++ < 60 * 60 * 30)
+	{
+		System.Tick(1.0f / 30.0f);
+	}
+	TestEqual(TEXT("The fire eventually burns itself out"), System.GetActiveFlameCount(), 0);
+
+	Record = System.FindRecord(FireId);
+	if (Record != nullptr)
+	{
+		TestTrue(TEXT("Burned-out flames are credited as expired"), Record->FlamesExpired > 0);
+		TestTrue(TEXT("A fire nobody fought burns a building cell out"), Record->CellsBurnedOut > 0);
+		TestEqual(TEXT("Nothing was saved from a fire nobody fought"), Record->ObjectsCaughtFire, 0);
+	}
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemTransportSchedulerTimerTest, "SimCopter.Missions.TransportSchedulerTimer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSimCopterMissionSystemTransportSchedulerTimerTest::RunTest(const FString& Parameters)

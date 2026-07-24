@@ -70,6 +70,7 @@ public:
 	// ~Begin ISimCopterMissionWorld Interface
 	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override;
 	virtual int32 GetBuildingFootprintSize(int32 TileX, int32 TileY) const override;
+	virtual int32 GetBuildingTopHeight1616(int32 TileX, int32 TileY) const override;
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const override;
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const override;
 	virtual bool IsModalUiActive() const override;
