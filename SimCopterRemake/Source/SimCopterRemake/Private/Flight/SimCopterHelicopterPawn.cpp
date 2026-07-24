@@ -45,6 +45,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/Notifications/SProgressBar.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -1009,6 +1010,22 @@ void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 		.ShadowOffset(FVector2D(1.0f, 1.0f))
 		.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.9f))
 		.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 14));
+	TSharedRef<STextBlock> CapacityText =
+		SNew(STextBlock)
+		.Justification(ETextJustify::Left)
+		.ColorAndOpacity(FLinearColor(0.82f, 0.93f, 1.0f, 0.98f))
+		.ShadowOffset(FVector2D(1.0f, 1.0f))
+		.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.9f))
+		.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 11));
+	TSharedRef<SProgressBar> CapacityBar =
+		SNew(SProgressBar)
+		.Percent(0.0f)
+		.BarFillType(EProgressBarFillType::LeftToRight)
+		.BarFillStyle(EProgressBarFillStyle::Scale)
+		.FillColorAndOpacity(FLinearColor(0.08f, 0.55f, 0.96f, 1.0f))
+		.BorderPadding(FVector2D(1.0f, 1.0f));
+	WaterCapacityText = CapacityText;
+	WaterCapacityBar = CapacityBar;
 	WaterControlsText = ControlsText;
 	WaterControlsWidget =
 		SNew(SOverlay)
@@ -1022,7 +1039,28 @@ void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 			.BorderBackgroundColor(FLinearColor(0.015f, 0.035f, 0.055f, 0.76f))
 			.Padding(FMargin(10.0f, 7.0f))
 			[
-				ControlsText
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					CapacityText
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 4.0f, 0.0f, 7.0f))
+				[
+					SNew(SBox)
+					.WidthOverride(330.0f)
+					.HeightOverride(14.0f)
+					[
+						CapacityBar
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					ControlsText
+				]
 			]
 		];
 
@@ -1037,18 +1075,36 @@ void ASimCopterHelicopterPawn::RemoveWaterControlsWidget()
 		GEngine->GameViewport->RemoveViewportWidgetContent(WaterControlsWidget.ToSharedRef());
 	}
 
+	WaterCapacityBar.Reset();
+	WaterCapacityText.Reset();
 	WaterControlsText.Reset();
 	WaterControlsWidget.Reset();
 }
 
 void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 {
-	if (!WaterControlsText.IsValid())
+	if (!WaterCapacityBar.IsValid() ||
+		!WaterCapacityText.IsValid() ||
+		!WaterControlsText.IsValid())
 	{
 		return;
 	}
 
 	const int32 CapacityPounds = FMath::Max(0, HelicopterTuning.MaxLoadPounds);
+	const float CapacityFraction = CapacityPounds > 0
+		? FMath::Clamp(
+			static_cast<float>(BucketWaterPounds) /
+				static_cast<float>(CapacityPounds),
+			0.0f,
+			1.0f)
+		: 0.0f;
+	WaterCapacityBar->SetPercent(CapacityFraction);
+	WaterCapacityText->SetText(FText::FromString(FString::Printf(
+		TEXT("WATER CAPACITY  %d / %d LB  (%d%%)"),
+		BucketWaterPounds,
+		CapacityPounds,
+		FMath::RoundToInt(CapacityFraction * 100.0f))));
+
 	FString BucketState;
 	if (!bRopeDeployed)
 	{

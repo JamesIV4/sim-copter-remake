@@ -24,6 +24,7 @@ class ASimCopterMissionSystemActor;
 class ASimCopterOnFootPawn;
 class APlayerController;
 class SHorizontalBox;
+class SProgressBar;
 class STextBlock;
 class SWidget;
 class FReply;
@@ -666,6 +667,8 @@ private:
 	TSharedPtr<SHorizontalBox> PassengerSlotsBox;
 	TSharedPtr<FSlateBrush> PassengerSlotIconBrush;
 	TSharedPtr<SWidget> WaterControlsWidget;
+	TSharedPtr<SProgressBar> WaterCapacityBar;
+	TSharedPtr<STextBlock> WaterCapacityText;
 	TSharedPtr<STextBlock> WaterControlsText;
 
 	void MovePitch(float Value);

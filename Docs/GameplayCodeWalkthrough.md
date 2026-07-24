@@ -163,7 +163,8 @@ conditioned terrain/class grids, and emits type-6 bucket water on dump. The
 same load feeds the separately gated type-5 water cannon. The rope begins at an
 underside attachment on the banking model pivot and terminates at the authored
 `BUCKET` mesh (with the engine cube retained only when original assets cannot
-load).
+load). A persistent lower-left capacity bar reads that shared pound supply, so
+it remains visible and accurate in both bucket and water-gun modes.
 
 `ASimCity2000CityActor::TryGetWaterGameplaySurface` samples the rendered
 terrain triangle and exact terrain class. Particle collision—not the

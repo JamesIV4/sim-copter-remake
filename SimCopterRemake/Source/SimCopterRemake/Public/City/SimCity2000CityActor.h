@@ -110,8 +110,9 @@ public:
 	bool HasRubbleAtTile(int32 FileX, int32 FileY) const;
 
 	// False when the building instances did not survive into this world - the state a duplicated
-	// (PIE) or loaded world starts in, since runtime-built static meshes carry no render data
-	// across duplication. BeginPlay rebuilds when this reports false.
+	// (PIE) or loaded world starts in. Runtime-built static meshes are deliberately excluded from
+	// duplication because their fast-built render data cannot be copied safely; BeginPlay rebuilds
+	// when this reports false.
 	bool AreBuildingInstancesIntact() const;
 
 	// World-space bounds of the standing building covering this tile, for the demolition's

@@ -36,6 +36,9 @@ namespace SimCopterRuntimeStaticMesh
 	// body setup as complex-as-simple. Every instance placed from this mesh then shares that
 	// one cook, which is what makes per-building placement affordable.
 	//
+	// The returned mesh is transient and duplicate-transient. Its fast-built render data cannot
+	// be copied safely into a PIE world, so the city actor deliberately rebuilds it there.
+	//
 	// Returns nullptr when the sections hold no triangles.
 	SIMCOPTERREMAKE_API UStaticMesh* Build(
 		UObject* Outer,

@@ -4322,10 +4322,9 @@ bool ASimCity2000CityActor::AreBuildingInstancesIntact() const
 
 		const UStaticMesh* Mesh = Component->GetStaticMesh();
 		// A building's static mesh is built at runtime with no committed source description, and
-		// its FStaticMeshRenderData is a bare TUniquePtr rather than a UPROPERTY. Duplicating a
-		// world - which is exactly what starting PIE does - copies the UObject but not that render
-		// data, so the component still points at a mesh that can no longer draw or collide. That
-		// is the failure that made buildings editor-only, and it is invisible to a null check.
+		// its FStaticMeshRenderData is a bare TUniquePtr rather than a UPROPERTY. Such meshes are
+		// marked duplicate-transient so starting PIE leaves this component's mesh null instead of
+		// constructing an invalid duplicate. The render-data check also covers old/stale worlds.
 		if (Mesh == nullptr || !Mesh->HasValidRenderData())
 		{
 			return false;
