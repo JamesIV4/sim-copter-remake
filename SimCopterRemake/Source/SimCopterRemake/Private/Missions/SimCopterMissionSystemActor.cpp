@@ -393,22 +393,24 @@ void ASimCopterMissionSystemActor::SimForceCarFire()
 	UE_LOG(LogTemp, Display, TEXT("SimForceCarFire: created car fire event %d"), EventId);
 }
 
-int32 ASimCopterMissionSystemActor::DumpWaterAt(const FVector& BucketWorldLocation)
+// SCHOOK: DouseWaterParticle 0x004a50c0
+int32 ASimCopterMissionSystemActor::ApplyWaterParticleImpact(
+	const FVector& ImpactWorldLocation,
+	const int32 Strength1616)
 {
 	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
-	if (TrafficSystem == nullptr)
+	if (TrafficSystem == nullptr || Strength1616 <= 0)
 	{
 		return 0;
 	}
 
 	int32 FlamesHit = 0;
 
-	// Building fires: FUN_004a50c0 compares the water's offset inside the cell against each
-	// flame's own offset, so resolve the bucket down to that sub-tile offset rather than
-	// soaking the whole cell. One dump frame is one water particle, i.e. one full-strength hit.
+	// FUN_004a50c0 compares the trajectory impact offset inside the cell against each flame's
+	// own offset. Do not douse at the bucket/emitter location.
 	int32 TileX = INDEX_NONE;
 	int32 TileY = INDEX_NONE;
-	if (TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(BucketWorldLocation, TileX, TileY))
+	if (TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(ImpactWorldLocation, TileX, TileY))
 	{
 		FVector TileCenter;
 		int32 LocalX1616 = 0;
@@ -417,14 +419,19 @@ int32 ASimCopterMissionSystemActor::DumpWaterAt(const FVector& BucketWorldLocati
 		if (TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
 		{
 			TrafficSystem->ConvertWorldOffsetToOriginal(
-				BucketWorldLocation - TileCenter, LocalX1616, LocalY1616, LocalZ1616);
+				ImpactWorldLocation - TileCenter, LocalX1616, LocalY1616, LocalZ1616);
 		}
-		FlamesHit += MissionSystem.DouseAtLocalOffset(TileX, TileY, LocalX1616, LocalZ1616, 0x10000);
+		FlamesHit += MissionSystem.DouseAtLocalOffset(
+			TileX,
+			TileY,
+			LocalX1616,
+			LocalZ1616,
+			Strength1616);
 	}
 
-	// Car fires: put out burning cars under the bucket and pay the douse/clear scoring events.
+	// Car fires are likewise resolved where the trajectory landed.
 	TArray<int32> ExtinguishedCarEvents;
-	TrafficSystem->DouseBurningVehiclesNear(BucketWorldLocation, CarDouseRadiusCm, ExtinguishedCarEvents);
+	TrafficSystem->DouseBurningVehiclesNear(ImpactWorldLocation, CarDouseRadiusCm, ExtinguishedCarEvents);
 	for (int32 EventId : ExtinguishedCarEvents)
 	{
 		MissionSystem.PostEvent(SimCopterMissions::EVT_CarDoused, EventId, 1, false);
@@ -457,7 +464,10 @@ FString ASimCopterMissionSystemActor::ResolveOriginalGameRootDir() const
 bool ASimCopterMissionSystemActor::TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const
 {
 	const UWorld* World = GetWorld();
-	if (World == nullptr)
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	const ASimCity2000CityActor* City =
+		TrafficSystem != nullptr ? TrafficSystem->GetCityActor() : nullptr;
+	if (World == nullptr || City == nullptr)
 	{
 		return false;
 	}
@@ -467,12 +477,28 @@ bool ASimCopterMissionSystemActor::TraceSurfaceTopZ(const FVector& WorldXY, floa
 
 	FCollisionQueryParams Params(FName(TEXT("SimCopterFireSurface")), /*bTraceComplex*/ false, this);
 
-	FHitResult Hit;
-	if (World->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	// Fire is seated on the authored city surface. A single visibility hit could select the
+	// helicopter, a pedestrian, or another transient actor flying over the flame, which made the
+	// fire jump onto that actor. Walk the trace and accept only city terrain/building collision.
+	FCollisionObjectQueryParams ObjectParams;
+	ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	TArray<FHitResult> Hits;
+	if (!World->LineTraceMultiByObjectType(Hits, Start, End, ObjectParams, Params))
 	{
-		OutTopZ = Hit.ImpactPoint.Z;
-		return true;
+		return false;
 	}
+
+	for (const FHitResult& Hit : Hits)
+	{
+		const UPrimitiveComponent* HitComponent = Hit.GetComponent();
+		if (City->IsTerrainCollisionComponent(HitComponent) ||
+			City->IsBuildingCollisionHit(HitComponent, Hit.ImpactPoint))
+		{
+			OutTopZ = Hit.ImpactPoint.Z;
+			return true;
+		}
+	}
+
 	return false;
 }
 

@@ -12,6 +12,7 @@
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
+#include "Flight/SimCopterWaterGameplay.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/PackageName.h"
@@ -2832,6 +2833,8 @@ void ASimCity2000CityActor::RebuildCity()
 	LastOriginalTextureCount = 0;
 	LastOriginalTexturedTriangleCount = 0;
 	BuildingTileFlags.Reset();
+	WaterGameplayCornerZ.Reset();
+	WaterGameplayTerrainClasses.Reset();
 	OriginalTextureCache.Reset();
 	OriginalTextureMaterials.Reset();
 	ResetBuildingInstances();
@@ -3038,6 +3041,22 @@ void ASimCity2000CityActor::RebuildCity()
 	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
 	// (the type IS the cell index). Reproduce that grid once for the whole map.
 	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City, ConditionedTerrainCorners);
+
+	// SCHOOK: SampleWaterGameplaySurface 0x004ae7a0
+	// The bucket fill and water-particle landing tests read these conditioned grids too. Keep a
+	// runtime copy rather than approximating gameplay height with a physics trace.
+	constexpr int32 GameplayCornerGridSize = FSimCity2000City::MapSize + 1;
+	WaterGameplayCornerZ.SetNumUninitialized(GameplayCornerGridSize * GameplayCornerGridSize);
+	for (int32 GridY = 0; GridY < GameplayCornerGridSize; ++GridY)
+	{
+		for (int32 GridX = 0; GridX < GameplayCornerGridSize; ++GridX)
+		{
+			WaterGameplayCornerZ[GridY * GameplayCornerGridSize + GridX] =
+				GetTerrainGridVertexZ(ConditionedTerrainCorners, GridX, GridY, EffectiveTerrainHeightScale);
+		}
+	}
+	WaterGameplayTerrainClasses = TerrainTypeGrid;
+
 	const FExtendedTerrainData ExtendedTerrain = BuildProceduralExtendedTerrain(
 		City,
 		ConditionedTerrainCorners,
@@ -4232,6 +4251,59 @@ float ASimCity2000CityActor::GetTerrainHeightScale() const
 float ASimCity2000CityActor::GetEffectiveTerrainHeightScale() const
 {
 	return bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
+}
+
+bool ASimCity2000CityActor::TryGetWaterGameplaySurface(
+	const FVector& WorldLocation,
+	float& OutSurfaceWorldZ,
+	uint8& OutTerrainClass,
+	FIntPoint* OutTile) const
+{
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	constexpr int32 CornerGridSize = MapSize + 1;
+	if (TileSize <= KINDA_SMALL_NUMBER ||
+		WaterGameplayCornerZ.Num() != CornerGridSize * CornerGridSize ||
+		WaterGameplayTerrainClasses.Num() != MapSize * MapSize)
+	{
+		return false;
+	}
+
+	const FVector LocalLocation = GetActorTransform().InverseTransformPosition(WorldLocation);
+	const float HalfMapSize = static_cast<float>(MapSize) * TileSize * 0.5f;
+	const float GridX = (LocalLocation.X + HalfMapSize) / TileSize;
+	const float GridY = (HalfMapSize - LocalLocation.Y) / TileSize;
+	const int32 FileX = FMath::FloorToInt(GridX);
+	const int32 FileY = FMath::FloorToInt(GridY);
+	if (FileX < 0 || FileX >= MapSize || FileY < 0 || FileY >= MapSize)
+	{
+		return false;
+	}
+
+	const auto CornerZ = [this](const int32 X, const int32 Y)
+	{
+		return WaterGameplayCornerZ[Y * (FSimCity2000City::MapSize + 1) + X];
+	};
+	const float SurfaceLocalZ = SimCopterWaterGameplay::SampleTerrainTriangleHeight(
+		GridX - static_cast<float>(FileX),
+		GridY - static_cast<float>(FileY),
+		CornerZ(FileX, FileY),
+		CornerZ(FileX + 1, FileY),
+		CornerZ(FileX + 1, FileY + 1),
+		CornerZ(FileX, FileY + 1));
+	OutSurfaceWorldZ = GetActorTransform().TransformPosition(
+		FVector(LocalLocation.X, LocalLocation.Y, SurfaceLocalZ)).Z;
+	OutTerrainClass = WaterGameplayTerrainClasses[FileY * MapSize + FileX];
+	if (OutTile != nullptr)
+	{
+		*OutTile = FIntPoint(FileX, FileY);
+	}
+	return true;
+}
+
+bool ASimCity2000CityActor::IsTerrainCollisionComponent(
+	const UPrimitiveComponent* HitComponent) const
+{
+	return HitComponent != nullptr && HitComponent == TerrainMeshComponent;
 }
 
 bool ASimCity2000CityActor::AreBuildingInstancesIntact() const

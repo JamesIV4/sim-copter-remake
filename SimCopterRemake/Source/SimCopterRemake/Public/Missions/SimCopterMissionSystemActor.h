@@ -114,11 +114,10 @@ public:
 	void SimForceFire();
 	void SimForceCarFire();
 
-	// Water bucket: dump water at the given world location - extinguishes nearby fires (via the
-	// mission system's DouseAt) and spawns the visible water splash/spray. Called by the
-	// helicopter pawn while the bucket is dumping. Returns the number of tiles that had fire in
-	// range (0 if the dump hit no fire).
-	int32 DumpWaterAt(const FVector& BucketWorldLocation);
+	// Called only when a type-5/type-6 water trajectory hits land or geometry. Remaining particle
+	// life is the douse strength (bucket particles arrive already divided by four); water-surface
+	// impacts are rejected by the particle updater before this boundary.
+	int32 ApplyWaterParticleImpact(const FVector& ImpactWorldLocation, int32 Strength1616);
 
 	// ~End ISimCopterMissionWorld Interface
 

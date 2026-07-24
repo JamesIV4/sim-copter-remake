@@ -45,8 +45,9 @@ The constructor builds the component tree:
 
 - A capsule root provides swept pawn collision.
 - `ModelPivot` parents the visual model so pitch/roll can tilt the model without tilting the collision capsule.
-- Placeholder static meshes provide a body, main rotor, tail rotor, rope, and bucket.
-- Procedural mesh components hold original Maxis fuselage, main rotor, and tail rotor objects.
+- Placeholder static meshes provide a body, main rotor, tail rotor, rope, and fallback bucket.
+- Procedural mesh components hold original Maxis fuselage, main rotor, tail rotor, and GEO
+  `0x7b` `BUCKET` objects.
 - A spring arm and camera provide the current modern camera.
 - A spotlight represents the searchlight.
 - Lit vertex-color and rotor-disc materials are loaded for original mesh rendering.
@@ -58,7 +59,7 @@ The constructor builds the component tree:
 
 `Tick` substeps flight simulation up to a fixed maximum step, then updates visuals and camera. This keeps the arcade-style movement more stable across frame rates.
 
-`SetupPlayerInputComponent` binds flight, collective, camera, rope, bucket, engine start/shutdown, interaction, searchlight, camera cycle, camera drag, zoom, and reset controls.
+`SetupPlayerInputComponent` binds flight, collective, camera, rope, bucket, engine start/shutdown, interaction, searchlight, camera cycle, camera drag, zoom, and reset controls. A persistent flight widget makes the water loop explicit: `R` deploys/stows, Page Up raises, Page Down lowers, and `G` dumps; it also shows rope length and water pounds.
 
 ### Original Tuning
 
@@ -156,9 +157,20 @@ The `Move*`, `Look*`, `MouseLook*`, `AdjustRope`, `Start/StopBucket*`, and `Star
 
 `UpdateFuel` burns fuel only while the engine runs, with input load increasing consumption.
 
-`UpdateRopeAndBucket` changes rope length, fills when the bucket is in water, dumps on command, and updates rope/bucket visuals.
+`UpdateRopeAndBucket` advances the original 20-node rope, carries water as
+pounds against the helicopter's max load, fills automatically from the
+conditioned terrain/class grids, and emits type-6 bucket water on dump. The
+same load feeds the separately gated type-5 water cannon. The rope begins at an
+underside attachment on the banking model pivot and terminates at the authored
+`BUCKET` mesh (with the engine cube retained only when original assets cannot
+load).
 
-`ProbeBucketWater` checks named water actors/components or falls back to `WaterFillWorldZ`.
+`ASimCity2000CityActor::TryGetWaterGameplaySurface` samples the rendered
+terrain triangle and exact terrain class. Particle collision—not the
+bucket—decides whether an impact splashes on water or douses a land/object hit.
+The douse comparison uses absolute source-runtime coordinates, so outer flames
+of a multi-tile building remain hittable even though their records belong to
+the building's anchor tile.
 
 `UpdateVisuals` applies body pitch/roll and spins placeholder/original rotor components.
 

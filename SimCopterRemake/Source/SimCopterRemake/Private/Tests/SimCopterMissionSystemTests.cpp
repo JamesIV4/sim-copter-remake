@@ -10,6 +10,8 @@ namespace
 {
 struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 {
+	int32 BuildingFootprint = 1;
+
 	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override
 	{
 		return (TileX >= 0 && TileX < 128 && TileY >= 0 && TileY < 128) ? 0x70 : 0;
@@ -17,7 +19,7 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 
 	virtual int32 GetBuildingFootprintSize(int32 TileX, int32 TileY) const override
 	{
-		return 1;
+		return BuildingFootprint;
 	}
 
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const override
@@ -225,6 +227,53 @@ bool FSimCopterMissionSystemFireDouseTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("No doused flame should be counted as burned out"), Record->FlamesExpired, 0);
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMissionSystemFootprintFireDouseTest,
+	"SimCopter.Missions.FireDouseAcrossFootprint",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSystemFootprintFireDouseTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTestMissionWorld World;
+	World.BuildingFootprint = 3;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 FireId = System.CreateEventAt(30, 40, TYPE_BuildingFire);
+	TestTrue(TEXT("Large-building fire should be created"), FireId != INDEX_NONE);
+
+	int32 OuterFlameIndex = INDEX_NONE;
+	const TArray<FSimCopterFlame>& Flames = System.GetFlames();
+	for (int32 Index = 0; Index < Flames.Num(); ++Index)
+	{
+		if (Flames[Index].bActive &&
+			Flames[Index].PosX == 0x500000 &&
+			Flames[Index].PosZ == 0x400000)
+		{
+			OuterFlameIndex = Index;
+			break;
+		}
+	}
+	TestTrue(TEXT("Three-tile footprint should create its guaranteed outer flame"), OuterFlameIndex != INDEX_NONE);
+	if (OuterFlameIndex == INDEX_NONE)
+	{
+		return false;
+	}
+
+	const int32 InitialHealth = Flames[OuterFlameIndex].DouseHealth1616;
+	// The visible point is +80 source X and +64 source Z from anchor tile (30, 40).
+	// That same world location belongs to tile (29, 41), at local (+16, 0).
+	const int32 FlamesHit =
+		System.DouseAtLocalOffset(29, 41, 0x100000, 0, 1);
+	TestTrue(TEXT("Water landing on an outer visible flame reaches its anchor-tile record"), FlamesHit >= 1);
+
+	const FSimCopterFlame& OuterFlameAfter = System.GetFlames()[OuterFlameIndex];
+	TestTrue(
+		TEXT("The outer visible flame takes douse damage"),
+		!OuterFlameAfter.bActive || OuterFlameAfter.DouseHealth1616 < InitialHealth);
 	return true;
 }
 

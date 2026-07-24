@@ -10,6 +10,8 @@ class UProceduralMeshComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UTexture2D;
+class ASimCity2000CityActor;
+class ASimCopterMissionSystemActor;
 
 // Original effect types used by FUN_0048e0b0.  Keep these values in the port: callers and the
 // updater use the type, rather than selecting a generic visual approximation.
@@ -53,6 +55,7 @@ struct FSimCopterEffectSlot
 	ESimCopterEffectPool Pool = ESimCopterEffectPool::Smoke10;
 	FVector Position = FVector::ZeroVector;
 	FVector Velocity = FVector::ZeroVector;
+	FIntVector Direction1616 = FIntVector::ZeroValue;
 	FIntPoint Cell = FIntPoint::ZeroValue;
 	int32 Age1616 = 0;
 	int32 Life1616 = 0;
@@ -158,6 +161,8 @@ private:
 	uint8 FireRampCursor = 0x10;
 	uint8 FireTipCursor = 0;
 	int32 DebrisObjectCursor = 0;
+	TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
+	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionActor;
 
 	FVector GetCameraLocation() const;
 	FIntPoint GetCellForWorld(const FVector& World) const;
@@ -165,6 +170,15 @@ private:
 	void ConfigureEffect(FSimCopterEffectSlot& Slot, ESimCopterEffectType Type, const FVector& World,
 		const FVector& VelocityCmPerSec, float SizeCm, const FIntPoint& Cell);
 	void UpdateSlots(float DeltaTime);
+	void AdvanceWaterTrajectory(FSimCopterEffectSlot& Slot, int32 Delta1616);
+	bool FindWaterTrajectoryImpact(
+		const FVector& Start,
+		const FVector& End,
+		FVector& OutImpact,
+		bool& bOutWaterSurface,
+		FIntPoint& OutCell);
+	ASimCity2000CityActor* ResolveCityActor();
+	ASimCopterMissionSystemActor* ResolveMissionActor();
 	void UpdateSplashColumns();
 	void RebuildMesh(const FVector& CameraLocation);
 	FLinearColor PaletteColor(uint8 PaletteIndex) const;

@@ -13,15 +13,18 @@ class UCapsuleComponent;
 class UMaterialInterface;
 class UProceduralMeshComponent;
 class USceneComponent;
+class USplineMeshComponent;
 class USpotLightComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UTexture2D;
 class USimCopterParticleFXComponent;
+class ASimCity2000CityActor;
 class ASimCopterMissionSystemActor;
 class ASimCopterOnFootPawn;
 class APlayerController;
 class SHorizontalBox;
+class STextBlock;
 class SWidget;
 class FReply;
 struct FSlateBrush;
@@ -135,10 +138,10 @@ struct SIMCOPTERREMAKE_API FSimCopterRopeTuning
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Rope")
-	float BucketFillPerSec = 0.30f;
+	float BucketFillPoundsPerFrame = 30.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Rope")
-	float BucketDumpPerSec = 0.21f;
+	float BucketDumpPoundsPerFrame = 21.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Rope")
 	float RopeLoadFactor = 102.0f;
@@ -147,7 +150,7 @@ struct SIMCOPTERREMAKE_API FSimCopterRopeTuning
 	float RopeTension = 0.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Rope")
-	float WaterThrowCmPerSec = 4900.0f;
+	float WaterThrow = 49.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Rope")
 	float CannonForce = 128.6f;
@@ -249,6 +252,7 @@ public:
 
 	const FVector& GetVelocityCmPerSec() const { return VelocityCmPerSec; }
 	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
+	int32 GetBucketWaterPounds() const { return BucketWaterPounds; }
 
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
@@ -287,7 +291,15 @@ protected:
 	TObjectPtr<UStaticMeshComponent> RopeMeshComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TArray<TObjectPtr<USplineMeshComponent>> RopeSegmentComponents;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> BucketMeshComponent;
+
+	// Original SimCopter BUCKET object (GEO id 0x7b). The static cube above remains only as
+	// a fallback when the original GEO packs are unavailable.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> OriginalBucketMeshComponent;
 
 	// Renders the original water effects: bucket water drips + douse steam (from the bucket) and
 	// the rotor-wash "wind kickback" spray/dust under the helicopter.
@@ -451,20 +463,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Collision")
 	bool bDrawDebugProbes = false;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Rope", meta = (ClampMin = "100.0"))
-	float RopeLengthCm = 650.0f;
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Rope")
+	float RopeLengthCm = 0.0f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Rope", meta = (ClampMin = "100.0"))
-	float MinRopeLengthCm = 220.0f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Rope", meta = (ClampMin = "100.0"))
-	float MaxRopeLengthCm = 1100.0f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Rope", meta = (ClampMin = "1.0"))
-	float RopeAdjustCmPerSec = 320.0f;
-
+	// Attachment point under the fuselage, in the banking model-pivot frame.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Rope")
-	float WaterFillWorldZ = 0.0f;
+	FVector RopeAnchorOffsetCm = FVector(0.0f, 0.0f, -55.0f);
+
+	// The decoded capability bit is 0x10, but ownership of that bit still belongs to the unported
+	// career equipment record. Expose the resolved capability without assigning it to a guessed
+	// helicopter type.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Rope")
+	bool bWaterCannonInstalled = false;
 
 	// --- Rotor wash "wind kickback" (FUN_004881b0) ---
 	// Enable the downwash effect cards under the rotor when flying low.
@@ -548,6 +558,9 @@ protected:
 	float BucketWaterFraction = 0.0f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	int32 BucketWaterPounds = 0;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	float CurrentFuelGallons = 0.0f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
@@ -570,6 +583,9 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bUsingOriginalMesh = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	bool bUsingOriginalBucketMesh = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelLoadError;
@@ -606,11 +622,19 @@ private:
 	float MouseLookYawInput = 0.0f;
 	float MouseLookPitchInput = 0.0f;
 	float RopeAdjustInput = 0.0f;
-	bool bBucketFillHeld = false;
 	bool bBucketDumpHeld = false;
+	bool bWaterCannonHeld = false;
 
-	// Cached mission actor for the bucket douse (resolved lazily via GetActorOfClass).
+	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
+	mutable TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
+
+	TArray<FVector> RopeNodeWorldPositions;
+	int32 RopeFirstActiveNode = 17;
+	bool bRopeStateInitialized = false;
+	FVector PreviousRopeAnchorWorld = FVector::ZeroVector;
+	FVector PreviousBucketWorld = FVector::ZeroVector;
+	FVector PreviousRopeEndDirection = -FVector::UpVector;
 	bool bEngineStartHeld = false;
 	bool bEngineShutdownHeld = false;
 	float EngineStartHoldElapsed = 0.0f;
@@ -632,6 +656,8 @@ private:
 	TSharedPtr<SWidget> PassengerSlotsWidget;
 	TSharedPtr<SHorizontalBox> PassengerSlotsBox;
 	TSharedPtr<FSlateBrush> PassengerSlotIconBrush;
+	TSharedPtr<SWidget> WaterControlsWidget;
+	TSharedPtr<STextBlock> WaterControlsText;
 
 	void MovePitch(float Value);
 	void MoveRoll(float Value);
@@ -646,10 +672,10 @@ private:
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
-	void StartBucketFill();
-	void StopBucketFill();
 	void StartBucketDump();
 	void StopBucketDump();
+	void StartWaterCannon();
+	void StopWaterCannon();
 	void StartEngineHold();
 	void StopEngineHold();
 	void StartEngineShutdownHold();
@@ -675,11 +701,18 @@ private:
 	FSimCopterFlightEnvironment BuildFlightEnvironment() const;
 	void ApplyFlightModelToActor(float DeltaSeconds);
 	void UpdateRopeAndBucket(float DeltaSeconds);
+	void InitializeRopeState();
+	bool StepRopeState();
+	void UpdateRopeVisuals();
+	FVector GetRopeAnchorWorldLocation() const;
+	void EmitBucketWaterFrame(bool bCollisionSpill);
+	void EmitWaterCannonFrame();
 	// Rotor-wash "wind kickback" (port of FUN_004881b0): when the helicopter is low over a
 	// surface and above the minimum altitude, scatter effect cards under the rotor - spray over
 	// water, dust over land. Also emits the bucket douse steam accumulator.
 	void UpdateRotorWash(float DeltaSeconds);
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
+	ASimCity2000CityActor* ResolveCityActor() const;
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateSearchLightEffect();
@@ -692,13 +725,16 @@ private:
 		const FVector& BoomOrigin,
 		float DesiredArmLength,
 		const FRotator& WorldRotation) const;
-	bool ProbeBucketWater(const FVector& BucketWorldLocation) const;
+	bool ProbeBucketWater(const FVector& BucketWorldLocation);
 	FString ResolveOriginalGameRoot() const;
 	void ApplyDerivedTuning();
 	void SyncPassengerFlightModelCount();
 	void EnsurePassengerSlotsWidget();
 	void RemovePassengerSlotsWidget();
 	void RefreshPassengerSlotsWidget();
+	void EnsureWaterControlsWidget();
+	void RemoveWaterControlsWidget();
+	void RefreshWaterControlsWidget();
 	bool LoadPassengerSlotIconTexture();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;

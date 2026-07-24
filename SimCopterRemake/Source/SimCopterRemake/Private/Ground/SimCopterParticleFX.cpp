@@ -3,6 +3,9 @@
 #include "Ground/SimCopterParticleFX.h"
 
 #include "Camera/PlayerCameraManager.h"
+#include "City/SimCity2000CityActor.h"
+#include "Engine/World.h"
+#include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "GameFramework/PlayerController.h"
@@ -11,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -366,6 +370,7 @@ void USimCopterParticleFXComponent::ConfigureEffect(FSimCopterEffectSlot& Slot, 
 	Slot.Type = Type;
 	Slot.Position = World;
 	Slot.Velocity = VelocityCmPerSec;
+	Slot.Direction1616 = SimCopterWaterGameplay::DirectionToFixed(VelocityCmPerSec);
 	Slot.Cell = Cell;
 	Slot.Life1616 = GetLifetime1616ForType(Type);
 	Slot.SpawnTimer1616 = Type == ESimCopterEffectType::BuildingFireSmoke ? 0x38000 :
@@ -433,7 +438,11 @@ bool USimCopterParticleFXComponent::SpawnEffect(ESimCopterEffectType Type, const
 	// FUN_0048e0b0 bypasses this insertion for type 8 and suppresses it for type 7.
 	if (Type != ESimCopterEffectType::RotorWash && Type != ESimCopterEffectType::SmallSpray)
 	{
-		SpawnTilePuff(World + VelocityCmPerSec * 10.0f, InitialSplatClass(Type, Slot->MotionScale1616), Cell.X, Cell.Y);
+		SpawnTilePuff(
+			World + VelocityCmPerSec.GetSafeNormal() * OriginalPointStepCm,
+			InitialSplatClass(Type, Slot->MotionScale1616),
+			Cell.X,
+			Cell.Y);
 	}
 	return true;
 }
@@ -595,6 +604,188 @@ void USimCopterParticleFXComponent::EmitFireBurst(const FSimCopterEffectSlot& So
 	}
 }
 
+ASimCity2000CityActor* USimCopterParticleFXComponent::ResolveCityActor()
+{
+	if (CachedCityActor.IsValid())
+	{
+		return CachedCityActor.Get();
+	}
+	if (UWorld* World = GetWorld())
+	{
+		CachedCityActor = Cast<ASimCity2000CityActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCity2000CityActor::StaticClass()));
+	}
+	return CachedCityActor.Get();
+}
+
+ASimCopterMissionSystemActor* USimCopterParticleFXComponent::ResolveMissionActor()
+{
+	if (CachedMissionActor.IsValid())
+	{
+		return CachedMissionActor.Get();
+	}
+	if (UWorld* World = GetWorld())
+	{
+		CachedMissionActor = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass()));
+	}
+	return CachedMissionActor.Get();
+}
+
+bool USimCopterParticleFXComponent::FindWaterTrajectoryImpact(
+	const FVector& Start,
+	const FVector& End,
+	FVector& OutImpact,
+	bool& bOutWaterSurface,
+	FIntPoint& OutCell)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return false;
+	}
+
+	float BestTime = 2.0f;
+	bool bFound = false;
+	bool bBestIsWater = false;
+	FIntPoint BestCell = GetCellForWorld(End);
+	FVector BestImpact = End;
+	ASimCity2000CityActor* City = ResolveCityActor();
+
+	// SCHOOK: WaterObjectCollision 0x00491370 0x0046efe0
+	FHitResult ObjectHit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterWaterTrajectory), false, GetOwner());
+	if (World->LineTraceSingleByChannel(ObjectHit, Start, End, ECC_Visibility, QueryParams))
+	{
+		BestTime = ObjectHit.Time;
+		BestImpact = ObjectHit.ImpactPoint;
+		bFound = true;
+
+		float SurfaceZ = 0.0f;
+		uint8 TerrainClass = 0xff;
+		FIntPoint SurfaceCell = BestCell;
+		if (City != nullptr &&
+			City->TryGetWaterGameplaySurface(BestImpact, SurfaceZ, TerrainClass, &SurfaceCell))
+		{
+			BestCell = SurfaceCell;
+			bBestIsWater =
+				City->IsTerrainCollisionComponent(ObjectHit.GetComponent()) &&
+				SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass) &&
+				FMath::Abs(BestImpact.Z - SurfaceZ) <=
+					SimCopterEffectFX::OriginalUnitToCm;
+		}
+	}
+
+	// SCHOOK: WaterTerrainCollision 0x00490690
+	// The rendered water material can move visually, but gameplay samples the conditioned terrain
+	// grid. Find the segment crossing against that grid even when terrain collision is disabled.
+	if (City != nullptr)
+	{
+		float StartSurfaceZ = 0.0f;
+		float EndSurfaceZ = 0.0f;
+		uint8 StartClass = 0xff;
+		uint8 EndClass = 0xff;
+		FIntPoint EndCell = BestCell;
+		if (City->TryGetWaterGameplaySurface(Start, StartSurfaceZ, StartClass) &&
+			City->TryGetWaterGameplaySurface(End, EndSurfaceZ, EndClass, &EndCell))
+		{
+			const float StartClearance = Start.Z - StartSurfaceZ;
+			const float EndClearance = End.Z - EndSurfaceZ;
+			if (EndClearance <= 0.0f)
+			{
+				const float Denominator = StartClearance - EndClearance;
+				const float HitTime = StartClearance <= 0.0f
+					? 0.0f
+					: (Denominator > KINDA_SMALL_NUMBER
+						? FMath::Clamp(StartClearance / Denominator, 0.0f, 1.0f)
+						: 1.0f);
+				if (HitTime < BestTime)
+				{
+					FVector TerrainImpact = FMath::Lerp(Start, End, HitTime);
+					float ImpactSurfaceZ = EndSurfaceZ;
+					uint8 ImpactClass = EndClass;
+					FIntPoint ImpactCell = EndCell;
+					City->TryGetWaterGameplaySurface(
+						TerrainImpact,
+						ImpactSurfaceZ,
+						ImpactClass,
+						&ImpactCell);
+					TerrainImpact.Z = ImpactSurfaceZ;
+					BestTime = HitTime;
+					BestImpact = TerrainImpact;
+					BestCell = ImpactCell;
+					bBestIsWater = SimCopterWaterGameplay::IsWaterTerrainClass(ImpactClass);
+					bFound = true;
+				}
+			}
+		}
+	}
+
+	if (!bFound)
+	{
+		return false;
+	}
+	OutImpact = BestImpact;
+	bOutWaterSurface = bBestIsWater;
+	OutCell = BestCell;
+	return true;
+}
+
+void USimCopterParticleFXComponent::AdvanceWaterTrajectory(
+	FSimCopterEffectSlot& Slot,
+	const int32 Delta1616)
+{
+	const SimCopterWaterGameplay::EWaterEmitter Emitter =
+		Slot.Type == ESimCopterEffectType::Spray
+			? SimCopterWaterGameplay::EWaterEmitter::Cannon
+			: SimCopterWaterGameplay::EWaterEmitter::Bucket;
+	SimCopterWaterGameplay::FWaterParticleMotion Motion;
+	Motion.Direction1616 = Slot.Direction1616;
+	Motion.Speed1616 = Slot.MotionScale1616;
+	Motion.Life1616 = Slot.Life1616;
+	const SimCopterWaterGameplay::FWaterParticleFrame Frame =
+		SimCopterWaterGameplay::AdvanceParticleFrame(Motion, Emitter, Delta1616);
+	Slot.Direction1616 = Motion.Direction1616;
+	Slot.MotionScale1616 = Motion.Speed1616;
+	Slot.Life1616 = Motion.Life1616;
+	if (!Frame.bAlive)
+	{
+		Slot.bActive = false;
+		return;
+	}
+
+	const FVector Start = Slot.Position;
+	const FVector End = Start + FVector(
+		static_cast<float>(Frame.Travel1616.X) * SimCopterEffectFX::Fixed1616ToCm,
+		static_cast<float>(Frame.Travel1616.Y) * SimCopterEffectFX::Fixed1616ToCm,
+		static_cast<float>(Frame.Travel1616.Z) * SimCopterEffectFX::Fixed1616ToCm);
+	FVector Impact;
+	bool bWaterSurface = false;
+	FIntPoint ImpactCell = Slot.Cell;
+	if (FindWaterTrajectoryImpact(Start, End, Impact, bWaterSurface, ImpactCell))
+	{
+		const SimCopterWaterGameplay::FWaterImpact Result =
+			SimCopterWaterGameplay::ResolveImpact(Emitter, Slot.Life1616, bWaterSurface);
+		Slot.bActive = false;
+		SpawnTilePuff(Impact, Result.PuffClass, ImpactCell.X, ImpactCell.Y);
+		if (Result.bDouse)
+		{
+			if (ASimCopterMissionSystemActor* Mission = ResolveMissionActor())
+			{
+				Mission->ApplyWaterParticleImpact(Impact, Result.DouseStrength1616);
+			}
+		}
+		return;
+	}
+
+	Slot.Position = End;
+	Slot.Cell = GetCellForWorld(End);
+	Slot.Velocity =
+		SimCopterWaterGameplay::DirectionToFloat(Slot.Direction1616) *
+		(static_cast<float>(Slot.MotionScale1616) / Fixed1616Scale) *
+		SimCopterEffectFX::OriginalUnitToCm;
+}
+
 void USimCopterParticleFXComponent::UpdateSlots(float DeltaTime)
 {
 	const int32 Delta1616 = FMath::Max(1, SecondsToFixed(DeltaTime));
@@ -605,6 +796,12 @@ void USimCopterParticleFXComponent::UpdateSlots(float DeltaTime)
 			continue;
 		}
 		Slot.Age1616 += Delta1616;
+		if (Slot.Type == ESimCopterEffectType::Spray ||
+			Slot.Type == ESimCopterEffectType::BucketDrip)
+		{
+			AdvanceWaterTrajectory(Slot, Delta1616);
+			continue;
+		}
 		Slot.Life1616 -= Delta1616;
 		if (Slot.Life1616 <= 0)
 		{
