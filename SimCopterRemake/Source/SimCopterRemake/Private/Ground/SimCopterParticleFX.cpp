@@ -705,28 +705,16 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 	const FTransform WorldToLocal = GetComponentTransform().Inverse();
 
 	FRotator CameraRotation = (GetComponentLocation() - CameraLocation).Rotation();
-	float HorizontalFovDegrees = 78.0f;
-	float ViewAspect = 16.0f / 9.0f;
 	if (const APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0))
 	{
 		if (const APlayerCameraManager* CameraManager = PC->PlayerCameraManager)
 		{
 			CameraRotation = CameraManager->GetCameraRotation();
-			HorizontalFovDegrees = CameraManager->GetFOVAngle();
-		}
-		int32 ViewWidth = 0;
-		int32 ViewHeight = 0;
-		PC->GetViewportSize(ViewWidth, ViewHeight);
-		if (ViewHeight > 0)
-		{
-			ViewAspect = static_cast<float>(ViewWidth) / static_cast<float>(ViewHeight);
 		}
 	}
 	const FVector CameraForward = CameraRotation.Vector();
 	const FVector CameraRight = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Y);
 	const FVector CameraUp = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Z);
-	const float HorizontalTangent =
-		FMath::Tan(FMath::DegreesToRadians(HorizontalFovDegrees * 0.5f));
 	const int32 RasterFrame = FMath::FloorToInt(
 		(GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0f) * 20.0f);
 
@@ -764,14 +752,12 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 		Section.Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
 	};
 
-	auto GetPixelSize = [&](float CameraDepth, float& OutWidth, float& OutHeight)
+	// One original 560x400 viewport pixel, in centimetres at that camera depth. Both
+	// effect handlers measure their output in those pixels and the original's pixel
+	// aspect is 1.0, so a single square size drives every card.
+	auto GetPixelSizeCm = [](float CameraDepth)
 	{
-		OutWidth =
-			2.0f * CameraDepth * HorizontalTangent /
-			FSimCopterEffectRasterizer::OriginalViewportWidth;
-		OutHeight =
-			2.0f * CameraDepth * HorizontalTangent /
-			(ViewAspect * FSimCopterEffectRasterizer::OriginalViewportHeight);
+		return FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(CameraDepth);
 	};
 
 	auto AddFace17 = [&](const FVector& Center, uint8 PaletteIndex)
@@ -781,9 +767,9 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 		{
 			return;
 		}
-		float PixelWidth = 0.0f;
-		float PixelHeight = 0.0f;
-		GetPixelSize(CameraDepth, PixelWidth, PixelHeight);
+		// FUN_00491520 writes a 2x2 block in the 0x10 renderer, so the half extent is
+		// exactly one pixel on each axis.
+		const float PixelSizeCm = GetPixelSizeCm(CameraDepth);
 		FLinearColor Color = PaletteColor(PaletteIndex);
 		Color.A = 1.0f;
 		AddQuad(
@@ -791,8 +777,8 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 			Center,
 			CameraRight,
 			CameraUp,
-			PixelWidth,
-			PixelHeight,
+			PixelSizeCm,
+			PixelSizeCm,
 			FVector2D::ZeroVector,
 			FVector2D(1.0f, 1.0f),
 			Color,
@@ -814,12 +800,7 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 		{
 			return;
 		}
-		const float DitherPixelWidth =
-			2.0f * CameraDepth * HorizontalTangent /
-				FSimCopterEffectRasterizer::DitherSimulationViewportWidth;
-		const float DitherPixelHeight =
-			2.0f * CameraDepth * HorizontalTangent /
-				(ViewAspect * FSimCopterEffectRasterizer::DitherSimulationViewportHeight);
+		const float PixelSizeCm = GetPixelSizeCm(CameraDepth);
 		uint32 RandomState = RandomSeed ^ static_cast<uint32>(RasterFrame) * 0xc2b2ae35u;
 		// Preserve the source rand()%7 remap-row sample even though the 0x10
 		// selector-write path does not consume the selected remap row.
@@ -842,12 +823,15 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 				FSimCopterEffectRasterizer::GetStencilMetrics(Radius);
 			const float RasterWidth = static_cast<float>(Stencil.Width);
 			const float RasterHeight = static_cast<float>(Stencil.Height);
+			// The original writes the kernel's first pixel at the jittered projected
+			// point and grows right/down, so the covered span is centred half a pixel
+			// short of the geometric middle.
 			const FVector KernelCenter =
 				Center +
 				CameraRight *
-					((static_cast<float>(JitterX) + RasterWidth * 0.5f) * DitherPixelWidth) -
+					((static_cast<float>(JitterX) + (RasterWidth - 1.0f) * 0.5f) * PixelSizeCm) -
 				CameraUp *
-					((static_cast<float>(JitterY) + RasterHeight * 0.5f) * DitherPixelHeight);
+					((static_cast<float>(JitterY) + (RasterHeight - 1.0f) * 0.5f) * PixelSizeCm);
 			const int32 SelectorPhase =
 				FSimCopterEffectRasterizer::ConsumeSelectorPhase(Radius);
 			const FVector2D UV0 = FSimCopterEffectRasterizer::GetAtlasUV(
@@ -859,8 +843,8 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 				KernelCenter,
 				CameraRight,
 				CameraUp,
-				RasterWidth * DitherPixelWidth * 0.5f,
-				RasterHeight * DitherPixelHeight * 0.5f,
+				RasterWidth * PixelSizeCm * 0.5f,
+				RasterHeight * PixelSizeCm * 0.5f,
 				UV0,
 				UV1,
 				FLinearColor::White,
@@ -912,15 +896,12 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 					FVector::DotProduct(Center - CameraLocation, CameraForward);
 				if (CameraDepth > 1.0f)
 				{
-					float PixelWidth = 0.0f;
-					float PixelHeight = 0.0f;
-					GetPixelSize(CameraDepth, PixelWidth, PixelHeight);
 					AddQuad(
 						Solids,
 						Center,
 						CameraRight,
 						LineUp,
-						PixelWidth,
+						GetPixelSizeCm(CameraDepth),
 						FVector::Distance(A, B) * 0.5f,
 						FVector2D::ZeroVector,
 						FVector2D(1.0f, 1.0f),

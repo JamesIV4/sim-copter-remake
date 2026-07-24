@@ -28,14 +28,17 @@ struct FSimCopterEffectStencilMetrics
 };
 
 // Shared, testable pieces of the original face-type 0x17/0x1a software renderer.
-// The Unreal components render a low-resolution virtual effect layer and scale
-// its cards, dither dots, and gaps together to the modern viewport.
+// Both handlers size their output in framebuffer pixels of the original gameplay
+// viewport, so the Unreal components convert those pixel counts back through the
+// original projection to get the world size the effect had in the 1996 renderer.
 class SIMCOPTERREMAKE_API FSimCopterEffectRasterizer
 {
 public:
-	// DAT_004f9750 == 0x10 selects the shipped high-resolution renderer. Its gameplay
-	// viewport is 560x400 inside a 640x480, 8-bit framebuffer. The 280x200 viewport
-	// and 320x240 framebuffer are the alternate low-resolution mode.
+	// FUN_00479bb0 stores 0x10 in DAT_004f9750, so the shipped renderer is the
+	// high-resolution one: a 560x400 gameplay viewport inside a 640x480, 8-bit
+	// framebuffer. The 280x200 viewport in a 320x240 framebuffer is the alternate
+	// mode 0x20, which FUN_00461350 stretch-blits 2x back up to 560x400 - both
+	// modes therefore cover the same fraction of the gameplay view.
 	static constexpr int32 OriginalViewportWidth = 560;
 	static constexpr int32 OriginalViewportHeight = 400;
 	static constexpr int32 OriginalFramebufferStride = 640;
@@ -44,10 +47,28 @@ public:
 	static constexpr int32 LowResolutionViewportHeight = 200;
 	static constexpr int32 LowResolutionFramebufferStride = 320;
 	static constexpr int32 LowResolutionFramebufferHeight = 240;
-	// Modern presentation intentionally simulates face-0x1a on the original
-	// low-resolution gameplay viewport, then scales that virtual layer as a whole.
-	static constexpr int32 DitherSimulationViewportWidth = LowResolutionViewportWidth;
-	static constexpr int32 DitherSimulationViewportHeight = LowResolutionViewportHeight;
+
+	// FUN_0046f2ca builds the projection from the active gameplay viewport:
+	//   DAT_004faff0 = viewportWidth << 11            = half width, 20.12
+	//   DAT_004faff8 = (DAT_004faff0 * 0x1bb6) >> 12  = focal length, 20.12
+	// 0x1bb6/4096 is 1.7319336 (sqrt 3), so tan(hFov/2) = halfWidth/focal = 1/sqrt(3)
+	// and the original gameplay view is a 60-degree horizontal frustum over 560x400.
+	// FUN_0046f2b0(0x10000) sets the pixel aspect DAT_004fb014 to 1.0, so original
+	// framebuffer pixels are square and one focal length serves both axes.
+	static constexpr float OriginalProjectionRatio = 7094.0f / 4096.0f;
+	static constexpr float OriginalFocalLengthPixels =
+		OriginalViewportWidth * 0.5f * OriginalProjectionRatio; // 484.9414
+
+	// World size that one original viewport pixel spans at CameraDepthCm - the exact
+	// inverse of the original perspective divide. Sizing effect kernels with this
+	// reproduces the size they had relative to the city, independent of the remake's
+	// resolution and camera FOV. Deriving it from the live viewport instead makes the
+	// effects grow with the remake's wider frustum.
+	static constexpr float GetWorldSizePerViewportPixel(float CameraDepthCm)
+	{
+		return CameraDepthCm / OriginalFocalLengthPixels;
+	}
+
 	static constexpr int32 KernelAtlasCellSize = 35;
 	static constexpr int32 SelectorFamilyCount = 4;
 	static constexpr int32 SelectorPhaseCount = 8;

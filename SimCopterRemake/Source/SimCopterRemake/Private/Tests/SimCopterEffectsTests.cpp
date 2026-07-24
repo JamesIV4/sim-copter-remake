@@ -66,10 +66,38 @@ bool FSimCopterEffectsRasterizerTest::RunTest(const FString& Parameters)
 		FSimCopterEffectRasterizer::LowResolutionViewportWidth, 280);
 	TestEqual(TEXT("alternate renderer gameplay viewport height"),
 		FSimCopterEffectRasterizer::LowResolutionViewportHeight, 200);
-	TestEqual(TEXT("dither simulates the low-resolution gameplay width"),
-		FSimCopterEffectRasterizer::DitherSimulationViewportWidth, 280);
-	TestEqual(TEXT("dither simulates the low-resolution gameplay height"),
-		FSimCopterEffectRasterizer::DitherSimulationViewportHeight, 200);
+	// FUN_0046f2ca: focal = (viewportWidth << 11) * 0x1bb6 >> 12, i.e. half the
+	// viewport width times sqrt(3) - a 60-degree horizontal frustum.
+	TestTrue(TEXT("0x1bb6 projection ratio is the decoded 20.12 constant"),
+		FMath::IsNearlyEqual(
+			FSimCopterEffectRasterizer::OriginalProjectionRatio,
+			1.7319336f,
+			1.0e-6f));
+	TestTrue(TEXT("original focal length is 484.94 viewport pixels"),
+		FMath::IsNearlyEqual(
+			FSimCopterEffectRasterizer::OriginalFocalLengthPixels,
+			484.9414f,
+			1.0e-3f));
+	TestTrue(TEXT("half the viewport width subtends a 30-degree half angle"),
+		FMath::IsNearlyEqual(
+			FMath::RadiansToDegrees(FMath::Atan(
+				FSimCopterEffectRasterizer::OriginalViewportWidth * 0.5f /
+				FSimCopterEffectRasterizer::OriginalFocalLengthPixels)),
+			30.0f,
+			0.01f));
+	// One viewport pixel at the focal distance is exactly one world unit, and the
+	// size stays proportional to depth - it must never depend on the live camera.
+	TestTrue(TEXT("one pixel at focal depth spans one world unit"),
+		FMath::IsNearlyEqual(
+			FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(
+				FSimCopterEffectRasterizer::OriginalFocalLengthPixels),
+			1.0f,
+			1.0e-4f));
+	TestTrue(TEXT("pixel world size scales linearly with depth"),
+		FMath::IsNearlyEqual(
+			FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(3000.0f),
+			3000.0f / 484.9414f,
+			1.0e-4f));
 
 	const FVector OriginalX =
 		SimCopterEffectFX::OriginalOffsetToCityLocalCm(0x10000, 0, 0);
