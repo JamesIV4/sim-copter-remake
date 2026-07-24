@@ -287,12 +287,15 @@ A genuine feature, currently absent, and cheap once the fill path exists.
    consumer; the relevant vtable draw path still needs to be named and exported
    before the original gauge can be ported. The remake now has a compact,
    persistent status/control panel showing pounds, capacity, rope length, and
-   the `R`, Page Up, Page Down, and `G` actions; that is an explicit gameplay
-   affordance, not a claim that the original gauge has been recovered.
+   the `R`, Page Up, Page Down, `G`, and left-click actions; that is an explicit
+   gameplay affordance, not a claim that the original gauge has been recovered.
 3. **Helicopter capability bits.** `DAT_00504060` comes from the career record
    at `+0x48`. Which helicopters carry a cannon (`& 0x10`) and which carry the
    second rope attachment (`& 4`) needs that record's layout, which the career
-   loader port covers rather than this one.
+   loader port covers rather than this one. An explicitly labelled debug button
+   can grant and select the water gun for testing: left click then fires it,
+   while `G` still dumps the bucket. This does not assign the capability to a
+   production helicopter or close the career-data blocker.
 4. **Face `0x1a` class 0 vs class 3 (closed by the renderer port).** Bucket and
    cannon water use the existing decoded selector-kernel path with class 0 and
    class 3 respectively; no substitute radial quad was introduced.

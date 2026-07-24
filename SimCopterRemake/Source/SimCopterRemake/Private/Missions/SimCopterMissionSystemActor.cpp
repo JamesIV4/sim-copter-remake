@@ -1551,8 +1551,14 @@ void ASimCopterMissionSystemActor::EnsureDebugButtonsWidget()
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
+				.Padding(FMargin(0.0f, 0.0f, 0.0f, 4.0f))
 				[
 					MakeButton(TEXT("Force Car Fire"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugForceCarFireClicked))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					MakeButton(TEXT("Switch Bucket / Water Gun"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugToggleWaterEquipmentClicked))
 				]
 			]
 		];
@@ -1578,6 +1584,24 @@ FReply ASimCopterMissionSystemActor::OnDebugForceFireClicked()
 FReply ASimCopterMissionSystemActor::OnDebugForceCarFireClicked()
 {
 	SimForceCarFire();
+	return FReply::Handled();
+}
+
+FReply ASimCopterMissionSystemActor::OnDebugToggleWaterEquipmentClicked()
+{
+	ASimCopterHelicopterPawn* Helicopter =
+		Cast<ASimCopterHelicopterPawn>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+	if (Helicopter == nullptr && GetWorld() != nullptr)
+	{
+		Helicopter = Cast<ASimCopterHelicopterPawn>(
+			UGameplayStatics::GetActorOfClass(
+				GetWorld(),
+				ASimCopterHelicopterPawn::StaticClass()));
+	}
+	if (Helicopter != nullptr)
+	{
+		Helicopter->ToggleDebugWaterEquipment();
+	}
 	return FReply::Handled();
 }
 

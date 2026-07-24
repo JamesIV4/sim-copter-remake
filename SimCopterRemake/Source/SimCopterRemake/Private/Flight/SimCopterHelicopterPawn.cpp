@@ -363,6 +363,8 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAxis(TEXT("SimCopterRopeAdjust"), this, &ASimCopterHelicopterPawn::AdjustRope);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterToggleRope"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleRope);
+	PlayerInputComponent->BindAction(TEXT("SimCopterReleaseWater"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartPrimaryWaterUse);
+	PlayerInputComponent->BindAction(TEXT("SimCopterReleaseWater"), IE_Released, this, &ASimCopterHelicopterPawn::StopPrimaryWaterUse);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterWaterCannon"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartWaterCannon);
@@ -741,6 +743,7 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	bRopeDeployed = false;
 	bRopeStateInitialized = false;
 	bWaterCannonHeld = false;
+	bPrimaryWaterUseHeld = false;
 	bIsLanded = false;
 	SetActorRotation(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	SeedFlightModelFromActor();
@@ -1010,9 +1013,9 @@ void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 	WaterControlsWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
-		.HAlign(HAlign_Right)
+		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Bottom)
-		.Padding(FMargin(0.0f, 0.0f, 22.0f, 22.0f))
+		.Padding(FMargin(22.0f, 0.0f, 0.0f, 22.0f))
 		[
 			SNew(SBorder)
 			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
@@ -1066,9 +1069,15 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 			RopeLengthCm / 100.0f);
 	}
 
-	WaterControlsText->SetText(FText::FromString(FString::Printf(
-		TEXT("WATER BUCKET  %s\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower   [G] dump"),
-		*BucketState)));
+	const FString Controls =
+		bDebugWaterCannonSelected
+			? FString::Printf(
+				TEXT("WATER BUCKET  %s\nPRIMARY: WATER GUN (DEBUG)   [LEFT CLICK] fire   [G] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+				*BucketState)
+			: FString::Printf(
+				TEXT("WATER BUCKET  %s\n[LEFT CLICK / G] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+				*BucketState);
+	WaterControlsText->SetText(FText::FromString(Controls));
 }
 
 void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
@@ -1310,6 +1319,16 @@ void ASimCopterHelicopterPawn::ToggleRope()
 	RefreshWaterControlsWidget();
 }
 
+void ASimCopterHelicopterPawn::StartPrimaryWaterUse()
+{
+	bPrimaryWaterUseHeld = true;
+}
+
+void ASimCopterHelicopterPawn::StopPrimaryWaterUse()
+{
+	bPrimaryWaterUseHeld = false;
+}
+
 void ASimCopterHelicopterPawn::StartBucketDump()
 {
 	bBucketDumpHeld = true;
@@ -1328,6 +1347,19 @@ void ASimCopterHelicopterPawn::StartWaterCannon()
 void ASimCopterHelicopterPawn::StopWaterCannon()
 {
 	bWaterCannonHeld = false;
+}
+
+void ASimCopterHelicopterPawn::ToggleDebugWaterEquipment()
+{
+	bDebugWaterCannonSelected = !bDebugWaterCannonSelected;
+	bPrimaryWaterUseHeld = false;
+	if (bDebugWaterCannonSelected)
+	{
+		// The actual installed state belongs to an unported career capability bit. This explicit
+		// debug path grants it only so the already-decoded cannon can be exercised in-game.
+		bWaterCannonInstalled = true;
+	}
+	RefreshWaterControlsWidget();
 }
 
 void ASimCopterHelicopterPawn::StartEngineHold()
@@ -1472,7 +1504,9 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	// SCHOOK: HelicopterWaterLoad 0x00484d20
 	// heli[0x74] is the actual number of pounds in the attachment, not a normalized fill amount.
 	FlightModel.LoadPounds = BucketWaterPounds;
-	if (bWaterCannonHeld && bWaterCannonInstalled && BucketWaterPounds > 0)
+	if ((bWaterCannonHeld || (bPrimaryWaterUseHeld && bDebugWaterCannonSelected)) &&
+		bWaterCannonInstalled &&
+		BucketWaterPounds > 0)
 	{
 		FlightModel.PitchTarget -= SimCopterWaterGameplay::FixedMul(
 			SimCopterFixed::FromFloat(DeltaSeconds),
@@ -1867,7 +1901,10 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 		}
 	}
 
-	if (bRopeDeployed && (bBucketDumpHeld || bCollisionSpill))
+	if (bRopeDeployed &&
+		(bBucketDumpHeld ||
+			(bPrimaryWaterUseHeld && !bDebugWaterCannonSelected) ||
+			bCollisionSpill))
 	{
 		EmitBucketWaterFrame(bCollisionSpill);
 	}
@@ -2152,7 +2189,8 @@ void ASimCopterHelicopterPawn::EmitBucketWaterFrame(bool)
 
 void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
 {
-	if (!bWaterCannonHeld)
+	if (!bWaterCannonHeld &&
+		!(bPrimaryWaterUseHeld && bDebugWaterCannonSelected))
 	{
 		return;
 	}
