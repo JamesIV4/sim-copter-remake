@@ -76,6 +76,7 @@ public:
 	virtual bool IsModalUiActive() const override;
 
 	virtual void OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId) override;
+	virtual void OnBuildingBurnedDown(int32 TileX, int32 TileY, int32 FootprintSize) override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Audio")
 	TMap<int32, USoundBase*> UiSounds;

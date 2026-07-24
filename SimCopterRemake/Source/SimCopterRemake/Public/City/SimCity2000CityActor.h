@@ -8,12 +8,45 @@
 #include "UObject/SoftObjectPath.h"
 #include "SimCity2000CityActor.generated.h"
 
+class UInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class USceneComponent;
+class UStaticMesh;
 class UTexture2D;
+
+// One model instance making up a placed building. A building always places its primary object
+// and, for some dispatches, a secondary object at the same origin; both come away together when
+// it is demolished, and its rubble is placed the same way.
+struct FSimCopterBuildingPart
+{
+	int32 ComponentIndex = INDEX_NONE;
+	int32 InstanceIndex = INDEX_NONE;
+
+	bool IsValid() const { return ComponentIndex != INDEX_NONE && InstanceIndex != INDEX_NONE; }
+	void Reset() { ComponentIndex = INDEX_NONE; InstanceIndex = INDEX_NONE; }
+};
+
+// One placed building. Its identity is its building id - its index in the city's building array -
+// which is fixed for the life of a city build. The instance indices underneath it are not: they
+// move whenever a neighbouring instance in the same component is removed, so nothing outside this
+// record should ever hold one.
+struct FSimCopterCityBuilding
+{
+	// Top-left tile of the footprint, and the footprint it covers.
+	FIntPoint OriginTile = FIntPoint::ZeroValue;
+	FIntPoint FootprintTiles = FIntPoint(1, 1);
+	// Component-space origin the model was placed at; the rubble takes the same spot.
+	FVector PlacementOrigin = FVector::ZeroVector;
+	uint8 XbldId = 0;
+	bool bDemolished = false;
+	// At most one part per component - the primary and secondary objects are different models.
+	TArray<FSimCopterBuildingPart, TInlineAllocator<2>> Parts;
+	// Valid once demolished, if a rubble model existed for this footprint size.
+	FSimCopterBuildingPart RubblePart;
+};
 
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCity2000CityActor : public AActor
@@ -48,6 +81,32 @@ public:
 	float GetEffectiveTerrainHeightScale() const;
 
 	bool IsBuildingCollisionHit(const UPrimitiveComponent* HitComponent, const FVector& WorldLocation) const;
+
+	// FUN_004a5fd0: the building covering this tile burned down. Removes its instances - which
+	// takes its geometry and its collision with it, since instance bodies come from the model's
+	// one shared cook - and clears the footprint's building flags so nothing treats it as a
+	// building any more. Any tile of the footprint may be passed, and OutClearedTiles reports the
+	// whole footprint. Returns false when the tile has no removable building (already demolished,
+	// or the building was baked rather than instanced).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|City")
+	bool DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles);
+
+	// True while the tile is covered by a building that has not been demolished.
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	bool HasStandingBuildingAtTile(int32 FileX, int32 FileY) const;
+
+	// True where a building burned down and left the footprint-sized rubble model in its place.
+	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
+	bool HasRubbleAtTile(int32 FileX, int32 FileY) const;
+
+	// False when the building instances did not survive into this world - the state a duplicated
+	// (PIE) or loaded world starts in, since runtime-built static meshes carry no render data
+	// across duplication. BeginPlay rebuilds when this reports false.
+	bool AreBuildingInstancesIntact() const;
+
+	// World-space bounds of the standing building covering this tile, for the demolition's
+	// debris and damage sweep. Returns false when there is nothing there.
+	bool TryGetBuildingBoundsAtTile(int32 FileX, int32 FileY, FBox& OutWorldBounds) const;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
@@ -183,6 +242,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalMeshes = true;
 
+	// Place buildings as instances of a per-model runtime static mesh instead of baking their
+	// triangles into the shared OriginalMeshComponent. Each distinct GEO model is built and
+	// collision-cooked once and then instanced, which is what lets a single building be removed
+	// when it burns down - baked into the merged mesh there is no per-building identity to
+	// remove. Turning this off restores the old merged path (and disables demolition).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bInstanceBuildingMeshes = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalTextures = true;
 
@@ -247,7 +314,49 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> OriginalTextureMaterials;
 
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastBuildingModelCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastBuildingInstanceCount = 0;
+
+	// One instanced component per distinct building model, each holding every placement of that
+	// model in the city. Kept parallel with BuildingInstanceTiles below.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>> BuildingInstanceComponents;
+
+	// The runtime static meshes those components render, held so they survive collection.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMesh>> BuildingModelMeshes;
+
 	TArray<uint8> BuildingTileFlags;
+
+	// Every placed building, indexed by building id. Demolished entries stay put so their id, tile
+	// span and rubble remain resolvable.
+	TArray<FSimCopterCityBuilding> Buildings;
+
+	// Every tile a building covers -> that building's id, INDEX_NONE where none was placed. The
+	// whole footprint points at the one id, so demolition can be asked for with any of its tiles.
+	TArray<int32> TileBuildingIds;
+
+	// Per component, the building id owning each of its instances. Kept in lockstep with the
+	// component's instance array so a removal can be mirrored and the one displaced instance
+	// re-pointed - see RemoveBuildingInstance.
+	TArray<TArray<int32>> ComponentInstanceBuildings;
+
+	// Rubble model component per footprint size 1..4 (original objects 0x14f..0x152), built up
+	// front so a collapse costs only an AddInstance.
+	int32 RubbleComponentIndices[4] = { INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE };
+
+	void ResetBuildingInstances();
+	// The part of this building held in the given component, or null. At most one exists: a
+	// building's primary, secondary and rubble models are always distinct models.
+	FSimCopterBuildingPart* FindBuildingPartInComponent(int32 BuildingId, int32 ComponentIndex);
+	// Removes one instance and repairs the single index the removal displaces. The components use
+	// RemoveAtSwap, so exactly one other instance moves - the last one into the freed slot.
+	void RemoveBuildingInstance(FSimCopterBuildingPart& Part);
+	// Adds an instance of a model component and records which building owns it.
+	FSimCopterBuildingPart AddBuildingInstance(int32 ComponentIndex, int32 BuildingId, const FVector& Origin);
 
 	FString ResolveCityPath() const;
 	FString ResolveOriginalGameRoot() const;
