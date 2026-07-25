@@ -377,6 +377,10 @@ private:
 	FString ResolveCityPath() const;
 	FString ResolveOriginalGameRoot() const;
 
+	// The city the main menu asked for (USimCopterSessionSubsystem), or empty when the level was
+	// entered without a session - then the actor's own CityFile is used.
+	FString GetSessionCityFilePath() const;
+
 	static bool IsRoadLikeTile(uint8 BuildingId);
 	static bool IsBuildingLikeTile(uint8 BuildingId);
 };

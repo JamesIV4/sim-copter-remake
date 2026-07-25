@@ -153,10 +153,17 @@ rotate the fixed offset `(−heliRight)`, scale by **×0x20**, add to the ground
 Over water vs land is **not** a color change in this function — it is always the class-8 puff;
 the SMOKE sprite reads as spray/dust against whatever it is over.
 
-### `FUN_00489250(heli)` — rotor **downwash disc** (the dust ring directly under the heli)
-Ray-marches 16 steps down, picks a dust-density tier 0..3 from `DAT_00504430`, and when the
-tier changes recolors its disc sprite through the **wash/glow frame table** `DAT_005d91e0`
-(= palette {0x08,0x09,0x0A,0x0B}); places a scaled disc via `FUN_0048ae70`.
+### `FUN_00489250(heli)` — **searchlight / spotlight target service** (NOT a downwash disc)
+**Corrected 2026-07-24** — the earlier "rotor downwash disc" reading of this function was wrong.
+Rotor wash is `FUN_004881b0` (above) and bucket drip is `FUN_00488060`; nothing here touches the
+rotor. `FUN_00489250` drives the `SPOTLITE` node at `heli+0xc0`: it ray-marches the aim vector
+`DAT_0057f230` (16 steps of 32 units, max 512), smooths the hit distance into `DAT_00504430`,
+picks a **range band** 0..3 (128/256/384-unit thresholds) stored in `heli[0x150]`, recolors the
+cone faces from the palette table `DAT_005d91e0` = {0x08,0x09,0x0A,0x0B} when the band changes,
+positions/scales the light node at the hit point, and calls
+`FUN_0048ae70(1, groundTile, spotlightNode, -1, band)` — the three-ring **spotlight interaction
+scan**, which is gameplay, not rendering. See
+`Docs/scratchpad/ghidra/heli_tools_models_decode_20260724.md` §4.
 
 ### `FUN_0048a8b0(heli)` — hard-landing / crash splash + dust (state machine)
 State 1: `FUN_004af220(cell, heliPos, 1)` + 5× `FUN_0048e0b0(4, …)` debris + one big

@@ -8,7 +8,7 @@ Status legend (from `Docs/DecompilationWorkflow.md`):
 - `Hypothesis`: plausible interpretation of how the engine consumes the value, not yet cross-checked against `SimCopter.exe`.
 - `Follow-up`: known missing reverse-engineering work.
 
-Nothing in this document is implemented in the remake yet. There is currently no mission, career, scoring, or economy code in `SimCopterRemake/Source` (verified by search). This is original-data documentation that a future mission system should consume.
+The mission layer described here is now ported: see `SimCopterRemake/Source/SimCopterRemake/Public/Missions/SimCopterMissionSystem.h` (scheduler, scoring, fire model, career table) and `Docs/Milestone5SimulationPlan.md`. The session/career-shell half is decoded in `Docs/scratchpad/ghidra/session_modes_and_menu_20260724.md`; the remake exposes it through a debug main menu rather than the original's bitmap screens. Sections below are still the authoritative transcription of the shipped tuning data.
 
 ## The `.twk` File Format
 
@@ -144,7 +144,9 @@ Control 9 (`Adjust feet by this vert dist = -18`) is independent confirmation of
 
 ## The Career: `career.twk`
 
-`Confirmed.` The career is 30 sequential cities, `City0`..`City29`, listed in `sim3d.twk` under `[Career]` (`NumCAREER=30`). Each city is an 11-control section in `career.twk`. The controls are identical in shape across all 30 cities; only the values change.
+`Confirmed.` The career is 30 cities, `City0`..`City29`, listed in `sim3d.twk` under `[Career]` (`NumCAREER=30`). Each city is an 11-control section in `career.twk`. The controls are identical in shape across all 30 cities; only the values change.
+
+`Confirmed (exe).` The cities are **not** played in order. Each city's in-memory record (`DAT_00518dcc + city * 0x50`, built by `FUN_00408370`) carries up to three successor city indices at +0x24/+0x28/+0x2c, and the career-select screen offers exactly those; a new career starts with the choice {City0, City1, City2}. `career.twk` supplies only the first nine controls of the record (+0x00..+0x20) plus Points Needed (+0x44) and $ Earned (+0x48) - the successor graph and the map name are hardcoded in the exe. Full record layout in `Docs/scratchpad/ghidra/session_modes_and_menu_20260724.md`.
 
 Per-city controls (order is fixed: `Ctrl0`..`Ctrl10`):
 
@@ -164,7 +166,9 @@ Per-city controls (order is fixed: `Ctrl0`..`Ctrl10`):
 
 `Hypothesis.` The seven `(weight)` controls are a relative distribution: when the random mission scheduler (see `[General Miss]` below) decides to spawn an event, it picks a mission type proportional to these weights. A weight of `0` disables that mission type in that city. This is why early cities have `Crime=0`, `Rescue=0`, `Riot=0` (only traffic/medevac/transport/light-fire), and why riots first appear at City21 (`Riot=5`) and dominate the final cities (`Riot=20`).
 
-`Hypothesis.` `Points Needed` is the city win condition (it climbs 400 -> 3000). `$ Earned` is most likely the cash awarded for completing the city, and it *decreases* 500 -> 100 as cities get harder, so later cities pay less and demand more. `Day or Night` 0/1 selects the lighting/time set; the exact mapping (which value is night) is a `Follow-up` against the exe.
+`Confirmed (exe).` `Points Needed` is the city win condition (it climbs 400 -> 3000): `FUN_00408c30` compares the session score against it and, once reached, stops the scheduler from creating further missions. `$ Earned` (+0x48, read by `FUN_00407b80` clamped to >= 1) *decreases* 500 -> 100 as cities get harder, so later cities pay less and demand more. A session - career or single city - always opens with $1000 and 0 points (`FUN_00407f30` / `FUN_004080c0`).
+
+`Hypothesis.` `Day or Night` 0/1 selects the lighting/time set; the value is copied to `DAT_004f9720` when a city is entered (and derived from `FUN_00448e80` in single-city mode). Which value means night is still a `Follow-up`.
 
 ### All 30 cities
 
@@ -209,7 +213,7 @@ Observed progression (useful for a remake difficulty curve):
 - Crime/Rescue start at 0 and only switch on at City3; Riot stays 0 until City21.
 - Traffic/MedEvac/Transport weights start high (the gentle intro missions) and shrink as Fire/Crime/Riot take over.
 - Points Needed roughly doubles across the career while $ Earned drops 5x, so the money squeeze is the real difficulty ramp, not the point target alone.
-- `career.twk` only defines the per-city tuning; which `.sc2` map each city uses is chosen elsewhere (`Follow-up`: confirm the city->map binding in the exe / UI data).
+- `career.twk` only defines the per-city tuning. `Confirmed (exe)`: the map comes from record +0x40 (`"city0"`.."city29"), with `".sc2"` appended and resolved against search-path class 7 (`"cities\career\"`), i.e. **career city N plays `cities\career\cityN.sc2`** - the 30 files shipped in `Reference/SimCopterOriginalGame/cities/career/`.
 
 ## The Mission Types: inline `[Missions]` in `sim3d.twk`
 
@@ -320,11 +324,12 @@ The remake's traffic system already models jams (`ESimCopterTrafficFlowMode`, se
 
 ## How This Maps to the Remake
 
-`Follow-up` (none implemented). A faithful mission system needs, in order:
+Done: the scheduler cadence, the weight-to-probability conversion (`FUN_004a6d20`), the `Interval Adj` formula, the per-`[* Miss]` scoring tables and the `fire.twk` fire model are ported in `FSimCopterMissionSystem`, which parses `career.twk` itself (`LoadCareerData`). Which city and session run is chosen in the front-end main menu (`SSimCopterMainMenu` in the `/Game/MainMenu` map) and handed to the city level through `USimCopterSessionSubsystem`.
+
+Still open:
 
 1. A tweak-tree loader that follows `sim3d.twk` `Class`/`Redirect`/`Prefix`/`Num*` directives and exposes structured `Ctrl<i>_*` controls with their `int`/`double`/`fxpt` types. `FSimCopterTweakReader` reads flat sections but does not model the tree or the control grouping.
-2. A career state machine over `City0..City29`: load the city's weights, run until `Points Needed` is met, award `$ Earned`, advance.
-3. A mission scheduler driven by `[General Miss]` cadence and the per-city weight vector.
-4. Per-mission handlers using the `[* Miss]` scoring tables, plus the fire model from `fire.twk` and the figure/crowd budget from `figure.twk`.
-
-The data to drive all of this is fully present in `tweak/`. The open reverse-engineering question is not *what* the numbers are (they are transcribed above) but *exactly how* the exe combines them: weight-to-probability conversion, the `Interval Adj` formula, the day/night flag mapping, and the city->`.sc2` binding. Those are the `Follow-up` items to confirm against `SimCopter.exe` when a mission system is built.
+2. The career successor graph (record +0x24/+0x28/+0x2c, hardcoded in `FUN_00408370`) and per-city map swapping. `AdvanceCareerCity` walks the list sequentially instead, and the remake plays whichever `.sc2` the city actor loaded.
+3. The day/night flag mapping (which value is night).
+4. Session block fields +0x44 (0x10) and +0x48 (3); nothing ported reads them yet.
+5. Five mission types still have stub world hooks, so they cannot be placed: plane crash (0x4), train crash (0x100), boat rescue (0x90), train rescue (0x110) and the speeder car (0x4000).

@@ -4,9 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Flight/SimCopterFlightModel.h"
+#include "Flight/SimCopterHelicopterRegistry.h"
+#include "Flight/SimCopterSpotlight.h"
+#include "Flight/SimCopterWinch.h"
 #include "GameFramework/Pawn.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterHelicopterPawn.generated.h"
+
+// Staged model data built by PrepareHelicopterModel and consumed by CommitHelicopterModel.
+// Defined in Private/Flight/SimCopterPreparedHelicopterModel.h so the public header does
+// not pull in the mesh builder.
+struct FSimCopterPreparedHelicopterModel;
 
 class UCameraComponent;
 class UCapsuleComponent;
@@ -254,13 +262,124 @@ public:
 	const FVector& GetVelocityCmPerSec() const { return VelocityCmPerSec; }
 	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
 	int32 GetBucketWaterPounds() const { return BucketWaterPounds; }
+	int32 GetMaxLoadPounds() const { return HelicopterTuning.MaxLoadPounds; }
 
-	// Debug-only equipment selector used until the career capability record is ported.
+	// --- Canonical model registry (Phase 1) ---
+
+	// Runtime type index into SimCopterHelicopterRegistry (the executable's heli[0]).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Model")
+	int32 GetHelicopterTypeIndex() const { return ActiveHelicopterTypeIndex; }
+
+	const FSimCopterHelicopterDefinition* GetHelicopterDefinition() const;
+
+	// Transactional live model switch (prepare -> validate -> commit). Returns false and
+	// leaves the current helicopter completely untouched when validation fails; the reason
+	// is available from GetLastModelSwitchStatus().
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Model")
+	bool SwitchHelicopterModel(int32 TypeIndex);
+
+	// Wraps through the nine registry entries.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Model")
+	bool CycleHelicopterModel(int32 Delta);
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Model")
+	FString GetLastModelSwitchStatus() const { return LastModelSwitchStatus; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Model")
+	bool IsUsingOriginalMesh() const { return bUsingOriginalMesh; }
+
+	// --- Equipment and tool selection (Phase 2) ---
+
+	const FSimCopterEquipmentState& GetEquipmentState() const { return EquipmentState; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	ESimCopterHelicopterTool GetSelectedTool() const { return SelectedTool; }
+
+	// Remembers the request even when the tool is unavailable; the active tool used by input
+	// falls back to the first available normal tool (GetActiveTool).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void SetSelectedTool(ESimCopterHelicopterTool Tool);
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void CycleSelectedTool(int32 Delta);
+
+	// The tool primary input actually drives right now. Equals GetSelectedTool() unless the
+	// selection is unavailable on this model.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	ESimCopterHelicopterTool GetActiveTool() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	ESimCopterToolAvailability GetToolAvailability(ESimCopterHelicopterTool Tool) const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	bool IsToolAvailable(ESimCopterHelicopterTool Tool) const;
+
+	// True when the tool exists in the selector for the active model (Apache tools are
+	// listed only on the Apache).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	bool IsToolSelectable(ESimCopterHelicopterTool Tool) const;
+
+	// Session-only grant/revoke. Never writes the career record.
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
-	void ToggleDebugWaterEquipment();
+	void SetDebugToolGrant(ESimCopterHelicopterTool Tool, bool bGranted);
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
-	bool IsDebugWaterCannonSelected() const { return bDebugWaterCannonSelected; }
+	void DebugRefillTearGas();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	ESimCopterMegaphoneMessage GetSelectedMegaphoneMessage() const { return SelectedMegaphoneMessage; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void CycleMegaphoneMessage(int32 Delta);
+
+	// The single primary-use entry point shared by left click and the debug panel's USE
+	// button. Held tools (bucket/cannon/machine gun) latch; pressed tools (megaphone/gas/
+	// missile/harness) act once on Start.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void StartPrimaryToolUse();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void StopPrimaryToolUse();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	bool IsPrimaryToolUseHeld() const { return bPrimaryToolUseHeld; }
+
+	// One-line reason string for the debug panel / HUD ("CAREER", "DEBUG GRANT", ...).
+	FString DescribeToolAvailability(ESimCopterHelicopterTool Tool) const;
+
+	// Last refusal produced by the primary-use path (missing equipment, out of water, ...).
+	FString GetLastToolStatus() const { return LastToolStatus; }
+
+	// --- Spotlight target service (Phase 3) ---
+
+	// The shared semantic target the megaphone (and later dispatch) aim at. Updated every
+	// frame regardless of whether the Unreal light is drawn.
+	const FSimCopterToolTarget& GetSpotlightTarget() const { return SpotlightTarget; }
+
+	// Aim deltas in the original's 16.16 tenth-degree units, clamped to +/-500.0.
+	void AddSpotlightAim(int32 PitchDelta1616, int32 YawDelta1616);
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Spotlight")
+	void ResetSpotlightAim();
+
+	// Freezes the target for diagnosis. Debug only; it never redefines the normal target,
+	// it just stops the cached one from being overwritten.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Spotlight")
+	void SetSpotlightTargetFrozen(bool bFrozen) { bSpotlightTargetFrozen = bFrozen; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Spotlight")
+	bool IsSpotlightTargetFrozen() const { return bSpotlightTargetFrozen; }
+
+	// Rope/winch state shared by the bucket and (Phase 4) the harness.
+	bool IsRopeDeployed() const { return bRopeDeployed; }
+	int32 GetRopeFirstActiveNode() const { return RopeFirstActiveNode; }
+
+	// Which object the rope end currently renders (heli[0x32] vs heli[0x33]).
+	bool IsHarnessRopeEndSelected() const { return bHarnessRopeEndSelected; }
+	bool HasHarnessRider() const { return bHarnessRiderAttached; }
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	void ToggleRopeFromDebugPanel();
 
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
@@ -309,6 +428,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UProceduralMeshComponent> OriginalBucketMeshComponent;
 
+	// Original SimCopter HARNESS object (GEO id 0x16d). FUN_00483c20 caches both rope-end
+	// objects and FUN_00487bb0 swaps which one the rope end renders.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> OriginalHarnessMeshComponent;
+
 	// Renders the original water effects: bucket water drips + douse steam (from the bucket) and
 	// the rotor-wash "wind kickback" spray/dust under the helicopter.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -326,8 +450,23 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	FDirectoryPath OriginalGameRoot;
 
+	// Seed value only: resolved through SimCopterHelicopterRegistry into
+	// ActiveHelicopterTypeIndex on BeginPlay, after which the index is authoritative.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	FString HelicopterTypeName = TEXT("Jet Ranger");
+
+	// Shows the tool/model debug panel in non-shipping builds.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
+	bool bShowHelicopterDebugPanel = true;
+
+	// Career equipment the session starts with. Until the career/shop layer is ported this
+	// seeds FSimCopterEquipmentState::CareerEquipmentMask; the water pair matches what the
+	// remake already shipped.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Equipment", meta = (Bitmask))
+	int32 StartingCareerEquipmentMask = 0x01;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Equipment", meta = (ClampMin = "0", ClampMax = "10"))
+	int32 StartingTearGasRounds = 0;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	bool bLoadTuningOnBeginPlay = true;
@@ -596,7 +735,21 @@ protected:
 	bool bUsingOriginalBucketMesh = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	bool bUsingOriginalHarnessMesh = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelLoadError;
+
+	// Runtime type index; the registry entry is the source of truth for names, object ids,
+	// seats, the tail-rotor mount, and the Apache armament flag.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	int32 ActiveHelicopterTypeIndex = 0;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	FString LastModelSwitchStatus;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	FSimCopterEquipmentState EquipmentState;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> ModelVertexColorMaterial;
@@ -632,8 +785,44 @@ private:
 	float RopeAdjustInput = 0.0f;
 	bool bBucketDumpHeld = false;
 	bool bWaterCannonHeld = false;
-	bool bPrimaryWaterUseHeld = false;
-	bool bDebugWaterCannonSelected = false;
+
+	// Common primary-use latch (FUN_00485f50 actions 2 / 0x0d / 0x10 are all level
+	// triggered; the edge-triggered tools consume bPrimaryToolUsePressed once).
+	bool bPrimaryToolUseHeld = false;
+	bool bPrimaryToolUsePressed = false;
+
+	ESimCopterHelicopterTool SelectedTool = ESimCopterHelicopterTool::WaterBucket;
+	ESimCopterMegaphoneMessage SelectedMegaphoneMessage = ESimCopterMegaphoneMessage::ReportTraffic;
+	FString LastToolStatus;
+
+	// FUN_0048e0b0's shared missile/tear-gas cooldown DAT_00504570 (1.0 s).
+	float ToolCooldownSeconds = 0.0f;
+
+	// Rope-end object selection, mirroring the original's heli[0x32] (BUCKET) /
+	// heli[0x33] (HARNESS) swap in FUN_00487bb0. The rider flag is driven by the behaviour
+	// VM attachment work; until that lands it stays false and only guards model switching.
+	bool bHarnessRopeEndSelected = false;
+	bool bHarnessRiderAttached = false;
+
+	// heli[0x6f]..heli[0x72]. RopeFirstActiveNode/bRopeDeployed above are derived from this
+	// each frame so the existing rope simulation and visuals keep working unchanged.
+	SimCopterWinch::FWinchState WinchState;
+
+	// One-shot winch command issued by ToggleRope / the debug panel; held until the winch
+	// reaches its limit.
+	int32 PendingWinchCommand = 0;
+
+	// Spotlight aim accumulators DAT_0050408c (pitch) / DAT_00504090 (yaw), 16.16
+	// tenth-degrees, clamped to +/-500.0. The rest pose adds the fixed -36 degree base tilt.
+	int32 SpotlightAimPitch1616 = 0;
+	int32 SpotlightAimYaw1616 = 0;
+	float SpotlightAimPitchInput = 0.0f;
+	float SpotlightAimYawInput = 0.0f;
+
+	// DAT_00504430: the smoothed march distance the band selection reads.
+	int32 SpotlightDistance1616 = 0;
+	FSimCopterToolTarget SpotlightTarget;
+	bool bSpotlightTargetFrozen = false;
 
 	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
@@ -670,6 +859,7 @@ private:
 	TSharedPtr<SProgressBar> WaterCapacityBar;
 	TSharedPtr<STextBlock> WaterCapacityText;
 	TSharedPtr<STextBlock> WaterControlsText;
+	TSharedPtr<SWidget> HelicopterDebugPanelWidget;
 
 	void MovePitch(float Value);
 	void MoveRoll(float Value);
@@ -684,8 +874,6 @@ private:
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
-	void StartPrimaryWaterUse();
-	void StopPrimaryWaterUse();
 	void StartBucketDump();
 	void StopBucketDump();
 	void StartWaterCannon();
@@ -704,6 +892,19 @@ private:
 	void SimForceFire();
 	UFUNCTION(Exec)
 	void SimForceCarFire();
+
+	// Tool/model debug console commands. These duplicate the debug panel so the transaction
+	// can also be exercised headlessly (automation, -game smoke tests).
+	UFUNCTION(Exec)
+	void SimSwitchHeli(int32 TypeIndex);
+	UFUNCTION(Exec)
+	void SimCycleHeli(int32 Delta);
+	UFUNCTION(Exec)
+	void SimSelectTool(int32 ToolIndex);
+	UFUNCTION(Exec)
+	void SimGrantTool(int32 ToolIndex, int32 bGranted);
+	UFUNCTION(Exec)
+	void SimDumpHeliState();
 
 	void UpdateEngineState(float DeltaSeconds);
 	void SimulateFlightStep(float DeltaSeconds);
@@ -730,6 +931,19 @@ private:
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateSearchLightEffect();
+
+	// Port of FUN_00489250: aim -> ray march -> smoothing -> band -> tile -> light node.
+	void UpdateSpotlightTarget(float DeltaSeconds);
+	void AimSpotlightPitch(float Value);
+	void AimSpotlightYaw(float Value);
+	void AimSpotlightPitchUp() { AimSpotlightPitch(1.0f); }
+	void AimSpotlightPitchDown() { AimSpotlightPitch(-1.0f); }
+	void StopAimSpotlightPitch() { AimSpotlightPitch(0.0f); }
+	void AimSpotlightYawLeft() { AimSpotlightYaw(-1.0f); }
+	void AimSpotlightYawRight() { AimSpotlightYaw(1.0f); }
+	void StopAimSpotlightYaw() { AimSpotlightYaw(0.0f); }
+	// Direction of the aim vector in world space, built the way FUN_00489730 does.
+	FVector GetSpotlightAimDirection() const;
 	float ResolveCameraGroundLift(
 		const FVector& BoomOrigin,
 		float ArmLength,
@@ -749,12 +963,55 @@ private:
 	void EnsureWaterControlsWidget();
 	void RemoveWaterControlsWidget();
 	void RefreshWaterControlsWidget();
+	void EnsureHelicopterDebugPanel();
+	void RemoveHelicopterDebugPanel();
 	bool LoadPassengerSlotIconTexture();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;
 
-	// Resolves the GEO table names (fuselage + main rotor) for HelicopterTypeName.
-	// Returns false when the name is not a known flyable helicopter.
-	static bool GetHelicopterMeshNames(const FString& TypeName, FString& OutBodyName, FString& OutMainRotorName);
 	void ShowOriginalMesh(bool bUseOriginalMesh);
+
+	// --- Transactional model switching (plan section 7) ---
+
+	// Builds every asset the target model needs without touching a single live component.
+	// Records problems in OutPrepared.Errors instead of failing hard so Validate can report
+	// all of them at once.
+	void PrepareHelicopterModel(int32 TypeIndex, FSimCopterPreparedHelicopterModel& OutPrepared) const;
+
+	// Safety gates: missing assets, too few seats for the onboard passengers, an occupied
+	// harness. Returns false with a reason and leaves the live helicopter alone.
+	bool ValidateHelicopterModel(const FSimCopterPreparedHelicopterModel& Prepared, FString& OutReason) const;
+
+	// Applies the staged data as one operation, preserving kinematics, engine/rotor state,
+	// camera, tool selection, debug grants, and mission association. Fuel and hit points
+	// carry over as fractions of the old maxima; water load is clamped to the new maximum.
+	void CommitHelicopterModel(FSimCopterPreparedHelicopterModel& Prepared);
+
+	// Mesh/hardpoint half of the commit. Only called once the staged data has validated, so
+	// it can replace live procedural sections without risking a half-swapped helicopter.
+	void ApplyPreparedModelMeshes(const FSimCopterPreparedHelicopterModel& Prepared);
+
+	// Reads heli.twk into the supplied tuning structs without mutating the pawn.
+	bool ReadTuningForSection(
+		const FString& SectionName,
+		FSimCopterHelicopterTypeTuning& OutHelicopterTuning,
+		FSimCopterLandingTuning& OutLandingTuning,
+		FSimCopterRopeTuning& OutRopeTuning,
+		FSimCopterDamageTuning& OutDamageTuning,
+		FString& OutError) const;
+
+	// --- Common tool dispatch (plan section 5.2) ---
+
+	// Runs once per flight substep: consumes the pressed edge, ticks the cooldown, and
+	// applies the held tools.
+	void UpdateToolDispatch(float DeltaSeconds);
+	bool TryBeginToolUse(ESimCopterHelicopterTool Tool);
+	void BroadcastMegaphoneMessage();
+
+	// Runs the original square-spiral tile scan around Event.TargetTile and routes every
+	// eligible object through the shared interaction dispatch. Returns how many reacted.
+	int32 BroadcastInteraction(const struct FSimCopterInteractionEvent& Event, int32 Rings);
+
+	void RecomputeActiveToolFallback();
+	int32 GetModelCapabilityMask() const;
 };

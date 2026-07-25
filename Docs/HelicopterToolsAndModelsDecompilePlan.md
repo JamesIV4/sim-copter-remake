@@ -1,8 +1,26 @@
 # Helicopter Tools and Model-Switching Decompile Plan
 
-Status: planning and first-pass evidence map complete; implementation pending
+Status: Phases 0-3 complete, Phase 4 partially complete, Phases 5-7 pending.
+See "Implementation status" below.
 
-Written: 2026-07-24
+Written: 2026-07-24 - last updated 2026-07-24
+
+## Implementation status
+
+| Phase | State | Notes |
+| --- | --- | --- |
+| 0 - durable evidence pack | **Done** | `Docs/scratchpad/ghidra/heli_tools_models_decode_20260724.md` plus four raw decompile dumps; hashes recorded; `FUN_00489250` label corrected; harness opcode 87 resolved; `DAT_0058d728` dumped and name-checked against `people.df`. |
+| 1 - model registry + live switching | **Done** | `SimCopterHelicopterRegistry` (nine records), prepare/validate/commit switching, authored tail-rotor mounts, debug-panel model row. |
+| 2 - equipment state, selector, input | **Done** | `FSimCopterEquipmentState` (career / debug-grant / model layers), `StartPrimaryToolUse`/`StopPrimaryToolUse`, tool row + contextual rows, mission widget's water button removed. |
+| 3 - spotlight + megaphone | **Done** | `SimCopterSpotlight` march/smoothing/bands, `FSimCopterToolTarget`, `SimCopterInteraction` spiral scan + reaction table, megaphone routed through the spotlight tile with all five messages. |
+| 4 - rescue harness | **Partial** | Winch state machine, rope-end exchange, and the `HARNESS` mesh are ported. The behaviour-VM opcodes (48/53/58/59/82/86/87) and the BHAV 700/305/303 attachment loop are **not** implemented yet. |
+| 5 - tear gas | **Not started** | Ammo, cooldown, and the refusal path are in; the projectile, gas cloud, and mode-5 reaction are not. |
+| 6 - Apache weapons | **Not started** | Selector entries and `MODEL` availability are in; the emitters are not. |
+| 7 - career/catalog integration | **Not started** | Prices, bits, and sell values are decoded and tabled, ready for the shop layer. |
+
+Corrections this pass made to the sections below are listed in section 9 of the
+decoded note; the two that change gameplay work are repeated inline where they
+apply.
 
 Scope: the remaining helicopter equipment, the shared targeting systems those
 tools depend on, Apache-only armament, and debug UI for switching tools and
@@ -222,11 +240,9 @@ The original spotlight is gameplay, not just illumination.
 `DAT_0057f230`. `FUN_00479060` maps input actions `0x2e` through `0x31` to that
 aim update.
 
-The existing heading for `FUN_00489250` in
-`Docs/scratchpad/ghidra/out_effects_DECODED.md` describes it as a downwash
-disc. Its node, aim-vector, target-tile, and interaction call chain establish
-the spotlight role; Phase 0 must correct that stale label and separate the
-actual rotor-wash functions before either renderer plan cites it again.
+**Done 2026-07-24.** The stale "downwash disc" heading for `FUN_00489250` in
+`Docs/scratchpad/ghidra/out_effects_DECODED.md` has been corrected; rotor wash
+is `FUN_004881b0` and bucket drip is `FUN_00488060`.
 
 Port the result as a reusable value such as `FHelicopterToolTarget`:
 
@@ -284,13 +300,13 @@ target and the mode-2 dispatch tests are in place.
 The bucket and harness use one 20-node rope and exchange the rope-end asset.
 The relevant helicopter state is:
 
-| State | Location |
-| --- | --- |
-| Active rope node | `heli[0x6f]` |
-| Bucket state | `heli[0x70]` |
-| Harness state | `heli[0x71]` |
-| Raise/lower command | `heli[0x72]` |
-| Rope-end render/master node | `heli + 0xbc` |
+| State | Location | Decoded meaning (2026-07-24) |
+| --- | --- | --- |
+| Active rope node | `heli[0x6f]` | Counts **down** from `0x11` (stowed) to `3` (fully lowered) |
+| Bucket state | `heli[0x70]` | **Stowed** flag: 1 = raised, 0 = deployed |
+| Harness state | `heli[0x71]` | **Stowed** flag: 1 = raised, 0 = deployed |
+| Raise/lower command | `heli[0x72]` | `+1`/`-1` bucket, `+2`/`-2` harness, `0` idle |
+| Rope-end render/master node | `heli + 0xbc` | Renders `heli[0x32]` (`BUCKET`) or `heli[0x33]` (`HARNESS`) |
 
 `FUN_00485f50` maps actions `0x0e` and `0x0f` to state-dependent rope
 commands, including the harness-specific `+2` / `-2` states, after checking
@@ -320,7 +336,7 @@ infer opcode numbers from thunk order. Confirm and implement at least:
 | 59 | thunk `0x004c8b60` -> `FUN_004cce30` | Master is helicopter body |
 | 82 | thunk `0x004c8e80` -> `FUN_004ccad0` | Stack-object proximity within `0x18` original units |
 | 86 | thunk `0x004c8b80` -> `FUN_004cceb0` | Master is rope end |
-| 87 | thunk `0x004c8ba0` | Still unresolved; used by the get-off path |
+| 87 | thunk `0x004c8ba0` -> `FUN_004cce50` | **Resolved 2026-07-24:** the person's stored destination tile record equals its current tile record - the get-off condition in BHAV 303 record [7] |
 
 BHAV 305 also uses opcodes 12 and 15 (`FUN_004ca940` and
 `FUN_004cac70`). Decode their branches before implementing automatic pickup.
@@ -361,16 +377,30 @@ Decode the full projectile path:
 
 | Targets | Required result |
 | --- | --- |
-| `FUN_0048e0b0(3, ...)` | Spawn transform, life, size, velocity, cooldown (`0x10000`), sound `0x17`, flags `4`, ten-slot pool `DAT_005d4bd0`, and ammo decrement/clamp |
+| `FUN_0048e0b0(3, ...)` | Spawn transform, life, size, velocity, cooldown (`0x10000`), sound `0x17`, ten-slot pool `DAT_005d4bd0`, and ammo decrement/clamp |
 | `FUN_00484d20`, `FUN_0048ed00` | Per-frame emitter and projectile update |
-| `FUN_00490690` | Collision and conversion of flags `4` to interaction mode 7 |
-| `FUN_0049a4f0(7, ...)`, `FUN_004c1050` | Object-class routing and people reaction from `DAT_0058d728[7]` |
+| `FUN_00490690` | Canister collision (class flag `0x8`) |
+| `FUN_0049a4f0(5, ...)`, `FUN_004c1050` | Object-class routing and people reaction from `DAT_0058d728[5]` |
 | `FUN_004a89c0` and mission handlers | Riot progression, correct tool order, rewards, and misuse penalties |
 | `FUN_0048b130`, `FUN_00444690`, `FUN_00444750` | Maintenance refill and UI feedback |
 
-`people.df` BHAV 907 is named `Rxn: Teargas` and is the expected people
-reaction, but dump and verify `DAT_0058d728[7]`. Use BHAV 908
-(`Rxn: Water`) and BHAV 901 (`Rxn: Megaphone`) as table-index cross-checks.
+**Corrected 2026-07-24.** The tear gas people reaction is **interaction mode 5**
+(`DAT_0058d728[5]` = BHAV 907 `Rxn: Teargas`), applied by the 30-second gas cloud
+in `FUN_0048ed00`, not mode 7 via `FUN_00490690`. Mode 7 is the Apache machine
+gun (class flag `0x4` -> BHAV 915), mode 3 is the Apache missile (class flag
+`0x2` -> BHAV 915), and a canister that physically strikes an object produces
+mode `0xe` (BHAV 910 `Rxn: Debris stuff hit`) from its `0x8` class flag. The pool
+class flags are written once by `FUN_0048da50` and survive impact, which is why
+the spawn function never sets them.
+
+The full life cycle: 5.0 s as a bouncing canister (class flag `0x798` makes
+`FUN_00490690` reflect it off surfaces instead of destroying it), a smoke card
+every 0.5 s, then detonation into a 30.0 s gas cloud that every 0.3 s drops a
+puff within +/-20 units and applies mode 5 to every person on that tile. The
+`0x10000` cooldown is shared with the Apache missile through `DAT_00504570`.
+
+The table was dumped from `FUN_004c3010` and every id cross-checked against the
+shipped `X/people.df` BHAV directory; see section 5 of the decoded note.
 
 The implementation is not complete when a visible gas card spawns. It is
 complete when the projectile consumes ammo, collides through the original

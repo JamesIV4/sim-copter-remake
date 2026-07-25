@@ -3,6 +3,7 @@
 #include "Ground/SimCopterBehaviorVM.h"
 
 #include "Formats/SimCopterPeopleCityRules.h"
+#include "Ground/SimCopterInteraction.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterBehaviorVM, Log, All);
 
@@ -253,6 +254,36 @@ void FSimCopterPersonContext::ResetToState(int32 StateIndex)
 	FFrame Frame;
 	Frame.ProgramId = StatePrograms.IsValidIndex(StateIndex) ? StatePrograms[StateIndex] : StatePrograms[0];
 	Stack.Add(Frame);
+}
+
+// SCHOOK: PersonReactionPush 0x004c1050
+bool FSimCopterPersonContext::PushReactionProgram(int32 ProgramId)
+{
+	if (ProgramId == INDEX_NONE)
+	{
+		return false;
+	}
+	if (!SimCopterInteraction::ReactionCanInterrupt(ProgramId, ActiveReactionProgramId))
+	{
+		return false;
+	}
+
+	// The original drops the deepest frame when the stack is nearly full
+	// (person[0x3d] > frames - 2) before pushing the reaction.
+	if (Stack.Num() >= MaxStackDepth - 1 && Stack.Num() > 1)
+	{
+		Stack.Pop(EAllowShrinking::No);
+	}
+	if (Stack.Num() >= MaxStackDepth)
+	{
+		return false;
+	}
+
+	FFrame Frame;
+	Frame.ProgramId = ProgramId;
+	Stack.Add(Frame);
+	ActiveReactionProgramId = ProgramId;
+	return true;
 }
 
 uint16 FSimCopterPersonContext::RandomRaw()

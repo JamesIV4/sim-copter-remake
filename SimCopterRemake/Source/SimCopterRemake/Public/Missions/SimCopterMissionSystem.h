@@ -397,7 +397,13 @@ public:
 	virtual int32 GetBuildingTopHeight1616(int32 TileX, int32 TileY) const { return 0; }
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const = 0;    // DAT_0061a618/c
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const = 0;    // DAT_005040d0+0x18
-	virtual bool IsModalUiActive() const { return false; }                     // FUN_00408c30
+	// FUN_00408c30, the scheduler's only spawn gate (DAT_005812b4). Despite the name it is not a
+	// UI test: it returns 1 only in career mode (DAT_00518d50 == 2) once the session score has
+	// reached the current city's "Points Needed", i.e. new missions stop arriving as soon as the
+	// city is won. Nothing in the original suppressed spawning for a menu - the shell ran in its
+	// own screen loop with the simulation stopped, which the remake does by not ticking the
+	// mission system at all (ASimCopterMissionSystemActor's debug session hold).
+	virtual bool IsModalUiActive() const { return false; }
 
 	// --- per-type creation hooks (return false = creation fails, slot freed,
 	//     exactly like the original's early-out paths) ---
@@ -474,6 +480,28 @@ public:
 	void AdvanceCareerCity();
 	void AdvanceCareerIfComplete();
 
+	// FUN_004080c0 (single city, DAT_00518d50 = 1) and FUN_00407f30 (career, = 2) both open a
+	// session with $1000 and 0 points. (Both also write two still-unidentified session fields,
+	// block +0x44 = 0x10 and +0x48 = 3, which nothing ported reads yet.)
+	static constexpr int32 SessionStartingCash = 1000;
+
+	// Opens a fresh session: score 0, cash SessionStartingCash.
+	void BeginSession();
+
+	// The career city table (career.twk City0..City29, in file order). The original also keeps a
+	// hardcoded per-city map name and successor list in FUN_00408370 - see
+	// Docs/scratchpad/ghidra/session_modes_and_menu_20260724.md; only the tweak half is ported.
+	int32 GetCareerCityCount() const { return CareerCities.Num(); }
+	int32 GetCareerCityIndex() const { return CurrentCityIndex; }
+	const FSimCopterCareerCity* GetCareerCityByIndex(int32 Index) const;
+
+	// FUN_00408210's tuning half: adopt career city Index (0..29) and reset the city score. The
+	// original also swapped in that city's cities\career\city<N>.sc2 map, which the remake's
+	// city actor owns.
+	bool SelectCareerCity(int32 Index);
+
+	static const TCHAR* GetTypeDisplayName(int32 TypeMask);
+
 
 	// Master per-frame update: advances the fps EMA (FUN_0047a760), then runs
 	// the scheduler (FUN_004a6e60), the fire update (FUN_004a4ac0) and the
@@ -543,6 +571,13 @@ public:
 	static uint8 GetXbldPropertyFlags(int32 XbldId); // FUN_0049a4d0 record byte 0
 	void RunSchedulerOnce();                         // FUN_004a6e60 body (post-cadence)
 
+	// FUN_004a6e60's weighted roll with its countdown skipped: creates one mission from the current
+	// city's weight vector right now. The original only reached the roll once DAT_00505fb4 had
+	// counted down (180 seconds at session start, then the scaled Easy Interval), so this is how the
+	// main menu hands the player a first job without the opening wait. Returns true when a mission
+	// was created; a zero-weight city can never create one.
+	bool RollScheduledMissionNow();
+
 private:
 	ISimCopterMissionWorld* World = nullptr;
 	FSimCopterMsvcRand Rand;
@@ -586,6 +621,8 @@ private:
 
 	// FUN_004a6e60 helpers.
 	void UpdateSchedulerCadence();
+	// The roll itself: reroll the percentage when asked, then pick the bucket it lands in.
+	void DispatchWeightedRoll();
 	void DispatchScheduledType(int32 Bucket);
 
 	// FUN_004a92f0 helpers.
@@ -601,7 +638,6 @@ private:
 	void PostAnnouncementVoice(const FSimCopterMissionRecord& Record); // FUN_004ab480
 	static int32 GetTypeTextId(int32 TypeMask);   // shared 0x23b..0x24b switch
 	static int32 GetLocationVoiceId(int32 TileX, int32 TileY); // FUN_004aba30
-	static const TCHAR* GetTypeDisplayName(int32 TypeMask);
 	bool FindDefaultDestinationTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;
 	// Nearest hospital tile (XBLD id 0xD1 / HO209) to the origin - the medevac drop-off.
 	bool FindNearestHospitalTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;

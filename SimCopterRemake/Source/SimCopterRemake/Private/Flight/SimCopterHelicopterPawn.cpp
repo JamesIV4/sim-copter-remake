@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterPawn.h"
 
@@ -21,14 +21,19 @@
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Formats/SimCopterTweakReader.h"
+#include "Flight/SimCopterHelicopterRegistry.h"
+#include "Flight/SimCopterPreparedHelicopterModel.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Debug/SSimCopterHelicopterDebugPanel.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterEffectFX.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterPopulationSprite.h"
+#include "EngineUtils.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "InputCoreTypes.h"
 #include "Input/Reply.h"
@@ -193,6 +198,17 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	OriginalBucketMeshComponent->SetCastShadow(true);
 	OriginalBucketMeshComponent->SetVisibility(false);
 
+	// The rope end renders exactly one of BUCKET/HARNESS at a time (FUN_00487bb0 swaps
+	// heli[0x32] / heli[0x33] into the rope-end node when the winch reaches node 0x10).
+	OriginalHarnessMeshComponent =
+		CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("OriginalHarness"));
+	OriginalHarnessMeshComponent->SetupAttachment(CollisionComponent);
+	OriginalHarnessMeshComponent->SetMobility(EComponentMobility::Movable);
+	OriginalHarnessMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OriginalHarnessMeshComponent->SetCanEverAffectNavigation(false);
+	OriginalHarnessMeshComponent->SetCastShadow(true);
+	OriginalHarnessMeshComponent->SetVisibility(false);
+
 	WaterFXComponent = CreateDefaultSubobject<USimCopterParticleFXComponent>(TEXT("WaterFX"));
 	WaterFXComponent->SetupAttachment(CollisionComponent);
 
@@ -277,6 +293,39 @@ void ASimCopterHelicopterPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// The editor property is a name; the registry index is what the runtime uses from here on.
+	if (const FSimCopterHelicopterDefinition* Seed =
+			SimCopterHelicopterRegistry::FindByDisplayName(HelicopterTypeName))
+	{
+		ActiveHelicopterTypeIndex = Seed->InternalTypeIndex;
+		HelicopterTypeName = Seed->DisplayName;
+	}
+	else
+	{
+		UE_LOG(
+			LogSimCopterHelicopterPawn,
+			Warning,
+			TEXT("'%s' is not a known helicopter type; falling back to runtime type 0."),
+			*HelicopterTypeName);
+		ActiveHelicopterTypeIndex = 0;
+		HelicopterTypeName = SimCopterHelicopterRegistry::GetDefinitions()[0].DisplayName;
+	}
+
+	// Career layer (Phase 7) will own this; for now the map seeds it and debug grants overlay it.
+	EquipmentState.CareerEquipmentMask =
+		StartingCareerEquipmentMask & SimCopterHelicopterRegistry::AllCareerEquipmentBits;
+	EquipmentState.CareerTearGasRounds = FMath::Clamp(
+		StartingTearGasRounds, 0, SimCopterHelicopterRegistry::TearGasCapacity);
+	EquipmentState.ClearDebugOverlay();
+	if (bWaterCannonInstalled)
+	{
+		// Preserve the pre-registry authoring switch as a career bit rather than a side flag.
+		EquipmentState.CareerEquipmentMask |=
+			SimCopterHelicopterRegistry::GetToolCareerBit(ESimCopterHelicopterTool::WaterCannon);
+	}
+	bWaterCannonInstalled = IsToolAvailable(ESimCopterHelicopterTool::WaterCannon);
+	RecomputeActiveToolFallback();
+
 	if (bLoadTuningOnBeginPlay)
 	{
 		LoadTuningFromOriginalGameRoot();
@@ -311,6 +360,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		PlayerController->SetInputMode(InputMode);
 		EnsurePassengerSlotsWidget();
 		EnsureWaterControlsWidget();
+		EnsureHelicopterDebugPanel();
 	}
 
 	UpdateGroundProbe();
@@ -328,12 +378,15 @@ void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	RemovePassengerSlotsWidget();
 	RemoveWaterControlsWidget();
+	RemoveHelicopterDebugPanel();
 	Super::EndPlay(EndPlayReason);
 }
 
 void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	UpdateToolDispatch(DeltaSeconds);
 
 	float RemainingSeconds = FMath::Clamp(DeltaSeconds, 0.0f, MaxTickSeconds);
 	while (RemainingSeconds > UE_SMALL_NUMBER)
@@ -345,6 +398,8 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 
 	UpdateVisuals(DeltaSeconds);
 	UpdateRotorWash(DeltaSeconds);
+	// Semantic targeting keeps running whether or not the cone is drawn (FUN_00489250).
+	UpdateSpotlightTarget(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
 }
 
@@ -364,8 +419,10 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAxis(TEXT("SimCopterRopeAdjust"), this, &ASimCopterHelicopterPawn::AdjustRope);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterToggleRope"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleRope);
-	PlayerInputComponent->BindAction(TEXT("SimCopterReleaseWater"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartPrimaryWaterUse);
-	PlayerInputComponent->BindAction(TEXT("SimCopterReleaseWater"), IE_Released, this, &ASimCopterHelicopterPawn::StopPrimaryWaterUse);
+	// Left click is the common primary action for every selected tool; the legacy action
+	// name stays so existing input mappings keep working.
+	PlayerInputComponent->BindAction(TEXT("SimCopterReleaseWater"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartPrimaryToolUse);
+	PlayerInputComponent->BindAction(TEXT("SimCopterReleaseWater"), IE_Released, this, &ASimCopterHelicopterPawn::StopPrimaryToolUse);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterWaterCannon"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartWaterCannon);
@@ -384,11 +441,57 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	// Megaphone: talk to the cars/people below (used to clear traffic jams). Bound directly to M so
 	// no input-mapping config edit is required; the on-screen prompt shows the same key.
 	PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &ASimCopterHelicopterPawn::UseMegaphone);
+
+	// Spotlight aim (original input actions 0x2e..0x31). Bound to the numpad arrows directly so
+	// no input-mapping config edit is required.
+	PlayerInputComponent->BindKey(EKeys::NumPadEight, IE_Pressed, this, &ASimCopterHelicopterPawn::AimSpotlightPitchDown);
+	PlayerInputComponent->BindKey(EKeys::NumPadEight, IE_Released, this, &ASimCopterHelicopterPawn::StopAimSpotlightPitch);
+	PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &ASimCopterHelicopterPawn::AimSpotlightPitchUp);
+	PlayerInputComponent->BindKey(EKeys::NumPadTwo, IE_Released, this, &ASimCopterHelicopterPawn::StopAimSpotlightPitch);
+	PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &ASimCopterHelicopterPawn::AimSpotlightYawLeft);
+	PlayerInputComponent->BindKey(EKeys::NumPadFour, IE_Released, this, &ASimCopterHelicopterPawn::StopAimSpotlightYaw);
+	PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &ASimCopterHelicopterPawn::AimSpotlightYawRight);
+	PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Released, this, &ASimCopterHelicopterPawn::StopAimSpotlightYaw);
+	PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &ASimCopterHelicopterPawn::ResetSpotlightAim);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
 {
 	LastTuningLoadError.Reset();
+
+	const FSimCopterHelicopterDefinition* Definition = GetHelicopterDefinition();
+	const FString SectionName = Definition != nullptr ? Definition->TweakSection : HelicopterTypeName;
+	if (!ReadTuningForSection(
+			SectionName,
+			HelicopterTuning,
+			LandingTuning,
+			RopeTuning,
+			DamageTuning,
+			LastTuningLoadError))
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastTuningLoadError);
+		return false;
+	}
+
+	ApplyDerivedTuning();
+	CurrentFuelGallons = HelicopterTuning.FuelGallons;
+
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Loaded SimCopter helicopter tuning '%s'."), *SectionName);
+	return true;
+}
+
+// Parses one heli.twk helicopter section plus the shared [Heli Landing]/[Heli Ropestuff]/
+// [Heli Damage] blocks into caller-owned structs. Kept side-effect free so the model-switch
+// transaction can stage tuning before it commits to anything (plan section 7).
+bool ASimCopterHelicopterPawn::ReadTuningForSection(
+	const FString& SectionName,
+	FSimCopterHelicopterTypeTuning& OutHelicopterTuning,
+	FSimCopterLandingTuning& OutLandingTuning,
+	FSimCopterRopeTuning& OutRopeTuning,
+	FSimCopterDamageTuning& OutDamageTuning,
+	FString& OutError) const
+{
+	OutError.Reset();
 
 	const FString RootPath = ResolveOriginalGameRoot();
 	const FString HeliTweakPath = FPaths::Combine(RootPath, TEXT("tweak/heli.twk"));
@@ -396,144 +499,110 @@ bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
 	FString Error;
 	if (!FSimCopterTweakReader::LoadTweakFileFromFile(HeliTweakPath, TweakFile, Error))
 	{
-		LastTuningLoadError = Error;
-		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastTuningLoadError);
+		OutError = Error;
 		return false;
 	}
 
-	const FSimCopterTweakSection* HeliSection = TweakFile.FindSection(HelicopterTypeName);
+	const FSimCopterTweakSection* HeliSection = TweakFile.FindSection(SectionName);
 	if (HeliSection == nullptr)
 	{
-		LastTuningLoadError = FString::Printf(TEXT("Could not find helicopter tuning section '%s' in '%s'."), *HelicopterTypeName, *HeliTweakPath);
-		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastTuningLoadError);
+		OutError = FString::Printf(TEXT("Could not find helicopter tuning section '%s' in '%s'."), *SectionName, *HeliTweakPath);
 		return false;
 	}
 
-	ReadAngleControl(*HeliSection, TEXT("MaxBank"), TweakAngleScale, HelicopterTuning.MaxBankDeg);
-	ReadAngleControl(*HeliSection, TEXT("MaxSlide"), TweakAngleScale, HelicopterTuning.MaxSlideDeg);
-	ReadAngleControl(*HeliSection, TEXT("MaxPitch"), TweakAngleScale, HelicopterTuning.MaxPitchDeg);
-	ReadAngleControl(*HeliSection, TEXT("PitchRate"), TweakAngleScale, HelicopterTuning.PitchRateDegPerSec);
-	ReadFloatControl(*HeliSection, TEXT("YawRate"), HelicopterTuning.YawAccelDegPerSec);
-	ReadAngleControl(*HeliSection, TEXT("RollRate"), TweakAngleScale, HelicopterTuning.RollRateDegPerSec);
-	ReadFloatControl(*HeliSection, TEXT("SlideRate"), HelicopterTuning.SlideResponse);
-	float RawClimbRate = HelicopterTuning.ClimbRateCmPerSec / TweakClimbToCmPerSec;
+	ReadAngleControl(*HeliSection, TEXT("MaxBank"), TweakAngleScale, OutHelicopterTuning.MaxBankDeg);
+	ReadAngleControl(*HeliSection, TEXT("MaxSlide"), TweakAngleScale, OutHelicopterTuning.MaxSlideDeg);
+	ReadAngleControl(*HeliSection, TEXT("MaxPitch"), TweakAngleScale, OutHelicopterTuning.MaxPitchDeg);
+	ReadAngleControl(*HeliSection, TEXT("PitchRate"), TweakAngleScale, OutHelicopterTuning.PitchRateDegPerSec);
+	ReadFloatControl(*HeliSection, TEXT("YawRate"), OutHelicopterTuning.YawAccelDegPerSec);
+	ReadAngleControl(*HeliSection, TEXT("RollRate"), TweakAngleScale, OutHelicopterTuning.RollRateDegPerSec);
+	ReadFloatControl(*HeliSection, TEXT("SlideRate"), OutHelicopterTuning.SlideResponse);
+	float RawClimbRate = OutHelicopterTuning.ClimbRateCmPerSec / TweakClimbToCmPerSec;
 	if (ReadControlValue(*HeliSection, TEXT("ClimbRate"), RawClimbRate))
 	{
-		HelicopterTuning.ClimbRateCmPerSec = RawClimbRate * TweakClimbToCmPerSec;
+		OutHelicopterTuning.ClimbRateCmPerSec = RawClimbRate * TweakClimbToCmPerSec;
 	}
-	float FloatMaxLoad = static_cast<float>(HelicopterTuning.MaxLoadPounds);
+	float FloatMaxLoad = static_cast<float>(OutHelicopterTuning.MaxLoadPounds);
 	if (ReadControlValue(*HeliSection, TEXT("Max Load"), FloatMaxLoad))
 	{
-		HelicopterTuning.MaxLoadPounds = FMath::RoundToInt(FloatMaxLoad);
+		OutHelicopterTuning.MaxLoadPounds = FMath::RoundToInt(FloatMaxLoad);
 	}
-	ReadFloatControl(*HeliSection, TEXT("Max YawRate"), HelicopterTuning.MaxYawRateDegPerSec);
-	ReadFloatControl(*HeliSection, TEXT("Fuel Rate"), HelicopterTuning.FuelRateGallonsPerHour);
-	float FloatNewCost = static_cast<float>(HelicopterTuning.NewCostDollars);
+	ReadFloatControl(*HeliSection, TEXT("Max YawRate"), OutHelicopterTuning.MaxYawRateDegPerSec);
+	ReadFloatControl(*HeliSection, TEXT("Fuel Rate"), OutHelicopterTuning.FuelRateGallonsPerHour);
+	float FloatNewCost = static_cast<float>(OutHelicopterTuning.NewCostDollars);
 	if (ReadControlValue(*HeliSection, TEXT("New Cost"), FloatNewCost))
 	{
-		HelicopterTuning.NewCostDollars = FMath::RoundToInt(FloatNewCost);
+		OutHelicopterTuning.NewCostDollars = FMath::RoundToInt(FloatNewCost);
 	}
-	float FloatMaxDamage = static_cast<float>(HelicopterTuning.MaxDamage);
+	float FloatMaxDamage = static_cast<float>(OutHelicopterTuning.MaxDamage);
 	if (ReadControlValue(*HeliSection, TEXT("Max Damage"), FloatMaxDamage))
 	{
-		HelicopterTuning.MaxDamage = FMath::RoundToInt(FloatMaxDamage);
+		OutHelicopterTuning.MaxDamage = FMath::RoundToInt(FloatMaxDamage);
 	}
-	ReadFloatControl(*HeliSection, TEXT("Fuel ("), HelicopterTuning.FuelGallons);
-	ReadFloatControl(*HeliSection, TEXT("Repair Rate"), HelicopterTuning.RepairRatePerDamage);
-	ReadFloatControl(*HeliSection, TEXT("Fuel Cost"), HelicopterTuning.FuelCostPerGallon);
+	ReadFloatControl(*HeliSection, TEXT("Fuel ("), OutHelicopterTuning.FuelGallons);
+	ReadFloatControl(*HeliSection, TEXT("Repair Rate"), OutHelicopterTuning.RepairRatePerDamage);
+	ReadFloatControl(*HeliSection, TEXT("Fuel Cost"), OutHelicopterTuning.FuelCostPerGallon);
 
 	if (const FSimCopterTweakSection* LandingSection = TweakFile.FindSection(TEXT("Heli Landing")))
 	{
-		ReadAngleControl(*LandingSection, TEXT("Pitch"), TweakAngleScale, LandingTuning.MaxPitchDeg);
-		ReadAngleControl(*LandingSection, TEXT("Slide"), TweakAngleScale, LandingTuning.MaxRollDeg);
-		float RawLandingSpeed = LandingTuning.MaxHorizontalSpeedCmPerSec / TweakSpeedToCmPerSec;
+		ReadAngleControl(*LandingSection, TEXT("Pitch"), TweakAngleScale, OutLandingTuning.MaxPitchDeg);
+		ReadAngleControl(*LandingSection, TEXT("Slide"), TweakAngleScale, OutLandingTuning.MaxRollDeg);
+		float RawLandingSpeed = OutLandingTuning.MaxHorizontalSpeedCmPerSec / TweakSpeedToCmPerSec;
 		if (ReadControlValue(*LandingSection, TEXT("Speed"), RawLandingSpeed))
 		{
-			LandingTuning.MaxHorizontalSpeedCmPerSec = RawLandingSpeed * TweakSpeedToCmPerSec;
+			OutLandingTuning.MaxHorizontalSpeedCmPerSec = RawLandingSpeed * TweakSpeedToCmPerSec;
 		}
-		float RawVerticalSpeed = LandingTuning.MaxVerticalSpeedCmPerSec / TweakSpeedToCmPerSec;
+		float RawVerticalSpeed = OutLandingTuning.MaxVerticalSpeedCmPerSec / TweakSpeedToCmPerSec;
 		if (ReadControlValue(*LandingSection, TEXT("Y Speed"), RawVerticalSpeed))
 		{
-			LandingTuning.MaxVerticalSpeedCmPerSec = RawVerticalSpeed * TweakSpeedToCmPerSec;
+			OutLandingTuning.MaxVerticalSpeedCmPerSec = RawVerticalSpeed * TweakSpeedToCmPerSec;
 		}
-		float RawDescentRate = LandingTuning.MaxDescentRateCmPerSec / TweakSpeedToCmPerSec;
+		float RawDescentRate = OutLandingTuning.MaxDescentRateCmPerSec / TweakSpeedToCmPerSec;
 		if (ReadControlValue(*LandingSection, TEXT("Max Descent Rate"), RawDescentRate))
 		{
-			LandingTuning.MaxDescentRateCmPerSec = RawDescentRate * TweakSpeedToCmPerSec;
+			OutLandingTuning.MaxDescentRateCmPerSec = RawDescentRate * TweakSpeedToCmPerSec;
 		}
 	}
 
 	if (const FSimCopterTweakSection* RopeSection = TweakFile.FindSection(TEXT("Heli Ropestuff")))
 	{
-		ReadFloatControl(*RopeSection, TEXT("Bucket Fill Rate"), RopeTuning.BucketFillPoundsPerFrame);
-		ReadFloatControl(*RopeSection, TEXT("Bucket Dump Rate"), RopeTuning.BucketDumpPoundsPerFrame);
-		ReadFloatControl(*RopeSection, TEXT("Rope Load Factor"), RopeTuning.RopeLoadFactor);
-		ReadFloatControl(*RopeSection, TEXT("Rope Tension"), RopeTuning.RopeTension);
-		ReadFloatControl(*RopeSection, TEXT("Water Throw"), RopeTuning.WaterThrow);
-		ReadFloatControl(*RopeSection, TEXT("Cannon Force"), RopeTuning.CannonForce);
+		ReadFloatControl(*RopeSection, TEXT("Bucket Fill Rate"), OutRopeTuning.BucketFillPoundsPerFrame);
+		ReadFloatControl(*RopeSection, TEXT("Bucket Dump Rate"), OutRopeTuning.BucketDumpPoundsPerFrame);
+		ReadFloatControl(*RopeSection, TEXT("Rope Load Factor"), OutRopeTuning.RopeLoadFactor);
+		ReadFloatControl(*RopeSection, TEXT("Rope Tension"), OutRopeTuning.RopeTension);
+		ReadFloatControl(*RopeSection, TEXT("Water Throw"), OutRopeTuning.WaterThrow);
+		ReadFloatControl(*RopeSection, TEXT("Cannon Force"), OutRopeTuning.CannonForce);
 	}
 
 	if (const FSimCopterTweakSection* DamageSection = TweakFile.FindSection(TEXT("Heli Damage")))
 	{
-		float RawMinFireAltitude = DamageTuning.MinFireAltitudeCm / TweakAltitudeToCm;
+		float RawMinFireAltitude = OutDamageTuning.MinFireAltitudeCm / TweakAltitudeToCm;
 		if (ReadControlValue(*DamageSection, TEXT("Min Fire Alt"), RawMinFireAltitude))
 		{
-			DamageTuning.MinFireAltitudeCm = RawMinFireAltitude * TweakAltitudeToCm;
+			OutDamageTuning.MinFireAltitudeCm = RawMinFireAltitude * TweakAltitudeToCm;
 		}
-		float RawMaxFireAltitude = DamageTuning.MaxFireAltitudeCm / TweakAltitudeToCm;
+		float RawMaxFireAltitude = OutDamageTuning.MaxFireAltitudeCm / TweakAltitudeToCm;
 		if (ReadControlValue(*DamageSection, TEXT("Max Fire Alt"), RawMaxFireAltitude))
 		{
-			DamageTuning.MaxFireAltitudeCm = RawMaxFireAltitude * TweakAltitudeToCm;
+			OutDamageTuning.MaxFireAltitudeCm = RawMaxFireAltitude * TweakAltitudeToCm;
 		}
-		ReadFloatControl(*DamageSection, TEXT("Depreciate"), DamageTuning.DepreciateDollarsPerSec);
-		ReadFloatControl(*DamageSection, TEXT("Collision Subtract Val"), DamageTuning.CollisionDamageScale);
-		ReadFloatControl(*DamageSection, TEXT("Repair Dist. Val"), DamageTuning.RepairDistanceValue);
-		ReadFloatControl(*DamageSection, TEXT("Fuel Dist. Val"), DamageTuning.FuelDistanceValue);
+		ReadFloatControl(*DamageSection, TEXT("Depreciate"), OutDamageTuning.DepreciateDollarsPerSec);
+		ReadFloatControl(*DamageSection, TEXT("Collision Subtract Val"), OutDamageTuning.CollisionDamageScale);
+		ReadFloatControl(*DamageSection, TEXT("Repair Dist. Val"), OutDamageTuning.RepairDistanceValue);
+		ReadFloatControl(*DamageSection, TEXT("Fuel Dist. Val"), OutDamageTuning.FuelDistanceValue);
 	}
 
-	ApplyDerivedTuning();
-	CurrentFuelGallons = HelicopterTuning.FuelGallons;
-
-	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Loaded SimCopter helicopter tuning '%s' from '%s'."), *HelicopterTypeName, *HeliTweakPath);
 	return true;
 }
 
-bool ASimCopterHelicopterPawn::GetHelicopterMeshNames(const FString& TypeName, FString& OutBodyName, FString& OutMainRotorName)
+const FSimCopterHelicopterDefinition* ASimCopterHelicopterPawn::GetHelicopterDefinition() const
 {
-	// Maps the flyable helicopter type names from heli.twk to their GEO-pack table names.
-	// Each helicopter is a fuselage object plus a separate main-rotor object that the
-	// original engine spins about the mast; the meshes carry no skeletal animation.
-	struct FHelicopterMeshNames
+	if (const FSimCopterHelicopterDefinition* ByIndex =
+			SimCopterHelicopterRegistry::FindByTypeIndex(ActiveHelicopterTypeIndex))
 	{
-		const TCHAR* TypeName;
-		const TCHAR* BodyName;
-		const TCHAR* MainRotorName;
-	};
-
-	static const FHelicopterMeshNames Table[] = {
-		{ TEXT("Jet Ranger"), TEXT("JETRANG"), TEXT("JETRROTR") },
-		{ TEXT("Hughes 500"), TEXT("HUGH500"), TEXT("H500ROTR") },
-		{ TEXT("Bell 212"), TEXT("BELL212"), TEXT("BELLROTR") },
-		{ TEXT("Schwiezer 300"), TEXT("SCWZR300"), TEXT("SCWZROTR") },
-		{ TEXT("Apache"), TEXT("APACHE"), TEXT("APACROTR") },
-		{ TEXT("Agusta"), TEXT("AGUSTA"), TEXT("AGUSROTR") },
-		{ TEXT("Dauphin"), TEXT("DAUPHIN"), TEXT("DAUPROTR") },
-		{ TEXT("MDEXPLORER"), TEXT("MDEXPLRR"), TEXT("MDEXROTR") },
-		{ TEXT("MD520"), TEXT("MD520"), TEXT("MD52ROTR") },
-	};
-
-	const FString Trimmed = TypeName.TrimStartAndEnd();
-	for (const FHelicopterMeshNames& Entry : Table)
-	{
-		if (Trimmed.Equals(Entry.TypeName, ESearchCase::IgnoreCase))
-		{
-			OutBodyName = Entry.BodyName;
-			OutMainRotorName = Entry.MainRotorName;
-			return true;
-		}
+		return ByIndex;
 	}
-
-	return false;
+	return SimCopterHelicopterRegistry::FindByDisplayName(HelicopterTypeName);
 }
 
 void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
@@ -550,49 +619,187 @@ void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
 	}
 }
 
-bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
+// SCHOOK: HelicopterModelBuild 0x00483c20
+// Stages every asset the target model needs. Nothing here touches a live component, so a
+// failed prepare leaves the current helicopter fully intact (plan section 7 "Prepare").
+void ASimCopterHelicopterPawn::PrepareHelicopterModel(
+	int32 TypeIndex,
+	FSimCopterPreparedHelicopterModel& OutPrepared) const
 {
-	LastModelLoadError.Reset();
-	bUsingOriginalBucketMesh = false;
-	if (OriginalBucketMeshComponent != nullptr)
+	OutPrepared.Definition = SimCopterHelicopterRegistry::FindByTypeIndex(TypeIndex);
+	if (OutPrepared.Definition == nullptr)
 	{
-		OriginalBucketMeshComponent->ClearAllMeshSections();
-		OriginalBucketMeshComponent->SetVisibility(false);
+		OutPrepared.Errors.Add(FString::Printf(
+			TEXT("No helicopter registry entry for runtime type %d."), TypeIndex));
+		return;
 	}
 
-	FString BodyName;
-	FString MainRotorName;
-	if (!GetHelicopterMeshNames(HelicopterTypeName, BodyName, MainRotorName))
+	const FSimCopterHelicopterDefinition& Definition = *OutPrepared.Definition;
+	OutPrepared.TailRotorOffsetCm = Definition.ToTailRotorOffsetCm(OriginalUnitToCm);
+
+	FString TuningError;
+	OutPrepared.bTuningLoaded = ReadTuningForSection(
+		Definition.TweakSection,
+		OutPrepared.HelicopterTuning,
+		OutPrepared.LandingTuning,
+		OutPrepared.RopeTuning,
+		OutPrepared.DamageTuning,
+		TuningError);
+	if (!OutPrepared.bTuningLoaded)
 	{
-		LastModelLoadError = FString::Printf(TEXT("'%s' is not a known flyable helicopter type; keeping placeholder model."), *HelicopterTypeName);
-		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelLoadError);
-		ShowOriginalMesh(false);
-		return false;
+		OutPrepared.Errors.Add(TuningError);
 	}
 
 	const FString RootPath = ResolveOriginalGameRoot();
 	FMaxisMeshLibrary MeshLibrary;
-	FString Error;
-	if (!MeshLibrary.LoadFromOriginalGameRoot(RootPath, Error))
+	FString MeshError;
+	if (!MeshLibrary.LoadFromOriginalGameRoot(RootPath, MeshError))
 	{
-		LastModelLoadError = Error;
-		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelLoadError);
-		ShowOriginalMesh(false);
-		return false;
+		OutPrepared.Errors.Add(MeshError);
+		return;
 	}
 
 	const FLinearColor FallbackColor(0.6f, 0.6f, 0.62f);
-
-	auto BuildComponentMesh = [this, &FallbackColor](UProceduralMeshComponent* Component, const FMaxisMeshObject& Object, const TArray<FColor>* ColorMap, FMaxisMeshSection& OutSection)
+	auto BuildById =
+		[this, &MeshLibrary, &FallbackColor](int32 ObjectId, FMaxisMeshSection& OutSection)
 	{
-		FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OutSection);
-		Component->ClearAllMeshSections();
-		if (OutSection.IsEmpty())
+		const TArray<FColor>* ColorMap = nullptr;
+		const FMaxisMeshObject* Object = MeshLibrary.FindObjectByObjectId(ObjectId, &ColorMap);
+		if (Object == nullptr)
 		{
 			return false;
 		}
+		FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(
+			*Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OutSection);
+		return !OutSection.IsEmpty();
+	};
 
-		Component->CreateMeshSection_LinearColor(0, OutSection.Vertices, OutSection.Triangles, OutSection.Normals, OutSection.UVs, OutSection.VertexColors, OutSection.Tangents, false);
+	// Rotors split into an opaque blade section and the face-type-11 blur disc the original
+	// only shows at RPM >= 300 (FUN_00487740).
+	auto BuildRotorById =
+		[this, &MeshLibrary, &FallbackColor](
+			int32 ObjectId, FMaxisMeshSection& OutOpaque, FMaxisMeshSection& OutDisc)
+	{
+		const TArray<FColor>* ColorMap = nullptr;
+		const FMaxisMeshObject* Object = MeshLibrary.FindObjectByObjectId(ObjectId, &ColorMap);
+		if (Object == nullptr)
+		{
+			return false;
+		}
+		FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
+			*Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OutOpaque, &OutDisc);
+		return !OutOpaque.IsEmpty() || !OutDisc.IsEmpty();
+	};
+
+	if (!BuildById(Definition.BodyObjectId, OutPrepared.BodySection))
+	{
+		OutPrepared.Errors.Add(FString::Printf(
+			TEXT("Could not build body mesh '%s' (GEO id 0x%03x) from '%s'."),
+			*Definition.BodyObjectName,
+			Definition.BodyObjectId,
+			*RootPath));
+	}
+
+	OutPrepared.bHasMainRotor = BuildRotorById(
+		Definition.MainRotorObjectId,
+		OutPrepared.MainRotorOpaqueSection,
+		OutPrepared.MainRotorDiscSection);
+	if (!OutPrepared.bHasMainRotor)
+	{
+		OutPrepared.Errors.Add(FString::Printf(
+			TEXT("Could not build main rotor mesh '%s' (GEO id 0x%03x)."),
+			*Definition.MainRotorObjectName,
+			Definition.MainRotorObjectId));
+	}
+
+	// NOTAR airframes hide the shared ROTORTL object entirely (static block +0x38).
+	if (bShowSeparateTailRotor && !Definition.bNoTailRotor)
+	{
+		OutPrepared.bHasTailRotor = BuildRotorById(
+			SimCopterHelicopterObjects::TailRotor,
+			OutPrepared.TailRotorOpaqueSection,
+			OutPrepared.TailRotorDiscSection);
+	}
+
+	OutPrepared.bHasBucket = BuildById(SimCopterHelicopterObjects::Bucket, OutPrepared.BucketSection);
+	OutPrepared.bHasHarness = BuildById(SimCopterHelicopterObjects::Harness, OutPrepared.HarnessSection);
+}
+
+// Plan section 7 "Validate": refuse the switch outright rather than half-applying it.
+bool ASimCopterHelicopterPawn::ValidateHelicopterModel(
+	const FSimCopterPreparedHelicopterModel& Prepared,
+	FString& OutReason) const
+{
+	OutReason.Reset();
+
+	if (Prepared.Definition == nullptr)
+	{
+		OutReason = Prepared.Errors.Num() > 0 ? Prepared.DescribeErrors() : TEXT("Unknown helicopter type.");
+		return false;
+	}
+	if (!Prepared.HasBody())
+	{
+		OutReason = FString::Printf(
+			TEXT("%s: body mesh unavailable (%s)"),
+			*Prepared.Definition->DisplayName,
+			*Prepared.DescribeErrors());
+		return false;
+	}
+	if (!Prepared.bHasMainRotor)
+	{
+		OutReason = FString::Printf(
+			TEXT("%s: main rotor mesh unavailable (%s)"),
+			*Prepared.Definition->DisplayName,
+			*Prepared.DescribeErrors());
+		return false;
+	}
+	if (!Prepared.bTuningLoaded)
+	{
+		OutReason = FString::Printf(
+			TEXT("%s: heli.twk tuning unavailable (%s)"),
+			*Prepared.Definition->DisplayName,
+			*Prepared.DescribeErrors());
+		return false;
+	}
+
+	const int32 OnboardPassengers = FMath::Max(FlightModel.Passengers, MissionPassengerSlots.Num());
+	if (Prepared.Definition->PassengerSeats < OnboardPassengers)
+	{
+		OutReason = FString::Printf(
+			TEXT("%s has %d seats but %d passenger(s) are aboard."),
+			*Prepared.Definition->DisplayName,
+			Prepared.Definition->PassengerSeats,
+			OnboardPassengers);
+		return false;
+	}
+
+	// Phase 4 hooks the real rope-end rider here; until then the harness is never occupied
+	// and this only guards the placeholder state.
+	if (bHarnessRiderAttached)
+	{
+		OutReason = TEXT("A Sim is riding the rescue harness; raise them aboard first.");
+		return false;
+	}
+
+	return true;
+}
+
+void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPreparedHelicopterModel& Prepared)
+{
+	auto ApplySection =
+		[this](UProceduralMeshComponent* Component, const FMaxisMeshSection& Section)
+	{
+		if (Component == nullptr)
+		{
+			return false;
+		}
+		Component->ClearAllMeshSections();
+		if (Section.IsEmpty())
+		{
+			return false;
+		}
+		Component->CreateMeshSection_LinearColor(
+			0, Section.Vertices, Section.Triangles, Section.Normals, Section.UVs, Section.VertexColors, Section.Tangents, false);
 		if (ModelVertexColorMaterial != nullptr)
 		{
 			Component->SetMaterial(0, ModelVertexColorMaterial);
@@ -600,127 +807,249 @@ bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
 		return true;
 	};
 
-	// Rotors split into an opaque blade section and a translucent disc section (Maxis face
-	// type 11). The original engine keeps those faces hidden until the rotor reaches lift
-	// speed (RPM 300), so the disc section index is recorded for the visibility toggle.
-	auto BuildRotorMesh = [this, &FallbackColor](UProceduralMeshComponent* Component, const FMaxisMeshObject& Object, const TArray<FColor>* ColorMap, int32& OutDiscSectionIndex)
+	auto ApplyRotor =
+		[this](
+			UProceduralMeshComponent* Component,
+			const FMaxisMeshSection& Opaque,
+			FMaxisMeshSection Disc,
+			int32& OutDiscSectionIndex)
 	{
 		OutDiscSectionIndex = INDEX_NONE;
-		FMaxisMeshSection OpaqueSection;
-		FMaxisMeshSection DiscSection;
-		FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(Object, ColorMap, ModelUnitsPerCentimeter, ModelScale, bRenderModelBackfaces, FallbackColor, OpaqueSection, &DiscSection);
+		if (Component == nullptr)
+		{
+			return false;
+		}
 		Component->ClearAllMeshSections();
-		if (OpaqueSection.IsEmpty() && DiscSection.IsEmpty())
+		if (Opaque.IsEmpty() && Disc.IsEmpty())
 		{
 			return false;
 		}
 
 		int32 SectionIndex = 0;
-		if (!OpaqueSection.IsEmpty())
+		if (!Opaque.IsEmpty())
 		{
-			Component->CreateMeshSection_LinearColor(SectionIndex, OpaqueSection.Vertices, OpaqueSection.Triangles, OpaqueSection.Normals, OpaqueSection.UVs, OpaqueSection.VertexColors, OpaqueSection.Tangents, false);
+			Component->CreateMeshSection_LinearColor(
+				SectionIndex, Opaque.Vertices, Opaque.Triangles, Opaque.Normals, Opaque.UVs, Opaque.VertexColors, Opaque.Tangents, false);
 			if (ModelVertexColorMaterial != nullptr)
 			{
 				Component->SetMaterial(SectionIndex, ModelVertexColorMaterial);
 			}
 			++SectionIndex;
 		}
-		if (!DiscSection.IsEmpty())
+		if (!Disc.IsEmpty())
 		{
-			for (FLinearColor& VertexColor : DiscSection.VertexColors)
+			for (FLinearColor& VertexColor : Disc.VertexColors)
 			{
 				VertexColor.A = FMath::Clamp(VertexColor.A * RotorDiscAlphaScale, 0.0f, 1.0f);
 			}
-			Component->CreateMeshSection_LinearColor(SectionIndex, DiscSection.Vertices, DiscSection.Triangles, DiscSection.Normals, DiscSection.UVs, DiscSection.VertexColors, DiscSection.Tangents, false);
-			UMaterialInterface* const DiscMaterial = RotorDiscMaterial != nullptr ? RotorDiscMaterial.Get() : ModelVertexColorMaterial.Get();
+			Component->CreateMeshSection_LinearColor(
+				SectionIndex, Disc.Vertices, Disc.Triangles, Disc.Normals, Disc.UVs, Disc.VertexColors, Disc.Tangents, false);
+			UMaterialInterface* const DiscMaterial =
+				RotorDiscMaterial != nullptr ? RotorDiscMaterial.Get() : ModelVertexColorMaterial.Get();
 			if (DiscMaterial != nullptr)
 			{
 				Component->SetMaterial(SectionIndex, DiscMaterial);
 			}
 			Component->SetMeshSectionVisible(SectionIndex, false);
 			OutDiscSectionIndex = SectionIndex;
-			++SectionIndex;
 		}
 		return true;
 	};
 
-	const TArray<FColor>* BodyColorMap = nullptr;
-	const FMaxisMeshObject* BodyObject = MeshLibrary.FindObjectByTableName(BodyName, &BodyColorMap);
-	FMaxisMeshSection BodySection;
-	if (BodyObject == nullptr || !BuildComponentMesh(HeliBodyMeshComponent, *BodyObject, BodyColorMap, BodySection))
+	ApplySection(HeliBodyMeshComponent, Prepared.BodySection);
+
+	// Sit the lowest fuselage vertex at the bottom of the collision capsule so the skids rest
+	// near the ground contact point the flight probes use.
+	const float CapsuleHalfHeight =
+		CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	const float VerticalOffset = -CapsuleHalfHeight - Prepared.BodySection.LocalBounds.Min.Z;
+	if (HeliBodyMeshComponent != nullptr)
 	{
-		LastModelLoadError = FString::Printf(TEXT("Could not build helicopter body mesh '%s' from '%s'."), *BodyName, *RootPath);
+		HeliBodyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, VerticalOffset));
+	}
+
+	ApplyRotor(
+		HeliMainRotorMeshComponent,
+		Prepared.MainRotorOpaqueSection,
+		Prepared.MainRotorDiscSection,
+		MainRotorDiscSectionIndex);
+	if (HeliMainRotorMeshComponent != nullptr)
+	{
+		HeliMainRotorMeshComponent->SetRelativeLocation(FVector::ZeroVector);
+	}
+
+	// Authored mount from the per-type static block replaces the old bounds heuristic.
+	TailRotorDiscSectionIndex = INDEX_NONE;
+	if (HeliTailRotorMeshComponent != nullptr)
+	{
+		HeliTailRotorMeshComponent->ClearAllMeshSections();
+		const bool bTailBuilt = Prepared.bHasTailRotor &&
+			ApplyRotor(
+				HeliTailRotorMeshComponent,
+				Prepared.TailRotorOpaqueSection,
+				Prepared.TailRotorDiscSection,
+				TailRotorDiscSectionIndex);
+		HeliTailRotorMeshComponent->SetVisibility(bTailBuilt, true);
+		if (bTailBuilt)
+		{
+			HeliTailRotorMeshComponent->SetRelativeLocation(Prepared.TailRotorOffsetCm);
+		}
+	}
+
+	bUsingOriginalBucketMesh = ApplySection(OriginalBucketMeshComponent, Prepared.BucketSection);
+	bUsingOriginalHarnessMesh = ApplySection(OriginalHarnessMeshComponent, Prepared.HarnessSection);
+	if (OriginalHarnessMeshComponent != nullptr)
+	{
+		// The harness only becomes visible when the winch swaps the rope end (Phase 4).
+		OriginalHarnessMeshComponent->SetVisibility(false);
+	}
+
+	ShowOriginalMesh(true);
+}
+
+// Plan section 7 "Commit": one logical operation that preserves flight/session state.
+void ASimCopterHelicopterPawn::CommitHelicopterModel(FSimCopterPreparedHelicopterModel& Prepared)
+{
+	check(Prepared.Definition != nullptr);
+
+	// Normalised carry-over so switching does not silently refuel or repair the aircraft.
+	const float PreviousMaxFuel = FMath::Max(HelicopterTuning.FuelGallons, KINDA_SMALL_NUMBER);
+	const float FuelFraction = FMath::Clamp(CurrentFuelGallons / PreviousMaxFuel, 0.0f, 1.0f);
+	const float PreviousMaxDamage = FMath::Max(static_cast<float>(HelicopterTuning.MaxDamage), 1.0f);
+	const float DamageFraction = FMath::Clamp(CurrentDamage / PreviousMaxDamage, 0.0f, 1.0f);
+	const int32 PreviousHitPoints = FlightModel.HitPoints;
+	const int32 PreviousMaxHitPoints = FMath::Max(FlightModel.Tuning.MaxDamage, 1);
+
+	// Held primary input must not survive the swap (plan section 7 "Validate").
+	bPrimaryToolUseHeld = false;
+	bPrimaryToolUsePressed = false;
+	bBucketDumpHeld = false;
+	bWaterCannonHeld = false;
+
+	ActiveHelicopterTypeIndex = Prepared.Definition->InternalTypeIndex;
+	HelicopterTypeName = Prepared.Definition->DisplayName;
+	HelicopterTuning = Prepared.HelicopterTuning;
+	LandingTuning = Prepared.LandingTuning;
+	RopeTuning = Prepared.RopeTuning;
+	DamageTuning = Prepared.DamageTuning;
+
+	ApplyPreparedModelMeshes(Prepared);
+	ApplyDerivedTuning();
+	ApplyFlightTuningToModel();
+
+	CurrentFuelGallons = FuelFraction * HelicopterTuning.FuelGallons;
+	CurrentDamage = DamageFraction * static_cast<float>(HelicopterTuning.MaxDamage);
+	FlightModel.Fuel = SimCopterFixed::FromFloat(CurrentFuelGallons);
+	FlightModel.HitPoints = FMath::Clamp(
+		FMath::RoundToInt(
+			static_cast<float>(PreviousHitPoints) / static_cast<float>(PreviousMaxHitPoints) *
+			static_cast<float>(FlightModel.Tuning.MaxDamage)),
+		0,
+		FlightModel.Tuning.MaxDamage);
+
+	// Water load is capacity-bound, so clamp it and say so rather than carrying it over.
+	const int32 ClampedWater = FMath::Clamp(BucketWaterPounds, 0, FMath::Max(0, HelicopterTuning.MaxLoadPounds));
+	const bool bWaterClamped = ClampedWater != BucketWaterPounds;
+	const int32 DroppedWater = BucketWaterPounds - ClampedWater;
+	BucketWaterPounds = ClampedWater;
+	FlightModel.LoadPounds = SimCopterFixed::FromFloat(static_cast<float>(BucketWaterPounds));
+
+	// A model without the Apache's weapons must not keep one selected as the active tool.
+	RecomputeActiveToolFallback();
+
+	LastModelLoadError.Reset();
+	LastModelSwitchStatus = FString::Printf(
+		TEXT("%s (type %d) %s/%s  seats %d  max load %d lb%s%s"),
+		*Prepared.Definition->DisplayName,
+		Prepared.Definition->InternalTypeIndex,
+		*Prepared.Definition->BodyObjectName,
+		*Prepared.Definition->MainRotorObjectName,
+		Prepared.Definition->PassengerSeats,
+		HelicopterTuning.MaxLoadPounds,
+		Prepared.Definition->bNoTailRotor ? TEXT("  NOTAR") : TEXT(""),
+		bWaterClamped ? *FString::Printf(TEXT("  (dumped %d lb over capacity)"), DroppedWater) : TEXT(""));
+
+	SyncPassengerFlightModelCount();
+	RefreshPassengerSlotsWidget();
+	RefreshWaterControlsWidget();
+}
+
+bool ASimCopterHelicopterPawn::SwitchHelicopterModel(int32 TypeIndex)
+{
+	if (TypeIndex == ActiveHelicopterTypeIndex && bUsingOriginalMesh)
+	{
+		LastModelSwitchStatus = FString::Printf(TEXT("Already flying runtime type %d."), TypeIndex);
+		return true;
+	}
+
+	FSimCopterPreparedHelicopterModel Prepared;
+	PrepareHelicopterModel(TypeIndex, Prepared);
+
+	FString Reason;
+	if (!ValidateHelicopterModel(Prepared, Reason))
+	{
+		LastModelSwitchStatus = FString::Printf(TEXT("Switch refused: %s"), *Reason);
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelSwitchStatus);
+		return false;
+	}
+
+	CommitHelicopterModel(Prepared);
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Switched helicopter model: %s"), *LastModelSwitchStatus);
+	return true;
+}
+
+bool ASimCopterHelicopterPawn::CycleHelicopterModel(int32 Delta)
+{
+	const int32 Count = SimCopterHelicopterRegistry::GetDefinitionCount();
+	if (Count <= 0 || Delta == 0)
+	{
+		return false;
+	}
+
+	// Wrap through every registry entry, skipping targets that refuse to load so one bad
+	// asset cannot strand the arrows.
+	for (int32 Attempt = 1; Attempt <= Count; ++Attempt)
+	{
+		const int32 Candidate =
+			((ActiveHelicopterTypeIndex + Delta * Attempt) % Count + Count) % Count;
+		if (SwitchHelicopterModel(Candidate))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ASimCopterHelicopterPawn::LoadHelicopterMeshFromOriginalGameRoot()
+{
+	LastModelLoadError.Reset();
+	bUsingOriginalBucketMesh = false;
+	bUsingOriginalHarnessMesh = false;
+
+	FSimCopterPreparedHelicopterModel Prepared;
+	PrepareHelicopterModel(ActiveHelicopterTypeIndex, Prepared);
+	if (!Prepared.HasBody() || !Prepared.bHasMainRotor)
+	{
+		LastModelLoadError = Prepared.Errors.Num() > 0
+			? Prepared.DescribeErrors()
+			: FString::Printf(TEXT("No helicopter registry entry for runtime type %d."), ActiveHelicopterTypeIndex);
 		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("%s"), *LastModelLoadError);
 		ShowOriginalMesh(false);
 		return false;
 	}
 
-	// FUN_00483c20 binds object 0x7b to the rope-end render node when the bucket
-	// attachment is selected. Load that authored BUCKET mesh instead of leaving the
-	// engine cube in place.
-	const TArray<FColor>* BucketColorMap = nullptr;
-	const FMaxisMeshObject* BucketObject =
-		MeshLibrary.FindObjectByObjectId(0x7b, &BucketColorMap);
-	FMaxisMeshSection BucketSection;
-	bUsingOriginalBucketMesh =
-		BucketObject != nullptr &&
-		BuildComponentMesh(
-			OriginalBucketMeshComponent,
-			*BucketObject,
-			BucketColorMap,
-			BucketSection);
-	if (!bUsingOriginalBucketMesh)
-	{
-		UE_LOG(
-			LogSimCopterHelicopterPawn,
-			Warning,
-			TEXT("Could not build original BUCKET mesh (GEO id 0x7b); using the fallback bucket."));
-	}
-
-	// Sit the lowest fuselage vertex at the bottom of the collision capsule so the skids
-	// rest near the ground contact point the flight probes use.
-	const float CapsuleHalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
-	const float VerticalOffset = -CapsuleHalfHeight - BodySection.LocalBounds.Min.Z;
-	HeliBodyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, VerticalOffset));
-
-	// Main rotor: authored around the mast at local X=Y=0, so spinning the component about
-	// its own Z axis at the body origin sweeps the blades correctly.
-	const TArray<FColor>* MainRotorColorMap = nullptr;
-	const FMaxisMeshObject* MainRotorObject = MeshLibrary.FindObjectByTableName(MainRotorName, &MainRotorColorMap);
-	MainRotorDiscSectionIndex = INDEX_NONE;
-	if (MainRotorObject != nullptr && BuildRotorMesh(HeliMainRotorMeshComponent, *MainRotorObject, MainRotorColorMap, MainRotorDiscSectionIndex))
-	{
-		HeliMainRotorMeshComponent->SetRelativeLocation(FVector::ZeroVector);
-	}
-
-	// Tail rotor: the shared ROTORTL object is authored centred on its own hub, so place it
-	// near the rear tip of the fuselage and spin it about the lateral (Y) axis.
-	HeliTailRotorMeshComponent->ClearAllMeshSections();
-	TailRotorDiscSectionIndex = INDEX_NONE;
-	if (bShowSeparateTailRotor && !FlightModel.Tuning.bNoTailRotor)
-	{
-		const TArray<FColor>* TailRotorColorMap = nullptr;
-		const FMaxisMeshObject* TailRotorObject = MeshLibrary.FindObjectByTableName(TEXT("ROTORTL"), &TailRotorColorMap);
-		if (TailRotorObject != nullptr && BuildRotorMesh(HeliTailRotorMeshComponent, *TailRotorObject, TailRotorColorMap, TailRotorDiscSectionIndex))
-		{
-			const FVector BodyMin = BodySection.LocalBounds.Min;
-			const FVector BodyMax = BodySection.LocalBounds.Max;
-			const float TailX = BodyMin.X + (BodyMax.X - BodyMin.X) * 0.05f;
-			const float TailZ = BodyMin.Z + (BodyMax.Z - BodyMin.Z) * 0.55f;
-			HeliTailRotorMeshComponent->SetRelativeLocation(FVector(TailX, 0.0f, TailZ));
-		}
-	}
-
-	ShowOriginalMesh(true);
+	// Tuning is loaded separately on BeginPlay, so this path only applies the geometry.
+	ApplyPreparedModelMeshes(Prepared);
 	UE_LOG(
 		LogSimCopterHelicopterPawn,
 		Display,
-		TEXT("Loaded SimCopter helicopter model '%s' (body '%s', rotor '%s', bucket=%s) from '%s'."),
-		*HelicopterTypeName,
-		*BodyName,
-		*MainRotorName,
-		bUsingOriginalBucketMesh ? TEXT("BUCKET/0x7b") : TEXT("fallback"),
-		*RootPath);
+		TEXT("Loaded SimCopter helicopter model '%s' (body '%s', rotor '%s', bucket=%s, harness=%s)."),
+		*Prepared.Definition->DisplayName,
+		*Prepared.Definition->BodyObjectName,
+		*Prepared.Definition->MainRotorObjectName,
+		bUsingOriginalBucketMesh ? TEXT("BUCKET/0x07b") : TEXT("fallback"),
+		bUsingOriginalHarnessMesh ? TEXT("HARNESS/0x16d") : TEXT("missing"));
 	return true;
 }
 
@@ -740,11 +1069,17 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	CurrentFuelGallons = HelicopterTuning.FuelGallons;
 	BucketWaterPounds = 0;
 	BucketWaterFraction = 0.0f;
+	WinchState = SimCopterWinch::FWinchState();
+	PendingWinchCommand = SimCopterWinch::CommandIdle;
+	bHarnessRopeEndSelected = false;
+	bHarnessRiderAttached = false;
 	RopeFirstActiveNode = SimCopterWaterGameplay::RopeStowedFirstActiveNode;
 	bRopeDeployed = false;
 	bRopeStateInitialized = false;
 	bWaterCannonHeld = false;
-	bPrimaryWaterUseHeld = false;
+	bPrimaryToolUseHeld = false;
+	bPrimaryToolUsePressed = false;
+	ToolCooldownSeconds = 0.0f;
 	bIsLanded = false;
 	SetActorRotation(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	SeedFlightModelFromActor();
@@ -781,6 +1116,7 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	PlayerController->SetInputMode(InputMode);
 	EnsurePassengerSlotsWidget();
 	EnsureWaterControlsWidget();
+	EnsureHelicopterDebugPanel();
 }
 
 bool ASimCopterHelicopterPawn::CanExitHelicopter() const
@@ -1125,15 +1461,97 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 			RopeLengthCm / 100.0f);
 	}
 
-	const FString Controls =
-		bDebugWaterCannonSelected
-			? FString::Printf(
-				TEXT("WATER BUCKET  %s\nPRIMARY: WATER GUN (DEBUG)   [LEFT CLICK] fire   [G] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
-				*BucketState)
-			: FString::Printf(
-				TEXT("WATER BUCKET  %s\n[LEFT CLICK / G] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
-				*BucketState);
+	// Contextual hints for whichever tool left click currently drives (plan section 5.2).
+	const ESimCopterHelicopterTool ActiveTool = GetActiveTool();
+	const TCHAR* const ActiveToolName = SimCopterHelicopterRegistry::GetToolDisplayName(ActiveTool);
+	FString Controls;
+	switch (ActiveTool)
+	{
+	case ESimCopterHelicopterTool::WaterCannon:
+		Controls = FString::Printf(
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK] fire stream   [G] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			ActiveToolName,
+			*DescribeToolAvailability(ActiveTool),
+			*BucketState);
+		break;
+	case ESimCopterHelicopterTool::Megaphone:
+		Controls = FString::Printf(
+			TEXT("TOOL: %s (%s)   MESSAGE: %s\n[LEFT CLICK / M] broadcast"),
+			ActiveToolName,
+			*DescribeToolAvailability(ActiveTool),
+			SimCopterHelicopterRegistry::GetMegaphoneMessageName(SelectedMegaphoneMessage));
+		break;
+	case ESimCopterHelicopterTool::TearGas:
+		Controls = FString::Printf(
+			TEXT("TOOL: %s (%s)   ROUNDS %d / %d\n[LEFT CLICK] fire (%.1fs cooldown)"),
+			ActiveToolName,
+			*DescribeToolAvailability(ActiveTool),
+			EquipmentState.GetTearGasRounds(),
+			SimCopterHelicopterRegistry::TearGasCapacity,
+			ToolCooldownSeconds);
+		break;
+	case ESimCopterHelicopterTool::RescueHarness:
+		Controls = FString::Printf(
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			ActiveToolName,
+			*DescribeToolAvailability(ActiveTool),
+			bRopeDeployed ? TEXT("LOWERED") : TEXT("STOWED"));
+		break;
+	case ESimCopterHelicopterTool::ApacheMissile:
+	case ESimCopterHelicopterTool::ApacheMachineGun:
+		Controls = FString::Printf(
+			TEXT("TOOL: %s (MODEL)\n[LEFT CLICK] fire"),
+			ActiveToolName);
+		break;
+	default:
+		Controls = FString::Printf(
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK / G] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			ActiveToolName,
+			*DescribeToolAvailability(ActiveTool),
+			*BucketState);
+		break;
+	}
+	if (!LastToolStatus.IsEmpty())
+	{
+		Controls += TEXT("\n");
+		Controls += LastToolStatus;
+	}
 	WaterControlsText->SetText(FText::FromString(Controls));
+}
+
+void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()
+{
+#if !UE_BUILD_SHIPPING
+	if (!bShowHelicopterDebugPanel ||
+		HelicopterDebugPanelWidget.IsValid() ||
+		GEngine == nullptr ||
+		GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	// Top-right so it never overlaps the water capacity HUD in the bottom-left.
+	HelicopterDebugPanelWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.0f, 22.0f, 22.0f, 0.0f))
+		[
+			SNew(SSimCopterHelicopterDebugPanel).Pawn(this)
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(HelicopterDebugPanelWidget.ToSharedRef(), 26);
+#endif
+}
+
+void ASimCopterHelicopterPawn::RemoveHelicopterDebugPanel()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && HelicopterDebugPanelWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(HelicopterDebugPanelWidget.ToSharedRef());
+	}
+	HelicopterDebugPanelWidget.Reset();
 }
 
 void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
@@ -1150,7 +1568,7 @@ void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
 		const bool bFull = MissionPassengerSlots.IsValidIndex(SlotIndex);
 		TSharedRef<SWidget> SlotContent =
 			SNew(STextBlock)
-			.Text(FText::FromString(bFull ? TEXT("●") : TEXT("○")))
+			.Text(FText::FromString(bFull ? TEXT("â—") : TEXT("â—‹")))
 			.Justification(ETextJustify::Center)
 			.ColorAndOpacity(bFull ? FLinearColor(0.95f, 0.9f, 0.58f, 1.0f) : FLinearColor(0.9f, 0.95f, 1.0f, 0.92f))
 			.ShadowOffset(FVector2D(1.0f, 1.0f))
@@ -1271,6 +1689,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	}
 	RemovePassengerSlotsWidget();
 	RemoveWaterControlsWidget();
+	RemoveHelicopterDebugPanel();
 
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	FVector ExitLocation =
@@ -1366,23 +1785,53 @@ void ASimCopterHelicopterPawn::AdjustRope(float Value)
 	RopeAdjustInput = FMath::Clamp(Value, -1.0f, 1.0f);
 }
 
+void ASimCopterHelicopterPawn::ToggleRopeFromDebugPanel()
+{
+	ToggleRope();
+}
+
 void ASimCopterHelicopterPawn::ToggleRope()
 {
-	RopeFirstActiveNode = bRopeDeployed
-		? SimCopterWaterGameplay::RopeStowedFirstActiveNode
-		: SimCopterWaterGameplay::RopeMinimumFirstActiveNode;
-	bRopeDeployed = RopeFirstActiveNode < SimCopterWaterGameplay::RopeStowedFirstActiveNode;
+	// Issues the same command the raise/lower keys would, for whichever attachment the active
+	// tool selects, and lets the winch state machine run it out over the following frames.
+	const bool bHarnessSelected = GetActiveTool() == ESimCopterHelicopterTool::RescueHarness;
+	const bool bThisAttachmentOut =
+		bHarnessSelected ? !WinchState.bHarnessStowed : !WinchState.bBucketStowed;
+
+	if (bThisAttachmentOut)
+	{
+		PendingWinchCommand = bHarnessSelected
+			? SimCopterWinch::ResolveRaiseHarnessCommand(WinchState)
+			: SimCopterWinch::ResolveRaiseBucketCommand(WinchState);
+	}
+	else
+	{
+		PendingWinchCommand = bHarnessSelected
+			? SimCopterWinch::ResolveLowerHarnessCommand(WinchState)
+			: SimCopterWinch::ResolveLowerBucketCommand(WinchState);
+	}
 	RefreshWaterControlsWidget();
 }
 
-void ASimCopterHelicopterPawn::StartPrimaryWaterUse()
+// SCHOOK: HelicopterToolInput 0x00485f50
+// The original reads every tool from one control block per frame; left click and the debug
+// panel's USE button both land here so there is exactly one dispatch path (plan 5.2).
+void ASimCopterHelicopterPawn::StartPrimaryToolUse()
 {
-	bPrimaryWaterUseHeld = true;
+	if (bPrimaryToolUseHeld)
+	{
+		return;
+	}
+	bPrimaryToolUseHeld = true;
+	bPrimaryToolUsePressed = true;
+	RefreshWaterControlsWidget();
 }
 
-void ASimCopterHelicopterPawn::StopPrimaryWaterUse()
+void ASimCopterHelicopterPawn::StopPrimaryToolUse()
 {
-	bPrimaryWaterUseHeld = false;
+	bPrimaryToolUseHeld = false;
+	bPrimaryToolUsePressed = false;
+	RefreshWaterControlsWidget();
 }
 
 void ASimCopterHelicopterPawn::StartBucketDump()
@@ -1405,17 +1854,179 @@ void ASimCopterHelicopterPawn::StopWaterCannon()
 	bWaterCannonHeld = false;
 }
 
-void ASimCopterHelicopterPawn::ToggleDebugWaterEquipment()
+// --- Tool identity and effective capability (plan section 5.1) ---
+
+int32 ASimCopterHelicopterPawn::GetModelCapabilityMask() const
 {
-	bDebugWaterCannonSelected = !bDebugWaterCannonSelected;
-	bPrimaryWaterUseHeld = false;
-	if (bDebugWaterCannonSelected)
+	// The Apache's weapons are model capabilities, never career equipment bits; they are
+	// tracked as a separate mask so the career mask stays untouched by model switches.
+	const FSimCopterHelicopterDefinition* Definition = GetHelicopterDefinition();
+	return (Definition != nullptr && Definition->bApacheArmament) ? 1 : 0;
+}
+
+bool ASimCopterHelicopterPawn::IsToolSelectable(ESimCopterHelicopterTool Tool) const
+{
+	if (Tool == ESimCopterHelicopterTool::ApacheMissile ||
+		Tool == ESimCopterHelicopterTool::ApacheMachineGun)
 	{
-		// The actual installed state belongs to an unported career capability bit. This explicit
-		// debug path grants it only so the already-decoded cannon can be exercised in-game.
-		bWaterCannonInstalled = true;
+		return GetModelCapabilityMask() != 0;
 	}
+	return Tool != ESimCopterHelicopterTool::Count;
+}
+
+ESimCopterToolAvailability ASimCopterHelicopterPawn::GetToolAvailability(ESimCopterHelicopterTool Tool) const
+{
+	if (Tool == ESimCopterHelicopterTool::ApacheMissile ||
+		Tool == ESimCopterHelicopterTool::ApacheMachineGun)
+	{
+		return GetModelCapabilityMask() != 0
+			? ESimCopterToolAvailability::Model
+			: ESimCopterToolAvailability::Unavailable;
+	}
+
+	const int32 Bit = SimCopterHelicopterRegistry::GetToolCareerBit(Tool);
+	if (EquipmentState.HasCareerBit(Bit))
+	{
+		return ESimCopterToolAvailability::Career;
+	}
+	if (EquipmentState.HasDebugBit(Bit))
+	{
+		return ESimCopterToolAvailability::DebugGrant;
+	}
+	return ESimCopterToolAvailability::Unavailable;
+}
+
+bool ASimCopterHelicopterPawn::IsToolAvailable(ESimCopterHelicopterTool Tool) const
+{
+	return GetToolAvailability(Tool) != ESimCopterToolAvailability::Unavailable;
+}
+
+FString ASimCopterHelicopterPawn::DescribeToolAvailability(ESimCopterHelicopterTool Tool) const
+{
+	switch (GetToolAvailability(Tool))
+	{
+	case ESimCopterToolAvailability::Career:
+		return TEXT("CAREER");
+	case ESimCopterToolAvailability::DebugGrant:
+		return TEXT("DEBUG GRANT");
+	case ESimCopterToolAvailability::Model:
+		return TEXT("MODEL");
+	default:
+		return TEXT("UNAVAILABLE");
+	}
+}
+
+void ASimCopterHelicopterPawn::SetSelectedTool(ESimCopterHelicopterTool Tool)
+{
+	if (Tool == ESimCopterHelicopterTool::Count)
+	{
+		return;
+	}
+
+	// The remembered selection is kept even when unavailable so the panel can offer a
+	// session grant instead of silently jumping to another tool.
+	SelectedTool = Tool;
+	StopPrimaryToolUse();
+	bWaterCannonHeld = false;
+	bBucketDumpHeld = false;
 	RefreshWaterControlsWidget();
+}
+
+void ASimCopterHelicopterPawn::CycleSelectedTool(int32 Delta)
+{
+	const int32 Count = static_cast<int32>(ESimCopterHelicopterTool::Count);
+	if (Count <= 0 || Delta == 0)
+	{
+		return;
+	}
+
+	// Apache entries only exist in the ring while the Apache is active.
+	for (int32 Attempt = 1; Attempt <= Count; ++Attempt)
+	{
+		const int32 Index = ((static_cast<int32>(SelectedTool) + Delta * Attempt) % Count + Count) % Count;
+		const ESimCopterHelicopterTool Candidate = static_cast<ESimCopterHelicopterTool>(Index);
+		if (IsToolSelectable(Candidate))
+		{
+			SetSelectedTool(Candidate);
+			return;
+		}
+	}
+}
+
+ESimCopterHelicopterTool ASimCopterHelicopterPawn::GetActiveTool() const
+{
+	if (IsToolSelectable(SelectedTool))
+	{
+		return SelectedTool;
+	}
+
+	// Model-specific tool selected on a model that does not have it: fall back to the first
+	// available normal tool for input while the selection itself is remembered.
+	for (int32 Index = 0; Index < static_cast<int32>(ESimCopterHelicopterTool::Count); ++Index)
+	{
+		const ESimCopterHelicopterTool Candidate = static_cast<ESimCopterHelicopterTool>(Index);
+		if (IsToolSelectable(Candidate) && IsToolAvailable(Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return ESimCopterHelicopterTool::WaterBucket;
+}
+
+void ASimCopterHelicopterPawn::RecomputeActiveToolFallback()
+{
+	if (!IsToolSelectable(SelectedTool))
+	{
+		LastToolStatus = FString::Printf(
+			TEXT("%s is not available on this model; using %s."),
+			SimCopterHelicopterRegistry::GetToolDisplayName(SelectedTool),
+			SimCopterHelicopterRegistry::GetToolDisplayName(GetActiveTool()));
+	}
+}
+
+void ASimCopterHelicopterPawn::SetDebugToolGrant(ESimCopterHelicopterTool Tool, bool bGranted)
+{
+	const int32 Bit = SimCopterHelicopterRegistry::GetToolCareerBit(Tool);
+	if (Bit == 0)
+	{
+		// Apache weapons are not career equipment and cannot be granted.
+		return;
+	}
+
+	if (bGranted)
+	{
+		EquipmentState.DebugGrantedEquipmentMask |= Bit;
+		if (Tool == ESimCopterHelicopterTool::TearGas && EquipmentState.GetTearGasRounds() <= 0)
+		{
+			// FUN_0042d840 stocks ten rounds with the launcher; a grant matches that so the
+			// tool is immediately testable without also editing ammo.
+			EquipmentState.DebugRefillTearGas();
+		}
+	}
+	else
+	{
+		EquipmentState.DebugGrantedEquipmentMask &= ~Bit;
+	}
+
+	// The already-shipped cannon path still reads this flag.
+	bWaterCannonInstalled = IsToolAvailable(ESimCopterHelicopterTool::WaterCannon);
+	RefreshWaterControlsWidget();
+}
+
+void ASimCopterHelicopterPawn::DebugRefillTearGas()
+{
+	EquipmentState.DebugRefillTearGas();
+}
+
+void ASimCopterHelicopterPawn::CycleMegaphoneMessage(int32 Delta)
+{
+	const int32 Count = static_cast<int32>(ESimCopterMegaphoneMessage::Count);
+	if (Count <= 0)
+	{
+		return;
+	}
+	const int32 Index = ((static_cast<int32>(SelectedMegaphoneMessage) + Delta) % Count + Count) % Count;
+	SelectedMegaphoneMessage = static_cast<ESimCopterMegaphoneMessage>(Index);
 }
 
 void ASimCopterHelicopterPawn::StartEngineHold()
@@ -1452,14 +2063,223 @@ void ASimCopterHelicopterPawn::Interact()
 
 void ASimCopterHelicopterPawn::UseMegaphone()
 {
-	if (GetWorld() == nullptr)
+	// Legacy M-key alias for the common primary path while the selector settles in.
+	const ESimCopterHelicopterTool Previous = SelectedTool;
+	SetSelectedTool(ESimCopterHelicopterTool::Megaphone);
+	if (!TryBeginToolUse(ESimCopterHelicopterTool::Megaphone))
 	{
+		SetSelectedTool(Previous);
+	}
+}
+
+// SCHOOK: MegaphoneBroadcast 0x0048a800
+// The megaphone is spotlight-directed and range-gated: FUN_0048a800 only broadcasts while
+// heli[0x150] < 3, then runs FUN_0048ae70(2, spotlightTile, body, -1, messageIndex), which
+// is a five-ring square spiral rather than a radius around the helicopter.
+void ASimCopterHelicopterPawn::BroadcastMegaphoneMessage()
+{
+	const int32 MessageIndex = static_cast<int32>(SelectedMegaphoneMessage);
+
+	if (!SpotlightTarget.bValid || SpotlightTarget.Band > SimCopterSpotlight::MegaphoneMaxBand)
+	{
+		LastToolStatus = TEXT("Spotlight target out of range for the megaphone (band 3).");
 		return;
 	}
-	if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
-		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+
+	FSimCopterInteractionEvent Event;
+	Event.Mode = ESimCopterInteractionMode::Megaphone;
+	Event.Source = this;
+	Event.TargetTile = SpotlightTarget.Tile;
+	Event.TargetWorldLocation = SpotlightTarget.WorldLocation;
+	Event.MessageIndex = MessageIndex;
+
+	const int32 Affected = BroadcastInteraction(Event, SimCopterInteraction::MegaphoneRings);
+
+	// The traffic-jam message keeps its mission hook so "Report Traffic" still clears jams
+	// while the per-message people/vehicle behaviour is ported.
+	if (SelectedMegaphoneMessage == ESimCopterMegaphoneMessage::ReportTraffic)
 	{
-		MissionActor->TryUseMegaphone(GetActorLocation());
+		if (ASimCopterMissionSystemActor* MissionActor = ResolveMissionSystem())
+		{
+			MissionActor->TryUseMegaphone(SpotlightTarget.WorldLocation);
+		}
+	}
+
+	LastToolStatus = FString::Printf(
+		TEXT("'%s' to tile (%d, %d): %d reacted."),
+		SimCopterHelicopterRegistry::GetMegaphoneMessageName(SelectedMegaphoneMessage),
+		SpotlightTarget.Tile.X,
+		SpotlightTarget.Tile.Y,
+		Affected);
+}
+
+// SCHOOK: InteractionBroadcast 0x0048ae70
+// The shared object-class router: walk the original spiral, collect the ground agents whose
+// tile is inside it, and hand each one the event. Buildings/vehicles/mission effects keep
+// their own owners, exactly as FUN_0049a4f0 dispatches by object class.
+int32 ASimCopterHelicopterPawn::BroadcastInteraction(const FSimCopterInteractionEvent& Event, int32 Rings)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || Event.TargetTile.X < 0 || Event.TargetTile.Y < 0)
+	{
+		return 0;
+	}
+
+	TArray<FIntPoint> Tiles;
+	SimCopterInteraction::BuildSpiralTiles(Event.TargetTile, Rings, Tiles);
+	if (Tiles.Num() == 0)
+	{
+		return 0;
+	}
+
+	const TSet<FIntPoint> TileSet(Tiles);
+	ASimCity2000CityActor* City = ResolveCityActor();
+	int32 Affected = 0;
+
+	for (TActorIterator<ASimCopterGroundAgent> It(World); It; ++It)
+	{
+		ASimCopterGroundAgent* Agent = *It;
+		if (Agent == nullptr || Agent == Event.Source)
+		{
+			continue;
+		}
+
+		FIntPoint AgentTile(INDEX_NONE, INDEX_NONE);
+		if (City != nullptr)
+		{
+			float SurfaceZ = 0.0f;
+			uint8 TerrainClass = 0xff;
+			if (!City->TryGetWaterGameplaySurface(Agent->GetActorLocation(), SurfaceZ, TerrainClass, &AgentTile))
+			{
+				continue;
+			}
+		}
+		if (!TileSet.Contains(AgentTile))
+		{
+			continue;
+		}
+
+		if (Agent->ApplyInteraction(Event))
+		{
+			++Affected;
+		}
+	}
+
+	return Affected;
+}
+
+// SCHOOK: HelicopterToolDispatch 0x00485f50
+// One frame of tool handling: the edge-triggered tools consume the press, the held tools
+// keep acting while the button is down, and the shared missile/tear-gas cooldown
+// (DAT_00504570) counts down exactly as FUN_0048ed00 does.
+void ASimCopterHelicopterPawn::UpdateToolDispatch(float DeltaSeconds)
+{
+	if (ToolCooldownSeconds > 0.0f)
+	{
+		ToolCooldownSeconds = FMath::Max(0.0f, ToolCooldownSeconds - DeltaSeconds);
+	}
+
+	if (bPrimaryToolUsePressed)
+	{
+		bPrimaryToolUsePressed = false;
+		TryBeginToolUse(GetActiveTool());
+	}
+}
+
+// Returns true when the action was accepted. Refusals record the original's
+// missing-equipment message so the HUD and debug panel can explain them.
+bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
+{
+	if (!IsToolSelectable(Tool))
+	{
+		LastToolStatus = FString::Printf(
+			TEXT("%s is not available on the %s."),
+			SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
+			*HelicopterTypeName);
+		return false;
+	}
+
+	if (!IsToolAvailable(Tool))
+	{
+		const FSimCopterEquipmentDefinition* Equipment = SimCopterHelicopterRegistry::FindEquipment(Tool);
+		LastToolStatus = FString::Printf(
+			TEXT("%s not installed (message 0x%03x)."),
+			SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
+			Equipment != nullptr ? Equipment->MissingMessageId : 0);
+		return false;
+	}
+
+	switch (Tool)
+	{
+	case ESimCopterHelicopterTool::WaterBucket:
+		// Held: UpdateRopeAndBucket dumps a frame of water for as long as the button is down.
+		if (BucketWaterPounds <= 0)
+		{
+			LastToolStatus = TEXT("Bucket empty (message 0x2a7).");
+			return false;
+		}
+		LastToolStatus.Reset();
+		return true;
+
+	case ESimCopterHelicopterTool::WaterCannon:
+		// Held: EmitWaterCannonFrame streams while the button is down.
+		if (BucketWaterPounds <= 0)
+		{
+			LastToolStatus = TEXT("Out of water (message 0x2a7).");
+			return false;
+		}
+		LastToolStatus.Reset();
+		return true;
+
+	case ESimCopterHelicopterTool::Megaphone:
+		// Edge: one broadcast per press (FUN_0044ac80 is a discrete command id).
+		BroadcastMegaphoneMessage();
+		LastToolStatus = FString::Printf(
+			TEXT("Broadcast '%s'."),
+			SimCopterHelicopterRegistry::GetMegaphoneMessageName(SelectedMegaphoneMessage));
+		return true;
+
+	case ESimCopterHelicopterTool::TearGas:
+		// Edge + cooldown-gated, and the round is only consumed on a successful shot.
+		if (ToolCooldownSeconds > 0.0f)
+		{
+			LastToolStatus = FString::Printf(TEXT("Tear gas reloading (%.1fs)."), ToolCooldownSeconds);
+			return false;
+		}
+		if (EquipmentState.GetTearGasRounds() <= 0)
+		{
+			LastToolStatus = TEXT("Out of tear gas rounds (message 0x2ac).");
+			return false;
+		}
+		EquipmentState.ConsumeTearGasRound();
+		ToolCooldownSeconds = SimCopterToolTiming::ProjectileCooldownSeconds;
+		LastToolStatus = FString::Printf(
+			TEXT("Tear gas fired (%d round(s) left)."), EquipmentState.GetTearGasRounds());
+		return true;
+
+	case ESimCopterHelicopterTool::RescueHarness:
+		// Context action; raise/lower stay on the explicit winch controls.
+		ToggleRope();
+		LastToolStatus = bRopeDeployed ? TEXT("Harness lowering.") : TEXT("Harness stowing.");
+		return true;
+
+	case ESimCopterHelicopterTool::ApacheMissile:
+		if (ToolCooldownSeconds > 0.0f)
+		{
+			LastToolStatus = FString::Printf(TEXT("Missile reloading (%.1fs)."), ToolCooldownSeconds);
+			return false;
+		}
+		ToolCooldownSeconds = SimCopterToolTiming::ProjectileCooldownSeconds;
+		LastToolStatus = TEXT("Missile away.");
+		return true;
+
+	case ESimCopterHelicopterTool::ApacheMachineGun:
+		// Held, no cooldown (FUN_0048e0b0 type 2 has no DAT_00504570 gate).
+		LastToolStatus = TEXT("Machine gun firing.");
+		return true;
+
+	default:
+		return false;
 	}
 }
 
@@ -1488,6 +2308,146 @@ void ASimCopterHelicopterPawn::ToggleSearchLight()
 		SearchLightComponent->ToggleVisibility();
 	}
 	UpdateSearchLightEffect();
+}
+
+// SCHOOK: SpotlightAimInput 0x00479060
+// Input actions 0x2e..0x31 step the aim by 40.0 tenth-degrees per frame in each axis.
+void ASimCopterHelicopterPawn::AimSpotlightPitch(float Value)
+{
+	SpotlightAimPitchInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::AimSpotlightYaw(float Value)
+{
+	SpotlightAimYawInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+// SCHOOK: SpotlightAimAccumulate 0x00489730
+void ASimCopterHelicopterPawn::AddSpotlightAim(int32 PitchDelta1616, int32 YawDelta1616)
+{
+	SpotlightAimPitch1616 = SimCopterSpotlight::ClampAim(SpotlightAimPitch1616 + PitchDelta1616);
+	SpotlightAimYaw1616 = SimCopterSpotlight::ClampAim(SpotlightAimYaw1616 + YawDelta1616);
+}
+
+void ASimCopterHelicopterPawn::ResetSpotlightAim()
+{
+	SpotlightAimPitch1616 = 0;
+	SpotlightAimYaw1616 = 0;
+}
+
+// The original builds identity -> rotateX(aimPitch - 360.0 tenth-deg) -> rotateY(aimYaw) and
+// transforms a fixed base vector. In Unreal terms that is the helicopter's forward axis
+// pitched 36 degrees down plus the accumulated aim, expressed in the banking model frame.
+FVector ASimCopterHelicopterPawn::GetSpotlightAimDirection() const
+{
+	const float PitchDeg =
+		SimCopterFixed::ToFloat(SpotlightAimPitch1616 - SimCopterSpotlight::BasePitch1616) / 10.0f;
+	const float YawDeg = SimCopterFixed::ToFloat(SpotlightAimYaw1616) / 10.0f;
+
+	const FTransform Frame = ModelPivot != nullptr
+		? ModelPivot->GetComponentTransform()
+		: GetActorTransform();
+	const FRotator LocalAim(PitchDeg, YawDeg, 0.0f);
+	return Frame.TransformVectorNoScale(LocalAim.Vector()).GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
+}
+
+// SCHOOK: SpotlightTargetService 0x00489250
+// Semantic targeting runs every frame even when the cone is hidden (the original hides the
+// node in cockpit view but still computes the target and broadcasts the interaction scan).
+void ASimCopterHelicopterPawn::UpdateSpotlightTarget(float DeltaSeconds)
+{
+	// Aim accumulation first, so the march uses this frame's direction.
+	if (!FMath::IsNearlyZero(SpotlightAimPitchInput) || !FMath::IsNearlyZero(SpotlightAimYawInput))
+	{
+		AddSpotlightAim(
+			FMath::RoundToInt(SpotlightAimPitchInput * SimCopterSpotlight::AimStep1616),
+			FMath::RoundToInt(SpotlightAimYawInput * SimCopterSpotlight::AimStep1616));
+	}
+
+	if (bSpotlightTargetFrozen)
+	{
+		return;
+	}
+
+	const float Unit = FMath::Max(OriginalUnitToCm, 0.01f);
+	const FVector Origin = ModelPivot != nullptr
+		? ModelPivot->GetComponentLocation()
+		: GetActorLocation();
+	const FVector Direction = GetSpotlightAimDirection();
+
+	// The original marches 16 fixed steps through the tile-object lists. The remake traces the
+	// same total reach in one sweep against the built city collision, then quantises the hit
+	// distance onto the same 32-unit step grid so the smoothing/banding math is unchanged.
+	const float StepCm = SimCopterFixed::ToFloat(SimCopterSpotlight::MarchStep1616) * Unit;
+	const float MaxReachCm = StepCm * SimCopterSpotlight::MaxMarchSteps;
+
+	FSimCopterToolTarget NewTarget;
+	NewTarget.InteractionRings = SimCopterInteraction::SpotlightRings;
+
+	int32 RawDistance1616 = SimCopterSpotlight::MaxMarchSteps * SimCopterSpotlight::MarchStep1616;
+	FVector HitWorld = Origin + Direction * MaxReachCm;
+	FVector HitNormal = FVector::UpVector;
+
+	if (UWorld* World = GetWorld())
+	{
+		FHitResult Hit;
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterSpotlightMarch), false, this);
+		if (World->LineTraceSingleByChannel(Hit, Origin, Origin + Direction * MaxReachCm, ECC_Visibility, QueryParams) &&
+			Hit.bBlockingHit)
+		{
+			// Round up to the step the original would have stopped on.
+			const int32 Steps = FMath::Clamp(
+				FMath::CeilToInt(Hit.Distance / FMath::Max(StepCm, KINDA_SMALL_NUMBER)),
+				1,
+				SimCopterSpotlight::MaxMarchSteps);
+			RawDistance1616 = Steps * SimCopterSpotlight::MarchStep1616;
+			HitWorld = Hit.ImpactPoint;
+			HitNormal = Hit.ImpactNormal;
+			NewTarget.HitActor = Hit.GetActor();
+			NewTarget.bValid = true;
+		}
+	}
+
+	RawDistance1616 = SimCopterSpotlight::ClampMarchDistance(RawDistance1616);
+	const bool bFlying = FlightModel.State != ESimCopterFlightState::Parked;
+	SpotlightDistance1616 = SimCopterSpotlight::SmoothDistance(SpotlightDistance1616, RawDistance1616, bFlying);
+
+	NewTarget.DistanceUnits = SimCopterFixed::ToFloat(SpotlightDistance1616);
+	NewTarget.Band = SimCopterSpotlight::SelectBand(SpotlightDistance1616);
+
+	// The original derives the light node position from the *smoothed* distance rather than
+	// the raw hit, which is why the cone lags slightly behind fast aim changes.
+	const FVector SmoothedPoint = Origin + Direction * (NewTarget.DistanceUnits * Unit);
+	NewTarget.WorldLocation = NewTarget.bValid ? HitWorld : SmoothedPoint;
+	NewTarget.WorldNormal = HitNormal;
+
+	if (ASimCity2000CityActor* City = ResolveCityActor())
+	{
+		float SurfaceZ = 0.0f;
+		uint8 TerrainClass = 0xff;
+		FIntPoint Tile = FIntPoint::ZeroValue;
+		if (City->TryGetWaterGameplaySurface(NewTarget.WorldLocation, SurfaceZ, TerrainClass, &Tile))
+		{
+			NewTarget.Tile = Tile;
+			if (!NewTarget.bValid)
+			{
+				// No collision hit but the beam is over the map: treat the terrain surface as
+				// the target so the megaphone still has a tile.
+				NewTarget.WorldLocation.Z = SurfaceZ;
+				NewTarget.bValid = true;
+			}
+		}
+	}
+
+	SpotlightTarget = NewTarget;
+
+	// Point the Unreal light at the resolved target. Visual only - the target above is what
+	// gameplay reads.
+	if (SearchLightComponent != nullptr)
+	{
+		const FVector LightOrigin = SearchLightComponent->GetComponentLocation();
+		SearchLightComponent->SetWorldRotation((SpotlightTarget.WorldLocation - LightOrigin).Rotation());
+	}
 }
 
 void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
@@ -1560,8 +2520,11 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	// SCHOOK: HelicopterWaterLoad 0x00484d20
 	// heli[0x74] is the actual number of pounds in the attachment, not a normalized fill amount.
 	FlightModel.LoadPounds = BucketWaterPounds;
-	if ((bWaterCannonHeld || (bPrimaryWaterUseHeld && bDebugWaterCannonSelected)) &&
-		bWaterCannonInstalled &&
+	// FUN_00485f50 action 0x10: firing the cannon kicks the pitch target by one frame of
+	// SlideRate * load, i.e. the recoil pushes the nose up.
+	if ((bWaterCannonHeld ||
+			(bPrimaryToolUseHeld && GetActiveTool() == ESimCopterHelicopterTool::WaterCannon)) &&
+		IsToolAvailable(ESimCopterHelicopterTool::WaterCannon) &&
 		BucketWaterPounds > 0)
 	{
 		FlightModel.PitchTarget -= SimCopterWaterGameplay::FixedMul(
@@ -1654,35 +2617,13 @@ void ASimCopterHelicopterPawn::ApplyFlightTuningToModel()
 	Tuning.MaxFireAlt = SimCopterFixed::FromFloat(DamageTuning.MaxFireAltitudeCm / FMath::Max(TweakAltitudeToCm, 1.0f));
 	Tuning.CollisionSubtract = FMath::RoundToInt(DamageTuning.CollisionDamageScale);
 
-	// Static per-type data from the executable's tuning block (DAT_005040e4 +
-	// type*0x5c): passenger seats at +0x00 and the no-tail-rotor flag at +0x38
-	// (set for the NOTAR airframes).
-	struct FHelicopterTypeStats
+	// Static per-type data from the executable's tuning block (DAT_005040e4 + type*0x5c):
+	// passenger seats at +0x00 and the no-tail-rotor flag at +0x38. One registry, no
+	// duplicated switch (plan section 3).
+	if (const FSimCopterHelicopterDefinition* Definition = GetHelicopterDefinition())
 	{
-		const TCHAR* TypeName;
-		int32 PassengerSeats;
-		bool bNoTailRotor;
-	};
-	static const FHelicopterTypeStats TypeStats[] = {
-		{ TEXT("Jet Ranger"), 4, false },
-		{ TEXT("Hughes 500"), 4, false },
-		{ TEXT("Apache"), 0, false },
-		{ TEXT("Bell 212"), 14, false },
-		{ TEXT("Schwiezer 300"), 2, false },
-		{ TEXT("Agusta"), 7, false },
-		{ TEXT("Dauphin"), 13, false },
-		{ TEXT("MDEXPLORER"), 7, true },
-		{ TEXT("MD520"), 4, true },
-	};
-	const FString Trimmed = HelicopterTypeName.TrimStartAndEnd();
-	for (const FHelicopterTypeStats& Stats : TypeStats)
-	{
-		if (Trimmed.Equals(Stats.TypeName, ESearchCase::IgnoreCase))
-		{
-			Tuning.PassengerSeats = Stats.PassengerSeats;
-			Tuning.bNoTailRotor = Stats.bNoTailRotor;
-			break;
-		}
+		Tuning.PassengerSeats = Definition->PassengerSeats;
+		Tuning.bNoTailRotor = Definition->bNoTailRotor;
 	}
 
 	FlightModel.Tuning = Tuning;
@@ -1957,9 +2898,10 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 		}
 	}
 
+	const ESimCopterHelicopterTool ActiveTool = GetActiveTool();
 	if (bRopeDeployed &&
 		(bBucketDumpHeld ||
-			(bPrimaryWaterUseHeld && !bDebugWaterCannonSelected) ||
+			(bPrimaryToolUseHeld && ActiveTool == ESimCopterHelicopterTool::WaterBucket) ||
 			bCollisionSpill))
 	{
 		EmitBucketWaterFrame(bCollisionSpill);
@@ -2010,22 +2952,48 @@ void ASimCopterHelicopterPawn::InitializeRopeState()
 	bRopeStateInitialized = true;
 }
 
+// SCHOOK: RopeWinchStep 0x00487bb0
 bool ASimCopterHelicopterPawn::StepRopeState()
 {
+	// The winch is a state machine, not a free cursor: the raise/lower keys pick a command
+	// for whichever attachment the active tool selects, and the "stow the other one first"
+	// rule falls out of SimCopterWinch::Resolve*Command.
+	const bool bHarnessSelected = GetActiveTool() == ESimCopterHelicopterTool::RescueHarness;
+	int32 Command = SimCopterWinch::CommandIdle;
 	if (RopeAdjustInput > 0.25f)
 	{
-		++RopeFirstActiveNode;
+		Command = bHarnessSelected
+			? SimCopterWinch::ResolveRaiseHarnessCommand(WinchState)
+			: SimCopterWinch::ResolveRaiseBucketCommand(WinchState);
 	}
 	else if (RopeAdjustInput < -0.25f)
 	{
-		--RopeFirstActiveNode;
+		Command = bHarnessSelected
+			? SimCopterWinch::ResolveLowerHarnessCommand(WinchState)
+			: SimCopterWinch::ResolveLowerBucketCommand(WinchState);
 	}
-	RopeFirstActiveNode = FMath::Clamp(
-		RopeFirstActiveNode,
-		SimCopterWaterGameplay::RopeMinimumFirstActiveNode,
-		SimCopterWaterGameplay::RopeStowedFirstActiveNode);
-	bRopeDeployed =
-		RopeFirstActiveNode < SimCopterWaterGameplay::RopeStowedFirstActiveNode;
+	else if (PendingWinchCommand != SimCopterWinch::CommandIdle)
+	{
+		// A one-shot command from ToggleRope / the debug panel keeps running until the winch
+		// reaches its limit, matching how the original holds heli[0x72] while the key is down.
+		Command = PendingWinchCommand;
+		const bool bRaising = PendingWinchCommand > 0;
+		if ((bRaising && WinchState.NodeCursor >= SimCopterWinch::StowedNode) ||
+			(!bRaising && WinchState.NodeCursor <= SimCopterWinch::LoweredNode))
+		{
+			PendingWinchCommand = SimCopterWinch::CommandIdle;
+		}
+	}
+
+	WinchState.Command = Command;
+	const bool bRopeEndChanged = SimCopterWinch::StepWinch(WinchState);
+	if (bRopeEndChanged)
+	{
+		bHarnessRopeEndSelected = WinchState.RopeEnd == SimCopterWinch::ERopeEnd::Harness;
+	}
+
+	RopeFirstActiveNode = WinchState.NodeCursor;
+	bRopeDeployed = WinchState.IsAnythingDeployed();
 
 	const FVector Anchor = GetRopeAnchorWorldLocation();
 	if (!bRopeDeployed)
@@ -2182,7 +3150,22 @@ void ASimCopterHelicopterPawn::UpdateRopeVisuals()
 		.GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
 	const FQuat BucketRotation = FQuat::FindBetweenNormals(-FVector::UpVector, EndDirection);
 
-	const bool bShowOriginalBucket = bRopeDeployed && bUsingOriginalBucketMesh;
+	// FUN_00487bb0 renders exactly one rope-end object: heli[0x32] (BUCKET) or heli[0x33]
+	// (HARNESS), selected when the winch crosses node 0x10 on its way down.
+	const bool bShowHarnessEnd = bRopeDeployed && bHarnessRopeEndSelected;
+	const bool bShowBucketEnd = bRopeDeployed && !bHarnessRopeEndSelected;
+
+	if (OriginalHarnessMeshComponent != nullptr)
+	{
+		const bool bVisible = bShowHarnessEnd && bUsingOriginalHarnessMesh;
+		OriginalHarnessMeshComponent->SetVisibility(bVisible);
+		OriginalHarnessMeshComponent->SetHiddenInGame(!bVisible);
+		OriginalHarnessMeshComponent->SetWorldLocation(BucketAttachmentWorld);
+		OriginalHarnessMeshComponent->SetWorldRotation(BucketRotation);
+		OriginalHarnessMeshComponent->SetRelativeScale3D(FVector::OneVector);
+	}
+
+	const bool bShowOriginalBucket = bShowBucketEnd && bUsingOriginalBucketMesh;
 	if (OriginalBucketMeshComponent != nullptr)
 	{
 		OriginalBucketMeshComponent->SetVisibility(bShowOriginalBucket);
@@ -2194,7 +3177,10 @@ void ASimCopterHelicopterPawn::UpdateRopeVisuals()
 
 	if (BucketMeshComponent != nullptr)
 	{
-		const bool bShowFallbackBucket = bRopeDeployed && !bUsingOriginalBucketMesh;
+		// The engine cube stands in for whichever rope end failed to load.
+		const bool bShowFallbackBucket =
+			(bShowBucketEnd && !bUsingOriginalBucketMesh) ||
+			(bShowHarnessEnd && !bUsingOriginalHarnessMesh);
 		BucketMeshComponent->SetVisibility(bShowFallbackBucket);
 		BucketMeshComponent->SetHiddenInGame(!bShowFallbackBucket);
 		BucketMeshComponent->SetWorldLocation(
@@ -2245,12 +3231,12 @@ void ASimCopterHelicopterPawn::EmitBucketWaterFrame(bool)
 
 void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
 {
-	if (!bWaterCannonHeld &&
-		!(bPrimaryWaterUseHeld && bDebugWaterCannonSelected))
+	const bool bCannonSelected = GetActiveTool() == ESimCopterHelicopterTool::WaterCannon;
+	if (!bWaterCannonHeld && !(bPrimaryToolUseHeld && bCannonSelected))
 	{
 		return;
 	}
-	if (!bWaterCannonInstalled || BucketWaterPounds <= 0)
+	if (!IsToolAvailable(ESimCopterHelicopterTool::WaterCannon) || BucketWaterPounds <= 0)
 	{
 		return;
 	}
@@ -2294,6 +3280,88 @@ void ASimCopterHelicopterPawn::SimForceCarFire()
 	{
 		MissionSystem->SimForceCarFire();
 	}
+}
+
+void ASimCopterHelicopterPawn::SimSwitchHeli(int32 TypeIndex)
+{
+	SwitchHelicopterModel(TypeIndex);
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("SimSwitchHeli %d: %s"), TypeIndex, *LastModelSwitchStatus);
+}
+
+void ASimCopterHelicopterPawn::SimCycleHeli(int32 Delta)
+{
+	CycleHelicopterModel(Delta != 0 ? Delta : 1);
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("SimCycleHeli: %s"), *LastModelSwitchStatus);
+}
+
+void ASimCopterHelicopterPawn::SimSelectTool(int32 ToolIndex)
+{
+	if (ToolIndex < 0 || ToolIndex >= static_cast<int32>(ESimCopterHelicopterTool::Count))
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("SimSelectTool: index %d out of range."), ToolIndex);
+		return;
+	}
+	SetSelectedTool(static_cast<ESimCopterHelicopterTool>(ToolIndex));
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("SimSelectTool %d: %s (%s), active %s"),
+		ToolIndex,
+		SimCopterHelicopterRegistry::GetToolDisplayName(SelectedTool),
+		*DescribeToolAvailability(SelectedTool),
+		SimCopterHelicopterRegistry::GetToolDisplayName(GetActiveTool()));
+}
+
+void ASimCopterHelicopterPawn::SimGrantTool(int32 ToolIndex, int32 bGranted)
+{
+	if (ToolIndex < 0 || ToolIndex >= static_cast<int32>(ESimCopterHelicopterTool::Count))
+	{
+		return;
+	}
+	const ESimCopterHelicopterTool Tool = static_cast<ESimCopterHelicopterTool>(ToolIndex);
+	SetDebugToolGrant(Tool, bGranted != 0);
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("SimGrantTool %s -> %s (career mask 0x%02x unchanged, effective 0x%02x)"),
+		SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
+		*DescribeToolAvailability(Tool),
+		EquipmentState.CareerEquipmentMask,
+		EquipmentState.GetEffectiveEquipmentMask());
+}
+
+void ASimCopterHelicopterPawn::SimDumpHeliState()
+{
+	const FSimCopterHelicopterDefinition* Definition = GetHelicopterDefinition();
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("Model: %s (type %d) seats %d maxload %d notar %d apache %d mesh %d | ")
+		TEXT("Tool: %s (%s) active %s | Career 0x%02x debug 0x%02x gas %d | ")
+		TEXT("Rope node %d bucketStowed %d harnessStowed %d end %s | ")
+		TEXT("Spotlight valid %d tile (%d,%d) band %d dist %.1f"),
+		Definition != nullptr ? *Definition->DisplayName : TEXT("<none>"),
+		ActiveHelicopterTypeIndex,
+		FlightModel.Tuning.PassengerSeats,
+		HelicopterTuning.MaxLoadPounds,
+		Definition != nullptr ? Definition->bNoTailRotor : false,
+		Definition != nullptr ? Definition->bApacheArmament : false,
+		bUsingOriginalMesh,
+		SimCopterHelicopterRegistry::GetToolDisplayName(SelectedTool),
+		*DescribeToolAvailability(SelectedTool),
+		SimCopterHelicopterRegistry::GetToolDisplayName(GetActiveTool()),
+		EquipmentState.CareerEquipmentMask,
+		EquipmentState.DebugGrantedEquipmentMask,
+		EquipmentState.GetTearGasRounds(),
+		WinchState.NodeCursor,
+		WinchState.bBucketStowed,
+		WinchState.bHarnessStowed,
+		bHarnessRopeEndSelected ? TEXT("HARNESS") : TEXT("BUCKET"),
+		SpotlightTarget.bValid,
+		SpotlightTarget.Tile.X,
+		SpotlightTarget.Tile.Y,
+		SpotlightTarget.Band,
+		SpotlightTarget.DistanceUnits);
 }
 
 ASimCopterMissionSystemActor* ASimCopterHelicopterPawn::ResolveMissionSystem()

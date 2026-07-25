@@ -144,6 +144,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool IsUsingOriginalMesh() const { return bUsingOriginalMesh; }
 
+	// Port of the person branch of FUN_0049a4f0 -> FUN_004c1050: look the interaction mode up
+	// in the reaction table and push that BHAV onto the behaviour stack, honouring the
+	// original's acceptance tests and interrupt priority. Returns true when the person
+	// actually reacted.
+	bool ApplyInteraction(const struct FSimCopterInteractionEvent& Event);
+
+	// The reaction currently running on this agent (INDEX_NONE when none).
+	int32 GetActiveReactionProgramId() const { return BehaviorContext.ActiveReactionProgramId; }
+
+	// Megaphone message the agent last received (person+0x15a).
+	int32 GetLastMegaphoneMessage() const { return BehaviorContext.MegaphoneMessageIndex; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;

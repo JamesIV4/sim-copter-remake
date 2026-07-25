@@ -49,6 +49,45 @@ Headless parser test command:
 
 The original game files live under `Reference/SimCopterOriginalGame` on this machine. That folder is ignored by git and should remain user-provided.
 
+### Running the game: the front end and the city level
+
+```powershell
+Start-Process "C:\GameDev\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList '"S:\Repos\sim-copter-remake\SimCopterRemake\SimCopterRemake.uproject"','-game','-windowed','-ResX=1600','-ResY=900','-log'
+```
+
+The game boots into `/Game/MainMenu`, an otherwise empty front-end map whose World Settings override
+the game mode to `ASimCopterMainMenuGameMode`. No city is loaded until the player chooses one, which
+is why `GameDefaultMap` points there and not at `CityRender`.
+
+`SSimCopterMainMenu` carries the original's five items (see `help/English/37ref.htm` in the original
+game folder):
+
+| Item | State |
+| --- | --- |
+| New Career Game | choose one of three cities (the original's opening successor trio City0/1/2), then fly it |
+| Open Career Game | disabled - no save system yet |
+| New User Game | pick any `.sc2` under the original game's `cities/`; the original opened a file dialog |
+| Open User Game | disabled - no save system yet |
+| Quit | quits |
+
+Below a divider the menu carries two development extras with no original equivalent: a mission type
+to create as soon as the city is up, and a toggle for rolling the city's first scheduled job
+immediately instead of after the original's 180 second opening countdown.
+
+Choosing a city writes it into `USimCopterSessionSubsystem` (a game-instance subsystem, so it
+survives the travel), then opens `/Game/CityRender`. There the city actor loads that `.sc2` -
+`cities/career/city<N>.sc2` for a career - and `ASimCopterGameMode` opens the matching mission
+session. Entering `CityRender` directly (PIE, or `-game /Game/CityRender`) still works: with no
+pending session the mission actor opens its own default session on city 0.
+
+To test the front end in the editor, open `/Game/MainMenu` before pressing Play - PIE always plays
+the map that is open.
+
+City-level console commands (the city level's game mode): `SimMainMenu` (the Settings panel's "Leave
+City"), `SimFreeRoam <city>`, `SimCityJobs <city>`, `SimLoadMission <missionIndex> [city]`
+(`SimLoadMission -1` lists the indices). The front end has `SimNewCareer <city>` and
+`SimNewUserGame <index>`.
+
 ## Unreal MCP
 
 Unreal MCP is enabled through the experimental engine plugin named `ModelContextProtocol` in `SimCopterRemake.uproject`.

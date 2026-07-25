@@ -14,6 +14,62 @@ The code in this file is a mix of three things:
 
 Where behavior is not known original behavior, this document says so explicitly.
 
+## Helicopter Registry, Tools, and Targeting
+
+Files:
+
+- `Public/Flight/SimCopterHelicopterRegistry.h` / `Private/Flight/SimCopterHelicopterRegistry.cpp`
+- `Public/Flight/SimCopterSpotlight.h` / `Private/Flight/SimCopterSpotlight.cpp`
+- `Public/Flight/SimCopterWinch.h` / `Private/Flight/SimCopterWinch.cpp`
+- `Public/Ground/SimCopterInteraction.h` / `Private/Ground/SimCopterInteraction.cpp`
+- `Private/Flight/SimCopterPreparedHelicopterModel.h`
+- `Private/Debug/SSimCopterHelicopterDebugPanel.h` / `.cpp`
+
+These four units carry the decoded static data and pure rules that used to be
+duplicated inside the pawn. Evidence for every value is
+`Docs/scratchpad/ghidra/heli_tools_models_decode_20260724.md`; the owning plan is
+`Docs/HelicopterToolsAndModelsDecompilePlan.md`.
+
+`SimCopterHelicopterRegistry` is the one table of the executable's nine
+helicopter records (`FUN_00483c20` object ids plus the `DAT_005040e4` static
+block: seats, tail-rotor mount, NOTAR flag, engine loop sound, catalog row) and
+the five purchasable tools (career bit, price, sell value, refusal message id
+from `FUN_0042d840`/`FUN_0048b0f0`/`FUN_00485f50`). `FSimCopterEquipmentState`
+holds the three explicit layers from the plan - career mask, transient debug
+grants, and tear gas rounds - so a debug grant is visible to gameplay without
+ever touching career state. **Runtime type indices are not `heli.twk` order and
+not shop order; never infer one from the other.**
+
+`SimCopterSpotlight` is the pure math of `FUN_00489250`: a 16-step 32-unit
+march, the `(previous * 7 + raw) >> 3` distance smoothing, the four range bands,
+the cone scale, and the `+/-500.0` tenth-degree aim clamp. `FSimCopterToolTarget`
+is the resulting shared semantic target - valid flag, world point/normal, city
+tile, smoothed distance, band, interaction rings. The pawn recomputes it every
+frame whether or not the Unreal spot light is drawn, because the megaphone and
+any later emergency-dispatch port read the target, not the light.
+
+`SimCopterInteraction` is the object router: `BuildSpiralTiles` is a verbatim
+port of `FUN_0048ae70`'s square spiral (3 rings for the spotlight, 5 for the
+megaphone, quirks included - it stops mid-leg, covering 8 and 24 tiles), and the
+reaction table is `DAT_0058d728` as written by `FUN_004c3010`, with every id
+cross-checked against the shipped `people.df` BHAV names. `ReactionCanInterrupt`
+implements `FUN_004c1050`'s priority rule that 903/915/912/909 cannot be
+displaced by a lesser reaction.
+
+`SimCopterWinch` is the shared rope state machine from `FUN_00485f50` +
+`FUN_00487bb0`. The polarity traps are decoded and asserted by
+`SimCopter.Winch.*`: the stowed flags are 1 when raised, the node cursor counts
+**down** from 17 to 3, commands are `+/-1` for the bucket and `+/-2` for the
+harness, and asking to lower one attachment while the other is out raises the
+other one first - that cross-check is the mechanism behind the manual's "one
+attachment at a time".
+
+`SSimCopterHelicopterDebugPanel` is a non-shipping pawn-owned Slate panel for
+cycling models and tools during play. It works in a free-flight map with no
+`ASimCopterMissionSystemActor`, calls only the pawn's public API, and every
+action it exposes is session state. All of its handlers return `Handled` so a
+click cannot also fire the world's primary action.
+
 ## Helicopter Pawn
 
 Files:
