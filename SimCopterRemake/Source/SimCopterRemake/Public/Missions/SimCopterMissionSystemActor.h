@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -17,6 +17,7 @@ enum class ESimCopterMissionPassengerKind : uint8;
 class UMaterialInterface;
 class USoundBase;
 class USoundWave;
+class USoundWaveProcedural;
 class SConstraintCanvas;
 class STextBlock;
 class SVerticalBox;
@@ -98,6 +99,11 @@ public:
 	virtual void OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId) override;
 	virtual void OnBuildingBurnedDown(int32 TileX, int32 TileY, int32 FootprintSize) override;
 
+	// Plays one of the original voice/UI clips. Runtime clips are USoundWaveProcedural and have
+	// to be re-queued before each play (the FIFO drains as it plays), so every play site goes
+	// through here rather than calling PlaySound2D directly.
+	void PlayOriginalClip(USoundBase* Sound, float VolumeMultiplier = 1.0f);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Audio")
 	TMap<int32, USoundBase*> UiSounds;
 
@@ -127,6 +133,49 @@ public:
 	// Megaphone: clear the nearest in-range traffic jam from the given (helicopter) location.
 	// Returns true if a jam was cleared. Called by the helicopter pawn's megaphone key.
 	bool TryUseMegaphone(const FVector& FromWorldLocation);
+
+	// --- Emergency dispatch resolution hooks ---
+	// These are what an arrived fire truck / police car / ambulance asks of the mission
+	// layer. See Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md section 7:
+	// the original's fire truck scans a five-ring spiral for a burning cell and sprays
+	// emitter type 6 at it (the water then douses through the ordinary impact path), and
+	// its police car scans three rings for a target before acting.
+
+	// One fire-truck water burst: find the nearest active flame within RadiusTiles of
+	// FromTile (Chebyshev, matching the spiral's reach) and douse AT THAT FLAME'S OWN
+	// local offset. Returns the number of flames the burst reached, 0 when nothing is
+	// alight in range.
+	//
+	// The offset matters: IgniteBuilding puts a large building's flames up to +/-0x700000
+	// from the anchor cell's origin, while Fire Radius is only ~0x2beb99, so aiming at the
+	// cell origin (DouseAtTile) reaches nothing on any building bigger than 1x1.
+	int32 ApplyServiceFireSuppression(
+		const FIntPoint& FromTile,
+		int32 RadiusTiles,
+		FIntPoint& OutFireTile,
+		int32& OutEventId);
+
+	// Nearest active traffic-jam mission tile within RadiusTiles of FromTile.
+	bool TryFindNearestJamTile(const FIntPoint& FromTile, int32 RadiusTiles, FIntPoint& OutTile, int32& OutEventId) const;
+
+	// Nearest active medevac/rescue mission tile within RadiusTiles of FromTile.
+	bool TryFindNearestMedicalTile(const FIntPoint& FromTile, int32 RadiusTiles, FIntPoint& OutTile, int32& OutEventId) const;
+
+	// Police clearing a jam they have driven to.
+	bool ClearTrafficJamEvent(int32 EventId);
+
+	// The fire truck's visible water jet: one droplet of emitter type 6, aimed from the
+	// truck's nozzle at the fire. Ported from FUN_004a5ca0 (building) / FUN_004a5dd0
+	// (object), which call FUN_0048e0b0(6, tile, nozzle, dir, ...) once per frame. The
+	// elevation of the jet sweeps up and down between shots so the stream plays over the
+	// fire rather than pointing at a single spot; that sweep state lives on this actor
+	// because the original keeps it in the DAT_00505f84/DAT_00505f88 globals.
+	void SpawnServiceWaterJet(const FVector& NozzleWorld, const FVector& TargetWorld);
+
+	// Distinct anchor tiles that currently have at least one active flame, with that tile's
+	// flame count. Debug/diagnostic use - a dispatched fire truck's scan works in these
+	// tiles, so this is what to compare its position against when it appears idle.
+	void GetActiveFlameTiles(TArray<TPair<FIntPoint, int32>>& OutTiles) const;
 
 	// Debug: force-spawn a building fire (or car fire) near the camera so fire visuals and the
 	// bucket douse can be exercised without waiting for the scheduler. Invoked via the helicopter
@@ -290,6 +339,31 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire", meta = (ClampMin = "50.0"))
 	float CarDouseRadiusCm = 600.0f;
 
+	// Fire-truck jet elevation sweep (original DAT_00505f84 / DAT_00505f88): the aim rises
+	// by the step each shot until it reaches 0x40000 (4.0 units), then falls back to 0.
+	int32 ServiceJetElevation1616 = 0;
+	int32 ServiceJetElevationStep1616 = 0x1999;
+	bool bLoggedServiceJetSpawnFailure = false;
+
+	// Decoded samples and format for one runtime voice clip.
+	struct FOriginalClipAudio
+	{
+		TArray<uint8> Pcm16;
+		int32 SampleRate = 0;
+		int32 Channels = 0;
+		float Duration = 0.0f;
+	};
+
+	// Source audio for each runtime clip, keyed by the wave object that stands for it in the
+	// containers above. Keyed by object because USoundWaveProcedural is UCLASS(MinimalAPI) and
+	// cannot be subclassed from a game module.
+	TMap<TObjectKey<USoundWaveProcedural>, FOriginalClipAudio> VoicePcmByWave;
+
+	// Builds a throwaway procedural wave holding one copy of a clip. Each play gets its own,
+	// because a procedural wave's FIFO is consumed by the audio thread: re-queueing a shared
+	// wave that is still playing races that reader.
+	USoundWaveProcedural* MakeOneShotVoice(const FOriginalClipAudio& Clip);
+
 	// Cached resolved city actor (for the rendered-surface trace that seats flames on rooftops)
 	// and the original game root (for loading the flame GEO meshes once).
 	TWeakObjectPtr<AActor> ResolvedCityActor;
@@ -332,7 +406,7 @@ private:
 	// Sound auto-setup.
 	void SetupMissionSounds();
 	FString ResolveOriginalSoundDir() const;
-	USoundWave* LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const;
+	USoundWaveProcedural* LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const;
 
 	ASimCopterTrafficSystemActor* ResolveTrafficSystem() const;
 	void ProcessPassengerTransfers();

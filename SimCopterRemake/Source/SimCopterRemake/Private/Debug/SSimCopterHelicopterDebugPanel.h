@@ -38,6 +38,8 @@ private:
 	FText GetToolAvailabilityText() const;
 	FText GetToolContextText() const;
 	FText GetGrantButtonText() const;
+	FText GetDispatchServiceText() const;
+	FText GetDispatchStatusText() const;
 
 	// All Slate handlers return Handled so a click on the panel can never also fire the
 	// world's primary action (plan section 5.2).
@@ -52,6 +54,11 @@ private:
 	FReply HandleMessageNext();
 	FReply HandleRefillTearGas();
 	FReply HandleRopeToggle();
+	FReply HandleDispatchServicePrev();
+	FReply HandleDispatchServiceNext();
+	FReply HandleDispatch();
+	FReply HandleDispatchChase();
+	FReply HandleDispatchClear();
 
 	EVisibility GetMegaphoneRowVisibility() const;
 	EVisibility GetTearGasRowVisibility() const;

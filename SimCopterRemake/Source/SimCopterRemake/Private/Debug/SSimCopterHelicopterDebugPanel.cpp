@@ -4,6 +4,7 @@
 
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Ground/SimCopterDispatch.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
@@ -243,9 +244,183 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 						]
 					]
 				]
+
+				// --- DISPATCH (original F2-F5; the buttons drive the same pawn path) ---
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 6.0f, 0.0f, 0.0f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "Dispatch", "DISPATCH"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(10, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						MakeArrow(
+							NSLOCTEXT("SimCopterDebug", "Prev", "<"),
+							FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatchServicePrev))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f))
+					[
+						SNew(STextBlock)
+						.Text(this, &SSimCopterHelicopterDebugPanel::GetDispatchServiceText)
+						.ColorAndOpacity(ValueColor)
+						.Font(PanelFont(12, true))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						MakeArrow(
+							NSLOCTEXT("SimCopterDebug", "Next", ">"),
+							FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatchServiceNext))
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(86.0f, 2.0f, 0.0f, 0.0f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SButton)
+						.ContentPadding(FMargin(8.0f, 1.0f))
+						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatch))
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "DispatchGo", "DISPATCH"))
+							.Font(PanelFont(10, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
+					[
+						SNew(SButton)
+						.ContentPadding(FMargin(8.0f, 1.0f))
+						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatchChase))
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "DispatchChase", "CHASE"))
+							.Font(PanelFont(10))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
+					[
+						SNew(SButton)
+						.ContentPadding(FMargin(8.0f, 1.0f))
+						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatchClear))
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "DispatchClear", "CLEAR"))
+							.Font(PanelFont(10))
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(86.0f, 2.0f, 0.0f, 0.0f))
+				[
+					SNew(STextBlock)
+					.Text(this, &SSimCopterHelicopterDebugPanel::GetDispatchStatusText)
+					.ColorAndOpacity(LabelColor)
+					.AutoWrapText(true)
+					.Font(PanelFont(10))
+				]
 			]
 		]
 	];
+}
+
+namespace
+{
+const TCHAR* GetDispatchServiceLabel(int32 ServiceIndex)
+{
+	switch (static_cast<SimCopterDispatch::EService>(ServiceIndex))
+	{
+	case SimCopterDispatch::EService::FireTruck: return TEXT("Fire Truck  (F2)");
+	case SimCopterDispatch::EService::Police: return TEXT("Police  (F4 / F5 chase)");
+	case SimCopterDispatch::EService::Ambulance: return TEXT("Ambulance  (F3)");
+	default: return TEXT("?");
+	}
+}
+}
+
+FText SSimCopterHelicopterDebugPanel::GetDispatchServiceText() const
+{
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	if (Helicopter == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+	return FText::FromString(GetDispatchServiceLabel(Helicopter->GetSelectedDispatchService()));
+}
+
+FText SSimCopterHelicopterDebugPanel::GetDispatchStatusText() const
+{
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	if (Helicopter == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+
+	const FString Status = Helicopter->GetSelectedDispatchServiceStatus();
+	const FString Last = Helicopter->GetLastDispatchStatus();
+	if (Last.IsEmpty())
+	{
+		return FText::FromString(Status);
+	}
+	return FText::FromString(FString::Printf(TEXT("%s\n%s"), *Status, *Last));
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleDispatchServicePrev()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->CycleSelectedDispatchService(-1);
+	}
+	return FReply::Handled();
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleDispatchServiceNext()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->CycleSelectedDispatchService(1);
+	}
+	return FReply::Handled();
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleDispatch()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->RequestDispatch(Helicopter->GetSelectedDispatchService(), false, false);
+	}
+	return FReply::Handled();
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleDispatchChase()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		// F5's special dispatch is police-only in the original; the panel routes the
+		// request the same way and lets the service selection decide.
+		Helicopter->RequestDispatch(Helicopter->GetSelectedDispatchService(), true, false);
+	}
+	return FReply::Handled();
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleDispatchClear()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->RequestDispatch(Helicopter->GetSelectedDispatchService(), false, true);
+	}
+	return FReply::Handled();
 }
 
 FText SSimCopterHelicopterDebugPanel::GetModelLineText() const

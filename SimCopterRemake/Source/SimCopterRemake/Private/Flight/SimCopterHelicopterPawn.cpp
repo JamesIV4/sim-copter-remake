@@ -453,6 +453,14 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &ASimCopterHelicopterPawn::AimSpotlightYawRight);
 	PlayerInputComponent->BindKey(EKeys::NumPadSix, IE_Released, this, &ASimCopterHelicopterPawn::StopAimSpotlightYaw);
 	PlayerInputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &ASimCopterHelicopterPawn::ResetSpotlightAim);
+
+	// Emergency dispatch, original command ids 0x16..0x19 (FUN_0048a580). The help
+	// (09tut.htm) pins the keys: F2 fire truck, F3 ambulance, F4 police, F5 chase; holding
+	// Shift clears that service's dispatch instead of issuing one.
+	PlayerInputComponent->BindKey(EKeys::F2, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchFireTruckKey);
+	PlayerInputComponent->BindKey(EKeys::F3, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchAmbulanceKey);
+	PlayerInputComponent->BindKey(EKeys::F4, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchPoliceKey);
+	PlayerInputComponent->BindKey(EKeys::F5, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchPoliceChaseKey);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
@@ -2072,6 +2080,227 @@ void ASimCopterHelicopterPawn::UseMegaphone()
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Emergency dispatch (F2-F5).
+//
+// SCHOOK: DispatchCommand 0x0048a580
+// The original reads the target tile from the spotlight's ground node, not the
+// helicopter, tests DAT_0051a078 (Shift) to decide dispatch vs release, and routes
+// through FUN_004be910. Decode:
+// Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md sections 1 and 7.
+// ---------------------------------------------------------------------------
+
+bool ASimCopterHelicopterPawn::IsDispatchClearModifierHeld() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	return PlayerController != nullptr && PlayerController->IsInputKeyDown(EKeys::LeftShift);
+}
+
+void ASimCopterHelicopterPawn::RequestDispatch(int32 ServiceIndex, bool bChaseSpotlight, bool bClearInstead)
+{
+	const int32 ServiceCount = static_cast<int32>(SimCopterDispatch::EService::Count);
+	if (ServiceIndex < 0 || ServiceIndex >= ServiceCount)
+	{
+		return;
+	}
+	const SimCopterDispatch::EService Service = static_cast<SimCopterDispatch::EService>(ServiceIndex);
+
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		LastDispatchStatus = TEXT("No traffic system in this map - dispatch unavailable.");
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
+		return;
+	}
+
+	// The dispatcher aims where the spotlight lands. Without a valid target there is no
+	// tile to dispatch to at all; the original simply reads whatever the light node last
+	// wrote, which is the same tile it publishes to DAT_005d70f0.
+	if (!SpotlightTarget.HasTile())
+	{
+		LastDispatchStatus = TEXT("Spotlight has no ground target.");
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
+		return;
+	}
+	const FIntPoint TargetTile = SpotlightTarget.Tile;
+
+	// Chase-dispatched police follow this tile from here on.
+	TrafficSystem->SetSpotlightChaseTile(TargetTile);
+
+	const TCHAR* ServiceName =
+		Service == SimCopterDispatch::EService::FireTruck ? TEXT("Fire truck") :
+		Service == SimCopterDispatch::EService::Police ? TEXT("Police") : TEXT("Ambulance");
+
+	if (bClearInstead)
+	{
+		const bool bCleared = TrafficSystem->ClearEmergencyDispatch(Service, TargetTile);
+		LastDispatchStatus = bCleared
+			? FString::Printf(TEXT("%s dispatch cleared."), ServiceName)
+			: FString::Printf(TEXT("No %s unit at the spotlight to release."), ServiceName);
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
+		return;
+	}
+
+	switch (TrafficSystem->RequestEmergencyDispatch(Service, TargetTile, bChaseSpotlight))
+	{
+	case SimCopterDispatch::EDispatchResult::Dispatched:
+		LastDispatchStatus = bChaseSpotlight
+			? FString::Printf(TEXT("%s following your spotlight."), ServiceName)
+			: FString::Printf(TEXT("%s dispatched to (%d,%d)."), ServiceName, TargetTile.X, TargetTile.Y);
+		break;
+	case SimCopterDispatch::EDispatchResult::NoUnitAvailable:
+		LastDispatchStatus = FString::Printf(TEXT("No %s unit available."), ServiceName);
+		break;
+	case SimCopterDispatch::EDispatchResult::CannotReach:
+		LastDispatchStatus = FString::Printf(TEXT("%s cannot reach that location."), ServiceName);
+		break;
+	default:
+		LastDispatchStatus = TEXT("Dispatch target is off the map.");
+		break;
+	}
+
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
+}
+
+void ASimCopterHelicopterPawn::DispatchFireTruckKey()
+{
+	RequestDispatch(static_cast<int32>(SimCopterDispatch::EService::FireTruck), false, IsDispatchClearModifierHeld());
+}
+
+void ASimCopterHelicopterPawn::DispatchAmbulanceKey()
+{
+	RequestDispatch(static_cast<int32>(SimCopterDispatch::EService::Ambulance), false, IsDispatchClearModifierHeld());
+}
+
+void ASimCopterHelicopterPawn::DispatchPoliceKey()
+{
+	RequestDispatch(static_cast<int32>(SimCopterDispatch::EService::Police), false, IsDispatchClearModifierHeld());
+}
+
+void ASimCopterHelicopterPawn::DispatchPoliceChaseKey()
+{
+	// Service type 3 in the original: the same police pool, launched in state 3.
+	RequestDispatch(static_cast<int32>(SimCopterDispatch::EService::Police), true, IsDispatchClearModifierHeld());
+}
+
+void ASimCopterHelicopterPawn::SimDispatch(int32 Service)
+{
+	RequestDispatch(Service, false, false);
+}
+
+void ASimCopterHelicopterPawn::SimDispatchChase(int32 Service)
+{
+	RequestDispatch(Service, true, false);
+}
+
+void ASimCopterHelicopterPawn::SimDispatchClear(int32 Service)
+{
+	RequestDispatch(Service, false, true);
+}
+
+void ASimCopterHelicopterPawn::SimDispatchTile(int32 Service, int32 TileX, int32 TileY)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: no traffic system."));
+		return;
+	}
+
+	const int32 ServiceCount = static_cast<int32>(SimCopterDispatch::EService::Count);
+	if (Service < 0 || Service >= ServiceCount)
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: service %d out of range."), Service);
+		return;
+	}
+
+	const SimCopterDispatch::EDispatchResult Result = TrafficSystem->RequestEmergencyDispatch(
+		static_cast<SimCopterDispatch::EService>(Service),
+		FIntPoint(TileX, TileY),
+		false);
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("Dispatch: service %d to (%d,%d) -> result %d"),
+		Service,
+		TileX,
+		TileY,
+		static_cast<int32>(Result));
+}
+
+void ASimCopterHelicopterPawn::SimDumpDispatchState()
+{
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("Dispatch state: spotlight tile=(%d,%d) valid=%d band=%d"),
+		SpotlightTarget.Tile.X,
+		SpotlightTarget.Tile.Y,
+		SpotlightTarget.bValid ? 1 : 0,
+		SpotlightTarget.Band);
+
+	// Burning tiles: a fire truck only acts on flames within its scan radius of where it
+	// parks, so this is what to compare its position against when it looks idle.
+	if (const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+	{
+		TArray<TPair<FIntPoint, int32>> FlameTiles;
+		Missions->GetActiveFlameTiles(FlameTiles);
+		if (FlameTiles.Num() == 0)
+		{
+			UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch state: nothing burning."));
+		}
+		for (const TPair<FIntPoint, int32>& Entry : FlameTiles)
+		{
+			UE_LOG(
+				LogSimCopterHelicopterPawn,
+				Display,
+				TEXT("Dispatch state: burning tile (%d,%d) x%d flames"),
+				Entry.Key.X,
+				Entry.Key.Y,
+				Entry.Value);
+		}
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch state: no traffic system."));
+		return;
+	}
+
+	for (int32 Index = 0; Index < static_cast<int32>(SimCopterDispatch::EService::Count); ++Index)
+	{
+		const SimCopterDispatch::EService Service = static_cast<SimCopterDispatch::EService>(Index);
+		UE_LOG(
+			LogSimCopterHelicopterPawn,
+			Display,
+			TEXT("Dispatch state: service %d - %s"),
+			Index,
+			*TrafficSystem->GetDispatchStatusLine(Service));
+	}
+}
+
+void ASimCopterHelicopterPawn::CycleSelectedDispatchService(int32 Delta)
+{
+	const int32 ServiceCount = static_cast<int32>(SimCopterDispatch::EService::Count);
+	SelectedDispatchService = ((SelectedDispatchService + Delta) % ServiceCount + ServiceCount) % ServiceCount;
+}
+
+FString ASimCopterHelicopterPawn::GetSelectedDispatchServiceStatus() const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		return TEXT("no traffic system");
+	}
+	return TrafficSystem->GetDispatchStatusLine(static_cast<SimCopterDispatch::EService>(SelectedDispatchService));
+}
+
 // SCHOOK: MegaphoneBroadcast 0x0048a800
 // The megaphone is spotlight-directed and range-gated: FUN_0048a800 only broadcasts while
 // heli[0x150] < 3, then runs FUN_0048ae70(2, spotlightTile, body, -1, messageIndex), which
@@ -2440,6 +2669,17 @@ void ASimCopterHelicopterPawn::UpdateSpotlightTarget(float DeltaSeconds)
 	}
 
 	SpotlightTarget = NewTarget;
+
+	// Chase-dispatched police re-read the spotlight tile every frame (FUN_004b9e40 case 2
+	// reads DAT_005040d0 + 0xc0 directly); the pawn publishes it instead.
+	if (SpotlightTarget.HasTile())
+	{
+		if (ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass())))
+		{
+			TrafficSystem->SetSpotlightChaseTile(SpotlightTarget.Tile);
+		}
+	}
 
 	// Point the Unreal light at the resolved target. Visual only - the target above is what
 	// gameplay reads.

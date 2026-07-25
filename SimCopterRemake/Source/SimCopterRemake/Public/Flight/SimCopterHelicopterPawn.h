@@ -381,6 +381,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
 	void ToggleRopeFromDebugPanel();
 
+	// --- Emergency dispatch (F2-F5) ---
+	//
+	// Ported from FUN_0048a580 / FUN_004be910, decoded in
+	// Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md. Every dispatch aims at
+	// the spotlight's ground tile, not the helicopter's, and Shift releases instead of
+	// dispatching. The service enum lives in Ground/SimCopterDispatch.h.
+
+	// Runs one dispatch (or release, when Shift is held) for a service. Public so the debug
+	// panel can drive the same path the keys use.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Dispatch")
+	void RequestDispatch(int32 ServiceIndex, bool bChaseSpotlight, bool bClearInstead);
+
+	// Last dispatch outcome as a HUD/debug line ("Fire Truck dispatched", "no unit
+	// available", ...). Mirrors which of the four voice clips the original would play.
+	FString GetLastDispatchStatus() const { return LastDispatchStatus; }
+
+	// Debug panel selection: which service the DISPATCH/CLEAR buttons act on.
+	int32 GetSelectedDispatchService() const { return SelectedDispatchService; }
+	void CycleSelectedDispatchService(int32 Delta);
+
+	// Status line for the currently selected service, sourced from the traffic system.
+	FString GetSelectedDispatchServiceStatus() const;
+
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
 
@@ -824,6 +847,10 @@ private:
 	FSimCopterToolTarget SpotlightTarget;
 	bool bSpotlightTargetFrozen = false;
 
+	// Emergency dispatch: the last outcome message and the debug panel's service selection.
+	FString LastDispatchStatus;
+	int32 SelectedDispatchService = 0;
+
 	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
 	mutable TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
@@ -884,6 +911,14 @@ private:
 	void StopEngineShutdownHold();
 	void Interact();
 	void UseMegaphone();
+
+	// Key handlers for the four dispatch commands (original command ids 0x16..0x19). Each
+	// checks the Shift modifier itself, exactly as FUN_0048a580 tests DAT_0051a078.
+	void DispatchFireTruckKey();
+	void DispatchAmbulanceKey();
+	void DispatchPoliceKey();
+	void DispatchPoliceChaseKey();
+	bool IsDispatchClearModifierHeld() const;
 	void CycleCameraMode();
 	void ToggleSearchLight();
 
@@ -905,6 +940,21 @@ private:
 	void SimGrantTool(int32 ToolIndex, int32 bGranted);
 	UFUNCTION(Exec)
 	void SimDumpHeliState();
+
+	// Emergency dispatch console commands, so F2-F5 can also be exercised headlessly.
+	// Service: 0 fire truck, 1 police, 2 ambulance (SimCopterDispatch::EService order).
+	UFUNCTION(Exec)
+	void SimDispatch(int32 Service);
+	UFUNCTION(Exec)
+	void SimDispatchChase(int32 Service);
+	UFUNCTION(Exec)
+	void SimDispatchClear(int32 Service);
+	UFUNCTION(Exec)
+	void SimDumpDispatchState();
+	// Dispatch to an explicit tile instead of the spotlight's, so the drive/arrive/act
+	// sequence can be exercised from the ground without flying the beam onto a road.
+	UFUNCTION(Exec)
+	void SimDispatchTile(int32 Service, int32 TileX, int32 TileY);
 
 	void UpdateEngineState(float DeltaSeconds);
 	void SimulateFlightStep(float DeltaSeconds);

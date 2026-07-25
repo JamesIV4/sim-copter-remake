@@ -289,6 +289,21 @@ ASimCopterGroundAgent* ASimCopterOnFootPawn::ConsumeCarriedMissionPerson()
 	return MissionPerson;
 }
 
+void ASimCopterOnFootPawn::SimBoardHelicopter()
+{
+	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(TNumericLimits<float>::Max());
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (Helicopter == nullptr || PlayerController == nullptr)
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: no helicopter or no player controller."));
+		return;
+	}
+
+	UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: possessing %s."), *Helicopter->GetName());
+	Helicopter->EnterHelicopter(PlayerController);
+	Destroy();
+}
+
 void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 {
 	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(HelicopterAutoEnterRadiusCm);
