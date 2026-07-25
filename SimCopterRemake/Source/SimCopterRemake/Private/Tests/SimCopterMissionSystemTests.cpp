@@ -423,6 +423,118 @@ bool FSimCopterEconomyCareerParsingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The debug main menu's free-roam session: a city whose seven weights sum to zero. FUN_004a6d20
+// writes an all-zero cumulative table for it, so FUN_004a6e60 can never pick a bucket no matter
+// how long the countdown runs.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionZeroWeightCityTest, "SimCopter.Missions.ZeroWeightCityNeverSpawns", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionZeroWeightCityTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCareerCity City;
+	City.Difficulty = 0;
+	for (int32 Index = 0; Index < 7; ++Index)
+	{
+		City.Weights[Index] = 0.0f;
+	}
+
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+	System.SetCareerCity(City);
+
+	const int32* Cumulative = System.GetCumulativeWeightTable();
+	for (int32 Bucket = 1; Bucket <= 7; ++Bucket)
+	{
+		TestEqual(TEXT("A zero-weight city produces an empty cumulative table"), Cumulative[Bucket], 0);
+	}
+
+	// Well past the 180s initial countdown and several easy intervals.
+	for (int32 Frame = 0; Frame < 60 * 600; ++Frame)
+	{
+		System.Tick(1.0f / 60.0f);
+	}
+
+	TestEqual(TEXT("Free roam must not schedule any mission"), System.GetActiveMissionCount(), 0);
+	TestEqual(TEXT("Free roam must not schedule any background mission"), System.GetBackgroundMissionCount(), 0);
+
+	// A mission asked for by hand still loads, which is what the menu's "load mission" does.
+	const int32 EventId = System.CreateEventOfType(TYPE_Transport);
+	TestTrue(TEXT("An explicitly created mission is unaffected by the zero weights"), EventId != -1);
+	TestEqual(TEXT("The explicit mission is the only active one"), System.GetActiveMissionCount(), 1);
+
+	return true;
+}
+
+// The rescue masks are composites of the victim bit 0x10, so the name selector has to match on
+// every bit of them or a bare train crash reads as a train rescue.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionTypeNameTest, "SimCopter.Missions.TypeDisplayNames", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionTypeNameTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("0x1 is a building fire"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_BuildingFire)), FString(TEXT("Building Fire")));
+	TestEqual(TEXT("0x4 is a plane crash"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_PlaneCrash)), FString(TEXT("Plane Crash")));
+	TestEqual(TEXT("0x100 is a train crash, not a train rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_TrainCrash)), FString(TEXT("Train Crash")));
+	TestEqual(TEXT("0x110 is a train rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_TrainRescue)), FString(TEXT("Train Rescue")));
+	TestEqual(TEXT("0x90 is a boat rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_BoatRescue)), FString(TEXT("Boat Rescue")));
+	TestEqual(TEXT("0x80010 is a fire rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_FireRescue)), FString(TEXT("Fire Rescue")));
+	TestEqual(TEXT("0x408 is a car fire"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_CarFireEvent)), FString(TEXT("Car Fire")));
+	TestEqual(TEXT("0x800 is a traffic jam"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_TrafficJam)), FString(TEXT("Traffic Jam")));
+	TestEqual(TEXT("0x20 is a medevac"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_Medevac)), FString(TEXT("MedEvac")));
+	TestEqual(TEXT("0x40 is a transport"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_Transport)), FString(TEXT("Transport")));
+	TestEqual(TEXT("0x1000 is a riot"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_Riot)), FString(TEXT("Riot")));
+	TestEqual(TEXT("0x100000 is the UFO"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_Ufo)), FString(TEXT("UFO")));
+
+	// A fire that has picked up the debris bit is still a fire (the promotion FUN_004a89c0 case 7
+	// does to a running 0x1 mission).
+	TestEqual(TEXT("0x9 is still a building fire"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_BuildingFire | TYPE_Debris)), FString(TEXT("Building Fire")));
+
+	return true;
+}
+
+// FUN_00408210 (enter city) + FUN_00407f30/FUN_004080c0 (open session).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSessionStartTest, "SimCopter.Missions.SessionStart", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSessionStartTest::RunTest(const FString& Parameters)
+{
+	FSimCopterMissionSystem System;
+	System.Initialize(nullptr, 1);
+
+	if (!System.LoadCareerData(ResolveCareerTweakPath()))
+	{
+		AddError(TEXT("Failed to load career data"));
+		return false;
+	}
+
+	TestEqual(TEXT("career.twk supplies 30 cities"), System.GetCareerCityCount(), 30);
+
+	// City25 is difficulty 3 (tier 4) in the shipped table.
+	if (!System.SelectCareerCity(25))
+	{
+		AddError(TEXT("SelectCareerCity(25) failed"));
+		return false;
+	}
+
+	TestEqual(TEXT("Selecting a city records the index"), System.GetCareerCityIndex(), 25);
+	TestEqual(TEXT("City25 is difficulty 3"), System.GetCareerCity().Difficulty, 3);
+	TestEqual(TEXT("Difficulty tier is difficulty + 1"), System.GetDifficultyTier(), 4);
+
+	System.AddScore(500);
+	System.SelectCareerCity(0);
+	TestEqual(TEXT("Entering a city clears the city score"), System.GetScore(), 0);
+	TestEqual(TEXT("Entering a city adopts its tier"), System.GetDifficultyTier(), 1);
+
+	System.AddScore(120);
+	System.AddCash(50);
+	System.BeginSession();
+	TestEqual(TEXT("A new session starts at $1000"), System.GetCash(), FSimCopterMissionSystem::SessionStartingCash);
+	TestEqual(TEXT("A new session starts at 0 points"), System.GetScore(), 0);
+
+	TestFalse(TEXT("Out-of-range cities are rejected"), System.SelectCareerCity(30));
+	TestTrue(TEXT("The career city list is addressable"), System.GetCareerCityByIndex(29) != nullptr);
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterEconomyScoreProgressionTest, "SimCopter.Economy.ScoreProgression", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)

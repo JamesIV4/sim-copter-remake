@@ -46,6 +46,30 @@ bool FSimCopterMissionSystem::LoadCareerData(const FString& TweakFilePath)
 	return false;
 }
 
+void FSimCopterMissionSystem::BeginSession()
+{
+	Score = 0;
+	Cash = SessionStartingCash;
+}
+
+const FSimCopterCareerCity* FSimCopterMissionSystem::GetCareerCityByIndex(int32 Index) const
+{
+	return CareerCities.IsValidIndex(Index) ? &CareerCities[Index] : nullptr;
+}
+
+bool FSimCopterMissionSystem::SelectCareerCity(int32 Index)
+{
+	if (!CareerCities.IsValidIndex(Index))
+	{
+		return false;
+	}
+
+	CurrentCityIndex = Index;
+	SetCareerCity(CareerCities[Index]);
+	Score = 0; // FUN_00408210 tail: entering a city clears the city score (session block +0x50)
+	return true;
+}
+
 void FSimCopterMissionSystem::AdvanceCareerCity()
 {
 	if (CareerCities.Num() > 0)
@@ -130,21 +154,37 @@ void FSimCopterMissionSystem::RunSchedulerOnce()
 
 	if (SpawnCountdown < 0 && (World == nullptr || !World->IsModalUiActive()))
 	{
-		if (bRerollRequested == 1)
-		{
-			RebuildCumulativeWeights();
-			uint32 UVar6 = Rand.Rand();
-			PercentRoll = static_cast<int32>(static_cast<int16>((UVar6 >> 15) << 16 | (UVar6 & 0xffff))) % 100;
-		}
-
-		if (PercentRoll < CumulativeWeights[1]) DispatchScheduledType(1); // Fire
-		else if (PercentRoll < CumulativeWeights[2]) DispatchScheduledType(2); // Crime
-		else if (PercentRoll < CumulativeWeights[3]) DispatchScheduledType(3); // Rescue
-		else if (PercentRoll < CumulativeWeights[4]) DispatchScheduledType(4); // Riot
-		else if (PercentRoll < CumulativeWeights[5]) DispatchScheduledType(5); // Traffic
-		else if (PercentRoll < CumulativeWeights[6]) DispatchScheduledType(6); // MedEvac
-		else if (PercentRoll < CumulativeWeights[7]) DispatchScheduledType(7); // Transport
+		DispatchWeightedRoll();
 	}
+}
+
+void FSimCopterMissionSystem::DispatchWeightedRoll()
+{
+	if (bRerollRequested == 1)
+	{
+		RebuildCumulativeWeights();
+		uint32 UVar6 = Rand.Rand();
+		PercentRoll = static_cast<int32>(static_cast<int16>((UVar6 >> 15) << 16 | (UVar6 & 0xffff))) % 100;
+	}
+
+	if (PercentRoll < CumulativeWeights[1]) DispatchScheduledType(1); // Fire
+	else if (PercentRoll < CumulativeWeights[2]) DispatchScheduledType(2); // Crime
+	else if (PercentRoll < CumulativeWeights[3]) DispatchScheduledType(3); // Rescue
+	else if (PercentRoll < CumulativeWeights[4]) DispatchScheduledType(4); // Riot
+	else if (PercentRoll < CumulativeWeights[5]) DispatchScheduledType(5); // Traffic
+	else if (PercentRoll < CumulativeWeights[6]) DispatchScheduledType(6); // MedEvac
+	else if (PercentRoll < CumulativeWeights[7]) DispatchScheduledType(7); // Transport
+}
+
+bool FSimCopterMissionSystem::RollScheduledMissionNow()
+{
+	const int32 BeforeCount = ActiveCount + BackgroundCount;
+
+	// A fresh percentage roll, as the scheduler does on the pass after a successful creation.
+	bRerollRequested = 1;
+	DispatchWeightedRoll();
+
+	return (ActiveCount + BackgroundCount) > BeforeCount;
 }
 
 void FSimCopterMissionSystem::UpdateSchedulerCadence()
@@ -584,11 +624,15 @@ int32 FSimCopterMissionSystem::GetLocationVoiceId(int32 TileX, int32 TileY)
 
 const TCHAR* FSimCopterMissionSystem::GetTypeDisplayName(int32 TypeMask)
 {
+	// The three rescue masks are composites of the victim bit 0x10 (0x90 boat, 0x110 train,
+	// 0x80010 fire), so they have to match on every bit: a plain "& mask != 0" test claims the
+	// bare 0x100 train crash as a train rescue, and 0x10 as all three.
 	if ((TypeMask & TYPE_Riot) != 0) return TEXT("Riot");
-	if ((TypeMask & TYPE_FireRescue) != 0) return TEXT("Fire Rescue");
-	if ((TypeMask & TYPE_BoatRescue) != 0) return TEXT("Boat Rescue");
-	if ((TypeMask & TYPE_TrainRescue) != 0) return TEXT("Train Rescue");
+	if ((TypeMask & TYPE_FireRescue) == TYPE_FireRescue) return TEXT("Fire Rescue");
+	if ((TypeMask & TYPE_BoatRescue) == TYPE_BoatRescue) return TEXT("Boat Rescue");
+	if ((TypeMask & TYPE_TrainRescue) == TYPE_TrainRescue) return TEXT("Train Rescue");
 	if ((TypeMask & TYPE_TrainCrash) != 0) return TEXT("Train Crash");
+	if ((TypeMask & TYPE_RescuePeople) != 0) return TEXT("Rescue");
 	if ((TypeMask & TYPE_Medevac) != 0) return TEXT("MedEvac");
 	if ((TypeMask & TYPE_Transport) != 0) return TEXT("Transport");
 	if ((TypeMask & TYPE_CarFire) != 0) return TEXT("Car Fire");

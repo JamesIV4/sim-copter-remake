@@ -37,6 +37,26 @@ struct FSimCopterMedevacHandoff
 	uint8 Phase = 0;
 };
 
+// How the mission layer is running the current city. The original shell offered exactly two session
+// kinds through DAT_00518d50: 1 = user city (FUN_004080c0, weights copied from career City0 and
+// optionally overridden by the city file's own 9-dword 0x5eeeeee record) and 2 = career
+// (FUN_00407f30, per-city record + cities\career\city<N>.sc2). Both always ran the scheduler, so
+// there is no original "no jobs" mode; free roam is expressed the one way the original data can
+// express it - a city whose seven weights sum to zero, which FUN_004a6d20 collapses into an
+// all-zero cumulative table so FUN_004a6e60 can never pick a bucket.
+UENUM()
+enum class ESimCopterMissionSessionMode : uint8
+{
+	// Nothing chosen yet. The mission system is not ticked while the main menu decides.
+	Pending,
+	// No scheduled jobs (zero-weight city). Fires/jams can still be started by hand.
+	FreeRoam,
+	// The city's difficulty tier and weight vector drive the scheduler, as in both original modes.
+	CityJobs,
+	// One mission started on demand; scheduled spawning stays off so it runs alone.
+	SingleMission,
+};
+
 struct FSimCopterMissionLogEntry
 {
 	FString Text;
@@ -113,6 +133,39 @@ public:
 	// pawn's `SimForceFire` / `SimForceCarFire` console commands (the player pawn routes Exec).
 	void SimForceFire();
 	void SimForceCarFire();
+
+	// --- Session control (driven by the main menu through ASimCopterGameMode) ---
+
+	// Holds the mission layer before its first tick so nothing spawns while the session is being
+	// set up. Without this the actor starts city 0's jobs on its first tick, which is what a map
+	// entered directly (PIE straight into the city level) gets.
+	void HoldSessionForMenu();
+
+	// Free roam: adopt the city's difficulty/day-night but zero its seven scheduler weights.
+	void StartFreeRoamSession(int32 CareerCityIndex);
+
+	// Jobs arrive on the city's own schedule, as in both original session kinds. CareerCityIndex
+	// supplies the tuning record; a user city uses City0, the way FUN_004080c0 seeds mode 1.
+	// bFirstJobImmediately rolls the opening job now instead of after the original's 180s countdown.
+	void StartCityJobsSession(int32 CareerCityIndex, bool bFirstJobImmediately = false);
+
+	// Start one mission of TypeMask right now through the original placement path
+	// (FUN_004a92f0 -> FUN_004a7a10) and leave scheduled spawning off so it runs alone.
+	// Returns the created event id, or INDEX_NONE when the placer found no suitable tile (or the
+	// type's world hook is not ported yet).
+	int32 StartSingleMissionSession(int32 CareerCityIndex, int32 TypeMask);
+
+	// Adds one mission to the session that is already running, without touching score or cash.
+	// Returns the created event id or INDEX_NONE.
+	int32 StartMissionNow(int32 TypeMask);
+
+	ESimCopterMissionSessionMode GetSessionMode() const { return SessionMode; }
+	int32 GetCareerCityCount() const { return MissionSystem.GetCareerCityCount(); }
+	bool GetCareerCityInfo(int32 Index, SimCopterMissions::FSimCopterCareerCity& OutCity) const;
+	int32 GetSessionScore() const { return MissionSystem.GetScore(); }
+	int32 GetSessionCash() const { return MissionSystem.GetCash(); }
+	int32 GetSessionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
+	int32 GetActiveMissionCount() const { return MissionSystem.GetActiveMissionCount(); }
 
 	// Called only when a type-5/type-6 water trajectory hits land or geometry. Remaining particle
 	// life is the douse strength (bucket particles arrive already divided by four); water-surface
@@ -209,6 +262,17 @@ private:
 
 	SimCopterMissions::FSimCopterMissionSystem MissionSystem;
 
+	ESimCopterMissionSessionMode SessionMode = ESimCopterMissionSessionMode::Pending;
+
+	// Set by HoldSessionForMenu: something is choosing the session, so the first tick must not fall
+	// back to city 0's jobs.
+	bool bSessionSelectionHeld = false;
+
+	// Shared session entry: adopt career city CareerCityIndex (with its scheduler weights zeroed
+	// when bAllowScheduledMissions is false) and open the session with the original's start
+	// money/score.
+	void BeginSession(ESimCopterMissionSessionMode Mode, int32 CareerCityIndex, bool bAllowScheduledMissions);
+
 	// Renders the cloned FIREPTS fire/smoke marker effects for every active building flame; driven
 	// each tick from MissionSystem.GetFlames().
 	UPROPERTY(Transient)
@@ -258,7 +322,6 @@ private:
 	void RemoveDebugButtonsWidget();
 	FReply OnDebugForceFireClicked();
 	FReply OnDebugForceCarFireClicked();
-	FReply OnDebugToggleWaterEquipmentClicked();
 
 	// Megaphone / jam clearing.
 	bool FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const;

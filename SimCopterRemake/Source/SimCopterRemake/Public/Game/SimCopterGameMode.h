@@ -7,7 +7,10 @@
 #include "SimCopterGameMode.generated.h"
 
 class ASimCopterTrafficSystemActor;
+class ASimCopterMissionSystemActor;
 
+// Game mode for the city level. Opens the session the main menu asked for
+// (USimCopterSessionSubsystem) once the city and mission actors exist.
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCopterGameMode : public AGameModeBase
 {
@@ -17,6 +20,20 @@ public:
 	ASimCopterGameMode();
 
 	virtual void BeginPlay() override;
+
+	// The Settings panel's "Leave City" (help/English/38ref.htm): back to the main menu.
+	UFUNCTION(Exec)
+	void SimMainMenu();
+
+	// Session commands, so a city entered directly (PIE, -game with no menu) can still be put into
+	// any session without clicking. CareerCityIndex supplies the tuning record.
+	UFUNCTION(Exec)
+	void SimFreeRoam(int32 CareerCityIndex = 0);
+	UFUNCTION(Exec)
+	void SimCityJobs(int32 CareerCityIndex = 0);
+	// MissionIndex is the main menu's mission list order; -1 lists it to the log.
+	UFUNCTION(Exec)
+	void SimLoadMission(int32 MissionIndex = -1, int32 CareerCityIndex = 0);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
@@ -30,4 +47,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	TSubclassOf<ASimCopterTrafficSystemActor> TrafficSystemClass;
+
+private:
+	TWeakObjectPtr<ASimCopterMissionSystemActor> MissionSystemActor;
+
+	// Caches (and, when needed, finds) the map's mission system actor; logs and returns null when
+	// the map has none.
+	ASimCopterMissionSystemActor* ResolveMissionSystemActor();
+
+	// Applies the main menu's choice: the city's scheduled jobs, plus any mission the menu asked to
+	// start straight away. Does nothing when the level was entered without going through the menu,
+	// which leaves the mission actor's own default session in charge.
+	void ApplyPendingSession();
 };

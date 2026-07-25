@@ -169,13 +169,31 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
+	if (SessionMode == ESimCopterMissionSessionMode::Pending)
+	{
+		if (bSessionSelectionHeld)
+		{
+			// The session is still being set up: nothing simulates until it opens.
+			return;
+		}
+
+		// The city level was entered directly (no main menu), so open the default session.
+		StartCityJobsSession(0);
+	}
+
 	MissionSystem.Tick(DeltaTime);
 	ProcessPassengerTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateMegaphonePrompt();
 	UpdateFireVisuals(DeltaTime);
-	MissionSystem.AdvanceCareerIfComplete();
+
+	// Only a scheduled-jobs session walks the career city list; the original's user-city mode
+	// (DAT_00518d50 = 1) has no city to advance to.
+	if (SessionMode == ESimCopterMissionSessionMode::CityJobs)
+	{
+		MissionSystem.AdvanceCareerIfComplete();
+	}
 
 	bool bChangedLog = false;
 	for (int32 Index = MissionMessageLog.Num() - 1; Index >= 0; --Index)
@@ -391,6 +409,99 @@ void ASimCopterMissionSystemActor::SimForceCarFire()
 {
 	const int32 EventId = MissionSystem.DebugForceCarFire();
 	UE_LOG(LogTemp, Display, TEXT("SimForceCarFire: created car fire event %d"), EventId);
+}
+
+void ASimCopterMissionSystemActor::HoldSessionForMenu()
+{
+	bSessionSelectionHeld = true;
+	SessionMode = ESimCopterMissionSessionMode::Pending;
+}
+
+void ASimCopterMissionSystemActor::BeginSession(
+	ESimCopterMissionSessionMode Mode,
+	int32 CareerCityIndex,
+	bool bAllowScheduledMissions)
+{
+	using namespace SimCopterMissions;
+
+	// FUN_00408210: entering a city adopts its record. The career table is only present when
+	// career.twk loaded; without it the system keeps whatever city it already has.
+	if (MissionSystem.GetCareerCityCount() > 0)
+	{
+		const int32 ClampedIndex = FMath::Clamp(CareerCityIndex, 0, MissionSystem.GetCareerCityCount() - 1);
+		MissionSystem.SelectCareerCity(ClampedIndex);
+	}
+
+	if (!bAllowScheduledMissions)
+	{
+		// The zero-weight city: FUN_004a6d20 sees a weight sum below 1.0 and writes an all-zero
+		// cumulative table, so FUN_004a6e60's bucket comparisons never fire. Difficulty tier and
+		// day/night still come from the selected city.
+		FSimCopterCareerCity City = MissionSystem.GetCareerCity();
+		for (float& Weight : City.Weights)
+		{
+			Weight = 0.0f;
+		}
+		MissionSystem.SetCareerCity(City);
+	}
+
+	// FUN_004080c0 / FUN_00407f30: $1000 and no points.
+	MissionSystem.BeginSession();
+
+	SessionMode = Mode;
+	bSessionSelectionHeld = false;
+}
+
+void ASimCopterMissionSystemActor::StartFreeRoamSession(int32 CareerCityIndex)
+{
+	BeginSession(ESimCopterMissionSessionMode::FreeRoam, CareerCityIndex, /*bAllowScheduledMissions=*/false);
+	UE_LOG(LogTemp, Display, TEXT("SimCopter session: free roam (city %d, tier %d, no scheduled jobs)"),
+		MissionSystem.GetCareerCityIndex(), MissionSystem.GetDifficultyTier());
+}
+
+void ASimCopterMissionSystemActor::StartCityJobsSession(int32 CareerCityIndex, bool bFirstJobImmediately)
+{
+	BeginSession(ESimCopterMissionSessionMode::CityJobs, CareerCityIndex, /*bAllowScheduledMissions=*/true);
+	UE_LOG(LogTemp, Display, TEXT("SimCopter session: city %d jobs (tier %d, %d points needed)"),
+		MissionSystem.GetCareerCityIndex(),
+		MissionSystem.GetDifficultyTier(),
+		MissionSystem.GetCareerCity().PointsNeeded);
+
+	if (bFirstJobImmediately)
+	{
+		const bool bCreated = MissionSystem.RollScheduledMissionNow();
+		UE_LOG(LogTemp, Display, TEXT("SimCopter session: opening job rolled immediately -> %s"),
+			bCreated ? TEXT("created") : TEXT("nothing placed (the scheduler will try again)"));
+	}
+}
+
+int32 ASimCopterMissionSystemActor::StartSingleMissionSession(int32 CareerCityIndex, int32 TypeMask)
+{
+	BeginSession(ESimCopterMissionSessionMode::SingleMission, CareerCityIndex, /*bAllowScheduledMissions=*/false);
+	return StartMissionNow(TypeMask);
+}
+
+int32 ASimCopterMissionSystemActor::StartMissionNow(int32 TypeMask)
+{
+	const int32 EventId = MissionSystem.CreateEventOfType(TypeMask);
+	UE_LOG(LogTemp, Display, TEXT("SimCopter session: mission %s (mask 0x%x) at city %d tier %d -> event %d"),
+		SimCopterMissions::FSimCopterMissionSystem::GetTypeDisplayName(TypeMask),
+		TypeMask,
+		MissionSystem.GetCareerCityIndex(),
+		MissionSystem.GetDifficultyTier(),
+		EventId);
+
+	return EventId == -1 ? INDEX_NONE : EventId;
+}
+
+bool ASimCopterMissionSystemActor::GetCareerCityInfo(int32 Index, SimCopterMissions::FSimCopterCareerCity& OutCity) const
+{
+	if (const SimCopterMissions::FSimCopterCareerCity* City = MissionSystem.GetCareerCityByIndex(Index))
+	{
+		OutCity = *City;
+		return true;
+	}
+	return false;
 }
 
 // SCHOOK: DouseWaterParticle 0x004a50c0
@@ -1551,15 +1662,11 @@ void ASimCopterMissionSystemActor::EnsureDebugButtonsWidget()
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
-				.Padding(FMargin(0.0f, 0.0f, 0.0f, 4.0f))
 				[
 					MakeButton(TEXT("Force Car Fire"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugForceCarFireClicked))
 				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					MakeButton(TEXT("Switch Bucket / Water Gun"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugToggleWaterEquipmentClicked))
-				]
+				// Tool and helicopter-model selection moved to the pawn-owned
+				// SSimCopterHelicopterDebugPanel so it works without a mission actor.
 			]
 		];
 
@@ -1584,24 +1691,6 @@ FReply ASimCopterMissionSystemActor::OnDebugForceFireClicked()
 FReply ASimCopterMissionSystemActor::OnDebugForceCarFireClicked()
 {
 	SimForceCarFire();
-	return FReply::Handled();
-}
-
-FReply ASimCopterMissionSystemActor::OnDebugToggleWaterEquipmentClicked()
-{
-	ASimCopterHelicopterPawn* Helicopter =
-		Cast<ASimCopterHelicopterPawn>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
-	if (Helicopter == nullptr && GetWorld() != nullptr)
-	{
-		Helicopter = Cast<ASimCopterHelicopterPawn>(
-			UGameplayStatics::GetActorOfClass(
-				GetWorld(),
-				ASimCopterHelicopterPawn::StaticClass()));
-	}
-	if (Helicopter != nullptr)
-	{
-		Helicopter->ToggleDebugWaterEquipment();
-	}
 	return FReply::Handled();
 }
 

@@ -1,0 +1,81 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Game/SimCopterSessionSubsystem.h"
+
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
+
+void USimCopterSessionSubsystem::RequestCareerCity(int32 InCareerCityIndex)
+{
+	Kind = ESimCopterSessionKind::Career;
+	CareerCityIndex = FMath::Clamp(InCareerCityIndex, 0, 29);
+	CityFilePath = ResolveCareerCityFilePath(CareerCityIndex);
+}
+
+void USimCopterSessionSubsystem::RequestUserCity(const FString& InCityFilePath)
+{
+	Kind = ESimCopterSessionKind::User;
+	// FUN_004080c0 seeds a user game with career City0's nine tuning dwords.
+	CareerCityIndex = 0;
+	CityFilePath = InCityFilePath;
+}
+
+void USimCopterSessionSubsystem::ClearPendingSession()
+{
+	Kind = ESimCopterSessionKind::None;
+	CareerCityIndex = 0;
+	CityFilePath.Reset();
+	PendingMissionTypeMask = 0;
+	bStartFirstMissionImmediately = false;
+}
+
+FString USimCopterSessionSubsystem::ResolveCitiesDir()
+{
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/cities"));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/cities")));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/cities")));
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeDirectoryName(Candidate);
+		if (IFileManager::Get().DirectoryExists(*Candidate))
+		{
+			return Candidate;
+		}
+	}
+
+	return FString();
+}
+
+FString USimCopterSessionSubsystem::ResolveCareerCityFilePath(int32 CareerCityIndex)
+{
+	const FString CitiesDir = ResolveCitiesDir();
+	if (CitiesDir.IsEmpty())
+	{
+		return FString();
+	}
+
+	return FPaths::Combine(CitiesDir, TEXT("career"), FString::Printf(TEXT("city%d.sc2"), FMath::Clamp(CareerCityIndex, 0, 29)));
+}
+
+void USimCopterSessionSubsystem::GetUserCityFilePaths(TArray<FString>& OutPaths)
+{
+	OutPaths.Reset();
+
+	const FString CitiesDir = ResolveCitiesDir();
+	if (CitiesDir.IsEmpty())
+	{
+		return;
+	}
+
+	TArray<FString> FileNames;
+	IFileManager::Get().FindFiles(FileNames, *(CitiesDir / TEXT("*.sc2")), true, false);
+	FileNames.Sort();
+
+	for (const FString& FileName : FileNames)
+	{
+		OutPaths.Add(FPaths::Combine(CitiesDir, FileName));
+	}
+}

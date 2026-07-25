@@ -13,6 +13,9 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Game/SimCopterSessionSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/PackageName.h"
@@ -24,6 +27,28 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCity2000CityActor, Log, All);
 
 namespace
 {
+// Buildings and rubble are drawn by UInstancedStaticMeshComponents, and a base material that has
+// never been marked "used with instanced static meshes" is silently replaced by the default
+// checkerboard material ("missing usage flag InstancedStaticMeshes! Default Material will be used
+// in game"). That is what turned every building into a checkerboard in -game while they looked
+// right in the editor, which sets the flag on first use. The flag is saved on the base materials
+// too; this keeps a freshly authored or re-imported material from regressing the whole city.
+void EnsureInstancedStaticMeshUsage(UMaterialInterface* Material)
+{
+#if WITH_EDITOR
+	if (Material == nullptr)
+	{
+		return;
+	}
+
+	if (UMaterial* BaseMaterial = Material->GetMaterial())
+	{
+		bool bNeedsRecompile = false;
+		BaseMaterial->SetMaterialUsage(bNeedsRecompile, MATUSAGE_InstancedStaticMeshes);
+	}
+#endif
+}
+
 FLinearColor ResolveMaxisFaceColor(const TArray<FColor>* ColorMap, uint8 FaceType, uint8 MaterialIndex, const FLinearColor& TexturedFaceFallbackColor)
 {
 	if (FaceType == 13 || FaceType == 18)
@@ -2804,9 +2829,36 @@ void ASimCity2000CityActor::OnConstruction(const FTransform& Transform)
 	}
 }
 
+FString ASimCity2000CityActor::GetSessionCityFilePath() const
+{
+	const UWorld* World = GetWorld();
+	const UGameInstance* GameInstance = World != nullptr ? World->GetGameInstance() : nullptr;
+	if (GameInstance == nullptr)
+	{
+		// Editor construction: no game instance, so the actor's own city file is the only source.
+		return FString();
+	}
+
+	const USimCopterSessionSubsystem* Session = GameInstance->GetSubsystem<USimCopterSessionSubsystem>();
+	if (Session == nullptr || !Session->HasPendingSession())
+	{
+		return FString();
+	}
+
+	return Session->GetCityFilePath();
+}
+
 void ASimCity2000CityActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// The main menu picked a city, so whatever was baked into this level has to be replaced even
+	// when the actor is not configured to load on begin play.
+	if (!GetSessionCityFilePath().IsEmpty())
+	{
+		RebuildCity();
+		return;
+	}
 
 	if (bLoadOnBeginPlay)
 	{
@@ -3411,7 +3463,9 @@ void ASimCity2000CityActor::RebuildCity()
 		Component->SetStaticMesh(ModelMesh);
 		for (int32 SlotIndex = 0; SlotIndex < ModelMesh->GetStaticMaterials().Num(); ++SlotIndex)
 		{
-			Component->SetMaterial(SlotIndex, ModelMesh->GetStaticMaterials()[SlotIndex].MaterialInterface);
+			UMaterialInterface* SlotMaterial = ModelMesh->GetStaticMaterials()[SlotIndex].MaterialInterface;
+			EnsureInstancedStaticMeshUsage(SlotMaterial);
+			Component->SetMaterial(SlotIndex, SlotMaterial);
 		}
 		Component->SetupAttachment(SceneRoot);
 		Component->SetCollisionEnabled(bEnableOriginalMeshCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
@@ -4596,6 +4650,14 @@ bool ASimCity2000CityActor::IsBuildingCollisionHit(
 
 FString ASimCity2000CityActor::ResolveCityPath() const
 {
+	// A session started from the main menu names the city to play (cities/career/city<N>.sc2 for a
+	// career, any .sc2 for a user game), which wins over whatever this actor was saved with. The
+	// traffic system reads the path back through GetResolvedCityPath, so both stay in step.
+	if (const FString SessionCityPath = GetSessionCityFilePath(); !SessionCityPath.IsEmpty())
+	{
+		return SessionCityPath;
+	}
+
 	const FString ConfiguredPath = CityFile.FilePath.TrimStartAndEnd();
 	if (ConfiguredPath.IsEmpty())
 	{

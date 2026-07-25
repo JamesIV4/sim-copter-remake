@@ -15,6 +15,7 @@
 #include "Formats/SimCopterPeopleReader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/Pawn.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
@@ -47,6 +48,12 @@ constexpr float PedestrianFallbackZCm = 88.0f;
 constexpr float PedestrianSpriteHeightCm = 162.0f;
 constexpr float PedestrianBodyHeightCm = 176.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
+
+// FUN_004c1050 mode 1: the spotlight reaction only fires when rng % DAT_0058dc3a == 0.
+// FUN_004c3010 writes 65000 to that global and something else writes a small tuning value;
+// the write order is unresolved (see heli_tools_models_decode_20260724.md section 10), so the
+// remake uses a playable 1-in-4 until it is decoded.
+constexpr uint16 SpotlightReactionChance = 4;
 
 uint16 GetPlayerBehaviorSpeedScalar(const APawn& Pawn)
 {
@@ -204,6 +211,60 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
 	bBehaviorActive = true;
+}
+
+// SCHOOK: PersonInteractionReaction 0x004c1050
+bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& Event)
+{
+	// FUN_0049a4f0 routes by object class; only the person class (obj[0xc] & 8) lands here.
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian || !bBehaviorActive)
+	{
+		return false;
+	}
+
+	// Acceptance tests from FUN_004c1050: never react to the helicopter body itself, and skip
+	// people the mission layer has taken over (carried, injured pose, mid-fall) - the original
+	// equivalents are the person+0x15e / person[0x52] / person+0x12e guards.
+	if (Event.Source == this || bMissionCarried || bMissionStationary || bPassengerFallActive)
+	{
+		return false;
+	}
+
+	// Mode 1 hard-codes BHAV 950 and only fires on a 1-in-N roll; every other mode reads
+	// DAT_0058d728[mode].
+	int32 ProgramId = INDEX_NONE;
+	if (Event.Mode == ESimCopterInteractionMode::Spotlight)
+	{
+		if (BehaviorContext.RandomBounded(SpotlightReactionChance) != 0)
+		{
+			return false;
+		}
+		ProgramId = SimCopterInteraction::SpotlightReactionProgram;
+	}
+	else
+	{
+		ProgramId = SimCopterInteraction::GetPersonReactionProgram(Event.Mode);
+	}
+
+	if (ProgramId == INDEX_NONE ||
+		!BehaviorModel.IsValid() ||
+		BehaviorModel->FindProgram(ProgramId) == nullptr)
+	{
+		return false;
+	}
+
+	if (!BehaviorContext.PushReactionProgram(ProgramId))
+	{
+		return false;
+	}
+
+	BehaviorContext.ReactionParameter = Event.MessageIndex;
+	if (Event.Mode == ESimCopterInteractionMode::Megaphone)
+	{
+		// person+0x15a: the message index the shipped BHAV 901 branches on.
+		BehaviorContext.MegaphoneMessageIndex = Event.MessageIndex;
+	}
+	return true;
 }
 
 void ASimCopterGroundAgent::ResetBehaviorProgramOverride()

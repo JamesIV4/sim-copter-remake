@@ -407,6 +407,20 @@ The scratchpad has these notable outputs:
   `out_effect_palette_producers_20260724.txt`, `out_effect_palette_tables_20260724.txt`, and
   `out_effect_palette_xrefs_20260724.txt`. Run manifest and hashes:
   `effect_renderer_decompile_run_20260724.md`.
+- 2026-07-24 helicopter tools/models pass (Phase 0 of
+  `Docs/HelicopterToolsAndModelsDecompilePlan.md`):
+  `out_heli_tools_decompile_20260724.txt` (career equipment ownership, catalog,
+  cockpit indicators, global command dispatch `FUN_0044ac80`, control reader
+  `FUN_00485f50`), `out_heli_tools_decompile2_20260724.txt` (spotlight
+  `FUN_00489250`, aim `FUN_00489730`/`FUN_00479060`, spiral interaction scan
+  `FUN_0048ae70`, megaphone `FUN_0048a800`, object-class router `FUN_0049a4f0`,
+  people reaction `FUN_004c1050`, model construction `FUN_00483c20`, winch
+  `FUN_00487bb0`), `out_heli_tools_decompile3_20260724.txt` (emitter spawn
+  `FUN_0048e0b0`, update `FUN_0048ed00`, collision `FUN_00490690`, harness
+  opcode handlers, people runtime init `FUN_004c3010`),
+  `out_heli_tools_decompile4_20260724.txt` (emitter pool class flags
+  `FUN_0048da50`, pool meshes `FUN_0048db20`). Decoded note with hashes,
+  corrections, and open items: `heli_tools_models_decode_20260724.md`.
 - `out_people_parser.txt`: `people.df` parse delegation (`FUN_004cd550` -> `FUN_004ce2d0`), behavior-file open check, the people LFSR PRNG (`FUN_004ce9d0`), the generic resource opener (`FUN_00433b20`), and Pascal-string helpers. Source for `OriginalGameFileFormats.md`.
 - `out_df_reader.txt`: DF resource read path and resource-type-`0xc` path resolver internals.
 - `out_traffic_terrain.txt`: original `TRAN` per-tile steering (`FUN_004b5290`), the road-graph dump/structures (`FUN_00495700`), and the `ALTM` altitude/slope helper (`FUN_004abc20`). Source for `OriginalRuntimeBehavior.md` traffic and slope sections.
