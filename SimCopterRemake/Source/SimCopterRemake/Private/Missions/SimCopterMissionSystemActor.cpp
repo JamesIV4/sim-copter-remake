@@ -1,6 +1,7 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Missions/SimCopterMissionSystemActor.h"
+#include "Sound/SoundWaveProcedural.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Ground/SimCopterFireRenderComponent.h"
 #include "Ground/SimCopterParticleFX.h"
@@ -863,7 +864,7 @@ void ASimCopterMissionSystemActor::PlayRadioVoice(int32 VoiceId, int32 Volume)
 {
 	if (USoundBase** Sound = RadioVoices.Find(VoiceId))
 	{
-		UGameplayStatics::PlaySound2D(this, *Sound, Volume / 255.0f);
+		PlayOriginalClip(*Sound, Volume / 255.0f);
 	}
 }
 
@@ -871,7 +872,7 @@ void ASimCopterMissionSystemActor::PlayUiSound(int32 SoundId)
 {
 	if (USoundBase** Sound = UiSounds.Find(SoundId))
 	{
-		UGameplayStatics::PlaySound2D(this, *Sound);
+		PlayOriginalClip(*Sound);
 	}
 }
 
@@ -1526,6 +1527,209 @@ bool ASimCopterMissionSystemActor::FindNearestClearableJam(const FVector& FromWo
 	return OutEventId != INDEX_NONE;
 }
 
+namespace
+{
+// Chebyshev reach of a square spiral of N rings: the same tiles FUN_004beda0(N) visits.
+bool IsWithinSpiralRings(const FIntPoint& A, const FIntPoint& B, int32 Rings)
+{
+	return FMath::Max(FMath::Abs(A.X - B.X), FMath::Abs(A.Y - B.Y)) <= Rings;
+}
+}
+
+int32 ASimCopterMissionSystemActor::ApplyServiceFireSuppression(
+	const FIntPoint& FromTile,
+	int32 RadiusTiles,
+	FIntPoint& OutFireTile,
+	int32& OutEventId)
+{
+	OutEventId = INDEX_NONE;
+
+	// Pick the nearest flame by its anchor tile, but remember its local offset - that is
+	// where the water has to land. A 3x3 building's flames sit 0x400000..0x500000 out from
+	// the anchor origin, five times Fire Radius, so a cell-origin impact misses them all.
+	int32 BestCost = TNumericLimits<int32>::Max();
+	int32 BestLocalX = 0;
+	int32 BestLocalZ = 0;
+	for (const SimCopterMissions::FSimCopterFlame& Flame : MissionSystem.GetFlames())
+	{
+		if (!Flame.bActive)
+		{
+			continue;
+		}
+		const FIntPoint FlameTile(Flame.TileX, Flame.TileY);
+		if (!IsWithinSpiralRings(FromTile, FlameTile, RadiusTiles))
+		{
+			continue;
+		}
+		const int32 Cost = SimCopterDispatch::TileCost(FromTile, FlameTile);
+		if (Cost < BestCost)
+		{
+			BestCost = Cost;
+			OutFireTile = FlameTile;
+			OutEventId = Flame.EventId;
+			BestLocalX = Flame.PosX;
+			BestLocalZ = Flame.PosZ;
+		}
+	}
+
+	if (BestCost == TNumericLimits<int32>::Max())
+	{
+		return 0;
+	}
+
+	// Full-strength hit, matching the original's water particle at the top of its life.
+	// The burst also catches any other flame within Fire Radius of the one aimed at.
+	return MissionSystem.DouseAtLocalOffset(OutFireTile.X, OutFireTile.Y, BestLocalX, BestLocalZ, 0x10000);
+}
+
+bool ASimCopterMissionSystemActor::TryFindNearestJamTile(
+	const FIntPoint& FromTile,
+	int32 RadiusTiles,
+	FIntPoint& OutTile,
+	int32& OutEventId) const
+{
+	OutEventId = INDEX_NONE;
+	int32 BestCost = TNumericLimits<int32>::Max();
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_TrafficJam) == 0)
+		{
+			continue;
+		}
+		const FIntPoint JamTile(Record.TileX, Record.TileY);
+		if (!IsValidMissionTile(Record.TileX, Record.TileY) || !IsWithinSpiralRings(FromTile, JamTile, RadiusTiles))
+		{
+			continue;
+		}
+		const int32 Cost = SimCopterDispatch::TileCost(FromTile, JamTile);
+		if (Cost < BestCost)
+		{
+			BestCost = Cost;
+			OutTile = JamTile;
+			OutEventId = Record.EventId;
+		}
+	}
+	return BestCost != TNumericLimits<int32>::Max();
+}
+
+bool ASimCopterMissionSystemActor::TryFindNearestMedicalTile(
+	const FIntPoint& FromTile,
+	int32 RadiusTiles,
+	FIntPoint& OutTile,
+	int32& OutEventId) const
+{
+	constexpr int32 MedicalMask =
+		SimCopterMissions::TYPE_Medevac | SimCopterMissions::TYPE_RescuePeople | SimCopterMissions::TYPE_FireRescue;
+
+	OutEventId = INDEX_NONE;
+	int32 BestCost = TNumericLimits<int32>::Max();
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (!Record.bActive || (Record.TypeMask & MedicalMask) == 0)
+		{
+			continue;
+		}
+		const FIntPoint Tile(Record.TileX, Record.TileY);
+		if (!IsValidMissionTile(Record.TileX, Record.TileY) || !IsWithinSpiralRings(FromTile, Tile, RadiusTiles))
+		{
+			continue;
+		}
+		const int32 Cost = SimCopterDispatch::TileCost(FromTile, Tile);
+		if (Cost < BestCost)
+		{
+			BestCost = Cost;
+			OutTile = Tile;
+			OutEventId = Record.EventId;
+		}
+	}
+	return BestCost != TNumericLimits<int32>::Max();
+}
+
+void ASimCopterMissionSystemActor::GetActiveFlameTiles(TArray<TPair<FIntPoint, int32>>& OutTiles) const
+{
+	OutTiles.Reset();
+	for (const SimCopterMissions::FSimCopterFlame& Flame : MissionSystem.GetFlames())
+	{
+		if (!Flame.bActive)
+		{
+			continue;
+		}
+		const FIntPoint Tile(Flame.TileX, Flame.TileY);
+		if (TPair<FIntPoint, int32>* Existing = OutTiles.FindByPredicate(
+				[&Tile](const TPair<FIntPoint, int32>& Entry) { return Entry.Key == Tile; }))
+		{
+			Existing->Value++;
+		}
+		else
+		{
+			OutTiles.Emplace(Tile, 1);
+		}
+	}
+}
+
+void ASimCopterMissionSystemActor::SpawnServiceWaterJet(const FVector& NozzleWorld, const FVector& TargetWorld)
+{
+	if (FireSmokeComponent == nullptr)
+	{
+		return;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	const float CmPerUnit = TrafficSystem != nullptr ? TrafficSystem->GetPeopleWorldCmPerOriginalUnit() : 6.25f;
+	if (CmPerUnit <= 0.0f)
+	{
+		return;
+	}
+
+	// FUN_004a5ca0: advance the shared elevation, reversing at 0 and 0x40000 (4.0 units).
+	// The original's building variant clamps at 0x40000 and the object variant at 0x30000;
+	// the building bound is used here because a dispatched truck is aimed at a structure.
+	constexpr int32 MaxElevation1616 = 0x40000;
+	ServiceJetElevation1616 += ServiceJetElevationStep1616;
+	if (ServiceJetElevation1616 > MaxElevation1616)
+	{
+		ServiceJetElevation1616 = MaxElevation1616;
+		ServiceJetElevationStep1616 = -0x1999;
+	}
+	else if (ServiceJetElevation1616 < 0)
+	{
+		ServiceJetElevation1616 = 0;
+		ServiceJetElevationStep1616 = 0x1999;
+	}
+
+	// The original builds {deltaX, elevation, deltaZ} and normalises, so the sweep is a
+	// small vertical term against the full horizontal reach - a shallow, wandering arc.
+	const FVector Delta = TargetWorld - NozzleWorld;
+	const float ElevationCm = (static_cast<float>(ServiceJetElevation1616) / 65536.0f) * CmPerUnit;
+	FVector Direction(Delta.X, Delta.Y, ElevationCm);
+	if (!Direction.Normalize())
+	{
+		return;
+	}
+
+	// speed = rand() % 100 + distance / 2, in original units per second.
+	const float DistanceUnits = Delta.Size() / CmPerUnit;
+	const float SpeedUnitsPerSecond = static_cast<float>(FMath::RandRange(0, 99)) + DistanceUnits * 0.5f;
+
+	const bool bSpawned = FireSmokeComponent->SpawnEffect(
+		ESimCopterEffectType::BucketDrip,
+		NozzleWorld,
+		Direction * SpeedUnitsPerSecond * CmPerUnit);
+
+	// The trajectory pool is shared with the helicopter's water, so a busy scene can refuse
+	// the droplet. Report the first refusal rather than letting the jet silently not exist.
+	if (!bSpawned && !bLoggedServiceJetSpawnFailure)
+	{
+		bLoggedServiceJetSpawnFailure = true;
+		UE_LOG(LogTemp, Warning, TEXT("[Mission] Fire-truck water jet could not spawn a droplet (effect pool full or uninitialised)."));
+	}
+}
+
+bool ASimCopterMissionSystemActor::ClearTrafficJamEvent(int32 EventId)
+{
+	return MissionSystem.ClearTrafficJam(EventId);
+}
+
 bool ASimCopterMissionSystemActor::TryUseMegaphone(const FVector& FromWorldLocation)
 {
 	int32 EventId = INDEX_NONE;
@@ -1546,7 +1750,7 @@ bool ASimCopterMissionSystemActor::TryUseMegaphone(const FVector& FromWorldLocat
 		const int32 Pick = FMath::RandRange(0, MegaphoneVoices.Num() - 1);
 		if (USoundBase* Voice = MegaphoneVoices[Pick])
 		{
-			UGameplayStatics::PlaySound2D(this, Voice);
+			PlayOriginalClip(Voice);
 		}
 	}
 
@@ -1713,7 +1917,7 @@ FString ASimCopterMissionSystemActor::ResolveOriginalSoundDir() const
 	return FString();
 }
 
-USoundWave* ASimCopterMissionSystemActor::LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const
+USoundWaveProcedural* ASimCopterMissionSystemActor::LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const
 {
 	if (SoundDir.IsEmpty() || BaseName.IsEmpty())
 	{
@@ -1772,7 +1976,22 @@ USoundWave* ASimCopterMissionSystemActor::LoadOriginalVoice(const FString& Sound
 		return nullptr; // unsupported bit depth
 	}
 
-	USoundWave* Sound = NewObject<USoundWave>(const_cast<ASimCopterMissionSystemActor*>(this));
+	// A USoundWaveProcedural, not a bare USoundWave. A runtime USoundWave whose only audio is
+	// RawPCMData is not playable by the UE5 mixer - RawPCMData is a legacy/editor field, and the
+	// mixer wants compressed inline data or streamed chunks. Both ways such a wave can end up
+	// configured crash on its first playback:
+	//
+	//   * left streaming (the default), it enters the audio streaming cache with zero chunks and
+	//     a worker thread eventually calls USoundWave::CacheInheritedLoadingBehavior(), which
+	//     asserts IsInGameThread() - a runtime object never ran PostLoad to resolve it;
+	//   * forced inline, it takes the non-streaming decode path, which wants BINKA data that was
+	//     never built, and the Bink decoder asserts on the empty buffer
+	//     (InSrcBufferDataSize >= sizeof(BinkAudioFileHeader)).
+	//
+	// USoundWaveProcedural avoids both: it sets bProcedural (PostLoad early-outs before the
+	// loading-behaviour cache, and IsStreaming() is false) and overrides HasCompressedData /
+	// GetCompressedData / InitAudioResource / GeneratePCMData to serve a queued PCM FIFO.
+	USoundWaveProcedural* Sound = NewObject<USoundWaveProcedural>(const_cast<ASimCopterMissionSystemActor*>(this));
 	if (Sound == nullptr)
 	{
 		return nullptr;
@@ -1781,15 +2000,78 @@ USoundWave* ASimCopterMissionSystemActor::LoadOriginalVoice(const FString& Sound
 	const int32 BytesPerFrame = 2 * Channels;
 	const int32 NumFrames = Pcm16.Num() / FMath::Max(1, BytesPerFrame);
 
-	Sound->SetSampleRate(SampleRate);
-	Sound->NumChannels = Channels;
-	Sound->Duration = static_cast<float>(NumFrames) / static_cast<float>(SampleRate);
+	FOriginalClipAudio Clip;
+	Clip.SampleRate = SampleRate;
+	Clip.Channels = Channels;
+	Clip.Duration = static_cast<float>(NumFrames) / static_cast<float>(SampleRate);
+	Clip.Pcm16 = MoveTemp(Pcm16);
+
+	Sound->SetSampleRate(Clip.SampleRate);
+	Sound->NumChannels = Clip.Channels;
+	Sound->Duration = Clip.Duration;
 	Sound->SoundGroup = SOUNDGROUP_Default;
 	Sound->bLooping = false;
-	Sound->RawPCMDataSize = Pcm16.Num();
-	Sound->RawPCMData = static_cast<uint8*>(FMemory::Malloc(Pcm16.Num()));
-	FMemory::Memcpy(Sound->RawPCMData, Pcm16.GetData(), Pcm16.Num());
+	// The FIFO reads in whole samples; ours are 16-bit.
+	Sound->SampleByteSize = 2;
+
+	// This object is only ever a handle: PlayOriginalClip builds a fresh wave per play from
+	// the stored samples, so this one's FIFO is deliberately left empty.
+	const_cast<ASimCopterMissionSystemActor*>(this)->VoicePcmByWave.Add(
+		TObjectKey<USoundWaveProcedural>(Sound),
+		MoveTemp(Clip));
+
 	return Sound;
+}
+
+USoundWaveProcedural* ASimCopterMissionSystemActor::MakeOneShotVoice(const FOriginalClipAudio& Clip)
+{
+	if (Clip.Pcm16.Num() == 0 || Clip.SampleRate <= 0 || Clip.Channels <= 0)
+	{
+		return nullptr;
+	}
+
+	USoundWaveProcedural* OneShot = NewObject<USoundWaveProcedural>(this);
+	if (OneShot == nullptr)
+	{
+		return nullptr;
+	}
+
+	OneShot->SetSampleRate(Clip.SampleRate);
+	OneShot->NumChannels = Clip.Channels;
+	OneShot->Duration = Clip.Duration;
+	OneShot->SoundGroup = SOUNDGROUP_Default;
+	OneShot->bLooping = false;
+	OneShot->SampleByteSize = 2;
+	OneShot->QueueAudio(Clip.Pcm16.GetData(), Clip.Pcm16.Num());
+	return OneShot;
+}
+
+void ASimCopterMissionSystemActor::PlayOriginalClip(USoundBase* Sound, float VolumeMultiplier)
+{
+	if (Sound == nullptr)
+	{
+		return;
+	}
+
+	// Runtime clips get a private wave per play. A procedural wave's FIFO is drained by the
+	// audio render thread, so re-queueing one shared wave races that reader whenever two plays
+	// overlap - and mission completions routinely land within a second of each other. The
+	// throwaway wave is queued once, never reset, and is kept alive by the audio component
+	// PlaySound2D creates for it.
+	if (USoundWaveProcedural* Handle = Cast<USoundWaveProcedural>(Sound))
+	{
+		if (const FOriginalClipAudio* Clip = VoicePcmByWave.Find(TObjectKey<USoundWaveProcedural>(Handle)))
+		{
+			if (USoundWaveProcedural* OneShot = MakeOneShotVoice(*Clip))
+			{
+				UGameplayStatics::PlaySound2D(this, OneShot, VolumeMultiplier);
+			}
+			return;
+		}
+	}
+
+	// Anything assigned in the editor is a normal cooked asset and plays directly.
+	UGameplayStatics::PlaySound2D(this, Sound, VolumeMultiplier);
 }
 
 void ASimCopterMissionSystemActor::SetupMissionSounds()

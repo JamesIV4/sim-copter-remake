@@ -421,6 +421,26 @@ The scratchpad has these notable outputs:
   `out_heli_tools_decompile4_20260724.txt` (emitter pool class flags
   `FUN_0048da50`, pool meshes `FUN_0048db20`). Decoded note with hashes,
   corrections, and open items: `heli_tools_models_decode_20260724.md`.
+- 2026-07-25 emergency dispatch pass (the F2-F5 keys):
+  `out_dispatch_core_20260725.txt` (manager construction `FUN_004bcc80`,
+  candidate heap `FUN_004bc250`, heap pop `FUN_004bc530`, station release
+  `FUN_004bc660`, adjacent-road search `FUN_004bc110`, spiral walker
+  `FUN_004beda0`/`FUN_004bedd0`, road-graph Dijkstra `FUN_004bef30`, tile
+  predicates `FUN_004bb900`/`FUN_004bb970`, station launch `FUN_004be0c0`,
+  recall `FUN_004bdc70`), `out_dispatch_vehicles_20260725.txt` (the three
+  vehicle constructors, road-position probe `FUN_00492240`, greedy variant
+  `FUN_004bf2c0`, on-scene helpers `FUN_004bd770`/`FUN_004bd980`/`FUN_004bdb50`),
+  `out_dispatch_ai_20260725.txt` (police state machine `FUN_004b9e40`, fire-truck
+  target acquisition `FUN_004b9890`/`FUN_004b99c0`), `out_dispatch_objectives_20260725.txt`
+  and `out_dispatch_objectives2_20260725.txt` (crew deployment `FUN_0049bd00`,
+  police target filter `FUN_0049dab0`, fire suppression `FUN_004a5ca0`/`FUN_004a5dd0`,
+  dispatch pylon `FUN_004a42f0`/`FUN_004a4340`),
+  `out_dispatch_alloc_asm_20260725.txt` and `out_dispatch_wrapper_asm_20260725.txt`
+  (**required**: Ghidra mis-typed `FUN_004bc680`'s calling convention, so its
+  argument list was recovered from assembly). Decoded note with hashes and open
+  items: `emergency_dispatch_decode_20260725.md`. Source for
+  `Source/SimCopterRemake/{Public,Private}/Ground/SimCopterDispatch.*` and the
+  dispatch runtime in `SimCopterTrafficSystemActor.cpp`.
 - `out_people_parser.txt`: `people.df` parse delegation (`FUN_004cd550` -> `FUN_004ce2d0`), behavior-file open check, the people LFSR PRNG (`FUN_004ce9d0`), the generic resource opener (`FUN_00433b20`), and Pascal-string helpers. Source for `OriginalGameFileFormats.md`.
 - `out_df_reader.txt`: DF resource read path and resource-type-`0xc` path resolver internals.
 - `out_traffic_terrain.txt`: original `TRAN` per-tile steering (`FUN_004b5290`), the road-graph dump/structures (`FUN_00495700`), and the `ALTM` altitude/slope helper (`FUN_004abc20`). Source for `OriginalRuntimeBehavior.md` traffic and slope sections.
@@ -501,6 +521,17 @@ These are the main executable functions currently tied to remake code:
 | `0x004ce9d0` | `FUN_004ce9d0` | People behavior 16-bit LFSR PRNG (tap `0x1bf5`); `FUN_004cea00` = `rng % n`. |
 | `0x00433b20` | `FUN_00433b20` | Generic Maxis resource path resolver by type (`0xc` = `.df` in `X/`). |
 | `0x004b5290` | `FUN_004b5290` | Original `TRAN` per-tile car steering (coin-flip turning, dead-end reverse). |
+| `0x0048a580` | `FUN_0048a580` | Emergency dispatch keys F2-F5 (command ids `0x16`..`0x19`); target tile read from the spotlight node, Shift (`DAT_0051a078`) clears instead. |
+| `0x004be910` | `FUN_004be910` | Service type -> station manager + vehicle pool routing (1 fire, 2 ambulance, 3/4 police). |
+| `0x004bc680` | `FUN_004bc680` | The dispatch transaction: candidate heap, radius-4 road snap, route test, launch/redirect. Returns 0 (no unit) / 2 (cannot reach) / 4 (dispatched). |
+| `0x004bc250` | `FUN_004bc250` | Candidate min-heap: idle vehicles + stations with no outstanding dispatch, octile cost `max + min/2`. |
+| `0x004bcc80` | `FUN_004bcc80` | Station scan: XBLD `0xd1`/`0xd2`/`0xd3`, 3x3 footprint, centre tile, adjacent-road gate, four voice clips. |
+| `0x004bc110` | `FUN_004bc110` | Adjacent-road search around a station: ring 2..4, start direction `(x+y)&3`. |
+| `0x004bef30` | `FUN_004bef30` | Dijkstra over the `0x38`-byte road-intersection graph; leaves back-links for the route walk. |
+| `0x004b9e40` | `FUN_004b9e40` | Police per-frame state machine; case 2 is the F5 chase (destination re-read from the spotlight every frame). |
+| `0x0049bd00` | `FUN_0049bd00` | On-scene crew deployment (police `(0xe, 8)`, ambulance `(0xf, 0xd)`). |
+| `0x004a5ca0` | `FUN_004a5ca0` | Fire-truck water jet at a burning building (emitter type 6); `FUN_004a5dd0` is the object variant. |
+| `0x0049b3f0` | `FUN_0049b3f0` | Shift+F&lt;n&gt; clear-dispatch: radius-2 spiral, wrong service aborts the scan. |
 | `0x00495700` | `FUN_00495700` | Road-graph debug dump; reveals `0x38`-byte intersections, 3-byte road tiles, service registries. |
 | `0x00489e20` | `FUN_00489e20` | heli.twk tuning binding (14 controls x 9 types into `0x5c`-byte blocks). |
 | `0x00484d20` | `FUN_00484d20` | Helicopter per-frame master tick (load factor, sub-steps, fuel burn, ground-impact bounce/damage); ported as `FSimCopterFlightModel::Step`. |

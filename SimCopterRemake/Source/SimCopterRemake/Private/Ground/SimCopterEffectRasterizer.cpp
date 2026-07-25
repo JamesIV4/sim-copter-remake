@@ -387,7 +387,11 @@ UTexture2D* FSimCopterEffectRasterizer::CreateSelectorAtlas(
 	}
 
 	Texture->CompressionSettings = TC_VectorDisplacementmap;
+#if WITH_EDITORONLY_DATA
+	// Editor-only: CreateTransient already makes a single-mip texture, so this only matters
+	// to the editor's build/cook path.
 	Texture->MipGenSettings = TMGS_NoMipmaps;
+#endif
 	Texture->NeverStream = true;
 	Texture->SRGB = true;
 	Texture->Filter = TF_Nearest;

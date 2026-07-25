@@ -277,6 +277,73 @@ bool FSimCopterMissionSystemFootprintFireDouseTest::RunTest(const FString& Param
 	return true;
 }
 
+// Regression: an emergency-service water burst must aim at the flame's own local offset,
+// not at the anchor cell's origin. IgniteBuilding puts a multi-tile building's flames far
+// outside Fire Radius of that origin, so a cell-origin douse silently reaches nothing -
+// which is what left dispatched fire trucks parked next to a burning building doing
+// nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMissionSystemServiceFireSuppressionTest,
+	"SimCopter.Missions.ServiceFireSuppressionUsesFlameOffset",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionSystemServiceFireSuppressionTest::RunTest(const FString& Parameters)
+{
+	for (const int32 Footprint : { 2, 3, 4 })
+	{
+		FSimCopterTestMissionWorld World;
+		World.BuildingFootprint = Footprint;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+
+		const int32 FireId = System.CreateEventAt(30, 40, TYPE_BuildingFire);
+		TestTrue(*FString::Printf(TEXT("Footprint %d fire should be created"), Footprint), FireId != INDEX_NONE);
+
+		int32 FlameIndex = INDEX_NONE;
+		const TArray<FSimCopterFlame>& Flames = System.GetFlames();
+		for (int32 Index = 0; Index < Flames.Num(); ++Index)
+		{
+			if (Flames[Index].bActive)
+			{
+				FlameIndex = Index;
+				break;
+			}
+		}
+		TestTrue(*FString::Printf(TEXT("Footprint %d should have a flame"), Footprint), FlameIndex != INDEX_NONE);
+		if (FlameIndex == INDEX_NONE)
+		{
+			continue;
+		}
+
+		const FSimCopterFlame Flame = Flames[FlameIndex];
+
+		// The defect: aiming at the cell origin reaches nothing on a multi-tile building.
+		TestEqual(
+			*FString::Printf(TEXT("Footprint %d: a cell-origin douse reaches no flame"), Footprint),
+			System.DouseAtTile(Flame.TileX, Flame.TileY),
+			0);
+
+		// The fix: aiming at the flame's own offset does reach it.
+		const int32 Hit = System.DouseAtLocalOffset(Flame.TileX, Flame.TileY, Flame.PosX, Flame.PosZ, 0x10000);
+		TestTrue(
+			*FString::Printf(TEXT("Footprint %d: a flame-offset douse reaches at least that flame"), Footprint),
+			Hit >= 1);
+	}
+
+	// A 1x1 building keeps its flames close enough that both forms work; this is why the
+	// bug never showed up on the smallest buildings.
+	{
+		FSimCopterTestMissionWorld World;
+		World.BuildingFootprint = 1;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		TestTrue(TEXT("Single-tile fire should be created"), System.CreateEventAt(30, 40, TYPE_BuildingFire) != INDEX_NONE);
+		TestTrue(TEXT("Footprint 1: a cell-origin douse still reaches the flame"), System.DouseAtTile(30, 40) >= 1);
+	}
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemFireLifecycleTest, "SimCopter.Missions.FireLifecycle", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FSimCopterMissionSystemFireLifecycleTest::RunTest(const FString& Parameters)

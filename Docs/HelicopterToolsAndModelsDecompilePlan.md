@@ -91,7 +91,10 @@ must be captured in the new durable decompile artifact described in Phase 0.
   the Apache is active, and should be implemented after the five normal tools.
 - Emergency dispatch (`F2` through `F5` in the original) is not part of this
   tool-parity milestone. The spotlight target service must nevertheless be
-  reusable by a later dispatch port.
+  reusable by a later dispatch port. **Done 2026-07-25**: the dispatch port
+  consumes `GetSpotlightTarget().Tile` exactly as `FUN_0048a580` reads the
+  spotlight node. See `Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md`
+  and `Source/SimCopterRemake/{Public,Private}/Ground/SimCopterDispatch.*`.
 
 The original help also establishes that purchased equipment is installed on
 every helicopter the player owns. Tool ownership therefore belongs to the

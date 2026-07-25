@@ -2,15 +2,18 @@
 
 #include "Ground/SimCopterTrafficSystemActor.h"
 
+#include "Algo/Reverse.h"
 #include "City/SimCity2000CityActor.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "GameFramework/PlayerController.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -691,6 +694,7 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
+	UpdateDispatchVehicles(DeltaSeconds);
 	UpdateWholeMapPopulation(DeltaSeconds);
 }
 
@@ -1617,6 +1621,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	RoadNodeCount = RoadNodes.Num();
 	PedestrianNodeCount = PedestrianNodes.Num();
 
+	RebuildDispatchStations();
 	BuildWholeMapPopulation();
 
 	UE_LOG(
@@ -1633,6 +1638,962 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		ActiveTileSize);
 
 	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Emergency dispatch (F2-F5). Decoded in
+// Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md; the pure
+// selection logic lives in Ground/SimCopterDispatch.h.
+//
+// Dispatched vehicles are deliberately kept out of VehicleAgents: the ambient
+// pool prunes by distance from the camera and re-rolls random turns, both of
+// which would break a unit that is meant to persist and drive a fixed route.
+// The original ran them through the same mover but with their own state
+// machines on top, which is what UpdateOneDispatchVehicle reproduces.
+// ---------------------------------------------------------------------------
+
+namespace
+{
+// The service each pool index belongs to, in EService order.
+constexpr int32 DispatchServiceCount = static_cast<int32>(SimCopterDispatch::EService::Count);
+
+const TCHAR* GetDispatchServiceName(SimCopterDispatch::EService Service)
+{
+	switch (Service)
+	{
+	case SimCopterDispatch::EService::FireTruck: return TEXT("Fire Truck");
+	case SimCopterDispatch::EService::Police: return TEXT("Police");
+	case SimCopterDispatch::EService::Ambulance: return TEXT("Ambulance");
+	default: return TEXT("?");
+	}
+}
+
+const TCHAR* GetDispatchStateName(ESimCopterDispatchVehicleState State)
+{
+	switch (State)
+	{
+	case ESimCopterDispatchVehicleState::Responding: return TEXT("responding");
+	case ESimCopterDispatchVehicleState::Chasing: return TEXT("chasing");
+	case ESimCopterDispatchVehicleState::OnScene: return TEXT("on scene");
+	case ESimCopterDispatchVehicleState::Returning: return TEXT("returning");
+	case ESimCopterDispatchVehicleState::Idle: return TEXT("idle");
+	default: return TEXT("empty");
+	}
+}
+
+// The body mesh IS the service's message id: FUN_0049dbb0 builds the render node from
+// FUN_00470571(veh[0x14]), and veh[0x14] is 0x11c/0x11d/0x11f. Resolved against the
+// shipped GEO tables those ids are CARFIRET "firetruk", CARPOLIC "popo" and CARAMBUL
+// "amblance" (0x11e, CARROBBR "badguy", is the criminal car FUN_0049dab0 hunts).
+// The 0x121/0x122/0x123 objects the constructors also load are AICON/PICON/FICON - the
+// dispatch pylon icons on a second, initially hidden node at veh+0x13b, not the bodies.
+const TCHAR* GetDispatchMeshName(SimCopterDispatch::EService Service)
+{
+	switch (Service)
+	{
+	case SimCopterDispatch::EService::FireTruck: return TEXT("CARFIRET");
+	case SimCopterDispatch::EService::Police: return TEXT("CARPOLIC");
+	case SimCopterDispatch::EService::Ambulance: return TEXT("CARAMBUL");
+	default: return TEXT("");
+	}
+}
+}
+
+void ASimCopterTrafficSystemActor::RebuildDispatchStations()
+{
+	auto GetTileId = [this](int32 X, int32 Y) { return GetXbldTileId(X, Y); };
+
+	for (int32 ServiceIndex = 0; ServiceIndex < DispatchServiceCount; ++ServiceIndex)
+	{
+		const SimCopterDispatch::EService Service = static_cast<SimCopterDispatch::EService>(ServiceIndex);
+		SimCopterDispatch::ScanStations(GetTileId, Service, DispatchStations[ServiceIndex]);
+
+		// A rebuild replaces the road graph the pool's routes point into, so any unit that
+		// is still out has to go with it rather than be orphaned in the world.
+		for (FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[ServiceIndex])
+		{
+			if (ASimCopterGroundAgent* Agent = Vehicle.Agent.Get())
+			{
+				Agent->Destroy();
+			}
+		}
+
+		// FUN_004bcc80 allocates the pool up front and leaves every slot empty.
+		DispatchVehicles[ServiceIndex].Reset();
+		DispatchVehicles[ServiceIndex].SetNum(SimCopterDispatch::VehiclesPerService);
+
+		UE_LOG(
+			LogSimCopterTrafficSystem,
+			Display,
+			TEXT("Dispatch: %s stations=%d (XBLD id 0x%02x)."),
+			GetDispatchServiceName(Service),
+			DispatchStations[ServiceIndex].Num(),
+			SimCopterDispatch::GetServiceStationXbldId(Service));
+	}
+}
+
+bool ASimCopterTrafficSystemActor::TryPlanRoadRoute(
+	const FIntPoint& FromTile,
+	const FIntPoint& ToTile,
+	TArray<int32>& OutNodes) const
+{
+	OutNodes.Reset();
+	if (RoadNodes.Num() == 0)
+	{
+		return false;
+	}
+
+	const int32* StartPtr = RoadNodeIndexByTile.Find(FromTile);
+	const int32* GoalPtr = RoadNodeIndexByTile.Find(ToTile);
+	if (StartPtr == nullptr || GoalPtr == nullptr)
+	{
+		return false;
+	}
+
+	const int32 Start = *StartPtr;
+	const int32 Goal = *GoalPtr;
+	if (Start == Goal)
+	{
+		OutNodes.Add(Goal);
+		return true;
+	}
+
+	// Breadth-first over the road-tile graph. The original searched its coarser
+	// intersection graph with Dijkstra (FUN_004bef30) and every edge there is a whole
+	// road segment; over per-tile nodes with unit edges BFS gives the same shortest path.
+	TArray<int32> Parent;
+	Parent.Init(INDEX_NONE, RoadNodes.Num());
+	TBitArray<> Visited(false, RoadNodes.Num());
+
+	TArray<int32> Queue;
+	Queue.Reserve(RoadNodes.Num());
+	Queue.Add(Start);
+	Visited[Start] = true;
+
+	int32 Head = 0;
+	bool bFound = false;
+	while (Head < Queue.Num())
+	{
+		const int32 Current = Queue[Head++];
+		if (Current == Goal)
+		{
+			bFound = true;
+			break;
+		}
+		for (const int32 Neighbor : RoadNodes[Current].Neighbors)
+		{
+			if (!RoadNodes.IsValidIndex(Neighbor) || Visited[Neighbor])
+			{
+				continue;
+			}
+			Visited[Neighbor] = true;
+			Parent[Neighbor] = Current;
+			Queue.Add(Neighbor);
+		}
+	}
+
+	if (!bFound)
+	{
+		return false;
+	}
+
+	for (int32 Node = Goal; Node != INDEX_NONE; Node = Parent[Node])
+	{
+		OutNodes.Add(Node);
+		if (Node == Start)
+		{
+			break;
+		}
+	}
+	Algo::Reverse(OutNodes);
+	return OutNodes.Num() > 0;
+}
+
+namespace
+{
+// Adapter that hands SimCopterDispatch::Dispatch the two world queries it needs.
+class FTrafficDispatchWorld final : public SimCopterDispatch::ISimCopterDispatchWorld
+{
+public:
+	explicit FTrafficDispatchWorld(const ASimCopterTrafficSystemActor& InActor, TFunctionRef<bool(const FIntPoint&, const FIntPoint&)> InRoute)
+		: Actor(InActor)
+		, Route(InRoute)
+	{
+	}
+
+	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override
+	{
+		return Actor.GetXbldTileId(TileX, TileY);
+	}
+
+	virtual bool CanRouteBetween(const FIntPoint& FromRoadTile, const FIntPoint& ToRoadTile) const override
+	{
+		return Route(FromRoadTile, ToRoadTile);
+	}
+
+private:
+	const ASimCopterTrafficSystemActor& Actor;
+	TFunctionRef<bool(const FIntPoint&, const FIntPoint&)> Route;
+};
+}
+
+bool ASimCopterTrafficSystemActor::TryGetDispatchVehicleTile(const FSimCopterDispatchVehicle& Vehicle, FIntPoint& OutTile) const
+{
+	const ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+	if (Agent == nullptr)
+	{
+		return false;
+	}
+	return TryGetPeopleTileCoordinateAtWorldLocation(Agent->GetActorLocation(), OutTile.X, OutTile.Y);
+}
+
+SimCopterDispatch::EDispatchResult ASimCopterTrafficSystemActor::RequestEmergencyDispatch(
+	SimCopterDispatch::EService Service,
+	const FIntPoint& TargetTile,
+	bool bChaseSpotlight)
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	if (ServiceIndex < 0 || ServiceIndex >= DispatchServiceCount)
+	{
+		return SimCopterDispatch::EDispatchResult::InvalidTarget;
+	}
+
+	TArray<SimCopterDispatch::FStation>& Stations = DispatchStations[ServiceIndex];
+	TArray<FSimCopterDispatchVehicle>& Vehicles = DispatchVehicles[ServiceIndex];
+
+	// Project the pool into the view FUN_004bc250 works from.
+	TArray<SimCopterDispatch::FVehicleSlotView> Slots;
+	Slots.SetNum(Vehicles.Num());
+	for (int32 Index = 0; Index < Vehicles.Num(); ++Index)
+	{
+		const FSimCopterDispatchVehicle& Vehicle = Vehicles[Index];
+		SimCopterDispatch::FVehicleSlotView& Slot = Slots[Index];
+		Slot.bSpawned = Vehicle.State != ESimCopterDispatchVehicleState::Empty && Vehicle.Agent.IsValid();
+		Slot.bIdle = Slot.bSpawned && Vehicle.State == ESimCopterDispatchVehicleState::Idle;
+		if (Slot.bSpawned)
+		{
+			TryGetDispatchVehicleTile(Vehicle, Slot.Tile);
+		}
+	}
+
+	auto RouteQuery = [this](const FIntPoint& From, const FIntPoint& To)
+	{
+		TArray<int32> Unused;
+		return TryPlanRoadRoute(From, To, Unused);
+	};
+	const FTrafficDispatchWorld DispatchWorld(*this, RouteQuery);
+
+	const SimCopterDispatch::FDispatchOutcome Outcome =
+		SimCopterDispatch::Dispatch(DispatchWorld, Stations, Slots, TargetTile);
+
+	if (Outcome.Result != SimCopterDispatch::EDispatchResult::Dispatched)
+	{
+		if (Outcome.Result == SimCopterDispatch::EDispatchResult::CannotReach)
+		{
+			UE_LOG(
+				LogSimCopterTrafficSystem,
+				Verbose,
+				TEXT("Dispatch: %s cannot reach (%d,%d) - %s."),
+				GetDispatchServiceName(Service),
+				TargetTile.X,
+				TargetTile.Y,
+				Outcome.bNoRoadNearTarget
+					? TEXT("no road within 4 tiles of the target")
+					: TEXT("no unit could route to the snapped road tile"));
+		}
+		return Outcome.Result;
+	}
+
+	FSimCopterDispatchVehicle& Vehicle = Vehicles[Outcome.SlotIndex];
+
+	if (!Outcome.bRedirectedExistingVehicle)
+	{
+		const SimCopterDispatch::FStation& Station = Stations[Outcome.StationIndex];
+		ASimCopterGroundAgent* Agent = SpawnDispatchVehicleAgent(Service, Station.RoadTile);
+		if (Agent == nullptr)
+		{
+			// The station's slot was already claimed by SimCopterDispatch::Dispatch; give it
+			// back so a later request can use it (FUN_004bc660's role on failure).
+			Stations[Outcome.StationIndex].Outstanding = FMath::Max(0, Stations[Outcome.StationIndex].Outstanding - 1);
+			return SimCopterDispatch::EDispatchResult::NoUnitAvailable;
+		}
+
+		Vehicle = FSimCopterDispatchVehicle();
+		Vehicle.Agent = Agent;
+		Vehicle.HomeTile = Station.RoadTile;
+		Vehicle.StationIndex = Outcome.StationIndex;
+	}
+
+	Vehicle.State = bChaseSpotlight
+		? ESimCopterDispatchVehicleState::Chasing
+		: ESimCopterDispatchVehicleState::Responding;
+	Vehicle.StayTimerSeconds = 0.0f;
+	Vehicle.ActionTimerSeconds = 0.0f;
+	Vehicle.bActedAtScene = false;
+	Vehicle.TargetEventId = INDEX_NONE;
+
+	if (!TryRetargetDispatchVehicle(Vehicle, Outcome.DestinationTile))
+	{
+		// The candidate routed a moment ago, so this only trips when the vehicle is not on
+		// a graph node yet; leave it responding and let the per-frame retarget pick it up.
+		Vehicle.DestinationTile = Outcome.DestinationTile;
+	}
+
+	UE_LOG(
+		LogSimCopterTrafficSystem,
+		Verbose,
+		TEXT("Dispatch: %s %s to (%d,%d)%s."),
+		GetDispatchServiceName(Service),
+		Outcome.bRedirectedExistingVehicle ? TEXT("redirected") : TEXT("launched"),
+		Outcome.DestinationTile.X,
+		Outcome.DestinationTile.Y,
+		bChaseSpotlight ? TEXT(" [chase]") : TEXT(""));
+
+	return SimCopterDispatch::EDispatchResult::Dispatched;
+}
+
+bool ASimCopterTrafficSystemActor::ClearEmergencyDispatch(SimCopterDispatch::EService Service, const FIntPoint& SpotlightTile)
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	if (ServiceIndex < 0 || ServiceIndex >= DispatchServiceCount || !SimCopterDispatch::IsTileInBounds(SpotlightTile))
+	{
+		return false;
+	}
+
+	// FUN_0049b3f0 walks a radius-2 spiral and inspects the first vehicle it meets on each
+	// tile. A vehicle of the wrong kind aborts the whole scan rather than being skipped, so
+	// a fire truck parked between the spotlight and a police car blocks the release - that
+	// is original behaviour, not an oversight. The original also aborted on an ambient car
+	// (every car carries the same tile-object flag); the remake only considers dispatched
+	// units, which makes the release slightly more forgiving than the original.
+	auto TestTile = [this, ServiceIndex](const FIntPoint& Tile, bool& bOutAbort) -> FSimCopterDispatchVehicle*
+	{
+		bOutAbort = false;
+		for (int32 OtherService = 0; OtherService < DispatchServiceCount; ++OtherService)
+		{
+			for (FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[OtherService])
+			{
+				if (Vehicle.State == ESimCopterDispatchVehicleState::Empty || !Vehicle.Agent.IsValid())
+				{
+					continue;
+				}
+				FIntPoint VehicleTile;
+				if (!TryGetDispatchVehicleTile(Vehicle, VehicleTile) || VehicleTile != Tile)
+				{
+					continue;
+				}
+				if (OtherService != ServiceIndex)
+				{
+					bOutAbort = true;
+					return nullptr;
+				}
+				return &Vehicle;
+			}
+		}
+		return nullptr;
+	};
+
+	FIntPoint Tile = SpotlightTile;
+	bool bAbort = false;
+	if (FSimCopterDispatchVehicle* Found = TestTile(Tile, bAbort))
+	{
+		RecallDispatchVehicle(*Found);
+		return true;
+	}
+	if (bAbort)
+	{
+		return false;
+	}
+
+	SimCopterDispatch::FSpiralWalker Walker(SimCopterDispatch::ClearDispatchRadius);
+	while (Walker.Step(Tile))
+	{
+		if (FSimCopterDispatchVehicle* Found = TestTile(Tile, bAbort))
+		{
+			RecallDispatchVehicle(*Found);
+			return true;
+		}
+		if (bAbort)
+		{
+			return false;
+		}
+	}
+	return false;
+}
+
+int32 ASimCopterTrafficSystemActor::GetDispatchStationCount(SimCopterDispatch::EService Service) const
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	if (ServiceIndex < 0 || ServiceIndex >= DispatchServiceCount)
+	{
+		return 0;
+	}
+	return DispatchStations[ServiceIndex].Num();
+}
+
+int32 ASimCopterTrafficSystemActor::GetActiveDispatchCount(SimCopterDispatch::EService Service) const
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	if (ServiceIndex < 0 || ServiceIndex >= DispatchServiceCount)
+	{
+		return 0;
+	}
+
+	int32 Count = 0;
+	for (const FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[ServiceIndex])
+	{
+		if (Vehicle.State != ESimCopterDispatchVehicleState::Empty && Vehicle.Agent.IsValid())
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+FString ASimCopterTrafficSystemActor::GetDispatchStatusLine(SimCopterDispatch::EService Service) const
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	if (ServiceIndex < 0 || ServiceIndex >= DispatchServiceCount)
+	{
+		return FString();
+	}
+
+	const int32 StationCount = DispatchStations[ServiceIndex].Num();
+	if (StationCount == 0)
+	{
+		return FString::Printf(TEXT("no %s stations in this city"), GetDispatchServiceName(Service));
+	}
+
+	TArray<FString> StationParts;
+	for (const SimCopterDispatch::FStation& Station : DispatchStations[ServiceIndex])
+	{
+		StationParts.Add(FString::Printf(
+			TEXT("(%d,%d)road(%d,%d)out%d"),
+			Station.Tile.X,
+			Station.Tile.Y,
+			Station.RoadTile.X,
+			Station.RoadTile.Y,
+			Station.Outstanding));
+	}
+
+	TArray<FString> Parts;
+	for (const FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[ServiceIndex])
+	{
+		if (Vehicle.State == ESimCopterDispatchVehicleState::Empty || !Vehicle.Agent.IsValid())
+		{
+			continue;
+		}
+		Parts.Add(FString::Printf(
+			TEXT("%s->(%d,%d)"),
+			GetDispatchStateName(Vehicle.State),
+			Vehicle.DestinationTile.X,
+			Vehicle.DestinationTile.Y));
+	}
+
+	if (Parts.Num() == 0)
+	{
+		return FString::Printf(TEXT("%d stations %s, no units out"), StationCount, *FString::Join(StationParts, TEXT(" ")));
+	}
+	return FString::Printf(
+		TEXT("%d stations %s  |  %s"),
+		StationCount,
+		*FString::Join(StationParts, TEXT(" ")),
+		*FString::Join(Parts, TEXT("  ")));
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnDispatchVehicleAgent(
+	SimCopterDispatch::EService Service,
+	const FIntPoint& RoadTile)
+{
+	if (GetWorld() == nullptr || GroundAgentClass == nullptr)
+	{
+		return nullptr;
+	}
+
+	FVector SpawnBase = FVector::ZeroVector;
+	if (!TryGetTileCenterWorldLocation(RoadTile.X, RoadTile.Y, SpawnBase))
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	ASimCopterGroundAgent* Agent = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+		GroundAgentClass,
+		SpawnBase + FVector::UpVector * 100.0f,
+		FRotator::ZeroRotator,
+		SpawnParams);
+	if (Agent == nullptr)
+	{
+		return nullptr;
+	}
+
+	FString MeshName = GetDispatchMeshName(Service);
+	Agent->ConfigureAgent(
+		ESimCopterGroundAgentKind::Vehicle,
+		MeshName,
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+		VehicleSpeedCmPerSec);
+
+	if (!Agent->IsUsingOriginalMesh() && VehicleMeshNames.Num() > 0)
+	{
+		// The named service body is missing from this GEO dump; fall back to an ambient car
+		// so the dispatch is still visible and drivable.
+		MeshName = VehicleMeshNames[RandomStream.RandRange(0, VehicleMeshNames.Num() - 1)];
+		Agent->ConfigureAgent(
+			ESimCopterGroundAgentKind::Vehicle,
+			MeshName,
+			ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+			VehicleSpeedCmPerSec);
+	}
+
+	Agent->SnapToGroundImmediate();
+
+	const int32* NodeIndex = RoadNodeIndexByTile.Find(RoadTile);
+	Agent->SetRouteState(NodeIndex != nullptr ? *NodeIndex : INDEX_NONE, INDEX_NONE);
+	Agent->ClearMoveTarget();
+	return Agent;
+}
+
+bool ASimCopterTrafficSystemActor::TryRetargetDispatchVehicle(FSimCopterDispatchVehicle& Vehicle, const FIntPoint& DestinationTile)
+{
+	FIntPoint FromTile;
+	if (!TryGetDispatchVehicleTile(Vehicle, FromTile))
+	{
+		return false;
+	}
+
+	// The vehicle may sit on a non-road tile after a bump; snap it back onto the network
+	// the same way the dispatcher snaps the requested target.
+	auto GetTileId = [this](int32 X, int32 Y) { return GetXbldTileId(X, Y); };
+	FIntPoint FromRoadTile = FromTile;
+	if (!SimCopterDispatch::IsRoadTileId(GetXbldTileId(FromTile.X, FromTile.Y)))
+	{
+		if (!SimCopterDispatch::TryFindNearestRoadTile(GetTileId, FromTile, SimCopterDispatch::TargetRoadSnapRadius, FromRoadTile))
+		{
+			return false;
+		}
+	}
+
+	TArray<int32> Route;
+	if (!TryPlanRoadRoute(FromRoadTile, DestinationTile, Route))
+	{
+		return false;
+	}
+
+	Vehicle.DestinationTile = DestinationTile;
+	Vehicle.RouteNodes = MoveTemp(Route);
+	Vehicle.RouteCursor = 0;
+	AdvanceDispatchRoute(Vehicle);
+	return true;
+}
+
+void ASimCopterTrafficSystemActor::AdvanceDispatchRoute(FSimCopterDispatchVehicle& Vehicle)
+{
+	ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+	if (Agent == nullptr)
+	{
+		return;
+	}
+
+	while (Vehicle.RouteNodes.IsValidIndex(Vehicle.RouteCursor))
+	{
+		const int32 NodeIndex = Vehicle.RouteNodes[Vehicle.RouteCursor];
+		if (!RoadNodes.IsValidIndex(NodeIndex))
+		{
+			++Vehicle.RouteCursor;
+			continue;
+		}
+
+		const int32 PrevIndex = Vehicle.RouteCursor > 0 ? Vehicle.RouteNodes[Vehicle.RouteCursor - 1] : INDEX_NONE;
+		const int32 NextIndex = Vehicle.RouteNodes.IsValidIndex(Vehicle.RouteCursor + 1)
+			? Vehicle.RouteNodes[Vehicle.RouteCursor + 1]
+			: INDEX_NONE;
+
+		Agent->SetRouteState(NodeIndex, PrevIndex, NextIndex);
+		Agent->SetMoveTarget(MakeVehicleRouteTargetLocation(RoadNodes, NodeIndex, PrevIndex, INDEX_NONE, NextIndex));
+		return;
+	}
+
+	Agent->ClearMoveTarget();
+}
+
+bool ASimCopterTrafficSystemActor::HasDispatchVehicleArrived(const FSimCopterDispatchVehicle& Vehicle) const
+{
+	FIntPoint Tile;
+	if (!TryGetDispatchVehicleTile(Vehicle, Tile))
+	{
+		return false;
+	}
+	// The original compares whole tile coordinates (veh[0x12d] == veh.tile), so the vehicle
+	// counts as arrived as soon as it is standing on the destination square.
+	return Tile == Vehicle.DestinationTile;
+}
+
+void ASimCopterTrafficSystemActor::RecallDispatchVehicle(FSimCopterDispatchVehicle& Vehicle)
+{
+	if (Vehicle.State == ESimCopterDispatchVehicleState::Empty || Vehicle.State == ESimCopterDispatchVehicleState::Idle)
+	{
+		// FUN_004bdc70 returns 0 for state 2 and leaves the vehicle alone.
+		return;
+	}
+
+	Vehicle.State = ESimCopterDispatchVehicleState::Returning;
+	Vehicle.StayTimerSeconds = 0.0f;
+	Vehicle.ActionTimerSeconds = 0.0f;
+	Vehicle.TargetEventId = INDEX_NONE;
+	TryRetargetDispatchVehicle(Vehicle, Vehicle.HomeTile);
+}
+
+void ASimCopterTrafficSystemActor::ReleaseDispatchVehicle(SimCopterDispatch::EService Service, int32 SlotIndex)
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	if (ServiceIndex < 0 || ServiceIndex >= DispatchServiceCount || !DispatchVehicles[ServiceIndex].IsValidIndex(SlotIndex))
+	{
+		return;
+	}
+
+	FSimCopterDispatchVehicle& Vehicle = DispatchVehicles[ServiceIndex][SlotIndex];
+
+	// FUN_004bc660: give the station its slot back.
+	if (DispatchStations[ServiceIndex].IsValidIndex(Vehicle.StationIndex))
+	{
+		SimCopterDispatch::FStation& Station = DispatchStations[ServiceIndex][Vehicle.StationIndex];
+		Station.Outstanding = FMath::Max(0, Station.Outstanding - 1);
+	}
+
+	if (ASimCopterGroundAgent* Agent = Vehicle.Agent.Get())
+	{
+		Agent->Destroy();
+	}
+
+	Vehicle = FSimCopterDispatchVehicle();
+}
+
+ASimCopterMissionSystemActor* ASimCopterTrafficSystemActor::ResolveMissionSystem() const
+{
+	if (UWorld* World = GetWorld())
+	{
+		for (TActorIterator<ASimCopterMissionSystemActor> It(World); It; ++It)
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::EService Service, FSimCopterDispatchVehicle& Vehicle)
+{
+	FIntPoint Tile;
+	if (!TryGetDispatchVehicleTile(Vehicle, Tile))
+	{
+		return false;
+	}
+
+	ASimCopterMissionSystemActor* Missions = ResolveMissionSystem();
+	ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+
+	switch (Service)
+	{
+	case SimCopterDispatch::EService::FireTruck:
+	{
+		// FUN_004b9890 scans five rings for a burning cell, then FUN_004a5ca0/FUN_004a5dd0
+		// spray emitter type 6 at it once per frame; the water does the dousing through the
+		// ordinary impact path. The remake applies that impact directly - the emitter and
+		// its arc belong to the effect layer, not to the dispatch behaviour.
+		bool bActed = false;
+		if (Missions != nullptr)
+		{
+			FIntPoint FireTile;
+			int32 EventId = INDEX_NONE;
+			const int32 FlamesHit = Missions->ApplyServiceFireSuppression(
+				Tile,
+				SimCopterDispatch::FireTargetScanRadius,
+				FireTile,
+				EventId);
+			if (EventId != INDEX_NONE)
+			{
+				Vehicle.TargetEventId = EventId;
+				Vehicle.TargetTile = FireTile;
+				bActed = FlamesHit > 0;
+				UE_LOG(
+					LogSimCopterTrafficSystem,
+					Verbose,
+					TEXT("Dispatch: fire truck at (%d,%d) sprayed fire at (%d,%d), %d flame(s) hit."),
+					Tile.X,
+					Tile.Y,
+					FireTile.X,
+					FireTile.Y,
+					FlamesHit);
+			}
+			else
+			{
+				// Nothing in range: stop aiming the jet.
+				Vehicle.TargetTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+				UE_LOG(
+					LogSimCopterTrafficSystem,
+					Verbose,
+					TEXT("Dispatch: fire truck at (%d,%d) found no flame within %d tiles."),
+					Tile.X,
+					Tile.Y,
+					SimCopterDispatch::FireTargetScanRadius);
+			}
+		}
+
+		// Burning cars are the fire truck's other target (the original finds them as tile
+		// objects flagged 0x1000 in the same spiral).
+		if (Agent != nullptr)
+		{
+			TArray<int32> Extinguished;
+			const float RadiusCm = SimCopterDispatch::FireTargetScanRadius * ActiveTileSize;
+			DouseBurningVehiclesNear(Agent->GetActorLocation(), RadiusCm, Extinguished);
+			if (Extinguished.Num() > 0)
+			{
+				bActed = true;
+				Vehicle.TargetEventId = Extinguished[0];
+			}
+		}
+		return bActed;
+	}
+
+	case SimCopterDispatch::EService::Police:
+	{
+		// The original's police car scans three rings for a criminal/speeder
+		// (FUN_0049dab0) and calls its "pull over" entry point. The remake has no criminal
+		// car class yet, so the ported half is the jam clearance the help documents for a
+		// police dispatch ("You should also dispatch police to help clear the traffic
+		// jam", 20ref.htm), plus the deployed officer below.
+		bool bActed = false;
+		if (Missions != nullptr)
+		{
+			FIntPoint JamTile;
+			int32 EventId = INDEX_NONE;
+			if (Missions->TryFindNearestJamTile(Tile, SimCopterDispatch::OnSceneScanRadius, JamTile, EventId))
+			{
+				Vehicle.TargetEventId = EventId;
+				bActed = Missions->ClearTrafficJamEvent(EventId);
+			}
+		}
+
+		// FUN_0049bd00(0xe, 8): put an officer on the ground beside the car.
+		if (!Vehicle.bActedAtScene)
+		{
+			bActed |= TrySpawnMissionPerson(0xe, 8, Tile.X, Tile.Y, Vehicle.TargetEventId);
+		}
+		return bActed;
+	}
+
+	case SimCopterDispatch::EService::Ambulance:
+	{
+		// FUN_0049bd00(0xf, 0xd): deploy a paramedic. The original ambulance has no other
+		// on-scene call - the crew's own behaviour program does the rest.
+		if (Vehicle.bActedAtScene)
+		{
+			return false;
+		}
+		if (Missions != nullptr)
+		{
+			FIntPoint MedicalTile;
+			int32 EventId = INDEX_NONE;
+			if (Missions->TryFindNearestMedicalTile(Tile, SimCopterDispatch::OnSceneScanRadius, MedicalTile, EventId))
+			{
+				Vehicle.TargetEventId = EventId;
+			}
+		}
+		return TrySpawnMissionPerson(0xf, 0xd, Tile.X, Tile.Y, Vehicle.TargetEventId);
+	}
+
+	default:
+		return false;
+	}
+}
+
+void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::EService Service, int32 SlotIndex, float DeltaSeconds)
+{
+	const int32 ServiceIndex = static_cast<int32>(Service);
+	FSimCopterDispatchVehicle& Vehicle = DispatchVehicles[ServiceIndex][SlotIndex];
+
+	if (Vehicle.State == ESimCopterDispatchVehicleState::Empty)
+	{
+		return;
+	}
+	if (!Vehicle.Agent.IsValid())
+	{
+		// The agent was destroyed under us; free the station slot so the service does not
+		// leak capacity.
+		ReleaseDispatchVehicle(Service, SlotIndex);
+		return;
+	}
+
+	switch (Vehicle.State)
+	{
+	case ESimCopterDispatchVehicleState::Chasing:
+	case ESimCopterDispatchVehicleState::Responding:
+	{
+		if (Vehicle.State == ESimCopterDispatchVehicleState::Chasing)
+		{
+			// FUN_004b9e40 case 2 re-reads the spotlight tile every frame and re-snaps it
+			// to a road tile through the same radius-4 spiral the dispatcher uses.
+			if (SimCopterDispatch::IsTileInBounds(SpotlightChaseTile))
+			{
+				auto GetTileId = [this](int32 X, int32 Y) { return GetXbldTileId(X, Y); };
+				FIntPoint ChaseRoadTile;
+				if (SimCopterDispatch::TryFindNearestRoadTile(GetTileId, SpotlightChaseTile, SimCopterDispatch::TargetRoadSnapRadius, ChaseRoadTile)
+					&& ChaseRoadTile != Vehicle.DestinationTile)
+				{
+					TryRetargetDispatchVehicle(Vehicle, ChaseRoadTile);
+				}
+			}
+		}
+
+		if (HasDispatchVehicleArrived(Vehicle))
+		{
+			if (Vehicle.State == ESimCopterDispatchVehicleState::Chasing)
+			{
+				// A chase unit parks on the spotlight tile but stays in chase mode so it
+				// keeps following when the beam moves again.
+				if (ASimCopterGroundAgent* Agent = Vehicle.Agent.Get())
+				{
+					Agent->ClearMoveTarget();
+				}
+				break;
+			}
+			Vehicle.State = ESimCopterDispatchVehicleState::OnScene;
+			Vehicle.StayTimerSeconds = SimCopterDispatch::OnSceneStaySeconds;
+			Vehicle.ActionTimerSeconds = 0.0f;
+			if (ASimCopterGroundAgent* Agent = Vehicle.Agent.Get())
+			{
+				Agent->ClearMoveTarget();
+			}
+			break;
+		}
+
+		ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+		if (Agent != nullptr && !Agent->HasMoveTarget())
+		{
+			// Route exhausted without arriving (the destination sits mid-tile): re-plan.
+			if (!TryRetargetDispatchVehicle(Vehicle, Vehicle.DestinationTile))
+			{
+				RecallDispatchVehicle(Vehicle);
+			}
+		}
+		else if (Agent != nullptr && Agent->IsNearMoveTarget())
+		{
+			++Vehicle.RouteCursor;
+			AdvanceDispatchRoute(Vehicle);
+		}
+		break;
+	}
+
+	case ESimCopterDispatchVehicleState::OnScene:
+	{
+		// FUN_004bd980 arms +0x2ad for the stay and retries the service call on the
+		// +0x2a5 gap until the stay runs out.
+		Vehicle.StayTimerSeconds -= DeltaSeconds;
+		Vehicle.ActionTimerSeconds -= DeltaSeconds;
+
+		// The original fire truck sprays every frame it has a target (FUN_004b9790) while
+		// the water's effect is applied by the droplets that land. Here the douse runs on
+		// the action timer below, so the jet is purely the visible half - but it is aimed
+		// with the same sweep and only while a fire really is in range.
+		Vehicle.JetTimerSeconds -= DeltaSeconds;
+		if (Service == SimCopterDispatch::EService::FireTruck
+			&& Vehicle.TargetTile.X >= 0
+			&& Vehicle.JetTimerSeconds <= 0.0f
+			&& Vehicle.Agent.IsValid())
+		{
+			// ~15 droplets a second: the original's per-frame rate at its own pacing, and
+			// slow enough to leave the shared trajectory pool room for the player's water.
+			Vehicle.JetTimerSeconds = 1.0f / 15.0f;
+
+			FVector FireWorld = FVector::ZeroVector;
+			if (TryGetTileCenterWorldLocation(Vehicle.TargetTile.X, Vehicle.TargetTile.Y, FireWorld))
+			{
+				if (ASimCopterMissionSystemActor* JetMissions = ResolveMissionSystem())
+				{
+					// FUN_004a5ca0 lifts the nozzle 0x1e0000 (30.0 units) above the truck.
+					const float NozzleUpCm = 30.0f * GetPeopleWorldCmPerOriginalUnit();
+					const FVector Nozzle = Vehicle.Agent->GetActorLocation() + FVector::UpVector * NozzleUpCm;
+					JetMissions->SpawnServiceWaterJet(Nozzle, FireWorld);
+				}
+			}
+		}
+		if (Vehicle.ActionTimerSeconds <= 0.0f)
+		{
+			const bool bActed = RunDispatchOnSceneAction(Service, Vehicle);
+			if (bActed)
+			{
+				Vehicle.bActedAtScene = true;
+				// FUN_004b9e40 holds for 0x780000 after a successful action.
+				Vehicle.ActionTimerSeconds = (Service == SimCopterDispatch::EService::FireTruck)
+					? 0.5f
+					: SimCopterDispatch::OnSceneHoldSeconds;
+			}
+			else
+			{
+				// A fire truck re-scans continuously in the original: FUN_004b9790 runs
+				// FUN_004b9890's five-ring search every frame, and only the give-up timer
+				// (+0x2ad) is long. Keeping the short cadence here is what lets a parked
+				// truck pick up the next fire in range - one that spread, or a second
+				// building that was already burning - instead of idling for half a minute.
+				// Police and ambulances deploy their crew once, so they keep the long gap.
+				Vehicle.ActionTimerSeconds = (Service == SimCopterDispatch::EService::FireTruck)
+					? 0.5f
+					: SimCopterDispatch::OnSceneRetrySeconds;
+			}
+		}
+
+		if (Vehicle.StayTimerSeconds <= 0.0f)
+		{
+			RecallDispatchVehicle(Vehicle);
+		}
+		break;
+	}
+
+	case ESimCopterDispatchVehicleState::Returning:
+	{
+		FIntPoint Tile;
+		if (TryGetDispatchVehicleTile(Vehicle, Tile) && Tile == Vehicle.HomeTile)
+		{
+			ReleaseDispatchVehicle(Service, SlotIndex);
+			return;
+		}
+
+		ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+		if (Agent != nullptr && !Agent->HasMoveTarget())
+		{
+			if (!TryRetargetDispatchVehicle(Vehicle, Vehicle.HomeTile))
+			{
+				// Cannot get home (the road was demolished): despawn rather than idle
+				// forever holding the station's slot.
+				ReleaseDispatchVehicle(Service, SlotIndex);
+				return;
+			}
+		}
+		else if (Agent != nullptr && Agent->IsNearMoveTarget())
+		{
+			++Vehicle.RouteCursor;
+			AdvanceDispatchRoute(Vehicle);
+		}
+		break;
+	}
+
+	default:
+		break;
+	}
+}
+
+void ASimCopterTrafficSystemActor::UpdateDispatchVehicles(float DeltaSeconds)
+{
+	for (int32 ServiceIndex = 0; ServiceIndex < DispatchServiceCount; ++ServiceIndex)
+	{
+		const SimCopterDispatch::EService Service = static_cast<SimCopterDispatch::EService>(ServiceIndex);
+		for (int32 SlotIndex = 0; SlotIndex < DispatchVehicles[ServiceIndex].Num(); ++SlotIndex)
+		{
+			UpdateOneDispatchVehicle(Service, SlotIndex, DeltaSeconds);
+		}
+	}
 }
 
 void ASimCopterTrafficSystemActor::BuildWholeMapPopulation()

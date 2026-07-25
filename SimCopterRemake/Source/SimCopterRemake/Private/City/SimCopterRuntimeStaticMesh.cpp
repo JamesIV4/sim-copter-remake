@@ -62,7 +62,12 @@ UStaticMesh* Build(
 		const FName SlotName(*FString::Printf(TEXT("Slot_%d"), StaticMaterials.Num()));
 		const FPolygonGroupID PolygonGroup = MeshDescription.CreatePolygonGroup();
 		SlotNames[PolygonGroup] = SlotName;
-		StaticMaterials.Add(FStaticMaterial(Section.Material, SlotName, SlotName));
+		// FStaticMaterial's imported-slot-name constructor parameter only exists in editor
+		// builds - in a game target the third parameter is the overlay material, so passing
+		// an FName there does not compile. The member itself exists in both, so set it after
+		// constructing.
+		FStaticMaterial& StaticMaterial = StaticMaterials.Emplace_GetRef(Section.Material, SlotName);
+		StaticMaterial.ImportedMaterialSlotName = SlotName;
 
 		// One vertex instance per source vertex: the city builder already emits unshared
 		// vertices per face, so each one carries exactly one normal and needs no splitting.

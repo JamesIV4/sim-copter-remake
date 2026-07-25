@@ -4,12 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Ground/SimCopterDispatch.h"
 #include "UObject/ObjectKey.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterTrafficSystemActor.generated.h"
 
 class ASimCity2000CityActor;
 class ASimCopterGroundAgent;
+class ASimCopterMissionSystemActor;
 class UInstancedStaticMeshComponent;
 
 struct FSimCopterGroundRouteNode
@@ -72,6 +74,55 @@ struct FSimCopterVehicleTrafficState
 	// flame visuals (rendered by the mission actor's fire component) until doused.
 	bool bMissionOnFire = false;
 	int32 MissionEventId = INDEX_NONE;
+};
+
+// Runtime state of one emergency-vehicle pool slot. The names mirror the original's
+// veh + 0x299 state values (Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md
+// section 6); FUN_004b9e40 switches on exactly these.
+enum class ESimCopterDispatchVehicleState : uint8
+{
+	// Slot holds no vehicle: the original's "veh[4] & 2 clear", the slot a station spawn
+	// takes. Never a dispatch candidate.
+	Empty,
+	// State 4: driving to a fixed destination tile (F2/F3/F4).
+	Responding,
+	// State 3: destination re-read from the spotlight every frame (F5 chase dispatch).
+	Chasing,
+	// State 1 with the on-scene flag 0x04: parked at the scene, doing the job.
+	OnScene,
+	// State 1 with the recall flag 0x10: driving back to the station road tile.
+	Returning,
+	// State 2: parked at the station. The only state that makes a spawned vehicle a
+	// redispatch candidate (FUN_004bc250).
+	Idle
+};
+
+// One emergency vehicle. Field comments name the original offsets they stand in for.
+struct FSimCopterDispatchVehicle
+{
+	TWeakObjectPtr<ASimCopterGroundAgent> Agent;
+	ESimCopterDispatchVehicleState State = ESimCopterDispatchVehicleState::Empty;
+	// +0x12d destination tile / +0x12b home (station road) tile / +0x29d station index.
+	FIntPoint DestinationTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	FIntPoint HomeTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	int32 StationIndex = INDEX_NONE;
+	// +0x2ad: the give-up / stay timer, and +0x2a5: the gap between on-scene attempts.
+	float StayTimerSeconds = 0.0f;
+	float ActionTimerSeconds = 0.0f;
+	// Gap between water-jet droplets. The original sprayed one per game frame at its ~15fps
+	// pacing; spraying per rendered frame here would swamp the shared 70-slot trajectory pool
+	// (which the player's bucket and cannon also draw from) within a second.
+	float JetTimerSeconds = 0.0f;
+	// Planned road-node route (the original walked FUN_004bef30's back-links instead).
+	TArray<int32> RouteNodes;
+	int32 RouteCursor = 0;
+	// Mission event the vehicle is working on, when it found one.
+	int32 TargetEventId = INDEX_NONE;
+	// Tile it is working on (a fire truck aims its jet here every frame; INDEX_NONE when
+	// it has nothing in range).
+	FIntPoint TargetTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	// True once the vehicle has acted at the scene at least once (original flag 0x08).
+	bool bActedAtScene = false;
 };
 
 // One burning car reported to the fire renderer: a stable key + its world location.
@@ -469,7 +520,37 @@ private:
 	int32 LastAmbientScanTileY = INDEX_NONE;
 	bool bLoggedMissingPedestrianMeshes = false;
 
+	// --- emergency dispatch (F2-F5) ---
+	// Station registries and the five-slot vehicle pool per service, indexed by
+	// SimCopterDispatch::EService. Rebuilt with the road graph.
+	TArray<SimCopterDispatch::FStation> DispatchStations[static_cast<int32>(SimCopterDispatch::EService::Count)];
+	TArray<FSimCopterDispatchVehicle> DispatchVehicles[static_cast<int32>(SimCopterDispatch::EService::Count)];
+	// The tile chase-dispatched police re-read every frame (the original read the
+	// spotlight node directly; the pawn pushes it here instead).
+	FIntPoint SpotlightChaseTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+
 public:
+	// Runs one FUN_004bc680 dispatch transaction for a service and commits the result.
+	// bChaseSpotlight selects initial state 3 (F5) instead of 4 (F2/F3/F4).
+	SimCopterDispatch::EDispatchResult RequestEmergencyDispatch(
+		SimCopterDispatch::EService Service,
+		const FIntPoint& TargetTile,
+		bool bChaseSpotlight);
+
+	// FUN_0049b3f0: release the first vehicle of this service within two rings of the
+	// spotlight tile. A vehicle of a different service on the way aborts the scan, as in
+	// the original.
+	bool ClearEmergencyDispatch(SimCopterDispatch::EService Service, const FIntPoint& SpotlightTile);
+
+	// The pawn feeds the spotlight's ground tile here so chase-dispatched police can
+	// follow it.
+	void SetSpotlightChaseTile(const FIntPoint& Tile) { SpotlightChaseTile = Tile; }
+
+	int32 GetDispatchStationCount(SimCopterDispatch::EService Service) const;
+	int32 GetActiveDispatchCount(SimCopterDispatch::EService Service) const;
+	// One-line status for the debug panel: stations, units out, and what they are doing.
+	FString GetDispatchStatusLine(SimCopterDispatch::EService Service) const;
+
 	// Mission system hooks
 	bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY);
 	void EndTrafficJam(int32 EventId);
@@ -588,4 +669,26 @@ public:
 	int32 ChooseNodeNearFocus(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& FocusLocation);
 	FVector MakeVehicleRouteTargetLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 TargetIndex, int32 PreviousIndex, int32 ApproachIndex, int32 LookAheadIndex) const;
 	FVector MakeRoutePointLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 PointIndex, int32 PreviousIndex, int32 NextIndex, bool bVehicle) const;
+
+	// --- emergency dispatch internals ---
+	// FUN_004bcc80: rescan the three station registries from the XBLD grid.
+	void RebuildDispatchStations();
+	// Per-frame state machines (FUN_004b9e40 and its fire/ambulance siblings).
+	void UpdateDispatchVehicles(float DeltaSeconds);
+	void UpdateOneDispatchVehicle(SimCopterDispatch::EService Service, int32 SlotIndex, float DeltaSeconds);
+	// Breadth-first road-node route; stands in for FUN_004bef30's Dijkstra + back-links.
+	bool TryPlanRoadRoute(const FIntPoint& FromTile, const FIntPoint& ToTile, TArray<int32>& OutNodes) const;
+	bool TryRetargetDispatchVehicle(FSimCopterDispatchVehicle& Vehicle, const FIntPoint& DestinationTile);
+	ASimCopterGroundAgent* SpawnDispatchVehicleAgent(SimCopterDispatch::EService Service, const FIntPoint& RoadTile);
+	void AdvanceDispatchRoute(FSimCopterDispatchVehicle& Vehicle);
+	bool HasDispatchVehicleArrived(const FSimCopterDispatchVehicle& Vehicle) const;
+	// The on-scene action: FUN_004bd980's service call. Returns true when the vehicle
+	// found something to do this attempt.
+	bool RunDispatchOnSceneAction(SimCopterDispatch::EService Service, FSimCopterDispatchVehicle& Vehicle);
+	// FUN_004bdc70: recall a vehicle to its station.
+	void RecallDispatchVehicle(FSimCopterDispatchVehicle& Vehicle);
+	// FUN_004bc660 + FUN_0049d5a0 + FUN_004a4340: free the station slot and despawn.
+	void ReleaseDispatchVehicle(SimCopterDispatch::EService Service, int32 SlotIndex);
+	bool TryGetDispatchVehicleTile(const FSimCopterDispatchVehicle& Vehicle, FIntPoint& OutTile) const;
+	ASimCopterMissionSystemActor* ResolveMissionSystem() const;
 };

@@ -176,6 +176,12 @@ private:
 	void DropCarriedMissionPerson();
 	void TryAutoEnterHelicopter();
 
+	// Board the nearest helicopter regardless of walking distance. Test scaffolding: a
+	// -game smoke test drives the shell through Slate, which never possesses the
+	// helicopter, so its keys and Exec commands stay unreachable without this.
+	UFUNCTION(Exec)
+	void SimBoardHelicopter();
+
 	void UpdateLookYaw(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateBodySprite(float DeltaSeconds);
