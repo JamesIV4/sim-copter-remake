@@ -109,18 +109,21 @@ struct FSimCopterDispatchVehicle
 	// +0x2ad: the give-up / stay timer, and +0x2a5: the gap between on-scene attempts.
 	float StayTimerSeconds = 0.0f;
 	float ActionTimerSeconds = 0.0f;
-	// Gap between water-jet droplets. The original sprayed one per game frame at its ~15fps
-	// pacing; spraying per rendered frame here would swamp the shared 70-slot trajectory pool
-	// (which the player's bucket and cannon also draw from) within a second.
+	// Gap to the next water-jet droplet. The original sprayed one per game frame; spraying per
+	// rendered frame here would swamp the shared 70-slot trajectory pool (which the player's
+	// bucket and cannon also draw from) within a second.
 	float JetTimerSeconds = 0.0f;
 	// Planned road-node route (the original walked FUN_004bef30's back-links instead).
 	TArray<int32> RouteNodes;
 	int32 RouteCursor = 0;
 	// Mission event the vehicle is working on, when it found one.
 	int32 TargetEventId = INDEX_NONE;
-	// Tile it is working on (a fire truck aims its jet here every frame; INDEX_NONE when
-	// it has nothing in range).
+	// Tile it is working on; INDEX_NONE when it has nothing in range.
 	FIntPoint TargetTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	// Where a fire truck's monitor is pointed (FUN_004b9b10's +0x2c0 aim). This is the flame's
+	// own position, not its tile centre - see FServiceFireTarget.
+	FVector TargetWorld = FVector::ZeroVector;
+	bool bHasJetTarget = false;
 	// True once the vehicle has acted at the scene at least once (original flag 0x08).
 	bool bActedAtScene = false;
 };

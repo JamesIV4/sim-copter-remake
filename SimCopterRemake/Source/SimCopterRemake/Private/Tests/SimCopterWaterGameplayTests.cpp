@@ -152,6 +152,151 @@ bool FSimCopterWaterDeterminismTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Regression: FUN_004a5ca0 substitutes the swept elevation into a *unit* aim vector
+// (FUN_004b9b10 normalises before storing it), so 4.0 of elevation against a horizontal
+// component of at most 1.0 throws the shot ~76 degrees up. Building the direction from the
+// raw target delta instead - hundreds of units of horizontal against the same 4.0 - flattens
+// the whole sweep into under a degree, which is a stream that dribbles onto the road.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterFireTruckJetSweepTest,
+	"SimCopter.Water.FireTruckJetSweep",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterFireTruckJetSweepTest::RunTest(const FString& Parameters)
+{
+	const FIntVector UnitAim = DirectionToFixed(FVector(1.0f, 0.0f, 0.0f));
+	const int32 Distance1616 = 200 * FixedOne;
+
+	FFireTruckJetSweep Sweep;
+	float MaxElevationDegrees = 0.0f;
+	float MinElevationDegrees = 90.0f;
+	int32 Reversals = 0;
+	int32 PreviousStep = Sweep.Step1616;
+
+	// A full sweep up and back: 4.0 / 0.1 is 40 shots each way.
+	for (int32 Shot = 0; Shot < 100; ++Shot)
+	{
+		const FFireTruckJetLaunch Launch = AdvanceFireTruckJet(
+			Sweep,
+			FireTruckBuildingElevationMax1616,
+			UnitAim,
+			Distance1616,
+			0);
+		if (Sweep.Step1616 != PreviousStep)
+		{
+			++Reversals;
+			PreviousStep = Sweep.Step1616;
+		}
+		const FVector Direction = DirectionToFloat(Launch.Direction1616);
+		const float Degrees = FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Direction.Z, -1.0f, 1.0f)));
+		MaxElevationDegrees = FMath::Max(MaxElevationDegrees, Degrees);
+		MinElevationDegrees = FMath::Min(MinElevationDegrees, Degrees);
+		TestTrue(TEXT("the shot always has forward reach"), Direction.X > 0.0f);
+	}
+
+	TestTrue(
+		*FString::Printf(TEXT("the sweep reaches a steep arc, got %.1f degrees"), MaxElevationDegrees),
+		MaxElevationDegrees > 70.0f);
+	TestTrue(
+		*FString::Printf(TEXT("the sweep also comes back down flat, got %.1f degrees"), MinElevationDegrees),
+		MinElevationDegrees < 10.0f);
+	TestTrue(TEXT("the sweep reverses at both ends"), Reversals >= 2);
+	TestEqual(TEXT("elevation stays inside the building bound"), Sweep.Elevation1616 <= FireTruckBuildingElevationMax1616, true);
+
+	// speed = rand() % 100 + distance / 2
+	FFireTruckJetSweep SpeedSweep;
+	const FFireTruckJetLaunch Rolled =
+		AdvanceFireTruckJet(SpeedSweep, FireTruckBuildingElevationMax1616, UnitAim, Distance1616, 37);
+	TestEqual(TEXT("speed rolls rand()%100 on top of half the range"),
+		Rolled.Speed1616,
+		37 * FixedOne + Distance1616 / 2);
+
+	// The tile-object variant tops out lower.
+	FFireTruckJetSweep ObjectSweep;
+	for (int32 Shot = 0; Shot < 60; ++Shot)
+	{
+		AdvanceFireTruckJet(ObjectSweep, FireTruckObjectElevationMax1616, UnitAim, Distance1616, 0);
+		TestTrue(
+			TEXT("object sweep never exceeds 3.0"),
+			ObjectSweep.Elevation1616 <= FireTruckObjectElevationMax1616);
+	}
+	return true;
+}
+
+// Regression: FUN_0048ed00's drag is a per-frame multiplier, so a droplet stepped once per
+// rendered frame loses reach as the frame rate climbs - the same shot that carries 2.2 tiles
+// on the original's clock carries 0.9 at 120fps, and a fire truck's water lands in the road
+// short of the building. The updater accumulates real time and spends it in whole
+// SimulationStep1616 steps; this checks that the path no longer depends on who is calling.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterWaterFixedStepTest,
+	"SimCopter.Water.FixedStepReach",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterWaterFixedStepTest::RunTest(const FString& Parameters)
+{
+	// Mirrors USimCopterParticleFXComponent::AdvanceWaterTrajectory's accumulator.
+	auto IntegrateAtFrameRate = [](const int32 FramesPerSecond, const int32 Seconds)
+	{
+		FWaterParticleMotion Motion;
+		Motion.Direction1616 = DirectionToFixed(FVector(0.707f, 0.0f, 0.707f));
+		Motion.Speed1616 = 150 * FixedOne;
+		Motion.Life1616 = InitialParticleLife1616;
+
+		FIntVector Travel = FIntVector::ZeroValue;
+		int32 Carry = 0;
+		const int32 FrameDelta = FixedOne / FramesPerSecond;
+		for (int32 Frame = 0; Frame < FramesPerSecond * Seconds; ++Frame)
+		{
+			Carry += FrameDelta;
+			while (Carry >= SimulationStep1616)
+			{
+				Carry -= SimulationStep1616;
+				const FWaterParticleFrame Step =
+					AdvanceParticleFrame(Motion, EWaterEmitter::Bucket, SimulationStep1616);
+				if (!Step.bAlive)
+				{
+					return Travel;
+				}
+				Travel += Step.Travel1616;
+			}
+		}
+		return Travel;
+	};
+
+	const FIntVector At30 = IntegrateAtFrameRate(30, 3);
+	const FIntVector At60 = IntegrateAtFrameRate(60, 3);
+	const FIntVector At120 = IntegrateAtFrameRate(120, 3);
+	TestTrue(TEXT("30fps and 60fps integrate the same path"), At30 == At60);
+	TestTrue(TEXT("60fps and 120fps integrate the same path"), At60 == At120);
+	TestTrue(TEXT("the shot actually carries downrange"), At60.X > 100 * FixedOne);
+
+	// And the defect it replaces: stepping on the rendered frame shortens the throw.
+	auto IntegratePerRenderedFrame = [](const int32 FramesPerSecond, const int32 Seconds)
+	{
+		FWaterParticleMotion Motion;
+		Motion.Direction1616 = DirectionToFixed(FVector(0.707f, 0.0f, 0.707f));
+		Motion.Speed1616 = 150 * FixedOne;
+		Motion.Life1616 = InitialParticleLife1616;
+
+		FIntVector Travel = FIntVector::ZeroValue;
+		const int32 FrameDelta = FixedOne / FramesPerSecond;
+		for (int32 Frame = 0; Frame < FramesPerSecond * Seconds; ++Frame)
+		{
+			const FWaterParticleFrame Step =
+				AdvanceParticleFrame(Motion, EWaterEmitter::Bucket, FrameDelta);
+			if (!Step.bAlive)
+			{
+				break;
+			}
+			Travel += Step.Travel1616;
+		}
+		return Travel;
+	};
+	TestTrue(
+		TEXT("per-rendered-frame stepping is what made reach frame-rate dependent"),
+		IntegratePerRenderedFrame(120, 3).X < IntegratePerRenderedFrame(30, 3).X);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterWaterTerrainAndRopeTest,
 	"SimCopter.Water.TerrainAndRopeConstants",

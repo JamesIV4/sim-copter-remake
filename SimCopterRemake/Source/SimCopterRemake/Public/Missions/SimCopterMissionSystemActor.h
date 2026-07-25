@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Flight/SimCopterWaterGameplay.h"
 #include "Input/Reply.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "SimCopterMissionSystemActor.generated.h"
@@ -141,19 +142,26 @@ public:
 	// emitter type 6 at it (the water then douses through the ordinary impact path), and
 	// its police car scans three rings for a target before acting.
 
-	// One fire-truck water burst: find the nearest active flame within RadiusTiles of
-	// FromTile (Chebyshev, matching the spiral's reach) and douse AT THAT FLAME'S OWN
-	// local offset. Returns the number of flames the burst reached, 0 when nothing is
-	// alight in range.
-	//
-	// The offset matters: IgniteBuilding puts a large building's flames up to +/-0x700000
-	// from the anchor cell's origin, while Fire Radius is only ~0x2beb99, so aiming at the
-	// cell origin (DouseAtTile) reaches nothing on any building bigger than 1x1.
-	int32 ApplyServiceFireSuppression(
+	// What a parked fire truck is currently hosing.
+	struct FServiceFireTarget
+	{
+		// Where the water has to land. This is the flame's OWN position, not its anchor
+		// cell's origin: IgniteBuilding puts a large building's flames up to +/-0x700000
+		// out from that origin while Fire Radius is only ~0x2beb99, so aiming at the cell
+		// centre reaches nothing on any building bigger than 1x1.
+		FVector World = FVector::ZeroVector;
+		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
+		int32 EventId = INDEX_NONE;
+	};
+
+	// SCHOOK: FireTruckAcquireTarget 0x004b9890 0x004b9b10
+	// Walk a RadiusTiles-ring spiral out from FromTile for something alight. Within a burning
+	// cell the original reservoir-samples that cell's flames, so which one gets hosed varies
+	// shot to shot; a burning vehicle on the tile wins outright. Nothing found -> false.
+	bool TryAcquireServiceFireTarget(
 		const FIntPoint& FromTile,
 		int32 RadiusTiles,
-		FIntPoint& OutFireTile,
-		int32& OutEventId);
+		FServiceFireTarget& OutTarget) const;
 
 	// Nearest active traffic-jam mission tile within RadiusTiles of FromTile.
 	bool TryFindNearestJamTile(const FIntPoint& FromTile, int32 RadiusTiles, FIntPoint& OutTile, int32& OutEventId) const;
@@ -164,13 +172,13 @@ public:
 	// Police clearing a jam they have driven to.
 	bool ClearTrafficJamEvent(int32 EventId);
 
-	// The fire truck's visible water jet: one droplet of emitter type 6, aimed from the
-	// truck's nozzle at the fire. Ported from FUN_004a5ca0 (building) / FUN_004a5dd0
-	// (object), which call FUN_0048e0b0(6, tile, nozzle, dir, ...) once per frame. The
-	// elevation of the jet sweeps up and down between shots so the stream plays over the
-	// fire rather than pointing at a single spot; that sweep state lives on this actor
-	// because the original keeps it in the DAT_00505f84/DAT_00505f88 globals.
-	void SpawnServiceWaterJet(const FVector& NozzleWorld, const FVector& TargetWorld);
+	// SCHOOK: FireTruckSpray 0x004a5ca0
+	// One shot from a fire truck's monitor: emitter type 6, launched from 30 units above the
+	// truck along the swept elevation. Nothing is extinguished here - the droplet douses where
+	// it lands, through the same impact path as the helicopter's water. The sweep state lives
+	// on this actor because the original keeps it in DAT_00505f84/DAT_00505f88, one pair shared
+	// by every truck.
+	void SpawnServiceWaterJet(const FVector& TruckWorld, const FVector& TargetWorld);
 
 	// Distinct anchor tiles that currently have at least one active flame, with that tile's
 	// flame count. Debug/diagnostic use - a dispatched fire truck's scan works in these
@@ -339,10 +347,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Fire", meta = (ClampMin = "50.0"))
 	float CarDouseRadiusCm = 600.0f;
 
-	// Fire-truck jet elevation sweep (original DAT_00505f84 / DAT_00505f88): the aim rises
-	// by the step each shot until it reaches 0x40000 (4.0 units), then falls back to 0.
-	int32 ServiceJetElevation1616 = 0;
-	int32 ServiceJetElevationStep1616 = 0x1999;
+	// Fire-truck jet elevation sweep (original DAT_00505f84 / DAT_00505f88): the aim rises by
+	// the step each shot until it reaches 4.0 units, then falls back to 0 - the stream arcs up
+	// over the fire and back down again about every five seconds.
+	SimCopterWaterGameplay::FFireTruckJetSweep ServiceJetSweep;
 	bool bLoggedServiceJetSpawnFailure = false;
 
 	// Decoded samples and format for one runtime voice clip.

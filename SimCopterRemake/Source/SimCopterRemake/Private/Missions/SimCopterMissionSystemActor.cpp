@@ -1536,20 +1536,25 @@ bool IsWithinSpiralRings(const FIntPoint& A, const FIntPoint& B, int32 Rings)
 }
 }
 
-int32 ASimCopterMissionSystemActor::ApplyServiceFireSuppression(
+// SCHOOK: FireTruckAcquireTarget 0x004b9890 0x004b9b10
+bool ASimCopterMissionSystemActor::TryAcquireServiceFireTarget(
 	const FIntPoint& FromTile,
-	int32 RadiusTiles,
-	FIntPoint& OutFireTile,
-	int32& OutEventId)
+	const int32 RadiusTiles,
+	FServiceFireTarget& OutTarget) const
 {
-	OutEventId = INDEX_NONE;
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
 
-	// Pick the nearest flame by its anchor tile, but remember its local offset - that is
-	// where the water has to land. A 3x3 building's flames sit 0x400000..0x500000 out from
-	// the anchor origin, five times Fire Radius, so a cell-origin impact misses them all.
+	// FUN_004b9890 walks FUN_004beda0's square spiral outward and stops at the first thing it
+	// finds, so nearer fires win by construction rather than by comparing distances.
+	bool bFound = false;
 	int32 BestCost = TNumericLimits<int32>::Max();
-	int32 BestLocalX = 0;
-	int32 BestLocalZ = 0;
+	const SimCopterMissions::FSimCopterFlame* Chosen = nullptr;
+	int32 SeenInCell = 0;
+
 	for (const SimCopterMissions::FSimCopterFlame& Flame : MissionSystem.GetFlames())
 	{
 		if (!Flame.bActive)
@@ -1565,21 +1570,66 @@ int32 ASimCopterMissionSystemActor::ApplyServiceFireSuppression(
 		if (Cost < BestCost)
 		{
 			BestCost = Cost;
-			OutFireTile = FlameTile;
-			OutEventId = Flame.EventId;
-			BestLocalX = Flame.PosX;
-			BestLocalZ = Flame.PosZ;
+			Chosen = &Flame;
+			SeenInCell = 1;
+			bFound = true;
+		}
+		else if (Cost == BestCost)
+		{
+			// Reservoir sample among the flames the spiral reaches at the same distance, so a
+			// multi-flame building gets hosed all over instead of on one corner.
+			++SeenInCell;
+			if (FMath::RandRange(0, SeenInCell - 1) == 0)
+			{
+				Chosen = &Flame;
+			}
 		}
 	}
 
-	if (BestCost == TNumericLimits<int32>::Max())
+	// A burning vehicle on a tile the spiral reaches is taken outright: FUN_004b9890 returns on
+	// the first tile object flagged 0x1000, ahead of any flame it was still sampling.
+	TArray<FSimCopterBurningVehicle> BurningVehicles;
+	TrafficSystem->GetBurningVehicles(BurningVehicles);
+	for (const FSimCopterBurningVehicle& Vehicle : BurningVehicles)
 	{
-		return 0;
+		int32 VehicleTileX = INDEX_NONE;
+		int32 VehicleTileY = INDEX_NONE;
+		if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Vehicle.World, VehicleTileX, VehicleTileY))
+		{
+			continue;
+		}
+		const FIntPoint VehicleTile(VehicleTileX, VehicleTileY);
+		if (!IsWithinSpiralRings(FromTile, VehicleTile, RadiusTiles))
+		{
+			continue;
+		}
+		const int32 Cost = SimCopterDispatch::TileCost(FromTile, VehicleTile);
+		if (!bFound || Cost <= BestCost)
+		{
+			OutTarget.World = Vehicle.World;
+			OutTarget.Tile = VehicleTile;
+			OutTarget.EventId = Vehicle.EventId;
+			return true;
+		}
 	}
 
-	// Full-strength hit, matching the original's water particle at the top of its life.
-	// The burst also catches any other flame within Fire Radius of the one aimed at.
-	return MissionSystem.DouseAtLocalOffset(OutFireTile.X, OutFireTile.Y, BestLocalX, BestLocalZ, 0x10000);
+	if (!bFound || Chosen == nullptr)
+	{
+		return false;
+	}
+
+	FVector TileCenter = FVector::ZeroVector;
+	if (!TrafficSystem->TryGetTileCenterWorldLocation(Chosen->TileX, Chosen->TileY, TileCenter))
+	{
+		return false;
+	}
+
+	// FUN_004b9b10 aims at the cell origin plus the flame's own offset, height included.
+	OutTarget.World =
+		TileCenter + TrafficSystem->ConvertOriginalOffsetToWorld(Chosen->PosX, Chosen->PosY, Chosen->PosZ);
+	OutTarget.Tile = FIntPoint(Chosen->TileX, Chosen->TileY);
+	OutTarget.EventId = Chosen->EventId;
+	return true;
 }
 
 bool ASimCopterMissionSystemActor::TryFindNearestJamTile(
@@ -1667,7 +1717,8 @@ void ASimCopterMissionSystemActor::GetActiveFlameTiles(TArray<TPair<FIntPoint, i
 	}
 }
 
-void ASimCopterMissionSystemActor::SpawnServiceWaterJet(const FVector& NozzleWorld, const FVector& TargetWorld)
+// SCHOOK: FireTruckSpray 0x004a5ca0
+void ASimCopterMissionSystemActor::SpawnServiceWaterJet(const FVector& TruckWorld, const FVector& TargetWorld)
 {
 	if (FireSmokeComponent == nullptr)
 	{
@@ -1681,35 +1732,39 @@ void ASimCopterMissionSystemActor::SpawnServiceWaterJet(const FVector& NozzleWor
 		return;
 	}
 
-	// FUN_004a5ca0: advance the shared elevation, reversing at 0 and 0x40000 (4.0 units).
-	// The original's building variant clamps at 0x40000 and the object variant at 0x30000;
-	// the building bound is used here because a dispatched truck is aimed at a structure.
-	constexpr int32 MaxElevation1616 = 0x40000;
-	ServiceJetElevation1616 += ServiceJetElevationStep1616;
-	if (ServiceJetElevation1616 > MaxElevation1616)
-	{
-		ServiceJetElevation1616 = MaxElevation1616;
-		ServiceJetElevationStep1616 = -0x1999;
-	}
-	else if (ServiceJetElevation1616 < 0)
-	{
-		ServiceJetElevation1616 = 0;
-		ServiceJetElevationStep1616 = 0x1999;
-	}
-
-	// The original builds {deltaX, elevation, deltaZ} and normalises, so the sweep is a
-	// small vertical term against the full horizontal reach - a shallow, wandering arc.
-	const FVector Delta = TargetWorld - NozzleWorld;
-	const float ElevationCm = (static_cast<float>(ServiceJetElevation1616) / 65536.0f) * CmPerUnit;
-	FVector Direction(Delta.X, Delta.Y, ElevationCm);
-	if (!Direction.Normalize())
+	// FUN_004b9b10 leaves a unit vector aiming at the flame and the range alongside it.
+	const FVector Delta = TargetWorld - TruckWorld;
+	const float DistanceUnits = Delta.Size() / CmPerUnit;
+	const FVector UnitAim = Delta.GetSafeNormal();
+	if (UnitAim.IsNearlyZero())
 	{
 		return;
 	}
 
-	// speed = rand() % 100 + distance / 2, in original units per second.
-	const float DistanceUnits = Delta.Size() / CmPerUnit;
-	const float SpeedUnitsPerSecond = static_cast<float>(FMath::RandRange(0, 99)) + DistanceUnits * 0.5f;
+	// FUN_004a5ca0 substitutes the swept elevation for that aim's vertical component. The
+	// horizontal pair it keeps belongs to a unit vector, so an elevation of up to 4.0 throws the
+	// shot as steep as ~76 degrees: the sweep is what makes the stream arc over the fire.
+	const SimCopterWaterGameplay::FFireTruckJetLaunch Launch =
+		SimCopterWaterGameplay::AdvanceFireTruckJet(
+			ServiceJetSweep,
+			SimCopterWaterGameplay::FireTruckBuildingElevationMax1616,
+			SimCopterWaterGameplay::DirectionToFixed(UnitAim),
+			FMath::RoundToInt(DistanceUnits * 65536.0f),
+			FMath::RandRange(0, 99));
+
+	const FVector Direction = SimCopterWaterGameplay::DirectionToFloat(Launch.Direction1616);
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+	const float SpeedUnitsPerSecond = static_cast<float>(Launch.Speed1616) / 65536.0f;
+
+	// The nozzle sits 30 units above the truck (FUN_004a5ca0 lifts only the spawn point; the
+	// aim is measured from the truck itself).
+	const FVector NozzleWorld =
+		TruckWorld +
+		FVector::UpVector *
+			(static_cast<float>(SimCopterWaterGameplay::FireTruckNozzleLift1616) / 65536.0f * CmPerUnit);
 
 	const bool bSpawned = FireSmokeComponent->SpawnEffect(
 		ESimCopterEffectType::BucketDrip,
