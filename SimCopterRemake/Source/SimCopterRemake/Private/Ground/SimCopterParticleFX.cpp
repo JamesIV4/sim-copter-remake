@@ -735,6 +735,22 @@ void USimCopterParticleFXComponent::AdvanceWaterTrajectory(
 	FSimCopterEffectSlot& Slot,
 	const int32 Delta1616)
 {
+	// FUN_0048ed00 multiplies the speed by a fixed drag factor once per game frame, so how far a
+	// droplet carries depends on how many frames it lives - not on how much time it lives. Run
+	// the water on the original's own clock instead of the rendered frame; otherwise a fire
+	// truck's reach shrinks as the frame rate rises and the jet falls short of the fire.
+	Slot.StepCarry1616 += Delta1616;
+	while (Slot.bActive && Slot.StepCarry1616 >= SimCopterWaterGameplay::SimulationStep1616)
+	{
+		Slot.StepCarry1616 -= SimCopterWaterGameplay::SimulationStep1616;
+		AdvanceWaterTrajectoryStep(Slot, SimCopterWaterGameplay::SimulationStep1616);
+	}
+}
+
+void USimCopterParticleFXComponent::AdvanceWaterTrajectoryStep(
+	FSimCopterEffectSlot& Slot,
+	const int32 Delta1616)
+{
 	const SimCopterWaterGameplay::EWaterEmitter Emitter =
 		Slot.Type == ESimCopterEffectType::Spray
 			? SimCopterWaterGameplay::EWaterEmitter::Cannon

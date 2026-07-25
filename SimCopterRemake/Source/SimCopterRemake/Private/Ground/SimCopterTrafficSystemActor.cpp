@@ -2292,69 +2292,49 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 	}
 
 	ASimCopterMissionSystemActor* Missions = ResolveMissionSystem();
-	ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
 
 	switch (Service)
 	{
 	case SimCopterDispatch::EService::FireTruck:
 	{
-		// FUN_004b9890 scans five rings for a burning cell, then FUN_004a5ca0/FUN_004a5dd0
-		// spray emitter type 6 at it once per frame; the water does the dousing through the
-		// ordinary impact path. The remake applies that impact directly - the emitter and
-		// its arc belong to the effect layer, not to the dispatch behaviour.
-		bool bActed = false;
-		if (Missions != nullptr)
+		// FUN_004b9890 scans five rings for something alight and FUN_004b9b10 stores the aim;
+		// FUN_004b9790 then sprays emitter type 6 at it every frame. The truck itself never
+		// extinguishes anything - each droplet douses where it lands, through the same impact
+		// path (FUN_004a50c0) the helicopter's water uses. So "acted" here means "has a
+		// target", not "put a fire out".
+		if (Missions == nullptr)
 		{
-			FIntPoint FireTile;
-			int32 EventId = INDEX_NONE;
-			const int32 FlamesHit = Missions->ApplyServiceFireSuppression(
-				Tile,
-				SimCopterDispatch::FireTargetScanRadius,
-				FireTile,
-				EventId);
-			if (EventId != INDEX_NONE)
-			{
-				Vehicle.TargetEventId = EventId;
-				Vehicle.TargetTile = FireTile;
-				bActed = FlamesHit > 0;
-				UE_LOG(
-					LogSimCopterTrafficSystem,
-					Verbose,
-					TEXT("Dispatch: fire truck at (%d,%d) sprayed fire at (%d,%d), %d flame(s) hit."),
-					Tile.X,
-					Tile.Y,
-					FireTile.X,
-					FireTile.Y,
-					FlamesHit);
-			}
-			else
-			{
-				// Nothing in range: stop aiming the jet.
-				Vehicle.TargetTile = FIntPoint(INDEX_NONE, INDEX_NONE);
-				UE_LOG(
-					LogSimCopterTrafficSystem,
-					Verbose,
-					TEXT("Dispatch: fire truck at (%d,%d) found no flame within %d tiles."),
-					Tile.X,
-					Tile.Y,
-					SimCopterDispatch::FireTargetScanRadius);
-			}
+			return false;
 		}
 
-		// Burning cars are the fire truck's other target (the original finds them as tile
-		// objects flagged 0x1000 in the same spiral).
-		if (Agent != nullptr)
+		ASimCopterMissionSystemActor::FServiceFireTarget Target;
+		if (!Missions->TryAcquireServiceFireTarget(Tile, SimCopterDispatch::FireTargetScanRadius, Target))
 		{
-			TArray<int32> Extinguished;
-			const float RadiusCm = SimCopterDispatch::FireTargetScanRadius * ActiveTileSize;
-			DouseBurningVehiclesNear(Agent->GetActorLocation(), RadiusCm, Extinguished);
-			if (Extinguished.Num() > 0)
-			{
-				bActed = true;
-				Vehicle.TargetEventId = Extinguished[0];
-			}
+			Vehicle.bHasJetTarget = false;
+			Vehicle.TargetTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+			UE_LOG(
+				LogSimCopterTrafficSystem,
+				Verbose,
+				TEXT("Dispatch: fire truck at (%d,%d) found nothing alight within %d tiles."),
+				Tile.X,
+				Tile.Y,
+				SimCopterDispatch::FireTargetScanRadius);
+			return false;
 		}
-		return bActed;
+
+		Vehicle.bHasJetTarget = true;
+		Vehicle.TargetWorld = Target.World;
+		Vehicle.TargetTile = Target.Tile;
+		Vehicle.TargetEventId = Target.EventId;
+		UE_LOG(
+			LogSimCopterTrafficSystem,
+			Verbose,
+			TEXT("Dispatch: fire truck at (%d,%d) is hosing the fire at (%d,%d)."),
+			Tile.X,
+			Tile.Y,
+			Target.Tile.X,
+			Target.Tile.Y);
+		return true;
 	}
 
 	case SimCopterDispatch::EService::Police:
@@ -2493,30 +2473,29 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 		Vehicle.StayTimerSeconds -= DeltaSeconds;
 		Vehicle.ActionTimerSeconds -= DeltaSeconds;
 
-		// The original fire truck sprays every frame it has a target (FUN_004b9790) while
-		// the water's effect is applied by the droplets that land. Here the douse runs on
-		// the action timer below, so the jet is purely the visible half - but it is aimed
-		// with the same sweep and only while a fire really is in range.
+		// FUN_004b9790 sprays every frame it holds a target and only re-runs the five-ring
+		// search when FUN_004a5ca0 says so - which it does on a 1-in-8 roll, or at once when
+		// the flame it was aimed at has gone out. Nothing is extinguished here: the droplets
+		// do that where they land.
 		Vehicle.JetTimerSeconds -= DeltaSeconds;
 		if (Service == SimCopterDispatch::EService::FireTruck
-			&& Vehicle.TargetTile.X >= 0
+			&& Vehicle.bHasJetTarget
 			&& Vehicle.JetTimerSeconds <= 0.0f
 			&& Vehicle.Agent.IsValid())
 		{
-			// ~15 droplets a second: the original's per-frame rate at its own pacing, and
-			// slow enough to leave the shared trajectory pool room for the player's water.
-			Vehicle.JetTimerSeconds = 1.0f / 15.0f;
+			// One droplet per game frame. Emitting per rendered frame instead would swamp the
+			// 70-slot trajectory pool the player's bucket and cannon share.
+			Vehicle.JetTimerSeconds = SimCopterDispatch::JetShotIntervalSeconds;
 
-			FVector FireWorld = FVector::ZeroVector;
-			if (TryGetTileCenterWorldLocation(Vehicle.TargetTile.X, Vehicle.TargetTile.Y, FireWorld))
+			if (ASimCopterMissionSystemActor* JetMissions = ResolveMissionSystem())
 			{
-				if (ASimCopterMissionSystemActor* JetMissions = ResolveMissionSystem())
-				{
-					// FUN_004a5ca0 lifts the nozzle 0x1e0000 (30.0 units) above the truck.
-					const float NozzleUpCm = 30.0f * GetPeopleWorldCmPerOriginalUnit();
-					const FVector Nozzle = Vehicle.Agent->GetActorLocation() + FVector::UpVector * NozzleUpCm;
-					JetMissions->SpawnServiceWaterJet(Nozzle, FireWorld);
-				}
+				JetMissions->SpawnServiceWaterJet(Vehicle.Agent->GetActorLocation(), Vehicle.TargetWorld);
+			}
+			if (FMath::Rand() % 8 == 0)
+			{
+				// Re-acquire on the next update, so the truck follows a fire as it spreads
+				// and moves on once the one it was hosing is out.
+				Vehicle.ActionTimerSeconds = 0.0f;
 			}
 		}
 		if (Vehicle.ActionTimerSeconds <= 0.0f)
@@ -2527,7 +2506,7 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 				Vehicle.bActedAtScene = true;
 				// FUN_004b9e40 holds for 0x780000 after a successful action.
 				Vehicle.ActionTimerSeconds = (Service == SimCopterDispatch::EService::FireTruck)
-					? 0.5f
+					? SimCopterDispatch::JetRetargetSeconds
 					: SimCopterDispatch::OnSceneHoldSeconds;
 			}
 			else
@@ -2539,7 +2518,7 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 				// building that was already burning - instead of idling for half a minute.
 				// Police and ambulances deploy their crew once, so they keep the long gap.
 				Vehicle.ActionTimerSeconds = (Service == SimCopterDispatch::EService::FireTruck)
-					? 0.5f
+					? SimCopterDispatch::JetRetargetSeconds
 					: SimCopterDispatch::OnSceneRetrySeconds;
 			}
 		}

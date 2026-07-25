@@ -25,6 +25,21 @@ namespace SimCopterWaterGameplay
 	static constexpr int32 RopeStowedFirstActiveNode = 17;
 	static constexpr int32 RopeSegmentLength1616 = 0x40000;
 
+	// Fire-truck water monitor (FUN_004a5ca0 building / FUN_004a5dd0 tile object).
+	static constexpr int32 FireTruckNozzleLift1616 = 0x1e0000;          // 30.0 units above the truck
+	static constexpr int32 FireTruckElevationStep1616 = 0x1999;         // ~0.1 units per shot
+	static constexpr int32 FireTruckBuildingElevationMax1616 = 0x40000; // 4.0 units
+	static constexpr int32 FireTruckObjectElevationMax1616 = 0x30000;   // 3.0 units
+	static constexpr int32 FireTruckRetargetMask = 7;                   // rand() & 7 -> 1-in-8
+
+	// The drag term in FUN_0048ed00 is a per-frame multiplier rather than a per-second rate, so
+	// a droplet's flight only reproduces the original when the update runs on a fixed cadence.
+	// Stepping on the rendered frame instead ties reach to the frame rate: the shot that carries
+	// 2.2 tiles here carries 0.9 at 120fps. 0xccc is the only frame delta the executable spells
+	// out - FUN_0049b930 and FUN_0049be50 substitute it for the measured delta - so the port
+	// steps water on that clock.
+	static constexpr int32 SimulationStep1616 = 0xccc;                  // 0.05 s
+
 	enum class EWaterEmitter : uint8
 	{
 		Cannon,
@@ -52,6 +67,21 @@ namespace SimCopterWaterGameplay
 		uint8 SoundId = 0;
 	};
 
+	// The sweeping elevation a fire truck's monitor holds between shots (DAT_00505f84 and its
+	// step DAT_00505f88). One state is shared by every truck in the original.
+	struct SIMCOPTERREMAKE_API FFireTruckJetSweep
+	{
+		int32 Elevation1616 = 0;
+		int32 Step1616 = FireTruckElevationStep1616;
+	};
+
+	struct SIMCOPTERREMAKE_API FFireTruckJetLaunch
+	{
+		FIntVector Direction1616 = FIntVector::ZeroValue;
+		int32 Speed1616 = 0;
+		int32 Elevation1616 = 0;
+	};
+
 	SIMCOPTERREMAKE_API int32 FixedMul(int32 A, int32 B);
 	SIMCOPTERREMAKE_API int32 FixedDiv(int32 Numerator, int32 Denominator);
 	SIMCOPTERREMAKE_API FIntVector Normalize1616(const FIntVector& Value, int32& OutLength1616);
@@ -69,6 +99,18 @@ namespace SimCopterWaterGameplay
 		EWaterEmitter Emitter,
 		int32 RemainingLife1616,
 		bool bLandedInWater);
+
+	// SCHOOK: FireTruckSpray 0x004a5ca0
+	// FUN_004b9b10 leaves a *unit* vector aiming at the flame; FUN_004a5ca0 then replaces its
+	// vertical component with the swept elevation and renormalises. Because the horizontal
+	// components are those of a unit vector, an elevation of up to 4.0 tilts the shot as far as
+	// ~76 degrees - the sweep is the arc, not a small perturbation of a flat aim.
+	SIMCOPTERREMAKE_API FFireTruckJetLaunch AdvanceFireTruckJet(
+		FFireTruckJetSweep& InOutSweep,
+		int32 ElevationMax1616,
+		const FIntVector& UnitAim1616,
+		int32 Distance1616,
+		int32 SpeedRoll);
 
 	SIMCOPTERREMAKE_API bool IsWaterTerrainClass(uint8 TerrainClass);
 

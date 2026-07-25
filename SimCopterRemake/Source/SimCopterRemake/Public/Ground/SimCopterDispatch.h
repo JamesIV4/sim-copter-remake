@@ -133,6 +133,15 @@ constexpr float OnSceneStaySeconds = 180.0f;
 constexpr float OnSceneHoldSeconds = 120.0f;
 constexpr float OnSceneRetrySeconds = 30.0f;
 
+// FUN_004b9790 fires one droplet per game frame and re-runs FUN_004b9890's search on
+// FUN_004a5ca0's 1-in-8 roll. Both are frame-paced in the original; here they run on the
+// same clock the water itself is stepped on (SimCopterWaterGameplay::SimulationStep1616),
+// so the truck neither starves nor floods the 70-slot trajectory pool at any frame rate.
+constexpr float JetShotIntervalSeconds = 0.05f;
+// Ceiling on how long a parked truck can go without re-scanning. The 1-in-8 roll normally
+// retargets far sooner; this only matters while the truck has no target at all.
+constexpr float JetRetargetSeconds = 0.5f;
+
 // ---------------------------------------------------------------------------
 // Station registry (FUN_004bcc80 / FUN_004bc110)
 // ---------------------------------------------------------------------------

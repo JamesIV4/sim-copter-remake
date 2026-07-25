@@ -109,6 +109,40 @@ namespace SimCopterWaterGameplay
 		return Result;
 	}
 
+	FFireTruckJetLaunch AdvanceFireTruckJet(
+		FFireTruckJetSweep& InOutSweep,
+		const int32 ElevationMax1616,
+		const FIntVector& UnitAim1616,
+		const int32 Distance1616,
+		const int32 SpeedRoll)
+	{
+		InOutSweep.Elevation1616 += InOutSweep.Step1616;
+		if (InOutSweep.Elevation1616 > ElevationMax1616)
+		{
+			InOutSweep.Elevation1616 = ElevationMax1616;
+			InOutSweep.Step1616 = -FireTruckElevationStep1616;
+		}
+		else if (InOutSweep.Elevation1616 < 0)
+		{
+			InOutSweep.Elevation1616 = 0;
+			InOutSweep.Step1616 = FireTruckElevationStep1616;
+		}
+
+		FFireTruckJetLaunch Result;
+		Result.Elevation1616 = InOutSweep.Elevation1616;
+
+		// The original keeps the aim's X and Z (its horizontal pair) and overwrites Y, which is
+		// its up axis. Unreal's up axis is Z, so the vertical component swaps places.
+		int32 Length1616 = 0;
+		Result.Direction1616 = Normalize1616(
+			FIntVector(UnitAim1616.X, UnitAim1616.Y, InOutSweep.Elevation1616),
+			Length1616);
+
+		// (rand() % 100) * 0x10000 + distance / 2
+		Result.Speed1616 = SpeedRoll * FixedOne + Distance1616 / 2;
+		return Result;
+	}
+
 	bool IsWaterTerrainClass(const uint8 TerrainClass)
 	{
 		return TerrainClass < 10;

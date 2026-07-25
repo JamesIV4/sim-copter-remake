@@ -277,11 +277,10 @@ bool FSimCopterMissionSystemFootprintFireDouseTest::RunTest(const FString& Param
 	return true;
 }
 
-// Regression: an emergency-service water burst must aim at the flame's own local offset,
-// not at the anchor cell's origin. IgniteBuilding puts a multi-tile building's flames far
-// outside Fire Radius of that origin, so a cell-origin douse silently reaches nothing -
-// which is what left dispatched fire trucks parked next to a burning building doing
-// nothing.
+// Regression: water has to land on a flame's own local offset to hurt it, not on the anchor
+// cell's origin. IgniteBuilding puts a multi-tile building's flames far outside Fire Radius
+// of that origin, so a cell-origin douse silently reaches nothing - which is why a fire truck
+// aims at the flame position FUN_004b9b10 computes rather than at the tile centre.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterMissionSystemServiceFireSuppressionTest,
 	"SimCopter.Missions.ServiceFireSuppressionUsesFlameOffset",

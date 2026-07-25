@@ -61,6 +61,8 @@ struct FSimCopterEffectSlot
 	int32 Life1616 = 0;
 	int32 SpawnTimer1616 = 0;
 	int32 MotionScale1616 = 0;
+	// Unspent time carried into the next fixed water step (see SimulationStep1616).
+	int32 StepCarry1616 = 0;
 	float SizeCm = 0.0f;
 	uint8 PaletteIndex = 0;
 	uint8 PointPaletteIndices[4] = { 0, 0, 0, 0 };
@@ -171,6 +173,7 @@ private:
 		const FVector& VelocityCmPerSec, float SizeCm, const FIntPoint& Cell);
 	void UpdateSlots(float DeltaTime);
 	void AdvanceWaterTrajectory(FSimCopterEffectSlot& Slot, int32 Delta1616);
+	void AdvanceWaterTrajectoryStep(FSimCopterEffectSlot& Slot, int32 Step1616);
 	bool FindWaterTrajectoryImpact(
 		const FVector& Start,
 		const FVector& End,
