@@ -10,9 +10,14 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Engine/Texture2D.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Formats/MaxisMeshReader.h"
+#include "Formats/MaxisTextureReader.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "GameFramework/Pawn.h"
+#include "Ground/SimCopterPopulationSprite.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerController.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -39,152 +44,99 @@ const FLinearColor FloorColor(0.22f, 0.22f, 0.23f, 1.0f);
 constexpr const TCHAR* VertexColorMaterialPath =
 	TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor");
 
-// One quad, wound both ways: the player walks inside the shell, so every face has to be visible
-// from both sides. (SimCopterPopulationBody's box builder does the same for the same reason.)
-void AppendQuad(
-	const FVector& A,
-	const FVector& B,
-	const FVector& C,
-	const FVector& D,
-	const FLinearColor& Color,
-	TArray<FVector>& Vertices,
-	TArray<int32>& Triangles,
-	TArray<FVector>& Normals,
-	TArray<FVector2D>& UVs,
-	TArray<FLinearColor>& VertexColors,
-	TArray<FProcMeshTangent>& Tangents)
+// The same lit-texture material the city builder skins its runtime-textured meshes with; its one
+// texture parameter is named "Texture".
+constexpr const TCHAR* TexturedMaterialPath =
+	TEXT("/Game/Materials/M_SimCopterLitTexture.M_SimCopterLitTexture");
+
+// One mesh section's worth of geometry. The shell is split by surface - walls, roof, floor and
+// the painted trim - because each takes a different atlas cell (or none at all).
+struct FShellSection
 {
-	const FVector Normal = FVector::CrossProduct(B - A, D - A).GetSafeNormal();
-	const FVector Tangent = (B - A).GetSafeNormal();
+	TArray<FVector> Vertices;
+	TArray<int32> Triangles;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UVs;
+	TArray<FLinearColor> VertexColors;
+	TArray<FProcMeshTangent> Tangents;
 
-	const int32 Base = Vertices.Num();
-	Vertices.Add(A);
-	Vertices.Add(B);
-	Vertices.Add(C);
-	Vertices.Add(D);
+	bool IsEmpty() const { return Triangles.Num() == 0; }
 
-	const FVector2D CornerUVs[4] = { FVector2D(0, 0), FVector2D(1, 0), FVector2D(1, 1), FVector2D(0, 1) };
-	for (int32 Corner = 0; Corner < 4; ++Corner)
+	// One quad, wound both ways: the player walks inside the shell, so every face has to be
+	// visible from both sides. (SimCopterPopulationBody's box builder does the same for the same
+	// reason.) UVs are given per corner so a wall can tile along its length and stretch over its
+	// height without a second mapping pass.
+	void AddQuad(
+		const FVector& A, const FVector2D& UVA,
+		const FVector& B, const FVector2D& UVB,
+		const FVector& C, const FVector2D& UVC,
+		const FVector& D, const FVector2D& UVD,
+		const FLinearColor& Color)
 	{
-		Normals.Add(Normal);
-		UVs.Add(CornerUVs[Corner]);
-		VertexColors.Add(Color);
-		Tangents.Add(FProcMeshTangent(Tangent, false));
+		const FVector Normal = FVector::CrossProduct(B - A, D - A).GetSafeNormal();
+		const FVector Tangent = (B - A).GetSafeNormal();
+
+		const int32 Base = Vertices.Num();
+		Vertices.Append({ A, B, C, D });
+		UVs.Append({ UVA, UVB, UVC, UVD });
+		for (int32 Corner = 0; Corner < 4; ++Corner)
+		{
+			Normals.Add(Normal);
+			VertexColors.Add(Color);
+			Tangents.Add(FProcMeshTangent(Tangent, false));
+		}
+
+		Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
+		Triangles.Append({ Base, Base + 2, Base + 1, Base, Base + 3, Base + 2 });
 	}
 
-	Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
-	Triangles.Append({ Base, Base + 2, Base + 1, Base, Base + 3, Base + 2 });
-}
-
-void AppendTriangle(
-	const FVector& A,
-	const FVector& B,
-	const FVector& C,
-	const FLinearColor& Color,
-	TArray<FVector>& Vertices,
-	TArray<int32>& Triangles,
-	TArray<FVector>& Normals,
-	TArray<FVector2D>& UVs,
-	TArray<FLinearColor>& VertexColors,
-	TArray<FProcMeshTangent>& Tangents)
-{
-	const FVector Normal = FVector::CrossProduct(B - A, C - A).GetSafeNormal();
-	const FVector Tangent = (B - A).GetSafeNormal();
-
-	const int32 Base = Vertices.Num();
-	Vertices.Add(A);
-	Vertices.Add(B);
-	Vertices.Add(C);
-
-	const FVector2D CornerUVs[3] = { FVector2D(0, 0), FVector2D(1, 0), FVector2D(0.5f, 1) };
-	for (int32 Corner = 0; Corner < 3; ++Corner)
+	void AddTriangle(
+		const FVector& A, const FVector2D& UVA,
+		const FVector& B, const FVector2D& UVB,
+		const FVector& C, const FVector2D& UVC,
+		const FLinearColor& Color)
 	{
-		Normals.Add(Normal);
-		UVs.Add(CornerUVs[Corner]);
-		VertexColors.Add(Color);
-		Tangents.Add(FProcMeshTangent(Tangent, false));
-	}
+		const FVector Normal = FVector::CrossProduct(B - A, C - A).GetSafeNormal();
+		const FVector Tangent = (B - A).GetSafeNormal();
 
-	Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 1 });
-}
+		const int32 Base = Vertices.Num();
+		Vertices.Append({ A, B, C });
+		UVs.Append({ UVA, UVB, UVC });
+		for (int32 Corner = 0; Corner < 3; ++Corner)
+		{
+			Normals.Add(Normal);
+			VertexColors.Add(Color);
+			Tangents.Add(FProcMeshTangent(Tangent, false));
+		}
+
+		Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 1 });
+	}
+};
 }
 
 namespace SimCopterHangarPlacement
 {
-FVector2D GetSideAnchorTile(const FIntPoint& AirportOrigin, const ESide Side)
+FIntPoint GetPlotOriginTile(const FIntPoint& AirportOrigin)
 {
-	// The block covers tile offsets 0..3 from its origin, so its outer edge is at -0.5 and 3.5
-	// and its centre at 1.5.
-	constexpr float BlockCentre = (SimCopterAirport::BlockSpan - 1) * 0.5f;
-	constexpr float NearEdge = -0.5f - StandoffTiles;
-	constexpr float FarEdge = (SimCopterAirport::BlockSpan - 1) + 0.5f + StandoffTiles;
-
-	FVector2D Offset(BlockCentre, BlockCentre);
-	switch (Side)
-	{
-	case ESide::North: Offset.Y = NearEdge; break;
-	case ESide::South: Offset.Y = FarEdge; break;
-	case ESide::West:  Offset.X = NearEdge; break;
-	case ESide::East:  Offset.X = FarEdge; break;
-	default: break;
-	}
-
-	return FVector2D(AirportOrigin.X + Offset.X, AirportOrigin.Y + Offset.Y);
+	return SimCopterAirport::GetTerminalTile(AirportOrigin);
 }
 
-ESide GetNearestSide(const FIntPoint& AirportOrigin, const FVector2D& TargetTile)
+FVector2D GetPlotCentreTile(const FIntPoint& AirportOrigin)
 {
-	constexpr float BlockCentre = (SimCopterAirport::BlockSpan - 1) * 0.5f;
-	const FVector2D Delta(
-		TargetTile.X - (AirportOrigin.X + BlockCentre),
-		TargetTile.Y - (AirportOrigin.Y + BlockCentre));
-
-	// A point inside the block resolves to whichever edge it is closest to leaving through.
-	if (FMath::Abs(Delta.X) >= FMath::Abs(Delta.Y))
-	{
-		return Delta.X >= 0.0f ? ESide::East : ESide::West;
-	}
-	return Delta.Y >= 0.0f ? ESide::South : ESide::North;
+	// The 2x2 spans tile offsets 1 and 2, so its centre in tile-centre coordinates is +1.5.
+	const FIntPoint PlotOrigin = GetPlotOriginTile(AirportOrigin);
+	return FVector2D(PlotOrigin.X + 0.5f, PlotOrigin.Y + 0.5f);
 }
 
-void GetSidesByDistance(const FIntPoint& AirportOrigin, const FVector2D& TargetTile, TArray<ESide>& OutSides)
-{
-	OutSides.Reset();
-	for (int32 Index = 0; Index < static_cast<int32>(ESide::Count); ++Index)
-	{
-		OutSides.Add(static_cast<ESide>(Index));
-	}
-
-	OutSides.Sort([&AirportOrigin, &TargetTile](const ESide Left, const ESide Right)
-	{
-		const double LeftDistance = (GetSideAnchorTile(AirportOrigin, Left) - TargetTile).SizeSquared();
-		const double RightDistance = (GetSideAnchorTile(AirportOrigin, Right) - TargetTile).SizeSquared();
-		return LeftDistance < RightDistance;
-	});
-}
-
-void GetFootprintTiles(const FVector2D& AnchorTile, TArray<FIntPoint>& OutTiles)
+void GetPlotTiles(const FIntPoint& AirportOrigin, TArray<FIntPoint>& OutTiles)
 {
 	OutTiles.Reset();
-
-	const int32 MinX = FMath::FloorToInt(AnchorTile.X - DepthTiles * 0.5f);
-	const int32 MaxX = FMath::FloorToInt(AnchorTile.X + DepthTiles * 0.5f);
-	const int32 MinY = FMath::FloorToInt(AnchorTile.Y - WidthTiles * 0.5f);
-	const int32 MaxY = FMath::FloorToInt(AnchorTile.Y + WidthTiles * 0.5f);
-
-	// The footprint is square-ish and the yaw only ever turns it a quarter at a time, so the same
-	// span is used on both axes - whichever way the doors end up facing.
-	const int32 Min = FMath::Min(MinX, MinY);
-	const int32 Max = FMath::Max(MaxX, MaxY);
-	const int32 CentreX = FMath::FloorToInt(AnchorTile.X);
-	const int32 CentreY = FMath::FloorToInt(AnchorTile.Y);
-	const int32 Radius = FMath::Max(CentreX - Min, Max - CentreX);
-
-	for (int32 OffsetY = -Radius; OffsetY <= Radius; ++OffsetY)
+	const FIntPoint PlotOrigin = GetPlotOriginTile(AirportOrigin);
+	for (int32 OffsetY = 0; OffsetY < 2; ++OffsetY)
 	{
-		for (int32 OffsetX = -Radius; OffsetX <= Radius; ++OffsetX)
+		for (int32 OffsetX = 0; OffsetX < 2; ++OffsetX)
 		{
-			OutTiles.Emplace(CentreX + OffsetX, CentreY + OffsetY);
+			OutTiles.Emplace(PlotOrigin.X + OffsetX, PlotOrigin.Y + OffsetY);
 		}
 	}
 }
@@ -231,6 +183,12 @@ ASimCopterHangar::ASimCopterHangar()
 	{
 		ShellMaterial = VertexColorMaterialFinder.Object;
 	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> TexturedMaterialFinder(TexturedMaterialPath);
+	if (TexturedMaterialFinder.Succeeded())
+	{
+		TexturedMaterial = TexturedMaterialFinder.Object;
+	}
 }
 
 void ASimCopterHangar::BeginPlay()
@@ -261,113 +219,186 @@ void ASimCopterHangar::BuildShellMesh()
 	const float HalfDoor = FMath::Min(DoorWidthTiles * TileSizeCm * 0.5f, HalfWidth - 1.0f);
 	const float DoorTop = FMath::Min(DoorHeightTiles * TileSizeCm, Eaves - 1.0f);
 
-	TArray<FVector> Vertices;
-	TArray<int32> Triangles;
-	TArray<FVector> Normals;
-	TArray<FVector2D> UVs;
-	TArray<FLinearColor> VertexColors;
-	TArray<FProcMeshTangent> Tangents;
-
-	auto Quad = [&](const FVector& A, const FVector& B, const FVector& C, const FVector& D, const FLinearColor& Color)
-	{
-		AppendQuad(A, B, C, D, Color, Vertices, Triangles, Normals, UVs, VertexColors, Tangents);
-	};
-	auto Tri = [&](const FVector& A, const FVector& B, const FVector& C, const FLinearColor& Color)
-	{
-		AppendTriangle(A, B, C, Color, Vertices, Triangles, Normals, UVs, VertexColors, Tangents);
-	};
-
 	// The doorway faces +X, which is the actor's forward axis - PlaceAtAirport yaws the whole
 	// actor so that axis points at the player's start.
 	const float Front = HalfDepth;
 	const float Back = -HalfDepth;
 
-	// Floor slab.
-	Quad(
-		FVector(Back, -HalfWidth, 0.0f),
-		FVector(Front, -HalfWidth, 0.0f),
-		FVector(Front, HalfWidth, 0.0f),
-		FVector(Back, HalfWidth, 0.0f),
-		FloorColor);
+	// Four surfaces, four skins: walls, roof, floor, and the painted band over the door.
+	FShellSection Walls;
+	FShellSection Roof;
+	FShellSection Floor;
+	FShellSection Trim;
+
+	// Every wall shares one mapping so the texture runs continuously round the building: U is the
+	// distance travelled along the wall in texture repeats, V is 1 at the ground and 0 at the
+	// eaves - which puts the cell's dark eaves band where the eaves are.
+	const float Repeat = FMath::Max(1.0f, TextureRepeatCm);
+	auto WallV = [Eaves](const float Z) { return 1.0f - Z / FMath::Max(1.0f, Eaves); };
+
+	// Floor slab, lifted clear of the apron it sits on.
+	{
+		const float FloorZ = FloorLiftCm;
+		const float UDepth = (HalfDepth * 2.0f) / Repeat;
+		const float VWidth = (HalfWidth * 2.0f) / Repeat;
+		Floor.AddQuad(
+			FVector(Back, -HalfWidth, FloorZ), FVector2D(0.0f, 0.0f),
+			FVector(Front, -HalfWidth, FloorZ), FVector2D(UDepth, 0.0f),
+			FVector(Front, HalfWidth, FloorZ), FVector2D(UDepth, VWidth),
+			FVector(Back, HalfWidth, FloorZ), FVector2D(0.0f, VWidth),
+			FLinearColor::White);
+	}
 
 	// Side walls up to the eaves.
-	for (const float Side : { -HalfWidth, HalfWidth })
 	{
-		Quad(
-			FVector(Back, Side, 0.0f),
-			FVector(Front, Side, 0.0f),
-			FVector(Front, Side, Eaves),
-			FVector(Back, Side, Eaves),
-			Side < 0.0f ? WallColor : WallShadeColor);
+		const float UDepth = (HalfDepth * 2.0f) / Repeat;
+		for (const float Side : { -HalfWidth, HalfWidth })
+		{
+			Walls.AddQuad(
+				FVector(Back, Side, 0.0f), FVector2D(0.0f, WallV(0.0f)),
+				FVector(Front, Side, 0.0f), FVector2D(UDepth, WallV(0.0f)),
+				FVector(Front, Side, Eaves), FVector2D(UDepth, WallV(Eaves)),
+				FVector(Back, Side, Eaves), FVector2D(0.0f, WallV(Eaves)),
+				FLinearColor::White);
+		}
 	}
 
 	// Back wall plus its gable.
-	Quad(
-		FVector(Back, -HalfWidth, 0.0f),
-		FVector(Back, HalfWidth, 0.0f),
-		FVector(Back, HalfWidth, Eaves),
-		FVector(Back, -HalfWidth, Eaves),
-		WallShadeColor);
-	Tri(
-		FVector(Back, -HalfWidth, Eaves),
-		FVector(Back, HalfWidth, Eaves),
-		FVector(Back, 0.0f, Apex),
-		WallShadeColor);
+	{
+		const float UWidth = (HalfWidth * 2.0f) / Repeat;
+		Walls.AddQuad(
+			FVector(Back, -HalfWidth, 0.0f), FVector2D(0.0f, WallV(0.0f)),
+			FVector(Back, HalfWidth, 0.0f), FVector2D(UWidth, WallV(0.0f)),
+			FVector(Back, HalfWidth, Eaves), FVector2D(UWidth, WallV(Eaves)),
+			FVector(Back, -HalfWidth, Eaves), FVector2D(0.0f, WallV(Eaves)),
+			FLinearColor::White);
+		Walls.AddTriangle(
+			FVector(Back, -HalfWidth, Eaves), FVector2D(0.0f, WallV(Eaves)),
+			FVector(Back, HalfWidth, Eaves), FVector2D(UWidth, WallV(Eaves)),
+			FVector(Back, 0.0f, Apex), FVector2D(UWidth * 0.5f, WallV(Apex)),
+			FLinearColor::White);
+	}
 
 	// Front wall: two jambs, a lintel, and the gable above them - the hole between is the door.
-	Quad(
-		FVector(Front, -HalfWidth, 0.0f),
-		FVector(Front, -HalfDoor, 0.0f),
-		FVector(Front, -HalfDoor, Eaves),
-		FVector(Front, -HalfWidth, Eaves),
-		WallColor);
-	Quad(
-		FVector(Front, HalfDoor, 0.0f),
-		FVector(Front, HalfWidth, 0.0f),
-		FVector(Front, HalfWidth, Eaves),
-		FVector(Front, HalfDoor, Eaves),
-		WallColor);
-	Quad(
-		FVector(Front, -HalfDoor, DoorTop),
-		FVector(Front, HalfDoor, DoorTop),
-		FVector(Front, HalfDoor, Eaves),
-		FVector(Front, -HalfDoor, Eaves),
-		WallColor);
-	Tri(
-		FVector(Front, -HalfWidth, Eaves),
-		FVector(Front, HalfWidth, Eaves),
-		FVector(Front, 0.0f, Apex),
-		TrimColor);
+	{
+		const float JambWidth = HalfWidth - HalfDoor;
+		const float UJamb = JambWidth / Repeat;
+		const float UDoor = (HalfDoor * 2.0f) / Repeat;
+		const float UWidth = (HalfWidth * 2.0f) / Repeat;
+
+		Walls.AddQuad(
+			FVector(Front, -HalfWidth, 0.0f), FVector2D(0.0f, WallV(0.0f)),
+			FVector(Front, -HalfDoor, 0.0f), FVector2D(UJamb, WallV(0.0f)),
+			FVector(Front, -HalfDoor, Eaves), FVector2D(UJamb, WallV(Eaves)),
+			FVector(Front, -HalfWidth, Eaves), FVector2D(0.0f, WallV(Eaves)),
+			FLinearColor::White);
+		Walls.AddQuad(
+			FVector(Front, HalfDoor, 0.0f), FVector2D(UJamb + UDoor, WallV(0.0f)),
+			FVector(Front, HalfWidth, 0.0f), FVector2D(UWidth, WallV(0.0f)),
+			FVector(Front, HalfWidth, Eaves), FVector2D(UWidth, WallV(Eaves)),
+			FVector(Front, HalfDoor, Eaves), FVector2D(UJamb + UDoor, WallV(Eaves)),
+			FLinearColor::White);
+		Walls.AddQuad(
+			FVector(Front, -HalfDoor, DoorTop), FVector2D(UJamb, WallV(DoorTop)),
+			FVector(Front, HalfDoor, DoorTop), FVector2D(UJamb + UDoor, WallV(DoorTop)),
+			FVector(Front, HalfDoor, Eaves), FVector2D(UJamb + UDoor, WallV(Eaves)),
+			FVector(Front, -HalfDoor, Eaves), FVector2D(UJamb, WallV(Eaves)),
+			FLinearColor::White);
+		Walls.AddTriangle(
+			FVector(Front, -HalfWidth, Eaves), FVector2D(0.0f, WallV(Eaves)),
+			FVector(Front, HalfWidth, Eaves), FVector2D(UWidth, WallV(Eaves)),
+			FVector(Front, 0.0f, Apex), FVector2D(UWidth * 0.5f, WallV(Apex)),
+			FLinearColor::White);
+	}
 
 	// Gable roof: two slopes from the eaves to the ridge.
-	Quad(
-		FVector(Back, -HalfWidth, Eaves),
-		FVector(Front, -HalfWidth, Eaves),
-		FVector(Front, 0.0f, Apex),
-		FVector(Back, 0.0f, Apex),
-		RoofColor);
-	Quad(
-		FVector(Back, 0.0f, Apex),
-		FVector(Front, 0.0f, Apex),
-		FVector(Front, HalfWidth, Eaves),
-		FVector(Back, HalfWidth, Eaves),
-		RoofColor);
+	{
+		const float UDepth = (HalfDepth * 2.0f) / Repeat;
+		const float SlopeLength = FMath::Sqrt(HalfWidth * HalfWidth + (Apex - Eaves) * (Apex - Eaves));
+		const float VSlope = SlopeLength / Repeat;
 
-	// A band over the doorway, so the building reads as the way in from the air as well.
-	const float BandZ = DoorTop + (Eaves - DoorTop) * 0.35f;
-	const float BandHeight = FMath::Max(6.0f, (Eaves - DoorTop) * 0.3f);
-	Quad(
-		FVector(Front + 2.0f, -HalfDoor, BandZ),
-		FVector(Front + 2.0f, HalfDoor, BandZ),
-		FVector(Front + 2.0f, HalfDoor, BandZ + BandHeight),
-		FVector(Front + 2.0f, -HalfDoor, BandZ + BandHeight),
-		TrimColor);
+		Roof.AddQuad(
+			FVector(Back, -HalfWidth, Eaves), FVector2D(0.0f, 0.0f),
+			FVector(Front, -HalfWidth, Eaves), FVector2D(UDepth, 0.0f),
+			FVector(Front, 0.0f, Apex), FVector2D(UDepth, VSlope),
+			FVector(Back, 0.0f, Apex), FVector2D(0.0f, VSlope),
+			FLinearColor::White);
+		Roof.AddQuad(
+			FVector(Back, 0.0f, Apex), FVector2D(0.0f, 0.0f),
+			FVector(Front, 0.0f, Apex), FVector2D(UDepth, 0.0f),
+			FVector(Front, HalfWidth, Eaves), FVector2D(UDepth, VSlope),
+			FVector(Back, HalfWidth, Eaves), FVector2D(0.0f, VSlope),
+			FLinearColor::White);
+	}
+
+	// A band over the doorway, so the building reads as the way in from the air as well. This one
+	// stays painted rather than skinned - it is the only part that is not the original's.
+	{
+		const float BandZ = DoorTop + (Eaves - DoorTop) * 0.35f;
+		const float BandHeight = FMath::Max(6.0f, (Eaves - DoorTop) * 0.3f);
+		Trim.AddQuad(
+			FVector(Front + 2.0f, -HalfDoor, BandZ), FVector2D(0.0f, 0.0f),
+			FVector(Front + 2.0f, HalfDoor, BandZ), FVector2D(1.0f, 0.0f),
+			FVector(Front + 2.0f, HalfDoor, BandZ + BandHeight), FVector2D(1.0f, 1.0f),
+			FVector(Front + 2.0f, -HalfDoor, BandZ + BandHeight), FVector2D(0.0f, 1.0f),
+			TrimColor);
+	}
+
+	// Without the original artwork the skinned sections fall back to flat paint, which is what the
+	// shell looked like before the textures were wired up.
+	UMaterialInterface* WallMaterial = ResolveCellMaterial(WallTextureCell);
+	UMaterialInterface* RoofMaterial = ResolveCellMaterial(RoofTextureCell);
+	UMaterialInterface* FloorMaterial = ResolveCellMaterial(FloorTextureCell);
+	if (WallMaterial == nullptr)
+	{
+		for (FLinearColor& Color : Walls.VertexColors) { Color = WallColor; }
+	}
+	if (RoofMaterial == nullptr)
+	{
+		for (FLinearColor& Color : Roof.VertexColors) { Color = RoofColor; }
+	}
+	if (FloorMaterial == nullptr)
+	{
+		for (FLinearColor& Color : Floor.VertexColors) { Color = FloorColor; }
+	}
 
 	ShellMesh->ClearAllMeshSections();
-	ShellMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, VertexColors, Tangents, /*bCreateCollision=*/true);
-	if (ShellMaterial != nullptr)
+
+	const TPair<FShellSection*, UMaterialInterface*> SectionPlan[] = {
+		{ &Walls, WallMaterial },
+		{ &Roof, RoofMaterial },
+		{ &Floor, FloorMaterial },
+		{ &Trim, nullptr },
+	};
+
+	int32 SectionIndex = 0;
+	for (const TPair<FShellSection*, UMaterialInterface*>& Entry : SectionPlan)
 	{
-		ShellMesh->SetMaterial(0, ShellMaterial);
+		FShellSection& Section = *Entry.Key;
+		if (Section.IsEmpty())
+		{
+			continue;
+		}
+
+		// Only the shell proper carries collision; the painted band is a decal on the front wall
+		// and would otherwise put an invisible ledge across the doorway.
+		const bool bCollides = &Section != &Trim;
+		ShellMesh->CreateMeshSection_LinearColor(
+			SectionIndex,
+			Section.Vertices,
+			Section.Triangles,
+			Section.Normals,
+			Section.UVs,
+			Section.VertexColors,
+			Section.Tangents,
+			bCollides);
+
+		UMaterialInterface* Material = Entry.Value != nullptr ? Entry.Value : ShellMaterial.Get();
+		if (Material != nullptr)
+		{
+			ShellMesh->SetMaterial(SectionIndex, Material);
+		}
+		++SectionIndex;
 	}
 
 	// The trigger fills the interior but stops short of the walls and the doorway, so the shell
@@ -420,108 +451,44 @@ bool ASimCopterHangar::PlaceAtAirport(ASimCopterTrafficSystemActor* Traffic, con
 		FVector::DotProduct(TargetDelta, AxisY) / AxisY.SizeSquared());
 
 	const FIntPoint Origin = Traffic->GetAirportOriginTile();
-	const FVector2D TargetTile(Origin.X + TargetTileOffset.X, Origin.Y + TargetTileOffset.Y);
 
-	// Prefer the side the player starts on, but a hangar dropped on top of a standing city block
-	// looks like a bug, so walk out to the next-nearest side until the ground is clear. If every
-	// side is built on, take the nearest one anyway and knock down what is in the way.
-	TArray<ESide> Sides;
-	GetSidesByDistance(Origin, TargetTile, Sides);
+	// The hangar takes the terminal's plot, so the offset is fixed - the middle of the block.
+	const FVector2D PlotCentre = GetPlotCentreTile(Origin);
+	const FVector2D PlotOffset(PlotCentre.X - Origin.X, PlotCentre.Y - Origin.Y);
 
-	ESide Side = Sides.Num() > 0 ? Sides[0] : ESide::South;
-	TArray<FIntPoint> Footprint;
-	bool bFoundClearSide = false;
+	// Height comes straight off the pad table. FUN_004829f0 flattens the whole 4x4 to the terminal
+	// tile's one height-map sample, so the plot is level with every pad by construction and there
+	// is nothing to trace for - tracing here would only find the terminal's own roof.
+	const FVector Location = PadOrigin + AxisX * PlotOffset.X + AxisY * PlotOffset.Y;
 
-	for (const ESide Candidate : Sides)
+	// Take the original's airport building off the plot first. Its base (object 0x165) is a flat
+	// 2x2 slab sitting exactly on the apron, so leaving it there z-fights with the hangar floor -
+	// and its walls would stand inside ours. No rubble: this is a site being built on, not a fire.
+	if (CityActor != nullptr)
 	{
-		GetFootprintTiles(GetSideAnchorTile(Origin, Candidate), Footprint);
+		TArray<FIntPoint> PlotTiles;
+		GetPlotTiles(Origin, PlotTiles);
 
-		bool bClear = true;
-		for (const FIntPoint& Tile : Footprint)
-		{
-			const bool bBuilt = CityActor != nullptr && CityActor->HasStandingBuildingAtTile(Tile.X, Tile.Y);
-			if (bBuilt || Traffic->IsWaterTile(Tile.X, Tile.Y))
-			{
-				bClear = false;
-				break;
-			}
-		}
-
-		if (bClear)
-		{
-			Side = Candidate;
-			bFoundClearSide = true;
-			break;
-		}
-	}
-
-	if (!bFoundClearSide && CityActor != nullptr)
-	{
-		GetFootprintTiles(GetSideAnchorTile(Origin, Side), Footprint);
 		TArray<FIntPoint> Cleared;
-		for (const FIntPoint& Tile : Footprint)
+		int32 DemolishedCount = 0;
+		for (const FIntPoint& Tile : PlotTiles)
 		{
 			if (CityActor->DemolishBuildingAtTile(Tile.X, Tile.Y, Cleared, /*bLeaveRubble=*/false))
 			{
 				Traffic->ClearXbldTiles(Cleared);
+				++DemolishedCount;
 			}
 		}
+
 		UE_LOG(LogTemp, Display,
-			TEXT("SimCopter hangar: every side of the airport was built on; cleared the nearest one."));
+			TEXT("SimCopter hangar: cleared %d building(s) off the terminal plot at (%d, %d)."),
+			DemolishedCount,
+			GetPlotOriginTile(Origin).X,
+			GetPlotOriginTile(Origin).Y);
 	}
 
-	const FVector2D AnchorTile = GetSideAnchorTile(Origin, Side);
-	const FVector2D AnchorOffset(AnchorTile.X - Origin.X, AnchorTile.Y - Origin.Y);
-
-	FVector Location = PadOrigin + AxisX * AnchorOffset.X + AxisY * AnchorOffset.Y;
-
-	// Seat the building on whatever the ground does out there; the airport's flattened patch
-	// stops at the block edge, so the hangar is usually just off it.
-	const UWorld* World = GetWorld();
-	if (World != nullptr && CityActor != nullptr)
-	{
-		const float HalfWidth = WidthTiles * TileSizeCm * 0.5f;
-		const float HalfDepth = DepthTiles * TileSizeCm * 0.5f;
-		const FVector Samples[5] = {
-			Location,
-			Location + FVector(HalfDepth, HalfWidth, 0.0f),
-			Location + FVector(HalfDepth, -HalfWidth, 0.0f),
-			Location + FVector(-HalfDepth, HalfWidth, 0.0f),
-			Location + FVector(-HalfDepth, -HalfWidth, 0.0f),
-		};
-
-		float HighestZ = -BIG_NUMBER;
-		for (const FVector& Sample : Samples)
-		{
-			FCollisionObjectQueryParams ObjectParams;
-			ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
-			FCollisionQueryParams Params(FName(TEXT("SimCopterHangarGround")), /*bTraceComplex=*/false, this);
-
-			TArray<FHitResult> Hits;
-			const FVector Start(Sample.X, Sample.Y, Location.Z + 6000.0f);
-			const FVector End(Sample.X, Sample.Y, Location.Z - 6000.0f);
-			if (!World->LineTraceMultiByObjectType(Hits, Start, End, ObjectParams, Params))
-			{
-				continue;
-			}
-
-			for (const FHitResult& Hit : Hits)
-			{
-				if (CityActor->IsTerrainCollisionComponent(Hit.GetComponent()))
-				{
-					HighestZ = FMath::Max(HighestZ, Hit.ImpactPoint.Z);
-					break;
-				}
-			}
-		}
-
-		if (HighestZ > -BIG_NUMBER * 0.5f)
-		{
-			Location.Z = HighestZ;
-		}
-	}
-
-	// Turn the doorway toward the player's start, square with the city grid.
+	// Turn the doorway toward the player's start, square with the city grid so the doors open onto
+	// a pad row rather than across a corner of the ring.
 	const float Yaw = GetSnappedFacingYawDegrees(Location, FacingTarget);
 	SetActorLocationAndRotation(Location, FRotator(0.0f, Yaw, 0.0f), /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
 
@@ -529,15 +496,94 @@ bool ASimCopterHangar::PlaceAtAirport(ASimCopterTrafficSystemActor* Traffic, con
 	BuildShellMesh();
 
 	UE_LOG(LogTemp, Display,
-		TEXT("SimCopter hangar: placed on the %s side of the airport block (%d, %d) at %s facing %.0f deg (site %s)."),
-		Side == ESide::North ? TEXT("north") : Side == ESide::South ? TEXT("south") : Side == ESide::West ? TEXT("west") : TEXT("east"),
+		TEXT("SimCopter hangar: standing on the airport terminal plot of block (%d, %d) at %s facing %.0f deg."),
 		Origin.X,
 		Origin.Y,
 		*Location.ToCompactString(),
-		Yaw,
-		bFoundClearSide ? TEXT("was clear") : TEXT("was cleared"));
+		Yaw);
 
 	return true;
+}
+
+UMaterialInterface* ASimCopterHangar::ResolveCellMaterial(const int32 AtlasCell)
+{
+	using namespace SimCopterHangarPlacement;
+
+	if (!bUseOriginalTextures || TexturedMaterial == nullptr)
+	{
+		return nullptr;
+	}
+
+	if (const TObjectPtr<UMaterialInterface>* Existing = CellMaterials.Find(AtlasCell))
+	{
+		return Existing->Get();
+	}
+
+	// A cached miss is stored so a missing install is only looked for once per cell.
+	CellMaterials.Add(AtlasCell, nullptr);
+
+	const FString RootPath = ResolveOriginalGameRoot();
+	if (RootPath.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	// The composite pages are palette-indexed, and the palette that decodes them is the GEO pack's
+	// own CMAP - the same pairing the city builder uses (sim3d1.max + BMP/SIM3D.BMP).
+	FMaxisMeshFile MeshFile;
+	FString Error;
+	if (!FMaxisMeshReader::LoadMeshFileFromFile(FPaths::Combine(RootPath, TEXT("GEO/sim3d1.max")), MeshFile, Error))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: no palette for the wall textures - %s"), *Error);
+		return nullptr;
+	}
+
+	FMaxisCompositeBitmap Pages;
+	if (!FMaxisTextureReader::LoadCompositeBitmapFromFile(
+			FPaths::Combine(RootPath, TEXT("BMP/SIM3D.BMP")),
+			MeshFile.ColorMap,
+			Pages,
+			Error))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: could not read the texture pages - %s"), *Error);
+		return nullptr;
+	}
+
+	const FMaxisTextureImage* Page = Pages.FindImage(TexturePage);
+	if (Page == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: SIM3D.BMP has no page %d."), TexturePage);
+		return nullptr;
+	}
+
+	FMaxisTextureImage CellImage;
+	if (!FMaxisTextureReader::ExtractAtlasTile(*Page, AtlasCell, CellImage, Error))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: %s"), *Error);
+		return nullptr;
+	}
+
+	UTexture2D* Texture = FSimCopterPopulationSprite::CreateTextureFromImage(this, CellImage, TEXT("SimCopterHangarSkin"));
+	if (Texture == nullptr)
+	{
+		return nullptr;
+	}
+
+	// A 32x32 cell tiled across a wall: wrap both ways, and keep the sprite path's nearest filter
+	// so the hangar stays as crunchy as the buildings around it.
+	Texture->AddressX = TA_Wrap;
+	Texture->AddressY = TA_Wrap;
+	Texture->UpdateResource();
+
+	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(TexturedMaterial, this);
+	if (Material == nullptr)
+	{
+		return nullptr;
+	}
+	Material->SetTextureParameterValue(TEXT("Texture"), Texture);
+
+	CellMaterials.Add(AtlasCell, Material);
+	return Material;
 }
 
 FVector ASimCopterHangar::GetTagWorldLocation() const

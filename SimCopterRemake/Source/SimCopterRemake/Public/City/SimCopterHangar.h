@@ -17,59 +17,58 @@ class SWidget;
 // Placement maths for the player's hangar, kept free of the actor so it can be tested without a
 // world.
 //
-// The original has no hangar building: `dhangar.bmp` is a rendered still, and the shell is
-// reached from the game's menu rather than by walking into anything. This remake gives the
-// player somewhere to walk to, so the building and where it stands are a remake decision - but
-// it is anchored to the one thing the original does place, the 4x4 airport block
-// FUN_004829f0 stamps (see SimCopterAirport).
+// **The hangar stands on the airport's terminal plot** - the middle 2x2 of the 4x4 block
+// FUN_004829f0 stamps, ringed by its twelve helipads (see SimCopterAirport). That is the plot the
+// original puts its own airport building on (XBLD 0xf6 -> GEO object 0x096 on base 0x165), and
+// the one the airport port already resolves through SimCopterAirport::GetTerminalTile. Standing
+// the hangar anywhere else would put a second building beside an airport that already has one.
+//
+// The building itself is not the original's. `dhangar.bmp` is a rendered still and the original's
+// shell is reached from a menu, so there is no hangar mesh to port - only the plot, the height
+// FUN_004829f0 flattens the block to, and the textures object 0x096 is skinned with.
 namespace SimCopterHangarPlacement
 {
-// The four tiles just outside the airport block, one per side, in the order they are tested.
-enum class ESide : uint8
-{
-	// -Y in tile space: the row above the block.
-	North,
-	// +Y: the row below it, which is where pad 0 and the session's first helicopter sit.
-	South,
-	// -X: the column to its left.
-	West,
-	// +X: the column to its right.
-	East,
-	Count,
-};
+// The footprint is the terminal's own 2x2 plot, inset a little so the walls never sit on the
+// helipads that ring it. 760 x 760 cm at the shipped 400 cm tile.
+constexpr float WidthTiles = 1.9f;
+constexpr float DepthTiles = 1.9f;
+constexpr float EavesHeightTiles = 0.5f;
+constexpr float ApexHeightTiles = 0.8f;
+constexpr float DoorWidthTiles = 1.25f;
+constexpr float DoorHeightTiles = 0.42f;
 
-// The building's footprint, in city tiles. Roughly 38 m x 42 m at the shipped 400 cm tile.
-constexpr float WidthTiles = 2.4f;
-constexpr float DepthTiles = 2.6f;
-constexpr float EavesHeightTiles = 0.55f;
-constexpr float ApexHeightTiles = 0.85f;
-constexpr float DoorWidthTiles = 1.5f;
-constexpr float DoorHeightTiles = 0.5f;
+// The floor slab is lifted clear of the flattened apron under it. The city actor offsets its own
+// meshes off the terrain by the same 2 cm for the same reason - two coplanar surfaces z-fight.
+constexpr float FloorLiftCm = 2.0f;
 
-// How far the hangar's centre stands off the block edge. DepthTiles/2 of that is the building
-// itself, so the doors end up about a fifth of a tile clear of the outermost pads.
-constexpr float StandoffTiles = 1.5f;
+// Atlas cells the original's airport building is skinned with, all on page 40 of BMP/SIM3D.BMP:
+// object 0x096's fourteen faces use cells 20..23 for its walls (cell 23 on five of them, so that
+// is the one the hangar takes), and pad object 0x08b uses cell 61 for its slab. Cell 52 is the
+// airport's gravel, which the terminal's flat-shaded roof faces have no texture for.
+constexpr int32 TexturePage = 40;
+constexpr int32 WallTextureCell = 23;
+constexpr int32 RoofTextureCell = 52;
+constexpr int32 FloorTextureCell = 61;
 
-// Centre tile (fractional) of the hangar on one side of the block.
-SIMCOPTERREMAKE_API FVector2D GetSideAnchorTile(const FIntPoint& AirportOrigin, ESide Side);
+// One repeat of a 32x32 cell across this many centimetres of wall. The terminal's own UVs run to
+// 3.0 over its 478 cm side, i.e. about 160 cm a repeat; this keeps that density.
+constexpr float TextureRepeatCm = 170.0f;
 
-// Which side of the block a point in tile space is nearest to. Used to put the hangar on the
-// side the player starts on so its doors are the first thing they see.
-SIMCOPTERREMAKE_API ESide GetNearestSide(const FIntPoint& AirportOrigin, const FVector2D& TargetTile);
+// The terminal plot's top-left tile - SimCopterAirport::GetTerminalTile, restated here so the
+// placement maths reads on its own.
+SIMCOPTERREMAKE_API FIntPoint GetPlotOriginTile(const FIntPoint& AirportOrigin);
 
-// The four sides ordered by how close each one's anchor is to TargetTile. The first entry is
-// GetNearestSide; the rest are the fallbacks to try when that side is built on or under water.
-SIMCOPTERREMAKE_API void GetSidesByDistance(
-	const FIntPoint& AirportOrigin,
-	const FVector2D& TargetTile,
-	TArray<ESide>& OutSides);
+// The plot's centre in tile-centre coordinates: the airport origin plus (1.5, 1.5), because the
+// 2x2 spans tile offsets 1 and 2 on both axes.
+SIMCOPTERREMAKE_API FVector2D GetPlotCentreTile(const FIntPoint& AirportOrigin);
 
-// The integer tiles the building covers when anchored at AnchorTile. Three by three: the
-// footprint is 2.4 x 2.6 tiles centred on a half-tile boundary.
-SIMCOPTERREMAKE_API void GetFootprintTiles(const FVector2D& AnchorTile, TArray<FIntPoint>& OutTiles);
+// The four tiles of the plot. These are the ones whose building has to come off before the
+// hangar goes on, and they are what the pad ring is measured against.
+SIMCOPTERREMAKE_API void GetPlotTiles(const FIntPoint& AirportOrigin, TArray<FIntPoint>& OutTiles);
 
 // Yaw in degrees that turns the actor's +X (the doorway) toward Target, snapped to the nearest
-// quarter turn so the building stays square with the city grid.
+// quarter turn so the building stays square with the city grid and its doors open onto a pad row
+// rather than across a corner.
 SIMCOPTERREMAKE_API float GetSnappedFacingYawDegrees(const FVector& From, const FVector& Target);
 }
 
@@ -154,9 +153,21 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult);
 
+	// Skin the shell with the original airport building's own atlas cells. Off falls back to the
+	// flat vertex colours, which is also what happens when the original assets are missing.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Hangar")
+	bool bUseOriginalTextures = true;
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> ShellMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> TexturedMaterial;
+
+	// One dynamic instance per skinned surface (walls / roof / floor), keyed by atlas cell.
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<UMaterialInterface>> CellMaterials;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USimCopterHangarArt> Art;
@@ -169,6 +180,10 @@ private:
 
 	void BuildShellMesh();
 	FString ResolveOriginalGameRoot() const;
+
+	// Cuts one 32x32 cell out of SIM3D.BMP page 40 and wraps it in a lit-texture instance.
+	// Returns null (and the caller falls back to vertex colour) when the originals are absent.
+	UMaterialInterface* ResolveCellMaterial(int32 AtlasCell);
 
 	// Shared by the overlap event and the tick: open the shell if this really is the player on
 	// foot and the shell is not already up or on its re-open cooldown.
