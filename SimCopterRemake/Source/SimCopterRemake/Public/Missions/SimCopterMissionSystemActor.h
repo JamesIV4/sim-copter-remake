@@ -233,6 +233,13 @@ public:
 	int32 GetSessionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
 	int32 GetActiveMissionCount() const { return MissionSystem.GetActiveMissionCount(); }
 
+	// FUN_00407a90 through the session record: the hangar shop's till. Negative spends; the
+	// original clamps the balance at zero rather than refusing, and so does this.
+	void AddSessionCash(int32 Delta) { MissionSystem.AddCash(Delta); }
+
+	// Seconds since the session opened, for stamping career log lines.
+	float GetSessionElapsedSeconds() const { return SessionElapsedSeconds; }
+
 	// Called only when a type-5/type-6 water trajectory hits land or geometry. Remaining particle
 	// life is the douse strength (bucket particles arrive already divided by four); water-surface
 	// impacts are rejected by the particle updater before this boundary.
@@ -333,6 +340,9 @@ private:
 	// Set by HoldSessionForMenu: something is choosing the session, so the first tick must not fall
 	// back to city 0's jobs.
 	bool bSessionSelectionHeld = false;
+
+	// Wall clock since BeginSession, used only to stamp the career mission log.
+	float SessionElapsedSeconds = 0.0f;
 
 	// Shared session entry: adopt career city CareerCityIndex (with its scheduler weights zeroed
 	// when bAllowScheduledMissions is false) and open the session with the original's start
@@ -443,6 +453,8 @@ private:
 	void RefreshMessageLogWidget();
 	void PushMissionLogMessage(const FString& Text, const FLinearColor& Color);
 	FString FormatMissionUiMessage(const SimCopterMissions::FSimCopterMissionUiMessage& Message, FLinearColor& OutColor) const;
+	// Mirrors the HUD line into the career log the hangar's Mission Log page prints.
+	void WriteCareerLogEntry(const SimCopterMissions::FSimCopterMissionUiMessage& Message);
 	void EnsureMissionMarkerWidget();
 	void RemoveMissionMarkerWidget();
 	void RefreshMissionMarkerWidget();

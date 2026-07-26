@@ -303,6 +303,13 @@ public:
 
 	const FSimCopterEquipmentState& GetEquipmentState() const { return EquipmentState; }
 
+	// SCHOOK: ShopSetEquipmentOwned 0x0042d840
+	// The hangar shop writing the career record (career + 0x48), which is what the debug grant
+	// deliberately does not do. Buying the tear gas launcher also fills career + 0x54 with the
+	// ten rounds FUN_0042d840 writes; selling it empties them.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void SetCareerEquipmentOwned(ESimCopterHelicopterTool Tool, bool bOwned);
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
 	ESimCopterHelicopterTool GetSelectedTool() const { return SelectedTool; }
 

@@ -4571,7 +4571,7 @@ bool ASimCity2000CityActor::TryGetBuildingBoundsAtTile(int32 FileX, int32 FileY,
 	return OutWorldBounds.IsValid != 0;
 }
 
-bool ASimCity2000CityActor::DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles)
+bool ASimCity2000CityActor::DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles, bool bLeaveRubble)
 {
 	OutClearedTiles.Reset();
 	if (!HasStandingBuildingAtTile(FileX, FileY))
@@ -4593,7 +4593,7 @@ bool ASimCity2000CityActor::DemolishBuildingAtTile(int32 FileX, int32 FileY, TAr
 	// FUN_004a5fd0 swaps the structure's geometry for the rubble model matching its footprint,
 	// so the site is left as a debris pile rather than bare ground.
 	const int32 RubbleSlot = FMath::Clamp(FMath::Max(Building.FootprintTiles.X, Building.FootprintTiles.Y), 1, 4) - 1;
-	if (RubbleComponentIndices[RubbleSlot] != INDEX_NONE)
+	if (bLeaveRubble && RubbleComponentIndices[RubbleSlot] != INDEX_NONE)
 	{
 		Building.RubblePart = AddBuildingInstance(RubbleComponentIndices[RubbleSlot], BuildingId, Building.PlacementOrigin);
 	}

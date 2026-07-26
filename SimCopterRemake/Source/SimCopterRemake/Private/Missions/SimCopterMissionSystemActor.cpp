@@ -10,12 +10,16 @@
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterHangar.h"
+#include "Game/SimCopterCareerSubsystem.h"
+#include "UI/SimCopterHangarShop.h"
 #include "Audio.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/StaticMesh.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -183,6 +187,8 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 		StartCityJobsSession(0);
 	}
 
+	SessionElapsedSeconds += DeltaTime;
+
 	MissionSystem.Tick(DeltaTime);
 	ProcessPassengerTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
@@ -312,7 +318,9 @@ bool ASimCopterMissionSystemActor::GetPlayerTile(int32& OutTileX, int32& OutTile
 
 bool ASimCopterMissionSystemActor::IsModalUiActive() const
 {
-	return false;
+	// FUN_004a6e60 never rolls a new job while the shell is up, and the hangar shell is the only
+	// modal screen the remake has in-city.
+	return ASimCopterHangar::IsAnyShellOpen(GetWorld());
 }
 
 void ASimCopterMissionSystemActor::OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId)
@@ -451,6 +459,28 @@ void ASimCopterMissionSystemActor::BeginSession(
 
 	SessionMode = Mode;
 	bSessionSelectionHeld = false;
+	SessionElapsedSeconds = 0.0f;
+
+	// The career record opens with the session: an empty log and the starter airframe on the
+	// books. The prices the catalog quotes come from the same heli.twk the flight model reads.
+	if (USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+			? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+			: nullptr)
+	{
+		Career->EnsurePricesLoaded(ResolveOriginalGameRootDir());
+		Career->BeginCareer();
+
+		// 534 "Entered City: %s, %s" - the original prints the city's name and the date it was
+		// entered. The remake has neither: the hardcoded per-city map names in FUN_00408370 are
+		// not ported and there is no calendar, so the record's own index stands in.
+		Career->AddLogEntry(
+			ESimCopterCareerLogKind::EnteredCity,
+			FString::Printf(TEXT("Entered City: City%d, tier %d"),
+				MissionSystem.GetCareerCityIndex(),
+				MissionSystem.GetDifficultyTier()),
+			0,
+			0.0f);
+	}
 }
 
 void ASimCopterMissionSystemActor::StartFreeRoamSession(int32 CareerCityIndex)
@@ -894,6 +924,59 @@ void ASimCopterMissionSystemActor::OnUiMessage(const SimCopterMissions::FSimCopt
 	{
 		PushMissionLogMessage(Text, Color);
 	}
+
+	WriteCareerLogEntry(Message);
+}
+
+// The hangar's Mission Log page prints the original's own lines (strings 536, 537, 540 and 541),
+// so the same four message kinds that drive the HUD ticker are re-formatted into the career log
+// with the type name string 570 + n gives them.
+void ASimCopterMissionSystemActor::WriteCareerLogEntry(const SimCopterMissions::FSimCopterMissionUiMessage& Message)
+{
+	USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+		? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+		: nullptr;
+	if (Career == nullptr)
+	{
+		return;
+	}
+
+	const FString TypeName = SimCopterHangarShop::GetMissionTypeLogName(Message.TypeMask);
+	const FString MissionName = Message.MissionName.IsEmpty()
+		? TypeName
+		: Message.MissionName;
+
+	FString Line;
+	ESimCopterCareerLogKind Kind = ESimCopterCareerLogKind::MissionStarted;
+	switch (Message.Kind)
+	{
+	case 5:
+		// 536 "%s: Started %s%s" - the trailing pair is the original's "Directly "/"Delayed"
+		// (strings 548/549), which describes how the job was scheduled; the remake's scheduler
+		// always places on the delayed path.
+		Kind = ESimCopterCareerLogKind::MissionStarted;
+		Line = FString::Printf(TEXT("%s: Started %s"), *MissionName, TEXT("Delayed"));
+		break;
+	case 6:
+		// 537 "%s: Ended, Award: %ld Points, %ld Bucks"
+		Kind = ESimCopterCareerLogKind::MissionEnded;
+		Line = FString::Printf(TEXT("%s: Ended, Award: %d Points, %d Bucks"), *MissionName, Message.ValueA, Message.ValueB);
+		break;
+	case 8:
+		// 541 "%s: %s %ld Points"
+		Kind = ESimCopterCareerLogKind::PointsAward;
+		Line = FString::Printf(TEXT("%s: %s %d Points"), *MissionName, GetMissionDeltaLabel(Message.TextId), Message.ValueA);
+		break;
+	case 9:
+		// 540 "%s: %s %ld Bucks"
+		Kind = ESimCopterCareerLogKind::CashAward;
+		Line = FString::Printf(TEXT("%s: %s %d Bucks"), *MissionName, GetMissionDeltaLabel(Message.TextId), Message.ValueA);
+		break;
+	default:
+		return;
+	}
+
+	Career->AddLogEntry(Kind, Line, Message.TypeMask, SessionElapsedSeconds);
 }
 
 ASimCopterTrafficSystemActor* ASimCopterMissionSystemActor::ResolveTrafficSystem() const
@@ -2374,6 +2457,23 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 
 	// Speeder tags track the live car, so this needs the traffic system rather than just tiles.
 	ASimCopterTrafficSystemActor* TrafficSystem = const_cast<ASimCopterMissionSystemActor*>(this)->ResolveTrafficSystem();
+
+	// The hangar's tag is permanent: it is the one marker that is not a job, and it is there so
+	// the player can always find their way back to base. "Base Location" is the mission log's own
+	// name for it (string 586).
+	if (const UWorld* World = GetWorld())
+	{
+		for (TActorIterator<ASimCopterHangar> It(const_cast<UWorld*>(World)); It; ++It)
+		{
+			FSimCopterMissionWorldMarkerEntry HangarMarker;
+			HangarMarker.WorldLocation = It->GetTagWorldLocation();
+			HangarMarker.Label = ASimCopterHangar::GetTagLabel();
+			HangarMarker.Detail = ASimCopterHangar::GetTagDetail();
+			HangarMarker.Color = FLinearColor(0.16f, 0.52f, 0.72f, 1.0f);
+			OutMarkers.Add(HangarMarker);
+			break;
+		}
+	}
 
 	auto AddTileMarker = [this, &OutMarkers](int32 TileX, int32 TileY, const TCHAR* Label, const FString& Detail, const FLinearColor& Color)
 	{
