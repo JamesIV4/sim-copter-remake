@@ -104,6 +104,25 @@ bool FSimCopterCriminalCarSpeedTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Band 3 leaves the speeder at full speed"),
 		GetFleeingSpeedMultiplier(true, SpotlightMarkMax, 3), 1.75f, Tolerance);
 
+	// The relationship the whole chase depends on: even the fastest speeder running flat out has
+	// to stay under the helicopter's own airspeed ceiling, or the player can never follow one and
+	// the spotlight step is unreachable. The remake had this inverted while ambient cars ran at
+	// 115 units/s instead of the authored 36..47.
+	const float FastestSpeeder =
+		static_cast<float>(RoadSpeedMaxUnitsPerSecond) * GetFleeingSpeedMultiplier(true, 0, INDEX_NONE);
+	TestTrue(
+		FString::Printf(TEXT("The fastest speeder (%.1f u/s) stays under the helicopter (%.1f u/s)"),
+			FastestSpeeder, HelicopterTopSpeedUnitsPerSecond),
+		FastestSpeeder < HelicopterTopSpeedUnitsPerSecond);
+
+	// ...and once it is lit, the slowest marked speeder drops to roughly ordinary traffic speed,
+	// which is what lets a police car close on it.
+	const float SlowestMarked =
+		static_cast<float>(RoadSpeedMinUnitsPerSecond) * GetFleeingSpeedMultiplier(true, 2, 0);
+	TestTrue(
+		FString::Printf(TEXT("A tightly lit speeder (%.1f u/s) is near ordinary traffic speed"), SlowestMarked),
+		SlowestMarked < static_cast<float>(RoadSpeedMaxUnitsPerSecond));
+
 	return true;
 }
 

@@ -271,8 +271,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Population")
 	bool bRequireOriginalPopulationMeshes = true;
 
+	// The mean road speed, in cm/s. FUN_0049dbb0 authors every vehicle's own speed when it is
+	// placed - veh[0xc3] = (rand() & 7) + 0x24 and veh[0xc7] = (rand() & 7) + 0x28, i.e. 36..43
+	// and 40..47 *original units per second* - and FUN_0049be50 advances the car by
+	// speed * frameDelta, so those are per-second figures. At the default 400 cm tile (64 units
+	// per tile, 6.25 cm per unit) the range is 225..294 cm/s and the mean is 259.
+	//
+	// This used to be 720, which is 115 units/s - nearly three times the original. It mattered
+	// once speeders arrived: FUN_0049d980's 1.75x fleeing multiplier took them to 201 units/s,
+	// past the helicopter's own 192 units/s ceiling (MaxPitch, which the flight model uses
+	// directly as airspeed), so nothing could ever catch one.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
-	float VehicleSpeedCmPerSec = 720.0f;
+	float VehicleSpeedCmPerSec = 259.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float PedestrianSpeedCmPerSec = 230.0f;
@@ -590,6 +600,19 @@ public:
 	// original's pool of five.
 	bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY);
 
+	// Live position of a mission's speeder, for the world tag that follows it. OutSpotlightMark
+	// is the 0..10 illumination counter and OutStopped is true once it has pulled over, so the
+	// tag can tell the player which of the three things they still have to do.
+	bool TryGetSpeederCarState(
+		int32 EventId,
+		FVector& OutWorldLocation,
+		int32& OutSpotlightMark,
+		bool& OutStopped) const;
+
+	// Speeders that have just been pulled over, for the few seconds their tag stays up after the
+	// mission record has already been retired and paid.
+	void GetRecentlyStoppedSpeederLocations(TArray<FVector>& OutWorldLocations) const;
+
 	// Report every car currently on fire (for the mission actor's fire renderer).
 	void GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const;
 	// Extinguish burning cars within RadiusCm of WorldLocation (helicopter bucket dump). Appends
@@ -738,6 +761,10 @@ public:
 
 	// FUN_0049df60's occupancy half: another stopped emergency vehicle already holds the tile.
 	bool CanVehicleStopOnTile(const FIntPoint& Tile) const;
+
+	// One vehicle's road speed. The original gives each car its own value rather than a shared
+	// one, so this reproduces that spread around VehicleSpeedCmPerSec's mean.
+	float DrawVehicleSpeedCmPerSec();
 
 	// FUN_004b8b60: siren, officer out, close the mission record, hold, remove.
 	void RunCriminalCarArrest(ASimCopterGroundAgent& Car, float DeltaSeconds);

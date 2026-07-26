@@ -47,6 +47,14 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 		OutTileY = 22;
 		return true;
 	}
+
+	bool bSpeederCarPlaced = false;
+
+	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override
+	{
+		bSpeederCarPlaced = true;
+		return true;
+	}
 };
 
 // A city that is water except where bAnyBuildings puts a building, and that records every tile
@@ -714,6 +722,76 @@ bool FSimCopterCrimePlacementTest::RunTest(const FString& Parameters)
 		TestTrue(
 			FString::Printf(TEXT("Criminal at (%d, %d) is on a mission building"), Tile.X, Tile.Y),
 			FSimCopterMissionSystem::IsMissionBuildingTile(City.GetXbldTileId(Tile.X, Tile.Y)));
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterSpeederCarRecordTest, "SimCopter.Missions.SpeederCarStaysOpen", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterSpeederCarRecordTest::RunTest(const FString& Parameters)
+{
+	// FUN_004a7a10's 0x4000 branch writes 1 to the record's +0x94 once the car is placed. Miss it
+	// and the crime completion test reads `caught + casualties < 0` as already satisfied, so the
+	// mission resolves on its very first update and the player never sees the car.
+	FSimCopterCrimeTestWorld World;
+	World.bAnyBuildings = true;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 EventId = System.CreateEventOfType(TYPE_CriminalCar);
+	if (EventId == -1)
+	{
+		AddError(TEXT("The speeder car mission was not created at all"));
+		return false;
+	}
+	TestTrue(TEXT("The world was asked to place a speeder car"), World.bSpeederCarPlaced);
+
+	const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+	if (Record == nullptr)
+	{
+		AddError(TEXT("No record for the speeder car mission"));
+		return false;
+	}
+	TestEqual(TEXT("The record wants one criminal caught"), Record->TargetCount, 1);
+	TestEqual(TEXT("...and starts with none"), Record->CriminalsCaught, 0);
+
+	// Run the system for a while: an uncaught speeder must keep its record open.
+	for (int32 Frame = 0; Frame < 120; ++Frame)
+	{
+		System.Tick(1.0f / 30.0f);
+	}
+	const FSimCopterMissionRecord* AfterUpdates = System.FindRecord(EventId);
+	TestTrue(TEXT("The mission is still open four seconds later"),
+		AfterUpdates != nullptr && AfterUpdates->bActive);
+
+	// FUN_004b8c90 posts EVT_CriminalCaught as the car is taken away. That is what takes
+	// CriminalsCaught to TargetCount and completes the mission - the earlier port posted
+	// EVT_SetCategory(CAT_ExpireSilently) instead, which is FUN_004b8b60's *failure* branch and
+	// makes the update loop skip the completion test, so nothing was ever paid out.
+	const int32 ScoreBefore = System.GetScore();
+	System.PostEvent(EVT_CriminalCaught, EventId, 1);
+	System.Tick(1.0f / 30.0f);
+
+	const FSimCopterMissionRecord* AfterCatch = System.FindRecord(EventId);
+	TestTrue(TEXT("Catching the driver closes the mission"),
+		AfterCatch == nullptr || !AfterCatch->bActive);
+	TestTrue(TEXT("...and it pays out"), System.GetScore() > ScoreBefore);
+
+	// The failure branch must not pay: CAT_ExpireSilently retires the record instead.
+	FSimCopterCrimeTestWorld QuietWorld;
+	FSimCopterMissionSystem QuietSystem;
+	QuietSystem.Initialize(&QuietWorld, 1);
+	const int32 QuietEvent = QuietSystem.CreateEventOfType(TYPE_CriminalCar);
+	if (QuietEvent != -1)
+	{
+		const int32 QuietScoreBefore = QuietSystem.GetScore();
+		QuietSystem.PostEvent(EVT_SetCategory, QuietEvent, CAT_ExpireSilently);
+		for (int32 Frame = 0; Frame < 30; ++Frame)
+		{
+			QuietSystem.Tick(1.0f / 30.0f);
+		}
+		TestEqual(TEXT("A retired speeder pays nothing"), QuietSystem.GetScore(), QuietScoreBefore);
 	}
 
 	return true;

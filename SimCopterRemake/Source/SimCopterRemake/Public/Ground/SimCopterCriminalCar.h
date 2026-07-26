@@ -58,8 +58,37 @@ constexpr int32 SpotlightMarkMax = 10;
 constexpr int32 PursuitScanRings = 3;
 constexpr int32 PursuitMaxTileSteps = 3;
 
-// FUN_004b8b60: veh[0x10] = 0x780000 before the wreck is removed.
+// FUN_004b8b60: veh[0x10] = 0x780000 before the car is removed - and FUN_004b8c90, which runs
+// when that expires, is what posts the criminal-caught event. So the payout lands at the end of
+// this hold, not the moment the car stops.
+//
+// FUN_004b8630 case 3 has a second exit, veh[8] != 0, and it is confirmed unreachable for a
+// speeder: veh[8]'s only writer anywhere in the binary is FUN_0049aed0, which is reached only
+// from people-VM opcode 60, and across all 137 shipped BHAV programs that opcode appears twice -
+// in "Rioter maybe throw" and "crim - arsonist unspotted", neither of which the arrest's
+// deployed person runs. So the full hold really is the only path here.
+//
+// The remake pays the mission out when the car stops rather than when this expires, so the hold
+// is only how long the stopped car stays parked before it is cleared away.
 constexpr float ArrestHoldSeconds = 120.0f;
+
+// Paying out immediately retires the mission record, which would take its world tag with it in
+// the same frame. Keep the green tag up this long afterwards so the stop actually registers.
+constexpr float ArrestTagLingerSeconds = 3.0f;
+
+// FUN_0049dbb0 authors every vehicle's road speed when it is placed:
+//   veh[0xc3] = (rand() & 7) + 0x24  -> 36..43
+//   veh[0xc7] = (rand() & 7) + 0x28  -> 40..47
+// FUN_0049be50 advances the car by speed * frameDelta, so these are original units per second.
+// FUN_0049d980 picks between the two per tick and applies the fleeing multiplier on top.
+constexpr int32 RoadSpeedMinUnitsPerSecond = 36;
+constexpr int32 RoadSpeedMaxUnitsPerSecond = 47;
+
+// The helicopter's airspeed ceiling, for the relationship that makes a pursuit winnable: the
+// flight model uses tenth-degrees of pitch directly as units/s, so the default airframe's
+// MaxPitch of 192.3 is also its top speed. A speeder at the fastest base and the full 1.75x
+// multiplier has to stay under this or nothing can ever follow one.
+constexpr float HelicopterTopSpeedUnitsPerSecond = 192.3f;
 
 // FUN_004b8b60's officer: FUN_0049bd00(0xf, 0xd), the same spawn mode and state the ambulance
 // uses for its paramedic.

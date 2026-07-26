@@ -151,7 +151,53 @@ So: hold the searchlight on the speeder to slow it *and* to make it stoppable, t
 An unmarked speeder cannot be stopped by police at all - `FUN_004b89a0`'s police branch requires
 `+0x11b != 0` and no other branch admits a cruising car.
 
-## 4b. The arrest - `FUN_004b8b60` - Confirmed
+## 4b. The arrest - `FUN_004b8b60` + `FUN_004b8c90` - Confirmed
+
+**Read the branch carefully.** `FUN_004b8b60` posts `EVT_SetCategory` value 4 only when
+`FUN_0049bd00(0xf, 0xd)` returned **0** - i.e. when nobody could be placed. That is the give-up
+path: `CAT_ExpireSilently` makes the update loop skip the completion test, so the record just
+runs out with no payout. On success it posts nothing and falls through to state 3 with
+`veh[0x10] = 0x780000` (120 s).
+
+The mission is closed by `FUN_004b8c90`, which runs when that hold expires and posts
+`{0x25, eventId, ., ., 1}` - `EVT_CriminalCaught` - taking `CriminalsCaught` to `TargetCount` and
+completing the mission properly. **The payout therefore lands 120 s after the car stops, not at
+the moment it stops.**
+
+### `veh[8]`, the hold's early exit - Resolved
+
+`FUN_004b8630` case 3 also exits on `veh[8] != 0`. Chasing that down:
+
+- Ghidra's export lists no writer, and a decompiler-text grep is useless because offset 8 is
+  generic. Disassembling every function and filtering for `dword ptr [reg + 8]` writes gives
+  exactly one candidate in the vehicle range that stores a constant: `FUN_0049aed0`.
+- `FUN_0049aed0(recordIndex, value)` resolves the vehicle through `DAT_0057f768[recordIndex]`
+  and, if it is spawned, sets **`veh[8] = 1` and `veh[0xc] = value`**.
+- Its only caller is `FUN_004ccef0`, which Ghidra reports as having **no callers** - the export
+  missed it. The address appears nowhere as a pointer, so it is not a vtable entry; scanning for
+  `call rel32` targets finds the single site at `0x004c8bee`, inside a run of 0x20-byte argument
+  thunks. The thunk `0x004c8be0` is installed by
+  `mov dword ptr [0x0058f068], 0x004c8be0`, and `0x0058f068` is slot **60** of the sparse
+  people-VM dispatch table `DAT_0058ef78`.
+
+So `veh[8]` is set by **people-VM opcode 60**: a person who came out of a vehicle telling it they
+are finished. The opcode's first argument becomes `veh[0xc]`, which selects `FUN_004b8c90`'s
+branch - `0` posts `EVT_CriminalCaught`, non-zero runs the door sounds and returns the car to
+state 0, i.e. it drives away again.
+
+Across all 137 BHAV programs in the shipped `people.df`, opcode 60 appears **twice**:
+
+| BHAV | name | argument |
+| ---: | --- | --- |
+| 288 | `Rioter maybe throw` | -1 |
+| 1078 | `crim - arsonist unspotted` | -1 |
+
+Both pass -1, and neither is the program the speeder arrest's deployed person runs. **The early
+exit is therefore unreachable for a speeder car**, `veh[0xc]` stays 0, and the 120 s hold followed
+by `EVT_CriminalCaught` is the only path. (The -1 uses are the arsonist/rioter getting back in
+and driving off - a different feature.)
+
+
 
 Runs once the car is actually at rest (`veh[4] & 0x20`), sequenced by sound completion:
 
@@ -209,8 +255,34 @@ Otherwise 1. The remake already has the intersection predicate as
 
 Pure rules live in `Public/Ground/SimCopterCriminalCar.h`; tests are `SimCopter.Crime.*`.
 
+## 5a. The record the mission creator builds - Confirmed
+
+`FUN_004a7a10`'s `param_3 == 0x4000` branch, in order:
+
+```
+sprintf(name, "%s %d", ..., record[0x24])
+record[0x20] = DAT_0057f9a0++                      ; per-type serial
+if (FUN_004b84f0(record[0x24], 0, tileX, tileY) == 0) { release; return -1 }
+record[0x94] = 1                                   ; TargetCount
+FUN_004ab480(record[0x28], record[0x2c], 0x4000)   ; UI announce
+```
+
+`+0x94` is `TargetCount`. **Missing that one write makes the mission resolve on its first
+update**, because the shared crime completion test is
+`CriminalsCaught + Casualties < TargetCount` and `0 + 0 < 0` is false. Pinned by
+`SimCopter.Missions.SpeederCarStaysOpen`.
+
+Note the record is *not* closed by a "caught" counter: `FUN_004b8b60` posts `EVT_SetCategory`
+value 4 (`CAT_ExpireSilently`), which makes the update loop skip the completion test entirely and
+let the record run out on its own timer with no fanfare.
+
 ## 6. Deliberate divergences
 
+- **The payout happens when the car stops, not 120 s later.** The original posts
+  `EVT_CriminalCaught` from `FUN_004b8c90`, at the end of the hold (section 4b). Waiting two
+  minutes with no feedback reads as a bug in play, so the remake posts it the moment the car
+  comes to rest and the driver is placed. The hold still runs - it is just how long the stopped
+  car stays parked before it is cleared - and the event is posted exactly once either way.
 - **The arrest sequence is timer-driven, not sound-driven.** `FUN_004b8b60` advances on
   `FUN_0042a3a0(0x6f)` / `(0x70)` reporting their clips finished. The remake collapses that to
   the 120 s hold, because the clips are the only thing gating each step and the remake does not
@@ -227,3 +299,32 @@ Pure rules live in `Public/Ground/SimCopterCriminalCar.h`; tests are `SimCopter.
 - **`FUN_0049df60`'s route-ahead test is not ported.** The remake checks the target's current
   tile and the stopped-vehicle occupancy, but not "the next tile along its route is also not an
   intersection", because the agent's route cursor does not expose a look-ahead tile.
+
+## 7. Known gap - the pursuit payout
+
+`EVT_SpeederPursuit` (0x21) is **not** posted by the remake, so catching a speeder currently pays
+nothing. Located but not ported, because the gating flag is not pinned down:
+
+`FUN_0049be50` (the vehicle move step) contains
+
+```
+if (veh[1] & 0x800) {
+  if (!(veh[1] & 0x1000) || !FUN_0049e130()) {
+    if ((veh[1] & 0x20) && veh[0xd7] <= 0 && FUN_0049bc60(veh)) {
+       FUN_004a89c0({0x21, eventId = -1, ., ., value = 1})   ; pays Incmtl Points as cash
+       veh[0xd7] = 0xa0000                                    ; 10 s cooldown
+    } else if (veh[0xd7] > 0) {
+       veh[0xd7] -= dt
+    }
+  }
+}
+```
+
+`FUN_0049bc60(veh)` is confirmed: a radius-2 spiral that returns 0 when **another vehicle with
+message id 0x11d (a police car) is nearby**, 1 otherwise.
+
+What is *not* confirmed is `veh[1] & 0x20`. `FUN_0049e0c0` clears `0x60` when a halt is ordered,
+yet `FUN_004b8630` cases 1/2/5 trigger the arrest on `veh[1] & 0x20` being **set** - which only
+reconciles if the mover re-sets `0x20` once the car is actually at rest. That is a guess, and the
+payout's meaning flips entirely on it (reward while fleeing vs. reward while pinned). Resolve
+`0x20`'s writer in the mover before porting this.
