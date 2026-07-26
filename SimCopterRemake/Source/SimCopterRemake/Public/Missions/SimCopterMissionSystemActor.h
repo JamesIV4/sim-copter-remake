@@ -172,9 +172,14 @@ public:
 	// Police clearing a jam they have driven to.
 	bool ClearTrafficJamEvent(int32 EventId);
 
-	// FUN_004b8b60: the speeder has been pulled over and its driver taken. The original closes
-	// the record by posting EVT_SetCategory with value 4 rather than a "caught" counter.
+	// FUN_004b8c90: the arrest has run its course and the car is being taken away. Posts
+	// EVT_CriminalCaught, which takes the record's CriminalsCaught to its TargetCount of 1 and
+	// so completes the mission - notification and payout included.
 	void ReportSpeederCarCaught(int32 EventId);
+
+	// FUN_004b8b60's failure branch: the arrest could not put anyone on the ground, so the record
+	// is retired with EVT_SetCategory value 4 (CAT_ExpireSilently) - no completion, no payout.
+	void ReportSpeederCarUnresolved(int32 EventId);
 
 	// SCHOOK: FireTruckSpray 0x004a5ca0
 	// One shot from a fire truck's monitor: emitter type 6, launched from 30 units above the

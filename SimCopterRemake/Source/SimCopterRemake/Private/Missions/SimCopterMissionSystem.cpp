@@ -964,6 +964,11 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
+		// FUN_004a7a10's 0x4000 branch writes 1 to the record's +0x94 right after the car is
+		// placed. Without it TargetCount stays 0, the crime completion test below reads
+		// `0 + 0 < 0` as satisfied, and the mission closes itself on its first update.
+		Rec.TargetCount = 1;
+		Rec.CriminalsCaught = 0;
 		Rec.Name = FString::Printf(TEXT("Criminal Car #%d"), TypeSerials[13]);
 		TypeSerials[13]++;
 	}

@@ -1792,9 +1792,16 @@ bool ASimCopterMissionSystemActor::ClearTrafficJamEvent(int32 EventId)
 
 void ASimCopterMissionSystemActor::ReportSpeederCarCaught(int32 EventId)
 {
-	// FUN_004b8b60 posts EVT_SetCategory with value 4 - CAT_ExpireSilently. The chase pays out
-	// through EVT_SpeederPursuit while it is running, so the arrest itself just retires the
-	// record rather than scoring it again.
+	// FUN_004b8c90: {0x25, eventId, ., ., 1}. This is the one that closes the mission properly -
+	// CriminalsCaught reaches TargetCount and the shared crime completion test passes.
+	MissionSystem.PostEvent(SimCopterMissions::EVT_CriminalCaught, EventId, 1);
+}
+
+void ASimCopterMissionSystemActor::ReportSpeederCarUnresolved(int32 EventId)
+{
+	// FUN_004b8b60 only posts this when FUN_0049bd00 returned 0, i.e. nowhere to put the driver.
+	// CAT_ExpireSilently makes the update loop skip the completion test, so the record just runs
+	// out - no fanfare and no payout, which is the point.
 	MissionSystem.PostEvent(
 		SimCopterMissions::EVT_SetCategory,
 		EventId,
@@ -2365,6 +2372,9 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 {
 	OutMarkers.Reset();
 
+	// Speeder tags track the live car, so this needs the traffic system rather than just tiles.
+	ASimCopterTrafficSystemActor* TrafficSystem = const_cast<ASimCopterMissionSystemActor*>(this)->ResolveTrafficSystem();
+
 	auto AddTileMarker = [this, &OutMarkers](int32 TileX, int32 TileY, const TCHAR* Label, const FString& Detail, const FLinearColor& Color)
 	{
 		FVector WorldLocation;
@@ -2453,14 +2463,70 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			continue;
 		}
 
+		if ((Record.TypeMask & SimCopterMissions::TYPE_CriminalCar) != 0)
+		{
+			// The speeder drives away from its spawn tile immediately, so its tag has to follow
+			// the car rather than sit on the tile the mission was created at. The label is the
+			// player's instruction: light it, then send police, then it is done.
+			FVector CarWorld = FVector::ZeroVector;
+			int32 SpotlightMark = 0;
+			bool bStopped = false;
+			if (TrafficSystem != nullptr &&
+				TrafficSystem->TryGetSpeederCarState(Record.EventId, CarWorld, SpotlightMark, bStopped))
+			{
+				// A stopped car's tag is emitted by the linger pass below instead, so that it
+				// survives the record being retired the instant the mission pays out. Emitting
+				// it here as well would double it up for the frame in between.
+				if (!bStopped)
+				{
+					// The marker box is a fixed width, so the label stays as short as every other
+					// one here ("FIRE", "JAM", "RIOT"). Progress is carried by colour instead:
+					// red = not lit yet, amber = marked and police can now stop it.
+					FSimCopterMissionWorldMarkerEntry Marker;
+					Marker.WorldLocation = CarWorld + FVector(0.0f, 0.0f, MissionMarkerWorldZOffsetCm);
+					Marker.Label = TEXT("SPEEDER");
+					Marker.Detail = Record.Name;
+					Marker.Color = SpotlightMark > 0
+						? FLinearColor(1.0f, 0.78f, 0.12f, 1.0f)
+						: FLinearColor(0.86f, 0.18f, 0.18f, 1.0f);
+					OutMarkers.Add(Marker);
+				}
+			}
+			else
+			{
+				// The car has not been placed yet, or has already been taken away.
+				AddTileMarker(Record.TileX, Record.TileY, TEXT("SPEEDER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			}
+			continue;
+		}
+
 		if ((Record.TypeMask & (SimCopterMissions::TYPE_CriminalA | SimCopterMissions::TYPE_CriminalC |
-			SimCopterMissions::TYPE_CriminalCar | SimCopterMissions::TYPE_SpeederEvent)) != 0)
+			SimCopterMissions::TYPE_SpeederEvent)) != 0)
 		{
 			AddTileMarker(Record.TileX, Record.TileY, TEXT("TARGET"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
 			continue;
 		}
 
 		AddTileMarker(Record.TileX, Record.TileY, TEXT("MISSION"), Record.Name, FLinearColor(0.15f, 0.55f, 1.0f, 1.0f));
+	}
+
+	// A speeder pays out the moment it stops, which retires its record in the same frame and
+	// would take the tag with it. Hold the green one up for a few seconds afterwards so the stop
+	// reads as a result rather than the marker just vanishing. Driven off the car, not a record,
+	// precisely because the record is already gone by then.
+	if (TrafficSystem != nullptr)
+	{
+		TArray<FVector> StoppedSpeeders;
+		TrafficSystem->GetRecentlyStoppedSpeederLocations(StoppedSpeeders);
+		for (const FVector& CarWorld : StoppedSpeeders)
+		{
+			FSimCopterMissionWorldMarkerEntry Marker;
+			Marker.WorldLocation = CarWorld + FVector(0.0f, 0.0f, MissionMarkerWorldZOffsetCm);
+			Marker.Label = TEXT("SPEEDER");
+			Marker.Detail = TEXT("Stopped");
+			Marker.Color = FLinearColor(0.05f, 0.72f, 0.32f, 1.0f);
+			OutMarkers.Add(Marker);
+		}
 	}
 }
 

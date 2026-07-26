@@ -1210,8 +1210,10 @@ bool ASimCopterGroundAgent::TryOrderStop(const int32 CallerMessageId)
 	}
 
 	// FUN_0049e0c0: raise the stopping flag and drop the moving ones. The car keeps its route -
-	// it decelerates along it rather than stopping dead.
+	// it decelerates along it rather than stopping dead, which is what the stop *distance* at
+	// +0xd3 buys. CriminalStopScale starts from whatever it was running at and coasts down.
 	bStopOrdered = true;
+	CriminalStopScale = TrafficSpeedScale;
 	CriminalState = static_cast<uint8>(SimCopterCriminalCar::EState::Stopping);
 	return true;
 }

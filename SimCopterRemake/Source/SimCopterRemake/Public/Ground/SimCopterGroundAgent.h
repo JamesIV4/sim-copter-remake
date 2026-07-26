@@ -170,6 +170,13 @@ public:
 	float GetArrestHoldSeconds() const { return ArrestHoldSeconds; }
 	void SetArrestHoldSeconds(float NewSeconds) { ArrestHoldSeconds = NewSeconds; }
 
+	// How much of its road speed a pulling-over car still has. The traffic pass resets every
+	// vehicle's speed scale to 1 each frame, so a stop has to be re-asserted from this rather
+	// than written once - which is what let an "arrested" car drive away.
+	float GetCriminalStopScale() const { return CriminalStopScale; }
+	void SetCriminalStopScale(float NewScale) { CriminalStopScale = NewScale; }
+	void MarkStopped() { bStopped = true; }
+
 	// The map tile this agent is standing on. Same answer as the behaviour-world override below,
 	// which is private because it is part of that interface rather than this actor's API.
 	bool TryGetTileCoordinate(int32& OutFileX, int32& OutFileY) const
@@ -406,6 +413,7 @@ private:
 	int32 SpotlightMark = 0;      // +0x11b
 	uint8 CriminalState = 0;      // +0x12b
 	float ArrestHoldSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
+	float CriminalStopScale = 1.0f; // stands in for the stop distance at +0xd3
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
 

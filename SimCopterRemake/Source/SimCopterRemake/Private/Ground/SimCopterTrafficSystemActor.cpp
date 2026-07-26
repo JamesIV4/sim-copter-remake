@@ -2167,12 +2167,17 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnDispatchVehicleAgent(
 		return nullptr;
 	}
 
+	// FUN_0049dbb0 is the shared placement for every vehicle class, so an emergency unit draws
+	// its road speed from the same range an ambient car does. That is deliberate: a police car
+	// cannot out-run a speeder at 1.75x, which is why the player has to slow one with the
+	// searchlight before the chase can end.
+	const float ServiceSpeedCmPerSec = DrawVehicleSpeedCmPerSec();
 	FString MeshName = GetDispatchMeshName(Service);
 	Agent->ConfigureAgent(
 		ESimCopterGroundAgentKind::Vehicle,
 		MeshName,
 		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
-		VehicleSpeedCmPerSec);
+		ServiceSpeedCmPerSec);
 
 	if (!Agent->IsUsingOriginalMesh() && VehicleMeshNames.Num() > 0)
 	{
@@ -2183,7 +2188,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnDispatchVehicleAgent(
 			ESimCopterGroundAgentKind::Vehicle,
 			MeshName,
 			ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
-			VehicleSpeedCmPerSec);
+			ServiceSpeedCmPerSec);
 	}
 
 	Agent->SnapToGroundImmediate();
@@ -2448,11 +2453,13 @@ bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
 
 	// GEO object 0x11e is CARROBBR, table name "badguy" - the body the original loads for this
 	// class, and the id FUN_0049dab0 tests for.
+	// The speeder's base speed is drawn the same way every other car's is; the 1.75x it runs at
+	// comes from the fleeing multiplier on top, not from a different base.
 	Car->ConfigureAgent(
 		ESimCopterGroundAgentKind::Vehicle,
 		TEXT("CARROBBR"),
 		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
-		VehicleSpeedCmPerSec);
+		DrawVehicleSpeedCmPerSec());
 	Car->SnapToGroundImmediate();
 	Car->MakeCriminalCar(EventId);
 
@@ -2477,6 +2484,67 @@ bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
 		TEXT("Speeder car for event %d placed on road tile (%d,%d); %d of %d in play."),
 		EventId, RoadTile.X, RoadTile.Y, CriminalCars.Num(), SimCopterCriminalCar::PoolCapacity);
 	return true;
+}
+
+// How fast a pulled-over car sheds its speed, in speed-scale per second. The original expresses
+// this as a stop *distance* at veh[0xd3] that the mover consumes; a fixed decay reads the same
+// on screen and does not need the mover's internals.
+static constexpr float SpeederStopBrakeRate = 1.5f;
+
+float ASimCopterTrafficSystemActor::DrawVehicleSpeedCmPerSec()
+{
+	// FUN_0049dbb0's two draws span 36..47 units/s together. The property carries the mean so it
+	// stays tunable in the editor; the draw supplies the original's roughly +/-13% spread, which
+	// is what stops a street of cars moving as one block.
+	constexpr int32 MinUnits = SimCopterCriminalCar::RoadSpeedMinUnitsPerSecond;
+	constexpr int32 MaxUnits = SimCopterCriminalCar::RoadSpeedMaxUnitsPerSecond;
+	constexpr float MeanUnits = (MinUnits + MaxUnits) * 0.5f;
+	const float Units = static_cast<float>(RandomStream.RandRange(MinUnits, MaxUnits));
+	return VehicleSpeedCmPerSec * (Units / MeanUnits);
+}
+
+bool ASimCopterTrafficSystemActor::TryGetSpeederCarState(
+	const int32 EventId,
+	FVector& OutWorldLocation,
+	int32& OutSpotlightMark,
+	bool& OutStopped) const
+{
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
+	{
+		const ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr || Car->GetCriminalEventId() != EventId)
+		{
+			continue;
+		}
+		OutWorldLocation = Car->GetActorLocation();
+		OutSpotlightMark = Car->GetSpotlightMark();
+		OutStopped = Car->GetCriminalState() ==
+			static_cast<uint8>(SimCopterCriminalCar::EState::Arrested);
+		return true;
+	}
+	return false;
+}
+
+void ASimCopterTrafficSystemActor::GetRecentlyStoppedSpeederLocations(TArray<FVector>& OutWorldLocations) const
+{
+	OutWorldLocations.Reset();
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
+	{
+		const ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr ||
+			Car->GetCriminalState() != static_cast<uint8>(SimCopterCriminalCar::EState::Arrested))
+		{
+			continue;
+		}
+		// The hold counts down from ArrestHoldSeconds, so what is left tells us how long ago the
+		// car stopped without needing a second timer.
+		const float SinceStopped =
+			SimCopterCriminalCar::ArrestHoldSeconds - Car->GetArrestHoldSeconds();
+		if (SinceStopped <= SimCopterCriminalCar::ArrestTagLingerSeconds)
+		{
+			OutWorldLocations.Add(Car->GetActorLocation());
+		}
+	}
 }
 
 bool ASimCopterTrafficSystemActor::CanVehicleStopOnTile(const FIntPoint& Tile) const
@@ -2548,8 +2616,10 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPursuitTarget(const FIn
 
 void ASimCopterTrafficSystemActor::RunCriminalCarArrest(ASimCopterGroundAgent& Car, const float DeltaSeconds)
 {
-	// FUN_004b8b60 runs on a sound-driven sequence; the remake collapses that to the hold timer,
-	// because the arrive/doors clips are the only thing gating each step.
+	// FUN_004b8630 case 3 counts veh[0x10] down and then hands over to FUN_004b8c90. Its other
+	// exit, veh[8] != 0, cannot fire for a speeder - see SimCopterCriminalCar.h - so the timer is
+	// the whole story. The mission was already paid out when the car stopped, so this only
+	// clears the wreck and frees its pool slot.
 	const float Remaining = Car.GetArrestHoldSeconds() - DeltaSeconds;
 	Car.SetArrestHoldSeconds(Remaining);
 	if (Remaining > 0.0f)
@@ -2557,7 +2627,6 @@ void ASimCopterTrafficSystemActor::RunCriminalCarArrest(ASimCopterGroundAgent& C
 		return;
 	}
 
-	// FUN_004b8c90: the car is taken away once the hold expires.
 	CriminalCars.Remove(&Car);
 	Car.Destroy();
 }
@@ -2584,8 +2653,12 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 
 		const SimCopterCriminalCar::EState State =
 			static_cast<SimCopterCriminalCar::EState>(Car->GetCriminalState());
-		if (State == SimCopterCriminalCar::EState::Arrested)
+		if (State == SimCopterCriminalCar::EState::Arrested ||
+			State == SimCopterCriminalCar::EState::Leaving)
 		{
+			// UpdateTrafficInteractions resets every vehicle to full speed each frame, so a
+			// stopped car has to be pinned here every frame or it simply drives off again.
+			Car->SetTrafficSpeedScale(0.0f);
 			RunCriminalCarArrest(*Car, DeltaSeconds);
 			continue;
 		}
@@ -2607,32 +2680,62 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 		if (Car->IsStopOrdered())
 		{
 			// FUN_0049e0c0 sets a stop distance rather than halting outright, so the car coasts
-			// down. Once it is at rest FUN_004b8b60's sequence can start.
-			Car->ApplyTrafficBrake(0.0f, DeltaSeconds, 2.0f);
-			if (!Car->IsStopped() && Car->GetCurrentVelocityCmPerSec().SizeSquared() < 25.0f)
+			// down instead of dropping dead. The scale is carried on the agent because the
+			// traffic pass overwrites TrafficSpeedScale every frame.
+			const float Coast = FMath::Max(0.0f, Car->GetCriminalStopScale() - DeltaSeconds * SpeederStopBrakeRate);
+			Car->SetCriminalStopScale(Coast);
+			Car->SetTrafficSpeedScale(Coast);
+			if (Coast > 0.0f)
+			{
+				continue;
+			}
+
+			// At rest: FUN_004b8b60's sequence.
+			Car->MarkStopped();
+			Car->SetFleeing(false);
+
+			int32 CarX = 0;
+			int32 CarY = 0;
+			Car->TryGetTileCoordinate(CarX, CarY);
+
+			// FUN_0049bd00(0xf, 0xd) puts the driver on the ground. Its return value is what
+			// decides the whole outcome: succeed and the arrest runs to a proper completion,
+			// fail and the record is retired silently with no payout.
+			const bool bPersonPlaced = TrySpawnMissionPerson(
+				SimCopterCriminalCar::ArrestPersonSpawnMode,
+				SimCopterCriminalCar::ArrestPersonState,
+				CarX,
+				CarY,
+				Car->GetCriminalEventId());
+
+			if (bPersonPlaced)
 			{
 				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Arrested));
 				Car->SetArrestHoldSeconds(SimCopterCriminalCar::ArrestHoldSeconds);
-				Car->SetFleeing(false);
 
-				int32 CarX = 0;
-				int32 CarY = 0;
-				Car->TryGetTileCoordinate(CarX, CarY);
-
-				// FUN_004b8b60: an officer gets out (spawn mode 0xf, state 0xd - the same pair
-				// the ambulance uses for its paramedic) and the mission record is closed.
-				TrySpawnMissionPerson(
-					SimCopterCriminalCar::ArrestPersonSpawnMode,
-					SimCopterCriminalCar::ArrestPersonState,
-					CarX,
-					CarY,
-					Car->GetCriminalEventId());
+				// DIVERGENCE: the original posts EVT_CriminalCaught from FUN_004b8c90, at the end
+				// of the 120 s hold. Paying out here instead tells the player the job is done the
+				// moment the car stops, rather than leaving them waiting two minutes with no
+				// signal. The car still lingers for the hold, but nothing is owed on it.
 				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
 				{
 					Missions->ReportSpeederCarCaught(Car->GetCriminalEventId());
 				}
 				UE_LOG(LogSimCopterTrafficSystem, Display,
-					TEXT("Speeder car for event %d pulled over at (%d,%d)."),
+					TEXT("Speeder car for event %d pulled over at (%d,%d); mission paid out, car leaves in %.0fs."),
+					Car->GetCriminalEventId(), CarX, CarY, SimCopterCriminalCar::ArrestHoldSeconds);
+			}
+			else
+			{
+				// FUN_004b8b60's `if (FUN_0049bd00(...) == 0)` branch: state 4, record retired.
+				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Leaving));
+				Car->SetArrestHoldSeconds(0.0f);
+				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+				{
+					Missions->ReportSpeederCarUnresolved(Car->GetCriminalEventId());
+				}
+				UE_LOG(LogSimCopterTrafficSystem, Warning,
+					TEXT("Speeder car for event %d stopped at (%d,%d) but nobody could be put on the ground; retiring it."),
 					Car->GetCriminalEventId(), CarX, CarY);
 			}
 			continue;
@@ -5538,7 +5641,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 		bVehicle ? ESimCopterGroundAgentKind::Vehicle : ESimCopterGroundAgentKind::Pedestrian,
 		MeshName,
 		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
-		bVehicle ? VehicleSpeedCmPerSec : PedestrianSpeedCmPerSec);
+		bVehicle ? DrawVehicleSpeedCmPerSec() : PedestrianSpeedCmPerSec);
 
 	if (bRequireOriginalPopulationMeshes && !Agent->IsUsingOriginalMesh())
 	{
