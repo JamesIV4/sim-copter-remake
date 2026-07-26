@@ -10,6 +10,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "GameFramework/PlayerController.h"
+#include "Ground/SimCopterCriminalCar.h"
 #include "Ground/SimCopterDispatchMarker.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
@@ -695,6 +696,9 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
+	// Speeders take their spotlight mark before the police read it, so a car lit this frame can
+	// be pulled over this frame.
+	UpdateCriminalCars(DeltaSeconds);
 	UpdateDispatchVehicles(DeltaSeconds);
 	UpdateWholeMapPopulation(DeltaSeconds);
 }
@@ -2379,6 +2383,267 @@ void ASimCopterTrafficSystemActor::UpdateDispatchMarker(
 	Marker->StepSpin();
 }
 
+void ASimCopterTrafficSystemActor::SetSpotlightMarkSource(
+	const FVector& GroundWorldLocation,
+	const int32 Band,
+	const bool bActive)
+{
+	SpotlightMarkWorldLocation = GroundWorldLocation;
+	SpotlightMarkBand = Band;
+	bSpotlightMarkActive = bActive;
+}
+
+bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
+	const int32 EventId,
+	const int32 TileX,
+	const int32 TileY)
+{
+	if (GetWorld() == nullptr || GroundAgentClass == nullptr || RoadNodes.Num() == 0)
+	{
+		return false;
+	}
+
+	// FUN_004b8540 walks the pool for a slot whose flags & 2 is clear and gives up when there is
+	// none. The pool is five deep, so five is a hard ceiling on live speeders.
+	CriminalCars.RemoveAll([](const TWeakObjectPtr<ASimCopterGroundAgent>& Car) { return !Car.IsValid(); });
+	if (CriminalCars.Num() >= SimCopterCriminalCar::PoolCapacity)
+	{
+		return false;
+	}
+
+	// FUN_0049cf10: a radius-5 spiral from the requested tile for a road tile it may sit on.
+	auto GetTileId = [this](int32 X, int32 Y) { return GetXbldTileId(X, Y); };
+	FIntPoint RoadTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	if (!SimCopterDispatch::TryFindNearestRoadTile(GetTileId, FIntPoint(TileX, TileY), 5, RoadTile))
+	{
+		return false;
+	}
+
+	const int32 NodeIndex = FindNodeByTile(RoadNodeIndexByTile, RoadTile.X, RoadTile.Y);
+	if (!RoadNodes.IsValidIndex(NodeIndex))
+	{
+		return false;
+	}
+
+	const int32 NextIndex = ChooseNextRouteNode(
+		RoadNodes, NodeIndex, INDEX_NONE, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
+	const FVector SpawnBase = MakeRoutePointLocation(RoadNodes, NodeIndex, INDEX_NONE, NextIndex, true);
+
+	FRotator SpawnRotation = FRotator::ZeroRotator;
+	if (RoadNodes.IsValidIndex(NextIndex))
+	{
+		const FVector Target = MakeRoutePointLocation(RoadNodes, NextIndex, NodeIndex, INDEX_NONE, true);
+		SpawnRotation.Yaw = (Target - SpawnBase).Rotation().Yaw;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	ASimCopterGroundAgent* Car = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+		GroundAgentClass, SpawnBase + FVector::UpVector * 100.0f, SpawnRotation, SpawnParams);
+	if (Car == nullptr)
+	{
+		return false;
+	}
+
+	// GEO object 0x11e is CARROBBR, table name "badguy" - the body the original loads for this
+	// class, and the id FUN_0049dab0 tests for.
+	Car->ConfigureAgent(
+		ESimCopterGroundAgentKind::Vehicle,
+		TEXT("CARROBBR"),
+		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+		VehicleSpeedCmPerSec);
+	Car->SnapToGroundImmediate();
+	Car->MakeCriminalCar(EventId);
+
+	if (RoadNodes.IsValidIndex(NextIndex))
+	{
+		const int32 PlannedNext = ChooseNextRouteNode(
+			RoadNodes, NextIndex, NodeIndex, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
+		Car->SetRouteState(NextIndex, NodeIndex, PlannedNext);
+	}
+	else
+	{
+		Car->SetRouteState(NodeIndex, INDEX_NONE);
+	}
+
+	// FUN_0049d980: a speeder runs at 1.75x until the searchlight finds it.
+	Car->SetTrafficSpeedScale(SimCopterCriminalCar::GetFleeingSpeedMultiplier(true, 0, INDEX_NONE));
+
+	CriminalCars.Add(Car);
+	VehicleAgents.Add(Car);
+
+	UE_LOG(LogSimCopterTrafficSystem, Display,
+		TEXT("Speeder car for event %d placed on road tile (%d,%d); %d of %d in play."),
+		EventId, RoadTile.X, RoadTile.Y, CriminalCars.Num(), SimCopterCriminalCar::PoolCapacity);
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::CanVehicleStopOnTile(const FIntPoint& Tile) const
+{
+	// FUN_0049df60's first test: never pull over on an intersection, because the car would block
+	// the junction.
+	if (SimCopterDispatch::IsIntersectionTileId(GetXbldTileId(Tile.X, Tile.Y)))
+	{
+		return false;
+	}
+
+	// ...and its last: no other stopped emergency vehicle already holds the tile.
+	for (int32 ServiceIndex = 0; ServiceIndex < DispatchServiceCount; ++ServiceIndex)
+	{
+		for (const FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[ServiceIndex])
+		{
+			if (Vehicle.State != ESimCopterDispatchVehicleState::OnScene)
+			{
+				continue;
+			}
+			const ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+			int32 AgentX = 0;
+			int32 AgentY = 0;
+			if (Agent != nullptr && Agent->TryGetTileCoordinate(AgentX, AgentY) &&
+				FIntPoint(AgentX, AgentY) == Tile)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPursuitTarget(const FIntPoint& FromTile) const
+{
+	// FUN_004b9e40 case 0: FUN_004beda0(3) rings, first object passing FUN_0049dab0 wins, and the
+	// hit is only kept when FUN_0049b000 puts it inside three steps. Scanning the live speeder
+	// list and applying the same step test gives the same answer without a per-tile object map.
+	ASimCopterGroundAgent* Best = nullptr;
+	int32 BestSteps = SimCopterCriminalCar::PursuitMaxTileSteps;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr)
+		{
+			continue;
+		}
+		if (!SimCopterCriminalCar::IsPursuitTarget(
+				Car->IsCriminalCar() ? SimCopterCriminalCar::CriminalCarMessageId : 0,
+				Car->IsFleeing()))
+		{
+			continue;
+		}
+		int32 CarX = 0;
+		int32 CarY = 0;
+		if (!Car->TryGetTileCoordinate(CarX, CarY))
+		{
+			continue;
+		}
+		const int32 Steps = SimCopterCriminalCar::GetTileStepDistance(FromTile, FIntPoint(CarX, CarY));
+		if (Steps < BestSteps)
+		{
+			BestSteps = Steps;
+			Best = Car;
+		}
+	}
+	return Best;
+}
+
+void ASimCopterTrafficSystemActor::RunCriminalCarArrest(ASimCopterGroundAgent& Car, const float DeltaSeconds)
+{
+	// FUN_004b8b60 runs on a sound-driven sequence; the remake collapses that to the hold timer,
+	// because the arrive/doors clips are the only thing gating each step.
+	const float Remaining = Car.GetArrestHoldSeconds() - DeltaSeconds;
+	Car.SetArrestHoldSeconds(Remaining);
+	if (Remaining > 0.0f)
+	{
+		return;
+	}
+
+	// FUN_004b8c90: the car is taken away once the hold expires.
+	CriminalCars.Remove(&Car);
+	Car.Destroy();
+}
+
+void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
+{
+	if (CriminalCars.Num() == 0)
+	{
+		return;
+	}
+
+	const float CmPerUnit = GetPeopleWorldCmPerOriginalUnit();
+	const float MarkRadiusCm =
+		SimCopterCriminalCar::GetSpotlightMarkRadiusOriginalUnits(SpotlightMarkBand) * CmPerUnit;
+
+	for (int32 Index = CriminalCars.Num() - 1; Index >= 0; --Index)
+	{
+		ASimCopterGroundAgent* Car = CriminalCars[Index].Get();
+		if (Car == nullptr)
+		{
+			CriminalCars.RemoveAt(Index);
+			continue;
+		}
+
+		const SimCopterCriminalCar::EState State =
+			static_cast<SimCopterCriminalCar::EState>(Car->GetCriminalState());
+		if (State == SimCopterCriminalCar::EState::Arrested)
+		{
+			RunCriminalCarArrest(*Car, DeltaSeconds);
+			continue;
+		}
+
+		// FUN_004a01f0. The distance is horizontal only - the beam's ground point against the
+		// car's position, with height ignored.
+		bool bLit = false;
+		if (bSpotlightMarkActive && MarkRadiusCm > 0.0f)
+		{
+			const FVector CarLocation = Car->GetActorLocation();
+			const FVector2D Flat(
+				CarLocation.X - SpotlightMarkWorldLocation.X,
+				CarLocation.Y - SpotlightMarkWorldLocation.Y);
+			bLit = Flat.SizeSquared() <= MarkRadiusCm * MarkRadiusCm;
+		}
+		Car->SetSpotlightMark(SimCopterCriminalCar::AccumulateSpotlightMark(
+			Car->GetSpotlightMark(), bLit, bSpotlightMarkActive));
+
+		if (Car->IsStopOrdered())
+		{
+			// FUN_0049e0c0 sets a stop distance rather than halting outright, so the car coasts
+			// down. Once it is at rest FUN_004b8b60's sequence can start.
+			Car->ApplyTrafficBrake(0.0f, DeltaSeconds, 2.0f);
+			if (!Car->IsStopped() && Car->GetCurrentVelocityCmPerSec().SizeSquared() < 25.0f)
+			{
+				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Arrested));
+				Car->SetArrestHoldSeconds(SimCopterCriminalCar::ArrestHoldSeconds);
+				Car->SetFleeing(false);
+
+				int32 CarX = 0;
+				int32 CarY = 0;
+				Car->TryGetTileCoordinate(CarX, CarY);
+
+				// FUN_004b8b60: an officer gets out (spawn mode 0xf, state 0xd - the same pair
+				// the ambulance uses for its paramedic) and the mission record is closed.
+				TrySpawnMissionPerson(
+					SimCopterCriminalCar::ArrestPersonSpawnMode,
+					SimCopterCriminalCar::ArrestPersonState,
+					CarX,
+					CarY,
+					Car->GetCriminalEventId());
+				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+				{
+					Missions->ReportSpeederCarCaught(Car->GetCriminalEventId());
+				}
+				UE_LOG(LogSimCopterTrafficSystem, Display,
+					TEXT("Speeder car for event %d pulled over at (%d,%d)."),
+					Car->GetCriminalEventId(), CarX, CarY);
+			}
+			continue;
+		}
+
+		// FUN_0049d980: the mark decides how fast it can run.
+		Car->SetTrafficSpeedScale(SimCopterCriminalCar::GetFleeingSpeedMultiplier(
+			Car->IsFleeing(), Car->GetSpotlightMark(), SpotlightMarkBand));
+	}
+}
+
 ASimCopterMissionSystemActor* ASimCopterTrafficSystemActor::ResolveMissionSystem() const
 {
 	if (UWorld* World = GetWorld())
@@ -2447,12 +2712,35 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 
 	case SimCopterDispatch::EService::Police:
 	{
-		// The original's police car scans three rings for a criminal/speeder
-		// (FUN_0049dab0) and calls its "pull over" entry point. The remake has no criminal
-		// car class yet, so the ported half is the jam clearance the help documents for a
-		// police dispatch ("You should also dispatch police to help clear the traffic
-		// jam", 20ref.htm), plus the deployed officer below.
 		bool bActed = false;
+
+		// FUN_004b9e40 case 0: sweep three rings around the car itself for a speeder, and order
+		// the nearest one to pull over. The order only sticks against a car the player has held
+		// the searchlight on - an unmarked speeder drives straight past.
+		ASimCopterGroundAgent* Target = FindPursuitTarget(Tile);
+		bool bTargetFleeing = false;
+		if (Target != nullptr)
+		{
+			bTargetFleeing = Target->IsFleeing();
+			int32 TargetX = 0;
+			int32 TargetY = 0;
+			Target->TryGetTileCoordinate(TargetX, TargetY);
+			// FUN_0049df60 is asked of the *target* - "may that car stop where it is" - not of
+			// the police car.
+			if (CanVehicleStopOnTile(FIntPoint(TargetX, TargetY)) &&
+				Target->TryOrderStop(SimCopterCriminalCar::PoliceCarMessageId))
+			{
+				Vehicle.TargetEventId = Target->GetCriminalEventId();
+				Vehicle.TargetTile = FIntPoint(TargetX, TargetY);
+				bActed = true;
+				UE_LOG(LogSimCopterTrafficSystem, Verbose,
+					TEXT("Dispatch: police at (%d,%d) ordered the speeder at (%d,%d) to pull over."),
+					Tile.X, Tile.Y, TargetX, TargetY);
+			}
+		}
+
+		// The jam clearance the help documents for a police dispatch ("You should also dispatch
+		// police to help clear the traffic jam", 20ref.htm).
 		if (Missions != nullptr)
 		{
 			FIntPoint JamTile;
@@ -2460,14 +2748,17 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 			if (Missions->TryFindNearestJamTile(Tile, SimCopterDispatch::OnSceneScanRadius, JamTile, EventId))
 			{
 				Vehicle.TargetEventId = EventId;
-				bActed = Missions->ClearTrafficJamEvent(EventId);
+				bActed |= Missions->ClearTrafficJamEvent(EventId);
 			}
 		}
 
-		// FUN_0049bd00(0xe, 8): put an officer on the ground beside the car.
+		// FUN_0049bd00(0xe, personState): put an officer on the ground beside the car. The state
+		// is 0xe when the car it just stopped was fleeing, 8 otherwise.
 		if (!Vehicle.bActedAtScene)
 		{
-			bActed |= TrySpawnMissionPerson(0xe, 8, Tile.X, Tile.Y, Vehicle.TargetEventId);
+			const int32 PersonState = SimCopterCriminalCar::GetOfficerPersonState(Target != nullptr, bTargetFleeing);
+			bActed |= TrySpawnMissionPerson(
+				SimCopterCriminalCar::OfficerSpawnMode, PersonState, Tile.X, Tile.Y, Vehicle.TargetEventId);
 		}
 		return bActed;
 	}
@@ -2525,9 +2816,44 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 	{
 		if (Vehicle.State == ESimCopterDispatchVehicleState::Chasing)
 		{
-			// FUN_004b9e40 case 2 re-reads the spotlight tile every frame and re-snaps it
-			// to a road tile through the same radius-4 spiral the dispatcher uses.
+			// FUN_004b9e40 case 2 sweeps three rings around the *spotlight* tile first: a
+			// speeder found there is driven to directly, and only when there is none does the
+			// unit fall back to the radius-4 road snap below.
+			bool bChasingTarget = false;
 			if (SimCopterDispatch::IsTileInBounds(SpotlightChaseTile))
+			{
+				if (ASimCopterGroundAgent* Target = FindPursuitTarget(SpotlightChaseTile))
+				{
+					int32 TargetX = 0;
+					int32 TargetY = 0;
+					if (Target->TryGetTileCoordinate(TargetX, TargetY))
+					{
+						const FIntPoint TargetTile(TargetX, TargetY);
+						if (TargetTile != Vehicle.DestinationTile)
+						{
+							bChasingTarget = TryRetargetDispatchVehicle(Vehicle, TargetTile);
+						}
+						else
+						{
+							bChasingTarget = true;
+						}
+
+						// The chase issues the same stop order an arrived unit does, so a
+						// marked speeder can be taken while the police car is still rolling.
+						if (bChasingTarget &&
+							SimCopterCriminalCar::GetTileStepDistance(Vehicle.DestinationTile, TargetTile)
+								< SimCopterCriminalCar::PursuitMaxTileSteps &&
+							CanVehicleStopOnTile(TargetTile))
+						{
+							Target->TryOrderStop(SimCopterCriminalCar::PoliceCarMessageId);
+						}
+					}
+				}
+			}
+
+			// FUN_004b9e40 case 2's no-target path: re-read the spotlight tile every frame and
+			// re-snap it to a road tile through the same radius-4 spiral the dispatcher uses.
+			if (!bChasingTarget && SimCopterDispatch::IsTileInBounds(SpotlightChaseTile))
 			{
 				auto GetTileId = [this](int32 X, int32 Y) { return GetXbldTileId(X, Y); };
 				FIntPoint ChaseRoadTile;

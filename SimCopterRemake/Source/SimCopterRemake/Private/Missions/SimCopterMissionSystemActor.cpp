@@ -878,6 +878,11 @@ void ASimCopterMissionSystemActor::PlayUiSound(int32 SoundId)
 
 bool ASimCopterMissionSystemActor::TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY)
 {
+	// FUN_004b84f0 -> FUN_004b8540: the traffic system owns the pool and the road placement.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
+	{
+		return TrafficSystem->TryActivateSpeederCar(EventId, TileX, TileY);
+	}
 	return false;
 }
 
@@ -1783,6 +1788,17 @@ void ASimCopterMissionSystemActor::SpawnServiceWaterJet(const FVector& TruckWorl
 bool ASimCopterMissionSystemActor::ClearTrafficJamEvent(int32 EventId)
 {
 	return MissionSystem.ClearTrafficJam(EventId);
+}
+
+void ASimCopterMissionSystemActor::ReportSpeederCarCaught(int32 EventId)
+{
+	// FUN_004b8b60 posts EVT_SetCategory with value 4 - CAT_ExpireSilently. The chase pays out
+	// through EVT_SpeederPursuit while it is running, so the arrest itself just retires the
+	// record rather than scoring it again.
+	MissionSystem.PostEvent(
+		SimCopterMissions::EVT_SetCategory,
+		EventId,
+		SimCopterMissions::CAT_ExpireSilently);
 }
 
 bool ASimCopterMissionSystemActor::TryUseMegaphone(const FVector& FromWorldLocation)

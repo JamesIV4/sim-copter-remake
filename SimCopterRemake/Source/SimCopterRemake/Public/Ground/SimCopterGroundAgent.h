@@ -138,6 +138,45 @@ public:
 	int32 GetRoutePrevNode() const { return RoutePrevNodeIndex; }
 	int32 GetRoutePlannedNextNode() const { return RoutePlannedNextNodeIndex; }
 
+	// --- Speeder / criminal car (FUN_004b8470's class, message id 0x11e) ---------------------
+	// Turns this vehicle into the mission's speeder. The traffic system drives the rest; see
+	// SimCopterCriminalCar.h for the decode.
+	void MakeCriminalCar(int32 InEventId);
+	bool IsCriminalCar() const { return bCriminalCar; }
+	int32 GetCriminalEventId() const { return CriminalEventId; }
+
+	// obj[5] & 8 - the fleeing flag the police target filter tests. A criminal car always flies
+	// it; the same flag is what would make a speeder *person* a valid target.
+	bool IsFleeing() const { return bFleeing; }
+	void SetFleeing(bool bInFleeing) { bFleeing = bInFleeing; }
+
+	// obj[0x11b] - how long the player's searchlight has been on it, 0..10 (FUN_004a01f0).
+	int32 GetSpotlightMark() const { return SpotlightMark; }
+	void SetSpotlightMark(int32 NewMark) { SpotlightMark = NewMark; }
+
+	// obj[0x12b] - the state FUN_004b8630 switches on, and FUN_004b89a0 gates the stop order on.
+	uint8 GetCriminalState() const { return CriminalState; }
+	void SetCriminalState(uint8 NewState) { CriminalState = NewState; }
+
+	// veh[4] & 0x10 / & 0x20: the stop has been ordered, and the car has actually come to rest.
+	bool IsStopOrdered() const { return bStopOrdered; }
+	bool IsStopped() const { return bStopped; }
+
+	// FUN_004b89a0 -> FUN_0049e0c0. Returns true when the order was accepted, which is only when
+	// the car has been marked by the spotlight first.
+	bool TryOrderStop(int32 CallerMessageId);
+
+	// FUN_004b8b60's hold before the car is removed.
+	float GetArrestHoldSeconds() const { return ArrestHoldSeconds; }
+	void SetArrestHoldSeconds(float NewSeconds) { ArrestHoldSeconds = NewSeconds; }
+
+	// The map tile this agent is standing on. Same answer as the behaviour-world override below,
+	// which is private because it is part of that interface rather than this actor's API.
+	bool TryGetTileCoordinate(int32& OutFileX, int32& OutFileY) const
+	{
+		return TryGetCurrentTileCoordinate(OutFileX, OutFileY);
+	}
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	ESimCopterGroundAgentKind GetAgentKind() const { return AgentKind; }
 
@@ -356,6 +395,17 @@ private:
 	int32 RouteTargetNodeIndex = INDEX_NONE;
 	int32 RoutePrevNodeIndex = INDEX_NONE;
 	int32 RoutePlannedNextNodeIndex = INDEX_NONE;
+
+	// Speeder / criminal car state. Offsets in the comments are the original's, on the class
+	// FUN_004b8470 builds.
+	bool bCriminalCar = false;    // message id 0x11e
+	bool bFleeing = false;        // obj[5] & 8
+	bool bStopOrdered = false;    // veh[4] & 0x10
+	bool bStopped = false;        // veh[4] & 0x20
+	int32 CriminalEventId = INDEX_NONE; // +0x113
+	int32 SpotlightMark = 0;      // +0x11b
+	uint8 CriminalState = 0;      // +0x12b
+	float ArrestHoldSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
 

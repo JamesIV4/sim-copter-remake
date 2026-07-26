@@ -18,7 +18,7 @@ const FSimCopterMissionCatalogEntry GMissionCatalog[] =
 	{ TYPE_CriminalA,    TEXT("Criminal"),     TEXT("Crime"),     TEXT("one criminal on foot (spawn mode 10, state 9)"), true },
 	{ TYPE_SpeederEvent, TEXT("Speeder"),      TEXT("Crime"),     TEXT("one speeder on foot (spawn mode 0xb, state 9)"), true },
 	{ TYPE_CriminalC,    TEXT("Criminal C"),   TEXT("Crime"),     TEXT("tier 3+ criminal variant (spawn mode 0xc, state 9)"), true },
-	{ TYPE_CriminalCar,  TEXT("Speeder Car"),  TEXT("Crime"),     TEXT("tier 3+ speeder car; car hook not ported"), false },
+	{ TYPE_CriminalCar,  TEXT("Speeder Car"),  TEXT("Crime"),     TEXT("tier 3+ speeder car; light it with the searchlight, then send police (F4/F5) to stop it"), true },
 
 	{ TYPE_FireRescue,   TEXT("Rescue"),       TEXT("Rescue"),    TEXT("people trapped at a mission building (spawn mode 2)"), true },
 	{ TYPE_BoatRescue,   TEXT("Boat Rescue"),  TEXT("Rescue"),    TEXT("tier 2+ sinking boat; boat hook not ported"), false },
