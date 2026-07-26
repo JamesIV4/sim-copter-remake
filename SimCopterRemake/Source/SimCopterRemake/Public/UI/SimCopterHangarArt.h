@@ -9,8 +9,19 @@
 class UTexture2D;
 struct FSlateBrush;
 
-// Loads the hangar shell's original artwork out of the shipped BMP folder and hands it to Slate
-// as brushes.
+// Quarter turns applied after a sub-rectangle is cut out. The cockpit's dispatch strip needs
+// left and right arrows and the original only ships an up/down rocker, so its two halves are
+// turned on their side.
+enum class ESimCopterArtRotation : uint8
+{
+	None,
+	Clockwise90,
+	CounterClockwise90,
+};
+
+// Loads the original artwork out of the shipped BMP folder and hands it to Slate as brushes.
+// The hangar shell was the first caller and named the class; the cockpit's tool flaps
+// (SimCopterFlapLayout) load their pages and button strips through it too.
 //
 // Every page the shell draws is one 8-bit Windows bitmap under BMP/, listed here with the
 // executable pointer that names it:
@@ -58,6 +69,15 @@ public:
 	// disabled) and cat_btn.bmp three 86x28 ones.
 	const FSlateBrush* GetStripFrame(const FString& FileName, int32 FrameIndex, int32 FrameCount);
 
+	// Any sub-rectangle of a bitmap, optionally turned a quarter. The cockpit's flapbtn strips
+	// pack frames of unequal width (flapbtn0.bmp is two 17x29 rocker frames followed by two
+	// 20x29 ones), so they cannot go through GetStripFrame.
+	const FSlateBrush* GetSubImage(
+		const FString& FileName,
+		const FIntRect& Source,
+		bool bColorKeyed = true,
+		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None);
+
 	// cat_<model>.bmp for a catalog row, or null for a row without a drawing.
 	const FSlateBrush* GetCatalogDrawing(int32 CatalogRow);
 
@@ -78,12 +98,13 @@ private:
 	// Resolves BMP/<FileName> case-insensitively; empty when it is not there.
 	FString ResolveBitmapPath(const FString& FileName) const;
 
+	// An empty Source takes the whole bitmap.
 	const FSlateBrush* BuildBrush(
 		const FString& CacheKey,
 		const FString& FileName,
 		bool bColorKeyed,
-		int32 FrameIndex,
-		int32 FrameCount);
+		const FIntRect& Source,
+		ESimCopterArtRotation Rotation);
 };
 
 // Where the hangar shell puts things on the original's 640x480 pages.

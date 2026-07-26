@@ -44,6 +44,8 @@
 #include "ProceduralMeshComponent.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
+#include "UI/SimCopterHangarArt.h"
+#include "UI/SSimCopterToolFlaps.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
@@ -360,6 +362,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		PlayerController->SetInputMode(InputMode);
 		EnsurePassengerSlotsWidget();
 		EnsureWaterControlsWidget();
+		EnsureToolFlapsWidget();
 		EnsureHelicopterDebugPanel();
 	}
 
@@ -378,6 +381,7 @@ void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	RemovePassengerSlotsWidget();
 	RemoveWaterControlsWidget();
+	RemoveToolFlapsWidget();
 	RemoveHelicopterDebugPanel();
 	Super::EndPlay(EndPlayReason);
 }
@@ -461,6 +465,10 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindKey(EKeys::F3, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchAmbulanceKey);
 	PlayerInputComponent->BindKey(EKeys::F4, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchPoliceKey);
 	PlayerInputComponent->BindKey(EKeys::F5, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchPoliceChaseKey);
+
+	// F1 shows and hides the developer panel. It starts visible, and the original binds nothing
+	// to F1, so the key is free.
+	PlayerInputComponent->BindKey(EKeys::F1, IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
@@ -1079,6 +1087,7 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	BucketWaterFraction = 0.0f;
 	WinchState = SimCopterWinch::FWinchState();
 	PendingWinchCommand = SimCopterWinch::CommandIdle;
+	WinchHeldDirection = 0;
 	bHarnessRopeEndSelected = false;
 	bHarnessRiderAttached = false;
 	RopeFirstActiveNode = SimCopterWaterGameplay::RopeStowedFirstActiveNode;
@@ -1152,6 +1161,7 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	PlayerController->SetInputMode(InputMode);
 	EnsurePassengerSlotsWidget();
 	EnsureWaterControlsWidget();
+	EnsureToolFlapsWidget();
 	EnsureHelicopterDebugPanel();
 }
 
@@ -1566,18 +1576,85 @@ void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()
 		return;
 	}
 
-	// Top-right so it never overlaps the water capacity HUD in the bottom-left.
+	// Top-left, above the water capacity HUD, which sits at the bottom of the same edge.
 	HelicopterDebugPanelWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
-		.HAlign(HAlign_Right)
+		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Top)
-		.Padding(FMargin(0.0f, 22.0f, 22.0f, 0.0f))
+		.Padding(FMargin(22.0f, 22.0f, 0.0f, 0.0f))
 		[
 			SNew(SSimCopterHelicopterDebugPanel).Pawn(this)
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(HelicopterDebugPanelWidget.ToSharedRef(), 26);
+#endif
+}
+
+void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
+{
+	if (!bShowToolFlaps ||
+		ToolFlapsWidget.IsValid() ||
+		GEngine == nullptr ||
+		GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	if (FlapArt == nullptr)
+	{
+		FlapArt = NewObject<USimCopterHangarArt>(this, TEXT("FlapArt"));
+	}
+	FlapArt->SetOriginalGameRoot(ResolveOriginalGameRoot());
+	if (!FlapArt->IsUsable())
+	{
+		// No BMP folder: the flaps would be four empty rectangles, so draw nothing at all and
+		// leave the water HUD as the only tool readout.
+		UE_LOG(LogTemp, Warning,
+			TEXT("SimCopter cockpit flaps: '%s' has no BMP folder; the tool flaps are hidden."),
+			*ResolveOriginalGameRoot());
+		return;
+	}
+
+	// The original pins the flaps to the right edge of its 640x480 screen (FUN_004127d0); the
+	// remake keeps that edge and stacks whatever the helicopter is carrying.
+	ToolFlapsWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
+		[
+			SNew(SSimCopterToolFlaps)
+			.Pawn(this)
+			.Art(FlapArt)
+			.Scale(ToolFlapScale)
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(ToolFlapsWidget.ToSharedRef(), 24);
+}
+
+void ASimCopterHelicopterPawn::RemoveToolFlapsWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && ToolFlapsWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(ToolFlapsWidget.ToSharedRef());
+	}
+	ToolFlapsWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel()
+{
+#if !UE_BUILD_SHIPPING
+	bShowHelicopterDebugPanel = !bShowHelicopterDebugPanel;
+	if (bShowHelicopterDebugPanel)
+	{
+		EnsureHelicopterDebugPanel();
+	}
+	else
+	{
+		RemoveHelicopterDebugPanel();
+	}
 #endif
 }
 
@@ -1728,6 +1805,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	}
 	RemovePassengerSlotsWidget();
 	RemoveWaterControlsWidget();
+	RemoveToolFlapsWidget();
 	RemoveHelicopterDebugPanel();
 
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
@@ -2098,6 +2176,27 @@ void ASimCopterHelicopterPawn::CycleMegaphoneMessage(int32 Delta)
 	}
 	const int32 Index = ((static_cast<int32>(SelectedMegaphoneMessage) + Delta) % Count + Count) % Count;
 	SelectedMegaphoneMessage = static_cast<ESimCopterMegaphoneMessage>(Index);
+}
+
+void ASimCopterHelicopterPawn::SetSelectedMegaphoneMessage(const ESimCopterMegaphoneMessage Message)
+{
+	if (Message < ESimCopterMegaphoneMessage::Count)
+	{
+		SelectedMegaphoneMessage = Message;
+	}
+}
+
+void ASimCopterHelicopterPawn::SetWinchHeldInput(const bool bHarness, const int32 Direction)
+{
+	WinchHeldDirection = FMath::Clamp(Direction, -1, 1);
+	bWinchHeldHarness = bHarness;
+	if (WinchHeldDirection != 0)
+	{
+		// Taking the rocker cancels a one-shot still running from ToggleRope, so the two
+		// cannot fight over the cursor.
+		PendingWinchCommand = SimCopterWinch::CommandIdle;
+	}
+	RefreshWaterControlsWidget();
 }
 
 void ASimCopterHelicopterPawn::StartEngineHold()
@@ -3298,7 +3397,19 @@ bool ASimCopterHelicopterPawn::StepRopeState()
 	// rule falls out of SimCopterWinch::Resolve*Command.
 	const bool bHarnessSelected = GetActiveTool() == ESimCopterHelicopterTool::RescueHarness;
 	int32 Command = SimCopterWinch::CommandIdle;
-	if (RopeAdjustInput > 0.25f)
+	if (WinchHeldDirection != 0)
+	{
+		// A flap rocker under the cursor. It names its own attachment, so it wins over the
+		// key axis and over any one-shot still in flight.
+		Command = WinchHeldDirection > 0
+			? (bWinchHeldHarness
+				? SimCopterWinch::ResolveRaiseHarnessCommand(WinchState)
+				: SimCopterWinch::ResolveRaiseBucketCommand(WinchState))
+			: (bWinchHeldHarness
+				? SimCopterWinch::ResolveLowerHarnessCommand(WinchState)
+				: SimCopterWinch::ResolveLowerBucketCommand(WinchState));
+	}
+	else if (RopeAdjustInput > 0.25f)
 	{
 		Command = bHarnessSelected
 			? SimCopterWinch::ResolveRaiseHarnessCommand(WinchState)
