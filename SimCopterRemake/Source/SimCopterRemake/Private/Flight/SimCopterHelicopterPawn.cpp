@@ -1632,6 +1632,9 @@ void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
 			.HeightOverride(38.0f)
 			[
 				SNew(SButton)
+				// A HUD button must never hold keyboard focus: a focused SButton treats the
+				// space bar as its own activation, and space is the collective.
+				.IsFocusable(false)
 				.ContentPadding(FMargin(1.0f))
 				.ToolTipText(FText::FromString(bFull ? TEXT("Drop passenger") : TEXT("Empty seat")))
 				.ButtonColorAndOpacity(bFull ? FLinearColor(0.09f, 0.12f, 0.14f, 0.95f) : FLinearColor(0.04f, 0.06f, 0.08f, 0.78f))
@@ -2327,6 +2330,31 @@ FString ASimCopterHelicopterPawn::GetSelectedDispatchServiceStatus() const
 		return TEXT("no traffic system");
 	}
 	return TrafficSystem->GetDispatchStatusLine(static_cast<SimCopterDispatch::EService>(SelectedDispatchService));
+}
+
+int32 ASimCopterHelicopterPawn::DebugStartMission(int32 TypeMask)
+{
+	ASimCopterMissionSystemActor* Missions = ResolveMissionSystem();
+	if (Missions == nullptr)
+	{
+		LastDebugMissionStatus = TEXT("No mission system in this map.");
+		return INDEX_NONE;
+	}
+
+	const TCHAR* Name = SimCopterMissions::FSimCopterMissionSystem::GetTypeDisplayName(TypeMask);
+	const int32 EventId = Missions->StartMissionNow(TypeMask);
+	if (EventId == INDEX_NONE)
+	{
+		// The placer gets five tries (ten for a fire) at a tile near the camera; nothing near
+		// the helicopter passed this type's tile test.
+		LastDebugMissionStatus = FString::Printf(
+			TEXT("%s (0x%x): the placer found no suitable tile near the camera."), Name, TypeMask);
+	}
+	else
+	{
+		LastDebugMissionStatus = FString::Printf(TEXT("%s (0x%x) -> event %d"), Name, TypeMask, EventId);
+	}
+	return EventId;
 }
 
 // SCHOOK: MegaphoneBroadcast 0x0048a800

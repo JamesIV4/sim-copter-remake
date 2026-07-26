@@ -415,6 +415,13 @@ public:
 	// Status line for the currently selected service, sourced from the traffic system.
 	FString GetSelectedDispatchServiceStatus() const;
 
+	// Debug panel: place one mission of TypeMask into the running session through the original
+	// placer (FUN_004a92f0 -> FUN_004a7a10). Nothing here bypasses the placement rules, so a
+	// type whose tile test finds nothing nearby reports a failure rather than forcing a spawn.
+	// Returns the event id, or INDEX_NONE.
+	int32 DebugStartMission(int32 TypeMask);
+	FString GetLastDebugMissionStatus() const { return LastDebugMissionStatus; }
+
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
 
@@ -861,6 +868,9 @@ private:
 	// Emergency dispatch: the last outcome message and the debug panel's service selection.
 	FString LastDispatchStatus;
 	int32 SelectedDispatchService = 0;
+
+	// Debug panel: what the last hand-placed mission did.
+	FString LastDebugMissionStatus;
 
 	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
