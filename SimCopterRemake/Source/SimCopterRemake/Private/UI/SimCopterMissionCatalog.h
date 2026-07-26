@@ -10,6 +10,10 @@
 struct FSimCopterMissionCatalogEntry
 {
 	int32 TypeMask;
+	// Short unambiguous name for a button or list row. GetTypeDisplayName is not enough on its
+	// own: it answers by bit, so the three criminal masks and the two rescue masks all come back
+	// with the same word.
+	const TCHAR* Label;
 	// The career.twk weight bucket whose FUN_004a6e60 branch rolls this mask.
 	const TCHAR* Bucket;
 	// The difficulty-tier gate the scheduler applies, plus anything the remake still lacks.

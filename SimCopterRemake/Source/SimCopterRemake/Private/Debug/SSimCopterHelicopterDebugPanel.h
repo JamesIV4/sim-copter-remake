@@ -40,6 +40,10 @@ private:
 	FText GetGrantButtonText() const;
 	FText GetDispatchServiceText() const;
 	FText GetDispatchStatusText() const;
+	FText GetMissionStatusText() const;
+
+	// One button per shared-catalog mission type, wrapped to the panel width.
+	TSharedRef<SWidget> BuildMissionButtons();
 
 	// All Slate handlers return Handled so a click on the panel can never also fire the
 	// world's primary action (plan section 5.2).
@@ -59,6 +63,8 @@ private:
 	FReply HandleDispatch();
 	FReply HandleDispatchChase();
 	FReply HandleDispatchClear();
+	// One per entry in the shared mission catalog.
+	FReply HandleStartMission(int32 TypeMask);
 
 	EVisibility GetMegaphoneRowVisibility() const;
 	EVisibility GetTearGasRowVisibility() const;

@@ -1892,6 +1892,9 @@ void ASimCopterMissionSystemActor::EnsureDebugButtonsWidget()
 	auto MakeButton = [](const FString& Label, FOnClicked InOnClicked) -> TSharedRef<SButton>
 	{
 		return SNew(SButton)
+			// Keyboard focus stays on the viewport: a focused SButton consumes the space bar,
+			// which the player needs for collective while the helicopter is in the air.
+			.IsFocusable(false)
 			.OnClicked(InOnClicked)
 			.ContentPadding(FMargin(12.0f, 6.0f))
 			[

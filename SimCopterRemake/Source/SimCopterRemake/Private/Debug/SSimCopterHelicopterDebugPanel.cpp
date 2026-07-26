@@ -5,10 +5,13 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Ground/SimCopterDispatch.h"
+#include "Missions/SimCopterMissionSystem.h"
 #include "Styling/CoreStyle.h"
+#include "UI/SimCopterMissionCatalog.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -25,6 +28,9 @@ TSharedRef<SWidget> MakeArrow(const FText& Label, FOnClicked OnClicked)
 		.WidthOverride(26.0f)
 		[
 			SNew(SButton)
+			// Never take keyboard focus: this panel sits over the flying helicopter, and a
+			// focused button swallows the space bar the player is holding for collective.
+			.IsFocusable(false)
 			.HAlign(HAlign_Center)
 			.VAlign(VAlign_Center)
 			.ContentPadding(FMargin(2.0f, 0.0f))
@@ -143,6 +149,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(8.0f, 1.0f))
 						.OnPressed(FSimpleDelegate::CreateLambda([this]() { HandleUsePressed(); }))
 						.OnReleased(FSimpleDelegate::CreateLambda([this]() { HandleUseReleased(); }))
@@ -168,6 +175,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(8.0f, 0.0f, 0.0f, 0.0f))
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(6.0f, 0.0f))
 						.Visibility(this, &SSimCopterHelicopterDebugPanel::GetGrantButtonVisibility)
 						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleToggleGrant))
@@ -180,6 +188,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(8.0f, 0.0f, 0.0f, 0.0f))
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(6.0f, 0.0f))
 						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleRopeToggle))
 						[
@@ -235,6 +244,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(8.0f, 0.0f, 0.0f, 0.0f))
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(6.0f, 0.0f))
 						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleRefillTearGas))
 						[
@@ -289,6 +299,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(8.0f, 1.0f))
 						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatch))
 						[
@@ -300,6 +311,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(8.0f, 1.0f))
 						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatchChase))
 						[
@@ -311,6 +323,7 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f, 0.0f, 0.0f))
 					[
 						SNew(SButton)
+						.IsFocusable(false)
 						.ContentPadding(FMargin(8.0f, 1.0f))
 						.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleDispatchClear))
 						[
@@ -330,9 +343,92 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					.AutoWrapText(true)
 					.Font(PanelFont(10))
 				]
+
+				// --- MISSIONS: one button per mask the placer can dispatch ---
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 6.0f, 0.0f, 0.0f))
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "Missions", "MISSIONS"))
+					.ColorAndOpacity(LabelColor)
+					.Font(PanelFont(10, true))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 3.0f, 0.0f, 0.0f))
+				[
+					BuildMissionButtons()
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 3.0f, 0.0f, 0.0f))
+				[
+					SNew(STextBlock)
+					.Text(this, &SSimCopterHelicopterDebugPanel::GetMissionStatusText)
+					.ColorAndOpacity(LabelColor)
+					.AutoWrapText(true)
+					.Font(PanelFont(10))
+				]
 			]
 		]
 	];
+}
+
+TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildMissionButtons()
+{
+	const TArrayView<const FSimCopterMissionCatalogEntry> Missions = GetSimCopterMissionCatalog();
+
+	TSharedRef<SWrapBox> Box = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D(3.0f, 3.0f));
+	for (const FSimCopterMissionCatalogEntry& Entry : Missions)
+	{
+		// A type whose world hook is still a stub is shown greyed and still clickable, so the
+		// panel reports the same "no suitable tile" the placer does rather than hiding it.
+		const FLinearColor TextColor = Entry.bWorldHookPorted
+			? FLinearColor(0.94f, 0.97f, 1.0f, 1.0f)
+			: FLinearColor(0.62f, 0.62f, 0.62f, 1.0f);
+
+		Box->AddSlot()
+		[
+			SNew(SButton)
+			.IsFocusable(false)
+			.ContentPadding(FMargin(6.0f, 1.0f))
+			.ToolTipText(FText::FromString(FString::Printf(
+				TEXT("mask 0x%x   %s bucket   %s%s"),
+				Entry.TypeMask,
+				Entry.Bucket,
+				Entry.Note,
+				Entry.bWorldHookPorted ? TEXT("") : TEXT("  (world hook not ported)"))))
+			.OnClicked(FOnClicked::CreateSP(this, &SSimCopterHelicopterDebugPanel::HandleStartMission, Entry.TypeMask))
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(Entry.Label))
+				.ColorAndOpacity(TextColor)
+				.Font(PanelFont(10))
+			]
+		];
+	}
+
+	return Box;
+}
+
+FText SSimCopterHelicopterDebugPanel::GetMissionStatusText() const
+{
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	if (Helicopter == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+	return FText::FromString(Helicopter->GetLastDebugMissionStatus());
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleStartMission(int32 TypeMask)
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->DebugStartMission(TypeMask);
+	}
+	return FReply::Handled();
 }
 
 namespace
