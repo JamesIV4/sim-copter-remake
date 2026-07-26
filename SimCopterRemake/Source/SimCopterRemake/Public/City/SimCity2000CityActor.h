@@ -98,8 +98,12 @@ public:
 	// building any more. Any tile of the footprint may be passed, and OutClearedTiles reports the
 	// whole footprint. Returns false when the tile has no removable building (already demolished,
 	// or the building was baked rather than instanced).
+	//
+	// bLeaveRubble is the original's behaviour and what a fire wants. Clearing a site to build on
+	// - the player's hangar - passes false, because a fresh building standing in a debris pile
+	// reads as a bug rather than as history.
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|City")
-	bool DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles);
+	bool DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles, bool bLeaveRubble = true);
 
 	// True while the tile is covered by a building that has not been demolished.
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")

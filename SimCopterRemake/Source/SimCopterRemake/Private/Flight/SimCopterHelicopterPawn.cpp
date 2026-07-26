@@ -2052,6 +2052,38 @@ void ASimCopterHelicopterPawn::SetDebugToolGrant(ESimCopterHelicopterTool Tool, 
 	RefreshWaterControlsWidget();
 }
 
+void ASimCopterHelicopterPawn::SetCareerEquipmentOwned(ESimCopterHelicopterTool Tool, bool bOwned)
+{
+	const int32 Bit = SimCopterHelicopterRegistry::GetToolCareerBit(Tool);
+	if (Bit == 0)
+	{
+		// The Apache's armament comes from the model, not the shop.
+		return;
+	}
+
+	if (bOwned)
+	{
+		EquipmentState.CareerEquipmentMask |= Bit;
+		if (Tool == ESimCopterHelicopterTool::TearGas)
+		{
+			// FUN_0042d840: `career[0x54] = 10` with the launcher, not `+=`.
+			EquipmentState.CareerTearGasRounds = SimCopterHelicopterRegistry::TearGasCapacity;
+		}
+	}
+	else
+	{
+		EquipmentState.CareerEquipmentMask &= ~Bit;
+		if (Tool == ESimCopterHelicopterTool::TearGas)
+		{
+			// FUN_0042d9f0 sells the rounds with the launcher.
+			EquipmentState.CareerTearGasRounds = 0;
+		}
+	}
+
+	bWaterCannonInstalled = IsToolAvailable(ESimCopterHelicopterTool::WaterCannon);
+	RefreshWaterControlsWidget();
+}
+
 void ASimCopterHelicopterPawn::DebugRefillTearGas()
 {
 	EquipmentState.DebugRefillTearGas();

@@ -4,6 +4,7 @@
 
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterAirport.h"
+#include "City/SimCopterHangar.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Ground/SimCopterOnFootPawn.h"
@@ -19,6 +20,7 @@ ASimCopterGameMode::ASimCopterGameMode()
 	DefaultPawnClass = ASimCopterOnFootPawn::StaticClass();
 	TrafficSystemClass = ASimCopterTrafficSystemActor::StaticClass();
 	MissionSystemClass = ASimCopterMissionSystemActor::StaticClass();
+	HangarClass = ASimCopterHangar::StaticClass();
 }
 
 void ASimCopterGameMode::BeginPlay()
@@ -141,6 +143,9 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 	APawn* PlayerPawn = PlayerController != nullptr ? PlayerController->GetPawn() : nullptr;
 	if (PlayerPawn == nullptr || PlayerPawn == PlayerHelicopter)
 	{
+		// No on-foot pawn to stand anywhere, but the hangar still belongs beside the airport;
+		// face it at the helicopter's pad.
+		PlaceHangar(Traffic, PlayerHelicopterPad);
 		return;
 	}
 
@@ -149,6 +154,37 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 		PlayerHelicopterPad +
 		FVector(-TileSizeCm * 0.75f, 0.0f, PlayerPawn->GetSimpleCollisionHalfHeight() + 4.0f);
 	PlayerPawn->TeleportTo(StandLocation, FRotator(0.0f, 0.0f, 0.0f), /*bIsATest=*/false, /*bNoCheck=*/true);
+
+	PlaceHangar(Traffic, StandLocation);
+}
+
+void ASimCopterGameMode::PlaceHangar(ASimCopterTrafficSystemActor* Traffic, const FVector& PlayerStandLocation)
+{
+	UWorld* World = GetWorld();
+	if (!bSpawnHangar || World == nullptr || HangarClass == nullptr || Traffic == nullptr)
+	{
+		return;
+	}
+
+	// A hangar placed in the level by hand wins; otherwise one is spawned here.
+	ASimCopterHangar* Hangar = Cast<ASimCopterHangar>(UGameplayStatics::GetActorOfClass(World, HangarClass));
+	if (Hangar == nullptr)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Hangar = World->SpawnActor<ASimCopterHangar>(HangarClass, PlayerStandLocation, FRotator::ZeroRotator, SpawnParams);
+	}
+
+	if (Hangar == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: could not be spawned."));
+		return;
+	}
+
+	if (!Hangar->PlaceAtAirport(Traffic, PlayerStandLocation))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: could not be placed at the airport; leaving it where it spawned."));
+	}
 }
 
 void ASimCopterGameMode::ApplyPendingSession()

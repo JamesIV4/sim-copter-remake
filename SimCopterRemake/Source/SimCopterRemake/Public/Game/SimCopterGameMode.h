@@ -8,6 +8,7 @@
 
 class ASimCopterTrafficSystemActor;
 class ASimCopterMissionSystemActor;
+class ASimCopterHangar;
 
 // Game mode for the city level. Opens the session the main menu asked for
 // (USimCopterSessionSubsystem) once the city and mission actors exist.
@@ -48,6 +49,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	TSubclassOf<ASimCopterTrafficSystemActor> TrafficSystemClass;
 
+	// The player's hangar. It is stood beside the airport with its doors turned to face wherever
+	// the session puts the player, so it is the first building they see on foot.
+	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Hangar")
+	bool bSpawnHangar = true;
+
+	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Hangar")
+	TSubclassOf<ASimCopterHangar> HangarClass;
+
 private:
 	TWeakObjectPtr<ASimCopterMissionSystemActor> MissionSystemActor;
 
@@ -66,4 +75,8 @@ private:
 	// traffic system builds the city grid - and with it the airport - in its own BeginPlay,
 	// which the engine dispatches after the game mode's.
 	void PlaceSessionOnAirportPads();
+
+	// Stands the hangar beside the airport, doors toward PlayerStandLocation. Called from
+	// PlaceSessionOnAirportPads once the pads are known.
+	void PlaceHangar(ASimCopterTrafficSystemActor* Traffic, const FVector& PlayerStandLocation);
 };
