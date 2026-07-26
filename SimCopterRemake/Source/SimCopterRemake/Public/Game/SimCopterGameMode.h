@@ -59,4 +59,11 @@ private:
 	// start straight away. Does nothing when the level was entered without going through the menu,
 	// which leaves the mission actor's own default session in charge.
 	void ApplyPendingSession();
+
+	// SCHOOK: SessionPlaceHelicopters 0x0047a240
+	// Puts every helicopter in the level on a free airport helipad and stands the player next to
+	// the one they will fly, the way city entry does. Runs a tick after BeginPlay because the
+	// traffic system builds the city grid - and with it the airport - in its own BeginPlay,
+	// which the engine dispatches after the game mode's.
+	void PlaceSessionOnAirportPads();
 };

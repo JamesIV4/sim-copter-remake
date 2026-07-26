@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "City/SimCopterAirport.h"
 #include "GameFramework/Actor.h"
 #include "Ground/SimCopterDispatch.h"
 #include "UObject/ObjectKey.h"
@@ -168,7 +169,19 @@ public:
 		FVector& OutWorldLocation,
 		int32& OutTileClass) const;
 	int32 GetXbldTileId(int32 FileX, int32 FileY) const;
+	// Raw XZON byte; its low nibble is the zone type (8 = airport, which is what the airport
+	// search in SimCopterAirport looks for).
+	int32 GetZoneTileId(int32 FileX, int32 FileY) const;
 	int32 GetBuildingFootprintSize(int32 FileX, int32 FileY) const;
+
+	// The airport block this city starts at (FUN_0047c0c0 / FUN_004829f0), cached with the rest
+	// of the grid. (128, 128) means the city had no airport zone and the original would have
+	// built one just past the map's far corner.
+	FIntPoint GetAirportOriginTile() const { return AirportOriginTile; }
+	// World location of one of the airport's twelve helipads (FUN_004829f0's pad table order).
+	// The height comes from the terminal tile, because FUN_004829f0 flattens the whole block to
+	// that one height-map sample before it places anything.
+	bool TryGetAirportPadWorldLocation(int32 PadIndex, FVector& OutWorldLocation) const;
 	// FUN_004a5fd0 zeroes the XBLD entry of every tile a burned-down building covered, which is
 	// what stops the sim treating the cleared ground as a building (and stops fire re-igniting it).
 	void ClearXbldTiles(const TArray<FIntPoint>& Tiles);
@@ -503,6 +516,9 @@ private:
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
 	TMap<FIntPoint, int32> PedestrianNodeIndexByTile;
 	TArray<uint8> XbldTileIds;
+	TArray<uint8> ZoneTileIds;
+	// Resolved once per city build; (128, 128) when the city has no airport zone.
+	FIntPoint AirportOriginTile = FIntPoint(SimCopterAirport::FallbackOriginTile, SimCopterAirport::FallbackOriginTile);
 	TArray<uint8> PeopleTileClasses;
 	TArray<uint8> PeopleTerrainTypes;
 	TArray<uint8> WaterTileFlags;

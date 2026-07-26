@@ -214,6 +214,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	void ResetAircraft();
 
+	// SCHOOK: HelicopterPlaceOnPad 0x00484790
+	// Park the helicopter on an airport helipad, the way city entry (FUN_0047a240) and the
+	// crash respawn (FUN_0048a8b0) both do: the aircraft is moved to the pad's own position
+	// with its attitude zeroed, not flown there. PadSurfaceWorldLocation is the top of the pad;
+	// the aircraft settles the same 1.2 units above it that a landing leaves it at.
+	void PlaceOnHelipad(const FVector& PadSurfaceWorldLocation, float YawDegrees);
+
+	// Where PlaceOnHelipad would put the actor's origin for that pad - so a pawn standing next
+	// to the aircraft can be put on the same ground.
+	float GetHelipadRestingOriginOffsetCm() const;
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	float GetFuelFraction() const;
 

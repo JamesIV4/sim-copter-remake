@@ -1523,6 +1523,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
 
 	XbldTileIds.SetNum(FSimCity2000City::TileCount);
+	ZoneTileIds.SetNum(FSimCity2000City::TileCount);
 	PeopleTileClasses.SetNum(FSimCity2000City::TileCount);
 	PeopleTerrainTypes.SetNum(FSimCity2000City::TileCount);
 	WaterTileFlags.SetNum(FSimCity2000City::TileCount);
@@ -1536,6 +1537,7 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
 			const int32 PeopleTileClass = FSimCopterPeopleCityRules::GetTileClassForBuildingId(Tile.Building);
 			XbldTileIds[TileIndex] = Tile.Building;
+			ZoneTileIds[TileIndex] = Tile.Zone;
 			PeopleTileClasses[TileIndex] = uint8(PeopleTileClass);
 			PeopleTerrainTypes[TileIndex] = GetPeopleTerrainTypeForAmbientGate(Tile);
 			WaterTileFlags[TileIndex] = Tile.bWater ? 1 : 0;
@@ -1596,6 +1598,35 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 					}
 				}
 			}
+		}
+	}
+
+	// FUN_0047c0c0 resolves the airport while it builds the cell map, before anything is placed,
+	// because the session's helicopters go on its pads.
+	{
+		auto ReadZone = [this](int32 TileX, int32 TileY) { return GetZoneTileId(TileX, TileY); };
+		auto ReadXbld = [this](int32 TileX, int32 TileY) { return GetXbldTileId(TileX, TileY); };
+		AirportOriginTile = SimCopterAirport::FindAirportOrigin(ReadZone, ReadXbld);
+
+		if (SimCopterAirport::IsFallbackAirportOrigin(AirportOriginTile))
+		{
+			UE_LOG(
+				LogSimCopterTrafficSystem,
+				Display,
+				TEXT("SimCopter airport: this city has no airport zone; the original builds one just past the map corner at (%d, %d)."),
+				AirportOriginTile.X,
+				AirportOriginTile.Y);
+		}
+		else
+		{
+			UE_LOG(
+				LogSimCopterTrafficSystem,
+				Display,
+				TEXT("SimCopter airport: 4x4 block at (%d, %d); pad 0 at (%d, %d)."),
+				AirportOriginTile.X,
+				AirportOriginTile.Y,
+				SimCopterAirport::GetPadTile(AirportOriginTile, 0).X,
+				SimCopterAirport::GetPadTile(AirportOriginTile, 0).Y);
 		}
 	}
 
@@ -2988,6 +3019,18 @@ int32 ASimCopterTrafficSystemActor::GetXbldTileId(int32 FileX, int32 FileY) cons
 	return int32(XbldTileIds[FileY * FSimCity2000City::MapSize + FileX]);
 }
 
+int32 ASimCopterTrafficSystemActor::GetZoneTileId(int32 FileX, int32 FileY) const
+{
+	if (ZoneTileIds.Num() != FSimCity2000City::TileCount ||
+		FileX < 0 || FileX >= FSimCity2000City::MapSize ||
+		FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return 0;
+	}
+
+	return int32(ZoneTileIds[FileY * FSimCity2000City::MapSize + FileX]);
+}
+
 int32 ASimCopterTrafficSystemActor::GetBuildingFootprintSize(int32 FileX, int32 FileY) const
 {
 	return FMath::Max(1, FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(uint8(GetXbldTileId(FileX, FileY))));
@@ -3014,6 +3057,39 @@ void ASimCopterTrafficSystemActor::ClearXbldTiles(const TArray<FIntPoint>& Tiles
 ASimCity2000CityActor* ASimCopterTrafficSystemActor::GetCityActor() const
 {
 	return ResolveSourceCityActor();
+}
+
+bool ASimCopterTrafficSystemActor::TryGetAirportPadWorldLocation(int32 PadIndex, FVector& OutWorldLocation) const
+{
+	OutWorldLocation = FVector::ZeroVector;
+	if (ActiveTileSize <= KINDA_SMALL_NUMBER || TileCenterWorldZ.Num() != FSimCity2000City::TileCount)
+	{
+		return false;
+	}
+
+	const FIntPoint PadTile = SimCopterAirport::GetPadTile(AirportOriginTile, PadIndex);
+	if (PadTile.X == INDEX_NONE)
+	{
+		return false;
+	}
+
+	// FUN_004829f0 copies one height-map sample - the terminal's own tile - across the whole
+	// block before it creates any cell, so every pad in an airport sits at exactly that height,
+	// however the ground under it sloped beforehand. The fallback block is off the map entirely
+	// and has no sample to read; clamping to the nearest real tile keeps it on the ground.
+	const FIntPoint TerminalTile = SimCopterAirport::GetTerminalTile(AirportOriginTile);
+	const int32 HeightX = FMath::Clamp(TerminalTile.X, 0, FSimCity2000City::MapSize - 1);
+	const int32 HeightY = FMath::Clamp(TerminalTile.Y, 0, FSimCity2000City::MapSize - 1);
+
+	// The XY formula is the one every tile uses and extrapolates past the map on its own, which
+	// is what the fallback block needs.
+	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
+	const float LocalX = GetWorldTileCenterCoordinate(static_cast<float>(PadTile.X), ActiveTileSize, HalfMapSize);
+	const float LocalY = -GetWorldTileCenterCoordinate(static_cast<float>(PadTile.Y), ActiveTileSize, HalfMapSize);
+
+	OutWorldLocation = ActiveCityToWorldTransform.TransformPosition(FVector(LocalX, LocalY, 0.0f));
+	OutWorldLocation.Z = TileCenterWorldZ[HeightY * FSimCity2000City::MapSize + HeightX];
+	return true;
 }
 
 bool ASimCopterTrafficSystemActor::TryGetTileCenterWorldLocation(int32 FileX, int32 FileY, FVector& OutWorldLocation) const

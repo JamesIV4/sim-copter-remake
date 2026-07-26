@@ -2,6 +2,9 @@
 
 #include "Game/SimCopterGameMode.h"
 
+#include "City/SimCity2000CityActor.h"
+#include "City/SimCopterAirport.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -55,6 +58,97 @@ void ASimCopterGameMode::BeginPlay()
 	}
 
 	ApplyPendingSession();
+
+	GetWorldTimerManager().SetTimerForNextTick(this, &ASimCopterGameMode::PlaceSessionOnAirportPads);
+}
+
+void ASimCopterGameMode::PlaceSessionOnAirportPads()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	ASimCopterTrafficSystemActor* Traffic =
+		Cast<ASimCopterTrafficSystemActor>(UGameplayStatics::GetActorOfClass(World, ASimCopterTrafficSystemActor::StaticClass()));
+	if (Traffic == nullptr)
+	{
+		return;
+	}
+
+	TArray<AActor*> HelicopterActors;
+	UGameplayStatics::GetAllActorsOfClass(World, ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
+	if (HelicopterActors.Num() == 0)
+	{
+		return;
+	}
+	// GetAllActorsOfClass has no defined order; the original walks its helicopter table in a
+	// fixed one, so sort to keep the assignment stable between runs of the same map.
+	HelicopterActors.Sort([](const AActor& Left, const AActor& Right)
+	{
+		return Left.GetName() < Right.GetName();
+	});
+
+	// FUN_0047a240 asks FUN_0048b000 for a free pad once per helicopter, and each placement
+	// occupies the pad it lands on, so the next helicopter sees one fewer. Nothing else is
+	// parked on the pads at city entry, so the first helicopter gets pad 0.
+	TBitArray<> PadTaken(false, SimCopterAirport::PadCount);
+	auto IsPadTaken = [&PadTaken](int32 PadIndex) { return PadTaken[PadIndex]; };
+
+	ASimCopterHelicopterPawn* PlayerHelicopter = nullptr;
+	FVector PlayerHelicopterPad = FVector::ZeroVector;
+
+	for (AActor* Actor : HelicopterActors)
+	{
+		ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
+		if (Helicopter == nullptr)
+		{
+			continue;
+		}
+
+		const int32 PadIndex = SimCopterAirport::FindFreePadIndex(IsPadTaken, IsPadTaken);
+		FVector PadWorld = FVector::ZeroVector;
+		if (PadIndex == INDEX_NONE || !Traffic->TryGetAirportPadWorldLocation(PadIndex, PadWorld))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("SimCopter airport: no free helipad for %s."), *Helicopter->GetName());
+			continue;
+		}
+		PadTaken[PadIndex] = true;
+
+		// FUN_00484790 clears the helicopter's orientation outright; the pads have no facing.
+		Helicopter->PlaceOnHelipad(PadWorld, 0.0f);
+
+		if (PlayerHelicopter == nullptr)
+		{
+			PlayerHelicopter = Helicopter;
+			PlayerHelicopterPad = PadWorld;
+		}
+
+		UE_LOG(LogTemp, Display, TEXT("SimCopter airport: %s parked on pad %d at %s."),
+			*Helicopter->GetName(), PadIndex, *PadWorld.ToCompactString());
+	}
+
+	if (PlayerHelicopter == nullptr)
+	{
+		return;
+	}
+
+	// The original starts the session in the helicopter. This port keeps its on-foot start, so
+	// the player is stood on the pad beside the aircraft instead - close enough to walk to it,
+	// far enough not to trip the auto-board radius before they have taken a look around.
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(World, 0);
+	APawn* PlayerPawn = PlayerController != nullptr ? PlayerController->GetPawn() : nullptr;
+	if (PlayerPawn == nullptr || PlayerPawn == PlayerHelicopter)
+	{
+		return;
+	}
+
+	const float TileSizeCm = Traffic->GetCityActor() != nullptr ? Traffic->GetCityActor()->GetTileSize() : 400.0f;
+	const FVector StandLocation =
+		PlayerHelicopterPad +
+		FVector(-TileSizeCm * 0.75f, 0.0f, PlayerPawn->GetSimpleCollisionHalfHeight() + 4.0f);
+	PlayerPawn->TeleportTo(StandLocation, FRotator(0.0f, 0.0f, 0.0f), /*bIsATest=*/false, /*bNoCheck=*/true);
 }
 
 void ASimCopterGameMode::ApplyPendingSession()

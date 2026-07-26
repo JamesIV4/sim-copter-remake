@@ -568,6 +568,9 @@ public:
 	FSimCopterMsvcRand& GetRand() { return Rand; }
 	void RebuildCumulativeWeights();                 // FUN_004a6d20
 	static bool IsFireSuitableTile(int32 XbldId);    // FUN_004a5f60 tile test
+	// FUN_004a92f0 LAB_004a95ff: the tile carries a building a mission can be attached to.
+	// Medevac, Transport and every on-foot criminal are placed through it.
+	static bool IsMissionBuildingTile(int32 XbldId);
 	static uint8 GetXbldPropertyFlags(int32 XbldId); // FUN_0049a4d0 record byte 0
 	void RunSchedulerOnce();                         // FUN_004a6e60 body (post-cadence)
 
