@@ -2,6 +2,7 @@
 
 #include "City/SimCity2000CityActor.h"
 
+#include "City/SimCopterAirport.h"
 #include "City/SimCopterRuntimeStaticMesh.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -2922,6 +2923,24 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 
 	LastLoadedCityName = City.CityName;
+
+	// FUN_0047bb20 runs the tmap conditioning (FUN_004abce0) and only then builds the city's
+	// cells (FUN_0047c0c0), which hands the first airport-zoned 4x4 to FUN_004829f0. That
+	// demolishes whatever SimCity 2000 zoned there and rebuilds it as SimCopter's own airport -
+	// a 2x2 terminal ringed by twelve bare helipads - so it has to happen before anything reads
+	// XBLD, and the flatten has to read a corner grid conditioned from the pre-stamp ids.
+	TArray<int16> ConditionedTerrainCorners = BuildConditionedTerrainCornerSamples(City);
+	{
+		const FIntPoint AirportOrigin = SimCopterAirport::BuildAirportIntoCity(City, &ConditionedTerrainCorners);
+		UE_LOG(
+			LogSimCity2000CityActor,
+			Display,
+			TEXT("SimCopter airport: %s at (%d, %d); the 4x4 block is now terminal + twelve pads."),
+			SimCopterAirport::IsFallbackAirportOrigin(AirportOrigin) ? TEXT("no airport zone, fallback block") : TEXT("block"),
+			AirportOrigin.X,
+			AirportOrigin.Y);
+	}
+
 	BuildingTileFlags.SetNumZeroed(FSimCity2000City::TileCount);
 	const int32 TileCountToCache = FMath::Min(FSimCity2000City::TileCount, City.Tiles.Num());
 	for (int32 TileIndex = 0; TileIndex < TileCountToCache; ++TileIndex)
@@ -3086,9 +3105,8 @@ void ASimCity2000CityActor::RebuildCity()
 	const bool bAnimateWater = bAnimateWaterSurface && bRenderWater && bUseTexturedTerrainSurface;
 	const bool bUseHighTerrainAtlas = BakedCityAtlasMaterials.TerrainHighMaterial != nullptr || (HighTerrainTexture != nullptr && TexturedMaterial != nullptr);
 
-	// The original conditions the tmap corner grid before anything reads it: flatten under
-	// buildings/flat network tiles, wedge ramps under raised spans, dip water corners.
-	const TArray<int16> ConditionedTerrainCorners = BuildConditionedTerrainCornerSamples(City);
+	// ConditionedTerrainCorners was built above, before the airport was stamped, because the
+	// original conditions the grid first and levels the airport into it afterwards.
 
 	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
 	// (the type IS the cell index). Reproduce that grid once for the whole map.

@@ -14,6 +14,7 @@ class ASimCity2000CityActor;
 class ASimCopterGroundAgent;
 class ASimCopterMissionSystemActor;
 class UInstancedStaticMeshComponent;
+class USimCopterDispatchMarkerComponent;
 
 struct FSimCopterGroundRouteNode
 {
@@ -127,6 +128,11 @@ struct FSimCopterDispatchVehicle
 	bool bHasJetTarget = false;
 	// True once the vehicle has acted at the scene at least once (original flag 0x08).
 	bool bActedAtScene = false;
+	// The waypoint marker hanging over DestinationTile, and the original's "marker is linked"
+	// flag +0x2b1 & 0x20. Created on the first dispatch and reused for the slot's lifetime, the
+	// way the original keeps one render node per vehicle.
+	TWeakObjectPtr<USimCopterDispatchMarkerComponent> Marker;
+	FIntPoint MarkerTile = FIntPoint(INDEX_NONE, INDEX_NONE);
 };
 
 // One burning car reported to the fire renderer: a stable key + its world location.
@@ -695,6 +701,14 @@ public:
 	// Per-frame state machines (FUN_004b9e40 and its fire/ambulance siblings).
 	void UpdateDispatchVehicles(float DeltaSeconds);
 	void UpdateOneDispatchVehicle(SimCopterDispatch::EService Service, int32 SlotIndex, float DeltaSeconds);
+
+	// FUN_004be890 / FUN_004be820 / FUN_004be750, folded into one step: hang the service's
+	// waypoint marker over the vehicle's destination tile while it is responding or chasing,
+	// re-anchor it when the destination moves, spin it, and drop it in every other state.
+	void UpdateDispatchMarker(SimCopterDispatch::EService Service, FSimCopterDispatchVehicle& Vehicle);
+
+	// The marker art is missing or unreadable; say so once rather than every tick per vehicle.
+	bool bLoggedDispatchMarkerError = false;
 	// Breadth-first road-node route; stands in for FUN_004bef30's Dijkstra + back-links.
 	bool TryPlanRoadRoute(const FIntPoint& FromTile, const FIntPoint& ToTile, TArray<int32>& OutNodes) const;
 	bool TryRetargetDispatchVehicle(FSimCopterDispatchVehicle& Vehicle, const FIntPoint& DestinationTile);

@@ -10,6 +10,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "GameFramework/PlayerController.h"
+#include "Ground/SimCopterDispatchMarker.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Kismet/GameplayStatics.h"
@@ -1520,6 +1521,12 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		return false;
 	}
 
+	// FUN_0047c0c0/FUN_004829f0 build the airport into the city before any cell is made, so the
+	// grid this actor caches has to see the stamped block - twelve bare pads and a terminal -
+	// rather than the SimCity 2000 airport the file was saved with. No corner grid here: this
+	// actor takes its heights from ALTM, which FUN_004829f0 never touches.
+	AirportOriginTile = SimCopterAirport::BuildAirportIntoCity(City, nullptr);
+
 	const float HalfMapSize = FSimCity2000City::MapSize * ActiveTileSize * 0.5f;
 
 	XbldTileIds.SetNum(FSimCity2000City::TileCount);
@@ -1601,13 +1608,9 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 		}
 	}
 
-	// FUN_0047c0c0 resolves the airport while it builds the cell map, before anything is placed,
-	// because the session's helicopters go on its pads.
+	// AirportOriginTile was resolved above, before the grid was cached, because the stamp has to
+	// land on the city data every one of these arrays is filled from.
 	{
-		auto ReadZone = [this](int32 TileX, int32 TileY) { return GetZoneTileId(TileX, TileY); };
-		auto ReadXbld = [this](int32 TileX, int32 TileY) { return GetXbldTileId(TileX, TileY); };
-		AirportOriginTile = SimCopterAirport::FindAirportOrigin(ReadZone, ReadXbld);
-
 		if (SimCopterAirport::IsFallbackAirportOrigin(AirportOriginTile))
 		{
 			UE_LOG(
@@ -2299,7 +2302,81 @@ void ASimCopterTrafficSystemActor::ReleaseDispatchVehicle(SimCopterDispatch::ESe
 		Agent->Destroy();
 	}
 
+	// FUN_004bd5f0's teardown drops the marker with the vehicle.
+	if (USimCopterDispatchMarkerComponent* Marker = Vehicle.Marker.Get())
+	{
+		Marker->DestroyComponent();
+	}
+
 	Vehicle = FSimCopterDispatchVehicle();
+}
+
+void ASimCopterTrafficSystemActor::UpdateDispatchMarker(
+	const SimCopterDispatch::EService Service,
+	FSimCopterDispatchVehicle& Vehicle)
+{
+	// FUN_004b9c00 / FUN_004babe0 re-link the marker on exactly `2 < state < 5`: it belongs to a
+	// unit that is still on its way, and goes as soon as it arrives, parks or is recalled.
+	const bool bWantMarker =
+		(Vehicle.State == ESimCopterDispatchVehicleState::Responding ||
+		 Vehicle.State == ESimCopterDispatchVehicleState::Chasing) &&
+		SimCopterDispatch::IsTileInBounds(Vehicle.DestinationTile);
+
+	if (!bWantMarker)
+	{
+		// FUN_004be820: unlink, keep the node.
+		if (USimCopterDispatchMarkerComponent* Marker = Vehicle.Marker.Get())
+		{
+			Marker->Hide();
+		}
+		Vehicle.MarkerTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+		return;
+	}
+
+	USimCopterDispatchMarkerComponent* Marker = Vehicle.Marker.Get();
+	if (Marker == nullptr)
+	{
+		Marker = NewObject<USimCopterDispatchMarkerComponent>(this);
+		if (Marker == nullptr)
+		{
+			return;
+		}
+		Marker->SetOriginalGameRoot(ResolveOriginalGameRoot());
+		Marker->SetupAttachment(GetRootComponent());
+		Marker->RegisterComponent();
+		Vehicle.Marker = Marker;
+	}
+
+	// FUN_004b9e40 re-reads the destination tile's cell every tick, so a chase unit's marker
+	// tracks the spotlight without anything else having to notice the destination moved.
+	if (Vehicle.MarkerTile != Vehicle.DestinationTile)
+	{
+		Vehicle.MarkerTile = Vehicle.DestinationTile;
+	}
+
+	FVector TileWorld = FVector::ZeroVector;
+	if (!TryGetTileCenterWorldLocation(Vehicle.DestinationTile.X, Vehicle.DestinationTile.Y, TileWorld))
+	{
+		Marker->Hide();
+		return;
+	}
+
+	// The original's +0xa0000 on the cell altitude: ten original units off the ground.
+	TileWorld.Z += USimCopterDispatchMarkerComponent::MarkerHeightOriginalUnits * GetPeopleWorldCmPerOriginalUnit();
+
+	if (!Marker->ShowAt(Service, TileWorld))
+	{
+		if (!Marker->GetLastLoadError().IsEmpty() && !bLoggedDispatchMarkerError)
+		{
+			bLoggedDispatchMarkerError = true;
+			UE_LOG(LogSimCopterTrafficSystem, Warning,
+				TEXT("Dispatch marker unavailable: %s"), *Marker->GetLastLoadError());
+		}
+		return;
+	}
+
+	// FUN_004be750, once per tick while the marker is up.
+	Marker->StepSpin();
 }
 
 ASimCopterMissionSystemActor* ASimCopterTrafficSystemActor::ResolveMissionSystem() const
@@ -2436,6 +2513,10 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 		ReleaseDispatchVehicle(Service, SlotIndex);
 		return;
 	}
+
+	// The original updates the marker inside this same tick, off the state it is about to act
+	// on, so it appears the frame the unit is dispatched and clears the frame it arrives.
+	UpdateDispatchMarker(Service, Vehicle);
 
 	switch (Vehicle.State)
 	{

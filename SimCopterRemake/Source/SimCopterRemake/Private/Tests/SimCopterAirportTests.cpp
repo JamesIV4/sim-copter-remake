@@ -217,3 +217,115 @@ bool FSimCopterAirportFootprintTest::RunTest(const FString& Parameters)
 
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterAirportStampTest, "SimCopter.City.AirportBlockStamp", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterAirportStampTest::RunTest(const FString& Parameters)
+{
+	const FIntPoint Origin(40, 60);
+
+	// FUN_004829f0 leaves the terminal on the middle 2x2 and a pad on each of the twelve
+	// perimeter tiles - the same twelve GetPadTile publishes.
+	TestEqual(TEXT("The block's own corner is a pad"),
+		SimCopterAirport::GetStampedXbldId(Origin, 40, 60), SimCopterAirport::PadXbldId);
+	TestEqual(TEXT("The terminal's top-left is the terminal"),
+		SimCopterAirport::GetStampedXbldId(Origin, 41, 61), SimCopterAirport::TerminalXbldId);
+	TestEqual(TEXT("The terminal's bottom-right is the terminal"),
+		SimCopterAirport::GetStampedXbldId(Origin, 42, 62), SimCopterAirport::TerminalXbldId);
+	TestEqual(TEXT("A tile outside the block is untouched"),
+		SimCopterAirport::GetStampedXbldId(Origin, 44, 60), int32(INDEX_NONE));
+
+	int32 TerminalTiles = 0;
+	int32 PadTiles = 0;
+	for (int32 DeltaY = 0; DeltaY < SimCopterAirport::BlockSpan; ++DeltaY)
+	{
+		for (int32 DeltaX = 0; DeltaX < SimCopterAirport::BlockSpan; ++DeltaX)
+		{
+			const int32 Stamped = SimCopterAirport::GetStampedXbldId(Origin, Origin.X + DeltaX, Origin.Y + DeltaY);
+			TerminalTiles += Stamped == SimCopterAirport::TerminalXbldId ? 1 : 0;
+			PadTiles += Stamped == SimCopterAirport::PadXbldId ? 1 : 0;
+		}
+	}
+	TestEqual(TEXT("Four terminal tiles"), TerminalTiles, 4);
+	TestEqual(TEXT("Twelve pad tiles"), PadTiles, SimCopterAirport::PadCount);
+
+	// Every published pad lands on a pad tile, never on the terminal - which is the bug this
+	// stamp fixes: without it the pads keep the SimCity 2000 airport standing on them.
+	for (int32 PadIndex = 0; PadIndex < SimCopterAirport::PadCount; ++PadIndex)
+	{
+		const FIntPoint Pad = SimCopterAirport::GetPadTile(Origin, PadIndex);
+		TestEqual(
+			*FString::Printf(TEXT("Pad %d is stamped as a helipad"), PadIndex),
+			SimCopterAirport::GetStampedXbldId(Origin, Pad.X, Pad.Y),
+			SimCopterAirport::PadXbldId);
+	}
+
+	// The XZON corner marks have to be rewritten with the ids, or the demolished SimCity 2000
+	// airport's footprint marks survive and a 1x1 pad measures itself as a multi-tile slab that
+	// lies coplanar in its neighbours' ground.
+	TestEqual(TEXT("Every pad is marked as a 1x1"),
+		SimCopterAirport::GetStampedZoneHighNibble(Origin, 40, 60), 0xf0);
+	TestEqual(TEXT("The terminal's top-left carries the anchor corner"),
+		SimCopterAirport::GetStampedZoneHighNibble(Origin, 41, 61), 0x80);
+	TestEqual(TEXT("...top-right the width mark"),
+		SimCopterAirport::GetStampedZoneHighNibble(Origin, 42, 61), 0x40);
+	TestEqual(TEXT("...bottom-left the height mark"),
+		SimCopterAirport::GetStampedZoneHighNibble(Origin, 41, 62), 0x10);
+	TestEqual(TEXT("...bottom-right the remaining corner"),
+		SimCopterAirport::GetStampedZoneHighNibble(Origin, 42, 62), 0x20);
+	TestEqual(TEXT("A tile outside the block keeps its own marks"),
+		SimCopterAirport::GetStampedZoneHighNibble(Origin, 39, 60), int32(INDEX_NONE));
+
+	for (int32 PadIndex = 0; PadIndex < SimCopterAirport::PadCount; ++PadIndex)
+	{
+		const FIntPoint Pad = SimCopterAirport::GetPadTile(Origin, PadIndex);
+		TestEqual(
+			*FString::Printf(TEXT("Pad %d measures as a 1x1"), PadIndex),
+			SimCopterAirport::GetStampedZoneHighNibble(Origin, Pad.X, Pad.Y),
+			0xf0);
+	}
+
+	// FUN_004829f0's height-map write: read the terminal's own corner, then level the 5x5 patch
+	// spanning the block to it.
+	{
+		constexpr int32 GridSize = SimCopterAirport::MapSize + 1;
+		TArray<int16> Corners;
+		Corners.SetNumZeroed(GridSize * GridSize);
+		for (int32 GridY = 0; GridY < GridSize; ++GridY)
+		{
+			for (int32 GridX = 0; GridX < GridSize; ++GridX)
+			{
+				Corners[GridY * GridSize + GridX] = static_cast<int16>(GridX + GridY);
+			}
+		}
+
+		SimCopterAirport::FlattenBlockCorners(Corners, GridSize, Origin);
+
+		const int16 Expected = static_cast<int16>((Origin.X + 1) + (Origin.Y + 1));
+		int32 Levelled = 0;
+		for (int32 GridY = Origin.Y; GridY <= Origin.Y + SimCopterAirport::BlockSpan; ++GridY)
+		{
+			for (int32 GridX = Origin.X; GridX <= Origin.X + SimCopterAirport::BlockSpan; ++GridX)
+			{
+				Levelled += Corners[GridY * GridSize + GridX] == Expected ? 1 : 0;
+			}
+		}
+		TestEqual(TEXT("The whole 5x5 corner patch is levelled"), Levelled, 25);
+		TestEqual(TEXT("...to the terminal tile's own corner sample"),
+			int32(Corners[Origin.Y * GridSize + Origin.X]), int32(Expected));
+		TestNotEqual(TEXT("The corner just outside the patch is left alone"),
+			int32(Corners[Origin.Y * GridSize + Origin.X - 1]), int32(Expected));
+	}
+
+	// The fallback block sits off the map; FUN_004829f0 skips every XBLD and height write for it.
+	{
+		constexpr int32 GridSize = SimCopterAirport::MapSize + 1;
+		TArray<int16> Corners;
+		Corners.SetNumZeroed(GridSize * GridSize);
+		Corners[0] = 7;
+		SimCopterAirport::FlattenBlockCorners(Corners, GridSize, FIntPoint(128, 128));
+		TestEqual(TEXT("The fallback block levels nothing"), int32(Corners[0]), 7);
+	}
+
+	return true;
+}
