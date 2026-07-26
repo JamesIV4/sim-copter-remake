@@ -85,7 +85,7 @@ FString USimCopterHangarArt::ResolveBitmapPath(const FString& FileName) const
 
 const FSlateBrush* USimCopterHangarArt::GetBitmap(const FString& FileName, const bool bColorKeyed)
 {
-	return BuildBrush(FileName, FileName, bColorKeyed, 0, 1);
+	return BuildBrush(FileName, FileName, bColorKeyed, FIntRect(), ESimCopterArtRotation::None);
 }
 
 const FSlateBrush* USimCopterHangarArt::GetStripFrame(
@@ -98,8 +98,48 @@ const FSlateBrush* USimCopterHangarArt::GetStripFrame(
 		return nullptr;
 	}
 
-	const FString CacheKey = FString::Printf(TEXT("%s#%d/%d"), *FileName, FrameIndex, FrameCount);
-	return BuildBrush(CacheKey, FileName, /*bColorKeyed=*/true, FrameIndex, FrameCount);
+	// The frame width is only known once the bitmap is loaded, so the split stays in BuildBrush;
+	// an all-zero rect with a frame count encoded in the key would not survive the cache. Load
+	// the whole bitmap once to size the frame.
+	const FSlateBrush* Whole = GetBitmap(FileName, /*bColorKeyed=*/true);
+	if (Whole == nullptr)
+	{
+		return nullptr;
+	}
+
+	const int32 FrameWidth = FMath::FloorToInt(Whole->ImageSize.X) / FrameCount;
+	if (FrameWidth <= 0)
+	{
+		return nullptr;
+	}
+
+	return GetSubImage(
+		FileName,
+		FIntRect(FrameIndex * FrameWidth, 0, (FrameIndex + 1) * FrameWidth, FMath::FloorToInt(Whole->ImageSize.Y)),
+		/*bColorKeyed=*/true);
+}
+
+const FSlateBrush* USimCopterHangarArt::GetSubImage(
+	const FString& FileName,
+	const FIntRect& Source,
+	const bool bColorKeyed,
+	const ESimCopterArtRotation Rotation)
+{
+	if (Source.Min.X < 0 || Source.Min.Y < 0 || Source.Width() <= 0 || Source.Height() <= 0)
+	{
+		return nullptr;
+	}
+
+	const FString CacheKey = FString::Printf(
+		TEXT("%s@%d,%d,%d,%d%s r%d"),
+		*FileName,
+		Source.Min.X,
+		Source.Min.Y,
+		Source.Max.X,
+		Source.Max.Y,
+		bColorKeyed ? TEXT("k") : TEXT(""),
+		static_cast<int32>(Rotation));
+	return BuildBrush(CacheKey, FileName, bColorKeyed, Source, Rotation);
 }
 
 const FSlateBrush* USimCopterHangarArt::GetCatalogDrawing(const int32 CatalogRow)
@@ -121,8 +161,8 @@ const FSlateBrush* USimCopterHangarArt::BuildBrush(
 	const FString& CacheKey,
 	const FString& FileName,
 	const bool bColorKeyed,
-	const int32 FrameIndex,
-	const int32 FrameCount)
+	const FIntRect& Source,
+	const ESimCopterArtRotation Rotation)
 {
 	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
 	{
@@ -151,28 +191,56 @@ const FSlateBrush* USimCopterHangarArt::BuildBrush(
 		return nullptr;
 	}
 
-	if (FrameCount > 1)
+	if (Source.Width() > 0 && Source.Height() > 0)
 	{
-		// Horizontal strip: keep only the requested frame.
-		const int32 FrameWidth = Image.Width / FrameCount;
-		if (FrameWidth <= 0)
+		// A sub-rectangle: one frame of a button strip, or one cell of a page.
+		const FIntRect Clipped(
+			FMath::Clamp(Source.Min.X, 0, Image.Width),
+			FMath::Clamp(Source.Min.Y, 0, Image.Height),
+			FMath::Clamp(Source.Max.X, 0, Image.Width),
+			FMath::Clamp(Source.Max.Y, 0, Image.Height));
+		if (Clipped.Width() <= 0 || Clipped.Height() <= 0)
 		{
+			UE_LOG(LogTemp, Warning,
+				TEXT("SimCopter art: rect (%d,%d)-(%d,%d) is outside '%s' (%dx%d)."),
+				Source.Min.X, Source.Min.Y, Source.Max.X, Source.Max.Y, *FileName, Image.Width, Image.Height);
 			return nullptr;
 		}
 
 		FMaxisTextureImage Frame;
-		Frame.Width = FrameWidth;
-		Frame.Height = Image.Height;
-		Frame.Pixels.SetNumUninitialized(FrameWidth * Image.Height);
-		const int32 SourceX = FrameIndex * FrameWidth;
-		for (int32 Y = 0; Y < Image.Height; ++Y)
+		Frame.Width = Clipped.Width();
+		Frame.Height = Clipped.Height();
+		Frame.Pixels.SetNumUninitialized(Frame.Width * Frame.Height);
+		for (int32 Y = 0; Y < Frame.Height; ++Y)
 		{
 			FMemory::Memcpy(
-				&Frame.Pixels[Y * FrameWidth],
-				&Image.Pixels[Y * Image.Width + SourceX],
-				FrameWidth * sizeof(FColor));
+				&Frame.Pixels[Y * Frame.Width],
+				&Image.Pixels[(Clipped.Min.Y + Y) * Image.Width + Clipped.Min.X],
+				Frame.Width * sizeof(FColor));
 		}
 		Image = MoveTemp(Frame);
+	}
+
+	if (Rotation != ESimCopterArtRotation::None)
+	{
+		FMaxisTextureImage Turned;
+		Turned.Width = Image.Height;
+		Turned.Height = Image.Width;
+		Turned.Pixels.SetNumUninitialized(Turned.Width * Turned.Height);
+		for (int32 Y = 0; Y < Image.Height; ++Y)
+		{
+			for (int32 X = 0; X < Image.Width; ++X)
+			{
+				const int32 TurnedX = Rotation == ESimCopterArtRotation::Clockwise90
+					? Image.Height - 1 - Y
+					: Y;
+				const int32 TurnedY = Rotation == ESimCopterArtRotation::Clockwise90
+					? X
+					: Image.Width - 1 - X;
+				Turned.Pixels[TurnedY * Turned.Width + TurnedX] = Image.Pixels[Y * Image.Width + X];
+			}
+		}
+		Image = MoveTemp(Turned);
 	}
 
 	UTexture2D* Texture = FSimCopterPopulationSprite::CreateTextureFromImage(this, Image, TEXT("SimCopterHangarArt"));

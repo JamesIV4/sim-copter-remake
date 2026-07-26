@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -350,6 +350,33 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
 	void CycleMegaphoneMessage(int32 Delta);
 
+	// The megaphone flap picks a message off a menu rather than stepping through them - "Click
+	// on the button to open a menu of message types, and click on the type you want" (help
+	// 34ref.htm).
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void SetSelectedMegaphoneMessage(ESimCopterMegaphoneMessage Message);
+
+	// The two water controls, each level triggered for as long as the button is held.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void StartBucketDump();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void StopBucketDump();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void StartWaterCannon();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void StopWaterCannon();
+
+	// SCHOOK: HelicopterToolInput 0x00485f50 (actions 0x0b..0x0f)
+	// A flap rocker held down. The winch pays out or takes in one node per frame for as long as
+	// the button is held - the same level-triggered path the raise/lower keys use - rather than
+	// running to the limit the way ToggleRope's one-shot command does. Direction is +1 to raise,
+	// -1 to lower, 0 to release. The attachment is named, because the flap belongs to that tool.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	void SetWinchHeldInput(bool bHarness, int32 Direction);
+
 	// The single primary-use entry point shared by left click and the debug panel's USE
 	// button. Held tools (bucket/cannon/machine gun) latch; pressed tools (megaphone/gas/
 	// missile/harness) act once on Start.
@@ -503,9 +530,19 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	FString HelicopterTypeName = TEXT("Jet Ranger");
 
-	// Shows the tool/model debug panel in non-shipping builds.
+	// Shows the tool/model debug panel in non-shipping builds. F1 toggles it in play.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
 	bool bShowHelicopterDebugPanel = true;
+
+	// Draws the cockpit's control flaps for the tools aboard (SimCopterFlapLayout).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI")
+	bool bShowToolFlaps = true;
+
+	// Original page pixels to screen pixels. A flap is 138x58 in the original's 640x480, which is
+	// far too small on a modern display, so the art is up-filtered. Lettering is not scaled with
+	// it; SSimCopterToolFlaps lays text out in screen pixels.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.5", ClampMax = "6.0"))
+	float ToolFlapScale = 2.0f;
 
 	// Career equipment the session starts with. Until the career/shop layer is ported this
 	// seeds FSimCopterEquipmentState::CareerEquipmentMask; the water pair matches what the
@@ -860,6 +897,11 @@ private:
 	// reaches its limit.
 	int32 PendingWinchCommand = 0;
 
+	// A cockpit flap's rocker held down: +1 raise, -1 lower, 0 nothing. Unlike RopeAdjustInput
+	// it names its attachment instead of following the active tool selection.
+	int32 WinchHeldDirection = 0;
+	bool bWinchHeldHarness = false;
+
 	// Spotlight aim accumulators DAT_0050408c (pitch) / DAT_00504090 (yaw), 16.16
 	// tenth-degrees, clamped to +/-500.0. The rest pose adds the fixed -36 degree base tilt.
 	int32 SpotlightAimPitch1616 = 0;
@@ -915,6 +957,11 @@ private:
 	TSharedPtr<STextBlock> WaterCapacityText;
 	TSharedPtr<STextBlock> WaterControlsText;
 	TSharedPtr<SWidget> HelicopterDebugPanelWidget;
+	TSharedPtr<SWidget> ToolFlapsWidget;
+
+	// Loads the cockpit flap bitmaps out of the original's BMP folder.
+	UPROPERTY(Transient)
+	TObjectPtr<class USimCopterHangarArt> FlapArt;
 
 	void MovePitch(float Value);
 	void MoveRoll(float Value);
@@ -929,10 +976,6 @@ private:
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
-	void StartBucketDump();
-	void StopBucketDump();
-	void StartWaterCannon();
-	void StopWaterCannon();
 	void StartEngineHold();
 	void StopEngineHold();
 	void StartEngineShutdownHold();
@@ -1041,8 +1084,12 @@ private:
 	void EnsureWaterControlsWidget();
 	void RemoveWaterControlsWidget();
 	void RefreshWaterControlsWidget();
+	void EnsureToolFlapsWidget();
+	void RemoveToolFlapsWidget();
 	void EnsureHelicopterDebugPanel();
 	void RemoveHelicopterDebugPanel();
+	// F1. Flips bShowHelicopterDebugPanel so the panel stays hidden across a re-possession.
+	void ToggleHelicopterDebugPanel();
 	bool LoadPassengerSlotIconTexture();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;

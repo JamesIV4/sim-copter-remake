@@ -44,8 +44,7 @@ void EnsureInstancedStaticMeshUsage(UMaterialInterface* Material)
 
 	if (UMaterial* BaseMaterial = Material->GetMaterial())
 	{
-		bool bNeedsRecompile = false;
-		BaseMaterial->SetMaterialUsage(bNeedsRecompile, MATUSAGE_InstancedStaticMeshes);
+		BaseMaterial->SetMaterialUsage(MATUSAGE_InstancedStaticMeshes);
 	}
 #endif
 }
