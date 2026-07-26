@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+struct FSimCity2000City;
+
 // The city's airport and its twelve helipads - where every session starts.
 //
 // Decoded from SimCopter.exe:
@@ -83,4 +85,42 @@ SIMCOPTERREMAKE_API FIntPoint GetTerminalTile(const FIntPoint& Origin);
 SIMCOPTERREMAKE_API int32 FindFreePadIndex(
 	TFunctionRef<bool(int32 PadIndex)> HasCellOccupants,
 	TFunctionRef<bool(int32 PadIndex)> HasBlockingOccupant);
+
+// The XBLD ids FUN_004829f0 stamps over the block, demolishing whatever SimCity 2000 had
+// zoned there. Both already have a dispatch case in the city builder: 0xde is the bare
+// helipad slab (object 0x08b, no base) and 0xf6 is the terminal (object 0x096) which, on an
+// airport-zone 2x2, takes base 0x165 - exactly the two objects FUN_004829f0 builds by hand.
+constexpr int32 PadXbldId = 0xde;
+constexpr int32 TerminalXbldId = 0xf6;
+
+// What FUN_004829f0 leaves on one tile of the block: the terminal id on the middle 2x2, the pad
+// id on the twelve perimeter tiles, INDEX_NONE for a tile outside the block.
+SIMCOPTERREMAKE_API int32 GetStampedXbldId(const FIntPoint& Origin, int32 TileX, int32 TileY);
+
+// The XZON high nibble that goes with it. SimCity 2000 marks a building's footprint by flagging
+// its four corner tiles - 0x80 top-left, 0x40 top-right, 0x10 bottom-left, 0x20 bottom-right,
+// all four (0xf0) on a 1x1, nothing on an interior tile - and that is what the city builder
+// measures a footprint from. FUN_004829f0 builds its cells by hand and never reads XZON, but the
+// remake goes through the shared XBLD -> footprint path, so the block's corner marks have to be
+// rewritten with the ids: a stale 2x2 corner mark left over from the demolished SimCity 2000
+// airport makes a 1x1 pad render as an oversized slab lying in its neighbours' ground.
+// Returns INDEX_NONE for a tile outside the block.
+SIMCOPTERREMAKE_API int32 GetStampedZoneHighNibble(const FIntPoint& Origin, int32 TileX, int32 TileY);
+
+// FUN_004829f0's XBLD writes: 0xf6 over the middle 2x2, 0xde over the twelve pads, plus the
+// footprint corner marks above. Without this the SimCity 2000 airport - runways, hangars,
+// control tower - stays standing on the pads and a helicopter parked on one ends up inside a
+// building. Does nothing for the fallback block, which is off the map and has no tiles to write.
+SIMCOPTERREMAKE_API void StampBlockTiles(FSimCity2000City& City, const FIntPoint& Origin);
+
+// FUN_004829f0's height-map write, which runs *after* FUN_004abce0's conditioning pass: it reads
+// one conditioned corner - the terminal tile's own top-left - and copies it over the 5x5 corner
+// patch spanning the block, levelling the ground under the whole airport however it sloped
+// before. Corners is the (MapSize + 1) square grid BuildConditionedTerrainCornerSamples returns.
+SIMCOPTERREMAKE_API void FlattenBlockCorners(TArray<int16>& Corners, int32 GridSize, const FIntPoint& Origin);
+
+// Convenience for the two places that load a city for play: find the block, stamp it, and hand
+// back the origin. Pass the conditioned corner grid to also level the terrain under it; the
+// traffic system has no corner grid of its own and passes nullptr.
+SIMCOPTERREMAKE_API FIntPoint BuildAirportIntoCity(FSimCity2000City& City, TArray<int16>* ConditionedCorners);
 }
