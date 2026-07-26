@@ -15,6 +15,7 @@
 #include "Formats/SimCopterPeopleReader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/Pawn.h"
+#include "Ground/SimCopterCriminalCar.h"
 #include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterPopulationBody.h"
@@ -1174,6 +1175,45 @@ void ASimCopterGroundAgent::SetTrafficSpeedScale(float NewSpeedScale)
 void ASimCopterGroundAgent::LimitTrafficSpeedScale(float MaxSpeedScale)
 {
 	TrafficSpeedScale = FMath::Min(TrafficSpeedScale, FMath::Clamp(MaxSpeedScale, 0.0f, 1.75f));
+}
+
+void ASimCopterGroundAgent::MakeCriminalCar(const int32 InEventId)
+{
+	// FUN_004b8540: the pool slot is claimed, the mission event id recorded at +0x113, and the
+	// state machine starts at 0. The fleeing flag is what makes FUN_0049dab0 accept it, and a
+	// criminal car flies it from the moment it is placed.
+	bCriminalCar = true;
+	bFleeing = true;
+	bStopOrdered = false;
+	bStopped = false;
+	CriminalEventId = InEventId;
+	SpotlightMark = 0;
+	CriminalState = static_cast<uint8>(SimCopterCriminalCar::EState::Cruising);
+	ArrestHoldSeconds = 0.0f;
+}
+
+bool ASimCopterGroundAgent::TryOrderStop(const int32 CallerMessageId)
+{
+	if (!bCriminalCar)
+	{
+		return false;
+	}
+
+	const bool bAccepted = SimCopterCriminalCar::AcceptsStopOrder(
+		static_cast<SimCopterCriminalCar::EState>(CriminalState),
+		SpotlightMark,
+		CallerMessageId,
+		bStopOrdered || bStopped);
+	if (!bAccepted)
+	{
+		return false;
+	}
+
+	// FUN_0049e0c0: raise the stopping flag and drop the moving ones. The car keeps its route -
+	// it decelerates along it rather than stopping dead.
+	bStopOrdered = true;
+	CriminalState = static_cast<uint8>(SimCopterCriminalCar::EState::Stopping);
+	return true;
 }
 
 void ASimCopterGroundAgent::ApplyTrafficBrake(float MaxSpeedScale, float DeltaSeconds, float BrakeRate)

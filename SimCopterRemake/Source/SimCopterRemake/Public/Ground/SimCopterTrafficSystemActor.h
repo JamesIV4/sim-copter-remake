@@ -576,10 +576,19 @@ public:
 	// One-line status for the debug panel: stations, units out, and what they are doing.
 	FString GetDispatchStatusLine(SimCopterDispatch::EService Service) const;
 
+	// The pawn publishes the spotlight's ground point and range band here every frame so speeder
+	// cars can accumulate their mark (FUN_004a01f0, interaction mode 1). bActive is false
+	// whenever the light is off, which resets every mark - the original's DAT_00503aa0 == 3.
+	void SetSpotlightMarkSource(const FVector& GroundWorldLocation, int32 Band, bool bActive);
+
 	// Mission system hooks
 	bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY);
 	void EndTrafficJam(int32 EventId);
 	bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY);
+
+	// FUN_004b8540: put the mission's speeder on a road tile near (TileX, TileY). Capped at the
+	// original's pool of five.
+	bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY);
 
 	// Report every car currently on fire (for the mission actor's fire renderer).
 	void GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const;
@@ -709,6 +718,29 @@ public:
 
 	// The marker art is missing or unreadable; say so once rather than every tick per vehicle.
 	bool bLoggedDispatchMarkerError = false;
+
+	// --- Speeder cars and police pursuit -----------------------------------------------------
+	// FUN_004a01f0's inputs, republished by the pawn each frame.
+	FVector SpotlightMarkWorldLocation = FVector::ZeroVector;
+	int32 SpotlightMarkBand = INDEX_NONE;
+	bool bSpotlightMarkActive = false;
+
+	// The live speeders. The original's pool is fixed at five (FUN_00479bb0).
+	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> CriminalCars;
+
+	// FUN_004a01f0 + FUN_0049d980: accumulate each speeder's mark from the spotlight and set the
+	// speed multiplier it earns.
+	void UpdateCriminalCars(float DeltaSeconds);
+
+	// FUN_004b9e40 case 0's three-ring sweep. Returns the nearest speeder within
+	// SimCopterCriminalCar::PursuitMaxTileSteps of FromTile, or null.
+	ASimCopterGroundAgent* FindPursuitTarget(const FIntPoint& FromTile) const;
+
+	// FUN_0049df60's occupancy half: another stopped emergency vehicle already holds the tile.
+	bool CanVehicleStopOnTile(const FIntPoint& Tile) const;
+
+	// FUN_004b8b60: siren, officer out, close the mission record, hold, remove.
+	void RunCriminalCarArrest(ASimCopterGroundAgent& Car, float DeltaSeconds);
 	// Breadth-first road-node route; stands in for FUN_004bef30's Dijkstra + back-links.
 	bool TryPlanRoadRoute(const FIntPoint& FromTile, const FIntPoint& ToTile, TArray<int32>& OutNodes) const;
 	bool TryRetargetDispatchVehicle(FSimCopterDispatchVehicle& Vehicle, const FIntPoint& DestinationTile);

@@ -2727,14 +2727,24 @@ void ASimCopterHelicopterPawn::UpdateSpotlightTarget(float DeltaSeconds)
 	SpotlightTarget = NewTarget;
 
 	// Chase-dispatched police re-read the spotlight tile every frame (FUN_004b9e40 case 2
-	// reads DAT_005040d0 + 0xc0 directly); the pawn publishes it instead.
-	if (SpotlightTarget.HasTile())
+	// reads DAT_005040d0 + 0xc0 directly); the pawn publishes it instead. The same node is what
+	// FUN_004a01f0 measures speeder cars against, so publish the ground point and band with it.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass())))
 	{
-		if (ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
-				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass())))
+		if (SpotlightTarget.HasTile())
 		{
 			TrafficSystem->SetSpotlightChaseTile(SpotlightTarget.Tile);
 		}
+
+		// The original zeroes every mark when the light is off (DAT_00503aa0 == 3); passing
+		// bActive = false does the same here.
+		const bool bMarkActive = SpotlightTarget.bValid &&
+			SearchLightComponent != nullptr && SearchLightComponent->IsVisible();
+		TrafficSystem->SetSpotlightMarkSource(
+			SpotlightTarget.WorldLocation,
+			SpotlightTarget.Band,
+			bMarkActive);
 	}
 
 	// Point the Unreal light at the resolved target. Visual only - the target above is what

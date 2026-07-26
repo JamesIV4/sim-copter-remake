@@ -172,6 +172,10 @@ public:
 	// Police clearing a jam they have driven to.
 	bool ClearTrafficJamEvent(int32 EventId);
 
+	// FUN_004b8b60: the speeder has been pulled over and its driver taken. The original closes
+	// the record by posting EVT_SetCategory with value 4 rather than a "caught" counter.
+	void ReportSpeederCarCaught(int32 EventId);
+
 	// SCHOOK: FireTruckSpray 0x004a5ca0
 	// One shot from a fire truck's monitor: emitter type 6, launched from 30 units above the
 	// truck along the swept elevation. Nothing is extinguished here - the droplet douses where
