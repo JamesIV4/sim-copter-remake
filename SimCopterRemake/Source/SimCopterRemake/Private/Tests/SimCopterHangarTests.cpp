@@ -19,55 +19,54 @@ bool FSimCopterHangarPlacementTest::RunTest(const FString& Parameters)
 	using namespace SimCopterHangarPlacement;
 
 	const FIntPoint Origin(40, 60);
-	constexpr float BlockCentre = (SimCopterAirport::BlockSpan - 1) * 0.5f;
 
-	// Each side anchor sits StandoffTiles clear of the block's own edge, square on the other axis.
+	// The hangar takes the airport's terminal plot - the middle 2x2 the airport port already
+	// resolves - so the plot maths has to agree with SimCopterAirport, not invent its own.
 	{
-		const double Centre = Origin.X + BlockCentre;
-		const double NearEdge = Origin.Y - 0.5 - StandoffTiles;
-		const double FarEdge = Origin.Y + (SimCopterAirport::BlockSpan - 1) + 0.5 + StandoffTiles;
+		TestEqual(TEXT("The plot origin is the airport's terminal tile"),
+			GetPlotOriginTile(Origin),
+			SimCopterAirport::GetTerminalTile(Origin));
+		TestEqual(TEXT("...which is one tile in from the block origin"),
+			GetPlotOriginTile(Origin),
+			FIntPoint(Origin.X + 1, Origin.Y + 1));
 
-		const FVector2D North = GetSideAnchorTile(Origin, ESide::North);
-		TestEqual(TEXT("The north anchor is centred on the block"), North.X, Centre);
-		TestEqual(TEXT("...and stands off the near edge"), North.Y, NearEdge);
-
-		const FVector2D South = GetSideAnchorTile(Origin, ESide::South);
-		TestEqual(TEXT("The south anchor is centred on the block"), South.X, Centre);
-		TestEqual(TEXT("...and stands off the far edge"), South.Y, FarEdge);
-
-		const FVector2D West = GetSideAnchorTile(Origin, ESide::West);
-		TestEqual(TEXT("The west anchor stands off the near column"), West.X, double(Origin.X) - 0.5 - StandoffTiles);
-		TestEqual(TEXT("...and is centred on the block"), West.Y, double(Origin.Y) + BlockCentre);
-
-		const FVector2D East = GetSideAnchorTile(Origin, ESide::East);
-		TestEqual(TEXT("The east anchor stands off the far column"), East.X, double(Origin.X) + (SimCopterAirport::BlockSpan - 1) + 0.5 + StandoffTiles);
-		TestEqual(TEXT("...and is centred on the block"), East.Y, double(Origin.Y) + BlockCentre);
+		const FVector2D Centre = GetPlotCentreTile(Origin);
+		TestEqual(TEXT("The plot centre sits between the 2x2's tiles in X"), Centre.X, double(Origin.X) + 1.5);
+		TestEqual(TEXT("...and in Y"), Centre.Y, double(Origin.Y) + 1.5);
 	}
 
-	// The building goes on the side the player is nearest, so the doors face them.
+	// The four tiles the plot covers are exactly the ones FUN_004829f0 stamps the terminal id on,
+	// and none of them is a helipad - the hangar must never stand on a pad.
 	{
-		TestEqual(TEXT("A point below the block picks the south side"),
-			static_cast<int32>(GetNearestSide(Origin, FVector2D(Origin.X + 1.5f, Origin.Y + 9.0f))),
-			static_cast<int32>(ESide::South));
-		TestEqual(TEXT("A point above the block picks the north side"),
-			static_cast<int32>(GetNearestSide(Origin, FVector2D(Origin.X + 1.5f, Origin.Y - 9.0f))),
-			static_cast<int32>(ESide::North));
-		TestEqual(TEXT("A point left of the block picks the west side"),
-			static_cast<int32>(GetNearestSide(Origin, FVector2D(Origin.X - 9.0f, Origin.Y + 1.5f))),
-			static_cast<int32>(ESide::West));
-		TestEqual(TEXT("A point right of the block picks the east side"),
-			static_cast<int32>(GetNearestSide(Origin, FVector2D(Origin.X + 9.0f, Origin.Y + 1.5f))),
-			static_cast<int32>(ESide::East));
+		TArray<FIntPoint> PlotTiles;
+		GetPlotTiles(Origin, PlotTiles);
+		TestEqual(TEXT("The plot is four tiles"), PlotTiles.Num(), 4);
+
+		for (const FIntPoint& Tile : PlotTiles)
+		{
+			TestEqual(
+				*FString::Printf(TEXT("Tile (%d, %d) carries the terminal id"), Tile.X, Tile.Y),
+				SimCopterAirport::GetStampedXbldId(Origin, Tile.X, Tile.Y),
+				SimCopterAirport::TerminalXbldId);
+		}
+
+		for (int32 PadIndex = 0; PadIndex < SimCopterAirport::PadCount; ++PadIndex)
+		{
+			const FIntPoint PadTile = SimCopterAirport::GetPadTile(Origin, PadIndex);
+			TestFalse(
+				*FString::Printf(TEXT("Pad %d is not under the hangar"), PadIndex),
+				PlotTiles.Contains(PadTile));
+		}
 	}
 
-	// Pad 0 is the block's (2, 3) tile - the far row - and the session stands the player beside
-	// it, so the hangar has to land on the south side of a block found at the origin above.
+	// The footprint has to fit inside that 2x2 or it would overhang onto the pad ring.
 	{
-		const FIntPoint Pad0 = SimCopterAirport::GetPadTile(Origin, 0);
-		const FVector2D PlayerTile(Pad0.X - 0.75f, Pad0.Y);
-		TestEqual(TEXT("The session's start beside pad 0 puts the hangar south of the block"),
-			static_cast<int32>(GetNearestSide(Origin, PlayerTile)),
-			static_cast<int32>(ESide::South));
+		TestTrue(TEXT("The hangar is no wider than its plot"), WidthTiles <= 2.0f);
+		TestTrue(TEXT("The hangar is no deeper than its plot"), DepthTiles <= 2.0f);
+		TestTrue(TEXT("The doorway fits inside the front wall"), DoorWidthTiles < WidthTiles);
+		TestTrue(TEXT("The doorway fits under the eaves"), DoorHeightTiles < EavesHeightTiles);
+		TestTrue(TEXT("The ridge is above the eaves"), ApexHeightTiles > EavesHeightTiles);
+		TestTrue(TEXT("The floor is lifted clear of the apron"), FloorLiftCm > 0.0f);
 	}
 
 	// The doorway is the actor's +X, and the yaw is snapped so the building stays grid-square.
