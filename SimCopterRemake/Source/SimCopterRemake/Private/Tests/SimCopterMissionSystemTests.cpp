@@ -49,6 +49,31 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 	}
 };
 
+// A city that is water except where bAnyBuildings puts a building, and that records every tile
+// a mission person is actually spawned on.
+struct FSimCopterCrimeTestWorld : public FSimCopterTestMissionWorld
+{
+	bool bAnyBuildings = true;
+	mutable TArray<FIntPoint> SpawnedTiles;
+
+	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override
+	{
+		if (!bAnyBuildings || TileX < 0 || TileX >= 128 || TileY < 0 || TileY >= 128)
+		{
+			return 0;
+		}
+		// Buildings on the even tiles only, so an unfiltered pick would land off one about
+		// three quarters of the time.
+		return ((TileX % 2) == 0 && (TileY % 2) == 0) ? 0x80 : 0;
+	}
+
+	virtual bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId) override
+	{
+		SpawnedTiles.Add(FIntPoint(TileX, TileY));
+		return true;
+	}
+};
+
 FString ResolveCareerTweakPath()
 {
 	TArray<FString, TInlineAllocator<3>> Candidates;
@@ -635,6 +660,60 @@ bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 	{
 		AddError(TEXT("Score should reset to 0 after advancing city."));
 		return false;
+	}
+
+	return true;
+}
+
+// The user-visible symptom this guards: a criminal appearing out in the ocean, where nothing
+// on the police side can reach. FUN_004a92f0 sends 0x200/0x2000/0x20000 through LAB_004a95ff,
+// whose only candidate tiles are ones carrying a mission building.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterCrimePlacementTest, "SimCopter.Missions.CrimePlacementNeedsBuilding", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCrimePlacementTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("An ordinary building is a candidate"), FSimCopterMissionSystem::IsMissionBuildingTile(0x70));
+	TestTrue(TEXT("The last building id is a candidate"), FSimCopterMissionSystem::IsMissionBuildingTile(0xdb));
+	TestFalse(TEXT("Open water is not"), FSimCopterMissionSystem::IsMissionBuildingTile(0x00));
+	TestFalse(TEXT("Roads are not"), FSimCopterMissionSystem::IsMissionBuildingTile(0x3d));
+	TestFalse(TEXT("The tile below the range is not"), FSimCopterMissionSystem::IsMissionBuildingTile(0x6f));
+	TestFalse(TEXT("0xdc is past the range"), FSimCopterMissionSystem::IsMissionBuildingTile(0xdc));
+	for (int32 Excluded = 0xd1; Excluded <= 0xd3; ++Excluded)
+	{
+		TestFalse(FString::Printf(TEXT("0x%x is excluded"), Excluded), FSimCopterMissionSystem::IsMissionBuildingTile(Excluded));
+	}
+
+	// A city that is nothing but water: every one of the five tries has to be refused, and no
+	// criminal may reach the world.
+	FSimCopterCrimeTestWorld Ocean;
+	Ocean.bAnyBuildings = false;
+	FSimCopterMissionSystem OceanSystem;
+	OceanSystem.Initialize(&Ocean, 1);
+	for (const int32 CrimeMask : { int32(TYPE_CriminalA), int32(TYPE_SpeederEvent), int32(TYPE_CriminalC) })
+	{
+		TestEqual(
+			FString::Printf(TEXT("Crime 0x%x is not placed in a city with no buildings"), CrimeMask),
+			OceanSystem.CreateEventOfType(CrimeMask),
+			-1);
+	}
+	TestEqual(TEXT("No criminal was spawned into the water"), Ocean.SpawnedTiles.Num(), 0);
+
+	// The same city with buildings on the even tiles: every criminal that does get placed must
+	// have landed on one of them.
+	FSimCopterCrimeTestWorld City;
+	City.bAnyBuildings = true;
+	FSimCopterMissionSystem CitySystem;
+	CitySystem.Initialize(&City, 1);
+	for (int32 Attempt = 0; Attempt < 40; ++Attempt)
+	{
+		CitySystem.CreateEventOfType(TYPE_CriminalA);
+	}
+	TestTrue(TEXT("Criminals were placed at all"), City.SpawnedTiles.Num() > 0);
+	for (const FIntPoint& Tile : City.SpawnedTiles)
+	{
+		TestTrue(
+			FString::Printf(TEXT("Criminal at (%d, %d) is on a mission building"), Tile.X, Tile.Y),
+			FSimCopterMissionSystem::IsMissionBuildingTile(City.GetXbldTileId(Tile.X, Tile.Y)));
 	}
 
 	return true;

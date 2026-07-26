@@ -1094,6 +1094,34 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	UpdateGroundProbe();
 }
 
+float ASimCopterHelicopterPawn::GetHelipadRestingOriginOffsetCm() const
+{
+	// SeedFlightModelFromActor reads the flight model's altitude back as
+	// (actor Z - capsule half height), and a completed landing (FUN_00487160) leaves that
+	// altitude 1.2 units above the surface it settled on.
+	const float CapsuleHalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	return CapsuleHalfHeight + SimCopterFixed::ToFloat(0x13333) * OriginalUnitToCm;
+}
+
+void ASimCopterHelicopterPawn::PlaceOnHelipad(const FVector& PadSurfaceWorldLocation, float YawDegrees)
+{
+	// FUN_00484790 writes the pad cell's own position straight into the helicopter's nodes and
+	// clears its orientation - there is no descent and no collision test.
+	SetActorRotation(FRotator(0.0f, YawDegrees, 0.0f));
+	SetActorLocation(
+		PadSurfaceWorldLocation + FVector(0.0f, 0.0f, GetHelipadRestingOriginOffsetCm()),
+		/*bSweep=*/false,
+		/*OutSweepHitResult=*/nullptr,
+		ETeleportType::TeleportPhysics);
+
+	VelocityCmPerSec = FVector::ZeroVector;
+	CurrentPitchDeg = 0.0f;
+	CurrentRollDeg = 0.0f;
+	bIsLanded = true;
+	SeedFlightModelFromActor();
+	UpdateGroundProbe();
+}
+
 float ASimCopterHelicopterPawn::GetFuelFraction() const
 {
 	return HelicopterTuning.FuelGallons > 0.0f ? FMath::Clamp(CurrentFuelGallons / HelicopterTuning.FuelGallons, 0.0f, 1.0f) : 0.0f;

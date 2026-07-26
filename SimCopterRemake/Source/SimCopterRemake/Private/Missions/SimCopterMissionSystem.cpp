@@ -351,15 +351,22 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			}
 		}
 	}
-	else if (TypeMask == TYPE_Medevac || TypeMask == TYPE_RescuePeople)
+	else if (TypeMask == TYPE_Medevac ||
+		TypeMask == TYPE_Transport ||
+		TypeMask == TYPE_CriminalA ||
+		TypeMask == TYPE_SpeederEvent ||
+		TypeMask == TYPE_CriminalC)
 	{
+		// FUN_004a92f0 LAB_004a95ff. Medevac, Transport and all three on-foot crime types share
+		// one placement rule: five tries, and the tile has to carry a mission building. Criminals
+		// come out of one, so a tile with no building on it - water above all - is never a
+		// candidate, which is why an unfiltered pick could put one out in the ocean.
 		for (int i = 0; i < 5; ++i)
 		{
 			int32 TX, TY;
 			if (TryPickRandomTileNearCamera(TX, TY))
 			{
-				uint8 XbldId = World ? World->GetXbldTileId(TX, TY) : 0;
-				if (XbldId > 0x6f && XbldId < 0xdc && XbldId != 0xd1 && XbldId != 0xd2 && XbldId != 0xd3)
+				if (IsMissionBuildingTile(World ? World->GetXbldTileId(TX, TY) : 0))
 				{
 					int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
 					if (CreatedId != -1) return ReturnCreation(CreatedId);
@@ -367,8 +374,17 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 			}
 		}
 	}
-	else if (TypeMask == TYPE_BoatRescue || TypeMask == TYPE_Transport)
+	else if (TypeMask == TYPE_RescuePeople ||
+		TypeMask == TYPE_BoatRescue ||
+		TypeMask == TYPE_TrainRescue ||
+		TypeMask == TYPE_CarFireEvent ||
+		TypeMask == TYPE_TrafficJam ||
+		TypeMask == TYPE_Riot ||
+		TypeMask == TYPE_CriminalCar)
 	{
+		// FUN_004a92f0's unfiltered tail. Each of these places something that finds its own
+		// ground - a boat on water, a car on the road network, a rioting crowd - so the tile
+		// test is left to the creator, and CreateEventAt failing is what costs a try.
 		for (int i = 0; i < 5; ++i)
 		{
 			int32 TX, TY;
@@ -383,56 +399,10 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	{
 		return ReturnCreation(CreateEventAt(-1, -1, TypeMask));
 	}
-	else if (TypeMask == TYPE_TrainRescue)
+	else if (TypeMask == TYPE_FireRescue)
 	{
-		for (int i = 0; i < 5; ++i)
-		{
-			int32 TX, TY;
-			if (TryPickRandomTileNearCamera(TX, TY))
-			{
-				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return ReturnCreation(CreatedId);
-			}
-		}
-	}
-	else if (TypeMask == TYPE_CriminalA || TypeMask == TYPE_CarFireEvent)
-	{
-		for (int i = 0; i < 5; ++i)
-		{
-			int32 TX, TY;
-			if (TryPickRandomTileNearCamera(TX, TY))
-			{
-				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return ReturnCreation(CreatedId);
-			}
-		}
-	}
-	else if (TypeMask == TYPE_TrafficJam || TypeMask == TYPE_Riot)
-	{
-		for (int i = 0; i < 5; ++i)
-		{
-			int32 TX, TY;
-			if (TryPickRandomTileNearCamera(TX, TY))
-			{
-				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return ReturnCreation(CreatedId);
-			}
-		}
-	}
-	else if (TypeMask == TYPE_SpeederEvent || TypeMask == TYPE_CriminalCar)
-	{
-		for (int i = 0; i < 5; ++i)
-		{
-			int32 TX, TY;
-			if (TryPickRandomTileNearCamera(TX, TY))
-			{
-				int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-				if (CreatedId != -1) return ReturnCreation(CreatedId);
-			}
-		}
-	}
-	else if (TypeMask == TYPE_CriminalC || TypeMask == TYPE_FireRescue)
-	{
+		// The one branch that leaves its loop to create: FUN_004a92f0 jumps to LAB_004a9814 on
+		// the first tile that passes, so a creation failure here is not retried.
 		for (int i = 0; i < 5; ++i)
 		{
 			int32 TX, TY;
@@ -442,19 +412,27 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 				uint8 Props = GetXbldPropertyFlags(XbldId);
 				if ((Props & 4) != 0 && XbldId != 0xd1 && XbldId != 0xd2 && XbldId != 0xd3)
 				{
-					int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-					if (CreatedId != -1) return ReturnCreation(CreatedId);
+					return ReturnCreation(CreateEventAt(TX, TY, TypeMask));
 				}
 			}
 		}
 	}
 	else if (TypeMask == TYPE_Ufo)
 	{
+		// FUN_004a92f0 has no case for 0x100000 and places nothing; the original's UFO arrives
+		// from somewhere else. Kept so the debug mission list can still summon one.
 		return ReturnCreation(CreateEventAt(-1, -1, TypeMask));
 	}
 
 	NoteCreationResult(false);
 	return -1;
+}
+
+bool FSimCopterMissionSystem::IsMissionBuildingTile(int32 XbldId)
+{
+	// FUN_004a92f0 LAB_004a95ff, literally: 0x6f < id < 0xdc, minus the three ids at 0xd1-0xd3.
+	const uint8 Id = static_cast<uint8>(XbldId);
+	return Id > 0x6f && Id < 0xdc && Id != 0xd1 && Id != 0xd2 && Id != 0xd3;
 }
 
 void FSimCopterMissionSystem::NoteCreationResult(bool bCreated)
