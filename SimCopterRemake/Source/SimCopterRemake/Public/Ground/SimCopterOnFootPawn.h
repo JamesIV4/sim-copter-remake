@@ -76,8 +76,17 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "40.0"))
 	float HelicopterAutoEnterRadiusCm = 145.0f;
 
+	// Forward walk speed. The avatar is only ~46cm tall in this 0.25x-scale world, so this is
+	// already several body heights a second; the original's pedestrian shuffle was far slower
+	// still, but that is deliberately not matched.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
-	float WalkSpeedCmPerSec = 540.0f;
+	float WalkSpeedCmPerSec = 270.0f;
+
+	// Side-step speed as a fraction of WalkSpeedCmPerSec. Strafing at full walk speed reads as a
+	// skate; halving it keeps sideways movement usable for lining up a pickup without it
+	// outrunning the walk cycle.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.05", ClampMax = "1.0"))
+	float StrafeSpeedScale = 0.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float MaxAccelerationCmPerSec2 = 3000.0f;
@@ -136,6 +145,15 @@ protected:
 	// The player's original figure ("pilot" - you are the SimCopter pilot). Empty disables.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets")
 	FString PlayerFigureName = TEXT("pilot");
+
+	// Playback rate of the privanim clips, in frames per second. The walk clip is 8 frames for a
+	// full two-step cycle, so at the avatar's scale a slow rate reads as gliding: the stride has
+	// to keep up with the ground covered.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets", meta = (ClampMin = "1.0"))
+	float FigureWalkFrameRate = 16.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets", meta = (ClampMin = "1.0"))
+	float FigureIdleFrameRate = 8.0f;
 
 private:
 	float LookYawInput = 0.0f;

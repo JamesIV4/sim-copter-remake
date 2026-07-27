@@ -93,6 +93,13 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	OriginalBodySpriteComponent->SetCanEverAffectNavigation(false);
 	OriginalBodySpriteComponent->SetVisibility(false);
 	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale));
+	// Per-object shadow rather than the sun's cascades - see the same call in
+	// ASimCopterGroundAgent: the figure is far too small for a CSM texel and self-shadows into
+	// acne across its overlapping parts. bExcludeFromLightAttachmentGroup is needed because the
+	// capsule we hang off is the attachment root, and a light attachment group would otherwise
+	// discard this component's shadow settings.
+	OriginalBodySpriteComponent->bCastInsetShadow = true;
+	OriginalBodySpriteComponent->bExcludeFromLightAttachmentGroup = true;
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(Capsule);
@@ -215,8 +222,12 @@ void ASimCopterOnFootPawn::MoveRight(float Value)
 {
 	if (!FMath::IsNearlyZero(Value))
 	{
+		// Character movement caps at MaxWalkSpeed scaled by the input magnitude, so a scaled
+		// strafe input is also a scaled strafe speed - no second speed setting needed.
 		const FRotator YawRotation(0.0f, GetActorRotation().Yaw, 0.0f);
-		AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), FMath::Clamp(Value, -1.0f, 1.0f));
+		AddMovementInput(
+			FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y),
+			FMath::Clamp(Value, -1.0f, 1.0f) * StrafeSpeedScale);
 	}
 }
 
@@ -392,7 +403,7 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 		}
 		if (FigureAnim.FrameCount > 1)
 		{
-			FigureAnim.FrameTime += DeltaSeconds * (bWalking ? 8.0f : 4.0f);
+			FigureAnim.FrameTime += DeltaSeconds * (bWalking ? FigureWalkFrameRate : FigureIdleFrameRate);
 			const int32 DesiredFrame = FMath::FloorToInt(FigureAnim.FrameTime) % FigureAnim.FrameCount;
 			if (DesiredFrame != FigureAnim.CurrentFrame)
 			{

@@ -8,6 +8,30 @@
 
 namespace
 {
+// Per-primitive sizing constants lifted straight out of the original's part dispatch
+// (FUN_004cf8f0). There the products are screen pixels; here the same numbers are model units,
+// which the calibration converts to centimetres.
+//
+//   0x0b thick line : width = Dims.Y
+//   0x0a thin line  : width = Dims.Y at the start, narrowing towards the end (see below)
+//   0x08/0x0d/0x0e  : filled disc, diameter = Dims.X * 1.8      (double at 0x004f5110)
+//   0x09 head       : ellipse, vertical radius Dims.X, horizontal radius 0.75x
+//   0x0c            : a single pixel
+constexpr float DiscDiameterPerDim = 1.8f;
+// The thin-line blitter (FUN_004d0f50) shrinks the stroke by two pixels every
+// length/(taper+1) steps, with taper = width * (1/3) * Dims.Z, so the far end lands at
+// width * (1 - 2/3 * Dims.Z).
+constexpr float ThinLineTaperPerDim = 2.0f / 3.0f;
+// The head blitter (FUN_004d0b70) walks rows out to +/-radius but takes its row half-widths
+// from (0.75 * radius)^2, so the head silhouette is an upright oval, not a circle.
+constexpr float HeadWidthRatio = 0.75f;
+
+// Tessellation of the ball primitives. The original drew them as small filled discs, so this
+// only has to read as round; keeping it coarse matters because a figure can carry dozens of
+// them across every animation frame (the dog and Nessie are made of almost nothing else).
+constexpr int32 BallSegments = 8; // around
+constexpr int32 BallRings = 5;    // pole to pole
+
 // Model axes (from the decompiled renderer): byte0 = stride/forward, byte1 = lateral,
 // byte2 = the vertical in *screen* space, which increases DOWNWARD (1996 software rasterizer),
 // so it is negated for Unreal's +Z-up (figures rendered upside down before the flip).
@@ -29,13 +53,27 @@ struct FMeshArrays
 	TArray<FProcMeshTangent> Tangents;
 };
 
+// Unreal shows the face a triangle winds *clockwise* around, i.e. the side its index order's
+// right-hand-rule normal points away from - the same convention the city terrain builder relies
+// on. Emit the triangle so it is visible from `Normal`'s side.
+void AppendTriangleIndices(FMeshArrays& M, int32 Base, int32 I0, int32 I1, int32 I2, bool bFlip)
+{
+	M.Triangles.Add(Base + I0);
+	M.Triangles.Add(Base + (bFlip ? I2 : I1));
+	M.Triangles.Add(Base + (bFlip ? I1 : I2));
+}
+
+// One quad. Corners are given in ring order; the face ends up visible from `Normal`'s side
+// whichever way round the ring turns. `CornerNormals`, when supplied, gives smooth shading
+// (used by the balls) while `Normal` still decides the winding.
 void AppendQuad(
 	FMeshArrays& M,
 	const FVector Corners[4],
 	const FVector& Normal,
 	const FLinearColor& Color,
 	bool bDoubleSided,
-	const FVector2D* CornerUVs = nullptr)
+	const FVector2D* CornerUVs = nullptr,
+	const FVector* CornerNormals = nullptr)
 {
 	const int32 Base = M.Vertices.Num();
 	const FVector Tangent = (Corners[1] - Corners[0]).GetSafeNormal();
@@ -43,23 +81,59 @@ void AppendQuad(
 	for (int32 Corner = 0; Corner < 4; ++Corner)
 	{
 		M.Vertices.Add(Corners[Corner]);
-		M.Normals.Add(Normal);
+		M.Normals.Add(CornerNormals != nullptr ? CornerNormals[Corner] : Normal);
 		M.UVs.Add(CornerUVs != nullptr ? CornerUVs[Corner] : DefaultUVs[Corner]);
 		M.VertexColors.Add(Color);
 		M.Tangents.Add(FProcMeshTangent(Tangent, false));
 	}
-	M.Triangles.Add(Base + 0); M.Triangles.Add(Base + 1); M.Triangles.Add(Base + 2);
-	M.Triangles.Add(Base + 0); M.Triangles.Add(Base + 2); M.Triangles.Add(Base + 3);
+
+	const FVector RingNormal = FVector::CrossProduct(Corners[1] - Corners[0], Corners[3] - Corners[0]);
+	const bool bFlip = FVector::DotProduct(RingNormal, Normal) > 0.0f;
+	AppendTriangleIndices(M, Base, 0, 1, 2, bFlip);
+	AppendTriangleIndices(M, Base, 0, 2, 3, bFlip);
 	if (bDoubleSided)
 	{
-		M.Triangles.Add(Base + 0); M.Triangles.Add(Base + 2); M.Triangles.Add(Base + 1);
-		M.Triangles.Add(Base + 0); M.Triangles.Add(Base + 3); M.Triangles.Add(Base + 2);
+		AppendTriangleIndices(M, Base, 0, 1, 2, !bFlip);
+		AppendTriangleIndices(M, Base, 0, 2, 3, !bFlip);
 	}
 }
 
-// Oriented box from A to B with a square cross-section (the 3D stand-in for the original's
-// constant-width screen stroke). Degenerate segments become a cube.
-void AppendStroke(FMeshArrays& M, const FVector& A, const FVector& B, float HalfWidth, const FLinearColor& Color)
+// As AppendQuad, for the triangles that close a ball's poles.
+void AppendTriangle(
+	FMeshArrays& M,
+	const FVector Corners[3],
+	const FVector& Normal,
+	const FLinearColor& Color,
+	const FVector2D* CornerUVs,
+	const FVector* CornerNormals)
+{
+	const int32 Base = M.Vertices.Num();
+	const FVector Tangent = (Corners[1] - Corners[0]).GetSafeNormal();
+	for (int32 Corner = 0; Corner < 3; ++Corner)
+	{
+		M.Vertices.Add(Corners[Corner]);
+		M.Normals.Add(CornerNormals != nullptr ? CornerNormals[Corner] : Normal);
+		M.UVs.Add(CornerUVs != nullptr ? CornerUVs[Corner] : FVector2D::ZeroVector);
+		M.VertexColors.Add(Color);
+		M.Tangents.Add(FProcMeshTangent(Tangent, false));
+	}
+
+	const FVector RingNormal = FVector::CrossProduct(Corners[1] - Corners[0], Corners[2] - Corners[0]);
+	AppendTriangleIndices(M, Base, 0, 1, 2, FVector::DotProduct(RingNormal, Normal) > 0.0f);
+}
+
+// Oriented box from A to B, optionally tapering from one half width to the other (the 3D
+// stand-in for the original's constant-width and shrinking screen strokes). `ForwardDepthRatio`
+// squashes the cross-section along the figure's forward axis, since the original's strokes have
+// width but no depth. Degenerate segments become a cube.
+void AppendStroke(
+	FMeshArrays& M,
+	const FVector& A,
+	const FVector& B,
+	float HalfWidthA,
+	float HalfWidthB,
+	const FLinearColor& Color,
+	float ForwardDepthRatio = 1.0f)
 {
 	FVector Axis = B - A;
 	float Length = Axis.Size();
@@ -67,27 +141,38 @@ void AppendStroke(FMeshArrays& M, const FVector& A, const FVector& B, float Half
 
 	// Extend the stroke by its half width on both ends so chained segments overlap the way the
 	// original's round-capped thick lines did (otherwise joints show gaps).
-	const FVector Start = A - Dir * HalfWidth;
-	const FVector End = B + Dir * HalfWidth;
+	const FVector Start = A - Dir * HalfWidthA;
+	const FVector End = B + Dir * HalfWidthB;
 
 	FVector U = FVector::CrossProduct(Dir, FVector::UpVector);
 	if (!U.Normalize())
 	{
 		U = FVector::CrossProduct(Dir, FVector::ForwardVector).GetSafeNormal();
 	}
-	const FVector V = FVector::CrossProduct(Dir, U);
+	FVector V = FVector::CrossProduct(Dir, U);
 
-	const FVector HalfU = U * HalfWidth;
-	const FVector HalfV = V * HalfWidth;
+	// Only the cross-section is squashed - never the endpoints or the length - so the pose and
+	// the figure's real forward reach are untouched and only the invented depth shrinks. A
+	// stroke already pointing along forward has no forward component in its cross-section, so
+	// this correctly leaves outstretched arms at full thickness.
+	U.X *= ForwardDepthRatio;
+	V.X *= ForwardDepthRatio;
 
-	// 8 corners: bottom (at Start) then top (at End).
+	const FVector StartU = U * HalfWidthA;
+	const FVector StartV = V * HalfWidthA;
+	const FVector EndU = U * HalfWidthB;
+	const FVector EndV = V * HalfWidthB;
+
+	// 8 corners: the ring at Start, then the ring at End.
 	const FVector C[8] = {
-		Start - HalfU - HalfV, Start + HalfU - HalfV, Start + HalfU + HalfV, Start - HalfU + HalfV,
-		End - HalfU - HalfV, End + HalfU - HalfV, End + HalfU + HalfV, End - HalfU + HalfV};
+		Start - StartU - StartV, Start + StartU - StartV, Start + StartU + StartV, Start - StartU + StartV,
+		End - EndU - EndV, End + EndU - EndV, End + EndU + EndV, End - EndU + EndV};
 
 	auto Face = [&M, &Color](const FVector& V0, const FVector& V1, const FVector& V2, const FVector& V3)
 	{
 		const FVector Corners[4] = {V0, V1, V2, V3};
+		// The corner rings below all turn the same way around the outside of the box, so the
+		// ring normal is the outward one.
 		const FVector Normal = FVector::CrossProduct(V1 - V0, V3 - V0).GetSafeNormal();
 		AppendQuad(M, Corners, Normal, Color, false);
 	};
@@ -102,44 +187,100 @@ void AppendStroke(FMeshArrays& M, const FVector& A, const FVector& B, float Half
 
 void AppendCube(FMeshArrays& M, const FVector& Center, float HalfSize, const FLinearColor& Color)
 {
-	AppendStroke(M, Center - FVector(0, 0, HalfSize * 0.001f), Center + FVector(0, 0, HalfSize * 0.001f), HalfSize, Color);
+	AppendStroke(
+		M,
+		Center - FVector(0, 0, HalfSize * 0.001f),
+		Center + FVector(0, 0, HalfSize * 0.001f),
+		HalfSize,
+		HalfSize,
+		Color);
 }
 
-// Head: the original's 52x25 SIM3D.BMP head images are panoramas sampled by view angle when the
-// rotated head sprite is blitted. The remake wraps the strip around a small vertical cylinder so
-// the face shows from the front and the hair from behind.
-void AppendHeadCylinder(FMeshArrays& M, const FVector& Center, float Radius, float Height, float FaceU)
+// A low-poly ball: the 3D stand-in for the original's filled-disc primitives, which were
+// rasterized in screen space and so looked round from every camera angle.
+//
+// With `PanoramaU` set the ball is skinned with the head sprite instead of vertex colours: the
+// original's 52x25 SIM3D.BMP head image is a panorama the blitter wraps around the head as it
+// turns, so U runs once around the ball (offset so the face fronts +X) and V runs top to bottom.
+void AppendBall(
+	FMeshArrays& M,
+	const FVector& Center,
+	float RadiusXY,
+	float RadiusZ,
+	const FLinearColor& Color,
+	const float* PanoramaU = nullptr)
 {
-	constexpr int32 Sides = 8;
-	const float HalfH = Height * 0.5f;
-	for (int32 Side = 0; Side < Sides; ++Side)
+	if (RadiusXY <= KINDA_SMALL_NUMBER || RadiusZ <= KINDA_SMALL_NUMBER)
 	{
-		// Angle 0 faces +X (agent forward); U runs so FaceU lands at the front.
-		const float Angle0 = (float(Side) / Sides) * UE_TWO_PI;
-		const float Angle1 = (float(Side + 1) / Sides) * UE_TWO_PI;
-		const FVector R0(FMath::Cos(Angle0) * Radius, FMath::Sin(Angle0) * Radius, 0.0f);
-		const FVector R1(FMath::Cos(Angle1) * Radius, FMath::Sin(Angle1) * Radius, 0.0f);
-		// The panorama's U axis wraps the head; mirror it on the +Y side so left/right read
-		// correctly, and offset by FaceU so the face fronts +X.
-		const float U0 = FMath::Fmod(FaceU + float(Side) / Sides, 1.0f);
-		const float U1 = U0 + 1.0f / Sides;
-
-		const FVector Corners[4] = {
-			Center + R0 + FVector(0, 0, HalfH),
-			Center + R1 + FVector(0, 0, HalfH),
-			Center + R1 - FVector(0, 0, HalfH),
-			Center + R0 - FVector(0, 0, HalfH)};
-		const FVector2D UVs[4] = {
-			FVector2D(U0, 0.0f), FVector2D(U1, 0.0f), FVector2D(U1, 1.0f), FVector2D(U0, 1.0f)};
-		const FVector Normal = ((R0 + R1) * 0.5f).GetSafeNormal();
-		AppendQuad(M, Corners, Normal, FLinearColor::White, false, UVs);
+		return;
 	}
-	// Caps pinch to the strip's top edge (hair) / bottom edge so they blend in.
-	const FVector TopCorners[4] = {
-		Center + FVector(-Radius, -Radius, HalfH), Center + FVector(-Radius, Radius, HalfH),
-		Center + FVector(Radius, Radius, HalfH), Center + FVector(Radius, -Radius, HalfH)};
-	const FVector2D CapUVs[4] = {FVector2D(0.99f, 0.02f), FVector2D(0.99f, 0.02f), FVector2D(0.99f, 0.02f), FVector2D(0.99f, 0.02f)};
-	AppendQuad(M, TopCorners, FVector::UpVector, FLinearColor::White, false, CapUVs);
+
+	// Ellipsoid surface normal, so the ball shades smoothly instead of showing its facets.
+	auto NormalAt = [RadiusXY, RadiusZ, &Center](const FVector& Point)
+	{
+		const FVector Local = Point - Center;
+		return FVector(
+			Local.X / (RadiusXY * RadiusXY),
+			Local.Y / (RadiusXY * RadiusXY),
+			Local.Z / (RadiusZ * RadiusZ)).GetSafeNormal();
+	};
+	auto PointAt = [RadiusXY, RadiusZ, &Center](int32 Ring, int32 Segment)
+	{
+		const float Polar = UE_PI * float(Ring) / float(BallRings);
+		const float Azimuth = UE_TWO_PI * float(Segment) / float(BallSegments);
+		return Center + FVector(
+			FMath::Cos(Azimuth) * FMath::Sin(Polar) * RadiusXY,
+			FMath::Sin(Azimuth) * FMath::Sin(Polar) * RadiusXY,
+			FMath::Cos(Polar) * RadiusZ);
+	};
+	// Keep every U inside 0..1 (the last column runs up to exactly 1.0) so the panorama needs no
+	// wrap addressing on the texture.
+	auto UAt = [PanoramaU](int32 Segment)
+	{
+		return FMath::Fmod(*PanoramaU + float(Segment) / float(BallSegments), 1.0f);
+	};
+	const FLinearColor SkinColor = PanoramaU != nullptr ? FLinearColor::White : Color;
+
+	for (int32 Ring = 0; Ring < BallRings; ++Ring)
+	{
+		const float V0 = float(Ring) / float(BallRings);
+		const float V1 = float(Ring + 1) / float(BallRings);
+		for (int32 Segment = 0; Segment < BallSegments; ++Segment)
+		{
+			const FVector TopLeft = PointAt(Ring, Segment);
+			const FVector TopRight = PointAt(Ring, Segment + 1);
+			const FVector BottomRight = PointAt(Ring + 1, Segment + 1);
+			const FVector BottomLeft = PointAt(Ring + 1, Segment);
+			const float U0 = PanoramaU != nullptr ? UAt(Segment) : 0.0f;
+			const float U1 = PanoramaU != nullptr ? U0 + 1.0f / float(BallSegments) : 1.0f;
+
+			if (Ring == 0 || Ring == BallRings - 1)
+			{
+				// The rings touching a pole collapse to a triangle fan.
+				const bool bTopPole = Ring == 0;
+				const FVector Corners[3] = {
+					bTopPole ? TopLeft : BottomLeft,
+					bTopPole ? BottomLeft : TopLeft,
+					bTopPole ? BottomRight : TopRight};
+				const FVector Normals[3] = {NormalAt(Corners[0]), NormalAt(Corners[1]), NormalAt(Corners[2])};
+				const FVector2D UVs[3] = {
+					FVector2D(U0, bTopPole ? V0 : V1),
+					FVector2D(U0, bTopPole ? V1 : V0),
+					FVector2D(U1, bTopPole ? V1 : V0)};
+				const FVector FaceNormal = (Normals[0] + Normals[1] + Normals[2]).GetSafeNormal();
+				AppendTriangle(M, Corners, FaceNormal, SkinColor, UVs, Normals);
+				continue;
+			}
+
+			const FVector Corners[4] = {TopLeft, TopRight, BottomRight, BottomLeft};
+			const FVector Normals[4] = {
+				NormalAt(TopLeft), NormalAt(TopRight), NormalAt(BottomRight), NormalAt(BottomLeft)};
+			const FVector2D UVs[4] = {
+				FVector2D(U0, V0), FVector2D(U1, V0), FVector2D(U1, V1), FVector2D(U0, V1)};
+			const FVector FaceNormal = (Normals[0] + Normals[1] + Normals[2] + Normals[3]).GetSafeNormal();
+			AppendQuad(M, Corners, FaceNormal, SkinColor, false, UVs, Normals);
+		}
+	}
 }
 } // namespace
 
@@ -288,11 +429,16 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 
 	MeshComponent->ClearAllMeshSections();
 
-	const float ThickHalf = Params.HeightCm * Params.ThickWidthFraction * 0.5f;
-	const float ThinHalf = Params.HeightCm * Params.ThinWidthFraction * 0.5f;
-	const float DotHalf = Params.HeightCm * Params.DotSizeFraction * 0.5f;
-	const float HeadHeight = Params.HeightCm * Params.HeadHeightFraction;
-	const float HeadRadius = Params.HeightCm * Params.HeadRadiusFraction;
+	// Model units -> world, with the global chunkiness dial folded in. Every primitive below is
+	// sized from the part's own ARCP dimensions through this.
+	const float SizeScale = Calibration.ScaleCmPerUnit * FMath::Max(Params.PartSizeScale, 0.0f);
+	const float MinSizeUnits = FMath::Max(Params.MinPartSizeUnits, 0.0f);
+	const float DepthRatio = FMath::Clamp(Params.StrokeForwardDepthRatio, 0.05f, 1.0f);
+	// Spread the painter bias over however many parts this figure has, so the total stays put
+	// whether the figure is Nessie's 29 parts or the cow's 88.
+	const float PainterBiasStep = Clip.PartCount > 0
+		? Params.HeightCm * FMath::Max(Params.PainterBiasFraction, 0.0f) / float(Clip.PartCount)
+		: 0.0f;
 
 	for (int32 Frame = 0; Frame < Clip.FrameCount; ++Frame)
 	{
@@ -312,34 +458,55 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 			const FVector B = ToLocal(Segment.B, Calibration);
 			const FLinearColor Color = ResolvePartColor(Palette, Part, Params.ClothesOffset);
 
+			// Dims.X sizes the round primitives (disc, head), Dims.Y the strokes, Dims.Z is the
+			// thin stroke's taper. The dot primitives only ever use endpoint A: the original
+			// does not even transform B for them (FUN_004cfb30 skips types 8/9/0xc/0xd/0xe).
+			// The painter bias stands in for the original's back-to-front draw order.
+			const float PainterBias = float(PartIndex) * PainterBiasStep;
+			const float RoundUnits = FMath::Max(Part.Dims.X, MinSizeUnits);
+			const float StrokeHalf = FMath::Max(Part.Dims.Y, MinSizeUnits) * 0.5f * SizeScale + PainterBias;
+
 			switch (Part.Type)
 			{
 			case EPrivAnimPartType::ThickLine:
-				AppendStroke(Body, A, B, ThickHalf, Color);
+				AppendStroke(Body, A, B, StrokeHalf, StrokeHalf, Color, DepthRatio);
 				break;
 			case EPrivAnimPartType::ThinLine:
-				AppendStroke(Body, A, B, ThinHalf, Color);
+			{
+				const float TaperedHalf =
+					StrokeHalf * FMath::Max(1.0f - ThinLineTaperPerDim * Part.Dims.Z, 0.0f);
+				AppendStroke(Body, A, B, StrokeHalf, TaperedHalf, Color, DepthRatio);
 				break;
+			}
 			case EPrivAnimPartType::HeadSprite:
 			{
+				const float HeadRadiusZ = RoundUnits * SizeScale + PainterBias;
+				const float HeadRadiusXY = HeadRadiusZ * HeadWidthRatio;
 				if (!Params.bTexturedHead)
 				{
-					AppendCube(Body, A, HeadHeight * 0.4f, Color);
+					AppendBall(Body, A, HeadRadiusXY, HeadRadiusZ, Color);
 					break;
 				}
-				AppendHeadCylinder(Head, A, HeadRadius, HeadHeight, Params.HeadFaceU);
+				AppendBall(Head, A, HeadRadiusXY, HeadRadiusZ, FLinearColor::White, &Params.HeadFaceU);
 				bOutHasHeadSection = true;
 				break;
 			}
 			case EPrivAnimPartType::DotStyle0:
 			case EPrivAnimPartType::DotStyle1:
 			case EPrivAnimPartType::DotStyle2:
+			{
+				const float DiscRadius = RoundUnits * DiscDiameterPerDim * 0.5f * SizeScale + PainterBias;
+				AppendBall(Body, A, DiscRadius, DiscRadius, Color);
+				break;
+			}
 			case EPrivAnimPartType::Pixel:
-				AppendCube(Body, A, DotHalf, Color);
+				// One screen pixel in the original; a speck here. These are nearly all
+				// far-LOD stand-ins, so they rarely survive the LOD gate above anyway.
+				AppendCube(Body, A, MinSizeUnits * 0.5f * SizeScale + PainterBias, Color);
 				break;
 			default:
-				// Unknown draw type - keep the segment visible as a thin stroke.
-				AppendStroke(Body, A, B, ThinHalf, Color);
+				// Unknown draw type - keep the segment visible as a stroke.
+				AppendStroke(Body, A, B, StrokeHalf, StrokeHalf, Color, DepthRatio);
 				break;
 			}
 		}

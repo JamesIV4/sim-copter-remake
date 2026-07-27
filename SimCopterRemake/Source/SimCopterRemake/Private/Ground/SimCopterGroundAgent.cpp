@@ -127,6 +127,13 @@ ASimCopterGroundAgent::ASimCopterGroundAgent()
 	OriginalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OriginalMeshComponent->SetCanEverAffectNavigation(false);
 	OriginalMeshComponent->SetVisibility(false);
+	// A privanim figure is a ~44cm stack of overlapping primitives, which is smaller than a
+	// single cascaded-shadow-map texel at any useful cascade size: the sun's CSM then shadows
+	// the figure against itself and the acne lands differently on the coincident faces of
+	// neighbouring parts, which is what reads as the fighting bars across a torso. A per-object
+	// inset shadow gives the figure its own shadow map fitted to its bounds, so it keeps its
+	// ground shadow and its response to the spotlight and street lights, without the acne.
+	OriginalMeshComponent->bCastInsetShadow = true;
 
 	ProxyMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProxyMesh"));
 	ProxyMeshComponent->SetupAttachment(VisualRoot);
