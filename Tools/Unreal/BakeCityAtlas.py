@@ -29,6 +29,8 @@ import unreal
 OUTPUT_DIR = "/Game/Generated/CityAtlas"
 ATLAS_MATERIAL = "/Game/Materials/M_SimCopterCityAtlas"
 TERRAIN_MATERIAL = "/Game/Materials/M_SimCopterLitTexture"
+# Masked, so palette index 0 punches out of tree/sign sprite cards.
+SPRITE_MATERIAL = "/Game/Materials/M_SimCopterSpriteTexture"
 SKY_PAGE_ID = 20          # face TextureAtlasIndex 20 resolves to SKY.BMP image 4, not SIM3D image 20
 SKY_IMAGE_INDEX = 4
 TERRAIN_HIGH_PAGE_ID = 13  # SIM3D.BMP image 13 doubles as the high terrain page (0x0d)
@@ -60,33 +62,52 @@ def decode_composite(path, palette):
         data_offset = row_table + h * 4
         pixel_count = w * h
         rgb = bytearray(pixel_count * 3)
+        # Palette index 0 is the Maxis transparency key - the original's sprite blitter skips it.
+        # Direct SIM3D images are drawn as cards (face types 2 and 13), so without this mask a
+        # tree sprite renders as an opaque black slab instead of foliage.
+        alpha = bytearray(pixel_count)
         for row in range(h):
             row_offset = struct.unpack_from("<i", d, row_table + row * 4)[0]
             dest_row = h - 1 - row
             base = data_offset + row_offset
             dst = dest_row * w * 3
+            adst = dest_row * w
             for col in range(w):
-                r, g, b = palette[d[base + col]]
+                index = d[base + col]
+                r, g, b = palette[index]
                 rgb[dst] = r
                 rgb[dst + 1] = g
                 rgb[dst + 2] = b
+                alpha[adst + col] = 0 if index == 0 else 255
                 dst += 3
-        images.append((w, h, bytes(rgb)))
+        images.append((w, h, bytes(rgb), bytes(alpha)))
         cursor = data_offset + pixel_count
     return images
 
 
-def write_png(path, width, height, rgb):
+def write_png(path, width, height, rgb, alpha=None):
     def chunk(tag, data):
         return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
 
     raw = bytearray()
-    stride = width * 3
-    for y in range(height):
-        raw.append(0)  # filter type 0
-        raw.extend(rgb[y * stride:(y + 1) * stride])
+    if alpha is None:
+        stride = width * 3
+        for y in range(height):
+            raw.append(0)  # filter type 0
+            raw.extend(rgb[y * stride:(y + 1) * stride])
+        color_type = 2  # 8-bit RGB
+    else:
+        stride = width * 3
+        for y in range(height):
+            raw.append(0)
+            row = rgb[y * stride:(y + 1) * stride]
+            arow = alpha[y * width:(y + 1) * width]
+            for x in range(width):
+                raw.extend(row[x * 3:x * 3 + 3])
+                raw.append(arow[x])
+        color_type = 6  # 8-bit RGBA
     png = b"\x89PNG\r\n\x1a\n"
-    png += chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))  # 8-bit RGB
+    png += chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, color_type, 0, 0, 0))
     png += chunk(b"IDAT", zlib.compress(bytes(raw), 9))
     png += chunk(b"IEND", b"")
     open(path, "wb").write(png)
@@ -146,12 +167,14 @@ def main():
         unreal.EditorAssetLibrary.make_directory(OUTPUT_DIR)
 
     # Every 256x256 SIM3D image is an 8x8 atlas page addressable by face TextureAtlasIndex.
+    # Atlas pages stay opaque: they are wall/roof surfaces, not keyed sprites.
     page_sources = {}
-    for index, (w, h, rgb) in enumerate(sim3d):
+    for index, (w, h, rgb, _alpha) in enumerate(sim3d):
         if w == 256 and h == 256:
             page_sources[index] = (w, h, rgb)
     # The SKY.BMP image-4 exception overrides page 20 regardless of SIM3D image 20.
-    page_sources[SKY_PAGE_ID] = sky[SKY_IMAGE_INDEX]
+    sky_w, sky_h, sky_rgb, _sky_alpha = sky[SKY_IMAGE_INDEX]
+    page_sources[SKY_PAGE_ID] = (sky_w, sky_h, sky_rgb)
 
     baked_pages = []
     for page_id, (w, h, rgb) in sorted(page_sources.items()):
@@ -161,16 +184,18 @@ def main():
         create_material_instance(f"MI_CityPage_{page_id}", ATLAS_MATERIAL, texture)
         baked_pages.append(page_id)
 
+    # Direct images are drawn as keyed cards (face types 2 and 13), so they carry the index-0
+    # alpha mask and hang off the masked sprite material rather than the opaque lit one.
     baked_direct_images = []
-    for image_id, (w, h, rgb) in enumerate(sim3d):
+    for image_id, (w, h, rgb, alpha) in enumerate(sim3d):
         png = os.path.join(temp_dir, f"image_{image_id}.png")
-        write_png(png, w, h, rgb)
+        write_png(png, w, h, rgb, alpha)
         texture = import_texture(png, f"T_CityImage_{image_id}")
-        create_material_instance(f"MI_CityImage_{image_id}", TERRAIN_MATERIAL, texture)
+        create_material_instance(f"MI_CityImage_{image_id}", SPRITE_MATERIAL, texture)
         baked_direct_images.append(image_id)
 
     # Terrain surfaces sample full pages with CPU-baked UVs through M_SimCopterLitTexture.
-    tw, th, trgb = tiled1[0]
+    tw, th, trgb, _talpha = tiled1[0]
     terrain_png = os.path.join(temp_dir, "terrain_low.png")
     write_png(terrain_png, tw, th, trgb)
     terrain_low = import_texture(terrain_png, "T_TerrainLow")

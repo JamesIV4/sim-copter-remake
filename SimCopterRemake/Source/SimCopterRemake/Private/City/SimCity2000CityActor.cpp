@@ -51,7 +51,7 @@ void EnsureInstancedStaticMeshUsage(UMaterialInterface* Material)
 
 FLinearColor ResolveMaxisFaceColor(const TArray<FColor>* ColorMap, uint8 FaceType, uint8 MaterialIndex, const FLinearColor& TexturedFaceFallbackColor)
 {
-	if (FaceType == 13 || FaceType == 18)
+	if (FaceType == 13 || FaceType == 18 || FaceType == 2)
 	{
 		return TexturedFaceFallbackColor;
 	}
@@ -64,9 +64,23 @@ FLinearColor ResolveMaxisFaceColor(const TArray<FColor>* ColorMap, uint8 FaceTyp
 	return FLinearColor::White;
 }
 
+// Face type 2 is a textured SPRITE CARD, not a line. Its FACE record carries two vertex indices,
+// but they are not the ends of a segment: the first is the card's centre and the second is its
+// (+halfWidth, +halfHeight) corner, so the card spans centre +/- (delta) and stands on the ground.
+// The tree objects prove the encoding - TREE6 stores the card corners alongside a base vertex at
+// (cardCentreX + halfWidth, 0) and a top vertex at (cardCentreX + halfWidth, 2 * centreY), i.e.
+// exactly the bottom-right and top-right corners of the rectangle the two face vertices describe.
+// The face's two UV entries are the 0.1/0.9 corners of the sprite rect inside direct image
+// MaterialIndex. Drawing these as palette-coloured line segments is what made every tree in the
+// city render as a white or orange stick.
 bool IsTexturedMaxisFace(uint8 FaceType)
 {
-	return FaceType == 13 || FaceType == 18;
+	return FaceType == 13 || FaceType == 18 || FaceType == 2;
+}
+
+bool IsMaxisSpriteCardFace(const FMaxisMeshFace& Face)
+{
+	return Face.FaceType == 2 && Face.VertexIndices.Num() == 2;
 }
 
 int32 MakeMaxisTextureKey(uint8 TextureFile, uint8 TextureNumber)
@@ -76,7 +90,8 @@ int32 MakeMaxisTextureKey(uint8 TextureFile, uint8 TextureNumber)
 
 int32 GetMaxisFaceTextureKey(const FMaxisMeshFace& Face)
 {
-	if (Face.FaceType == 13)
+	// Face type 2 keys the same direct-image space as 13 (TextureAtlasIndex is always 0 on them).
+	if (Face.FaceType == 13 || Face.FaceType == 2)
 	{
 		return MakeMaxisTextureKey(0, Face.MaterialIndex);
 	}
@@ -837,6 +852,44 @@ int32 GetOriginalBuildingBaseObjectId(uint8 Zone, int32 FootprintSize)
 		return 0x167;
 	default:
 		return 0x164;
+	}
+}
+
+// Natural scenery dispatch transcribed from FUN_0047c0c0's `bVar2 < 0x1d` switch: the seven
+// SimCity 2000 tree densities (XBLD 0x06 "Trees 1" .. 0x0C "Trees 7") and the small park
+// (0x0D) each place one runtime object. The original also takes the MINIMUM conditioned corner
+// sample over the tile as the placement height (`local_3a`) instead of the flattened pad the
+// building path uses, so a tree on a slope sits on the low corner rather than floating.
+//
+// These tiles used to render nothing at all, which is not only a visual gap: the ambient people
+// spawner's placement sampler (FUN_004c02a0) rejects a sampled point whose walked surface
+// (FUN_004c82c0 = max of the scene cell's object meshes) rises more than 10 original units above
+// the cell base. With no canopy geometry to hit, every forest tile handed out a spawn point - and
+// a forest tile is people tile class 3, whose only DAT_0058ec00 matches are behaviour class 10
+// (dog) and 17 (cow). Missing trees were therefore also the reason the city filled with animals.
+// FUN_0047c0c0's `if (bVar2 < 5)` arm, taken before the `bVar2 < 0x1d` switch: all four SimCity
+// 2000 rubble ids share one GRUBBLE1 debris mesh. Unlike the trees this keeps the default
+// `local_3a` placement height, so it sits on the tile surface like roads and buildings do.
+// (XBLD 0x05, radioactive waste, deliberately places nothing - it falls through to the switch
+// default.)
+int32 GetOriginalRubbleObjectId(uint8 BuildingId)
+{
+	return (BuildingId >= 0x01 && BuildingId <= 0x04) ? 0x14F : INDEX_NONE;
+}
+
+int32 GetOriginalNaturalObjectId(uint8 BuildingId)
+{
+	switch (BuildingId)
+	{
+	case 0x06: return 0x10D;
+	case 0x07: return 0x10E;
+	case 0x08: return 0x10F;
+	case 0x09: return 0x110;
+	case 0x0A: return 0x111;
+	case 0x0B: return 0x112;
+	case 0x0C: return 0x113;
+	case 0x0D: return 0x143;
+	default: return INDEX_NONE;
 	}
 }
 
@@ -2549,6 +2602,113 @@ void Append3DVectorLine(
 	}
 }
 
+// Emits a Maxis face-type-2 sprite card as a crossed pair of vertical, double-sided quads.
+// CentreVertex is the card centre in Maxis object space (Y up); the card spans +/-HalfWidth
+// horizontally and +/-HalfHeight vertically about it, so a tree's card sits on the ground.
+void AppendMaxisSpriteCard(
+	FOriginalMeshSectionData& Section,
+	const FVector& TileOrigin,
+	const FMaxisMeshVertex& CentreVertex,
+	int32 HalfWidth,
+	int32 HalfHeight,
+	const FVector2D& UVMin,
+	const FVector2D& UVMax,
+	const FLinearColor& FaceColor,
+	float MeshUnitsPerCentimeter,
+	float MeshScale,
+	bool bRenderBackfaces,
+	int32& AddedTriangleCount,
+	int32& OutTexturedTriangleCount,
+	bool bTexturedFace)
+{
+	if (HalfWidth <= 0 || HalfHeight <= 0)
+	{
+		return;
+	}
+
+	const auto ToWorld = [&](int32 MaxisX, int32 MaxisY, int32 MaxisZ) -> FVector
+	{
+		FMaxisMeshVertex Vertex;
+		Vertex.X = MaxisX;
+		Vertex.Y = MaxisY;
+		Vertex.Z = MaxisZ;
+		const FVector Converted = FMaxisMeshReader::ConvertMaxisVertexToUnreal(Vertex, MeshUnitsPerCentimeter) * MeshScale;
+		// Global 180-degree yaw about world up, matching the polygon path.
+		return TileOrigin + FVector(-Converted.X, -Converted.Y, Converted.Z);
+	};
+
+	const int32 BottomY = CentreVertex.Y - HalfHeight;
+	const int32 TopY = CentreVertex.Y + HalfHeight;
+
+	for (int32 QuadIndex = 0; QuadIndex < 2; ++QuadIndex)
+	{
+		const bool bAlongX = QuadIndex == 0;
+		const int32 MinX = bAlongX ? CentreVertex.X - HalfWidth : CentreVertex.X;
+		const int32 MaxX = bAlongX ? CentreVertex.X + HalfWidth : CentreVertex.X;
+		const int32 MinZ = bAlongX ? CentreVertex.Z : CentreVertex.Z - HalfWidth;
+		const int32 MaxZ = bAlongX ? CentreVertex.Z : CentreVertex.Z + HalfWidth;
+
+		const int32 VStart = Section.Vertices.Num();
+		Section.Vertices.Add(ToWorld(MinX, BottomY, MinZ));
+		Section.Vertices.Add(ToWorld(MaxX, BottomY, MaxZ));
+		Section.Vertices.Add(ToWorld(MaxX, TopY, MaxZ));
+		Section.Vertices.Add(ToWorld(MinX, TopY, MinZ));
+
+		// V=0 is the BOTTOM of the sprite here, not the top: ConvertMaxisUVToUnreal already flips V
+		// (1 - raw/65536) and BakeCityAtlas re-orders the composite's bottom-up rows on top of that,
+		// so the two inversions leave the card's base at V=0. Corners run bottom-left, bottom-right,
+		// top-right, top-left to match the vertex order emitted above.
+		Section.UVs.Add(FVector2D(UVMin.X, UVMin.Y));
+		Section.UVs.Add(FVector2D(UVMax.X, UVMin.Y));
+		Section.UVs.Add(FVector2D(UVMax.X, UVMax.Y));
+		Section.UVs.Add(FVector2D(UVMin.X, UVMax.Y));
+
+		const FVector Edge = Section.Vertices[VStart + 1] - Section.Vertices[VStart];
+		FVector Normal = FVector::CrossProduct(Edge, FVector::UpVector).GetSafeNormal();
+		if (Normal.IsNearlyZero())
+		{
+			Normal = FVector::UpVector;
+		}
+
+		const FVector TangentDir = Edge.GetSafeNormal();
+		for (int32 Corner = 0; Corner < 4; ++Corner)
+		{
+			Section.VertexColors.Add(FaceColor);
+			Section.Tangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
+			Section.Normals.Add(Normal);
+		}
+
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 1);
+		Section.Triangles.Add(VStart + 2);
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 2);
+		Section.Triangles.Add(VStart + 3);
+		Section.TriangleCount += 2;
+		AddedTriangleCount += 2;
+		if (bTexturedFace)
+		{
+			OutTexturedTriangleCount += 2;
+		}
+
+		// A sprite card has no back: always emit the reversed winding so the tree is visible from
+		// both sides of each quad regardless of the object's backface setting.
+		(void)bRenderBackfaces;
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 2);
+		Section.Triangles.Add(VStart + 1);
+		Section.Triangles.Add(VStart);
+		Section.Triangles.Add(VStart + 3);
+		Section.Triangles.Add(VStart + 2);
+		Section.TriangleCount += 2;
+		AddedTriangleCount += 2;
+		if (bTexturedFace)
+		{
+			OutTexturedTriangleCount += 2;
+		}
+	}
+}
+
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
@@ -2598,7 +2758,7 @@ int32 AppendMaxisMeshObject(
 		const int32 TextureKey = GetMaxisFaceTextureKey(Face);
 		const bool bAtlasCellInRange = Face.MaterialIndex < FMaxisTextureReader::AtlasColumnCount * FMaxisTextureReader::AtlasColumnCount;
 		const bool bBakedAtlasTexturedFace = bUseOriginalTextures && Face.FaceType == 18 && bAtlasCellInRange && AvailableBakedAtlasPageIds.Contains(Face.TextureAtlasIndex);
-		const bool bBakedDirectTexturedFace = bUseOriginalTextures && Face.FaceType == 13 && AvailableBakedDirectImageIds.Contains(Face.MaterialIndex);
+		const bool bBakedDirectTexturedFace = bUseOriginalTextures && (Face.FaceType == 13 || Face.FaceType == 2) && AvailableBakedDirectImageIds.Contains(Face.MaterialIndex);
 		const bool bRuntimeTexturedFace = bUseOriginalTextures && !bBakedAtlasTexturedFace && !bBakedDirectTexturedFace && IsTexturedMaxisFace(Face.FaceType) && AvailableRuntimeTextureKeys.Contains(TextureKey);
 		const bool bTexturedFace = bBakedAtlasTexturedFace || bBakedDirectTexturedFace || bRuntimeTexturedFace;
 		const int32 SectionKey = bBakedAtlasTexturedFace
@@ -2609,6 +2769,50 @@ int32 AppendMaxisMeshObject(
 		const FLinearColor FaceColor = bTexturedFace
 			? FLinearColor::White
 			: ResolveMaxisFaceColor(ColorMap, Face.FaceType, Face.MaterialIndex, TexturedFaceFallbackColor);
+
+		if (IsMaxisSpriteCardFace(Face))
+		{
+			const uint16 CentreIndex = Face.VertexIndices[0];
+			const uint16 CornerIndex = Face.VertexIndices[1];
+			if (MeshObject.Vertices.IsValidIndex(CentreIndex) && MeshObject.Vertices.IsValidIndex(CornerIndex))
+			{
+				const FMaxisMeshVertex& CentreVertex = MeshObject.Vertices[CentreIndex];
+				const FMaxisMeshVertex& CornerVertex = MeshObject.Vertices[CornerIndex];
+				const int32 HalfWidth = FMath::Abs(CornerVertex.X - CentreVertex.X);
+				const int32 HalfHeight = FMath::Abs(CornerVertex.Y - CentreVertex.Y);
+
+				// Every sprite card in the shipped GEO carries the same 0.1/0.9 pair here, so it is a
+				// fixed exporter convention rather than a per-card crop rectangle. Mapping it across
+				// the quad shaves the outer 10% off all four edges of the sprite - and since the tree
+				// artwork runs edge to edge in its image (measured: 0 blank rows at the top, at most 1
+				// at the bottom), that clipped the base of the trunk and left every tree drawn 10% of
+				// its height above the ground it is actually standing on. The card IS the sprite, so
+				// the image maps across it whole.
+				const FVector2D UVMin(0.0f, 0.0f);
+				const FVector2D UVMax(1.0f, 1.0f);
+
+				// The original draws one camera-facing card. The city mesh is baked once, so the
+				// static stand-in is the usual crossed pair of vertical quads: it reads as a tree
+				// from any heading the helicopter can approach from, and keeps the exact footprint
+				// and height the card encodes.
+				AppendMaxisSpriteCard(
+					Section,
+					TileOrigin,
+					CentreVertex,
+					HalfWidth,
+					HalfHeight,
+					UVMin,
+					UVMax,
+					FaceColor,
+					MeshUnitsPerCentimeter,
+					MeshScale,
+					bRenderBackfaces,
+					AddedTriangleCount,
+					OutTexturedTriangleCount,
+					bTexturedFace);
+			}
+			continue;
+		}
 
 		if (Face.VertexIndices.Num() == 2)
 		{
@@ -3555,6 +3759,12 @@ void ASimCity2000CityActor::RebuildCity()
 			// fold both steps into their per-vertex coordinates.
 			const bool bRoadLikeTile = IsRoadLikeTile(Tile.Building);
 			const bool bBuildingLikeTile = IsBuildingLikeTile(Tile.Building);
+			const bool bNaturalObjectTile = GetOriginalNaturalObjectId(Tile.Building) != INDEX_NONE;
+			const bool bRubbleTile = GetOriginalRubbleObjectId(Tile.Building) != INDEX_NONE;
+			// Objects on tiles the terrain builder never flattens, so their ground is genuinely sloped:
+			// power lines (0x0E-0x1C), trees and the small park (0x06-0x0D), and rubble (0x01-0x04).
+			const bool bGroundHuggingObjectTile =
+				bNaturalObjectTile || bRubbleTile || (Tile.Building >= 0x0E && Tile.Building <= 0x1C);
 
 			if (bRenderTerrain)
 			{
@@ -3610,7 +3820,7 @@ void ASimCity2000CityActor::RebuildCity()
 					RoadMarkingColor);
 			}
 
-			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile))
+			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile || bNaturalObjectTile || bRubbleTile))
 			{
 				const FTileFootprint Footprint = ResolveOriginalMeshFootprint(City, FileX, FileY);
 				if (Footprint.bShouldRender)
@@ -3631,9 +3841,12 @@ void ASimCity2000CityActor::RebuildCity()
 							City.Rotation,
 							bOriginalSpecialE7BuildingPlaced)
 						: FOriginalCityObjectDispatch();
+					const int32 NaturalObjectId = bNaturalObjectTile
+						? GetOriginalNaturalObjectId(Tile.Building)
+						: GetOriginalRubbleObjectId(Tile.Building);
 					const int32 PrimaryObjectId = BridgeDispatch.PrimaryObjectId != INDEX_NONE
 						? BridgeDispatch.PrimaryObjectId
-						: BuildingDispatch.PrimaryObjectId;
+						: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId);
 					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
 						? BridgeDispatch.SecondaryObjectId
 						: BuildingDispatch.SecondaryObjectId;
@@ -3647,7 +3860,22 @@ void ASimCity2000CityActor::RebuildCity()
 					{
 						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						const float MeshWorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
-						const float MeshTerrainTopZ = GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
+						// GetAverageTerrainSurfaceZ derives Z from the tile's own ALTM step, but the terrain
+						// MESH is built from the conditioned corner grid - AppendTerrainTile feeds it the
+						// four GetTerrainGridVertexZ corners. On tiles the builder flattens (buildings and
+						// the flat road/rail network) all four corners are forced to that same step, so the
+						// two agree and those objects sit correctly. On tiles it does NOT flatten - power
+						// lines, trees, the small park, rubble - the step is only one of four differing
+						// corner heights, so the object floats above or sinks into the slope by up to the
+						// tile's corner spread. Those sample the rendered surface under the footprint
+						// centre instead: the same surface the player walks on.
+						const float MeshTerrainTopZ = bGroundHuggingObjectTile
+							? GetTerrainGridBilinearZ(
+								ConditionedTerrainCorners,
+								static_cast<float>(FileX) + static_cast<float>(Footprint.Width) * 0.5f,
+								static_cast<float>(FileY) + static_cast<float>(Footprint.Height) * 0.5f,
+								EffectiveTerrainHeightScale)
+							: GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
 
@@ -3852,12 +4080,22 @@ void ASimCity2000CityActor::RebuildCity()
 			return Result;
 		};
 
+		// Must match the pole placement exactly: power line tiles are never flattened, so their Z
+		// comes from the conditioned corner grid the terrain mesh renders, not the tile's ALTM step.
+		// Anchoring the wire with GetAverageTerrainSurfaceZ while the pole it hangs from used the
+		// sampled surface is what left the spans detached on sloped ground. Each end samples its own
+		// tile, so a span between poles at different heights already runs at the correct slant - the
+		// sag below is applied about the straight line between those two anchors.
 		auto GetTileMeshOrigin = [&](int32 FileX, int32 FileY)
 		{
 			return FVector(
 				GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize),
 				-GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize),
-				GetAverageTerrainSurfaceZ(City, FileX, FileY, 1, 1, EffectiveTerrainHeightScale) + OriginalMeshZOffset);
+				GetTerrainGridBilinearZ(
+					ConditionedTerrainCorners,
+					static_cast<float>(FileX) + 0.5f,
+					static_cast<float>(FileY) + 0.5f,
+					EffectiveTerrainHeightScale) + OriginalMeshZOffset);
 		};
 
 		const uint8 Directions[] = {
