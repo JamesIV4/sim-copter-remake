@@ -20,13 +20,18 @@ struct FSimCopterPrivAnimShared
 
 // Builds SimCopter's original `privanim.df` pedestrian figures as animated procedural meshes.
 //
-// The original drew each figure per frame as depth-sorted 2D strokes: a thick palette-colored
-// line per body part, dots for hands/feet details, and a rotated photo-head sprite from
+// The original drew each figure per frame as depth-sorted 2D primitives: a constant-width
+// stroke per limb, a tapered stroke for hair/tails, a filled disc for rounded masses (hands,
+// chests, hats, and every part of the dog and Nessie), and a rotated photo-head sprite from
 // SIM3D.BMP (see Docs/OriginalGameFileFormats.md "The figure renderer"). The remake rebuilds
-// the same data in 3D: an oriented box per line segment (thick/thin per part type), small
-// cubes for dot parts, and a forward-facing textured card for the head part. Each animation
-// frame is emitted as its own pair of mesh sections (body + head) so playback just toggles
-// section visibility.
+// the same data in 3D: an oriented box per line segment, a tapered box for thin lines, a ball
+// for the disc primitives, and a textured ellipsoid for the head. Each animation frame is
+// emitted as its own pair of mesh sections (body + head) so playback just toggles section
+// visibility.
+//
+// Every primitive's size comes from the part's own ARCP dimension floats, exactly as the
+// original's per-part dispatch reads them (FUN_004cf8f0); those numbers are screen pixels
+// there and model units here, so the proportions come out the same.
 //
 // Colors reproduce the original palette math: entry `0x24 + color*0x10` in the shared GEO
 // CMAP palette, with recolorable parts offset by the per-person clothes index modulo 14.
@@ -50,21 +55,36 @@ public:
 		float HeightCm = 44.0f;
 		// Per-person clothes color offset, 0..13.
 		int32 ClothesOffset = 0;
-		// Stroke sizes as fractions of HeightCm (the original used screen-space pixel widths;
-		// these defaults match its chunky proportions and are tunable).
-		float ThickWidthFraction = 0.085f;
-		float ThinWidthFraction = 0.04f;
-		float DotSizeFraction = 0.065f;
-		// The head texture is a 52x25 panorama the original wraps around the rotating head
-		// sprite; the remake wraps it around a small cylinder (face forward, hair behind).
-		float HeadHeightFraction = 0.17f;
-		float HeadRadiusFraction = 0.07f;
+		// Uniform fudge on every primitive's thickness. Part sizes are data-driven, so this is
+		// only a global "chunkiness" dial; 1.0 is the original's proportions.
+		float PartSizeScale = 1.0f;
+		// Floor on a primitive's model-space size, so a part authored with zero dimensions
+		// still shows up instead of collapsing to nothing.
+		float MinPartSizeUnits = 0.75f;
+		// The original's strokes are screen-space lines with no depth at all. A 3D box has to
+		// pick one, and a square cross-section makes a 7-unit-wide torso 7 units deep, so bodies
+		// bulge front and back in a way the original never did (its skeletons are close to
+		// planar, so pedestrians really are thin side-on). Squash the stroke cross-section along
+		// the figure's forward axis to bring the proportions back. Round primitives are exempt:
+		// they were screen-space discs, so they have to read round from every angle.
+		float StrokeForwardDepthRatio = 0.6f;
+		// The original had no depth buffer: parts were sorted back-to-front and simply
+		// overpainted each other, so figures carry parts that lie exactly on top of one another
+		// (the fill and outline strokes down a torso, the trim on a sleeve). Against a depth
+		// buffer those coincide and z-fight. Growing each part by a hair in ARCP order restores
+		// a deterministic winner - later, detail parts sit fractionally proud of the earlier,
+		// bulk ones - without a runtime sort. Total spread across all parts, as a fraction of
+		// HeightCm; small enough to be invisible, large enough to beat depth precision at the
+		// range a pedestrian is actually legible.
+		float PainterBiasFraction = 0.004f;
 		// U offset of the face within the panorama strip (tune so the face looks forward).
 		float HeadFaceU = 0.5f;
-		// Draw parts whose LOD bitmask contains this bit (bit0 = the original's nearest band).
+		// Draw parts whose LOD bitmask contains this bit. The original picks the mask from the
+		// figure's screen depth (FUN_004c7f10): 1 nearest, 2 and 4 progressively coarser, so
+		// bit0 is the full-detail set and bit2-only parts are far-away stand-ins.
 		uint8 LodBit = 1;
-		// When false (no head texture available) the head part is drawn as a colored cube in
-		// the body section instead of a textured card section.
+		// When false (no head texture available) the head part is drawn as a colored ball in
+		// the body section instead of a textured head section.
 		bool bTexturedHead = true;
 	};
 
@@ -78,8 +98,8 @@ public:
 	static FCalibration Calibrate(const FPrivAnimClip& StandingClip, float HeightCm);
 
 	// Emits two mesh sections per frame into the component:
-	//   section Frame*2     = body strokes (vertex-colored)
-	//   section Frame*2 + 1 = head card (textured; empty if the figure has no head part)
+	//   section Frame*2     = body primitives (vertex-colored)
+	//   section Frame*2 + 1 = head ellipsoid (textured; empty if the figure has no head part)
 	// Only frame 0 is left visible. Returns false when the clip/figure mismatch.
 	static bool BuildClipSections(
 		UProceduralMeshComponent* MeshComponent,
