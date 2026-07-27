@@ -17,10 +17,13 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SLeafWidget.h"
 #include "Widgets/SNullWidget.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace
 {
+const TCHAR* const UpscaledDashboardFile = TEXT("DASH6-plus-DASH4-upscaled.png");
+
 // --- seatwin2.bmp, 186x115 -----------------------------------------------------------------
 //
 // The window is three slices: a left frame, a speckled well that repeats, and the right frame
@@ -54,6 +57,8 @@ constexpr int32 Dash6Height = 82;
 
 // FUN_004521a0 writes this rect by hand for the money readout.
 const FIntRect MoneyRect(20, 12, 94, 26);
+constexpr float UpscaledMoneyTextXOffset = -1.0f;
+constexpr float UpscaledMoneyTextYOffset = 0.0f;
 
 // The points bar is the second black well, measured at x 19..96, y 36..51. managge.bmp is a
 // 15x13 block, so five of them fill it.
@@ -113,6 +118,8 @@ constexpr int32 JoystickBaseHeight = 64;
 const TCHAR* const Dash4File = TEXT("DASH4.BMP");
 constexpr int32 Dash4Width = 455;
 constexpr int32 Dash4Height = 43;
+constexpr int32 DashboardWidth = Dash6Width;
+constexpr int32 DashboardHeight = Dash4Height + Dash6Height;
 
 // compass1.bmp is 160x16 and reads NW N NE E SE S SW W NW N NE - eight points at 16px each, so
 // one revolution is 128px and the remaining 32px is the wrap overlap.
@@ -127,6 +134,14 @@ constexpr float CompassNorthCentre = 24.0f;
 constexpr float CompassWindowX = 402.0f;
 constexpr float CompassWindowY = 11.0f;
 constexpr float CompassWindowWidth = 37.0f;
+constexpr float UpscaledCompassWindowXOffset = -3.0f;
+constexpr float UpscaledCompassWindowYOffset = 3.0f;
+
+// The upscale reconstructed the three dial faces about one-and-a-half page pixels below the
+// original bitmap centres. Keep the original decoded gauge geometry and compensate only while
+// the replacement panel is active.
+constexpr float UpscaledGaugeNeedleYOffset = 1.5f;
+const FVector2D UpscaledAirspeedNeedleOffset(1.0f, 1.0f);
 
 const FLinearColor NeedleColour(0.96f, 0.96f, 0.96f, 1.0f);
 const FLinearColor ReadoutInk(1.0f, 0.86f, 0.42f, 1.0f);
@@ -204,6 +219,47 @@ void SSimCopterDashboard::Construct(const FArguments& InArgs)
 	Art = InArgs._Art;
 	Scale = FMath::Max(0.5f, InArgs._Scale);
 
+	const FSlateBrush* UpscaledDashboardBrush = nullptr;
+	if (USimCopterHangarArt* ArtObject = Art.Get())
+	{
+		UpscaledDashboardBrush = ArtObject->GetBundledSlateImage(UpscaledDashboardFile);
+	}
+	bUseUpscaledDashboardArt = UpscaledDashboardBrush != nullptr;
+
+	TSharedRef<SVerticalBox> InstrumentLayers =
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+		[
+			BuildDash4()
+		]
+		+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+		[
+			BuildDash6()
+		];
+
+	TSharedRef<SWidget> InstrumentPanel = InstrumentLayers;
+	if (UpscaledDashboardBrush != nullptr)
+	{
+		// The PNG has much more source detail, but it occupies the exact same 458x125 page-space
+		// rectangle as dash4 stacked over dash6. The transparent live layers stay at their old
+		// coordinates, so readouts and needles continue to line up with the replacement art.
+		InstrumentPanel =
+			SNew(SBox)
+			.WidthOverride(DashboardWidth * Scale)
+			.HeightOverride(DashboardHeight * Scale)
+			[
+				SNew(SOverlay)
+				+ SOverlay::Slot()
+				[
+					SNew(SImage).Image(UpscaledDashboardBrush)
+				]
+				+ SOverlay::Slot()
+				[
+					InstrumentLayers
+				]
+			];
+	}
+
 	ChildSlot
 	[
 		SNew(SHorizontalBox)
@@ -218,15 +274,7 @@ void SSimCopterDashboard::Construct(const FArguments& InArgs)
 		// dash4 above the whole row instead would leave it floating over the taller seat window.
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
 		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
-			[
-				BuildDash4()
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
-			[
-				BuildDash6()
-			]
+			InstrumentPanel
 		]
 	];
 }
@@ -421,14 +469,20 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 {
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
 
-	AddAtPage(*Canvas, 0.0f, 0.0f, static_cast<float>(Dash6Width), static_cast<float>(Dash6Height),
-		MakeImage(Dash6File, FIntRect(0, 0, Dash6Width, Dash6Height), /*bColorKeyed=*/false));
+	if (!bUseUpscaledDashboardArt)
+	{
+		AddAtPage(*Canvas, 0.0f, 0.0f, static_cast<float>(Dash6Width), static_cast<float>(Dash6Height),
+			MakeImage(Dash6File, FIntRect(0, 0, Dash6Width, Dash6Height), /*bColorKeyed=*/false));
+	}
 
-	// Money, in the rect FUN_004521a0 sets aside for it. Lifted a couple of page pixels: the
-	// readout is set larger than the original's bitmap font, so it needs to sit higher in the
-	// well to look centred.
+	// Money, in the rect FUN_004521a0 sets aside for it. The original low-resolution page needed
+	// the larger Slate font lifted slightly; the reconstructed well sits lower and a touch left.
+	const float MoneyTextX = MoneyRect.Min.X
+		+ (bUseUpscaledDashboardArt ? UpscaledMoneyTextXOffset : 0.0f);
+	const float MoneyTextY = MoneyRect.Min.Y
+		+ (bUseUpscaledDashboardArt ? UpscaledMoneyTextYOffset : -2.0f);
 	AddAtPage(*Canvas,
-		static_cast<float>(MoneyRect.Min.X), MoneyRect.Min.Y - 2.0f,
+		MoneyTextX, MoneyTextY,
 		static_cast<float>(MoneyRect.Width()), static_cast<float>(MoneyRect.Height()),
 		SNew(STextBlock)
 		.Text(this, &SSimCopterDashboard::GetMoneyText)
@@ -479,11 +533,16 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 
 	// The three needles. Each sits in a box the size of its dial, so the needle can draw from the
 	// box's centre out to its rim without knowing where the dial ended up on screen.
-	auto AddNeedle = [this, &Canvas](const FGauge& Gauge, TAttribute<float> Angle)
+	auto AddNeedle = [this, &Canvas](
+		const FGauge& Gauge,
+		TAttribute<float> Angle,
+		const FVector2D UpscaledOffset = FVector2D::ZeroVector)
 	{
+		const float NeedleYOffset = bUseUpscaledDashboardArt ? UpscaledGaugeNeedleYOffset : 0.0f;
+		const FVector2D ArtOffset = bUseUpscaledDashboardArt ? UpscaledOffset : FVector2D::ZeroVector;
 		AddAtPage(*Canvas,
-			Gauge.CentreX - Gauge.Radius,
-			Gauge.CentreY - Gauge.Radius,
+			Gauge.CentreX - Gauge.Radius + ArtOffset.X,
+			Gauge.CentreY - Gauge.Radius + NeedleYOffset + ArtOffset.Y,
 			Gauge.Radius * 2.0f,
 			Gauge.Radius * 2.0f,
 			SNew(SSimCopterGaugeNeedle).AngleDegrees(Angle).Thickness(FMath::Max(2.0f, Scale * 1.6f)));
@@ -510,7 +569,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		// segment spare.
 		const float Units = FMath::Clamp(GetAirspeedDialKnots() / 10.0f, 0.0f, 25.0f);
 		return AirspeedGauge.StartAngleDegrees - Units * AirspeedGauge.DegreesPerUnit;
-	}));
+	}), UpscaledAirspeedNeedleOffset);
 
 	// The altimeter's rollover window, counting thousands of feet.
 	AddAtPage(*Canvas, AltimeterDigitX, AltimeterDigitY,
@@ -532,12 +591,19 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash4()
 {
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
 
-	AddAtPage(*Canvas, 0.0f, 0.0f, static_cast<float>(Dash4Width), static_cast<float>(Dash4Height),
-		MakeImage(Dash4File, FIntRect(0, 0, Dash4Width, Dash4Height)));
+	if (!bUseUpscaledDashboardArt)
+	{
+		AddAtPage(*Canvas, 0.0f, 0.0f, static_cast<float>(Dash4Width), static_cast<float>(Dash4Height),
+			MakeImage(Dash4File, FIntRect(0, 0, Dash4Width, Dash4Height)));
+	}
 
 	// The strip goes on top of the page, not under it: the compass window is painted as a solid
 	// screen on dash4, not left as a hole, so anything drawn first is simply covered up.
-	AddAtPage(*Canvas, CompassWindowX, CompassWindowY, CompassWindowWidth,
+	const float CompassX = CompassWindowX
+		+ (bUseUpscaledDashboardArt ? UpscaledCompassWindowXOffset : 0.0f);
+	const float CompassY = CompassWindowY
+		+ (bUseUpscaledDashboardArt ? UpscaledCompassWindowYOffset : 0.0f);
+	AddAtPage(*Canvas, CompassX, CompassY, CompassWindowWidth,
 		static_cast<float>(CompassStripHeight),
 		SNew(SBox)
 		.Clipping(EWidgetClipping::ClipToBounds)

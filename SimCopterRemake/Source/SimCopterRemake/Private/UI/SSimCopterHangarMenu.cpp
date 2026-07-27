@@ -32,6 +32,7 @@ const FLinearColor ShellLabel(0.94f, 0.94f, 0.90f, 1.0f);
 const FLinearColor SelectionTint(0.10f, 0.28f, 0.85f, 1.0f);
 
 // The original's button strips: button.bmp is three 100x28 frames, cat_btn.bmp three 86x28.
+const TCHAR* const UpscaledHangarBackdrop = TEXT("DHANGAR-upscaled.png");
 const TCHAR* const ShellButtonStrip = TEXT("BUTTON.BMP");
 const TCHAR* const CatalogButtonStrip = TEXT("CAT_BTN.BMP");
 constexpr int32 ButtonFrameCount = 3;
@@ -268,11 +269,15 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakePageText(
 
 void SSimCopterHangarMenu::BuildHangarPage(SConstraintCanvas& Canvas)
 {
-	// dhangar.bmp is 1131x480 - much wider than the page - so it fills the whole viewport behind
-	// the page rather than being squeezed into it. (The original pans it; the remake shows the
-	// lot.)
+	// The high-resolution reconstruction fills the same viewport backdrop slot as dhangar.bmp.
+	// Keep the original available as a fallback for a missing or unreadable bundled image.
 	USimCopterHangarArt* ArtObject = Art.Get();
-	const FSlateBrush* Backdrop3D = ArtObject != nullptr ? ArtObject->GetBitmap(TEXT("DHANGAR.BMP")) : nullptr;
+	const FSlateBrush* Backdrop3D =
+		ArtObject != nullptr ? ArtObject->GetBundledSlateImage(UpscaledHangarBackdrop) : nullptr;
+	if (Backdrop3D == nullptr && ArtObject != nullptr)
+	{
+		Backdrop3D = ArtObject->GetBitmap(TEXT("DHANGAR.BMP"));
+	}
 	if (Backdrop3D != nullptr && Backdrop.IsValid())
 	{
 		Backdrop->AddSlot()

@@ -65,6 +65,10 @@ public:
 	// Whole bitmap as a brush, cached by file name. Null when the file is missing or unreadable.
 	const FSlateBrush* GetBitmap(const FString& FileName, bool bColorKeyed = false);
 
+	// Full-colour artwork bundled with the remake under Content/Slate. This is kept separate
+	// from GetBitmap because these images are modern RGBA files, not original paletted BMPs.
+	const FSlateBrush* GetBundledSlateImage(const FString& FileName);
+
 	// One frame of a horizontal strip: button.bmp is three 100x28 frames (normal, pressed,
 	// disabled) and cat_btn.bmp three 86x28 ones.
 	const FSlateBrush* GetStripFrame(const FString& FileName, int32 FrameIndex, int32 FrameCount);

@@ -18,8 +18,8 @@ struct FButtonStyle;
 // It is four pages, and every one of them is the original's artwork with the original's text
 // laid back over it:
 //
-//   Hangar       dhangar.bmp, with the four buttons the shell offers (strings 125..128):
-//                Catalog, Mission Log, Inventory, Done.
+//   Hangar       High-resolution DHANGAR reconstruction, with the four buttons the shell offers
+//                (strings 125..128): Catalog, Mission Log, Inventory, Done.
 //   Catalog      catalog.bmp with one of the eight cat_<model>.bmp blueprints, its History /
 //                Specialties / Description (strings 460..487), the funds and item value
 //                readouts, and Buy / Sell. The Upgrades tab printed at the page's bottom-left

@@ -7,6 +7,7 @@
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "HAL/FileManager.h"
+#include "ImageUtils.h"
 #include "Misc/Paths.h"
 #include "Styling/SlateBrush.h"
 
@@ -86,6 +87,37 @@ FString USimCopterHangarArt::ResolveBitmapPath(const FString& FileName) const
 const FSlateBrush* USimCopterHangarArt::GetBitmap(const FString& FileName, const bool bColorKeyed)
 {
 	return BuildBrush(FileName, FileName, bColorKeyed, FIntRect(), ESimCopterArtRotation::None);
+}
+
+const FSlateBrush* USimCopterHangarArt::GetBundledSlateImage(const FString& FileName)
+{
+	const FString CacheKey = FString::Printf(TEXT("Slate/%s"), *FileName);
+	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
+	{
+		return Existing->IsValid() ? Existing->Get() : nullptr;
+	}
+
+	Brushes.Add(CacheKey, nullptr);
+
+	const FString Path = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), FileName);
+	UTexture2D* Texture = FImageUtils::ImportFileAsTexture2D(Path);
+	if (Texture == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter bundled art: could not load '%s'."), *Path);
+		return nullptr;
+	}
+
+	Texture->Filter = TF_Bilinear;
+	Texture->UpdateResource();
+	Textures.Add(CacheKey, Texture);
+
+	TSharedRef<FSlateBrush> Brush = MakeShared<FSlateBrush>();
+	Brush->SetResourceObject(Texture);
+	Brush->ImageSize = FVector2D(Texture->GetSizeX(), Texture->GetSizeY());
+	Brush->DrawAs = ESlateBrushDrawType::Image;
+	Brushes.Add(CacheKey, Brush);
+
+	return &Brush.Get();
 }
 
 const FSlateBrush* USimCopterHangarArt::GetStripFrame(
