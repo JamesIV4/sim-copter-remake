@@ -14,15 +14,16 @@ struct FSlateBrush;
 
 // The bottom-right of the original's cockpit: the seat window, then the instrument panel.
 //
-// Three shipped bitmaps make it up, all placed in their own page pixels and scaled once on the
-// way out, exactly like the tool flaps:
+// The remake uses a combined high-resolution image for the two instrument-panel pages while
+// retaining their original 458x125 screen-space footprint. The seat window and every live
+// overlay stay in original page pixels and are scaled once on the way out, like the tool flaps:
 //
 //   seatwin2.bmp  186x115  the seat window. One portrait per seat, cut from people1.bmp, whose
 //                          leftmost 27x33 cell is the empty seat.
-//   dash6.bmp     458x82   FUN_004521a0. Money, the mission points meter, six damage lamps, the
+//   dashboard PNG 458x125  High-resolution replacement for dash4 above dash6.
+//   dash6 region  458x82   FUN_004521a0. Money, the mission points meter, six damage lamps, the
 //                          fuel gauge, the joystick, the altimeter and the airspeed dial.
-//   dash4.bmp     455x43   FUN_00451980. Sits above dash6: the radio, and the compass window
-//                          that compass1.bmp scrolls behind.
+//   dash4 region  455x43   FUN_00451980. The radio and scrolling compass window.
 //
 // The three gauge geometries are FUN_004521a0's own. Each writes a centre, a radius, a start
 // angle and degrees-per-unit, and the needle runs *clockwise* from the start angle:
@@ -51,6 +52,7 @@ private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
 	float Scale = 2.0f;
+	bool bUseUpscaledDashboardArt = false;
 
 	// Rebuilt whenever the seat count or the passengers change, so the window is only laid out
 	// when it has to be.
