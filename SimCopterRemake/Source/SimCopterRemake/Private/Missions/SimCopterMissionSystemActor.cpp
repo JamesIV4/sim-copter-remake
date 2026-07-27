@@ -132,7 +132,6 @@ void ASimCopterMissionSystemActor::BeginPlay()
 	EnsureMessageLogWidget();
 	EnsureMissionMarkerWidget();
 	EnsureMegaphonePromptWidget();
-	EnsureDebugButtonsWidget();
 
 	// Load the FIREPTS flame mesh once (deferred so the traffic/city actors have finished their
 	// own BeginPlay asset loads first).
@@ -167,7 +166,6 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 	RemoveMegaphonePromptWidget();
 	RemoveMissionMarkerWidget();
 	RemoveMessageLogWidget();
-	RemoveDebugButtonsWidget();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -1986,80 +1984,6 @@ void ASimCopterMissionSystemActor::RemoveMegaphonePromptWidget()
 	MegaphonePromptText.Reset();
 	MegaphonePromptWidget.Reset();
 	bMegaphonePromptVisible = false;
-}
-
-void ASimCopterMissionSystemActor::EnsureDebugButtonsWidget()
-{
-	if (!bShowDebugFireButtons || DebugButtonsWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
-	{
-		return;
-	}
-
-	auto MakeButton = [](const FString& Label, FOnClicked InOnClicked) -> TSharedRef<SButton>
-	{
-		return SNew(SButton)
-			// Keyboard focus stays on the viewport: a focused SButton consumes the space bar,
-			// which the player needs for collective while the helicopter is in the air.
-			.IsFocusable(false)
-			.OnClicked(InOnClicked)
-			.ContentPadding(FMargin(12.0f, 6.0f))
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(Label))
-				.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13))
-			];
-	};
-
-	DebugButtonsWidget =
-		SNew(SBox)
-		.HAlign(HAlign_Right)
-		.VAlign(VAlign_Bottom)
-		.Padding(FMargin(0.0f, 0.0f, 18.0f, 18.0f))
-		[
-			SNew(SBorder)
-			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f))
-			.Padding(FMargin(6.0f))
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(FMargin(0.0f, 0.0f, 0.0f, 4.0f))
-				[
-					MakeButton(TEXT("Force Fire"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugForceFireClicked))
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					MakeButton(TEXT("Force Car Fire"), FOnClicked::CreateUObject(this, &ASimCopterMissionSystemActor::OnDebugForceCarFireClicked))
-				]
-				// Tool and helicopter-model selection moved to the pawn-owned
-				// SSimCopterHelicopterDebugPanel so it works without a mission actor.
-			]
-		];
-
-	GEngine->GameViewport->AddViewportWidgetContent(DebugButtonsWidget.ToSharedRef(), 30);
-}
-
-void ASimCopterMissionSystemActor::RemoveDebugButtonsWidget()
-{
-	if (GEngine != nullptr && GEngine->GameViewport != nullptr && DebugButtonsWidget.IsValid())
-	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(DebugButtonsWidget.ToSharedRef());
-	}
-	DebugButtonsWidget.Reset();
-}
-
-FReply ASimCopterMissionSystemActor::OnDebugForceFireClicked()
-{
-	SimForceFire();
-	return FReply::Handled();
-}
-
-FReply ASimCopterMissionSystemActor::OnDebugForceCarFireClicked()
-{
-	SimForceCarFire();
-	return FReply::Handled();
 }
 
 FString ASimCopterMissionSystemActor::ResolveOriginalSoundDir() const

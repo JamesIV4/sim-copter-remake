@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "City/SimCity2000CityActor.h"
 
@@ -182,6 +182,8 @@ struct FExtendedTerrainData
 	int32 MinTileCoordinate = 0;
 	int32 TileGridSize = 0;
 	TArray<float> GridVertexZ;
+	// Average world Z of the city's water tiles - the datum the cockpit altimeter reads from.
+	float OceanSurfaceZ = 0.0f;
 	TArray<uint8> TerrainTypes;
 	TArray<uint8> WaterMask;
 
@@ -1680,6 +1682,9 @@ FExtendedTerrainData BuildProceduralExtendedTerrain(
 	}
 
 	const float OceanSurfaceZ = WaterZCount > 0 ? WaterZSum / static_cast<float>(WaterZCount) : MinOriginalGridZ;
+	// Handed back so the cockpit altimeter can read zero at the water rather than at the bottom
+	// of the terrain range.
+	Data.OceanSurfaceZ = OceanSurfaceZ;
 	const float LandFloorZ = OceanSurfaceZ + TerrainHeightScale * 0.35f;
 
 	for (int32 FileY = 0; FileY < N; ++FileY)
@@ -3132,6 +3137,9 @@ void ASimCity2000CityActor::RebuildCity()
 		TerrainTypeGrid,
 		(bRenderTerrain && bRenderProceduralMapExtension) ? ProceduralMapExtensionTiles : 0,
 		EffectiveTerrainHeightScale);
+
+	CachedOceanSurfaceZ = ExtendedTerrain.OceanSurfaceZ;
+	bHasOceanSurfaceZ = true;
 
 	// WR16-WR19 are the four directional grade-transition poles. The saved XBLD
 	// variant is normally right, but terrain conditioning can turn the underlying

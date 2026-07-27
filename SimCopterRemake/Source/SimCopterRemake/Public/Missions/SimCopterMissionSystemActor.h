@@ -231,6 +231,8 @@ public:
 	int32 GetSessionScore() const { return MissionSystem.GetScore(); }
 	int32 GetSessionCash() const { return MissionSystem.GetCash(); }
 	int32 GetSessionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
+	// Which career city the session adopted, so the dashboard can read its points requirement.
+	int32 GetSessionCareerCityIndex() const { return MissionSystem.GetCareerCityIndex(); }
 	int32 GetActiveMissionCount() const { return MissionSystem.GetActiveMissionCount(); }
 
 	// FUN_00407a90 through the session record: the hangar shop's till. Negative spends; the
@@ -256,11 +258,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI")
 	bool bShowMissionMessageLog = true;
-
-	// Debug: show on-screen buttons that force-spawn a fire / car-fire mission even when the mission
-	// pool is full (bypasses the cap). Handy for testing the fire visuals.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
-	bool bShowDebugFireButtons = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "1", ClampMax = "12"))
 	int32 MaxMessageLogEntries = 6;
@@ -416,13 +413,6 @@ private:
 	TSharedPtr<SWidget> MegaphonePromptWidget;
 	TSharedPtr<STextBlock> MegaphonePromptText;
 	bool bMegaphonePromptVisible = false;
-
-	// On-screen debug buttons (force fires / toggle test water equipment).
-	TSharedPtr<SWidget> DebugButtonsWidget;
-	void EnsureDebugButtonsWidget();
-	void RemoveDebugButtonsWidget();
-	FReply OnDebugForceFireClicked();
-	FReply OnDebugForceCarFireClicked();
 
 	// Megaphone / jam clearing.
 	bool FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const;

@@ -89,6 +89,14 @@ public:
 		uint8& OutTerrainClass,
 		FIntPoint* OutTile = nullptr) const;
 
+	// World Z of the ocean surface, which the terrain build averages over every water vertex.
+	// False before a city has been rebuilt.
+	bool TryGetOceanSurfaceWorldZ(float& OutWorldZ) const
+	{
+		OutWorldZ = CachedOceanSurfaceZ;
+		return bHasOceanSurfaceZ;
+	}
+
 	bool IsTerrainCollisionComponent(const UPrimitiveComponent* HitComponent) const;
 	bool IsBuildingCollisionHit(const UPrimitiveComponent* HitComponent, const FVector& WorldLocation) const;
 
@@ -218,6 +226,10 @@ private:
 	// displaces and lights them in the vertex shader (see Docs/ReverseEngineering.md).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water")
 	bool bAnimateWaterSurface = true;
+
+	// Filled by the terrain build; see TryGetOceanSurfaceWorldZ.
+	float CachedOceanSurfaceZ = 0.0f;
+	bool bHasOceanSurfaceZ = false;
 
 	// How many tiles it takes for the waves to ramp from calm (welded to the shore) to full open-water
 	// amplitude. Higher = gentler transition, less of a lighting seam where water meets land.

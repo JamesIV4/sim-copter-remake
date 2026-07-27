@@ -45,6 +45,7 @@
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "UI/SimCopterHangarArt.h"
+#include "UI/SSimCopterDashboard.h"
 #include "UI/SSimCopterToolFlaps.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/Images/SImage.h"
@@ -360,7 +361,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		InputMode.SetHideCursorDuringCapture(false);
 		PlayerController->SetInputMode(InputMode);
-		EnsurePassengerSlotsWidget();
+		EnsureDashboardWidget();
 		EnsureWaterControlsWidget();
 		EnsureToolFlapsWidget();
 		EnsureHelicopterDebugPanel();
@@ -379,7 +380,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 
 void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	RemovePassengerSlotsWidget();
+	RemoveDashboardWidget();
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
 	RemoveHelicopterDebugPanel();
@@ -986,7 +987,7 @@ void ASimCopterHelicopterPawn::CommitHelicopterModel(FSimCopterPreparedHelicopte
 		bWaterClamped ? *FString::Printf(TEXT("  (dumped %d lb over capacity)"), DroppedWater) : TEXT(""));
 
 	SyncPassengerFlightModelCount();
-	RefreshPassengerSlotsWidget();
+	RefreshDashboardSeats();
 	RefreshWaterControlsWidget();
 }
 
@@ -1141,6 +1142,33 @@ float ASimCopterHelicopterPawn::GetDamageFraction() const
 	return HelicopterTuning.MaxDamage > 0 ? FMath::Clamp(CurrentDamage / static_cast<float>(HelicopterTuning.MaxDamage), 0.0f, 1.0f) : 0.0f;
 }
 
+float ASimCopterHelicopterPawn::GetAltimeterUnits() const
+{
+	// Zeroed on the water. FlightModel.Altitude is the original node's Y, whose datum is the
+	// bottom of the terrain range, so a helicopter sitting on the ocean reads about a hundred
+	// units - the needle off its stop and the rollover already showing 1. Measuring from the
+	// ocean surface instead is what a pilot expects, and costs nothing but the subtraction.
+	if (const ASimCity2000CityActor* City =
+			const_cast<ASimCopterHelicopterPawn*>(this)->ResolveCityActor())
+	{
+		float OceanSurfaceZ = 0.0f;
+		if (City->TryGetOceanSurfaceWorldZ(OceanSurfaceZ))
+		{
+			return FMath::Max(
+				0.0f,
+				(static_cast<float>(GetActorLocation().Z) - OceanSurfaceZ) /
+					FMath::Max(0.01f, OriginalUnitToCm));
+		}
+	}
+	return SimCopterFixed::ToFloat(FlightModel.Altitude);
+}
+
+float ASimCopterHelicopterPawn::GetAirspeedDialKnots() const
+{
+	// [0x37], the |velocity| the original keeps for its HUD.
+	return SimCopterFixed::ToFloat(FlightModel.HorizontalSpeed);
+}
+
 bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const
 {
 	return FVector::DistSquared(WorldLocation, GetActorLocation()) <= FMath::Square(RadiusCm);
@@ -1159,7 +1187,7 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetHideCursorDuringCapture(false);
 	PlayerController->SetInputMode(InputMode);
-	EnsurePassengerSlotsWidget();
+	EnsureDashboardWidget();
 	EnsureWaterControlsWidget();
 	EnsureToolFlapsWidget();
 	EnsureHelicopterDebugPanel();
@@ -1192,7 +1220,7 @@ int32 ASimCopterHelicopterPawn::RemoveMissionPassengers(int32 Count)
 	{
 		MissionPassengerSlots.RemoveAt(FMath::Max(0, MissionPassengerSlots.Num() - Removed), Removed);
 		SyncPassengerFlightModelCount();
-		RefreshPassengerSlotsWidget();
+		RefreshDashboardSeats();
 	}
 	return Removed;
 }
@@ -1210,7 +1238,7 @@ int32 ASimCopterHelicopterPawn::AddMissionPassengersForMission(int32 Count, int3
 	if (Added > 0)
 	{
 		SyncPassengerFlightModelCount();
-		RefreshPassengerSlotsWidget();
+		RefreshDashboardSeats();
 	}
 	return Added;
 }
@@ -1230,7 +1258,7 @@ int32 ASimCopterHelicopterPawn::RemoveMissionPassengersForMission(int32 Count, i
 	if (Removed > 0)
 	{
 		SyncPassengerFlightModelCount();
-		RefreshPassengerSlotsWidget();
+		RefreshDashboardSeats();
 	}
 	return Removed;
 }
@@ -1281,7 +1309,7 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 
 	MissionPassengerSlots.RemoveAt(SlotIndex);
 	SyncPassengerFlightModelCount();
-	RefreshPassengerSlotsWidget();
+	RefreshDashboardSeats();
 
 	if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
 		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
@@ -1336,46 +1364,53 @@ void ASimCopterHelicopterPawn::SyncPassengerFlightModelCount()
 	FlightModel.Passengers = MissionPassengerSlots.Num();
 }
 
-void ASimCopterHelicopterPawn::EnsurePassengerSlotsWidget()
+void ASimCopterHelicopterPawn::EnsureDashboardWidget()
 {
-	if (PassengerSlotsWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	if (DashboardWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
 	{
 		return;
 	}
 
-	LoadPassengerSlotIconTexture();
-
-	TSharedRef<SHorizontalBox> SlotBox = SNew(SHorizontalBox);
-	PassengerSlotsBox = SlotBox;
-	PassengerSlotsWidget =
-		SNew(SOverlay)
-		+ SOverlay::Slot()
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Bottom)
-		.Padding(FMargin(0.0f, 0.0f, 0.0f, 24.0f))
-		[
-			SNew(SBorder)
-			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.58f))
-			.Padding(FMargin(7.0f, 5.0f))
-			[
-				SlotBox
-			]
-		];
-
-	GEngine->GameViewport->AddViewportWidgetContent(PassengerSlotsWidget.ToSharedRef(), 25);
-	RefreshPassengerSlotsWidget();
-}
-
-void ASimCopterHelicopterPawn::RemovePassengerSlotsWidget()
-{
-	if (GEngine != nullptr && GEngine->GameViewport != nullptr && PassengerSlotsWidget.IsValid())
+	if (FlapArt == nullptr)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(PassengerSlotsWidget.ToSharedRef());
+		FlapArt = NewObject<USimCopterHangarArt>(this, TEXT("FlapArt"));
+	}
+	FlapArt->SetOriginalGameRoot(ResolveOriginalGameRoot());
+	if (!FlapArt->IsUsable())
+	{
+		// No BMP folder: the dashboard is nothing but its artwork, so draw none of it.
+		return;
 	}
 
-	PassengerSlotsBox.Reset();
-	PassengerSlotsWidget.Reset();
+	TSharedRef<SSimCopterDashboard> Dashboard =
+		SNew(SSimCopterDashboard)
+		.Pawn(this)
+		.Art(FlapArt)
+		.Scale(ToolFlapScale);
+	DashboardPanel = Dashboard;
+
+	// Bottom-right, where the original's cockpit puts it.
+	DashboardWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Bottom)
+		[
+			Dashboard
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(DashboardWidget.ToSharedRef(), 25);
+}
+
+void ASimCopterHelicopterPawn::RemoveDashboardWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && DashboardWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(DashboardWidget.ToSharedRef());
+	}
+
+	DashboardPanel.Reset();
+	DashboardWidget.Reset();
 }
 
 void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
@@ -1667,122 +1702,12 @@ void ASimCopterHelicopterPawn::RemoveHelicopterDebugPanel()
 	HelicopterDebugPanelWidget.Reset();
 }
 
-void ASimCopterHelicopterPawn::RefreshPassengerSlotsWidget()
+void ASimCopterHelicopterPawn::RefreshDashboardSeats()
 {
-	if (!PassengerSlotsBox.IsValid())
+	if (DashboardPanel.IsValid())
 	{
-		return;
+		DashboardPanel->RefreshSeats();
 	}
-
-	PassengerSlotsBox->ClearChildren();
-	const int32 SeatCount = FMath::Max(0, GetPassengerSeatCount());
-	for (int32 SlotIndex = 0; SlotIndex < SeatCount; ++SlotIndex)
-	{
-		const bool bFull = MissionPassengerSlots.IsValidIndex(SlotIndex);
-		TSharedRef<SWidget> SlotContent =
-			SNew(STextBlock)
-			.Text(FText::FromString(bFull ? TEXT("â—") : TEXT("â—‹")))
-			.Justification(ETextJustify::Center)
-			.ColorAndOpacity(bFull ? FLinearColor(0.95f, 0.9f, 0.58f, 1.0f) : FLinearColor(0.9f, 0.95f, 1.0f, 0.92f))
-			.ShadowOffset(FVector2D(1.0f, 1.0f))
-			.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.75f))
-			.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 24));
-
-		if (bFull && PassengerSlotIconBrush.IsValid())
-		{
-			SlotContent =
-				SNew(SBox)
-				.WidthOverride(24.0f)
-				.HeightOverride(30.0f)
-				[
-					SNew(SImage)
-					.Image(PassengerSlotIconBrush.Get())
-				];
-		}
-
-		PassengerSlotsBox->AddSlot()
-		.AutoWidth()
-		.Padding(FMargin(3.0f, 0.0f))
-		[
-			SNew(SBox)
-			.WidthOverride(38.0f)
-			.HeightOverride(38.0f)
-			[
-				SNew(SButton)
-				// A HUD button must never hold keyboard focus: a focused SButton treats the
-				// space bar as its own activation, and space is the collective.
-				.IsFocusable(false)
-				.ContentPadding(FMargin(1.0f))
-				.ToolTipText(FText::FromString(bFull ? TEXT("Drop passenger") : TEXT("Empty seat")))
-				.ButtonColorAndOpacity(bFull ? FLinearColor(0.09f, 0.12f, 0.14f, 0.95f) : FLinearColor(0.04f, 0.06f, 0.08f, 0.78f))
-				.OnClicked(FOnClicked::CreateUObject(this, &ASimCopterHelicopterPawn::HandlePassengerSlotClicked, SlotIndex))
-				[
-					SlotContent
-				]
-			]
-		];
-	}
-}
-
-bool ASimCopterHelicopterPawn::LoadPassengerSlotIconTexture()
-{
-	if (PassengerSlotIconTexture != nullptr && PassengerSlotIconBrush.IsValid())
-	{
-		return true;
-	}
-
-	const FString PeoplePath = FSimCopterPopulationSprite::ResolvePeople1BitmapPath(ResolveOriginalGameRoot());
-	if (PeoplePath.IsEmpty())
-	{
-		return false;
-	}
-
-	FMaxisTextureImage SheetImage;
-	FString Error;
-	if (!FMaxisWindowsBitmapReader::LoadPalettedBitmapFromFile(
-			PeoplePath,
-			SheetImage,
-			Error,
-			FSimCopterPopulationSprite::People1TransparentPaletteIndex))
-	{
-		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("Could not load passenger slot icon from PEOPLE1.BMP: %s"), *Error);
-		return false;
-	}
-
-	constexpr int32 SourceColumn = 1;
-	constexpr int32 SourceRow = 0;
-	constexpr int32 IconWidth = FSimCopterPopulationSprite::People1FrameWidth;
-	constexpr int32 IconHeight = FSimCopterPopulationSprite::People1FrameHeight;
-	const int32 SourceX = SourceColumn * IconWidth;
-	const int32 SourceY = SourceRow * IconHeight;
-	if (SheetImage.Width < SourceX + IconWidth || SheetImage.Height < SourceY + IconHeight)
-	{
-		return false;
-	}
-
-	FMaxisTextureImage IconImage;
-	IconImage.Width = IconWidth;
-	IconImage.Height = IconHeight;
-	IconImage.Pixels.SetNumUninitialized(IconWidth * IconHeight);
-	for (int32 Y = 0; Y < IconHeight; ++Y)
-	{
-		for (int32 X = 0; X < IconWidth; ++X)
-		{
-			IconImage.Pixels[Y * IconWidth + X] = SheetImage.Pixels[(SourceY + Y) * SheetImage.Width + SourceX + X];
-		}
-	}
-
-	PassengerSlotIconTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, IconImage, TEXT("SimCopterPassengerSlotIcon"));
-	if (PassengerSlotIconTexture == nullptr)
-	{
-		return false;
-	}
-
-	PassengerSlotIconBrush = MakeShared<FSlateBrush>();
-	PassengerSlotIconBrush->SetResourceObject(PassengerSlotIconTexture);
-	PassengerSlotIconBrush->ImageSize = FVector2D(24.0f, 30.0f);
-	PassengerSlotIconBrush->DrawAs = ESlateBrushDrawType::Image;
-	return true;
 }
 
 FReply ASimCopterHelicopterPawn::HandlePassengerSlotClicked(int32 SlotIndex)
@@ -1803,7 +1728,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	{
 		return;
 	}
-	RemovePassengerSlotsWidget();
+	RemoveDashboardWidget();
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
 	RemoveHelicopterDebugPanel();
