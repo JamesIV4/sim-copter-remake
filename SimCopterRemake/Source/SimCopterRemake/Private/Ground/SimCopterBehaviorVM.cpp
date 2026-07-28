@@ -178,8 +178,8 @@ EOpResult ExecOpcode(
 	case 16: // deactivate person (FUN_004cb180 -> FUN_004c4e40; result 3 = stop)
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
-	case 17: // threat response probe (FUN_004cb190)
-		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
+	case 17: // "may I stand here?" - and if so, get off whatever I am on (FUN_004cb190)
+		return World.TryAlightHere() ? EOpResult::True : EOpResult::False;
 	case 18: // face toward the selected object; absent object is a true no-op (FUN_004cb270)
 		if (!Context.bHasSelection)
 		{
@@ -192,8 +192,8 @@ EOpResult ExecOpcode(
 		return FSimCopterPeopleCityRules::GetAmbientStateTileClasses(Context.Attributes[EBhavAttr::BehaviorClass])
 			.Contains(World.GetCurrentTileClass())
 			? EOpResult::True : EOpResult::False;
-	case 21: // threat nearby? (FUN_004cb360 -> FUN_004c9bc0)
-		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
+	case 21: // may I stand here? (FUN_004cb360 -> FUN_004c9bc0, the test without the side effect)
+		return World.CanAlightHere() ? EOpResult::True : EOpResult::False;
 	case 22: // same tile as player/camera globals; writes player speed + facing locals (FUN_004cb370)
 	{
 		int32 CurrentFileX = INDEX_NONE;
@@ -221,6 +221,12 @@ EOpResult ExecOpcode(
 	}
 	case 24: // compute bearing/distance to a selected runtime object (FUN_004cb480)
 		return EOpResult::False;
+	case 25: // XBLD id at my tile == arg0 (FUN_004cb550; BHAV 801 tests 209 = the hospital)
+		return World.GetCurrentTileBuildingId() == int32(int16(Record.Args[0]))
+			? EOpResult::True : EOpResult::False;
+	case 26: // same shape as 25 in the original, one tile-map lookup apart; unported.
+		World.OnUnknownOpcode(Record.Token);
+		return EOpResult::False;
 	case 27: // reaction-force side effect (FUN_004cb630); not needed by the remake movement.
 		return EOpResult::True;
 	case 28: // maybe create a rioter from a carried/context object (FUN_004cb680)
@@ -230,6 +236,13 @@ EOpResult ExecOpcode(
 		return EOpResult::True;
 	case 31: // face away from a linked runtime object; no object means success (FUN_004cc240)
 		return EOpResult::True;
+	case 32: // face away from whatever last interacted with me (FUN_004cc290 -> FUN_004cc2b0)
+	case 33: // ...and token 0x21 is the same handler facing toward it
+		// person+0x1a4 is the object that caused the last interaction, which the remake does not
+		// keep a handle to. That lands on FUN_004cc2b0's own no-bearing arm: take a random facing
+		// and report failure, which is what the shipped programs branch on.
+		Context.Attributes[EBhavAttr::Facing] = Context.RandomBounded(8);
+		return EOpResult::False;
 	case 34: // wander out of road/invalid pedestrian tile (FUN_004cc330)
 	{
 		const int32 TileClass = World.GetCurrentTileClass();
@@ -249,7 +262,10 @@ EOpResult ExecOpcode(
 	}
 	case 36: // face toward a runtime object class (FUN_004cc470); no matching object in this world.
 		return EOpResult::False;
-	case 38: // walk to the selected object (FUN_004cc540 -> FUN_004ca940); arg0 is the tick budget
+	// Both are FUN_004ca940; op 12 is the arm that also gets on the thing when it arrives
+	// (`*param_3 == 0xc`), which is how every passenger in the game boards anything.
+	case 12:
+	case 38:
 	{
 		if (!Context.bHasSelection)
 		{
@@ -266,7 +282,12 @@ EOpResult ExecOpcode(
 		--Counter;
 		switch (World.StepTowardSelectedObject(Context))
 		{
-		case ESimCopterBehaviorStepResult::Arrived: return EOpResult::True;
+		case ESimCopterBehaviorStepResult::Arrived:
+			if (Record.Token == 12 && !World.BoardSelection(Context))
+			{
+				return EOpResult::False;
+			}
+			return EOpResult::True;
 		case ESimCopterBehaviorStepResult::Moving:  return EOpResult::Yield;
 		default:                                    return EOpResult::False;
 		}
@@ -279,16 +300,138 @@ EOpResult ExecOpcode(
 		// it as opcode 16's despawn is what stops a finished cop standing in the road forever.
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
+	case 37: // FUN_004cc530: FUN_004ca4b0() then result 3 - leave the map
+		Context.bRequestDespawn = true;
+		return EOpResult::Stop;
+	case 44: // pick the selected person up (FUN_004cc6a0)
+		World.PutSelectedPersonOnMe(Context);
+		return EOpResult::True; // the original returns 1 whether or not anything was selected
+	case 46: // select the person I am carrying (FUN_004cc7d0 -> FUN_004ca650)
+		return World.SelectCarriedPerson(Context, /*bAlsoDropThem*/ false) ? EOpResult::True : EOpResult::False;
+	case 47: // put the selected person down (FUN_004cc8d0)
+		World.DropSelectedPerson(Context);
+		return EOpResult::True;
+	case 48: // make the selection my carrier (FUN_004cc900)
+		return World.BoardSelection(Context) ? EOpResult::True : EOpResult::False;
+	case 51: // set down whoever I am carrying and select them (FUN_004cca00 -> FUN_004ca570)
+		return World.SelectCarriedPerson(Context, /*bAlsoDropThem*/ true) ? EOpResult::True : EOpResult::False;
+	case 53: // select the player's helicopter when it is within 24 units (FUN_004cca60)
+	{
+		int32 Distance = 0;
+		if (!World.SelectObjectOfClass(Context, EBhavObjectClass::PlayerHelicopter, Distance))
+		{
+			return EOpResult::False;
+		}
+		// FUN_004cca60's own gate is a 3D Manhattan sum of 0x18 original units, not a tile count.
+		if (!World.IsSelectionWithinUnits(Context, 24))
+		{
+			Context.ClearSelection();
+			return EOpResult::False;
+		}
+		return EOpResult::True;
+	}
+	case 56: // may an emergency crew work on the tile I am on? (FUN_004ccc40)
+		return World.IsCurrentTileServiceable() ? EOpResult::True : EOpResult::False;
 	case 57: // sound/side-effect trigger (FUN_004ccca0 -> FUN_004c5210)
 		return EOpResult::True;
-	case 59: // carried object is player helicopter? (FUN_004cce30)
-		return EOpResult::False;
+	case 62: // select the vehicle I belong to, else the player's helicopter (FUN_004ca700)
+		World.SelectOwningVehicle(Context);
+		return EOpResult::True; // the original returns 1 on both arms
+	case 63: // am I riding something? (FUN_004ca6f0: person+0x1a0 != 0)
+		return World.IsRidingCarrier(Context) ? EOpResult::True : EOpResult::False;
+	// FUN_004cbb80 / FUN_004cb730 copy the selected object between this frame and its caller's
+	// (walkFrame[-2] + 4). The remake keeps one selection slot on the person rather than one per
+	// frame, so callee and caller already share it and the copy is implicit - but the opcodes
+	// still have to succeed, because both are on the hot path of the medevac programs.
+	case 67:
+	case 68:
+		return EOpResult::True;
+	case 69: // is my selection the player's helicopter? (FUN_004cbb60)
+		return World.IsSelectionPlayerHelicopter(Context) ? EOpResult::True : EOpResult::False;
+	case 71: // am I carrying anyone? (FUN_004cbaa0 -> FUN_004ca650)
+		return World.IsCarryingPerson() ? EOpResult::True : EOpResult::False;
+	case 72: // clear the selection (FUN_004cb770)
+		Context.ClearSelection();
+		return EOpResult::True;
+	case 74: // local[arg0] := the difficulty tier (FUN_004cba70 reads DAT_004f9740)
+		Local(Record.Args[0]) = uint16(World.GetDifficultyTier());
+		return EOpResult::True;
+	case 75: // local[arg0] := my tile X (FUN_004cba10 reads person+0x12a)
+	case 76: // local[arg0] := my tile Y (FUN_004cba40 reads person+0x12c)
+	{
+		int32 FileX = INDEX_NONE;
+		int32 FileY = INDEX_NONE;
+		if (!World.TryGetCurrentTileCoordinate(FileX, FileY))
+		{
+			return EOpResult::True; // the original writes whatever is cached; never fails
+		}
+		Local(Record.Args[0]) = uint16(Record.Token == 75 ? FileX : FileY);
+		return EOpResult::True;
+	}
+	case 77: // local[arg0] := abs(local[arg0]) (FUN_004cb9e0)
+	{
+		uint16& Slot = Local(Record.Args[0]);
+		Slot = uint16(FMath::Abs(int32(int16(Slot))));
+		return EOpResult::True;
+	}
+	case 82: // is my selection within 25 units? (FUN_004ccad0)
+		return World.IsSelectionWithinUnits(Context, 25) ? EOpResult::True : EOpResult::False;
+	case 58: // get on the heli if the harness is raised (FUN_004cccd0)
+		return World.GetOnHelicopterIfHarnessRaised(Context) ? EOpResult::True : EOpResult::False;
+	case 59: // is my carrier the player's helicopter? (FUN_004cce30)
+		return World.IsCarrierPlayerHelicopter() ? EOpResult::True : EOpResult::False;
+	case 61: // tell the vehicle I belong to something (FUN_004ccef0)
+		World.MessageOwningVehicle(int32(int16(Record.Args[0])));
+		return EOpResult::True;
 	case 70: // snap/update vertical position from ground/carried object (FUN_004cbab0)
 		return EOpResult::True;
 	case 85: // ambient audio/side-effect kick (FUN_004cc110 -> FUN_004c5210)
 		return EOpResult::True;
-	case 86: // ordinary ambient pedestrians do not match the player/carried object probe.
+	case 84: // select a medevac victim already aboard the player's helicopter (FUN_004cc830)
+		return World.SelectMedevacVictimAboardPlayer(Context) ? EOpResult::True : EOpResult::False;
+	case 86: // is my carrier the harness? (FUN_004cceb0)
+		return World.IsCarrierHarness() ? EOpResult::True : EOpResult::False;
+	case 87: // am I back on the tile I was placed on? (FUN_004cce50)
+		return World.IsOnHomeTile() ? EOpResult::True : EOpResult::False;
+	case 30: // bind "Thro" and launch a projectile along my facing (FUN_004cbfd0)
+	case 60: // the same handler (FUN_004cced0 forwards to it)
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false);
+		return EOpResult::True;
+	case 83: // face the selection, bind "Thro", throw at it (FUN_004cc130)
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ true);
+		return EOpResult::True;
+	case 66: // fall and die (FUN_004cbbc0)
+		World.BeginFallAndDie(Context);
+		Context.bRequestDespawn = true;
+		return EOpResult::Stop;
+	case 35: // conditional despawn: local[arg0] over a tuned threshold (FUN_004cc410)
+	{
+		// FUN_004abb00(0x20) is a tuning read the remake does not have; the original compares the
+		// local against it and only leaves when the local is larger. With no threshold to read,
+		// stay - the alternative is people vanishing for no visible reason.
+		if (int32(int16(Record.Args[0])) == -1)
+		{
+			Context.bRequestDespawn = true;
+			return EOpResult::Stop;
+		}
 		return EOpResult::False;
+	}
+	case 54: // set the face this person shows in the seat window (FUN_004ccb40)
+		World.SetSeatPortraitMood(int32(int16(Record.Args[0])));
+		return EOpResult::True;
+	case 55: // local[arg0] := the player helicopter's speed (FUN_004ccb80)
+		// BHAV 264 "Face vs. speed/health" reads it and picks face 2 over 250, face 1 over 125,
+		// face 0 otherwise - a passenger looking progressively less happy the faster you fly.
+		Local(Record.Args[0]) = uint16(FMath::Clamp(World.GetPlayerHelicopterSpeed(), 0, 0xffff));
+		return EOpResult::True;
+	case 73: // is there a paramedic on the map? (FUN_004cb9c0 -> FUN_004ca4f0(state 5, hidden))
+		// Always false in the shipped game: nothing ever spawns person state 5. BHAV 281 uses it
+		// to decide how fast a medevac victim's health drains, and the false arm - the fast one -
+		// is the only one the original can take.
+		return EOpResult::False;
+	case 79: // local[arg0] := DAT_00506448 (FUN_004cb7d0); a frame counter the remake has no use for
+		Local(Record.Args[0]) = 0;
+		return EOpResult::True;
 	default:
 		// Not yet ported (semantics in out_vm_ops_*.txt). Follow the failure edge so a missing
 		// object/mission handler does not silently invent successful behavior.

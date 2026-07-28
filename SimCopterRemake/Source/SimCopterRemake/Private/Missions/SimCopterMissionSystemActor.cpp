@@ -193,8 +193,18 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 
 	MissionSystem.Tick(DeltaTime);
 	ProcessPassengerTransfers();
-	ProcessRescueTransfers();
-	ProcessMedevacHospitalHandoffs(DeltaTime);
+	// (Rescue boarding and delivery are the VM's - see the note where ProcessRescueTransfers was.)
+	// DISABLED: the hospital EMT hand-off was an invention, not a port. Nothing in SimCopter.exe
+	// ever spawns person state 5 - the only two calls into FUN_004c3eb0 with a medevac-ish state
+	// are the creator's state 6 victims - so BHAV 801 "Medevac paramedic new initbhav" and its
+	// helpers (262, 263, 269, 272) are unreferenced content, alongside 1499 "old Medevac paramedic
+	// initbhav". The real delivery is BHAV 282 "Medevac test for finished": once the victim is
+	// standing on a hospital tile (opcode 25 against XBLD 209, plus opcode 56) it posts outcome 1,
+	// which FUN_004ccf50 turns into EVT_MedevacDelivered for a state-6 person. So the player lands
+	// at the hospital, drops the patient out of the seat window, and the patient reports
+	// themselves delivered. The staged EMT, its doorway prop and DeliverMedevacDirectly are left
+	// in the file but no longer run.
+	// ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateMegaphonePrompt();
 	UpdateFireVisuals(DeltaTime);
 
@@ -1358,23 +1368,23 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 				PassengerBoardGuidanceSeconds);
 
 			int32 NewPickupCreditCount = 0;
+			// Boarding attaches the passenger to the helicopter and claims their seat as part of
+			// the pickup, so there is no separate AddMissionPassengersForMission here - doing both
+			// booked two seats for one person.
 			const int32 PickedUp = TrafficSystem->BoardMissionPeopleTouching(
 				Mission.EventId,
 				Helicopter->GetActorLocation(),
 				SeatsAvailable,
 				PassengerBoardTouchRadiusCm,
 				PassengerTransferMaxVerticalDeltaCm,
-				&NewPickupCreditCount);
+				&NewPickupCreditCount,
+				Helicopter);
 			if (PickedUp <= 0)
 			{
 				continue;
 			}
 
-			const int32 Boarded = Helicopter->AddMissionPassengersForMission(PickedUp, Mission.EventId, ESimCopterMissionPassengerKind::Transport);
-			if (Boarded <= 0)
-			{
-				continue;
-			}
+			const int32 Boarded = PickedUp;
 
 			Onboard += Boarded;
 			const int32 NewPickupCredit = FMath::Clamp(NewPickupCreditCount, 0, Boarded);
@@ -1392,144 +1402,22 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 	}
 }
 
-void ASimCopterMissionSystemActor::ProcessRescueTransfers()
-{
-	// The rescue half of the passenger loop. FUN_004ccf50 turns a person's "delivered" action into
-	// EVT_RescueDelivered (0x10) for spawn modes 1, 2 and 0x13 - the water, roof and train
-	// survivors - and FUN_004a7a10 leaves those records without a Secondary tile, so unlike
-	// transport and medevac there is nowhere specific to take them: they are winched aboard where
-	// they are and set down on any dry land.
-	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
-	if (TrafficSystem == nullptr)
-	{
-		return;
-	}
-
-	struct FRescueSnapshot
-	{
-		int32 EventId = INDEX_NONE;
-		int32 Waiting = 0;
-		int32 Onboard = 0;
-		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
-	};
-
-	TArray<FRescueSnapshot, TInlineAllocator<8>> Missions;
-	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
-	{
-		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_RescuePeople) == 0)
-		{
-			continue;
-		}
-
-		FRescueSnapshot Snapshot;
-		Snapshot.EventId = Record.EventId;
-		Snapshot.Tile = FIntPoint(Record.TileX, Record.TileY);
-		Snapshot.Waiting = FMath::Max(0, Record.RescueVictims - Record.VictimsPickedUp - Record.Casualties);
-		Snapshot.Onboard = FMath::Max(0, Record.VictimsPickedUp - Record.RescueDelivered - Record.Casualties);
-		Missions.Add(Snapshot);
-	}
-
-	if (Missions.Num() == 0)
-	{
-		return;
-	}
-
-	TArray<AActor*> HelicopterActors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
-
-	for (const FRescueSnapshot& Mission : Missions)
-	{
-		for (AActor* Actor : HelicopterActors)
-		{
-			ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
-			if (Helicopter == nullptr)
-			{
-				continue;
-			}
-
-			const FVector HelicopterLocation = Helicopter->GetActorLocation();
-
-			// Two ways aboard, and only two:
-			//
-			//  * the rescue harness, which is the intended tool - the pickup point is the rope
-			//    END (the original swaps GEO 0x16d onto the rope for exactly this), so the
-			//    player has to fly the harness onto the survivors;
-			//  * climbing straight in, which needs the survivor to actually be against the
-			//    airframe - the helicopter's own collision radius plus a hand's breadth, not a
-			//    nine-metre bubble around it.
-			if (Mission.Waiting > 0)
-			{
-				const int32 Seats = FMath::Min(Mission.Waiting, Helicopter->GetAvailablePassengerSeats());
-				FVector PickupPoint = HelicopterLocation;
-				float PickupRadiusCm = Helicopter->GetSimpleCollisionRadius() + RescueBoardTouchMarginCm;
-				float PickupVerticalCm = Helicopter->GetSimpleCollisionHalfHeight() + RescueBoardTouchMarginCm;
-
-				FVector RopeEnd = FVector::ZeroVector;
-				if (Helicopter->IsHarnessRopeEndSelected() && Helicopter->TryGetRopeEndWorldLocation(RopeEnd))
-				{
-					PickupPoint = RopeEnd;
-					PickupRadiusCm = RescueHarnessReachCm;
-					PickupVerticalCm = RescueHarnessReachCm;
-				}
-
-				if (Seats > 0)
-				{
-					int32 NewPickupCredit = 0;
-					const int32 PickedUp = TrafficSystem->PickUpMissionPeopleNear(
-						Mission.EventId,
-						PickupPoint,
-						Seats,
-						PickupRadiusCm,
-						PickupVerticalCm,
-						&NewPickupCredit);
-					if (PickedUp > 0)
-					{
-						const int32 Boarded = Helicopter->AddMissionPassengersForMission(
-							PickedUp, Mission.EventId, ESimCopterMissionPassengerKind::Rescue);
-						if (Boarded > 0)
-						{
-							MissionSystem.PostEvent(
-								SimCopterMissions::EVT_VictimPickedUp, Mission.EventId, Boarded);
-						}
-					}
-				}
-			}
-
-			// Delivery: set them down once the helicopter is on dry land.
-			const int32 Carrying = Helicopter->GetMissionPassengerCount(
-				Mission.EventId, ESimCopterMissionPassengerKind::Rescue);
-			if (Carrying <= 0 || !Helicopter->CanTransferMissionPassengers())
-			{
-				continue;
-			}
-
-			int32 DropTileX = INDEX_NONE;
-			int32 DropTileY = INDEX_NONE;
-			if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(HelicopterLocation, DropTileX, DropTileY) ||
-				TrafficSystem->IsWaterTile(DropTileX, DropTileY))
-			{
-				continue;
-			}
-
-			const int32 Delivered = Helicopter->RemoveMissionPassengersForMission(
-				Carrying, Mission.EventId, ESimCopterMissionPassengerKind::Rescue);
-			if (Delivered <= 0)
-			{
-				continue;
-			}
-
-			TrafficSystem->SpawnMissionPeopleAtWorldLocation(
-				Delivered,
-				Helicopter->GetPassengerDropWorldLocation(),
-				INDEX_NONE,
-				0,
-				-1,
-				185.0f);
-			MissionSystem.PostEvent(SimCopterMissions::EVT_RescueDelivered, Mission.EventId, Delivered);
-			break;
-		}
-	}
-}
+// REMOVED: ASimCopterMissionSystemActor::ProcessRescueTransfers.
+//
+// It ran a second, engine-side copy of the rescue passenger loop: a radius test around the rope
+// end teleported survivors into seats and posted EVT_VictimPickedUp, and a landing test removed
+// them again, spawned replacement pedestrians at the drop point and posted EVT_RescueDelivered.
+// Every one of those steps is in the shipped programs -
+//
+//   BHAV 305 "Rescue try to get on heli or bucket": object class 3 selects the harness, opcode 12
+//   walks the survivor to the rope end and gets them on it, opcode 58 moves them into the cabin
+//   when the bucket is raised, opcode 13 outcome 0 posts EVT_VictimPickedUp;
+//   BHAV 303 "Rescue try get off heli or bucket if appropriate": opcode 17 tests the ground and
+//   performs the alight, opcode 13 outcome 1 posts EVT_RescueDelivered, then they deactivate.
+//
+// - and running both double-counted. The VM owns rescue boarding and delivery now, which is also
+// why the survivors themselves walk away from the drop point instead of being swapped for
+// stand-in pedestrians.
 
 void ASimCopterMissionSystemActor::ProcessMedevacHospitalHandoffs(float DeltaSeconds)
 {

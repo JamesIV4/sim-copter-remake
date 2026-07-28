@@ -1016,6 +1016,10 @@ private:
 	// Log what the plane/boat/train pools are doing.
 	UFUNCTION(Exec)
 	void SimDumpAmbientVehicles();
+	// Park above the nearest tile with this XBLD id (0xd1 hospital, 0xd2 police station), so a
+	// roof mechanic can be checked without flying the city looking for one.
+	UFUNCTION(Exec)
+	void SimGotoBuilding(int32 XbldId);
 
 	// Tool/model debug console commands. These duplicate the debug panel so the transaction
 	// can also be exercised headlessly (automation, -game smoke tests).

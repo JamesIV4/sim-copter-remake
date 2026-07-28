@@ -20,6 +20,7 @@
 #include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/MaxisWindowsBitmapReader.h"
+#include "Formats/SimCity2000Reader.h"
 #include "Formats/SimCopterTweakReader.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterPreparedHelicopterModel.h"
@@ -1302,6 +1303,31 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	}
 
 	const FSimCopterMissionPassengerSlot Slot = MissionPassengerSlots[SlotIndex];
+
+	// The behaviour VM boards real people and attaches them to this pawn, so dropping one has to
+	// release that person. Spawning a replacement instead - which is all this used to do - left
+	// the original still riding, invisible, holding a seat that had already been given back.
+	if (ASimCopterGroundAgent* Aboard = TrafficSystem->FindPersonAboardForEvent(this, Slot.EventId))
+	{
+		const FVector DropLocation = GetPassengerAirDropWorldLocation(SlotIndex);
+		Aboard->AlightFromCarrier(); // hands the seat back on its own
+		Aboard->SetActorLocation(DropLocation, false);
+		if (Slot.Kind == ESimCopterMissionPassengerKind::Transport)
+		{
+			Aboard->SetMissionPickupCreditAwarded(true);
+		}
+		Aboard->BeginPassengerFall(Slot.EventId, PassengerFallInjuryDistanceCm);
+		SyncPassengerFlightModelCount();
+		RefreshDashboardSeats();
+		if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			MissionActor->NotifyPassengerDroppedFromHelicopter(Slot.EventId, Slot.Kind, 1);
+		}
+		return true;
+	}
+
+	// Nobody attached: a seat filled by something other than the VM. Fall back to the stand-in.
 	const int32 SpawnMode = Slot.Kind == ESimCopterMissionPassengerKind::Medevac ? 6 : 0;
 	ASimCopterGroundAgent* DroppedPassenger = TrafficSystem->SpawnFallingMissionPassengerAtWorldLocation(
 		GetPassengerAirDropWorldLocation(SlotIndex),
@@ -3224,8 +3250,11 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 		.GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
 
 	// SCHOOK: BucketFill 0x00487bb0
-	// Filling is automatic while the active attachment is at a class-0..9 surface.
-	if (bRopeDeployed)
+	// Filling is automatic while the active attachment is at a class-0..9 surface - but only when
+	// the thing on the end of the rope is the bucket. Dunking the rescue harness was scooping
+	// water with it (heli[0x32] vs heli[0x33]: the original swaps the object on the rope, and only
+	// one of the two holds anything).
+	if (bRopeDeployed && !bHarnessRopeEndSelected)
 	{
 		float SurfaceWorldZ = 0.0f;
 		uint8 TerrainClass = 0xff;
@@ -3689,6 +3718,90 @@ void ASimCopterHelicopterPawn::SimDumpAmbientVehicles()
 		}
 	}
 	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("SimDumpAmbientVehicles: unavailable."));
+}
+
+void ASimCopterHelicopterPawn::SimGotoBuilding(int32 XbldId)
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("SimGotoBuilding: no traffic system."));
+		return;
+	}
+
+	// Nearest tile carrying the id, by distance from where we are now.
+	const FVector Here = GetActorLocation();
+	FVector BestLocation = FVector::ZeroVector;
+	FIntPoint BestTile(INDEX_NONE, INDEX_NONE);
+	float BestDistanceSq = TNumericLimits<float>::Max();
+	for (int32 TileY = 0; TileY < FSimCity2000City::MapSize; ++TileY)
+	{
+		for (int32 TileX = 0; TileX < FSimCity2000City::MapSize; ++TileX)
+		{
+			if (TrafficSystem->GetXbldTileId(TileX, TileY) != XbldId)
+			{
+				continue;
+			}
+			FVector TileCenter = FVector::ZeroVector;
+			if (!TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
+			{
+				continue;
+			}
+			const float DistanceSq = FVector::DistSquared2D(TileCenter, Here);
+			if (DistanceSq < BestDistanceSq)
+			{
+				BestDistanceSq = DistanceSq;
+				BestLocation = TileCenter;
+				BestTile = FIntPoint(TileX, TileY);
+			}
+		}
+	}
+
+	if (BestTile.X == INDEX_NONE)
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("SimGotoBuilding 0x%02x: this city has none."), XbldId);
+		return;
+	}
+
+	// The nearest matching tile is whichever corner of the footprint we approached from, so grow
+	// it into the whole run of same-id tiles and aim at that block's middle - the roof.
+	FIntPoint Min = BestTile;
+	FIntPoint Max = BestTile;
+	while (Min.X > 0 && TrafficSystem->GetXbldTileId(Min.X - 1, BestTile.Y) == XbldId) { --Min.X; }
+	while (Max.X < FSimCity2000City::MapSize - 1 && TrafficSystem->GetXbldTileId(Max.X + 1, BestTile.Y) == XbldId) { ++Max.X; }
+	while (Min.Y > 0 && TrafficSystem->GetXbldTileId(BestTile.X, Min.Y - 1) == XbldId) { --Min.Y; }
+	while (Max.Y < FSimCity2000City::MapSize - 1 && TrafficSystem->GetXbldTileId(BestTile.X, Max.Y + 1) == XbldId) { ++Max.Y; }
+
+	FVector CornerA = FVector::ZeroVector;
+	FVector CornerB = FVector::ZeroVector;
+	if (TrafficSystem->TryGetTileCenterWorldLocation(Min.X, Min.Y, CornerA) &&
+		TrafficSystem->TryGetTileCenterWorldLocation(Max.X, Max.Y, CornerB))
+	{
+		BestLocation = (CornerA + CornerB) * 0.5f;
+	}
+
+	// Set down on whatever is on top: the roof if there is one, the street otherwise. This is a
+	// teleport, so it goes through the helipad placement - a bare SetActorLocation is overwritten
+	// by the flight model's own position on the very next tick.
+	FVector Surface = BestLocation;
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimGotoBuilding), false, this);
+	if (GetWorld()->LineTraceSingleByChannel(
+			Hit,
+			BestLocation + FVector(0.0f, 0.0f, 60000.0f),
+			BestLocation - FVector(0.0f, 0.0f, 2000.0f),
+			ECC_Camera,
+			QueryParams) &&
+		Hit.bBlockingHit)
+	{
+		Surface = Hit.ImpactPoint;
+	}
+
+	PlaceOnHelipad(Surface, GetActorRotation().Yaw);
+	UE_LOG(LogSimCopterHelicopterPawn, Display,
+		TEXT("SimGotoBuilding 0x%02x: tiles (%d, %d)-(%d, %d), set down on %s (street Z %.0f)."),
+		XbldId, Min.X, Min.Y, Max.X, Max.Y, *Surface.ToCompactString(), BestLocation.Z);
 }
 
 void ASimCopterHelicopterPawn::SimSwitchHeli(int32 TypeIndex)

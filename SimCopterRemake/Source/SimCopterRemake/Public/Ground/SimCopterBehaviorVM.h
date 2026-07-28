@@ -54,6 +54,8 @@ namespace EBhavAttr
 	// FUN_004ca350 refuses to return a person with this set when it is asked for object class 6,
 	// which is how an arrested criminal stops being a target for every other cop on the map.
 	constexpr int32 CriminalCaught = 23;
+	// +0x184. BHAV 281 drains it; BHAV 280 rec[11] kills the victim once it falls below 1.
+	constexpr int32 MedevacHealth = 34;
 	constexpr int32 Count = 0x30;
 }
 
@@ -64,11 +66,16 @@ namespace EBhavObjectClass
 	constexpr int32 MyMissionCoords = 0;  // FUN_004a88e0(person+0x10a) - the mission's tile
 	constexpr int32 AlreadySelected = 1;  // whatever is already in the selected slot
 	constexpr int32 PlayerHelicopter = 2; // DAT_005040d0+0xa4
-	constexpr int32 PlayerObjectB = 3;    // DAT_005040d0+0xbc
+	// DAT_005040d0+0xbc. Named by opcode 58's own assert text ("master is neither harness nor
+	// heli"): this is the rescue harness on the end of the rope.
+	constexpr int32 Harness = 3;
 	constexpr int32 InteractionSource = 4;// person+0x1a4 - what last interacted with me
 	constexpr int32 MedevacVictim = 5;    // FUN_004ca350 state == 6
 	constexpr int32 UncaughtCriminal = 6; // FUN_004ca350 loopflag == 0 and CriminalCaught == 0
 	constexpr int32 PoliceOfficer = 8;    // FUN_004ca350 loopflag == 1 (states 7 and 8)
+	// DAT_00506444, the fixed person record - the player's own avatar on foot. BHAV 291 looks for
+	// it so a waiting passenger walks up to you and waves.
+	constexpr int32 PlayerAvatar = 9;
 	constexpr int32 FireTruck = 10;       // FUN_0049b060(0, tile)
 	constexpr int32 PoliceCar = 11;       // FUN_0049b060(1, tile)
 	constexpr int32 Ambulance = 12;       // FUN_0049b060(2, tile)
@@ -122,12 +129,16 @@ struct FSimCopterPersonContext
 	TWeakObjectPtr<AActor> SelectedObject;
 	FVector SelectedLocation = FVector::ZeroVector;
 	bool bHasSelection = false;
+	// Object class 3 selects the harness, which lives on the helicopter's rope rather than being
+	// an actor: SelectedObject is the helicopter and this says which of the two was meant.
+	bool bSelectionIsHarness = false;
 
 	void ClearSelection()
 	{
 		SelectedObject.Reset();
 		SelectedLocation = FVector::ZeroVector;
 		bHasSelection = false;
+		bSelectionIsHarness = false;
 	}
 
 	// Interrupt reaction state, mirroring FUN_004c1050's writes:
@@ -214,6 +225,93 @@ public:
 	// Op 39, FUN_004cc560: push a BHAV onto the *selected person's* walk stack. This is how a cop
 	// arrests a criminal - it pushes BHAV 1060 "Rx: criminal-caught" onto them.
 	virtual bool PushReactionOnSelectedObject(FSimCopterPersonContext& Context, int32 ProgramId) { return false; }
+
+	// Op 25, FUN_004cb550: the XBLD building id of the tile the person stands on. INDEX_NONE when
+	// the tile is off the map (the original answers 0xffff, or 0xf6 inside the airport patch).
+	virtual int32 GetCurrentTileBuildingId() const { return INDEX_NONE; }
+
+	// Op 56, FUN_004ccc40: is the tile under the person one an emergency crew may work on -
+	// FUN_004c9cc0 (occupied?) plus FUN_004c9dc0 on its tile class.
+	virtual bool IsCurrentTileServiceable() const { return false; }
+
+	// Op 63, FUN_004ca6f0 / op 71, FUN_004cbaa0: person+0x1a0, the thing this person is riding.
+	virtual bool IsRidingCarrier(const FSimCopterPersonContext& Context) const { return false; }
+
+	// Ops 21 and 17, both via FUN_004c9bc0: may this person stand where they are right now - the
+	// tile is one people may occupy, they are still close to whatever is carrying them, and they
+	// are within 6 original units of the ground. Op 17 (FUN_004cb190) additionally *does* it:
+	// clears the carrier and re-seats them on the terrain. This is the drop-off test for every
+	// passenger type; it is emphatically not a "is the player nearby" probe.
+	virtual bool CanAlightHere() const { return false; }
+	virtual bool TryAlightHere() { return false; }
+
+	// Op 48, FUN_004cc900 (and op 12's tail): make the selection my carrier and snap to it.
+	virtual bool BoardSelection(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 44, FUN_004cc6a0: pick the selected person up - move them onto me and become their
+	// carrier. This is the paramedic collecting a victim.
+	virtual bool PutSelectedPersonOnMe(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 47, FUN_004cc8d0: clear the selected person's carrier - put them down.
+	virtual bool DropSelectedPerson(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 46, FUN_004cc7d0 / op 51, FUN_004ca570: FUN_004ca650 finds the person whose carrier is
+	// me - the one I am toting - and selects them. Op 51 also sets them down first.
+	virtual bool SelectCarriedPerson(FSimCopterPersonContext& Context, bool bAlsoDropThem) { return false; }
+
+	// Op 71, FUN_004cbaa0: am I carrying anyone.
+	virtual bool IsCarryingPerson() const { return false; }
+
+	// Op 58, FUN_004cccd0 "GetOnHeliIfHarnessRaised": true unless I am on the harness with the
+	// bucket raised, in which case climb into the cabin first.
+	virtual bool GetOnHelicopterIfHarnessRaised(FSimCopterPersonContext& Context) { return true; }
+
+	// Op 59, FUN_004cce30: is my carrier the player's helicopter (DAT_005040d0+0xa4).
+	virtual bool IsCarrierPlayerHelicopter() const { return false; }
+
+	// Op 86, FUN_004cceb0: is my carrier the harness (DAT_005040d0+0xbc).
+	virtual bool IsCarrierHarness() const { return false; }
+
+	// Op 87, FUN_004cce50: is the scene cell at person+0x188/+0x18a the one I am standing on -
+	// i.e. am I back where I was placed.
+	virtual bool IsOnHomeTile() const { return false; }
+
+	// Op 84, FUN_004cc830: walk the player's passenger list and select the first medevac victim
+	// aboard.
+	virtual bool SelectMedevacVictimAboardPlayer(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 54, FUN_004ccb40: which of the three faces this person shows in the seat window. BHAV 264
+	// "Face vs. speed/health" sets it from the helicopter's speed and the victim's health.
+	virtual void SetSeatPortraitMood(int32 Mood) {}
+
+	// Op 55, FUN_004ccb80: the player helicopter's speed, in the units BHAV 264 compares against
+	// 250 and 125.
+	virtual int32 GetPlayerHelicopterSpeed() const { return 0; }
+
+	// Op 61, FUN_004ccef0: FUN_0049aed0(person+0x170, arg0) - tell the emergency vehicle I belong
+	// to something. A boarded crew member uses it to release its car.
+	virtual void MessageOwningVehicle(int32 MessageId) {}
+
+	// Ops 30/60/83, FUN_004cbfd0 / FUN_004cc130: bind "Thro" and launch a projectile, either on
+	// the person's facing or straight at the selection.
+	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) {}
+
+	// Op 66, FUN_004cbbc0: the fall-and-die handler - detach, drop to the ground, post
+	// EVT_PersonDied and bind "Dead". True when the person has finished dying.
+	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 62, FUN_004ca700: select the emergency vehicle this person belongs to, or the player's
+	// helicopter when they belong to none.
+	virtual bool SelectOwningVehicle(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 69, FUN_004cbb60: is the selection the player's helicopter?
+	virtual bool IsSelectionPlayerHelicopter(const FSimCopterPersonContext& Context) const { return false; }
+
+	// Op 82, FUN_004ccad0: is the selection within 25 original units (Manhattan, 3D)?
+	virtual bool IsSelectionWithinUnits(const FSimCopterPersonContext& Context, int32 Units) const { return false; }
+
+	// Op 74, FUN_004cba70: DAT_004f9740, the difficulty tier the mission layer scales counts by.
+	virtual int32 GetDifficultyTier() const { return 1; }
 
 	// Op 13, FUN_004caac0 -> FUN_004ccf50: turn a program outcome code into a mission event on
 	// the record this person belongs to. Outcome 6 re-posts the person's own tile as the mission

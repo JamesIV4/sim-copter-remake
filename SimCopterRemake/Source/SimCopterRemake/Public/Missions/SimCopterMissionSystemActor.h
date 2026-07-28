@@ -465,7 +465,6 @@ private:
 	void ProcessPassengerTransfers();
 	// The rescue half of the transfer loop: winch water/roof/train survivors aboard and set them
 	// down on dry land (FUN_004ccf50 action 1 posts EVT_RescueDelivered for spawn modes 1/2/0x13).
-	void ProcessRescueTransfers();
 
 	TWeakObjectPtr<class ASimCopterAmbientVehiclesActor> CachedAmbientVehicles;
 	// Runs the EMT patient-unload sequence at hospitals for landed helicopters carrying medevac
