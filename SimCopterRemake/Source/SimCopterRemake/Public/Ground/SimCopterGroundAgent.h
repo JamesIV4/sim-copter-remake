@@ -496,6 +496,7 @@ private:
 		const FSimCopterPersonContext& Context,
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const override;
 	virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutTileDistance) override;
+	virtual bool EvaluateProximityTest(const FSimCopterPersonContext& Context, int32 TestIndex) const override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual ESimCopterBehaviorStepResult StepTowardSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool PushReactionOnSelectedObject(FSimCopterPersonContext& Context, int32 ProgramId) override;

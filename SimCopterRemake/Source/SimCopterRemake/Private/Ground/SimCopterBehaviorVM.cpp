@@ -166,20 +166,24 @@ EOpResult ExecOpcode(
 		Local(Record.Args[3]) = uint16(bFound ? TileDistance : 2000);
 		if (!bFound || TileDistance >= Radius)
 		{
-			Context.SelectedObject.Reset();
+			Context.ClearSelection();
 			return EOpResult::False;
 		}
 		return EOpResult::True;
 	}
+	case 14: // proximity tests against the player and the person's carrier (FUN_004caaf0)
+		return World.EvaluateProximityTest(Context, int32(int16(Record.Args[0])))
+			? EOpResult::True
+			: EOpResult::False;
 	case 16: // deactivate person (FUN_004cb180 -> FUN_004c4e40; result 3 = stop)
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
 	case 17: // threat response probe (FUN_004cb190)
 		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
 	case 18: // face toward the selected object; absent object is a true no-op (FUN_004cb270)
-		if (!Context.SelectedObject.IsValid())
+		if (!Context.bHasSelection)
 		{
-			return EOpResult::True;
+			return EOpResult::True; // FUN_004cb270's "no object" early-out returns 1
 		}
 		return World.FaceSelectedObject(Context) ? EOpResult::True : EOpResult::False;
 	case 19: // tile class == arg (FUN_004cb2c0 -> FUN_004c9220)
@@ -247,7 +251,7 @@ EOpResult ExecOpcode(
 		return EOpResult::False;
 	case 38: // walk to the selected object (FUN_004cc540 -> FUN_004ca940); arg0 is the tick budget
 	{
-		if (!Context.SelectedObject.IsValid())
+		if (!Context.bHasSelection)
 		{
 			return EOpResult::False;
 		}
@@ -270,6 +274,11 @@ EOpResult ExecOpcode(
 	case 39: // push a BHAV onto the selected person's stack (FUN_004cc560); always succeeds
 		World.PushReactionOnSelectedObject(Context, int32(Record.Args[0]));
 		return EOpResult::True;
+	case 40: // tear the person down (FUN_004cc5d0 clears person+0x142 and unhooks the render node)
+		// Both edges of every shipped op-40 record are -3, so the walker never resumes; treating
+		// it as opcode 16's despawn is what stops a finished cop standing in the road forever.
+		Context.bRequestDespawn = true;
+		return EOpResult::Stop;
 	case 57: // sound/side-effect trigger (FUN_004ccca0 -> FUN_004c5210)
 		return EOpResult::True;
 	case 59: // carried object is player helicopter? (FUN_004cce30)

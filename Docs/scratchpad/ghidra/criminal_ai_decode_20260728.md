@@ -123,16 +123,38 @@ units, i.e. the player hovering just off the deck. Chain:
 -> `[11]` -> `[12]` idle -> `[19]` **caught** -> sound 12 -> despawn. So setting down on top of a
 criminal arrests them without any police at all, roughly half the time they roll for it.
 
-## 6. Port status
+## 6. Which officer gets deployed
 
-Ported in this pass: opcodes 13, 15 (classes 2/5/6/8/14), 18, 38, 39.
+`FUN_004b9e40`'s on-scene action calls `FUN_0049bd00(0xe, personState)` with personState 8 or 0xe.
+Those are **person states**, not spawn modes: 8 is BHAV 1401 `Cop foot` (which runs
+`1150 copf - chase criminal`) and 0xe is BHAV 1402 `Cop speeder` (which probes object class 13,
+walks to the speeder it stopped, gabs at it, then leaves in its own car). The remake had been
+passing the constant 0xe through as the state and the 8/0xe as the behaviour class, so every
+dispatched officer ran `Cop speeder`, found no speeder, and fell through to an unported opcode 40
+whose edges are both -3 - which the walker reads as "return false", so the program restarted and
+the officer stood in the road forever.
+
+## 7. Port status
+
+Ported: opcodes 13, 14 (case 1), 15 (classes 2/5/6/8/10/11/12/13/14/16), 18, 38, 39, 40. Officers
+now spawn on the decoded state and wear the "Kopp" figure.
+
+Divergences taken deliberately:
+- **class 16 = the searchlight's ground spot.** `DAT_005040d0+0xc0` was not identified from the
+  binary; it is read by exactly one program, `1151 copf - follow heli`, and the remake resolves it
+  to where the player's spotlight is pointed. That is a gameplay-shaped call, not a decode: it
+  matches how SimCopter directs police (the dispatcher itself takes its chase target from the
+  spotlight node, `FUN_0049b3f0`) and it makes the opcode useful, but the byte offset has not been
+  confirmed.
+- **class 2 = the player's current pawn**, not strictly the helicopter, so the on-foot avatar is
+  something people react to as well. Opcode 14 case 1 still requires an actual helicopter.
 
 Not ported, and why:
-- classes 10-13 (dispatch vehicles) - the remake's emergency vehicles are not actors the behaviour
-  world can hand back, so `1172 crim - run from cop car` and `1152 copf - return to cop car` take
-  their false edges.
-- classes 3, 9, 15, 16 - the globals behind them are not identified, so `1151 copf - follow heli`
-  does nothing.
+- classes 3, 9, 15 - the globals behind them are not identified. No shipped program the remake
+  runs reaches them.
 - class 4 - the remake keeps no handle to the object that caused the last interaction.
-- `FUN_004caaf0` case 1 (the hover-to-catch of section 5) - opcode 14 is still unported, so the
-  helicopter-only arrest does not fire.
+- class 0 - a person can already reach its own mission record without it.
+- opcode 14 cases 0/2/3 - case 0 reads an unidentified player field; 2 and 3 test a carrier the
+  remake does not model for these programs.
+- opcode 61 - unidentified, but every shipped record sends both edges to the same place, so its
+  result never changes control flow.

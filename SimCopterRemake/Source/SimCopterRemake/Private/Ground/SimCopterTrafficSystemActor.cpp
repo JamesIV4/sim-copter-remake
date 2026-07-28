@@ -838,8 +838,19 @@ void ASimCopterTrafficSystemActor::DouseBurningVehiclesNear(const FVector& World
 	}
 }
 
-bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId)
+bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
+	int32 SpawnMode,
+	int32 PersonState,
+	int32 TileX,
+	int32 TileY,
+	int32 EventId,
+	const FString& FigureName,
+	ASimCopterGroundAgent** OutSpawned)
 {
+	if (OutSpawned != nullptr)
+	{
+		*OutSpawned = nullptr;
+	}
 	if (GroundAgentClass == nullptr) return false;
 	const bool bTransportPassenger = SpawnMode == 4;
 	if (bTransportPassenger && IsWaterTile(TileX, TileY))
@@ -954,6 +965,11 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 
 
 	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
 	Person->MissionEventId = EventId;
+	if (!FigureName.IsEmpty())
+	{
+		// Has to happen before ConfigureAgent - that is where the figure is built.
+		Person->SetPedestrianFigureName(FigureName);
+	}
 	Person->ConfigureAgent(
 		ESimCopterGroundAgentKind::Pedestrian,
 		MeshName,
@@ -979,7 +995,34 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 
 		Person->SetMissionAwaitingRescue(true);
 	}
 	PedestrianAgents.Add(Person);
+	if (OutSpawned != nullptr)
+	{
+		*OutSpawned = Person;
+	}
 	return true;
+}
+
+bool ASimCopterTrafficSystemActor::HasArrestedCriminalNear(const FVector& WorldLocation, const float RadiusCm) const
+{
+	const float RadiusSq = FMath::Square(RadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->IsActorBeingDestroyed() || Agent->IsHidden())
+		{
+			// Hidden means opcode 40 has already run on them: they are in the car.
+			continue;
+		}
+		if (Agent->GetBehaviorAttribute(EBhavAttr::CriminalCaught) == 0)
+		{
+			continue;
+		}
+		if (FVector::DistSquared(WorldLocation, Agent->GetActorLocation()) <= RadiusSq)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
@@ -1417,6 +1460,52 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestBehaviorPerson(
 		}
 	}
 
+	return Best;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestServiceVehicleAgent(
+	const FVector& FromWorldLocation,
+	const int32 Service) const
+{
+	ASimCopterGroundAgent* Best = nullptr;
+	float BestDistanceSq = TNumericLimits<float>::Max();
+
+	auto Consider = [&Best, &BestDistanceSq, &FromWorldLocation](ASimCopterGroundAgent* Candidate)
+	{
+		if (Candidate == nullptr || Candidate->IsActorBeingDestroyed())
+		{
+			return;
+		}
+		const float DistanceSq = FVector::DistSquared(FromWorldLocation, Candidate->GetActorLocation());
+		if (DistanceSq < BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			Best = Candidate;
+		}
+	};
+
+	// The cop programs' service 3 is the speeder pool, not a fourth emergency service.
+	if (Service == 3)
+	{
+		for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
+		{
+			Consider(CarPtr.Get());
+		}
+		return Best;
+	}
+
+	if (Service < 0 || Service >= static_cast<int32>(SimCopterDispatch::EService::Count))
+	{
+		return nullptr;
+	}
+	for (const FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[Service])
+	{
+		if (Vehicle.State == ESimCopterDispatchVehicleState::Empty)
+		{
+			continue;
+		}
+		Consider(Vehicle.Agent.Get());
+	}
 	return Best;
 }
 
@@ -3034,12 +3123,29 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 		}
 
 		// FUN_0049bd00(0xe, personState): put an officer on the ground beside the car. The state
-		// is 0xe when the car it just stopped was fleeing, 8 otherwise.
+		// is 0xe when the car it just stopped was fleeing, 8 otherwise - and those are person
+		// states, not spawn modes: 8 is BHAV 1401 "Cop foot", which runs 1150 "copf - chase
+		// criminal", and 0xe is BHAV 1402 "Cop speeder", which walks up to the car it stopped.
+		// The officer wears the original's "Kopp" figure so the player can tell them from the
+		// civilians standing around.
 		if (!Vehicle.bActedAtScene)
 		{
-			const int32 PersonState = SimCopterCriminalCar::GetOfficerPersonState(Target != nullptr, bTargetFleeing);
-			bActed |= TrySpawnMissionPerson(
-				SimCopterCriminalCar::OfficerSpawnMode, PersonState, Tile.X, Tile.Y, Vehicle.TargetEventId);
+			const int32 OfficerState = SimCopterCriminalCar::GetOfficerPersonState(Target != nullptr, bTargetFleeing);
+			ASimCopterGroundAgent* Officer = nullptr;
+			const bool bDeployed = TrySpawnMissionPerson(
+				OfficerState,
+				-1,
+				Tile.X,
+				Tile.Y,
+				Vehicle.TargetEventId,
+				SimCopterCriminalCar::OfficerFigureName,
+				&Officer);
+			if (bDeployed)
+			{
+				Vehicle.DeployedOfficer = Officer;
+				Vehicle.bOfficerDeployed = true;
+			}
+			bActed |= bDeployed;
 		}
 		return bActed;
 	}
@@ -3239,6 +3345,29 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 				Vehicle.ActionTimerSeconds = (Service == SimCopterDispatch::EService::FireTruck)
 					? SimCopterDispatch::JetRetargetSeconds
 					: SimCopterDispatch::OnSceneRetrySeconds;
+			}
+		}
+
+		// Everyone aboard: leave. BHAV 1150/1152 (the officer) and BHAV 1060 (the criminal they
+		// arrested) both end by walking to object class 11 - this car - and running opcode 40,
+		// which hides them. That is the "gets in" the original never had to model, because its
+		// people simply stopped existing. Waiting out the rest of the 180 s stay after that just
+		// leaves an empty car parked at the scene.
+		if (Vehicle.bOfficerDeployed)
+		{
+			const ASimCopterGroundAgent* Officer = Vehicle.DeployedOfficer.Get();
+			const bool bOfficerAboard = Officer == nullptr || Officer->IsActorBeingDestroyed() || Officer->IsHidden();
+			const ASimCopterGroundAgent* CarAgent = Vehicle.Agent.Get();
+			// The same ten tiles both programs use for their class-11 probe: anyone still walking
+			// in is still a passenger this car is waiting on.
+			const float BoardingRadiusCm = GetPeopleWorldCmPerOriginalUnit() * 64.0f * 10.0f;
+			if (bOfficerAboard &&
+				(CarAgent == nullptr || !HasArrestedCriminalNear(CarAgent->GetActorLocation(), BoardingRadiusCm)))
+			{
+				Vehicle.bOfficerDeployed = false;
+				Vehicle.DeployedOfficer.Reset();
+				RecallDispatchVehicle(Vehicle);
+				break;
 			}
 		}
 

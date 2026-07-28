@@ -97,8 +97,11 @@ constexpr int32 ArrestPersonState = 0xd;
 
 // FUN_004b9e40's officer deploy: spawn mode 0xe, and the state depends on the target.
 constexpr int32 OfficerSpawnMode = 0xe;
+// Person states, i.e. BHAV 1401 "Cop foot" and BHAV 1402 "Cop speeder".
 constexpr int32 OfficerStateDefault = 8;
 constexpr int32 OfficerStateAgainstFleeing = 0xe;
+// privanim figure "Kopp" - the uniformed officer in the shipped figure set.
+inline const TCHAR* OfficerFigureName = TEXT("Kopp");
 
 // FUN_004b8630's switch, in its own numbering.
 enum class EState : uint8
