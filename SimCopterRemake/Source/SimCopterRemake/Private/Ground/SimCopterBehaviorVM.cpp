@@ -425,10 +425,7 @@ EOpResult ExecOpcode(
 		Local(Record.Args[0]) = uint16(FMath::Clamp(World.GetPlayerHelicopterSpeed(), 0, 0xffff));
 		return EOpResult::True;
 	case 73: // is there a paramedic on the map? (FUN_004cb9c0 -> FUN_004ca4f0(state 5, hidden))
-		// Always false in the shipped game: nothing ever spawns person state 5. BHAV 281 uses it
-		// to decide how fast a medevac victim's health drains, and the false arm - the fast one -
-		// is the only one the original can take.
-		return EOpResult::False;
+		return World.HasHiddenPersonInState(5) ? EOpResult::True : EOpResult::False;
 	case 79: // local[arg0] := DAT_00506448 (FUN_004cb7d0); a frame counter the remake has no use for
 		Local(Record.Args[0]) = 0;
 		return EOpResult::True;

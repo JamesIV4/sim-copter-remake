@@ -192,6 +192,7 @@ private:
 	void MouseLookPitch(float Value);
 	void Interact();
 	void DropCarriedMissionPerson();
+	bool TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn* Helicopter);
 	void TryAutoEnterHelicopter();
 
 	// Board the nearest helicopter regardless of walking distance. Test scaffolding: a

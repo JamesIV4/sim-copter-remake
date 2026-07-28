@@ -163,7 +163,7 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 {
 	for (FSimCopterMedevacHandoff& Handoff : MedevacHandoffs)
 	{
-		EndMedevacHandoff(Handoff);
+		EndMedevacHandoff(Handoff, /*bResolvePatients*/ false);
 	}
 	MedevacHandoffs.Reset();
 
@@ -193,18 +193,8 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 
 	MissionSystem.Tick(DeltaTime);
 	ProcessPassengerTransfers();
-	// (Rescue boarding and delivery are the VM's - see the note where ProcessRescueTransfers was.)
-	// DISABLED: the hospital EMT hand-off was an invention, not a port. Nothing in SimCopter.exe
-	// ever spawns person state 5 - the only two calls into FUN_004c3eb0 with a medevac-ish state
-	// are the creator's state 6 victims - so BHAV 801 "Medevac paramedic new initbhav" and its
-	// helpers (262, 263, 269, 272) are unreferenced content, alongside 1499 "old Medevac paramedic
-	// initbhav". The real delivery is BHAV 282 "Medevac test for finished": once the victim is
-	// standing on a hospital tile (opcode 25 against XBLD 209, plus opcode 56) it posts outcome 1,
-	// which FUN_004ccf50 turns into EVT_MedevacDelivered for a state-6 person. So the player lands
-	// at the hospital, drops the patient out of the seat window, and the patient reports
-	// themselves delivered. The staged EMT, its doorway prop and DeliverMedevacDirectly are left
-	// in the file but no longer run.
-	// ProcessMedevacHospitalHandoffs(DeltaTime);
+	ProcessRescueTransfers();
+	ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateMegaphonePrompt();
 	UpdateFireVisuals(DeltaTime);
 
@@ -983,6 +973,7 @@ bool ASimCopterMissionSystemActor::CreatePlayerCausedMedevacForVictim(ASimCopter
 
 	Victim->MissionEventId = EventId;
 	Victim->InitialPersonState = 6;
+	Victim->ResetMissionActionTracking();
 	Victim->SetMissionInjuredPose();
 	return true;
 }
@@ -1118,15 +1109,188 @@ ASimCopterTrafficSystemActor* ASimCopterMissionSystemActor::ResolveTrafficSystem
 	return nullptr;
 }
 
-void ASimCopterMissionSystemActor::NotifyMedevacVictimBoarded(int32 EventId, int32 Count)
+bool ASimCopterMissionSystemActor::TryGetMissionDestinationTile(
+	const int32 EventId,
+	int32& OutTileX,
+	int32& OutTileY) const
 {
-	if (EventId == INDEX_NONE || Count <= 0)
+	OutTileX = INDEX_NONE;
+	OutTileY = INDEX_NONE;
+	const SimCopterMissions::FSimCopterMissionRecord* Record = MissionSystem.FindRecord(EventId);
+	if (Record == nullptr ||
+		!Record->bActive ||
+		!IsValidMissionTile(Record->SecondaryX, Record->SecondaryY))
 	{
-		return;
+		return false;
 	}
 
-	MissionPassengersOnboard.FindOrAdd(EventId) += Count;
-	MissionSystem.PostEvent(SimCopterMissions::EVT_VictimPickedUp, EventId, Count);
+	OutTileX = Record->SecondaryX;
+	OutTileY = Record->SecondaryY;
+	return true;
+}
+
+bool ASimCopterMissionSystemActor::NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person)
+{
+	if (Person == nullptr ||
+		Person->MissionEventId == INDEX_NONE ||
+		Person->HasMissionResolutionReported() ||
+		Person->IsMissionPickupCounted() ||
+		!Person->HasClaimedPassengerSeat())
+	{
+		return false;
+	}
+
+	const ASimCopterHelicopterPawn* Helicopter =
+		Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier());
+	if (Helicopter == nullptr ||
+		Helicopter->GetMissionPassengerCount(
+			Person->MissionEventId,
+			Person->GetMissionPassengerKind()) <= 0)
+	{
+		// Opcode 13 can only acknowledge an action that already happened. A decoded or partial
+		// behavior path saying "picked up" is not permission to synthesize a passenger.
+		return false;
+	}
+
+	const SimCopterMissions::FSimCopterMissionRecord* Record =
+		MissionSystem.FindRecord(Person->MissionEventId);
+	if (Record == nullptr || !Record->bActive)
+	{
+		return false;
+	}
+
+	// Reboarding after a seat-window drop restores the counter silently: the first pickup already
+	// paid and announced. A single real person can therefore cross the VM, on-foot, and recovery
+	// paths without any of them double-crediting the mission.
+	const bool bSilent = Person->HasMissionPickupCreditAwarded();
+	MissionSystem.PostEvent(
+		SimCopterMissions::EVT_VictimPickedUp,
+		Person->MissionEventId,
+		1,
+		bSilent);
+	Person->SetMissionPickupCreditAwarded(true);
+	Person->SetMissionPickupCounted(true);
+	return true;
+}
+
+int32 ASimCopterMissionSystemActor::PostPassengerDelivery(
+	const int32 EventId,
+	const ESimCopterMissionPassengerKind Kind,
+	const int32 RequestedCount,
+	const bool bSilent)
+{
+	const SimCopterMissions::FSimCopterMissionRecord* Record = MissionSystem.FindRecord(EventId);
+	if (Record == nullptr || !Record->bActive || RequestedCount <= 0)
+	{
+		return 0;
+	}
+
+	int32 EventCode = INDEX_NONE;
+	int32 Remaining = 0;
+	switch (Kind)
+	{
+	case ESimCopterMissionPassengerKind::Transport:
+		if ((Record->TypeMask & SimCopterMissions::TYPE_Transport) != 0)
+		{
+			EventCode = SimCopterMissions::EVT_TransportDelivered;
+			Remaining = Record->TransportPassengers - Record->TransportDelivered -
+				Record->PassengersLost - Record->Casualties;
+		}
+		break;
+	case ESimCopterMissionPassengerKind::Medevac:
+		if ((Record->TypeMask & SimCopterMissions::TYPE_Medevac) != 0)
+		{
+			EventCode = SimCopterMissions::EVT_MedevacDelivered;
+			Remaining = Record->MedevacVictims - Record->MedevacDelivered - Record->Casualties;
+		}
+		break;
+	case ESimCopterMissionPassengerKind::Rescue:
+		if ((Record->TypeMask & SimCopterMissions::TYPE_RescuePeople) != 0)
+		{
+			EventCode = SimCopterMissions::EVT_RescueDelivered;
+			Remaining = Record->RescueVictims - Record->RescueDelivered - Record->Casualties;
+		}
+		break;
+	default:
+		break;
+	}
+
+	const int32 Delivered = FMath::Clamp(RequestedCount, 0, FMath::Max(0, Remaining));
+	if (EventCode != INDEX_NONE && Delivered > 0)
+	{
+		MissionSystem.PostEvent(EventCode, EventId, Delivered, bSilent);
+	}
+	return Delivered;
+}
+
+bool ASimCopterMissionSystemActor::NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person)
+{
+	if (Person == nullptr ||
+		Person->MissionEventId == INDEX_NONE ||
+		Person->HasMissionResolutionReported() ||
+		!Person->IsMissionPickupCounted() ||
+		Person->HasClaimedPassengerSeat() ||
+		Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier()) != nullptr)
+	{
+		return false;
+	}
+
+	const int32 Delivered = PostPassengerDelivery(
+		Person->MissionEventId,
+		Person->GetMissionPassengerKind(),
+		1);
+	if (Delivered <= 0)
+	{
+		return false;
+	}
+
+	Person->SetMissionResolutionReported(true);
+	Person->SetMissionPickupCounted(false);
+	return true;
+}
+
+bool ASimCopterMissionSystemActor::NotifyMissionPersonDied(ASimCopterGroundAgent* Person)
+{
+	if (Person == nullptr ||
+		Person->MissionEventId == INDEX_NONE ||
+		Person->HasMissionResolutionReported())
+	{
+		return false;
+	}
+
+	const SimCopterMissions::FSimCopterMissionRecord* Record =
+		MissionSystem.FindRecord(Person->MissionEventId);
+	if (Record == nullptr || !Record->bActive)
+	{
+		return false;
+	}
+
+	const ESimCopterMissionPassengerKind Kind = Person->GetMissionPassengerKind();
+	int32 Remaining = 0;
+	switch (Kind)
+	{
+	case ESimCopterMissionPassengerKind::Transport:
+		Remaining = Record->TransportPassengers - Record->TransportDelivered -
+			Record->PassengersLost - Record->Casualties;
+		break;
+	case ESimCopterMissionPassengerKind::Medevac:
+		Remaining = Record->MedevacVictims - Record->MedevacDelivered - Record->Casualties;
+		break;
+	case ESimCopterMissionPassengerKind::Rescue:
+		Remaining = Record->RescueVictims - Record->RescueDelivered - Record->Casualties;
+		break;
+	default:
+		break;
+	}
+	if (Remaining <= 0)
+	{
+		return false;
+	}
+
+	MissionSystem.PostEvent(SimCopterMissions::EVT_PersonDied, Person->MissionEventId, 1);
+	Person->SetMissionResolutionReported(true);
+	Person->SetMissionPickupCounted(false);
+	return true;
 }
 
 void ASimCopterMissionSystemActor::NotifyPassengerDroppedFromHelicopter(
@@ -1134,19 +1298,46 @@ void ASimCopterMissionSystemActor::NotifyPassengerDroppedFromHelicopter(
 	ESimCopterMissionPassengerKind Kind,
 	int32 Count)
 {
+	(void)Kind;
 	if (EventId == INDEX_NONE || Count <= 0)
 	{
 		return;
 	}
 
-	if (int32* OnboardCount = MissionPassengersOnboard.Find(EventId))
-	{
-		*OnboardCount = FMath::Max(0, *OnboardCount - Count);
-	}
-
 	// Every kind gives back its pickup credit when it leaves the cabin without being delivered -
 	// otherwise a rescue whose survivors were dumped mid-air could never be finished.
 	MissionSystem.AdjustVictimsPickedUp(EventId, -Count);
+}
+
+bool ASimCopterMissionSystemActor::CanHospitalParamedicBoardPlayerHelicopter(
+	const ASimCopterHelicopterPawn* Helicopter) const
+{
+	if (Helicopter == nullptr)
+	{
+		return false;
+	}
+
+	bool bHasWaitingMedevacPatient = false;
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_Medevac) == 0)
+		{
+			continue;
+		}
+
+		if (Helicopter->GetMissionPassengerCount(
+				Record.EventId,
+				ESimCopterMissionPassengerKind::Medevac) > 0)
+		{
+			return false;
+		}
+
+		const int32 Waiting = Record.MedevacVictims -
+			Record.VictimsPickedUp -
+			Record.Casualties;
+		bHasWaitingMedevacPatient |= Waiting > 0;
+	}
+	return bHasWaitingMedevacPatient;
 }
 
 void ASimCopterMissionSystemActor::GetTransferReadyHelicopters(TArray<ASimCopterHelicopterPawn*>& OutHelicopters) const
@@ -1167,6 +1358,92 @@ void ASimCopterMissionSystemActor::GetTransferReadyHelicopters(TArray<ASimCopter
 			OutHelicopters.Add(Helicopter);
 		}
 	}
+}
+
+int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
+	ASimCopterHelicopterPawn* Helicopter,
+	const int32 EventId,
+	const ESimCopterMissionPassengerKind Kind,
+	const int32 MaxCount,
+	const FVector& DropLocation,
+	const bool bRemoveAfterDelivery)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (Helicopter == nullptr || TrafficSystem == nullptr || MaxCount <= 0)
+	{
+		return 0;
+	}
+
+	int32 Processed = 0;
+	int32 Delivered = 0;
+	while (Processed < MaxCount)
+	{
+		ASimCopterGroundAgent* Person =
+			TrafficSystem->FindPersonAboardForEvent(Helicopter, EventId, Kind);
+		if (Person == nullptr)
+		{
+			break;
+		}
+		if (Kind == ESimCopterMissionPassengerKind::Rescue &&
+			Person->GetBehaviorAttribute(EBhavAttr::State) == 2 &&
+			Person->IsAtBehaviorHomeTile())
+		{
+			// BHAV 303 explicitly refuses to deliver a building/roof rescue on its placement
+			// tile. Preserve that rule in the recovery path so landing at the pickup cannot both
+			// board and instantly complete the mission.
+			break;
+		}
+
+		Person->AlightFromCarrier(); // atomically returns this real person's seat
+		const float Side = (Processed & 1) == 0 ? 1.0f : -1.0f;
+		Person->SetActorLocation(
+			DropLocation + FVector(0.0f, Side * (35.0f + 28.0f * float(Processed)), 0.0f),
+			false);
+		Person->SnapToGroundImmediate();
+		if (NotifyMissionPersonDelivered(Person))
+		{
+			Delivered++;
+		}
+
+		if (bRemoveAfterDelivery)
+		{
+			Person->Destroy();
+		}
+		else
+		{
+			Person->MissionEventId = INDEX_NONE;
+			Person->InitialPersonState = 0;
+			Person->ClearMissionPose();
+			Person->ResumeNormalPedestrianBehavior();
+		}
+		Processed++;
+	}
+
+	// Compatibility for seats created before real-person ownership was introduced (or by a test
+	// fixture). Only the unmatched slots use stand-ins; the normal path never replaces a person.
+	const int32 LegacyRequested = MaxCount - Processed;
+	if (LegacyRequested > 0)
+	{
+		const int32 LegacySlots = FMath::Min(
+			LegacyRequested,
+			Helicopter->GetMissionPassengerCount(EventId, Kind));
+		const int32 Removed = Helicopter->RemoveMissionPassengersForMission(
+			LegacySlots, EventId, Kind);
+		const int32 LegacyDelivered = PostPassengerDelivery(EventId, Kind, Removed);
+		Delivered += LegacyDelivered;
+		if (!bRemoveAfterDelivery && LegacyDelivered > 0)
+		{
+			TrafficSystem->SpawnMissionPeopleAtWorldLocation(
+				LegacyDelivered,
+				DropLocation,
+				INDEX_NONE,
+				0,
+				-1,
+				185.0f);
+		}
+	}
+
+	return Delivered;
 }
 
 void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
@@ -1194,7 +1471,6 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 	};
 
 	TArray<FPassengerMissionSnapshot, TInlineAllocator<8>> PassengerMissions;
-	TSet<int32> ActivePassengerEventIds;
 	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
 	{
 		if (!Record.bActive)
@@ -1208,8 +1484,6 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 		{
 			continue;
 		}
-
-		ActivePassengerEventIds.Add(Record.EventId);
 
 		FPassengerMissionSnapshot Snapshot;
 		Snapshot.EventId = Record.EventId;
@@ -1230,14 +1504,6 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 			Snapshot.DeliverablePassengers = FMath::Max(0, Record.MedevacVictims - Record.MedevacDelivered - Record.Casualties);
 		}
 		PassengerMissions.Add(Snapshot);
-	}
-
-	for (auto It = MissionPassengersOnboard.CreateIterator(); It; ++It)
-	{
-		if (!ActivePassengerEventIds.Contains(It.Key()))
-		{
-			It.RemoveCurrent();
-		}
 	}
 
 	auto IsWorldLocationNearTile = [this, TrafficSystem](const FVector& WorldLocation, int32 TileX, int32 TileY, float RadiusCm) -> bool
@@ -1283,28 +1549,10 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 
 	for (const FPassengerMissionSnapshot& Mission : PassengerMissions)
 	{
-		int32& Onboard = MissionPassengersOnboard.FindOrAdd(Mission.EventId);
 		FVector DropoffLocation = FVector::ZeroVector;
 		const bool bHasDropoffLocation =
 			IsValidMissionTile(Mission.DropoffX, Mission.DropoffY) &&
 			TrafficSystem->TryGetTileCenterWorldLocation(Mission.DropoffX, Mission.DropoffY, DropoffLocation);
-
-		// Medevac patients are unloaded by the hospital EMT (ProcessMedevacHospitalHandoffs), never
-		// by dropping them near the tile, so only transport uses this ground-release path.
-		if (bHasDropoffLocation && Mission.bTransport && Mission.DeliverablePassengers > 0)
-		{
-			const int32 ReleasedOnGround = TrafficSystem->ReleaseMissionPeopleNear(
-				Mission.EventId,
-				DropoffLocation,
-				Mission.DeliverablePassengers,
-				PassengerDropoffRadiusCm,
-				PassengerTransferMaxVerticalDeltaCm);
-			if (ReleasedOnGround > 0)
-			{
-				Onboard = FMath::Max(0, Onboard - ReleasedOnGround);
-				MissionSystem.PostEvent(SimCopterMissions::EVT_TransportDelivered, Mission.EventId, ReleasedOnGround);
-			}
-		}
 
 		if (Mission.bTransport && bHasDropoffLocation)
 		{
@@ -1315,22 +1563,21 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 					continue;
 				}
 
-				const int32 OnHelicopter = Helicopter->GetMissionPassengerCount(Mission.EventId, ESimCopterMissionPassengerKind::Transport);
-				const int32 Delivered = Helicopter->RemoveMissionPassengersForMission(OnHelicopter, Mission.EventId, ESimCopterMissionPassengerKind::Transport);
-				if (Delivered <= 0)
+				const int32 OnHelicopter = Helicopter->GetMissionPassengerCount(
+					Mission.EventId,
+					ESimCopterMissionPassengerKind::Transport);
+				if (OnHelicopter <= 0)
 				{
 					continue;
 				}
 
-				Onboard = FMath::Max(0, Onboard - Delivered);
-				TrafficSystem->SpawnMissionPeopleAtWorldLocation(
-					Delivered,
+				ReleaseMissionPassengersFromHelicopter(
+					Helicopter,
+					Mission.EventId,
+					ESimCopterMissionPassengerKind::Transport,
+					FMath::Min(OnHelicopter, Mission.DeliverablePassengers),
 					Helicopter->GetPassengerDropWorldLocation(),
-					INDEX_NONE,
-					0,
-					-1,
-					185.0f);
-				MissionSystem.PostEvent(SimCopterMissions::EVT_TransportDelivered, Mission.EventId, Delivered);
+					/*bRemoveAfterDelivery*/ false);
 				break;
 			}
 		}
@@ -1347,77 +1594,162 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 				continue;
 			}
 
-			if (!IsWorldLocationNearTile(Helicopter->GetActorLocation(), Mission.PickupX, Mission.PickupY, PassengerPickupRadiusCm))
-			{
-				continue;
-			}
-
-			const int32 SeatsAvailable = FMath::Min(Mission.WaitingPassengers, Helicopter->GetAvailablePassengerSeats());
+			const int32 SeatsAvailable = FMath::Min(
+				Mission.WaitingPassengers,
+				Helicopter->GetAvailablePassengerSeats());
 			if (SeatsAvailable <= 0)
 			{
 				continue;
 			}
 
+			// The passenger's exact event id and physical proximity are authoritative. BHAV 291
+			// follows the player from four tiles away, so by the time they reach a helicopter it
+			// is wrong to reject them merely because the pilot touched down just outside a
+			// radius around the mission record's original tile.
+			const int32 NextSeatIndex = Helicopter->GetMissionPassengerSlots().Num();
+			const FVector CabinDoor = Helicopter->GetPassengerDropWorldLocation(NextSeatIndex);
 			TrafficSystem->GuideMissionPeopleToLocation(
 				Mission.EventId,
-				Helicopter->GetActorLocation(),
-				Helicopter->GetActorLocation(),
+				CabinDoor,
+				CabinDoor,
 				SeatsAvailable,
 				PassengerPickupRadiusCm,
 				PassengerTransferMaxVerticalDeltaCm,
 				PassengerBoardGuidanceSeconds);
 
-			int32 NewPickupCreditCount = 0;
 			// Boarding attaches the passenger to the helicopter and claims their seat as part of
-			// the pickup, so there is no separate AddMissionPassengersForMission here - doing both
-			// booked two seats for one person.
+			// the pickup. BoardCarrier also invokes the idempotent mission action service, so this
+			// loop neither books a second seat nor posts a second pickup event.
 			const int32 PickedUp = TrafficSystem->BoardMissionPeopleTouching(
 				Mission.EventId,
-				Helicopter->GetActorLocation(),
+				CabinDoor,
 				SeatsAvailable,
 				PassengerBoardTouchRadiusCm,
 				PassengerTransferMaxVerticalDeltaCm,
-				&NewPickupCreditCount,
+				nullptr,
 				Helicopter);
 			if (PickedUp <= 0)
 			{
 				continue;
 			}
 
-			const int32 Boarded = PickedUp;
-
-			Onboard += Boarded;
-			const int32 NewPickupCredit = FMath::Clamp(NewPickupCreditCount, 0, Boarded);
-			const int32 Reboarded = Boarded - NewPickupCredit;
-			if (NewPickupCredit > 0)
-			{
-				MissionSystem.PostEvent(SimCopterMissions::EVT_VictimPickedUp, Mission.EventId, NewPickupCredit);
-			}
-			if (Reboarded > 0)
-			{
-				MissionSystem.PostEvent(SimCopterMissions::EVT_VictimPickedUp, Mission.EventId, Reboarded, true);
-			}
 			break;
 		}
 	}
 }
 
-// REMOVED: ASimCopterMissionSystemActor::ProcessRescueTransfers.
-//
-// It ran a second, engine-side copy of the rescue passenger loop: a radius test around the rope
-// end teleported survivors into seats and posted EVT_VictimPickedUp, and a landing test removed
-// them again, spawned replacement pedestrians at the drop point and posted EVT_RescueDelivered.
-// Every one of those steps is in the shipped programs -
-//
-//   BHAV 305 "Rescue try to get on heli or bucket": object class 3 selects the harness, opcode 12
-//   walks the survivor to the rope end and gets them on it, opcode 58 moves them into the cabin
-//   when the bucket is raised, opcode 13 outcome 0 posts EVT_VictimPickedUp;
-//   BHAV 303 "Rescue try get off heli or bucket if appropriate": opcode 17 tests the ground and
-//   performs the alight, opcode 13 outcome 1 posts EVT_RescueDelivered, then they deactivate.
-//
-// - and running both double-counted. The VM owns rescue boarding and delivery now, which is also
-// why the survivors themselves walk away from the drop point instead of being swapped for
-// stand-in pedestrians.
+void ASimCopterMissionSystemActor::ProcessRescueTransfers()
+{
+	// The decoded program still decides how survivors approach the harness and when they want to
+	// leave. This loop is the stability backstop around the same authoritative BoardCarrier /
+	// AlightFromCarrier actions: swimmers and train riders cannot be allowed to strand a mission
+	// forever because one movement opcode misses a moving target.
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr || GetWorld() == nullptr)
+	{
+		return;
+	}
+
+	struct FRescueSnapshot
+	{
+		int32 EventId = INDEX_NONE;
+		int32 Waiting = 0;
+		int32 Deliverable = 0;
+	};
+	TArray<FRescueSnapshot, TInlineAllocator<8>> Missions;
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_RescuePeople) == 0)
+		{
+			continue;
+		}
+		FRescueSnapshot& Snapshot = Missions.AddDefaulted_GetRef();
+		Snapshot.EventId = Record.EventId;
+		Snapshot.Waiting = FMath::Max(
+			0,
+			Record.RescueVictims - Record.VictimsPickedUp - Record.Casualties);
+		Snapshot.Deliverable = FMath::Max(
+			0,
+			Record.RescueVictims - Record.RescueDelivered - Record.Casualties);
+	}
+
+	TArray<AActor*> HelicopterActors;
+	UGameplayStatics::GetAllActorsOfClass(
+		GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
+	for (const FRescueSnapshot& Mission : Missions)
+	{
+		int32 Waiting = Mission.Waiting;
+		for (AActor* Actor : HelicopterActors)
+		{
+			ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
+			if (Helicopter == nullptr)
+			{
+				continue;
+			}
+
+			if (Waiting > 0 && Helicopter->GetAvailablePassengerSeats() > 0)
+			{
+				FVector PickupPoint = Helicopter->GetActorLocation();
+				float PickupRadius = Helicopter->GetSimpleCollisionRadius() + RescueBoardTouchMarginCm;
+				float PickupVertical = Helicopter->GetSimpleCollisionHalfHeight() + RescueBoardTouchMarginCm;
+				bool bUseHarness = false;
+				FVector RopeEnd = FVector::ZeroVector;
+				if (Helicopter->IsHarnessRopeEndSelected() &&
+					Helicopter->TryGetRopeEndWorldLocation(RopeEnd))
+				{
+					bUseHarness = true;
+					PickupPoint = RopeEnd;
+					PickupRadius = RescueHarnessReachCm;
+					PickupVertical = RescueHarnessReachCm;
+				}
+
+				// Direct cabin entry is a landed-helicopter action. Harness boarding remains valid
+				// in flight and claims its cabin seat only when op 58 winds the rider in.
+				if (bUseHarness || Helicopter->CanTransferMissionPassengers())
+				{
+					const int32 Boarded = TrafficSystem->BoardMissionPeopleTouching(
+						Mission.EventId,
+						PickupPoint,
+						bUseHarness ? 1 : FMath::Min(
+							Waiting,
+							Helicopter->GetAvailablePassengerSeats()),
+						PickupRadius,
+						PickupVertical,
+						nullptr,
+						Helicopter,
+						bUseHarness);
+					Waiting = FMath::Max(0, Waiting - Boarded);
+				}
+			}
+
+			if (Mission.Deliverable <= 0 || !Helicopter->CanTransferMissionPassengers())
+			{
+				continue;
+			}
+
+			int32 DropTileX = INDEX_NONE;
+			int32 DropTileY = INDEX_NONE;
+			if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(
+					Helicopter->GetActorLocation(), DropTileX, DropTileY) ||
+				TrafficSystem->IsWaterTile(DropTileX, DropTileY))
+			{
+				continue;
+			}
+
+			const int32 Delivered = ReleaseMissionPassengersFromHelicopter(
+				Helicopter,
+				Mission.EventId,
+				ESimCopterMissionPassengerKind::Rescue,
+				Mission.Deliverable,
+				Helicopter->GetPassengerDropWorldLocation(),
+				/*bRemoveAfterDelivery*/ false);
+			if (Delivered > 0)
+			{
+				break;
+			}
+		}
+	}
+}
 
 void ASimCopterMissionSystemActor::ProcessMedevacHospitalHandoffs(float DeltaSeconds)
 {
@@ -1524,9 +1856,23 @@ void ASimCopterMissionSystemActor::BeginMedevacHandoff(int32 EventId, ASimCopter
 	FVector DoorwayFeet = HeliDoor + Direction * DoorwayDistance;
 	DoorwayFeet.Z = HeliDoor.Z;
 
-	// The EMT waits at the hospital doorway (facing the helicopter), ready to unload it. It is a
-	// worker, not a victim, so it carries no mission id (nothing tries to "rescue" the EMT).
-	ASimCopterGroundAgent* Emt = TrafficSystem->SpawnScriptedMissionAgent(DoorwayFeet, INDEX_NONE, TEXT("Medik"), false, 1.0f);
+	// FUN_004c25b0 explicitly spawns class 0x0c / state 5 on XBLD D1, whose BHAV 801 is the
+	// hospital paramedic. Use that visible roof worker for the deterministic handoff when one is
+	// available; only create a temporary EMT when ambient population did not provide one.
+	ASimCopterGroundAgent* Emt = TrafficSystem->FindNearestAvailablePersonInState(
+		HospitalCenter,
+		5,
+		MedevacHospitalHandoffRadiusCm);
+	const bool bOwnsEmt = Emt == nullptr;
+	if (Emt != nullptr)
+	{
+		Emt->SetMissionScriptedMover();
+	}
+	else
+	{
+		Emt = TrafficSystem->SpawnScriptedMissionAgent(
+			DoorwayFeet, INDEX_NONE, TEXT("Medik"), false, 1.0f);
+	}
 	if (Emt == nullptr)
 	{
 		// Couldn't stage an EMT (e.g. original assets unavailable): don't strand the patients.
@@ -1541,6 +1887,8 @@ void ASimCopterMissionSystemActor::BeginMedevacHandoff(int32 EventId, ASimCopter
 	Handoff.HeliDoorLocation = HeliDoor;
 	Handoff.DoorwayLocation = DoorwayFeet;
 	Handoff.Phase = 0;
+	Handoff.PhaseSeconds = 0.0f;
+	Handoff.bOwnsEmt = bOwnsEmt;
 	Handoff.Doorway = SpawnHospitalDoorway(DoorwayFeet + FVector(0.0f, 0.0f, 37.5f), (-Direction).Rotation());
 	MedevacHandoffs.Add(Handoff);
 }
@@ -1553,6 +1901,7 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 	{
 		return false;
 	}
+	Handoff.PhaseSeconds += DeltaSeconds;
 
 	// Refresh the door target (the helicopter can settle a little after touchdown).
 	Handoff.HeliDoorLocation = Helicopter->GetPassengerDropWorldLocation();
@@ -1575,32 +1924,61 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 		Target.Z = Emt->GetActorLocation().Z;
 		Emt->SetMoveTarget(Target);
 
-		if (FVector::DistSquared2D(Emt->GetActorLocation(), Handoff.HeliDoorLocation) <= FMath::Square(MedevacEmtReachRadiusCm))
+		if (FVector::DistSquared2D(Emt->GetActorLocation(), Handoff.HeliDoorLocation) <= FMath::Square(MedevacEmtReachRadiusCm) ||
+			Handoff.PhaseSeconds >= 12.0f)
 		{
-			const int32 Removed = Helicopter->RemoveMissionPassengersForMission(1, Handoff.EventId, ESimCopterMissionPassengerKind::Medevac);
-			if (Removed <= 0)
+			ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+			ASimCopterGroundAgent* Patient = TrafficSystem != nullptr
+				? TrafficSystem->FindPersonAboardForEvent(
+					Helicopter,
+					Handoff.EventId,
+					ESimCopterMissionPassengerKind::Medevac)
+				: nullptr;
+			if (Patient != nullptr)
 			{
-				return false;
+				Patient->AlightFromCarrier(); // removes this real person's own slot
+				Patient->SetActorLocation(Handoff.HeliDoorLocation, false);
 			}
-			if (int32* OnboardCount = MissionPassengersOnboard.Find(Handoff.EventId))
+			else
 			{
-				*OnboardCount = FMath::Max(0, *OnboardCount - Removed);
+				const int32 Removed = Helicopter->RemoveMissionPassengersForMission(
+					1,
+					Handoff.EventId,
+					ESimCopterMissionPassengerKind::Medevac);
+				if (Removed <= 0)
+				{
+					return false;
+				}
+				Patient = TrafficSystem != nullptr
+					? TrafficSystem->SpawnScriptedMissionAgent(
+						Handoff.HeliDoorLocation, Handoff.EventId, FString(), true, 1.0f)
+					: nullptr;
 			}
 
-			// Lift a patient out of the helicopter, carried by the EMT just like the player carries
-			// them.
-			if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
+			if (Patient == nullptr)
 			{
-				ASimCopterGroundAgent* Patient = TrafficSystem->SpawnScriptedMissionAgent(
-					Handoff.HeliDoorLocation, Handoff.EventId, FString(), true, 1.0f);
-				if (Patient != nullptr)
-				{
-					Patient->SetCarriedBy(Emt->GetRootComponent(), FVector(40.0f, 0.0f, -6.0f), FRotator(0.0f, 90.0f, 88.0f));
-					Handoff.CarriedPatient = Patient;
-				}
+				// The seat was real even if an old save/test supplied no actor. Resolve that one
+				// unit rather than leave an invisible mission dependency.
+				PostPassengerDelivery(
+					Handoff.EventId,
+					ESimCopterMissionPassengerKind::Medevac,
+					1);
+				Handoff.PhaseSeconds = 0.0f;
+				return Helicopter->GetMissionPassengerCount(
+					Handoff.EventId,
+					ESimCopterMissionPassengerKind::Medevac) > 0;
 			}
+
+			// The scripted carry temporarily pauses the patient's own VM. The behavior requested
+			// the action; the stable carrier service owns the transform and the eventual outcome.
+			Patient->SetCarriedBy(
+				Emt->GetRootComponent(),
+				FVector(40.0f, 0.0f, -6.0f),
+				FRotator(0.0f, 90.0f, 88.0f));
+			Handoff.CarriedPatient = Patient;
 			Emt->ClearMoveTarget();
 			Handoff.Phase = 1;
+			Handoff.PhaseSeconds = 0.0f;
 		}
 		return true;
 	}
@@ -1610,20 +1988,22 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 	Target.Z = Emt->GetActorLocation().Z;
 	Emt->SetMoveTarget(Target);
 
-	if (FVector::DistSquared2D(Emt->GetActorLocation(), Handoff.DoorwayLocation) <= FMath::Square(MedevacEmtReachRadiusCm))
+	if (FVector::DistSquared2D(Emt->GetActorLocation(), Handoff.DoorwayLocation) <= FMath::Square(MedevacEmtReachRadiusCm) ||
+		Handoff.PhaseSeconds >= 12.0f)
 	{
 		if (ASimCopterGroundAgent* Patient = Handoff.CarriedPatient.Get())
 		{
+			NotifyMissionPersonDelivered(Patient);
 			Patient->Destroy(); // taken inside the hospital
 		}
 		Handoff.CarriedPatient.Reset();
-		MissionSystem.PostEvent(SimCopterMissions::EVT_MedevacDelivered, Handoff.EventId, 1);
 		Emt->ClearMoveTarget();
 
 		// Keep going while the helicopter still holds patients for this mission.
 		if (Helicopter->GetMissionPassengerCount(Handoff.EventId, ESimCopterMissionPassengerKind::Medevac) > 0)
 		{
 			Handoff.Phase = 0;
+			Handoff.PhaseSeconds = 0.0f;
 		}
 		else
 		{
@@ -1633,15 +2013,45 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 	return true;
 }
 
-void ASimCopterMissionSystemActor::EndMedevacHandoff(FSimCopterMedevacHandoff& Handoff)
+void ASimCopterMissionSystemActor::EndMedevacHandoff(
+	FSimCopterMedevacHandoff& Handoff,
+	const bool bResolvePatients)
 {
 	if (ASimCopterGroundAgent* Patient = Handoff.CarriedPatient.Get())
 	{
+		// A failed animation/path must never erase the real patient. This handoff only exists at
+		// the hospital, so resolve the action directly before removing the carried actor.
+		if (bResolvePatients)
+		{
+			NotifyMissionPersonDelivered(Patient);
+		}
 		Patient->Destroy();
 	}
 	if (ASimCopterGroundAgent* Emt = Handoff.Emt.Get())
 	{
-		Emt->Destroy();
+		if (Handoff.bOwnsEmt)
+		{
+			Emt->Destroy();
+		}
+		else
+		{
+			Emt->ClearMoveTarget();
+			Emt->SetBehaviorGroundSnap(true);
+			Emt->ResumeSuspendedPedestrianBehavior();
+		}
+	}
+	if (bResolvePatients)
+	{
+		if (ASimCopterHelicopterPawn* Helicopter = Handoff.Helicopter.Get())
+		{
+			if (Helicopter->CanTransferMissionPassengers() &&
+				Helicopter->GetMissionPassengerCount(
+					Handoff.EventId,
+					ESimCopterMissionPassengerKind::Medevac) > 0)
+			{
+				DeliverMedevacDirectly(Handoff.EventId, Helicopter);
+			}
+		}
 	}
 	if (AActor* Doorway = Handoff.Doorway.Get())
 	{
@@ -1659,16 +2069,17 @@ void ASimCopterMissionSystemActor::DeliverMedevacDirectly(int32 EventId, ASimCop
 		return;
 	}
 	const int32 Onboard = Helicopter->GetMissionPassengerCount(EventId, ESimCopterMissionPassengerKind::Medevac);
-	const int32 Removed = Helicopter->RemoveMissionPassengersForMission(Onboard, EventId, ESimCopterMissionPassengerKind::Medevac);
-	if (Removed <= 0)
+	if (Onboard <= 0)
 	{
 		return;
 	}
-	if (int32* OnboardCount = MissionPassengersOnboard.Find(EventId))
-	{
-		*OnboardCount = FMath::Max(0, *OnboardCount - Removed);
-	}
-	MissionSystem.PostEvent(SimCopterMissions::EVT_MedevacDelivered, EventId, Removed);
+	ReleaseMissionPassengersFromHelicopter(
+		Helicopter,
+		EventId,
+		ESimCopterMissionPassengerKind::Medevac,
+		Onboard,
+		Helicopter->GetPassengerDropWorldLocation(),
+		/*bRemoveAfterDelivery*/ true);
 }
 
 AActor* ASimCopterMissionSystemActor::SpawnHospitalDoorway(const FVector& CenterLocation, const FRotator& Facing)
@@ -2567,8 +2978,22 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 
 		if (bHasPassengerPickup)
 		{
-			const int32 TransportOnboard = FMath::Max(0, Record.VictimsPickedUp - Record.TransportDelivered - Record.PassengersLost);
-			const int32 TransportWaiting = FMath::Max(0, Record.TransportPassengers - Record.VictimsPickedUp - Record.PassengersLost);
+			int32 TransportOnboard = 0;
+			if (const UWorld* World = GetWorld())
+			{
+				for (TActorIterator<ASimCopterHelicopterPawn> It(const_cast<UWorld*>(World)); It; ++It)
+				{
+					TransportOnboard += It->GetMissionPassengerCount(
+						Record.EventId,
+						ESimCopterMissionPassengerKind::Transport);
+				}
+			}
+			const int32 TransportWaiting = FMath::Max(
+				0,
+				Record.TransportPassengers -
+				Record.TransportDelivered -
+				Record.PassengersLost -
+				TransportOnboard);
 			if (TransportOnboard > 0 && bHasDropoff)
 			{
 				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("DROP"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));

@@ -1307,15 +1307,12 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	// The behaviour VM boards real people and attaches them to this pawn, so dropping one has to
 	// release that person. Spawning a replacement instead - which is all this used to do - left
 	// the original still riding, invisible, holding a seat that had already been given back.
-	if (ASimCopterGroundAgent* Aboard = TrafficSystem->FindPersonAboardForEvent(this, Slot.EventId))
+	if (ASimCopterGroundAgent* Aboard = TrafficSystem->FindPersonAboardForEvent(this, Slot.EventId, Slot.Kind))
 	{
 		const FVector DropLocation = GetPassengerAirDropWorldLocation(SlotIndex);
 		Aboard->AlightFromCarrier(); // hands the seat back on its own
 		Aboard->SetActorLocation(DropLocation, false);
-		if (Slot.Kind == ESimCopterMissionPassengerKind::Transport)
-		{
-			Aboard->SetMissionPickupCreditAwarded(true);
-		}
+		Aboard->SetMissionPickupCounted(false);
 		Aboard->BeginPassengerFall(Slot.EventId, PassengerFallInjuryDistanceCm);
 		SyncPassengerFlightModelCount();
 		RefreshDashboardSeats();
@@ -1328,7 +1325,10 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	}
 
 	// Nobody attached: a seat filled by something other than the VM. Fall back to the stand-in.
-	const int32 SpawnMode = Slot.Kind == ESimCopterMissionPassengerKind::Medevac ? 6 : 0;
+	const int32 SpawnMode =
+		Slot.Kind == ESimCopterMissionPassengerKind::Medevac ? 6 :
+		Slot.Kind == ESimCopterMissionPassengerKind::Rescue ? 1 :
+		4;
 	ASimCopterGroundAgent* DroppedPassenger = TrafficSystem->SpawnFallingMissionPassengerAtWorldLocation(
 		GetPassengerAirDropWorldLocation(SlotIndex),
 		Slot.EventId,
@@ -1339,10 +1339,8 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	{
 		return false;
 	}
-	if (Slot.Kind == ESimCopterMissionPassengerKind::Transport)
-	{
-		DroppedPassenger->SetMissionPickupCreditAwarded(true);
-	}
+	DroppedPassenger->SetMissionPickupCreditAwarded(true);
+	DroppedPassenger->SetMissionPickupCounted(false);
 
 	MissionPassengerSlots.RemoveAt(SlotIndex);
 	SyncPassengerFlightModelCount();

@@ -37,6 +37,10 @@ struct FSimCopterMedevacHandoff
 	FVector DoorwayLocation = FVector::ZeroVector;
 	// 0 = EMT walking to the helicopter to collect a patient; 1 = carrying one to the doorway.
 	uint8 Phase = 0;
+	float PhaseSeconds = 0.0f;
+	// False when this is the decoded state-5 hospital paramedic, which is returned to its VM
+	// after the deterministic handoff rather than destroyed.
+	bool bOwnsEmt = false;
 };
 
 // How the mission layer is running the current city. The original shell offered exactly two session
@@ -129,7 +133,14 @@ public:
 	bool CanIgniteCrashSite(int32 TileX, int32 TileY) const { return MissionSystem.CanIgniteCrashSite(TileX, TileY); }
 	// True while the mission layer still holds a live record for this event - what a crash wreck
 	// or a rescued boat watches to know when to clear itself away.
-	bool IsMissionEventActive(int32 EventId) const { return MissionSystem.FindRecord(EventId) != nullptr; }
+	bool IsMissionEventActive(int32 EventId) const
+	{
+		const SimCopterMissions::FSimCopterMissionRecord* Record = MissionSystem.FindRecord(EventId);
+		return Record != nullptr && Record->bActive;
+	}
+	// FUN_004a88e0 returns the live record's +0x30 coordinate pair. Object class 0 uses this
+	// destination in BHAV 292 before a transport passenger requests opcode 17 (alight).
+	bool TryGetMissionDestinationTile(int32 EventId, int32& OutTileX, int32& OutTileY) const;
 	// OR a type bit onto a running record, the way EVT_DebrisCreated/MedevacVictimAdded do.
 	void PromoteMissionType(int32 EventId, int32 TypeBits) { MissionSystem.PromoteRecordType(EventId, TypeBits); }
 	int32 GetMissionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
@@ -145,8 +156,17 @@ public:
 	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override;
 	virtual bool TryResolveTransportSpawnTile(int32 OriginX, int32 OriginY, int32& OutTileX, int32& OutTileY) override;
 	virtual bool TrySpawnMissionPerson(int32 Mode, int32 SubState, int32 TileX, int32 TileY, int32 EventId) override;
-	void NotifyMedevacVictimBoarded(int32 EventId, int32 Count);
+	// Stable action boundary used by both the decoded VM and engine-side recovery paths. A real
+	// person owns idempotency; these methods are the only place passenger outcomes reach mission
+	// counters.
+	bool NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person);
+	bool NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person);
+	bool NotifyMissionPersonDied(ASimCopterGroundAgent* Person);
 	void NotifyPassengerDroppedFromHelicopter(int32 EventId, ESimCopterMissionPassengerKind Kind, int32 Count);
+	// BHAV 263 only reaches BHAV 269's "get on starting object" arm after it finds no medevac
+	// victim aboard. The mission layer adds the missing temporal context: the helper ride is useful
+	// only while an active medevac still has a patient waiting to be retrieved.
+	bool CanHospitalParamedicBoardPlayerHelicopter(const ASimCopterHelicopterPawn* Helicopter) const;
 	bool CreatePlayerCausedMedevacForVictim(ASimCopterGroundAgent* Victim);
 	bool ConvertDroppedTransportPassengerToMedevac(ASimCopterGroundAgent* Victim, int32 SourceTransportEventId);
 
@@ -443,7 +463,6 @@ private:
 	TSharedPtr<SVerticalBox> MessageLogBox;
 	TSharedPtr<SWidget> MissionMarkerWidget;
 	TSharedPtr<SConstraintCanvas> MissionMarkerCanvas;
-	TMap<int32, int32> MissionPassengersOnboard;
 	TArray<FSimCopterMedevacHandoff> MedevacHandoffs;
 
 	TSharedPtr<SWidget> MegaphonePromptWidget;
@@ -465,6 +484,19 @@ private:
 	void ProcessPassengerTransfers();
 	// The rescue half of the transfer loop: winch water/roof/train survivors aboard and set them
 	// down on dry land (FUN_004ccf50 action 1 posts EVT_RescueDelivered for spawn modes 1/2/0x13).
+	void ProcessRescueTransfers();
+	int32 PostPassengerDelivery(
+		int32 EventId,
+		ESimCopterMissionPassengerKind Kind,
+		int32 RequestedCount,
+		bool bSilent = false);
+	int32 ReleaseMissionPassengersFromHelicopter(
+		ASimCopterHelicopterPawn* Helicopter,
+		int32 EventId,
+		ESimCopterMissionPassengerKind Kind,
+		int32 MaxCount,
+		const FVector& DropLocation,
+		bool bRemoveAfterDelivery);
 
 	TWeakObjectPtr<class ASimCopterAmbientVehiclesActor> CachedAmbientVehicles;
 	// Runs the EMT patient-unload sequence at hospitals for landed helicopters carrying medevac
@@ -474,7 +506,7 @@ private:
 	void BeginMedevacHandoff(int32 EventId, ASimCopterHelicopterPawn* Helicopter, const FVector& HospitalCenter);
 	// Returns false when the handoff is finished/aborted and should be cleaned up.
 	bool AdvanceMedevacHandoff(FSimCopterMedevacHandoff& Handoff, float DeltaSeconds);
-	void EndMedevacHandoff(FSimCopterMedevacHandoff& Handoff);
+	void EndMedevacHandoff(FSimCopterMedevacHandoff& Handoff, bool bResolvePatients = true);
 	void DeliverMedevacDirectly(int32 EventId, ASimCopterHelicopterPawn* Helicopter);
 	AActor* SpawnHospitalDoorway(const FVector& CenterLocation, const FRotator& Facing);
 	void GetTransferReadyHelicopters(TArray<ASimCopterHelicopterPawn*>& OutHelicopters) const;

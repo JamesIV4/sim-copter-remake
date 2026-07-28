@@ -63,7 +63,7 @@ namespace EBhavAttr
 // Full derivation in Docs/scratchpad/ghidra/criminal_ai_decode_20260728.md.
 namespace EBhavObjectClass
 {
-	constexpr int32 MyMissionCoords = 0;  // FUN_004a88e0(person+0x10a) - the mission's tile
+	constexpr int32 MyMissionCoords = 0;  // FUN_004a88e0(person+0x10a) -> record +0x30, SecondaryX/Y
 	constexpr int32 AlreadySelected = 1;  // whatever is already in the selected slot
 	constexpr int32 PlayerHelicopter = 2; // DAT_005040d0+0xa4
 	// DAT_005040d0+0xbc. Named by opcode 58's own assert text ("master is neither harness nor
@@ -312,6 +312,10 @@ public:
 
 	// Op 74, FUN_004cba70: DAT_004f9740, the difficulty tier the mission layer scales counts by.
 	virtual int32 GetDifficultyTier() const { return 1; }
+
+	// Op 73, FUN_004cb9c0 -> FUN_004ca4f0(State, 0): true when a person in State exists but is
+	// hidden from ordinary object searches (person+0x152 == 0), normally because they are riding.
+	virtual bool HasHiddenPersonInState(int32 State) const { return false; }
 
 	// Op 13, FUN_004caac0 -> FUN_004ccf50: turn a program outcome code into a mission event on
 	// the record this person belongs to. Outcome 6 re-posts the person's own tile as the mission
