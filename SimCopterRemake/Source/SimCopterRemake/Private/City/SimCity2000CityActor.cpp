@@ -806,6 +806,42 @@ FOriginalBridgeDispatch GetOriginalBridgeDispatch(uint8 BuildingId, bool bTileIs
 	}
 }
 
+// Rail network tile dispatch transcribed from FUN_0047c0c0 (XBLD 0x2c..0x3e). Unlike the roads
+// above it there is no flat/sloped variant test - it is a flat table - but it is emphatically NOT
+// the identity, which is the trap: the rail meshes are named RL44..RL58 after the SimCity piece
+// number, and their GEO *object ids* are permuted across 0x2e..0x35 relative to those names. XBLD
+// 0x2e (piece 46, a slope) lives at object id 0x32, while XBLD 0x32 (piece 50, a diagonal) lives
+// at object id 0x2e. The heuristic XBLD->mesh table resolves by object id, so it draws a diagonal
+// where a slope belongs and a slope where a diagonal belongs - which breaks the line visibly at
+// every grade change. XBLD 0x3b..0x3e (rail crossing under a road) have no RL object of their own
+// and reuse the two straight pieces.
+int32 GetOriginalRailTileObjectId(uint8 BuildingId)
+{
+	switch (BuildingId)
+	{
+	case 0x2c: return 0x2c; // RL44 straight
+	case 0x3c: return 0x2c;
+	case 0x3e: return 0x2c;
+	case 0x2d: return 0x2d; // RL45 straight, other axis
+	case 0x3b: return 0x2d;
+	case 0x3d: return 0x2d;
+	case 0x2e: return 0x32; // RL46..RL49: the four slope pieces
+	case 0x2f: return 0x33;
+	case 0x30: return 0x34;
+	case 0x31: return 0x35;
+	case 0x32: return 0x2e; // RL50..RL53: the four diagonal (corner) pieces
+	case 0x33: return 0x2f;
+	case 0x34: return 0x30;
+	case 0x35: return 0x31;
+	case 0x36: return 0x36; // RL54..RL58: junctions and crossings, identity
+	case 0x37: return 0x37;
+	case 0x38: return 0x38;
+	case 0x39: return 0x39;
+	case 0x3a: return 0x3a;
+	default: return INDEX_NONE;
+	}
+}
+
 // FUN_00482890 selects the original ground/base object for building tiles that
 // need a second scene object. The low XZON nibble chooses residential/commercial/
 // industrial base art; the building footprint size chooses 1x1..4x4.
@@ -3844,9 +3880,16 @@ void ASimCity2000CityActor::RebuildCity()
 					const int32 NaturalObjectId = bNaturalObjectTile
 						? GetOriginalNaturalObjectId(Tile.Building)
 						: GetOriginalRubbleObjectId(Tile.Building);
+					// The rail band is dispatched by id like the bridges, for the permutation
+					// reason spelled out on GetOriginalRailTileObjectId.
+					const int32 RailObjectId = (!bUseBridgeDispatch && Tile.Building >= 0x2c && Tile.Building <= 0x3e)
+						? GetOriginalRailTileObjectId(Tile.Building)
+						: INDEX_NONE;
 					const int32 PrimaryObjectId = BridgeDispatch.PrimaryObjectId != INDEX_NONE
 						? BridgeDispatch.PrimaryObjectId
-						: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId);
+						: (RailObjectId != INDEX_NONE
+							? RailObjectId
+							: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId));
 					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
 						? BridgeDispatch.SecondaryObjectId
 						: BuildingDispatch.SecondaryObjectId;

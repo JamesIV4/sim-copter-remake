@@ -972,6 +972,12 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(int32 SpawnMode, int32 
 	{
 		Person->SetMissionInjuredPose();
 	}
+	else if (SpawnMode == 2)
+	{
+		// Fire-rescue victims are uninjured, so they keep milling about on their program - but
+		// every time it leaves them standing they wave for the helicopter.
+		Person->SetMissionAwaitingRescue(true);
+	}
 	PedestrianAgents.Add(Person);
 	return true;
 }
@@ -1267,6 +1273,129 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
 	}
 
 	return Spawned;
+}
+
+int32 ASimCopterTrafficSystemActor::SpawnMissionSwimmersAtWorldLocation(
+	int32 Count,
+	const FVector& WorldLocation,
+	int32 EventId,
+	int32 SpawnMode,
+	float SpreadRadiusCm,
+	bool bFloatOnWaterSurface,
+	TArray<ASimCopterGroundAgent*>* OutSpawned)
+{
+	if (GroundAgentClass == nullptr || Count <= 0 || GetWorld() == nullptr)
+	{
+		return 0;
+	}
+
+	// The surface the survivors bob on. ASimCity2000CityActor keeps the same conditioned water
+	// height the bucket samples, so they float at the level the boat sits at.
+	float SurfaceZ = WorldLocation.Z;
+	if (bFloatOnWaterSurface)
+	{
+		if (const ASimCity2000CityActor* City = ResolveSourceCityActor())
+		{
+			uint8 TerrainClass = 0;
+			float SampledZ = 0.0f;
+			if (City->TryGetWaterGameplaySurface(WorldLocation, SampledZ, TerrainClass))
+			{
+				SurfaceZ = SampledZ;
+			}
+		}
+	}
+
+	const float ClampedSpread = FMath::Max(40.0f, SpreadRadiusCm);
+	const float GoldenAngleRadians = 2.39996323f;
+	int32 Spawned = 0;
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		const float Angle = float(Index) * GoldenAngleRadians;
+		const float Radius = ClampedSpread * FMath::Sqrt((float(Index) + 0.5f) / float(Count));
+		FVector SpawnLocation = WorldLocation + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
+		if (bFloatOnWaterSurface)
+		{
+			// Shoulders at the waterline: the capsule sits mostly under the surface.
+			SpawnLocation.Z = SurfaceZ + 20.0f;
+		}
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+			GroundAgentClass,
+			SpawnLocation,
+			FRotator(0.0f, RandomStream.FRandRange(0.0f, 360.0f), 0.0f),
+			SpawnParams);
+		if (Person == nullptr)
+		{
+			continue;
+		}
+
+		Person->InitialPersonState = SpawnMode;
+		const FString MeshName = PedestrianMeshNames.Num() > 0
+			? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)]
+			: FString();
+		Person->MissionEventId = EventId;
+		Person->ConfigureAgent(
+			ESimCopterGroundAgentKind::Pedestrian,
+			MeshName,
+			ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
+			PedestrianSpeedCmPerSec);
+
+		if (bRequireOriginalPopulationMeshes && !Person->IsUsingOriginalMesh())
+		{
+			UE_LOG(LogSimCopterTrafficSystem, Warning,
+				TEXT("Discarding water-rescue survivor because original mesh '%s' could not be loaded."), *MeshName);
+			Person->Destroy();
+			continue;
+		}
+
+		// They tread water where they are: no ground snap (there is no walkable ground under
+		// them) and no behaviour program, which is what the original's spawn-mode-1 people do
+		// until the harness reaches them.
+		Person->SetMissionScriptedMover();
+		// Both callers are rescue victims with nowhere to go - treading water beside the capsized
+		// boat, or stranded on the runaway train's roof - so they wave for the helicopter.
+		Person->SetMissionAwaitingRescue(true);
+		Person->SetActorLocation(SpawnLocation, false);
+		PedestrianAgents.Add(Person);
+		if (OutSpawned != nullptr)
+		{
+			OutSpawned->Add(Person);
+		}
+		Spawned++;
+	}
+
+	return Spawned;
+}
+
+int32 ASimCopterTrafficSystemActor::RemoveMissionPeople(int32 EventId)
+{
+	if (EventId == INDEX_NONE)
+	{
+		return 0;
+	}
+
+	int32 Removed = 0;
+	for (int32 Index = PedestrianAgents.Num() - 1; Index >= 0; --Index)
+	{
+		ASimCopterGroundAgent* Agent = PedestrianAgents[Index].Get();
+		if (Agent == nullptr)
+		{
+			PedestrianAgents.RemoveAtSwap(Index);
+			continue;
+		}
+		if (Agent->MissionEventId != EventId || Agent->IsMissionCarried())
+		{
+			continue;
+		}
+		Agent->Destroy();
+		PedestrianAgents.RemoveAtSwap(Index);
+		Removed++;
+	}
+	return Removed;
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnFallingMissionPassengerAtWorldLocation(
@@ -3763,8 +3892,18 @@ void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCop
 			continue;
 		}
 
+		// Anyone who belongs to a mission is not ambient population and is never culled for
+		// distance: the mission layer owns them and takes them away itself (rescued, delivered,
+		// killed, or removed with the vehicle they were on). Culling them stranded every victim
+		// of a mission that starts away from the player - a train rescue puts its passengers on
+		// a train that can be anywhere on the map, and they were being destroyed the same frame.
+		if (Agent->MissionEventId != INDEX_NONE)
+		{
+			continue;
+		}
+
 		float ActiveDespawnRadiusCm = DespawnRadiusCm;
-		if (Agent->GetAgentKind() == ESimCopterGroundAgentKind::Pedestrian && Agent->MissionEventId == INDEX_NONE)
+		if (Agent->GetAgentKind() == ESimCopterGroundAgentKind::Pedestrian)
 		{
 			ActiveDespawnRadiusCm = FMath::Max(1.0f, OriginalAmbientDespawnRadiusTiles * ActiveTileSize);
 		}

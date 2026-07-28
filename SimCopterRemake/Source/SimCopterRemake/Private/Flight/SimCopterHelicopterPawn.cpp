@@ -27,6 +27,7 @@
 #include "Debug/SSimCopterHelicopterDebugPanel.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterParticleFX.h"
@@ -1201,6 +1202,16 @@ bool ASimCopterHelicopterPawn::CanExitHelicopter() const
 bool ASimCopterHelicopterPawn::CanTransferMissionPassengers() const
 {
 	return bIsLanded && GroundClearanceCm <= GroundContactTolerance + 60.0f;
+}
+
+bool ASimCopterHelicopterPawn::TryGetRopeEndWorldLocation(FVector& OutWorldLocation) const
+{
+	if (!bRopeDeployed || RopeNodeWorldPositions.Num() == 0)
+	{
+		return false;
+	}
+	OutWorldLocation = RopeNodeWorldPositions.Last();
+	return true;
 }
 
 int32 ASimCopterHelicopterPawn::GetAvailablePassengerSeats() const
@@ -3654,6 +3665,30 @@ void ASimCopterHelicopterPawn::SimForceCarFire()
 	{
 		MissionSystem->SimForceCarFire();
 	}
+}
+
+void ASimCopterHelicopterPawn::SimStartMission(int32 TypeMask)
+{
+	if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
+	{
+		const int32 EventId = MissionSystem->StartMissionNow(TypeMask);
+		UE_LOG(LogSimCopterHelicopterPawn, Display,
+			TEXT("SimStartMission: mask 0x%x -> event %d."), TypeMask, EventId);
+	}
+}
+
+void ASimCopterHelicopterPawn::SimDumpAmbientVehicles()
+{
+	if (ASimCopterMissionSystemActor* MissionSystem = ResolveMissionSystem())
+	{
+		if (ASimCopterAmbientVehiclesActor* Vehicles = MissionSystem->ResolveAmbientVehicles())
+		{
+			UE_LOG(LogSimCopterHelicopterPawn, Display,
+				TEXT("SimDumpAmbientVehicles: %s"), *Vehicles->GetStatusLine());
+			return;
+		}
+	}
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("SimDumpAmbientVehicles: unavailable."));
 }
 
 void ASimCopterHelicopterPawn::SimSwitchHeli(int32 TypeIndex)

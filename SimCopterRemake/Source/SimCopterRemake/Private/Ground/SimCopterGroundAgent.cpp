@@ -330,6 +330,12 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 	// Anim binds map straight onto the figure clips (same 4-char mnemonics as ARLU).
 	if (!BehaviorContext.PendingAnimMnemonic.IsEmpty())
 	{
+		// A victim still waiting on a pickup waves whenever their program leaves them standing;
+		// the moment it walks them somewhere the walk clip takes back over.
+		if (bMissionWavesWhenIdle && BehaviorContext.PendingAnimMnemonic == TEXT("NoMo"))
+		{
+			BehaviorContext.PendingAnimMnemonic = TEXT("Wave");
+		}
 		if (bUsingPedestrianFigure && BehaviorContext.PendingAnimMnemonic != FigureMnemonic)
 		{
 			RebuildFigureClip(BehaviorContext.PendingAnimMnemonic);
@@ -1061,8 +1067,11 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 	}
 
 	const bool bWalking = SpeedAlpha > 0.12f;
+	// Off-program victims (treading water beside the capsized boat, riding the runaway train's
+	// roof) have no behavior VM to bind clips for them, so the wave is chosen here instead.
+	const bool bWaving = !bWalking && bMissionWavesWhenIdle;
 	{
-		const FString Desired = bWalking ? TEXT("1Wal") : TEXT("NoMo");
+		const FString Desired = bWalking ? TEXT("1Wal") : (bWaving ? TEXT("Wave") : TEXT("NoMo"));
 		if (Desired != FigureMnemonic)
 		{
 			RebuildFigureClip(Desired);
@@ -1073,8 +1082,9 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 		return;
 	}
 
-	// Idle clips tick at half rate, matching the original's lazier off-screen cadence.
-	FigureFrameTime += DeltaSeconds * (bWalking ? FigureFrameRate : FigureFrameRate * 0.5f);
+	// Idle clips tick at half rate, matching the original's lazier off-screen cadence; a wave is
+	// a deliberate signal, so it plays at full rate.
+	FigureFrameTime += DeltaSeconds * ((bWalking || bWaving) ? FigureFrameRate : FigureFrameRate * 0.5f);
 	const int32 DesiredFrame = FMath::FloorToInt(FigureFrameTime) % FigureFrameCount;
 	if (DesiredFrame != FigureCurrentFrame)
 	{
@@ -1314,6 +1324,7 @@ void ASimCopterGroundAgent::SetMissionInjuredPose()
 void ASimCopterGroundAgent::ClearMissionPose()
 {
 	bMissionStationary = false;
+	bMissionWavesWhenIdle = false;
 	bMissionCarried = false;
 	bSnapToGround = true;
 	ClearForcedPedestrianFigureClip();
@@ -1338,6 +1349,7 @@ void ASimCopterGroundAgent::ResumeNormalPedestrianBehavior()
 
 	bMissionStationary = false;
 	bMissionCarried = false;
+	bMissionWavesWhenIdle = false;
 	ClearMoveTarget();
 	CurrentVelocityCmPerSec = FVector::ZeroVector;
 	ExternalVelocityCmPerSec = FVector::ZeroVector;

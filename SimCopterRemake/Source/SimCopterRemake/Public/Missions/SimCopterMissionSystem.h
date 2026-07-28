@@ -413,9 +413,12 @@ public:
 	// Mask 4 / 0x100: mark an idle plane / the train as crashing.
 	virtual bool TryActivatePlaneCrash(int32 EventId) { return false; }
 	virtual bool TryActivateTrainCrash(int32 EventId) { return false; }
-	// Mask 0x90 / 0x110: activate the boat / place the train, then report the
-	// object tile so the core can spawn victims there.
-	virtual bool TryActivateBoatRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY) { return false; }
+	// Mask 0x90 (FUN_004b1aa0): place the capsized boat in open water near the placer's tile,
+	// spawn its survivors, and report the boat's own tile - the original does the same thing by
+	// posting EVT_SetPrimaryCoords from inside the boat code.
+	virtual bool TryActivateBoatRescue(int32 EventId, int32 Timer1616, int32 TileX, int32 TileY, int32& OutTileX, int32& OutTileY) { return false; }
+	// Mask 0x110 (FUN_004b7fd0): put the train on the rails - seeded from a random map tile, not
+	// the placer's - spawn its trapped passengers, and report the train's tile.
 	virtual bool TryActivateTrainRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY) { return false; }
 	// Mask 0x4000: activate a speeder car (speed = base + rand % range in the
 	// original; the car subsystem owns that roll).
@@ -530,6 +533,11 @@ public:
 
 	void AdjustVictimsPickedUp(int32 EventId, int32 Delta);
 
+	// ORs type bits onto a live record. The original's masks are not fixed at creation either -
+	// EVT_DebrisCreated ORs 0x8, EVT_MedevacVictimAdded ORs 0x20, EVT_TransportPassengerAdded ORs
+	// 0x40 - so a crash that leaves burning wreckage joins the 0x400 family the same way.
+	void PromoteRecordType(int32 EventId, int32 TypeBits);
+
 	// FUN_004a50c0: one water particle landing on a burning cell. Every flame in the
 	// cell has its burn countdown pushed out by 3.0s (water stalls the climb), and any
 	// flame whose local offset is within Fire Radius of the impact loses
@@ -568,6 +576,10 @@ public:
 	FSimCopterMsvcRand& GetRand() { return Rand; }
 	void RebuildCumulativeWeights();                 // FUN_004a6d20
 	static bool IsFireSuitableTile(int32 XbldId);    // FUN_004a5f60 tile test
+	// FUN_004b2cd0's crash-site test: the tile will take a fire and there is none already burning
+	// inside FUN_004a6860's spiral. A plane that hits a tile passing this starts a building fire
+	// instead of becoming a mission itself.
+	bool CanIgniteCrashSite(int32 TileX, int32 TileY) const;
 	// FUN_004a92f0 LAB_004a95ff: the tile carries a building a mission can be attached to.
 	// Medevac, Transport and every on-foot criminal are placed through it.
 	static bool IsMissionBuildingTile(int32 XbldId);

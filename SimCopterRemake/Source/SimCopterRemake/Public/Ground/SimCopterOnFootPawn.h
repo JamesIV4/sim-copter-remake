@@ -200,6 +200,21 @@ private:
 	UFUNCTION(Exec)
 	void SimBoardHelicopter();
 
+	// Force one mission of the given type mask (SimCopterMissions::EType) into the running
+	// session, for verifying a type without waiting for the scheduler to roll it.
+	UFUNCTION(Exec)
+	void SimStartMission(int32 TypeMask);
+
+	// Log what the plane/boat/train pools are doing right now.
+	UFUNCTION(Exec)
+	void SimDumpAmbientVehicles();
+
+	// Jump beside one of them: 0 train, 1 capsized boat, 2 plane, 3 nearest wreck. Reading a
+	// position out of the log and teleporting to it is always a second or two stale, which is
+	// enough for a running train to have left.
+	UFUNCTION(Exec)
+	void SimGotoAmbient(int32 Which);
+
 	void UpdateLookYaw(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateBodySprite(float DeltaSeconds);

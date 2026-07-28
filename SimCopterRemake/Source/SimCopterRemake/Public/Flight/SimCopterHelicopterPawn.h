@@ -429,6 +429,11 @@ public:
 	bool IsRopeDeployed() const { return bRopeDeployed; }
 	int32 GetRopeFirstActiveNode() const { return RopeFirstActiveNode; }
 
+	// World position of the last rope node - the bucket or the harness, whichever is on the rope.
+	// False while the rope is stowed. Rescue pickups reach for this rather than for the airframe,
+	// which is what makes the harness worth deploying.
+	bool TryGetRopeEndWorldLocation(FVector& OutWorldLocation) const;
+
 	// Which object the rope end currently renders (heli[0x32] vs heli[0x33]).
 	bool IsHarnessRopeEndSelected() const { return bHarnessRopeEndSelected; }
 	bool HasHarnessRider() const { return bHarnessRiderAttached; }
@@ -1005,6 +1010,12 @@ private:
 	void SimForceFire();
 	UFUNCTION(Exec)
 	void SimForceCarFire();
+	// Force one mission of the given SimCopterMissions::EType mask into the running session.
+	UFUNCTION(Exec)
+	void SimStartMission(int32 TypeMask);
+	// Log what the plane/boat/train pools are doing.
+	UFUNCTION(Exec)
+	void SimDumpAmbientVehicles();
 
 	// Tool/model debug console commands. These duplicate the debug panel so the transaction
 	// can also be exercised headlessly (automation, -game smoke tests).
