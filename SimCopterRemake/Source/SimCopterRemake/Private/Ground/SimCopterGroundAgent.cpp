@@ -220,6 +220,14 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	// which is what stopped cops finding criminals.
 	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
 	BehaviorContext.ResetToState(InitialPersonState);
+	// person+0x188/+0x18a: where this person started, which opcode 87 compares against.
+	{
+		int32 HomeX = INDEX_NONE;
+		int32 HomeY = INDEX_NONE;
+		BehaviorHomeTile = TryGetCurrentTileCoordinate(HomeX, HomeY)
+			? FIntPoint(HomeX, HomeY)
+			: FIntPoint(INDEX_NONE, INDEX_NONE);
+	}
 	ResetBehaviorProgramOverride();
 	LastAppliedBehaviorFacing = INDEX_NONE;
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
@@ -320,7 +328,12 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		}
 		if (Result == EBhavStepResult::Stopped || BehaviorContext.bRequestDespawn)
 		{
-			// Original 'Disappear'/deactivate path: hide and let the spawner recycle us.
+			// Original 'Disappear'/deactivate path: hide and let the spawner recycle us. Give any
+			// seat back first, or a delivered passenger would leave the cabin counting them.
+			if (bClaimedPassengerSeat || BehaviorCarrier.IsValid())
+			{
+				AlightFromCarrier();
+			}
 			bBehaviorActive = false;
 			SetActorHiddenInGame(true);
 			SetLifeSpan(1.0f);
@@ -632,6 +645,42 @@ bool ASimCopterGroundAgent::TryGetPlayerTileProbe(
 	return true;
 }
 
+ASimCopterHelicopterPawn* ASimCopterGroundAgent::ResolvePlayerHelicopter() const
+{
+	// DAT_005040d0+0xa4: the player's airframe, whether or not they are currently in it.
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+	if (ASimCopterHelicopterPawn* Piloted = Cast<ASimCopterHelicopterPawn>(UGameplayStatics::GetPlayerPawn(World, 0)))
+	{
+		return Piloted;
+	}
+	// On foot: the machine they stepped out of is the one parked nearest to them.
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(World, 0);
+	const FVector From = PlayerPawn != nullptr ? PlayerPawn->GetActorLocation() : GetActorLocation();
+	TArray<AActor*> Helicopters;
+	UGameplayStatics::GetAllActorsOfClass(World, ASimCopterHelicopterPawn::StaticClass(), Helicopters);
+	ASimCopterHelicopterPawn* Best = nullptr;
+	float BestDistanceSq = TNumericLimits<float>::Max();
+	for (AActor* Actor : Helicopters)
+	{
+		ASimCopterHelicopterPawn* Candidate = Cast<ASimCopterHelicopterPawn>(Actor);
+		if (Candidate == nullptr)
+		{
+			continue;
+		}
+		const float DistanceSq = FVector::DistSquared(From, Candidate->GetActorLocation());
+		if (DistanceSq < BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			Best = Candidate;
+		}
+	}
+	return Best;
+}
+
 bool ASimCopterGroundAgent::SelectObjectOfClass(
 	FSimCopterPersonContext& Context,
 	const int32 ObjectClass,
@@ -645,6 +694,7 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	// Classes that are a place rather than a thing fill this instead.
 	FVector FoundLocation = FVector::ZeroVector;
 	bool bFoundLocation = false;
+	bool bFoundHarness = false;
 
 	switch (ObjectClass)
 	{
@@ -654,16 +704,41 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 		FoundLocation = Context.SelectedLocation;
 		break;
 	case EBhavObjectClass::PlayerHelicopter:
-		// The original's DAT_005040d0+0xa4 is specifically the helicopter. The remake uses
-		// whichever body the player is in so that the on-foot avatar is also something people
-		// notice; opcode 14's altitude test below still insists on an actual helicopter.
-		Found = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+		// DAT_005040d0+0xa4 is the player's helicopter, and it exists whether or not they are
+		// sitting in it - so this must find the airframe, not "whatever body the player is in".
+		// BHAV 291 probes it at one tile to decide a transport passenger may climb aboard.
+		Found = ResolvePlayerHelicopter();
 		break;
 	case EBhavObjectClass::PlayerSpotlight:
 		if (TrafficSystem != nullptr && TrafficSystem->TryGetSpotlightGroundLocation(FoundLocation))
 		{
 			bFoundLocation = true;
 		}
+		break;
+	case EBhavObjectClass::Harness:
+	{
+		// The rope end, and only while the harness is the thing on it - a bucket is not something
+		// you climb onto. The actor is the helicopter, because that is what a rider ends up
+		// attached to; bSelectionIsHarness records which of the two was asked for.
+		ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
+		FVector RopeEnd = FVector::ZeroVector;
+		if (Helicopter != nullptr &&
+			Helicopter->IsHarnessRopeEndSelected() &&
+			Helicopter->TryGetRopeEndWorldLocation(RopeEnd))
+		{
+			Found = Helicopter;
+			FoundLocation = RopeEnd;
+			bFoundLocation = true;
+			bFoundHarness = true;
+		}
+		break;
+	}
+	case EBhavObjectClass::PlayerAvatar:
+		// DAT_00506444 is the player's own person record, which follows them into the cockpit -
+		// it is "wherever the player is", not "the on-foot avatar". BHAV 291 probes it at four
+		// tiles, which is what makes a waiting transport party walk over to a helicopter that is
+		// still in the air and wave at it.
+		Found = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 		break;
 	case EBhavObjectClass::MedevacVictim:
 		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, -2, 6) : nullptr;
@@ -690,7 +765,7 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 		break;
 	}
 
-	if (Found != nullptr)
+	if (Found != nullptr && !bFoundHarness)
 	{
 		FoundLocation = Found->GetActorLocation();
 		bFoundLocation = true;
@@ -717,9 +792,78 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 
 	Context.SelectedObject = Found;
 	Context.SelectedLocation = FoundLocation;
+	Context.bSelectionIsHarness = bFoundHarness;
 	Context.bHasSelection = true;
 	OutTileDistance = FMath::Max(FMath::Abs(TheirX - MyX), FMath::Abs(TheirY - MyY));
 	return true;
+}
+
+void ASimCopterGroundAgent::UpdateDescendingHelicopterAvoidance()
+{
+	// NOT FOUND IN THE SHIPPED PROGRAMS - reconstructed. No BHAV a transport fare or an ambient
+	// pedestrian runs contains a "get out from under the helicopter" branch: only the criminal
+	// programs test the airframe's altitude (BHAV 1173 rec[10], opcode 14 case 1). But standing
+	// under a descending helicopter until it lands on you is not what the game does, so the
+	// trigger is remake-side while the pieces are the original's - opcode 14 case 1's altitude
+	// test, and BHAV 904 "Rxn: Run away (dir already set)" pushed through the same reaction path
+	// every tool interaction uses.
+	if (!bBehaviorActive || AgentKind != ESimCopterGroundAgentKind::Pedestrian ||
+		bMissionCarried || bMissionStationary || bBehaviorMoveSuspended || BehaviorCarrier.IsValid())
+	{
+		return;
+	}
+	if (BehaviorContext.ActiveReactionProgramId == SimCopterInteraction::RunAwayReactionProgram)
+	{
+		return; // already scrambling
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
+	if (TrafficSystem == nullptr || Helicopter == nullptr)
+	{
+		return;
+	}
+
+	// Only when it is coming down on top of me: same tile, and low enough that the next few
+	// metres of descent land on my head. The altitude band is opcode 14 case 1's, doubled - the
+	// point is to move before the skids arrive, not as they touch.
+	int32 MyX = INDEX_NONE;
+	int32 MyY = INDEX_NONE;
+	int32 HeliX = INDEX_NONE;
+	int32 HeliY = INDEX_NONE;
+	const FVector HelicopterLocation = Helicopter->GetActorLocation();
+	if (!TryGetCurrentTileCoordinate(MyX, MyY) ||
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(HelicopterLocation, HeliX, HeliY) ||
+		MyX != HeliX || MyY != HeliY)
+	{
+		return;
+	}
+
+	const float UnitCm = FMath::Max(1.0f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
+	const float ClearanceCm =
+		(HelicopterLocation.Z - Helicopter->GetSimpleCollisionHalfHeight()) -
+		(GetActorLocation().Z + GetCapsuleHalfHeightCm());
+	if (ClearanceCm > UnitCm * 8.0f)
+	{
+		return;
+	}
+
+	// Face away from it, then run. BHAV 904 moves on the facing it is given, which is why the
+	// original's name for it is "dir already set".
+	Context_FaceAwayFromHelicopter(HelicopterLocation);
+	PushBehaviorReaction(SimCopterInteraction::RunAwayReactionProgram);
+}
+
+void ASimCopterGroundAgent::Context_FaceAwayFromHelicopter(const FVector& HelicopterLocation)
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+	const FVector Away = GetActorLocation() + (GetActorLocation() - HelicopterLocation).GetSafeNormal2D() * 200.0f;
+	BehaviorContext.Attributes[EBhavAttr::Facing] =
+		uint16(TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), Away) & 7);
 }
 
 bool ASimCopterGroundAgent::EvaluateProximityTest(const FSimCopterPersonContext& Context, const int32 TestIndex) const
@@ -782,7 +926,22 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	// step or the chase walks to where it used to be.
 	if (const AActor* Target = Context.SelectedObject.Get())
 	{
-		Context.SelectedLocation = Target->GetActorLocation();
+		if (Context.bSelectionIsHarness)
+		{
+			// Walk to the rope end, not to the airframe hanging above it.
+			const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Target);
+			FVector RopeEnd = FVector::ZeroVector;
+			if (Helicopter == nullptr || !Helicopter->TryGetRopeEndWorldLocation(RopeEnd))
+			{
+				Context.ClearSelection();
+				return ESimCopterBehaviorStepResult::NoTarget;
+			}
+			Context.SelectedLocation = RopeEnd;
+		}
+		else
+		{
+			Context.SelectedLocation = Target->GetActorLocation();
+		}
 	}
 	else if (!TrafficSystem->TryGetSpotlightGroundLocation(Context.SelectedLocation))
 	{
@@ -801,9 +960,21 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
+	// FUN_004ca940 arrives on the same tile within 5 original units of vertical separation. The
+	// original measures between two ground-referenced positions; the remake keeps an actor origin
+	// mid-body, so the comparison has to be feet-to-doorsill or a landed helicopter is permanently
+	// "too high" to climb into - 5 units is only about 31 cm.
 	const float HeightGateCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 5.0f;
-	if (MyX == TheirX && MyY == TheirY &&
-		FMath::Abs(Context.SelectedLocation.Z - GetActorLocation().Z) < HeightGateCm)
+	float TargetReferenceZ = Context.SelectedLocation.Z;
+	if (!Context.bSelectionIsHarness)
+	{
+		if (const AActor* TargetActor = Context.SelectedObject.Get())
+		{
+			TargetReferenceZ -= TargetActor->GetSimpleCollisionHalfHeight();
+		}
+	}
+	const float MyFeetZ = GetActorLocation().Z - GetCapsuleHalfHeightCm();
+	if (MyX == TheirX && MyY == TheirY && FMath::Abs(TargetReferenceZ - MyFeetZ) < HeightGateCm)
 	{
 		return ESimCopterBehaviorStepResult::Arrived;
 	}
@@ -894,6 +1065,449 @@ void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context,
 	Missions->PostMissionEvent(EventCode, MissionEventId, 1, false);
 }
 
+int32 ASimCopterGroundAgent::GetCurrentTileBuildingId() const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	if (TrafficSystem == nullptr || !TryGetCurrentTileCoordinate(FileX, FileY))
+	{
+		return INDEX_NONE;
+	}
+	return TrafficSystem->GetXbldTileId(FileX, FileY);
+}
+
+bool ASimCopterGroundAgent::IsCurrentTileServiceable() const
+{
+	// FUN_004ccc40 = FUN_004c9cc0 (is anything on this tile) && FUN_004c9dc0(tile class). The
+	// remake answers the second half only: the walkable classes an on-foot crew member can stand
+	// and work on, which is the part the paramedic program branches on.
+	const int32 TileClass = GetCurrentTileClass();
+	return TileClass == 7 || TileClass == 10 || TileClass == 11 || TileClass == 12 || TileClass == 13;
+}
+
+bool ASimCopterGroundAgent::IsRidingCarrier(const FSimCopterPersonContext& Context) const
+{
+	// person+0x1a0. Either the VM put them on something or the mission layer did.
+	return BehaviorCarrier.IsValid() || bMissionCarried;
+}
+
+bool ASimCopterGroundAgent::CanAlightHere() const
+{
+	// FUN_004c9bc0: the tile has to be one people may occupy, and the person has to be within
+	// 6 original units of the ground under them. That second half is what stops a passenger
+	// stepping out of a helicopter at altitude.
+	//
+	// The tile half is deliberately broad: anywhere that is not open water. Restricting it to the
+	// walkable pedestrian classes meant a helicopter set down on a helipad, a roof or a road
+	// shoulder failed the test and nobody could ever get out - which is what stranded the train
+	// survivors aboard.
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (TrafficSystem != nullptr &&
+		TryGetCurrentTileCoordinate(TileX, TileY) &&
+		TrafficSystem->IsWaterTile(TileX, TileY))
+	{
+		return false;
+	}
+
+	if (TrafficSystem == nullptr)
+	{
+		return true;
+	}
+
+	float SurfaceZ = 0.0f;
+	const FVector Location = GetActorLocation();
+	if (!TryGetWalkSurfaceZAt(Location, SurfaceZ) &&
+		!TrafficSystem->TryGetTerrainWorldZAtWorldLocation(Location, SurfaceZ))
+	{
+		return false;
+	}
+
+	const float HeightCm = Location.Z - GetCapsuleHalfHeightCm() - SurfaceZ;
+	return HeightCm < TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 6.0f;
+}
+
+bool ASimCopterGroundAgent::TryAlightHere()
+{
+	if (!CanAlightHere())
+	{
+		return false;
+	}
+	if (BehaviorCarrier.IsValid() || bBehaviorMoveSuspended)
+	{
+		AlightFromCarrier();
+	}
+	return true;
+}
+
+ESimCopterMissionPassengerKind ASimCopterGroundAgent::GetMissionPassengerKind() const
+{
+	// The same split FUN_004ccf50 case 1 makes on person+0x148 when it decides which "delivered"
+	// event a person is worth: states 1/2/0x13 are rescues, 4 is a transport fare, 6 a medevac.
+	switch (int32(BehaviorContext.Attributes[EBhavAttr::State]))
+	{
+	case 4:  return ESimCopterMissionPassengerKind::Transport;
+	case 6:  return ESimCopterMissionPassengerKind::Medevac;
+	default: return ESimCopterMissionPassengerKind::Rescue;
+	}
+}
+
+bool ASimCopterGroundAgent::BoardCarrier(AActor* NewCarrier, const bool bAsHarnessRider)
+{
+	if (NewCarrier == nullptr || NewCarrier == this)
+	{
+		return false;
+	}
+	if (BehaviorCarrier.Get() == NewCarrier && bRidingHarness == bAsHarnessRider)
+	{
+		return true;
+	}
+
+	ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(NewCarrier);
+	if (Helicopter != nullptr && bAsHarnessRider)
+	{
+		// One person on the hook. The harness is a single sling in the original and a queue of
+		// survivors all riding the same rope end is nonsense; whoever grabs it first has it until
+		// they are lifted into the cabin or let go.
+		if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+		{
+			if (TrafficSystem->FindHarnessRider(Helicopter, this) != nullptr)
+			{
+				return false;
+			}
+		}
+	}
+	if (Helicopter != nullptr && !bAsHarnessRider)
+	{
+		// Riding inside means occupying a seat. Refuse when the cabin is full, exactly as the
+		// original's seat check does - otherwise the VM would board people the seat window can
+		// never show and the mission counters would drift.
+		if (Helicopter->GetAvailablePassengerSeats() <= 0 ||
+			Helicopter->AddMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind()) <= 0)
+		{
+			return false;
+		}
+		bClaimedPassengerSeat = true;
+		SetActorHiddenInGame(true);
+	}
+
+	AlightAttachmentOnly();
+	BehaviorCarrier = NewCarrier;
+	bRidingHarness = bAsHarnessRider;
+
+	bBehaviorMoveSuspended = true;
+	bSnapToGround = false;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	ClearMoveTarget();
+	SetActorEnableCollision(false);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (USceneComponent* CarrierRoot = NewCarrier->GetRootComponent())
+	{
+		AttachToComponent(CarrierRoot, FAttachmentTransformRules::KeepWorldTransform);
+	}
+	return true;
+}
+
+void ASimCopterGroundAgent::UpdateCarriedTransform()
+{
+	AActor* Carrier = BehaviorCarrier.Get();
+	if (Carrier == nullptr)
+	{
+		return;
+	}
+	if (!bRidingHarness)
+	{
+		// Attached to the carrier's root: the attachment already moves us.
+		return;
+	}
+	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Carrier);
+	FVector RopeEnd = FVector::ZeroVector;
+	if (Helicopter == nullptr || !Helicopter->TryGetRopeEndWorldLocation(RopeEnd))
+	{
+		// The rope has been wound all the way in with someone on it. They come inside - that is
+		// the point of the winch - not onto the ground under the helicopter, which is what
+		// letting go used to do. Opcode 58 normally gets here first; this is the backstop for
+		// when the rope stows between behaviour ticks.
+		if (!TransferFromHarnessToCabin())
+		{
+			AlightFromCarrier();
+		}
+		return;
+	}
+	SetActorLocation(RopeEnd - FVector(0.0f, 0.0f, GetCapsuleHalfHeightCm()), false);
+}
+
+void ASimCopterGroundAgent::AlightAttachmentOnly()
+{
+	if (GetAttachParentActor() != nullptr)
+	{
+		DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	}
+}
+
+bool ASimCopterGroundAgent::AlightFromCarrier()
+{
+	AActor* Carrier = BehaviorCarrier.Get();
+	if (bClaimedPassengerSeat)
+	{
+		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Carrier))
+		{
+			Helicopter->RemoveMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind());
+		}
+		bClaimedPassengerSeat = false;
+	}
+
+	AlightAttachmentOnly();
+	BehaviorCarrier.Reset();
+	bRidingHarness = false;
+	bBehaviorMoveSuspended = false;
+	bSnapToGround = true;
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
+	SnapToGroundImmediate();
+	return true;
+}
+
+bool ASimCopterGroundAgent::TransferFromHarnessToCabin()
+{
+	AActor* Carrier = BehaviorCarrier.Get();
+	if (Carrier == nullptr || !bRidingHarness)
+	{
+		return false;
+	}
+	bRidingHarness = false;
+	BehaviorCarrier.Reset();
+	return BoardCarrier(Carrier, /*bAsHarnessRider*/ false);
+}
+
+bool ASimCopterGroundAgent::BoardSelection(FSimCopterPersonContext& Context)
+{
+	// FUN_004cc900. The harness is a place on the rope rather than an actor of its own, so a
+	// harness selection carries the helicopter as the actor and the rope end as the location.
+	AActor* Target = Context.SelectedObject.Get();
+	if (Target == nullptr)
+	{
+		return false;
+	}
+	const bool bHarness = Context.bSelectionIsHarness;
+	return BoardCarrier(Target, bHarness);
+}
+
+bool ASimCopterGroundAgent::PutSelectedPersonOnMe(FSimCopterPersonContext& Context)
+{
+	// FUN_004cc6a0: the selected person is teleported onto me and I become their carrier.
+	ASimCopterGroundAgent* Person = Cast<ASimCopterGroundAgent>(Context.SelectedObject.Get());
+	if (Person == nullptr || Person == this)
+	{
+		return false;
+	}
+	Person->SetActorLocation(GetActorLocation(), false);
+	return Person->BoardCarrier(this, /*bAsHarnessRider*/ false);
+}
+
+bool ASimCopterGroundAgent::DropSelectedPerson(FSimCopterPersonContext& Context)
+{
+	ASimCopterGroundAgent* Person = Cast<ASimCopterGroundAgent>(Context.SelectedObject.Get());
+	if (Person == nullptr)
+	{
+		return false;
+	}
+	return Person->AlightFromCarrier();
+}
+
+bool ASimCopterGroundAgent::SelectCarriedPerson(FSimCopterPersonContext& Context, const bool bAlsoDropThem)
+{
+	// FUN_004ca650 scans the person array for whoever's carrier is me.
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	ASimCopterGroundAgent* Carried = TrafficSystem != nullptr ? TrafficSystem->FindPersonCarriedBy(*this) : nullptr;
+	if (Carried == nullptr)
+	{
+		Context.ClearSelection();
+		return false;
+	}
+	if (bAlsoDropThem)
+	{
+		Carried->AlightFromCarrier();
+	}
+	Context.SelectedObject = Carried;
+	Context.SelectedLocation = Carried->GetActorLocation();
+	Context.bSelectionIsHarness = false;
+	Context.bHasSelection = true;
+	return true;
+}
+
+bool ASimCopterGroundAgent::IsCarryingPerson() const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	return TrafficSystem != nullptr && TrafficSystem->FindPersonCarriedBy(*this) != nullptr;
+}
+
+bool ASimCopterGroundAgent::GetOnHelicopterIfHarnessRaised(FSimCopterPersonContext& Context)
+{
+	// FUN_004cccd0. Not on the harness at all -> nothing to do, answer true (the original's two
+	// "can ignore" arms). On the harness with the bucket still down -> also true, keep riding.
+	// On the harness once it is raised -> climb into the cabin, and the answer is whether that
+	// worked.
+	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get());
+	if (Helicopter == nullptr || !bRidingHarness)
+	{
+		return true;
+	}
+	// "bucket not raised - can ignore": while the rope is still out the rider stays on it.
+	if (Helicopter->IsRopeDeployed())
+	{
+		return true;
+	}
+	return TransferFromHarnessToCabin();
+}
+
+bool ASimCopterGroundAgent::IsCarrierPlayerHelicopter() const
+{
+	const AActor* Carrier = BehaviorCarrier.Get();
+	return Carrier != nullptr && !bRidingHarness && Carrier->IsA<ASimCopterHelicopterPawn>();
+}
+
+bool ASimCopterGroundAgent::IsCarrierHarness() const
+{
+	return BehaviorCarrier.IsValid() && bRidingHarness;
+}
+
+bool ASimCopterGroundAgent::IsOnHomeTile() const
+{
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	return BehaviorHomeTile.X != INDEX_NONE &&
+		TryGetCurrentTileCoordinate(FileX, FileY) &&
+		FIntPoint(FileX, FileY) == BehaviorHomeTile;
+}
+
+bool ASimCopterGroundAgent::SelectMedevacVictimAboardPlayer(FSimCopterPersonContext& Context)
+{
+	// FUN_004cc830 walks the player's passenger list for a person in state 6. The remake keeps
+	// the same people attached to the helicopter, so the search is over who it is carrying.
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (TrafficSystem == nullptr || PlayerPawn == nullptr)
+	{
+		Context.ClearSelection();
+		return false;
+	}
+
+	ASimCopterGroundAgent* Victim = TrafficSystem->FindMedevacPassengerAboard(PlayerPawn);
+	if (Victim == nullptr)
+	{
+		Context.ClearSelection();
+		return false;
+	}
+	Context.SelectedObject = Victim;
+	Context.SelectedLocation = Victim->GetActorLocation();
+	Context.bSelectionIsHarness = false;
+	Context.bHasSelection = true;
+	return true;
+}
+
+void ASimCopterGroundAgent::MessageOwningVehicle(const int32 MessageId)
+{
+	// FUN_0049aed0(person+0x170, msg). The remake stamps the deploying vehicle on the crew member
+	// so a boarded officer or paramedic can release it; anything else is a no-op, as it is in the
+	// original for a person with no vehicle.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+	{
+		TrafficSystem->NotifyCrewMemberMessagedVehicle(*this, MessageId);
+	}
+}
+
+void ASimCopterGroundAgent::ThrowProjectileAtSelection(FSimCopterPersonContext& Context, const bool bAtSelection)
+{
+	// FUN_004cbfd0 / FUN_004cc130 both bind "Thro" and hand a projectile to FUN_0048e0b0. The
+	// remake has no rioter projectile object, so only the animation half is reproduced - which is
+	// the visible half, and stops a rioter standing inert where the original throws something.
+	if (bAtSelection)
+	{
+		FaceSelectedObject(Context);
+	}
+	Context.PendingAnimMnemonic = TEXT("Thro");
+}
+
+bool ASimCopterGroundAgent::BeginFallAndDie(FSimCopterPersonContext& Context)
+{
+	// FUN_004cbbc0's terminal arm: come off whatever is holding you, land, post EVT_PersonDied and
+	// hold the "Dead" pose.
+	AlightFromCarrier();
+	PostMissionOutcome(Context, 10);
+	SetMissionInjuredPose();
+	return true;
+}
+
+bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context)
+{
+	// FUN_004ca700: person+0x170 names the emergency vehicle this person rode in on; with none,
+	// the original falls back to the player's helicopter. The remake does not yet stamp the
+	// vehicle id on a deployed crew member, so only the fallback arm is live.
+	int32 Distance = 0;
+	return SelectObjectOfClass(Context, EBhavObjectClass::PlayerHelicopter, Distance);
+}
+
+bool ASimCopterGroundAgent::IsSelectionPlayerHelicopter(const FSimCopterPersonContext& Context) const
+{
+	const AActor* Selected = Context.SelectedObject.Get();
+	return Selected != nullptr && Selected == UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+}
+
+bool ASimCopterGroundAgent::IsSelectionWithinUnits(const FSimCopterPersonContext& Context, const int32 Units) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (!Context.bHasSelection || TrafficSystem == nullptr)
+	{
+		return false;
+	}
+	// FUN_004ccad0 / FUN_004cca60 both sum the three absolute axis deltas in original units.
+	const FVector Delta = Context.SelectedLocation - GetActorLocation();
+	const float UnitCm = FMath::Max(1.0f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
+	const float ManhattanUnits = (FMath::Abs(Delta.X) + FMath::Abs(Delta.Y) + FMath::Abs(Delta.Z)) / UnitCm;
+	return ManhattanUnits < float(Units);
+}
+
+int32 ASimCopterGroundAgent::GetPlayerHelicopterSpeed() const
+{
+	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(
+		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (Helicopter == nullptr || TrafficSystem == nullptr)
+	{
+		return 0;
+	}
+	// BHAV 264's thresholds (250 / 125) are in the original's units, so convert out of centimetres.
+	const float UnitCm = FMath::Max(1.0f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
+	return FMath::RoundToInt(Helicopter->GetVelocity().Size() / UnitCm);
+}
+
+int32 ASimCopterGroundAgent::GetDifficultyTier() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		if (const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(const_cast<UWorld*>(World), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			return Missions->GetMissionDifficultyTier();
+		}
+	}
+	return 1;
+}
+
 void ASimCopterGroundAgent::OnUnknownOpcode(int32 Opcode)
 {
 	if (!ReportedUnknownOpcodes.Contains(Opcode))
@@ -926,6 +1540,25 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 		UpdateJankyAnimation(DeltaSeconds);
 		return;
 	}
+	if (bBehaviorMoveSuspended)
+	{
+		// Riding something: the carrier owns the transform, but the walker keeps running - that
+		// is how a passenger decides to get off again.
+		if (!BehaviorCarrier.IsValid())
+		{
+			AlightFromCarrier();
+		}
+		else
+		{
+			CurrentVelocityCmPerSec = FVector::ZeroVector;
+			ExternalVelocityCmPerSec = FVector::ZeroVector;
+			UpdateCarriedTransform();
+			UpdateOriginalBehavior(DeltaSeconds);
+			UpdateJankyAnimation(DeltaSeconds);
+			return;
+		}
+	}
+	UpdateDescendingHelicopterAvoidance();
 	UpdateOriginalBehavior(DeltaSeconds);
 	UpdateMovement(DeltaSeconds);
 	if (bSnapToGround)
@@ -1576,13 +2209,38 @@ void ASimCopterGroundAgent::ClearForcedPedestrianFigureClip()
 void ASimCopterGroundAgent::SetMissionInjuredPose()
 {
 	bMissionStationary = true;
-	bBehaviorActive = false;
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
 	CurrentVelocityCmPerSec = FVector::ZeroVector;
 	ExternalVelocityCmPerSec = FVector::ZeroVector;
 	ClearMoveTarget();
-	SetForcedPedestrianFigureClip(TEXT("Dead"));
+
+	// An injured person is a medevac victim, and a medevac victim is BHAV 800 "Medevac initbhav":
+	// it binds "Dead" itself and then runs 280 "Medevac sim", which decays their health (281),
+	// kills them when it runs out (312), posts EVT_VictimPickedUp when they notice they are
+	// aboard, and posts EVT_MedevacDelivered once they are set down on a hospital tile (282,
+	// which is opcode 25 against XBLD 209 plus opcode 56). Freezing the VM here - which is what
+	// this used to do - threw all of that away and left a prop lying on the pavement.
+	if (bBehaviorActive && BehaviorModel.IsValid())
+	{
+		ClearForcedPedestrianFigureClip();
+		BehaviorContext.ResetToState(6);
+		// attr34 is the victim's health: BHAV 281 "Medevac adjust health" drains it and BHAV 280
+		// rec[11] kills them the moment it drops below 1. Nothing in people.df seeds it and no
+		// write to person+0x184 exists in the executable, so the original must seed it outside
+		// the data we have. Left at 0 they die on their first behaviour tick, which is exactly
+		// what "the mission starts and instantly ends" looked like. 58 is the one health-shaped
+		// constant in the medevac tree (BHAV 800 rec[4] sets attr38 to it) - ASSUMED, not decoded.
+		if (BehaviorContext.Attributes[EBhavAttr::MedevacHealth] == 0)
+		{
+			BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = 58;
+		}
+	}
+	else
+	{
+		SetForcedPedestrianFigureClip(TEXT("Dead"));
+	}
+
 	if (!bUsingPedestrianFigure && VisualRoot != nullptr)
 	{
 		VisualRoot->SetRelativeRotation(FRotator(0.0f, 0.0f, 86.0f));
@@ -1919,8 +2577,18 @@ bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const
 				// tiles can slope, so grant the extra headroom only there.
 				const int32 TileClass = TrafficSystem->GetPeopleTileClassAtWorldLocation(CurrentLocation);
 				const bool bBuildingTile = TileClass >= 10 && TileClass <= 13;
-				StartZ = TerrainWorldZ + PedestrianGroundProbeStartAboveTerrainCm +
+				const float StreetLevelStartZ = TerrainWorldZ + PedestrianGroundProbeStartAboveTerrainCm +
 					(bBuildingTile ? 0.0f : PedestrianGroundProbeSlopeHeadroomCm);
+				// That clamp only describes someone who is walking the street. Anyone whose feet
+				// are already above it is up there deliberately - the hospital paramedic and the
+				// aerial cop standing on their helipad, a passenger dropped out of the cabin,
+				// anyone still mid-fall - and probing from beneath their own feet is what pulled
+				// them straight down through the roof into the building. Starting at the feet
+				// leaves a street walker's probe exactly where it was (their feet rest on the
+				// street, so this resolves to the same height) and lets an elevated person take
+				// the roof under them as real ground.
+				const float FeetZ = CurrentLocation.Z - HalfHeight;
+				StartZ = FMath::Max(StreetLevelStartZ, FeetZ + PedestrianGroundProbeStartAboveTerrainCm);
 				TerrainFallbackZ = TerrainWorldZ;
 				bHasTerrainClamp = true;
 			}

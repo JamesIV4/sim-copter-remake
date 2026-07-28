@@ -952,15 +952,16 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 		return false;
 	}
 
-	Person->InitialPersonState = bTransportPassenger ? 0 : SpawnMode;
+	// A transport fare is person state 4, which is BHAV 750 "Transport initbhav" -> 291 "Transport
+	// go to avatar/get on heli". It used to be forced to state 0 (plain ambient) and given an
+	// ambient behaviour class, which is why a waiting party wandered off like any other pedestrian
+	// and never so much as looked at the helicopter: that was correct only while an engine-side
+	// pickup teleported them into a seat, and that pickup is gone. The original passes no
+	// behaviour class at all here - FUN_004c3eb0(-1, 4, ...).
+	Person->InitialPersonState = SpawnMode;
 	if (PersonState != -1)
 	{
 		Person->SetInitialBehaviorClass(PersonState);
-	}
-	else if (bTransportPassenger)
-	{
-		const int32 TileClass = GetPeopleTileClassAtWorldLocation(SpawnLocation);
-		Person->SetInitialBehaviorClass(FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(TileClass, PeopleRandomState));
 	}
 
 	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
@@ -1031,7 +1032,8 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
 	int32 MaxCount,
 	float RadiusCm,
 	float MaxVerticalDeltaCm,
-	int32* OutNewPickupCreditCount)
+	int32* OutNewPickupCreditCount,
+	AActor* BoardOnto)
 {
 	if (OutNewPickupCreditCount != nullptr)
 	{
@@ -1092,6 +1094,26 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
 
 		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
 		{
+			if (BoardOnto != nullptr)
+			{
+				// Put them in the cabin instead of deleting them. Destroying the actor meant that
+				// once someone was "aboard" there was no longer a person to put back down: the
+				// seat window's drop spawned a stand-in, the real passenger was already gone, and
+				// a medevac patient could never stand on a hospital tile to report themselves
+				// delivered. BoardCarrier claims the seat itself.
+				if (!Agent->BoardCarrier(BoardOnto, /*bAsHarnessRider*/ false))
+				{
+					continue;
+				}
+				if (!Agent->HasMissionPickupCreditAwarded())
+				{
+					Agent->SetMissionPickupCreditAwarded(true);
+					NewPickupCreditCount++;
+				}
+				PickedUp++;
+				continue;
+			}
+
 			if (!Agent->HasMissionPickupCreditAwarded())
 			{
 				Agent->SetMissionPickupCreditAwarded(true);
@@ -1196,7 +1218,8 @@ int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(
 	int32 MaxCount,
 	float TouchRadiusCm,
 	float MaxVerticalDeltaCm,
-	int32* OutNewPickupCreditCount)
+	int32* OutNewPickupCreditCount,
+	AActor* BoardOnto)
 {
 	if (MaxCount <= 0)
 	{
@@ -1207,7 +1230,8 @@ int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(
 		return 0;
 	}
 
-	return PickUpMissionPeopleNear(EventId, WorldLocation, MaxCount, TouchRadiusCm, MaxVerticalDeltaCm, OutNewPickupCreditCount);
+	return PickUpMissionPeopleNear(
+		EventId, WorldLocation, MaxCount, TouchRadiusCm, MaxVerticalDeltaCm, OutNewPickupCreditCount, BoardOnto);
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm)
@@ -1395,10 +1419,14 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionSwimmersAtWorldLocation(
 			continue;
 		}
 
-		// They tread water where they are: no ground snap (there is no walkable ground under
-		// them) and no behaviour program, which is what the original's spawn-mode-1 people do
-		// until the harness reaches them.
-		Person->SetMissionScriptedMover();
+		// These run the shipped rescue program (states 1 and 0x13 both map to BHAV 700), which is
+		// what actually gets them aboard: 305 walks them onto the harness and 303 gets them off
+		// again. They used to be inert scripted movers, which was fine only while an engine-side
+		// pickup existed to teleport them into a seat.
+		//
+		// What stays remake-side is the ground snap: there is no walkable surface under a swimmer
+		// or a roof rider, so their owner keeps them where they belong until they board.
+		Person->SetBehaviorGroundSnap(false);
 		// Both callers are rescue victims with nowhere to go - treading water beside the capsized
 		// boat, or stranded on the runaway train's roof - so they wave for the helicopter.
 		Person->SetMissionAwaitingRescue(true);
@@ -1461,6 +1489,96 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestBehaviorPerson(
 	}
 
 	return Best;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const
+{
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr && Agent != &Carrier && !Agent->IsActorBeingDestroyed() &&
+			Agent->GetBehaviorCarrier() == &Carrier)
+		{
+			return Agent;
+		}
+	}
+	return nullptr;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMedevacPassengerAboard(const AActor* Carrier) const
+{
+	if (Carrier == nullptr)
+	{
+		return nullptr;
+	}
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		// person+0x148 == 6 is the medevac victim state; the original also accepts anyone flagged
+		// injured (+0x15e), which the remake models as the injured mission pose.
+		if (Agent != nullptr && !Agent->IsActorBeingDestroyed() &&
+			Agent->GetBehaviorCarrier() == Carrier &&
+			Agent->GetBehaviorAttribute(EBhavAttr::State) == 6)
+		{
+			return Agent;
+		}
+	}
+	return nullptr;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonAboardForEvent(
+	const AActor* Carrier,
+	const int32 EventId) const
+{
+	if (Carrier == nullptr)
+	{
+		return nullptr;
+	}
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr && !Agent->IsActorBeingDestroyed() &&
+			Agent->GetBehaviorCarrier() == Carrier &&
+			(EventId == INDEX_NONE || Agent->MissionEventId == EventId))
+		{
+			return Agent;
+		}
+	}
+	return nullptr;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindHarnessRider(
+	const AActor* Helicopter,
+	const ASimCopterGroundAgent* Except) const
+{
+	if (Helicopter == nullptr)
+	{
+		return nullptr;
+	}
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr && Agent != Except && !Agent->IsActorBeingDestroyed() &&
+			Agent->GetBehaviorCarrier() == Helicopter && Agent->IsRidingHarness())
+		{
+			return Agent;
+		}
+	}
+	return nullptr;
+}
+
+void ASimCopterTrafficSystemActor::NotifyCrewMemberMessagedVehicle(
+	const ASimCopterGroundAgent& CrewMember,
+	const int32 MessageId)
+{
+	// FUN_0049aed0(person+0x170, msg). The remake does not carry the original's message ids, and
+	// guessing that any message means "I am done here" sent units home the moment a crew member
+	// hit one of opcode 61's twelve sites - including the ones that fire long before boarding.
+	// That is what stopped Clear working: by the time the player pressed it there was nothing left
+	// at the spotlight to release. The unit's own on-scene tick already sends it home once the
+	// officer is actually aboard, so this stays a no-op until the message ids are decoded.
+	(void)CrewMember;
+	(void)MessageId;
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestServiceVehicleAgent(
@@ -5498,6 +5616,28 @@ bool ASimCopterTrafficSystemActor::HasAmbientPedestrianNearTile(int32 TileX, int
 	return false;
 }
 
+bool ASimCopterTrafficSystemActor::HasPedestrianInPersonStateNearTile(int32 TileX, int32 TileY, float RadiusTiles, int32 PersonState) const
+{
+	FVector TileCenter = FVector::ZeroVector;
+	if (!TryGetTileCenterWorldLocation(TileX, TileY, TileCenter))
+	{
+		return false;
+	}
+
+	const float RadiusSq = FMath::Square(FMath::Max(0.5f, RadiusTiles) * ActiveTileSize);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr &&
+			Agent->InitialPersonState == PersonState &&
+			FVector::DistSquared2D(Agent->GetActorLocation(), TileCenter) <= RadiusSq)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool ASimCopterTrafficSystemActor::TryRunOriginalAmbientPedestrianScan(const FVector& FocusLocation, int32 MaxSpawnAttempts)
 {
 	if (GetWorld() == nullptr || GroundAgentClass == nullptr || PedestrianNodes.Num() == 0 || MaxSpawnAttempts <= 0)
@@ -5643,7 +5783,17 @@ int32 ASimCopterTrafficSystemActor::TrySpawnSpecialBuildingPeople(int32 TileX, i
 	{
 		return 0;
 	}
-	if (HasAmbientPedestrianNearTile(TileX, TileY, float(FMath::Max(1, GetBuildingFootprintSize(TileX, TileY)))))
+	// Both roof buildings are tested for their own crew rather than for any pedestrian at all:
+	// their man stands on the roof, so a passer-by on the pavement below is not a duplicate of
+	// him, and letting one veto the spawn left busy cities with permanently empty helipads. The
+	// ball park and the plaza do put their people on the ground, where any pedestrian standing
+	// there really is the duplicate this test is for.
+	const float FootprintTiles = float(FMath::Max(1, GetBuildingFootprintSize(TileX, TileY)));
+	const bool bRoofCrewBuilding = BuildingId == 0xD1 || BuildingId == 0xD2;
+	const bool bAlreadyStaffed = bRoofCrewBuilding
+		? HasPedestrianInPersonStateNearTile(TileX, TileY, FootprintTiles, BuildingId == 0xD1 ? 5 : 7)
+		: HasAmbientPedestrianNearTile(TileX, TileY, FootprintTiles);
+	if (bAlreadyStaffed)
 	{
 		return 0;
 	}
@@ -5654,14 +5804,16 @@ int32 ASimCopterTrafficSystemActor::TrySpawnSpecialBuildingPeople(int32 TileX, i
 		int32 InitialState,
 		int32 ProgramId,
 		const FVector2D* ExplicitOffset,
-		int32 ClothesOffset)
+		int32 ClothesOffset,
+		bool bOnRoof = false)
 	{
 		if (AttemptsRemaining <= 0 || PedestrianAgents.Num() >= MaxPedestrianAgents)
 		{
 			return;
 		}
 		--AttemptsRemaining;
-		if (TrySpawnOriginalPersonAtTile(TileX, TileY, BehaviorClass, InitialState, ProgramId, ExplicitOffset, ClothesOffset))
+		if (TrySpawnOriginalPersonAtTile(
+			TileX, TileY, BehaviorClass, InitialState, ProgramId, ExplicitOffset, ClothesOffset, bOnRoof))
 		{
 			++Spawned;
 		}
@@ -5694,9 +5846,28 @@ int32 ASimCopterTrafficSystemActor::TrySpawnSpecialBuildingPeople(int32 TileX, i
 
 		const int32 BehaviorClass = BuildingId == 0xD1 ? 0x0c : 0x0e;
 		const int32 InitialState = BuildingId == 0xD1 ? 5 : 7;
+
+		// ON THE ROOF, not on the pavement beside the building.
+		//
+		// NOT YET FOUND IN THE DECOMPILE - confirmed from gameplay. The placement call here is
+		// FUN_004c3eb0's ordinary tile spawn and nothing in it obviously lifts the person onto the
+		// building, so whatever the original does to put them up there is still unlocated. But the
+		// behaviour only makes sense from the roof: person state 5 is BHAV 801 "Medevac paramedic
+		// new initbhav", and state 7 is BHAV 1400 "Cop aerial" -> 1051 "cop - wait at station" ->
+		// 1052 "cop - ride on copter". Both are crew who stand at their building waiting for the
+		// player to land and collect them (1051 rec[4] probes the helicopter at twenty tiles and
+		// rec[8] is opcode 12, "walk to it and get on"), and you collect them off the helipad.
+		// Spawning them at ground level left the helipad empty and the mechanic dead.
+		//
+		// This branch landed them on the roof correctly and they still never appeared: the
+		// pedestrian ground probe in ASimCopterGroundAgent::TraceGround started below every
+		// roof by construction, so the SnapToGroundImmediate at the end of the spawn dragged
+		// them straight back down inside the building. That probe now starts from the person's
+		// own feet when those are already above street level, which is also what stops a
+		// medevac patient dropped on the roof from falling through it.
 		while (SpawnCount-- > 0)
 		{
-			TryOne(BehaviorClass, InitialState, INDEX_NONE, nullptr, INDEX_NONE);
+			TryOne(BehaviorClass, InitialState, INDEX_NONE, nullptr, INDEX_NONE, /*bOnRoof=*/true);
 		}
 		break;
 	}
@@ -5744,7 +5915,8 @@ bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
 	int32 InitialState,
 	int32 InitialProgramId,
 	const FVector2D* ExplicitOriginalOffset,
-	int32 ClothesOffset)
+	int32 ClothesOffset,
+	bool bPlaceOnBuildingRoof)
 {
 	if (GetWorld() == nullptr || GroundAgentClass == nullptr || PedestrianAgents.Num() >= MaxPedestrianAgents)
 	{
@@ -5761,7 +5933,26 @@ bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
 	FVector SpawnBaseLocation = Node.Location;
 	bool bFoundSpawnLocation = false;
 
-	if (ExplicitOriginalOffset != nullptr)
+	if (bPlaceOnBuildingRoof)
+	{
+		// On top of the building, not beside it. The open-ground test below would reject a roof
+		// out of hand, so this drops onto the topmost rendered surface over the building instead -
+		// the same ECC_Camera probe the ground agents walk on, which sees the building and not the
+		// terrain underneath it. The probe goes down the middle of the whole footprint (the node's
+		// scene centre), not the scanned tile: a 3x3 hospital is scanned corner-first and a corner
+		// tile can fall outside the model's own roof.
+		const FVector TraceStart(Node.Location.X, Node.Location.Y, Node.Location.Z + 60000.0f);
+		const FVector TraceEnd(Node.Location.X, Node.Location.Y, Node.Location.Z - 2000.0f);
+		FHitResult Hit;
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterRoofPersonSpawn), false, this);
+		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
+			Hit.bBlockingHit)
+		{
+			SpawnBaseLocation = Hit.ImpactPoint;
+			bFoundSpawnLocation = true;
+		}
+	}
+	else if (ExplicitOriginalOffset != nullptr)
 	{
 		SpawnBaseLocation = Node.Location + MakePeopleSpawnOffsetWorldFromOriginalUnits(
 			ActiveCityToWorldTransform,
@@ -5846,6 +6037,19 @@ bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
 	Agent->SetRouteState(NodeIndex, INDEX_NONE);
 	Agent->ClearMoveTarget();
 	PedestrianAgents.Add(Agent);
+	if (bPlaceOnBuildingRoof)
+	{
+		// The ground snap above is what used to undo this placement, so the height it settled at
+		// is the thing worth seeing: this must read well above the node's street-level Z.
+		UE_LOG(LogSimCopterTrafficSystem, Display,
+			TEXT("Roof crew (state %d) posted on building 0x%02x at tile (%d, %d): roof Z %.0f, street Z %.0f."),
+			Agent->InitialPersonState,
+			uint8(GetXbldTileId(TileX, TileY)),
+			TileX,
+			TileY,
+			Agent->GetActorLocation().Z,
+			Node.Location.Z);
+	}
 	return true;
 }
 

@@ -488,6 +488,12 @@ public:
 	// block +0x44 = 0x10 and +0x48 = 3, which nothing ported reads yet.)
 	static constexpr int32 SessionStartingCash = 1000;
 
+	// REMAKE DIVERGENCE, no original counterpart: what it costs you to put a civilian in hospital.
+	// Paired with FSimCopterMissionRecord::bSuppressCompletionRewards on player-caused medevacs,
+	// so injuring someone is a straight loss and letting them die then costs you again - the
+	// original paid full price for delivering someone you had run over yourself.
+	static constexpr int32 PlayerCausedInjuryFine = 250;
+
 	// Opens a fresh session: score 0, cash SessionStartingCash.
 	void BeginSession();
 

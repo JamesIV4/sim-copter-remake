@@ -1926,9 +1926,10 @@ void ASimCopterAmbientVehiclesActor::UpdateTrainRoofRiders()
 			TrainRoofRiders.RemoveAt(Index);
 			continue;
 		}
-		if (Rider->IsMissionCarried())
+		if (Rider->IsMissionCarried() || Rider->GetBehaviorCarrier() != nullptr)
 		{
-			// Already on the winch or aboard; the helicopter owns their transform now.
+			// On the harness or in the cabin: whatever picked them up owns their transform, and
+			// putting them back on the roof would drag them off it.
 			continue;
 		}
 

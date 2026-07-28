@@ -22,6 +22,123 @@
 
 namespace
 {
+// --- dragging a passenger out of the seat window ----------------------------------------------
+//
+// The original lets the player pull a portrait out of the seat well to put that passenger on the
+// ground, and dropping it back inside the well cancels. The drag carries the seat index; whether
+// the passenger leaves is decided by where the pointer let go: the seat well marks a drop as
+// handled, so an unhandled drop is by definition somewhere else.
+class FSimCopterPassengerDragDropOp : public FDragDropOperation
+{
+public:
+	DRAG_DROP_OPERATOR_TYPE(FSimCopterPassengerDragDropOp, FDragDropOperation)
+
+	static TSharedRef<FSimCopterPassengerDragDropOp> New(
+		TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn,
+		int32 InSlotIndex,
+		const FSlateBrush* InPortrait)
+	{
+		TSharedRef<FSimCopterPassengerDragDropOp> Operation = MakeShared<FSimCopterPassengerDragDropOp>();
+		Operation->Pawn = InPawn;
+		Operation->SlotIndex = InSlotIndex;
+		Operation->Portrait = InPortrait;
+		Operation->Construct();
+		return Operation;
+	}
+
+	virtual TSharedPtr<SWidget> GetDefaultDecorator() const override
+	{
+		if (Portrait == nullptr)
+		{
+			return nullptr;
+		}
+		return SNew(SImage).Image(Portrait);
+	}
+
+	virtual void OnDrop(bool bDropWasHandled, const FPointerEvent& MouseEvent) override
+	{
+		if (!bDropWasHandled)
+		{
+			if (ASimCopterHelicopterPawn* Helicopter = Pawn.Get())
+			{
+				Helicopter->DropPassengerAtSlot(SlotIndex);
+			}
+		}
+		FDragDropOperation::OnDrop(bDropWasHandled, MouseEvent);
+	}
+
+private:
+	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
+	int32 SlotIndex = INDEX_NONE;
+	const FSlateBrush* Portrait = nullptr;
+};
+
+// The portrait itself: press and move to start the drag.
+class SSimCopterSeatPortrait : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SSimCopterSeatPortrait) {}
+		SLATE_ARGUMENT(TWeakObjectPtr<ASimCopterHelicopterPawn>, Pawn)
+		SLATE_ARGUMENT(int32, SlotIndex)
+		SLATE_ARGUMENT(const FSlateBrush*, Portrait)
+		SLATE_DEFAULT_SLOT(FArguments, Content)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		Pawn = InArgs._Pawn;
+		SlotIndex = InArgs._SlotIndex;
+		Portrait = InArgs._Portrait;
+		ChildSlot[InArgs._Content.Widget];
+	}
+
+	virtual FReply OnMouseButtonDown(const FGeometry&, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			return FReply::Handled().DetectDrag(SharedThis(this), EKeys::LeftMouseButton);
+		}
+		return FReply::Unhandled();
+	}
+
+	virtual FReply OnDragDetected(const FGeometry&, const FPointerEvent&) override
+	{
+		return FReply::Handled().BeginDragDrop(
+			FSimCopterPassengerDragDropOp::New(Pawn, SlotIndex, Portrait));
+	}
+
+private:
+	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
+	int32 SlotIndex = INDEX_NONE;
+	const FSlateBrush* Portrait = nullptr;
+};
+
+// The seat well. Accepting the drop is what makes "put them back in the seat" mean "do nothing".
+class SSimCopterSeatWell : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SSimCopterSeatWell) {}
+		SLATE_DEFAULT_SLOT(FArguments, Content)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs) { ChildSlot[InArgs._Content.Widget]; }
+
+	virtual FReply OnDragOver(const FGeometry&, const FDragDropEvent& DragDropEvent) override
+	{
+		return DragDropEvent.GetOperationAs<FSimCopterPassengerDragDropOp>().IsValid()
+			? FReply::Handled()
+			: FReply::Unhandled();
+	}
+
+	virtual FReply OnDrop(const FGeometry&, const FDragDropEvent& DragDropEvent) override
+	{
+		// Handled and nothing else: the passenger stays where they were.
+		return DragDropEvent.GetOperationAs<FSimCopterPassengerDragDropOp>().IsValid()
+			? FReply::Handled()
+			: FReply::Unhandled();
+	}
+};
+
 const TCHAR* const UpscaledDashboardFile = TEXT("DASH6-plus-DASH4-upscaled.png");
 const TCHAR* const GaugeNeedleFile = TEXT("gauge-needle.png");
 constexpr float GaugeNeedleSourceWidth = 47.0f;
@@ -377,7 +494,13 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildSeatWindow()
 		SNew(SBox)
 		.WidthOverride(static_cast<float>(SeatWindowWidth) * Scale)
 		[
-			Canvas
+			// The well accepts a passenger drop and does nothing with it, which is how dragging a
+			// portrait back into the seats cancels. Anything dropped outside is unhandled, and the
+			// drag operation puts that passenger on the ground.
+			SNew(SSimCopterSeatWell)
+			[
+				Canvas
+			]
 		];
 	SeatWindowBox = Window;
 
@@ -471,12 +594,26 @@ void SSimCopterDashboard::RebuildSeats()
 		// placeholder squashed it into a 24x30 box.
 		const int32 Column2 = SeatIndex % SeatsPerRow;
 		const int32 SeatRow = SeatIndex / SeatsPerRow;
+		TSharedRef<SWidget> Portrait = MakeImage(TEXT("PEOPLE1.BMP"), Source);
+
+		// An occupied seat can be dragged out to put that passenger down; an empty one is scenery.
+		if (Slots.IsValidIndex(SeatIndex))
+		{
+			Portrait = SNew(SSimCopterSeatPortrait)
+				.Pawn(Pawn)
+				.SlotIndex(SeatIndex)
+				.Portrait(nullptr)
+				[
+					Portrait
+				];
+		}
+
 		AddAtPage(*SeatCanvas,
 			SeatFirstPortraitX + Column2 * SeatPortraitStride,
 			SeatWellTop + SeatRow * SeatRowStride,
 			static_cast<float>(Width),
 			static_cast<float>(Height),
-			MakeImage(TEXT("PEOPLE1.BMP"), Source));
+			Portrait);
 	}
 
 	BuiltSeatCount = Seats;

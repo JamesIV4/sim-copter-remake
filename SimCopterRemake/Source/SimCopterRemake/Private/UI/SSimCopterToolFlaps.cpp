@@ -232,7 +232,11 @@ void SSimCopterToolFlaps::AddFlapButton(SConstraintCanvas& Canvas, const FButton
 		.IsFocusable(false)
 		.ContentPadding(FMargin(0.0f))
 		.ToolTipText(FText::FromString(GetActionName(Action)))
-		.IsEnabled(TAttribute<bool>::CreateSP(this, &SSimCopterToolFlaps::IsToolButtonEnabled, Tool))
+		// Deliberately always enabled. A disabled SButton does not handle the mouse, so the click
+		// fell straight through the cockpit to the world's left-click binding, which runs the
+		// *selected* tool's primary action - pressing the cannon's fire button with the rescue
+		// harness selected paid the harness out to full length. The button now always swallows the
+		// press and PressAction decides whether the tool can act.
 		.OnPressed(FSimpleDelegate::CreateSP(this, &SSimCopterToolFlaps::PressAction, Action))
 		.OnReleased(FSimpleDelegate::CreateSP(this, &SSimCopterToolFlaps::ReleaseAction, Action));
 
@@ -322,6 +326,21 @@ void SSimCopterToolFlaps::PressAction(const EAction Action)
 	if (Helicopter == nullptr)
 	{
 		return;
+	}
+	// The hotspot is always clickable so it consumes the press; whether the tool may act is
+	// decided here.
+	{
+		const ESimCopterHelicopterTool ActionTool =
+			(Action == EAction::CannonFire) ? ESimCopterHelicopterTool::WaterCannon :
+			(Action == EAction::MegaphoneBroadcast) ? ESimCopterHelicopterTool::Megaphone :
+			(Action == EAction::TearGasFire) ? ESimCopterHelicopterTool::TearGas :
+			(Action == EAction::HarnessRaise || Action == EAction::HarnessLower)
+				? ESimCopterHelicopterTool::RescueHarness
+				: ESimCopterHelicopterTool::WaterBucket;
+		if (!IsToolButtonEnabled(ActionTool))
+		{
+			return;
+		}
 	}
 
 	switch (Action)

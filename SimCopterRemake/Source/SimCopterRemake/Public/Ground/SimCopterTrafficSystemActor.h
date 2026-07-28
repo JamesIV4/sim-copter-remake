@@ -665,13 +665,34 @@ public:
 	// Anyone within RadiusCm who has been arrested (EBhavAttr::CriminalCaught) but is still on
 	// their feet - i.e. holding the hands-up pose or walking to the police car.
 	bool HasArrestedCriminalNear(const FVector& WorldLocation, float RadiusCm) const;
+
+	// FUN_004ca650: the person whose carrier is Carrier - whoever they are toting.
+	ASimCopterGroundAgent* FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const;
+
+	// FUN_004cc830: the first medevac victim (person state 6) riding the given carrier.
+	ASimCopterGroundAgent* FindMedevacPassengerAboard(const AActor* Carrier) const;
+
+	// Anyone riding Carrier on behalf of EventId. The seat window drops real people now, so it
+	// has to find the one it is dropping rather than spawn a stand-in.
+	ASimCopterGroundAgent* FindPersonAboardForEvent(const AActor* Carrier, int32 EventId) const;
+
+	// Whoever is currently on the given helicopter's harness, ignoring Except. The sling takes one.
+	ASimCopterGroundAgent* FindHarnessRider(const AActor* Helicopter, const ASimCopterGroundAgent* Except) const;
+
+	// Behaviour opcode 61: a deployed crew member telling the vehicle that put them out that they
+	// are done with it. Sends the unit home.
+	void NotifyCrewMemberMessagedVehicle(const ASimCopterGroundAgent& CrewMember, int32 MessageId);
+	// BoardOnto, when set, attaches each person to that actor and claims a passenger seat instead
+	// of destroying them - so they can be put back down again later. Passing null keeps the old
+	// consume-on-pickup behaviour for callers that only want the count.
 	int32 PickUpMissionPeopleNear(
 		int32 EventId,
 		const FVector& WorldLocation,
 		int32 MaxCount,
 		float RadiusCm,
 		float MaxVerticalDeltaCm,
-		int32* OutNewPickupCreditCount = nullptr);
+		int32* OutNewPickupCreditCount = nullptr,
+		AActor* BoardOnto = nullptr);
 	int32 GuideMissionPeopleToLocation(
 		int32 EventId,
 		const FVector& SearchLocation,
@@ -686,7 +707,8 @@ public:
 		int32 MaxCount,
 		float TouchRadiusCm,
 		float MaxVerticalDeltaCm,
-		int32* OutNewPickupCreditCount = nullptr);
+		int32* OutNewPickupCreditCount = nullptr,
+		AActor* BoardOnto = nullptr);
 	ASimCopterGroundAgent* FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm);
 	int32 SpawnMissionPeopleAtWorldLocation(
 		int32 Count,
@@ -781,10 +803,16 @@ public:
 		int32 InitialState,
 		int32 InitialProgramId,
 		const FVector2D* ExplicitOriginalOffset,
-		int32 ClothesOffset);
+		int32 ClothesOffset,
+		// Drops the person onto the top of the building instead of finding open ground beside it -
+		// the hospital paramedic and the aerial cop wait on their helipad.
+		bool bPlaceOnBuildingRoof = false);
 	bool TryResolvePedestrianNodeForTile(int32 TileX, int32 TileY, int32& OutNodeIndex) const;
 	bool IsOriginalAmbientTileGateOpen(int32 TileX, int32 TileY) const;
 	bool HasAmbientPedestrianNearTile(int32 TileX, int32 TileY, float RadiusTiles) const;
+	// Is one of a specific building's crew already posted here (person+0x148 == PersonState)?
+	// Ordinary pedestrians on the pavement below do not count.
+	bool HasPedestrianInPersonStateNearTile(int32 TileX, int32 TileY, float RadiusTiles, int32 PersonState) const;
 	int32 ChooseNodeNearFocus(const TArray<FSimCopterGroundRouteNode>& Nodes, const FVector& FocusLocation);
 	FVector MakeVehicleRouteTargetLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 TargetIndex, int32 PreviousIndex, int32 ApproachIndex, int32 LookAheadIndex) const;
 	FVector MakeRoutePointLocation(const TArray<FSimCopterGroundRouteNode>& Nodes, int32 PointIndex, int32 PreviousIndex, int32 NextIndex, bool bVehicle) const;

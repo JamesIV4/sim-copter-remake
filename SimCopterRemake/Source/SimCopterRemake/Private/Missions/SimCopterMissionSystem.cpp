@@ -776,8 +776,12 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		TX = Rec.TileX;
 		TY = Rec.TileY;
 
+		// FUN_004a7a10's 0x40 branch: `rand() % (DAT_004f9740 + 1) + 1` passengers, where
+		// DAT_004f9740 is the difficulty tier (FUN_004a92f0 switches on it 1/2/3). One party of
+		// ten every single time was a placeholder.
 		bool bSpawned = false;
-		for (int32 i = 0; i < 10; ++i)
+		const int32 PartySize = (Rand.Rand() % (DifficultyTier + 1)) + 1;
+		for (int32 i = 0; i < PartySize; ++i)
 		{
 			if (World && World->TrySpawnMissionPerson(4, -1, TX, TY, Rec.EventId))
 			{
@@ -1025,7 +1029,28 @@ int32 FSimCopterMissionSystem::CreatePlayerCausedMedevacAt(int32 TileX, int32 Ti
 	Rec.EventId = NextEventId++;
 	Rec.Category = CAT_Active;
 	Rec.MedevacVictims = 1;
+	// You hurt them, so you do not get paid for carting them to hospital. The original did pay
+	// out, which made deliberately mowing people down and delivering them a profitable strategy;
+	// this is a deliberate remake divergence.
 	Rec.bSuppressCompletionRewards = true;
+
+	// REMAKE DIVERGENCE: an immediate fine for putting a civilian in hospital. With the completion
+	// reward suppressed above, the incentive runs the right way round - hurting someone costs you,
+	// and letting them die costs you again, so the cheapest thing you can do is fly carefully and
+	// the second cheapest is to get them treated.
+	Cash -= PlayerCausedInjuryFine;
+	if (World)
+	{
+		FSimCopterMissionUiMessage Message;
+		Message.Kind = 1;
+		Message.EventId = Rec.EventId;
+		Message.ValueB = -PlayerCausedInjuryFine;
+		Message.TypeMask = Rec.TypeMask;
+		Message.MissionName = TEXT("Civilian injured");
+		Message.bNegative = true;
+		World->OnUiMessage(Message);
+		World->PlayUiSound(0x1e);
+	}
 	Rec.Name = FString::Printf(TEXT("MedEvac #%d"), TypeSerials[2]);
 	TypeSerials[2]++;
 

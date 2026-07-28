@@ -9,10 +9,12 @@
 #include "UObject/NoExportTypes.h"
 #include "SimCopterGroundAgent.generated.h"
 
+class ASimCopterHelicopterPawn;
 class UCapsuleComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UProceduralMeshComponent;
+enum class ESimCopterMissionPassengerKind : uint8;
 class USceneComponent;
 class USpotLightComponent;
 class UStaticMeshComponent;
@@ -122,8 +124,13 @@ public:
 	void BeginPassengerFall(int32 SourceEventId, float InjuryDistanceCm);
 
 	// Turns the agent into a script-driven mover: no behavior VM, no ground snapping (its owner
-	// keeps it on a chosen plane), driven purely by SetMoveTarget. Used for the hospital EMT.
+	// keeps it on a chosen plane), driven purely by SetMoveTarget.
 	void SetMissionScriptedMover();
+
+	// Whether the agent settles onto the terrain each tick. Off for people whose owner places
+	// them somewhere there is no ground - swimmers beside a capsized boat, riders on a train
+	// roof - while they still run their behaviour program.
+	void SetBehaviorGroundSnap(bool bEnabled) { bSnapToGround = bEnabled; }
 
 	// Choose the privanim figure this agent renders (e.g. "Medik"). Only takes effect before the
 	// figure is built (i.e. before ConfigureAgent).
@@ -220,6 +227,21 @@ public:
 	// FUN_004cc560: another person's op 39 pushing a reaction BHAV onto this one. This is the
 	// arrest: a cop pushes BHAV 1060 "Rx: criminal-caught".
 	bool PushBehaviorReaction(int32 ProgramId);
+
+	// --- person+0x1a0, the carrier ------------------------------------------------------------
+	// What this person is riding. The shipped programs drive every pickup and drop-off through
+	// this: a rescue victim boards the harness (BHAV 305), a transport passenger boards the
+	// helicopter (BHAV 291), a paramedic totes a victim (BHAV 262). Boarding a helicopter cabin
+	// also claims one of its passenger seats, so the seat window and the mission counters agree
+	// with what the VM did.
+	AActor* GetBehaviorCarrier() const { return BehaviorCarrier.Get(); }
+	bool IsRidingHarness() const { return BehaviorCarrier.IsValid() && bRidingHarness; }
+	bool BoardCarrier(AActor* NewCarrier, bool bAsHarnessRider);
+	bool AlightFromCarrier();
+	// Op 58's transfer: a victim on the raised harness climbs into the cabin.
+	bool TransferFromHarnessToCabin();
+	// The mission passenger kind this person counts as, from their spawn state (person+0x148).
+	ESimCopterMissionPassengerKind GetMissionPassengerKind() const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -450,6 +472,25 @@ private:
 	bool bUsingPedestrianFigure = false;
 	FString ForcedFigureMnemonic;
 	int32 ForcedFigureClothesOffset = INDEX_NONE;
+	// person+0x1a0 and whether it is the rope end rather than the cabin (op 86 distinguishes them).
+	TWeakObjectPtr<AActor> BehaviorCarrier;
+	bool bRidingHarness = false;
+	bool bClaimedPassengerSeat = false;
+	// True while a carrier owns this person's transform, so UpdateMovement leaves them alone.
+	bool bBehaviorMoveSuspended = false;
+	void AlightAttachmentOnly();
+	// DAT_005040d0+0xa4: the player's helicopter, in it or not.
+	ASimCopterHelicopterPawn* ResolvePlayerHelicopter() const;
+	// Scatters this person when the player's helicopter is descending onto their tile.
+	void UpdateDescendingHelicopterAvoidance();
+	void Context_FaceAwayFromHelicopter(const FVector& HelicopterLocation);
+	// Keeps a harness rider on the rope end, which is a point on the helicopter rather than a
+	// component this actor can be parented to.
+	void UpdateCarriedTransform();
+	// person+0x188/+0x18a: the tile the person was placed on, which op 87 compares against.
+	FIntPoint BehaviorHomeTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	// Opcode 54's face index. Stored so the seat window can use it once it draws moods.
+	int32 SeatPortraitMood = 0;
 	bool bMissionWavesWhenIdle = false;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
@@ -497,6 +538,30 @@ private:
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const override;
 	virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutTileDistance) override;
 	virtual bool EvaluateProximityTest(const FSimCopterPersonContext& Context, int32 TestIndex) const override;
+	virtual int32 GetCurrentTileBuildingId() const override;
+	virtual bool IsCurrentTileServiceable() const override;
+	virtual bool IsRidingCarrier(const FSimCopterPersonContext& Context) const override;
+	virtual bool SelectOwningVehicle(FSimCopterPersonContext& Context) override;
+	virtual bool IsSelectionPlayerHelicopter(const FSimCopterPersonContext& Context) const override;
+	virtual bool IsSelectionWithinUnits(const FSimCopterPersonContext& Context, int32 Units) const override;
+	virtual int32 GetDifficultyTier() const override;
+	virtual bool CanAlightHere() const override;
+	virtual bool TryAlightHere() override;
+	virtual bool BoardSelection(FSimCopterPersonContext& Context) override;
+	virtual bool PutSelectedPersonOnMe(FSimCopterPersonContext& Context) override;
+	virtual bool DropSelectedPerson(FSimCopterPersonContext& Context) override;
+	virtual bool SelectCarriedPerson(FSimCopterPersonContext& Context, bool bAlsoDropThem) override;
+	virtual bool IsCarryingPerson() const override;
+	virtual bool GetOnHelicopterIfHarnessRaised(FSimCopterPersonContext& Context) override;
+	virtual bool IsCarrierPlayerHelicopter() const override;
+	virtual bool IsCarrierHarness() const override;
+	virtual bool IsOnHomeTile() const override;
+	virtual bool SelectMedevacVictimAboardPlayer(FSimCopterPersonContext& Context) override;
+	virtual void MessageOwningVehicle(int32 MessageId) override;
+	virtual void SetSeatPortraitMood(int32 Mood) override { SeatPortraitMood = Mood; }
+	virtual int32 GetPlayerHelicopterSpeed() const override;
+	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) override;
+	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual ESimCopterBehaviorStepResult StepTowardSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool PushReactionOnSelectedObject(FSimCopterPersonContext& Context, int32 ProgramId) override;

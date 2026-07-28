@@ -75,6 +75,10 @@ SIMCOPTERREMAKE_API int32 GetPersonReactionProgram(int32 Mode);
 // FUN_004c1050 mode 1 hard-codes BHAV 950 instead of using the table.
 constexpr int32 SpotlightReactionProgram = 950;
 
+// BHAV 904 "Rxn: Run away (dir already set)" - runs on whatever facing the caller set first.
+// Used by the remake to clear people out from under a descending helicopter.
+constexpr int32 RunAwayReactionProgram = 904;
+
 // FUN_004c1050's interrupt priority: 903 (Die), 915 (Missile/bullet), 912 (Large fast
 // vehicle hit) and 909 (Fall) cannot be displaced by a lesser reaction while one is active.
 SIMCOPTERREMAKE_API bool IsHighPriorityReaction(int32 ProgramId);
