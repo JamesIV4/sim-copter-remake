@@ -13,6 +13,7 @@
 class ASimCity2000CityActor;
 class ASimCopterGroundAgent;
 class ASimCopterMissionSystemActor;
+enum class ESimCopterMissionPassengerKind : uint8;
 class UInstancedStaticMeshComponent;
 class USimCopterDispatchMarkerComponent;
 
@@ -183,6 +184,14 @@ public:
 		const ASimCopterGroundAgent& From,
 		int32 LoopFlagFilter,
 		int32 StateFilter) const;
+	// FUN_004ca4f0(State, 0): state match whose visibility attribute is zero.
+	bool HasHiddenBehaviorPersonInState(int32 State) const;
+	// Stable mission-action lookup for hospital handoffs. Excludes anyone riding or already
+	// carrying another person so the mission layer cannot steal an in-progress VM action.
+	ASimCopterGroundAgent* FindNearestAvailablePersonInState(
+		const FVector& WorldLocation,
+		int32 State,
+		float RadiusCm) const;
 
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
@@ -674,7 +683,10 @@ public:
 
 	// Anyone riding Carrier on behalf of EventId. The seat window drops real people now, so it
 	// has to find the one it is dropping rather than spawn a stand-in.
-	ASimCopterGroundAgent* FindPersonAboardForEvent(const AActor* Carrier, int32 EventId) const;
+	ASimCopterGroundAgent* FindPersonAboardForEvent(
+		const AActor* Carrier,
+		int32 EventId,
+		ESimCopterMissionPassengerKind Kind) const;
 
 	// Whoever is currently on the given helicopter's harness, ignoring Except. The sling takes one.
 	ASimCopterGroundAgent* FindHarnessRider(const AActor* Helicopter, const ASimCopterGroundAgent* Except) const;
@@ -692,7 +704,8 @@ public:
 		float RadiusCm,
 		float MaxVerticalDeltaCm,
 		int32* OutNewPickupCreditCount = nullptr,
-		AActor* BoardOnto = nullptr);
+		AActor* BoardOnto = nullptr,
+		bool bAsHarnessRider = false);
 	int32 GuideMissionPeopleToLocation(
 		int32 EventId,
 		const FVector& SearchLocation,
@@ -708,7 +721,8 @@ public:
 		float TouchRadiusCm,
 		float MaxVerticalDeltaCm,
 		int32* OutNewPickupCreditCount = nullptr,
-		AActor* BoardOnto = nullptr);
+		AActor* BoardOnto = nullptr,
+		bool bAsHarnessRider = false);
 	ASimCopterGroundAgent* FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm);
 	int32 SpawnMissionPeopleAtWorldLocation(
 		int32 Count,

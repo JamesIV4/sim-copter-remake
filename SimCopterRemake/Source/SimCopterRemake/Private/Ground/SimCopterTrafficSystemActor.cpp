@@ -905,12 +905,18 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 				{
 					continue;
 				}
-				if (SpawnMode == 4 && IsWaterTile(TileX + OffsetX, TileY + OffsetY))
+				const int32 CandidateTileX = TileX + OffsetX;
+				const int32 CandidateTileY = TileY + OffsetY;
+				if (IsWaterTile(CandidateTileX, CandidateTileY))
 				{
 					continue;
 				}
-				if (bTransportPassenger && IsPedestrianRoadTile(uint8(GetXbldTileId(TileX + OffsetX, TileY + OffsetY))))
+				const uint8 CandidateBuildingId = uint8(GetXbldTileId(CandidateTileX, CandidateTileY));
+				if (CandidateBuildingId != 0 && !IsPedestrianRoadTile(CandidateBuildingId))
 				{
+					// Mission coordinates usually point at the source building. Do not trust a
+					// roof trace or collision adjustment to decide whether a person is outside:
+					// reject every occupied XBLD tile and continue past the whole footprint.
 					continue;
 				}
 
@@ -943,7 +949,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
 	const float SpawnYaw = RandomStream.FRandRange(0.0f, 360.0f);
 	ASimCopterGroundAgent* Person = GetWorld()->SpawnActor<ASimCopterGroundAgent>(GroundAgentClass, SpawnLocation, FRotator(0.0f, SpawnYaw, 0.0f), SpawnParams);
@@ -1033,7 +1039,8 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
 	float RadiusCm,
 	float MaxVerticalDeltaCm,
 	int32* OutNewPickupCreditCount,
-	AActor* BoardOnto)
+	AActor* BoardOnto,
+	bool bAsHarnessRider)
 {
 	if (OutNewPickupCreditCount != nullptr)
 	{
@@ -1055,7 +1062,8 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
 	{
 		ASimCopterGroundAgent* Agent = AgentPtr.Get();
-		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed())
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() ||
+			Agent->IsMissionCarried() || Agent->GetBehaviorCarrier() != nullptr)
 		{
 			continue;
 		}
@@ -1101,13 +1109,13 @@ int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
 				// seat window's drop spawned a stand-in, the real passenger was already gone, and
 				// a medevac patient could never stand on a hospital tile to report themselves
 				// delivered. BoardCarrier claims the seat itself.
-				if (!Agent->BoardCarrier(BoardOnto, /*bAsHarnessRider*/ false))
+				const bool bHadPickupCredit = Agent->HasMissionPickupCreditAwarded();
+				if (!Agent->BoardCarrier(BoardOnto, bAsHarnessRider))
 				{
 					continue;
 				}
-				if (!Agent->HasMissionPickupCreditAwarded())
+				if (!bHadPickupCredit)
 				{
-					Agent->SetMissionPickupCreditAwarded(true);
 					NewPickupCreditCount++;
 				}
 				PickedUp++;
@@ -1166,7 +1174,8 @@ int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
 	{
 		ASimCopterGroundAgent* Agent = AgentPtr.Get();
-		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() || Agent->IsMissionCarried())
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() ||
+			Agent->IsMissionCarried() || Agent->GetBehaviorCarrier() != nullptr)
 		{
 			continue;
 		}
@@ -1219,7 +1228,8 @@ int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(
 	float TouchRadiusCm,
 	float MaxVerticalDeltaCm,
 	int32* OutNewPickupCreditCount,
-	AActor* BoardOnto)
+	AActor* BoardOnto,
+	bool bAsHarnessRider)
 {
 	if (MaxCount <= 0)
 	{
@@ -1231,7 +1241,14 @@ int32 ASimCopterTrafficSystemActor::BoardMissionPeopleTouching(
 	}
 
 	return PickUpMissionPeopleNear(
-		EventId, WorldLocation, MaxCount, TouchRadiusCm, MaxVerticalDeltaCm, OutNewPickupCreditCount, BoardOnto);
+		EventId,
+		WorldLocation,
+		MaxCount,
+		TouchRadiusCm,
+		MaxVerticalDeltaCm,
+		OutNewPickupCreditCount,
+		BoardOnto,
+		bAsHarnessRider);
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMissionPersonNear(int32 EventId, const FVector& WorldLocation, float RadiusCm, float MaxVerticalDeltaCm)
@@ -1241,7 +1258,8 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMissionPersonNear(int32
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
 	{
 		ASimCopterGroundAgent* Agent = AgentPtr.Get();
-		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() || Agent->IsMissionCarried())
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() ||
+			Agent->IsMissionCarried() || Agent->GetBehaviorCarrier() != nullptr)
 		{
 			continue;
 		}
@@ -1491,6 +1509,53 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestBehaviorPerson(
 	return Best;
 }
 
+bool ASimCopterTrafficSystemActor::HasHiddenBehaviorPersonInState(const int32 State) const
+{
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr &&
+			!Agent->IsActorBeingDestroyed() &&
+			Agent->IsBehaviorActive() &&
+			int16(Agent->GetBehaviorAttribute(EBhavAttr::State)) == int16(State) &&
+			Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestAvailablePersonInState(
+	const FVector& WorldLocation,
+	const int32 State,
+	const float RadiusCm) const
+{
+	ASimCopterGroundAgent* Best = nullptr;
+	float BestDistanceSq = FMath::Square(RadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr ||
+			Agent->IsActorBeingDestroyed() ||
+			Agent->IsMissionCarried() ||
+			Agent->GetBehaviorCarrier() != nullptr ||
+			int16(Agent->GetBehaviorAttribute(EBhavAttr::State)) != int16(State) ||
+			FindPersonCarriedBy(*Agent) != nullptr)
+		{
+			continue;
+		}
+
+		const float DistanceSq = FVector::DistSquared2D(WorldLocation, Agent->GetActorLocation());
+		if (DistanceSq <= BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			Best = Agent;
+		}
+	}
+	return Best;
+}
+
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const
 {
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
@@ -1528,7 +1593,8 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMedevacPassengerAboard(
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonAboardForEvent(
 	const AActor* Carrier,
-	const int32 EventId) const
+	const int32 EventId,
+	const ESimCopterMissionPassengerKind Kind) const
 {
 	if (Carrier == nullptr)
 	{
@@ -1539,7 +1605,8 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonAboardForEvent(
 		ASimCopterGroundAgent* Agent = AgentPtr.Get();
 		if (Agent != nullptr && !Agent->IsActorBeingDestroyed() &&
 			Agent->GetBehaviorCarrier() == Carrier &&
-			(EventId == INDEX_NONE || Agent->MissionEventId == EventId))
+			(EventId == INDEX_NONE || Agent->MissionEventId == EventId) &&
+			Agent->GetMissionPassengerKind() == Kind)
 		{
 			return Agent;
 		}
@@ -1643,7 +1710,7 @@ int32 ASimCopterTrafficSystemActor::RemoveMissionPeople(int32 EventId)
 			PedestrianAgents.RemoveAtSwap(Index);
 			continue;
 		}
-		if (Agent->MissionEventId != EventId || Agent->IsMissionCarried())
+		if (Agent->MissionEventId != EventId || Agent->IsMissionCarried() || Agent->GetBehaviorCarrier() != nullptr)
 		{
 			continue;
 		}
@@ -1782,7 +1849,8 @@ int32 ASimCopterTrafficSystemActor::ReleaseMissionPeopleNear(int32 EventId, cons
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
 	{
 		ASimCopterGroundAgent* Agent = AgentPtr.Get();
-		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() || Agent->IsMissionCarried())
+		if (Agent == nullptr || Agent->MissionEventId != EventId || Agent->IsActorBeingDestroyed() ||
+			Agent->IsMissionCarried() || Agent->GetBehaviorCarrier() != nullptr)
 		{
 			continue;
 		}

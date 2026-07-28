@@ -192,6 +192,38 @@ void ASimCopterGroundAgent::BeginPlay()
 	}
 }
 
+void ASimCopterGroundAgent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// A person actor and its passenger slot are one ownership unit. If an external teardown
+	// destroys the actor while it is still aboard, return the slot here so the helicopter cannot
+	// be left permanently full with no person behind that seat.
+	if (bClaimedPassengerSeat)
+	{
+		const int32 DroppedEventId = MissionEventId;
+		const ESimCopterMissionPassengerKind DroppedKind = GetMissionPassengerKind();
+		const bool bReturnPickupCount =
+			bMissionPickupCounted && !bMissionResolutionReported && DroppedEventId != INDEX_NONE;
+		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()))
+		{
+			Helicopter->RemoveMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind());
+		}
+		bClaimedPassengerSeat = false;
+		if (bReturnPickupCount)
+		{
+			if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+			{
+				Missions->NotifyPassengerDroppedFromHelicopter(DroppedEventId, DroppedKind, 1);
+			}
+			bMissionPickupCounted = false;
+		}
+	}
+	AlightAttachmentOnly();
+	BehaviorCarrier.Reset();
+	bRidingHarness = false;
+	Super::EndPlay(EndPlayReason);
+}
+
 void ASimCopterGroundAgent::StartOriginalBehavior()
 {
 	bBehaviorActive = false;
@@ -328,6 +360,32 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		}
 		if (Result == EBhavStepResult::Stopped || BehaviorContext.bRequestDespawn)
 		{
+			ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+			const bool bUnresolvedMissionPerson =
+				MissionEventId != INDEX_NONE &&
+				!bMissionResolutionReported &&
+				Missions != nullptr &&
+				Missions->IsMissionEventActive(MissionEventId);
+			const bool bHospitalParamedic =
+				int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 &&
+				MissionEventId == INDEX_NONE;
+			if (bUnresolvedMissionPerson || bHospitalParamedic)
+			{
+				// A decoded program may time out or reach Disappear, but that cannot be allowed to
+				// erase an unresolved mission dependency. State-5 hospital staff are likewise a
+				// persistent service point: the original population code can recycle them, while
+				// doing so visibly after a handoff makes the worker appear to vanish.
+				BehaviorContext.bRequestDespawn = false;
+				ResetBehaviorProgramOverride();
+				if (!bClaimedPassengerSeat && !BehaviorCarrier.IsValid())
+				{
+					SetActorHiddenInGame(false);
+					BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
+				}
+				return;
+			}
+
 			// Original 'Disappear'/deactivate path: hide and let the spawner recycle us. Give any
 			// seat back first, or a delivered passenger would leave the cabin counting them.
 			if (bClaimedPassengerSeat || BehaviorCarrier.IsValid())
@@ -686,9 +744,9 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	const int32 ObjectClass,
 	int32& OutTileDistance)
 {
-	// FUN_004cac70's jump table at 0x004cb130. Only the classes the shipped criminal, cop and
-	// ambient programs actually ask for are answered here; the rest fall through to "nothing
-	// found", which makes their probe take the false edge exactly as an empty city would.
+	// FUN_004cac70's jump table at 0x004cb130. Classes backed by systems the remake actually owns
+	// are answered here; the rest fall through to "nothing found", which makes their probe take
+	// the false edge exactly as an empty city would.
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
 	AActor* Found = nullptr;
 	// Classes that are a place rather than a thing fill this instead.
@@ -698,6 +756,27 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 
 	switch (ObjectClass)
 	{
+	case EBhavObjectClass::MyMissionCoords:
+	{
+		// FUN_004a88e0 resolves person+0x10a to a live mission record and returns the pointer at
+		// record +0x30 when it is not -1: SecondaryX/Y, the destination. BHAV 292 is the only
+		// shipped class-0 site; it probes this before performing the passenger's real alight.
+		const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+		int32 DestinationX = INDEX_NONE;
+		int32 DestinationY = INDEX_NONE;
+		if (Missions != nullptr &&
+			TrafficSystem != nullptr &&
+			Missions->TryGetMissionDestinationTile(MissionEventId, DestinationX, DestinationY) &&
+			TrafficSystem->TryGetTileCenterWorldLocation(
+				DestinationX,
+				DestinationY,
+				FoundLocation))
+		{
+			bFoundLocation = true;
+		}
+		break;
+	}
 	case EBhavObjectClass::AlreadySelected:
 		Found = Context.SelectedObject.Get();
 		bFoundLocation = Context.bHasSelection;
@@ -1050,6 +1129,29 @@ void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context,
 		return;
 	}
 
+	// Passenger actions are engine-owned, idempotent services. The decoded program decides *when*
+	// to request one, but it does not write counters directly: the same real person may also pass
+	// through an on-foot pickup, the seat window, or the mission recovery loop in the same frame.
+	const int32 PersonState = int32(Context.Attributes[EBhavAttr::State]);
+	const bool bPassengerState =
+		PersonState == 1 || PersonState == 2 || PersonState == 4 ||
+		PersonState == 6 || PersonState == 0x13;
+	if ((OutcomeCode == 0 || OutcomeCode == 8) && bPassengerState)
+	{
+		Missions->NotifyMissionPersonBoarded(this);
+		return;
+	}
+	if ((OutcomeCode == 1 && bPassengerState) || OutcomeCode == 7)
+	{
+		Missions->NotifyMissionPersonDelivered(this);
+		return;
+	}
+	if (OutcomeCode == 10 && bPassengerState)
+	{
+		Missions->NotifyMissionPersonDied(this);
+		return;
+	}
+
 	if (bCarriesCoordinates)
 	{
 		int32 TileX = INDEX_NONE;
@@ -1094,6 +1196,29 @@ bool ASimCopterGroundAgent::IsRidingCarrier(const FSimCopterPersonContext& Conte
 
 bool ASimCopterGroundAgent::CanAlightHere() const
 {
+	// Cabin entry/exit already has a proven helicopter-side landing gate. Use that service as the
+	// definitive answer instead of reconstructing landing state from the hidden passenger actor's
+	// attachment transform. The tile check below still prevents rescue delivery onto open water.
+	const ASimCopterHelicopterPawn* CabinHelicopter =
+		bClaimedPassengerSeat && !bRidingHarness
+			? Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get())
+			: nullptr;
+	if (CabinHelicopter != nullptr && !CabinHelicopter->CanTransferMissionPassengers())
+	{
+		return false;
+	}
+	if (CabinHelicopter != nullptr &&
+		MissionEventId != INDEX_NONE &&
+		GetMissionPassengerKind() == ESimCopterMissionPassengerKind::Medevac)
+	{
+		// A hospital medevac unload is owned by ProcessMedevacHospitalHandoffs: it gives the
+		// decoded state-5 paramedic time to walk over and visibly take this same actor. Letting
+		// BHAV 282 alight the patient independently races that sequence and is why the EMT would
+		// sometimes arrive at an already-empty cabin. The seat-window drop and the bounded
+		// handoff fallback call AlightFromCarrier directly, so the patient cannot be stranded.
+		return false;
+	}
+
 	// FUN_004c9bc0: the tile has to be one people may occupy, and the person has to be within
 	// 6 original units of the ground under them. That second half is what stops a passenger
 	// stepping out of a helicopter at altitude.
@@ -1113,6 +1238,11 @@ bool ASimCopterGroundAgent::CanAlightHere() const
 	}
 
 	if (TrafficSystem == nullptr)
+	{
+		return true;
+	}
+
+	if (CabinHelicopter != nullptr)
 	{
 		return true;
 	}
@@ -1154,7 +1284,10 @@ ESimCopterMissionPassengerKind ASimCopterGroundAgent::GetMissionPassengerKind() 
 	}
 }
 
-bool ASimCopterGroundAgent::BoardCarrier(AActor* NewCarrier, const bool bAsHarnessRider)
+bool ASimCopterGroundAgent::BoardCarrier(
+	AActor* NewCarrier,
+	const bool bAsHarnessRider,
+	const bool bAllowAirborneCabinTransfer)
 {
 	if (NewCarrier == nullptr || NewCarrier == this)
 	{
@@ -1168,6 +1301,14 @@ bool ASimCopterGroundAgent::BoardCarrier(AActor* NewCarrier, const bool bAsHarne
 	ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(NewCarrier);
 	if (Helicopter != nullptr && bAsHarnessRider)
 	{
+		// A harness pickup is only useful when winding the rider in can actually claim a cabin
+		// seat. Refuse the action up front instead of stranding or dropping somebody at the top
+		// of the rope when op 58 attempts the transfer.
+		if (Helicopter->GetAvailablePassengerSeats() <= 0)
+		{
+			return false;
+		}
+
 		// One person on the hook. The harness is a single sling in the original and a queue of
 		// survivors all riding the same rope end is nonsense; whoever grabs it first has it until
 		// they are lifted into the cabin or let go.
@@ -1181,22 +1322,83 @@ bool ASimCopterGroundAgent::BoardCarrier(AActor* NewCarrier, const bool bAsHarne
 	}
 	if (Helicopter != nullptr && !bAsHarnessRider)
 	{
-		// Riding inside means occupying a seat. Refuse when the cabin is full, exactly as the
-		// original's seat check does - otherwise the VM would board people the seat window can
-		// never show and the mission counters would drift.
-		if (Helicopter->GetAvailablePassengerSeats() <= 0 ||
-			Helicopter->AddMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind()) <= 0)
+		if (int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 &&
+			MissionEventId == INDEX_NONE)
+		{
+			// Shipped BHAV 263 first looks for a medevac patient aboard. Only its no-patient arm
+			// calls BHAV 269, which may select the player's helicopter as the medic's ride. Once
+			// our deterministic hospital handoff has removed the last patient, that same test is
+			// also true, so the stable action boundary must distinguish "go help retrieve one"
+			// from "the delivery just finished."
+			const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+			if (Missions == nullptr ||
+				!Missions->CanHospitalParamedicBoardPlayerHelicopter(Helicopter))
+			{
+				return false;
+			}
+		}
+
+		// Normal cabin boarding goes through the same landed/settled gate as the proven mission
+		// transfer path. The one exception is the decoded op-58 harness-to-cabin transition:
+		// winding the rope in is supposed to bring its rider aboard while airborne.
+		if ((!bAllowAirborneCabinTransfer && !Helicopter->CanTransferMissionPassengers()) ||
+			Helicopter->GetAvailablePassengerSeats() <= 0)
+		{
+			return false;
+		}
+	}
+
+	// Relinquish the old carrier before taking the new one. This is deliberately attachment-only:
+	// snapping a harness rider to the ground for the instant it transfers into the cabin produces
+	// a visible teleport and can select a roof far below it.
+	if (AActor* PreviousCarrier = BehaviorCarrier.Get())
+	{
+		if (bClaimedPassengerSeat)
+		{
+			if (ASimCopterHelicopterPawn* PreviousHelicopter = Cast<ASimCopterHelicopterPawn>(PreviousCarrier))
+			{
+				PreviousHelicopter->RemoveMissionPassengersForMission(
+					1, MissionEventId, GetMissionPassengerKind());
+			}
+			bClaimedPassengerSeat = false;
+		}
+		AlightAttachmentOnly();
+		BehaviorCarrier.Reset();
+		bRidingHarness = false;
+	}
+	else
+	{
+		// The older on-foot carry path attaches directly to a scene component and records no
+		// BehaviorCarrier. Detach that real person; never destroy it and replace it with a slot.
+		AlightAttachmentOnly();
+	}
+
+	if (Helicopter != nullptr && !bAsHarnessRider)
+	{
+		if (Helicopter->AddMissionPassengersForMission(
+				1, MissionEventId, GetMissionPassengerKind()) <= 0)
 		{
 			return false;
 		}
 		bClaimedPassengerSeat = true;
 		SetActorHiddenInGame(true);
 	}
+	else
+	{
+		SetActorHiddenInGame(false);
+	}
 
-	AlightAttachmentOnly();
 	BehaviorCarrier = NewCarrier;
 	bRidingHarness = bAsHarnessRider;
 
+	// A legacy on-foot carry paused the VM. Preserve its live context and let it resume once the
+	// helicopter owns the transform, so medevac health/delivery behavior is not discarded.
+	bMissionCarried = false;
+	if (!bBehaviorActive && BehaviorModel.IsValid() && bUseOriginalBehaviors)
+	{
+		bBehaviorActive = true;
+	}
 	bBehaviorMoveSuspended = true;
 	bSnapToGround = false;
 	CurrentVelocityCmPerSec = FVector::ZeroVector;
@@ -1212,6 +1414,27 @@ bool ASimCopterGroundAgent::BoardCarrier(AActor* NewCarrier, const bool bAsHarne
 	if (USceneComponent* CarrierRoot = NewCarrier->GetRootComponent())
 	{
 		AttachToComponent(CarrierRoot, FAttachmentTransformRules::KeepWorldTransform);
+		if (Cast<ASimCopterGroundAgent>(NewCarrier) != nullptr)
+		{
+			// Keep a patient visibly slung across the paramedic instead of occupying the same
+			// transform and disappearing inside their body.
+			SetActorRelativeLocation(FVector(40.0f, 0.0f, -6.0f));
+			SetActorRelativeRotation(FRotator(0.0f, 90.0f, 88.0f));
+			SetForcedPedestrianFigureClip(TEXT("Dead"));
+		}
+	}
+
+	// Riding removes the person from every other person's object search, but not from rendering
+	// unless they are physically inside the cabin.
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 0;
+
+	if (Helicopter != nullptr && MissionEventId != INDEX_NONE)
+	{
+		if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			Missions->NotifyMissionPersonBoarded(this);
+		}
 	}
 	return true;
 }
@@ -1269,8 +1492,12 @@ bool ASimCopterGroundAgent::AlightFromCarrier()
 	BehaviorCarrier.Reset();
 	bRidingHarness = false;
 	bBehaviorMoveSuspended = false;
+	bMissionCarried = false;
 	bSnapToGround = true;
 	SetActorHiddenInGame(false);
+	ClearForcedPedestrianFigureClip();
+	const FRotator CurrentRotation = GetActorRotation();
+	SetActorRotation(FRotator(0.0f, CurrentRotation.Yaw, 0.0f));
 	SetActorEnableCollision(true);
 	if (CollisionComponent != nullptr)
 	{
@@ -1288,9 +1515,10 @@ bool ASimCopterGroundAgent::TransferFromHarnessToCabin()
 	{
 		return false;
 	}
-	bRidingHarness = false;
-	BehaviorCarrier.Reset();
-	return BoardCarrier(Carrier, /*bAsHarnessRider*/ false);
+	return BoardCarrier(
+		Carrier,
+		/*bAsHarnessRider*/ false,
+		/*bAllowAirborneCabinTransfer*/ true);
 }
 
 bool ASimCopterGroundAgent::BoardSelection(FSimCopterPersonContext& Context)
@@ -1399,14 +1627,14 @@ bool ASimCopterGroundAgent::SelectMedevacVictimAboardPlayer(FSimCopterPersonCont
 	// FUN_004cc830 walks the player's passenger list for a person in state 6. The remake keeps
 	// the same people attached to the helicopter, so the search is over who it is carrying.
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
-	if (TrafficSystem == nullptr || PlayerPawn == nullptr)
+	const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
+	if (TrafficSystem == nullptr || Helicopter == nullptr)
 	{
 		Context.ClearSelection();
 		return false;
 	}
 
-	ASimCopterGroundAgent* Victim = TrafficSystem->FindMedevacPassengerAboard(PlayerPawn);
+	ASimCopterGroundAgent* Victim = TrafficSystem->FindMedevacPassengerAboard(Helicopter);
 	if (Victim == nullptr)
 	{
 		Context.ClearSelection();
@@ -1457,6 +1685,22 @@ bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context
 	// FUN_004ca700: person+0x170 names the emergency vehicle this person rode in on; with none,
 	// the original falls back to the player's helicopter. The remake does not yet stamp the
 	// vehicle id on a deployed crew member, so only the fallback arm is live.
+	if (int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5)
+	{
+		const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
+		const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+		if (Helicopter == nullptr ||
+			Missions == nullptr ||
+			!Missions->CanHospitalParamedicBoardPlayerHelicopter(Helicopter))
+		{
+			// Do not even select/walk toward the fallback helicopter after a completed handoff.
+			// BoardCarrier repeats this check as the atomic action backstop.
+			Context.ClearSelection();
+			return false;
+		}
+	}
+
 	int32 Distance = 0;
 	return SelectObjectOfClass(Context, EBhavObjectClass::PlayerHelicopter, Distance);
 }
@@ -1464,7 +1708,7 @@ bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context
 bool ASimCopterGroundAgent::IsSelectionPlayerHelicopter(const FSimCopterPersonContext& Context) const
 {
 	const AActor* Selected = Context.SelectedObject.Get();
-	return Selected != nullptr && Selected == UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	return Selected != nullptr && Selected == ResolvePlayerHelicopter();
 }
 
 bool ASimCopterGroundAgent::IsSelectionWithinUnits(const FSimCopterPersonContext& Context, const int32 Units) const
@@ -1483,8 +1727,7 @@ bool ASimCopterGroundAgent::IsSelectionWithinUnits(const FSimCopterPersonContext
 
 int32 ASimCopterGroundAgent::GetPlayerHelicopterSpeed() const
 {
-	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(
-		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+	const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
 	if (Helicopter == nullptr || TrafficSystem == nullptr)
 	{
@@ -1493,6 +1736,12 @@ int32 ASimCopterGroundAgent::GetPlayerHelicopterSpeed() const
 	// BHAV 264's thresholds (250 / 125) are in the original's units, so convert out of centimetres.
 	const float UnitCm = FMath::Max(1.0f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
 	return FMath::RoundToInt(Helicopter->GetVelocity().Size() / UnitCm);
+}
+
+bool ASimCopterGroundAgent::HasHiddenPersonInState(const int32 State) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	return TrafficSystem != nullptr && TrafficSystem->HasHiddenBehaviorPersonInState(State);
 }
 
 int32 ASimCopterGroundAgent::GetDifficultyTier() const
@@ -2225,15 +2474,13 @@ void ASimCopterGroundAgent::SetMissionInjuredPose()
 	{
 		ClearForcedPedestrianFigureClip();
 		BehaviorContext.ResetToState(6);
-		// attr34 is the victim's health: BHAV 281 "Medevac adjust health" drains it and BHAV 280
-		// rec[11] kills them the moment it drops below 1. Nothing in people.df seeds it and no
-		// write to person+0x184 exists in the executable, so the original must seed it outside
-		// the data we have. Left at 0 they die on their first behaviour tick, which is exactly
-		// what "the mission starts and instantly ends" looked like. 58 is the one health-shaped
-		// constant in the medevac tree (BHAV 800 rec[4] sets attr38 to it) - ASSUMED, not decoded.
+		// attr34 is person+0x184: BHAV 281 drains it and BHAV 280 kills the victim below 1.
+		// FUN_004c4190's successful non-mode-4 spawn path explicitly writes 100 to +0x184 after
+		// configuring the person. The previous 58 was inferred from an unrelated BHAV constant
+		// and made patients substantially more fragile than the executable does.
 		if (BehaviorContext.Attributes[EBhavAttr::MedevacHealth] == 0)
 		{
-			BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = 58;
+			BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = 100;
 		}
 	}
 	else
@@ -2284,6 +2531,36 @@ void ASimCopterGroundAgent::ResumeNormalPedestrianBehavior()
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
 	StartOriginalBehavior();
+}
+
+void ASimCopterGroundAgent::ResumeSuspendedPedestrianBehavior()
+{
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian)
+	{
+		return;
+	}
+
+	bMissionStationary = false;
+	bMissionCarried = false;
+	bMissionWavesWhenIdle = false;
+	bBehaviorMoveSuspended = false;
+	bSnapToGround = true;
+	ClearMoveTarget();
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	SetActorHiddenInGame(false);
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
+
+	if (BehaviorModel.IsValid() && bUseOriginalBehaviors && BehaviorContext.Stack.Num() > 0)
+	{
+		bBehaviorActive = true;
+	}
+	else
+	{
+		StartOriginalBehavior();
+	}
 }
 
 void ASimCopterGroundAgent::SetDroppedInjuredOnGround(const FVector& WorldLocation)

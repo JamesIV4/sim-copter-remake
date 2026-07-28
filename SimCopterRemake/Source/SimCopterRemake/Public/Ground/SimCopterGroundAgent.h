@@ -36,6 +36,7 @@ public:
 	ASimCopterGroundAgent();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
@@ -100,6 +101,16 @@ public:
 	bool IsGuidanceMoveTargetActive() const { return GuidanceMoveTargetTimeRemainingSeconds > 0.0f; }
 	bool HasMissionPickupCreditAwarded() const { return bMissionPickupCreditAwarded; }
 	void SetMissionPickupCreditAwarded(bool bAwarded) { bMissionPickupCreditAwarded = bAwarded; }
+	bool IsMissionPickupCounted() const { return bMissionPickupCounted; }
+	void SetMissionPickupCounted(bool bCounted) { bMissionPickupCounted = bCounted; }
+	bool HasMissionResolutionReported() const { return bMissionResolutionReported; }
+	void SetMissionResolutionReported(bool bReported) { bMissionResolutionReported = bReported; }
+	void ResetMissionActionTracking()
+	{
+		bMissionPickupCreditAwarded = false;
+		bMissionPickupCounted = false;
+		bMissionResolutionReported = false;
+	}
 
 	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
 	void ClearForcedPedestrianFigureClip();
@@ -112,6 +123,10 @@ public:
 	void SetMissionAwaitingRescue(bool bAwaiting) { bMissionWavesWhenIdle = bAwaiting; }
 	void ClearMissionPose();
 	void ResumeNormalPedestrianBehavior();
+	// Continue the exact VM stack that was paused by SetMissionScriptedMover. Hospital handoffs use
+	// this so completing the engine-owned carry animation does not look like a brand-new paramedic
+	// arrival and immediately enter BHAV 263's no-patient helper branch.
+	void ResumeSuspendedPedestrianBehavior();
 	void SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation);
 	bool IsMissionCarried() const { return bMissionCarried; }
 
@@ -236,7 +251,9 @@ public:
 	// with what the VM did.
 	AActor* GetBehaviorCarrier() const { return BehaviorCarrier.Get(); }
 	bool IsRidingHarness() const { return BehaviorCarrier.IsValid() && bRidingHarness; }
-	bool BoardCarrier(AActor* NewCarrier, bool bAsHarnessRider);
+	bool HasClaimedPassengerSeat() const { return bClaimedPassengerSeat; }
+	bool IsAtBehaviorHomeTile() const { return IsOnHomeTile(); }
+	bool BoardCarrier(AActor* NewCarrier, bool bAsHarnessRider, bool bAllowAirborneCabinTransfer = false);
 	bool AlightFromCarrier();
 	// Op 58's transfer: a victim on the raised harness climbs into the cabin.
 	bool TransferFromHarnessToCabin();
@@ -495,6 +512,8 @@ private:
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
 	bool bMissionPickupCreditAwarded = false;
+	bool bMissionPickupCounted = false;
+	bool bMissionResolutionReported = false;
 	bool bPassengerFallActive = false;
 	bool bPassengerFallStarted = false;
 	float PassengerFallStartZ = 0.0f;
@@ -560,6 +579,7 @@ private:
 	virtual void MessageOwningVehicle(int32 MessageId) override;
 	virtual void SetSeatPortraitMood(int32 Mood) override { SeatPortraitMood = Mood; }
 	virtual int32 GetPlayerHelicopterSpeed() const override;
+	virtual bool HasHiddenPersonInState(int32 State) const override;
 	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) override;
 	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;

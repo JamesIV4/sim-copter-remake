@@ -311,6 +311,12 @@ void ASimCopterOnFootPawn::SimBoardHelicopter()
 		return;
 	}
 
+	if (!TryBoardCarriedMissionPerson(Helicopter))
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: carried patient could not board."));
+		return;
+	}
+
 	UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: possessing %s."), *Helicopter->GetName());
 	Helicopter->EnterHelicopter(PlayerController);
 	Destroy();
@@ -371,6 +377,29 @@ void ASimCopterOnFootPawn::SimGotoAmbient(int32 Which)
 	UE_LOG(LogTemp, Display, TEXT("SimGotoAmbient %d: %s"), Which, *Target.ToCompactString());
 }
 
+bool ASimCopterOnFootPawn::TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn* Helicopter)
+{
+	if (!CarriedMissionPerson.IsValid())
+	{
+		return true;
+	}
+	if (Helicopter == nullptr || Helicopter->GetAvailablePassengerSeats() <= 0)
+	{
+		return false;
+	}
+
+	ASimCopterGroundAgent* MissionPerson = CarriedMissionPerson.Get();
+	if (MissionPerson == nullptr || !MissionPerson->BoardCarrier(Helicopter, /*bAsHarnessRider*/ false))
+	{
+		return false;
+	}
+
+	// BoardCarrier detached and preserved the actual actor, claimed the seat, and notified the
+	// mission action service. Only clear the on-foot weak reference here.
+	ConsumeCarriedMissionPerson();
+	return true;
+}
+
 void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 {
 	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(HelicopterAutoEnterRadiusCm);
@@ -381,29 +410,9 @@ void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
-		if (CarriedMissionPerson.IsValid())
+		if (!TryBoardCarriedMissionPerson(Helicopter))
 		{
-			if (Helicopter->GetAvailablePassengerSeats() <= 0)
-			{
-				return;
-			}
-
-			const int32 EventId = CarriedMissionEventId;
-			ASimCopterGroundAgent* MissionPerson = ConsumeCarriedMissionPerson();
-			if (MissionPerson != nullptr)
-			{
-				MissionPerson->Destroy();
-			}
-
-			const int32 Boarded = Helicopter->AddMissionPassengersForMission(1, EventId, ESimCopterMissionPassengerKind::Medevac);
-			if (Boarded > 0)
-			{
-				if (ASimCopterMissionSystemActor* MissionActor = Cast<ASimCopterMissionSystemActor>(
-					UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
-				{
-					MissionActor->NotifyMedevacVictimBoarded(EventId, Boarded);
-				}
-			}
+			return;
 		}
 
 		Helicopter->EnterHelicopter(PlayerController);

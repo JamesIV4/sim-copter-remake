@@ -1,13 +1,15 @@
 # People behaviour VM - complete opcode table (2026-07-28)
 
-The authoritative map, not a reconstruction. `FUN_004c3010` fills the 88-slot table at
-`DAT_0058ef78` with 0x20-byte thunks starting at `LAB_004c84e0`; each thunk forwards to its handler
-with a `call` at thunk+0x0e. Opcode = `(slot address - 0x58ef78) / 4`, which is why the numbering is
-sparse - 81 of the 88 slots are filled and the gaps are real. Rebuild with
-`scratchpad/opcode_map.py`.
+The handler-table mapping is authoritative; gameplay ownership and call-site conclusions are not.
+`FUN_004c3010` fills the 88-slot table at `DAT_0058ef78` with 0x20-byte thunks starting at
+`LAB_004c84e0`; each thunk forwards to its handler with a `call` at thunk+0x0e. Opcode =
+`(slot address - 0x58ef78) / 4`, which is why the numbering is sparse - 81 of the 88 slots are
+filled and the gaps are real. Rebuild with `scratchpad/opcode_map.py`. The VM requests world
+actions; stable engine services remain authoritative for real people, carrier attachments,
+helicopter seats, and idempotent mission outcomes.
 
 **Coverage: 81 opcodes in the table, 67 used by the shipped `people.df` programs, 70 ported.
-Of the 67 the programs actually run, 65 are live; only 50, 78 and 80 remain (5 record sites).**
+Only 50, 78 and 80 remain among shipped record sites (5 record sites).**
 
 ## Ported this pass
 
@@ -83,7 +85,7 @@ Ported with a stated compromise:
 | 35 | `FUN_004cc410` | 2 | Conditional despawn against `FUN_004abb00(0x20)`, a tuning read the remake does not have. Stays put rather than vanishing people on a threshold it cannot read. |
 | 54 | `FUN_004ccb40` | 4 | Which of three faces the person shows in the seat window (BHAV 264 sets it from speed and health). Stored on the agent; the seat window does not draw moods yet. |
 | 66 | `FUN_004cbbc0` | 5 | Fall and die: detach, land, `FUN_004ccf50(10)` = `EVT_PersonDied`, hold "Dead". The projectile-as-body half is not reproduced. |
-| 73 | `FUN_004cb9c0` -> `FUN_004ca4f0(5, 0)` | 1 | Is there a hidden paramedic on the map. Always false in the shipped game - nothing spawns person state 5 - so BHAV 281's fast health-decay arm is the only reachable one. |
+| 73 | `FUN_004cb9c0` -> `FUN_004ca4f0(5, 0)` | 1 | Is there a hidden state-5 paramedic on the map (`person+0x152 == 0`). This is a live query: `FUN_004c25b0` spawns state 5 at XBLD D1, and a riding paramedic is hidden. |
 | 79 | `FUN_004cb7d0` | 3 | local := `DAT_00506448`, a frame counter with no remake equivalent; writes 0. |
 
 Still not ported (5 record sites):
@@ -112,33 +114,82 @@ loads it from the career city, and its static initialiser is 2.
 a spawn mode: the transport creator passes 4, the medevac creator 6, and `FUN_0049bd00` passes the
 officer's 8 or 0xe (confirmed twice over by `FUN_004bd980(0xe, 8, ...)` in `FUN_004b9e40`).
 
-The complete set of person-spawn call sites in the executable, by state:
+The complete set of `FUN_004c3eb0` person-spawn call sites in the executable, by state:
 
     (-1, 1)   (-1, 2)   (-1, 0x13)   rescue victims  -> BHAV 700
     (-1, 3)   riot      (-1, 4)      transport       (-1, 6)  medevac victim
     (9, 10)   (9, 0xb)  (9, 0xc)     the criminals   (0x15, 0xf) scallop
     (0xe, 8)  (0xe, 0xe)             police officers (0xf, 0xd)  arrested speeder driver
 
-**Nothing spawns person state 5.** BHAV 801 "Medevac paramedic new initbhav" and its helpers (262
-"Put all nearby medevac victims on emerg vehs", 263, 269, 272) are unreferenced content, as are
-1498 "old Rescue initbhav" and 1499 "old Medevac paramedic initbhav". The remake's hospital EMT
-hand-off was therefore an invention rather than a port, and is disabled: a medevac victim is
-delivered by BHAV 282 "Medevac test for finished" the moment they are standing on a hospital tile
-(opcode 25 against XBLD 209, plus opcode 56).
+That list is not the complete person-spawn graph. `FUN_004c25b0` case XBLD D1 explicitly calls
+`FUN_004c2260(0x0c, 5, TileX, TileY, -1, 0)`. State 5 and BHAV 801 "Medevac paramedic new
+initbhav" are therefore live hospital behavior; helpers 262, 263, 269 and 272 are not dead-content
+evidence. BHAV 282 remains the victim-side completion behavior once a patient is set down on the
+hospital tile (opcode 25 against XBLD 209 plus opcode 56).
 
-## Divergences removed this pass
+`FUN_004c4190` also supplies the medevac-health seed that was previously treated as unknown: its
+successful non-mode-4 spawn path writes `100` to person `+0x184`, the attr34 drained by BHAV 281.
+The unrelated constant `58` from BHAV 800 is not a health seed.
 
-- **`ProcessRescueTransfers` deleted.** It was a second, engine-side rescue passenger loop. BHAV
-  305 boards survivors onto the harness and BHAV 303 sets them down, both posting their own mission
-  events; running both double-counted. Survivors now walk away from the drop point themselves
-  instead of being swapped for stand-in pedestrians.
+### When the hospital paramedic boards
+
+The shipped graph agrees with the observed intent, but not with restarting the program after an
+unload:
+
+1. BHAV 801's XBLD D1/serviceable arm calls BHAV 263 "Pull all med victims off heli".
+2. BHAV 263 record 0 uses opcode 84 to select a medevac victim aboard the player. Its victim-found
+   arm performs the unload/tote sequence.
+3. Only its **no victim aboard** arm reaches BHAV 269 "medic get on starting object".
+4. BHAV 269 uses opcode 62 to select the emergency vehicle the medic belongs to, falling back to
+   the player's helicopter, then uses opcodes 12/48 to board it. If no starting object can be
+   selected, record 9 executes opcode 40 (`Disappear`), which explains the visible vanish after
+   this branch became detached from its original population lifecycle.
+
+So a paramedic must not try to board while a patient is aboard. The graph by itself cannot
+distinguish "we arrived empty and need help retrieving a patient" from "the last patient was just
+removed": both have no patient aboard. The remake supplies that missing temporal guard at the
+stable boarding service. A state-5 hospital paramedic may take the fallback helicopter ride only
+when an active medevac still has a patient waiting for pickup; completing a handoff resumes the
+paused VM stack rather than restarting BHAV 801. State-5 hospital staff are also protected from a
+visible `Disappear` immediately after service.
+
+### Transport action order
+
+BHAV 291 "Transport go to avatar/get on heli" probes object class 2 (the player's helicopter) at
+one tile and reaches opcode 12, the real walk-and-board action. BHAV 292 "Transport wait to get
+off" probes its mission coordinates, runs opcode 17 to perform the real alight, posts delivered
+outcome 1, and only then disappears. The class-0 probe was previously declared but absent from the
+world adapter. `FUN_004a88e0` returns the live mission record's pointer at `+0x30` when that field
+is not `-1`; `+0x30/+0x34` are `SecondaryX/Y`, so class 0 now resolves the actual destination.
+Accordingly:
+
+- pickup outcome 0 is only an acknowledgement after this real person owns a matching helicopter
+  seat; it can no longer create mission progress by itself;
+- the recovery approach targets the cabin door and calls the same `BoardCarrier` service;
+- `DROP` is derived from matching live helicopter seats, never from historical
+  `VictimsPickedUp`; and
+- delivery releases that exact actor and seat before posting the transport outcome. A VM timeout
+  cannot despawn an unresolved mission person.
+
+## Stability ownership correction
+
+- **The VM requests actions; it does not replace them.** `BoardCarrier` / `AlightFromCarrier`
+  preserve the real person actor, own the attachment and passenger seat together, and route pickup,
+  delivery, and death through one idempotent mission-action service.
+- **`ProcessRescueTransfers` is a recovery path again.** BHAV 305/303 still drive normal approach,
+  harness, and alight behavior. The recovery loop calls the same carrier services when a swimmer,
+  roof victim, or moving-train victim would otherwise strand the mission; it does not create a
+  second seat or post a second outcome.
 - **Boat and train survivors run the VM.** They were inert scripted movers, which only worked while
   an engine-side pickup existed to teleport them into a seat. They keep their remake-side ground
-  snap suppression - there is no walkable surface under a swimmer or a roof rider - but the program
-  is the original's.
+  snap suppression - there is no walkable surface under a swimmer or a roof rider - while stable
+  carrier actions remain available to the recovery loop.
 - **`SetMissionInjuredPose` no longer freezes the walker.** An injured person is a medevac victim
-  and BHAV 800 binds "Dead" itself; stopping the VM discarded the health decay, the death and the
-  delivery test with it.
+  and BHAV 800 binds "Dead" itself. Its decoded attr34 seed is 100.
 - **`DropPassengerAtSlot` releases the real passenger** rather than spawning a stand-in beside a
   still-attached invisible one.
-- **`ProcessMedevacHospitalHandoffs` disabled** - see above.
+- **Hospital handoffs are active and bounded.** They reuse the decoded state-5 roof paramedic when
+  available, own automatic medevac cabin alighting so the victim VM cannot race the EMT to an empty
+  seat, visibly carry the actual patient out of the helicopter, and fall back to direct delivery if
+  staging or movement fails. A legacy abstract seat gets a stand-in only when no real attached
+  person exists.
