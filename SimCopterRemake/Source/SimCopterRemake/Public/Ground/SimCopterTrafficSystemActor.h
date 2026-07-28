@@ -128,6 +128,11 @@ struct FSimCopterDispatchVehicle
 	bool bHasJetTarget = false;
 	// True once the vehicle has acted at the scene at least once (original flag 0x08).
 	bool bActedAtScene = false;
+	// The officer this unit put on the ground. BHAV 1150/1152 walk them back to the car and end
+	// on opcode 40, which is "get in"; once they and anyone they arrested are aboard, the car has
+	// no reason to sit out the rest of its stay.
+	TWeakObjectPtr<ASimCopterGroundAgent> DeployedOfficer;
+	bool bOfficerDeployed = false;
 	// The waypoint marker hanging over DestinationTile, and the original's "marker is linked"
 	// flag +0x2b1 & 0x20. Created on the first dispatch and reused for the slot's lifetime, the
 	// way the original keeps one render node per vehicle.
@@ -178,6 +183,11 @@ public:
 		const ASimCopterGroundAgent& From,
 		int32 LoopFlagFilter,
 		int32 StateFilter) const;
+
+	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
+	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
+	// criminal-car pool. Backs behaviour opcode 15's object classes 10-13.
+	ASimCopterGroundAgent* FindNearestServiceVehicleAgent(const FVector& FromWorldLocation, int32 Service) const;
 	bool TryGetPeopleFacingStepTarget(
 		const FVector& FromWorldLocation,
 		int32 Facing,
@@ -591,6 +601,19 @@ public:
 	// follow it.
 	void SetSpotlightChaseTile(const FIntPoint& Tile) { SpotlightChaseTile = Tile; }
 
+	// Where the searchlight is currently pointed on the ground, or false when it is off. Backs
+	// behaviour opcode 15's object class 16, which is what BHAV 1151 "copf - follow heli" walks
+	// toward: shining the light somewhere is how the player sends an officer there.
+	bool TryGetSpotlightGroundLocation(FVector& OutWorldLocation) const
+	{
+		if (!bSpotlightMarkActive)
+		{
+			return false;
+		}
+		OutWorldLocation = SpotlightMarkWorldLocation;
+		return true;
+	}
+
 	int32 GetDispatchStationCount(SimCopterDispatch::EService Service) const;
 	int32 GetActiveDispatchCount(SimCopterDispatch::EService Service) const;
 	// One-line status for the debug panel: stations, units out, and what they are doing.
@@ -628,7 +651,20 @@ public:
 	// Extinguish burning cars within RadiusCm of WorldLocation (helicopter bucket dump). Appends
 	// the event ids of the cars that were put out so the caller can post the douse/scoring events.
 	void DouseBurningVehiclesNear(const FVector& WorldLocation, float RadiusCm, TArray<int32>& OutExtinguishedEventIds);
-	bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId);
+	// FigureName forces a privanim figure (e.g. "Kopp" for a police officer) instead of the random
+	// civilian one; empty keeps the random pick.
+	bool TrySpawnMissionPerson(
+		int32 SpawnMode,
+		int32 PersonState,
+		int32 TileX,
+		int32 TileY,
+		int32 EventId,
+		const FString& FigureName = FString(),
+		ASimCopterGroundAgent** OutSpawned = nullptr);
+
+	// Anyone within RadiusCm who has been arrested (EBhavAttr::CriminalCaught) but is still on
+	// their feet - i.e. holding the hands-up pose or walking to the police car.
+	bool HasArrestedCriminalNear(const FVector& WorldLocation, float RadiusCm) const;
 	int32 PickUpMissionPeopleNear(
 		int32 EventId,
 		const FVector& WorldLocation,

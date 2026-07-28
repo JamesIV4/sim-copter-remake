@@ -72,8 +72,15 @@ namespace EBhavObjectClass
 	constexpr int32 FireTruck = 10;       // FUN_0049b060(0, tile)
 	constexpr int32 PoliceCar = 11;       // FUN_0049b060(1, tile)
 	constexpr int32 Ambulance = 12;       // FUN_0049b060(2, tile)
+	// "Service 3" is the speeder pool, not a fourth emergency service: BHAV 1402 "Cop speeder"
+	// probes it at rec[3] to find the car it was sent to arrest.
+	constexpr int32 SpeederCar = 13;      // FUN_0049b060(3, tile)
 	constexpr int32 Civilian = 14;        // FUN_004ca350 state == 0
-	constexpr int32 PlayerObjectC = 16;   // DAT_005040d0+0xc0
+	// DAT_005040d0+0xc0, the third object hanging off the player record. Taken to be the
+	// searchlight: the only program that asks for it is 1151 "copf - follow heli", and pointing
+	// the light at what you want the police to deal with is how SimCopter directs them - the
+	// dispatcher itself reads the spotlight node for its chase target (FUN_0049b3f0).
+	constexpr int32 PlayerSpotlight = 16;
 }
 
 // FUN_004ca940's outcome, as op 38 reads it.
@@ -107,7 +114,21 @@ struct FSimCopterPersonContext
 	// The walker's "current runtime object" slot (original walker record +0x04). Op 15 selects
 	// into it; ops 18/38/39 act on whatever is in it. Kept as an actor handle so the VM needs no
 	// knowledge of what kind of thing it found.
+	//
+	// Not every object class is an actor: class 16 is the helicopter's spotlight, which in the
+	// remake is a place rather than a thing. SelectedLocation always holds the point to walk to
+	// and face; SelectedObject is null for those, which only op 39 (push a reaction onto a
+	// person) cares about.
 	TWeakObjectPtr<AActor> SelectedObject;
+	FVector SelectedLocation = FVector::ZeroVector;
+	bool bHasSelection = false;
+
+	void ClearSelection()
+	{
+		SelectedObject.Reset();
+		SelectedLocation = FVector::ZeroVector;
+		bHasSelection = false;
+	}
 
 	// Interrupt reaction state, mirroring FUN_004c1050's writes:
 	//   person+0x17c  the 900-series reaction id currently running (INDEX_NONE = none)
@@ -165,9 +186,18 @@ public:
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const { return false; }
 
 	// Op 15, FUN_004cac70: find the nearest object of EBhavObjectClass, put it in
-	// Context.SelectedObject and report its Chebyshev tile distance. False when the class is not
-	// supported here or nothing matched - the opcode then writes the original's 2000 sentinel.
+	// Context.SelectedObject/SelectedLocation and report its Chebyshev tile distance. False when
+	// the class is not supported here or nothing matched - the opcode then writes the original's
+	// 2000 sentinel.
 	virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutTileDistance)
+	{
+		return false;
+	}
+
+	// Op 14, FUN_004caaf0: a small family of proximity tests picked by the record's first
+	// argument. Case 1 - the one the criminal programs use - is "is the player's helicopter
+	// within 4 original units of the ground", i.e. hovering just off the deck.
+	virtual bool EvaluateProximityTest(const FSimCopterPersonContext& Context, int32 TestIndex) const
 	{
 		return false;
 	}

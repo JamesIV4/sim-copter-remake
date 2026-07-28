@@ -213,6 +213,12 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	// person; the move speed (+0x164) starts 0 and is assigned by the shipped programs
 	// ("movespeed := 6/8/12/16/25" expressions in people.df).
 	BehaviorContext.Attributes[EBhavAttr::AutoTurn] = 1;
+	// person+0x152: a spawned person is on the map and can be seen. The shipped programs treat 1
+	// as the live default and clear it only while riding something (BHAV 1052 "cop - ride on
+	// copter" sets it to 0, BHAV 1055 sets it back on getting out). It gates every object-class
+	// search in FUN_004ca350, so leaving it at 0 makes a person invisible to every other person -
+	// which is what stopped cops finding criminals.
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
 	BehaviorContext.ResetToState(InitialPersonState);
 	ResetBehaviorProgramOverride();
 	LastAppliedBehaviorFacing = INDEX_NONE;
@@ -636,14 +642,28 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	// found", which makes their probe take the false edge exactly as an empty city would.
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
 	AActor* Found = nullptr;
+	// Classes that are a place rather than a thing fill this instead.
+	FVector FoundLocation = FVector::ZeroVector;
+	bool bFoundLocation = false;
 
 	switch (ObjectClass)
 	{
 	case EBhavObjectClass::AlreadySelected:
 		Found = Context.SelectedObject.Get();
+		bFoundLocation = Context.bHasSelection;
+		FoundLocation = Context.SelectedLocation;
 		break;
 	case EBhavObjectClass::PlayerHelicopter:
+		// The original's DAT_005040d0+0xa4 is specifically the helicopter. The remake uses
+		// whichever body the player is in so that the on-foot avatar is also something people
+		// notice; opcode 14's altitude test below still insists on an actual helicopter.
 		Found = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+		break;
+	case EBhavObjectClass::PlayerSpotlight:
+		if (TrafficSystem != nullptr && TrafficSystem->TryGetSpotlightGroundLocation(FoundLocation))
+		{
+			bFoundLocation = true;
+		}
 		break;
 	case EBhavObjectClass::MedevacVictim:
 		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, -2, 6) : nullptr;
@@ -657,13 +677,27 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	case EBhavObjectClass::Civilian:
 		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, -2, 0) : nullptr;
 		break;
+	case EBhavObjectClass::FireTruck:
+	case EBhavObjectClass::PoliceCar:
+	case EBhavObjectClass::Ambulance:
+	case EBhavObjectClass::SpeederCar:
+		Found = TrafficSystem != nullptr
+			? TrafficSystem->FindNearestServiceVehicleAgent(
+				GetActorLocation(), ObjectClass - EBhavObjectClass::FireTruck)
+			: nullptr;
+		break;
 	default:
 		break;
 	}
 
-	if (Found == nullptr)
+	if (Found != nullptr)
 	{
-		Context.SelectedObject.Reset();
+		FoundLocation = Found->GetActorLocation();
+		bFoundLocation = true;
+	}
+	if (!bFoundLocation)
+	{
+		Context.ClearSelection();
 		return false;
 	}
 
@@ -675,30 +709,62 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	int32 TheirY = INDEX_NONE;
 	if (TrafficSystem == nullptr ||
 		!TryGetCurrentTileCoordinate(MyX, MyY) ||
-		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Found->GetActorLocation(), TheirX, TheirY))
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(FoundLocation, TheirX, TheirY))
 	{
-		Context.SelectedObject.Reset();
+		Context.ClearSelection();
 		return false;
 	}
 
 	Context.SelectedObject = Found;
+	Context.SelectedLocation = FoundLocation;
+	Context.bHasSelection = true;
 	OutTileDistance = FMath::Max(FMath::Abs(TheirX - MyX), FMath::Abs(TheirY - MyY));
 	return true;
+}
+
+bool ASimCopterGroundAgent::EvaluateProximityTest(const FSimCopterPersonContext& Context, const int32 TestIndex) const
+{
+	// FUN_004caaf0. Case 1 is the only one the shipped criminal and cop programs reach in the
+	// remake: |helicopter altitude - the ground height under it| <= 4 original units. Cases 2 and
+	// 3 test a carrier the remake does not model for these programs, and case 0 reads a player
+	// field that has not been identified.
+	if (TestIndex != 1)
+	{
+		return false;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(
+		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+	if (TrafficSystem == nullptr || Helicopter == nullptr)
+	{
+		// On foot there is no helicopter to hover, so nothing is being set down on anyone.
+		return false;
+	}
+
+	const FVector HelicopterLocation = Helicopter->GetActorLocation();
+	float TerrainZ = 0.0f;
+	if (!TrafficSystem->TryGetTerrainWorldZAtWorldLocation(HelicopterLocation, TerrainZ))
+	{
+		return false;
+	}
+
+	const float GateCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 4.0f;
+	return FMath::Abs(HelicopterLocation.Z - TerrainZ) <= GateCm;
 }
 
 bool ASimCopterGroundAgent::FaceSelectedObject(FSimCopterPersonContext& Context)
 {
 	// FUN_004cb270: facing = (octant toward the object - 2) & 7. The remake's helper already
 	// returns the stored octant for a pair of world points, so the -2 rotation is baked in.
-	const AActor* Target = Context.SelectedObject.Get();
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	if (Target == nullptr || TrafficSystem == nullptr)
+	if (!Context.bHasSelection || TrafficSystem == nullptr)
 	{
 		return false;
 	}
 
 	Context.Attributes[EBhavAttr::Facing] = uint16(
-		TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), Target->GetActorLocation()) & 7);
+		TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), Context.SelectedLocation) & 7);
 	return true;
 }
 
@@ -706,10 +772,22 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 {
 	// FUN_004ca940: turn to face the object, take one ordinary move step, and report arrival once
 	// the two are on the same tile (the original's move result 10 plus a half-tile height gate).
-	const AActor* Target = Context.SelectedObject.Get();
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	if (Target == nullptr || TrafficSystem == nullptr)
+	if (!Context.bHasSelection || TrafficSystem == nullptr)
 	{
+		return ESimCopterBehaviorStepResult::NoTarget;
+	}
+
+	// A moving target (and the spotlight is the most mobile of the lot) has to be re-read every
+	// step or the chase walks to where it used to be.
+	if (const AActor* Target = Context.SelectedObject.Get())
+	{
+		Context.SelectedLocation = Target->GetActorLocation();
+	}
+	else if (!TrafficSystem->TryGetSpotlightGroundLocation(Context.SelectedLocation))
+	{
+		// The only location-only class is the spotlight; once it is off there is nothing to walk to.
+		Context.ClearSelection();
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
@@ -718,14 +796,14 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	int32 TheirX = INDEX_NONE;
 	int32 TheirY = INDEX_NONE;
 	if (!TryGetCurrentTileCoordinate(MyX, MyY) ||
-		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Target->GetActorLocation(), TheirX, TheirY))
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Context.SelectedLocation, TheirX, TheirY))
 	{
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
 	const float HeightGateCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 5.0f;
 	if (MyX == TheirX && MyY == TheirY &&
-		FMath::Abs(Target->GetActorLocation().Z - GetActorLocation().Z) < HeightGateCm)
+		FMath::Abs(Context.SelectedLocation.Z - GetActorLocation().Z) < HeightGateCm)
 	{
 		return ESimCopterBehaviorStepResult::Arrived;
 	}
@@ -1515,6 +1593,8 @@ void ASimCopterGroundAgent::ClearMissionPose()
 {
 	bMissionStationary = false;
 	bMissionWavesWhenIdle = false;
+	// Back on the map, so back in everyone else's object searches.
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
 	bMissionCarried = false;
 	bSnapToGround = true;
 	ClearForcedPedestrianFigureClip();
@@ -1552,6 +1632,7 @@ void ASimCopterGroundAgent::SetDroppedInjuredOnGround(const FVector& WorldLocati
 {
 	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 	bMissionCarried = false;
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
 	SetActorEnableCollision(true);
 	if (CollisionComponent != nullptr)
 	{
@@ -1645,6 +1726,9 @@ void ASimCopterGroundAgent::SetCarriedBy(USceneComponent* CarryParentComponent, 
 	SetActorRelativeLocation(RelativeLocation);
 	SetActorRelativeRotation(RelativeRotation);
 	SetForcedPedestrianFigureClip(TEXT("Dead"));
+	// Riding something takes a person out of every object-class search, so nobody tries to chase
+	// or rescue someone who is already in the winch.
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 0;
 }
 
 void ASimCopterGroundAgent::ApplyAgentShape()
