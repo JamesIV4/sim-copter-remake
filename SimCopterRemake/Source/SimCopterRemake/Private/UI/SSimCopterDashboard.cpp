@@ -24,16 +24,14 @@ namespace
 {
 const TCHAR* const UpscaledDashboardFile = TEXT("DASH6-plus-DASH4-upscaled.png");
 
-// --- seatwin2.bmp, 186x115 -----------------------------------------------------------------
+// --- seatwin2, 186x115 page space -----------------------------------------------------------
 //
-// The window is three slices: a left frame, a speckled well that repeats, and the right frame
-// with its two fittings. Widening it for a helicopter with more seats means tiling the well,
-// which is why the well's bounds were measured off the bitmap rather than assumed.
+// The high-resolution reconstruction is kept at the original fixed width. Shorter seat lists
+// crop its bottom in UV space; the fourteen-seat airframe uses the full 115-pixel height.
 const TCHAR* const SeatWindowFile = TEXT("SEATWIN2.BMP");
+const TCHAR* const UpscaledSeatWindowFile = TEXT("SEATWIN2-upscaled-small.png");
+constexpr int32 SeatWindowWidth = 186;
 constexpr int32 SeatWindowHeight = 115;
-const FIntRect SeatFrameLeft(0, 0, 10, SeatWindowHeight);
-const FIntRect SeatFrameFill(10, 0, 20, SeatWindowHeight);
-const FIntRect SeatFrameRight(171, 0, 186, SeatWindowHeight);
 
 // The well starts at y 10 and runs to the bottom edge - there is no bottom frame - so the window
 // is cut to whatever depth the seat rows need rather than always standing 115 tall. The biggest
@@ -342,46 +340,35 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildSeatWindow()
 	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
 	const int32 Seats = Helicopter != nullptr ? FMath::Max(0, Helicopter->GetPassengerSeatCount()) : 0;
 
-	const int32 Columns = FMath::Clamp(Seats, 1, SeatsPerRow);
 	const int32 Rows = FMath::Max(1, FMath::DivideAndRoundUp(Seats, SeatsPerRow));
 
-	// Only as wide and as deep as the seats this airframe actually has: a four-seater shows one
-	// row of four, the fourteen-seater three rows of five. The trailing gap keeps the last
-	// portrait clear of the right frame's fittings.
-	const float PageWidth =
-		SeatFirstPortraitX + Columns * SeatPortraitStride + SeatRowPadding + SeatFrameRight.Width();
+	// SEATWIN2 always keeps its original width. Only its open-bottomed depth follows the number
+	// of seat rows: one row for smaller helicopters and all three for the fourteen-seater.
+	const float PageWidth = static_cast<float>(SeatWindowWidth);
 	const float PageHeight = SeatWellTop + Rows * SeatRowStride + SeatRowPadding;
 
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
 	SeatCanvas = Canvas;
 
-	const float LeftWidth = static_cast<float>(SeatFrameLeft.Width());
-	const float RightWidth = static_cast<float>(SeatFrameRight.Width());
-
-	// Each slice is taken from the top of the bitmap and cut to the depth in use, so the frame,
-	// the hazard stripe and the two fittings all stay where they belong.
 	const int32 SourceHeight = FMath::Clamp(FMath::CeilToInt(PageHeight), 1, SeatWindowHeight);
-	auto Slice = [SourceHeight](const FIntRect& Full)
-	{
-		return FIntRect(Full.Min.X, 0, Full.Max.X, SourceHeight);
-	};
+	TSharedRef<SWidget> WindowImage =
+		MakeImage(SeatWindowFile, FIntRect(0, 0, SeatWindowWidth, SourceHeight), /*bColorKeyed=*/false);
 
-	AddAtPage(*Canvas, 0.0f, 0.0f, LeftWidth, PageHeight,
-		MakeImage(SeatWindowFile, Slice(SeatFrameLeft), /*bColorKeyed=*/false));
-
-	if (const FSlateBrush* Fill = GetBrush(SeatWindowFile, Slice(SeatFrameFill), /*bColorKeyed=*/false))
+	if (USimCopterHangarArt* ArtObject = Art.Get())
 	{
-		// The well is a speckled texture, so it tiles cleanly; stretching it would smear it.
-		TSharedRef<FSlateBrush> Tiled = MakeShared<FSlateBrush>(*Fill);
-		Tiled->Tiling = ESlateBrushTileType::Horizontal;
-		Tiled->ImageSize = FVector2D(SeatFrameFill.Width() * Scale, PageHeight * Scale);
-		SeatFillBrush = Tiled;
-		AddAtPage(*Canvas, LeftWidth, 0.0f, PageWidth - LeftWidth - RightWidth, PageHeight,
-			SNew(SImage).Image(&Tiled.Get()));
+		if (const FSlateBrush* Upscaled = ArtObject->GetBundledSlateImage(UpscaledSeatWindowFile))
+		{
+			TSharedRef<FSlateBrush> Cropped = MakeShared<FSlateBrush>(*Upscaled);
+			Cropped->SetUVRegion(FBox2f(
+				FVector2f(0.0f, 0.0f),
+				FVector2f(1.0f, PageHeight / static_cast<float>(SeatWindowHeight))));
+			Cropped->ImageSize = FVector2D(PageWidth * Scale, PageHeight * Scale);
+			SeatWindowBrush = Cropped;
+			WindowImage = SNew(SImage).Image(&Cropped.Get());
+		}
 	}
 
-	AddAtPage(*Canvas, PageWidth - RightWidth, 0.0f, RightWidth, PageHeight,
-		MakeImage(SeatWindowFile, Slice(SeatFrameRight), /*bColorKeyed=*/false));
+	AddAtPage(*Canvas, 0.0f, 0.0f, PageWidth, PageHeight, WindowImage);
 
 	RebuildSeats();
 
@@ -413,8 +400,8 @@ void SSimCopterDashboard::RebuildSeats() const
 
 	const int32 Seats = FMath::Max(0, Helicopter->GetPassengerSeatCount());
 
-	// Only the portraits are rebuilt; the window frame slots stay where BuildSeatWindow put them.
-	const int32 FrameSlotCount = 3;
+	// Only the portraits are rebuilt; the window frame slot stays where BuildSeatWindow put it.
+	const int32 FrameSlotCount = 1;
 	while (SeatCanvas->GetChildren()->Num() > FrameSlotCount)
 	{
 		SeatCanvas->RemoveSlot(SeatCanvas->GetChildren()->GetChildAt(SeatCanvas->GetChildren()->Num() - 1));
