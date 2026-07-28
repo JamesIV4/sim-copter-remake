@@ -60,9 +60,9 @@ private:
 	mutable int32 BuiltPassengerCount = -1;
 	TSharedPtr<SConstraintCanvas> SeatCanvas;
 
-	// The seat well's tiled fill is a copy of a cached brush with tiling switched on, so unlike
-	// every other brush here it is not owned by the art object.
-	TSharedPtr<FSlateBrush> SeatFillBrush;
+	// The fixed-width seat window uses a copy of the high-resolution brush with its bottom
+	// cropped in UV space for helicopters that need fewer than three seat rows.
+	TSharedPtr<FSlateBrush> SeatWindowBrush;
 
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 	ASimCopterMissionSystemActor* GetMissionSystem() const;
