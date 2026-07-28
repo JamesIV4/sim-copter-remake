@@ -152,17 +152,36 @@ EOpResult ExecOpcode(
 		Local(Record.Args[0]) = Context.RandomBounded(FMath::Max<uint16>(Bound, 1));
 		return EOpResult::True;
 	}
-	case 13: // side-effect/event trigger (FUN_004caac0 -> FUN_004ccf50)
+	case 13: // mission-event side effect (FUN_004caac0 -> FUN_004ccf50)
+		World.PostMissionOutcome(Context, int32(int16(Record.Args[0])));
 		return EOpResult::True;
-	case 15: // distance/object probe used by "Check for Cops or Heli" (FUN_004cac70)
-		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
+	case 15: // nearest object of a class (FUN_004cac70); arg3 names the local the range lands in
+	{
+		const int32 ObjectClass = int32(int16(Record.Args[0]));
+		const int32 Radius = int32(int16(ResolveOperand(Context, Record.Args[2], Record.Args[1], nullptr)));
+		int32 TileDistance = 0;
+		const bool bFound = World.SelectObjectOfClass(Context, ObjectClass, TileDistance);
+		// The original stores 2000 in the local when the search comes up empty, and only commits
+		// the object to the selected slot when it is inside the range (0x4cb0e5).
+		Local(Record.Args[3]) = uint16(bFound ? TileDistance : 2000);
+		if (!bFound || TileDistance >= Radius)
+		{
+			Context.SelectedObject.Reset();
+			return EOpResult::False;
+		}
+		return EOpResult::True;
+	}
 	case 16: // deactivate person (FUN_004cb180 -> FUN_004c4e40; result 3 = stop)
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
 	case 17: // threat response probe (FUN_004cb190)
 		return World.IsThreatNearby(Context) ? EOpResult::True : EOpResult::False;
-	case 18: // face toward runtime object; absent object is a true no-op (FUN_004cb270)
-		return EOpResult::True;
+	case 18: // face toward the selected object; absent object is a true no-op (FUN_004cb270)
+		if (!Context.SelectedObject.IsValid())
+		{
+			return EOpResult::True;
+		}
+		return World.FaceSelectedObject(Context) ? EOpResult::True : EOpResult::False;
 	case 19: // tile class == arg (FUN_004cb2c0 -> FUN_004c9220)
 		return World.GetCurrentTileClass() == int32(Record.Args[0]) ? EOpResult::True : EOpResult::False;
 	case 20: // tile class allowed for my behavior class (FUN_004cb300, DAT_0058ec00 rows)
@@ -226,6 +245,31 @@ EOpResult ExecOpcode(
 	}
 	case 36: // face toward a runtime object class (FUN_004cc470); no matching object in this world.
 		return EOpResult::False;
+	case 38: // walk to the selected object (FUN_004cc540 -> FUN_004ca940); arg0 is the tick budget
+	{
+		if (!Context.SelectedObject.IsValid())
+		{
+			return EOpResult::False;
+		}
+		uint16& Counter = Local(Record.Args[0]);
+		if (Counter == 0)
+		{
+			// Ran out of tries. As with op 4's exhausted branch, the post-move selector binds
+			// NoMo so the walk clip stops with the walk.
+			Context.PendingAnimMnemonic = TEXT("NoMo");
+			return EOpResult::False;
+		}
+		--Counter;
+		switch (World.StepTowardSelectedObject(Context))
+		{
+		case ESimCopterBehaviorStepResult::Arrived: return EOpResult::True;
+		case ESimCopterBehaviorStepResult::Moving:  return EOpResult::Yield;
+		default:                                    return EOpResult::False;
+		}
+	}
+	case 39: // push a BHAV onto the selected person's stack (FUN_004cc560); always succeeds
+		World.PushReactionOnSelectedObject(Context, int32(Record.Args[0]));
+		return EOpResult::True;
 	case 57: // sound/side-effect trigger (FUN_004ccca0 -> FUN_004c5210)
 		return EOpResult::True;
 	case 59: // carried object is player helicopter? (FUN_004cce30)

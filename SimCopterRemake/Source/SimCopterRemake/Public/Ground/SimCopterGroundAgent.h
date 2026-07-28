@@ -208,6 +208,19 @@ public:
 	// Megaphone message the agent last received (person+0x15a).
 	int32 GetLastMegaphoneMessage() const { return BehaviorContext.MegaphoneMessageIndex; }
 
+	// Behaviour-VM state other agents' opcodes have to read. FUN_004ca350 filters candidates on
+	// the loop flag (+0x14a), the state (+0x148), visibility (+0x152) and, for criminals, the
+	// "already caught" attribute (+0x16e).
+	bool IsBehaviorActive() const { return bBehaviorActive; }
+	uint16 GetBehaviorAttribute(int32 Index) const
+	{
+		return Index >= 0 && Index < EBhavAttr::Count ? BehaviorContext.Attributes[Index] : 0;
+	}
+
+	// FUN_004cc560: another person's op 39 pushing a reaction BHAV onto this one. This is the
+	// arrest: a cop pushes BHAV 1060 "Rx: criminal-caught".
+	bool PushBehaviorReaction(int32 ProgramId);
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;
@@ -482,6 +495,11 @@ private:
 	virtual bool TryGetPlayerTileProbe(
 		const FSimCopterPersonContext& Context,
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const override;
+	virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutTileDistance) override;
+	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
+	virtual ESimCopterBehaviorStepResult StepTowardSelectedObject(FSimCopterPersonContext& Context) override;
+	virtual bool PushReactionOnSelectedObject(FSimCopterPersonContext& Context, int32 ProgramId) override;
+	virtual void PostMissionOutcome(FSimCopterPersonContext& Context, int32 OutcomeCode) override;
 	virtual void OnUnknownOpcode(int32 Opcode) override;
 
 	void ApplyAgentShape();
