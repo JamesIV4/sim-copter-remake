@@ -23,6 +23,13 @@
 namespace
 {
 const TCHAR* const UpscaledDashboardFile = TEXT("DASH6-plus-DASH4-upscaled.png");
+const TCHAR* const GaugeNeedleFile = TEXT("gauge-needle.png");
+constexpr float GaugeNeedleSourceWidth = 47.0f;
+constexpr float GaugeNeedleSourceHeight = 350.0f;
+constexpr float GaugeNeedlePivotFromLeft = 24.0f;
+constexpr float GaugeNeedlePivotFromBottom = 68.0f;
+constexpr float GaugeNeedlePivotFromTop = GaugeNeedleSourceHeight - GaugeNeedlePivotFromBottom;
+constexpr float GaugeNeedleTipLength = GaugeNeedlePivotFromTop;
 
 // --- seatwin2, 186x115 page space -----------------------------------------------------------
 //
@@ -141,7 +148,6 @@ constexpr float UpscaledCompassWindowYOffset = 3.0f;
 constexpr float UpscaledGaugeNeedleYOffset = 1.5f;
 const FVector2D UpscaledAirspeedNeedleOffset(1.0f, 1.0f);
 
-const FLinearColor NeedleColour(0.96f, 0.96f, 0.96f, 1.0f);
 const FLinearColor ReadoutInk(1.0f, 0.86f, 0.42f, 1.0f);
 
 // Screen pixels, deliberately not scaled with the art: the money well is 74x14 page pixels, which
@@ -153,23 +159,23 @@ FSlateFontInfo DashFont(const int32 Size)
 	return FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), Size);
 }
 
-// One gauge needle: a line from the dial's centre out to its rim. The original draws these as
-// lines too, which is why there is no needle sprite in the BMP folder.
+// A gauge-needle image rotated around the artwork's authored pivot: 24 pixels from the left and
+// 68 pixels above the bottom. BuildDash6 places that exact pivot on each decoded gauge centre.
 class SSimCopterGaugeNeedle : public SLeafWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterGaugeNeedle)
-		: _Thickness(1.6f)
+		: _Image(nullptr)
 	{}
 		// Standard maths convention: 0 is to the right, positive is anticlockwise.
 		SLATE_ATTRIBUTE(float, AngleDegrees)
-		SLATE_ARGUMENT(float, Thickness)
+		SLATE_ARGUMENT(const FSlateBrush*, Image)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs)
 	{
 		AngleDegrees = InArgs._AngleDegrees;
-		Thickness = InArgs._Thickness;
+		Image = InArgs._Image;
 		SetCanTick(false);
 	}
 
@@ -182,32 +188,46 @@ public:
 		const FWidgetStyle& InWidgetStyle,
 		bool bParentEnabled) const override
 	{
+		if (Image == nullptr || Image->DrawAs == ESlateBrushDrawType::NoDrawType)
+		{
+			return LayerId;
+		}
+
 		const FVector2D Size = AllottedGeometry.GetLocalSize();
-		const FVector2D Centre = Size * 0.5f;
-		const float Radians = FMath::DegreesToRadians(AngleDegrees.Get(0.0f));
+		const FVector2f RotationPoint(
+			static_cast<float>(Size.X) * GaugeNeedlePivotFromLeft / GaugeNeedleSourceWidth,
+			static_cast<float>(Size.Y) * GaugeNeedlePivotFromTop / GaugeNeedleSourceHeight);
 
-		TArray<FVector2D> Points;
-		Points.Add(Centre);
-		// Screen Y grows downward, so the sine is negated to keep the maths convention.
-		Points.Add(Centre + FVector2D(FMath::Cos(Radians), -FMath::Sin(Radians)) * Centre.X);
+		// The source artwork points straight up. Slate's positive rotation is clockwise in screen
+		// space, so 90-angle maps the existing mathematical gauge angle onto the image.
+		const float RotationRadians =
+			FMath::DegreesToRadians(90.0f - AngleDegrees.Get(0.0f));
+		const ESlateDrawEffect DrawEffects =
+			bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect;
+		const FLinearColor Tint =
+			InWidgetStyle.GetColorAndOpacityTint() * Image->GetTint(InWidgetStyle);
 
-		FSlateDrawElement::MakeLines(
+		FSlateDrawElement::MakeRotatedBox(
 			OutDrawElements,
 			LayerId,
 			AllottedGeometry.ToPaintGeometry(),
-			Points,
-			ESlateDrawEffect::None,
-			NeedleColour,
-			/*bAntialias=*/true,
-			Thickness);
+			Image,
+			DrawEffects,
+			RotationRadians,
+			RotationPoint,
+			FSlateDrawElement::RelativeToElement,
+			Tint);
 		return LayerId + 1;
 	}
 
-	virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(16.0f, 16.0f); }
+	virtual FVector2D ComputeDesiredSize(float) const override
+	{
+		return FVector2D(GaugeNeedleSourceWidth, GaugeNeedleSourceHeight);
+	}
 
 private:
 	TAttribute<float> AngleDegrees;
-	float Thickness = 1.6f;
+	const FSlateBrush* Image = nullptr;
 };
 }
 
@@ -518,21 +538,44 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		static_cast<float>(JoystickBaseHeight),
 		MakeImage(JoystickBaseFile, FIntRect(0, 0, JoystickBaseWidth, JoystickBaseHeight)));
 
-	// The three needles. Each sits in a box the size of its dial, so the needle can draw from the
-	// box's centre out to its rim without knowing where the dial ended up on screen.
+	USimCopterHangarArt* ArtObject = Art.Get();
+	const FSlateBrush* GaugeNeedleBrush =
+		ArtObject != nullptr ? ArtObject->GetBundledSlateImage(GaugeNeedleFile) : nullptr;
+
+	// Scale the artwork independently for each dial so its centre-to-tip length reaches that
+	// gauge's decoded radius, then place the authored pivot exactly on the gauge centre.
 	auto AddNeedle = [this, &Canvas](
 		const FGauge& Gauge,
 		TAttribute<float> Angle,
+		const FSlateBrush* NeedleBrush,
 		const FVector2D UpscaledOffset = FVector2D::ZeroVector)
 	{
+		if (NeedleBrush == nullptr)
+		{
+			return;
+		}
+
 		const float NeedleYOffset = bUseUpscaledDashboardArt ? UpscaledGaugeNeedleYOffset : 0.0f;
 		const FVector2D ArtOffset = bUseUpscaledDashboardArt ? UpscaledOffset : FVector2D::ZeroVector;
+		const FVector2D GaugeCentre(
+			Gauge.CentreX + ArtOffset.X,
+			Gauge.CentreY + NeedleYOffset + ArtOffset.Y);
+		const float NeedleArtScale = Gauge.Radius / GaugeNeedleTipLength;
+		const FVector2D NeedleSize(
+			GaugeNeedleSourceWidth * NeedleArtScale,
+			GaugeNeedleSourceHeight * NeedleArtScale);
+		const FVector2D PivotInNeedle(
+			GaugeNeedlePivotFromLeft * NeedleArtScale,
+			GaugeNeedlePivotFromTop * NeedleArtScale);
+
 		AddAtPage(*Canvas,
-			Gauge.CentreX - Gauge.Radius + ArtOffset.X,
-			Gauge.CentreY - Gauge.Radius + NeedleYOffset + ArtOffset.Y,
-			Gauge.Radius * 2.0f,
-			Gauge.Radius * 2.0f,
-			SNew(SSimCopterGaugeNeedle).AngleDegrees(Angle).Thickness(FMath::Max(2.0f, Scale * 1.6f)));
+			GaugeCentre.X - PivotInNeedle.X,
+			GaugeCentre.Y - PivotInNeedle.Y,
+			NeedleSize.X,
+			NeedleSize.Y,
+			SNew(SSimCopterGaugeNeedle)
+			.AngleDegrees(Angle)
+			.Image(NeedleBrush));
 	};
 
 	AddNeedle(FuelGauge, TAttribute<float>::CreateSPLambda(this, [this]()
@@ -540,7 +583,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		const ASimCopterHelicopterPawn* Helicopter = GetPawn();
 		const float Percent = Helicopter != nullptr ? FMath::Clamp(Helicopter->GetFuelFraction(), 0.0f, 1.0f) * 100.0f : 0.0f;
 		return FuelGauge.StartAngleDegrees - Percent * FuelGauge.DegreesPerUnit;
-	}));
+	}), GaugeNeedleBrush);
 
 	AddNeedle(AltimeterGauge, TAttribute<float>::CreateSPLambda(this, [this]()
 	{
@@ -548,7 +591,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		// the turns.
 		const float Within = FMath::Fmod(FMath::Max(0.0f, GetAltitudeUnits()), AltimeterUnitsPerTurn);
 		return AltimeterGauge.StartAngleDegrees - Within * AltimeterGauge.DegreesPerUnit;
-	}));
+	}), GaugeNeedleBrush);
 
 	AddNeedle(AirspeedGauge, TAttribute<float>::CreateSPLambda(this, [this]()
 	{
@@ -556,7 +599,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		// segment spare.
 		const float Units = FMath::Clamp(GetAirspeedDialKnots() / 10.0f, 0.0f, 25.0f);
 		return AirspeedGauge.StartAngleDegrees - Units * AirspeedGauge.DegreesPerUnit;
-	}), UpscaledAirspeedNeedleOffset);
+	}), GaugeNeedleBrush, UpscaledAirspeedNeedleOffset);
 
 	// The altimeter's rollover window, counting thousands of feet.
 	AddAtPage(*Canvas, AltimeterDigitX, AltimeterDigitY,
