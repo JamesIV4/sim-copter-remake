@@ -117,9 +117,28 @@ public:
 
 	virtual bool TryActivatePlaneCrash(int32 EventId) override;
 	virtual bool TryActivateTrainCrash(int32 EventId) override;
-	virtual bool TryActivateBoatRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY) override;
+	virtual bool TryActivateBoatRescue(int32 EventId, int32 Timer1616, int32 TileX, int32 TileY, int32& OutTileX, int32& OutTileY) override;
 	virtual bool TryActivateTrainRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY) override;
-	
+
+	// --- ambient vehicle callbacks (ASimCopterAmbientVehiclesActor) ---
+	// A crashing plane/train has to be able to open a mission of its own: FUN_004b2cd0 creates a
+	// fire or a boat rescue at the impact tile, and FUN_004b49b0 promotes the train's own record.
+	int32 CreateMissionAt(int32 TileX, int32 TileY, int32 TypeMask);
+	void PostMissionEvent(int32 Code, int32 EventId, int32 Value, bool bSilent);
+	void PostMissionEventAt(int32 Code, int32 EventId, int32 X, int32 Y, int32 Value, bool bSilent);
+	bool CanIgniteCrashSite(int32 TileX, int32 TileY) const { return MissionSystem.CanIgniteCrashSite(TileX, TileY); }
+	// True while the mission layer still holds a live record for this event - what a crash wreck
+	// or a rescued boat watches to know when to clear itself away.
+	bool IsMissionEventActive(int32 EventId) const { return MissionSystem.FindRecord(EventId) != nullptr; }
+	// OR a type bit onto a running record, the way EVT_DebrisCreated/MedevacVictimAdded do.
+	void PromoteMissionType(int32 EventId, int32 TypeBits) { MissionSystem.PromoteRecordType(EventId, TypeBits); }
+	int32 GetMissionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
+	// FUN_004c3f00: the mission's people go with the vehicle when it sinks or blows up.
+	void RemoveMissionPeople(int32 EventId);
+	// Finds (or spawns) the actor that owns the plane/boat/train pools.
+	class ASimCopterAmbientVehiclesActor* ResolveAmbientVehicles();
+
+
 	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) override;
 	virtual void EndTrafficJam(int32 EventId) override;
 	virtual bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY) override;
@@ -298,6 +317,23 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "25.0"))
 	float MedevacOnFootPickupRadiusCm = 95.0f;
 
+	// Rescue victims (spawn modes 1, 2 and 0x13 - water, roof and train) are winched aboard where
+	// they are, not from a pickup tile, and are set down on any dry land: FUN_004a7a10 leaves a
+	// rescue record's Secondary tile at -1, so there is no delivery point to fly to.
+	//
+	// How close counts depends on which way they come aboard. With the harness out, the reach is
+	// measured from the rope END; climbing straight in needs them against the airframe, i.e. the
+	// helicopter's own collision extent plus this margin.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float RescueBoardTouchMarginCm = 70.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "20.0"))
+	float RescueHarnessReachCm = 220.0f;
+
+	// How low the helicopter has to be over dry land before the survivors get out.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
+	float RescueDropoffHeightCm = 600.0f;
+
 	// How close the helicopter (with medevac patients aboard) must be to the hospital drop-off tile
 	// before the EMT comes out to unload it.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
@@ -427,6 +463,11 @@ private:
 
 	ASimCopterTrafficSystemActor* ResolveTrafficSystem() const;
 	void ProcessPassengerTransfers();
+	// The rescue half of the transfer loop: winch water/roof/train survivors aboard and set them
+	// down on dry land (FUN_004ccf50 action 1 posts EVT_RescueDelivered for spawn modes 1/2/0x13).
+	void ProcessRescueTransfers();
+
+	TWeakObjectPtr<class ASimCopterAmbientVehiclesActor> CachedAmbientVehicles;
 	// Runs the EMT patient-unload sequence at hospitals for landed helicopters carrying medevac
 	// patients (called each Tick, after ProcessPassengerTransfers).
 	void ProcessMedevacHospitalHandoffs(float DeltaSeconds);

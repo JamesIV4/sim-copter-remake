@@ -3,6 +3,7 @@
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Sound/SoundWaveProcedural.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterFireRenderComponent.h"
 #include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterEffectFX.h"
@@ -129,6 +130,9 @@ void ASimCopterMissionSystemActor::BeginPlay()
 	MissionSystem.LoadCareerData(ResolveCareerTweakPath());
 
 	SetupMissionSounds();
+	// Planes, boats and the train are ambient traffic, not mission props: the original ticks all
+	// three pools from FUN_0047a760 whether or not a mission wants them.
+	ResolveAmbientVehicles();
 	EnsureMessageLogWidget();
 	EnsureMissionMarkerWidget();
 	EnsureMegaphonePromptWidget();
@@ -189,6 +193,7 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 
 	MissionSystem.Tick(DeltaTime);
 	ProcessPassengerTransfers();
+	ProcessRescueTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateMegaphonePrompt();
 	UpdateFireVisuals(DeltaTime);
@@ -579,6 +584,19 @@ int32 ASimCopterMissionSystemActor::ApplyWaterParticleImpact(
 		++FlamesHit;
 	}
 
+	// So is burning crash wreckage - the plane's airframe and the derailed carriages. They count
+	// as doused, not cleared: there is no jam to break up, just a fire to put out.
+	if (ASimCopterAmbientVehiclesActor* Vehicles = ResolveAmbientVehicles())
+	{
+		TArray<int32> ExtinguishedWreckEvents;
+		Vehicles->DouseBurningWrecksNear(ImpactWorldLocation, CarDouseRadiusCm, ExtinguishedWreckEvents);
+		for (int32 EventId : ExtinguishedWreckEvents)
+		{
+			MissionSystem.PostEvent(SimCopterMissions::EVT_CarDoused, EventId, 1, false);
+			++FlamesHit;
+		}
+	}
+
 	return FlamesHit;
 }
 
@@ -725,6 +743,11 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 	// authored fire-truck vehicle model, not a flame mesh.
 	TArray<FSimCopterBurningVehicle> BurningVehicles;
 	TrafficSystem->GetBurningVehicles(BurningVehicles);
+	// Crashed planes and derailed carriages burn through the same path.
+	if (ASimCopterAmbientVehiclesActor* Vehicles = ResolveAmbientVehicles())
+	{
+		Vehicles->GetBurningWrecks(BurningVehicles);
+	}
 	for (const FSimCopterBurningVehicle& Burning : BurningVehicles)
 	{
 		FSimCopterFlameVisual Visual;
@@ -757,23 +780,111 @@ void ASimCopterMissionSystemActor::SpawnFirePlume(const FVector& FlameBaseWorld,
 		FVector::UpVector * SimCopterEffectFX::OriginalUnitToCm);
 }
 
+ASimCopterAmbientVehiclesActor* ASimCopterMissionSystemActor::ResolveAmbientVehicles()
+{
+	if (ASimCopterAmbientVehiclesActor* Cached = CachedAmbientVehicles.Get())
+	{
+		return Cached;
+	}
+
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return nullptr;
+	}
+
+	ASimCopterAmbientVehiclesActor* Found = Cast<ASimCopterAmbientVehiclesActor>(
+		UGameplayStatics::GetActorOfClass(World, ASimCopterAmbientVehiclesActor::StaticClass()));
+	if (Found == nullptr)
+	{
+		// The pools are pure runtime state, so a level that has not been re-saved with the actor
+		// still gets planes, boats and a train.
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Found = World->SpawnActor<ASimCopterAmbientVehiclesActor>(
+			ASimCopterAmbientVehiclesActor::StaticClass(), FTransform::Identity, SpawnParams);
+	}
+
+	CachedAmbientVehicles = Found;
+	return Found;
+}
+
+int32 ASimCopterMissionSystemActor::CreateMissionAt(int32 TileX, int32 TileY, int32 TypeMask)
+{
+	return MissionSystem.CreateEventAt(TileX, TileY, TypeMask);
+}
+
+void ASimCopterMissionSystemActor::PostMissionEvent(int32 Code, int32 EventId, int32 Value, bool bSilent)
+{
+	MissionSystem.PostEvent(Code, EventId, Value, bSilent);
+}
+
+void ASimCopterMissionSystemActor::PostMissionEventAt(int32 Code, int32 EventId, int32 X, int32 Y, int32 Value, bool bSilent)
+{
+	SimCopterMissions::FSimCopterMissionEvent Event;
+	Event.Code = Code;
+	Event.EventId = EventId;
+	Event.X = X;
+	Event.Y = Y;
+	Event.Value = Value;
+	Event.bSilent = bSilent;
+	MissionSystem.PostEvent(Event);
+}
+
+void ASimCopterMissionSystemActor::RemoveMissionPeople(int32 EventId)
+{
+	if (EventId == INDEX_NONE)
+	{
+		return;
+	}
+	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
+	{
+		TrafficSystem->RemoveMissionPeople(EventId);
+	}
+}
+
 bool ASimCopterMissionSystemActor::TryActivatePlaneCrash(int32 EventId)
 {
+	if (ASimCopterAmbientVehiclesActor* Vehicles = ResolveAmbientVehicles())
+	{
+		return Vehicles->TryActivatePlaneCrash(EventId);
+	}
 	return false;
 }
 
 bool ASimCopterMissionSystemActor::TryActivateTrainCrash(int32 EventId)
 {
+	if (ASimCopterAmbientVehiclesActor* Vehicles = ResolveAmbientVehicles())
+	{
+		return Vehicles->TryActivateTrainCrash(EventId);
+	}
 	return false;
 }
 
-bool ASimCopterMissionSystemActor::TryActivateBoatRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY)
+bool ASimCopterMissionSystemActor::TryActivateBoatRescue(
+	int32 EventId,
+	int32 Timer1616,
+	int32 TileX,
+	int32 TileY,
+	int32& OutTileX,
+	int32& OutTileY)
 {
+	if (ASimCopterAmbientVehiclesActor* Vehicles = ResolveAmbientVehicles())
+	{
+		return Vehicles->TryActivateBoatRescue(
+			EventId, static_cast<float>(Timer1616) / 65536.0f, TileX, TileY, OutTileX, OutTileY);
+	}
 	return false;
 }
 
 bool ASimCopterMissionSystemActor::TryActivateTrainRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY)
 {
+	if (ASimCopterAmbientVehiclesActor* Vehicles = ResolveAmbientVehicles())
+	{
+		return Vehicles->TryActivateTrainRescue(
+			EventId, static_cast<float>(Timer1616) / 65536.0f, OutTileX, OutTileY);
+	}
 	return false;
 }
 
@@ -1023,10 +1134,9 @@ void ASimCopterMissionSystemActor::NotifyPassengerDroppedFromHelicopter(
 		*OnboardCount = FMath::Max(0, *OnboardCount - Count);
 	}
 
-	if (Kind == ESimCopterMissionPassengerKind::Transport || Kind == ESimCopterMissionPassengerKind::Medevac)
-	{
-		MissionSystem.AdjustVictimsPickedUp(EventId, -Count);
-	}
+	// Every kind gives back its pickup credit when it leaves the cabin without being delivered -
+	// otherwise a rescue whose survivors were dumped mid-air could never be finished.
+	MissionSystem.AdjustVictimsPickedUp(EventId, -Count);
 }
 
 void ASimCopterMissionSystemActor::GetTransferReadyHelicopters(TArray<ASimCopterHelicopterPawn*>& OutHelicopters) const
@@ -1277,6 +1387,145 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 			{
 				MissionSystem.PostEvent(SimCopterMissions::EVT_VictimPickedUp, Mission.EventId, Reboarded, true);
 			}
+			break;
+		}
+	}
+}
+
+void ASimCopterMissionSystemActor::ProcessRescueTransfers()
+{
+	// The rescue half of the passenger loop. FUN_004ccf50 turns a person's "delivered" action into
+	// EVT_RescueDelivered (0x10) for spawn modes 1, 2 and 0x13 - the water, roof and train
+	// survivors - and FUN_004a7a10 leaves those records without a Secondary tile, so unlike
+	// transport and medevac there is nowhere specific to take them: they are winched aboard where
+	// they are and set down on any dry land.
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	struct FRescueSnapshot
+	{
+		int32 EventId = INDEX_NONE;
+		int32 Waiting = 0;
+		int32 Onboard = 0;
+		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	};
+
+	TArray<FRescueSnapshot, TInlineAllocator<8>> Missions;
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_RescuePeople) == 0)
+		{
+			continue;
+		}
+
+		FRescueSnapshot Snapshot;
+		Snapshot.EventId = Record.EventId;
+		Snapshot.Tile = FIntPoint(Record.TileX, Record.TileY);
+		Snapshot.Waiting = FMath::Max(0, Record.RescueVictims - Record.VictimsPickedUp - Record.Casualties);
+		Snapshot.Onboard = FMath::Max(0, Record.VictimsPickedUp - Record.RescueDelivered - Record.Casualties);
+		Missions.Add(Snapshot);
+	}
+
+	if (Missions.Num() == 0)
+	{
+		return;
+	}
+
+	TArray<AActor*> HelicopterActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
+
+	for (const FRescueSnapshot& Mission : Missions)
+	{
+		for (AActor* Actor : HelicopterActors)
+		{
+			ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
+			if (Helicopter == nullptr)
+			{
+				continue;
+			}
+
+			const FVector HelicopterLocation = Helicopter->GetActorLocation();
+
+			// Two ways aboard, and only two:
+			//
+			//  * the rescue harness, which is the intended tool - the pickup point is the rope
+			//    END (the original swaps GEO 0x16d onto the rope for exactly this), so the
+			//    player has to fly the harness onto the survivors;
+			//  * climbing straight in, which needs the survivor to actually be against the
+			//    airframe - the helicopter's own collision radius plus a hand's breadth, not a
+			//    nine-metre bubble around it.
+			if (Mission.Waiting > 0)
+			{
+				const int32 Seats = FMath::Min(Mission.Waiting, Helicopter->GetAvailablePassengerSeats());
+				FVector PickupPoint = HelicopterLocation;
+				float PickupRadiusCm = Helicopter->GetSimpleCollisionRadius() + RescueBoardTouchMarginCm;
+				float PickupVerticalCm = Helicopter->GetSimpleCollisionHalfHeight() + RescueBoardTouchMarginCm;
+
+				FVector RopeEnd = FVector::ZeroVector;
+				if (Helicopter->IsHarnessRopeEndSelected() && Helicopter->TryGetRopeEndWorldLocation(RopeEnd))
+				{
+					PickupPoint = RopeEnd;
+					PickupRadiusCm = RescueHarnessReachCm;
+					PickupVerticalCm = RescueHarnessReachCm;
+				}
+
+				if (Seats > 0)
+				{
+					int32 NewPickupCredit = 0;
+					const int32 PickedUp = TrafficSystem->PickUpMissionPeopleNear(
+						Mission.EventId,
+						PickupPoint,
+						Seats,
+						PickupRadiusCm,
+						PickupVerticalCm,
+						&NewPickupCredit);
+					if (PickedUp > 0)
+					{
+						const int32 Boarded = Helicopter->AddMissionPassengersForMission(
+							PickedUp, Mission.EventId, ESimCopterMissionPassengerKind::Rescue);
+						if (Boarded > 0)
+						{
+							MissionSystem.PostEvent(
+								SimCopterMissions::EVT_VictimPickedUp, Mission.EventId, Boarded);
+						}
+					}
+				}
+			}
+
+			// Delivery: set them down once the helicopter is on dry land.
+			const int32 Carrying = Helicopter->GetMissionPassengerCount(
+				Mission.EventId, ESimCopterMissionPassengerKind::Rescue);
+			if (Carrying <= 0 || !Helicopter->CanTransferMissionPassengers())
+			{
+				continue;
+			}
+
+			int32 DropTileX = INDEX_NONE;
+			int32 DropTileY = INDEX_NONE;
+			if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(HelicopterLocation, DropTileX, DropTileY) ||
+				TrafficSystem->IsWaterTile(DropTileX, DropTileY))
+			{
+				continue;
+			}
+
+			const int32 Delivered = Helicopter->RemoveMissionPassengersForMission(
+				Carrying, Mission.EventId, ESimCopterMissionPassengerKind::Rescue);
+			if (Delivered <= 0)
+			{
+				continue;
+			}
+
+			TrafficSystem->SpawnMissionPeopleAtWorldLocation(
+				Delivered,
+				Helicopter->GetPassengerDropWorldLocation(),
+				INDEX_NONE,
+				0,
+				-1,
+				185.0f);
+			MissionSystem.PostEvent(SimCopterMissions::EVT_RescueDelivered, Mission.EventId, Delivered);
 			break;
 		}
 	}

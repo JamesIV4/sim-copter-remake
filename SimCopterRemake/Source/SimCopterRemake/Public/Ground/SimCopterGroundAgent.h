@@ -102,6 +102,12 @@ public:
 	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
 	void ClearForcedPedestrianFigureClip();
 	void SetMissionInjuredPose();
+
+	// Marks an uninjured victim who still needs picking up. They keep whatever program or carrier
+	// they are on, but any moment it leaves them standing still they wave for the helicopter
+	// instead of idling. The original binds the same "Wave" clip when a person notices the player
+	// (behavior op 22: face the player, bind "Wave", wait 15).
+	void SetMissionAwaitingRescue(bool bAwaiting) { bMissionWavesWhenIdle = bAwaiting; }
 	void ClearMissionPose();
 	void ResumeNormalPedestrianBehavior();
 	void SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation);
@@ -431,6 +437,7 @@ private:
 	bool bUsingPedestrianFigure = false;
 	FString ForcedFigureMnemonic;
 	int32 ForcedFigureClothesOffset = INDEX_NONE;
+	bool bMissionWavesWhenIdle = false;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
 	bool bMissionPickupCreditAwarded = false;

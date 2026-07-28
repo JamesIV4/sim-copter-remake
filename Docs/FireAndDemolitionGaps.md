@@ -165,11 +165,14 @@ Extending instancing to road-like tiles would close both.
 
 ## 9. Mission types that still stub out
 
-Unrelated to fire, but these `ISimCopterMissionWorld` hooks return false, so the
-scheduler creates the event and immediately fails it: `TryActivatePlaneCrash`,
-`TryActivateTrainCrash`, `TryActivateBoatRescue`, `TryActivateTrainRescue`,
-`TryActivateSpeederCar`. The fire bucket of the scheduler rolls plane crashes at
-difficulty tier 2+, so some scheduled fire missions silently never appear.
+**Closed 2026-07-27.** `TryActivatePlaneCrash`, `TryActivateTrainCrash`,
+`TryActivateBoatRescue` and `TryActivateTrainRescue` now run against the ported
+ambient vehicle pools in `ASimCopterAmbientVehiclesActor`, and
+`TryActivateSpeederCar` was closed earlier by the criminal-car work. The fire
+bucket's tier-2+ plane crashes therefore appear, and a plane that comes down on a
+burnable tile starts a real building fire at the impact tile
+(`FUN_004b2cd0`) - or a boat rescue if it ditches in the water. See
+`Docs/scratchpad/ghidra/planes_trains_boats_decode_20260727.md`.
 
 ---
 

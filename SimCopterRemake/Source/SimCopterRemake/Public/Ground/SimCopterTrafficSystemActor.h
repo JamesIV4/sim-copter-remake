@@ -649,6 +649,22 @@ public:
 		int32 SpawnMode,
 		int32 PersonState,
 		float SpreadRadiusCm);
+	// Mission people who are not standing on the ground and must not be snapped to it: the
+	// survivors floating beside the capsized boat (FUN_004b1950, spawn mode 1) and the passengers
+	// stranded on the roof of a moving train (FUN_004b7fd0, spawn mode 0x13). bFloatOnWaterSurface
+	// seats them on the water; otherwise they are left exactly where they are put and the caller
+	// drives them. OutSpawned, when supplied, receives the agents so the caller can keep carrying
+	// them.
+	int32 SpawnMissionSwimmersAtWorldLocation(
+		int32 Count,
+		const FVector& WorldLocation,
+		int32 EventId,
+		int32 SpawnMode,
+		float SpreadRadiusCm,
+		bool bFloatOnWaterSurface = true,
+		TArray<ASimCopterGroundAgent*>* OutSpawned = nullptr);
+	// FUN_004c3f00: the mission's people go down with the boat / train. Returns how many went.
+	int32 RemoveMissionPeople(int32 EventId);
 	ASimCopterGroundAgent* SpawnFallingMissionPassengerAtWorldLocation(
 		const FVector& WorldLocation,
 		int32 EventId,

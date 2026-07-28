@@ -833,15 +833,17 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 	}
 	else if (TypeMask == TYPE_BoatRescue)
 	{
+		// FUN_004a7a10 passes the placer's tile and DAT_00505fc8 (the difficulty-scaled mission
+		// timer) straight through, and leaves Secondary/Tertiary at -1: a boat rescue has no
+		// delivery tile, only survivors to get out of the water.
 		int32 OutX, OutY;
-		if (!World || !World->TryActivateBoatRescue(Rec.EventId, Tuning.BaseMissionTimer, OutX, OutY))
+		if (!World || !World->TryActivateBoatRescue(Rec.EventId, ScaledMissionTimer, TX, TY, OutX, OutY))
 		{
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
 		Rec.TileX = OutX;
 		Rec.TileY = OutY;
-		FindDefaultDestinationTile(Rec.TileX, Rec.TileY, Rec.SecondaryX, Rec.SecondaryY);
 		Rec.Name = FString::Printf(TEXT("Boat Rescue #%d"), TypeSerials[4]);
 		TypeSerials[4]++;
 	}
@@ -864,15 +866,15 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 	}
 	else if (TypeMask == TYPE_TrainRescue)
 	{
+		// FUN_004b7fb0(eventId, DAT_00505fc8). Like the boat rescue, no delivery tile.
 		int32 OutX, OutY;
-		if (!World || !World->TryActivateTrainRescue(Rec.EventId, Tuning.BaseMissionTimer, OutX, OutY))
+		if (!World || !World->TryActivateTrainRescue(Rec.EventId, ScaledMissionTimer, OutX, OutY))
 		{
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
 		Rec.TileX = OutX;
 		Rec.TileY = OutY;
-		FindDefaultDestinationTile(Rec.TileX, Rec.TileY, Rec.SecondaryX, Rec.SecondaryY);
 		Rec.Name = FString::Printf(TEXT("Train Rescue #%d"), TypeSerials[7]);
 		TypeSerials[7]++;
 	}
@@ -1090,7 +1092,20 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 			}
 		}
 
-		if (Rec.Category == CAT_Background || Rec.Category == CAT_ExpireSilently)
+		// FUN_004a73e0's `category == 4` arm: retire the record on the spot, no scoring, no
+		// completion message. That is how a plane crash whose fire became its own mission gets
+		// out of the way (FUN_004b2cd0 posts EVT_SetCategory 4 on the plane's own record).
+		if (Rec.Category == CAT_ExpireSilently)
+		{
+			if ((Rec.TypeMask & TYPE_TrafficJam) != 0 && World)
+			{
+				World->EndTrafficJam(Rec.EventId);
+			}
+			DeactivateRecord(i);
+			continue;
+		}
+
+		if (Rec.Category == CAT_Background)
 		{
 			continue;
 		}
@@ -1168,6 +1183,15 @@ bool FSimCopterMissionSystem::HasFlameOnTile(int32 TileX, int32 TileY) const
 		}
 	}
 	return false;
+}
+
+bool FSimCopterMissionSystem::CanIgniteCrashSite(int32 TileX, int32 TileY) const
+{
+	if (World == nullptr)
+	{
+		return false;
+	}
+	return IsFireSuitableTile(World->GetXbldTileId(TileX, TileY)) && !IsAnyFireNear(TileX, TileY);
 }
 
 bool FSimCopterMissionSystem::IsAnyFireNear(int32 TileX, int32 TileY) const
@@ -1978,6 +2002,15 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		const FSimCopterMissionRecord* RecPtr = (RecordIndex != INDEX_NONE) ? &Records[RecordIndex] : nullptr;
 		if (EarnedPoints != 0) PostTypedUiMessage(8, RecPtr, Event.EventId, TextId, EarnedPoints, 0, EarnedPoints < 0);
 		if (EarnedCash != 0) PostTypedUiMessage(9, RecPtr, Event.EventId, TextId, EarnedCash, 0, EarnedCash < 0);
+	}
+}
+
+void FSimCopterMissionSystem::PromoteRecordType(int32 EventId, int32 TypeBits)
+{
+	const int32 Index = FindRecordIndex(EventId);
+	if (Index != INDEX_NONE)
+	{
+		Records[Index].TypeMask |= TypeBits;
 	}
 }
 

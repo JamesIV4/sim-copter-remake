@@ -15,6 +15,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputCoreTypes.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationFigure.h"
@@ -313,6 +314,61 @@ void ASimCopterOnFootPawn::SimBoardHelicopter()
 	UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: possessing %s."), *Helicopter->GetName());
 	Helicopter->EnterHelicopter(PlayerController);
 	Destroy();
+}
+
+void ASimCopterOnFootPawn::SimStartMission(int32 TypeMask)
+{
+	ASimCopterMissionSystemActor* Mission = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Mission == nullptr)
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimStartMission: no mission system actor."));
+		return;
+	}
+
+	const int32 EventId = Mission->StartMissionNow(TypeMask);
+	UE_LOG(LogTemp, Display, TEXT("SimStartMission: mask 0x%x -> event %d."), TypeMask, EventId);
+}
+
+void ASimCopterOnFootPawn::SimDumpAmbientVehicles()
+{
+	ASimCopterMissionSystemActor* Mission = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Mission == nullptr)
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimDumpAmbientVehicles: no mission system actor."));
+		return;
+	}
+
+	if (ASimCopterAmbientVehiclesActor* Vehicles = Mission->ResolveAmbientVehicles())
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimDumpAmbientVehicles: %s"), *Vehicles->GetStatusLine());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimDumpAmbientVehicles: no ambient vehicles actor."));
+	}
+}
+
+void ASimCopterOnFootPawn::SimGotoAmbient(int32 Which)
+{
+	ASimCopterMissionSystemActor* Mission = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	ASimCopterAmbientVehiclesActor* Vehicles = Mission != nullptr ? Mission->ResolveAmbientVehicles() : nullptr;
+	FVector Target = FVector::ZeroVector;
+	if (Vehicles == nullptr || !Vehicles->TryGetDebugViewTarget(Which, Target))
+	{
+		UE_LOG(LogTemp, Display, TEXT("SimGotoAmbient %d: nothing there right now."), Which);
+		return;
+	}
+
+	const FVector Offset(700.0f, -700.0f, 500.0f);
+	SetActorLocation(Target + Offset, false);
+	if (AController* OwningController = GetController())
+	{
+		OwningController->SetControlRotation((Target - (Target + Offset)).Rotation());
+	}
+	UE_LOG(LogTemp, Display, TEXT("SimGotoAmbient %d: %s"), Which, *Target.ToCompactString());
 }
 
 void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
