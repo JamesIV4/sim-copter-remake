@@ -95,13 +95,18 @@ constexpr FGauge FuelGauge{ 161.0f, 47.0f, 28.0f, 258.0f, 3.35f };
 constexpr FGauge AltimeterGauge{ 316.0f, 38.0f, 24.0f, 90.0f, 3.6f };
 constexpr FGauge AirspeedGauge{ 398.0f, 32.0f, 26.0f, 90.0f, 14.0f };
 
-// altnumbr.bmp is a vertical strip of eleven 8x9 digits (0..9 then 0 again) shown in the
-// altimeter's little rollover window.
+// Both altimeter readout assets are vertical strips of eleven digits (0..9 then 0 again). The
+// replacement is rendered into a slightly narrower window and lowered within the taller opening
+// reconstructed in the high-resolution dashboard.
 const TCHAR* const AltimeterDigitFile = TEXT("ALTNUMBR.BMP");
+const TCHAR* const UpscaledAltimeterDigitFile = TEXT("altimeter-indicator-400h.png");
 constexpr int32 AltimeterDigitWidth = 8;
 constexpr int32 AltimeterDigitHeight = 9;
+constexpr int32 AltimeterDigitFrameCount = 11;
 constexpr float AltimeterDigitX = 300.0f;
 constexpr float AltimeterDigitY = 31.0f;
+constexpr float UpscaledAltimeterDigitWidth = 7.5f;
+constexpr float UpscaledAltimeterDigitY = 35.0f;
 
 // One turn of the altimeter face is the 100 units its ten divisions cover at 3.6 degrees each,
 // and the rollover window counts the turns, so the instrument reads 0..1000 world units end to
@@ -126,16 +131,22 @@ constexpr int32 Dash4Height = 43;
 constexpr int32 DashboardWidth = Dash6Width;
 constexpr int32 DashboardHeight = Dash4Height + Dash6Height;
 
-// compass1.bmp is 160x16 and reads NW N NE E SE S SW W NW N NE - eight points at 16px each, so
-// one revolution is 128px and the remaining 32px is the wrap overlap.
+// The replacement compass strip occupies compass1.bmp's original 160x16 page-space footprint.
+// Its 512px source has direction marks every 48px, so one eight-point revolution is 384 source
+// pixels (120 page pixels) and the extra marks provide the overlap used for seamless wrapping.
 const TCHAR* const CompassFile = TEXT("COMPASS1.BMP");
+const TCHAR* const UpscaledCompassFile = TEXT("compass-indicator-512w.png");
 constexpr int32 CompassStripWidth = 160;
 constexpr int32 CompassStripHeight = 16;
-constexpr float CompassPixelsPerRevolution = 128.0f;
-// Ten 16px cells: NW N NE E SE S SW W NW N. North is the second, so its glyph is centred one and
-// a half cells in - not one, which drew the whole strip half a cell off and made north look like
-// it spanned a wide arc as the second N came round.
-constexpr float CompassNorthCentre = 24.0f;
+constexpr float UpscaledCompassSourceWidth = 512.0f;
+constexpr float UpscaledCompassPointStride = 48.0f;
+constexpr float UpscaledCompassNorthCentre = 65.5f;
+constexpr float CompassSourceToPageScale =
+	static_cast<float>(CompassStripWidth) / UpscaledCompassSourceWidth;
+constexpr float CompassPixelsPerRevolution =
+	UpscaledCompassPointStride * 8.0f * CompassSourceToPageScale;
+constexpr float CompassNorthCentre =
+	UpscaledCompassNorthCentre * CompassSourceToPageScale;
 constexpr float CompassWindowX = 402.0f;
 constexpr float CompassWindowY = 11.0f;
 constexpr float CompassWindowWidth = 37.0f;
@@ -241,6 +252,8 @@ void SSimCopterDashboard::Construct(const FArguments& InArgs)
 	if (USimCopterHangarArt* ArtObject = Art.Get())
 	{
 		UpscaledDashboardBrush = ArtObject->GetBundledSlateImage(UpscaledDashboardFile);
+		bUseUpscaledAltimeterArt =
+			ArtObject->GetBundledSlateImage(UpscaledAltimeterDigitFile) != nullptr;
 	}
 	bUseUpscaledDashboardArt = UpscaledDashboardBrush != nullptr;
 
@@ -357,23 +370,60 @@ void SSimCopterDashboard::AddAtPage(
 
 TSharedRef<SWidget> SSimCopterDashboard::BuildSeatWindow()
 {
+	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
+	SeatCanvas = Canvas;
+
+	TSharedRef<SBox> Window =
+		SNew(SBox)
+		.WidthOverride(static_cast<float>(SeatWindowWidth) * Scale)
+		[
+			Canvas
+		];
+	SeatWindowBox = Window;
+
+	RebuildSeats();
+
+	return Window;
+}
+
+void SSimCopterDashboard::RefreshSeats()
+{
+	RebuildSeats();
+}
+
+void SSimCopterDashboard::RebuildSeats()
+{
+	if (!SeatCanvas.IsValid() || !SeatWindowBox.IsValid())
+	{
+		return;
+	}
+
 	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
-	const int32 Seats = Helicopter != nullptr ? FMath::Max(0, Helicopter->GetPassengerSeatCount()) : 0;
+	if (Helicopter == nullptr)
+	{
+		return;
+	}
 
-	const int32 Rows = FMath::Max(1, FMath::DivideAndRoundUp(Seats, SeatsPerRow));
-
-	// SEATWIN2 always keeps its original width. Only its open-bottomed depth follows the number
-	// of seat rows: one row for smaller helicopters and all three for the fourteen-seater.
+	const int32 Seats = FMath::Max(0, Helicopter->GetPassengerSeatCount());
+	const int32 Rows = FMath::Clamp(FMath::DivideAndRoundUp(Seats, SeatsPerRow), 1, 3);
 	const float PageWidth = static_cast<float>(SeatWindowWidth);
 	const float PageHeight = SeatWellTop + Rows * SeatRowStride + SeatRowPadding;
 
-	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
-	SeatCanvas = Canvas;
+	// The dashboard's outer row is bottom-aligned. Updating this desired height therefore moves
+	// the panel up by one row at 6 seats and another at 11 seats while keeping its bottom edge
+	// beside the instrument panel.
+	SeatWindowBox->SetHeightOverride(
+		TAttribute<FOptionalSize>(FOptionalSize(PageHeight * Scale)));
+
+	// Capacity can change when the active helicopter model changes. Rebuild the frame as well as
+	// the portraits so its crop and canvas extent follow the newly required row count.
+	SeatCanvas->ClearChildren();
 
 	const int32 SourceHeight = FMath::Clamp(FMath::CeilToInt(PageHeight), 1, SeatWindowHeight);
 	TSharedRef<SWidget> WindowImage =
 		MakeImage(SeatWindowFile, FIntRect(0, 0, SeatWindowWidth, SourceHeight), /*bColorKeyed=*/false);
 
+	SeatWindowBrush.Reset();
 	if (USimCopterHangarArt* ArtObject = Art.Get())
 	{
 		if (const FSlateBrush* Upscaled = ArtObject->GetBundledSlateImage(UpscaledSeatWindowFile))
@@ -388,44 +438,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildSeatWindow()
 		}
 	}
 
-	AddAtPage(*Canvas, 0.0f, 0.0f, PageWidth, PageHeight, WindowImage);
-
-	RebuildSeats();
-
-	return SNew(SBox)
-		.WidthOverride(PageWidth * Scale)
-		.HeightOverride(PageHeight * Scale)
-		[
-			Canvas
-		];
-}
-
-void SSimCopterDashboard::RefreshSeats()
-{
-	RebuildSeats();
-}
-
-void SSimCopterDashboard::RebuildSeats() const
-{
-	if (!SeatCanvas.IsValid())
-	{
-		return;
-	}
-
-	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
-	if (Helicopter == nullptr)
-	{
-		return;
-	}
-
-	const int32 Seats = FMath::Max(0, Helicopter->GetPassengerSeatCount());
-
-	// Only the portraits are rebuilt; the window frame slot stays where BuildSeatWindow put it.
-	const int32 FrameSlotCount = 1;
-	while (SeatCanvas->GetChildren()->Num() > FrameSlotCount)
-	{
-		SeatCanvas->RemoveSlot(SeatCanvas->GetChildren()->GetChildAt(SeatCanvas->GetChildren()->Num() - 1));
-	}
+	AddAtPage(*SeatCanvas, 0.0f, 0.0f, PageWidth, PageHeight, WindowImage);
 
 	const TArray<FSimCopterMissionPassengerSlot>& Slots = Helicopter->GetMissionPassengerSlots();
 
@@ -578,6 +591,30 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 			.Image(NeedleBrush));
 	};
 
+	// Keep the full eleven-digit strip behind a clipped opening. It is added before the needles
+	// so the altimeter needle crosses over the readout, as it would on the physical instrument.
+	const float DigitWidth = bUseUpscaledAltimeterArt
+		? UpscaledAltimeterDigitWidth
+		: static_cast<float>(AltimeterDigitWidth);
+	const float DigitY = bUseUpscaledAltimeterArt
+		? UpscaledAltimeterDigitY
+		: AltimeterDigitY;
+	AddAtPage(*Canvas, AltimeterDigitX, DigitY,
+		DigitWidth, static_cast<float>(AltimeterDigitHeight),
+		SNew(SBox)
+		.Clipping(EWidgetClipping::ClipToBounds)
+		[
+			SNew(SConstraintCanvas)
+			+ SConstraintCanvas::Slot()
+			.Offset(TAttribute<FMargin>::CreateSP(
+				this, &SSimCopterDashboard::GetAltimeterRolloverOffset))
+			.Alignment(FVector2D::ZeroVector)
+			[
+				SNew(SImage).Image(TAttribute<const FSlateBrush*>::CreateSP(
+					this, &SSimCopterDashboard::GetAltimeterRolloverBrush))
+			]
+		]);
+
 	AddNeedle(FuelGauge, TAttribute<float>::CreateSPLambda(this, [this]()
 	{
 		const ASimCopterHelicopterPawn* Helicopter = GetPawn();
@@ -600,12 +637,6 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		const float Units = FMath::Clamp(GetAirspeedDialKnots() / 10.0f, 0.0f, 25.0f);
 		return AirspeedGauge.StartAngleDegrees - Units * AirspeedGauge.DegreesPerUnit;
 	}), GaugeNeedleBrush, UpscaledAirspeedNeedleOffset);
-
-	// The altimeter's rollover window, counting thousands of feet.
-	AddAtPage(*Canvas, AltimeterDigitX, AltimeterDigitY,
-		static_cast<float>(AltimeterDigitWidth), static_cast<float>(AltimeterDigitHeight),
-		SNew(SImage).Image(TAttribute<const FSlateBrush*>::CreateSP(
-			this, &SSimCopterDashboard::GetAltimeterRolloverBrush)));
 
 	return SNew(SBox)
 		.WidthOverride(Dash6Width * Scale)
@@ -742,15 +773,55 @@ float SSimCopterDashboard::GetHeadingDegrees() const
 
 const FSlateBrush* SSimCopterDashboard::GetAltimeterRolloverBrush() const
 {
-	const int32 Turns = FMath::Clamp(
-		FMath::FloorToInt(FMath::Max(0.0f, GetAltitudeUnits()) / AltimeterUnitsPerTurn), 0, 9);
+	if (bUseUpscaledAltimeterArt)
+	{
+		if (USimCopterHangarArt* ArtObject = Art.Get())
+		{
+			if (const FSlateBrush* Upscaled =
+				ArtObject->GetBundledSlateImage(UpscaledAltimeterDigitFile))
+			{
+				return Upscaled;
+			}
+		}
+	}
+
 	return GetBrush(
 		AltimeterDigitFile,
-		FIntRect(0, Turns * AltimeterDigitHeight, AltimeterDigitWidth, (Turns + 1) * AltimeterDigitHeight));
+		FIntRect(
+			0,
+			0,
+			AltimeterDigitWidth,
+			AltimeterDigitFrameCount * AltimeterDigitHeight));
+}
+
+FMargin SSimCopterDashboard::GetAltimeterRolloverOffset() const
+{
+	// The strip moves continuously with the needle instead of snapping at each complete turn.
+	// Its repeated final zero lets the ninth digit roll smoothly back to zero near full scale.
+	const float Turns = FMath::Clamp(
+		FMath::Max(0.0f, GetAltitudeUnits()) / AltimeterUnitsPerTurn,
+		0.0f,
+		static_cast<float>(AltimeterDigitFrameCount - 1));
+	const float DigitWidth = bUseUpscaledAltimeterArt
+		? UpscaledAltimeterDigitWidth
+		: static_cast<float>(AltimeterDigitWidth);
+	const float FrameHeight = static_cast<float>(AltimeterDigitHeight);
+	return FMargin(
+		0.0f,
+		-Turns * FrameHeight * Scale,
+		DigitWidth * Scale,
+		AltimeterDigitFrameCount * FrameHeight * Scale);
 }
 
 const FSlateBrush* SSimCopterDashboard::GetCompassBrush() const
 {
+	if (USimCopterHangarArt* ArtObject = Art.Get())
+	{
+		if (const FSlateBrush* Upscaled = ArtObject->GetBundledSlateImage(UpscaledCompassFile))
+		{
+			return Upscaled;
+		}
+	}
 	return GetBrush(CompassFile, FIntRect(0, 0, CompassStripWidth, CompassStripHeight));
 }
 

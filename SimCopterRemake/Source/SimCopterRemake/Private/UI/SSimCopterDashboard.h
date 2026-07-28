@@ -53,12 +53,14 @@ private:
 	TWeakObjectPtr<USimCopterHangarArt> Art;
 	float Scale = 2.0f;
 	bool bUseUpscaledDashboardArt = false;
+	bool bUseUpscaledAltimeterArt = false;
 
 	// Rebuilt whenever the seat count or the passengers change, so the window is only laid out
 	// when it has to be.
-	mutable int32 BuiltSeatCount = -1;
-	mutable int32 BuiltPassengerCount = -1;
+	int32 BuiltSeatCount = -1;
+	int32 BuiltPassengerCount = -1;
 	TSharedPtr<SConstraintCanvas> SeatCanvas;
+	TSharedPtr<class SBox> SeatWindowBox;
 
 	// The fixed-width seat window uses a copy of the high-resolution brush with its bottom
 	// cropped in UV space for helicopters that need fewer than three seat rows.
@@ -75,7 +77,7 @@ private:
 	TSharedRef<SWidget> BuildDash6();
 	TSharedRef<SWidget> BuildDash4();
 
-	void RebuildSeats() const;
+	void RebuildSeats();
 
 	// --- live readouts ---
 
@@ -90,6 +92,7 @@ private:
 	float GetHeadingDegrees() const;
 
 	const FSlateBrush* GetAltimeterRolloverBrush() const;
+	FMargin GetAltimeterRolloverOffset() const;
 	const FSlateBrush* GetCompassBrush() const;
 	// Where the compass strip sits inside its window, in screen pixels. Two copies are drawn a
 	// revolution apart so the scroll wraps without a seam.
