@@ -168,6 +168,16 @@ public:
 	int32 GetPeopleStoredFacingFromWorldLocations(
 		const FVector& FromWorldLocation,
 		const FVector& ToWorldLocation) const;
+
+	// FUN_004ca350: the nearest *other* visible person running the behaviour VM whose loop flag
+	// and/or state match (-2 = "any"), by Manhattan distance. A loop-flag-0 search also skips
+	// anyone already flagged EBhavAttr::CriminalCaught - that is what makes an arrested criminal
+	// stop being a target for every other cop on the map. Backs behaviour opcode 15's object
+	// classes 5/6/8/14.
+	ASimCopterGroundAgent* FindNearestBehaviorPerson(
+		const ASimCopterGroundAgent& From,
+		int32 LoopFlagFilter,
+		int32 StateFilter) const;
 	bool TryGetPeopleFacingStepTarget(
 		const FVector& FromWorldLocation,
 		int32 Facing,

@@ -1371,6 +1371,55 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionSwimmersAtWorldLocation(
 	return Spawned;
 }
 
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestBehaviorPerson(
+	const ASimCopterGroundAgent& From,
+	const int32 LoopFlagFilter,
+	const int32 StateFilter) const
+{
+	// FUN_004ca350 walks the whole person array and keeps the closest match by Manhattan
+	// distance in world units; the remake walks the pedestrian pool instead but keeps the same
+	// filters and the same metric.
+	const FVector FromLocation = From.GetActorLocation();
+	ASimCopterGroundAgent* Best = nullptr;
+	float BestDistance = TNumericLimits<float>::Max();
+
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent == &From || Agent->IsActorBeingDestroyed() || !Agent->IsBehaviorActive())
+		{
+			continue;
+		}
+		// person+0x152: invisible people (riding a carrier) are never candidates.
+		if (Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0)
+		{
+			continue;
+		}
+		if (LoopFlagFilter != -2 && int16(Agent->GetBehaviorAttribute(EBhavAttr::LoopFlag)) != int16(LoopFlagFilter))
+		{
+			continue;
+		}
+		if (StateFilter != -2 && int16(Agent->GetBehaviorAttribute(EBhavAttr::State)) != int16(StateFilter))
+		{
+			continue;
+		}
+		if (LoopFlagFilter == 0 && Agent->GetBehaviorAttribute(EBhavAttr::CriminalCaught) != 0)
+		{
+			continue;
+		}
+
+		const FVector Delta = FromLocation - Agent->GetActorLocation();
+		const float Distance = FMath::Abs(Delta.X) + FMath::Abs(Delta.Y) + FMath::Abs(Delta.Z);
+		if (Distance < BestDistance)
+		{
+			BestDistance = Distance;
+			Best = Agent;
+		}
+	}
+
+	return Best;
+}
+
 int32 ASimCopterTrafficSystemActor::RemoveMissionPeople(int32 EventId)
 {
 	if (EventId == INDEX_NONE)

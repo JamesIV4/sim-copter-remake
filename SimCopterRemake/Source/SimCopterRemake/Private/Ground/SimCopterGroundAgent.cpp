@@ -626,6 +626,196 @@ bool ASimCopterGroundAgent::TryGetPlayerTileProbe(
 	return true;
 }
 
+bool ASimCopterGroundAgent::SelectObjectOfClass(
+	FSimCopterPersonContext& Context,
+	const int32 ObjectClass,
+	int32& OutTileDistance)
+{
+	// FUN_004cac70's jump table at 0x004cb130. Only the classes the shipped criminal, cop and
+	// ambient programs actually ask for are answered here; the rest fall through to "nothing
+	// found", which makes their probe take the false edge exactly as an empty city would.
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	AActor* Found = nullptr;
+
+	switch (ObjectClass)
+	{
+	case EBhavObjectClass::AlreadySelected:
+		Found = Context.SelectedObject.Get();
+		break;
+	case EBhavObjectClass::PlayerHelicopter:
+		Found = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+		break;
+	case EBhavObjectClass::MedevacVictim:
+		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, -2, 6) : nullptr;
+		break;
+	case EBhavObjectClass::UncaughtCriminal:
+		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, 0, -2) : nullptr;
+		break;
+	case EBhavObjectClass::PoliceOfficer:
+		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, 1, -2) : nullptr;
+		break;
+	case EBhavObjectClass::Civilian:
+		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, -2, 0) : nullptr;
+		break;
+	default:
+		break;
+	}
+
+	if (Found == nullptr)
+	{
+		Context.SelectedObject.Reset();
+		return false;
+	}
+
+	// The range the opcode compares is a tile count: the original takes the larger of the two
+	// axis deltas between the two stored tile coordinates (0x004cb094).
+	int32 MyX = INDEX_NONE;
+	int32 MyY = INDEX_NONE;
+	int32 TheirX = INDEX_NONE;
+	int32 TheirY = INDEX_NONE;
+	if (TrafficSystem == nullptr ||
+		!TryGetCurrentTileCoordinate(MyX, MyY) ||
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Found->GetActorLocation(), TheirX, TheirY))
+	{
+		Context.SelectedObject.Reset();
+		return false;
+	}
+
+	Context.SelectedObject = Found;
+	OutTileDistance = FMath::Max(FMath::Abs(TheirX - MyX), FMath::Abs(TheirY - MyY));
+	return true;
+}
+
+bool ASimCopterGroundAgent::FaceSelectedObject(FSimCopterPersonContext& Context)
+{
+	// FUN_004cb270: facing = (octant toward the object - 2) & 7. The remake's helper already
+	// returns the stored octant for a pair of world points, so the -2 rotation is baked in.
+	const AActor* Target = Context.SelectedObject.Get();
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (Target == nullptr || TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	Context.Attributes[EBhavAttr::Facing] = uint16(
+		TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), Target->GetActorLocation()) & 7);
+	return true;
+}
+
+ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSimCopterPersonContext& Context)
+{
+	// FUN_004ca940: turn to face the object, take one ordinary move step, and report arrival once
+	// the two are on the same tile (the original's move result 10 plus a half-tile height gate).
+	const AActor* Target = Context.SelectedObject.Get();
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (Target == nullptr || TrafficSystem == nullptr)
+	{
+		return ESimCopterBehaviorStepResult::NoTarget;
+	}
+
+	int32 MyX = INDEX_NONE;
+	int32 MyY = INDEX_NONE;
+	int32 TheirX = INDEX_NONE;
+	int32 TheirY = INDEX_NONE;
+	if (!TryGetCurrentTileCoordinate(MyX, MyY) ||
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Target->GetActorLocation(), TheirX, TheirY))
+	{
+		return ESimCopterBehaviorStepResult::NoTarget;
+	}
+
+	const float HeightGateCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 5.0f;
+	if (MyX == TheirX && MyY == TheirY &&
+		FMath::Abs(Target->GetActorLocation().Z - GetActorLocation().Z) < HeightGateCm)
+	{
+		return ESimCopterBehaviorStepResult::Arrived;
+	}
+
+	FaceSelectedObject(Context);
+	MoveStep(Context);
+	return ESimCopterBehaviorStepResult::Moving;
+}
+
+bool ASimCopterGroundAgent::PushReactionOnSelectedObject(FSimCopterPersonContext& Context, const int32 ProgramId)
+{
+	ASimCopterGroundAgent* Target = Cast<ASimCopterGroundAgent>(Context.SelectedObject.Get());
+	return Target != nullptr && Target->PushBehaviorReaction(ProgramId);
+}
+
+bool ASimCopterGroundAgent::PushBehaviorReaction(const int32 ProgramId)
+{
+	if (!bBehaviorActive || !BehaviorModel.IsValid() || BehaviorModel->FindProgram(ProgramId) == nullptr)
+	{
+		return false;
+	}
+	return BehaviorContext.PushReactionProgram(ProgramId);
+}
+
+void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context, const int32 OutcomeCode)
+{
+	// FUN_004ccf50: the person's program reports an outcome, and this maps it onto one of the
+	// mission event codes and posts it against the record the person belongs to (person+0x10a).
+	if (MissionEventId == INDEX_NONE)
+	{
+		return;
+	}
+
+	int32 EventCode = INDEX_NONE;
+	bool bCarriesCoordinates = false;
+	switch (OutcomeCode)
+	{
+	case 0: EventCode = SimCopterMissions::EVT_VictimPickedUp; break;
+	case 1:
+		// Which "delivered" event depends on what kind of person this is (person+0x148).
+		switch (int32(Context.Attributes[EBhavAttr::State]))
+		{
+		case 1: case 2: case 0x13: EventCode = SimCopterMissions::EVT_RescueDelivered; break;
+		case 3:                    EventCode = SimCopterMissions::EVT_RioterCalmed; break;
+		case 4:                    EventCode = SimCopterMissions::EVT_TransportDelivered; break;
+		case 6:                    EventCode = SimCopterMissions::EVT_MedevacDelivered; break;
+		default: break;
+		}
+		break;
+	case 2: EventCode = SimCopterMissions::EVT_SetTertiaryCoords; bCarriesCoordinates = true; break;
+	case 4: EventCode = SimCopterMissions::EVT_RioterDispersed; break;
+	case 5: EventCode = SimCopterMissions::EVT_RioterCalmed; break;
+	// The one that makes a criminal's marker follow them: every loop of every criminal program
+	// re-posts the person's own tile as the mission's primary coordinates.
+	case 6: EventCode = SimCopterMissions::EVT_SetPrimaryCoords; bCarriesCoordinates = true; break;
+	case 7: EventCode = SimCopterMissions::EVT_MedevacDelivered; break;
+	case 8: EventCode = SimCopterMissions::EVT_VictimPickedUp; break;
+	case 9: EventCode = SimCopterMissions::EVT_CriminalCaught; break;
+	case 10: EventCode = SimCopterMissions::EVT_PersonDied; break;
+	case 11: EventCode = SimCopterMissions::EVT_PassengerLost; break;
+	default: break;
+	}
+
+	if (EventCode == INDEX_NONE)
+	{
+		return;
+	}
+
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Missions == nullptr)
+	{
+		return;
+	}
+
+	if (bCarriesCoordinates)
+	{
+		int32 TileX = INDEX_NONE;
+		int32 TileY = INDEX_NONE;
+		if (!TryGetCurrentTileCoordinate(TileX, TileY))
+		{
+			return;
+		}
+		Missions->PostMissionEventAt(EventCode, MissionEventId, TileX, TileY, 0, true);
+		return;
+	}
+
+	Missions->PostMissionEvent(EventCode, MissionEventId, 1, false);
+}
+
 void ASimCopterGroundAgent::OnUnknownOpcode(int32 Opcode)
 {
 	if (!ReportedUnknownOpcodes.Contains(Opcode))

@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Formats/SimCopterPeopleReader.h"
+#include "UObject/WeakObjectPtrTemplates.h"
+
+class AActor;
 
 // Interpreter for SimCopter's people.df BHAV behavior programs - a faithful port of the
 // original's walker VM (FUN_004ce7b0 + the 88-handler table at 0x4c84e0; advance semantics
@@ -47,8 +50,39 @@ namespace EBhavAttr
 	constexpr int32 AutoTurn = 21;   // +0x16a; enables the move core's 8-facing retry loop
 	constexpr int32 MoveThroughWalls = 40; // +0x190; BHAV 308 sets it after repeated move fails
 	constexpr int32 MoveFailCounter = 41;  // +0x192
+	// +0x16e. Set by BHAV 1060 "Rx: criminal-caught" and cleared by the criminal root programs.
+	// FUN_004ca350 refuses to return a person with this set when it is asked for object class 6,
+	// which is how an arrested criminal stops being a target for every other cop on the map.
+	constexpr int32 CriminalCaught = 23;
 	constexpr int32 Count = 0x30;
 }
+
+// FUN_004cac70's object-class table: what op 15 will search for. Values are the executable's.
+// Full derivation in Docs/scratchpad/ghidra/criminal_ai_decode_20260728.md.
+namespace EBhavObjectClass
+{
+	constexpr int32 MyMissionCoords = 0;  // FUN_004a88e0(person+0x10a) - the mission's tile
+	constexpr int32 AlreadySelected = 1;  // whatever is already in the selected slot
+	constexpr int32 PlayerHelicopter = 2; // DAT_005040d0+0xa4
+	constexpr int32 PlayerObjectB = 3;    // DAT_005040d0+0xbc
+	constexpr int32 InteractionSource = 4;// person+0x1a4 - what last interacted with me
+	constexpr int32 MedevacVictim = 5;    // FUN_004ca350 state == 6
+	constexpr int32 UncaughtCriminal = 6; // FUN_004ca350 loopflag == 0 and CriminalCaught == 0
+	constexpr int32 PoliceOfficer = 8;    // FUN_004ca350 loopflag == 1 (states 7 and 8)
+	constexpr int32 FireTruck = 10;       // FUN_0049b060(0, tile)
+	constexpr int32 PoliceCar = 11;       // FUN_0049b060(1, tile)
+	constexpr int32 Ambulance = 12;       // FUN_0049b060(2, tile)
+	constexpr int32 Civilian = 14;        // FUN_004ca350 state == 0
+	constexpr int32 PlayerObjectC = 16;   // DAT_005040d0+0xc0
+}
+
+// FUN_004ca940's outcome, as op 38 reads it.
+enum class ESimCopterBehaviorStepResult : uint8
+{
+	NoTarget, // nothing selected, or no bearing to it
+	Moving,   // took a step; not there yet
+	Arrived   // standing on/next to the target
+};
 
 struct FSimCopterPersonContext
 {
@@ -69,6 +103,11 @@ struct FSimCopterPersonContext
 	// Outputs the world/agent consumes after each tick:
 	FString PendingAnimMnemonic; // op1 bind requests ("1Wal", "NoMo", "Wave", ...)
 	bool bRequestDespawn = false;
+
+	// The walker's "current runtime object" slot (original walker record +0x04). Op 15 selects
+	// into it; ops 18/38/39 act on whatever is in it. Kept as an actor handle so the VM needs no
+	// knowledge of what kind of thing it found.
+	TWeakObjectPtr<AActor> SelectedObject;
 
 	// Interrupt reaction state, mirroring FUN_004c1050's writes:
 	//   person+0x17c  the 900-series reaction id currently running (INDEX_NONE = none)
@@ -124,6 +163,32 @@ public:
 	virtual bool TryGetPlayerTileProbe(
 		const FSimCopterPersonContext& Context,
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const { return false; }
+
+	// Op 15, FUN_004cac70: find the nearest object of EBhavObjectClass, put it in
+	// Context.SelectedObject and report its Chebyshev tile distance. False when the class is not
+	// supported here or nothing matched - the opcode then writes the original's 2000 sentinel.
+	virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutTileDistance)
+	{
+		return false;
+	}
+
+	// Op 18, FUN_004cb270: snap facing to the selected object's octant (bearing - 2 & 7).
+	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 38, FUN_004ca940: face the selected object and take one move step toward it.
+	virtual ESimCopterBehaviorStepResult StepTowardSelectedObject(FSimCopterPersonContext& Context)
+	{
+		return ESimCopterBehaviorStepResult::NoTarget;
+	}
+
+	// Op 39, FUN_004cc560: push a BHAV onto the *selected person's* walk stack. This is how a cop
+	// arrests a criminal - it pushes BHAV 1060 "Rx: criminal-caught" onto them.
+	virtual bool PushReactionOnSelectedObject(FSimCopterPersonContext& Context, int32 ProgramId) { return false; }
+
+	// Op 13, FUN_004caac0 -> FUN_004ccf50: turn a program outcome code into a mission event on
+	// the record this person belongs to. Outcome 6 re-posts the person's own tile as the mission
+	// coordinates (which is what makes a criminal's marker follow them); outcome 9 is the arrest.
+	virtual void PostMissionOutcome(FSimCopterPersonContext& Context, int32 OutcomeCode) {}
 
 	virtual void OnUnknownOpcode(int32 Opcode) {}
 };
