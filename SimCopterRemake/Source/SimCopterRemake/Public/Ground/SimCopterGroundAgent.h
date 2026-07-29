@@ -241,6 +241,21 @@ public:
 	// Megaphone message the agent last received (person+0x15a).
 	int32 GetLastMegaphoneMessage() const { return BehaviorContext.MegaphoneMessageIndex; }
 
+	// person+0x1a4: the object that last interacted with this person. Behaviour opcodes 32/33 turn
+	// away from or toward it, opcode 80 gabs at it, and opcode 15 class 4 selects it.
+	AActor* GetBehaviorInteractionSource() const { return BehaviorInteractionSource.Get(); }
+
+	// person+0x1a8 plus the state change in FUN_004c0f40: start the abduction. The person switches to
+	// state 16 (BHAV 666 "Porkchop"), waves, and then flies up to Target at movespeed with no regard
+	// for terrain (opcode 78). Returns false when FUN_004c0f80's eligibility test rejects them - not
+	// on screen, too far from the camera, riding the player, or a person the mission layer owns.
+	//
+	// The target is a component rather than an actor because the original's person+0x1a8 is a scene
+	// object, and the only thing that ever fills it - the UFO - is one mesh among the plane pool on
+	// the ambient-vehicle actor rather than an actor of its own.
+	bool BeginBeamAbduction(USceneComponent* Target);
+	bool IsBeingBeamedUp() const { return bBeamAbductionActive; }
+
 	// Behaviour-VM state other agents' opcodes have to read. FUN_004ca350 filters candidates on
 	// the loop flag (+0x14a), the state (+0x148), visibility (+0x152) and, for criminals, the
 	// "already caught" attribute (+0x16e).
@@ -502,6 +517,18 @@ private:
 	int32 ForcedFigureClothesOffset = INDEX_NONE;
 	// person+0x1a0 and whether it is the rope end rather than the cabin (op 86 distinguishes them).
 	TWeakObjectPtr<AActor> BehaviorCarrier;
+	// person+0x1a4, written by FUN_004c1050 when an interaction is delivered, and by the move core
+	// when this person walks into somebody.
+	TWeakObjectPtr<AActor> BehaviorInteractionSource;
+	// person+0x1a8, the thing opcode 78 flies to - only ever the UFO in the shipped data. The flag is
+	// separate so a saucer that despawns mid-flight still finishes the abduction.
+	TWeakObjectPtr<USceneComponent> BehaviorBeamTarget;
+	bool bBeamAbductionActive = false;
+	// person+0x1c4, this person's own radius in original units (opcode 27 halves it for a rioter).
+	float BehaviorBodyRadiusUnits = 3.0f;
+	// DAT_00506448. The original's is global, but every shipped use reads it twice inside one
+	// person's program and subtracts, so a per-person tick count is indistinguishable.
+	int32 BehaviorTickCounter = 0;
 	bool bRidingHarness = false;
 	bool bClaimedPassengerSeat = false;
 	// True while a carrier owns this person's transform, so UpdateMovement leaves them alone.
@@ -596,10 +623,42 @@ private:
 	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) override;
 	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
+	virtual bool FaceAwayFromSelectedObject(FSimCopterPersonContext& Context) override;
+	virtual bool FaceInteractionSource(FSimCopterPersonContext& Context, bool bFaceToward) override;
+	virtual void ReactToInteractionSource(FSimCopterPersonContext& Context) override;
+	virtual bool MeasureRiotCrowd(
+		const FSimCopterPersonContext& Context,
+		int32 RadiusTiles,
+		int32& OutFacingOctant,
+		int32& OutAverageAgitation,
+		int32& OutCount) const override;
+	virtual void SetBodyRadiusOriginalUnits(float RadiusUnits) override { BehaviorBodyRadiusUnits = RadiusUnits; }
+	virtual bool JoinLiveRiot(FSimCopterPersonContext& Context) override;
+	virtual bool FaceNearestFireWithin(FSimCopterPersonContext& Context, int32 RadiusTiles, int32& OutTileDistance) override;
+	virtual int32 GetActiveMedevacMissionCount() const override;
+	virtual bool CollapseIntoMedevacVictim(FSimCopterPersonContext& Context) override;
+	virtual int32 GetSelectionRoomForBoarding(const FSimCopterPersonContext& Context) const override;
+	virtual bool AdvanceBeamAbduction(FSimCopterPersonContext& Context) override;
+	virtual int32 GetBehaviorTickCounter() const override { return BehaviorTickCounter; }
 	virtual ESimCopterBehaviorStepResult StepTowardSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool PushReactionOnSelectedObject(FSimCopterPersonContext& Context, int32 ProgramId) override;
 	virtual void PostMissionOutcome(FSimCopterPersonContext& Context, int32 OutcomeCode) override;
 	virtual void OnUnknownOpcode(int32 Opcode) override;
+
+	// FUN_004c8430: the stored facing octant from this person toward a world point, and whether
+	// there is a bearing at all (the original answers -1 for a zero delta, which ops 31/32/33 take
+	// their failure edge from).
+	bool TryGetBehaviorFacingOctantToward(const FVector& TargetWorldLocation, int32& OutOctant) const;
+	// FUN_004c6970's result-5 arm: face the person we just walked into, bind "2Gab" or "HipH" 50/50,
+	// and let them know it happened (interaction mode 13, which pushes BHAV 914 on them).
+	void RunBumpedPersonSelector(ASimCopterGroundAgent& Other);
+	// The half of that which opcode 80 also runs, against an explicitly supplied object.
+	void RunMeetSelector(FSimCopterPersonContext& Context, AActor* Source);
+	// FUN_004c9000 over the step target: the nearest *other* visible pedestrian whose body radius
+	// overlaps ours there. Move result 5 - it blocks the step and turns the walker one octant on.
+	ASimCopterGroundAgent* FindBumpedPedestrian(const FVector& StepTargetWorldLocation) const;
+	// The tail of opcode 78's flight: the person has reached the UFO and vanishes.
+	void FinishBeamAbduction();
 
 	void ApplyAgentShape();
 	void UpdateMovement(float DeltaSeconds);

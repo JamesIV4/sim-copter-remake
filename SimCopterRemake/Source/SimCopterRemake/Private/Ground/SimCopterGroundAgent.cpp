@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterGroundAgent.h"
 
+#include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -283,9 +284,23 @@ bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& E
 	{
 		return false;
 	}
+	// The two exact guards from the same test: someone riding the player's helicopter is out of
+	// reach of everything, and a medevac victim (state 6) never reacts to anything at all - they are
+	// lying on the ground waiting for a pickup.
+	if (BehaviorCarrier.Get() != nullptr && BehaviorCarrier.Get() == ResolvePlayerHelicopter())
+	{
+		return false;
+	}
+	if (BehaviorContext.Attributes[EBhavAttr::State] == 6)
+	{
+		return false;
+	}
 
 	// Mode 1 hard-codes BHAV 950 and only fires on a 1-in-N roll; every other mode reads
-	// DAT_0058d728[mode].
+	// DAT_0058d728[mode]. Mode 13 is the exception: FUN_004c1050 uses param_5 *as the program id*
+	// when it is non-zero, which is how a cop or a paramedic (attr 32 := 916 in BHAV 1400/1401/1402
+	// and 801) makes the person they shove reach for "don't gawk, maybe run" instead of stopping to
+	// chat.
 	int32 ProgramId = INDEX_NONE;
 	if (Event.Mode == ESimCopterInteractionMode::Spotlight)
 	{
@@ -294,6 +309,10 @@ bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& E
 			return false;
 		}
 		ProgramId = SimCopterInteraction::SpotlightReactionProgram;
+	}
+	else if (Event.Mode == ESimCopterInteractionMode::PersonNeutral && Event.MessageIndex != 0)
+	{
+		ProgramId = Event.MessageIndex;
 	}
 	else
 	{
@@ -313,6 +332,9 @@ bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& E
 	}
 
 	BehaviorContext.ReactionParameter = Event.MessageIndex;
+	// person+0x1a4, written on the same accepted branch: what caused this. Opcodes 32/33 turn away
+	// from or toward it, opcode 80 gabs at it, and opcode 15 class 4 selects it.
+	BehaviorInteractionSource = Event.Source;
 	if (Event.Mode == ESimCopterInteractionMode::Megaphone)
 	{
 		// person+0x15a: the message index the shipped BHAV 901 branches on.
@@ -353,6 +375,8 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 
 	for (int32 Step = 0; Step < Steps; ++Step)
 	{
+		// DAT_00506448, incremented once per behaviour tick by FUN_004c5fb0. Opcode 79 reads it.
+		++BehaviorTickCounter;
 		const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(BehaviorContext, *BehaviorModel, *this);
 		if (Result == EBhavStepResult::Completed && InitialBehaviorProgramId != INDEX_NONE)
 		{
@@ -578,6 +602,7 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	const int32 BehaviorClass = Context.Attributes[EBhavAttr::BehaviorClass];
 
 	int32 LastBlockResult = 0;
+	ASimCopterGroundAgent* BumpedPerson = nullptr;
 	for (int32 Turn = 0; Turn < MaxAttempts; ++Turn)
 	{
 		const int32 Facing = (StartFacing + Turn) & 7;
@@ -630,6 +655,16 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 			}
 		}
 
+		// FUN_004c9470 step 3: something in the target cell is in the way. Walking into another
+		// person is move result 5, which FUN_004c9300's retry loop treats as blocked (it only
+		// accepts 0/7/8/10) and which broadcasts reaction 0xd at them from inside the step check.
+		if (ASimCopterGroundAgent* Bumped = FindBumpedPedestrian(TargetLocation))
+		{
+			LastBlockResult = 5;
+			BumpedPerson = Bumped;
+			continue;
+		}
+
 		// Success: renew the constant step velocity until the next behavior tick (the ground
 		// snap performs the original's per-step warp onto the walked surface).
 		Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
@@ -642,10 +677,49 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 
 	// Blocked on every allowed facing: bind the recoil clip for the final attempt's result,
 	// exactly like the single post-move call after FUN_004c9300's retry loop.
-	Context.PendingAnimMnemonic = LastBlockResult == 1 ? TEXT("FaCl") : (LastBlockResult == 2 ? TEXT("Whoa") : TEXT("NoMo"));
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
+	if (LastBlockResult == 5 && BumpedPerson != nullptr)
+	{
+		// Result 5: the street conversation. Both halves of it - we turn to them and gab, and they
+		// get reaction 914, which reaches opcode 80 and gabs back.
+		RunBumpedPersonSelector(*BumpedPerson);
+		return false;
+	}
+	Context.PendingAnimMnemonic = LastBlockResult == 1 ? TEXT("FaCl") : (LastBlockResult == 2 ? TEXT("Whoa") : TEXT("NoMo"));
 	return false;
+}
+
+ASimCopterGroundAgent* ASimCopterGroundAgent::FindBumpedPedestrian(const FVector& StepTargetWorldLocation) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
+	{
+		return nullptr;
+	}
+	// FUN_004c9000 collides against the other object's own radius (person+0x1c4, the field opcode 27
+	// writes). The remake measures with the same physical quantity it already has - the two capsule
+	// radii - scaled by opcode 27's ratio, so an agitated rioter still packs to half the spacing.
+	const float RadiusScale = BehaviorBodyRadiusUnits / 3.0f;
+	const float BumpRadiusCm = FMath::Max(1.0f, GetCollisionRadiusCm() * RadiusScale * 2.0f);
+	return TrafficSystem->FindPersonOverlapping(*this, StepTargetWorldLocation, BumpRadiusCm);
+}
+
+void ASimCopterGroundAgent::RunBumpedPersonSelector(ASimCopterGroundAgent& Other)
+{
+	// FUN_004c9470's result-5 side effect, verbatim:
+	//   FUN_004c1050(0xd, me, them, -1, person+0x180)
+	// - mode 13 is DAT_0058d728[13] = BHAV 914 "Rxn: Person--civil, neutral", and person+0x180
+	// (attribute 32) overrides it when set. Cops and paramedics set it to 916.
+	FSimCopterInteractionEvent Event;
+	Event.Mode = ESimCopterInteractionMode::PersonNeutral;
+	Event.Source = this;
+	Event.TargetWorldLocation = Other.GetActorLocation();
+	Event.MessageIndex = int32(BehaviorContext.Attributes[EBhavAttr::BumpReaction]);
+	Other.ApplyInteraction(Event);
+
+	// And FUN_004c6970 case 5 on our own side: face them, then 2Gab or HipH.
+	RunMeetSelector(BehaviorContext, &Other);
 }
 
 bool ASimCopterGroundAgent::TryGetWalkSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const
@@ -835,6 +909,11 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 		// still in the air and wave at it.
 		Found = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
 		break;
+	case EBhavObjectClass::InteractionSource:
+		// person+0x1a4, now that the reaction path records it: whatever last interacted with me,
+		// which for a bump is the person who walked into me.
+		Found = BehaviorInteractionSource.Get();
+		break;
 	case EBhavObjectClass::MedevacVictim:
 		Found = TrafficSystem != nullptr ? TrafficSystem->FindNearestBehaviorPerson(*this, -2, 6) : nullptr;
 		break;
@@ -1005,6 +1084,95 @@ bool ASimCopterGroundAgent::FaceSelectedObject(FSimCopterPersonContext& Context)
 	Context.Attributes[EBhavAttr::Facing] = uint16(
 		TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), Context.SelectedLocation) & 7);
 	return true;
+}
+
+bool ASimCopterGroundAgent::TryGetBehaviorFacingOctantToward(
+	const FVector& TargetWorldLocation,
+	int32& OutOctant) const
+{
+	OutOctant = 0;
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+	// FUN_004c8430 answers -1 when the two points share a position, which is the arm ops 31/32/33
+	// treat as failure. A few centimetres is the same thing at this scale.
+	if (FVector::DistSquared2D(GetActorLocation(), TargetWorldLocation) < FMath::Square(1.0f))
+	{
+		return false;
+	}
+	OutOctant = TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), TargetWorldLocation) & 7;
+	return true;
+}
+
+bool ASimCopterGroundAgent::FaceAwayFromSelectedObject(FSimCopterPersonContext& Context)
+{
+	// FUN_004cc240: facing = (bearing + 2) & 7, which is the op-18 facing turned 180 degrees. No
+	// selection at all is a successful no-op; a selection we have no bearing to fails.
+	if (!Context.bHasSelection)
+	{
+		return true;
+	}
+	int32 Octant = 0;
+	if (!TryGetBehaviorFacingOctantToward(Context.SelectedLocation, Octant))
+	{
+		return false;
+	}
+	Context.Attributes[EBhavAttr::Facing] = uint16((Octant + 4) & 7);
+	return true;
+}
+
+bool ASimCopterGroundAgent::FaceInteractionSource(FSimCopterPersonContext& Context, const bool bFaceToward)
+{
+	// FUN_004cc2b0 against person+0x1a4. Token 0x21 faces toward it, 0x20 away; no source is a
+	// successful no-op, and a source with no bearing takes a random facing and fails.
+	const AActor* Source = BehaviorInteractionSource.Get();
+	if (Source == nullptr)
+	{
+		return true;
+	}
+	int32 Octant = 0;
+	if (!TryGetBehaviorFacingOctantToward(Source->GetActorLocation(), Octant))
+	{
+		Context.Attributes[EBhavAttr::Facing] = Context.RandomBounded(8);
+		return false;
+	}
+	Context.Attributes[EBhavAttr::Facing] = uint16(bFaceToward ? Octant : ((Octant + 4) & 7));
+	return true;
+}
+
+void ASimCopterGroundAgent::ReactToInteractionSource(FSimCopterPersonContext& Context)
+{
+	// FUN_004cb790 -> FUN_004c6970(movespeed, source is a person ? 5 : 4, source).
+	RunMeetSelector(Context, BehaviorInteractionSource.Get());
+}
+
+void ASimCopterGroundAgent::RunMeetSelector(FSimCopterPersonContext& Context, AActor* Source)
+{
+	// FUN_004c6970's two person-contact arms: result 5 is the street conversation, result 4 the
+	// "Whoa" a person gives an object that shoved them. The object comes in as a parameter because
+	// the bumper's own person+0x1a4 is not written by a bump - only the bumped person's is.
+	if (Source == nullptr)
+	{
+		return;
+	}
+
+	ASimCopterGroundAgent* OtherPerson = Cast<ASimCopterGroundAgent>(Source);
+	if (OtherPerson != nullptr && OtherPerson->AgentKind == ESimCopterGroundAgentKind::Pedestrian)
+	{
+		int32 Octant = 0;
+		if (TryGetBehaviorFacingOctantToward(Source->GetActorLocation(), Octant))
+		{
+			Context.Attributes[EBhavAttr::Facing] = uint16(Octant);
+		}
+		// FUN_004c6970 case 5: 50/50 between the two conversation clips, then one of nine voice
+		// lines (the remake has no people voice bank yet, so only the animation half runs).
+		Context.PendingAnimMnemonic = Context.RandomBounded(2) == 0 ? TEXT("2Gab") : TEXT("HipH");
+		return;
+	}
+
+	Context.PendingAnimMnemonic = TEXT("Whoa");
 }
 
 ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSimCopterPersonContext& Context)
@@ -1780,6 +1948,330 @@ int32 ASimCopterGroundAgent::GetDifficultyTier() const
 		}
 	}
 	return 1;
+}
+
+int32 ASimCopterGroundAgent::GetActiveMedevacMissionCount() const
+{
+	// FUN_004abb00(0x20): live records whose type mask carries the MedEvac bit.
+	if (const UWorld* World = GetWorld())
+	{
+		if (const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(const_cast<UWorld*>(World), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			return Missions->CountActiveMissionsOfType(SimCopterMissions::TYPE_Medevac);
+		}
+	}
+	return 0;
+}
+
+bool ASimCopterGroundAgent::CollapseIntoMedevacVictim(FSimCopterPersonContext& Context)
+{
+	// SCHOOK: PersonCollapsesIntoCasualty 0x004c9b50
+	UWorld* World = GetWorld();
+	ASimCopterMissionSystemActor* Missions = World != nullptr
+		? Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass()))
+		: nullptr;
+	if (Missions == nullptr || !bBehaviorActive)
+	{
+		return false;
+	}
+	// Someone the mission layer already owns is not available to be re-purposed as a fresh casualty,
+	// and neither is anyone already lying there as one.
+	if (bMissionCarried || bMissionStationary || bClaimedPassengerSeat || bPersistentHospitalRoofCrew ||
+		BehaviorCarrier.IsValid() ||
+		Context.Attributes[EBhavAttr::State] == 6)
+	{
+		return false;
+	}
+
+	// The original tells the record this person belonged to that they died, then hands them to a new
+	// MedEvac record. Nearly every route into BHAV 906 "Rxn: Swoon" is one of the player's own tools
+	// (tear gas via 907, "Ouch" via 902), so the remake routes it through the established
+	// player-caused injury service: same state-6 victim and marker, but no completion reward, which
+	// is the existing rule for putting a civilian in hospital yourself.
+	if (MissionEventId != INDEX_NONE && !bMissionResolutionReported)
+	{
+		PostMissionOutcome(Context, 10);
+	}
+	Context.Attributes[EBhavAttr::Speed] = 0;
+	return Missions->CreatePlayerCausedMedevacForVictim(this);
+}
+
+bool ASimCopterGroundAgent::MeasureRiotCrowd(
+	const FSimCopterPersonContext& Context,
+	const int32 RadiusTiles,
+	int32& OutFacingOctant,
+	int32& OutAverageAgitation,
+	int32& OutCount) const
+{
+	OutFacingOctant = 0;
+	OutAverageAgitation = 0;
+	OutCount = 0;
+
+	// FUN_004cb480 refuses outright unless a riot record is live (FUN_004a9230(0x1000)) - the crowd
+	// scan is only a riot measurement while there is a riot to measure.
+	const UWorld* World = GetWorld();
+	const ASimCopterMissionSystemActor* Missions = World != nullptr
+		? Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(const_cast<UWorld*>(World), ASimCopterMissionSystemActor::StaticClass()))
+		: nullptr;
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (Missions == nullptr ||
+		TrafficSystem == nullptr ||
+		Missions->FindActiveMissionOfType(SimCopterMissions::TYPE_Riot) == INDEX_NONE)
+	{
+		return false;
+	}
+
+	FVector Centroid = FVector::ZeroVector;
+	if (!TrafficSystem->MeasureBehaviorCrowd(*this, RadiusTiles, OutCount, OutAverageAgitation, Centroid))
+	{
+		return false;
+	}
+
+	// The bearing the original reports is already the stored octant (it applies the same -2 turn as
+	// opcode 18), which is why BHAV 852 can assign it straight to the facing attribute.
+	int32 Octant = 0;
+	if (TryGetBehaviorFacingOctantToward(Centroid, Octant))
+	{
+		OutFacingOctant = Octant;
+	}
+	return true;
+}
+
+bool ASimCopterGroundAgent::JoinLiveRiot(FSimCopterPersonContext& Context)
+{
+	// FUN_004cb680 -> FUN_004c4e60: find the live riot, post EVT_RiotPersonAdded, and change state
+	// to 3 so the walker restarts on BHAV 850 "Riot!".
+	UWorld* World = GetWorld();
+	ASimCopterMissionSystemActor* Missions = World != nullptr
+		? Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass()))
+		: nullptr;
+	if (Missions == nullptr)
+	{
+		return false;
+	}
+	const int32 RiotEventId = Missions->FindActiveMissionOfType(SimCopterMissions::TYPE_Riot);
+	if (RiotEventId == INDEX_NONE)
+	{
+		return false;
+	}
+
+	// Anyone the mission layer already owns keeps the job they have; the original had no passengers
+	// or hospital staff to protect here, but converting one would strand the mission that needs them.
+	if (bMissionCarried || bMissionStationary || bClaimedPassengerSeat || bPersistentHospitalRoofCrew ||
+		BehaviorCarrier.IsValid() || MissionEventId != INDEX_NONE)
+	{
+		return false;
+	}
+
+	Missions->PostMissionEvent(SimCopterMissions::EVT_RiotPersonAdded, RiotEventId, 1, false);
+	MissionEventId = RiotEventId;
+	InitialPersonState = 3;
+	ResetMissionActionTracking();
+	// FUN_004c0df0 sets the state, which rebinds the program - the caller then returns 3 (Stop)
+	// because the program the walker was running no longer exists.
+	Context.ResetToState(3);
+	Context.Attributes[EBhavAttr::CriminalCaught] = 0;
+	return true;
+}
+
+bool ASimCopterGroundAgent::FaceNearestFireWithin(
+	FSimCopterPersonContext& Context,
+	const int32 RadiusTiles,
+	int32& OutTileDistance)
+{
+	OutTileDistance = 0;
+	UWorld* World = GetWorld();
+	ASimCopterMissionSystemActor* Missions = World != nullptr
+		? Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass()))
+		: nullptr;
+	int32 MyX = INDEX_NONE;
+	int32 MyY = INDEX_NONE;
+	if (Missions == nullptr || RadiusTiles <= 0 || !TryGetCurrentTileCoordinate(MyX, MyY))
+	{
+		return false;
+	}
+
+	// FUN_004ca190 takes the Manhattan-nearest cell carrying scene-cell flag 0x20 within the square.
+	// The flag's writer is not in the Ghidra export set: "0x20 = this cell is alight" is read off the
+	// program's own name (274 "Gawk at (or flee) fire") plus the fact that FUN_004c9cc0 refuses an
+	// ambient spawn on such a cell. The fire truck's own target scan is the query that already
+	// answers it here.
+	ASimCopterMissionSystemActor::FServiceFireTarget Target;
+	if (!Missions->TryAcquireServiceFireTarget(FIntPoint(MyX, MyY), RadiusTiles, Target) ||
+		Target.Tile.X == INDEX_NONE)
+	{
+		return false;
+	}
+
+	OutTileDistance = FMath::Abs(Target.Tile.X - MyX) + FMath::Abs(Target.Tile.Y - MyY);
+	int32 Octant = 0;
+	if (TryGetBehaviorFacingOctantToward(Target.World, Octant))
+	{
+		Context.Attributes[EBhavAttr::Facing] = uint16(Octant);
+	}
+	return true;
+}
+
+int32 ASimCopterGroundAgent::GetSelectionRoomForBoarding(const FSimCopterPersonContext& Context) const
+{
+	// FUN_004cc980: the player's helicopter answers manifest[+4] - manifest[+8], i.e. free seats.
+	const AActor* Selection = Context.SelectedObject.Get();
+	if (Selection == nullptr)
+	{
+		return INDEX_NONE;
+	}
+	if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Selection))
+	{
+		return Helicopter == ResolvePlayerHelicopter() ? Helicopter->GetAvailablePassengerSeats() : INDEX_NONE;
+	}
+	// obj+0xc & 0x10 is the emergency-vehicle flag (FUN_004c4e10 copies obj+0xe from it into
+	// person+0x170), and those get the original's flat "there is room" constant.
+	if (const ASimCopterGroundAgent* Vehicle = Cast<ASimCopterGroundAgent>(Selection))
+	{
+		if (Vehicle->GetAgentKind() == ESimCopterGroundAgentKind::Vehicle)
+		{
+			return ISimCopterBehaviorWorld::EmergencyVehicleRoomId;
+		}
+	}
+	return INDEX_NONE;
+}
+
+bool ASimCopterGroundAgent::BeginBeamAbduction(USceneComponent* Target)
+{
+	// SCHOOK: BeamPersonUp 0x004c0f40 (eligibility 0x004c0f80)
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	UWorld* World = GetWorld();
+	if (Target == nullptr || World == nullptr || TrafficSystem == nullptr)
+	{
+		return false;
+	}
+	if (!bBehaviorActive || AgentKind != ESimCopterGroundAgentKind::Pedestrian || bBeamAbductionActive)
+	{
+		return false;
+	}
+
+	// person+0x148 != 0 needs a 1-in-3000 roll of its own: the UFO takes ambient pedestrians freely
+	// and a mission person only very rarely.
+	if (BehaviorContext.Attributes[EBhavAttr::State] != 0 &&
+		BehaviorContext.RandomBounded(3000) != 0)
+	{
+		return false;
+	}
+
+	// person+0x15e, "already written off", plus the remake's own engine-owned people. The original
+	// had no equivalent of a mission carrying a real actor, and abducting one would strand it.
+	if (bMissionCarried || bMissionStationary || bPassengerFallActive || bMissionPatientDead ||
+		bClaimedPassengerSeat || bPersistentHospitalRoofCrew || BehaviorCarrier.IsValid())
+	{
+		return false;
+	}
+
+	// FUN_0049ad30: the person has to be on screen, with person+0x1c4 as the test radius.
+	if (!WasRecentlyRendered(0.5f))
+	{
+		return false;
+	}
+
+	// ...and within 9 tiles of the camera tile (DAT_0061a618/0x61a61c).
+	int32 MyX = INDEX_NONE;
+	int32 MyY = INDEX_NONE;
+	int32 CameraX = INDEX_NONE;
+	int32 CameraY = INDEX_NONE;
+	const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(World, 0);
+	const APlayerCameraManager* CameraManager = PlayerController != nullptr ? PlayerController->PlayerCameraManager : nullptr;
+	if (CameraManager == nullptr ||
+		!TryGetCurrentTileCoordinate(MyX, MyY) ||
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(CameraManager->GetCameraLocation(), CameraX, CameraY) ||
+		FMath::Abs(CameraX - MyX) >= 9 ||
+		FMath::Abs(CameraY - MyY) >= 9)
+	{
+		return false;
+	}
+
+	BehaviorBeamTarget = Target;
+	bBeamAbductionActive = true;
+	// The flight is a teleport per tick with no move check, so the ground snap has to let go of them
+	// the same way it does for a swimmer or a train-roof rider.
+	bSnapToGround = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	// FUN_004c0df0(0x10, -1): state 16 is BHAV 666 "Porkchop".
+	InitialPersonState = 16;
+	ResetBehaviorProgramOverride();
+	BehaviorContext.ResetToState(16);
+	return true;
+}
+
+bool ASimCopterGroundAgent::AdvanceBeamAbduction(FSimCopterPersonContext& Context)
+{
+	// SCHOOK: BeamFlightStep 0x004cb830
+	const USceneComponent* Target = BehaviorBeamTarget.Get();
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (Target == nullptr || TrafficSystem == nullptr)
+	{
+		// No person+0x1a8: the handler returns 1 without moving. If the saucer left while we were
+		// on our way up, finish anyway rather than leaving somebody hanging in the air.
+		FinishBeamAbduction();
+		return false;
+	}
+
+	// One step is MoveSpeed WHOLE original units along the normalised 3D delta - the walker's /12
+	// does not apply here - and the position is written straight through with no climb gate.
+	const float UnitCm = FMath::Max(0.01f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
+	const float StepCm = FMath::Max(0, int32(int16(Context.Attributes[EBhavAttr::MoveSpeed]))) * UnitCm;
+	const FVector Delta = Target->GetComponentLocation() - GetActorLocation();
+	const float DistanceCm = Delta.Size();
+	if (StepCm > 0.0f && DistanceCm > KINDA_SMALL_NUMBER)
+	{
+		SetActorLocation(GetActorLocation() + Delta / DistanceCm * FMath::Min(StepCm, DistanceCm));
+	}
+
+	// Result 2 (keep flying) only while there was at least one whole step left to travel and the
+	// person is still within 0x15 tiles of the camera; anything else finishes the opcode.
+	if (StepCm <= 0.0f || DistanceCm < StepCm)
+	{
+		FinishBeamAbduction();
+		return false;
+	}
+
+	int32 MyX = INDEX_NONE;
+	int32 MyY = INDEX_NONE;
+	int32 CameraX = INDEX_NONE;
+	int32 CameraY = INDEX_NONE;
+	const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	const APlayerCameraManager* CameraManager = PlayerController != nullptr ? PlayerController->PlayerCameraManager : nullptr;
+	if (CameraManager == nullptr ||
+		!TryGetCurrentTileCoordinate(MyX, MyY) ||
+		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(CameraManager->GetCameraLocation(), CameraX, CameraY) ||
+		FMath::Abs(CameraX - MyX) >= 0x15 ||
+		FMath::Abs(CameraY - MyY) >= 0x15)
+	{
+		FinishBeamAbduction();
+		return false;
+	}
+
+	return true;
+}
+
+void ASimCopterGroundAgent::FinishBeamAbduction()
+{
+	// BHAV 666 rec[8] sets person+0x152 to 0 the moment the flight ends, and in the original that
+	// both hides the figure and stops its behaviour being simulated. Its remaining records (a sound,
+	// Idle-10, then Disappear) run out the clock on an already-invisible person, so hide the actor
+	// here and let opcode 40 recycle it.
+	if (!bBeamAbductionActive)
+	{
+		return;
+	}
+	bBeamAbductionActive = false;
+	BehaviorBeamTarget.Reset();
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 0;
+	SetActorHiddenInGame(true);
 }
 
 void ASimCopterGroundAgent::OnUnknownOpcode(int32 Opcode)

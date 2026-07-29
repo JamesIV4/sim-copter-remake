@@ -97,6 +97,222 @@ Still not ported (5 record sites):
 | 78 | `FUN_004cb830` | 1 | Move toward person+0x1a8 at movespeed; result 2 once within 0x15 tiles of `DAT_0061a618`/`0x61a61c`. |
 | 80 | `FUN_004cb790` | 1 | Re-run the post-move clip selector against person+0x1a4. |
 
+---
+
+# Second pass (2026-07-29): the last three, and the ambient stubs behind them
+
+**Coverage now: 81 opcodes in the table, 67 used by the shipped programs, 73 ported. Every opcode a
+shipped record reaches is ported** - `opcode_map.py`'s "used but NOT ported" list is empty for the
+first time. The eight that remain (42, 43, 45, 49, 52, 64, 65, 81) have no record site in
+`people.df` at all. Everything below is decoded from the executable, not inferred from play; each
+row names the function it came from.
+
+## 50 - "is there room for me?" (3 sites)
+
+`FUN_004cc980` writes into `local[args[0]]`:
+
+- selection == `DAT_005040d0+0xa4` (the player's helicopter) -> `FUN_0048c1e0(DAT_005040d0+0x1d4)`,
+  which is `manifest[+4] - manifest[+8]`;
+- selection has obj flag `0x10` -> the constant `0x1721`;
+- anything else -> **nothing is written** (the local keeps its previous value).
+
+`DAT_005040d0+0x1d4` is the **seat manifest**, and the two fields are decoded outright:
+`FUN_0048bff0` (add a passenger) refuses when `[+4] == [+8]`, increments `[+8]`, and fills the first
+free of 16 entries at `[+0x1c]` (stride 0x14: `+0x00` head image from person+0x18e, `+0x04` face
+index - the slot opcode 54 writes - `+0x08` flags `0x200`, `+0x0c` person id, `+0x10` display slot);
+`FUN_0048c120` (remove) decrements `[+8]`; `FUN_004c0ba0` iterates `[+4]` entries. So `[+4]` is the
+helicopter's seat count and `[+8]` the number occupied: **opcode 50 on the player's helicopter is
+`GetAvailablePassengerSeats()`.** Flag `0x10` is named by `FUN_004c4e10`, which copies `obj+0xe`
+into person+0x170 - the "emergency vehicle I belong to" field - so the `0x1721` arm means "an
+emergency vehicle, always room".
+
+Every site follows it with `local > 0`:
+
+| program | records | what the gate does |
+|---------|---------|--------------------|
+| 1051 `cop - wait at station` | `[13]` -> `[14]` | a waiting officer only walks over and boards (op 12) when your cabin has a free seat; otherwise back to Idle-20. |
+| 1054 `cop - return to copter` | `[10]` -> `[11]` | same gate before the return trip. |
+| 272 `nearest emerg veh on stack` | `[5]` -> `[6]` | a full cabin sets `l0 := 5000`, so the nearest fire truck wins the "closest ride" comparison instead. |
+
+## 78 + state 16 - the UFO abducts people (1 site)
+
+`FUN_004cb830`: no `person+0x1a8` -> result 1. Otherwise normalise the 3D delta to that object
+(`FUN_00467a80` normalises in place and returns the length), scale by `person+0x164` (movespeed -
+**whole units per tick, not the walker's `/12`**), and *teleport* to the result
+(`FUN_004c7910` / `FUN_004c6fa0` / `FUN_004c78c0`: unlink, set position+tile+tile class, relink).
+No move check, no climb gate, no terrain. Result 2 (yield) only while the pre-step distance was at
+least one step **and** the person is within 0x15 tiles of the camera tile
+(`DAT_0061a618`/`0x61a61c`); result 1 otherwise.
+
+Who fills `person+0x1a8`: `FUN_004c0f40(person, target)` = eligibility (`FUN_004c0f80`) then
+`FUN_004c0df0(0x10, -1)` - **a state change to 16** - then `+0x1a8 = target`. State 16 is BHAV
+**666 'Porkchop'**, and the program is the whole gag:
+
+    [0] Whoa -> [1] movespeed := 20 -> [12] Wave -> [10] 1-in-2 -> sound 51 / Idle-10
+    -> [6] idle rand20+1 -> [3] sound 33 -> [4] op78 (fly up, yields until it arrives)
+    -> [8] visible := 0 -> [2] sound 34 -> [9] Idle-10 -> [5] op40 despawn
+
+The caller is `FUN_004c0d10`, and `FUN_004b2630`'s `param_1[0x15] != 0x12e` arm is its only
+call site - i.e. **the plane that is not PLANE1, which is the UFO** (see
+`planes_trains_boats_decode_20260727.md`). Per UFO tick:
+
+    if (peopleRand(DAT_0058dc3a >> 2) != 0) return;             // the "beam now?" roll
+    for (i = 0; i <= DAT_0058dc3e; ++i)                          // every person slot
+        if (peopleRand(2) == 0) FUN_004c0f40(person[i], ufo);
+
+(asm at `Docs/scratchpad/agent-sessions/2026-07-29-people-vm-opcodes/asm_4c0d10.txt`; `DAT_0058dc3e`
+is the person high-water index every people loop uses, and slot 32000 resolves to `DAT_00506444`,
+the player - dead code, because the eligibility test rejects them.)
+
+`DAT_0058dc3a` has two writers and **the order settles it**: `FUN_00479bb0` calls the
+figure.twk bind `FUN_004c8120` at `0x00479bd3` ("Consider this large" = 4) and then
+`FUN_004c06d0` -> `FUN_004c2f30` -> `FUN_004c3010` at `0x0047a212`, which stores `0xfde8`. So it is
+**65000 during play**, the roll is 1-in-16250 per UFO tick, and the same threshold feeds the
+celebrity re-roll in `FUN_004c7190` (which is how the remake already had it).
+
+`FUN_004c0f80`, the per-person eligibility test:
+
+- `+0x142` alive;
+- **state != 0 also needs `peopleRand(3000) == 0`** - the UFO overwhelmingly takes ambient
+  pedestrians and only very rarely a mission person;
+- `+0x15e == 0` (`FUN_004c0ba0` sets it on everyone aboard when the helicopter is destroyed, so it
+  reads "already written off");
+- not the player (`+0x12e != 32000`);
+- `FUN_0049ad30(pos, +0x1c4)` - a four-plane frustum test, i.e. **on screen**;
+- within 9 tiles of the camera tile;
+- and `+0x1a0 != DAT_005040d0+0xa4` - not riding your helicopter.
+
+## 80 - the street conversation (1 site)
+
+`FUN_004cb790`: with `person+0x1a4` set, call the post-move selector
+`FUN_004c6970(movespeed, (source+0xc & 8) ? 5 : 4, source)`. Result 5 is the decoded
+"met another person" arm - face them (`facing = bearing-2 & 7`), bind `2Gab` or `HipH` 50/50, and
+play one of nine random voice lines; result 4 is `Whoa` plus sound 0x2a. Its one site is
+**914 `Rxn: Person--civil, neutral` rec[2]**, which is `DAT_0058d728[13]` - the reaction the move
+core broadcasts through `FUN_004c1050` when a step bumps into somebody
+(`FUN_004c9470` result 5). This is the "bump result 5 (street chats)" item that has been open in
+`simcopter-people-logic-next.md` since 2026-07-02.
+
+    914: [0] attr14 += 1 -> [5] 1-in-4 ? [6] op32 face away + Scatter + Move 10
+                                       : [2] op80 gab at them + Idle-5
+
+`FUN_004c9300`'s retry loop breaks on results 0/7/8/10, so **result 5 blocks the step** and turns
+the walker one octant clockwise.
+
+## 26 - rebind my state's program (0 sites)
+
+`FUN_004cb5e0`: if the top walk frame's program id != `person+0x17a` (the per-state program from
+`DAT_0058de80`), pop when the stack is nearly full and `FUN_004ce700(0,0,+0x17a)` - push it. The
+same "push it unless it is already on top" shape appears inline in `FUN_004c65e0` for BHAV 802.
+Nothing shipped uses it.
+
+## The stubs behind them, all on the ambient hot path
+
+`600 'Ambient initbhav'` - the program every pedestrian runs - calls `270` (riot check) at `[8]`,
+`274` (gawk at fire) at `[9]` and `273` (gawk at corpse) at `[10]`. Those three are exactly the
+programs whose opcodes were still stubs, so the stubs were costing every person in the city three
+behaviours.
+
+**Op 31 `FUN_004cc240` (12 sites)** - `facing = bearing(selection) + 2 & 7`: face **away from my
+selection**, TRUE when there is nothing selected, FALSE when there is no bearing. Used by every
+flee program (`1171/1172/1173` run from cop / cop car / copter, `900/901/907/908` reactions,
+`273/286`) right after the thing to run from is selected. Returning a bare TRUE meant they fled in
+whatever direction they happened to face.
+
+**Ops 32/33 `FUN_004cc290` -> `FUN_004cc2b0`** - the same thing against `person+0x1a4`: token 0x21
+(33) faces toward (`bearing-2`), token 0x20 (32) faces away (`bearing+2`). No source -> **TRUE with
+no facing change**; no bearing -> random facing, FALSE. The remake was taking the random-facing arm
+unconditionally.
+
+**Op 24 `FUN_004cb480` (1 site) - the riot contagion.** Requires a live 0x1000 record
+(`FUN_004a9230`), then `FUN_004c9f10(sceneNode, radius, &avgSpeed, &count, &bearing)` scans the
+square of scene cells within `local[args[0]]` tiles, counts objects with flag 8 (people, minus
+itself), sums their `+0x150`, and reports the bearing octant to the crowd's mean position, the mean
+`+0x150`, and the head count -> `local[args[1]] = bearing`, `local[args[2]] = mean`,
+`local[args[3]] = count`. `852 'Refigure riot val and turn to it'` then computes
+`riotValue = count * mean / 15`, turns toward the crowd when it exceeds 2, and walks its own
+`+0x150` one step toward it per pass. **`+0x150` is an agitation level, not a speed.**
+
+**Op 27 `FUN_004cb630` (1 site)** - `person+0x1c4 = (+0x150 > 5) ? 1.5 : 3.0` original units. That
+field is the person's own radius: the frustum test uses it, and so does the object-collision query
+`FUN_004c9000` (`obj+0x10 / DAT_00506aec`). So an agitated rioter shrinks to half size and the mob
+packs twice as tight.
+
+**Op 28 `FUN_004cb680` (1 site) - join the riot.** `FUN_004c4e60`: find the live 0x1000 record,
+post `EVT_RiotPersonAdded (0x0b)` with value 1, then `FUN_004c0df0(3, record)` - become a **state 3
+rioter** owned by that record. Returns 3 (Stop) because the state change replaced the program;
+returns 0 when no riot is running. `270 'check riot and join if big'` reaches it when the person's
+own agitation passes 2, so a riot spreads through the ambient crowd by itself.
+
+**Op 36 `FUN_004cc470` (1 site)** - `FUN_004ca190(radius, &x, &y, &dist)` clears cell bit 2 over the
+square, then takes the Manhattan-nearest cell with **cell flag 0x20** set; op 36 faces toward it and
+writes the distance to `local[args[1]]`. `274 'Gawk at (or flee) fire'` calls it with radius 12 and
+branches: **>= 6 tiles away run toward it, 4-5 stand and dance `HipH`, < 4 turn 180 and flee**, with
+a 1-in-12 chance per pass of giving up (it saves/restores the ambient and autoturn attributes around
+the whole thing). Flag 0x20 is also what makes `FUN_004c9cc0` refuse an ambient spawn on a cell. Its
+setter is not in the Ghidra export set, so "0x20 = this cell is alight" rests on the program name
+plus the spawn-gate use, not on a decoded write - the one inference in this pass, and it is called
+out again at the port.
+
+**Op 35 `FUN_004cc410` (2 sites)** - the threshold is `FUN_004abb00(0x20)`, which counts **active
+mission records whose type mask contains 0x20 (MedEvac)**. `906 'Rxn: Swoon'` sets
+`l0 := difficulty + 2`, falls off its carrier, and leaves the map unless that many medevacs are
+already running; `293 'Scallop fall'` passes -1, which skips the compare and always leaves.
+
+**Op 79 `FUN_004cb7d0` (3 sites) - a stopwatch, not a dead counter.** `DAT_00506448` is the people
+system's tick counter: `FUN_004c5fb0` accumulates the frame delta and, when it passes
+`DAT_00506450 = 0x147a` (0.08 s -> **12.5 Hz, the original behaviour tick rate**), increments it and
+runs one behaviour tick for every person. `444 'Tuba initbhav (SID 246)'` reads it into `l3`, walks
+to the player's avatar (object class 9), reads it again into `l2`, and plays a tuba note (sound
+37/38, 1-in-3) every time `l2 - l3 > 20` ticks. Writing 0 made the difference always 0, so the tuba
+player never played.
+
+## What the port added
+
+All of it goes through the existing interaction framework and the existing carrier/mission services;
+nothing about the framework's shape changed. New `ISimCopterBehaviorWorld` methods carry the world
+half of each opcode, so the VM stays a pure interpreter.
+
+| behaviour | how it reaches the player |
+|-----------|---------------------------|
+| An officer checks for a free seat before boarding (50) | a cop at the station or heading back to your machine now waits when the cabin is full instead of walking over to it; a hospital helper prefers the fire truck. |
+| The UFO abducts people (78 + state 16 + `TryBeamPeopleUp`) | 1-in-16250 per UFO tick, then a coin flip per person: everyone eligible waves, flies up to the saucer at 20 units a tick, and vanishes. |
+| Street conversations (80 + the move core's bump) | walking into somebody blocks the step, turns you both, and plays `2Gab`/`HipH`; cops and paramedics carry attribute 32 = 916 so nobody chats with them. |
+| Fleeing in the right direction (31, 32/33) | criminals, rioters and reaction programs now turn away from what they are running from instead of keeping their old facing. |
+| Riot contagion (24, 27, 28) | a bystander measures the mob's size and agitation, drifts toward it, and joins as a state-3 rioter once their own agitation passes 2; agitated people shrink to half radius and pack tighter. |
+| Fire watching (36) | people converge on a fire from 6+ tiles, gawk between 4 and 6, and run at under 4. |
+| Swooning into a casualty (35) | tear gas can now put a civilian on the ground as a real medevac victim with its own mission, capped at difficulty + 2 live medevacs. |
+| The tuba player (79) | its note timer measures real elapsed ticks, so it actually plays. |
+
+Two deliberate remake choices, both noted at the call site:
+
+- **Opcodes 28 and 35 yield rather than stop.** The original returns 3 because the state change
+  already rebound the program; the remake's `EOpResult::Stop` is wired to the despawn path, which
+  would delete the rioter or casualty that was just created.
+- **A collapse (35) routes through the player-caused injury service**, so it pays no delivery reward.
+  Almost every route into BHAV 906 is one of the player's own tools, and that matches the existing
+  rule for putting a civilian in hospital yourself.
+
+Verified: clean editor build, and the whole automation suite (86 tests) green, including a new
+`SimCopter.Behavior.VM.LateOpcodes` covering each opcode's edges and `SimCopter.Behavior.VM.Reference`
+pinning the shipped record sites (1051 rec 13/14, 666 rec 4/8, 914 rec 2/6, 274 rec 0, 852 rec 2).
+The ambient reference run reports 356 move steps and zero unported opcodes. Nothing here has been
+watched on screen yet - the abduction in particular needs a UFO overhead in a live city.
+
+## Still open after this pass
+
+- **Op 15 class 15**, the "corpse" the ambient program gawks at (`273` probes it at radius 3). The
+  class dispatch is the jump table at `0x004cb130` inside `FUN_004cac70`, and Ghidra's function
+  boundary stops at 82 instructions - the class-15 inline scan at `0x004caee5` needs a raw capstone
+  pass like the criminal decode used. Everything else about opcode 15 is decoded.
+- **Cell flag 0x20's setter** (see op 36 above).
+- **The spotlight reaction's odds.** `FUN_004c1050`'s mode-1 arm rolls `FUN_004cea00(DAT_0058dc3a)`,
+  i.e. 1-in-65000 rather than the 1-in-N the remake currently uses. Worth checking
+  `SpotlightReactionChance` against that before the next spotlight pass.
+- **The original behaviour tick rate is 12.5 Hz**, not the remake's 15: `DAT_00506450 = 0x147a` is
+  0.08 s per people tick (`FUN_004c5fb0`). Everything scales off that constant - move distance, idle
+  durations, clip playback - so it is a one-line change with a wide blast radius, left alone here.
+
 ## Mission-layer findings from the same pass
 
 `FUN_004a7a10` is the record creator. Its spawn counts:

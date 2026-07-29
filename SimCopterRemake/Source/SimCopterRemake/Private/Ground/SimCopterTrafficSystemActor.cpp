@@ -1509,6 +1509,129 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestBehaviorPerson(
 	return Best;
 }
 
+// SCHOOK: MeasureCrowdAroundPerson 0x004c9f10
+bool ASimCopterTrafficSystemActor::MeasureBehaviorCrowd(
+	const ASimCopterGroundAgent& From,
+	const int32 RadiusTiles,
+	int32& OutCount,
+	int32& OutAverageAgitation,
+	FVector& OutCentroidWorldLocation) const
+{
+	OutCount = 0;
+	OutAverageAgitation = 0;
+	OutCentroidWorldLocation = FVector::ZeroVector;
+
+	int32 FromX = INDEX_NONE;
+	int32 FromY = INDEX_NONE;
+	if (RadiusTiles < 0 || !From.TryGetTileCoordinate(FromX, FromY))
+	{
+		return false;
+	}
+
+	// The original sweeps the SQUARE of scene cells from -radius to +radius on both axes and walks
+	// each cell's object list, so the metric is Chebyshev tile distance, not Euclidean. It counts
+	// every person object except itself - visibility is not part of this test - and sums +0x150.
+	int32 AgitationSum = 0;
+	FVector PositionSum = FVector::ZeroVector;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent == &From || Agent->IsActorBeingDestroyed() || !Agent->IsBehaviorActive())
+		{
+			continue;
+		}
+		int32 AgentX = INDEX_NONE;
+		int32 AgentY = INDEX_NONE;
+		if (!Agent->TryGetTileCoordinate(AgentX, AgentY) ||
+			FMath::Abs(AgentX - FromX) > RadiusTiles ||
+			FMath::Abs(AgentY - FromY) > RadiusTiles)
+		{
+			continue;
+		}
+
+		++OutCount;
+		AgitationSum += int32(int16(Agent->GetBehaviorAttribute(EBhavAttr::Speed)));
+		PositionSum += Agent->GetActorLocation();
+	}
+
+	// FUN_004c9f10 reports "no bearing" when it found nobody or the whole crowd is calm, which is
+	// what makes BHAV 852's riot value collapse to zero on an ordinary street.
+	if (OutCount == 0 || AgitationSum == 0)
+	{
+		return false;
+	}
+
+	OutAverageAgitation = AgitationSum / OutCount;
+	OutCentroidWorldLocation = PositionSum / float(OutCount);
+	return true;
+}
+
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonOverlapping(
+	const ASimCopterGroundAgent& From,
+	const FVector& WorldLocation,
+	const float RadiusCm) const
+{
+	ASimCopterGroundAgent* Best = nullptr;
+	float BestDistanceSq = FMath::Square(RadiusCm);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent == &From || Agent->IsActorBeingDestroyed() || !Agent->IsBehaviorActive())
+		{
+			continue;
+		}
+		// FUN_004c9000 skips people whose +0x152 is clear - someone riding a carrier is not in the
+		// cell's object list at all, so you cannot walk into them.
+		if (Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0)
+		{
+			continue;
+		}
+		const float DistanceSq = FVector::DistSquared2D(WorldLocation, Agent->GetActorLocation());
+		if (DistanceSq < BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			Best = Agent;
+		}
+	}
+	return Best;
+}
+
+// SCHOOK: BeamPeopleUp 0x004c0d10
+int32 ASimCopterTrafficSystemActor::TryBeamPeopleUp(USceneComponent* BeamTarget)
+{
+	if (BeamTarget == nullptr)
+	{
+		return 0;
+	}
+
+	// One roll for the whole map: peopleRand(DAT_0058dc3a >> 2). DAT_0058dc3a is 65000 during play -
+	// FUN_004c3010 stores it after FUN_004c8120 has bound figure.twk's "Consider this large" = 4,
+	// and nothing writes it again (see the opcode-table decode note).
+	static constexpr uint16 BeamChanceBound = uint16(65000 >> 2);
+	if (FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, BeamChanceBound) != 0)
+	{
+		return 0;
+	}
+
+	// Then a coin flip per person slot; the eligibility test does the rest. The roll happens for
+	// every slot the original would have visited, empty ones included, so a sparse pool does not
+	// change how many people a successful beam takes.
+	int32 Taken = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		if (FSimCopterPeopleCityRules::NextPeopleRandomBounded(PeopleRandomState, 2) != 0)
+		{
+			continue;
+		}
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent != nullptr && !Agent->IsActorBeingDestroyed() && Agent->BeginBeamAbduction(BeamTarget))
+		{
+			++Taken;
+		}
+	}
+	return Taken;
+}
+
 bool ASimCopterTrafficSystemActor::HasHiddenBehaviorPersonInState(const int32 State) const
 {
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)

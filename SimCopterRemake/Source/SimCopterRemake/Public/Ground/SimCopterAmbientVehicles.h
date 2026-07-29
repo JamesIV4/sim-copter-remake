@@ -249,6 +249,9 @@ private:
 	TSharedPtr<FMaxisMeshLibrary> MeshLibrary;
 
 	FRandomStream RandomStream;
+	// FUN_004c0d10 is a per-simulation-tick roll, so the UFO's abduction attempt is metered to
+	// OriginalSimHz instead of firing once per rendered frame.
+	float UfoBeamTickAccumSeconds = 0.0f;
 	bool bPoolsInitialized = false;
 	bool bLoggedMeshError = false;
 

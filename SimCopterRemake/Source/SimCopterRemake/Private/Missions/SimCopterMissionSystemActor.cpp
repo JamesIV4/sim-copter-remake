@@ -1229,6 +1229,35 @@ bool ASimCopterMissionSystemActor::TryGetMissionDestinationTile(
 	return true;
 }
 
+// SCHOOK: FindActiveRecordOfType 0x004a9230
+int32 ASimCopterMissionSystemActor::FindActiveMissionOfType(const int32 TypeMask) const
+{
+	// The original walks the 30 slots and returns the first whose flag bit 0 is set and whose type
+	// mask contains every requested bit ((mask & param) == param, not a plain AND).
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (Record.bActive && (Record.TypeMask & TypeMask) == TypeMask)
+		{
+			return Record.EventId;
+		}
+	}
+	return INDEX_NONE;
+}
+
+// SCHOOK: CountActiveRecordsOfType 0x004abb00
+int32 ASimCopterMissionSystemActor::CountActiveMissionsOfType(const int32 TypeMask) const
+{
+	int32 Count = 0;
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (Record.bActive && (Record.TypeMask & TypeMask) == TypeMask)
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
 bool ASimCopterMissionSystemActor::NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person)
 {
 	if (Person == nullptr ||

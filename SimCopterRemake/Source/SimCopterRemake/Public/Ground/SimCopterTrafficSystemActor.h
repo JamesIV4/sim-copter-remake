@@ -186,6 +186,25 @@ public:
 		int32 StateFilter) const;
 	// FUN_004ca4f0(State, 0): state match whose visibility attribute is zero.
 	bool HasHiddenBehaviorPersonInState(int32 State) const;
+	// FUN_004c9f10: the crowd around a person - how many other people are within RadiusTiles, the
+	// mean of their agitation (the op-23 "logic" speed at +0x150) and the centroid of their
+	// positions. Behaviour opcode 24 turns that into the riot value BHAV 852 acts on.
+	bool MeasureBehaviorCrowd(
+		const ASimCopterGroundAgent& From,
+		int32 RadiusTiles,
+		int32& OutCount,
+		int32& OutAverageAgitation,
+		FVector& OutCentroidWorldLocation) const;
+	// FUN_004c9000 restricted to people: the nearest *other* visible pedestrian whose body radius
+	// overlaps WorldLocation. This is the move core's result-5 bump.
+	ASimCopterGroundAgent* FindPersonOverlapping(
+		const ASimCopterGroundAgent& From,
+		const FVector& WorldLocation,
+		float RadiusCm) const;
+	// FUN_004c0d10, called by the UFO every tick: roll once for the whole map, then offer every
+	// person slot a coin flip and let FUN_004c0f80 (ASimCopterGroundAgent::BeginBeamAbduction)
+	// decide. Returns how many people were taken.
+	int32 TryBeamPeopleUp(USceneComponent* BeamTarget);
 	// Stable mission-action lookup for hospital handoffs. Excludes anyone riding or already
 	// carrying another person so the mission layer cannot steal an in-progress VM action.
 	ASimCopterGroundAgent* FindNearestAvailablePersonInState(

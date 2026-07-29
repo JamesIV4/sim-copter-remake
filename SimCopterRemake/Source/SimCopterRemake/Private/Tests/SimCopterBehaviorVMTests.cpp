@@ -4,6 +4,7 @@
 
 #include "Formats/SimCopterPeopleReader.h"
 #include "Ground/SimCopterBehaviorVM.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 
@@ -29,6 +30,24 @@ public:
 	int32 TryAlightCalls = 0;
 	int32 BeginFallAndDieCalls = 0;
 	bool bHasHiddenState5 = false;
+	int32 SelectionRoom = INDEX_NONE;
+	bool bBeamStillFlying = false;
+	int32 BeamSteps = 0;
+	int32 ReactToSourceCalls = 0;
+	bool bFaceAwayFromSelection = true;
+	bool bHasRiotCrowd = false;
+	int32 RiotFacingOctant = 0;
+	int32 RiotAverageAgitation = 0;
+	int32 RiotCount = 0;
+	float BodyRadiusUnits = 3.0f;
+	bool bJoinRiotResult = false;
+	int32 JoinRiotCalls = 0;
+	bool bHasFireNearby = false;
+	int32 FireTileDistance = 0;
+	int32 ActiveMedevacs = 0;
+	int32 CollapseCalls = 0;
+	bool bCollapseResult = true;
+	int32 TickCounter = 0;
 	TSet<int32> UnknownOpcodes;
 
 	virtual int32 GetCurrentTileClass() const override { return TileClass; }
@@ -84,6 +103,47 @@ public:
 		OutProbe = PlayerProbe;
 		return true;
 	}
+	virtual int32 GetSelectionRoomForBoarding(const FSimCopterPersonContext&) const override
+	{
+		return SelectionRoom;
+	}
+	virtual bool AdvanceBeamAbduction(FSimCopterPersonContext&) override
+	{
+		++BeamSteps;
+		return bBeamStillFlying;
+	}
+	virtual void ReactToInteractionSource(FSimCopterPersonContext&) override { ++ReactToSourceCalls; }
+	virtual bool FaceAwayFromSelectedObject(FSimCopterPersonContext&) override { return bFaceAwayFromSelection; }
+	virtual bool MeasureRiotCrowd(
+		const FSimCopterPersonContext&,
+		int32,
+		int32& OutFacingOctant,
+		int32& OutAverageAgitation,
+		int32& OutCount) const override
+	{
+		OutFacingOctant = RiotFacingOctant;
+		OutAverageAgitation = RiotAverageAgitation;
+		OutCount = RiotCount;
+		return bHasRiotCrowd;
+	}
+	virtual void SetBodyRadiusOriginalUnits(float RadiusUnits) override { BodyRadiusUnits = RadiusUnits; }
+	virtual bool JoinLiveRiot(FSimCopterPersonContext&) override
+	{
+		++JoinRiotCalls;
+		return bJoinRiotResult;
+	}
+	virtual bool FaceNearestFireWithin(FSimCopterPersonContext&, int32, int32& OutTileDistance) override
+	{
+		OutTileDistance = FireTileDistance;
+		return bHasFireNearby;
+	}
+	virtual int32 GetActiveMedevacMissionCount() const override { return ActiveMedevacs; }
+	virtual bool CollapseIntoMedevacVictim(FSimCopterPersonContext&) override
+	{
+		++CollapseCalls;
+		return bCollapseResult;
+	}
+	virtual int32 GetBehaviorTickCounter() const override { return TickCounter; }
 	virtual void OnUnknownOpcode(int32 Opcode) override { UnknownOpcodes.Add(Opcode); }
 };
 } // namespace
@@ -229,6 +289,237 @@ bool FSimCopterBehaviorVMActionDelegationTest::RunTest(const FString& Parameters
 	return true;
 }
 
+// The opcodes closed out in the 2026-07-29 decode pass: the room check every officer boards
+// through, the UFO abduction flight, the bump conversation, and the ambient stubs behind
+// BHAV 600's riot/fire hooks.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterBehaviorVMLateOpcodeTest,
+	"SimCopter.Behavior.VM.LateOpcodes",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterBehaviorVMLateOpcodeTest::RunTest(const FString& Parameters)
+{
+	// One opcode with both edges landing on a wait record, exactly as the delegation test above
+	// builds them: the wait parks the walker on record 1 or 2 so the edge it took can be read back.
+	constexpr uint16 WaitLocalSlot = 9;
+	auto AddProgram = [WaitLocalSlot](FPeopleBehaviorModel& Model, int32 ProgramId, uint16 Opcode, const uint16(&Args)[4])
+	{
+		FBhavProgram Program;
+		Program.Id = ProgramId;
+		Program.Name = FString::Printf(TEXT("Opcode %d"), int32(Opcode));
+		FBhavRecord Action;
+		Action.Token = Opcode;
+		Action.TrueNext = 1;
+		Action.FalseNext = 2;
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			Action.Args[Index] = Args[Index];
+		}
+		FBhavRecord Wait;
+		Wait.Token = 0;
+		Wait.Args[0] = WaitLocalSlot;
+		Program.Records = {Action, Wait, Wait};
+		Model.ProgramsById.Add(Program.Id, MoveTemp(Program));
+	};
+
+	// The wait counter has to start non-zero or the wait succeeds immediately and walks back onto
+	// record 0 (default edge) until the runaway guard trips.
+	auto Push = [WaitLocalSlot](FSimCopterPersonContext& Context, int32 ProgramId)
+	{
+		FSimCopterPersonContext::FFrame Frame;
+		Frame.ProgramId = ProgramId;
+		Frame.Locals[WaitLocalSlot] = 200;
+		Context.Stack.Add(Frame);
+	};
+
+	FPeopleBehaviorModel Model;
+	AddProgram(Model, 1050, 50, {0, 0, 0, 0});
+	AddProgram(Model, 1078, 78, {0, 0, 0, 0});
+	AddProgram(Model, 1080, 80, {0, 0, 0, 0});
+	AddProgram(Model, 1031, 31, {0, 0, 0, 0});
+	AddProgram(Model, 1032, 32, {0, 0, 0, 0});
+	AddProgram(Model, 1024, 24, {0, 1, 2, 3});
+	AddProgram(Model, 1027, 27, {0, 0, 0, 0});
+	AddProgram(Model, 1028, 28, {0, 0, 0, 0});
+	AddProgram(Model, 1035, 35, {0, 0, 0, 0});
+	AddProgram(Model, 1036, 36, {12, 1, 0, 0});
+	AddProgram(Model, 1079, 79, {0, 0, 0, 0});
+
+	// Opcode 50: the free-seat count lands in the local, and an object with no room to report leaves
+	// whatever was there (the original writes nothing on that arm). Both take the true edge.
+	{
+		FStubBehaviorWorld World;
+		World.SelectionRoom = 3;
+		FSimCopterPersonContext Context;
+		Push(Context, 1050);
+		Context.Stack.Last().Locals[0] = 77;
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 50 writes the free seat count"), int32(Context.Stack.Last().Locals[0]), 3);
+		TestEqual(TEXT("Opcode 50 always succeeds"), Context.Stack.Last().RecordIndex, 1);
+
+		FStubBehaviorWorld NoRoomWorld;
+		NoRoomWorld.SelectionRoom = INDEX_NONE;
+		FSimCopterPersonContext NoRoomContext;
+		Push(NoRoomContext, 1050);
+		NoRoomContext.Stack.Last().Locals[0] = 77;
+		FSimCopterBehaviorVM::Tick(NoRoomContext, Model, NoRoomWorld);
+		TestEqual(TEXT("Opcode 50 leaves the local alone for anything else"), int32(NoRoomContext.Stack.Last().Locals[0]), 77);
+		TestEqual(TEXT("Opcode 50 still succeeds"), NoRoomContext.Stack.Last().RecordIndex, 1);
+	}
+
+	// Opcode 78: yields while the flight is still running, true once it is done.
+	{
+		FStubBehaviorWorld World;
+		World.bBeamStillFlying = true;
+		FSimCopterPersonContext Context;
+		Push(Context, 1078);
+		TestEqual(
+			TEXT("Opcode 78 yields mid-flight"),
+			int32(FSimCopterBehaviorVM::Tick(Context, Model, World)),
+			int32(EBhavStepResult::Ran));
+		TestEqual(TEXT("Opcode 78 stays on its own record while flying"), Context.Stack.Last().RecordIndex, 0);
+		TestEqual(TEXT("Opcode 78 steps once per tick"), World.BeamSteps, 1);
+
+		World.bBeamStillFlying = false;
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 78 advances once it arrives"), Context.Stack.Last().RecordIndex, 1);
+	}
+
+	// Opcode 80 always succeeds and always asks the world for the reaction.
+	{
+		FStubBehaviorWorld World;
+		FSimCopterPersonContext Context;
+		Push(Context, 1080);
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 80 delegates the bump reaction"), World.ReactToSourceCalls, 1);
+		TestEqual(TEXT("Opcode 80 always succeeds"), Context.Stack.Last().RecordIndex, 1);
+	}
+
+	// Opcode 31 follows the world's answer; opcode 32 with no interaction source is a successful
+	// no-op (the interface default), not the random-facing failure the stub used to take.
+	{
+		FStubBehaviorWorld World;
+		World.bFaceAwayFromSelection = false;
+		FSimCopterPersonContext Context;
+		Push(Context, 1031);
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 31 fails when there is no bearing"), Context.Stack.Last().RecordIndex, 2);
+
+		FSimCopterPersonContext SourceContext;
+		Push(SourceContext, 1032);
+		SourceContext.Attributes[EBhavAttr::Facing] = 5;
+		FSimCopterBehaviorVM::Tick(SourceContext, Model, World);
+		TestEqual(TEXT("Opcode 32 with no source succeeds"), SourceContext.Stack.Last().RecordIndex, 1);
+		TestEqual(TEXT("Opcode 32 with no source leaves the facing"), int32(SourceContext.Attributes[EBhavAttr::Facing]), 5);
+	}
+
+	// Opcode 24 writes bearing/mean/count into args[1..3] and fails outright without a riot.
+	{
+		FStubBehaviorWorld World;
+		World.bHasRiotCrowd = true;
+		World.RiotFacingOctant = 6;
+		World.RiotAverageAgitation = 4;
+		World.RiotCount = 9;
+		FSimCopterPersonContext Context;
+		Push(Context, 1024);
+		Context.Stack.Last().Locals[0] = 1; // the search radius BHAV 852 passes
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 24 bearing local"), int32(Context.Stack.Last().Locals[1]), 6);
+		TestEqual(TEXT("Opcode 24 mean agitation local"), int32(Context.Stack.Last().Locals[2]), 4);
+		TestEqual(TEXT("Opcode 24 head count local"), int32(Context.Stack.Last().Locals[3]), 9);
+		TestEqual(TEXT("Opcode 24 true edge"), Context.Stack.Last().RecordIndex, 1);
+
+		FStubBehaviorWorld NoRiotWorld;
+		FSimCopterPersonContext NoRiotContext;
+		Push(NoRiotContext, 1024);
+		NoRiotContext.Stack.Last().Locals[0] = 1;
+		FSimCopterBehaviorVM::Tick(NoRiotContext, Model, NoRiotWorld);
+		TestEqual(TEXT("Opcode 24 fails with no live riot"), NoRiotContext.Stack.Last().RecordIndex, 2);
+	}
+
+	// Opcode 27: 3.0 units normally, 1.5 once agitation passes 5.
+	{
+		FStubBehaviorWorld World;
+		FSimCopterPersonContext Context;
+		Push(Context, 1027);
+		Context.Attributes[EBhavAttr::Speed] = 5;
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 27 calm body radius"), World.BodyRadiusUnits, 3.0f);
+
+		FSimCopterPersonContext AgitatedContext;
+		Push(AgitatedContext, 1027);
+		AgitatedContext.Attributes[EBhavAttr::Speed] = 6;
+		FSimCopterBehaviorVM::Tick(AgitatedContext, Model, World);
+		TestEqual(TEXT("Opcode 27 agitated body radius"), World.BodyRadiusUnits, 1.5f);
+	}
+
+	// Opcode 28 ends the tick when it converts someone - it must not reach the despawn path.
+	{
+		FStubBehaviorWorld World;
+		World.bJoinRiotResult = true;
+		FSimCopterPersonContext Context;
+		Push(Context, 1028);
+		TestEqual(
+			TEXT("Opcode 28 yields after joining a riot"),
+			int32(FSimCopterBehaviorVM::Tick(Context, Model, World)),
+			int32(EBhavStepResult::Ran));
+		TestEqual(TEXT("Opcode 28 asks to join once"), World.JoinRiotCalls, 1);
+		TestFalse(TEXT("Opcode 28 does not request a despawn"), Context.bRequestDespawn);
+
+		FStubBehaviorWorld NoRiotWorld;
+		FSimCopterPersonContext NoRiotContext;
+		Push(NoRiotContext, 1028);
+		FSimCopterBehaviorVM::Tick(NoRiotContext, Model, NoRiotWorld);
+		TestEqual(TEXT("Opcode 28 fails with no live riot"), NoRiotContext.Stack.Last().RecordIndex, 2);
+	}
+
+	// Opcode 35 is a collapse, not a despawn: it converts below the medevac cap and does nothing at
+	// or above it.
+	{
+		FStubBehaviorWorld World;
+		World.ActiveMedevacs = 0;
+		FSimCopterPersonContext Context;
+		Push(Context, 1035);
+		Context.Stack.Last().Locals[0] = 3; // BHAV 906's difficulty + 2
+		TestEqual(
+			TEXT("Opcode 35 yields after collapsing"),
+			int32(FSimCopterBehaviorVM::Tick(Context, Model, World)),
+			int32(EBhavStepResult::Ran));
+		TestEqual(TEXT("Opcode 35 collapses once"), World.CollapseCalls, 1);
+		TestFalse(TEXT("Opcode 35 never despawns the person"), Context.bRequestDespawn);
+
+		FStubBehaviorWorld BusyWorld;
+		BusyWorld.ActiveMedevacs = 3;
+		FSimCopterPersonContext BusyContext;
+		Push(BusyContext, 1035);
+		BusyContext.Stack.Last().Locals[0] = 3;
+		FSimCopterBehaviorVM::Tick(BusyContext, Model, BusyWorld);
+		TestEqual(TEXT("Opcode 35 leaves them standing at the cap"), BusyContext.Stack.Last().RecordIndex, 2);
+		TestEqual(TEXT("Opcode 35 does not collapse at the cap"), BusyWorld.CollapseCalls, 0);
+	}
+
+	// Opcode 36 writes the fire distance BHAV 274 branches on; opcode 79 the tick counter BHAV 444
+	// subtracts.
+	{
+		FStubBehaviorWorld World;
+		World.bHasFireNearby = true;
+		World.FireTileDistance = 5;
+		FSimCopterPersonContext Context;
+		Push(Context, 1036);
+		FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Opcode 36 writes the fire distance"), int32(Context.Stack.Last().Locals[1]), 5);
+		TestEqual(TEXT("Opcode 36 true edge"), Context.Stack.Last().RecordIndex, 1);
+
+		World.TickCounter = 4321;
+		FSimCopterPersonContext TickContext;
+		Push(TickContext, 1079);
+		FSimCopterBehaviorVM::Tick(TickContext, Model, World);
+		TestEqual(TEXT("Opcode 79 writes the behaviour tick counter"), int32(TickContext.Stack.Last().Locals[0]), 4321);
+	}
+
+	return true;
+}
+
 // Runs the shipped people.df programs through the interpreter. Skips without the original data.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterBehaviorVMReferenceTest,
@@ -333,6 +624,58 @@ bool FSimCopterBehaviorVMReferenceTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("BHAV 269 selects starting vehicle"), int32(MedicRide->Records[1].Token), 62);
 			TestEqual(TEXT("BHAV 269 missing vehicle reaches disappear"), int32(MedicRide->Records[1].FalseNext), 9);
 			TestEqual(TEXT("BHAV 269 missing vehicle disappears"), int32(MedicRide->Records[9].Token), 40);
+		}
+
+		// The record sites the 2026-07-29 decode pass closed. These are the whole shipped use of
+		// opcodes 50/78/80, so if a later change breaks one of them the behaviour is simply gone.
+		if (const FBhavProgram* CopWait = Model.FindProgram(1051);
+			TestNotNull(TEXT("BHAV 1051 cop wait at station"), CopWait) && CopWait->Records.IsValidIndex(14))
+		{
+			TestEqual(TEXT("BHAV 1051 asks the helicopter for room"), int32(CopWait->Records[13].Token), 50);
+			TestEqual(TEXT("BHAV 1051 room lands in local 0"), int32(CopWait->Records[13].Args[0]), 0);
+			// rec[14] is "local0 > 0": operator 0 with a literal source (scope pair 0x0907).
+			TestEqual(TEXT("BHAV 1051 tests the room"), int32(CopWait->Records[14].Token), 2);
+			TestEqual(TEXT("BHAV 1051 room comparison is >"), int32(CopWait->Records[14].Args[2]), 0);
+			TestEqual(TEXT("BHAV 1051 room threshold is 0"), int32(CopWait->Records[14].Args[1]), 0);
+			TestEqual(TEXT("BHAV 1051 free seat reaches the boarding arm"), int32(CopWait->Records[14].TrueNext), 6);
+		}
+
+		if (const FBhavProgram* Abduction = Model.FindProgram(666);
+			TestNotNull(TEXT("BHAV 666 Porkchop"), Abduction) && Abduction->Records.IsValidIndex(8))
+		{
+			TestEqual(TEXT("BHAV 666 is the state-16 program"), FPeopleBehaviorModel::GetStateProgramIds()[16], 666);
+			TestEqual(TEXT("BHAV 666 name"), Abduction->Name, FString(TEXT("Porkchop")));
+			TestEqual(TEXT("BHAV 666 flies to the beam target"), int32(Abduction->Records[4].Token), 78);
+			TestEqual(TEXT("BHAV 666 arrival goes invisible"), int32(Abduction->Records[4].TrueNext), 8);
+			TestEqual(TEXT("BHAV 666 vanish is an expression"), int32(Abduction->Records[8].Token), 2);
+			TestEqual(TEXT("BHAV 666 vanish target is the visible attribute"), int32(Abduction->Records[8].Args[0]), EBhavAttr::Visible);
+		}
+
+		if (const FBhavProgram* BumpReaction = Model.FindProgram(914);
+			TestNotNull(TEXT("BHAV 914 person-neutral reaction"), BumpReaction) && BumpReaction->Records.IsValidIndex(6))
+		{
+			TestEqual(
+				TEXT("BHAV 914 is the mode-13 reaction"),
+				SimCopterInteraction::GetPersonReactionProgram(ESimCopterInteractionMode::PersonNeutral),
+				914);
+			TestEqual(TEXT("BHAV 914 gabs at the bumper"), int32(BumpReaction->Records[2].Token), 80);
+			TestEqual(TEXT("BHAV 914 otherwise turns away from them"), int32(BumpReaction->Records[6].Token), 32);
+		}
+
+		if (const FBhavProgram* FireGawk = Model.FindProgram(274);
+			TestNotNull(TEXT("BHAV 274 gawk at fire"), FireGawk) && FireGawk->Records.IsValidIndex(1))
+		{
+			TestEqual(TEXT("BHAV 274 looks for a fire"), int32(FireGawk->Records[0].Token), 36);
+			TestEqual(TEXT("BHAV 274 fire search radius"), int32(FireGawk->Records[0].Args[0]), 12);
+			TestEqual(TEXT("BHAV 274 distance lands in local 0"), int32(FireGawk->Records[0].Args[1]), 0);
+		}
+
+		if (const FBhavProgram* RiotValue = Model.FindProgram(852);
+			TestNotNull(TEXT("BHAV 852 riot value"), RiotValue) && RiotValue->Records.IsValidIndex(2))
+		{
+			TestEqual(TEXT("BHAV 852 measures the crowd"), int32(RiotValue->Records[2].Token), 24);
+			TestEqual(TEXT("BHAV 852 crowd radius local"), int32(RiotValue->Records[2].Args[0]), 0);
+			TestEqual(TEXT("BHAV 852 no crowd returns false"), int32(RiotValue->Records[2].FalseNext), -1);
 		}
 
 		// The ambient state-0 program (id 600) must run without runaway loops for many ticks.

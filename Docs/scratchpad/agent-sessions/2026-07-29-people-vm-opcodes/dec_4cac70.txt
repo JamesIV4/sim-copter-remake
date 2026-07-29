@@ -1,0 +1,103 @@
+﻿// ===========================================
+// Ghidra:    FUN_004cac70
+// Address:   0x004cac70
+// Signature: undefined FUN_004cac70(void)
+// ===========================================
+
+
+
+/* WARNING: Removing unreachable block (ram,0x004cb076) */
+
+/* WARNING: Removing unreachable block (ram,0x004cb0f5) */
+
+/* WARNING: Removing unreachable block (ram,0x004cacb9) */
+
+
+
+undefined4 __thiscall FUN_004cac70(int *param_1,undefined4 param_2,int param_3)
+
+
+
+{
+
+  short sVar1;
+
+  ushort uVar2;
+
+  ushort uVar3;
+
+  ushort uVar4;
+
+  short unaff_BX;
+
+  int unaff_ESI;
+
+  undefined4 uVar5;
+
+  short sStack_18;
+
+  short sStack_e;
+
+  undefined2 uStack_6;
+
+  undefined2 local_4;
+
+  
+
+  uStack_6 = (undefined2)((uint)*(undefined4 *)(param_3 + 4) >> 0x10);
+
+  local_4 = (undefined2)*(undefined4 *)(param_3 + 8);
+
+  sVar1 = (**(code **)(*param_1 + 0x18))(*(undefined4 *)(param_3 + 8),CONCAT22(local_4,uStack_6),0);
+
+  if (unaff_ESI == 0) {
+
+    *(undefined2 *)((int)param_1 + ((int)sStack_e + (short)param_1[0x3d] * 10) * 2 + -8) = 2000;
+
+    uVar5 = 0;
+
+  }
+
+  else {
+
+    uVar2 = unaff_BX - *(short *)((int)param_1 + 0x12a);
+
+    uVar4 = (short)uVar2 >> 0xf;
+
+    uVar4 = (uVar2 ^ uVar4) - uVar4;
+
+    uVar3 = sStack_18 - (short)param_1[0x4b];
+
+    uVar2 = (short)uVar3 >> 0xf;
+
+    uVar2 = (uVar3 ^ uVar2) - uVar2;
+
+    if ((short)uVar4 <= (short)uVar2) {
+
+      uVar4 = uVar2;
+
+    }
+
+    *(ushort *)((int)param_1 + ((int)sStack_e + (short)param_1[0x3d] * 10) * 2 + -8) = uVar4 & 0xff;
+
+    if ((short)(uVar4 & 0xff) < sVar1) {
+
+      uVar5 = 1;
+
+    }
+
+    else {
+
+      uVar5 = 0;
+
+    }
+
+  }
+
+  return uVar5;
+
+}
+
+
+
+
