@@ -550,8 +550,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UProceduralMeshComponent> HeliCannonMeshComponent;
 
-	// The same geometry again as a cockpit view model, carried by the camera rather than the
-	// airframe so it never moves in frame. Replaces the world cannon while in cockpit view.
+	// The same geometry again as a cockpit view model. Its position is camera-parented while
+	// its absolute rotation follows the stabilized aircraft frame without camera look pitch.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UProceduralMeshComponent> CockpitCannonMeshComponent;
 
@@ -618,6 +618,11 @@ protected:
 	// along the view's gameplay axis.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "1.0"))
 	float CrosshairWorldOffsetCm = 600.0f;
+
+	// The cockpit mark sits below the stabilized forward axis so it remains useful with the
+	// cannon framed in the lower part of the view.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0"))
+	float CockpitCrosshairDownOffsetCm = 200.0f;
 
 	// Original page pixels to screen pixels. A flap is 138x58 in the original's 640x480, which is
 	// far too small on a modern display, so the art is up-filtered. Lettering is not scaled with
@@ -858,7 +863,7 @@ protected:
 	// How quickly the stabilized attitude catches up with the airframe. Lower is smoother and
 	// lags further behind.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CockpitAttitudeLerpSpeed = 8.0f;
+	float CockpitAttitudeLerpSpeed = 5.0f;
 
 	// Ceiling on the tilt the view will take, so an extreme attitude cannot roll the horizon
 	// past something readable.
@@ -868,7 +873,12 @@ protected:
 	// Where the cockpit cannon view model sits in camera space: X forward, Y right, Z up, in
 	// centimetres from the eye. Adjustable live from the debug panel's CANNON VM row.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
-	FVector CockpitCannonViewModelOffsetCm = FVector(0.0f, 0.0f, -45.0f);
+	FVector CockpitCannonViewModelOffsetCm = FVector(26.0f, 15.0f, -34.0f);
+
+	// Extends only the cockpit copy's rear-most vertex ring so looking down cannot expose the
+	// original CANNON mesh's abruptly clipped back.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CockpitCannonRearExtensionCm = 100.0f;
 
 	// Middle-drag pan rate, in centimetres of camera movement per unit of mouse travel. Mouse
 	// axes already arrive as per-frame deltas, so this is not scaled by delta time.
@@ -977,6 +987,8 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bUsingOriginalCannonMesh = false;
+	FVector CannonBarrelTipLocalCm = FVector::ZeroVector;
+	bool bHasCannonBarrelTip = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelLoadError;
@@ -1019,7 +1031,8 @@ private:
 	float CurrentCameraGroundLiftCm = 0.0f;
 	float CurrentCameraPullInAlpha = 1.0f;
 	FRotator CurrentCameraAvoidanceOffsetDeg = FRotator::ZeroRotator;
-	// Damped, partial copy of the airframe's visual tilt; read only by the cockpit camera.
+	// Damped, partial copy of the airframe's visual tilt; shared by the cockpit camera,
+	// cockpit crosshair anchor, and camera-carried cannon presentation.
 	FRotator CockpitStabilizedAttitudeDeg = FRotator::ZeroRotator;
 	bool bCockpitStabilizedAttitudeInitialized = false;
 	float SmoothedCameraArmLengthCm = 0.0f;
@@ -1246,7 +1259,7 @@ private:
 	void UpdateVisuals(float DeltaSeconds);
 	void AdvanceCockpitStabilizedAttitude(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
-	void UpdateCockpitCannonViewModel(const FVector& CameraLocation, const FRotator& CameraRotation);
+	void UpdateCockpitCannonViewModel(const FRotator& MountWorldRotation);
 	void UpdateCameraAnchorFromVisibleBody();
 	void LoadCameraViewDebugOffsets();
 	void SaveCameraViewDebugOffset(ESimCopterCameraMode Mode) const;
