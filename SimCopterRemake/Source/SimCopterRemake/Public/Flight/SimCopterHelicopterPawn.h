@@ -803,6 +803,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraRecenterDelaySeconds = 1.0f;
 
+	// Middle-drag pan rate, in centimetres of camera movement per unit of mouse travel. Mouse
+	// axes already arrive as per-frame deltas, so this is not scaled by delta time.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraPanCmPerMouseUnit = 22.0f;
+
+	// How far the pan may push the camera off the view's authored framing, at reference zoom.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraPanMaxOffsetCm = 900.0f;
+
 	// Boarding and exiting transfer control immediately, but blend between the two pawn cameras.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraPossessionBlendSeconds = 0.85f;
@@ -943,6 +952,12 @@ private:
 	static constexpr int32 CameraModeCount = 3;
 	TStaticArray<FSimCopterCameraViewDebugOffset, CameraModeCount> CameraViewDebugOffsets;
 
+	// Middle-drag pan: how far the camera has been pushed along its own up axis, per view.
+	// Held for the session only -- unlike the debug offsets above this is never written to
+	// config, so it is back to zero next launch. Stored at the reference zoom distance and
+	// scaled by the zoom ratio on use, which keeps the framing constant as the player zooms.
+	TStaticArray<float, CameraModeCount> CameraViewPanOffsetsCm{InPlace, 0.0f};
+
 	float PitchInput = 0.0f;
 	float RollInput = 0.0f;
 	float YawInput = 0.0f;
@@ -1026,6 +1041,11 @@ private:
 	bool bCameraDragActive = false;
 	float CameraRecenterDelayRemaining = 0.0f;
 
+	// Middle-drag vertical pan. Kept separate from the look drag above because it neither
+	// rotates the view nor recenters on release.
+	int32 CameraPanButtonCount = 0;
+	bool bCameraPanDragActive = false;
+
 	FHitResult LastGroundHit;
 	FHitResult LastForwardProbeHit;
 
@@ -1056,6 +1076,8 @@ private:
 	void MouseLookPitch(float Value);
 	void StartCameraDrag();
 	void StopCameraDrag();
+	void StartCameraPanDrag();
+	void StopCameraPanDrag();
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
