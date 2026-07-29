@@ -9,6 +9,7 @@
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterMissionCatalog.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SWrapBox.h"
@@ -110,6 +111,271 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					.ColorAndOpacity(LabelColor)
 					.AutoWrapText(true)
 					.Font(PanelFont(10))
+				]
+
+				// --- CAMERA: persistent offsets for the currently active view ---
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "Camera", "CAMERA"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(10, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(this, &SSimCopterHelicopterDebugPanel::GetCameraModeText)
+						.ColorAndOpacity(ValueColor)
+						.Font(PanelFont(12, true))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SButton)
+						.IsFocusable(false)
+						.ContentPadding(FMargin(7.0f, 1.0f))
+						.ToolTipText(NSLOCTEXT(
+							"SimCopterDebug",
+							"ResetCameraOffsetTip",
+							"Restore the default translation, rotation, and zoom framing "
+							"and maximum zoom for the current camera view."))
+						.OnClicked(FOnClicked::CreateSP(
+							this,
+							&SSimCopterHelicopterDebugPanel::HandleResetCameraOffset))
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "ResetCameraOffset", "RESET"))
+							.Font(PanelFont(10))
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 0.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"CameraTranslationTip",
+						"Helicopter-local centimetres: X forward, Y right, Z up."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "CameraPosition", "POSITION CM"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("X"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-10000.0f)
+						.MaxValue(10000.0f)
+						.MinSliderValue(-1000.0f)
+						.MaxSliderValue(1000.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraTranslationX)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraTranslationXChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Y"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-10000.0f)
+						.MaxValue(10000.0f)
+						.MinSliderValue(-1000.0f)
+						.MaxSliderValue(1000.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraTranslationY)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraTranslationYChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Z"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-10000.0f)
+						.MaxValue(10000.0f)
+						.MinSliderValue(-1000.0f)
+						.MaxSliderValue(1000.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraTranslationZ)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraTranslationZChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"CameraRotationTip",
+						"Relative camera rotation in degrees: pitch, yaw, roll."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "CameraRotation", "ROTATION DEG"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("P"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-180.0f)
+						.MaxValue(180.0f)
+						.MinSliderValue(-180.0f)
+						.MaxSliderValue(180.0f)
+						.Delta(0.5f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraRotationPitch)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraRotationPitchChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Y"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-180.0f)
+						.MaxValue(180.0f)
+						.MinSliderValue(-180.0f)
+						.MaxSliderValue(180.0f)
+						.Delta(0.5f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraRotationYaw)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraRotationYawChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("R"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-180.0f)
+						.MaxValue(180.0f)
+						.MinSliderValue(-180.0f)
+						.MaxSliderValue(180.0f)
+						.Delta(0.5f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraRotationRoll)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraRotationRollChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"CameraZoomVerticalFramingTip",
+						"Scales the camera framing offset with zoom distance so the helicopter "
+						"stays at the same vertical screen position during zoom and right-drag "
+						"camera movement. 0 disables; 1 is full correction."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "CameraZoomVerticalFraming", "ZOOM V-LOCK"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(2.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(2.0f)
+						.Delta(0.05f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraZoomVerticalFramingStrength)
+						.OnValueChanged(
+							this,
+							&SSimCopterHelicopterDebugPanel::HandleCameraZoomVerticalFramingStrengthChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"CameraMaxZoomDistanceTip",
+						"Maximum zoom-out distance for the current camera view, in centimetres."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "CameraMaxZoomDistance", "MAX ZOOM CM"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(100.0f)
+						.MaxValue(10000.0f)
+						.MinSliderValue(900.0f)
+						.MaxSliderValue(5000.0f)
+						.Delta(25.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(0)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraMaxZoomDistance)
+						.OnValueChanged(
+							this,
+							&SSimCopterHelicopterDebugPanel::HandleCameraMaxZoomDistanceChanged)
+					]
 				]
 
 				// --- TOOL ---
@@ -571,6 +837,192 @@ FText SSimCopterHelicopterDebugPanel::GetModelStatusText() const
 		return FText::GetEmpty();
 	}
 	return FText::FromString(HelicopterPawn->GetLastModelSwitchStatus());
+}
+
+FText SSimCopterHelicopterDebugPanel::GetCameraModeText() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	if (HelicopterPawn == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+
+	const TCHAR* Label = TEXT("CHASE VIEW");
+	switch (HelicopterPawn->GetCameraMode())
+	{
+	case ESimCopterCameraMode::Orbit:
+		Label = TEXT("ORBIT VIEW");
+		break;
+	case ESimCopterCameraMode::Rescue:
+		Label = TEXT("RESCUE VIEW");
+		break;
+	default:
+		break;
+	}
+	return FText::FromString(FString::Printf(TEXT("%s   [C] cycle"), Label));
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleResetCameraOffset()
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->ResetCameraViewDebugOffset(HelicopterPawn->GetCameraMode());
+	}
+	return FReply::Handled();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraTranslationX() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraViewDebugOffset(HelicopterPawn->GetCameraMode()).TranslationCm.X)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraTranslationY() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraViewDebugOffset(HelicopterPawn->GetCameraMode()).TranslationCm.Y)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraTranslationZ() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraViewDebugOffset(HelicopterPawn->GetCameraMode()).TranslationCm.Z)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraRotationPitch() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraViewDebugOffset(HelicopterPawn->GetCameraMode()).RotationDeg.Pitch)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraRotationYaw() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraViewDebugOffset(HelicopterPawn->GetCameraMode()).RotationDeg.Yaw)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraRotationRoll() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraViewDebugOffset(HelicopterPawn->GetCameraMode()).RotationDeg.Roll)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraZoomVerticalFramingStrength() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(
+			HelicopterPawn->GetCameraViewDebugOffset(
+				HelicopterPawn->GetCameraMode()).ZoomVerticalFramingStrength)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraMaxZoomDistance() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(
+			HelicopterPawn->GetCameraViewMaxZoomDistanceCm(
+				HelicopterPawn->GetCameraMode()))
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraTranslationXChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		const ESimCopterCameraMode Mode = HelicopterPawn->GetCameraMode();
+		FVector Translation = HelicopterPawn->GetCameraViewDebugOffset(Mode).TranslationCm;
+		Translation.X = Value;
+		HelicopterPawn->SetCameraViewDebugTranslation(Mode, Translation);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraTranslationYChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		const ESimCopterCameraMode Mode = HelicopterPawn->GetCameraMode();
+		FVector Translation = HelicopterPawn->GetCameraViewDebugOffset(Mode).TranslationCm;
+		Translation.Y = Value;
+		HelicopterPawn->SetCameraViewDebugTranslation(Mode, Translation);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraTranslationZChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		const ESimCopterCameraMode Mode = HelicopterPawn->GetCameraMode();
+		FVector Translation = HelicopterPawn->GetCameraViewDebugOffset(Mode).TranslationCm;
+		Translation.Z = Value;
+		HelicopterPawn->SetCameraViewDebugTranslation(Mode, Translation);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraRotationPitchChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		const ESimCopterCameraMode Mode = HelicopterPawn->GetCameraMode();
+		FRotator Rotation = HelicopterPawn->GetCameraViewDebugOffset(Mode).RotationDeg;
+		Rotation.Pitch = Value;
+		HelicopterPawn->SetCameraViewDebugRotation(Mode, Rotation);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraRotationYawChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		const ESimCopterCameraMode Mode = HelicopterPawn->GetCameraMode();
+		FRotator Rotation = HelicopterPawn->GetCameraViewDebugOffset(Mode).RotationDeg;
+		Rotation.Yaw = Value;
+		HelicopterPawn->SetCameraViewDebugRotation(Mode, Rotation);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraRotationRollChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		const ESimCopterCameraMode Mode = HelicopterPawn->GetCameraMode();
+		FRotator Rotation = HelicopterPawn->GetCameraViewDebugOffset(Mode).RotationDeg;
+		Rotation.Roll = Value;
+		HelicopterPawn->SetCameraViewDebugRotation(Mode, Rotation);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraZoomVerticalFramingStrengthChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCameraViewZoomVerticalFramingStrength(
+			HelicopterPawn->GetCameraMode(),
+			Value);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraMaxZoomDistanceChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCameraViewMaxZoomDistanceCm(
+			HelicopterPawn->GetCameraMode(),
+			Value);
+	}
 }
 
 FText SSimCopterHelicopterDebugPanel::GetToolLineText() const

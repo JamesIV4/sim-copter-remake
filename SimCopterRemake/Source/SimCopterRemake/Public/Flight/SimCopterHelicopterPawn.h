@@ -46,6 +46,20 @@ enum class ESimCopterCameraMode : uint8
 	Rescue
 };
 
+// Persistent developer adjustment layered over one of the three normal camera views.
+// Translation is in helicopter-local centimetres; rotation is in relative degrees.
+struct SIMCOPTERREMAKE_API FSimCopterCameraViewDebugOffset
+{
+	FVector TranslationCm = FVector::ZeroVector;
+	FRotator RotationDeg = FRotator::ZeroRotator;
+	// 0 disables framing compensation; 1 keeps the helicopter at approximately the same
+	// vertical screen position through zoom changes and right-drag camera movement.
+	float ZoomVerticalFramingStrength = 1.0f;
+	// Zero uses the authored per-view default; a positive value is a persisted developer
+	// override for the far end of the zoom range.
+	float MaxZoomDistanceCm = 0.0f;
+};
+
 UENUM(BlueprintType)
 enum class ESimCopterMissionPassengerKind : uint8
 {
@@ -474,6 +488,17 @@ public:
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
 
+	// Persistent offsets edited by the developer panel. Each normal camera view has its own
+	// values; setters update the live camera and flush that view to GameUserSettings.ini.
+	ESimCopterCameraMode GetCameraMode() const { return CameraMode; }
+	FSimCopterCameraViewDebugOffset GetCameraViewDebugOffset(ESimCopterCameraMode Mode) const;
+	void SetCameraViewDebugTranslation(ESimCopterCameraMode Mode, const FVector& TranslationCm);
+	void SetCameraViewDebugRotation(ESimCopterCameraMode Mode, const FRotator& RotationDeg);
+	void SetCameraViewZoomVerticalFramingStrength(ESimCopterCameraMode Mode, float Strength);
+	float GetCameraViewMaxZoomDistanceCm(ESimCopterCameraMode Mode) const;
+	void SetCameraViewMaxZoomDistanceCm(ESimCopterCameraMode Mode, float DistanceCm);
+	void ResetCameraViewDebugOffset(ESimCopterCameraMode Mode);
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;
@@ -527,6 +552,11 @@ protected:
 	// the rotor-wash "wind kickback" spray/dust under the helicopter.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USimCopterParticleFXComponent> WaterFXComponent;
+
+	// Follows the rendered fuselage roof, including the visual pitch/roll applied at ModelPivot.
+	// Camera translations move the spring-arm endpoint and never move this collision-path origin.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USceneComponent> CameraAnchor;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -733,10 +763,20 @@ protected:
 	float ChaseCameraMinDistance = 720.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "100.0"))
-	float ChaseCameraMaxDistance = 1350.0f;
+	float ChaseCameraMaxDistance = 2200.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
 	float ChaseCameraBasePitch = -14.0f;
+
+	// At full forward speed, pitch this many degrees toward the horizon for better visibility.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float ChaseCameraForwardPitchLiftDeg = 4.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "100.0"))
+	float OrbitCameraMaxDistance = 2200.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "100.0"))
+	float RescueCameraMaxDistance = 2400.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
 	float ChaseCameraTargetHeightCm = -130.0f;
@@ -763,6 +803,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraRecenterDelaySeconds = 1.0f;
 
+	// Boarding and exiting transfer control immediately, but blend between the two pawn cameras.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraPossessionBlendSeconds = 0.85f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraViewPositionLerpSpeed = 4.5f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraViewRotationLerpSpeed = 5.0f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraGroundClearanceCm = 24.0f;
 
@@ -772,11 +822,25 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
 	float CameraGroundProbeDownCm = 6000.0f;
 
+	// The avoidance search uses this much extra radius beyond the actual camera probe. That
+	// starts the angle correction before the camera would touch terrain or a building.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
-	float CameraObstructionPaddingCm = 18.0f;
+	float CameraObstructionPaddingCm = 90.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
-	float CameraMinObstructedArmLengthCm = 0.0f;
+	float CameraMinObstructedDistanceCm = 0.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0", ClampMax = "85.0"))
+	float CameraAvoidanceMaxAngleDeg = 65.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0", ClampMax = "15.0"))
+	float CameraAvoidanceSearchStepDeg = 5.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraAvoidanceLerpSpeed = 7.5f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CameraAvoidanceReturnLerpSpeed = 3.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
 	float CameraGroundLiftHeightCm = 250.0f;
@@ -788,10 +852,10 @@ protected:
 	float CameraGroundLiftLerpSpeed = 7.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraObstructionPullInLerpSpeed = 14.0f;
+	float CameraObstructionReleaseLerpSpeed = 5.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraObstructionReleaseLerpSpeed = 5.0f;
+	float CameraObstructionPullInLerpSpeed = 8.0f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
@@ -869,8 +933,15 @@ private:
 	float CameraYawOffsetDeg = 0.0f;
 	float CameraPitchOffsetDeg = 0.0f;
 	float CameraZoomAlpha = 0.25f;
-	float CurrentCameraArmLengthCm = 900.0f;
 	float CurrentCameraGroundLiftCm = 0.0f;
+	float CurrentCameraPullInAlpha = 1.0f;
+	FRotator CurrentCameraAvoidanceOffsetDeg = FRotator::ZeroRotator;
+	float SmoothedCameraArmLengthCm = 0.0f;
+	FVector SmoothedCameraTranslationWorld = FVector::ZeroVector;
+	FRotator SmoothedCameraViewWorldRotation = FRotator::ZeroRotator;
+	bool bCameraViewSmoothingInitialized = false;
+	static constexpr int32 CameraModeCount = 3;
+	TStaticArray<FSimCopterCameraViewDebugOffset, CameraModeCount> CameraViewDebugOffsets;
 
 	float PitchInput = 0.0f;
 	float RollInput = 0.0f;
@@ -1073,6 +1144,9 @@ private:
 	ASimCity2000CityActor* ResolveCityActor() const;
 	void UpdateVisuals(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
+	void UpdateCameraAnchorFromVisibleBody();
+	void LoadCameraViewDebugOffsets();
+	void SaveCameraViewDebugOffset(ESimCopterCameraMode Mode) const;
 	void UpdateSearchLightEffect();
 
 	// Port of FUN_00489250: aim -> ray march -> smoothing -> band -> tile -> light node.
@@ -1090,12 +1164,19 @@ private:
 	float ResolveCameraGroundLift(
 		const FVector& BoomOrigin,
 		float ArmLength,
-		const FRotator& WorldRotation,
-		float& OutRequiredLiftCm) const;
-	float ResolveCameraArmLengthForObstruction(
-		const FVector& BoomOrigin,
-		float DesiredArmLength,
 		const FRotator& WorldRotation) const;
+	float ResolveCameraPullInAlpha(
+		const FVector& PathStart,
+		const FVector& DesiredCameraLocation) const;
+	FRotator FindCameraAvoidanceOffset(
+		const FVector& BoomOrigin,
+		float ArmLength,
+		const FRotator& DesiredWorldRotation) const;
+	bool IsCameraPathClear(
+		const FVector& BoomOrigin,
+		float ArmLength,
+		const FRotator& WorldRotation,
+		float ExtraPaddingCm) const;
 	bool ProbeBucketWater(const FVector& BucketWorldLocation);
 	FString ResolveOriginalGameRoot() const;
 	void ApplyDerivedTuning();

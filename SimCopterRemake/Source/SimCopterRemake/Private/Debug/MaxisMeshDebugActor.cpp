@@ -2,6 +2,7 @@
 
 #include "Debug/MaxisMeshDebugActor.h"
 
+#include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/Paths.h"
@@ -79,9 +80,26 @@ void AMaxisMeshDebugActor::RebuildMesh()
 		? FMaxisMeshReader::ConvertMaxisVertexToUnreal(MeshObject->Vertices[0], MeshUnitsPerCentimeter)
 		: FVector::ZeroVector;
 
-	int32 PolygonFaceCount = 0;
-	for (const FMaxisMeshFace& Face : MeshObject->Faces)
+	TArray<FVector> SourceVertexPositions;
+	SourceVertexPositions.Reserve(MeshObject->Vertices.Num());
+	for (const FMaxisMeshVertex& SourceVertex : MeshObject->Vertices)
 	{
+		SourceVertexPositions.Add(
+			FMaxisMeshReader::ConvertMaxisVertexToUnreal(SourceVertex, MeshUnitsPerCentimeter) - Origin);
+	}
+
+	TArray<TArray<FVector>> AutoSmoothCornerNormals;
+	FMaxisProceduralMeshBuilder::BuildAutoSmoothCornerNormals(
+		*MeshObject,
+		SourceVertexPositions,
+		false,
+		FMaxisProceduralMeshBuilder::DefaultSmoothAngleDegrees,
+		AutoSmoothCornerNormals);
+
+	int32 PolygonFaceCount = 0;
+	for (int32 FaceIndex = 0; FaceIndex < MeshObject->Faces.Num(); ++FaceIndex)
+	{
+		const FMaxisMeshFace& Face = MeshObject->Faces[FaceIndex];
 		if (Face.VertexIndices.Num() < 3)
 		{
 			continue;
@@ -102,21 +120,21 @@ void AMaxisMeshDebugActor::RebuildMesh()
 			UVs.Add(Face.RawUVs.IsValidIndex(FaceVertexIndex) ? FMaxisMeshReader::ConvertMaxisUVToUnreal(Face.RawUVs[FaceVertexIndex]) : FVector2D::ZeroVector);
 			VertexColors.Add(FaceColor);
 			Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
+			Normals.Add(
+				AutoSmoothCornerNormals[FaceIndex].IsValidIndex(FaceVertexIndex)
+					? AutoSmoothCornerNormals[FaceIndex][FaceVertexIndex]
+					: FVector::UpVector);
 		}
 
 		const int32 FaceVertexCount = Vertices.Num() - FaceVertexStart;
 		if (FaceVertexCount < 3)
 		{
+			Vertices.SetNum(FaceVertexStart);
+			UVs.SetNum(FaceVertexStart);
+			VertexColors.SetNum(FaceVertexStart);
+			Tangents.SetNum(FaceVertexStart);
+			Normals.SetNum(FaceVertexStart);
 			continue;
-		}
-
-		const FVector FaceNormal = FVector::CrossProduct(
-			Vertices[FaceVertexStart + 1] - Vertices[FaceVertexStart],
-			Vertices[FaceVertexStart + 2] - Vertices[FaceVertexStart]).GetSafeNormal();
-
-		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
-		{
-			Normals.Add(FaceNormal);
 		}
 
 		for (int32 TriangleIndex = 1; TriangleIndex < FaceVertexCount - 1; ++TriangleIndex)

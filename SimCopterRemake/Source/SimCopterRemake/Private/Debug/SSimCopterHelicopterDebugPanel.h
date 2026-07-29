@@ -34,6 +34,7 @@ private:
 	FText GetModelLineText() const;
 	FText GetModelDetailText() const;
 	FText GetModelStatusText() const;
+	FText GetCameraModeText() const;
 	FText GetToolLineText() const;
 	FText GetToolAvailabilityText() const;
 	FText GetToolContextText() const;
@@ -49,6 +50,7 @@ private:
 	// world's primary action (plan section 5.2).
 	FReply HandleModelPrev();
 	FReply HandleModelNext();
+	FReply HandleResetCameraOffset();
 	FReply HandleToolPrev();
 	FReply HandleToolNext();
 	FReply HandleUsePressed();
@@ -69,4 +71,21 @@ private:
 	EVisibility GetMegaphoneRowVisibility() const;
 	EVisibility GetTearGasRowVisibility() const;
 	EVisibility GetGrantButtonVisibility() const;
+
+	TOptional<float> GetCameraTranslationX() const;
+	TOptional<float> GetCameraTranslationY() const;
+	TOptional<float> GetCameraTranslationZ() const;
+	TOptional<float> GetCameraRotationPitch() const;
+	TOptional<float> GetCameraRotationYaw() const;
+	TOptional<float> GetCameraRotationRoll() const;
+	TOptional<float> GetCameraZoomVerticalFramingStrength() const;
+	TOptional<float> GetCameraMaxZoomDistance() const;
+	void HandleCameraTranslationXChanged(float Value);
+	void HandleCameraTranslationYChanged(float Value);
+	void HandleCameraTranslationZChanged(float Value);
+	void HandleCameraRotationPitchChanged(float Value);
+	void HandleCameraRotationYawChanged(float Value);
+	void HandleCameraRotationRollChanged(float Value);
+	void HandleCameraZoomVerticalFramingStrengthChanged(float Value);
+	void HandleCameraMaxZoomDistanceChanged(float Value);
 };

@@ -42,6 +42,7 @@
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
 #include "Styling/CoreStyle.h"
@@ -66,6 +67,130 @@ namespace
 constexpr float MaxSubstepSeconds = 1.0f / 60.0f;
 constexpr float MaxTickSeconds = 0.1f;
 constexpr int32 MaxTweakControls = 64;
+constexpr TCHAR CameraDebugConfigSection[] = TEXT("SimCopter.CameraViews");
+constexpr double MaxCameraDebugTranslationCm = 10000.0;
+constexpr float MaxCameraZoomFramingStrength = 2.0f;
+constexpr float MaxCameraZoomDistanceCm = 10000.0f;
+
+int32 GetCameraModeIndex(ESimCopterCameraMode Mode)
+{
+	switch (Mode)
+	{
+	case ESimCopterCameraMode::Chase: return 0;
+	case ESimCopterCameraMode::Orbit: return 1;
+	case ESimCopterCameraMode::Rescue: return 2;
+	default: return 0;
+	}
+}
+
+const TCHAR* GetCameraModeConfigName(ESimCopterCameraMode Mode)
+{
+	switch (Mode)
+	{
+	case ESimCopterCameraMode::Chase: return TEXT("Chase");
+	case ESimCopterCameraMode::Orbit: return TEXT("Orbit");
+	case ESimCopterCameraMode::Rescue: return TEXT("Rescue");
+	default: return TEXT("Chase");
+	}
+}
+
+FSimCopterCameraViewDebugOffset GetDefaultCameraViewDebugOffset(ESimCopterCameraMode Mode)
+{
+	FSimCopterCameraViewDebugOffset Offset;
+	switch (Mode)
+	{
+	case ESimCopterCameraMode::Chase:
+		Offset.TranslationCm = FVector(197.0, 0.0, -184.0);
+		Offset.RotationDeg = FRotator(-8.0, 0.0, 0.0);
+		break;
+	case ESimCopterCameraMode::Orbit:
+		Offset.TranslationCm = FVector(124.0, 0.0, -273.0);
+		Offset.RotationDeg = FRotator(3.5, 0.0, 0.0);
+		break;
+	case ESimCopterCameraMode::Rescue:
+		Offset.TranslationCm = FVector(-19.0, 0.0, -440.0);
+		Offset.RotationDeg = FRotator(-24.5, 0.0, 0.0);
+		break;
+	default:
+		break;
+	}
+	return Offset;
+}
+
+FString MakeCameraDebugConfigKey(ESimCopterCameraMode Mode, const TCHAR* Suffix)
+{
+	return FString::Printf(TEXT("%s.%s"), GetCameraModeConfigName(Mode), Suffix);
+}
+
+double SanitizeCameraDebugTranslation(double Value)
+{
+	return FMath::IsFinite(Value)
+		? FMath::Clamp(Value, -MaxCameraDebugTranslationCm, MaxCameraDebugTranslationCm)
+		: 0.0;
+}
+
+double SanitizeCameraDebugRotation(double Value)
+{
+	return FMath::IsFinite(Value) ? FRotator::NormalizeAxis(Value) : 0.0;
+}
+
+FVector SanitizeCameraDebugTranslation(const FVector& TranslationCm)
+{
+	return FVector(
+		SanitizeCameraDebugTranslation(TranslationCm.X),
+		SanitizeCameraDebugTranslation(TranslationCm.Y),
+		SanitizeCameraDebugTranslation(TranslationCm.Z));
+}
+
+FRotator SanitizeCameraDebugRotation(const FRotator& RotationDeg)
+{
+	return FRotator(
+		SanitizeCameraDebugRotation(RotationDeg.Pitch),
+		SanitizeCameraDebugRotation(RotationDeg.Yaw),
+		SanitizeCameraDebugRotation(RotationDeg.Roll));
+}
+
+float SanitizeCameraZoomFramingStrength(float Strength)
+{
+	return FMath::IsFinite(Strength)
+		? FMath::Clamp(Strength, 0.0f, MaxCameraZoomFramingStrength)
+		: 1.0f;
+}
+
+float SanitizeCameraMaxZoomDistanceOverride(float DistanceCm)
+{
+	if (!FMath::IsFinite(DistanceCm) || DistanceCm <= 0.0f)
+	{
+		return 0.0f;
+	}
+	return FMath::Clamp(DistanceCm, 100.0f, MaxCameraZoomDistanceCm);
+}
+
+void BlendPossessionViewTarget(
+	APlayerController* PlayerController,
+	AActor* OutgoingViewTarget,
+	APawn* IncomingPawn,
+	float BlendSeconds)
+{
+	if (PlayerController == nullptr ||
+		OutgoingViewTarget == nullptr ||
+		IncomingPawn == nullptr ||
+		OutgoingViewTarget == IncomingPawn ||
+		BlendSeconds <= UE_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	// Possess immediately hands over input and also immediately selects the new pawn's camera.
+	// Restore the outgoing view in the same frame, then ease to the already-possessed pawn.
+	PlayerController->SetViewTarget(OutgoingViewTarget);
+	PlayerController->SetViewTargetWithBlend(
+		IncomingPawn,
+		BlendSeconds,
+		VTBlend_Cubic,
+		2.0f,
+		/*bLockOutgoing*/ true);
+}
 
 bool ReadControlValue(const FSimCopterTweakSection& Section, const TCHAR* LabelPrefix, float& OutValue)
 {
@@ -112,6 +237,12 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	AutoPossessPlayer = EAutoReceiveInput::Disabled;
+	CameraViewDebugOffsets[GetCameraModeIndex(ESimCopterCameraMode::Chase)] =
+		GetDefaultCameraViewDebugOffset(ESimCopterCameraMode::Chase);
+	CameraViewDebugOffsets[GetCameraModeIndex(ESimCopterCameraMode::Orbit)] =
+		GetDefaultCameraViewDebugOffset(ESimCopterCameraMode::Orbit);
+	CameraViewDebugOffsets[GetCameraModeIndex(ESimCopterCameraMode::Rescue)] =
+		GetDefaultCameraViewDebugOffset(ESimCopterCameraMode::Rescue);
 
 	CollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CollisionComponent"));
 	CollisionComponent->InitCapsuleSize(95.0f, 82.0f);
@@ -125,6 +256,11 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	// Shared tilt pivot so both the placeholder and the original-mesh geometry bank together.
 	ModelPivot = CreateDefaultSubobject<USceneComponent>(TEXT("ModelPivot"));
 	ModelPivot->SetupAttachment(CollisionComponent);
+
+	CameraAnchor = CreateDefaultSubobject<USceneComponent>(TEXT("CameraAnchor"));
+	CameraAnchor->SetupAttachment(ModelPivot);
+	CameraAnchor->SetRelativeLocation(
+		FVector(0.0f, 0.0f, CollisionComponent->GetUnscaledCapsuleHalfHeight()));
 
 	BodyMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BodyMesh"));
 	BodyMeshComponent->SetupAttachment(ModelPivot);
@@ -229,9 +365,10 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(CollisionComponent);
+	CameraBoom->SetupAttachment(CameraAnchor);
+	CameraBoom->SetUsingAbsoluteRotation(true);
 	CameraBoom->TargetArmLength = 900.0f;
-	CameraBoom->TargetOffset = FVector(0.0f, 0.0f, ChaseCameraTargetHeightCm);
+	CameraBoom->TargetOffset = FVector::ZeroVector;
 	CameraBoom->bDoCollisionTest = true;
 	CameraBoom->ProbeChannel = ECC_Camera;
 	CameraBoom->ProbeSize = 18.0f;
@@ -240,7 +377,6 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CameraBoom->bEnableCameraRotationLag = true;
 	CameraBoom->CameraRotationLagSpeed = 8.0f;
 	CameraBoom->SetRelativeRotation(FRotator(-16.0f, 0.0f, 0.0f));
-	CurrentCameraArmLengthCm = CameraBoom->TargetArmLength;
 
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -297,6 +433,7 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 void ASimCopterHelicopterPawn::BeginPlay()
 {
 	Super::BeginPlay();
+	LoadCameraViewDebugOffsets();
 
 	// The editor property is a name; the registry index is what the runtime uses from here on.
 	if (const FSimCopterHelicopterDefinition* Seed =
@@ -344,6 +481,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	{
 		LoadHelicopterMeshFromOriginalGameRoot();
 	}
+	UpdateCameraAnchorFromVisibleBody();
 	if (WaterFXComponent != nullptr)
 	{
 		FString EffectError;
@@ -640,6 +778,43 @@ void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
 	{
 		BodyMeshComponent->SetVisibility(!bUseOriginalMesh, true);
 	}
+	UpdateCameraAnchorFromVisibleBody();
+}
+
+void ASimCopterHelicopterPawn::UpdateCameraAnchorFromVisibleBody()
+{
+	if (CameraAnchor == nullptr)
+	{
+		return;
+	}
+
+	float RoofLocalZ = CollisionComponent != nullptr
+		? CollisionComponent->GetUnscaledCapsuleHalfHeight()
+		: 0.0f;
+	const USceneComponent* VisibleBody =
+		bUsingOriginalMesh
+			? static_cast<const USceneComponent*>(HeliBodyMeshComponent.Get())
+			: static_cast<const USceneComponent*>(BodyMeshComponent.Get());
+	if (VisibleBody != nullptr)
+	{
+		// Supplying the body-to-ModelPivot transform makes these bounds directly usable as
+		// CameraAnchor's local coordinates for both procedural and placeholder fuselages.
+		const FBoxSphereBounds BodyBounds =
+			VisibleBody->CalcBounds(VisibleBody->GetRelativeTransform());
+		const float BodyTopLocalZ = BodyBounds.Origin.Z + BodyBounds.BoxExtent.Z;
+		if (BodyBounds.SphereRadius > UE_SMALL_NUMBER && FMath::IsFinite(BodyTopLocalZ))
+		{
+			RoofLocalZ = BodyTopLocalZ;
+		}
+	}
+
+	CameraAnchor->SetRelativeLocation(FVector(0.0f, 0.0f, RoofLocalZ));
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Verbose,
+		TEXT("Camera collision-path anchor set to fuselage roof Z %.1f cm (%s body)."),
+		RoofLocalZ,
+		bUsingOriginalMesh ? TEXT("original") : TEXT("fallback"));
 }
 
 // SCHOOK: HelicopterModelBuild 0x00483c20
@@ -1187,7 +1362,26 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 		return;
 	}
 
+	AActor* OutgoingViewTarget = PlayerController->GetViewTarget();
+	ASimCopterOnFootPawn* OutgoingOnFootPawn =
+		Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn());
 	PlayerController->Possess(this);
+	BlendPossessionViewTarget(
+		PlayerController,
+		OutgoingViewTarget,
+		this,
+		CameraPossessionBlendSeconds);
+
+	// The outgoing pawn is also the outgoing camera when boarding. Keep it valid until the
+	// blend completes, while removing its body and collision from play immediately.
+	if (OutgoingOnFootPawn != nullptr)
+	{
+		OutgoingOnFootPawn->SetActorHiddenInGame(true);
+		OutgoingOnFootPawn->SetActorEnableCollision(false);
+		OutgoingOnFootPawn->SetActorTickEnabled(false);
+		OutgoingOnFootPawn->SetLifeSpan(CameraPossessionBlendSeconds + 0.1f);
+	}
+
 	PlayerController->bShowMouseCursor = true;
 	FInputModeGameAndUI InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -1770,6 +1964,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	{
 		return;
 	}
+	AActor* OutgoingViewTarget = PlayerController->GetViewTarget();
 	RemoveDashboardWidget();
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
@@ -1801,6 +1996,11 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	if (OnFootPawn != nullptr)
 	{
 		PlayerController->Possess(OnFootPawn);
+		BlendPossessionViewTarget(
+			PlayerController,
+			OutgoingViewTarget,
+			OnFootPawn,
+			CameraPossessionBlendSeconds);
 	}
 }
 
@@ -2682,6 +2882,188 @@ void ASimCopterHelicopterPawn::CycleCameraMode()
 		CameraPitchOffsetDeg = 0.0f;
 		break;
 	}
+}
+
+FSimCopterCameraViewDebugOffset ASimCopterHelicopterPawn::GetCameraViewDebugOffset(
+	ESimCopterCameraMode Mode) const
+{
+	return CameraViewDebugOffsets[GetCameraModeIndex(Mode)];
+}
+
+void ASimCopterHelicopterPawn::SetCameraViewDebugTranslation(
+	ESimCopterCameraMode Mode,
+	const FVector& TranslationCm)
+{
+	CameraViewDebugOffsets[GetCameraModeIndex(Mode)].TranslationCm =
+		SanitizeCameraDebugTranslation(TranslationCm);
+	SaveCameraViewDebugOffset(Mode);
+	if (Mode == CameraMode)
+	{
+		UpdateCamera(0.0f);
+	}
+}
+
+void ASimCopterHelicopterPawn::SetCameraViewDebugRotation(
+	ESimCopterCameraMode Mode,
+	const FRotator& RotationDeg)
+{
+	CameraViewDebugOffsets[GetCameraModeIndex(Mode)].RotationDeg =
+		SanitizeCameraDebugRotation(RotationDeg);
+	SaveCameraViewDebugOffset(Mode);
+	if (Mode == CameraMode)
+	{
+		UpdateCamera(0.0f);
+	}
+}
+
+void ASimCopterHelicopterPawn::SetCameraViewZoomVerticalFramingStrength(
+	ESimCopterCameraMode Mode,
+	float Strength)
+{
+	CameraViewDebugOffsets[GetCameraModeIndex(Mode)].ZoomVerticalFramingStrength =
+		SanitizeCameraZoomFramingStrength(Strength);
+	SaveCameraViewDebugOffset(Mode);
+	if (Mode == CameraMode)
+	{
+		UpdateCamera(0.0f);
+	}
+}
+
+float ASimCopterHelicopterPawn::GetCameraViewMaxZoomDistanceCm(
+	ESimCopterCameraMode Mode) const
+{
+	const float MinDistanceCm =
+		Mode == ESimCopterCameraMode::Chase
+			? ChaseCameraMinDistance
+			: (Mode == ESimCopterCameraMode::Orbit ? 640.0f : 860.0f);
+	const float OverrideDistance =
+		CameraViewDebugOffsets[GetCameraModeIndex(Mode)].MaxZoomDistanceCm;
+	if (OverrideDistance > 0.0f)
+	{
+		return FMath::Max(MinDistanceCm + 1.0f, OverrideDistance);
+	}
+
+	float AuthoredDistance = ChaseCameraMaxDistance;
+	switch (Mode)
+	{
+	case ESimCopterCameraMode::Orbit:
+		AuthoredDistance = OrbitCameraMaxDistance;
+		break;
+	case ESimCopterCameraMode::Rescue:
+		AuthoredDistance = RescueCameraMaxDistance;
+		break;
+	default:
+		break;
+	}
+	return FMath::Max(MinDistanceCm + 1.0f, AuthoredDistance);
+}
+
+void ASimCopterHelicopterPawn::SetCameraViewMaxZoomDistanceCm(
+	ESimCopterCameraMode Mode,
+	float DistanceCm)
+{
+	const float MinDistanceCm =
+		Mode == ESimCopterCameraMode::Chase
+			? ChaseCameraMinDistance
+			: (Mode == ESimCopterCameraMode::Orbit ? 640.0f : 860.0f);
+	CameraViewDebugOffsets[GetCameraModeIndex(Mode)].MaxZoomDistanceCm =
+		FMath::Clamp(
+			SanitizeCameraMaxZoomDistanceOverride(DistanceCm),
+			MinDistanceCm + 1.0f,
+			MaxCameraZoomDistanceCm);
+	SaveCameraViewDebugOffset(Mode);
+	if (Mode == CameraMode)
+	{
+		UpdateCamera(0.0f);
+	}
+}
+
+void ASimCopterHelicopterPawn::ResetCameraViewDebugOffset(ESimCopterCameraMode Mode)
+{
+	CameraViewDebugOffsets[GetCameraModeIndex(Mode)] = GetDefaultCameraViewDebugOffset(Mode);
+	SaveCameraViewDebugOffset(Mode);
+	if (Mode == CameraMode)
+	{
+		UpdateCamera(0.0f);
+	}
+}
+
+void ASimCopterHelicopterPawn::LoadCameraViewDebugOffsets()
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	const ESimCopterCameraMode Modes[] = {
+		ESimCopterCameraMode::Chase,
+		ESimCopterCameraMode::Orbit,
+		ESimCopterCameraMode::Rescue
+	};
+	for (const ESimCopterCameraMode Mode : Modes)
+	{
+		FSimCopterCameraViewDebugOffset& Offset =
+			CameraViewDebugOffsets[GetCameraModeIndex(Mode)];
+
+		auto LoadDouble = [Mode](const TCHAR* Suffix, double& OutValue)
+		{
+			double Value = 0.0;
+			if (GConfig->GetDouble(
+					CameraDebugConfigSection,
+					*MakeCameraDebugConfigKey(Mode, Suffix),
+					Value,
+					GGameUserSettingsIni))
+			{
+				OutValue = Value;
+			}
+		};
+
+		LoadDouble(TEXT("TranslationX"), Offset.TranslationCm.X);
+		LoadDouble(TEXT("TranslationY"), Offset.TranslationCm.Y);
+		LoadDouble(TEXT("TranslationZ"), Offset.TranslationCm.Z);
+		LoadDouble(TEXT("RotationPitch"), Offset.RotationDeg.Pitch);
+		LoadDouble(TEXT("RotationYaw"), Offset.RotationDeg.Yaw);
+		LoadDouble(TEXT("RotationRoll"), Offset.RotationDeg.Roll);
+		double ZoomVerticalFramingStrength = Offset.ZoomVerticalFramingStrength;
+		LoadDouble(TEXT("ZoomVerticalFramingStrength"), ZoomVerticalFramingStrength);
+		double MaxZoomDistance = Offset.MaxZoomDistanceCm;
+		LoadDouble(TEXT("MaxZoomDistanceCm"), MaxZoomDistance);
+		Offset.TranslationCm = SanitizeCameraDebugTranslation(Offset.TranslationCm);
+		Offset.RotationDeg = SanitizeCameraDebugRotation(Offset.RotationDeg);
+		Offset.ZoomVerticalFramingStrength =
+			SanitizeCameraZoomFramingStrength(static_cast<float>(ZoomVerticalFramingStrength));
+		Offset.MaxZoomDistanceCm =
+			SanitizeCameraMaxZoomDistanceOverride(static_cast<float>(MaxZoomDistance));
+	}
+}
+
+void ASimCopterHelicopterPawn::SaveCameraViewDebugOffset(ESimCopterCameraMode Mode) const
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	const FSimCopterCameraViewDebugOffset& Offset =
+		CameraViewDebugOffsets[GetCameraModeIndex(Mode)];
+	auto SaveDouble = [Mode](const TCHAR* Suffix, double Value)
+	{
+		GConfig->SetDouble(
+			CameraDebugConfigSection,
+			*MakeCameraDebugConfigKey(Mode, Suffix),
+			Value,
+			GGameUserSettingsIni);
+	};
+
+	SaveDouble(TEXT("TranslationX"), Offset.TranslationCm.X);
+	SaveDouble(TEXT("TranslationY"), Offset.TranslationCm.Y);
+	SaveDouble(TEXT("TranslationZ"), Offset.TranslationCm.Z);
+	SaveDouble(TEXT("RotationPitch"), Offset.RotationDeg.Pitch);
+	SaveDouble(TEXT("RotationYaw"), Offset.RotationDeg.Yaw);
+	SaveDouble(TEXT("RotationRoll"), Offset.RotationDeg.Roll);
+	SaveDouble(TEXT("ZoomVerticalFramingStrength"), Offset.ZoomVerticalFramingStrength);
+	SaveDouble(TEXT("MaxZoomDistanceCm"), Offset.MaxZoomDistanceCm);
+	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
 void ASimCopterHelicopterPawn::ToggleSearchLight()
@@ -4046,10 +4428,20 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	const float HorizontalSpeed = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Size();
 	const float SpeedAlpha = FMath::Clamp(HorizontalSpeed / FMath::Max(1.0f, MaxForwardSpeedCmPerSec), 0.0f, 1.0f);
 	const float ActorYaw = GetActorRotation().Yaw;
+	const float MaxZoomDistanceCmForView =
+		GetCameraViewMaxZoomDistanceCm(CameraMode);
 	float ViewYaw = ActorYaw;
-	float ViewPitch = ChaseCameraBasePitch - SpeedAlpha * 4.0f;
-	float ArmLength = FMath::Lerp(ChaseCameraMinDistance, ChaseCameraMaxDistance, CameraZoomAlpha) + SpeedAlpha * ChaseSpeedPullbackCm;
-	FVector TargetOffset(0.0f, 0.0f, ChaseCameraTargetHeightCm + SpeedAlpha * ChaseCameraSpeedTargetLiftCm);
+	float ViewPitch =
+		ChaseCameraBasePitch + SpeedAlpha * ChaseCameraForwardPitchLiftDeg;
+	float ZoomArmLength =
+		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, CameraZoomAlpha);
+	float ReferenceZoomArmLength =
+		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, 0.25f);
+	float ArmLength = ZoomArmLength + SpeedAlpha * ChaseSpeedPullbackCm;
+	FVector CameraTranslationWorld(
+		0.0f,
+		0.0f,
+		ChaseCameraTargetHeightCm + SpeedAlpha * ChaseCameraSpeedTargetLiftCm);
 
 	if (CameraMode == ESimCopterCameraMode::Chase)
 	{
@@ -4064,145 +4456,485 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	{
 		ViewYaw = ActorYaw;
 		ViewPitch = -18.0f;
-		ArmLength = FMath::Lerp(640.0f, 1400.0f, CameraZoomAlpha);
-		TargetOffset = FVector(0.0f, 0.0f, 120.0f);
+		ZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, CameraZoomAlpha);
+		ReferenceZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, 0.25f);
+		ArmLength = ZoomArmLength;
+		CameraTranslationWorld = FVector(0.0f, 0.0f, 120.0f);
 	}
 	else
 	{
 		ViewYaw = ActorYaw;
 		ViewPitch = RescueCameraPitch;
-		ArmLength = FMath::Lerp(860.0f, 1500.0f, CameraZoomAlpha);
-		TargetOffset = FVector(0.0f, 0.0f, 30.0f);
+		ZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, CameraZoomAlpha);
+		ReferenceZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, 0.25f);
+		ArmLength = ZoomArmLength;
+		CameraTranslationWorld = FVector(0.0f, 0.0f, 30.0f);
 		if (bRecenterYaw)
 		{
 			CameraYawOffsetDeg = FMath::FInterpTo(CameraYawOffsetDeg, 0.0f, DeltaSeconds, 0.8f);
 		}
 	}
 
-	const float RelativeYaw = FRotator::NormalizeAxis(ViewYaw + CameraYawOffsetDeg - ActorYaw);
+	const FSimCopterCameraViewDebugOffset& ViewDebugOffset =
+		CameraViewDebugOffsets[GetCameraModeIndex(CameraMode)];
+	const FVector DebugTranslationWorld =
+		FRotator(0.0f, ActorYaw, 0.0f).RotateVector(ViewDebugOffset.TranslationCm);
+	CameraTranslationWorld += DebugTranslationWorld;
+
+	// Scaling the complete framing translation by distance preserves its projected screen
+	// offset. At strength 1 the helicopter therefore stays at the same vertical position as
+	// zoom changes, leaving the extra pulled-back area available primarily for more ground.
+	const float ZoomDistanceRatio =
+		ZoomArmLength / FMath::Max(1.0f, ReferenceZoomArmLength);
+	const float ZoomFramingScale = FMath::Lerp(
+		1.0f,
+		ZoomDistanceRatio,
+		ViewDebugOffset.ZoomVerticalFramingStrength);
+	CameraTranslationWorld *= ZoomFramingScale;
+
+	const float BaselineRelativeYaw = FRotator::NormalizeAxis(
+		ViewYaw - ActorYaw + ViewDebugOffset.RotationDeg.Yaw);
+	const float TargetRelativeYaw = FRotator::NormalizeAxis(
+		BaselineRelativeYaw + CameraYawOffsetDeg);
 	constexpr float MinCameraPitchDeg = -78.0f;
 	constexpr float MaxCameraPitchDeg = 2.0f;
-	const float DesiredPitchDeg = FMath::Clamp(ViewPitch + CameraPitchOffsetDeg, MinCameraPitchDeg, MaxCameraPitchDeg);
-	const float WorldYawDeg = ActorYaw + RelativeYaw;
-	const FRotator CameraWorldRotation(DesiredPitchDeg, WorldYawDeg, 0.0f);
-	const FVector UnliftedBoomOrigin = GetActorLocation() + TargetOffset;
-	float RequiredGroundLiftCm = 0.0f;
+	const float BaselinePitchDeg = FRotator::NormalizeAxis(
+		FMath::Clamp(
+			ViewPitch,
+			MinCameraPitchDeg,
+			MaxCameraPitchDeg) +
+		ViewDebugOffset.RotationDeg.Pitch);
+	const float TargetPitchDeg = FRotator::NormalizeAxis(
+		FMath::Clamp(
+			ViewPitch + CameraPitchOffsetDeg,
+			MinCameraPitchDeg,
+			MaxCameraPitchDeg) +
+		ViewDebugOffset.RotationDeg.Pitch);
+	const FRotator TargetCameraWorldRotation(
+		TargetPitchDeg,
+		ActorYaw + TargetRelativeYaw,
+		ViewDebugOffset.RotationDeg.Roll);
+	const FRotator BaselineCameraWorldRotation(
+		BaselinePitchDeg,
+		ActorYaw + BaselineRelativeYaw,
+		TargetCameraWorldRotation.Roll);
+
+	// Keep the framing translation fixed in camera space while right-drag moves the view.
+	// Rotating it from the baseline frame into the looked frame prevents the helicopter from
+	// sliding vertically; the existing strength control blends the effect.
+	const FVector LookCompensatedTranslationWorld =
+		TargetCameraWorldRotation.RotateVector(
+			BaselineCameraWorldRotation.UnrotateVector(CameraTranslationWorld));
+	CameraTranslationWorld = FMath::Lerp(
+		CameraTranslationWorld,
+		LookCompensatedTranslationWorld,
+		ViewDebugOffset.ZoomVerticalFramingStrength);
+
+	if (!bCameraViewSmoothingInitialized)
+	{
+		SmoothedCameraArmLengthCm = ArmLength;
+		SmoothedCameraTranslationWorld = CameraTranslationWorld;
+		SmoothedCameraViewWorldRotation = TargetCameraWorldRotation;
+		bCameraViewSmoothingInitialized = true;
+	}
+	else
+	{
+		SmoothedCameraArmLengthCm = FMath::FInterpTo(
+			SmoothedCameraArmLengthCm,
+			ArmLength,
+			DeltaSeconds,
+			CameraViewPositionLerpSpeed);
+		SmoothedCameraTranslationWorld = FMath::VInterpTo(
+			SmoothedCameraTranslationWorld,
+			CameraTranslationWorld,
+			DeltaSeconds,
+			CameraViewPositionLerpSpeed);
+		SmoothedCameraViewWorldRotation = FMath::RInterpTo(
+			SmoothedCameraViewWorldRotation,
+			TargetCameraWorldRotation,
+			DeltaSeconds,
+			CameraViewRotationLerpSpeed);
+	}
+
+	ArmLength = SmoothedCameraArmLengthCm;
+	CameraTranslationWorld = SmoothedCameraTranslationWorld;
+	const FRotator DesiredCameraWorldRotation = SmoothedCameraViewWorldRotation;
+	const float DesiredPitchDeg = DesiredCameraWorldRotation.Pitch;
+	const float DesiredRelativeYaw = FRotator::NormalizeAxis(
+		DesiredCameraWorldRotation.Yaw - ActorYaw);
+	const float DesiredRollDeg = DesiredCameraWorldRotation.Roll;
+	const FVector CameraAnchorWorld = CameraAnchor != nullptr
+		? CameraAnchor->GetComponentLocation()
+		: GetActorLocation();
+	const FVector UnliftedBoomOrigin = CameraAnchorWorld + CameraTranslationWorld;
 	const float DesiredGroundLiftCm = ResolveCameraGroundLift(
 		UnliftedBoomOrigin,
 		ArmLength,
-		CameraWorldRotation,
-		RequiredGroundLiftCm);
-	CurrentCameraGroundLiftCm = FMath::Max(
-		RequiredGroundLiftCm,
-		FMath::FInterpTo(CurrentCameraGroundLiftCm, DesiredGroundLiftCm, DeltaSeconds, CameraGroundLiftLerpSpeed));
-	TargetOffset.Z += CurrentCameraGroundLiftCm;
+		DesiredCameraWorldRotation);
+	const float PreviousGroundLiftCm = CurrentCameraGroundLiftCm;
+	const float PreliminaryGroundLiftCm = FMath::FInterpTo(
+		CurrentCameraGroundLiftCm,
+		DesiredGroundLiftCm,
+		DeltaSeconds,
+		CameraGroundLiftLerpSpeed);
+	CameraTranslationWorld.Z += PreliminaryGroundLiftCm;
 
-	const FVector BoomOrigin = GetActorLocation() + TargetOffset;
-	const float ObstructionSafeArmLength = ResolveCameraArmLengthForObstruction(BoomOrigin, ArmLength, CameraWorldRotation);
-	const float ArmLerpSpeed =
-		ObstructionSafeArmLength < CurrentCameraArmLengthCm
+	const FVector BoomOrigin = CameraAnchorWorld + CameraTranslationWorld;
+	const FRotator TargetAvoidanceOffset =
+		FindCameraAvoidanceOffset(BoomOrigin, ArmLength, DesiredCameraWorldRotation);
+	const bool bAvoiding =
+		!TargetAvoidanceOffset.IsNearlyZero(0.01f);
+	const float AvoidanceLerpSpeed =
+		bAvoiding ? CameraAvoidanceLerpSpeed : CameraAvoidanceReturnLerpSpeed;
+	CurrentCameraAvoidanceOffsetDeg.Pitch = FMath::FInterpTo(
+		CurrentCameraAvoidanceOffsetDeg.Pitch,
+		TargetAvoidanceOffset.Pitch,
+		DeltaSeconds,
+		AvoidanceLerpSpeed);
+	CurrentCameraAvoidanceOffsetDeg.Yaw = FMath::FInterpTo(
+		CurrentCameraAvoidanceOffsetDeg.Yaw,
+		TargetAvoidanceOffset.Yaw,
+		DeltaSeconds,
+		AvoidanceLerpSpeed);
+	CurrentCameraAvoidanceOffsetDeg.Roll = 0.0f;
+
+	const float AvoidedPitchDeg = FMath::Clamp(
+		DesiredPitchDeg + CurrentCameraAvoidanceOffsetDeg.Pitch,
+		-88.0f,
+		60.0f);
+	const float AvoidedRelativeYaw = FRotator::NormalizeAxis(
+		DesiredRelativeYaw + CurrentCameraAvoidanceOffsetDeg.Yaw);
+	const FRotator CameraWorldRotation(
+		AvoidedPitchDeg,
+		ActorYaw + AvoidedRelativeYaw,
+		DesiredRollDeg);
+
+	// Re-evaluate the height response at the smoothed avoidance angle. The proximity range
+	// starts this correction early enough that both raising and settling can remain smooth.
+	const float AvoidedDesiredGroundLiftCm = ResolveCameraGroundLift(
+		UnliftedBoomOrigin,
+		ArmLength,
+		CameraWorldRotation);
+	CurrentCameraGroundLiftCm = FMath::FInterpTo(
+		PreviousGroundLiftCm,
+		AvoidedDesiredGroundLiftCm,
+		DeltaSeconds,
+		CameraGroundLiftLerpSpeed);
+	CameraTranslationWorld.Z =
+		UnliftedBoomOrigin.Z - CameraAnchorWorld.Z + CurrentCameraGroundLiftCm;
+
+	// Pull in along the same roof-to-camera segment used by avoidance. Scaling the arm and
+	// endpoint translation together keeps that segment geometrically exact; the old approach
+	// shortened only the arm from a translated origin, which could point below terrain.
+	const FVector DesiredCameraLocation =
+		CameraAnchorWorld +
+		CameraTranslationWorld -
+		CameraWorldRotation.Vector() * ArmLength;
+	const float TargetPullInAlpha =
+		ResolveCameraPullInAlpha(CameraAnchorWorld, DesiredCameraLocation);
+	const float PullInLerpSpeed =
+		TargetPullInAlpha < CurrentCameraPullInAlpha
 			? CameraObstructionPullInLerpSpeed
 			: CameraObstructionReleaseLerpSpeed;
-	CurrentCameraArmLengthCm = FMath::FInterpTo(CurrentCameraArmLengthCm, ObstructionSafeArmLength, DeltaSeconds, ArmLerpSpeed);
+	CurrentCameraPullInAlpha = FMath::FInterpTo(
+		CurrentCameraPullInAlpha,
+		TargetPullInAlpha,
+		DeltaSeconds,
+		PullInLerpSpeed);
 
-	CameraBoom->TargetArmLength = CurrentCameraArmLengthCm;
-	CameraBoom->TargetOffset = TargetOffset;
-	CameraBoom->SetRelativeRotation(FRotator(DesiredPitchDeg, RelativeYaw, 0.0f));
+	const FVector PulledInTranslation =
+		CameraTranslationWorld * CurrentCameraPullInAlpha;
+	CameraBoom->TargetArmLength = ArmLength * CurrentCameraPullInAlpha;
+	CameraBoom->TargetOffset = FVector::ZeroVector;
+	CameraBoom->SocketOffset =
+		CameraWorldRotation.UnrotateVector(PulledInTranslation);
+	CameraBoom->SetWorldRotation(CameraWorldRotation);
 }
 
 float ASimCopterHelicopterPawn::ResolveCameraGroundLift(
 	const FVector& BoomOrigin,
 	float ArmLength,
-	const FRotator& WorldRotation,
-	float& OutRequiredLiftCm) const
+	const FRotator& WorldRotation) const
 {
-	OutRequiredLiftCm = 0.0f;
 	if (GetWorld() == nullptr || ArmLength <= UE_SMALL_NUMBER)
 	{
 		return 0.0f;
 	}
 
 	const FVector DesiredCameraLocation = BoomOrigin - WorldRotation.Vector() * ArmLength;
-	const FVector TraceStart = DesiredCameraLocation + FVector::UpVector * CameraGroundProbeUpCm;
-	const FVector TraceEnd = DesiredCameraLocation - FVector::UpVector * CameraGroundProbeDownCm;
-
-	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraGroundProbe), false, this);
-	if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) || !Hit.bBlockingHit)
+	auto TryGetMinimumSafeZ = [this, &QueryParams](const FVector& Location, float& OutMinimumSafeZ)
+	{
+		const FVector TraceStart = Location + FVector::UpVector * CameraGroundProbeUpCm;
+		const FVector TraceEnd = Location - FVector::UpVector * CameraGroundProbeDownCm;
+		TArray<FHitResult> Hits;
+		if (!GetWorld()->LineTraceMultiByChannel(
+				Hits,
+				TraceStart,
+				TraceEnd,
+				ECC_Camera,
+				QueryParams))
+		{
+			return false;
+		}
+
+		for (const FHitResult& Hit : Hits)
+		{
+			if (!Hit.bBlockingHit)
+			{
+				continue;
+			}
+
+			// Buildings are handled by the least-angle avoidance search. Treating a roof as
+			// "ground" here would lift the whole view over it before angle avoidance could act.
+			if (const ASimCity2000CityActor* CityActor =
+					Cast<ASimCity2000CityActor>(Hit.GetActor());
+				CityActor != nullptr &&
+				CityActor->IsBuildingCollisionHit(Hit.GetComponent(), Hit.ImpactPoint))
+			{
+				continue;
+			}
+
+			OutMinimumSafeZ = Hit.ImpactPoint.Z + CameraGroundClearanceCm;
+			return true;
+		}
+		return false;
+	};
+
+	float MinCameraZ = 0.0f;
+	if (!TryGetMinimumSafeZ(DesiredCameraLocation, MinCameraZ))
 	{
 		return 0.0f;
 	}
-
-	const float MinCameraZ = Hit.ImpactPoint.Z + CameraGroundClearanceCm;
 	const float DistanceAboveGroundCm = DesiredCameraLocation.Z - MinCameraZ;
-	OutRequiredLiftCm = FMath::Max(0.0f, -DistanceAboveGroundCm);
+	const float RequiredLiftCm = FMath::Max(0.0f, -DistanceAboveGroundCm);
 	if (DistanceAboveGroundCm >= CameraGroundLiftProbeRangeCm)
 	{
-		return OutRequiredLiftCm;
+		return RequiredLiftCm;
 	}
 
 	const float ProximityAlpha = 1.0f - FMath::Clamp(
 		DistanceAboveGroundCm / FMath::Max(1.0f, CameraGroundLiftProbeRangeCm),
 		0.0f,
 		1.0f);
-	return FMath::Max(OutRequiredLiftCm, CameraGroundLiftHeightCm * ProximityAlpha);
+	return FMath::Max(RequiredLiftCm, CameraGroundLiftHeightCm * ProximityAlpha);
 }
 
-float ASimCopterHelicopterPawn::ResolveCameraArmLengthForObstruction(
-	const FVector& BoomOrigin,
-	float DesiredArmLength,
-	const FRotator& WorldRotation) const
+float ASimCopterHelicopterPawn::ResolveCameraPullInAlpha(
+	const FVector& PathStart,
+	const FVector& DesiredCameraLocation) const
 {
-	if (GetWorld() == nullptr || CameraBoom == nullptr || DesiredArmLength <= UE_SMALL_NUMBER)
+	if (GetWorld() == nullptr || CameraBoom == nullptr)
 	{
-		return DesiredArmLength;
+		return 1.0f;
 	}
 
-	const FVector DesiredCameraLocation = BoomOrigin - WorldRotation.Vector() * DesiredArmLength;
+	const float PathLength = FVector::Distance(PathStart, DesiredCameraLocation);
+	if (PathLength <= UE_SMALL_NUMBER)
+	{
+		return 1.0f;
+	}
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraPullInProbe), false, this);
+	FHitResult Hit;
 	const float ProbeRadius = FMath::Max(1.0f, CameraBoom->ProbeSize);
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraObstructionProbe), false, this);
-	TArray<FHitResult> Hits;
-	GetWorld()->SweepMultiByChannel(
-		Hits,
-		BoomOrigin,
+	float HitDistanceFromPathStart = 0.0f;
+	if (GetWorld()->SweepSingleByChannel(
+			Hit,
+			PathStart,
+			DesiredCameraLocation,
+			FQuat::Identity,
+			ECC_Camera,
+			FCollisionShape::MakeSphere(ProbeRadius),
+			QueryParams) &&
+		Hit.bBlockingHit)
+	{
+		HitDistanceFromPathStart = Hit.Distance;
+	}
+	else
+	{
+		// Start retracting before contact so the pull-in itself can be interpolated smoothly.
+		// As with angle avoidance, apply the large padding only over the outer half of the
+		// path so a landed helicopter does not overlap the padded sphere at its roof anchor.
+		const FVector PaddedStart =
+			FMath::Lerp(PathStart, DesiredCameraLocation, 0.5f);
+		if (!GetWorld()->SweepSingleByChannel(
+				Hit,
+				PaddedStart,
+				DesiredCameraLocation,
+				FQuat::Identity,
+				ECC_Camera,
+				FCollisionShape::MakeSphere(
+					ProbeRadius + FMath::Max(0.0f, CameraObstructionPaddingCm)),
+				QueryParams) ||
+			!Hit.bBlockingHit)
+		{
+			return 1.0f;
+		}
+		HitDistanceFromPathStart = PathLength * 0.5f + Hit.Distance;
+	}
+
+	// The sweep shape already represents the camera radius. Preserve only a tiny numerical
+	// gap, then express the safe point as a fraction of the exact roof-to-camera segment.
+	const float SafeDistance = FMath::Max(
+		CameraMinObstructedDistanceCm,
+		HitDistanceFromPathStart - 2.0f);
+	return FMath::Clamp(SafeDistance / PathLength, 0.0f, 1.0f);
+}
+
+bool ASimCopterHelicopterPawn::IsCameraPathClear(
+	const FVector& BoomOrigin,
+	float ArmLength,
+	const FRotator& WorldRotation,
+	float ExtraPaddingCm) const
+{
+	if (GetWorld() == nullptr || CameraBoom == nullptr || ArmLength <= UE_SMALL_NUMBER)
+	{
+		return true;
+	}
+
+	const FVector DesiredCameraLocation = BoomOrigin - WorldRotation.Vector() * ArmLength;
+	const FVector PathStart =
+		CameraAnchor != nullptr ? CameraAnchor->GetComponentLocation() : BoomOrigin;
+	const float ProbeRadius = FMath::Max(1.0f, CameraBoom->ProbeSize);
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraAvoidanceProbe), false, this);
+	FHitResult Hit;
+	if (GetWorld()->SweepSingleByChannel(
+			Hit,
+			PathStart,
+			DesiredCameraLocation,
+			FQuat::Identity,
+			ECC_Camera,
+			FCollisionShape::MakeSphere(ProbeRadius),
+			QueryParams))
+	{
+		return false;
+	}
+
+	const float Padding = FMath::Max(0.0f, ExtraPaddingCm);
+	if (Padding <= UE_SMALL_NUMBER)
+	{
+		return true;
+	}
+
+	// Ramp the anticipatory padding in over the outer half of the roof-to-camera path so the
+	// larger probe protects the camera without rejecting every angle near the helicopter.
+	const FVector PaddedStart = FMath::Lerp(PathStart, DesiredCameraLocation, 0.5);
+	return !GetWorld()->SweepSingleByChannel(
+		Hit,
+		PaddedStart,
 		DesiredCameraLocation,
 		FQuat::Identity,
 		ECC_Camera,
-		FCollisionShape::MakeSphere(ProbeRadius),
+		FCollisionShape::MakeSphere(ProbeRadius + Padding),
 		QueryParams);
+}
 
-	Hits.Sort([](const FHitResult& Left, const FHitResult& Right)
+FRotator ASimCopterHelicopterPawn::FindCameraAvoidanceOffset(
+	const FVector& BoomOrigin,
+	float ArmLength,
+	const FRotator& DesiredWorldRotation) const
+{
+	if (IsCameraPathClear(
+			BoomOrigin,
+			ArmLength,
+			DesiredWorldRotation,
+			CameraObstructionPaddingCm))
 	{
-		return Left.Distance < Right.Distance;
-	});
-
-	const FHitResult* BuildingHit = nullptr;
-	for (const FHitResult& Hit : Hits)
-	{
-		if (!Hit.bBlockingHit)
-		{
-			continue;
-		}
-
-		const ASimCity2000CityActor* CityActor = Cast<ASimCity2000CityActor>(Hit.GetActor());
-		if (CityActor == nullptr || !CityActor->IsBuildingCollisionHit(Hit.GetComponent(), Hit.ImpactPoint))
-		{
-			continue;
-		}
-
-		BuildingHit = &Hit;
-		break;
+		return FRotator::ZeroRotator;
 	}
 
-	if (BuildingHit == nullptr)
+	// Derive which pitch direction raises the actual camera endpoint instead of relying on
+	// rotator sign conventions. Every pitch-bearing candidate below uses that direction, so
+	// terrain avoidance can never choose a route that lowers the camera.
+	constexpr float PitchProbeAngleDeg = 1.0f;
+	FRotator MinusPitchProbe = DesiredWorldRotation;
+	MinusPitchProbe.Pitch = FMath::Clamp(
+		DesiredWorldRotation.Pitch - PitchProbeAngleDeg,
+		-88.0,
+		60.0);
+	FRotator PlusPitchProbe = DesiredWorldRotation;
+	PlusPitchProbe.Pitch = FMath::Clamp(
+		DesiredWorldRotation.Pitch + PitchProbeAngleDeg,
+		-88.0,
+		60.0);
+	const double MinusPitchCameraZ =
+		(BoomOrigin - MinusPitchProbe.Vector() * ArmLength).Z;
+	const double PlusPitchCameraZ =
+		(BoomOrigin - PlusPitchProbe.Vector() * ArmLength).Z;
+	const double UpPitchSign =
+		PlusPitchCameraZ > MinusPitchCameraZ ? 1.0 : -1.0;
+
+	// Search only along the upward pitch arc. Sideways avoidance makes the helicopter slide
+	// unpredictably across the frame and is much harder to read than a vertical correction.
+	const FVector2D Directions[] = {
+		FVector2D(UpPitchSign, 0.0)
+	};
+
+	const float MaxAngle = FMath::Clamp(CameraAvoidanceMaxAngleDeg, 0.0f, 85.0f);
+	const float Step = FMath::Clamp(CameraAvoidanceSearchStepDeg, 1.0f, 15.0f);
+	auto MakeCandidate = [&DesiredWorldRotation](
+		const FVector2D& Direction,
+		float Angle)
 	{
-		return DesiredArmLength;
+		FRotator Candidate = DesiredWorldRotation;
+		Candidate.Pitch = FMath::Clamp(
+			DesiredWorldRotation.Pitch + Direction.X * Angle,
+			-88.0,
+			60.0);
+		Candidate.Yaw = FRotator::NormalizeAxis(
+			DesiredWorldRotation.Yaw + Direction.Y * Angle);
+		return Candidate;
+	};
+	auto MakeOffset = [&DesiredWorldRotation](const FRotator& Candidate)
+	{
+		return FRotator(
+			FRotator::NormalizeAxis(Candidate.Pitch - DesiredWorldRotation.Pitch),
+			FRotator::NormalizeAxis(Candidate.Yaw - DesiredWorldRotation.Yaw),
+			0.0);
+	};
+
+	for (float Angle = Step; Angle <= MaxAngle + UE_SMALL_NUMBER; Angle += Step)
+	{
+		for (const FVector2D& Direction : Directions)
+		{
+			const FRotator Candidate = MakeCandidate(Direction, Angle);
+			if (!IsCameraPathClear(
+					BoomOrigin,
+					ArmLength,
+					Candidate,
+					CameraObstructionPaddingCm))
+			{
+				continue;
+			}
+
+			// Refine the winning direction within this ring without changing which side was
+			// selected. Four iterations put a 5-degree search step well below half a degree.
+			float Low = FMath::Max(0.0f, Angle - Step);
+			float High = Angle;
+			for (int32 Iteration = 0; Iteration < 4; ++Iteration)
+			{
+				const float Mid = (Low + High) * 0.5f;
+				if (IsCameraPathClear(
+						BoomOrigin,
+						ArmLength,
+						MakeCandidate(Direction, Mid),
+						CameraObstructionPaddingCm))
+				{
+					High = Mid;
+				}
+				else
+				{
+					Low = Mid;
+				}
+			}
+			return MakeOffset(MakeCandidate(Direction, High));
+		}
 	}
 
-	const float SafeDistance = FMath::Max(
-		CameraMinObstructedArmLengthCm,
-		BuildingHit->Distance - ProbeRadius - CameraObstructionPaddingCm);
-	return FMath::Min(DesiredArmLength, SafeDistance);
+	// If every sampled route is obstructed, aim as high as the view limits allow. The hard
+	// arm sweep still prevents penetration while this is lerped in.
+	return MakeOffset(MakeCandidate(FVector2D(UpPitchSign, 0.0), MaxAngle));
 }
 
 bool ASimCopterHelicopterPawn::ProbeBucketWater(const FVector& BucketWorldLocation)

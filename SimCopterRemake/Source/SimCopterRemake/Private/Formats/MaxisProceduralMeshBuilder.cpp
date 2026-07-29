@@ -4,6 +4,47 @@
 
 namespace
 {
+struct FMaxisFaceNormalData
+{
+	FVector Normal = FVector::UpVector;
+	FVector WeightedNormal = FVector::UpVector;
+	bool bValid = false;
+};
+
+uint32 MakeSourceEdgeKey(uint16 VertexA, uint16 VertexB)
+{
+	const uint16 MinVertex = FMath::Min(VertexA, VertexB);
+	const uint16 MaxVertex = FMath::Max(VertexA, VertexB);
+	return (static_cast<uint32>(MinVertex) << 16) | static_cast<uint32>(MaxVertex);
+}
+
+int32 FindSetRoot(TArray<int32>& Parents, int32 Index)
+{
+	int32 Root = Index;
+	while (Parents[Root] != Root)
+	{
+		Root = Parents[Root];
+	}
+
+	while (Parents[Index] != Index)
+	{
+		const int32 Next = Parents[Index];
+		Parents[Index] = Root;
+		Index = Next;
+	}
+	return Root;
+}
+
+void UnionSets(TArray<int32>& Parents, int32 IndexA, int32 IndexB)
+{
+	const int32 RootA = FindSetRoot(Parents, IndexA);
+	const int32 RootB = FindSetRoot(Parents, IndexB);
+	if (RootA != RootB)
+	{
+		Parents[RootB] = RootA;
+	}
+}
+
 FLinearColor ResolveFaceColor(const TArray<FColor>* ColorMap, uint8 FaceType, uint8 MaterialIndex, const FLinearColor& FallbackColor)
 {
 	// Face types 13/18 are textured in the city geometry; the helicopter meshes do
@@ -24,7 +65,7 @@ FLinearColor ResolveFaceColor(const TArray<FColor>* ColorMap, uint8 FaceType, ui
 void AppendFaceToSection(
 	const FMaxisMeshObject& Object,
 	const FMaxisMeshFace& Face,
-	const FVector& ObjectCenter,
+	const TArray<FVector>& CornerNormals,
 	const TArray<FColor>* ColorMap,
 	float EffectiveUnits,
 	float Scale,
@@ -125,6 +166,10 @@ void AppendFaceToSection(
 		Section.UVs.Add(FVector2D::ZeroVector);
 		Section.VertexColors.Add(FaceColor);
 		Section.Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
+		Section.Normals.Add(
+			CornerNormals.IsValidIndex(FaceVertexIndex)
+				? CornerNormals[FaceVertexIndex]
+				: FVector::UpVector);
 		Section.LocalBounds += LocalVertex;
 	}
 
@@ -135,27 +180,8 @@ void AppendFaceToSection(
 		Section.UVs.SetNum(FaceVertexStart);
 		Section.VertexColors.SetNum(FaceVertexStart);
 		Section.Tangents.SetNum(FaceVertexStart);
+		Section.Normals.SetNum(FaceVertexStart);
 		return;
-	}
-
-	FVector FaceNormal = FVector::CrossProduct(
-		Section.Vertices[FaceVertexStart + 1] - Section.Vertices[FaceVertexStart],
-		Section.Vertices[FaceVertexStart + 2] - Section.Vertices[FaceVertexStart]).GetSafeNormal();
-
-	FVector FaceCenter = FVector::ZeroVector;
-	for (int32 Index = 0; Index < FaceVertexCount; ++Index)
-	{
-		FaceCenter += Section.Vertices[FaceVertexStart + Index];
-	}
-	FaceCenter /= static_cast<float>(FaceVertexCount);
-	if (FVector::DotProduct(FaceNormal, FaceCenter - ObjectCenter) < 0.0f)
-	{
-		FaceNormal = -FaceNormal;
-	}
-
-	for (int32 Index = 0; Index < FaceVertexCount; ++Index)
-	{
-		Section.Normals.Add(FaceNormal);
 	}
 
 	for (int32 TriangleIndex = 1; TriangleIndex < FaceVertexCount - 1; ++TriangleIndex)
@@ -172,6 +198,204 @@ void AppendFaceToSection(
 		}
 	}
 }
+}
+
+void FMaxisProceduralMeshBuilder::BuildAutoSmoothCornerNormals(
+	const FMaxisMeshObject& Object,
+	const TArray<FVector>& VertexPositions,
+	bool bForceHorizontalFacesUp,
+	float SmoothAngleDegrees,
+	TArray<TArray<FVector>>& OutCornerNormals)
+{
+	OutCornerNormals.Reset();
+	OutCornerNormals.SetNum(Object.Faces.Num());
+
+	TArray<FMaxisFaceNormalData> FaceNormalData;
+	FaceNormalData.SetNum(Object.Faces.Num());
+
+	TMap<uint16, TArray<int32>> FacesByVertex;
+	TMap<uint32, TArray<int32>> FacesByEdge;
+
+	FVector ObjectCenter = FVector::ZeroVector;
+	for (const FVector& VertexPosition : VertexPositions)
+	{
+		ObjectCenter += VertexPosition;
+	}
+	if (VertexPositions.Num() > 0)
+	{
+		ObjectCenter /= static_cast<float>(VertexPositions.Num());
+	}
+
+	for (int32 FaceIndex = 0; FaceIndex < Object.Faces.Num(); ++FaceIndex)
+	{
+		const FMaxisMeshFace& Face = Object.Faces[FaceIndex];
+		TArray<FVector>& CornerNormals = OutCornerNormals[FaceIndex];
+		CornerNormals.Init(FVector::UpVector, Face.VertexIndices.Num());
+		if (Face.VertexIndices.Num() < 3)
+		{
+			continue;
+		}
+
+		TArray<uint16> ValidVertexIndices;
+		ValidVertexIndices.Reserve(Face.VertexIndices.Num());
+		FVector FaceCenter = FVector::ZeroVector;
+		for (const uint16 SourceVertexIndex : Face.VertexIndices)
+		{
+			if (!VertexPositions.IsValidIndex(SourceVertexIndex))
+			{
+				continue;
+			}
+
+			ValidVertexIndices.Add(SourceVertexIndex);
+			FaceCenter += VertexPositions[SourceVertexIndex];
+			FacesByVertex.FindOrAdd(SourceVertexIndex).AddUnique(FaceIndex);
+		}
+
+		if (ValidVertexIndices.Num() < 3)
+		{
+			continue;
+		}
+		FaceCenter /= static_cast<float>(ValidVertexIndices.Num());
+
+		// Newell's method uses the whole polygon, so faces whose first three
+		// corners are collinear still receive a stable area-weighted normal.
+		FVector WeightedNormal = FVector::ZeroVector;
+		for (int32 CornerIndex = 0; CornerIndex < ValidVertexIndices.Num(); ++CornerIndex)
+		{
+			const FVector& Current = VertexPositions[ValidVertexIndices[CornerIndex]];
+			const FVector& Next = VertexPositions[ValidVertexIndices[(CornerIndex + 1) % ValidVertexIndices.Num()]];
+			WeightedNormal.X += (Current.Y - Next.Y) * (Current.Z + Next.Z);
+			WeightedNormal.Y += (Current.Z - Next.Z) * (Current.X + Next.X);
+			WeightedNormal.Z += (Current.X - Next.X) * (Current.Y + Next.Y);
+		}
+
+		FVector FaceNormal = WeightedNormal.GetSafeNormal();
+		if (FaceNormal.IsNearlyZero())
+		{
+			FaceNormal = FVector::UpVector;
+			WeightedNormal = FaceNormal;
+		}
+
+		bool bFlipNormal = false;
+		if (bForceHorizontalFacesUp && FMath::Abs(FaceNormal.Z) > 0.85f)
+		{
+			bFlipNormal = FaceNormal.Z < 0.0f;
+		}
+		else
+		{
+			bFlipNormal = FVector::DotProduct(FaceNormal, FaceCenter - ObjectCenter) < 0.0f;
+		}
+		if (bFlipNormal)
+		{
+			FaceNormal = -FaceNormal;
+			WeightedNormal = -WeightedNormal;
+		}
+
+		FMaxisFaceNormalData& NormalData = FaceNormalData[FaceIndex];
+		NormalData.Normal = FaceNormal;
+		NormalData.WeightedNormal = WeightedNormal;
+		NormalData.bValid = true;
+		CornerNormals.Init(FaceNormal, Face.VertexIndices.Num());
+
+		for (int32 CornerIndex = 0; CornerIndex < Face.VertexIndices.Num(); ++CornerIndex)
+		{
+			const uint16 VertexA = Face.VertexIndices[CornerIndex];
+			const uint16 VertexB = Face.VertexIndices[(CornerIndex + 1) % Face.VertexIndices.Num()];
+			if (VertexA == VertexB ||
+				!VertexPositions.IsValidIndex(VertexA) ||
+				!VertexPositions.IsValidIndex(VertexB))
+			{
+				continue;
+			}
+			FacesByEdge.FindOrAdd(MakeSourceEdgeKey(VertexA, VertexB)).AddUnique(FaceIndex);
+		}
+	}
+
+	const float ClampedSmoothAngle = FMath::Clamp(SmoothAngleDegrees, 0.0f, 180.0f);
+	const float SmoothDotThreshold = FMath::Cos(FMath::DegreesToRadians(ClampedSmoothAngle));
+	TMap<uint16, TArray<FIntPoint>> SmoothFacePairsByVertex;
+	for (const TPair<uint32, TArray<int32>>& EdgeEntry : FacesByEdge)
+	{
+		const uint16 VertexA = static_cast<uint16>(EdgeEntry.Key >> 16);
+		const uint16 VertexB = static_cast<uint16>(EdgeEntry.Key & 0xffffu);
+		const TArray<int32>& EdgeFaces = EdgeEntry.Value;
+		for (int32 FaceAIndex = 0; FaceAIndex < EdgeFaces.Num(); ++FaceAIndex)
+		{
+			for (int32 FaceBIndex = FaceAIndex + 1; FaceBIndex < EdgeFaces.Num(); ++FaceBIndex)
+			{
+				const int32 FaceA = EdgeFaces[FaceAIndex];
+				const int32 FaceB = EdgeFaces[FaceBIndex];
+				if (!FaceNormalData[FaceA].bValid || !FaceNormalData[FaceB].bValid ||
+					FVector::DotProduct(FaceNormalData[FaceA].Normal, FaceNormalData[FaceB].Normal) <= SmoothDotThreshold)
+				{
+					continue;
+				}
+
+				SmoothFacePairsByVertex.FindOrAdd(VertexA).Emplace(FaceA, FaceB);
+				SmoothFacePairsByVertex.FindOrAdd(VertexB).Emplace(FaceA, FaceB);
+			}
+		}
+	}
+
+	// Build a separate connected face fan at each source vertex. This matters on
+	// gradually curved meshes: each neighboring edge may be under 35 degrees even
+	// when the normals at opposite ends of the fan differ by more than 35 degrees.
+	for (const TPair<uint16, TArray<int32>>& VertexEntry : FacesByVertex)
+	{
+		const uint16 SourceVertexIndex = VertexEntry.Key;
+		const TArray<int32>& VertexFaces = VertexEntry.Value;
+		if (VertexFaces.Num() == 0)
+		{
+			continue;
+		}
+
+		TMap<int32, int32> LocalIndexByFace;
+		TArray<int32> Parents;
+		Parents.SetNumUninitialized(VertexFaces.Num());
+		for (int32 LocalIndex = 0; LocalIndex < VertexFaces.Num(); ++LocalIndex)
+		{
+			LocalIndexByFace.Add(VertexFaces[LocalIndex], LocalIndex);
+			Parents[LocalIndex] = LocalIndex;
+		}
+
+		if (const TArray<FIntPoint>* SmoothPairs = SmoothFacePairsByVertex.Find(SourceVertexIndex))
+		{
+			for (const FIntPoint& SmoothPair : *SmoothPairs)
+			{
+				const int32* LocalFaceA = LocalIndexByFace.Find(SmoothPair.X);
+				const int32* LocalFaceB = LocalIndexByFace.Find(SmoothPair.Y);
+				if (LocalFaceA != nullptr && LocalFaceB != nullptr)
+				{
+					UnionSets(Parents, *LocalFaceA, *LocalFaceB);
+				}
+			}
+		}
+
+		TMap<int32, FVector> WeightedNormalsByRoot;
+		for (int32 LocalIndex = 0; LocalIndex < VertexFaces.Num(); ++LocalIndex)
+		{
+			const int32 Root = FindSetRoot(Parents, LocalIndex);
+			WeightedNormalsByRoot.FindOrAdd(Root) += FaceNormalData[VertexFaces[LocalIndex]].WeightedNormal;
+		}
+
+		for (int32 LocalIndex = 0; LocalIndex < VertexFaces.Num(); ++LocalIndex)
+		{
+			const int32 FaceIndex = VertexFaces[LocalIndex];
+			const int32 Root = FindSetRoot(Parents, LocalIndex);
+			const FVector SmoothedNormal = WeightedNormalsByRoot[Root].GetSafeNormal(
+				SMALL_NUMBER,
+				FaceNormalData[FaceIndex].Normal);
+
+			const FMaxisMeshFace& Face = Object.Faces[FaceIndex];
+			for (int32 CornerIndex = 0; CornerIndex < Face.VertexIndices.Num(); ++CornerIndex)
+			{
+				if (Face.VertexIndices[CornerIndex] == SourceVertexIndex)
+				{
+					OutCornerNormals[FaceIndex][CornerIndex] = SmoothedNormal;
+				}
+			}
+		}
+	}
 }
 
 void FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(
@@ -204,25 +428,38 @@ void FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
 
 	const float EffectiveUnits = UnitsPerCentimeter > 0.0f ? UnitsPerCentimeter : FMaxisMeshReader::MeshUnitsPerCentimeter;
 
-	// Object centroid in the same converted/scaled local space the vertices use below,
-	// so per-face normals can be flipped to face away from it.
-	FVector ObjectCenter = FVector::ZeroVector;
-	if (Object.Vertices.Num() > 0)
+	TArray<FVector> VertexPositions;
+	VertexPositions.Reserve(Object.Vertices.Num());
+	for (const FMaxisMeshVertex& Vertex : Object.Vertices)
 	{
-		for (const FMaxisMeshVertex& Vertex : Object.Vertices)
-		{
-			ObjectCenter += FMaxisMeshReader::ConvertMaxisVertexToUnreal(Vertex, EffectiveUnits) * Scale;
-		}
-		ObjectCenter /= static_cast<float>(Object.Vertices.Num());
+		VertexPositions.Add(FMaxisMeshReader::ConvertMaxisVertexToUnreal(Vertex, EffectiveUnits) * Scale);
 	}
 
-	for (const FMaxisMeshFace& Face : Object.Faces)
+	TArray<TArray<FVector>> CornerNormals;
+	BuildAutoSmoothCornerNormals(
+		Object,
+		VertexPositions,
+		false,
+		DefaultSmoothAngleDegrees,
+		CornerNormals);
+
+	for (int32 FaceIndex = 0; FaceIndex < Object.Faces.Num(); ++FaceIndex)
 	{
+		const FMaxisMeshFace& Face = Object.Faces[FaceIndex];
 		const bool bTranslucent = OutTranslucentSection != nullptr && IsTranslucentFaceType(Face.FaceType);
 		FMaxisMeshSection& Target = bTranslucent ? *OutTranslucentSection : OutOpaqueSection;
 		// The translucent disc is drawn with a two-sided material, so it needs no reversed
 		// backface triangles - adding them would double-blend the disc and make it look solid.
 		const bool bFaceBackfaces = bTranslucent ? false : bAddBackfaces;
-		AppendFaceToSection(Object, Face, ObjectCenter, ColorMap, EffectiveUnits, Scale, bFaceBackfaces, FallbackColor, Target);
+		AppendFaceToSection(
+			Object,
+			Face,
+			CornerNormals[FaceIndex],
+			ColorMap,
+			EffectiveUnits,
+			Scale,
+			bFaceBackfaces,
+			FallbackColor,
+			Target);
 	}
 }
