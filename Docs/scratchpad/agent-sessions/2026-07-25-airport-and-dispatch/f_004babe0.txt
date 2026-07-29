@@ -1,0 +1,74 @@
+﻿// ===========================================
+// Ghidra:    FUN_004babe0
+// Address:   0x004babe0
+// Signature: undefined FUN_004babe0(void)
+// Callers:   0  |  Callees: 5
+// ===========================================
+
+
+
+void __thiscall FUN_004babe0(int param_1,byte *param_2)
+
+
+
+{
+
+  undefined4 *puVar1;
+
+  int iVar2;
+
+  undefined2 local_12;
+
+  
+
+  if ((*param_2 & 2) != 0) {
+
+    FUN_004bebd0(param_2);
+
+    *(undefined4 *)(param_1 + 0x310) = *(undefined4 *)(param_2 + 0x392);
+
+    iVar2 = *(int *)(param_1 + 0x299);
+
+    if ((2 < iVar2) && (iVar2 < 5)) {
+
+      FUN_004be890(CONCAT22((short)((uint)iVar2 >> 0x10),*(undefined2 *)(param_1 + 0x12d)));
+
+    }
+
+    local_12 = *(undefined2 *)(param_1 + 0x88);
+
+    FUN_004beda0(3);
+
+    do {
+
+      for (puVar1 = *(undefined4 **)
+
+                     ((&DAT_005d9200)[(uint)(byte)local_12 * 0x100 + (uint)local_12._1_1_] + 0x10);
+
+          puVar1 != (undefined4 *)0x0; puVar1 = (undefined4 *)*puVar1) {
+
+        if (((*(ushort *)(puVar1 + 3) & 0x10) != 0) && (iVar2 = FUN_0049dab0(), iVar2 != 0)) {
+
+          *(undefined4 **)(param_1 + 0x318) = puVar1;
+
+          return;
+
+        }
+
+      }
+
+      iVar2 = FUN_004bedd0(&local_12);
+
+    } while (iVar2 != 0);
+
+    *(undefined4 *)(param_1 + 0x318) = 0;
+
+  }
+
+  return;
+
+}
+
+
+
+

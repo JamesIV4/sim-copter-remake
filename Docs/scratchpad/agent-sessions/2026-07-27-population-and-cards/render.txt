@@ -1,0 +1,34 @@
+﻿// ===========================================
+// Ghidra:    FUN_0046f7e0
+// Address:   0x0046f7e0
+// Signature: undefined FUN_0046f7e0(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+
+
+void FUN_0046f7e0(void)
+
+
+
+{
+
+  _DAT_004fc0c0 = (undefined1 *)register0x00000010;
+
+                    /* WARNING: Could not recover jumptable at 0x0046f7e6. Too many branches */
+
+                    /* WARNING: Treating indirect jump as call */
+
+  (*(code *)PTR_LAB_004fc178)();
+
+  return;
+
+}
+
+
+
+

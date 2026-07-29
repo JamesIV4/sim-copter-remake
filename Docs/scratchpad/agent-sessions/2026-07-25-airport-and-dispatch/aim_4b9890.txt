@@ -1,0 +1,56 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b9890
+// Address:   0x004b9890
+// Signature: undefined FUN_004b9890(void)
+// Callers:   3  |  Callees: 4
+// ===========================================
+bool __thiscall FUN_004b9890(int param_1,undefined4 param_2)
+{
+  byte *pbVar1;
+  undefined4 *puVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  
+  FUN_004beda0(5);
+  *(undefined4 *)(param_1 + 0x2b4) = 0;
+  *(undefined4 *)(param_1 + 0x2b8) = 0;
+  do {
+    pbVar1 = (byte *)(&DAT_005d9200)[(uint)(byte)param_2 * 0x100 + (uint)param_2._1_1_];
+    if ((*pbVar1 & 0x20) != 0) {
+      iVar5 = 0;
+      for (puVar2 = *(undefined4 **)(pbVar1 + 0xc); puVar2 != (undefined4 *)0x0;
+          puVar2 = (undefined4 *)*puVar2) {
+        if ((*(byte *)(puVar2 + 2) & 1) != 0) {
+          iVar5 = iVar5 + 1;
+          iVar3 = puVar2[3];
+          *(int *)(param_1 + 0x2b4) = iVar3;
+          iVar4 = _rand();
+          if ((int)(short)iVar4 % ((*(int *)(*(int *)(iVar3 + 0x98) + 4) - iVar5) + 1) == 0) {
+            return true;
+          }
+        }
+      }
+    }
+    puVar2 = *(undefined4 **)(pbVar1 + 0x10);
+    while (puVar2 != (undefined4 *)0x0) {
+      if ((*(ushort *)(puVar2 + 3) & 0x1000) != 0) {
+        *(undefined4 **)(param_1 + 0x2b8) = puVar2;
+        return true;
+      }
+      if ((*(ushort *)(puVar2 + 3) & 4) == 0) {
+        puVar2 = (undefined4 *)*puVar2;
+      }
+      else {
+        puVar2 = *(undefined4 **)
+                  **(undefined4 **)**(undefined4 **)**(undefined4 **)**(undefined4 **)*puVar2;
+      }
+    }
+    iVar5 = FUN_004bedd0(&param_2);
+  } while (iVar5 != 0);
+  if (*(int *)(param_1 + 0x2b4) != 0) {
+    return true;
+  }
+  iVar5 = FUN_004b99c0(*(undefined2 *)(param_1 + 0x12d));
+  return iVar5 != 0;
+}

@@ -1,0 +1,314 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b4440
+// Address:   0x004b4440
+// Signature: undefined FUN_004b4440(void)
+// Callers:   1  |  Callees: 2
+// ===========================================
+void __fastcall FUN_004b4440(int *param_1)
+{
+  int iVar1;
+  undefined4 *puVar2;
+  undefined4 *puVar3;
+  undefined4 uStack_58;
+  undefined4 uStack_54;
+  undefined4 uStack_50;
+  undefined4 auStack_40 [16];
+  if ((char)param_1[1] == '\0') {
+    return;
+  }
+  if (*(char *)((int)param_1 + 5) == '\0') {
+    if ((*(char *)((int)param_1 + 0xb) == '\0') &&
+       (*(int *)((int)param_1 + 0x5d) < *(int *)((int)param_1 + 0x61))) {
+      (**(code **)(*param_1 + 0x14))();
+    }
+    if (*(char *)((int)param_1 + 5) == '\0') {
+      *(int *)((int)param_1 + 0x61) = *(int *)((int)param_1 + 0x61) + DAT_005039a0;
+      goto LAB_004b4553;
+    }
+  }
+  (**(code **)(*param_1 + 4))();
+  if (*(char *)((int)param_1 + 5) != '\0') {
+    uStack_58 = *(undefined4 *)((int)param_1 + 0xb9);
+    uStack_54 = *(undefined4 *)((int)param_1 + 0xbd);
+    uStack_50 = *(undefined4 *)((int)param_1 + 0xc1);
+    puVar2 = (undefined4 *)((int)param_1 + 0xc5);
+    puVar3 = auStack_40;
+    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {
+      *puVar3 = *puVar2;
+      puVar2 = puVar2 + 1;
+      puVar3 = puVar3 + 1;
+    }
+    FUN_004704d1(*(undefined4 *)((int)param_1 + 0xa9),&uStack_58,3);
+    uStack_58 = *(undefined4 *)((int)param_1 + 0x11d);
+    uStack_54 = *(undefined4 *)((int)param_1 + 0x121);
+    uStack_50 = *(undefined4 *)((int)param_1 + 0x125);
+    puVar2 = (undefined4 *)((int)param_1 + 0x129);
+    puVar3 = auStack_40;
+    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {
+      *puVar3 = *puVar2;
+      puVar2 = puVar2 + 1;
+      puVar3 = puVar3 + 1;
+    }
+    FUN_004704d1(*(undefined4 *)((int)param_1 + 0x10d),&uStack_58,3);
+    uStack_58 = *(undefined4 *)((int)param_1 + 0x181);
+    uStack_54 = *(undefined4 *)((int)param_1 + 0x185);
+    uStack_50 = *(undefined4 *)((int)param_1 + 0x189);
+    puVar2 = (undefined4 *)((int)param_1 + 0x18d);
+    puVar3 = auStack_40;
+    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {
+      *puVar3 = *puVar2;
+      puVar2 = puVar2 + 1;
+      puVar3 = puVar3 + 1;
+    }
+    FUN_004704d1(*(undefined4 *)((int)param_1 + 0x171),&uStack_58,3);
+  }
+LAB_004b4553:
+  FUN_004b4570();
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004b4250
+// Address:   0x004b4250
+// Signature: undefined FUN_004b4250(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+undefined4 * __thiscall FUN_004b4250(undefined4 *param_1,undefined4 param_2,undefined4 param_3)
+{
+  uint uVar1;
+  *param_1 = &PTR_LAB_004f4cb8;
+  param_1[1] = 0;
+  param_1[2] = 0;
+  *(undefined1 *)(param_1 + 3) = 0;
+  *(undefined4 *)((int)param_1 + 0xa9) = 0;
+  *(undefined4 *)((int)param_1 + 0x10d) = 0;
+  *(undefined4 *)((int)param_1 + 0x171) = 0;
+  *(undefined4 *)((int)param_1 + 0xd) = 0;
+  *(undefined4 *)((int)param_1 + 0x61) = 0;
+  *(undefined4 *)((int)param_1 + 0x11) = 0;
+  *(undefined4 *)((int)param_1 + 0x2d) = 0;
+  *(undefined4 *)((int)param_1 + 0x31) = 0;
+  *(undefined4 *)((int)param_1 + 0x35) = param_2;
+  *(undefined4 *)((int)param_1 + 0x39) = param_3;
+  *(undefined4 *)((int)param_1 + 0x3d) = param_2;
+  *(undefined4 *)((int)param_1 + 0x41) = param_3;
+  *(undefined4 *)((int)param_1 + 0x45) = param_2;
+  *(undefined4 *)((int)param_1 + 0x49) = param_3;
+  *(undefined4 *)((int)param_1 + 0x4d) = param_2;
+  *(undefined4 *)((int)param_1 + 0x51) = param_3;
+  *(undefined4 *)((int)param_1 + 0x55) = param_2;
+  *(undefined4 *)((int)param_1 + 0x59) = param_3;
+  uVar1 = _rand();
+  if ((short)((int)((uint)(ushort)((short)uVar1 >> 0xf) << 0x10 | uVar1 & 0xffff) % 100) < 100) {
+    *(undefined4 *)((int)param_1 + 0x95) = 0x12d;
+    *(undefined4 *)((int)param_1 + 0x99) = 0x14c;
+    *(undefined4 *)((int)param_1 + 0x9d) = 0x14d;
+  }
+  *(undefined4 *)((int)param_1 + 0x35) = param_2;
+  *(undefined4 *)((int)param_1 + 0x39) = param_3;
+  *(undefined4 *)((int)param_1 + 0x3d) = param_2;
+  *(undefined4 *)((int)param_1 + 0x41) = param_3;
+  *(undefined4 *)((int)param_1 + 0x45) = param_2;
+  *(undefined4 *)((int)param_1 + 0x49) = param_3;
+  return param_1;
+}
+// ===========================================
+// Ghidra:    FUN_004b4300
+// Address:   0x004b4300
+// Signature: undefined FUN_004b4300(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+void __fastcall FUN_004b4300(int param_1)
+{
+  int iVar1;
+  int *piVar2;
+  int *piVar3;
+  if (*(char *)(param_1 + 5) != '\0') {
+    if ((&DAT_005d9200)
+        [(*(uint *)(param_1 + 0x35) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x39) & 0xff)] != 0) {
+      piVar3 = (int *)((&DAT_005d9200)
+                       [(*(uint *)(param_1 + 0x35) & 0xff) * 0x100 +
+                        (*(uint *)(param_1 + 0x39) & 0xff)] + 0x10);
+      iVar1 = *piVar3;
+      while (iVar1 != 0) {
+        piVar2 = (int *)*piVar3;
+        if (*(int **)(param_1 + 0x1cd) == piVar2) {
+          *piVar3 = **(int **)(param_1 + 0x1cd);
+          break;
+        }
+        piVar3 = piVar2;
+        iVar1 = *piVar2;
+      }
+    }
+    if ((&DAT_005d9200)
+        [(*(uint *)(param_1 + 0x3d) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x41) & 0xff)] != 0) {
+      piVar3 = (int *)((&DAT_005d9200)
+                       [(*(uint *)(param_1 + 0x3d) & 0xff) * 0x100 +
+                        (*(uint *)(param_1 + 0x41) & 0xff)] + 0x10);
+      iVar1 = *piVar3;
+      while (iVar1 != 0) {
+        piVar2 = (int *)*piVar3;
+        if (*(int **)(param_1 + 0x1d1) == piVar2) {
+          *piVar3 = **(int **)(param_1 + 0x1d1);
+          break;
+        }
+        piVar3 = piVar2;
+        iVar1 = *piVar2;
+      }
+    }
+    if ((&DAT_005d9200)
+        [(*(uint *)(param_1 + 0x45) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x49) & 0xff)] != 0) {
+      piVar3 = (int *)((&DAT_005d9200)
+                       [(*(uint *)(param_1 + 0x45) & 0xff) * 0x100 +
+                        (*(uint *)(param_1 + 0x49) & 0xff)] + 0x10);
+      iVar1 = *piVar3;
+      while (iVar1 != 0) {
+        piVar2 = (int *)*piVar3;
+        if (*(int **)(param_1 + 0x1d5) == piVar2) {
+          *piVar3 = **(int **)(param_1 + 0x1d5);
+          break;
+        }
+        piVar3 = piVar2;
+        iVar1 = *piVar2;
+      }
+    }
+    *(undefined1 *)(param_1 + 5) = 0;
+  }
+  *(undefined1 *)(param_1 + 6) = 0;
+  *(undefined1 *)(param_1 + 7) = 0;
+  *(undefined1 *)(param_1 + 8) = 0;
+  *(undefined1 *)(param_1 + 9) = 0;
+  *(undefined1 *)(param_1 + 10) = 0;
+  *(undefined1 *)(param_1 + 0xb) = 0;
+  *(undefined1 *)(param_1 + 0xc) = 0;
+  *(undefined4 *)(param_1 + 0xd) = 0;
+  *(undefined4 *)(param_1 + 0x61) = 0;
+  *(undefined4 *)(param_1 + 0x11) = 0;
+  *(undefined4 *)(param_1 + 0x2d) = 0;
+  *(undefined4 *)(param_1 + 0x35) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x39) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x3d) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x41) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x45) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x49) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x4d) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x51) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x55) = 0xffffffff;
+  *(undefined4 *)(param_1 + 0x59) = 0xffffffff;
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004b4130
+// Address:   0x004b4130
+// Signature: undefined FUN_004b4130(void)
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004b4130(void)
+{
+  int iVar1;
+  int *piVar2;
+  int *piVar3;
+  if (((byte)DAT_00582b00 & 1) == 0) {
+    DAT_00582b00._0_1_ = (byte)DAT_00582b00 | 1;
+    _DAT_00582920 = &PTR_LAB_004f4cb8;
+    if (((char)DAT_00582924 != '\0') && (DAT_00582924._1_1_ != '\0')) {
+      if ((&DAT_005d9200)[(DAT_00582955 & 0xff) * 0x100 + (DAT_00582959 & 0xff)] != 0) {
+        piVar3 = (int *)((&DAT_005d9200)[(DAT_00582955 & 0xff) * 0x100 + (DAT_00582959 & 0xff)] +
+                        0x10);
+        iVar1 = *piVar3;
+        while (iVar1 != 0) {
+          piVar2 = (int *)*piVar3;
+          if (DAT_00582aed == piVar2) {
+            *piVar3 = *DAT_00582aed;
+            break;
+          }
+          piVar3 = piVar2;
+          iVar1 = *piVar2;
+        }
+      }
+      if ((&DAT_005d9200)[(DAT_0058295d & 0xff) * 0x100 + (DAT_00582961 & 0xff)] != 0) {
+        piVar3 = (int *)((&DAT_005d9200)[(DAT_0058295d & 0xff) * 0x100 + (DAT_00582961 & 0xff)] +
+                        0x10);
+        iVar1 = *piVar3;
+        while (iVar1 != 0) {
+          piVar2 = (int *)*piVar3;
+          if (DAT_00582af1 == piVar2) {
+            *piVar3 = *DAT_00582af1;
+            break;
+          }
+          piVar3 = piVar2;
+          iVar1 = *piVar2;
+        }
+      }
+      if (((&DAT_005d9200)[(DAT_00582965 & 0xff) * 0x100 + (DAT_00582969 & 0xff)] != 0) &&
+         (piVar3 = (int *)((&DAT_005d9200)[(DAT_00582965 & 0xff) * 0x100 + (DAT_00582969 & 0xff)] +
+                          0x10), *piVar3 != 0)) {
+        while (piVar2 = (int *)*piVar3, DAT_00582af5 != piVar2) {
+          piVar3 = piVar2;
+          if (*piVar2 == 0) {
+            DAT_00582924._0_1_ = 0;
+            return;
+          }
+        }
+        *piVar3 = *DAT_00582af5;
+      }
+    }
+    DAT_00582924._0_1_ = '\0';
+  }
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004b4420
+// Address:   0x004b4420
+// Signature: undefined FUN_004b4420(void)
+// Callers:   2  |  Callees: 0
+// ===========================================
+int FUN_004b4420(void)
+{
+  if (DAT_00582afc == 0) {
+    return 0;
+  }
+  return DAT_00582afc + 0xa1;
+}
+// ===========================================
+// Ghidra:    FUN_004b4570
+// Address:   0x004b4570
+// Signature: undefined FUN_004b4570(void)
+// Callers:   1  |  Callees: 7
+// ===========================================
+void __fastcall FUN_004b4570(int param_1)
+{
+  int iVar1;
+  int iVar2;
+  undefined4 uVar3;
+  int local_c;
+  int local_8;
+  int local_4;
+  if ((*(char *)(param_1 + 5) == '\0') || (*(int *)(param_1 + 0x2d) == 0)) {
+    iVar1 = FUN_0042a3a0(0x19);
+    if (iVar1 == 1) {
+      FUN_0042a310(0x19);
+    }
+  }
+  else {
+    local_c = DAT_0061a6ac - *(int *)(param_1 + 0xb9);
+    local_8 = DAT_0061a6b0 - *(int *)(param_1 + 0xbd);
+    local_4 = DAT_0061a6b4 - *(int *)(param_1 + 0xc1);
+    iVar1 = FUN_00468220(&local_c);
+    if (iVar1 < 0x7800000) {
+      iVar2 = FUN_0042a3a0(0x19);
+      if (iVar2 == 0) {
+        FUN_0042a1f0(0x19,(int *)(param_1 + 0xb9),1);
+      }
+      uVar3 = FUN_0046c4bf(iVar1,0x7800000,0xf0600000);
+      iVar1 = FUN_0046c49d(uVar3);
+      FUN_0042a360(0x19,iVar1 >> 0x10);
+      return;
+    }
+    iVar1 = FUN_0042a3a0(0x19);
+    if (iVar1 == 1) {
+      FUN_0042a310(0x19);
+      return;
+    }
+  }
+  return;
+}

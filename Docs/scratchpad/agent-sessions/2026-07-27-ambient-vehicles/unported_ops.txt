@@ -1,0 +1,1099 @@
+
+##################### OPCODE 12  (0x4ca940) #####################
+// ===========================================
+// Ghidra:    FUN_004ca940
+// Address:   0x004ca940
+// Signature: undefined FUN_004ca940(void)
+// Callers:   1  |  Callees: 7
+// ===========================================
+byte __thiscall FUN_004ca940(int param_1,int param_2,short *param_3)
+{
+  short *psVar1;
+  int iVar2;
+  short sVar3;
+  undefined2 uVar4;
+  byte bVar5;
+  int local_14;
+  undefined1 local_10 [8];
+  undefined4 local_8;
+  
+  if (*(int *)(param_2 + 4) == 0) {
+    bVar5 = 0;
+  }
+  else {
+    local_14 = *(int *)(param_3 + 2);
+    uVar4 = 0;
+    psVar1 = (short *)(param_1 + -8 + ((int)(short)local_14 + *(short *)(param_1 + 0xf4) * 10) * 2);
+    sVar3 = *psVar1;
+    if (sVar3 == 0) {
+      local_14 = 8;
+      bVar5 = 0;
+    }
+    else {
+      *psVar1 = sVar3 + -1;
+      iVar2 = *(int *)(param_2 + 4);
+      sVar3 = FUN_004c8430(iVar2);
+      if (sVar3 == -1) {
+        bVar5 = 0;
+      }
+      else {
+        *(ushort *)(param_1 + 0x140) = sVar3 - 2U & 7;
+        FUN_004ce170(local_10,0,0x10);
+        uVar4 = *(undefined2 *)(param_1 + 0x164);
+        local_14 = FUN_004c9300(uVar4,0,local_10);
+        if ((local_14 == 10) &&
+           ((int)(*(int *)(iVar2 + 0x1c) - *(int *)(param_1 + 0x1d0) & 0xffff0000U) < 0x50000)) {
+          if (*param_3 == 0xc) {
+            sVar3 = FUN_004c6360(*(undefined4 *)(param_2 + 4));
+            if (sVar3 == 0) {
+              bVar5 = 0;
+            }
+            else {
+              iVar2 = *(int *)(param_2 + 4);
+              *(int *)(param_1 + 0x1cc) = *(int *)(iVar2 + 0x18);
+              *(undefined4 *)(param_1 + 0x1d0) = *(undefined4 *)(iVar2 + 0x1c);
+              *(undefined4 *)(param_1 + 0x1d4) = *(undefined4 *)(iVar2 + 0x20);
+              FUN_004c7910();
+              bVar5 = 1;
+              *(short *)(param_1 + 0x12a) = (short)(*(int *)(param_1 + 0x1cc) + 0x20000000 >> 0x16);
+              *(short *)(param_1 + 300) = (short)(0x20000000 - *(int *)(param_1 + 0x1d4) >> 0x16);
+              FUN_004c78c0();
+            }
+          }
+          else {
+            bVar5 = 1;
+          }
+        }
+        else {
+          bVar5 = -(local_14 == 0) & 2;
+        }
+      }
+    }
+    FUN_004c6970(uVar4,local_14,local_8);
+  }
+  return bVar5;
+}
+
+##################### OPCODE 25  (0x4cb550) #####################
+// ===========================================
+// Ghidra:    FUN_004cb550
+// Address:   0x004cb550
+// Signature: undefined FUN_004cb550(void)
+// ===========================================
+bool __thiscall FUN_004cb550(int param_1,undefined4 param_2,int param_3)
+{
+  ushort uVar1;
+  ushort uVar2;
+  ushort uVar3;
+  uint uVar4;
+  
+  uVar2 = *(ushort *)(param_1 + 0x12a) & 0xff;
+  uVar3 = *(ushort *)(param_1 + 300) & 0xff;
+  if ((uVar2 < 0x80) && (uVar3 < 0x80)) {
+    uVar2 = (ushort)*(byte *)((&DAT_005910b0)[(short)uVar2] + (int)(short)uVar3);
+  }
+  else {
+    uVar1 = (short)(uVar2 - (short)DAT_005d91d0) >> 0xf;
+    if ((1 < (short)((uVar2 - (short)DAT_005d91d0 ^ uVar1) - uVar1)) ||
+       (uVar4 = (int)(short)(uVar3 - (short)DAT_005d91d4) >> 0x1f, uVar2 = 0xf6,
+       1 < (short)(((int)(short)(uVar3 - (short)DAT_005d91d4) ^ uVar4) - uVar4))) {
+      uVar2 = 0xffff;
+    }
+  }
+  return uVar2 == *(ushort *)(param_3 + 4);
+}
+
+##################### OPCODE 30  (0x4cbfd0) #####################
+// ===========================================
+// Ghidra:    FUN_004cbfd0
+// Address:   0x004cbfd0
+// Signature: undefined FUN_004cbfd0(void)
+// Callers:   1  |  Callees: 6
+// ===========================================
+undefined4 __thiscall FUN_004cbfd0(int param_1,undefined4 param_2,short *param_3)
+{
+  int iVar1;
+  uint uVar2;
+  undefined4 uVar3;
+  undefined1 *puVar4;
+  int local_6c;
+  int local_68;
+  undefined4 local_64;
+  undefined4 local_60;
+  undefined4 local_5c;
+  undefined1 local_58 [12];
+  undefined4 local_4c;
+  undefined4 local_48;
+  undefined4 local_44;
+  undefined1 local_40 [64];
+  
+  if ((*(int *)(param_1 + 0x224) == 0) || (*(int *)(param_1 + 0x220) != 0x5468726f)) {
+    iVar1 = FUN_004cf7b0(0x5468726f);
+    if (iVar1 != 0) {
+      *(int *)(param_1 + 0x224) = iVar1;
+    }
+    *(undefined4 *)(param_1 + 0x220) = 0x5468726f;
+  }
+  local_6c = (int)*(short *)(param_1 + 0x12a);
+  local_68 = (int)*(short *)(param_1 + 300);
+  local_48 = *(undefined4 *)(param_1 + 0x1d0);
+  local_4c = *(undefined4 *)(param_1 + 0x1cc);
+  local_44 = *(undefined4 *)(param_1 + 0x1d4);
+  uVar3 = 10;
+  if (*param_3 == 0x3c) {
+    uVar3 = 4;
+  }
+  iVar1 = (int)*(short *)(param_1 + 0x140);
+  local_64 = (&DAT_0058da98)[iVar1 * 3];
+  local_60 = (&DAT_0058da9c)[iVar1 * 3];
+  local_5c = (&DAT_0058daa0)[iVar1 * 3];
+  FUN_0046cad1(local_40);
+  puVar4 = local_40;
+  uVar2 = _rand();
+  FUN_0046cae4(((short)((int)((uint)(ushort)((short)uVar2 >> 0xf) << 0x10 | uVar2 & 0xffff) % 200) +
+               0x2ee) * 0x10000,puVar4);
+  FUN_0046cb74(&local_64,local_58,local_40);
+  uVar2 = _rand();
+  FUN_0048e0b0(uVar3,&local_6c,&local_4c,local_58,1,param_1 + 0x1b4,
+               ((short)((int)((uint)(ushort)((short)uVar2 >> 0xf) << 0x10 | uVar2 & 0xffff) % 0x32)
+               + 0x32) * 0x10000,0xffffffff);
+  return 1;
+}
+
+##################### OPCODE 32  (0x4cc290) #####################
+// ===========================================
+// Ghidra:    FUN_004cc290
+// Address:   0x004cc290
+// Signature: undefined FUN_004cc290(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+void FUN_004cc290(undefined4 param_1,undefined4 param_2)
+{
+  FUN_004cc2b0(param_1,param_2);
+  return;
+}
+
+##################### OPCODE 35  (0x4cc410) #####################
+// ===========================================
+// Ghidra:    FUN_004cc410
+// Address:   0x004cc410
+// Signature: undefined FUN_004cc410(void)
+// Callers:   0  |  Callees: 2
+// ===========================================
+undefined4 __thiscall FUN_004cc410(int param_1,undefined4 param_2,int param_3)
+{
+  short sVar1;
+  bool bVar2;
+  int iVar3;
+  undefined4 uVar4;
+  
+  bVar2 = true;
+  uVar4 = 0;
+  if (*(short *)(param_3 + 4) != -1) {
+    sVar1 = *(short *)(param_1 + -8 +
+                      ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2);
+    iVar3 = FUN_004abb00(0x20);
+    if (sVar1 <= iVar3) {
+      bVar2 = false;
+    }
+  }
+  if (bVar2) {
+    uVar4 = 3;
+    FUN_004c9b50();
+  }
+  return uVar4;
+}
+
+##################### OPCODE 37  (0x4cc530) #####################
+// ===========================================
+// Ghidra:    FUN_004cc530
+// Address:   0x004cc530
+// Signature: undefined FUN_004cc530(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 FUN_004cc530(void)
+{
+  FUN_004ca4b0();
+  return 3;
+}
+
+##################### OPCODE 44  (0x4cc6a0) #####################
+// ===========================================
+// Ghidra:    FUN_004cc6a0
+// Address:   0x004cc6a0
+// Signature: undefined FUN_004cc6a0(void)
+// Callers:   0  |  Callees: 4
+// ===========================================
+undefined4 __thiscall FUN_004cc6a0(int param_1,int param_2)
+{
+  int iVar1;
+  
+  if (*(int *)(param_2 + 4) != 0) {
+    iVar1 = FUN_004c0090(*(int *)(param_2 + 4));
+    *(int *)(iVar1 + 0x1cc) = *(int *)(param_1 + 0x1cc);
+    *(undefined4 *)(iVar1 + 0x1d0) = *(undefined4 *)(param_1 + 0x1d0);
+    *(undefined4 *)(iVar1 + 0x1d4) = *(undefined4 *)(param_1 + 0x1d4);
+    FUN_004c7910();
+    *(short *)(iVar1 + 0x12a) = (short)(*(int *)(iVar1 + 0x1cc) + 0x20000000 >> 0x16);
+    *(short *)(iVar1 + 300) = (short)(0x20000000 - *(int *)(iVar1 + 0x1d4) >> 0x16);
+    FUN_004c78c0();
+    FUN_004c6360(param_1 + 0x1b4);
+  }
+  return 1;
+}
+
+##################### OPCODE 46  (0x4cc7d0) #####################
+// ===========================================
+// Ghidra:    FUN_004cc7d0
+// Address:   0x004cc7d0
+// Signature: undefined FUN_004cc7d0(void)
+// Callers:   0  |  Callees: 2
+// ===========================================
+undefined4 FUN_004cc7d0(int param_1)
+{
+  int iVar1;
+  short sVar2;
+  uint uVar3;
+  uint uVar4;
+  
+  iVar1 = *(int *)(param_1 + 4);
+  if (iVar1 == 0) {
+    return 0;
+  }
+  uVar3 = FUN_004ca650();
+  uVar4 = 0;
+  if (uVar3 != 0) {
+    sVar2 = FUN_004c6360(iVar1);
+    uVar4 = (sVar2 == 0) - 1 & uVar3;
+  }
+  if (uVar4 != 0) {
+    *(uint *)(param_1 + 4) = uVar4 + 0x1b4;
+    return 1;
+  }
+  return 0;
+}
+
+##################### OPCODE 47  (0x4cc8d0) #####################
+// ===========================================
+// Ghidra:    FUN_004cc8d0
+// Address:   0x004cc8d0
+// Signature: undefined FUN_004cc8d0(void)
+// Callers:   0  |  Callees: 2
+// ===========================================
+undefined4 FUN_004cc8d0(int param_1)
+{
+  FUN_004c0090(*(undefined4 *)(param_1 + 4));
+  FUN_004c6360(0);
+  return 1;
+}
+
+##################### OPCODE 48  (0x4cc900) #####################
+// ===========================================
+// Ghidra:    FUN_004cc900
+// Address:   0x004cc900
+// Signature: undefined FUN_004cc900(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 __thiscall FUN_004cc900(int param_1,int param_2)
+{
+  int iVar1;
+  short sVar2;
+  
+  if (*(int *)(param_2 + 4) == 0) {
+    return 0;
+  }
+  sVar2 = FUN_004c6360(*(int *)(param_2 + 4));
+  if (sVar2 != 0) {
+    iVar1 = *(int *)(param_1 + 0x1a0);
+    *(undefined4 *)(param_1 + 0x1cc) = *(undefined4 *)(iVar1 + 0x18);
+    *(undefined4 *)(param_1 + 0x1d0) = *(undefined4 *)(iVar1 + 0x1c);
+    *(undefined4 *)(param_1 + 0x1d4) = *(undefined4 *)(iVar1 + 0x20);
+    return 1;
+  }
+  return 0;
+}
+
+##################### OPCODE 50  (0x4cc980) #####################
+// ===========================================
+// Ghidra:    FUN_004cc980
+// Address:   0x004cc980
+// Signature: undefined FUN_004cc980(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 __thiscall FUN_004cc980(int param_1,int param_2,int param_3)
+{
+  short sVar1;
+  short sVar2;
+  undefined2 uVar3;
+  
+  sVar1 = *(short *)(param_3 + 4);
+  if (*(int *)(DAT_005040d0 + 0xa4) == *(int *)(param_2 + 4)) {
+    sVar2 = *(short *)(param_1 + 0xf4);
+    uVar3 = FUN_0048c1e0(DAT_005040d0 + 0x1d4);
+    *(undefined2 *)(param_1 + -8 + ((int)sVar1 + sVar2 * 10) * 2) = uVar3;
+  }
+  else if ((*(byte *)(*(int *)(param_2 + 4) + 0xc) & 0x10) != 0) {
+    *(undefined2 *)(param_1 + -8 + ((int)sVar1 + *(short *)(param_1 + 0xf4) * 10) * 2) = 0x1721;
+    return 1;
+  }
+  return 1;
+}
+
+##################### OPCODE 51  (0x4cca00) #####################
+// ===========================================
+// Ghidra:    FUN_004cca00
+// Address:   0x004cca00
+// Signature: undefined FUN_004cca00(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 FUN_004cca00(int param_1)
+{
+  int iVar1;
+  
+  iVar1 = FUN_004ca570();
+  if (iVar1 != 0) {
+    *(int *)(param_1 + 4) = iVar1 + 0x1b4;
+    return 1;
+  }
+  return 0;
+}
+
+##################### OPCODE 53  (0x4cca60) #####################
+// ===========================================
+// Ghidra:    FUN_004cca60
+// Address:   0x004cca60
+// Signature: undefined FUN_004cca60(void)
+// ===========================================
+undefined4 __thiscall FUN_004cca60(int param_1,int param_2)
+{
+  int iVar1;
+  ushort uVar2;
+  ushort uVar3;
+  ushort uVar4;
+  ushort uVar5;
+  ushort uVar6;
+  ushort uVar7;
+  
+  iVar1 = *(int *)(DAT_005040d0 + 0xa4);
+  uVar5 = (ushort)((uint)(*(int *)(param_1 + 0x1d4) - *(int *)(iVar1 + 0x20)) >> 0x10);
+  uVar3 = (short)uVar5 >> 0xf;
+  uVar6 = (ushort)((uint)(*(int *)(param_1 + 0x1cc) - *(int *)(iVar1 + 0x18)) >> 0x10);
+  uVar2 = (short)uVar6 >> 0xf;
+  uVar7 = (ushort)((uint)(*(int *)(param_1 + 0x1d0) - *(int *)(iVar1 + 0x1c)) >> 0x10);
+  uVar4 = (short)uVar7 >> 0xf;
+  if (0x18 < (ushort)(((uVar5 ^ uVar3) - uVar3) + ((uVar6 ^ uVar2) - uVar2) +
+                     ((uVar7 ^ uVar4) - uVar4))) {
+    return 0;
+  }
+  *(int *)(param_2 + 4) = iVar1;
+  return 1;
+}
+
+##################### OPCODE 54  (0x4ccb40) #####################
+// ===========================================
+// Ghidra:    FUN_004ccb40
+// Address:   0x004ccb40
+// Signature: undefined FUN_004ccb40(void)
+// Callers:   0  |  Callees: 2
+// ===========================================
+undefined4 __thiscall FUN_004ccb40(int param_1,undefined4 param_2,int param_3)
+{
+  FUN_0048c0e0(DAT_005040d0 + 0x1d4,(int)*(short *)(param_1 + 0x12e),(int)*(short *)(param_3 + 4));
+  FUN_0048bf40(DAT_005040d0 + 0x1d4);
+  return 1;
+}
+
+##################### OPCODE 55  (0x4ccb80) #####################
+// ===========================================
+// Ghidra:    FUN_004ccb80
+// Address:   0x004ccb80
+// Signature: undefined FUN_004ccb80(void)
+// Callers:   0  |  Callees: 3
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+undefined4 __thiscall FUN_004ccb80(int param_1,undefined4 param_2,int param_3)
+{
+  undefined2 uVar1;
+  
+  FUN_0048a550(DAT_005040d0);
+  FUN_0048a530(DAT_005040d0);
+  uVar1 = __ftol();
+  *(undefined2 *)
+   (param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) = uVar1;
+  return 1;
+}
+
+##################### OPCODE 56  (0x4ccc40) #####################
+// ===========================================
+// Ghidra:    FUN_004ccc40
+// Address:   0x004ccc40
+// Signature: undefined FUN_004ccc40(void)
+// Callers:   0  |  Callees: 3
+// ===========================================
+undefined4 __fastcall FUN_004ccc40(int param_1)
+{
+  short sVar1;
+  undefined4 uVar2;
+  undefined2 extraout_var;
+  
+  sVar1 = FUN_004c9cc0(*(undefined2 *)(param_1 + 0x12a),*(undefined2 *)(param_1 + 300),param_1);
+  if (sVar1 != 0) {
+    uVar2 = FUN_004c9220(CONCAT22(extraout_var,*(undefined2 *)(param_1 + 0x12a)),
+                         *(undefined2 *)(param_1 + 300),param_1);
+    sVar1 = FUN_004c9dc0(uVar2);
+    if (sVar1 != 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+##################### OPCODE 58  (0x4cccd0) #####################
+// ===========================================
+// Ghidra:    FUN_004cccd0
+// Address:   0x004cccd0
+// Signature: undefined FUN_004cccd0(void)
+// Callers:   0  |  Callees: 3
+// ===========================================
+bool __thiscall FUN_004cccd0(int param_1,short *param_2)
+{
+  short sVar1;
+  char local_a0 [160];
+  
+  if (*(int *)(param_1 + 0x1a0) == 0) {
+    _sprintf(local_a0,s_tree__d__node__d___s_00506b8c,(int)*param_2,(int)param_2[1],
+             s_no_master_in_GetOnHeliIfHarnessR_00506ba4);
+    FUN_004d1600(s_C__Copter_Source_X_Y_Yobjsim_cpp_00506b68,0x94f,local_a0,0x8c085);
+  }
+  if (*(int *)(DAT_005040d0 + 0xbc) != *(int *)(param_1 + 0x1a0)) {
+    if (*(int *)(DAT_005040d0 + 0xa4) != *(int *)(param_1 + 0x1a0)) {
+      _sprintf(local_a0,s_tree__d__node__d___s_00506b8c,(int)*param_2,(int)param_2[1],
+               s_master_is_neither_harness_nor_he_00506b1c);
+      FUN_004d1600(s_C__Copter_Source_X_Y_Yobjsim_cpp_00506b68,0x952,local_a0,0x8c085);
+    }
+    return true;
+  }
+  if (*(int *)(DAT_005040d0 + 0x1c4) == 0) {
+    if (*(int *)(DAT_005040d0 + 0x1c0) == 0) {
+      _sprintf(local_a0,s_tree__d__node__d___s_00506b8c,(int)*param_2,(int)param_2[1],
+               s_bucket_not_raised___can_ignore_00506afc);
+      FUN_004d1600(s_C__Copter_Source_X_Y_Yobjsim_cpp_00506b68,0x95c,local_a0,0x8c085);
+    }
+    return true;
+  }
+  sVar1 = FUN_004c6360(*(undefined4 *)(DAT_005040d0 + 0xa4));
+  return sVar1 != 0;
+}
+
+##################### OPCODE 60  (0x4cced0) #####################
+// ===========================================
+// Ghidra:    FUN_004cced0
+// Address:   0x004cced0
+// Signature: undefined FUN_004cced0(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+void FUN_004cced0(undefined4 param_1,undefined4 param_2)
+{
+  FUN_004cbfd0(param_1,param_2);
+  return;
+}
+
+##################### OPCODE 61  (0x4ccef0) #####################
+// ===========================================
+// Ghidra:    FUN_004ccef0
+// Address:   0x004ccef0
+// Signature: undefined FUN_004ccef0(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 __thiscall FUN_004ccef0(int param_1,undefined4 param_2,int param_3)
+{
+  if (*(short *)(param_1 + 0x170) != -1) {
+    FUN_0049aed0((int)*(short *)(param_1 + 0x170),(int)*(short *)(param_3 + 4));
+  }
+  return 1;
+}
+
+##################### OPCODE 62  (0x4ca700) #####################
+// ===========================================
+// Ghidra:    FUN_004ca700
+// Address:   0x004ca700
+// Signature: undefined FUN_004ca700(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 __thiscall FUN_004ca700(int param_1,int param_2)
+{
+  int iVar1;
+  
+  if (*(short *)(param_1 + 0x170) == -1) {
+    *(undefined4 *)(param_2 + 4) = *(undefined4 *)(DAT_005040d0 + 0xa4);
+  }
+  else {
+    iVar1 = FUN_004bd6e0((int)*(short *)(param_1 + 0x170));
+    if (iVar1 != 0) {
+      *(int *)(param_2 + 4) = iVar1;
+      return 1;
+    }
+  }
+  return 1;
+}
+
+##################### OPCODE 63  (0x4ca6f0) #####################
+// ===========================================
+// Ghidra:    FUN_004ca6f0
+// Address:   0x004ca6f0
+// Signature: undefined FUN_004ca6f0(void)
+// ===========================================
+bool __fastcall FUN_004ca6f0(int param_1)
+{
+  return *(int *)(param_1 + 0x1a0) != 0;
+}
+
+##################### OPCODE 66  (0x4cbbc0) #####################
+// ===========================================
+// Ghidra:    FUN_004cbbc0
+// Address:   0x004cbbc0
+// Signature: undefined FUN_004cbbc0(void)
+// Callers:   0  |  Callees: 16
+// ===========================================
+undefined4 __fastcall FUN_004cbbc0(int param_1)
+{
+  int *piVar1;
+  bool bVar2;
+  short sVar3;
+  int iVar4;
+  int iVar5;
+  undefined2 extraout_var;
+  undefined4 uVar6;
+  int local_2c;
+  undefined4 local_28;
+  int local_24;
+  int local_20;
+  int local_1c;
+  int local_18 [3];
+  int local_c;
+  undefined4 local_8;
+  undefined4 local_4;
+  
+  iVar4 = *(int *)(param_1 + 0x1a0);
+  if ((iVar4 == 0) || ((*(byte *)(iVar4 + 0xd) & 0x80) == 0)) {
+    local_20 = (int)*(short *)(param_1 + 0x12a);
+    local_1c = (int)*(short *)(param_1 + 300);
+    local_8 = *(undefined4 *)(param_1 + 0x1d0);
+    piVar1 = (int *)(param_1 + 0x1cc);
+    local_c = *piVar1;
+    local_4 = *(undefined4 *)(param_1 + 0x1d4);
+    iVar4 = (int)*(short *)(param_1 + 0x140);
+    local_28 = (&DAT_0058da9c)[iVar4 * 3];
+    local_2c = (&DAT_0058da98)[iVar4 * 3];
+    local_24 = (&DAT_0058daa0)[iVar4 * 3];
+    iVar4 = FUN_0048e0b0(8,&local_20,&local_c,&local_2c,1,param_1 + 0x1b4,0xa0000,0xffffffff);
+    if (iVar4 == 0) {
+      FUN_004c6360(0);
+      iVar4 = *(int *)(param_1 + 0x1a0);
+      if (iVar4 == 0) {
+        iVar5 = FUN_004c82c0(*piVar1,*(undefined4 *)(param_1 + 0x1d0),
+                             *(undefined4 *)(param_1 + 0x1d4));
+      }
+      else {
+        local_18[0] = *piVar1 - *(int *)(iVar4 + 0x18);
+        local_18[1] = 0;
+        local_18[2] = *(int *)(param_1 + 0x1d4) - *(int *)(iVar4 + 0x20);
+        iVar4 = FUN_0046d770(*(undefined4 *)(iVar4 + 8),iVar4 + 0x24,local_18,
+                             *(undefined4 *)(param_1 + 0x1c4));
+        iVar5 = FUN_004c82c0(*piVar1,*(undefined4 *)(param_1 + 0x1d0),
+                             *(undefined4 *)(param_1 + 0x1d4));
+        iVar5 = iVar5 + iVar4;
+      }
+      *(int *)(param_1 + 0x1d0) = iVar5 + 0x30000;
+      FUN_004ccf50(10,*(undefined4 *)(param_1 + 0x10a));
+      if ((*(int *)(param_1 + 0x224) == 0) || (*(int *)(param_1 + 0x220) != 0x44656164)) {
+        iVar4 = FUN_004cf7b0(0x44656164);
+        if (iVar4 != 0) {
+          *(int *)(param_1 + 0x224) = iVar4;
+        }
+        *(undefined4 *)(param_1 + 0x220) = 0x44656164;
+      }
+      FUN_004ca4b0();
+      uVar6 = 3;
+    }
+    else {
+      FUN_004c6360(*(undefined4 *)(iVar4 + 0x28));
+      if (*(short *)(param_1 + 0x15e) == 0) {
+        uVar6 = 0x20;
+      }
+      else {
+        uVar6 = 0x3d;
+      }
+      FUN_004c5210(uVar6,1,0,1);
+      uVar6 = 2;
+    }
+    *(undefined2 *)(param_1 + 0x194) = 0;
+    return uVar6;
+  }
+  iVar4 = FUN_00491bd0((int)*(short *)(iVar4 + 0xe));
+  if (*(int *)(iVar4 + 0x38) != 0) {
+    bVar2 = false;
+    if (*(short *)(param_1 + 0x15e) == 0) {
+      sVar3 = FUN_004c92a0(CONCAT22(extraout_var,*(undefined2 *)(param_1 + 0x12a)),
+                           *(undefined2 *)(param_1 + 300));
+      if ((sVar3 == 0) && (*(int *)(iVar4 + 0xc) < 0x280001)) goto LAB_004cbc48;
+      bVar2 = true;
+      FUN_004ccf50(10,*(undefined4 *)(param_1 + 0x10a));
+      *(undefined2 *)(param_1 + 0x15e) = 1;
+    }
+    else {
+LAB_004cbc48:
+      if ((0x140000 < *(int *)(iVar4 + 0xc)) &&
+         ((*(short *)(param_1 + 0x148) != 6 && (*(short *)(param_1 + 0x15e) == 0)))) {
+        *(undefined2 *)(param_1 + 0x194) = 1;
+      }
+    }
+    if (bVar2) {
+      uVar6 = 0x1d;
+    }
+    else if (*(short *)(param_1 + 0x15e) == 0) {
+      sVar3 = FUN_004cea00(3);
+      if (sVar3 == 0) goto LAB_004cbcbb;
+      uVar6 = 0x1e;
+    }
+    else {
+      sVar3 = FUN_004cea00(3);
+      if (sVar3 == 0) {
+LAB_004cbcbb:
+        uVar6 = 0x2a;
+      }
+      else {
+        uVar6 = 0x1f;
+      }
+    }
+    FUN_004c5210(uVar6,1,0,1);
+  }
+  if (0 < *(int *)(iVar4 + 4)) {
+    return 2;
+  }
+  FUN_004c6360(0);
+  iVar4 = *(int *)(param_1 + 0x1a0);
+  if (iVar4 == 0) {
+    iVar5 = FUN_004c82c0(*(undefined4 *)(param_1 + 0x1cc),*(undefined4 *)(param_1 + 0x1d0),
+                         *(undefined4 *)(param_1 + 0x1d4));
+  }
+  else {
+    local_2c = *(int *)(param_1 + 0x1cc) - *(int *)(iVar4 + 0x18);
+    local_28 = 0;
+    local_24 = *(int *)(param_1 + 0x1d4) - *(int *)(iVar4 + 0x20);
+    iVar4 = FUN_0046d770(*(undefined4 *)(iVar4 + 8),iVar4 + 0x24,&local_2c,
+                         *(undefined4 *)(param_1 + 0x1c4));
+    iVar5 = FUN_004c82c0(*(undefined4 *)(param_1 + 0x1cc),*(undefined4 *)(param_1 + 0x1d0),
+                         *(undefined4 *)(param_1 + 0x1d4));
+    iVar5 = iVar5 + iVar4;
+  }
+  *(int *)(param_1 + 0x1d0) = iVar5 + 0x30000;
+  if (*(short *)(param_1 + 0x15e) == 0) {
+    if (*(short *)(param_1 + 0x194) != 0) {
+      FUN_004c9b50();
+      return 3;
+    }
+    return 1;
+  }
+  FUN_004625b0();
+  iVar4 = FUN_00462920();
+  if (iVar4 == 0x1e) {
+    iVar4 = FUN_00462a10();
+    if (iVar4 != 9) goto LAB_004cbd99;
+  }
+  else {
+LAB_004cbd99:
+    iVar4 = FUN_00462920();
+    if (iVar4 != 0x16) goto LAB_004cbdbf;
+    iVar4 = FUN_00462a10();
+    if (iVar4 != 8) goto LAB_004cbdbf;
+  }
+  DAT_0058dc3a = 4;
+LAB_004cbdbf:
+  FUN_004c68f0(0x44656164);
+  FUN_004ca4b0();
+  return 3;
+}
+
+##################### OPCODE 67  (0x4cbb80) #####################
+// ===========================================
+// Ghidra:    FUN_004cbb80
+// Address:   0x004cbb80
+// Signature: undefined FUN_004cbb80(void)
+// ===========================================
+undefined4 __thiscall FUN_004cbb80(int param_1,int param_2)
+{
+  short sVar1;
+  
+  sVar1 = *(short *)(param_1 + 0xf4) + -2;
+  if ((sVar1 < 0) || (*(short *)(param_1 + 0xf4) <= sVar1)) {
+    param_1 = 0;
+  }
+  else {
+    param_1 = sVar1 * 0x14 + 4 + param_1;
+  }
+  if (param_1 != 0) {
+    *(undefined4 *)(param_1 + 4) = *(undefined4 *)(param_2 + 4);
+  }
+  return 1;
+}
+
+##################### OPCODE 68  (0x4cb730) #####################
+// ===========================================
+// Ghidra:    FUN_004cb730
+// Address:   0x004cb730
+// Signature: undefined FUN_004cb730(void)
+// ===========================================
+undefined4 __thiscall FUN_004cb730(int param_1,int param_2)
+{
+  short sVar1;
+  
+  sVar1 = *(short *)(param_1 + 0xf4) + -2;
+  if ((sVar1 < 0) || (*(short *)(param_1 + 0xf4) <= sVar1)) {
+    param_1 = 0;
+  }
+  else {
+    param_1 = sVar1 * 0x14 + 4 + param_1;
+  }
+  if (param_1 != 0) {
+    *(undefined4 *)(param_2 + 4) = *(undefined4 *)(param_1 + 4);
+  }
+  return 1;
+}
+
+##################### OPCODE 69  (0x4cbb60) #####################
+// ===========================================
+// Ghidra:    FUN_004cbb60
+// Address:   0x004cbb60
+// Signature: undefined FUN_004cbb60(void)
+// ===========================================
+bool FUN_004cbb60(int param_1)
+{
+  return *(int *)(param_1 + 4) == *(int *)(DAT_005040d0 + 0xa4);
+}
+
+##################### OPCODE 71  (0x4cbaa0) #####################
+// ===========================================
+// Ghidra:    FUN_004cbaa0
+// Address:   0x004cbaa0
+// Signature: undefined FUN_004cbaa0(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+bool FUN_004cbaa0(void)
+{
+  int iVar1;
+  
+  iVar1 = FUN_004ca650();
+  return iVar1 != 0;
+}
+
+##################### OPCODE 72  (0x4cb770) #####################
+// ===========================================
+// Ghidra:    FUN_004cb770
+// Address:   0x004cb770
+// Signature: undefined FUN_004cb770(void)
+// ===========================================
+undefined4 FUN_004cb770(int param_1)
+{
+  *(undefined4 *)(param_1 + 4) = 0;
+  return 1;
+}
+
+##################### OPCODE 73  (0x4cb9c0) #####################
+// ===========================================
+// Ghidra:    FUN_004cb9c0
+// Address:   0x004cb9c0
+// Signature: undefined FUN_004cb9c0(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+bool FUN_004cb9c0(void)
+{
+  int iVar1;
+  
+  iVar1 = FUN_004ca4f0(5,0);
+  return iVar1 != 0;
+}
+
+##################### OPCODE 74  (0x4cba70) #####################
+// ===========================================
+// Ghidra:    FUN_004cba70
+// Address:   0x004cba70
+// Signature: undefined FUN_004cba70(void)
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+undefined4 __thiscall FUN_004cba70(int param_1,undefined4 param_2,int param_3)
+{
+  *(short *)(param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) =
+       (short)_DAT_004f9740;
+  return 1;
+}
+
+##################### OPCODE 75  (0x4cba10) #####################
+// ===========================================
+// Ghidra:    FUN_004cba10
+// Address:   0x004cba10
+// Signature: undefined FUN_004cba10(void)
+// ===========================================
+undefined4 __thiscall FUN_004cba10(int param_1,undefined4 param_2,int param_3)
+{
+  *(undefined2 *)
+   (param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) =
+       *(undefined2 *)(param_1 + 0x12a);
+  return 1;
+}
+
+##################### OPCODE 76  (0x4cba40) #####################
+// ===========================================
+// Ghidra:    FUN_004cba40
+// Address:   0x004cba40
+// Signature: undefined FUN_004cba40(void)
+// ===========================================
+undefined4 __thiscall FUN_004cba40(int param_1,undefined4 param_2,int param_3)
+{
+  *(undefined2 *)
+   (param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) =
+       *(undefined2 *)(param_1 + 300);
+  return 1;
+}
+
+##################### OPCODE 77  (0x4cb9e0) #####################
+// ===========================================
+// Ghidra:    FUN_004cb9e0
+// Address:   0x004cb9e0
+// Signature: undefined FUN_004cb9e0(void)
+// ===========================================
+undefined4 __thiscall FUN_004cb9e0(int param_1,undefined4 param_2,int param_3)
+{
+  ushort *puVar1;
+  ushort uVar2;
+  ushort uVar3;
+  
+  puVar1 = (ushort *)
+           (param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2);
+  uVar2 = *puVar1;
+  uVar3 = (short)uVar2 >> 0xf;
+  *puVar1 = (uVar2 ^ uVar3) - uVar3;
+  return 1;
+}
+
+##################### OPCODE 78  (0x4cb830) #####################
+// ===========================================
+// Ghidra:    FUN_004cb830
+// Address:   0x004cb830
+// Signature: undefined FUN_004cb830(void)
+// Callers:   0  |  Callees: 5
+// ===========================================
+undefined4 __fastcall FUN_004cb830(int param_1)
+{
+  int iVar1;
+  int iVar2;
+  ushort uVar3;
+  ushort uVar4;
+  int iVar5;
+  int local_24;
+  int local_20;
+  int local_1c;
+  int local_18;
+  int local_14;
+  int local_10;
+  int local_c;
+  int local_8;
+  int local_4;
+  
+  iVar5 = *(int *)(param_1 + 0x1a8);
+  if (iVar5 == 0) {
+    return 1;
+  }
+  iVar1 = *(int *)(param_1 + 0x1d0);
+  iVar2 = *(int *)(param_1 + 0x1cc);
+  local_4 = *(int *)(param_1 + 0x1d4);
+  local_18 = *(int *)(iVar5 + 0x18);
+  local_14 = *(int *)(iVar5 + 0x1c);
+  local_10 = *(int *)(iVar5 + 0x20);
+  local_24 = local_18 - iVar2;
+  local_20 = local_14 - iVar1;
+  local_1c = local_10 - local_4;
+  local_c = iVar2;
+  local_8 = iVar1;
+  iVar5 = FUN_00467a80(&local_24);
+  local_24 = FUN_0046c49d(local_24,(int)*(short *)(param_1 + 0x164) << 0x10);
+  local_20 = FUN_0046c49d(local_20,(int)*(short *)(param_1 + 0x164) << 0x10);
+  local_1c = FUN_0046c49d(local_1c,(int)*(short *)(param_1 + 0x164) << 0x10);
+  local_18 = local_24 + iVar2;
+  local_14 = local_20 + iVar1;
+  local_10 = local_1c + local_4;
+  FUN_004c7910();
+  FUN_004c6fa0(local_18,local_14,local_10);
+  FUN_004c78c0();
+  if (((*(short *)(param_1 + 0x164) * 0x10000 <= iVar5) &&
+      (uVar4 = (short)DAT_0061a618 - *(short *)(param_1 + 0x12a), uVar3 = (short)uVar4 >> 0xf,
+      (short)((uVar4 ^ uVar3) - uVar3) < 0x15)) &&
+     (uVar4 = (short)DAT_0061a61c - *(short *)(param_1 + 300), uVar3 = (short)uVar4 >> 0xf,
+     (short)((uVar4 ^ uVar3) - uVar3) < 0x15)) {
+    return 2;
+  }
+  return 1;
+}
+
+##################### OPCODE 79  (0x4cb7d0) #####################
+// ===========================================
+// Ghidra:    FUN_004cb7d0
+// Address:   0x004cb7d0
+// Signature: undefined FUN_004cb7d0(void)
+// ===========================================
+undefined4 __thiscall FUN_004cb7d0(int param_1,undefined4 param_2,int param_3)
+{
+  *(short *)(param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) =
+       (short)DAT_00506448;
+  return 1;
+}
+
+##################### OPCODE 80  (0x4cb790) #####################
+// ===========================================
+// Ghidra:    FUN_004cb790
+// Address:   0x004cb790
+// Signature: undefined FUN_004cb790(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+undefined4 __fastcall FUN_004cb790(int param_1)
+{
+  int iVar1;
+  int iVar2;
+  
+  iVar1 = *(int *)(param_1 + 0x1a4);
+  if (iVar1 != 0) {
+    iVar2 = 5 - (uint)((*(ushort *)(iVar1 + 0xc) & 8) == 0);
+    FUN_004c6970(CONCAT22((short)((uint)iVar2 >> 0x10),*(undefined2 *)(param_1 + 0x164)),iVar2,iVar1
+                );
+  }
+  return 1;
+}
+
+##################### OPCODE 82  (0x4ccad0) #####################
+// ===========================================
+// Ghidra:    FUN_004ccad0
+// Address:   0x004ccad0
+// Signature: undefined FUN_004ccad0(void)
+// ===========================================
+bool __thiscall FUN_004ccad0(int param_1,int param_2)
+{
+  int iVar1;
+  ushort uVar2;
+  ushort uVar3;
+  ushort uVar4;
+  ushort uVar5;
+  ushort uVar6;
+  ushort uVar7;
+  
+  iVar1 = *(int *)(param_2 + 4);
+  if (iVar1 == 0) {
+    return false;
+  }
+  uVar5 = (ushort)((uint)(*(int *)(param_1 + 0x1d0) - *(int *)(iVar1 + 0x1c)) >> 0x10);
+  uVar3 = (short)uVar5 >> 0xf;
+  uVar6 = (ushort)((uint)(*(int *)(param_1 + 0x1d4) - *(int *)(iVar1 + 0x20)) >> 0x10);
+  uVar2 = (short)uVar6 >> 0xf;
+  uVar7 = (ushort)((uint)(*(int *)(param_1 + 0x1cc) - *(int *)(iVar1 + 0x18)) >> 0x10);
+  uVar4 = (short)uVar7 >> 0xf;
+  return (ushort)(((uVar5 ^ uVar3) - uVar3) + ((uVar6 ^ uVar2) - uVar2) + ((uVar7 ^ uVar4) - uVar4))
+         < 0x19;
+}
+
+##################### OPCODE 83  (0x4cc130) #####################
+// ===========================================
+// Ghidra:    FUN_004cc130
+// Address:   0x004cc130
+// Signature: undefined FUN_004cc130(void)
+// Callers:   0  |  Callees: 5
+// ===========================================
+undefined4 __thiscall FUN_004cc130(int param_1,int param_2)
+{
+  int iVar1;
+  short sVar2;
+  int iVar3;
+  int local_20;
+  int local_1c;
+  int local_18;
+  int local_14;
+  int local_10;
+  int local_c;
+  undefined4 local_8;
+  undefined4 local_4;
+  
+  iVar1 = *(int *)(param_2 + 4);
+  if (iVar1 != 0) {
+    sVar2 = FUN_004c8430(iVar1);
+    if (sVar2 != -1) {
+      *(ushort *)(param_1 + 0x140) = sVar2 - 2U & 7;
+    }
+    if ((*(int *)(param_1 + 0x224) == 0) || (*(int *)(param_1 + 0x220) != 0x5468726f)) {
+      iVar3 = FUN_004cf7b0(0x5468726f);
+      if (iVar3 != 0) {
+        *(int *)(param_1 + 0x224) = iVar3;
+      }
+      *(undefined4 *)(param_1 + 0x220) = 0x5468726f;
+    }
+    FUN_004c5210(0x39,1,0,1);
+    local_14 = (int)*(short *)(param_1 + 0x12a);
+    local_10 = (int)*(short *)(param_1 + 300);
+    local_c = *(int *)(param_1 + 0x1cc);
+    local_8 = *(undefined4 *)(param_1 + 0x1d0);
+    local_4 = *(undefined4 *)(param_1 + 0x1d4);
+    local_20 = *(int *)(iVar1 + 0x18) - *(int *)(param_1 + 0x1cc);
+    local_1c = *(int *)(iVar1 + 0x1c) - *(int *)(param_1 + 0x1d0);
+    local_18 = *(int *)(iVar1 + 0x20) - *(int *)(param_1 + 0x1d4);
+    FUN_00467a80(&local_20);
+    FUN_0048e0b0(0xe,&local_14,&local_c,&local_20,1,param_1 + 0x1b4,0x12c0000,0xffffffff);
+  }
+  return 1;
+}
+
+##################### OPCODE 84  (0x4cc830) #####################
+// ===========================================
+// Ghidra:    FUN_004cc830
+// Address:   0x004cc830
+// Signature: undefined FUN_004cc830(void)
+// ===========================================
+bool FUN_004cc830(int param_1)
+{
+  int iVar1;
+  short sVar2;
+  int iVar3;
+  short sVar4;
+  
+  iVar1 = -1;
+  sVar4 = 0;
+  if (0 < *(int *)(DAT_005040d0 + 0x1d8)) {
+    do {
+      iVar3 = *(int *)(sVar4 * 0x14 + 0x1fc + DAT_005040d0);
+      if (iVar3 != -1) {
+        sVar2 = (short)iVar3;
+        iVar3 = DAT_00506444;
+        if (sVar2 != 32000) {
+          iVar3 = (&DAT_0058e030)[sVar2];
+        }
+        if ((*(short *)(iVar3 + 0x148) == 6) || (*(short *)(iVar3 + 0x15e) != 0)) {
+          *(int *)(param_1 + 4) = iVar3 + 0x1b4;
+          iVar1 = 1;
+          break;
+        }
+      }
+      sVar4 = sVar4 + 1;
+    } while ((int)sVar4 < *(int *)(DAT_005040d0 + 0x1d8));
+  }
+  return iVar1 == 1;
+}
+
+##################### OPCODE 87  (0x4cce50) #####################
+// ===========================================
+// Ghidra:    FUN_004cce50
+// Address:   0x004cce50
+// Signature: undefined FUN_004cce50(void)
+// ===========================================
+bool __fastcall FUN_004cce50(int param_1)
+{
+  return (&DAT_005d9200)
+         [(*(ushort *)(param_1 + 0x188) & 0xff) * 0x100 + (*(ushort *)(param_1 + 0x18a) & 0xff)] ==
+         (&DAT_005d9200)
+         [(*(ushort *)(param_1 + 0x12a) & 0xff) * 0x100 + (*(ushort *)(param_1 + 300) & 0xff)];
+}

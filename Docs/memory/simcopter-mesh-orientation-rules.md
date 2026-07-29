@@ -1,11 +1,6 @@
----
-name: simcopter-mesh-orientation-rules
-description: How the original SimCopter.exe orients/places city tile meshes (no per-tile rotation; col axis negated)
-metadata: 
-  node_type: memory
-  type: reference
-  originSessionId: 2bd18189-b198-4105-9d35-8b3729691cf9
----
+﻿# SimCopter mesh orientation rules
+
+*How the original SimCopter.exe orients/places city tile meshes (no per-tile rotation; col axis negated)*
 
 Decompiled from `Reference/SimCopterOriginalGame/SimCopter.exe` (Ghidra) on 2026-06-23.
 

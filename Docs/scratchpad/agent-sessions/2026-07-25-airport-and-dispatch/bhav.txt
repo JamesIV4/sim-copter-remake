@@ -1,0 +1,243 @@
+﻿=== BHAV 600 'Ambient initbhav' (31 records) ===
+  [ 0] ambient-audio  args=65535,65535,65535,65535             T->1 F->-3
+  [ 1] expr attr15 == 0                                        T->20 F->26
+  [ 2] CALL 256 'Wander out of the road'                       T->7 F->7
+  [ 3] expr state(+148) == 0                                   T->5 F->23
+  [ 4] expr attr14 := 0                                        T->6 F->-3
+  [ 5] CALL 261 'idle a bit'                                   T->4 F->-3
+  [ 6] expr ambient(+168) := 1                                 T->28 F->-3
+  [ 7] CALL 267 'random motion'                                T->8 F->-3
+  [ 8] CALL 270 'check riot and join if big'                   T->3 F->-3
+  [ 9] CALL 274 'Gawk at (or flee) fire'                       T->12 F->10
+  [10] CALL 273 'Gawk at corpse (inc. medevac)'                T->7 F->13
+  [11] expr local2 := 0                                        T->30 F->-3
+  [12] expr local2 := 1                                        T->10 F->-3
+  [13] expr local2 == 1                                        T->7 F->15
+  [14] expr attr33 == 1                                        T->24 F->9
+  [15] CALL 260 'Ambient possibly look for spolight'           T->2 F->2
+  [16] wait(local[a0]--)  args=0,65535,65535,65535             T->17 F->-3
+  [17] expr local0 := 50                                       T->16 F->-3
+  [18] bind-anim 'Dead'                                        T->19 F->-3
+  [19] expr attr14 := 1                                        T->17 F->-3
+  [20] bind-anim 'NoMo'                                        T->4 F->-3
+  [21] op54?  args=2,0,0,0                                     T->18 F->-3
+  [22] expr attr39 := 10                                       T->21 F->-3
+  [23] expr state(+148) == 20                                  T->5 F->retT
+  [24] CALL 296 'rand 1 in 6?'                                 T->25 F->2
+  [25] expr attr33 := 0                                        T->2 F->-3
+  [26] op63?  args=65535,65535,65535,65535                     T->22 F->27
+  [27] snap-z  args=65535,65535,65535,65535                    T->22 F->22
+  [28] expr autoturn(+16a) := 0                                T->29 F->-3
+  [29] expr movethruwalls(+190) := 0                           T->11 F->-3
+  [30] CALL 261 'idle a bit'                                   T->14 F->-3
+
+=== BHAV 256 'Wander out of the road' (9 records) ===
+  [ 0] expr local1 := 3                                        T->8 F->-3
+  [ 1] local[a0]:=rand(resolve(a1,scope=a2))  args=0,30,7,0    T->3 F->-3
+  [ 2] wander-out-of-bad-tile(local[a0]--)  args=0,0,0,0       T->retT F->4
+  [ 3] expr local0 += 10                                       T->7 F->-3
+  [ 4] CALL 259 'Scatter direction'                            T->5 F->-3
+  [ 5] expr local1 -= 1                                        T->6 F->-3
+  [ 6] expr local1 > 0                                         T->8 F->retF
+  [ 7] expr movespeed(+164) := 6                               T->2 F->-3
+  [ 8] CALL 261 'idle a bit'                                   T->1 F->-3
+
+=== BHAV 261 'idle a bit' (2 records) ===
+  [ 0] expr local0 := 3                                        T->1 F->-3
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->-3
+
+=== BHAV 267 'random motion' (22 records) ===
+  [ 0] player/carried-probe  args=65535,65535,65535,65535      T->retT F->20
+  [ 1] local[a0]:=rand(resolve(a1,scope=a2))  args=1,140,7,0   T->9 F->-3
+  [ 2] local[a0]:=rand(resolve(a1,scope=a2))  args=0,4,7,0     T->11 F->-3
+  [ 3] timed-move(local[a0]--; speed=+0x164)  args=1,1,0,0     T->16 F->10
+  [ 4] local[a0]:=rand(resolve(a1,scope=a2))  args=2,7,7,65535 T->5 F->-3
+  [ 5] facing:=local[a0]&7  args=2,0,0,0                       T->retT F->-3
+  [ 6] expr local0 *= 4                                        T->21 F->-3
+  [ 7] CALL 261 'idle a bit'                                   T->17 F->-3
+  [ 8] expr movespeed(+164) := local0                          T->3 F->-3
+  [ 9] CALL 261 'idle a bit'                                   T->2 F->-3
+  [10] CALL 271 'idle -- rand 20 + 1'                          T->14 F->-3
+  [11] expr local0 == 0                                        T->12 F->6
+  [12] bind-anim 'HipH'                                        T->18 F->-3
+  [13] CALL 271 'idle -- rand 20 + 1'                          T->retT F->-3
+  [14] CALL 1102 'Idle-20'                                     T->4 F->-3
+  [15] sound  args=3,0,0,0                                     T->7 F->-3
+  [16] CALL 296 'rand 1 in 6?'                                 T->15 F->7
+  [17] CALL 296 'rand 1 in 6?'                                 T->4 F->retT
+  [18] CALL 296 'rand 1 in 6?'                                 T->19 F->13
+  [19] sound  args=36,0,0,0                                    T->13 F->-3
+  [20] carried-is-player  args=65535,65535,65535,65535         T->retT F->1
+  [21] expr local0 += 4                                        T->8 F->-3
+
+=== BHAV 270 'check riot and join if big' (3 records) ===
+  [ 0] CALL 852 'Refigure riot val and turn to it'             T->1 F->retT
+  [ 1] expr speed(+150) > 2                                    T->2 F->retT
+  [ 2] riot-create  args=65535,65535,65535,65535               T->-3 F->retT
+
+=== BHAV 274 'Gawk at (or flee) fire' (21 records) ===
+  [ 0] face-obj-class  args=12,0,0,0                           T->15 F->20
+  [ 1] expr local0 < 6                                         T->2 F->9
+  [ 2] expr local0 < 4                                         T->6 F->3
+  [ 3] bind-anim 'HipH'                                        T->5 F->-3
+  [ 4] wait(local[a0]--)  args=1,0,0,0                         T->10 F->-3
+  [ 5] expr local1 := 20                                       T->4 F->-3
+  [ 6] expr local1 := facing(+140)                             T->7 F->-3
+  [ 7] expr local1 -= 4                                        T->8 F->-3
+  [ 8] facing:=local[a0]&7  args=1,0,0,0                       T->19 F->-3
+  [ 9] CALL 904 'Rxn: Run away (dir already set)'              T->10 F->-3
+  [10] CALL 261 'idle a bit'                                   T->12 F->-3
+  [11] CALL 261 'idle a bit'                                   T->1 F->-3
+  [12] local[a0]:=rand(resolve(a1,scope=a2))  args=0,12,7,0    T->13 F->-3
+  [13] expr local0 == 0                                        T->18 F->0
+  [14] expr ambient(+168) := 0                                 T->11 F->-3
+  [15] expr local3 := ambient(+168)                            T->17 F->-3
+  [16] expr ambient(+168) := local3                            T->retT F->-3
+  [17] expr local2 := autoturn(+16a)                           T->14 F->-3
+  [18] expr autoturn(+16a) := local2                           T->16 F->-3
+  [19] expr autoturn(+16a) := 1                                T->9 F->-3
+  [20] CALL 261 'idle a bit'                                   T->retF F->-3
+
+=== BHAV 273 'Gawk at corpse (inc. medevac)' (31 records) ===
+  [ 0] expr local2 := ambient(+168)                            T->1 F->-3
+  [ 1] expr ambient(+168) := 0                                 T->23 F->-3
+  [ 2] threat-probe  args=15,3,7,0                             T->4 F->9
+  [ 3] op38?  args=0,1,0,0                                     T->17 F->22
+  [ 4] expr local0 := 20                                       T->5 F->-3
+  [ 5] expr movespeed(+164) := 20                              T->3 F->-3
+  [ 6] CALL 261 'idle a bit'                                   T->13 F->-3
+  [ 7] sound  args=43,0,0,0                                    T->19 F->19
+  [ 8] expr ambient(+168) := local2                            T->25 F->-3
+  [ 9] CALL 261 'idle a bit'                                   T->11 F->-3
+  [10] CALL 299 'rand 1 in 4?'                                 T->-3 F->-3
+  [11] expr failcount(+192) := 0                               T->14 F->-3
+  [12] CALL 261 'idle a bit'                                   T->2 F->-3
+  [13] CALL 313 'Reset fail counter and don't move through walls' T->8 F->-3
+  [14] CALL 313 'Reset fail counter and don't move through walls' T->26 F->-3
+  [15] CALL 313 'Reset fail counter and don't move through walls' T->2 F->-3
+  [16] expr failcount(+192) > 10                               T->6 F->12
+  [17] CALL 296 'rand 1 in 6?'                                 T->7 F->20
+  [18] face-away-linked  args=65535,65535,65535,65535          T->21 F->21
+  [19] CALL 261 'idle a bit'                                   T->20 F->-3
+  [20] CALL 297 'rand 1 in 3?'                                 T->6 F->18
+  [21] CALL 259 'Scatter direction'                            T->28 F->-3
+  [22] expr failcount(+192) += 1                               T->16 F->-3
+  [23] expr local3 := autoturn(+16a)                           T->24 F->-3
+  [24] expr autoturn(+16a) := 1                                T->15 F->-3
+  [25] expr autoturn(+16a) := local3                           T->retT F->-3
+  [26] expr ambient(+168) := local2                            T->27 F->-3
+  [27] expr autoturn(+16a) := local3                           T->retF F->-3
+  [28] CALL 1016 'Run-10'                                      T->29 F->29
+  [29] CALL 259 'Scatter direction'                            T->30 F->-3
+  [30] CALL 1016 'Run-10'                                      T->6 F->6
+
+=== BHAV 260 'Ambient possibly look for spolight' (10 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,12,7,0    T->2 F->-3
+  [ 1] player-tile-probe(l[a0]=speed,l[a1]=facing)  args=0,1,0,0 T->6 F->retF
+  [ 2] expr local0 == 0                                        T->9 F->retF
+  [ 3] bind-anim 'Wave'                                        T->4 F->-3
+  [ 4] expr local0 := 15                                       T->5 F->-3
+  [ 5] wait(local[a0]--)  args=0,0,0,0                         T->7 F->-3
+  [ 6] expr local2 := facing(+140)                             T->8 F->-3
+  [ 7] facing:=local[a0]&7  args=2,0,0,0                       T->retT F->-3
+  [ 8] facing:=local[a0]&7  args=1,0,0,0                       T->3 F->-3
+  [ 9] CALL 261 'idle a bit'                                   T->1 F->-3
+
+=== BHAV 296 'rand 1 in 6?' (4 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,6,7,0     T->1 F->-3
+  [ 1] expr local0 == 0                                        T->retT F->retF
+  [ 2] local[a0]:=rand(resolve(a1,scope=a2))  args=0,6,7,0     T->3 F->-3
+  [ 3] expr local0 == 0                                        T->-3 F->-3
+
+=== BHAV 259 'Scatter direction' (6 records) ===
+  [ 0] expr local1 := facing(+140)                             T->1 F->-3
+  [ 1] local[a0]:=rand(resolve(a1,scope=a2))  args=0,3,7,0     T->2 F->-3
+  [ 2] expr local0 -= 1                                        T->3 F->-3
+  [ 3] expr local1 += local0                                   T->4 F->-3
+  [ 4] facing:=local[a0]&7  args=1,0,0,0                       T->5 F->-3
+  [ 5] CALL 261 'idle a bit'                                   T->retT F->-3
+
+=== BHAV 271 'idle -- rand 20 + 1' (3 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,20,7,0    T->1 F->-3
+  [ 1] expr local0 += 1                                        T->2 F->-3
+  [ 2] wait(local[a0]--)  args=0,0,0,0                         T->retT F->-3
+
+=== BHAV 1102 'Idle-20' (2 records) ===
+  [ 0] expr local0 := 20                                       T->1 F->1
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->retT
+
+=== BHAV 852 'Refigure riot val and turn to it' (18 records) ===
+  [ 0] CALL 261 'idle a bit'                                   T->1 F->-3
+  [ 1] expr local0 := 1                                        T->2 F->-3
+  [ 2] obj-bearing-probe  args=0,1,2,3                         T->8 F->retF
+  [ 3] expr local0 /= 15                                       T->16 F->-3
+  [ 4] expr speed(+150) > local0                               T->13 F->5
+  [ 5] speed(+0x150)+=a0  args=1,0,0,0                         T->11 F->-3
+  [ 6] speed(+0x150)+=a0  args=65535,0,0,0                     T->7 F->-3
+  [ 7] reaction  args=65535,65535,65535,65535                  T->17 F->17
+  [ 8] expr local0 := local3                                   T->9 F->-3
+  [ 9] expr local0 *= local2                                   T->3 F->-3
+  [10] expr local0 > 2                                         T->14 F->4
+  [11] expr speed(+150) < local0                               T->7 F->7
+  [12] speed(+0x150)+=a0  args=1,0,0,0                         T->7 F->-3
+  [13] expr speed(+150) == local0                              T->17 F->6
+  [14] facing:=local[a0]&7  args=1,0,0,0                       T->15 F->-3
+  [15] CALL 259 'Scatter direction'                            T->4 F->-3
+  [16] CALL 261 'idle a bit'                                   T->10 F->-3
+  [17] CALL 261 'idle a bit'                                   T->retT F->-3
+
+=== BHAV 904 'Rxn: Run away (dir already set)' (19 records) ===
+  [ 0] expr attr14 += 1                                        T->14 F->-3
+  [ 1] timed-move(local[a0]--; speed=+0x164)  args=0,0,1,512   T->10 F->6
+  [ 2] expr local0 := 25                                       T->11 F->-3
+  [ 3] timed-move(local[a0]--; speed=+0x164)  args=0,0,1,512   T->10 F->7
+  [ 4] expr local0 := 20                                       T->3 F->-3
+  [ 5] expr attr14 -= 1                                        T->retT F->-3
+  [ 6] CALL 258 'Run laterally just a bit'                     T->4 F->4
+  [ 7] CALL 258 'Run laterally just a bit'                     T->8 F->8
+  [ 8] expr local0 := 10                                       T->9 F->-3
+  [ 9] timed-move(local[a0]--; speed=+0x164)  args=0,0,1,512   T->10 F->10
+  [10] CALL 261 'idle a bit'                                   T->12 F->-3
+  [11] expr movespeed(+164) := 18                              T->1 F->-3
+  [12] expr ambient(+168) := local3                            T->13 F->-3
+  [13] expr attr19 := local2                                   T->5 F->-3
+  [14] expr local2 := attr19                                   T->15 F->-3
+  [15] expr local3 := ambient(+168)                            T->16 F->-3
+  [16] expr ambient(+168) := 0                                 T->17 F->-3
+  [17] expr attr19 := 0                                        T->18 F->-3
+  [18] CALL 261 'idle a bit'                                   T->2 F->-3
+
+=== BHAV 299 'rand 1 in 4?' (2 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,4,7,0     T->1 F->-3
+  [ 1] expr local0 == 0                                        T->retT F->retF
+
+=== BHAV 313 'Reset fail counter and don't move through walls' (2 records) ===
+  [ 0] expr failcount(+192) := 0                               T->1 F->-3
+  [ 1] expr movethruwalls(+190) := 0                           T->retT F->-3
+
+=== BHAV 297 'rand 1 in 3?' (2 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,3,7,0     T->1 F->-3
+  [ 1] expr local0 == 0                                        T->retT F->retF
+
+=== BHAV 1016 'Run-10' (4 records) ===
+  [ 0] expr movespeed(+164) := 25                              T->2 F->2
+  [ 1] timed-move(local[a0]--; speed=+0x164)  args=1,0,0,0     T->retT F->3
+  [ 2] expr local1 := 10                                       T->1 F->1
+  [ 3] CALL 261 'idle a bit'                                   T->retF F->-3
+
+=== BHAV 258 'Run laterally just a bit' (14 records) ===
+  [ 0] CALL 261 'idle a bit'                                   T->1 F->-3
+  [ 1] expr local3 := facing(+140)                             T->2 F->-3
+  [ 2] local[a0]:=rand(resolve(a1,scope=a2))  args=2,2,7,0     T->7 F->-3
+  [ 3] expr local2 == 0                                        T->5 F->4
+  [ 4] expr local0 += 2                                        T->8 F->-3
+  [ 5] expr local0 -= 2                                        T->8 F->-3
+  [ 6] expr local0 := 8                                        T->13 F->-3
+  [ 7] expr local0 := facing(+140)                             T->3 F->-3
+  [ 8] facing:=local[a0]&7  args=0,0,0,0                       T->6 F->-3
+  [ 9] timed-move(local[a0]--; speed=+0x164)  args=0,0,0,0     T->10 F->12
+  [10] facing:=local[a0]&7  args=3,0,0,0                       T->retT F->-3
+  [11] facing:=local[a0]&7  args=3,0,0,0                       T->retF F->-3
+  [12] CALL 261 'idle a bit'                                   T->11 F->-3
+  [13] expr movespeed(+164) := 3                               T->9 F->-3
+

@@ -1,0 +1,78 @@
+﻿
+################################ 0x0049dbb0 ################################
+// ===========================================
+// Ghidra:    FUN_0049dbb0
+// Address:   0x0049dbb0
+// Signature: undefined FUN_0049dbb0(void)
+// Callers:   3  |  Callees: 9
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+undefined4 __thiscall FUN_0049dbb0(int param_1,int param_2)
+{
+  ushort uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  int iVar4;
+  undefined1 local_24 [12];
+  undefined4 local_18;
+  *(undefined4 *)(param_1 + 0x20) = 0;
+  uVar2 = FUN_00470571(*(undefined4 *)(param_1 + 0x14));
+  if (param_2 == 0) {
+    *(undefined4 *)(param_1 + 0x20) = uVar2;
+    if (DAT_0051ac70 != 0) {
+      DAT_0057f880 = 0;
+      _DAT_0057f758 = 0;
+      DAT_0057f75c = param_1;
+    }
+  }
+  else {
+    uVar3 = FUN_00470270(uVar2);
+    uVar3 = FUN_00468380(DAT_00504824,uVar3);
+    uVar3 = FUN_004702c0(uVar2,uVar3);
+    *(undefined4 *)(param_1 + 0x20) = uVar3;
+    FUN_0047022b(*(undefined4 *)(param_1 + 0x20),DAT_005039c0);
+  }
+  *(short *)(param_1 + 0x26) = (short)param_2;
+  *(undefined2 *)(param_1 + 0x24) = 0x11;
+  FUN_004705a9(uVar2,local_24);
+  *(undefined4 *)(param_1 + 0x28) = local_18;
+  uVar2 = FUN_0046e640(uVar2);
+  *(undefined4 *)(param_1 + 0x2c) = uVar2;
+  *(undefined4 *)(param_1 + 4) = 0;
+  iVar4 = _rand();
+  uVar1 = (short)(ushort)iVar4 >> 0xf;
+  *(int *)(param_1 + 0xc3) =
+       ((short)((((ushort)iVar4 ^ uVar1) - uVar1 & 7 ^ uVar1) - uVar1) + 0x24) * 0x10000;
+  iVar4 = _rand();
+  uVar1 = (short)(ushort)iVar4 >> 0xf;
+  *(int *)(param_1 + 199) =
+       ((short)((((ushort)iVar4 ^ uVar1) - uVar1 & 7 ^ uVar1) - uVar1) + 0x28) * 0x10000;
+  if ((*(int *)(param_1 + 0x14) < 0x11c) || (0x11f < *(int *)(param_1 + 0x14))) {
+    FUN_004a2060();
+    *(undefined4 *)(param_1 + 0xcf) = 0x50000;
+    *(undefined4 *)(param_1 + 0xcb) = 0x50000;
+  }
+  else {
+    *(undefined4 *)(param_1 + 0xcf) = 0x1e0000;
+    *(undefined4 *)(param_1 + 0xcb) = 0x1e0000;
+  }
+  if (DAT_0051ac70 != 0) {
+    *(undefined4 *)(param_1 + 0xcb) = 0;
+  }
+  (&DAT_0057f768)[param_2] = param_1;
+  *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) | 1;
+  return 1;
+}
+
+################################ 0x0049dd20 ################################
+// ===========================================
+// Ghidra:    FUN_0049dd20
+// Address:   0x0049dd20
+// Signature: undefined FUN_0049dd20(void)
+// Callers:   3  |  Callees: 1
+// ===========================================
+void FUN_0049dd20(undefined4 param_1)
+{
+  FUN_0049dbb0(param_1);
+  return;
+}

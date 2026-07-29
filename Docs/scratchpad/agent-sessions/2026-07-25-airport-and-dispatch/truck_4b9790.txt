@@ -1,0 +1,49 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b9790
+// Address:   0x004b9790
+// Signature: undefined FUN_004b9790(void)
+// Callers:   0  |  Callees: 5
+// ===========================================
+undefined4 __fastcall FUN_004b9790(int param_1)
+{
+  short sVar1;
+  int iVar2;
+  int local_c;
+  int local_8;
+  int local_4;
+  
+  if ((*(byte *)(param_1 + 0x2b1) & 0x10) != 0) {
+    return 1;
+  }
+  if (*(int *)(param_1 + 0x2b4) == 0) {
+    if (*(int *)(param_1 + 0x2b8) == 0) {
+      return 0;
+    }
+    iVar2 = FUN_004a5dd0(*(int *)(param_1 + 0x2b8),*(undefined4 *)(param_1 + 700),param_1 + 0x18,
+                         param_1 + 0x2c0);
+    if (iVar2 == 0) goto LAB_004b97f1;
+    sVar1 = FUN_004b9890(*(undefined2 *)(param_1 + 0x12d));
+    if (sVar1 == 0) {
+      return 0;
+    }
+  }
+  else {
+    iVar2 = FUN_004a5ca0(*(int *)(param_1 + 0x2b4),*(undefined4 *)(param_1 + 700),param_1 + 0x18,
+                         param_1 + 0x2c0);
+    if (iVar2 == 0) goto LAB_004b97f1;
+    sVar1 = FUN_004b9890(*(undefined2 *)(param_1 + 0x12d));
+    if (sVar1 == 0) {
+      return 0;
+    }
+  }
+  FUN_004b9b10();
+LAB_004b97f1:
+  local_c = DAT_0061a6ac - *(int *)(param_1 + 0x30);
+  local_8 = DAT_0061a6b0 - *(int *)(param_1 + 0x34);
+  local_4 = DAT_0061a6b4 - *(int *)(param_1 + 0x38);
+  iVar2 = FUN_00468220(&local_c);
+  if (iVar2 < DAT_0057f750) {
+    DAT_0057f750 = iVar2;
+  }
+  return 1;
+}

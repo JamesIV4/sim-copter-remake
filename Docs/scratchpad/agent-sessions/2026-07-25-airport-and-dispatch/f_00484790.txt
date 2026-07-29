@@ -1,0 +1,304 @@
+﻿// ===========================================
+// Ghidra:    FUN_00484790
+// Address:   0x00484790
+// Signature: undefined FUN_00484790(void)
+// Callers:   3  |  Callees: 7
+// ===========================================
+
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+
+
+void FUN_00484790(int *param_1,uint param_2,uint param_3)
+
+
+
+{
+
+  int iVar1;
+
+  int iVar2;
+
+  int iVar3;
+
+  int *piVar4;
+
+  int *piVar5;
+
+  int *piVar6;
+
+  int iVar7;
+
+  
+
+  iVar1 = *param_1;
+
+  iVar7 = 0;
+
+  piVar6 = &DAT_005040a8;
+
+  do {
+
+    if (*piVar6 == 0) {
+
+      (&DAT_005040a8)[iVar7] = param_1;
+
+      break;
+
+    }
+
+    piVar6 = piVar6 + 1;
+
+    iVar7 = iVar7 + 1;
+
+  } while (piVar6 < &DAT_005040d0);
+
+  iVar7 = (&DAT_005d9200)[(param_2 & 0xff) * 0x100 + (param_3 & 0xff)];
+
+  *(int *)(param_1[0x29] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x29] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x29] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  FUN_0046cad1(param_1[0x29] + 0x24);
+
+  *(int *)(param_1[0x28] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x28] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x28] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  FUN_0046cad1(param_1[0x28] + 0x24);
+
+  iVar2 = param_1[0x29];
+
+  iVar3 = param_1[0x2e];
+
+  *(undefined4 *)(iVar3 + 0x18) = *(undefined4 *)(iVar2 + 0x18);
+
+  *(undefined4 *)(iVar3 + 0x1c) = *(undefined4 *)(iVar2 + 0x1c);
+
+  *(undefined4 *)(iVar3 + 0x20) = *(undefined4 *)(iVar2 + 0x20);
+
+  FUN_0046cad1(param_1[0x2e] + 0x24);
+
+  *(int *)(param_1[0x2f] + 0x18) = *(int *)(param_1[0x29] + 0x18) + *(int *)param_1[99];
+
+  *(int *)(param_1[0x2f] + 0x1c) = *(int *)(param_1[99] + 4) + *(int *)(param_1[0x29] + 0x1c);
+
+  piVar6 = param_1 + 0x65;
+
+  *(int *)(param_1[0x2f] + 0x20) = *(int *)(param_1[0x29] + 0x20) + *(int *)(param_1[99] + 8);
+
+  piVar4 = (int *)param_1[99];
+
+  piVar5 = (int *)param_1[100];
+
+  *piVar6 = *piVar5 - *piVar4;
+
+  param_1[0x66] = piVar5[1] - piVar4[1];
+
+  param_1[0x67] = piVar5[2] - piVar4[2];
+
+  FUN_00467a80(piVar6);
+
+  FUN_00467f30(param_1[0x2f] + 0x24,piVar6);
+
+  *(int *)(param_1[0x30] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x30] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x30] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  FUN_0046cad1(param_1[0x30] + 0x24);
+
+  *(int *)(param_1[0x2a] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x2a] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x2a] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  FUN_0046cad1(param_1[0x2a] + 0x24);
+
+  *(int *)(param_1[0x2b] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x2b] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x2b] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  FUN_0046cad1(param_1 + 8);
+
+  *(int *)(param_1[0x31] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x31] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x31] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  *(int *)(param_1[0x2c] + 0x18) = (int)*(short *)(iVar7 + 2) << 0x10;
+
+  *(int *)(param_1[0x2c] + 0x1c) = (int)*(short *)(iVar7 + 4) << 0x10;
+
+  *(int *)(param_1[0x2c] + 0x20) = (int)*(short *)(iVar7 + 6) << 0x10;
+
+  FUN_0046cad1(param_1 + 0x18);
+
+  iVar2 = param_1[0x2b];
+
+  iVar3 = param_1[0x2d];
+
+  *(undefined4 *)(iVar3 + 0x18) = *(undefined4 *)(iVar2 + 0x18);
+
+  *(undefined4 *)(iVar3 + 0x1c) = *(undefined4 *)(iVar2 + 0x1c);
+
+  *(undefined4 *)(iVar3 + 0x20) = *(undefined4 *)(iVar2 + 0x20);
+
+  *(int *)param_1[0x29] = param_1[0x2b];
+
+  *(int *)param_1[0x2b] = param_1[0x2c];
+
+  *(int *)param_1[0x2c] = param_1[0x2d];
+
+  *(int *)param_1[0x2d] = param_1[0x2a];
+
+  *(int *)param_1[0x2a] = param_1[0x2e];
+
+  *(int *)param_1[0x2e] = param_1[0x2f];
+
+  *(int *)param_1[0x2f] = param_1[0x28];
+
+  *(int *)param_1[0x28] = param_1[0x30];
+
+  *(int *)param_1[0x30] = param_1[0x31];
+
+  *(undefined4 *)param_1[0x31] = *(undefined4 *)(iVar7 + 0x10);
+
+  *(int *)(iVar7 + 0x10) = param_1[0x29];
+
+  *(int *)(param_1[0x29] + 4) = param_1[0x2b];
+
+  *(int *)(param_1[0x2b] + 4) = param_1[0x2c];
+
+  *(int *)(param_1[0x2c] + 4) = param_1[0x2d];
+
+  *(int *)(param_1[0x2d] + 4) = param_1[0x2a];
+
+  *(int *)(param_1[0x2a] + 4) = param_1[0x2e];
+
+  *(int *)(param_1[0x2e] + 4) = param_1[0x2f];
+
+  *(int *)(param_1[0x2f] + 4) = param_1[0x28];
+
+  *(int *)(param_1[0x28] + 4) = param_1[0x30];
+
+  *(int *)(param_1[0x30] + 4) = param_1[0x31];
+
+  *(undefined4 *)(param_1[0x31] + 4) = 0;
+
+  param_1[6] = (int)(short)param_2;
+
+  param_1[4] = (int)(short)param_2;
+
+  param_1[0x40] = 0;
+
+  param_1[0x42] = 0x10000;
+
+  param_1[7] = (int)(short)param_3;
+
+  param_1[5] = (int)(short)param_3;
+
+  param_1[0x41] = 0;
+
+  _DAT_0057f23c = FUN_0046cd20(DAT_005039ac,6);
+
+  param_1[0x38] = 0;
+
+  param_1[0x39] = 0;
+
+  param_1[0x3a] = 0;
+
+  param_1[1] = 0;
+
+  param_1[0x56] = 0;
+
+  param_1[0x55] = 1;
+
+  param_1[0x6f] = 0;
+
+  param_1[0x47] = 0;
+
+  param_1[0x4c] = 0;
+
+  param_1[0x4e] = 0;
+
+  param_1[0x43] = 0;
+
+  param_1[0x45] = 0;
+
+  param_1[0x46] = 0;
+
+  param_1[0x44] = 0;
+
+  param_1[0x57] = 0;
+
+  param_1[0x36] = 0x10000;
+
+  param_1[0x3b] = 0x10000;
+
+  param_1[0x53] = 1;
+
+  param_1[0x34] = *(int *)(&DAT_0050412c + iVar1 * 0x5c);
+
+  param_1[0xcc] = *(int *)(&DAT_00504120 + iVar1 * 0x5c);
+
+  param_1[0xcd] = 0;
+
+  param_1[0x35] = 0;
+
+  param_1[0x54] = 0;
+
+  param_1[0x52] = 0;
+
+  param_1[3] = 0;
+
+  param_1[0x72] = 0;
+
+  param_1[0x73] = 0;
+
+  param_1[0x74] = 0;
+
+  param_1[0x70] = 1;
+
+  param_1[0x6f] = 0x11;
+
+  param_1[0x71] = 1;
+
+  FUN_0046f610(*(undefined4 *)(param_1[0x2e] + 8),1);
+
+  FUN_0046f610(*(undefined4 *)(param_1[0x2f] + 8),1);
+
+  FUN_0048bf60(param_1 + 0x75,*param_1);
+
+  param_1[2] = param_1[2] | 2;
+
+  if (*param_1 == 2) {
+
+    DAT_00504084 = 1;
+
+  }
+
+  if ((*(byte *)(param_1 + 2) & 1) != 0) {
+
+    FUN_0047ae30();
+
+  }
+
+  return;
+
+}
+
+
+
+

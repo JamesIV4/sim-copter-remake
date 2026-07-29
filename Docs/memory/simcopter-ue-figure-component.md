@@ -1,11 +1,6 @@
----
-name: simcopter-ue-figure-component
-description: "Phase 3 done: UE5 renders original privanim figures for pedestrians (reader + builder + agent integration); Z byte is screen-space y-down (negate for UE); unity builds disabled"
-metadata: 
-  node_type: memory
-  type: project
-  originSessionId: ac7bbbd4-fa8e-4787-8737-b11dd7d4b850
----
+﻿# SimCopter ue figure component
+
+*Phase 3 done: UE5 renders original privanim figures for pedestrians (reader + builder + agent integration); Z byte is screen-space y-down (negate for UE); unity builds disabled*
 
 Phase 3 (original pedestrian look) shipped 2026-07-01:
 - `Source/.../Formats/SimCopterPrivAnimReader.{h,cpp}` - pure C++ privanim.df parser (mirrors

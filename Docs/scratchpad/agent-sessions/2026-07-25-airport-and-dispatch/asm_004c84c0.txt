@@ -1,0 +1,6 @@
+004c84c0 MOV AX,word ptr [ECX + 0x17a]
+004c84c7 MOV EDX,dword ptr [ECX + 0x126]
+004c84cd PUSH EAX
+004c84ce PUSH EDX
+004c84cf CALL 0x004ce6c0
+004c84d4 RET
