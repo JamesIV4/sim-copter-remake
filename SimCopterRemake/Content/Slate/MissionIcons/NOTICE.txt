@@ -8,5 +8,6 @@ The SVG geometry is from that package. The files were modified only to set a whi
 so Unreal's Slate renderer can apply the mission-tag tint.
 The matching *_shadow.png files are locally generated, blurred alpha masks derived from those
 SVGs for the mission-tag presentation.
+label_accent_glow.png is a locally generated alpha gradient used by the mission-tag label.
 
 The icons are provided under the Apache License, Version 2.0. See LICENSE.txt.

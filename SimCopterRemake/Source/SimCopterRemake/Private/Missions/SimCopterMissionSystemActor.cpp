@@ -165,6 +165,22 @@ const FSlateBrush* GetMissionMarkerIconShadowBrush(const FString& Label)
 	}
 	return Brush.Get();
 }
+
+const FSlateBrush* GetMissionMarkerAccentGlowBrush()
+{
+	static TSharedPtr<FSlateImageBrush> Brush;
+	if (!Brush.IsValid())
+	{
+		const FString GlowPath = FPaths::Combine(
+			FPaths::ProjectContentDir(),
+			TEXT("Slate/MissionIcons/label_accent_glow.png"));
+		Brush = MakeShared<FSlateImageBrush>(
+			GlowPath,
+			FVector2D(128.0f, 2.0f),
+			FLinearColor::White);
+	}
+	return Brush.Get();
+}
 }
 
 ASimCopterMissionSystemActor::ASimCopterMissionSystemActor()
@@ -3057,7 +3073,10 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 		const FString PlateText = FString::Printf(TEXT("%s / %s"), *Marker.Label, *DistanceText);
 		const FSlateBrush* IconBrush = GetMissionMarkerIconBrush(Marker.Label);
 		const FSlateBrush* IconShadowBrush = GetMissionMarkerIconShadowBrush(Marker.Label);
+		const FSlateBrush* AccentGlowBrush = GetMissionMarkerAccentGlowBrush();
 		const float ForegroundOpacity = bClamped ? 0.70f : 1.0f;
+		FLinearColor AccentGlowColor = Marker.Color;
+		AccentGlowColor.A *= ForegroundOpacity;
 
 		MissionMarkerCanvas->AddSlot()
 		.Offset(FMargin(DrawPosition.X, DrawPosition.Y, ClampedMarkerSize.X, ClampedMarkerSize.Y))
@@ -3114,19 +3133,52 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 						[
 							SNew(SBorder)
 							.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-							.BorderBackgroundColor(FLinearColor(0.38f, 0.49f, 0.51f, 0.82f * ForegroundOpacity))
+							.BorderBackgroundColor(FLinearColor(0.24f, 0.29f, 0.30f, 0.82f * ForegroundOpacity))
 							.Padding(FMargin(1.0f))
 							[
-								SNew(SBorder)
-								.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-								.BorderBackgroundColor(FLinearColor(0.035f, 0.075f, 0.085f, 0.90f * ForegroundOpacity))
-								.Padding(FMargin(4.0f, 1.0f))
+								SNew(SOverlay)
+								+ SOverlay::Slot()
 								[
-									SNew(STextBlock)
-									.Text(FText::FromString(PlateText))
-									.Justification(ETextJustify::Center)
-									.ColorAndOpacity(FLinearColor(0.95f, 0.975f, 0.98f, ForegroundOpacity))
-									.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 8))
+									SNew(SBorder)
+									.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+									.BorderBackgroundColor(FLinearColor(0.035f, 0.075f, 0.085f, 0.90f * ForegroundOpacity))
+									.Padding(FMargin(4.0f, 0.0f))
+									[
+										SNew(SBox)
+										.HAlign(HAlign_Fill)
+										.VAlign(VAlign_Center)
+										[
+											SNew(STextBlock)
+											.Text(FText::FromString(PlateText))
+											.Justification(ETextJustify::Center)
+											.ColorAndOpacity(FLinearColor(0.95f, 0.975f, 0.98f, ForegroundOpacity))
+											.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 8))
+										]
+									]
+								]
+								+ SOverlay::Slot()
+								.HAlign(HAlign_Fill)
+								.VAlign(VAlign_Top)
+								[
+									SNew(SBox)
+									.HeightOverride(1.0f)
+									[
+										SNew(SImage)
+										.Image(AccentGlowBrush)
+										.ColorAndOpacity(AccentGlowColor)
+									]
+								]
+								+ SOverlay::Slot()
+								.HAlign(HAlign_Fill)
+								.VAlign(VAlign_Bottom)
+								[
+									SNew(SBox)
+									.HeightOverride(1.0f)
+									[
+										SNew(SImage)
+										.Image(AccentGlowBrush)
+										.ColorAndOpacity(AccentGlowColor)
+									]
 								]
 							]
 						]
