@@ -464,6 +464,9 @@ private:
 	TSharedPtr<SWidget> MissionMarkerWidget;
 	TSharedPtr<SConstraintCanvas> MissionMarkerCanvas;
 	TArray<FSimCopterMedevacHandoff> MedevacHandoffs;
+	// Mission records clear their type when the casualty counter completes them. Keep the hospital
+	// tile until every real medevac seat (including a deceased patient) has been unloaded.
+	TMap<int32, FIntPoint> MedevacHospitalTiles;
 
 	TSharedPtr<SWidget> MegaphonePromptWidget;
 	TSharedPtr<STextBlock> MegaphonePromptText;

@@ -362,6 +362,22 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		{
 			ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
 				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+			const bool bDeadMedevacPatientAboard =
+				bMissionPatientDead &&
+				bClaimedPassengerSeat &&
+				int32(BehaviorContext.Attributes[EBhavAttr::State]) == 6 &&
+				Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()) != nullptr;
+			if (bDeadMedevacPatientAboard)
+			{
+				// Opcode 66 normally asks the population layer to recycle the dead person. A
+				// medevac body already in the cabin is still owned by that real passenger seat:
+				// keep both until the hospital paramedic visibly removes them.
+				BehaviorContext.bRequestDespawn = false;
+				bBehaviorActive = false;
+				bBehaviorMoveSuspended = true;
+				SetActorHiddenInGame(true);
+				return;
+			}
 			const bool bUnresolvedMissionPerson =
 				MissionEventId != INDEX_NONE &&
 				!bMissionResolutionReported &&
@@ -1673,10 +1689,19 @@ void ASimCopterGroundAgent::ThrowProjectileAtSelection(FSimCopterPersonContext& 
 bool ASimCopterGroundAgent::BeginFallAndDie(FSimCopterPersonContext& Context)
 {
 	// FUN_004cbbc0's terminal arm: come off whatever is holding you, land, post EVT_PersonDied and
-	// hold the "Dead" pose.
-	AlightFromCarrier();
+	// hold the "Dead" pose. The literal detach is not allowed to discard a medevac body already
+	// inside the cabin: its real actor and seat stay paired until the hospital handoff takes it.
+	const bool bDeadMedevacPatientAboard =
+		MissionEventId != INDEX_NONE &&
+		int32(Context.Attributes[EBhavAttr::State]) == 6 &&
+		bClaimedPassengerSeat &&
+		Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()) != nullptr;
+	if (!bDeadMedevacPatientAboard)
+	{
+		AlightFromCarrier();
+	}
 	PostMissionOutcome(Context, 10);
-	SetMissionInjuredPose();
+	SetMissionDeadPose();
 	return true;
 }
 
@@ -2457,6 +2482,7 @@ void ASimCopterGroundAgent::ClearForcedPedestrianFigureClip()
 
 void ASimCopterGroundAgent::SetMissionInjuredPose()
 {
+	bMissionPatientDead = false;
 	bMissionStationary = true;
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
@@ -2494,10 +2520,42 @@ void ASimCopterGroundAgent::SetMissionInjuredPose()
 	}
 }
 
+void ASimCopterGroundAgent::SetMissionDeadPose()
+{
+	bMissionPatientDead = true;
+	bMissionStationary = true;
+	bMissionCarried = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	ClearMoveTarget();
+	bBehaviorActive = false;
+
+	const bool bAboardCabin =
+		bClaimedPassengerSeat &&
+		Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()) != nullptr;
+	bBehaviorMoveSuspended = bAboardCabin;
+	bSnapToGround = !bAboardCabin;
+	SetActorEnableCollision(!bAboardCabin);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(
+			bAboardCabin ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryAndPhysics);
+	}
+	SetForcedPedestrianFigureClip(TEXT("Dead"));
+
+	if (!bUsingPedestrianFigure && VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeRotation(FRotator(0.0f, 0.0f, 86.0f));
+	}
+}
+
 void ASimCopterGroundAgent::ClearMissionPose()
 {
 	bMissionStationary = false;
 	bMissionWavesWhenIdle = false;
+	bMissionPatientDead = false;
 	// Back on the map, so back in everyone else's object searches.
 	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
 	bMissionCarried = false;

@@ -192,6 +192,9 @@ public:
 		const FVector& WorldLocation,
 		int32 State,
 		float RadiusCm) const;
+	// Keep a real state-5 medic on this D1 hospital roof for mission service. Unlike an ambient
+	// scan this bypasses the crowd cap and marks the worker as distance-persistent.
+	ASimCopterGroundAgent* EnsureHospitalParamedicAtTile(int32 TileX, int32 TileY);
 
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
@@ -820,7 +823,9 @@ public:
 		int32 ClothesOffset,
 		// Drops the person onto the top of the building instead of finding open ground beside it -
 		// the hospital paramedic and the aerial cop wait on their helipad.
-		bool bPlaceOnBuildingRoof = false);
+		bool bPlaceOnBuildingRoof = false,
+		// Mission service points cannot disappear merely because the ambient crowd budget is full.
+		bool bBypassPopulationCap = false);
 	bool TryResolvePedestrianNodeForTile(int32 TileX, int32 TileY, int32& OutNodeIndex) const;
 	bool IsOriginalAmbientTileGateOpen(int32 TileX, int32 TileY) const;
 	bool HasAmbientPedestrianNearTile(int32 TileX, int32 TileY, float RadiusTiles) const;
