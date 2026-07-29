@@ -554,11 +554,20 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	if (ModelMaterialFinder.Succeeded())
 	{
 		ModelVertexColorMaterial = ModelMaterialFinder.Object;
+	}
+
+	// The stock cylinder has no authored vertex colour, so the shared vertex-colour material
+	// rendered the rope as a bright placeholder. The original winch line reads as black.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> RopeMaterialFinder(
+		TEXT("/Engine/EngineDebugMaterials/BlackUnlitMaterial.BlackUnlitMaterial"));
+	if (RopeMaterialFinder.Succeeded())
+	{
+		RopeMeshComponent->SetMaterial(0, RopeMaterialFinder.Object);
 		for (USplineMeshComponent* Segment : RopeSegmentComponents)
 		{
 			if (Segment != nullptr)
 			{
-				Segment->SetMaterial(0, ModelVertexColorMaterial);
+				Segment->SetMaterial(0, RopeMaterialFinder.Object);
 			}
 		}
 	}
