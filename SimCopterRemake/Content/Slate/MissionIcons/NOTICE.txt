@@ -1,0 +1,12 @@
+Mission marker icons are selected, unmodified SVGs from:
+
+  Material Design Icons
+  @material-design-icons/svg version 0.14.15
+  https://github.com/google/material-design-icons
+
+The SVG geometry is from that package. The files were modified only to set a white root fill
+so Unreal's Slate renderer can apply the mission-tag tint.
+The matching *_shadow.png files are locally generated, blurred alpha masks derived from those
+SVGs for the mission-tag presentation.
+
+The icons are provided under the Apache License, Version 2.0. See LICENSE.txt.

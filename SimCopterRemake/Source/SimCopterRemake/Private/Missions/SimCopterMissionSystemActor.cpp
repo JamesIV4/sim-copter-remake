@@ -15,6 +15,8 @@
 #include "Game/SimCopterCareerSubsystem.h"
 #include "UI/SimCopterHangarShop.h"
 #include "Audio.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
+#include "Brushes/SlateImageBrush.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
@@ -26,11 +28,13 @@
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Sound/SoundWave.h"
 #include "Styling/CoreStyle.h"
 #include "UObject/ConstructorHelpers.h"
 #include "CollisionQueryParams.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
@@ -92,10 +96,74 @@ bool IsValidMissionTile(int32 TileX, int32 TileY)
 	return TileX >= 0 && TileX < 128 && TileY >= 0 && TileY < 128;
 }
 
-FLinearColor WithAlpha(FLinearColor Color, float Alpha)
+FString FormatMissionMarkerDistance(float DistanceCm)
 {
-	Color.A = Alpha;
-	return Color;
+	const float DistanceMeters = FMath::Max(0.0f, DistanceCm) * 0.01f;
+	if (DistanceMeters < 1000.0f)
+	{
+		return FString::Printf(TEXT("%d M"), FMath::RoundToInt(DistanceMeters));
+	}
+
+	const float DistanceKilometers = DistanceMeters * 0.001f;
+	return DistanceKilometers < 10.0f
+		? FString::Printf(TEXT("%.1f KM"), DistanceKilometers)
+		: FString::Printf(TEXT("%.0f KM"), DistanceKilometers);
+}
+
+FName ResolveMissionMarkerIconName(const FString& Label)
+{
+	if (Label == TEXT("HANGAR")) return TEXT("warehouse");
+	if (Label == TEXT("TRANSPORT")) return TEXT("local_shipping");
+	if (Label == TEXT("DROPOFF")) return TEXT("flag");
+	if (Label == TEXT("PATIENT")) return TEXT("personal_injury");
+	if (Label == TEXT("HOSPITAL")) return TEXT("local_hospital");
+	if (Label == TEXT("RESCUE")) return TEXT("hail");
+	if (Label == TEXT("FIRE")) return TEXT("local_fire_department");
+	if (Label == TEXT("JAM")) return TEXT("traffic");
+	if (Label == TEXT("RIOT")) return TEXT("campaign");
+	if (Label == TEXT("SPEEDER")) return TEXT("directions_car");
+	if (Label == TEXT("TARGET")) return TEXT("my_location");
+	return TEXT("location_on");
+}
+
+const FSlateBrush* GetMissionMarkerIconBrush(const FString& Label)
+{
+	static TMap<FName, TSharedPtr<FSlateVectorImageBrush>> IconBrushes;
+
+	const FName IconName = ResolveMissionMarkerIconName(Label);
+	TSharedPtr<FSlateVectorImageBrush>& Brush = IconBrushes.FindOrAdd(IconName);
+	if (!Brush.IsValid())
+	{
+		const FString IconPath = FPaths::Combine(
+			FPaths::ProjectContentDir(),
+			TEXT("Slate/MissionIcons"),
+			IconName.ToString() + TEXT(".svg"));
+		Brush = MakeShared<FSlateVectorImageBrush>(
+			IconPath,
+			FVector2D(39.0f, 39.0f),
+			FLinearColor::White);
+	}
+	return Brush.Get();
+}
+
+const FSlateBrush* GetMissionMarkerIconShadowBrush(const FString& Label)
+{
+	static TMap<FName, TSharedPtr<FSlateImageBrush>> ShadowBrushes;
+
+	const FName IconName = ResolveMissionMarkerIconName(Label);
+	TSharedPtr<FSlateImageBrush>& Brush = ShadowBrushes.FindOrAdd(IconName);
+	if (!Brush.IsValid())
+	{
+		const FString ShadowPath = FPaths::Combine(
+			FPaths::ProjectContentDir(),
+			TEXT("Slate/MissionIcons"),
+			IconName.ToString() + TEXT("_shadow.png"));
+		Brush = MakeShared<FSlateImageBrush>(
+			ShadowPath,
+			FVector2D(43.0f, 43.0f),
+			FLinearColor::White);
+	}
+	return Brush.Get();
 }
 }
 
@@ -2948,8 +3016,28 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 	BuildMissionWorldMarkers(Markers);
 
 	const FVector2D ClampedMarkerSize(
-		FMath::Clamp(MissionMarkerSize.X, 36.0f, 220.0f),
-		FMath::Clamp(MissionMarkerSize.Y, 22.0f, 80.0f));
+		FMath::Clamp(MissionMarkerSize.X, 104.0f, 160.0f),
+		FMath::Clamp(MissionMarkerSize.Y, 63.0f, 88.0f));
+
+	FVector DistanceOrigin = FVector::ZeroVector;
+	bool bHasDistanceOrigin = false;
+	if (const UWorld* World = GetWorld())
+	{
+		if (const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(World, 0))
+		{
+			if (const APawn* PlayerPawn = PlayerController->GetPawn())
+			{
+				DistanceOrigin = PlayerPawn->GetActorLocation();
+				bHasDistanceOrigin = true;
+			}
+			else
+			{
+				FRotator UnusedRotation;
+				PlayerController->GetPlayerViewPoint(DistanceOrigin, UnusedRotation);
+				bHasDistanceOrigin = true;
+			}
+		}
+	}
 
 	for (const FSimCopterMissionWorldMarkerEntry& Marker : Markers)
 	{
@@ -2963,7 +3051,13 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 		const FVector2D DrawPosition(
 			ScreenPosition.X - ClampedMarkerSize.X * 0.5f,
 			ScreenPosition.Y - ClampedMarkerSize.Y * 0.5f);
-		const FLinearColor BackgroundColor = WithAlpha(Marker.Color, bClamped ? 0.72f : 0.86f);
+		const FString DistanceText = bHasDistanceOrigin
+			? FormatMissionMarkerDistance(FVector::Distance(DistanceOrigin, Marker.WorldLocation))
+			: TEXT("-- M");
+		const FString PlateText = FString::Printf(TEXT("%s / %s"), *Marker.Label, *DistanceText);
+		const FSlateBrush* IconBrush = GetMissionMarkerIconBrush(Marker.Label);
+		const FSlateBrush* IconShadowBrush = GetMissionMarkerIconShadowBrush(Marker.Label);
+		const float ForegroundOpacity = bClamped ? 0.70f : 1.0f;
 
 		MissionMarkerCanvas->AddSlot()
 		.Offset(FMargin(DrawPosition.X, DrawPosition.Y, ClampedMarkerSize.X, ClampedMarkerSize.Y))
@@ -2973,18 +3067,70 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 			.WidthOverride(ClampedMarkerSize.X)
 			.HeightOverride(ClampedMarkerSize.Y)
 			[
-				SNew(SBorder)
-				.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-				.BorderBackgroundColor(BackgroundColor)
-				.Padding(FMargin(7.0f, 3.0f))
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
 				[
-					SNew(STextBlock)
-					.Text(FText::FromString(Marker.Label))
-					.Justification(ETextJustify::Center)
-					.ColorAndOpacity(FLinearColor::White)
-					.ShadowOffset(FVector2D(1.0f, 1.0f))
-					.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.85f))
-					.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13))
+					SNew(SBox)
+					.WidthOverride(56.0f)
+					.HeightOverride(43.0f)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SImage)
+							.Image(IconShadowBrush)
+							.ColorAndOpacity(FLinearColor(0.01f, 0.018f, 0.022f, 0.34f * ForegroundOpacity))
+						]
+						+ SOverlay::Slot()
+						.HAlign(HAlign_Center)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SImage)
+							.Image(IconBrush)
+							.ColorAndOpacity(FLinearColor(0.78f, 0.84f, 0.85f, ForegroundOpacity))
+						]
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 0.0f))
+				[
+					SNew(SBox)
+					.HeightOverride(18.0f)
+					[
+						SNew(SOverlay)
+						+ SOverlay::Slot()
+						[
+							SNew(SBorder)
+							.BorderImage(FCoreStyle::Get().GetBrush(TEXT("BoxShadow")))
+							.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.30f * ForegroundOpacity))
+						]
+						+ SOverlay::Slot()
+						.Padding(FMargin(1.0f, 1.0f, 1.0f, 2.0f))
+						[
+							SNew(SBorder)
+							.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+							.BorderBackgroundColor(FLinearColor(0.38f, 0.49f, 0.51f, 0.82f * ForegroundOpacity))
+							.Padding(FMargin(1.0f))
+							[
+								SNew(SBorder)
+								.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+								.BorderBackgroundColor(FLinearColor(0.035f, 0.075f, 0.085f, 0.90f * ForegroundOpacity))
+								.Padding(FMargin(4.0f, 1.0f))
+								[
+									SNew(STextBlock)
+									.Text(FText::FromString(PlateText))
+									.Justification(ETextJustify::Center)
+									.ColorAndOpacity(FLinearColor(0.95f, 0.975f, 0.98f, ForegroundOpacity))
+									.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 8))
+								]
+							]
+						]
+					]
 				]
 			]
 		];
@@ -3066,11 +3212,11 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 				TransportOnboard);
 			if (TransportOnboard > 0 && bHasDropoff)
 			{
-				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("DROP"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
+				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("DROPOFF"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
 			}
 			else if (TransportWaiting > 0)
 			{
-				AddTileMarker(Record.TileX, Record.TileY, TEXT("PICKUP"), Record.Name, FLinearColor(0.08f, 0.46f, 0.95f, 1.0f));
+				AddTileMarker(Record.TileX, Record.TileY, TEXT("TRANSPORT"), Record.Name, FLinearColor(0.08f, 0.46f, 0.95f, 1.0f));
 			}
 			continue;
 		}
@@ -3079,7 +3225,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 		{
 			if (bPickedUpAnyPassenger && bHasDropoff)
 			{
-				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("DROP"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
+				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("HOSPITAL"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
 			}
 			else
 			{
@@ -3139,7 +3285,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 					// one here ("FIRE", "JAM", "RIOT"). Progress is carried by colour instead:
 					// red = not lit yet, amber = marked and police can now stop it.
 					FSimCopterMissionWorldMarkerEntry Marker;
-					Marker.WorldLocation = CarWorld + FVector(0.0f, 0.0f, MissionMarkerWorldZOffsetCm);
+					Marker.WorldLocation = CarWorld;
 					Marker.Label = TEXT("SPEEDER");
 					Marker.Detail = Record.Name;
 					Marker.Color = SpotlightMark > 0
@@ -3177,7 +3323,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 		for (const FVector& CarWorld : StoppedSpeeders)
 		{
 			FSimCopterMissionWorldMarkerEntry Marker;
-			Marker.WorldLocation = CarWorld + FVector(0.0f, 0.0f, MissionMarkerWorldZOffsetCm);
+			Marker.WorldLocation = CarWorld;
 			Marker.Label = TEXT("SPEEDER");
 			Marker.Detail = TEXT("Stopped");
 			Marker.Color = FLinearColor(0.05f, 0.72f, 0.32f, 1.0f);
@@ -3197,7 +3343,6 @@ bool ASimCopterMissionSystemActor::TryMakeMissionMarkerWorldLocation(int32 TileX
 	{
 		if (TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, OutWorldLocation))
 		{
-			OutWorldLocation.Z += MissionMarkerWorldZOffsetCm;
 			return true;
 		}
 	}
@@ -3220,10 +3365,8 @@ bool ASimCopterMissionSystemActor::ProjectMissionMarkerToScreen(const FVector& W
 		return false;
 	}
 
-	int32 ViewportX = 0;
-	int32 ViewportY = 0;
-	PlayerController->GetViewportSize(ViewportX, ViewportY);
-	if (ViewportX <= 0 || ViewportY <= 0)
+	const FVector2D ViewportSize = UWidgetLayoutLibrary::GetViewportWidgetGeometry(World).GetLocalSize();
+	if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
 	{
 		return false;
 	}
@@ -3238,15 +3381,22 @@ bool ASimCopterMissionSystemActor::ProjectMissionMarkerToScreen(const FVector& W
 	bool bProjected = false;
 	if (bInFront)
 	{
-		bProjected = PlayerController->ProjectWorldLocationToScreen(WorldLocation, ScreenPosition, true);
+		// MissionMarkerCanvas is a viewport Slate widget, so it needs DPI- and quality-scale-free
+		// widget coordinates. Feeding raw projected pixels into it makes the error grow farther
+		// from the upper-left corner.
+		bProjected = UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+			PlayerController,
+			WorldLocation,
+			ScreenPosition,
+			false);
 	}
 
 	if (!bProjected)
 	{
-		const FVector2D ViewCenter(float(ViewportX) * 0.5f, float(ViewportY) * 0.5f);
+		const FVector2D ViewCenter = ViewportSize * 0.5f;
 		if (bInFront)
 		{
-			const float Aspect = FMath::Max(float(ViewportX) / FMath::Max(1.0f, float(ViewportY)), 0.01f);
+			const float Aspect = FMath::Max(ViewportSize.X / FMath::Max(1.0f, ViewportSize.Y), 0.01f);
 			const float FovDeg = PlayerController->PlayerCameraManager != nullptr ? PlayerController->PlayerCameraManager->GetFOVAngle() : 90.0f;
 			const float TanHalfHorizontalFov = FMath::Tan(FMath::DegreesToRadians(FMath::Clamp(FovDeg, 5.0f, 170.0f) * 0.5f));
 			const float TanHalfVerticalFov = TanHalfHorizontalFov / Aspect;
@@ -3264,22 +3414,27 @@ bool ASimCopterMissionSystemActor::ProjectMissionMarkerToScreen(const FVector& W
 				Direction = FVector2D(0.0f, 1.0f);
 			}
 			Direction.Normalize();
-			ScreenPosition = ViewCenter + Direction * FMath::Max(float(ViewportX), float(ViewportY));
+			ScreenPosition = ViewCenter + Direction * FMath::Max(ViewportSize.X, ViewportSize.Y);
 		}
 	}
 
 	const FVector2D ClampedMarkerSize(
-		FMath::Clamp(MissionMarkerSize.X, 36.0f, 220.0f),
-		FMath::Clamp(MissionMarkerSize.Y, 22.0f, 80.0f));
+		FMath::Clamp(MissionMarkerSize.X, 104.0f, 160.0f),
+		FMath::Clamp(MissionMarkerSize.Y, 63.0f, 88.0f));
+	// Project the true objective/car location, then lift only the panel. This keeps its horizontal
+	// center locked to the area regardless of distance, camera pitch, or helicopter bank.
+	const FVector2D DesiredMarkerCenter(
+		ScreenPosition.X,
+		ScreenPosition.Y - ClampedMarkerSize.Y * 0.5f - MissionMarkerScreenOffset);
 	const float MinX = MissionMarkerEdgePadding + ClampedMarkerSize.X * 0.5f;
-	const float MaxX = float(ViewportX) - MissionMarkerEdgePadding - ClampedMarkerSize.X * 0.5f;
+	const float MaxX = ViewportSize.X - MissionMarkerEdgePadding - ClampedMarkerSize.X * 0.5f;
 	const float MinY = MissionMarkerEdgePadding + ClampedMarkerSize.Y * 0.5f;
-	const float MaxY = float(ViewportY) - MissionMarkerEdgePadding - ClampedMarkerSize.Y * 0.5f;
+	const float MaxY = ViewportSize.Y - MissionMarkerEdgePadding - ClampedMarkerSize.Y * 0.5f;
 	const FVector2D ClampedPosition(
-		FMath::Clamp(ScreenPosition.X, MinX, MaxX),
-		FMath::Clamp(ScreenPosition.Y, MinY, MaxY));
+		FMath::Clamp(DesiredMarkerCenter.X, MinX, MaxX),
+		FMath::Clamp(DesiredMarkerCenter.Y, MinY, MaxY));
 
-	bOutClamped = !bInFront || FVector2D::Distance(ScreenPosition, ClampedPosition) > 0.5f;
+	bOutClamped = !bInFront || FVector2D::Distance(DesiredMarkerCenter, ClampedPosition) > 0.5f;
 	OutScreenPosition = ClampedPosition;
 	return true;
 }
