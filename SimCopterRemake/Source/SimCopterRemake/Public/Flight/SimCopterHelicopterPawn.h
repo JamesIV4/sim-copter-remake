@@ -19,6 +19,7 @@ struct FSimCopterPreparedHelicopterModel;
 class UCameraComponent;
 class UCapsuleComponent;
 class UMaterialInterface;
+class UMaterialInstanceDynamic;
 class UProceduralMeshComponent;
 class USceneComponent;
 class USplineMeshComponent;
@@ -43,7 +44,9 @@ enum class ESimCopterCameraMode : uint8
 {
 	Chase,
 	Orbit,
-	Rescue
+	Rescue,
+	// First person from the pilot's seat: no boom, and a crosshair for aiming the tools.
+	Cockpit
 };
 
 // Persistent developer adjustment layered over one of the three normal camera views.
@@ -495,9 +498,22 @@ public:
 	void SetCameraViewDebugTranslation(ESimCopterCameraMode Mode, const FVector& TranslationCm);
 	void SetCameraViewDebugRotation(ESimCopterCameraMode Mode, const FRotator& RotationDeg);
 	void SetCameraViewZoomVerticalFramingStrength(ESimCopterCameraMode Mode, float Strength);
+	float GetCameraViewMinZoomDistanceCm(ESimCopterCameraMode Mode) const;
 	float GetCameraViewMaxZoomDistanceCm(ESimCopterCameraMode Mode) const;
 	void SetCameraViewMaxZoomDistanceCm(ESimCopterCameraMode Mode, float DistanceCm);
 	void ResetCameraViewDebugOffset(ESimCopterCameraMode Mode);
+
+	float GetCockpitAttitudeFollowStrength() const { return CockpitAttitudeFollowStrength; }
+	void SetCockpitAttitudeFollowStrength(float Strength);
+	float GetCockpitAttitudeLerpSpeed() const { return CockpitAttitudeLerpSpeed; }
+	void SetCockpitAttitudeLerpSpeed(float Speed);
+	FVector GetCockpitCannonViewModelOffsetCm() const { return CockpitCannonViewModelOffsetCm; }
+	void SetCockpitCannonViewModelOffsetCm(const FVector& OffsetCm);
+
+	float GetRotorDiscOpacity() const { return RotorDiscOpacity; }
+	void SetRotorDiscOpacity(float Opacity);
+	FLinearColor GetRotorDiscColor() const { return RotorDiscColor; }
+	void SetRotorDiscColor(const FLinearColor& Color);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -528,6 +544,15 @@ protected:
 	// Original SimCopter tail rotor mesh (shared ROTORTL object); spun about its hub.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UProceduralMeshComponent> HeliTailRotorMeshComponent;
+
+	// Original SimCopter CANNON object (GEO id 0x16e), shown while the water cannon is fitted.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> HeliCannonMeshComponent;
+
+	// The same geometry again as a cockpit view model, carried by the camera rather than the
+	// airframe so it never moves in frame. Replaces the world cannon while in cockpit view.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> CockpitCannonMeshComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UStaticMeshComponent> RopeMeshComponent;
@@ -661,8 +686,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.0"))
 	float TailRotorSpeedMultiplier = 3.4f;
 
+	// Opacity of the spinning-rotor blur disc, written into M_SimCopterRotorDisc's DiscOpacity
+	// parameter. Adjustable live from the helicopter debug panel and persisted like the camera
+	// view offsets. Matches the material's authored default.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Model", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float RotorDiscAlphaScale = 0.5f;
+	float RotorDiscOpacity = 0.1f;
+
+	// Colour of the blur disc, written into the same material's DiscColor parameter. Alpha is
+	// unused - RotorDiscOpacity drives transparency.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Model")
+	FLinearColor RotorDiscColor = FLinearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light")
 	bool bSearchLightStartsEnabled = true;
@@ -803,6 +836,29 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraRecenterDelaySeconds = 1.0f;
 
+	// Cockpit view only. How much of the airframe's pitch/roll the eye adopts: 1 rides the
+	// model rigidly, lower keeps the horizon steadier than the aircraft actually is. Together
+	// with the lerp speed below this is the whole of the "artificial stabilization" - it is a
+	// camera filter, and the flight model, ModelPivot and every tool's aiming frame go on
+	// using the true attitude, so handling and aim never change with it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float CockpitAttitudeFollowStrength = 0.75f;
+
+	// How quickly the stabilized attitude catches up with the airframe. Lower is smoother and
+	// lags further behind.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float CockpitAttitudeLerpSpeed = 8.0f;
+
+	// Ceiling on the tilt the view will take, so an extreme attitude cannot roll the horizon
+	// past something readable.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0", ClampMax = "89.0"))
+	float CockpitAttitudeMaxDeg = 35.0f;
+
+	// Where the cockpit cannon view model sits in camera space: X forward, Y right, Z up, in
+	// centimetres from the eye. Adjustable live from the debug panel's CANNON VM row.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
+	FVector CockpitCannonViewModelOffsetCm = FVector(0.0f, 0.0f, -45.0f);
+
 	// Middle-drag pan rate, in centimetres of camera movement per unit of mouse travel. Mouse
 	// axes already arrive as per-frame deltas, so this is not scaled by delta time.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
@@ -909,6 +965,9 @@ protected:
 	bool bUsingOriginalHarnessMesh = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	bool bUsingOriginalCannonMesh = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelLoadError;
 
 	// Runtime type index; the registry entry is the source of truth for names, object ids,
@@ -929,6 +988,10 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> RotorDiscMaterial;
 
+	// Instance of the above, shared by both rotors, so DiscOpacity can be driven at runtime.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> RotorDiscMaterialInstance;
+
 private:
 	// The decompiled original flight simulation; the pawn feeds it inputs and
 	// city geometry and mirrors its position/attitude onto the actor.
@@ -945,11 +1008,14 @@ private:
 	float CurrentCameraGroundLiftCm = 0.0f;
 	float CurrentCameraPullInAlpha = 1.0f;
 	FRotator CurrentCameraAvoidanceOffsetDeg = FRotator::ZeroRotator;
+	// Damped, partial copy of the airframe's visual tilt; read only by the cockpit camera.
+	FRotator CockpitStabilizedAttitudeDeg = FRotator::ZeroRotator;
+	bool bCockpitStabilizedAttitudeInitialized = false;
 	float SmoothedCameraArmLengthCm = 0.0f;
 	FVector SmoothedCameraTranslationWorld = FVector::ZeroVector;
 	FRotator SmoothedCameraViewWorldRotation = FRotator::ZeroRotator;
 	bool bCameraViewSmoothingInitialized = false;
-	static constexpr int32 CameraModeCount = 3;
+	static constexpr int32 CameraModeCount = 4;
 	TStaticArray<FSimCopterCameraViewDebugOffset, CameraModeCount> CameraViewDebugOffsets;
 
 	// Middle-drag pan: how far the camera has been pushed along its own up axis, per view.
@@ -1059,6 +1125,8 @@ private:
 	TSharedPtr<STextBlock> WaterControlsText;
 	TSharedPtr<SWidget> HelicopterDebugPanelWidget;
 	TSharedPtr<SWidget> ToolFlapsWidget;
+	// Centre-screen aiming reticle, shown only in the views the player aims from.
+	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
 
@@ -1165,10 +1233,18 @@ private:
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
 	void UpdateVisuals(float DeltaSeconds);
+	void AdvanceCockpitStabilizedAttitude(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
+	void UpdateCockpitCannonViewModel(const FVector& CameraLocation, const FRotator& CameraRotation);
 	void UpdateCameraAnchorFromVisibleBody();
 	void LoadCameraViewDebugOffsets();
 	void SaveCameraViewDebugOffset(ESimCopterCameraMode Mode) const;
+	void LoadCockpitStabilization();
+	void SaveCockpitStabilization() const;
+	UMaterialInstanceDynamic* GetOrCreateRotorDiscMaterialInstance();
+	void ApplyRotorDiscAppearance();
+	void LoadRotorDiscAppearance();
+	void SaveRotorDiscAppearance() const;
 	void UpdateSearchLightEffect();
 
 	// Port of FUN_00489250: aim -> ray march -> smoothing -> band -> tile -> light node.
@@ -1211,6 +1287,9 @@ private:
 	void RefreshWaterControlsWidget();
 	void EnsureToolFlapsWidget();
 	void RemoveToolFlapsWidget();
+	void EnsureCrosshairWidget();
+	void RemoveCrosshairWidget();
+	void UpdateCrosshairVisibility();
 	void EnsureHelicopterDebugPanel();
 	void RemoveHelicopterDebugPanel();
 	// Ctrl+Alt+D. Keeps both developer overlays hidden across a re-possession.

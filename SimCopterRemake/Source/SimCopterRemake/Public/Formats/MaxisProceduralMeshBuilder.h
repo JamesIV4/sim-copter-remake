@@ -84,6 +84,11 @@ public:
 
 	// Same as above, but routes translucent (disc) faces into OutTranslucentSection instead of
 	// OutOpaqueSection. Pass a null OutTranslucentSection to keep all faces in OutOpaqueSection.
+	//
+	// bFirstTranslucentFaceOnly keeps just the first translucent face and drops the rest. Every
+	// rotor object in the GEO carries two type-11 polygons a few units apart in height (verified
+	// across all nine ROTR objects and ROTORTL), which blend into two visibly stacked circles
+	// here; keeping one draws the blur as a single disc.
 	static void BuildPaletteColoredSections(
 		const FMaxisMeshObject& Object,
 		const TArray<FColor>* ColorMap,
@@ -92,5 +97,6 @@ public:
 		bool bAddBackfaces,
 		const FLinearColor& FallbackColor,
 		FMaxisMeshSection& OutOpaqueSection,
-		FMaxisMeshSection* OutTranslucentSection);
+		FMaxisMeshSection* OutTranslucentSection,
+		bool bFirstTranslucentFaceOnly = false);
 };

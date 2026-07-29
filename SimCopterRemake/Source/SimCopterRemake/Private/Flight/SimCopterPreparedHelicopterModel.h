@@ -33,11 +33,15 @@ struct FSimCopterPreparedHelicopterModel
 	FMaxisMeshSection TailRotorDiscSection;
 	FMaxisMeshSection BucketSection;
 	FMaxisMeshSection HarnessSection;
+	// CANNON (0x16e). Authored in the same local frame as the fuselage, so it needs no mount
+	// offset - it rides the body component directly.
+	FMaxisMeshSection CannonSection;
 
 	bool bHasMainRotor = false;
 	bool bHasTailRotor = false;
 	bool bHasBucket = false;
 	bool bHasHarness = false;
+	bool bHasCannon = false;
 
 	// DAT_005040e4 + 0x2c..0x34 converted to the pawn's centimetre space.
 	FVector TailRotorOffsetCm = FVector::ZeroVector;

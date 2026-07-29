@@ -94,7 +94,21 @@ This is a **decompile-and-port** project, not a reimagining. When you touch port
 
 ## 6. Verifying in-game
 
-Pure logic → automation test. Anything visual or interactive → run it:
+**Don't.** Not as a routine step. Launching the game, driving the front end, boarding a
+helicopter and synthesizing input is slow, it takes over the machine's foreground window and
+keyboard while someone may be using it, and it is fragile: the front end and the possessed pawn
+are two different command scopes, centred panels move, and synthesized keys reach Slate and the
+console but *not* gameplay input, so most interactive checks cannot be driven from a script
+anyway.
+
+Default instead to: build clean, cover the logic with an automation test (§3), get ground truth
+from the decompile (§5) — then say plainly what you did *not* verify on screen and leave that
+last check to whoever is at the keyboard. "Built and unit-tested; not verified in-game" is a
+complete report, not an admission.
+
+Reserve an actual run for a genuinely complex problem that nothing cheaper can settle — a
+rendering or timing bug that only appears in a live city, say — and prefer to ask first. When it
+really is warranted:
 
 ```powershell
 Start-Process "C:\GameDev\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList `

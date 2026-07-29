@@ -418,7 +418,8 @@ void FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
 	bool bAddBackfaces,
 	const FLinearColor& FallbackColor,
 	FMaxisMeshSection& OutOpaqueSection,
-	FMaxisMeshSection* OutTranslucentSection)
+	FMaxisMeshSection* OutTranslucentSection,
+	bool bFirstTranslucentFaceOnly)
 {
 	OutOpaqueSection.Reset();
 	if (OutTranslucentSection != nullptr)
@@ -443,10 +444,16 @@ void FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
 		DefaultSmoothAngleDegrees,
 		CornerNormals);
 
+	bool bTranslucentFaceEmitted = false;
 	for (int32 FaceIndex = 0; FaceIndex < Object.Faces.Num(); ++FaceIndex)
 	{
 		const FMaxisMeshFace& Face = Object.Faces[FaceIndex];
 		const bool bTranslucent = OutTranslucentSection != nullptr && IsTranslucentFaceType(Face.FaceType);
+		if (bTranslucent && bFirstTranslucentFaceOnly && bTranslucentFaceEmitted)
+		{
+			continue;
+		}
+		bTranslucentFaceEmitted |= bTranslucent;
 		FMaxisMeshSection& Target = bTranslucent ? *OutTranslucentSection : OutOpaqueSection;
 		// The translucent disc is drawn with a two-sided material, so it needs no reversed
 		// backface triangles - adding them would double-blend the disc and make it look solid.
