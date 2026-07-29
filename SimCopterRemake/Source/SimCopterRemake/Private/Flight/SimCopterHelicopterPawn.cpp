@@ -579,6 +579,8 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterHelicopterPawn::Interact);
 	PlayerInputComponent->BindAction(TEXT("SimCopterCameraDrag"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartCameraDrag);
 	PlayerInputComponent->BindAction(TEXT("SimCopterCameraDrag"), IE_Released, this, &ASimCopterHelicopterPawn::StopCameraDrag);
+	PlayerInputComponent->BindAction(TEXT("SimCopterCameraPan"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartCameraPanDrag);
+	PlayerInputComponent->BindAction(TEXT("SimCopterCameraPan"), IE_Released, this, &ASimCopterHelicopterPawn::StopCameraPanDrag);
 	PlayerInputComponent->BindAction(TEXT("SimCopterCycleCamera"), IE_Pressed, this, &ASimCopterHelicopterPawn::CycleCameraMode);
 	PlayerInputComponent->BindAction(TEXT("SimCopterSearchLight"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleSearchLight);
 	PlayerInputComponent->BindAction(TEXT("SimCopterResetAircraft"), IE_Pressed, this, &ASimCopterHelicopterPawn::ResetAircraft);
@@ -2056,6 +2058,18 @@ void ASimCopterHelicopterPawn::StopCameraDrag()
 	bCameraDragActive = CameraDragButtonCount > 0;
 }
 
+void ASimCopterHelicopterPawn::StartCameraPanDrag()
+{
+	++CameraPanButtonCount;
+	bCameraPanDragActive = true;
+}
+
+void ASimCopterHelicopterPawn::StopCameraPanDrag()
+{
+	CameraPanButtonCount = FMath::Max(0, CameraPanButtonCount - 1);
+	bCameraPanDragActive = CameraPanButtonCount > 0;
+}
+
 void ASimCopterHelicopterPawn::ZoomCamera(float Value)
 {
 	if (!FMath::IsNearlyZero(Value))
@@ -2981,6 +2995,9 @@ void ASimCopterHelicopterPawn::SetCameraViewMaxZoomDistanceCm(
 void ASimCopterHelicopterPawn::ResetCameraViewDebugOffset(ESimCopterCameraMode Mode)
 {
 	CameraViewDebugOffsets[GetCameraModeIndex(Mode)] = GetDefaultCameraViewDebugOffset(Mode);
+	// Drop the session's middle-drag pan too, so the reset really does put the view back on its
+	// authored framing instead of leaving it offset by however far the pan was left.
+	CameraViewPanOffsetsCm[GetCameraModeIndex(Mode)] = 0.0f;
 	SaveCameraViewDebugOffset(Mode);
 	if (Mode == CameraMode)
 	{
@@ -4411,12 +4428,30 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	if (bCameraDragActive)
 	{
 		YawLookInput += MouseLookYawInput;
-		PitchLookInput += MouseLookPitchInput;
+		// A middle-drag in progress owns vertical mouse travel, so holding both buttons pans
+		// instead of doing both at once.
+		if (!bCameraPanDragActive)
+		{
+			PitchLookInput += MouseLookPitchInput;
+		}
 		CameraRecenterDelayRemaining = CameraRecenterDelaySeconds;
 	}
 	else if (CameraRecenterDelayRemaining > 0.0f)
 	{
 		CameraRecenterDelayRemaining = FMath::Max(0.0f, CameraRecenterDelayRemaining - DeltaSeconds);
+	}
+
+	// Middle-drag slides the camera along its own up axis, which walks the helicopter the
+	// other way up the screen. Mouse axes are already per-frame deltas, so this is not scaled
+	// by DeltaSeconds; the result is left exactly where the player dropped it (no recenter),
+	// separately per camera view and only for this session.
+	float& CameraViewPanOffsetCm = CameraViewPanOffsetsCm[GetCameraModeIndex(CameraMode)];
+	if (bCameraPanDragActive && !FMath::IsNearlyZero(MouseLookPitchInput))
+	{
+		CameraViewPanOffsetCm = FMath::Clamp(
+			CameraViewPanOffsetCm + MouseLookPitchInput * CameraPanCmPerMouseUnit,
+			-CameraPanMaxOffsetCm,
+			CameraPanMaxOffsetCm);
 	}
 
 	CameraYawOffsetDeg += YawLookInput * CameraYawSpeedDegPerSec * DeltaSeconds;
@@ -4529,6 +4564,12 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		CameraTranslationWorld,
 		LookCompensatedTranslationWorld,
 		ViewDebugOffset.ZoomVerticalFramingStrength);
+
+	// The pan offset is authored in camera space, so it needs no look compensation -- rotating
+	// it out of the view frame is what keeps it fixed on screen while the view turns. Scaling
+	// by the zoom ratio holds the same screen offset as the arm length changes.
+	CameraTranslationWorld += TargetCameraWorldRotation.RotateVector(
+		FVector(0.0f, 0.0f, CameraViewPanOffsetCm * ZoomDistanceRatio));
 
 	if (!bCameraViewSmoothingInitialized)
 	{
