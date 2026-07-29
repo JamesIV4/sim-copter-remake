@@ -545,7 +545,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
 	FString HelicopterTypeName = TEXT("Jet Ranger");
 
-	// Shows the tool/model debug panel in non-shipping builds. F1 toggles it in play.
+	// Shows the top-left developer panel and bottom-left tool readout. Ctrl+Alt+D toggles both.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
 	bool bShowHelicopterDebugPanel = true;
 
@@ -1110,7 +1110,7 @@ private:
 	void RemoveToolFlapsWidget();
 	void EnsureHelicopterDebugPanel();
 	void RemoveHelicopterDebugPanel();
-	// F1. Flips bShowHelicopterDebugPanel so the panel stays hidden across a re-possession.
+	// Ctrl+Alt+D. Keeps both developer overlays hidden across a re-possession.
 	void ToggleHelicopterDebugPanel();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;

@@ -311,13 +311,15 @@ private:
 	bool bShowMissionWorldMarkers = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI")
-	FVector2D MissionMarkerSize = FVector2D(88.0f, 32.0f);
+	FVector2D MissionMarkerSize = FVector2D(110.0f, 63.0f);
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "2000.0"))
-	float MissionMarkerWorldZOffsetCm = 950.0f;
+	// Lift the panel above the exact projected objective point in screen space. A world-space
+	// lift makes the tag slide sideways when the helicopter camera banks, especially nearby.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "64.0"))
+	float MissionMarkerScreenOffset = 4.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "128.0"))
-	float MissionMarkerEdgePadding = 18.0f;
+	float MissionMarkerEdgePadding = 9.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
 	float PassengerPickupRadiusCm = 780.0f;

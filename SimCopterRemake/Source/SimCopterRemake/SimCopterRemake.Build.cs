@@ -18,7 +18,7 @@ public class SimCopterRemake : ModuleRules
 		// buildings can be placed as removable instances instead of baked into one merged mesh.
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "ProceduralMeshComponent", "MeshDescription", "StaticMeshDescription" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG" });
 		
 		// Uncomment if you are using online features
 		// PrivateDependencyModuleNames.Add("OnlineSubsystem");

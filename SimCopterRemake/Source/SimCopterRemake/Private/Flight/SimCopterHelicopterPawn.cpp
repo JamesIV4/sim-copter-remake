@@ -469,9 +469,13 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindKey(EKeys::F4, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchPoliceKey);
 	PlayerInputComponent->BindKey(EKeys::F5, IE_Pressed, this, &ASimCopterHelicopterPawn::DispatchPoliceChaseKey);
 
-	// F1 shows and hides the developer panel. It starts visible, and the original binds nothing
-	// to F1, so the key is free.
-	PlayerInputComponent->BindKey(EKeys::F1, IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel);
+	// Keep the original function keys free for dispatch and put the developer overlays behind a
+	// deliberate chord that is unlikely to be pressed during flight.
+	PlayerInputComponent->BindKey(
+		FInputChord(EKeys::D, false, true, true, false),
+		IE_Pressed,
+		this,
+		&ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
@@ -1450,7 +1454,10 @@ void ASimCopterHelicopterPawn::RemoveDashboardWidget()
 
 void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 {
-	if (WaterControlsWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	if (!bShowHelicopterDebugPanel ||
+		WaterControlsWidget.IsValid() ||
+		GEngine == nullptr ||
+		GEngine->GameViewport == nullptr)
 	{
 		return;
 	}
@@ -1715,17 +1722,17 @@ void ASimCopterHelicopterPawn::RemoveToolFlapsWidget()
 
 void ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel()
 {
-#if !UE_BUILD_SHIPPING
 	bShowHelicopterDebugPanel = !bShowHelicopterDebugPanel;
 	if (bShowHelicopterDebugPanel)
 	{
+		EnsureWaterControlsWidget();
 		EnsureHelicopterDebugPanel();
 	}
 	else
 	{
+		RemoveWaterControlsWidget();
 		RemoveHelicopterDebugPanel();
 	}
-#endif
 }
 
 void ASimCopterHelicopterPawn::RemoveHelicopterDebugPanel()
