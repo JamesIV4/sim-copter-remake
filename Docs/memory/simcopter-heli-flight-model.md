@@ -42,6 +42,10 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
   5%/frame up, 10%/frame down; descend ramps −2×MaxDescent/s, floor −4×; **ceiling
   `DAT_0050404c` = 800 units AGL** — above it any collective sinks at MaxDescent.
   Autorotation: out of fuel, decelerating (`speedDelta<0`) offsets the sink.
+- **Which twk field ramps what** — the easiest thing to get wrong: pitch and slide keys
+  ramp at Ctrl6 **"SlideRate"**, *not* Ctrl3 PitchRate. PitchRate does nothing but shape
+  the shared EMA lag `N` above. Wiring the ramp to PitchRate looks plausible and flies
+  wrong.
 - **Pitch clamp extras**: positive climb impulse derates MaxPitch (down to ½); within
   150 units of ground a bonus up to MaxPitch/8 scales with height. Bank additionally
   clamps to |smoothedPitch| + 300 (30°).

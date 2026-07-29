@@ -1,0 +1,58 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b99c0
+// Address:   0x004b99c0
+// Signature: undefined FUN_004b99c0(void)
+// Callers:   1  |  Callees: 4
+// ===========================================
+undefined4 __fastcall FUN_004b99c0(int param_1)
+{
+  ushort *puVar1;
+  undefined4 *puVar2;
+  short sVar3;
+  int iVar4;
+  undefined1 local_26;
+  undefined1 local_25;
+  uint local_24;
+  uint local_20;
+  int local_1c;
+  int local_18;
+  int local_14;
+  
+  sVar3 = FUN_004c9df0(&local_24);
+  if (sVar3 == 0) {
+    return 0;
+  }
+  local_26 = (undefined1)local_24;
+  local_25 = (undefined1)local_20;
+  iVar4 = (&DAT_005d9200)[(local_24 & 0xff) * 0x100 + (local_20 & 0xff)];
+  local_1c = *(short *)(iVar4 + 2) * 0x10000 - *(int *)(param_1 + 0x30);
+  local_18 = *(short *)(iVar4 + 4) * 0x10000 - *(int *)(param_1 + 0x34);
+  local_14 = *(short *)(iVar4 + 6) * 0x10000 - *(int *)(param_1 + 0x38);
+  iVar4 = FUN_00467a80(&local_1c);
+  if (iVar4 < 0x1400000) {
+    FUN_004beda0(2);
+    *(int *)(param_1 + 700) = iVar4;
+    *(int *)(param_1 + 0x2c0) = local_1c;
+    *(int *)(param_1 + 0x2c4) = local_18;
+    *(int *)(param_1 + 0x2c8) = local_14;
+    do {
+      puVar2 = *(undefined4 **)
+                ((&DAT_005d9200)[(local_24 & 0xff) * 0x100 + (local_20 & 0xff)] + 0x10);
+      while (puVar2 != (undefined4 *)0x0) {
+        puVar1 = (ushort *)(puVar2 + 3);
+        if ((*puVar1 & 8) != 0) {
+          *(undefined4 **)(param_1 + 0x2b8) = puVar2;
+          return 1;
+        }
+        puVar2 = (undefined4 *)*puVar2;
+        if ((*puVar1 & 4) != 0) {
+          puVar2 = (undefined4 *)
+                   **(undefined4 **)**(undefined4 **)**(undefined4 **)**(undefined4 **)*puVar2;
+        }
+      }
+      iVar4 = FUN_004bedd0(&local_26);
+    } while (iVar4 != 0);
+    return 0;
+  }
+  return 0;
+}

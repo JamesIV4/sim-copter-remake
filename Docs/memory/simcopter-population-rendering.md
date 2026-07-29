@@ -1,11 +1,6 @@
----
-name: simcopter-population-rendering
-description: "How SimCopter renders cars (headlight beams) and people, and the ground-agent placement gotcha in the remake"
-metadata: 
-  node_type: memory
-  type: reference
-  originSessionId: 420dbcd0-b8c8-4faf-b9d6-ae9b6f48f81b
----
+﻿# SimCopter population rendering
+
+*How SimCopter renders cars (headlight beams) and people, and the ground-agent placement gotcha in the remake*
 
 Findings from dumping the `GEO/*.MAX` packs and the ground-population code on 2026-06-24. See [[simcopter-mesh-orientation-rules]] for the mesh format and [[simcopter-ghidra-workflow]] for the toolchain.
 

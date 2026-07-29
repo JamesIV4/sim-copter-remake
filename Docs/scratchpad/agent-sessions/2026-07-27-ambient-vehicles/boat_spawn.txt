@@ -1,0 +1,107 @@
+﻿// ===========================================
+// Ghidra:    FUN_004af6f0
+// Address:   0x004af6f0
+// Signature: undefined FUN_004af6f0(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+undefined4 * __thiscall
+FUN_004af6f0(undefined4 *param_1,undefined4 param_2,undefined4 param_3,int param_4)
+{
+  uint uVar1;
+  *param_1 = &PTR_LAB_004f4c80;
+  param_1[1] = 0;
+  *(undefined2 *)(param_1 + 2) = 0;
+  *(undefined1 *)((int)param_1 + 10) = 0;
+  *(undefined4 *)((int)param_1 + 0x87) = 0;
+  *(undefined4 *)((int)param_1 + 0x4f) = 0;
+  *(undefined4 *)((int)param_1 + 0xf) = 0;
+  *(undefined4 *)((int)param_1 + 0x2b) = 0;
+  *(undefined4 *)((int)param_1 + 0x2f) = 0;
+  *(undefined4 *)((int)param_1 + 0x33) = param_2;
+  *(undefined4 *)((int)param_1 + 0x37) = param_3;
+  *(undefined4 *)((int)param_1 + 0x3b) = param_2;
+  *(undefined4 *)((int)param_1 + 0x3f) = param_3;
+  *(undefined4 *)((int)param_1 + 0x43) = param_2;
+  *(undefined4 *)((int)param_1 + 0x47) = param_3;
+  uVar1 = _rand();
+  if (((short)((int)((uint)(ushort)((short)uVar1 >> 0xf) << 0x10 | uVar1 & 0xffff) % 100) < 100) &&
+     (*(undefined4 *)((int)param_1 + 0x7b) = 0x163, param_4 != 0)) {
+    *(undefined4 *)((int)param_1 + 0x7b) = 0x12f;
+  }
+  *(undefined4 *)((int)param_1 + 0x33) = param_2;
+  *(undefined4 *)((int)param_1 + 0x37) = param_3;
+  return param_1;
+}
+// ===========================================
+// Ghidra:    FUN_004b0100
+// Address:   0x004b0100
+// Signature: undefined FUN_004b0100(void)
+// Callers:   2  |  Callees: 0
+// ===========================================
+void __thiscall FUN_004b0100(int param_1,uint *param_2)
+{
+  int *piVar1;
+  int *piVar2;
+  if (((&DAT_005d9200)[(*param_2 & 0xff) * 0x100 + (param_2[1] & 0xff)] != 0) &&
+     (piVar2 = (int *)((&DAT_005d9200)[(*param_2 & 0xff) * 0x100 + (param_2[1] & 0xff)] + 0x10),
+     *piVar2 != 0)) {
+    while (piVar1 = (int *)*piVar2, param_1 - (int)piVar1 != -0x7f) {
+      piVar2 = piVar1;
+      if (*piVar1 == 0) {
+        return;
+      }
+    }
+    *piVar2 = *(int *)(param_1 + 0x7f);
+  }
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004b1040
+// Address:   0x004b1040
+// Signature: undefined FUN_004b1040(void)
+// Callers:   3  |  Callees: 0
+// ===========================================
+void __fastcall FUN_004b1040(int param_1)
+{
+  int *piVar1;
+  int *piVar2;
+  if (*(char *)(param_1 + 5) != '\0') {
+    if (((&DAT_005d9200)
+         [(*(uint *)(param_1 + 0x33) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x37) & 0xff)] != 0) &&
+       (piVar2 = (int *)((&DAT_005d9200)
+                         [(*(uint *)(param_1 + 0x33) & 0xff) * 0x100 +
+                          (*(uint *)(param_1 + 0x37) & 0xff)] + 0x10), *piVar2 != 0)) {
+      while (piVar1 = (int *)*piVar2, param_1 - (int)piVar1 != -0x7f) {
+        piVar2 = piVar1;
+        if (*piVar1 == 0) {
+          *(undefined1 *)(param_1 + 5) = 0;
+          return;
+        }
+      }
+      *piVar2 = *(int *)(param_1 + 0x7f);
+    }
+    *(undefined1 *)(param_1 + 5) = 0;
+  }
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004b00a0
+// Address:   0x004b00a0
+// Signature: undefined FUN_004b00a0(void)
+// ===========================================
+undefined4 __fastcall FUN_004b00a0(int param_1)
+{
+  byte bVar1;
+  uint uVar2;
+  uint uVar3;
+  uVar3 = *(int *)(param_1 + 0x97) + 0x20000000 >> 0x16;
+  uVar2 = 0x20000000 - *(int *)(param_1 + 0x9f) >> 0x16;
+  *(uint *)(param_1 + 0x3b) = uVar3;
+  *(uint *)(param_1 + 0x3f) = uVar2;
+  if ((((*(uint *)(param_1 + 0x33) != uVar3) || (*(uint *)(param_1 + 0x37) != uVar2)) &&
+      (bVar1 = *(byte *)((int)&DAT_005bde80 + (uVar2 & 0xff) + (uVar3 & 0xff) * 0x100), 4 < bVar1))
+     && (bVar1 < 10)) {
+    return 1;
+  }
+  return 0;
+}

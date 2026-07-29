@@ -1,0 +1,72 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b8470
+// Address:   0x004b8470
+// Signature: undefined FUN_004b8470(void)
+// Callers:   1  |  Callees: 4
+// ===========================================
+
+
+
+bool FUN_004b8470(undefined4 param_1)
+
+
+
+{
+
+  int iVar1;
+
+  undefined4 *puVar2;
+
+  int iVar3;
+
+  
+
+  puVar2 = (undefined4 *)FUN_004d28b0(0x13f);
+
+  if (puVar2 == (undefined4 *)0x0) {
+
+    puVar2 = (undefined4 *)0x0;
+
+  }
+
+  else {
+
+    FUN_0049b740();
+
+    *puVar2 = &PTR_FUN_004f4cd8;
+
+    puVar2[5] = 0x11e;
+
+  }
+
+  if (puVar2 != (undefined4 *)0x0) {
+
+    iVar3 = FUN_0049dd20(param_1);
+
+    iVar1 = DAT_0050637c;
+
+    if (iVar3 != 0) {
+
+      DAT_0050637c = DAT_0050637c + 1;
+
+      (&DAT_00582b08)[iVar1] = puVar2;
+
+      return puVar2 != (undefined4 *)0x0;
+
+    }
+
+    if (puVar2 != (undefined4 *)0x0) {
+
+      (**(code **)*puVar2)(1);
+
+    }
+
+  }
+
+  return false;
+
+}
+
+
+
+

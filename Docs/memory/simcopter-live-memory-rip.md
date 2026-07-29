@@ -1,11 +1,6 @@
----
-name: simcopter-live-memory-rip
-description: "How to read the live SimCopter process memory to validate decompiled structures, and the gotchas"
-metadata: 
-  node_type: memory
-  type: reference
-  originSessionId: ac7bbbd4-fa8e-4787-8737-b11dd7d4b850
----
+﻿# SimCopter live memory rip
+
+*How to read the live SimCopter process memory to validate decompiled structures, and the gotchas*
 
 Validated 2026-06-26 against the running game. The running `SimCopter.exe` (1.0.1.3, run from `D:\Downloads\SimCopter\Extracted\SIMCOPTER\`, patched by SimCopterX v17) is **byte-identical (same SHA-256) to `Reference/SimCopterOriginalGame/SimCopter.exe`** that was decompiled in Ghidra. So the Ghidra analysis IS the running build; SimCopterX patches in-memory (note the `.detour` section), base stays `0x400000`, no ASLR. See [[simcopter-ghidra-workflow]] and [[simcopter-population-rendering]].
 

@@ -16,6 +16,7 @@
 #include "UI/SimCopterHangarShop.h"
 #include "Audio.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
+#include "Brushes/SlateDynamicImageBrush.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
@@ -146,38 +147,52 @@ const FSlateBrush* GetMissionMarkerIconBrush(const FString& Label)
 	return Brush.Get();
 }
 
+// A loose .png on disk has to go through FSlateDynamicImageBrush. FSlateImageBrush is a *static*
+// brush: FSlateRHIResourceManager only ever resolves those against ResourceMap, which holds the
+// textures registered by a style set, so a raw file path finds nothing and the brush paints the
+// default white quad instead - the dark box that showed up behind the marker icons rather than a
+// shadow. Only vector brushes (the .svg icons) load straight off disk while static, because they
+// are rasterised through the vector graphics cache. Returns null when the file is missing; SImage
+// treats a null brush as "draw nothing", which is the right failure for a decoration.
+TSharedPtr<FSlateDynamicImageBrush> MakeMissionMarkerFileBrush(const FString& FilePath, const FVector2D& ImageSize)
+{
+	if (!FPaths::FileExists(FilePath))
+	{
+		return nullptr;
+	}
+	return MakeShared<FSlateDynamicImageBrush>(FName(*FilePath), ImageSize, FLinearColor::White);
+}
+
 const FSlateBrush* GetMissionMarkerIconShadowBrush(const FString& Label)
 {
-	static TMap<FName, TSharedPtr<FSlateImageBrush>> ShadowBrushes;
+	static TMap<FName, TSharedPtr<FSlateDynamicImageBrush>> ShadowBrushes;
 
 	const FName IconName = ResolveMissionMarkerIconName(Label);
-	TSharedPtr<FSlateImageBrush>& Brush = ShadowBrushes.FindOrAdd(IconName);
-	if (!Brush.IsValid())
+	if (const TSharedPtr<FSlateDynamicImageBrush>* Cached = ShadowBrushes.Find(IconName))
 	{
-		const FString ShadowPath = FPaths::Combine(
-			FPaths::ProjectContentDir(),
-			TEXT("Slate/MissionIcons"),
-			IconName.ToString() + TEXT("_shadow.png"));
-		Brush = MakeShared<FSlateImageBrush>(
-			ShadowPath,
-			FVector2D(43.0f, 43.0f),
-			FLinearColor::White);
+		return Cached->Get();
 	}
+
+	const FString ShadowPath = FPaths::Combine(
+		FPaths::ProjectContentDir(),
+		TEXT("Slate/MissionIcons"),
+		IconName.ToString() + TEXT("_shadow.png"));
+	const TSharedPtr<FSlateDynamicImageBrush> Brush = MakeMissionMarkerFileBrush(ShadowPath, FVector2D(43.0f, 43.0f));
+	ShadowBrushes.Add(IconName, Brush);
 	return Brush.Get();
 }
 
 const FSlateBrush* GetMissionMarkerAccentGlowBrush()
 {
-	static TSharedPtr<FSlateImageBrush> Brush;
-	if (!Brush.IsValid())
+	static bool bResolved = false;
+	static TSharedPtr<FSlateDynamicImageBrush> Brush;
+	if (!bResolved)
 	{
+		bResolved = true;
 		const FString GlowPath = FPaths::Combine(
 			FPaths::ProjectContentDir(),
 			TEXT("Slate/MissionIcons/label_accent_glow.png"));
-		Brush = MakeShared<FSlateImageBrush>(
-			GlowPath,
-			FVector2D(128.0f, 2.0f),
-			FLinearColor::White);
+		Brush = MakeMissionMarkerFileBrush(GlowPath, FVector2D(128.0f, 2.0f));
 	}
 	return Brush.Get();
 }

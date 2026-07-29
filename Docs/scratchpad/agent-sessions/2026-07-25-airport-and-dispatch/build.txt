@@ -1,0 +1,13 @@
+﻿Using bundled DotNet SDK version: 10.0 win-x64
+Running UnrealBuildTool: dotnet "..\..\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll" SimCopterRemakeEditor Win64 Development -Project=S:\Repos\sim-copter-remake\SimCopterRemake\SimCopterRemake.uproject -WaitMutex
+Log file: C:\Users\james\AppData\Local\UnrealBuildTool\Log.txt
+Determining max actions to execute in parallel (8 physical cores, 8 logical cores)
+  Executing up to 8 processes, one per physical core
+  Requested 1.5 GB memory per action, 9.01 GB available: limiting max parallel actions to 6
+Using 'git status' to determine working set for adaptive non-unity build (S:\Repos\sim-copter-remake).
+UbaServer - Listening on 0.0.0.0:1345
+Unable to build while Live Coding is active. Exit the editor and game, or press Ctrl+Alt+F11 if iterating on code in the editor or game
+
+Result: Failed (OtherCompilationError)
+Total execution time: 0.67 seconds
+Trace written to file C:\Users\james\AppData\Local\UnrealBuildTool\Trace.uba with size 2.5kb

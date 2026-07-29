@@ -1,0 +1,82 @@
+﻿// ===========================================
+// Ghidra:    FUN_004af220
+// Address:   0x004af220
+// Signature: undefined FUN_004af220(void)
+// Callers:   44  |  Callees: 5
+// ===========================================
+void FUN_004af220(uint param_1,undefined4 *param_2,undefined4 param_3)
+{
+  uint uVar1;
+  ushort uVar2;
+  int iVar3;
+  uint *puVar4;
+  undefined1 local_20 [16];
+  undefined4 local_10;
+  
+  iVar3 = 0;
+  puVar4 = &DAT_00581c68;
+  do {
+    if ((*puVar4 & 1) == 0) break;
+    iVar3 = iVar3 + 1;
+    puVar4 = puVar4 + 7;
+  } while (iVar3 < 100);
+  if (iVar3 == 100) {
+    return;
+  }
+  if (param_1 == 0) {
+    return;
+  }
+  FUN_0046f5a5(puVar4[4],local_20);
+  local_10 = param_3;
+  FUN_0046f5e1(puVar4[4],local_20);
+  *puVar4 = *puVar4 | 1;
+  puVar4[3] = param_1;
+  puVar4[2] = 0x20000;
+  uVar1 = puVar4[1];
+  *(undefined4 *)(uVar1 + 0x18) = *param_2;
+  *(undefined4 *)(uVar1 + 0x1c) = param_2[1];
+  *(undefined4 *)(uVar1 + 0x20) = param_2[2];
+  FUN_0046cad1(puVar4[1] + 0x24);
+  *(undefined4 *)puVar4[1] = *(undefined4 *)(param_1 + 0x10);
+  *(uint *)(param_1 + 0x10) = puVar4[1];
+  switch(param_3) {
+  case 0:
+    puVar4[5] = 0xa0000;
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) & 0xef;
+    break;
+  case 1:
+    puVar4[5] = 0x190000;
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) & 0xef;
+    break;
+  case 2:
+    puVar4[5] = 0x110000;
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) | 0x10;
+    iVar3 = _rand();
+    uVar2 = (short)(ushort)iVar3 >> 0xf;
+    if ((((ushort)iVar3 ^ uVar2) - uVar2 & 0xf ^ uVar2) == uVar2) {
+      FUN_0042a1f0(0xb,puVar4[1] + 0x18,0);
+    }
+    break;
+  case 3:
+    puVar4[5] = 0xd0000;
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) & 0xef;
+    break;
+  case 4:
+    puVar4[5] = 0x1e0000;
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) & 0xef;
+    break;
+  case 5:
+    puVar4[5] = 0x190000;
+    goto LAB_004af36d;
+  default:
+    puVar4[5] = 0xf0000;
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) & 0xef;
+    break;
+  case 10:
+    puVar4[5] = 0x140000;
+LAB_004af36d:
+    *(byte *)(puVar4[1] + 0xd) = *(byte *)(puVar4[1] + 0xd) | 0x10;
+  }
+  DAT_00506244 = DAT_00506244 + 1;
+  return;
+}

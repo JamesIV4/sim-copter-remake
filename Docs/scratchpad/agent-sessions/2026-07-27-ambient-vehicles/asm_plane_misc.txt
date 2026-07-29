@@ -1,0 +1,12 @@
+﻿
+; ================ 004b28e0 ================
+004b28e0 mov     eax, dword ptr [ecx + 0x1c]
+004b28e3 mov     dword ptr [ecx + 0x18], eax
+004b28e6 cmp     dword ptr [0x50625c], 0
+004b28ed jne     0x4b28f6
+004b28ef mov     dword ptr [ecx + 0x18], 1
+004b28f6 ret     
+
+; ================ 004b2900 ================
+004b2900 xor     eax, eax
+004b2902 ret     

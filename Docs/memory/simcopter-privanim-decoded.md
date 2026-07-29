@@ -1,11 +1,6 @@
----
-name: simcopter-privanim-decoded
-description: "privanim.df is FULLY decoded (2026-07-01): exact container spec, 21 named figures, skeleton trees, 18-clip maps, per-frame line-segment poses; old display rules were wrong"
-metadata: 
-  node_type: memory
-  type: project
-  originSessionId: ac7bbbd4-fa8e-4787-8737-b11dd7d4b850
----
+﻿# SimCopter privanim decoded
+
+*privanim.df is FULLY decoded (2026-07-01): exact container spec, 21 named figures, skeleton trees, 18-clip maps, per-frame line-segment poses; old display rules were wrong*
 
 `X/privanim.df` was fully, code-derivedly decoded on 2026-07-01 (Fable 5 pass). Authoritative spec:
 `Docs/OriginalGameFileFormats.md` "Exact Container Spec"; parser `Tools/privanim_extract.py`

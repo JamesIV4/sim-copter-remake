@@ -1,0 +1,48 @@
+﻿// ===========================================
+// Ghidra:    FUN_004af100
+// Address:   0x004af100
+// Signature: undefined FUN_004af100(void)
+// Callers:   20  |  Callees: 4
+// ===========================================
+void FUN_004af100(uint param_1,int param_2,int param_3,int param_4,uint param_5,uint param_6)
+{
+  uint uVar1;
+  int iVar2;
+  uint *puVar3;
+  undefined1 local_20 [16];
+  undefined4 local_10;
+  
+  iVar2 = 0;
+  puVar3 = &DAT_00581788;
+  do {
+    if ((*puVar3 & 1) == 0) break;
+    iVar2 = iVar2 + 1;
+    puVar3 = puVar3 + 0xd;
+  } while (iVar2 < 0x14);
+  if ((iVar2 != 0x14) && (param_1 != 0)) {
+    *puVar3 = *puVar3 | 1;
+    iVar2 = 4 << ((byte)param_5 & 0x1f);
+    FUN_0046f5a5(puVar3[7],local_20);
+    local_10 = DAT_00581c40;
+    FUN_0046f5e1(puVar3[7],local_20);
+    puVar3[6] = 0xffffffff;
+    puVar3[0xb] = param_1;
+    puVar3[0xc] = param_6;
+    puVar3[10] = param_5;
+    FUN_0046e590(*(undefined4 *)(puVar3[8] + 8),iVar2,iVar2);
+    puVar3[3] = *(short *)(param_1 + 2) * 0x10000 + param_2;
+    puVar3[4] = *(short *)(param_1 + 4) * 0x10000 + param_3;
+    puVar3[5] = *(short *)(param_1 + 6) * 0x10000 + param_4;
+    uVar1 = puVar3[8];
+    *(uint *)(uVar1 + 0x18) = puVar3[3];
+    *(uint *)(uVar1 + 0x1c) = puVar3[4];
+    *(uint *)(uVar1 + 0x20) = puVar3[5];
+    *(int *)(puVar3[8] + 0x10) = iVar2 << 0x10;
+    *(int *)(puVar3[8] + 0x1c) = *(int *)(puVar3[8] + 0x1c) + -0x200000;
+    FUN_0046cad1(puVar3[8] + 0x24);
+    *(undefined4 *)puVar3[8] = *(undefined4 *)(param_1 + 0x10);
+    *(uint *)(param_1 + 0x10) = puVar3[8];
+    DAT_00506240 = DAT_00506240 + 1;
+  }
+  return;
+}

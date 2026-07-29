@@ -1,11 +1,7 @@
----
-name: simcopter-people-logic-next
-description: "Next major RE goal: clean decode of SimCopter people/pedestrian logic (behavior VM + spawn rules) for faithful spawning and original behaviors"
-metadata: 
-  node_type: memory
-  type: project
-  originSessionId: ac7bbbd4-fa8e-4787-8737-b11dd7d4b850
----
+﻿# SimCopter people logic — decoded + ported
+
+*The behavior VM, spawn rules and walked-surface handling for pedestrians. The longest note here;
+the filename keeps its original "next" suffix from when this was still an open goal.*
 
 **Next major reverse-engineering goal (set 2026-06-26):** a clean decode of the SimCopter **people logic** so the remake spawns pedestrians correctly and they carry **all the original behaviors** (idle/walk/panic/return-to-car/flee-helicopter-spotlight/get-picked-up/decommission-when-far). The `privanim.df` figure/animation container is already fully decoded (see [[simcopter-population-rendering]] and `Docs/OriginalGameFileFormats.md` "Faithful Extraction Method" + `Tools/privanim_extract.py`); the behavior VM is the remaining piece.
 
