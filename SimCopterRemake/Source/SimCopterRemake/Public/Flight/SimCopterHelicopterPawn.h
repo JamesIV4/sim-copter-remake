@@ -27,6 +27,7 @@ class USpotLightComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UTexture2D;
+class UWidgetComponent;
 class USimCopterParticleFXComponent;
 class ASimCity2000CityActor;
 class ASimCopterMissionSystemActor;
@@ -589,6 +590,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCameraComponent> CameraComponent;
 
+	// Screen-space presentation at a world-space aim point: the component projects its location
+	// through the active camera, but Slate keeps the mark pixel-sized and above scene depth.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UWidgetComponent> CrosshairComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USpotLightComponent> SearchLightComponent;
 
@@ -607,6 +613,11 @@ protected:
 	// Draws the cockpit's control flaps for the tools aboard (SimCopterFlapLayout).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI")
 	bool bShowToolFlaps = true;
+
+	// Both aiming views position the fixed-size mark six metres from the helicopter midpoint
+	// along the view's gameplay axis.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "1.0"))
+	float CrosshairWorldOffsetCm = 600.0f;
 
 	// Original page pixels to screen pixels. A flap is 138x58 in the original's 640x480, which is
 	// far too small on a modern display, so the art is up-filtered. Lettering is not scaled with
@@ -1125,7 +1136,7 @@ private:
 	TSharedPtr<STextBlock> WaterControlsText;
 	TSharedPtr<SWidget> HelicopterDebugPanelWidget;
 	TSharedPtr<SWidget> ToolFlapsWidget;
-	// Centre-screen aiming reticle, shown only in the views the player aims from.
+	// Fixed-pixel aiming reticle hosted by CrosshairComponent at the mode-specific world point.
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
@@ -1290,6 +1301,7 @@ private:
 	void EnsureCrosshairWidget();
 	void RemoveCrosshairWidget();
 	void UpdateCrosshairVisibility();
+	void UpdateCrosshairWorldLocation();
 	void EnsureHelicopterDebugPanel();
 	void RemoveHelicopterDebugPanel();
 	// Ctrl+Alt+D. Keeps both developer overlays hidden across a re-possession.

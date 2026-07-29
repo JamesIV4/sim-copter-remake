@@ -10,6 +10,7 @@
 #include "Components/SplineMeshComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/WidgetComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -77,6 +78,7 @@ const FName RotorDiscColorParameterName(TEXT("DiscColor"));
 constexpr double MaxCameraDebugTranslationCm = 10000.0;
 constexpr float MaxCameraZoomFramingStrength = 2.0f;
 constexpr float MaxCameraZoomDistanceCm = 10000.0f;
+const FName CrosshairScreenLayerName(TEXT("SimCopterCrosshairLayer"));
 
 int32 GetCameraModeIndex(ESimCopterCameraMode Mode)
 {
@@ -439,6 +441,22 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	CameraComponent->FieldOfView = 78.0f;
 
+	// Screen space is deliberate: the component still follows a world location, but it is
+	// composited after the world with no depth test and retains an invariant Slate pixel size.
+	CrosshairComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Crosshair"));
+	CrosshairComponent->SetupAttachment(CollisionComponent);
+	CrosshairComponent->SetUsingAbsoluteLocation(true);
+	CrosshairComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	CrosshairComponent->SetDrawAtDesiredSize(true);
+	CrosshairComponent->SetPivot(FVector2D(0.5f, 0.5f));
+	CrosshairComponent->SetWindowFocusable(false);
+	CrosshairComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CrosshairComponent->SetCanEverAffectNavigation(false);
+	CrosshairComponent->SetCastShadow(false);
+	CrosshairComponent->SetInitialSharedLayerName(CrosshairScreenLayerName);
+	CrosshairComponent->SetInitialLayerZOrder(10);
+	CrosshairComponent->SetVisibility(false);
+
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMeshFinder(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshFinder(TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	if (CubeMeshFinder.Succeeded())
@@ -607,6 +625,7 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 	// Semantic targeting keeps running whether or not the cone is drawn (FUN_00489250).
 	UpdateSpotlightTarget(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
+	UpdateCrosshairWorldLocation();
 }
 
 void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -1800,13 +1819,13 @@ void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 
 void ASimCopterHelicopterPawn::EnsureCrosshairWidget()
 {
-	if (CrosshairWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	if (CrosshairWidget.IsValid() || CrosshairComponent == nullptr)
 	{
 		return;
 	}
 
-	// Two white bars crossed at the viewport centre, with a gap in the middle so the bit being
-	// aimed at is never covered. Drawn from the engine's WhiteBrush so it needs no asset.
+	// Two white bars with a gap in the middle so the bit being aimed at is never covered. The
+	// host component handles world projection; these dimensions remain screen pixels.
 	const FSlateBrush* const WhiteBrush = FCoreStyle::Get().GetBrush(TEXT("WhiteBrush"));
 	const FLinearColor CrosshairColor(1.0f, 1.0f, 1.0f, 0.85f);
 	auto MakeBar = [WhiteBrush, CrosshairColor](float Width, float Height)
@@ -1864,29 +1883,60 @@ void ASimCopterHelicopterPawn::EnsureCrosshairWidget()
 			]
 		];
 
-	// Below the cockpit/dashboard panels so it never draws over them.
-	GEngine->GameViewport->AddViewportWidgetContent(CrosshairWidget.ToSharedRef(), 10);
+	CrosshairComponent->SetSlateWidget(CrosshairWidget);
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		CrosshairComponent->SetOwnerPlayer(PlayerController->GetLocalPlayer());
+	}
+	UpdateCrosshairWorldLocation();
 	UpdateCrosshairVisibility();
 }
 
 void ASimCopterHelicopterPawn::RemoveCrosshairWidget()
 {
-	if (GEngine != nullptr && GEngine->GameViewport != nullptr && CrosshairWidget.IsValid())
+	if (CrosshairComponent != nullptr)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(CrosshairWidget.ToSharedRef());
+		CrosshairComponent->SetVisibility(false);
+		CrosshairComponent->SetSlateWidget(nullptr);
 	}
 	CrosshairWidget.Reset();
 }
 
 void ASimCopterHelicopterPawn::UpdateCrosshairVisibility()
 {
-	if (CrosshairWidget.IsValid())
+	if (CrosshairComponent != nullptr)
 	{
-		CrosshairWidget->SetVisibility(
-			CameraModeShowsCrosshair(CameraMode)
-				? EVisibility::HitTestInvisible
-				: EVisibility::Collapsed);
+		CrosshairComponent->SetVisibility(
+			CrosshairWidget.IsValid() && CameraModeShowsCrosshair(CameraMode));
 	}
+}
+
+void ASimCopterHelicopterPawn::UpdateCrosshairWorldLocation()
+{
+	if (CrosshairComponent == nullptr)
+	{
+		return;
+	}
+
+	const float OffsetCm = FMath::Max(1.0f, CrosshairWorldOffsetCm);
+	FVector AimPoint = GetActorLocation();
+	if (CameraMode == ESimCopterCameraMode::Rescue)
+	{
+		// The overhead mark denotes the point directly beneath the airframe, independent of
+		// helicopter bank and of any orbit/look adjustment.
+		AimPoint -= FVector::UpVector * OffsetCm;
+	}
+	else if (CameraMode == ESimCopterCameraMode::Cockpit)
+	{
+		// Follow the helicopter's real tool axis, not the camera look rotation. ModelPivot owns
+		// the visual/weapon pitch and roll while the actor itself owns yaw.
+		const FVector Forward = ModelPivot != nullptr
+			? ModelPivot->GetForwardVector().GetSafeNormal()
+			: GetActorForwardVector();
+		AimPoint += Forward * OffsetCm;
+	}
+
+	CrosshairComponent->SetWorldLocation(AimPoint);
 }
 
 void ASimCopterHelicopterPawn::RemoveWaterControlsWidget()
