@@ -1710,12 +1710,13 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 			// follows the player from four tiles away, so by the time they reach a helicopter it
 			// is wrong to reject them merely because the pilot touched down just outside a
 			// radius around the mission record's original tile.
-			const int32 NextSeatIndex = Helicopter->GetMissionPassengerSlots().Num();
-			const FVector CabinDoor = Helicopter->GetPassengerDropWorldLocation(NextSeatIndex);
+			// Restore the proven pre-5ff1eaa boarding point. People enter at the helicopter's
+			// midpoint; the side/row cabin-door locations remain correct for exiting passengers.
+			const FVector CabinMidpoint = Helicopter->GetActorLocation();
 			TrafficSystem->GuideMissionPeopleToLocation(
 				Mission.EventId,
-				CabinDoor,
-				CabinDoor,
+				CabinMidpoint,
+				CabinMidpoint,
 				SeatsAvailable,
 				PassengerPickupRadiusCm,
 				PassengerTransferMaxVerticalDeltaCm,
@@ -1726,7 +1727,7 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 			// loop neither books a second seat nor posts a second pickup event.
 			const int32 PickedUp = TrafficSystem->BoardMissionPeopleTouching(
 				Mission.EventId,
-				CabinDoor,
+				CabinMidpoint,
 				SeatsAvailable,
 				PassengerBoardTouchRadiusCm,
 				PassengerTransferMaxVerticalDeltaCm,
