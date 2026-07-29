@@ -134,6 +134,10 @@ struct FSimCopterDispatchVehicle
 	// no reason to sit out the rest of its stay.
 	TWeakObjectPtr<ASimCopterGroundAgent> DeployedOfficer;
 	bool bOfficerDeployed = false;
+	// FUN_004b8f60 -> FUN_004bd980(0x0c, 5): the state-5 Medik this ambulance put
+	// on the ground. Its person+0x170 points back to Agent, so BHAV 269 can return
+	// to this exact ambulance and opcode 61 can release it.
+	TWeakObjectPtr<ASimCopterGroundAgent> DeployedParamedic;
 	// The waypoint marker hanging over DestinationTile, and the original's "marker is linked"
 	// flag +0x2b1 & 0x20. Created on the first dispatch and reused for the slot's lifetime, the
 	// way the original keeps one render node per vehicle.
@@ -210,7 +214,8 @@ public:
 	ASimCopterGroundAgent* FindNearestAvailablePersonInState(
 		const FVector& WorldLocation,
 		int32 State,
-		float RadiusCm) const;
+		float RadiusCm,
+		bool bRequirePersistentHospitalCrew = false) const;
 	// Keep a real state-5 medic on this D1 hospital roof for mission service. Unlike an ambient
 	// scan this bypasses the crowd cap and marks the worker as distance-persistent.
 	ASimCopterGroundAgent* EnsureHospitalParamedicAtTile(int32 TileX, int32 TileY);

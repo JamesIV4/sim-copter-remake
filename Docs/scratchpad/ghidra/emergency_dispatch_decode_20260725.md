@@ -25,7 +25,7 @@ Raw decompiles this note is derived from:
   `FUN_004bdb50`), re-route (`FUN_004be5e0`), tile link/unlink
   (`FUN_004be820`/`FUN_004be890`), body placement (`FUN_004be750`).
 - `out_dispatch_ai_20260725.txt` - police per-frame state machine
-  (`FUN_004b9e40`), ambulance on-scene sequence (`FUN_004b8b60`/`FUN_004b8c90`),
+  (`FUN_004b9e40`), criminal-car arrest sequence (`FUN_004b8b60`/`FUN_004b8c90`),
   fire-truck target acquisition (`FUN_004b9790`/`FUN_004b9890`/`FUN_004b99c0`/
   `FUN_004b9b10`), save/load hooks.
 - `out_dispatch_objectives_20260725.txt`,
@@ -537,9 +537,42 @@ first success, 0 when nothing fits.
 | Service | Call | Meaning |
 | --- | --- | --- |
 | Police | `FUN_0049bd00(0xe, 8)` (or `(0xe, 0xe)` when the target object carries flag `0x8`) | deploy an officer |
-| Ambulance | `FUN_0049bd00(0xf, 0xd)` | deploy a paramedic |
+| Ambulance | `FUN_004b8f60` -> `FUN_004bd980(0x0c, 5, ...)` -> `FUN_0049bd00` | deploy a behavior-class-12, state-5 `Medik` |
 
 Fire trucks do not deploy crew; they spray (below).
+
+### Ambulance paramedic interaction - Confirmed 2026-07-29
+
+The ambulance vtable at `0x004f4d20` points its on-scene update slot at
+`FUN_004b8f60`. Both of that function's deployment arms call
+`FUN_004bd980(0x0c, 5, ...)`. The similar `(0x0f, 0x0d)` call is in the
+criminal-car function `FUN_004b8b60`; it is not an ambulance call.
+
+The shipped `people.df` supplies the complete interaction:
+
+1. person state 5 starts BHAV 801, `Medevac paramedic new initbhav`;
+2. away from XBLD `0xd1`, BHAV 801 calls BHAV 262, which searches eight tiles
+   for object class 5 / person state 6 and uses opcode 44 to tote that victim;
+3. BHAV 272 selects object class 10 and BHAV 275 walks to it, uses opcode 51
+   to set down the same patient, then pushes BHAV 285 onto the patient;
+4. BHAV 285 posts outcome 0 (picked up), outcome 1 (medevac delivered), then
+   disappears;
+5. BHAV 269 selects `person+0x170`, the vehicle that deployed the medic,
+   boards it, and messages it through opcode 61 so it returns.
+
+`FUN_004cac70`'s object-class jump table proves classes 10..12 call
+`FUN_0049b060` with kinds 0..2. The actual pools are:
+
+| behavior object class | `FUN_0049b060` kind | pool |
+| ---: | ---: | --- |
+| 10 | 0 | ambulance (`DAT_00582b20`) |
+| 11 | 1 | police (`DAT_00582b50`) |
+| 12 | 2 | fire truck (`DAT_00582b38`) |
+
+The old port had classes 10 and 12 reversed, so BHAV 272 sent the medic toward
+a fire truck. It also deployed `(0x0f, 0x0d)` through a helper whose arguments
+are person state first and behavior class second, producing neither the
+state-5 paramedic nor BHAV 801.
 
 ### Police target filter - Confirmed
 
@@ -604,10 +637,11 @@ a tile (`flags & 0x20`), using the same octile metric, or 0 when there is none.
 | 0 | `DAT_00582b20` ambulances |
 | 1 | `DAT_00582b50` police |
 | 2 | `DAT_00582b38` fire trucks |
-| 3, 4 | `DAT_00582b08` (a fourth pool outside this plan) |
+| 3, 4 | `DAT_00582b08` (speeder/criminal-car pool) |
 
-`Follow-up`: `DAT_00582b08` and the `FUN_0049b060` call site were not located in
-this pass (the export shows no callers, so it is reached indirectly).
+The indirect caller is people-object selection `FUN_004cac70`: behavior object
+classes 10..13 reach `FUN_0049b060` kinds 0..3 through its jump table. BHAV 272
+is the ambulance-side class-10 call site.
 
 ---
 
@@ -656,15 +690,9 @@ Divergences from the original, all deliberate:
 
 ## 10. Remaining unresolved items
 
-- The exact mission event codes an arriving ambulance/fire truck posts.
-  `FUN_004b8b60`/`FUN_004b8c90` post `FUN_004a89c0` codes `0x1d` and `0x25` and
-  drive state fields at `+0x133..+0x136`, which do **not** match the vehicle
-  layout used elsewhere in this note; they are more likely the deployed crew
-  person's own state machine. Not ported.
 - `FUN_004bdd40` (retarget an already-driving vehicle) failed to decompile;
   its argument list was recovered from the `FUN_004bc680` call site but its body
   was not read. The remake re-plans the route from scratch instead.
 - `FUN_00492d80`, the per-direction road-position filler behind
   `FUN_00492240`, was not decoded; the remake uses its own road-tile graph.
-- `DAT_00582b08` (the fourth vehicle pool) and `FUN_0049b060`'s caller.
 - The precise leading digits of the two police voice clips (section 2).

@@ -407,9 +407,7 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 				!bMissionResolutionReported &&
 				Missions != nullptr &&
 				Missions->IsMissionEventActive(MissionEventId);
-			const bool bHospitalParamedic =
-				int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 &&
-				MissionEventId == INDEX_NONE;
+			const bool bHospitalParamedic = bPersistentHospitalRoofCrew;
 			if (bUnresolvedMissionPerson || bHospitalParamedic)
 			{
 				// A decoded program may time out or reach Disappear, but that cannot be allowed to
@@ -930,11 +928,28 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	case EBhavObjectClass::PoliceCar:
 	case EBhavObjectClass::Ambulance:
 	case EBhavObjectClass::SpeederCar:
+	{
+		int32 ServiceIndex = 3; // FUN_0049b060 kinds 3/4 share the speeder pool.
+		switch (ObjectClass)
+		{
+		case EBhavObjectClass::Ambulance:
+			ServiceIndex = static_cast<int32>(SimCopterDispatch::EService::Ambulance);
+			break;
+		case EBhavObjectClass::PoliceCar:
+			ServiceIndex = static_cast<int32>(SimCopterDispatch::EService::Police);
+			break;
+		case EBhavObjectClass::FireTruck:
+			ServiceIndex = static_cast<int32>(SimCopterDispatch::EService::FireTruck);
+			break;
+		default:
+			break;
+		}
 		Found = TrafficSystem != nullptr
 			? TrafficSystem->FindNearestServiceVehicleAgent(
-				GetActorLocation(), ObjectClass - EBhavObjectClass::FireTruck)
+				GetActorLocation(), ServiceIndex)
 			: nullptr;
 		break;
+	}
 	default:
 		break;
 	}
@@ -1391,18 +1406,6 @@ bool ASimCopterGroundAgent::CanAlightHere() const
 	{
 		return false;
 	}
-	if (CabinHelicopter != nullptr &&
-		MissionEventId != INDEX_NONE &&
-		GetMissionPassengerKind() == ESimCopterMissionPassengerKind::Medevac)
-	{
-		// A hospital medevac unload is owned by ProcessMedevacHospitalHandoffs: it gives the
-		// decoded state-5 paramedic time to walk over and visibly take this same actor. Letting
-		// BHAV 282 alight the patient independently races that sequence and is why the EMT would
-		// sometimes arrive at an already-empty cabin. The seat-window drop and the bounded
-		// handoff fallback call AlightFromCarrier directly, so the patient cannot be stranded.
-		return false;
-	}
-
 	// FUN_004c9bc0: the tile has to be one people may occupy, and the person has to be within
 	// 6 original units of the ground under them. That second half is what stops a passenger
 	// stepping out of a helicopter at altitude.
@@ -1511,7 +1514,7 @@ bool ASimCopterGroundAgent::BoardCarrier(
 		{
 			// Shipped BHAV 263 first looks for a medevac patient aboard. Only its no-patient arm
 			// calls BHAV 269, which may select the player's helicopter as the medic's ride. Once
-			// our deterministic hospital handoff has removed the last patient, that same test is
+			// BHAV 263 has removed the last patient, that same test is
 			// also true, so the stable action boundary must distinguish "go help retrieve one"
 			// from "the delivery just finished."
 			const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
@@ -1750,9 +1753,34 @@ bool ASimCopterGroundAgent::SelectCarriedPerson(FSimCopterPersonContext& Context
 		Context.ClearSelection();
 		return false;
 	}
+	const AActor* PreviousSelection = Context.SelectedObject.Get();
+	const AActor* StartingVehicle = BehaviorStartingVehicle.Get();
+	const bool bAtStartingAmbulance =
+		bAlsoDropThem &&
+		StartingVehicle != nullptr &&
+		PreviousSelection == StartingVehicle &&
+		int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 &&
+		int32(Carried->BehaviorContext.Attributes[EBhavAttr::State]) == 6;
+
 	if (bAlsoDropThem)
 	{
 		Carried->AlightFromCarrier();
+		if (bAtStartingAmbulance)
+		{
+			// BHAV 262 -> 272 -> 275 reaches opcode 51 only after the medic has selected and
+			// walked back to object class 10, the ambulance pool. BHAV 285 now owns the two
+			// mission outcomes that follow; record that this is a real ground-service handoff,
+			// not an arbitrary opcode-13 request from a person standing elsewhere.
+			Carried->SetAmbulanceHandoffPending(true);
+		}
+		if (Carried->IsMissionPatientDead())
+		{
+			// The original removes a dead person at opcode 66, before any later handoff. The
+			// remake deliberately retains a cabin body so the medic can visibly carry the same
+			// actor. Once opcode 51 completes that interaction, the extra lifetime is over.
+			Carried->SetActorHiddenInGame(true);
+			Carried->SetLifeSpan(0.25f);
+		}
 	}
 	Context.SelectedObject = Carried;
 	Context.SelectedLocation = Carried->GetActorLocation();
@@ -1876,8 +1904,16 @@ bool ASimCopterGroundAgent::BeginFallAndDie(FSimCopterPersonContext& Context)
 bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context)
 {
 	// FUN_004ca700: person+0x170 names the emergency vehicle this person rode in on; with none,
-	// the original falls back to the player's helicopter. The remake does not yet stamp the
-	// vehicle id on a deployed crew member, so only the fallback arm is live.
+	// the original falls back to the player's helicopter.
+	if (AActor* StartingVehicle = BehaviorStartingVehicle.Get())
+	{
+		Context.SelectedObject = StartingVehicle;
+		Context.SelectedLocation = StartingVehicle->GetActorLocation();
+		Context.bSelectionIsHarness = false;
+		Context.bHasSelection = true;
+		return true;
+	}
+
 	if (int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5)
 	{
 		const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();

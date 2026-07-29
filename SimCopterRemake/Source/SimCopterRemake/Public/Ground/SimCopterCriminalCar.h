@@ -90,8 +90,8 @@ constexpr int32 RoadSpeedMaxUnitsPerSecond = 47;
 // multiplier has to stay under this or nothing can ever follow one.
 constexpr float HelicopterTopSpeedUnitsPerSecond = 192.3f;
 
-// FUN_004b8b60's officer: FUN_0049bd00(0xf, 0xd), the same spawn mode and state the ambulance
-// uses for its paramedic.
+// FUN_004b8b60's stopped-car person: FUN_0049bd00(0xf, 0xd). This pair is specific to the
+// criminal car; the ambulance vtable method FUN_004b8f60 deploys class 0x0c / state 5.
 constexpr int32 ArrestPersonSpawnMode = 0xf;
 constexpr int32 ArrestPersonState = 0xd;
 

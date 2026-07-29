@@ -529,7 +529,7 @@ These are the main executable functions currently tied to remake code:
 | `0x004bc110` | `FUN_004bc110` | Adjacent-road search around a station: ring 2..4, start direction `(x+y)&3`. |
 | `0x004bef30` | `FUN_004bef30` | Dijkstra over the `0x38`-byte road-intersection graph; leaves back-links for the route walk. |
 | `0x004b9e40` | `FUN_004b9e40` | Police per-frame state machine; case 2 is the F5 chase (destination re-read from the spotlight every frame). |
-| `0x0049bd00` | `FUN_0049bd00` | On-scene crew deployment (police `(0xe, 8)`, ambulance `(0xf, 0xd)`). |
+| `0x0049bd00` | `FUN_0049bd00` | On-scene crew deployment (police behavior class `0xe`, state `8`/`0xe`; ambulance behavior class `0x0c`, state `5`). The `(0x0f, 0x0d)` pair belongs to the stopped criminal car. |
 | `0x004a5ca0` | `FUN_004a5ca0` | Fire-truck water jet at a burning building (emitter type 6); `FUN_004a5dd0` is the object variant. |
 | `0x0049b3f0` | `FUN_0049b3f0` | Shift+F&lt;n&gt; clear-dispatch: radius-2 spiral, wrong service aborts the scan. |
 | `0x00495700` | `FUN_00495700` | Road-graph debug dump; reveals `0x38`-byte intersections, 3-byte road tiles, service registries. |

@@ -112,13 +112,15 @@ public:
 		bMissionPickupCounted = false;
 		bMissionResolutionReported = false;
 		bMissionPatientDead = false;
+		bAmbulanceHandoffPending = false;
 	}
 
 	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
 	void ClearForcedPedestrianFigureClip();
 	void SetMissionInjuredPose();
 	// A dead medevac patient remains the same physical person. When they die in the cabin this
-	// pose stops their VM without relinquishing their seat; the hospital handoff removes the body.
+	// pose stops their VM without relinquishing their seat; the state-5 medic may still remove
+	// that same body through BHAV 263's ordinary carrier interactions.
 	void SetMissionDeadPose();
 
 	// Mission-required roof staff are outside the disposable ambient-population budget. A medic
@@ -134,12 +136,21 @@ public:
 	void SetMissionAwaitingRescue(bool bAwaiting) { bMissionWavesWhenIdle = bAwaiting; }
 	void ClearMissionPose();
 	void ResumeNormalPedestrianBehavior();
-	// Continue the exact VM stack that was paused by SetMissionScriptedMover. Hospital handoffs use
-	// this so completing the engine-owned carry animation does not look like a brand-new paramedic
-	// arrival and immediately enter BHAV 263's no-patient helper branch.
+	// Continue the exact VM stack that was paused by SetMissionScriptedMover.
 	void ResumeSuspendedPedestrianBehavior();
 	void SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation);
 	bool IsMissionCarried() const { return bMissionCarried; }
+
+	// person+0x170, written by FUN_004c4e10 when an emergency vehicle deploys this person.
+	// Opcode 62 selects this exact starting object before it considers the player helicopter.
+	void SetBehaviorStartingVehicle(AActor* Vehicle) { BehaviorStartingVehicle = Vehicle; }
+	AActor* GetBehaviorStartingVehicle() const { return BehaviorStartingVehicle.Get(); }
+
+	// BHAV 275 has just used opcode 51 to set this patient down at the ambulance selected by
+	// BHAV 272. BHAV 285's following outcome 0/1 pair may therefore use the mission service even
+	// though no helicopter seat is involved.
+	bool IsAmbulanceHandoffPending() const { return bAmbulanceHandoffPending; }
+	void SetAmbulanceHandoffPending(bool bPending) { bAmbulanceHandoffPending = bPending; }
 
 	// Detach from a carrier and set the agent back down as an injured pickup at the given world
 	// location (used when the player presses drop, or a carrier releases them on the ground).
@@ -517,6 +528,8 @@ private:
 	int32 ForcedFigureClothesOffset = INDEX_NONE;
 	// person+0x1a0 and whether it is the rope end rather than the cabin (op 86 distinguishes them).
 	TWeakObjectPtr<AActor> BehaviorCarrier;
+	// person+0x170: the emergency vehicle that deployed this crew member.
+	TWeakObjectPtr<AActor> BehaviorStartingVehicle;
 	// person+0x1a4, written by FUN_004c1050 when an interaction is delivered, and by the move core
 	// when this person walks into somebody.
 	TWeakObjectPtr<AActor> BehaviorInteractionSource;
@@ -553,6 +566,7 @@ private:
 	bool bMissionPickupCounted = false;
 	bool bMissionResolutionReported = false;
 	bool bMissionPatientDead = false;
+	bool bAmbulanceHandoffPending = false;
 	bool bPersistentHospitalRoofCrew = false;
 	bool bPassengerFallActive = false;
 	bool bPassengerFallStarted = false;

@@ -1652,7 +1652,8 @@ bool ASimCopterTrafficSystemActor::HasHiddenBehaviorPersonInState(const int32 St
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestAvailablePersonInState(
 	const FVector& WorldLocation,
 	const int32 State,
-	const float RadiusCm) const
+	const float RadiusCm,
+	const bool bRequirePersistentHospitalCrew) const
 {
 	ASimCopterGroundAgent* Best = nullptr;
 	float BestDistanceSq = FMath::Square(RadiusCm);
@@ -1663,6 +1664,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestAvailablePersonI
 			Agent->IsActorBeingDestroyed() ||
 			Agent->IsMissionCarried() ||
 			Agent->GetBehaviorCarrier() != nullptr ||
+			(bRequirePersistentHospitalCrew && !Agent->IsPersistentHospitalRoofCrew()) ||
 			int16(Agent->GetBehaviorAttribute(EBhavAttr::State)) != int16(State) ||
 			FindPersonCarriedBy(*Agent) != nullptr)
 		{
@@ -1708,6 +1710,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTi
 			if (Agent == nullptr ||
 				Agent->IsActorBeingDestroyed() ||
 				Agent->InitialPersonState != 5 ||
+				Agent->MissionEventId != INDEX_NONE ||
 				Agent->GetBehaviorCarrier() != nullptr ||
 				Agent->IsMissionCarried() ||
 				Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0 ||
@@ -1832,14 +1835,29 @@ void ASimCopterTrafficSystemActor::NotifyCrewMemberMessagedVehicle(
 	const ASimCopterGroundAgent& CrewMember,
 	const int32 MessageId)
 {
-	// FUN_0049aed0(person+0x170, msg). The remake does not carry the original's message ids, and
-	// guessing that any message means "I am done here" sent units home the moment a crew member
-	// hit one of opcode 61's twelve sites - including the ones that fire long before boarding.
-	// That is what stopped Clear working: by the time the player pressed it there was nothing left
-	// at the spotlight to release. The unit's own on-scene tick already sends it home once the
-	// officer is actually aboard, so this stays a no-op until the message ids are decoded.
-	(void)CrewMember;
-	(void)MessageId;
+	// FUN_0049aed0(person+0x170, msg) resolves the one vehicle that deployed this person and sets
+	// veh[8] = 1 / veh[0xc] = msg. FUN_004b8f60's ambulance state then takes its return path.
+	// Earlier code had no person+0x170 relationship, so treating every opcode-61 call as a recall
+	// could release unrelated units. With the exact starting object stamped, the transaction is
+	// scoped to this crew member's own ambulance.
+	AActor* StartingVehicle = CrewMember.GetBehaviorStartingVehicle();
+	if (StartingVehicle == nullptr)
+	{
+		return;
+	}
+
+	const int32 AmbulanceIndex = static_cast<int32>(SimCopterDispatch::EService::Ambulance);
+	for (FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[AmbulanceIndex])
+	{
+		if (Vehicle.Agent.Get() != StartingVehicle)
+		{
+			continue;
+		}
+		Vehicle.DeployedParamedic.Reset();
+		RecallDispatchVehicle(Vehicle);
+		(void)MessageId; // Both BHAV 269 messages set the same veh[8] completion flag.
+		return;
+	}
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestServiceVehicleAgent(
@@ -3532,8 +3550,12 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 
 	case SimCopterDispatch::EService::Ambulance:
 	{
-		// FUN_0049bd00(0xf, 0xd): deploy a paramedic. The original ambulance has no other
-		// on-scene call - the crew's own behaviour program does the rest.
+		// SCHOOK: AmbulanceOnScene 0x004b8f60
+		// The ambulance vtable calls FUN_004bd980(0x0c, 5, ...), which reaches
+		// FUN_0049bd00/FUN_004c3eb0 as behavior class 12 and person state 5. That is a Medik
+		// running BHAV 801; outside XBLD D1 it enters BHAV 262, seeks a state-6 victim, totes
+		// them back to object class 10 (the ambulance pool), then returns to this vehicle.
+		// (0x0f, 0x0d) is the stopped criminal-car deployment in FUN_004b8b60.
 		if (Vehicle.bActedAtScene)
 		{
 			return false;
@@ -3547,7 +3569,23 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 				Vehicle.TargetEventId = EventId;
 			}
 		}
-		return TrySpawnMissionPerson(0xf, 0xd, Tile.X, Tile.Y, Vehicle.TargetEventId);
+		ASimCopterGroundAgent* Paramedic = nullptr;
+		const bool bDeployed = TrySpawnMissionPerson(
+			SimCopterDispatch::AmbulanceMedicPersonState,
+			SimCopterDispatch::AmbulanceMedicBehaviorClass,
+			Tile.X,
+			Tile.Y,
+			Vehicle.TargetEventId,
+			TEXT("Medik"),
+			&Paramedic);
+		if (bDeployed && Paramedic != nullptr)
+		{
+			// FUN_004c4190's on-vehicle spawn path calls FUN_004c4e10(param_7), which stores
+			// the deploying vehicle at person+0x170 for opcodes 62 and 61.
+			Paramedic->SetBehaviorStartingVehicle(Vehicle.Agent.Get());
+			Vehicle.DeployedParamedic = Paramedic;
+		}
+		return bDeployed;
 	}
 
 	default:
@@ -4455,7 +4493,9 @@ void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCop
 		// killed, or removed with the vehicle they were on). Culling them stranded every victim
 		// of a mission that starts away from the player - a train rescue puts its passengers on
 		// a train that can be anywhere on the map, and they were being destroyed the same frame.
-		if (Agent->MissionEventId != INDEX_NONE || Agent->IsPersistentHospitalRoofCrew())
+		if (Agent->MissionEventId != INDEX_NONE ||
+			Agent->IsPersistentHospitalRoofCrew() ||
+			Agent->GetBehaviorStartingVehicle() != nullptr)
 		{
 			continue;
 		}

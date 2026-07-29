@@ -24,23 +24,17 @@ class STextBlock;
 class SVerticalBox;
 class SWidget;
 
-// One in-progress medevac unload at a hospital: an EMT ferries patients out of a landed helicopter
-// to a doorway "into" the hospital, one at a time, until the helicopter is empty.
+// One monitored medevac unload at a hospital. The state-5 Medik's shipped BHAV 263 owns the
+// visible interaction: select the real cabin patient, alight them through the carrier service,
+// tote them laterally, and set them down on XBLD D1 for BHAV 282 to finish. This record is only a
+// bounded recovery guard around that behavior; it does not animate a parallel handoff.
 struct FSimCopterMedevacHandoff
 {
 	int32 EventId = INDEX_NONE;
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Helicopter;
 	TWeakObjectPtr<ASimCopterGroundAgent> Emt;
-	TWeakObjectPtr<ASimCopterGroundAgent> CarriedPatient;
-	TWeakObjectPtr<AActor> Doorway;
-	FVector HeliDoorLocation = FVector::ZeroVector;
-	FVector DoorwayLocation = FVector::ZeroVector;
-	// 0 = EMT walking to the helicopter to collect a patient; 1 = carrying one to the doorway.
-	uint8 Phase = 0;
-	float PhaseSeconds = 0.0f;
-	// False when this is the decoded state-5 hospital paramedic, which is returned to its VM
-	// after the deterministic handoff rather than destroyed.
-	bool bOwnsEmt = false;
+	int32 LastOnboardCount = 0;
+	float SecondsWithoutProgress = 0.0f;
 };
 
 // How the mission layer is running the current city. The original shell offered exactly two session
@@ -367,17 +361,11 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
 	float MedevacHospitalHandoffRadiusCm = 1500.0f;
 
-	// How close the EMT must get to the helicopter door / the doorway to act on it.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "25.0"))
-	float MedevacEmtReachRadiusCm = 130.0f;
-
-	// Distance from the helicopter to place the hospital doorway the EMT delivers patients to.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
-	float MedevacDoorwayDistanceCm = 420.0f;
-
-	// Optional dark material for the hospital doorway box; a plain box is used when unset.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions")
-	TObjectPtr<UMaterialInterface> HospitalDoorwayMaterial;
+	// Recovery only: if BHAV 263 makes no cabin progress for this long while the helicopter
+	// remains landed at D1, resolve the remaining seat(s) through the established mission service.
+	// Normal unloads never reach this timer.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "5.0"))
+	float MedevacBehaviorRecoverySeconds = 45.0f;
 
 	// Megaphone range (horizontal): the helicopter must be within this of a traffic jam for the
 	// megaphone prompt to show and the jam to be clearable. (Original flavor: ~300 m.)
@@ -510,16 +498,15 @@ private:
 		bool bRemoveAfterDelivery);
 
 	TWeakObjectPtr<class ASimCopterAmbientVehiclesActor> CachedAmbientVehicles;
-	// Runs the EMT patient-unload sequence at hospitals for landed helicopters carrying medevac
-	// patients (called each Tick, after ProcessPassengerTransfers).
+	// Guarantees the decoded hospital worker and monitors its BHAV-driven unload (called each Tick,
+	// after ProcessPassengerTransfers).
 	void ProcessMedevacHospitalHandoffs(float DeltaSeconds);
 	FSimCopterMedevacHandoff* FindMedevacHandoff(int32 EventId);
 	void BeginMedevacHandoff(int32 EventId, ASimCopterHelicopterPawn* Helicopter, const FVector& HospitalCenter);
 	// Returns false when the handoff is finished/aborted and should be cleaned up.
 	bool AdvanceMedevacHandoff(FSimCopterMedevacHandoff& Handoff, float DeltaSeconds);
-	void EndMedevacHandoff(FSimCopterMedevacHandoff& Handoff, bool bResolvePatients = true);
+	void EndMedevacHandoff(FSimCopterMedevacHandoff& Handoff, bool bResolvePatients = false);
 	void DeliverMedevacDirectly(int32 EventId, ASimCopterHelicopterPawn* Helicopter);
-	AActor* SpawnHospitalDoorway(const FVector& CenterLocation, const FRotator& Facing);
 	void GetTransferReadyHelicopters(TArray<ASimCopterHelicopterPawn*>& OutHelicopters) const;
 	void EnsureMessageLogWidget();
 	void RemoveMessageLogWidget();
