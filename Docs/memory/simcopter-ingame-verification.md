@@ -4,6 +4,11 @@
 
 *Recorded 2026-07-25; ported into the repo 2026-07-29.*
 
+> **Read `AGENTS.md` §6 first: don't do this routinely.** In-game validation is reserved for a
+> genuinely complex problem that a build plus an automation test cannot settle, and it is worth
+> asking before starting — it seizes the foreground window and keyboard. The rest of this note is
+> *how* to do it on the occasions when it is warranted, not a sign that you should.
+
 Verified 2026-07-24. Build, then run the game in a window and drive it with Win32 calls — no
 Playwright/driver needed:
 

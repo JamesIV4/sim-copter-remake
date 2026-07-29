@@ -237,6 +237,32 @@ bool FMaxisProceduralMeshBuilderHelicopterTest::RunTest(const FString& Parameter
 		FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(*RotorObject, RotorColorMap, 2621.44f, 0.25f, true, FLinearColor::White, RotorSection);
 		const FVector Center = RotorSection.LocalBounds.GetCenter();
 		TestTrue(TEXT("Rotor hub is near the mast axis"), FMath::Abs(Center.X) < 5.0 && FMath::Abs(Center.Y) < 5.0);
+
+		// JETRROTR carries two type-11 polygons ~3.8 cm apart in height, which is why the
+		// unfiltered blur reads as two stacked circles. The first-face-only build must keep a
+		// single flat disc.
+		FMaxisMeshSection BothOpaque;
+		FMaxisMeshSection BothDiscs;
+		FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
+			*RotorObject, RotorColorMap, 2621.44f, 0.25f, true, FLinearColor::White, BothOpaque, &BothDiscs, false);
+		FMaxisMeshSection SingleOpaque;
+		FMaxisMeshSection SingleDisc;
+		FMaxisProceduralMeshBuilder::BuildPaletteColoredSections(
+			*RotorObject, RotorColorMap, 2621.44f, 0.25f, true, FLinearColor::White, SingleOpaque, &SingleDisc, true);
+
+		TestTrue(TEXT("Unfiltered blur keeps both disc polygons"), BothDiscs.Triangles.Num() > SingleDisc.Triangles.Num());
+		TestFalse(TEXT("Filtered blur still has a disc"), SingleDisc.IsEmpty());
+		TestEqual(TEXT("Filtered blur is exactly one polygon"), SingleDisc.Triangles.Num() * 2, BothDiscs.Triangles.Num());
+		TestTrue(
+			TEXT("Dropping the second polygon does not change the opaque blades"),
+			SingleOpaque.Triangles.Num() == BothOpaque.Triangles.Num());
+
+		auto HeightSpread = [](const FMaxisMeshSection& Section)
+		{
+			return Section.LocalBounds.Max.Z - Section.LocalBounds.Min.Z;
+		};
+		TestTrue(TEXT("One disc is flat"), HeightSpread(SingleDisc) < 0.1);
+		TestTrue(TEXT("Two discs are stacked"), HeightSpread(BothDiscs) > 1.0);
 	}
 
 	return true;

@@ -88,4 +88,24 @@ private:
 	void HandleCameraRotationRollChanged(float Value);
 	void HandleCameraZoomVerticalFramingStrengthChanged(float Value);
 	void HandleCameraMaxZoomDistanceChanged(float Value);
+
+	TOptional<float> GetCockpitAttitudeFollowStrength() const;
+	TOptional<float> GetCockpitAttitudeLerpSpeed() const;
+	void HandleCockpitAttitudeFollowStrengthChanged(float Value);
+	void HandleCockpitAttitudeLerpSpeedChanged(float Value);
+	TOptional<float> GetCockpitCannonOffsetX() const;
+	TOptional<float> GetCockpitCannonOffsetY() const;
+	TOptional<float> GetCockpitCannonOffsetZ() const;
+	void HandleCockpitCannonOffsetXChanged(float Value);
+	void HandleCockpitCannonOffsetYChanged(float Value);
+	void HandleCockpitCannonOffsetZChanged(float Value);
+
+	TOptional<float> GetRotorDiscOpacity() const;
+	void HandleRotorDiscOpacityChanged(float Value);
+	TOptional<float> GetRotorDiscColorR() const;
+	TOptional<float> GetRotorDiscColorG() const;
+	TOptional<float> GetRotorDiscColorB() const;
+	void HandleRotorDiscColorRChanged(float Value);
+	void HandleRotorDiscColorGChanged(float Value);
+	void HandleRotorDiscColorBChanged(float Value);
 };

@@ -377,6 +377,251 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 							&SSimCopterHelicopterDebugPanel::HandleCameraMaxZoomDistanceChanged)
 					]
 				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"CockpitStabilizationTip",
+						"Cockpit view only. AMT is how much of the airframe's pitch/roll the eye "
+						"adopts (1 rides the model rigidly, 0 keeps the horizon level); SPD is how "
+						"quickly it catches up. Camera filter only - flight handling and tool aim "
+						"are unaffected."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "CockpitStabilization", "COCKPIT STAB"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("AMT"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(1.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1.0f)
+						.Delta(0.05f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCockpitAttitudeFollowStrength)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCockpitAttitudeFollowStrengthChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("SPD"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.1f)
+						.MaxValue(30.0f)
+						.MinSliderValue(0.5f)
+						.MaxSliderValue(20.0f)
+						.Delta(0.5f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCockpitAttitudeLerpSpeed)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCockpitAttitudeLerpSpeedChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"CockpitCannonOffsetTip",
+						"Where the water cannon view model sits in the cockpit view, in camera-space "
+						"centimetres from the eye: X forward, Y right, Z up. It is carried by the "
+						"camera, so this is a fixed position in the frame."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "CockpitCannonOffset", "CANNON VM"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("X"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-1000.0f)
+						.MaxValue(1000.0f)
+						.MinSliderValue(-300.0f)
+						.MaxSliderValue(300.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCockpitCannonOffsetX)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetXChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Y"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-1000.0f)
+						.MaxValue(1000.0f)
+						.MinSliderValue(-300.0f)
+						.MaxSliderValue(300.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCockpitCannonOffsetY)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetYChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("Z"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(-1000.0f)
+						.MaxValue(1000.0f)
+						.MinSliderValue(-300.0f)
+						.MaxSliderValue(300.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCockpitCannonOffsetZ)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetZChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"RotorDiscOpacityTip",
+						"Opacity of the spinning-rotor blur disc. 0 hides it; 1 is a solid disc."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "RotorDiscOpacity", "ROTOR ALPHA"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(1.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1.0f)
+						.Delta(0.01f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetRotorDiscOpacity)
+						.OnValueChanged(
+							this,
+							&SSimCopterHelicopterDebugPanel::HandleRotorDiscOpacityChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 0.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"RotorDiscColorTip",
+						"Colour of the spinning-rotor blur disc, as linear RGB in 0..1."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "RotorDiscColor", "ROTOR RGB"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("R"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(1.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1.0f)
+						.Delta(0.01f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetRotorDiscColorR)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleRotorDiscColorRChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("G"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(1.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1.0f)
+						.Delta(0.01f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetRotorDiscColorG)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleRotorDiscColorGChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("B"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(1.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1.0f)
+						.Delta(0.01f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetRotorDiscColorB)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleRotorDiscColorBChanged)
+					]
+				]
 
 				// --- TOOL ---
 				+ SVerticalBox::Slot()
@@ -856,6 +1101,9 @@ FText SSimCopterHelicopterDebugPanel::GetCameraModeText() const
 	case ESimCopterCameraMode::Rescue:
 		Label = TEXT("RESCUE VIEW");
 		break;
+	case ESimCopterCameraMode::Cockpit:
+		Label = TEXT("COCKPIT VIEW");
+		break;
 	default:
 		break;
 	}
@@ -1022,6 +1270,162 @@ void SSimCopterHelicopterDebugPanel::HandleCameraMaxZoomDistanceChanged(float Va
 		HelicopterPawn->SetCameraViewMaxZoomDistanceCm(
 			HelicopterPawn->GetCameraMode(),
 			Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCockpitAttitudeFollowStrength() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCockpitAttitudeFollowStrength())
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCockpitAttitudeLerpSpeed() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCockpitAttitudeLerpSpeed())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCockpitAttitudeFollowStrengthChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCockpitAttitudeFollowStrength(Value);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCockpitAttitudeLerpSpeedChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCockpitAttitudeLerpSpeed(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCockpitCannonOffsetX() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(static_cast<float>(HelicopterPawn->GetCockpitCannonViewModelOffsetCm().X))
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCockpitCannonOffsetY() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(static_cast<float>(HelicopterPawn->GetCockpitCannonViewModelOffsetCm().Y))
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCockpitCannonOffsetZ() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(static_cast<float>(HelicopterPawn->GetCockpitCannonViewModelOffsetCm().Z))
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetXChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		FVector Offset = HelicopterPawn->GetCockpitCannonViewModelOffsetCm();
+		Offset.X = Value;
+		HelicopterPawn->SetCockpitCannonViewModelOffsetCm(Offset);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetYChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		FVector Offset = HelicopterPawn->GetCockpitCannonViewModelOffsetCm();
+		Offset.Y = Value;
+		HelicopterPawn->SetCockpitCannonViewModelOffsetCm(Offset);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetZChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		FVector Offset = HelicopterPawn->GetCockpitCannonViewModelOffsetCm();
+		Offset.Z = Value;
+		HelicopterPawn->SetCockpitCannonViewModelOffsetCm(Offset);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetRotorDiscOpacity() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetRotorDiscOpacity())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleRotorDiscOpacityChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetRotorDiscOpacity(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetRotorDiscColorR() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetRotorDiscColor().R)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetRotorDiscColorG() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetRotorDiscColor().G)
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetRotorDiscColorB() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetRotorDiscColor().B)
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleRotorDiscColorRChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		FLinearColor Color = HelicopterPawn->GetRotorDiscColor();
+		Color.R = Value;
+		HelicopterPawn->SetRotorDiscColor(Color);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleRotorDiscColorGChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		FLinearColor Color = HelicopterPawn->GetRotorDiscColor();
+		Color.G = Value;
+		HelicopterPawn->SetRotorDiscColor(Color);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleRotorDiscColorBChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		FLinearColor Color = HelicopterPawn->GetRotorDiscColor();
+		Color.B = Value;
+		HelicopterPawn->SetRotorDiscColor(Color);
 	}
 }
 
