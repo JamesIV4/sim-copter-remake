@@ -782,6 +782,29 @@ void ASimCopterAmbientVehiclesActor::UpdatePlane(FSimCopterAmbientPlane& Plane, 
 
 	if (bIsUfo)
 	{
+		// FUN_004b2630's first act on a non-PLANE1 aircraft is FUN_004c0d10(itself): the abduction
+		// roll. It runs once per original simulation tick, so the remake meters it to OriginalSimHz
+		// rather than per frame - at 1-in-16250 a frame the frame rate would set how often the UFO
+		// takes anyone.
+		UfoBeamTickAccumSeconds += DeltaSeconds;
+		const float BeamTickSeconds = 1.0f / SimCopterAmbientVehicles::OriginalSimHz;
+		int32 BeamTicks = FMath::FloorToInt(UfoBeamTickAccumSeconds / BeamTickSeconds);
+		UfoBeamTickAccumSeconds -= BeamTicks * BeamTickSeconds;
+		BeamTicks = FMath::Min(BeamTicks, 4); // don't burst the roll after a hitch
+		if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
+		{
+			for (int32 BeamTick = 0; BeamTick < BeamTicks; ++BeamTick)
+			{
+				// The saucer itself, not the pool actor: an abductee flies to where the mesh is.
+				const int32 Taken = TrafficSystem->TryBeamPeopleUp(Plane.Mesh);
+				if (Taken > 0)
+				{
+					UE_LOG(LogSimCopterAmbientVehicles, Log,
+						TEXT("UFO beamed up %d %s."), Taken, Taken == 1 ? TEXT("person") : TEXT("people"));
+				}
+			}
+		}
+
 		Plane.EffectTimerSeconds -= DeltaSeconds;
 		if (Plane.EffectTimerSeconds < 0.0f && !Plane.bCrashing && !Plane.bCrashRequested)
 		{

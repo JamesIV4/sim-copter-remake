@@ -307,3 +307,44 @@ walk-in-place / building walk-through fixed):**
   frames advance per VM tick; yaw snaps from the facing attribute (op29 turns show while
   standing); BehaviorTickRate default 15. New attrs in EBhavAttr: MoveSpeed 18, AmbientFlag 20,
   AutoTurn 21, MoveThroughWalls 40, MoveFailCounter 41.
+
+**Update 2026-07-29 (the opcode table is finished: every shipped record site is ported).**
+Full decode + port notes: `Docs/scratchpad/ghidra/people_vm_opcode_table_20260728.md` (second-pass
+section). 73 of the 81 table entries are implemented; `opcode_map.py`'s "used by shipped programs but
+NOT ported" list is finally empty, and the eight left over (42/43/45/49/52/64/65/81) appear in no
+`people.df` record.
+- **Op 50 = free seats.** `FUN_0048c1e0` on the seat manifest at `DAT_005040d0+0x1d4` is
+  `capacity(+4) - occupied(+8)`; an emergency vehicle (obj+0xc flag 0x10, the field `FUN_004c4e10`
+  copies into person+0x170) answers the flat constant 0x1721. All three sites follow it with
+  `local > 0`, so it is the gate an officer boards through - a full cabin makes them wait.
+- **Op 78 + state 16 = the UFO abduction.** BHAV 666 'Porkchop' is state 16; `FUN_004c0f40` puts a
+  person into it with the saucer in person+0x1a8, and the driver is `FUN_004c0d10`, called from
+  `FUN_004b2630`'s non-PLANE1 arm. **`DAT_0058dc3a` is 65000 at runtime, not figure.twk's 4** -
+  `FUN_004c3010` stores it after `FUN_004c8120` binds the tweak - so the roll is 1-in-16250 per UFO
+  tick, then a coin flip per person slot. Op 78 itself teleports movespeed WHOLE units per tick
+  (no `/12`, no move check, no climb gate) and is done on arrival or past 21 tiles from the camera.
+- **Op 80 = the street conversation**, closing the "bump result 5 chats" gap. `FUN_004c9470` calls
+  `FUN_004c1050(0xd, me, them, -1, person+0x180)`; mode 13 with a non-zero param_5 uses **that value
+  as the program id**, and attribute 32 (+0x180) is 916 for cops/paramedics, 0 (-> table entry 914)
+  for everyone else. Move result 5 blocks the step and turns the walker one octant on.
+- **The ambient stubs behind BHAV 600's hooks were the expensive ones.** 600 calls 270 (riot),
+  274 (fire) and 273 (corpse), so ops 24/27/28/31/36 were dead for every person in the city.
+  Op 24 measures crowd count + mean agitation + bearing (agitation is +0x150, NOT a walk speed);
+  op 28 converts the person into a state-3 rioter on the live 0x1000 record; op 27 halves their body
+  radius (+0x1c4, which is also the bump radius) when agitated; op 31 faces AWAY from the selection;
+  op 36 finds the nearest cell with flag 0x20 (fire) and BHAV 274 runs toward it from 6+ tiles,
+  gawks at 4-5, flees under 4.
+- **Op 35 is not a despawn.** `FUN_004c9b50` posts EVT_PersonDied on the old record, creates a fresh
+  MedEvac record and makes the person its state-6 victim - a swoon becomes a real casualty, capped at
+  difficulty + 2 live medevacs. Ops 28 and 35 must YIELD in the remake, not Stop: Stop is wired to
+  the despawn path and would delete what they just created.
+- **Op 79 is a stopwatch.** `DAT_00506448` is the people tick counter (`FUN_004c5fb0`), and BHAV 444
+  subtracts two samples to time the tuba player's notes. That function also pins the original
+  behaviour tick rate: `DAT_00506450 = 0x147a` = 0.08 s = **12.5 Hz** (the remake runs 15).
+- Also decoded here: person+0x15e = "written off" (`FUN_004c0ba0` sets it on everyone aboard when the
+  helicopter is destroyed), attribute 33 (+0x182) = "recently spooked" (BHAV 600 rec[14] holds off
+  the gawk hooks until a 1-in-6 roll clears it), and `FUN_004c1050`'s exact acceptance tests -
+  including **state 6 never reacts to anything**.
+- Still open: op 15 **class 15** (the corpse BHAV 273 gawks at) needs a capstone pass over the
+  jump-table body at `0x004caee5`, and cell flag 0x20's writer is not in the Ghidra exports, so
+  "0x20 = alight" rests on the program name plus the spawn gate.

@@ -219,30 +219,73 @@ EOpResult ExecOpcode(
 		Context.Attributes[EBhavAttr::Speed] = uint16(NewSpeed);
 		return EOpResult::True;
 	}
-	case 24: // compute bearing/distance to a selected runtime object (FUN_004cb480)
-		return EOpResult::False;
+	case 24: // the riot measurement (FUN_004cb480 -> FUN_004c9f10)
+	{
+		// args: [0] radius local, [1] bearing-octant out, [2] mean-agitation out, [3] head-count out.
+		// FUN_004cb480 fails outright when no 0x1000 record is live, which is what stops an ordinary
+		// crowd on the sidewalk from reading as a riot.
+		int32 FacingOctant = 0;
+		int32 AverageAgitation = 0;
+		int32 Count = 0;
+		if (!World.MeasureRiotCrowd(Context, int32(Local(Record.Args[0])), FacingOctant, AverageAgitation, Count))
+		{
+			return EOpResult::False;
+		}
+		Local(Record.Args[1]) = uint16(FacingOctant & 7);
+		Local(Record.Args[2]) = uint16(FMath::Clamp(AverageAgitation, 0, 0xffff));
+		Local(Record.Args[3]) = uint16(FMath::Clamp(Count, 0, 0xffff));
+		return EOpResult::True;
+	}
 	case 25: // XBLD id at my tile == arg0 (FUN_004cb550; BHAV 801 tests 209 = the hospital)
 		return World.GetCurrentTileBuildingId() == int32(int16(Record.Args[0]))
 			? EOpResult::True : EOpResult::False;
-	case 26: // same shape as 25 in the original, one tile-map lookup apart; unported.
-		World.OnUnknownOpcode(Record.Token);
-		return EOpResult::False;
-	case 27: // reaction-force side effect (FUN_004cb630); not needed by the remake movement.
+	case 26: // re-push my state's own program (FUN_004cb5e0) unless it is already the top frame
+	{
+		// person+0x17a is the DAT_0058de80 program for the person's state; the original pops the
+		// deepest frame first when the stack is nearly full. No shipped program uses this opcode.
+		const TArray<int32>& StatePrograms = FPeopleBehaviorModel::GetStateProgramIds();
+		const int32 StateIndex = Context.GetStateIndex();
+		const int32 StateProgram = StatePrograms.IsValidIndex(StateIndex) ? StatePrograms[StateIndex] : StatePrograms[0];
+		if (Frame.ProgramId == StateProgram)
+		{
+			return EOpResult::True;
+		}
+		if (Context.Stack.Num() >= FSimCopterPersonContext::MaxStackDepth - 1 && Context.Stack.Num() > 1)
+		{
+			Context.Stack.Pop(EAllowShrinking::No);
+		}
+		FSimCopterPersonContext::FFrame Callee;
+		Callee.ProgramId = StateProgram;
+		Context.Stack.Add(Callee);
+		// End the tick on the pushed frame. Returning True would hand the caller's edge to the frame
+		// we just pushed, and the original's own answer here is unverifiable: no shipped program
+		// reaches this opcode, so the walker never advanced past one of its pushes.
+		return EOpResult::Yield;
+	}
+	case 27: // my own body radius (FUN_004cb630): 1.5 units once agitated, 3.0 otherwise
+		// The original writes person+0x1c4, which is both the frustum-cull radius and the radius
+		// FUN_004c9000 bumps people with - so an agitated rioter physically packs tighter.
+		World.SetBodyRadiusOriginalUnits(int16(Context.Attributes[EBhavAttr::Speed]) > 5 ? 1.5f : 3.0f);
 		return EOpResult::True;
-	case 28: // maybe create a rioter from a carried/context object (FUN_004cb680)
+	case 28: // join the live riot (FUN_004cb680 -> FUN_004c4e60)
+		// FUN_004c0df0 has already rebound the program, so the original returns 3 to end the walk
+		// for this tick. Yield is that, and only that: EOpResult::Stop would take the remake's
+		// despawn path and delete the rioter we just recruited.
+		if (World.JoinLiveRiot(Context))
+		{
+			return EOpResult::Yield;
+		}
 		return EOpResult::False;
 	case 29: // facing := local[arg0] & 7 (FUN_004cb6d0)
 		Context.Attributes[EBhavAttr::Facing] = uint16(Local(Record.Args[0]) & 7);
 		return EOpResult::True;
-	case 31: // face away from a linked runtime object; no object means success (FUN_004cc240)
-		return EOpResult::True;
+	case 31: // face away from my selection (FUN_004cc240); nothing selected is a success
+		return World.FaceAwayFromSelectedObject(Context) ? EOpResult::True : EOpResult::False;
 	case 32: // face away from whatever last interacted with me (FUN_004cc290 -> FUN_004cc2b0)
 	case 33: // ...and token 0x21 is the same handler facing toward it
-		// person+0x1a4 is the object that caused the last interaction, which the remake does not
-		// keep a handle to. That lands on FUN_004cc2b0's own no-bearing arm: take a random facing
-		// and report failure, which is what the shipped programs branch on.
-		Context.Attributes[EBhavAttr::Facing] = Context.RandomBounded(8);
-		return EOpResult::False;
+		return World.FaceInteractionSource(Context, /*bFaceToward*/ Record.Token == 33)
+			? EOpResult::True
+			: EOpResult::False;
 	case 34: // wander out of road/invalid pedestrian tile (FUN_004cc330)
 	{
 		const int32 TileClass = World.GetCurrentTileClass();
@@ -260,8 +303,18 @@ EOpResult ExecOpcode(
 		--Counter;
 		return World.MoveStep(Context) ? EOpResult::Yield : EOpResult::False;
 	}
-	case 36: // face toward a runtime object class (FUN_004cc470); no matching object in this world.
-		return EOpResult::False;
+	case 36: // face the nearest burning cell within arg0 tiles (FUN_004cc470 -> FUN_004ca190)
+	{
+		// BHAV 274 "Gawk at (or flee) fire" calls this with radius 12 and branches on the distance:
+		// 6+ tiles away it runs toward the fire, 4-5 it stands and dances, under 4 it turns and runs.
+		int32 TileDistance = 0;
+		if (!World.FaceNearestFireWithin(Context, int32(int16(Record.Args[0])), TileDistance))
+		{
+			return EOpResult::False;
+		}
+		Local(Record.Args[1]) = uint16(FMath::Clamp(TileDistance, 0, 0xffff));
+		return EOpResult::True;
+	}
 	// Both are FUN_004ca940; op 12 is the arm that also gets on the thing when it arrives
 	// (`*param_3 == 0xc`), which is how every passenger in the game boards anything.
 	case 12:
@@ -404,17 +457,25 @@ EOpResult ExecOpcode(
 		World.BeginFallAndDie(Context);
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
-	case 35: // conditional despawn: local[arg0] over a tuned threshold (FUN_004cc410)
+	case 35: // collapse into a medevac casualty (FUN_004cc410 -> FUN_004c9b50)
 	{
-		// FUN_004abb00(0x20) is a tuning read the remake does not have; the original compares the
-		// local against it and only leaves when the local is larger. With no threshold to read,
-		// stay - the alternative is people vanishing for no visible reason.
-		if (int32(int16(Record.Args[0])) == -1)
+		// FUN_004c9b50 is NOT a despawn: it posts EVT_PersonDied on whatever record owned this
+		// person, zeroes their agitation, creates a *new* MedEvac record (FUN_004a9a10(0x20)), makes
+		// them a state-6 victim of it and puts its marker on their tile. The gate in front of it
+		// counts live MedEvac records (FUN_004abb00(0x20)): BHAV 906 "Rxn: Swoon" passes
+		// local0 = difficulty + 2 and only collapses while fewer than that many are running, while
+		// BHAV 293 "Scallop fall" passes -1 and always collapses.
+		if (int32(int16(Record.Args[0])) != -1 &&
+			int32(int16(Local(Record.Args[0]))) <= World.GetActiveMedevacMissionCount())
 		{
-			Context.bRequestDespawn = true;
-			return EOpResult::Stop;
+			return EOpResult::False;
 		}
-		return EOpResult::False;
+		if (!World.CollapseIntoMedevacVictim(Context))
+		{
+			return EOpResult::False;
+		}
+		// As with opcode 28, the state change rebound the program: end the tick, do not despawn.
+		return EOpResult::Yield;
 	}
 	case 54: // set the face this person shows in the seat window (FUN_004ccb40)
 		World.SetSeatPortraitMood(int32(int16(Record.Args[0])));
@@ -426,8 +487,29 @@ EOpResult ExecOpcode(
 		return EOpResult::True;
 	case 73: // is there a paramedic on the map? (FUN_004cb9c0 -> FUN_004ca4f0(state 5, hidden))
 		return World.HasHiddenPersonInState(5) ? EOpResult::True : EOpResult::False;
-	case 79: // local[arg0] := DAT_00506448 (FUN_004cb7d0); a frame counter the remake has no use for
-		Local(Record.Args[0]) = 0;
+	case 50: // local[arg0] := how much room the selection has for me (FUN_004cc980)
+	{
+		// The player's helicopter answers its free seat count, an emergency vehicle the original's
+		// 0x1721 constant, anything else nothing at all - every site then tests "> 0", so this is
+		// the gate that stops an officer walking over to a full cabin.
+		const int32 Room = World.GetSelectionRoomForBoarding(Context);
+		if (Room != INDEX_NONE)
+		{
+			Local(Record.Args[0]) = uint16(FMath::Clamp(Room, 0, 0xffff));
+		}
+		return EOpResult::True; // FUN_004cc980 returns 1 on every arm
+	}
+	case 78: // one step of the abduction flight toward person+0x1a8 (FUN_004cb830)
+		return World.AdvanceBeamAbduction(Context) ? EOpResult::Yield : EOpResult::True;
+	case 79: // local[arg0] := the behaviour tick counter (FUN_004cb7d0 reads DAT_00506448)
+		// BHAV 444 samples it twice and subtracts: the tuba player's note timer.
+		Local(Record.Args[0]) = uint16(World.GetBehaviorTickCounter() & 0xffff);
+		return EOpResult::True;
+	case 80: // react to whatever last interacted with me (FUN_004cb790)
+		// The post-move selector's "met another person" arm: face them, bind 2Gab or HipH, and say
+		// something. This is the other half of a bump - the bumped person gets reaction 914, which
+		// lands back here.
+		World.ReactToInteractionSource(Context);
 		return EOpResult::True;
 	default:
 		// Not yet ported (semantics in out_vm_ops_*.txt). Follow the failure edge so a missing

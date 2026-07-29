@@ -54,6 +54,14 @@ namespace EBhavAttr
 	// FUN_004ca350 refuses to return a person with this set when it is asked for object class 6,
 	// which is how an arrested criminal stops being a target for every other cop on the map.
 	constexpr int32 CriminalCaught = 23;
+	// +0x180. Which reaction BHAV *other* people get when this person walks into them: 0 means the
+	// mode-13 table entry (914 "Rxn: Person--civil, neutral", the street conversation), and the cop
+	// and paramedic programs set 916 "don't gawk, maybe run" so nobody chats with them.
+	// FUN_004c9470 passes it as FUN_004c1050's param_5.
+	constexpr int32 BumpReaction = 32;
+	// +0x182. Set by BHAV 916 and by the megaphone reaction, and tested by BHAV 600 rec[14]: while it
+	// is 1 the ambient loop keeps clear of the gawk hooks until a 1-in-6 roll clears it.
+	constexpr int32 RecentlySpooked = 33;
 	// +0x184. BHAV 281 drains it; BHAV 280 rec[11] kills the victim once it falls below 1.
 	constexpr int32 MedevacHealth = 34;
 	constexpr int32 Count = 0x30;
@@ -215,6 +223,77 @@ public:
 
 	// Op 18, FUN_004cb270: snap facing to the selected object's octant (bearing - 2 & 7).
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 31, FUN_004cc240: the same bearing, turned 180 degrees (bearing + 2 & 7) - face *away*
+	// from the selection. Every flee program selects the thing to run from and then calls this, so
+	// without it a criminal runs from a cop in whatever direction they happened to be facing.
+	// Nothing selected is a successful no-op; a selection with no bearing (same position) fails.
+	virtual bool FaceAwayFromSelectedObject(FSimCopterPersonContext& Context) { return true; }
+
+	// Ops 32/33, FUN_004cc290 -> FUN_004cc2b0: the same two turns against person+0x1a4, the object
+	// that last interacted with me. No source at all returns true *without* changing the facing;
+	// a source with no bearing takes a random facing and returns false.
+	virtual bool FaceInteractionSource(FSimCopterPersonContext& Context, bool bFaceToward) { return true; }
+
+	// Op 80, FUN_004cb790: re-run the post-move selector against person+0x1a4 with result 5 when the
+	// source is a person (obj+0xc & 8) and 4 otherwise - the street conversation ("2Gab"/"HipH" plus
+	// a voice line) or a "Whoa". Always succeeds.
+	virtual void ReactToInteractionSource(FSimCopterPersonContext& Context) {}
+
+	// Op 24, FUN_004cb480 -> FUN_004c9f10: the riot measurement. False when no riot mission is live
+	// (FUN_004a9230(0x1000)). Otherwise counts the other people within RadiusTiles, averages their
+	// agitation (the op-23 "logic" speed at +0x150) and reports the facing octant toward the crowd's
+	// mean position. BHAV 852 turns this into riotValue = count * mean / 15.
+	virtual bool MeasureRiotCrowd(
+		const FSimCopterPersonContext& Context,
+		int32 RadiusTiles,
+		int32& OutFacingOctant,
+		int32& OutAverageAgitation,
+		int32& OutCount) const
+	{
+		return false;
+	}
+
+	// Op 27, FUN_004cb630: person+0x1c4, this person's own radius - 3 original units normally, 1.5
+	// once their agitation passes 5, which is how a mob packs twice as tight. The same field is the
+	// radius FUN_004c9000 collides people with, so it is also the bump radius.
+	virtual void SetBodyRadiusOriginalUnits(float RadiusUnits) {}
+
+	// Op 28, FUN_004cb680 -> FUN_004c4e60: join the live riot - post EVT_RiotPersonAdded and become
+	// a state-3 rioter owned by that record. False when no riot is running.
+	virtual bool JoinLiveRiot(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 36, FUN_004cc470 -> FUN_004ca190: the nearest cell within RadiusTiles carrying scene-cell
+	// flag 0x20. Faces toward it and reports its tile distance, which BHAV 274 branches on to decide
+	// between running to watch a fire, gawking at it, and fleeing.
+	virtual bool FaceNearestFireWithin(FSimCopterPersonContext& Context, int32 RadiusTiles, int32& OutTileDistance)
+	{
+		return false;
+	}
+
+	// Op 35, FUN_004cc410 -> FUN_004abb00(0x20): how many mission records of type MedEvac are live.
+	virtual int32 GetActiveMedevacMissionCount() const { return 0; }
+
+	// Op 35's action, FUN_004c9b50: the person collapses. Their old record is told they died, a fresh
+	// MedEvac record is created at their tile, and they become its state-6 victim.
+	virtual bool CollapseIntoMedevacVictim(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 50, FUN_004cc980: how much room the selection has for another passenger. The player's
+	// helicopter answers its free seat count (manifest +4 minus +8); an emergency vehicle answers the
+	// original's 0x1721 "always room" constant; anything else answers INDEX_NONE, which means the
+	// handler writes nothing and the local keeps its old value.
+	static constexpr int32 EmergencyVehicleRoomId = 0x1721;
+	virtual int32 GetSelectionRoomForBoarding(const FSimCopterPersonContext& Context) const { return INDEX_NONE; }
+
+	// Op 78, FUN_004cb830: one step of the abduction flight - normalise the 3D delta to
+	// person+0x1a8 and teleport MoveSpeed whole units along it, with no move check or climb gate.
+	// True while still travelling (the opcode yields), false when it has arrived, drifted more than
+	// 0x15 tiles from the camera, or there is no beam target at all.
+	virtual bool AdvanceBeamAbduction(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 79, FUN_004cb7d0: DAT_00506448, the people system's behaviour-tick counter. BHAV 444 reads
+	// it twice and subtracts, which is how the tuba player times its notes.
+	virtual int32 GetBehaviorTickCounter() const { return 0; }
 
 	// Op 38, FUN_004ca940: face the selected object and take one move step toward it.
 	virtual ESimCopterBehaviorStepResult StepTowardSelectedObject(FSimCopterPersonContext& Context)

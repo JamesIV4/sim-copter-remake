@@ -30,7 +30,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 ## Population, traffic and agents
 
-- [SimCopter people logic](simcopter-people-logic-next.md) — the big one; traps: dispatch table 0x58ef78 is SPARSE (opcode numbering!), the PRNG is a left-shift xor, figures bind by behavior class at spawn (dog=10/cow=17/Elvis=20), walk anims come from the post-move selector.
+- [SimCopter people logic](simcopter-people-logic-next.md) — the big one; traps: dispatch table 0x58ef78 is SPARSE (opcode numbering!), the PRNG is a left-shift xor, figures bind by behavior class at spawn (dog=10/cow=17/Elvis=20), walk anims come from the post-move selector. **Opcode table finished 2026-07-29** — every shipped record site is ported (UFO abduction, street chats, riot contagion, fire gawking); op 35 is a collapse-into-casualty, not a despawn.
 - [SimCopter population rendering](simcopter-population-rendering.md) — car headlights are face-type-11 beam cards; people aren't in GEO (use a procedural box body); ground agents must Camera-trace from high up or they hover.
 - [SimCopter UE figure component](simcopter-ue-figure-component.md) — privanim figures render in UE; ARPP Z is y-down (negate!); unity builds disabled in `Build.cs`; engine at `C:\GameDev\UE_5.8`.
 - [SimCopter ambient vehicles](simcopter-ambient-vehicles.md) — planes/trains/boats + the four crash/rescue missions ported; plane slot 1 IS the UFO, boat slot 0 is CAPBOAT1, Plane/Train Crash tuning is bound-but-dead, a plane ditching on water makes a boat rescue, and only cities with rail (e.g. 12) can show a train.

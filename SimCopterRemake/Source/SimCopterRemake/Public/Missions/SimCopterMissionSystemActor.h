@@ -141,6 +141,12 @@ public:
 	// FUN_004a88e0 returns the live record's +0x30 coordinate pair. Object class 0 uses this
 	// destination in BHAV 292 before a transport passenger requests opcode 17 (alight).
 	bool TryGetMissionDestinationTile(int32 EventId, int32& OutTileX, int32& OutTileY) const;
+	// FUN_004a9230(mask): the event id of the first live record carrying every bit of TypeMask, or
+	// INDEX_NONE. Behaviour opcodes 24 and 28 use it to find the running riot.
+	int32 FindActiveMissionOfType(int32 TypeMask) const;
+	// FUN_004abb00(mask): how many live records carry every bit of TypeMask. Behaviour opcode 35
+	// compares against the MedEvac count.
+	int32 CountActiveMissionsOfType(int32 TypeMask) const;
 	// OR a type bit onto a running record, the way EVT_DebrisCreated/MedevacVictimAdded do.
 	void PromoteMissionType(int32 EventId, int32 TypeBits) { MissionSystem.PromoteRecordType(EventId, TypeBits); }
 	int32 GetMissionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }

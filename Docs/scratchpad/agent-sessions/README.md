@@ -19,6 +19,7 @@ off the scripts inside it and cross-checked against the note it produced in `Doc
 | `2026-07-27-privanim-figures` | 10 | privanim part/dimension analysis via `Tools/privanim_extract.py` | `simcopter-privanim-decoded.md` |
 | `2026-07-27-population-and-cards` | 12 | dog/tree stats, GEO object dumps, effect-card geometry | `simcopter-population-rendering.md`, `simcopter-fire-water-fx.md` |
 | `2026-07-28-ingame-driving` | 1 | Win32 input driver for the running game | `simcopter-ingame-verification.md` |
+| `2026-07-29-people-vm-opcodes` | 8 | finishing the people VM opcode table: `dump_bhav.py` (full opcode legend), `scan_attr.py`, and the asm/decompiles behind the UFO abduction roll, `DAT_0058dc3a`'s init order and the move core's bump | `simcopter-people-logic-next.md`, `ghidra/people_vm_opcode_table_20260728.md` |
 
 ## What was deliberately left behind
 
