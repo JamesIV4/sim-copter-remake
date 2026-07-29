@@ -105,16 +105,27 @@ public:
 	void SetMissionPickupCounted(bool bCounted) { bMissionPickupCounted = bCounted; }
 	bool HasMissionResolutionReported() const { return bMissionResolutionReported; }
 	void SetMissionResolutionReported(bool bReported) { bMissionResolutionReported = bReported; }
+	bool IsMissionPatientDead() const { return bMissionPatientDead; }
 	void ResetMissionActionTracking()
 	{
 		bMissionPickupCreditAwarded = false;
 		bMissionPickupCounted = false;
 		bMissionResolutionReported = false;
+		bMissionPatientDead = false;
 	}
 
 	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
 	void ClearForcedPedestrianFigureClip();
 	void SetMissionInjuredPose();
+	// A dead medevac patient remains the same physical person. When they die in the cabin this
+	// pose stops their VM without relinquishing their seat; the hospital handoff removes the body.
+	void SetMissionDeadPose();
+
+	// Mission-required roof staff are outside the disposable ambient-population budget. A medic
+	// may be far across the city while the player collects a patient and still has to be present
+	// when the helicopter reaches the hospital.
+	bool IsPersistentHospitalRoofCrew() const { return bPersistentHospitalRoofCrew; }
+	void SetPersistentHospitalRoofCrew(bool bPersistent) { bPersistentHospitalRoofCrew = bPersistent; }
 
 	// Marks an uninjured victim who still needs picking up. They keep whatever program or carrier
 	// they are on, but any moment it leaves them standing still they wave for the helicopter
@@ -514,6 +525,8 @@ private:
 	bool bMissionPickupCreditAwarded = false;
 	bool bMissionPickupCounted = false;
 	bool bMissionResolutionReported = false;
+	bool bMissionPatientDead = false;
+	bool bPersistentHospitalRoofCrew = false;
 	bool bPassengerFallActive = false;
 	bool bPassengerFallStarted = false;
 	float PassengerFallStartZ = 0.0f;

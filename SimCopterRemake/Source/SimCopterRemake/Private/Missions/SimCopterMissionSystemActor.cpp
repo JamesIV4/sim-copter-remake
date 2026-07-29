@@ -166,6 +166,7 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 		EndMedevacHandoff(Handoff, /*bResolvePatients*/ false);
 	}
 	MedevacHandoffs.Reset();
+	MedevacHospitalTiles.Reset();
 
 	RemoveMegaphonePromptWidget();
 	RemoveMissionMarkerWidget();
@@ -1317,19 +1318,23 @@ bool ASimCopterMissionSystemActor::CanHospitalParamedicBoardPlayerHelicopter(
 		return false;
 	}
 
+	// A living patient or a body already in the cabin always belongs to the hospital unload
+	// service first. Do not let a helper medic claim another seat just because the casualty made
+	// their mission record inactive.
+	for (const FSimCopterMissionPassengerSlot& Slot : Helicopter->GetMissionPassengerSlots())
+	{
+		if (Slot.Kind == ESimCopterMissionPassengerKind::Medevac)
+		{
+			return false;
+		}
+	}
+
 	bool bHasWaitingMedevacPatient = false;
 	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
 	{
 		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_Medevac) == 0)
 		{
 			continue;
-		}
-
-		if (Helicopter->GetMissionPassengerCount(
-				Record.EventId,
-				ESimCopterMissionPassengerKind::Medevac) > 0)
-		{
-			return false;
 		}
 
 		const int32 Waiting = Record.MedevacVictims -
@@ -1755,8 +1760,9 @@ void ASimCopterMissionSystemActor::ProcessMedevacHospitalHandoffs(float DeltaSec
 {
 	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
 
-	// Collect active medevac missions and their hospital drop-off world locations.
-	TMap<int32, FVector> MedevacDropoffs;
+	// Cache every active medevac's hospital before lifecycle completion clears its record type.
+	// A casualty can complete the scoring record while their real body is still occupying a seat.
+	TSet<int32> ActiveMedevacEvents;
 	if (TrafficSystem != nullptr)
 	{
 		for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
@@ -1765,21 +1771,85 @@ void ASimCopterMissionSystemActor::ProcessMedevacHospitalHandoffs(float DeltaSec
 			{
 				continue;
 			}
+			ActiveMedevacEvents.Add(Record.EventId);
 			if (!IsValidMissionTile(Record.SecondaryX, Record.SecondaryY))
 			{
 				continue;
 			}
-			FVector HospitalLocation = FVector::ZeroVector;
-			if (TrafficSystem->TryGetTileCenterWorldLocation(Record.SecondaryX, Record.SecondaryY, HospitalLocation))
+			MedevacHospitalTiles.Add(Record.EventId, FIntPoint(Record.SecondaryX, Record.SecondaryY));
+		}
+	}
+
+	// See every seat, not only landed helicopters. An inactive casualty record must retain its
+	// hospital service while the body is still being flown there.
+	TArray<AActor*> HelicopterActors;
+	if (GetWorld() != nullptr)
+	{
+		UGameplayStatics::GetAllActorsOfClass(
+			GetWorld(),
+			ASimCopterHelicopterPawn::StaticClass(),
+			HelicopterActors);
+	}
+	TArray<ASimCopterHelicopterPawn*> AllHelicopters;
+	TArray<ASimCopterHelicopterPawn*> Helicopters;
+	for (AActor* Actor : HelicopterActors)
+	{
+		ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
+		if (Helicopter == nullptr)
+		{
+			continue;
+		}
+		AllHelicopters.Add(Helicopter);
+		if (Helicopter->CanTransferMissionPassengers())
+		{
+			Helicopters.Add(Helicopter);
+		}
+	}
+
+	// Keep a mission-required state-5 worker physically posted on every relevant hospital roof.
+	// The post remains required for an active mission anywhere in the city, and after a casualty
+	// until the last body has actually left the cabin.
+	TMap<int32, FVector> MedevacDropoffs;
+	if (TrafficSystem != nullptr)
+	{
+		for (auto It = MedevacHospitalTiles.CreateIterator(); It; ++It)
+		{
+			const int32 EventId = It.Key();
+			bool bHasPatientAboard = false;
+			for (const ASimCopterHelicopterPawn* Helicopter : AllHelicopters)
 			{
-				MedevacDropoffs.Add(Record.EventId, HospitalLocation);
+				if (Helicopter != nullptr &&
+					Helicopter->GetMissionPassengerCount(
+						EventId,
+						ESimCopterMissionPassengerKind::Medevac) > 0)
+				{
+					bHasPatientAboard = true;
+					break;
+				}
+			}
+
+			if (!ActiveMedevacEvents.Contains(EventId) &&
+				!bHasPatientAboard &&
+				FindMedevacHandoff(EventId) == nullptr)
+			{
+				It.RemoveCurrent();
+				continue;
+			}
+
+			const FIntPoint HospitalTile = It.Value();
+			FVector HospitalLocation = FVector::ZeroVector;
+			if (TrafficSystem->TryGetTileCenterWorldLocation(
+					HospitalTile.X,
+					HospitalTile.Y,
+					HospitalLocation))
+			{
+				MedevacDropoffs.Add(EventId, HospitalLocation);
+				TrafficSystem->EnsureHospitalParamedicAtTile(HospitalTile.X, HospitalTile.Y);
 			}
 		}
 	}
 
 	// Start a handoff for any landed helicopter that is at a hospital with patients still aboard.
-	TArray<ASimCopterHelicopterPawn*> Helicopters;
-	GetTransferReadyHelicopters(Helicopters);
 	for (const TPair<int32, FVector>& Pair : MedevacDropoffs)
 	{
 		const int32 EventId = Pair.Key;

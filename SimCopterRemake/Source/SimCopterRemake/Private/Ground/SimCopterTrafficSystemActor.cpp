@@ -1556,6 +1556,77 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestAvailablePersonI
 	return Best;
 }
 
+ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTile(
+	const int32 TileX,
+	const int32 TileY)
+{
+	if (GetWorld() == nullptr ||
+		TileX < 0 || TileX >= FSimCity2000City::MapSize ||
+		TileY < 0 || TileY >= FSimCity2000City::MapSize ||
+		uint8(GetXbldTileId(TileX, TileY)) != 0xD1)
+	{
+		return nullptr;
+	}
+
+	FVector HospitalCenter = FVector::ZeroVector;
+	if (!TryGetTileCenterWorldLocation(TileX, TileY, HospitalCenter))
+	{
+		return nullptr;
+	}
+
+	const float RadiusCm =
+		float(FMath::Max(1, GetBuildingFootprintSize(TileX, TileY))) * ActiveTileSize;
+	auto FindPostedMedic = [this, &HospitalCenter, RadiusCm]() -> ASimCopterGroundAgent*
+	{
+		const float RadiusSq = FMath::Square(FMath::Max(1.0f, RadiusCm));
+		for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+		{
+			ASimCopterGroundAgent* Agent = AgentPtr.Get();
+			if (Agent == nullptr ||
+				Agent->IsActorBeingDestroyed() ||
+				Agent->InitialPersonState != 5 ||
+				Agent->GetBehaviorCarrier() != nullptr ||
+				Agent->IsMissionCarried() ||
+				Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0 ||
+				FVector::DistSquared2D(Agent->GetActorLocation(), HospitalCenter) > RadiusSq)
+			{
+				continue;
+			}
+			return Agent;
+		}
+		return nullptr;
+	};
+
+	if (ASimCopterGroundAgent* Existing = FindPostedMedic())
+	{
+		Existing->SetPersistentHospitalRoofCrew(true);
+		return Existing;
+	}
+
+	// This is mission infrastructure, not a random crowd roll. Retry every mission tick if the
+	// city surface is not ready yet, and do not let a full ambient pool veto the post.
+	if (!TrySpawnOriginalPersonAtTile(
+			TileX,
+			TileY,
+			/*BehaviorClass*/ 0x0c,
+			/*InitialState*/ 5,
+			/*InitialProgramId*/ INDEX_NONE,
+			/*ExplicitOriginalOffset*/ nullptr,
+			/*ClothesOffset*/ INDEX_NONE,
+			/*bPlaceOnBuildingRoof*/ true,
+			/*bBypassPopulationCap*/ true))
+	{
+		return nullptr;
+	}
+
+	ASimCopterGroundAgent* Spawned = FindPostedMedic();
+	if (Spawned != nullptr)
+	{
+		Spawned->SetPersistentHospitalRoofCrew(true);
+	}
+	return Spawned;
+}
+
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const
 {
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
@@ -4261,7 +4332,7 @@ void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCop
 		// killed, or removed with the vehicle they were on). Culling them stranded every victim
 		// of a mission that starts away from the player - a train rescue puts its passengers on
 		// a train that can be anywhere on the map, and they were being destroyed the same frame.
-		if (Agent->MissionEventId != INDEX_NONE)
+		if (Agent->MissionEventId != INDEX_NONE || Agent->IsPersistentHospitalRoofCrew())
 		{
 			continue;
 		}
@@ -5984,9 +6055,12 @@ bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
 	int32 InitialProgramId,
 	const FVector2D* ExplicitOriginalOffset,
 	int32 ClothesOffset,
-	bool bPlaceOnBuildingRoof)
+	bool bPlaceOnBuildingRoof,
+	bool bBypassPopulationCap)
 {
-	if (GetWorld() == nullptr || GroundAgentClass == nullptr || PedestrianAgents.Num() >= MaxPedestrianAgents)
+	if (GetWorld() == nullptr ||
+		GroundAgentClass == nullptr ||
+		(!bBypassPopulationCap && PedestrianAgents.Num() >= MaxPedestrianAgents))
 	{
 		return false;
 	}

@@ -153,6 +153,26 @@ when an active medevac still has a patient waiting for pickup; completing a hand
 paused VM stack rather than restarting BHAV 801. State-5 hospital staff are also protected from a
 visible `Disappear` immediately after service.
 
+The population scan is not allowed to own whether this service exists. While a medevac is active,
+the mission layer guarantees a real state-5 worker on that mission's D1 hospital roof, even when the
+hospital is outside the ambient population radius or the random-pedestrian pool is full. A worker
+posted this way is distance-persistent. If one leaves as a retrieval helper, the still-active
+mission posts a replacement to preserve roof coverage.
+
+### Deceased patients still leave through the hospital
+
+Opcode 66 (`FUN_004cbbc0`) is a terminal fall/death action: it posts `EVT_PersonDied`, binds
+`Dead`, and the VM requests population cleanup. Applying that cleanup literally to a medevac
+patient who dies inside the cabin relinquishes their seat and destroys the only actor the hospital
+paramedic could remove.
+
+The stable carrier service therefore owns one deliberate physical invariant: a deceased medevac
+patient already in the cabin remains attached to their real seat until the hospital handoff alights
+and carries that same actor inside. The casualty outcome is still posted immediately, so the
+mission receives no delivery credit or delivery reward and may retire its scoring record. The
+mission layer caches the hospital tile across that retirement and keeps the roof medic posted until
+the body has actually left the cabin.
+
 ### Transport action order
 
 BHAV 291 "Transport go to avatar/get on heli" probes object class 2 (the player's helicopter) at
@@ -193,3 +213,6 @@ Accordingly:
   seat, visibly carry the actual patient out of the helicopter, and fall back to direct delivery if
   staging or movement fails. A legacy abstract seat gets a stand-in only when no real attached
   person exists.
+- **A casualty is not an empty cabin.** A dead medevac actor keeps its seat through the flight and
+  hospital removal. Its already-reported death makes `NotifyMissionPersonDelivered` reject reward,
+  while the cached hospital service remains available after the mission record retires.

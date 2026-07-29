@@ -27,6 +27,7 @@ public:
 	bool bCanAlight = false;
 	bool bTryAlight = false;
 	int32 TryAlightCalls = 0;
+	int32 BeginFallAndDieCalls = 0;
 	bool bHasHiddenState5 = false;
 	TSet<int32> UnknownOpcodes;
 
@@ -62,6 +63,11 @@ public:
 	{
 		++TryAlightCalls;
 		return bTryAlight;
+	}
+	virtual bool BeginFallAndDie(FSimCopterPersonContext&) override
+	{
+		++BeginFallAndDieCalls;
+		return true;
 	}
 	virtual bool HasHiddenPersonInState(int32 State) const override
 	{
@@ -162,6 +168,7 @@ bool FSimCopterBehaviorVMActionDelegationTest::RunTest(const FString& Parameters
 	AddBranchingProgram(Model, 1221, 21);
 	AddBranchingProgram(Model, 1212, 12);
 	AddBranchingProgram(Model, 1273, 73);
+	AddBranchingProgram(Model, 1266, 66);
 
 	{
 		FStubBehaviorWorld World;
@@ -205,6 +212,18 @@ bool FSimCopterBehaviorVMActionDelegationTest::RunTest(const FString& Parameters
 		Context.Stack.Add({1273, 0, {0, 0, 1}});
 		FSimCopterBehaviorVM::Tick(Context, Model, World);
 		TestEqual(TEXT("Opcode 73 queries live hidden state-5 people"), Context.Stack.Last().RecordIndex, 1);
+	}
+
+	{
+		FStubBehaviorWorld World;
+		FSimCopterPersonContext Context;
+		Context.Stack.Add({1266, 0, {0, 0, 1}});
+		TestEqual(
+			TEXT("Opcode 66 stops after delegating physical death handling"),
+			int32(FSimCopterBehaviorVM::Tick(Context, Model, World)),
+			int32(EBhavStepResult::Stopped));
+		TestEqual(TEXT("Opcode 66 delegates death exactly once"), World.BeginFallAndDieCalls, 1);
+		TestTrue(TEXT("Opcode 66 still requests population cleanup"), Context.bRequestDespawn);
 	}
 
 	return true;

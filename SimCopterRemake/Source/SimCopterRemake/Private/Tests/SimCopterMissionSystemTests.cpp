@@ -796,3 +796,58 @@ bool FSimCopterSpeederCarRecordTest::RunTest(const FString& Parameters)
 
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMedevacCasualtyRewardTest,
+	"SimCopter.Missions.MedevacCasualtyHasNoDeliveryReward",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMedevacCasualtyRewardTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 EventId = System.CreateEventOfType(TYPE_Medevac);
+	if (EventId == INDEX_NONE)
+	{
+		AddError(TEXT("Could not create the medevac fixture"));
+		return false;
+	}
+
+	System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+	System.PostEvent(EVT_PersonDied, EventId, 1);
+
+	const FSimCopterMissionRecord* BeforeCompletion = System.FindRecord(EventId);
+	if (BeforeCompletion == nullptr)
+	{
+		AddError(TEXT("The medevac record vanished before lifecycle completion"));
+		return false;
+	}
+	TestEqual(TEXT("A deceased patient is a casualty"), BeforeCompletion->Casualties, 1);
+	TestEqual(TEXT("Death is not a medevac delivery"), BeforeCompletion->MedevacDelivered, 0);
+
+	const int32 CashBeforeCompletion = System.GetCash();
+	const int32 ScoreBeforeCompletion = System.GetScore();
+	for (int32 Frame = 0; Frame < 4; ++Frame)
+	{
+		System.Tick(1.0f / 30.0f);
+	}
+
+	const FSimCopterMissionRecord* RetiredRecord = nullptr;
+	for (const FSimCopterMissionRecord& Record : System.GetRecords())
+	{
+		if (Record.EventId == EventId)
+		{
+			RetiredRecord = &Record;
+			break;
+		}
+	}
+	TestTrue(TEXT("The casualty completes the scoring record"),
+		RetiredRecord != nullptr && !RetiredRecord->bActive);
+	TestTrue(TEXT("The retired record still has no delivered patient"),
+		RetiredRecord != nullptr && RetiredRecord->MedevacDelivered == 0);
+	TestEqual(TEXT("A casualty completion adds no cash"), System.GetCash(), CashBeforeCompletion);
+	TestEqual(TEXT("A casualty completion adds no score"), System.GetScore(), ScoreBeforeCompletion);
+	return true;
+}
