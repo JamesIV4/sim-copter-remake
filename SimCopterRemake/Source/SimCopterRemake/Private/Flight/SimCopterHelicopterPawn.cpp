@@ -131,7 +131,7 @@ FSimCopterCameraViewDebugOffset GetDefaultCameraViewDebugOffset(ESimCopterCamera
 		Offset.RotationDeg = FRotator(3.5, 0.0, 0.0);
 		break;
 	case ESimCopterCameraMode::Rescue:
-		Offset.TranslationCm = FVector(-159.0, 0.0, -440.0);
+		Offset.TranslationCm = FVector(-59.0, 0.0, -440.0);
 		Offset.RotationDeg = FRotator(-24.5, 0.0, 0.0);
 		break;
 	case ESimCopterCameraMode::Cockpit:
@@ -139,7 +139,7 @@ FSimCopterCameraViewDebugOffset GetDefaultCameraViewDebugOffset(ESimCopterCamera
 		// down puts the eye level with the cabin; the CANNON object occupies X 27..58 at
 		// Z ~8 in the same body frame, about 69 cm below the roof, so from here it sits just
 		// under the crosshair. Tune from the debug panel's POSITION CM row.
-		Offset.TranslationCm = FVector(-20.0, 0.0, -60.0);
+		Offset.TranslationCm = FVector(10.0, 0.0, -60.0);
 		// Level with the nose: the crosshair then marks the model's forward axis, which is the
 		// direction every tool fires along (EmitWaterCannonFrame and friends).
 		Offset.RotationDeg = FRotator::ZeroRotator;
@@ -176,6 +176,77 @@ FVector SanitizeCameraDebugTranslation(const FVector& TranslationCm)
 		SanitizeCameraDebugTranslation(TranslationCm.X),
 		SanitizeCameraDebugTranslation(TranslationCm.Y),
 		SanitizeCameraDebugTranslation(TranslationCm.Z));
+}
+
+bool ResolveCannonBarrelTipLocal(
+	const FMaxisMeshSection& CannonSection,
+	FVector& OutTipLocalCm)
+{
+	OutTipLocalCm = FVector::ZeroVector;
+	if (CannonSection.IsEmpty() || !CannonSection.LocalBounds.IsValid)
+	{
+		return false;
+	}
+
+	// CANNON is authored down +X. Average the forward-most vertex ring rather than using the
+	// complete bounds centre, because the rear mount is wider than the barrel mouth.
+	const double MaxX = CannonSection.LocalBounds.Max.X;
+	const double TipToleranceCm = FMath::Max(
+		0.25,
+		static_cast<double>(CannonSection.LocalBounds.GetSize().X) * 0.02);
+	FVector TipSum = FVector::ZeroVector;
+	int32 TipVertexCount = 0;
+	for (const FVector& Vertex : CannonSection.Vertices)
+	{
+		if (Vertex.X >= MaxX - TipToleranceCm)
+		{
+			TipSum += Vertex;
+			++TipVertexCount;
+		}
+	}
+	if (TipVertexCount <= 0)
+	{
+		return false;
+	}
+
+	OutTipLocalCm = TipSum / static_cast<double>(TipVertexCount);
+	OutTipLocalCm.X = MaxX;
+	return true;
+}
+
+FMaxisMeshSection BuildExtendedCockpitCannonSection(
+	const FMaxisMeshSection& Source,
+	const float RearExtensionCm)
+{
+	FMaxisMeshSection Extended = Source;
+	if (Extended.IsEmpty() ||
+		!Extended.LocalBounds.IsValid ||
+		RearExtensionCm <= UE_SMALL_NUMBER)
+	{
+		return Extended;
+	}
+
+	// The builder emits split face-corner vertices, but every corner on the rear cap shares the
+	// same minimum X. Moving that entire ring backward stretches the connecting faces into a
+	// closed one-metre extension without changing the untouched world cannon.
+	const double MinX = Extended.LocalBounds.Min.X;
+	const double RearToleranceCm = FMath::Max(
+		0.25,
+		static_cast<double>(Extended.LocalBounds.GetSize().X) * 0.02);
+	for (FVector& Vertex : Extended.Vertices)
+	{
+		if (Vertex.X <= MinX + RearToleranceCm)
+		{
+			Vertex.X -= RearExtensionCm;
+		}
+	}
+
+	Extended.LocalBounds = FBox(ForceInit);
+	for (const FVector& Vertex : Extended.Vertices)
+	{
+		Extended.LocalBounds += Vertex;
+	}
+	return Extended;
 }
 
 FRotator SanitizeCameraDebugRotation(const FRotator& RotationDeg)
@@ -347,12 +418,10 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	HeliCannonMeshComponent->SetCanEverAffectNavigation(false);
 	HeliCannonMeshComponent->SetVisibility(false);
 
-	// Cockpit view model: the same CANNON geometry, but carried by the camera instead of the
-	// airframe so it is perfectly still in the frame. Placed in world space every frame from
-	// the camera transform, so it is deliberately not parented to the model hierarchy.
+	// Cockpit view model: the same CANNON geometry, camera-parented for an exact positional
+	// lock. Its rotation is absolute because user look pitch must sweep past the cannon rather
+	// than tilt the aircraft-mounted barrel.
 	CockpitCannonMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("CockpitCannon"));
-	CockpitCannonMeshComponent->SetupAttachment(CollisionComponent);
-	CockpitCannonMeshComponent->SetUsingAbsoluteLocation(true);
 	CockpitCannonMeshComponent->SetUsingAbsoluteRotation(true);
 	CockpitCannonMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	CockpitCannonMeshComponent->SetCanEverAffectNavigation(false);
@@ -440,6 +509,7 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	CameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	CameraComponent->FieldOfView = 78.0f;
+	CockpitCannonMeshComponent->SetupAttachment(CameraComponent);
 
 	// Screen space is deliberate: the component still follows a world location, but it is
 	// composited after the world with no depth test and retains an invariant Slate pixel size.
@@ -1183,11 +1253,17 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 	// decides each frame whether the player actually has the cannon fitted, and which of the
 	// two representations - world or cockpit view model - the current view wants.
 	bUsingOriginalCannonMesh = ApplySection(HeliCannonMeshComponent, Prepared.CannonSection);
+	bHasCannonBarrelTip = ResolveCannonBarrelTipLocal(
+		Prepared.CannonSection,
+		CannonBarrelTipLocalCm);
 	if (HeliCannonMeshComponent != nullptr)
 	{
 		HeliCannonMeshComponent->SetRelativeLocation(FVector::ZeroVector);
 	}
-	ApplySection(CockpitCannonMeshComponent, Prepared.CannonSection);
+	const FMaxisMeshSection CockpitCannonSection = BuildExtendedCockpitCannonSection(
+		Prepared.CannonSection,
+		CockpitCannonRearExtensionCm);
+	ApplySection(CockpitCannonMeshComponent, CockpitCannonSection);
 
 	bUsingOriginalBucketMesh = ApplySection(OriginalBucketMeshComponent, Prepared.BucketSection);
 	bUsingOriginalHarnessMesh = ApplySection(OriginalHarnessMeshComponent, Prepared.HarnessSection);
@@ -1928,12 +2004,20 @@ void ASimCopterHelicopterPawn::UpdateCrosshairWorldLocation()
 	}
 	else if (CameraMode == ESimCopterCameraMode::Cockpit)
 	{
-		// Follow the helicopter's real tool axis, not the camera look rotation. ModelPivot owns
-		// the visual/weapon pitch and roll while the actor itself owns yaw.
-		const FVector Forward = ModelPivot != nullptr
-			? ModelPivot->GetForwardVector().GetSafeNormal()
-			: GetActorForwardVector();
+		// Use the same damped attitude frame as the cockpit camera, excluding camera look pitch.
+		// The widget itself stays screen-aligned and fixed-size because it is screen-space.
+		const FQuat StabilizedCockpitFrame =
+			FQuat(FRotator(0.0f, GetActorRotation().Yaw, 0.0f)) *
+			FQuat(CockpitStabilizedAttitudeDeg);
+		const FVector Forward =
+			StabilizedCockpitFrame.RotateVector(FVector::ForwardVector).GetSafeNormal();
 		AimPoint += Forward * OffsetCm;
+		if (GetActiveTool() == ESimCopterHelicopterTool::WaterCannon)
+		{
+			// The cannon sits below the normal forward aim line. Other tools retain the
+			// original cockpit crosshair height when the player cycles away from it.
+			AimPoint -= FVector::UpVector * FMath::Max(0.0f, CockpitCrosshairDownOffsetCm);
+		}
 	}
 
 	CrosshairComponent->SetWorldLocation(AimPoint);
@@ -4448,12 +4532,20 @@ void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
 	}
 
 	// SCHOOK: WaterCannonEmitter 0x00484d20
-	const FVector Direction = ModelPivot != nullptr
-		? ModelPivot->GetForwardVector().GetSafeNormal()
-		: GetActorForwardVector();
-	const FVector SpawnWorld =
-		(ModelPivot != nullptr ? ModelPivot->GetComponentLocation() : GetActorLocation()) +
-		GetActorUpVector() * (3.0f * OriginalUnitToCm);
+	const bool bUseOriginalBarrel =
+		bUsingOriginalCannonMesh &&
+		bHasCannonBarrelTip &&
+		HeliCannonMeshComponent != nullptr;
+	const FVector Direction = bUseOriginalBarrel
+		? HeliCannonMeshComponent->GetForwardVector().GetSafeNormal()
+		: (ModelPivot != nullptr
+			? ModelPivot->GetForwardVector().GetSafeNormal()
+			: GetActorForwardVector());
+	const FVector SpawnWorld = bUseOriginalBarrel
+		? HeliCannonMeshComponent->GetComponentTransform().TransformPosition(
+			CannonBarrelTipLocalCm)
+		: (ModelPivot != nullptr ? ModelPivot->GetComponentLocation() : GetActorLocation()) +
+			GetActorUpVector() * (3.0f * OriginalUnitToCm);
 	const float ForwardSpeedOriginal =
 		SimCopterFixed::ToFloat(FlightModel.ForwardSpeed);
 	const float EmissionSpeedCmPerSec =
@@ -4749,9 +4841,9 @@ void ASimCopterHelicopterPawn::UpdateRotorWash(float DeltaSeconds)
 // Cockpit stabilization. The eye rides the airframe's own pitch and roll, but through a damped,
 // partial copy of it: CockpitAttitudeFollowStrength decides how much of the tilt reaches the
 // view and CockpitAttitudeLerpSpeed how quickly, so a gust or a hard cyclic input does not snap
-// the horizon over. It is a presentation filter and nothing more - the flight model, ModelPivot,
-// the rope anchor and every tool's firing direction all keep reading the true attitude, so
-// handling and aim are untouched.
+// the horizon over. It is a presentation filter shared by the cockpit camera, crosshair, and
+// cannon view model; the flight model, ModelPivot, rope anchor, and real tool emission direction
+// keep reading the true attitude, so handling and simulation aim are untouched.
 //
 // Advanced here, before the visuals and the camera consume it, so the stabilized props and the
 // stabilized eye are placed from the same value on the same frame.
@@ -4873,6 +4965,10 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	// view, which also keeps the crosshair on the aircraft's heading - the line the tools
 	// actually fire along.
 	const bool bFirstPersonView = CameraModeIsFirstPerson(CameraMode);
+	// A cockpit eye has no boom to soften. Leaving the spring arm's own lag enabled meant
+	// camera-parented props followed a different transform from the camera calculations below.
+	CameraBoom->bEnableCameraLag = !bFirstPersonView;
+	CameraBoom->bEnableCameraRotationLag = !bFirstPersonView;
 
 	// Gamepad look drives the camera continuously; mouse look only contributes while a mouse
 	// button is held (a click-drag). Dragging, then the CameraRecenterDelaySeconds window
@@ -4921,9 +5017,10 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	// helicopter. From inside the cockpit that reads backwards - you are turning your head,
 	// not the scene - so the vertical sense is inverted for that view only.
 	const float PitchLookSign = CameraModeIsFirstPerson(CameraMode) ? -1.0f : 1.0f;
+	const float MinPitchLookDeg = bFirstPersonView ? -89.0f : -28.0f;
 	CameraPitchOffsetDeg = FMath::Clamp(
 		CameraPitchOffsetDeg + PitchLookSign * PitchLookInput * CameraPitchSpeedDegPerSec * DeltaSeconds,
-		-28.0f,
+		MinPitchLookDeg,
 		18.0f);
 
 	const bool bHoldOffset = bCameraDragActive || CameraRecenterDelayRemaining > 0.0f;
@@ -5026,7 +5123,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		ViewYaw - ActorYaw + ViewDebugOffset.RotationDeg.Yaw);
 	const float TargetRelativeYaw = FRotator::NormalizeAxis(
 		BaselineRelativeYaw + CameraYawOffsetDeg);
-	constexpr float MinCameraPitchDeg = -78.0f;
+	const float MinCameraPitchDeg = bFirstPersonView ? -89.0f : -78.0f;
 	constexpr float MaxCameraPitchDeg = 2.0f;
 	const float BaselinePitchDeg = FRotator::NormalizeAxis(
 		FMath::Clamp(
@@ -5083,7 +5180,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	// A rigidly mounted eye must not ease toward anything: easing is lag, and lag against a
 	// helicopter that is already moving reads as the aircraft sliding around the view. The only
 	// softening the cockpit gets is the attitude stabilization, which is already baked into the
-	// target here and into the props riding CockpitStabilizedPivot, so the two stay locked.
+	// target here and consumed by the cockpit presentation props, so they stay locked.
 	if (!bCameraViewSmoothingInitialized || bFirstPersonView)
 	{
 		SmoothedCameraArmLengthCm = ArmLength;
@@ -5158,7 +5255,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 
 	const float AvoidedPitchDeg = FMath::Clamp(
 		DesiredPitchDeg + CurrentCameraAvoidanceOffsetDeg.Pitch,
-		-88.0f,
+		bFirstPersonView ? -89.0f : -88.0f,
 		60.0f);
 	const float AvoidedRelativeYaw = FRotator::NormalizeAxis(
 		DesiredRelativeYaw + CurrentCameraAvoidanceOffsetDeg.Yaw);
@@ -5215,17 +5312,14 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		CameraWorldRotation.UnrotateVector(PulledInTranslation);
 	CameraBoom->SetWorldRotation(CameraWorldRotation);
 
-	// Same eye the boom just produced. Computing it here rather than reading the camera
-	// component avoids depending on when the spring arm happens to tick.
-	UpdateCockpitCannonViewModel(
-		CameraAnchorWorld + PulledInTranslation -
-			CameraWorldRotation.Vector() * (ArmLength * CurrentCameraPullInAlpha),
-		CameraWorldRotation);
+	// BaselineCameraWorldRotation contains the same damped cockpit attitude as the camera but
+	// precedes CameraPitchOffsetDeg. The cannon therefore follows aircraft stabilization while
+	// user look pitch sweeps the view past it.
+	UpdateCockpitCannonViewModel(BaselineCameraWorldRotation);
 }
 
 void ASimCopterHelicopterPawn::UpdateCockpitCannonViewModel(
-	const FVector& CameraLocation,
-	const FRotator& CameraRotation)
+	const FRotator& MountWorldRotation)
 {
 	if (CockpitCannonMeshComponent == nullptr)
 	{
@@ -5243,17 +5337,13 @@ void ASimCopterHelicopterPawn::UpdateCockpitCannonViewModel(
 		return;
 	}
 
-	// Carried by the camera: the offset is applied in the camera's own frame, so the barrel
-	// holds one spot in the frame no matter what the helicopter or the view is doing. The
-	// airframe's stabilized tilt is already in CameraRotation, so no drift can creep in here.
-	CockpitCannonMeshComponent->SetWorldLocation(
-		CameraLocation + CameraRotation.RotateVector(CockpitCannonViewModelOffsetCm));
+	// Position is truly camera-local, so spring-arm/component tick order cannot create drift.
+	CockpitCannonMeshComponent->SetRelativeLocation(CockpitCannonViewModelOffsetCm);
 
-	// Yaw and roll follow the view so the barrel stays visually bolted to it, but pitch does
-	// not: looking up or down sweeps the view past a cannon that keeps lying along the
-	// aircraft's heading instead of tipping with the camera.
-	CockpitCannonMeshComponent->SetWorldRotation(
-		FRotator(0.0f, CameraRotation.Yaw, CameraRotation.Roll));
+	// Absolute rotation follows the stabilized cockpit mount rather than reconstructing a
+	// pitchless rotator from final camera Euler angles. That removes only dynamic look pitch,
+	// retaining the camera's damped airframe pitch and roll without cross-axis coupling.
+	CockpitCannonMeshComponent->SetWorldRotation(MountWorldRotation);
 }
 
 float ASimCopterHelicopterPawn::ResolveCameraGroundLift(
