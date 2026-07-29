@@ -319,7 +319,6 @@ void ASimCopterOnFootPawn::SimBoardHelicopter()
 
 	UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: possessing %s."), *Helicopter->GetName());
 	Helicopter->EnterHelicopter(PlayerController);
-	Destroy();
 }
 
 void ASimCopterOnFootPawn::SimStartMission(int32 TypeMask)
@@ -416,7 +415,6 @@ void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 		}
 
 		Helicopter->EnterHelicopter(PlayerController);
-		Destroy();
 	}
 }
 

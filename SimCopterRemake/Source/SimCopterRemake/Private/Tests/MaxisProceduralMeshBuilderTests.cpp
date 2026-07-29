@@ -35,6 +35,40 @@ FMaxisMeshObject MakeSingleQuadObject()
 
 	return Object;
 }
+
+void MakeBentTrianglePair(
+	float AngleDegrees,
+	FMaxisMeshObject& OutObject,
+	TArray<FVector>& OutVertexPositions)
+{
+	const float AngleRadians = FMath::DegreesToRadians(AngleDegrees);
+	const float CosAngle = FMath::Cos(AngleRadians);
+	const float SinAngle = FMath::Sin(AngleRadians);
+
+	// Two outward-facing triangles share edge 0-1. Their normals are +Z and
+	// (0, -sin(angle), cos(angle)), respectively.
+	OutVertexPositions = {
+		FVector(0.0f, 0.0f, 0.0f),
+		FVector(1.0f, 0.0f, 0.0f),
+		FVector(0.0f, 1.0f, 0.0f),
+		FVector(0.0f, -CosAngle, -SinAngle),
+	};
+
+	OutObject = FMaxisMeshObject();
+	OutObject.Header.VertexCount = 4;
+	OutObject.Header.FaceCount = 2;
+	OutObject.Vertices.SetNum(4);
+
+	FMaxisMeshFace FaceA;
+	FaceA.VertexCount = 3;
+	FaceA.VertexIndices = { 0, 1, 2 };
+	OutObject.Faces.Add(MoveTemp(FaceA));
+
+	FMaxisMeshFace FaceB;
+	FaceB.VertexCount = 3;
+	FaceB.VertexIndices = { 0, 3, 1 };
+	OutObject.Faces.Add(MoveTemp(FaceB));
+}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -74,6 +108,70 @@ bool FMaxisProceduralMeshBuilderQuadTest::RunTest(const FString& Parameters)
 	FMaxisMeshSection Scaled;
 	FMaxisProceduralMeshBuilder::BuildPaletteColoredSection(Object, &ColorMap, 1.0f, 0.25f, false, FLinearColor::White, Scaled);
 	TestTrue(TEXT("Scale shrinks bounds"), Scaled.LocalBounds.Max.Equals(FVector(0.0, 25.0, 25.0), 0.01));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMaxisProceduralMeshBuilderAutoSmoothTest,
+	"SimCopter.Formats.MaxisMesh.AutoSmoothNormals",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMaxisProceduralMeshBuilderAutoSmoothTest::RunTest(const FString& Parameters)
+{
+	FMaxisMeshObject SmoothObject;
+	TArray<FVector> SmoothPositions;
+	MakeBentTrianglePair(20.0f, SmoothObject, SmoothPositions);
+
+	TArray<TArray<FVector>> SmoothCornerNormals;
+	FMaxisProceduralMeshBuilder::BuildAutoSmoothCornerNormals(
+		SmoothObject,
+		SmoothPositions,
+		false,
+		35.0f,
+		SmoothCornerNormals);
+
+	const FVector SmoothFaceBNormal(
+		0.0f,
+		-FMath::Sin(FMath::DegreesToRadians(20.0f)),
+		FMath::Cos(FMath::DegreesToRadians(20.0f)));
+	const FVector ExpectedSmoothNormal = (FVector::UpVector + SmoothFaceBNormal).GetSafeNormal();
+	TestTrue(
+		TEXT("Faces below 35 degrees share one shading normal at their common edge"),
+		SmoothCornerNormals.Num() == 2 &&
+			SmoothCornerNormals[0].Num() == 3 &&
+			SmoothCornerNormals[1].Num() == 3 &&
+			SmoothCornerNormals[0][0].Equals(ExpectedSmoothNormal, 0.001f) &&
+			SmoothCornerNormals[1][0].Equals(ExpectedSmoothNormal, 0.001f));
+	TestTrue(
+		TEXT("A boundary corner keeps its polygon normal"),
+		SmoothCornerNormals.Num() == 2 &&
+			SmoothCornerNormals[0].Num() == 3 &&
+			SmoothCornerNormals[0][2].Equals(FVector::UpVector, 0.001f));
+
+	FMaxisMeshObject HardObject;
+	TArray<FVector> HardPositions;
+	MakeBentTrianglePair(50.0f, HardObject, HardPositions);
+
+	TArray<TArray<FVector>> HardCornerNormals;
+	FMaxisProceduralMeshBuilder::BuildAutoSmoothCornerNormals(
+		HardObject,
+		HardPositions,
+		false,
+		35.0f,
+		HardCornerNormals);
+
+	const FVector HardFaceBNormal(
+		0.0f,
+		-FMath::Sin(FMath::DegreesToRadians(50.0f)),
+		FMath::Cos(FMath::DegreesToRadians(50.0f)));
+	TestTrue(
+		TEXT("Faces above 35 degrees keep distinct normals at their common edge"),
+		HardCornerNormals.Num() == 2 &&
+			HardCornerNormals[0].Num() == 3 &&
+			HardCornerNormals[1].Num() == 3 &&
+			HardCornerNormals[0][0].Equals(FVector::UpVector, 0.001f) &&
+			HardCornerNormals[1][0].Equals(HardFaceBNormal, 0.001f));
 
 	return true;
 }

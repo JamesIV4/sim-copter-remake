@@ -9,6 +9,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Formats/MaxisMeshLibrary.h"
+#include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/SimCopterPeopleCityRules.h"
@@ -2763,29 +2764,26 @@ int32 AppendMaxisMeshObject(
 {
 	int32 AddedTriangleCount = 0;
 
-	// Orient face normals so they point away from the object's centroid. The raw
-	// Maxis winding (run through ConvertMaxisVertexToUnreal + the 180-degree yaw)
-	// yields inward-facing normals for exterior faces - the same reason the
-	// terrain quad has to use a reversed cross product to face up. Inward normals
-	// left buildings/roads unlit by both the directional light and Lumen's
-	// surface cache (dark everywhere except where Lumen's screen trace faded out
-	// at the edges). The centroid is built in the same local space the vertices
-	// are stored in, with TileOrigin folded in so it compares directly against
-	// per-face centers below.
-	FVector ObjectCenter = TileOrigin;
-	if (MeshObject.Vertices.Num() > 0)
+	TArray<FVector> LocalVertexPositions;
+	LocalVertexPositions.Reserve(MeshObject.Vertices.Num());
+	for (const FMaxisMeshVertex& SourceVertex : MeshObject.Vertices)
 	{
-		FVector LocalCenter = FVector::ZeroVector;
-		for (const FMaxisMeshVertex& CentroidVertex : MeshObject.Vertices)
-		{
-			const FVector CentroidConverted = FMaxisMeshReader::ConvertMaxisVertexToUnreal(CentroidVertex, MeshUnitsPerCentimeter) * MeshScale;
-			LocalCenter += FVector(-CentroidConverted.X, -CentroidConverted.Y, CentroidConverted.Z);
-		}
-		ObjectCenter += LocalCenter / static_cast<float>(MeshObject.Vertices.Num());
+		const FVector ConvertedVertex =
+			FMaxisMeshReader::ConvertMaxisVertexToUnreal(SourceVertex, MeshUnitsPerCentimeter) * MeshScale;
+		LocalVertexPositions.Add(FVector(-ConvertedVertex.X, -ConvertedVertex.Y, ConvertedVertex.Z));
 	}
 
-	for (const FMaxisMeshFace& Face : MeshObject.Faces)
+	TArray<TArray<FVector>> AutoSmoothCornerNormals;
+	FMaxisProceduralMeshBuilder::BuildAutoSmoothCornerNormals(
+		MeshObject,
+		LocalVertexPositions,
+		true,
+		FMaxisProceduralMeshBuilder::DefaultSmoothAngleDegrees,
+		AutoSmoothCornerNormals);
+
+	for (int32 FaceIndex = 0; FaceIndex < MeshObject.Faces.Num(); ++FaceIndex)
 	{
+		const FMaxisMeshFace& Face = MeshObject.Faces[FaceIndex];
 		if (Face.VertexIndices.Num() < 2)
 		{
 			continue;
@@ -2894,6 +2892,10 @@ int32 AppendMaxisMeshObject(
 			}
 			Section.VertexColors.Add(FaceColor);
 			Section.Tangents.Add(FProcMeshTangent(1.0f, 0.0f, 0.0f));
+			Section.Normals.Add(
+				AutoSmoothCornerNormals[FaceIndex].IsValidIndex(FaceVertexIndex)
+					? AutoSmoothCornerNormals[FaceIndex][FaceVertexIndex]
+					: FVector::UpVector);
 		}
 
 		const int32 FaceVertexCount = Section.Vertices.Num() - FaceVertexStart;
@@ -2907,57 +2909,8 @@ int32 AppendMaxisMeshObject(
 			}
 			Section.VertexColors.SetNum(FaceVertexStart);
 			Section.Tangents.SetNum(FaceVertexStart);
+			Section.Normals.SetNum(FaceVertexStart);
 			continue;
-		}
-
-		// Newell's method for the face normal. A plain cross product of the first three
-		// vertices returns a zero vector whenever those three happen to be collinear,
-		// which leaves the face with no usable normal and renders it unlit; summing over
-		// every edge is immune to that and gives the true area-weighted polygon normal.
-		FVector FaceNormal = FVector::ZeroVector;
-		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
-		{
-			const FVector& CurrentVertex = Section.Vertices[FaceVertexStart + Index];
-			const FVector& NextVertex = Section.Vertices[FaceVertexStart + ((Index + 1) % FaceVertexCount)];
-			FaceNormal.X += (CurrentVertex.Y - NextVertex.Y) * (CurrentVertex.Z + NextVertex.Z);
-			FaceNormal.Y += (CurrentVertex.Z - NextVertex.Z) * (CurrentVertex.X + NextVertex.X);
-			FaceNormal.Z += (CurrentVertex.X - NextVertex.X) * (CurrentVertex.Y + NextVertex.Y);
-		}
-		FaceNormal = FaceNormal.GetSafeNormal();
-		if (FaceNormal.IsNearlyZero())
-		{
-			FaceNormal = FVector::UpVector;
-		}
-
-		// Orient the normal so the visible surface is lit. Near-horizontal faces are the
-		// ground/road/roof surfaces of a city viewed from above, so they must face up toward
-		// the sky regardless of where they sit relative to the object centroid. Road asphalt
-		// sits *below* its own tile centroid (the road mesh's raised curbs/sidewalk strips
-		// pull the centroid up above the asphalt plane), so the old "outward from centroid"
-		// test flipped the asphalt to face down and left it unlit with no shadows - while the
-		// curb strips, being higher/vertical, oriented correctly and stayed lit. Only truly
-		// vertical faces (building walls) still resolve outward from the centroid.
-		FVector FaceCenter = FVector::ZeroVector;
-		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
-		{
-			FaceCenter += Section.Vertices[FaceVertexStart + Index];
-		}
-		FaceCenter /= static_cast<float>(FaceVertexCount);
-		if (FMath::Abs(FaceNormal.Z) > 0.85f)
-		{
-			if (FaceNormal.Z < 0.0f)
-			{
-				FaceNormal = -FaceNormal;
-			}
-		}
-		else if (FVector::DotProduct(FaceNormal, FaceCenter - ObjectCenter) < 0.0f)
-		{
-			FaceNormal = -FaceNormal;
-		}
-
-		for (int32 Index = 0; Index < FaceVertexCount; ++Index)
-		{
-			Section.Normals.Add(FaceNormal);
 		}
 
 		for (int32 TriangleIndex = 1; TriangleIndex < FaceVertexCount - 1; ++TriangleIndex)

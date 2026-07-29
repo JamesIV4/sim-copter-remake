@@ -39,10 +39,29 @@ struct FMaxisMeshSection
 class SIMCOPTERREMAKE_API FMaxisProceduralMeshBuilder
 {
 public:
+	// Matches Blender's Auto Smooth behavior for the imported Maxis geometry:
+	// adjacent polygon corners share a shading normal only when every edge that
+	// connects their face fan is below this angle. The vertices remain split, so
+	// UV and palette/material boundaries are unaffected.
+	static constexpr float DefaultSmoothAngleDegrees = 35.0f;
+
 	// Maxis Sim3D face type 11 is the alpha-blended "disc" surface - used for the spinning
 	// rotor blur, which the original game draws as a near-translucent disc over the opaque
 	// blades. Callers separate these faces so they can apply a translucent material.
 	static bool IsTranslucentFaceType(uint8 FaceType) { return FaceType == 11; }
+
+	// Calculates one normal per source face corner. VertexPositions must be aligned
+	// with Object.Vertices and already transformed into the destination mesh's local
+	// coordinate system. Faces connected across an edge whose dihedral angle is less
+	// than SmoothAngleDegrees are averaged as a connected fan; all other edges remain
+	// hard. bForceHorizontalFacesUp applies the city renderer's road/roof orientation
+	// rule before smoothing.
+	static void BuildAutoSmoothCornerNormals(
+		const FMaxisMeshObject& Object,
+		const TArray<FVector>& VertexPositions,
+		bool bForceHorizontalFacesUp,
+		float SmoothAngleDegrees,
+		TArray<TArray<FVector>>& OutCornerNormals);
 
 	// Builds a vertex-colored section from a palette-colored Maxis object.
 	//
@@ -51,9 +70,9 @@ public:
 	// SimCopter moving objects face +Z in Maxis space, which maps to Unreal +X (the pawn's
 	// forward axis), so the model already faces forward.
 	//
-	// Face normals are oriented to point away from the object centroid so the visible
-	// exterior is lit regardless of the source winding (the raw Maxis winding produces
-	// inward normals for exterior faces - the same correction the city renderer applies).
+	// Face normals are oriented to point away from the object centroid, then auto-smoothed
+	// below 35 degrees so curved/bevelled areas shade continuously while larger angles
+	// remain visible as hard edges.
 	static void BuildPaletteColoredSection(
 		const FMaxisMeshObject& Object,
 		const TArray<FColor>* ColorMap,
