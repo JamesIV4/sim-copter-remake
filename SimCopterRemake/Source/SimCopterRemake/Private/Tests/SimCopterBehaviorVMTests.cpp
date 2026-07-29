@@ -610,20 +610,95 @@ bool FSimCopterBehaviorVMReferenceTest::RunTest(const FString& Parameters)
 
 		if (const FBhavProgram* PullPatients = Model.FindProgram(263);
 			TestNotNull(TEXT("BHAV 263 hospital unload program"), PullPatients) &&
-			PullPatients->Records.IsValidIndex(19))
+			PullPatients->Records.IsValidIndex(24))
 		{
 			TestEqual(TEXT("BHAV 263 first selects aboard patient"), int32(PullPatients->Records[0].Token), 84);
 			TestEqual(TEXT("BHAV 263 no-patient edge"), int32(PullPatients->Records[0].FalseNext), 19);
 			TestEqual(TEXT("BHAV 263 no-patient edge calls helper ride"), int32(PullPatients->Records[19].Token), 269);
+			TestEqual(TEXT("BHAV 263 alights the selected real patient"), int32(PullPatients->Records[3].Token), 47);
+			TestEqual(TEXT("BHAV 263 totes that patient"), int32(PullPatients->Records[10].Token), 44);
+			TestEqual(TEXT("BHAV 263 gives the patient the slump behavior"), int32(PullPatients->Records[24].Token), 39);
+			TestEqual(TEXT("BHAV 263 pushes BHAV 802"), int32(PullPatients->Records[24].Args[0]), 802);
 		}
 
 		if (const FBhavProgram* MedicRide = Model.FindProgram(269);
 			TestNotNull(TEXT("BHAV 269 medic ride program"), MedicRide) &&
-			MedicRide->Records.IsValidIndex(9))
+			MedicRide->Records.IsValidIndex(22))
 		{
 			TestEqual(TEXT("BHAV 269 selects starting vehicle"), int32(MedicRide->Records[1].Token), 62);
 			TestEqual(TEXT("BHAV 269 missing vehicle reaches disappear"), int32(MedicRide->Records[1].FalseNext), 9);
 			TestEqual(TEXT("BHAV 269 missing vehicle disappears"), int32(MedicRide->Records[9].Token), 40);
+			TestEqual(TEXT("BHAV 269 walks and boards the starting vehicle"), int32(MedicRide->Records[6].Token), 12);
+			TestEqual(TEXT("BHAV 269 fallback boards its selection"), int32(MedicRide->Records[22].Token), 48);
+			TestEqual(TEXT("BHAV 269 messages the starting vehicle after boarding"), int32(MedicRide->Records[15].Token), 61);
+		}
+
+		// The original ambulance interaction is data-driven end to end. Pin the exact graph that
+		// seeks a state-6 victim, carries them to original object class 10, sets down that same
+		// person, and posts pickup/delivery before either actor disappears.
+		TestEqual(TEXT("person state 5 starts BHAV 801"), FPeopleBehaviorModel::GetStateProgramIds()[5], 801);
+		if (const FBhavProgram* MedicInit = Model.FindProgram(801);
+			TestNotNull(TEXT("BHAV 801 ambulance/hospital medic program"), MedicInit) &&
+			MedicInit->Records.IsValidIndex(9))
+		{
+			TestEqual(TEXT("BHAV 801 tests XBLD hospital 209"), int32(MedicInit->Records[1].Token), 25);
+			TestEqual(TEXT("BHAV 801 hospital id"), int32(MedicInit->Records[1].Args[0]), 209);
+			TestEqual(TEXT("BHAV 801 hospital arm calls unload"), int32(MedicInit->Records[8].Token), 263);
+			TestEqual(TEXT("BHAV 801 street arm calls victim search"), int32(MedicInit->Records[9].Token), 262);
+		}
+
+		if (const FBhavProgram* StreetMedic = Model.FindProgram(262);
+			TestNotNull(TEXT("BHAV 262 street paramedic program"), StreetMedic) &&
+			StreetMedic->Records.IsValidIndex(40))
+		{
+			TestEqual(TEXT("BHAV 262 searches by object class"), int32(StreetMedic->Records[1].Token), 15);
+			TestEqual(TEXT("BHAV 262 searches for medevac victims"), int32(StreetMedic->Records[1].Args[0]), 5);
+			TestEqual(TEXT("BHAV 262 search radius is eight tiles"), int32(StreetMedic->Records[1].Args[1]), 8);
+			TestEqual(TEXT("BHAV 262 picks up the selected victim"), int32(StreetMedic->Records[26].Token), 44);
+			TestEqual(TEXT("BHAV 262 selects the nearest emergency vehicle"), int32(StreetMedic->Records[9].Token), 272);
+			TestEqual(TEXT("BHAV 262 hands the victim to that vehicle"), int32(StreetMedic->Records[11].Token), 275);
+			TestEqual(TEXT("BHAV 262 returns the medic to its starting vehicle"), int32(StreetMedic->Records[40].Token), 269);
+		}
+
+		if (const FBhavProgram* NearestEmergencyVehicle = Model.FindProgram(272);
+			TestNotNull(TEXT("BHAV 272 nearest emergency vehicle program"), NearestEmergencyVehicle) &&
+			NearestEmergencyVehicle->Records.IsValidIndex(2))
+		{
+			TestEqual(TEXT("BHAV 272 selects an object class"), int32(NearestEmergencyVehicle->Records[2].Token), 15);
+			TestEqual(TEXT("BHAV 272 selects original class 10 ambulance"), int32(NearestEmergencyVehicle->Records[2].Args[0]), 10);
+		}
+
+		if (const FBhavProgram* PutPatientOnVehicle = Model.FindProgram(275);
+			TestNotNull(TEXT("BHAV 275 ambulance handoff program"), PutPatientOnVehicle) &&
+			PutPatientOnVehicle->Records.IsValidIndex(6))
+		{
+			TestEqual(TEXT("BHAV 275 reselects the carried patient"), int32(PutPatientOnVehicle->Records[2].Token), 46);
+			TestEqual(TEXT("BHAV 275 sets down that patient"), int32(PutPatientOnVehicle->Records[3].Token), 51);
+			TestEqual(TEXT("BHAV 275 pushes completion onto the patient"), int32(PutPatientOnVehicle->Records[6].Token), 39);
+			TestEqual(TEXT("BHAV 275 pushes BHAV 285"), int32(PutPatientOnVehicle->Records[6].Args[0]), 285);
+		}
+
+		if (const FBhavProgram* AmbulanceOutcome = Model.FindProgram(285);
+			TestNotNull(TEXT("BHAV 285 ambulance patient completion"), AmbulanceOutcome) &&
+			AmbulanceOutcome->Records.IsValidIndex(2))
+		{
+			TestEqual(TEXT("BHAV 285 first posts picked up"), int32(AmbulanceOutcome->Records[0].Token), 13);
+			TestEqual(TEXT("BHAV 285 picked-up outcome"), int32(AmbulanceOutcome->Records[0].Args[0]), 0);
+			TestEqual(TEXT("BHAV 285 then posts delivered"), int32(AmbulanceOutcome->Records[1].Token), 13);
+			TestEqual(TEXT("BHAV 285 delivered outcome"), int32(AmbulanceOutcome->Records[1].Args[0]), 1);
+			TestEqual(TEXT("BHAV 285 disappears only after both outcomes"), int32(AmbulanceOutcome->Records[2].Token), 40);
+		}
+
+		if (const FBhavProgram* PatientAtHospital = Model.FindProgram(282);
+			TestNotNull(TEXT("BHAV 282 hospital patient completion"), PatientAtHospital) &&
+			PatientAtHospital->Records.IsValidIndex(4))
+		{
+			TestEqual(TEXT("BHAV 282 tests XBLD hospital"), int32(PatientAtHospital->Records[2].Token), 25);
+			TestEqual(TEXT("BHAV 282 hospital id"), int32(PatientAtHospital->Records[2].Args[0]), 209);
+			TestEqual(TEXT("BHAV 282 requires a serviceable tile"), int32(PatientAtHospital->Records[3].Token), 56);
+			TestEqual(TEXT("BHAV 282 posts delivered"), int32(PatientAtHospital->Records[1].Token), 13);
+			TestEqual(TEXT("BHAV 282 delivery outcome"), int32(PatientAtHospital->Records[1].Args[0]), 1);
+			TestEqual(TEXT("BHAV 282 leaves the map after delivery"), int32(PatientAtHospital->Records[4].Token), 37);
 		}
 
 		// The record sites the 2026-07-29 decode pass closed. These are the whole shipped use of

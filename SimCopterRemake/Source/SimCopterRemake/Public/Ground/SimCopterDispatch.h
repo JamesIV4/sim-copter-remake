@@ -133,6 +133,14 @@ constexpr float OnSceneStaySeconds = 180.0f;
 constexpr float OnSceneHoldSeconds = 120.0f;
 constexpr float OnSceneRetrySeconds = 30.0f;
 
+// SCHOOK: AmbulanceOnScene 0x004b8f60
+// The ambulance vtable's on-scene state calls FUN_004bd980(0x0c, 5, ...).
+// FUN_004bd980 forwards those as behavior class 0x0c and person state 5 to
+// FUN_0049bd00/FUN_004c3eb0: a Medik running BHAV 801. The superficially
+// similar (0x0f, 0x0d) call belongs to FUN_004b8b60's stopped criminal car.
+constexpr int32 AmbulanceMedicBehaviorClass = 0x0c;
+constexpr int32 AmbulanceMedicPersonState = 5;
+
 // FUN_004b9790 fires one droplet per game frame and re-runs FUN_004b9890's search on
 // FUN_004a5ca0's 1-in-8 roll. Both are frame-paced in the original; here they run on the
 // same clock the water itself is stepped on (SimCopterWaterGameplay::SimulationStep1616),

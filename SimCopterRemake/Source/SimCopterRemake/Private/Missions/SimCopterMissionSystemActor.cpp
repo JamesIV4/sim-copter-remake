@@ -19,10 +19,8 @@
 #include "Brushes/SlateDynamicImageBrush.h"
 #include "Brushes/SlateImageBrush.h"
 #include "Camera/PlayerCameraManager.h"
-#include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
-#include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
@@ -1260,25 +1258,31 @@ int32 ASimCopterMissionSystemActor::CountActiveMissionsOfType(const int32 TypeMa
 
 bool ASimCopterMissionSystemActor::NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person)
 {
+	const bool bAmbulanceHandoff =
+		Person != nullptr && Person->IsAmbulanceHandoffPending();
 	if (Person == nullptr ||
 		Person->MissionEventId == INDEX_NONE ||
 		Person->HasMissionResolutionReported() ||
 		Person->IsMissionPickupCounted() ||
-		!Person->HasClaimedPassengerSeat())
+		(!Person->HasClaimedPassengerSeat() && !bAmbulanceHandoff))
 	{
 		return false;
 	}
 
-	const ASimCopterHelicopterPawn* Helicopter =
-		Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier());
-	if (Helicopter == nullptr ||
-		Helicopter->GetMissionPassengerCount(
-			Person->MissionEventId,
-			Person->GetMissionPassengerKind()) <= 0)
+	if (!bAmbulanceHandoff)
 	{
-		// Opcode 13 can only acknowledge an action that already happened. A decoded or partial
-		// behavior path saying "picked up" is not permission to synthesize a passenger.
-		return false;
+		const ASimCopterHelicopterPawn* Helicopter =
+			Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier());
+		if (Helicopter == nullptr ||
+			Helicopter->GetMissionPassengerCount(
+				Person->MissionEventId,
+				Person->GetMissionPassengerKind()) <= 0)
+		{
+			// Opcode 13 can only acknowledge an action that already happened. A decoded or
+			// partial behavior path saying "picked up" is not permission to synthesize a
+			// passenger. BHAV 275's ambulance handoff is the other concrete action boundary.
+			return false;
+		}
 	}
 
 	const SimCopterMissions::FSimCopterMissionRecord* Record =
@@ -1375,6 +1379,7 @@ bool ASimCopterMissionSystemActor::NotifyMissionPersonDelivered(ASimCopterGround
 
 	Person->SetMissionResolutionReported(true);
 	Person->SetMissionPickupCounted(false);
+	Person->SetAmbulanceHandoffPending(false);
 	return true;
 }
 
@@ -2034,48 +2039,21 @@ void ASimCopterMissionSystemActor::BeginMedevacHandoff(int32 EventId, ASimCopter
 		return;
 	}
 
-	// The whole hand-off plays out on the surface the helicopter landed on (hospital roof or the
-	// ground beside it): the drop point beside the helicopter gives that surface height.
-	const FVector HeliDoor = Helicopter->GetPassengerDropWorldLocation();
-
-	// The doorway sits between the helicopter and the hospital, capped so the EMT's walk stays
-	// short and readable.
-	FVector ToHospital = HospitalCenter - HeliDoor;
-	ToHospital.Z = 0.0f;
-	FVector Direction = ToHospital.GetSafeNormal();
-	if (Direction.IsNearlyZero())
-	{
-		Direction = Helicopter->GetActorForwardVector().GetSafeNormal2D();
-		if (Direction.IsNearlyZero())
-		{
-			Direction = FVector(1.0f, 0.0f, 0.0f);
-		}
-	}
-	const float DoorwayDistance = FMath::Clamp(ToHospital.Size(), 260.0f, MedevacDoorwayDistanceCm);
-	FVector DoorwayFeet = HeliDoor + Direction * DoorwayDistance;
-	DoorwayFeet.Z = HeliDoor.Z;
-
-	// FUN_004c25b0 explicitly spawns class 0x0c / state 5 on XBLD D1, whose BHAV 801 is the
-	// hospital paramedic. Use that visible roof worker for the deterministic handoff when one is
-	// available; only create a temporary EMT when ambient population did not provide one.
+	// FUN_004c25b0 explicitly spawns class 0x0c / state 5 on XBLD D1. Do not pause that worker:
+	// BHAV 801 -> 263 is the original unload implementation. It selects the real patient aboard
+	// the player (op 84), walks over, alights them through the carrier service (op 47), totes
+	// them (op 44), and sets them down laterally (op 51). BHAV 282 then recognizes XBLD D1,
+	// posts the delivery, and leaves the map. This record only watches that interaction for
+	// progress so a malformed legacy seat cannot strand a mission forever.
 	ASimCopterGroundAgent* Emt = TrafficSystem->FindNearestAvailablePersonInState(
 		HospitalCenter,
 		5,
-		MedevacHospitalHandoffRadiusCm);
-	const bool bOwnsEmt = Emt == nullptr;
-	if (Emt != nullptr)
-	{
-		Emt->SetMissionScriptedMover();
-	}
-	else
-	{
-		Emt = TrafficSystem->SpawnScriptedMissionAgent(
-			DoorwayFeet, INDEX_NONE, TEXT("Medik"), false, 1.0f);
-	}
+		MedevacHospitalHandoffRadiusCm,
+		/*bRequirePersistentHospitalCrew*/ true);
 	if (Emt == nullptr)
 	{
-		// Couldn't stage an EMT (e.g. original assets unavailable): don't strand the patients.
-		DeliverMedevacDirectly(EventId, Helicopter);
+		// EnsureHospitalParamedicAtTile retries every mission tick. Do not invent a temporary
+		// worker or visual prop while the original-data actor is still being staged.
 		return;
 	}
 
@@ -2083,12 +2061,9 @@ void ASimCopterMissionSystemActor::BeginMedevacHandoff(int32 EventId, ASimCopter
 	Handoff.EventId = EventId;
 	Handoff.Helicopter = Helicopter;
 	Handoff.Emt = Emt;
-	Handoff.HeliDoorLocation = HeliDoor;
-	Handoff.DoorwayLocation = DoorwayFeet;
-	Handoff.Phase = 0;
-	Handoff.PhaseSeconds = 0.0f;
-	Handoff.bOwnsEmt = bOwnsEmt;
-	Handoff.Doorway = SpawnHospitalDoorway(DoorwayFeet + FVector(0.0f, 0.0f, 37.5f), (-Direction).Rotation());
+	Handoff.LastOnboardCount = Helicopter->GetMissionPassengerCount(
+		EventId,
+		ESimCopterMissionPassengerKind::Medevac);
 	MedevacHandoffs.Add(Handoff);
 }
 
@@ -2100,145 +2075,51 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 	{
 		return false;
 	}
-	Handoff.PhaseSeconds += DeltaSeconds;
-
-	// Refresh the door target (the helicopter can settle a little after touchdown).
-	Handoff.HeliDoorLocation = Helicopter->GetPassengerDropWorldLocation();
-
-	const int32 Onboard = Helicopter->GetMissionPassengerCount(Handoff.EventId, ESimCopterMissionPassengerKind::Medevac);
-
-	if (Handoff.Phase == 0)
+	if (!Helicopter->CanTransferMissionPassengers())
 	{
-		// Walk to the helicopter to collect the next patient.
-		if (!Helicopter->CanTransferMissionPassengers())
-		{
-			return false; // helicopter took off / left before we reached it
-		}
-		if (Onboard <= 0)
-		{
-			return false; // nothing left to unload - all done
-		}
+		return false; // the VM keeps its own stack and can try again after a later landing
+	}
 
-		FVector Target = Handoff.HeliDoorLocation;
-		Target.Z = Emt->GetActorLocation().Z;
-		Emt->SetMoveTarget(Target);
+	const int32 Onboard = Helicopter->GetMissionPassengerCount(
+		Handoff.EventId,
+		ESimCopterMissionPassengerKind::Medevac);
+	if (Onboard <= 0)
+	{
+		return false;
+	}
 
-		if (FVector::DistSquared2D(Emt->GetActorLocation(), Handoff.HeliDoorLocation) <= FMath::Square(MedevacEmtReachRadiusCm) ||
-			Handoff.PhaseSeconds >= 12.0f)
-		{
-			ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
-			ASimCopterGroundAgent* Patient = TrafficSystem != nullptr
-				? TrafficSystem->FindPersonAboardForEvent(
-					Helicopter,
-					Handoff.EventId,
-					ESimCopterMissionPassengerKind::Medevac)
-				: nullptr;
-			if (Patient != nullptr)
-			{
-				Patient->AlightFromCarrier(); // removes this real person's own slot
-				Patient->SetActorLocation(Handoff.HeliDoorLocation, false);
-			}
-			else
-			{
-				const int32 Removed = Helicopter->RemoveMissionPassengersForMission(
-					1,
-					Handoff.EventId,
-					ESimCopterMissionPassengerKind::Medevac);
-				if (Removed <= 0)
-				{
-					return false;
-				}
-				Patient = TrafficSystem != nullptr
-					? TrafficSystem->SpawnScriptedMissionAgent(
-						Handoff.HeliDoorLocation, Handoff.EventId, FString(), true, 1.0f)
-					: nullptr;
-			}
+	if (Onboard < Handoff.LastOnboardCount)
+	{
+		// Opcode 47 has released a real patient from the cabin. Their own BHAV now owns
+		// completion on the hospital tile, while the medic loops for the next seat.
+		Handoff.LastOnboardCount = Onboard;
+		Handoff.SecondsWithoutProgress = 0.0f;
+	}
+	else
+	{
+		Handoff.SecondsWithoutProgress += DeltaSeconds;
+	}
 
-			if (Patient == nullptr)
-			{
-				// The seat was real even if an old save/test supplied no actor. Resolve that one
-				// unit rather than leave an invisible mission dependency.
-				PostPassengerDelivery(
-					Handoff.EventId,
-					ESimCopterMissionPassengerKind::Medevac,
-					1);
-				Handoff.PhaseSeconds = 0.0f;
-				return Helicopter->GetMissionPassengerCount(
-					Handoff.EventId,
-					ESimCopterMissionPassengerKind::Medevac) > 0;
-			}
-
-			// The scripted carry temporarily pauses the patient's own VM. The behavior requested
-			// the action; the stable carrier service owns the transform and the eventual outcome.
-			Patient->SetCarriedBy(
-				Emt->GetRootComponent(),
-				FVector(40.0f, 0.0f, -6.0f),
-				FRotator(0.0f, 90.0f, 88.0f));
-			Handoff.CarriedPatient = Patient;
-			Emt->ClearMoveTarget();
-			Handoff.Phase = 1;
-			Handoff.PhaseSeconds = 0.0f;
-		}
+	if (Handoff.SecondsWithoutProgress < MedevacBehaviorRecoverySeconds)
+	{
 		return true;
 	}
 
-	// Phase 1: carry the patient to the hospital doorway.
-	FVector Target = Handoff.DoorwayLocation;
-	Target.Z = Emt->GetActorLocation().Z;
-	Emt->SetMoveTarget(Target);
-
-	if (FVector::DistSquared2D(Emt->GetActorLocation(), Handoff.DoorwayLocation) <= FMath::Square(MedevacEmtReachRadiusCm) ||
-		Handoff.PhaseSeconds >= 12.0f)
-	{
-		if (ASimCopterGroundAgent* Patient = Handoff.CarriedPatient.Get())
-		{
-			NotifyMissionPersonDelivered(Patient);
-			Patient->Destroy(); // taken inside the hospital
-		}
-		Handoff.CarriedPatient.Reset();
-		Emt->ClearMoveTarget();
-
-		// Keep going while the helicopter still holds patients for this mission.
-		if (Helicopter->GetMissionPassengerCount(Handoff.EventId, ESimCopterMissionPassengerKind::Medevac) > 0)
-		{
-			Handoff.Phase = 0;
-			Handoff.PhaseSeconds = 0.0f;
-		}
-		else
-		{
-			return false; // finished
-		}
-	}
-	return true;
+	// Recovery for an abstract legacy seat or a behavior asset that failed to load. This is not
+	// the normal animation path: the executable's BHAV has had a generous window to act first.
+	UE_LOG(LogTemp, Warning,
+		TEXT("Medevac %d made no BHAV-263 unload progress for %.1fs; resolving %d remaining seat(s) through the mission service."),
+		Handoff.EventId,
+		Handoff.SecondsWithoutProgress,
+		Onboard);
+	DeliverMedevacDirectly(Handoff.EventId, Helicopter);
+	return false;
 }
 
 void ASimCopterMissionSystemActor::EndMedevacHandoff(
 	FSimCopterMedevacHandoff& Handoff,
 	const bool bResolvePatients)
 {
-	if (ASimCopterGroundAgent* Patient = Handoff.CarriedPatient.Get())
-	{
-		// A failed animation/path must never erase the real patient. This handoff only exists at
-		// the hospital, so resolve the action directly before removing the carried actor.
-		if (bResolvePatients)
-		{
-			NotifyMissionPersonDelivered(Patient);
-		}
-		Patient->Destroy();
-	}
-	if (ASimCopterGroundAgent* Emt = Handoff.Emt.Get())
-	{
-		if (Handoff.bOwnsEmt)
-		{
-			Emt->Destroy();
-		}
-		else
-		{
-			Emt->ClearMoveTarget();
-			Emt->SetBehaviorGroundSnap(true);
-			Emt->ResumeSuspendedPedestrianBehavior();
-		}
-	}
 	if (bResolvePatients)
 	{
 		if (ASimCopterHelicopterPawn* Helicopter = Handoff.Helicopter.Get())
@@ -2252,13 +2133,8 @@ void ASimCopterMissionSystemActor::EndMedevacHandoff(
 			}
 		}
 	}
-	if (AActor* Doorway = Handoff.Doorway.Get())
-	{
-		Doorway->Destroy();
-	}
-	Handoff.CarriedPatient.Reset();
 	Handoff.Emt.Reset();
-	Handoff.Doorway.Reset();
+	Handoff.Helicopter.Reset();
 }
 
 void ASimCopterMissionSystemActor::DeliverMedevacDirectly(int32 EventId, ASimCopterHelicopterPawn* Helicopter)
@@ -2279,49 +2155,6 @@ void ASimCopterMissionSystemActor::DeliverMedevacDirectly(int32 EventId, ASimCop
 		Onboard,
 		Helicopter->GetPassengerDropWorldLocation(),
 		/*bRemoveAfterDelivery*/ true);
-}
-
-AActor* ASimCopterMissionSystemActor::SpawnHospitalDoorway(const FVector& CenterLocation, const FRotator& Facing)
-{
-	UWorld* World = GetWorld();
-	if (World == nullptr)
-	{
-		return nullptr;
-	}
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	AActor* Doorway = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, SpawnParams);
-	if (Doorway == nullptr)
-	{
-		return nullptr;
-	}
-
-	UStaticMeshComponent* Mesh = NewObject<UStaticMeshComponent>(Doorway, TEXT("DoorwayMesh"));
-	if (Mesh == nullptr)
-	{
-		Doorway->Destroy();
-		return nullptr;
-	}
-	Doorway->SetRootComponent(Mesh);
-	Mesh->SetMobility(EComponentMobility::Movable);
-	Mesh->RegisterComponent();
-	if (UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
-	{
-		Mesh->SetStaticMesh(Cube);
-	}
-	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Mesh->SetCanEverAffectNavigation(false);
-	if (HospitalDoorwayMaterial != nullptr)
-	{
-		Mesh->SetMaterial(0, HospitalDoorwayMaterial);
-	}
-	Doorway->SetActorLocationAndRotation(CenterLocation, Facing);
-	// A tall, thin slab standing on the surface - a stairwell doorway into the hospital. The engine
-	// cube is 100 cm, so this is ~12 x 55 x 75 cm.
-	Doorway->SetActorScale3D(FVector(0.12f, 0.55f, 0.75f));
-	return Doorway;
 }
 
 bool ASimCopterMissionSystemActor::FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const

@@ -1,0 +1,57 @@
+004cadd2  MOVSX EAX,word ptr [ESI + 0x12c]
+004cadd9  MOVSX ECX,word ptr [ESI + 0x12a]
+004cade0  PUSH EAX
+004cade1  PUSH ECX
+004cade2  PUSH 0x0
+004cade4  CALL 0x0049b060   -> 0049b060(FUN_0049b060) 
+004cade9  ADD ESP,0xc
+004cadec  MOV EDI,EAX
+004cadee  TEST EDI,EDI
+004cadf0  JZ 0x004cadff   -> 004cadff 
+004cadf2  MOV dword ptr [ESP + 0x14],0x1
+004cadfa  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004cadff  MOV dword ptr [ESP + 0x14],0x0
+004cae07  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004cae0c  MOVSX EAX,word ptr [ESI + 0x12c]
+004cae13  MOVSX ECX,word ptr [ESI + 0x12a]
+004cae1a  PUSH EAX
+004cae1b  PUSH ECX
+004cae1c  PUSH 0x1
+004cae1e  CALL 0x0049b060   -> 0049b060(FUN_0049b060) 
+004cae23  ADD ESP,0xc
+004cae26  MOV EDI,EAX
+004cae28  TEST EDI,EDI
+004cae2a  JZ 0x004cae39   -> 004cae39 
+004cae2c  MOV dword ptr [ESP + 0x14],0x1
+004cae34  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004cae39  MOV dword ptr [ESP + 0x14],0x0
+004cae41  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004cae46  MOVSX EAX,word ptr [ESI + 0x12c]
+004cae4d  MOVSX ECX,word ptr [ESI + 0x12a]
+004cae54  PUSH EAX
+004cae55  PUSH ECX
+004cae56  PUSH 0x2
+004cae58  CALL 0x0049b060   -> 0049b060(FUN_0049b060) 
+004cae5d  ADD ESP,0xc
+004cae60  MOV EDI,EAX
+004cae62  TEST EDI,EDI
+004cae64  JZ 0x004cae73   -> 004cae73 
+004cae66  MOV dword ptr [ESP + 0x14],0x1
+004cae6e  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004cae73  MOV dword ptr [ESP + 0x14],0x0
+004cae7b  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004cae80  MOVSX EAX,word ptr [ESI + 0x12c]
+004cae87  MOVSX ECX,word ptr [ESI + 0x12a]
+004cae8e  PUSH EAX
+004cae8f  PUSH ECX
+004cae90  PUSH 0x3
+004cae92  CALL 0x0049b060   -> 0049b060(FUN_0049b060) 
+004cae97  ADD ESP,0xc
+004cae9a  MOV EDI,EAX
+004cae9c  TEST EDI,EDI
+004cae9e  JZ 0x004caead   -> 004caead 
+004caea0  MOV dword ptr [ESP + 0x14],0x1
+004caea8  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004caead  MOV dword ptr [ESP + 0x14],0x0
+004caeb5  JMP 0x004cb067   -> 004cb067(FUN_004cac70) 
+004caeba  PUSH 0x0

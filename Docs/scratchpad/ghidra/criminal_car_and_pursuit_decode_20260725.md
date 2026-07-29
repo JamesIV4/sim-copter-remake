@@ -202,9 +202,10 @@ and driving off - a different feature.)
 Runs once the car is actually at rest (`veh[4] & 0x20`), sequenced by sound completion:
 
 1. clear flag 4, play sound `0x6f` (arrive);
-2. on completion: `FUN_0049bd00(0xf, 0xd)` - deploy a person with the same spawn mode and state
-   the **ambulance** uses for its paramedic. If that fails, post the mission event anyway. Play
-   sound `0x70` (doors);
+2. on completion: `FUN_0049bd00(0xf, 0xd)` - deploy the criminal-car person (behavior class
+   `0x0f`, state `0x0d`). This is **not** the ambulance paramedic; `FUN_004b8f60` deploys that
+   medic as behavior class `0x0c`, state `5`. If placement fails, post the mission event anyway.
+   Play sound `0x70` (doors);
 3. on completion: state 3, arm `veh[0x10] = 0x780000` (120 s), then `FUN_004b8c90` removes it.
 
 The mission record is closed with `FUN_004a89c0({0x1d, eventId, ., ., 4})` - `EVT_SetCategory`

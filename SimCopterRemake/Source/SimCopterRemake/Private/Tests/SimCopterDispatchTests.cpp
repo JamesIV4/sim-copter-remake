@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterDispatch.h"
+#include "Ground/SimCopterBehaviorVM.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -94,6 +95,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterDispatchTileRulesTest::RunTest(const FString& Parameters)
 {
+	// SCHOOK: AmbulanceOnScene 0x004b8f60
+	// The on-scene ambulance deploys FUN_004bd980(0x0c, 5), and BHAV 272 later selects
+	// FUN_004cac70 object class 10 to bring the patient back to the ambulance pool.
+	TestEqual(TEXT("ambulance deploys behavior class 12"), AmbulanceMedicBehaviorClass, 0x0c);
+	TestEqual(TEXT("ambulance deploys person state 5"), AmbulanceMedicPersonState, 5);
+	TestEqual(TEXT("original object class 10 is ambulance"), EBhavObjectClass::Ambulance, 10);
+	TestEqual(TEXT("original object class 11 is police car"), EBhavObjectClass::PoliceCar, 11);
+	TestEqual(TEXT("original object class 12 is fire truck"), EBhavObjectClass::FireTruck, 12);
+
 	// The three ranges FUN_004bc110 / FUN_004bc680 accept.
 	TestTrue(TEXT("0x1d is road"), IsRoadTileId(0x1d));
 	TestTrue(TEXT("0x2b is road"), IsRoadTileId(0x2b));

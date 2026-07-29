@@ -84,9 +84,13 @@ namespace EBhavObjectClass
 	// DAT_00506444, the fixed person record - the player's own avatar on foot. BHAV 291 looks for
 	// it so a waiting passenger walks up to you and waves.
 	constexpr int32 PlayerAvatar = 9;
-	constexpr int32 FireTruck = 10;       // FUN_0049b060(0, tile)
+	// FUN_004cac70's jump-table cases 10..12 pass 0..2 straight through to
+	// FUN_0049b060. Those pools are DAT_00582b20 (ambulance), DAT_00582b50
+	// (police), and DAT_00582b38 (fire), respectively. The earlier names had
+	// cases 10 and 12 reversed, which sent BHAV 262's medic to a fire truck.
+	constexpr int32 Ambulance = 10;       // FUN_0049b060(0, tile)
 	constexpr int32 PoliceCar = 11;       // FUN_0049b060(1, tile)
-	constexpr int32 Ambulance = 12;       // FUN_0049b060(2, tile)
+	constexpr int32 FireTruck = 12;       // FUN_0049b060(2, tile)
 	// "Service 3" is the speeder pool, not a fourth emergency service: BHAV 1402 "Cop speeder"
 	// probes it at rec[3] to find the car it was sent to arrest.
 	constexpr int32 SpeederCar = 13;      // FUN_0049b060(3, tile)
