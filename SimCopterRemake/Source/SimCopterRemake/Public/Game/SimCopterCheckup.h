@@ -113,4 +113,9 @@ public:
 	// least $21 of repair or fuel outstanding, or with the launcher fitted and fewer than five
 	// canisters left.
 	static bool ShouldOffer(const FSimCopterCheckupState& State);
+
+	// Remake discovery policy: every airport landing opens the panel, even when every slider is
+	// already at zero. Kept separate from ShouldOffer so the original's decoded threshold remains
+	// available and tested instead of being silently rewritten.
+	static bool ShouldOpenOnAirportLanding(const FSimCopterCheckupState& State);
 };

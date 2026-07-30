@@ -139,3 +139,11 @@ bool FSimCopterCheckup::ShouldOffer(const FSimCopterCheckupState& State)
 
 	return State.bTearGasFitted && State.TearGasRounds < OfferTearGasThreshold;
 }
+
+bool FSimCopterCheckup::ShouldOpenOnAirportLanding(const FSimCopterCheckupState& State)
+{
+	// Deliberate remake divergence from FUN_00444750: the original hides this useful panel unless
+	// a service threshold is crossed. Opening on every airport touchdown makes repair/refuelling
+	// discoverable and gives the player one predictable rule instead.
+	return State.bAtAirport;
+}

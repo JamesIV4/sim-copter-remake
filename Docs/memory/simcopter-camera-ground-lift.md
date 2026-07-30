@@ -46,6 +46,15 @@ lift is computed correctly, the sliders change nothing on screen.
 
 `ProbeChannel` and `ProbeSize` are still read by the remake's own probes, so they stay set.
 
+## Building-avoidance response
+
+The angle search and fallback pull-in are deliberately damped. The tuned defaults use 40 cm of
+anticipatory padding, a 50-degree maximum pitch correction, 2.25 avoidance / 1.5 return
+interpolation speeds, and 4.0 pull-in / 2.0 release speeds. This keeps the real camera-radius
+sweeps intact while preventing a nearby wall that the camera would miss from provoking a sharp
+pitch jump. Recorded 2026-07-30 after the original 90 cm, 65-degree, 7.5 / 3.5 / 8.0 / 5.0
+response proved too sensitive and abrupt in play.
+
 ## The trap
 
 The ramp used to be `alpha = 1 - dist / ProbeRange`, which only reaches full strength at **zero

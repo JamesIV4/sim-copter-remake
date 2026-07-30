@@ -65,18 +65,36 @@ constexpr FCheckupRect SliderTrackRect[SliderCount] = {
 	{ 333.0f, 108.0f, 359.0f, 310.0f },
 };
 
+// The remake draws the 22x18 SLIDERTV thumb at 1.5x. The bitmap's visual indicator is not centred
+// in FUN_00443c20's control rectangle, so the paint/hit rectangles put its midpoint 3.5 px right
+// and 5.5 px above the decoded mathematical centreline. The travel endpoints are pulled inward
+// by half of the rendered 27 px thumb at each end, so the printed line terminates at the thumb's
+// red midpoint instead of its top or bottom edge.
+constexpr float SliderThumbSourceWidth = 22.0f;
+constexpr float SliderThumbSourceHeight = 18.0f;
+constexpr float SliderThumbScale = 1.5f;
+constexpr float SliderThumbVisualOffsetX = 3.5f;
+constexpr float SliderThumbVisualOffsetY = -5.5f;
+constexpr float SliderThumbHalfHeight = SliderThumbSourceHeight * SliderThumbScale * 0.5f;
+constexpr FCheckupRect SliderControlRect[SliderCount] = {
+	{  91.0f, 111.5f, 124.0f, 295.5f },
+	{ 191.0f, 179.5f, 224.0f, 363.5f },
+	{ 333.0f, 111.5f, 366.0f, 295.5f },
+};
+
 // Each slider's name plate and its live cost readout: below the outer two, above the middle one.
-// The label and value boxes overlap by a few pixels in the original; text is drawn from the top
-// of its box, so at the font sizes below the two lines still clear each other.
+// These are visually tuned a few pixels below the decoded rectangles: the original's overlapping
+// boxes crowded the two Slate baselines. Fuel moves down farther than the outer pair because its
+// label sat visibly too high in the upper plate.
 constexpr FCheckupRect SliderLabelRect[SliderCount] = {
-	{  52.0f, 327.0f, 154.0f, 347.0f }, // string 593 Damage
-	{ 147.0f, 107.0f, 268.0f, 127.0f }, // string 594 Fuel
-	{ 287.0f, 327.0f, 405.0f, 347.0f }, // string 595 Teargas
+	{  52.0f, 331.0f, 154.0f, 351.0f }, // string 593 Damage
+	{ 147.0f, 114.0f, 268.0f, 134.0f }, // string 594 Fuel
+	{ 287.0f, 331.0f, 405.0f, 351.0f }, // string 595 Teargas
 };
 constexpr FCheckupRect SliderValueRect[SliderCount] = {
-	{  64.0f, 341.0f, 147.0f, 358.0f },
-	{ 167.0f, 122.0f, 255.0f, 138.0f },
-	{ 305.0f, 341.0f, 389.0f, 358.0f },
+	{  64.0f, 350.0f, 147.0f, 367.0f },
+	{ 167.0f, 133.0f, 255.0f, 149.0f },
+	{ 305.0f, 350.0f, 389.0f, 367.0f },
 };
 
 // FUN_00443c20 gives both buttons a degenerate 1x1 rectangle - (186,390)-(187,391) for OK and

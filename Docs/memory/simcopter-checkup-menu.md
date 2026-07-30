@@ -50,6 +50,17 @@ Tested every frame from `FUN_00449850`: view mode 3, standing on the airport, an
 adds a once-per-touchdown latch the original does not have — the original re-tests every frame and
 has no way to dismiss the panel and stay parked, so without it Cancel would reopen instantly.
 
+**Playable remake divergence (2026-07-30): every airport landing opens the panel.** The original
+threshold remains implemented and tested as `ShouldOffer`, but automatic gameplay uses
+`ShouldOpenOnAirportLanding`, whose service policy gate is only `bAtAirport`. Runtime additionally
+requires a player-controlled helicopter that has actually been airborne: initial pad placement,
+an unpossessed helicopter ticking at game start, and entering a parked helicopter are not
+landings. The panel refuses to construct until `FlapArt` can load the original BMPs, and the latch
+is set only after `OpenCheckupMenu` succeeds.
+
+Airport eligibility uses the airport builder's exact twelve perimeter pad tiles around the middle
+2x2 hangar plot. It does not depend on finding a surviving terminal XBLD in a radius scan.
+
 ## Layout — read the ASM, not the decompile
 
 **The decompile aliases the rectangles; the assembly states them outright.** Ghidra reuses the
@@ -102,3 +113,15 @@ a small `SLeafWidget` instead; its travel maths is static and unit-tested
 (`SimCopter.Checkup.SliderTravel`).
 
 `SimCheckup` on the possessed pawn raises the panel without flying to the airport.
+
+## Remake visual tuning
+
+As of 2026-07-30 the thumb is intentionally rendered at 1.5x (33x27). The decoded 26x202 track
+rectangles remain the source of truth. Its visual midpoint is tuned 3.5 px right and 5.5 px up
+from the decoded mathematical centreline to meet the actual bright groove in CHECKUP.BMP. The
+top and bottom travel limits are each inset by half the rendered thumb height (13.5 px), making
+the groove terminate at the thumb's red midpoint rather than its outer edge.
+
+The Damage and Teargas label blocks are shifted down 4 px, Fuel is shifted down 7 px, and each
+cost line is lower still to leave a visible gap below its type label. These are explicit remake
+visual adjustments over the decoded overlapping text rectangles.
