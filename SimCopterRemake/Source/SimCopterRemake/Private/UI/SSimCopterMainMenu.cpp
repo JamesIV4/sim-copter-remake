@@ -2,7 +2,9 @@
 
 #include "UI/SSimCopterMainMenu.h"
 
+#include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterSessionSubsystem.h"
+#include "InputCoreTypes.h"
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterMissionCatalog.h"
 #include "Widgets/Input/SButton.h"
@@ -74,6 +76,25 @@ TSharedRef<SWidget> MakeArrow(const FText& Label, FOnClicked OnClicked)
 				SNew(STextBlock).Text(Label).Font(MenuFont(12, true))
 			]
 		];
+}
+
+TSharedPtr<SWidget> FindFirstFocusableWidget(const TSharedRef<SWidget>& Root)
+{
+	if (Root->SupportsKeyboardFocus() && Root->IsEnabled())
+	{
+		return Root;
+	}
+
+	FChildren* Children = Root->GetChildren();
+	for (int32 ChildIndex = 0; Children != nullptr && ChildIndex < Children->Num(); ++ChildIndex)
+	{
+		if (TSharedPtr<SWidget> Result = FindFirstFocusableWidget(Children->GetChildAt(ChildIndex)))
+		{
+			return Result;
+		}
+	}
+
+	return nullptr;
 }
 
 FString ResolveCareerTweakPath()
@@ -172,6 +193,11 @@ void SSimCopterMainMenu::ShowPanel(EPanel NewPanel)
 		BuildRootPanel();
 
 	Body->AddSlot().AutoHeight()[PanelContent];
+	InitialFocusWidget = FindFirstFocusableWidget(PanelContent);
+	if (InitialFocusWidget.IsValid() && FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocus(InitialFocusWidget, EFocusCause::Navigation);
+	}
 }
 
 TSharedRef<SWidget> SSimCopterMainMenu::BuildRootPanel()
@@ -645,6 +671,16 @@ FReply SSimCopterMainMenu::HandleStartUserCity()
 
 	OnStartRequested.ExecuteIfBound();
 	return FReply::Handled();
+}
+
+FReply SSimCopterMainMenu::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Right && Panel != EPanel::Root)
+	{
+		return HandleBack();
+	}
+
+	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -7,6 +7,8 @@
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
@@ -26,7 +28,9 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
+#include "UI/SSimCopterControllerOverlay.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Widgets/SOverlay.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterOnFootPawn, Log, All);
 
@@ -166,6 +170,13 @@ void ASimCopterOnFootPawn::BeginPlay()
 		FInputModeGameOnly InputMode;
 		PlayerController->SetInputMode(InputMode);
 	}
+	EnsureControllerOverlayWidget();
+}
+
+void ASimCopterOnFootPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	RemoveControllerOverlayWidget();
+	Super::EndPlay(EndPlayReason);
 }
 
 void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
@@ -197,8 +208,14 @@ void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis(TEXT("SimCopterLookPitch"), this, &ASimCopterOnFootPawn::LookPitch);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookYaw"), this, &ASimCopterOnFootPawn::MouseLookYaw);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookPitch"), this, &ASimCopterOnFootPawn::MouseLookPitch);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftY"), this, &ASimCopterOnFootPawn::MoveForward);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftX"), this, &ASimCopterOnFootPawn::MoveRight);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightX"), this, &ASimCopterOnFootPawn::LookYaw);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightY"), this, &ASimCopterOnFootPawn::ControllerLookPitch);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterOnFootPawn::Interact);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &ASimCopterOnFootPawn::Interact);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Left, IE_Pressed, this, &ASimCopterOnFootPawn::DropCarriedMissionPerson);
 
 	// Drop a carried person on the ground (e.g. when the helicopter is full and you need to come
 	// back for them later). Bound directly to F so no input-mapping config edit is required.
@@ -208,6 +225,15 @@ void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	// capsule). Bound directly to Space so no input-mapping config edit is required.
 	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Released, this, &ACharacter::StopJumping);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Bottom, IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Bottom, IE_Released, this, &ACharacter::StopJumping);
+
+	FInputKeyBinding& PauseBinding = PlayerInputComponent->BindKey(
+		EKeys::Gamepad_Special_Right,
+		IE_Pressed,
+		this,
+		&ASimCopterOnFootPawn::ToggleGamePause);
+	PauseBinding.bExecuteWhenPaused = true;
 }
 
 void ASimCopterOnFootPawn::MoveForward(float Value)
@@ -252,9 +278,54 @@ void ASimCopterOnFootPawn::MouseLookPitch(float Value)
 	MouseLookPitchInput = Value;
 }
 
+void ASimCopterOnFootPawn::ControllerLookPitch(float Value)
+{
+	// The existing camera subtracts its look input. Invert the raw gamepad axis so stick-up
+	// raises the view, matching the old Gamepad_RightY mapping.
+	LookPitch(-Value);
+}
+
 void ASimCopterOnFootPawn::Interact()
 {
-	TryAutoEnterHelicopter();
+	TryEnterHelicopter(HelicopterInteractionRadiusCm);
+}
+
+void ASimCopterOnFootPawn::ToggleGamePause()
+{
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	UWorld* World = GetWorld();
+	if (PlayerController != nullptr && World != nullptr)
+	{
+		PlayerController->SetPause(!World->IsPaused());
+	}
+}
+
+void ASimCopterOnFootPawn::EnsureControllerOverlayWidget()
+{
+	if (ControllerOverlayWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	ControllerOverlayWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SNew(SSimCopterControllerOverlay)
+				.Pawn(nullptr)
+		];
+	GEngine->GameViewport->AddViewportWidgetContent(ControllerOverlayWidget.ToSharedRef(), 60);
+}
+
+void ASimCopterOnFootPawn::RemoveControllerOverlayWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && ControllerOverlayWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(ControllerOverlayWidget.ToSharedRef());
+	}
+	ControllerOverlayWidget.Reset();
 }
 
 void ASimCopterOnFootPawn::DropCarriedMissionPerson()
@@ -318,6 +389,7 @@ void ASimCopterOnFootPawn::SimBoardHelicopter()
 	}
 
 	UE_LOG(LogTemp, Display, TEXT("SimBoardHelicopter: possessing %s."), *Helicopter->GetName());
+	RemoveControllerOverlayWidget();
 	Helicopter->EnterHelicopter(PlayerController);
 }
 
@@ -401,7 +473,12 @@ bool ASimCopterOnFootPawn::TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn
 
 void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 {
-	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(HelicopterAutoEnterRadiusCm);
+	TryEnterHelicopter(HelicopterAutoEnterRadiusCm);
+}
+
+void ASimCopterOnFootPawn::TryEnterHelicopter(const float SearchRadiusCm)
+{
+	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(SearchRadiusCm);
 	if (Helicopter == nullptr)
 	{
 		return;
@@ -414,6 +491,7 @@ void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 			return;
 		}
 
+		RemoveControllerOverlayWidget();
 		Helicopter->EnterHelicopter(PlayerController);
 	}
 }

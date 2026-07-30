@@ -17,6 +17,7 @@ class UProceduralMeshComponent;
 class USpringArmComponent;
 class UStaticMeshComponent;
 class UTexture2D;
+class SWidget;
 
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCopterOnFootPawn : public ACharacter
@@ -27,6 +28,7 @@ public:
 	ASimCopterOnFootPawn();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
@@ -167,6 +169,7 @@ private:
 	TWeakObjectPtr<ASimCopterGroundAgent> CarriedMissionPerson;
 	int32 CarriedMissionEventId = INDEX_NONE;
 	float MissionPickupCooldownSeconds = 0.0f;
+	TSharedPtr<SWidget> ControllerOverlayWidget;
 
 	// Original pilot-figure state (mirrors the ground agent's figure path).
 	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
@@ -190,10 +193,15 @@ private:
 	void LookPitch(float Value);
 	void MouseLookYaw(float Value);
 	void MouseLookPitch(float Value);
+	void ControllerLookPitch(float Value);
 	void Interact();
 	void DropCarriedMissionPerson();
+	void ToggleGamePause();
 	bool TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn* Helicopter);
 	void TryAutoEnterHelicopter();
+	void TryEnterHelicopter(float SearchRadiusCm);
+	void EnsureControllerOverlayWidget();
+	void RemoveControllerOverlayWidget();
 
 	// Board the nearest helicopter regardless of walking distance. Test scaffolding: a
 	// -game smoke test drives the shell through Slate, which never possesses the

@@ -231,7 +231,10 @@ the building's anchor tile.
 
 `UpdateVisuals` applies body pitch/roll and spins placeholder/original rotor components.
 
-`UpdateCamera` implements the modern camera modes and mouse-drag/gamepad look offsets.
+`UpdateCamera` implements the modern camera modes and mouse-drag/gamepad look offsets. The
+complete context-sensitive controller mapping, including dispatch/tool radials, passenger
+selection, on-foot controls, and controller-focused shell menus, is documented in
+[`ControllerSupport.md`](ControllerSupport.md).
 
 ## Ground Agent
 

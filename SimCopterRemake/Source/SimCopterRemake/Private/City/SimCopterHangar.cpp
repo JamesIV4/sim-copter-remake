@@ -748,7 +748,8 @@ void ASimCopterHangar::OpenShell(APlayerController* PlayerController)
 		Context.Career = Career;
 	}
 
-	ShellWidget = SNew(SSimCopterHangarMenu)
+	TSharedPtr<SSimCopterHangarMenu> HangarMenu;
+	ShellWidget = SAssignNew(HangarMenu, SSimCopterHangarMenu)
 		.Art(Art)
 		.Shop(Context)
 		.OnDoneRequested(FSimpleDelegate::CreateUObject(this, &ASimCopterHangar::CloseShell));
@@ -760,6 +761,7 @@ void ASimCopterHangar::OpenShell(APlayerController* PlayerController)
 	{
 		FInputModeUIOnly InputMode;
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetWidgetToFocus(HangarMenu.IsValid() ? HangarMenu->GetInitialFocusWidget() : nullptr);
 		Controller->SetInputMode(InputMode);
 		Controller->bShowMouseCursor = true;
 	}
