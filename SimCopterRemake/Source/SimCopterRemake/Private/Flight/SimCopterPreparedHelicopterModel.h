@@ -6,6 +6,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Ground/SimCopterFlashingLights.h"
 
 // Everything a live model switch needs, built off to the side so a failed load can never
 // leave one model's tuning on another model's mesh (plan section 7).
@@ -36,6 +37,9 @@ struct FSimCopterPreparedHelicopterModel
 	// CANNON (0x16e). Authored in the same local frame as the fuselage, so it needs no mount
 	// offset - it rides the body component directly.
 	FMaxisMeshSection CannonSection;
+
+	// The fuselage's face-type-25 blink markers, in the same local frame as BodySection.
+	TArray<FSimCopterFlashingLightPoint> BodyLightPoints;
 
 	bool bHasMainRotor = false;
 	bool bHasTailRotor = false;

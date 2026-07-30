@@ -64,6 +64,25 @@ state-5 medic. For hospital delivery, let BHAV 263 remove the real cabin actor;
 a bounded recovery timer may resolve malformed legacy seats, but must not
 animate a competing handoff or spawn visual geometry.
 
+## The roof post is rate-limited (2026-07-30)
+
+`EnsureHospitalParamedicAtTile` is called by the mission tick **every frame** a medevac is
+pending, and its `FindPostedMedic` scan rejects any agent with a behaviour carrier or with
+`Visible == 0`. A medic boarding the player's helicopter acquires both, so it stops matching on the
+very next tick and the post looks empty — which used to spawn a **second paramedic on the roof the
+instant the first one climbed aboard**.
+
+Fixed with a per-tile respawn delay: `HospitalParamedicLastSeenSeconds` records when a medic was
+last actually seen standing on that roof, and no replacement is posted until
+`HospitalParamedicRespawnDelaySeconds` (default **40 s**) after that. A roof that has never been
+staffed has no entry and staffs immediately; a failed spawn records nothing, so the retry-every-tick
+behaviour for a not-yet-ready city surface is unchanged.
+
+The timing gate is `ASimCopterTrafficSystemActor::CanPostHospitalParamedic`, a pure static so it
+can be tested without a world — `SimCopter.Dispatch.HospitalParamedicRespawn`. It also treats
+*backwards* world time as "allow", so a level reload that keeps the map cannot lock a roof out for
+the rest of the session.
+
 ## Evidence and verification
 
 - Fresh executable output:

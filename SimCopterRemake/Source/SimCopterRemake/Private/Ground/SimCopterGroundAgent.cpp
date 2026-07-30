@@ -15,6 +15,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "GameFramework/Pawn.h"
 #include "Ground/SimCopterCriminalCar.h"
 #include "Ground/SimCopterInteraction.h"
@@ -180,6 +181,15 @@ ASimCopterGroundAgent::ASimCopterGroundAgent()
 void ASimCopterGroundAgent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Share the fleet's material instance so the metallic slider reaches the cars too.
+	if (USimCopterVehicleMaterialSubsystem* VehicleMaterials = USimCopterVehicleMaterialSubsystem::Get(this))
+	{
+		if (UMaterialInstanceDynamic* Shared = VehicleMaterials->GetVehicleMaterial(VertexColorMaterial))
+		{
+			VertexColorMaterial = Shared;
+		}
+	}
 
 	ApplyAgentShape();
 	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)

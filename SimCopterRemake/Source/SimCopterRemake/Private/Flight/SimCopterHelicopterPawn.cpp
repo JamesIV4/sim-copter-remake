@@ -27,10 +27,12 @@
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterPreparedHelicopterModel.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "Debug/SSimCopterHelicopterDebugPanel.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterAmbientVehicles.h"
+#include "Ground/SimCopterFlashingLights.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterParticleFX.h"
@@ -53,6 +55,7 @@
 #include "UI/SimCopterHangarArt.h"
 #include "UI/SSimCopterControllerOverlay.h"
 #include "UI/SSimCopterDashboard.h"
+#include "UI/SSimCopterCheckupMenu.h"
 #include "UI/SSimCopterToolFlaps.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/Images/SImage.h"
@@ -75,6 +78,7 @@ constexpr TCHAR CameraDebugConfigSection[] = TEXT("SimCopter.CameraViews");
 constexpr TCHAR RotorDiscConfigSection[] = TEXT("SimCopter.RotorDisc");
 constexpr TCHAR CockpitViewConfigSection[] = TEXT("SimCopter.CockpitView");
 constexpr TCHAR FlightModelConfigSection[] = TEXT("SimCopter.FlightModel");
+constexpr TCHAR CameraGroundLiftConfigSection[] = TEXT("SimCopter.CameraGroundLift");
 // Parameters authored by Tools/Unreal/CreateSimCopterMaterials.py.
 const FName RotorDiscOpacityParameterName(TEXT("DiscOpacity"));
 const FName RotorDiscColorParameterName(TEXT("DiscColor"));
@@ -126,11 +130,11 @@ FSimCopterCameraViewDebugOffset GetDefaultCameraViewDebugOffset(ESimCopterCamera
 	switch (Mode)
 	{
 	case ESimCopterCameraMode::Chase:
-		Offset.TranslationCm = FVector(197.0, 0.0, -184.0);
-		Offset.RotationDeg = FRotator(-8.0, 0.0, 0.0);
+		Offset.TranslationCm = FVector(197.0, 0.0, -126.0);
+		Offset.RotationDeg = FRotator(-6.0, 0.0, 0.0);
 		break;
 	case ESimCopterCameraMode::Orbit:
-		Offset.TranslationCm = FVector(124.0, 0.0, -273.0);
+		Offset.TranslationCm = FVector(124.0, 0.0, -234.0);
 		Offset.RotationDeg = FRotator(3.5, 0.0, 0.0);
 		break;
 	case ESimCopterCameraMode::Rescue:
@@ -412,6 +416,17 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	HeliTailRotorMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HeliTailRotorMeshComponent->SetCanEverAffectNavigation(false);
 
+	// Parented to the body so the markers keep the local frame PrepareHelicopterModel read them in,
+	// including the skid-to-capsule offset ApplyPreparedModelMeshes puts on the body.
+	FlashingLightsComponent = CreateDefaultSubobject<USimCopterFlashingLightsComponent>(TEXT("FlashingLights"));
+	FlashingLightsComponent->SetupAttachment(HeliBodyMeshComponent);
+	// Uncapped like the city's (MaxPointLights stays 0); an airframe only carries four markers
+	// anyway - one white, two red, one green - and just one colour is lit at a time.
+	// Close range: these are position lights on a small aircraft, not searchlights. The spotlight
+	// (SimCopterSpotlight) is the thing that is supposed to illuminate the ground.
+	FlashingLightsComponent->PointLightAttenuationRadiusCm = 600.0f;
+	FlashingLightsComponent->PointLightIntensity = 6.0f;
+
 	// The CANNON object's vertices are authored in fuselage-local space (barrel at X 27..58,
 	// Y +/-2.5, Z 5..11 cm), so parenting it to the body at zero offset puts it exactly where
 	// the original draws it. Only visible while the water cannon is installed.
@@ -500,7 +515,20 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CameraBoom->SetUsingAbsoluteRotation(true);
 	CameraBoom->TargetArmLength = 900.0f;
 	CameraBoom->TargetOffset = FVector::ZeroVector;
-	CameraBoom->bDoCollisionTest = true;
+	// The spring arm's own collision test is OFF on purpose. UpdateCamera does all three of the
+	// jobs it would do - least-angle avoidance (FindCameraAvoidanceOffset), pull-in along the
+	// roof-to-camera segment (ResolveCameraPullInAlpha) and ground clearance
+	// (ResolveCameraGroundLift) - and the engine's version actively fought the last of them:
+	//
+	// it sweeps from ArmOrigin, which is GetComponentLocation() + TargetOffset, and this camera
+	// keeps TargetOffset at zero and puts the whole framing translation in SocketOffset, applied
+	// *after* the arm. So the engine swept from the fuselage roof straight to the final offset
+	// position and clamped the camera to the first thing it grazed. Near the ground that clamp
+	// won every time, which is why the ground lift appeared to do nothing however it was tuned.
+	//
+	// ProbeChannel/ProbeSize are still read by ResolveCameraArmLengthForObstruction and the
+	// pull-in probe, so they stay.
+	CameraBoom->bDoCollisionTest = false;
 	CameraBoom->ProbeChannel = ECC_Camera;
 	CameraBoom->ProbeSize = 18.0f;
 	CameraBoom->bEnableCameraLag = true;
@@ -590,15 +618,27 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 void ASimCopterHelicopterPawn::BeginPlay()
 {
 	Super::BeginPlay();
+	// Swap the raw material asset for the fleet-wide instance, so the debug panel's metallic
+	// slider reaches the fuselage. Everything downstream still just assigns ModelVertexColorMaterial.
+	if (USimCopterVehicleMaterialSubsystem* VehicleMaterials = USimCopterVehicleMaterialSubsystem::Get(this))
+	{
+		if (UMaterialInstanceDynamic* Shared = VehicleMaterials->GetVehicleMaterial(ModelVertexColorMaterial))
+		{
+			ModelVertexColorMaterial = Shared;
+		}
+	}
 	LoadCameraViewDebugOffsets();
 	LoadCockpitStabilization();
 	LoadRotorDiscAppearance();
+	LoadCameraGroundLift();
 	LoadEasyFlightModel();
 	// Playable starting point for the frame-rate assumption, over the model's own
 	// defaults, which are the executable's figures. These are feel, not fidelity, and
 	// exist to be dialled in from the debug panel - the ini below wins once they have
 	// been. 20 fps everywhere with a x1 rotor is the documented-faithful setting to go
 	// back to; the shake is the one that stays there, because 60 makes it far too busy.
+	//
+	// Promoted 2026-07-30 from the current debug-panel values in GameUserSettings.
 	FlightModel.TurbulenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 20.0f);
 	FlightModel.ReferenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
 	FlightModel.SpeedChaseFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
@@ -718,6 +758,12 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 
 	UpdateVisuals(DeltaSeconds);
 	UpdateRotorWash(DeltaSeconds);
+	UpdateCheckupOffer();
+	// Only the GEO fuselage carries blink markers; the placeholder body has none to show.
+	if (FlashingLightsComponent != nullptr && bUsingOriginalMesh && GetWorld() != nullptr)
+	{
+		FlashingLightsComponent->SyncLightsFromPlayerCamera(GetWorld()->GetTimeSeconds());
+	}
 	// Semantic targeting keeps running whether or not the cone is drawn (FUN_00489250).
 	UpdateSpotlightTarget(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
@@ -1118,6 +1164,25 @@ void ASimCopterHelicopterPawn::PrepareHelicopterModel(
 			*RootPath));
 	}
 
+	// The blink markers are face type 25, which BuildPaletteColoredSection skips (one vertex, so it
+	// is not a polygon or a line). They come out of the same object in the same local frame - see
+	// FSimCopterFlashingLightSchedule for the original's colour-phase rule.
+	OutPrepared.BodyLightPoints.Reset();
+	{
+		const TArray<FColor>* BodyColorMap = nullptr;
+		if (const FMaxisMeshObject* BodyObject =
+			MeshLibrary.FindObjectByObjectId(Definition.BodyObjectId, &BodyColorMap))
+		{
+			FSimCopterFlashingLightSchedule::ExtractLightPoints(
+				*BodyObject,
+				BodyColorMap,
+				ModelUnitsPerCentimeter,
+				ModelScale,
+				/*bApplyCityMeshOrientation*/ false,
+				OutPrepared.BodyLightPoints);
+		}
+	}
+
 	OutPrepared.bHasMainRotor = BuildRotorById(
 		Definition.MainRotorObjectId,
 		OutPrepared.MainRotorOpaqueSection,
@@ -1330,6 +1395,11 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 		Prepared.CannonSection,
 		CockpitCannonRearExtensionCm);
 	ApplySection(CockpitCannonMeshComponent, CockpitCannonSection);
+
+	if (FlashingLightsComponent != nullptr)
+	{
+		FlashingLightsComponent->SetLightPoints(Prepared.BodyLightPoints);
+	}
 
 	bUsingOriginalBucketMesh = ApplySection(OriginalBucketMeshComponent, Prepared.BucketSection);
 	bUsingOriginalHarnessMesh = ApplySection(OriginalHarnessMeshComponent, Prepared.HarnessSection);
@@ -4195,6 +4265,62 @@ void ASimCopterHelicopterPawn::SaveRotorDiscAppearance() const
 	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
+void ASimCopterHelicopterPawn::SetCameraGroundLiftHeightCm(const float ValueCm)
+{
+	CameraGroundLiftHeightCm = FMath::Clamp(ValueCm, 0.0f, 4000.0f);
+	SaveCameraGroundLift();
+}
+
+void ASimCopterHelicopterPawn::SetCameraGroundLiftProbeRangeCm(const float ValueCm)
+{
+	CameraGroundLiftProbeRangeCm = FMath::Clamp(ValueCm, 1.0f, 20000.0f);
+	SaveCameraGroundLift();
+}
+
+void ASimCopterHelicopterPawn::SetCameraGroundLiftFullDistanceCm(const float ValueCm)
+{
+	CameraGroundLiftFullDistanceCm = FMath::Clamp(ValueCm, 0.0f, 20000.0f);
+	SaveCameraGroundLift();
+}
+
+void ASimCopterHelicopterPawn::LoadCameraGroundLift()
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	double Value = 0.0;
+	if (GConfig->GetDouble(CameraGroundLiftConfigSection, TEXT("HeightCm"), Value, GGameUserSettingsIni))
+	{
+		CameraGroundLiftHeightCm = FMath::Clamp(static_cast<float>(Value), 0.0f, 4000.0f);
+	}
+	if (GConfig->GetDouble(CameraGroundLiftConfigSection, TEXT("ProbeRangeCm"), Value, GGameUserSettingsIni))
+	{
+		CameraGroundLiftProbeRangeCm = FMath::Clamp(static_cast<float>(Value), 1.0f, 20000.0f);
+	}
+	if (GConfig->GetDouble(CameraGroundLiftConfigSection, TEXT("FullDistanceCm"), Value, GGameUserSettingsIni))
+	{
+		CameraGroundLiftFullDistanceCm = FMath::Clamp(static_cast<float>(Value), 0.0f, 20000.0f);
+	}
+}
+
+void ASimCopterHelicopterPawn::SaveCameraGroundLift() const
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	GConfig->SetDouble(
+		CameraGroundLiftConfigSection, TEXT("HeightCm"), CameraGroundLiftHeightCm, GGameUserSettingsIni);
+	GConfig->SetDouble(
+		CameraGroundLiftConfigSection, TEXT("ProbeRangeCm"), CameraGroundLiftProbeRangeCm, GGameUserSettingsIni);
+	GConfig->SetDouble(
+		CameraGroundLiftConfigSection, TEXT("FullDistanceCm"), CameraGroundLiftFullDistanceCm, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+}
+
 void ASimCopterHelicopterPawn::SetEasyFlightModelEnabled(bool bEnabled)
 {
 	if (FlightModel.bEasyFlightModel == bEnabled)
@@ -4901,6 +5027,227 @@ void ASimCopterHelicopterPawn::UpdateGroundProbe()
 	if (bDrawDebugProbes)
 	{
 		DrawDebugLine(GetWorld(), Start, End, LastGroundHit.bBlockingHit ? FColor::Green : FColor::Red, false, 0.0f, 0, 2.0f);
+	}
+}
+
+float ASimCopterHelicopterPawn::GetVehicleMetallic() const
+{
+	const USimCopterVehicleMaterialSubsystem* VehicleMaterials = USimCopterVehicleMaterialSubsystem::Get(this);
+	return VehicleMaterials != nullptr ? VehicleMaterials->GetMetallic() : 0.0f;
+}
+
+void ASimCopterHelicopterPawn::SetVehicleMetallic(float Metallic)
+{
+	if (USimCopterVehicleMaterialSubsystem* VehicleMaterials = USimCopterVehicleMaterialSubsystem::Get(this))
+	{
+		VehicleMaterials->SetMetallic(Metallic);
+	}
+}
+
+float ASimCopterHelicopterPawn::GetFlashingLightIntensityScale() const
+{
+	return FlashingLightsComponent != nullptr ? FlashingLightsComponent->PointLightIntensityScale : 1.0f;
+}
+
+void ASimCopterHelicopterPawn::SetFlashingLightIntensityScale(float Scale)
+{
+	const float Clamped = FMath::Max(Scale, 0.0f);
+	if (FlashingLightsComponent != nullptr)
+	{
+		FlashingLightsComponent->PointLightIntensityScale = Clamped;
+	}
+	// The city's beacons are the ones you are usually looking at, so the one slider moves both.
+	if (ASimCity2000CityActor* City = ResolveCityActor())
+	{
+		City->SetFlashingLightIntensityScale(Clamped);
+	}
+	// Written centrally rather than per component: a city that has not spawned yet still picks
+	// this up, because every component reads the same key on its own BeginPlay.
+	USimCopterFlashingLightsComponent::SaveIntensityScaleToConfig(Clamped);
+}
+
+// SCHOOK: CheckupAtAirport 0x004823a0
+bool ASimCopterHelicopterPawn::IsStandingOnAirport() const
+{
+	ASimCity2000CityActor* City = ResolveCityActor();
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (City == nullptr || TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	float SurfaceZ = 0.0f;
+	uint8 TerrainClass = 0xff;
+	FIntPoint Tile = FIntPoint::ZeroValue;
+	if (!City->TryGetWaterGameplaySurface(GetActorLocation(), SurfaceZ, TerrainClass, &Tile))
+	{
+		return false;
+	}
+
+	// The original's radius-2 window around the helicopter's own tile, looking for XBLD 0xf6.
+	constexpr int32 AirportTerminalXbld = 0xf6;
+	constexpr int32 SearchRadius = 2;
+	for (int32 OffsetY = -SearchRadius; OffsetY <= SearchRadius; ++OffsetY)
+	{
+		for (int32 OffsetX = -SearchRadius; OffsetX <= SearchRadius; ++OffsetX)
+		{
+			if (TrafficSystem->GetXbldTileId(Tile.X + OffsetX, Tile.Y + OffsetY) == AirportTerminalXbld)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+FSimCopterCheckupState ASimCopterHelicopterPawn::BuildCheckupState() const
+{
+	FSimCopterCheckupState State;
+
+	// heli[0x34] and DAT_0050412c. The flight model already names these the original's way.
+	State.HitPoints = FlightModel.HitPoints;
+	State.MaxHitPoints = FMath::Max(FlightModel.Tuning.MaxDamage, 1);
+	// heli.twk "Repair Rate" / "Fuel Cost" are the per-type dollar rates (DAT_00504130/34).
+	State.DollarsPerHitPoint1616 = SimCopterFixed::FromFloat(HelicopterTuning.RepairRatePerDamage);
+	State.DollarsPerGallon1616 = SimCopterFixed::FromFloat(HelicopterTuning.FuelCostPerGallon);
+
+	// heli[0xcc] and DAT_00504120, both 16.16 gallons.
+	State.Fuel1616 = FlightModel.Fuel;
+	State.FuelCapacity1616 = SimCopterFixed::FromFloat(HelicopterTuning.FuelGallons);
+
+	State.bTearGasFitted = IsToolAvailable(ESimCopterHelicopterTool::TearGas);
+	State.TearGasRounds = EquipmentState.GetTearGasRounds();
+
+	State.bAtAirport = IsStandingOnAirport();
+
+	if (const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+	{
+		State.Funds = Missions->GetSessionCash();
+	}
+
+	return State;
+}
+
+// SCHOOK: CheckupApply 0x004385c0
+void ASimCopterHelicopterPawn::ApplyCheckupOrder(const FSimCopterCheckupOrder& RawOrder)
+{
+	const FSimCopterCheckupState State = BuildCheckupState();
+	const FSimCopterCheckupOrder Order = FSimCopterCheckup::ClampOrder(State, RawOrder);
+
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+
+	// The original charges and applies each line separately, in this order, so a player who can
+	// only afford part of the order still gets the earlier lines.
+	if (Order.DamageDollars > 0)
+	{
+		if (Missions != nullptr)
+		{
+			Missions->AddSessionCash(-Order.DamageDollars);
+		}
+		FlightModel.HitPoints = FSimCopterCheckup::ApplyDamageRepair(State, Order.DamageDollars);
+		// The remake also carries a float damage counter for the HUD; keep it in step with the
+		// hit points the original actually repairs.
+		CurrentDamage = static_cast<float>(FMath::Max(State.MaxHitPoints - FlightModel.HitPoints, 0));
+	}
+	if (Order.FuelDollars > 0)
+	{
+		if (Missions != nullptr)
+		{
+			Missions->AddSessionCash(-Order.FuelDollars);
+		}
+		FlightModel.Fuel = FSimCopterCheckup::ApplyFuel(State, Order.FuelDollars);
+		CurrentFuelGallons = SimCopterFixed::ToFloat(FlightModel.Fuel);
+	}
+	if (Order.TearGasRounds > 0)
+	{
+		const int32 Dollars = FSimCopterCheckup::GetTearGasCostDollars(Order.TearGasRounds);
+		if (Missions != nullptr)
+		{
+			Missions->AddSessionCash(-Dollars);
+		}
+		EquipmentState.CareerTearGasRounds =
+			FSimCopterCheckup::ApplyTearGas(Dollars, EquipmentState.CareerTearGasRounds);
+	}
+}
+
+bool ASimCopterHelicopterPawn::IsCheckupMenuOpen() const
+{
+	return CheckupWidget.IsValid();
+}
+
+bool ASimCopterHelicopterPawn::OpenCheckupMenu()
+{
+	if (CheckupWidget.IsValid())
+	{
+		return true;
+	}
+	if (GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return false;
+	}
+
+	// The panel is drawn from the original's own page art, so it needs the same loader the
+	// cockpit flaps use; FlapArt is already pointed at the BMP folder by BeginPlay.
+	CheckupWidget =
+		SNew(SSimCopterCheckupMenu)
+		.State(BuildCheckupState())
+		.Art(FlapArt)
+		.OnAccepted_Lambda([this](FSimCopterCheckupOrder Order)
+		{
+			ApplyCheckupOrder(Order);
+			CloseCheckupMenu();
+		})
+		.OnCancelled_Lambda([this]()
+		{
+			CloseCheckupMenu();
+		});
+
+	// Above the dashboard and the debug panel: while it is up it is the only thing to click.
+	GEngine->GameViewport->AddViewportWidgetContent(CheckupWidget.ToSharedRef(), 70);
+	return true;
+}
+
+void ASimCopterHelicopterPawn::CloseCheckupMenu()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && CheckupWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(CheckupWidget.ToSharedRef());
+	}
+	CheckupWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::SimCheckup()
+{
+	if (!OpenCheckupMenu())
+	{
+		UE_LOG(LogSimCopterHelicopterPawn, Warning, TEXT("SimCheckup: no game viewport to open the panel in."));
+	}
+}
+
+// SCHOOK: CheckupShouldOffer 0x00444750
+void ASimCopterHelicopterPawn::UpdateCheckupOffer()
+{
+	// Taking off re-arms the offer; the original re-tests every frame and has no latch, but it
+	// also has no way for the player to dismiss the panel and stay parked.
+	if (!bIsLanded)
+	{
+		bCheckupOfferedThisLanding = false;
+		return;
+	}
+
+	if (!bAutoOpenCheckupOnLanding || bCheckupOfferedThisLanding || CheckupWidget.IsValid())
+	{
+		return;
+	}
+
+	if (FSimCopterCheckup::ShouldOffer(BuildCheckupState()))
+	{
+		bCheckupOfferedThisLanding = true;
+		OpenCheckupMenu();
 	}
 }
 
@@ -5877,7 +6224,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	float ZoomArmLength =
 		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, CameraZoomAlpha);
 	float ReferenceZoomArmLength =
-		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, 0.25f);
+		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, CameraDefaultZoomAlpha);
 	float ArmLength = ZoomArmLength + SpeedAlpha * ChaseSpeedPullbackCm;
 	FVector CameraTranslationWorld(
 		0.0f,
@@ -5900,7 +6247,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		ViewYaw = ActorYaw;
 		ViewPitch = -18.0f;
 		ZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, CameraZoomAlpha);
-		ReferenceZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, 0.25f);
+		ReferenceZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, CameraDefaultZoomAlpha);
 		ArmLength = ZoomArmLength;
 		CameraTranslationWorld = FVector(0.0f, 0.0f, 120.0f);
 	}
@@ -5924,7 +6271,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		ViewYaw = ActorYaw;
 		ViewPitch = RescueCameraPitch;
 		ZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, CameraZoomAlpha);
-		ReferenceZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, 0.25f);
+		ReferenceZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, CameraDefaultZoomAlpha);
 		ArmLength = ZoomArmLength;
 		CameraTranslationWorld = FVector(0.0f, 0.0f, 30.0f);
 		if (bRecenterYaw)
@@ -6198,58 +6545,66 @@ float ASimCopterHelicopterPawn::ResolveCameraGroundLift(
 
 	const FVector DesiredCameraLocation = BoomOrigin - WorldRotation.Vector() * ArmLength;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterCameraGroundProbe), false, this);
+
+	// Whatever the camera is standing over counts as its ground, buildings included - an airport
+	// apron, a helipad and a rooftop are all surfaces you park on, and the lift should read them
+	// exactly like terrain.
+	//
+	// The previous version skipped building hits hoping to fall through to the terrain beneath,
+	// which never worked: a line trace STOPS at its first blocking hit, so there was nothing
+	// behind the building to find and the probe simply reported no ground at all. Over the airport
+	// that meant the lift never engaged.
+	//
+	// The one hit still rejected is a non-terrain surface ABOVE the camera - a roof or a bridge
+	// deck overhead is not something we are landing on, and treating it as ground would heave the
+	// whole view up over it. Terrain above the camera is still accepted, because that means the
+	// camera has sunk into the landscape and the hard lift has to push it back out.
 	auto TryGetMinimumSafeZ = [this, &QueryParams](const FVector& Location, float& OutMinimumSafeZ)
 	{
 		const FVector TraceStart = Location + FVector::UpVector * CameraGroundProbeUpCm;
 		const FVector TraceEnd = Location - FVector::UpVector * CameraGroundProbeDownCm;
-		TArray<FHitResult> Hits;
-		if (!GetWorld()->LineTraceMultiByChannel(
-				Hits,
-				TraceStart,
-				TraceEnd,
-				ECC_Camera,
-				QueryParams))
+		FHitResult Hit;
+		if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) ||
+			!Hit.bBlockingHit)
 		{
 			return false;
 		}
 
-		for (const FHitResult& Hit : Hits)
+		if (Hit.ImpactPoint.Z > Location.Z)
 		{
-			if (!Hit.bBlockingHit)
-			{
-				continue;
-			}
-
-			// Buildings are handled by the least-angle avoidance search. Treating a roof as
-			// "ground" here would lift the whole view over it before angle avoidance could act.
-			if (const ASimCity2000CityActor* CityActor =
-					Cast<ASimCity2000CityActor>(Hit.GetActor());
-				CityActor != nullptr &&
+			const ASimCity2000CityActor* CityActor = Cast<ASimCity2000CityActor>(Hit.GetActor());
+			if (CityActor != nullptr &&
 				CityActor->IsBuildingCollisionHit(Hit.GetComponent(), Hit.ImpactPoint))
 			{
-				continue;
+				return false;
 			}
-
-			OutMinimumSafeZ = Hit.ImpactPoint.Z + CameraGroundClearanceCm;
-			return true;
 		}
-		return false;
+
+		OutMinimumSafeZ = Hit.ImpactPoint.Z + CameraGroundClearanceCm;
+		return true;
 	};
 
 	float MinCameraZ = 0.0f;
 	if (!TryGetMinimumSafeZ(DesiredCameraLocation, MinCameraZ))
 	{
+		bLastCameraGroundProbeHit = false;
 		return 0.0f;
 	}
-	const float DistanceAboveGroundCm = DesiredCameraLocation.Z - MinCameraZ;
-	const float RequiredLiftCm = FMath::Max(0.0f, -DistanceAboveGroundCm);
-	if (DistanceAboveGroundCm >= CameraGroundLiftProbeRangeCm)
-	{
-		return RequiredLiftCm;
-	}
 
-	const float ProximityAlpha = 1.0f - FMath::Clamp(
-		DistanceAboveGroundCm / FMath::Max(1.0f, CameraGroundLiftProbeRangeCm),
+	const float DistanceAboveGroundCm = DesiredCameraLocation.Z - MinCameraZ;
+	bLastCameraGroundProbeHit = true;
+	LastCameraGroundProbeDistanceCm = DistanceAboveGroundCm;
+	const float RequiredLiftCm = FMath::Max(0.0f, -DistanceAboveGroundCm);
+
+	// Plateau ramp: full lift from FullDistance down, easing off to nothing at ProbeRange. The
+	// ramp this replaces was a straight `1 - dist / range`, which only reached full strength at
+	// zero clearance - and the camera never gets there, because it stops a clearance above the
+	// surface. A landed helicopter therefore received a small fraction of the lift and stayed
+	// pinned near the top of the frame.
+	const float FullDistanceCm = FMath::Max(0.0f, CameraGroundLiftFullDistanceCm);
+	const float RangeCm = FMath::Max(FullDistanceCm + 1.0f, CameraGroundLiftProbeRangeCm);
+	const float ProximityAlpha = FMath::Clamp(
+		(RangeCm - DistanceAboveGroundCm) / (RangeCm - FullDistanceCm),
 		0.0f,
 		1.0f);
 	return FMath::Max(RequiredLiftCm, CameraGroundLiftHeightCm * ProximityAlpha);

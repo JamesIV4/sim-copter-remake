@@ -14,6 +14,7 @@ class UMaterialInterface;
 class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class USceneComponent;
+class USimCopterFlashingLightsComponent;
 class UStaticMesh;
 class UTexture2D;
 
@@ -58,6 +59,7 @@ public:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SimCopter|City")
 	void RebuildCity();
@@ -70,6 +72,11 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	float GetTileSize() const;
+
+	// Debug tuning for the buildings' blink markers. The scale multiplies whatever this city's
+	// beacons were tuned to, so it stays in balance with the helicopter's own markers.
+	float GetFlashingLightIntensityScale() const;
+	void SetFlashingLightIntensityScale(float Scale);
 
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	bool UsesOriginalTerrainHeightScale() const;
@@ -143,6 +150,16 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<UProceduralMeshComponent> RoadMarkingMeshComponent;
+
+	// Every placed building's face-type-25 blink markers, gathered during RebuildCity. One
+	// component serves the whole city because the original drives them all off a single global
+	// phase counter (FUN_00496c00).
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<USimCopterFlashingLightsComponent> FlashingLightsComponent;
+
+	// Buildings, airports, power plants and the traffic signals blink; turn this off to drop them.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderFlashingLights = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City", meta = (FilePathFilter = "sc2"))
 	FFilePath CityFile;
@@ -318,6 +335,9 @@ private:
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	int32 LastOriginalTexturedTriangleCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastFlashingLightCount = 0;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;

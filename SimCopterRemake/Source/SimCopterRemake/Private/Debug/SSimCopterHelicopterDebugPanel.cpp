@@ -276,6 +276,201 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleRotorVisualMultiplierChanged)
 					]
 				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"VehicleMetallicTip",
+						"Metallic on the shared vehicle material - the fuselage, the ground cars and the "
+						"ambient planes/trains/boats all move together. The original had no PBR at all, so "
+						"0 (dielectric) is the faithful look and anything above it is taste.\n\n"
+						"The city's buildings deliberately stay on the plain material, so this cannot turn "
+						"the skyline to chrome.\n\n"
+						"Does nothing until M_SimCopterLitVertexColor exposes a \"Metallic\" scalar "
+						"parameter wired to its Metallic input."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "VehicleMetallic", "METALLIC"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(1.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1.0f)
+						.Delta(0.01f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetVehicleMetallic)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleVehicleMetallicChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"FlashingLightIntensityTip",
+						"Multiplies the point-light intensity of the face-type-25 blink markers "
+						"(FUN_00496c00) - this airframe's four position lights and the city's building "
+						"beacons together. It is a multiplier rather than an absolute value because the "
+						"two are tuned to different bases, and one number would flatten that.\n\n"
+						"The original had no dynamic lighting at all; 0 leaves the coloured cards drawing "
+						"with no light cast."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "FlashingLightIntensity", "BLINK LIGHT x"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(20.0f)
+						// Ranged around the tuned 0.02: with MegaLights solving every marker, useful
+						// values sit well under 1 and a 0..5 spin stepped straight past them.
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(0.5f)
+						.Delta(0.005f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(3)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetFlashingLightIntensityScale)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleFlashingLightIntensityScaleChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"GroundLiftTip",
+						"Framing only: as the camera nears the ground it raises the boom PIVOT, which walks "
+						"the helicopter down the screen. Parked it should sit around the middle instead of "
+						"up near the top. Terrain only - buildings are the avoidance search's job.\n\n"
+						"LIFT is how far the pivot rises at full strength; raise it to push the aircraft "
+						"further down the frame.\n\n"
+						"FULL is the clearance at or below which the lift is at maximum - the knob to reach "
+						"for if a landed helicopter is not sitting where you want, since it has to be above "
+						"the camera's actual parked height. START is where the effect begins easing in on "
+						"the way down; wider is gentler.\n\n"
+						"Persisted to GameUserSettings like the camera offsets."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "GroundLift", "GROUND LIFT"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("LIFT"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(4000.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1200.0f)
+						.Delta(5.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraGroundLiftHeightCm)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraGroundLiftHeightCmChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("FULL"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(20000.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(1000.0f)
+						.Delta(5.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraGroundLiftFullDistanceCm)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraGroundLiftFullDistanceCmChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("START"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(1.0f)
+						.MaxValue(20000.0f)
+						.MinSliderValue(50.0f)
+						.MaxSliderValue(3000.0f)
+						.Delta(10.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetCameraGroundLiftProbeRangeCm)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleCameraGroundLiftProbeRangeCmChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 0.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"GroundLiftStatusTip",
+						"What the lift is doing right now: the clearance the downward probe measured from "
+						"the camera, and the lift currently applied.\n\n"
+						"\"no ground\" means the probe hit nothing at all - the lift cannot work and the "
+						"numbers above are irrelevant. A clearance that never falls below START means the "
+						"camera is further from the ground than you think."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "GroundLiftStatus", "  live"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(this, &SSimCopterHelicopterDebugPanel::GetCameraGroundLiftStatusText)
+						.ColorAndOpacity(ValueColor)
+						.Font(PanelFont(9))
+					]
+				]
 
 				// --- CAMERA: persistent offsets for the currently active view ---
 				+ SVerticalBox::Slot()
@@ -1618,6 +1813,106 @@ void SSimCopterHelicopterDebugPanel::HandleRotorVisualMultiplierChanged(float Va
 	{
 		HelicopterPawn->SetRotorVisualMultiplier(Value);
 	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetVehicleMetallic() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetVehicleMetallic())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleVehicleMetallicChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetVehicleMetallic(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetFlashingLightIntensityScale() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetFlashingLightIntensityScale())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleFlashingLightIntensityScaleChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetFlashingLightIntensityScale(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraGroundLiftHeightCm() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraGroundLiftHeightCm())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraGroundLiftHeightCmChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCameraGroundLiftHeightCm(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraGroundLiftProbeRangeCm() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraGroundLiftProbeRangeCm())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraGroundLiftProbeRangeCmChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCameraGroundLiftProbeRangeCm(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetCameraGroundLiftFullDistanceCm() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetCameraGroundLiftFullDistanceCm())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleCameraGroundLiftFullDistanceCmChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetCameraGroundLiftFullDistanceCm(Value);
+	}
+}
+
+FText SSimCopterHelicopterDebugPanel::GetCameraGroundLiftStatusText() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	if (HelicopterPawn == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+
+	const float ProbeDistanceCm = HelicopterPawn->GetLastCameraGroundProbeDistanceCm();
+	const float AppliedLiftCm = HelicopterPawn->GetCurrentCameraGroundLiftCm();
+	if (ProbeDistanceCm < 0.0f)
+	{
+		return FText::FromString(FString::Printf(
+			TEXT("no ground under camera    lift %.0f cm"), AppliedLiftCm));
+	}
+
+	return FText::FromString(FString::Printf(
+		TEXT("clearance %.0f cm    lift %.0f cm"), ProbeDistanceCm, AppliedLiftCm));
 }
 
 TOptional<float> SSimCopterHelicopterDebugPanel::GetRotorDiscOpacity() const

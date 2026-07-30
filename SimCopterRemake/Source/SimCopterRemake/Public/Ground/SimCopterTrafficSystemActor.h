@@ -218,7 +218,24 @@ public:
 		bool bRequirePersistentHospitalCrew = false) const;
 	// Keep a real state-5 medic on this D1 hospital roof for mission service. Unlike an ambient
 	// scan this bypasses the crowd cap and marks the worker as distance-persistent.
+	//
+	// Rate-limited: the mission tick calls this every frame a medevac is pending, and the posted
+	// medic stops matching the moment it boards the player's helicopter (it gains a carrier and
+	// goes invisible). Backfilling on the very next tick is what produced a second paramedic
+	// appearing on the roof the instant the first one climbed aboard, so a replacement waits
+	// HospitalParamedicRespawnDelaySeconds after the last time one was actually seen standing there.
 	ASimCopterGroundAgent* EnsureHospitalParamedicAtTile(int32 TileX, int32 TileY);
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic", meta = (ClampMin = "0.0"))
+	float HospitalParamedicRespawnDelaySeconds = 40.0f;
+
+	// Pure form of that respawn gate, so the timing is testable without a world. bHasPreviousPost
+	// is false for a roof that has never been staffed, which posts immediately.
+	static bool CanPostHospitalParamedic(
+		bool bHasPreviousPost,
+		double LastSeenSeconds,
+		double NowSeconds,
+		float DelaySeconds);
 
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
@@ -591,6 +608,10 @@ private:
 	TArray<uint8> ZoneTileIds;
 	// Resolved once per city build; (128, 128) when the city has no airport zone.
 	FIntPoint AirportOriginTile = FIntPoint(SimCopterAirport::FallbackOriginTile, SimCopterAirport::FallbackOriginTile);
+	// Per D1 hospital tile: world seconds when a posted medic was last seen standing on that roof.
+	// Drives EnsureHospitalParamedicAtTile's respawn delay. An absent entry means the roof has
+	// never been staffed, so the first medic posts immediately.
+	TMap<FIntPoint, double> HospitalParamedicLastSeenSeconds;
 	TArray<uint8> PeopleTileClasses;
 	TArray<uint8> PeopleTerrainTypes;
 	TArray<uint8> WaterTileFlags;

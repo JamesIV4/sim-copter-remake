@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Flight/SimCopterFlightModel.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Game/SimCopterCheckup.h"
 #include "Flight/SimCopterSpotlight.h"
 #include "Flight/SimCopterWinch.h"
 #include "GameFramework/Pawn.h"
@@ -28,6 +29,7 @@ class USpringArmComponent;
 class UStaticMeshComponent;
 class UTexture2D;
 class UWidgetComponent;
+class USimCopterFlashingLightsComponent;
 class USimCopterParticleFXComponent;
 class ASimCity2000CityActor;
 class ASimCopterMissionSystemActor;
@@ -390,6 +392,46 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
 	void DebugRefillTearGas();
 
+	// --- Debug appearance knobs (SSimCopterHelicopterDebugPanel) ---
+
+	// Metallic on the shared vehicle material: the fuselage, the cars and the ambient
+	// planes/trains/boats all move together, and the city's buildings deliberately do not.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	float GetVehicleMetallic() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	void SetVehicleMetallic(float Metallic);
+
+	// One multiplier over both this airframe's blink markers and the city's building beacons.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	float GetFlashingLightIntensityScale() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	void SetFlashingLightIntensityScale(float Scale);
+
+	// --- Check-up service menu (FUN_00443c20; offer test FUN_00444750) ---
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Checkup")
+	bool IsCheckupMenuOpen() const;
+
+	// Raises the panel whatever the offer test says - the console command and the OK/Cancel path
+	// both go through here. Returns false when there is no viewport to put it in.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Checkup")
+	bool OpenCheckupMenu();
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Checkup")
+	void CloseCheckupMenu();
+
+	// Console: raise the Check-up panel on demand, so it can be seen without flying to the airport.
+	UFUNCTION(Exec)
+	void SimCheckup();
+
+	// Everything FSimCopterCheckup needs to price this aircraft where it is standing.
+	FSimCopterCheckupState BuildCheckupState() const;
+
+	// FUN_004385c0: charge the funds and apply the three purchases, in the original's order.
+	void ApplyCheckupOrder(const FSimCopterCheckupOrder& Order);
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
 	ESimCopterMegaphoneMessage GetSelectedMegaphoneMessage() const { return SelectedMegaphoneMessage; }
 
@@ -552,6 +594,25 @@ public:
 	FVector GetCockpitCannonViewModelOffsetCm() const { return CockpitCannonViewModelOffsetCm; }
 	void SetCockpitCannonViewModelOffsetCm(const FVector& OffsetCm);
 
+	// Ground-lift framing, live-tunable because how centred a parked helicopter looks is a
+	// judgement call no amount of arithmetic settles. See ResolveCameraGroundLift.
+	float GetCameraGroundLiftHeightCm() const { return CameraGroundLiftHeightCm; }
+	void SetCameraGroundLiftHeightCm(float ValueCm);
+	float GetCameraGroundLiftProbeRangeCm() const { return CameraGroundLiftProbeRangeCm; }
+	void SetCameraGroundLiftProbeRangeCm(float ValueCm);
+	float GetCameraGroundLiftFullDistanceCm() const { return CameraGroundLiftFullDistanceCm; }
+	void SetCameraGroundLiftFullDistanceCm(float ValueCm);
+
+	// Live readout for the debug panel: what the lift is actually doing right now. Worth having
+	// because "the lift does nothing" and "the probe never finds ground" look identical on screen
+	// and want completely different fixes.
+	float GetCurrentCameraGroundLiftCm() const { return CurrentCameraGroundLiftCm; }
+	// Camera clearance above whatever the probe last hit, or a negative value when it hit nothing.
+	float GetLastCameraGroundProbeDistanceCm() const
+	{
+		return bLastCameraGroundProbeHit ? LastCameraGroundProbeDistanceCm : -1.0f;
+	}
+
 	float GetRotorDiscOpacity() const { return RotorDiscOpacity; }
 	void SetRotorDiscOpacity(float Opacity);
 	FLinearColor GetRotorDiscColor() const { return RotorDiscColor; }
@@ -619,6 +680,11 @@ protected:
 	// the rotor-wash "wind kickback" spray/dust under the helicopter.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USimCopterParticleFXComponent> WaterFXComponent;
+
+	// The fuselage's own face-type-25 blink markers (FUN_00496c00). Every flyable airframe carries
+	// four: one white, two red and one green. Rides the body mesh, whose local frame they share.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USimCopterFlashingLightsComponent> FlashingLightsComponent;
 
 	// Follows the rendered fuselage roof, including the visual pitch/roll applied at ModelPivot.
 	// Camera translations move the spring-arm endpoint and never move this collision-path origin.
@@ -849,6 +915,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera")
 	ESimCopterCameraMode CameraMode = ESimCopterCameraMode::Chase;
 
+	// Zoom fraction a fresh session starts on, and the reference every view's framing translation
+	// is scaled against so the helicopter holds its screen position through zoom. The two must be
+	// the same number or the default view is already scaled off its authored framing.
+	static constexpr float CameraDefaultZoomAlpha = 0.05f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "100.0"))
 	float ChaseCameraMinDistance = 720.0f;
 
@@ -979,11 +1050,25 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
 	float CameraAvoidanceReturnLerpSpeed = 3.5f;
 
+	// How far the boom pivot rises once the camera is right down on a surface. Raising the pivot
+	// while the aim direction holds walks the helicopter DOWN the screen, which is the whole
+	// point: parked, the aircraft should sit around the middle of the frame instead of up near
+	// the top where the authored chase framing puts it in the air.
+	//
+	// Promoted from the live debug-panel tuning on 2026-07-30.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraGroundLiftHeightCm = 250.0f;
+	float CameraGroundLiftHeightCm = 155.0f;
 
+	// Where the lift starts easing in, measured from the camera down to whatever is under it.
+	// It begins during the approach and reaches full strength at the threshold below.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
-	float CameraGroundLiftProbeRangeCm = 260.0f;
+	float CameraGroundLiftProbeRangeCm = 430.0f;
+
+	// ...and where it reaches full lift. This is the piece the old ramp lacked: it scaled to
+	// maximum only at zero clearance, which the camera never reaches, so a landed helicopter got
+	// a fraction of the intended lift and barely moved.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
+	float CameraGroundLiftFullDistanceCm = 40.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
 	float CameraGroundLiftLerpSpeed = 7.5f;
@@ -996,6 +1081,16 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
+
+	// FUN_00449850 runs FUN_00444750 every frame while the player is landed; the panel goes up by
+	// itself the moment the aircraft settles on the airport with work worth doing. Clear this to
+	// keep it manual (SimCheckup).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Checkup")
+	bool bAutoOpenCheckupOnLanding = true;
+
+	// One offer per touchdown: without this the panel would reopen the instant it is cancelled,
+	// because nothing about the aircraft's state changed.
+	bool bCheckupOfferedThisLanding = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bRopeDeployed = false;
@@ -1078,8 +1173,12 @@ private:
 	float CurrentRollDeg = 0.0f;
 	float CameraYawOffsetDeg = 0.0f;
 	float CameraPitchOffsetDeg = 0.0f;
-	float CameraZoomAlpha = 0.25f;
+	float CameraZoomAlpha = CameraDefaultZoomAlpha;
 	float CurrentCameraGroundLiftCm = 0.0f;
+	// Written by the const ResolveCameraGroundLift purely so the debug panel can show what the
+	// probe saw; nothing reads them back into the camera calculation.
+	mutable float LastCameraGroundProbeDistanceCm = 0.0f;
+	mutable bool bLastCameraGroundProbeHit = false;
 	float CurrentCameraPullInAlpha = 1.0f;
 	FRotator CurrentCameraAvoidanceOffsetDeg = FRotator::ZeroRotator;
 	// Damped, partial copy of the airframe's visual tilt; shared by the cockpit camera,
@@ -1232,6 +1331,8 @@ private:
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
+	// The Check-up panel, up only while the player is being served.
+	TSharedPtr<SWidget> CheckupWidget;
 	TSharedPtr<SWidget> ControllerOverlayWidget;
 	TSharedPtr<SSimCopterControllerOverlay> ControllerOverlayPanel;
 
@@ -1377,6 +1478,14 @@ private:
 	void UpdateRotorWash(float DeltaSeconds);
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
+
+	// FUN_004823a0(heli.x, heli.y, 0xf6, 2): is an airport terminal tile within two tiles of us?
+	// The terminal is the 2x2 middle of the block and the twelve helipads ring it, so a radius of
+	// two covers every pad you can actually put down on.
+	bool IsStandingOnAirport() const;
+
+	// FUN_00449850's per-frame offer test, plus the once-per-touchdown latch.
+	void UpdateCheckupOffer();
 	void UpdateVisuals(float DeltaSeconds);
 	void AdvanceCockpitStabilizedAttitude(float DeltaSeconds);
 	void UpdateCamera(float DeltaSeconds);
@@ -1390,6 +1499,8 @@ private:
 	void ApplyRotorDiscAppearance();
 	void LoadRotorDiscAppearance();
 	void SaveRotorDiscAppearance() const;
+	void LoadCameraGroundLift();
+	void SaveCameraGroundLift() const;
 	void LoadEasyFlightModel();
 	void SaveEasyFlightModel() const;
 	void LoadFlightRateTuning();
