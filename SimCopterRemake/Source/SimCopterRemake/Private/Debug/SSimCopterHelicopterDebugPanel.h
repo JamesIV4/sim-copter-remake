@@ -103,6 +103,15 @@ private:
 	void HandleCockpitCannonOffsetYChanged(float Value);
 	void HandleCockpitCannonOffsetZChanged(float Value);
 
+	TOptional<float> GetTurbulenceReferenceFps() const;
+	void HandleTurbulenceReferenceFpsChanged(float Value);
+	TOptional<float> GetFlightReferenceFps() const;
+	TOptional<float> GetSpeedChaseReferenceFps() const;
+	TOptional<float> GetRotorVisualMultiplier() const;
+	void HandleFlightReferenceFpsChanged(float Value);
+	void HandleSpeedChaseReferenceFpsChanged(float Value);
+	void HandleRotorVisualMultiplierChanged(float Value);
+
 	TOptional<float> GetRotorDiscOpacity() const;
 	void HandleRotorDiscOpacityChanged(float Value);
 	TOptional<float> GetRotorDiscColorR() const;

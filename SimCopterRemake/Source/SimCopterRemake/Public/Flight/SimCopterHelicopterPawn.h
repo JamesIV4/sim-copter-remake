@@ -516,6 +516,23 @@ public:
 	bool IsEasyFlightModelEnabled() const { return FlightModel.bEasyFlightModel; }
 	void SetEasyFlightModelEnabled(bool bEnabled);
 
+	// The frame rate the original's per-frame rules are assumed to have been written
+	// for, in fps. The executable names 20 (and only there), but it had no fixed
+	// timestep, so this is a feel knob as much as a fidelity one - hence live tuning.
+	// Split three ways: the shake and the airspeed chase each pull the shared reference
+	// in the opposite direction from the other, so each owns its own. Turbulence is the
+	// shake; sim reference is the collective's neutral decay, the fire burn and the
+	// attitude window; speed chase is how quickly the helicopter gets moving.
+	float GetTurbulenceReferenceFps() const;
+	void SetTurbulenceReferenceFps(float Fps);
+	float GetFlightReferenceFps() const;
+	void SetFlightReferenceFps(float Fps);
+	float GetSpeedChaseReferenceFps() const;
+	void SetSpeedChaseReferenceFps(float Fps);
+	// Presentation only: how much faster than the original's strobe the blades draw.
+	float GetRotorVisualMultiplier() const;
+	void SetRotorVisualMultiplier(float Multiplier);
+
 	// Persistent offsets edited by the developer panel. Each normal camera view has its own
 	// values; setters update the live camera and flush that view to GameUserSettings.ini.
 	ESimCopterCameraMode GetCameraMode() const { return CameraMode; }
@@ -1375,6 +1392,8 @@ private:
 	void SaveRotorDiscAppearance() const;
 	void LoadEasyFlightModel();
 	void SaveEasyFlightModel() const;
+	void LoadFlightRateTuning();
+	void SaveFlightRateTuning() const;
 	void UpdateSearchLightEffect();
 
 	// Port of FUN_00489250: aim -> ray march -> smoothing -> band -> tile -> light node.
