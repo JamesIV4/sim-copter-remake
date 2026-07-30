@@ -74,6 +74,7 @@ constexpr int32 MaxTweakControls = 64;
 constexpr TCHAR CameraDebugConfigSection[] = TEXT("SimCopter.CameraViews");
 constexpr TCHAR RotorDiscConfigSection[] = TEXT("SimCopter.RotorDisc");
 constexpr TCHAR CockpitViewConfigSection[] = TEXT("SimCopter.CockpitView");
+constexpr TCHAR FlightModelConfigSection[] = TEXT("SimCopter.FlightModel");
 // Parameters authored by Tools/Unreal/CreateSimCopterMaterials.py.
 const FName RotorDiscOpacityParameterName(TEXT("DiscOpacity"));
 const FName RotorDiscColorParameterName(TEXT("DiscColor"));
@@ -592,6 +593,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	LoadCameraViewDebugOffsets();
 	LoadCockpitStabilization();
 	LoadRotorDiscAppearance();
+	LoadEasyFlightModel();
 
 	// The editor property is a name; the registry index is what the runtime uses from here on.
 	if (const FSimCopterHelicopterDefinition* Seed =
@@ -4183,6 +4185,45 @@ void ASimCopterHelicopterPawn::SaveRotorDiscAppearance() const
 	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
+void ASimCopterHelicopterPawn::SetEasyFlightModelEnabled(bool bEnabled)
+{
+	if (FlightModel.bEasyFlightModel == bEnabled)
+	{
+		return;
+	}
+	// Nothing to reconcile on the way across: both models read and write the same attitude
+	// and speed state, they only weigh it differently, so the switch takes effect from the
+	// next Step() with the helicopter left exactly as it was flying.
+	FlightModel.bEasyFlightModel = bEnabled;
+	SaveEasyFlightModel();
+}
+
+void ASimCopterHelicopterPawn::LoadEasyFlightModel()
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	bool bEnabled = FlightModel.bEasyFlightModel;
+	if (GConfig->GetBool(FlightModelConfigSection, TEXT("EasyModel"), bEnabled, GGameUserSettingsIni))
+	{
+		FlightModel.bEasyFlightModel = bEnabled;
+	}
+}
+
+void ASimCopterHelicopterPawn::SaveEasyFlightModel() const
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	GConfig->SetBool(
+		FlightModelConfigSection, TEXT("EasyModel"), FlightModel.bEasyFlightModel, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+}
+
 void ASimCopterHelicopterPawn::ToggleSearchLight()
 {
 	if (SearchLightComponent != nullptr)
@@ -4441,9 +4482,16 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		IsToolAvailable(ESimCopterHelicopterTool::WaterCannon) &&
 		BucketWaterPounds > 0)
 	{
-		FlightModel.PitchTarget -= SimCopterWaterGameplay::FixedMul(
+		int32 CannonKick = SimCopterWaterGameplay::FixedMul(
 			SimCopterFixed::FromFloat(DeltaSeconds),
 			SimCopterFixed::FromFloat(RopeTuning.CannonForce));
+		if (FlightModel.bEasyFlightModel)
+		{
+			// The recoil reads the same `iVar2` the easy model already halved for the
+			// pitch keys, so it is gentler under that model too.
+			CannonKick >>= 1;
+		}
+		FlightModel.PitchTarget -= CannonKick;
 	}
 
 	const FSimCopterFlightInputs Inputs = BuildFlightInputs();

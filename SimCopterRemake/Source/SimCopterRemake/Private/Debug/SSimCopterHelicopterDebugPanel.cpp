@@ -113,6 +113,52 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					.Font(PanelFont(10))
 				]
 
+				// --- FLIGHT: which of the original's two handling models is running ---
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 0.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"FlightModelTip",
+						"The original shipped two handling models and picked between them by camera "
+						"view. EASY halves the pitch key ramp and the pitch clamp, holds a trimmed "
+						"nose longer, doubles the airspeed a degree of pitch buys, and bleeds speed "
+						"off twice as fast. Switching is safe in flight."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "FlightModel", "FLIGHT"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(10, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(this, &SSimCopterHelicopterDebugPanel::GetFlightModelText)
+						.ColorAndOpacity(ValueColor)
+						.Font(PanelFont(12, true))
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SButton)
+						.IsFocusable(false)
+						.ContentPadding(FMargin(7.0f, 1.0f))
+						.OnClicked(FOnClicked::CreateSP(
+							this,
+							&SSimCopterHelicopterDebugPanel::HandleToggleEasyFlightModel))
+						[
+							SNew(STextBlock)
+							.Text(this, &SSimCopterHelicopterDebugPanel::GetFlightModelButtonText)
+							.Font(PanelFont(10))
+						]
+					]
+				]
+
 				// --- CAMERA: persistent offsets for the currently active view ---
 				+ SVerticalBox::Slot()
 				.AutoHeight()
@@ -1108,6 +1154,39 @@ FText SSimCopterHelicopterDebugPanel::GetCameraModeText() const
 		break;
 	}
 	return FText::FromString(FString::Printf(TEXT("%s   [C] cycle"), Label));
+}
+
+FText SSimCopterHelicopterDebugPanel::GetFlightModelText() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	if (HelicopterPawn == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+	return HelicopterPawn->IsEasyFlightModelEnabled()
+		? NSLOCTEXT("SimCopterDebug", "FlightModelEasy", "EASY MODEL")
+		: NSLOCTEXT("SimCopterDebug", "FlightModelStandard", "STANDARD MODEL");
+}
+
+FText SSimCopterHelicopterDebugPanel::GetFlightModelButtonText() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	if (HelicopterPawn == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+	return HelicopterPawn->IsEasyFlightModelEnabled()
+		? NSLOCTEXT("SimCopterDebug", "UseStandardModel", "USE STANDARD")
+		: NSLOCTEXT("SimCopterDebug", "UseEasyModel", "USE EASY");
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleToggleEasyFlightModel()
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetEasyFlightModelEnabled(!HelicopterPawn->IsEasyFlightModelEnabled());
+	}
+	return FReply::Handled();
 }
 
 FReply SSimCopterHelicopterDebugPanel::HandleResetCameraOffset()
