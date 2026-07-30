@@ -256,12 +256,90 @@ struct SIMCOPTERREMAKE_API FSimCopterFlightModel
 
 	// Turbulence (FUN_00489800): 9-sample ring buffers of random kicks whose
 	// averages are added to the attitude targets every frame.
+	//
+	// The original pushes one sample per rendered frame and adds the average to
+	// the targets once per rendered frame, so the shake it produces is a function
+	// of the frame rate: the excursion grows as 1/sqrt(dt), and at the remake's
+	// 60 Hz substep a damaged airframe shook about 1.8x as hard as the original's
+	// did at the ~20 fps its constants were tuned for. (The original concedes that
+	// design rate itself by capping the attitude EMA at 20 fps - see
+	// MinSmoothingDt.) The remake therefore pins turbulence to a fixed 20 Hz clock
+	// and interpolates between ticks, which needs both halves to work:
+	//
+	//   * the ring buffer advances on OriginalFrameSeconds boundaries only, so the
+	//     noise *sequence* is the original's rather than 3x as many samples, and
+	//     TurbPitch/Slide/Yaw lerp from the previous tick's average to the current
+	//     one so nothing steps at 60 Hz;
+	//   * StepAttitude scales each injection by dt/OriginalFrameSeconds, so the amount
+	//     added per second is rate-independent. Interpolating alone would have made
+	//     things *worse* - a smoothly held value is more correlated frame to frame,
+	//     which pushes the random walk toward the 3x constant-bias case.
+	//
+	// At dt = 1/20 this reduces to the original's arithmetic exactly, one tick of
+	// lag aside (interpolation cannot reach a value it has not generated yet).
 	int32 TurbPitchSamples[9] = {};
 	int32 TurbSlideSamples[9] = {};
 	int32 TurbYawSamples[9] = {};
-	int32 TurbPitch = 0;        // DAT_0057f2e0
-	int32 TurbSlide = 0;        // DAT_0057f2b8
-	int32 TurbYaw = 0;          // DAT_0057f240
+	int32 TurbPitch = 0;        // DAT_0057f2e0, interpolated
+	int32 TurbSlide = 0;        // DAT_0057f2b8, interpolated
+	int32 TurbYaw = 0;          // DAT_0057f240, interpolated
+
+	// Ring averages either side of the current 20 Hz interval, and the 16.16
+	// seconds accumulated into it.
+	int32 TurbPitchPrev = 0;
+	int32 TurbSlidePrev = 0;
+	int32 TurbYawPrev = 0;
+	int32 TurbPitchNext = 0;
+	int32 TurbSlideNext = 0;
+	int32 TurbYawNext = 0;
+	int32 TurbulenceClock = 0;
+
+	// 0.05 s: the frame period the original's per-frame rules were written against.
+	// It is the only frame rate the executable ever names - the floor its attitude EMA
+	// puts on the frame delta (FUN_00486a30) - but it is an inference, not a fact: the
+	// original's delta is raw GetTickCount with no fixed timestep (FUN_00449850), so
+	// the helicopter genuinely shook and accelerated harder on a faster machine.
+	static constexpr int32 OriginalFrameSeconds = 0x0ccc;
+
+	// --- Frame-rate assumption, live-tunable from the helicopter debug panel ---
+	//
+	// Every rule the executable applied "once per frame" is converted against these,
+	// so the simulation behaves identically at 20, 60, 144 or 240 fps whatever they
+	// are set to. What they change is *which* machine's feel is being reproduced.
+	//
+	// The reference is split three ways because a single knob fights itself: raising it
+	// makes the helicopter accelerate harder (good) but also shake harder, arrest its
+	// descent faster and burn quicker in a fire (all bad). Acceleration and the shake
+	// are the two that wanted to move in opposite directions, so each has its own.
+	//
+	// These default to the executable's own figures, so a default-constructed model
+	// reproduces the port and the automation tests assert fidelity rather than
+	// whatever the panel is currently dialled to. The playable starting values live on
+	// the pawn (ASimCopterHelicopterPawn::BeginPlay) and are overridden by the ini.
+	//
+	// TurbulenceFrameSeconds drives the shake alone - the ring buffer's advance and the
+	// per-substep injection into the attitude targets.
+	int32 TurbulenceFrameSeconds = OriginalFrameSeconds;
+
+	// ReferenceFrameSeconds drives the rest of the per-frame rules: the
+	// neutral-collective climb decay, the fire burn and the attitude EMA's window. Note
+	// the attitude EMA barely moves with it - FUN_00486a30 already carries its own fps
+	// compensation, so only the integer flooring of N shifts.
+	int32 ReferenceFrameSeconds = OriginalFrameSeconds;
+
+	// SpeedChaseFrameSeconds drives FUN_00486e90's 1/32-of-the-gap airspeed chase, the
+	// dominant term in how long the helicopter takes to get moving.
+	int32 SpeedChaseFrameSeconds = OriginalFrameSeconds;
+
+	// Pure presentation: how much faster than the original's 39.1-degrees-per-0.05 s
+	// strobe the blades are drawn (16.16 multiplier). Nothing in the simulation reads
+	// the blade angle, and this is deliberately independent of the two above so that
+	// revisiting a fidelity assumption never changes how fast the rotor looks.
+	int32 RotorVisualMultiplier = SimCopterFixed::One;
+
+	// Fire burns whole hit points per original frame; a substep's share is fractional,
+	// so it accrues here and is spent as whole points (16.16).
+	int32 FireDamageAccrued = 0;
 
 	// MSVC rand() (the original's _rand), kept internal so tests are deterministic.
 	uint32 RandState = 1;
@@ -295,7 +373,7 @@ struct SIMCOPTERREMAKE_API FSimCopterFlightModel
 
 private:
 	void StepControls(int32 Dt, const FSimCopterFlightInputs& Inputs);
-	void StepTurbulence(const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents);
+	void StepTurbulence(int32 Dt, const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents);
 	void StepAttitude(int32 Dt, const FSimCopterFlightEnvironment& Env);
 	void StepVelocity(int32 Dt, const FSimCopterFlightInputs& Inputs);
 	void StepVertical(int32 Dt, const FSimCopterFlightInputs& Inputs, const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents);
@@ -304,4 +382,5 @@ private:
 	void StepFuelAndDamage(int32 Dt, FSimCopterFlightEvents& OutEvents);
 	void ApplyDamage(int32 Amount, FSimCopterFlightEvents& OutEvents);
 	int32 SmoothingFrames(int32 RateTenthDeg, int32 Dt) const;
+	int32 SmoothingAlpha(int32 Dt) const;
 };

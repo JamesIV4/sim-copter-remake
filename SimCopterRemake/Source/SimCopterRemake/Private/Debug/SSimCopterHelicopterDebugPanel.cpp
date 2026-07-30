@@ -158,6 +158,124 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 						]
 					]
 				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"FrameRateReferenceTip",
+						"The frame rate the original's per-frame rules are assumed to have been "
+						"written for. The executable only ever names 20, and had no fixed timestep, "
+						"so this is feel as much as fidelity - the simulation stays identical at any "
+						"display rate whatever you set.\n\n"
+						"TURB is the airframe shake alone. SIM is how far the helicopter coasts when "
+						"you release the collective, how fast fire burns you, and the attitude "
+						"window. ACCEL is how quickly it gets moving. They are separate because "
+						"raising one number to sharpen acceleration also makes the shake busier."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "FrameRateReference", "REF FPS"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("TURB"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(5.0f)
+						.MaxValue(240.0f)
+						.MinSliderValue(10.0f)
+						.MaxSliderValue(120.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetTurbulenceReferenceFps)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleTurbulenceReferenceFpsChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("SIM"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(5.0f)
+						.MaxValue(240.0f)
+						.MinSliderValue(10.0f)
+						.MaxSliderValue(120.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetFlightReferenceFps)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleFlightReferenceFpsChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("ACCEL"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(5.0f)
+						.MaxValue(240.0f)
+						.MinSliderValue(10.0f)
+						.MaxSliderValue(120.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetSpeedChaseReferenceFps)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleSpeedChaseReferenceFpsChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"RotorSpinTip",
+						"How much faster than the original's 39.1-degrees-per-frame strobe the blades "
+						"are drawn. 1 is the original's 782 deg/s, which reads as slow motion on a "
+						"modern display. Presentation only - nothing in the flight model reads the "
+						"blade angle, and this is independent of REF FPS on purpose."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "RotorSpin", "ROTOR SPIN x"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.1f)
+						.MaxValue(40.0f)
+						.MinSliderValue(1.0f)
+						.MaxSliderValue(20.0f)
+						.Delta(0.25f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetRotorVisualMultiplier)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleRotorVisualMultiplierChanged)
+					]
+				]
 
 				// --- CAMERA: persistent offsets for the currently active view ---
 				+ SVerticalBox::Slot()
@@ -1435,6 +1553,70 @@ void SSimCopterHelicopterDebugPanel::HandleCockpitCannonOffsetZChanged(float Val
 		FVector Offset = HelicopterPawn->GetCockpitCannonViewModelOffsetCm();
 		Offset.Z = Value;
 		HelicopterPawn->SetCockpitCannonViewModelOffsetCm(Offset);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetTurbulenceReferenceFps() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetTurbulenceReferenceFps())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleTurbulenceReferenceFpsChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetTurbulenceReferenceFps(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetFlightReferenceFps() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetFlightReferenceFps())
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetSpeedChaseReferenceFps() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetSpeedChaseReferenceFps())
+		: TOptional<float>();
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetRotorVisualMultiplier() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetRotorVisualMultiplier())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleFlightReferenceFpsChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetFlightReferenceFps(Value);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleSpeedChaseReferenceFpsChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetSpeedChaseReferenceFps(Value);
+	}
+}
+
+void SSimCopterHelicopterDebugPanel::HandleRotorVisualMultiplierChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetRotorVisualMultiplier(Value);
 	}
 }
 

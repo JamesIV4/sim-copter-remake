@@ -49,6 +49,107 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
 - **Pitch clamp extras**: positive climb impulse derates MaxPitch (down to ½); within
   150 units of ground a bonus up to MaxPitch/8 scales with height. Bank additionally
   clamps to |smoothedPitch| + 300 (30°).
+- **The surface push is gated on NOT-flat** (FUN_00487160 @ the `param_1[0x53] == 0`
+  branch): with the collective neutral and the helicopter at or below the surface,
+  ClimbSpeed is forced to `ClimbRate * 4` — but **only on ground it cannot land on**.
+  `[0x53]` is the flat flag: 1 = flat/landable (the landing block below tests `== 1`),
+  0 = rough, or cleared for a hostile tile. The remake had this inverted (`&&
+  bTerrainFlat`) until 2026-07-30, which shoved the helicopter off exactly the flat
+  ground it was settling onto, every frame it got there — landing was a coin flip
+  undamaged and near-impossible once turbulence widened the attitude gate. Guard:
+  `SimCopter.Flight.DamagedLanding`. Note the trap in *testing* this: feathering the
+  collective against LandMaxYSpeed hides the bug entirely, because the descend-key
+  frames skip the neutral branch. Repro with hold-descend-then-release.
+- **Every per-frame rule is now converted to delta time** (2026-07-30). The
+  original writes several rules per *frame* with no delta term, tuned at its ~20 fps
+  frame; the remake substeps at up to 60 Hz and **shorter than that above 60 fps**
+  (`MaxSubstepSeconds` is a max, so 144 fps gives dt = 1/144), so unconverted they
+  ran 3x too fast at 60 and 7x at 144. All of them are now expressed against
+  `FSimCopterFlightModel::OriginalFrameSeconds` (0.05 s) via two helpers in the .cpp,
+  `DecayOverSubstep` (per-frame decay -> `1-(1-r)^(dt/0.05)`) and
+  `SubstepFrameFraction` (`dt/0.05`). Converted: neutral-collective climb decay
+  (5%/10%), forward-speed chase (`>>5`, `>>4` easy), **the attitude EMA**, fire-band
+  burn, the rotor strobe step, and turbulence. Guard:
+  `SimCopter.Flight.FrameRateIndependence` (20/30/60/144/240 Hz).
+  - **The attitude EMA is the one to be careful with — it is NOT a free parameter.**
+    `N = ((1000 - PitchRate)/500) * fps` and the filter removes `1/N` per frame, so
+    `N/fps` — the lag in seconds — has the fps terms **cancel**. The original's
+    attitude lag is already frame-rate independent by construction; the `* fps` IS
+    its delta-time compensation, written the long way round. What breaks it is the
+    exe's own floor on the delta (`DAT_005039a0 < 0xccd -> 0xccc`), which pins the fps
+    term at 20 while the filter keeps running at the real rate — a 21-frame window at
+    60 Hz settles in 0.35 s where the original took 1.02 s.
+    Match the filter the original **ran**, not the one the algebra describes: retain
+    `(N-1)/N` per 0.05 s. `N` is floored 21.89 -> 21, so the real lag is 1.02 s where
+    the un-floored formula says 1.09 — a 7% difference, and the floored one is right.
+    Measured original lag by rate: 0.90 s @5 fps, 0.95 @10, **1.02 @20 and above**.
+  - Fire damage needed an accumulator (`FireDamageAccrued`): a substep owes a
+    fraction of a hit point, so scaling alone would truncate to zero every frame.
+  - **Audit of every arithmetic site** in the six flight functions (grep the two
+    scratchpad decompiles for `DAT_005039a8`, the smoothed delta, and `DAT_005039a0`,
+    the raw one). Sites that ALREADY carry a delta and must be left alone: all of
+    `FUN_00485f50` (every control ramp and decay), heading integration, position
+    integration, bounce timer, rotor spool rates, the proportional blade step, climb
+    and descend ramps, altitude integration, fuel burn, flight timer, and the
+    dying-state rotations. Sites with **no** delta term, which are the whole list of
+    what needed converting: turbulence sample push + its injection into the targets,
+    fire-band burn, the forward-speed chase, the neutral-collective climb decay, and
+    the rotor's flat 39.1-degree strobe. Nothing else.
+  - Checked and correctly left alone: the autorotation offset
+    `ClimbSpeed += SpeedDelta * -2` has no delta term but is already rate-independent,
+    because `SpeedDelta` is a per-frame *difference* — its sum over a second is the
+    total speed change however often you slice it. Ground-impact damage and attitude
+    kicks are one-shot events, not rates. Load factor is an instantaneous ratio.
+  - Known benign divergence: the original feeds its sim an 8-frame EMA of the frame
+    delta (`DAT_005039a8 = (DAT_005039a8*7 + DAT_005039a0) >> 3`, `FUN_0047a760`)
+    because `GetTickCount` only has 10-16 ms resolution. The remake passes its
+    substep straight through, which is already near-uniform.
+  - Left alone deliberately: the control decays `(1-2*dt)` and `(1-4*dt)` in
+    `FUN_00485f50` already carry a delta term. They are first-order approximations of
+    `exp()`, so they drift ~10% between 20 fps and the high-rate limit, but that is
+    the original's own arithmetic and converting it would change the trim feel.
+  Turbulence in particular needs BOTH halves or it gets *worse*, not better:
+  1. advance the 9-sample ring on a fixed `TurbulencePeriod` (0.05 s) clock and
+     **lerp** `TurbPitch/Slide/Yaw` between ticks, so the noise sequence is the
+     original's and nothing steps at 60 Hz;
+  2. scale each injection in `StepAttitude` by `Div(Dt, TurbulencePeriod)` so the
+     amount added per second is rate-independent. Interpolating alone would have
+     made it *worse* — a held value is more correlated frame to frame, pushing the
+     random walk from the `1/sqrt(dt)` noise case toward the `1/dt` constant-bias
+     case. Excursion is `~T/(2*dt)` for correlated input, `~SD(T)/(2*sqrt(dt))` for
+     white.
+  **The reference is live-tunable from the debug panel** (REF FPS: TURB / SIM / ACCEL,
+  and ROTOR SPIN x), persisted to `[SimCopter.FlightModel]` in GameUserSettings.ini.
+  `FSimCopterFlightModel` defaults to the executable's own figures (20 fps, x1) so a
+  default-constructed model reproduces the port and the tests assert fidelity; the
+  **playable** starting values are set in `ASimCopterHelicopterPawn::BeginPlay` and
+  overridden by the ini. Keep that split — putting feel defaults on the struct broke
+  `SimCopter.Flight.PitchDrivesSpeed`, because doubled yaw turbulence walked the
+  heading past its tolerance.
+  - **Tuned defaults as of 2026-07-30: turbulence 20 fps, everything else 60, rotor
+    x4.** The shake is the one thing that stays at the executable's own figure — 60
+    makes it far too busy — while acceleration, the collective's coast and the fire
+    burn all wanted the faster reference.
+  - **Split three ways because one knob fights itself**: raising the reference
+    sharpens acceleration (wanted) but also makes the airframe shake harder, arrest
+    its descent faster and burn quicker in fire (not wanted). The shake and the chase
+    pull in opposite directions, so each owns its own period.
+  - Rotor spin is pinned to its own fixed 0.05 s, never the tunable reference: it is
+    presentation, and a fidelity experiment must not silently change how fast the
+    blades look.
+  **20 fps is an inference, not a fact, for the five genuinely per-frame rules.** The
+  original's frame delta is raw `GetTickCount` floored at 1.5 ms and capped at 0.5 s
+  (`FUN_00449850`) — no fixed timestep, so the helicopter really did accelerate and
+  shake harder on a faster machine. The single piece of evidence is the 0.05 s delta
+  floor in `FUN_00486a30`, the only frame rate the executable ever names, so it is
+  the reference used everywhere — except the forward-speed chase, deliberately
+  overridden to `SpeedChaseFramePeriod` (1/60 s) because 20 fps acceleration felt
+  sluggish. That knob is feel, not fidelity; the rest are fidelity.
+  Measured peak pitch after the fix: 7.5/7.4/7.3 (healthy), 53.6/53.1/52.9 (half),
+  77.5/76.6/75.9 (near-dead) at 20/30/60 Hz — within 2%. Before it was 140 at 60 Hz
+  vs 77 at 20 Hz on a wreck. Guard: `SimCopter.Flight.TurbulenceFrameRate`.
+  Costs one tick (50 ms) of lag; interpolation cannot reach a value it has not
+  generated yet.
 - **Landing** (FUN_00487160): needs terrain **flat flag** (sampler `FUN_004ae7a0`:
   triangle corners within 9.0 units), altitude within ±1.0 of surface, and *targets*
   within Heli Landing twk (pitch 51.6, slide 43.3, speed 42.1, yspeed 20.1); snaps to

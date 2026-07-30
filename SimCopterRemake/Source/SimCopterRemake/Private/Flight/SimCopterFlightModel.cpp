@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterFlightModel.h"
 
@@ -89,10 +89,45 @@ namespace
 {
 using namespace SimCopterFixed;
 
-// The original clamps the frame delta to at least 0x0ccc (0.05 s) when
-// computing the attitude smoothing window, capping the effective frame rate at
-// 20 fps so the lag feel does not tighten on fast machines.
-constexpr int32 MinSmoothingDt = 0x0ccc;
+// Several of the original's rules are written per *frame* with no delta term at
+// all - the collective's neutral decay, the forward-speed chase, the attitude
+// EMA, the fire burn, the rotor strobe. They were tuned at its ~20 fps frame, and
+// the executable half-admits that by clamping the smoothing window's frame delta
+// to 0.05 s. Running them unchanged at the remake's substep would make the
+// simulation a function of the display rate: three times too fast at 60 fps,
+// seven at 144. Each one is therefore converted against
+// FSimCopterFlightModel::OriginalFrameSeconds.
+//
+// Returns the fraction of a value a per-frame decay should remove over Dt: a
+// removal of `PerFrameRemoved` once per original frame is 1 - (1 - r)^(dt/0.05).
+// The subtraction is done in float because for short substeps the result is a
+// small difference of two near-equal numbers, and 16.16 has no precision to spare
+// there.
+int32 DecayOverSubstep(int32 PerFrameRemoved, int32 Dt, int32 FramePeriod)
+{
+	const float Retained = 1.0f - ToFloat(PerFrameRemoved);
+	if (Retained <= 0.0f)
+	{
+		return One;
+	}
+	const float Exponent = ToFloat(Dt) / ToFloat(FMath::Max(FramePeriod, 1));
+	return FromFloat(1.0f - FMath::Pow(Retained, Exponent));
+}
+
+// The substep's share of one reference frame, for rules that add a fixed amount per
+// frame rather than decaying.
+int32 SubstepFrameFraction(int32 Dt, int32 FramePeriod)
+{
+	return Div(Dt, FMath::Max(FramePeriod, 1));
+}
+
+// FUN_00487740's blade step: a flat 39.1 degrees per frame once the rotor passes 250.
+// As a rate that is only 782 deg/s at 20 fps, which reads as slow motion on a modern
+// display; the remake had been drawing 39.1 x the display rate instead (~2300 deg/s
+// at 60 fps, ~5600 at 144). Scaled by RotorVisualMultiplier against this fixed
+// period, so the blades turn at the same apparent speed on every machine.
+constexpr int32 RotorVisualFramePeriod = 0x0ccc; // 0.05 s
+constexpr int32 RotorStrobeStep = 0x1870000;     // 391.0 tenth-deg per frame
 
 // FUN_00486e90: slide velocity weight (32000/65536 = 0.488) and the
 // units-per-second scale for position integration (40000/65536 = 0.610).
@@ -147,6 +182,10 @@ void FSimCopterFlightModel::ResetOnSurface(int32 InPosX, int32 InPosZ, int32 Sur
 	FMemory::Memzero(TurbSlideSamples, sizeof(TurbSlideSamples));
 	FMemory::Memzero(TurbYawSamples, sizeof(TurbYawSamples));
 	TurbPitch = TurbSlide = TurbYaw = 0;
+	TurbPitchPrev = TurbSlidePrev = TurbYawPrev = 0;
+	TurbPitchNext = TurbSlideNext = TurbYawNext = 0;
+	TurbulenceClock = 0;
+	FireDamageAccrued = 0;
 }
 
 void FSimCopterFlightModel::Step(float DeltaSeconds, const FSimCopterFlightInputs& Inputs, const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents)
@@ -191,7 +230,7 @@ void FSimCopterFlightModel::Step(float DeltaSeconds, const FSimCopterFlightInput
 	{
 		StepControls(Dt, Inputs);
 	}
-	StepTurbulence(Env, OutEvents);
+	StepTurbulence(Dt, Env, OutEvents);
 	StepAttitude(Dt, Env);
 	StepVelocity(Dt, Inputs);
 	StepVertical(Dt, Inputs, Env, OutEvents);
@@ -296,7 +335,7 @@ void FSimCopterFlightModel::StepControls(int32 Dt, const FSimCopterFlightInputs&
 	// (ClimbCommand itself is consumed by StepVertical.)
 }
 
-void FSimCopterFlightModel::StepTurbulence(const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents)
+void FSimCopterFlightModel::StepTurbulence(int32 Dt, const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents)
 {
 	// FUN_00489800: every frame push one random kick per axis into a 9-sample
 	// ring buffer and expose the running averages; the attitude integrator adds
@@ -314,10 +353,20 @@ void FSimCopterFlightModel::StepTurbulence(const FSimCopterFlightEnvironment& En
 		Amplitude = 0;
 		if (FireDelta != 0)
 		{
-			// Flying inside the fire band burns hit points...
+			// Flying inside the fire band burns hit points. The original spends this
+			// many per frame; a substep owes a fraction of one, so it accrues and is
+			// paid in whole points - otherwise truncation either burns nothing at all
+			// or, unscaled, makes a fire several times more lethal than the original's.
 			if (Tuning.MinFireAlt <= FireDelta && FireDelta <= Tuning.MaxFireAlt)
 			{
-				ApplyDamage((Tuning.MaxFireAlt >> 16) - (FireDelta >> 16), OutEvents);
+				const int32 PerFrame = (Tuning.MaxFireAlt >> 16) - (FireDelta >> 16);
+				FireDamageAccrued += Mul(PerFrame * One, SubstepFrameFraction(Dt, ReferenceFrameSeconds));
+				const int32 WholePoints = FireDamageAccrued >> 16;
+				if (WholePoints > 0)
+				{
+					ApplyDamage(WholePoints, OutEvents);
+					FireDamageAccrued -= WholePoints << 16;
+				}
 			}
 			// ...and anything within 250 units shakes harder the closer it is.
 			if (FireDelta >= -0x300000 && FireDelta <= 0xfa0000)
@@ -351,19 +400,58 @@ void FSimCopterFlightModel::StepTurbulence(const FSimCopterFlightEnvironment& En
 		return Sum / 9;
 	};
 
-	TurbSlide = PushSample(TurbSlideSamples);
-	TurbYaw = PushSample(TurbYawSamples);
-	TurbPitch = PushSample(TurbPitchSamples);
+	// The ring advances on the original's 20 Hz frame boundary, not on every
+	// substep, so the sequence of kicks is the one the executable would have
+	// generated. The order of the three pulls is the original's (slide, yaw,
+	// pitch) because they consume the shared rand() stream.
+	TurbulenceClock += Dt;
+	while (TurbulenceClock >= TurbulenceFrameSeconds)
+	{
+		TurbulenceClock -= TurbulenceFrameSeconds;
+		TurbSlidePrev = TurbSlideNext;
+		TurbYawPrev = TurbYawNext;
+		TurbPitchPrev = TurbPitchNext;
+		TurbSlideNext = PushSample(TurbSlideSamples);
+		TurbYawNext = PushSample(TurbYawSamples);
+		TurbPitchNext = PushSample(TurbPitchSamples);
+	}
+
+	// Lerp across the interval so a 60 Hz substep does not see a 20 Hz staircase.
+	const int32 Phase = Div(TurbulenceClock, TurbulenceFrameSeconds);
+	TurbSlide = TurbSlidePrev + Mul(TurbSlideNext - TurbSlidePrev, Phase);
+	TurbYaw = TurbYawPrev + Mul(TurbYawNext - TurbYawPrev, Phase);
+	TurbPitch = TurbPitchPrev + Mul(TurbPitchNext - TurbPitchPrev, Phase);
 }
 
 int32 FSimCopterFlightModel::SmoothingFrames(int32 /*RateTenthDeg*/, int32 Dt) const
 {
-	// FUN_00486a30: N = ((1000.0 - PitchRate) / 500) * fps, fps capped at 20 by
-	// the 0.05 s minimum delta. All four axes share the PitchRate-derived N.
-	int32 ClampedDt = FMath::Max(Dt, MinSmoothingDt);
+	// FUN_00486a30: N = ((1000.0 - PitchRate) / 500) * fps, where fps comes from the
+	// RAW frame delta DAT_005039a0 floored at 0.05 s - so 20 fps is the most the term
+	// can ever be. 21 frames for the Jet Ranger. All four axes share this N.
+	int32 ClampedDt = FMath::Max(Dt, ReferenceFrameSeconds);
 	const int32 Fps = Div(One, ClampedDt);
 	int32 Frames = (static_cast<int64>(0x3e80000 - Tuning.PitchRate) / 500) * (Fps >> 16) >> 16;
 	return FMath::Max(Frames, 1);
+}
+
+int32 FSimCopterFlightModel::SmoothingAlpha(int32 Dt) const
+{
+	// N above is a count of frames and the filter removes 1/N of the gap per frame,
+	// so N/fps - the lag in seconds - has the fps terms cancel: the original's
+	// attitude lag is *already* frame-rate independent by construction, and the
+	// `* fps` is its delta-time compensation written the long way round. What breaks
+	// it is its own floor on the delta, which pins the fps term at 20 above 20 fps
+	// while the filter keeps being applied at the real rate. That is exactly the
+	// regime the remake lives in - the pawn's substep is at most 1/60 s.
+	//
+	// Reproduce the filter the original actually ran, rather than the one the
+	// un-floored formula describes: retaining (N-1)/N per 0.05 s frame. Those differ
+	// - N is floored from 21.89 to 21, which is a 1.02 s lag where the algebra says
+	// 1.09 - and 20 fps is the only frame rate the executable itself ever names, so
+	// its behaviour there is the thing worth matching.
+	const int32 Frames = SmoothingFrames(Tuning.PitchRate, Dt);
+	const int32 PerFrameAlpha = Div(One, Frames * One);
+	return DecayOverSubstep(PerFrameAlpha, FMath::Min(Dt, ReferenceFrameSeconds), ReferenceFrameSeconds);
 }
 
 void FSimCopterFlightModel::StepAttitude(int32 Dt, const FSimCopterFlightEnvironment& Env)
@@ -388,8 +476,13 @@ void FSimCopterFlightModel::StepAttitude(int32 Dt, const FSimCopterFlightEnviron
 		PitchClamp = Mul(Fraction, Tuning.MaxPitch);
 	}
 
-	// Turbulence feeds straight into the targets (player helicopters only).
-	PitchTarget += TurbPitch;
+	// Turbulence feeds straight into the targets (player helicopters only). The
+	// original adds the whole ring average once per rendered frame; scaling by the
+	// substep's share of a 20 Hz frame keeps the amount injected per second - and
+	// so the size of the random walk the shake produces - the same at any rate.
+	// This is 1.0 at dt = 1/20, where it reduces to the original's arithmetic.
+	const int32 TurbulenceInjection = SubstepFrameFraction(Dt, TurbulenceFrameSeconds);
+	PitchTarget += Mul(TurbPitch, TurbulenceInjection);
 
 	// Within 150 units of the ground a proximity bonus of up to MaxPitch/8
 	// loosens the clamp as height increases.
@@ -406,24 +499,24 @@ void FSimCopterFlightModel::StepAttitude(int32 Dt, const FSimCopterFlightEnviron
 	PitchTarget = FMath::Clamp(PitchTarget, -PitchLimit, PitchLimit);
 
 	// First-order lag shared by all four smoothed values.
-	const int32 Frames = SmoothingFrames(Tuning.PitchRate, Dt);
-	PitchSmoothed = (static_cast<int64>(PitchSmoothed) * (Frames - 1) + PitchTarget) / Frames;
+	const int32 Alpha = SmoothingAlpha(Dt);
+	PitchSmoothed += Mul(PitchTarget - PitchSmoothed, Alpha);
 
 	// Bank: clamp to MaxBank, then to |smoothed pitch| + 30 degrees.
 	BankTarget = FMath::Clamp(BankTarget, -Tuning.MaxBank, Tuning.MaxBank);
 	const int32 BankLimit = FMath::Abs(PitchSmoothed) + BankOverPitchAllowance;
 	BankTarget = FMath::Clamp(BankTarget, -BankLimit, BankLimit);
-	BankSmoothed = (static_cast<int64>(BankSmoothed) * (Frames - 1) + BankTarget) / Frames;
+	BankSmoothed += Mul(BankTarget - BankSmoothed, Alpha);
 
 	// Slide.
-	SlideTarget += TurbSlide;
+	SlideTarget += Mul(TurbSlide, TurbulenceInjection);
 	SlideTarget = FMath::Clamp(SlideTarget, -Tuning.MaxSlide, Tuning.MaxSlide);
-	SlideSmoothed = (static_cast<int64>(SlideSmoothed) * (Frames - 1) + SlideTarget) / Frames;
+	SlideSmoothed += Mul(SlideTarget - SlideSmoothed, Alpha);
 
 	// Yaw rate.
-	YawRateTarget += TurbYaw;
+	YawRateTarget += Mul(TurbYaw, TurbulenceInjection);
 	YawRateTarget = FMath::Clamp(YawRateTarget, -Tuning.MaxYawRate, Tuning.MaxYawRate);
-	YawRateSmoothed = (static_cast<int64>(YawRateSmoothed) * (Frames - 1) + YawRateTarget) / Frames;
+	YawRateSmoothed += Mul(YawRateTarget - YawRateSmoothed, Alpha);
 
 	// Heading integrates the smoothed yaw rate at x15 (tenth-deg per second).
 	Heading = WrapAngle(Heading + Mul(YawRateSmoothed, Mul(Dt, 0xf0000)));
@@ -453,14 +546,19 @@ void FSimCopterFlightModel::StepVelocity(int32 Dt, const FSimCopterFlightInputs&
 		// cancels its halved pitch clamp at the top end and leaves it faster
 		// everywhere below - and it sheds speed at 1/16 per frame rather than
 		// 1/32, so backing off the nose actually slows it down.
+		// The original closes 1/32 of the gap per frame (1/16 shedding speed under
+		// the easy model), written as a shift; converted here so the same fraction
+		// is closed per unit time whatever the substep is, against
+		// SpeedChaseFramePeriod rather than the 20 fps reference the other rules use.
 		const int32 Target = bEasyFlightModel ? PitchSmoothed * 2 : PitchSmoothed;
 		if (ForwardSpeed < Target)
 		{
-			ForwardSpeed += (Target - ForwardSpeed) >> 5;
+			ForwardSpeed += Mul(Target - ForwardSpeed, DecayOverSubstep(One >> 5, Dt, SpeedChaseFrameSeconds));
 		}
 		if (ForwardSpeed > Target)
 		{
-			ForwardSpeed -= (ForwardSpeed - Target) >> (bEasyFlightModel ? 4 : 5);
+			const int32 PerFrame = bEasyFlightModel ? (One >> 4) : (One >> 5);
+			ForwardSpeed -= Mul(ForwardSpeed - Target, DecayOverSubstep(PerFrame, Dt, SpeedChaseFrameSeconds));
 		}
 	}
 
@@ -529,20 +627,27 @@ void FSimCopterFlightModel::StepVertical(int32 Dt, const FSimCopterFlightInputs&
 	}
 	else if (ClimbCommand == 0)
 	{
-		// Neutral: per-frame exponential decay, 5% up / 10% down.
+		// Neutral: exponential decay of 5% per frame climbing, 10% descending,
+		// converted to the substep. This one decides how far the helicopter coasts
+		// after the collective is released, which is the whole feel of a landing
+		// flare - unconverted it arrests three times too quickly at 60 fps.
 		if (ClimbSpeed > 0)
 		{
-			ClimbSpeed -= Mul(0x0ccc, ClimbSpeed);
+			ClimbSpeed -= Mul(DecayOverSubstep(0x0ccc, Dt, ReferenceFrameSeconds), ClimbSpeed);
 			ClimbSpeed = FMath::Max(ClimbSpeed, 0);
 		}
 		else if (ClimbSpeed < 0)
 		{
-			ClimbSpeed -= Mul(0x1999, ClimbSpeed);
+			ClimbSpeed -= Mul(DecayOverSubstep(0x1999, Dt, ReferenceFrameSeconds), ClimbSpeed);
 			ClimbSpeed = FMath::Min(ClimbSpeed, 0);
 		}
-		// Resting on a surface with lifting rotor pushes up at 4x ClimbRate
-		// (this is what makes an idle-collective helicopter hop off a slam).
-		if ((Altitude <= Env.SurfaceHeight || Altitude <= Env.TerrainHeight) && Env.bTerrainFlat)
+		// Touching down on ground the helicopter cannot land on pushes it back up at
+		// 4x ClimbRate. FUN_00487160 gates this on `param_1[0x53] == 0` - the terrain
+		// flat flag being CLEAR, i.e. rough or hostile ground - so that settling onto
+		// flat, landable ground is never interrupted. Testing bTerrainFlat instead
+		// inverts it and shoves the helicopter off exactly the ground it is trying to
+		// land on, which is what made a shaking airframe impossible to put down.
+		if ((Altitude <= Env.SurfaceHeight || Altitude <= Env.TerrainHeight) && !Env.bTerrainFlat)
 		{
 			ClimbSpeed = Tuning.ClimbRate * 4;
 		}
@@ -635,12 +740,14 @@ void FSimCopterFlightModel::StepRotor(int32 Dt, const FSimCopterFlightInputs& In
 	}
 	RotorSpeed = FMath::Max(RotorSpeed, 0);
 
-	// Blade step: proportional while slow, then a constant 39.1 degrees per
-	// frame - the original's deliberate blur strobe.
-	int32 BladeStep = 0x1870000; // 391.0 tenth-deg
+	// Blade step: proportional while spooling, then a constant 39.1 degrees per frame -
+	// the original's deliberate blur strobe. Both branches are per-frame rates scaled
+	// to the substep and then up by RotorVisualSpeedUp, so the blades turn at the same
+	// apparent speed on every machine. See the constant for why it is not 1.
+	int32 BladeStep = Mul(Mul(RotorStrobeStep, RotorVisualMultiplier), Div(Dt, RotorVisualFramePeriod));
 	if (RotorSpeed <= 0xfa0000)
 	{
-		BladeStep = Mul(RotorSpeed, Dt << 5);
+		BladeStep = Mul(Mul(RotorSpeed, Dt << 5), RotorVisualMultiplier);
 	}
 	MainRotorAngle = WrapAngle(MainRotorAngle + BladeStep);
 	TailRotorAngle = WrapAngle(TailRotorAngle + BladeStep);
@@ -764,3 +871,9 @@ void FSimCopterFlightModel::NotifyWallImpact(FSimCopterFlightEvents& OutEvents)
 	BounceTimer = 0x3333; // 0.2 s
 	OutEvents.bPadBounce = true;
 }
+
+
+
+
+
+

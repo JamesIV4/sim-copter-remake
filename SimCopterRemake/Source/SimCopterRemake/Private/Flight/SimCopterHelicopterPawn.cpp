@@ -594,6 +594,16 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	LoadCockpitStabilization();
 	LoadRotorDiscAppearance();
 	LoadEasyFlightModel();
+	// Playable starting point for the frame-rate assumption, over the model's own
+	// defaults, which are the executable's figures. These are feel, not fidelity, and
+	// exist to be dialled in from the debug panel - the ini below wins once they have
+	// been. 20 fps everywhere with a x1 rotor is the documented-faithful setting to go
+	// back to; the shake is the one that stays there, because 60 makes it far too busy.
+	FlightModel.TurbulenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 20.0f);
+	FlightModel.ReferenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
+	FlightModel.SpeedChaseFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
+	FlightModel.RotorVisualMultiplier = SimCopterFixed::FromFloat(4.0f);
+	LoadFlightRateTuning();
 
 	// The editor property is a name; the registry index is what the runtime uses from here on.
 	if (const FSimCopterHelicopterDefinition* Seed =
@@ -4221,6 +4231,114 @@ void ASimCopterHelicopterPawn::SaveEasyFlightModel() const
 
 	GConfig->SetBool(
 		FlightModelConfigSection, TEXT("EasyModel"), FlightModel.bEasyFlightModel, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+}
+
+namespace
+{
+// The knobs are stored as frame periods in 16.16 seconds but read as frame rates,
+// which is the way round that means something to whoever is flying.
+float FramePeriodToFps(int32 PeriodSeconds)
+{
+	return PeriodSeconds > 0 ? 1.0f / SimCopterFixed::ToFloat(PeriodSeconds) : 0.0f;
+}
+
+int32 FpsToFramePeriod(float Fps)
+{
+	return SimCopterFixed::FromFloat(1.0f / FMath::Clamp(Fps, 1.0f, 480.0f));
+}
+}
+
+float ASimCopterHelicopterPawn::GetTurbulenceReferenceFps() const
+{
+	return FramePeriodToFps(FlightModel.TurbulenceFrameSeconds);
+}
+
+void ASimCopterHelicopterPawn::SetTurbulenceReferenceFps(float Fps)
+{
+	FlightModel.TurbulenceFrameSeconds = FpsToFramePeriod(Fps);
+	// The ring is part-way through an interval measured against the old period; clear
+	// the clock so the next tick starts a clean one rather than a partial one of the
+	// wrong length.
+	FlightModel.TurbulenceClock = 0;
+	SaveFlightRateTuning();
+}
+
+float ASimCopterHelicopterPawn::GetFlightReferenceFps() const
+{
+	return FramePeriodToFps(FlightModel.ReferenceFrameSeconds);
+}
+
+void ASimCopterHelicopterPawn::SetFlightReferenceFps(float Fps)
+{
+	FlightModel.ReferenceFrameSeconds = FpsToFramePeriod(Fps);
+	SaveFlightRateTuning();
+}
+
+float ASimCopterHelicopterPawn::GetSpeedChaseReferenceFps() const
+{
+	return FramePeriodToFps(FlightModel.SpeedChaseFrameSeconds);
+}
+
+void ASimCopterHelicopterPawn::SetSpeedChaseReferenceFps(float Fps)
+{
+	FlightModel.SpeedChaseFrameSeconds = FpsToFramePeriod(Fps);
+	SaveFlightRateTuning();
+}
+
+float ASimCopterHelicopterPawn::GetRotorVisualMultiplier() const
+{
+	return SimCopterFixed::ToFloat(FlightModel.RotorVisualMultiplier);
+}
+
+void ASimCopterHelicopterPawn::SetRotorVisualMultiplier(float Multiplier)
+{
+	FlightModel.RotorVisualMultiplier = SimCopterFixed::FromFloat(FMath::Clamp(Multiplier, 0.1f, 40.0f));
+	SaveFlightRateTuning();
+}
+
+void ASimCopterHelicopterPawn::LoadFlightRateTuning()
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	double Value = 0.0;
+	if (GConfig->GetDouble(FlightModelConfigSection, TEXT("TurbulenceFps"), Value, GGameUserSettingsIni))
+	{
+		FlightModel.TurbulenceFrameSeconds = FpsToFramePeriod(static_cast<float>(Value));
+	}
+	if (GConfig->GetDouble(FlightModelConfigSection, TEXT("ReferenceFps"), Value, GGameUserSettingsIni))
+	{
+		FlightModel.ReferenceFrameSeconds = FpsToFramePeriod(static_cast<float>(Value));
+	}
+	if (GConfig->GetDouble(FlightModelConfigSection, TEXT("SpeedChaseFps"), Value, GGameUserSettingsIni))
+	{
+		FlightModel.SpeedChaseFrameSeconds = FpsToFramePeriod(static_cast<float>(Value));
+	}
+	if (GConfig->GetDouble(FlightModelConfigSection, TEXT("RotorVisualMultiplier"), Value, GGameUserSettingsIni))
+	{
+		FlightModel.RotorVisualMultiplier =
+			SimCopterFixed::FromFloat(FMath::Clamp(static_cast<float>(Value), 0.1f, 40.0f));
+	}
+}
+
+void ASimCopterHelicopterPawn::SaveFlightRateTuning() const
+{
+	if (GConfig == nullptr || GGameUserSettingsIni.IsEmpty())
+	{
+		return;
+	}
+
+	GConfig->SetDouble(
+		FlightModelConfigSection, TEXT("TurbulenceFps"), GetTurbulenceReferenceFps(), GGameUserSettingsIni);
+	GConfig->SetDouble(
+		FlightModelConfigSection, TEXT("ReferenceFps"), GetFlightReferenceFps(), GGameUserSettingsIni);
+	GConfig->SetDouble(
+		FlightModelConfigSection, TEXT("SpeedChaseFps"), GetSpeedChaseReferenceFps(), GGameUserSettingsIni);
+	GConfig->SetDouble(
+		FlightModelConfigSection, TEXT("RotorVisualMultiplier"), GetRotorVisualMultiplier(), GGameUserSettingsIni);
 	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
