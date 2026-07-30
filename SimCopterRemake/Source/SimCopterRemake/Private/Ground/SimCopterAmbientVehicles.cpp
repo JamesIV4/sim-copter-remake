@@ -6,10 +6,12 @@
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/SimCity2000Reader.h"
+#include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "Missions/SimCopterMissionSystemActor.h"
@@ -132,6 +134,15 @@ ASimCopterAmbientVehiclesActor::ASimCopterAmbientVehiclesActor()
 void ASimCopterAmbientVehiclesActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// Share the fleet's material instance so the metallic slider reaches the planes/trains/boats.
+	if (USimCopterVehicleMaterialSubsystem* VehicleMaterials = USimCopterVehicleMaterialSubsystem::Get(this))
+	{
+		if (UMaterialInstanceDynamic* Shared = VehicleMaterials->GetVehicleMaterial(VertexColorMaterial))
+		{
+			VertexColorMaterial = Shared;
+		}
+	}
 
 	RandomStream.Initialize(1996);
 

@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterDispatch.h"
 #include "Ground/SimCopterBehaviorVM.h"
+#include "Ground/SimCopterTrafficSystemActor.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -86,6 +87,56 @@ private:
 	const FTestGrid& Grid;
 	bool bAllowRoutes;
 };
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterHospitalParamedicRespawnTest,
+	"SimCopter.Dispatch.HospitalParamedicRespawn",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterHospitalParamedicRespawnTest::RunTest(const FString& Parameters)
+{
+	constexpr float Delay = 40.0f;
+	using FTraffic = ASimCopterTrafficSystemActor;
+
+	// A roof nobody has ever staffed posts its first medic straight away.
+	TestTrue(
+		TEXT("First post is immediate"),
+		FTraffic::CanPostHospitalParamedic(false, 0.0, 0.0, Delay));
+	TestTrue(
+		TEXT("First post is immediate well into a session"),
+		FTraffic::CanPostHospitalParamedic(false, 0.0, 5000.0, Delay));
+
+	// The bug: the medic boards at t=100 and the mission tick asks again on the very next frame.
+	TestFalse(
+		TEXT("No backfill on the tick right after boarding"),
+		FTraffic::CanPostHospitalParamedic(true, 100.0, 100.016, Delay));
+	TestFalse(
+		TEXT("No backfill part way through the delay"),
+		FTraffic::CanPostHospitalParamedic(true, 100.0, 120.0, Delay));
+	TestFalse(
+		TEXT("No backfill one second short"),
+		FTraffic::CanPostHospitalParamedic(true, 100.0, 139.0, Delay));
+
+	// ...and a replacement once the delay is served.
+	TestTrue(
+		TEXT("Backfill exactly on the delay"),
+		FTraffic::CanPostHospitalParamedic(true, 100.0, 140.0, Delay));
+	TestTrue(
+		TEXT("Backfill after the delay"),
+		FTraffic::CanPostHospitalParamedic(true, 100.0, 200.0, Delay));
+
+	// A zero delay is the old always-backfill behaviour, which the property still allows.
+	TestTrue(
+		TEXT("Zero delay backfills immediately"),
+		FTraffic::CanPostHospitalParamedic(true, 100.0, 100.0, 0.0f));
+
+	// World time running backwards (level reload) must not lock the roof out forever.
+	TestTrue(
+		TEXT("Backwards world time does not lock the post"),
+		FTraffic::CanPostHospitalParamedic(true, 900.0, 3.0, Delay));
+
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

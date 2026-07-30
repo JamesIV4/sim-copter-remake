@@ -108,9 +108,20 @@ private:
 	TOptional<float> GetFlightReferenceFps() const;
 	TOptional<float> GetSpeedChaseReferenceFps() const;
 	TOptional<float> GetRotorVisualMultiplier() const;
+	TOptional<float> GetVehicleMetallic() const;
+	TOptional<float> GetFlashingLightIntensityScale() const;
+	TOptional<float> GetCameraGroundLiftHeightCm() const;
+	TOptional<float> GetCameraGroundLiftProbeRangeCm() const;
+	TOptional<float> GetCameraGroundLiftFullDistanceCm() const;
+	FText GetCameraGroundLiftStatusText() const;
 	void HandleFlightReferenceFpsChanged(float Value);
 	void HandleSpeedChaseReferenceFpsChanged(float Value);
 	void HandleRotorVisualMultiplierChanged(float Value);
+	void HandleVehicleMetallicChanged(float Value);
+	void HandleFlashingLightIntensityScaleChanged(float Value);
+	void HandleCameraGroundLiftHeightCmChanged(float Value);
+	void HandleCameraGroundLiftProbeRangeCmChanged(float Value);
+	void HandleCameraGroundLiftFullDistanceCmChanged(float Value);
 
 	TOptional<float> GetRotorDiscOpacity() const;
 	void HandleRotorDiscOpacityChanged(float Value);

@@ -221,6 +221,100 @@ bool FMaxisMeshLibraryTileMappingTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FMaxisMeshLibraryFlatRoadVariantsTest,
+	"SimCopter.Formats.MaxisMesh.FlatRoadVariants",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FMaxisMeshLibraryFlatRoadVariantsTest::RunTest(const FString& Parameters)
+{
+	const FString OriginalGameRoot = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	if (!FPaths::DirectoryExists(FPaths::Combine(OriginalGameRoot, TEXT("GEO"))))
+	{
+		AddWarning(FString::Printf(TEXT("Skipping optional flat road variant test because '%s' is not present."), *OriginalGameRoot));
+		return true;
+	}
+
+	FMaxisMeshLibrary MeshLibrary;
+	FString Error;
+	if (!TestTrue(TEXT("Loads original game mesh library"), MeshLibrary.LoadFromOriginalGameRoot(OriginalGameRoot, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+
+	// FUN_0047c0c0's XBLD 0x1d..0x2b cases each choose between two road meshes on the four-corner
+	// tmap flatness test: the curbed piece whose object id equals the XBLD id, and the flat "L"
+	// slab. Both ends of every pair have to resolve, or ASimCity2000CityActor's road dispatch
+	// silently falls back to one mesh for the whole city.
+	struct FRoadPair
+	{
+		int32 BuildingId;
+		int32 SlopedObjectId;
+		const TCHAR* SlopedName;
+		int32 FlatObjectId;
+		const TCHAR* FlatName;
+	};
+
+	const FRoadPair RoadPairs[] = {
+		{ 0x1d, 0x1d, TEXT("RD29"), 0x3b, TEXT("RD29L") },
+		{ 0x1e, 0x1e, TEXT("RD30"), 0x3c, TEXT("RD30L") },
+		{ 0x23, 0x23, TEXT("RD35"), 0x3d, TEXT("RD35L") },
+		{ 0x24, 0x24, TEXT("RD36"), 0x3e, TEXT("RD36L") },
+		{ 0x25, 0x25, TEXT("RD37"), 0x3f, TEXT("RD37L") },
+		{ 0x26, 0x26, TEXT("RD38"), 0x40, TEXT("RD38L") },
+		{ 0x27, 0x27, TEXT("RD39"), 0x41, TEXT("RD39L") },
+		{ 0x28, 0x28, TEXT("RD40"), 0x42, TEXT("RD40L") },
+		{ 0x29, 0x29, TEXT("RD41"), 0x43, TEXT("RD41L") },
+		{ 0x2a, 0x2a, TEXT("RD42"), 0x44, TEXT("RD42L") },
+		{ 0x2b, 0x2b, TEXT("RD43"), 0x45, TEXT("RD43L") },
+	};
+
+	for (const FRoadPair& Pair : RoadPairs)
+	{
+		const FMaxisMeshObject* Sloped = MeshLibrary.FindObjectByObjectId(Pair.SlopedObjectId);
+		const FMaxisMeshObject* Flat = MeshLibrary.FindObjectByObjectId(Pair.FlatObjectId);
+		if (TestNotNull(FString::Printf(TEXT("XBLD 0x%x sloped road object 0x%x resolves"), Pair.BuildingId, Pair.SlopedObjectId), Sloped))
+		{
+			TestEqual(FString::Printf(TEXT("XBLD 0x%x sloped road name"), Pair.BuildingId), Sloped->Header.TableName, FString(Pair.SlopedName));
+		}
+		if (TestNotNull(FString::Printf(TEXT("XBLD 0x%x flat road object 0x%x resolves"), Pair.BuildingId, Pair.FlatObjectId), Flat))
+		{
+			TestEqual(FString::Printf(TEXT("XBLD 0x%x flat road name"), Pair.BuildingId), Flat->Header.TableName, FString(Pair.FlatName));
+		}
+
+		// The regression this guards: the heuristic XBLD->mesh table demotes the "L" suffix, so a
+		// tile-id lookup always lands on the curbed piece. Roads must not be resolved that way.
+		const FMaxisMeshObject* ByTileId = MeshLibrary.FindObjectByTileId(Pair.BuildingId);
+		if (ByTileId != nullptr)
+		{
+			TestEqual(
+				FString::Printf(TEXT("XBLD 0x%x tile-id lookup still prefers the curbed piece"), Pair.BuildingId),
+				ByTileId->Header.TableName,
+				FString(Pair.SlopedName));
+		}
+	}
+
+	// The four dedicated slope pieces have no flat counterpart in the pack, which is why
+	// GetOriginalRoadTileObjectId leaves 0x1f..0x22 unconditional.
+	for (int32 BuildingId = 0x1f; BuildingId <= 0x22; ++BuildingId)
+	{
+		const FMaxisMeshObject* SlopePiece = MeshLibrary.FindObjectByObjectId(BuildingId);
+		if (TestNotNull(FString::Printf(TEXT("Road slope piece 0x%x resolves"), BuildingId), SlopePiece))
+		{
+			TestEqual(
+				FString::Printf(TEXT("Road slope piece 0x%x name"), BuildingId),
+				SlopePiece->Header.TableName,
+				FString::Printf(TEXT("RD%d"), BuildingId));
+			TestNull(
+				FString::Printf(TEXT("Road slope piece 0x%x has no L variant"), BuildingId),
+				MeshLibrary.FindObjectByTableName(FString::Printf(TEXT("RD%dL"), BuildingId)));
+		}
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FMaxisTextureAtlasTileExtractionTest,
 	"SimCopter.Formats.MaxisTexture.AtlasTileExtraction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

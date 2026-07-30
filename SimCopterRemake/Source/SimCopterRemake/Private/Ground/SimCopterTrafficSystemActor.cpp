@@ -1681,6 +1681,23 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindNearestAvailablePersonI
 	return Best;
 }
 
+bool ASimCopterTrafficSystemActor::CanPostHospitalParamedic(
+	const bool bHasPreviousPost,
+	const double LastSeenSeconds,
+	const double NowSeconds,
+	const float DelaySeconds)
+{
+	if (!bHasPreviousPost)
+	{
+		return true;
+	}
+
+	// A world time that went backwards (a level reload keeping this actor's map) must not lock the
+	// roof out for the rest of the session.
+	const double Elapsed = NowSeconds - LastSeenSeconds;
+	return Elapsed < 0.0 || Elapsed >= double(FMath::Max(DelaySeconds, 0.0f));
+}
+
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTile(
 	const int32 TileX,
 	const int32 TileY)
@@ -1723,10 +1740,29 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTi
 		return nullptr;
 	};
 
+	const FIntPoint HospitalTile(TileX, TileY);
+	const double NowSeconds = GetWorld()->GetTimeSeconds();
+
 	if (ASimCopterGroundAgent* Existing = FindPostedMedic())
 	{
 		Existing->SetPersistentHospitalRoofCrew(true);
+		HospitalParamedicLastSeenSeconds.Add(HospitalTile, NowSeconds);
 		return Existing;
+	}
+
+	// The post is empty. Usually that is not because the medic vanished - it is because it just
+	// climbed into the player's helicopter, which gives it a carrier and hides it, so FindPostedMedic
+	// stops matching it on the very next tick. Backfilling immediately is what put a second
+	// paramedic on the roof the instant the first one boarded. Wait out the delay before posting a
+	// replacement; a roof that has never been staffed has no entry and so staffs immediately.
+	const double* LastSeenSeconds = HospitalParamedicLastSeenSeconds.Find(HospitalTile);
+	if (!CanPostHospitalParamedic(
+			LastSeenSeconds != nullptr,
+			LastSeenSeconds != nullptr ? *LastSeenSeconds : 0.0,
+			NowSeconds,
+			HospitalParamedicRespawnDelaySeconds))
+	{
+		return nullptr;
 	}
 
 	// This is mission infrastructure, not a random crowd roll. Retry every mission tick if the
@@ -1749,7 +1785,10 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTi
 	if (Spawned != nullptr)
 	{
 		Spawned->SetPersistentHospitalRoofCrew(true);
+		HospitalParamedicLastSeenSeconds.Add(HospitalTile, NowSeconds);
 	}
+	// A failed spawn deliberately records nothing, so the next mission tick retries at once
+	// rather than serving out a delay for a medic that was never posted.
 	return Spawned;
 }
 

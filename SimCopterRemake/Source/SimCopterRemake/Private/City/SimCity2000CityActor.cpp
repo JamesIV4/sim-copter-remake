@@ -14,6 +14,7 @@
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
+#include "Ground/SimCopterFlashingLights.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Engine/GameInstance.h"
@@ -841,6 +842,47 @@ int32 GetOriginalRailTileObjectId(uint8 BuildingId)
 	case 0x3a: return 0x3a;
 	default: return INDEX_NONE;
 	}
+}
+
+// Surface-road tile dispatch transcribed from FUN_0047c0c0's XBLD 0x1d..0x2b cases. Every one of
+// them runs the same four-corner tmap comparison the bridges use and picks a DIFFERENT mesh for a
+// flat tile than for a sloped one: RD29/RD30 and RD35..RD43 carry a raised curb along their edges
+// because they have to meet the terrain across a grade change, and RD29L/RD30L/RD35L..RD43L are the
+// flat, curbless slabs laid on level ground. The two sets are object ids 0x1d..0x2b and 0x3b..0x45.
+//
+// The remake resolved these through the heuristic XBLD->mesh table instead, and that table scores
+// the plain "RD29" name above the "RD29L" variant (MappingVariantPenalty in MaxisMeshLibrary
+// demotes the F/H/L suffixes), so every road tile in the city drew the sloped, curbed piece - a
+// curb down both sides of every flat street. Only 0x1f..0x22, the four dedicated slope pieces, have
+// no flat counterpart and are unconditional in the original too.
+int32 GetOriginalRoadTileObjectId(uint8 BuildingId, bool bTileIsFlat)
+{
+	if (BuildingId < 0x1d || BuildingId > 0x2b)
+	{
+		return INDEX_NONE;
+	}
+
+	if (bTileIsFlat)
+	{
+		switch (BuildingId)
+		{
+		case 0x1d: return 0x3b; // RD29L, straight east-west
+		case 0x1e: return 0x3c; // RD30L, straight north-south
+		case 0x23: return 0x3d; // RD35L..RD43L, the corners, tees and crossroads
+		case 0x24: return 0x3e;
+		case 0x25: return 0x3f;
+		case 0x26: return 0x40;
+		case 0x27: return 0x41;
+		case 0x28: return 0x42;
+		case 0x29: return 0x43;
+		case 0x2a: return 0x44;
+		case 0x2b: return 0x45;
+		default: break; // 0x1f..0x22 are slope-only; they fall through to the sloped piece.
+		}
+	}
+
+	// The sloped/fallback piece is the object whose id equals the XBLD id (RD29..RD43).
+	return static_cast<int32>(BuildingId);
 }
 
 // FUN_00482890 selects the original ground/base object for building tiles that
@@ -2947,8 +2989,10 @@ int32 AppendMaxisMeshObject(
 ASimCity2000CityActor::ASimCity2000CityActor()
 {
 	// The water surface undulates entirely in its material's vertex shader (World Position Offset),
-	// so the actor needs no per-frame tick.
-	PrimaryActorTick.bCanEverTick = false;
+	// so nothing here needs a tick except the building blink markers: those are camera-facing cards
+	// on an 8-step colour phase (FUN_00496c00) and have to be rebuilt when the phase or the view
+	// changes. The component early-outs when neither did, and when the city has no lights at all.
+	PrimaryActorTick.bCanEverTick = true;
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -2976,6 +3020,16 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	RoadMarkingMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	RoadMarkingMeshComponent->SetCanEverAffectNavigation(false);
 	RoadMarkingMeshComponent->SetCastShadow(false);
+
+	// Sits on SceneRoot so its component space is the same one the baked mesh sections and the
+	// building instances are placed in - the tile origins can be stored verbatim.
+	FlashingLightsComponent = CreateDefaultSubobject<USimCopterFlashingLightsComponent>(TEXT("FlashingLightsComponent"));
+	FlashingLightsComponent->SetupAttachment(SceneRoot);
+	// A city has hundreds of markers and every lit one gets its own light - MaxPointLights stays 0
+	// (uncapped) because MegaLights is what this project renders with. Rooftop beacons on tall
+	// buildings want a wide, soft pool of colour.
+	FlashingLightsComponent->PointLightAttenuationRadiusCm = 2000.0f;
+	FlashingLightsComponent->PointLightIntensity = 20.0f;
 
 	// Project-authored lit materials replace the engine's emissive/unlit debug materials so the
 	// city responds to the scene's directional/sky lighting and to dynamic night lights (street
@@ -3092,6 +3146,13 @@ void ASimCity2000CityActor::RebuildCity()
 	TerrainMeshComponent->ClearAllMeshSections();
 	OriginalMeshComponent->ClearAllMeshSections();
 	RoadMarkingMeshComponent->ClearAllMeshSections();
+	LastFlashingLightCount = 0;
+	if (FlashingLightsComponent != nullptr)
+	{
+		// Dropped up front so a rebuild that bails out early cannot leave the previous city's
+		// lights hanging in the air.
+		FlashingLightsComponent->ClearLightPoints();
+	}
 	TerrainMeshComponent->SetCollisionEnabled(bEnableTerrainCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	OriginalMeshComponent->SetCollisionEnabled(bEnableOriginalMeshCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 	RoadMarkingMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -3284,6 +3345,8 @@ void ASimCity2000CityActor::RebuildCity()
 	FOriginalMeshSectionData TerrainPage0DSection;
 	FOriginalMeshSectionData TerrainWaterSection;
 	FOriginalMeshSectionData RoadMarkingSection;
+	// Blink markers gathered from every placed object, in SceneRoot space (see the collection site).
+	TArray<FSimCopterFlashingLightPoint> CityFlashingLightPoints;
 	// Per-vertex "keep flat" flags for the two land terrain sections, index-aligned with their
 	// vertices. Set for tiles under buildings/roads so smooth-normal shading does not round the flat
 	// pads the conditioning creates - the terrain stays crisp where man-made surfaces sit on it.
@@ -3818,8 +3881,10 @@ void ASimCity2000CityActor::RebuildCity()
 					// Bridges/elevated roads and buildings are dispatched by the original builder to
 					// specific object Ids rather than through the heuristic XBLD->mesh table.
 					const bool bUseBridgeDispatch = Tile.Building >= 0x3f && Tile.Building <= 0x6b;
+					// Bridges and surface roads both pick their mesh from this one test.
+					const bool bTileIsFlat = IsOriginalTerrainTileFlat(ConditionedTerrainCorners, FileX, FileY);
 					const FOriginalBridgeDispatch BridgeDispatch = bUseBridgeDispatch
-						? GetOriginalBridgeDispatch(Tile.Building, IsOriginalTerrainTileFlat(ConditionedTerrainCorners, FileX, FileY), Tile.BitFlags)
+						? GetOriginalBridgeDispatch(Tile.Building, bTileIsFlat, Tile.BitFlags)
 						: FOriginalBridgeDispatch();
 					const FOriginalCityObjectDispatch BuildingDispatch = (!bUseBridgeDispatch && bBuildingLikeTile)
 						? GetOriginalBuildingDispatch(
@@ -3838,11 +3903,18 @@ void ASimCity2000CityActor::RebuildCity()
 					const int32 RailObjectId = (!bUseBridgeDispatch && Tile.Building >= 0x2c && Tile.Building <= 0x3e)
 						? GetOriginalRailTileObjectId(Tile.Building)
 						: INDEX_NONE;
+					// Surface roads are dispatched by id as well, so the flat tiles get their curbless
+					// RD*L slab instead of the sloped piece the heuristic table always resolved to.
+					const int32 RoadObjectId = !bUseBridgeDispatch
+						? GetOriginalRoadTileObjectId(Tile.Building, bTileIsFlat)
+						: INDEX_NONE;
 					const int32 PrimaryObjectId = BridgeDispatch.PrimaryObjectId != INDEX_NONE
 						? BridgeDispatch.PrimaryObjectId
-						: (RailObjectId != INDEX_NONE
-							? RailObjectId
-							: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId));
+						: (RoadObjectId != INDEX_NONE
+							? RoadObjectId
+							: (RailObjectId != INDEX_NONE
+								? RailObjectId
+								: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId)));
 					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
 						? BridgeDispatch.SecondaryObjectId
 						: BuildingDispatch.SecondaryObjectId;
@@ -3873,6 +3945,42 @@ void ASimCity2000CityActor::RebuildCity()
 								EffectiveTerrainHeightScale)
 							: GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
+
+						// Blink markers are face type 25, which AppendMaxisMeshObject drops (a single
+						// vertex is neither a polygon nor one of its two-point lines). Collect them here
+						// for both the instanced-building and the baked-section paths, since the original
+						// draws them for whatever object the tile placed. See
+						// FSimCopterFlashingLightSchedule for the colour-phase rule they blink on.
+						if (bRenderFlashingLights)
+						{
+							const int32 FirstLight = CityFlashingLightPoints.Num();
+							FSimCopterFlashingLightSchedule::ExtractLightPoints(
+								*MeshObject,
+								ColorMap,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								/*bApplyCityMeshOrientation*/ true,
+								CityFlashingLightPoints);
+							if (SecondaryObjectId != INDEX_NONE)
+							{
+								const TArray<FColor>* SecondaryLightColorMap = nullptr;
+								if (const FMaxisMeshObject* SecondaryLightObject =
+									MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &SecondaryLightColorMap))
+								{
+									FSimCopterFlashingLightSchedule::ExtractLightPoints(
+										*SecondaryLightObject,
+										SecondaryLightColorMap,
+										OriginalMeshUnitsPerCentimeter,
+										OriginalMeshScale,
+										/*bApplyCityMeshOrientation*/ true,
+										CityFlashingLightPoints);
+								}
+							}
+							for (int32 LightIndex = FirstLight; LightIndex < CityFlashingLightPoints.Num(); ++LightIndex)
+							{
+								CityFlashingLightPoints[LightIndex].LocalOffset += TileOrigin;
+							}
+						}
 						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
 
 						// Buildings become instances so a single one can be removed later; roads,
@@ -4510,6 +4618,12 @@ void ASimCity2000CityActor::RebuildCity()
 	LastOriginalMeshTriangleCount = OriginalMeshTriangleCount;
 	LastBuildingModelCount = BuildingInstanceComponents.Num();
 
+	LastFlashingLightCount = CityFlashingLightPoints.Num();
+	if (FlashingLightsComponent != nullptr)
+	{
+		FlashingLightsComponent->SetLightPoints(MoveTemp(CityFlashingLightPoints));
+	}
+
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
@@ -4536,6 +4650,18 @@ void ASimCity2000CityActor::RebuildCity()
 		EffectiveTerrainHeightScale);
 }
 
+void ASimCity2000CityActor::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	// The blink phase is global and time-based, so the component decides whether anything actually
+	// needs rebuilding; a city with no lit objects never allocates a mesh section at all.
+	if (FlashingLightsComponent != nullptr && FlashingLightsComponent->HasLightPoints() && GetWorld() != nullptr)
+	{
+		FlashingLightsComponent->SyncLightsFromPlayerCamera(GetWorld()->GetTimeSeconds());
+	}
+}
+
 FString ASimCity2000CityActor::GetResolvedCityPath() const
 {
 	return ResolveCityPath();
@@ -4544,6 +4670,19 @@ FString ASimCity2000CityActor::GetResolvedCityPath() const
 FString ASimCity2000CityActor::GetResolvedOriginalGameRoot() const
 {
 	return ResolveOriginalGameRoot();
+}
+
+float ASimCity2000CityActor::GetFlashingLightIntensityScale() const
+{
+	return FlashingLightsComponent != nullptr ? FlashingLightsComponent->PointLightIntensityScale : 1.0f;
+}
+
+void ASimCity2000CityActor::SetFlashingLightIntensityScale(float Scale)
+{
+	if (FlashingLightsComponent != nullptr)
+	{
+		FlashingLightsComponent->PointLightIntensityScale = FMath::Max(Scale, 0.0f);
+	}
 }
 
 float ASimCity2000CityActor::GetTileSize() const

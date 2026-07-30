@@ -40,6 +40,17 @@ Fallback details carried over from the older note (still true):
 The exe is PE32 x86, image base 0x400000, no symbols (all funcs `FUN_xxxx`). See
 [[simcopter-mesh-orientation-rules]] for city geometry findings.
 
+**`dump-asm` beats the decompile whenever the value you want is a stack-built struct** (proven
+2026-07-30 on the Check-up dialog, [[simcopter-checkup-menu]]). Ghidra aliases stack slots that
+are reused across a run of similar calls, so `FUN_00443c20`'s sixteen control rectangles all came
+through the C output as one rectangle and looked unrecoverable — the earlier note said to measure
+the page bitmap instead. The assembly has every one of them verbatim, as four
+`MOV dword ptr [ESP + n], imm` stores before each construction call, together with the string id
+and the font/justify setters. `ghidra-bridge dump-asm <fn> <out>`, then parse
+(`Docs/scratchpad/parse_checkup_rects.py` is a working template). **Trap:** a `PUSH` between the
+stores shifts every later displacement by four, so pair the slots up by *address order*, never by
+the literal offsets.
+
 **When the bridge comes up empty, go to the bytes** (proven 2026-07-26 chasing a struct field's
 writer). `pip install capstone`, parse the PE section table, and:
 - *vtables*: the bridge has no vtable export; read the entries straight out of `.rdata` at the

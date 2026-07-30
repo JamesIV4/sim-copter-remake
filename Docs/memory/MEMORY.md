@@ -9,7 +9,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 - [Agent workspace conventions](agent-workspace-conventions.md) — memories and scratch files live IN THE REPO (`Docs/memory/`, `Docs/scratchpad/`), never in an agent's machine-local dirs.
 - [Building and running](build-and-run.md) — always compile with `RebuildUnrealCpp.bat` at the repo root (it pins `-NoLiveCoding`); feed it empty stdin or its trailing `pause` hangs.
-- [SimCopter Ghidra workflow](simcopter-ghidra-workflow.md) — MAIN PATH: ghidra-bridge instant queries over `.ghidra-exports`; re-agent for parity/LLM loops; analyzeHeadless only for scan/bytes/decompileforce.
+- [SimCopter Ghidra workflow](simcopter-ghidra-workflow.md) — MAIN PATH: ghidra-bridge instant queries over `.ghidra-exports`; re-agent for parity/LLM loops; analyzeHeadless only for scan/bytes/decompileforce. Use `dump-asm` whenever the value you want is a stack-built struct (dialog rects, font sizes) — the decompile aliases those slots, the assembly does not.
 - [SimCopter live memory rip](simcopter-live-memory-rip.md) — read the live process with ReadProcessMemory for `.data` ONLY (SimCopterX relocates `.text` in memory; read code from Ghidra); per-region `.data` calibration.
 - [SimCopter in-game verification](simcopter-ingame-verification.md) — RARELY: only for a problem a build + automation test cannot settle (AGENTS.md §6). How-to if it is: launch `-game -windowed`, drive/screenshot the Slate UI from PowerShell, poll the log for readiness; centred panels shift and stale click coords silently no-op.
 
@@ -20,6 +20,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 - [SimCopter terrain flattening](simcopter-terrain-flattening.md) — FUN_004abce0 tmap conditioning decoded+ported: flatten under buildings/flat roads, +0x20 ramps under raised spans 0x3f-0x42, water dip; single raster sweep, order matters.
 - [SimCopter instanced buildings](simcopter-instanced-buildings.md) — buildings are per-model runtime UStaticMesh instances (103 models / 2624 placements), not baked into the merged city mesh, so one can be removed when it burns down.
 - [SimCopter airport spawn](simcopter-airport-spawn.md) — FUN_004829f0 STAMPS the airport over the SC2 city (XBLD 0xf6 + 0xde) and levels the 5x5 corner patch; finding the block is only half the port, and there is no separate "first helicopter" placer.
+- [SimCopter road tile variants](simcopter-road-tile-variants.md) — every road tile has a flat `RD*L` mesh and a curbed sloped one; the heuristic XBLD table demotes the `L` suffix, so the remake put a curb on every street. Also lists the unported road decorations (incl. SIGNAL1).
 
 ## Flight and the helicopter
 
@@ -39,11 +40,21 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 - [SimCopter mission system (M5)](simcopter-mission-system.md) — scheduler/fire/lifecycle; plan at `Docs/Milestone5SimulationPlan.md`; the old 0x20/0x40 event-mask guesses were wrong; the mission layer uses MSVC rand, not the people LFSR. Fire sim decoded+ported (flames CLIMB and re-arm; +0x0c is a growth step not a size).
 - [SimCopter emergency dispatch](simcopter-emergency-dispatch.md) — F2-F5 decoded+ported; traps: Ghidra mis-types FUN_004bc680 (read the asm), the "message id" IS the body's GEO object id, FUN_0042de60(1) is the Shift key, svc 3 vs 4 is the initial STATE not a count.
-- [SimCopter paramedic handoffs](simcopter-paramedic-handoffs.md) — ambulance vtable deploy is class 12/state 5, not criminal-car `(0xf,0xd)`; BHAV 262 seeks/totes victims to object class 10 ambulance, while BHAV 263 unloads the real helicopter patient at XBLD D1 without a synthetic doorway.
+- [SimCopter paramedic handoffs](simcopter-paramedic-handoffs.md) — ambulance vtable deploy is class 12/state 5, not criminal-car `(0xf,0xd)`; BHAV 262 seeks/totes victims to object class 10 ambulance, while BHAV 263 unloads the real helicopter patient at XBLD D1 without a synthetic doorway. The hospital roof post is rate-limited (40 s): a boarding medic stops matching the scan, and backfilling on the next tick spawned a duplicate.
 - [SimCopter speeder pursuit](simcopter-speeder-pursuit.md) — the searchlight IS the mechanic (obj[0x11b] is an illumination counter); police cannot stop an unlit speeder; FUN_004b89a0 isn't in the Ghidra exports — read `.rdata`.
 - [SimCopter fire/water FX](simcopter-fire-water-fx.md) — FIREPTS(0x120) = 22 POINT sprites not a mesh; effect cards are flat palette-coloured (no texture) with a radial soft-alpha material; rotor-wash = FUN_004881b0; fire/car-fire/bucket-douse/wind-kickback rendering added.
+- [SimCopter flashing lights](simcopter-flashing-lights.md) — face type 25 = a 1-vertex blink marker whose material byte is a palette colour; FUN_00496c00 strobes the WHOLE world by colour on one 8-step global counter (phases 6/7 dark). Not face type 26, which is the effect markers. Two deliberate divergences: fixed world size (never distance-culled, floored at 1 original pixel) and a coloured point light on EVERY lit marker — uncapped, because the project renders with MegaLights.
 - [SimCopter vertex animation via WPO](simcopter-vertex-animation-wpo.md) — animate/displace city mesh verts with a material World Position Offset (`M_SimCopterWater`), NOT CPU `UpdateMeshSection`; GPU-only, works in editor+game; bake control data into vertex colors.
+
+## Camera, materials and appearance
+
+- [SimCopter camera ground lift](simcopter-camera-ground-lift.md) — raising the boom PIVOT walks the helicopter down the screen; the old ramp only hit full strength at zero clearance, which never happens, so a landed helicopter got 25 cm of a 250 cm lift. The spring arm's own `bDoCollisionTest` must stay OFF — it swept from the roof to the socket-offset camera and clamped it, making the lift look dead however it was tuned. Whatever is under the camera is its ground, buildings included — a line trace STOPS at its first blocking hit, so skipping buildings to reach terrain beneath just reported "no ground" over an airport. Live on the debug panel's GROUND LIFT row, with a clearance/lift readout. `CameraDefaultZoomAlpha` is both the start zoom and the framing reference — keep them equal.
+
+
+
+- [SimCopter shared vehicle material](simcopter-vehicle-material.md) — `M_SimCopterLitVertexColor` is shared by the vehicles AND the city; only the vehicles go through `USimCopterVehicleMaterialSubsystem`'s instance, so a metallic helicopter does not chrome the skyline. `SetScalarParameterValue` on a parameter the material lacks is silently ignored — check the asset before debugging a dead slider.
 
 ## UI
 
+- [SimCopter Check-up menu](simcopter-checkup-menu.md) — the landing-pad repair/refuel panel (strings 590-598); its Damage and Fuel sliders are in DOLLARS and `heli[0x34]` is HIT POINTS, not damage; servicing off-airport costs triple, but only the repair applier divides it back. **Layout comes from `dump-asm`, not from measuring the bitmap** — the decompile aliases all sixteen control rects but the assembly states each one, plus its font size and justification; that generalises to every dialog. Slider art is SLIDERTV.BMP (thumb) over the page's printed track, drawn by a hand-rolled widget because `SSlider` rotates a vertical thumb 90°.
 - [SimCopter hangar shell](simcopter-hangar-shell.md) — catalog/log/inventory ported; the shell's TEXT is in the exe's Win32 STRINGTABLE (NOT the Ghidra `.rdata` export); the hangar belongs on the airport's TERMINAL plot (demolish 0x096+0x165 first or the base slab z-fights); its skin is SIM3D page 40 cells 20-23/61; all nine `CAT_*T` tab strips share one hit-rect table; overlap events miss a teleported pawn.

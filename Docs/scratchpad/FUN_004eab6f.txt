@@ -1,0 +1,58 @@
+﻿// ===========================================
+// Ghidra:    FUN_004eab6f
+// Address:   0x004eab6f
+// Signature: undefined FUN_004eab6f(void)
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+undefined4 FUN_004eab6f(void)
+{
+  longlong lVar1;
+  int *piVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  int iVar6;
+  undefined4 unaff_retaddr;
+  do {
+    piVar2 = DAT_0051668c;
+    _DAT_00516690 = DAT_0051668c;
+    if (DAT_0051668c == DAT_00516724) {
+      return unaff_retaddr;
+    }
+    DAT_0051668c = DAT_0051668c + 5;
+    if (DAT_00516728 < (int)DAT_0051668c) {
+      DAT_0051668c = DAT_0051672c;
+    }
+    uVar5 = piVar2[1];
+    iVar3 = ((uint)DAT_0051668c[1] >> 0xc) - (uVar5 >> 0xc);
+  } while (iVar3 == 0);
+  _DAT_0051669c = iVar3;
+  DAT_00516694 = *piVar2;
+  iVar3 = DAT_0051668c[1] - uVar5;
+  if (iVar3 < 0x1000) {
+    iVar3 = 0x1000;
+  }
+  uVar4 = *DAT_0051668c - *piVar2;
+  _DAT_005166ac =
+       (int)(CONCAT44(((int)uVar4 >> 0x1f) << 0xc | uVar4 >> 0x14,uVar4 * 0x1000) / (longlong)iVar3)
+  ;
+  lVar1 = (longlong)_DAT_005166ac * (longlong)(int)(uVar5 & 0xfff);
+  DAT_00516700 = -((uint)lVar1 >> 0xc | (int)((ulonglong)lVar1 >> 0x20) << 0x14);
+  uVar5 = piVar2[2] - DAT_0059ea14;
+  if (piVar2[2] < DAT_0059ea14) {
+    uVar5 = 0;
+  }
+  iVar6 = (int)(CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 << 0x10) /
+               (longlong)DAT_005a2588);
+  DAT_005166d0 = iVar6 * 0x20;
+  uVar5 = DAT_0051668c[2] - DAT_0059ea14;
+  if (DAT_0051668c[2] < DAT_0059ea14) {
+    uVar5 = 0;
+  }
+  uVar5 = (int)(CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 << 0x10) /
+               (longlong)DAT_005a2588) * 0x20 + iVar6 * -0x20;
+  DAT_005166c4 = (undefined4)
+                 (CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 * 0x10000) /
+                 (longlong)(iVar3 << 4));
+  return DAT_005166c4;
+}
