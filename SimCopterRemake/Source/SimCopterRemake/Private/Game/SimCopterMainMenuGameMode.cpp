@@ -49,13 +49,14 @@ void ASimCopterMainMenuGameMode::OpenMainMenu()
 		? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 		: nullptr;
 
+	TSharedPtr<SSimCopterMainMenu> MenuPanel;
 	MainMenuWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
 		[
-			SNew(SSimCopterMainMenu)
+			SAssignNew(MenuPanel, SSimCopterMainMenu)
 			.Session(Session)
 			.OnStartRequested(FSimpleDelegate::CreateUObject(this, &ASimCopterMainMenuGameMode::StartPendingSession))
 			.OnQuitRequested(FSimpleDelegate::CreateUObject(this, &ASimCopterMainMenuGameMode::QuitGame))
@@ -67,6 +68,7 @@ void ASimCopterMainMenuGameMode::OpenMainMenu()
 	{
 		FInputModeUIOnly InputMode;
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetWidgetToFocus(MenuPanel.IsValid() ? MenuPanel->GetInitialFocusWidget() : nullptr);
 		PlayerController->SetInputMode(InputMode);
 		PlayerController->bShowMouseCursor = true;
 	}

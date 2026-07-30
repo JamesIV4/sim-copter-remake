@@ -37,6 +37,7 @@ class SHorizontalBox;
 class SProgressBar;
 class STextBlock;
 class SWidget;
+class SSimCopterControllerOverlay;
 class FReply;
 struct FSlateBrush;
 
@@ -48,6 +49,15 @@ enum class ESimCopterCameraMode : uint8
 	Rescue,
 	// First person from the pilot's seat: no boom, and a crosshair for aiming the tools.
 	Cockpit
+};
+
+enum class ESimCopterControllerMode : uint8
+{
+	None,
+	DispatchWheel,
+	ToolWheel,
+	PassengerSelect,
+	PassengerConfirm
 };
 
 // Persistent developer adjustment layered over one of the three normal camera views.
@@ -297,6 +307,14 @@ public:
 	const TArray<FSimCopterMissionPassengerSlot>& GetMissionPassengerSlots() const { return MissionPassengerSlots; }
 	bool DropPassengerAtSlot(int32 SlotIndex);
 	FVector GetPassengerDropWorldLocation(int32 SlotIndex = INDEX_NONE) const;
+
+	// Read-only controller presentation state consumed by the radial/passenger Slate layer.
+	ESimCopterControllerMode GetControllerMode() const { return ControllerMode; }
+	int32 GetControllerRadialIndex() const { return ControllerRadialIndex; }
+	const TArray<ESimCopterHelicopterTool>& GetControllerToolWheelTools() const { return ControllerToolWheelTools; }
+	int32 GetControllerPassengerSlot() const { return ControllerPassengerSlot; }
+	int32 GetControllerPassengerConfirmChoice() const { return ControllerPassengerConfirmChoice; }
+	bool IsPassengerSlotControllerSelected(int32 SlotIndex) const;
 
 	const FVector& GetVelocityCmPerSec() const { return VelocityCmPerSec; }
 	float GetMaxForwardSpeedCmPerSec() const { return MaxForwardSpeedCmPerSec; }
@@ -889,6 +907,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraPanMaxOffsetCm = 900.0f;
 
+	// R3 + right-stick Y reaches either end of the current view's zoom range in roughly this
+	// many seconds at full deflection.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Controller", meta = (ClampMin = "0.05"))
+	float ControllerCameraZoomAlphaPerSecond = 0.65f;
+
+	// R3 + RB/RT moves the helicopter up/down in the frame through the same per-view offset as
+	// middle-mouse drag.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Controller", meta = (ClampMin = "1.0"))
+	float ControllerCameraPanCmPerSecond = 520.0f;
+
 	// Boarding and exiting transfer control immediately, but blend between the two pawn cameras.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraPossessionBlendSeconds = 0.85f;
@@ -1060,6 +1088,32 @@ private:
 	bool bBucketDumpHeld = false;
 	bool bWaterCannonHeld = false;
 
+	// Raw controller state has its own axes so the left stick can take FUN_00485f50's analog
+	// joystick path while keyboard WASD retains the original ramping-key behavior.
+	float ControllerLeftXInput = 0.0f;
+	float ControllerLeftYInput = 0.0f;
+	float ControllerRightXInput = 0.0f;
+	float ControllerRightYInput = 0.0f;
+	float ControllerRightTriggerInput = 0.0f;
+	bool bControllerCameraAdjustHeld = false;
+	bool bControllerRightShoulderHeld = false;
+	bool bControllerDPadUpHeld = false;
+	bool bControllerDPadDownHeld = false;
+	bool bControllerDPadLeftHeld = false;
+	bool bControllerDPadRightHeld = false;
+	bool bControllerEngineStartHeld = false;
+	bool bControllerEngineShutdownHeld = false;
+
+	ESimCopterControllerMode ControllerMode = ESimCopterControllerMode::None;
+	int32 ControllerRadialIndex = 0;
+	TArray<ESimCopterHelicopterTool> ControllerToolWheelTools;
+	ESimCopterHelicopterTool ControllerToolWheelOriginal = ESimCopterHelicopterTool::WaterBucket;
+	int32 ControllerPassengerSlot = INDEX_NONE;
+	// 0 Drop, 1 Cancel.
+	int32 ControllerPassengerConfirmChoice = 0;
+	int32 ControllerAppliedWinchDirection = 0;
+	bool bControllerAppliedWinchHarness = false;
+
 	// Common primary-use latch (FUN_00485f50 actions 2 / 0x0d / 0x10 are all level
 	// triggered; the edge-triggered tools consume bPrimaryToolUsePressed once).
 	bool bPrimaryToolUseHeld = false;
@@ -1097,6 +1151,8 @@ private:
 	int32 SpotlightAimYaw1616 = 0;
 	float SpotlightAimPitchInput = 0.0f;
 	float SpotlightAimYawInput = 0.0f;
+	float ControllerSpotlightAimPitchInput = 0.0f;
+	float ControllerSpotlightAimYawInput = 0.0f;
 
 	// DAT_00504430: the smoothed march distance the band selection reads.
 	int32 SpotlightDistance1616 = 0;
@@ -1153,6 +1209,8 @@ private:
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
+	TSharedPtr<SWidget> ControllerOverlayWidget;
+	TSharedPtr<SSimCopterControllerOverlay> ControllerOverlayPanel;
 
 	// Loads the cockpit flap bitmaps out of the original's BMP folder.
 	UPROPERTY(Transient)
@@ -1166,6 +1224,11 @@ private:
 	void LookPitch(float Value);
 	void MouseLookYaw(float Value);
 	void MouseLookPitch(float Value);
+	void ControllerLeftX(float Value);
+	void ControllerLeftY(float Value);
+	void ControllerRightX(float Value);
+	void ControllerRightY(float Value);
+	void ControllerRightTrigger(float Value);
 	void StartCameraDrag();
 	void StopCameraDrag();
 	void StartCameraPanDrag();
@@ -1179,6 +1242,41 @@ private:
 	void StopEngineShutdownHold();
 	void Interact();
 	void UseMegaphone();
+	void ToggleGamePause();
+
+	// Controller context actions. LB/LT own the right stick while their wheel is open; R3 owns
+	// right-stick Y and RB/RT; passenger mode owns X/A/B and D-pad left/right.
+	void ControllerDispatchWheelPressed();
+	void ControllerDispatchWheelReleased();
+	void ControllerToolWheelPressed();
+	void ControllerToolWheelReleased();
+	void ControllerCameraAdjustPressed();
+	void ControllerCameraAdjustReleased();
+	void ControllerRightShoulderPressed();
+	void ControllerRightShoulderReleased();
+	void ControllerPrimaryPressed();
+	void ControllerPrimaryReleased();
+	void ControllerPassengerPressed();
+	void ControllerCancelPressed();
+	void ControllerEnterExitPressed();
+	void ControllerBackPressed();
+	void ControllerSearchLightPressed();
+	void ControllerDPadUpPressed();
+	void ControllerDPadUpReleased();
+	void ControllerDPadDownPressed();
+	void ControllerDPadDownReleased();
+	void ControllerDPadLeftPressed();
+	void ControllerDPadLeftReleased();
+	void ControllerDPadRightPressed();
+	void ControllerDPadRightReleased();
+	void UpdateControllerInput(float DeltaSeconds);
+	void UpdateControllerRadialSelection();
+	void UpdateControllerToolManipulation();
+	void RebuildControllerToolWheel();
+	void CloseControllerMode();
+	void NormalizeControllerPassengerSelection();
+	void StepControllerPassengerSelection(int32 Delta);
+	void ConfirmControllerPassengerAction();
 
 	// Key handlers for the four dispatch commands (original command ids 0x16..0x19). Each
 	// checks the Shift modifier itself, exactly as FUN_0048a580 tests DAT_0051a078.
@@ -1313,6 +1411,9 @@ private:
 	void RemoveToolFlapsWidget();
 	void EnsureCrosshairWidget();
 	void RemoveCrosshairWidget();
+	void EnsureControllerOverlayWidget();
+	void RemoveControllerOverlayWidget();
+	void RefreshControllerOverlayRadials();
 	void UpdateCrosshairVisibility();
 	void UpdateCrosshairWorldLocation();
 	void EnsureHelicopterDebugPanel();

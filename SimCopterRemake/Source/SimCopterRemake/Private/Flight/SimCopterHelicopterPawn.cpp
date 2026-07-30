@@ -23,6 +23,7 @@
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Formats/SimCopterTweakReader.h"
+#include "Flight/SimCopterControllerInput.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterPreparedHelicopterModel.h"
 #include "Flight/SimCopterWaterGameplay.h"
@@ -50,6 +51,7 @@
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "UI/SimCopterHangarArt.h"
+#include "UI/SSimCopterControllerOverlay.h"
 #include "UI/SSimCopterDashboard.h"
 #include "UI/SSimCopterToolFlaps.h"
 #include "UObject/ConstructorHelpers.h"
@@ -661,6 +663,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		EnsureWaterControlsWidget();
 		EnsureToolFlapsWidget();
 		EnsureCrosshairWidget();
+		EnsureControllerOverlayWidget();
 		EnsureHelicopterDebugPanel();
 	}
 
@@ -681,6 +684,7 @@ void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
 	RemoveCrosshairWidget();
+	RemoveControllerOverlayWidget();
 	RemoveHelicopterDebugPanel();
 	Super::EndPlay(EndPlayReason);
 }
@@ -689,6 +693,7 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	UpdateControllerInput(DeltaSeconds);
 	UpdateToolDispatch(DeltaSeconds);
 
 	float RemainingSeconds = FMath::Clamp(DeltaSeconds, 0.0f, MaxTickSeconds);
@@ -721,6 +726,11 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookPitch"), this, &ASimCopterHelicopterPawn::MouseLookPitch);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterCameraZoom"), this, &ASimCopterHelicopterPawn::ZoomCamera);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterRopeAdjust"), this, &ASimCopterHelicopterPawn::AdjustRope);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftX"), this, &ASimCopterHelicopterPawn::ControllerLeftX);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftY"), this, &ASimCopterHelicopterPawn::ControllerLeftY);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightX"), this, &ASimCopterHelicopterPawn::ControllerRightX);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightY"), this, &ASimCopterHelicopterPawn::ControllerRightY);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightTrigger"), this, &ASimCopterHelicopterPawn::ControllerRightTrigger);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterToggleRope"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleRope);
 	// Left click is the common primary action for every selected tool; the legacy action
@@ -743,6 +753,41 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("SimCopterCycleCamera"), IE_Pressed, this, &ASimCopterHelicopterPawn::CycleCameraMode);
 	PlayerInputComponent->BindAction(TEXT("SimCopterSearchLight"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleSearchLight);
 	PlayerInputComponent->BindAction(TEXT("SimCopterResetAircraft"), IE_Pressed, this, &ASimCopterHelicopterPawn::ResetAircraft);
+
+	// Controller contexts are direct key bindings rather than static action mappings: LB/LT/R3
+	// deliberately change what A/X/B, the right stick, RB/RT, and the D-pad mean.
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftShoulder, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerDispatchWheelPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftShoulder, IE_Released, this, &ASimCopterHelicopterPawn::ControllerDispatchWheelReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftTrigger, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerToolWheelPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftTrigger, IE_Released, this, &ASimCopterHelicopterPawn::ControllerToolWheelReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightThumbstick, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerCameraAdjustPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightThumbstick, IE_Released, this, &ASimCopterHelicopterPawn::ControllerCameraAdjustReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightShoulder, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerRightShoulderPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightShoulder, IE_Released, this, &ASimCopterHelicopterPawn::ControllerRightShoulderReleased);
+
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Bottom, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerPrimaryPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Bottom, IE_Released, this, &ASimCopterHelicopterPawn::ControllerPrimaryReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Left, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerPassengerPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Right, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerCancelPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerEnterExitPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_Special_Left, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerBackPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftThumbstick, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerSearchLightPressed);
+
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Up, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerDPadUpPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Up, IE_Released, this, &ASimCopterHelicopterPawn::ControllerDPadUpReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Down, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerDPadDownPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Down, IE_Released, this, &ASimCopterHelicopterPawn::ControllerDPadDownReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Left, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerDPadLeftPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Left, IE_Released, this, &ASimCopterHelicopterPawn::ControllerDPadLeftReleased);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Right, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerDPadRightPressed);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Right, IE_Released, this, &ASimCopterHelicopterPawn::ControllerDPadRightReleased);
+
+	FInputKeyBinding& PauseBinding = PlayerInputComponent->BindKey(
+		EKeys::Gamepad_Special_Right,
+		IE_Pressed,
+		this,
+		&ASimCopterHelicopterPawn::ToggleGamePause);
+	PauseBinding.bExecuteWhenPaused = true;
 
 	// Megaphone: talk to the cars/people below (used to clear traffic jams). Bound directly to M so
 	// no input-mapping config edit is required; the on-screen prompt shows the same key.
@@ -1439,6 +1484,14 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	bEngineRunning = false;
 	bEngineStartHeld = false;
 	bEngineShutdownHeld = false;
+	bControllerEngineStartHeld = false;
+	bControllerEngineShutdownHeld = false;
+	bControllerRightShoulderHeld = false;
+	bControllerCameraAdjustHeld = false;
+	bControllerDPadUpHeld = false;
+	bControllerDPadDownHeld = false;
+	bControllerDPadLeftHeld = false;
+	bControllerDPadRightHeld = false;
 	EngineStartHoldElapsed = 0.0f;
 	EngineShutdownHoldElapsed = 0.0f;
 	EngineStartHoldAlpha = 0.0f;
@@ -1458,6 +1511,13 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	bWaterCannonHeld = false;
 	bPrimaryToolUseHeld = false;
 	bPrimaryToolUsePressed = false;
+	ControllerMode = ESimCopterControllerMode::None;
+	ControllerPassengerSlot = INDEX_NONE;
+	SetWinchHeldInput(/*bHarness=*/false, /*Direction=*/0);
+	ControllerAppliedWinchDirection = 0;
+	bControllerAppliedWinchHarness = false;
+	ControllerSpotlightAimPitchInput = 0.0f;
+	ControllerSpotlightAimYawInput = 0.0f;
 	ToolCooldownSeconds = 0.0f;
 	bIsLanded = false;
 	SetActorRotation(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
@@ -1571,6 +1631,7 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	EnsureWaterControlsWidget();
 	EnsureToolFlapsWidget();
 	EnsureCrosshairWidget();
+	EnsureControllerOverlayWidget();
 	EnsureHelicopterDebugPanel();
 }
 
@@ -1987,6 +2048,45 @@ void ASimCopterHelicopterPawn::RemoveCrosshairWidget()
 	CrosshairWidget.Reset();
 }
 
+void ASimCopterHelicopterPawn::EnsureControllerOverlayWidget()
+{
+	if (ControllerOverlayWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	ControllerOverlayPanel =
+		SNew(SSimCopterControllerOverlay)
+			.Pawn(this);
+	ControllerOverlayWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			ControllerOverlayPanel.ToSharedRef()
+		];
+	GEngine->GameViewport->AddViewportWidgetContent(ControllerOverlayWidget.ToSharedRef(), 60);
+}
+
+void ASimCopterHelicopterPawn::RemoveControllerOverlayWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && ControllerOverlayWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(ControllerOverlayWidget.ToSharedRef());
+	}
+	ControllerOverlayPanel.Reset();
+	ControllerOverlayWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::RefreshControllerOverlayRadials()
+{
+	if (ControllerOverlayPanel.IsValid())
+	{
+		ControllerOverlayPanel->RefreshRadials();
+	}
+}
+
 void ASimCopterHelicopterPawn::UpdateCrosshairVisibility()
 {
 	if (CrosshairComponent != nullptr)
@@ -2251,10 +2351,20 @@ void ASimCopterHelicopterPawn::RemoveHelicopterDebugPanel()
 
 void ASimCopterHelicopterPawn::RefreshDashboardSeats()
 {
+	NormalizeControllerPassengerSelection();
 	if (DashboardPanel.IsValid())
 	{
 		DashboardPanel->RefreshSeats();
 	}
+}
+
+bool ASimCopterHelicopterPawn::IsPassengerSlotControllerSelected(const int32 SlotIndex) const
+{
+	return
+		(ControllerMode == ESimCopterControllerMode::PassengerSelect ||
+		 ControllerMode == ESimCopterControllerMode::PassengerConfirm) &&
+		ControllerPassengerSlot == SlotIndex &&
+		MissionPassengerSlots.IsValidIndex(SlotIndex);
 }
 
 FReply ASimCopterHelicopterPawn::HandlePassengerSlotClicked(int32 SlotIndex)
@@ -2280,6 +2390,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
 	RemoveCrosshairWidget();
+	RemoveControllerOverlayWidget();
 	RemoveHelicopterDebugPanel();
 
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
@@ -2354,6 +2465,518 @@ void ASimCopterHelicopterPawn::MouseLookYaw(float Value)
 void ASimCopterHelicopterPawn::MouseLookPitch(float Value)
 {
 	MouseLookPitchInput = Value;
+}
+
+void ASimCopterHelicopterPawn::ControllerLeftX(float Value)
+{
+	ControllerLeftXInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::ControllerLeftY(float Value)
+{
+	ControllerLeftYInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::ControllerRightX(float Value)
+{
+	ControllerRightXInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::ControllerRightY(float Value)
+{
+	ControllerRightYInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::ControllerRightTrigger(float Value)
+{
+	ControllerRightTriggerInput = FMath::Clamp(Value, 0.0f, 1.0f);
+}
+
+void ASimCopterHelicopterPawn::ControllerDispatchWheelPressed()
+{
+	CloseControllerMode();
+	ControllerMode = ESimCopterControllerMode::DispatchWheel;
+	ControllerRadialIndex = FMath::Clamp(
+		SelectedDispatchService,
+		0,
+		static_cast<int32>(SimCopterDispatch::EService::Count) - 1);
+	RefreshControllerOverlayRadials();
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ControllerDispatchWheelReleased()
+{
+	if (ControllerMode == ESimCopterControllerMode::DispatchWheel)
+	{
+		ControllerMode = ESimCopterControllerMode::None;
+		RefreshDashboardSeats();
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerToolWheelPressed()
+{
+	CloseControllerMode();
+	RebuildControllerToolWheel();
+	ControllerMode = ESimCopterControllerMode::ToolWheel;
+	RefreshControllerOverlayRadials();
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ControllerToolWheelReleased()
+{
+	if (ControllerMode != ESimCopterControllerMode::ToolWheel)
+	{
+		return;
+	}
+
+	if (ControllerToolWheelTools.IsValidIndex(ControllerRadialIndex))
+	{
+		SetSelectedTool(ControllerToolWheelTools[ControllerRadialIndex]);
+	}
+	ControllerMode = ESimCopterControllerMode::None;
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ControllerCameraAdjustPressed()
+{
+	bControllerCameraAdjustHeld = true;
+}
+
+void ASimCopterHelicopterPawn::ControllerCameraAdjustReleased()
+{
+	bControllerCameraAdjustHeld = false;
+}
+
+void ASimCopterHelicopterPawn::ControllerRightShoulderPressed()
+{
+	bControllerRightShoulderHeld = true;
+}
+
+void ASimCopterHelicopterPawn::ControllerRightShoulderReleased()
+{
+	bControllerRightShoulderHeld = false;
+}
+
+void ASimCopterHelicopterPawn::ControllerPrimaryPressed()
+{
+	switch (ControllerMode)
+	{
+	case ESimCopterControllerMode::DispatchWheel:
+		RequestDispatch(ControllerRadialIndex, /*bChaseSpotlight=*/false, /*bClearInstead=*/false);
+		break;
+	case ESimCopterControllerMode::PassengerSelect:
+		if (MissionPassengerSlots.IsValidIndex(ControllerPassengerSlot))
+		{
+			ControllerPassengerConfirmChoice = 0;
+			ControllerMode = ESimCopterControllerMode::PassengerConfirm;
+			RefreshDashboardSeats();
+		}
+		break;
+	case ESimCopterControllerMode::PassengerConfirm:
+		ConfirmControllerPassengerAction();
+		break;
+	case ESimCopterControllerMode::ToolWheel:
+		// Tool selection commits on LT release so A can never leak through as a tool fire.
+		break;
+	default:
+		StartPrimaryToolUse();
+		break;
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerPrimaryReleased()
+{
+	// Safe for discrete tools as well as held ones, and clears a held tool if another controller
+	// context was opened before A came back up.
+	StopPrimaryToolUse();
+}
+
+void ASimCopterHelicopterPawn::ControllerPassengerPressed()
+{
+	if (ControllerMode == ESimCopterControllerMode::DispatchWheel)
+	{
+		RequestDispatch(ControllerRadialIndex, /*bChaseSpotlight=*/true, /*bClearInstead=*/false);
+		return;
+	}
+	if (ControllerMode == ESimCopterControllerMode::ToolWheel)
+	{
+		return;
+	}
+	if (ControllerMode == ESimCopterControllerMode::PassengerSelect ||
+		ControllerMode == ESimCopterControllerMode::PassengerConfirm)
+	{
+		ControllerMode = ESimCopterControllerMode::None;
+		RefreshDashboardSeats();
+		return;
+	}
+
+	NormalizeControllerPassengerSelection();
+	ControllerMode = ESimCopterControllerMode::PassengerSelect;
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ControllerCancelPressed()
+{
+	switch (ControllerMode)
+	{
+	case ESimCopterControllerMode::DispatchWheel:
+		RequestDispatch(ControllerRadialIndex, /*bChaseSpotlight=*/false, /*bClearInstead=*/true);
+		break;
+	case ESimCopterControllerMode::ToolWheel:
+		SetSelectedTool(ControllerToolWheelOriginal);
+		ControllerMode = ESimCopterControllerMode::None;
+		RefreshDashboardSeats();
+		break;
+	case ESimCopterControllerMode::PassengerConfirm:
+		ControllerMode = ESimCopterControllerMode::PassengerSelect;
+		RefreshDashboardSeats();
+		break;
+	case ESimCopterControllerMode::PassengerSelect:
+		ControllerMode = ESimCopterControllerMode::None;
+		RefreshDashboardSeats();
+		break;
+	default:
+		break;
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerEnterExitPressed()
+{
+	if (ControllerMode == ESimCopterControllerMode::None)
+	{
+		Interact();
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerBackPressed()
+{
+	if (ControllerMode == ESimCopterControllerMode::None)
+	{
+		CycleCameraMode();
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerSearchLightPressed()
+{
+	if (ControllerMode == ESimCopterControllerMode::None)
+	{
+		ToggleSearchLight();
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadUpPressed()
+{
+	bControllerDPadUpHeld = true;
+	if (ControllerMode == ESimCopterControllerMode::PassengerConfirm)
+	{
+		ControllerPassengerConfirmChoice = 0;
+	}
+	else if (ControllerMode == ESimCopterControllerMode::None &&
+		!bControllerCameraAdjustHeld &&
+		GetActiveTool() == ESimCopterHelicopterTool::Megaphone)
+	{
+		CycleMegaphoneMessage(-1);
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadUpReleased()
+{
+	bControllerDPadUpHeld = false;
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadDownPressed()
+{
+	bControllerDPadDownHeld = true;
+	if (ControllerMode == ESimCopterControllerMode::PassengerConfirm)
+	{
+		ControllerPassengerConfirmChoice = 1;
+	}
+	else if (ControllerMode == ESimCopterControllerMode::None &&
+		!bControllerCameraAdjustHeld &&
+		GetActiveTool() == ESimCopterHelicopterTool::Megaphone)
+	{
+		CycleMegaphoneMessage(1);
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadDownReleased()
+{
+	bControllerDPadDownHeld = false;
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadLeftPressed()
+{
+	bControllerDPadLeftHeld = true;
+	if (ControllerMode == ESimCopterControllerMode::PassengerSelect)
+	{
+		StepControllerPassengerSelection(-1);
+	}
+	else if (ControllerMode == ESimCopterControllerMode::PassengerConfirm)
+	{
+		ControllerPassengerConfirmChoice =
+			(ControllerPassengerConfirmChoice + 1) % 2;
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadLeftReleased()
+{
+	bControllerDPadLeftHeld = false;
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadRightPressed()
+{
+	bControllerDPadRightHeld = true;
+	if (ControllerMode == ESimCopterControllerMode::PassengerSelect)
+	{
+		StepControllerPassengerSelection(1);
+	}
+	else if (ControllerMode == ESimCopterControllerMode::PassengerConfirm)
+	{
+		ControllerPassengerConfirmChoice =
+			(ControllerPassengerConfirmChoice + 1) % 2;
+	}
+}
+
+void ASimCopterHelicopterPawn::ControllerDPadRightReleased()
+{
+	bControllerDPadRightHeld = false;
+}
+
+void ASimCopterHelicopterPawn::UpdateControllerInput(const float DeltaSeconds)
+{
+	UpdateControllerRadialSelection();
+
+	const bool bRadialOwnsRightStick =
+		ControllerMode == ESimCopterControllerMode::DispatchWheel ||
+		ControllerMode == ESimCopterControllerMode::ToolWheel;
+	const bool bCameraAdjust = bControllerCameraAdjustHeld && !bRadialOwnsRightStick;
+	const SimCopterControllerInput::FFlightRouting Routing =
+		SimCopterControllerInput::ResolveFlightRouting(
+			ControllerLeftXInput,
+			ControllerLeftYInput,
+			ControllerRightYInput,
+			bCameraAdjust,
+			bControllerRightShoulderHeld,
+			ControllerRightTriggerInput);
+
+	bControllerEngineStartHeld = Routing.CollectiveCommand > 0;
+	bControllerEngineShutdownHeld = Routing.CollectiveCommand < 0;
+
+	if (bCameraAdjust)
+	{
+		if (!FMath::IsNearlyZero(Routing.CameraZoomCommand))
+		{
+			CameraZoomAlpha = FMath::Clamp(
+				CameraZoomAlpha -
+					Routing.CameraZoomCommand * ControllerCameraZoomAlphaPerSecond * DeltaSeconds,
+				0.0f,
+				1.0f);
+		}
+
+		if (!CameraModeIsFirstPerson(CameraMode) && Routing.CameraVerticalCommand != 0)
+		{
+			float& PanOffset = CameraViewPanOffsetsCm[GetCameraModeIndex(CameraMode)];
+			PanOffset = FMath::Clamp(
+				PanOffset -
+					static_cast<float>(Routing.CameraVerticalCommand) *
+						ControllerCameraPanCmPerSecond *
+						DeltaSeconds,
+				-CameraPanMaxOffsetCm,
+				CameraPanMaxOffsetCm);
+		}
+	}
+
+	UpdateControllerToolManipulation();
+}
+
+void ASimCopterHelicopterPawn::UpdateControllerRadialSelection()
+{
+	int32 SlotCount = 0;
+	if (ControllerMode == ESimCopterControllerMode::DispatchWheel)
+	{
+		SlotCount = static_cast<int32>(SimCopterDispatch::EService::Count);
+	}
+	else if (ControllerMode == ESimCopterControllerMode::ToolWheel)
+	{
+		SlotCount = ControllerToolWheelTools.Num();
+	}
+	else
+	{
+		return;
+	}
+
+	const int32 NewIndex = SimCopterControllerInput::ResolveRadialIndex(
+		FVector2D(ControllerRightXInput, ControllerRightYInput),
+		SlotCount,
+		ControllerRadialIndex);
+	if (NewIndex == INDEX_NONE || NewIndex == ControllerRadialIndex)
+	{
+		return;
+	}
+
+	ControllerRadialIndex = NewIndex;
+	if (ControllerMode == ESimCopterControllerMode::DispatchWheel)
+	{
+		SelectedDispatchService = ControllerRadialIndex;
+	}
+}
+
+void ASimCopterHelicopterPawn::UpdateControllerToolManipulation()
+{
+	int32 WinchDirection = 0;
+	bool bHarness = false;
+	float SpotlightPitch = 0.0f;
+	float SpotlightYaw = 0.0f;
+
+	if (ControllerMode == ESimCopterControllerMode::None)
+	{
+		const int32 VerticalDPad =
+			(bControllerDPadUpHeld ? 1 : 0) -
+			(bControllerDPadDownHeld ? 1 : 0);
+		const int32 HorizontalDPad =
+			(bControllerDPadRightHeld ? 1 : 0) -
+			(bControllerDPadLeftHeld ? 1 : 0);
+
+		if (bControllerCameraAdjustHeld)
+		{
+			// R3+D-pad retains full two-axis spotlight aim even when the selected tool normally
+			// consumes D-pad up/down for a winch or megaphone sub-selection.
+			SpotlightPitch = static_cast<float>(VerticalDPad);
+			SpotlightYaw = static_cast<float>(HorizontalDPad);
+		}
+		else
+		{
+			const ESimCopterHelicopterTool Tool = GetActiveTool();
+			if (Tool == ESimCopterHelicopterTool::WaterBucket ||
+				Tool == ESimCopterHelicopterTool::RescueHarness)
+			{
+				WinchDirection = VerticalDPad;
+				bHarness = Tool == ESimCopterHelicopterTool::RescueHarness;
+			}
+			else if (Tool != ESimCopterHelicopterTool::Megaphone)
+			{
+				SpotlightPitch = static_cast<float>(VerticalDPad);
+			}
+			SpotlightYaw = static_cast<float>(HorizontalDPad);
+		}
+	}
+
+	if (WinchDirection != ControllerAppliedWinchDirection ||
+		bHarness != bControllerAppliedWinchHarness)
+	{
+		SetWinchHeldInput(bHarness, WinchDirection);
+		ControllerAppliedWinchDirection = WinchDirection;
+		bControllerAppliedWinchHarness = bHarness;
+	}
+	ControllerSpotlightAimPitchInput = SpotlightPitch;
+	ControllerSpotlightAimYawInput = SpotlightYaw;
+}
+
+void ASimCopterHelicopterPawn::RebuildControllerToolWheel()
+{
+	ControllerToolWheelTools.Reset();
+	ControllerToolWheelOriginal = SelectedTool;
+
+	for (int32 Index = 0; Index < static_cast<int32>(ESimCopterHelicopterTool::Count); ++Index)
+	{
+		const ESimCopterHelicopterTool Tool = static_cast<ESimCopterHelicopterTool>(Index);
+		if (IsToolSelectable(Tool) && IsToolAvailable(Tool))
+		{
+			ControllerToolWheelTools.Add(Tool);
+		}
+	}
+
+	ControllerRadialIndex = ControllerToolWheelTools.IndexOfByKey(GetActiveTool());
+	if (ControllerRadialIndex == INDEX_NONE)
+	{
+		ControllerRadialIndex = 0;
+	}
+}
+
+void ASimCopterHelicopterPawn::CloseControllerMode()
+{
+	if (ControllerMode == ESimCopterControllerMode::ToolWheel)
+	{
+		SetSelectedTool(ControllerToolWheelOriginal);
+	}
+	ControllerMode = ESimCopterControllerMode::None;
+	StopPrimaryToolUse();
+}
+
+void ASimCopterHelicopterPawn::NormalizeControllerPassengerSelection()
+{
+	if (MissionPassengerSlots.Num() == 0)
+	{
+		ControllerPassengerSlot = INDEX_NONE;
+		return;
+	}
+	ControllerPassengerSlot = FMath::Clamp(ControllerPassengerSlot, 0, MissionPassengerSlots.Num() - 1);
+}
+
+void ASimCopterHelicopterPawn::StepControllerPassengerSelection(const int32 Delta)
+{
+	const int32 Count = MissionPassengerSlots.Num();
+	if (Count <= 0 || Delta == 0)
+	{
+		ControllerPassengerSlot = INDEX_NONE;
+		return;
+	}
+	NormalizeControllerPassengerSelection();
+	ControllerPassengerSlot =
+		((ControllerPassengerSlot + Delta) % Count + Count) % Count;
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ConfirmControllerPassengerAction()
+{
+	if (ControllerPassengerConfirmChoice != 0)
+	{
+		ControllerMode = ESimCopterControllerMode::PassengerSelect;
+		return;
+	}
+
+	if (MissionPassengerSlots.IsValidIndex(ControllerPassengerSlot))
+	{
+		DropPassengerAtSlot(ControllerPassengerSlot);
+	}
+	NormalizeControllerPassengerSelection();
+	ControllerMode = ESimCopterControllerMode::PassengerSelect;
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ToggleGamePause()
+{
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	UWorld* World = GetWorld();
+	if (PlayerController == nullptr || World == nullptr)
+	{
+		return;
+	}
+
+	const bool bShouldPause = !World->IsPaused();
+	if (bShouldPause)
+	{
+		CloseControllerMode();
+		bControllerEngineStartHeld = false;
+		bControllerEngineShutdownHeld = false;
+		bControllerRightShoulderHeld = false;
+		bControllerCameraAdjustHeld = false;
+		bControllerDPadUpHeld = false;
+		bControllerDPadDownHeld = false;
+		bControllerDPadLeftHeld = false;
+		bControllerDPadRightHeld = false;
+		UpdateControllerToolManipulation();
+	}
+	else
+	{
+		// Press/release bindings other than Start do not execute while paused. Resample the two
+		// held modifiers that affect flight immediately so a release during pause cannot stick.
+		bControllerRightShoulderHeld =
+			PlayerController->IsInputKeyDown(EKeys::Gamepad_RightShoulder);
+		bControllerCameraAdjustHeld =
+			PlayerController->IsInputKeyDown(EKeys::Gamepad_RightThumbstick);
+	}
+	PlayerController->SetPause(bShouldPause);
 }
 
 void ASimCopterHelicopterPawn::StartCameraDrag()
@@ -3616,11 +4239,19 @@ FVector ASimCopterHelicopterPawn::GetSpotlightAimDirection() const
 void ASimCopterHelicopterPawn::UpdateSpotlightTarget(float DeltaSeconds)
 {
 	// Aim accumulation first, so the march uses this frame's direction.
-	if (!FMath::IsNearlyZero(SpotlightAimPitchInput) || !FMath::IsNearlyZero(SpotlightAimYawInput))
+	const float CombinedPitchInput = FMath::Clamp(
+		SpotlightAimPitchInput + ControllerSpotlightAimPitchInput,
+		-1.0f,
+		1.0f);
+	const float CombinedYawInput = FMath::Clamp(
+		SpotlightAimYawInput + ControllerSpotlightAimYawInput,
+		-1.0f,
+		1.0f);
+	if (!FMath::IsNearlyZero(CombinedPitchInput) || !FMath::IsNearlyZero(CombinedYawInput))
 	{
 		AddSpotlightAim(
-			FMath::RoundToInt(SpotlightAimPitchInput * SimCopterSpotlight::AimStep1616),
-			FMath::RoundToInt(SpotlightAimYawInput * SimCopterSpotlight::AimStep1616));
+			FMath::RoundToInt(CombinedPitchInput * SimCopterSpotlight::AimStep1616),
+			FMath::RoundToInt(CombinedYawInput * SimCopterSpotlight::AimStep1616));
 	}
 
 	if (bSpotlightTargetFrozen)
@@ -3753,7 +4384,10 @@ void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
 
 void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 {
-	if (bEngineStartHeld && !bEngineRunning && CurrentFuelGallons > 0.01f && CurrentDamage < static_cast<float>(HelicopterTuning.MaxDamage))
+	const bool bAnyEngineStartHeld = bEngineStartHeld || bControllerEngineStartHeld;
+	const bool bAnyEngineShutdownHeld = bEngineShutdownHeld || bControllerEngineShutdownHeld;
+
+	if (bAnyEngineStartHeld && !bEngineRunning && CurrentFuelGallons > 0.01f && CurrentDamage < static_cast<float>(HelicopterTuning.MaxDamage))
 	{
 		EngineStartHoldElapsed += DeltaSeconds;
 		EngineStartHoldAlpha = EngineStartHoldSeconds > 0.0f ? FMath::Clamp(EngineStartHoldElapsed / EngineStartHoldSeconds, 0.0f, 1.0f) : 1.0f;
@@ -3764,13 +4398,13 @@ void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 			EngineStartHoldAlpha = 0.0f;
 		}
 	}
-	else if (!bEngineStartHeld)
+	else if (!bAnyEngineStartHeld)
 	{
 		EngineStartHoldElapsed = 0.0f;
 		EngineStartHoldAlpha = 0.0f;
 	}
 
-	if (bEngineShutdownHeld && bEngineRunning && bIsLanded)
+	if (bAnyEngineShutdownHeld && bEngineRunning && bIsLanded)
 	{
 		EngineShutdownHoldElapsed += DeltaSeconds;
 		EngineShutdownHoldAlpha = EngineShutdownHoldSeconds > 0.0f ? FMath::Clamp(EngineShutdownHoldElapsed / EngineShutdownHoldSeconds, 0.0f, 1.0f) : 1.0f;
@@ -3781,7 +4415,7 @@ void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 			EngineShutdownHoldAlpha = 0.0f;
 		}
 	}
-	else if (!bEngineShutdownHeld || !bIsLanded)
+	else if (!bAnyEngineShutdownHeld || !bIsLanded)
 	{
 		EngineShutdownHoldElapsed = 0.0f;
 		EngineShutdownHoldAlpha = 0.0f;
@@ -3930,6 +4564,20 @@ FSimCopterFlightInputs ASimCopterHelicopterPawn::BuildFlightInputs() const
 	Inputs.bTurnLeftKey = RollInput < -KeyThreshold;
 	Inputs.bSlideRightKey = YawInput > KeyThreshold;
 	Inputs.bSlideLeftKey = YawInput < -KeyThreshold;
+	const bool bRadialOwnsRightStick =
+		ControllerMode == ESimCopterControllerMode::DispatchWheel ||
+		ControllerMode == ESimCopterControllerMode::ToolWheel;
+	const SimCopterControllerInput::FFlightRouting ControllerRouting =
+		SimCopterControllerInput::ResolveFlightRouting(
+			ControllerLeftXInput,
+			ControllerLeftYInput,
+			ControllerRightYInput,
+			bControllerCameraAdjustHeld && !bRadialOwnsRightStick,
+			bControllerRightShoulderHeld,
+			ControllerRightTriggerInput);
+	Inputs.PitchAxis = ControllerRouting.PitchAxisPercent;
+	Inputs.TurnAxis = ControllerRouting.TurnAxisPercent;
+	Inputs.SlideAxis = ControllerRouting.SlideAxisPercent;
 	if (CollectiveInput > KeyThreshold)
 	{
 		Inputs.ClimbCommand = 1;
@@ -3937,6 +4585,10 @@ FSimCopterFlightInputs ASimCopterHelicopterPawn::BuildFlightInputs() const
 	else if (CollectiveInput < -KeyThreshold)
 	{
 		Inputs.ClimbCommand = -1;
+	}
+	else
+	{
+		Inputs.ClimbCommand = ControllerRouting.CollectiveCommand;
 	}
 	return Inputs;
 }
@@ -4003,7 +4655,7 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 			Environment.bHostileSurface = true;
 			Environment.bTerrainFlat = false;
 		}
-		else if (bEngineShutdownHeld)
+		else if (bEngineShutdownHeld || bControllerEngineShutdownHeld)
 		{
 			Environment.bTerrainFlat = true;
 		}
@@ -4982,8 +5634,19 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	// Gamepad look drives the camera continuously; mouse look only contributes while a mouse
 	// button is held (a click-drag). Dragging, then the CameraRecenterDelaySeconds window
 	// after release, holds the offset; gamepad look recenters immediately on release.
-	float YawLookInput = bFirstPersonView ? 0.0f : CameraYawInput;
-	float PitchLookInput = CameraPitchInput;
+	const bool bControllerRightStickLooks =
+		!bControllerCameraAdjustHeld &&
+		ControllerMode != ESimCopterControllerMode::DispatchWheel &&
+		ControllerMode != ESimCopterControllerMode::ToolWheel;
+	const float ControllerYawLookInput =
+		bControllerRightStickLooks ? ControllerRightXInput : 0.0f;
+	// Match right-mouse drag in boom views: stick-up drags the world down. The cockpit's
+	// PitchLookSign below reverses it into ordinary head-look behavior.
+	const float ControllerPitchLookInput =
+		bControllerRightStickLooks ? -ControllerRightYInput : 0.0f;
+	float YawLookInput =
+		bFirstPersonView ? 0.0f : CameraYawInput + ControllerYawLookInput;
+	float PitchLookInput = CameraPitchInput + ControllerPitchLookInput;
 	if (bCameraDragActive)
 	{
 		if (!bFirstPersonView)
@@ -5033,7 +5696,9 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		18.0f);
 
 	const bool bHoldOffset = bCameraDragActive || CameraRecenterDelayRemaining > 0.0f;
-	const bool bRecenterYaw = !bHoldOffset && FMath::IsNearlyZero(CameraYawInput, 0.01f);
+	const bool bRecenterYaw =
+		!bHoldOffset &&
+		FMath::IsNearlyZero(CameraYawInput + ControllerYawLookInput, 0.01f);
 
 	const float HorizontalSpeed = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Size();
 	const float SpeedAlpha = FMath::Clamp(HorizontalSpeed / FMath::Max(1.0f, MaxForwardSpeedCmPerSec), 0.0f, 1.0f);

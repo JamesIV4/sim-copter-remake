@@ -12,6 +12,7 @@
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/SBoxPanel.h"
@@ -594,11 +595,31 @@ void SSimCopterDashboard::RebuildSeats()
 		// placeholder squashed it into a 24x30 box.
 		const int32 Column2 = SeatIndex % SeatsPerRow;
 		const int32 SeatRow = SeatIndex / SeatsPerRow;
+		const float PortraitX = SeatFirstPortraitX + Column2 * SeatPortraitStride;
+		const float PortraitY = SeatWellTop + SeatRow * SeatRowStride;
 		TSharedRef<SWidget> Portrait = MakeImage(TEXT("PEOPLE1.BMP"), Source);
 
 		// An occupied seat can be dragged out to put that passenger down; an empty one is scenery.
 		if (Slots.IsValidIndex(SeatIndex))
 		{
+			const TWeakObjectPtr<ASimCopterHelicopterPawn> WeakPawn = Pawn;
+			AddAtPage(
+				*SeatCanvas,
+				PortraitX - 2.0f,
+				PortraitY - 2.0f,
+				static_cast<float>(Width) + 4.0f,
+				static_cast<float>(Height) + 4.0f,
+				SNew(SBorder)
+					.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+					.BorderBackgroundColor_Lambda([WeakPawn, SeatIndex]()
+					{
+						const ASimCopterHelicopterPawn* Helicopter = WeakPawn.Get();
+						return Helicopter != nullptr &&
+							Helicopter->IsPassengerSlotControllerSelected(SeatIndex)
+								? FLinearColor(1.0f, 0.68f, 0.12f, 1.0f)
+								: FLinearColor::Transparent;
+					}));
+
 			Portrait = SNew(SSimCopterSeatPortrait)
 				.Pawn(Pawn)
 				.SlotIndex(SeatIndex)
@@ -609,8 +630,8 @@ void SSimCopterDashboard::RebuildSeats()
 		}
 
 		AddAtPage(*SeatCanvas,
-			SeatFirstPortraitX + Column2 * SeatPortraitStride,
-			SeatWellTop + SeatRow * SeatRowStride,
+			PortraitX,
+			PortraitY,
 			static_cast<float>(Width),
 			static_cast<float>(Height),
 			Portrait);

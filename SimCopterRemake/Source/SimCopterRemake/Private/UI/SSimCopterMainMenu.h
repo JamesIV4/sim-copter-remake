@@ -36,6 +36,9 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	TSharedPtr<SWidget> GetInitialFocusWidget() const { return InitialFocusWidget; }
+
+	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 private:
 	// Which panel is showing. The original is the same two steps: main menu, then city choice.
@@ -104,4 +107,5 @@ private:
 
 	// The panel body is rebuilt when the step changes, so the whole widget is one vertical box.
 	TSharedPtr<SVerticalBox> Body;
+	TSharedPtr<SWidget> InitialFocusWidget;
 };

@@ -43,6 +43,9 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	TSharedPtr<SWidget> GetInitialFocusWidget() const { return InitialFocusWidget; }
+
+	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 private:
 	enum class EPage : uint8
@@ -78,9 +81,11 @@ private:
 	// Button styles are held by pointer by SButton, so they have to outlive the rebuild that
 	// created them.
 	TArray<TSharedPtr<FButtonStyle>> ButtonStyles;
+	TArray<TSharedPtr<SWidget>> ControllerFocusableWidgets;
 
 	TSharedPtr<SConstraintCanvas> PageCanvas;
 	TSharedPtr<class SOverlay> Backdrop;
+	TSharedPtr<SWidget> InitialFocusWidget;
 
 	void ShowPage(EPage NewPage);
 	void RebuildPage();

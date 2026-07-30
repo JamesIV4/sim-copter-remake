@@ -4,7 +4,9 @@
 
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterCareerSubsystem.h"
+#include "InputCoreTypes.h"
 #include "Math/TransformCalculus2D.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Styling/CoreStyle.h"
@@ -120,9 +122,17 @@ void SSimCopterHangarMenu::RebuildPage()
 		return;
 	}
 
+	int32 PreviousFocusIndex = INDEX_NONE;
+	if (FSlateApplication::IsInitialized())
+	{
+		const TSharedPtr<SWidget> FocusedWidget = FSlateApplication::Get().GetKeyboardFocusedWidget();
+		PreviousFocusIndex = ControllerFocusableWidgets.IndexOfByKey(FocusedWidget);
+	}
+
 	PageCanvas->ClearChildren();
 	Backdrop->ClearChildren();
 	ButtonStyles.Reset();
+	ControllerFocusableWidgets.Reset();
 
 	switch (Page)
 	{
@@ -144,6 +154,22 @@ void SSimCopterHangarMenu::RebuildPage()
 	{
 		AddAt(*PageCanvas, 20.0f, 2.0f, 600.0f, 16.0f,
 			MakePageText(StatusText, 11, FLinearColor(1.0f, 0.92f, 0.55f, 1.0f), ETextJustify::Center, /*bBold=*/true, /*bWrap=*/false));
+	}
+
+	if (ControllerFocusableWidgets.Num() > 0)
+	{
+		const int32 FocusIndex = PreviousFocusIndex == INDEX_NONE
+			? 0
+			: FMath::Clamp(PreviousFocusIndex, 0, ControllerFocusableWidgets.Num() - 1);
+		InitialFocusWidget = ControllerFocusableWidgets[FocusIndex];
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().SetAllUserFocus(InitialFocusWidget, EFocusCause::Navigation);
+		}
+	}
+	else
+	{
+		InitialFocusWidget.Reset();
 	}
 }
 
@@ -195,8 +221,8 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakeArtButton(
 	const FSlateBrush* Disabled = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 2, FrameCount) : nullptr;
 
 	TSharedRef<SButton> Button = SNew(SButton)
-		// A shell button must never hold keyboard focus; the space bar belongs to the game.
-		.IsFocusable(false)
+		// Focus is required for D-pad navigation and gamepad A activation while the shell owns input.
+		.IsFocusable(true)
 		.IsEnabled(bEnabled)
 		.ContentPadding(FMargin(0.0f))
 		.HAlign(HAlign_Center)
@@ -225,17 +251,23 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakeArtButton(
 		Button->SetButtonStyle(&Style.Get());
 	}
 
+	if (bEnabled)
+	{
+		ControllerFocusableWidgets.Add(Button);
+	}
 	return Button;
 }
 
 TSharedRef<SWidget> SSimCopterHangarMenu::MakeHotspot(FOnClicked OnClicked, const FString& ToolTip)
 {
-	return SNew(SButton)
-		.IsFocusable(false)
+	TSharedRef<SButton> Button = SNew(SButton)
+		.IsFocusable(true)
 		.ButtonColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f))
 		.ContentPadding(FMargin(0.0f))
 		.ToolTipText(FText::FromString(ToolTip))
 		.OnClicked(OnClicked);
+	ControllerFocusableWidgets.Add(Button);
+	return Button;
 }
 
 TSharedRef<SWidget> SSimCopterHangarMenu::MakePageText(
@@ -711,4 +743,16 @@ FReply SSimCopterHangarMenu::HandleSetLogSort(const ELogSort NewSort)
 	LogSort = NewSort;
 	RebuildPage();
 	return FReply::Handled();
+}
+
+FReply SSimCopterHangarMenu::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Right)
+	{
+		return Page == EPage::Hangar
+			? HandleDone()
+			: HandleShowPage(EPage::Hangar);
+	}
+
+	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
 }
