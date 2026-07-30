@@ -1031,24 +1031,26 @@ protected:
 	float CameraGroundProbeDownCm = 6000.0f;
 
 	// The avoidance search uses this much extra radius beyond the actual camera probe. That
-	// starts the angle correction before the camera would touch terrain or a building.
+	// starts the angle correction before the camera would touch terrain or a building. Keep the
+	// margin restrained: a large padded sphere makes the view react to nearby walls that the
+	// camera's real collision shape would comfortably miss.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
-	float CameraObstructionPaddingCm = 90.0f;
+	float CameraObstructionPaddingCm = 40.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0"))
 	float CameraMinObstructedDistanceCm = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0", ClampMax = "85.0"))
-	float CameraAvoidanceMaxAngleDeg = 65.0f;
+	float CameraAvoidanceMaxAngleDeg = 50.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0", ClampMax = "15.0"))
 	float CameraAvoidanceSearchStepDeg = 5.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraAvoidanceLerpSpeed = 7.5f;
+	float CameraAvoidanceLerpSpeed = 2.25f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraAvoidanceReturnLerpSpeed = 3.5f;
+	float CameraAvoidanceReturnLerpSpeed = 1.5f;
 
 	// How far the boom pivot rises once the camera is right down on a surface. Raising the pivot
 	// while the aim direction holds walks the helicopter DOWN the screen, which is the whole
@@ -1074,23 +1076,27 @@ protected:
 	float CameraGroundLiftLerpSpeed = 7.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraObstructionReleaseLerpSpeed = 5.0f;
+	float CameraObstructionReleaseLerpSpeed = 2.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
-	float CameraObstructionPullInLerpSpeed = 8.0f;
+	float CameraObstructionPullInLerpSpeed = 4.0f;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
 
-	// FUN_00449850 runs FUN_00444750 every frame while the player is landed; the panel goes up by
-	// itself the moment the aircraft settles on the airport with work worth doing. Clear this to
-	// keep it manual (SimCheckup).
+	// The original runs FUN_00444750's service-threshold test while landed. The remake opens on
+	// every airport landing instead so the feature is easy to discover and behaves predictably.
+	// Clear this to keep it manual (SimCheckup).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Checkup")
 	bool bAutoOpenCheckupOnLanding = true;
 
-	// One offer per touchdown: without this the panel would reopen the instant it is cancelled,
-	// because nothing about the aircraft's state changed.
-	bool bCheckupOfferedThisLanding = false;
+	// False at startup and while merely entering a parked helicopter. The first controlled
+	// airborne frame arms it; a successful airport-landing open consumes it.
+	bool bCheckupAutoOpenArmed = false;
+
+	// One open per touchdown: without this the panel would reopen the instant it is cancelled,
+	// because the aircraft is still landed at the airport.
+	bool bCheckupOpenedThisLanding = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bRopeDeployed = false;
@@ -1479,12 +1485,10 @@ private:
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
 
-	// FUN_004823a0(heli.x, heli.y, 0xf6, 2): is an airport terminal tile within two tiles of us?
-	// The terminal is the 2x2 middle of the block and the twelve helipads ring it, so a radius of
-	// two covers every pad you can actually put down on.
+	// True on any of the twelve published helipad tiles around the hangar's middle 2x2 plot.
 	bool IsStandingOnAirport() const;
 
-	// FUN_00449850's per-frame offer test, plus the once-per-touchdown latch.
+	// Remake airport-landing policy plus the once-per-touchdown latch.
 	void UpdateCheckupOffer();
 	void UpdateVisuals(float DeltaSeconds);
 	void AdvanceCockpitStabilizedAttitude(float DeltaSeconds);

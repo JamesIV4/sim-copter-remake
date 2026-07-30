@@ -34,10 +34,13 @@ class SSimCopterCheckupSlider : public SLeafWidget
 public:
 	SLATE_BEGIN_ARGS(SSimCopterCheckupSlider)
 		: _ThumbBrush(nullptr)
+		, _ThumbScale(1.0f)
 		, _Locked(false)
 	{}
 		// SLIDERTV.BMP, or null when the original artwork is not installed.
 		SLATE_ARGUMENT(const FSlateBrush*, ThumbBrush)
+		// Display scale only; the menu supplies a separately tuned paint/hit rectangle.
+		SLATE_ARGUMENT(float, ThumbScale)
 		// FUN_00444690 leaves a slider with a zero maximum disabled - a full tank, an undamaged
 		// airframe, or the tear-gas launcher not fitted.
 		SLATE_ARGUMENT(bool, Locked)
@@ -74,6 +77,7 @@ public:
 
 private:
 	const FSlateBrush* ThumbBrush = nullptr;
+	float ThumbScale = 1.0f;
 	bool bLocked = false;
 	float Value = 0.0f;
 	FOnFloatValueChanged OnValueChanged;

@@ -166,6 +166,18 @@ bool FSimCopterCheckupOfferTest::RunTest(const FString& Parameters)
 	State.bTearGasFitted = false;
 	TestFalse(TEXT("No launcher, no tear gas offer"), FSimCopterCheckup::ShouldOffer(State));
 
+	// Deliberate remake policy: the auto-open path ignores the original service thresholds.
+	// Airport location alone is enough, so a pristine landing still teaches the player where
+	// repair and refuelling live.
+	State = MakeState();
+	TestTrue(
+		TEXT("Pristine airport landing opens in the remake"),
+		FSimCopterCheckup::ShouldOpenOnAirportLanding(State));
+	State.bAtAirport = false;
+	TestFalse(
+		TEXT("Off-airport landing does not auto-open"),
+		FSimCopterCheckup::ShouldOpenOnAirportLanding(State));
+
 	return true;
 }
 
@@ -236,6 +248,7 @@ bool FSimCopterCheckupLayoutTest::RunTest(const FString& Parameters)
 	for (int32 Index = 0; Index < SliderCount; ++Index)
 	{
 		TestOnPage(TEXT("Slider track"), SliderTrackRect[Index]);
+		TestOnPage(TEXT("Slider control"), SliderControlRect[Index]);
 		TestOnPage(TEXT("Slider label"), SliderLabelRect[Index]);
 		TestOnPage(TEXT("Slider value"), SliderValueRect[Index]);
 	}
@@ -270,6 +283,18 @@ bool FSimCopterCheckupLayoutTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Damage plate is under its track"), SliderLabelRect[0].Top >= SliderTrackRect[0].Bottom);
 	TestTrue(TEXT("Teargas plate is under its track"), SliderLabelRect[2].Top >= SliderTrackRect[2].Bottom);
 	TestTrue(TEXT("Fuel plate is above its track"), SliderLabelRect[1].Bottom <= SliderTrackRect[1].Top);
+	for (int32 Index = 0; Index < SliderCount; ++Index)
+	{
+		TestTrue(
+			TEXT("Slider control carries the printed groove's horizontal offset"),
+			FMath::IsNearlyEqual(
+				SliderControlRect[Index].Left + SliderControlRect[Index].Width() * 0.5f,
+				SliderTrackRect[Index].Left + SliderTrackRect[Index].Width() * 0.5f +
+					SliderThumbVisualOffsetX));
+		TestTrue(
+			TEXT("Slider label and value have a readable line gap"),
+			SliderValueRect[Index].Top - SliderLabelRect[Index].Top >= 18.0f);
+	}
 
 	// Both buttons sit side by side on one line in the bottom tray.
 	TestTrue(TEXT("Cancel follows OK"), CancelButtonX >= OkButtonX + ButtonWidth);
@@ -286,6 +311,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterCheckupSliderTravelTest::RunTest(const FString& Parameters)
 {
+	using namespace SimCopterCheckupLayout;
+
 	// A 26x202 control rect (FUN_00443c20) carrying SLIDERTV.BMP's 22x18 thumb.
 	const FVector2f Track(26.0f, 202.0f);
 	const FVector2f Thumb(22.0f, 18.0f);
@@ -354,6 +381,34 @@ bool FSimCopterCheckupSliderTravelTest::RunTest(const FString& Parameters)
 		TEXT("Degenerate track reads zero"),
 		SSimCopterCheckupSlider::GetValueAtLocalY(10.0f, 18.0f, 5.0f),
 		0.0f);
+
+	// The menu's 1.5x thumb uses a visually tuned control rect around the same printed track.
+	// The art's midpoint sits slightly right and above the decoded mathematical centreline, and
+	// each travel endpoint is inset by another half-thumb so the track ends at the red midpoint.
+	const FVector2f TunedControl(
+		SliderControlRect[0].Width(),
+		SliderControlRect[0].Height());
+	const FVector2f TunedThumb(
+		SliderThumbSourceWidth * SliderThumbScale,
+		SliderThumbSourceHeight * SliderThumbScale);
+	const float OriginalTopCentre = SliderTrackRect[0].Top + Thumb.Y * 0.5f;
+	const float OriginalBottomCentre = SliderTrackRect[0].Bottom - Thumb.Y * 0.5f;
+	const FVector2f TunedTopLeft =
+		SSimCopterCheckupSlider::GetThumbTopLeft(TunedControl, TunedThumb, 1.0f);
+	const FVector2f TunedBottomLeft =
+		SSimCopterCheckupSlider::GetThumbTopLeft(TunedControl, TunedThumb, 0.0f);
+	TestEqual(
+		TEXT("1.5x thumb midpoint is visually aligned horizontally"),
+		SliderControlRect[0].Left + TunedTopLeft.X + TunedThumb.X * 0.5f,
+		SliderTrackRect[0].Left + SliderTrackRect[0].Width() * 0.5f + SliderThumbVisualOffsetX);
+	TestEqual(
+		TEXT("1.5x thumb top endpoint is inset by half its height"),
+		SliderControlRect[0].Top + TunedTopLeft.Y + TunedThumb.Y * 0.5f,
+		OriginalTopCentre + SliderThumbVisualOffsetY + SliderThumbHalfHeight);
+	TestEqual(
+		TEXT("1.5x thumb bottom endpoint is inset by half its height"),
+		SliderControlRect[0].Top + TunedBottomLeft.Y + TunedThumb.Y * 0.5f,
+		OriginalBottomCentre + SliderThumbVisualOffsetY - SliderThumbHalfHeight);
 
 	return true;
 }

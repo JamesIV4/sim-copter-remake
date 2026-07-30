@@ -135,7 +135,7 @@ void SSimCopterCheckupMenu::Construct(const FArguments& InArgs)
 
 	for (int32 Index = 0; Index < SliderCount; ++Index)
 	{
-		AddAt(SliderTrackRect[Index], BuildSlider(Index));
+		AddAt(SliderControlRect[Index], BuildSlider(Index));
 		AddText(SliderLabelRect[Index], SliderLabel(Index), ETextJustify::Center, BodyFontSize, false, nullptr);
 		AddText(SliderValueRect[Index], FText::GetEmpty(), ETextJustify::Center, BodyFontSize, false,
 			&ValueTexts[Index]);
@@ -191,6 +191,7 @@ TSharedRef<SWidget> SSimCopterCheckupMenu::BuildSlider(int32 Index)
 	// repair / full tank / ten canisters at the top.
 	TSharedRef<SSimCopterCheckupSlider> Slider = SNew(SSimCopterCheckupSlider)
 		.ThumbBrush(Art != nullptr ? Art->GetBitmap(SliderThumbBitmap, /*bColorKeyed*/ false) : nullptr)
+		.ThumbScale(SliderThumbScale)
 		.Locked(SliderMaxima[Index] <= 0)
 		.OnValueChanged_Lambda([this](float) { RefreshReadouts(); });
 

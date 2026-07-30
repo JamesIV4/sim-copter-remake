@@ -3,6 +3,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 
 #include "Camera/CameraComponent.h"
+#include "City/SimCopterAirport.h"
 #include "City/SimCity2000CityActor.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -5085,21 +5086,15 @@ bool ASimCopterHelicopterPawn::IsStandingOnAirport() const
 		return false;
 	}
 
-	// The original's radius-2 window around the helicopter's own tile, looking for XBLD 0xf6.
-	constexpr int32 AirportTerminalXbld = 0xf6;
-	constexpr int32 SearchRadius = 2;
-	for (int32 OffsetY = -SearchRadius; OffsetY <= SearchRadius; ++OffsetY)
-	{
-		for (int32 OffsetX = -SearchRadius; OffsetX <= SearchRadius; ++OffsetX)
-		{
-			if (TrafficSystem->GetXbldTileId(Tile.X + OffsetX, Tile.Y + OffsetY) == AirportTerminalXbld)
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
+	// The original asks whether terminal XBLD 0xf6 is nearby. The remake has stronger ground
+	// truth: the airport builder publishes the exact 4x4 block whose twelve perimeter tiles are
+	// helipads around the middle 2x2 hangar plot. Testing the stamped result makes every one of
+	// those pads eligible regardless of which building cells survived into the cached city grid.
+	const FIntPoint AirportOrigin = TrafficSystem->GetAirportOriginTile();
+	return SimCopterAirport::GetStampedXbldId(
+		AirportOrigin,
+		Tile.X,
+		Tile.Y) == SimCopterAirport::PadXbldId;
 }
 
 FSimCopterCheckupState ASimCopterHelicopterPawn::BuildCheckupState() const
@@ -5190,8 +5185,19 @@ bool ASimCopterHelicopterPawn::OpenCheckupMenu()
 		return false;
 	}
 
-	// The panel is drawn from the original's own page art, so it needs the same loader the
-	// cockpit flaps use; FlapArt is already pointed at the BMP folder by BeginPlay.
+	// The panel is drawn from the original's own page art. Do not construct the plain fallback
+	// during startup before possession has made the cockpit create its shared loader; initialise
+	// it here too, and retry on a later frame if the BMP folder is not ready yet.
+	if (FlapArt == nullptr)
+	{
+		FlapArt = NewObject<USimCopterHangarArt>(this, TEXT("FlapArt"));
+	}
+	FlapArt->SetOriginalGameRoot(ResolveOriginalGameRoot());
+	if (!FlapArt->IsUsable())
+	{
+		return false;
+	}
+
 	CheckupWidget =
 		SNew(SSimCopterCheckupMenu)
 		.State(BuildCheckupState())
@@ -5231,23 +5237,39 @@ void ASimCopterHelicopterPawn::SimCheckup()
 // SCHOOK: CheckupShouldOffer 0x00444750
 void ASimCopterHelicopterPawn::UpdateCheckupOffer()
 {
-	// Taking off re-arms the offer; the original re-tests every frame and has no latch, but it
-	// also has no way for the player to dismiss the panel and stay parked.
+	// An unpossessed helicopter can BeginPlay already parked on an airport pad. It must not put a
+	// menu over the on-foot player or the front end before its artwork and controls are ready.
+	if (!IsPlayerControlled())
+	{
+		return;
+	}
+
+	// Auto-open only after this controlled helicopter has genuinely been airborne. Entering a
+	// parked helicopter is not a landing, and neither is the initial session placement.
 	if (!bIsLanded)
 	{
-		bCheckupOfferedThisLanding = false;
+		bCheckupAutoOpenArmed = true;
+		bCheckupOpenedThisLanding = false;
 		return;
 	}
 
-	if (!bAutoOpenCheckupOnLanding || bCheckupOfferedThisLanding || CheckupWidget.IsValid())
+	if (!bAutoOpenCheckupOnLanding ||
+		!bCheckupAutoOpenArmed ||
+		bCheckupOpenedThisLanding ||
+		CheckupWidget.IsValid())
 	{
 		return;
 	}
 
-	if (FSimCopterCheckup::ShouldOffer(BuildCheckupState()))
+	// Unlike FUN_00444750, the playable remake does not hide the panel behind a service-need
+	// threshold. Any airport touchdown opens it, including a pristine aircraft, so players learn
+	// where repair and refuelling live. Only consume the landing after the viewport accepts the
+	// widget; otherwise a transient startup failure would make this landing silently miss it.
+	if (FSimCopterCheckup::ShouldOpenOnAirportLanding(BuildCheckupState()) &&
+		OpenCheckupMenu())
 	{
-		bCheckupOfferedThisLanding = true;
-		OpenCheckupMenu();
+		bCheckupAutoOpenArmed = false;
+		bCheckupOpenedThisLanding = true;
 	}
 }
 

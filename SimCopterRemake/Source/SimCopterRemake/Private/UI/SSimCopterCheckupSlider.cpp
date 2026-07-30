@@ -15,6 +15,7 @@ const FVector2f FallbackThumbSize(22.0f, 18.0f);
 void SSimCopterCheckupSlider::Construct(const FArguments& InArgs)
 {
 	ThumbBrush = InArgs._ThumbBrush;
+	ThumbScale = FMath::Max(InArgs._ThumbScale, UE_SMALL_NUMBER);
 	bLocked = InArgs._Locked;
 	OnValueChanged = InArgs._OnValueChanged;
 
@@ -25,9 +26,9 @@ FVector2f SSimCopterCheckupSlider::GetThumbSize() const
 {
 	if (ThumbBrush == nullptr || ThumbBrush->ImageSize.IsNearlyZero())
 	{
-		return FallbackThumbSize;
+		return FallbackThumbSize * ThumbScale;
 	}
-	return FVector2f(ThumbBrush->ImageSize);
+	return FVector2f(ThumbBrush->ImageSize) * ThumbScale;
 }
 
 FVector2f SSimCopterCheckupSlider::GetThumbTopLeft(
