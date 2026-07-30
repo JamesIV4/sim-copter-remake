@@ -210,7 +210,15 @@ void FSimCopterFlightModel::StepControls(int32 Dt, const FSimCopterFlightInputs&
 	// Pitch and slide keys both ramp at the SlideRate control (the PitchRate
 	// control only shapes the attitude lag below). Confirmed against the
 	// decompile: FUN_00485f50 reads DAT_00504108 (Ctrl6) for both.
-	const int32 PitchRampRate = Mul(Tuning.SlideRate, LoadFactor);
+	//
+	// The easy model halves this, but only here: FUN_00485f50 computes the rate
+	// twice, applies `iVar2 >> 1` to the copy the pitch keys use, and re-reads
+	// Ctrl6 unhalved for the slide keys below. Halving both flies wrong.
+	int32 PitchRampRate = Mul(Tuning.SlideRate, LoadFactor);
+	if (bEasyFlightModel)
+	{
+		PitchRampRate >>= 1;
+	}
 
 	if (Inputs.bPitchForwardKey)
 	{
@@ -228,8 +236,9 @@ void FSimCopterFlightModel::StepControls(int32 Dt, const FSimCopterFlightInputs&
 	}
 	else
 	{
-		// No input: decay toward level at (1 - 2*dt) per frame.
-		PitchTarget = Mul(PitchTarget, (0x8000 - Dt) * 2);
+		// No input: decay toward level at (1 - 2*dt) per frame. The easy model
+		// uses (1 - dt) instead, so a trimmed nose attitude persists.
+		PitchTarget = Mul(PitchTarget, bEasyFlightModel ? (One - Dt) : ((0x8000 - Dt) * 2));
 	}
 
 	// Coordinated turn: bank and yaw-rate move together.
@@ -390,7 +399,10 @@ void FSimCopterFlightModel::StepAttitude(int32 Dt, const FSimCopterFlightEnviron
 	{
 		Bonus = Mul(PitchClamp >> 3, Div(GroundPitchBand - Proximity, GroundPitchBand));
 	}
-	const int32 PitchLimit = PitchClamp + Bonus; // easy model: (PitchClamp + Bonus) / 2
+	// The easy model halves each term separately - (Bonus >> 1) + (PitchClamp >> 1),
+	// which is how FUN_00486a30 writes it - so the nose can only reach half the
+	// attitude, and with it half the standard model's top speed per degree.
+	const int32 PitchLimit = bEasyFlightModel ? ((Bonus >> 1) + (PitchClamp >> 1)) : (PitchClamp + Bonus);
 	PitchTarget = FMath::Clamp(PitchTarget, -PitchLimit, PitchLimit);
 
 	// First-order lag shared by all four smoothed values.
@@ -437,14 +449,18 @@ void FSimCopterFlightModel::StepVelocity(int32 Dt, const FSimCopterFlightInputs&
 	}
 	else
 	{
-		const int32 Target = PitchSmoothed; // easy model: PitchSmoothed * 2
+		// The easy model doubles the airspeed a degree of pitch is worth, which
+		// cancels its halved pitch clamp at the top end and leaves it faster
+		// everywhere below - and it sheds speed at 1/16 per frame rather than
+		// 1/32, so backing off the nose actually slows it down.
+		const int32 Target = bEasyFlightModel ? PitchSmoothed * 2 : PitchSmoothed;
 		if (ForwardSpeed < Target)
 		{
 			ForwardSpeed += (Target - ForwardSpeed) >> 5;
 		}
 		if (ForwardSpeed > Target)
 		{
-			ForwardSpeed -= (ForwardSpeed - Target) >> 5;
+			ForwardSpeed -= (ForwardSpeed - Target) >> (bEasyFlightModel ? 4 : 5);
 		}
 	}
 

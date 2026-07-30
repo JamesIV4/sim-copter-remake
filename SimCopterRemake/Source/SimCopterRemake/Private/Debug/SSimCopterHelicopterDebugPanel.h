@@ -35,6 +35,8 @@ private:
 	FText GetModelDetailText() const;
 	FText GetModelStatusText() const;
 	FText GetCameraModeText() const;
+	FText GetFlightModelText() const;
+	FText GetFlightModelButtonText() const;
 	FText GetToolLineText() const;
 	FText GetToolAvailabilityText() const;
 	FText GetToolContextText() const;
@@ -51,6 +53,7 @@ private:
 	FReply HandleModelPrev();
 	FReply HandleModelNext();
 	FReply HandleResetCameraOffset();
+	FReply HandleToggleEasyFlightModel();
 	FReply HandleToolPrev();
 	FReply HandleToolNext();
 	FReply HandleUsePressed();

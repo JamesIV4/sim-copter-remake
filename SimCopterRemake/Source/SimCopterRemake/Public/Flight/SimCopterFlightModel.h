@@ -21,9 +21,9 @@
 //
 // Units are the original's: positions/speeds in world units (64 units per city
 // tile, 16.16 fixed point), angles in tenths of degrees (full turn = 3600.0),
-// time in seconds (16.16). The original game options had an "easy" flight model
-// variant (DAT_00503aa0 != 0, cockpit view); this port implements the standard
-// model (mode 0) and notes the divergences in comments.
+// time in seconds (16.16). Both of the original's handling models are here: the
+// standard one and the "easy" variant it selected from the view mode - see
+// FSimCopterFlightModel::bEasyFlightModel.
 
 namespace SimCopterFixed
 {
@@ -187,6 +187,25 @@ enum class ESimCopterFlightState : uint8
 struct SIMCOPTERREMAKE_API FSimCopterFlightModel
 {
 	FSimCopterFlightTuning Tuning;
+
+	// The original's second handling model, selected by the view-mode global
+	// DAT_00503aa0: mode 0 is the external chase view and flies the standard
+	// model, while the interior views (1 and 2, cycled by input action 0x15)
+	// switch every `DAT_00503aa0 != 0` branch below to the easy one. Flying from
+	// inside the cabin you cannot read your own attitude, so the game trades
+	// authority for reach - four divergences, all cited at their use sites:
+	//
+	//   FUN_00485f50  pitch key ramp halved; pitch decays at (1 - dt) not
+	//                 (1 - 2*dt) per frame, so the nose holds its trim longer.
+	//                 The slide ramp re-reads Ctrl6 and is NOT halved.
+	//   FUN_00486a30  the pitch clamp and its ground-proximity bonus are each
+	//                 halved before the clamp.
+	//   FUN_00486e90  the airspeed a given pitch buys is doubled, and speed
+	//                 bleeds off at 1/16 per frame instead of 1/32.
+	//
+	// The remake decouples this from the camera: it is a handling option the
+	// developer panel toggles, so either model can be flown from any view.
+	bool bEasyFlightModel = false;
 
 	ESimCopterFlightState State = ESimCopterFlightState::Parked; // [1]
 

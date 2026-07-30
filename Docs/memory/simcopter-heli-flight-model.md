@@ -68,9 +68,25 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
 - **Deaths**: hp < 0 → state 5 (tumble/fall, driven by a spawned crash effect in the
   original; remake integrates an equivalent spiral) → ground → state 6 → respawn at
   nearest pad (remake: repair-in-place for now).
-- **Easy model** (`DAT_00503aa0 != 0`, cockpit view): half control ramps and pitch
-  clamp, double speed-per-pitch, gentler decay. NOT ported (mode 0 only); the same
-  global is also the view mode (1 hides the fuselage) and 3 = transition.
+- **Easy model** — ported 2026-07-29 as `FSimCopterFlightModel::bEasyFlightModel`
+  (default off), toggled from the helicopter debug panel's FLIGHT row and persisted
+  to `[SimCopter.FlightModel] EasyModel` in GameUserSettings.ini. Tests:
+  `SimCopter.Flight.EasyModel`. `DAT_00503aa0` is **not** a difficulty setting — it is
+  the *view mode*, cycled by input action 0x15 in `FUN_004796c0`: 0 = external chase,
+  1 = cockpit (fuselage hidden), 2 = second interior view, 3 = map/not-flying (set by
+  `FUN_0047a240` on city load). Every flight-model branch tests `!= 0`, so the two
+  interior views fly the easy model and the external view flies the standard one. The
+  remake decouples that: it is an option, flyable from any camera. Exactly four
+  divergences, and two are easy to get wrong:
+  - `FUN_00485f50` computes `Mul(SlideRate, load)` **twice**; only the copy the pitch
+    keys use gets `>> 1`. The slide keys re-read Ctrl6 unhalved — do not halve both.
+  - `FUN_00485f50` pitch decay is `(1 - dt)` instead of `(1 - 2*dt)` per frame.
+  - `FUN_00486a30` pitch limit is `(bonus >> 1) + (clamp >> 1)`, halved term by term.
+  - `FUN_00486e90` speed target is `PitchSmoothed * 2`, and the *deceleration* shift
+    becomes `>> 4` where acceleration stays `>> 5` — half the pitch authority but the
+    same top speed, reached with a nose attitude that actually slows you when released.
+  The `FUN_00485f50` action-0x10 water-cannon recoil reads the already-halved rate, so
+  it is gentler under the easy model too.
 
 ## Remake integration compromises (flagged in code)
 

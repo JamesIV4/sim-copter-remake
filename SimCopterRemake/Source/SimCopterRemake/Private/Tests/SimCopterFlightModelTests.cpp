@@ -369,6 +369,124 @@ bool FSimCopterFlightTurbulenceTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterFlightEasyModelTest,
+	"SimCopter.Flight.EasyModel",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterFlightEasyModelTest::RunTest(const FString& Parameters)
+{
+	// The DAT_00503aa0 != 0 branches of FUN_00485f50, FUN_00486a30 and
+	// FUN_00486e90. Two models are flown side by side from the same state with
+	// the same inputs; only bEasyFlightModel differs.
+	auto MakeAirborne = [](bool bEasy)
+	{
+		FSimCopterFlightModel Model;
+		Model.bEasyFlightModel = bEasy;
+		Model.ResetOnSurface(0, 0, 0);
+		const FSimCopterFlightEnvironment Ground = FlatGroundAt(0);
+		SpoolAndLiftOff(Model, Ground);
+
+		// Climb well clear of the 150-unit ground-proximity pitch bonus band, so
+		// the clamp comparison below is the plain MaxPitch one.
+		FSimCopterFlightInputs Inputs;
+		Inputs.ClimbCommand = 1;
+		FSimCopterFlightEvents Events;
+		for (int32 StepIndex = 0; StepIndex < 200; ++StepIndex)
+		{
+			Model.Step(StepSeconds, Inputs, Ground, Events);
+		}
+		return Model;
+	};
+
+	const FSimCopterFlightEnvironment Ground = FlatGroundAt(0);
+	FSimCopterFlightModel Standard = MakeAirborne(false);
+	FSimCopterFlightModel Easy = MakeAirborne(true);
+
+	// The two models share their tuning, so the divergences below are the code's.
+	TestEqual(TEXT("same MaxPitch"), Easy.Tuning.MaxPitch, Standard.Tuning.MaxPitch);
+
+	// FUN_00485f50: one frame of the pitch key ramps the easy model half as far.
+	FSimCopterFlightInputs Pitch;
+	Pitch.bPitchForwardKey = true;
+	FSimCopterFlightEvents Events;
+	Standard.PitchTarget = 0;
+	Easy.PitchTarget = 0;
+	Standard.Step(StepSeconds, Pitch, Ground, Events);
+	Easy.Step(StepSeconds, Pitch, Ground, Events);
+	// Turbulence rides on top of the ramp, so compare with its +-2 tenth-degree band.
+	TestTrue(
+		TEXT("easy pitch key ramps at half rate"),
+		FMath::Abs(Easy.PitchTarget * 2 - Standard.PitchTarget) < SimCopterFixed::FromFloat(6.0f));
+
+	// Hold the key to the clamp: FUN_00486a30 halves the pitch limit.
+	for (int32 StepIndex = 0; StepIndex < 600; ++StepIndex)
+	{
+		Standard.Step(StepSeconds, Pitch, Ground, Events);
+		Easy.Step(StepSeconds, Pitch, Ground, Events);
+	}
+	TestTrue(
+		TEXT("standard reaches MaxPitch"),
+		Standard.PitchTarget > Standard.Tuning.MaxPitch - SimCopterFixed::FromFloat(4.0f));
+	TestTrue(
+		TEXT("easy clamps at half MaxPitch"),
+		Easy.PitchTarget < (Easy.Tuning.MaxPitch >> 1) + SimCopterFixed::FromFloat(4.0f));
+
+	// FUN_00486e90: half the pitch but double the speed per degree, so the two
+	// models end up cruising at about the same airspeed at full deflection.
+	TestTrue(
+		TEXT("easy top speed matches standard despite half the pitch"),
+		FMath::Abs(Easy.ForwardSpeed - Standard.ForwardSpeed) < SimCopterFixed::FromFloat(24.0f));
+
+	// Releasing everything: FUN_00485f50's easy pitch decay is (1 - dt) rather
+	// than (1 - 2*dt), so the trimmed nose attitude persists across more frames.
+	const FSimCopterFlightInputs Neutral;
+	const int32 StandardHeldPitch = Standard.PitchTarget;
+	const int32 EasyHeldPitch = Easy.PitchTarget;
+	for (int32 StepIndex = 0; StepIndex < 10; ++StepIndex)
+	{
+		Standard.Step(StepSeconds, Neutral, Ground, Events);
+		Easy.Step(StepSeconds, Neutral, Ground, Events);
+	}
+	TestTrue(
+		TEXT("easy keeps more of its pitch trim"),
+		SimCopterFixed::Div(Easy.PitchTarget, EasyHeldPitch) >
+			SimCopterFixed::Div(Standard.PitchTarget, StandardHeldPitch));
+
+	// FUN_00486e90's other easy branch: closing on a *lower* speed target uses
+	// >> 4 instead of >> 5. Measured with the nose pinned level so the target is
+	// the same (zero) for both models and only the shift differs - in normal
+	// flight the easy model's doubled target masks this.
+	FSimCopterFlightModel StandardCoast = MakeAirborne(false);
+	FSimCopterFlightModel EasyCoast = MakeAirborne(true);
+	const int32 CoastSpeed = SimCopterFixed::FromFloat(320.0f);
+	StandardCoast.PitchTarget = StandardCoast.PitchSmoothed = 0;
+	EasyCoast.PitchTarget = EasyCoast.PitchSmoothed = 0;
+	StandardCoast.ForwardSpeed = CoastSpeed;
+	EasyCoast.ForwardSpeed = CoastSpeed;
+	StandardCoast.Step(StepSeconds, Neutral, Ground, Events);
+	EasyCoast.Step(StepSeconds, Neutral, Ground, Events);
+	const int32 StandardBleed = CoastSpeed - StandardCoast.ForwardSpeed;
+	const int32 EasyBleed = CoastSpeed - EasyCoast.ForwardSpeed;
+	TestTrue(
+		TEXT("easy bleeds speed at twice the rate"),
+		FMath::Abs(EasyBleed - StandardBleed * 2) < SimCopterFixed::FromFloat(1.0f));
+
+	// The slide ramp re-reads Ctrl6 unhalved in FUN_00485f50 - the trap.
+	FSimCopterFlightModel StandardSlide = MakeAirborne(false);
+	FSimCopterFlightModel EasySlide = MakeAirborne(true);
+	FSimCopterFlightInputs Slide;
+	Slide.bSlideLeftKey = true;
+	StandardSlide.SlideTarget = 0;
+	EasySlide.SlideTarget = 0;
+	StandardSlide.Step(StepSeconds, Slide, Ground, Events);
+	EasySlide.Step(StepSeconds, Slide, Ground, Events);
+	TestTrue(
+		TEXT("slide ramp is not halved by the easy model"),
+		FMath::Abs(EasySlide.SlideTarget - StandardSlide.SlideTarget) < SimCopterFixed::FromFloat(6.0f));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterFlightRotorSpoolDownTest,
 	"SimCopter.Flight.RotorSpoolDown",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

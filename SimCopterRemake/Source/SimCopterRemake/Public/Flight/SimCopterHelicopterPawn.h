@@ -510,6 +510,12 @@ public:
 	// The decompiled flight simulation state (read-only; for HUD and tests).
 	const FSimCopterFlightModel& GetFlightModel() const { return FlightModel; }
 
+	// The original's easy handling model (FSimCopterFlightModel::bEasyFlightModel). The
+	// executable bound it to the interior camera views; here it is an explicit option so
+	// either model can be flown from any view. Persisted like the camera view offsets.
+	bool IsEasyFlightModelEnabled() const { return FlightModel.bEasyFlightModel; }
+	void SetEasyFlightModelEnabled(bool bEnabled);
+
 	// Persistent offsets edited by the developer panel. Each normal camera view has its own
 	// values; setters update the live camera and flush that view to GameUserSettings.ini.
 	ESimCopterCameraMode GetCameraMode() const { return CameraMode; }
@@ -1367,6 +1373,8 @@ private:
 	void ApplyRotorDiscAppearance();
 	void LoadRotorDiscAppearance();
 	void SaveRotorDiscAppearance() const;
+	void LoadEasyFlightModel();
+	void SaveEasyFlightModel() const;
 	void UpdateSearchLightEffect();
 
 	// Port of FUN_00489250: aim -> ray march -> smoothing -> band -> tile -> light node.

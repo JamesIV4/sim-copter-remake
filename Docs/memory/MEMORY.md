@@ -23,7 +23,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 ## Flight and the helicopter
 
-- [SimCopter heli flight model DECODED](simcopter-heli-flight-model.md) — physics/controls/rotor decoded+ported as `FSimCopterFlightModel` (16.16); traps: tenth-deg units, speed = smoothed pitch, SlideRate (not PitchRate) ramps pitch keys, rotor gate 300, fps-capped EMA.
+- [SimCopter heli flight model DECODED](simcopter-heli-flight-model.md) — physics/controls/rotor decoded+ported as `FSimCopterFlightModel` (16.16); traps: tenth-deg units, speed = smoothed pitch, SlideRate (not PitchRate) ramps pitch keys, rotor gate 300, fps-capped EMA. **Easy model ported 2026-07-29** — `DAT_00503aa0` is the VIEW mode, not a difficulty flag; only the pitch ramp is halved, not slide.
 - [SimCopter heli tools/models](simcopter-heli-tools-models.md) — tools+registry decoded; traps: tear gas is interaction mode 5 not 7, stowed flags are 1=raised and the rope node counts DOWN, FUN_00489250 is the spotlight not a downwash disc, runtime type order != twk/shop order.
 - [SimCopter water gameplay](simcopter-water-gameplay.md) — the bucket never douses directly; particle impact does, at strength = remaining life; a water cannon exists and is unported.
 - [SimCopter cockpit flaps](simcopter-cockpit-flaps.md) — tool flaps decoded; the click-box table sits in an UNANALYZED Ghidra gap (scan `.text` for pointer refs); flapbtn frames are unequal widths.
