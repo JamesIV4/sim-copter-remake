@@ -37,9 +37,18 @@ the returned square for mesh centering, terrain-height sampling, instanced-build
 demolition coverage. `XZON` remains available for zoning/base dispatch but no longer decides where a
 building mesh is placed.
 
+**The people layer used the same retired rule until 2026-07-31.**
+`ASimCopterTrafficSystemActor::RebuildSpawnData` built its pedestrian nodes off `XZON & 0x80` too, so
+on 22 of the 30 career cities no hospital had a spawn site and no roof paramedic could ever be
+posted. It now shares this claim, with the `SceneCellState` carried across its whole row-major sweep
+and the claim run on **every** tile - skipping cells leaves holes in the suppression state and lets a
+later cell validate a square through one. See [[simcopter-paramedic-handoffs]].
+
 Automation coverage:
 
 - `SimCopter.City.BuildingFootprintClaim` uses a synthetic 3x3 building whose XZON 0x80 is at the
   far corner and checks that only the XBLD origin claims it; it also rejects an incomplete square.
+- `SimCopter.City.IslandHospitalFootprints` checks both Islandtown hospitals claim a 3x3 square, and
+  that the retired XZON rule owned neither of them.
 - `SimCopter.City.IslandBuildingFootprints` checks the reference Islandtown file has 274 original
   claims, including the `(79,52)` 3x3 placement and suppression of `(81,54)`.

@@ -91,6 +91,45 @@ can be tested without a world — `SimCopter.Dispatch.HospitalParamedicRespawn`.
 *backwards* world time as "allow", so a level reload that keeps the map cannot lock a roof out for
 the rest of the session.
 
+## The roof was unreachable, and the medic on it froze (2026-07-31)
+
+Two separate faults, both reported as "paramedics don't work on hospital roofs".
+
+**1. Most hospitals had no spawn site at all.** `TrySpawnOriginalPersonAtTile` resolves a tile through
+`PedestrianNodeIndexByTile`, and the pedestrian-node builder still owned footprints the retired way -
+`XZON & 0x80` gates the owner, then scan right/down for the same XBLD. That is the exact rule
+[[simcopter-building-footprints]] retired for mesh placement, and it fails the same way here: those
+0x80 cells sit at the FAR corner of multi-tile squares, so the scan runs off the building. **In 22 of
+the 30 career cities not one hospital had an owner**, Islandtown included (both of its 3x3 hospitals,
+at `(91,62)` and `(16,76)`), so `EnsureHospitalParamedicAtTile` could never place anybody and retried
+forever. It now uses `FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint` over a
+`SceneCellState` carried across the whole row-major sweep, exactly as `RebuildCity` does - claim on
+**every** tile, not just the ones that get a node, or the suppression state grows holes. This also
+restores ambient people, cop roof crews (0xD2), the ball park and the plaza on those cities.
+
+**2. A refused despawn parks the walker on the stop opcode.** `FUN_004ce7b0` returns on handler
+result 3 *without moving the record cursor*, so a frame that reaches opcode 16/37/40 stays sitting on
+it. `ASimCopterGroundAgent::UpdateOriginalBehavior` cancelled `bRequestDespawn` for persistent
+hospital crew and unresolved mission people but left the stack alone, so every following tick
+re-executed the same stop opcode: alive, visible, inert. That is the frozen paramedic.
+
+It is not a rare path. BHAV 801's loop calls **272 'nearest emerg veh on stack'**, which runs
+**265 'Medevac disappear'** (op 51 then op 40) whenever neither the player's helicopter nor an
+ambulance is within ten tiles - true within a couple of seconds of the post being staffed, since the
+medevac that needs it starts elsewhere. **263 -> 269** ends at op 40 the same way when no patient is
+aboard. Relanding sometimes cleared it because an interaction pushes a reaction frame, and unwinding
+that frame finally consumes the dead record's edge.
+
+The fix is `BehaviorContext.ResetToState(GetStateIndex())` alongside the refusal: restart the state
+program the way `FUN_004c7090` does for a fresh spawn. The post then loops 801 - Walk-10, Idle-10,
+probe - so it visibly patrols its roof and picks the player up on the next pass.
+`ResetBehaviorProgramOverride` alone was never enough; it early-outs when
+`InitialBehaviorProgramId == INDEX_NONE`, which is every hospital medic.
+
+Covered by `SimCopter.City.IslandHospitalFootprints` and
+`SimCopter.Behavior.VM.HospitalMedicRetire`. Evidence:
+`Docs/scratchpad/agent-sessions/2026-07-31-hospital-paramedics/`.
+
 ## Evidence and verification
 
 - Fresh executable output:

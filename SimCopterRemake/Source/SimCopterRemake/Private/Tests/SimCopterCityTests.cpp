@@ -151,6 +151,86 @@ bool FSimCopterCityIslandBuildingFootprintsTest::RunTest(const FString& Paramete
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCityIslandHospitalFootprintsTest,
+	"SimCopter.City.IslandHospitalFootprints",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCityIslandHospitalFootprintsTest::RunTest(const FString& Parameters)
+{
+	// The pedestrian-node builder (ASimCopterTrafficSystemActor::RebuildSpawnData) spawns people at
+	// footprint owners, and a hospital with no owner is a hospital that can never be staffed:
+	// EnsureHospitalParamedicAtTile resolves the roof through that node table. It used to take the
+	// owner from XZON, and neither of Islandtown's hospitals has its 0x80 marker on the XBLD origin,
+	// so no paramedic could ever appear on either roof.
+	const FString IslandCityPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("../Reference/SimCopterOriginalGame/cities/career/city1.sc2")));
+	if (!FPaths::FileExists(IslandCityPath))
+	{
+		AddWarning(FString::Printf(TEXT("Skipping optional Islandtown hospital test because '%s' is not present."), *IslandCityPath));
+		return true;
+	}
+
+	FSimCity2000City City;
+	FString Error;
+	if (!TestTrue(TEXT("Islandtown city data loads"), FSimCity2000Reader::LoadCityFromFile(IslandCityPath, City, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+
+	constexpr uint8 HospitalBuildingId = 0xD1;
+	TArray<uint8> SceneCellState;
+	TArray<FIntPoint> ClaimedHospitals;
+	int32 HospitalTiles = 0;
+	int32 XzonOwnedHospitals = 0;
+	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
+		{
+			const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
+			const FIntPoint Footprint = FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+				City,
+				FileX,
+				FileY,
+				SceneCellState);
+			if (Tile.Building != HospitalBuildingId)
+			{
+				continue;
+			}
+
+			++HospitalTiles;
+			if (Footprint.X > 0)
+			{
+				ClaimedHospitals.Add(FIntPoint(FileX, FileY));
+				TestEqual(TEXT("An Islandtown hospital claims a 3x3 square"), Footprint, FIntPoint(3, 3));
+			}
+			// The retired rule, re-run here so the regression stays visible: the XZON high nibble
+			// gated the owner, and the same-XBLD scan then ran right/down from whatever it picked.
+			if ((Tile.Zone & 0xF0) == 0xF0 || (Tile.Zone & 0x80) != 0)
+			{
+				bool bSquareIsWhole = FileX + 3 <= FSimCity2000City::MapSize && FileY + 3 <= FSimCity2000City::MapSize;
+				for (int32 OffsetY = 0; bSquareIsWhole && OffsetY < 3; ++OffsetY)
+				{
+					for (int32 OffsetX = 0; OffsetX < 3; ++OffsetX)
+					{
+						bSquareIsWhole &= City.Tiles[(FileY + OffsetY) * FSimCity2000City::MapSize + FileX + OffsetX].Building == HospitalBuildingId;
+					}
+				}
+				XzonOwnedHospitals += bSquareIsWhole ? 1 : 0;
+			}
+		}
+	}
+
+	TestEqual(TEXT("Islandtown has two 3x3 hospitals"), HospitalTiles, 2 * 3 * 3);
+	TestEqual(TEXT("Both Islandtown hospitals have a footprint owner to spawn their roof crew on"), ClaimedHospitals.Num(), 2);
+	TestTrue(TEXT("The first hospital is claimed at (91,62)"), ClaimedHospitals.Contains(FIntPoint(91, 62)));
+	TestTrue(TEXT("The second hospital is claimed at (16,76)"), ClaimedHospitals.Contains(FIntPoint(16, 76)));
+	TestEqual(TEXT("The retired XZON owner rule found neither of them"), XzonOwnedHospitals, 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterCityRuntimeMeshDuplicationTest,
 	"SimCopter.City.RuntimeMeshDuplication",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

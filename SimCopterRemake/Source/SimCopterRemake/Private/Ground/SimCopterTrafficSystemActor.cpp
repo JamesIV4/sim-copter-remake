@@ -5,6 +5,7 @@
 #include "Algo/Reverse.h"
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterCityGeometryRules.h"
 #include "CollisionShape.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/OverlapResult.h"
@@ -320,41 +321,46 @@ struct FPeopleSceneFootprint
 	int32 Size = 1;
 };
 
-bool TryResolvePeopleSceneFootprint(const FSimCity2000City& City, int32 FileX, int32 FileY, FPeopleSceneFootprint& OutFootprint)
+// The square this tile owns for people purposes, given the renderer's row-major claim for it.
+//
+// FUN_0047c0c0 does not consult XZON, and this used to: it took `XZON & 0x80` for the footprint
+// owner and scanned right/down from there. In Islandtown (and 21 of the other 29 career cities)
+// those 0x80 cells sit at the FAR corner of multi-tile XBLD squares, so the scan ran off the
+// building and rejected it - 104 of Islandtown's 274 buildings, including both of its hospitals.
+// A hospital with no pedestrian node cannot be a spawn site, which is why
+// EnsureHospitalParamedicAtTile could never post a medic on those roofs. Ownership now comes from
+// the same claim the city mesh uses; see Docs/memory/simcopter-building-footprints.md.
+bool TryResolvePeopleSceneFootprint(
+	uint8 BuildingId,
+	int32 FileX,
+	int32 FileY,
+	const FIntPoint& ClaimedFootprint,
+	FPeopleSceneFootprint& OutFootprint)
 {
-	const FSimCity2000Tile& Tile = City.Tiles[FileY * FSimCity2000City::MapSize + FileX];
-	const int32 FootprintSize = FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(Tile.Building);
-	if (Tile.Building >= 0x70)
+	OutFootprint.OriginX = FileX;
+	OutFootprint.OriginY = FileY;
+
+	if (BuildingId >= 0x70)
 	{
-		const uint8 ZoneHigh = Tile.Zone & 0xF0;
-		if (ZoneHigh != 0xF0 && (Tile.Zone & 0x80) == 0)
+		// A zero claim means an earlier cell in the sweep already owns this tile, or the square
+		// is not a valid building - either way this tile is not the origin of anything.
+		if (ClaimedFootprint.X <= 0)
 		{
 			return false;
 		}
+		OutFootprint.Size = ClaimedFootprint.X;
+		return true;
 	}
 
-	if (FootprintSize <= 0 ||
-		FileX + FootprintSize > FSimCity2000City::MapSize ||
-		FileY + FootprintSize > FSimCity2000City::MapSize)
+	// FUN_004e4f80 gives every id below 0x70 a size of 1, except the bridge and highway spans it
+	// calls 2x2. Those are tile classes 7/8/9, which are not ambient pedestrian classes, so no
+	// caller reaches this with one.
+	const int32 FootprintSize = FSimCopterPeopleCityRules::GetFootprintSizeForBuildingId(BuildingId);
+	if (FootprintSize != 1)
 	{
 		return false;
 	}
-
-	for (int32 DeltaY = 0; DeltaY < FootprintSize; ++DeltaY)
-	{
-		for (int32 DeltaX = 0; DeltaX < FootprintSize; ++DeltaX)
-		{
-			const FSimCity2000Tile& Candidate = City.Tiles[(FileY + DeltaY) * FSimCity2000City::MapSize + FileX + DeltaX];
-			if (Candidate.Building != Tile.Building)
-			{
-				return false;
-			}
-		}
-	}
-
-	OutFootprint.OriginX = FileX;
-	OutFootprint.OriginY = FileY;
-	OutFootprint.Size = FootprintSize;
+	OutFootprint.Size = 1;
 	return true;
 }
 
@@ -2346,6 +2352,11 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	WaterTileFlags.SetNum(FSimCity2000City::TileCount);
 	TileCenterWorldZ.SetNum(FSimCity2000City::TileCount);
 
+	// Carried across the whole row-major sweep, exactly as ASimCity2000CityActor::RebuildCity
+	// carries its own: a claimed square suppresses the cells it covers, so the cell that owns a
+	// building is the first one the sweep reaches and no later cell can claim a square through it.
+	TArray<uint8> PeopleSceneCellState;
+
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
 	{
 		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
@@ -2379,10 +2390,19 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 				RoadNodeIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
 
+			// Claim on EVERY tile, not just the ones that end up carrying a pedestrian node: the
+			// suppression state is what stops two identical neighbouring buildings validating a
+			// square that straddles them, and skipping cells would leave holes in it.
+			const FIntPoint ClaimedFootprint = FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+				City,
+				FileX,
+				FileY,
+				PeopleSceneCellState);
+
 			if (!Tile.bWater && FSimCopterPeopleCityRules::IsAmbientPedestrianTileClass(PeopleTileClass))
 			{
 				FPeopleSceneFootprint SceneFootprint;
-				if (!TryResolvePeopleSceneFootprint(City, FileX, FileY, SceneFootprint))
+				if (!TryResolvePeopleSceneFootprint(Tile.Building, FileX, FileY, ClaimedFootprint, SceneFootprint))
 				{
 					continue;
 				}
