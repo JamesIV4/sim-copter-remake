@@ -193,6 +193,10 @@ SIMCOPTERREMAKE_API int32 GetEquipmentSellValue(ESimCopterHelicopterTool Tool);
 // Career mask of every purchasable tool (0x1f).
 constexpr int32 AllCareerEquipmentBits = 0x1f;
 
+// SCHOOK: CareerGameInit 0x004080c0 / UserGameInit 0x00407f30. Both original new-game
+// paths write 3 to career + 0x48: the starting bucket (0x01) and megaphone (0x02).
+constexpr int32 StartingCareerEquipmentBits = 0x03;
+
 // FUN_0042d840: buying the tear gas launcher writes ten rounds; FUN_0048b130 refills at
 // one round per $50 and FUN_00444750 offers maintenance below five rounds.
 constexpr int32 TearGasCapacity = 10;

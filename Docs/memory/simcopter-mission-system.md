@@ -23,6 +23,13 @@
   binder `FUN_004ab170` (all [.* Miss] globals 0x505fa4..0x50604c); fire array `DAT_005ce0a0`
   0x8c×0xa0; fire twk binder `FUN_004a64d0`; car crash → MedEvac chance `FUN_0049fd00`.
 - This layer uses MSVC `_rand()` (LCG), NOT the people LFSR [[simcopter-people-logic-next]].
+- **Incremental text ids are not zero-based from the event number.** `FUN_004aa150`
+  maps rescue/transport/medevac/pickup to `0x3a7/0x3a8/0x3a9/0x3aa`, whose retail
+  strings are `Sim Rescued!`, `Sim Transported!`, `Sim MedEvaced!`, and
+  `Sim Picked Up!`. Traffic creation `FUN_0049fca0 -> FUN_0049fe30` posts one
+  `EVT_JamCarAdded` for the initial car; megaphone message 0 posts one
+  `EVT_CarCleared` per affected jammed car, and the lifecycle completes when the
+  cleared/burned count reaches the added-car count.
 
 **Fire simulation decoded + ported 2026-07-24** — full notes at repo
 `Docs/scratchpad/ghidra/fire_simulation_decode_20260724.md`; **outstanding gaps

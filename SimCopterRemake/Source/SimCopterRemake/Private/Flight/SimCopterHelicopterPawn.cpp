@@ -44,6 +44,7 @@
 #include "Ground/SimCopterPopulationSprite.h"
 #include "EngineUtils.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "HAL/FileManager.h"
 #include "InputCoreTypes.h"
 #include "Input/Reply.h"
 #include "Missions/SimCopterMissionSystemActor.h"
@@ -859,10 +860,6 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 		this,
 		&ASimCopterHelicopterPawn::ToggleGamePause);
 	PauseBinding.bExecuteWhenPaused = true;
-
-	// Megaphone: talk to the cars/people below (used to clear traffic jams). Bound directly to M so
-	// no input-mapping config edit is required; the on-screen prompt shows the same key.
-	PlayerInputComponent->BindKey(EKeys::M, IE_Pressed, this, &ASimCopterHelicopterPawn::UseMegaphone);
 
 	// Spotlight aim (original input actions 0x2e..0x31). Bound to the numpad arrows directly so
 	// no input-mapping config edit is required.
@@ -2542,7 +2539,7 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 		break;
 	case ESimCopterHelicopterTool::Megaphone:
 		Controls = FString::Printf(
-			TEXT("TOOL: %s (%s)   MESSAGE: %s\n[LEFT CLICK / M] broadcast"),
+			TEXT("TOOL: %s (%s)   MESSAGE: %s\n[LEFT CLICK] broadcast"),
 			ActiveToolName,
 			*DescribeToolAvailability(ActiveTool),
 			SimCopterHelicopterRegistry::GetMegaphoneMessageName(SelectedMegaphoneMessage));
@@ -3651,6 +3648,20 @@ void ASimCopterHelicopterPawn::SetSelectedMegaphoneMessage(const ESimCopterMegap
 	}
 }
 
+bool ASimCopterHelicopterPawn::SendMegaphoneMessage(const ESimCopterMegaphoneMessage Message)
+{
+	if (Message >= ESimCopterMegaphoneMessage::Count)
+	{
+		return false;
+	}
+
+	// SCHOOK: MegaphoneCommand 0x0044ac80. F6-F10 select, voice and broadcast in the same
+	// command dispatch. A popup choice is the mouse equivalent of one of those discrete keys.
+	SetSelectedMegaphoneMessage(Message);
+	SetSelectedTool(ESimCopterHelicopterTool::Megaphone);
+	return TryBeginToolUse(ESimCopterHelicopterTool::Megaphone);
+}
+
 void ASimCopterHelicopterPawn::SetWinchHeldInput(const bool bHarness, const int32 Direction)
 {
 	WinchHeldDirection = FMath::Clamp(Direction, -1, 1);
@@ -3693,17 +3704,6 @@ void ASimCopterHelicopterPawn::Interact()
 	if (CanExitHelicopter())
 	{
 		ExitHelicopter();
-	}
-}
-
-void ASimCopterHelicopterPawn::UseMegaphone()
-{
-	// Legacy M-key alias for the common primary path while the selector settles in.
-	const ESimCopterHelicopterTool Previous = SelectedTool;
-	SetSelectedTool(ESimCopterHelicopterTool::Megaphone);
-	if (!TryBeginToolUse(ESimCopterHelicopterTool::Megaphone))
-	{
-		SetSelectedTool(Previous);
 	}
 }
 
@@ -3960,6 +3960,7 @@ int32 ASimCopterHelicopterPawn::DebugStartMission(int32 TypeMask)
 void ASimCopterHelicopterPawn::BroadcastMegaphoneMessage()
 {
 	const int32 MessageIndex = static_cast<int32>(SelectedMegaphoneMessage);
+	PlayMegaphoneVoice(MessageIndex);
 
 	if (!SpotlightTarget.bValid || SpotlightTarget.Band > SimCopterSpotlight::MegaphoneMaxBand)
 	{
@@ -3976,22 +3977,58 @@ void ASimCopterHelicopterPawn::BroadcastMegaphoneMessage()
 
 	const int32 Affected = BroadcastInteraction(Event, SimCopterInteraction::MegaphoneRings);
 
-	// The traffic-jam message keeps its mission hook so "Report Traffic" still clears jams
-	// while the per-message people/vehicle behaviour is ported.
-	if (SelectedMegaphoneMessage == ESimCopterMegaphoneMessage::ReportTraffic)
-	{
-		if (ASimCopterMissionSystemActor* MissionActor = ResolveMissionSystem())
-		{
-			MissionActor->TryUseMegaphone(SpotlightTarget.WorldLocation);
-		}
-	}
-
 	LastToolStatus = FString::Printf(
 		TEXT("'%s' to tile (%d, %d): %d reacted."),
 		SimCopterHelicopterRegistry::GetMegaphoneMessageName(SelectedMegaphoneMessage),
 		SpotlightTarget.Tile.X,
 		SpotlightTarget.Tile.Y,
 		Affected);
+}
+
+void ASimCopterHelicopterPawn::PlayMegaphoneVoice(const int32 MessageIndex)
+{
+	USimCopterAudioSubsystem* Audio = GetHelicopterAudio();
+	const int32 MessageCount = static_cast<int32>(ESimCopterMegaphoneMessage::Count);
+	if (Audio == nullptr || MessageIndex < 0 || MessageIndex >= MessageCount)
+	{
+		return;
+	}
+
+	if (!bMegaphoneVoicesLoaded)
+	{
+		bMegaphoneVoicesLoaded = true;
+		MegaphoneVoiceFilesByMessage.SetNum(MessageCount);
+		MegaphoneVoiceNextIndices.SetNumZeroed(MessageCount);
+
+		const FString LanguageDir = FPaths::Combine(Audio->GetSoundRoot(), TEXT("English"));
+		for (int32 Index = 0; Index < MessageCount; ++Index)
+		{
+			TArray<FString> Files;
+			IFileManager::Get().FindFiles(
+				Files,
+				*FPaths::Combine(LanguageDir, FString::Printf(TEXT("MG_%02d_*.WAV"), Index)),
+				true,
+				false);
+			Files.Sort();
+			for (const FString& File : Files)
+			{
+				MegaphoneVoiceFilesByMessage[Index].Add(FPaths::GetBaseFilename(File));
+			}
+		}
+	}
+
+	TArray<FString>& Lines = MegaphoneVoiceFilesByMessage[MessageIndex];
+	if (Lines.Num() == 0)
+	{
+		return;
+	}
+
+	// SCHOOK: FUN_00424620 owns one cursor per message list and wraps it, so each message uses
+	// its own MG_XX_YY family in sequence instead of choosing a random line from all five sets.
+	int32& NextIndex = MegaphoneVoiceNextIndices[MessageIndex];
+	NextIndex = FMath::Clamp(NextIndex, 0, Lines.Num() - 1);
+	Audio->PlayFile2D(Lines[NextIndex], SimCopterSound::ESoundDir::Language);
+	NextIndex = (NextIndex + 1) % Lines.Num();
 }
 
 // SCHOOK: InteractionBroadcast 0x0048ae70
@@ -4040,7 +4077,12 @@ int32 ASimCopterHelicopterPawn::BroadcastInteraction(const FSimCopterInteraction
 			continue;
 		}
 
-		if (Agent->ApplyInteraction(Event))
+		ASimCopterTrafficSystemActor* TrafficSystem =
+			Cast<ASimCopterTrafficSystemActor>(Agent->GetOwner());
+		const bool bReacted = Agent->GetAgentKind() == ESimCopterGroundAgentKind::Vehicle
+			? (TrafficSystem != nullptr && TrafficSystem->ApplyVehicleInteraction(*Agent, Event))
+			: Agent->ApplyInteraction(Event);
+		if (bReacted)
 		{
 			++Affected;
 		}

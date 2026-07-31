@@ -137,6 +137,16 @@ bool FSimCopterCityBuildingDemolitionTest::RunTest(const FString& Parameters)
 		TEXT("A standing building reports world bounds for the demolition burst"),
 		CityActor->TryGetBuildingBoundsAtTile(FoundX, FoundY, BuildingBounds));
 	TestTrue(TEXT("Those bounds enclose real volume"), BuildingBounds.GetVolume() > 0.0);
+	TestTrue(
+		TEXT("The mission-spawn guard recognizes the rendered building volume"),
+		CityActor->IsInsideStandingBuildingBounds(BuildingBounds.GetCenter()));
+	const FVector JustOutsideWall(
+		BuildingBounds.Max.X + 16.0f,
+		BuildingBounds.GetCenter().Y,
+		BuildingBounds.GetCenter().Z);
+	TestTrue(
+		TEXT("The mission-spawn guard reserves room for the pedestrian capsule"),
+		CityActor->IsInsideStandingBuildingBounds(JustOutsideWall, 32.0f));
 
 	TArray<FIntPoint> ClearedTiles;
 	TestTrue(
@@ -159,6 +169,9 @@ bool FSimCopterCityBuildingDemolitionTest::RunTest(const FString& Parameters)
 			FString::Printf(TEXT("Tile (%d,%d) is left as rubble"), Tile.X, Tile.Y),
 			CityActor->HasRubbleAtTile(Tile.X, Tile.Y));
 	}
+	TestFalse(
+		TEXT("A demolished building no longer blocks mission-person placement"),
+		CityActor->IsInsideStandingBuildingBounds(BuildingBounds.GetCenter()));
 
 	// A second demolition of the same ground is a no-op rather than a double removal, which is
 	// what keeps a repeated burn-down from tearing an unrelated building's instance out.

@@ -368,7 +368,9 @@ void SSimCopterToolFlaps::PressAction(const EAction Action)
 	case EAction::MegaphoneBroadcast:
 		if (MegaphoneMenu.IsValid())
 		{
-			MegaphoneMenu->SetIsOpen(!MegaphoneMenu->IsOpen());
+			// Keep keyboard focus on the game viewport while the mouse-only phrase menu is open;
+			// otherwise clicking the cockpit art interrupts keyboard flight input.
+			MegaphoneMenu->SetIsOpen(!MegaphoneMenu->IsOpen(), /*bFocusMenu=*/false);
 		}
 		break;
 	case EAction::TearGasFire:
@@ -459,14 +461,11 @@ FReply SSimCopterToolFlaps::HandleMegaphoneMessageChosen(const ESimCopterMegapho
 {
 	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
 	{
-		Helicopter->SetSelectedMegaphoneMessage(Message);
-		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::Megaphone);
-		Helicopter->StartPrimaryToolUse();
-		Helicopter->StopPrimaryToolUse();
+		Helicopter->SendMegaphoneMessage(Message);
 	}
 	if (MegaphoneMenu.IsValid())
 	{
-		MegaphoneMenu->SetIsOpen(false);
+		MegaphoneMenu->SetIsOpen(false, /*bFocusMenu=*/false);
 	}
 	return FReply::Handled();
 }

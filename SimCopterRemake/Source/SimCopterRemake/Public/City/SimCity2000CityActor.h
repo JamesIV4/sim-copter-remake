@@ -145,6 +145,10 @@ public:
 	// debris and damage sweep. Returns false when there is nothing there.
 	bool TryGetBuildingBoundsAtTile(int32 FileX, int32 FileY, FBox& OutWorldBounds) const;
 
+	// Conservative spawn guard backed by the rendered instanced-mesh bounds, including model
+	// overhang beyond the SC2 tile footprint. ClearanceCm expands only the horizontal footprint.
+	bool IsInsideStandingBuildingBounds(const FVector& WorldLocation, float ClearanceCm = 0.0f) const;
+
 private:
 	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
 	TObjectPtr<USceneComponent> SceneRoot;

@@ -25,6 +25,19 @@ Canonical notes live in the repo: `Docs/scratchpad/ghidra/heli_tools_models_deco
   never sold.
 - Behaviour-VM opcode numbers are NOT the thunk-table order. Compute them as
   `(slotAddr - 0x58ef78) / 4` from `FUN_004c3010`'s assignments.
+- **Megaphone traffic resolution is a vehicle interaction, not a mission hotkey.**
+  `FUN_0049a4f0` routes cars to `FUN_0049fc10` -> `FUN_0049f680`; mode 2 calls
+  `FUN_0049d7e0`, where message 0 clears that car's jam flag `0x200` and posts
+  `EVT_CarCleared` (`0x1b`) for the car's event. The five-ring scan therefore
+  clears only jammed cars around the spotlight target. `FUN_00424620` also owns
+  one wrapping voice cursor per message, so `MG_00_*` through `MG_04_*` must not
+  be pooled and randomized together.
+- **The original starts with both the bucket and megaphone.** `FUN_004080c0`
+  (new career) and `FUN_00407f30` (new user game) both write `0x03` to career
+  equipment `+0x48`. That single career mask is displayed on every owned
+  helicopter; it is not a per-model loadout. `FUN_0044ac80` also makes each
+  F6-F10 message a synchronous select-and-broadcast command, so a cockpit popup
+  choice must invoke the action immediately rather than pulse a frame latch.
 
 Related: [[simcopter-heli-flight-model]], [[simcopter-people-logic-next]],
 [[simcopter-water-gameplay]], [[simcopter-fire-water-fx]].

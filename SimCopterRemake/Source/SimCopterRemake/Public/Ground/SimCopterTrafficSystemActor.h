@@ -14,6 +14,7 @@ class ASimCity2000CityActor;
 class ASimCopterGroundAgent;
 class ASimCopterMissionSystemActor;
 enum class ESimCopterMissionPassengerKind : uint8;
+struct FSimCopterInteractionEvent;
 class UInstancedStaticMeshComponent;
 class USimCopterDispatchMarkerComponent;
 
@@ -715,6 +716,10 @@ public:
 	// FUN_004b8540: put the mission's speeder on a road tile near (TileX, TileY). Capped at the
 	// original's pool of five.
 	bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY);
+
+	// Vehicle-class arm of FUN_0049a4f0. The person VM cannot handle cars: mode 2 continues
+	// through FUN_0049fc10/FUN_0049f680, where Report Traffic clears a jammed car.
+	bool ApplyVehicleInteraction(ASimCopterGroundAgent& Vehicle, const FSimCopterInteractionEvent& Event);
 
 	// Live position of a mission's speeder, for the world tag that follows it. OutSpotlightMark
 	// is the 0..10 illumination counter and OutStopped is true once it has pulled over, so the

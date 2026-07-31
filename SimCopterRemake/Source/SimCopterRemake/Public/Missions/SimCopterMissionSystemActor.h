@@ -162,10 +162,6 @@ public:
 	bool CreatePlayerCausedMedevacForVictim(ASimCopterGroundAgent* Victim);
 	bool ConvertDroppedTransportPassengerToMedevac(ASimCopterGroundAgent* Victim, int32 SourceTransportEventId);
 
-	// Megaphone: clear the nearest in-range traffic jam from the given (helicopter) location.
-	// Returns true if a jam was cleared. Called by the helicopter pawn's megaphone key.
-	bool TryUseMegaphone(const FVector& FromWorldLocation);
-
 	// --- Emergency dispatch resolution hooks ---
 	// These are what an arrived fire truck / police car / ambulance asks of the mission
 	// layer. See Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md section 7:
@@ -202,6 +198,10 @@ public:
 
 	// Police clearing a jam they have driven to.
 	bool ClearTrafficJamEvent(int32 EventId);
+
+	// SCHOOK: VehicleMegaphoneReaction 0x0049d7e0. Message 0 clears one jammed car and posts
+	// EVT_CarCleared; the mission closes only after every car counted by EVT_JamCarAdded clears.
+	bool ReportTrafficJamCarCleared(int32 EventId);
 
 	// FUN_004b8c90: the arrest has run its course and the car is being taken away. Posts
 	// EVT_CriminalCaught, which takes the record's CriminalsCaught to its TargetCount of 1 and
@@ -359,17 +359,6 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "5.0"))
 	float MedevacBehaviorRecoverySeconds = 45.0f;
 
-	// Megaphone range (horizontal): the helicopter must be within this of a traffic jam for the
-	// megaphone prompt to show and the jam to be clearable. (Original flavor: ~300 m.)
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
-	float MegaphoneRangeCm = 7500.0f;
-
-	// Megaphone voice lines, the "MG_*" files in the original's language folder. These are not
-	// table slots - the original never registers them - so they are named by file and played
-	// through USimCopterAudioSubsystem::PlayFile2D, which is the same standalone-sound-object
-	// route the front-end screens use. Collected once on BeginPlay.
-	TArray<FString> MegaphoneVoiceFiles;
-
 	SimCopterMissions::FSimCopterMissionSystem MissionSystem;
 
 	ESimCopterMissionSessionMode SessionMode = ESimCopterMissionSessionMode::Pending;
@@ -432,20 +421,6 @@ private:
 	// Mission records clear their type when the casualty counter completes them. Keep the hospital
 	// tile until every real medevac seat (including a deceased patient) has been unloaded.
 	TMap<int32, FIntPoint> MedevacHospitalTiles;
-
-	TSharedPtr<SWidget> MegaphonePromptWidget;
-	TSharedPtr<STextBlock> MegaphonePromptText;
-	bool bMegaphonePromptVisible = false;
-
-	// Megaphone / jam clearing.
-	bool FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const;
-	void UpdateMegaphonePrompt();
-	void EnsureMegaphonePromptWidget();
-	void RemoveMegaphonePromptWidget();
-
-	// Collects the megaphone lines. Everything else the mission layer plays is a table slot the
-	// audio subsystem loads on demand from its id.
-	void SetupMissionSounds();
 
 	// The burning-building loop (id 0x0d) is one voice for the whole city: FUN_004a4ac0 keeps
 	// picking the nearest fire and calling SetPosition on that single slot, so a second fire

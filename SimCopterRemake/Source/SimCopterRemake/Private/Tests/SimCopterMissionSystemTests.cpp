@@ -82,6 +82,25 @@ struct FSimCopterCrimeTestWorld : public FSimCopterTestMissionWorld
 	}
 };
 
+struct FSimCopterTrafficJamTestWorld : public FSimCopterTestMissionWorld
+{
+	bool bJamStarted = false;
+	TArray<FSimCopterMissionUiMessage> UiMessages;
+
+	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) override
+	{
+		bJamStarted = true;
+		OutTileX = 61;
+		OutTileY = 62;
+		return true;
+	}
+
+	virtual void OnUiMessage(const FSimCopterMissionUiMessage& Message) override
+	{
+		UiMessages.Add(Message);
+	}
+};
+
 FString ResolveCareerTweakPath()
 {
 	TArray<FString, TInlineAllocator<3>> Candidates;
@@ -587,6 +606,78 @@ bool FSimCopterMissionTypeNameTest::RunTest(const FString& Parameters)
 	// does to a running 0x1 mission).
 	TestEqual(TEXT("0x9 is still a building fire"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_BuildingFire | TYPE_Debris)), FString(TEXT("Building Fire")));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterOriginalPickupMessageTest,
+	"SimCopter.Missions.OriginalPickupMessage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterOriginalPickupMessageTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTrafficJamTestWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 EventId = System.CreateEventOfType(TYPE_Transport);
+	if (EventId == INDEX_NONE)
+	{
+		AddError(TEXT("Could not create the transport fixture"));
+		return false;
+	}
+
+	World.UiMessages.Reset();
+	System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+
+	const FSimCopterMissionUiMessage* PickupMessage = World.UiMessages.FindByPredicate(
+		[EventId](const FSimCopterMissionUiMessage& Message)
+		{
+			return Message.EventId == EventId && Message.Kind == 9;
+		});
+	if (!TestNotNull(TEXT("Picking up a transport Sim posts the cash/update message"), PickupMessage))
+	{
+		return false;
+	}
+
+	// FUN_004aa150 case 0x13 selects STRINGTABLE 0x3aa: retail text "Sim Picked Up!".
+	TestEqual(TEXT("Pickup uses the original string-resource id"), PickupMessage->TextId, 0x3aa);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterTrafficJamCarClearTest,
+	"SimCopter.Missions.TrafficJamCarClearCompletes",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterTrafficJamCarClearTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTrafficJamTestWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 EventId = System.CreateEventOfType(TYPE_TrafficJam);
+	if (EventId == INDEX_NONE)
+	{
+		AddError(TEXT("Could not create the traffic-jam fixture"));
+		return false;
+	}
+	TestTrue(TEXT("The world marks an initial jammed car"), World.bJamStarted);
+
+	const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+	if (!TestNotNull(TEXT("The jam has a mission record"), Record))
+	{
+		return false;
+	}
+	// FUN_0049fca0 -> FUN_0049fe30 posts EVT_JamCarAdded for the initial 0x200 car.
+	TestEqual(TEXT("The initial jammed car is counted"), Record->JamCarCount, 1);
+
+	// FUN_0049d7e0 handles megaphone message 0 per car and posts EVT_CarCleared (0x1b).
+	System.PostEvent(EVT_CarCleared, EventId, 1);
+	System.Tick(1.0f / 30.0f);
+	const FSimCopterMissionRecord* AfterClear = System.FindRecord(EventId);
+	TestTrue(TEXT("Clearing every counted car resolves the traffic-jam mission"),
+		AfterClear == nullptr || !AfterClear->bActive);
 	return true;
 }
 
