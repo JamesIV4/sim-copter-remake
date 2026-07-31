@@ -1,0 +1,11 @@
+﻿
+===== 0x00451d70 (400 bytes)
+  00451d70  push     esi
+  00451d71  push     edi
+  00451d72  cmp      dword ptr [ecx + 0x54], 0
+  00451d76  mov      esi, ecx
+  00451d78  jne      0x451d7f
+  00451d7a  xor      eax, eax
+  00451d7c  pop      edi
+  00451d7d  pop      esi
+  00451d7e  ret      

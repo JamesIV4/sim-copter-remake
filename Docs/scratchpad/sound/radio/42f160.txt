@@ -1,0 +1,218 @@
+﻿// ===========================================
+// Ghidra:    FUN_0042f160
+// Address:   0x0042f160
+// Signature: undefined FUN_0042f160(void)
+// Callers:   0  |  Callees: 4
+// ===========================================
+
+
+
+undefined4 __fastcall FUN_0042f160(int *param_1)
+
+
+
+{
+
+  int iVar1;
+
+  DWORD DVar2;
+
+  int iVar3;
+
+  uint uVar4;
+
+  LARGE_INTEGER LStack_8;
+
+  
+
+  iVar3 = *param_1;
+
+  iVar1 = (**(code **)(iVar3 + 0x24))();
+
+  if (iVar1 == 0) {
+
+    return 1;
+
+  }
+
+  if (param_1[7] == 0) {
+
+    iVar3 = (**(code **)(*(int *)(param_1[0xd] + 0x38) + 0x10))();
+
+    if (iVar3 == 0) {
+
+      param_1[7] = 1;
+
+      param_1[10] = 0;
+
+      param_1[9] = 0;
+
+      if (param_1[8] == 0) {
+
+        QueryPerformanceCounter(&LStack_8);
+
+        param_1[9] = LStack_8.s.LowPart;
+
+      }
+
+      else {
+
+        if (param_1[8] == 1) {
+
+          uVar4 = timeGetTime();
+
+        }
+
+        else {
+
+          DVar2 = timeGetTime();
+
+          uVar4 = DVar2 / 1000;
+
+        }
+
+        param_1[9] = uVar4;
+
+      }
+
+    }
+
+    return 1;
+
+  }
+
+  uVar4 = param_1[10];
+
+  if (param_1[9] != 0) {
+
+    if (param_1[8] == 0) {
+
+      QueryPerformanceCounter(&LStack_8);
+
+    }
+
+    else if (param_1[8] == 1) {
+
+      LStack_8.s.LowPart = timeGetTime();
+
+    }
+
+    else {
+
+      DVar2 = timeGetTime();
+
+      LStack_8.s.LowPart = DVar2 / 1000;
+
+    }
+
+    uVar4 = (uVar4 - param_1[9]) + LStack_8.s.LowPart;
+
+  }
+
+  if ((param_1[8] == 0) && (param_1[0xb] != 0)) {
+
+    uVar4 = MulDiv(uVar4,1000000,param_1[0xb]);
+
+  }
+
+  if (uVar4 < 4000) {
+
+    return 1;
+
+  }
+
+  if (((*(int *)(param_1[2] + param_1[5] * 4) == 0) &&
+
+      (iVar1 = (**(code **)(iVar3 + 0x30))(0), iVar1 != 0)) && (iVar1 = _rand(), iVar1 % 100 < 10))
+
+  {
+
+    param_1[7] = 0;
+
+    param_1[6] = param_1[6] + 1;
+
+    (**(code **)(iVar3 + 0x40))(0);
+
+    return 1;
+
+  }
+
+  iVar1 = param_1[5];
+
+  param_1[5] = iVar1 + 1;
+
+  if (param_1[3] - param_1[2] >> 2 <= iVar1 + 1) {
+
+    (**(code **)(iVar3 + 0x1c))();
+
+    param_1[5] = 0;
+
+  }
+
+  iVar1 = *(int *)(param_1[2] + param_1[5] * 4);
+
+  if (iVar1 == 0) {
+
+    iVar1 = (**(code **)(iVar3 + 0x30))(0);
+
+    if (iVar1 != 0) {
+
+      param_1[7] = 0;
+
+      (**(code **)(iVar3 + 0x40))(0);
+
+      return 1;
+
+    }
+
+  }
+
+  else if (iVar1 == 1) {
+
+    iVar1 = _rand();
+
+    if ((iVar1 % 100 < 0x14) && (iVar1 = (**(code **)(iVar3 + 0x30))(1), iVar1 != 0)) {
+
+      param_1[7] = 0;
+
+      (**(code **)(iVar3 + 0x40))(1);
+
+      return 1;
+
+    }
+
+  }
+
+  else if (iVar1 == 2) {
+
+    iVar1 = _rand();
+
+    if ((iVar1 % 100 < 0x5a) && (iVar1 = (**(code **)(iVar3 + 0x30))(2), iVar1 != 0)) {
+
+      param_1[7] = 0;
+
+      (**(code **)(iVar3 + 0x40))(2);
+
+      return 1;
+
+    }
+
+  }
+
+  else if (((iVar1 == 3) && (iVar1 = _rand(), iVar1 % 100 < 0x14)) &&
+
+          (iVar1 = (**(code **)(iVar3 + 0x30))(3), iVar1 != 0)) {
+
+    param_1[7] = 0;
+
+    (**(code **)(iVar3 + 0x40))(3);
+
+  }
+
+  return 1;
+
+}
+
+
+
+

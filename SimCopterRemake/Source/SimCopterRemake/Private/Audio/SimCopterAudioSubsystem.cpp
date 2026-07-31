@@ -110,6 +110,14 @@ void USimCopterAudioSubsystem::Deinitialize()
 		}
 	}
 	LooseComponents.Reset();
+
+	if (RadioComponent != nullptr)
+	{
+		RadioComponent->Stop();
+		RadioComponent->DestroyComponent();
+		RadioComponent = nullptr;
+	}
+	RadioEndTime = 0.0;
 	ClipCache.Reset();
 	bSoundsAvailable = false;
 
@@ -231,6 +239,59 @@ FString USimCopterAudioSubsystem::ResolveWavPath(const FString& WavName, SimCopt
 	return FString();
 }
 
+bool USimCopterAudioSubsystem::DecodeWav(const FString& AbsolutePath, FSimCopterPcmClip& OutClip)
+{
+	OutClip = FSimCopterPcmClip();
+
+	TArray<uint8> FileBytes;
+	if (!FFileHelper::LoadFileToArray(FileBytes, *AbsolutePath))
+	{
+		return false;
+	}
+
+	FWaveModInfo WaveInfo;
+	if (!WaveInfo.ReadWaveInfo(FileBytes.GetData(), FileBytes.Num()))
+	{
+		UE_LOG(LogSimCopterAudio, Warning, TEXT("[Audio] '%s' is not a readable RIFF/WAVE."), *AbsolutePath);
+		return false;
+	}
+
+	const int32 Channels = WaveInfo.pChannels != nullptr ? *WaveInfo.pChannels : 0;
+	const int32 SampleRate = WaveInfo.pSamplesPerSec != nullptr ? static_cast<int32>(*WaveInfo.pSamplesPerSec) : 0;
+	const int32 BitsPerSample = WaveInfo.pBitsPerSample != nullptr ? *WaveInfo.pBitsPerSample : 0;
+	if (Channels <= 0 || SampleRate <= 0 || WaveInfo.SampleDataSize == 0)
+	{
+		return false;
+	}
+
+	// The retail install mixes two quality sets - 11025 Hz 8-bit and 22050 Hz 16-bit - and the
+	// procedural FIFO wants signed 16-bit either way, so 8-bit is widened here.
+	if (BitsPerSample == 16)
+	{
+		OutClip.Pcm16.Append(WaveInfo.SampleDataStart, WaveInfo.SampleDataSize);
+	}
+	else if (BitsPerSample == 8)
+	{
+		const int32 NumSamples = static_cast<int32>(WaveInfo.SampleDataSize);
+		OutClip.Pcm16.SetNumUninitialized(NumSamples * 2);
+		int16* Out = reinterpret_cast<int16*>(OutClip.Pcm16.GetData());
+		for (int32 Index = 0; Index < NumSamples; ++Index)
+		{
+			Out[Index] = static_cast<int16>((static_cast<int32>(WaveInfo.SampleDataStart[Index]) - 128) << 8);
+		}
+	}
+	else
+	{
+		UE_LOG(LogSimCopterAudio, Warning, TEXT("[Audio] '%s' has unsupported depth %d."), *AbsolutePath, BitsPerSample);
+		return false;
+	}
+
+	OutClip.SampleRate = SampleRate;
+	OutClip.Channels = Channels;
+	OutClip.Duration = static_cast<float>(OutClip.Pcm16.Num() / (2 * Channels)) / static_cast<float>(SampleRate);
+	return true;
+}
+
 const FSimCopterPcmClip* USimCopterAudioSubsystem::LoadClip(const FString& WavName, SimCopterSound::ESoundDir Dir)
 {
 	const FString Key = WavName.ToLower();
@@ -239,7 +300,8 @@ const FSimCopterPcmClip* USimCopterAudioSubsystem::LoadClip(const FString& WavNa
 		return Cached->IsValid() ? Cached : nullptr;
 	}
 
-	// Cache the failure too, so a missing clip is not re-probed on every frame that asks.
+	// Cache the failure too, so a missing clip is not re-probed on every frame that asks: an
+	// empty entry is the "already tried, nothing here" marker the lookup above reads.
 	FSimCopterPcmClip& Clip = ClipCache.Add(Key);
 
 	const FString Path = ResolveWavPath(WavName, Dir);
@@ -249,55 +311,78 @@ const FSimCopterPcmClip* USimCopterAudioSubsystem::LoadClip(const FString& WavNa
 		return nullptr;
 	}
 
-	TArray<uint8> FileBytes;
-	if (!FFileHelper::LoadFileToArray(FileBytes, *Path))
+	return DecodeWav(Path, Clip) ? &Clip : nullptr;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The radio's channel
+// ---------------------------------------------------------------------------------------------
+
+bool USimCopterAudioSubsystem::PlayRadioFile(const FString& AbsolutePath, float VolumeMultiplier)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || !bSoundsAvailable || AbsolutePath.IsEmpty())
 	{
-		return nullptr;
+		return false;
 	}
 
-	FWaveModInfo WaveInfo;
-	if (!WaveInfo.ReadWaveInfo(FileBytes.GetData(), FileBytes.Num()))
+	// Deliberately uncached: a five-minute music track is about 7 MB of 16-bit PCM and the mix
+	// station alone has 25 of them. The samples live only as long as the wave that plays them.
+	FSimCopterPcmClip Clip;
+	if (!DecodeWav(AbsolutePath, Clip))
 	{
-		UE_LOG(LogSimCopterAudio, Warning, TEXT("[Audio] '%s' is not a readable RIFF/WAVE."), *Path);
-		return nullptr;
+		return false;
 	}
 
-	const int32 Channels = WaveInfo.pChannels != nullptr ? *WaveInfo.pChannels : 0;
-	const int32 SampleRate = WaveInfo.pSamplesPerSec != nullptr ? static_cast<int32>(*WaveInfo.pSamplesPerSec) : 0;
-	const int32 BitsPerSample = WaveInfo.pBitsPerSample != nullptr ? *WaveInfo.pBitsPerSample : 0;
-	if (Channels <= 0 || SampleRate <= 0 || WaveInfo.SampleDataSize == 0)
+	USoundWaveProcedural* Wave = MakeWave(Clip, /*bLoop=*/false, this);
+	if (Wave == nullptr)
 	{
-		return nullptr;
+		return false;
 	}
 
-	// Nearly every original effect is 8-bit unsigned mono at 11025 Hz; USoundWave::RawPCMData
-	// and the procedural FIFO both want signed 16-bit, so 8-bit is widened here.
-	if (BitsPerSample == 16)
+	if (RadioComponent == nullptr)
 	{
-		Clip.Pcm16.Append(WaveInfo.SampleDataStart, WaveInfo.SampleDataSize);
-	}
-	else if (BitsPerSample == 8)
-	{
-		const int32 NumSamples = static_cast<int32>(WaveInfo.SampleDataSize);
-		Clip.Pcm16.SetNumUninitialized(NumSamples * 2);
-		int16* Out = reinterpret_cast<int16*>(Clip.Pcm16.GetData());
-		for (int32 Index = 0; Index < NumSamples; ++Index)
+		RadioComponent = NewObject<UAudioComponent>(this);
+		if (RadioComponent == nullptr)
 		{
-			Out[Index] = static_cast<int16>((static_cast<int32>(WaveInfo.SampleDataStart[Index]) - 128) << 8);
+			return false;
 		}
-	}
-	else
-	{
-		// Leave the cache entry in place but empty: that is the "already tried, no audio here"
-		// marker the lookup at the top of this function reads.
-		UE_LOG(LogSimCopterAudio, Warning, TEXT("[Audio] '%s' has unsupported depth %d."), *Path, BitsPerSample);
-		return nullptr;
+		RadioComponent->bAutoActivate = false;
+		RadioComponent->bAutoDestroy = false;
+		RadioComponent->bAllowSpatialization = false;
+		RadioComponent->bIsUISound = true;
+		RadioComponent->RegisterComponentWithWorld(World);
 	}
 
-	Clip.SampleRate = SampleRate;
-	Clip.Channels = Channels;
-	Clip.Duration = static_cast<float>(Clip.Pcm16.Num() / (2 * Channels)) / static_cast<float>(SampleRate);
-	return &Clip;
+	RadioComponent->Stop();
+	RadioComponent->SetSound(Wave);
+	RadioComponent->SetVolumeMultiplier(VolumeMultiplier * VolumeIndexToGain(MasterVolume));
+	RadioEndTime = FPlatformTime::Seconds() + static_cast<double>(Clip.Duration);
+	RadioComponent->Play();
+	return true;
+}
+
+void USimCopterAudioSubsystem::StopRadio()
+{
+	RadioEndTime = 0.0;
+	if (RadioComponent != nullptr)
+	{
+		RadioComponent->Stop();
+	}
+}
+
+bool USimCopterAudioSubsystem::IsRadioPlaying() const
+{
+	return RadioEndTime > 0.0 && FPlatformTime::Seconds() < RadioEndTime;
+}
+
+float USimCopterAudioSubsystem::GetRadioRemainingSeconds() const
+{
+	if (!IsRadioPlaying())
+	{
+		return 0.0f;
+	}
+	return static_cast<float>(RadioEndTime - FPlatformTime::Seconds());
 }
 
 bool USimCopterAudioSubsystem::EnsureSlotLoaded(int32 Id)

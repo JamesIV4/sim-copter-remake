@@ -1,0 +1,42 @@
+﻿// ===========================================
+// Ghidra:    FUN_00431b10
+// Address:   0x00431b10
+// Signature: undefined FUN_00431b10(void)
+// Callers:   1  |  Callees: 5
+// ===========================================
+
+
+
+int FUN_00431b10(int param_1)
+
+
+
+{
+
+  int iVar1;
+
+  ostream *poVar2;
+
+  
+
+  set_new_handler((_func_void *)0x0);
+
+  iVar1 = FUN_004d28b0(param_1 << 2);
+
+  if (iVar1 == 0) {
+
+    poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);
+
+    FUN_00401000(poVar2);
+
+    FUN_004d2060(1);
+
+  }
+
+  return iVar1;
+
+}
+
+
+
+

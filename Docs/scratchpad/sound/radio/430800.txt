@@ -1,0 +1,26 @@
+﻿// ===========================================
+// Ghidra:    FUN_00430800
+// Address:   0x00430800
+// Signature: undefined FUN_00430800(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+undefined4 __fastcall FUN_00430800(int *param_1)
+
+
+
+{
+
+  (**(code **)(*param_1 + 0x18))();
+
+  (**(code **)(param_1[0xe] + 0x40))();
+
+  return 1;
+
+}
+
+
+
+

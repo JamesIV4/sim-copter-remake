@@ -1,0 +1,74 @@
+﻿
+===== 0x00451c00 (230 bytes)
+  00451c00  sub      esp, 0xc
+  00451c03  push     ebx
+  00451c04  push     esi
+  00451c05  push     edi
+  00451c06  mov      ebx, ecx
+  00451c08  push     ebp
+  00451c09  push     0x10
+  00451c0b  call     0x4d28b0
+  00451c10  add      esp, 4
+  00451c13  xor      ecx, ecx
+  00451c15  test     eax, eax
+  00451c17  je       0x451c2e
+  00451c19  mov      dword ptr [eax + 4], ecx
+  00451c1c  mov      dword ptr [eax + 8], ecx
+  00451c1f  mov      dword ptr [eax], ecx
+  00451c21  mov      dword ptr [eax + 0xc], 1
+  00451c28  mov      dword ptr [esp + 0x18], eax
+  00451c2c  jmp      0x451c36
+  00451c2e  mov      dword ptr [esp + 0x18], 0
+  00451c36  mov      eax, dword ptr [esp + 0x20]
+  00451c3a  mov      ecx, ebx
+  00451c3c  mov      dword ptr [esp + 0x14], 0
+  00451c44  push     eax
+  00451c45  call     0x404930
+  00451c4a  cmp      dword ptr [ebx + 0x84], 0
+  00451c51  jne      0x451cf9
+  00451c57  lea      eax, [esp + 0x14]
+  00451c5b  lea      ecx, [ebx + 0x88]
+  00451c61  push     eax
+  00451c62  push     ecx
+  00451c63  push     0
+  00451c65  mov      ecx, 0x51a168
+  00451c6a  push     8
+  00451c6c  call     0x4344d0
+  00451c71  push     0x134
+  00451c76  call     0x4d28b0
+  00451c7b  add      esp, 4
+  00451c7e  mov      ebp, eax
+  00451c80  test     ebp, ebp
+  00451c82  je       0x451cef
+  00451c84  cmp      dword ptr [esp + 0x14], 0
+  00451c89  je       0x451c98
+  00451c8b  mov      eax, dword ptr [esp + 0x14]
+  00451c8f  push     eax
+  00451c90  call     0x4d29a0
+  00451c95  add      esp, 4
+  00451c98  mov      eax, dword ptr [esp + 0x18]
+  00451c9c  mov      eax, dword ptr [eax + 4]
+  00451c9f  inc      eax
+  00451ca0  push     eax
+  00451ca1  call     0x4d28b0
+  00451ca6  mov      ecx, dword ptr [esp + 0x1c]
+  00451caa  mov      dword ptr [esp + 0x18], eax
+  00451cae  add      esp, 4
+  00451cb1  mov      edx, dword ptr [ecx + 4]
+  00451cb4  test     edx, edx
+  00451cb6  je       0x451ccc
+  00451cb8  mov      esi, dword ptr [ecx]
+  00451cba  mov      edi, dword ptr [esp + 0x14]
+  00451cbe  mov      ecx, edx
+  00451cc0  shr      ecx, 2
+  00451cc3  rep movsd dword ptr es:[edi], dword ptr [esi]
+  00451cc5  mov      ecx, edx
+  00451cc7  and      ecx, 3
+  00451cca  rep movsb byte ptr es:[edi], byte ptr [esi]
+  00451ccc  mov      eax, dword ptr [esp + 0x18]
+  00451cd0  mov      ecx, dword ptr [esp + 0x14]
+  00451cd4  mov      edx, dword ptr [eax + 4]
+  00451cd7  mov      byte ptr [edx + ecx], 0
+  00451cdb  mov      ecx, dword ptr [esp + 0x14]
+  00451cdf  push     ecx
+  00451ce0  mov      ecx, ebp

@@ -3,6 +3,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
+#include "Audio/SimCopterRadio.h"
 #include "Camera/CameraComponent.h"
 #include "City/SimCopterAirport.h"
 #include "City/SimCity2000CityActor.h"
@@ -6062,6 +6063,63 @@ void ASimCopterHelicopterPawn::PlayFlightEventAudio(const FSimCopterFlightEvents
 		Audio->Play2D(SimCopterSound::SND_GASOUT);
 	}
 	bAudioWasFuelStarved = bFuelStarved;
+}
+
+void ASimCopterHelicopterPawn::SimRadio(const FString& Command)
+{
+	USimCopterRadioSubsystem* Radio = USimCopterRadioSubsystem::Get(this);
+	if (Radio == nullptr || Radio->GetStationCount() == 0)
+	{
+		LastToolStatus = TEXT("No radio stations found under sound/radio.");
+		UE_LOG(LogTemp, Display, TEXT("[Radio] %s"), *LastToolStatus);
+		return;
+	}
+
+	const FString Arg = Command.TrimStartAndEnd();
+	if (Arg.IsEmpty() || Arg.Equals(TEXT("next"), ESearchCase::IgnoreCase))
+	{
+		Radio->NextStation();
+	}
+	else if (Arg.Equals(TEXT("prev"), ESearchCase::IgnoreCase))
+	{
+		Radio->PreviousStation();
+	}
+	else if (Arg.Equals(TEXT("off"), ESearchCase::IgnoreCase))
+	{
+		Radio->SetPowered(false);
+	}
+	else if (Arg.Equals(TEXT("on"), ESearchCase::IgnoreCase))
+	{
+		Radio->SetPowered(true);
+	}
+	else if (Arg.IsNumeric())
+	{
+		Radio->SetStationIndex(FCString::Atoi(*Arg));
+	}
+	else
+	{
+		const TArray<FSimCopterRadioStation>& Stations = Radio->GetStations();
+		const int32 Found = Stations.IndexOfByPredicate(
+			[&Arg](const FSimCopterRadioStation& Station)
+			{
+				return Station.CallSign.Equals(Arg, ESearchCase::IgnoreCase);
+			});
+		if (Found == INDEX_NONE)
+		{
+			LastToolStatus = FString::Printf(TEXT("Unknown station '%s'."), *Arg);
+			UE_LOG(LogTemp, Display, TEXT("[Radio] %s"), *LastToolStatus);
+			return;
+		}
+		Radio->SetStationIndex(Found);
+	}
+
+	LastToolStatus = FString::Printf(
+		TEXT("Radio %s, station %d/%d (%s)."),
+		Radio->IsPowered() ? TEXT("on") : TEXT("off"),
+		Radio->GetStationIndex() + 1,
+		Radio->GetStationCount(),
+		*Radio->GetStationCallSign());
+	UE_LOG(LogTemp, Display, TEXT("[Radio] %s"), *LastToolStatus);
 }
 
 void ASimCopterHelicopterPawn::SimForceFire()

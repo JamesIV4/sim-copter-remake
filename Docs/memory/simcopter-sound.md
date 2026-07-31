@@ -112,11 +112,135 @@ into the speaker's bank slot, applies a per-person `AddFrequency`, and plays it 
 Extracted by `Docs/scratchpad/sound/extract_people_voices.py`; the table and the bank allocator
 are ported, and events 56/62 name clips (MORITURI, REPAIR) that retail does not ship.
 
-## Not ported
+## The radio (decoded 2026-07-31, not yet ported)
 
-- **The radio is impossible from this install**: every file under `sound/radio/` — 154 of them,
-  all five stations, their DJs and all 79 commercials — is **zero bytes**. There is nothing to
-  decode against. `sound/`, `sound/English/` and `sound/people/` are all intact.
+**The assets exist — check the right copy.** Every file under
+`Reference/SimCopterOriginalGame/sound/radio/` is zero bytes, but that is a bad copy: the real
+install at `D:\Downloads\SimCopter\Extracted\SIMCOPTER\sound\radio\` has all 154 (about 185 MB).
+Only the five `.id` files are legitimately empty — they are markers whose *filename* is the
+station's call sign. Do not conclude "no assets" from the reference tree alone.
+
+**Playlists are discovered by globbing, not from a table.** The radio's own string table is at
+`0x004f8f40` (`classic\`, `rock\`, `techno\`, `country\`, `jazz\`, `oldies\`, `rb\`, `easy\`,
+`talk\`, `radio\`, `commercl\`, `stations\`, `music\`, `dj\`, `jingle\`, `*.wav`, `*.id*`, `KMIX`).
+`FUN_004302b0` globs `*.id*` under `stations\` to find the stations; the loader then globs `*.wav`
+per station under `music\` and `dj\<lang>\`, and globally under `commercl\<lang>\`. The exe knows
+**nine** genres (`FUN_00430e90` validates against that list); retail ships four plus `mix`.
+
+**It is a shuffle bag, not a per-pick random draw.** Two Fisher-Yates shuffles, both using
+`FUN_00455d70(n)` — a **subtractive lagged-Fibonacci** generator (55-word state at `DAT_0055af08`,
+two cursors advanced mod 55) returning `state % n`. That is *not* MSVC `rand`, and not the people
+LFSR either; the radio is the third RNG in the game.
+
+- `FUN_0042ff00` (vtable +0x18) shuffles a file list in place: flatten the linked list to an array,
+  Fisher-Yates it, rebuild. `FUN_0042fa20` calls it **once per category** at load.
+- `FUN_00430070` (vtable +0x1c) shuffles the **slot-type pattern array** (`this+8`/`this+0xc`) at
+  the end of every cycle, then applies an anti-repeat rule: if the newly shuffled first element
+  equals the previous cycle's last, swap first and last so the same category cannot straddle the
+  seam.
+
+Within a category, playback **walks the shuffled list in order and wraps** — cursor at
+`+0x58/+0x6c/+0x80/+0x94` against the list end at `+0x50/+0x64/+0x78/+0x8c`, reset to the head on
+reaching it (`FUN_0042f3d0`). So every track plays once per cycle before any repeats.
+
+**Then probability gates on top**, in the scheduler `FUN_0042f160`, and *these* use MSVC
+`rand() % 100`:
+
+| type | roll | content | directory |
+| --- | --- | --- | --- |
+| 0 | always | music | `stations\<x>\music\` |
+| 1 | `< 0x14` = **20%** | DJ | `stations\<x>\dj\<lang>\` |
+| 2 | `< 0x5a` = **90%** | commercial | `commercl\<lang>\` |
+| 3 | `< 0x14` = **20%** | jingle | `stations\<x>\jingle\` — **empty in retail, never fires** |
+
+That mapping is settled by three independent things, not by the order alone: the path builder loads
+`music\` (0x4310f7), `dj\` (0x431148), `commercl\` (0x43125c), `jingle\` (0x4314c9) into base-path
+members at ascending offsets 0x48 / 0x60 / 0x78 / 0x8c; type 0 takes the plain direct-play path
+while **types 2 and 3 walk a multi-part sub-index** (`entry+0xc`, starting at -1) and type 1 does
+not — and the only multi-part files that ship are commercials (`ad013a`/`ad013b`,
+`ad050a`/`ad050b`), while every DJ line is a single file. The `jingle` folders exist under all four
+genre stations but are empty, so type 3 is inert; `commercl\german\` is an empty localisation slot.
+
+plus a **10%** chance (`rand()%100 < 10`) to play the music slot *again* without advancing the
+cursor — back-to-back tracks. A failed roll skips that slot silently; the cursor has already moved.
+
+Between items the scheduler waits for the current sound to stop and then for **4000 timer units**
+(`if (uVar4 < 4000) return`) before picking again — timed by `QueryPerformanceCounter` or
+`timeGetTime`, selected by `this[8]`. Types 2 and 3 additionally walk a sub-index inside one entry
+(`entry+0xc`, starting at -1) — multi-part items played in sequence, which is what the shipped
+`ad013a`/`ad013b` and `ad050a`/`ad050b` pairs are.
+
+## The dash tuner (ported 2026-07-31)
+
+The radio lives in **dash4**, the 455x43 strip above the instrument panel: an FM head unit whose
+lit scale is printed 88 / 92 / 96 / 104 / 108. (Those are evenly spaced in *pixels* but not in
+frequency - the sequence skips 100. It is an art quirk in the original; left alone.)
+
+`FUN_00451980` builds that widget and stores a rectangle **(20, 15, 86, 38)** plus `[0x24] = -1`
+for "no station yet". The rectangle bounds the whole head unit, **not** the lit scale, so the
+needle geometry came from measuring `DASH4.BMP` instead — a luminance profile
+(`Docs/scratchpad/sound/radio/measure_tuner.py`) puts:
+
+- the lit band at **rows 24..30, columns 17..92**;
+- the printed label centres at **x = 22, 38, 53, 69, 84**.
+
+The port therefore hangs the needle's end detents on the outermost printed labels (22 and 84) and
+divides evenly between, which lands the five shipped stations at 22.0, 37.5, 53.0, 68.5, 84.0 —
+within half a pixel of every label. `Docs/scratchpad/sound/radio/preview_needle.py` composites the
+result onto the real artwork so this can be re-checked without launching the game.
+
+Radio state reaches the dash over a **message bus**, not by polling: `FUN_00430950` publishes a
+7-dword struct under the id `0x5245494f` ("REIO") and `FUN_00430890` reads it back, falling back
+to `PTR_DAT_004f8f8c` — the literal **"KMIX"** — when there is no saved state. That is why the
+radio opens on KMIX. The struct is {volume, ?, trackIndex, ?, ?, ?, ?}; volume defaults to 10000
+(`FUN_004306e0`).
+
+**Remake choices**, because the original's input path for tuning was not pinned down: stations are
+sorted by call sign for a stable dial order; left-click on the head unit tunes to the nearest
+station, right-click is power; `SimRadio [next|prev|on|off|<callsign>|<index>]` does the same from
+the console. The needle is drawn one page pixel wide and dims when the set is off.
+
+Watch out for `radio.bmp` — it is a UI **radio button**, nothing to do with this. The dashboard art
+is `dash4.bmp`; `radiotv.bmp` / `station.bmp` belong to the options screen.
+
+## There are two audio quality sets, and it changes the rotor
+
+The retail install ships **22050 Hz / 16-bit mono** versions of many effects; a partial or
+low-quality copy has **11025 Hz / 8-bit**. Some files (DOUSE, BLIP1, the D1xxx voice lines) are
+byte-identical in both. On 2026-07-31 the repo's `Reference/` tree was the low-quality set with a
+zero-byte radio; it was refreshed from the user's full install (`robocopy`, no `/MIR`, so the 13
+reference-only files survived) and is now 525 files / 209 MB.
+
+**This is not cosmetic.** `AddFrequency` adds a Hz delta to *the clip's own rate*, so the rotor's
+pitch depth depends on which set is installed — and the original behaves the same way, because it
+reads the rate off the buffer:
+
+| COPLOOP rate | 300 rpm (lift gate) | where UE's 0.4 pitch clamp starts biting |
+| --- | --- | --- |
+| 11025 Hz | 7425 Hz = **0.67x** | about 250 rpm |
+| 22050 Hz | 18450 Hz = **0.84x** | about 150 rpm |
+
+The port needs no change for this (it computes `Base + DeltaHz` from the loaded clip), but do not
+"fix" a rotor that sounds shallower than a video of the game — check the asset rate first.
+
+## Corrections to earlier notes in this file
+
+Three claims here were made against the incomplete `Reference/` copy and were wrong:
+
+- The radio assets are **not** missing. See above.
+- `help1.wav` **is** shipped in `sound\English\`, exactly where id 0x1d's dir-3 registration says.
+  The language-then-root search still earns its keep, but not for this.
+- `MORITURI.WAV` and `REPAIR.WAV` (voice events 56 and 62) **are** shipped in `sound\people\`.
+
+The full install also carries `ambsiren.wav`, `blast1.wav`, `explode1.wav`, `firelg.wav`,
+`firemd.wav`, `firesm.wav`, which the low-quality copy lacks and which no registration references —
+unused or cut.
+
+**Do not copy the executable from a full install**: it is usually SimCopterX-patched (1558528 bytes
+versus the original 1521664), and SimCopterX relocates `.text`, so every address in these notes
+would be wrong. Audio only.
+
+## Not ported
 - **The front-end sounds are not table slots.** Each screen builds its own standalone sound object
   (`FUN_0041d4c0` + a direct `Play`). Decoded: `hangar.wav` (FUN_00449cb0), `career.wav` +
   `carsel.wav` (FUN_00457c90), `menu.wav` (FUN_0045e920 / FUN_0043c6d0), plus `menuback.wav`,

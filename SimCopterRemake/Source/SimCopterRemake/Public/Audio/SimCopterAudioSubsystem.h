@@ -162,6 +162,22 @@ public:
 
 	// --- mixer state ---
 
+	// --- the radio's own channel ---
+	//
+	// The radio is not a table slot. In the original it is a separate object with its own buffer
+	// (`FUN_004306e0`'s construction, volume defaulting to 10000), which is why a station can
+	// keep playing underneath every effect. It also streams things two orders of magnitude
+	// larger than any effect - a music track is five minutes - so these deliberately do NOT go
+	// through the clip cache; each play decodes once and drops the samples when it ends.
+
+	/** Absolute path, because the radio tree is nested well below the slot search roots. */
+	bool PlayRadioFile(const FString& AbsolutePath, float VolumeMultiplier = 1.0f);
+	void StopRadio();
+	bool IsRadioPlaying() const;
+
+	/** Seconds left of the current radio item, 0 when nothing is playing. */
+	float GetRadioRemainingSeconds() const;
+
 	/** DAT_00519cc0, the master effects volume index in [0, 10000]. */
 	void SetMasterVolume(int32 Volume);
 	int32 GetMasterVolume() const { return MasterVolume; }
@@ -265,12 +281,21 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAudioComponent>> LooseComponents;
 
+	/** The radio's single voice. */
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> RadioComponent = nullptr;
+
+	double RadioEndTime = 0.0;
+
 	/** Clips loaded by PlayFile2D / SetFile, keyed by lowercase relative path. */
 	TMap<FString, FSimCopterPcmClip> ClipCache;
 
 	FString ResolveSoundRoot() const;
 	FString ResolveWavPath(const FString& WavName, SimCopterSound::ESoundDir Dir) const;
 	const FSimCopterPcmClip* LoadClip(const FString& WavName, SimCopterSound::ESoundDir Dir);
+
+	/** Decode one RIFF/WAVE file. Shared by the cached slot loader and the uncached radio one. */
+	static bool DecodeWav(const FString& AbsolutePath, FSimCopterPcmClip& OutClip);
 	bool EnsureSlotLoaded(int32 Id);
 	UAudioComponent* EnsureSlotComponent(int32 Id);
 

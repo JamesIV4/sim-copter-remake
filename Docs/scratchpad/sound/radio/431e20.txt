@@ -1,0 +1,160 @@
+﻿// ===========================================
+// Ghidra:    FUN_00431e20
+// Address:   0x00431e20
+// Signature: undefined FUN_00431e20(void)
+// Callers:   2  |  Callees: 6
+// ===========================================
+
+
+
+int * __thiscall FUN_00431e20(int *param_1,int *param_2)
+
+
+
+{
+
+  int iVar1;
+
+  undefined4 *puVar2;
+
+  undefined4 *puVar3;
+
+  uint uVar4;
+
+  undefined4 *puVar5;
+
+  ostream *poVar6;
+
+  undefined4 *puVar7;
+
+  int iVar8;
+
+  undefined4 *puVar9;
+
+  uint uVar10;
+
+  
+
+  if (param_1 == param_2) {
+
+    return param_1;
+
+  }
+
+  puVar5 = (undefined4 *)param_2[1];
+
+  puVar9 = (undefined4 *)*param_2;
+
+  puVar7 = (undefined4 *)*param_1;
+
+  uVar10 = (int)puVar5 - (int)puVar9 >> 2;
+
+  if ((uint)(param_1[2] - (int)puVar7 >> 2) < uVar10) {
+
+    FUN_004d29a0(puVar7);
+
+    iVar8 = param_2[1];
+
+    iVar1 = *param_2;
+
+    set_new_handler((_func_void *)0x0);
+
+    puVar5 = (undefined4 *)FUN_004d28b0((iVar8 - iVar1 >> 2) << 2);
+
+    if (puVar5 == (undefined4 *)0x0) {
+
+      poVar6 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);
+
+      FUN_00401000(poVar6);
+
+      FUN_004d2060(1);
+
+    }
+
+    *param_1 = (int)puVar5;
+
+    puVar9 = (undefined4 *)param_2[1];
+
+    puVar7 = (undefined4 *)*param_2;
+
+    while (puVar3 = puVar5, puVar2 = puVar7, puVar2 != puVar9) {
+
+      puVar7 = puVar2 + 1;
+
+      puVar5 = puVar3 + 1;
+
+      if (puVar3 != (undefined4 *)0x0) {
+
+        *puVar3 = *puVar2;
+
+      }
+
+    }
+
+    param_1[2] = (int)puVar3;
+
+  }
+
+  else {
+
+    uVar4 = param_1[1] - (int)puVar7 >> 2;
+
+    if (uVar4 < uVar10) {
+
+      puVar5 = puVar9 + uVar4;
+
+      for (; puVar9 != puVar5; puVar9 = puVar9 + 1) {
+
+        *puVar7 = *puVar9;
+
+        puVar7 = puVar7 + 1;
+
+      }
+
+      puVar5 = (undefined4 *)param_2[1];
+
+      iVar8 = (param_1[1] - *param_1 >> 2) * 4;
+
+      puVar9 = (undefined4 *)(*param_1 + iVar8);
+
+      puVar7 = (undefined4 *)(*param_2 + iVar8);
+
+      while (puVar3 = puVar7, puVar2 = puVar9, puVar5 != puVar3) {
+
+        puVar9 = puVar2 + 1;
+
+        puVar7 = puVar3 + 1;
+
+        if (puVar2 != (undefined4 *)0x0) {
+
+          *puVar2 = *puVar3;
+
+        }
+
+      }
+
+    }
+
+    else {
+
+      for (; puVar9 != puVar5; puVar9 = puVar9 + 1) {
+
+        *puVar7 = *puVar9;
+
+        puVar7 = puVar7 + 1;
+
+      }
+
+    }
+
+  }
+
+  param_1[1] = (param_2[1] - *param_2 >> 2) * 4 + *param_1;
+
+  return param_1;
+
+}
+
+
+
+
