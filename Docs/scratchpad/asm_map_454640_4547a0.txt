@@ -1,0 +1,142 @@
+00454640  push     esi
+00454641  mov      esi, ecx
+00454643  call     0x404920
+00454648  push     1
+0045464a  mov      eax, dword ptr [esi]
+0045464c  mov      ecx, esi
+0045464e  call     dword ptr [eax + 0x10]
+00454651  pop      esi
+00454652  ret      
+00454653  int3     
+00454654  int3     
+00454655  int3     
+00454656  int3     
+00454657  int3     
+00454658  int3     
+00454659  int3     
+0045465a  int3     
+0045465b  int3     
+0045465c  int3     
+0045465d  int3     
+0045465e  int3     
+0045465f  int3     
+00454660  mov      dword ptr [ecx + 0x88], 0xfffffffe
+0045466a  mov      eax, 1
+0045466f  mov      dword ptr [ecx + 0x78], eax
+00454672  mov      dword ptr [ecx + 0x7c], eax
+00454675  ret      
+00454676  int3     
+00454677  int3     
+00454678  int3     
+00454679  int3     
+0045467a  int3     
+0045467b  int3     
+0045467c  int3     
+0045467d  int3     
+0045467e  int3     
+0045467f  int3     
+00454680  mov      eax, dword ptr [esp + 4]
+00454684  sub      esp, 0x108
+0045468a  push     esi
+0045468b  push     eax
+0045468c  mov      esi, ecx
+0045468e  call     0x404930
+00454693  mov      eax, dword ptr [esi + 0x58]
+00454696  cmp      eax, -1
+00454699  je       0x4546a6
+0045469b  mov      ecx, dword ptr [esi + 0x40]
+0045469e  push     eax
+0045469f  push     1
+004546a1  mov      eax, dword ptr [ecx]
+004546a3  call     dword ptr [eax + 8]
+004546a6  mov      byte ptr [esp + 4], 0x6f
+004546ab  mov      byte ptr [esp + 5], 0xda
+004546b0  mov      byte ptr [esp + 6], 0xff
+004546b5  mov      eax, dword ptr [esp + 4]
+004546b9  mov      ecx, dword ptr [esi + 0x40]
+004546bc  mov      dword ptr [ecx + 0x38], eax
+004546bf  cmp      dword ptr [esi + 0x74], 0
+004546c3  jne      0x454706
+004546c5  lea      eax, [esp + 8]
+004546c9  mov      ecx, dword ptr [0x4f9940]
+004546cf  push     eax
+004546d0  push     ecx
+004546d1  push     0
+004546d3  push     8
+004546d5  call     0x432ab0
+004546da  add      esp, 0x10
+004546dd  push     0x134
+004546e2  call     0x4d28b0
+004546e7  add      esp, 4
+004546ea  mov      ecx, eax
+004546ec  test     ecx, ecx
+004546ee  je       0x4546ff
+004546f0  lea      eax, [esp + 8]
+004546f4  push     eax
+004546f5  call     0x44f860
+004546fa  mov      dword ptr [esi + 0x74], eax
+004546fd  jmp      0x454706
+004546ff  mov      dword ptr [esi + 0x74], 0
+00454706  mov      eax, dword ptr [esi]
+00454708  mov      ecx, esi
+0045470a  call     dword ptr [eax + 0xd8]
+00454710  mov      eax, dword ptr [esi + 0x40]
+00454713  pop      esi
+00454714  add      esp, 0x108
+0045471a  ret      4
+0045471d  int3     
+0045471e  int3     
+0045471f  int3     
+00454720  push     esi
+00454721  push     edi
+00454722  cmp      dword ptr [0x4f81e0], ecx
+00454728  mov      edi, ecx
+0045472a  jne      0x45473f
+0045472c  push     edi
+0045472d  mov      eax, dword ptr [edi]
+0045472f  call     dword ptr [eax + 0xac]
+00454735  mov      dword ptr [edi + 0x80], 0xffffffff
+0045473f  mov      esi, dword ptr [edi + 0x74]
+00454742  test     esi, esi
+00454744  je       0x45475d
+00454746  mov      ecx, esi
+00454748  call     0x44fbb0
+0045474d  push     esi
+0045474e  call     0x4d29a0
+00454753  mov      dword ptr [edi + 0x74], 0
+0045475a  add      esp, 4
+0045475d  mov      ecx, edi
+0045475f  call     0x404a20
+00454764  pop      edi
+00454765  pop      esi
+00454766  ret      
+00454767  int3     
+00454768  int3     
+00454769  int3     
+0045476a  int3     
+0045476b  int3     
+0045476c  int3     
+0045476d  int3     
+0045476e  int3     
+0045476f  int3     
+00454770  push     esi
+00454771  cmp      ecx, dword ptr [0x4f81e0]
+00454777  mov      esi, ecx
+00454779  jne      0x45478e
+0045477b  push     esi
+0045477c  mov      eax, dword ptr [esi]
+0045477e  call     dword ptr [eax + 0xac]
+00454784  mov      dword ptr [esi + 0x80], 0xffffffff
+0045478e  mov      ecx, esi
+00454790  call     0x404c80
+00454795  pop      esi
+00454796  ret      
+00454797  int3     
+00454798  int3     
+00454799  int3     
+0045479a  int3     
+0045479b  int3     
+0045479c  int3     
+0045479d  int3     
+0045479e  int3     
+0045479f  int3     

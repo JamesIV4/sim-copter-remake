@@ -1,0 +1,214 @@
+﻿// ===========================================
+// Ghidra:    FUN_004a3b20
+// Address:   0x004a3b20
+// Signature: undefined FUN_004a3b20(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+void FUN_004a3b20(int param_1,int param_2)
+
+
+
+{
+
+  undefined4 uVar1;
+
+  undefined4 *puVar2;
+
+  undefined4 *puVar3;
+
+  int iVar4;
+
+  undefined4 *puVar5;
+
+  int iVar6;
+
+  
+
+  iVar6 = 0;
+
+  puVar5 = (undefined4 *)(param_2 * DAT_00505ecc + param_1 + DAT_00505ec8);
+
+  puVar3 = DAT_00505ee4;
+
+  if (0 < DAT_00505edc) {
+
+    do {
+
+      iVar4 = 0;
+
+      puVar2 = puVar5;
+
+      if (0 < (int)(DAT_00505ed8 & 0xfffffffc)) {
+
+        do {
+
+          uVar1 = *puVar3;
+
+          puVar3 = puVar3 + 1;
+
+          *puVar2 = uVar1;
+
+          puVar2 = puVar2 + 1;
+
+          iVar4 = iVar4 + 1;
+
+        } while (iVar4 < (int)DAT_00505ed8 >> 2);
+
+      }
+
+      puVar5 = (undefined4 *)((int)puVar5 + param_2);
+
+      iVar6 = iVar6 + 1;
+
+    } while (iVar6 < DAT_00505edc);
+
+  }
+
+  return;
+
+}
+
+
+
+
+// ===========================================
+// Ghidra:    FUN_004a3d00
+// Address:   0x004a3d00
+// Signature: undefined FUN_004a3d00(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+uint FUN_004a3d00(int param_1,int param_2)
+
+
+
+{
+
+  uint uVar1;
+
+  uint *puVar2;
+
+  
+
+  uVar1 = 0xffffffff;
+
+  if (DAT_00505f10 != 0) {
+
+    puVar2 = &DAT_005d3eb0;
+
+    do {
+
+      if (((((*puVar2 & 1) != 0) && ((*puVar2 & 2) != 0)) && ((int)puVar2[8] <= param_1)) &&
+
+         (((param_1 <= (int)puVar2[9] && ((int)puVar2[6] <= param_2)) && (param_2 <= (int)puVar2[7])
+
+          ))) {
+
+        uVar1 = puVar2[1];
+
+      }
+
+      puVar2 = puVar2 + 10;
+
+    } while (puVar2 < &DAT_005d41d0);
+
+  }
+
+  return uVar1;
+
+}
+
+
+
+
+// ===========================================
+// Ghidra:    FUN_004a3ee0
+// Address:   0x004a3ee0
+// Signature: undefined FUN_004a3ee0(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+void FUN_004a3ee0(int param_1)
+
+
+
+{
+
+  if (param_1 != 0) {
+
+    DAT_00505f0c = 1;
+
+    return;
+
+  }
+
+  DAT_00505f0c = 0;
+
+  return;
+
+}
+
+
+
+
+// ===========================================
+// Ghidra:    FUN_004a3f00
+// Address:   0x004a3f00
+// Signature: undefined FUN_004a3f00(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+void FUN_004a3f00(int param_1)
+
+
+
+{
+
+  if (param_1 != 0) {
+
+    DAT_00505f10 = 1;
+
+    return;
+
+  }
+
+  DAT_00505f10 = 0;
+
+  return;
+
+}
+
+
+
+
+// ===========================================
+// Ghidra:    FUN_004a92e0
+// Address:   0x004a92e0
+// Signature: undefined FUN_004a92e0(void)
+// Callers:   2  |  Callees: 0
+// ===========================================
+
+
+
+undefined4 FUN_004a92e0(void)
+
+
+
+{
+
+  return DAT_0057f9d8;
+
+}
+
+
+
+

@@ -1,0 +1,58 @@
+004a30d0  add      dword ptr [eax], eax
+004a30d2  add      byte ptr [ebx + 0x8e1c1c8], cl
+004a30d8  mov      cl, byte ptr [ecx + edx + 0x5bde80]
+004a30df  cmp      cl, 0x30
+004a30e2  jl       0x4a3132
+004a30e4  cmp      cl, 0x40
+004a30e7  jge      0x4a3132
+004a30e9  mov      edi, dword ptr [0x50616c]
+004a30ef  mov      cl, byte ptr [0x506170]
+004a30f5  and      edi, edx
+004a30f7  mov      ebp, dword ptr [0x5cde80]
+004a30fd  shl      edi, cl
+004a30ff  mov      ecx, dword ptr [0x50616c]
+004a3105  and      ecx, eax
+004a3107  add      edi, ecx
+004a3109  mov      cx, word ptr [ebp + edi*2]
+004a310e  shr      cx, 6
+004a3112  cmp      cx, 0xf
+004a3116  jbe      0x4a311c
+004a3118  mov      cx, 0xf
+004a311c  mov      byte ptr [ebx], 0xe8
+004a311f  inc      ebx
+004a3120  sub      cl, 0x80
+004a3123  inc      ebx
+004a3124  mov      byte ptr [ebx - 1], cl
+004a3127  mov      byte ptr [ebx], cl
+004a3129  mov      byte ptr [ebx + 1], cl
+004a312c  inc      ebx
+004a312d  jmp      0x4a31f8
+004a3132  test     cl, cl
+004a3134  jl       0x4a3151
+004a3136  cmp      cl, 0xa
+004a3139  jge      0x4a3151
+004a313b  mov      byte ptr [ebx], 0xe8
+004a313e  inc      ebx
+004a313f  inc      ebx
+004a3140  mov      byte ptr [ebx - 1], 0x90
+004a3144  mov      byte ptr [ebx], 0x90
+004a3147  mov      byte ptr [ebx + 1], 0x90
+004a314b  inc      ebx
+004a314c  jmp      0x4a31f8
+004a3151  cmp      cl, 0x20
+004a3154  jl       0x4a31a1
+004a3156  cmp      cl, 0x30
+004a3159  jge      0x4a31a1
+004a315b  mov      edi, dword ptr [0x50616c]
+004a3161  mov      cl, byte ptr [0x506170]
+004a3167  and      edi, edx
+004a3169  mov      ebp, dword ptr [0x5cde80]
+004a316f  shl      edi, cl
+004a3171  mov      ecx, dword ptr [0x50616c]
+004a3177  and      ecx, eax
+004a3179  add      edi, ecx
+004a317b  mov      cx, word ptr [ebp + edi*2]
+004a3180  shr      cx, 6
+004a3184  cmp      cx, 0xf
+004a3188  jbe      0x4a318e
+004a318a  mov      cx, 0xf

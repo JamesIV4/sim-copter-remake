@@ -1,0 +1,58 @@
+004a31f8  inc      ebx
+004a31f9  inc      esi
+004a31fa  inc      eax
+004a31fb  mov      ecx, dword ptr [0x505eec]
+004a3201  sar      ecx, 2
+004a3204  cmp      ecx, esi
+004a3206  jg       0x4a2f56
+004a320c  add      ebx, 0x14
+004a320f  mov      esi, dword ptr [0x505eec]
+004a3215  mov      edi, ebx
+004a3217  mov      eax, 0xe8e8e8e8
+004a321c  mov      ecx, esi
+004a321e  shr      ecx, 2
+004a3221  rep stosd dword ptr es:[edi], eax
+004a3223  mov      ecx, esi
+004a3225  and      ecx, 3
+004a3228  rep stosb byte ptr es:[edi], al
+004a322a  add      ebx, dword ptr [0x505ed8]
+004a3230  mov      eax, dword ptr [0x505eec]
+004a3235  mov      edi, ebx
+004a3237  mov      esi, dword ptr [esp + 0x10]
+004a323b  mov      ecx, eax
+004a323d  shr      ecx, 2
+004a3240  rep movsd dword ptr es:[edi], dword ptr [esi]
+004a3242  mov      ecx, eax
+004a3244  and      ecx, 3
+004a3247  rep movsb byte ptr es:[edi], byte ptr [esi]
+004a3249  add      ebx, dword ptr [0x505ed8]
+004a324f  mov      eax, dword ptr [0x505eec]
+004a3254  mov      edi, ebx
+004a3256  mov      esi, dword ptr [esp + 0x10]
+004a325a  mov      ecx, eax
+004a325c  shr      ecx, 2
+004a325f  rep movsd dword ptr es:[edi], dword ptr [esi]
+004a3261  mov      ecx, eax
+004a3263  inc      edx
+004a3264  and      ecx, 3
+004a3267  rep movsb byte ptr es:[edi], byte ptr [esi]
+004a3269  add      ebx, dword ptr [0x505ed8]
+004a326f  mov      eax, dword ptr [0x505ef0]
+004a3274  sar      eax, 2
+004a3277  inc      dword ptr [esp + 0x14]
+004a327b  cmp      eax, dword ptr [esp + 0x14]
+004a327f  jg       0x4a2f35
+004a3285  jmp      0x4a37d3
+004a328a  mov      eax, dword ptr [esp + 0x20]
+004a328e  mov      ecx, dword ptr [0x505eec]
+004a3294  sar      ecx, 4
+004a3297  sub      eax, ecx
+004a3299  mov      ecx, dword ptr [0x505ef0]
+004a329f  sar      ecx, 4
+004a32a2  mov      dword ptr [0x57f8c8], eax
+004a32a7  mov      eax, dword ptr [esp + 0x24]
+004a32ab  sub      eax, ecx
+004a32ad  mov      dword ptr [0x57f8cc], eax
+004a32b2  mov      eax, dword ptr [0x505eec]
+004a32b7  sar      eax, 3
+004a32ba  add      eax, dword ptr [0x57f8c8]

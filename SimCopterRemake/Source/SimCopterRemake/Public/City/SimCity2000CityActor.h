@@ -104,6 +104,13 @@ public:
 		return bHasOceanSurfaceZ;
 	}
 
+	// The two grids the cockpit map shades open ground with (FUN_004a28e0): the conditioned
+	// terrain class per tile, and the tmap corner sample reduced to the map's 0..15 shade the way
+	// the original does it - one right shift by 6, clamped - because a corner holds
+	// (height step + 1) * 0x20. Both come out 128x128, indexed [FileY * MapSize + FileX]. False
+	// before a city has been rebuilt.
+	bool TryGetMapTerrainGrids(TArray<uint8>& OutTerrainClasses, TArray<uint8>& OutAltitudeShades) const;
+
 	bool IsTerrainCollisionComponent(const UPrimitiveComponent* HitComponent) const;
 	bool IsBuildingCollisionHit(const UPrimitiveComponent* HitComponent, const FVector& WorldLocation) const;
 
@@ -382,6 +389,10 @@ private:
 	// and particle collision paths. Rendering used to discard both after RebuildCity.
 	TArray<float> WaterGameplayCornerZ;
 	TArray<uint8> WaterGameplayTerrainClasses;
+
+	// The same 129x129 grid in the original's own sample units, kept because the cockpit map
+	// shades ground by shifting the raw sample rather than by any world height.
+	TArray<int16> MapAltitudeCorners;
 
 	// Every placed building, indexed by building id. Demolished entries stay put so their id, tile
 	// span and rubble remain resolvable.
