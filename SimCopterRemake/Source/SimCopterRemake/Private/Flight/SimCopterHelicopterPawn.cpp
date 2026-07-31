@@ -2131,6 +2131,34 @@ float ASimCopterHelicopterPawn::GetCockpitScale() const
 	return ToolFlapScale * (Settings != nullptr ? Settings->GetHudScale() : 1.0f);
 }
 
+void ASimCopterHelicopterPawn::AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const
+{
+	if (DashboardPanel.IsValid())
+	{
+		OutWidgets.Add(DashboardPanel);
+	}
+	if (MapPanel.IsValid())
+	{
+		OutWidgets.Add(MapPanel);
+	}
+	if (WaterControlsPanel.IsValid())
+	{
+		OutWidgets.Add(WaterControlsPanel);
+	}
+	if (HelicopterDebugPanel.IsValid())
+	{
+		OutWidgets.Add(HelicopterDebugPanel);
+	}
+	if (ToolFlapsPanel.IsValid())
+	{
+		ToolFlapsPanel->AppendMissionMarkerAvoidanceWidgets(OutWidgets);
+	}
+	if (ControllerOverlayPanel.IsValid())
+	{
+		ControllerOverlayPanel->AppendMissionMarkerAvoidanceWidgets(OutWidgets);
+	}
+}
+
 void ASimCopterHelicopterPawn::RebuildCockpitOverlays()
 {
 	// Every panel takes its scale at construction, so there is nothing to poke at runtime - the
@@ -2299,6 +2327,36 @@ void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 	WaterCapacityText = CapacityText;
 	WaterCapacityBar = CapacityBar;
 	WaterControlsText = ControlsText;
+	TSharedRef<SBorder> ControlsPanel =
+		SNew(SBorder)
+		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+		.BorderBackgroundColor(FLinearColor(0.015f, 0.035f, 0.055f, 0.76f))
+		.Padding(FMargin(10.0f, 7.0f))
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				CapacityText
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.0f, 4.0f, 0.0f, 7.0f))
+			[
+				SNew(SBox)
+				.WidthOverride(330.0f)
+				.HeightOverride(14.0f)
+				[
+					CapacityBar
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				ControlsText
+			]
+		];
+	WaterControlsPanel = ControlsPanel;
 	WaterControlsWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -2306,34 +2364,7 @@ void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
 		.VAlign(VAlign_Bottom)
 		.Padding(FMargin(22.0f, 0.0f, 0.0f, 22.0f))
 		[
-			SNew(SBorder)
-			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-			.BorderBackgroundColor(FLinearColor(0.015f, 0.035f, 0.055f, 0.76f))
-			.Padding(FMargin(10.0f, 7.0f))
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					CapacityText
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(FMargin(0.0f, 4.0f, 0.0f, 7.0f))
-				[
-					SNew(SBox)
-					.WidthOverride(330.0f)
-					.HeightOverride(14.0f)
-					[
-						CapacityBar
-					]
-				]
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					ControlsText
-				]
-			]
+			ControlsPanel
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(WaterControlsWidget.ToSharedRef(), 24);
@@ -2519,6 +2550,7 @@ void ASimCopterHelicopterPawn::RemoveWaterControlsWidget()
 	WaterCapacityBar.Reset();
 	WaterCapacityText.Reset();
 	WaterControlsText.Reset();
+	WaterControlsPanel.Reset();
 	WaterControlsWidget.Reset();
 }
 
@@ -2636,6 +2668,8 @@ void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()
 	}
 
 	// Top-left, above the water capacity HUD, which sits at the bottom of the same edge.
+	TSharedRef<SWidget> DebugPanel = SNew(SSimCopterHelicopterDebugPanel).Pawn(this);
+	HelicopterDebugPanel = DebugPanel;
 	HelicopterDebugPanelWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -2643,7 +2677,7 @@ void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()
 		.VAlign(VAlign_Top)
 		.Padding(FMargin(22.0f, 22.0f, 0.0f, 0.0f))
 		[
-			SNew(SSimCopterHelicopterDebugPanel).Pawn(this)
+			DebugPanel
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(HelicopterDebugPanelWidget.ToSharedRef(), 26);
@@ -2677,6 +2711,12 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 
 	// The original pins the flaps to the right edge of its 640x480 screen (FUN_004127d0); the
 	// remake keeps that edge and stacks whatever the helicopter is carrying.
+	TSharedRef<SSimCopterToolFlaps> ToolFlaps =
+		SNew(SSimCopterToolFlaps)
+		.Pawn(this)
+		.Art(FlapArt)
+		.Scale(GetCockpitScale());
+	ToolFlapsPanel = ToolFlaps;
 	ToolFlapsWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
@@ -2684,10 +2724,7 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 		.VAlign(VAlign_Top)
 		.Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
 		[
-			SNew(SSimCopterToolFlaps)
-			.Pawn(this)
-			.Art(FlapArt)
-			.Scale(GetCockpitScale())
+			ToolFlaps
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(ToolFlapsWidget.ToSharedRef(), 24);
@@ -2699,6 +2736,7 @@ void ASimCopterHelicopterPawn::RemoveToolFlapsWidget()
 	{
 		GEngine->GameViewport->RemoveViewportWidgetContent(ToolFlapsWidget.ToSharedRef());
 	}
+	ToolFlapsPanel.Reset();
 	ToolFlapsWidget.Reset();
 }
 
@@ -2723,6 +2761,7 @@ void ASimCopterHelicopterPawn::RemoveHelicopterDebugPanel()
 	{
 		GEngine->GameViewport->RemoveViewportWidgetContent(HelicopterDebugPanelWidget.ToSharedRef());
 	}
+	HelicopterDebugPanel.Reset();
 	HelicopterDebugPanelWidget.Reset();
 }
 
