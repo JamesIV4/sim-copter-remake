@@ -27,26 +27,17 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
 *target* + smoothed bank, and **bank state inherits the slide when |slide| > |bank|**
 (persistent overwrite quirk).
 
-## The slow takeoff was never the flight model — it was input (2026-07-31)
+## The slow takeoff was never the flight model — it was input (2026-07-31, FIXED)
 
-**`>= 300` (commit 387e58e) was not it.** Nor is anything else in the model:
-`SimCopter.Flight.TakeoffRepeat` drives the pure model through take off → climb → descend → land →
-take off again and the **second spool takes 0.72 s against the first's 3.02 s** (a landed rotor is
-still near 360 and decays at only 50/s), with one state change, one lift-off, zero touchdowns.
+Confirmed fixed in play. `>= 300` (commit 387e58e) was not it, and neither is anything else in the
+model: `SimCopter.Flight.TakeoffRepeat` drives the pure model through take off → climb → descend →
+land → take off again and the **second spool takes 0.72 s against the first's 3.02 s** (a landed
+rotor is still near 360 and decays at only 50/s), with one state change, one lift-off, zero
+touchdowns.
 
-`LogSimCopterTakeoff` (prints on every Parked/Flying edge and once a second during a spool) settled
-it in one run. A healthy takeoff is three lines, rotor +100/s, lift-off at 3.0 s. The stall:
-
-    13:54:49  landed, collective -1, rotor 360      <- landing ended on the descend key
-    13:54:50  MouseCaptureMode -> CapturePermanently    (stepped out, on foot)
-    13:54:54  Victim picked up (MedEvac #0)
-    13:54:54  MouseCaptureMode -> CaptureDuringMouseDown (climbed back in)
-      ... twelve seconds, NOT ONE spool line ...
-    13:55:06  lift-off, rotor 301.2
-
-**It is a stuck `bEngineShutdownHeld`, and the third log shows it happening frame by frame.** Once
-the diagnostic printed the raw axis alongside the engine flag, the failure was unmistakable — the
-player's input never wavers, the *engine* does:
+**The cause was a stuck `bEngineShutdownHeld`.** A temporary `LogSimCopterTakeoff` category (since
+removed — the excerpts below are all that is worth keeping) caught it once it printed the raw
+collective axis alongside the engine flag. The player's input never wavers, the *engine* does:
 
     14:20:30.703  collective 1 (axis +1.00)  engine 1  rotor  22.1
     14:20:31.499  collective 0 (axis +1.00)  engine 0  rotor 100.8   <- engine died, input zeroed
@@ -87,7 +78,13 @@ terms — but neither was the cause:**
 
 **The diagnostic trap that cost two rounds:** the log originally gated on "parked *and spooling*",
 i.e. collective >= 1 — precisely what the bug prevents. The one failure worth seeing printed
-nothing at all, twice. Gate diagnostics on *attempting* the action, never on succeeding at it.
+nothing at all, twice, and the silence got filled with plausible theories instead of evidence.
+Gate diagnostics on *attempting* the action, never on succeeding at it, and print the raw input
+next to the derived one — `collective 0 (axis +1.00)` is what ended it, and no amount of reading
+the flight model would ever have produced that line.
+
+Raw log excerpts from all three runs, including the two that printed nothing:
+`Docs/scratchpad/agent-sessions/2026-07-31-takeoff-stall/`.
 
 The audible half follows from the same thing: CHOPSTAR/CHOPSTOP have only two sources —
 `bTouchedDown`, and the collective dropping below 1 while parked — and neither can fire while the

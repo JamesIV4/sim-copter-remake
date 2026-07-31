@@ -4993,9 +4993,7 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	const FSimCopterFlightEnvironment Environment = BuildFlightEnvironment();
 	LastClimbCommand = Inputs.ClimbCommand;
 	LastFlightEnvironmentFireDelta = Environment.FireHeightDelta;
-	const ESimCopterFlightState StateBeforeStep = FlightModel.State;
 	FlightModel.Step(DeltaSeconds, Inputs, Environment, LastFlightEvents);
-	LogTakeoffDiagnostics(DeltaSeconds, StateBeforeStep, Inputs, Environment);
 
 	// Before anything downstream consumes or clears the events.
 	PlayFlightEventAudio(LastFlightEvents);
@@ -5034,85 +5032,6 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 			GetActorLocation(),
 			LastFlightEvents.bSplashBounce || ProbeBucketWater(GetActorLocation()));
 	}
-}
-
-// Diagnostics for the "the second takeoff takes forever, winding up and down" report. The flight
-// model on its own is not the culprit - SimCopter.Flight.TakeoffRepeat drives take off, land, take
-// off against constant ground and the second spool is *shorter* than the first, with exactly one
-// state change. So whatever strands a real takeoff comes from the pawn's coupling to the world:
-// the traced environment, or the swept move whose result is written back over the model's
-// altitude. This prints the state every Parked/Flying edge and once a second while a takeoff is
-// in progress, which is enough to tell those apart in one run. `LogSimCopterTakeoff Verbose` (or
-// Log for just the edges).
-DEFINE_LOG_CATEGORY_STATIC(LogSimCopterTakeoff, Log, All);
-
-void ASimCopterHelicopterPawn::LogTakeoffDiagnostics(
-	float DeltaSeconds,
-	ESimCopterFlightState StateBeforeStep,
-	const FSimCopterFlightInputs& Inputs,
-	const FSimCopterFlightEnvironment& Environment)
-{
-	if (!IsLocallyControlled())
-	{
-		return;
-	}
-
-	// Gate on "parked with the collective doing anything", not on "spooling". The first version
-	// only printed while the collective read >= 1, which is precisely the state a stuck descend
-	// key prevents - so the one failure worth seeing was the one that logged nothing at all for
-	// fifty-two seconds. A collective jammed at -1 now prints once a second like any other.
-	const bool bParked = FlightModel.State == ESimCopterFlightState::Parked;
-	const bool bCollectiveActive =
-		bParked && (Inputs.ClimbCommand != 0 || !FMath::IsNearlyZero(CollectiveInput));
-	const bool bStateChanged = FlightModel.State != StateBeforeStep;
-	const bool bCommandChanged = bParked && Inputs.ClimbCommand != LastDiagnosticClimbCommand;
-	LastDiagnosticClimbCommand = Inputs.ClimbCommand;
-
-	TakeoffDiagnosticAccumulator = bCollectiveActive || bStateChanged
-		? TakeoffDiagnosticAccumulator + DeltaSeconds
-		: 0.0f;
-	const bool bDueForPeriodicLine = bCollectiveActive && TakeoffDiagnosticAccumulator >= 1.0f;
-	if (!bStateChanged && !bCommandChanged && !bDueForPeriodicLine)
-	{
-		return;
-	}
-	if (bDueForPeriodicLine)
-	{
-		TakeoffDiagnosticAccumulator = 0.0f;
-	}
-
-	const float Unit = FMath::Max(OriginalUnitToCm, 0.01f);
-	UE_LOG(LogSimCopterTakeoff, Log,
-		TEXT("state %d->%d collective %d (axis %+.2f) focus %d engine %d rotor %.1f/%.1f climb %.3f ")
-		TEXT("alt %.3f writeback %+.4f terrain %.3f surface %.3f flat %d hostile %d fuel %.2f ")
-		TEXT("lift %d touch %d padbounce %d gndbounce %d bounce %.3f unit %.2f"),
-		int32(StateBeforeStep),
-		int32(FlightModel.State),
-		Inputs.ClimbCommand,
-		CollectiveInput,
-		// 1 when the game viewport owns the keyboard. A 0 here with the player pressing the
-		// collective is a Slate widget eating the input, which is what stalled a takeoff after
-		// climbing back in from a job on foot.
-		(FSlateApplication::IsInitialized() &&
-			FSlateApplication::Get().GetUserFocusedWidget(0) ==
-				FSlateApplication::Get().GetGameViewport()) ? 1 : 0,
-		bEngineRunning ? 1 : 0,
-		SimCopterFixed::ToFloat(FlightModel.RotorSpeed),
-		SimCopterFixed::ToFloat(FSimCopterFlightModel::RotorLiftGate),
-		SimCopterFixed::ToFloat(FlightModel.ClimbSpeed),
-		SimCopterFixed::ToFloat(FlightModel.Altitude),
-		SimCopterFixed::ToFloat(LastAltitudeWriteBackDelta),
-		SimCopterFixed::ToFloat(Environment.TerrainHeight),
-		SimCopterFixed::ToFloat(Environment.SurfaceHeight),
-		Environment.bTerrainFlat ? 1 : 0,
-		Environment.bHostileSurface ? 1 : 0,
-		SimCopterFixed::ToFloat(FlightModel.Fuel),
-		LastFlightEvents.bLiftedOff ? 1 : 0,
-		LastFlightEvents.bTouchedDown ? 1 : 0,
-		LastFlightEvents.bPadBounce ? 1 : 0,
-		LastFlightEvents.bGroundBounce ? 1 : 0,
-		SimCopterFixed::ToFloat(FlightModel.BounceTimer),
-		Unit);
 }
 
 void ASimCopterHelicopterPawn::SeedFlightModelFromActor()
@@ -5325,12 +5244,7 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 	const FVector Applied = GetActorLocation();
 	FlightModel.PosZ = SimCopterFixed::FromFloat(Applied.X / Unit);
 	FlightModel.PosX = SimCopterFixed::FromFloat(Applied.Y / Unit);
-	const int32 AltitudeBeforeWriteBack = FlightModel.Altitude;
 	FlightModel.Altitude = SimCopterFixed::FromFloat((Applied.Z - CapsuleHalfHeight) / Unit);
-	// How much height the swept move refused to give the model this step. On the ground this is
-	// the difference between what the simulation asked for and where the capsule actually ended
-	// up, and a persistently negative value means the collision is eating the climb.
-	LastAltitudeWriteBackDelta = FlightModel.Altitude - AltitudeBeforeWriteBack;
 
 	// Display attitude: the original builds the render matrix from the pitch
 	// *target* and the smoothed bank (which inherits the slide when larger).
