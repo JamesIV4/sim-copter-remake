@@ -14,6 +14,7 @@
 #include "City/SimCopterHangar.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "UI/SimCopterHangarShop.h"
+#include "UI/SimCopterMissionMarkerLayout.h"
 #include "Audio.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Brushes/SlateDynamicImageBrush.h"
@@ -2595,6 +2596,15 @@ void ASimCopterMissionSystemActor::EnsureMessageLogWidget()
 
 	TSharedRef<SVerticalBox> LogBox = SNew(SVerticalBox);
 	MessageLogBox = LogBox;
+	TSharedRef<SBorder> LogPanel =
+		SNew(SBorder)
+		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+		.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.58f))
+		.Padding(FMargin(10.0f, 8.0f))
+		[
+			LogBox
+		];
+	MessageLogPanel = LogPanel;
 	MessageLogWidget =
 		SNew(SBox)
 		.HAlign(HAlign_Left)
@@ -2602,13 +2612,7 @@ void ASimCopterMissionSystemActor::EnsureMessageLogWidget()
 		.Padding(FMargin(MessageLogScreenPadding.X, MessageLogScreenPadding.Y, 0.0f, 0.0f))
 		.Visibility(EVisibility::Collapsed)
 		[
-			SNew(SBorder)
-			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.58f))
-			.Padding(FMargin(10.0f, 8.0f))
-			[
-				LogBox
-			]
+			LogPanel
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(MessageLogWidget.ToSharedRef(), 20);
@@ -2621,6 +2625,7 @@ void ASimCopterMissionSystemActor::RemoveMessageLogWidget()
 		GEngine->GameViewport->RemoveViewportWidgetContent(MessageLogWidget.ToSharedRef());
 	}
 
+	MessageLogPanel.Reset();
 	MessageLogBox.Reset();
 	MessageLogWidget.Reset();
 }
@@ -2697,10 +2702,17 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 
 	TArray<FSimCopterMissionWorldMarkerEntry> Markers;
 	BuildMissionWorldMarkers(Markers);
+	TArray<SimCopterMissionMarkerLayout::FUiObstacle> UiObstacles;
+	BuildMissionMarkerUiObstacles(UiObstacles);
+	TArray<SimCopterMissionMarkerLayout::FPlacedMarker> PlacedMarkers;
 
 	const FVector2D ClampedMarkerSize(
 		FMath::Clamp(MissionMarkerSize.X, 104.0f, 160.0f),
 		FMath::Clamp(MissionMarkerSize.Y, 63.0f, 88.0f));
+	const UWorld* MarkerWorld = GetWorld();
+	const FVector2D MarkerViewportSize = MarkerWorld != nullptr
+		? UWidgetLayoutLibrary::GetViewportWidgetGeometry(MarkerWorld).GetLocalSize()
+		: FVector2D::ZeroVector;
 
 	FVector DistanceOrigin = FVector::ZeroVector;
 	bool bHasDistanceOrigin = false;
@@ -2730,6 +2742,23 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 		{
 			continue;
 		}
+
+		bool bOverlapAdjusted = false;
+		ScreenPosition = SimCopterMissionMarkerLayout::ResolveMarkerCenter(
+			ScreenPosition,
+			ClampedMarkerSize,
+			MarkerViewportSize,
+			MissionMarkerEdgePadding,
+			UiObstacles,
+			PlacedMarkers,
+			MissionMarkerAllowedOverlap,
+			bOverlapAdjusted);
+		bClamped = bClamped || bOverlapAdjusted;
+
+		// Deconflict only against earlier mission markers. A half-panel overlap is intentional: it
+		// keeps clustered objectives compact while leaving every icon visibly distinct.
+		PlacedMarkers.Emplace(
+			FBox2D(ScreenPosition - ClampedMarkerSize * 0.5f, ScreenPosition + ClampedMarkerSize * 0.5f));
 
 		const FVector2D DrawPosition(
 			ScreenPosition.X - ClampedMarkerSize.X * 0.5f,
@@ -3067,6 +3096,61 @@ bool ASimCopterMissionSystemActor::TryMakeMissionMarkerWorldLocation(int32 TileX
 	}
 
 	return false;
+}
+
+void ASimCopterMissionSystemActor::BuildMissionMarkerUiObstacles(
+	TArray<SimCopterMissionMarkerLayout::FUiObstacle>& OutObstacles) const
+{
+	OutObstacles.Reset();
+	const UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	const FGeometry ViewportGeometry = UWidgetLayoutLibrary::GetViewportWidgetGeometry(World);
+	const FVector2D ViewportSize = ViewportGeometry.GetLocalSize();
+	if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+	{
+		return;
+	}
+
+	TArray<TSharedPtr<SWidget>> Widgets;
+	if (MessageLogWidget.IsValid() && MessageLogWidget->GetVisibility().IsVisible() && MessageLogPanel.IsValid())
+	{
+		Widgets.Add(MessageLogPanel);
+	}
+	if (const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(World, 0))
+	{
+		if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(PlayerController->GetPawn()))
+		{
+			Helicopter->AppendMissionMarkerAvoidanceWidgets(Widgets);
+		}
+	}
+
+	for (const TSharedPtr<SWidget>& Widget : Widgets)
+	{
+		if (!Widget.IsValid() || !Widget->GetVisibility().IsVisible())
+		{
+			continue;
+		}
+
+		const FGeometry& WidgetGeometry = Widget->GetCachedGeometry();
+		const FVector2D AbsoluteMin = WidgetGeometry.GetAbsolutePosition();
+		const FVector2D AbsoluteMax = AbsoluteMin + FVector2D(WidgetGeometry.GetAbsoluteSize());
+		const FVector2D LocalA = ViewportGeometry.AbsoluteToLocal(AbsoluteMin);
+		const FVector2D LocalB = ViewportGeometry.AbsoluteToLocal(AbsoluteMax);
+		const FVector2D LocalMin(
+			FMath::Clamp(FMath::Min(LocalA.X, LocalB.X), 0.0f, ViewportSize.X),
+			FMath::Clamp(FMath::Min(LocalA.Y, LocalB.Y), 0.0f, ViewportSize.Y));
+		const FVector2D LocalMax(
+			FMath::Clamp(FMath::Max(LocalA.X, LocalB.X), 0.0f, ViewportSize.X),
+			FMath::Clamp(FMath::Max(LocalA.Y, LocalB.Y), 0.0f, ViewportSize.Y));
+		if (LocalMax.X - LocalMin.X > 0.5f && LocalMax.Y - LocalMin.Y > 0.5f)
+		{
+			OutObstacles.Emplace(FBox2D(LocalMin, LocalMax), MissionMarkerUiPadding);
+		}
+	}
 }
 
 bool ASimCopterMissionSystemActor::ProjectMissionMarkerToScreen(const FVector& WorldLocation, FVector2D& OutScreenPosition, bool& bOutClamped) const

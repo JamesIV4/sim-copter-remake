@@ -40,6 +40,7 @@ class SProgressBar;
 class STextBlock;
 class SWidget;
 class SSimCopterControllerOverlay;
+class SSimCopterToolFlaps;
 class FReply;
 struct FSlateBrush;
 
@@ -668,6 +669,10 @@ public:
 	void SetRotorDiscOpacity(float Opacity);
 	FLinearColor GetRotorDiscColor() const { return RotorDiscColor; }
 	void SetRotorDiscColor(const FLinearColor& Color);
+
+	// The mission-marker layer lives below the cockpit in the viewport stack, so it cannot infer
+	// which parts of a full-screen overlay actually paint UI. Supply the exact live panel widgets.
+	void AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -1385,11 +1390,14 @@ private:
 	int32 MainRotorDiscSectionIndex = INDEX_NONE;
 	int32 TailRotorDiscSectionIndex = INDEX_NONE;
 	TSharedPtr<SWidget> WaterControlsWidget;
+	TSharedPtr<SWidget> WaterControlsPanel;
 	TSharedPtr<SProgressBar> WaterCapacityBar;
 	TSharedPtr<STextBlock> WaterCapacityText;
 	TSharedPtr<STextBlock> WaterControlsText;
 	TSharedPtr<SWidget> HelicopterDebugPanelWidget;
+	TSharedPtr<SWidget> HelicopterDebugPanel;
 	TSharedPtr<SWidget> ToolFlapsWidget;
+	TSharedPtr<SSimCopterToolFlaps> ToolFlapsPanel;
 	// Fixed-pixel aiming reticle hosted by CrosshairComponent at the mode-specific world point.
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;

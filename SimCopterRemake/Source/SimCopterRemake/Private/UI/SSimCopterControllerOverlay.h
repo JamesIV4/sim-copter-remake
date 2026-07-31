@@ -25,10 +25,14 @@ public:
 	// set of labels rather than keeping unavailable entries in the wheel.
 	void RefreshRadials();
 
+	// Adds only the currently visible controller panels, never the full-screen overlay host.
+	void AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const;
+
 private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TSharedPtr<SBox> DispatchWheelHost;
 	TSharedPtr<SBox> ToolWheelHost;
+	TSharedPtr<SWidget> PassengerPanel;
 
 	TSharedRef<SWidget> BuildDispatchWheel() const;
 	TSharedRef<SWidget> BuildToolWheel() const;

@@ -7,6 +7,7 @@
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Input/Reply.h"
 #include "Missions/SimCopterMissionSystem.h"
+#include "UI/SimCopterMissionMarkerLayout.h"
 #include "SimCopterMissionSystemActor.generated.h"
 
 class ASimCopterTrafficSystemActor;
@@ -325,6 +326,16 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "128.0"))
 	float MissionMarkerEdgePadding = 9.0f;
 
+	// Clearance around each visible cockpit/HUD panel. Panel geometry is sampled from Slate, so
+	// this remains correct when the HUD scale or viewport size changes.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "128.0"))
+	float MissionMarkerUiPadding = 12.0f;
+
+	// Marker panels may cover half of one another on either screen axis, but no more. This keeps
+	// coincident objectives readable without spreading a dense cluster across the HUD.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float MissionMarkerAllowedOverlap = 0.5f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
 	float PassengerPickupRadiusCm = 780.0f;
 
@@ -426,6 +437,7 @@ private:
 
 	TArray<FSimCopterMissionLogEntry> MissionMessageLog;
 	TSharedPtr<SWidget> MessageLogWidget;
+	TSharedPtr<SWidget> MessageLogPanel;
 	TSharedPtr<SVerticalBox> MessageLogBox;
 	TSharedPtr<SWidget> MissionMarkerWidget;
 	TSharedPtr<SConstraintCanvas> MissionMarkerCanvas;
@@ -490,6 +502,8 @@ private:
 	void RemoveMissionMarkerWidget();
 	void RefreshMissionMarkerWidget();
 	void BuildMissionWorldMarkers(TArray<FSimCopterMissionWorldMarkerEntry>& OutMarkers) const;
+	void BuildMissionMarkerUiObstacles(
+		TArray<SimCopterMissionMarkerLayout::FUiObstacle>& OutObstacles) const;
 	bool TryMakeMissionMarkerWorldLocation(int32 TileX, int32 TileY, FVector& OutWorldLocation) const;
 	bool ProjectMissionMarkerToScreen(const FVector& WorldLocation, FVector2D& OutScreenPosition, bool& bOutClamped) const;
 };

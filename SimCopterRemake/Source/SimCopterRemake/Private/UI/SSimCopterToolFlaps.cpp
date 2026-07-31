@@ -87,28 +87,33 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 	Scale = FMath::Max(0.5f, InArgs._Scale);
 
 	TSharedRef<SVerticalBox> Column = SNew(SVerticalBox);
+	MissionMarkerAvoidancePanels.Reset();
 
 	// The dispatch strip sits above the tools, with the same gap between panels that the column
 	// leaves above itself. A flap the helicopter is not carrying collapses, and a collapsed slot
 	// takes its padding with it, so the gaps never double up.
 	const FMargin PanelGap(0.0f, 0.0f, 0.0f, PanelGapPixels);
 
+	TSharedRef<SWidget> DispatchPanel = BuildDispatchFlap();
+	MissionMarkerAvoidancePanels.Add(DispatchPanel);
 	Column->AddSlot()
 		.AutoHeight()
 		.HAlign(HAlign_Right)
 		.Padding(PanelGap)
 		[
-			BuildDispatchFlap()
+			DispatchPanel
 		];
 
 	for (const FFlap& Flap : GetFlaps())
 	{
+		TSharedRef<SWidget> ToolPanel = BuildToolFlap(Flap);
+		MissionMarkerAvoidancePanels.Add(ToolPanel);
 		Column->AddSlot()
 			.AutoHeight()
 			.HAlign(HAlign_Right)
 			.Padding(PanelGap)
 			[
-				BuildToolFlap(Flap)
+				ToolPanel
 			];
 	}
 
@@ -116,6 +121,17 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 	[
 		Column
 	];
+}
+
+void SSimCopterToolFlaps::AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const
+{
+	for (const TSharedPtr<SWidget>& Panel : MissionMarkerAvoidancePanels)
+	{
+		if (Panel.IsValid() && Panel->GetVisibility().IsVisible())
+		{
+			OutWidgets.Add(Panel);
+		}
+	}
 }
 
 TSharedRef<SWidget> SSimCopterToolFlaps::MakePanel(

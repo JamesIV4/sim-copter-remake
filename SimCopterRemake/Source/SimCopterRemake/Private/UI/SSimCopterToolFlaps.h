@@ -42,6 +42,10 @@ public:
 	// Rebinds when possession changes so the flaps follow the controlled helicopter.
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
 
+	// Each visible flap is its own marker obstacle, so tags can follow the stepped left edge of
+	// the unequal-width dispatch/tool panels instead of being held off by one large column box.
+	void AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const;
+
 private:
 	// The dispatch strip's page width. Wider than a tool flap because it carries a service name
 	// and two labelled buttons; its background is a tool flap's frame with the middle tiled out
@@ -60,6 +64,7 @@ private:
 	TSharedPtr<FSlateBrush> DispatchFillBrush;
 
 	TSharedPtr<SMenuAnchor> MegaphoneMenu;
+	TArray<TSharedPtr<SWidget>> MissionMarkerAvoidancePanels;
 
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 

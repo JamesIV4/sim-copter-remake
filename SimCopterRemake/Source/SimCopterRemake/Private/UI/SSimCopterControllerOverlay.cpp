@@ -57,7 +57,7 @@ void SSimCopterControllerOverlay::Construct(const FArguments& InArgs)
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
 		[
-			SNew(SBorder)
+			SAssignNew(PassengerPanel, SBorder)
 			.Visibility(this, &SSimCopterControllerOverlay::GetPauseVisibility)
 			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
 			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.58f))
@@ -130,6 +130,20 @@ void SSimCopterControllerOverlay::Construct(const FArguments& InArgs)
 
 	RefreshRadials();
 	SetVisibility(EVisibility::HitTestInvisible);
+}
+
+void SSimCopterControllerOverlay::AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const
+{
+	const auto AddIfVisible = [&OutWidgets](const TSharedPtr<SWidget>& Widget)
+	{
+		if (Widget.IsValid() && Widget->GetVisibility().IsVisible())
+		{
+			OutWidgets.Add(Widget);
+		}
+	};
+	AddIfVisible(DispatchWheelHost);
+	AddIfVisible(ToolWheelHost);
+	AddIfVisible(PassengerPanel);
 }
 
 void SSimCopterControllerOverlay::RefreshRadials()
