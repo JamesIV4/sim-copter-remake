@@ -247,6 +247,28 @@ int32 USimCopterRadioSubsystem::GetSlotChancePercent(ESimCopterRadioSlot Slot)
 	}
 }
 
+void USimCopterRadioSubsystem::SetSlotEnabled(const ESimCopterRadioSlot Slot, const bool bEnabled)
+{
+	const int32 Index = static_cast<int32>(Slot);
+	if (Index >= 0 && Index < UE_ARRAY_COUNT(bSlotEnabled))
+	{
+		bSlotEnabled[Index] = bEnabled;
+	}
+}
+
+bool USimCopterRadioSubsystem::IsSlotEnabled(const ESimCopterRadioSlot Slot) const
+{
+	// The Sound dialog has no control for the music slot and the original never gates it, so it
+	// stays on whatever the flags say.
+	if (Slot == ESimCopterRadioSlot::Music)
+	{
+		return true;
+	}
+
+	const int32 Index = static_cast<int32>(Slot);
+	return Index >= 0 && Index < UE_ARRAY_COUNT(bSlotEnabled) ? bSlotEnabled[Index] : true;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Playlists
 // ---------------------------------------------------------------------------------------------
@@ -399,9 +421,10 @@ void USimCopterRadioSubsystem::Tick(float DeltaSeconds)
 	const ESimCopterRadioSlot Slot = static_cast<ESimCopterRadioSlot>(Pattern[PatternCursor]);
 
 	// Music plays unconditionally; the other three have to make their roll or the beat passes
-	// in silence with the cursor already moved on.
+	// in silence with the cursor already moved on. A slot the Sound dialog switched off behaves
+	// exactly like one that lost its roll.
 	const int32 Chance = GetSlotChancePercent(Slot);
-	if (Chance < 100 && FMath::RandRange(0, 99) >= Chance)
+	if (!IsSlotEnabled(Slot) || (Chance < 100 && FMath::RandRange(0, 99) >= Chance))
 	{
 		GapStartTime = FPlatformTime::Seconds();
 		return;

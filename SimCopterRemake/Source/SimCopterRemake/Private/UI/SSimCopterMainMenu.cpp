@@ -28,42 +28,6 @@ const TCHAR* const SelectionSound = TEXT("menu");
 const TCHAR* const MenuMusic = TEXT("menuback");
 }
 
-namespace SimCopterMainMenuLayout
-{
-int32 GetNavigationTarget(const ENavigation Navigation, const int32 Selected, const int32 Count)
-{
-	if (Count <= 0)
-	{
-		return INDEX_NONE;
-	}
-
-	switch (Navigation)
-	{
-	case ENavigation::Next:
-		// FUN_0045f040: `if (count - 1 > selected) selected + 1 else 0`.
-		return (Count - 1 > Selected) ? Selected + 1 : 0;
-
-	case ENavigation::Previous:
-		// `if (selected == 0) count - 1 else selected - 1`.
-		return (Selected == 0) ? Count - 1 : Selected - 1;
-
-	case ENavigation::PreviousNoWrap:
-		// Page Up only moves while the selection is above the first item; the original falls
-		// straight through to the Home/End tests otherwise, which do not match, so nothing happens.
-		return (Selected > 0) ? Selected - 1 : INDEX_NONE;
-
-	case ENavigation::First:
-		return 0;
-
-	case ENavigation::Last:
-		return Count - 1;
-
-	default:
-		return INDEX_NONE;
-	}
-}
-}
-
 void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 {
 	Art = InArgs._Art;
@@ -247,30 +211,9 @@ FReply SSimCopterMainMenu::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 {
 	const FKey Key = InKeyEvent.GetKey();
 
-	// FUN_0045f040, in its own order.
-	if (Key == EKeys::Down || Key == EKeys::PageDown)
+	if (const ENavigation Navigation = GetNavigationForKey(Key); Navigation != ENavigation::None)
 	{
-		Navigate(ENavigation::Next);
-		return FReply::Handled();
-	}
-	if (Key == EKeys::Up)
-	{
-		Navigate(ENavigation::Previous);
-		return FReply::Handled();
-	}
-	if (Key == EKeys::PageUp)
-	{
-		Navigate(ENavigation::PreviousNoWrap);
-		return FReply::Handled();
-	}
-	if (Key == EKeys::Home)
-	{
-		Navigate(ENavigation::First);
-		return FReply::Handled();
-	}
-	if (Key == EKeys::End)
-	{
-		Navigate(ENavigation::Last);
+		Navigate(Navigation);
 		return FReply::Handled();
 	}
 	if (Key == EKeys::Enter)

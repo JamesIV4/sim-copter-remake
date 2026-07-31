@@ -28,7 +28,11 @@ struct FSlateBrush;
 // That rotates the thumb bitmap with everything else, which would stand the 22x18 cap on its end
 // and run its red stripe vertically.
 //
-// Zero is at the BOTTOM of the track, as in the original.
+// Zero is at the BOTTOM of a vertical track and at the LEFT of a horizontal one, as in the
+// original. Horizontal support is here for the Settings screen's Sound dialog, whose Game Volume
+// slider (FUN_0043f7c0, 192x32 at page 120,334) is the one horizontal slider in the game; the
+// original uses the same control class for both and picks SLIDERTH.BMP instead of SLIDERTV.BMP
+// for the thumb.
 class SSimCopterCheckupSlider : public SLeafWidget
 {
 public:
@@ -36,6 +40,7 @@ public:
 		: _ThumbBrush(nullptr)
 		, _ThumbScale(1.0f)
 		, _Locked(false)
+		, _Orientation(Orient_Vertical)
 	{}
 		// SLIDERTV.BMP, or null when the original artwork is not installed.
 		SLATE_ARGUMENT(const FSlateBrush*, ThumbBrush)
@@ -44,6 +49,7 @@ public:
 		// FUN_00444690 leaves a slider with a zero maximum disabled - a full tank, an undamaged
 		// airframe, or the tear-gas launcher not fitted.
 		SLATE_ARGUMENT(bool, Locked)
+		SLATE_ARGUMENT(EOrientation, Orientation)
 		SLATE_EVENT(FOnFloatValueChanged, OnValueChanged)
 	SLATE_END_ARGS()
 
@@ -54,13 +60,21 @@ public:
 
 	// Thumb travel, split out so the geometry can be tested without a live Slate widget.
 	//
-	// The thumb is centred across the track and slides its own height short of the full run, so a
-	// value of 1 parks its top edge at the top of the track rather than above it.
-	static FVector2f GetThumbTopLeft(const FVector2f& TrackSize, const FVector2f& ThumbSize, float InValue);
+	// The thumb is centred across the track and slides its own length short of the full run, so a
+	// value of 1 parks its leading edge at the end of the track rather than past it.
+	static FVector2f GetThumbTopLeft(
+		const FVector2f& TrackSize,
+		const FVector2f& ThumbSize,
+		float InValue,
+		EOrientation InOrientation = Orient_Vertical);
 
 	// Inverse of the above: the value a click at LocalY selects, taking the cursor as the middle
-	// of the thumb rather than its top edge.
+	// of the thumb rather than its top edge. Vertical only - the horizontal inverse is
+	// GetValueAtLocalX, because the axis runs the other way as well as the other direction.
 	static float GetValueAtLocalY(float TrackHeight, float ThumbHeight, float LocalY);
+
+	// Horizontal inverse: 0 at the left, 1 at the right.
+	static float GetValueAtLocalX(float TrackWidth, float ThumbWidth, float LocalX);
 
 	virtual int32 OnPaint(
 		const FPaintArgs& Args,
@@ -79,6 +93,7 @@ private:
 	const FSlateBrush* ThumbBrush = nullptr;
 	float ThumbScale = 1.0f;
 	bool bLocked = false;
+	EOrientation Orientation = Orient_Vertical;
 	float Value = 0.0f;
 	FOnFloatValueChanged OnValueChanged;
 

@@ -77,11 +77,10 @@ constexpr FRect GetItemHitRect(const int32 Index)
 		FirstItemY + ItemStride * static_cast<float>(Index) + static_cast<float>(ItemFontHeight) };
 }
 
-// Descriptor +0x28/+0x2c, written a byte at a time as 80 85 4a and ea ef 9a - Win32 COLORREF, so
-// low byte is red: an olive that reads as engraved on the plate, and a pale yellow-green for the
-// item the selection is on.
-inline const FLinearColor ItemColor(0x80 / 255.0f, 0x85 / 255.0f, 0x4A / 255.0f, 1.0f);
-inline const FLinearColor ItemSelectedColor(0xEA / 255.0f, 0xEF / 255.0f, 0x9A / 255.0f, 1.0f);
+// Descriptor +0x28/+0x2c. The Settings menu writes the same pair, so they live in the shared
+// scaffolding.
+using SimCopterFrontEnd::ItemColor;
+using SimCopterFrontEnd::ItemSelectedColor;
 
 // FUN_0045fe10 (main4.bmp, the round indicator lamps) and FUN_0045fed0 (main5.bmp, the arrow
 // keys down the left edge). Both bitmaps are two columns: the selected row's source is shifted
@@ -98,19 +97,10 @@ constexpr float KeyTop[ItemCount] = { 35.0f, 100.0f, 164.0f, 227.0f, 289.0f };
 constexpr float KeySourceTop[ItemCount] = { 0.0f, 65.0f, 129.0f, 192.0f, 254.0f };
 constexpr float KeySourceBottom[ItemCount] = { 65.0f, 129.0f, 192.0f, 254.0f, 297.0f };
 
-// FUN_0045f040's key map. Page Up is deliberately not Up: it refuses to wrap.
-enum class ENavigation : uint8
-{
-	None,
-	Next,      // Down, Page Down - wraps to the first item past the end
-	Previous,  // Up - wraps to the last item at item 0
-	PreviousNoWrap, // Page Up
-	First,     // Home
-	Last,      // End
-};
-
-// Returns the index the original's handler would move to, or INDEX_NONE for no change.
-int32 GetNavigationTarget(ENavigation Navigation, int32 Selected, int32 Count);
+// FUN_0045f040's key map belongs to the page class, not to this screen - the Settings menu is
+// driven by the same code - so it lives in the shared scaffolding now.
+using SimCopterFrontEnd::ENavigation;
+using SimCopterFrontEnd::GetNavigationTarget;
 }
 
 // Which item was chosen. The values are the original's own indices, which are also the message

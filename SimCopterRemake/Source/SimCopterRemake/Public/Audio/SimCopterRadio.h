@@ -121,6 +121,15 @@ public:
 	void SetVolume(float InVolume);
 	float GetVolume() const { return Volume; }
 
+	/**
+	 * The Sound dialog's DJ and Commercials toggles (control 0x7d6, commands 3 and 4). A disabled
+	 * slot type is skipped where its probability gate is rolled, so the pattern still advances and
+	 * the shuffle bag is untouched - the beat just passes in silence, exactly as it does when a
+	 * slot loses its roll or its folder is empty.
+	 */
+	void SetSlotEnabled(ESimCopterRadioSlot Slot, bool bEnabled);
+	bool IsSlotEnabled(ESimCopterRadioSlot Slot) const;
+
 	// --- the ported RNG, exposed for tests ---
 
 	/**
@@ -167,6 +176,9 @@ private:
 	int32 StationIndex = 0;
 	bool bPowered = true;
 	float Volume = 1.0f;
+
+	/** Indexed by ESimCopterRadioSlot; music can never be switched off. */
+	bool bSlotEnabled[4] = { true, true, true, true };
 
 	/** The slot-type pattern, reshuffled at the end of each cycle, and its cursor. */
 	TArray<int32> Pattern;

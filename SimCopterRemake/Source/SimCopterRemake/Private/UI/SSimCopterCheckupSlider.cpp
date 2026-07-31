@@ -17,6 +17,7 @@ void SSimCopterCheckupSlider::Construct(const FArguments& InArgs)
 	ThumbBrush = InArgs._ThumbBrush;
 	ThumbScale = FMath::Max(InArgs._ThumbScale, UE_SMALL_NUMBER);
 	bLocked = InArgs._Locked;
+	Orientation = InArgs._Orientation;
 	OnValueChanged = InArgs._OnValueChanged;
 
 	SetCanTick(false);
@@ -34,12 +35,19 @@ FVector2f SSimCopterCheckupSlider::GetThumbSize() const
 FVector2f SSimCopterCheckupSlider::GetThumbTopLeft(
 	const FVector2f& TrackSize,
 	const FVector2f& ThumbSize,
-	const float InValue)
+	const float InValue,
+	const EOrientation InOrientation)
 {
+	const float Clamped = FMath::Clamp(InValue, 0.0f, 1.0f);
+
+	if (InOrientation == Orient_Horizontal)
+	{
+		const float Travel = FMath::Max(0.0f, TrackSize.X - ThumbSize.X);
+		return FVector2f(Clamped * Travel, (TrackSize.Y - ThumbSize.Y) * 0.5f);
+	}
+
 	const float Travel = FMath::Max(0.0f, TrackSize.Y - ThumbSize.Y);
-	return FVector2f(
-		(TrackSize.X - ThumbSize.X) * 0.5f,
-		(1.0f - FMath::Clamp(InValue, 0.0f, 1.0f)) * Travel);
+	return FVector2f((TrackSize.X - ThumbSize.X) * 0.5f, (1.0f - Clamped) * Travel);
 }
 
 float SSimCopterCheckupSlider::GetValueAtLocalY(
@@ -54,6 +62,20 @@ float SSimCopterCheckupSlider::GetValueAtLocalY(
 	}
 	const float TopEdge = FMath::Clamp(LocalY - ThumbHeight * 0.5f, 0.0f, Travel);
 	return 1.0f - TopEdge / Travel;
+}
+
+float SSimCopterCheckupSlider::GetValueAtLocalX(
+	const float TrackWidth,
+	const float ThumbWidth,
+	const float LocalX)
+{
+	const float Travel = FMath::Max(0.0f, TrackWidth - ThumbWidth);
+	if (Travel <= 0.0f)
+	{
+		return 0.0f;
+	}
+	const float LeftEdge = FMath::Clamp(LocalX - ThumbWidth * 0.5f, 0.0f, Travel);
+	return LeftEdge / Travel;
 }
 
 void SSimCopterCheckupSlider::SetValue(const float InValue)
@@ -83,7 +105,7 @@ int32 SSimCopterCheckupSlider::OnPaint(
 	}
 
 	const FVector2f ThumbSize = GetThumbSize();
-	const FVector2f TopLeft = GetThumbTopLeft(AllottedGeometry.GetLocalSize(), ThumbSize, Value);
+	const FVector2f TopLeft = GetThumbTopLeft(AllottedGeometry.GetLocalSize(), ThumbSize, Value, Orientation);
 	const ESlateDrawEffect Effects = (bParentEnabled && !bLocked)
 		? ESlateDrawEffect::None
 		: ESlateDrawEffect::DisabledEffect;
@@ -109,7 +131,11 @@ FVector2D SSimCopterCheckupSlider::ComputeDesiredSize(float) const
 void SSimCopterCheckupSlider::ApplyMouse(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
 {
 	const FVector2f Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
-	SetValue(GetValueAtLocalY(MyGeometry.GetLocalSize().Y, GetThumbSize().Y, Local.Y));
+	const FVector2f Track = MyGeometry.GetLocalSize();
+	const FVector2f Thumb = GetThumbSize();
+	SetValue(Orientation == Orient_Horizontal
+		? GetValueAtLocalX(Track.X, Thumb.X, Local.X)
+		: GetValueAtLocalY(Track.Y, Thumb.Y, Local.Y));
 }
 
 FReply SSimCopterCheckupSlider::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
