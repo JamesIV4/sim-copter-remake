@@ -1,0 +1,68 @@
+﻿// ===========================================
+// Ghidra:    FUN_00431d70
+// Address:   0x00431d70
+// Signature: undefined FUN_00431d70(void)
+// Callers:   1  |  Callees: 5
+// ===========================================
+
+
+
+void FUN_00431d70(void)
+
+
+
+{
+
+  undefined4 *puVar1;
+
+  ostream *poVar2;
+
+  int iVar3;
+
+  
+
+  set_new_handler((_func_void *)0x0);
+
+  puVar1 = (undefined4 *)FUN_004d28b0(8);
+
+  if (puVar1 == (undefined4 *)0x0) {
+
+    poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);
+
+    FUN_00401000(poVar2);
+
+    FUN_004d2060(1);
+
+  }
+
+  set_new_handler((_func_void *)0x0);
+
+  iVar3 = FUN_004d28b0(0x1000);
+
+  if (iVar3 == 0) {
+
+    poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);
+
+    FUN_00401000(poVar2);
+
+    FUN_004d2060(1);
+
+  }
+
+  puVar1[1] = iVar3;
+
+  *puVar1 = DAT_004f8364;
+
+  DAT_004f8364 = puVar1;
+
+  DAT_004f835c = puVar1[1];
+
+  DAT_004f8358 = puVar1[1] + 0x1000;
+
+  return;
+
+}
+
+
+
+

@@ -2,6 +2,7 @@
 
 #include "SSimCopterDashboard.h"
 
+#include "Audio/SimCopterRadio.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "Flight/SimCopterHelicopterPawn.h"
@@ -271,6 +272,40 @@ constexpr float CompassWindowWidth = 37.0f;
 constexpr float UpscaledCompassWindowXOffset = -3.0f;
 constexpr float UpscaledCompassWindowYOffset = 3.0f;
 
+// --- the radio tuner --------------------------------------------------------------------------
+//
+// dash4's left third is an FM head unit: a dark body with a lit scale printed 88 / 92 / 96 /
+// 100 / 104, and a needle that slides along it. The original stores the needle position in the
+// dash4 widget (FUN_00451980 sets [0x24] = -1 for "no station yet") and repaints it from the
+// "REIO" state message the radio publishes each time it changes.
+//
+// These bounds are MEASURED from DASH4.BMP rather than taken from the exe, because the widget's
+// own rectangle (20, 15, 86, 38) bounds the whole head unit, not the lit scale. The measurement
+// is a luminance profile - Docs/scratchpad/sound/radio/measure_tuner.py - which puts the lit
+// band at rows 24..30 and columns 17..92, with the printed labels centred at x = 22, 38, 53,
+// 69 and 84.
+constexpr float RadioScaleX = 17.0f;
+constexpr float RadioScaleY = 24.0f;
+constexpr float RadioScaleWidth = 76.0f;   // x 17..92 inclusive
+constexpr float RadioScaleHeight = 7.0f;   // y 24..30 inclusive
+
+// The needle's two end detents sit on the OUTERMOST PRINTED LABELS - x = 22 and x = 84 in page
+// pixels - rather than on the ends of the lit band, so a tuned station lines up with a printed
+// frequency instead of floating between two of them. Expressed relative to the scale, because
+// the tuner widget is sized to exactly that band.
+constexpr float RadioDialFirstX = 22.0f - RadioScaleX;
+constexpr float RadioDialLastX = 84.0f - RadioScaleX;
+
+// One page pixel, the same weight as the printed tick marks the needle moves between.
+constexpr float RadioNeedleWidth = 1.0f;
+
+// The clickable head unit, from FUN_00451980's stored rectangle. Clicking anywhere on it tunes
+// to the station nearest that point along the scale.
+constexpr float RadioBodyX = 20.0f;
+constexpr float RadioBodyY = 15.0f;
+constexpr float RadioBodyWidth = 66.0f;    // 20..86
+constexpr float RadioBodyHeight = 23.0f;   // 15..38
+
 // The upscale reconstructed the three dial faces about one-and-a-half page pixels below the
 // original bitmap centres. Keep the original decoded gauge geometry and compensate only while
 // the replacement panel is active.
@@ -357,6 +392,117 @@ public:
 private:
 	TAttribute<float> AngleDegrees;
 	const FSlateBrush* Image = nullptr;
+};
+
+/**
+ * The radio tuner: paints the station needle over the printed scale and takes the click that
+ * tunes it. It is sized to the lit scale exactly, so the click position maps straight onto the
+ * dial without the widget needing to know anything about the dashboard's layout or scaling.
+ */
+class SSimCopterRadioTuner : public SLeafWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SSimCopterRadioTuner) {}
+		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterRadioSubsystem>, Radio)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		Radio = InArgs._Radio;
+		SetCanTick(false);
+	}
+
+	virtual int32 OnPaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override
+	{
+		USimCopterRadioSubsystem* RadioPtr = Radio.Get();
+		if (RadioPtr == nullptr || RadioPtr->GetStationCount() == 0)
+		{
+			return LayerId;
+		}
+
+		const FVector2D Size = AllottedGeometry.GetLocalSize();
+		const float PixelsPerPage = static_cast<float>(Size.X) / FMath::Max(RadioScaleWidth, 1.0f);
+		const float NeedleX = PixelsPerPage *
+			(RadioDialFirstX + RadioPtr->GetDialAlpha() * (RadioDialLastX - RadioDialFirstX));
+		const float NeedleWidth = FMath::Max(1.0f, RadioNeedleWidth * PixelsPerPage);
+
+		// Dimmed when the set is off, so the dial still reads as tuned to something.
+		const FLinearColor Tint = RadioPtr->IsPowered()
+			? FLinearColor(1.0f, 0.16f, 0.12f, 1.0f)
+			: FLinearColor(0.45f, 0.12f, 0.10f, 0.65f);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			LayerId,
+			AllottedGeometry.ToPaintGeometry(
+				FVector2f(NeedleWidth, static_cast<float>(Size.Y)),
+				FSlateLayoutTransform(FVector2f(NeedleX - NeedleWidth * 0.5f, 0.0f))),
+			FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")),
+			bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect,
+			Tint * InWidgetStyle.GetColorAndOpacityTint());
+
+		return LayerId + 1;
+	}
+
+	virtual FVector2D ComputeDesiredSize(float) const override
+	{
+		return FVector2D(RadioScaleWidth, RadioScaleHeight);
+	}
+
+	virtual bool SupportsKeyboardFocus() const override { return false; }
+
+	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		USimCopterRadioSubsystem* RadioPtr = Radio.Get();
+		if (RadioPtr == nullptr || RadioPtr->GetStationCount() == 0)
+		{
+			return FReply::Unhandled();
+		}
+
+		if (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+		{
+			// Right-click is the power switch: the original's radio has an on/off of its own
+			// (FUN_004309c0 takes a plain on/off), and the dial is the only radio surface here.
+			RadioPtr->SetPowered(!RadioPtr->IsPowered());
+			return FReply::Handled();
+		}
+
+		if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+		{
+			return FReply::Unhandled();
+		}
+
+		const FVector2D Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+		const float Width = FMath::Max(static_cast<float>(MyGeometry.GetLocalSize().X), 1.0f);
+		const float PixelsPerPage = Width / FMath::Max(RadioScaleWidth, 1.0f);
+		// Inverse of the paint mapping: page pixels back onto the first..last detent span.
+		const float PageX = static_cast<float>(Local.X) / FMath::Max(PixelsPerPage, KINDA_SMALL_NUMBER);
+		const float Alpha =
+			(PageX - RadioDialFirstX) / FMath::Max(RadioDialLastX - RadioDialFirstX, 1.0f);
+
+		const int32 Station = RadioPtr->GetStationForDialAlpha(Alpha);
+		if (Station != INDEX_NONE)
+		{
+			RadioPtr->SetPowered(true);
+			RadioPtr->SetStationIndex(Station);
+		}
+		return FReply::Handled();
+	}
+
+	virtual FCursorReply OnCursorQuery(const FGeometry&, const FPointerEvent&) const override
+	{
+		return FCursorReply::Cursor(EMouseCursor::Hand);
+	}
+
+private:
+	TWeakObjectPtr<USimCopterRadioSubsystem> Radio;
 };
 }
 
@@ -846,12 +992,24 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash4()
 			]
 		]);
 
+	// The radio needle, over the printed scale. Sized to the lit band so the tuner widget's own
+	// local space is the dial: it needs no knowledge of Scale or of where dash4 ended up.
+	AddAtPage(*Canvas, RadioScaleX, RadioScaleY, RadioScaleWidth, RadioScaleHeight,
+		SNew(SSimCopterRadioTuner).Radio(GetRadio()));
+
 	return SNew(SBox)
 		.WidthOverride(Dash4Width * Scale)
 		.HeightOverride(Dash4Height * Scale)
 		[
 			Canvas
 		];
+}
+
+USimCopterRadioSubsystem* SSimCopterDashboard::GetRadio() const
+{
+	const ASimCopterHelicopterPawn* PawnPtr = Pawn.Get();
+	const UWorld* World = PawnPtr != nullptr ? PawnPtr->GetWorld() : nullptr;
+	return World != nullptr ? World->GetSubsystem<USimCopterRadioSubsystem>() : nullptr;
 }
 
 // --- readouts ------------------------------------------------------------------------------------

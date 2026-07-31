@@ -1,0 +1,192 @@
+﻿
+===== 0x0043125c (620 bytes)
+  0043125c  mov      esi, dword ptr [0x4f8f70]
+  00431262  mov      ecx, 0xffffffff
+  00431267  mov      edi, esi
+  00431269  sub      eax, eax
+  0043126b  repne scasb al, byte ptr es:[edi]
+  0043126d  not      ecx
+  0043126f  mov      eax, dword ptr [esp + 0x34]
+  00431273  lea      ebp, [ecx - 1]
+  00431276  push     ebp
+  00431277  mov      ecx, dword ptr [eax + 4]
+  0043127a  push     ecx
+  0043127b  lea      ecx, [esp + 0x38]
+  0043127f  call     0x4026a0
+  00431284  lea      ecx, [esp + 0x70]
+  00431288  push     eax
+  00431289  call     0x401e20
+  0043128e  test     ebp, ebp
+  00431290  je       0x4312ad
+  00431292  mov      eax, dword ptr [esp + 0x34]
+  00431296  mov      ecx, dword ptr [esp + 0x6c]
+  0043129a  mov      edi, dword ptr [eax + 4]
+  0043129d  add      edi, dword ptr [ecx]
+  0043129f  mov      ecx, ebp
+  004312a1  shr      ecx, 2
+  004312a4  rep movsd dword ptr es:[edi], dword ptr [esi]
+  004312a6  mov      ecx, ebp
+  004312a8  and      ecx, 3
+  004312ab  rep movsb byte ptr es:[edi], byte ptr [esi]
+  004312ad  mov      eax, dword ptr [esp + 0x6c]
+  004312b1  push     -1
+  004312b3  lea      ecx, [esp + 0x6c]
+  004312b7  push     0
+  004312b9  push     ecx
+  004312ba  add      dword ptr [eax + 4], ebp
+  004312bd  lea      ecx, [esp + 0x48]
+  004312c1  call     0x401d00
+  004312c6  lea      ecx, [esp + 0x68]
+  004312ca  call     0x401f10
+  004312cf  lea      edx, [esp + 0x118]
+  004312d6  lea      ecx, [esp + 0x3c]
+  004312da  cmp      edx, ecx
+  004312dc  je       0x431338
+  004312de  mov      ecx, edx
+  004312e0  call     0x401ed0
+  004312e5  mov      eax, dword ptr [esp + 0x40]
+  004312e9  add      eax, 0xc
+  004312ec  cmp      dword ptr [eax], -1
+  004312ef  je       0x431300
+  004312f1  mov      ecx, dword ptr [esp + 0x40]
+  004312f5  mov      dword ptr [esp + 0x11c], ecx
+  004312fc  inc      dword ptr [eax]
+  004312fe  jmp      0x431338
+  00431300  push     0x10
+  00431302  call     0x4d28b0
+  00431307  add      esp, 4
+  0043130a  test     eax, eax
+  0043130c  jne      0x43131b
+  0043130e  mov      dword ptr [esp + 0x11c], 0
+  00431319  jmp      0x431338
+  0043131b  mov      ecx, dword ptr [esp + 0x40]
+  0043131f  lea      ebp, [esp + 0x3c]
+  00431323  mov      edx, dword ptr [ecx + 4]
+  00431326  mov      ecx, eax
+  00431328  push     edx
+  00431329  push     0
+  0043132b  push     ebp
+  0043132c  call     0x402960
+  00431331  mov      dword ptr [esp + 0x11c], eax
+  00431338  lea      ecx, [esp + 0x3c]
+  0043133c  call     0x401ed0
+  00431341  cmp      dword ptr [esp + 0x3c], 0
+  00431346  je       0x431355
+  00431348  mov      eax, dword ptr [esp + 0x3c]
+  0043134c  push     eax
+  0043134d  call     0x4d29a0
+  00431352  add      esp, 4
+  00431355  lea      eax, [esp + 0x10]
+  00431359  push     0
+  0043135b  push     eax
+  0043135c  call     0x423520
+  00431361  mov      eax, dword ptr [esp + 0x1c]
+  00431365  mov      edx, dword ptr [esp + 0x124]
+  0043136c  add      esp, 8
+  0043136f  mov      ecx, dword ptr [eax + 4]
+  00431372  mov      eax, dword ptr [edx + 4]
+  00431375  push     ecx
+  00431376  lea      ecx, [esp + 0x11c]
+  0043137d  push     eax
+  0043137e  call     0x4026a0
+  00431383  lea      ecx, [esp + 0x78]
+  00431387  push     eax
+  00431388  call     0x401e20
+  0043138d  mov      ecx, dword ptr [esp + 0x14]
+  00431391  mov      ebp, dword ptr [ecx + 4]
+  00431394  test     ebp, ebp
+  00431396  je       0x4313c1
+  00431398  lea      ecx, [esp + 0x10]
+  0043139c  call     0x4026a0
+  004313a1  mov      ecx, dword ptr [esp + 0x11c]
+  004313a8  mov      edx, dword ptr [esp + 0x74]
+  004313ac  mov      esi, eax
+  004313ae  mov      edi, dword ptr [ecx + 4]
+  004313b1  add      edi, dword ptr [edx]
+  004313b3  mov      ecx, ebp
+  004313b5  shr      ecx, 2
+  004313b8  rep movsd dword ptr es:[edi], dword ptr [esi]
+  004313ba  mov      ecx, ebp
+  004313bc  and      ecx, 3
+  004313bf  rep movsb byte ptr es:[edi], byte ptr [esi]
+  004313c1  mov      ecx, dword ptr [esp + 0x74]
+  004313c5  mov      eax, dword ptr [esp + 0x14]
+  004313c9  push     -1
+  004313cb  push     0
+  004313cd  mov      edx, dword ptr [eax + 4]
+  004313d0  add      dword ptr [ecx + 4], edx
+  004313d3  lea      ecx, [esp + 0x78]
+  004313d7  push     ecx
+  004313d8  lea      ecx, [esp + 0x50]
+  004313dc  call     0x401d00
+  004313e1  lea      ecx, [esp + 0x70]
+  004313e5  call     0x401f10
+  004313ea  lea      edx, [esp + 0x44]
+  004313ee  lea      ecx, [esp + 0x18]
+  004313f2  cmp      edx, ecx
+  004313f4  je       0x431445
+  004313f6  call     0x401ed0
+  004313fb  mov      eax, dword ptr [esp + 0x48]
+  004313ff  add      eax, 0xc
+  00431402  cmp      dword ptr [eax], -1
+  00431405  je       0x431413
+  00431407  mov      ecx, dword ptr [esp + 0x48]
+  0043140b  mov      dword ptr [esp + 0x1c], ecx
+  0043140f  inc      dword ptr [eax]
+  00431411  jmp      0x431445
+  00431413  push     0x10
+  00431415  call     0x4d28b0
+  0043141a  add      esp, 4
+  0043141d  test     eax, eax
+  0043141f  jne      0x43142b
+  00431421  mov      dword ptr [esp + 0x1c], 0
+  00431429  jmp      0x431445
+  0043142b  mov      ecx, dword ptr [esp + 0x48]
+  0043142f  lea      ebp, [esp + 0x44]
+  00431433  mov      edx, dword ptr [ecx + 4]
+  00431436  mov      ecx, eax
+  00431438  push     edx
+  00431439  push     0
+  0043143b  push     ebp
+  0043143c  call     0x402960
+  00431441  mov      dword ptr [esp + 0x1c], eax
+  00431445  lea      ecx, [esp + 0x44]
+  00431449  call     0x401ed0
+  0043144e  cmp      dword ptr [esp + 0x44], 0
+  00431453  je       0x431462
+  00431455  mov      eax, dword ptr [esp + 0x44]
+  00431459  push     eax
+  0043145a  call     0x4d29a0
+  0043145f  add      esp, 4
+  00431462  cmp      dword ptr [0x4f86d4], 1
+  00431469  je       0x4314ab
+  0043146b  mov      esi, dword ptr [ebx]
+  0043146d  lea      eax, [esp + 0x18]
+  00431471  push     eax
+  00431472  mov      ecx, ebx
+  00431474  call     dword ptr [esi + 0x54]
+  00431477  test     eax, eax
+  00431479  jne      0x4314ab
+  0043147b  push     2
+  0043147d  mov      ecx, ebx
+  0043147f  mov      dword ptr [ebx + 0x34], 1
+  00431486  call     dword ptr [esi + 0x28]
+  00431489  test     eax, eax
+  0043148b  je       0x43149e
+  0043148d  lea      eax, [esp + 0x10]
+  00431491  push     1
+  00431493  push     eax
+  00431494  call     0x423520
+  00431499  add      esp, 8
+  0043149c  jmp      0x4314ab
+  0043149e  lea      ecx, [esp + 0x10]
+  004314a2  push     -1
+  004314a4  push     0
+  004314a6  call     0x402490
+  004314ab  mov      eax, dword ptr [esp + 0x14]
+  004314af  mov      ecx, dword ptr [eax + 4]
+  004314b2  push     ecx
+  004314b3  lea      ecx, [esp + 0x14]
+  004314b7  call     0x4026a0
+  004314bc  lea      ecx, [esp + 0x11c]
+  004314c3  push     eax

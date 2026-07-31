@@ -10,6 +10,7 @@
 class ASimCopterHelicopterPawn;
 class ASimCopterMissionSystemActor;
 class SConstraintCanvas;
+class USimCopterRadioSubsystem;
 struct FSlateBrush;
 
 // The bottom-right of the original's cockpit: the seat window, then the instrument panel.
@@ -93,6 +94,10 @@ private:
 
 	const FSlateBrush* GetAltimeterRolloverBrush() const;
 	FMargin GetAltimeterRolloverOffset() const;
+	// The world's radio, for the dash4 tuner needle. Null when there is no world or no station
+	// folder was found, which the tuner paints as "not fitted" - nothing at all.
+	USimCopterRadioSubsystem* GetRadio() const;
+
 	const FSlateBrush* GetCompassBrush() const;
 	// Where the compass strip sits inside its window, in screen pixels. Two copies are drawn a
 	// revolution apart so the scroll wraps without a seam.

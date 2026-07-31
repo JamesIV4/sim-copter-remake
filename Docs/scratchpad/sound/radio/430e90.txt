@@ -1,0 +1,147 @@
+﻿// ===========================================
+// Ghidra:    FUN_00430e90
+// Address:   0x00430e90
+// Signature: undefined FUN_00430e90(void)
+// ===========================================
+
+
+
+undefined4 FUN_00430e90(int param_1)
+
+
+
+{
+
+  byte bVar1;
+
+  int iVar2;
+
+  uint uVar3;
+
+  uint uVar4;
+
+  undefined **ppuVar5;
+
+  byte *pbVar6;
+
+  byte *pbVar7;
+
+  bool bVar8;
+
+  bool bVar9;
+
+  
+
+  ppuVar5 = &PTR_s_classic__004f8f48;
+
+  do {
+
+    pbVar7 = *ppuVar5;
+
+    uVar3 = 0xffffffff;
+
+    pbVar6 = pbVar7;
+
+    do {
+
+      if (uVar3 == 0) break;
+
+      uVar3 = uVar3 - 1;
+
+      bVar1 = *pbVar6;
+
+      pbVar6 = pbVar6 + 1;
+
+    } while (bVar1 != 0);
+
+    uVar3 = ~uVar3 - 1;
+
+    uVar4 = *(uint *)(*(int *)(param_1 + 4) + 4);
+
+    if (uVar3 <= uVar4) {
+
+      uVar4 = uVar3;
+
+    }
+
+    if ((*(undefined4 **)(param_1 + 4))[1] == 0) {
+
+      if (pbVar7 == (byte *)0x0) {
+
+        iVar2 = 0;
+
+      }
+
+      else {
+
+        iVar2 = -(int)(char)*pbVar7;
+
+      }
+
+LAB_00430f09:
+
+      if (iVar2 == 0) {
+
+        return 1;
+
+      }
+
+    }
+
+    else {
+
+      bVar8 = false;
+
+      iVar2 = 0;
+
+      bVar9 = true;
+
+      pbVar6 = (byte *)**(undefined4 **)(param_1 + 4);
+
+      do {
+
+        if (uVar4 == 0) break;
+
+        uVar4 = uVar4 - 1;
+
+        bVar8 = *pbVar6 < *pbVar7;
+
+        bVar9 = *pbVar6 == *pbVar7;
+
+        pbVar6 = pbVar6 + 1;
+
+        pbVar7 = pbVar7 + 1;
+
+      } while (bVar9);
+
+      if (!bVar9) {
+
+        iVar2 = (1 - (uint)bVar8) - (uint)(bVar8 != 0);
+
+      }
+
+      if (iVar2 == 0) {
+
+        iVar2 = *(int *)(*(int *)(param_1 + 4) + 4) - uVar3;
+
+        goto LAB_00430f09;
+
+      }
+
+    }
+
+    ppuVar5 = ppuVar5 + 1;
+
+    if ((undefined **)((int)&PTR_s_talk__004f8f68 + 3) < ppuVar5) {
+
+      return 0;
+
+    }
+
+  } while( true );
+
+}
+
+
+
+

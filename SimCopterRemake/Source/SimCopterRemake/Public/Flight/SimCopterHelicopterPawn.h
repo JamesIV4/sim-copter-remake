@@ -1419,6 +1419,11 @@ private:
 	void ToggleSearchLight();
 
 	// Debug console commands (routed through the player pawn) to exercise the fire/water work.
+	// Radio: no argument cycles to the next station, "off"/"on" switches the set, a call sign
+	// or a dial index tunes directly. The dash tuner does the same thing by click.
+	UFUNCTION(Exec)
+	void SimRadio(const FString& Command);
+
 	UFUNCTION(Exec)
 	void SimForceFire();
 	UFUNCTION(Exec)

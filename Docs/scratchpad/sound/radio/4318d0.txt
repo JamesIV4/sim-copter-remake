@@ -1,0 +1,54 @@
+﻿// ===========================================
+// Ghidra:    FUN_004318d0
+// Address:   0x004318d0
+// Signature: undefined FUN_004318d0(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+
+
+
+void __thiscall FUN_004318d0(int param_1,undefined4 *param_2,int param_3)
+
+
+
+{
+
+  int iVar1;
+
+  undefined4 *puVar2;
+
+  undefined4 *puVar3;
+
+  int iVar4;
+
+  
+
+  iVar1 = *(int *)(param_1 + 4);
+
+  puVar3 = param_2;
+
+  for (iVar4 = param_3; iVar4 != iVar1; iVar4 = iVar4 + 0x98) {
+
+    puVar3 = puVar3 + 0x26;
+
+    FUN_0042ecc0(iVar4);
+
+  }
+
+  puVar2 = *(undefined4 **)(param_1 + 4);
+
+  for (; puVar3 != puVar2; puVar3 = puVar3 + 0x26) {
+
+    (**(code **)*puVar3)(0);
+
+  }
+
+  *(int *)(param_1 + 4) = *(int *)(param_1 + 4) + (((int)param_2 - param_3) / 0x98) * 0x98;
+
+  return;
+
+}
+
+
+
+

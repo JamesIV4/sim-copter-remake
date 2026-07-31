@@ -1,0 +1,35 @@
+﻿// ===========================================
+// Ghidra:    FUN_00430b30
+// Address:   0x00430b30
+// Signature: undefined FUN_00430b30(void)
+// ===========================================
+
+
+
+void __fastcall FUN_00430b30(int param_1)
+
+
+
+{
+
+  int iVar1;
+
+  int unaff_ESI;
+
+  undefined1 local_4 [4];
+
+  
+
+  iVar1 = *(int *)(param_1 + 0x38);
+
+  (**(code **)(iVar1 + 0x20))(local_4);
+
+  (**(code **)(iVar1 + 0x28))(unaff_ESI,(int)(unaff_ESI + (unaff_ESI >> 0x1f & 3U)) >> 2,2000);
+
+  return;
+
+}
+
+
+
+
