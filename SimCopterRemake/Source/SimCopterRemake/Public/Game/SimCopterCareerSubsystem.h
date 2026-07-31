@@ -112,6 +112,7 @@ public:
 
 	int32 GetHelicopterDepreciation(int32 TypeIndex) const;
 	void AddHelicopterDepreciation(int32 TypeIndex, int32 Dollars);
+	const TArray<int32>& GetHelicopterDepreciationValues() const { return HelicopterDepreciation; }
 
 	// --- mission log ---
 
@@ -124,6 +125,14 @@ public:
 
 	// Clears the log and puts the books back to a new career. Called when a session opens.
 	void BeginCareer();
+
+	// Restores the part of the original CINF career block owned here. Save loading happens after
+	// BeginCareer because the mission actor opens a normal city session first; keeping the restore
+	// on this subsystem preserves the existing single owner for fleet and log state.
+	void RestoreCareerState(
+		int32 InOwnedHelicopterMask,
+		const TArray<int32>& InHelicopterDepreciation,
+		const TArray<FSimCopterCareerLogEntry>& InLogEntries);
 
 	// True once BeginCareer has run, so a city entered directly (PIE) can seed itself.
 	bool IsCareerOpen() const { return bCareerOpen; }

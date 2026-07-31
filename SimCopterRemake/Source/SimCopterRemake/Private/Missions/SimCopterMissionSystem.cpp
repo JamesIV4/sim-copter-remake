@@ -52,6 +52,16 @@ void FSimCopterMissionSystem::BeginSession()
 	Cash = SessionStartingCash;
 }
 
+void FSimCopterMissionSystem::RestoreSessionState(
+	const int32 InScore,
+	const int32 InCash,
+	const FSimCopterCareerCity& InCareerCity)
+{
+	SetCareerCity(InCareerCity);
+	Score = FMath::Max(0, InScore);
+	Cash = FMath::Max(0, InCash);
+}
+
 const FSimCopterCareerCity* FSimCopterMissionSystem::GetCareerCityByIndex(int32 Index) const
 {
 	return CareerCities.IsValidIndex(Index) ? &CareerCities[Index] : nullptr;

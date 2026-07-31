@@ -6,6 +6,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterCareerProgression.h"
+#include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -13,6 +14,7 @@
 #include "UI/SSimCopterCareerSelect.h"
 #include "UI/SSimCopterMainMenu.h"
 #include "UI/SSimCopterMessageBox.h"
+#include "UI/SSimCopterSaveGamePicker.h"
 #include "UI/SSimCopterUserCityPicker.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/SOverlay.h"
@@ -109,6 +111,26 @@ TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFron
 			}));
 	}
 
+	case ESimCopterFrontEndScreen::SavedGamePicker:
+	{
+		TArray<FSimCopterSaveSummary> Saves;
+		if (const USimCopterSaveSubsystem* SaveSubsystem = USimCopterSaveSubsystem::Get(this))
+		{
+			SaveSubsystem->GetSaveSummaries(PendingSaveKind, Saves);
+		}
+
+		return SNew(SSimCopterSaveGamePicker)
+			.Art(Art)
+			.Kind(PendingSaveKind)
+			.Saves(Saves)
+			.OnAccepted(FOnSimCopterSaveGameChosen::CreateUObject(
+				this, &ASimCopterMainMenuGameMode::HandleSavedGameChosen))
+			.OnCancelled(FSimpleDelegate::CreateLambda([this]()
+			{
+				EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+			}));
+	}
+
 	case ESimCopterFrontEndScreen::Message:
 		return SNew(SSimCopterMessageBox)
 			.Art(Art)
@@ -184,23 +206,30 @@ void ASimCopterMainMenuGameMode::HandleMainMenuItem(const ESimCopterMainMenuItem
 	{
 	case ESimCopterMainMenuItem::NewCareerGame:
 		// app[0xb0] = 1, then EnterState(5).
+		if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this))
+		{
+			Saves->BeginNewGame();
+		}
 		EnterScreen(ESimCopterFrontEndScreen::CareerSelect);
 		return;
 
 	case ESimCopterMainMenuItem::NewUserGame:
 		// The original opens GetOpenFileName here; the remake lists the same folder itself.
+		if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this))
+		{
+			Saves->BeginNewGame();
+		}
 		EnterScreen(ESimCopterFrontEndScreen::UserCityPicker);
 		return;
 
 	case ESimCopterMainMenuItem::OpenCareerGame:
+		PendingSaveKind = ESimCopterSessionKind::Career;
+		EnterScreen(ESimCopterFrontEndScreen::SavedGamePicker);
+		return;
+
 	case ESimCopterMainMenuItem::OpenUserGame:
-		// Both open a saved game. The remake has no save system, so it refuses the same way the
-		// original's demo build did (STRINGTABLE 653) rather than opening a picker with nothing
-		// in it. The items stay on the menu because the original's item set is fixed at five.
-		PendingMessage = LOCTEXT(
-			"NoSavedGames",
-			"Saved games are not implemented yet. Select 'New Career Game' or 'New User Game'.");
-		EnterScreen(ESimCopterFrontEndScreen::Message);
+		PendingSaveKind = ESimCopterSessionKind::User;
+		EnterScreen(ESimCopterFrontEndScreen::SavedGamePicker);
 		return;
 
 	case ESimCopterMainMenuItem::Quit:
@@ -252,6 +281,26 @@ void ASimCopterMainMenuGameMode::HandleUserCityChosen(const FString& CityFilePat
 	StartPendingSession();
 }
 
+void ASimCopterMainMenuGameMode::HandleSavedGameChosen(const FString& SlotName)
+{
+	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+	if (Saves == nullptr)
+	{
+		PendingMessage = LOCTEXT("NoSaveService", "The saved-game service is unavailable.");
+		EnterScreen(ESimCopterFrontEndScreen::Message);
+		return;
+	}
+
+	FString Error;
+	if (!Saves->LoadGame(SlotName, PendingSaveKind, Error))
+	{
+		PendingMessage = FText::FromString(Error);
+		EnterScreen(ESimCopterFrontEndScreen::Message);
+		return;
+	}
+	StartPendingSession();
+}
+
 void ASimCopterMainMenuGameMode::StartPendingSession()
 {
 	USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
@@ -279,6 +328,11 @@ void ASimCopterMainMenuGameMode::QuitGame()
 
 void ASimCopterMainMenuGameMode::SimNewCareer(int32 CareerCityIndex)
 {
+	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this))
+	{
+		Saves->BeginNewGame();
+	}
+
 	USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 		? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 		: nullptr;
@@ -293,6 +347,11 @@ void ASimCopterMainMenuGameMode::SimNewCareer(int32 CareerCityIndex)
 
 void ASimCopterMainMenuGameMode::SimNewUserGame(int32 CityIndex)
 {
+	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this))
+	{
+		Saves->BeginNewGame();
+	}
+
 	USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 		? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 		: nullptr;
@@ -314,6 +373,24 @@ void ASimCopterMainMenuGameMode::SimNewUserGame(int32 CityIndex)
 	}
 
 	Session->RequestUserCity(CityPaths[CityIndex]);
+	StartPendingSession();
+}
+
+void ASimCopterMainMenuGameMode::SimLoadGame(const FString& SlotName)
+{
+	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+	if (Saves == nullptr)
+	{
+		return;
+	}
+
+	// Console loading accepts either kind; the file itself remains validated before travel.
+	FString Error;
+	if (!Saves->LoadGame(SlotName, ESimCopterSessionKind::None, Error))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimLoadGame: %s"), *Error);
+		return;
+	}
 	StartPendingSession();
 }
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Game/SimCopterSessionSubsystem.h"
 #include "GameFramework/GameModeBase.h"
 #include "SimCopterMainMenuGameMode.generated.h"
 
@@ -20,6 +21,7 @@ enum class ESimCopterFrontEndScreen : uint8
 	MainMenu,       // state 4, page 0x7d2, main1.bmp
 	CareerSelect,   // state 5, page 0x7d7, career.bmp
 	UserCityPicker, // stands in for FUN_00406400's GetOpenFileName
+	SavedGamePicker,// remake SaveGame slots, filtered to the original career/user split
 	Message,        // MBox.bmp
 };
 
@@ -48,6 +50,8 @@ public:
 	void SimNewCareer(int32 CareerCityIndex = 0);
 	UFUNCTION(Exec)
 	void SimNewUserGame(int32 CityIndex = 0);
+	UFUNCTION(Exec)
+	void SimLoadGame(const FString& SlotName);
 
 private:
 	// The original's artwork, shared by every front-end screen.
@@ -56,6 +60,7 @@ private:
 
 	TSharedPtr<SWidget> ScreenWidget;
 	ESimCopterFrontEndScreen Screen = ESimCopterFrontEndScreen::None;
+	ESimCopterSessionKind PendingSaveKind = ESimCopterSessionKind::None;
 
 	// SCHOOK: EnterState 0x00449cb0 - tear the current screen down and put the next one up.
 	void EnterScreen(ESimCopterFrontEndScreen NewScreen);
@@ -67,6 +72,7 @@ private:
 
 	void HandleCareerCityChosen(int32 CareerCityIndex);
 	void HandleUserCityChosen(const FString& CityFilePath);
+	void HandleSavedGameChosen(const FString& SlotName);
 
 	// Travels to the city level with whatever the shell wrote into the session subsystem.
 	void StartPendingSession();

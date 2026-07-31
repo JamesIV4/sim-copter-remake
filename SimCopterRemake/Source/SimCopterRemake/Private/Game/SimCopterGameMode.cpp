@@ -7,6 +7,7 @@
 #include "City/SimCopterHangar.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Game/SimCopterPlayerController.h"
+#include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -134,6 +135,14 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 			*Helicopter->GetName(), PadIndex, *PadWorld.ToCompactString());
 	}
 
+	// Loading restores the career-owned aircraft only after the ordinary city-entry placement.
+	// That preserves FUN_0047a240's pad selection while keeping a saved model/service state from
+	// being overwritten by BeginPlay or the parking pass.
+	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
+	{
+		Saves->ApplyPendingAircraftState(World);
+	}
+
 	if (PlayerHelicopter == nullptr)
 	{
 		return;
@@ -219,6 +228,11 @@ void ASimCopterGameMode::ApplyPendingSession()
 	Actor->StartCityJobsSession(
 		Session->GetCareerCityIndex(),
 		Session->ShouldStartFirstMissionImmediately());
+
+	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
+	{
+		Saves->ApplyPendingMissionAndCareerState(Actor);
+	}
 
 	if (const int32 TypeMask = Session->GetPendingMissionTypeMask())
 	{

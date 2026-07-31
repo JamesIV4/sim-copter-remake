@@ -90,9 +90,10 @@ indexes volume linearly in [0,10000], so the port is linear over the original's 
   mappings, which is the functionality the original delivers. Its Defaults button parses
   `Config/DefaultInput.ini` **directly**, not through `FConfigCacheIni` — the hierarchy already has
   the player's saved `Input.ini` on top, which is exactly what "defaults" has to ignore.
-- **Save Game / Save Game As refuse in the message box**, as the main menu's Open items do; there
-  is no save system. Leave City therefore skips the original's second confirm (string 49) and goes
-  straight to the front end, which is what answering No does.
+- **Save Game / Save Game As are live.** Save overwrites the active named slot and routes an
+  unnamed session to Save As, matching `FUN_0044c9e0`; success uses string 48, "Game saved!".
+  Leave City again has the original second confirmation on string 49, "Do you want to save the
+  game?" The in-app name dialog and versioned archive are described in [[simcopter-save-load]].
 - **The Settings key is the remake's choice.** App command 0x3f is not in `input.cfg` — the file
   binds 78 commands and 0x3f is not among them — so it is wired in the window procedure. The port
   binds Escape, which is also the key the page itself answers as Continue.

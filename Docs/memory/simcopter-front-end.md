@@ -79,9 +79,10 @@ is four border strips, left/top/right/bottom, because the middle is where the pr
 - **No file dialog.** `SSimCopterUserCityPicker` lists the same `.sc2` files on menu4.bmp — the
   original's keyboard-shortcut list page — keeping title string 40. Its rectangles are *measured*
   off that bitmap, not decoded, because the original never lays a file list on it.
-- **Open Career/User Game refuse instead of opening an empty picker**, in MBox.bmp, which is where
-  the original's own demo build put the same refusal (STRINGTABLE 653). The items stay on the menu
-  because the original's item set is fixed at five.
+- **Open Career/User Game use an in-app saved-game picker.** The original routes both items through
+  a Win32 file dialog (`*.scc` for careers and `*.scu` for user games). The remake instead lists
+  its versioned SaveGame slots on `menu4.bmp`, filtered to the same career/user split. See
+  [[simcopter-save-load]].
 - The old debug menu's "start with mission N" extras are gone; `SimLoadMission` in the city level
   already covers them.
 

@@ -65,9 +65,9 @@ game folder):
 | Item | State |
 | --- | --- |
 | New Career Game | choose one of three cities (the original's opening successor trio City0/1/2), then fly it |
-| Open Career Game | disabled - no save system yet |
+| Open Career Game | choose a compatible named career save, then restore it |
 | New User Game | pick any `.sc2` under the original game's `cities/`; the original opened a file dialog |
-| Open User Game | disabled - no save system yet |
+| Open User Game | choose a compatible named user-game save, then restore it |
 | Quit | quits |
 
 Below a divider the menu carries two development extras with no original equivalent: a mission type

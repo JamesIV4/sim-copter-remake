@@ -193,3 +193,33 @@ void USimCopterCareerSubsystem::BeginCareer()
 	}
 	bCareerOpen = true;
 }
+
+void USimCopterCareerSubsystem::RestoreCareerState(
+	const int32 InOwnedHelicopterMask,
+	const TArray<int32>& InHelicopterDepreciation,
+	const TArray<FSimCopterCareerLogEntry>& InLogEntries)
+{
+	const int32 TypeCount = SimCopterHelicopterRegistry::GetDefinitionCount();
+	const uint32 ValidTypeBits = TypeCount >= 32
+		? MAX_uint32
+		: ((1u << FMath::Max(TypeCount, 0)) - 1u);
+	OwnedHelicopterMask = static_cast<int32>(static_cast<uint32>(InOwnedHelicopterMask) & ValidTypeBits);
+
+	HelicopterDepreciation.Init(0, TypeCount);
+	for (int32 TypeIndex = 0; TypeIndex < TypeCount && TypeIndex < InHelicopterDepreciation.Num(); ++TypeIndex)
+	{
+		HelicopterDepreciation[TypeIndex] = FMath::Max(0, InHelicopterDepreciation[TypeIndex]);
+	}
+
+	const int32 FirstEntry = FMath::Max(0, InLogEntries.Num() - MaxLogEntries);
+	LogEntries.Reset(InLogEntries.Num() - FirstEntry);
+	for (int32 Index = FirstEntry; Index < InLogEntries.Num(); ++Index)
+	{
+		if (!InLogEntries[Index].Text.IsEmpty())
+		{
+			LogEntries.Add(InLogEntries[Index]);
+		}
+	}
+
+	bCareerOpen = true;
+}

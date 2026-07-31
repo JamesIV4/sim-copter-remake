@@ -271,6 +271,19 @@ public:
 	// original clamps the balance at zero rather than refusing, and so does this.
 	void AddSessionCash(int32 Delta) { MissionSystem.AddCash(Delta); }
 
+	// Save loading: restores the durable session record after StartCityJobsSession has performed
+	// the ordinary city setup. Transient jobs start fresh because their original BOMB payload has
+	// no remake serializer yet.
+	void RestoreSavedSessionState(
+		int32 Score,
+		int32 Cash,
+		const SimCopterMissions::FSimCopterCareerCity& City,
+		float ElapsedSeconds)
+	{
+		MissionSystem.RestoreSessionState(Score, Cash, City);
+		SessionElapsedSeconds = FMath::Max(0.0f, ElapsedSeconds);
+	}
+
 	// The record the running session is scheduling from - the eight values the Settings screen's
 	// City Settings dialog edits. FUN_00440ec0 writes them straight back into the live block, and
 	// so does this: the change takes effect on the next scheduler tick, with no restart.
