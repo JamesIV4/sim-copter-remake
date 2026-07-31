@@ -191,6 +191,10 @@ bool FSimCopterEquipmentTableTest::RunTest(const FString& Parameters)
 	}
 
 	TestEqual(TEXT("career equipment mask covers 0x1f"), UnionMask, SimCopterHelicopterRegistry::AllCareerEquipmentBits);
+	TestEqual(
+		TEXT("new games start with bucket and megaphone"),
+		SimCopterHelicopterRegistry::StartingCareerEquipmentBits,
+		0x03);
 
 	// Apache weapons are model capabilities, never career equipment.
 	TestEqual(

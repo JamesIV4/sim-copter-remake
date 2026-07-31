@@ -4983,6 +4983,65 @@ bool ASimCity2000CityActor::TryGetBuildingBoundsAtTile(int32 FileX, int32 FileY,
 	return OutWorldBounds.IsValid != 0;
 }
 
+bool ASimCity2000CityActor::IsInsideStandingBuildingBounds(
+	const FVector& WorldLocation,
+	const float ClearanceCm) const
+{
+	if (TileBuildingIds.Num() != FSimCity2000City::TileCount || TileSize <= UE_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	const float HalfMapSize = MapSize * TileSize * 0.5f;
+	const FVector LocalLocation = GetActorTransform().InverseTransformPosition(WorldLocation);
+	const int32 FileX = FMath::FloorToInt((LocalLocation.X + HalfMapSize) / TileSize);
+	const int32 FileY = FMath::FloorToInt((HalfMapSize - LocalLocation.Y) / TileSize);
+	const float HorizontalClearance = FMath::Max(0.0f, ClearanceCm);
+	TSet<int32> CheckedBuildings;
+
+	// TileBuildingIds maps every child tile back to its footprint owner. The one-tile margin also
+	// catches authored GEO geometry that overhangs its nominal SC2 footprint.
+	for (int32 OffsetY = -1; OffsetY <= 1; ++OffsetY)
+	{
+		for (int32 OffsetX = -1; OffsetX <= 1; ++OffsetX)
+		{
+			const int32 TileX = FileX + OffsetX;
+			const int32 TileY = FileY + OffsetY;
+			if (TileX < 0 || TileX >= MapSize || TileY < 0 || TileY >= MapSize)
+			{
+				continue;
+			}
+
+			const int32 BuildingId = TileBuildingIds[TileY * MapSize + TileX];
+			if (!Buildings.IsValidIndex(BuildingId) || Buildings[BuildingId].bDemolished ||
+				CheckedBuildings.Contains(BuildingId))
+			{
+				continue;
+			}
+			CheckedBuildings.Add(BuildingId);
+
+			FBox Bounds(ForceInit);
+			if (!TryGetBuildingBoundsAtTile(TileX, TileY, Bounds))
+			{
+				continue;
+			}
+
+			if (WorldLocation.X >= Bounds.Min.X - HorizontalClearance &&
+				WorldLocation.X <= Bounds.Max.X + HorizontalClearance &&
+				WorldLocation.Y >= Bounds.Min.Y - HorizontalClearance &&
+				WorldLocation.Y <= Bounds.Max.Y + HorizontalClearance &&
+				WorldLocation.Z >= Bounds.Min.Z - 10.0f &&
+				WorldLocation.Z <= Bounds.Max.Z + 10.0f)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool ASimCity2000CityActor::DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles, bool bLeaveRubble)
 {
 	OutClearedTiles.Reset();

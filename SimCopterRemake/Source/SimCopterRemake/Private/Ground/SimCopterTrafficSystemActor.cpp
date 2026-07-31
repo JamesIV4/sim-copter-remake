@@ -5,7 +5,9 @@
 #include "Algo/Reverse.h"
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCity2000CityActor.h"
+#include "CollisionShape.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Formats/SimCopterPeopleCityRules.h"
@@ -15,6 +17,7 @@
 #include "Ground/SimCopterDispatchMarker.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
@@ -811,6 +814,41 @@ void ASimCopterTrafficSystemActor::EndTrafficJam(int32 EventId)
 			Pair.Value.MissionEventId = INDEX_NONE;
 		}
 	}
+}
+
+bool ASimCopterTrafficSystemActor::ApplyVehicleInteraction(
+	ASimCopterGroundAgent& Vehicle,
+	const FSimCopterInteractionEvent& Event)
+{
+	// SCHOOK: FUN_0049a4f0 routes class-0x10 objects through FUN_0049fc10/FUN_0049f680.
+	// Interaction mode 2 then calls FUN_0049d7e0; message 0 is Report Traffic.
+	constexpr int32 ReportTrafficMessage = 0;
+	if (Vehicle.GetAgentKind() != ESimCopterGroundAgentKind::Vehicle ||
+		Event.Mode != ESimCopterInteractionMode::Megaphone ||
+		Event.MessageIndex != ReportTrafficMessage)
+	{
+		return false;
+	}
+
+	FSimCopterVehicleTrafficState* State =
+		VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	if (State == nullptr || !State->bMissionJammed || State->bMissionOnFire ||
+		State->MissionEventId == INDEX_NONE)
+	{
+		return false;
+	}
+
+	ASimCopterMissionSystemActor* Missions = ResolveMissionSystem();
+	if (Missions == nullptr || !Missions->ReportTrafficJamCarCleared(State->MissionEventId))
+	{
+		return false;
+	}
+
+	// FUN_0049d7e0 clears flag 0x200 on this car, not every car in the event. Each affected
+	// vehicle posts its own EVT_CarCleared, and the mission count decides when the jam is over.
+	State->bMissionJammed = false;
+	State->MissionEventId = INDEX_NONE;
+	return true;
 }
 
 bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY)
@@ -5459,6 +5497,42 @@ bool ASimCopterTrafficSystemActor::IsPedestrianSpawnLocationOpen(const FVector& 
 
 bool ASimCopterTrafficSystemActor::IsMissionGroundSpawnValid(const FVector& SpawnLocation) const
 {
+	// The older outward-ring fix was tile based. Once the faithful GEO buildings became runtime
+	// instances, model overhang and complex collision could extend beyond those SC2 tile flags.
+	// Reject the actual pedestrian capsule against building collision and retain a bounds-backed
+	// fallback for runtime meshes whose complex cook does not answer overlap queries.
+	if (const ASimCity2000CityActor* City = ResolveSourceCityActor())
+	{
+		constexpr float PedestrianCapsuleRadiusCm = 32.0f;
+		constexpr float PedestrianCapsuleHalfHeightCm = 88.0f;
+		if (City->IsInsideStandingBuildingBounds(SpawnLocation, PedestrianCapsuleRadiusCm))
+		{
+			return false;
+		}
+
+		if (GetWorld() != nullptr)
+		{
+			TArray<FOverlapResult> Overlaps;
+			FCollisionObjectQueryParams ObjectParams;
+			ObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
+			FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterMissionPersonSpawnProbe), false);
+			GetWorld()->OverlapMultiByObjectType(
+				Overlaps,
+				SpawnLocation,
+				FQuat::Identity,
+				ObjectParams,
+				FCollisionShape::MakeCapsule(PedestrianCapsuleRadiusCm, PedestrianCapsuleHalfHeightCm),
+				QueryParams);
+			for (const FOverlapResult& Overlap : Overlaps)
+			{
+				if (City->IsBuildingCollisionHit(Overlap.GetComponent(), SpawnLocation))
+				{
+					return false;
+				}
+			}
+		}
+	}
+
 	if (IsPedestrianSpawnLocationOpen(SpawnLocation))
 	{
 		return true;

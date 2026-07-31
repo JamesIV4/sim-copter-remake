@@ -64,6 +64,14 @@ state-5 medic. For hospital delivery, let BHAV 263 remove the real cabin actor;
 a bounded recovery timer may resolve malformed legacy seats, but must not
 animate a competing handoff or spawn visual geometry.
 
+The retail game can choose a medevac coordinate inside a building. The remake's
+intentional safety guard must validate the whole pedestrian capsule against the
+rendered building, not just reject the SC2 origin tile: faithful instanced GEO
+models can overhang their nominal footprint, and complex runtime collision may
+not answer the old top-down trace. `IsMissionGroundSpawnValid` therefore uses
+both building collision overlap and `IsInsideStandingBuildingBounds` before a
+patient is spawned; if no nearby point passes, the spawn is refused.
+
 ## The roof post is rate-limited (2026-07-30)
 
 `EnsureHospitalParamedicAtTile` is called by the mission tick **every frame** a medevac is

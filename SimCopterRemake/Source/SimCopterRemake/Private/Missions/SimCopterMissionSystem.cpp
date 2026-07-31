@@ -892,6 +892,10 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.TileX = OutX;
 		Rec.TileY = OutY;
+		// SCHOOK: FUN_0049fca0 -> FUN_0049fe30. Marking the first car with flag 0x200 also
+		// posts EVT_JamCarAdded; without that count, clearing the car can never satisfy the
+		// traffic-jam lifecycle test.
+		PostEvent(EVT_JamCarAdded, Rec.EventId, 1);
 		Rec.Name = FString::Printf(TEXT("Traffic Jam #%d"), TypeSerials[8]);
 		TypeSerials[8]++;
 		Rec.Category = CAT_Background;
@@ -1955,26 +1959,29 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
 		break;
+	// SCHOOK: MissionIncrementalScoring 0x004aa150. These are the retail STRINGTABLE ids:
+	// 0x3a7 "Sim Rescued!", 0x3a8 "Sim Transported!", 0x3a9 "Sim MedEvaced!",
+	// and 0x3aa "Sim Picked Up!". The earlier port shifted this whole run by one.
 	case EVT_RescueDelivered:
-		TextId = 0x3a8;
+		TextId = 0x3a7;
 		EarnedCash = Event.Value * Tuning.RescueIncMoneyPerPerson;
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_TransportDelivered:
-		TextId = 0x3a9;
+		TextId = 0x3a8;
 		EarnedCash = Event.Value * Tuning.TransportIncMoneyPerPerson;
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_MedevacDelivered:
-		TextId = 0x3aa;
+		TextId = 0x3a9;
 		EarnedCash = Event.Value * Tuning.MedevacIncMoneyPerPerson;
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_VictimPickedUp:
-		TextId = 0x3ab;
+		TextId = 0x3aa;
 		EarnedCash = Event.Value * Tuning.PickupIncMoneyPerPerson;
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
@@ -1998,8 +2005,8 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_CarCleared:
-		TextId = 0x3b7;
-		EarnedCash = Event.Value * Tuning.CarFireMoney;
+		TextId = 0x3ad;
+		EarnedCash = Event.Value * Tuning.CarClearedMoney;
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
 		break;

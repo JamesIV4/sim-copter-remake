@@ -23,7 +23,6 @@
 #include "Engine/GameViewportClient.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
-#include "HAL/FileManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/FileHelper.h"
@@ -57,10 +56,11 @@ const TCHAR* GetMissionDeltaLabel(int32 TextId)
 	case 0x3a4: return TEXT("Building burned");
 	case 0x3a5: return TEXT("Building saved");
 	case 0x3a6: return TEXT("Debris doused");
-	case 0x3a8: return TEXT("Rescue delivered");
-	case 0x3a9: return TEXT("Passenger delivered");
-	case 0x3aa: return TEXT("Patient delivered");
-	case 0x3ab: return TEXT("Victim picked up");
+	case 0x3a7: return TEXT("Sim Rescued!");
+	case 0x3a8: return TEXT("Sim Transported!");
+	case 0x3a9: return TEXT("Sim MedEvaced!");
+	case 0x3aa: return TEXT("Sim Picked Up!");
+	case 0x3ad: return TEXT("Car UnJammed!");
 	case 0x3ac: return TEXT("Rioter dispersed");
 	case 0x3b1: return TEXT("Person died");
 	case 0x3b6: return TEXT("Car doused");
@@ -226,13 +226,11 @@ void ASimCopterMissionSystemActor::BeginPlay()
 
 	MissionSystem.LoadCareerData(ResolveCareerTweakPath());
 
-	SetupMissionSounds();
 	// Planes, boats and the train are ambient traffic, not mission props: the original ticks all
 	// three pools from FUN_0047a760 whether or not a mission wants them.
 	ResolveAmbientVehicles();
 	EnsureMessageLogWidget();
 	EnsureMissionMarkerWidget();
-	EnsureMegaphonePromptWidget();
 
 	// Load the FIREPTS flame mesh once (deferred so the traffic/city actors have finished their
 	// own BeginPlay asset loads first).
@@ -265,7 +263,6 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 	MedevacHandoffs.Reset();
 	MedevacHospitalTiles.Reset();
 
-	RemoveMegaphonePromptWidget();
 	RemoveMissionMarkerWidget();
 	RemoveMessageLogWidget();
 	Super::EndPlay(EndPlayReason);
@@ -293,7 +290,6 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	ProcessPassengerTransfers();
 	ProcessRescueTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
-	UpdateMegaphonePrompt();
 	UpdateFireVisuals(DeltaTime);
 	UpdateFireAudio();
 	UpdateEmergencySirenAudio();
@@ -2295,42 +2291,6 @@ void ASimCopterMissionSystemActor::DeliverMedevacDirectly(int32 EventId, ASimCop
 		/*bRemoveAfterDelivery*/ true);
 }
 
-bool ASimCopterMissionSystemActor::FindNearestClearableJam(const FVector& FromWorldLocation, int32& OutEventId, FVector& OutJamWorldLocation) const
-{
-	OutEventId = INDEX_NONE;
-	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
-	if (TrafficSystem == nullptr)
-	{
-		return false;
-	}
-
-	float BestDistSq = FMath::Square(MegaphoneRangeCm);
-	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
-	{
-		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_TrafficJam) == 0)
-		{
-			continue;
-		}
-		if (!IsValidMissionTile(Record.TileX, Record.TileY))
-		{
-			continue;
-		}
-		FVector JamLocation = FVector::ZeroVector;
-		if (!TrafficSystem->TryGetTileCenterWorldLocation(Record.TileX, Record.TileY, JamLocation))
-		{
-			continue;
-		}
-		const float DistSq = FVector::DistSquared2D(FromWorldLocation, JamLocation);
-		if (DistSq <= BestDistSq)
-		{
-			BestDistSq = DistSq;
-			OutEventId = Record.EventId;
-			OutJamWorldLocation = JamLocation;
-		}
-	}
-	return OutEventId != INDEX_NONE;
-}
-
 namespace
 {
 // Chebyshev reach of a square spiral of N rings: the same tiles FUN_004beda0(N) visits.
@@ -2593,6 +2553,21 @@ bool ASimCopterMissionSystemActor::ClearTrafficJamEvent(int32 EventId)
 	return MissionSystem.ClearTrafficJam(EventId);
 }
 
+bool ASimCopterMissionSystemActor::ReportTrafficJamCarCleared(int32 EventId)
+{
+	const SimCopterMissions::FSimCopterMissionRecord* Record = MissionSystem.FindRecord(EventId);
+	if (Record == nullptr || !Record->bActive ||
+		(Record->TypeMask & SimCopterMissions::TYPE_TrafficJam) == 0)
+	{
+		return false;
+	}
+
+	// SCHOOK: FUN_0049d7e0 posts {0x1b, car+0x113, ..., 1} after message 0 removes
+	// the car's 0x200 jam flag. UpdateLifecycle closes the record when every counted car clears.
+	MissionSystem.PostEvent(SimCopterMissions::EVT_CarCleared, EventId, 1);
+	return true;
+}
+
 void ASimCopterMissionSystemActor::ReportSpeederCarCaught(int32 EventId)
 {
 	// FUN_004b8c90: {0x25, eventId, ., ., 1}. This is the one that closes the mission properly -
@@ -2611,138 +2586,6 @@ void ASimCopterMissionSystemActor::ReportSpeederCarUnresolved(int32 EventId)
 		SimCopterMissions::CAT_ExpireSilently);
 }
 
-bool ASimCopterMissionSystemActor::TryUseMegaphone(const FVector& FromWorldLocation)
-{
-	int32 EventId = INDEX_NONE;
-	FVector JamLocation = FVector::ZeroVector;
-	if (!FindNearestClearableJam(FromWorldLocation, EventId, JamLocation))
-	{
-		return false;
-	}
-
-	if (!MissionSystem.ClearTrafficJam(EventId))
-	{
-		return false;
-	}
-
-	// Megaphone bark, one of the original "MG_*" lines.
-	if (MegaphoneVoiceFiles.Num() > 0)
-	{
-		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
-		{
-			const int32 Pick = FMath::RandRange(0, MegaphoneVoiceFiles.Num() - 1);
-			Audio->PlayFile2D(MegaphoneVoiceFiles[Pick], SimCopterSound::ESoundDir::Language);
-		}
-	}
-
-	UpdateMegaphonePrompt();
-	return true;
-}
-
-void ASimCopterMissionSystemActor::UpdateMegaphonePrompt()
-{
-	bool bInRange = false;
-	if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(UGameplayStatics::GetPlayerPawn(GetWorld(), 0)))
-	{
-		int32 EventId = INDEX_NONE;
-		FVector JamLocation = FVector::ZeroVector;
-		bInRange = FindNearestClearableJam(Helicopter->GetActorLocation(), EventId, JamLocation);
-	}
-
-	EnsureMegaphonePromptWidget();
-	if (!MegaphonePromptWidget.IsValid())
-	{
-		return;
-	}
-	if (bInRange != bMegaphonePromptVisible)
-	{
-		bMegaphonePromptVisible = bInRange;
-		MegaphonePromptWidget->SetVisibility(bInRange ? EVisibility::HitTestInvisible : EVisibility::Collapsed);
-	}
-}
-
-void ASimCopterMissionSystemActor::EnsureMegaphonePromptWidget()
-{
-	if (MegaphonePromptWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
-	{
-		return;
-	}
-
-	TSharedRef<STextBlock> PromptText =
-		SNew(STextBlock)
-		.Text(FText::FromString(TEXT("Press  [ M ]  to clear the traffic jam  (Megaphone)")))
-		.ColorAndOpacity(FLinearColor(1.0f, 0.95f, 0.5f, 1.0f))
-		.ShadowOffset(FVector2D(1.0f, 1.0f))
-		.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.85f))
-		.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 18));
-	MegaphonePromptText = PromptText;
-
-	MegaphonePromptWidget =
-		SNew(SBox)
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Bottom)
-		.Padding(FMargin(0.0f, 0.0f, 0.0f, 108.0f))
-		.Visibility(EVisibility::Collapsed)
-		[
-			SNew(SBorder)
-			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.55f))
-			.Padding(FMargin(16.0f, 8.0f))
-			[
-				PromptText
-			]
-		];
-
-	bMegaphonePromptVisible = false;
-	GEngine->GameViewport->AddViewportWidgetContent(MegaphonePromptWidget.ToSharedRef(), 25);
-}
-
-void ASimCopterMissionSystemActor::RemoveMegaphonePromptWidget()
-{
-	if (GEngine != nullptr && GEngine->GameViewport != nullptr && MegaphonePromptWidget.IsValid())
-	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(MegaphonePromptWidget.ToSharedRef());
-	}
-	MegaphonePromptText.Reset();
-	MegaphonePromptWidget.Reset();
-	bMegaphonePromptVisible = false;
-}
-
-// The megaphone lines are the only mission audio that is not a table slot: MG_*.WAV is never
-// registered by FUN_00424b70, so there is no id to ask for. Collect the filenames once and let
-// the audio subsystem play them as standalone sounds.
-void ASimCopterMissionSystemActor::SetupMissionSounds()
-{
-	MegaphoneVoiceFiles.Reset();
-
-	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
-	if (Audio == nullptr || Audio->GetSoundRoot().IsEmpty())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Mission] No original sound folder; mission audio stays silent."));
-		return;
-	}
-
-	const FString LanguageDir = FPaths::Combine(Audio->GetSoundRoot(), TEXT("English"));
-	TArray<FString> Files;
-	IFileManager::Get().FindFiles(Files, *FPaths::Combine(LanguageDir, TEXT("MG_*.WAV")), true, false);
-
-	// The install ships the same line under both cases (mg_00_00.wav / MG_00_04.WAV), so fold
-	// them or the random pick is biased toward whichever spelling repeats.
-	TSet<FString> Seen;
-	for (const FString& File : Files)
-	{
-		const FString BaseName = FPaths::GetBaseFilename(File);
-		bool bAlreadySeen = false;
-		Seen.Add(BaseName.ToUpper(), &bAlreadySeen);
-		if (!bAlreadySeen)
-		{
-			MegaphoneVoiceFiles.Add(BaseName);
-		}
-	}
-
-	UE_LOG(LogTemp, Display, TEXT("[Mission] %d megaphone lines from %s"),
-		MegaphoneVoiceFiles.Num(), *LanguageDir);
-}
 void ASimCopterMissionSystemActor::EnsureMessageLogWidget()
 {
 	if (!bShowMissionMessageLog || MessageLogWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)

@@ -489,6 +489,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
 	void SetSelectedMegaphoneMessage(ESimCopterMegaphoneMessage Message);
 
+	// FUN_0044ac80's F6-F10 commands choose a message and invoke it synchronously. The cockpit
+	// popup uses this instead of a pressed-input latch because its click supplies both edges in
+	// one Slate callback.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
+	bool SendMegaphoneMessage(ESimCopterMegaphoneMessage Message);
+
 	// The two water controls, each level triggered for as long as the button is held.
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Tools")
 	void StartBucketDump();
@@ -783,10 +789,9 @@ protected:
 	float ToolFlapScale = 2.0f;
 
 	// Career equipment the session starts with. Until the career/shop layer is ported this
-	// seeds FSimCopterEquipmentState::CareerEquipmentMask; the water pair matches what the
-	// remake already shipped.
+	// seeds FSimCopterEquipmentState::CareerEquipmentMask from both original new-game paths.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Equipment", meta = (Bitmask))
-	int32 StartingCareerEquipmentMask = 0x01;
+	int32 StartingCareerEquipmentMask = SimCopterHelicopterRegistry::StartingCareerEquipmentBits;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Equipment", meta = (ClampMin = "0", ClampMax = "10"))
 	int32 StartingTearGasRounds = 0;
@@ -1294,6 +1299,9 @@ private:
 
 	ESimCopterHelicopterTool SelectedTool = ESimCopterHelicopterTool::WaterBucket;
 	ESimCopterMegaphoneMessage SelectedMegaphoneMessage = ESimCopterMegaphoneMessage::ReportTraffic;
+	TArray<TArray<FString>> MegaphoneVoiceFilesByMessage;
+	TArray<int32> MegaphoneVoiceNextIndices;
+	bool bMegaphoneVoicesLoaded = false;
 	FString LastToolStatus;
 
 	// FUN_0048e0b0's shared missile/tear-gas cooldown DAT_00504570 (1.0 s).
@@ -1419,7 +1427,6 @@ private:
 	void StartEngineShutdownHold();
 	void StopEngineShutdownHold();
 	void Interact();
-	void UseMegaphone();
 	void ToggleGamePause();
 
 	// Controller context actions. LB/LT own the right stick while their wheel is open; R3 owns
@@ -1721,6 +1728,7 @@ private:
 	void UpdateToolDispatch(float DeltaSeconds);
 	bool TryBeginToolUse(ESimCopterHelicopterTool Tool);
 	void BroadcastMegaphoneMessage();
+	void PlayMegaphoneVoice(int32 MessageIndex);
 
 	// Runs the original square-spiral tile scan around Event.TargetTile and routes every
 	// eligible object through the shared interaction dispatch. Returns how many reacted.
