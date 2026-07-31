@@ -32,7 +32,11 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
 - **Load factor** `[0xce] = (seats×120 + MaxLoad + 30 − (passengers×120 + load)) / cap`
   scales every control ramp rate and the climb cap.
 - **Rotor** `[0x56]`: collective-up spools +100/s; **no lift until 300** (≈3 s), then
-  state→Flying; tops at 360 in flight; −50/s parked, −200/s dying. Blade angle steps
+  state→Flying; tops at 360 in flight; −50/s parked, −200/s dying. The takeoff
+  gate is inclusive: FUN_00487160 tests `0x12bffff < rotor`, i.e. `rotor >= 300`.
+  A strict `> 300` check can strand the fixed-point rotor exactly at 300 because
+  the spool branch only advances values below the gate, replaying CHOPSTAR forever.
+  Guard: `SimCopter.Flight.RotorSpoolGate`. Blade angle steps
   `min(rotor×32×dt, 39.1°)` per **frame** (deliberate strobe). Face-type-11 blur discs
   toggle **on at 300**. NOTAR types (MDEXPLORER, MD520; static flag +0x38) hide the
   tail rotor; tail offsets at +0x2c..0x34 of the 0x5c static block at `0x5040e4`

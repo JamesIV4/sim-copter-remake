@@ -689,7 +689,10 @@ void FSimCopterFlightModel::StepVertical(int32 Dt, const FSimCopterFlightInputs&
 	// State transitions.
 	if (State == ESimCopterFlightState::Parked)
 	{
-		if (ClimbCommand > 0 && RotorSpeed > RotorLiftGate)
+		// FUN_00487160 tests `0x12bffff < RotorSpeed`, so exactly 300.0 is
+		// sufficient for takeoff. Requiring strictly more can strand the fixed-point
+		// rotor at the gate forever: the spool branch only advances values below it.
+		if (ClimbCommand > 0 && RotorSpeed >= RotorLiftGate)
 		{
 			PitchSmoothed = 0;
 			SlideSmoothed = 0;
@@ -871,7 +874,6 @@ void FSimCopterFlightModel::NotifyWallImpact(FSimCopterFlightEvents& OutEvents)
 	BounceTimer = 0x3333; // 0.2 s
 	OutEvents.bPadBounce = true;
 }
-
 
 
 

@@ -79,7 +79,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FSimCopterFlightSpoolGateTest::RunTest(const FString& Parameters)
 {
 	// FUN_00487160: holding the collective spools the rotor at 100/s; there is
-	// no lift and no takeoff until it passes 300 (about three seconds).
+	// no lift and no takeoff until it reaches 300 (about three seconds).
 	FSimCopterFlightModel Model;
 	Model.ResetOnSurface(0, 0, 0);
 	const FSimCopterFlightEnvironment Env = FlatGroundAt(0);
@@ -110,6 +110,19 @@ bool FSimCopterFlightSpoolGateTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("lifted off"), static_cast<int32>(Model.State), static_cast<int32>(ESimCopterFlightState::Flying));
 	TestTrue(TEXT("gate passed near 3s"), LiftSteps >= 30 && LiftSteps <= 60);
 	TestTrue(TEXT("blur disc on at lift RPM"), Model.bRotorBlurDisc);
+
+	// Regression: the original's `0x12bffff < rotor` comparison includes exactly
+	// 300.0. The spool branch only advances values below 300, so a strict takeoff
+	// comparison strands this state forever and repeatedly replays CHOPSTAR.
+	FSimCopterFlightModel ExactGateModel;
+	ExactGateModel.ResetOnSurface(0, 0, 0);
+	ExactGateModel.RotorSpeed = FSimCopterFlightModel::RotorLiftGate;
+	ExactGateModel.Step(StepSeconds, Inputs, Env, Events);
+	TestEqual(
+		TEXT("exact lift gate takes off"),
+		static_cast<int32>(ExactGateModel.State),
+		static_cast<int32>(ESimCopterFlightState::Flying));
+	TestTrue(TEXT("exact lift gate emits one lift-off edge"), Events.bLiftedOff);
 
 	// Climb continues and altitude rises once flying.
 	for (int32 StepIndex = 0; StepIndex < 40; ++StepIndex)
@@ -814,4 +827,3 @@ bool FSimCopterFlightRotorSpoolDownTest::RunTest(const FString& Parameters)
 }
 
 #endif // WITH_DEV_AUTOMATION_TESTS
-
