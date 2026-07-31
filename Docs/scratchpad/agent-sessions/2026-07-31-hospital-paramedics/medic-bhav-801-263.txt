@@ -1,0 +1,264 @@
+﻿=== BHAV 801 'Medevac paramedic new initbhav' (12 records) ===
+  [ 0] bind-anim 'NoMo'                                        T->5 F->-3
+  [ 1] op25?  args=209,0,0,0                                   T->3 F->9
+  [ 2] expr attr14 := 0                                        T->4 F->-3
+  [ 3] op56?  args=65535,65535,65535,65535                     T->8 F->9
+  [ 4] expr autoturn(+16a) := 0                                T->6 F->-3
+  [ 5] expr attr32 := 916                                      T->2 F->-3
+  [ 6] CALL 1015 'Walk-10'                                     T->7 F->7
+  [ 7] CALL 1101 'Idle-10'                                     T->11 F->-3
+  [ 8] CALL 263 'Pull all med victims off heli'                T->11 F->-3
+  [ 9] CALL 262 'Put all nearby medevac victims on emerg vehs' T->11 F->-3
+  [10] CALL 272 'nearest emerg veh on stack'                   T->1 F->-3
+  [11] CALL 261 'idle a bit'                                   T->10 F->-3
+
+=== BHAV 263 'Pull all med victims off heli' (33 records) ===
+  [ 0] op84?  args=65535,65535,65535,65535                     T->1 F->19
+  [ 1] carried-is-player  args=65535,65535,65535,65535         T->29 F->2
+  [ 2] threat-probe  args=2,10,7,0                             T->17 F->retT
+  [ 3] op47?  args=65535,65535,65535,65535                     T->10 F->-3
+  [ 4] CALL 258 'Run laterally just a bit'                     T->14 F->14
+  [ 5] op38?  args=0,1,0,0                                     T->31 F->32
+  [ 6] CALL 258 'Run laterally just a bit'                     T->2 F->2
+  [ 7] expr local0 := 50                                       T->5 F->-3
+  [ 8] threat-probe  args=2,1,7,0                              T->27 F->23
+  [ 9] bind-anim 'Tote'                                        T->16 F->-3
+  [10] op44?  args=65535,65535,65535,65535                     T->24 F->-3
+  [11] expr local0 == 0                                        T->12 F->4
+  [12] CALL 259 'Scatter direction'                            T->14 F->-3
+  [13] timed-move(local[a0]--; speed=+0x164)  args=0,0,0,512   T->8 F->8
+  [14] expr local0 := 10                                       T->18 F->-3
+  [15] local[a0]:=rand(resolve(a1,scope=a2))  args=0,2,7,0     T->11 F->-3
+  [16] expr attr17 := 0                                        T->26 F->-3
+  [17] expr movespeed(+164) := 20                              T->7 F->-3
+  [18] expr movespeed(+164) := 18                              T->13 F->-3
+  [19] CALL 269 'medic get on starting object'                 T->retT F->-3
+  [20] op71?  args=65535,65535,65535,65535                     T->15 F->21
+  [21] expr attr17 := 1                                        T->30 F->-3
+  [22] op72?  args=65535,65535,65535,65535                     T->9 F->-3
+  [23] CALL 279 'Drop toted, let fall'                         T->30 F->-3
+  [24] op39?  args=802,0,0,0                                   T->25 F->-3
+  [25] CALL 261 'idle a bit'                                   T->22 F->-3
+  [26] expr local3 := 0                                        T->14 F->-3
+  [27] expr local3 += 1                                        T->28 F->-3
+  [28] expr local3 > 3                                         T->23 F->20
+  [29] threat-response  args=65535,65535,65535,65535           T->31 F->retT
+  [30] CALL 1101 'Idle-10'                                     T->0 F->-3
+  [31] op84?  args=65535,65535,65535,65535                     T->3 F->19
+  [32] op82?  args=65535,65535,65535,65535                     T->31 F->6
+
+=== BHAV 1015 'Walk-10' (4 records) ===
+  [ 0] expr movespeed(+164) := 10                              T->2 F->2
+  [ 1] timed-move(local[a0]--; speed=+0x164)  args=1,0,0,0     T->retT F->3
+  [ 2] expr local1 := 10                                       T->1 F->1
+  [ 3] CALL 261 'idle a bit'                                   T->retF F->-3
+
+=== BHAV 1101 'Idle-10' (2 records) ===
+  [ 0] expr local0 := 10                                       T->1 F->1
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->retT
+
+=== BHAV 262 'Put all nearby medevac victims on emerg vehs' (56 records) ===
+  [ 0] expr attr43 := 0                                        T->54 F->-3
+  [ 1] threat-probe  args=5,8,7,0                              T->2 F->42
+  [ 2] carried-is-player  args=65535,65535,65535,65535         T->22 F->33
+  [ 3] bind-anim 'Tote'                                        T->6 F->-3
+  [ 4] expr local0 := 40                                       T->8 F->-3
+  [ 5] op38?  args=0,0,0,0                                     T->21 F->55
+  [ 6] expr attr17 := 0                                        T->17 F->-3
+  [ 7] expr attr17 := 1                                        T->43 F->-3
+  [ 8] expr movespeed(+164) := 18                              T->14 F->-3
+  [ 9] CALL 272 'nearest emerg veh on stack'                   T->12 F->-3
+  [10] expr attr43 := 1                                        T->7 F->-3
+  [11] CALL 275 'Put toted med vic on stack object'            T->10 F->15
+  [12] op71?  args=65535,65535,65535,65535                     T->3 F->13
+  [13] expr attr17 := 1                                        T->39 F->-3
+  [14] CALL 261 'idle a bit'                                   T->5 F->-3
+  [15] CALL 279 'Drop toted, let fall'                         T->7 F->-3
+  [16] sound  args=21,1,1,1                                    T->19 F->19
+  [17] expr local1 == 0                                        T->18 F->4
+  [18] expr local1 := 1                                        T->47 F->-3
+  [19] CALL 261 'idle a bit'                                   T->20 F->-3
+  [20] CALL 261 'idle a bit'                                   T->4 F->-3
+  [21] expr movethruwalls(+190) := 0                           T->11 F->-3
+  [22] threat-response  args=65535,65535,65535,65535           T->33 F->42
+  [23] expr local0 := 80                                       T->27 F->-3
+  [24] op38?  args=0,1,0,0                                     T->37 F->36
+  [25] op39?  args=802,0,0,0                                   T->49 F->-3
+  [26] op44?  args=65535,65535,65535,65535                     T->25 F->-3
+  [27] expr movespeed(+164) := 28                              T->29 F->-3
+  [28] expr autoturn(+16a) := 1                                T->23 F->-3
+  [29] CALL 261 'idle a bit'                                   T->24 F->-3
+  [30] sound  args=20,1,1,1                                    T->31 F->31
+  [31] CALL 261 'idle a bit'                                   T->32 F->-3
+  [32] CALL 261 'idle a bit'                                   T->28 F->-3
+  [33] expr local2 == 0                                        T->34 F->28
+  [34] expr local2 := 1                                        T->46 F->-3
+  [35] expr local1 := 0                                        T->26 F->-3
+  [36] expr movethruwalls(+190) := 1                           T->1 F->-3
+  [37] expr movethruwalls(+190) := 0                           T->35 F->-3
+  [38] expr local3 == 0                                        T->-3 F->-3
+  [39] expr local2 := 0                                        T->1 F->-3
+  [40] CALL 269 'medic get on starting object'                 T->retT F->-3
+  [41] sound  args=19,1,1,1                                    T->45 F->45
+  [42] carried-is-player  args=65535,65535,65535,65535         T->40 F->41
+  [43] CALL 261 'idle a bit'                                   T->44 F->-3
+  [44] CALL 261 'idle a bit'                                   T->39 F->-3
+  [45] CALL 1101 'Idle-10'                                     T->40 F->-3
+  [46] expr attr24 == 65535                                    T->30 F->30
+  [47] expr attr24 == 65535                                    T->16 F->16
+  [48] CALL 1101 'Idle-10'                                     T->50 F->-3
+  [49] sound  args=8,0,0,0                                     T->48 F->48
+  [50] expr failcount(+192) := 0                               T->9 F->-3
+  [51] CALL 307 'Inc fail and move through walls if > 4'       T->9 F->-3
+  [52] expr local0 := 0                                        T->-3 F->-3
+  [53] expr local0 := 1                                        T->-3 F->-3
+  [54] expr attr14 += 1                                        T->39 F->39
+  [55] threat-probe  args=10,1,7,3                             T->21 F->51
+
+=== BHAV 272 'nearest emerg veh on stack' (12 records) ===
+  [ 0] CALL 261 'idle a bit'                                   T->1 F->-3
+  [ 1] threat-probe  args=2,10,7,0                             T->8 F->9
+  [ 2] threat-probe  args=10,10,7,1                            T->3 F->4
+  [ 3] expr local0 < local1                                    T->4 F->7
+  [ 4] threat-probe  args=2,10,7,0                             T->7 F->10
+  [ 5] op50?  args=3,0,0,0                                     T->6 F->-3
+  [ 6] expr local3 > 0                                         T->2 F->9
+  [ 7] op67?  args=65535,65535,65535,65535                     T->11 F->-3
+  [ 8] op14?  args=0,0,0,0                                     T->5 F->9
+  [ 9] expr local0 := 5000                                     T->2 F->-3
+  [10] CALL 265 'Medevac disappear'                            T->-3 F->-3
+  [11] CALL 261 'idle a bit'                                   T->retT F->-3
+
+=== BHAV 261 'idle a bit' (2 records) ===
+  [ 0] expr local0 := 3                                        T->1 F->-3
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->-3
+
+=== BHAV 258 'Run laterally just a bit' (14 records) ===
+  [ 0] CALL 261 'idle a bit'                                   T->1 F->-3
+  [ 1] expr local3 := facing(+140)                             T->2 F->-3
+  [ 2] local[a0]:=rand(resolve(a1,scope=a2))  args=2,2,7,0     T->7 F->-3
+  [ 3] expr local2 == 0                                        T->5 F->4
+  [ 4] expr local0 += 2                                        T->8 F->-3
+  [ 5] expr local0 -= 2                                        T->8 F->-3
+  [ 6] expr local0 := 8                                        T->13 F->-3
+  [ 7] expr local0 := facing(+140)                             T->3 F->-3
+  [ 8] facing:=local[a0]&7  args=0,0,0,0                       T->6 F->-3
+  [ 9] timed-move(local[a0]--; speed=+0x164)  args=0,0,0,0     T->10 F->12
+  [10] facing:=local[a0]&7  args=3,0,0,0                       T->retT F->-3
+  [11] facing:=local[a0]&7  args=3,0,0,0                       T->retF F->-3
+  [12] CALL 261 'idle a bit'                                   T->11 F->-3
+  [13] expr movespeed(+164) := 3                               T->9 F->-3
+
+=== BHAV 259 'Scatter direction' (6 records) ===
+  [ 0] expr local1 := facing(+140)                             T->1 F->-3
+  [ 1] local[a0]:=rand(resolve(a1,scope=a2))  args=0,3,7,0     T->2 F->-3
+  [ 2] expr local0 -= 1                                        T->3 F->-3
+  [ 3] expr local1 += local0                                   T->4 F->-3
+  [ 4] facing:=local[a0]&7  args=1,0,0,0                       T->5 F->-3
+  [ 5] CALL 261 'idle a bit'                                   T->retT F->-3
+
+=== BHAV 269 'medic get on starting object' (24 records) ===
+  [ 0] carried-is-player  args=65535,65535,65535,65535         T->retT F->1
+  [ 1] op62?  args=65535,65535,65535,65535                     T->8 F->9
+  [ 2] op67?  args=65535,65535,65535,65535                     T->3 F->-3
+  [ 3] expr local0 := 80                                       T->5 F->-3
+  [ 4] expr movespeed(+164) := 18                              T->6 F->-3
+  [ 5] CALL 261 'idle a bit'                                   T->4 F->-3
+  [ 6] op12?  args=0,1,0,0                                     T->20 F->21
+  [ 7] CALL 258 'Run laterally just a bit'                     T->1 F->1
+  [ 8] threat-probe  args=1,10,7,0                             T->2 F->19
+  [ 9] op40?  args=65535,65535,65535,65535                     T->-3 F->-3
+  [10] expr movethruwalls(+190) := 1                           T->7 F->-3
+  [11] expr movethruwalls(+190) := 0                           T->13 F->-3
+  [12] expr attr24 == 65535                                    T->11 F->16
+  [13] sound  args=22,1,1,1                                    T->retT F->retT
+  [14] CALL 1102 'Idle-20'                                     T->1 F->-3
+  [15] op61?  args=0,0,0,0                                     T->9 F->-3
+  [16] expr attr43 == 0                                        T->15 F->18
+  [17] op61?  args=1,0,0,0                                     T->9 F->-3
+  [18] expr attr43 == 1                                        T->17 F->17
+  [19] op61?  args=1,0,0,0                                     T->9 F->-3
+  [20] CALL 1101 'Idle-10'                                     T->12 F->-3
+  [21] op82?  args=65535,65535,65535,65535                     T->22 F->10
+  [22] op48?  args=65535,65535,65535,65535                     T->20 F->23
+  [23] CALL 267 'random motion'                                T->7 F->-3
+
+=== BHAV 279 'Drop toted, let fall' (6 records) ===
+  [ 0] op51?  args=65535,65535,65535,65535                     T->3 F->3
+  [ 1] CALL 258 'Run laterally just a bit'                     T->4 F->4
+  [ 2] op39?  args=283,0,0,0                                   T->5 F->-3
+  [ 3] expr attr17 := 1                                        T->1 F->-3
+  [ 4] op67?  args=65535,65535,65535,65535                     T->retT F->-3
+  [ 5] CALL 261 'idle a bit'                                   T->4 F->-3
+
+=== BHAV 275 'Put toted med vic on stack object' (11 records) ===
+  [ 0] op68?  args=65535,65535,65535,65535                     T->1 F->-3
+  [ 1] op69?  args=65535,65535,65535,65535                     T->2 F->3
+  [ 2] op46?  args=65535,65535,65535,65535                     T->4 F->8
+  [ 3] op51?  args=65535,65535,65535,65535                     T->6 F->7
+  [ 4] op67?  args=65535,65535,65535,65535                     T->retT F->-3
+  [ 5] op67?  args=65535,65535,65535,65535                     T->retF F->-3
+  [ 6] op39?  args=285,0,0,0                                   T->7 F->-3
+  [ 7] CALL 1102 'Idle-20'                                     T->retT F->-3
+  [ 8] CALL 279 'Drop toted, let fall'                         T->9 F->-3
+  [ 9] CALL 261 'idle a bit'                                   T->10 F->-3
+  [10] CALL 1104 'Idle-80'                                     T->5 F->-3
+
+=== BHAV 307 'Inc fail and move through walls if > 4' (3 records) ===
+  [ 0] CALL 261 'idle a bit'                                   T->1 F->-3
+  [ 1] expr failcount(+192) += 1                               T->2 F->-3
+  [ 2] CALL 308 'If fail > 4 move thru walls else no'          T->retT F->-3
+
+=== BHAV 265 'Medevac disappear' (3 records) ===
+  [ 0] op51?  args=65535,65535,65535,65535                     T->1 F->1
+  [ 1] op40?  args=65535,65535,65535,65535                     T->-3 F->-3
+  [ 2] op39?  args=800,0,0,0                                   T->1 F->-3
+
+=== BHAV 1102 'Idle-20' (2 records) ===
+  [ 0] expr local0 := 20                                       T->1 F->1
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->retT
+
+=== BHAV 267 'random motion' (22 records) ===
+  [ 0] player/carried-probe  args=65535,65535,65535,65535      T->retT F->20
+  [ 1] local[a0]:=rand(resolve(a1,scope=a2))  args=1,140,7,0   T->9 F->-3
+  [ 2] local[a0]:=rand(resolve(a1,scope=a2))  args=0,4,7,0     T->11 F->-3
+  [ 3] timed-move(local[a0]--; speed=+0x164)  args=1,1,0,0     T->16 F->10
+  [ 4] local[a0]:=rand(resolve(a1,scope=a2))  args=2,7,7,65535 T->5 F->-3
+  [ 5] facing:=local[a0]&7  args=2,0,0,0                       T->retT F->-3
+  [ 6] expr local0 *= 4                                        T->21 F->-3
+  [ 7] CALL 261 'idle a bit'                                   T->17 F->-3
+  [ 8] expr movespeed(+164) := local0                          T->3 F->-3
+  [ 9] CALL 261 'idle a bit'                                   T->2 F->-3
+  [10] CALL 271 'idle -- rand 20 + 1'                          T->14 F->-3
+  [11] expr local0 == 0                                        T->12 F->6
+  [12] bind-anim 'HipH'                                        T->18 F->-3
+  [13] CALL 271 'idle -- rand 20 + 1'                          T->retT F->-3
+  [14] CALL 1102 'Idle-20'                                     T->4 F->-3
+  [15] sound  args=3,0,0,0                                     T->7 F->-3
+  [16] CALL 296 'rand 1 in 6?'                                 T->15 F->7
+  [17] CALL 296 'rand 1 in 6?'                                 T->4 F->retT
+  [18] CALL 296 'rand 1 in 6?'                                 T->19 F->13
+  [19] sound  args=36,0,0,0                                    T->13 F->-3
+  [20] carried-is-player  args=65535,65535,65535,65535         T->retT F->1
+  [21] expr local0 += 4                                        T->8 F->-3
+
+=== BHAV 1104 'Idle-80' (2 records) ===
+  [ 0] expr local0 := 80                                       T->1 F->1
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->retT
+
+=== BHAV 308 'If fail > 4 move thru walls else no' (3 records) ===
+  [ 0] expr failcount(+192) > 4                                T->1 F->2
+  [ 1] expr movethruwalls(+190) := 1                           T->retT F->-3
+  [ 2] expr movethruwalls(+190) := 0                           T->retT F->-3
+
+=== BHAV 271 'idle -- rand 20 + 1' (3 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,20,7,0    T->1 F->-3
+  [ 1] expr local0 += 1                                        T->2 F->-3
+  [ 2] wait(local[a0]--)  args=0,0,0,0                         T->retT F->-3
+
+=== BHAV 296 'rand 1 in 6?' (4 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=0,6,7,0     T->1 F->-3
+  [ 1] expr local0 == 0                                        T->retT F->retF
+  [ 2] local[a0]:=rand(resolve(a1,scope=a2))  args=0,6,7,0     T->3 F->-3
+  [ 3] expr local0 == 0                                        T->-3 F->-3
+

@@ -836,4 +836,82 @@ bool FSimCopterBehaviorVMReferenceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The hospital roof paramedic is a persistent post: ASimCopterGroundAgent refuses its despawn so a
+// medevac cannot be stranded by the population layer recycling the only worker who can unload it.
+// This pins what refusing that despawn has to do about the walker, because refusing it alone is not
+// enough - the person freezes on the roof, which is exactly what the post exists to prevent.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterBehaviorVMHospitalMedicRetireTest,
+	"SimCopter.Behavior.VM.HospitalMedicRetire",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterBehaviorVMHospitalMedicRetireTest::RunTest(const FString& Parameters)
+{
+	const FString RootPath = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	const FString PeoplePath = FSimCopterPeopleReader::ResolvePeoplePath(RootPath);
+	if (PeoplePath.IsEmpty())
+	{
+		AddInfo(TEXT("Original people.df not present; skipping hospital medic retire validation."));
+		return true;
+	}
+
+	FPeopleBehaviorModel Model;
+	FString Error;
+	if (!TestTrue(TEXT("Parses people.df"), FSimCopterPeopleReader::LoadFromFile(PeoplePath, Model, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+
+	// A medic stood on a hospital roof with the player nowhere near: no helicopter and no ambulance
+	// within ten tiles, and nobody aboard anything. This is the ordinary case for the seconds after
+	// EnsureHospitalParamedicAtTile posts one, since the mission that needs it starts elsewhere.
+	FStubBehaviorWorld World;
+	World.TileClass = 12; // XBLD 0xD1 is people tile class 12
+	World.FileX = 91;
+	World.FileY = 62;
+
+	FSimCopterPersonContext Context;
+	Context.ResetToState(5);
+	TestEqual(TEXT("State 5 runs BHAV 801"), Context.Stack.Last().ProgramId, 801);
+
+	EBhavStepResult Result = EBhavStepResult::Ran;
+	int32 Ticks = 0;
+	for (; Ticks < 400 && Result != EBhavStepResult::Stopped; ++Ticks)
+	{
+		Result = FSimCopterBehaviorVM::Tick(Context, Model, World);
+	}
+	TestEqual(TEXT("With nothing to serve, BHAV 801 reaches a retire opcode"), int32(Result), int32(EBhavStepResult::Stopped));
+	TestTrue(TEXT("Retiring asks the population layer to recycle the worker"), Context.bRequestDespawn);
+	TestTrue(TEXT("The medic walked before retiring"), World.MoveSteps > 0);
+
+	// The trap: FUN_004ce7b0 returns on result 3 without moving the record cursor, so the frame is
+	// left sitting ON the stop opcode. Refusing the despawn and ticking again just runs it a second
+	// time, and every tick after that - a paramedic stood on the roof doing nothing at all.
+	const int32 StalledProgram = Context.Stack.Last().ProgramId;
+	const int32 StalledRecord = Context.Stack.Last().RecordIndex;
+	Context.bRequestDespawn = false;
+	TestEqual(
+		TEXT("A refused despawn re-executes the same stop opcode"),
+		int32(FSimCopterBehaviorVM::Tick(Context, Model, World)),
+		int32(EBhavStepResult::Stopped));
+	TestEqual(TEXT("...from the same program"), Context.Stack.Last().ProgramId, StalledProgram);
+	TestEqual(TEXT("...on the same record"), Context.Stack.Last().RecordIndex, StalledRecord);
+
+	// So a refusal has to restart the state program, which is what a fresh spawn would have run.
+	Context.bRequestDespawn = false;
+	Context.ResetToState(Context.GetStateIndex());
+	World.MoveSteps = 0;
+	Result = EBhavStepResult::Ran;
+	for (int32 Tick = 0; Tick < 400 && Result != EBhavStepResult::Stopped; ++Tick)
+	{
+		Result = FSimCopterBehaviorVM::Tick(Context, Model, World);
+	}
+	TestTrue(TEXT("The restarted post walks its roof again"), World.MoveSteps > 0);
+	TestEqual(TEXT("...and reaches the same retire point, ready to restart once more"), int32(Result), int32(EBhavStepResult::Stopped));
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

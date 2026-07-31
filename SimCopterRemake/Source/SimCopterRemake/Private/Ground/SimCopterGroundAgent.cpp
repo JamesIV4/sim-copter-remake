@@ -441,7 +441,18 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 				// erase an unresolved mission dependency. State-5 hospital staff are likewise a
 				// persistent service point: the original population code can recycle them, while
 				// doing so visibly after a handoff makes the worker appear to vanish.
+				//
+				// Refusing the despawn is not enough on its own. The walker never advances past a
+				// stop opcode (FUN_004ce7b0 returns on result 3 without touching the record
+				// cursor), so the person stays parked ON it and re-executes it every tick from
+				// then on - alive, visible and completely inert. That is the frozen hospital
+				// paramedic: BHAV 801 -> 272 reaches 'Medevac disappear' (op 51 then op 40)
+				// whenever the player is more than ten tiles away, which is nearly always true
+				// moments after the roof is staffed, and 263 -> 269 ends the same way when no
+				// patient is aboard. Restart the state program instead, the way FUN_004c7090 does
+				// for a freshly spawned worker, so the post keeps probing for the helicopter.
 				BehaviorContext.bRequestDespawn = false;
+				BehaviorContext.ResetToState(BehaviorContext.GetStateIndex());
 				ResetBehaviorProgramOverride();
 				if (!bClaimedPassengerSeat && !BehaviorCarrier.IsValid())
 				{
