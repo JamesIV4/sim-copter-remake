@@ -177,6 +177,16 @@ public:
 	 */
 	bool PlayFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier = 1.0f);
 
+	/**
+	 * The looping half of the same idea, for the one standalone sound object the original plays
+	 * with `Play(1, 1)` instead of `Play(0, 1)`: the main menu's menuback.wav, started by
+	 * FUN_0045f3d0 and stopped by the page's [vt+0xfc] (FUN_0045f630) when the menu goes away.
+	 * One voice, like the original's - starting a second track replaces the first.
+	 */
+	bool PlayMusicFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier = 1.0f);
+	void StopMusic();
+	bool IsMusicPlaying() const;
+
 	// --- mixer state ---
 
 	// --- the radio's own channel ---
@@ -301,6 +311,10 @@ private:
 	/** The radio's single voice. */
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> RadioComponent = nullptr;
+
+	/** The front end's single looping music voice (menuback.wav). */
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> MusicComponent = nullptr;
 
 	double RadioEndTime = 0.0;
 

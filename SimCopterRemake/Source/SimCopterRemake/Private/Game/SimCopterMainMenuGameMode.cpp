@@ -4,16 +4,24 @@
 
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Game/SimCopterCareerProgression.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "UI/SSimCopterCareerSelect.h"
 #include "UI/SSimCopterMainMenu.h"
+#include "UI/SSimCopterMessageBox.h"
+#include "UI/SSimCopterUserCityPicker.h"
+#include "UI/SimCopterHangarArt.h"
 #include "Widgets/SOverlay.h"
+
+#define LOCTEXT_NAMESPACE "SimCopterMainMenuGameMode"
 
 ASimCopterMainMenuGameMode::ASimCopterMainMenuGameMode()
 {
-	// The front end has nothing to possess; the menu is the whole level.
+	// The front end has nothing to possess; the shell is the whole level.
 	DefaultPawnClass = nullptr;
 }
 
@@ -29,63 +37,219 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 		Session->ClearPendingSession();
 	}
 
-	OpenMainMenu();
+	Art = NewObject<USimCopterHangarArt>(this, TEXT("FrontEndArt"));
+	Art->SetOriginalGameRoot(ResolveOriginalGameRoot());
+
+	EnterScreen(ESimCopterFrontEndScreen::MainMenu);
 }
 
 void ASimCopterMainMenuGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	CloseMainMenu();
+	CloseScreen();
 	Super::EndPlay(EndPlayReason);
 }
 
-void ASimCopterMainMenuGameMode::OpenMainMenu()
+FString ASimCopterMainMenuGameMode::ResolveOriginalGameRoot() const
 {
-	if (MainMenuWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeDirectoryName(Candidate);
+		if (FPaths::DirectoryExists(Candidate))
+		{
+			return Candidate;
+		}
+	}
+
+	return FString();
+}
+
+TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFrontEndScreen NewScreen)
+{
+	switch (NewScreen)
+	{
+	case ESimCopterFrontEndScreen::CareerSelect:
+	{
+		// A new career always offers cities 0, 1 and 2 (FUN_00457c90's null-trio branch). The
+		// successor graph only comes into play once a career is running, which the remake reaches
+		// through the mission system rather than through this screen.
+		TArray<int32> Choices;
+		SimCopterCareerProgression::GetNewCareerChoices(Choices);
+
+		return SNew(SSimCopterCareerSelect)
+			.Art(Art)
+			.Cities(Choices)
+			.AllowCancel(true)
+			.OnAccepted(FOnSimCopterCareerCityChosen::CreateUObject(
+				this, &ASimCopterMainMenuGameMode::HandleCareerCityChosen))
+			.OnCancelled(FSimpleDelegate::CreateLambda([this]()
+			{
+				EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+			}));
+	}
+
+	case ESimCopterFrontEndScreen::UserCityPicker:
+	{
+		TArray<FString> CityPaths;
+		USimCopterSessionSubsystem::GetUserCityFilePaths(CityPaths);
+
+		return SNew(SSimCopterUserCityPicker)
+			.Art(Art)
+			.CityFilePaths(CityPaths)
+			.OnAccepted(FOnSimCopterUserCityChosen::CreateUObject(
+				this, &ASimCopterMainMenuGameMode::HandleUserCityChosen))
+			.OnCancelled(FSimpleDelegate::CreateLambda([this]()
+			{
+				EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+			}));
+	}
+
+	case ESimCopterFrontEndScreen::Message:
+		return SNew(SSimCopterMessageBox)
+			.Art(Art)
+			.Message(PendingMessage)
+			.OnDismissed(FSimpleDelegate::CreateLambda([this]()
+			{
+				EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+			}));
+
+	default:
+		return SNew(SSimCopterMainMenu)
+			.Art(Art)
+			.OnItemChosen(FOnSimCopterMainMenuItemChosen::CreateUObject(
+				this, &ASimCopterMainMenuGameMode::HandleMainMenuItem));
+	}
+}
+
+void ASimCopterMainMenuGameMode::EnterScreen(const ESimCopterFrontEndScreen NewScreen)
+{
+	if (GEngine == nullptr || GEngine->GameViewport == nullptr)
 	{
 		return;
 	}
 
-	USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
-		? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
-		: nullptr;
+	CloseScreen();
 
-	TSharedPtr<SSimCopterMainMenu> MenuPanel;
-	MainMenuWidget =
+	TSharedRef<SWidget> Content = BuildScreen(NewScreen);
+	ScreenWidget =
 		SNew(SOverlay)
 		+ SOverlay::Slot()
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Center)
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
 		[
-			SAssignNew(MenuPanel, SSimCopterMainMenu)
-			.Session(Session)
-			.OnStartRequested(FSimpleDelegate::CreateUObject(this, &ASimCopterMainMenuGameMode::StartPendingSession))
-			.OnQuitRequested(FSimpleDelegate::CreateUObject(this, &ASimCopterMainMenuGameMode::QuitGame))
+			Content
 		];
+	Screen = NewScreen;
 
-	GEngine->GameViewport->AddViewportWidgetContent(MainMenuWidget.ToSharedRef(), 100);
+	GEngine->GameViewport->AddViewportWidgetContent(ScreenWidget.ToSharedRef(), 100);
 
 	if (APlayerController* PlayerController = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		FInputModeUIOnly InputMode;
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		InputMode.SetWidgetToFocus(MenuPanel.IsValid() ? MenuPanel->GetInitialFocusWidget() : nullptr);
+		InputMode.SetWidgetToFocus(Content);
 		PlayerController->SetInputMode(InputMode);
 		PlayerController->bShowMouseCursor = true;
 	}
+	else if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocus(Content, EFocusCause::SetDirectly);
+	}
 }
 
-void ASimCopterMainMenuGameMode::CloseMainMenu()
+void ASimCopterMainMenuGameMode::CloseScreen()
 {
-	if (!MainMenuWidget.IsValid())
+	if (!ScreenWidget.IsValid())
 	{
 		return;
 	}
 
 	if (GEngine != nullptr && GEngine->GameViewport != nullptr)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(MainMenuWidget.ToSharedRef());
+		GEngine->GameViewport->RemoveViewportWidgetContent(ScreenWidget.ToSharedRef());
 	}
-	MainMenuWidget.Reset();
+	ScreenWidget.Reset();
+	Screen = ESimCopterFrontEndScreen::None;
+}
+
+void ASimCopterMainMenuGameMode::HandleMainMenuItem(const ESimCopterMainMenuItem Item)
+{
+	// FUN_0044c710's switch, item for item.
+	switch (Item)
+	{
+	case ESimCopterMainMenuItem::NewCareerGame:
+		// app[0xb0] = 1, then EnterState(5).
+		EnterScreen(ESimCopterFrontEndScreen::CareerSelect);
+		return;
+
+	case ESimCopterMainMenuItem::NewUserGame:
+		// The original opens GetOpenFileName here; the remake lists the same folder itself.
+		EnterScreen(ESimCopterFrontEndScreen::UserCityPicker);
+		return;
+
+	case ESimCopterMainMenuItem::OpenCareerGame:
+	case ESimCopterMainMenuItem::OpenUserGame:
+		// Both open a saved game. The remake has no save system, so it refuses the same way the
+		// original's demo build did (STRINGTABLE 653) rather than opening a picker with nothing
+		// in it. The items stay on the menu because the original's item set is fixed at five.
+		PendingMessage = LOCTEXT(
+			"NoSavedGames",
+			"Saved games are not implemented yet. Select 'New Career Game' or 'New User Game'.");
+		EnterScreen(ESimCopterFrontEndScreen::Message);
+		return;
+
+	case ESimCopterMainMenuItem::Quit:
+		// EnterState(1). No confirmation - the original does not ask here either.
+		QuitGame();
+		return;
+	}
+}
+
+void ASimCopterMainMenuGameMode::HandleCareerCityChosen(const int32 CareerCityIndex)
+{
+	USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
+		? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
+		: nullptr;
+	if (Session == nullptr)
+	{
+		return;
+	}
+
+	Session->RequestCareerCity(CareerCityIndex);
+
+	const FString CityFile = Session->GetCityFilePath();
+	if (CityFile.IsEmpty() || !FPaths::FileExists(CityFile))
+	{
+		Session->ClearPendingSession();
+		PendingMessage = FText::Format(
+			LOCTEXT(
+				"MissingCareerCity",
+				"Cannot find {0}.\nThe original game folder has to be in place under Reference/SimCopterOriginalGame."),
+			FText::FromString(USimCopterSessionSubsystem::ResolveCareerCityFilePath(CareerCityIndex)));
+		EnterScreen(ESimCopterFrontEndScreen::Message);
+		return;
+	}
+
+	StartPendingSession();
+}
+
+void ASimCopterMainMenuGameMode::HandleUserCityChosen(const FString& CityFilePath)
+{
+	USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
+		? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
+		: nullptr;
+	if (Session == nullptr || CityFilePath.IsEmpty())
+	{
+		return;
+	}
+
+	Session->RequestUserCity(CityFilePath);
+	StartPendingSession();
 }
 
 void ASimCopterMainMenuGameMode::StartPendingSession()
@@ -96,15 +260,15 @@ void ASimCopterMainMenuGameMode::StartPendingSession()
 
 	if (Session == nullptr || !Session->HasPendingSession())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("SimCopter main menu: no session was requested, staying in the front end."));
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter front end: no session was requested, staying in the shell."));
 		return;
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("SimCopter main menu: starting %s session, city file '%s'"),
+	UE_LOG(LogTemp, Display, TEXT("SimCopter front end: starting %s session, city file '%s'"),
 		Session->GetSessionKind() == ESimCopterSessionKind::Career ? TEXT("career") : TEXT("user"),
 		*Session->GetCityFilePath());
 
-	CloseMainMenu();
+	CloseScreen();
 	UGameplayStatics::OpenLevel(this, FName(USimCopterSessionSubsystem::GetCityLevelName()));
 }
 
@@ -152,3 +316,5 @@ void ASimCopterMainMenuGameMode::SimNewUserGame(int32 CityIndex)
 	Session->RequestUserCity(CityPaths[CityIndex]);
 	StartPendingSession();
 }
+
+#undef LOCTEXT_NAMESPACE
