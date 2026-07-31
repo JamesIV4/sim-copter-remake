@@ -3,6 +3,7 @@
 #include "SimCopterFrontEndPage.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
+#include "InputCoreTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
@@ -145,6 +146,50 @@ TSharedRef<SWidget> MakeInvisibleHitButton(
 		.ContentPadding(FMargin(0.0f))
 		.OnClicked(OnClicked)
 		.OnHovered(OnHovered);
+}
+
+int32 GetNavigationTarget(const ENavigation Navigation, const int32 Selected, const int32 Count)
+{
+	if (Count <= 0)
+	{
+		return INDEX_NONE;
+	}
+
+	switch (Navigation)
+	{
+	case ENavigation::Next:
+		// FUN_0045f040: `if (count - 1 > selected) selected + 1 else 0`.
+		return (Count - 1 > Selected) ? Selected + 1 : 0;
+
+	case ENavigation::Previous:
+		// `if (selected == 0) count - 1 else selected - 1`.
+		return (Selected == 0) ? Count - 1 : Selected - 1;
+
+	case ENavigation::PreviousNoWrap:
+		// Page Up only moves while the selection is above the first item; the original falls
+		// straight through to the Home/End tests otherwise, which do not match, so nothing happens.
+		return (Selected > 0) ? Selected - 1 : INDEX_NONE;
+
+	case ENavigation::First:
+		return 0;
+
+	case ENavigation::Last:
+		return Count - 1;
+
+	default:
+		return INDEX_NONE;
+	}
+}
+
+ENavigation GetNavigationForKey(const FKey& Key)
+{
+	// FUN_0045f040's tests, in its own order.
+	if (Key == EKeys::Down || Key == EKeys::PageDown) { return ENavigation::Next; }
+	if (Key == EKeys::Up)                             { return ENavigation::Previous; }
+	if (Key == EKeys::PageUp)                         { return ENavigation::PreviousNoWrap; }
+	if (Key == EKeys::Home)                           { return ENavigation::First; }
+	if (Key == EKeys::End)                            { return ENavigation::Last; }
+	return ENavigation::None;
 }
 
 void PlayScreenSound(const TCHAR* WavName)

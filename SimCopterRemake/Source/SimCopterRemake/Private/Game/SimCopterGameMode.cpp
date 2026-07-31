@@ -6,6 +6,7 @@
 #include "City/SimCopterAirport.h"
 #include "City/SimCopterHangar.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Game/SimCopterPlayerController.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -18,6 +19,8 @@
 ASimCopterGameMode::ASimCopterGameMode()
 {
 	DefaultPawnClass = ASimCopterOnFootPawn::StaticClass();
+	// Owns the in-game Settings screen (playmenu.bmp, control 0x7d3) and the pause that goes with it.
+	PlayerControllerClass = ASimCopterPlayerController::StaticClass();
 	TrafficSystemClass = ASimCopterTrafficSystemActor::StaticClass();
 	MissionSystemClass = ASimCopterMissionSystemActor::StaticClass();
 	HangarClass = ASimCopterHangar::StaticClass();

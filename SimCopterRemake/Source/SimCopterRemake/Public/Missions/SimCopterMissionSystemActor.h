@@ -270,6 +270,18 @@ public:
 	// original clamps the balance at zero rather than refusing, and so does this.
 	void AddSessionCash(int32 Delta) { MissionSystem.AddCash(Delta); }
 
+	// The record the running session is scheduling from - the eight values the Settings screen's
+	// City Settings dialog edits. FUN_00440ec0 writes them straight back into the live block, and
+	// so does this: the change takes effect on the next scheduler tick, with no restart.
+	const SimCopterMissions::FSimCopterCareerCity& GetSessionCareerCity() const
+	{
+		return MissionSystem.GetCareerCity();
+	}
+	void SetSessionCareerCity(const SimCopterMissions::FSimCopterCareerCity& City)
+	{
+		MissionSystem.SetCareerCity(City);
+	}
+
 	// Seconds since the session opened, for stamping career log lines.
 	float GetSessionElapsedSeconds() const { return SessionElapsedSeconds; }
 

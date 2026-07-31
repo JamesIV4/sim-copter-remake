@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterPawn.h"
 
@@ -30,6 +30,7 @@
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterPreparedHelicopterModel.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Game/SimCopterSettings.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "Debug/SSimCopterHelicopterDebugPanel.h"
 #include "GameFramework/PlayerController.h"
@@ -623,6 +624,14 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 void ASimCopterHelicopterPawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// The Settings screen's HUD Scale row.
+	if (USimCopterSettings* Settings = USimCopterSettings::Get(this))
+	{
+		HudScaleHandle = Settings->OnHudScaleChanged.AddWeakLambda(
+			this, [this](float) { RebuildCockpitOverlays(); });
+	}
+
 	// Swap the raw material asset for the fleet-wide instance, so the debug panel's metallic
 	// slider reaches the fuselage. Everything downstream still just assigns ModelVertexColorMaterial.
 	if (USimCopterVehicleMaterialSubsystem* VehicleMaterials = USimCopterVehicleMaterialSubsystem::Get(this))
@@ -738,6 +747,12 @@ void ASimCopterHelicopterPawn::BeginPlay()
 
 void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (USimCopterSettings* Settings = USimCopterSettings::Get(this); Settings != nullptr && HudScaleHandle.IsValid())
+	{
+		Settings->OnHudScaleChanged.Remove(HudScaleHandle);
+		HudScaleHandle.Reset();
+	}
+
 	RemoveDashboardWidget();
 	RemoveMapWidget();
 	RemoveWaterControlsWidget();
@@ -2110,6 +2125,33 @@ void ASimCopterHelicopterPawn::SyncPassengerFlightModelCount()
 	FlightModel.Passengers = MissionPassengerSlots.Num();
 }
 
+float ASimCopterHelicopterPawn::GetCockpitScale() const
+{
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	return ToolFlapScale * (Settings != nullptr ? Settings->GetHudScale() : 1.0f);
+}
+
+void ASimCopterHelicopterPawn::RebuildCockpitOverlays()
+{
+	// Every panel takes its scale at construction, so there is nothing to poke at runtime - the
+	// cheapest correct answer is to build them again. Only the widgets that are already up come
+	// back, so this does not conjure a dashboard for a pawn that has none.
+	const bool bHadDashboard = DashboardWidget.IsValid();
+	const bool bHadMap = MapWidget.IsValid();
+	const bool bHadWaterControls = WaterControlsWidget.IsValid();
+	const bool bHadToolFlaps = ToolFlapsWidget.IsValid();
+
+	RemoveDashboardWidget();
+	RemoveMapWidget();
+	RemoveWaterControlsWidget();
+	RemoveToolFlapsWidget();
+
+	if (bHadDashboard)      { EnsureDashboardWidget(); }
+	if (bHadMap)            { EnsureMapWidget(); }
+	if (bHadWaterControls)  { EnsureWaterControlsWidget(); }
+	if (bHadToolFlaps)      { EnsureToolFlapsWidget(); }
+}
+
 void ASimCopterHelicopterPawn::EnsureDashboardWidget()
 {
 	if (DashboardWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
@@ -2132,7 +2174,7 @@ void ASimCopterHelicopterPawn::EnsureDashboardWidget()
 		SNew(SSimCopterDashboard)
 		.Pawn(this)
 		.Art(FlapArt)
-		.Scale(ToolFlapScale);
+		.Scale(GetCockpitScale());
 	DashboardPanel = Dashboard;
 
 	// Bottom-right, where the original's cockpit puts it.
@@ -2180,7 +2222,7 @@ void ASimCopterHelicopterPawn::EnsureMapWidget()
 		SNew(SSimCopterMapPanel)
 		.Pawn(this)
 		.Art(FlapArt)
-		.Scale(ToolFlapScale);
+		.Scale(GetCockpitScale());
 	MapPanel = Map;
 
 	// Anchor the map itself directly to the lower-left corner.
@@ -2645,7 +2687,7 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 			SNew(SSimCopterToolFlaps)
 			.Pawn(this)
 			.Art(FlapArt)
-			.Scale(ToolFlapScale)
+			.Scale(GetCockpitScale())
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(ToolFlapsWidget.ToSharedRef(), 24);
@@ -7579,3 +7621,4 @@ void ASimCopterHelicopterPawn::ApplyDerivedTuning()
 		HelicopterTuning.MaxPitchDeg * 10.0f * (40000.0f / 65536.0f) * OriginalUnitToCm);
 	ApplyFlightTuningToModel();
 }
+

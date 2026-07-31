@@ -22,7 +22,9 @@ const FLinearColor WellText(0.08f, 0.08f, 0.09f, 1.0f);
 
 void SSimCopterMessageBox::Construct(const FArguments& InArgs)
 {
+	bConfirm = InArgs._Confirm;
 	OnDismissed = InArgs._OnDismissed;
+	OnConfirmed = InArgs._OnConfirmed;
 
 	USimCopterHangarArt* ArtObject = InArgs._Art;
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
@@ -43,23 +45,33 @@ void SSimCopterMessageBox::Construct(const FArguments& InArgs)
 		.Font(PageFont(TextFontHeight))
 		.ColorAndOpacity(FSlateColor(WellText)));
 
-	AddAt(
-		Canvas,
-		FRect{
-			PageX + SingleButtonX,
-			PageY + ButtonY,
-			PageX + SingleButtonX + ButtonWidth,
-			PageY + ButtonY + ButtonHeight },
-		MakeButton(
-			ArtObject,
-			LOCTEXT("Ok", "OK"), // STRINGTABLE 20
-			ButtonFontHeight,
-			FOnClicked::CreateLambda([this]()
-			{
-				OnDismissed.ExecuteIfBound();
-				return FReply::Handled();
-			}),
-			ButtonStyles));
+	const auto AddButton = [&](const float X, const FText& Label, FSimpleDelegate* Delegate)
+	{
+		AddAt(
+			Canvas,
+			FRect{ PageX + X, PageY + ButtonY, PageX + X + ButtonWidth, PageY + ButtonY + ButtonHeight },
+			MakeButton(
+				ArtObject,
+				Label,
+				ButtonFontHeight,
+				FOnClicked::CreateLambda([Delegate]()
+				{
+					Delegate->ExecuteIfBound();
+					return FReply::Handled();
+				}),
+				ButtonStyles));
+	};
+
+	if (bConfirm)
+	{
+		// FUN_0043d0c0's two-button form, at the two decoded positions.
+		AddButton(LeftButtonX, LOCTEXT("Yes", "Yes"), &OnConfirmed); // STRINGTABLE 22
+		AddButton(RightButtonX, LOCTEXT("No", "No"), &OnDismissed);  // STRINGTABLE 23
+	}
+	else
+	{
+		AddButton(SingleButtonX, LOCTEXT("Ok", "OK"), &OnDismissed); // STRINGTABLE 20
+	}
 
 	ChildSlot
 	[
@@ -70,6 +82,14 @@ void SSimCopterMessageBox::Construct(const FArguments& InArgs)
 FReply SSimCopterMessageBox::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
 	const FKey Key = InKeyEvent.GetKey();
+
+	if (bConfirm && Key == EKeys::Enter)
+	{
+		// Enter is Yes on the two-button form; Escape stays No, so the safe answer is the one that
+		// needs no thought.
+		OnConfirmed.ExecuteIfBound();
+		return FReply::Handled();
+	}
 	if (Key == EKeys::Enter || Key == EKeys::Escape || Key == EKeys::SpaceBar)
 	{
 		OnDismissed.ExecuteIfBound();

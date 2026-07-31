@@ -788,6 +788,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.5", ClampMax = "6.0"))
 	float ToolFlapScale = 2.0f;
 
+	// USimCopterSettings::OnHudScaleChanged, so the Settings screen's HUD Scale row rebuilds the
+	// cockpit while the player is looking at it.
+	FDelegateHandle HudScaleHandle;
+
 	// Career equipment the session starts with. Until the career/shop layer is ported this
 	// seeds FSimCopterEquipmentState::CareerEquipmentMask from both original new-game paths.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Equipment", meta = (Bitmask))
@@ -1663,6 +1667,14 @@ private:
 	FString ResolveOriginalGameRoot() const;
 	void ApplyDerivedTuning();
 	void SyncPassengerFlightModelCount();
+	// The Settings screen's HUD Scale row multiplies ToolFlapScale, and the overlays size
+	// themselves at construction, so a change means tearing them down and building them again.
+	void RebuildCockpitOverlays();
+
+	// ToolFlapScale times the stored HUD scale. Every cockpit overlay is built with this rather
+	// than with ToolFlapScale directly.
+	float GetCockpitScale() const;
+
 	void EnsureDashboardWidget();
 	void RemoveDashboardWidget();
 	void RefreshDashboardSeats();

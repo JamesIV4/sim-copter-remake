@@ -41,10 +41,20 @@ constexpr float RightButtonX = 294.0f;
 class SSimCopterMessageBox : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SSimCopterMessageBox) {}
+	SLATE_BEGIN_ARGS(SSimCopterMessageBox)
+		: _Confirm(false)
+	{}
 		SLATE_ARGUMENT(TObjectPtr<USimCopterHangarArt>, Art)
 		SLATE_ARGUMENT(FText, Message)
+		/**
+		 * The two-button form. FUN_00435140 / FUN_004352f0 select it with flags 0x20002 rather than
+		 * 1, and the Settings screen uses it for "Are you sure you want to leave this city?"
+		 * (STRINGTABLE 11) and "Do you want to save the game?" (49). The modal variant returns 2
+		 * for Yes, which is what OnConfirmed stands for.
+		 */
+		SLATE_ARGUMENT(bool, Confirm)
 		SLATE_EVENT(FSimpleDelegate, OnDismissed)
+		SLATE_EVENT(FSimpleDelegate, OnConfirmed)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -53,6 +63,8 @@ public:
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 private:
+	bool bConfirm = false;
 	FSimpleDelegate OnDismissed;
+	FSimpleDelegate OnConfirmed;
 	TArray<TSharedRef<FButtonStyle>> ButtonStyles;
 };
