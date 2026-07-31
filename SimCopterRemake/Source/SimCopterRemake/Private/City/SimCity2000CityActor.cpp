@@ -3,6 +3,7 @@
 #include "City/SimCity2000CityActor.h"
 
 #include "City/SimCopterAirport.h"
+#include "City/SimCopterCityGeometryRules.h"
 #include "City/SimCopterRuntimeStaticMesh.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -163,14 +164,6 @@ struct FBakedCityAtlasMaterials
 	{
 		return PageMaterials.Num() + DirectImageMaterials.Num() + (TerrainLowMaterial != nullptr ? 1 : 0) + (TerrainHighMaterial != nullptr ? 1 : 0);
 	}
-};
-
-struct FTileFootprint
-{
-	bool bShouldRender = true;
-	bool bSuppressedChildTile = false;
-	int32 Width = 1;
-	int32 Height = 1;
 };
 
 enum class ERoadOpening : uint8
@@ -2539,68 +2532,6 @@ void ApplySmoothTerrainNormals(FOriginalMeshSectionData& Section, const TArray<u
 	}
 }
 
-FTileFootprint ResolveOriginalMeshFootprint(const FSimCity2000City& City, int32 FileX, int32 FileY)
-{
-	const int32 TileIndex = FileY * FSimCity2000City::MapSize + FileX;
-	const FSimCity2000Tile& Tile = City.Tiles[TileIndex];
-	FTileFootprint Footprint;
-
-	if (Tile.Building < 0x70)
-	{
-		return Footprint;
-	}
-
-	const uint8 ZoneHigh = Tile.Zone & 0xF0;
-	const uint8 ZoneLow = Tile.Zone & 0x0F;
-	if (ZoneHigh == 0xF0)
-	{
-		return Footprint;
-	}
-
-	if ((Tile.Zone & 0x80) == 0)
-	{
-		Footprint.bShouldRender = false;
-		Footprint.bSuppressedChildTile = true;
-		return Footprint;
-	}
-
-	int32 Width = 1;
-	for (int32 X = FileX; X < FSimCity2000City::MapSize; ++X)
-	{
-		const FSimCity2000Tile& Candidate = City.Tiles[FileY * FSimCity2000City::MapSize + X];
-		if (Candidate.Building != Tile.Building || (Candidate.Zone & 0x0F) != ZoneLow)
-		{
-			break;
-		}
-
-		if ((Candidate.Zone & 0x40) != 0)
-		{
-			Width = X - FileX + 1;
-			break;
-		}
-	}
-
-	int32 Height = 1;
-	for (int32 Y = FileY; Y < FSimCity2000City::MapSize; ++Y)
-	{
-		const FSimCity2000Tile& Candidate = City.Tiles[Y * FSimCity2000City::MapSize + FileX];
-		if (Candidate.Building != Tile.Building || (Candidate.Zone & 0x0F) != ZoneLow)
-		{
-			break;
-		}
-
-		if ((Candidate.Zone & 0x10) != 0)
-		{
-			Height = Y - FileY + 1;
-			break;
-		}
-	}
-
-	Footprint.Width = Width;
-	Footprint.Height = Height;
-	return Footprint;
-}
-
 // The original SimCopter city builder (FUN_0047c0c0 in SimCopter.exe) applies NO
 // per-tile rotation to road/building/bridge meshes. Each SC2 tile id is dispatched
 // to a specific, pre-oriented mesh object; the engine places it at the tile position
@@ -3620,6 +3551,11 @@ void ASimCity2000CityActor::RebuildCity()
 	int32 ExtensionTerrainCount = 0;
 	int32 OriginalMeshTriangleCount = 0;
 	bool bOriginalSpecialE7BuildingPlaced = false;
+	// FUN_0047c0c0 owns multi-tile buildings through the scene-cell raster, not XZON. Keeping
+	// the claim state across this row-major sweep makes the first cell of each verified XBLD
+	// square its owner and suppresses every cell covered by that placement.
+	TArray<uint8> OriginalBuildingSceneCellState;
+	OriginalBuildingSceneCellState.Init(0, FSimCity2000City::TileCount);
 
 	// --- Instanced buildings -------------------------------------------------------------
 	// Buildings are the only city geometry that can be destroyed, so they are placed as
@@ -3875,8 +3811,14 @@ void ASimCity2000CityActor::RebuildCity()
 
 			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile || bNaturalObjectTile || bRubbleTile))
 			{
-				const FTileFootprint Footprint = ResolveOriginalMeshFootprint(City, FileX, FileY);
-				if (Footprint.bShouldRender)
+				const FIntPoint Footprint = bBuildingLikeTile
+					? FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+						City,
+						FileX,
+						FileY,
+						OriginalBuildingSceneCellState)
+					: FIntPoint(1, 1);
+				if (Footprint.X > 0 && Footprint.Y > 0)
 				{
 					const TArray<FColor>* ColorMap = nullptr;
 					// Bridges/elevated roads and buildings are dispatched by the original builder to
@@ -3927,8 +3869,8 @@ void ASimCity2000CityActor::RebuildCity()
 						: MeshLibrary.FindObjectByTileId(MeshTileId, &ColorMap);
 					if (MeshObject != nullptr)
 					{
-						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.Width) - 1.0f) * 0.5f, TileSize, HalfMapSize);
-						const float MeshWorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Height) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.X) - 1.0f) * 0.5f, TileSize, HalfMapSize);
+						const float MeshWorldY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY) + (static_cast<float>(Footprint.Y) - 1.0f) * 0.5f, TileSize, HalfMapSize);
 						// GetAverageTerrainSurfaceZ derives Z from the tile's own ALTM step, but the terrain
 						// MESH is built from the conditioned corner grid - AppendTerrainTile feeds it the
 						// four GetTerrainGridVertexZ corners. On tiles the builder flattens (buildings and
@@ -3941,10 +3883,10 @@ void ASimCity2000CityActor::RebuildCity()
 						const float MeshTerrainTopZ = bGroundHuggingObjectTile
 							? GetTerrainGridBilinearZ(
 								ConditionedTerrainCorners,
-								static_cast<float>(FileX) + static_cast<float>(Footprint.Width) * 0.5f,
-								static_cast<float>(FileY) + static_cast<float>(Footprint.Height) * 0.5f,
+								static_cast<float>(FileX) + static_cast<float>(Footprint.X) * 0.5f,
+								static_cast<float>(FileY) + static_cast<float>(Footprint.Y) * 0.5f,
 								EffectiveTerrainHeightScale)
-							: GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.Width, Footprint.Height, EffectiveTerrainHeightScale);
+							: GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.X, Footprint.Y, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 
 						// Blink markers are face type 25, which AppendMaxisMeshObject drops (a single
@@ -4001,16 +3943,16 @@ void ASimCity2000CityActor::RebuildCity()
 							const int32 BuildingId = Buildings.AddDefaulted();
 							FSimCopterCityBuilding& Building = Buildings[BuildingId];
 							Building.OriginTile = FIntPoint(FileX, FileY);
-							Building.FootprintTiles = FIntPoint(Footprint.Width, Footprint.Height);
+							Building.FootprintTiles = Footprint;
 							Building.PlacementOrigin = TileOrigin;
 							Building.XbldId = Tile.Building;
 							Building.Parts.Add(AddBuildingInstance(PlacedComponentIndex, BuildingId, TileOrigin));
 
 							// Every tile the footprint covers resolves to the one building id, so
 							// demolition can be asked for with any of them.
-							for (int32 OffsetY = 0; OffsetY < Footprint.Height; ++OffsetY)
+							for (int32 OffsetY = 0; OffsetY < Footprint.Y; ++OffsetY)
 							{
-								for (int32 OffsetX = 0; OffsetX < Footprint.Width; ++OffsetX)
+								for (int32 OffsetX = 0; OffsetX < Footprint.X; ++OffsetX)
 								{
 									const int32 CoveredX = FileX + OffsetX;
 									const int32 CoveredY = FileY + OffsetY;

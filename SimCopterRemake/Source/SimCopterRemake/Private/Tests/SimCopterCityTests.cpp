@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CoreMinimal.h"
+#include "City/SimCopterCityGeometryRules.h"
 #include "City/SimCopterRuntimeStaticMesh.h"
 #include "City/SimCity2000CityActor.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -8,6 +9,7 @@
 #include "Engine/World.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/Paths.h"
 #include "UObject/UObjectIterator.h"
 
 namespace
@@ -28,6 +30,124 @@ ASimCity2000CityActor* FindLoadedCityActor()
 	}
 	return nullptr;
 }
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCityBuildingFootprintClaimTest,
+	"SimCopter.City.BuildingFootprintClaim",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCityBuildingFootprintClaimTest::RunTest(const FString& Parameters)
+{
+	// Islandtown exposes the regression clearly: its XZON 0x80 marker is at the far corner of a
+	// multi-tile building. Treating that marker as a top-left owner placed a full GEO building
+	// half to one-and-a-half tiles too far along each axis, directly over roads. FUN_0047c0c0 claims
+	// the first row-major XBLD square and never reads XZON for this decision.
+	FSimCity2000City SyntheticCity;
+	SyntheticCity.Tiles.SetNumZeroed(FSimCity2000City::TileCount);
+	constexpr int32 OriginX = 10;
+	constexpr int32 OriginY = 20;
+	constexpr uint8 ThreeTileBuildingId = 0xD6;
+	for (int32 OffsetY = 0; OffsetY < 3; ++OffsetY)
+	{
+		for (int32 OffsetX = 0; OffsetX < 3; ++OffsetX)
+		{
+			SyntheticCity.Tiles[(OriginY + OffsetY) * FSimCity2000City::MapSize + OriginX + OffsetX].Building = ThreeTileBuildingId;
+		}
+	}
+	SyntheticCity.Tiles[(OriginY + 2) * FSimCity2000City::MapSize + OriginX + 2].Zone = 0x80;
+
+	TArray<uint8> SceneCellState;
+	const FIntPoint OwnerFootprint = FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+		SyntheticCity,
+		OriginX,
+		OriginY,
+		SceneCellState);
+	TestEqual(TEXT("The XBLD table supplies the three-tile width"), OwnerFootprint.X, 3);
+	TestEqual(TEXT("The original building footprint is square"), OwnerFootprint.Y, 3);
+	TestEqual(
+		TEXT("The far-corner XZON marker is covered, not treated as a second owner"),
+		FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+			SyntheticCity,
+			OriginX + 2,
+			OriginY + 2,
+			SceneCellState),
+		FIntPoint::ZeroValue);
+
+	// An incomplete large-building id is rejected instead of placing its large GEO mesh as a
+	// one-tile object. That is the exact failure mode that put buildings over adjacent roads.
+	FSimCity2000City IncompleteCity;
+	IncompleteCity.Tiles.SetNumZeroed(FSimCity2000City::TileCount);
+	IncompleteCity.Tiles[OriginY * FSimCity2000City::MapSize + OriginX].Building = ThreeTileBuildingId;
+	TArray<uint8> IncompleteSceneCellState;
+	TestEqual(
+		TEXT("An incomplete three-tile XBLD square is not rendered"),
+		FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+			IncompleteCity,
+			OriginX,
+			OriginY,
+			IncompleteSceneCellState),
+		FIntPoint::ZeroValue);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCityIslandBuildingFootprintsTest,
+	"SimCopter.City.IslandBuildingFootprints",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCityIslandBuildingFootprintsTest::RunTest(const FString& Parameters)
+{
+	const FString IslandCityPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(
+		FPaths::ProjectDir(),
+		TEXT("../Reference/SimCopterOriginalGame/cities/career/city1.sc2")));
+	if (!FPaths::FileExists(IslandCityPath))
+	{
+		AddWarning(FString::Printf(TEXT("Skipping optional Islandtown footprint test because '%s' is not present."), *IslandCityPath));
+		return true;
+	}
+
+	FSimCity2000City City;
+	FString Error;
+	if (!TestTrue(TEXT("Islandtown city data loads"), FSimCity2000Reader::LoadCityFromFile(IslandCityPath, City, Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+
+	TArray<uint8> SceneCellState;
+	int32 BuildingCount = 0;
+	FIntPoint LandmarkFootprint = FIntPoint::ZeroValue;
+	FIntPoint OldXzonOwnerFootprint(-1, -1);
+	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < FSimCity2000City::MapSize; ++FileX)
+		{
+			const FIntPoint Footprint = FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint(
+				City,
+				FileX,
+				FileY,
+				SceneCellState);
+			if (Footprint.X > 0)
+			{
+				++BuildingCount;
+			}
+			if (FileX == 79 && FileY == 52)
+			{
+				LandmarkFootprint = Footprint;
+			}
+			if (FileX == 81 && FileY == 54)
+			{
+				OldXzonOwnerFootprint = Footprint;
+			}
+		}
+	}
+
+	TestEqual(TEXT("Islandtown has the original 274 claimed building placements"), BuildingCount, 274);
+	TestEqual(TEXT("Islandtown XBLD 0xD6 begins at (79,52) as a 3x3 square"), LandmarkFootprint, FIntPoint(3, 3));
+	TestEqual(TEXT("Islandtown's old XZON-derived owner at (81,54) is suppressed"), OldXzonOwnerFootprint, FIntPoint::ZeroValue);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

@@ -17,13 +17,12 @@ only the first leaves the helicopter spawning inside a building:
    demolishing whatever SimCity 2000 zoned there.
 
 Traps:
-- **XZON's high nibble must be stamped too.** SC2 marks a footprint by flagging its four corner
-  tiles - 0x80 top-left, 0x40 top-right, 0x10 bottom-left, 0x20 bottom-right, all four (0xf0) on
-  a 1x1, 0x00 on an interior tile - and `ResolveOriginalMeshFootprint` measures footprints from
-  those marks, not from matching XBLD ids. Stamping XBLD alone leaves the demolished building's
-  corner marks behind, so a 1x1 pad measures itself as a 2x2 and its ground slab z-fights the
-  neighbours'. (Bit meanings derived empirically from Demo.sc2, not guessed.)
-  `FUN_004829f0` never reads XZON - it builds its cells by hand - so this is a remake-only step.
+- **XZON's high nibble is normalized as remake metadata, not used for mesh ownership.** SC2 marks
+  a footprint by flagging its four corner tiles - 0x80 top-left, 0x40 top-right, 0x10 bottom-left,
+  0x20 bottom-right, all four (0xf0) on a 1x1, 0x00 on an interior tile. The airport stamp rewrites
+  those bits so downstream SC2-grid consumers do not inherit the demolished buildings' corners.
+  `FUN_004829f0` never reads or writes XZON, and the city renderer now faithfully claims geometry
+  from same-XBLD squares instead; see [[simcopter-building-footprints]].
 - Demo.sc2, pengland.sc2 and 6 career cities have a building on **all 12** pads before the stamp.
   Most other shipped cities were saved with 0xf6 already on the terminal tile, which is why the
   bug looks map-specific.

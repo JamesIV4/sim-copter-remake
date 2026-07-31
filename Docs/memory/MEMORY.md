@@ -15,6 +15,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 ## File formats and city data
 
+- [SimCopter building footprints](simcopter-building-footprints.md) - `FUN_0047c0c0` ignores XZON for mesh ownership; claim the square size from the XBLD footprint table in row-major scene-cell order. The old XZON owner shifted Islandtown's large GEO models onto roads.
 - [SimCopter mesh orientation rules](simcopter-mesh-orientation-rules.md) — the original uses no per-tile mesh rotation; the col axis is negated in world placement.
 - [SimCopter privanim DECODED](simcopter-privanim-decoded.md) — exact DF container spec; 21 named figures incl. Elvis/Nessie; ARPP = per-frame line segments; the OLD display rules were wrong; `people.df` = same container.
 - [SimCopter terrain flattening](simcopter-terrain-flattening.md) — FUN_004abce0 tmap conditioning decoded+ported: flatten under buildings/flat roads, +0x20 ramps under raised spans 0x3f-0x42, water dip; single raster sweep, order matters.

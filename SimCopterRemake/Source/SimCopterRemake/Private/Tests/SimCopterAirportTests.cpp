@@ -260,9 +260,8 @@ bool FSimCopterAirportStampTest::RunTest(const FString& Parameters)
 			SimCopterAirport::PadXbldId);
 	}
 
-	// The XZON corner marks have to be rewritten with the ids, or the demolished SimCity 2000
-	// airport's footprint marks survive and a 1x1 pad measures itself as a multi-tile slab that
-	// lies coplanar in its neighbours' ground.
+	// Normalize XZON beside the stamped ids so downstream SC2-grid consumers do not inherit the
+	// demolished airport buildings' footprint corners. City mesh ownership itself comes from XBLD.
 	TestEqual(TEXT("Every pad is marked as a 1x1"),
 		SimCopterAirport::GetStampedZoneHighNibble(Origin, 40, 60), 0xf0);
 	TestEqual(TEXT("The terminal's top-left carries the anchor corner"),
