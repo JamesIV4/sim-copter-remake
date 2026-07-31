@@ -114,6 +114,13 @@ public:
 	/** SCHOOK: SoundAddFrequency 0x0042a330. DeltaHz is added to the clip's own sample rate. */
 	void AddFrequency(int32 Id, int32 DeltaHz);
 
+	/**
+	 * The buffer's own SetFrequency, vtable +0x68 - the absolute rate AddFrequency computes and
+	 * hands on. FUN_004c5210 calls it directly to re-tune a voice that is already looping, which
+	 * is how a medevac patient's EKG slows as their health drains without restarting the clip.
+	 */
+	void SetFrequencyHz(int32 Id, int32 Hz);
+
 	/** Restore a slot to its registered sample rate (AddFrequency(id, 0) in the original). */
 	void ResetFrequency(int32 Id);
 
@@ -144,11 +151,21 @@ public:
 	void ReleaseVoiceSlot(int32 Id);
 
 	/**
-	 * Play one people-voice event (the `switch (param_2)` of FUN_004c5210) at a world position.
-	 * Picks uniformly from the event's clips, SetFile()s it into Slot and plays it 3D.
-	 * PitchDeltaHz is the original's per-person AddFrequency argument.
+	 * Play one people-voice event (the `switch (param_2)` of FUN_004c5210) out of Slot. Picks
+	 * uniformly from the event's clips and SetFile()s the winner in. PitchDeltaHz is the
+	 * original's per-person AddFrequency argument.
+	 *
+	 * bNonPositional is the handler's param_4: zero plays 3D at WorldLocation (FUN_0042a1f0),
+	 * non-zero plays 2D (FUN_0042a2a0) so the sound is heard wherever the listener is - that is
+	 * how an injured passenger's EKG reaches the cockpit. Flags carries the loop bit.
 	 */
-	bool PlayVoiceEvent(int32 Slot, int32 VoiceEvent, const FVector& WorldLocation, int32 PitchDeltaHz = 0);
+	bool PlayVoiceEvent(
+		int32 Slot,
+		int32 VoiceEvent,
+		const FVector& WorldLocation,
+		int32 PitchDeltaHz = 0,
+		bool bNonPositional = false,
+		int32 Flags = 0);
 
 	// --- one-off files outside the table ---
 

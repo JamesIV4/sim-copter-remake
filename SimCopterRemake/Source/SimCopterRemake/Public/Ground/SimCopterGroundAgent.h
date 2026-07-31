@@ -297,6 +297,19 @@ public:
 	// The mission passenger kind this person counts as, from their spawn state (person+0x148).
 	ESimCopterMissionPassengerKind GetMissionPassengerKind() const;
 
+	// --- person+0x18e, the head ----------------------------------------------------------------
+	// FUN_004c71c0 gives every behavior class a fixed head, and FUN_004c7090 overwrites it with 10
+	// - the bandaged one - for state 6, the medevac victim. It indexes DAT_0058f0e0 for the SIM3D
+	// panorama on the 3D figure and people1.bmp's columns for the seat-window portrait, so both
+	// have to come from here or a passenger's face stops matching their body.
+	int32 GetHeadImageIndex() const { return FigureHeadIndex; }
+	// Re-read attribute 39 and swap the figure's head texture when it has moved. Becoming a
+	// medevac victim - a collapse (opcode 35), or SetMissionInjuredPose - is what moves it.
+	void RefreshHeadImageIndex();
+
+	// Opcode 54's stored face: which people1.bmp row this person's seat portrait uses.
+	int32 GetSeatPortraitMood() const { return SeatPortraitMood; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UCapsuleComponent> CollisionComponent;
@@ -557,8 +570,17 @@ private:
 	void UpdateCarriedTransform();
 	// person+0x188/+0x18a: the tile the person was placed on, which op 87 compares against.
 	FIntPoint BehaviorHomeTile = FIntPoint(INDEX_NONE, INDEX_NONE);
-	// Opcode 54's face index. Stored so the seat window can use it once it draws moods.
-	int32 SeatPortraitMood = 0;
+	// Opcode 54's face index: which people1.bmp row this person's seat portrait is drawn from.
+	// FUN_004c6250 seats every passenger at 1 and BHAV 264 moves it between 0, 1 and 2 from there.
+	int32 SeatPortraitMood = 1;
+
+	// person+0x172 / person+0x174: the voice-bank slot this person has borrowed and the event
+	// currently loaded into it. FUN_004c5210 hands out one of the fourteen and releases it again.
+	int32 VoiceSlotId = INDEX_NONE;
+	int32 VoiceCurrentEvent = INDEX_NONE;
+	// person+0x198: 1 when the current voice was started 2D, which is how a looping EKG stays
+	// audible from the cockpit while a 3D moan follows the person around.
+	bool bVoiceIsNonPositional = false;
 	bool bMissionWavesWhenIdle = false;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
@@ -575,6 +597,10 @@ private:
 	int32 PassengerFallSourceEventId = INDEX_NONE;
 
 	bool RebuildFigureClip(const FString& Mnemonic);
+	// FUN_004c71c0's `local_4` plus FUN_004c7090's state-6 override, clamped to the head table.
+	int32 ResolveHeadImageIndex() const;
+	// Keeps a playing 3D voice on this person and hands a finished slot back to the bank.
+	void UpdatePersonVoice();
 	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);
 
 	// Original behavior-VM state (pedestrians only).
@@ -631,7 +657,9 @@ private:
 	virtual bool IsOnHomeTile() const override;
 	virtual bool SelectMedevacVictimAboardPlayer(FSimCopterPersonContext& Context) override;
 	virtual void MessageOwningVehicle(int32 MessageId) override;
-	virtual void SetSeatPortraitMood(int32 Mood) override { SeatPortraitMood = Mood; }
+	virtual void SetSeatPortraitMood(int32 Mood) override;
+	virtual void PlayPersonVoiceEvent(int32 VoiceEvent, bool bAllocateSlot, bool bNonPositional, bool bForce) override;
+	virtual void StopPersonVoice() override;
 	virtual int32 GetPlayerHelicopterSpeed() const override;
 	virtual bool HasHiddenPersonInState(int32 State) const override;
 	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) override;

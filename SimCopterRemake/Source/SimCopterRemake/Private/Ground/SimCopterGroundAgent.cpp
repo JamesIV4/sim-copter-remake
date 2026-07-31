@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterGroundAgent.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
@@ -205,6 +206,10 @@ void ASimCopterGroundAgent::BeginPlay()
 
 void ASimCopterGroundAgent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	// There are fourteen voice slots for the whole city, so one has to go back the moment its
+	// speaker leaves - a despawning medevac victim otherwise leaves its EKG looping forever.
+	StopPersonVoice();
+
 	// A person actor and its passenger slot are one ownership unit. If an external teardown
 	// destroys the actor while it is still aboard, return the slot here so the helicopter cannot
 	// be left permanently full with no person behind that seat.
@@ -216,7 +221,7 @@ void ASimCopterGroundAgent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			bMissionPickupCounted && !bMissionResolutionReported && DroppedEventId != INDEX_NONE;
 		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()))
 		{
-			Helicopter->RemoveMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind());
+			Helicopter->RemoveMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind(), this);
 		}
 		bClaimedPassengerSeat = false;
 		if (bReturnPickupCount)
@@ -262,6 +267,18 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	// search in FUN_004ca350, so leaving it at 0 makes a person invisible to every other person -
 	// which is what stopped cops finding criminals.
 	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
+	// FUN_004c71c0's appearance block, applied at spawn: the head this class wears, how its voice
+	// is pitched and which looping voice event it owns. These have to be in place before the state
+	// is set, because FUN_004c7090 overwrites the head for a medevac victim and must win.
+	{
+		const int32 SpawnClass = int32(BehaviorContext.Attributes[EBhavAttr::BehaviorClass]);
+		BehaviorContext.Attributes[EBhavAttr::HeadImageIndex] =
+			uint16(FSimCopterPeopleCityRules::GetHeadImageIndexForBehaviorClass(SpawnClass));
+		BehaviorContext.Attributes[EBhavAttr::VoicePitch] =
+			uint16(int16(FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(SpawnClass)));
+		BehaviorContext.Attributes[EBhavAttr::VoiceSet] =
+			uint16(FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(SpawnClass, BehaviorContext.Lfsr));
+	}
 	BehaviorContext.ResetToState(InitialPersonState);
 	// person+0x188/+0x18a: where this person started, which opcode 87 compares against.
 	{
@@ -467,6 +484,13 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		}
 		BehaviorContext.PendingAnimMnemonic.Reset();
 	}
+
+	UpdatePersonVoice();
+
+	// Attribute 39 can have moved under us: FUN_004c7090 writes head 10 whenever a person becomes
+	// a state-6 casualty, which a swoon (opcode 35) does mid-life. FUN_004c7f10 re-reads it every
+	// time it draws the figure, so it costs one comparison here and only re-skins on a change.
+	RefreshHeadImageIndex();
 
 	// The original driver (FUN_004c6450) advances the bound clip one frame per behavior tick,
 	// wrapping at the clip's ARPP row count - playback rate is the tick rate, not wall time.
@@ -1556,7 +1580,7 @@ bool ASimCopterGroundAgent::BoardCarrier(
 			if (ASimCopterHelicopterPawn* PreviousHelicopter = Cast<ASimCopterHelicopterPawn>(PreviousCarrier))
 			{
 				PreviousHelicopter->RemoveMissionPassengersForMission(
-					1, MissionEventId, GetMissionPassengerKind());
+					1, MissionEventId, GetMissionPassengerKind(), this);
 			}
 			bClaimedPassengerSeat = false;
 		}
@@ -1573,8 +1597,11 @@ bool ASimCopterGroundAgent::BoardCarrier(
 
 	if (Helicopter != nullptr && !bAsHarnessRider)
 	{
+		// FUN_004c6250 copies person+0x18e into the record and seats the face at 1, so the seat
+		// window shows this passenger's own head from the moment they climb in.
+		SeatPortraitMood = 1;
 		if (Helicopter->AddMissionPassengersForMission(
-				1, MissionEventId, GetMissionPassengerKind()) <= 0)
+				1, MissionEventId, GetMissionPassengerKind(), this) <= 0)
 		{
 			return false;
 		}
@@ -1680,7 +1707,7 @@ bool ASimCopterGroundAgent::AlightFromCarrier()
 	{
 		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Carrier))
 		{
-			Helicopter->RemoveMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind());
+			Helicopter->RemoveMissionPassengersForMission(1, MissionEventId, GetMissionPassengerKind(), this);
 		}
 		bClaimedPassengerSeat = false;
 	}
@@ -1964,17 +1991,186 @@ bool ASimCopterGroundAgent::IsSelectionWithinUnits(const FSimCopterPersonContext
 	return ManhattanUnits < float(Units);
 }
 
+// SCHOOK: PeopleOpSetSeatFace 0x004ccb40
+void ASimCopterGroundAgent::SetSeatPortraitMood(int32 Mood)
+{
+	// people1.bmp has three rows and FUN_00453f70 multiplies the record straight into a source
+	// rect, so anything else would sample off the sheet.
+	SeatPortraitMood = FMath::Clamp(Mood, 0, FSimCopterPopulationSprite::People1Rows - 1);
+
+	// FUN_004ccb40 writes the seat manifest and marks the window dirty. Nothing else stores this,
+	// so a person with no seat simply keeps the value for whenever they take one.
+	if (bClaimedPassengerSeat)
+	{
+		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()))
+		{
+			Helicopter->SetMissionPassengerPortraitState(this, SeatPortraitMood);
+		}
+	}
+}
+
+// SCHOOK: PersonPlayVoice 0x004c5210 (via opcodes 57 and 85, FUN_004ccca0 / FUN_004cc110)
+void ASimCopterGroundAgent::PlayPersonVoiceEvent(
+	const int32 VoiceEvent,
+	const bool bAllocateSlot,
+	const bool bNonPositional,
+	const bool bForce)
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr)
+	{
+		return;
+	}
+	if (VoiceEvent < 0)
+	{
+		StopPersonVoice(); // the param_2 == -1 arm
+		return;
+	}
+
+	// The audibility gate. The original plays when the sound is 2D, when the caller forces it,
+	// when this person is riding the player's cabin - which is what carries an injured
+	// passenger's EKG and moans into the cockpit - or when DAT_00503aa0 == 3, the mode the game
+	// enters as you step out of the helicopter and walk the streets yourself.
+	const bool bPlayerOnFoot = GetWorld() != nullptr &&
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterOnFootPawn::StaticClass()) != nullptr;
+	if (!bNonPositional && !bForce && !bPlayerOnFoot && !IsCarrierPlayerHelicopter())
+	{
+		return;
+	}
+
+	if (VoiceSlotId == INDEX_NONE)
+	{
+		// param_3 == 0 means "only speak if I already have a slot"; the original returns without
+		// taking one. FUN_004c5120 recycles the oldest speaker when all of them are busy, which
+		// the mixer's own allocator does not do - a dropped line is the honest fallback.
+		if (!bAllocateSlot)
+		{
+			return;
+		}
+		VoiceSlotId = Audio->AcquireVoiceSlot();
+		if (VoiceSlotId == INDEX_NONE)
+		{
+			return;
+		}
+		VoiceCurrentEvent = INDEX_NONE;
+	}
+
+	const int32 VoiceSet = int32(BehaviorContext.Attributes[EBhavAttr::VoiceSet]);
+	if (VoiceCurrentEvent == VoiceEvent && Audio->IsPlaying(VoiceSlotId))
+	{
+		// Already saying this. A looping sound that is also this person's own voice event gets
+		// re-tuned instead of restarted - and BHAV 800 makes 58 a medevac victim's voice event
+		// precisely so the EKG's rate tracks their health: (health*4 + 0x78) * 0x19 is 13 kHz at
+		// full health and 3 kHz at zero, i.e. the beep slows and deepens as they fade. Everything
+		// else re-tunes from the walk speed, which is how footsteps keep up with a runner.
+		if (VoiceSet != VoiceEvent)
+		{
+			return;
+		}
+		const int32 Health = FMath::Clamp(int32(BehaviorContext.Attributes[EBhavAttr::MedevacHealth]), 0, 100);
+		BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = uint16(Health);
+		const int32 Rate = VoiceEvent == SimCopterSound::VOX_EKG
+			? SimCopterSound::GetEkgFrequencyHz(Health)
+			: SimCopterSound::GetWalkPacedFrequencyHz(int32(BehaviorContext.Attributes[EBhavAttr::MoveSpeed]));
+		Audio->SetFrequencyHz(VoiceSlotId, FMath::Max(0, Rate));
+		return;
+	}
+
+	// FUN_004c5210's per-event pitch: person+0x178 unless the event overrides it. The three
+	// footstep clips and the Elvis noises scale with the walk speed, and the EKG starts from the
+	// victim's health so it is already at the right rate before the first re-tune.
+	int32 PitchDeltaHz = int32(int16(BehaviorContext.Attributes[EBhavAttr::VoicePitch]));
+	if (SimCopterSound::IsWalkPacedVoiceEvent(VoiceEvent))
+	{
+		PitchDeltaHz = SimCopterSound::GetWalkPacedPitchDeltaHz(
+			int32(BehaviorContext.Attributes[EBhavAttr::MoveSpeed]));
+	}
+	else if (VoiceEvent == SimCopterSound::VOX_EKG)
+	{
+		PitchDeltaHz = SimCopterSound::GetEkgStartPitchDeltaHz(
+			int32(BehaviorContext.Attributes[EBhavAttr::MedevacHealth]));
+	}
+	const bool bLoop = SimCopterSound::IsLoopingVoiceEvent(VoiceEvent);
+
+	VoiceCurrentEvent = VoiceEvent;
+	bVoiceIsNonPositional = bNonPositional;
+	// uStack_108: the loop bit is set for a looping clip, and also whenever the event is this
+	// person's own voice event.
+	const int32 Flags = (bLoop || VoiceSet == VoiceEvent) ? SimCopterSoundFlags::Loop : 0;
+	if (!Audio->PlayVoiceEvent(VoiceSlotId, VoiceEvent, GetActorLocation(), PitchDeltaHz, bNonPositional, Flags))
+	{
+		VoiceCurrentEvent = INDEX_NONE;
+	}
+}
+
+void ASimCopterGroundAgent::UpdatePersonVoice()
+{
+	if (VoiceSlotId == INDEX_NONE)
+	{
+		return;
+	}
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr)
+	{
+		return;
+	}
+	if (!Audio->IsPlaying(VoiceSlotId))
+	{
+		// The bank is fourteen slots for a whole city. The original recycles the oldest speaker
+		// when it runs dry (FUN_004c5120); handing a finished slot straight back is the same
+		// result without having to rank speakers, and it means a one-shot line cannot pin a slot.
+		Audio->ReleaseVoiceSlot(VoiceSlotId);
+		VoiceSlotId = INDEX_NONE;
+		VoiceCurrentEvent = INDEX_NONE;
+		return;
+	}
+	if (!bVoiceIsNonPositional)
+	{
+		// One buffer per sound and no per-emitter handle: a 3D voice is kept on its speaker by
+		// the owner calling SetPosition (FUN_0042a2f0) while it plays.
+		Audio->SetPosition(VoiceSlotId, GetActorLocation());
+	}
+}
+
+// SCHOOK: PersonPlayVoice 0x004c5210, the param_2 == -1 arm (opcode 85, FUN_004cc110)
+void ASimCopterGroundAgent::StopPersonVoice()
+{
+	if (VoiceSlotId == INDEX_NONE)
+	{
+		return;
+	}
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->ReleaseVoiceSlot(VoiceSlotId);
+	}
+	VoiceSlotId = INDEX_NONE;
+	VoiceCurrentEvent = INDEX_NONE;
+	bVoiceIsNonPositional = false;
+}
+
+// SCHOOK: PeopleOpPlayerSpeed 0x004ccb80
 int32 ASimCopterGroundAgent::GetPlayerHelicopterSpeed() const
 {
 	const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
-	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	if (Helicopter == nullptr || TrafficSystem == nullptr)
+	if (Helicopter == nullptr)
 	{
 		return 0;
 	}
-	// BHAV 264's thresholds (250 / 125) are in the original's units, so convert out of centimetres.
-	const float UnitCm = FMath::Max(1.0f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
-	return FMath::RoundToInt(Helicopter->GetVelocity().Size() / UnitCm);
+
+	// Not the plain airspeed. FUN_004ccb80 is
+	//     (heli[0x4e] >> 16) * MaxDamage / max(heli[0x34], 1)
+	// where heli[0x34] is the machine's remaining hit points (FUN_0048a550) and MaxDamage the
+	// model's full complement (FUN_0048a530 reads registry +0x48). The ratio is 1 in a pristine
+	// helicopter and grows as it is beaten up, so BHAV 264's 250/125 thresholds are crossed at
+	// lower and lower real speeds: passengers get frightened sooner in a wreck. The original
+	// floors the divisor at 1.0 - the compare is on the float's bit pattern, so a negative hit
+	// point count lands there too - and clamps the result to 65535 before truncating.
+	const FSimCopterFlightModel& Model = Helicopter->GetFlightModel();
+	const int32 SpeedUnits = Model.ForwardSpeed >> 16;
+	const float HitPoints = float(Model.HitPoints);
+	const float Divisor = HitPoints >= 0.5f ? HitPoints : 1.0f;
+	const float Scaled = float(Model.Tuning.MaxDamage) / Divisor * float(SpeedUnits);
+	return int32(FMath::Min(Scaled, 65535.0f));
 }
 
 bool ASimCopterGroundAgent::HasHiddenPersonInState(const int32 State) const
@@ -2655,9 +2851,12 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 		? ForcedFigureClothesOffset
 		: int32((Hash / 7u) % 14u);
 
-	// Head sprite: pick from the original's SIM3D.BMP head-image table.
+	// Head sprite. FUN_004c71c0 binds one head per behavior class and FUN_004c7090 swaps in head
+	// 10 for a state-6 medevac victim, so the head is decided by who this person is - not rolled.
+	// Picking it from a hash is what put SIM3D image 0x43, the bandaged head, on healthy
+	// pedestrians while the actual casualties wore whatever came up.
+	FigureHeadIndex = ResolveHeadImageIndex();
 	const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
-	FigureHeadIndex = int32((Hash / 3u) % uint32(HeadTable.Num()));
 	if (SpriteMaterial == nullptr)
 	{
 		SpriteMaterial = LoadSpriteMaterialNoWarn();
@@ -2690,6 +2889,46 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight));
 	ShowOriginalMesh(true);
 	return true;
+}
+
+// SCHOOK: PersonHeadImage 0x004c71c0 (its `local_4`) + 0x004c7090's state-6 override
+int32 ASimCopterGroundAgent::ResolveHeadImageIndex() const
+{
+	const int32 HeadCount = FSimCopterPopulationFigure::GetHeadImageTable().Num();
+	// Once the VM owns this person, attribute 39 is the head - BHAV 264 reads it too, so the
+	// portrait and the body must agree on one value rather than each deriving its own.
+	const int32 Head = bBehaviorActive
+		? int32(BehaviorContext.Attributes[EBhavAttr::HeadImageIndex])
+		: (InitialPersonState == 6
+			? FSimCopterPeopleCityRules::MedevacVictimHeadImageIndex
+			: FSimCopterPeopleCityRules::GetHeadImageIndexForBehaviorClass(InitialBehaviorClass));
+	return FMath::Clamp(Head, 0, FMath::Max(0, HeadCount - 1));
+}
+
+void ASimCopterGroundAgent::RefreshHeadImageIndex()
+{
+	const int32 Head = ResolveHeadImageIndex();
+	if (Head == FigureHeadIndex)
+	{
+		return;
+	}
+	FigureHeadIndex = Head;
+
+	// Only the texture in the head section's material changes; the figure, its clip and its
+	// vertex data are untouched, so there is nothing to rebuild.
+	if (!bUsingPedestrianFigure || !FigureShared.IsValid() || FigureHeadMaterialInstance == nullptr)
+	{
+		return;
+	}
+	const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
+	if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[FigureHeadIndex]))
+	{
+		FigureHeadTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, *HeadImage, TEXT("SimCopterFigureHead"));
+		if (FigureHeadTexture != nullptr)
+		{
+			FigureHeadMaterialInstance->SetTextureParameterValue(TEXT("Texture"), FigureHeadTexture);
+		}
+	}
 }
 
 bool ASimCopterGroundAgent::RebuildFigureClip(const FString& Mnemonic)

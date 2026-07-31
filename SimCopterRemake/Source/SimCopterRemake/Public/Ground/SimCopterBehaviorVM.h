@@ -64,6 +64,21 @@ namespace EBhavAttr
 	constexpr int32 RecentlySpooked = 33;
 	// +0x184. BHAV 281 drains it; BHAV 280 rec[11] kills the victim once it falls below 1.
 	constexpr int32 MedevacHealth = 34;
+	// +0x178. FUN_004c71c0 writes the class's voice pitch here and FUN_004c5210 hands it to
+	// AddFrequency, so it is a *signed* offset stored in a u16 slot.
+	constexpr int32 VoicePitch = 28;
+	// +0x15e "written off": FUN_004c0ba0 sets it on everyone aboard when the helicopter is
+	// destroyed. BHAV 264 rec[9] and BHAV 302 rec[10] both stop caring about a person once it is
+	// set - a face frozen at 2 and no more sound.
+	constexpr int32 WrittenOff = 15;
+	// +0x18c. The person's own looping voice event: FUN_004c71c0 seeds it with one of the three
+	// footstep clips (0x0e/0x28/0x29) or an Elvis noise, and BHAV 800 rec[4] assigns 58 so a
+	// medevac victim owns the EKG. FUN_004c5210 only re-tunes a sound that matches this.
+	constexpr int32 VoiceSet = 38;
+	// +0x18e. Which head this person wears - FUN_004c71c0 sets it from the behavior class and
+	// FUN_004c7090 overwrites it with 10 for state 6. BHAV 264 rec[8] tests it against 10 to
+	// decide whether the seat portrait follows the victim's health or the helicopter's speed.
+	constexpr int32 HeadImageIndex = 39;
 	constexpr int32 Count = 0x30;
 }
 
@@ -364,11 +379,27 @@ public:
 	virtual bool SelectMedevacVictimAboardPlayer(FSimCopterPersonContext& Context) { return false; }
 
 	// Op 54, FUN_004ccb40: which of the three faces this person shows in the seat window. BHAV 264
-	// "Face vs. speed/health" sets it from the helicopter's speed and the victim's health.
+	// "Face vs. speed/health" sets it from the helicopter's speed and the victim's health. The
+	// original writes it into the seat manifest with FUN_0048c0e0 and marks the window dirty.
 	virtual void SetSeatPortraitMood(int32 Mood) {}
 
-	// Op 55, FUN_004ccb80: the player helicopter's speed, in the units BHAV 264 compares against
-	// 250 and 125.
+	// Op 57, FUN_004ccca0 -> FUN_004c5210: play one of the 62 people-voice events out of this
+	// person's own bank slot. The arguments are the handler's, in order:
+	//   VoiceEvent    which clip family (13 = achdie, 58 = the medevac EKG, 59 = spray, ...)
+	//   bAllocateSlot claim a voice-bank slot when this person has none; without it the call is
+	//                 dropped rather than stealing one
+	//   bNonPositional play 2D instead of 3D at the person's position - and open the audibility
+	//                 gate, which is how the EKG is heard from the cockpit
+	//   bForce        open the gate regardless of where the person and the player are
+	virtual void PlayPersonVoiceEvent(int32 VoiceEvent, bool bAllocateSlot, bool bNonPositional, bool bForce) {}
+
+	// Op 85, FUN_004cc110: the same handler called as FUN_004c5210(-1, 1, 1, 1) - stop whatever
+	// this person is saying and give the bank slot back.
+	virtual void StopPersonVoice() {}
+
+	// Op 55, FUN_004ccb80: the player helicopter's speed in the units BHAV 264 compares against
+	// 250 and 125 - which is the raw forward speed scaled by MaxDamage / remaining hit points, so
+	// the thresholds arrive sooner the more battered the machine is.
 	virtual int32 GetPlayerHelicopterSpeed() const { return 0; }
 
 	// Op 61, FUN_004ccef0: FUN_0049aed0(person+0x170, arg0) - tell the emergency vehicle I belong

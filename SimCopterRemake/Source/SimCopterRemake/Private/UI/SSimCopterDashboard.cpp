@@ -159,17 +159,21 @@ const TCHAR* const UpscaledSeatWindowFile = TEXT("SEATWIN2-upscaled-small.png");
 constexpr int32 SeatWindowWidth = 186;
 constexpr int32 SeatWindowHeight = 115;
 
-// The well starts at y 10 and runs to the bottom edge - there is no bottom frame - so the window
-// is cut to whatever depth the seat rows need rather than always standing 115 tall. The biggest
-// airframe carries fourteen, which is three rows of five.
+// FUN_00453f70 blits seat `i` to ((i % cols) * 0x20 + 0x0e, (i / cols) * 0x23 + 0x0a), and
+// FUN_0048bf60 fixes cols at 5 (manifest +0x14). Three rows of five at that pitch fill the page
+// exactly - 10 + 3 * 35 = 115 - and centre the block in the printed well, which the earlier
+// measured-by-eye stride did not. The well runs to the bottom edge with no frame under it, so the
+// window is cut to whatever depth the seat rows need rather than always standing 115 tall.
 constexpr float SeatWellTop = 10.0f;
 constexpr int32 SeatsPerRow = 5;
-constexpr float SeatFirstPortraitX = 13.0f;
-constexpr float SeatPortraitStride = 29.0f;
-constexpr float SeatRowStride = 34.0f;
-constexpr float SeatRowPadding = 3.0f;
+constexpr float SeatFirstPortraitX = 14.0f;
+constexpr float SeatPortraitStride = 32.0f;
+constexpr float SeatRowStride = 35.0f;
 
-// people1.bmp is a 12x3 grid of 27x33 cells. Column 0 is the empty seat.
+// people1.bmp is a 12x3 grid of 27x33 cells. FUN_00453f70's source rect is
+// x0 = (record[0] * 3 + 3) * 9, y0 = record[1] * 0x21, i.e. column = head image index + 1 and row
+// = the opcode-54 face. Column 0 row 0 is the empty seat, which is also what the clearing pass
+// stamps into every seat before the occupied ones are drawn over it.
 constexpr int32 PeopleEmptySeatColumn = 0;
 constexpr int32 PeopleFirstFaceColumn = 1;
 constexpr int32 PeopleColumns = 12;
@@ -677,7 +681,7 @@ void SSimCopterDashboard::RebuildSeats()
 	const int32 Seats = FMath::Max(0, Helicopter->GetPassengerSeatCount());
 	const int32 Rows = FMath::Clamp(FMath::DivideAndRoundUp(Seats, SeatsPerRow), 1, 3);
 	const float PageWidth = static_cast<float>(SeatWindowWidth);
-	const float PageHeight = SeatWellTop + Rows * SeatRowStride + SeatRowPadding;
+	const float PageHeight = SeatWellTop + Rows * SeatRowStride;
 
 	// The dashboard's outer row is bottom-aligned. Updating this desired height therefore moves
 	// the panel up by one row at 6 seats and another at 11 seats while keeping its bottom edge
@@ -724,15 +728,20 @@ void SSimCopterDashboard::RebuildSeats()
 		{
 			const FSimCopterMissionPassengerSlot& Slot = Slots[SeatIndex];
 
-			// One face per passenger, stable for as long as they are aboard: the seat has to keep
-			// showing the same person, so the choice is derived from the job they came off rather
-			// than drawn fresh each frame.
-			const uint32 Mix = static_cast<uint32>(Slot.EventId * 2654435761u + SeatIndex * 40503u);
-			Column = PeopleFirstFaceColumn + static_cast<int32>(Mix % (PeopleColumns - PeopleFirstFaceColumn));
+			// The face is the passenger's own head (person+0x18e, copied into the seat record when
+			// they boarded), and the row is whatever opcode 54 last wrote. A medevac victim always
+			// carries head 10, the bandaged one, so an injured passenger reads as injured; a
+			// transport fare or an officer wears the head their behavior class was given.
+			Column = FMath::Clamp(
+				PeopleFirstFaceColumn + Slot.HeadImageIndex,
+				PeopleFirstFaceColumn,
+				PeopleColumns - 1);
 
-			// Row 2 of the sheet is the distressed set - the right look for someone being lifted
-			// out of trouble. A transport fare gets the calm row.
-			Row = Slot.Kind == ESimCopterMissionPassengerKind::Transport ? 0 : 2;
+			// BHAV 264 drives this: for a casualty, face 0 above 50 health, face 1 below it and
+			// face 2 once they are gone. Everybody else follows the helicopter instead - face 1
+			// while you crawl, face 0 at a cruise, face 2 past the program's 250 threshold, which
+			// a damaged machine reaches at a much lower real speed.
+			Row = FMath::Clamp(Slot.PortraitState, 0, FSimCopterPopulationSprite::People1Rows - 1);
 		}
 
 		const FIntRect Source(Column * Width, Row * Height, (Column + 1) * Width, (Row + 1) * Height);

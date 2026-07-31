@@ -385,7 +385,15 @@ EOpResult ExecOpcode(
 	}
 	case 56: // may an emergency crew work on the tile I am on? (FUN_004ccc40)
 		return World.IsCurrentTileServiceable() ? EOpResult::True : EOpResult::False;
-	case 57: // sound/side-effect trigger (FUN_004ccca0 -> FUN_004c5210)
+	case 57: // play a people-voice event (FUN_004ccca0 -> FUN_004c5210)
+		// The four arguments are the handler's four parameters verbatim. FUN_004ccca0 returns the
+		// dispatcher's own result, and every arm of FUN_004c5210 that reaches the end returns 1 -
+		// including the one that plays nothing because the person is too far away to be heard.
+		World.PlayPersonVoiceEvent(
+			int32(int16(Record.Args[0])),
+			Record.Args[1] != 0,
+			Record.Args[2] != 0,
+			Record.Args[3] != 0);
 		return EOpResult::True;
 	case 62: // select the vehicle I belong to, else the player's helicopter (FUN_004ca700)
 		World.SelectOwningVehicle(Context);
@@ -438,7 +446,8 @@ EOpResult ExecOpcode(
 		return EOpResult::True;
 	case 70: // snap/update vertical position from ground/carried object (FUN_004cbab0)
 		return EOpResult::True;
-	case 85: // ambient audio/side-effect kick (FUN_004cc110 -> FUN_004c5210)
+	case 85: // stop this person's voice (FUN_004cc110 -> FUN_004c5210(-1, 1, 1, 1))
+		World.StopPersonVoice();
 		return EOpResult::True;
 	case 84: // select a medevac victim already aboard the player's helicopter (FUN_004cc830)
 		return World.SelectMedevacVictimAboardPlayer(Context) ? EOpResult::True : EOpResult::False;
@@ -481,9 +490,12 @@ EOpResult ExecOpcode(
 		World.SetSeatPortraitMood(int32(int16(Record.Args[0])));
 		return EOpResult::True;
 	case 55: // local[arg0] := the player helicopter's speed (FUN_004ccb80)
-		// BHAV 264 "Face vs. speed/health" reads it and picks face 2 over 250, face 1 over 125,
-		// face 0 otherwise - a passenger looking progressively less happy the faster you fly.
-		Local(Record.Args[0]) = uint16(FMath::Clamp(World.GetPlayerHelicopterSpeed(), 0, 0xffff));
+		// BHAV 264 "Face vs. speed/health" reads it: over 250 takes face 2, over 125 face 0, and
+		// anything slower face 1. It is not a plain airspeed either - the handler scales it by
+		// MaxDamage / remaining hit points, so a battered helicopter frightens its passengers at a
+		// much lower real speed. The result is stored as the low 16 bits of a signed value
+		// (`MOV word ptr [..], AX`), so flying backwards wraps large and shows face 2. Kept as-is.
+		Local(Record.Args[0]) = uint16(World.GetPlayerHelicopterSpeed());
 		return EOpResult::True;
 	case 73: // is there a paramedic on the map? (FUN_004cb9c0 -> FUN_004ca4f0(state 5, hidden))
 		return World.HasHiddenPersonInState(5) ? EOpResult::True : EOpResult::False;
@@ -520,10 +532,17 @@ EOpResult ExecOpcode(
 }
 } // namespace
 
+// SCHOOK: PersonSetState 0x004c7090
 void FSimCopterPersonContext::ResetToState(int32 StateIndex)
 {
 	Attributes[EBhavAttr::State] = uint16(StateIndex);
 	Attributes[EBhavAttr::LoopFlag] = uint16(FPeopleBehaviorModel::GetStateLoopFlag(StateIndex));
+	// FUN_004c7090's tail, and the only writer of head 10 in the executable: becoming a medevac
+	// victim is what puts the bandages on. Behavior classes only ever claim heads 0..9.
+	if (StateIndex == 6)
+	{
+		Attributes[EBhavAttr::HeadImageIndex] = 10;
+	}
 	Stack.Reset();
 	const TArray<int32>& StatePrograms = FPeopleBehaviorModel::GetStateProgramIds();
 	FFrame Frame;

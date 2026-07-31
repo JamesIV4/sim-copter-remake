@@ -1763,7 +1763,12 @@ int32 ASimCopterHelicopterPawn::RemoveMissionPassengers(int32 Count)
 	return Removed;
 }
 
-int32 ASimCopterHelicopterPawn::AddMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind)
+// SCHOOK: SeatManifestAdd 0x0048bff0
+int32 ASimCopterHelicopterPawn::AddMissionPassengersForMission(
+	int32 Count,
+	int32 EventId,
+	ESimCopterMissionPassengerKind Kind,
+	ASimCopterGroundAgent* Person)
 {
 	const int32 Added = FMath::Clamp(Count, 0, GetAvailablePassengerSeats());
 	for (int32 Index = 0; Index < Added; ++Index)
@@ -1771,6 +1776,14 @@ int32 ASimCopterHelicopterPawn::AddMissionPassengersForMission(int32 Count, int3
 		FSimCopterMissionPassengerSlot Slot;
 		Slot.EventId = EventId;
 		Slot.Kind = Kind;
+		// FUN_004c6250 builds the record before adding it: head from person+0x18e, face 1, then
+		// the person id. A seat with nobody behind it keeps the struct's own defaults.
+		if (Person != nullptr)
+		{
+			Slot.HeadImageIndex = Person->GetHeadImageIndex();
+			Slot.PortraitState = Person->GetSeatPortraitMood();
+			Slot.Person = Person;
+		}
 		MissionPassengerSlots.Add(Slot);
 	}
 	if (Added > 0)
@@ -1781,9 +1794,39 @@ int32 ASimCopterHelicopterPawn::AddMissionPassengersForMission(int32 Count, int3
 	return Added;
 }
 
-int32 ASimCopterHelicopterPawn::RemoveMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind)
+// SCHOOK: SeatManifestRemove 0x0048c120
+int32 ASimCopterHelicopterPawn::RemoveMissionPassengersForMission(
+	int32 Count,
+	int32 EventId,
+	ESimCopterMissionPassengerKind Kind,
+	const ASimCopterGroundAgent* Person)
 {
 	int32 Removed = 0;
+	// FUN_0048c120 frees the record whose +0x0c matches the person, not just any record of the
+	// right shape - releasing somebody else's seat would leave their portrait behind.
+	if (Person != nullptr)
+	{
+		for (int32 Index = 0; Index < MissionPassengerSlots.Num(); ++Index)
+		{
+			if (MissionPassengerSlots[Index].Person.Get() == Person)
+			{
+				MissionPassengerSlots.RemoveAt(Index);
+				Removed = 1;
+				break;
+			}
+		}
+	}
+	for (int32 Index = MissionPassengerSlots.Num() - 1; Index >= 0 && Removed < Count; --Index)
+	{
+		const FSimCopterMissionPassengerSlot& Slot = MissionPassengerSlots[Index];
+		// Never take a seat that belongs to a live passenger of its own when standing in for an
+		// abstract count; theirs is released by the branch above when they actually alight.
+		if (Slot.EventId == EventId && Slot.Kind == Kind && !Slot.Person.IsValid())
+		{
+			MissionPassengerSlots.RemoveAt(Index);
+			Removed++;
+		}
+	}
 	for (int32 Index = MissionPassengerSlots.Num() - 1; Index >= 0 && Removed < Count; --Index)
 	{
 		const FSimCopterMissionPassengerSlot& Slot = MissionPassengerSlots[Index];
@@ -1799,6 +1842,35 @@ int32 ASimCopterHelicopterPawn::RemoveMissionPassengersForMission(int32 Count, i
 		RefreshDashboardSeats();
 	}
 	return Removed;
+}
+
+// SCHOOK: SeatManifestSetFace 0x0048c0e0
+bool ASimCopterHelicopterPawn::SetMissionPassengerPortraitState(
+	const ASimCopterGroundAgent* Person,
+	int32 PortraitState)
+{
+	if (Person == nullptr)
+	{
+		return false;
+	}
+	for (FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
+	{
+		if (Slot.Person.Get() != Person)
+		{
+			continue;
+		}
+		// FUN_004ccb40 writes the record and marks the window dirty on every pass, and BHAV 264
+		// runs it several times a second; FUN_00453cb0 then re-blits two cells on every fourth
+		// frame. Slate rebuilds a widget tree instead, so the refresh is gated on an actual change.
+		if (Slot.PortraitState == PortraitState)
+		{
+			return true;
+		}
+		Slot.PortraitState = PortraitState;
+		RefreshDashboardSeats();
+		return true;
+	}
+	return false;
 }
 
 int32 ASimCopterHelicopterPawn::GetMissionPassengerCount(int32 EventId, ESimCopterMissionPassengerKind Kind) const
@@ -1833,7 +1905,14 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	// The behaviour VM boards real people and attaches them to this pawn, so dropping one has to
 	// release that person. Spawning a replacement instead - which is all this used to do - left
 	// the original still riding, invisible, holding a seat that had already been given back.
-	if (ASimCopterGroundAgent* Aboard = TrafficSystem->FindPersonAboardForEvent(this, Slot.EventId, Slot.Kind))
+	// The seat record names its own passenger (FUN_0048bff0 stores the person id at +0x0c), so
+	// dragging one portrait out cannot pick a different passenger who shares its mission and kind.
+	ASimCopterGroundAgent* SeatOccupant = Slot.Person.Get();
+	if (SeatOccupant == nullptr)
+	{
+		SeatOccupant = TrafficSystem->FindPersonAboardForEvent(this, Slot.EventId, Slot.Kind);
+	}
+	if (ASimCopterGroundAgent* Aboard = SeatOccupant)
 	{
 		const FVector DropLocation = GetPassengerAirDropWorldLocation(SlotIndex);
 		Aboard->AlightFromCarrier(); // hands the seat back on its own
