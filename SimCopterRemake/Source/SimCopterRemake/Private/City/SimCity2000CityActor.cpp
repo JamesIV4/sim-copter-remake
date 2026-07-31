@@ -3386,6 +3386,7 @@ void ASimCity2000CityActor::RebuildCity()
 		}
 	}
 	WaterGameplayTerrainClasses = TerrainTypeGrid;
+	MapAltitudeCorners = ConditionedTerrainCorners;
 
 	const FExtendedTerrainData ExtendedTerrain = BuildProceduralExtendedTerrain(
 		City,
@@ -4749,6 +4750,37 @@ bool ASimCity2000CityActor::TryGetWaterGameplaySurface(
 	{
 		*OutTile = FIntPoint(FileX, FileY);
 	}
+	return true;
+}
+
+bool ASimCity2000CityActor::TryGetMapTerrainGrids(
+	TArray<uint8>& OutTerrainClasses,
+	TArray<uint8>& OutAltitudeShades) const
+{
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	constexpr int32 CornerGridSize = MapSize + 1;
+	if (WaterGameplayTerrainClasses.Num() != MapSize * MapSize ||
+		MapAltitudeCorners.Num() != CornerGridSize * CornerGridSize)
+	{
+		return false;
+	}
+
+	OutTerrainClasses = WaterGameplayTerrainClasses;
+
+	// FUN_004a28e0 shades a tile with `tmap[y][x] >> 6`, clamped to 15 - one shade per two
+	// altitude steps, since a step is 0x20 sample units. It samples the tile's own corner, not
+	// an interpolated centre.
+	OutAltitudeShades.SetNumUninitialized(MapSize * MapSize);
+	for (int32 FileY = 0; FileY < MapSize; ++FileY)
+	{
+		for (int32 FileX = 0; FileX < MapSize; ++FileX)
+		{
+			const int32 Sample = MapAltitudeCorners[FileY * CornerGridSize + FileX];
+			OutAltitudeShades[FileY * MapSize + FileX] =
+				static_cast<uint8>(FMath::Clamp(Sample >> 6, 0, 15));
+		}
+	}
+
 	return true;
 }
 

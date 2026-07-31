@@ -1,0 +1,350 @@
+﻿ERROR: Function not found: 0x004545C0
+Try: ghidra-bridge search <pattern>
+// ===========================================
+// Ghidra:    FUN_00454640
+// Address:   0x00454640
+// Signature: undefined FUN_00454640(void)
+// Callers:   0  |  Callees: 1
+// ===========================================
+
+
+
+void __fastcall FUN_00454640(int *param_1)
+
+
+
+{
+
+  FUN_00404920();
+
+  (**(code **)(*param_1 + 0x10))(1);
+
+  return;
+
+}
+
+
+
+
+ERROR: Function not found: 0x00454660
+Try: ghidra-bridge search <pattern>
+ERROR: Function not found: 0x00454680
+Try: ghidra-bridge search <pattern>
+ERROR: Function not found: 0x00454720
+Try: ghidra-bridge search <pattern>
+ERROR: Function not found: 0x00454770
+Try: ghidra-bridge search <pattern>
+// ===========================================
+// Ghidra:    FUN_004547a0
+// Address:   0x004547a0
+// Signature: undefined FUN_004547a0(void)
+// Callers:   0  |  Callees: 2
+// ===========================================
+
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+
+
+undefined4 __fastcall FUN_004547a0(int param_1)
+
+
+
+{
+
+  char cVar1;
+
+  int *piVar2;
+
+  int iVar3;
+
+  char *pcVar4;
+
+  uint uVar5;
+
+  char *pcVar6;
+
+  
+
+  if (*(int *)(param_1 + 0x54) == 0) {
+
+    return 0;
+
+  }
+
+  _DAT_004f9944 = _DAT_004f9944 + 1;
+
+  if ((_DAT_004f9944 & 1) != 0) {
+
+    iVar3 = (**(code **)**(undefined4 **)(param_1 + 0x40))();
+
+    if (iVar3 != 0) {
+
+      FUN_004a3b20(*(undefined4 *)(*(int *)(param_1 + 0x40) + 0x10),
+
+                   *(undefined4 *)(*(int *)(param_1 + 0x40) + 0x14));
+
+      (**(code **)(**(int **)(param_1 + 0x40) + 4))();
+
+    }
+
+  }
+
+  if ((_DAT_004f9944 & 7) == 0) {
+
+    iVar3 = -2;
+
+    pcVar4 = (char *)FUN_004a92e0();
+
+    if (pcVar4 != (char *)0x0) {
+
+      iVar3 = *(int *)(pcVar4 + 0x24);
+
+    }
+
+    if (*(int *)(param_1 + 0x88) != iVar3) {
+
+      (**(code **)(**(int **)(param_1 + 0x40) + 0x44))(0x31,param_1 + 0x108);
+
+      if (pcVar4 != (char *)0x0) {
+
+        uVar5 = 0xffffffff;
+
+        pcVar6 = pcVar4;
+
+        do {
+
+          if (uVar5 == 0) break;
+
+          uVar5 = uVar5 - 1;
+
+          cVar1 = *pcVar6;
+
+          pcVar6 = pcVar6 + 1;
+
+        } while (cVar1 != '\0');
+
+        (**(code **)(**(int **)(param_1 + 0x40) + 0x48))
+
+                  (pcVar4,~uVar5 - 1,0,param_1 + 0x108,param_1 + 0x8c);
+
+      }
+
+      *(int *)(param_1 + 0x88) = iVar3;
+
+    }
+
+  }
+
+  piVar2 = *(int **)(param_1 + 0x40);
+
+  (**(code **)(*piVar2 + 0xc))
+
+            (*(undefined4 *)(param_1 + 0x44),*(undefined4 *)(param_1 + 0x20),
+
+             *(undefined4 *)(param_1 + 0x24),0,0,piVar2[2],piVar2[3]);
+
+  return 1;
+
+}
+
+
+
+
+ERROR: Function not found: 0x00454880
+Try: ghidra-bridge search <pattern>
+// ===========================================
+// Ghidra:    FUN_00454ad0
+// Address:   0x00454ad0
+// Signature: undefined FUN_00454ad0(void)
+// Callers:   0  |  Callees: 3
+// ===========================================
+
+
+
+undefined4 __thiscall FUN_00454ad0(int *param_1,int param_2,int param_3)
+
+
+
+{
+
+  int iVar1;
+
+  int iVar2;
+
+  int *piVar3;
+
+  int local_8;
+
+  int local_4;
+
+  
+
+  if ((((param_2 < DAT_00505ec8) || (DAT_00505ed0 < param_2)) || (param_3 < DAT_00505ecc)) ||
+
+     (DAT_00505ed4 < param_3)) {
+
+    if (((param_2 < param_1[0x3a]) || (param_3 < param_1[0x3b])) ||
+
+       ((param_1[0x3c] <= param_2 || (param_1[0x3d] <= param_3)))) {
+
+      if (((param_2 < param_1[0x3e]) || (param_3 < param_1[0x3f])) ||
+
+         ((param_1[0x40] <= param_2 || (param_1[0x41] <= param_3)))) {
+
+        iVar2 = 0;
+
+        piVar3 = param_1 + 0x2a;
+
+        do {
+
+          if ((((*piVar3 <= param_2) && (piVar3[1] <= param_3)) && (param_2 < piVar3[2])) &&
+
+             (param_3 < piVar3[3])) {
+
+            iVar1 = *param_1;
+
+            (**(code **)(iVar1 + 0xa8))(param_1);
+
+            (**(code **)(iVar1 + 0xdc))(iVar2,1);
+
+            param_1[0x20] = iVar2;
+
+            return 1;
+
+          }
+
+          piVar3 = piVar3 + 4;
+
+          iVar2 = iVar2 + 1;
+
+        } while (iVar2 < 4);
+
+      }
+
+      else {
+
+        iVar2 = param_1[0x1f];
+
+        param_1[0x1f] = (uint)(iVar2 == 0);
+
+        (**(code **)(*param_1 + 0xdc))(5,(uint)(iVar2 == 0));
+
+        FUN_004a3f00(param_1[0x1f]);
+
+      }
+
+    }
+
+    else {
+
+      iVar2 = param_1[0x1e];
+
+      param_1[0x1e] = (uint)(iVar2 == 0);
+
+      (**(code **)(*param_1 + 0xdc))(4,(uint)(iVar2 == 0));
+
+      FUN_004a3ee0(param_1[0x1e]);
+
+    }
+
+  }
+
+  else {
+
+    iVar2 = FUN_004a3d00(param_2 - DAT_00505ec8,param_3 - DAT_00505ecc);
+
+    param_1[0x21] = iVar2;
+
+    if (-1 < iVar2) {
+
+      local_8 = param_2;
+
+      local_4 = param_3;
+
+      (**(code **)(*param_1 + 0xe0))(iVar2,1,&local_8);
+
+    }
+
+  }
+
+  return 1;
+
+}
+
+
+
+
+ERROR: Function not found: 0x00454C40
+Try: ghidra-bridge search <pattern>
+ERROR: Function not found: 0x00454D60
+Try: ghidra-bridge search <pattern>
+// ===========================================
+// Ghidra:    FUN_00454da0
+// Address:   0x00454da0
+// Signature: undefined FUN_00454da0(void)
+// Callers:   0  |  Callees: 2
+// ===========================================
+
+
+
+void __thiscall FUN_00454da0(int *param_1,undefined4 param_2,undefined4 param_3,int param_4)
+
+
+
+{
+
+  int iVar1;
+
+  code *pcVar2;
+
+  int iVar3;
+
+  int *piVar4;
+
+  undefined4 uVar5;
+
+  
+
+  iVar1 = *param_1;
+
+  (**(code **)(iVar1 + 0xb0))(param_4,param_4 + 4);
+
+  iVar3 = FUN_004d28b0(0xd8);
+
+  if (iVar3 == 0) {
+
+    piVar4 = (int *)0x0;
+
+  }
+
+  else {
+
+    piVar4 = (int *)FUN_00440ff0(&stack0xffffffe8,1,DAT_004f81e8,param_1,1,0);
+
+  }
+
+  iVar3 = *piVar4;
+
+  (**(code **)(iVar3 + 4))();
+
+  (**(code **)(iVar3 + 0x13c))(0x14,0,0);
+
+  uVar5 = (**(code **)(iVar1 + 0xe4))(param_1[0x21]);
+
+  pcVar2 = *(code **)(iVar3 + 0xe4);
+
+  (*pcVar2)(uVar5,0xffffffff);
+
+  (*pcVar2)(0x60,0xffffffff);
+
+  return;
+
+}
+
+
+
+
+ERROR: Function not found: 0x00454E50
+Try: ghidra-bridge search <pattern>

@@ -175,6 +175,12 @@ public:
 		const FVector& WorldLocation,
 		int32& OutFileX,
 		int32& OutFileY) const;
+
+	// The same mapping applied to a direction instead of a point: city-local +X is +tile X and
+	// city-local +Y is -tile Y. The cockpit map's heading needle needs this, because the original
+	// reads the helicopter's facing straight off its world vector and the map's Y runs the other
+	// way. Normalised; false when no city is bound or the direction is degenerate in the plane.
+	bool TryGetPeopleTileDirection(const FVector& WorldDirection, FVector2D& OutTileDirection) const;
 	int32 GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const;
 	bool TryGetTerrainWorldZAtWorldLocation(const FVector& WorldLocation, float& OutTerrainWorldZ) const;
 	bool IsWaterTile(int32 FileX, int32 FileY) const;
@@ -679,6 +685,17 @@ public:
 		OutWorldLocation = SpotlightMarkWorldLocation;
 		return true;
 	}
+
+	// Every emergency vehicle currently out in the city, for the cockpit map's blip table
+	// (DAT_005d3eb0). Service doubles as the map's icon: 0 fire, 1 police, 2 ambulance.
+	struct FServiceVehicleView
+	{
+		int32 Service = INDEX_NONE;
+		int32 SlotIndex = INDEX_NONE;
+		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
+		FIntPoint DestinationTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	};
+	void GetActiveServiceVehicles(TArray<FServiceVehicleView>& OutVehicles) const;
 
 	int32 GetDispatchStationCount(SimCopterDispatch::EService Service) const;
 	int32 GetActiveDispatchCount(SimCopterDispatch::EService Service) const;

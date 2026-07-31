@@ -82,6 +82,12 @@ public:
 		bool bColorKeyed = true,
 		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None);
 
+	// Somewhere UObject-shaped to hang a texture the remake builds at runtime rather than loads.
+	// The cockpit map re-uploads its rasterised buffer every tick and its Slate widget cannot own
+	// the texture itself.
+	void RegisterRuntimeTexture(const FString& Key, UTexture2D* Texture);
+	UTexture2D* FindRuntimeTexture(const FString& Key) const;
+
 	// cat_<model>.bmp for a catalog row, or null for a row without a drawing.
 	const FSlateBrush* GetCatalogDrawing(int32 CatalogRow);
 

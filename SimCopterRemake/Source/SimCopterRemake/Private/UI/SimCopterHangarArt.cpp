@@ -89,6 +89,20 @@ const FSlateBrush* USimCopterHangarArt::GetBitmap(const FString& FileName, const
 	return BuildBrush(FileName, FileName, bColorKeyed, FIntRect(), ESimCopterArtRotation::None);
 }
 
+void USimCopterHangarArt::RegisterRuntimeTexture(const FString& Key, UTexture2D* Texture)
+{
+	if (Texture != nullptr)
+	{
+		Textures.Add(Key, Texture);
+	}
+}
+
+UTexture2D* USimCopterHangarArt::FindRuntimeTexture(const FString& Key) const
+{
+	const TObjectPtr<UTexture2D>* Found = Textures.Find(Key);
+	return (Found != nullptr) ? Found->Get() : nullptr;
+}
+
 const FSlateBrush* USimCopterHangarArt::GetBundledSlateImage(const FString& FileName)
 {
 	const FString CacheKey = FString::Printf(TEXT("Slate/%s"), *FileName);

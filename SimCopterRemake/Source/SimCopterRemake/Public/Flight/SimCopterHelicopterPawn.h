@@ -1382,6 +1382,9 @@ private:
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
+
+	TSharedPtr<SWidget> MapWidget;
+	TSharedPtr<class SSimCopterMapPanel> MapPanel;
 	// The Check-up panel, up only while the player is being served.
 	TSharedPtr<SWidget> CheckupWidget;
 	TSharedPtr<SWidget> ControllerOverlayWidget;
@@ -1656,6 +1659,11 @@ private:
 	void EnsureDashboardWidget();
 	void RemoveDashboardWidget();
 	void RefreshDashboardSeats();
+	void EnsureMapWidget();
+	void RemoveMapWidget();
+	// The original's map zoom commands 0x1b and 0x1c, which input.cfg binds to '=' and '-'.
+	void MapZoomIn();
+	void MapZoomOut();
 	void EnsureWaterControlsWidget();
 	void RemoveWaterControlsWidget();
 	void RefreshWaterControlsWidget();

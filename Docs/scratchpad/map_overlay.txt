@@ -1,0 +1,141 @@
+// ===========================================
+// Ghidra:    FUN_004a3820
+// Address:   0x004a3820
+// Signature: undefined FUN_004a3820(void)
+// Callers:   2  |  Callees: 6
+// ===========================================
+void FUN_004a3820(undefined1 param_1,undefined1 param_2)
+{
+  int *piVar1;
+  uint uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  uint uVar7;
+  int iVar8;
+  int local_8;
+  int local_4;
+  
+  piVar1 = (int *)FUN_004a8960();
+  if ((piVar1 == (int *)0x0) || (*piVar1 == -1)) {
+    piVar1 = (int *)FUN_004a8940();
+    if ((piVar1 == (int *)0x0) || (*piVar1 == -1)) goto LAB_004a3902;
+    FUN_004a4650(param_1,param_2,*piVar1,piVar1[1],&local_8,&local_4);
+    uVar2 = local_8 >> (DAT_00505f08 & 0x1f);
+    uVar7 = (int)uVar2 >> 0x1f;
+    iVar3 = (uVar2 ^ uVar7) - uVar7;
+    uVar2 = local_4 >> (DAT_00505f08 & 0x1f);
+    uVar7 = (int)uVar2 >> 0x1f;
+    iVar4 = (uVar2 ^ uVar7) - uVar7;
+    if (iVar3 <= iVar4) goto LAB_004a38db;
+    iVar4 = iVar4 + iVar3 * 2;
+  }
+  else {
+    FUN_004a4650(param_1,param_2,*piVar1,piVar1[1],&local_8,&local_4);
+    uVar2 = local_8 >> (DAT_00505f08 & 0x1f);
+    uVar7 = (int)uVar2 >> 0x1f;
+    iVar3 = (uVar2 ^ uVar7) - uVar7;
+    uVar2 = local_4 >> (DAT_00505f08 & 0x1f);
+    uVar7 = (int)uVar2 >> 0x1f;
+    iVar4 = (uVar2 ^ uVar7) - uVar7;
+    if (iVar4 < iVar3) {
+      iVar4 = iVar4 + iVar3 * 2;
+    }
+    else {
+LAB_004a38db:
+      iVar4 = iVar3 + iVar4 * 2;
+    }
+  }
+  FUN_004a3a00(local_8,local_4,(iVar4 << 4) / -0x184 + 0x3f,0xffffffff);
+LAB_004a3902:
+  piVar1 = (int *)FUN_004a8990();
+  if ((piVar1 != (int *)0x0) && (*piVar1 != -1)) {
+    FUN_004a4650(param_1,param_2,*piVar1,piVar1[1],&local_8,&local_4);
+    uVar2 = local_8 >> (DAT_00505f08 & 0x1f);
+    uVar7 = (int)uVar2 >> 0x1f;
+    iVar3 = (uVar2 ^ uVar7) - uVar7;
+    uVar2 = local_4 >> (DAT_00505f08 & 0x1f);
+    uVar7 = (int)uVar2 >> 0x1f;
+    iVar4 = (uVar2 ^ uVar7) - uVar7;
+    if (iVar4 < iVar3) {
+      iVar4 = iVar4 + iVar3 * 2;
+    }
+    else {
+      iVar4 = iVar3 + iVar4 * 2;
+    }
+    FUN_004a3a00(local_8,local_4,(iVar4 << 3) / -0x184 + 0x6a,0xffffffff);
+  }
+  if (DAT_00503aa0 == 3) {
+    piVar1 = (int *)FUN_004c1ab0();
+    iVar4 = *piVar1;
+    iVar3 = FUN_004c1ab0();
+    iVar3 = *(int *)(iVar3 + 8);
+  }
+  else {
+    iVar4 = *(int *)(DAT_005040d0 + 0x100);
+    iVar3 = *(int *)(DAT_005040d0 + 0x108);
+  }
+  iVar8 = 0;
+  local_4 = 0;
+  local_8 = 0;
+  if (0 < DAT_00505ef8) {
+    do {
+      iVar5 = local_8 >> 0x10;
+      iVar6 = local_4 >> 0x10;
+      iVar8 = iVar8 + 1;
+      local_8 = local_8 + iVar4;
+      local_4 = local_4 - iVar3;
+      *(undefined1 *)(DAT_00505ed8 * iVar6 + iVar5 + DAT_00505ee8) = 0x70;
+    } while (iVar8 < DAT_00505ef8);
+  }
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a4200
+// Address:   0x004a4200
+// Signature: undefined FUN_004a4200(void)
+// Callers:   1  |  Callees: 4
+// ===========================================
+void FUN_004a4200(int param_1,int param_2)
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  undefined4 local_c;
+  int local_8;
+  undefined4 local_4;
+  
+  iVar4 = 0;
+  local_8 = FUN_004a92e0();
+  do {
+    iVar1 = FUN_004ab3b0(iVar4);
+    if ((((iVar1 != 0) && ((*(byte *)(iVar1 + 0x4c) & 1) != 0)) && (*(int *)(iVar1 + 0x54) != 2)) &&
+       (local_8 != iVar1)) {
+      FUN_004a4000(*(undefined4 *)(iVar1 + 0x50),&local_c,&local_4);
+      iVar2 = *(int *)(iVar1 + 0x30);
+      if (iVar2 == -1) {
+        iVar2 = *(int *)(iVar1 + 0x28);
+        if (iVar2 != -1) {
+          iVar3 = *(int *)(iVar1 + 0x2c);
+          goto LAB_004a4293;
+        }
+      }
+      else {
+        iVar3 = *(int *)(iVar1 + 0x34);
+LAB_004a4293:
+        FUN_004a3a00(iVar2 - param_1 << (DAT_00505f08 & 0x1f),
+                     iVar3 - param_2 << (DAT_00505f08 & 0x1f),0,local_c);
+      }
+      if (*(int *)(iVar1 + 0x38) != -1) {
+        FUN_004a3a00(*(int *)(iVar1 + 0x38) - param_1 << (DAT_00505f08 & 0x1f),
+                     *(int *)(iVar1 + 0x3c) - param_2 << (DAT_00505f08 & 0x1f),0,local_4);
+      }
+    }
+    iVar4 = iVar4 + 1;
+    if (0x1d < iVar4) {
+      return;
+    }
+  } while( true );
+}

@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterPawn.h"
 
@@ -58,6 +58,7 @@
 #include "UI/SimCopterHangarArt.h"
 #include "UI/SSimCopterControllerOverlay.h"
 #include "UI/SSimCopterDashboard.h"
+#include "UI/SSimCopterMapPanel.h"
 #include "UI/SSimCopterCheckupMenu.h"
 #include "UI/SSimCopterToolFlaps.h"
 #include "UObject/ConstructorHelpers.h"
@@ -715,6 +716,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		InputMode.SetHideCursorDuringCapture(false);
 		PlayerController->SetInputMode(InputMode);
 		EnsureDashboardWidget();
+		EnsureMapWidget();
 		EnsureWaterControlsWidget();
 		EnsureToolFlapsWidget();
 		EnsureCrosshairWidget();
@@ -736,6 +738,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	RemoveDashboardWidget();
+	RemoveMapWidget();
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
 	RemoveCrosshairWidget();
@@ -815,6 +818,12 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("SimCopterCycleCamera"), IE_Pressed, this, &ASimCopterHelicopterPawn::CycleCameraMode);
 	PlayerInputComponent->BindAction(TEXT("SimCopterSearchLight"), IE_Pressed, this, &ASimCopterHelicopterPawn::ToggleSearchLight);
 	PlayerInputComponent->BindAction(TEXT("SimCopterResetAircraft"), IE_Pressed, this, &ASimCopterHelicopterPawn::ResetAircraft);
+
+	// The map's zoom, bound directly because the keys are ground truth rather than a preference:
+	// the shipped input.cfg maps command 0x1b (FUN_004a3d50, zoom in) to '=' and 0x1c
+	// (FUN_004a3d80, zoom out) to '-'. The numpad pair is the collective, not the map.
+	PlayerInputComponent->BindKey(EKeys::Equals, IE_Pressed, this, &ASimCopterHelicopterPawn::MapZoomIn);
+	PlayerInputComponent->BindKey(EKeys::Hyphen, IE_Pressed, this, &ASimCopterHelicopterPawn::MapZoomOut);
 
 	// Controller contexts are direct key bindings rather than static action mappings: LB/LT/R3
 	// deliberately change what A/X/B, the right stick, RB/RT, and the D-pad mean.
@@ -1714,6 +1723,7 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	InputMode.SetHideCursorDuringCapture(false);
 	PlayerController->SetInputMode(InputMode);
 	EnsureDashboardWidget();
+	EnsureMapWidget();
 	EnsureWaterControlsWidget();
 	EnsureToolFlapsWidget();
 	EnsureCrosshairWidget();
@@ -2150,6 +2160,70 @@ void ASimCopterHelicopterPawn::RemoveDashboardWidget()
 
 	DashboardPanel.Reset();
 	DashboardWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::EnsureMapWidget()
+{
+	if (MapWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	if (FlapArt == nullptr)
+	{
+		FlapArt = NewObject<USimCopterHangarArt>(this, TEXT("FlapArt"));
+	}
+	FlapArt->SetOriginalGameRoot(ResolveOriginalGameRoot());
+	if (!FlapArt->IsUsable())
+	{
+		return;
+	}
+
+	TSharedRef<SSimCopterMapPanel> Map =
+		SNew(SSimCopterMapPanel)
+		.Pawn(this)
+		.Art(FlapArt)
+		.Scale(ToolFlapScale);
+	MapPanel = Map;
+
+	// Anchor the map itself directly to the lower-left corner.
+	MapWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Bottom)
+		[
+			Map
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(MapWidget.ToSharedRef(), 25);
+}
+
+void ASimCopterHelicopterPawn::RemoveMapWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && MapWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(MapWidget.ToSharedRef());
+	}
+
+	MapPanel.Reset();
+	MapWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::MapZoomIn()
+{
+	if (MapPanel.IsValid())
+	{
+		MapPanel->ZoomIn();
+	}
+}
+
+void ASimCopterHelicopterPawn::MapZoomOut()
+{
+	if (MapPanel.IsValid())
+	{
+		MapPanel->ZoomOut();
+	}
 }
 
 void ASimCopterHelicopterPawn::EnsureWaterControlsWidget()
@@ -2663,6 +2737,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 
 	AActor* OutgoingViewTarget = PlayerController->GetViewTarget();
 	RemoveDashboardWidget();
+	RemoveMapWidget();
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
 	RemoveCrosshairWidget();

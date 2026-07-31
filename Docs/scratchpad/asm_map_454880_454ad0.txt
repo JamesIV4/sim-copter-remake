@@ -1,0 +1,121 @@
+00454880  mov      eax, dword ptr [esp + 4]
+00454884  sub      esp, 0x18
+00454887  test     eax, eax
+00454889  jne      0x4548e3
+0045488b  mov      dword ptr [esp + 0x10], 9
+00454893  mov      dword ptr [esp + 0x14], 0x36
+0045489b  cmp      dword ptr [esp + 0x20], 0
+004548a0  je       0x4548c7
+004548a2  mov      dword ptr [esp], 0x20
+004548aa  mov      dword ptr [esp + 4], 0
+004548b2  mov      dword ptr [esp + 8], 0x30
+004548ba  mov      dword ptr [esp + 0xc], 0x10
+004548c2  jmp      0x454ab0
+004548c7  xor      eax, eax
+004548c9  mov      dword ptr [esp], eax
+004548cd  mov      dword ptr [esp + 4], eax
+004548d1  mov      eax, 0x10
+004548d6  mov      dword ptr [esp + 8], eax
+004548da  mov      dword ptr [esp + 0xc], eax
+004548de  jmp      0x454ab0
+004548e3  cmp      eax, 1
+004548e6  jne      0x454946
+004548e8  mov      dword ptr [esp + 0x10], 0x1b
+004548f0  mov      dword ptr [esp + 0x14], 0x36
+004548f8  cmp      dword ptr [esp + 0x20], 0
+004548fd  je       0x454924
+004548ff  mov      dword ptr [esp], 0x30
+00454907  mov      dword ptr [esp + 4], 0
+0045490f  mov      dword ptr [esp + 8], 0x40
+00454917  mov      dword ptr [esp + 0xc], 0x10
+0045491f  jmp      0x454ab0
+00454924  mov      dword ptr [esp + 4], 0
+0045492c  mov      dword ptr [esp + 8], 0x20
+00454934  mov      eax, 0x10
+00454939  mov      dword ptr [esp], eax
+0045493d  mov      dword ptr [esp + 0xc], eax
+00454941  jmp      0x454ab0
+00454946  cmp      eax, 2
+00454949  jne      0x4549a6
+0045494b  mov      dword ptr [esp + 0x10], 9
+00454953  mov      dword ptr [esp + 0x14], 0x49
+0045495b  cmp      dword ptr [esp + 0x20], 0
+00454960  je       0x454984
+00454962  mov      dword ptr [esp + 4], 0x10
+0045496a  mov      dword ptr [esp + 8], 0x30
+00454972  mov      eax, 0x20
+00454977  mov      dword ptr [esp], eax
+0045497b  mov      dword ptr [esp + 0xc], eax
+0045497f  jmp      0x454ab0
+00454984  mov      dword ptr [esp], 0
+0045498c  mov      dword ptr [esp + 0xc], 0x20
+00454994  mov      eax, 0x10
+00454999  mov      dword ptr [esp + 4], eax
+0045499d  mov      dword ptr [esp + 8], eax
+004549a1  jmp      0x454ab0
+004549a6  cmp      eax, 3
+004549a9  jne      0x454a06
+004549ab  mov      dword ptr [esp + 0x10], 0x1b
+004549b3  mov      dword ptr [esp + 0x14], 0x49
+004549bb  cmp      dword ptr [esp + 0x20], 0
+004549c0  je       0x4549e7
+004549c2  mov      dword ptr [esp], 0x30
+004549ca  mov      dword ptr [esp + 4], 0x10
+004549d2  mov      dword ptr [esp + 8], 0x40
+004549da  mov      dword ptr [esp + 0xc], 0x20
+004549e2  jmp      0x454ab0
+004549e7  mov      eax, 0x10
+004549ec  mov      dword ptr [esp], eax
+004549f0  mov      dword ptr [esp + 4], eax
+004549f4  mov      eax, 0x20
+004549f9  mov      dword ptr [esp + 8], eax
+004549fd  mov      dword ptr [esp + 0xc], eax
+00454a01  jmp      0x454ab0
+00454a06  cmp      eax, 4
+00454a09  jne      0x454a58
+00454a0b  mov      dword ptr [esp + 0x10], 9
+00454a13  mov      dword ptr [esp + 0x14], 0x5c
+00454a1b  cmp      dword ptr [esp + 0x20], 0
+00454a20  je       0x454a3e
+00454a22  mov      eax, 0x20
+00454a27  mov      dword ptr [esp], eax
+00454a2b  mov      dword ptr [esp + 4], eax
+00454a2f  mov      eax, 0x30
+00454a34  mov      dword ptr [esp + 8], eax
+00454a38  mov      dword ptr [esp + 0xc], eax
+00454a3c  jmp      0x454ab0
+00454a3e  mov      dword ptr [esp], 0
+00454a46  mov      dword ptr [esp + 4], 0x20
+00454a4e  mov      dword ptr [esp + 8], 0x10
+00454a56  jmp      0x454aa8
+00454a58  cmp      eax, 5
+00454a5b  jne      0x454ab0
+00454a5d  mov      dword ptr [esp + 0x10], 0x1b
+00454a65  mov      dword ptr [esp + 0x14], 0x5c
+00454a6d  cmp      dword ptr [esp + 0x20], 0
+00454a72  je       0x454a93
+00454a74  mov      dword ptr [esp + 4], 0x20
+00454a7c  mov      dword ptr [esp + 8], 0x40
+00454a84  mov      eax, 0x30
+00454a89  mov      dword ptr [esp], eax
+00454a8d  mov      dword ptr [esp + 0xc], eax
+00454a91  jmp      0x454ab0
+00454a93  mov      dword ptr [esp], 0x10
+00454a9b  mov      eax, 0x20
+00454aa0  mov      dword ptr [esp + 4], eax
+00454aa4  mov      dword ptr [esp + 8], eax
+00454aa8  mov      dword ptr [esp + 0xc], 0x30
+00454ab0  mov      edx, dword ptr [ecx + 0x74]
+00454ab3  lea      eax, [esp]
+00454ab7  push     eax
+00454ab8  mov      ecx, dword ptr [ecx + 0x40]
+00454abb  lea      eax, [esp + 0x14]
+00454abf  push     eax
+00454ac0  push     ecx
+00454ac1  mov      eax, dword ptr [edx]
+00454ac3  mov      ecx, edx
+00454ac5  call     dword ptr [eax + 0x2c]
+00454ac8  add      esp, 0x18
+00454acb  ret      8
+00454ace  int3     
+00454acf  int3     

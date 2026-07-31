@@ -1,0 +1,151 @@
+// ===========================================
+// Ghidra:    FUN_004a3d50
+// Address:   0x004a3d50
+// Signature: undefined FUN_004a3d50(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004a3d50(void)
+{
+  int local_4;
+  
+  if (_DAT_00505f08 < 3) {
+    _DAT_00505f08 = _DAT_00505f08 + 1;
+  }
+  local_4 = _DAT_00505f08;
+  FUN_00448ee0(DAT_004f48d0,&local_4,4);
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a3d80
+// Address:   0x004a3d80
+// Signature: undefined FUN_004a3d80(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004a3d80(void)
+{
+  int local_4;
+  
+  if (0 < _DAT_00505f08) {
+    _DAT_00505f08 = _DAT_00505f08 + -1;
+  }
+  local_4 = _DAT_00505f08;
+  FUN_00448ee0(DAT_004f48d0,&local_4,4);
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a3db0
+// Address:   0x004a3db0
+// Signature: undefined FUN_004a3db0(void)
+// Callers:   1  |  Callees: 2
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004a3db0(undefined4 param_1)
+{
+  undefined4 uVar1;
+  int iVar2;
+  int local_8;
+  int local_4;
+  
+  uVar1 = DAT_004f48d0;
+  iVar2 = FUN_00459a10(param_1,DAT_004f48d0,&local_8,4);
+  if (((iVar2 != 0) && (-1 < _DAT_00505f08)) && (_DAT_00505f08 < 4)) {
+    _DAT_00505f08 = local_8;
+    local_4 = local_8;
+    FUN_00448ee0(uVar1,&local_4,4);
+  }
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a3e10
+// Address:   0x004a3e10
+// Signature: undefined FUN_004a3e10(void)
+// Callers:   1  |  Callees: 2
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004a3e10(void)
+{
+  undefined4 uVar1;
+  int *piVar2;
+  int local_4;
+  
+  uVar1 = DAT_004f48d0;
+  piVar2 = (int *)FUN_00448ec0(DAT_004f48d0);
+  if (((piVar2 != (int *)0x0) && (local_4 = *piVar2, -1 < _DAT_00505f08)) && (_DAT_00505f08 < 4)) {
+    _DAT_00505f08 = local_4;
+    FUN_00448ee0(uVar1,&local_4,4);
+  }
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a3e60
+// Address:   0x004a3e60
+// Signature: undefined FUN_004a3e60(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004a3e60(undefined4 param_1)
+{
+  undefined4 local_4;
+  
+  local_4 = _DAT_00505f08;
+  FUN_00459a80(param_1,DAT_004f48d0,&local_4,4);
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a3e90
+// Address:   0x004a3e90
+// Signature: undefined FUN_004a3e90(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_004a3e90(void)
+{
+  undefined4 local_4;
+  
+  local_4 = _DAT_00505f08;
+  FUN_00448ee0(DAT_004f48d0,&local_4,4);
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a4650
+// Address:   0x004a4650
+// Signature: undefined FUN_004a4650(void)
+// Callers:   3  |  Callees: 1
+// ===========================================
+void FUN_004a4650(int param_1,int param_2,int param_3,int param_4,int *param_5,int *param_6)
+{
+  int iVar1;
+  int local_14;
+  int local_10;
+  int local_c;
+  int local_8;
+  int local_4;
+  
+  if ((param_1 < 0x80) && (param_2 < 0x80)) {
+    *param_5 = param_3 - param_1 << (DAT_00505f08 & 0x1f);
+    *param_6 = param_4 - param_2 << (DAT_00505f08 & 0x1f);
+    return;
+  }
+  local_14 = param_1;
+  local_10 = param_2;
+  local_c = param_3;
+  local_8 = param_4;
+  local_4 = FUN_004681f0(&local_14,&local_c);
+  if (0x7f < param_1) {
+    local_14 = local_14 + -0x100;
+  }
+  if (0x7f < param_2) {
+    local_10 = local_10 + -0x100;
+  }
+  iVar1 = FUN_004681f0(&local_14,&local_c);
+  if (iVar1 < local_4) {
+    *param_5 = param_3 - local_14 << (DAT_00505f08 & 0x1f);
+    *param_6 = param_4 - local_10 << (DAT_00505f08 & 0x1f);
+    return;
+  }
+  *param_5 = param_3 - param_1 << (DAT_00505f08 & 0x1f);
+  *param_6 = param_4 - param_2 << (DAT_00505f08 & 0x1f);
+  return;
+}

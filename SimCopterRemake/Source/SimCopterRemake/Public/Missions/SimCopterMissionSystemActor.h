@@ -121,6 +121,12 @@ public:
 	// FUN_004a88e0 returns the live record's +0x30 coordinate pair. Object class 0 uses this
 	// destination in BHAV 292 before a transport passenger requests opcode 17 (alight).
 	bool TryGetMissionDestinationTile(int32 EventId, int32& OutTileX, int32& OutTileY) const;
+	// The whole 30-slot record table (DAT_0057f9dc). The cockpit map draws every live record and
+	// cycles its selection through them in slot order, so it needs the table, not a lookup.
+	const TArray<SimCopterMissions::FSimCopterMissionRecord>& GetMissionRecords() const
+	{
+		return MissionSystem.GetRecords();
+	}
 	// FUN_004a9230(mask): the event id of the first live record carrying every bit of TypeMask, or
 	// INDEX_NONE. Behaviour opcodes 24 and 28 use it to find the running riot.
 	int32 FindActiveMissionOfType(int32 TypeMask) const;

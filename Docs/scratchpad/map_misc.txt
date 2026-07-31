@@ -1,0 +1,186 @@
+// ===========================================
+// Ghidra:    thunk_FUN_004a9900
+// Address:   0x004a3ec0
+// Signature: undefined thunk_FUN_004a9900(void)
+// ===========================================
+void thunk_FUN_004a9900(void)
+{
+  int iVar1;
+  undefined *puVar2;
+  undefined *puVar3;
+  int iVar4;
+  
+  puVar3 = DAT_0057f9d8;
+  if (DAT_0057f9d8 != (undefined *)0x0) {
+    iVar1 = (int)(DAT_0057f9d8 + -0x57f9dc) / 0xd4;
+    if (-1 < iVar1 + -1) {
+      puVar2 = &DAT_0057f9dc + (iVar1 + -1) * 0xd4;
+      do {
+        if (((*(uint *)(puVar2 + 0x4c) & 1) != 0) && (*(int *)(puVar2 + 0x54) != 2)) {
+          DAT_0057f9d8 = puVar2;
+          return;
+        }
+        puVar2 = puVar2 + -0xd4;
+      } while ((undefined *)0x57f9db < puVar2);
+    }
+    iVar4 = 0x1d;
+    if (iVar1 < 0x1d) {
+      puVar3 = &DAT_005811e0;
+      while (((*(uint *)(puVar3 + 0x4c) & 1) == 0 || (*(int *)(puVar3 + 0x54) == 2))) {
+        puVar3 = puVar3 + -0xd4;
+        iVar4 = iVar4 + -1;
+        if (iVar4 <= iVar1) {
+          return;
+        }
+      }
+    }
+  }
+  DAT_0057f9d8 = puVar3;
+  return;
+}
+// ===========================================
+// Ghidra:    thunk_FUN_004a9860
+// Address:   0x004a3ed0
+// Signature: undefined thunk_FUN_004a9860(void)
+// ===========================================
+void thunk_FUN_004a9860(void)
+{
+  int iVar1;
+  undefined4 *puVar2;
+  int iVar3;
+  undefined *puVar4;
+  
+  puVar4 = (undefined *)DAT_0057f9d8;
+  if (DAT_0057f9d8 != (undefined4 *)0x0) {
+    iVar1 = (int)((int)DAT_0057f9d8 + -0x57f9dc) / 0xd4;
+    if (iVar1 + 1 < 0x1e) {
+      puVar2 = (undefined4 *)(&DAT_0057f9dc + (iVar1 + 1) * 0xd4);
+      do {
+        if (((puVar2[0x13] & 1) != 0) && (puVar2[0x15] != 2)) {
+          DAT_0057f9d8 = puVar2;
+          return;
+        }
+        puVar2 = puVar2 + 0x35;
+      } while (puVar2 < &DAT_005812b4);
+    }
+    iVar3 = 0;
+    if (0 < iVar1) {
+      puVar4 = &DAT_0057f9dc;
+      while (((*(uint *)(puVar4 + 0x4c) & 1) == 0 || (*(int *)(puVar4 + 0x54) == 2))) {
+        puVar4 = puVar4 + 0xd4;
+        iVar3 = iVar3 + 1;
+        if (iVar1 <= iVar3) {
+          return;
+        }
+      }
+    }
+  }
+  DAT_0057f9d8 = (undefined4 *)puVar4;
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004a4000
+// Address:   0x004a4000
+// Signature: undefined FUN_004a4000(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+void FUN_004a4000(int param_1,undefined4 *param_2,undefined4 *param_3)
+{
+  if (param_1 < 10) {
+    if ((param_1 == 9) || (param_1 == 1)) {
+      *param_2 = 7;
+      *param_3 = 0xffffffff;
+      return;
+    }
+    if (param_1 == 2) {
+      *param_2 = 0xffffffff;
+      *param_3 = 0xffffffff;
+      return;
+    }
+  }
+  else if (param_1 < 0x11) {
+    if (param_1 == 0x10) {
+LAB_004a414e:
+      *param_2 = 4;
+      *param_3 = 0xffffffff;
+      return;
+    }
+    if (param_1 == 0xc) {
+      *param_2 = 7;
+      *param_3 = 1;
+      return;
+    }
+  }
+  else if (param_1 < 0x41) {
+    if (param_1 == 0x40) {
+      *param_2 = 0xffffffff;
+      *param_3 = 3;
+      return;
+    }
+    if (param_1 == 0x20) {
+      *param_2 = 1;
+      *param_3 = 4;
+      return;
+    }
+  }
+  else if (param_1 < 0x101) {
+    if (param_1 == 0x100) {
+      *param_2 = 7;
+      *param_3 = 1;
+      return;
+    }
+    if (param_1 == 0x90) goto LAB_004a414e;
+  }
+  else if (param_1 < 0x201) {
+    if (param_1 == 0x200) goto LAB_004a41a2;
+    if (param_1 == 0x110) goto LAB_004a414e;
+  }
+  else if (param_1 < 0x801) {
+    if (param_1 == 0x800) {
+      *param_2 = 5;
+      *param_3 = 5;
+      return;
+    }
+    if (param_1 == 0x408) {
+      *param_2 = 7;
+      *param_3 = 0xffffffff;
+      return;
+    }
+  }
+  else if (param_1 < 0x2001) {
+    if (param_1 == 0x2000) goto LAB_004a41a2;
+    if (param_1 == 0x1000) {
+      *param_2 = 6;
+      *param_3 = 0xffffffff;
+      return;
+    }
+  }
+  else if (param_1 < 0x10001) {
+    if ((param_1 == 0x10000) || (param_1 == 0x4000)) {
+LAB_004a41a2:
+      *param_2 = 2;
+      *param_3 = 0xffffffff;
+      return;
+    }
+  }
+  else {
+    if ((param_1 == 0x20000) || (param_1 == 0x40000)) goto LAB_004a41a2;
+    if (param_1 == 0x80010) goto LAB_004a414e;
+  }
+  *param_2 = 0xffffffff;
+  *param_3 = 0xffffffff;
+  return;
+}
+// ===========================================
+// Ghidra:    FUN_004ab3b0
+// Address:   0x004ab3b0
+// Signature: undefined FUN_004ab3b0(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+undefined * FUN_004ab3b0(int param_1)
+{
+  if ((-1 < param_1) && (param_1 < 0x1e)) {
+    return &DAT_0057f9dc + param_1 * 0xd4;
+  }
+  return (undefined *)0x0;
+}

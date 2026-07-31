@@ -1,0 +1,69 @@
+// ===========================================
+// Ghidra:    FUN_0049b3f0
+// Address:   0x0049b3f0
+// Signature: undefined FUN_0049b3f0(void)
+// Callers:   4  |  Callees: 7
+// ===========================================
+undefined4 FUN_0049b3f0(short param_1,undefined4 param_2,int *param_3)
+{
+  undefined4 *puVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  byte local_12;
+  byte local_11;
+  
+  if (param_1 != -0x600) {
+    uVar2 = FUN_0049b5c0(param_2,param_3);
+    return uVar2;
+  }
+  FUN_004beda0(2);
+  local_12 = (byte)(*(int *)(*(int *)(DAT_005040d0 + 0xc0) + 0x18) + 0x20000000 >> 0x16);
+  local_11 = (byte)(0x20000000 - *(int *)(*(int *)(DAT_005040d0 + 0xc0) + 0x20) >> 0x16);
+  do {
+    for (puVar1 = *(undefined4 **)((&DAT_005d9200)[(uint)local_12 * 0x100 + (uint)local_11] + 0x10);
+        puVar1 != (undefined4 *)0x0; puVar1 = (undefined4 *)*puVar1) {
+      if (((*(ushort *)(puVar1 + 3) & 0x10) != 0) && ((short)param_2 == 1)) {
+        iVar3 = *param_3;
+        if (*(int *)((&DAT_0057f768)[*(short *)((int)puVar1 + 0xe)] + 0x14) != iVar3) {
+          return 0;
+        }
+        if (iVar3 == 0x11c) {
+          (**(code **)(**(int **)(DAT_0051af00 + 0x10) + 0x24))(DAT_00519cc0);
+          iVar3 = FUN_004d28b0(0x18);
+          if (iVar3 == 0) {
+            uVar2 = 0;
+          }
+          else {
+            uVar2 = FUN_00401030(*(undefined4 *)(DAT_0051af00 + 0x10),500,0);
+          }
+        }
+        else {
+          if (iVar3 == 0x11d) {
+            (**(code **)(**(int **)(DAT_0051ac50 + 0x10) + 0x24))(DAT_00519cc0);
+            iVar4 = FUN_004d28b0(0x18);
+            iVar3 = DAT_0051ac50;
+          }
+          else {
+            if (iVar3 != 0x11f) goto LAB_0049b5a6;
+            (**(code **)(**(int **)(DAT_0051ac7c + 0x10) + 0x24))(DAT_00519cc0);
+            iVar4 = FUN_004d28b0(0x18);
+            iVar3 = DAT_0051ac7c;
+          }
+          uVar2 = 0;
+          if (iVar4 != 0) {
+            uVar2 = FUN_00401030(*(undefined4 *)(iVar3 + 0x10),500,0);
+          }
+        }
+        FUN_00401410(uVar2);
+LAB_0049b5a6:
+        uVar2 = FUN_004bdc70();
+        return uVar2;
+      }
+    }
+    iVar3 = FUN_004bedd0(&local_12);
+    if (iVar3 == 0) {
+      return 0;
+    }
+  } while( true );
+}

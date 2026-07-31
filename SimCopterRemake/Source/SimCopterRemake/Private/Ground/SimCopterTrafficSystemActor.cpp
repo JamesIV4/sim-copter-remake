@@ -2856,6 +2856,41 @@ int32 ASimCopterTrafficSystemActor::GetActiveDispatchCount(SimCopterDispatch::ES
 	return Count;
 }
 
+void ASimCopterTrafficSystemActor::GetActiveServiceVehicles(TArray<FServiceVehicleView>& OutVehicles) const
+{
+	OutVehicles.Reset();
+
+	// The original's map table holds twenty slots; three services of five vehicles can never
+	// exceed that, so no cap is needed here.
+	for (int32 ServiceIndex = 0; ServiceIndex < DispatchServiceCount; ++ServiceIndex)
+	{
+		const TArray<FSimCopterDispatchVehicle>& Slots = DispatchVehicles[ServiceIndex];
+		for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex)
+		{
+			const FSimCopterDispatchVehicle& Vehicle = Slots[SlotIndex];
+			if (Vehicle.State == ESimCopterDispatchVehicleState::Empty)
+			{
+				continue;
+			}
+			const ASimCopterGroundAgent* Agent = Vehicle.Agent.Get();
+			if (Agent == nullptr)
+			{
+				continue;
+			}
+
+			FServiceVehicleView View;
+			View.Service = ServiceIndex;
+			View.SlotIndex = SlotIndex;
+			if (!TryGetPeopleTileCoordinateAtWorldLocation(Agent->GetActorLocation(), View.Tile.X, View.Tile.Y))
+			{
+				continue;
+			}
+			View.DestinationTile = Vehicle.DestinationTile;
+			OutVehicles.Add(View);
+		}
+	}
+}
+
 FString ASimCopterTrafficSystemActor::GetDispatchStatusLine(SimCopterDispatch::EService Service) const
 {
 	const int32 ServiceIndex = static_cast<int32>(Service);
@@ -4200,6 +4235,27 @@ bool ASimCopterTrafficSystemActor::TryGetPeopleTileCoordinateAtWorldLocation(
 
 	OutFileX = FileX;
 	OutFileY = FileY;
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::TryGetPeopleTileDirection(
+	const FVector& WorldDirection,
+	FVector2D& OutTileDirection) const
+{
+	OutTileDirection = FVector2D::ZeroVector;
+	if (PeopleTileClasses.Num() != FSimCity2000City::TileCount || ActiveTileSize <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const FVector LocalDirection = ActiveCityToWorldTransform.InverseTransformVector(WorldDirection);
+	FVector2D TileDirection(LocalDirection.X, -LocalDirection.Y);
+	if (!TileDirection.Normalize())
+	{
+		return false;
+	}
+
+	OutTileDirection = TileDirection;
 	return true;
 }
 

@@ -1,0 +1,39 @@
+// ===========================================
+// Ghidra:    FUN_004a8940
+// Address:   0x004a8940
+// Signature: undefined FUN_004a8940(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+int FUN_004a8940(void)
+{
+  if (DAT_0057f9d8 == 0) {
+    return 0;
+  }
+  return DAT_0057f9d8 + 0x28;
+}
+// ===========================================
+// Ghidra:    FUN_004a8960
+// Address:   0x004a8960
+// Signature: undefined FUN_004a8960(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+uint FUN_004a8960(void)
+{
+  if (DAT_0057f9d8 == 0) {
+    return 0;
+  }
+  return (*(int *)(DAT_0057f9d8 + 0x30) == -1) - 1 & DAT_0057f9d8 + 0x30U;
+}
+// ===========================================
+// Ghidra:    FUN_004a8990
+// Address:   0x004a8990
+// Signature: undefined FUN_004a8990(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+uint FUN_004a8990(void)
+{
+  if (DAT_0057f9d8 == 0) {
+    return 0;
+  }
+  return (*(int *)(DAT_0057f9d8 + 0x38) == -1) - 1 & DAT_0057f9d8 + 0x38U;
+}
