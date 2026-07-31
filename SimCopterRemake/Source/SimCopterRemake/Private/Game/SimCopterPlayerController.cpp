@@ -8,6 +8,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterSessionSubsystem.h"
+#include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
@@ -15,6 +16,7 @@
 #include "UI/SSimCopterControlSettings.h"
 #include "UI/SSimCopterGraphicsSettings.h"
 #include "UI/SSimCopterMessageBox.h"
+#include "UI/SSimCopterSaveNameDialog.h"
 #include "UI/SSimCopterSettingsMenu.h"
 #include "UI/SSimCopterSoundSettings.h"
 #include "UI/SimCopterHangarArt.h"
@@ -277,6 +279,27 @@ TSharedRef<SWidget> ASimCopterPlayerController::BuildScreen(const ESimCopterSett
 				EnterScreen(ESimCopterSettingsScreen::Menu);
 			}));
 
+	case ESimCopterSettingsScreen::SaveName:
+	{
+		USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+		const FString SuggestedName = Saves != nullptr
+			? Saves->GetSuggestedSaveName(this)
+			: FString(TEXT("Saved Game"));
+		TSharedRef<SSimCopterSaveNameDialog> Dialog =
+			SNew(SSimCopterSaveNameDialog)
+			.Art(Art)
+			.SuggestedName(SuggestedName)
+			.OnAccepted(FOnSimCopterSaveNameAccepted::CreateUObject(
+				this, &ASimCopterPlayerController::SaveAsName))
+			.OnCancelled(FSimpleDelegate::CreateLambda([this]()
+			{
+				bLeaveAfterSaveAs = false;
+				EnterScreen(ESimCopterSettingsScreen::Menu);
+			}));
+		InitialFocusWidget = Dialog->GetInitialFocusWidget();
+		return Dialog;
+	}
+
 	case ESimCopterSettingsScreen::Message:
 		return SNew(SSimCopterMessageBox)
 			.Art(Art)
@@ -291,11 +314,19 @@ TSharedRef<SWidget> ASimCopterPlayerController::BuildScreen(const ESimCopterSett
 			.Art(Art)
 			.Message(PendingMessage)
 			.Confirm(true)
-			.OnConfirmed(FSimpleDelegate::CreateLambda([this]() { LeaveCity(); }))
+			.OnConfirmed(FSimpleDelegate::CreateLambda([this]() { ConfirmLeaveCity(); }))
 			.OnDismissed(FSimpleDelegate::CreateLambda([this]()
 			{
 				EnterScreen(ESimCopterSettingsScreen::Menu);
 			}));
+
+	case ESimCopterSettingsScreen::SaveBeforeLeave:
+		return SNew(SSimCopterMessageBox)
+			.Art(Art)
+			.Message(PendingMessage)
+			.Confirm(true)
+			.OnConfirmed(FSimpleDelegate::CreateLambda([this]() { HandleSaveBeforeLeave(); }))
+			.OnDismissed(FSimpleDelegate::CreateLambda([this]() { LeaveCity(); }));
 
 	default:
 		return SNew(SSimCopterSettingsMenu)
@@ -321,6 +352,7 @@ void ASimCopterPlayerController::EnterScreen(const ESimCopterSettingsScreen NewS
 		ScreenWidget.Reset();
 	}
 
+	InitialFocusWidget.Reset();
 	TSharedRef<SWidget> Content = BuildScreen(NewScreen);
 	ScreenWidget =
 		SNew(SOverlay)
@@ -337,7 +369,7 @@ void ASimCopterPlayerController::EnterScreen(const ESimCopterSettingsScreen NewS
 
 	FInputModeUIOnly InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	InputMode.SetWidgetToFocus(Content);
+	InputMode.SetWidgetToFocus(InitialFocusWidget.IsValid() ? InitialFocusWidget.ToSharedRef() : Content);
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
 }
@@ -402,13 +434,19 @@ void ASimCopterPlayerController::HandleSettingsItem(const ESimCopterSettingsItem
 		return;
 
 	case ESimCopterSettingsItem::SaveGame:
+		if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+			Saves != nullptr && Saves->HasCurrentSave())
+		{
+			SaveToCurrentSlot();
+		}
+		else
+		{
+			OpenSaveNameDialog(/*bLeaveAfterSave=*/false);
+		}
+		return;
+
 	case ESimCopterSettingsItem::SaveGameAs:
-		// FUN_0044c9e0 runs FUN_004200e0 / FUN_00420670 here and reports STRINGTABLE 48 "Game
-		// saved!" in a message box. The remake has no save system, so it refuses in the same box
-		// rather than pretending - the same treatment the main menu gives Open Career/User Game.
-		ShowMessage(LOCTEXT(
-			"NoSaving",
-			"Saving is not implemented yet.\nThe city and your progress are lost when you leave."));
+		OpenSaveNameDialog(/*bLeaveAfterSave=*/false);
 		return;
 
 	case ESimCopterSettingsItem::LeaveCity:
@@ -426,9 +464,6 @@ void ASimCopterPlayerController::HandleSettingsItem(const ESimCopterSettingsItem
 
 void ASimCopterPlayerController::LeaveCity()
 {
-	// The original follows the confirm with a second Yes/No on STRINGTABLE 49 ("Do you want to
-	// save the game?"). With no save system there is nothing to ask, so the port goes straight to
-	// the main menu - which is what answering No does.
 	if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 			: nullptr)
@@ -444,6 +479,87 @@ void ASimCopterPlayerController::LeaveCity()
 
 	CloseScreen();
 	UGameplayStatics::OpenLevel(this, FName(USimCopterSessionSubsystem::GetMainMenuLevelName()));
+}
+
+void ASimCopterPlayerController::OpenSaveNameDialog(const bool bLeaveAfterSave)
+{
+	bLeaveAfterSaveAs = bLeaveAfterSave;
+	EnterScreen(ESimCopterSettingsScreen::SaveName);
+}
+
+bool ASimCopterPlayerController::SaveToCurrentSlot()
+{
+	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+	FString Error;
+	if (Saves == nullptr || !Saves->SaveCurrentGame(this, Error))
+	{
+		ShowMessage(FText::FromString(Error.IsEmpty() ? TEXT("The game could not be saved.") : Error));
+		return false;
+	}
+
+	ShowMessage(LOCTEXT("GameSaved", "Game saved!")); // STRINGTABLE 48
+	return true;
+}
+
+void ASimCopterPlayerController::SaveAsName(const FString& SaveName)
+{
+	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+	FString Error;
+	if (Saves == nullptr || !Saves->SaveCurrentGameAs(this, SaveName, Error))
+	{
+		bLeaveAfterSaveAs = false;
+		ShowMessage(FText::FromString(Error.IsEmpty() ? TEXT("The game could not be saved.") : Error));
+		return;
+	}
+
+	if (bLeaveAfterSaveAs)
+	{
+		bLeaveAfterSaveAs = false;
+		LeaveCity();
+		return;
+	}
+	ShowMessage(LOCTEXT("GameSavedAs", "Game saved!")); // STRINGTABLE 48
+}
+
+void ASimCopterPlayerController::ConfirmLeaveCity()
+{
+	PendingMessage = LOCTEXT("SaveBeforeLeave", "Do you want to save the game?"); // STRINGTABLE 49
+	EnterScreen(ESimCopterSettingsScreen::SaveBeforeLeave);
+}
+
+void ASimCopterPlayerController::HandleSaveBeforeLeave()
+{
+	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+	if (Saves != nullptr && Saves->HasCurrentSave())
+	{
+		FString Error;
+		if (Saves->SaveCurrentGame(this, Error))
+		{
+			LeaveCity();
+			return;
+		}
+		ShowMessage(FText::FromString(Error.IsEmpty() ? TEXT("The game could not be saved.") : Error));
+		return;
+	}
+	OpenSaveNameDialog(/*bLeaveAfterSave=*/true);
+}
+
+void ASimCopterPlayerController::SimSaveGame(const FString& SaveName)
+{
+	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
+	if (Saves == nullptr)
+	{
+		return;
+	}
+
+	FString Error;
+	const bool bSaved = SaveName.IsEmpty()
+		? Saves->SaveCurrentGame(this, Error)
+		: Saves->SaveCurrentGameAs(this, SaveName, Error);
+	if (!bSaved)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimSaveGame: %s"), *Error);
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

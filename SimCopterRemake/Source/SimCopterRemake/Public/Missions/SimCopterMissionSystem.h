@@ -497,6 +497,11 @@ public:
 	// Opens a fresh session: score 0, cash SessionStartingCash.
 	void BeginSession();
 
+	// Restores the serializable CINF/UINF + CSET portion after a normal city session has opened.
+	// Live mission records and fires belong to the original's separate BOMB world payload and are
+	// deliberately not synthesized here.
+	void RestoreSessionState(int32 InScore, int32 InCash, const FSimCopterCareerCity& InCareerCity);
+
 	// The career city table (career.twk City0..City29, in file order). The original also keeps a
 	// hardcoded per-city map name and successor list in FUN_00408370 - see
 	// Docs/scratchpad/ghidra/session_modes_and_menu_20260724.md; only the tweak half is ported.

@@ -291,6 +291,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	float GetDamageFraction() const;
 
+	// Applies the durable aircraft portion of a save after the game mode has parked the freshly
+	// spawned aircraft. Position, velocity, passengers, rope and active missions intentionally
+	// restart at the airport; this restores the career-owned machine and its service condition.
+	void RestoreSavedCareerState(
+		int32 TypeIndex,
+		int32 CareerEquipmentMask,
+		int32 CareerTearGasRounds,
+		float FuelFraction,
+		float DamageFraction,
+		int32 SelectedToolIndex);
+
 	// The two readings the instrument panel takes straight off the flight model, both in the
 	// original's own world units (64 per city tile, node +0x1c "Y" for altitude and [0x37] for
 	// speed). The KNOTS face is graduated in these, not in physical knots: the fastest airframe

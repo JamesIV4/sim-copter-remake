@@ -1670,6 +1670,40 @@ float ASimCopterHelicopterPawn::GetDamageFraction() const
 	return HelicopterTuning.MaxDamage > 0 ? FMath::Clamp(CurrentDamage / static_cast<float>(HelicopterTuning.MaxDamage), 0.0f, 1.0f) : 0.0f;
 }
 
+void ASimCopterHelicopterPawn::RestoreSavedCareerState(
+	const int32 TypeIndex,
+	const int32 CareerEquipmentMask,
+	const int32 CareerTearGasRounds,
+	const float FuelFraction,
+	const float DamageFraction,
+	const int32 SelectedToolIndex)
+{
+	// A failed asset prepare leaves the existing aircraft untouched. The rest of the career state
+	// is still valid and should load even when one local original-game mesh is unavailable.
+	SwitchHelicopterModel(TypeIndex);
+
+	EquipmentState.CareerEquipmentMask =
+		CareerEquipmentMask & SimCopterHelicopterRegistry::AllCareerEquipmentBits;
+	EquipmentState.CareerTearGasRounds = FMath::Clamp(
+		CareerTearGasRounds, 0, SimCopterHelicopterRegistry::TearGasCapacity);
+	EquipmentState.ClearDebugOverlay();
+
+	CurrentFuelGallons = FMath::Clamp(FuelFraction, 0.0f, 1.0f) * HelicopterTuning.FuelGallons;
+	CurrentDamage = FMath::Clamp(DamageFraction, 0.0f, 1.0f) * static_cast<float>(HelicopterTuning.MaxDamage);
+	FlightModel.Fuel = SimCopterFixed::FromFloat(CurrentFuelGallons);
+	FlightModel.HitPoints = FMath::Clamp(
+		HelicopterTuning.MaxDamage - FMath::RoundToInt(CurrentDamage),
+		0,
+		HelicopterTuning.MaxDamage);
+
+	const ESimCopterHelicopterTool SavedTool = static_cast<ESimCopterHelicopterTool>(SelectedToolIndex);
+	SetSelectedTool(SavedTool);
+	bWaterCannonInstalled = IsToolAvailable(ESimCopterHelicopterTool::WaterCannon);
+	RecomputeActiveToolFallback();
+	RefreshDashboardSeats();
+	RefreshWaterControlsWidget();
+}
+
 float ASimCopterHelicopterPawn::GetAltimeterUnits() const
 {
 	// Zeroed on the water. FlightModel.Altitude is the original node's Y, whose datum is the

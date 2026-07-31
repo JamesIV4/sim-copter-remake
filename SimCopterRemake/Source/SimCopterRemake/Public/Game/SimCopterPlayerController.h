@@ -20,8 +20,10 @@ enum class ESimCopterSettingsScreen : uint8
 	Graphics,      // render.bmp,   0x7d5
 	Sound,         // sound.bmp,    0x7d6
 	Controls,      // input.bmp,    0x7d4
+	SaveName,      // remake in-app replacement for the Win32 Save As dialog
 	Message,       // MBox.bmp, one button
 	Confirm,       // MBox.bmp, Yes/No
+	SaveBeforeLeave,// MBox.bmp, STRINGTABLE 49 Yes/No
 };
 
 /**
@@ -49,6 +51,10 @@ public:
 	UFUNCTION(Exec)
 	void SimSettings();
 
+	/** Headless save equivalent. Empty overwrites the current named save; a name performs Save As. */
+	UFUNCTION(Exec)
+	void SimSaveGame(const FString& SaveName = FString());
+
 	bool IsSettingsOpen() const { return Screen != ESimCopterSettingsScreen::None; }
 
 private:
@@ -56,9 +62,11 @@ private:
 	TObjectPtr<USimCopterHangarArt> Art;
 
 	TSharedPtr<SWidget> ScreenWidget;
+	TSharedPtr<SWidget> InitialFocusWidget;
 	ESimCopterSettingsScreen Screen = ESimCopterSettingsScreen::None;
 
 	FText PendingMessage;
+	bool bLeaveAfterSaveAs = false;
 
 	/**
 	 * FUN_004346c0's `app+0xbc`: the pause is reference counted, because opening a sub-dialog
@@ -81,8 +89,15 @@ private:
 	bool IsUserGame() const;
 
 	void ShowMessage(const FText& Message);
+	void OpenSaveNameDialog(bool bLeaveAfterSave);
+	void SaveAsName(const FString& SaveName);
+	bool SaveToCurrentSlot();
 
-	/** Settings item 6: back to the main menu, after the confirm on STRINGTABLE 11. */
+	/** First Yes on STRINGTABLE 11 advances to the original's STRINGTABLE 49 save prompt. */
+	void ConfirmLeaveCity();
+	void HandleSaveBeforeLeave();
+
+	/** Settings item 6: back to the main menu after the two original confirmation steps. */
 	void LeaveCity();
 
 	class ASimCopterMissionSystemActor* ResolveMissionSystem() const;
