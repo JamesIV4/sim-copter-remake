@@ -340,5 +340,10 @@ private:
 	// Shared debris burst: FUN_0048e0b0 type 4 x3 plus the sound-0x1a explosion the plane and the
 	// train both play at the crash site.
 	void SpawnCrashDebris(const FVector& World, int32 EventId, int32 Count);
+
+	// One looping voice per vehicle kind - plane engine, plane dive, UFO, train - each gated on
+	// the 1920-unit radius and volume-driven by distance. See the .cpp for the CESSLP1/DIVE1
+	// split, which is not what their names suggest.
+	void UpdateAmbientVehicleAudio();
 	int32 GetDifficultyTier() const;
 };

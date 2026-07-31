@@ -94,6 +94,10 @@ private:
 	FReply HandleBack();
 	FReply HandleCareerPrev();
 	FReply HandleCareerNext();
+
+	// The front-end screens each own a standalone sound object rather than a table slot
+	// (career.wav / carsel.wav in FUN_00457c90), so these play by filename.
+	static void PlayFrontEndSound(const TCHAR* WavName);
 	FReply HandleUserPrev();
 	FReply HandleUserNext();
 	FReply HandleMissionPrev();

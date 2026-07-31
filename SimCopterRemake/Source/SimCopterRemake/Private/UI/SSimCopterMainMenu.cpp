@@ -2,6 +2,10 @@
 
 #include "UI/SSimCopterMainMenu.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/World.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "InputCoreTypes.h"
@@ -532,6 +536,9 @@ FReply SSimCopterMainMenu::HandleNewCareerGame()
 {
 	StatusText = FText::GetEmpty();
 	ShowPanel(EPanel::CareerCity);
+	// SCHOOK: CareerScreenSound 0x00457c90 - the career screen (career.bmp) owns career.wav as
+	// its own sound object and plays it once, not looped: the buffer's Play is (0, 1).
+	PlayFrontEndSound(TEXT("career"));
 	return FReply::Handled();
 }
 
@@ -564,13 +571,33 @@ FReply SSimCopterMainMenu::HandleBack()
 FReply SSimCopterMainMenu::HandleCareerPrev()
 {
 	CareerChoice = (CareerChoice + 2) % 3;
+	// carsel.wav, the other sound object FUN_00457c90 builds: the city-selection tick.
+	PlayFrontEndSound(TEXT("carsel"));
 	return FReply::Handled();
 }
 
 FReply SSimCopterMainMenu::HandleCareerNext()
 {
 	CareerChoice = (CareerChoice + 1) % 3;
+	PlayFrontEndSound(TEXT("carsel"));
 	return FReply::Handled();
+}
+
+// The front-end screens do not use the 130-slot table at all - each builds a standalone sound
+// object for its own file - so these go through PlayFile2D rather than an id.
+void SSimCopterMainMenu::PlayFrontEndSound(const TCHAR* WavName)
+{
+	const UWorld* World = GEngine != nullptr && GEngine->GameViewport != nullptr
+		? GEngine->GameViewport->GetWorld()
+		: nullptr;
+	if (World == nullptr)
+	{
+		return;
+	}
+	if (USimCopterAudioSubsystem* Audio = World->GetSubsystem<USimCopterAudioSubsystem>())
+	{
+		Audio->PlayFile2D(WavName, SimCopterSound::ESoundDir::Root);
+	}
 }
 
 FReply SSimCopterMainMenu::HandleUserPrev()

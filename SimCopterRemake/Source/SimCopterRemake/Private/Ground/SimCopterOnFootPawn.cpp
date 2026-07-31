@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterOnFootPawn.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -196,6 +197,19 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 	}
 	UpdateBodySprite(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
+
+	// The listener has to follow whoever the player is. Every distance in the mixer is measured
+	// against it (DAT_0061a748 in the original), so leaving it parked at the helicopter would
+	// attenuate the whole city against a point the player walked away from.
+	if (IsLocallyControlled() && CameraComponent != nullptr)
+	{
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+		{
+			Audio->SetListener(
+				CameraComponent->GetComponentLocation(),
+				CameraComponent->GetComponentRotation());
+		}
+	}
 }
 
 void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

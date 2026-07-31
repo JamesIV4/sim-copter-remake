@@ -2,6 +2,7 @@
 
 #include "Flight/SimCopterHelicopterPawn.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/CameraComponent.h"
 #include "City/SimCopterAirport.h"
 #include "City/SimCity2000CityActor.h"
@@ -759,6 +760,7 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 
 	UpdateVisuals(DeltaSeconds);
 	UpdateRotorWash(DeltaSeconds);
+	UpdateHelicopterAudio(DeltaSeconds);
 	UpdateCheckupOffer();
 	// Only the GEO fuselage carries blink markers; the placeholder body has none to show.
 	if (FlashingLightsComponent != nullptr && bUsingOriginalMesh && GetWorld() != nullptr)
@@ -2468,6 +2470,18 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	{
 		return;
 	}
+	// SCHOOK: HelicopterDismountSound 0x0048a580 (command 0x1a)
+	// The original plays both halves back to back on the way out - the door opens, the pilot
+	// steps down, the door shuts - and stops the winch, which cannot run unattended.
+	if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
+	{
+		Audio->Play3D(SimCopterSound::SND_DOROPN, GetActorLocation());
+		Audio->Play3D(SimCopterSound::SND_DORCLS, GetActorLocation());
+		Audio->Stop(SimCopterSound::SND_WINCHLP);
+		Audio->Stop(SimCopterSound::SND_WATERCAN);
+		Audio->Stop(SimCopterSound::SND_MACHGUN1);
+	}
+
 	AActor* OutgoingViewTarget = PlayerController->GetViewTarget();
 	RemoveDashboardWidget();
 	RemoveWaterControlsWidget();
@@ -3803,12 +3817,22 @@ void ASimCopterHelicopterPawn::UpdateToolDispatch(float DeltaSeconds)
 // missing-equipment message so the HUD and debug panel can explain them.
 bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 {
+	// SCHOOK: ToolRefusedSound 0x00485f50
+	// Every capability gate in FUN_00485f50 does the same two things: post the missing-equipment
+	// string and Play3D(0x80 NOEQUIP) at the helicopter. So does the hotkey path in
+	// FUN_0044ac80, which plays it 2D instead because it runs off the menu.
+	USimCopterAudioSubsystem* Audio = GetHelicopterAudio();
+
 	if (!IsToolSelectable(Tool))
 	{
 		LastToolStatus = FString::Printf(
 			TEXT("%s is not available on the %s."),
 			SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
 			*HelicopterTypeName);
+		if (Audio != nullptr)
+		{
+			Audio->Play3D(SimCopterSound::SND_NOEQUIP, GetActorLocation());
+		}
 		return false;
 	}
 
@@ -3819,6 +3843,10 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 			TEXT("%s not installed (message 0x%03x)."),
 			SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
 			Equipment != nullptr ? Equipment->MissingMessageId : 0);
+		if (Audio != nullptr)
+		{
+			Audio->Play3D(SimCopterSound::SND_NOEQUIP, GetActorLocation());
+		}
 		return false;
 	}
 
@@ -3866,6 +3894,11 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 		}
 		EquipmentState.ConsumeTearGasRound();
 		ToolCooldownSeconds = SimCopterToolTiming::ProjectileCooldownSeconds;
+		// FUN_0048e0b0's tear-gas branch: the launch whoosh, at the helicopter.
+		if (Audio != nullptr)
+		{
+			Audio->Play3D(SimCopterSound::SND_TGSHWH, GetActorLocation());
+		}
 		LastToolStatus = FString::Printf(
 			TEXT("Tear gas fired (%d round(s) left)."), EquipmentState.GetTearGasRounds());
 		return true;
@@ -3883,11 +3916,22 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 			return false;
 		}
 		ToolCooldownSeconds = SimCopterToolTiming::ProjectileCooldownSeconds;
+		// FUN_0048e0b0 type 1: one MISSILE per launch, no already-playing guard.
+		if (Audio != nullptr)
+		{
+			Audio->Play3D(SimCopterSound::SND_MISSILE, GetActorLocation());
+		}
 		LastToolStatus = TEXT("Missile away.");
 		return true;
 
 	case ESimCopterHelicopterTool::ApacheMachineGun:
-		// Held, no cooldown (FUN_0048e0b0 type 2 has no DAT_00504570 gate).
+		// Held, no cooldown (FUN_0048e0b0 type 2 has no DAT_00504570 gate). MACHGUN1 is a LOOP
+		// there, started once and left running until the emitter stops - which is why the
+		// original guards it on IsPlaying and why StopHeldToolAudio has to stop it.
+		if (Audio != nullptr && !Audio->IsPlaying(SimCopterSound::SND_MACHGUN1))
+		{
+			Audio->Play3D(SimCopterSound::SND_MACHGUN1, GetActorLocation(), SimCopterSoundFlags::Loop);
+		}
 		LastToolStatus = TEXT("Machine gun firing.");
 		return true;
 
@@ -4741,7 +4785,12 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 
 	const FSimCopterFlightInputs Inputs = BuildFlightInputs();
 	const FSimCopterFlightEnvironment Environment = BuildFlightEnvironment();
+	LastClimbCommand = Inputs.ClimbCommand;
+	LastFlightEnvironmentFireDelta = Environment.FireHeightDelta;
 	FlightModel.Step(DeltaSeconds, Inputs, Environment, LastFlightEvents);
+
+	// Before anything downstream consumes or clears the events.
+	PlayFlightEventAudio(LastFlightEvents);
 
 	ApplyFlightModelToActor(DeltaSeconds);
 	UpdateGroundProbe();
@@ -5364,6 +5413,20 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 							SurfaceCell.Y);
 					}
 				}
+
+				// FUN_00487bb0's else-branch: the scoop keeps splashing while there is still
+				// room in the bucket. Once it is full the original takes the clamp branch
+				// instead and the sound stops, which is the only cue that it is full.
+				if (PreviousWaterPounds < HelicopterTuning.MaxLoadPounds)
+				{
+					if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
+					{
+						if (!Audio->IsPlaying(SimCopterSound::SND_SPLISH))
+						{
+							Audio->Play3D(SimCopterSound::SND_SPLISH, BucketWorld);
+						}
+					}
+				}
 			}
 		}
 	}
@@ -5754,6 +5817,251 @@ void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
 		ESimCopterEffectType::Spray,
 		SpawnWorld,
 		Direction * EmissionSpeedCmPerSec);
+}
+
+// =================================================================================================
+// Audio. Decode notes in Docs/memory/simcopter-sound.md.
+// =================================================================================================
+
+USimCopterAudioSubsystem* ASimCopterHelicopterPawn::GetHelicopterAudio() const
+{
+	// Every 2D helicopter sound in the original is gated on `heli[8] & 1`, the flag that marks
+	// the aircraft the player is flying - an AI helicopter across the city must not put CHOPSTAR
+	// in your ears. IsLocallyControlled() is the port of that bit.
+	if (!IsLocallyControlled())
+	{
+		return nullptr;
+	}
+	return USimCopterAudioSubsystem::Get(this);
+}
+
+// SCHOOK: HelicopterRotorSound 0x00488fd0
+// SCHOOK: HelicopterSpoolSound 0x00487160 (the state-0 CHOPSTAR/CHOPSTOP branch)
+void ASimCopterHelicopterPawn::UpdateHelicopterAudio(float DeltaSeconds)
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr)
+	{
+		return;
+	}
+
+	// The listener is the camera, which is also what DAT_0061a748 tracks in the original.
+	if (IsLocallyControlled() && CameraComponent != nullptr)
+	{
+		Audio->SetListener(CameraComponent->GetComponentLocation(), CameraComponent->GetComponentRotation());
+	}
+
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
+	// --- CHOPSTAR / CHOPSTOP, on the ground ---
+	//
+	// FUN_00487160: while parked, holding the collective up spools the rotor and plays
+	// CHOPSTAR; releasing it plays CHOPSTOP exactly once, on the edge where CHOPSTAR was
+	// still running. Neither is a loop - both clips are five seconds long and cover the spool.
+	if (FlightModel.State == ESimCopterFlightState::Parked)
+	{
+		if (LastClimbCommand < 1)
+		{
+			if (Audio->IsPlaying(SimCopterSound::SND_CHOPSTAR))
+			{
+				Audio->Play2D(SimCopterSound::SND_CHOPSTOP);
+				Audio->Stop(SimCopterSound::SND_CHOPSTAR);
+			}
+		}
+		else
+		{
+			if (Audio->IsPlaying(SimCopterSound::SND_CHOPSTOP))
+			{
+				Audio->Stop(SimCopterSound::SND_CHOPSTOP);
+			}
+			Audio->Play2D(SimCopterSound::SND_CHOPSTAR);
+		}
+	}
+
+	// --- held tools: the two looping emitters ---
+	//
+	// FUN_0048e0b0 starts MACHGUN1 and WATERCAN as loops when the emitter is created and
+	// FUN_0048ed00 stops them when it dies, so the loop's lifetime is the stream's, not the
+	// button's. Reproducing that means re-asserting it every frame from the same predicate the
+	// emitter itself uses - Play3D on an already-playing slot only re-aims it.
+	{
+		const bool bCannonSelected = GetActiveTool() == ESimCopterHelicopterTool::WaterCannon;
+		const bool bCannonStreaming =
+			(bWaterCannonHeld || (bPrimaryToolUseHeld && bCannonSelected)) &&
+			IsToolAvailable(ESimCopterHelicopterTool::WaterCannon) &&
+			BucketWaterPounds > 0;
+		if (bCannonStreaming)
+		{
+			Audio->Play3D(SimCopterSound::SND_WATERCAN, GetActorLocation(), SimCopterSoundFlags::Loop);
+		}
+		else if (Audio->IsPlaying(SimCopterSound::SND_WATERCAN))
+		{
+			Audio->Stop(SimCopterSound::SND_WATERCAN);
+		}
+
+		const bool bGunFiring =
+			bPrimaryToolUseHeld &&
+			GetActiveTool() == ESimCopterHelicopterTool::ApacheMachineGun &&
+			IsToolAvailable(ESimCopterHelicopterTool::ApacheMachineGun);
+		if (bGunFiring)
+		{
+			Audio->Play3D(SimCopterSound::SND_MACHGUN1, GetActorLocation(), SimCopterSoundFlags::Loop);
+		}
+		else if (Audio->IsPlaying(SimCopterSound::SND_MACHGUN1))
+		{
+			Audio->Stop(SimCopterSound::SND_MACHGUN1);
+		}
+	}
+
+	// --- WINCHLP, the winch motor ---
+	//
+	// FUN_00487bb0 keys this on the sign of heli[0x72], the winch command: negative lowers and
+	// positive raises, and only the raise adds the 0xa0 Hz offset that makes it strain.
+	{
+		const int32 WinchCommand = WinchState.Command;
+		if (WinchCommand < 0)
+		{
+			Audio->Play2D(SimCopterSound::SND_WINCHLP, SimCopterSoundFlags::Loop);
+			Audio->ResetFrequency(SimCopterSound::SND_WINCHLP);
+		}
+		else if (WinchCommand > 0)
+		{
+			Audio->Play2D(SimCopterSound::SND_WINCHLP, SimCopterSoundFlags::Loop);
+			Audio->AddFrequency(SimCopterSound::SND_WINCHLP, 0xa0);
+		}
+		else if (Audio->IsPlaying(SimCopterSound::SND_WINCHLP))
+		{
+			Audio->Stop(SimCopterSound::SND_WINCHLP);
+		}
+	}
+
+	// --- COPLOOP, the engine loop ---
+	//
+	// FUN_00488fd0 hangs off a counter that lets it run on every seventh 0.05 s frame, so the
+	// port paces it on 0.35 s of real time instead of once per rendered frame. Doing it every
+	// frame would not sound wrong, but the rate limit is the original's and it is free to keep.
+	constexpr float RotorAudioPeriodSeconds = 7.0f * 0.05f;
+	RotorAudioAccumulator += DeltaSeconds;
+	if (RotorAudioAccumulator < RotorAudioPeriodSeconds)
+	{
+		return;
+	}
+	RotorAudioAccumulator = 0.0f;
+
+	// `0x1dffff < heli[0x56]`, i.e. the loop starts once the rotor passes 30.
+	constexpr int32 RotorSoundGate1616 = 0x1e0000;
+	if (FlightModel.RotorSpeed < RotorSoundGate1616)
+	{
+		Audio->Stop(SimCopterSound::SND_COPLOOP);
+		return;
+	}
+
+	if (!Audio->IsPlaying(SimCopterSound::SND_COPLOOP))
+	{
+		// `heli[0xcc] < 1` - a dry helicopter windmills silently.
+		if (FlightModel.Fuel < 1)
+		{
+			return;
+		}
+
+		// FUN_00429ff0(0, DAT_005040e4[type] + 0x54): the engine loop is per model, which is
+		// what COPLOOP2..COPLOOP6 are for. The registry already carries the name.
+		if (const FSimCopterHelicopterDefinition* Definition =
+				SimCopterHelicopterRegistry::FindByTypeIndex(ActiveHelicopterTypeIndex))
+		{
+			const FString Wav = FPaths::GetBaseFilename(Definition->EngineLoopSound);
+			if (!Wav.IsEmpty() && Wav != ActiveEngineLoopSound)
+			{
+				if (Audio->SetFile(SimCopterSound::SND_COPLOOP, Wav, SimCopterSound::ESoundDir::Root))
+				{
+					ActiveEngineLoopSound = Wav;
+				}
+			}
+		}
+		Audio->Play2D(SimCopterSound::SND_COPLOOP, SimCopterSoundFlags::Loop);
+	}
+
+	// The rpm the two laws below read is the plain integer part of heli[0x56].
+	const int32 Rpm = FlightModel.RotorSpeed >> 16;
+
+	// FUN_0042a330(0, (rpm*4 - 0x5a0) * 0xf). 0x5a0 is 1440 = 4 * 360, so the delta is zero at
+	// 360 rpm and negative below it: the loop is pitched DOWN as the rotor slows, reaching
+	// about 0.67x at the 300 rpm lift gate. It is an absolute offset from the clip's own
+	// 11025 Hz, not an accumulating one - see AddFrequency.
+	Audio->AddFrequency(SimCopterSound::SND_COPLOOP, (Rpm * 4 - 0x5a0) * 0xf);
+
+	// FUN_0042a360(0, (rpm - 0x168) / 4). Only about -80 across the whole range: the rotor's
+	// audible character is carried by pitch, and volume barely moves.
+	Audio->SetVolumeAdjust(SimCopterSound::SND_COPLOOP, (Rpm - 0x168) / 4);
+}
+
+// SCHOOK: HelicopterImpactSounds 0x00484d20 / 0x00489800 / 0x00489ac0 / 0x0048a8b0
+void ASimCopterHelicopterPawn::PlayFlightEventAudio(const FSimCopterFlightEvents& Events)
+{
+	USimCopterAudioSubsystem* Audio = GetHelicopterAudio();
+	if (Audio == nullptr)
+	{
+		return;
+	}
+
+	// FUN_00484d20 plays EXPLODE on every hard contact that is not water: rough ground, a
+	// building face, and sinking through an elevated pad edge all reach the same call.
+	if (Events.bGroundBounce || Events.bPadBounce)
+	{
+		Audio->Play2D(SimCopterSound::SND_EXPLODE);
+	}
+
+	// The water branch instead guards on the sound already running, because a helicopter
+	// skipping across a lake re-enters it every frame.
+	if (Events.bSplashBounce && !Audio->IsPlaying(SimCopterSound::SND_DOUSE))
+	{
+		Audio->Play2D(SimCopterSound::SND_DOUSE);
+	}
+
+	// FUN_00487160's landing branch: stop the spool-up, then bump or wind down depending on
+	// whether there is fuel left to wind down.
+	if (Events.bTouchedDown)
+	{
+		Audio->Stop(SimCopterSound::SND_CHOPSTAR);
+		Audio->Play2D(FlightModel.Fuel < 1 ? SimCopterSound::SND_SOFTBMP2 : SimCopterSound::SND_CHOPSTOP);
+	}
+
+	// FUN_0048a8b0's phase one: the airframe goes up, and the rescue flyby siren starts.
+	if (Events.bCrashed)
+	{
+		Audio->Play2D(SimCopterSound::SND_BOOM1);
+		Audio->Stop(SimCopterSound::SND_COPLOOP);
+		Audio->Stop(SimCopterSound::SND_CHOPSTAR);
+		Audio->Play3D(SimCopterSound::SND_AMBSRN2, GetActorLocation(), SimCopterSoundFlags::Loop);
+	}
+
+	// FUN_00489ac0: past damage tier 7 the engine note goes bad and stays bad. The original
+	// re-issues this every frame and relies on the already-playing check to rate-limit it.
+	if (Events.DamageTaken > 0)
+	{
+		const int32 DamageTier = (FlightModel.Tuning.MaxDamage - FlightModel.HitPoints) >> 6;
+		if (DamageTier > 7)
+		{
+			Audio->Play2D(SimCopterSound::SND_MOTOROLD);
+		}
+
+		// FUN_00489800: damage taken inside the fire altitude band is fire damage.
+		if (LastFlightEnvironmentFireDelta != 0)
+		{
+			Audio->Play2D(SimCopterSound::SND_FIREDMG);
+		}
+	}
+
+	// FUN_00484d20's `_DAT_00504014 = 0x2ad` branch: the tanks just ran dry.
+	const bool bFuelStarved = FlightModel.Fuel < 1;
+	if (bFuelStarved && !bAudioWasFuelStarved)
+	{
+		Audio->Play2D(SimCopterSound::SND_GASOUT);
+	}
+	bAudioWasFuelStarved = bFuelStarved;
 }
 
 void ASimCopterHelicopterPawn::SimForceFire()

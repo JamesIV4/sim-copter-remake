@@ -1,0 +1,90 @@
+﻿// ===========================================
+// Ghidra:    FUN_004c5120
+// Address:   0x004c5120
+// Signature: undefined FUN_004c5120(void)
+// Callers:   1  |  Callees: 2
+// ===========================================
+
+
+
+void FUN_004c5120(void)
+
+
+
+{
+
+  int iVar1;
+
+  short sVar2;
+
+  short sVar3;
+
+  short local_2;
+
+  
+
+  local_2 = 0;
+
+  do {
+
+    sVar3 = local_2 + 8;
+
+    if ((&DAT_0058dc42)[sVar3] != 0) {
+
+      sVar2 = -1;
+
+      if (sVar3 != -1) {
+
+        sVar2 = local_2 + 0x79;
+
+      }
+
+      iVar1 = FUN_0042a3a0((int)sVar2);
+
+      if ((iVar1 == 0) && (sVar2 = 0, -1 < DAT_0058dc3e)) {
+
+        do {
+
+          iVar1 = DAT_00506444;
+
+          if (sVar2 != 32000) {
+
+            iVar1 = (&DAT_0058e030)[sVar2];
+
+          }
+
+          if ((sVar3 == *(short *)(iVar1 + 0x172)) && (*(short *)(iVar1 + 0x172) != -1)) {
+
+            *(undefined2 *)(iVar1 + 0x174) = 0xffff;
+
+            if (*(short *)(iVar1 + 0x172) != -1) {
+
+              FUN_0042a310((int)(short)(*(short *)(iVar1 + 0x172) + 0x71));
+
+            }
+
+            (&DAT_0058dc42)[*(short *)(iVar1 + 0x172)] = 0;
+
+            *(undefined2 *)(iVar1 + 0x172) = 0xffff;
+
+          }
+
+          sVar2 = sVar2 + 1;
+
+        } while (sVar2 <= DAT_0058dc3e);
+
+      }
+
+    }
+
+    local_2 = local_2 + 1;
+
+  } while (local_2 < 6);
+
+  return;
+
+}
+
+
+
+

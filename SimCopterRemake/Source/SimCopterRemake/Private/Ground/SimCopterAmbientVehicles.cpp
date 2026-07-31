@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterAmbientVehicles.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCity2000CityActor.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
@@ -753,6 +754,78 @@ void ASimCopterAmbientVehiclesActor::Tick(float DeltaSeconds)
 	}
 
 	UpdateWrecks(DeltaSeconds);
+	UpdateAmbientVehicleAudio();
+}
+
+// SCHOOK: AmbientVehicleSound 0x004b23e0 (planes/UFO) and 0x004b4570 (train)
+//
+// Both are the same shape as the siren mixer: one voice per vehicle kind, started as a 3D loop
+// when the vehicle is inside the 1920-unit radius and stopped when it leaves, with the volume
+// re-derived from distance every tick.
+//
+// The plane pair is worth spelling out, because the names mislead. CESSLP1 (0x1c) is the plane's
+// ENGINE and plays whenever it is in range; DIVE1 (0x1b) is layered on top only while +0x07 - the
+// crashing flag - is set. DIVE1 is the dive, not "the other aircraft".
+void ASimCopterAmbientVehiclesActor::UpdateAmbientVehicleAudio()
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr)
+	{
+		return;
+	}
+
+	const FVector Listener = Audio->GetListenerLocation();
+	const float RangeCm =
+		USimCopterAudioSubsystem::AudibleRangeUnits * USimCopterAudioSubsystem::OriginalUnitToCm;
+
+	auto DriveLoop = [Audio, Listener, RangeCm](int32 SoundId, bool bLive, const FVector& World)
+	{
+		if (!bLive || FVector::Dist(World, Listener) >= RangeCm)
+		{
+			if (Audio->IsPlaying(SoundId))
+			{
+				Audio->Stop(SoundId);
+			}
+			return;
+		}
+		Audio->Play3D(SoundId, World, SimCopterSoundFlags::Loop);
+		const float DistanceUnits =
+			static_cast<float>(FVector::Dist(World, Listener)) / USimCopterAudioSubsystem::OriginalUnitToCm;
+		Audio->SetVolumeAdjust(
+			SoundId,
+			USimCopterAudioSubsystem::DistanceVolumeIndex(DistanceUnits) - 10000);
+	};
+
+	bool bPlaneLive = false;
+	bool bPlaneDiving = false;
+	FVector PlaneWorld = FVector::ZeroVector;
+	bool bUfoLive = false;
+	FVector UfoWorld = FVector::ZeroVector;
+
+	for (const FSimCopterAmbientPlane& Plane : Planes)
+	{
+		if (!Plane.bVisible)
+		{
+			continue;
+		}
+		// Slot 1 is the UFO, not a second aircraft - see the header note.
+		if (Plane.ObjectId == SimCopterAmbientVehicles::UfoObjectId)
+		{
+			bUfoLive = true;
+			UfoWorld = Plane.World;
+		}
+		else
+		{
+			bPlaneLive = true;
+			PlaneWorld = Plane.World;
+			bPlaneDiving = Plane.bCrashing;
+		}
+	}
+
+	DriveLoop(SimCopterSound::SND_CESSLP1, bPlaneLive, PlaneWorld);
+	DriveLoop(SimCopterSound::SND_DIVE1, bPlaneLive && bPlaneDiving, PlaneWorld);
+	DriveLoop(SimCopterSound::SND_UFO, bUfoLive, UfoWorld);
+	DriveLoop(SimCopterSound::SND_TRAIN1, Train.bVisible, Train.World);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2111,6 +2184,13 @@ void ASimCopterAmbientVehiclesActor::SpawnCrashDebris(const FVector& World, cons
 	if (EffectComponent == nullptr)
 	{
 		return;
+	}
+
+	// Both crash sites also play CRSH2 at the impact point, and the plane's stops the dive.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->Play3D(SimCopterSound::SND_CRSH2, World);
+		Audio->Stop(SimCopterSound::SND_DIVE1);
 	}
 
 	// FUN_004b2cd0 / FUN_004b49b0 both throw type-4 debris with a random yaw over 3600

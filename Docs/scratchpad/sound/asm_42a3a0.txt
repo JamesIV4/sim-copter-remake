@@ -1,0 +1,4 @@
+0042a3a0 MOV EAX,dword ptr [ESP + 0x4]
+0042a3a4 MOV ECX,dword ptr [EAX*0x4 + 0x55b1ac]
+0042a3ab MOV EAX,dword ptr [ECX]
+0042a3ad JMP dword ptr [EAX + 0x10]

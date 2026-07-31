@@ -77,6 +77,10 @@ struct FSimCopterVehicleTrafficState
 	// flame visuals (rendered by the mission actor's fire component) until doused.
 	bool bMissionOnFire = false;
 	int32 MissionEventId = INDEX_NONE;
+
+	// Was this car stopped last audio tick? FUN_004b8630 plays ACCEL2 on the frame a held car
+	// is let go, so the port needs the previous state to find that edge.
+	bool bAudioWasStopped = false;
 };
 
 // Runtime state of one emergency-vehicle pool slot. The names mirror the original's
@@ -241,6 +245,11 @@ public:
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
 	// criminal-car pool. Backs behaviour opcode 15's object classes 10-13.
 	ASimCopterGroundAgent* FindNearestServiceVehicleAgent(const FVector& FromWorldLocation, int32 Service) const;
+
+	// SCHOOK: TrafficHornSound 0x0049be50 / TrafficAccelSound 0x004b8630
+	// Held cars lean on the horn (a 1-in-16 roll per update against obj[0xdb], the horn the car
+	// was given when it spawned) and bark ACCEL2 on the frame they are released.
+	void UpdateTrafficAudio();
 	bool TryGetPeopleFacingStepTarget(
 		const FVector& FromWorldLocation,
 		int32 Facing,

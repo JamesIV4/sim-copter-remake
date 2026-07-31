@@ -3,6 +3,7 @@
 #include "Ground/SimCopterTrafficSystemActor.h"
 
 #include "Algo/Reverse.h"
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCity2000CityActor.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/World.h"
@@ -701,6 +702,63 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	UpdateCriminalCars(DeltaSeconds);
 	UpdateDispatchVehicles(DeltaSeconds);
 	UpdateWholeMapPopulation(DeltaSeconds);
+	UpdateTrafficAudio();
+}
+
+// SCHOOK: TrafficHornSound 0x0049be50 / TrafficAccelSound 0x004b8630
+void ASimCopterTrafficSystemActor::UpdateTrafficAudio()
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr)
+	{
+		return;
+	}
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+		FSimCopterVehicleTrafficState* State =
+			VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State == nullptr)
+		{
+			continue;
+		}
+
+		const bool bStopped = State->bMissionJammed;
+		const FVector World = Vehicle->GetActorLocation();
+
+		if (bStopped)
+		{
+			// One roll in sixteen per update, and only if that horn is not already sounding.
+			// Three horns share the whole city's traffic, so the already-playing check is what
+			// stops a jam from becoming a wall of noise.
+			if (FMath::RandRange(0, 15) == 0)
+			{
+				// The original assigns obj[0xdb] once, at spawn. Deriving it from the agent's
+				// identity keeps a given car on a given horn without adding a field.
+				const int32 HornId = SimCopterSound::SND_HORN1 +
+					(GetTypeHash(TObjectKey<ASimCopterGroundAgent>(Vehicle)) % 3);
+				if (!Audio->IsPlaying(HornId))
+				{
+					Audio->Play3D(HornId, World);
+				}
+			}
+		}
+		else if (State->bAudioWasStopped)
+		{
+			// FUN_004b8630's release branch: one ACCEL2 as the car pulls away.
+			if (!Audio->IsPlaying(SimCopterSound::SND_ACCEL2))
+			{
+				Audio->Play3D(SimCopterSound::SND_ACCEL2, World);
+			}
+		}
+
+		State->bAudioWasStopped = bStopped;
+	}
 }
 
 bool ASimCopterTrafficSystemActor::TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY)
@@ -776,6 +834,12 @@ bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 		State->bMissionJammed = true;
 		State->bMissionOnFire = true;
 		State->MissionEventId = EventId;
+	}
+
+	// SCHOOK: ObjectIgniteSound 0x0049fd00 - Play3D(0x81 FIRESTAR) at whatever just caught.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->Play3D(SimCopterSound::SND_FIRESTAR, ChosenVehicle->GetActorLocation());
 	}
 
 	if (!TryGetPeopleTileCoordinateAtWorldLocation(ChosenVehicle->GetActorLocation(), OutTileX, OutTileY))
