@@ -1,0 +1,142 @@
+﻿// ===========================================
+// Ghidra:    FUN_004c4ee0
+// Address:   0x004c4ee0
+// Signature: undefined FUN_004c4ee0(void)
+// Callers:   1  |  Callees: 4
+// ===========================================
+
+
+
+void FUN_004c4ee0(void)
+
+
+
+{
+
+  ushort uVar1;
+
+  ushort uVar2;
+
+  ushort uVar3;
+
+  ushort uVar4;
+
+  short sVar5;
+
+  undefined4 uVar6;
+
+  int iVar7;
+
+  short sVar8;
+
+  
+
+  sVar5 = 0;
+
+  if (-1 < DAT_0058dc3e) {
+
+    do {
+
+      sVar8 = sVar5 + 1;
+
+      iVar7 = DAT_00506444;
+
+      if (sVar5 != 32000) {
+
+        iVar7 = (&DAT_0058e030)[sVar5];
+
+      }
+
+      sVar5 = *(short *)(iVar7 + 0x172);
+
+      if (sVar5 != -1) {
+
+        uVar3 = (short)DAT_0061a618 - *(short *)(iVar7 + 0x12a);
+
+        uVar1 = (short)uVar3 >> 0xf;
+
+        uVar4 = (short)DAT_0061a61c - *(short *)(iVar7 + 300);
+
+        uVar2 = (short)uVar4 >> 0xf;
+
+        if (((int)(short)((uVar3 ^ uVar1) - uVar1) + (int)(short)((uVar4 ^ uVar2) - uVar2) < 3) ||
+
+           (7 < sVar5)) {
+
+          if (*(short *)(iVar7 + 0x198) == 0) {
+
+            if (sVar5 == -1) {
+
+              sVar5 = -1;
+
+            }
+
+            else {
+
+              sVar5 = sVar5 + 0x71;
+
+            }
+
+            FUN_0042a2f0((int)sVar5,iVar7 + 0x1cc);
+
+          }
+
+        }
+
+        else if (sVar5 != -1) {
+
+          *(undefined2 *)(iVar7 + 0x174) = 0xffff;
+
+          if (*(short *)(iVar7 + 0x172) != -1) {
+
+            FUN_0042a310((int)(short)(*(short *)(iVar7 + 0x172) + 0x71));
+
+          }
+
+          (&DAT_0058dc42)[*(short *)(iVar7 + 0x172)] = 0;
+
+          *(undefined2 *)(iVar7 + 0x172) = 0xffff;
+
+        }
+
+      }
+
+      sVar5 = sVar8;
+
+    } while (sVar8 <= DAT_0058dc3e);
+
+  }
+
+  sVar5 = 0;
+
+  do {
+
+    if ((&DAT_0058dc42)[sVar5] == 0) goto LAB_004c4ffa;
+
+    sVar5 = sVar5 + 1;
+
+  } while (sVar5 < 8);
+
+  sVar5 = -1;
+
+LAB_004c4ffa:
+
+  uVar6 = FUN_004c5030(1,sVar5);
+
+  FUN_004c5030(2,uVar6);
+
+  sVar5 = FUN_004cea00(100);
+
+  if (sVar5 == 0) {
+
+    DAT_0058dc3a = 65000;
+
+  }
+
+  return;
+
+}
+
+
+
+

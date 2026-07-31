@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterParticleFX.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
 #include "Engine/World.h"
@@ -784,6 +785,17 @@ void USimCopterParticleFXComponent::AdvanceWaterTrajectoryStep(
 			SimCopterWaterGameplay::ResolveImpact(Emitter, Slot.Life1616, bWaterSurface);
 		Slot.bActive = false;
 		SpawnTilePuff(Impact, Result.PuffClass, ImpactCell.X, ImpactCell.Y);
+
+		// SCHOOK: WaterImpactSound 0x00490690 - SPLISH where the water douses, DOUSE where it
+		// hits the surface. Both are one-shots on a shared slot, so the hundreds of droplets a
+		// cannon throws collapse into one continuous hiss instead of machine-gunning: Play is a
+		// no-op while the slot is already sounding, which is the whole reason the original gets
+		// away with playing this per particle.
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+		{
+			Audio->Play3D(Result.SoundId, Impact);
+		}
+
 		if (Result.bDouse)
 		{
 			if (ASimCopterMissionSystemActor* Mission = ResolveMissionActor())

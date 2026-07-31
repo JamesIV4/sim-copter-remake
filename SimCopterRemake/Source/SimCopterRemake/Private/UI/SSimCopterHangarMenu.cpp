@@ -2,6 +2,10 @@
 
 #include "SSimCopterHangarMenu.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/World.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Framework/Application/SlateApplication.h"
@@ -59,6 +63,18 @@ void SSimCopterHangarMenu::Construct(const FArguments& InArgs)
 	Art = InArgs._Art;
 	Shop = InArgs._Shop;
 	OnDoneRequested = InArgs._OnDoneRequested;
+
+	// SCHOOK: HangarScreenSound 0x00449cb0 - the hangar builds its own hangar.wav sound object
+	// and plays it once on entry (the buffer's Play is (0, 1), so it does not loop).
+	if (const UWorld* World = GEngine != nullptr && GEngine->GameViewport != nullptr
+			? GEngine->GameViewport->GetWorld()
+			: nullptr)
+	{
+		if (USimCopterAudioSubsystem* Audio = World->GetSubsystem<USimCopterAudioSubsystem>())
+		{
+			Audio->PlayFile2D(TEXT("hangar"), SimCopterSound::ESoundDir::Root);
+		}
+	}
 
 	// Open on the row the player is already flying, the way FUN_0042d420 does.
 	if (const ASimCopterHelicopterPawn* Helicopter = Shop.Helicopter.Get())

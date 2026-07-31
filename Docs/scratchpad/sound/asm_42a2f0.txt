@@ -1,0 +1,7 @@
+0042a2f0 MOV EAX,dword ptr [ESP + 0x4]
+0042a2f4 MOV EDX,dword ptr [ESP + 0x8]
+0042a2f8 PUSH EDX
+0042a2f9 MOV ECX,dword ptr [EAX*0x4 + 0x55b1ac]
+0042a300 MOV EAX,dword ptr [ECX]
+0042a302 CALL dword ptr [EAX + 0x90]
+0042a308 RET

@@ -1,0 +1,142 @@
+﻿// ===========================================
+// Ghidra:    FUN_0049d7e0
+// Address:   0x0049d7e0
+// Signature: undefined FUN_0049d7e0(void)
+// Callers:   1  |  Callees: 8
+// ===========================================
+
+
+
+void __thiscall FUN_0049d7e0(int *param_1,int param_2)
+
+
+
+{
+
+  uint uVar1;
+
+  ushort uVar2;
+
+  bool bVar3;
+
+  int iVar4;
+
+  undefined4 local_18;
+
+  undefined4 local_14;
+
+  undefined4 local_8;
+
+  undefined4 local_4;
+
+  
+
+  if (((((*(byte *)((int)param_1 + 5) & 8) != 0) && (0 < *(int *)((int)param_1 + 0x11b))) &&
+
+      (iVar4 = FUN_0049df60(), iVar4 != 0)) && (param_2 == 1)) {
+
+    *(undefined4 *)((int)param_1 + 0xd7) = 0xa0000;
+
+    (**(code **)(*param_1 + 4))(0xffffffff);
+
+    return;
+
+  }
+
+  uVar1 = param_1[1];
+
+  if (((uVar1 & 0x200) != 0) && (param_2 == 0)) {
+
+    local_14 = *(undefined4 *)((int)param_1 + 0x113);
+
+    param_1[1] = uVar1 & 0xfffffdff;
+
+    *(undefined4 *)((int)param_1 + 0xaf) = 0;
+
+    param_1[1] = uVar1 & 0xfffffdff | 0x4000;
+
+    local_18 = 0x1b;
+
+    local_8 = 1;
+
+    local_4 = 0;
+
+    FUN_004a89c0(&local_18);
+
+    return;
+
+  }
+
+  if ((0 < *(int *)((int)param_1 + 0xaf)) && (param_2 == 0)) {
+
+    if (0xa0000 < *(int *)((int)param_1 + 0xaf)) {
+
+      FUN_00407a90(1);
+
+      FUN_0042a2a0(0x1e,0);
+
+      iVar4 = _rand();
+
+      uVar2 = (short)(ushort)iVar4 >> 0xf;
+
+      if ((((ushort)iVar4 ^ uVar2) - uVar2 & 0xf ^ uVar2) == uVar2) {
+
+        FUN_00407b00(1);
+
+      }
+
+    }
+
+    iVar4 = FUN_0049ea70(0);
+
+    if ((iVar4 == 0) ||
+
+       ((iVar4 = param_1[5], 0x11b < iVar4 && ((iVar4 < 0x11e || (iVar4 == 0x11f)))))) {
+
+      if (0x50000 < *(int *)((int)param_1 + 0xaf)) {
+
+        *(int *)((int)param_1 + 0x127) = *(int *)((int)param_1 + 0x127) + 1;
+
+      }
+
+    }
+
+    else {
+
+      FUN_0049e9a0();
+
+    }
+
+    *(undefined4 *)((int)param_1 + 0xaf) = 0;
+
+    return;
+
+  }
+
+  if (((uVar1 & 0xb00) == 0) &&
+
+     ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {
+
+    bVar3 = false;
+
+  }
+
+  else {
+
+    bVar3 = true;
+
+  }
+
+  if (((!bVar3) && (param_2 == 1)) && (iVar4 = FUN_0049df60(), iVar4 != 0)) {
+
+    (**(code **)(*param_1 + 4))(0xffffffff);
+
+  }
+
+  return;
+
+}
+
+
+
+

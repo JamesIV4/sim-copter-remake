@@ -1482,6 +1482,43 @@ private:
 	// surface and above the minimum altitude, scatter effect cards under the rotor - spray over
 	// water, dust over land. Also emits the bucket douse steam accumulator.
 	void UpdateRotorWash(float DeltaSeconds);
+
+	// --- audio (Docs/memory/simcopter-sound.md) ---
+	//
+	// The engine loop, the spool-up/down pair and the listener, ported from the two functions
+	// that own them in the original:
+	//   FUN_00488fd0  the rotor loop: nearest-helicopter pick, the rpm -> pitch/volume law, and
+	//                 the every-seventh-frame cadence its DAT_00504064 counter imposes.
+	//   FUN_00487160  CHOPSTAR / CHOPSTOP / SOFTBMP2 around the Parked state and touchdown.
+	void UpdateHelicopterAudio(float DeltaSeconds);
+
+	// One-shots from this step's FSimCopterFlightEvents: EXPLODE, DOUSE, BLDEXPL, SOFTBMP2,
+	// MOTOROLD, FIREDMG and GASOUT (FUN_00484d20 / FUN_00489800 / FUN_00489ac0).
+	void PlayFlightEventAudio(const FSimCopterFlightEvents& Events);
+
+	// Null unless this pawn is the locally controlled one - `heli[8] & 1` in the original,
+	// which is what gates every 2D helicopter sound there.
+	class USimCopterAudioSubsystem* GetHelicopterAudio() const;
+
+	// Time since the rotor sound last updated. FUN_00488fd0 runs on every seventh call of the
+	// 0.05 s frame, so the port accumulates 0.35 s rather than counting frames.
+	float RotorAudioAccumulator = 0.0f;
+
+	// Which engine loop WAV is currently in slot 0, so the per-model SetFile only runs on a
+	// change (the original re-issues it on every start, which is equally cheap for it).
+	FString ActiveEngineLoopSound;
+
+	// Latches for the level-triggered transitions the original reads off state instead.
+	bool bAudioWasFuelStarved = false;
+
+	// The collective this step ran with. FUN_00487160 keys the spool-up/down sounds on
+	// heli[3], the collective command, not on the rotor speed it produces.
+	int32 LastClimbCommand = 0;
+
+	// FSimCopterFlightEnvironment::FireHeightDelta from the last step, so the damage handler
+	// can tell FUN_00489800's fire damage from ordinary collision damage.
+	int32 LastFlightEnvironmentFireDelta = 0;
+
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
 

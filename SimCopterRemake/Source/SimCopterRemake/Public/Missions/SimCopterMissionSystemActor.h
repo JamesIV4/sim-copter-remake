@@ -16,9 +16,6 @@ class USimCopterFireRenderComponent;
 class USimCopterParticleFXComponent;
 enum class ESimCopterMissionPassengerKind : uint8;
 class UMaterialInterface;
-class USoundBase;
-class USoundWave;
-class USoundWaveProcedural;
 class SConstraintCanvas;
 class STextBlock;
 class SVerticalBox;
@@ -97,17 +94,6 @@ public:
 
 	virtual void OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId) override;
 	virtual void OnBuildingBurnedDown(int32 TileX, int32 TileY, int32 FootprintSize) override;
-
-	// Plays one of the original voice/UI clips. Runtime clips are USoundWaveProcedural and have
-	// to be re-queued before each play (the FIFO drains as it plays), so every play site goes
-	// through here rather than calling PlaySound2D directly.
-	void PlayOriginalClip(USoundBase* Sound, float VolumeMultiplier = 1.0f);
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Audio")
-	TMap<int32, USoundBase*> UiSounds;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Audio")
-	TMap<int32, USoundBase*> RadioVoices;
 
 	virtual void PlayRadioVoice(int32 VoiceId, int32 Volume) override;
 	virtual void PlayUiSound(int32 SoundId) override;
@@ -372,15 +358,11 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
 	float MegaphoneRangeCm = 7500.0f;
 
-	// Auto-detect the original game's sound folder on BeginPlay and load the mission/megaphone
-	// voice lines from it (so the sound maps below don't have to be filled in by hand).
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Audio")
-	bool bAutoLoadOriginalSounds = true;
-
-	// Megaphone voice lines (auto-loaded from the original "MG_*" files); one is played at random
-	// when the megaphone is used.
-	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Audio")
-	TArray<TObjectPtr<USoundBase>> MegaphoneVoices;
+	// Megaphone voice lines, the "MG_*" files in the original's language folder. These are not
+	// table slots - the original never registers them - so they are named by file and played
+	// through USimCopterAudioSubsystem::PlayFile2D, which is the same standalone-sound-object
+	// route the front-end screens use. Collected once on BeginPlay.
+	TArray<FString> MegaphoneVoiceFiles;
 
 	SimCopterMissions::FSimCopterMissionSystem MissionSystem;
 
@@ -421,25 +403,6 @@ private:
 	SimCopterWaterGameplay::FFireTruckJetSweep ServiceJetSweep;
 	bool bLoggedServiceJetSpawnFailure = false;
 
-	// Decoded samples and format for one runtime voice clip.
-	struct FOriginalClipAudio
-	{
-		TArray<uint8> Pcm16;
-		int32 SampleRate = 0;
-		int32 Channels = 0;
-		float Duration = 0.0f;
-	};
-
-	// Source audio for each runtime clip, keyed by the wave object that stands for it in the
-	// containers above. Keyed by object because USoundWaveProcedural is UCLASS(MinimalAPI) and
-	// cannot be subclassed from a game module.
-	TMap<TObjectKey<USoundWaveProcedural>, FOriginalClipAudio> VoicePcmByWave;
-
-	// Builds a throwaway procedural wave holding one copy of a clip. Each play gets its own,
-	// because a procedural wave's FIFO is consumed by the audio thread: re-queueing a shared
-	// wave that is still playing races that reader.
-	USoundWaveProcedural* MakeOneShotVoice(const FOriginalClipAudio& Clip);
-
 	// Cached resolved city actor (for the rendered-surface trace that seats flames on rooftops)
 	// and the original game root (for loading the flame GEO meshes once).
 	TWeakObjectPtr<AActor> ResolvedCityActor;
@@ -474,10 +437,25 @@ private:
 	void EnsureMegaphonePromptWidget();
 	void RemoveMegaphonePromptWidget();
 
-	// Sound auto-setup.
+	// Collects the megaphone lines. Everything else the mission layer plays is a table slot the
+	// audio subsystem loads on demand from its id.
 	void SetupMissionSounds();
-	FString ResolveOriginalSoundDir() const;
-	USoundWaveProcedural* LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const;
+
+	// The burning-building loop (id 0x0d) is one voice for the whole city: FUN_004a4ac0 keeps
+	// picking the nearest fire and calling SetPosition on that single slot, so a second fire
+	// does not double it. Re-run every tick from UpdateFireVisuals.
+	void UpdateFireAudio();
+
+	// SCHOOK: EmergencySirenMixer 0x004a1d50
+	// Four looping voices - ambulance, fire, police, hose - each driven by the distance to the
+	// NEAREST vehicle of that kind and nothing else. The original stores those four distances in
+	// DAT_0057f750..764 and runs an identical block per sound.
+	void UpdateEmergencySirenAudio();
+
+	// Where and when a fire truck last fired its monitor, so the hose loop knows whether any
+	// truck is spraying and how far away it is.
+	FVector ServiceJetWorld = FVector::ZeroVector;
+	double ServiceJetLastSeconds = -1000.0;
 
 	ASimCopterTrafficSystemActor* ResolveTrafficSystem() const;
 	void ProcessPassengerTransfers();

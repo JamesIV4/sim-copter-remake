@@ -1,7 +1,7 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Missions/SimCopterMissionSystemActor.h"
-#include "Sound/SoundWaveProcedural.h"
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterFireRenderComponent.h"
@@ -295,6 +295,8 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateMegaphonePrompt();
 	UpdateFireVisuals(DeltaTime);
+	UpdateFireAudio();
+	UpdateEmergencySirenAudio();
 
 	// Only a scheduled-jobs session walks the career city list; the original's user-city mode
 	// (DAT_00518d50 = 1) has no city to advance to.
@@ -468,7 +470,11 @@ void ASimCopterMissionSystemActor::OnBuildingBurnedDown(int32 TileX, int32 TileY
 		? FVector(BuildingBounds.GetCenter().X, BuildingBounds.GetCenter().Y, BuildingBounds.Min.Z)
 		: TileCenter;
 
-	PlayUiSound(4);
+	// SCHOOK: BuildingBurnedDownSound 0x004a5fd0 - Play3D(4 BLDEXPL) at the building, not 2D.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->Play3D(SimCopterSound::SND_BLDEXPL, BurstOrigin);
+	}
 
 	if (FireSmokeComponent != nullptr)
 	{
@@ -1098,20 +1104,152 @@ bool ASimCopterMissionSystemActor::ConvertDroppedTransportPassengerToMedevac(
 	return true;
 }
 
-void ASimCopterMissionSystemActor::PlayRadioVoice(int32 VoiceId, int32 Volume)
+// SCHOOK: DispatchVoicePlay 0x0042a3b0
+// The dispatcher lines are ordinary table slots - 0x2f..0x6e are D1000..D1018, L001..L009,
+// D2001..D2020 and DIS053..DIS068 - so the id the mission system already computes is the id the
+// mixer wants, and nothing here has to map anything.
+//
+// The second argument is NOT a volume. FUN_0042a3b0 sets the buffer to the full master volume
+// before playing, whatever that argument is, and passes it instead to the node it appends to the
+// per-id completion list at 0x519a18. The port plays at full volume to match and ignores it.
+void ASimCopterMissionSystemActor::PlayRadioVoice(int32 VoiceId, int32 /*QueueTag*/)
 {
-	if (USoundBase** Sound = RadioVoices.Find(VoiceId))
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 	{
-		PlayOriginalClip(*Sound, Volume / 255.0f);
+		Audio->Play2D(VoiceId);
 	}
 }
 
 void ASimCopterMissionSystemActor::PlayUiSound(int32 SoundId)
 {
-	if (USoundBase** Sound = UiSounds.Find(SoundId))
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 	{
-		PlayOriginalClip(*Sound);
+		Audio->Play2D(SoundId);
 	}
+}
+
+// SCHOOK: FireLoopSound 0x004a4ac0
+void ASimCopterMissionSystemActor::UpdateFireAudio()
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr)
+	{
+		return;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	// Nearest burning flame to the listener. One slot, one voice: the original does exactly this
+	// - it walks the flame list every tick, keeps the closest, and drives slot 0x0d with it.
+	// The tile centre is close enough for a sound; the roof trace UpdateFireVisuals does is for
+	// seating the sprite, and this must keep working when the render component is not ready.
+	const FVector Listener = Audio->GetListenerLocation();
+	bool bFound = false;
+	FVector NearestWorld = FVector::ZeroVector;
+	double NearestDistSq = TNumericLimits<double>::Max();
+
+	for (const SimCopterMissions::FSimCopterFlame& Flame : MissionSystem.GetFlames())
+	{
+		FVector FlameWorld;
+		if (!Flame.bActive ||
+			!TrafficSystem->TryGetTileCenterWorldLocation(Flame.TileX, Flame.TileY, FlameWorld))
+		{
+			continue;
+		}
+		const double DistSq = FVector::DistSquared(FlameWorld, Listener);
+		if (DistSq < NearestDistSq)
+		{
+			NearestDistSq = DistSq;
+			NearestWorld = FlameWorld;
+			bFound = true;
+		}
+	}
+
+	if (!bFound)
+	{
+		Audio->Stop(SimCopterSound::SND_FIRELP11);
+		return;
+	}
+
+	// Play3D culls past 1920 units on its own, so a distant fire simply never starts; keeping
+	// the position fresh is what makes an already-running one fade as you fly away.
+	if (Audio->IsPlaying(SimCopterSound::SND_FIRELP11))
+	{
+		Audio->SetPosition(SimCopterSound::SND_FIRELP11, NearestWorld);
+	}
+	else
+	{
+		Audio->Play3D(SimCopterSound::SND_FIRELP11, NearestWorld, SimCopterSoundFlags::Loop);
+	}
+}
+
+// SCHOOK: EmergencySirenMixer 0x004a1d50
+void ASimCopterMissionSystemActor::UpdateEmergencySirenAudio()
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (Audio == nullptr || TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	const FVector Listener = Audio->GetListenerLocation();
+	const float RangeCm =
+		USimCopterAudioSubsystem::AudibleRangeUnits * USimCopterAudioSubsystem::OriginalUnitToCm;
+
+	// The original does NOT position these. It plays each one at `listener + (0, 0, distance)`,
+	// a synthetic point straight along one axis whose only purpose is to be the right distance
+	// away, and then overrides the volume with the same distance anyway. There is no direction
+	// in an original siren - only "how close is the nearest one" - so the port plays them 2D and
+	// applies the identical volume law, which is what that synthetic point amounted to.
+	auto DriveSiren = [Audio, RangeCm](int32 SoundId, bool bHasSource, double DistanceCm)
+	{
+		if (!bHasSource || DistanceCm >= RangeCm)
+		{
+			if (Audio->IsPlaying(SoundId))
+			{
+				Audio->Stop(SoundId);
+			}
+			return;
+		}
+		Audio->Play2D(SoundId, SimCopterSoundFlags::Loop);
+		const float DistanceUnits =
+			static_cast<float>(DistanceCm) / USimCopterAudioSubsystem::OriginalUnitToCm;
+		Audio->SetVolumeAdjust(
+			SoundId,
+			USimCopterAudioSubsystem::DistanceVolumeIndex(DistanceUnits) - 10000);
+	};
+
+	// Services 0/1/2 are fire/police/ambulance (FUN_0049b060's argument).
+	struct FSirenRoute { int32 Service; int32 SoundId; };
+	static const FSirenRoute Routes[] = {
+		{ 0, SimCopterSound::SND_FIRESIRE },
+		{ 1, SimCopterSound::SND_POLICESI },
+		{ 2, SimCopterSound::SND_AMBSRN11 },
+	};
+	for (const FSirenRoute& Route : Routes)
+	{
+		const ASimCopterGroundAgent* Agent =
+			TrafficSystem->FindNearestServiceVehicleAgent(Listener, Route.Service);
+		DriveSiren(
+			Route.SoundId,
+			Agent != nullptr,
+			Agent != nullptr ? FVector::Dist(Agent->GetActorLocation(), Listener) : 0.0);
+	}
+
+	// The hose loop follows whichever truck last fired its monitor. A truck sprays on a timer,
+	// not every frame, so hold the loop across the gap rather than stuttering it.
+	const double Now = GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0;
+	constexpr double HoseHoldSeconds = 1.0;
+	const bool bHosing = (Now - ServiceJetLastSeconds) < HoseHoldSeconds;
+	DriveSiren(
+		SimCopterSound::SND_FIRHOSLP,
+		bHosing,
+		bHosing ? FVector::Dist(ServiceJetWorld, Listener) : 0.0);
 }
 
 bool ASimCopterMissionSystemActor::TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY)
@@ -2432,6 +2570,10 @@ void ASimCopterMissionSystemActor::SpawnServiceWaterJet(const FVector& TruckWorl
 		FVector::UpVector *
 			(static_cast<float>(SimCopterWaterGameplay::FireTruckNozzleLift1616) / 65536.0f * CmPerUnit);
 
+	// Feeds the FIRHOSLP loop in UpdateEmergencySirenAudio (id 0x14).
+	ServiceJetWorld = TruckWorld;
+	ServiceJetLastSeconds = GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0;
+
 	const bool bSpawned = FireSmokeComponent->SpawnEffect(
 		ESimCopterEffectType::BucketDrip,
 		NozzleWorld,
@@ -2483,13 +2625,13 @@ bool ASimCopterMissionSystemActor::TryUseMegaphone(const FVector& FromWorldLocat
 		return false;
 	}
 
-	// Megaphone bark (auto-loaded original "MG_*" line).
-	if (MegaphoneVoices.Num() > 0)
+	// Megaphone bark, one of the original "MG_*" lines.
+	if (MegaphoneVoiceFiles.Num() > 0)
 	{
-		const int32 Pick = FMath::RandRange(0, MegaphoneVoices.Num() - 1);
-		if (USoundBase* Voice = MegaphoneVoices[Pick])
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 		{
-			PlayOriginalClip(Voice);
+			const int32 Pick = FMath::RandRange(0, MegaphoneVoiceFiles.Num() - 1);
+			Audio->PlayFile2D(MegaphoneVoiceFiles[Pick], SimCopterSound::ESoundDir::Language);
 		}
 	}
 
@@ -2566,237 +2708,41 @@ void ASimCopterMissionSystemActor::RemoveMegaphonePromptWidget()
 	bMegaphonePromptVisible = false;
 }
 
-FString ASimCopterMissionSystemActor::ResolveOriginalSoundDir() const
-{
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/sound/English"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/sound/English")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/sound/English")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-	return FString();
-}
-
-USoundWaveProcedural* ASimCopterMissionSystemActor::LoadOriginalVoice(const FString& SoundDir, const FString& BaseName) const
-{
-	if (SoundDir.IsEmpty() || BaseName.IsEmpty())
-	{
-		return nullptr;
-	}
-
-	// The originals ship with mixed-case extensions.
-	FString Path = FPaths::Combine(SoundDir, BaseName + TEXT(".WAV"));
-	if (!FPaths::FileExists(Path))
-	{
-		Path = FPaths::Combine(SoundDir, BaseName + TEXT(".wav"));
-		if (!FPaths::FileExists(Path))
-		{
-			return nullptr;
-		}
-	}
-
-	TArray<uint8> FileBytes;
-	if (!FFileHelper::LoadFileToArray(FileBytes, *Path))
-	{
-		return nullptr;
-	}
-
-	FWaveModInfo WaveInfo;
-	if (!WaveInfo.ReadWaveInfo(FileBytes.GetData(), FileBytes.Num()))
-	{
-		return nullptr;
-	}
-
-	const int32 Channels = WaveInfo.pChannels != nullptr ? *WaveInfo.pChannels : 0;
-	const int32 SampleRate = WaveInfo.pSamplesPerSec != nullptr ? *WaveInfo.pSamplesPerSec : 0;
-	const int32 BitsPerSample = WaveInfo.pBitsPerSample != nullptr ? *WaveInfo.pBitsPerSample : 0;
-	if (Channels <= 0 || SampleRate <= 0 || WaveInfo.SampleDataSize == 0)
-	{
-		return nullptr;
-	}
-
-	// USoundWave::RawPCMData expects 16-bit signed PCM. Pass 16-bit through and up-convert 8-bit.
-	TArray<uint8> Pcm16;
-	if (BitsPerSample == 16)
-	{
-		Pcm16.Append(WaveInfo.SampleDataStart, WaveInfo.SampleDataSize);
-	}
-	else if (BitsPerSample == 8)
-	{
-		const int32 NumSamples = static_cast<int32>(WaveInfo.SampleDataSize);
-		Pcm16.SetNumUninitialized(NumSamples * 2);
-		int16* Out = reinterpret_cast<int16*>(Pcm16.GetData());
-		for (int32 Index = 0; Index < NumSamples; ++Index)
-		{
-			Out[Index] = static_cast<int16>((static_cast<int32>(WaveInfo.SampleDataStart[Index]) - 128) << 8);
-		}
-	}
-	else
-	{
-		return nullptr; // unsupported bit depth
-	}
-
-	// A USoundWaveProcedural, not a bare USoundWave. A runtime USoundWave whose only audio is
-	// RawPCMData is not playable by the UE5 mixer - RawPCMData is a legacy/editor field, and the
-	// mixer wants compressed inline data or streamed chunks. Both ways such a wave can end up
-	// configured crash on its first playback:
-	//
-	//   * left streaming (the default), it enters the audio streaming cache with zero chunks and
-	//     a worker thread eventually calls USoundWave::CacheInheritedLoadingBehavior(), which
-	//     asserts IsInGameThread() - a runtime object never ran PostLoad to resolve it;
-	//   * forced inline, it takes the non-streaming decode path, which wants BINKA data that was
-	//     never built, and the Bink decoder asserts on the empty buffer
-	//     (InSrcBufferDataSize >= sizeof(BinkAudioFileHeader)).
-	//
-	// USoundWaveProcedural avoids both: it sets bProcedural (PostLoad early-outs before the
-	// loading-behaviour cache, and IsStreaming() is false) and overrides HasCompressedData /
-	// GetCompressedData / InitAudioResource / GeneratePCMData to serve a queued PCM FIFO.
-	USoundWaveProcedural* Sound = NewObject<USoundWaveProcedural>(const_cast<ASimCopterMissionSystemActor*>(this));
-	if (Sound == nullptr)
-	{
-		return nullptr;
-	}
-
-	const int32 BytesPerFrame = 2 * Channels;
-	const int32 NumFrames = Pcm16.Num() / FMath::Max(1, BytesPerFrame);
-
-	FOriginalClipAudio Clip;
-	Clip.SampleRate = SampleRate;
-	Clip.Channels = Channels;
-	Clip.Duration = static_cast<float>(NumFrames) / static_cast<float>(SampleRate);
-	Clip.Pcm16 = MoveTemp(Pcm16);
-
-	Sound->SetSampleRate(Clip.SampleRate);
-	Sound->NumChannels = Clip.Channels;
-	Sound->Duration = Clip.Duration;
-	Sound->SoundGroup = SOUNDGROUP_Default;
-	Sound->bLooping = false;
-	// The FIFO reads in whole samples; ours are 16-bit.
-	Sound->SampleByteSize = 2;
-
-	// This object is only ever a handle: PlayOriginalClip builds a fresh wave per play from
-	// the stored samples, so this one's FIFO is deliberately left empty.
-	const_cast<ASimCopterMissionSystemActor*>(this)->VoicePcmByWave.Add(
-		TObjectKey<USoundWaveProcedural>(Sound),
-		MoveTemp(Clip));
-
-	return Sound;
-}
-
-USoundWaveProcedural* ASimCopterMissionSystemActor::MakeOneShotVoice(const FOriginalClipAudio& Clip)
-{
-	if (Clip.Pcm16.Num() == 0 || Clip.SampleRate <= 0 || Clip.Channels <= 0)
-	{
-		return nullptr;
-	}
-
-	USoundWaveProcedural* OneShot = NewObject<USoundWaveProcedural>(this);
-	if (OneShot == nullptr)
-	{
-		return nullptr;
-	}
-
-	OneShot->SetSampleRate(Clip.SampleRate);
-	OneShot->NumChannels = Clip.Channels;
-	OneShot->Duration = Clip.Duration;
-	OneShot->SoundGroup = SOUNDGROUP_Default;
-	OneShot->bLooping = false;
-	OneShot->SampleByteSize = 2;
-	OneShot->QueueAudio(Clip.Pcm16.GetData(), Clip.Pcm16.Num());
-	return OneShot;
-}
-
-void ASimCopterMissionSystemActor::PlayOriginalClip(USoundBase* Sound, float VolumeMultiplier)
-{
-	if (Sound == nullptr)
-	{
-		return;
-	}
-
-	// Runtime clips get a private wave per play. A procedural wave's FIFO is drained by the
-	// audio render thread, so re-queueing one shared wave races that reader whenever two plays
-	// overlap - and mission completions routinely land within a second of each other. The
-	// throwaway wave is queued once, never reset, and is kept alive by the audio component
-	// PlaySound2D creates for it.
-	if (USoundWaveProcedural* Handle = Cast<USoundWaveProcedural>(Sound))
-	{
-		if (const FOriginalClipAudio* Clip = VoicePcmByWave.Find(TObjectKey<USoundWaveProcedural>(Handle)))
-		{
-			if (USoundWaveProcedural* OneShot = MakeOneShotVoice(*Clip))
-			{
-				UGameplayStatics::PlaySound2D(this, OneShot, VolumeMultiplier);
-			}
-			return;
-		}
-	}
-
-	// Anything assigned in the editor is a normal cooked asset and plays directly.
-	UGameplayStatics::PlaySound2D(this, Sound, VolumeMultiplier);
-}
-
+// The megaphone lines are the only mission audio that is not a table slot: MG_*.WAV is never
+// registered by FUN_00424b70, so there is no id to ask for. Collect the filenames once and let
+// the audio subsystem play them as standalone sounds.
 void ASimCopterMissionSystemActor::SetupMissionSounds()
 {
-	if (!bAutoLoadOriginalSounds)
+	MegaphoneVoiceFiles.Reset();
+
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr || Audio->GetSoundRoot().IsEmpty())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[Mission] No original sound folder; mission audio stays silent."));
 		return;
 	}
 
-	const FString SoundDir = ResolveOriginalSoundDir();
-	if (SoundDir.IsEmpty())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[Mission] Original sound folder not found; mission audio stays silent."));
-		return;
-	}
+	const FString LanguageDir = FPaths::Combine(Audio->GetSoundRoot(), TEXT("English"));
+	TArray<FString> Files;
+	IFileManager::Get().FindFiles(Files, *FPaths::Combine(LanguageDir, TEXT("MG_*.WAV")), true, false);
 
-	// Mission completion dispatcher voices used by FSimCopterMissionSystem::CompleteMission
-	// (PlayRadioVoice). The exact original id->file table isn't decoded, so the numbered "D2###"
-	// dispatcher series is mapped deterministically; any entry already assigned in the editor wins.
-	static const int32 RadioVoiceIds[] = { 0x5f, 0x60, 0x61, 0x65, 0x66, 0x67, 0x68, 99, 100 };
-	for (int32 VoiceId : RadioVoiceIds)
-	{
-		if (RadioVoices.Contains(VoiceId))
-		{
-			continue;
-		}
-		const FString BaseName = FString::Printf(TEXT("D2%03d"), VoiceId - 94);
-		if (USoundWave* Voice = LoadOriginalVoice(SoundDir, BaseName))
-		{
-			RadioVoices.Add(VoiceId, Voice);
-		}
-	}
-
-	// Megaphone lines ("MG_*"): one is barked when the megaphone clears a jam.
-	MegaphoneVoices.Reset();
-	TArray<FString> MegaphoneFiles;
-	IFileManager::Get().FindFiles(MegaphoneFiles, *FPaths::Combine(SoundDir, TEXT("MG_*.WAV")), true, false);
-	TSet<FString> SeenBaseNames;
-	for (const FString& File : MegaphoneFiles)
+	// The install ships the same line under both cases (mg_00_00.wav / MG_00_04.WAV), so fold
+	// them or the random pick is biased toward whichever spelling repeats.
+	TSet<FString> Seen;
+	for (const FString& File : Files)
 	{
 		const FString BaseName = FPaths::GetBaseFilename(File);
 		bool bAlreadySeen = false;
-		SeenBaseNames.Add(BaseName.ToUpper(), &bAlreadySeen);
-		if (bAlreadySeen)
+		Seen.Add(BaseName.ToUpper(), &bAlreadySeen);
+		if (!bAlreadySeen)
 		{
-			continue;
-		}
-		if (USoundWave* Voice = LoadOriginalVoice(SoundDir, BaseName))
-		{
-			MegaphoneVoices.Add(Voice);
+			MegaphoneVoiceFiles.Add(BaseName);
 		}
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("[Mission] Auto-loaded %d radio voices and %d megaphone lines from %s"),
-		RadioVoices.Num(), MegaphoneVoices.Num(), *SoundDir);
+	UE_LOG(LogTemp, Display, TEXT("[Mission] %d megaphone lines from %s"),
+		MegaphoneVoiceFiles.Num(), *LanguageDir);
 }
-
 void ASimCopterMissionSystemActor::EnsureMessageLogWidget()
 {
 	if (!bShowMissionMessageLog || MessageLogWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)

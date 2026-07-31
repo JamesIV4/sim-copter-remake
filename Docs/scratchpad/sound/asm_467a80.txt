@@ -1,0 +1,50 @@
+00467a80 SUB ESP,0x20
+00467a83 PUSH ESI
+00467a84 MOV ESI,dword ptr [ESP + 0x28]
+00467a88 FILD dword ptr [ESI]
+00467a8a FMUL double ptr [0x004f3a28]
+00467a90 FSTP double ptr [ESP + 0x14]
+00467a94 FILD dword ptr [ESI + 0x4]
+00467a97 FMUL double ptr [0x004f3a28]
+00467a9d FSTP double ptr [ESP + 0x1c]
+00467aa1 FILD dword ptr [ESI + 0x8]
+00467aa4 FMUL double ptr [0x004f3a28]
+00467aaa FST double ptr [ESP + 0x4]
+00467aae FMUL double ptr [ESP + 0x4]
+00467ab2 FLD double ptr [ESP + 0x1c]
+00467ab6 FMUL double ptr [ESP + 0x1c]
+00467aba FADDP
+00467abc FLD double ptr [ESP + 0x14]
+00467ac0 FMUL double ptr [ESP + 0x14]
+00467ac4 FADDP
+00467ac6 FSQRT
+00467ac8 FCOM double ptr [0x004f3a38]
+00467ace FSTP double ptr [ESP + 0xc]
+00467ad2 FNSTSW AX
+00467ad4 TEST AH,0x40
+00467ad7 JNZ 0x00467b1c
+00467ad9 FLD double ptr [ESP + 0x14]
+00467add FDIV double ptr [ESP + 0xc]
+00467ae1 FMUL double ptr [0x004f3a30]
+00467ae7 CALL 0x004d39a8
+00467aec FLD double ptr [ESP + 0x1c]
+00467af0 FDIV double ptr [ESP + 0xc]
+00467af4 MOV dword ptr [ESI],EAX
+00467af6 FMUL double ptr [0x004f3a30]
+00467afc CALL 0x004d39a8
+00467b01 FLD double ptr [ESP + 0x4]
+00467b05 FDIV double ptr [ESP + 0xc]
+00467b09 MOV dword ptr [ESI + 0x4],EAX
+00467b0c FMUL double ptr [0x004f3a30]
+00467b12 CALL 0x004d39a8
+00467b17 MOV dword ptr [ESI + 0x8],EAX
+00467b1a JMP 0x00467b30
+00467b1c MOV dword ptr [ESI + 0x8],0x0
+00467b23 MOV dword ptr [ESI + 0x4],0x0
+00467b2a MOV dword ptr [ESI],0x0
+00467b30 FLD double ptr [ESP + 0xc]
+00467b34 FMUL double ptr [0x004f3a30]
+00467b3a CALL 0x004d39a8
+00467b3f POP ESI
+00467b40 ADD ESP,0x20
+00467b43 RET
