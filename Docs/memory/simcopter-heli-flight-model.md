@@ -27,6 +27,77 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
 *target* + smoothed bank, and **bank state inherits the slide when |slide| > |bank|**
 (persistent overwrite quirk).
 
+## The slow takeoff was never the flight model — it was input (2026-07-31)
+
+**`>= 300` (commit 387e58e) was not it.** Nor is anything else in the model:
+`SimCopter.Flight.TakeoffRepeat` drives the pure model through take off → climb → descend → land →
+take off again and the **second spool takes 0.72 s against the first's 3.02 s** (a landed rotor is
+still near 360 and decays at only 50/s), with one state change, one lift-off, zero touchdowns.
+
+`LogSimCopterTakeoff` (prints on every Parked/Flying edge and once a second during a spool) settled
+it in one run. A healthy takeoff is three lines, rotor +100/s, lift-off at 3.0 s. The stall:
+
+    13:54:49  landed, collective -1, rotor 360      <- landing ended on the descend key
+    13:54:50  MouseCaptureMode -> CapturePermanently    (stepped out, on foot)
+    13:54:54  Victim picked up (MedEvac #0)
+    13:54:54  MouseCaptureMode -> CaptureDuringMouseDown (climbed back in)
+      ... twelve seconds, NOT ONE spool line ...
+    13:55:06  lift-off, rotor 301.2
+
+**It is a stuck `bEngineShutdownHeld`, and the third log shows it happening frame by frame.** Once
+the diagnostic printed the raw axis alongside the engine flag, the failure was unmistakable — the
+player's input never wavers, the *engine* does:
+
+    14:20:30.703  collective 1 (axis +1.00)  engine 1  rotor  22.1
+    14:20:31.499  collective 0 (axis +1.00)  engine 0  rotor 100.8   <- engine died, input zeroed
+    14:20:31.858  collective 0 (axis +1.00)  engine 0  rotor  82.9   <- rotor spooling DOWN
+    14:20:32.352  collective 1 (axis +1.00)  engine 1  rotor  59.3
+    14:20:33.149  collective 0 (axis +1.00)  engine 0  rotor 138.1
+    14:20:35.257  collective 1 (axis +1.00)  engine 1  rotor  33.5   <- collapsed back to 33
+
+The chain:
+
+1. `CanExitHelicopter` requires `!bEngineRunning`, so **getting out means holding the shutdown key
+   through a possession change**.
+2. That key's release never reaches the pawn — `bEngineShutdownHeld` is the pawn's *own* bool, set
+   by an action's Pressed/Released handlers, and an unpossessed pawn gets no Released. It stays
+   asserted for good.
+3. `UpdateEngineState` ran its start and shutdown timers **independently**, so with both live they
+   took turns: start runs out and sets the engine running, shutdown immediately runs out and clears
+   it, about once a second.
+4. `BuildFlightInputs` returns *dead controls* while `!bEngineRunning`, so `ClimbCommand` alternated
+   1/0. The rotor sawtoothed instead of spooling and never reached the 300 gate.
+5. `LastClimbCommand` flapping 1/0 while parked is exactly what plays CHOPSTAR then CHOPSTOP — the
+   back-to-back wind up/wind down that was reported from the very first message.
+
+Fixes: `ResetTransientInputState()` clears every held-action bool and hold timer (not just the
+axes) on both edges of a possession change, and `ResolveEngineHoldAction` makes conflicting start
+and shutdown resolve to **neither**, so the state machine cannot oscillate however the bools got
+set. Guard: `SimCopter.Flight.EngineHoldArbitration`.
+
+**Two earlier attempts that were wrong, kept as changes because both are defects on their own
+terms — but neither was the cause:**
+
+- *Stale cached axes.* Real, but cannot cause this: the binding rewrites the held value next frame.
+- *Keyboard focus.* `EnterHelicopter` never handed focus back to the viewport. The log says
+  `focus 1` throughout, so it was never the problem.
+- And before those, `>= 300` (387e58e) and the `FlushPressedKeys()` round. `FlushPressedKeys`
+  cannot reach a pawn-owned bool: the release it synthesises goes through whatever input stack is
+  current, which during a possession swap is not this pawn's.
+
+**The diagnostic trap that cost two rounds:** the log originally gated on "parked *and spooling*",
+i.e. collective >= 1 — precisely what the bug prevents. The one failure worth seeing printed
+nothing at all, twice. Gate diagnostics on *attempting* the action, never on succeeding at it.
+
+The audible half follows from the same thing: CHOPSTAR/CHOPSTOP have only two sources —
+`bTouchedDown`, and the collective dropping below 1 while parked — and neither can fire while the
+collective is genuinely held. Pressing at a helicopter that is not listening alternates them, and
+each release also winds the parked rotor **down** at 50/s (`FUN_00487740`), so pumping the
+collective actively loses ground.
+
+The diagnostic stays in, now including the raw axis value and whether the viewport owns the
+keyboard, so a recurrence names itself: `focus 0` with the player pressing is Slate eating input.
+
 ## Key mechanics
 
 - **Load factor** `[0xce] = (seats×120 + MaxLoad + 30 − (passengers×120 + load)) / cap`
@@ -42,6 +113,11 @@ vel × dt × 0.610. Heading += smoothedYaw × **15** × dt. Display matrix uses 
   tail rotor; tail offsets at +0x2c..0x34 of the 0x5c static block at `0x5040e4`
   (seats at +0x00: JR 4, H500 4, Apache 0, Bell 14, Schw 2, Agusta 7, Dauphin 13,
   MDX 7, MD520 4).
+- **No fuel rewrites the collective field itself.** `FUN_00485f50`'s last statement is
+  `if (heli[0xcc] < 1) heli[3] = -1;`, so every reader later in the same tick sees it — the
+  vertical step *and* `FUN_00487740`, which is what winds a dry parked rotor down. The remake
+  derived the override privately inside `StepVertical`, leaving `StepRotor` on the player's raw
+  input and the rotor frozen. Fixed 2026-07-31; guard `SimCopter.Flight.DryRotorSpoolsDown`.
 - **Climb** `[0x4d]`: up ramps +2×ClimbRate/s to cap 4×ClimbRate×load; neutral decays
   5%/frame up, 10%/frame down; descend ramps −2×MaxDescent/s, floor −4×; **ceiling
   `DAT_0050404c` = 800 units AGL** — above it any collective sinks at MaxDescent.

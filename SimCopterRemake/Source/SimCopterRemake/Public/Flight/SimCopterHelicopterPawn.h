@@ -256,6 +256,10 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	// Every possession path lands here, not just EnterHelicopter: the initial spawn, a console
+	// command, and climbing back in after a job on foot.
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void UnPossessed() override;
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool LoadTuningFromOriginalGameRoot();
@@ -1509,6 +1513,18 @@ private:
 	void SimDispatchTile(int32 Service, int32 TileX, int32 TileY);
 
 	void UpdateEngineState(float DeltaSeconds);
+
+public:
+	/**
+	 * The engine start/shutdown arbitration, pulled out so it can be tested without a world.
+	 * Returns which hold timer, if either, is allowed to advance this frame. Conflicting input
+	 * resolves to neither: with both live the two timers take turns and the engine oscillates,
+	 * which reads in game as a collective that does nothing and a rotor that will not spool.
+	 */
+	enum class EEngineHoldAction : uint8 { None, Start, Shutdown };
+	static EEngineHoldAction ResolveEngineHoldAction(bool bStartInput, bool bShutdownInput);
+
+private:
 	void SimulateFlightStep(float DeltaSeconds);
 	void UpdateGroundProbe();
 	void UpdateForwardProbe();
@@ -1560,6 +1576,30 @@ private:
 	// The collective this step ran with. FUN_00487160 keys the spool-up/down sounds on
 	// heli[3], the collective command, not on the rotor speed it produces.
 	int32 LastClimbCommand = 0;
+
+	// Takeoff diagnostics: seconds since the last line, so a stalled spool prints once a second
+	// rather than every frame. See LogTakeoffDiagnostics.
+	float TakeoffDiagnosticAccumulator = 0.0f;
+	int32 LastDiagnosticClimbCommand = 0;
+	// 16.16 units the swept MoveComponent added to or took off the model's altitude last step.
+	int32 LastAltitudeWriteBackDelta = 0;
+
+	// Clears every "what is held right now" input cache - axes and action bools alike. All of it
+	// goes stale the moment the pawn is unpossessed, and a stuck engine-shutdown bool is what made
+	// takeoffs after a job on foot take forever. Called on both edges of a possession change.
+	void ResetTransientInputState();
+	// Hands keyboard focus back to the game viewport. Under FInputModeGameAndUI a focused Slate
+	// widget swallows keys before the axis bindings run.
+	void RestoreGameViewportFocus();
+	// Releases everything UPlayerInput still believes is held. A key whose release is delivered
+	// during a possession change otherwise sticks down and its axis reports the held value for
+	// good - which is what left the collective jammed at -1 after stepping out of the helicopter.
+	static void FlushStuckKeys(AController* ForController);
+	void LogTakeoffDiagnostics(
+		float DeltaSeconds,
+		ESimCopterFlightState StateBeforeStep,
+		const FSimCopterFlightInputs& Inputs,
+		const FSimCopterFlightEnvironment& Environment);
 
 	// FSimCopterFlightEnvironment::FireHeightDelta from the last step, so the damage handler
 	// can tell FUN_00489800's fire damage from ordinary collision damage.
