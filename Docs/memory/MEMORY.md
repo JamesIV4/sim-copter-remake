@@ -35,6 +35,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 - [SimCopter population rendering](simcopter-population-rendering.md) — car headlights are face-type-11 beam cards; people aren't in GEO (use a procedural box body); ground agents must Camera-trace from high up or they hover.
 - [SimCopter UE figure component](simcopter-ue-figure-component.md) — privanim figures render in UE; ARPP Z is y-down (negate!); unity builds disabled in `Build.cs`; engine at `C:\GameDev\UE_5.8`.
 - [SimCopter ambient vehicles](simcopter-ambient-vehicles.md) — planes/trains/boats + the four crash/rescue missions ported; plane slot 1 IS the UFO, boat slot 0 is CAPBOAT1, Plane/Train Crash tuning is bound-but-dead, a plane ditching on water makes a boat rescue, and only cities with rail (e.g. 12) can show a train.
+- [SimCopter passenger display + person heads](simcopter-passenger-display.md) — the seat manifest (`DAT_005040d0+0x1d4`) and its blit decoded+ported. **Heads are per behavior class, never random, and head 10 (the bandage) belongs to state 6 alone** — the remake was rolling it onto healthy pedestrians. Portrait column = head + 1, row = opcode 54's face from BHAV 264, whose speed edges are NOT monotonic and whose "speed" is scaled by MaxDamage / hit points. Opcodes 57/85 were no-ops; the medevac EKG now loops in the cockpit and its rate falls with the patient's health.
 
 ## Missions, dispatch and effects
 

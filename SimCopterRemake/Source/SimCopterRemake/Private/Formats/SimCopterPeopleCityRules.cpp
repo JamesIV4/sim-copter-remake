@@ -281,6 +281,106 @@ FString FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(int32 BehaviorC
 	return TEXT("5man");
 }
 
+namespace
+{
+	// FUN_004c71c0's per-class appearance block, read straight off its switch: the head index it
+	// stores at person+0x18e and the voice pitch offset it stores at person+0x178. Eleven heads
+	// exist (0..10) and no class claims 10 - that one belongs to state 6, the medevac victim.
+	struct FPeopleAppearanceRow
+	{
+		int32 HeadImageIndex;
+		int32 VoicePitchDeltaHz;
+		int32 VoiceSetEvent;
+	};
+
+	// Voice pitch is a signed 16-bit offset in the executable; 0xfd44 reads -700 and so on.
+	constexpr FPeopleAppearanceRow GPeopleAppearance[] = {
+		{ 4,  500, 0x28 }, //  0 Blonde
+		{ 8,  400, 0x28 }, //  1 Woman
+		{ 6,  400, 0x28 }, //  2 2woman
+		{ 7,  700, 0x0e }, //  3 Child
+		{ 5,    0, 0x0e }, //  4 5man
+		{ 7, -700, 0x0e }, //  5 fatman
+		{ 7, -200, 0x29 }, //  6 BLUE
+		{ 7, -300, 0x0e }, //  7 SUIT
+		{ 5, -100, 0x0e }, //  8 5.5man
+		{ 5,  300, 0x0e }, //  9 SHADES
+		{ 6,  900, 0x0e }, // 10 2DOGG - 1 in 200 takes an Elvis voice instead
+		{ 9, -500, 0x28 }, // 11 2blonde
+		{ 3, -300, 0x0e }, // 12 Medik
+		{ 2, -300, 0x29 }, // 13 Fireman
+		{ 1, -300, 0x29 }, // 14 Kopp
+		{ 5, -900, 0x0e }, // 15 Badguy
+		{ 4,-1000, 0x0e }, // 16 Nessie - always an Elvis voice
+		{ 4,-1000, 0x0e }, // 17 Coww   - 1 in 200 takes an Elvis voice instead
+		{ 7,-1000, 0x29 }, // 18 TubaExpert
+		{ 0,-1000, 0x29 }, // 19 pilot
+		{ 7,-8000, 0x0e }, // 20 Elvis  - always an Elvis voice
+		{ 5, 1000, 0x0e }, // 21 swimmer
+	};
+
+	// FUN_004c5210's cases 0x2f..0x36: atomchg, ftrchkbr, hum, decphum, popon, trnsfrm, spacidle,
+	// pasfstB, passlwB - the eight "Elvis" noises FUN_004c71c0 rolls between.
+	constexpr int32 GElvisVoiceFirst = 0x2f;
+	constexpr int32 GElvisVoiceCount = 8;
+
+	// FUN_004c3010 stores 65000 here after figure.twk's "Consider this large" bind, which is the
+	// value in force during play - the same threshold the celebrity class re-roll uses.
+	constexpr uint16 GConsiderThisLarge = 65000;
+
+	const FPeopleAppearanceRow& AppearanceRow(int32 BehaviorClass)
+	{
+		return GPeopleAppearance[
+			(BehaviorClass >= 0 && BehaviorClass < int32(UE_ARRAY_COUNT(GPeopleAppearance)))
+				? BehaviorClass
+				: 4]; // FUN_004c71c0's default arm leaves the class defaults; 5man is the plain one
+	}
+}
+
+int32 FSimCopterPeopleCityRules::GetHeadImageIndexForBehaviorClass(int32 BehaviorClass)
+{
+	return AppearanceRow(BehaviorClass).HeadImageIndex;
+}
+
+int32 FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(int32 BehaviorClass)
+{
+	return AppearanceRow(BehaviorClass).VoicePitchDeltaHz;
+}
+
+int32 FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(int32 BehaviorClass, uint16& PeopleRandomState)
+{
+	auto RollElvisVoice = [&PeopleRandomState]()
+	{
+		return GElvisVoiceFirst + int32(NextPeopleRandomBounded(PeopleRandomState, GElvisVoiceCount));
+	};
+
+	int32 VoiceSet = AppearanceRow(BehaviorClass).VoiceSetEvent;
+	switch (BehaviorClass)
+	{
+	case 10: // the dog and the cow ask for one Elvis noise in two hundred
+	case 17:
+		if (NextPeopleRandomBounded(PeopleRandomState, 200) == 0)
+		{
+			VoiceSet = RollElvisVoice();
+		}
+		break;
+	case 16: // Nessie and Elvis always have one
+	case 20:
+		VoiceSet = RollElvisVoice();
+		break;
+	default:
+		break;
+	}
+
+	// The tail of FUN_004c71c0 runs for every class and can overwrite whatever the switch chose:
+	// one person in DAT_0058dc3a speaks in Elvis noises regardless of what they are.
+	if (NextPeopleRandomBounded(PeopleRandomState, GConsiderThisLarge) == 0)
+	{
+		VoiceSet = RollElvisVoice();
+	}
+	return VoiceSet;
+}
+
 FSimCopterPeopleLocalOffset FSimCopterPeopleCityRules::ChooseSpawnLocalOffset(
 	int32 FootprintSize,
 	int32 PlacementMode,

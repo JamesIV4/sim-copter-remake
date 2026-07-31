@@ -717,9 +717,19 @@ void USimCopterAudioSubsystem::AddFrequency(int32 Id, int32 DeltaHz)
 	// (vtable +0x60) is `return this[0x5c]`, the clip's OWN rate. The delta is therefore
 	// absolute, not cumulative: calling it every frame with the same argument is a no-op, which
 	// is exactly how the rotor loop drives it.
+	SetFrequencyHz(Id, Slots[Id].Clip.SampleRate + DeltaHz);
+}
+
+void USimCopterAudioSubsystem::SetFrequencyHz(int32 Id, int32 Hz)
+{
+	if (!EnsureSlotLoaded(Id))
+	{
+		return;
+	}
+
 	FSlot& Slot = Slots[Id];
 	const int32 Base = FMath::Max(Slot.Clip.SampleRate, 1);
-	const int32 Target = FMath::Clamp(Base + DeltaHz, GMinFrequencyHz, GMaxFrequencyHz);
+	const int32 Target = FMath::Clamp(Hz, GMinFrequencyHz, GMaxFrequencyHz);
 
 	Slot.PitchMultiplier = FMath::Clamp(
 		static_cast<float>(Target) / static_cast<float>(Base),
@@ -815,7 +825,13 @@ void USimCopterAudioSubsystem::ReleaseVoiceSlot(int32 Id)
 	Slots[Id].bVoiceBankInUse = false;
 }
 
-bool USimCopterAudioSubsystem::PlayVoiceEvent(int32 Slot, int32 VoiceEvent, const FVector& WorldLocation, int32 PitchDeltaHz)
+bool USimCopterAudioSubsystem::PlayVoiceEvent(
+	int32 Slot,
+	int32 VoiceEvent,
+	const FVector& WorldLocation,
+	int32 PitchDeltaHz,
+	bool bNonPositional,
+	int32 Flags)
 {
 	if (!SimCopterSound::IsVoiceBankSlot(Slot) || !bSoundsAvailable)
 	{
@@ -835,7 +851,9 @@ bool USimCopterAudioSubsystem::PlayVoiceEvent(int32 Slot, int32 VoiceEvent, cons
 		return false;
 	}
 	AddFrequency(Slot, PitchDeltaHz);
-	return Play3D(Slot, WorldLocation, 0);
+	// FUN_004c5210's tail: param_4 chooses between FUN_0042a1f0 (3D, culled by distance) and
+	// FUN_0042a2a0 (2D, always at full volume).
+	return bNonPositional ? Play2D(Slot, Flags) : Play3D(Slot, WorldLocation, Flags);
 }
 
 // ---------------------------------------------------------------------------------------------

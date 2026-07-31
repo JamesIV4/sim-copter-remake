@@ -166,5 +166,79 @@ namespace SimCopterSound
 		VOX_FALLING  = 32,   // FallWhsl - falling whistle
 		VOX_UFOUP    = 33,   // UFOup - abduction
 		VOX_OHDRAT   = 35,   // ohdrat
+		VOX_SPRAY    = 59,   // spray - the medic's kit, BHAV 282's delivery
+
+		/**
+		 * The events FUN_004c5210 marks looping (its `bVar3`). Everything in the walk-paced group
+		 * is re-tuned to (movespeed - 1) * 500 Hz, so footsteps and Elvis noises keep step with
+		 * the walker; the EKG is tuned from the patient's health instead.
+		 */
+		VOX_FOOTSTEPS_SHOES = 14,  // xFtShoes
+		VOX_CHEWGUM         = 36,  // chewgum1
+		VOX_KISS            = 39,  // kissA/B/G
+		VOX_FOOTSTEPS_HEELS = 40,  // xFtHeels
+		VOX_FOOTSTEPS_BOOTS = 41,  // xFtBoots
+		VOX_ELVIS_RANDOM    = 46,  // one of the eight, rolled per play
+		VOX_ELVIS_FIRST     = 47,  // 47..54: atomchg, ftrchkbr, hum, decphum, popon, trnsfrm,
+		VOX_ELVIS_LAST      = 54,  //         spacidle, pasfstB, passlwB - FUN_004c71c0's voice sets
+
+		/**
+		 * EKG.wav, the medevac heart monitor. BHAV 800 assigns it as a victim's own voice event
+		 * (attribute 38 := 58) and BHAV 302 asks for it 2D on every pass, so it loops in the
+		 * cockpit while they are aboard. FUN_004c5210 then drives its sample rate straight from
+		 * their health: (health * 4 + 0x78) * 0x19, i.e. 13000 Hz at 100 down to 3000 Hz at 0.
+		 */
+		VOX_EKG      = 58,
 	};
+
+	/**
+	 * The two re-tuning formulas inside FUN_004c5210's "already saying this" arm, which calls the
+	 * buffer's SetFrequency (vtable +0x68) with an ABSOLUTE rate rather than an offset. Both are
+	 * reached only when the event matches the person's own voice event (person+0x18c).
+	 */
+	inline constexpr int32 GetEkgFrequencyHz(int32 Health)
+	{
+		// (health * 4 + 0x78) * 0x19 - 13000 Hz at full health down to 3000 Hz at zero, so the
+		// heart monitor audibly slows as a medevac patient fades. Health is clamped to 0..100
+		// first, in place, by the same code.
+		return ((Health < 0 ? 0 : (Health > 100 ? 100 : Health)) * 4 + 0x78) * 0x19;
+	}
+	inline constexpr int32 GetWalkPacedFrequencyHz(int32 MoveSpeed)
+	{
+		// (movespeed * 4 + 0x54) * 0x7d - what keeps footsteps in step with a runner.
+		return (MoveSpeed * 4 + 0x54) * 0x7d;
+	}
+
+	/** The EKG's initial AddFrequency offset: (health - 100) * 100, i.e. 0 at full health. */
+	inline constexpr int32 GetEkgStartPitchDeltaHz(int32 Health)
+	{
+		return ((Health < 0 ? 0 : (Health > 100 ? 100 : Health)) - 100) * 100;
+	}
+
+	/** The walk-paced events' offset: (movespeed - 1) * 500. */
+	inline constexpr int32 GetWalkPacedPitchDeltaHz(int32 MoveSpeed)
+	{
+		return (MoveSpeed - 1) * 500;
+	}
+
+	/** True for the events FUN_004c5210 marks looping (its `bVar3`). */
+	inline constexpr bool IsLoopingVoiceEvent(int32 VoiceEvent)
+	{
+		return VoiceEvent == VOX_FOOTSTEPS_SHOES ||
+			VoiceEvent == VOX_CHEWGUM ||
+			VoiceEvent == VOX_KISS ||
+			VoiceEvent == VOX_FOOTSTEPS_HEELS ||
+			VoiceEvent == VOX_FOOTSTEPS_BOOTS ||
+			VoiceEvent == VOX_EKG ||
+			(VoiceEvent >= VOX_ELVIS_RANDOM && VoiceEvent <= VOX_ELVIS_LAST);
+	}
+
+	/** True for the events whose rate follows the walker's move speed rather than the person. */
+	inline constexpr bool IsWalkPacedVoiceEvent(int32 VoiceEvent)
+	{
+		return VoiceEvent == VOX_FOOTSTEPS_SHOES ||
+			VoiceEvent == VOX_FOOTSTEPS_HEELS ||
+			VoiceEvent == VOX_FOOTSTEPS_BOOTS ||
+			(VoiceEvent >= VOX_ELVIS_RANDOM && VoiceEvent <= VOX_ELVIS_LAST);
+	}
 }

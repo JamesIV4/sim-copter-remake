@@ -84,6 +84,19 @@ enum class ESimCopterMissionPassengerKind : uint8
 	Rescue
 };
 
+/**
+ * One record of the original's seat manifest, the 16-entry array at DAT_005040d0+0x1d4+0x1c that
+ * FUN_0048bff0 fills, FUN_0048c120 clears and FUN_00453f70 draws. Its five ints are:
+ *
+ *   +0x00  the passenger's head image (copied from person+0x18e when they board)
+ *   +0x04  which of people1.bmp's three rows their portrait uses - opcode 54 writes it
+ *   +0x08  flags; FUN_004c6250 always passes 0x200 and nothing reads it back
+ *   +0x0c  the person id, which is how FUN_0048c0c0 finds a record again
+ *   +0x10  the display slot, recomputed by both writers so the seats stay packed
+ *
+ * The remake keeps the person as an actor handle instead of an id, and lets Unreal's array index
+ * be the display slot; the two fields that decide what is drawn are carried verbatim.
+ */
 USTRUCT(BlueprintType)
 struct SIMCOPTERREMAKE_API FSimCopterMissionPassengerSlot
 {
@@ -94,6 +107,18 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionPassengerSlot
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Missions")
 	ESimCopterMissionPassengerKind Kind = ESimCopterMissionPassengerKind::Transport;
+
+	/** Record +0x00: person+0x18e at the moment they boarded. Portrait column is this plus one. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Missions")
+	int32 HeadImageIndex = 0;
+
+	/** Record +0x04. FUN_004c6250 seats everyone at 1; BHAV 264 moves it between 0, 1 and 2. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Missions")
+	int32 PortraitState = 1;
+
+	/** Record +0x0c: who is in this seat. Null for a seat filled without a real person actor. */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Missions")
+	TWeakObjectPtr<class ASimCopterGroundAgent> Person;
 };
 
 USTRUCT(BlueprintType)
@@ -301,9 +326,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
 	int32 RemoveMissionPassengers(int32 Count);
 
-	int32 AddMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind);
-	int32 RemoveMissionPassengersForMission(int32 Count, int32 EventId, ESimCopterMissionPassengerKind Kind);
+	// SCHOOK: SeatManifestAdd 0x0048bff0 / SeatManifestRemove 0x0048c120. Person is the record's
+	// +0x0c: pass it and the seat carries that passenger's head and can be found again by opcode
+	// 54; leave it null for a seat the mission layer books without a person actor behind it.
+	int32 AddMissionPassengersForMission(
+		int32 Count,
+		int32 EventId,
+		ESimCopterMissionPassengerKind Kind,
+		ASimCopterGroundAgent* Person = nullptr);
+	int32 RemoveMissionPassengersForMission(
+		int32 Count,
+		int32 EventId,
+		ESimCopterMissionPassengerKind Kind,
+		const ASimCopterGroundAgent* Person = nullptr);
 	int32 GetMissionPassengerCount(int32 EventId, ESimCopterMissionPassengerKind Kind) const;
+
+	// SCHOOK: SeatManifestSetFace 0x0048c0e0, reached from people opcode 54 (FUN_004ccb40). Writes
+	// record +0x04 for the seat holding Person and marks the seat window dirty (FUN_0048bf40).
+	// False when that person holds no seat, which is the original's iVar1 == -1 arm.
+	bool SetMissionPassengerPortraitState(const ASimCopterGroundAgent* Person, int32 PortraitState);
 
 	// Who is aboard, in seat order. The seat window draws one portrait per entry.
 	const TArray<FSimCopterMissionPassengerSlot>& GetMissionPassengerSlots() const { return MissionPassengerSlots; }
