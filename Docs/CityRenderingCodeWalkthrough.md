@@ -252,16 +252,19 @@ Because it preserves SimCopter terrain type ranges, the renderer can use the sam
 
 ## Building Footprints
 
-`ResolveOriginalMeshFootprint` suppresses duplicate rendering of multi-tile buildings:
+`FSimCopterCityGeometryRules::ClaimOriginalBuildingFootprint` mirrors the scene-cell claim in
+`FUN_0047c0c0`:
 
-- Tiles below `0x70` are road/infrastructure and render as single tiles.
-- `XZON` high nibble `0xf0` means a single/full tile.
-- If bit `0x80` is absent, the tile is treated as a child tile and suppressed.
-- Width scans right until a matching tile has bit `0x40`.
-- Height scans downward until a matching tile has bit `0x10`.
-- The low nibble must match while scanning, so unrelated buildings with the same `XBLD` id do not merge.
+- `FUN_004e4f80` supplies one square size (1-4 tiles) from the building's `XBLD` id.
+- The full square must be inside the map and every cell must carry that same `XBLD` id.
+- The first valid cell in the row-major sweep claims the square; later covered cells are suppressed.
+- The mesh origin is the center of that claimed square.
+- `XZON` is deliberately not consulted. Its corner markers are SimCity zone data, not SimCopter's
+  building-mesh owner field.
 
-This is based on the SC2 footprint marker behavior documented in `ReverseEngineering.md`.
+The old `XZON & 0x80` path selected the far corner of many Islandtown footprints and then failed to
+find its right/down endpoints, so it centered 2x2-4x4 GEO models as 1x1 objects over neighboring
+roads.
 
 ## Original Mesh Assembly
 

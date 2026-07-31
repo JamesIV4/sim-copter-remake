@@ -97,18 +97,16 @@ constexpr int32 TerminalXbldId = 0xf6;
 // id on the twelve perimeter tiles, INDEX_NONE for a tile outside the block.
 SIMCOPTERREMAKE_API int32 GetStampedXbldId(const FIntPoint& Origin, int32 TileX, int32 TileY);
 
-// The XZON high nibble that goes with it. SimCity 2000 marks a building's footprint by flagging
-// its four corner tiles - 0x80 top-left, 0x40 top-right, 0x10 bottom-left, 0x20 bottom-right,
-// all four (0xf0) on a 1x1, nothing on an interior tile - and that is what the city builder
-// measures a footprint from. FUN_004829f0 builds its cells by hand and never reads XZON, but the
-// remake goes through the shared XBLD -> footprint path, so the block's corner marks have to be
-// rewritten with the ids: a stale 2x2 corner mark left over from the demolished SimCity 2000
-// airport makes a 1x1 pad render as an oversized slab lying in its neighbours' ground.
+// The XZON high nibble to normalize beside GetStampedXbldId. SimCity 2000 marks a building's
+// footprint by flagging its four corners (0x80/0x40/0x10/0x20, or 0xf0 for a 1x1). SimCopter's
+// city renderer claims meshes from XBLD squares and FUN_004829f0 never reads XZON, but keeping the
+// stamped SC2 grid internally coherent prevents other zone-marker consumers from inheriting the
+// demolished airport buildings' corners.
 // Returns INDEX_NONE for a tile outside the block.
 SIMCOPTERREMAKE_API int32 GetStampedZoneHighNibble(const FIntPoint& Origin, int32 TileX, int32 TileY);
 
-// FUN_004829f0's XBLD writes: 0xf6 over the middle 2x2, 0xde over the twelve pads, plus the
-// footprint corner marks above. Without this the SimCity 2000 airport - runways, hangars,
+// FUN_004829f0's XBLD writes: 0xf6 over the middle 2x2 and 0xde over the twelve pads, plus the
+// remake's XZON metadata normalization above. Without this the SimCity 2000 airport - runways, hangars,
 // control tower - stays standing on the pads and a helicopter parked on one ends up inside a
 // building. Does nothing for the fallback block, which is off the map and has no tiles to write.
 SIMCOPTERREMAKE_API void StampBlockTiles(FSimCity2000City& City, const FIntPoint& Origin);
