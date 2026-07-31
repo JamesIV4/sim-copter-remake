@@ -28,6 +28,10 @@ public:
 	ASimCopterOnFootPawn();
 
 	virtual void BeginPlay() override;
+	// Keyboard focus has to come back to the viewport on every possession, or the pawn's axis
+	// bindings never see the keys - see the helicopter's RestoreGameViewportFocus.
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void UnPossessed() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;

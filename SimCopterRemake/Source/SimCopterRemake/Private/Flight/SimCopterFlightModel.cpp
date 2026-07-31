@@ -230,11 +230,24 @@ void FSimCopterFlightModel::Step(float DeltaSeconds, const FSimCopterFlightInput
 	{
 		StepControls(Dt, Inputs);
 	}
+
+	// FUN_00485f50's very last statement is `if (heli[0xcc] < 1) heli[3] = -1;` - the no-fuel
+	// override is written into the collective field ITSELF, so every reader later in the same
+	// tick sees it. Both do read it: FUN_00487160 for the descent, and FUN_00487740 to decide
+	// whether the parked rotor winds down. Deriving the override privately inside StepVertical
+	// left StepRotor looking at the player's raw input, so a dry helicopter with the collective
+	// held kept its rotor frozen at whatever RPM it had instead of spooling down.
+	FSimCopterFlightInputs Effective = Inputs;
+	if (Fuel < 1)
+	{
+		Effective.ClimbCommand = -1;
+	}
+
 	StepTurbulence(Dt, Env, OutEvents);
 	StepAttitude(Dt, Env);
-	StepVelocity(Dt, Inputs);
-	StepVertical(Dt, Inputs, Env, OutEvents);
-	StepRotor(Dt, Inputs);
+	StepVelocity(Dt, Effective);
+	StepVertical(Dt, Effective, Env, OutEvents);
+	StepRotor(Dt, Effective);
 	StepFuelAndDamage(Dt, OutEvents);
 	StepGroundImpact(Dt, Env, OutEvents);
 }
@@ -602,13 +615,10 @@ void FSimCopterFlightModel::StepVelocity(int32 Dt, const FSimCopterFlightInputs&
 
 void FSimCopterFlightModel::StepVertical(int32 Dt, const FSimCopterFlightInputs& Inputs, const FSimCopterFlightEnvironment& Env, FSimCopterFlightEvents& OutEvents)
 {
-	// FUN_00487160.
+	// FUN_00487160. The no-fuel override already landed on Inputs.ClimbCommand in Step(), where
+	// FUN_00485f50 puts it, so this reads the same value the rotor step does.
 	const bool bOutOfFuel = Fuel < 1;
-	int32 ClimbCommand = Inputs.ClimbCommand;
-	if (bOutOfFuel)
-	{
-		ClimbCommand = -1; // FUN_00485f50 forces descend with no fuel
-	}
+	const int32 ClimbCommand = Inputs.ClimbCommand;
 
 	if (ClimbCommand < 0)
 	{

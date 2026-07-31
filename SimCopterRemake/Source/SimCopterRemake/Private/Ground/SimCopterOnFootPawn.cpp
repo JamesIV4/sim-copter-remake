@@ -172,6 +172,36 @@ void ASimCopterOnFootPawn::BeginPlay()
 		PlayerController->SetInputMode(InputMode);
 	}
 	EnsureControllerOverlayWidget();
+	// Same reason as the helicopter's: the overlay above is a Slate widget, and a focused widget
+	// takes the keys before the pawn's axis bindings do.
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
+}
+
+void ASimCopterOnFootPawn::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	// Same stuck-key flush as the helicopter: a key held across the swap otherwise keeps
+	// reporting its held value on the pawn you just moved to.
+	if (APlayerController* PlayerController = Cast<APlayerController>(NewController))
+	{
+		PlayerController->FlushPressedKeys();
+	}
+	if (FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
+}
+
+void ASimCopterOnFootPawn::UnPossessed()
+{
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		PlayerController->FlushPressedKeys();
+	}
+	Super::UnPossessed();
 }
 
 void ASimCopterOnFootPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
