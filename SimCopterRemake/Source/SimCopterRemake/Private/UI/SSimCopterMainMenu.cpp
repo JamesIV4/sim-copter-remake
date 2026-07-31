@@ -1,713 +1,300 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "UI/SSimCopterMainMenu.h"
 
-#include "Audio/SimCopterAudioSubsystem.h"
-#include "Engine/Engine.h"
-#include "Engine/GameViewportClient.h"
-#include "Engine/World.h"
-#include "Framework/Application/SlateApplication.h"
-#include "Game/SimCopterSessionSubsystem.h"
 #include "InputCoreTypes.h"
-#include "Styling/CoreStyle.h"
-#include "UI/SimCopterMissionCatalog.h"
-#include "Widgets/Input/SButton.h"
-#include "Widgets/Layout/SBorder.h"
-#include "Widgets/Layout/SBox.h"
-#include "Widgets/Layout/SSeparator.h"
-#include "Widgets/SBoxPanel.h"
+#include "SimCopterFrontEndPage.h"
+#include "Styling/SlateBrush.h"
+#include "UI/SimCopterHangarArt.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SimCopterMainMenu"
 
-using namespace SimCopterMissions;
+using namespace SimCopterFrontEnd;
+using namespace SimCopterMainMenuLayout;
 
 namespace
 {
-const FLinearColor LabelColor(0.62f, 0.72f, 0.82f, 1.0f);
-const FLinearColor ValueColor(0.94f, 0.97f, 1.0f, 1.0f);
-const FLinearColor TitleColor(1.0f, 0.85f, 0.45f, 1.0f);
-const FLinearColor DisabledColor(0.45f, 0.48f, 0.52f, 1.0f);
-const FLinearColor StatusColor(1.0f, 0.72f, 0.55f, 1.0f);
+const TCHAR* const MenuPage = TEXT("MAIN1.BMP");
+const TCHAR* const HoseTop = TEXT("MAIN2.BMP");
+const TCHAR* const HoseCorner = TEXT("MAIN3.BMP");
+const TCHAR* const LampStrip = TEXT("MAIN4.BMP");
+const TCHAR* const KeyStrip = TEXT("MAIN5.BMP");
 
-FSlateFontInfo MenuFont(int32 Size, bool bBold = false)
-{
-	return FCoreStyle::GetDefaultFontStyle(bBold ? TEXT("Bold") : TEXT("Regular"), Size);
+// The selection tick FUN_0045ed60 plays, and the looping backing track FUN_0045f3d0 starts.
+const TCHAR* const SelectionSound = TEXT("menu");
+const TCHAR* const MenuMusic = TEXT("menuback");
 }
 
-// The five main-menu items are full-width rows, like the original's stacked bitmap buttons.
-TSharedRef<SWidget> MakeMenuItem(const FText& Label, const FText& Tooltip, FOnClicked OnClicked, bool bEnabled = true)
+namespace SimCopterMainMenuLayout
 {
-	return SNew(SButton)
-		.HAlign(HAlign_Center)
-		.IsEnabled(bEnabled)
-		.ToolTipText(Tooltip)
-		.ContentPadding(FMargin(10.0f, 7.0f))
-		.OnClicked(OnClicked)
-		[
-			SNew(STextBlock)
-			.Text(Label)
-			.ColorAndOpacity(bEnabled ? ValueColor : DisabledColor)
-			.Font(MenuFont(14, true))
-		];
-}
-
-TSharedRef<SWidget> MakeSmallButton(const FText& Label, FOnClicked OnClicked)
+int32 GetNavigationTarget(const ENavigation Navigation, const int32 Selected, const int32 Count)
 {
-	return SNew(SButton)
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Center)
-		.ContentPadding(FMargin(8.0f, 3.0f))
-		.OnClicked(OnClicked)
-		[
-			SNew(STextBlock).Text(Label).Font(MenuFont(12, true))
-		];
-}
-
-// MinDesiredWidth, not WidthOverride: a fixed width gets squeezed when a row runs out of room and
-// the glyph is then clipped away entirely, leaving a blank button.
-TSharedRef<SWidget> MakeArrow(const FText& Label, FOnClicked OnClicked)
-{
-	return SNew(SBox)
-		.MinDesiredWidth(28.0f)
-		[
-			SNew(SButton)
-			.HAlign(HAlign_Center)
-			.VAlign(VAlign_Center)
-			.ContentPadding(FMargin(7.0f, 1.0f))
-			.OnClicked(OnClicked)
-			[
-				SNew(STextBlock).Text(Label).Font(MenuFont(12, true))
-			]
-		];
-}
-
-TSharedPtr<SWidget> FindFirstFocusableWidget(const TSharedRef<SWidget>& Root)
-{
-	if (Root->SupportsKeyboardFocus() && Root->IsEnabled())
+	if (Count <= 0)
 	{
-		return Root;
+		return INDEX_NONE;
 	}
 
-	FChildren* Children = Root->GetChildren();
-	for (int32 ChildIndex = 0; Children != nullptr && ChildIndex < Children->Num(); ++ChildIndex)
+	switch (Navigation)
 	{
-		if (TSharedPtr<SWidget> Result = FindFirstFocusableWidget(Children->GetChildAt(ChildIndex)))
-		{
-			return Result;
-		}
+	case ENavigation::Next:
+		// FUN_0045f040: `if (count - 1 > selected) selected + 1 else 0`.
+		return (Count - 1 > Selected) ? Selected + 1 : 0;
+
+	case ENavigation::Previous:
+		// `if (selected == 0) count - 1 else selected - 1`.
+		return (Selected == 0) ? Count - 1 : Selected - 1;
+
+	case ENavigation::PreviousNoWrap:
+		// Page Up only moves while the selection is above the first item; the original falls
+		// straight through to the Home/End tests otherwise, which do not match, so nothing happens.
+		return (Selected > 0) ? Selected - 1 : INDEX_NONE;
+
+	case ENavigation::First:
+		return 0;
+
+	case ENavigation::Last:
+		return Count - 1;
+
+	default:
+		return INDEX_NONE;
 	}
-
-	return nullptr;
-}
-
-FString ResolveCareerTweakPath()
-{
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/tweak/career.twk"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/tweak/career.twk")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/tweak/career.twk")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeFilename(Candidate);
-		if (FPaths::FileExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return Candidates.Last();
 }
 }
-
-constexpr int32 SSimCopterMainMenu::NewCareerCityChoices[3];
 
 void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 {
-	Session = InArgs._Session;
-	OnStartRequested = InArgs._OnStartRequested;
-	OnQuitRequested = InArgs._OnQuitRequested;
+	Art = InArgs._Art;
+	OnItemChosen = InArgs._OnItemChosen;
 
-	bCareerDataLoaded = CareerData.LoadCareerData(ResolveCareerTweakPath());
-	USimCopterSessionSubsystem::GetUserCityFilePaths(UserCityPaths);
+	USimCopterHangarArt* ArtObject = Art;
+	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
+
+	// main1.bmp, then the two hose pieces that bridge it to the screen edges. The page falls back
+	// to a plain panel without the artwork, but the hoses are pure decoration: draw them only when
+	// they are really there, or the fallback leaves two grey blocks hanging off the panel.
+	AddAt(Canvas, FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
+		MakePageImage(ArtObject, MenuPage));
+	if (ArtObject != nullptr)
+	{
+		if (const FSlateBrush* Brush = ArtObject->GetBitmap(HoseTop, /*bColorKeyed=*/true))
+		{
+			AddAt(Canvas, FRect{ HoseTopX, HoseTopY, HoseTopX + HoseTopWidth, HoseTopY + HoseTopHeight },
+				SNew(SImage).Image(Brush));
+		}
+		if (const FSlateBrush* Brush = ArtObject->GetBitmap(HoseCorner, /*bColorKeyed=*/true))
+		{
+			AddAt(
+				Canvas,
+				FRect{ HoseCornerX, HoseCornerY, HoseCornerX + HoseCornerWidth, HoseCornerY + HoseCornerHeight },
+				SNew(SImage).Image(Brush));
+		}
+	}
+
+	// The two sprite columns. Both strips are two columns wide; the row's brush is picked per
+	// frame from the live selection, which is what FUN_0045fe10's `+= 0x3c` does to its source.
+	for (int32 Index = 0; Index < ItemCount; ++Index)
+	{
+		const auto AddStripCell = [&](
+			const TCHAR* FileName,
+			const float PageLeft,
+			const float PageTop,
+			const float ColumnWidth,
+			const float SourceTop,
+			const float SourceBottom)
+		{
+			if (ArtObject == nullptr)
+			{
+				return;
+			}
+
+			const int32 Top = FMath::RoundToInt(SourceTop);
+			const int32 Bottom = FMath::RoundToInt(SourceBottom);
+			const int32 Width = FMath::RoundToInt(ColumnWidth);
+			const FSlateBrush* Off = ArtObject->GetSubImage(FileName, FIntRect(0, Top, Width, Bottom), /*bColorKeyed=*/false);
+			const FSlateBrush* On = ArtObject->GetSubImage(FileName, FIntRect(Width, Top, Width * 2, Bottom), /*bColorKeyed=*/false);
+			if (Off == nullptr)
+			{
+				return;
+			}
+
+			AddAt(
+				Canvas,
+				FRect{ PageX + PageLeft, PageY + PageTop, PageX + PageLeft + ColumnWidth, PageY + PageTop + (SourceBottom - SourceTop) },
+				SNew(SImage)
+				.Visibility(EVisibility::HitTestInvisible)
+				.Image_Lambda([this, Index, Off, On]()
+				{
+					return (SelectedIndex == Index && On != nullptr) ? On : Off;
+				}));
+		};
+
+		AddStripCell(KeyStrip, KeyX, KeyTop[Index], KeyColumnWidth, KeySourceTop[Index], KeySourceBottom[Index]);
+		AddStripCell(LampStrip, LampX, LampTop[Index], LampColumnWidth, LampSourceTop[Index], LampSourceBottom[Index]);
+	}
+
+	// The item labels, then a transparent hit row over each one. The label goes in first so the
+	// hit row is on top and gets the pointer.
+	for (int32 Index = 0; Index < ItemCount; ++Index)
+	{
+		const FRect Text = GetItemTextRect(Index);
+		AddAt(
+			Canvas,
+			FRect{ PageX + Text.Left, PageY + Text.Top, PageX + Text.Right, PageY + Text.Bottom },
+			SNew(STextBlock)
+			.Text(GetItemLabel(Index))
+			.Visibility(EVisibility::HitTestInvisible)
+			.Font(PageFont(ItemFontHeight, /*bBold=*/true))
+			.ColorAndOpacity_Lambda([this, Index]()
+			{
+				return FSlateColor(SelectedIndex == Index ? ItemSelectedColor : ItemColor);
+			}));
+	}
+
+	for (int32 Index = 0; Index < ItemCount; ++Index)
+	{
+		const FRect Hit = GetItemHitRect(Index);
+		AddAt(
+			Canvas,
+			FRect{ PageX + Hit.Left, PageY + Hit.Top, PageX + Hit.Right, PageY + Hit.Bottom },
+			MakeInvisibleHitButton(
+				FOnClicked::CreateLambda([this, Index]()
+				{
+					// FUN_0045f1a0: a click selects what is under the cursor and then activates it.
+					SetSelectedIndex(Index);
+					ActivateSelected();
+					return FReply::Handled();
+				}),
+				FSimpleDelegate::CreateLambda([this, Index]()
+				{
+					// FUN_0045f210: moving over an item selects it.
+					SetSelectedIndex(Index);
+				}),
+				ButtonStyles));
+	}
 
 	ChildSlot
 	[
-		SNew(SBorder)
-		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-		.BorderBackgroundColor(FLinearColor(0.02f, 0.03f, 0.05f, 0.94f))
-		.Padding(FMargin(22.0f, 18.0f))
-		[
-			SNew(SBox)
-			.WidthOverride(660.0f)
-			[
-				SNew(SVerticalBox)
-
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("Title", "SIMCOPTER"))
-					.ColorAndOpacity(TitleColor)
-					.Font(MenuFont(30, true))
-				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 14.0f))
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("Subtitle", "Main Menu - placeholder styling"))
-					.ColorAndOpacity(LabelColor)
-					.Font(MenuFont(11))
-				]
-
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SAssignNew(Body, SVerticalBox)
-				]
-
-				+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
-				[
-					SNew(STextBlock)
-					.Text(this, &SSimCopterMainMenu::GetStatusText)
-					.ColorAndOpacity(StatusColor)
-					.AutoWrapText(true)
-					.Font(MenuFont(10))
-				]
-			]
-		]
+		MakeScaledScreen(Canvas)
 	];
 
-	ShowPanel(EPanel::Root);
+	PlayScreenMusic(MenuMusic);
 }
 
-void SSimCopterMainMenu::ShowPanel(EPanel NewPanel)
+const FText& SSimCopterMainMenu::GetItemLabel(const int32 Index)
 {
-	Panel = NewPanel;
+	// STRINGTABLE 55..59, English. Resources rather than .rdata, same as the rest of the shell.
+	static const FText Labels[ItemCount] = {
+		LOCTEXT("NewCareerGame", "New Career Game"),   // 55
+		LOCTEXT("OpenCareerGame", "Open Career Game"), // 56
+		LOCTEXT("NewUserGame", "New User Game"),       // 57
+		LOCTEXT("OpenUserGame", "Open User Game"),     // 58
+		LOCTEXT("Quit", "Quit"),                       // 59
+	};
 
-	if (!Body.IsValid())
+	static const FText Empty = FText::GetEmpty();
+	return (Index >= 0 && Index < ItemCount) ? Labels[Index] : Empty;
+}
+
+void SSimCopterMainMenu::SetSelectedIndex(const int32 Index)
+{
+	if (Index < 0 || Index >= ItemCount || Index == SelectedIndex)
 	{
 		return;
 	}
 
-	Body->ClearChildren();
+	SelectedIndex = Index;
+	PlayScreenSound(SelectionSound);
+}
 
-	TSharedRef<SWidget> PanelContent =
-		Panel == EPanel::CareerCity ? BuildCareerCityPanel() :
-		Panel == EPanel::UserCity ? BuildUserCityPanel() :
-		BuildRootPanel();
+void SSimCopterMainMenu::ActivateSelected()
+{
+	// FUN_0045f3d0's [vt+0xfc] stops menuback.wav as the page goes away; the host swaps the
+	// screen out from under us in the delegate, so stop it first.
+	StopScreenMusic();
+	OnItemChosen.ExecuteIfBound(static_cast<ESimCopterMainMenuItem>(SelectedIndex));
+}
 
-	Body->AddSlot().AutoHeight()[PanelContent];
-	InitialFocusWidget = FindFirstFocusableWidget(PanelContent);
-	if (InitialFocusWidget.IsValid() && FSlateApplication::IsInitialized())
+void SSimCopterMainMenu::Navigate(const ENavigation Navigation)
+{
+	const int32 Target = GetNavigationTarget(Navigation, SelectedIndex, ItemCount);
+	if (Target != INDEX_NONE)
 	{
-		FSlateApplication::Get().SetAllUserFocus(InitialFocusWidget, EFocusCause::Navigation);
+		SetSelectedIndex(Target);
 	}
 }
 
-TSharedRef<SWidget> SSimCopterMainMenu::BuildRootPanel()
+bool SSimCopterMainMenu::SelectByMnemonic(const TCHAR Character)
 {
-	const FText NoSaves = LOCTEXT("NoSaveSystem", "Saved games are not implemented yet.");
-
-	return SNew(SVerticalBox)
-
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 5.0f))
-		[
-			MakeMenuItem(
-				LOCTEXT("NewCareer", "NEW CAREER GAME"),
-				LOCTEXT("NewCareerTip", "Begin a new career. You choose one of three cities."),
-				FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleNewCareerGame))
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 5.0f))
-		[
-			MakeMenuItem(
-				LOCTEXT("OpenCareer", "OPEN CAREER GAME"),
-				NoSaves,
-				FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleUnavailable, NoSaves),
-				/*bEnabled=*/false)
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 5.0f))
-		[
-			MakeMenuItem(
-				LOCTEXT("NewUser", "NEW USER GAME"),
-				LOCTEXT("NewUserTip", "Play any SimCity 2000 city. The original opened a file dialog here."),
-				FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleNewUserGame))
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 5.0f))
-		[
-			MakeMenuItem(
-				LOCTEXT("OpenUser", "OPEN USER GAME"),
-				NoSaves,
-				FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleUnavailable, NoSaves),
-				/*bEnabled=*/false)
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			MakeMenuItem(
-				LOCTEXT("Quit", "QUIT"),
-				LOCTEXT("QuitTip", "Leave SimCopter."),
-				FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleQuit))
-		]
-
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 16.0f, 0.0f, 8.0f))
-		[
-			SNew(SSeparator)
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			BuildMissionOptions()
-		];
-}
-
-TSharedRef<SWidget> SSimCopterMainMenu::BuildCareerCityPanel()
-{
-	return SNew(SVerticalBox)
-
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 8.0f))
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("ChooseCareerCity", "NEW CAREER GAME - choose your first city"))
-			.ColorAndOpacity(TitleColor)
-			.Font(MenuFont(14, true))
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				MakeArrow(LOCTEXT("Prev", "<"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleCareerPrev))
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(8.0f, 0.0f))
-			[
-				SNew(STextBlock)
-				.Text(this, &SSimCopterMainMenu::GetCareerCityLineText)
-				.ColorAndOpacity(ValueColor)
-				.Font(MenuFont(14, true))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				MakeArrow(LOCTEXT("Next", ">"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleCareerNext))
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(36.0f, 4.0f, 0.0f, 14.0f))
-		[
-			SNew(STextBlock)
-			.Text(this, &SSimCopterMainMenu::GetCareerCityDetailText)
-			.ColorAndOpacity(LabelColor)
-			.AutoWrapText(true)
-			.Font(MenuFont(10))
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(0.0f, 0.0f, 6.0f, 0.0f))
-			[
-				MakeMenuItem(
-					LOCTEXT("FlyThisCity", "FLY THIS CITY"),
-					LOCTEXT("FlyThisCityTip", "Load this career city and start taking jobs."),
-					FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleStartCareer))
-			]
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
-				MakeSmallButton(LOCTEXT("Back", "BACK"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleBack))
-			]
-		];
-}
-
-TSharedRef<SWidget> SSimCopterMainMenu::BuildUserCityPanel()
-{
-	return SNew(SVerticalBox)
-
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 8.0f))
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("ChooseUserCity", "NEW USER GAME - choose a SimCity 2000 city"))
-			.ColorAndOpacity(TitleColor)
-			.Font(MenuFont(14, true))
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				MakeArrow(LOCTEXT("Prev", "<"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleUserPrev))
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(8.0f, 0.0f))
-			[
-				SNew(STextBlock)
-				.Text(this, &SSimCopterMainMenu::GetUserCityLineText)
-				.ColorAndOpacity(ValueColor)
-				.Font(MenuFont(14, true))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				MakeArrow(LOCTEXT("Next", ">"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleUserNext))
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(36.0f, 4.0f, 0.0f, 14.0f))
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("UserCityDetail", "User cities use career City0's tuning (difficulty 0, no crime or riots), the way FUN_004080c0 seeds a user game."))
-			.ColorAndOpacity(LabelColor)
-			.AutoWrapText(true)
-			.Font(MenuFont(10))
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(0.0f, 0.0f, 6.0f, 0.0f))
-			[
-				MakeMenuItem(
-					LOCTEXT("FlyUserCity", "FLY THIS CITY"),
-					LOCTEXT("FlyUserCityTip", "Load this city and start taking jobs."),
-					FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleStartUserCity))
-			]
-			+ SHorizontalBox::Slot().AutoWidth()
-			[
-				MakeSmallButton(LOCTEXT("Back", "BACK"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleBack))
-			]
-		];
-}
-
-TSharedRef<SWidget> SSimCopterMainMenu::BuildMissionOptions()
-{
-	return SNew(SVerticalBox)
-
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(0.0f, 0.0f, 0.0f, 6.0f))
-		[
-			SNew(STextBlock)
-			.Text(LOCTEXT("ExtrasHeader", "DEVELOPMENT EXTRAS (not in the original menu)"))
-			.ColorAndOpacity(LabelColor)
-			.Font(MenuFont(10, true))
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				SNew(SBox).MinDesiredWidth(104.0f)
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("StartWithMission", "Start with"))
-					.ColorAndOpacity(LabelColor)
-					.Font(MenuFont(10, true))
-				]
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				MakeArrow(LOCTEXT("Prev", "<"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleMissionPrev))
-			]
-			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(8.0f, 0.0f))
-			[
-				SNew(STextBlock)
-				.Text(this, &SSimCopterMainMenu::GetMissionLineText)
-				.ColorAndOpacity(ValueColor)
-				.Font(MenuFont(12, true))
-			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-			[
-				MakeArrow(LOCTEXT("Next", ">"), FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleMissionNext))
-			]
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(FMargin(104.0f, 2.0f, 0.0f, 8.0f))
-		[
-			SNew(STextBlock)
-			.Text(this, &SSimCopterMainMenu::GetMissionDetailText)
-			.ColorAndOpacity(LabelColor)
-			.AutoWrapText(true)
-			.Font(MenuFont(10))
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SButton)
-			.HAlign(HAlign_Left)
-			.ContentPadding(FMargin(8.0f, 3.0f))
-			.ToolTipText(LOCTEXT(
-				"FirstMissionTip",
-				"The original waits out a 180 second opening countdown before the first scheduled job (DAT_00505fb4)."))
-			.OnClicked(FOnClicked::CreateSP(this, &SSimCopterMainMenu::HandleToggleFirstMission))
-			[
-				SNew(STextBlock)
-				.Text(this, &SSimCopterMainMenu::GetFirstMissionToggleText)
-				.ColorAndOpacity(ValueColor)
-				.Font(MenuFont(11))
-			]
-		];
-}
-
-FText SSimCopterMainMenu::GetCareerCityLineText() const
-{
-	const int32 CityIndex = NewCareerCityChoices[FMath::Clamp(CareerChoice, 0, 2)];
-	return FText::Format(
-		LOCTEXT("CareerCityLine", "City{0}   (choice {1} of 3)   cities/career/city{0}.sc2"),
-		FText::AsNumber(CityIndex),
-		FText::AsNumber(CareerChoice + 1));
-}
-
-FText SSimCopterMainMenu::GetCareerCityDetailText() const
-{
-	const int32 CityIndex = NewCareerCityChoices[FMath::Clamp(CareerChoice, 0, 2)];
-	const FSimCopterCareerCity* City = bCareerDataLoaded ? CareerData.GetCareerCityByIndex(CityIndex) : nullptr;
-	if (City == nullptr)
+	// FUN_0045eed0 compares the key against the *first byte* of each item's text and stops at the
+	// first match, so "New Career Game" always wins over "New User Game" on N.
+	for (int32 Index = 0; Index < ItemCount; ++Index)
 	{
-		return LOCTEXT("NoCareerData", "career.twk was not found, so this city will run with built-in defaults.");
+		const FString Label = GetItemLabel(Index).ToString();
+		if (Label.Len() > 0 && FChar::ToUpper(Label[0]) == FChar::ToUpper(Character))
+		{
+			SetSelectedIndex(Index);
+			return true;
+		}
 	}
 
-	return FText::Format(
-		LOCTEXT(
-			"CareerCityDetail",
-			"Difficulty {0} (tier {1})   {2} points to finish   ${3} on completion   day/night flag {4}\nJob mix  Fire {5}  Crime {6}  Rescue {7}  Riot {8}  Traffic {9}  MedEvac {10}  Transport {11}"),
-		FText::AsNumber(City->Difficulty),
-		FText::AsNumber(City->Difficulty + 1),
-		FText::AsNumber(City->PointsNeeded),
-		FText::AsNumber(City->MoneyEarned),
-		FText::AsNumber(City->DayOrNight),
-		FText::AsNumber(static_cast<int32>(City->Weights[0])),
-		FText::AsNumber(static_cast<int32>(City->Weights[1])),
-		FText::AsNumber(static_cast<int32>(City->Weights[2])),
-		FText::AsNumber(static_cast<int32>(City->Weights[3])),
-		FText::AsNumber(static_cast<int32>(City->Weights[4])),
-		FText::AsNumber(static_cast<int32>(City->Weights[5])),
-		FText::AsNumber(static_cast<int32>(City->Weights[6])));
-}
-
-FText SSimCopterMainMenu::GetUserCityLineText() const
-{
-	if (UserCityPaths.Num() == 0)
-	{
-		return LOCTEXT("NoUserCities", "No .sc2 files found under the original game's cities folder");
-	}
-
-	const int32 Index = FMath::Clamp(UserCityChoice, 0, UserCityPaths.Num() - 1);
-	return FText::Format(
-		LOCTEXT("UserCityLine", "{0}   ({1} of {2})"),
-		FText::FromString(FPaths::GetCleanFilename(UserCityPaths[Index])),
-		FText::AsNumber(Index + 1),
-		FText::AsNumber(UserCityPaths.Num()));
-}
-
-FText SSimCopterMainMenu::GetMissionLineText() const
-{
-	const TArrayView<const FSimCopterMissionCatalogEntry> Catalog = GetSimCopterMissionCatalog();
-	if (!Catalog.IsValidIndex(MissionChoice))
-	{
-		return LOCTEXT("NoMission", "nothing - jobs arrive on the city's own schedule");
-	}
-
-	return FText::Format(
-		LOCTEXT("MissionLine", "{0}   (mask 0x{1})   {2} of {3}"),
-		FText::FromString(FSimCopterMissionSystem::GetTypeDisplayName(Catalog[MissionChoice].TypeMask)),
-		FText::FromString(FString::Printf(TEXT("%x"), Catalog[MissionChoice].TypeMask)),
-		FText::AsNumber(MissionChoice + 1),
-		FText::AsNumber(Catalog.Num()));
-}
-
-FText SSimCopterMainMenu::GetMissionDetailText() const
-{
-	const TArrayView<const FSimCopterMissionCatalogEntry> Catalog = GetSimCopterMissionCatalog();
-	if (!Catalog.IsValidIndex(MissionChoice))
-	{
-		return FText::GetEmpty();
-	}
-
-	const FSimCopterMissionCatalogEntry& Entry = Catalog[MissionChoice];
-	const FText Description = FText::Format(
-		LOCTEXT("MissionDetail", "{0} bucket - {1}"),
-		FText::FromString(Entry.Bucket),
-		FText::FromString(Entry.Note));
-
-	if (Entry.bWorldHookPorted)
-	{
-		return Description;
-	}
-
-	return FText::Format(
-		LOCTEXT("MissionDetailUnported", "{0}\nThis type's world hook is still a stub, so it will report a placement failure."),
-		Description);
-}
-
-FText SSimCopterMainMenu::GetFirstMissionToggleText() const
-{
-	return bStartFirstMissionImmediately
-		? LOCTEXT("FirstMissionOn", "[x] first scheduled job arrives immediately")
-		: LOCTEXT("FirstMissionOff", "[ ] first scheduled job arrives immediately");
-}
-
-FReply SSimCopterMainMenu::HandleNewCareerGame()
-{
-	StatusText = FText::GetEmpty();
-	ShowPanel(EPanel::CareerCity);
-	// SCHOOK: CareerScreenSound 0x00457c90 - the career screen (career.bmp) owns career.wav as
-	// its own sound object and plays it once, not looped: the buffer's Play is (0, 1).
-	PlayFrontEndSound(TEXT("career"));
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleNewUserGame()
-{
-	StatusText = FText::GetEmpty();
-	ShowPanel(EPanel::UserCity);
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleUnavailable(FText Reason)
-{
-	StatusText = Reason;
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleQuit()
-{
-	OnQuitRequested.ExecuteIfBound();
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleBack()
-{
-	StatusText = FText::GetEmpty();
-	ShowPanel(EPanel::Root);
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleCareerPrev()
-{
-	CareerChoice = (CareerChoice + 2) % 3;
-	// carsel.wav, the other sound object FUN_00457c90 builds: the city-selection tick.
-	PlayFrontEndSound(TEXT("carsel"));
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleCareerNext()
-{
-	CareerChoice = (CareerChoice + 1) % 3;
-	PlayFrontEndSound(TEXT("carsel"));
-	return FReply::Handled();
-}
-
-// The front-end screens do not use the 130-slot table at all - each builds a standalone sound
-// object for its own file - so these go through PlayFile2D rather than an id.
-void SSimCopterMainMenu::PlayFrontEndSound(const TCHAR* WavName)
-{
-	const UWorld* World = GEngine != nullptr && GEngine->GameViewport != nullptr
-		? GEngine->GameViewport->GetWorld()
-		: nullptr;
-	if (World == nullptr)
-	{
-		return;
-	}
-	if (USimCopterAudioSubsystem* Audio = World->GetSubsystem<USimCopterAudioSubsystem>())
-	{
-		Audio->PlayFile2D(WavName, SimCopterSound::ESoundDir::Root);
-	}
-}
-
-FReply SSimCopterMainMenu::HandleUserPrev()
-{
-	if (UserCityPaths.Num() > 0)
-	{
-		UserCityChoice = (UserCityChoice + UserCityPaths.Num() - 1) % UserCityPaths.Num();
-	}
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleUserNext()
-{
-	if (UserCityPaths.Num() > 0)
-	{
-		UserCityChoice = (UserCityChoice + 1) % UserCityPaths.Num();
-	}
-	return FReply::Handled();
-}
-
-void SSimCopterMainMenu::StepMission(int32 Delta)
-{
-	// INDEX_NONE ("nothing") is one step below the first entry, so the list wraps through it.
-	const int32 Count = GetSimCopterMissionCatalog().Num();
-	const int32 Slots = Count + 1;
-	const int32 Current = MissionChoice + 1;
-	MissionChoice = ((Current + Delta % Slots + Slots) % Slots) - 1;
-}
-
-FReply SSimCopterMainMenu::HandleMissionPrev()
-{
-	StepMission(-1);
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleMissionNext()
-{
-	StepMission(1);
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleToggleFirstMission()
-{
-	bStartFirstMissionImmediately = !bStartFirstMissionImmediately;
-	return FReply::Handled();
-}
-
-void SSimCopterMainMenu::ApplyMissionOptionsToSession()
-{
-	USimCopterSessionSubsystem* SessionPtr = Session.Get();
-	if (SessionPtr == nullptr)
-	{
-		return;
-	}
-
-	const TArrayView<const FSimCopterMissionCatalogEntry> Catalog = GetSimCopterMissionCatalog();
-	SessionPtr->SetPendingMissionTypeMask(Catalog.IsValidIndex(MissionChoice) ? Catalog[MissionChoice].TypeMask : 0);
-	SessionPtr->SetStartFirstMissionImmediately(bStartFirstMissionImmediately);
-}
-
-FReply SSimCopterMainMenu::HandleStartCareer()
-{
-	USimCopterSessionSubsystem* SessionPtr = Session.Get();
-	if (SessionPtr == nullptr)
-	{
-		StatusText = LOCTEXT("NoSession", "The session subsystem is missing, so the city cannot be started.");
-		return FReply::Handled();
-	}
-
-	const int32 CityIndex = NewCareerCityChoices[FMath::Clamp(CareerChoice, 0, 2)];
-	SessionPtr->RequestCareerCity(CityIndex);
-	ApplyMissionOptionsToSession();
-
-	if (SessionPtr->GetCityFilePath().IsEmpty() || !FPaths::FileExists(SessionPtr->GetCityFilePath()))
-	{
-		StatusText = FText::Format(
-			LOCTEXT("MissingCareerCity", "Cannot find {0}. The original game folder has to be in place under Reference/SimCopterOriginalGame."),
-			FText::FromString(USimCopterSessionSubsystem::ResolveCareerCityFilePath(CityIndex)));
-		SessionPtr->ClearPendingSession();
-		return FReply::Handled();
-	}
-
-	OnStartRequested.ExecuteIfBound();
-	return FReply::Handled();
-}
-
-FReply SSimCopterMainMenu::HandleStartUserCity()
-{
-	USimCopterSessionSubsystem* SessionPtr = Session.Get();
-	if (SessionPtr == nullptr || UserCityPaths.Num() == 0)
-	{
-		StatusText = LOCTEXT("NoUserCityToStart", "No city file to load. Put the original game folder under Reference/SimCopterOriginalGame.");
-		return FReply::Handled();
-	}
-
-	SessionPtr->RequestUserCity(UserCityPaths[FMath::Clamp(UserCityChoice, 0, UserCityPaths.Num() - 1)]);
-	ApplyMissionOptionsToSession();
-
-	OnStartRequested.ExecuteIfBound();
-	return FReply::Handled();
+	return false;
 }
 
 FReply SSimCopterMainMenu::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
-	if (InKeyEvent.GetKey() == EKeys::Gamepad_FaceButton_Right && Panel != EPanel::Root)
+	const FKey Key = InKeyEvent.GetKey();
+
+	// FUN_0045f040, in its own order.
+	if (Key == EKeys::Down || Key == EKeys::PageDown)
 	{
-		return HandleBack();
+		Navigate(ENavigation::Next);
+		return FReply::Handled();
+	}
+	if (Key == EKeys::Up)
+	{
+		Navigate(ENavigation::Previous);
+		return FReply::Handled();
+	}
+	if (Key == EKeys::PageUp)
+	{
+		Navigate(ENavigation::PreviousNoWrap);
+		return FReply::Handled();
+	}
+	if (Key == EKeys::Home)
+	{
+		Navigate(ENavigation::First);
+		return FReply::Handled();
+	}
+	if (Key == EKeys::End)
+	{
+		Navigate(ENavigation::Last);
+		return FReply::Handled();
+	}
+	if (Key == EKeys::Enter)
+	{
+		ActivateSelected();
+		return FReply::Handled();
+	}
+	if (Key == EKeys::Escape)
+	{
+		// FUN_0045f040 posts 0x3ea and FUN_0044c710 rewrites it to item 4, so Escape on the main
+		// menu is Quit outright - there is no confirmation here.
+		StopScreenMusic();
+		OnItemChosen.ExecuteIfBound(ESimCopterMainMenuItem::Quit);
+		return FReply::Handled();
+	}
+
+	const FString KeyName = Key.GetFName().ToString();
+	if (KeyName.Len() == 1 && SelectByMnemonic(KeyName[0]))
+	{
+		return FReply::Handled();
 	}
 
 	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
 }
 
 #undef LOCTEXT_NAMESPACE
+

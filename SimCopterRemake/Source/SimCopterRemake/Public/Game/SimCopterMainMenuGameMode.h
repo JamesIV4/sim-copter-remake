@@ -7,12 +7,31 @@
 #include "SimCopterMainMenuGameMode.generated.h"
 
 class SWidget;
+class USimCopterHangarArt;
+enum class ESimCopterMainMenuItem : uint8;
 
-// Game mode for the front-end map (`/Game/MainMenu`): no pawn, no city, just the main menu.
+// Which front-end screen is up. These are FUN_00449cb0's own screen numbers for the two the
+// remake has - the main menu is state 4 and the career city select is state 5 - plus the two the
+// remake substitutes for dialogs the original handed to Windows.
+UENUM()
+enum class ESimCopterFrontEndScreen : uint8
+{
+	None,
+	MainMenu,       // state 4, page 0x7d2, main1.bmp
+	CareerSelect,   // state 5, page 0x7d7, career.bmp
+	UserCityPicker, // stands in for FUN_00406400's GetOpenFileName
+	Message,        // MBox.bmp
+};
+
+// Game mode for the front-end map (`/Game/MainMenu`): no pawn, no city, just the shell.
 //
 // The original ran its shell screens with the simulation stopped and only then loaded a city, so
-// the remake keeps the menu in its own tiny level and travels to the city level once the player has
+// the remake keeps them in their own tiny level and travels to the city level once the player has
 // chosen. The choice is handed over in USimCopterSessionSubsystem, which outlives the travel.
+//
+// This class is the remake's FUN_00449cb0 / FUN_0044c710 pair: it owns the screen the shell is on
+// and answers the menu's five items exactly as the original's handler does. Decode:
+// Docs/scratchpad/mainmenu-DECODED.md.
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCopterMainMenuGameMode : public AGameModeBase
 {
@@ -31,11 +50,31 @@ public:
 	void SimNewUserGame(int32 CityIndex = 0);
 
 private:
-	TSharedPtr<SWidget> MainMenuWidget;
+	// The original's artwork, shared by every front-end screen.
+	UPROPERTY(Transient)
+	TObjectPtr<USimCopterHangarArt> Art = nullptr;
 
-	void OpenMainMenu();
-	void CloseMainMenu();
-	// Travels to the city level with whatever the menu wrote into the session subsystem.
+	TSharedPtr<SWidget> ScreenWidget;
+	ESimCopterFrontEndScreen Screen = ESimCopterFrontEndScreen::None;
+
+	// SCHOOK: EnterState 0x00449cb0 - tear the current screen down and put the next one up.
+	void EnterScreen(ESimCopterFrontEndScreen NewScreen);
+	void CloseScreen();
+	TSharedRef<SWidget> BuildScreen(ESimCopterFrontEndScreen NewScreen);
+
+	// SCHOOK: MainMenuCommand 0x0044c710 - what each of the five items does.
+	void HandleMainMenuItem(ESimCopterMainMenuItem Item);
+
+	void HandleCareerCityChosen(int32 CareerCityIndex);
+	void HandleUserCityChosen(const FString& CityFilePath);
+
+	// Travels to the city level with whatever the shell wrote into the session subsystem.
 	void StartPendingSession();
 	void QuitGame();
+
+	FString ResolveOriginalGameRoot() const;
+
+	// Raised for the two items the remake cannot honour yet; the original's own demo build put the
+	// same refusal in the same box (STRINGTABLE 653).
+	FText PendingMessage;
 };

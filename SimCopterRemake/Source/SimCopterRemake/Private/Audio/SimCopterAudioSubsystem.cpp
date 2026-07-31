@@ -117,6 +117,12 @@ void USimCopterAudioSubsystem::Deinitialize()
 		RadioComponent->DestroyComponent();
 		RadioComponent = nullptr;
 	}
+	if (MusicComponent != nullptr)
+	{
+		MusicComponent->Stop();
+		MusicComponent->DestroyComponent();
+		MusicComponent = nullptr;
+	}
 	RadioEndTime = 0.0;
 	ClipCache.Reset();
 	bSoundsAvailable = false;
@@ -896,4 +902,61 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 
 	LooseComponents.Add(Component);
 	return true;
+}
+
+bool USimCopterAudioSubsystem::PlayMusicFile2D(
+	const FString& WavName,
+	SimCopterSound::ESoundDir Dir,
+	float VolumeMultiplier)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || !bSoundsAvailable)
+	{
+		return false;
+	}
+
+	const FSimCopterPcmClip* Clip = LoadClip(WavName, Dir);
+	if (Clip == nullptr)
+	{
+		return false;
+	}
+
+	USoundWaveProcedural* Wave = MakeWave(*Clip, /*bLoop=*/true, this);
+	if (Wave == nullptr)
+	{
+		return false;
+	}
+
+	if (MusicComponent == nullptr)
+	{
+		MusicComponent = NewObject<UAudioComponent>(this);
+		if (MusicComponent == nullptr)
+		{
+			return false;
+		}
+		MusicComponent->bAutoActivate = false;
+		MusicComponent->bAutoDestroy = false;
+		MusicComponent->bAllowSpatialization = false;
+		MusicComponent->bIsUISound = true;
+		MusicComponent->RegisterComponentWithWorld(World);
+	}
+
+	MusicComponent->Stop();
+	MusicComponent->SetSound(Wave);
+	MusicComponent->SetVolumeMultiplier(VolumeMultiplier * VolumeIndexToGain(MasterVolume));
+	MusicComponent->Play();
+	return true;
+}
+
+void USimCopterAudioSubsystem::StopMusic()
+{
+	if (MusicComponent != nullptr)
+	{
+		MusicComponent->Stop();
+	}
+}
+
+bool USimCopterAudioSubsystem::IsMusicPlaying() const
+{
+	return MusicComponent != nullptr && MusicComponent->IsPlaying();
 }
