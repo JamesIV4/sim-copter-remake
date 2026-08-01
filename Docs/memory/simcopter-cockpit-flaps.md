@@ -59,8 +59,10 @@ how the points bar shipped wrong until 2026-08-01.
 **The Apache has no flap and never will.** `FUN_004127d0` builds flaps from the five *equipment*
 bits at career + 0x48; the Apache's missile and machine gun are **model capabilities**, so the
 original ships no artwork and no layout for them. The remake gives them an invented strip built
-from the same donor frame as the (also invented) dispatch strip - missile button, held gun button,
-and a readout that shows the shared 1 s cooldown or how many missiles are in the air. It collapses
-on the eight civilian airframes.
+from the same donor frame as the (also invented) dispatch strip: a missile button and a held gun
+button, each firing directly, and nothing else - the ammunition is unlimited and the only limits
+(the shared 1 s cooldown, the pool sizes) are things the player feels rather than reads. What is
+actually in the air is on the debug panel instead. The strip collapses on the eight civilian
+airframes.
 
 Related: [[simcopter-heli-tools-models]], [[simcopter-water-gameplay]].
