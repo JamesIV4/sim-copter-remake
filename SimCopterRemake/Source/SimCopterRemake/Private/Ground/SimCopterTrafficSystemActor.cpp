@@ -1806,6 +1806,45 @@ bool ASimCopterTrafficSystemActor::CanPostHospitalParamedic(
 	return Elapsed < 0.0 || Elapsed >= double(FMath::Max(DelaySeconds, 0.0f));
 }
 
+bool ASimCopterTrafficSystemActor::TryGetHospitalRoofPost(
+	const int32 TileX,
+	const int32 TileY,
+	FVector& OutRoofCenter,
+	float& OutHalfExtentCm)
+{
+	int32 NodeIndex = INDEX_NONE;
+	if (GetWorld() == nullptr || !TryResolvePedestrianNodeForTile(TileX, TileY, NodeIndex))
+	{
+		return false;
+	}
+
+	const FSimCopterGroundRouteNode& Node = PedestrianNodes[NodeIndex];
+	OutHalfExtentCm = float(FMath::Max(1, Node.PeopleFootprintSize)) * ActiveTileSize * 0.5f;
+
+	const FIntPoint HospitalTile(TileX, TileY);
+	if (const FVector* Cached = HospitalRoofPostByTile.Find(HospitalTile))
+	{
+		OutRoofCenter = *Cached;
+		return true;
+	}
+
+	// The same probe TrySpawnOriginalPersonAtTile places the medic with, so the post and the
+	// spawn agree on where the roof is.
+	const FVector TraceStart(Node.Location.X, Node.Location.Y, Node.Location.Z + 60000.0f);
+	const FVector TraceEnd(Node.Location.X, Node.Location.Y, Node.Location.Z - 2000.0f);
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterHospitalRoofPost), false, this);
+	if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) ||
+		!Hit.bBlockingHit)
+	{
+		return false;
+	}
+
+	OutRoofCenter = FVector(Node.Location.X, Node.Location.Y, Hit.ImpactPoint.Z);
+	HospitalRoofPostByTile.Add(HospitalTile, OutRoofCenter);
+	return true;
+}
+
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTile(
 	const int32 TileX,
 	const int32 TileY)
@@ -1851,9 +1890,28 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTi
 	const FIntPoint HospitalTile(TileX, TileY);
 	const double NowSeconds = GetWorld()->GetTimeSeconds();
 
+	// Confine whoever is on this roof to it. The original's roof medic retires within seconds of
+	// spawning, so it never wanders; this one has to stand there for the length of a medevac, and a
+	// worker that walks or gets pushed off the edge leaves the helipad unstaffed with the player
+	// already inbound.
+	FVector RoofCenter = FVector::ZeroVector;
+	float RoofHalfExtentCm = 0.0f;
+	const bool bHasRoofPost = TryGetHospitalRoofPost(TileX, TileY, RoofCenter, RoofHalfExtentCm);
+	auto PostMedic = [bHasRoofPost, &RoofCenter, RoofHalfExtentCm](ASimCopterGroundAgent& Medic)
+	{
+		if (bHasRoofPost)
+		{
+			Medic.SetHospitalRoofPost(RoofCenter, RoofHalfExtentCm);
+		}
+		else
+		{
+			Medic.SetPersistentHospitalRoofCrew(true);
+		}
+	};
+
 	if (ASimCopterGroundAgent* Existing = FindPostedMedic())
 	{
-		Existing->SetPersistentHospitalRoofCrew(true);
+		PostMedic(*Existing);
 		HospitalParamedicLastSeenSeconds.Add(HospitalTile, NowSeconds);
 		return Existing;
 	}
@@ -1892,7 +1950,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTi
 	ASimCopterGroundAgent* Spawned = FindPostedMedic();
 	if (Spawned != nullptr)
 	{
-		Spawned->SetPersistentHospitalRoofCrew(true);
+		PostMedic(*Spawned);
 		HospitalParamedicLastSeenSeconds.Add(HospitalTile, NowSeconds);
 	}
 	// A failed spawn deliberately records nothing, so the next mission tick retries at once

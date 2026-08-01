@@ -127,7 +127,34 @@ public:
 	// may be far across the city while the player collects a patient and still has to be present
 	// when the helicopter reaches the hospital.
 	bool IsPersistentHospitalRoofCrew() const { return bPersistentHospitalRoofCrew; }
-	void SetPersistentHospitalRoofCrew(bool bPersistent) { bPersistentHospitalRoofCrew = bPersistent; }
+	void SetPersistentHospitalRoofCrew(bool bPersistent);
+
+	// Pins that worker to the roof it was posted on: the square its building covers, and the roof
+	// surface height it was placed at. The original's roof medic retires within seconds of being
+	// spawned, so it never gets the chance to wander; this one lives for as long as the medevac
+	// does, and a persistent walker will eventually reach an edge. Several movers (crowd
+	// separation, traffic impulses) also displace agents without consulting the walked surface at
+	// all, so the containment is applied to the transform rather than to any one of them.
+	void SetHospitalRoofPost(const FVector& RoofCenterWorldLocation, float HalfExtentCm);
+
+	enum class ERoofPostContainment : uint8
+	{
+		AtPost,    // already over its own roof; nothing to do
+		Contained, // was over the edge or below the roof, and has been put back
+		Abandoned  // too far away to be "off the edge"; the post no longer applies
+	};
+
+	// Pure form of that containment, so the geometry is testable without a world. The inset keeps
+	// the body over the roof rather than half off it, and a position more than FallToleranceCm
+	// below the posted surface is a fall to be undone rather than variation in the surface.
+	static ERoofPostContainment ClampToHospitalRoofPost(
+		const FVector& WorldLocation,
+		const FVector& PostCenterWorldLocation,
+		float PostHalfExtentCm,
+		float BodyRadiusCm,
+		float CapsuleHalfHeightCm,
+		float FallToleranceCm,
+		FVector& OutContainedLocation);
 
 	// Marks an uninjured victim who still needs picking up. They keep whatever program or carrier
 	// they are on, but any moment it leaves them standing still they wave for the helicopter
@@ -448,6 +475,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
 	float PedestrianGroundProbeSlopeHeadroomCm = 110.0f;
 
+	// Where a person another person is carrying rides, relative to the carrier. X is out in front
+	// of the chest; the figure is laid across it by the rotation applied alongside this.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement")
+	FVector CarriedPersonRelativeOffsetCm = FVector(14.0f, 0.0f, -6.0f);
+
+	// How far below its posted roof a hospital worker has to be before it counts as having come
+	// off the building rather than as ordinary variation in the surface. Roofs are flat by
+	// construction and the shortest storey is around 150cm, so anything past this is a fall.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
+	float HospitalRoofPostFallToleranceCm = 100.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement")
 	bool bSnapToGround = true;
 
@@ -590,6 +628,15 @@ private:
 	bool bMissionPatientDead = false;
 	bool bAmbulanceHandoffPending = false;
 	bool bPersistentHospitalRoofCrew = false;
+	// The roof post from SetHospitalRoofPost: centre and surface Z of the building this worker
+	// belongs to, and half the width of its footprint.
+	bool bHasHospitalRoofPost = false;
+	FVector HospitalRoofPostWorldLocation = FVector::ZeroVector;
+	float HospitalRoofPostHalfExtentCm = 0.0f;
+	// Keeps the posted worker over its own roof. Returns true when it had to intervene.
+	bool ContainToHospitalRoofPost();
+	// Whether a step target is still over the posted roof; unposted people are unconstrained.
+	bool IsWithinHospitalRoofPost(const FVector& WorldLocation) const;
 	bool bPassengerFallActive = false;
 	bool bPassengerFallStarted = false;
 	float PassengerFallStartZ = 0.0f;

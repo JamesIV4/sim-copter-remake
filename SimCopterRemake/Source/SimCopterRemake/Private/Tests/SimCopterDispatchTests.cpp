@@ -2,6 +2,7 @@
 
 #include "Ground/SimCopterDispatch.h"
 #include "Ground/SimCopterBehaviorVM.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 
 #include "Misc/AutomationTest.h"
@@ -135,6 +136,73 @@ bool FSimCopterHospitalParamedicRespawnTest::RunTest(const FString& Parameters)
 	TestTrue(
 		TEXT("Backwards world time does not lock the post"),
 		FTraffic::CanPostHospitalParamedic(true, 900.0, 3.0, Delay));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterHospitalRoofPostTest,
+	"SimCopter.Dispatch.HospitalRoofPost",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterHospitalRoofPostTest::RunTest(const FString& Parameters)
+{
+	// A 3x3 hospital on a 400cm grid: 1200cm across, so 600cm either side of centre. Its roof is
+	// 450cm up, and the medic is a 92cm-tall capsule with a 30cm body.
+	using FAgent = ASimCopterGroundAgent;
+	const FVector Post(0.0f, 0.0f, 450.0f);
+	constexpr float HalfExtent = 600.0f;
+	constexpr float BodyRadius = 30.0f;
+	constexpr float HalfHeight = 92.0f;
+	constexpr float FallTolerance = 100.0f;
+	const float Limit = HalfExtent - BodyRadius; // 570: the body stays over the roof
+	auto Clamp = [&](const FVector& From, FVector& Out)
+	{
+		return FAgent::ClampToHospitalRoofPost(From, Post, HalfExtent, BodyRadius, HalfHeight, FallTolerance, Out);
+	};
+
+	// Standing anywhere on its own roof is left alone.
+	FVector Out = FVector::ZeroVector;
+	TestEqual(
+		TEXT("A medic on its roof is not moved"),
+		int32(Clamp(FVector(200.0f, -300.0f, Post.Z + HalfHeight), Out)),
+		int32(FAgent::ERoofPostContainment::AtPost));
+
+	// Walked (or shoved) past the edge: pulled back to the inset limit, height untouched.
+	TestEqual(
+		TEXT("A medic over the edge is contained"),
+		int32(Clamp(FVector(HalfExtent + 40.0f, 0.0f, Post.Z + HalfHeight), Out)),
+		int32(FAgent::ERoofPostContainment::Contained));
+	TestEqual(TEXT("...back to the inset edge"), float(Out.X), Limit);
+	TestEqual(TEXT("...without changing a height that was already on the roof"), float(Out.Z), float(Post.Z) + HalfHeight);
+
+	// Already fallen to the street beside the building: put back on the roof, not left in the lobby.
+	TestEqual(
+		TEXT("A medic that fell to the street is recovered"),
+		int32(Clamp(FVector(HalfExtent + 200.0f, 0.0f, HalfHeight), Out)),
+		int32(FAgent::ERoofPostContainment::Contained));
+	TestEqual(TEXT("...back over the roof"), float(Out.X), Limit);
+	TestTrue(TEXT("...and back up onto it"), Out.Z > Post.Z);
+
+	// A drop inside the tolerance is surface variation, not a fall.
+	TestEqual(
+		TEXT("A small dip on the roof is not treated as a fall"),
+		int32(Clamp(FVector(0.0f, 0.0f, Post.Z + HalfHeight - (FallTolerance - 1.0f)), Out)),
+		int32(FAgent::ERoofPostContainment::AtPost));
+
+	// Carried off in the cabin and set down across the city: the post no longer applies, so the
+	// mission tick staffs the roof again rather than this worker being teleported back to it.
+	TestEqual(
+		TEXT("A medic taken away from the hospital is not dragged back"),
+		int32(Clamp(FVector(9000.0f, 4000.0f, 120.0f), Out)),
+		int32(FAgent::ERoofPostContainment::Abandoned));
+
+	// An unposted worker (no footprint resolved) is never constrained.
+	TestEqual(
+		TEXT("No post means no containment"),
+		int32(FAgent::ClampToHospitalRoofPost(
+			FVector(9000.0f, 0.0f, 0.0f), Post, 0.0f, BodyRadius, HalfHeight, FallTolerance, Out)),
+		int32(FAgent::ERoofPostContainment::AtPost));
 
 	return true;
 }
