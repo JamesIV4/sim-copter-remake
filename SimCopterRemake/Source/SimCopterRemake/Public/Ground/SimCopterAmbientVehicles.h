@@ -63,6 +63,10 @@ SIMCOPTERREMAKE_API bool IsRailTile(int32 XbldId, int32 ZoneId);
 // placement test deliberately excludes because the train should not materialise on a grade or in a
 // crossing. Using the placement set for routing is what makes a train stop dead at every slope.
 SIMCOPTERREMAKE_API bool IsTraversableRailTile(int32 XbldId, int32 ZoneId);
+
+// FUN_004b7020 raises the train target by 0x1f original units on RL90/RL90F bridge tiles,
+// including their XZON-bit-1 variants. The fraction is public for data-only automation tests.
+SIMCOPTERREMAKE_API float GetRailBridgeDeckHeightTileFraction(int32 XbldId, int32 ZoneId);
 }
 
 // One ambient plane. Field comments name the original record offsets.
@@ -281,6 +285,7 @@ private:
 	float GetCmPerOriginalUnit() const;
 	bool TryGetCameraTile(FIntPoint& OutTile) const;
 	bool TryGetTileCenter(const FIntPoint& Tile, FVector& OutWorld) const;
+	bool TryGetTrainTileCenter(const FIntPoint& Tile, FVector& OutWorld) const;
 	bool IsWaterTile(const FIntPoint& Tile) const;
 	// The 3x3 open-water test FUN_004b10a0 applies to CAPBOAT1 only.
 	bool IsOpenWaterTile(const FIntPoint& Tile) const;

@@ -938,9 +938,10 @@ bool ASimCopterGroundAgent::TryGetWalkSurfaceZAt(const FVector& WorldLocation, f
 		{
 			if (bAllowsElevatedMesh && GetWorld() != nullptr)
 			{
-				// Only raised-span ramp and bridge/highway tile IDs reach this trace. Sampling the
-				// actual road mesh makes both ground snap and the forward/back pitch probes follow
-				// its exact plane while every unrelated mesh remains non-solid to traffic.
+				// Only ramp/elevated-road tile IDs reach this trace. Sampling the actual ramp mesh
+				// makes both ground snap and the forward/back pitch probes follow its exact plane.
+				// Bridge tiles deliberately stay graph-driven: their composite meshes also contain
+				// supports/towers that must never become a vehicle surface.
 				const FVector Start(
 					WorldLocation.X, WorldLocation.Y, GetActorLocation().Z + GroundProbeUpCm);
 				const FVector End(

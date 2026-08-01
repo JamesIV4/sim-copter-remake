@@ -96,6 +96,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	float GetEffectiveTerrainHeightScale() const;
 
+	// The raised road caps (TL63..TL66) and road bridge band place their driving plane exactly
+	// one original terrain-height step above the owning tile's terrain origin. Kept public so the
+	// city markings and traffic graph use the same decoded surface rule.
+	static bool IsOneStepRaisedRoadDeckTile(uint8 BuildingId);
+
 	// Samples the same conditioned terrain triangle and terrain-class grid used to build the
 	// visible city. Terrain classes below 10 are water in the original water gameplay routines.
 	// Returns false outside the original 128x128 gameplay map or before a city has been rebuilt.

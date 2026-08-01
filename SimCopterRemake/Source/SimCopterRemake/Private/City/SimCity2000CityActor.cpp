@@ -2202,12 +2202,17 @@ uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
 		return 0;
 	case 0x45: return E | W;
 	case 0x46: return N | S;
-	case 0x49: return E | W;
-	case 0x4A: return N | S;
-	case 0x4D: return E | W;
-	case 0x4E: return N | S;
-	case 0x4F: return E | W;
-	case 0x50: return N | S;
+	// RD73/RD74 are reused by all six simple road-bridge ids and, like RD67/RD68 above,
+	// already carry their face-type-20 centre line on the raised deck. A procedural duplicate
+	// is both unnecessary and dangerous: before the raised-plane fix it was the yellow line seen
+	// on the water/ground under the bridge.
+	case 0x49:
+	case 0x4A:
+	case 0x4D:
+	case 0x4E:
+	case 0x4F:
+	case 0x50:
+		return 0;
 	default: return 0;
 	}
 }
@@ -2248,6 +2253,7 @@ FVector MakeRoadMarkingWorldPoint(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
+	const TOptional<float>& SurfaceZOverride,
 	float ZOffset)
 {
 	const float CenterX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
@@ -2257,7 +2263,9 @@ FVector MakeRoadMarkingWorldPoint(
 	return FVector(
 		CenterX + LocalPoint.X,
 		CenterY + LocalPoint.Y,
-		GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale) + ZOffset);
+		(SurfaceZOverride.IsSet()
+			? SurfaceZOverride.GetValue()
+			: GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale)) + ZOffset);
 }
 
 void AppendRoadMarkingSegment(
@@ -2270,6 +2278,7 @@ void AppendRoadMarkingSegment(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
+	const TOptional<float>& SurfaceZOverride,
 	float ZOffset,
 	float Width,
 	const FLinearColor& Color)
@@ -2290,10 +2299,10 @@ void AppendRoadMarkingSegment(
 	const FVector2D P3 = Start - Perp * HalfWidth;
 	const int32 VertexStart = Section.Vertices.Num();
 
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
 
 	Section.Triangles.Add(VertexStart);
 	Section.Triangles.Add(VertexStart + 1);
@@ -2323,6 +2332,7 @@ void AppendTiledDashedRoadMarkingSegment(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
+	const TOptional<float>& SurfaceZOverride,
 	float ZOffset,
 	float Width,
 	int32 SegmentCount,
@@ -2355,6 +2365,7 @@ void AppendTiledDashedRoadMarkingSegment(
 			TileSize,
 			HalfMapSize,
 			TerrainHeightScale,
+			SurfaceZOverride,
 			ZOffset,
 			Width,
 			Color);
@@ -2370,6 +2381,7 @@ void AppendRoadMarkingsForTile(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
+	float TileTerrainSurfaceZ,
 	float ZOffset,
 	float Width,
 	const FLinearColor& Color)
@@ -2404,6 +2416,14 @@ void AppendRoadMarkingsForTile(
 		(HasRoadOpening(Openings, ERoadOpening::North) && HasRoadOpening(Openings, ERoadOpening::South)) ||
 		(HasRoadOpening(Openings, ERoadOpening::East) && HasRoadOpening(Openings, ERoadOpening::West));
 	const int32 SegmentCount = bOpposingOpenings ? 2 : 1;
+	// SCHOOK: FUN_004c82c0 returns the placed object's road top, not the tmap below it. The
+	// TL63..TL66 raised caps are a full-height box: their top face is one altitude step above
+	// TileOrigin. Following the conditioned terrain here left these yellow dashes underneath the
+	// visible cap, exactly where the terrain wedge can be seen through the bridge opening.
+	const TOptional<float> SurfaceZOverride =
+		ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(BuildingId)
+		? TOptional<float>(TileTerrainSurfaceZ + TerrainHeightScale)
+		: TOptional<float>();
 	AppendTiledDashedRoadMarkingSegment(
 		Section,
 		ConditionedCorners,
@@ -2414,6 +2434,7 @@ void AppendRoadMarkingsForTile(
 		TileSize,
 		HalfMapSize,
 		TerrainHeightScale,
+		SurfaceZOverride,
 		ZOffset,
 		Width,
 		SegmentCount,
@@ -3812,6 +3833,7 @@ void ASimCity2000CityActor::RebuildCity()
 					TileSize,
 					HalfMapSize,
 					EffectiveTerrainHeightScale,
+					GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale),
 					OriginalMeshZOffset + RoadMarkingZOffset,
 					RoadMarkingWidth,
 					RoadMarkingColor);
@@ -4664,6 +4686,15 @@ float ASimCity2000CityActor::GetTerrainHeightScale() const
 float ASimCity2000CityActor::GetEffectiveTerrainHeightScale() const
 {
 	return bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
+}
+
+bool ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(const uint8 BuildingId)
+{
+	// SCHOOK: FUN_0047c0c0 places TL63..TL66 for 0x3f..0x42 and the road bridge objects for
+	// 0x49..0x59. Their drivable top is 0x20 original tmap units (one ALTM step) above the
+	// scene-cell origin; FUN_004c82c0 returns that object top to ground movers.
+	return (BuildingId >= 0x3f && BuildingId <= 0x42) ||
+		(BuildingId >= 0x49 && BuildingId <= 0x59);
 }
 
 bool ASimCity2000CityActor::TryGetWaterGameplaySurface(

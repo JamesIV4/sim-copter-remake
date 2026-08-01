@@ -2836,13 +2836,23 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			if (IsOriginalTrafficRoadTile(Tile.Building))
 			{
 				const FVector2D CenterlineOffset = GetRoadCenterlineLocalOffset(Tile.Building, ActiveTileSize);
+				// SCHOOK: FUN_004c82c0 resolves the road object's top above the scene-cell terrain
+				// origin. TL63..TL66 and every 0x49..0x59 road bridge deck are one ALTM step
+				// high. Carry that explicit plane in the graph so a car leaving the raised cap
+				// stays level across water instead of dropping to the water tile's ALTM height.
+				const float DeckOffsetZ = ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(Tile.Building)
+					? EffectiveTerrainHeightScale
+					: 0.0f;
 				const int32 NodeIndex = RoadNodes.Num();
 				FSimCopterGroundRouteNode& Node = RoadNodes.AddDefaulted_GetRef();
 				Node.FileX = FileX;
 				Node.FileY = FileY;
 				Node.BuildingId = Tile.Building;
 				Node.PeopleTileClass = PeopleTileClass;
-				Node.LocalLocation = FVector(LocalX + CenterlineOffset.X, LocalY + CenterlineOffset.Y, LocalZ + 10.0f);
+				Node.LocalLocation = FVector(
+					LocalX + CenterlineOffset.X,
+					LocalY + CenterlineOffset.Y,
+					LocalZ + DeckOffsetZ + 10.0f);
 				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
 				RoadNodeIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
@@ -4871,13 +4881,15 @@ bool ASimCopterTrafficSystemActor::TryGetVehicleRoadSurfaceZ(
 
 bool ASimCopterTrafficSystemActor::UsesVehicleRoadMeshSurface(uint8 BuildingId)
 {
-	// SCHOOK: FUN_0047c0c0 dispatches 0x3f..0x42 directly to the four raised-span ramp
-	// meshes 0x178..0x17b. Their rendered wedge, not a centre-to-centre graph interpolation,
-	// is the road plane. FUN_00495700 also classifies them with the bridge/highway road ranges.
-	// Keep 0x43/0x44 out: those are power-line-over-road crossings whose overhead mesh must not
-	// become drivable. Ordinary terrain-following slope roads likewise remain graph-driven.
-	return (BuildingId >= 0x3f && BuildingId <= 0x42) ||
-		(BuildingId >= 0x49 && BuildingId <= 0x59) ||
+	// SCHOOK: FUN_0047c0c0 dispatches 0x1f..0x22 to the four dedicated surface-ramp meshes
+	// RD31..RD34 and 0x3f..0x42 to the raised-span ramp meshes 0x178..0x17b. Their rendered
+	// wedge, not a centre-to-centre graph interpolation, is the authoritative road plane.
+	// Keep bridge pieces 0x49..0x59 graph-driven: their composite meshes include towers and
+	// supports above/below the straight deck, so a highest-hit trace would warp cars onto them.
+	// Keep 0x43/0x44 out as well; those are power-line-over-road crossings whose wires must not
+	// become drivable.
+	return (BuildingId >= 0x1f && BuildingId <= 0x22) ||
+		(BuildingId >= 0x3f && BuildingId <= 0x42) ||
 		(BuildingId >= 0x5d && BuildingId <= 0x6b);
 }
 
