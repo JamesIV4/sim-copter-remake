@@ -387,8 +387,7 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> OriginalTextureMaterials;
 
-	// The terrain-water MID and page-20 mesh-pool MID. Kept separately so the debug rate input can
-	// update only materials that actually expose WaterTextureFramesPerSecond.
+	// The dedicated terrain-water MID. Mesh-pool water remains on its authored static atlas cell.
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> WaterTextureMaterials;
 

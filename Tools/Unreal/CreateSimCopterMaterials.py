@@ -135,9 +135,8 @@ def create_city_atlas_material():
     SimCopter mesh faces store an in-cell UV (which repeats outside 0..1) plus a cell index.
     Rather than slicing every 32x32 atlas cell into its own texture at load time, the renderer
     passes the in-cell UV in TexCoord0 and the cell column/row in TexCoord1, and this material
-    maps them into one 8x8 page texture. Page 20 is SKY.BMP image 4, whose cells 0..9 are
-    byte-identical to TILED1's two five-frame water sequences; its pool/pond faces opt into the
-    same flowing five-frame animation through AnimateWaterCells.
+    maps them into one 8x8 page texture. Mesh-page water remains on its authored atlas cell; only
+    the dedicated terrain-water material below runs the five-frame texture animation.
     frac() reproduces the per-cell wrap addressing; with the page texture set to nearest filter
     and no mips, this samples exactly the cell the original game used, with no bleed between
     neighbouring cells."""
@@ -154,123 +153,48 @@ def create_city_atlas_material():
     )
     cell_index.set_editor_property("coordinate_index", 1)
 
-    time = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionTime, -900, 360
-    )
+    # The legacy page-20 flag now identifies pool/pond cells only for the constant render lift
+    # below. It deliberately has no effect on their texture UVs.
     animate_water = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionScalarParameter, -900, 480
+        material, unreal.MaterialExpressionScalarParameter, -900, 400
     )
     animate_water.set_editor_property("parameter_name", "AnimateWaterCells")
     animate_water.set_editor_property("default_value", 0.0)
-    animate_water.set_editor_property("group", "Texture Animation")
-    water_texture_fps = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionScalarParameter, -900, 600
-    )
-    water_texture_fps.set_editor_property("parameter_name", "WaterTextureFramesPerSecond")
-    water_texture_fps.set_editor_property("default_value", 4.0)
-    water_texture_fps.set_editor_property("group", "Texture Animation")
+    animate_water.set_editor_property("group", "Mesh Water")
 
-    frame_state = add_water_frame_state(
-        material, time, water_texture_fps, "OriginalMeshWaterTextureFrameState", -720, 720
-    )
-
-    # SCHOOK: FUN_004814c0 / DAT_00503f68. The original adds DAT_005039a0 (its fixed-time
-    # delta) to an accumulator and advances above 4000; 4000 is not milliseconds. Preserve the
-    # five-frame sequence here while exposing its presentation cadence for live tuning. The 1996
-    # renderer hard-switched cells; interpolate current -> next (including 4 -> 0) so a modern
-    # full-screen material does not flash at the loop boundary. CellIndex is in decoded (vertically
-    # mirrored) atlas coordinates; convert through the raw cell number so open-water frames 5..9
-    # wrap correctly across the 8-cell row boundary. Only source cells 0 and 5 animate.
-    def atlas_water_uv_code(frame_component):
-        return (
-            "float sourceIndex = (7.0 - CellIndex.y) * 8.0 + CellIndex.x;\n"
-            "float isWaterBase = (abs(sourceIndex) < 0.1 || abs(sourceIndex - 5.0) < 0.1) ? 1.0 : 0.0;\n"
-            f"float frame = FrameState.{frame_component};\n"
-            "float targetIndex = sourceIndex + frame;\n"
-            "float2 targetCell = float2(fmod(targetIndex, 8.0), 7.0 - floor(targetIndex / 8.0));\n"
-            "float useAnimation = step(0.5, Enabled) * isWaterBase;\n"
-            "float2 selectedCell = lerp(CellIndex, targetCell, useAnimation);\n"
-            "return (selectedCell + frac(InCellUV)) / 8.0;"
-        )
-
-    current_page_uv = add_custom_node(
+    page_uv = add_custom_node(
         material,
-        "OriginalMeshWaterTextureCurrentFrame",
-        atlas_water_uv_code("x"),
-        ["InCellUV", "CellIndex", "Enabled", "FrameState"],
+        "OriginalMeshTextureUV",
+        "return (CellIndex + frac(InCellUV)) / 8.0;",
+        ["InCellUV", "CellIndex"],
         -560,
         0,
         unreal.CustomMaterialOutputType.CMOT_FLOAT2,
     )
-    next_page_uv = add_custom_node(
-        material,
-        "OriginalMeshWaterTextureNextFrame",
-        atlas_water_uv_code("y"),
-        ["InCellUV", "CellIndex", "Enabled", "FrameState"],
-        -560,
-        220,
-        unreal.CustomMaterialOutputType.CMOT_FLOAT2,
-    )
-    for page_uv in (current_page_uv, next_page_uv):
-        unreal.MaterialEditingLibrary.connect_material_expressions(in_cell_uv, "", page_uv, "InCellUV")
-        unreal.MaterialEditingLibrary.connect_material_expressions(cell_index, "", page_uv, "CellIndex")
-        unreal.MaterialEditingLibrary.connect_material_expressions(animate_water, "", page_uv, "Enabled")
-        unreal.MaterialEditingLibrary.connect_material_expressions(
-            frame_state, "", page_uv, "FrameState"
-        )
+    unreal.MaterialEditingLibrary.connect_material_expressions(in_cell_uv, "", page_uv, "InCellUV")
+    unreal.MaterialEditingLibrary.connect_material_expressions(cell_index, "", page_uv, "CellIndex")
 
-    current_texture = unreal.MaterialEditingLibrary.create_material_expression(
+    texture = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionTextureSampleParameter2D, -260, -20
     )
-    current_texture.set_editor_property("parameter_name", "Texture")
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        current_page_uv, "", current_texture, "UVs"
-    )
-    next_texture = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionTextureSampleParameter2D, -260, 180
-    )
-    next_texture.set_editor_property("parameter_name", "Texture")
-    unreal.MaterialEditingLibrary.connect_material_expressions(next_page_uv, "", next_texture, "UVs")
-
-    frame_blend = add_custom_node(
-        material,
-        "OriginalMeshWaterTextureFrameBlend",
-        "return FrameState.z;",
-        ["FrameState"],
-        -340,
-        520,
-        unreal.CustomMaterialOutputType.CMOT_FLOAT1,
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        frame_state, "", frame_blend, "FrameState"
-    )
-    blended_texture = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionLinearInterpolate, -20, 80
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        current_texture, "RGB", blended_texture, "A"
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        next_texture, "RGB", blended_texture, "B"
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        frame_blend, "", blended_texture, "Alpha"
-    )
+    texture.set_editor_property("parameter_name", "Texture")
+    unreal.MaterialEditingLibrary.connect_material_expressions(page_uv, "", texture, "UVs")
 
     unreal.MaterialEditingLibrary.connect_material_property(
-        blended_texture, "", unreal.MaterialProperty.MP_BASE_COLOR
+        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
     )
-    add_shading_nodes(material, blended_texture, "")
+    add_shading_nodes(material, texture, "RGB")
 
     # Some original pool/pond faces are authored exactly on a terrain or pad plane. Lift only the
-    # animated page-20 water cells in the vertex shader so the lower surface cannot intermittently
-    # win the depth test when the texture cycle wraps. Geometry and collision remain unchanged.
+    # page-20 water cells in the vertex shader so the lower surface cannot win the depth test.
+    # This offset is constant: mesh water texture animation is deliberately disabled, and geometry
+    # and collision remain unchanged.
     mesh_water_render_lift = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionScalarParameter, -900, 820
     )
     mesh_water_render_lift.set_editor_property("parameter_name", "MeshWaterRenderLiftCm")
     mesh_water_render_lift.set_editor_property("default_value", 2.0)
-    mesh_water_render_lift.set_editor_property("group", "Texture Animation")
+    mesh_water_render_lift.set_editor_property("group", "Mesh Water")
     mesh_water_wpo = add_custom_node(
         material,
         "OriginalMeshWaterRenderLift",
@@ -405,32 +329,26 @@ def add_custom_node(material, name, code, inputs, x, y, output_type=None):
     return node
 
 
-def add_water_frame_state(material, time, frames_per_second, name, x, y):
-    """Return current frame, next frame, and blend phase from one shared calculation.
-
-    Keeping all three values in one material expression prevents independent floor/frac operations
-    from disagreeing for a render at the five-frame wrap boundary.
-    """
-    frame_state = add_custom_node(
+def add_water_frame_index(material, time, frames_per_second, name, x, y):
+    """Return the discrete current frame of the original five-cell water cycle."""
+    frame_index = add_custom_node(
         material,
         name,
         (
             "float framePosition = max(Time, 0.0) * max(FramesPerSecond, 0.0);\n"
             "float wrappedPosition = framePosition - 5.0 * floor(framePosition / 5.0);\n"
-            "float currentFrame = min(floor(wrappedPosition), 4.0);\n"
-            "float nextFrame = (currentFrame >= 4.0) ? 0.0 : currentFrame + 1.0;\n"
-            "return float3(currentFrame, nextFrame, wrappedPosition - currentFrame);"
+            "return min(floor(wrappedPosition), 4.0);"
         ),
         ["Time", "FramesPerSecond"],
         x,
         y,
-        unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT1,
     )
-    unreal.MaterialEditingLibrary.connect_material_expressions(time, "", frame_state, "Time")
+    unreal.MaterialEditingLibrary.connect_material_expressions(time, "", frame_index, "Time")
     unreal.MaterialEditingLibrary.connect_material_expressions(
-        frames_per_second, "", frame_state, "FramesPerSecond"
+        frames_per_second, "", frame_index, "FramesPerSecond"
     )
-    return frame_state
+    return frame_index
 
 
 # The undulating sea. Same TILED1 texturing + lit shading as the terrain, but the water tiles are
@@ -444,7 +362,7 @@ def add_water_frame_state(material, time, frames_per_second, name, x, y):
 # and the wave ripple takes over, so open water reads flat instead of a tilted sheet.
 WATER_WAVE_INPUTS = ["WorldPos", "Time", "Weight", "Amplitude", "WaveLength", "Speed"]
 WATER_NORMAL_INPUTS = WATER_WAVE_INPUTS + ["BaseNormal"]
-WATER_UV_INPUTS = ["BaseUV", "FrameState"]
+WATER_UV_INPUTS = ["BaseUV", "Frame"]
 
 # SCHOOK: FUN_004814c0 advances DAT_00503f68 once its accumulator, fed by the fixed-time delta
 # DAT_005039a0, exceeds 4000. The earlier port incorrectly read that threshold as milliseconds.
@@ -453,15 +371,14 @@ WATER_UV_INPUTS = ["BaseUV", "FrameState"]
 # TILED1 is an 8x8 atlas whose raw rows were flipped when decoded into Unreal, so move by cell
 # index rather than adding U: the open-water sequence 5..9 crosses from the first row into the
 # second. This is texture animation only; the WPO wave below remains an independent effect.
-def water_uv_code(frame_component):
+def water_uv_code():
     return (
         "float2 atlasUV = BaseUV * 8.0;\n"
         "float2 inCellUV = frac(atlasUV);\n"
         "float sourceColumn = floor(atlasUV.x);\n"
         "float sourceDecodedRow = floor(atlasUV.y);\n"
         "float sourceIndex = (7.0 - sourceDecodedRow) * 8.0 + sourceColumn;\n"
-        f"float frame = FrameState.{frame_component};\n"
-        "float targetIndex = sourceIndex + frame;\n"
+        "float targetIndex = sourceIndex + Frame;\n"
         "float targetColumn = fmod(targetIndex, 8.0);\n"
         "float targetDecodedRow = 7.0 - floor(targetIndex / 8.0);\n"
         "return (float2(targetColumn, targetDecodedRow) + inCellUV) / 8.0;"
@@ -505,18 +422,14 @@ def create_water_material():
     clear_expressions(material)
 
     # Base color / lit shading, identical to the terrain-low material so the water reads the same.
-    current_texture = unreal.MaterialEditingLibrary.create_material_expression(
+    texture = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionTextureSampleParameter2D, -400, -100
     )
-    current_texture.set_editor_property("parameter_name", "Texture")
-    next_texture = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionTextureSampleParameter2D, -400, 100
-    )
-    next_texture.set_editor_property("parameter_name", "Texture")
+    texture.set_editor_property("parameter_name", "Texture")
 
-    # Keep the original five-frame TILED1 animation. The source mesh already carries either cell
-    # 0 or cell 5 UVs, so the two custom nodes preserve the in-cell coordinate while selecting
-    # adjacent cells. Blending them by the fractional frame clock makes 4 -> 0 continuous too.
+    # Keep the original five-frame TILED1 animation on the dedicated terrain-water surface. The
+    # source mesh already carries either cell 0 or cell 5 UVs, and the material hard-switches to
+    # the selected cell without crossfading adjacent source frames.
     base_uv = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionTextureCoordinate, -1000, -160
     )
@@ -529,53 +442,24 @@ def create_water_material():
     texture_fps.set_editor_property("parameter_name", "WaterTextureFramesPerSecond")
     texture_fps.set_editor_property("default_value", 4.0)
     texture_fps.set_editor_property("group", "Texture Animation")
-    frame_state = add_water_frame_state(
-        material, texture_time, texture_fps, "OriginalWaterTextureFrameState", -850, 300
+    frame_index = add_water_frame_index(
+        material, texture_time, texture_fps, "OriginalWaterTextureFrame", -850, 300
     )
-    current_uv = add_custom_node(
-        material, "OriginalWaterTextureCurrentFrame", water_uv_code("x"), WATER_UV_INPUTS, -700, -180,
+    animated_uv = add_custom_node(
+        material, "OriginalWaterTextureUV", water_uv_code(), WATER_UV_INPUTS, -700, -180,
         unreal.CustomMaterialOutputType.CMOT_FLOAT2,
     )
-    next_uv = add_custom_node(
-        material, "OriginalWaterTextureNextFrame", water_uv_code("y"), WATER_UV_INPUTS, -700, 60,
-        unreal.CustomMaterialOutputType.CMOT_FLOAT2,
-    )
-    for animated_uv in (current_uv, next_uv):
-        unreal.MaterialEditingLibrary.connect_material_expressions(base_uv, "", animated_uv, "BaseUV")
-        unreal.MaterialEditingLibrary.connect_material_expressions(
-            frame_state, "", animated_uv, "FrameState"
-        )
-    unreal.MaterialEditingLibrary.connect_material_expressions(current_uv, "", current_texture, "UVs")
-    unreal.MaterialEditingLibrary.connect_material_expressions(next_uv, "", next_texture, "UVs")
-
-    frame_blend = add_custom_node(
-        material,
-        "OriginalWaterTextureFrameBlend",
-        "return FrameState.z;",
-        ["FrameState"],
-        -500,
-        300,
-        unreal.CustomMaterialOutputType.CMOT_FLOAT1,
+    unreal.MaterialEditingLibrary.connect_material_expressions(
+        base_uv, "", animated_uv, "BaseUV"
     )
     unreal.MaterialEditingLibrary.connect_material_expressions(
-        frame_state, "", frame_blend, "FrameState"
+        frame_index, "", animated_uv, "Frame"
     )
-    blended_texture = unreal.MaterialEditingLibrary.create_material_expression(
-        material, unreal.MaterialExpressionLinearInterpolate, -160, 0
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        current_texture, "RGB", blended_texture, "A"
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        next_texture, "RGB", blended_texture, "B"
-    )
-    unreal.MaterialEditingLibrary.connect_material_expressions(
-        frame_blend, "", blended_texture, "Alpha"
-    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(animated_uv, "", texture, "UVs")
     unreal.MaterialEditingLibrary.connect_material_property(
-        blended_texture, "", unreal.MaterialProperty.MP_BASE_COLOR
+        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
     )
-    add_shading_nodes(material, blended_texture, "")
+    add_shading_nodes(material, texture, "RGB")
 
     # Shared wave inputs.
     world_pos = unreal.MaterialEditingLibrary.create_material_expression(
