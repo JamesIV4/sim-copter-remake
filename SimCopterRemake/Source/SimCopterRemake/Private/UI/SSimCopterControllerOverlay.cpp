@@ -170,7 +170,7 @@ TSharedRef<SWidget> SSimCopterControllerOverlay::BuildDispatchWheel() const
 		NSLOCTEXT(
 			"SimCopterController",
 			"DispatchInstructions",
-			"RS  SELECT\nA  DISPATCH     X  CHASE     B  CLEAR\nRELEASE LB  CLOSE"));
+			"RS  SELECT\nA  DISPATCH     X  CHASE     B  CLEAR ALL\nRELEASE LB  CLOSE"));
 }
 
 TSharedRef<SWidget> SSimCopterControllerOverlay::BuildToolWheel() const

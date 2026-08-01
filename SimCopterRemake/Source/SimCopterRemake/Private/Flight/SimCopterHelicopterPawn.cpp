@@ -3565,7 +3565,7 @@ void ASimCopterHelicopterPawn::ControllerCancelPressed()
 	switch (ControllerMode)
 	{
 	case ESimCopterControllerMode::DispatchWheel:
-		RequestDispatch(ControllerRadialIndex, /*bChaseSpotlight=*/false, /*bClearInstead=*/true);
+		ClearAllDispatchVehicles();
 		break;
 	case ESimCopterControllerMode::ToolWheel:
 		SetSelectedTool(ControllerToolWheelOriginal);
@@ -4384,6 +4384,24 @@ void ASimCopterHelicopterPawn::RequestDispatch(int32 ServiceIndex, bool bChaseSp
 		break;
 	}
 
+	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
+}
+
+void ASimCopterHelicopterPawn::ClearAllDispatchVehicles()
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		LastDispatchStatus = TEXT("No traffic system in this map - dispatch unavailable.");
+		UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
+		return;
+	}
+
+	const int32 Cleared = TrafficSystem->ClearAllEmergencyDispatches();
+	LastDispatchStatus = Cleared > 0
+		? FString::Printf(TEXT("Cleared %d dispatch vehicle%s."), Cleared, Cleared == 1 ? TEXT("") : TEXT("s"))
+		: TEXT("No dispatch vehicles to clear.");
 	UE_LOG(LogSimCopterHelicopterPawn, Display, TEXT("Dispatch: %s"), *LastDispatchStatus);
 }
 

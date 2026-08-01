@@ -755,6 +755,10 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 	AddTextAtPage(*Canvas, 63.0f, 20.5f, 170.0f, 24.0f,
 		SNew(STextBlock)
 		.Text(this, &SSimCopterToolFlaps::GetDispatchServiceText)
+		// The long POLICE (CHASE) label extends over the left arrow. The right arrow is added
+		// after it, but the left one sits underneath, so a hit-testable label swallowed only
+		// the previous-service click.
+		.Visibility(EVisibility::HitTestInvisible)
 		.Justification(ETextJustify::Center)
 		.ColorAndOpacity(FlapReadout)
 		.Font(FlapFont(ReadoutFontSize)));
@@ -777,7 +781,7 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 	AddAtPage(*Canvas, 168.0f, 4.0f, 17.0f, 24.0f,
 		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
 			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatchClear),
-			NSLOCTEXT("SimCopterFlaps", "ClearTip", "Release the selected service at the spotlight")));
+			NSLOCTEXT("SimCopterFlaps", "ClearTip", "Immediately clear all dispatched vehicles")));
 	AddTextAtPage(*Canvas, 176.5f, 35.0f, 120.0f, 20.0f,
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Clear", "CLEAR"), LabelFontSize));
 
@@ -901,14 +905,7 @@ FReply SSimCopterToolFlaps::HandleDispatchClear()
 {
 	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
 	{
-		int32 ServiceIndex = INDEX_NONE;
-		bool bChase = false;
-		if (ResolveDispatchEntry(SelectedDispatchEntry, ServiceIndex, bChase))
-		{
-			// FUN_0049b3f0 clears by real service identity. POLICE and POLICE (CHASE) therefore
-			// both release the same police pool through the existing clear-dispatch path.
-			Helicopter->RequestDispatch(ServiceIndex, /*bChase=*/false, /*bClear=*/true);
-		}
+		Helicopter->ClearAllDispatchVehicles();
 	}
 	return FReply::Handled();
 }
