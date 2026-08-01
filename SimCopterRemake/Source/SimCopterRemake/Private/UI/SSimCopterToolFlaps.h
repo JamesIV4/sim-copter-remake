@@ -52,8 +52,13 @@ private:
 	// to width (see BuildDispatchFlap).
 	static constexpr float DispatchPageWidth = 232.0f;
 
-	// The Apache armament strip: two buttons and their labels, nothing else.
-	static constexpr float ApachePageWidth = 110.0f;
+	// The Apache armament strip: two buttons and their labels, nothing else. Widened from 110 so
+	// its pair can sit directly under the dispatch strip's - both strips are right-aligned in the
+	// column, so what lines them up is the distance from the right edge, and the dispatch strip
+	// puts DISPATCH at 232 - 126 = 106 and CHASE at 232 - 168 = 64.
+	static constexpr float ApachePageWidth = 138.0f;
+	static constexpr float MissileButtonInsetFromRight = 106.0f;
+	static constexpr float GunButtonInsetFromRight = 64.0f;
 
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
@@ -92,7 +97,6 @@ private:
 		TSharedPtr<FSlateBrush>& InOutFillBrush);
 
 	EVisibility GetApacheFlapVisibility() const;
-	FReply HandleApacheMissile();
 
 	// The invisible hit box plus the pressed sprite that lights under it. The unpressed button
 	// is already painted on the page, so nothing is drawn until the player holds it down.
