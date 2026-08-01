@@ -3151,21 +3151,8 @@ void ASimCity2000CityActor::RebuildCity()
 	UTexture2D* TerrainTexture = nullptr;
 	UTexture2D* HighTerrainTexture = nullptr;
 	FBakedCityAtlasMaterials BakedCityAtlasMaterials = bRenderOriginalTextures ? LoadBakedCityAtlasMaterials() : FBakedCityAtlasMaterials();
-	// Page 20 is SKY.BMP image 4, whose pool/pond faces use the same water frame cells as TILED1.
-	// Wrap only that baked page so the debug FPS input can update mesh water without rebuilding
-	// runtime static meshes or replacing every city material.
-	if (UMaterialInterface** WaterPageMaterial = BakedCityAtlasMaterials.PageMaterials.Find(SimCopterSkyGroundTextureFile))
-	{
-		if (UMaterialInstanceDynamic* WaterPageMID = UMaterialInstanceDynamic::Create(*WaterPageMaterial, this))
-		{
-			WaterPageMID->SetScalarParameterValue(
-				TEXT("WaterTextureFramesPerSecond"),
-				WaterTextureFramesPerSecond);
-			*WaterPageMaterial = WaterPageMID;
-			OriginalTextureMaterials.Add(WaterPageMID);
-			WaterTextureMaterials.Add(WaterPageMID);
-		}
-	}
+	// Page-20 pool/pond faces remain on their authored static atlas cells. Only the dedicated
+	// terrain-water section uses the five-frame texture animation and its debug FPS input.
 	TSet<int32> AvailableBakedAtlasPageIds;
 	TSet<int32> AvailableBakedDirectImageIds;
 	BakedCityAtlasMaterials.PageMaterials.GetKeys(AvailableBakedAtlasPageIds);
