@@ -304,6 +304,17 @@ public:
 	// impacts are rejected by the particle updater before this boundary.
 	int32 ApplyWaterParticleImpact(const FVector& ImpactWorldLocation, int32 Strength1616);
 
+	// SCHOOK: FireProximityProbe 0x004a5c10
+	// How far a point sits above the top of the nearest flame below it, in original 16.16 units,
+	// or 0 when there is no flame within reach. This is the helicopter's fire-damage and
+	// fire-shake input (FSimCopterFlightEnvironment::FireHeightDelta): the flight model burns hit
+	// points while the delta is inside [MinFireAlt, MaxFireAlt] and shakes harder the smaller it
+	// is. Negative means the point is below the top of the flame.
+	//
+	// The original walks only the flames on the caller's own tile and box-tests them; the remake
+	// walks the live flame list and does the same test, which is the same set.
+	int32 GetFireHeightDelta1616(const FVector& WorldLocation) const;
+
 	// ~End ISimCopterMissionWorld Interface
 
 private:
@@ -447,6 +458,12 @@ private:
 	FString ResolveOriginalGameRootDir() const;
 	// Trace the rendered surface (building roof / terrain) at a world XY; returns the top Z.
 	bool TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const;
+	// Where one flame is drawn: tile centre plus its local offset, seated on the traced roof and
+	// lifted by the storeys it has climbed. Shared by the renderer and the fire-damage probe so
+	// the band the helicopter burns in is the fire the player can see.
+	bool TryGetFlameWorldLocation(
+		const struct SimCopterMissions::FSimCopterFlame& Flame,
+		FVector& OutWorld) const;
 
 	TArray<FSimCopterMissionLogEntry> MissionMessageLog;
 	TSharedPtr<SWidget> MessageLogWidget;

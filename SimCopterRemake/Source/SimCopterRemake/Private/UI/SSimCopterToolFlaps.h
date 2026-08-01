@@ -84,6 +84,19 @@ private:
 	// is already painted on the page, so nothing is drawn until the player holds it down.
 	void AddFlapButton(SConstraintCanvas& Canvas, const SimCopterFlapLayout::FButton& Button);
 
+	// flap3's ten canister lamps. Like the original's repaint (0x00455790) this only draws the
+	// spent ones: the page already prints a full row.
+	void AddCanisterCounter(SConstraintCanvas& Canvas);
+	EVisibility GetCanisterLampVisibility(int32 LampIndex) const;
+
+	// flap0's eleven-cell water meter (0x00455700). Every cell picks one of three sprites, so
+	// unlike the lamps this one draws over the page rather than beside it.
+	void AddWaterGauge(SConstraintCanvas& Canvas);
+	const FSlateBrush* GetWaterGaugeCellBrush(int32 CellIndex) const;
+
+	// The three watergge.bmp cells, indexed by SimCopterFlapLayout::WaterGauge::ECell.
+	const FSlateBrush* WaterGaugeBrushes[3] = { nullptr, nullptr, nullptr };
+
 	// One piece of a bitmap as an image widget, or an empty widget when the art is missing.
 	TSharedRef<SWidget> MakeImage(const TCHAR* FileName, const FIntRect& Source);
 

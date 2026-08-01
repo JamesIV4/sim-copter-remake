@@ -471,7 +471,7 @@ bool USimCopterParticleFXComponent::SpawnTilePuff(const FVector& World, uint8 Ef
 }
 
 bool USimCopterParticleFXComponent::SpawnSplashColumn(const FVector& World, int32 ScaleExponent,
-	uint8, int32 CellX, int32 CellY)
+	uint8, int32 CellX, int32 CellY, bool bSubmergeOrigin)
 {
 	FSimCopterEffectSlot* Slot = nullptr;
 	if (!Allocate(ESimCopterEffectPool::SplashColumns20, Slot))
@@ -479,7 +479,9 @@ bool USimCopterParticleFXComponent::SpawnSplashColumn(const FVector& World, int3
 		return false;
 	}
 	Slot->Type = ESimCopterEffectType::SplashSubParticle;
-	Slot->Position = World - FVector::UpVector * (32.0f * SimCopterEffectFX::OriginalUnitToCm);
+	Slot->Position = bSubmergeOrigin
+		? World - FVector::UpVector * (32.0f * SimCopterEffectFX::OriginalUnitToCm)
+		: World;
 	Slot->Cell = CellX == INDEX_NONE || CellY == INDEX_NONE ? GetCellForWorld(World) : FIntPoint(CellX, CellY);
 	Slot->SizeCm = static_cast<float>(4 << FMath::Clamp(ScaleExponent, 0, 8)) * SimCopterEffectFX::OriginalUnitToCm;
 	Slot->PaletteIndex = SplashFrames[0];

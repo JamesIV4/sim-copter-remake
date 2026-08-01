@@ -229,6 +229,20 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildToolFlap(const FFlap& Flap)
 		AddFlapButton(*Canvas, Button);
 	}
 
+	// The two flaps with a readout on them. flap0 is the shared water flap, so its meter is
+	// gated on the pair of bits FUN_004127d0 tests, not on one tool.
+	if (Flap.EquipmentMask ==
+		SimCopterHelicopterRegistry::GetToolCareerBit(ESimCopterHelicopterTool::TearGas))
+	{
+		AddCanisterCounter(*Canvas);
+	}
+	else if ((Flap.EquipmentMask &
+		(SimCopterHelicopterRegistry::GetToolCareerBit(ESimCopterHelicopterTool::WaterBucket) |
+		 SimCopterHelicopterRegistry::GetToolCareerBit(ESimCopterHelicopterTool::WaterCannon))) != 0)
+	{
+		AddWaterGauge(*Canvas);
+	}
+
 	const int32 EquipmentMask = Flap.EquipmentMask;
 	return SNew(SBox)
 		.Visibility(TAttribute<EVisibility>::CreateSP(this, &SSimCopterToolFlaps::GetFlapVisibility, EquipmentMask))
@@ -312,6 +326,96 @@ void SSimCopterToolFlaps::AddFlapButton(SConstraintCanvas& Canvas, const FButton
 			.Placement(MenuPlacement_BelowAnchor)
 			.OnGetMenuContent(FOnGetContent::CreateSP(this, &SSimCopterToolFlaps::BuildMegaphoneMenu)));
 	}
+}
+
+// SCHOOK: TearGasCanisterCounter 0x00455790
+// Ten 4x4 dots on a 12x13 grid. The original repaints the whole row whenever career + 0x54
+// changes; here each lamp is a Slate image that shows itself when its round has been spent, which
+// is the same picture without the polling.
+void SSimCopterToolFlaps::AddCanisterCounter(SConstraintCanvas& Canvas)
+{
+	using namespace SimCopterFlapLayout::CanisterCounter;
+
+	const FSlateBrush* Empty = GetBrush(GetLampFileName(), GetLampEmptyFrame());
+	if (Empty == nullptr)
+	{
+		return;
+	}
+
+	for (int32 Index = 0; Index < LampCount; ++Index)
+	{
+		const FIntPoint Origin = GetLampOrigin(Index);
+		AddAtPage(
+			Canvas,
+			static_cast<float>(Origin.X),
+			static_cast<float>(Origin.Y),
+			static_cast<float>(LampSize),
+			static_cast<float>(LampSize),
+			SNew(SImage)
+			.Image(Empty)
+			.Visibility(TAttribute<EVisibility>::CreateSP(
+				this, &SSimCopterToolFlaps::GetCanisterLampVisibility, Index)));
+	}
+}
+
+EVisibility SSimCopterToolFlaps::GetCanisterLampVisibility(const int32 LampIndex) const
+{
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	if (Helicopter == nullptr)
+	{
+		return EVisibility::Collapsed;
+	}
+	// Hidden rather than Collapsed so the canvas slot keeps its geometry, and never hit-testable:
+	// the flap's fire button is the only thing on this page that takes a click.
+	return SimCopterFlapLayout::CanisterCounter::IsLampEmpty(
+		LampIndex,
+		Helicopter->GetEquipmentState().GetTearGasRounds())
+		? EVisibility::HitTestInvisible
+		: EVisibility::Hidden;
+}
+
+// SCHOOK: WaterGaugeRepaint 0x00455700
+// Eleven 5x10 cells from x 16, y 43. The original repaints the row whenever heli[0x74] * 11 /
+// maxLoad changes; here each cell binds its sprite to that same quotient.
+void SSimCopterToolFlaps::AddWaterGauge(SConstraintCanvas& Canvas)
+{
+	using namespace SimCopterFlapLayout::WaterGauge;
+
+	WaterGaugeBrushes[0] = GetBrush(GetGaugeFileName(), GetCellFrame(ECell::Full));
+	WaterGaugeBrushes[1] = GetBrush(GetGaugeFileName(), GetCellFrame(ECell::LeadingEdge));
+	WaterGaugeBrushes[2] = GetBrush(GetGaugeFileName(), GetCellFrame(ECell::Empty));
+	if (WaterGaugeBrushes[0] == nullptr)
+	{
+		// Without the art the page's own printed gauge is still there, reading empty.
+		return;
+	}
+
+	for (int32 Index = 0; Index < CellCount; ++Index)
+	{
+		const FIntPoint Origin = GetCellOrigin(Index);
+		AddAtPage(
+			Canvas,
+			static_cast<float>(Origin.X),
+			static_cast<float>(Origin.Y),
+			static_cast<float>(CellWidth),
+			static_cast<float>(CellHeight),
+			SNew(SImage)
+			.Image(TAttribute<const FSlateBrush*>::CreateSP(
+				this, &SSimCopterToolFlaps::GetWaterGaugeCellBrush, Index))
+			// The gauge is a readout, not a control; the flap's own buttons take every click.
+			.Visibility(EVisibility::HitTestInvisible));
+	}
+}
+
+const FSlateBrush* SSimCopterToolFlaps::GetWaterGaugeCellBrush(const int32 CellIndex) const
+{
+	using namespace SimCopterFlapLayout::WaterGauge;
+
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	const int32 Level = Helicopter != nullptr
+		? GetLevel(Helicopter->GetBucketWaterPounds(), Helicopter->GetMaxLoadPounds())
+		: 0;
+	return WaterGaugeBrushes[static_cast<int32>(GetCellState(CellIndex, Level))];
 }
 
 EVisibility SSimCopterToolFlaps::GetFlapVisibility(const int32 EquipmentMask) const

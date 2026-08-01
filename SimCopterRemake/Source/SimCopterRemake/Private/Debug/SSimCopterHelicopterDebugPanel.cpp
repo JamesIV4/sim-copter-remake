@@ -5,6 +5,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Ground/SimCopterDispatch.h"
+#include "Ground/SimCopterTearGasPool.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterMissionCatalog.h"
@@ -2037,10 +2038,17 @@ FText SSimCopterHelicopterDebugPanel::GetToolContextText() const
 		return FText::FromString(
 			SimCopterHelicopterRegistry::GetMegaphoneMessageName(HelicopterPawn->GetSelectedMegaphoneMessage()));
 	case ESimCopterHelicopterTool::TearGas:
+	{
+		// The ten pool slots (DAT_005d4bd0) are what actually limits rapid fire, so show what is
+		// in the air beside the magazine: a shot is refused while all ten are busy.
+		const USimCopterTearGasPoolComponent* Pool = HelicopterPawn->GetTearGasPool();
 		return FText::FromString(FString::Printf(
-			TEXT("Rounds %d / %d"),
+			TEXT("Rounds %d / %d   in flight %d   clouds %d"),
 			HelicopterPawn->GetEquipmentState().GetTearGasRounds(),
-			SimCopterHelicopterRegistry::TearGasCapacity));
+			SimCopterHelicopterRegistry::TearGasCapacity,
+			Pool != nullptr ? Pool->GetActiveCanisterCount() : 0,
+			Pool != nullptr ? Pool->GetActiveCloudCount() : 0));
+	}
 	default:
 		return FText::GetEmpty();
 	}

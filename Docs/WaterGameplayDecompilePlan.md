@@ -255,7 +255,7 @@ this tier is only the water-specific spawners feeding it.
 
 | Target | Role | Source |
 | --- | --- | --- |
-| consumer of `WATERGGE.BMP` (string `0x004f9824`) | the cockpit water gauge — the only readout of `heli[0x74]` | **fallback**: no exported function references it (`ghidra-bridge strings` finds the string with no owner) |
+| consumer of `WATERGGE.BMP` (string `0x004f9824`) | the cockpit water gauge — the only readout of `heli[0x74]` | **done 2026-07-31**: the tick `0x00455300` and the repaint `0x00455700`, both in the unexported gap after `FUN_00454ee0` — disassemble, do not expect `decompile` to work |
 | `FUN_0048c4c0` + ids `0x2a7`, `0x2a9`, `0x2ac`, `0x2ad` | "bucket empty" / "no cannon" / etc. on-screen messages | **needs decompile** |
 | `FUN_0042a1f0`, `FUN_0042a2a0`, `FUN_0042a310`, `FUN_0042a330`, `FUN_0042a3a0` | positional sound start / start-global / stop / set-volume / query | **need decompile** |
 | the sound-id table | ids used here: `7`, `9`, `0xa`, `0xb`, `0xf`, `0x15`, `0x16`, `0x1f`, `0x80` — `WATERCAN.WAV` is in the shipped set | **needs the id → WAV mapping** |
@@ -281,15 +281,20 @@ A genuine feature, currently absent, and cheap once the fill path exists.
    — the *same* table that blocks fire damage (gap 1 in
    `Docs/FireAndDemolitionGaps.md`). The rope port can land without it; the
    damage cannot. Do not invent a behaviour id.
-2. **The water gauge.** A 2026-07-24 `xrefsto 0x004f9824` pass reached
-   `FUN_00455170`, which lazily loads `WATERGGE.BMP` into the owning object at
-   `+0xbc`. That establishes the asset owner but not the gauge's drawing/value
-   consumer; the relevant vtable draw path still needs to be named and exported
-   before the original gauge can be ported. The remake now has a compact,
-   persistent status/control panel with a numeric water readout and capacity
-   bar shared by bucket and water-gun modes, plus rope length and the `R`, Page
-   Up, Page Down, `G`, and left-click actions; that is an explicit gameplay
-   affordance, not a claim that the original gauge has been recovered.
+2. ~~**The water gauge.**~~ **Closed 2026-07-31.** The 2026-07-24 pass was right
+   that `FUN_00455170` loads `WATERGGE.BMP` into the owner at `+0xbc` and stopped
+   there because the draw path is not exported. It never will be: the flap class's
+   methods sit in the gap Ghidra left after `FUN_00454ee0`, so they have to be read
+   out of the bytes (`Docs/scratchpad/disasm_va.py`). Vtable `0x4f3150` slot `+0xd0`
+   is `0x00455300`, a per-frame tick that every fourth call computes
+   `heli[0x74] * 11 / maxLoad[type]` and, on a change, calls `0x00455700` to repaint
+   **eleven 5x10 cells from page (16, 43)**: `level` full-water cells, then one
+   meniscus (skipped when the tank is full), then empties, all out of the 15x10
+   `WATERGGE.BMP`. `flap0.bmp` ships the gauge *empty* with the meniscus already
+   printed at x 16, so the repaint has to cover it. Ported into the cockpit tool
+   flap (`SimCopterFlapLayout::WaterGauge`, `SSimCopterToolFlaps::AddWaterGauge`);
+   test `SimCopter.UI.WaterGauge`. Full decode in
+   `Docs/scratchpad/agent-sessions/2026-07-31-teargas/teargas-decode.md` section 6.
 3. **Helicopter capability bits.** `DAT_00504060` comes from the career record
    at `+0x48`. Which helicopters carry a cannon (`& 0x10`) and which carry the
    second rope attachment (`& 4`) needs that record's layout, which the career

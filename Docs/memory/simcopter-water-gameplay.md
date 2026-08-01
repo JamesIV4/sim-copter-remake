@@ -31,5 +31,13 @@ worth keeping out of band:
   `0x125` when the bucket empties.
 - Blocked the same way as [[simcopter-mission-system]]'s fire damage: bucket
   strikes route through `FUN_0049a4f0` modes `0x11`/`0x12` into `DAT_0058d728`.
-  The water gauge (`WATERGGE.BMP`) has no owner in `.ghidra-exports` and needs
-  an `analyzeHeadless` fallback pass.
+- **The water gauge is solved and ported (2026-07-31).** Its owner is not missing,
+  it is in the Ghidra gap after `FUN_00454ee0` - read it out of the bytes, not the
+  exports. The flap tick `0x00455300` computes `heli[0x74] * 11 / maxLoad[type]`
+  every fourth frame and `0x00455700` repaints **eleven 5x10 cells from page
+  (16, 43)** out of `WATERGGE.BMP`, which is exactly 15x10: full water | meniscus |
+  empty. The row is `level` full cells, then **one** meniscus (skipped when the tank
+  is full), then empties. Unlike flap3's canister lamps, all three states have to be
+  drawn - `flap0.bmp` ships the *empty* gauge with the meniscus printed at x 16, so a
+  partly full tank has to paint over it. Divide by the **heli.twk** max load, not the
+  static table's. See [[simcopter-cockpit-flaps]].

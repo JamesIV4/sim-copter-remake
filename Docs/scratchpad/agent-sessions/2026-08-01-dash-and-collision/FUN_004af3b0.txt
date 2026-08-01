@@ -1,0 +1,244 @@
+﻿// ===========================================
+// Ghidra:    FUN_004af3b0
+// Address:   0x004af3b0
+// Signature: undefined FUN_004af3b0(void)
+// Callers:   1  |  Callees: 5
+// ===========================================
+
+
+
+void FUN_004af3b0(void)
+
+
+
+{
+
+  uint *puVar1;
+
+  uint uVar2;
+
+  int iVar3;
+
+  uint *puVar4;
+
+  int iVar5;
+
+  uint *puVar6;
+
+  undefined4 *puVar7;
+
+  undefined4 *puVar8;
+
+  int local_80;
+
+  int local_7c;
+
+  undefined1 local_78 [16];
+
+  undefined4 local_68;
+
+  undefined4 local_58;
+
+  undefined4 local_54;
+
+  undefined4 local_50;
+
+  undefined4 local_40 [16];
+
+  
+
+  puVar6 = &DAT_00581788;
+
+  for (iVar5 = 0; (0 < DAT_00506240 && (iVar5 < 0x14)); iVar5 = iVar5 + 1) {
+
+    if ((*puVar6 & 1) != 0) {
+
+      uVar2 = puVar6[6];
+
+      puVar6[6] = uVar2 + 1;
+
+      if ((uVar2 + 1 == 1) && ((*(byte *)((int)puVar6 + 0x2b) & 0x80) == 0)) {
+
+        local_80 = (int)(puVar6[3] + 0x20000000) >> 0x16;
+
+        local_7c = (int)(0x20000000 - puVar6[5]) >> 0x16;
+
+        puVar7 = &DAT_00581b98;
+
+        do {
+
+          puVar8 = puVar7 + 3;
+
+          FUN_0048e0b0(9,&local_80,puVar6 + 3,puVar7,puVar6[10],puVar6[8],0x140000,puVar6[0xc]);
+
+          puVar7 = puVar8;
+
+        } while (puVar8 < &DAT_00581c40);
+
+      }
+
+      if ((int)puVar6[6] < 9) {
+
+        FUN_0046f5a5(puVar6[7],local_78);
+
+        local_68 = (&DAT_00581c40)[puVar6[6]];
+
+        FUN_0046f5e1(puVar6[7],local_78);
+
+        uVar2 = puVar6[8];
+
+        local_58 = *(undefined4 *)(uVar2 + 0x18);
+
+        local_54 = *(undefined4 *)(uVar2 + 0x1c);
+
+        local_50 = *(undefined4 *)(uVar2 + 0x20);
+
+        puVar7 = (undefined4 *)(puVar6[8] + 0x24);
+
+        puVar8 = local_40;
+
+        for (iVar3 = 0x10; iVar3 != 0; iVar3 = iVar3 + -1) {
+
+          *puVar8 = *puVar7;
+
+          puVar7 = puVar7 + 1;
+
+          puVar8 = puVar8 + 1;
+
+        }
+
+        FUN_004704d1(*(undefined4 *)(puVar6[8] + 8),&local_58,3);
+
+      }
+
+      else {
+
+        if (*(uint *)(puVar6[0xb] + 0x10) != 0) {
+
+          puVar4 = (uint *)(puVar6[0xb] + 0x10);
+
+          do {
+
+            puVar1 = (uint *)*puVar4;
+
+            if ((uint *)puVar6[8] == puVar1) {
+
+              *puVar4 = *(uint *)puVar6[8];
+
+              break;
+
+            }
+
+            puVar4 = puVar1;
+
+          } while (*puVar1 != 0);
+
+        }
+
+        *puVar6 = *puVar6 & 0xfffffffe;
+
+        DAT_00506240 = DAT_00506240 + -1;
+
+      }
+
+    }
+
+    puVar6 = puVar6 + 0xd;
+
+  }
+
+  iVar5 = 0;
+
+  puVar6 = &DAT_00581c68;
+
+  do {
+
+    if ((DAT_00506244 < 1) || (99 < iVar5)) {
+
+      return;
+
+    }
+
+    if ((*puVar6 & 1) != 0) {
+
+      uVar2 = puVar6[2] - DAT_005039a8;
+
+      puVar6[2] = uVar2;
+
+      if ((int)uVar2 < 1) {
+
+        if (*(uint *)(puVar6[3] + 0x10) != 0) {
+
+          puVar4 = (uint *)(puVar6[3] + 0x10);
+
+          do {
+
+            puVar1 = (uint *)*puVar4;
+
+            if ((uint *)puVar6[1] == puVar1) {
+
+              *puVar4 = *(uint *)puVar6[1];
+
+              break;
+
+            }
+
+            puVar4 = puVar1;
+
+          } while (*puVar1 != 0);
+
+        }
+
+        *puVar6 = *puVar6 & 0xfffffffe;
+
+        DAT_00506244 = DAT_00506244 + -1;
+
+      }
+
+      else {
+
+        uVar2 = puVar6[1];
+
+        iVar3 = FUN_0046c49d(puVar6[5],DAT_005039a8);
+
+        *(int *)(uVar2 + 0x1c) = *(int *)(uVar2 + 0x1c) + iVar3;
+
+        uVar2 = puVar6[1];
+
+        local_58 = *(undefined4 *)(uVar2 + 0x18);
+
+        local_54 = *(undefined4 *)(uVar2 + 0x1c);
+
+        local_50 = *(undefined4 *)(uVar2 + 0x20);
+
+        puVar7 = (undefined4 *)(puVar6[1] + 0x24);
+
+        puVar8 = local_40;
+
+        for (iVar3 = 0x10; iVar3 != 0; iVar3 = iVar3 + -1) {
+
+          *puVar8 = *puVar7;
+
+          puVar7 = puVar7 + 1;
+
+          puVar8 = puVar8 + 1;
+
+        }
+
+        FUN_004704d1(*(undefined4 *)(puVar6[1] + 8),&local_58,3);
+
+      }
+
+    }
+
+    iVar5 = iVar5 + 1;
+
+    puVar6 = puVar6 + 7;
+
+  } while( true );
+
+}
+
+
+
+

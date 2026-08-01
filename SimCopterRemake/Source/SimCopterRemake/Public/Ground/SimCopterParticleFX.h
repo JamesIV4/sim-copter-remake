@@ -95,8 +95,11 @@ public:
 		float SizeCm = 0.0f, int32 CellX = INDEX_NONE, int32 CellY = INDEX_NONE);
 	// Tile puffs (FUN_004af220) and splash columns (FUN_004af100/FUN_004af3b0).
 	bool SpawnTilePuff(const FVector& World, uint8 EffectClass, int32 CellX = INDEX_NONE, int32 CellY = INDEX_NONE);
+	// FUN_004af100 seats the column 32 units below the point it is given, so a water splash rises
+	// up through the surface it came out of. An impact against a wall or a slope wants the burst
+	// where the contact was, so it passes bSubmergeOrigin = false.
 	bool SpawnSplashColumn(const FVector& World, int32 ScaleExponent = 4, uint8 PaletteIndex = 0xFF,
-		int32 CellX = INDEX_NONE, int32 CellY = INDEX_NONE);
+		int32 CellX = INDEX_NONE, int32 CellY = INDEX_NONE, bool bSubmergeOrigin = true);
 	// Crash landing phase one: one class-1 puff, five debris items and a scale-4 splash column.
 	void SpawnHardLanding(const FVector& World, bool bWaterSurface, int32 CellX = INDEX_NONE, int32 CellY = INDEX_NONE);
 

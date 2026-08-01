@@ -60,6 +60,41 @@ const FFlap Flaps[] = {
 };
 }
 
+namespace CanisterCounter
+{
+FIntPoint GetLampOrigin(const int32 Index)
+{
+	const int32 Clamped = FMath::Clamp(Index, 0, LampCount - 1);
+	return FIntPoint(
+		LampOriginX + LampPitchX * (Clamped % LampColumns),
+		LampOriginY + LampPitchY * (Clamped / LampColumns));
+}
+
+const TCHAR* GetLampFileName()
+{
+	return TEXT("FLAPBTN1.BMP");
+}
+
+FIntRect GetLampFullFrame()
+{
+	return FIntRect(34, 0, 34 + LampSize, LampSize);
+}
+
+FIntRect GetLampEmptyFrame()
+{
+	return FIntRect(34, LampSize, 34 + LampSize, LampSize * 2);
+}
+}
+
+namespace WaterGauge
+{
+const TCHAR* GetGaugeFileName()
+{
+	// Exactly 15x10 - three 5x10 cells.
+	return TEXT("WATERGGE.BMP");
+}
+}
+
 TArrayView<const FFlap> GetFlaps()
 {
 	return MakeArrayView(Flaps);
