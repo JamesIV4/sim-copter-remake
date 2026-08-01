@@ -3365,6 +3365,28 @@ bool ASimCopterTrafficSystemActor::ClearEmergencyDispatch(SimCopterDispatch::ESe
 	return false;
 }
 
+int32 ASimCopterTrafficSystemActor::ClearAllEmergencyDispatches()
+{
+	int32 Cleared = 0;
+	for (int32 ServiceIndex = 0; ServiceIndex < DispatchServiceCount; ++ServiceIndex)
+	{
+		const SimCopterDispatch::EService Service = static_cast<SimCopterDispatch::EService>(ServiceIndex);
+		for (int32 SlotIndex = 0; SlotIndex < DispatchVehicles[ServiceIndex].Num(); ++SlotIndex)
+		{
+			if (DispatchVehicles[ServiceIndex][SlotIndex].State == ESimCopterDispatchVehicleState::Empty)
+			{
+				continue;
+			}
+
+			ReleaseDispatchVehicle(Service, SlotIndex);
+			++Cleared;
+		}
+	}
+
+	SpotlightChaseTile = FIntPoint(INDEX_NONE, INDEX_NONE);
+	return Cleared;
+}
+
 int32 ASimCopterTrafficSystemActor::GetDispatchStationCount(SimCopterDispatch::EService Service) const
 {
 	const int32 ServiceIndex = static_cast<int32>(Service);

@@ -623,6 +623,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Dispatch")
 	void RequestDispatch(int32 ServiceIndex, bool bChaseSpotlight, bool bClearInstead);
 
+	// Dedicated dispatch-panel/controller action. Unlike Shift+F, this does not need a spotlight
+	// target and immediately removes every active response and chase vehicle.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Dispatch")
+	void ClearAllDispatchVehicles();
+
 	// Last dispatch outcome as a HUD/debug line ("Fire Truck dispatched", "no unit
 	// available", ...). Mirrors which of the four voice clips the original would play.
 	FString GetLastDispatchStatus() const { return LastDispatchStatus; }

@@ -40,10 +40,12 @@ stick.
 | --- | --- |
 | `A` | Dispatch the selected service to the spotlight target |
 | `X` | Dispatch the selected service in spotlight-chase mode |
-| `B` | Clear the selected service at the spotlight target |
+| `B` | Immediately clear every active dispatch and chase vehicle |
 | Release `LB` | Close the radial |
 
-The spotlight still determines the dispatch tile, matching the existing dispatch implementation.
+The spotlight determines the dispatch and chase tile. Clear All is immediate and does not require
+a valid spotlight target; the original Shift+F2-F5 bindings retain their selected-service,
+spotlight-local release behavior.
 
 ## Tool radial and use
 
@@ -96,4 +98,3 @@ The main menu and every hangar page acquire controller focus when opened or rebu
 - `A` activates the focused button or hotspot.
 - `B` returns from a city-selection or hangar subpage; on the main hangar page it closes the
   hangar.
-

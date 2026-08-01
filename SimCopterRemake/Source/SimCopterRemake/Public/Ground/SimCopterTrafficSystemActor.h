@@ -695,6 +695,11 @@ public:
 	// the original.
 	bool ClearEmergencyDispatch(SimCopterDispatch::EService Service, const FIntPoint& SpotlightTile);
 
+	// Remake dispatch-panel action: immediately despawn every active response/chase unit and
+	// return every claimed station slot. The original Shift+F spotlight-local path above remains
+	// available to the keyboard commands.
+	int32 ClearAllEmergencyDispatches();
+
 	// The pawn feeds the spotlight's ground tile here so chase-dispatched police can
 	// follow it.
 	void SetSpotlightChaseTile(const FIntPoint& Tile) { SpotlightChaseTile = Tile; }

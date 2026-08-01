@@ -2,6 +2,7 @@
 
 #include "City/SimCopterHangar.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterAirport.h"
 #include "CollisionQueryParams.h"
@@ -782,6 +783,13 @@ void ASimCopterHangar::CloseShell()
 		GEngine->GameViewport->RemoveViewportWidgetContent(ShellWidget.ToSharedRef());
 	}
 	ShellWidget.Reset();
+
+	// The hangar owns hangar.wav as a standalone, unlooped sound object (FUN_00449cb0).
+	// Leaving before the long clip finishes must tear that screen-owned sound down immediately.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->StopStandaloneSounds();
+	}
 
 	if (APlayerController* Controller = ShellController.Get())
 	{
