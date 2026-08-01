@@ -28,6 +28,10 @@ plausible-but-wrong behaviour.
   turns F2-F5 into the clear-dispatch path.
 - Service types 3 and 4 are both police and share one pool/manager; the argument that looks
   like a count (4 or 3) is the **initial vehicle state** at `veh+0x299`. State 3 = chase.
+- The remake-only cockpit dispatch strip exposes chase as a fourth selector entry,
+  `POLICE (CHASE)`, but it must resolve back to the real `Police` service with state 3. Do not
+  extend `EService`: the adjacent `CLEAR` button uses the same Shift+F clear path, so both police
+  entries release from the one shared police pool.
 - `FUN_004bcc80` records stations at `(x+1, y+1)` because it clears a **3x3 footprint** around
   the matched corner - stations are 3x3 buildings and the record is the centre.
 - Fire trucks have no extinguish call: they spawn **emitter type 6** water at the fire and the

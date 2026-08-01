@@ -16,9 +16,9 @@ class STextBlock;
 class UTexture2D;
 struct FSlateBrush;
 
-// The cockpit map: dash5.bmp, its rasterised 124x98 buffer, six mapbttn.bmp buttons and the
-// current mission's name. Ported from the widget the original constructs at FUN_00454420, whose
-// class vtable sits at 0x004f3068.
+// The cockpit map: a high-resolution DASH5 replacement mapped to the original page rectangle,
+// its rasterised 124x98 buffer, six mapbttn.bmp buttons and the current mission's name. Ported
+// from the widget the original constructs at FUN_00454420, whose class vtable sits at 0x004f3068.
 //
 // The original sits this panel at screen (455,290)-(640,438) of its 640x480 cockpit, hard against
 // the right edge and directly above the instrument strip along the bottom. The remake keeps that

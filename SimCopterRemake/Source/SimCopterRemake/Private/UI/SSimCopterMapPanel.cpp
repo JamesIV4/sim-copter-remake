@@ -24,12 +24,17 @@ using namespace SimCopterMap;
 
 namespace
 {
-const TCHAR* const PanelBitmapFile = TEXT("DASH5.BMP");
+const TCHAR* const OriginalPanelBitmapFile = TEXT("DASH5.BMP");
+const TCHAR* const UpscaledPanelFile = TEXT("DASH5-upscaled.png");
 const TCHAR* const ButtonBitmapFile = TEXT("MAPBTTN.BMP");
 const TCHAR* const RasterTextureKey = TEXT("SimCopterMapBuffer");
 
 // FUN_004547a0 rasterises on every other frame of the original's 0.05 s loop.
 constexpr double RasterIntervalSeconds = 0.1;
+
+// Slate's font ascender leaves the visible capitals low in the reconstructed display well.
+// Lift the label without changing FUN_00460e30's decoded 145x13 text rectangle.
+constexpr float MissionLabelYOffset = -2.0f;
 
 }
 
@@ -74,7 +79,7 @@ void SSimCopterMapPanel::Construct(const FArguments& InArgs)
 	Canvas->AddSlot()
 		.Offset(FMargin(
 			LabelLeft * Scale,
-			LabelTop * Scale,
+			(LabelTop + MissionLabelYOffset) * Scale,
 			(LabelRight - LabelLeft) * Scale,
 			(LabelBottom - LabelTop) * Scale))
 		.Alignment(FVector2D::ZeroVector)
@@ -94,9 +99,13 @@ void SSimCopterMapPanel::Construct(const FArguments& InArgs)
 	const FSlateBrush* PanelBrush = nullptr;
 	if (USimCopterHangarArt* ArtObject = Art.Get())
 	{
-		// Keyed on index 254: dash5's top-left corner is cyan so the cockpit shows through the
-		// panel's cut corner.
-		PanelBrush = ArtObject->GetBitmap(PanelBitmapFile, /*bColorKeyed=*/true);
+		PanelBrush = ArtObject->GetBundledSlateImage(UpscaledPanelFile);
+		if (PanelBrush == nullptr)
+		{
+			// Keep the original available as a fallback. Keying index 254 makes its cyan top-left
+			// corner transparent so the cockpit shows through the panel's cut corner.
+			PanelBrush = ArtObject->GetBitmap(OriginalPanelBitmapFile, /*bColorKeyed=*/true);
+		}
 	}
 
 	// The viewport slot anchors this panel directly to the bottom-left corner.
@@ -109,6 +118,8 @@ void SSimCopterMapPanel::Construct(const FArguments& InArgs)
 			SNew(SOverlay)
 			+ SOverlay::Slot()
 			[
+				// The 626x500 replacement fills DASH5's original 185x148 page-space rectangle.
+				// All live raster, label and button layers therefore retain their decoded positions.
 				PanelBrush != nullptr ? StaticCastSharedRef<SWidget>(SNew(SImage).Image(PanelBrush)) : SNullWidget::NullWidget
 			]
 			+ SOverlay::Slot()
