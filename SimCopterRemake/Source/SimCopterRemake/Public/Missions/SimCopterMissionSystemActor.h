@@ -161,6 +161,7 @@ public:
 	// only while an active medevac still has a patient waiting to be retrieved.
 	bool CanHospitalParamedicBoardPlayerHelicopter(const ASimCopterHelicopterPawn* Helicopter) const;
 	bool CreatePlayerCausedMedevacForVictim(ASimCopterGroundAgent* Victim);
+	bool CreatePlayerCausedCarFireForVehicle(ASimCopterGroundAgent* Vehicle);
 	bool ConvertDroppedTransportPassengerToMedevac(ASimCopterGroundAgent* Victim, int32 SourceTransportEventId);
 
 	// --- Emergency dispatch resolution hooks ---
@@ -298,6 +299,11 @@ public:
 
 	// Seconds since the session opened, for stamping career log lines.
 	float GetSessionElapsedSeconds() const { return SessionElapsedSeconds; }
+
+	// Complete live BOMB-side mission state (records, scheduler, fires and actor-owned mission
+	// bookkeeping). The byte array contains no UObject pointers and is safe across level travel.
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData);
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
 
 	// Called only when a type-5/type-6 water trajectory hits land or geometry. Remaining particle
 	// life is the douse strength (bucket particles arrive already divided by four); water-surface

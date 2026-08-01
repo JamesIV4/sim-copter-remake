@@ -78,6 +78,15 @@ public:
 	float GetFlashingLightIntensityScale() const;
 	void SetFlashingLightIntensityScale(float Scale);
 
+	// FUN_004814c0's threshold is fed by DAT_005039a0 fixed-time units, not milliseconds. The
+	// material exposes the resulting five-frame texture cadence so it can be tuned live without
+	// rebuilding either the city or the shaders. Zero deliberately freezes frame zero for inspection.
+	static constexpr float DefaultWaterTextureFramesPerSecond = 4.0f;
+	static constexpr float MaxWaterTextureFramesPerSecond = 120.0f;
+	static float SanitizeWaterTextureFramesPerSecond(float FramesPerSecond);
+	float GetWaterTextureFramesPerSecond() const { return WaterTextureFramesPerSecond; }
+	void SetWaterTextureFramesPerSecond(float FramesPerSecond);
+
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	bool UsesOriginalTerrainHeightScale() const;
 
@@ -126,6 +135,8 @@ public:
 	// reads as a bug rather than as history.
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|City")
 	bool DemolishBuildingAtTile(int32 FileX, int32 FileY, TArray<FIntPoint>& OutClearedTiles, bool bLeaveRubble = true);
+	void GetDemolishedBuildingOrigins(TArray<FIntPoint>& OutOrigins) const;
+	void RestoreDemolishedBuildingOrigins(const TArray<FIntPoint>& Origins, TArray<FIntPoint>& OutClearedTiles);
 
 	// True while the tile is covered by a building that has not been demolished.
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
@@ -276,6 +287,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "0.0"))
 	float WaterWaveSpeed = 1.1f;
 
+	// Playback rate for the five original water texture cells. Independent of the WPO waves above.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Render|Water", meta = (ClampMin = "0.0", ClampMax = "120.0"))
+	float WaterTextureFramesPerSecond = DefaultWaterTextureFramesPerSecond;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Render")
 	bool bRenderRoads = true;
 
@@ -371,6 +386,11 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> OriginalTextureMaterials;
+
+	// The terrain-water MID and page-20 mesh-pool MID. Kept separately so the debug rate input can
+	// update only materials that actually expose WaterTextureFramesPerSecond.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> WaterTextureMaterials;
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	int32 LastBuildingModelCount = 0;

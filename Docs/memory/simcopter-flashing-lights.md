@@ -75,9 +75,10 @@ up metres across and blooms over the building it is bolted to. The port sizes th
 4-pixel block covered at `LightSizeReferenceDepthCm` (600 cm) through the original's own
 projection, and lets perspective shrink it from there.
 
-There is a **hard floor of one original viewport pixel** on the screen footprint, so a marker never
-shrinks out of sight however far away it is — the skyline has to keep twinkling to the horizon.
-Do not add a distance cull to the cards.
+There is a **hard floor of one physical output pixel** on the screen footprint, calculated from
+the live viewport width and camera horizontal FOV, so a marker never shrinks out of sight however
+far away it is. It is deliberately not one original 560x400 pixel, which can cover several modern
+output pixels. Do not add a distance cull to the cards.
 
 **2. Each lit marker also casts a real `UPointLightComponent` of its own palette colour.** The
 original had no dynamic lighting whatsoever.

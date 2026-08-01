@@ -8,6 +8,7 @@
 #include "SimCopterApachePool.generated.h"
 
 class ASimCity2000CityActor;
+class ASimCopterGroundAgent;
 class ASimCopterHelicopterPawn;
 class UMaterialInterface;
 class UProceduralMeshComponent;
@@ -33,6 +34,12 @@ class SIMCOPTERREMAKE_API USimCopterApachePoolComponent : public USceneComponent
 	GENERATED_BODY()
 
 public:
+	// Remake mission-layer blast areas. FUN_00490690 still supplies the original direct mode-3/
+	// mode-7 reaction; these radii let the visible impact explosion select nearby cars and people
+	// for the player-caused car-fire/medevac records added by the remake.
+	static constexpr float DefaultMissileMissionBlastRadiusCm = 150.0f;
+	static constexpr float DefaultMachineGunMissionBlastRadiusCm = 50.0f;
+
 	USimCopterApachePoolComponent();
 
 	virtual void TickComponent(
@@ -51,6 +58,10 @@ public:
 
 	int32 GetActiveMissileCount() const;
 	int32 GetActiveBulletCount() const;
+	float GetMissileMissionBlastRadiusCm() const { return MissileMissionBlastRadiusCm; }
+	float GetMachineGunMissionBlastRadiusCm() const { return MachineGunMissionBlastRadiusCm; }
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData) const;
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
 	void ClearAll();
 
 protected:
@@ -72,16 +83,32 @@ private:
 		float SpeedCmPerSec = 0.0f;
 		int32 Life1616 = 0;
 		int32 MeshIndex = INDEX_NONE;
+		uint8 PaletteIndex = 0x10;
 	};
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UProceduralMeshComponent>> MissileMeshes;
 
+	// One rebuilt section for all 70 face-0x17 tracers. Their positions are owned by this pool;
+	// feeding a fresh generic particle into the other effects pool every 0.05 s gave those copies
+	// independent gravity/lifetimes and is what made the visual stick to the helicopter or vanish.
+	UPROPERTY(Transient)
+	TObjectPtr<UProceduralMeshComponent> BulletMesh;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> BulletMaterial;
+
+	UPROPERTY(Transient)
 	TObjectPtr<USimCopterParticleFXComponent> Effects;
+
+	UPROPERTY(EditAnywhere, Category = "Apache|Impact", meta = (ClampMin = "0.0", Units = "cm"))
+	float MissileMissionBlastRadiusCm = DefaultMissileMissionBlastRadiusCm;
+
+	UPROPERTY(EditAnywhere, Category = "Apache|Impact", meta = (ClampMin = "0.0", Units = "cm"))
+	float MachineGunMissionBlastRadiusCm = DefaultMachineGunMissionBlastRadiusCm;
 
 	TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
 
@@ -97,11 +124,16 @@ private:
 	ASimCity2000CityActor* ResolveCityActor();
 	ASimCopterHelicopterPawn* GetHelicopter() const;
 	UProceduralMeshComponent* EnsureMissileMesh(int32 SlotIndex);
+	void RebuildBulletMesh();
 
 	bool Launch(EKind Kind, const FVector& World, const FVector& Direction, int32 ForwardSpeed1616);
 	void AdvanceSlot(int32 SlotIndex, int32 Delta1616);
 	// True when the projectile is spent and the slot should be released.
 	bool ResolveImpact(FSlot& Slot, const FVector& Start, const FVector& End);
+	bool ApplyPlayerCausedMissionBlast(
+		const FSlot& Slot,
+		const FVector& ImpactWorld,
+		ASimCopterGroundAgent* DirectHitAgent);
 	void Detonate(const FSlot& Slot, const FVector& World, const FVector& Normal, bool bHitTerrain);
 	void ReleaseSlot(int32 SlotIndex);
 };

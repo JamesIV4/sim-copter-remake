@@ -172,6 +172,11 @@ public:
 	UFUNCTION(BlueprintCallable, CallInEditor, Category = "SimCopter|Traffic")
 	bool RebuildSpawnData();
 
+	// Live BOMB-side traffic/population snapshot. Includes the active beamed agents, their
+	// mission/vehicle state, dispatch slots, whole-map records and both original RNG streams.
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData);
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data, class ASimCopterHelicopterPawn* Helicopter);
+
 	bool TryGetPeopleTileCoordinateAtWorldLocation(
 		const FVector& WorldLocation,
 		int32& OutFileX,
@@ -184,6 +189,16 @@ public:
 	bool TryGetPeopleTileDirection(const FVector& WorldDirection, FVector2D& OutTileDirection) const;
 	int32 GetPeopleTileClassAtWorldLocation(const FVector& WorldLocation) const;
 	bool TryGetTerrainWorldZAtWorldLocation(const FVector& WorldLocation, float& OutTerrainWorldZ) const;
+	// Road-graph height at a vehicle's current progress between its previous and target nodes.
+	// Unlike a scene trace this cannot jump onto a power line, tree or building over the lane.
+	// bOutAllowsElevatedMesh is true only for raised-span ramps and actual bridge/highway deck
+	// ranges, whose mesh is the authoritative drivable plane above the SC2 terrain sample.
+	static bool UsesVehicleRoadMeshSurface(uint8 BuildingId);
+	bool TryGetVehicleRoadSurfaceZ(
+		const ASimCopterGroundAgent& Vehicle,
+		const FVector& WorldLocation,
+		float& OutSurfaceZ,
+		bool& bOutAllowsElevatedMesh) const;
 	bool IsWaterTile(int32 FileX, int32 FileY) const;
 	bool TryFindNearestTransportLandTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY);
 	int32 GetPeopleStoredFacingFromWorldLocations(
@@ -646,6 +661,7 @@ private:
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> VehicleAgents;
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> PedestrianAgents;
 	TMap<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState> VehicleTrafficStates;
+	TWeakObjectPtr<ASimCopterGroundAgent> NextCarFireTarget;
 	FRandomStream RandomStream;
 	uint16 PeopleRandomState = 1;
 	FTransform ActiveCityToWorldTransform = FTransform::Identity;
@@ -720,6 +736,10 @@ public:
 	bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY);
 	void EndTrafficJam(int32 EventId);
 	bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY);
+	// The car-fire creator normally chooses a random ambient car. A missile already has an exact
+	// collision target, so arm that actor for the next synchronous TYPE_CarFireEvent transaction.
+	void ArmNextCarFireTarget(ASimCopterGroundAgent* Vehicle);
+	void ClearNextCarFireTarget();
 
 	// FUN_004b8540: put the mission's speeder on a road tile near (TileX, TileY). Capped at the
 	// original's pool of five.

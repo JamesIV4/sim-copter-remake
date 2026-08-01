@@ -4,10 +4,13 @@
 
 #include "InputCoreTypes.h"
 #include "SimCopterFrontEndPage.h"
+#include "Rendering/DrawElements.h"
+#include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
+#include "Widgets/SLeafWidget.h"
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SimCopterMainMenu"
@@ -22,10 +25,81 @@ const TCHAR* const HoseTop = TEXT("MAIN2.BMP");
 const TCHAR* const HoseCorner = TEXT("MAIN3.BMP");
 const TCHAR* const LampStrip = TEXT("MAIN4.BMP");
 const TCHAR* const KeyStrip = TEXT("MAIN5.BMP");
+const TCHAR* const CloudStrip = TEXT("SKYCOOL.BMP");
 
 // The selection tick FUN_0045ed60 plays, and the looping backing track FUN_0045f3d0 starts.
 const TCHAR* const SelectionSound = TEXT("menu");
 const TCHAR* const MenuMusic = TEXT("menuback");
+
+// SCHOOK: MainMenuSkyMovie 0x0044d070 / MENUSKY.SMK. The retail CD entry in this install is a
+// zero-byte placeholder; SKYCOOL.BMP is the closest shipped palette cloud plate. Pan two copies
+// behind main1 so the intended moving sky remains visible without pretending this fallback is a
+// decode of the absent Smacker frames or bundling replacement art.
+class SSimCopterMenuCloudBackdrop final : public SLeafWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SSimCopterMenuCloudBackdrop) {}
+		SLATE_ARGUMENT(const FSlateBrush*, CloudBrush)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& Args)
+	{
+		CloudBrush = Args._CloudBrush;
+	}
+
+	virtual void Tick(const FGeometry& AllottedGeometry, const double CurrentTime, const float DeltaTime) override
+	{
+		SLeafWidget::Tick(AllottedGeometry, CurrentTime, DeltaTime);
+		ScrollPixels = FMath::Fmod(ScrollPixels + DeltaTime * 5.0f, SimCopterFrontEnd::ScreenWidth);
+		Invalidate(EInvalidateWidgetReason::Paint);
+	}
+
+	virtual int32 OnPaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		const int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		const bool bParentEnabled) const override
+	{
+		const FVector2f Size = FVector2f(AllottedGeometry.GetLocalSize());
+		const FSlateBrush* BaseBrush = FCoreStyle::Get().GetBrush(TEXT("WhiteBrush"));
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			LayerId,
+			AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform()),
+			BaseBrush,
+			ESlateDrawEffect::None,
+			FLinearColor(0.28f, 0.58f, 0.72f, 1.0f));
+
+		if (CloudBrush != nullptr)
+		{
+			const float Width = FMath::Max(1.0f, static_cast<float>(Size.X));
+			for (int32 Copy = -1; Copy <= 1; ++Copy)
+			{
+				const float X = static_cast<float>(Copy) * Width - ScrollPixels;
+				FSlateDrawElement::MakeBox(
+					OutDrawElements,
+					LayerId + 1,
+					AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform(FVector2f(X, 0.0f))),
+					CloudBrush,
+					ESlateDrawEffect::None,
+					InWidgetStyle.GetColorAndOpacityTint());
+			}
+		}
+		return LayerId + 1;
+	}
+
+	virtual FVector2D ComputeDesiredSize(float) const override
+	{
+		return FVector2D(SimCopterFrontEnd::ScreenWidth, SimCopterFrontEnd::ScreenHeight);
+	}
+
+private:
+	const FSlateBrush* CloudBrush = nullptr;
+	float ScrollPixels = 0.0f;
+};
 }
 
 void SSimCopterMainMenu::Construct(const FArguments& InArgs)
@@ -35,6 +109,13 @@ void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 
 	USimCopterHangarArt* ArtObject = Art;
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
+	const FSlateBrush* CloudBrush = ArtObject != nullptr
+		? ArtObject->GetBitmap(CloudStrip, /*bColorKeyed=*/false)
+		: nullptr;
+	AddAt(
+		Canvas,
+		FRect{0.0f, 0.0f, ScreenWidth, ScreenHeight},
+		SNew(SSimCopterMenuCloudBackdrop).CloudBrush(CloudBrush));
 
 	// main1.bmp, then the two hose pieces that bridge it to the screen edges. The page falls back
 	// to a plain panel without the artwork, but the hoses are pure decoration: draw them only when
@@ -240,4 +321,3 @@ FReply SSimCopterMainMenu::OnKeyDown(const FGeometry& MyGeometry, const FKeyEven
 }
 
 #undef LOCTEXT_NAMESPACE
-

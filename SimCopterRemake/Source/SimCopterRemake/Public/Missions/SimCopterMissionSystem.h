@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+class FArchive;
+
 // Decompiled SimCopter mission/event system, ported from SimCopter.exe.
 //
 // This is an exact port of the original mission layer, decoded from these
@@ -58,7 +60,7 @@ enum EType : int32
 	TYPE_CarFire        = 0x400,    // burning car family bit ([Fire Miss] car controls)
 	TYPE_CarFireEvent   = 0x408,    // scheduler-created car fire (FUN_0049fd00 on a car)
 	TYPE_TrafficJam     = 0x800,    // jam flag 0x200 on a car (FUN_0049fe30)
-	TYPE_Riot           = 0x1000,   // 16+ people, spawn mode 3; one riot at a time
+	TYPE_Riot           = 0x1000,   // 9..30 requested by difficulty; at least 11 mode-3 people or creation fails
 	TYPE_SpeederEvent   = 0x2000,   // single person, spawn mode 0xb, state 9
 	TYPE_CriminalCar    = 0x4000,   // special speeder car object (FUN_004b8540)
 	TYPE_CriminalC      = 0x20000,  // single person, spawn mode 0xc, state 9
@@ -66,20 +68,12 @@ enum EType : int32
 	TYPE_Ufo            = 0x100000, // the UFO event ([General Miss] UFO Money/Points)
 };
 
-// Agitation a freshly spawned rioter starts with (person + 0x150).
-//
-// BHAV 850 'Riot!' calls 852 'Refigure riot val and turn to it' and then 311 'Rioter maybe leave
-// riot' on every loop, and 311 retires anyone under 3 - so a rioter that starts at zero is
-// dispersed on its first behaviour tick and the whole mission completes the instant it is
-// created. 852 can only servo agitation one step per pass toward `count * mean / 15`, which is
-// also zero while the crowd is calm, so nothing bootstraps it.
-//
-// Where the original gets that first push is NOT pinned: it is not in FUN_004a7a10's riot branch,
-// not in FUN_004c3eb0, not in FUN_004c4e60, and person + 0x150 is never written by a literal
-// offset anywhere in .text - the field is only reachable through the behaviour VM's attribute
-// table. This is therefore a remake-side bootstrap, set to the threshold 311 tests so a crowd of
-// ~15 sustains a riot value of 3 and the servo holds rather than fights it.
-static constexpr int32 RioterSpawnAgitation = 3;
+// SCHOOK: RioterSpawn 0x004c4190, spawn-mode-3 arm.
+// The original writes 7 directly to person + 0x150 before placing the rioter. BHAV 852 then
+// servos that agitation toward `nearby-count * nearby-mean / 15`, while BHAV 311 only leaves the
+// riot below 3. The earlier value 3 sat on that cliff and decayed immediately whenever collision
+// placement spread even a few people outside the one-tile crowd scan.
+static constexpr int32 RioterSpawnAgitation = 7;
 
 // Mission event codes accepted by PostEvent (FUN_004a89c0 switch cases).
 enum EEvent : int32
@@ -618,6 +612,11 @@ public:
 	// main menu hands the player a first job without the opening wait. Returns true when a mission
 	// was created; a zero-weight city can never create one.
 	bool RollScheduledMissionNow();
+
+	// BOMB-side save payload. The original writes the live 30-record mission table, scheduler
+	// globals and fire pools separately from CINF/CSET. Keep this explicit and pointer-free so a
+	// city can be rebuilt first, then resume the exact simulation tick it was saved on.
+	bool SerializeRuntimeState(FArchive& Archive);
 
 private:
 	ISimCopterMissionWorld* World = nullptr;

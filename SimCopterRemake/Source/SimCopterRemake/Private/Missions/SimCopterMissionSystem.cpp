@@ -1,5 +1,6 @@
 #include "Missions/SimCopterMissionSystem.h"
 #include "Formats/SimCopterTweakReader.h"
+#include "Serialization/Archive.h"
 
 namespace SimCopterMissions
 {
@@ -2240,6 +2241,116 @@ void FSimCopterMissionSystem::DeactivateRecord(int32 RecordIndex)
 			ActiveCount = FMath::Max(0, ActiveCount - 1);
 		}
 	}
+}
+
+bool FSimCopterMissionSystem::SerializeRuntimeState(FArchive& Archive)
+{
+	// SCHOOK: SaveGame 0x004200e0, BOMB chunk. This is the pointer-free portion owned by the
+	// mission core: the exact record/fire pools plus every global that makes their next tick
+	// deterministic. Tuning and the career table are reloaded from the installed TWK first.
+	auto SerializeBool = [&Archive](bool& Value)
+	{
+		uint8 Byte = Value ? 1 : 0;
+		Archive << Byte;
+		if (Archive.IsLoading())
+		{
+			Value = Byte != 0;
+		}
+	};
+
+	Archive << Rand.State;
+	Archive << CurrentCityIndex;
+	Archive << CareerCity.Difficulty;
+	for (float& Weight : CareerCity.Weights)
+	{
+		Archive << Weight;
+	}
+	Archive << CareerCity.DayOrNight;
+	Archive << CareerCity.PointsNeeded;
+	Archive << CareerCity.MoneyEarned;
+
+	Archive << Score;
+	Archive << Cash;
+	Archive << DifficultyTier;
+	for (int32& Weight : CumulativeWeights) Archive << Weight;
+	Archive << FrameDeltaEma;
+	Archive << SpawnCountdown;
+	Archive << EasyIntervalCache;
+	Archive << MaxEasyWithDifficulty;
+	Archive << ScaledMissionTimer;
+	Archive << NagInterval;
+	Archive << PercentRoll;
+	Archive << bRerollRequested;
+	Archive << ConsecutivePlaceFailures;
+	Archive << ActiveCount;
+	Archive << BackgroundCount;
+	Archive << NextEventId;
+	for (int32& Serial : TypeSerials) Archive << Serial;
+	Archive << LifecyclePassCounter;
+	Archive << FocusRecordIndex;
+	Archive << ActiveFlameCount;
+	Archive << SpreadAccumulator;
+
+	if (Archive.IsLoading())
+	{
+		Records.SetNum(MaxRecords);
+		Flames.SetNum(MaxFlames);
+		FireObjects.SetNum(MaxFireObjects);
+	}
+	if (Records.Num() != MaxRecords || Flames.Num() != MaxFlames || FireObjects.Num() != MaxFireObjects)
+	{
+		Archive.SetError();
+		return false;
+	}
+
+	for (FSimCopterMissionRecord& Record : Records)
+	{
+		Archive << Record.Name;
+		Archive << Record.TypeSerial << Record.EventId << Record.TileX << Record.TileY;
+		Archive << Record.SecondaryX << Record.SecondaryY << Record.TertiaryX << Record.TertiaryY;
+		Archive << Record.TimeAccum << Record.EndMoneyScaled << Record.EndPointsScaled;
+		SerializeBool(Record.bActive);
+		Archive << Record.TypeMask << Record.Category << Record.FlamesCreated << Record.StructuresIgnited;
+		Archive << Record.FlamesDoused << Record.FlamesExpired << Record.CellsBurnedOut;
+		Archive << Record.ObjectsCaughtFire << Record.DebrisCreated << Record.DebrisDoused;
+		Archive << Record.DebrisExpired << Record.DebrisCleared << Record.RiotSize;
+		Archive << Record.MedevacVictims << Record.TransportPassengers << Record.RescueVictims;
+		Archive << Record.Counter90 << Record.TargetCount << Record.RescueDelivered;
+		Archive << Record.TransportDelivered << Record.MedevacDelivered << Record.VictimsPickedUp;
+		Archive << Record.RiotersDispersed << Record.RiotersCalmed << Record.CounterB0;
+		Archive << Record.Casualties << Record.CriminalsCaught << Record.PassengersLost;
+		Archive << Record.CarsCrashed << Record.JamCarCount << Record.CarsDoused;
+		Archive << Record.CarsBurned << Record.CarsCleared;
+		SerializeBool(Record.bSuppressCompletionRewards);
+	}
+
+	for (FSimCopterFlame& Flame : Flames)
+	{
+		SerializeBool(Flame.bActive);
+		Archive << Flame.GrowthAxisFlags << Flame.BurnCountdown << Flame.DouseHealth1616;
+		Archive << Flame.PosX << Flame.PosY << Flame.PosZ << Flame.GrowthStepsRemaining;
+		Archive << Flame.GrowthStep1616 << Flame.DamageCountdown;
+		Archive << Flame.WorldX << Flame.WorldY << Flame.WorldZ;
+		Archive << Flame.TileX << Flame.TileY << Flame.ClimbTargetObject;
+		Archive << Flame.FireObjectIndex << Flame.EventId;
+	}
+
+	for (FSimCopterFireObject& FireObject : FireObjects)
+	{
+		SerializeBool(FireObject.bActive);
+		Archive << FireObject.TileX << FireObject.TileY << FireObject.FlameCount;
+		SerializeBool(FireObject.bRescueSpawned);
+	}
+
+	if (Archive.IsLoading())
+	{
+		CurrentCityIndex = FMath::Clamp(CurrentCityIndex, 0, FMath::Max(0, CareerCities.Num() - 1));
+		DifficultyTier = FMath::Clamp(DifficultyTier, 1, 4);
+		ActiveCount = FMath::Clamp(ActiveCount, 0, MaxRecords);
+		BackgroundCount = FMath::Clamp(BackgroundCount, 0, MaxRecords);
+		ActiveFlameCount = FMath::Clamp(ActiveFlameCount, 0, MaxFlames);
+	}
+	return !Archive.IsError();
 }
 
 } // namespace SimCopterMissions

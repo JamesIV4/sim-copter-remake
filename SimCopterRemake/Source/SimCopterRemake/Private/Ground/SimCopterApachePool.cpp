@@ -4,12 +4,16 @@
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Audio/SimCopterSoundTable.h"
+#include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
+#include "CollisionShape.h"
+#include "Engine/OverlapResult.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Ground/SimCopterEffectFX.h"
+#include "Ground/SimCopterEffectRasterizer.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterParticleFX.h"
@@ -18,6 +22,9 @@
 #include "Missions/SimCopterMissionSystem.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "ProceduralMeshComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterApache, Log, All);
@@ -58,6 +65,15 @@ constexpr float MissileModelScale = 0.25f;
 // Same fixed clock the tear gas pool runs on, for the same reason.
 constexpr int32 SimulationStep1616 = SimCopterWaterGameplay::SimulationStep1616;
 constexpr int32 MaxStepsPerTick = 8;
+constexpr uint32 ApacheRuntimeSaveMagic = 0x41504143; // 'APAC'
+constexpr int32 ApacheRuntimeSaveVersion = 1;
+
+void SerializeApacheBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading()) Value = Byte != 0;
+}
 }
 
 USimCopterApachePoolComponent::USimCopterApachePoolComponent()
@@ -74,6 +90,11 @@ USimCopterApachePoolComponent::USimCopterApachePoolComponent()
 	{
 		VertexColorMaterial = ModelMaterialFinder.Object;
 	}
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BulletMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterParticleFX.M_SimCopterParticleFX"));
+	BulletMaterial = BulletMaterialFinder.Succeeded()
+		? BulletMaterialFinder.Object.Get()
+		: VertexColorMaterial.Get();
 }
 
 void USimCopterApachePoolComponent::OnRegister()
@@ -81,6 +102,16 @@ void USimCopterApachePoolComponent::OnRegister()
 	Super::OnRegister();
 	Slots.SetNum(TotalSlots);
 	MissileMeshes.SetNum(MissileSlots);
+	if (BulletMesh == nullptr)
+	{
+		BulletMesh = NewObject<UProceduralMeshComponent>(this, TEXT("ApacheMachineGunTracers"));
+		BulletMesh->SetupAttachment(this);
+		BulletMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		BulletMesh->SetCanEverAffectNavigation(false);
+		BulletMesh->SetCastShadow(false);
+		BulletMesh->bUseAsyncCooking = false;
+		BulletMesh->RegisterComponent();
+	}
 }
 
 void USimCopterApachePoolComponent::SetEffectComponent(USimCopterParticleFXComponent* InEffects)
@@ -238,6 +269,11 @@ bool USimCopterApachePoolComponent::Launch(
 			SimCopterFixed::ToFloat(ForwardSpeed1616 + Bonus) * SimCopterEffectFX::OriginalUnitToCm;
 		Slot.Life1616 = ProjectileLife1616;
 		Slot.MeshIndex = Kind == EKind::Missile ? Index : INDEX_NONE;
+		if (Kind == EKind::Bullet)
+		{
+			Slot.PaletteIndex = TracerPaletteCursor;
+			TracerPaletteCursor = TracerPaletteCursor >= 0x1f ? 0x10 : TracerPaletteCursor + 1;
+		}
 
 		if (Slot.MeshIndex != INDEX_NONE)
 		{
@@ -284,11 +320,81 @@ int32 USimCopterApachePoolComponent::GetActiveBulletCount() const
 	return Count;
 }
 
+bool USimCopterApachePoolComponent::CaptureRuntimeSaveState(TArray<uint8>& OutData) const
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = ApacheRuntimeSaveMagic;
+	int32 Version = ApacheRuntimeSaveVersion;
+	int32 SavedStepAccumulator = StepAccumulator1616;
+	uint8 SavedPaletteCursor = TracerPaletteCursor;
+	int32 SlotCount = Slots.Num();
+	Writer << Magic << Version << SavedStepAccumulator << SavedPaletteCursor << SlotCount;
+	for (const FSlot& ConstSlot : Slots)
+	{
+		FSlot Slot = ConstSlot;
+		SerializeApacheBool(Writer, Slot.bActive);
+		uint8 Kind = static_cast<uint8>(Slot.Kind);
+		Writer << Kind << Slot.Position << Slot.Direction << Slot.SpeedCmPerSec;
+		Writer << Slot.Life1616 << Slot.MeshIndex << Slot.PaletteIndex;
+	}
+	if (Writer.IsError()) OutData.Reset();
+	return !Writer.IsError();
+}
+
+bool USimCopterApachePoolComponent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	if (Data.IsEmpty()) return false;
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	int32 SlotCount = 0;
+	Reader << Magic << Version << StepAccumulator1616 << TracerPaletteCursor << SlotCount;
+	if (Magic != ApacheRuntimeSaveMagic || Version != ApacheRuntimeSaveVersion ||
+		SlotCount != TotalSlots || SlotCount != Slots.Num())
+	{
+		return false;
+	}
+
+	ClearAll();
+	for (int32 Index = 0; Index < SlotCount; ++Index)
+	{
+		FSlot& Slot = Slots[Index];
+		SerializeApacheBool(Reader, Slot.bActive);
+		uint8 Kind = 0;
+		Reader << Kind << Slot.Position << Slot.Direction << Slot.SpeedCmPerSec;
+		Reader << Slot.Life1616 << Slot.MeshIndex << Slot.PaletteIndex;
+		if (Kind > static_cast<uint8>(EKind::Bullet) ||
+			(Slot.bActive && ((Index < MissileSlots) !=
+				(Kind == static_cast<uint8>(EKind::Missile)))))
+		{
+			return false;
+		}
+		Slot.Kind = static_cast<EKind>(Kind);
+		if (Slot.bActive && Slot.Kind == EKind::Missile)
+		{
+			if (UProceduralMeshComponent* Mesh = EnsureMissileMesh(Index))
+			{
+				Mesh->SetWorldLocation(Slot.Position);
+				Mesh->SetWorldRotation(Slot.Direction.Rotation());
+				Mesh->SetVisibility(true);
+			}
+		}
+	}
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
+	RebuildBulletMesh();
+	return true;
+}
+
 void USimCopterApachePoolComponent::ClearAll()
 {
 	for (int32 Index = 0; Index < Slots.Num(); ++Index)
 	{
 		ReleaseSlot(Index);
+	}
+	if (BulletMesh != nullptr)
+	{
+		BulletMesh->ClearMeshSection(0);
 	}
 }
 
@@ -321,6 +427,7 @@ void USimCopterApachePoolComponent::TickComponent(
 	if (!bAnyActive)
 	{
 		StepAccumulator1616 = 0;
+		RebuildBulletMesh();
 		return;
 	}
 
@@ -342,6 +449,7 @@ void USimCopterApachePoolComponent::TickComponent(
 	{
 		StepAccumulator1616 = 0;
 	}
+	RebuildBulletMesh();
 }
 
 void USimCopterApachePoolComponent::AdvanceSlot(const int32 SlotIndex, const int32 Delta1616)
@@ -379,15 +487,95 @@ void USimCopterApachePoolComponent::AdvanceSlot(const int32 SlotIndex, const int
 			FX->SpawnTilePuff(Slot.Position, MissileMuzzlePuffClass);
 		}
 	}
-	else if (USimCopterParticleFXComponent* FX = Effects.Get())
+}
+
+void USimCopterApachePoolComponent::RebuildBulletMesh()
+{
+	if (BulletMesh == nullptr)
 	{
-		// The tracer itself: FUN_0048e0b0 type 2 builds a 3-point 0x17 trajectory card and
-		// recolours it from DAT_00504558, a cursor that walks the fire ramp 0x10..0x1f and wraps.
-		FX->SpawnEffect(
-			ESimCopterEffectType::FireTrajectory,
-			Slot.Position,
-			Slot.Direction * Slot.SpeedCmPerSec);
-		TracerPaletteCursor = TracerPaletteCursor >= 0x1f ? 0x10 : TracerPaletteCursor + 1;
+		return;
+	}
+
+	const APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	const APlayerCameraManager* CameraManager = PC != nullptr ? PC->PlayerCameraManager : nullptr;
+	if (CameraManager == nullptr)
+	{
+		BulletMesh->ClearMeshSection(0);
+		return;
+	}
+
+	const FVector CameraLocation = CameraManager->GetCameraLocation();
+	const FRotator CameraRotation = CameraManager->GetCameraRotation();
+	const FVector CameraForward = CameraRotation.Vector();
+	const FVector CameraRight = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Y);
+	const FVector CameraUp = FRotationMatrix(CameraRotation).GetScaledAxis(EAxis::Z);
+	const FTransform WorldToLocal = GetComponentTransform().Inverse();
+
+	TArray<FVector> Vertices;
+	TArray<int32> Triangles;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UVs;
+	TArray<FLinearColor> Colors;
+	TArray<FProcMeshTangent> Tangents;
+	Vertices.Reserve(BulletSlots * 3 * 4);
+	Triangles.Reserve(BulletSlots * 3 * 6);
+
+	for (int32 SlotIndex = MissileSlots; SlotIndex < Slots.Num(); ++SlotIndex)
+	{
+		const FSlot& Slot = Slots[SlotIndex];
+		if (!Slot.bActive || Slot.Kind != EKind::Bullet)
+		{
+			continue;
+		}
+
+		FLinearColor Color = Effects != nullptr
+			? Effects->PaletteColor(Slot.PaletteIndex)
+			: SimCopterEffectFX::FireTipBright();
+		Color.A = 1.0f;
+		for (int32 PointIndex = 0; PointIndex < 3; ++PointIndex)
+		{
+			// FUN_0048e0b0 builds the tracer from three face-0x17 points ten original units
+			// apart. Each point is the original renderer's fixed 2x2-pixel square.
+			const FVector Center = Slot.Position +
+				Slot.Direction * (10.0f * SimCopterEffectFX::OriginalUnitToCm * PointIndex);
+			const float CameraDepth = FVector::DotProduct(Center - CameraLocation, CameraForward);
+			if (CameraDepth <= 1.0f)
+			{
+				continue;
+			}
+			const float HalfExtent =
+				FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(CameraDepth);
+			const int32 Base = Vertices.Num();
+			Vertices.Append({
+				WorldToLocal.TransformPosition(Center - CameraRight * HalfExtent - CameraUp * HalfExtent),
+				WorldToLocal.TransformPosition(Center + CameraRight * HalfExtent - CameraUp * HalfExtent),
+				WorldToLocal.TransformPosition(Center + CameraRight * HalfExtent + CameraUp * HalfExtent),
+				WorldToLocal.TransformPosition(Center - CameraRight * HalfExtent + CameraUp * HalfExtent)
+			});
+			Triangles.Append({ Base, Base + 1, Base + 2, Base, Base + 2, Base + 3 });
+			UVs.Append({ FVector2D(0, 1), FVector2D(1, 1), FVector2D(1, 0), FVector2D(0, 0) });
+			const FVector LocalNormal = WorldToLocal.TransformVectorNoScale(-CameraForward);
+			const FProcMeshTangent Tangent(WorldToLocal.TransformVectorNoScale(CameraRight), false);
+			for (int32 VertexIndex = 0; VertexIndex < 4; ++VertexIndex)
+			{
+				Normals.Add(LocalNormal);
+				Colors.Add(Color);
+				Tangents.Add(Tangent);
+			}
+		}
+	}
+
+	if (Vertices.IsEmpty())
+	{
+		BulletMesh->ClearMeshSection(0);
+		return;
+	}
+
+	BulletMesh->CreateMeshSection_LinearColor(
+		0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
+	if (BulletMaterial != nullptr)
+	{
+		BulletMesh->SetMaterial(0, BulletMaterial);
 	}
 }
 
@@ -415,19 +603,27 @@ bool USimCopterApachePoolComponent::ResolveImpact(
 		}
 
 		// Both weapons are in FUN_00490690's 0x4006 despawn set, so the first thing either of
-		// them touches is the last: no bouncing, no passing through.
-		if (ASimCopterGroundAgent* Agent = Cast<ASimCopterGroundAgent>(Hit.GetActor()))
+		// them touches is the last: no bouncing, no passing through. The original reaction stays
+		// attached to that exact actor, while the remake's new mission effect uses the round impact
+		// area represented by the explosion/strike visual.
+		ASimCopterGroundAgent* Agent = Cast<ASimCopterGroundAgent>(Hit.GetActor());
+		const bool bDirectAgentConverted =
+			ApplyPlayerCausedMissionBlast(Slot, Hit.ImpactPoint, Agent);
+		if (Agent != nullptr)
 		{
-			FSimCopterInteractionEvent Event;
-			// Both map to BHAV 915 "Rxn: Missile/bullet" - mode 3 for the missile's 0x802 and
-			// mode 7 for a bullet's 0x004 - which is one of the four reactions nothing else can
-			// interrupt.
-			Event.Mode = Slot.Kind == EKind::Missile
-				? ESimCopterInteractionMode::Missile
-				: ESimCopterInteractionMode::MachineGun;
-			Event.Source = Helicopter;
-			Event.TargetWorldLocation = Hit.ImpactPoint;
-			Agent->ApplyInteraction(Event);
+			const bool bMissile = Slot.Kind == EKind::Missile;
+			if (!bDirectAgentConverted)
+			{
+				FSimCopterInteractionEvent Event;
+				// Both map to BHAV 915 "Rxn: Missile/bullet" - mode 3 for the missile's
+				// 0x802 and mode 7 for a bullet's 0x004.
+				Event.Mode = bMissile
+					? ESimCopterInteractionMode::Missile
+					: ESimCopterInteractionMode::MachineGun;
+				Event.Source = Helicopter;
+				Event.TargetWorldLocation = Hit.ImpactPoint;
+				Agent->ApplyInteraction(Event);
+			}
 			Detonate(Slot, Hit.ImpactPoint, Hit.ImpactNormal, /*bHitTerrain=*/false);
 			return true;
 		}
@@ -437,6 +633,99 @@ bool USimCopterApachePoolComponent::ResolveImpact(
 	}
 
 	return false;
+}
+
+bool USimCopterApachePoolComponent::ApplyPlayerCausedMissionBlast(
+	const FSlot& Slot,
+	const FVector& ImpactWorld,
+	ASimCopterGroundAgent* DirectHitAgent)
+{
+	UWorld* World = GetWorld();
+	ASimCopterMissionSystemActor* Missions = World != nullptr
+		? Cast<ASimCopterMissionSystemActor>(UGameplayStatics::GetActorOfClass(
+			World, ASimCopterMissionSystemActor::StaticClass()))
+		: nullptr;
+	if (World == nullptr || Missions == nullptr)
+	{
+		return false;
+	}
+
+	const bool bMissile = Slot.Kind == EKind::Missile;
+	const float RadiusCm = FMath::Max(
+		0.0f,
+		bMissile ? MissileMissionBlastRadiusCm : MachineGunMissionBlastRadiusCm);
+	TArray<ASimCopterGroundAgent*> Agents;
+	if (RadiusCm > 0.0f)
+	{
+		TArray<FOverlapResult> Overlaps;
+		FCollisionObjectQueryParams ObjectParams;
+		ObjectParams.AddObjectTypesToQuery(ECC_Pawn);
+		FCollisionQueryParams QueryParams(
+			SCENE_QUERY_STAT(SimCopterApacheMissionBlast), false, GetHelicopter());
+		World->OverlapMultiByObjectType(
+			Overlaps,
+			ImpactWorld,
+			FQuat::Identity,
+			ObjectParams,
+			FCollisionShape::MakeSphere(RadiusCm),
+			QueryParams);
+
+		for (const FOverlapResult& Overlap : Overlaps)
+		{
+			if (ASimCopterGroundAgent* Agent = Cast<ASimCopterGroundAgent>(Overlap.GetActor()))
+			{
+				Agents.AddUnique(Agent);
+			}
+		}
+	}
+
+	// Keep the old exact-hit behavior even if a custom radius is zero or an actor's collision
+	// capsule is temporarily disabled. The sphere only broadens the mission selection.
+	if (DirectHitAgent != nullptr)
+	{
+		Agents.AddUnique(DirectHitAgent);
+	}
+
+	// Overlap result order is not stable. Nearest-first makes mission allocation deterministic if
+	// a dense impact exhausts the fixed event-record pool; names break equal-distance ties.
+	Agents.Sort([&ImpactWorld](
+		const ASimCopterGroundAgent& Left,
+		const ASimCopterGroundAgent& Right)
+	{
+		const float LeftDistance = FVector::DistSquared(Left.GetActorLocation(), ImpactWorld);
+		const float RightDistance = FVector::DistSquared(Right.GetActorLocation(), ImpactWorld);
+		if (!FMath::IsNearlyEqual(LeftDistance, RightDistance))
+		{
+			return LeftDistance < RightDistance;
+		}
+		return Left.GetName() < Right.GetName();
+	});
+
+	bool bDirectAgentConverted = false;
+	for (ASimCopterGroundAgent* Agent : Agents)
+	{
+		bool bConvertedToMission = false;
+		if (Agent->GetAgentKind() == ESimCopterGroundAgentKind::Vehicle)
+		{
+			bConvertedToMission = Missions->CreatePlayerCausedCarFireForVehicle(Agent);
+		}
+		else if (Agent->IsMedevacVictim())
+		{
+			// State 6 never accepts reactions in FUN_004c1050. It is already the exact injured
+			// person of a medevac record, so consume the impact without creating a duplicate.
+			bConvertedToMission = true;
+		}
+		else if (Agent->PrepareForPlayerCausedMedevac())
+		{
+			bConvertedToMission = Missions->CreatePlayerCausedMedevacForVictim(Agent);
+		}
+
+		if (Agent == DirectHitAgent)
+		{
+			bDirectAgentConverted = bConvertedToMission;
+		}
+	}
+	return bDirectAgentConverted;
 }
 
 void USimCopterApachePoolComponent::Detonate(

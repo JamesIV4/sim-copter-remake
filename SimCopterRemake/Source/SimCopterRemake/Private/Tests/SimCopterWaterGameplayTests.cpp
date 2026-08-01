@@ -1,9 +1,45 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Flight/SimCopterHelicopterPawn.h"
+#include "City/SimCity2000CityActor.h"
 #include "Misc/AutomationTest.h"
 
 using namespace SimCopterWaterGameplay;
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterWaterTextureAnimationRateTest,
+	"SimCopter.Water.TextureAnimationRate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterWaterTextureAnimationRateTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("flowing default is 4 Hz"), ASimCity2000CityActor::DefaultWaterTextureFramesPerSecond, 4.0f);
+	TestEqual(TEXT("zero freezes the texture"), ASimCity2000CityActor::SanitizeWaterTextureFramesPerSecond(0.0f), 0.0f);
+	TestEqual(TEXT("debug rate clamps at 120 FPS"), ASimCity2000CityActor::SanitizeWaterTextureFramesPerSecond(200.0f), 120.0f);
+	TestEqual(TEXT("invalid rate returns to default"), ASimCity2000CityActor::SanitizeWaterTextureFramesPerSecond(NAN), 4.0f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRopeAutoZoomGateTest,
+	"SimCopter.Water.RopeAutoZoomGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterRopeAutoZoomGateTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("View 1 closest zoom and full rope backs out"),
+		ASimCopterHelicopterPawn::ShouldUseRopeAutoZoom(
+			ESimCopterCameraMode::Chase, 0.0f, SimCopterWinch::LoweredNode));
+	TestFalse(TEXT("A player-selected wider zoom is preserved"),
+		ASimCopterHelicopterPawn::ShouldUseRopeAutoZoom(
+			ESimCopterCameraMode::Chase, 0.01f, SimCopterWinch::LoweredNode));
+	TestFalse(TEXT("Pulling in one node returns to the player's zoom"),
+		ASimCopterHelicopterPawn::ShouldUseRopeAutoZoom(
+			ESimCopterCameraMode::Chase, 0.0f, SimCopterWinch::LoweredNode + 1));
+	TestFalse(TEXT("Other camera views do not auto-zoom"),
+		ASimCopterHelicopterPawn::ShouldUseRopeAutoZoom(
+			ESimCopterCameraMode::Cockpit, 0.0f, SimCopterWinch::LoweredNode));
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterWaterFillDumpTest,

@@ -84,11 +84,15 @@ public:
 	// 4-pixel block covered at LightSizeReferenceDepthCm through the original's own projection.
 	static constexpr float LightSizeReferenceDepthCm = 600.0f;
 
-	// ...with a hard floor on the screen footprint, so a marker NEVER shrinks out of sight however
-	// far away it is - the city has to keep twinkling all the way to the horizon. One original
-	// viewport pixel is about 3.4 real pixels at 1080p, so this stays clearly visible while still
-	// being small enough that a distant skyline reads as pinpricks rather than blobs.
+	// ...with a hard floor on the ACTUAL output footprint, so a marker never rasterizes below one
+	// physical screen pixel however far away it is. This is intentionally not an original 560x400
+	// pixel: on a modern viewport that old unit can be several output pixels wide.
 	static constexpr float MinLightSizeViewportPixels = 1.0f;
+	static float GetWorldSizeForScreenPixels(
+		float CameraDepthCm,
+		float ViewportWidthPixels,
+		float HorizontalFovDegrees,
+		float ScreenPixels);
 
 	// Full width of a light card in centimetres, at the reference depth.
 	static float GetLightWorldSizeCm();
@@ -240,5 +244,7 @@ private:
 	// The owner can move without the camera moving (a parked helicopter seen from a fixed camera
 	// is the obvious case), and the cards are built in component space, so this is tracked too.
 	FTransform LastComponentTransform = FTransform::Identity;
+	float ActiveViewportWidthPixels = 560.0f;
+	float ActiveHorizontalFovDegrees = 60.0f;
 	bool bHasDrawnOnce = false;
 };

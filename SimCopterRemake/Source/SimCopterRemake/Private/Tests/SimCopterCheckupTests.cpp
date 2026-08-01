@@ -453,6 +453,14 @@ bool FSimCopterFlashingLightScheduleTest::RunTest(const FString& Parameters)
 	// Negative time has no original counterpart; it must not produce a negative index.
 	TestEqual(TEXT("Negative time clamps"), FSimCopterFlashingLightSchedule::GetPhaseAtTime(-5.0), 0);
 
+	// At 1000 cm through a 90-degree horizontal FOV, a 2000-pixel viewport spans 2000 cm:
+	// one physical pixel is exactly one centimetre. This is the runtime floor, independent of
+	// the original 560x400 projection used to derive the marker's preferred world size.
+	TestEqual(
+		TEXT("One output pixel world size"),
+		FSimCopterFlashingLightSchedule::GetWorldSizeForScreenPixels(1000.0f, 2000.0f, 90.0f, 1.0f),
+		1.0f);
+
 	return true;
 }
 

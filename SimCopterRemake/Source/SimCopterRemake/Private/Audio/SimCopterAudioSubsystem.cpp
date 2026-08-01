@@ -101,15 +101,7 @@ void USimCopterAudioSubsystem::Deinitialize()
 	}
 	SlotComponents.Reset();
 
-	for (const TObjectPtr<UAudioComponent>& Component : LooseComponents)
-	{
-		if (Component != nullptr)
-		{
-			Component->Stop();
-			Component->DestroyComponent();
-		}
-	}
-	LooseComponents.Reset();
+	StopStandaloneSounds();
 
 	if (RadioComponent != nullptr)
 	{
@@ -902,6 +894,19 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 
 	LooseComponents.Add(Component);
 	return true;
+}
+
+void USimCopterAudioSubsystem::StopStandaloneSounds()
+{
+	for (const TObjectPtr<UAudioComponent>& Component : LooseComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->Stop();
+			Component->DestroyComponent();
+		}
+	}
+	LooseComponents.Reset();
 }
 
 bool USimCopterAudioSubsystem::PlayMusicFile2D(

@@ -177,6 +177,9 @@ public:
 	 */
 	bool PlayFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier = 1.0f);
 
+	/** Stop and discard all one-shot standalone sounds owned by the current front-end screen. */
+	void StopStandaloneSounds();
+
 	/**
 	 * The looping half of the same idea, for the one standalone sound object the original plays
 	 * with `Play(1, 1)` instead of `Play(0, 1)`: the main menu's menuback.wav, started by

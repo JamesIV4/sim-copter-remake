@@ -28,6 +28,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "Sound/SoundWave.h"
 #include "Styling/CoreStyle.h"
 #include "UObject/ConstructorHelpers.h"
@@ -43,6 +45,8 @@
 
 namespace
 {
+constexpr uint32 MissionRuntimeSaveMagic = 0x4d534352; // 'MSCR'
+constexpr int32 MissionRuntimeSaveVersion = 1;
 FString FormatSignedAmount(int32 Value, const TCHAR* Unit)
 {
 	return FString::Printf(TEXT("%+d %s"), Value, Unit);
@@ -279,6 +283,185 @@ void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayRea
 	RemoveMissionMarkerWidget();
 	RemoveMessageLogWidget();
 	Super::EndPlay(EndPlayReason);
+}
+
+bool ASimCopterMissionSystemActor::CaptureRuntimeSaveState(TArray<uint8>& OutData)
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = MissionRuntimeSaveMagic;
+	int32 Version = MissionRuntimeSaveVersion;
+	Writer << Magic << Version;
+	if (!MissionSystem.SerializeRuntimeState(Writer))
+	{
+		OutData.Reset();
+		return false;
+	}
+
+	uint8 Mode = static_cast<uint8>(SessionMode);
+	uint8 SelectionHeld = bSessionSelectionHeld ? 1 : 0;
+	Writer << Mode << SelectionHeld << SessionElapsedSeconds;
+	Writer << ServiceJetSweep.Elevation1616 << ServiceJetSweep.Step1616;
+
+	int32 HospitalCount = MedevacHospitalTiles.Num();
+	Writer << HospitalCount;
+	for (const TPair<int32, FIntPoint>& Pair : MedevacHospitalTiles)
+	{
+		int32 EventId = Pair.Key;
+		FIntPoint Tile = Pair.Value;
+		Writer << EventId << Tile;
+	}
+
+	int32 LogCount = MissionMessageLog.Num();
+	Writer << LogCount;
+	for (FSimCopterMissionLogEntry& Entry : MissionMessageLog)
+	{
+		Writer << Entry.Text << Entry.Color << Entry.RemainingSeconds;
+	}
+
+	TArray<uint8> FireEffectState;
+	if (FireSmokeComponent == nullptr ||
+		!FireSmokeComponent->CaptureRuntimeSaveState(FireEffectState))
+	{
+		OutData.Reset();
+		return false;
+	}
+	Writer << FireEffectState;
+
+	int32 HandoffCount = MedevacHandoffs.Num();
+	Writer << HandoffCount;
+	for (FSimCopterMedevacHandoff& Handoff : MedevacHandoffs)
+	{
+		FName HelicopterName = Handoff.Helicopter.IsValid()
+			? Handoff.Helicopter->GetFName()
+			: NAME_None;
+		FName EmtName = Handoff.Emt.IsValid()
+			? Handoff.Emt->GetRuntimeSaveIdentityName()
+			: NAME_None;
+		Writer << Handoff.EventId << HelicopterName << EmtName;
+		Writer << Handoff.LastOnboardCount << Handoff.SecondsWithoutProgress;
+	}
+	if (Writer.IsError())
+	{
+		OutData.Reset();
+		return false;
+	}
+	return true;
+}
+
+bool ASimCopterMissionSystemActor::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	if (Data.IsEmpty())
+	{
+		return false;
+	}
+
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	Reader << Magic << Version;
+	if (Magic != MissionRuntimeSaveMagic || Version != MissionRuntimeSaveVersion ||
+		!MissionSystem.SerializeRuntimeState(Reader))
+	{
+		return false;
+	}
+
+	uint8 Mode = 0;
+	uint8 SelectionHeld = 0;
+	Reader << Mode << SelectionHeld << SessionElapsedSeconds;
+	Reader << ServiceJetSweep.Elevation1616 << ServiceJetSweep.Step1616;
+	if (Mode > static_cast<uint8>(ESimCopterMissionSessionMode::SingleMission))
+	{
+		return false;
+	}
+	SessionMode = static_cast<ESimCopterMissionSessionMode>(Mode);
+	bSessionSelectionHeld = SelectionHeld != 0;
+
+	int32 HospitalCount = 0;
+	Reader << HospitalCount;
+	if (HospitalCount < 0 || HospitalCount > SimCopterMissions::FSimCopterMissionSystem::MaxRecords)
+	{
+		return false;
+	}
+	MedevacHospitalTiles.Reset();
+	for (int32 Index = 0; Index < HospitalCount; ++Index)
+	{
+		int32 EventId = INDEX_NONE;
+		FIntPoint Tile = FIntPoint::ZeroValue;
+		Reader << EventId << Tile;
+		MedevacHospitalTiles.Add(EventId, Tile);
+	}
+
+	int32 LogCount = 0;
+	Reader << LogCount;
+	if (LogCount < 0 || LogCount > 64)
+	{
+		return false;
+	}
+	MissionMessageLog.SetNum(LogCount);
+	for (FSimCopterMissionLogEntry& Entry : MissionMessageLog)
+	{
+		Reader << Entry.Text << Entry.Color << Entry.RemainingSeconds;
+	}
+
+	TArray<uint8> FireEffectState;
+	Reader << FireEffectState;
+	if (FireEffectState.IsEmpty())
+	{
+		return false;
+	}
+
+	int32 HandoffCount = 0;
+	Reader << HandoffCount;
+	if (HandoffCount < 0 || HandoffCount > SimCopterMissions::FSimCopterMissionSystem::MaxRecords)
+	{
+		return false;
+	}
+	MedevacHandoffs.Reset(HandoffCount);
+	for (int32 Index = 0; Index < HandoffCount; ++Index)
+	{
+		FName HelicopterName;
+		FName EmtName;
+		FSimCopterMedevacHandoff& Handoff = MedevacHandoffs.AddDefaulted_GetRef();
+		Reader << Handoff.EventId << HelicopterName << EmtName;
+		Reader << Handoff.LastOnboardCount << Handoff.SecondsWithoutProgress;
+
+		for (TActorIterator<ASimCopterHelicopterPawn> It(GetWorld()); It; ++It)
+		{
+			if (It->GetFName() == HelicopterName)
+			{
+				Handoff.Helicopter = *It;
+				break;
+			}
+		}
+		for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+		{
+			if (It->GetRuntimeSaveIdentityName() == EmtName)
+			{
+				Handoff.Emt = *It;
+				break;
+			}
+		}
+		if ((!HelicopterName.IsNone() && !Handoff.Helicopter.IsValid()) ||
+			(!EmtName.IsNone() && !Handoff.Emt.IsValid()))
+		{
+			return false;
+		}
+	}
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize())
+	{
+		return false;
+	}
+	if (FireSmokeComponent == nullptr ||
+		!FireSmokeComponent->RestoreRuntimeSaveState(FireEffectState))
+	{
+		return false;
+	}
+
+	SessionElapsedSeconds = FMath::Max(0.0f, SessionElapsedSeconds);
+	UpdateFireVisuals(0.0f);
+	RefreshMessageLogWidget();
+	return true;
 }
 
 void ASimCopterMissionSystemActor::Tick(float DeltaTime)
@@ -1145,6 +1328,38 @@ bool ASimCopterMissionSystemActor::CreatePlayerCausedMedevacForVictim(ASimCopter
 	Victim->ResetMissionActionTracking();
 	Victim->SetMissionInjuredPose();
 	return true;
+}
+
+bool ASimCopterMissionSystemActor::CreatePlayerCausedCarFireForVehicle(
+	ASimCopterGroundAgent* Vehicle)
+{
+	if (Vehicle == nullptr || Vehicle->GetAgentKind() != ESimCopterGroundAgentKind::Vehicle)
+	{
+		return false;
+	}
+
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(
+		Vehicle->GetActorLocation(), TileX, TileY))
+	{
+		return false;
+	}
+
+	// TYPE_CarFireEvent normally asks FUN_0049fd00 to choose a car. A missile impact already
+	// resolved the class-0x10 object, so bind that exact car for the synchronous world callback
+	// made by CreateEventAt. Clear the one-shot even when record allocation fails.
+	TrafficSystem->ArmNextCarFireTarget(Vehicle);
+	const int32 EventId = MissionSystem.CreateEventAt(
+		TileX, TileY, SimCopterMissions::TYPE_CarFireEvent);
+	TrafficSystem->ClearNextCarFireTarget();
+	return EventId != INDEX_NONE && EventId >= 0;
 }
 
 bool ASimCopterMissionSystemActor::ConvertDroppedTransportPassengerToMedevac(

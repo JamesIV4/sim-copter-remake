@@ -40,7 +40,7 @@ would be false until every original chunk, especially BOMB, is implemented. Care
 remain separate and the two Open menu items only list the matching kind, preserving the original's
 visible contract.
 
-## State currently persisted
+## State currently persisted (format version 2)
 
 - session kind and city (career index or portable user-city filename);
 - cash, score, session elapsed time, and the full live city-tuning record;
@@ -48,20 +48,47 @@ visible contract.
 - active helicopter type, purchased equipment, tear-gas ammunition, selected tool, fuel, and
   damage.
 
+Version 2 also carries a pointer-free live-world payload split by the same runtime owners that
+already simulate the port:
+
+- the mission scheduler/PRNG, all 30 mission records, all flame and fire-object slots, active
+  message log, hospital targets/handoffs, fire-truck jet sweep, and the mission-owned smoke/ember
+  effect pool;
+- every traffic-owned person and vehicle, including dispatch-only service vehicles: transform,
+  movement/route state, criminal/fire state, figure animation, complete BHAV stack/locals/
+  attributes/LFSR, mission id, carrier/selection links, dispatch slots, whole-map records, traffic
+  PRNG, and the hospital-roof replacement cooldown;
+- planes, boats, train, wrecks, train-roof riders, UFO-abduction target, ambient PRNG, and the
+  ambient crash/debris effect pool;
+- the helicopter transform and fixed-point flight integrator, damage/fuel/engine state, camera
+  view and smoothing, winch chain, selected bucket/harness, water load, spotlight, tool cooldowns,
+  seat manifest, and the active water/tear-gas/Apache projectile pools;
+- demolished building origins (replayed through the city actor so its meshes and traffic XBLD
+  grid agree); and
+- exact player possession. An on-foot save also carries movement mode/velocity, view and figure
+  frame, jump state, and the stable identity of the real mission person being carried.
+
+Actor pointers are never archived. Traffic gives each recreated ground agent a stable save
+identity and every carrier, selection, dispatch crew, seat, handoff, and carried-person reference
+relinks through that identity. The identity deliberately survives repeated load -> save -> load
+cycles; transient UObject names can gain suffixes while old level objects await collection.
+
 On load, the normal session path first resolves and loads the `.sc2` city. After
-`StartCityJobsSession` has initialized its runtime owners, the save subsystem restores the mission
-record and career state. The normal airport placement then runs, after which the saved aircraft
-model and service state are applied. This order prevents startup initialization or pad placement
-from overwriting restored data.
+`StartCityJobsSession` has initialized its runtime owners, the save subsystem restores the durable
+mission/career header and pauses the mission, traffic, and ambient actors. The normal airport and
+hangar placement runs before live state is replayed in dependency order: demolished city objects,
+aircraft, traffic/people and their pointer links, ambient vehicles, mission actor bookkeeping, then
+player possession/on-foot state. Ticks resume only after the complete saved frame exists. Loading
+into the helicopter selects the saved camera immediately rather than blending from the temporary
+airport pawn.
 
-## Deliberate current boundary
+## Deliberate boundary
 
-The original BOMB world serializer is not ported. Loading therefore starts the city at the airport
-and does **not** restore active missions, fires, destroyed or modified world objects, traffic and
-people instances, passengers, rope state, aircraft transform, or instantaneous flight velocity.
-Those transient systems restart cleanly. Add them only through deterministic per-owner archive
-records tied back to BOMB; do not serialize raw Unreal actor pointers or imply original-save
-compatibility.
+This is a BOMB-equivalent serializer for the systems the remake currently ports, not a byte-for-byte
+port of the original chunk writer. It still does **not** make remake saves compatible with `.scc`
+or `.scu`, and must not be advertised that way. Each runtime owner has its own magic/version and
+rejects a malformed or future byte stream instead of interpreting raw UObject memory. Legacy
+format-version-1 remake saves remain header-only and use the old airport-start restore path.
 
 ## UI and console paths
 
@@ -78,6 +105,6 @@ compatibility.
 ## Verification
 
 `SimCopter.SaveGame.*` automation covers name/slot normalization, archive serialization and version
-rejection, kind isolation, and restoration of mission and career state. The implementation is
-verified by the standard C++ build and the complete 141-test `SimCopter.*` automation suite; it has
-not been driven visually in-game.
+rejection, kind isolation, and the version-2 blob fields. Mission/effect owner round trips have
+focused automation coverage. The implementation is verified through the standard C++ build and
+headless automation; it has not been driven visually in-game.

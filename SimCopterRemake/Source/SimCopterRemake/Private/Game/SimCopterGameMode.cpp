@@ -135,14 +135,6 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 			*Helicopter->GetName(), PadIndex, *PadWorld.ToCompactString());
 	}
 
-	// Loading restores the career-owned aircraft only after the ordinary city-entry placement.
-	// That preserves FUN_0047a240's pad selection while keeping a saved model/service state from
-	// being overwritten by BeginPlay or the parking pass.
-	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
-	{
-		Saves->ApplyPendingAircraftState(World);
-	}
-
 	if (PlayerHelicopter == nullptr)
 	{
 		return;
@@ -158,6 +150,10 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 		// No on-foot pawn to stand anywhere, but the hangar still belongs beside the airport;
 		// face it at the helicopter's pad.
 		PlaceHangar(Traffic, PlayerHelicopterPad);
+		if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
+		{
+			Saves->ApplyPendingAircraftState(World);
+		}
 		return;
 	}
 
@@ -168,6 +164,14 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 	PlayerPawn->TeleportTo(StandLocation, FRotator(0.0f, 0.0f, 0.0f), /*bIsATest=*/false, /*bNoCheck=*/true);
 
 	PlaceHangar(Traffic, StandLocation);
+
+	// This is deliberately last. The city-entry pad pass, default on-foot placement and hangar
+	// demolition all happen first; only then may version-2 BOMB state put the aircraft/player,
+	// mission people, fires and mutable city objects back on their saved frame.
+	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
+	{
+		Saves->ApplyPendingAircraftState(World);
+	}
 }
 
 void ASimCopterGameMode::PlaceHangar(ASimCopterTrafficSystemActor* Traffic, const FVector& PlayerStandLocation)

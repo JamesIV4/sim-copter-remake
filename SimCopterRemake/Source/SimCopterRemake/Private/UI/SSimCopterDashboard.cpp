@@ -247,15 +247,6 @@ constexpr float UpscaledAltimeterDigitY = 35.0f;
 // feet - a foot-scaled face would barely leave its stop over the whole flight envelope.
 constexpr float AltimeterUnitsPerTurn = 100.0f;
 
-// The joystick well is the black square at (223,20)-(255,57); bootsqur.bmp is centred on it and
-// boot.bmp rides on top.
-const TCHAR* const JoystickBaseFile = TEXT("BOOTSQUR.BMP");
-const TCHAR* const JoystickStickFile = TEXT("BOOT.BMP");
-constexpr float JoystickCentreX = 239.0f;
-constexpr float JoystickCentreY = 38.0f;
-constexpr int32 JoystickBaseWidth = 51;
-constexpr int32 JoystickBaseHeight = 64;
-
 // --- dash4.bmp, 455x43 ---------------------------------------------------------------------
 const TCHAR* const Dash4File = TEXT("DASH4.BMP");
 constexpr int32 Dash4Width = 455;
@@ -881,14 +872,6 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 				static_cast<float>(DamageFrameWidth), static_cast<float>(DamageFrameHeight), Image);
 		}
 	}
-
-	// The joystick, centred on its well.
-	AddAtPage(*Canvas,
-		JoystickCentreX - JoystickBaseWidth * 0.5f,
-		JoystickCentreY - JoystickBaseHeight * 0.5f,
-		static_cast<float>(JoystickBaseWidth),
-		static_cast<float>(JoystickBaseHeight),
-		MakeImage(JoystickBaseFile, FIntRect(0, 0, JoystickBaseWidth, JoystickBaseHeight)));
 
 	USimCopterHangarArt* ArtObject = Art.Get();
 	const FSlateBrush* GaugeNeedleBrush =

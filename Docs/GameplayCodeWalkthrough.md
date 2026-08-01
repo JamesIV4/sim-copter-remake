@@ -464,6 +464,15 @@ The constructor sets defaults:
 
 `SyncVehicleTrafficStates` creates/removes state entries for live vehicles, decays timers, tracks actual motion, and accumulates blocked time.
 
+Vehicle Z and pitch no longer come from the highest arbitrary mesh under a tall trace. Movement is
+nonswept so cars phase through buildings, power lines, and other scenery, while
+`TryGetVehicleRoadSurfaceZ` interpolates the road graph between the previous and target nodes.
+Only decoded raised-span ramps (`0x3f..0x42`) and bridge/highway tile ranges may refine that graph
+height from their road mesh; the same restricted sampler feeds the centre, ahead, and behind probes,
+so vehicle Z and pitch match the visible ramp/deck plane. XBLD `0x43/0x44` are power-line road
+crossings, not elevated road decks. Their RD67/RD68 mesh already owns the centre line, so the
+obsolete procedural road-marking block for those pieces is disabled.
+
 `ApplyTrafficLights` treats qualifying intersection nodes as signalized intersections. It groups vehicles by approach, sorts them by distance, assigns queue slots, marks queue state, and brakes vehicles toward their slots until the approach is green.
 
 `IsTrafficLightIntersectionNode` and `IsTrafficLightGreenForApproach` define the current signal logic. This is remake behavior, not yet confirmed original mission logic.

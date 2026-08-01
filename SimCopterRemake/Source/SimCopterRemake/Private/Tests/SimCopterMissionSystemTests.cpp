@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "Missions/SimCopterMissionSystem.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 
 using namespace SimCopterMissions;
 
@@ -606,6 +608,67 @@ bool FSimCopterMissionTypeNameTest::RunTest(const FString& Parameters)
 	// does to a running 0x1 mission).
 	TestEqual(TEXT("0x9 is still a building fire"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_BuildingFire | TYPE_Debris)), FString(TEXT("Building Fire")));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMissionRuntimeSaveRoundTripTest,
+	"SimCopter.Missions.RuntimeSaveRoundTrip",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionRuntimeSaveRoundTripTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem Source;
+	Source.Initialize(&World, 1);
+	FSimCopterCareerCity City;
+	City.Difficulty = 2;
+	City.Weights[3] = 100.0f;
+	City.PointsNeeded = 1234;
+	Source.RestoreSessionState(321, 4567, City);
+	Source.GetRand().Seed(0x13579bdu);
+
+	const int32 RiotEventId = Source.CreateEventAt(44, 55, TYPE_Riot);
+	if (!TestTrue(TEXT("Riot fixture was created"), RiotEventId != INDEX_NONE))
+	{
+		return false;
+	}
+	Source.PostEvent(EVT_RioterDispersed, RiotEventId, 1);
+	const int32 SavedScore = Source.GetScore();
+	const int32 SavedCash = Source.GetCash();
+
+	TArray<uint8> Bytes;
+	FMemoryWriter Writer(Bytes, true);
+	if (!TestTrue(TEXT("Mission runtime state writes"), Source.SerializeRuntimeState(Writer)))
+	{
+		return false;
+	}
+	Writer.Close();
+	TestTrue(TEXT("Mission runtime blob is non-empty"), !Bytes.IsEmpty());
+
+	FSimCopterMissionSystem Restored;
+	Restored.Initialize(&World, 1);
+	FMemoryReader Reader(Bytes, true);
+	if (!TestTrue(TEXT("Mission runtime state reads"), Restored.SerializeRuntimeState(Reader)))
+	{
+		return false;
+	}
+	Reader.Close();
+
+	TestEqual(TEXT("Score resumes"), Restored.GetScore(), SavedScore);
+	TestEqual(TEXT("Cash resumes"), Restored.GetCash(), SavedCash);
+	TestEqual(TEXT("Difficulty resumes"), Restored.GetDifficultyTier(), 3);
+	const FSimCopterMissionRecord* Record = Restored.FindRecord(RiotEventId);
+	if (!TestNotNull(TEXT("Active riot record resumes"), Record))
+	{
+		return false;
+	}
+	TestTrue(TEXT("Riot remains active after loading"), Record->bActive);
+	TestEqual(TEXT("Riot tile X resumes"), Record->TileX, 44);
+	TestEqual(TEXT("Riot tile Y resumes"), Record->TileY, 55);
+	TestEqual(TEXT("Riot progress resumes"), Record->RiotersDispersed, 1);
+	TestEqual(TEXT("Mission PRNG resumes at the exact next value"), Restored.GetRand().Rand(), Source.GetRand().Rand());
+	TestEqual(TEXT("Original riot spawn agitation is seven"), RioterSpawnAgitation, 7);
 	return true;
 }
 

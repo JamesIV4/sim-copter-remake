@@ -323,6 +323,10 @@ public:
 	bool TransferFromHarnessToCabin();
 	// The mission passenger kind this person counts as, from their spawn state (person+0x148).
 	ESimCopterMissionPassengerKind GetMissionPassengerKind() const;
+	bool IsMedevacVictim() const;
+	// A direct weapon conversion bypasses BHAV 915 -> 906 -> opcode 35. Preserve opcode 35's
+	// old-record casualty notification before the mission actor assigns the new medevac record.
+	bool PrepareForPlayerCausedMedevac();
 
 	// --- person+0x18e, the head ----------------------------------------------------------------
 	// FUN_004c71c0 gives every behavior class a fixed head, and FUN_004c7090 overwrites it with 10
@@ -336,6 +340,17 @@ public:
 
 	// Opcode 54's stored face: which people1.bmp row this person's seat portrait uses.
 	int32 GetSeatPortraitMood() const { return SeatPortraitMood; }
+
+	// Pointer-free mission-person/vehicle snapshot used by the save subsystem's BOMB payload.
+	// ConfigureAgent is replayed on load, then the exact movement and BHAV stack are restored.
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData);
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
+	void SetRuntimeSaveIdentityName(FName Name) { RuntimeSaveIdentityName = Name; }
+	FName GetRuntimeSaveIdentityName() const
+	{
+		return RuntimeSaveIdentityName.IsNone() ? GetFName() : RuntimeSaveIdentityName;
+	}
+	void ResolveRuntimeSaveReferences(const TMap<FName, AActor*>& SavedActors, ASimCopterHelicopterPawn* Helicopter);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -426,8 +441,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "21"))
 	int32 InitialBehaviorClass = 0;
 
-	// Agitation (person + 0x150) to start with. Only the riot spawner sets it; see
-	// SimCopterMissions::RioterSpawnAgitation for why a rioter cannot start at zero.
+	// Agitation (person + 0x150) to start with. Spawn mode 3 sets the original's literal 7; see
+	// SimCopterMissions::RioterSpawnAgitation.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
 	int32 InitialBehaviorAgitation = 0;
 
@@ -479,6 +494,12 @@ public:
 	// the tile-center altitude (and there is no roof to catch the probe).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
 	float PedestrianGroundProbeSlopeHeadroomCm = 110.0f;
+
+	// A real bridge/highway deck may rise above the route graph's SC2 terrain sample. Accept its
+	// mesh surface only inside this band; all ordinary road tiles use graph height and phase
+	// through arbitrary meshes instead of warping onto their tops.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
+	float VehicleElevatedRoadMeshMaxOffsetCm = 600.0f;
 
 	// Where a person another person is carrying rides, relative to the carrier. X is out in front
 	// of the chest; the figure is laid across it by the rotation applied alongside this.
@@ -592,6 +613,11 @@ private:
 	// person+0x1a8, the thing opcode 78 flies to - only ever the UFO in the shipped data. The flag is
 	// separate so a saucer that despawns mid-flight still finishes the abduction.
 	TWeakObjectPtr<USceneComponent> BehaviorBeamTarget;
+	FName PendingSavedCarrierName;
+	FName PendingSavedStartingVehicleName;
+	FName PendingSavedInteractionSourceName;
+	FName PendingSavedSelectionName;
+	FName RuntimeSaveIdentityName;
 	bool bBeamAbductionActive = false;
 	// person+0x1c4, this person's own radius in original units (opcode 27 halves it for a rioter).
 	float BehaviorBodyRadiusUnits = 3.0f;
