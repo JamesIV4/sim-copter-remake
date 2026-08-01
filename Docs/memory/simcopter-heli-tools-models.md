@@ -63,7 +63,13 @@ Canonical notes live in the repo: `Docs/scratchpad/ghidra/heli_tools_models_deco
 - **BRACKET (0x16c, `heli[0x31]`) is the harness's mount** and was unported. `FUN_00483c20` builds
   it for every helicopter and nothing in `.text` writes `heli + 0xc4` again, so like CANNON it is
   authored in the fuselage frame and rides the body - a triangular frame on the **right flank**,
-  the side a winched Sim comes aboard. The rope hangs off it.
+  the side a winched Sim comes aboard. **Only the harness** hangs off it - the bucket keeps the
+  belly point, because it is lowered straight down to scoop and to douse - and the anchor is
+  the frame's **outboard tip**, standing off by one cable radius so the rope's outer edge lands
+  on the tip rather than half the rope hanging past it. BRACKET is one GEO shared by all nine
+  airframes, so its own tip is only wide enough for the small ones: **sample the BODY's own
+  half-width at the bracket's height too** and take whichever is further out, or the cable runs
+  through the hull on a Bell 212 or a Dauphin.
 - **Apache armament ported 2026-08-01** (`USimCopterApachePoolComponent`). Missile: 10 slots, GEO
   0x0ae, `heli[0x4e] + 450`, cooldown shared with tear gas, mode 3, impact column scale 2 + sound
   7. Gun: 70 slots, a 3-point 0x17 card cycling palette 0x10..0x1f, `+600`, NO cooldown, mode 7,

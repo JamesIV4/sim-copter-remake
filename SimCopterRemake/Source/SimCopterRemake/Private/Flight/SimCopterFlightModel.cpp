@@ -850,6 +850,30 @@ void FSimCopterFlightModel::StepGroundImpact(int32 Dt, const FSimCopterFlightEnv
 	}
 }
 
+void FSimCopterFlightModel::NotifyWreckCollision(
+	int32 PushX1616,
+	int32 PushZ1616,
+	FSimCopterFlightEvents& OutEvents)
+{
+	if (State != ESimCopterFlightState::Dying)
+	{
+		return;
+	}
+
+	// The death spiral has no horizontal motion of its own - it only spins and drops - so a wreck
+	// that comes down against a wall has nothing to carry it clear and hangs there spinning until
+	// the player quits. Shove it out along the surface it hit and lift it over the lip.
+	//
+	// This is the movement half of the wall response with the attitude half left out on purpose:
+	// PitchTarget and BankSmoothed belong to the spiral, and kicking them would break the tumble
+	// the state exists to play.
+	PosX += PushX1616;
+	PosZ += PushZ1616;
+	Altitude += WreckImpactLift;
+	// The same event the flying impact raises, so the explosion and EXPLODE come with it.
+	OutEvents.bPadBounce = true;
+}
+
 void FSimCopterFlightModel::NotifyObjectCollision(FSimCopterFlightEvents& OutEvents)
 {
 	if (State != ESimCopterFlightState::Flying && State != ESimCopterFlightState::FlyingAI)

@@ -358,6 +358,20 @@ struct SIMCOPTERREMAKE_API FSimCopterFlightModel
 	// points - 4 + 4*CollisionSubtract when out of fuel - then bounces).
 	void NotifyObjectCollision(FSimCopterFlightEvents& OutEvents);
 
+	// The same thing for a wreck already in its death spiral. Movement and effects only: the
+	// spiral owns the attitude, so nothing kicks pitch or bank. Without it a wreck that comes
+	// down against a building hangs there spinning forever - the Dying branch integrates no
+	// horizontal motion at all, so nothing else can carry it clear.
+	void NotifyWreckCollision(int32 PushX1616, int32 PushZ1616, FSimCopterFlightEvents& OutEvents);
+
+	// How far a wreck impact lifts the airframe, so a shove along a wall also clears the ledge
+	// it is resting on. 4.0 original units.
+	static constexpr int32 WreckImpactLift = 0x40000;
+
+	// How hard that shove is, in 16.16 original units - a little over the collision capsule's
+	// own radius so one impact always leaves the obstacle rather than re-hitting it next frame.
+	static constexpr int32 WreckImpactPush = 0x110000;
+
 	// Display attitude for the scene node (FUN_00486a30 tail: matrix built from
 	// heading, pitch *target* and the smoothed bank after the slide quirk).
 	int32 DisplayPitchTenthDeg() const { return PitchTarget; }

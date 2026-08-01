@@ -4,6 +4,7 @@
 
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Ground/SimCopterApachePool.h"
 #include "Ground/SimCopterDispatch.h"
 #include "Ground/SimCopterTearGasPool.h"
 #include "Missions/SimCopterMissionSystem.h"
@@ -2048,6 +2049,17 @@ FText SSimCopterHelicopterDebugPanel::GetToolContextText() const
 			SimCopterHelicopterRegistry::TearGasCapacity,
 			Pool != nullptr ? Pool->GetActiveCanisterCount() : 0,
 			Pool != nullptr ? Pool->GetActiveCloudCount() : 0));
+	}
+	case ESimCopterHelicopterTool::ApacheMissile:
+	case ESimCopterHelicopterTool::ApacheMachineGun:
+	{
+		// The Apache's cockpit strip is deliberately just two fire buttons, so what is actually
+		// in the air is only visible here.
+		const USimCopterApachePoolComponent* Pool = HelicopterPawn->GetApachePool();
+		return FText::FromString(FString::Printf(
+			TEXT("missiles %d / 10   tracers %d / 70"),
+			Pool != nullptr ? Pool->GetActiveMissileCount() : 0,
+			Pool != nullptr ? Pool->GetActiveBulletCount() : 0));
 	}
 	default:
 		return FText::GetEmpty();

@@ -112,6 +112,8 @@ const TCHAR* GetActionName(const EAction Action)
 	case EAction::HarnessRaise: return TEXT("Raise harness");
 	case EAction::HarnessLower: return TEXT("Lower harness");
 	case EAction::TearGasFire: return TEXT("Fire tear gas");
+	case EAction::ApacheMissileFire: return TEXT("Fire missile");
+	case EAction::ApacheGunFire: return TEXT("Machine gun");
 	default: return TEXT("?");
 	}
 }
