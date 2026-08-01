@@ -731,8 +731,16 @@ is the water cannon's mount, not the Apache's.
   and source-object source.
 - `FUN_004c6250` - the presumed free-seat gate on boarding the helicopter body.
 - `FUN_004c6310` - the presumed "rope end already occupied" test.
-- The consumer of `heli[0x57]` (emitter request) - muzzle transforms for the
-  water cannon, tear gas, and both Apache weapons.
+- ~~The consumer of `heli[0x57]` (emitter request) - muzzle transforms.~~
+  **Resolved 2026-07-31**: it is the tail of `FUN_00484d20`. All four weapons launch
+  from the body node lifted `+0x30000` along the airframe's forward axis
+  (`FUN_0046cb74(&DAT_004fa2e0 = (0,0,1), dir, body + 0x24)`) at `heli[0x4e]` plus a
+  per-type bonus - missile `0x1c20000`, machine gun `0x2580000`, tear gas `0x320000`.
+  There are no per-weapon mount points. See
+  `Docs/scratchpad/agent-sessions/2026-07-31-teargas/teargas-decode.md`, which also
+  corrects two claims in section 8 below: type 3 uses the **identity** matrix builder
+  `FUN_0046cad1`, not `FUN_00467d30`, and the `0x30000` `FUN_0048db20` writes to
+  `node + 0x10` is the **collision radius**, not a scale.
 - `DAT_0058dc3a` write order (65000 in `FUN_004c3010` vs. a smaller tuning
   value elsewhere) - needed for the spotlight reaction probability.
 - Mission scoring/misuse penalties for megaphone messages and tear gas

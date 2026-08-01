@@ -14,7 +14,7 @@ Written: 2026-07-24 - last updated 2026-07-24
 | 2 - equipment state, selector, input | **Done** | `FSimCopterEquipmentState` (career / debug-grant / model layers), `StartPrimaryToolUse`/`StopPrimaryToolUse`, tool row + contextual rows, mission widget's water button removed. |
 | 3 - spotlight + megaphone | **Done** | `SimCopterSpotlight` march/smoothing/bands, `FSimCopterToolTarget`, `SimCopterInteraction` spiral scan + reaction table, megaphone routed through the spotlight tile with all five messages. |
 | 4 - rescue harness | **Partial** | Winch state machine, rope-end exchange, and the `HARNESS` mesh are ported. The behaviour-VM opcodes (48/53/58/59/82/86/87) and the BHAV 700/305/303 attachment loop are **not** implemented yet. |
-| 5 - tear gas | **Not started** | Ammo, cooldown, and the refusal path are in; the projectile, gas cloud, and mode-5 reaction are not. |
+| 5 - tear gas | **Done** | `SimCopterTearGas` (fixed-point fuse/drag/gravity/bounce/cloud), `USimCopterTearGasPoolComponent` (ten slots, TEARGAS GEO 0x147, trail + puff cards, TGSHWH/TGPOP/SOFTBMP2/DOUSE), the `FUN_00484d20` muzzle, mode-5 delivery through `DeliverInteractionToTile`, and flap3's ten canister lamps. Riot scoring needs no new code - BHAV 907 and 311 already do it once mode 5 arrives. Tests: `SimCopter.TearGas.*`. Not verified in-game. |
 | 6 - Apache weapons | **Not started** | Selector entries and `MODEL` availability are in; the emitters are not. |
 | 7 - career/catalog integration | **Not started** | Prices, bits, and sell values are decoded and tabled, ready for the shop layer. |
 
@@ -70,7 +70,7 @@ tools. The water pair is already implemented; three normal tools remain.
 | Water bucket | `0x01` | Core loop ported | Preserve and route through the common selector |
 | Megaphone | `0x02` | Traffic-jam-only placeholder | Port spotlight-area targeting and five messages |
 | Rescue harness | `0x04` | Missing | Port the original rope end, person attachment, and boarding loop |
-| Tear gas launcher | `0x08` | Missing | Port ammo, projectile, impact reaction, and riot scoring |
+| Tear gas launcher | `0x08` | Ported 2026-07-31 | Ammo, canister, gas cloud, mode-5 reaction and flap3's lamp row are in |
 | Water cannon | `0x10` | Core loop ported | Preserve and route through the common selector |
 
 `FUN_00407a50` returns the career record. `FUN_0042d840` and
@@ -410,6 +410,24 @@ complete when the projectile consumes ammo, collides through the original
 path, drives the correct person/riot behavior, respects the megaphone-water-gas
 escalation order, penalizes misuse, and refills through maintenance.
 
+**Decoded and ported 2026-07-31**, full evidence in
+`Docs/scratchpad/agent-sessions/2026-07-31-teargas/teargas-decode.md`:
+
+- The **muzzle** is the tail of `FUN_00484d20` (this plan's last open item): the
+  body node lifted `+0x30000`, along the airframe's forward axis, at
+  `heli[0x4e] + 0x320000`. The launcher has no aim of its own and does not use
+  the spotlight.
+- Two corrections to the 2026-07-24 note: type 3 builds an **identity** node
+  matrix (`FUN_0046cad1`), so the canister is never oriented; and the `0x30000`
+  written to `node + 0x10` by `FUN_0048db20` is its **collision radius**.
+- The burst sets the effect timer to **zero**, so the pop and the first puff of
+  gas land on the same frame.
+- Riot progression needs no code of its own. BHAV 907 moves the rioter's
+  agitation (`+0x150`) by `-2`, or `+5` on a one-in-six roll, and swoons them on a
+  further one-in-21; BHAV 311 `Rioter maybe leave riot` posts
+  `EVT_RioterDispersed` / `EVT_RioterCalmed` and deactivates them once agitation
+  drops below 3. Both already run in the behaviour VM.
+
 ### 4.6 Apache-only armament
 
 Runtime helicopter type 2 changes the meaning of two normal actions in
@@ -721,12 +739,20 @@ behavior path.
 
 1. Add transient and career ammo sources with capacity 10.
 2. Port emitter type 3 spawn/update/collision.
-3. Route interaction mode 7 and BHAV reaction.
+3. Route interaction mode **5** (not 7 - see the correction in 4.5) and its BHAV.
 4. Port riot escalation, reward/misuse behavior, audio, and maintenance refill.
 5. Add ammo/refill/cooldown status to the debug panel.
 
 Exit gate: a round has physical travel and collision, decrements exactly once,
 drives the original reaction/scoring path, and cannot fire at zero ammo.
+
+**Done 2026-07-31.** Riot escalation and scoring turned out to need no code of
+their own: BHAV 907 moves a rioter's agitation and BHAV 311 posts
+`EVT_RioterDispersed` / `EVT_RioterCalmed` when it falls below three, and the
+behaviour VM already runs both. One deliberate divergence from step 2 - the
+canister is swept against Unreal's collision instead of the original's per-tile
+object/mesh lists, keeping the same responses (reflect off structures, pass
+through people with mode 0xe, splash and die on water).
 
 ### Phase 6 - Apache weapons
 

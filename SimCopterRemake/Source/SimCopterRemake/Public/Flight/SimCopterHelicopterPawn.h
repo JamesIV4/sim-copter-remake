@@ -31,6 +31,7 @@ class UTexture2D;
 class UWidgetComponent;
 class USimCopterFlashingLightsComponent;
 class USimCopterParticleFXComponent;
+class USimCopterTearGasPoolComponent;
 class ASimCity2000CityActor;
 class ASimCopterMissionSystemActor;
 class ASimCopterOnFootPawn;
@@ -546,6 +547,16 @@ public:
 	// Last refusal produced by the primary-use path (missing equipment, out of water, ...).
 	FString GetLastToolStatus() const { return LastToolStatus; }
 
+	// --- Tear gas ---
+
+	// Hands one interaction to every ground agent standing on Event.TargetTile. The gas cloud
+	// scans a single tile rather than FUN_0048ae70's spiral, so it needs this rather than
+	// BroadcastInteraction. Returns how many reacted.
+	int32 DeliverInteractionToTile(const struct FSimCopterInteractionEvent& Event);
+
+	// The ten-slot canister pool, so the debug panel and tests can read it.
+	USimCopterTearGasPoolComponent* GetTearGasPool() const { return TearGasPool; }
+
 	// --- Spotlight target service (Phase 3) ---
 
 	// The shared semantic target the megaphone (and later dispatch) aim at. Updated every
@@ -747,6 +758,11 @@ protected:
 	// the rotor-wash "wind kickback" spray/dust under the helicopter.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USimCopterParticleFXComponent> WaterFXComponent;
+
+	// DAT_005d4bd0: the ten tear gas canisters in flight and the clouds they leave behind. Slots
+	// are world-space, so a canister keeps flying and gassing after the helicopter has left.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USimCopterTearGasPoolComponent> TearGasPool;
 
 	// The fuselage's own face-type-25 blink markers (FUN_00496c00). Every flyable airframe carries
 	// four: one white, two red and one green. Rides the body mesh, whose local frame they share.
@@ -1625,6 +1641,12 @@ private:
 	// can tell FUN_00489800's fire damage from ordinary collision damage.
 	int32 LastFlightEnvironmentFireDelta = 0;
 
+	// Where the swept collider actually touched, so the impact burst lands on the contact point
+	// rather than at the middle of the airframe. Raised inside ApplyFlightModelToActor and
+	// consumed by the effect pass later in the same frame.
+	FVector LastImpactWorldLocation = FVector::ZeroVector;
+	bool bHasPendingImpactEffect = false;
+
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
 
@@ -1764,6 +1786,16 @@ private:
 	// Runs the original square-spiral tile scan around Event.TargetTile and routes every
 	// eligible object through the shared interaction dispatch. Returns how many reacted.
 	int32 BroadcastInteraction(const struct FSimCopterInteractionEvent& Event, int32 Rings);
+
+	// The tile walk both of the above share: hand the event to every agent standing on one of
+	// these tiles. FUN_0049a4f0's class routing lives here.
+	int32 DeliverInteractionToTiles(
+		const struct FSimCopterInteractionEvent& Event,
+		const TSet<FIntPoint>& Tiles);
+
+	// FUN_00484d20's heli[0x57] == 3 arm: build the muzzle point/direction/speed and hand them
+	// to the pool. False when the pool is full, which refuses the shot before a round is spent.
+	bool LaunchTearGasCanister();
 
 	void RecomputeActiveToolFallback();
 	int32 GetModelCapabilityMask() const;

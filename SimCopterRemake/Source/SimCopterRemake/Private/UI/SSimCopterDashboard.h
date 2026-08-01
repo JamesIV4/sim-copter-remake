@@ -83,9 +83,15 @@ private:
 	// --- live readouts ---
 
 	FText GetMoneyText() const;
-	float GetPointsFraction() const;
 	int32 GetDamageLampLevel(int32 LampIndex) const;
-	EVisibility GetPointsBlockVisibility(int32 BlockIndex) const;
+
+	// The points bar: how many of its fifteen cells are filled, and which of managge.bmp's three
+	// sprites one cell is showing.
+	int32 GetPointsLevel() const;
+	const FSlateBrush* GetPointsCellBrush(int32 CellIndex) const;
+
+	// managge.bmp's three states, indexed by SimCopterSegmentedBar::ECell.
+	const FSlateBrush* PointsCellBrushes[3] = { nullptr, nullptr, nullptr };
 
 	// Both in the original's world units, straight off the flight model.
 	float GetAltitudeUnits() const;

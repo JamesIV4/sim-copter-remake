@@ -12,6 +12,7 @@
 #include "Rendering/DrawElements.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
+#include "UI/SimCopterSegmentedBar.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -188,13 +189,21 @@ const FIntRect MoneyRect(20, 12, 94, 26);
 constexpr float UpscaledMoneyTextXOffset = -1.0f;
 constexpr float UpscaledMoneyTextYOffset = 0.0f;
 
-// The points bar is the second black well, measured at x 19..96, y 36..51. managge.bmp is a
-// 15x13 block, so five of them fill it.
-constexpr int32 PointsBlockCount = 5;
-constexpr float PointsBlockX = 20.0f;
-constexpr float PointsBlockY = 37.0f;
-constexpr float PointsBlockStride = 15.0f;
-const TCHAR* const PointsBlockFile = TEXT("MANAGGE.BMP");
+// The points bar, in the second black well (x 19..96, y 36..51). managge.bmp is NOT one block:
+// like watergge.bmp it is a strip of three states - full, leading edge, empty - and the repaint
+// at 0x004534f2 lays FIFTEEN 5x13 cells from x 0x14, y 0x25, which is what fills the well.
+//
+//   mov edi, 0x14                              ; the cursor, stepping +5
+//   value = score * 15 / pointsNeeded          ; lea/lea/idiv, score clamped to needed first
+//   loop 1  value times   src (0,0)-(5,13)
+//   loop 2  once, if n<15 src (5,0)-(10,13)
+//   loop 3  15-n times    src (10,0)-(15,13)
+constexpr int32 PointsCellCount = 15;
+constexpr int32 PointsCellWidth = 5;
+constexpr int32 PointsCellHeight = 13;
+constexpr float PointsBarX = 20.0f;  // 0x14
+constexpr float PointsBarY = 37.0f;  // 0x25
+const TCHAR* const PointsBarFile = TEXT("MANAGGE.BMP");
 
 // damage.bmp is three 15x14 lamp frames: unlit, amber, red. Six lamps are stamped along the
 // bottom of dash6 - the positions are where the unlit frame matches the page.
@@ -823,13 +832,30 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		.ColorAndOpacity(ReadoutInk)
 		.Font(DashFont(MoneyFontSize)));
 
-	// The points meter: five blocks that light as the score approaches the city's requirement.
-	for (int32 Block = 0; Block < PointsBlockCount; ++Block)
+	// The points meter: fifteen cells, each showing one of managge.bmp's three states as the
+	// score climbs towards the city's requirement.
+	PointsCellBrushes[0] = GetBrush(PointsBarFile,
+		SimCopterSegmentedBar::GetCellFrame(
+			SimCopterSegmentedBar::ECell::Full, PointsCellWidth, PointsCellHeight));
+	PointsCellBrushes[1] = GetBrush(PointsBarFile,
+		SimCopterSegmentedBar::GetCellFrame(
+			SimCopterSegmentedBar::ECell::LeadingEdge, PointsCellWidth, PointsCellHeight));
+	PointsCellBrushes[2] = GetBrush(PointsBarFile,
+		SimCopterSegmentedBar::GetCellFrame(
+			SimCopterSegmentedBar::ECell::Empty, PointsCellWidth, PointsCellHeight));
+	if (PointsCellBrushes[0] != nullptr)
 	{
-		TSharedRef<SWidget> Image = MakeImage(PointsBlockFile, FIntRect(0, 0, 15, 13));
-		Image->SetVisibility(TAttribute<EVisibility>::CreateSP(
-			this, &SSimCopterDashboard::GetPointsBlockVisibility, Block));
-		AddAtPage(*Canvas, PointsBlockX + Block * PointsBlockStride, PointsBlockY, 15.0f, 13.0f, Image);
+		for (int32 Cell = 0; Cell < PointsCellCount; ++Cell)
+		{
+			AddAtPage(*Canvas,
+				PointsBarX + Cell * PointsCellWidth,
+				PointsBarY,
+				static_cast<float>(PointsCellWidth),
+				static_cast<float>(PointsCellHeight),
+				SNew(SImage)
+				.Image(TAttribute<const FSlateBrush*>::CreateSP(
+					this, &SSimCopterDashboard::GetPointsCellBrush, Cell)));
+		}
 	}
 
 	// Six damage lamps, each showing one of damage.bmp's three frames.
@@ -1034,26 +1060,30 @@ FText SSimCopterDashboard::GetMoneyText() const
 	return FText::FromString(FString::Printf(TEXT("$%d"), Missions->GetSessionCash()));
 }
 
-float SSimCopterDashboard::GetPointsFraction() const
+// The repaint's `score * 15 / pointsNeeded`. The original clamps the score to the requirement
+// before dividing, so a city already earned reads as a full bar rather than overflowing it.
+int32 SSimCopterDashboard::GetPointsLevel() const
 {
 	const ASimCopterMissionSystemActor* Missions = GetMissionSystem();
 	if (Missions == nullptr)
 	{
-		return 0.0f;
+		return 0;
 	}
 
 	SimCopterMissions::FSimCopterCareerCity City;
-	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City) || City.PointsNeeded <= 0)
+	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City))
 	{
-		return 0.0f;
+		return 0;
 	}
-	return FMath::Clamp(static_cast<float>(Missions->GetSessionScore()) / static_cast<float>(City.PointsNeeded), 0.0f, 1.0f);
+	return SimCopterSegmentedBar::GetLevel(
+		Missions->GetSessionScore(), City.PointsNeeded, PointsCellCount);
 }
 
-EVisibility SSimCopterDashboard::GetPointsBlockVisibility(const int32 BlockIndex) const
+const FSlateBrush* SSimCopterDashboard::GetPointsCellBrush(const int32 CellIndex) const
 {
-	const float Filled = GetPointsFraction() * PointsBlockCount;
-	return Filled >= static_cast<float>(BlockIndex + 1) ? EVisibility::HitTestInvisible : EVisibility::Hidden;
+	const SimCopterSegmentedBar::ECell Cell =
+		SimCopterSegmentedBar::GetCellState(CellIndex, GetPointsLevel());
+	return PointsCellBrushes[static_cast<int32>(Cell)];
 }
 
 int32 SSimCopterDashboard::GetDamageLampLevel(const int32 LampIndex) const

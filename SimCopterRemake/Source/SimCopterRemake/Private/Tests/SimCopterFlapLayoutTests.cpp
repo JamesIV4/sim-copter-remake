@@ -179,3 +179,108 @@ bool FSimCopterFlapLayoutTest::RunTest(const FString& Parameters)
 
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterSegmentedBarTest,
+	"SimCopter.UI.SegmentedBar",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterSegmentedBarTest::RunTest(const FString& Parameters)
+{
+	using namespace SimCopterSegmentedBar;
+
+	// Both bar bitmaps are a three-state strip, so the frame is a column of the caller's cell
+	// size - never the whole image. watergge.bmp is 15x10, managge.bmp 15x13.
+	TestEqual(TEXT("Water full"), GetCellFrame(ECell::Full, 5, 10), FIntRect(0, 0, 5, 10));
+	TestEqual(TEXT("Water edge"), GetCellFrame(ECell::LeadingEdge, 5, 10), FIntRect(5, 0, 10, 10));
+	TestEqual(TEXT("Water empty"), GetCellFrame(ECell::Empty, 5, 10), FIntRect(10, 0, 15, 10));
+	TestEqual(TEXT("Points full"), GetCellFrame(ECell::Full, 5, 13), FIntRect(0, 0, 5, 13));
+	TestEqual(TEXT("Points edge"), GetCellFrame(ECell::LeadingEdge, 5, 13), FIntRect(5, 0, 10, 13));
+	TestEqual(TEXT("Points empty"), GetCellFrame(ECell::Empty, 5, 13), FIntRect(10, 0, 15, 13));
+
+	// The points bar's own arithmetic: score * 15 / pointsNeeded, truncating.
+	TestEqual(TEXT("No score"), GetLevel(0, 3000, 15), 0);
+	TestEqual(TEXT("Target met"), GetLevel(3000, 3000, 15), 15);
+	TestEqual(TEXT("A third of the way"), GetLevel(1000, 3000, 15), 5);
+	TestEqual(TEXT("Just under a cell"), GetLevel(199, 3000, 15), 0);
+	TestEqual(TEXT("Exactly one cell"), GetLevel(200, 3000, 15), 1);
+	// The original clamps the score to the requirement before dividing; so does this.
+	TestEqual(TEXT("Overshooting the target"), GetLevel(99999, 3000, 15), 15);
+	TestEqual(TEXT("A city with no requirement"), GetLevel(500, 0, 15), 0);
+
+	// A full bar has no meniscus, because no index can equal a level of CellCount.
+	for (int32 Index = 0; Index < 15; ++Index)
+	{
+		TestEqual(
+			*FString::Printf(TEXT("Full bar cell %d"), Index),
+			static_cast<int32>(GetCellState(Index, 15)),
+			static_cast<int32>(ECell::Full));
+
+		const ECell Expected =
+			Index < 6 ? ECell::Full :
+			Index == 6 ? ECell::LeadingEdge : ECell::Empty;
+		TestEqual(
+			*FString::Printf(TEXT("Six-fifteenths, cell %d"), Index),
+			static_cast<int32>(GetCellState(Index, 6)),
+			static_cast<int32>(Expected));
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterWaterGaugeTest,
+	"SimCopter.UI.WaterGauge",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterWaterGaugeTest::RunTest(const FString& Parameters)
+{
+	using namespace SimCopterFlapLayout::WaterGauge;
+
+	// 0x00455700: eleven 5x10 cells, x stepping by 5 from 16, all on row 0x2b.
+	TestEqual(TEXT("The gauge is eleven cells"), CellCount, 11);
+	TestEqual(TEXT("First cell"), GetCellOrigin(0), FIntPoint(16, 43));
+	TestEqual(TEXT("Second cell"), GetCellOrigin(1), FIntPoint(21, 43));
+	TestEqual(TEXT("Last cell"), GetCellOrigin(10), FIntPoint(66, 43));
+
+	// watergge.bmp is exactly 15x10: full, meniscus, empty.
+	TestEqual(TEXT("Full cell frame"), GetCellFrame(ECell::Full), FIntRect(0, 0, 5, 10));
+	TestEqual(TEXT("Leading edge frame"), GetCellFrame(ECell::LeadingEdge), FIntRect(5, 0, 10, 10));
+	TestEqual(TEXT("Empty cell frame"), GetCellFrame(ECell::Empty), FIntRect(10, 0, 15, 10));
+
+	// heli[0x74] * 11 / maxLoad, truncating.
+	TestEqual(TEXT("An empty bucket reads zero"), GetLevel(0, 1548), 0);
+	TestEqual(TEXT("A full bucket reads eleven"), GetLevel(1548, 1548), 11);
+	TestEqual(TEXT("Half a tank truncates down"), GetLevel(774, 1548), 5);
+	TestEqual(TEXT("One pound short of a cell"), GetLevel(140, 1548), 0);
+	TestEqual(TEXT("The first cell fills at 1/11th"), GetLevel(141, 1548), 1);
+	// The divisor comes from heli.twk at runtime, so guard the degenerate cases the original
+	// never sees but a half-loaded tuning table could produce.
+	TestEqual(TEXT("No max load reads zero"), GetLevel(500, 0), 0);
+	TestEqual(TEXT("Overfilled clamps to the row"), GetLevel(99999, 1548), 11);
+	TestEqual(TEXT("Negative water reads zero"), GetLevel(-10, 1548), 0);
+
+	// Loop one draws `level` full cells, loop two exactly one meniscus, loop three the rest -
+	// and loop two is skipped once eleven cells are already down.
+	for (int32 Index = 0; Index < CellCount; ++Index)
+	{
+		TestEqual(
+			*FString::Printf(TEXT("Empty gauge cell %d"), Index),
+			static_cast<int32>(GetCellState(Index, 0)),
+			static_cast<int32>(Index == 0 ? ECell::LeadingEdge : ECell::Empty));
+		TestEqual(
+			*FString::Printf(TEXT("Full gauge cell %d"), Index),
+			static_cast<int32>(GetCellState(Index, 11)),
+			static_cast<int32>(ECell::Full));
+
+		const ECell Expected =
+			Index < 4 ? ECell::Full :
+			Index == 4 ? ECell::LeadingEdge : ECell::Empty;
+		TestEqual(
+			*FString::Printf(TEXT("Four elevenths, cell %d"), Index),
+			static_cast<int32>(GetCellState(Index, 4)),
+			static_cast<int32>(Expected));
+	}
+
+	return true;
+}

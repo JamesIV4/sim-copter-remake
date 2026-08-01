@@ -1,0 +1,82 @@
+﻿// ===========================================
+// Ghidra:    FUN_004a5c10
+// Address:   0x004a5c10
+// Signature: undefined FUN_004a5c10(void)
+// Callers:   1  |  Callees: 0
+// ===========================================
+
+
+
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+
+
+
+int FUN_004a5c10(byte *param_1,int *param_2)
+
+
+
+{
+
+  undefined4 *puVar1;
+
+  int iVar2;
+
+  int iVar3;
+
+  
+
+  if ((*param_1 & 0x20) == 0) {
+
+    return 0;
+
+  }
+
+  puVar1 = *(undefined4 **)(param_1 + 0xc);
+
+  iVar3 = (1 - _DAT_004f9740) * 0x80000 + _DAT_00505f54;
+
+  do {
+
+    if (puVar1 == (undefined4 *)0x0) {
+
+      return 0;
+
+    }
+
+    if ((*(byte *)(puVar1 + 2) & 1) != 0) {
+
+      iVar2 = puVar1[3];
+
+      if ((*param_2 < *(int *)(iVar2 + 0x10) + iVar3) && (*(int *)(iVar2 + 0x10) - iVar3 < *param_2)
+
+         ) {
+
+        if ((param_2[2] < *(int *)(iVar2 + 0x18) + iVar3) &&
+
+           (*(int *)(iVar2 + 0x18) - iVar3 < param_2[2])) {
+
+          iVar3 = (param_2[1] - *(int *)(iVar2 + 8)) - *(int *)(iVar2 + 0x14);
+
+          if (iVar3 != 0) {
+
+            return iVar3;
+
+          }
+
+          return 1;
+
+        }
+
+      }
+
+    }
+
+    puVar1 = (undefined4 *)*puVar1;
+
+  } while( true );
+
+}
+
+
+
+

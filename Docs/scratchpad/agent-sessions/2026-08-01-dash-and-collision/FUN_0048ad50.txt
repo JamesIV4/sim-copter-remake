@@ -1,0 +1,98 @@
+﻿// ===========================================
+// Ghidra:    FUN_0048ad50
+// Address:   0x0048ad50
+// Signature: undefined FUN_0048ad50(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+
+
+
+undefined4 FUN_0048ad50(int param_1)
+
+
+
+{
+
+  ushort uVar1;
+
+  undefined4 *puVar2;
+
+  undefined4 *puVar3;
+
+  int iVar4;
+
+  undefined4 local_10;
+
+  
+
+  local_10 = 0;
+
+  puVar2 = *(undefined4 **)
+
+            ((&DAT_005d9200)
+
+             [(*(uint *)(param_1 + 0x18) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x1c) & 0xff)] +
+
+            0x10);
+
+  while (puVar2 != (undefined4 *)0x0) {
+
+    puVar3 = *(undefined4 **)(param_1 + 0xa4);
+
+    if ((puVar2 != puVar3) &&
+
+       (((uVar1 = *(ushort *)(puVar2 + 3), (uVar1 & 0x20) == 0 || ((uVar1 & 0x1000) != 0)) &&
+
+        ((uVar1 & 0x40) == 0)))) {
+
+      iVar4 = puVar2[4];
+
+      if ((((((int)puVar3[6] < iVar4 + puVar2[6]) && (puVar2[6] - iVar4 < (int)puVar3[6])) &&
+
+           ((int)puVar2[7] < (int)puVar3[7])) &&
+
+          (((int)puVar3[7] < (int)(puVar2[5] + puVar2[7]) && ((int)puVar3[8] < puVar2[8] + iVar4))))
+
+         && (puVar2[8] - iVar4 < (int)puVar3[8])) {
+
+        FUN_0049a4f0(0xc,puVar3,puVar2,0xffffffff,0);
+
+        if ((*(ushort *)(puVar2 + 3) & 0x28) == 0) {
+
+          local_10 = 1;
+
+        }
+
+        if ((*(ushort *)(puVar2 + 3) & 0x1000) != 0) {
+
+          DAT_00504058 = 1;
+
+        }
+
+      }
+
+    }
+
+    if ((*(byte *)(puVar2 + 3) & 4) == 0) {
+
+      puVar2 = (undefined4 *)*puVar2;
+
+    }
+
+    else {
+
+      puVar2 = *(undefined4 **)
+
+                **(undefined4 **)**(undefined4 **)**(undefined4 **)**(undefined4 **)*puVar2;
+
+    }
+
+  }
+
+  return local_10;
+
+}
+
+
+
+

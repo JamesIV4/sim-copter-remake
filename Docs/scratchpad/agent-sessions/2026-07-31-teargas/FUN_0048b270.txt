@@ -1,0 +1,138 @@
+﻿// ===========================================
+// Ghidra:    FUN_0048b270
+// Address:   0x0048b270
+// Signature: undefined FUN_0048b270(void)
+// Callers:   1  |  Callees: 1
+// ===========================================
+
+
+
+void FUN_0048b270(int param_1)
+
+
+
+{
+
+  int *piVar1;
+
+  int *piVar2;
+
+  int iVar3;
+
+  undefined4 *puVar4;
+
+  int iVar5;
+
+  undefined4 *puVar6;
+
+  
+
+  iVar3 = 0;
+
+  piVar2 = &DAT_005d7110;
+
+  do {
+
+    if (*piVar2 == param_1) {
+
+      puVar6 = &DAT_005d7110 + iVar3 * 0xcf;
+
+      goto LAB_0048b291;
+
+    }
+
+    piVar2 = piVar2 + 0xcf;
+
+    iVar3 = iVar3 + 1;
+
+  } while (piVar2 < &DAT_005d9168);
+
+  puVar6 = (undefined4 *)0x0;
+
+LAB_0048b291:
+
+  if (puVar6 == (undefined4 *)0x0) {
+
+    return;
+
+  }
+
+  puVar6[2] = puVar6[2] & 0xfffffffd;
+
+  iVar3 = FUN_00407a50();
+
+  iVar5 = 0;
+
+  puVar4 = &DAT_005040a8;
+
+  do {
+
+    if ((undefined4 *)*puVar4 == puVar6) {
+
+      if (*(int *)((&DAT_005d9200)[(puVar6[6] & 0xff) * 0x100 + (puVar6[7] & 0xff)] + 0x10) == 0)
+
+      goto LAB_0048b31e;
+
+      piVar2 = (int *)((&DAT_005d9200)[(puVar6[6] & 0xff) * 0x100 + (puVar6[7] & 0xff)] + 0x10);
+
+      goto LAB_0048b2f9;
+
+    }
+
+    puVar4 = puVar4 + 1;
+
+    iVar5 = iVar5 + 1;
+
+  } while (puVar4 < &DAT_005040d0);
+
+  goto LAB_0048b337;
+
+  while (piVar2 = piVar1, *piVar1 != 0) {
+
+LAB_0048b2f9:
+
+    piVar1 = (int *)*piVar2;
+
+    if ((int *)puVar6[0x29] == piVar1) {
+
+      *piVar2 = **(int **)**(undefined4 **)
+
+                            **(undefined4 **)**(undefined4 **)**(undefined4 **)puVar6[0x29];
+
+      break;
+
+    }
+
+  }
+
+LAB_0048b31e:
+
+  (&DAT_005040a8)[iVar5] = 0;
+
+  *(uint *)(iVar3 + 0x44) = *(uint *)(iVar3 + 0x44) & ~(1 << ((byte)param_1 & 0x1f));
+
+LAB_0048b337:
+
+  iVar5 = 0;
+
+  do {
+
+    if ((*(uint *)(iVar3 + 0x44) & 1 << ((byte)iVar5 & 0x1f)) != 0) {
+
+      DAT_005040d0 = &DAT_005d7110 + iVar5 * 0xcf;
+
+      return;
+
+    }
+
+    iVar5 = iVar5 + 1;
+
+  } while (iVar5 < 9);
+
+  return;
+
+}
+
+
+
+

@@ -29,6 +29,7 @@
 #include "Flight/SimCopterControllerInput.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterPreparedHelicopterModel.h"
+#include "Flight/SimCopterTearGas.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Game/SimCopterSettings.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
@@ -43,6 +44,7 @@
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterPopulationSprite.h"
+#include "Ground/SimCopterTearGasPool.h"
 #include "EngineUtils.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "HAL/FileManager.h"
@@ -92,6 +94,10 @@ constexpr double MaxCameraDebugTranslationCm = 10000.0;
 constexpr float MaxCameraZoomFramingStrength = 2.0f;
 constexpr float MaxCameraZoomDistanceCm = 10000.0f;
 const FName CrosshairScreenLayerName(TEXT("SimCopterCrosshairLayer"));
+
+// FUN_004af100's `4 << (param5 & 0x1f)`: both helicopter impact arms pass 0x80000001, so the
+// column is scale 1 (an 8-unit burst), not the scale-4 splash a ditching throws.
+constexpr int32 ImpactColumnScaleExponent = 1;
 
 int32 GetCameraModeIndex(ESimCopterCameraMode Mode)
 {
@@ -505,6 +511,9 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	WaterFXComponent = CreateDefaultSubobject<USimCopterParticleFXComponent>(TEXT("WaterFX"));
 	WaterFXComponent->SetupAttachment(CollisionComponent);
 
+	TearGasPool = CreateDefaultSubobject<USimCopterTearGasPoolComponent>(TEXT("TearGasPool"));
+	TearGasPool->SetupAttachment(CollisionComponent);
+
 	SearchLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SearchLight"));
 	SearchLightComponent->SetupAttachment(ModelPivot);
 	SearchLightComponent->SetRelativeLocation(FVector(95.0f, 0.0f, -35.0f));
@@ -713,6 +722,13 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		{
 			UE_LOG(LogTemp, Warning, TEXT("SimCopter effect palette unavailable: %s"), *EffectError);
 		}
+	}
+	if (TearGasPool != nullptr)
+	{
+		// Trail smoke and gas puffs are ordinary FUN_004af220 tile puffs, so the pool borrows the
+		// same renderer the bucket and the rotor wash already use.
+		TearGasPool->SetOriginalGameRoot(ResolveOriginalGameRoot());
+		TearGasPool->SetEffectComponent(WaterFXComponent);
 	}
 
 	// Keep the cursor free so the player can use on-screen buttons; mouse-look is only
@@ -1687,6 +1703,13 @@ void ASimCopterHelicopterPawn::RestoreSavedCareerState(
 	EquipmentState.CareerTearGasRounds = FMath::Clamp(
 		CareerTearGasRounds, 0, SimCopterHelicopterRegistry::TearGasCapacity);
 	EquipmentState.ClearDebugOverlay();
+
+	// Canisters in the air belong to the session being replaced; the save carries the magazine,
+	// not the pool. Leaving them running would gas the loaded city on the previous game's behalf.
+	if (TearGasPool != nullptr)
+	{
+		TearGasPool->ClearAll();
+	}
 
 	CurrentFuelGallons = FMath::Clamp(FuelFraction, 0.0f, 1.0f) * HelicopterTuning.FuelGallons;
 	CurrentDamage = FMath::Clamp(DamageFraction, 0.0f, 1.0f) * static_cast<float>(HelicopterTuning.MaxDamage);
@@ -4152,8 +4175,7 @@ void ASimCopterHelicopterPawn::PlayMegaphoneVoice(const int32 MessageIndex)
 // their own owners, exactly as FUN_0049a4f0 dispatches by object class.
 int32 ASimCopterHelicopterPawn::BroadcastInteraction(const FSimCopterInteractionEvent& Event, int32 Rings)
 {
-	UWorld* World = GetWorld();
-	if (World == nullptr || Event.TargetTile.X < 0 || Event.TargetTile.Y < 0)
+	if (Event.TargetTile.X < 0 || Event.TargetTile.Y < 0)
 	{
 		return 0;
 	}
@@ -4165,7 +4187,32 @@ int32 ASimCopterHelicopterPawn::BroadcastInteraction(const FSimCopterInteraction
 		return 0;
 	}
 
-	const TSet<FIntPoint> TileSet(Tiles);
+	return DeliverInteractionToTiles(Event, TSet<FIntPoint>(Tiles));
+}
+
+// The gas cloud gasses whoever is standing on the one tile its puff landed on, so it needs the
+// tile walk without FUN_0048ae70's spiral in front of it.
+int32 ASimCopterHelicopterPawn::DeliverInteractionToTile(const FSimCopterInteractionEvent& Event)
+{
+	if (Event.TargetTile.X < 0 || Event.TargetTile.Y < 0)
+	{
+		return 0;
+	}
+	TSet<FIntPoint> TileSet;
+	TileSet.Add(Event.TargetTile);
+	return DeliverInteractionToTiles(Event, TileSet);
+}
+
+int32 ASimCopterHelicopterPawn::DeliverInteractionToTiles(
+	const FSimCopterInteractionEvent& Event,
+	const TSet<FIntPoint>& TileSet)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || TileSet.Num() == 0)
+	{
+		return 0;
+	}
+
 	ASimCity2000CityActor* City = ResolveCityActor();
 	int32 Affected = 0;
 
@@ -4204,6 +4251,30 @@ int32 ASimCopterHelicopterPawn::BroadcastInteraction(const FSimCopterInteraction
 	}
 
 	return Affected;
+}
+
+// SCHOOK: TearGasLaunch 0x00484d20
+// The consumer of heli[0x57]: the muzzle is the body node lifted 3.0 units, the direction is the
+// airframe's own forward axis - NOT the spotlight's aim, which is why the launcher is fired by
+// flying at what you want gassed - and the speed is heli[0x4e] plus a fixed 50.0 units/s.
+bool ASimCopterHelicopterPawn::LaunchTearGasCanister()
+{
+	if (TearGasPool == nullptr)
+	{
+		return false;
+	}
+
+	const FTransform Frame = ModelPivot != nullptr
+		? ModelPivot->GetComponentTransform()
+		: GetActorTransform();
+	const FVector Direction = Frame.TransformVectorNoScale(FVector::ForwardVector).GetSafeNormal();
+	const FVector Muzzle =
+		Frame.GetLocation() +
+		FVector::UpVector * (SimCopterFixed::ToFloat(SimCopterTearGas::LaunchHeight1616) * OriginalUnitToCm);
+
+	// The original passes -1 as the mission event, so a canister the player throws is credited to
+	// whichever mission the person it gasses already belongs to.
+	return TearGasPool->Launch(Muzzle, Direction, FlightModel.ForwardSpeed, INDEX_NONE);
 }
 
 // SCHOOK: HelicopterToolDispatch 0x00485f50
@@ -4303,8 +4374,16 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 			LastToolStatus = TEXT("Out of tear gas rounds (message 0x2ac).");
 			return false;
 		}
-		EquipmentState.ConsumeTearGasRound();
+		// FUN_0048e0b0 arms the shared cooldown *before* it looks for a free slot, so a shot that
+		// finds the pool full still costs the player the second - but it never costs a round,
+		// because the ammo decrement is inside the branch that found one.
 		ToolCooldownSeconds = SimCopterToolTiming::ProjectileCooldownSeconds;
+		if (!LaunchTearGasCanister())
+		{
+			LastToolStatus = TEXT("Tear gas pool full (ten canisters already in the air).");
+			return false;
+		}
+		EquipmentState.ConsumeTearGasRound();
 		// FUN_0048e0b0's tear-gas branch: the launch whoosh, at the helicopter.
 		if (Audio != nullptr)
 		{
@@ -5227,10 +5306,15 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	LastFlightEnvironmentFireDelta = Environment.FireHeightDelta;
 	FlightModel.Step(DeltaSeconds, Inputs, Environment, LastFlightEvents);
 
+	// ApplyFlightModelToActor is where the swept collider raises an object impact, so the audio
+	// pass has to run after it, not before: Step() clears the event block at the top of every
+	// frame, so a bPadBounce raised here used to be wiped before anything ever played it. That is
+	// why flying into a building was silent even once the impact itself started firing.
+	ApplyFlightModelToActor(DeltaSeconds);
+
 	// Before anything downstream consumes or clears the events.
 	PlayFlightEventAudio(LastFlightEvents);
 
-	ApplyFlightModelToActor(DeltaSeconds);
 	UpdateGroundProbe();
 	UpdateForwardProbe();
 	UpdateRopeAndBucket(DeltaSeconds);
@@ -5263,6 +5347,29 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		WaterFXComponent->SpawnHardLanding(
 			GetActorLocation(),
 			LastFlightEvents.bSplashBounce || ProbeBucketWater(GetActorLocation()));
+	}
+
+	// Flying into something has its own visual, and it is not the landing one. Both impact arms
+	// of FUN_00484d20 - the elevated-surface branch at LAB_00485605 and the object-overlap branch
+	// behind FUN_0048ad50 - throw an impact column with FUN_004af100(..., 0x80000001, -1), whose
+	// `4 << (param5 & 0x1f)` makes it a scale-1 burst rather than the big scale-4 water splash a
+	// ditching uses.
+	if (bHasPendingImpactEffect)
+	{
+		bHasPendingImpactEffect = false;
+		if (!LastFlightEvents.bCrashed && WaterFXComponent != nullptr)
+		{
+			// At the contact point, and NOT submerged: the column's 32-unit drop exists so a
+			// water splash rises through the surface it came out of, and on a building face it
+			// just buries the burst below the impact.
+			WaterFXComponent->SpawnSplashColumn(
+				LastImpactWorldLocation,
+				ImpactColumnScaleExponent,
+				/*PaletteIndex=*/0xFF,
+				INDEX_NONE,
+				INDEX_NONE,
+				/*bSubmergeOrigin=*/false);
+		}
 	}
 }
 
@@ -5441,6 +5548,15 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 		}
 	}
 
+	// FUN_004a5c10, the last input this environment was missing. Without it FireHeightDelta was
+	// always zero, so StepTurbulence's fire arm never ran: flying into a burning building did no
+	// damage, the airframe never shook near a fire, and FIREDMG never played.
+	if (const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+	{
+		Environment.FireHeightDelta = Missions->GetFireHeightDelta1616(Location);
+	}
+
 	return Environment;
 }
 
@@ -5462,17 +5578,52 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		SimCopterFixed::ToFloat(FlightModel.Altitude) * Unit + CapsuleHalfHeight);
 	const FRotator NewRotation(0.0f, SimCopterFixed::ToFloat(FlightModel.Heading) / 10.0f, 0.0f);
 
+	// SCHOOK: HelicopterObjectCollision 0x0048ad50
+	// The original has exactly one collision system and it never blocks. FUN_00484d20 writes the
+	// simulated position into the node unconditionally; contact is found afterwards, either by the
+	// height test against heli[0x59] or by FUN_0048ad50's AABB sweep of the objects on the
+	// helicopter's own tile, and the response is always to *push the airframe away* - damage, an
+	// attitude kick and a bounce at four times the climb rate. That is why the original cannot
+	// wedge you against anything.
+	//
+	// The remake substitutes a swept capsule against real geometry for the tile-object boxes,
+	// which is a fair trade, but it must keep the "never block" half of the bargain: a capsule
+	// that stops the aircraft while the flight model keeps steering into the obstacle pins it
+	// there, and the blocked position used to be written back into the model so the simulation
+	// believed it too. The sweep is now a detector only.
 	FHitResult BlockingHit;
 	RootComponent->MoveComponent(NewLocation - GetActorLocation(), NewRotation.Quaternion(), true, &BlockingHit);
-	if (BlockingHit.IsValidBlockingHit() && FMath::Abs(BlockingHit.Normal.Z) < 0.6f)
+	if (BlockingHit.IsValidBlockingHit())
 	{
-		// Hit a wall: run the original object-collision response (damage plus
-		// an attitude kick away from the motion direction and a bounce up).
-		FlightModel.NotifyObjectCollision(LastFlightEvents);
+		// The threshold is the flight model's own landing test, not a wall test. StepGroundImpact
+		// treats terrain as landable only when the normal clears LandingFlatNormalZ and bounces
+		// off everything else; the swept collider has to draw the line in the same place or the
+		// two disagree. It used to use 0.6, which let every roof pitch and hillside through - the
+		// skids would touch a slope at speed, the height test would not fire either because the
+		// point directly below the origin was still clear, and nothing happened at all. Taking the
+		// absolute value made it worse: a ceiling (normal.Z about -1) read as a floor.
+		//
+		// No speed gate, because the original has none: any contact with a surface it cannot land
+		// on is an impact. BounceTimer is the original's own rate limit (0.2 s, set by the wall
+		// kick), and it is what stops a scrape stacking an impact every frame.
+		if (BlockingHit.ImpactNormal.Z < LandingFlatNormalZ && FlightModel.BounceTimer <= 0)
+		{
+			FlightModel.NotifyObjectCollision(LastFlightEvents);
+			// FUN_00484d20 puts the impact column at the helicopter pushed five units along its
+			// motion, i.e. at the contact side. The remake has the real contact point, so it uses
+			// that; spawning at the actor origin put the burst at the middle of the airframe and
+			// then the column's own submerge offset dropped it two metres further.
+			LastImpactWorldLocation = BlockingHit.ImpactPoint;
+			bHasPendingImpactEffect = true;
+		}
+
+		// Hand the position back to the flight model. The bounce above is what clears the
+		// obstacle; the collider's job ends at reporting it.
+		SetActorLocation(NewLocation, /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
 	}
 
-	// Write the possibly blocked position back so the simulation stays in
-	// lockstep with the actor.
+	// The model owns the position, so this is now a straight read-back; it stays because
+	// SetActorLocation still clamps against the world's own limits.
 	const FVector Applied = GetActorLocation();
 	FlightModel.PosZ = SimCopterFixed::FromFloat(Applied.X / Unit);
 	FlightModel.PosX = SimCopterFixed::FromFloat(Applied.Y / Unit);

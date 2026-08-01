@@ -96,6 +96,18 @@ bool IsValidMissionTile(int32 TileX, int32 TileY)
 	return TileX >= 0 && TileX < 128 && TileY >= 0 && TileY < 128;
 }
 
+// FUN_004a5c10's horizontal gate: `(1 - DAT_004f9740) * 0x80000 + DAT_00505f54`, where
+// DAT_00505f54 ships as 0x180000 = 24.0 units. DAT_004f9740 is a global whose shipped value is
+// 2 and whose meaning is not pinned, so the port takes the base 24.0 and leaves the +/-8.0 term
+// out. It is a tight box on purpose - the damage inside it kills a healthy airframe in seconds,
+// so it must only fire when the helicopter is genuinely down in the flames.
+constexpr float FireProximityRadiusCm = 24.0f * SimCopterEffectFX::OriginalUnitToCm;
+
+// The original measures the delta from the flame's *top*, subtracting a height term as well as
+// the flame's own Y. FUN_004a47c0 draws every flame at a 0x100000 scale, so the port uses that
+// as the height; the damage band is 109 units wide, which swamps any small error here.
+constexpr float FlameHeightCm = 16.0f * SimCopterEffectFX::OriginalUnitToCm;
+
 FString FormatMissionMarkerDistance(float DistanceCm)
 {
 	const float DistanceMeters = FMath::Max(0.0f, DistanceCm) * 0.01f;
@@ -761,6 +773,78 @@ bool ASimCopterMissionSystemActor::TraceSurfaceTopZ(const FVector& WorldXY, floa
 	return false;
 }
 
+bool ASimCopterMissionSystemActor::TryGetFlameWorldLocation(
+	const SimCopterMissions::FSimCopterFlame& Flame,
+	FVector& OutWorld) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	FVector TileCenter;
+	if (TrafficSystem == nullptr ||
+		!TrafficSystem->TryGetTileCenterWorldLocation(Flame.TileX, Flame.TileY, TileCenter))
+	{
+		return false;
+	}
+
+	// FUN_004a5340 stores source-runtime X/Y-up/Z offsets. Apply the same verified
+	// Maxis-to-Unreal axes and global city yaw as the building mesh; mapping these
+	// directly to Unreal XYZ rotates the planar FIREPTS cloud away from its wall.
+	OutWorld = TileCenter + TrafficSystem->ConvertOriginalOffsetToWorld(Flame.PosX, 0, Flame.PosZ);
+
+	float TopZ = TileCenter.Z;
+	TraceSurfaceTopZ(OutWorld, TopZ);
+	// PosY is the flame's own climb up the wall, one storey per FUN_004a4ac0 growth
+	// step, so it rides on top of the seated base rather than being traced away.
+	OutWorld.Z = TopZ + TrafficSystem->ConvertOriginalOffsetToWorld(0, Flame.PosY, 0).Z;
+	return true;
+}
+
+// SCHOOK: FireProximityProbe 0x004a5c10
+int32 ASimCopterMissionSystemActor::GetFireHeightDelta1616(const FVector& WorldLocation) const
+{
+	const float Unit = FMath::Max(SimCopterEffectFX::OriginalUnitToCm, 0.01f);
+
+	int32 Nearest = 0;
+	for (const SimCopterMissions::FSimCopterFlame& Flame : MissionSystem.GetFlames())
+	{
+		if (!Flame.bActive)
+		{
+			continue;
+		}
+
+		FVector FlameWorld;
+		if (!TryGetFlameWorldLocation(Flame, FlameWorld))
+		{
+			continue;
+		}
+
+		// The original's horizontal gate is a box, not a circle: |dx| and |dz| each under the
+		// radius. It is deliberately tight - the damage inside it is severe - so this only fires
+		// when the helicopter is genuinely down among the flames.
+		if (FMath::Abs(WorldLocation.X - FlameWorld.X) >= FireProximityRadiusCm ||
+			FMath::Abs(WorldLocation.Y - FlameWorld.Y) >= FireProximityRadiusCm)
+		{
+			continue;
+		}
+
+		// heliY - flameY - flameHeight: how far above the *top* of the flame the helicopter is.
+		const float TopZ = FlameWorld.Z + FlameHeightCm;
+		int32 Delta = FMath::RoundToInt((WorldLocation.Z - TopZ) / Unit * 65536.0f);
+		if (Delta == 0)
+		{
+			// The original returns 1 for an exact zero, because 0 is its "no fire here" answer.
+			Delta = 1;
+		}
+
+		// Several flames can cover one point; the closest one owns the damage.
+		if (Nearest == 0 || FMath::Abs(Delta) < FMath::Abs(Nearest))
+		{
+			Nearest = Delta;
+		}
+	}
+
+	return Nearest;
+}
+
 void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 {
 	if (FireRenderComponent == nullptr || !FireRenderComponent->IsReady())
@@ -798,27 +882,11 @@ void ASimCopterMissionSystemActor::UpdateFireVisuals(float DeltaSeconds)
 			continue;
 		}
 
-		FVector TileCenter;
-		if (!TrafficSystem->TryGetTileCenterWorldLocation(Flame.TileX, Flame.TileY, TileCenter))
+		FVector FlameXY;
+		if (!TryGetFlameWorldLocation(Flame, FlameXY))
 		{
 			continue;
 		}
-
-		// FUN_004a5340 stores source-runtime X/Y-up/Z offsets. Apply the same verified
-		// Maxis-to-Unreal axes and global city yaw as the building mesh; mapping these
-		// directly to Unreal XYZ rotates the planar FIREPTS cloud away from its wall.
-		FVector FlameXY =
-			TileCenter +
-			TrafficSystem->ConvertOriginalOffsetToWorld(
-				Flame.PosX,
-				0,
-				Flame.PosZ);
-
-		float TopZ = TileCenter.Z;
-		TraceSurfaceTopZ(FlameXY, TopZ);
-		// PosY is the flame's own climb up the wall, one storey per FUN_004a4ac0 growth
-		// step, so it rides on top of the seated base rather than being traced away.
-		FlameXY.Z = TopZ + TrafficSystem->ConvertOriginalOffsetToWorld(0, Flame.PosY, 0).Z;
 
 		// FUN_004a47c0 gives every flame the same 0x100000 render scale; the record's
 		// +0x0c is the growth step, not a size.

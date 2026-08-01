@@ -1,0 +1,1 @@
+﻿ERROR: No vtables exported. Run export scripts in Ghidra first.
