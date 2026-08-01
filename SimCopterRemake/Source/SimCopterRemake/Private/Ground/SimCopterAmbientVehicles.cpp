@@ -139,6 +139,46 @@ float SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
 		: 0.0f;
 }
 
+float SimCopterAmbientVehicles::GetRailTileCenterHeightTileFraction(
+	const int32 XbldId,
+	const int32 ZoneId)
+{
+	const float BridgeHeight = GetRailBridgeDeckHeightTileFraction(XbldId, ZoneId);
+	if (BridgeHeight > 0.0f)
+	{
+		return BridgeHeight;
+	}
+
+	const uint8 Id = static_cast<uint8>(XbldId);
+	return Id >= 0x2e && Id <= 0x31
+		? 15.5f / OriginalUnitsPerTile
+		: 0.0f;
+}
+
+float SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(
+	const int32 XbldId,
+	const int32 ZoneId,
+	const int32 NeighborDeltaX,
+	const int32 NeighborDeltaY)
+{
+	const float BridgeHeight = GetRailBridgeDeckHeightTileFraction(XbldId, ZoneId);
+	if (BridgeHeight > 0.0f)
+	{
+		return BridgeHeight;
+	}
+
+	// SCHOOK: FUN_004b7020 cases 0x2e..0x31 apply the same 0x1f0000 lift as
+	// RL90/RL90F when the train target is approached from each piece's high edge. The
+	// directions below are also visible directly in RL46..RL49's authored rail planes.
+	const uint8 Id = static_cast<uint8>(XbldId);
+	const bool bHighEdge =
+		(Id == 0x2e && NeighborDeltaX == 0 && NeighborDeltaY < 0) ||
+		(Id == 0x2f && NeighborDeltaX < 0 && NeighborDeltaY == 0) ||
+		(Id == 0x30 && NeighborDeltaX == 0 && NeighborDeltaY > 0) ||
+		(Id == 0x31 && NeighborDeltaX > 0 && NeighborDeltaY == 0);
+	return bHighEdge ? 31.0f / OriginalUnitsPerTile : 0.0f;
+}
+
 ASimCopterAmbientVehiclesActor::ASimCopterAmbientVehiclesActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -491,7 +531,7 @@ bool ASimCopterAmbientVehiclesActor::TryGetTrainTileCenter(
 		return false;
 	}
 
-	const float HeightFraction = SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+	const float HeightFraction = SimCopterAmbientVehicles::GetRailTileCenterHeightTileFraction(
 		TrafficSystem->GetXbldTileId(Tile.X, Tile.Y),
 		TrafficSystem->GetZoneTileId(Tile.X, Tile.Y));
 	if (HeightFraction <= 0.0f)
@@ -624,18 +664,25 @@ bool ASimCopterAmbientVehiclesActor::TryGetTrainWaypoint(
 
 	OutWorld = (FromCenter + ToCenter) * 0.5f;
 
-	// FUN_004b7020 puts the train at +31 units as soon as its target is an RL90/RL90F
-	// bridge cell. Apply the larger endpoint offset at the shared edge: the ramp reaches deck
-	// height at the beginning of the bridge, and every waypoint over the water then stays level.
+	// FUN_004b7020 uses the same exact +31-unit height for an RL46..RL49 high edge and an
+	// RL90/RL90F bridge deck. Evaluate both tiles at their shared edge and keep the larger value:
+	// each grade then runs continuously from 0 -> 31 -> bridge (and back down) instead of changing
+	// height at tile centres or briefly sinking under the rendered track.
 	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
 	if (TrafficSystem != nullptr)
 	{
-		const float FromFraction = SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+		const FIntPoint FromToDelta = ToTile - FromTile;
+		const FIntPoint ToFromDelta = FromTile - ToTile;
+		const float FromFraction = SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(
 			TrafficSystem->GetXbldTileId(FromTile.X, FromTile.Y),
-			TrafficSystem->GetZoneTileId(FromTile.X, FromTile.Y));
-		const float ToFraction = SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+			TrafficSystem->GetZoneTileId(FromTile.X, FromTile.Y),
+			FromToDelta.X,
+			FromToDelta.Y);
+		const float ToFraction = SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(
 			TrafficSystem->GetXbldTileId(ToTile.X, ToTile.Y),
-			TrafficSystem->GetZoneTileId(ToTile.X, ToTile.Y));
+			TrafficSystem->GetZoneTileId(ToTile.X, ToTile.Y),
+			ToFromDelta.X,
+			ToFromDelta.Y);
 		const FVector LocalDeckOffset(
 			0.0f,
 			0.0f,
