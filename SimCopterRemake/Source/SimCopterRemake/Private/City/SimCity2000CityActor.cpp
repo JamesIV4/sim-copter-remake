@@ -2,6 +2,7 @@
 
 #include "City/SimCity2000CityActor.h"
 
+#include "Algo/Count.h"
 #include "City/SimCopterAirport.h"
 #include "City/SimCopterCityGeometryRules.h"
 #include "City/SimCopterRuntimeStaticMesh.h"
@@ -2175,21 +2176,9 @@ uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
 
 	switch (BuildingId)
 	{
-	case 0x1D: return E | W;
-	case 0x1E: return N | S;
-	case 0x1F: return N | S;
-	case 0x20: return E | W;
-	case 0x21: return N | S;
-	case 0x22: return E | W;
-	case 0x23: return S | W;
-	case 0x24: return E | S;
-	case 0x25: return N | E;
-	case 0x26: return N | W;
-	case 0x27: return N | S | W;
-	case 0x28: return E | S | W;
-	case 0x29: return N | E | S;
-	case 0x2A: return N | E | W;
-	case 0x2B: return N | E | S | W;
+	// Every RD surface-road object already carries its exact face-type-20 centre-line segments.
+	// In particular RD31..RD34 author those endpoints on their sloped asphalt plane. Rebuilding
+	// them from the terrain grid painted a second yellow line underneath every road ramp.
 	case 0x3F: return N | S;
 	case 0x40: return E | W;
 	case 0x41: return N | S;
@@ -2200,8 +2189,10 @@ uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
 	case 0x43:
 	case 0x44:
 		return 0;
-	case 0x45: return E | W;
-	case 0x46: return N | S;
+	// Road/rail crossing meshes also carry their own road line.
+	case 0x45:
+	case 0x46:
+		return 0;
 	// RD73/RD74 are reused by all six simple road-bridge ids and, like RD67/RD68 above,
 	// already carry their face-type-20 centre line on the raised deck. A procedural duplicate
 	// is both unnecessary and dangerous: before the raised-plane fix it was the yellow line seen
@@ -2266,6 +2257,14 @@ FVector MakeRoadMarkingWorldPoint(
 		(SurfaceZOverride.IsSet()
 			? SurfaceZOverride.GetValue()
 			: GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale)) + ZOffset);
+}
+
+bool IsVehicleRoadSurfaceTile(const uint8 BuildingId)
+{
+	return (BuildingId >= 0x1d && BuildingId <= 0x2b) ||
+		(BuildingId >= 0x3f && BuildingId <= 0x46) ||
+		(BuildingId >= 0x49 && BuildingId <= 0x59) ||
+		(BuildingId >= 0x5d && BuildingId <= 0x6b);
 }
 
 void AppendRoadMarkingSegment(
@@ -2634,6 +2633,223 @@ void Append3DVectorLine(
 		Section.Triangles.Add(VStart + 2);
 		Section.TriangleCount += 2;
 		AddedTriangleCount += 2;
+	}
+}
+
+FVector ConvertPlacedCityMeshVertex(
+	const FMaxisMeshVertex& SourceVertex,
+	const FVector& TileOrigin,
+	float MeshUnitsPerCentimeter,
+	float MeshScale)
+{
+	const FVector Converted =
+		FMaxisMeshReader::ConvertMaxisVertexToUnreal(SourceVertex, MeshUnitsPerCentimeter) * MeshScale;
+	return TileOrigin + FVector(-Converted.X, -Converted.Y, Converted.Z);
+}
+
+bool TryEvaluateTrianglePlaneAtXY(
+	const FVector& A,
+	const FVector& B,
+	const FVector& C,
+	const FVector2D& XY,
+	float& OutZ,
+	FVector2D& OutGradient)
+{
+	const float Denominator =
+		(B.Y - C.Y) * (A.X - C.X) +
+		(C.X - B.X) * (A.Y - C.Y);
+	if (FMath::Abs(Denominator) <= UE_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const float WeightA =
+		((B.Y - C.Y) * (XY.X - C.X) + (C.X - B.X) * (XY.Y - C.Y)) /
+		Denominator;
+	const float WeightB =
+		((C.Y - A.Y) * (XY.X - C.X) + (A.X - C.X) * (XY.Y - C.Y)) /
+		Denominator;
+	const float WeightC = 1.0f - WeightA - WeightB;
+	constexpr float EdgeTolerance = 0.002f;
+	if (WeightA < -EdgeTolerance || WeightB < -EdgeTolerance || WeightC < -EdgeTolerance)
+	{
+		return false;
+	}
+
+	const FVector Normal = FVector::CrossProduct(B - A, C - A);
+	if (FMath::Abs(Normal.Z) <= UE_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	OutZ = WeightA * A.Z + WeightB * B.Z + WeightC * C.Z;
+	OutGradient = FVector2D(-Normal.X / Normal.Z, -Normal.Y / Normal.Z);
+	return true;
+}
+
+bool TryBuildPlacedRoadSurfaceProfile(
+	const FMaxisMeshObject& MeshObject,
+	const FVector& TileOrigin,
+	float MeshUnitsPerCentimeter,
+	float MeshScale,
+	FSimCopterRoadSurfaceProfile& OutProfile)
+{
+	OutProfile = FSimCopterRoadSurfaceProfile();
+
+	// Face type 20 / palette 112 is the yellow road centre line in every RD/BR/highway object.
+	// Its mean XY gives us an unambiguous point over the asphalt, even in composite suspension
+	// bridge objects whose tower tops also overlap the cell centre.
+	FVector LinePointSum = FVector::ZeroVector;
+	int32 LinePointCount = 0;
+	for (const FMaxisMeshFace& Face : MeshObject.Faces)
+	{
+		if (Face.FaceType != 20 || Face.MaterialIndex != 112 || Face.VertexIndices.Num() != 2)
+		{
+			continue;
+		}
+
+		for (const uint16 VertexIndex : Face.VertexIndices)
+		{
+			if (MeshObject.Vertices.IsValidIndex(VertexIndex))
+			{
+				LinePointSum += ConvertPlacedCityMeshVertex(
+					MeshObject.Vertices[VertexIndex],
+					TileOrigin,
+					MeshUnitsPerCentimeter,
+					MeshScale);
+				++LinePointCount;
+			}
+		}
+	}
+
+	const FVector LineReference = LinePointCount > 0
+		? LinePointSum / static_cast<float>(LinePointCount)
+		: TileOrigin;
+	const FVector2D ReferenceXY(LineReference.X, LineReference.Y);
+	const float MaxCandidateZ = LinePointCount > 0 ? LineReference.Z + 1.0f : TNumericLimits<float>::Max();
+	bool bFoundSurface = false;
+	float BestZ = -TNumericLimits<float>::Max();
+	FVector2D BestGradient = FVector2D::ZeroVector;
+
+	// Face type 15 / palette 48 is the authored asphalt. Select its highest plane below the yellow
+	// line. The upper bound rejects BR86's overhead slab while retaining the deck directly beneath
+	// its marking; TL63..TL66 have no line and simply select their highest asphalt face.
+	for (const FMaxisMeshFace& Face : MeshObject.Faces)
+	{
+		if (Face.FaceType != 15 || Face.MaterialIndex != 48 || Face.VertexIndices.Num() < 3)
+		{
+			continue;
+		}
+
+		const uint16 RootIndex = Face.VertexIndices[0];
+		if (!MeshObject.Vertices.IsValidIndex(RootIndex))
+		{
+			continue;
+		}
+		const FVector A = ConvertPlacedCityMeshVertex(
+			MeshObject.Vertices[RootIndex], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
+		for (int32 TriangleIndex = 1; TriangleIndex + 1 < Face.VertexIndices.Num(); ++TriangleIndex)
+		{
+			const uint16 BIndex = Face.VertexIndices[TriangleIndex];
+			const uint16 CIndex = Face.VertexIndices[TriangleIndex + 1];
+			if (!MeshObject.Vertices.IsValidIndex(BIndex) || !MeshObject.Vertices.IsValidIndex(CIndex))
+			{
+				continue;
+			}
+
+			const FVector B = ConvertPlacedCityMeshVertex(
+				MeshObject.Vertices[BIndex], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
+			const FVector C = ConvertPlacedCityMeshVertex(
+				MeshObject.Vertices[CIndex], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
+			float CandidateZ = 0.0f;
+			FVector2D CandidateGradient = FVector2D::ZeroVector;
+			if (TryEvaluateTrianglePlaneAtXY(A, B, C, ReferenceXY, CandidateZ, CandidateGradient) &&
+				CandidateZ <= MaxCandidateZ &&
+				CandidateZ > BestZ)
+			{
+				BestZ = CandidateZ;
+				BestGradient = CandidateGradient;
+				bFoundSurface = true;
+			}
+		}
+	}
+
+	if (!bFoundSurface)
+	{
+		return false;
+	}
+
+	OutProfile.ReferenceXY = ReferenceXY;
+	OutProfile.ReferenceZ = BestZ;
+	OutProfile.Gradient = BestGradient;
+	OutProfile.bValid = true;
+	return true;
+}
+
+void AppendAuthoredRoadMarkingLines(
+	FOriginalMeshSectionData& Section,
+	const FMaxisMeshObject& MeshObject,
+	const FVector& TileOrigin,
+	float MeshUnitsPerCentimeter,
+	float MeshScale,
+	float Width,
+	const FLinearColor& Color)
+{
+	const float HalfWidth = Width * 0.5f;
+	for (const FMaxisMeshFace& Face : MeshObject.Faces)
+	{
+		if (Face.FaceType != 20 || Face.MaterialIndex != 112 || Face.VertexIndices.Num() != 2 ||
+			!MeshObject.Vertices.IsValidIndex(Face.VertexIndices[0]) ||
+			!MeshObject.Vertices.IsValidIndex(Face.VertexIndices[1]))
+		{
+			continue;
+		}
+
+		const FVector A = ConvertPlacedCityMeshVertex(
+			MeshObject.Vertices[Face.VertexIndices[0]], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
+		const FVector B = ConvertPlacedCityMeshVertex(
+			MeshObject.Vertices[Face.VertexIndices[1]], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
+		const FVector Direction = (B - A).GetSafeNormal();
+		FVector Across = FVector::CrossProduct(FVector::UpVector, Direction).GetSafeNormal();
+		if (Direction.IsNearlyZero() || Across.IsNearlyZero())
+		{
+			continue;
+		}
+
+		const int32 VertexStart = Section.Vertices.Num();
+		Section.Vertices.Add(A + Across * HalfWidth);
+		Section.Vertices.Add(B + Across * HalfWidth);
+		Section.Vertices.Add(B - Across * HalfWidth);
+		Section.Vertices.Add(A - Across * HalfWidth);
+		Section.Triangles.Add(VertexStart);
+		Section.Triangles.Add(VertexStart + 1);
+		Section.Triangles.Add(VertexStart + 2);
+		Section.Triangles.Add(VertexStart);
+		Section.Triangles.Add(VertexStart + 2);
+		Section.Triangles.Add(VertexStart + 3);
+		// FACE line endpoint order is not a render winding contract. Emit the reverse side too,
+		// just as Append3DVectorLine does, so every authored dash is visible from above regardless
+		// of which endpoint the MAX exporter stored first.
+		Section.Triangles.Add(VertexStart);
+		Section.Triangles.Add(VertexStart + 2);
+		Section.Triangles.Add(VertexStart + 1);
+		Section.Triangles.Add(VertexStart);
+		Section.Triangles.Add(VertexStart + 3);
+		Section.Triangles.Add(VertexStart + 2);
+		Section.TriangleCount += 4;
+
+		FVector Normal = FVector::CrossProduct(Direction, -Across).GetSafeNormal();
+		if (Normal.Z < 0.0f)
+		{
+			Normal = -Normal;
+		}
+		for (int32 VertexIndex = 0; VertexIndex < 4; ++VertexIndex)
+		{
+			Section.Normals.Add(Normal);
+			Section.UVs.Add(FVector2D(VertexIndex == 1 || VertexIndex == 2 ? 1.0f : 0.0f, VertexIndex >= 2 ? 1.0f : 0.0f));
+			Section.VertexColors.Add(Color);
+			Section.Tangents.Add(FProcMeshTangent(Direction.X, Direction.Y, Direction.Z));
+		}
 	}
 }
 
@@ -3096,6 +3312,7 @@ void ASimCity2000CityActor::RebuildCity()
 	BuildingTileFlags.Reset();
 	WaterGameplayCornerZ.Reset();
 	WaterGameplayTerrainClasses.Reset();
+	RoadSurfaceProfiles.Reset();
 	OriginalTextureCache.Reset();
 	OriginalTextureMaterials.Reset();
 	WaterTextureMaterials.Reset();
@@ -3158,6 +3375,7 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 
 	BuildingTileFlags.SetNumZeroed(FSimCity2000City::TileCount);
+	RoadSurfaceProfiles.SetNum(FSimCity2000City::TileCount);
 	const int32 TileCountToCache = FMath::Min(FSimCity2000City::TileCount, City.Tiles.Num());
 	for (int32 TileIndex = 0; TileIndex < TileCountToCache; ++TileIndex)
 	{
@@ -3919,6 +4137,36 @@ void ASimCity2000CityActor::RebuildCity()
 							: GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.X, Footprint.Y, EffectiveTerrainHeightScale);
 						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
 
+						if (IsVehicleRoadSurfaceTile(Tile.Building) && RoadSurfaceProfiles.IsValidIndex(TileIndex))
+						{
+							// SCHOOK: FUN_004c82c0 returns the placed object's surface at the mover's
+							// exact X/Z. Extract the asphalt plane from the same object FUN_0047c0c0
+							// dispatched, so every RD slope, bridge approach and highway ramp shares
+							// one continuous authored surface with traffic.
+							TryBuildPlacedRoadSurfaceProfile(
+								*MeshObject,
+								TileOrigin,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								RoadSurfaceProfiles[TileIndex]);
+						}
+
+						if (bRenderRoadMarkings && Tile.Building >= 0x1d && Tile.Building <= 0x2b)
+						{
+							// The RD objects contain the original yellow segments at their authored
+							// 3-D endpoints. A surface-aligned ribbon preserves those endpoints without
+							// Append3DVectorLine's vertical cross-quad, and puts ramp markings on asphalt
+							// rather than on the terrain wedge underneath it.
+							AppendAuthoredRoadMarkingLines(
+								RoadMarkingSection,
+								*MeshObject,
+								TileOrigin,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								RoadMarkingWidth,
+								RoadMarkingColor);
+						}
+
 						// Blink markers are face type 25, which AppendMaxisMeshObject drops (a single
 						// vertex is neither a polygon nor one of its two-point lines). Collect them here
 						// for both the instanced-building and the baked-section paths, since the original
@@ -4617,7 +4865,7 @@ void ASimCity2000CityActor::RebuildCity()
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
-		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d extensionTerrain=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
+		TEXT("Rendered SC2 city '%s' from '%s': terrain=%d extensionTerrain=%d originalMeshTiles=%d missingOriginalMeshTiles=%d originalTriangles=%d roadMarkingTriangles=%d roadSurfaceProfiles=%d texturedTriangles=%d originalTextures=%d chunks=%d rotation=%d waterLevel=%d terrainHeightScale=%.2f"),
 		*City.CityName,
 		*ResolvedCityPath,
 		TerrainCount,
@@ -4625,6 +4873,8 @@ void ASimCity2000CityActor::RebuildCity()
 		LastOriginalMeshTileCount,
 		LastMissingOriginalMeshTileCount,
 		LastOriginalMeshTriangleCount,
+		RoadMarkingSection.TriangleCount,
+		Algo::CountIf(RoadSurfaceProfiles, [](const FSimCopterRoadSurfaceProfile& Profile) { return Profile.bValid; }),
 		LastOriginalTexturedTriangleCount,
 		LastOriginalTextureCount,
 		City.Chunks.Num(),
@@ -4695,6 +4945,40 @@ bool ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(const uint8 BuildingId)
 	// scene-cell origin; FUN_004c82c0 returns that object top to ground movers.
 	return (BuildingId >= 0x3f && BuildingId <= 0x42) ||
 		(BuildingId >= 0x49 && BuildingId <= 0x59);
+}
+
+bool ASimCity2000CityActor::TryGetRoadSurfaceWorldZ(
+	const FVector& WorldLocation,
+	float& OutSurfaceWorldZ) const
+{
+	OutSurfaceWorldZ = 0.0f;
+	if (RoadSurfaceProfiles.Num() != FSimCity2000City::TileCount || TileSize <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const FTransform CityTransform = GetActorTransform();
+	const FVector LocalLocation = CityTransform.InverseTransformPosition(WorldLocation);
+	const float HalfMapSize = FSimCity2000City::MapSize * TileSize * 0.5f;
+	const int32 FileX = FMath::FloorToInt((LocalLocation.X + HalfMapSize) / TileSize);
+	const int32 FileY = FMath::FloorToInt((HalfMapSize - LocalLocation.Y) / TileSize);
+	if (FileX < 0 || FileX >= FSimCity2000City::MapSize ||
+		FileY < 0 || FileY >= FSimCity2000City::MapSize)
+	{
+		return false;
+	}
+
+	const FSimCopterRoadSurfaceProfile& Profile =
+		RoadSurfaceProfiles[FileY * FSimCity2000City::MapSize + FileX];
+	if (!Profile.bValid)
+	{
+		return false;
+	}
+
+	const float LocalSurfaceZ = Profile.Evaluate(FVector2D(LocalLocation.X, LocalLocation.Y));
+	OutSurfaceWorldZ = CityTransform.TransformPosition(
+		FVector(LocalLocation.X, LocalLocation.Y, LocalSurfaceZ)).Z;
+	return true;
 }
 
 bool ASimCity2000CityActor::TryGetWaterGameplaySurface(

@@ -49,6 +49,23 @@ struct FSimCopterCityBuilding
 	FSimCopterBuildingPart RubblePart;
 };
 
+// One authored driving plane extracted from the road mesh actually placed in a city cell. The
+// reference and gradient are in city-local space, so the profile remains valid when the whole city
+// actor is translated or yawed. Keeping this separate from collision is important for bridges:
+// their object also contains towers, cables and supports above/below the road deck.
+struct FSimCopterRoadSurfaceProfile
+{
+	FVector2D ReferenceXY = FVector2D::ZeroVector;
+	FVector2D Gradient = FVector2D::ZeroVector;
+	float ReferenceZ = 0.0f;
+	bool bValid = false;
+
+	float Evaluate(const FVector2D& LocalXY) const
+	{
+		return ReferenceZ + FVector2D::DotProduct(LocalXY - ReferenceXY, Gradient);
+	}
+};
+
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCity2000CityActor : public AActor
 {
@@ -100,6 +117,11 @@ public:
 	// one original terrain-height step above the owning tile's terrain origin. Kept public so the
 	// city markings and traffic graph use the same decoded surface rule.
 	static bool IsOneStepRaisedRoadDeckTile(uint8 BuildingId);
+
+	// Samples the actual asphalt plane extracted from the placed RD/TL/bridge/highway object. This
+	// is the authoritative ramp surface for traffic; unlike a highest-hit trace it cannot select a
+	// bridge tower or support. False for non-road cells or before the original meshes are rebuilt.
+	bool TryGetRoadSurfaceWorldZ(const FVector& WorldLocation, float& OutSurfaceWorldZ) const;
 
 	// Samples the same conditioned terrain triangle and terrain-class grid used to build the
 	// visible city. Terrain classes below 10 are water in the original water gameplay routines.
@@ -421,6 +443,10 @@ private:
 	// The same 129x129 grid in the original's own sample units, kept because the cockpit map
 	// shades ground by shifting the raw sample rather than by any world height.
 	TArray<int16> MapAltitudeCorners;
+
+	// One entry per SC2 cell. Profiles are populated from the exact primary mesh object selected by
+	// FUN_0047c0c0's dispatch, including ordinary road meshes selected in their sloped variant.
+	TArray<FSimCopterRoadSurfaceProfile> RoadSurfaceProfiles;
 
 	// Every placed building, indexed by building id. Demolished entries stay put so their id, tile
 	// span and rubble remain resolvable.

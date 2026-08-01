@@ -67,6 +67,16 @@ SIMCOPTERREMAKE_API bool IsTraversableRailTile(int32 XbldId, int32 ZoneId);
 // FUN_004b7020 raises the train target by 0x1f original units on RL90/RL90F bridge tiles,
 // including their XZON-bit-1 variants. The fraction is public for data-only automation tests.
 SIMCOPTERREMAKE_API float GetRailBridgeDeckHeightTileFraction(int32 XbldId, int32 ZoneId);
+
+// Continuous grade helpers for RL46..RL49. The centre is halfway between the low and high
+// edges; the edge query takes the neighbouring tile delta and returns FUN_004b7020's exact
+// 31-unit lift only on that ramp's high side (or on either side of a bridge deck).
+SIMCOPTERREMAKE_API float GetRailTileCenterHeightTileFraction(int32 XbldId, int32 ZoneId);
+SIMCOPTERREMAKE_API float GetRailEdgeHeightTileFraction(
+	int32 XbldId,
+	int32 ZoneId,
+	int32 NeighborDeltaX,
+	int32 NeighborDeltaY);
 }
 
 // One ambient plane. Field comments name the original record offsets.

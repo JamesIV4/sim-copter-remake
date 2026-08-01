@@ -260,6 +260,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameters)
 {
 	using FTraffic = ASimCopterTrafficSystemActor;
+	constexpr float RailDeckFraction = 31.0f / 64.0f;
+
+	// The placed-mesh cache is a true plane rather than a tile-wide height. This is the shape the
+	// city actor extracts from every selected asphalt face and traffic evaluates at its exact XY.
+	FSimCopterRoadSurfaceProfile RampProfile;
+	RampProfile.ReferenceXY = FVector2D(100.0f, 200.0f);
+	RampProfile.ReferenceZ = 300.0f;
+	RampProfile.Gradient = FVector2D(0.5f, -0.25f);
+	RampProfile.bValid = true;
+	TestEqual(TEXT("authored ramp plane evaluates continuously"), RampProfile.Evaluate(FVector2D(140.0f, 160.0f)), 330.0f);
 
 	// FUN_0047c0c0 dispatches these four IDs to the dedicated surface-ramp meshes RD31..RD34.
 	TestTrue(TEXT("0x1f begins the surface-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x1f));
@@ -296,7 +306,6 @@ bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameter
 	TestFalse(TEXT("rail bridge is not a road deck"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x5a));
 
 	// FUN_004b7020 adds 0x1f units to RL90/RL90F, with one tile equal to 0x40 units.
-	constexpr float RailDeckFraction = 31.0f / 64.0f;
 	TestEqual(
 		TEXT("0x5a rail bridge is raised 31/64 tile"),
 		SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(0x5a, 0),
@@ -309,6 +318,37 @@ bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameter
 		TEXT("rail bridge approach remains terrain-relative"),
 		SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(0x47, 0),
 		0.0f);
+
+	// RL46..RL49 rise continuously between an unraised edge, a half-height centre, and the exact
+	// same 31-unit high edge used by the bridge deck. These orientations match the authored GEO.
+	TestEqual(
+		TEXT("rail slope centre is halfway up the 31-unit grade"),
+		SimCopterAmbientVehicles::GetRailTileCenterHeightTileFraction(0x2e, 0),
+		15.5f / 64.0f);
+	TestEqual(
+		TEXT("RL46 north edge is high"),
+		SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(0x2e, 0, 0, -1),
+		RailDeckFraction);
+	TestEqual(
+		TEXT("RL46 south edge is low"),
+		SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(0x2e, 0, 0, 1),
+		0.0f);
+	TestEqual(
+		TEXT("RL47 west edge is high"),
+		SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(0x2f, 0, -1, 0),
+		RailDeckFraction);
+	TestEqual(
+		TEXT("RL48 south edge is high"),
+		SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(0x30, 0, 0, 1),
+		RailDeckFraction);
+	TestEqual(
+		TEXT("RL49 east edge is high"),
+		SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(0x31, 0, 1, 0),
+		RailDeckFraction);
+	TestEqual(
+		TEXT("rail bridge remains high at either edge"),
+		SimCopterAmbientVehicles::GetRailEdgeHeightTileFraction(0x5a, 0, -1, 0),
+		RailDeckFraction);
 
 	return true;
 }

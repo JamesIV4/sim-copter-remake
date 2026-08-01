@@ -46,25 +46,31 @@ both. The former procedural centre-line workaround creates a second raised strip
 road and is not part of the original piece.
 
 Cars also must not discover their driving Z by tracing the highest arbitrary mesh. Their
-nonswept movement intentionally phases through scenery and `TryGetVehicleRoadSurfaceZ` interpolates
-the road graph. The decoded dedicated surface ramps (`0x1f..0x22`), raised-span ramps
-(`0x3f..0x42`), and highway/on-ramp range (`0x5d..0x6b`) can refine that result from their road
-mesh so a vehicle uses the exact visible slope for both Z and pitch. The raised caps and road
-bridge pieces (`0x3f..0x42`, `0x49..0x59`) put their driving plane one ALTM step above the scene-cell
-terrain origin (confirmed by their GEO vertices and `FUN_004c82c0`), so the road graph carries that
-explicit offset. Bridge pieces must otherwise remain graph-driven: each bridge is a composite mesh
-containing supports/towers as well as its straight deck, and a highest-hit trace can teleport cars
-onto those non-road surfaces. Roofs and the power crossing likewise remain non-solid to traffic.
+nonswept movement intentionally phases through scenery, and every placed drivable road cell now
+caches the plane of the exact authored asphalt face selected by `FUN_0047c0c0`. The selector uses
+face type 15/material 48 at the authored road-line height, rather than the highest mesh face, so a
+composite bridge contributes its deck instead of its towers, cables, or supports. Route nodes
+sample that plane at the tile centre; `TryGetVehicleRoadSurfaceZ` samples it again at the vehicle's
+current XY. This makes ordinary surface ramps, raised-span ramps, highway/on-ramp pieces, and bridge
+approaches use the visible slope continuously for both Z and pitch. Collision traces remain only a
+fallback when no authored road plane was extracted. `FUN_004c82c0` independently confirms that the
+original queries the placed scene-object surface rather than terrain alone.
 
-`TL63..TL66` have no face-type-20 centre line, so their procedural marking uses that same raised
-object-top plane instead of the conditioned terrain under the cap. `RD67`/`RD68` and bridge pieces
-`RD73`/`RD74` already own face-type-20 line geometry; their old procedural duplicates are disabled.
+Surface-road `RD*` meshes own face-type-20/material-112 centre-line endpoints. The remake converts
+those authored lines to narrow, non-colliding planar ribbons on the placed mesh, so markings follow
+every ramp rather than being projected onto terrain. Endpoint order is not a reliable winding
+signal, so each ribbon emits both triangle windings to remain visible with backface culling.
+`TL63..TL66` have no authored centre line and are the only raised pieces retaining procedural
+markings; those markings use the cap's object-top plane. `RD67`/`RD68` and bridge pieces
+`RD73`/`RD74` already own authored lines, so their old procedural duplicates remain disabled.
 
 Trains have a separate exact rule in `FUN_004b7020`: rail bridge ids `0x5a/0x5b` and the
 `0x805a/0x805b` XZON-bit-1 variants add `0x1f` original units to the target up-coordinate. Since a
 tile is `0x40` units, the remake raises the RL90/RL90F train plane by `31/64` of a tile and keeps
-that height at both shared edges of the bridge. Using plain tile-centre ALTM was why trains drove
-through the water below those meshes.
+that height at both shared edges of the bridge. Rail slopes `0x2e..0x31` use `15.5/64` at their
+centres and `31/64` at their direction-specific high edge (north, west, south, east respectively),
+with zero lift at the low edge. Shared-edge waypoints therefore form a continuous low-edge to
+half-height to high-edge grade instead of dipping through terrain or water at tile boundaries.
 
 ## Still unported
 

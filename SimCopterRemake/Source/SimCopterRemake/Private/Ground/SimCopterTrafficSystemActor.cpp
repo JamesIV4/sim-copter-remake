@@ -2764,21 +2764,22 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 
 	float EffectiveTerrainHeightScale = bUseOriginalTerrainHeightScale ? TileSize * 0.5f : TerrainHeightScale;
 	FString CityPath = ResolveCityPath();
+	const ASimCity2000CityActor* ActiveCityActor = ResolveSourceCityActor();
 
-	if (const ASimCity2000CityActor* CityActor = ResolveSourceCityActor())
+	if (ActiveCityActor != nullptr)
 	{
-		CityPath = CityActor->GetResolvedCityPath();
-		ActiveTileSize = CityActor->GetTileSize();
-		EffectiveTerrainHeightScale = CityActor->GetEffectiveTerrainHeightScale();
-		ActiveCityToWorldTransform = CityActor->GetActorTransform();
+		CityPath = ActiveCityActor->GetResolvedCityPath();
+		ActiveTileSize = ActiveCityActor->GetTileSize();
+		EffectiveTerrainHeightScale = ActiveCityActor->GetEffectiveTerrainHeightScale();
+		ActiveCityToWorldTransform = ActiveCityActor->GetActorTransform();
 
-		const FString CityOriginalRoot = CityActor->GetResolvedOriginalGameRoot();
+		const FString CityOriginalRoot = ActiveCityActor->GetResolvedOriginalGameRoot();
 		if (!CityOriginalRoot.IsEmpty())
 		{
 			ActiveOriginalGameRootPath = CityOriginalRoot;
 		}
 
-		LastCitySource = FString::Printf(TEXT("City actor '%s'"), *CityActor->GetName());
+		LastCitySource = FString::Printf(TEXT("City actor '%s'"), *ActiveCityActor->GetName());
 	}
 	else
 	{
@@ -2836,10 +2837,8 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 			if (IsOriginalTrafficRoadTile(Tile.Building))
 			{
 				const FVector2D CenterlineOffset = GetRoadCenterlineLocalOffset(Tile.Building, ActiveTileSize);
-				// SCHOOK: FUN_004c82c0 resolves the road object's top above the scene-cell terrain
-				// origin. TL63..TL66 and every 0x49..0x59 road bridge deck are one ALTM step
-				// high. Carry that explicit plane in the graph so a car leaving the raised cap
-				// stays level across water instead of dropping to the water tile's ALTM height.
+				// Fallback for a city actor that has not published its placed-mesh surface. In the
+				// normal path the exact RD/TL/bridge/highway asphalt plane replaces this below.
 				const float DeckOffsetZ = ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(Tile.Building)
 					? EffectiveTerrainHeightScale
 					: 0.0f;
@@ -2854,6 +2853,20 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 					LocalY + CenterlineOffset.Y,
 					LocalZ + DeckOffsetZ + 10.0f);
 				Node.Location = ActiveCityToWorldTransform.TransformPosition(Node.LocalLocation);
+				if (ActiveCityActor != nullptr)
+				{
+					float AuthoredSurfaceWorldZ = 0.0f;
+					if (ActiveCityActor->TryGetRoadSurfaceWorldZ(Node.Location, AuthoredSurfaceWorldZ))
+					{
+						// SCHOOK: FUN_004c82c0 samples the placed scene object at the exact
+						// horizontal point. Using its extracted plane at the node centre makes
+						// every kind of ramp start with the correct route height as well.
+						const float RouteOffsetWorldZ = ActiveCityToWorldTransform.TransformVector(
+							FVector(0.0f, 0.0f, 10.0f)).Z;
+						Node.Location.Z = AuthoredSurfaceWorldZ + RouteOffsetWorldZ;
+						Node.LocalLocation = ActiveCityToWorldTransform.InverseTransformPosition(Node.Location);
+					}
+				}
 				RoadNodeIndexByTile.Add(FIntPoint(FileX, FileY), NodeIndex);
 			}
 
@@ -4833,6 +4846,17 @@ bool ASimCopterTrafficSystemActor::TryGetVehicleRoadSurfaceZ(
 	if (!TryGetPeopleTileCoordinateAtWorldLocation(WorldLocation, FileX, FileY))
 	{
 		return false;
+	}
+
+	if (const ASimCity2000CityActor* CityActor = GetCityActor())
+	{
+		if (CityActor->TryGetRoadSurfaceWorldZ(WorldLocation, OutSurfaceZ))
+		{
+			// The cached profile is already the asphalt plane and deliberately excludes bridge
+			// towers, supports and overhead wires. Do not replace it with a highest-hit trace.
+			bOutAllowsElevatedMesh = false;
+			return true;
+		}
 	}
 
 	const uint8 BuildingId = uint8(GetXbldTileId(FileX, FileY));
