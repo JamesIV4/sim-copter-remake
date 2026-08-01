@@ -191,8 +191,9 @@ public:
 	bool TryGetTerrainWorldZAtWorldLocation(const FVector& WorldLocation, float& OutTerrainWorldZ) const;
 	// Road-graph height at a vehicle's current progress between its previous and target nodes.
 	// Unlike a scene trace this cannot jump onto a power line, tree or building over the lane.
-	// bOutAllowsElevatedMesh is true only for raised-span ramps and actual bridge/highway deck
-	// ranges, whose mesh is the authoritative drivable plane above the SC2 terrain sample.
+	// bOutAllowsElevatedMesh is true only for ramp/elevated-road ranges whose mesh is the
+	// authoritative sloped driving plane. Bridges stay on the road graph so their composite
+	// support meshes cannot teleport vehicles above or below the straight deck.
 	static bool UsesVehicleRoadMeshSurface(uint8 BuildingId);
 	bool TryGetVehicleRoadSurfaceZ(
 		const ASimCopterGroundAgent& Vehicle,

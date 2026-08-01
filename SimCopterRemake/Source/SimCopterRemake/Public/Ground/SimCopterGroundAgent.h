@@ -495,9 +495,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
 	float PedestrianGroundProbeSlopeHeadroomCm = 110.0f;
 
-	// A real bridge/highway deck may rise above the route graph's SC2 terrain sample. Accept its
-	// mesh surface only inside this band; all ordinary road tiles use graph height and phase
-	// through arbitrary meshes instead of warping onto their tops.
+	// A real ramp/elevated-road surface may differ from the route graph's linear sample. Accept
+	// its mesh surface only inside this band; bridges and ordinary road tiles use graph height
+	// and phase through arbitrary meshes instead of warping onto their tops.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float VehicleElevatedRoadMeshMaxOffsetCm = 600.0f;
 

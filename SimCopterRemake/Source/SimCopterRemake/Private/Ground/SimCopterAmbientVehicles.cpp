@@ -125,6 +125,20 @@ bool SimCopterAmbientVehicles::IsTraversableRailTile(const int32 XbldId, const i
 	return Id > 0x8059 && Id < 0x805c;
 }
 
+float SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+	const int32 XbldId,
+	const int32 ZoneId)
+{
+	// SCHOOK: FUN_004b7020 adds 0x1f0000 to the target's up coordinate for 0x5a/0x5b
+	// and 0x805a/0x805b. One tile is 0x40 original units, so the RL90/RL90F running
+	// plane is exactly 31/64 of a tile above the scene-cell terrain origin.
+	const uint32 Id = static_cast<uint32>(static_cast<uint8>(XbldId)) |
+		((static_cast<uint32>(ZoneId) & 2u) << 14);
+	return Id == 0x5a || Id == 0x5b || Id == 0x805a || Id == 0x805b
+		? 31.0f / OriginalUnitsPerTile
+		: 0.0f;
+}
+
 ASimCopterAmbientVehiclesActor::ASimCopterAmbientVehiclesActor()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -467,6 +481,31 @@ bool ASimCopterAmbientVehiclesActor::TryGetTileCenter(const FIntPoint& Tile, FVe
 	return false;
 }
 
+bool ASimCopterAmbientVehiclesActor::TryGetTrainTileCenter(
+	const FIntPoint& Tile,
+	FVector& OutWorld) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr || !TryGetTileCenter(Tile, OutWorld))
+	{
+		return false;
+	}
+
+	const float HeightFraction = SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+		TrafficSystem->GetXbldTileId(Tile.X, Tile.Y),
+		TrafficSystem->GetZoneTileId(Tile.X, Tile.Y));
+	if (HeightFraction <= 0.0f)
+	{
+		return true;
+	}
+
+	const FVector LocalDeckOffset(0.0f, 0.0f, GetTileSizeCm() * HeightFraction);
+	OutWorld += ResolveCityActor() != nullptr
+		? ResolveCityActor()->GetActorTransform().TransformVector(LocalDeckOffset)
+		: LocalDeckOffset;
+	return true;
+}
+
 bool ASimCopterAmbientVehiclesActor::IsWaterTile(const FIntPoint& Tile) const
 {
 	if (const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
@@ -584,6 +623,27 @@ bool ASimCopterAmbientVehiclesActor::TryGetTrainWaypoint(
 	}
 
 	OutWorld = (FromCenter + ToCenter) * 0.5f;
+
+	// FUN_004b7020 puts the train at +31 units as soon as its target is an RL90/RL90F
+	// bridge cell. Apply the larger endpoint offset at the shared edge: the ramp reaches deck
+	// height at the beginning of the bridge, and every waypoint over the water then stays level.
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem != nullptr)
+	{
+		const float FromFraction = SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+			TrafficSystem->GetXbldTileId(FromTile.X, FromTile.Y),
+			TrafficSystem->GetZoneTileId(FromTile.X, FromTile.Y));
+		const float ToFraction = SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(
+			TrafficSystem->GetXbldTileId(ToTile.X, ToTile.Y),
+			TrafficSystem->GetZoneTileId(ToTile.X, ToTile.Y));
+		const FVector LocalDeckOffset(
+			0.0f,
+			0.0f,
+			GetTileSizeCm() * FMath::Max(FromFraction, ToFraction));
+		OutWorld += ResolveCityActor() != nullptr
+			? ResolveCityActor()->GetActorTransform().TransformVector(LocalDeckOffset)
+			: LocalDeckOffset;
+	}
 	return true;
 }
 
@@ -2010,7 +2070,7 @@ bool ASimCopterAmbientVehiclesActor::PlaceTrainNearTile(const FIntPoint& Origin,
 				}
 
 				FVector Center = FVector::ZeroVector;
-				if (!TryGetTileCenter(Candidate, Center))
+				if (!TryGetTrainTileCenter(Candidate, Center))
 				{
 					continue;
 				}

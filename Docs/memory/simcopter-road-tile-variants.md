@@ -47,10 +47,24 @@ road and is not part of the original piece.
 
 Cars also must not discover their driving Z by tracing the highest arbitrary mesh. Their
 nonswept movement intentionally phases through scenery and `TryGetVehicleRoadSurfaceZ` interpolates
-the road graph. Only the decoded raised-span ramps (`0x3f..0x42`) and bridge/highway tile ranges can
-refine that result from their road mesh; ordinary terrain-following slope pieces remain graph-driven.
-The same restricted surface feeds forward/back pitch probes, so a vehicle's Z and pitch use the
-exact visible ramp/deck plane while roofs and the power crossing remain non-solid to traffic.
+the road graph. The decoded dedicated surface ramps (`0x1f..0x22`), raised-span ramps
+(`0x3f..0x42`), and highway/on-ramp range (`0x5d..0x6b`) can refine that result from their road
+mesh so a vehicle uses the exact visible slope for both Z and pitch. The raised caps and road
+bridge pieces (`0x3f..0x42`, `0x49..0x59`) put their driving plane one ALTM step above the scene-cell
+terrain origin (confirmed by their GEO vertices and `FUN_004c82c0`), so the road graph carries that
+explicit offset. Bridge pieces must otherwise remain graph-driven: each bridge is a composite mesh
+containing supports/towers as well as its straight deck, and a highest-hit trace can teleport cars
+onto those non-road surfaces. Roofs and the power crossing likewise remain non-solid to traffic.
+
+`TL63..TL66` have no face-type-20 centre line, so their procedural marking uses that same raised
+object-top plane instead of the conditioned terrain under the cap. `RD67`/`RD68` and bridge pieces
+`RD73`/`RD74` already own face-type-20 line geometry; their old procedural duplicates are disabled.
+
+Trains have a separate exact rule in `FUN_004b7020`: rail bridge ids `0x5a/0x5b` and the
+`0x805a/0x805b` XZON-bit-1 variants add `0x1f` original units to the target up-coordinate. Since a
+tile is `0x40` units, the remake raises the RL90/RL90F train plane by `31/64` of a tile and keeps
+that height at both shared edges of the bridge. Using plain tile-centre ALTM was why trains drove
+through the water below those meshes.
 
 ## Still unported
 

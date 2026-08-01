@@ -2,6 +2,8 @@
 
 #include "Ground/SimCopterDispatch.h"
 #include "Ground/SimCopterBehaviorVM.h"
+#include "City/SimCity2000CityActor.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 
@@ -259,22 +261,54 @@ bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameter
 {
 	using FTraffic = ASimCopterTrafficSystemActor;
 
+	// FUN_0047c0c0 dispatches these four IDs to the dedicated surface-ramp meshes RD31..RD34.
+	TestTrue(TEXT("0x1f begins the surface-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x1f));
+	TestTrue(TEXT("0x22 ends the surface-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x22));
+
 	// FUN_0047c0c0 maps these four pieces to dedicated raised-span ramp meshes 0x178..0x17b.
 	// Sampling those meshes is what keeps both vehicle Z and pitch on the visible wedge.
 	TestTrue(TEXT("0x3f begins the raised-span ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x3f));
 	TestTrue(TEXT("0x42 ends the raised-span ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x42));
 
-	TestTrue(TEXT("0x49 begins the bridge-deck range"), FTraffic::UsesVehicleRoadMeshSurface(0x49));
-	TestTrue(TEXT("0x59 ends the bridge-deck range"), FTraffic::UsesVehicleRoadMeshSurface(0x59));
+	// Bridges use the road graph's straight deck height. Their combined meshes include towers
+	// and supports which a vertical highest-hit trace must never treat as driving surfaces.
+	TestFalse(TEXT("0x49 begins the graph-driven bridge range"), FTraffic::UsesVehicleRoadMeshSurface(0x49));
+	TestFalse(TEXT("0x59 ends the graph-driven bridge range"), FTraffic::UsesVehicleRoadMeshSurface(0x59));
 	TestTrue(TEXT("0x5d begins the highway/on-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x5d));
 	TestTrue(TEXT("0x6b ends the highway/on-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x6b));
 
-	// Ordinary sloped roads follow conditioned terrain. Power crossings must stay at road level
-	// instead of treating their overhead wires as a vehicle surface.
-	TestFalse(TEXT("ordinary terrain slope stays graph-driven"), FTraffic::UsesVehicleRoadMeshSurface(0x1f));
+	// Flat/curved road variants follow the graph. Power crossings must stay at road level instead
+	// of treating their overhead wires as a vehicle surface.
+	TestFalse(TEXT("road before surface ramps stays graph-driven"), FTraffic::UsesVehicleRoadMeshSurface(0x1e));
+	TestFalse(TEXT("road after surface ramps stays graph-driven"), FTraffic::UsesVehicleRoadMeshSurface(0x23));
 	TestFalse(TEXT("east-west power crossing ignores overhead mesh"), FTraffic::UsesVehicleRoadMeshSurface(0x43));
 	TestFalse(TEXT("north-south power crossing ignores overhead mesh"), FTraffic::UsesVehicleRoadMeshSurface(0x44));
 	TestFalse(TEXT("non-road meshes remain non-solid to traffic"), FTraffic::UsesVehicleRoadMeshSurface(0x2c));
+
+	// The graph itself owns the safe, flat top across composite bridge meshes. Both the raised
+	// cap and bridge band sit one ALTM step above their tile origin; adjacent surface ramps and
+	// rail bridges are different families.
+	TestTrue(TEXT("0x3f raised cap starts the one-step road deck"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x3f));
+	TestTrue(TEXT("0x42 raised cap ends the one-step road deck"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x42));
+	TestTrue(TEXT("0x49 starts the one-step road bridge band"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x49));
+	TestTrue(TEXT("0x59 ends the one-step road bridge band"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x59));
+	TestFalse(TEXT("surface ramp is not a flat raised cap"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x1f));
+	TestFalse(TEXT("rail bridge is not a road deck"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x5a));
+
+	// FUN_004b7020 adds 0x1f units to RL90/RL90F, with one tile equal to 0x40 units.
+	constexpr float RailDeckFraction = 31.0f / 64.0f;
+	TestEqual(
+		TEXT("0x5a rail bridge is raised 31/64 tile"),
+		SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(0x5a, 0),
+		RailDeckFraction);
+	TestEqual(
+		TEXT("0x5b raised XZON variant keeps the same deck"),
+		SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(0x5b, 2),
+		RailDeckFraction);
+	TestEqual(
+		TEXT("rail bridge approach remains terrain-relative"),
+		SimCopterAmbientVehicles::GetRailBridgeDeckHeightTileFraction(0x47, 0),
+		0.0f);
 
 	return true;
 }

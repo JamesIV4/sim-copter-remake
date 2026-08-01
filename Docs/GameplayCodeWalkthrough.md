@@ -467,11 +467,20 @@ The constructor sets defaults:
 Vehicle Z and pitch no longer come from the highest arbitrary mesh under a tall trace. Movement is
 nonswept so cars phase through buildings, power lines, and other scenery, while
 `TryGetVehicleRoadSurfaceZ` interpolates the road graph between the previous and target nodes.
-Only decoded raised-span ramps (`0x3f..0x42`) and bridge/highway tile ranges may refine that graph
-height from their road mesh; the same restricted sampler feeds the centre, ahead, and behind probes,
-so vehicle Z and pitch match the visible ramp/deck plane. XBLD `0x43/0x44` are power-line road
-crossings, not elevated road decks. Their RD67/RD68 mesh already owns the centre line, so the
-obsolete procedural road-marking block for those pieces is disabled.
+Only decoded surface ramps (`0x1f..0x22`), raised-span ramps (`0x3f..0x42`), and the
+highway/on-ramp range (`0x5d..0x6b`) may refine that graph height from their road mesh; the same
+restricted sampler feeds the centre, ahead, and behind probes, so vehicle Z and pitch match the
+visible ramp plane. The graph explicitly lifts the `0x3f..0x42` raised caps and every road bridge
+piece (`0x49..0x59`) one ALTM step above the tile origin. Bridge pieces then stay graph-driven at
+that fixed deck height because their composite meshes contain supports/towers in addition to the
+straight deck. XBLD `0x43/0x44` are power-line road crossings, not elevated road decks. Their
+RD67/RD68 mesh and the RD73/RD74 bridge meshes already own their centre lines, so their obsolete
+procedural road-marking duplicates are disabled.
+
+The ambient train applies `FUN_004b7020`'s separate rail rule: destination tiles `0x5a/0x5b`
+(including their XZON-bit-1 forms) raise the running plane by `0x1f` original units, or `31/64` of
+a tile. Shared-edge waypoints keep that lift from the start of the bridge to its exit, so the loco
+and trailing cars no longer interpolate through the water-level tile centres.
 
 `ApplyTrafficLights` treats qualifying intersection nodes as signalized intersections. It groups vehicles by approach, sorts them by distance, assigns queue slots, marks queue state, and brakes vehicles toward their slots until the approach is green.
 
