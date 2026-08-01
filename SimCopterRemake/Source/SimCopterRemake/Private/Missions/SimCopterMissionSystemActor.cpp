@@ -1672,7 +1672,8 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 		Person->SetActorLocation(
 			DropLocation + FVector(0.0f, Side * (35.0f + 28.0f * float(Processed)), 0.0f),
 			false);
-		Person->SnapToGroundImmediate();
+		// No ground snap: they were let out of the cabin, so they fall the cabin's height onto
+		// whatever is underneath rather than appearing already stood on it.
 		if (NotifyMissionPersonDelivered(Person))
 		{
 			Delivered++;

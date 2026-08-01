@@ -657,6 +657,15 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 			continue;
 		}
 
+		// A posted hospital worker turns at the edge of its own roof instead of walking to it and
+		// leaning on the containment clamp. Result 3 is the same code the original uses for a tile
+		// the walker may not enter, so the retry loop turns them exactly as it would there.
+		if (!IsWithinHospitalRoofPost(TargetLocation))
+		{
+			LastBlockResult = 3;
+			continue;
+		}
+
 		// FUN_004c9470: ambient people (+0x168) may only enter tile classes from their
 		// behavior-class row (DAT_0058ec00); result 3 otherwise. Non-ambient movement keeps
 		// the pre-VM rows as a safety net (missions steer via goto-object opcodes instead).
@@ -677,24 +686,42 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 
 		// The max-climb/drop gate against the walked surface (highest geometry at the target
 		// column). This - not the tile class - is what stops people at building walls: the
-		// surface there is the roof, far above the 5-unit climb allowance. BHAV 308's
-		// "move through walls" flag (+0x190) bypasses it after repeated failures.
-		if (!bMoveThroughWalls)
+		// surface there is the roof, far above the 5-unit climb allowance.
+		//
+		// Only the CLIMB arm has BHAV 308's "move through walls" escape. FUN_004c9470 reads
+		//     if (maxClimb < rise)      { if (person+0x190 == 0) result = 1; else keep the old Z; }
+		//     else if (rise < -0x8000 - maxClimb) { result = 2; }
+		// so the drop arm is unconditional: no flag has ever let a person step down off a ledge.
+		// The remake wrapped both arms in the flag, and that is how a paramedic walking over to
+		// the helicopter - with the flag left set by BHAV 269, or by 308 after four failed moves -
+		// walked straight off the edge of the hospital roof.
+		//
+		// The original's climb escape keeps the walker's existing Z rather than lifting them onto
+		// whatever they walked into. The remake has no separate walker Z (the ground snap owns it),
+		// so allowing the horizontal step is the whole of that arm here.
+		float SurfaceZ = 0.0f;
+		if (!TryGetWalkSurfaceZAt(TargetLocation, SurfaceZ))
 		{
-			float SurfaceZ = 0.0f;
-			if (TryGetWalkSurfaceZAt(TargetLocation, SurfaceZ))
+			// FUN_004c82c0 always answers - it is the max of the cell's object tops and the
+			// terrain, and one of those always exists. "I could not find a surface" is a remake
+			// state with no original counterpart, so taking the step anyway was an invented hole
+			// in the gate. Refuse it and let the retry loop turn, exactly as for a tile the
+			// walker may not enter.
+			LastBlockResult = 3;
+			continue;
+		}
+
+		{
+			const float Rise = SurfaceZ - CurrentFeetZ;
+			if (Rise > MaxClimbCm && !bMoveThroughWalls)
 			{
-				const float Rise = SurfaceZ - CurrentFeetZ;
-				if (Rise > MaxClimbCm)
-				{
-					LastBlockResult = 1; // FaCl recoil
-					continue;
-				}
-				if (Rise < -MaxDropCm)
-				{
-					LastBlockResult = 2; // Whoa
-					continue;
-				}
+				LastBlockResult = 1; // FaCl recoil
+				continue;
+			}
+			if (Rise < -MaxDropCm)
+			{
+				LastBlockResult = 2; // Whoa
+				continue;
 			}
 		}
 
@@ -763,6 +790,123 @@ void ASimCopterGroundAgent::RunBumpedPersonSelector(ASimCopterGroundAgent& Other
 
 	// And FUN_004c6970 case 5 on our own side: face them, then 2Gab or HipH.
 	RunMeetSelector(BehaviorContext, &Other);
+}
+
+void ASimCopterGroundAgent::SetPersistentHospitalRoofCrew(const bool bPersistent)
+{
+	bPersistentHospitalRoofCrew = bPersistent;
+	if (!bPersistent)
+	{
+		bHasHospitalRoofPost = false;
+	}
+}
+
+void ASimCopterGroundAgent::SetHospitalRoofPost(const FVector& RoofCenterWorldLocation, const float HalfExtentCm)
+{
+	bPersistentHospitalRoofCrew = true;
+	HospitalRoofPostWorldLocation = RoofCenterWorldLocation;
+	HospitalRoofPostHalfExtentCm = FMath::Max(0.0f, HalfExtentCm);
+	bHasHospitalRoofPost = HospitalRoofPostHalfExtentCm > 0.0f;
+}
+
+bool ASimCopterGroundAgent::IsWithinHospitalRoofPost(const FVector& WorldLocation) const
+{
+	if (!bHasHospitalRoofPost)
+	{
+		return true;
+	}
+	// Inset by the body radius so the capsule stays over the roof rather than half off it.
+	const float Radius = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f;
+	const float Limit = FMath::Max(1.0f, HospitalRoofPostHalfExtentCm - Radius);
+	return FMath::Abs(WorldLocation.X - HospitalRoofPostWorldLocation.X) <= Limit &&
+		FMath::Abs(WorldLocation.Y - HospitalRoofPostWorldLocation.Y) <= Limit;
+}
+
+ASimCopterGroundAgent::ERoofPostContainment ASimCopterGroundAgent::ClampToHospitalRoofPost(
+	const FVector& WorldLocation,
+	const FVector& PostCenterWorldLocation,
+	const float PostHalfExtentCm,
+	const float BodyRadiusCm,
+	const float CapsuleHalfHeightCm,
+	const float FallToleranceCm,
+	FVector& OutContainedLocation)
+{
+	OutContainedLocation = WorldLocation;
+	if (PostHalfExtentCm <= 0.0f)
+	{
+		return ERoofPostContainment::AtPost;
+	}
+
+	// Somebody who has genuinely left - flown off in the cabin and set down across the city - is not
+	// "over the edge of their roof", and hauling them back would teleport them across the map. Past
+	// roughly a building's width from the post, treat the post as abandoned and let the mission tick
+	// staff the roof again instead.
+	const float AbandonedDistanceCm = PostHalfExtentCm * 2.0f;
+	if (FVector::DistSquared2D(WorldLocation, PostCenterWorldLocation) > FMath::Square(AbandonedDistanceCm))
+	{
+		return ERoofPostContainment::Abandoned;
+	}
+
+	const float Limit = FMath::Max(1.0f, PostHalfExtentCm - BodyRadiusCm);
+	FVector Contained(
+		FMath::Clamp(WorldLocation.X, PostCenterWorldLocation.X - Limit, PostCenterWorldLocation.X + Limit),
+		FMath::Clamp(WorldLocation.Y, PostCenterWorldLocation.Y - Limit, PostCenterWorldLocation.Y + Limit),
+		WorldLocation.Z);
+
+	// Putting them back over the roof is not enough once they are already beside the building: the
+	// pedestrian ground probe starts at their own feet, so from street level it would find the
+	// ground *inside* the building and leave them standing in the lobby. Restore the roof height
+	// they were posted at, which is the surface the spawn placed them on.
+	if ((Contained.Z - CapsuleHalfHeightCm) < PostCenterWorldLocation.Z - FallToleranceCm)
+	{
+		Contained.Z = PostCenterWorldLocation.Z + CapsuleHalfHeightCm + 1.0f;
+	}
+
+	if (Contained.Equals(WorldLocation, 0.5f))
+	{
+		return ERoofPostContainment::AtPost;
+	}
+
+	OutContainedLocation = Contained;
+	return ERoofPostContainment::Contained;
+}
+
+bool ASimCopterGroundAgent::ContainToHospitalRoofPost()
+{
+	// Only while the worker owns its own transform: riding the helicopter, being carried or lying
+	// in a mission pose all mean somebody else is placing them.
+	if (!bHasHospitalRoofPost || bMissionCarried || bBehaviorMoveSuspended || BehaviorCarrier.IsValid())
+	{
+		return false;
+	}
+
+	FVector Contained = FVector::ZeroVector;
+	const ERoofPostContainment Result = ClampToHospitalRoofPost(
+		GetActorLocation(),
+		HospitalRoofPostWorldLocation,
+		HospitalRoofPostHalfExtentCm,
+		CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f,
+		CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f,
+		HospitalRoofPostFallToleranceCm,
+		Contained);
+
+	if (Result == ERoofPostContainment::Abandoned)
+	{
+		bHasHospitalRoofPost = false;
+		return false;
+	}
+	if (Result == ERoofPostContainment::AtPost)
+	{
+		return false;
+	}
+
+	VerticalVelocityCmPerSec = 0.0f;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	SetActorLocation(Contained, false);
+	return true;
 }
 
 bool ASimCopterGroundAgent::TryGetWalkSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const
@@ -1627,6 +1771,11 @@ bool ASimCopterGroundAgent::BoardCarrier(
 	BehaviorCarrier = NewCarrier;
 	bRidingHarness = bAsHarnessRider;
 
+	// Climbing aboard something is a hospital worker leaving its post under its own program (BHAV
+	// 269 boards the vehicle it came from). The carrier owns the transform from here, and holding
+	// the roof confinement would fight it - or drag them back the moment they were set down.
+	bHasHospitalRoofPost = false;
+
 	// A legacy on-foot carry paused the VM. Preserve its live context and let it resume once the
 	// helicopter owns the transform, so medevac health/delivery behavior is not discarded.
 	bMissionCarried = false;
@@ -1651,9 +1800,11 @@ bool ASimCopterGroundAgent::BoardCarrier(
 		AttachToComponent(CarrierRoot, FAttachmentTransformRules::KeepWorldTransform);
 		if (Cast<ASimCopterGroundAgent>(NewCarrier) != nullptr)
 		{
-			// Keep a patient visibly slung across the paramedic instead of occupying the same
-			// transform and disappearing inside their body.
-			SetActorRelativeLocation(FVector(40.0f, 0.0f, -6.0f));
+			// Keep a patient visibly slung across the carrier instead of occupying the same
+			// transform and disappearing inside their body. Held against the chest: far enough
+			// out not to intersect, close enough to read as carried rather than floating along
+			// in front of them.
+			SetActorRelativeLocation(CarriedPersonRelativeOffsetCm);
 			SetActorRelativeRotation(FRotator(0.0f, 90.0f, 88.0f));
 			SetForcedPedestrianFigureClip(TEXT("Dead"));
 		}
@@ -1739,7 +1890,11 @@ bool ASimCopterGroundAgent::AlightFromCarrier()
 		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
 	BehaviorContext.Attributes[EBhavAttr::Visible] = 1;
-	SnapToGroundImmediate();
+	// Deliberately NOT SnapToGroundImmediate: somebody let go of this person, so they fall.
+	// bSnapToGround (set above) hands them to UpdateGroundSnap, which accelerates them down onto
+	// whatever is beneath and only places them once they land. Teleporting them to the ground here
+	// is what made a patient lifted out of the cabin appear on the deck with no drop at all.
+	VerticalVelocityCmPerSec = 0.0f;
 	return true;
 }
 
@@ -1788,7 +1943,39 @@ bool ASimCopterGroundAgent::DropSelectedPerson(FSimCopterPersonContext& Context)
 	{
 		return false;
 	}
-	return Person->AlightFromCarrier();
+
+	// BHAV 263 rec[3] is the moment an emergency worker takes a casualty out of the player's cabin.
+	// The shipped graph then leaves the delivery to the patient's own BHAV 282, which posts it only
+	// on XBLD 209 - so a medic who is not stood on the hospital when it happens completes the
+	// interaction, revives the patient, and never credits the mission. That soft-locks the medevac:
+	// the seat is empty, so nothing can hand the patient over a second time.
+	//
+	// Handing a casualty to a paramedic IS the delivery, wherever the two of them are standing.
+	// NotifyMissionPersonDelivered is the idempotent service, so the ordinary hospital route still
+	// runs its full animation and BHAV 282's later request is simply refused as already reported.
+	const bool bIsEmergencyWorker = int32(Context.Attributes[EBhavAttr::State]) == 5;
+	const bool bTakenFromPlayer =
+		Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier()) != nullptr &&
+		Person->MissionEventId != INDEX_NONE &&
+		!Person->HasMissionResolutionReported();
+
+	if (!Person->AlightFromCarrier())
+	{
+		return false;
+	}
+
+	if (bIsEmergencyWorker && bTakenFromPlayer)
+	{
+		if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			// The service resolves the passenger kind from the record itself and returns 0 for a
+			// record that does not carry one, so this cannot invent a delivery the mission never
+			// asked for.
+			Missions->NotifyMissionPersonDelivered(Person);
+		}
+	}
+	return true;
 }
 
 bool ASimCopterGroundAgent::SelectCarriedPerson(FSimCopterPersonContext& Context, const bool bAlsoDropThem)
@@ -2580,6 +2767,9 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	UpdateDescendingHelicopterAvoidance();
 	UpdateOriginalBehavior(DeltaSeconds);
 	UpdateMovement(DeltaSeconds);
+	// After every mover and before the ground snap: a worker pushed past the edge of its roof must
+	// be back over it before the snap reads a surface, or the snap is what drops them to the street.
+	ContainToHospitalRoofPost();
 	if (bSnapToGround)
 	{
 		UpdateGroundSnap(DeltaSeconds);
@@ -3428,7 +3618,9 @@ void ASimCopterGroundAgent::SetDroppedInjuredOnGround(const FVector& WorldLocati
 	bSnapToGround = true;
 	// Leave them lying injured on the ground, ready to be picked up again.
 	SetMissionInjuredPose();
-	SnapToGroundImmediate();
+	// Dropped, not placed: UpdateGroundSnap accelerates them down from wherever they were let go
+	// of. Snapping here removed the drop entirely, however high the carrier was holding them.
+	VerticalVelocityCmPerSec = 0.0f;
 }
 
 void ASimCopterGroundAgent::BeginPassengerFall(int32 SourceEventId, float InjuryDistanceCm)

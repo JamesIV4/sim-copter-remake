@@ -130,6 +130,79 @@ Covered by `SimCopter.City.IslandHospitalFootprints` and
 `SimCopter.Behavior.VM.HospitalMedicRetire`. Evidence:
 `Docs/scratchpad/agent-sessions/2026-07-31-hospital-paramedics/`.
 
+## Taking the patient is the delivery, and the post is pinned to its roof (2026-07-31)
+
+Restarting the program (above) let the roof medic walk again, and it walked off the building. Two
+consequences, both reported from play.
+
+**The delivery must not depend on where the handoff happens.** BHAV 263 rec[3] (op 47) is where a
+worker takes the casualty out of the player's cabin, but the shipped graph leaves the *credit* to the
+patient's own BHAV 282, which posts it only on XBLD 209. A medic standing anywhere else therefore
+completed the whole interaction - took the patient, revived her - and never credited the mission,
+with the seat now empty so nothing could hand her over again. **Soft-locked.**
+`DropSelectedPerson` now calls `NotifyMissionPersonDelivered` whenever a **state-5** worker takes a
+mission passenger off the player's helicopter, wherever the two are standing. That service is
+idempotent and resolves the passenger kind from the record itself, so the ordinary hospital route
+still plays out in full and BHAV 282's later request is simply refused as already reported, while a
+record that carries no such passenger returns 0 and nothing is invented.
+
+**The drop gate had a hole the original does not have.** `FUN_004c9470` reads
+
+```c
+if (maxClimb < rise)                { if (person+0x190 == 0) result = 1; else keep the OLD Z; }
+else if (rise < -0x8000 - maxClimb) { result = 2; }
+```
+
+Only the **climb** arm has BHAV 308's "move through walls" escape (+0x190, decimal 400 in the
+decompile), and even that does not lift the walker onto what they walked into - it restores their
+previous Z. The **drop** arm is unconditional: nothing in the original has ever let a person step
+down off a ledge. The remake wrapped *both* arms in the flag, so a medic crossing the roof to the
+helicopter with +0x190 left set - by BHAV 269 rec[10], or by 308 after four failed moves - walked
+straight off the edge. Same pass: a walk-surface probe that fails now blocks the step instead of
+allowing it, because `FUN_004c82c0` always answers (max of object tops and terrain) and "no surface"
+is a remake-only state.
+
+Still divergent and deliberate: the original also lets +0x190 push through **people and objects**
+(both collision arms only return 4/5 when it is clear); the remake's bump check is not gated by it.
+
+**Containment beats chasing movers.** `MoveStep` gates climbs and drops, but `MoveByTrafficSeparation`
+and `AddTrafficVelocityImpulse` displace agents with no walked-surface check at all, and once the
+body is past the edge `UpdateGroundSnap`'s gravity does the rest. So the fix is on the transform, not
+on any one mover: `SetHospitalRoofPost` gives the posted worker its building's square and roof Z, and
+`ContainToHospitalRoofPost` (called each tick **before** the ground snap - after it is too late) keeps
+them over it. `MoveStep` also refuses a step target outside the post with result 3, so they turn at
+the edge rather than leaning on the clamp.
+
+Two traps in that containment:
+
+- **Recovery has to restore Z, not just XY.** The pedestrian ground probe starts at the walker's own
+  feet, so a medic put back over the building from street level would find the ground *inside* it and
+  stand in the lobby. The posted roof Z is restored whenever the feet are more than
+  `HospitalRoofPostFallToleranceCm` (100 cm, well under the ~150 cm shortest storey) below it.
+- **The roof probe is cached per tile** (`HospitalRoofPostByTile`) and the post is dropped in
+  `BoardCarrier`. Re-running a downward trace while the player is parked on the helipad would answer
+  the *helicopter's hull* and walk the post up onto the aircraft; and a medic flown away and set down
+  elsewhere must not be teleported back, which is also what the "abandoned past twice the half
+  extent" arm of `ClampToHospitalRoofPost` covers.
+
+The clamp geometry is the pure static `ASimCopterGroundAgent::ClampToHospitalRoofPost`, tested by
+`SimCopter.Dispatch.HospitalRoofPost`.
+
+## Letting go of a person is a drop, not a placement (2026-07-31)
+
+`UpdateGroundSnap` already gives an airborne pedestrian gravity - it only places one that is at or
+below the surface. What removed every fall was `SnapToGroundImmediate` being called the instant a
+carry ended: `AlightFromCarrier`, `SetDroppedInjuredOnGround`, and the mission recovery drop all
+teleported the person onto the ground, so a patient lifted out of the cabin appeared standing on the
+deck with no drop at all. Those three now leave `bSnapToGround` on and let gravity run. The spawn-time
+snaps in the traffic actor stay - those exist so an agent's first frame is grounded rather than
+hovering, which is not a drop.
+
+Carried-person offsets are tunables now, and much tighter: `CarriedPersonRelativeOffsetCm` on the
+agent (person carrying person, was 40 cm out in front) and `CarriedMissionPersonOffsetCm` on the
+on-foot pawn (the player carrying a casualty, was 48 cm). Both hold the body against the chest
+instead of floating it along ahead of the carrier.
+
 ## Evidence and verification
 
 - Fresh executable output:

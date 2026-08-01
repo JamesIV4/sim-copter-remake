@@ -121,6 +121,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
 	float MissionDropRepickupCooldownSeconds = 1.5f;
 
+	// Where a casualty the player is carrying rides, relative to the avatar's capsule. X is out in
+	// front of the chest: enough not to intersect the body, not so much that they float along ahead
+	// of it. The figure is laid across the carrier by the rotation applied alongside this.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
+	FVector CarriedMissionPersonOffsetCm = FVector(16.0f, 0.0f, -7.0f);
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "1.0"))
 	float LookYawSpeedDegPerSec = 155.0f;
 

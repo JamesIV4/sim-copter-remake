@@ -248,6 +248,12 @@ public:
 		double NowSeconds,
 		float DelaySeconds);
 
+	// Centre and roof-surface height of a D1 hospital, with half its footprint width - the square a
+	// posted medic is confined to. Resolved once per roof and cached: the probe is a downward trace,
+	// so re-running it while the player is parked up there would answer the helicopter's hull and
+	// walk the post up onto the aircraft.
+	bool TryGetHospitalRoofPost(int32 TileX, int32 TileY, FVector& OutRoofCenter, float& OutHalfExtentCm);
+
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
 	// criminal-car pool. Backs behaviour opcode 15's object classes 10-13.
@@ -628,6 +634,8 @@ private:
 	// Drives EnsureHospitalParamedicAtTile's respawn delay. An absent entry means the roof has
 	// never been staffed, so the first medic posts immediately.
 	TMap<FIntPoint, double> HospitalParamedicLastSeenSeconds;
+	// Per D1 hospital tile: the roof point TryGetHospitalRoofPost resolved, cached for the session.
+	TMap<FIntPoint, FVector> HospitalRoofPostByTile;
 	TArray<uint8> PeopleTileClasses;
 	TArray<uint8> PeopleTerrainTypes;
 	TArray<uint8> WaterTileFlags;
