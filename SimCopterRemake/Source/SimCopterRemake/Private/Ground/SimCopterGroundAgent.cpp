@@ -280,6 +280,11 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 			uint16(FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(SpawnClass, BehaviorContext.Lfsr));
 	}
 	BehaviorContext.ResetToState(InitialPersonState);
+	if (InitialBehaviorAgitation != 0)
+	{
+		BehaviorContext.Attributes[EBhavAttr::Speed] =
+			uint16(FMath::Clamp(InitialBehaviorAgitation, 0, 0xffff));
+	}
 	// person+0x188/+0x18a: where this person started, which opcode 87 compares against.
 	{
 		int32 HomeX = INDEX_NONE;
@@ -2464,18 +2469,20 @@ bool ASimCopterGroundAgent::MeasureRiotCrowd(
 		return false;
 	}
 
+	// A crowd that is present but calm still measures - it just has no bearing. FUN_004c9f10
+	// writes 0xffff into the octant and zero into the mean in that case and returns anyway, so
+	// this only reports a facing when there is one. Failing here instead is what used to make
+	// every riot disperse itself on the first tick.
 	FVector Centroid = FVector::ZeroVector;
-	if (!TrafficSystem->MeasureBehaviorCrowd(*this, RadiusTiles, OutCount, OutAverageAgitation, Centroid))
+	if (TrafficSystem->MeasureBehaviorCrowd(*this, RadiusTiles, OutCount, OutAverageAgitation, Centroid))
 	{
-		return false;
-	}
-
-	// The bearing the original reports is already the stored octant (it applies the same -2 turn as
-	// opcode 18), which is why BHAV 852 can assign it straight to the facing attribute.
-	int32 Octant = 0;
-	if (TryGetBehaviorFacingOctantToward(Centroid, Octant))
-	{
-		OutFacingOctant = Octant;
+		// The bearing the original reports is already the stored octant (it applies the same -2
+		// turn as opcode 18), which is why BHAV 852 can assign it straight to the facing attribute.
+		int32 Octant = 0;
+		if (TryGetBehaviorFacingOctantToward(Centroid, Octant))
+		{
+			OutFacingOctant = Octant;
+		}
 	}
 	return true;
 }

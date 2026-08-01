@@ -54,5 +54,22 @@ Canonical notes live in the repo: `Docs/scratchpad/ghidra/heli_tools_models_deco
   F6-F10 message a synchronous select-and-broadcast command, so a cockpit popup
   choice must invoke the action immediately rather than pulse a frame latch.
 
+- **Every tool fires from one muzzle, and the pivot-relative version is a trap.** `FUN_00484d20`
+  launches all four emitters from the body node lifted 3.0 units. In the remake `ModelPivot` is the
+  *capsule* centre with the fuselage pushed down beneath it, so that point lands up by the rotor
+  mast - which is where tear gas canisters looked like they were coming from. One shared
+  `ResolveToolMuzzle` now serves cannon/gas/missile/gun: CANNON's barrel tip, else the fuselage
+  nose off the body mesh's bounds.
+- **BRACKET (0x16c, `heli[0x31]`) is the harness's mount** and was unported. `FUN_00483c20` builds
+  it for every helicopter and nothing in `.text` writes `heli + 0xc4` again, so like CANNON it is
+  authored in the fuselage frame and rides the body - a triangular frame on the **right flank**,
+  the side a winched Sim comes aboard. The rope hangs off it.
+- **Apache armament ported 2026-08-01** (`USimCopterApachePoolComponent`). Missile: 10 slots, GEO
+  0x0ae, `heli[0x4e] + 450`, cooldown shared with tear gas, mode 3, impact column scale 2 + sound
+  7. Gun: 70 slots, a 3-point 0x17 card cycling palette 0x10..0x1f, `+600`, NO cooldown, mode 7,
+  scale-1 column + sound 0x10 (or 8 into a body). **Both fly at constant speed with no drag and no
+  gravity** - only the tear gas and debris pools arc - and both despawn on first contact (the
+  0x4006 set). The missile is the only projectile that starts fires.
+
 Related: [[simcopter-heli-flight-model]], [[simcopter-people-logic-next]],
-[[simcopter-water-gameplay]], [[simcopter-fire-water-fx]].
+[[simcopter-water-gameplay]], [[simcopter-fire-water-fx]], [[simcopter-helicopter-collision]].

@@ -32,6 +32,7 @@ class UWidgetComponent;
 class USimCopterFlashingLightsComponent;
 class USimCopterParticleFXComponent;
 class USimCopterTearGasPoolComponent;
+class USimCopterApachePoolComponent;
 class ASimCity2000CityActor;
 class ASimCopterMissionSystemActor;
 class ASimCopterOnFootPawn;
@@ -730,6 +731,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<UProceduralMeshComponent> HeliCannonMeshComponent;
 
+	// BRACKET (heli[0x31]): the rescue harness's triangular mount on the right flank, which is
+	// the side a winched Sim is brought aboard.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<UProceduralMeshComponent> HeliBracketMeshComponent;
+
 	// The same geometry again as a cockpit view model. Its position is camera-parented while
 	// its absolute rotation follows the stabilized aircraft frame without camera look pitch.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
@@ -763,6 +769,10 @@ protected:
 	// are world-space, so a canister keeps flying and gassing after the helicopter has left.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
 	TObjectPtr<USimCopterTearGasPoolComponent> TearGasPool;
+
+	// DAT_005d4900 (ten missiles) and DAT_005d4f30 (seventy tracers), the Apache's armament.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SimCopter|Components")
+	TObjectPtr<USimCopterApachePoolComponent> ApachePool;
 
 	// The fuselage's own face-type-25 blink markers (FUN_00496c00). Every flyable airframe carries
 	// four: one white, two red and one green. Rides the body mesh, whose local frame they share.
@@ -1229,6 +1239,9 @@ protected:
 	bool bHasCannonBarrelTip = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	bool bUsingOriginalBracketMesh = false;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelLoadError;
 
 	// Runtime type index; the registry entry is the source of truth for names, object ids,
@@ -1589,6 +1602,8 @@ private:
 	FVector GetRopeAnchorWorldLocation() const;
 	void EmitBucketWaterFrame(bool bCollisionSpill);
 	void EmitWaterCannonFrame();
+	// The Apache's gun is held, not pressed: one tracer per frame while the button is down.
+	void EmitApacheMachineGunFrame();
 	// Rotor-wash "wind kickback" (port of FUN_004881b0): when the helicopter is low over a
 	// surface and above the minimum altitude, scatter effect cards under the rotor - spray over
 	// water, dust over land. Also emits the bucket douse steam accumulator.
@@ -1796,6 +1811,14 @@ private:
 	// FUN_00484d20's heli[0x57] == 3 arm: build the muzzle point/direction/speed and hand them
 	// to the pool. False when the pool is full, which refuses the shot before a round is spent.
 	bool LaunchTearGasCanister();
+
+	// Shared launch point for the forward-firing tools. True when it came off the cannon barrel
+	// or the fuselage nose, false when it fell back to the original's pivot-relative point.
+	bool ResolveToolMuzzle(FVector& OutWorld, FVector& OutDirection) const;
+
+	// The fuselage nose in ModelPivot's frame, taken off the built body mesh.
+	FVector NoseMuzzleLocalCm = FVector::ZeroVector;
+	bool bHasNoseMuzzle = false;
 
 	void RecomputeActiveToolFallback();
 	int32 GetModelCapabilityMask() const;

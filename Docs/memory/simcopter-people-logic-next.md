@@ -348,3 +348,13 @@ NOT ported" list is finally empty, and the eight left over (42/43/45/49/52/64/65
 - Still open: op 15 **class 15** (the corpse BHAV 273 gawks at) needs a capstone pass over the
   jump-table body at `0x004caee5`, and cell flag 0x20's writer is not in the Ghidra exports, so
   "0x20 = alight" rests on the program name plus the spawn gate.
+- **Opcode 24 (the riot crowd measure) cannot fail on a calm crowd** (2026-08-01). `FUN_004c9f10`
+  is a **`void`** function: with nobody in range, or a total agitation of zero, it writes
+  `bearing = 0xffff` and `mean = 0` but still reports the head count, and `FUN_004cb480` returns 1
+  regardless. Only "no live 0x1000 record" fails. Porting the calm case as a failure deadlocked
+  every riot - BHAV 852 returned before its `speed += 1`, so agitation never left 0, and BHAV 311
+  `Rioter maybe leave riot` (which retires anyone under 3) dispersed the whole crowd on its first
+  tick, completing the mission the instant it was created. Separately, **a rioter cannot start at
+  agitation 0** and nothing in the executable seeds it - person+0x150 is never written by a literal
+  offset anywhere in `.text`, only through the VM's attribute table - so the remake bootstraps it
+  to 3 (`SimCopterMissions::RioterSpawnAgitation`). That seed is an open item.

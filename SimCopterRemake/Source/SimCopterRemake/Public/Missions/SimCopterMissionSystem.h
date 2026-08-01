@@ -66,6 +66,21 @@ enum EType : int32
 	TYPE_Ufo            = 0x100000, // the UFO event ([General Miss] UFO Money/Points)
 };
 
+// Agitation a freshly spawned rioter starts with (person + 0x150).
+//
+// BHAV 850 'Riot!' calls 852 'Refigure riot val and turn to it' and then 311 'Rioter maybe leave
+// riot' on every loop, and 311 retires anyone under 3 - so a rioter that starts at zero is
+// dispersed on its first behaviour tick and the whole mission completes the instant it is
+// created. 852 can only servo agitation one step per pass toward `count * mean / 15`, which is
+// also zero while the crowd is calm, so nothing bootstraps it.
+//
+// Where the original gets that first push is NOT pinned: it is not in FUN_004a7a10's riot branch,
+// not in FUN_004c3eb0, not in FUN_004c4e60, and person + 0x150 is never written by a literal
+// offset anywhere in .text - the field is only reachable through the behaviour VM's attribute
+// table. This is therefore a remake-side bootstrap, set to the threshold 311 tests so a crowd of
+// ~15 sustains a riot value of 3 and the servo holds rather than fights it.
+static constexpr int32 RioterSpawnAgitation = 3;
+
 // Mission event codes accepted by PostEvent (FUN_004a89c0 switch cases).
 enum EEvent : int32
 {

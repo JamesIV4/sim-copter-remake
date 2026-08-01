@@ -43,6 +43,7 @@
 #include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterInteraction.h"
+#include "Ground/SimCopterApachePool.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Ground/SimCopterTearGasPool.h"
 #include "EngineUtils.h"
@@ -445,6 +446,16 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	HeliCannonMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HeliCannon"));
 	HeliCannonMeshComponent->SetupAttachment(HeliBodyMeshComponent);
 	HeliCannonMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// BRACKET (0x16c): the rescue harness's mount on the right flank. FUN_00483c20 builds it for
+	// every helicopter; the remake only shows it when the harness is actually aboard.
+	HeliBracketMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("HeliBracketMesh"));
+	HeliBracketMeshComponent->SetupAttachment(HeliBodyMeshComponent);
+	HeliBracketMeshComponent->SetMobility(EComponentMobility::Movable);
+	HeliBracketMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HeliBracketMeshComponent->SetCanEverAffectNavigation(false);
+	HeliBracketMeshComponent->SetCastShadow(true);
+	HeliBracketMeshComponent->SetVisibility(false);
 	HeliCannonMeshComponent->SetCanEverAffectNavigation(false);
 	HeliCannonMeshComponent->SetVisibility(false);
 
@@ -513,6 +524,9 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 
 	TearGasPool = CreateDefaultSubobject<USimCopterTearGasPoolComponent>(TEXT("TearGasPool"));
 	TearGasPool->SetupAttachment(CollisionComponent);
+
+	ApachePool = CreateDefaultSubobject<USimCopterApachePoolComponent>(TEXT("ApachePool"));
+	ApachePool->SetupAttachment(CollisionComponent);
 
 	SearchLightComponent = CreateDefaultSubobject<USpotLightComponent>(TEXT("SearchLight"));
 	SearchLightComponent->SetupAttachment(ModelPivot);
@@ -729,6 +743,11 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		// same renderer the bucket and the rotor wash already use.
 		TearGasPool->SetOriginalGameRoot(ResolveOriginalGameRoot());
 		TearGasPool->SetEffectComponent(WaterFXComponent);
+	}
+	if (ApachePool != nullptr)
+	{
+		ApachePool->SetOriginalGameRoot(ResolveOriginalGameRoot());
+		ApachePool->SetEffectComponent(WaterFXComponent);
 	}
 
 	// Keep the cursor free so the player can use on-screen buttons; mouse-look is only
@@ -1248,6 +1267,7 @@ void ASimCopterHelicopterPawn::PrepareHelicopterModel(
 	OutPrepared.bHasBucket = BuildById(SimCopterHelicopterObjects::Bucket, OutPrepared.BucketSection);
 	OutPrepared.bHasHarness = BuildById(SimCopterHelicopterObjects::Harness, OutPrepared.HarnessSection);
 	OutPrepared.bHasCannon = BuildById(SimCopterHelicopterObjects::Cannon, OutPrepared.CannonSection);
+	OutPrepared.bHasBracket = BuildById(SimCopterHelicopterObjects::Bracket, OutPrepared.BracketSection);
 }
 
 // Plan section 7 "Validate": refuse the switch outright rather than half-applying it.
@@ -1393,6 +1413,21 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 		HeliBodyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, VerticalOffset));
 	}
 
+	// The nose, in ModelPivot's frame. FUN_00484d20 launches every emitter from the body node
+	// lifted 3.0 units, but the remake's ModelPivot is the *capsule* centre and the fuselage is
+	// pushed down from it so the skids meet the ground - so "pivot + 3 units up" comes out level
+	// with the rotor mast, which is where the tear gas canister appeared to be thrown from. Take
+	// the muzzle off the mesh instead: forward-most X, the fuselage's own mid-height, on centre.
+	bHasNoseMuzzle = Prepared.BodySection.LocalBounds.IsValid != 0;
+	if (bHasNoseMuzzle)
+	{
+		const FBox& Body = Prepared.BodySection.LocalBounds;
+		NoseMuzzleLocalCm = FVector(
+			Body.Max.X,
+			0.0f,
+			VerticalOffset + Body.GetCenter().Z);
+	}
+
 	ApplyRotor(
 		HeliMainRotorMeshComponent,
 		Prepared.MainRotorOpaqueSection,
@@ -1424,6 +1459,15 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 	// Rides the body at zero offset (see the component's construction comment); UpdateVisuals
 	// decides each frame whether the player actually has the cannon fitted, and which of the
 	// two representations - world or cockpit view model - the current view wants.
+	// BRACKET rides the body at zero offset for the same reason the cannon does: the GEO is
+	// authored in the fuselage's own frame, out on the right flank where a winched Sim comes
+	// aboard, and nothing in the executable ever repositions heli[0x31] after construction.
+	bUsingOriginalBracketMesh = ApplySection(HeliBracketMeshComponent, Prepared.BracketSection);
+	if (HeliBracketMeshComponent != nullptr)
+	{
+		HeliBracketMeshComponent->SetRelativeLocation(FVector::ZeroVector);
+	}
+
 	bUsingOriginalCannonMesh = ApplySection(HeliCannonMeshComponent, Prepared.CannonSection);
 	bHasCannonBarrelTip = ResolveCannonBarrelTipLocal(
 		Prepared.CannonSection,
@@ -4253,10 +4297,45 @@ int32 ASimCopterHelicopterPawn::DeliverInteractionToTiles(
 	return Affected;
 }
 
+// Where every forward-firing tool leaves the airframe. FUN_00484d20 uses one point for all of
+// them - the body node lifted 3.0 units - and the remake keeps that as the last resort, but
+// prefers the CANNON barrel tip when the cannon is fitted and the fuselage nose otherwise. The
+// pivot-plus-3 fallback is only right in the original's frame: here ModelPivot is the capsule
+// centre with the fuselage pushed down beneath it, so it sits up by the rotor mast.
+bool ASimCopterHelicopterPawn::ResolveToolMuzzle(FVector& OutWorld, FVector& OutDirection) const
+{
+	const bool bUseOriginalBarrel =
+		bUsingOriginalCannonMesh &&
+		bHasCannonBarrelTip &&
+		HeliCannonMeshComponent != nullptr;
+
+	OutDirection = bUseOriginalBarrel
+		? HeliCannonMeshComponent->GetForwardVector().GetSafeNormal()
+		: (ModelPivot != nullptr
+			? ModelPivot->GetForwardVector().GetSafeNormal()
+			: GetActorForwardVector());
+
+	if (bUseOriginalBarrel)
+	{
+		OutWorld = HeliCannonMeshComponent->GetComponentTransform().TransformPosition(
+			CannonBarrelTipLocalCm);
+		return true;
+	}
+	if (bHasNoseMuzzle && ModelPivot != nullptr)
+	{
+		OutWorld = ModelPivot->GetComponentTransform().TransformPosition(NoseMuzzleLocalCm);
+		return true;
+	}
+
+	OutWorld = (ModelPivot != nullptr ? ModelPivot->GetComponentLocation() : GetActorLocation()) +
+		GetActorUpVector() * (3.0f * OriginalUnitToCm);
+	return false;
+}
+
 // SCHOOK: TearGasLaunch 0x00484d20
-// The consumer of heli[0x57]: the muzzle is the body node lifted 3.0 units, the direction is the
-// airframe's own forward axis - NOT the spotlight's aim, which is why the launcher is fired by
-// flying at what you want gassed - and the speed is heli[0x4e] plus a fixed 50.0 units/s.
+// The consumer of heli[0x57]: the direction is the airframe's own forward axis - NOT the
+// spotlight's aim, which is why the launcher is fired by flying at what you want gassed - and the
+// speed is heli[0x4e] plus a fixed 50.0 units/s.
 bool ASimCopterHelicopterPawn::LaunchTearGasCanister()
 {
 	if (TearGasPool == nullptr)
@@ -4264,13 +4343,9 @@ bool ASimCopterHelicopterPawn::LaunchTearGasCanister()
 		return false;
 	}
 
-	const FTransform Frame = ModelPivot != nullptr
-		? ModelPivot->GetComponentTransform()
-		: GetActorTransform();
-	const FVector Direction = Frame.TransformVectorNoScale(FVector::ForwardVector).GetSafeNormal();
-	const FVector Muzzle =
-		Frame.GetLocation() +
-		FVector::UpVector * (SimCopterFixed::ToFloat(SimCopterTearGas::LaunchHeight1616) * OriginalUnitToCm);
+	FVector Muzzle = FVector::ZeroVector;
+	FVector Direction = FVector::ForwardVector;
+	ResolveToolMuzzle(Muzzle, Direction);
 
 	// The original passes -1 as the mission event, so a canister the player throws is credited to
 	// whichever mission the person it gasses already belongs to.
@@ -4400,12 +4475,24 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 		return true;
 
 	case ESimCopterHelicopterTool::ApacheMissile:
+	{
 		if (ToolCooldownSeconds > 0.0f)
 		{
 			LastToolStatus = FString::Printf(TEXT("Missile reloading (%.1fs)."), ToolCooldownSeconds);
 			return false;
 		}
+		// FUN_0048e0b0 arms the shared cooldown before it looks for a slot, so a full rack still
+		// costs the second.
 		ToolCooldownSeconds = SimCopterToolTiming::ProjectileCooldownSeconds;
+		FVector Muzzle = FVector::ZeroVector;
+		FVector Direction = FVector::ForwardVector;
+		ResolveToolMuzzle(Muzzle, Direction);
+		if (ApachePool == nullptr ||
+			!ApachePool->LaunchMissile(Muzzle, Direction, FlightModel.ForwardSpeed))
+		{
+			LastToolStatus = TEXT("Missile rack full (ten already in the air).");
+			return false;
+		}
 		// FUN_0048e0b0 type 1: one MISSILE per launch, no already-playing guard.
 		if (Audio != nullptr)
 		{
@@ -4413,17 +4500,27 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 		}
 		LastToolStatus = TEXT("Missile away.");
 		return true;
+	}
 
 	case ESimCopterHelicopterTool::ApacheMachineGun:
+	{
 		// Held, no cooldown (FUN_0048e0b0 type 2 has no DAT_00504570 gate). MACHGUN1 is a LOOP
 		// there, started once and left running until the emitter stops - which is why the
 		// original guards it on IsPlaying and why StopHeldToolAudio has to stop it.
+		FVector Muzzle = FVector::ZeroVector;
+		FVector Direction = FVector::ForwardVector;
+		ResolveToolMuzzle(Muzzle, Direction);
+		if (ApachePool != nullptr)
+		{
+			ApachePool->LaunchBullet(Muzzle, Direction, FlightModel.ForwardSpeed);
+		}
 		if (Audio != nullptr && !Audio->IsPlaying(SimCopterSound::SND_MACHGUN1))
 		{
 			Audio->Play3D(SimCopterSound::SND_MACHGUN1, GetActorLocation(), SimCopterSoundFlags::Loop);
 		}
 		LastToolStatus = TEXT("Machine gun firing.");
 		return true;
+	}
 
 	default:
 		return false;
@@ -6029,6 +6126,7 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 		EmitBucketWaterFrame(bCollisionSpill);
 	}
 	EmitWaterCannonFrame();
+	EmitApacheMachineGunFrame();
 
 	BucketWaterFraction = HelicopterTuning.MaxLoadPounds > 0
 		? FMath::Clamp(
@@ -6044,6 +6142,21 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 
 FVector ASimCopterHelicopterPawn::GetRopeAnchorWorldLocation() const
 {
+	// With the harness fitted the rope hangs off BRACKET (heli[0x31]) rather than from a point
+	// under the belly: the frame is out on the right flank because that is the side a Sim is
+	// winched up into. Its own geometry gives the offset, so no mount figure has to be invented.
+	if (bUsingOriginalBracketMesh &&
+		HeliBracketMeshComponent != nullptr &&
+		HeliBracketMeshComponent->IsVisible())
+	{
+		const FBoxSphereBounds BracketBounds = HeliBracketMeshComponent->CalcLocalBounds();
+		const FVector BracketLocal(
+			BracketBounds.Origin.X,
+			BracketBounds.Origin.Y,
+			BracketBounds.Origin.Z - BracketBounds.BoxExtent.Z);
+		return HeliBracketMeshComponent->GetComponentTransform().TransformPosition(BracketLocal);
+	}
+
 	const FTransform AnchorTransform = ModelPivot != nullptr
 		? ModelPivot->GetComponentTransform()
 		: GetActorTransform();
@@ -6380,20 +6493,9 @@ void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
 	}
 
 	// SCHOOK: WaterCannonEmitter 0x00484d20
-	const bool bUseOriginalBarrel =
-		bUsingOriginalCannonMesh &&
-		bHasCannonBarrelTip &&
-		HeliCannonMeshComponent != nullptr;
-	const FVector Direction = bUseOriginalBarrel
-		? HeliCannonMeshComponent->GetForwardVector().GetSafeNormal()
-		: (ModelPivot != nullptr
-			? ModelPivot->GetForwardVector().GetSafeNormal()
-			: GetActorForwardVector());
-	const FVector SpawnWorld = bUseOriginalBarrel
-		? HeliCannonMeshComponent->GetComponentTransform().TransformPosition(
-			CannonBarrelTipLocalCm)
-		: (ModelPivot != nullptr ? ModelPivot->GetComponentLocation() : GetActorLocation()) +
-			GetActorUpVector() * (3.0f * OriginalUnitToCm);
+	FVector SpawnWorld = FVector::ZeroVector;
+	FVector Direction = FVector::ForwardVector;
+	ResolveToolMuzzle(SpawnWorld, Direction);
 	const float ForwardSpeedOriginal =
 		SimCopterFixed::ToFloat(FlightModel.ForwardSpeed);
 	const float EmissionSpeedCmPerSec =
@@ -6406,6 +6508,26 @@ void ASimCopterHelicopterPawn::EmitWaterCannonFrame()
 		ESimCopterEffectType::Spray,
 		SpawnWorld,
 		Direction * EmissionSpeedCmPerSec);
+}
+
+// SCHOOK: ApacheMachineGunEmitter 0x00485f50 action 0x10
+// The machine gun is level-triggered, not edge-triggered: FUN_00485f50 rewrites heli[0x57] = 2
+// every frame the button is down and FUN_0048e0b0 type 2 has no cooldown, so it lays down a
+// tracer per frame out of a seventy-slot pool.
+void ASimCopterHelicopterPawn::EmitApacheMachineGunFrame()
+{
+	if (ApachePool == nullptr ||
+		!bPrimaryToolUseHeld ||
+		GetActiveTool() != ESimCopterHelicopterTool::ApacheMachineGun ||
+		!IsToolAvailable(ESimCopterHelicopterTool::ApacheMachineGun))
+	{
+		return;
+	}
+
+	FVector Muzzle = FVector::ZeroVector;
+	FVector Direction = FVector::ForwardVector;
+	ResolveToolMuzzle(Muzzle, Direction);
+	ApachePool->LaunchBullet(Muzzle, Direction, FlightModel.ForwardSpeed);
 }
 
 // =================================================================================================
@@ -7086,6 +7208,20 @@ void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 			IsToolAvailable(ESimCopterHelicopterTool::WaterCannon);
 		HeliCannonMeshComponent->SetVisibility(bShowCannon);
 		HeliCannonMeshComponent->SetHiddenInGame(!bShowCannon);
+	}
+
+	// Same rule for the harness bracket: bolted on with the equipment, gone in the cockpit view
+	// where the fuselage itself is hidden. It is what the winched Sim is brought up alongside, so
+	// it belongs to the harness rather than to the rope being out.
+	if (HeliBracketMeshComponent != nullptr)
+	{
+		const bool bShowBracket =
+			bUsingOriginalMesh &&
+			bUsingOriginalBracketMesh &&
+			!CameraModeIsFirstPerson(CameraMode) &&
+			IsToolAvailable(ESimCopterHelicopterTool::RescueHarness);
+		HeliBracketMeshComponent->SetVisibility(bShowBracket);
+		HeliBracketMeshComponent->SetHiddenInGame(!bShowBracket);
 	}
 	if (HeliTailRotorMeshComponent != nullptr)
 	{

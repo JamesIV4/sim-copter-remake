@@ -426,6 +426,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0", ClampMax = "21"))
 	int32 InitialBehaviorClass = 0;
 
+	// Agitation (person + 0x150) to start with. Only the riot spawner sets it; see
+	// SimCopterMissions::RioterSpawnAgitation for why a rioter cannot start at zero.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
+	int32 InitialBehaviorAgitation = 0;
+
 	// Optional direct BHAV entry id for scripted building spawns (FUN_004c20b0 callers such as
 	// baseball batter/fielders and park ambient people).
 	int32 InitialBehaviorProgramId = INDEX_NONE;

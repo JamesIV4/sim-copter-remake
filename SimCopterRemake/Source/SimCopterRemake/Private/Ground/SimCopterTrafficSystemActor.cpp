@@ -1077,6 +1077,12 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	{
 		Person->SetInitialBehaviorClass(PersonState);
 	}
+	if (SpawnMode == 3)
+	{
+		// A rioter cannot start calm - BHAV 311 would retire it on its first tick and the mission
+		// would complete before the player ever saw it. See RioterSpawnAgitation.
+		Person->InitialBehaviorAgitation = SimCopterMissions::RioterSpawnAgitation;
+	}
 
 	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
 	Person->MissionEventId = EventId;
@@ -1662,16 +1668,24 @@ bool ASimCopterTrafficSystemActor::MeasureBehaviorCrowd(
 		PositionSum += Agent->GetActorLocation();
 	}
 
-	// FUN_004c9f10 reports "no bearing" when it found nobody or the whole crowd is calm, which is
-	// what makes BHAV 852's riot value collapse to zero on an ordinary street.
-	if (OutCount == 0 || AgitationSum == 0)
+	// FUN_004c9f10 is a void function - it cannot fail. When it finds nobody, or the whole crowd
+	// is calm, it writes bearing = 0xffff and mean = 0 but STILL reports the head count, and its
+	// caller FUN_004cb480 returns 1 regardless. Only "no live riot record" makes opcode 24 fail.
+	//
+	// Returning false here instead deadlocked every riot: rioters spawn with agitation 0, so the
+	// sum was 0, so the measurement "failed", so BHAV 852 returned before its `speed += 1` could
+	// bootstrap them - and BHAV 311's `speed < 3` then retired the whole crowd on their first
+	// tick. The mission completed the instant it was created.
+	if (OutCount > 0 && AgitationSum > 0)
 	{
-		return false;
+		OutAverageAgitation = AgitationSum / OutCount;
+		OutCentroidWorldLocation = PositionSum / float(OutCount);
+		return true;
 	}
 
-	OutAverageAgitation = AgitationSum / OutCount;
-	OutCentroidWorldLocation = PositionSum / float(OutCount);
-	return true;
+	// Counted, but with no bearing to report: the caller keeps the count and leaves the facing
+	// alone. OutCount is already correct and the mean stays zero.
+	return false;
 }
 
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonOverlapping(

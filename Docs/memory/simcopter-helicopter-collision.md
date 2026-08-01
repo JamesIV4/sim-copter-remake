@@ -58,6 +58,14 @@ Three follow-on traps, all found on screen after the first fix (2026-08-01):
   centre of the airframe, then two metres down, then the sub-particle ring falling under gravity
   from there. Pass `Hit.ImpactPoint` and `bSubmergeOrigin = false`.
 
+## Fire damage rate
+
+`ReferenceFrameSeconds` is a **feel** knob the debug panel dials in, and the pawn ships it at
+**1/60**. Pointing the fire burn at it made a fire cost three times what the executable charges.
+Damage is fidelity, not taste: the burn is now pinned to `OriginalFrameSeconds` (20 Hz). Check any
+other rule before you reach for `ReferenceFrameSeconds` - the climb decay and the EMA window
+belong there, hit points do not.
+
 ## Fire damage
 
 `FSimCopterFlightModel::StepTurbulence` has the whole decoded fire arm and always has - it was
