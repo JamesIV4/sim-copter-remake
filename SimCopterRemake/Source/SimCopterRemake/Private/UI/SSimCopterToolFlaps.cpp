@@ -32,6 +32,12 @@ const FLinearColor FlapReadout(1.0f, 0.86f, 0.42f, 1.0f);
 constexpr int32 ReadoutFontSize = 13;
 constexpr int32 LabelFontSize = 11;
 
+// The first three entries deliberately retain EService's order. Chase is an action on the
+// police pool, not a fourth service, so it lives one slot past EService::Count and resolves back
+// to Police when the player dispatches or clears it.
+constexpr int32 PoliceChaseDispatchEntry = static_cast<int32>(SimCopterDispatch::EService::Count);
+constexpr int32 DispatchEntryCount = PoliceChaseDispatchEntry + 1;
+
 // Screen pixels between stacked panels. Matches the inset the pawn gives the whole column, so
 // the gap above the first panel and the gaps between them read the same.
 constexpr float PanelGapPixels = 12.0f;
@@ -70,6 +76,11 @@ FSlateFontInfo FlapFont(const int32 Size, const bool bBold = true)
 
 const TCHAR* GetDispatchServiceLabel(const int32 ServiceIndex)
 {
+	if (ServiceIndex == PoliceChaseDispatchEntry)
+	{
+		return TEXT("POLICE (CHASE)");
+	}
+
 	switch (static_cast<SimCopterDispatch::EService>(ServiceIndex))
 	{
 	case SimCopterDispatch::EService::FireTruck: return TEXT("FIRE TRUCK");
@@ -78,6 +89,28 @@ const TCHAR* GetDispatchServiceLabel(const int32 ServiceIndex)
 	default: return TEXT("-");
 	}
 }
+
+bool ResolveDispatchEntry(
+	const int32 EntryIndex,
+	int32& OutServiceIndex,
+	bool& bOutChase)
+{
+	if (EntryIndex == PoliceChaseDispatchEntry)
+	{
+		OutServiceIndex = static_cast<int32>(SimCopterDispatch::EService::Police);
+		bOutChase = true;
+		return true;
+	}
+
+	if (EntryIndex < 0 || EntryIndex >= static_cast<int32>(SimCopterDispatch::EService::Count))
+	{
+		return false;
+	}
+
+	OutServiceIndex = EntryIndex;
+	bOutChase = false;
+	return true;
+}
 }
 
 void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
@@ -85,6 +118,9 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 	Pawn = InArgs._Pawn;
 	Art = InArgs._Art;
 	Scale = FMath::Max(0.5f, InArgs._Scale);
+	SelectedDispatchEntry = Pawn.IsValid()
+		? FMath::Clamp(Pawn->GetSelectedDispatchService(), 0, PoliceChaseDispatchEntry - 1)
+		: 0;
 
 	TSharedRef<SVerticalBox> Column = SNew(SVerticalBox);
 	MissionMarkerAvoidancePanels.Reset();
@@ -666,7 +702,7 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 	// selected the launcher and then fired nothing. Press and release have to straddle a tick.
 	//
 	// Both strips are right-aligned in the column, so the two buttons are placed by their
-	// distance from the RIGHT edge to line up with DISPATCH and CHASE above them.
+	// distance from the RIGHT edge to line up with DISPATCH and CLEAR above them.
 	AddAtPage(*Canvas, ApachePageWidth - MissileButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
 		MakeHeldArtButton(OctagonFile, OctagonNormal, OctagonPressed,
 			SimCopterFlapLayout::EAction::ApacheMissileFire,
@@ -729,22 +765,21 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatchServiceStep, 1),
 			NSLOCTEXT("SimCopterFlaps", "NextService", "Next service")));
 
-	// Dispatch and Dispatch (Chase), spaced so both labels clear each other and neither button
+	// Dispatch and Clear, spaced so both labels clear each other and neither button
 	// runs into the right edge's dash corner, which starts at DispatchPageWidth - 40.
 	AddAtPage(*Canvas, 126.0f, 4.0f, 17.0f, 24.0f,
 		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
-			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatch, false),
+			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatch),
 			NSLOCTEXT("SimCopterFlaps", "DispatchTip", "Dispatch the selected service to the spotlight")));
 	AddTextAtPage(*Canvas, 134.5f, 35.0f, 120.0f, 20.0f,
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Dispatch", "DISPATCH"), LabelFontSize));
 
-	// Chase is the original's F5, which only the police answer.
 	AddAtPage(*Canvas, 168.0f, 4.0f, 17.0f, 24.0f,
 		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
-			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatch, true),
-			NSLOCTEXT("SimCopterFlaps", "ChaseTip", "Dispatch a police chase (F5)")));
+			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatchClear),
+			NSLOCTEXT("SimCopterFlaps", "ClearTip", "Release the selected service at the spotlight")));
 	AddTextAtPage(*Canvas, 176.5f, 35.0f, 120.0f, 20.0f,
-		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Chase", "CHASE"), LabelFontSize));
+		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Clear", "CLEAR"), LabelFontSize));
 
 	return MakePanel(DispatchPageWidth, Canvas);
 }
@@ -824,23 +859,56 @@ FText SSimCopterToolFlaps::GetDispatchServiceText() const
 	{
 		return FText::GetEmpty();
 	}
-	return FText::FromString(GetDispatchServiceLabel(Helicopter->GetSelectedDispatchService()));
+	return FText::FromString(GetDispatchServiceLabel(SelectedDispatchEntry));
 }
 
 FReply SSimCopterToolFlaps::HandleDispatchServiceStep(const int32 Delta)
 {
 	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
 	{
-		Helicopter->CycleSelectedDispatchService(Delta);
+		SelectedDispatchEntry =
+			((SelectedDispatchEntry + Delta) % DispatchEntryCount + DispatchEntryCount) % DispatchEntryCount;
+
+		// Keep the pawn's real-service selection in sync for the controller wheel and debug panel.
+		// The chase pseudo-entry selects Police in those surfaces because they expose chase as a
+		// separate action rather than as a list entry.
+		int32 ServiceIndex = INDEX_NONE;
+		bool bChase = false;
+		if (ResolveDispatchEntry(SelectedDispatchEntry, ServiceIndex, bChase))
+		{
+			Helicopter->CycleSelectedDispatchService(
+				ServiceIndex - Helicopter->GetSelectedDispatchService());
+		}
 	}
 	return FReply::Handled();
 }
 
-FReply SSimCopterToolFlaps::HandleDispatch(const bool bChase)
+FReply SSimCopterToolFlaps::HandleDispatch()
 {
 	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
 	{
-		Helicopter->RequestDispatch(Helicopter->GetSelectedDispatchService(), bChase, /*bClear=*/false);
+		int32 ServiceIndex = INDEX_NONE;
+		bool bChase = false;
+		if (ResolveDispatchEntry(SelectedDispatchEntry, ServiceIndex, bChase))
+		{
+			Helicopter->RequestDispatch(ServiceIndex, bChase, /*bClear=*/false);
+		}
+	}
+	return FReply::Handled();
+}
+
+FReply SSimCopterToolFlaps::HandleDispatchClear()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		int32 ServiceIndex = INDEX_NONE;
+		bool bChase = false;
+		if (ResolveDispatchEntry(SelectedDispatchEntry, ServiceIndex, bChase))
+		{
+			// FUN_0049b3f0 clears by real service identity. POLICE and POLICE (CHASE) therefore
+			// both release the same police pool through the existing clear-dispatch path.
+			Helicopter->RequestDispatch(ServiceIndex, /*bChase=*/false, /*bClear=*/true);
+		}
 	}
 	return FReply::Handled();
 }

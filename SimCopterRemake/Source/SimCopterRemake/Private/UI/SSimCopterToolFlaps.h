@@ -19,7 +19,7 @@ struct FSlateBrush;
 //
 // One flap per tool aboard (SimCopterFlapLayout has the decode), plus a dispatch flap the
 // original does not have: the remake's emergency services are on F2-F5 with no on-screen
-// control, so they get a strip above the tools with the service selector and the two dispatch
+// control, so they get a strip above the tools with the service selector plus dispatch and clear
 // buttons.
 //
 // The artwork is 640x480-era pixel art, so it is placed at page coordinates multiplied by Scale
@@ -55,7 +55,7 @@ private:
 	// The Apache armament strip: two buttons and their labels, nothing else. Widened from 110 so
 	// its pair can sit directly under the dispatch strip's - both strips are right-aligned in the
 	// column, so what lines them up is the distance from the right edge, and the dispatch strip
-	// puts DISPATCH at 232 - 126 = 106 and CHASE at 232 - 168 = 64.
+	// puts DISPATCH at 232 - 126 = 106 and CLEAR at 232 - 168 = 64.
 	static constexpr float ApachePageWidth = 138.0f;
 	static constexpr float MissileButtonInsetFromRight = 106.0f;
 	static constexpr float GunButtonInsetFromRight = 64.0f;
@@ -74,6 +74,9 @@ private:
 
 	TSharedPtr<SMenuAnchor> MegaphoneMenu;
 	TArray<TSharedPtr<SWidget>> MissionMarkerAvoidancePanels;
+	// The selector has the three service identities plus a fourth POLICE (CHASE) action. Keeping
+	// that pseudo-entry here avoids turning chase into a fake service in the decoded dispatch core.
+	int32 SelectedDispatchEntry = 0;
 
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 
@@ -156,6 +159,7 @@ private:
 	FReply HandleMegaphoneMessageChosen(ESimCopterMegaphoneMessage Message);
 
 	FReply HandleDispatchServiceStep(int32 Delta);
-	FReply HandleDispatch(bool bChase);
+	FReply HandleDispatch();
+	FReply HandleDispatchClear();
 	FText GetDispatchServiceText() const;
 };
