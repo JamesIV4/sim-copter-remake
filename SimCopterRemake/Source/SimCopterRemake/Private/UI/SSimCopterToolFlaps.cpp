@@ -104,6 +104,18 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 			DispatchPanel
 		];
 
+	// The Apache's armament strip sits with the tool flaps. It collapses on every other airframe,
+	// so the column is unchanged for the eight civilian models.
+	TSharedRef<SWidget> ApachePanel = BuildApacheFlap();
+	MissionMarkerAvoidancePanels.Add(ApachePanel);
+	Column->AddSlot()
+		.AutoHeight()
+		.HAlign(HAlign_Right)
+		.Padding(PanelGap)
+		[
+			ApachePanel
+		];
+
 	for (const FFlap& Flap : GetFlaps())
 	{
 		TSharedRef<SWidget> ToolPanel = BuildToolFlap(Flap);
@@ -454,6 +466,8 @@ void SSimCopterToolFlaps::PressAction(const EAction Action)
 			(Action == EAction::CannonFire) ? ESimCopterHelicopterTool::WaterCannon :
 			(Action == EAction::MegaphoneBroadcast) ? ESimCopterHelicopterTool::Megaphone :
 			(Action == EAction::TearGasFire) ? ESimCopterHelicopterTool::TearGas :
+			(Action == EAction::ApacheMissileFire) ? ESimCopterHelicopterTool::ApacheMissile :
+			(Action == EAction::ApacheGunFire) ? ESimCopterHelicopterTool::ApacheMachineGun :
 			(Action == EAction::HarnessRaise || Action == EAction::HarnessLower)
 				? ESimCopterHelicopterTool::RescueHarness
 				: ESimCopterHelicopterTool::WaterBucket;
@@ -499,6 +513,11 @@ void SSimCopterToolFlaps::PressAction(const EAction Action)
 		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::TearGas);
 		Helicopter->StartPrimaryToolUse();
 		break;
+	case EAction::ApacheGunFire:
+		// Held: the emitter lays down a tracer every frame the button is down.
+		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::ApacheMachineGun);
+		Helicopter->StartPrimaryToolUse();
+		break;
 	default:
 		break;
 	}
@@ -529,6 +548,7 @@ void SSimCopterToolFlaps::ReleaseAction(const EAction Action)
 		Helicopter->SetWinchHeldInput(/*bHarness=*/true, 0);
 		break;
 	case EAction::TearGasFire:
+	case EAction::ApacheGunFire:
 		Helicopter->StopPrimaryToolUse();
 		break;
 	default:
@@ -592,31 +612,93 @@ FReply SSimCopterToolFlaps::HandleMegaphoneMessageChosen(const ESimCopterMegapho
 
 // --- dispatch strip ------------------------------------------------------------------------------
 
-TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
+// The remake's own strip background, for the two panels the original has no artwork for: a tool
+// flap's frame taken apart, with a slice of bare grid tiled out to whatever width is wanted.
+void SSimCopterToolFlaps::AddStripBackground(
+	SConstraintCanvas& Canvas,
+	const float PageWidthUnits,
+	TSharedPtr<FSlateBrush>& InOutFillBrush)
 {
-	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
-
-	// Background: the donor flap's left edge, its bare grid tiled across, then its right edge.
 	const float LeftWidth = static_cast<float>(DispatchFrameLeft.Width());
 	const float RightWidth = static_cast<float>(DispatchFrameRight.Width());
-	const float FillWidth = DispatchPageWidth - LeftWidth - RightWidth;
+	const float FillWidth = PageWidthUnits - LeftWidth - RightWidth;
 
-	AddAtPage(*Canvas, 0.0f, 0.0f, LeftWidth, static_cast<float>(PageHeight),
+	AddAtPage(Canvas, 0.0f, 0.0f, LeftWidth, static_cast<float>(PageHeight),
 		MakeImage(DispatchFrameFile, DispatchFrameLeft));
 
 	if (const FSlateBrush* Fill = GetBrush(DispatchFrameFile, DispatchFrameFill))
 	{
 		// Tiled rather than stretched: the grid is a six pixel repeat, and stretching it across
 		// the strip would smear it into bands.
-		DispatchFillBrush = MakeShared<FSlateBrush>(*Fill);
-		DispatchFillBrush->Tiling = ESlateBrushTileType::Horizontal;
-		DispatchFillBrush->ImageSize = FVector2D(DispatchFrameFill.Width() * Scale, PageHeight * Scale);
-		AddAtPage(*Canvas, LeftWidth, 0.0f, FillWidth, static_cast<float>(PageHeight),
-			SNew(SImage).Image(DispatchFillBrush.Get()));
+		InOutFillBrush = MakeShared<FSlateBrush>(*Fill);
+		InOutFillBrush->Tiling = ESlateBrushTileType::Horizontal;
+		InOutFillBrush->ImageSize = FVector2D(DispatchFrameFill.Width() * Scale, PageHeight * Scale);
+		AddAtPage(Canvas, LeftWidth, 0.0f, FillWidth, static_cast<float>(PageHeight),
+			SNew(SImage).Image(InOutFillBrush.Get()));
 	}
 
-	AddAtPage(*Canvas, DispatchPageWidth - RightWidth, 0.0f, RightWidth, static_cast<float>(PageHeight),
+	AddAtPage(Canvas, PageWidthUnits - RightWidth, 0.0f, RightWidth, static_cast<float>(PageHeight),
 		MakeImage(DispatchFrameFile, DispatchFrameRight));
+}
+
+// SCHOOK: none - the Apache's weapons are model capabilities, not equipment bits, so
+// FUN_004127d0 never builds a flap for them and the original ships no artwork. This strip is the
+// remake's, built from the same donor frame as the dispatch strip.
+TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
+{
+	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
+	AddStripBackground(*Canvas, ApachePageWidth, ApacheFillBrush);
+
+	// Two buttons, no readout: each one just fires its weapon. The ammunition is unlimited and
+	// the only limits - the shared 1 s missile cooldown and the pool sizes - are things the
+	// player feels rather than reads.
+	AddAtPage(*Canvas, 20.0f, 4.0f, 17.0f, 24.0f,
+		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
+			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleApacheMissile),
+			NSLOCTEXT("SimCopterFlaps", "MissileTip", "Fire a missile")));
+	AddTextAtPage(*Canvas, 28.5f, 35.0f, 120.0f, 20.0f,
+		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Missile", "MISSILE"), LabelFontSize));
+
+	// Held, like the water cannon's trigger.
+	AddAtPage(*Canvas, 72.0f, 4.0f, 17.0f, 24.0f,
+		MakeHeldArtButton(OctagonFile, OctagonNormal, OctagonPressed,
+			SimCopterFlapLayout::EAction::ApacheGunFire,
+			NSLOCTEXT("SimCopterFlaps", "GunTip", "Hold to fire the machine gun")));
+	AddTextAtPage(*Canvas, 80.5f, 35.0f, 120.0f, 20.0f,
+		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Gun", "GUN"), LabelFontSize));
+
+	return SNew(SBox)
+		.Visibility(TAttribute<EVisibility>::CreateSP(this, &SSimCopterToolFlaps::GetApacheFlapVisibility))
+		[
+			MakePanel(ApachePageWidth, Canvas)
+		];
+}
+
+EVisibility SSimCopterToolFlaps::GetApacheFlapVisibility() const
+{
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	// Both weapons come from the airframe, so one test covers the strip.
+	return (Helicopter != nullptr &&
+			Helicopter->IsToolAvailable(ESimCopterHelicopterTool::ApacheMachineGun))
+		? EVisibility::SelfHitTestInvisible
+		: EVisibility::Collapsed;
+}
+
+FReply SSimCopterToolFlaps::HandleApacheMissile()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::ApacheMissile);
+		Helicopter->StartPrimaryToolUse();
+		Helicopter->StopPrimaryToolUse();
+	}
+	return FReply::Handled();
+}
+
+TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
+{
+	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
+	AddStripBackground(*Canvas, DispatchPageWidth, DispatchFillBrush);
 
 	// The service selector: one arrow sprite, turned each way.
 	AddAtPage(*Canvas, 8.0f, 12.0f,
@@ -662,6 +744,40 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Chase", "CHASE"), LabelFontSize));
 
 	return MakePanel(DispatchPageWidth, Canvas);
+}
+
+// The held variant: the machine gun has to fire for as long as the button is down, so it goes
+// through the same press/release latch the flap controls use rather than OnClicked.
+TSharedRef<SWidget> SSimCopterToolFlaps::MakeHeldArtButton(
+	const TCHAR* FileName,
+	const FIntRect& NormalFrame,
+	const FIntRect& PressedFrame,
+	const SimCopterFlapLayout::EAction Action,
+	const FText& ToolTip)
+{
+	TSharedRef<SButton> Button = SNew(SButton)
+		.IsFocusable(false)
+		.ContentPadding(FMargin(0.0f))
+		.ToolTipText(ToolTip)
+		.OnPressed(FSimpleDelegate::CreateSP(this, &SSimCopterToolFlaps::PressAction, Action))
+		.OnReleased(FSimpleDelegate::CreateSP(this, &SSimCopterToolFlaps::ReleaseAction, Action));
+
+	const FSlateBrush* Normal = GetBrush(FileName, NormalFrame);
+	const FSlateBrush* Pressed = GetBrush(FileName, PressedFrame);
+	if (Normal != nullptr)
+	{
+		TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
+		Style->SetNormal(*Normal);
+		Style->SetHovered(*Normal);
+		Style->SetPressed(Pressed != nullptr ? *Pressed : *Normal);
+		Style->SetDisabled(*Normal);
+		Style->SetNormalPadding(FMargin(0.0f));
+		Style->SetPressedPadding(FMargin(0.0f));
+		ButtonStyles.Add(Style);
+		Button->SetButtonStyle(&Style.Get());
+	}
+
+	return Button;
 }
 
 TSharedRef<SWidget> SSimCopterToolFlaps::MakeArtButton(

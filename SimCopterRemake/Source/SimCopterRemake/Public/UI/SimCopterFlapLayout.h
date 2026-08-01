@@ -57,6 +57,11 @@ enum class EAction : uint8
 	HarnessLower,
 	// flap3
 	TearGasFire,
+	// The Apache strip, which the original does not have: its weapons are model capabilities
+	// rather than equipment bits, so FUN_004127d0 never builds a flap for them and there is no
+	// artwork. The remake gives them a strip of their own (see SSimCopterToolFlaps).
+	ApacheMissileFire,
+	ApacheGunFire,
 };
 
 // The three button strips. Frames are packed left to right at unequal widths:

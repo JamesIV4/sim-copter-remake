@@ -52,6 +52,9 @@ private:
 	// to width (see BuildDispatchFlap).
 	static constexpr float DispatchPageWidth = 232.0f;
 
+	// The Apache armament strip: two buttons and their labels, nothing else.
+	static constexpr float ApachePageWidth = 110.0f;
+
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
 	float Scale = 2.0f;
@@ -62,6 +65,7 @@ private:
 	// The dispatch strip's tiled fill is a copy of a cached brush with tiling switched on, so
 	// unlike every other brush here it is not owned by the art object.
 	TSharedPtr<FSlateBrush> DispatchFillBrush;
+	TSharedPtr<FSlateBrush> ApacheFillBrush;
 
 	TSharedPtr<SMenuAnchor> MegaphoneMenu;
 	TArray<TSharedPtr<SWidget>> MissionMarkerAvoidancePanels;
@@ -79,6 +83,16 @@ private:
 
 	TSharedRef<SWidget> BuildToolFlap(const SimCopterFlapLayout::FFlap& Flap);
 	TSharedRef<SWidget> BuildDispatchFlap();
+	TSharedRef<SWidget> BuildApacheFlap();
+
+	// The shared background for the two strips the original has no artwork for.
+	void AddStripBackground(
+		SConstraintCanvas& Canvas,
+		float PageWidthUnits,
+		TSharedPtr<FSlateBrush>& InOutFillBrush);
+
+	EVisibility GetApacheFlapVisibility() const;
+	FReply HandleApacheMissile();
 
 	// The invisible hit box plus the pressed sprite that lights under it. The unpressed button
 	// is already painted on the page, so nothing is drawn until the player holds it down.
@@ -106,6 +120,14 @@ private:
 		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None);
 
 	TSharedRef<SWidget> MakeLabel(const FText& Text, int32 FontSize) const;
+
+	// The held variant, for a control that fires while the button is down.
+	TSharedRef<SWidget> MakeHeldArtButton(
+		const TCHAR* FileName,
+		const FIntRect& NormalFrame,
+		const FIntRect& PressedFrame,
+		SimCopterFlapLayout::EAction Action,
+		const FText& ToolTip);
 
 	// A dispatch-strip button, drawn from a normal/pressed pair rather than over page art.
 	TSharedRef<SWidget> MakeArtButton(

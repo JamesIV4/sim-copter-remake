@@ -56,4 +56,11 @@ how the points bar shipped wrong until 2026-08-01.
   *empty* gauge with the meniscus already printed at x 16, so a partly full tank has to
   paint over it. Divide by the heli.twk max load, not the static table's.
 
+**The Apache has no flap and never will.** `FUN_004127d0` builds flaps from the five *equipment*
+bits at career + 0x48; the Apache's missile and machine gun are **model capabilities**, so the
+original ships no artwork and no layout for them. The remake gives them an invented strip built
+from the same donor frame as the (also invented) dispatch strip - missile button, held gun button,
+and a readout that shows the shared 1 s cooldown or how many missiles are in the air. It collapses
+on the eight civilian airframes.
+
 Related: [[simcopter-heli-tools-models]], [[simcopter-water-gameplay]].

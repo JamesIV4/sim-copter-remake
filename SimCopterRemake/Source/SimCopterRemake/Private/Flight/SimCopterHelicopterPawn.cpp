@@ -96,6 +96,14 @@ constexpr float MaxCameraZoomFramingStrength = 2.0f;
 constexpr float MaxCameraZoomDistanceCm = 10000.0f;
 const FName CrosshairScreenLayerName(TEXT("SimCopterCrosshairLayer"));
 
+// Cross-section of a winch rope segment. Halved from 0.04 - the cable the original draws is a
+// thin line, and both the bucket's and the harness's read as pipes at the old size.
+constexpr float RopeSegmentScale = 0.02f;
+
+// The engine's basic cylinder is 100 units across, so the drawn cable's radius is half of that
+// times the scale above. Used to stand the harness anchor off by one rope width.
+constexpr float RopeRadiusCm = 50.0f * RopeSegmentScale;
+
 // FUN_004af100's `4 << (param5 & 0x1f)`: both helicopter impact arms pass 0x80000001, so the
 // column is scale 1 (an 8-unit burst), not the scale-4 splash a ditching throws.
 constexpr int32 ImpactColumnScaleExponent = 1;
@@ -231,6 +239,83 @@ bool ResolveCannonBarrelTipLocal(
 
 	OutTipLocalCm = TipSum / static_cast<double>(TipVertexCount);
 	OutTipLocalCm.X = MaxX;
+	return true;
+}
+
+// Where the harness cable leaves the airframe, in the shared body/bracket local frame.
+//
+// BRACKET is one GEO used by all nine helicopters, so its own tip is only far enough out for the
+// small ones - on a Bell 212 or a Dauphin the cable ends up inside the fuselage. Sample both: the
+// bracket gives the height and the fore-aft station, and whichever of the bracket tip or the
+// BODY's own widest point is further out gives the side, so the rope always clears the hull.
+bool ResolveHarnessRopeAnchorLocal(
+	const FMaxisMeshSection& BracketSection,
+	const FMaxisMeshSection& BodySection,
+	const float CableRadiusCm,
+	FVector& OutAnchorLocalCm)
+{
+	OutAnchorLocalCm = FVector::ZeroVector;
+	if (BracketSection.IsEmpty() || !BracketSection.LocalBounds.IsValid)
+	{
+		return false;
+	}
+
+	const FBox& Bounds = BracketSection.LocalBounds;
+	const bool bOutboardIsPositiveY = FMath::Abs(Bounds.Max.Y) >= FMath::Abs(Bounds.Min.Y);
+	const double BracketOutboardY = bOutboardIsPositiveY ? Bounds.Max.Y : Bounds.Min.Y;
+	const double ToleranceCm = FMath::Max(0.25, static_cast<double>(Bounds.GetSize().Y) * 0.05);
+
+	FVector Sum = FVector::ZeroVector;
+	int32 Count = 0;
+	double LowestZ = TNumericLimits<double>::Max();
+	for (const FVector& Vertex : BracketSection.Vertices)
+	{
+		if (FMath::Abs(Vertex.Y - BracketOutboardY) > ToleranceCm)
+		{
+			continue;
+		}
+		Sum += Vertex;
+		++Count;
+		LowestZ = FMath::Min(LowestZ, Vertex.Z);
+	}
+	if (Count == 0)
+	{
+		return false;
+	}
+
+	OutAnchorLocalCm = Sum / static_cast<double>(Count);
+	OutAnchorLocalCm.Z = LowestZ;
+
+	// The hull's own half-width on the bracket's side. Sampled at the bracket's height rather
+	// than from the whole-body bounds, because the widest part of a fuselage is not always level
+	// with the door.
+	double HullOutboardY = 0.0;
+	if (BodySection.LocalBounds.IsValid)
+	{
+		const double BandHalfHeightCm =
+			FMath::Max(8.0, static_cast<double>(Bounds.GetSize().Z) * 0.5);
+		for (const FVector& Vertex : BodySection.Vertices)
+		{
+			if (FMath::Abs(Vertex.Z - OutAnchorLocalCm.Z) > BandHalfHeightCm)
+			{
+				continue;
+			}
+			HullOutboardY = FMath::Max(HullOutboardY, FMath::Abs(Vertex.Y));
+		}
+		// Nothing at that height (a very shallow hull): fall back to the widest point there is.
+		if (HullOutboardY <= 0.0)
+		{
+			HullOutboardY = FMath::Max(
+				FMath::Abs(BodySection.LocalBounds.Max.Y),
+				FMath::Abs(BodySection.LocalBounds.Min.Y));
+		}
+	}
+
+	// Stand off by the rope's own radius so the cable's OUTBOARD edge lands on the anchor rather
+	// than its centreline - hanging it centred on the tip leaves half the rope past the frame.
+	const double OutboardMagnitude =
+		FMath::Max(FMath::Abs(BracketOutboardY), HullOutboardY) - CableRadiusCm;
+	OutAnchorLocalCm.Y = bOutboardIsPositiveY ? OutboardMagnitude : -OutboardMagnitude;
 	return true;
 }
 
@@ -1463,6 +1548,11 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 	// authored in the fuselage's own frame, out on the right flank where a winched Sim comes
 	// aboard, and nothing in the executable ever repositions heli[0x31] after construction.
 	bUsingOriginalBracketMesh = ApplySection(HeliBracketMeshComponent, Prepared.BracketSection);
+	bHasBracketRopeAnchor = ResolveHarnessRopeAnchorLocal(
+		Prepared.BracketSection,
+		Prepared.BodySection,
+		RopeRadiusCm,
+		BracketRopeAnchorLocalCm);
 	if (HeliBracketMeshComponent != nullptr)
 	{
 		HeliBracketMeshComponent->SetRelativeLocation(FVector::ZeroVector);
@@ -5703,7 +5793,20 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		// No speed gate, because the original has none: any contact with a surface it cannot land
 		// on is an impact. BounceTimer is the original's own rate limit (0.2 s, set by the wall
 		// kick), and it is what stops a scrape stacking an impact every frame.
-		if (BlockingHit.ImpactNormal.Z < LandingFlatNormalZ && FlightModel.BounceTimer <= 0)
+		const bool bWreck = FlightModel.State == ESimCopterFlightState::Dying;
+		if (bWreck)
+		{
+			// A wreck answers with movement only. Sim X is UE Y and sim Z is UE X (see the axis
+			// note above NewLocation), so the surface normal converts straight across.
+			const FVector Push = BlockingHit.ImpactNormal.GetSafeNormal();
+			FlightModel.NotifyWreckCollision(
+				FMath::RoundToInt(Push.Y * FSimCopterFlightModel::WreckImpactPush),
+				FMath::RoundToInt(Push.X * FSimCopterFlightModel::WreckImpactPush),
+				LastFlightEvents);
+			LastImpactWorldLocation = BlockingHit.ImpactPoint;
+			bHasPendingImpactEffect = true;
+		}
+		else if (BlockingHit.ImpactNormal.Z < LandingFlatNormalZ && FlightModel.BounceTimer <= 0)
 		{
 			FlightModel.NotifyObjectCollision(LastFlightEvents);
 			// FUN_00484d20 puts the impact column at the helicopter pushed five units along its
@@ -5715,8 +5818,17 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		}
 
 		// Hand the position back to the flight model. The bounce above is what clears the
-		// obstacle; the collider's job ends at reporting it.
-		SetActorLocation(NewLocation, /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
+		// obstacle; the collider's job ends at reporting it. A wreck's shove edits the model's
+		// position directly, so re-read it rather than restoring the pre-impact point - otherwise
+		// the push would not land until the following frame and a wreck wedged in a corner could
+		// out-run it.
+		const FVector RestoreLocation = bWreck
+			? FVector(
+				SimCopterFixed::ToFloat(FlightModel.PosZ) * Unit,
+				SimCopterFixed::ToFloat(FlightModel.PosX) * Unit,
+				SimCopterFixed::ToFloat(FlightModel.Altitude) * Unit + CapsuleHalfHeight)
+			: NewLocation;
+		SetActorLocation(RestoreLocation, /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
 	}
 
 	// The model owns the position, so this is now a straight read-back; it stays because
@@ -6142,19 +6254,18 @@ void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
 
 FVector ASimCopterHelicopterPawn::GetRopeAnchorWorldLocation() const
 {
-	// With the harness fitted the rope hangs off BRACKET (heli[0x31]) rather than from a point
-	// under the belly: the frame is out on the right flank because that is the side a Sim is
-	// winched up into. Its own geometry gives the offset, so no mount figure has to be invented.
-	if (bUsingOriginalBracketMesh &&
+	// Only the HARNESS hangs off BRACKET (heli[0x31]). The bucket keeps the belly point: it is
+	// lowered to scoop water and dropped on fires straight below, so swinging it out to the door
+	// puts it off the aircraft's centre for no reason. FUN_00487bb0 swaps which rope-end object
+	// is drawn, and that same flag decides which anchor the cable leaves from here.
+	if (bHarnessRopeEndSelected &&
+		bUsingOriginalBracketMesh &&
+		bHasBracketRopeAnchor &&
 		HeliBracketMeshComponent != nullptr &&
 		HeliBracketMeshComponent->IsVisible())
 	{
-		const FBoxSphereBounds BracketBounds = HeliBracketMeshComponent->CalcLocalBounds();
-		const FVector BracketLocal(
-			BracketBounds.Origin.X,
-			BracketBounds.Origin.Y,
-			BracketBounds.Origin.Z - BracketBounds.BoxExtent.Z);
-		return HeliBracketMeshComponent->GetComponentTransform().TransformPosition(BracketLocal);
+		return HeliBracketMeshComponent->GetComponentTransform().TransformPosition(
+			BracketRopeAnchorLocalCm);
 	}
 
 	const FTransform AnchorTransform = ModelPivot != nullptr
@@ -6377,8 +6488,8 @@ void ASimCopterHelicopterPawn::UpdateRopeVisuals()
 		const FVector End = RopeTransform.InverseTransformPosition(
 			RopeNodeWorldPositions[SegmentIndex + 1]);
 		const FVector Tangent = End - Start;
-		SegmentComponent->SetStartScale(FVector2D(0.04f, 0.04f), false);
-		SegmentComponent->SetEndScale(FVector2D(0.04f, 0.04f), false);
+		SegmentComponent->SetStartScale(FVector2D(RopeSegmentScale, RopeSegmentScale), false);
+		SegmentComponent->SetEndScale(FVector2D(RopeSegmentScale, RopeSegmentScale), false);
 		SegmentComponent->SetStartAndEnd(Start, Tangent, End, Tangent, true);
 	}
 

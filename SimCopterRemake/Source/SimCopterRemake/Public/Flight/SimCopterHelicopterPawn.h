@@ -558,6 +558,9 @@ public:
 	// The ten-slot canister pool, so the debug panel and tests can read it.
 	USimCopterTearGasPoolComponent* GetTearGasPool() const { return TearGasPool; }
 
+	// The Apache's missile/tracer pools, so the debug panel can read them.
+	USimCopterApachePoolComponent* GetApachePool() const { return ApachePool; }
+
 	// --- Spotlight target service (Phase 3) ---
 
 	// The shared semantic target the megaphone (and later dispatch) aim at. Updated every
@@ -1240,6 +1243,9 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bUsingOriginalBracketMesh = false;
+	// The bracket's outboard tip, in its own local frame: where the winch cable leaves.
+	FVector BracketRopeAnchorLocalCm = FVector::ZeroVector;
+	bool bHasBracketRopeAnchor = false;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelLoadError;

@@ -52,6 +52,15 @@ Three follow-on traps, all found on screen after the first fix (2026-08-01):
   - the impact sound was wiped before anything played it, so EXPLODE never fired no matter how
   well the collision worked. The visual pass ran later and *did* see the event, which is what made
   this look like "the sound is missing" rather than "the event is missing".
+- **A wreck in its death spiral needs its own response.** The `Dying` branch of `Step` integrates
+  **no horizontal motion at all** - it only spins and drops - and `NotifyObjectCollision` returns
+  early outside `Flying`/`FlyingAI`, so a wreck that came down against a building had nothing to
+  carry it clear and hung there spinning. `NotifyWreckCollision` is the movement half of the wall
+  response with the attitude half deliberately left out (the spiral owns pitch and bank): it
+  shoves the wreck along the surface normal, lifts it over the lip, and raises `bPadBounce` so the
+  explosion and EXPLODE come with it. The pawn re-reads the model's position after the shove
+  rather than restoring the pre-impact point, or the push lands a frame late and a wedged wreck
+  can out-run it.
 - **The impact burst goes at the contact point, un-submerged.** `FUN_004af100` seats its column
   32 units *below* the point it is given so a water splash rises through the surface; on a
   building face that just buries the burst. Spawning at `GetActorLocation()` compounded it -
