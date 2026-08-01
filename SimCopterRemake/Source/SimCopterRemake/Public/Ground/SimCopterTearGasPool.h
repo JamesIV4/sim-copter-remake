@@ -57,6 +57,8 @@ public:
 	// Slots still in the air (fuse burning) and slots that have burst into gas.
 	int32 GetActiveCanisterCount() const;
 	int32 GetActiveCloudCount() const;
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData) const;
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
 
 	// Drops everything, for a session boundary the canisters must not cross.
 	void ClearAll();

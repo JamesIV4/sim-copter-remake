@@ -4,6 +4,7 @@
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/PlayerCameraManager.h"
+#include "City/SimCity2000CityActor.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -19,6 +20,7 @@
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "GameFramework/Pawn.h"
 #include "Ground/SimCopterCriminalCar.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterPopulationBody.h"
@@ -30,12 +32,23 @@
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterGroundAgent, Log, All);
 
 namespace
 {
+constexpr uint32 GroundAgentRuntimeSaveMagic = 0x4147454e; // 'AGEN'
+constexpr int32 GroundAgentRuntimeSaveVersion = 1;
+
+void SerializeAgentBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading()) Value = Byte != 0;
+}
 // The city (and its cars/helicopters) is rendered at 0.25x of real-cm so a 400cm remake tile
 // stands in for the original 1600-unit tile. The population capsules and bodies were authored in
 // real cm, which made pedestrians (and the on-foot player) read ~4x too tall next to the shrunk
@@ -917,6 +930,42 @@ bool ASimCopterGroundAgent::ContainToHospitalRoofPost()
 bool ASimCopterGroundAgent::TryGetWalkSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const
 {
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
+	{
+		bool bAllowsElevatedMesh = false;
+		if (TrafficSystem != nullptr && TrafficSystem->TryGetVehicleRoadSurfaceZ(
+			*this, WorldLocation, OutSurfaceZ, bAllowsElevatedMesh))
+		{
+			if (bAllowsElevatedMesh && GetWorld() != nullptr)
+			{
+				// Only raised-span ramp and bridge/highway tile IDs reach this trace. Sampling the
+				// actual road mesh makes both ground snap and the forward/back pitch probes follow
+				// its exact plane while every unrelated mesh remains non-solid to traffic.
+				const FVector Start(
+					WorldLocation.X, WorldLocation.Y, GetActorLocation().Z + GroundProbeUpCm);
+				const FVector End(
+					WorldLocation.X, WorldLocation.Y, OutSurfaceZ - GroundProbeDistanceCm);
+				FHitResult Hit;
+				FCollisionQueryParams QueryParams(
+					SCENE_QUERY_STAT(SimCopterVehicleRoadDeck), false, this);
+				if (GetWorld()->LineTraceSingleByChannel(
+						Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
+				{
+					const ASimCity2000CityActor* City = TrafficSystem->GetCityActor();
+					const bool bBuildingHit = City != nullptr &&
+						City->IsBuildingCollisionHit(Hit.GetComponent(), Hit.ImpactPoint);
+					const float MeshOffset = Hit.ImpactPoint.Z - OutSurfaceZ;
+					if (!bBuildingHit && MeshOffset >= -10.0f &&
+						MeshOffset <= VehicleElevatedRoadMeshMaxOffsetCm)
+					{
+						OutSurfaceZ = Hit.ImpactPoint.Z;
+					}
+				}
+			}
+			return true;
+		}
+		return false;
+	}
 	if (GetWorld() == nullptr)
 	{
 		return false;
@@ -1663,6 +1712,35 @@ ESimCopterMissionPassengerKind ASimCopterGroundAgent::GetMissionPassengerKind() 
 	case 6:  return ESimCopterMissionPassengerKind::Medevac;
 	default: return ESimCopterMissionPassengerKind::Rescue;
 	}
+}
+
+bool ASimCopterGroundAgent::IsMedevacVictim() const
+{
+	return AgentKind == ESimCopterGroundAgentKind::Pedestrian &&
+		int32(BehaviorContext.Attributes[EBhavAttr::State]) == 6;
+}
+
+bool ASimCopterGroundAgent::PrepareForPlayerCausedMedevac()
+{
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian ||
+		IsMedevacVictim() ||
+		bMissionCarried ||
+		bClaimedPassengerSeat ||
+		BehaviorCarrier.IsValid())
+	{
+		return false;
+	}
+
+	// SCHOOK: PersonCollapsesIntoCasualty 0x004c9b50. The original reports death against the
+	// person's current record before replacing person+0x10a with the fresh medevac record. The
+	// Apache missile makes the same conversion synchronously, so it must retain that first half
+	// or a struck rioter/rescue victim leaves their former mission waiting forever.
+	if (MissionEventId != INDEX_NONE && !bMissionResolutionReported)
+	{
+		PostMissionOutcome(BehaviorContext, 10);
+	}
+	BehaviorContext.Attributes[EBhavAttr::Speed] = 0;
+	return true;
 }
 
 bool ASimCopterGroundAgent::BoardCarrier(
@@ -2817,6 +2895,273 @@ void ASimCopterGroundAgent::ConfigureAgent(
 	}
 }
 
+bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = GroundAgentRuntimeSaveMagic;
+	int32 Version = GroundAgentRuntimeSaveVersion;
+	Writer << Magic << Version;
+	uint8 Kind = static_cast<uint8>(AgentKind);
+	Writer << Kind << MeshTableName << OriginalGameRoot.Path << MovementSpeedCmPerSec;
+	Writer << PedestrianFigureName << InitialPersonState << InitialBehaviorClass;
+	Writer << InitialBehaviorAgitation << InitialBehaviorProgramId << MissionEventId;
+	FTransform Transform = GetActorTransform();
+	Writer << Transform;
+
+	Writer << MoveTargetLocation << CurrentVelocityCmPerSec << ExternalVelocityCmPerSec;
+	Writer << VerticalVelocityCmPerSec << AvoidanceMoveTargetLocation << AvoidancePathOffset;
+	Writer << GuidanceMoveTargetLocation;
+	SerializeAgentBool(Writer, bHasMoveTarget);
+	Writer << TrafficSpeedScale << AvoidanceMoveTimeRemainingSeconds;
+	Writer << AvoidancePathOffsetTimeRemainingSeconds << GuidanceMoveTargetTimeRemainingSeconds;
+	Writer << AvoidanceSpeedMultiplier << AvoidancePathOffsetSpeedMultiplier;
+	Writer << AnimationTimeSeconds << AnimationPhase;
+	Writer << PedestrianSpriteColumn << PedestrianSpriteRow << PedestrianOutfitIndex;
+	Writer << RouteTargetNodeIndex << RoutePrevNodeIndex << RoutePlannedNextNodeIndex;
+	SerializeAgentBool(Writer, bSnapToGround);
+
+	SerializeAgentBool(Writer, bCriminalCar);
+	SerializeAgentBool(Writer, bFleeing);
+	SerializeAgentBool(Writer, bStopOrdered);
+	SerializeAgentBool(Writer, bStopped);
+	Writer << CriminalEventId << SpotlightMark << CriminalState;
+	Writer << ArrestHoldSeconds << CriminalStopScale;
+
+	Writer << FigureMnemonic << FigureCurrentFrame << FigureFrameTime << FigureClothesOffset;
+	Writer << FigureHeadIndex << ForcedFigureMnemonic << ForcedFigureClothesOffset;
+	Writer << BehaviorHomeTile << SeatPortraitMood;
+	Writer << BehaviorBodyRadiusUnits << BehaviorTickCounter << BehaviorTickAccumulator;
+	SerializeAgentBool(Writer, bBehaviorActive);
+	Writer << BehaviorStepVelocityCmPerSec << BehaviorStepTimeRemainingSeconds;
+	Writer << LastAppliedBehaviorFacing;
+
+	int32 StackCount = BehaviorContext.Stack.Num();
+	Writer << StackCount;
+	for (FSimCopterPersonContext::FFrame& Frame : BehaviorContext.Stack)
+	{
+		Writer << Frame.ProgramId << Frame.RecordIndex;
+		for (uint16& Local : Frame.Locals) Writer << Local;
+	}
+	for (uint16& Attribute : BehaviorContext.Attributes) Writer << Attribute;
+	Writer << BehaviorContext.Lfsr << BehaviorContext.PendingAnimMnemonic;
+	SerializeAgentBool(Writer, BehaviorContext.bRequestDespawn);
+	Writer << BehaviorContext.SelectedLocation;
+	SerializeAgentBool(Writer, BehaviorContext.bHasSelection);
+	SerializeAgentBool(Writer, BehaviorContext.bSelectionIsHarness);
+	Writer << BehaviorContext.ActiveReactionProgramId << BehaviorContext.ReactionParameter;
+	Writer << BehaviorContext.MegaphoneMessageIndex;
+
+	auto SavedActorName = [](AActor* Actor) -> FName
+	{
+		if (const ASimCopterGroundAgent* Agent = Cast<ASimCopterGroundAgent>(Actor))
+		{
+			return Agent->GetRuntimeSaveIdentityName();
+		}
+		return Actor != nullptr ? Actor->GetFName() : NAME_None;
+	};
+	AActor* SavedCarrier = BehaviorCarrier.Get();
+	if (SavedCarrier == nullptr && bMissionCarried) SavedCarrier = GetAttachParentActor();
+	FName CarrierName = SavedActorName(SavedCarrier);
+	FName StartingName = SavedActorName(BehaviorStartingVehicle.Get());
+	FName InteractionName = SavedActorName(BehaviorInteractionSource.Get());
+	FName SelectionName = SavedActorName(BehaviorContext.SelectedObject.Get());
+	Writer << CarrierName << StartingName << InteractionName << SelectionName;
+	SerializeAgentBool(Writer, bRidingHarness);
+	SerializeAgentBool(Writer, bClaimedPassengerSeat);
+	SerializeAgentBool(Writer, bBehaviorMoveSuspended);
+	SerializeAgentBool(Writer, bBeamAbductionActive);
+
+	SerializeAgentBool(Writer, bMissionWavesWhenIdle);
+	SerializeAgentBool(Writer, bMissionStationary);
+	SerializeAgentBool(Writer, bMissionCarried);
+	SerializeAgentBool(Writer, bMissionPickupCreditAwarded);
+	SerializeAgentBool(Writer, bMissionPickupCounted);
+	SerializeAgentBool(Writer, bMissionResolutionReported);
+	SerializeAgentBool(Writer, bMissionPatientDead);
+	SerializeAgentBool(Writer, bAmbulanceHandoffPending);
+	SerializeAgentBool(Writer, bPersistentHospitalRoofCrew);
+	SerializeAgentBool(Writer, bHasHospitalRoofPost);
+	Writer << HospitalRoofPostWorldLocation << HospitalRoofPostHalfExtentCm;
+	SerializeAgentBool(Writer, bPassengerFallActive);
+	SerializeAgentBool(Writer, bPassengerFallStarted);
+	Writer << PassengerFallStartZ << PassengerFallInjuryDistanceCm << PassengerFallSourceEventId;
+	return !Writer.IsError();
+}
+
+bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	if (Data.IsEmpty()) return false;
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	uint8 Kind = 0;
+	FString SavedMesh;
+	FString SavedRoot;
+	float SavedMovementSpeed = 0.0f;
+	FString SavedFigure;
+	Reader << Magic << Version << Kind << SavedMesh << SavedRoot << SavedMovementSpeed;
+	Reader << SavedFigure << InitialPersonState << InitialBehaviorClass;
+	Reader << InitialBehaviorAgitation << InitialBehaviorProgramId << MissionEventId;
+	FTransform Transform;
+	Reader << Transform;
+	if (Magic != GroundAgentRuntimeSaveMagic || Version != GroundAgentRuntimeSaveVersion ||
+		Kind > static_cast<uint8>(ESimCopterGroundAgentKind::Vehicle) || SavedMovementSpeed <= 0.0f)
+	{
+		return false;
+	}
+	PedestrianFigureName = SavedFigure;
+	ConfigureAgent(static_cast<ESimCopterGroundAgentKind>(Kind), SavedMesh, SavedRoot, SavedMovementSpeed);
+	SetActorTransform(Transform, false, nullptr, ETeleportType::TeleportPhysics);
+
+	Reader << MoveTargetLocation << CurrentVelocityCmPerSec << ExternalVelocityCmPerSec;
+	Reader << VerticalVelocityCmPerSec << AvoidanceMoveTargetLocation << AvoidancePathOffset;
+	Reader << GuidanceMoveTargetLocation;
+	SerializeAgentBool(Reader, bHasMoveTarget);
+	Reader << TrafficSpeedScale << AvoidanceMoveTimeRemainingSeconds;
+	Reader << AvoidancePathOffsetTimeRemainingSeconds << GuidanceMoveTargetTimeRemainingSeconds;
+	Reader << AvoidanceSpeedMultiplier << AvoidancePathOffsetSpeedMultiplier;
+	Reader << AnimationTimeSeconds << AnimationPhase;
+	Reader << PedestrianSpriteColumn << PedestrianSpriteRow << PedestrianOutfitIndex;
+	Reader << RouteTargetNodeIndex << RoutePrevNodeIndex << RoutePlannedNextNodeIndex;
+	SerializeAgentBool(Reader, bSnapToGround);
+
+	SerializeAgentBool(Reader, bCriminalCar);
+	SerializeAgentBool(Reader, bFleeing);
+	SerializeAgentBool(Reader, bStopOrdered);
+	SerializeAgentBool(Reader, bStopped);
+	Reader << CriminalEventId << SpotlightMark << CriminalState;
+	Reader << ArrestHoldSeconds << CriminalStopScale;
+
+	Reader << FigureMnemonic << FigureCurrentFrame << FigureFrameTime << FigureClothesOffset;
+	Reader << FigureHeadIndex << ForcedFigureMnemonic << ForcedFigureClothesOffset;
+	Reader << BehaviorHomeTile << SeatPortraitMood;
+	Reader << BehaviorBodyRadiusUnits << BehaviorTickCounter << BehaviorTickAccumulator;
+	SerializeAgentBool(Reader, bBehaviorActive);
+	Reader << BehaviorStepVelocityCmPerSec << BehaviorStepTimeRemainingSeconds;
+	Reader << LastAppliedBehaviorFacing;
+
+	int32 StackCount = 0;
+	Reader << StackCount;
+	if (StackCount < 0 || StackCount > FSimCopterPersonContext::MaxStackDepth) return false;
+	BehaviorContext.Stack.SetNum(StackCount);
+	for (FSimCopterPersonContext::FFrame& Frame : BehaviorContext.Stack)
+	{
+		Reader << Frame.ProgramId << Frame.RecordIndex;
+		for (uint16& Local : Frame.Locals) Reader << Local;
+	}
+	for (uint16& Attribute : BehaviorContext.Attributes) Reader << Attribute;
+	Reader << BehaviorContext.Lfsr << BehaviorContext.PendingAnimMnemonic;
+	SerializeAgentBool(Reader, BehaviorContext.bRequestDespawn);
+	Reader << BehaviorContext.SelectedLocation;
+	SerializeAgentBool(Reader, BehaviorContext.bHasSelection);
+	SerializeAgentBool(Reader, BehaviorContext.bSelectionIsHarness);
+	Reader << BehaviorContext.ActiveReactionProgramId << BehaviorContext.ReactionParameter;
+	Reader << BehaviorContext.MegaphoneMessageIndex;
+	Reader << PendingSavedCarrierName << PendingSavedStartingVehicleName;
+	Reader << PendingSavedInteractionSourceName << PendingSavedSelectionName;
+	SerializeAgentBool(Reader, bRidingHarness);
+	SerializeAgentBool(Reader, bClaimedPassengerSeat);
+	SerializeAgentBool(Reader, bBehaviorMoveSuspended);
+	SerializeAgentBool(Reader, bBeamAbductionActive);
+
+	SerializeAgentBool(Reader, bMissionWavesWhenIdle);
+	SerializeAgentBool(Reader, bMissionStationary);
+	SerializeAgentBool(Reader, bMissionCarried);
+	SerializeAgentBool(Reader, bMissionPickupCreditAwarded);
+	SerializeAgentBool(Reader, bMissionPickupCounted);
+	SerializeAgentBool(Reader, bMissionResolutionReported);
+	SerializeAgentBool(Reader, bMissionPatientDead);
+	SerializeAgentBool(Reader, bAmbulanceHandoffPending);
+	SerializeAgentBool(Reader, bPersistentHospitalRoofCrew);
+	SerializeAgentBool(Reader, bHasHospitalRoofPost);
+	Reader << HospitalRoofPostWorldLocation << HospitalRoofPostHalfExtentCm;
+	SerializeAgentBool(Reader, bPassengerFallActive);
+	SerializeAgentBool(Reader, bPassengerFallStarted);
+	Reader << PassengerFallStartZ << PassengerFallInjuryDistanceCm << PassengerFallSourceEventId;
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
+
+	BehaviorContext.SelectedObject.Reset();
+	BehaviorCarrier.Reset();
+	BehaviorStartingVehicle.Reset();
+	BehaviorInteractionSource.Reset();
+	BehaviorBeamTarget.Reset();
+	// The fixed ambient UFO component is relinked in ResolveRuntimeSaveReferences after every
+	// traffic actor exists. It is not a behavior selection and therefore has no actor-name field.
+	RefreshHeadImageIndex();
+	if (!ForcedFigureMnemonic.IsEmpty())
+	{
+		SetForcedPedestrianFigureClip(ForcedFigureMnemonic);
+	}
+	else if (!FigureMnemonic.IsEmpty())
+	{
+		const int32 SavedFrame = FigureCurrentFrame;
+		const float SavedFrameTime = FigureFrameTime;
+		RebuildFigureClip(FigureMnemonic);
+		FigureCurrentFrame = FMath::Clamp(SavedFrame, 0, FMath::Max(0, FigureFrameCount - 1));
+		FigureFrameTime = SavedFrameTime;
+		FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, FigureCurrentFrame, bFigureHasHeadSection);
+	}
+	return true;
+}
+
+void ASimCopterGroundAgent::ResolveRuntimeSaveReferences(
+	const TMap<FName, AActor*>& SavedActors,
+	ASimCopterHelicopterPawn* Helicopter)
+{
+	auto ResolveActor = [&SavedActors, Helicopter](const FName Name) -> AActor*
+	{
+		if (Name.IsNone()) return nullptr;
+		if (Helicopter != nullptr && Helicopter->GetFName() == Name) return Helicopter;
+		if (AActor* const* Found = SavedActors.Find(Name)) return *Found;
+		return nullptr;
+	};
+
+	BehaviorStartingVehicle = ResolveActor(PendingSavedStartingVehicleName);
+	BehaviorInteractionSource = ResolveActor(PendingSavedInteractionSourceName);
+	BehaviorContext.SelectedObject = ResolveActor(PendingSavedSelectionName);
+	if (bBeamAbductionActive)
+	{
+		ASimCopterAmbientVehiclesActor* Ambient = Cast<ASimCopterAmbientVehiclesActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterAmbientVehiclesActor::StaticClass()));
+		BehaviorBeamTarget = Ambient != nullptr ? Ambient->GetUfoBeamTargetComponent() : nullptr;
+		if (!BehaviorBeamTarget.IsValid())
+		{
+			bBeamAbductionActive = false;
+		}
+	}
+	AActor* Carrier = ResolveActor(PendingSavedCarrierName);
+	BehaviorCarrier = Carrier;
+	if (Carrier == nullptr)
+	{
+		return;
+	}
+
+	SetActorEnableCollision(false);
+	if (CollisionComponent != nullptr) CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	bSnapToGround = false;
+	BehaviorContext.Attributes[EBhavAttr::Visible] = 0;
+	if (ASimCopterHelicopterPawn* CarrierHelicopter = Cast<ASimCopterHelicopterPawn>(Carrier))
+	{
+		if (bClaimedPassengerSeat)
+		{
+			AttachToComponent(CarrierHelicopter->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+			SetActorHiddenInGame(true);
+			CarrierHelicopter->RelinkSavedMissionPassenger(this, RuntimeSaveIdentityName);
+		}
+		else
+		{
+			SetActorHiddenInGame(false);
+			UpdateCarriedTransform();
+		}
+	}
+	else
+	{
+		AttachToComponent(Carrier->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+		SetActorHiddenInGame(false);
+	}
+}
+
 bool ASimCopterGroundAgent::LoadOriginalMeshFromOriginalGameRoot()
 {
 	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian && FSimCopterPopulationSprite::IsPeople1Name(MeshTableName))
@@ -3873,6 +4218,20 @@ bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const
 
 	const float HalfHeight = CollisionComponent->GetScaledCapsuleHalfHeight();
 	const FVector CurrentLocation = GetActorLocation();
+
+	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
+	{
+		float RoadSurfaceZ = 0.0f;
+		if (TryGetWalkSurfaceZAt(CurrentLocation, RoadSurfaceZ))
+		{
+			OutGroundLocation = FVector(
+				CurrentLocation.X,
+				CurrentLocation.Y,
+				RoadSurfaceZ + HalfHeight + 1.0f);
+			return true;
+		}
+		return false;
+	}
 
 	// Trace well above to well below the agent so placement survives any gap between the traffic
 	// spawner's terrain estimate and the city's actual rendered surface (the cause of the old

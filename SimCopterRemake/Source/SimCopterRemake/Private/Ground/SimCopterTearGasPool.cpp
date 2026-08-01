@@ -17,6 +17,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterTearGas, Log, All);
@@ -38,6 +40,15 @@ constexpr int32 SimulationStep1616 = SimCopterWaterGameplay::SimulationStep1616;
 // A whole tick of accumulated time is dropped rather than replayed after a hitch, so a stalled
 // frame cannot teleport every canister across the map.
 constexpr int32 MaxStepsPerTick = 8;
+constexpr uint32 TearGasRuntimeSaveMagic = 0x54474153; // 'TGAS'
+constexpr int32 TearGasRuntimeSaveVersion = 1;
+
+void SerializeTearGasBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading()) Value = Byte != 0;
+}
 
 FVector Fixed1616ToCm(const FIntVector& Value1616)
 {
@@ -241,6 +252,65 @@ int32 USimCopterTearGasPoolComponent::GetActiveCloudCount() const
 		Count += Slot.bActive && Slot.State.bDetonated ? 1 : 0;
 	}
 	return Count;
+}
+
+bool USimCopterTearGasPoolComponent::CaptureRuntimeSaveState(TArray<uint8>& OutData) const
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = TearGasRuntimeSaveMagic;
+	int32 Version = TearGasRuntimeSaveVersion;
+	int32 SavedStepAccumulator = StepAccumulator1616;
+	int32 SlotCount = Slots.Num();
+	Writer << Magic << Version << SavedStepAccumulator << SlotCount;
+	for (const FSlot& ConstSlot : Slots)
+	{
+		FSlot Slot = ConstSlot;
+		SerializeTearGasBool(Writer, Slot.bActive);
+		Writer << Slot.State.Direction1616 << Slot.State.Speed1616;
+		Writer << Slot.State.Life1616 << Slot.State.EffectTimer1616;
+		SerializeTearGasBool(Writer, Slot.State.bDetonated);
+		Writer << Slot.Position << Slot.MissionEventId << Slot.SpinDegrees;
+	}
+	if (Writer.IsError()) OutData.Reset();
+	return !Writer.IsError();
+}
+
+bool USimCopterTearGasPoolComponent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	if (Data.IsEmpty()) return false;
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	int32 SlotCount = 0;
+	Reader << Magic << Version << StepAccumulator1616 << SlotCount;
+	if (Magic != TearGasRuntimeSaveMagic || Version != TearGasRuntimeSaveVersion ||
+		SlotCount != SimCopterTearGas::PoolSlots || SlotCount != Slots.Num())
+	{
+		return false;
+	}
+
+	ClearAll();
+	for (int32 Index = 0; Index < SlotCount; ++Index)
+	{
+		FSlot& Slot = Slots[Index];
+		SerializeTearGasBool(Reader, Slot.bActive);
+		Reader << Slot.State.Direction1616 << Slot.State.Speed1616;
+		Reader << Slot.State.Life1616 << Slot.State.EffectTimer1616;
+		SerializeTearGasBool(Reader, Slot.State.bDetonated);
+		Reader << Slot.Position << Slot.MissionEventId << Slot.SpinDegrees;
+		if (Slot.bActive && !Slot.State.bDetonated)
+		{
+			if (UProceduralMeshComponent* Mesh = EnsureCanisterMesh(Index))
+			{
+				Mesh->SetWorldLocation(Slot.Position);
+				const FVector Travel = SimCopterWaterGameplay::DirectionToFloat(Slot.State.Direction1616);
+				Mesh->SetWorldRotation(FRotator(Slot.SpinDegrees, Travel.Rotation().Yaw, 0.0f));
+				Mesh->SetVisibility(true);
+			}
+		}
+	}
+	return !Reader.IsError() && Reader.Tell() == Reader.TotalSize();
 }
 
 void USimCopterTearGasPoolComponent::ClearAll()

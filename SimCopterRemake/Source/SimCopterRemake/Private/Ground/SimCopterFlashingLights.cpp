@@ -20,6 +20,19 @@ float FSimCopterFlashingLightSchedule::GetLightWorldSizeCm()
 		FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(LightSizeReferenceDepthCm);
 }
 
+float FSimCopterFlashingLightSchedule::GetWorldSizeForScreenPixels(
+	const float CameraDepthCm,
+	const float ViewportWidthPixels,
+	const float HorizontalFovDegrees,
+	const float ScreenPixels)
+{
+	const float Width = FMath::Max(ViewportWidthPixels, 1.0f);
+	const float HalfFovRadians = FMath::DegreesToRadians(
+		FMath::Clamp(HorizontalFovDegrees, 1.0f, 179.0f) * 0.5f);
+	return 2.0f * FMath::Max(CameraDepthCm, 0.0f) * FMath::Tan(HalfFovRadians) *
+		FMath::Max(ScreenPixels, 0.0f) / Width;
+}
+
 int32 FSimCopterFlashingLightSchedule::GetPhaseForPaletteIndex(uint8 PaletteIndex)
 {
 	// The switch in FUN_00496c00, in its own order.
@@ -163,6 +176,11 @@ void USimCopterFlashingLightsComponent::SyncLightsFromPlayerCamera(double GameTi
 	{
 		return;
 	}
+	int32 ViewportWidth = 0;
+	int32 ViewportHeight = 0;
+	PC->GetViewportSize(ViewportWidth, ViewportHeight);
+	ActiveViewportWidthPixels = FMath::Max(float(ViewportWidth), 1.0f);
+	ActiveHorizontalFovDegrees = CameraManager->GetFOVAngle();
 
 	SyncLights(GameTimeSeconds, CameraManager->GetCameraLocation(), CameraManager->GetCameraRotation());
 }
@@ -255,9 +273,14 @@ void USimCopterFlashingLightsComponent::RebuildCards(
 		Lit.CameraDepthCm = CameraDepth;
 		Lit.CameraDistanceSquared = FVector::DistSquared(Center, CameraLocation);
 
-		// Never let the card fall below one original pixel, or a distant skyline stops twinkling.
-		const float MinWorldSize = FSimCopterFlashingLightSchedule::MinLightSizeViewportPixels *
-			FSimCopterEffectRasterizer::GetWorldSizePerViewportPixel(CameraDepth);
+		// Never let the card fall below one physical output pixel, or a distant skyline stops
+		// twinkling. Use the live camera projection rather than the original 560x400 raster unit.
+		const float MinWorldSize =
+			FSimCopterFlashingLightSchedule::GetWorldSizeForScreenPixels(
+				CameraDepth,
+				ActiveViewportWidthPixels,
+				ActiveHorizontalFovDegrees,
+				FSimCopterFlashingLightSchedule::MinLightSizeViewportPixels);
 		const float HalfSize = FMath::Max(CardWorldSize, MinWorldSize) * 0.5f;
 
 		const int32 Base = Vertices.Num();

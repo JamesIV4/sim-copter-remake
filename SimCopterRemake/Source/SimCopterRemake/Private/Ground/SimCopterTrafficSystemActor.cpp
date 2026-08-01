@@ -13,6 +13,7 @@
 #include "EngineUtils.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Ground/SimCopterCriminalCar.h"
 #include "Ground/SimCopterDispatchMarker.h"
@@ -22,12 +23,23 @@
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterTrafficSystem, Log, All);
 
 namespace
 {
+constexpr uint32 TrafficRuntimeSaveMagic = 0x54524146; // 'TRAF'
+constexpr int32 TrafficRuntimeSaveVersion = 1;
+
+void SerializeTrafficBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading()) Value = Byte != 0;
+}
 float GetWorldTileCenterCoordinate(float FileCoordinate, float TileSize, float HalfMapSize)
 {
 	return (FileCoordinate + 0.5f) * TileSize - HalfMapSize;
@@ -701,6 +713,321 @@ void ASimCopterTrafficSystemActor::BeginPlay()
 	}
 }
 
+bool ASimCopterTrafficSystemActor::CaptureRuntimeSaveState(TArray<uint8>& OutData)
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = TrafficRuntimeSaveMagic;
+	int32 Version = TrafficRuntimeSaveVersion;
+	Writer << Magic << Version;
+	int32 RandomInitial = RandomStream.GetInitialSeed();
+	int32 RandomCurrent = RandomStream.GetCurrentSeed();
+	Writer << RandomInitial << RandomCurrent << PeopleRandomState;
+	Writer << WholeMapSimAccumulatorSeconds << SpawnThinkAccumulatorSeconds;
+	Writer << LastAmbientScanTileX << LastAmbientScanTileY << SpotlightChaseTile;
+	Writer << SpotlightMarkWorldLocation << SpotlightMarkBand;
+	SerializeTrafficBool(Writer, bSpotlightMarkActive);
+	const double CaptureWorldSeconds = GetWorld() != nullptr ? GetWorld()->GetTimeSeconds() : 0.0;
+	int32 HospitalPostCount = HospitalParamedicLastSeenSeconds.Num();
+	Writer << HospitalPostCount;
+	for (const TPair<FIntPoint, double>& Pair : HospitalParamedicLastSeenSeconds)
+	{
+		FIntPoint Tile = Pair.Key;
+		double SecondsSinceLastSeen = FMath::Max(0.0, CaptureWorldSeconds - Pair.Value);
+		Writer << Tile << SecondsSinceLastSeen;
+	}
+
+	auto SerializeWholeMap = [&Writer](TArray<FSimCopterWholeMapRecord>& Records)
+	{
+		int32 Count = Records.Num();
+		Writer << Count;
+		for (FSimCopterWholeMapRecord& Record : Records)
+		{
+			Writer << Record.Location << Record.Facing << Record.BehaviorClass;
+			Writer << Record.RouteNodeIndex << Record.RouteNextIndex;
+		}
+	};
+	SerializeWholeMap(WholeMapPedestrianRecords);
+	SerializeWholeMap(WholeMapVehicleRecords);
+
+	// Dispatch vehicles deliberately do not live in VehicleAgents, so snapshot every live ground
+	// agent owned by this traffic system and record pool membership separately. This also catches
+	// any scripted mission agent whose caller owns its lifetime outside the ambient arrays.
+	TArray<ASimCopterGroundAgent*> Agents;
+	for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+	{
+		ASimCopterGroundAgent* Agent = *It;
+		if (Agent != nullptr && Agent->GetOwner() == this && !Agent->IsActorBeingDestroyed())
+		{
+			Agents.Add(Agent);
+		}
+	}
+	int32 AgentCount = Agents.Num();
+	Writer << AgentCount;
+	for (ASimCopterGroundAgent* Agent : Agents)
+	{
+		// Preserve the first saved identity across repeated load -> save cycles. Recreated actors
+		// can receive a suffixed UObject name while the old level's pending-kill objects still
+		// exist; using that transient name would break every pointer relink on the next load.
+		FName Identity = Agent->GetRuntimeSaveIdentityName();
+		bool bInPedestrianPool = PedestrianAgents.ContainsByPredicate(
+			[Agent](const TWeakObjectPtr<ASimCopterGroundAgent>& Candidate)
+			{
+				return Candidate.Get() == Agent;
+			});
+		bool bInVehiclePool = VehicleAgents.ContainsByPredicate(
+			[Agent](const TWeakObjectPtr<ASimCopterGroundAgent>& Candidate)
+			{
+				return Candidate.Get() == Agent;
+			});
+		TArray<uint8> AgentData;
+		if (!Agent->CaptureRuntimeSaveState(AgentData))
+		{
+			OutData.Reset();
+			return false;
+		}
+		Writer << Identity << AgentData;
+		SerializeTrafficBool(Writer, bInPedestrianPool);
+		SerializeTrafficBool(Writer, bInVehiclePool);
+		FSimCopterVehicleTrafficState* State =
+			VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Agent));
+		bool bHasState = State != nullptr;
+		SerializeTrafficBool(Writer, bHasState);
+		if (State != nullptr)
+		{
+			Writer << State->LastLocation << State->BlockedSeconds << State->RecentCollisionSeconds;
+			Writer << State->RecoveryCooldownSeconds << State->TrafficLightLineGraceSeconds;
+			Writer << State->RecoveryBypassSeconds << State->RecoveryRejoinSeconds;
+			Writer << State->IntersectionCommitSeconds;
+			SerializeTrafficBool(Writer, State->bInitialized);
+			SerializeTrafficBool(Writer, State->bInTrafficLightLine);
+			SerializeTrafficBool(Writer, State->bMissionJammed);
+			SerializeTrafficBool(Writer, State->bMissionOnFire);
+			Writer << State->MissionEventId;
+			SerializeTrafficBool(Writer, State->bAudioWasStopped);
+		}
+	}
+
+	int32 ServiceCount = static_cast<int32>(SimCopterDispatch::EService::Count);
+	Writer << ServiceCount;
+	for (int32 ServiceIndex = 0; ServiceIndex < ServiceCount; ++ServiceIndex)
+	{
+		int32 SlotCount = DispatchVehicles[ServiceIndex].Num();
+		Writer << SlotCount;
+		for (FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[ServiceIndex])
+		{
+			FName AgentName = Vehicle.Agent.IsValid() ? Vehicle.Agent->GetRuntimeSaveIdentityName() : NAME_None;
+			FName OfficerName = Vehicle.DeployedOfficer.IsValid() ? Vehicle.DeployedOfficer->GetRuntimeSaveIdentityName() : NAME_None;
+			FName ParamedicName = Vehicle.DeployedParamedic.IsValid() ? Vehicle.DeployedParamedic->GetRuntimeSaveIdentityName() : NAME_None;
+			uint8 State = static_cast<uint8>(Vehicle.State);
+			Writer << AgentName << State << Vehicle.DestinationTile << Vehicle.HomeTile;
+			Writer << Vehicle.StationIndex << Vehicle.StayTimerSeconds << Vehicle.ActionTimerSeconds;
+			Writer << Vehicle.JetTimerSeconds << Vehicle.RouteNodes << Vehicle.RouteCursor;
+			Writer << Vehicle.TargetEventId << Vehicle.TargetTile << Vehicle.TargetWorld;
+			SerializeTrafficBool(Writer, Vehicle.bHasJetTarget);
+			SerializeTrafficBool(Writer, Vehicle.bActedAtScene);
+			Writer << OfficerName;
+			SerializeTrafficBool(Writer, Vehicle.bOfficerDeployed);
+			Writer << ParamedicName << Vehicle.MarkerTile;
+		}
+	}
+	return !Writer.IsError();
+}
+
+bool ASimCopterTrafficSystemActor::RestoreRuntimeSaveState(
+	const TArray<uint8>& Data,
+	ASimCopterHelicopterPawn* Helicopter)
+{
+	if (Data.IsEmpty() || GetWorld() == nullptr || GroundAgentClass == nullptr) return false;
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	int32 RandomInitial = 0;
+	int32 RandomCurrent = 0;
+	Reader << Magic << Version << RandomInitial << RandomCurrent << PeopleRandomState;
+	if (Magic != TrafficRuntimeSaveMagic || Version != TrafficRuntimeSaveVersion) return false;
+	RandomStream.Initialize(RandomCurrent);
+	Reader << WholeMapSimAccumulatorSeconds << SpawnThinkAccumulatorSeconds;
+	Reader << LastAmbientScanTileX << LastAmbientScanTileY << SpotlightChaseTile;
+	Reader << SpotlightMarkWorldLocation << SpotlightMarkBand;
+	SerializeTrafficBool(Reader, bSpotlightMarkActive);
+	int32 HospitalPostCount = 0;
+	Reader << HospitalPostCount;
+	if (HospitalPostCount < 0 || HospitalPostCount > 64) return false;
+	HospitalParamedicLastSeenSeconds.Reset();
+	const double RestoreWorldSeconds = GetWorld()->GetTimeSeconds();
+	for (int32 Index = 0; Index < HospitalPostCount; ++Index)
+	{
+		FIntPoint Tile = FIntPoint::ZeroValue;
+		double SecondsSinceLastSeen = 0.0;
+		Reader << Tile << SecondsSinceLastSeen;
+		if (Tile.X < 0 || Tile.X >= FSimCity2000City::MapSize ||
+			Tile.Y < 0 || Tile.Y >= FSimCity2000City::MapSize ||
+			!FMath::IsFinite(SecondsSinceLastSeen) || SecondsSinceLastSeen < 0.0)
+		{
+			return false;
+		}
+		HospitalParamedicLastSeenSeconds.Add(Tile, RestoreWorldSeconds - SecondsSinceLastSeen);
+	}
+
+	auto DeserializeWholeMap = [&Reader](TArray<FSimCopterWholeMapRecord>& Records) -> bool
+	{
+		int32 Count = 0;
+		Reader << Count;
+		if (Count < 0 || Count > 100000) return false;
+		Records.SetNum(Count);
+		for (FSimCopterWholeMapRecord& Record : Records)
+		{
+			Reader << Record.Location << Record.Facing << Record.BehaviorClass;
+			Reader << Record.RouteNodeIndex << Record.RouteNextIndex;
+		}
+		return !Reader.IsError();
+	};
+	if (!DeserializeWholeMap(WholeMapPedestrianRecords) || !DeserializeWholeMap(WholeMapVehicleRecords)) return false;
+
+	struct FSavedAgentEntry
+	{
+		FName Identity;
+		TArray<uint8> Data;
+		bool bInPedestrianPool = false;
+		bool bInVehiclePool = false;
+		bool bHasVehicleState = false;
+		FSimCopterVehicleTrafficState VehicleState;
+	};
+	int32 AgentCount = 0;
+	Reader << AgentCount;
+	if (AgentCount < 0 || AgentCount > MaxVehicleAgents + MaxPedestrianAgents + 64) return false;
+	TArray<FSavedAgentEntry> SavedAgents;
+	SavedAgents.SetNum(AgentCount);
+	for (FSavedAgentEntry& Entry : SavedAgents)
+	{
+		Reader << Entry.Identity << Entry.Data;
+		SerializeTrafficBool(Reader, Entry.bInPedestrianPool);
+		SerializeTrafficBool(Reader, Entry.bInVehiclePool);
+		SerializeTrafficBool(Reader, Entry.bHasVehicleState);
+		if (Entry.Data.IsEmpty() || (Entry.bInPedestrianPool && Entry.bInVehiclePool)) return false;
+		if (Entry.bHasVehicleState)
+		{
+			FSimCopterVehicleTrafficState& State = Entry.VehicleState;
+			Reader << State.LastLocation << State.BlockedSeconds << State.RecentCollisionSeconds;
+			Reader << State.RecoveryCooldownSeconds << State.TrafficLightLineGraceSeconds;
+			Reader << State.RecoveryBypassSeconds << State.RecoveryRejoinSeconds;
+			Reader << State.IntersectionCommitSeconds;
+			SerializeTrafficBool(Reader, State.bInitialized);
+			SerializeTrafficBool(Reader, State.bInTrafficLightLine);
+			SerializeTrafficBool(Reader, State.bMissionJammed);
+			SerializeTrafficBool(Reader, State.bMissionOnFire);
+			Reader << State.MissionEventId;
+			SerializeTrafficBool(Reader, State.bAudioWasStopped);
+		}
+	}
+
+	TArray<ASimCopterGroundAgent*> Existing;
+	for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+	{
+		ASimCopterGroundAgent* Agent = *It;
+		if (Agent != nullptr && Agent->GetOwner() == this && !Agent->IsActorBeingDestroyed())
+		{
+			Existing.Add(Agent);
+		}
+	}
+	for (ASimCopterGroundAgent* Agent : Existing) Agent->Destroy();
+	PedestrianAgents.Reset();
+	VehicleAgents.Reset();
+	VehicleTrafficStates.Reset();
+	CriminalCars.Reset();
+
+	TMap<FName, AActor*> SavedActorMap;
+	TArray<ASimCopterGroundAgent*> RestoredAgents;
+	for (FSavedAgentEntry& Entry : SavedAgents)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = this;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ASimCopterGroundAgent* Agent = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+			GroundAgentClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		if (Agent == nullptr || !Agent->RestoreRuntimeSaveState(Entry.Data)) return false;
+		Agent->SetRuntimeSaveIdentityName(Entry.Identity);
+		SavedActorMap.Add(Entry.Identity, Agent);
+		RestoredAgents.Add(Agent);
+		if (Entry.bInVehiclePool)
+		{
+			VehicleAgents.Add(Agent);
+		}
+		if (Entry.bInPedestrianPool)
+		{
+			PedestrianAgents.Add(Agent);
+		}
+		if (Entry.bHasVehicleState)
+		{
+			if (Agent->GetAgentKind() != ESimCopterGroundAgentKind::Vehicle) return false;
+			VehicleTrafficStates.Add(TObjectKey<ASimCopterGroundAgent>(Agent), Entry.VehicleState);
+		}
+		if (Agent->IsCriminalCar()) CriminalCars.Add(Agent);
+	}
+	for (ASimCopterGroundAgent* Agent : RestoredAgents)
+	{
+		Agent->ResolveRuntimeSaveReferences(SavedActorMap, Helicopter);
+	}
+
+	int32 ServiceCount = 0;
+	Reader << ServiceCount;
+	if (ServiceCount != static_cast<int32>(SimCopterDispatch::EService::Count)) return false;
+	for (int32 ServiceIndex = 0; ServiceIndex < ServiceCount; ++ServiceIndex)
+	{
+		int32 SlotCount = 0;
+		Reader << SlotCount;
+		if (SlotCount < 0 || SlotCount > 32) return false;
+		DispatchVehicles[ServiceIndex].SetNum(SlotCount);
+		for (FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[ServiceIndex])
+		{
+			FName AgentName;
+			FName OfficerName;
+			FName ParamedicName;
+			uint8 State = 0;
+			Reader << AgentName << State << Vehicle.DestinationTile << Vehicle.HomeTile;
+			Reader << Vehicle.StationIndex << Vehicle.StayTimerSeconds << Vehicle.ActionTimerSeconds;
+			Reader << Vehicle.JetTimerSeconds << Vehicle.RouteNodes << Vehicle.RouteCursor;
+			Reader << Vehicle.TargetEventId << Vehicle.TargetTile << Vehicle.TargetWorld;
+			SerializeTrafficBool(Reader, Vehicle.bHasJetTarget);
+			SerializeTrafficBool(Reader, Vehicle.bActedAtScene);
+			Reader << OfficerName;
+			SerializeTrafficBool(Reader, Vehicle.bOfficerDeployed);
+			Reader << ParamedicName << Vehicle.MarkerTile;
+			if (State > static_cast<uint8>(ESimCopterDispatchVehicleState::Idle)) return false;
+			Vehicle.State = static_cast<ESimCopterDispatchVehicleState>(State);
+			Vehicle.Agent = Cast<ASimCopterGroundAgent>(SavedActorMap.FindRef(AgentName));
+			Vehicle.DeployedOfficer = Cast<ASimCopterGroundAgent>(SavedActorMap.FindRef(OfficerName));
+			Vehicle.DeployedParamedic = Cast<ASimCopterGroundAgent>(SavedActorMap.FindRef(ParamedicName));
+			Vehicle.Marker.Reset();
+		}
+	}
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
+	if (FarPedestrianInstances != nullptr && FarVehicleInstances != nullptr)
+	{
+		FarPedestrianInstances->ClearInstances();
+		FarVehicleInstances->ClearInstances();
+		TArray<FTransform> Transforms;
+		Transforms.Reserve(WholeMapPedestrianRecords.Num());
+		for (const FSimCopterWholeMapRecord& Record : WholeMapPedestrianRecords)
+		{
+			Transforms.Add(FTransform(FRotator::ZeroRotator, Record.Location + FVector(0, 0, 85.0f), FVector(0.42f, 0.42f, 1.7f)));
+		}
+		FarPedestrianInstances->AddInstances(Transforms, false, true);
+		Transforms.Reset(WholeMapVehicleRecords.Num());
+		for (const FSimCopterWholeMapRecord& Record : WholeMapVehicleRecords)
+		{
+			Transforms.Add(FTransform(FRotator::ZeroRotator, Record.Location + FVector(0, 0, 52.0f), FVector(3.6f, 1.7f, 1.05f)));
+		}
+		FarVehicleInstances->AddInstances(Transforms, false, true);
+	}
+	WholeMapPedestrianRecordCount = WholeMapPedestrianRecords.Num();
+	WholeMapVehicleRecordCount = WholeMapVehicleRecords.Num();
+	ActivePedestrianCount = PedestrianAgents.Num();
+	ActiveVehicleCount = VehicleAgents.Num();
+	return true;
+}
+
 void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
@@ -859,18 +1186,54 @@ bool ASimCopterTrafficSystemActor::ApplyVehicleInteraction(
 
 bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY)
 {
-	TArray<ASimCopterGroundAgent*> EligibleVehicles;
-	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	ASimCopterGroundAgent* ChosenVehicle = NextCarFireTarget.Get();
+	const bool bHasExplicitTarget = ChosenVehicle != nullptr;
+	NextCarFireTarget.Reset();
+	if (bHasExplicitTarget)
 	{
-		if (ASimCopterGroundAgent* Vehicle = AgentPtr.Get())
+		if (ChosenVehicle->GetAgentKind() != ESimCopterGroundAgentKind::Vehicle ||
+			ChosenVehicle->IsActorBeingDestroyed())
 		{
-			EligibleVehicles.Add(Vehicle);
+			return false;
+		}
+		else
+		{
+			// Emergency-service cars are intentionally outside VehicleAgents, but a direct missile
+			// hit still has to ignite the actor it struck. Give any such vehicle the same fire state
+			// record without admitting it to the ambient pool (which would prune/reroute it).
+			FSimCopterVehicleTrafficState& State = VehicleTrafficStates.FindOrAdd(
+				TObjectKey<ASimCopterGroundAgent>(ChosenVehicle));
+			if (State.bMissionOnFire)
+			{
+				// A second missile into a burning car detonates there; it must not silently arm a
+				// different random vehicle as a new mission.
+				return false;
+			}
 		}
 	}
 
-	if (EligibleVehicles.Num() == 0) return false;
-	
-	ASimCopterGroundAgent* ChosenVehicle = EligibleVehicles[FMath::RandRange(0, EligibleVehicles.Num() - 1)];
+	TArray<ASimCopterGroundAgent*> EligibleVehicles;
+	if (!bHasExplicitTarget)
+	{
+		for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+		{
+			if (ASimCopterGroundAgent* Vehicle = AgentPtr.Get())
+			{
+				const FSimCopterVehicleTrafficState* State =
+					VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+				if (State != nullptr && !State->bMissionOnFire)
+				{
+					EligibleVehicles.Add(Vehicle);
+				}
+			}
+		}
+
+		if (EligibleVehicles.Num() == 0)
+		{
+			return false;
+		}
+		ChosenVehicle = EligibleVehicles[FMath::RandRange(0, EligibleVehicles.Num() - 1)];
+	}
 	
 	if (FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(ChosenVehicle)))
 	{
@@ -895,12 +1258,27 @@ bool ASimCopterTrafficSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 	return true;
 }
 
+void ASimCopterTrafficSystemActor::ArmNextCarFireTarget(ASimCopterGroundAgent* Vehicle)
+{
+	NextCarFireTarget = Vehicle;
+}
+
+void ASimCopterTrafficSystemActor::ClearNextCarFireTarget()
+{
+	NextCarFireTarget.Reset();
+}
+
 void ASimCopterTrafficSystemActor::GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const
 {
-	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	if (GetWorld() == nullptr)
 	{
-		const ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
-		if (Vehicle == nullptr)
+		return;
+	}
+	for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+	{
+		const ASimCopterGroundAgent* Vehicle = *It;
+		if (Vehicle == nullptr || Vehicle->GetOwner() != this ||
+			Vehicle->GetAgentKind() != ESimCopterGroundAgentKind::Vehicle)
 		{
 			continue;
 		}
@@ -920,11 +1298,16 @@ void ASimCopterTrafficSystemActor::GetBurningVehicles(TArray<FSimCopterBurningVe
 
 void ASimCopterTrafficSystemActor::DouseBurningVehiclesNear(const FVector& WorldLocation, float RadiusCm, TArray<int32>& OutExtinguishedEventIds)
 {
-	const float RadiusSq = RadiusCm * RadiusCm;
-	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	if (GetWorld() == nullptr)
 	{
-		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
-		if (Vehicle == nullptr)
+		return;
+	}
+	const float RadiusSq = RadiusCm * RadiusCm;
+	for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+	{
+		ASimCopterGroundAgent* Vehicle = *It;
+		if (Vehicle == nullptr || Vehicle->GetOwner() != this ||
+			Vehicle->GetAgentKind() != ESimCopterGroundAgentKind::Vehicle)
 		{
 			continue;
 		}
@@ -941,6 +1324,7 @@ void ASimCopterTrafficSystemActor::DouseBurningVehiclesNear(const FVector& World
 		// Put the car out: it stops burning and resumes normal traffic.
 		State->bMissionOnFire = false;
 		State->bMissionJammed = false;
+		Vehicle->SetTrafficSpeedScale(1.0f);
 		OutExtinguishedEventIds.Add(State->MissionEventId);
 		State->MissionEventId = INDEX_NONE;
 	}
@@ -1079,8 +1463,9 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	}
 	if (SpawnMode == 3)
 	{
-		// A rioter cannot start calm - BHAV 311 would retire it on its first tick and the mission
-		// would complete before the player ever saw it. See RioterSpawnAgitation.
+		// FUN_004c4190's spawn-mode-3 arm writes 7 to person+0x150 before placement. This is the
+		// agitation BHAV 852 maintains and tear gas / the megaphone can drive below BHAV 311's
+		// leave threshold; it is not a remake-side bootstrap.
 		Person->InitialBehaviorAgitation = SimCopterMissions::RioterSpawnAgitation;
 	}
 
@@ -3877,6 +4262,13 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 		ReleaseDispatchVehicle(Service, SlotIndex);
 		return;
 	}
+	if (const FSimCopterVehicleTrafficState* TrafficState = VehicleTrafficStates.Find(
+		TObjectKey<ASimCopterGroundAgent>(Vehicle.Agent.Get()));
+		TrafficState != nullptr && TrafficState->bMissionOnFire)
+	{
+		Vehicle.Agent->SetTrafficSpeedScale(0.0f);
+		return;
+	}
 
 	// The original updates the marker inside this same tick, off the state it is about to act
 	// on, so it appears the frame the unit is dispatched and clears the frame it arrives.
@@ -4418,6 +4810,77 @@ bool ASimCopterTrafficSystemActor::TryGetTerrainWorldZAtWorldLocation(
 	return true;
 }
 
+bool ASimCopterTrafficSystemActor::TryGetVehicleRoadSurfaceZ(
+	const ASimCopterGroundAgent& Vehicle,
+	const FVector& WorldLocation,
+	float& OutSurfaceZ,
+	bool& bOutAllowsElevatedMesh) const
+{
+	OutSurfaceZ = 0.0f;
+	bOutAllowsElevatedMesh = false;
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	if (!TryGetPeopleTileCoordinateAtWorldLocation(WorldLocation, FileX, FileY))
+	{
+		return false;
+	}
+
+	const uint8 BuildingId = uint8(GetXbldTileId(FileX, FileY));
+	bOutAllowsElevatedMesh = UsesVehicleRoadMeshSurface(BuildingId);
+
+	const int32 PreviousIndex = Vehicle.GetRoutePrevNode();
+	const int32 TargetIndex = Vehicle.GetRouteTargetNode();
+	const FSimCopterGroundRouteNode* A = RoadNodes.IsValidIndex(PreviousIndex)
+		? &RoadNodes[PreviousIndex]
+		: nullptr;
+	const FSimCopterGroundRouteNode* B = RoadNodes.IsValidIndex(TargetIndex)
+		? &RoadNodes[TargetIndex]
+		: nullptr;
+	if (A == nullptr && B == nullptr)
+	{
+		if (const int32* TileNode = RoadNodeIndexByTile.Find(FIntPoint(FileX, FileY));
+			TileNode != nullptr && RoadNodes.IsValidIndex(*TileNode))
+		{
+			B = &RoadNodes[*TileNode];
+		}
+	}
+	if (A == nullptr && B == nullptr)
+	{
+		return TryGetTerrainWorldZAtWorldLocation(WorldLocation, OutSurfaceZ);
+	}
+
+	float GraphZ = B != nullptr ? B->Location.Z : A->Location.Z;
+	if (A != nullptr && B != nullptr)
+	{
+		const FVector2D Segment(B->Location.X - A->Location.X, B->Location.Y - A->Location.Y);
+		const FVector2D FromA(WorldLocation.X - A->Location.X, WorldLocation.Y - A->Location.Y);
+		const float SegmentLengthSq = Segment.SizeSquared();
+		const float Alpha = SegmentLengthSq > UE_SMALL_NUMBER
+			? FMath::Clamp(FVector2D::DotProduct(FromA, Segment) / SegmentLengthSq, 0.0f, 1.0f)
+			: 1.0f;
+		GraphZ = FMath::Lerp(A->Location.Z, B->Location.Z, Alpha);
+	}
+
+	// Route nodes are authored ten centimetres above their conditioned terrain sample so target
+	// markers do not z-fight. The ground surface itself is below that authoring offset.
+	const float RouteAuthoringOffsetZ =
+		ActiveCityToWorldTransform.TransformVector(FVector(0.0f, 0.0f, 10.0f)).Z;
+	OutSurfaceZ = GraphZ - RouteAuthoringOffsetZ;
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::UsesVehicleRoadMeshSurface(uint8 BuildingId)
+{
+	// SCHOOK: FUN_0047c0c0 dispatches 0x3f..0x42 directly to the four raised-span ramp
+	// meshes 0x178..0x17b. Their rendered wedge, not a centre-to-centre graph interpolation,
+	// is the road plane. FUN_00495700 also classifies them with the bridge/highway road ranges.
+	// Keep 0x43/0x44 out: those are power-line-over-road crossings whose overhead mesh must not
+	// become drivable. Ordinary terrain-following slope roads likewise remain graph-driven.
+	return (BuildingId >= 0x3f && BuildingId <= 0x42) ||
+		(BuildingId >= 0x49 && BuildingId <= 0x59) ||
+		(BuildingId >= 0x5d && BuildingId <= 0x6b);
+}
+
 bool ASimCopterTrafficSystemActor::IsWaterTile(int32 FileX, int32 FileY) const
 {
 	if (WaterTileFlags.Num() != FSimCity2000City::TileCount ||
@@ -4946,6 +5409,27 @@ void ASimCopterTrafficSystemActor::SyncVehicleTrafficStates(float DeltaSeconds)
 		}
 
 		State.LastLocation = CurrentLocation;
+	}
+
+	// A direct missile can put the same state record on a dispatch/scripted vehicle, which is
+	// intentionally absent from VehicleAgents. Keep that record alive without running ambient
+	// following/recovery logic on the special vehicle.
+	if (GetWorld() != nullptr)
+	{
+		for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+		{
+			ASimCopterGroundAgent* Vehicle = *It;
+			if (Vehicle == nullptr || Vehicle->GetOwner() != this ||
+				Vehicle->GetAgentKind() != ESimCopterGroundAgentKind::Vehicle)
+			{
+				continue;
+			}
+			const TObjectKey<ASimCopterGroundAgent> VehicleKey(Vehicle);
+			if (VehicleTrafficStates.Contains(VehicleKey))
+			{
+				LiveVehicleKeys.Add(VehicleKey);
+			}
+		}
 	}
 
 	for (auto StateIt = VehicleTrafficStates.CreateIterator(); StateIt; ++StateIt)

@@ -43,6 +43,10 @@ public:
 	int32 GetCarriedMissionEventId() const { return CarriedMissionEventId; }
 	bool PickUpMissionPerson(ASimCopterGroundAgent* MissionPerson);
 	ASimCopterGroundAgent* ConsumeCarriedMissionPerson();
+	// Player-side live snapshot used when the save was made outside the helicopter: movement,
+	// view/animation state and the exact mission person currently being carried.
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData) const;
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
 
 	// False for a short window after the player manually drops a person, so the auto-pickup logic
 	// does not instantly re-grab someone they just set down on the ground.

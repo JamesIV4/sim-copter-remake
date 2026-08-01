@@ -162,6 +162,43 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"WaterTextureFpsTip",
+						"Playback rate for the original five-cell water texture sequence on terrain water "
+						"and mesh pools. This is independent of the geometric wave shader. The previous "
+						"four-second rate came from treating FUN_004814c0's fixed-time threshold as "
+						"milliseconds. Set 0 to freeze frame zero for inspection."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "WaterTextureFps", "WATER TEX FPS"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(120.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(60.0f)
+						.Delta(1.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(1)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetWaterTextureFramesPerSecond)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleWaterTextureFramesPerSecondChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
 				.Padding(FMargin(0.0f, 2.0f, 0.0f, 2.0f))
 				[
 					SNew(SHorizontalBox)
@@ -1846,6 +1883,22 @@ void SSimCopterHelicopterDebugPanel::HandleFlashingLightIntensityScaleChanged(fl
 	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
 	{
 		HelicopterPawn->SetFlashingLightIntensityScale(Value);
+	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetWaterTextureFramesPerSecond() const
+{
+	const ASimCopterHelicopterPawn* HelicopterPawn = GetPawn();
+	return HelicopterPawn != nullptr
+		? TOptional<float>(HelicopterPawn->GetWaterTextureFramesPerSecond())
+		: TOptional<float>();
+}
+
+void SSimCopterHelicopterDebugPanel::HandleWaterTextureFramesPerSecondChanged(float Value)
+{
+	if (ASimCopterHelicopterPawn* HelicopterPawn = GetPawn())
+	{
+		HelicopterPawn->SetWaterTextureFramesPerSecond(Value);
 	}
 }
 

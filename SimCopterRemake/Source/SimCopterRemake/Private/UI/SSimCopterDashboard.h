@@ -23,7 +23,7 @@ struct FSlateBrush;
 //                          leftmost 27x33 cell is the empty seat.
 //   dashboard PNG 458x125  High-resolution replacement for dash4 above dash6.
 //   dash6 region  458x82   FUN_004521a0. Money, the mission points meter, six damage lamps, the
-//                          fuel gauge, the joystick, the altimeter and the airspeed dial.
+//                          fuel gauge, the altimeter and the airspeed dial.
 //   dash4 region  455x43   FUN_00451980. The radio and scrolling compass window.
 //
 // The three gauge geometries are FUN_004521a0's own. Each writes a centre, a radius, a start

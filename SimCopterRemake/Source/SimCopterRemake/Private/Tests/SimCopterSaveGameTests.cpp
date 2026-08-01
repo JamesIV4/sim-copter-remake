@@ -69,6 +69,16 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 	Source->SelectedToolIndex = 3;
 	Source->FuelFraction = 0.625f;
 	Source->DamageFraction = 0.25f;
+	Source->bHasRuntimeWorldState = true;
+	Source->MissionRuntimeState = { 0x4d, 0x49, 0x53, 0x4e };
+	Source->TrafficRuntimeState = { 0x54, 0x52, 0x41, 0x46 };
+	Source->AmbientVehicleRuntimeState = { 0x41, 0x4d, 0x42, 0x49 };
+	Source->AircraftRuntimeState = { 0x48, 0x45, 0x4c, 0x49 };
+	Source->DemolishedBuildingOrigins = { FIntPoint(12, 34), FIntPoint(56, 78) };
+	Source->bPlayerWasInHelicopter = false;
+	Source->bHasOnFootTransform = true;
+	Source->OnFootTransform = FTransform(FRotator(1.0, 2.0, 3.0), FVector(400.0, 500.0, 600.0));
+	Source->OnFootRuntimeState = { 0x46, 0x4f, 0x4f, 0x54 };
 
 	FSimCopterCareerLogEntry Log;
 	Log.Text = TEXT("Fire: Ended, Award: 100 Points, 200 Bucks");
@@ -111,6 +121,14 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Ammo survives"), Loaded->CareerTearGasRounds, 7);
 	TestEqual(TEXT("Fuel survives"), Loaded->FuelFraction, 0.625f);
 	TestEqual(TEXT("Damage survives"), Loaded->DamageFraction, 0.25f);
+	TestTrue(TEXT("Live-world payload survives"), Loaded->bHasRuntimeWorldState);
+	TestEqual(TEXT("Mission blob survives"), Loaded->MissionRuntimeState, Source->MissionRuntimeState);
+	TestEqual(TEXT("Traffic blob survives"), Loaded->TrafficRuntimeState, Source->TrafficRuntimeState);
+	TestEqual(TEXT("Ambient blob survives"), Loaded->AmbientVehicleRuntimeState, Source->AmbientVehicleRuntimeState);
+	TestEqual(TEXT("Aircraft blob survives"), Loaded->AircraftRuntimeState, Source->AircraftRuntimeState);
+	TestEqual(TEXT("Demolished buildings survive"), Loaded->DemolishedBuildingOrigins, Source->DemolishedBuildingOrigins);
+	TestTrue(TEXT("On-foot transform survives"), Loaded->OnFootTransform.Equals(Source->OnFootTransform));
+	TestEqual(TEXT("On-foot blob survives"), Loaded->OnFootRuntimeState, Source->OnFootRuntimeState);
 
 	Loaded->FormatVersion = USimCopterSaveGame::CurrentFormatVersion + 1;
 	TestFalse(TEXT("A future version is refused"),

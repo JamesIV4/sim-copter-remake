@@ -304,6 +304,13 @@ public:
 		float DamageFraction,
 		int32 SelectedToolIndex);
 
+	// Exact live-aircraft half of the original BOMB payload: transform, fixed-point flight
+	// integrator, camera, winch/bucket, tool state and the seat manifest. The normal career
+	// restore selects/loads the airframe first; this resumes the in-world state on that model.
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData);
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
+	void RelinkSavedMissionPassenger(class ASimCopterGroundAgent* Person, FName SavedActorName = NAME_None);
+
 	// The two readings the instrument panel takes straight off the flight model, both in the
 	// original's own world units (64 per city tile, node +0x1c "Y" for altitude and [0x37] for
 	// speed). The KNOTS face is graduated in these, not in physical knots: the fastest airframe
@@ -315,7 +322,7 @@ public:
 	bool CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const;
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
-	void EnterHelicopter(APlayerController* PlayerController);
+	void EnterHelicopter(APlayerController* PlayerController, bool bBlendView = true);
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
 	bool CanExitHelicopter() const;
@@ -467,6 +474,13 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
 	void SetFlashingLightIntensityScale(float Scale);
+
+	// Live five-frame water texture cadence used by both terrain water and page-20 mesh pools.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	float GetWaterTextureFramesPerSecond() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Debug")
+	void SetWaterTextureFramesPerSecond(float FramesPerSecond);
 
 	// --- Check-up service menu (FUN_00443c20; offer test FUN_00444750) ---
 
@@ -656,6 +670,10 @@ public:
 	// Persistent offsets edited by the developer panel. Each normal camera view has its own
 	// values; setters update the live camera and flush that view to GameUserSettings.ini.
 	ESimCopterCameraMode GetCameraMode() const { return CameraMode; }
+	static bool ShouldUseRopeAutoZoom(
+		ESimCopterCameraMode Mode,
+		float PlayerZoomAlpha,
+		int32 FirstActiveRopeNode);
 	FSimCopterCameraViewDebugOffset GetCameraViewDebugOffset(ESimCopterCameraMode Mode) const;
 	void SetCameraViewDebugTranslation(ESimCopterCameraMode Mode, const FVector& TranslationCm);
 	void SetCameraViewDebugRotation(ESimCopterCameraMode Mode, const FRotator& RotationDeg);
@@ -811,7 +829,7 @@ protected:
 
 	// Shows the top-left developer panel and bottom-left tool readout. Ctrl+Alt+D toggles both.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
-	bool bShowHelicopterDebugPanel = true;
+	bool bShowHelicopterDebugPanel = false;
 
 	// Draws the cockpit's control flaps for the tools aboard (SimCopterFlapLayout).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI")
@@ -885,6 +903,9 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Missions")
 	TArray<FSimCopterMissionPassengerSlot> MissionPassengerSlots;
+	// Actor names serialized beside the pointer-free seat records. Mission people are recreated
+	// after the aircraft and call RelinkSavedMissionPassenger to fill the weak handles back in.
+	TArray<FName> PendingSavedPassengerActorNames;
 
 
 	// Mesh units per centimetre for the GEO packs (matches the city renderer's value).
@@ -1105,6 +1126,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Controller", meta = (ClampMin = "0.05"))
 	float ControllerCameraZoomAlphaPerSecond = 0.65f;
 
+	// View 1 only: at the player's closest zoom, a fully paid-out bucket/harness would fall below
+	// the frame. This is layered on top of (never written into) CameraZoomAlpha so pulling in even
+	// one node returns to exactly the zoom the player chose.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float FullyLoweredRopeZoomOutAlpha = 0.10f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Camera", meta = (ClampMin = "0.1"))
+	float RopeAutoZoomLerpSpeed = 3.0f;
+
 	// R3 + RB/RT moves the helicopter up/down in the frame through the same per-view offset as
 	// middle-mouse drag.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Controller", meta = (ClampMin = "1.0"))
@@ -1285,6 +1315,7 @@ private:
 	float CameraYawOffsetDeg = 0.0f;
 	float CameraPitchOffsetDeg = 0.0f;
 	float CameraZoomAlpha = CameraDefaultZoomAlpha;
+	float RopeAutoZoomAlpha = 0.0f;
 	float CurrentCameraGroundLiftCm = 0.0f;
 	// Written by the const ResolveCameraGroundLift purely so the debug panel can show what the
 	// probe saw; nothing reads them back into the camera calculation.

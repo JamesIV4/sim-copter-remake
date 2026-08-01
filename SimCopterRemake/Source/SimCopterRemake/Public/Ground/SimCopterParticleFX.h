@@ -122,6 +122,13 @@ public:
 	static float GetTilePuffRiseSpeedCmPerSec(uint8 EffectClass);
 	static int32 GetSplashRingParticleCount() { return 14; }
 	static bool IsRotorWashEligible(float HeightCm, int32 RotorSpeed1616);
+	// Fixed-pool BOMB snapshot: active water trajectories, smoke/spray/debris cards and the
+	// palette cursors that determine the next emitted frame.
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData) const;
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
+	// Shared SIM3D palette lookup used by separately-owned original effect pools (the Apache's
+	// 70 tracer slots are not part of this component's generic trajectory pool).
+	FLinearColor PaletteColor(uint8 PaletteIndex) const;
 
 protected:
 	virtual void OnRegister() override;
@@ -187,6 +194,5 @@ private:
 	ASimCopterMissionSystemActor* ResolveMissionActor();
 	void UpdateSplashColumns();
 	void RebuildMesh(const FVector& CameraLocation);
-	FLinearColor PaletteColor(uint8 PaletteIndex) const;
 	void EmitFireBurst(const FSimCopterEffectSlot& Source);
 };

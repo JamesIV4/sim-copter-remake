@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterParticleFX.h"
+#include "Ground/SimCopterApachePool.h"
+#include "Ground/SimCopterTearGasPool.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterEffectRasterizer.h"
@@ -46,6 +48,65 @@ bool FSimCopterEffectsPrimitiveTest::RunTest(const FString& Parameters)
 		FMath::IsNearlyEqual(
 			USimCopterParticleFXComponent::GetTilePuffRiseSpeedCmPerSec(8),
 			15.0f * SimCopterEffectFX::OriginalUnitToCm));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterEffectsRuntimeSaveRoundTripTest,
+	"SimCopter.Effects.RuntimeSaveRoundTrip",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterEffectsRuntimeSaveRoundTripTest::RunTest(const FString& Parameters)
+{
+	USimCopterParticleFXComponent* Effects = NewObject<USimCopterParticleFXComponent>();
+	TestTrue(TEXT("Water/effect fixture allocates"),
+		Effects->SpawnEffect(ESimCopterEffectType::BucketDrip, FVector(1, 2, 3), FVector(4, 5, 6)));
+	TArray<uint8> EffectData;
+	TestTrue(TEXT("Water/effect pool writes"), Effects->CaptureRuntimeSaveState(EffectData));
+	USimCopterParticleFXComponent* RestoredEffects = NewObject<USimCopterParticleFXComponent>();
+	TestTrue(TEXT("Water/effect pool reads"), RestoredEffects->RestoreRuntimeSaveState(EffectData));
+	TestEqual(TEXT("Water trajectory resumes"),
+		RestoredEffects->GetActiveCount(ESimCopterEffectPool::Trajectory70), 1);
+
+	USimCopterTearGasPoolComponent* TearGas = NewObject<USimCopterTearGasPoolComponent>();
+	TestTrue(TEXT("Tear-gas fixture launches"),
+		TearGas->Launch(FVector(10, 20, 30), FVector::ForwardVector, 0, 77));
+	TArray<uint8> TearGasData;
+	TestTrue(TEXT("Tear-gas pool writes"), TearGas->CaptureRuntimeSaveState(TearGasData));
+	USimCopterTearGasPoolComponent* RestoredTearGas = NewObject<USimCopterTearGasPoolComponent>();
+	TestTrue(TEXT("Tear-gas pool reads"), RestoredTearGas->RestoreRuntimeSaveState(TearGasData));
+	TestEqual(TEXT("Tear-gas canister resumes"), RestoredTearGas->GetActiveCanisterCount(), 1);
+
+	USimCopterApachePoolComponent* Apache = NewObject<USimCopterApachePoolComponent>();
+	TestTrue(TEXT("Apache tracer fixture launches"),
+		Apache->LaunchBullet(FVector(100, 200, 300), FVector::DownVector, 0));
+	TArray<uint8> ApacheData;
+	TestTrue(TEXT("Apache pools write"), Apache->CaptureRuntimeSaveState(ApacheData));
+	USimCopterApachePoolComponent* RestoredApache = NewObject<USimCopterApachePoolComponent>();
+	TestTrue(TEXT("Apache pools read"), RestoredApache->RestoreRuntimeSaveState(ApacheData));
+	TestEqual(TEXT("Apache tracer resumes"), RestoredApache->GetActiveBulletCount(), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterApacheMissionBlastDefaultsTest,
+	"SimCopter.Effects.ApacheMissionBlastDefaults",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterApacheMissionBlastDefaultsTest::RunTest(const FString& Parameters)
+{
+	const USimCopterApachePoolComponent* Apache = NewObject<USimCopterApachePoolComponent>();
+	TestEqual(
+		TEXT("Missile mission blast is 24 original units"),
+		Apache->GetMissileMissionBlastRadiusCm(),
+		USimCopterApachePoolComponent::DefaultMissileMissionBlastRadiusCm);
+	TestEqual(
+		TEXT("Machine-gun mission blast is 8 original units"),
+		Apache->GetMachineGunMissionBlastRadiusCm(),
+		USimCopterApachePoolComponent::DefaultMachineGunMissionBlastRadiusCm);
+	TestTrue(
+		TEXT("Missile mission blast is larger than the machine-gun strike"),
+		Apache->GetMissileMissionBlastRadiusCm() > Apache->GetMachineGunMissionBlastRadiusCm());
 	return true;
 }
 

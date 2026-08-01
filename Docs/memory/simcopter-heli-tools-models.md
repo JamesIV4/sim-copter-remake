@@ -70,12 +70,24 @@ Canonical notes live in the repo: `Docs/scratchpad/ghidra/heli_tools_models_deco
   airframes, so its own tip is only wide enough for the small ones: **sample the BODY's own
   half-width at the bracket's height too** and take whichever is further out, or the cable runs
   through the hull on a Bell 212 or a Dauphin.
+- **Full-rope camera framing is an overlay, not a player-zoom write.** In chase/view 1 only, when
+  the player's zoom is already at its closest and the bucket or harness reaches the fully lowered
+  node, the camera lerps an extra 0.10 zoom alpha out. Raising even one node lerps that overlay
+  back to zero, so the exact zoom chosen by the player is preserved.
 - **Apache armament ported 2026-08-01** (`USimCopterApachePoolComponent`). Missile: 10 slots, GEO
   0x0ae, `heli[0x4e] + 450`, cooldown shared with tear gas, mode 3, impact column scale 2 + sound
   7. Gun: 70 slots, a 3-point 0x17 card cycling palette 0x10..0x1f, `+600`, NO cooldown, mode 7,
   scale-1 column + sound 0x10 (or 8 into a body). **Both fly at constant speed with no drag and no
   gravity** - only the tear gas and debris pools arc - and both despawn on first contact (the
-  0x4006 set). The missile is the only projectile that starts fires.
+  0x4006 set). The 70 tracer visuals are rebuilt directly from those same live slots as three
+  camera-facing 2x2-pixel points; do not clone them into the generic gravity-driven trajectory
+  pool, which made copies stick at the helicopter or vanish. The visible impact now has a spherical
+  mission-effect area: 24 original units / 150 cm for a missile and 8 units / 50 cm for a gun
+  strike. Every car in that area can become the exact target of a car-fire record, and every person
+  can become the exact state-6 victim of a player-caused medevac (reporting a casualty to any old
+  mission first). The original direct mode-3/mode-7 reaction remains the fallback for the actor the
+  projectile trace actually struck. Building/terrain fire remains missile-only and retains the
+  existing direct-impact path; the sphere only broadens car/person mission selection.
 
 Related: [[simcopter-heli-flight-model]], [[simcopter-people-logic-next]],
 [[simcopter-water-gameplay]], [[simcopter-fire-water-fx]], [[simcopter-helicopter-collision]].

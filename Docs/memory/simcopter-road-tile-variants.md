@@ -38,6 +38,20 @@ still possible if someone reverts the dispatch).
 a road) return `bTileIsFlat ? 0x3b : 0x1d` and `bTileIsFlat ? 0x3c : 0x1e` — the same pair, which
 is what confirms the mapping independently.
 
+## Power crossing and vehicle surface follow-up (2026-08-01)
+
+XBLD `0x43/0x44` are RD67/RD68, the power-line-over-road pieces. Their mesh now imports its own
+face-type-20 centre line correctly, so `GetOriginalRoadMarkingOpeningMask` must return zero for
+both. The former procedural centre-line workaround creates a second raised strip/block across the
+road and is not part of the original piece.
+
+Cars also must not discover their driving Z by tracing the highest arbitrary mesh. Their
+nonswept movement intentionally phases through scenery and `TryGetVehicleRoadSurfaceZ` interpolates
+the road graph. Only the decoded raised-span ramps (`0x3f..0x42`) and bridge/highway tile ranges can
+refine that result from their road mesh; ordinary terrain-following slope pieces remain graph-driven.
+The same restricted surface feeds forward/back pitch probes, so a vehicle's Z and pitch use the
+exact visible ramp/deck plane while roofs and the power crossing remain non-solid to traffic.
+
 ## Still unported
 
 The same switch cases place **decoration objects** on flat road tiles, which the remake does not:

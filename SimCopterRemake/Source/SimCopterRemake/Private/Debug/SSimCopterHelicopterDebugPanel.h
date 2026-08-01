@@ -110,6 +110,7 @@ private:
 	TOptional<float> GetRotorVisualMultiplier() const;
 	TOptional<float> GetVehicleMetallic() const;
 	TOptional<float> GetFlashingLightIntensityScale() const;
+	TOptional<float> GetWaterTextureFramesPerSecond() const;
 	TOptional<float> GetCameraGroundLiftHeightCm() const;
 	TOptional<float> GetCameraGroundLiftProbeRangeCm() const;
 	TOptional<float> GetCameraGroundLiftFullDistanceCm() const;
@@ -119,6 +120,7 @@ private:
 	void HandleRotorVisualMultiplierChanged(float Value);
 	void HandleVehicleMetallicChanged(float Value);
 	void HandleFlashingLightIntensityScaleChanged(float Value);
+	void HandleWaterTextureFramesPerSecondChanged(float Value);
 	void HandleCameraGroundLiftHeightCmChanged(float Value);
 	void HandleCameraGroundLiftProbeRangeCmChanged(float Value);
 	void HandleCameraGroundLiftFullDistanceCmChanged(float Value);

@@ -2194,8 +2194,12 @@ uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
 	case 0x40: return E | W;
 	case 0x41: return N | S;
 	case 0x42: return E | W;
-	case 0x43: return E | W;
-	case 0x44: return N | S;
+	// RD67/RD68 (the power-line-over-road crossing) already carry the original face-type-20
+	// centre-line geometry. The procedural road-marking workaround was added while those mesh
+	// line faces were missing; retaining it now lays a second raised strip/block over the crossing.
+	case 0x43:
+	case 0x44:
+		return 0;
 	case 0x45: return E | W;
 	case 0x46: return N | S;
 	case 0x49: return E | W;
@@ -3060,6 +3064,7 @@ void ASimCity2000CityActor::BeginPlay()
 
 void ASimCity2000CityActor::RebuildCity()
 {
+	WaterTextureFramesPerSecond = SanitizeWaterTextureFramesPerSecond(WaterTextureFramesPerSecond);
 	LastLoadError.Reset();
 	LastLoadedCityName.Reset();
 	LastOriginalMeshTileCount = 0;
@@ -3072,6 +3077,7 @@ void ASimCity2000CityActor::RebuildCity()
 	WaterGameplayTerrainClasses.Reset();
 	OriginalTextureCache.Reset();
 	OriginalTextureMaterials.Reset();
+	WaterTextureMaterials.Reset();
 	ResetBuildingInstances();
 
 	TerrainMeshComponent->ClearAllMeshSections();
@@ -3144,7 +3150,22 @@ void ASimCity2000CityActor::RebuildCity()
 	TSet<int32> AvailableOriginalTextureKeys;
 	UTexture2D* TerrainTexture = nullptr;
 	UTexture2D* HighTerrainTexture = nullptr;
-	const FBakedCityAtlasMaterials BakedCityAtlasMaterials = bRenderOriginalTextures ? LoadBakedCityAtlasMaterials() : FBakedCityAtlasMaterials();
+	FBakedCityAtlasMaterials BakedCityAtlasMaterials = bRenderOriginalTextures ? LoadBakedCityAtlasMaterials() : FBakedCityAtlasMaterials();
+	// Page 20 is SKY.BMP image 4, whose pool/pond faces use the same water frame cells as TILED1.
+	// Wrap only that baked page so the debug FPS input can update mesh water without rebuilding
+	// runtime static meshes or replacing every city material.
+	if (UMaterialInterface** WaterPageMaterial = BakedCityAtlasMaterials.PageMaterials.Find(SimCopterSkyGroundTextureFile))
+	{
+		if (UMaterialInstanceDynamic* WaterPageMID = UMaterialInstanceDynamic::Create(*WaterPageMaterial, this))
+		{
+			WaterPageMID->SetScalarParameterValue(
+				TEXT("WaterTextureFramesPerSecond"),
+				WaterTextureFramesPerSecond);
+			*WaterPageMaterial = WaterPageMID;
+			OriginalTextureMaterials.Add(WaterPageMID);
+			WaterTextureMaterials.Add(WaterPageMID);
+		}
+	}
 	TSet<int32> AvailableBakedAtlasPageIds;
 	TSet<int32> AvailableBakedDirectImageIds;
 	BakedCityAtlasMaterials.PageMaterials.GetKeys(AvailableBakedAtlasPageIds);
@@ -4418,16 +4439,6 @@ void ASimCity2000CityActor::RebuildCity()
 		}
 
 		const int32 WaterSectionIndex = TerrainMeshSectionIndex++;
-		TerrainMeshComponent->CreateMeshSection_LinearColor(
-			WaterSectionIndex,
-			TerrainWaterSection.Vertices,
-			TerrainWaterSection.Triangles,
-			TerrainWaterSection.Normals,
-			TerrainWaterSection.UVs,
-			TerrainWaterSection.VertexColors,
-			TerrainWaterSection.Tangents,
-			bEnableTerrainCollision);
-
 		// Reuse the exact TILED1 atlas the terrain-low surface samples so the water looks identical.
 		UTexture* WaterSurfaceTexture = nullptr;
 		if (BakedCityAtlasMaterials.TerrainLowMaterial != nullptr)
@@ -4442,6 +4453,7 @@ void ASimCity2000CityActor::RebuildCity()
 		UMaterialInstanceDynamic* WaterMID = (WaterMaterial != nullptr && WaterSurfaceTexture != nullptr)
 			? UMaterialInstanceDynamic::Create(WaterMaterial, this)
 			: nullptr;
+		UMaterialInterface* WaterSectionMaterial = nullptr;
 		if (WaterMID != nullptr)
 		{
 			WaterMID->SetTextureParameterValue(TEXT("Texture"), WaterSurfaceTexture);
@@ -4449,17 +4461,36 @@ void ASimCity2000CityActor::RebuildCity()
 			WaterMID->SetScalarParameterValue(TEXT("WaveAmplitude"), bAnimateWaterSurface ? WaterWaveAmplitude : 0.0f);
 			WaterMID->SetScalarParameterValue(TEXT("WaveLength"), WaterWaveLength);
 			WaterMID->SetScalarParameterValue(TEXT("WaveSpeed"), WaterWaveSpeed);
+			WaterMID->SetScalarParameterValue(TEXT("WaterTextureFramesPerSecond"), WaterTextureFramesPerSecond);
 			OriginalTextureMaterials.Add(WaterMID);
-			TerrainMeshComponent->SetMaterial(WaterSectionIndex, WaterMID);
+			WaterTextureMaterials.Add(WaterMID);
+			WaterSectionMaterial = WaterMID;
 		}
 		else if (BakedCityAtlasMaterials.TerrainLowMaterial != nullptr)
 		{
-			TerrainMeshComponent->SetMaterial(WaterSectionIndex, BakedCityAtlasMaterials.TerrainLowMaterial);
+			WaterSectionMaterial = BakedCityAtlasMaterials.TerrainLowMaterial;
 		}
 		else if (VertexColorMaterial != nullptr)
 		{
-			TerrainMeshComponent->SetMaterial(WaterSectionIndex, VertexColorMaterial);
+			WaterSectionMaterial = VertexColorMaterial;
 		}
+
+		// Bind a valid material before the section creates its first render state. Creating the mesh
+		// first briefly exposed the procedural component's empty/default slot while the water MID was
+		// being prepared, which could make the whole water plane appear late on a city load.
+		if (WaterSectionMaterial != nullptr)
+		{
+			TerrainMeshComponent->SetMaterial(WaterSectionIndex, WaterSectionMaterial);
+		}
+		TerrainMeshComponent->CreateMeshSection_LinearColor(
+			WaterSectionIndex,
+			TerrainWaterSection.Vertices,
+			TerrainWaterSection.Triangles,
+			TerrainWaterSection.Normals,
+			TerrainWaterSection.UVs,
+			TerrainWaterSection.VertexColors,
+			TerrainWaterSection.Tangents,
+			bEnableTerrainCollision);
 	}
 
 	if (RoadMarkingSection.Vertices.Num() > 0)
@@ -4925,6 +4956,27 @@ bool ASimCity2000CityActor::TryGetBuildingBoundsAtTile(int32 FileX, int32 FileY,
 	return OutWorldBounds.IsValid != 0;
 }
 
+float ASimCity2000CityActor::SanitizeWaterTextureFramesPerSecond(float FramesPerSecond)
+{
+	return FMath::IsFinite(FramesPerSecond)
+		? FMath::Clamp(FramesPerSecond, 0.0f, MaxWaterTextureFramesPerSecond)
+		: DefaultWaterTextureFramesPerSecond;
+}
+
+void ASimCity2000CityActor::SetWaterTextureFramesPerSecond(float FramesPerSecond)
+{
+	WaterTextureFramesPerSecond = SanitizeWaterTextureFramesPerSecond(FramesPerSecond);
+	for (UMaterialInstanceDynamic* Material : WaterTextureMaterials)
+	{
+		if (Material != nullptr)
+		{
+			Material->SetScalarParameterValue(
+				TEXT("WaterTextureFramesPerSecond"),
+				WaterTextureFramesPerSecond);
+		}
+	}
+}
+
 bool ASimCity2000CityActor::IsInsideStandingBuildingBounds(
 	const FVector& WorldLocation,
 	const float ClearanceCm) const
@@ -5033,6 +5085,33 @@ bool ASimCity2000CityActor::DemolishBuildingAtTile(int32 FileX, int32 FileY, TAr
 	}
 
 	return true;
+}
+
+void ASimCity2000CityActor::GetDemolishedBuildingOrigins(TArray<FIntPoint>& OutOrigins) const
+{
+	OutOrigins.Reset();
+	for (const FSimCopterCityBuilding& Building : Buildings)
+	{
+		if (Building.bDemolished)
+		{
+			OutOrigins.Add(Building.OriginTile);
+		}
+	}
+}
+
+void ASimCity2000CityActor::RestoreDemolishedBuildingOrigins(
+	const TArray<FIntPoint>& Origins,
+	TArray<FIntPoint>& OutClearedTiles)
+{
+	OutClearedTiles.Reset();
+	for (const FIntPoint& Origin : Origins)
+	{
+		TArray<FIntPoint> BuildingTiles;
+		if (DemolishBuildingAtTile(Origin.X, Origin.Y, BuildingTiles, /*bLeaveRubble=*/true))
+		{
+			OutClearedTiles.Append(BuildingTiles);
+		}
+	}
 }
 
 bool ASimCity2000CityActor::IsBuildingCollisionHit(

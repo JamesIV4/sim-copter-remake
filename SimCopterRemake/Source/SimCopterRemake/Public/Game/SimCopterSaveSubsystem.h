@@ -24,7 +24,7 @@ class SIMCOPTERREMAKE_API USimCopterSaveGame : public USaveGame
 	GENERATED_BODY()
 
 public:
-	static constexpr int32 CurrentFormatVersion = 1;
+	static constexpr int32 CurrentFormatVersion = 2;
 	static const TCHAR* GetFormatMagic() { return TEXT("SimCopterRemakeSave"); }
 
 	UPROPERTY()
@@ -108,6 +108,38 @@ public:
 	UPROPERTY()
 	float DamageFraction = 0.0f;
 
+	// Version 2: pointer-free BOMB runtime-owner payloads. Each owner versions its own internal
+	// byte stream so malformed or future state is rejected instead of half-applied.
+	UPROPERTY()
+	bool bHasRuntimeWorldState = false;
+
+	UPROPERTY()
+	TArray<uint8> MissionRuntimeState;
+
+	UPROPERTY()
+	TArray<uint8> TrafficRuntimeState;
+
+	UPROPERTY()
+	TArray<uint8> AmbientVehicleRuntimeState;
+
+	UPROPERTY()
+	TArray<uint8> AircraftRuntimeState;
+
+	UPROPERTY()
+	TArray<FIntPoint> DemolishedBuildingOrigins;
+
+	UPROPERTY()
+	bool bPlayerWasInHelicopter = false;
+
+	UPROPERTY()
+	bool bHasOnFootTransform = false;
+
+	UPROPERTY()
+	FTransform OnFootTransform = FTransform::Identity;
+
+	UPROPERTY()
+	TArray<uint8> OnFootRuntimeState;
+
 	bool IsStructurallyValid(ESimCopterSessionKind ExpectedKind, FString& OutError) const;
 	FString GetCityDisplayName() const;
 };
@@ -171,4 +203,3 @@ private:
 	static USimCopterSaveGame* ReadSaveSlot(const FString& SlotName);
 	static bool IsManagedSlotName(const FString& SlotName);
 };
-

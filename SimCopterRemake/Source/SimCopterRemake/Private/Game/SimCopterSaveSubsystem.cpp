@@ -4,7 +4,11 @@
 
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "City/SimCity2000CityActor.h"
 #include "Game/SimCopterCareerProgression.h"
+#include "Ground/SimCopterAmbientVehicles.h"
+#include "Ground/SimCopterOnFootPawn.h"
+#include "Ground/SimCopterTrafficSystemActor.h"
 #include "HAL/FileManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Crc.h"
@@ -111,6 +115,15 @@ bool USimCopterSaveGame::IsStructurallyValid(
 		 !FMath::IsFinite(DamageFraction) || DamageFraction < 0.0f || DamageFraction > 1.0f))
 	{
 		OutError = TEXT("The save contains an invalid aircraft record.");
+		return false;
+	}
+	if (FormatVersion >= 2 && bHasRuntimeWorldState &&
+		(!bHasAircraftState || MissionRuntimeState.IsEmpty() || TrafficRuntimeState.IsEmpty() ||
+		 AmbientVehicleRuntimeState.IsEmpty() || AircraftRuntimeState.IsEmpty() ||
+		 (!bPlayerWasInHelicopter &&
+		  (!bHasOnFootTransform || OnFootTransform.ContainsNaN() || OnFootRuntimeState.IsEmpty()))))
+	{
+		OutError = TEXT("The save contains an invalid live-world record.");
 		return false;
 	}
 	return true;
@@ -268,7 +281,7 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 		return nullptr;
 	}
 
-	const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
 		UGameplayStatics::GetActorOfClass(WorldContextObject, ASimCopterMissionSystemActor::StaticClass()));
 	if (Missions == nullptr)
 	{
@@ -302,7 +315,8 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 		Save->CareerLog = Career->GetLogEntries();
 	}
 
-	if (const ASimCopterHelicopterPawn* Helicopter = ResolveCareerHelicopter(WorldContextObject))
+	ASimCopterHelicopterPawn* Helicopter = ResolveCareerHelicopter(WorldContextObject);
+	if (Helicopter != nullptr)
 	{
 		const FSimCopterEquipmentState& Equipment = Helicopter->GetEquipmentState();
 		Save->bHasAircraftState = true;
@@ -312,6 +326,46 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 		Save->SelectedToolIndex = static_cast<int32>(Helicopter->GetSelectedTool());
 		Save->FuelFraction = Helicopter->GetFuelFraction();
 		Save->DamageFraction = Helicopter->GetDamageFraction();
+	}
+
+	ASimCopterTrafficSystemActor* Traffic = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(WorldContextObject, ASimCopterTrafficSystemActor::StaticClass()));
+	ASimCopterAmbientVehiclesActor* Ambient = Cast<ASimCopterAmbientVehiclesActor>(
+		UGameplayStatics::GetActorOfClass(WorldContextObject, ASimCopterAmbientVehiclesActor::StaticClass()));
+	ASimCity2000CityActor* CityActor = Traffic != nullptr ? Traffic->GetCityActor() : nullptr;
+	if (CityActor == nullptr)
+	{
+		CityActor = Cast<ASimCity2000CityActor>(
+			UGameplayStatics::GetActorOfClass(WorldContextObject, ASimCity2000CityActor::StaticClass()));
+	}
+
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(WorldContextObject, 0);
+	APawn* PlayerPawn = PlayerController != nullptr ? PlayerController->GetPawn() : nullptr;
+	Save->bPlayerWasInHelicopter = PlayerPawn != nullptr && PlayerPawn == Helicopter;
+	if (const ASimCopterOnFootPawn* OnFoot = Cast<ASimCopterOnFootPawn>(PlayerPawn))
+	{
+		Save->bHasOnFootTransform = true;
+		Save->OnFootTransform = OnFoot->GetActorTransform();
+		if (!OnFoot->CaptureRuntimeSaveState(Save->OnFootRuntimeState))
+		{
+			OutError = TEXT("The on-foot player state could not be captured.");
+			return nullptr;
+		}
+	}
+
+	if (Helicopter != nullptr && Traffic != nullptr && Ambient != nullptr && CityActor != nullptr &&
+		Missions->CaptureRuntimeSaveState(Save->MissionRuntimeState) &&
+		Traffic->CaptureRuntimeSaveState(Save->TrafficRuntimeState) &&
+		Ambient->CaptureRuntimeSaveState(Save->AmbientVehicleRuntimeState) &&
+		Helicopter->CaptureRuntimeSaveState(Save->AircraftRuntimeState))
+	{
+		CityActor->GetDemolishedBuildingOrigins(Save->DemolishedBuildingOrigins);
+		Save->bHasRuntimeWorldState = true;
+	}
+	else
+	{
+		OutError = TEXT("The live city state could not be captured.");
+		return nullptr;
 	}
 
 	if (!Save->IsStructurallyValid(Save->Kind, OutError))
@@ -525,6 +579,22 @@ bool USimCopterSaveSubsystem::ApplyPendingMissionAndCareerState(
 			PendingLoadedGame->CareerLog);
 	}
 
+	// The level and airport still have one setup pass to run. Hold every restored simulation
+	// owner until ApplyPendingAircraftState runs after that pass; otherwise a single tick can age
+	// fires, advance BHAV stacks or move traffic before the player sees the loaded frame.
+	if (PendingLoadedGame->bHasRuntimeWorldState)
+	{
+		MissionActor->SetActorTickEnabled(false);
+		if (AActor* Traffic = UGameplayStatics::GetActorOfClass(MissionActor, ASimCopterTrafficSystemActor::StaticClass()))
+		{
+			Traffic->SetActorTickEnabled(false);
+		}
+		if (AActor* Ambient = UGameplayStatics::GetActorOfClass(MissionActor, ASimCopterAmbientVehiclesActor::StaticClass()))
+		{
+			Ambient->SetActorTickEnabled(false);
+		}
+	}
+
 	bPendingMissionStateApplied = true;
 	return true;
 }
@@ -556,7 +626,76 @@ bool USimCopterSaveSubsystem::ApplyPendingAircraftState(UWorld* World)
 		PendingLoadedGame->DamageFraction,
 		PendingLoadedGame->SelectedToolIndex);
 
+	bool bApplySucceeded = true;
+	if (PendingLoadedGame->bHasRuntimeWorldState)
+	{
+		ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass()));
+		ASimCopterTrafficSystemActor* Traffic = Cast<ASimCopterTrafficSystemActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterTrafficSystemActor::StaticClass()));
+		ASimCopterAmbientVehiclesActor* Ambient = Cast<ASimCopterAmbientVehiclesActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterAmbientVehiclesActor::StaticClass()));
+		ASimCity2000CityActor* City = Traffic != nullptr ? Traffic->GetCityActor() : nullptr;
+		if (City == nullptr)
+		{
+			City = Cast<ASimCity2000CityActor>(
+				UGameplayStatics::GetActorOfClass(World, ASimCity2000CityActor::StaticClass()));
+		}
+
+		bool bRuntimeRestored = Missions != nullptr && Traffic != nullptr && Ambient != nullptr && City != nullptr;
+		if (bRuntimeRestored)
+		{
+			TArray<FIntPoint> ClearedTiles;
+			City->RestoreDemolishedBuildingOrigins(PendingLoadedGame->DemolishedBuildingOrigins, ClearedTiles);
+			Traffic->ClearXbldTiles(ClearedTiles);
+			// Recreate pointer owners before the mission actor restores its in-progress medevac
+			// handoffs and render state. The aircraft loads first so each recreated passenger can
+			// relink its saved cabin seat; ambient then finds the restored train-roof riders.
+			bRuntimeRestored =
+				Helicopter->RestoreRuntimeSaveState(PendingLoadedGame->AircraftRuntimeState) &&
+				Traffic->RestoreRuntimeSaveState(PendingLoadedGame->TrafficRuntimeState, Helicopter) &&
+				Ambient->RestoreRuntimeSaveState(PendingLoadedGame->AmbientVehicleRuntimeState) &&
+				Missions->RestoreRuntimeSaveState(PendingLoadedGame->MissionRuntimeState);
+		}
+
+		if (bRuntimeRestored)
+		{
+			if (APlayerController* PlayerController = UGameplayStatics::GetPlayerController(World, 0))
+			{
+				if (PendingLoadedGame->bPlayerWasInHelicopter)
+				{
+					Helicopter->EnterHelicopter(PlayerController, /*bBlendView=*/false);
+				}
+				else if (PendingLoadedGame->bHasOnFootTransform)
+				{
+					if (ASimCopterOnFootPawn* OnFoot = Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn()))
+					{
+						bRuntimeRestored = OnFoot->RestoreRuntimeSaveState(PendingLoadedGame->OnFootRuntimeState);
+					}
+					else
+					{
+						bRuntimeRestored = false;
+					}
+				}
+			}
+			else
+			{
+				bRuntimeRestored = false;
+			}
+		}
+
+		if (!bRuntimeRestored)
+		{
+			UE_LOG(LogTemp, Error, TEXT("SimCopter save: the exact live-world state could not be restored."));
+			bApplySucceeded = false;
+		}
+
+		if (Missions != nullptr) Missions->SetActorTickEnabled(true);
+		if (Traffic != nullptr) Traffic->SetActorTickEnabled(true);
+		if (Ambient != nullptr) Ambient->SetActorTickEnabled(true);
+	}
+
 	PendingLoadedGame = nullptr;
 	bPendingMissionStateApplied = false;
-	return true;
+	return bApplySucceeded;
 }

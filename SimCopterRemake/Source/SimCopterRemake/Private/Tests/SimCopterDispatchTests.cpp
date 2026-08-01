@@ -251,6 +251,35 @@ bool FSimCopterDispatchTileRulesTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterVehicleRoadMeshSurfaceRulesTest,
+	"SimCopter.Traffic.RoadMeshSurfaceRules",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameters)
+{
+	using FTraffic = ASimCopterTrafficSystemActor;
+
+	// FUN_0047c0c0 maps these four pieces to dedicated raised-span ramp meshes 0x178..0x17b.
+	// Sampling those meshes is what keeps both vehicle Z and pitch on the visible wedge.
+	TestTrue(TEXT("0x3f begins the raised-span ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x3f));
+	TestTrue(TEXT("0x42 ends the raised-span ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x42));
+
+	TestTrue(TEXT("0x49 begins the bridge-deck range"), FTraffic::UsesVehicleRoadMeshSurface(0x49));
+	TestTrue(TEXT("0x59 ends the bridge-deck range"), FTraffic::UsesVehicleRoadMeshSurface(0x59));
+	TestTrue(TEXT("0x5d begins the highway/on-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x5d));
+	TestTrue(TEXT("0x6b ends the highway/on-ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x6b));
+
+	// Ordinary sloped roads follow conditioned terrain. Power crossings must stay at road level
+	// instead of treating their overhead wires as a vehicle surface.
+	TestFalse(TEXT("ordinary terrain slope stays graph-driven"), FTraffic::UsesVehicleRoadMeshSurface(0x1f));
+	TestFalse(TEXT("east-west power crossing ignores overhead mesh"), FTraffic::UsesVehicleRoadMeshSurface(0x43));
+	TestFalse(TEXT("north-south power crossing ignores overhead mesh"), FTraffic::UsesVehicleRoadMeshSurface(0x44));
+	TestFalse(TEXT("non-road meshes remain non-solid to traffic"), FTraffic::UsesVehicleRoadMeshSurface(0x2c));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterDispatchStationScanTest,
 	"SimCopter.Dispatch.StationScan",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

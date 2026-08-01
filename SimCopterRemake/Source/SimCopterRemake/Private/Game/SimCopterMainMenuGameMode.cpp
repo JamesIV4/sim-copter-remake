@@ -2,6 +2,7 @@
 
 #include "Game/SimCopterMainMenuGameMode.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
@@ -156,6 +157,17 @@ void ASimCopterMainMenuGameMode::EnterScreen(const ESimCopterFrontEndScreen NewS
 	}
 
 	CloseScreen();
+
+	// A front-end page owns its standalone sounds in the original. The remake's audio subsystem
+	// is world-scoped, so explicitly retire the outgoing page's one-shots before the next page
+	// constructs its own bed. Also silence the world radio defensively: no helicopter is possessed
+	// in the shell, and the main menu must have only its own menuback.wav music channel.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->StopRadio();
+		Audio->StopMusic();
+		Audio->StopStandaloneSounds();
+	}
 
 	TSharedRef<SWidget> Content = BuildScreen(NewScreen);
 	ScreenWidget =

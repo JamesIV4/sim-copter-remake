@@ -367,6 +367,18 @@ void USimCopterRadioSubsystem::Tick(float DeltaSeconds)
 		return;
 	}
 
+	// This subsystem exists in every game world, including the front end and the city while the
+	// player is walking. The radio belongs to the possessed helicopter, so power alone must not
+	// make it audible in either of those states.
+	if (!bPlayerInHelicopter)
+	{
+		if (Audio->IsRadioPlaying())
+		{
+			Audio->StopRadio();
+		}
+		return;
+	}
+
 	if (!bPowered)
 	{
 		if (Audio->IsRadioPlaying())
@@ -477,6 +489,20 @@ void USimCopterRadioSubsystem::SetPowered(bool bInPowered)
 	{
 		Audio->StopRadio();
 	}
+}
+
+void USimCopterRadioSubsystem::SetPlayerInHelicopter(const bool bInPlayerHelicopter)
+{
+	if (bPlayerInHelicopter == bInPlayerHelicopter)
+	{
+		return;
+	}
+
+	bPlayerInHelicopter = bInPlayerHelicopter;
+	// Stop the abandoned item on exit and back-date the normal four-second gap on both edges.
+	// Re-entering therefore starts the next item immediately while preserving the station and
+	// the player's explicit radio power choice.
+	RearmSchedule(/*bStopCurrent=*/true);
 }
 
 FString USimCopterRadioSubsystem::GetStationCallSign() const

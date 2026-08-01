@@ -89,6 +89,13 @@ public:
 	void SetPowered(bool bInPowered);
 	bool IsPowered() const { return bPowered; }
 
+	/**
+	 * The radio is fitted to the player helicopter, not to the world. Possession turns this on;
+	 * leaving the aircraft turns it off without changing the player's power setting or station.
+	 */
+	void SetPlayerInHelicopter(bool bInPlayerHelicopter);
+	bool IsPlayerInHelicopter() const { return bPlayerInHelicopter; }
+
 	/** Dial order, ascending. Empty when no station folder was found. */
 	const TArray<FSimCopterRadioStation>& GetStations() const { return Stations; }
 
@@ -175,6 +182,7 @@ private:
 
 	int32 StationIndex = 0;
 	bool bPowered = true;
+	bool bPlayerInHelicopter = false;
 	float Volume = 1.0f;
 
 	/** Indexed by ESimCopterRadioSlot; music can never be switched off. */

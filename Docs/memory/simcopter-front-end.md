@@ -74,8 +74,12 @@ is four border strips, left/top/right/bottom, because the middle is where the pr
 ## Remake divergences (all deliberate)
 
 - **No city preview movies.** Each career panel runs `city<N>_s.smk` (`FUN_00407c50(2, ...)`
-  appends `_s.smk`), and the panel shows the city's name instead. `menusky.smk`, the animated
-  backdrop behind the main menu, is a zero-byte CD stub in the reference install anyway.
+  appends `_s.smk`), and the panel shows the city's name instead.
+- **The main-menu sky moves again, with explicit fallback provenance.** `FUN_0044d070` opens
+  `menusky.smk` as the backdrop, but that file is a zero-byte CD stub in the reference install.
+  `SSimCopterMainMenu` therefore pans two copies of shipped `SKYCOOL.BMP` behind the keyed menu art.
+  This restores the intended animated cloudy background without claiming the missing Smacker
+  frames were decoded.
 - **No file dialog.** `SSimCopterUserCityPicker` lists the same `.sc2` files on menu4.bmp — the
   original's keyboard-shortcut list page — keeping title string 40. Its rectangles are *measured*
   off that bitmap, not decoded, because the original never lays a file list on it.

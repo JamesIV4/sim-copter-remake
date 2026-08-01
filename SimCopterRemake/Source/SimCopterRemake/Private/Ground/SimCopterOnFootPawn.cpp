@@ -13,6 +13,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -29,6 +30,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UI/SSimCopterControllerOverlay.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/SOverlay.h"
@@ -37,6 +40,16 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterOnFootPawn, Log, All);
 
 namespace
 {
+constexpr uint32 OnFootRuntimeSaveMagic = 0x464f4f54; // 'FOOT'
+constexpr int32 OnFootRuntimeSaveVersion = 1;
+
+void SerializeOnFootBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading()) Value = Byte != 0;
+}
+
 // Matches ASimCopterGroundAgent::PopulationWorldScale - the on-foot avatar was authored in real
 // cm and read ~4x too tall next to the 0.25x-scaled city, cars and NPC pedestrians.
 constexpr float PopulationWorldScale = 0.25f;
@@ -414,6 +427,215 @@ ASimCopterGroundAgent* ASimCopterOnFootPawn::ConsumeCarriedMissionPerson()
 	CarriedMissionPerson.Reset();
 	CarriedMissionEventId = INDEX_NONE;
 	return MissionPerson;
+}
+
+bool ASimCopterOnFootPawn::CaptureRuntimeSaveState(TArray<uint8>& OutData) const
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = OnFootRuntimeSaveMagic;
+	int32 Version = OnFootRuntimeSaveVersion;
+	Writer << Magic;
+	Writer << Version;
+
+	FTransform Transform = GetActorTransform();
+	FVector Velocity = GetVelocity();
+	uint8 MovementMode = MOVE_None;
+	uint8 CustomMovementMode = 0;
+	if (const UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Velocity = Move->Velocity;
+		MovementMode = static_cast<uint8>(Move->MovementMode);
+		CustomMovementMode = Move->CustomMovementMode;
+	}
+	Writer << Transform;
+	Writer << Velocity;
+	Writer << MovementMode;
+	Writer << CustomMovementMode;
+
+	float SavedCameraPitchDeg = CameraPitchDeg;
+	int32 SavedBodySpriteRow = BodySpriteRow;
+	float SavedBodySpriteTimeSeconds = BodySpriteTimeSeconds;
+	FString FigureMnemonic = FigureAnim.Mnemonic;
+	int32 FigureFrame = FigureAnim.CurrentFrame;
+	float FigureFrameTime = FigureAnim.FrameTime;
+	Writer << SavedCameraPitchDeg;
+	Writer << SavedBodySpriteRow;
+	Writer << SavedBodySpriteTimeSeconds;
+	Writer << FigureMnemonic;
+	Writer << FigureFrame;
+	Writer << FigureFrameTime;
+
+	FName CarriedPersonName = NAME_None;
+	if (const ASimCopterGroundAgent* CarriedPerson = CarriedMissionPerson.Get())
+	{
+		CarriedPersonName = CarriedPerson->GetRuntimeSaveIdentityName();
+	}
+	int32 SavedCarriedMissionEventId = CarriedMissionEventId;
+	float SavedPickupCooldownSeconds = MissionPickupCooldownSeconds;
+	Writer << CarriedPersonName;
+	Writer << SavedCarriedMissionEventId;
+	Writer << SavedPickupCooldownSeconds;
+
+	FRotator ControlRotation = FRotator::ZeroRotator;
+	bool bHasControlRotation = false;
+	if (const AController* OwningController = GetController())
+	{
+		ControlRotation = OwningController->GetControlRotation();
+		bHasControlRotation = true;
+	}
+	SerializeOnFootBool(Writer, bHasControlRotation);
+	Writer << ControlRotation;
+
+	bool bSavedPressedJump = bPressedJump != 0;
+	bool bSavedWasJumping = bWasJumping != 0;
+	float SavedJumpKeyHoldTime = JumpKeyHoldTime;
+	float SavedJumpForceTimeRemaining = JumpForceTimeRemaining;
+	int32 SavedJumpCurrentCount = JumpCurrentCount;
+	int32 SavedJumpCurrentCountPreJump = JumpCurrentCountPreJump;
+	SerializeOnFootBool(Writer, bSavedPressedJump);
+	SerializeOnFootBool(Writer, bSavedWasJumping);
+	Writer << SavedJumpKeyHoldTime;
+	Writer << SavedJumpForceTimeRemaining;
+	Writer << SavedJumpCurrentCount;
+	Writer << SavedJumpCurrentCountPreJump;
+	return !Writer.IsError();
+}
+
+bool ASimCopterOnFootPawn::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	Reader << Magic;
+	Reader << Version;
+	if (Reader.IsError() || Magic != OnFootRuntimeSaveMagic || Version != OnFootRuntimeSaveVersion)
+	{
+		return false;
+	}
+
+	FTransform Transform = FTransform::Identity;
+	FVector Velocity = FVector::ZeroVector;
+	uint8 MovementMode = MOVE_None;
+	uint8 CustomMovementMode = 0;
+	Reader << Transform;
+	Reader << Velocity;
+	Reader << MovementMode;
+	Reader << CustomMovementMode;
+
+	float SavedCameraPitchDeg = 0.0f;
+	int32 SavedBodySpriteRow = INDEX_NONE;
+	float SavedBodySpriteTimeSeconds = 0.0f;
+	FString FigureMnemonic;
+	int32 FigureFrame = 0;
+	float FigureFrameTime = 0.0f;
+	Reader << SavedCameraPitchDeg;
+	Reader << SavedBodySpriteRow;
+	Reader << SavedBodySpriteTimeSeconds;
+	Reader << FigureMnemonic;
+	Reader << FigureFrame;
+	Reader << FigureFrameTime;
+
+	FName CarriedPersonName = NAME_None;
+	int32 SavedCarriedMissionEventId = INDEX_NONE;
+	float SavedPickupCooldownSeconds = 0.0f;
+	Reader << CarriedPersonName;
+	Reader << SavedCarriedMissionEventId;
+	Reader << SavedPickupCooldownSeconds;
+
+	bool bHasControlRotation = false;
+	FRotator ControlRotation = FRotator::ZeroRotator;
+	SerializeOnFootBool(Reader, bHasControlRotation);
+	Reader << ControlRotation;
+
+	bool bSavedPressedJump = false;
+	bool bSavedWasJumping = false;
+	float SavedJumpKeyHoldTime = 0.0f;
+	float SavedJumpForceTimeRemaining = 0.0f;
+	int32 SavedJumpCurrentCount = 0;
+	int32 SavedJumpCurrentCountPreJump = 0;
+	SerializeOnFootBool(Reader, bSavedPressedJump);
+	SerializeOnFootBool(Reader, bSavedWasJumping);
+	Reader << SavedJumpKeyHoldTime;
+	Reader << SavedJumpForceTimeRemaining;
+	Reader << SavedJumpCurrentCount;
+	Reader << SavedJumpCurrentCountPreJump;
+
+	if (Reader.IsError() || Reader.Tell() != Data.Num() || Transform.ContainsNaN() || Velocity.ContainsNaN() ||
+		MovementMode >= MOVE_MAX || !FMath::IsFinite(SavedCameraPitchDeg) ||
+		SavedCameraPitchDeg < -90.0f || SavedCameraPitchDeg > 90.0f ||
+		!FMath::IsFinite(SavedBodySpriteTimeSeconds) || SavedBodySpriteTimeSeconds < 0.0f ||
+		FigureMnemonic.Len() > 16 || FigureFrame < 0 || !FMath::IsFinite(FigureFrameTime) || FigureFrameTime < 0.0f ||
+		!FMath::IsFinite(SavedPickupCooldownSeconds) || SavedPickupCooldownSeconds < 0.0f ||
+		(bHasControlRotation && ControlRotation.ContainsNaN()) ||
+		!FMath::IsFinite(SavedJumpKeyHoldTime) || SavedJumpKeyHoldTime < 0.0f ||
+		!FMath::IsFinite(SavedJumpForceTimeRemaining) || SavedJumpForceTimeRemaining < 0.0f ||
+		SavedJumpCurrentCount < 0 || SavedJumpCurrentCount > JumpMaxCount ||
+		SavedJumpCurrentCountPreJump < 0 || SavedJumpCurrentCountPreJump > JumpMaxCount)
+	{
+		return false;
+	}
+
+	ASimCopterGroundAgent* CarriedPerson = nullptr;
+	if (!CarriedPersonName.IsNone())
+	{
+		for (TActorIterator<ASimCopterGroundAgent> It(GetWorld()); It; ++It)
+		{
+			if (It->GetRuntimeSaveIdentityName() == CarriedPersonName)
+			{
+				CarriedPerson = *It;
+				break;
+			}
+		}
+		if (CarriedPerson == nullptr || CarriedPerson->MissionEventId != SavedCarriedMissionEventId)
+		{
+			return false;
+		}
+	}
+
+	SetActorTransform(Transform, false, nullptr, ETeleportType::TeleportPhysics);
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(static_cast<EMovementMode>(MovementMode), CustomMovementMode);
+		Move->Velocity = Velocity;
+	}
+	CameraPitchDeg = SavedCameraPitchDeg;
+	if (CameraBoom != nullptr)
+	{
+		CameraBoom->SetRelativeRotation(FRotator(CameraPitchDeg, 0.0f, 0.0f));
+	}
+	BodySpriteRow = SavedBodySpriteRow;
+	BodySpriteTimeSeconds = SavedBodySpriteTimeSeconds;
+
+	if (bUsingOriginalFigure && !FigureMnemonic.IsEmpty() && RebuildPlayerFigureClip(FigureMnemonic))
+	{
+		FigureAnim.FrameTime = FigureFrameTime;
+		FigureAnim.CurrentFrame = FMath::Clamp(FigureFrame, 0, FMath::Max(0, FigureAnim.FrameCount - 1));
+		FSimCopterPopulationFigure::ShowFrame(
+			OriginalBodySpriteComponent,
+			FigureAnim.FrameCount,
+			FigureAnim.CurrentFrame,
+			FigureAnim.bHasHeadSection);
+	}
+
+	CarriedMissionPerson.Reset();
+	CarriedMissionEventId = INDEX_NONE;
+	if (CarriedPerson != nullptr && !PickUpMissionPerson(CarriedPerson))
+	{
+		return false;
+	}
+	MissionPickupCooldownSeconds = SavedPickupCooldownSeconds;
+	if (bHasControlRotation && GetController() != nullptr)
+	{
+		GetController()->SetControlRotation(ControlRotation);
+	}
+	bPressedJump = bSavedPressedJump;
+	bWasJumping = bSavedWasJumping;
+	JumpKeyHoldTime = SavedJumpKeyHoldTime;
+	JumpForceTimeRemaining = SavedJumpForceTimeRemaining;
+	JumpCurrentCount = SavedJumpCurrentCount;
+	JumpCurrentCountPreJump = SavedJumpCurrentCountPreJump;
+	return true;
 }
 
 void ASimCopterOnFootPawn::SimBoardHelicopter()

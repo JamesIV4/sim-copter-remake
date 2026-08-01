@@ -139,7 +139,7 @@ def import_texture(png_path, asset_name):
     return texture
 
 
-def create_material_instance(asset_name, parent_path, texture):
+def create_material_instance(asset_name, parent_path, texture, animate_water_cells=False):
     asset_path = f"{OUTPUT_DIR}/{asset_name}"
     parent = unreal.EditorAssetLibrary.load_asset(parent_path)
     existing = unreal.EditorAssetLibrary.load_asset(asset_path)
@@ -151,6 +151,9 @@ def create_material_instance(asset_name, parent_path, texture):
         )
     mic.set_editor_property("parent", parent)
     unreal.MaterialEditingLibrary.set_material_instance_texture_parameter_value(mic, "Texture", texture)
+    unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value(
+        mic, "AnimateWaterCells", 1.0 if animate_water_cells else 0.0
+    )
     unreal.EditorAssetLibrary.save_asset(asset_path, only_if_is_dirty=False)
 
 
@@ -181,7 +184,15 @@ def main():
         png = os.path.join(temp_dir, f"page_{page_id}.png")
         write_png(png, w, h, rgb)
         texture = import_texture(png, f"T_CityPage_{page_id}")
-        create_material_instance(f"MI_CityPage_{page_id}", ATLAS_MATERIAL, texture)
+        # SCHOOK: FUN_004814c0. SKY.BMP image 4 (the page-20 exception) contains the exact same
+        # water cells 0..9 as TILED1. Mesh-object ponds/pools use base cell 0 or 5 and therefore
+        # advance with the terrain water instead of staying on their first frame.
+        create_material_instance(
+            f"MI_CityPage_{page_id}",
+            ATLAS_MATERIAL,
+            texture,
+            animate_water_cells=(page_id == SKY_PAGE_ID),
+        )
         baked_pages.append(page_id)
 
     # Direct images are drawn as keyed cards (face types 2 and 13), so they carry the index-0

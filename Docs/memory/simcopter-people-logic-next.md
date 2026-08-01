@@ -354,7 +354,9 @@ NOT ported" list is finally empty, and the eight left over (42/43/45/49/52/64/65
   regardless. Only "no live 0x1000 record" fails. Porting the calm case as a failure deadlocked
   every riot - BHAV 852 returned before its `speed += 1`, so agitation never left 0, and BHAV 311
   `Rioter maybe leave riot` (which retires anyone under 3) dispersed the whole crowd on its first
-  tick, completing the mission the instant it was created. Separately, **a rioter cannot start at
-  agitation 0** and nothing in the executable seeds it - person+0x150 is never written by a literal
-  offset anywhere in `.text`, only through the VM's attribute table - so the remake bootstraps it
-  to 3 (`SimCopterMissions::RioterSpawnAgitation`). That seed is an open item.
+  tick, completing the mission the instant it was created. The seed is now pinned too:
+  **`FUN_004c4190`'s spawn-mode-3 arm writes literal 7 to person+0x150** before placement. The
+  remake uses that exact value (`SimCopterMissions::RioterSpawnAgitation`), not the former inferred
+  threshold value 3. A riot requests 9..30 people depending on difficulty and creation succeeds
+  only when at least 11 actual pedestrian actors spawn; those actors remain until megaphone/tear
+  gas, calming, arrest, or casualty outcomes satisfy the record.

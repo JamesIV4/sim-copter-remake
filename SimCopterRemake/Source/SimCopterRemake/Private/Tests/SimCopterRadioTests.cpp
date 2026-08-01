@@ -189,6 +189,33 @@ bool FSimCopterRadioScheduleTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRadioPossessionGateTest,
+	"SimCopter.Radio.PossessionGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterRadioPossessionGateTest::RunTest(const FString& Parameters)
+{
+	USimCopterRadioSubsystem* Radio = NewObject<USimCopterRadioSubsystem>();
+	if (!TestNotNull(TEXT("subsystem constructs"), Radio))
+	{
+		return false;
+	}
+
+	TestFalse(TEXT("radio starts outside the helicopter"), Radio->IsPlayerInHelicopter());
+	TestTrue(TEXT("radio power setting still defaults on"), Radio->IsPowered());
+
+	Radio->SetPlayerInHelicopter(true);
+	TestTrue(TEXT("possession enables radio playback"), Radio->IsPlayerInHelicopter());
+
+	Radio->SetPowered(false);
+	Radio->SetPlayerInHelicopter(false);
+	TestFalse(TEXT("leaving disables radio playback"), Radio->IsPlayerInHelicopter());
+	Radio->SetPlayerInHelicopter(true);
+	TestFalse(TEXT("re-entering preserves the player's off setting"), Radio->IsPowered());
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterRadioDialTest,
 	"SimCopter.Radio.Dial",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

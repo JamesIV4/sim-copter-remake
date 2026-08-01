@@ -142,6 +142,7 @@ struct FSimCopterAmbientTrain
 struct FSimCopterVehicleWreck
 {
 	TObjectPtr<UProceduralMeshComponent> Mesh;
+	int32 ObjectId = INDEX_NONE;
 	int32 EventId = INDEX_NONE;
 	// Stable key for the fire renderer; distinct from the flame-slot and burning-car key spaces.
 	int32 Key = 0;
@@ -149,6 +150,8 @@ struct FSimCopterVehicleWreck
 	// Counts down while it burns; running out is a failure to douse, not a completion.
 	float BurnTimeoutSeconds = 0.0f;
 	FVector World = FVector::ZeroVector;
+	FVector Direction = FVector::ForwardVector;
+	float ExtraYawDegrees = 0.0f;
 };
 
 UCLASS()
@@ -192,6 +195,12 @@ public:
 	// it without the round-trip lag of reading a position out of the log. 0 = train, 1 = capsized
 	// boat, 2 = a flying plane, 3 = the nearest burning wreck.
 	bool TryGetDebugViewTarget(int32 Which, FVector& OutWorld) const;
+
+	bool CaptureRuntimeSaveState(TArray<uint8>& OutData);
+	bool RestoreRuntimeSaveState(const TArray<uint8>& Data);
+	// Stable component owned by the fixed UFO pool. Restored abductees relink to it after traffic
+	// actors are recreated; the ambient restore then moves that same component to its saved pose.
+	USceneComponent* GetUfoBeamTargetComponent() const;
 
 	// The UFO only flies when this is on; the original gated it on DAT_00504084.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Ambient Vehicles")

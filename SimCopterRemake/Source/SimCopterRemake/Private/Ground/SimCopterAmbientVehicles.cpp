@@ -17,12 +17,23 @@
 #include "Missions/SimCopterMissionSystem.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "ProceduralMeshComponent.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterAmbientVehicles, Log, All);
 
 namespace
 {
+constexpr uint32 AmbientRuntimeSaveMagic = 0x414d4249; // 'AMBI'
+constexpr int32 AmbientRuntimeSaveVersion = 1;
+
+void SerializeAmbientBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading()) Value = Byte != 0;
+}
 // The city builds its GEO models at TileSize / OriginalMeshSourceTileSize; the ground agents use
 // the same 0.25 at the default 400 cm tile. Planes, boats and trains are the same art, so they go
 // through the same conversion.
@@ -156,6 +167,208 @@ void ASimCopterAmbientVehiclesActor::BeginPlay()
 				TEXT("Crash debris unavailable: %s"), *EffectError);
 		}
 	}
+}
+
+bool ASimCopterAmbientVehiclesActor::CaptureRuntimeSaveState(TArray<uint8>& OutData)
+{
+	EnsurePools();
+	if (!bPoolsInitialized) return false;
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = AmbientRuntimeSaveMagic;
+	int32 Version = AmbientRuntimeSaveVersion;
+	Writer << Magic << Version;
+	int32 RandomCurrent = RandomStream.GetCurrentSeed();
+	Writer << RandomCurrent << UfoBeamTickAccumSeconds << NextWreckKey;
+
+	for (FSimCopterAmbientPlane& Plane : Planes)
+	{
+		Writer << Plane.ObjectId;
+		SerializeAmbientBool(Writer, Plane.bVisible);
+		SerializeAmbientBool(Writer, Plane.bCrashRequested);
+		SerializeAmbientBool(Writer, Plane.bCrashing);
+		Writer << Plane.Direction << Plane.SegmentRemainingCm << Plane.SpeedCmPerSec;
+		Writer << Plane.Tile << Plane.RespawnAccumSeconds << Plane.VerticalSpeedCmPerSec;
+		Writer << Plane.EventId << Plane.EffectTimerSeconds << Plane.HitCount << Plane.World;
+	}
+	for (FSimCopterAmbientBoat& Boat : Boats)
+	{
+		Writer << Boat.ObjectId;
+		SerializeAmbientBool(Writer, Boat.bVisible);
+		Writer << Boat.Direction << Boat.DistanceToTargetCm << Boat.SpeedCmPerSec << Boat.BaseSpeedCmPerSec;
+		Writer << Boat.Tile << Boat.TargetTile << Boat.PreviousTile << Boat.RespawnAccumSeconds;
+		Writer << Boat.EventId << Boat.MissionTimerSeconds << Boat.WakeTimerSeconds << Boat.World;
+	}
+	SerializeAmbientBool(Writer, Train.bVisible);
+	SerializeAmbientBool(Writer, Train.bCrashRequested);
+	SerializeAmbientBool(Writer, Train.bDerailing);
+	SerializeAmbientBool(Writer, Train.bRescueActive);
+	Writer << Train.Tile << Train.NextTile << Train.PreviousTile;
+	Writer << Train.SpeedCmPerSec << Train.BaseSpeedCmPerSec << Train.RespawnAccumSeconds;
+	Writer << Train.EventId << Train.MissionTimerSeconds << Train.DerailTimerSeconds;
+	Writer << Train.DerailSpinDegrees << Train.World << Train.Direction << Train.PitchDegrees;
+	Writer << Train.PathHistory;
+
+	int32 WreckCount = Wrecks.Num();
+	Writer << WreckCount;
+	for (FSimCopterVehicleWreck& Wreck : Wrecks)
+	{
+		Writer << Wreck.ObjectId << Wreck.EventId << Wreck.Key;
+		SerializeAmbientBool(Writer, Wreck.bBurning);
+		Writer << Wreck.BurnTimeoutSeconds << Wreck.World << Wreck.Direction << Wreck.ExtraYawDegrees;
+	}
+	TArray<uint8> EffectState;
+	if (EffectComponent == nullptr || !EffectComponent->CaptureRuntimeSaveState(EffectState))
+	{
+		OutData.Reset();
+		return false;
+	}
+	Writer << EffectState;
+	return !Writer.IsError();
+}
+
+bool ASimCopterAmbientVehiclesActor::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	EnsurePools();
+	if (!bPoolsInitialized || Data.IsEmpty()) return false;
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	int32 RandomCurrent = 0;
+	Reader << Magic << Version << RandomCurrent << UfoBeamTickAccumSeconds << NextWreckKey;
+	if (Magic != AmbientRuntimeSaveMagic || Version != AmbientRuntimeSaveVersion) return false;
+	RandomStream.Initialize(RandomCurrent);
+
+	for (FSimCopterAmbientPlane& Plane : Planes)
+	{
+		UProceduralMeshComponent* Mesh = Plane.Mesh;
+		Reader << Plane.ObjectId;
+		SerializeAmbientBool(Reader, Plane.bVisible);
+		SerializeAmbientBool(Reader, Plane.bCrashRequested);
+		SerializeAmbientBool(Reader, Plane.bCrashing);
+		Reader << Plane.Direction << Plane.SegmentRemainingCm << Plane.SpeedCmPerSec;
+		Reader << Plane.Tile << Plane.RespawnAccumSeconds << Plane.VerticalSpeedCmPerSec;
+		Reader << Plane.EventId << Plane.EffectTimerSeconds << Plane.HitCount << Plane.World;
+		Plane.Mesh = Mesh;
+	}
+	for (FSimCopterAmbientBoat& Boat : Boats)
+	{
+		UProceduralMeshComponent* Mesh = Boat.Mesh;
+		Reader << Boat.ObjectId;
+		SerializeAmbientBool(Reader, Boat.bVisible);
+		Reader << Boat.Direction << Boat.DistanceToTargetCm << Boat.SpeedCmPerSec << Boat.BaseSpeedCmPerSec;
+		Reader << Boat.Tile << Boat.TargetTile << Boat.PreviousTile << Boat.RespawnAccumSeconds;
+		Reader << Boat.EventId << Boat.MissionTimerSeconds << Boat.WakeTimerSeconds << Boat.World;
+		Boat.Mesh = Mesh;
+	}
+	UProceduralMeshComponent* LocoMesh = Train.LocoMesh;
+	UProceduralMeshComponent* CarMeshes[SimCopterAmbientVehicles::TrainCarCount] = {Train.CarMeshes[0], Train.CarMeshes[1]};
+	SerializeAmbientBool(Reader, Train.bVisible);
+	SerializeAmbientBool(Reader, Train.bCrashRequested);
+	SerializeAmbientBool(Reader, Train.bDerailing);
+	SerializeAmbientBool(Reader, Train.bRescueActive);
+	Reader << Train.Tile << Train.NextTile << Train.PreviousTile;
+	Reader << Train.SpeedCmPerSec << Train.BaseSpeedCmPerSec << Train.RespawnAccumSeconds;
+	Reader << Train.EventId << Train.MissionTimerSeconds << Train.DerailTimerSeconds;
+	Reader << Train.DerailSpinDegrees << Train.World << Train.Direction << Train.PitchDegrees;
+	Reader << Train.PathHistory;
+	Train.LocoMesh = LocoMesh;
+	for (int32 Index = 0; Index < SimCopterAmbientVehicles::TrainCarCount; ++Index) Train.CarMeshes[Index] = CarMeshes[Index];
+
+	struct FSavedWreck
+	{
+		int32 ObjectId = INDEX_NONE;
+		int32 EventId = INDEX_NONE;
+		int32 Key = 0;
+		bool bBurning = false;
+		float Timeout = 0.0f;
+		FVector World = FVector::ZeroVector;
+		FVector Direction = FVector::ForwardVector;
+		float Yaw = 0.0f;
+	};
+	int32 WreckCount = 0;
+	Reader << WreckCount;
+	if (WreckCount < 0 || WreckCount > 32) return false;
+	TArray<FSavedWreck> SavedWrecks;
+	SavedWrecks.SetNum(WreckCount);
+	for (FSavedWreck& Wreck : SavedWrecks)
+	{
+		Reader << Wreck.ObjectId << Wreck.EventId << Wreck.Key;
+		SerializeAmbientBool(Reader, Wreck.bBurning);
+		Reader << Wreck.Timeout << Wreck.World << Wreck.Direction << Wreck.Yaw;
+	}
+	TArray<uint8> EffectState;
+	Reader << EffectState;
+	if (EffectState.IsEmpty()) return false;
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
+
+	for (FSimCopterVehicleWreck& Wreck : Wrecks) DestroyWreck(Wreck);
+	Wrecks.Reset();
+	const int32 SavedNextWreckKey = NextWreckKey;
+	for (const FSavedWreck& Saved : SavedWrecks)
+	{
+		if (FSimCopterVehicleWreck* Wreck = AddWreck(
+			Saved.ObjectId, Saved.World, Saved.Direction, Saved.Yaw,
+			Saved.EventId, Saved.bBurning, Saved.Timeout))
+		{
+			Wreck->Key = Saved.Key;
+		}
+	}
+	NextWreckKey = SavedNextWreckKey;
+	if (EffectComponent == nullptr || !EffectComponent->RestoreRuntimeSaveState(EffectState))
+	{
+		return false;
+	}
+
+	for (FSimCopterAmbientPlane& Plane : Planes)
+	{
+		if (Plane.Mesh != nullptr)
+		{
+			Plane.Mesh->SetVisibility(Plane.bVisible);
+			if (Plane.bVisible) SetMeshTransform(Plane.Mesh, Plane.World, Plane.Direction);
+		}
+	}
+	for (FSimCopterAmbientBoat& Boat : Boats)
+	{
+		if (Boat.Mesh != nullptr)
+		{
+			Boat.Mesh->SetVisibility(Boat.bVisible);
+			if (Boat.bVisible) SetMeshTransform(Boat.Mesh, Boat.World, Boat.Direction);
+		}
+	}
+	if (Train.LocoMesh != nullptr) Train.LocoMesh->SetVisibility(Train.bVisible);
+	for (UProceduralMeshComponent* Mesh : Train.CarMeshes) if (Mesh != nullptr) Mesh->SetVisibility(Train.bVisible);
+	if (Train.bVisible) UpdateTrainCarTransforms();
+
+	TrainRoofRiders.Reset();
+	if (Train.EventId != INDEX_NONE && GetWorld() != nullptr)
+	{
+		TArray<AActor*> People;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterGroundAgent::StaticClass(), People);
+		for (AActor* Actor : People)
+		{
+			ASimCopterGroundAgent* Person = Cast<ASimCopterGroundAgent>(Actor);
+			if (Person != nullptr && Person->GetAgentKind() == ESimCopterGroundAgentKind::Pedestrian &&
+				Person->MissionEventId == Train.EventId)
+			{
+				TrainRoofRiders.Add(Person);
+			}
+		}
+		UpdateTrainRoofRiders();
+	}
+	return true;
+}
+
+USceneComponent* ASimCopterAmbientVehiclesActor::GetUfoBeamTargetComponent() const
+{
+	for (const FSimCopterAmbientPlane& Plane : Planes)
+	{
+		if (Plane.ObjectId == SimCopterAmbientVehicles::UfoObjectId && Plane.Mesh != nullptr)
+		{
+			return Plane.Mesh;
+		}
+	}
+	return nullptr;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -593,12 +806,15 @@ FSimCopterVehicleWreck* ASimCopterAmbientVehiclesActor::AddWreck(
 
 	FSimCopterVehicleWreck Wreck;
 	Wreck.Mesh = Mesh;
+	Wreck.ObjectId = ObjectId;
 	Wreck.EventId = EventId;
 	// A key space of its own, above the flame slots and the burning-car ids.
 	Wreck.Key = 0x50000000 | (NextWreckKey++ & 0x0FFFFFFF);
 	Wreck.bBurning = bBurning;
 	Wreck.BurnTimeoutSeconds = BurnTimeoutSeconds;
 	Wreck.World = World;
+	Wreck.Direction = Direction;
+	Wreck.ExtraYawDegrees = ExtraYawDegrees;
 
 	SetMeshTransform(Mesh, World, Direction, ExtraYawDegrees);
 	Wrecks.Add(Wreck);

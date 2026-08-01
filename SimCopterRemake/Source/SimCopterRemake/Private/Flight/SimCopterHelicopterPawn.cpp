@@ -58,6 +58,9 @@
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
+#include "Serialization/Archive.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "UI/SimCopterHangarArt.h"
@@ -88,6 +91,57 @@ constexpr TCHAR RotorDiscConfigSection[] = TEXT("SimCopter.RotorDisc");
 constexpr TCHAR CockpitViewConfigSection[] = TEXT("SimCopter.CockpitView");
 constexpr TCHAR FlightModelConfigSection[] = TEXT("SimCopter.FlightModel");
 constexpr TCHAR CameraGroundLiftConfigSection[] = TEXT("SimCopter.CameraGroundLift");
+constexpr uint32 AircraftRuntimeSaveMagic = 0x48454c49; // 'HELI'
+constexpr int32 AircraftRuntimeSaveVersion = 1;
+
+void SerializeArchiveBool(FArchive& Archive, bool& Value)
+{
+	uint8 Byte = Value ? 1 : 0;
+	Archive << Byte;
+	if (Archive.IsLoading())
+	{
+		Value = Byte != 0;
+	}
+}
+
+void SerializeFlightTuning(FArchive& Archive, FSimCopterFlightTuning& Tuning)
+{
+	Archive << Tuning.MaxBank << Tuning.MaxSlide << Tuning.MaxPitch << Tuning.PitchRate;
+	Archive << Tuning.YawRate << Tuning.RollRate << Tuning.SlideRate << Tuning.ClimbRate;
+	Archive << Tuning.MaxLoadPounds << Tuning.MaxYawRate << Tuning.FuelRateGalPerHour;
+	Archive << Tuning.MaxDamage << Tuning.FuelGallons << Tuning.PassengerSeats;
+	SerializeArchiveBool(Archive, Tuning.bNoTailRotor);
+	Archive << Tuning.LandMaxPitch << Tuning.LandMaxSlide << Tuning.LandMaxSpeed;
+	Archive << Tuning.LandMaxYSpeed << Tuning.MaxDescentRate << Tuning.MinFireAlt;
+	Archive << Tuning.MaxFireAlt << Tuning.CollisionSubtract;
+}
+
+void SerializeFlightModel(FArchive& Archive, FSimCopterFlightModel& Model)
+{
+	SerializeFlightTuning(Archive, Model.Tuning);
+	SerializeArchiveBool(Archive, Model.bEasyFlightModel);
+	uint8 State = static_cast<uint8>(Model.State);
+	Archive << State;
+	if (Archive.IsLoading()) Model.State = static_cast<ESimCopterFlightState>(State);
+	Archive << Model.PosX << Model.Altitude << Model.PosZ << Model.Heading;
+	Archive << Model.PitchTarget << Model.PitchSmoothed << Model.BankTarget << Model.BankSmoothed;
+	Archive << Model.SlideTarget << Model.SlideSmoothed << Model.YawRateTarget << Model.YawRateSmoothed;
+	Archive << Model.ForwardSpeed << Model.ClimbSpeed << Model.SpeedDelta << Model.HorizontalSpeed;
+	Archive << Model.VelX << Model.VelZ << Model.DeltaX << Model.DeltaZ << Model.AboveGround;
+	Archive << Model.RotorSpeed << Model.MainRotorAngle << Model.TailRotorAngle;
+	SerializeArchiveBool(Archive, Model.bRotorBlurDisc);
+	Archive << Model.HitPoints << Model.Fuel << Model.FlightSeconds << Model.LoadPounds;
+	Archive << Model.Passengers << Model.LoadFactor << Model.BounceTimer << Model.DyingTimer;
+	for (int32& Value : Model.TurbPitchSamples) Archive << Value;
+	for (int32& Value : Model.TurbSlideSamples) Archive << Value;
+	for (int32& Value : Model.TurbYawSamples) Archive << Value;
+	Archive << Model.TurbPitch << Model.TurbSlide << Model.TurbYaw;
+	Archive << Model.TurbPitchPrev << Model.TurbSlidePrev << Model.TurbYawPrev;
+	Archive << Model.TurbPitchNext << Model.TurbSlideNext << Model.TurbYawNext;
+	Archive << Model.TurbulenceClock << Model.TurbulenceFrameSeconds;
+	Archive << Model.ReferenceFrameSeconds << Model.SpeedChaseFrameSeconds;
+	Archive << Model.RotorVisualMultiplier << Model.FireDamageAccrued << Model.RandState;
+}
 // Parameters authored by Tools/Unreal/CreateSimCopterMaterials.py.
 const FName RotorDiscOpacityParameterName(TEXT("DiscOpacity"));
 const FName RotorDiscColorParameterName(TEXT("DiscColor"));
@@ -1863,6 +1917,252 @@ void ASimCopterHelicopterPawn::RestoreSavedCareerState(
 	RefreshWaterControlsWidget();
 }
 
+bool ASimCopterHelicopterPawn::CaptureRuntimeSaveState(TArray<uint8>& OutData)
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = AircraftRuntimeSaveMagic;
+	int32 Version = AircraftRuntimeSaveVersion;
+	Writer << Magic << Version;
+
+	FTransform ActorTransform = GetActorTransform();
+	Writer << ActorTransform;
+	SerializeFlightModel(Writer, FlightModel);
+	SerializeArchiveBool(Writer, bFlightModelSeeded);
+	Writer << VelocityCmPerSec << CurrentPitchDeg << CurrentRollDeg;
+	Writer << CurrentFuelGallons << CurrentDamage;
+	SerializeArchiveBool(Writer, bEngineRunning);
+	Writer << EngineStartHoldElapsed << EngineShutdownHoldElapsed;
+
+	uint8 SavedCameraMode = static_cast<uint8>(CameraMode);
+	Writer << SavedCameraMode << CameraYawOffsetDeg << CameraPitchOffsetDeg << CameraZoomAlpha;
+	Writer << CurrentCameraGroundLiftCm << CurrentCameraPullInAlpha << CurrentCameraAvoidanceOffsetDeg;
+	Writer << CockpitStabilizedAttitudeDeg;
+	SerializeArchiveBool(Writer, bCockpitStabilizedAttitudeInitialized);
+	for (float& PanOffset : CameraViewPanOffsetsCm) Writer << PanOffset;
+	Writer << RopeAutoZoomAlpha << SmoothedCameraArmLengthCm << SmoothedCameraTranslationWorld;
+	Writer << SmoothedCameraViewWorldRotation;
+	SerializeArchiveBool(Writer, bCameraViewSmoothingInitialized);
+	SerializeArchiveBool(Writer, bIsLanded);
+	Writer << GroundClearanceCm << ForwardObstacleDistanceCm;
+	SerializeArchiveBool(Writer, bCheckupAutoOpenArmed);
+	SerializeArchiveBool(Writer, bCheckupOpenedThisLanding);
+
+	uint8 Tool = static_cast<uint8>(SelectedTool);
+	uint8 Megaphone = static_cast<uint8>(SelectedMegaphoneMessage);
+	Writer << Tool << Megaphone << ToolCooldownSeconds;
+	Writer << EquipmentState.CareerEquipmentMask << EquipmentState.CareerTearGasRounds;
+	Writer << MegaphoneVoiceNextIndices;
+	SerializeArchiveBool(Writer, bWaterCannonInstalled);
+
+	Writer << BucketWaterFraction << BucketWaterPounds;
+	SerializeArchiveBool(Writer, bRopeDeployed);
+	SerializeArchiveBool(Writer, bHarnessRopeEndSelected);
+	SerializeArchiveBool(Writer, bHarnessRiderAttached);
+	Writer << WinchState.NodeCursor;
+	SerializeArchiveBool(Writer, WinchState.bBucketStowed);
+	SerializeArchiveBool(Writer, WinchState.bHarnessStowed);
+	Writer << WinchState.Command;
+	uint8 RopeEnd = static_cast<uint8>(WinchState.RopeEnd);
+	Writer << RopeEnd << PendingWinchCommand << RopeFirstActiveNode;
+	SerializeArchiveBool(Writer, bRopeStateInitialized);
+	Writer << RopeNodeWorldPositions << PreviousRopeAnchorWorld << PreviousBucketWorld;
+	Writer << PreviousRopeEndDirection;
+
+	Writer << SpotlightAimPitch1616 << SpotlightAimYaw1616 << SpotlightDistance1616;
+	SerializeArchiveBool(Writer, bSpotlightTargetFrozen);
+	SerializeArchiveBool(Writer, SpotlightTarget.bValid);
+	Writer << SpotlightTarget.WorldLocation << SpotlightTarget.WorldNormal << SpotlightTarget.Tile;
+	Writer << SpotlightTarget.DistanceUnits << SpotlightTarget.Band << SpotlightTarget.InteractionRings;
+	bool bSearchLightVisible = SearchLightComponent != nullptr && SearchLightComponent->IsVisible();
+	SerializeArchiveBool(Writer, bSearchLightVisible);
+
+	TArray<uint8> ParticleFxData;
+	TArray<uint8> TearGasData;
+	TArray<uint8> ApacheData;
+	if (WaterFXComponent == nullptr || TearGasPool == nullptr || ApachePool == nullptr ||
+		!WaterFXComponent->CaptureRuntimeSaveState(ParticleFxData) ||
+		!TearGasPool->CaptureRuntimeSaveState(TearGasData) ||
+		!ApachePool->CaptureRuntimeSaveState(ApacheData))
+	{
+		OutData.Reset();
+		return false;
+	}
+	Writer << ParticleFxData << TearGasData << ApacheData;
+
+	int32 PassengerCount = MissionPassengerSlots.Num();
+	Writer << PassengerCount;
+	for (FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
+	{
+		Writer << Slot.EventId;
+		uint8 Kind = static_cast<uint8>(Slot.Kind);
+		Writer << Kind << Slot.HeadImageIndex << Slot.PortraitState;
+		FName PersonName = Slot.Person.IsValid()
+			? Slot.Person->GetRuntimeSaveIdentityName()
+			: NAME_None;
+		Writer << PersonName;
+	}
+	if (Writer.IsError())
+	{
+		OutData.Reset();
+		return false;
+	}
+	return true;
+}
+
+bool ASimCopterHelicopterPawn::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	if (Data.IsEmpty())
+	{
+		return false;
+	}
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	Reader << Magic << Version;
+	if (Magic != AircraftRuntimeSaveMagic || Version != AircraftRuntimeSaveVersion)
+	{
+		return false;
+	}
+
+	FTransform ActorTransform;
+	Reader << ActorTransform;
+	SerializeFlightModel(Reader, FlightModel);
+	SerializeArchiveBool(Reader, bFlightModelSeeded);
+	Reader << VelocityCmPerSec << CurrentPitchDeg << CurrentRollDeg;
+	Reader << CurrentFuelGallons << CurrentDamage;
+	SerializeArchiveBool(Reader, bEngineRunning);
+	Reader << EngineStartHoldElapsed << EngineShutdownHoldElapsed;
+
+	uint8 SavedCameraMode = 0;
+	Reader << SavedCameraMode << CameraYawOffsetDeg << CameraPitchOffsetDeg << CameraZoomAlpha;
+	Reader << CurrentCameraGroundLiftCm << CurrentCameraPullInAlpha << CurrentCameraAvoidanceOffsetDeg;
+	Reader << CockpitStabilizedAttitudeDeg;
+	SerializeArchiveBool(Reader, bCockpitStabilizedAttitudeInitialized);
+	for (float& PanOffset : CameraViewPanOffsetsCm) Reader << PanOffset;
+	Reader << RopeAutoZoomAlpha << SmoothedCameraArmLengthCm << SmoothedCameraTranslationWorld;
+	Reader << SmoothedCameraViewWorldRotation;
+	SerializeArchiveBool(Reader, bCameraViewSmoothingInitialized);
+	SerializeArchiveBool(Reader, bIsLanded);
+	Reader << GroundClearanceCm << ForwardObstacleDistanceCm;
+	SerializeArchiveBool(Reader, bCheckupAutoOpenArmed);
+	SerializeArchiveBool(Reader, bCheckupOpenedThisLanding);
+
+	uint8 Tool = 0;
+	uint8 Megaphone = 0;
+	Reader << Tool << Megaphone << ToolCooldownSeconds;
+	Reader << EquipmentState.CareerEquipmentMask << EquipmentState.CareerTearGasRounds;
+	Reader << MegaphoneVoiceNextIndices;
+	SerializeArchiveBool(Reader, bWaterCannonInstalled);
+
+	Reader << BucketWaterFraction << BucketWaterPounds;
+	SerializeArchiveBool(Reader, bRopeDeployed);
+	SerializeArchiveBool(Reader, bHarnessRopeEndSelected);
+	SerializeArchiveBool(Reader, bHarnessRiderAttached);
+	Reader << WinchState.NodeCursor;
+	SerializeArchiveBool(Reader, WinchState.bBucketStowed);
+	SerializeArchiveBool(Reader, WinchState.bHarnessStowed);
+	Reader << WinchState.Command;
+	uint8 RopeEnd = 0;
+	Reader << RopeEnd << PendingWinchCommand << RopeFirstActiveNode;
+	SerializeArchiveBool(Reader, bRopeStateInitialized);
+	Reader << RopeNodeWorldPositions << PreviousRopeAnchorWorld << PreviousBucketWorld;
+	Reader << PreviousRopeEndDirection;
+
+	Reader << SpotlightAimPitch1616 << SpotlightAimYaw1616 << SpotlightDistance1616;
+	SerializeArchiveBool(Reader, bSpotlightTargetFrozen);
+	SerializeArchiveBool(Reader, SpotlightTarget.bValid);
+	Reader << SpotlightTarget.WorldLocation << SpotlightTarget.WorldNormal << SpotlightTarget.Tile;
+	Reader << SpotlightTarget.DistanceUnits << SpotlightTarget.Band << SpotlightTarget.InteractionRings;
+	bool bSearchLightVisible = false;
+	SerializeArchiveBool(Reader, bSearchLightVisible);
+	TArray<uint8> ParticleFxData;
+	TArray<uint8> TearGasData;
+	TArray<uint8> ApacheData;
+	Reader << ParticleFxData << TearGasData << ApacheData;
+
+	int32 PassengerCount = 0;
+	Reader << PassengerCount;
+	if (Reader.IsError() || SavedCameraMode >= CameraModeCount ||
+		Tool >= static_cast<uint8>(ESimCopterHelicopterTool::Count) ||
+		Megaphone >= static_cast<uint8>(ESimCopterMegaphoneMessage::Count) ||
+		RopeEnd > static_cast<uint8>(SimCopterWinch::ERopeEnd::Harness) ||
+		PassengerCount < 0 || PassengerCount > 16 ||
+		ParticleFxData.IsEmpty() || TearGasData.IsEmpty() || ApacheData.IsEmpty())
+	{
+		return false;
+	}
+
+	MissionPassengerSlots.Reset(PassengerCount);
+	PendingSavedPassengerActorNames.Reset(PassengerCount);
+	for (int32 Index = 0; Index < PassengerCount; ++Index)
+	{
+		FSimCopterMissionPassengerSlot& Slot = MissionPassengerSlots.AddDefaulted_GetRef();
+		uint8 Kind = 0;
+		FName PersonName;
+		Reader << Slot.EventId << Kind << Slot.HeadImageIndex << Slot.PortraitState << PersonName;
+		if (Kind > static_cast<uint8>(ESimCopterMissionPassengerKind::Rescue))
+		{
+			return false;
+		}
+		Slot.Kind = static_cast<ESimCopterMissionPassengerKind>(Kind);
+		Slot.Person.Reset();
+		PendingSavedPassengerActorNames.Add(PersonName);
+	}
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize())
+	{
+		return false;
+	}
+
+	CameraMode = static_cast<ESimCopterCameraMode>(SavedCameraMode);
+	SelectedTool = static_cast<ESimCopterHelicopterTool>(Tool);
+	SelectedMegaphoneMessage = static_cast<ESimCopterMegaphoneMessage>(Megaphone);
+	WinchState.RopeEnd = static_cast<SimCopterWinch::ERopeEnd>(RopeEnd);
+	SpotlightTarget.HitActor.Reset();
+	if (SearchLightComponent != nullptr)
+	{
+		SearchLightComponent->SetVisibility(bSearchLightVisible);
+	}
+	if (WaterFXComponent == nullptr || TearGasPool == nullptr || ApachePool == nullptr ||
+		!WaterFXComponent->RestoreRuntimeSaveState(ParticleFxData) ||
+		!TearGasPool->RestoreRuntimeSaveState(TearGasData) ||
+		!ApachePool->RestoreRuntimeSaveState(ApacheData))
+	{
+		return false;
+	}
+	BucketWaterFraction = FMath::Clamp(BucketWaterFraction, 0.0f, 1.0f);
+	BucketWaterPounds = FMath::Max(0, BucketWaterPounds);
+	FlightModel.Passengers = MissionPassengerSlots.Num();
+	SyncPassengerFlightModelCount();
+	ResetTransientInputState();
+	SetActorTransform(ActorTransform, false, nullptr, ETeleportType::TeleportPhysics);
+	RecomputeActiveToolFallback();
+	UpdateRopeVisuals();
+	RefreshDashboardSeats();
+	RefreshWaterControlsWidget();
+	return true;
+}
+
+void ASimCopterHelicopterPawn::RelinkSavedMissionPassenger(
+	ASimCopterGroundAgent* Person,
+	const FName SavedActorName)
+{
+	if (Person == nullptr)
+	{
+		return;
+	}
+	for (int32 Index = 0; Index < MissionPassengerSlots.Num() && Index < PendingSavedPassengerActorNames.Num(); ++Index)
+	{
+		const FName Identity = SavedActorName.IsNone() ? Person->GetFName() : SavedActorName;
+		if (PendingSavedPassengerActorNames[Index] == Identity)
+		{
+			MissionPassengerSlots[Index].Person = Person;
+			PendingSavedPassengerActorNames[Index] = NAME_None;
+			break;
+		}
+	}
+}
+
 float ASimCopterHelicopterPawn::GetAltimeterUnits() const
 {
 	// Zeroed on the water. FlightModel.Altitude is the original node's Y, whose datum is the
@@ -1895,7 +2195,7 @@ bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, floa
 	return FVector::DistSquared(WorldLocation, GetActorLocation()) <= FMath::Square(RadiusCm);
 }
 
-void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerController)
+void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerController, const bool bBlendView)
 {
 	if (PlayerController == nullptr)
 	{
@@ -1906,11 +2206,20 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	ASimCopterOnFootPawn* OutgoingOnFootPawn =
 		Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn());
 	PlayerController->Possess(this);
-	BlendPossessionViewTarget(
-		PlayerController,
-		OutgoingViewTarget,
-		this,
-		CameraPossessionBlendSeconds);
+	if (bBlendView)
+	{
+		BlendPossessionViewTarget(
+			PlayerController,
+			OutgoingViewTarget,
+			this,
+			CameraPossessionBlendSeconds);
+	}
+	else
+	{
+		// A load resumes a saved camera frame; easing from the airport's temporary on-foot pawn
+		// would visibly move through a view that was never part of the save.
+		PlayerController->SetViewTarget(this);
+	}
 
 	// The outgoing pawn is also the outgoing camera when boarding. Keep it valid until the
 	// blend completes, while removing its body and collision from play immediately.
@@ -2023,6 +2332,13 @@ void ASimCopterHelicopterPawn::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 	FlushStuckKeys(NewController);
 	ResetTransientInputState();
+	if (Cast<APlayerController>(NewController) != nullptr)
+	{
+		if (USimCopterRadioSubsystem* Radio = USimCopterRadioSubsystem::Get(this))
+		{
+			Radio->SetPlayerInHelicopter(true);
+		}
+	}
 	RestoreGameViewportFocus();
 }
 
@@ -2032,6 +2348,13 @@ void ASimCopterHelicopterPawn::UnPossessed()
 	// stops the outgoing pawn's held keys from following the player to the next one.
 	FlushStuckKeys(GetController());
 	ResetTransientInputState();
+	if (Cast<APlayerController>(GetController()) != nullptr)
+	{
+		if (USimCopterRadioSubsystem* Radio = USimCopterRadioSubsystem::Get(this))
+		{
+			Radio->SetPlayerInHelicopter(false);
+		}
+	}
 	Super::UnPossessed();
 }
 
@@ -4699,6 +5022,16 @@ float ASimCopterHelicopterPawn::GetCameraViewMinZoomDistanceCm(
 	}
 }
 
+bool ASimCopterHelicopterPawn::ShouldUseRopeAutoZoom(
+	const ESimCopterCameraMode Mode,
+	const float PlayerZoomAlpha,
+	const int32 FirstActiveRopeNode)
+{
+	return Mode == ESimCopterCameraMode::Chase &&
+		PlayerZoomAlpha <= KINDA_SMALL_NUMBER &&
+		FirstActiveRopeNode <= SimCopterWinch::LoweredNode;
+}
+
 float ASimCopterHelicopterPawn::GetCameraViewMaxZoomDistanceCm(
 	ESimCopterCameraMode Mode) const
 {
@@ -5914,6 +6247,22 @@ void ASimCopterHelicopterPawn::SetFlashingLightIntensityScale(float Scale)
 	// Written centrally rather than per component: a city that has not spawned yet still picks
 	// this up, because every component reads the same key on its own BeginPlay.
 	USimCopterFlashingLightsComponent::SaveIntensityScaleToConfig(Clamped);
+}
+
+float ASimCopterHelicopterPawn::GetWaterTextureFramesPerSecond() const
+{
+	const ASimCity2000CityActor* City = ResolveCityActor();
+	return City != nullptr
+		? City->GetWaterTextureFramesPerSecond()
+		: ASimCity2000CityActor::DefaultWaterTextureFramesPerSecond;
+}
+
+void ASimCopterHelicopterPawn::SetWaterTextureFramesPerSecond(float FramesPerSecond)
+{
+	if (ASimCity2000CityActor* City = ResolveCityActor())
+	{
+		City->SetWaterTextureFramesPerSecond(FramesPerSecond);
+	}
 }
 
 // SCHOOK: CheckupAtAirport 0x004823a0
@@ -7441,13 +7790,27 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	const float HorizontalSpeed = FVector(VelocityCmPerSec.X, VelocityCmPerSec.Y, 0.0f).Size();
 	const float SpeedAlpha = FMath::Clamp(HorizontalSpeed / FMath::Max(1.0f, MaxForwardSpeedCmPerSec), 0.0f, 1.0f);
 	const float ActorYaw = GetActorRotation().Yaw;
+	const float TargetRopeAutoZoom = ShouldUseRopeAutoZoom(
+		CameraMode, CameraZoomAlpha, RopeFirstActiveNode)
+		? FullyLoweredRopeZoomOutAlpha
+		: 0.0f;
+	RopeAutoZoomAlpha = FMath::FInterpTo(
+		RopeAutoZoomAlpha,
+		TargetRopeAutoZoom,
+		DeltaSeconds,
+		RopeAutoZoomLerpSpeed);
+	const float EffectiveCameraZoomAlpha = FMath::Clamp(
+		CameraZoomAlpha +
+			(CameraMode == ESimCopterCameraMode::Chase ? RopeAutoZoomAlpha : 0.0f),
+		0.0f,
+		1.0f);
 	const float MaxZoomDistanceCmForView =
 		GetCameraViewMaxZoomDistanceCm(CameraMode);
 	float ViewYaw = ActorYaw;
 	float ViewPitch =
 		ChaseCameraBasePitch + SpeedAlpha * ChaseCameraForwardPitchLiftDeg;
 	float ZoomArmLength =
-		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, CameraZoomAlpha);
+		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, EffectiveCameraZoomAlpha);
 	float ReferenceZoomArmLength =
 		FMath::Lerp(ChaseCameraMinDistance, MaxZoomDistanceCmForView, CameraDefaultZoomAlpha);
 	float ArmLength = ZoomArmLength + SpeedAlpha * ChaseSpeedPullbackCm;
@@ -7471,7 +7834,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	{
 		ViewYaw = ActorYaw;
 		ViewPitch = -18.0f;
-		ZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, CameraZoomAlpha);
+		ZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, EffectiveCameraZoomAlpha);
 		ReferenceZoomArmLength = FMath::Lerp(640.0f, MaxZoomDistanceCmForView, CameraDefaultZoomAlpha);
 		ArmLength = ZoomArmLength;
 		CameraTranslationWorld = FVector(0.0f, 0.0f, 120.0f);
@@ -7495,7 +7858,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	{
 		ViewYaw = ActorYaw;
 		ViewPitch = RescueCameraPitch;
-		ZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, CameraZoomAlpha);
+		ZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, EffectiveCameraZoomAlpha);
 		ReferenceZoomArmLength = FMath::Lerp(860.0f, MaxZoomDistanceCmForView, CameraDefaultZoomAlpha);
 		ArmLength = ZoomArmLength;
 		CameraTranslationWorld = FVector(0.0f, 0.0f, 30.0f);

@@ -17,6 +17,8 @@
 #include "Materials/MaterialInterface.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "ProceduralMeshComponent.h"
+#include "Serialization/MemoryReader.h"
+#include "Serialization/MemoryWriter.h"
 #include "UObject/ConstructorHelpers.h"
 
 namespace
@@ -25,6 +27,15 @@ namespace
 	constexpr float OriginalPointStepCm = 10.0f * SimCopterEffectFX::OriginalUnitToCm;
 	constexpr uint8 SplashFrames[] = { 0x0F, 0x10, 0x11, 0x12, 0x19, 0x1A, 0x1B, 0x1C, 0x1D };
 	constexpr uint8 FireTipFrames[] = { 0x73, 0x7B, 0x70, 0xEA };
+	constexpr uint32 ParticleRuntimeSaveMagic = 0x50465853; // 'PFXS'
+	constexpr int32 ParticleRuntimeSaveVersion = 1;
+
+	void SerializeParticleBool(FArchive& Archive, bool& Value)
+	{
+		uint8 Byte = Value ? 1 : 0;
+		Archive << Byte;
+		if (Archive.IsLoading()) Value = Byte != 0;
+	}
 
 	int32 SecondsToFixed(float Seconds)
 	{
@@ -97,6 +108,83 @@ USimCopterParticleFXComponent::USimCopterParticleFXComponent()
 		TEXT("/Game/Materials/M_SimCopterLitVertexColor.M_SimCopterLitVertexColor"));
 	CardMaterial = FxMaterialFinder.Succeeded() ? FxMaterialFinder.Object : FallbackFinder.Object;
 	KernelMaterial = KernelMaterialFinder.Object;
+}
+
+bool USimCopterParticleFXComponent::CaptureRuntimeSaveState(TArray<uint8>& OutData) const
+{
+	OutData.Reset();
+	FMemoryWriter Writer(OutData, true);
+	uint32 Magic = ParticleRuntimeSaveMagic;
+	int32 Version = ParticleRuntimeSaveVersion;
+	Writer << Magic << Version;
+	uint8 SavedFireRampCursor = FireRampCursor;
+	uint8 SavedFireTipCursor = FireTipCursor;
+	int32 SavedDebrisObjectCursor = DebrisObjectCursor;
+	Writer << SavedFireRampCursor << SavedFireTipCursor << SavedDebrisObjectCursor;
+	int32 SlotCount = Slots.Num();
+	Writer << SlotCount;
+	for (const FSimCopterEffectSlot& ConstSlot : Slots)
+	{
+		FSimCopterEffectSlot Slot = ConstSlot;
+		SerializeParticleBool(Writer, Slot.bActive);
+		uint8 Type = static_cast<uint8>(Slot.Type);
+		uint8 Pool = static_cast<uint8>(Slot.Pool);
+		Writer << Type << Pool << Slot.Position << Slot.Velocity << Slot.Direction1616 << Slot.Cell;
+		Writer << Slot.Age1616 << Slot.Life1616 << Slot.SpawnTimer1616 << Slot.MotionScale1616;
+		Writer << Slot.StepCarry1616 << Slot.SizeCm << Slot.PaletteIndex;
+		for (uint8& Palette : Slot.PointPaletteIndices) Writer << Palette;
+		Writer << Slot.PointCount << Slot.FaceType << Slot.EffectClass << Slot.FrameCursor;
+		Writer << Slot.GeoObjectId;
+		SerializeParticleBool(Writer, Slot.bTrajectory);
+		SerializeParticleBool(Writer, Slot.bApplyGravity);
+		SerializeParticleBool(Writer, Slot.bBurstEmitted);
+	}
+	if (Writer.IsError()) OutData.Reset();
+	return !Writer.IsError();
+}
+
+bool USimCopterParticleFXComponent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
+{
+	if (Data.IsEmpty()) return false;
+	FMemoryReader Reader(Data, true);
+	uint32 Magic = 0;
+	int32 Version = 0;
+	Reader << Magic << Version << FireRampCursor << FireTipCursor << DebrisObjectCursor;
+	int32 SlotCount = 0;
+	Reader << SlotCount;
+	if (Magic != ParticleRuntimeSaveMagic || Version != ParticleRuntimeSaveVersion ||
+		SlotCount != Slots.Num())
+	{
+		return false;
+	}
+
+	for (FSimCopterEffectSlot& Slot : Slots)
+	{
+		SerializeParticleBool(Reader, Slot.bActive);
+		uint8 Type = 0;
+		uint8 Pool = 0;
+		Reader << Type << Pool << Slot.Position << Slot.Velocity << Slot.Direction1616 << Slot.Cell;
+		Reader << Slot.Age1616 << Slot.Life1616 << Slot.SpawnTimer1616 << Slot.MotionScale1616;
+		Reader << Slot.StepCarry1616 << Slot.SizeCm << Slot.PaletteIndex;
+		for (uint8& Palette : Slot.PointPaletteIndices) Reader << Palette;
+		Reader << Slot.PointCount << Slot.FaceType << Slot.EffectClass << Slot.FrameCursor;
+		Reader << Slot.GeoObjectId;
+		SerializeParticleBool(Reader, Slot.bTrajectory);
+		SerializeParticleBool(Reader, Slot.bApplyGravity);
+		SerializeParticleBool(Reader, Slot.bBurstEmitted);
+		if (Type < static_cast<uint8>(ESimCopterEffectType::Smoke) ||
+			Type > static_cast<uint8>(ESimCopterEffectType::FireTrajectoryAlt) ||
+			Pool > static_cast<uint8>(ESimCopterEffectPool::TilePuffs100) ||
+			Slot.PointCount > UE_ARRAY_COUNT(Slot.PointPaletteIndices))
+		{
+			return false;
+		}
+		Slot.Type = static_cast<ESimCopterEffectType>(Type);
+		Slot.Pool = static_cast<ESimCopterEffectPool>(Pool);
+	}
+	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
+	RebuildMesh(GetCameraLocation());
+	return true;
 }
 
 bool USimCopterParticleFXComponent::InitEffectAssets(const FString& OriginalGameRoot, FString& OutError)
