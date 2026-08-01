@@ -518,6 +518,12 @@ void SSimCopterToolFlaps::PressAction(const EAction Action)
 		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::ApacheMachineGun);
 		Helicopter->StartPrimaryToolUse();
 		break;
+	case EAction::ApacheMissileFire:
+		// One per press, gated downstream by the shared cooldown - bPrimaryToolUsePressed is a
+		// one-shot latch, so holding the button still only launches once.
+		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::ApacheMissile);
+		Helicopter->StartPrimaryToolUse();
+		break;
 	default:
 		break;
 	}
@@ -549,6 +555,7 @@ void SSimCopterToolFlaps::ReleaseAction(const EAction Action)
 		break;
 	case EAction::TearGasFire:
 	case EAction::ApacheGunFire:
+	case EAction::ApacheMissileFire:
 		Helicopter->StopPrimaryToolUse();
 		break;
 	default:
@@ -652,19 +659,26 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 	// Two buttons, no readout: each one just fires its weapon. The ammunition is unlimited and
 	// the only limits - the shared 1 s missile cooldown and the pool sizes - are things the
 	// player feels rather than reads.
-	AddAtPage(*Canvas, 20.0f, 4.0f, 17.0f, 24.0f,
-		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
-			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleApacheMissile),
+	//
+	// BOTH go through the press/release latch, not OnClicked. StopPrimaryToolUse() clears
+	// bPrimaryToolUsePressed as well as the held flag, so a handler that pressed and released
+	// inside one frame cancelled the shot before UpdateToolDispatch ever ran - the missile button
+	// selected the launcher and then fired nothing. Press and release have to straddle a tick.
+	//
+	// Both strips are right-aligned in the column, so the two buttons are placed by their
+	// distance from the RIGHT edge to line up with DISPATCH and CHASE above them.
+	AddAtPage(*Canvas, ApachePageWidth - MissileButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
+		MakeHeldArtButton(OctagonFile, OctagonNormal, OctagonPressed,
+			SimCopterFlapLayout::EAction::ApacheMissileFire,
 			NSLOCTEXT("SimCopterFlaps", "MissileTip", "Fire a missile")));
-	AddTextAtPage(*Canvas, 28.5f, 35.0f, 120.0f, 20.0f,
+	AddTextAtPage(*Canvas, ApachePageWidth - MissileButtonInsetFromRight + 8.5f, 35.0f, 120.0f, 20.0f,
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Missile", "MISSILE"), LabelFontSize));
 
-	// Held, like the water cannon's trigger.
-	AddAtPage(*Canvas, 72.0f, 4.0f, 17.0f, 24.0f,
+	AddAtPage(*Canvas, ApachePageWidth - GunButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
 		MakeHeldArtButton(OctagonFile, OctagonNormal, OctagonPressed,
 			SimCopterFlapLayout::EAction::ApacheGunFire,
 			NSLOCTEXT("SimCopterFlaps", "GunTip", "Hold to fire the machine gun")));
-	AddTextAtPage(*Canvas, 80.5f, 35.0f, 120.0f, 20.0f,
+	AddTextAtPage(*Canvas, ApachePageWidth - GunButtonInsetFromRight + 8.5f, 35.0f, 120.0f, 20.0f,
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Gun", "GUN"), LabelFontSize));
 
 	return SNew(SBox)
@@ -682,17 +696,6 @@ EVisibility SSimCopterToolFlaps::GetApacheFlapVisibility() const
 			Helicopter->IsToolAvailable(ESimCopterHelicopterTool::ApacheMachineGun))
 		? EVisibility::SelfHitTestInvisible
 		: EVisibility::Collapsed;
-}
-
-FReply SSimCopterToolFlaps::HandleApacheMissile()
-{
-	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
-	{
-		Helicopter->SetSelectedTool(ESimCopterHelicopterTool::ApacheMissile);
-		Helicopter->StartPrimaryToolUse();
-		Helicopter->StopPrimaryToolUse();
-	}
-	return FReply::Handled();
 }
 
 TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()

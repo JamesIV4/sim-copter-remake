@@ -65,4 +65,16 @@ button, each firing directly, and nothing else - the ammunition is unlimited and
 actually in the air is on the debug panel instead. The strip collapses on the eight civilian
 airframes.
 
+**Trap: a cockpit fire button must use the press/release latch, never `OnClicked`.**
+`StopPrimaryToolUse()` clears `bPrimaryToolUsePressed` as well as the held flag, so a handler that
+presses and releases inside one frame cancels the shot before `UpdateToolDispatch` runs - the
+button selects the tool and fires nothing. Press and release have to straddle a tick, which is
+what `MakeHeldArtButton` (and every flap control) does. Holding is still one shot for the
+edge-triggered tools, because `bPrimaryToolUsePressed` is a one-shot latch.
+
+**Both invented strips are right-aligned in the column**, so what lines their controls up with
+each other is the distance from the **right** edge, not the page x. The dispatch strip puts
+DISPATCH at 106 and CHASE at 64 from its right edge; the Apache strip repeats those two insets so
+its pair sits directly beneath them.
+
 Related: [[simcopter-heli-tools-models]], [[simcopter-water-gameplay]].

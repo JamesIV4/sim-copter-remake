@@ -311,10 +311,12 @@ bool ResolveHarnessRopeAnchorLocal(
 		}
 	}
 
-	// Stand off by the rope's own radius so the cable's OUTBOARD edge lands on the anchor rather
-	// than its centreline - hanging it centred on the tip leaves half the rope past the frame.
+	// Stand off inboard by the rope's full DIAMETER, not its radius. Half a rope's worth put the
+	// cable's outboard edge on the anchor line, which still read as hanging off the end of the
+	// frame; a whole width tucks it against the inside of the tip, which is where a winch cable
+	// would actually run.
 	const double OutboardMagnitude =
-		FMath::Max(FMath::Abs(BracketOutboardY), HullOutboardY) - CableRadiusCm;
+		FMath::Max(FMath::Abs(BracketOutboardY), HullOutboardY) - CableRadiusCm * 2.0;
 	OutAnchorLocalCm.Y = bOutboardIsPositiveY ? OutboardMagnitude : -OutboardMagnitude;
 	return true;
 }
