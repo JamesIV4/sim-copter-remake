@@ -37,6 +37,11 @@ struct FSimCopterPreparedHelicopterModel
 	// CANNON (0x16e). Authored in the same local frame as the fuselage, so it needs no mount
 	// offset - it rides the body component directly.
 	FMaxisMeshSection CannonSection;
+	// BRACKET (0x16c), heli[0x31]. The rescue harness's mount: a triangular frame on the right
+	// flank, which is the side a Sim is winched up into. Nothing in .text ever writes heli + 0xc4
+	// after FUN_00483c20 creates it, so like the cannon it is authored in the fuselage's own frame
+	// and simply rides the body.
+	FMaxisMeshSection BracketSection;
 
 	// The fuselage's face-type-25 blink markers, in the same local frame as BodySection.
 	TArray<FSimCopterFlashingLightPoint> BodyLightPoints;
@@ -46,6 +51,7 @@ struct FSimCopterPreparedHelicopterModel
 	bool bHasBucket = false;
 	bool bHasHarness = false;
 	bool bHasCannon = false;
+	bool bHasBracket = false;
 
 	// DAT_005040e4 + 0x2c..0x34 converted to the pawn's centimetre space.
 	FVector TailRotorOffsetCm = FVector::ZeroVector;

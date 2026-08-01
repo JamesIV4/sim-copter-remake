@@ -372,8 +372,13 @@ void FSimCopterFlightModel::StepTurbulence(int32 Dt, const FSimCopterFlightEnvir
 			// or, unscaled, makes a fire several times more lethal than the original's.
 			if (Tuning.MinFireAlt <= FireDelta && FireDelta <= Tuning.MaxFireAlt)
 			{
+				// Charged against the original's own 20 Hz frame, NOT ReferenceFrameSeconds. That
+				// knob is a feel setting the debug panel dials in - the pawn ships it at 1/60 for
+				// the climb decay and the EMA window - and pointing a *damage* rule at it made a
+				// fire burn three times as fast as the executable does. How much a fire costs is
+				// fidelity, not taste, so it stays pinned.
 				const int32 PerFrame = (Tuning.MaxFireAlt >> 16) - (FireDelta >> 16);
-				FireDamageAccrued += Mul(PerFrame * One, SubstepFrameFraction(Dt, ReferenceFrameSeconds));
+				FireDamageAccrued += Mul(PerFrame * One, SubstepFrameFraction(Dt, OriginalFrameSeconds));
 				const int32 WholePoints = FireDamageAccrued >> 16;
 				if (WholePoints > 0)
 				{
