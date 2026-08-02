@@ -538,9 +538,17 @@ void FSimCopterMapRaster::DrawMissionLines(const FSimCopterMapFrame& Frame, cons
 	const FSimCopterMapMission& Mission = Frame.Missions[Frame.CurrentMission];
 	const int32 Zoom = FMath::Clamp(Settings.Zoom, 0, MaxZoom);
 
-	// The line runs to the mission's secondary tile when it has one - that is where the work
-	// currently is - and falls back to the tile the mission was created on.
-	const FIntPoint Primary = (Mission.Secondary.X != INDEX_NONE) ? Mission.Secondary : Mission.Tile;
+	// Primary line goes to Mission.Tile (the pickup / mission site) until the player has begun the
+	// mission (bBegun is true). Once begun, it points to Mission.Secondary (the dropoff/hospital).
+	FIntPoint Primary = Mission.Tile;
+	FIntPoint Secondary = (Mission.Secondary.X != INDEX_NONE) ? Mission.Secondary : Mission.Tertiary;
+
+	if (Mission.bBegun && Mission.Secondary.X != INDEX_NONE)
+	{
+		Primary = Mission.Secondary;
+		Secondary = Mission.Tertiary;
+	}
+
 	if (Primary.X != INDEX_NONE)
 	{
 		const int32 TileDeltaX = Primary.X - Frame.CentreTile.X;
@@ -550,12 +558,10 @@ void FSimCopterMapRaster::DrawMissionLines(const FSimCopterMapFrame& Frame, cons
 		DrawRay(-TileDeltaY << Zoom, -TileDeltaX << Zoom, static_cast<uint8>(Shade), INDEX_NONE, nullptr, false);
 	}
 
-	// The second line is the delivery end of the job - the hospital, the airport - and fades on a
-	// shallower ramp so the two never read as the same line.
-	if (Mission.Tertiary.X != INDEX_NONE)
+	if (Secondary.X != INDEX_NONE && Secondary != Primary)
 	{
-		const int32 TileDeltaX = Mission.Tertiary.X - Frame.CentreTile.X;
-		const int32 TileDeltaY = Mission.Tertiary.Y - Frame.CentreTile.Y;
+		const int32 TileDeltaX = Secondary.X - Frame.CentreTile.X;
+		const int32 TileDeltaY = Secondary.Y - Frame.CentreTile.Y;
 		const int32 Length = OctagonalLength(TileDeltaX, TileDeltaY);
 		const int32 Shade = Color::SecondaryLineBase - (Length << Color::SecondaryLineShift) / Color::LineFadeDivisor;
 		DrawRay(-TileDeltaY << Zoom, -TileDeltaX << Zoom, static_cast<uint8>(Shade), INDEX_NONE, nullptr, false);
@@ -595,9 +601,15 @@ void FSimCopterMapRaster::DrawOtherMissions(const FSimCopterMapFrame& Frame, con
 		int32 SecondaryIcon = INDEX_NONE;
 		GetMissionIcons(Mission.TypeMask, PrimaryIcon, SecondaryIcon);
 
-		// Colour 0 means "walk the ray but paint nothing": these missions get an icon at the edge
-		// of the map, not a line to it.
-		const FIntPoint Primary = (Mission.Secondary.X != INDEX_NONE) ? Mission.Secondary : Mission.Tile;
+		FIntPoint Primary = Mission.Tile;
+		FIntPoint Secondary = (Mission.Secondary.X != INDEX_NONE) ? Mission.Secondary : Mission.Tertiary;
+
+		if (Mission.bBegun && Mission.Secondary.X != INDEX_NONE)
+		{
+			Primary = Mission.Secondary;
+			Secondary = Mission.Tertiary;
+		}
+
 		if (Primary.X != INDEX_NONE)
 		{
 			DrawRay(
@@ -609,11 +621,11 @@ void FSimCopterMapRaster::DrawOtherMissions(const FSimCopterMapFrame& Frame, con
 				Settings.bShowMissionBlips);
 		}
 
-		if (Mission.Tertiary.X != INDEX_NONE)
+		if (Secondary.X != INDEX_NONE && Secondary != Primary)
 		{
 			DrawRay(
-				-(Mission.Tertiary.Y - Frame.CentreTile.Y) << Zoom,
-				-(Mission.Tertiary.X - Frame.CentreTile.X) << Zoom,
+				-(Secondary.Y - Frame.CentreTile.Y) << Zoom,
+				-(Secondary.X - Frame.CentreTile.X) << Zoom,
 				0,
 				SecondaryIcon,
 				Frame.MissionIcons,
@@ -729,6 +741,7 @@ void FSimCopterMapRaster::GetMissionIcons(const int32 TypeMask, int32& OutPrimar
 		OutSecondaryIcon = 4;
 		break;
 	case 0x40:     // transport
+		OutPrimaryIcon = 3;
 		OutSecondaryIcon = 3;
 		break;
 	case 0x200:    // criminal on foot

@@ -162,6 +162,7 @@ struct SIMCOPTERREMAKE_API FSimCopterMapMission
 	int32 TypeMask = 0;           // +0x50, picks the icons
 	int32 Category = 0;           // +0x54, 2 = finished and off the map
 	bool bActive = false;         // +0x4c bit 0
+	bool bBegun = false;          // True when the player has begun the mission (e.g. passenger/patient picked up)
 	FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);      // +0x28/+0x2c
 	FIntPoint Secondary = FIntPoint(INDEX_NONE, INDEX_NONE); // +0x30/+0x34
 	FIntPoint Tertiary = FIntPoint(INDEX_NONE, INDEX_NONE);  // +0x38/+0x3c

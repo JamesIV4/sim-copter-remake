@@ -172,6 +172,9 @@ public:
 	bool CreatePlayerCausedCarFireForVehicle(ASimCopterGroundAgent* Vehicle);
 	bool ConvertDroppedTransportPassengerToMedevac(ASimCopterGroundAgent* Victim, int32 SourceTransportEventId);
 
+	// Returns true if the player has begun the mission (e.g. passenger/patient/victim picked up or onboard).
+	bool IsMissionBegun(const SimCopterMissions::FSimCopterMissionRecord& Record) const;
+
 	// --- Emergency dispatch resolution hooks ---
 	// These are what an arrived fire truck / police car / ambulance asks of the mission
 	// layer. See Docs/scratchpad/ghidra/emergency_dispatch_decode_20260725.md section 7:
