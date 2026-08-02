@@ -247,12 +247,18 @@ void FSimCopterMapRaster::RasteriseTiles(const FSimCopterMapFrame& Frame, const 
 	const int32 PixelsPerTile = 1 << Zoom;
 	const int32 TilesAcross = ViewTilesX >> Zoom;
 	const int32 TilesDown = ViewTilesY >> Zoom;
+	const int32 HalfAcross = TilesAcross >> 1;
+	const int32 HalfDown = TilesDown >> 1;
 
-	// The view is centred on the helicopter, so the top-left tile is half a view away.
+	// In North-Up orientation:
+	// Screen Y (top to bottom) runs North to South: TileX decreases (CentreTile.X + HalfDown down to CentreTile.X - HalfDown)
+	// Screen X (left to right) runs West to East: TileY decreases (CentreTile.Y + HalfAcross down to CentreTile.Y - HalfAcross)
 	ViewOriginTile = FIntPoint(
-		Frame.CentreTile.X - (ViewTilesX >> (Zoom + 1)),
-		Frame.CentreTile.Y - (ViewTilesY >> (Zoom + 1)));
-	ViewMaxTile = FIntPoint(ViewOriginTile.X + TilesAcross - 1, ViewOriginTile.Y + TilesDown - 1);
+		Frame.CentreTile.X + HalfDown,
+		Frame.CentreTile.Y + HalfAcross);
+	ViewMaxTile = FIntPoint(
+		Frame.CentreTile.X - HalfDown,
+		Frame.CentreTile.Y - HalfAcross);
 
 	if (Frame.City == nullptr)
 	{
@@ -268,13 +274,13 @@ void FSimCopterMapRaster::RasteriseTiles(const FSimCopterMapFrame& Frame, const 
 
 	for (int32 RowIndex = 0; RowIndex < TilesDown; ++RowIndex)
 	{
-		const int32 TileY = ViewOriginTile.Y + RowIndex;
+		const int32 TileX = Frame.CentreTile.X + HalfDown - RowIndex;
 		const int32 FirstPixelRow = ViewOriginY + RowIndex * PixelsPerTile;
 
 		// Sub-row 0 carries the tile colours; the rest of the block is copied from it.
 		for (int32 ColumnIndex = 0; ColumnIndex < TilesAcross; ++ColumnIndex)
 		{
-			const int32 TileX = ViewOriginTile.X + ColumnIndex;
+			const int32 TileY = Frame.CentreTile.Y + HalfAcross - ColumnIndex;
 			const int32 FirstPixelColumn = ViewOriginX + ColumnIndex * PixelsPerTile;
 
 			// Only zoom 2 and 3 mark the tile the helicopter is over; at zoom 0 and 1 a tile is
@@ -541,7 +547,7 @@ void FSimCopterMapRaster::DrawMissionLines(const FSimCopterMapFrame& Frame, cons
 		const int32 TileDeltaY = Primary.Y - Frame.CentreTile.Y;
 		const int32 Length = OctagonalLength(TileDeltaX, TileDeltaY);
 		const int32 Shade = Color::PrimaryLineBase - (Length << Color::PrimaryLineShift) / Color::LineFadeDivisor;
-		DrawRay(TileDeltaX << Zoom, TileDeltaY << Zoom, static_cast<uint8>(Shade), INDEX_NONE, nullptr, false);
+		DrawRay(-TileDeltaY << Zoom, -TileDeltaX << Zoom, static_cast<uint8>(Shade), INDEX_NONE, nullptr, false);
 	}
 
 	// The second line is the delivery end of the job - the hospital, the airport - and fades on a
@@ -552,7 +558,7 @@ void FSimCopterMapRaster::DrawMissionLines(const FSimCopterMapFrame& Frame, cons
 		const int32 TileDeltaY = Mission.Tertiary.Y - Frame.CentreTile.Y;
 		const int32 Length = OctagonalLength(TileDeltaX, TileDeltaY);
 		const int32 Shade = Color::SecondaryLineBase - (Length << Color::SecondaryLineShift) / Color::LineFadeDivisor;
-		DrawRay(TileDeltaX << Zoom, TileDeltaY << Zoom, static_cast<uint8>(Shade), INDEX_NONE, nullptr, false);
+		DrawRay(-TileDeltaY << Zoom, -TileDeltaX << Zoom, static_cast<uint8>(Shade), INDEX_NONE, nullptr, false);
 	}
 }
 
@@ -595,8 +601,8 @@ void FSimCopterMapRaster::DrawOtherMissions(const FSimCopterMapFrame& Frame, con
 		if (Primary.X != INDEX_NONE)
 		{
 			DrawRay(
-				(Primary.X - Frame.CentreTile.X) << Zoom,
-				(Primary.Y - Frame.CentreTile.Y) << Zoom,
+				-(Primary.Y - Frame.CentreTile.Y) << Zoom,
+				-(Primary.X - Frame.CentreTile.X) << Zoom,
 				0,
 				PrimaryIcon,
 				Frame.MissionIcons,
@@ -606,8 +612,8 @@ void FSimCopterMapRaster::DrawOtherMissions(const FSimCopterMapFrame& Frame, con
 		if (Mission.Tertiary.X != INDEX_NONE)
 		{
 			DrawRay(
-				(Mission.Tertiary.X - Frame.CentreTile.X) << Zoom,
-				(Mission.Tertiary.Y - Frame.CentreTile.Y) << Zoom,
+				-(Mission.Tertiary.Y - Frame.CentreTile.Y) << Zoom,
+				-(Mission.Tertiary.X - Frame.CentreTile.X) << Zoom,
 				0,
 				SecondaryIcon,
 				Frame.MissionIcons,
@@ -622,6 +628,15 @@ void FSimCopterMapRaster::DrawServiceBlips(const FSimCopterMapFrame& Frame, cons
 
 	const int32 Zoom = FMath::Clamp(Settings.Zoom, 0, MaxZoom);
 	const int32 Cell = (Frame.ServiceIcons != nullptr) ? Frame.ServiceIcons->CellSize : 0;
+	const int32 TilesAcross = ViewTilesX >> Zoom;
+	const int32 TilesDown = ViewTilesY >> Zoom;
+	const int32 HalfAcross = TilesAcross >> 1;
+	const int32 HalfDown = TilesDown >> 1;
+
+	const int32 MinTileX = Frame.CentreTile.X - HalfDown;
+	const int32 MaxTileX = Frame.CentreTile.X + HalfDown;
+	const int32 MinTileY = Frame.CentreTile.Y - HalfAcross;
+	const int32 MaxTileY = Frame.CentreTile.Y + HalfAcross;
 
 	for (int32 Index = 0; Index < Frame.ServiceBlips.Num() && Index < MaxServiceBlips; ++Index)
 	{
@@ -630,26 +645,27 @@ void FSimCopterMapRaster::DrawServiceBlips(const FSimCopterMapFrame& Frame, cons
 		{
 			continue;
 		}
-		// Off the view it loses its clickable flag, which is what stops a click landing on a
-		// vehicle that is not drawn.
-		if (Blip.Tile.X < ViewOriginTile.X || Blip.Tile.Y < ViewOriginTile.Y ||
-			Blip.Tile.X > ViewMaxTile.X || Blip.Tile.Y > ViewMaxTile.Y)
+		if (Blip.Tile.X < MinTileX || Blip.Tile.X > MaxTileX ||
+			Blip.Tile.Y < MinTileY || Blip.Tile.Y > MaxTileY)
 		{
 			continue;
 		}
 
-		// The +9/+8 is the original's: one pixel up and left of the view origin, so a 10x10 icon
-		// sits over its tile rather than beside it.
-		const int32 Left = ((Blip.Tile.X - ViewOriginTile.X) << Zoom) + 9;
-		const int32 Top = ((Blip.Tile.Y - ViewOriginTile.Y) << Zoom) + 8;
+		const int32 TileDeltaX = Blip.Tile.X - Frame.CentreTile.X;
+		const int32 TileDeltaY = Blip.Tile.Y - Frame.CentreTile.Y;
+
+		const int32 Left = CentreX + ((-TileDeltaY) << Zoom) - (Cell >> 1);
+		const int32 Top = CentreY + ((-TileDeltaX) << Zoom) - (Cell >> 1);
 
 		if (Blip.EndTile.X != INDEX_NONE && Blip.EndTile.Y != INDEX_NONE)
 		{
+			const int32 EndTileDeltaX = Blip.EndTile.X - Blip.Tile.X;
+			const int32 EndTileDeltaY = Blip.EndTile.Y - Blip.Tile.Y;
 			DrawLineFrom(
-				Left,
-				Top,
-				(Blip.EndTile.X - Blip.Tile.X) << Zoom,
-				(Blip.EndTile.Y - Blip.Tile.Y) << Zoom,
+				Left + (Cell >> 1),
+				Top + (Cell >> 1),
+				-EndTileDeltaY << Zoom,
+				-EndTileDeltaX << Zoom,
 				GetServiceTrackColor(Blip.IconIndex));
 		}
 

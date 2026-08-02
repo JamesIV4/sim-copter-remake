@@ -283,13 +283,13 @@ bool SSimCopterMapPanel::BuildFrame(FSimCopterMapFrame& OutFrame)
 		OutFrame.CentreTile = FIntPoint(TileX, TileY);
 	}
 
-	// The needle steps a 16.16 unit vector out from the centre; the raster subtracts the second
-	// component, so it is stored negated the way the original stores world Z.
+	// The needle steps a 16.16 unit vector out from the centre; in North-Up orientation,
+	// Screen X (Right, East) = -TileDirection.Y, Screen -Y (Up, North) = +TileDirection.X.
 	FVector2D TileDirection = FVector2D::ZeroVector;
 	if (TrafficSystem->TryGetPeopleTileDirection(Helicopter->GetActorForwardVector(), TileDirection))
 	{
-		OutFrame.HeadingX1616 = FMath::RoundToInt(TileDirection.X * 65536.0f);
-		OutFrame.HeadingZ1616 = -FMath::RoundToInt(TileDirection.Y * 65536.0f);
+		OutFrame.HeadingX1616 = -FMath::RoundToInt(TileDirection.Y * 65536.0f);
+		OutFrame.HeadingZ1616 = FMath::RoundToInt(TileDirection.X * 65536.0f);
 	}
 
 	if (const ASimCopterMissionSystemActor* MissionSystem = GetMissionSystem())

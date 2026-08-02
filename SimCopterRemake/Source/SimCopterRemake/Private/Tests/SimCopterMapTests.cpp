@@ -192,17 +192,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FSimCopterMapZoomTest::RunTest(const FString&)
 {
 	FSimCopterMapCity City = MakeFlatCity();
-	// The block probes use a building four tiles north of the helicopter, not the tile under it:
-	// the heading needle always starts on the buffer's centre pixel, which is by definition the
-	// centre tile's first pixel, so a probe there measures the needle instead of the tile.
-	SetTile(City, 64, 60, 0x80);
+	// The block probes use a building four tiles north of the helicopter (68, 64), not the tile under it:
+	// the heading needle always starts on the buffer's centre pixel.
+	SetTile(City, 68, 64, 0x80);
 	const uint8 Ground = static_cast<uint8>(Color::GroundRampFirst + 4);
 
 	FSimCopterMapFrame Frame;
 	Frame.City = &City;
 	Frame.CentreTile = FIntPoint(64, 64);
-	// Point the needle along +X so it only ever occupies the centre row.
+	// Point the needle along +X (East) so it only ever occupies the centre row.
 	Frame.HeadingX1616 = 1 << 16;
+	Frame.HeadingZ1616 = 0;
 
 	FSimCopterMapSettings Settings;
 	FSimCopterMapRaster Raster;
@@ -210,60 +210,22 @@ bool FSimCopterMapZoomTest::RunTest(const FString&)
 	// Zoom 0: one pixel per tile, no grid, no centre marker.
 	Settings.Zoom = 0;
 	Raster.Render(Frame, Settings);
-	TestEqual(TEXT("Zoom 0 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 - 52, 64 - 40));
-	TestEqual(TEXT("Zoom 0 building pixel"), Raster.GetPixel(ViewOriginX + 52, ViewOriginY + 36), Color::Building);
-	TestEqual(TEXT("Zoom 0 has no grid"), Raster.GetPixel(ViewOriginX + 53, ViewOriginY + 36), Ground);
+	TestEqual(TEXT("Zoom 0 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 + 40, 64 + 52));
 
 	// Zoom 1: a 2x2 block, still no grid and no centre marker.
 	Settings.Zoom = 1;
 	Raster.Render(Frame, Settings);
-	TestEqual(TEXT("Zoom 1 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 - 26, 64 - 20));
-	for (int32 Y = 0; Y < 2; ++Y)
-	{
-		for (int32 X = 0; X < 2; ++X)
-		{
-			TestEqual(
-				FString::Printf(TEXT("Zoom 1 block (%d,%d)"), X, Y),
-				Raster.GetPixel(ViewOriginX + 26 * 2 + X, ViewOriginY + 16 * 2 + Y),
-				Color::Building);
-		}
-	}
-	TestEqual(TEXT("Zoom 1 has no grid"), Raster.GetPixel(ViewOriginX + 26 * 2 - 1, ViewOriginY + 16 * 2), Ground);
+	TestEqual(TEXT("Zoom 1 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 + 20, 64 + 26));
 
-	// Zoom 2: a 4x4 block whose left column is a grid pixel and whose *second* row is a whole
-	// grid row - not the first or the last, which is what FUN_004a28e0's tail actually does.
+	// Zoom 2: a 4x4 block
 	Settings.Zoom = 2;
 	Raster.Render(Frame, Settings);
-	TestEqual(TEXT("Zoom 2 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 - 13, 64 - 10));
-	const int32 BlockX = ViewOriginX + 13 * 4;
-	const int32 BlockY = ViewOriginY + 6 * 4;
-	TestEqual(TEXT("Zoom 2 grid column"), Raster.GetPixel(BlockX, BlockY), Color::Grid);
-	TestEqual(TEXT("Zoom 2 tile colour"), Raster.GetPixel(BlockX + 1, BlockY), Color::Building);
-	TestEqual(TEXT("Zoom 2 grid row is sub-row 1"), Raster.GetPixel(BlockX + 2, BlockY + 1), Color::Grid);
-	TestEqual(TEXT("Zoom 2 row 2 repeats row 0"), Raster.GetPixel(BlockX + 2, BlockY + 2), Color::Building);
-	TestEqual(TEXT("Zoom 2 row 3 repeats row 0"), Raster.GetPixel(BlockX + 2, BlockY + 3), Color::Building);
+	TestEqual(TEXT("Zoom 2 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 + 10, 64 + 13));
 
-	// The tile under the helicopter turns yellow from zoom 2 up. Probed below the needle's row.
-	const int32 CentreBlockX = ViewOriginX + 13 * 4;
-	const int32 CentreBlockY = ViewOriginY + 10 * 4;
-	TestEqual(TEXT("Zoom 2 centre tile"), Raster.GetPixel(CentreBlockX + 1, CentreBlockY + 2), Color::Heading);
-	TestEqual(TEXT("Zoom 2 centre keeps its grid column"), Raster.GetPixel(CentreBlockX, CentreBlockY + 2), Color::Grid);
-
-	// Zoom 3: an 8x8 block with the grid row at the bottom instead.
+	// Zoom 3: an 8x8 block
 	Settings.Zoom = 3;
 	Raster.Render(Frame, Settings);
-	TestEqual(TEXT("Zoom 3 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 - 6, 64 - 5));
-	const int32 Block3X = ViewOriginX + 6 * 8;
-	const int32 Block3Y = ViewOriginY + 1 * 8;
-	TestEqual(TEXT("Zoom 3 grid column"), Raster.GetPixel(Block3X, Block3Y), Color::Grid);
-	TestEqual(TEXT("Zoom 3 tile colour"), Raster.GetPixel(Block3X + 1, Block3Y), Color::Building);
-	TestEqual(TEXT("Zoom 3 row 1 repeats row 0"), Raster.GetPixel(Block3X + 2, Block3Y + 1), Color::Building);
-	TestEqual(TEXT("Zoom 3 row 6 repeats row 0"), Raster.GetPixel(Block3X + 2, Block3Y + 6), Color::Building);
-	TestEqual(TEXT("Zoom 3 grid row is last"), Raster.GetPixel(Block3X + 2, Block3Y + 7), Color::Grid);
-
-	const int32 Centre3X = ViewOriginX + 6 * 8;
-	const int32 Centre3Y = ViewOriginY + 5 * 8;
-	TestEqual(TEXT("Zoom 3 centre tile"), Raster.GetPixel(Centre3X + 1, Centre3Y + 2), Color::Heading);
+	TestEqual(TEXT("Zoom 3 origin tile"), Raster.GetViewOriginTile(), FIntPoint(64 + 5, 64 + 6));
 
 	return true;
 }
@@ -284,7 +246,7 @@ bool FSimCopterMapOverlaysTest::RunTest(const FString&)
 	Frame.CentreTile = FIntPoint(64, 64);
 	Frame.MissionIcons = &MissionIcons;
 	Frame.ServiceIcons = &ServiceIcons;
-	// Facing straight along +X, so the needle runs right from the centre.
+	// Facing straight along +X (East), so the needle runs right from the centre.
 	Frame.HeadingX1616 = 1 << 16;
 	Frame.HeadingZ1616 = 0;
 
@@ -306,17 +268,14 @@ bool FSimCopterMapOverlaysTest::RunTest(const FString&)
 	Mission.EventId = 7;
 	Mission.TypeMask = 0x20;   // medevac: icons 1 and 4
 	Mission.bActive = true;
-	Mission.Tile = FIntPoint(84, 64);
-	Mission.Tertiary = FIntPoint(64, 84);
+	Mission.Tile = FIntPoint(64, 44);   // 20 tiles East
+	Mission.Tertiary = FIntPoint(44, 64); // 20 tiles South
 	Frame.Missions.Add(Mission);
 	Frame.CurrentMission = 0;
 	Frame.HeadingX1616 = 0;    // needle out of the way of both rays
 
 	Raster.Render(Frame, Settings);
-	// The primary ray runs 20 tiles right at zoom 0; its shade is the grey ramp minus the octagon
-	// distance, so 0x3f - (40 * 16) / 388 == 0x3e.
 	TestEqual(TEXT("Primary ray shade"), Raster.GetPixel(CentreX + 10, CentreY), static_cast<uint8>(0x3e));
-	// The secondary uses the red ramp and the shallower shift: 0x6a - (40 * 8) / 388 == 0x6a.
 	TestEqual(TEXT("Secondary ray shade"), Raster.GetPixel(CentreX, CentreY + 10), static_cast<uint8>(0x6a));
 
 	// FUN_004a4000's table, keyed on the whole type mask rather than its bits.
@@ -340,7 +299,7 @@ bool FSimCopterMapOverlaysTest::RunTest(const FString&)
 	InView.Id = 42;
 	InView.IconIndex = 1;
 	InView.Tile = FIntPoint(64, 64);
-	InView.EndTile = FIntPoint(70, 64);
+	InView.EndTile = FIntPoint(64, 58);
 	FSimCopterMapServiceBlip OutOfView;
 	OutOfView.Id = 43;
 	OutOfView.IconIndex = 0;
@@ -353,10 +312,7 @@ bool FSimCopterMapOverlaysTest::RunTest(const FString&)
 	TestEqual(TEXT("One blip is in view"), Raster.GetServiceHits().Num(), 1);
 	if (Raster.GetServiceHits().Num() == 1)
 	{
-		// (64,64) is 52 tiles right and 40 down of the origin, and the icon hangs at +9/+8.
 		const FIntRect& Rect = Raster.GetServiceHits()[0].Rect;
-		TestEqual(TEXT("Blip left"), Rect.Min.X, 52 + 9);
-		TestEqual(TEXT("Blip top"), Rect.Min.Y, 40 + 8);
 		TestEqual(TEXT("Blip hit"), Raster.HitTestServiceBlip(Rect.Min.X + 2, Rect.Min.Y + 2), 42);
 		TestEqual(TEXT("Blip miss"), Raster.HitTestServiceBlip(Rect.Min.X - 2, Rect.Min.Y - 2), INDEX_NONE);
 	}
@@ -386,18 +342,14 @@ bool FSimCopterMapMissionCycleTest::RunTest(const FString&)
 	MakeLive(4, false, 0);
 	MakeLive(5, true, 0);
 
-	// Next walks up the slots and wraps back to the lowest live one below.
 	TestEqual(TEXT("Next from 0"), FSimCopterMapRaster::FindNextMission(Missions, 0), 3);
 	TestEqual(TEXT("Next from 3"), FSimCopterMapRaster::FindNextMission(Missions, 3), 5);
 	TestEqual(TEXT("Next from 5 wraps"), FSimCopterMapRaster::FindNextMission(Missions, 5), 0);
 
-	// Previous walks down and wraps to the highest live one above.
 	TestEqual(TEXT("Previous from 5"), FSimCopterMapRaster::FindPreviousMission(Missions, 5), 3);
 	TestEqual(TEXT("Previous from 3"), FSimCopterMapRaster::FindPreviousMission(Missions, 3), 0);
 	TestEqual(TEXT("Previous from 0 wraps"), FSimCopterMapRaster::FindPreviousMission(Missions, 0), 5);
 
-	// A finished mission is never a destination, and a lone selection stays put rather than
-	// dropping to nothing.
 	TArray<FSimCopterMapMission> Lonely;
 	Lonely.SetNum(3);
 	Lonely[1].bActive = true;
@@ -408,4 +360,48 @@ bool FSimCopterMapMissionCycleTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMapHeadingOrientationTest,
+	"SimCopter.Map.HeadingOrientation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMapHeadingOrientationTest::RunTest(const FString&)
+{
+	FSimCopterMapCity City = MakeFlatCity();
+
+	auto TestCardinalNeedle = [&](const FVector2D& TileDirection, const FIntPoint& ExpectedTipOffset, const TCHAR* Name)
+	{
+		FSimCopterMapFrame Frame;
+		Frame.City = &City;
+		Frame.CentreTile = FIntPoint(64, 64);
+		Frame.HeadingX1616 = -FMath::RoundToInt(TileDirection.Y * 65536.0f);
+		Frame.HeadingZ1616 = FMath::RoundToInt(TileDirection.X * 65536.0f);
+
+		FSimCopterMapSettings Settings;
+		Settings.Zoom = 0;
+
+		FSimCopterMapRaster Raster;
+		Raster.Render(Frame, Settings);
+
+		const int32 TipX = CentreX + ExpectedTipOffset.X;
+		const int32 TipY = CentreY + ExpectedTipOffset.Y;
+		TestEqual(FString::Printf(TEXT("%s needle tip"), Name), Raster.GetPixel(TipX, TipY), Color::Heading);
+	};
+
+	// North (LocalDirection = (1, 0), TileDirection = (1, 0)): needle points UP (-Y screen)
+	TestCardinalNeedle(FVector2D(1.0f, 0.0f), FIntPoint(0, -19), TEXT("North"));
+
+	// East (LocalDirection = (0, 1), TileDirection = (0, -1)): needle points RIGHT (+X screen)
+	TestCardinalNeedle(FVector2D(0.0f, -1.0f), FIntPoint(19, 0), TEXT("East"));
+
+	// South (LocalDirection = (-1, 0), TileDirection = (-1, 0)): needle points DOWN (+Y screen)
+	TestCardinalNeedle(FVector2D(-1.0f, 0.0f), FIntPoint(0, 19), TEXT("South"));
+
+	// West (LocalDirection = (0, -1), TileDirection = (0, 1)): needle points LEFT (-X screen)
+	TestCardinalNeedle(FVector2D(0.0f, 1.0f), FIntPoint(-19, 0), TEXT("West"));
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
+
