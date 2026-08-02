@@ -278,6 +278,32 @@ bool FSimCopterMapOverlaysTest::RunTest(const FString&)
 	TestEqual(TEXT("Primary ray shade"), Raster.GetPixel(CentreX + 10, CentreY), static_cast<uint8>(0x3e));
 	TestEqual(TEXT("Secondary ray shade"), Raster.GetPixel(CentreX, CentreY + 10), static_cast<uint8>(0x6a));
 
+	// Test Transport mission line targeting before and after pickup (bBegun false vs true)
+	FSimCopterMapMission TransportMission;
+	TransportMission.Name = TEXT("Transport #1");
+	TransportMission.EventId = 8;
+	TransportMission.TypeMask = 0x40;  // Transport
+	TransportMission.bActive = true;
+	TransportMission.bBegun = false;
+	TransportMission.Tile = FIntPoint(64, 44);      // Passenger at 20 tiles East
+	TransportMission.Secondary = FIntPoint(44, 64); // Dropoff at 20 tiles South
+
+	FSimCopterMapFrame TransportFrame = Frame;
+	TransportFrame.Missions.Reset();
+	TransportFrame.Missions.Add(TransportMission);
+	TransportFrame.CurrentMission = 0;
+
+	// Before pickup (bBegun = false): Primary line goes to Passenger (East), Secondary line to Dropoff (South)
+	FSimCopterMapRaster TransportRaster;
+	TransportRaster.Render(TransportFrame, Settings);
+	TestEqual(TEXT("Unbegun transport primary ray goes to passenger (East)"), TransportRaster.GetPixel(CentreX + 10, CentreY), static_cast<uint8>(0x3e));
+	TestEqual(TEXT("Unbegun transport secondary ray goes to dropoff (South)"), TransportRaster.GetPixel(CentreX, CentreY + 10), static_cast<uint8>(0x6a));
+
+	// After pickup (bBegun = true): Primary line switches to Dropoff (South)
+	TransportFrame.Missions[0].bBegun = true;
+	TransportRaster.Render(TransportFrame, Settings);
+	TestEqual(TEXT("Begun transport primary ray goes to dropoff (South)"), TransportRaster.GetPixel(CentreX, CentreY + 10), static_cast<uint8>(0x3e));
+
 	// FUN_004a4000's table, keyed on the whole type mask rather than its bits.
 	int32 Primary = INDEX_NONE;
 	int32 Secondary = INDEX_NONE;

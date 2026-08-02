@@ -3200,6 +3200,65 @@ void ASimCopterMissionSystemActor::RefreshMissionMarkerWidget()
 	MissionMarkerWidget->SetVisibility(Markers.Num() > 0 ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed);
 }
 
+bool ASimCopterMissionSystemActor::IsMissionBegun(const SimCopterMissions::FSimCopterMissionRecord& Record) const
+{
+	if (!Record.bActive || Record.TypeMask == 0)
+	{
+		return false;
+	}
+
+	const bool bHasPassengerPickup = (Record.TypeMask & SimCopterMissions::TYPE_Transport) != 0;
+	const bool bHasMedicalPickup = (Record.TypeMask & SimCopterMissions::TYPE_Medevac) != 0;
+	const bool bHasRescuePickup = (Record.TypeMask & SimCopterMissions::TYPE_RescuePeople) != 0;
+
+	if (bHasPassengerPickup)
+	{
+		int32 TransportOnboard = 0;
+		if (const UWorld* World = GetWorld())
+		{
+			for (TActorIterator<ASimCopterHelicopterPawn> It(const_cast<UWorld*>(World)); It; ++It)
+			{
+				TransportOnboard += It->GetMissionPassengerCount(
+					Record.EventId,
+					ESimCopterMissionPassengerKind::Transport);
+			}
+		}
+		return (TransportOnboard > 0 || Record.TransportDelivered > 0 || Record.VictimsPickedUp > 0);
+	}
+
+	if (bHasMedicalPickup)
+	{
+		int32 MedevacOnboard = 0;
+		if (const UWorld* World = GetWorld())
+		{
+			for (TActorIterator<ASimCopterHelicopterPawn> It(const_cast<UWorld*>(World)); It; ++It)
+			{
+				MedevacOnboard += It->GetMissionPassengerCount(
+					Record.EventId,
+					ESimCopterMissionPassengerKind::Medevac);
+			}
+		}
+		return (MedevacOnboard > 0 || Record.MedevacDelivered > 0 || Record.VictimsPickedUp > 0);
+	}
+
+	if (bHasRescuePickup)
+	{
+		int32 RescueOnboard = 0;
+		if (const UWorld* World = GetWorld())
+		{
+			for (TActorIterator<ASimCopterHelicopterPawn> It(const_cast<UWorld*>(World)); It; ++It)
+			{
+				RescueOnboard += It->GetMissionPassengerCount(
+					Record.EventId,
+					ESimCopterMissionPassengerKind::Rescue);
+			}
+		}
+		return (RescueOnboard > 0 || Record.RescueDelivered > 0 || Record.VictimsPickedUp > 0);
+	}
+
+	return Record.VictimsPickedUp > 0;
+}
+
 void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMissionWorldMarkerEntry>& OutMarkers) const
 {
 	OutMarkers.Reset();
@@ -3251,31 +3310,15 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 		const bool bHasPassengerPickup = (Record.TypeMask & SimCopterMissions::TYPE_Transport) != 0;
 		const bool bHasMedicalPickup = (Record.TypeMask & SimCopterMissions::TYPE_Medevac) != 0;
 		const bool bHasRescuePickup = (Record.TypeMask & SimCopterMissions::TYPE_RescuePeople) != 0;
-		const bool bPickedUpAnyPassenger = Record.VictimsPickedUp > 0 || Record.TransportDelivered > 0 || Record.RescueDelivered > 0 || Record.MedevacDelivered > 0;
+		const bool bBegun = IsMissionBegun(Record);
 
 		if (bHasPassengerPickup)
 		{
-			int32 TransportOnboard = 0;
-			if (const UWorld* World = GetWorld())
-			{
-				for (TActorIterator<ASimCopterHelicopterPawn> It(const_cast<UWorld*>(World)); It; ++It)
-				{
-					TransportOnboard += It->GetMissionPassengerCount(
-						Record.EventId,
-						ESimCopterMissionPassengerKind::Transport);
-				}
-			}
-			const int32 TransportWaiting = FMath::Max(
-				0,
-				Record.TransportPassengers -
-				Record.TransportDelivered -
-				Record.PassengersLost -
-				TransportOnboard);
-			if (TransportOnboard > 0 && bHasDropoff)
+			if (bBegun && bHasDropoff)
 			{
 				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("DROPOFF"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
 			}
-			else if (TransportWaiting > 0)
+			else
 			{
 				AddTileMarker(Record.TileX, Record.TileY, TEXT("TRANSPORT"), Record.Name, FLinearColor(0.08f, 0.46f, 0.95f, 1.0f));
 			}
@@ -3284,7 +3327,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 
 		if (bHasMedicalPickup)
 		{
-			if (bPickedUpAnyPassenger && bHasDropoff)
+			if (bBegun && bHasDropoff)
 			{
 				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("HOSPITAL"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
 			}
@@ -3297,7 +3340,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 
 		if (bHasRescuePickup)
 		{
-			if (bPickedUpAnyPassenger && bHasDropoff)
+			if (bBegun && bHasDropoff)
 			{
 				AddTileMarker(Record.SecondaryX, Record.SecondaryY, TEXT("DROP"), Record.Name, FLinearColor(0.05f, 0.72f, 0.32f, 1.0f));
 			}

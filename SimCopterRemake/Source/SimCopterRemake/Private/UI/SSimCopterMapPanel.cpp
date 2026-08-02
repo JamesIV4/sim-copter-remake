@@ -304,6 +304,7 @@ bool SSimCopterMapPanel::BuildFrame(FSimCopterMapFrame& OutFrame)
 			Mission.TypeMask = Record.TypeMask;
 			Mission.Category = Record.Category;
 			Mission.bActive = Record.bActive;
+			Mission.bBegun = MissionSystem->IsMissionBegun(Record);
 			Mission.Tile = FIntPoint(Record.TileX, Record.TileY);
 			Mission.Secondary = FIntPoint(Record.SecondaryX, Record.SecondaryY);
 			Mission.Tertiary = FIntPoint(Record.TertiaryX, Record.TertiaryY);
