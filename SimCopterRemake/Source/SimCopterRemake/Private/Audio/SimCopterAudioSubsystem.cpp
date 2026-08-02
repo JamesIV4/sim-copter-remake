@@ -170,10 +170,12 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 
 FString USimCopterAudioSubsystem::ResolveSoundRoot() const
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
+	TArray<FString> Candidates;
 	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/sound"));
 	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/sound")));
 	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/sound")));
+	Candidates.Add(TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame/sound"));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../../Reference/SimCopterOriginalGame/sound")));
 
 	for (FString Candidate : Candidates)
 	{
