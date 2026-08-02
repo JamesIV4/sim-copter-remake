@@ -3048,26 +3048,12 @@ void ASimCopterHelicopterPawn::UpdateCrosshairWorldLocation()
 		// helicopter bank and of any orbit/look adjustment.
 		AimPoint -= FVector::UpVector * OffsetCm;
 	}
-	else if (CameraMode == ESimCopterCameraMode::Cockpit)
+	else if (CameraMode == ESimCopterCameraMode::Cockpit ||
+		(IsApacheHelicopter() && (CameraMode == ESimCopterCameraMode::Chase || CameraMode == ESimCopterCameraMode::Orbit)))
 	{
-		// Use the same damped attitude frame as the cockpit camera, excluding camera look pitch.
-		// The widget itself stays screen-aligned and fixed-size because it is screen-space.
-		const FQuat StabilizedCockpitFrame =
-			FQuat(FRotator(0.0f, GetActorRotation().Yaw, 0.0f)) *
-			FQuat(CockpitStabilizedAttitudeDeg);
-		const FVector Forward =
-			StabilizedCockpitFrame.RotateVector(FVector::ForwardVector).GetSafeNormal();
-		AimPoint += Forward * OffsetCm;
-		if (GetActiveTool() == ESimCopterHelicopterTool::WaterCannon)
-		{
-			// The cannon sits below the normal forward aim line. Other tools retain the
-			// original cockpit crosshair height when the player cycles away from it.
-			AimPoint -= FVector::UpVector * FMath::Max(0.0f, CockpitCrosshairDownOffsetCm);
-		}
-	}
-	else if (IsApacheHelicopter() && (CameraMode == ESimCopterCameraMode::Chase || CameraMode == ESimCopterCameraMode::Orbit))
-	{
-		// Orient crosshair along the exact firing vector of Apache missiles and machine gun.
+		// Orient crosshair along the exact tool/weapon firing vector (Muzzle + Direction * Offset).
+		// Used for first-person cockpit view on all helicopters, and also for behind-airframe
+		// views (Chase & Orbit) on the Apache.
 		FVector Muzzle = FVector::ZeroVector;
 		FVector Direction = FVector::ForwardVector;
 		ResolveToolMuzzle(Muzzle, Direction);
