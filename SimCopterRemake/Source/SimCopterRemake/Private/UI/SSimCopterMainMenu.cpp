@@ -11,6 +11,7 @@
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/SLeafWidget.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SimCopterMainMenu"
@@ -25,32 +26,48 @@ const TCHAR* const HoseTop = TEXT("MAIN2.BMP");
 const TCHAR* const HoseCorner = TEXT("MAIN3.BMP");
 const TCHAR* const LampStrip = TEXT("MAIN4.BMP");
 const TCHAR* const KeyStrip = TEXT("MAIN5.BMP");
-const TCHAR* const CloudStrip = TEXT("SKYCOOL.BMP");
+const TCHAR* const FallbackCloudStrip = TEXT("SKYCOOL.BMP");
 
 // The selection tick FUN_0045ed60 plays, and the looping backing track FUN_0045f3d0 starts.
 const TCHAR* const SelectionSound = TEXT("menu");
 const TCHAR* const MenuMusic = TEXT("menuback");
 
-// SCHOOK: MainMenuSkyMovie 0x0044d070 / MENUSKY.SMK. The retail CD entry in this install is a
-// zero-byte placeholder; SKYCOOL.BMP is the closest shipped palette cloud plate. Pan two copies
-// behind main1 so the intended moving sky remains visible without pretending this fallback is a
-// decode of the absent Smacker frames or bundling replacement art.
+// SCHOOK: MainMenuSkyMovie 0x0044d070 / MENUSKY.SMK. The exact movie remains centred under the
+// original 640x480 page. Its largest always-visible sky opening repeats behind it at the same
+// live frame, extending the animation into aspect-ratio margins without stretching the original
+// composition. SKYCOOL remains only as a missing-original-data fallback.
 class SSimCopterMenuCloudBackdrop final : public SLeafWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterMenuCloudBackdrop) {}
-		SLATE_ARGUMENT(const FSlateBrush*, CloudBrush)
+		SLATE_ARGUMENT(const FSlateBrush*, MovieBrush)
+		SLATE_ARGUMENT(const FSlateBrush*, FallbackCloudBrush)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& Args)
 	{
-		CloudBrush = Args._CloudBrush;
+		MovieBrush = Args._MovieBrush;
+		FallbackCloudBrush = Args._FallbackCloudBrush;
+		if (MovieBrush != nullptr)
+		{
+			ExtensionBrush = *MovieBrush;
+			ExtensionBrush.SetUVRegion(FBox2f(
+				FVector2f(
+					SimCopterMenuSkyLayout::ExtensionSource.Left / SimCopterMenuSkyLayout::MovieWidth,
+					SimCopterMenuSkyLayout::ExtensionSource.Top / SimCopterMenuSkyLayout::MovieHeight),
+				FVector2f(
+					SimCopterMenuSkyLayout::ExtensionSource.Right / SimCopterMenuSkyLayout::MovieWidth,
+					SimCopterMenuSkyLayout::ExtensionSource.Bottom / SimCopterMenuSkyLayout::MovieHeight)));
+		}
 	}
 
 	virtual void Tick(const FGeometry& AllottedGeometry, const double CurrentTime, const float DeltaTime) override
 	{
 		SLeafWidget::Tick(AllottedGeometry, CurrentTime, DeltaTime);
-		ScrollPixels = FMath::Fmod(ScrollPixels + DeltaTime * 5.0f, SimCopterFrontEnd::ScreenWidth);
+		if (MovieBrush == nullptr)
+		{
+			ScrollPixels = FMath::Fmod(ScrollPixels + DeltaTime * 5.0f, SimCopterFrontEnd::ScreenWidth);
+		}
 		Invalidate(EInvalidateWidgetReason::Paint);
 	}
 
@@ -73,7 +90,41 @@ public:
 			ESlateDrawEffect::None,
 			FLinearColor(0.28f, 0.58f, 0.72f, 1.0f));
 
-		if (CloudBrush != nullptr)
+		if (MovieBrush != nullptr)
+		{
+			// Preserve the crop's aspect ratio and repeat it horizontally. The centred legacy
+			// frame covers nearly all of these tiles; only the extra screen margins remain visible.
+			const float TileWidth = FMath::Max(
+				1.0f,
+				SimCopterMenuSkyLayout::GetExtensionTileWidth(static_cast<float>(Size.Y)));
+			const int32 TileCount = FMath::Max(1, FMath::CeilToInt(static_cast<float>(Size.X) / TileWidth));
+			for (int32 Tile = 0; Tile < TileCount; ++Tile)
+			{
+				FSlateDrawElement::MakeBox(
+					OutDrawElements,
+					LayerId + 1,
+					AllottedGeometry.ToPaintGeometry(
+						FVector2f(TileWidth, Size.Y),
+						FSlateLayoutTransform(FVector2f(static_cast<float>(Tile) * TileWidth, 0.0f))),
+					&ExtensionBrush,
+					ESlateDrawEffect::None,
+					InWidgetStyle.GetColorAndOpacityTint());
+			}
+
+			const FRect MovieRect = SimCopterMenuSkyLayout::GetCenteredMovieRect(Size.X, Size.Y);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				AllottedGeometry.ToPaintGeometry(
+					FVector2f(MovieRect.Width(), MovieRect.Height()),
+					FSlateLayoutTransform(FVector2f(MovieRect.Left, MovieRect.Top))),
+				MovieBrush,
+				ESlateDrawEffect::None,
+				InWidgetStyle.GetColorAndOpacityTint());
+			return LayerId + 2;
+		}
+
+		if (FallbackCloudBrush != nullptr)
 		{
 			const float Width = FMath::Max(1.0f, static_cast<float>(Size.X));
 			for (int32 Copy = -1; Copy <= 1; ++Copy)
@@ -83,7 +134,7 @@ public:
 					OutDrawElements,
 					LayerId + 1,
 					AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform(FVector2f(X, 0.0f))),
-					CloudBrush,
+					FallbackCloudBrush,
 					ESlateDrawEffect::None,
 					InWidgetStyle.GetColorAndOpacityTint());
 			}
@@ -97,7 +148,9 @@ public:
 	}
 
 private:
-	const FSlateBrush* CloudBrush = nullptr;
+	const FSlateBrush* MovieBrush = nullptr;
+	const FSlateBrush* FallbackCloudBrush = nullptr;
+	FSlateBrush ExtensionBrush;
 	float ScrollPixels = 0.0f;
 };
 }
@@ -109,13 +162,12 @@ void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 
 	USimCopterHangarArt* ArtObject = Art;
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
-	const FSlateBrush* CloudBrush = ArtObject != nullptr
-		? ArtObject->GetBitmap(CloudStrip, /*bColorKeyed=*/false)
+	const FSlateBrush* MovieBrush = ArtObject != nullptr
+		? ArtObject->GetMenuSkyMovieBrush()
 		: nullptr;
-	AddAt(
-		Canvas,
-		FRect{0.0f, 0.0f, ScreenWidth, ScreenHeight},
-		SNew(SSimCopterMenuCloudBackdrop).CloudBrush(CloudBrush));
+	const FSlateBrush* FallbackCloudBrush = ArtObject != nullptr
+		? ArtObject->GetBitmap(FallbackCloudStrip, /*bColorKeyed=*/false)
+		: nullptr;
 
 	// main1.bmp, then the two hose pieces that bridge it to the screen edges. The page falls back
 	// to a plain panel without the artwork, but the hoses are pure decoration: draw them only when
@@ -222,7 +274,21 @@ void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 
 	ChildSlot
 	[
-		MakeScaledScreen(Canvas)
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SNew(SSimCopterMenuCloudBackdrop)
+			.MovieBrush(MovieBrush)
+			.FallbackCloudBrush(FallbackCloudBrush)
+		]
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			MakeScaledScreen(Canvas)
+		]
 	];
 
 	PlayScreenMusic(MenuMusic);

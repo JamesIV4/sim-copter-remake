@@ -71,15 +71,24 @@ The career screen's selection glow is **carsel.bmp**, a 557x743 sheet holding tw
 three panel frames in the *page's own coordinates*: glowing at y+0, plain at **y+360**. Each panel
 is four border strips, left/top/right/bottom, because the middle is where the preview movie plays.
 
+## Main-menu sky movie (authentic port, full-screen extension)
+
+The installed/RIP `SMK/MENUSKY.SMK` is a zero-byte CD stub; it is **not** evidence that the movie
+was absent. `FUN_0044d070` resolves `menusky.smk` through the CD-data path, opens it on a 0x27c-byte
+movie object, binds `DAT_00519cc0` (the display palette), and writes 1 to movie+8 (loop). The
+original CD file is SMK2, **640x480, 201 frames at exactly 71 ms/frame**: a 14.271-second loop.
+Full evidence is in `Docs/scratchpad/menusky-DECODED.md`.
+
+`Tools/Unreal/BakeMenuSky.py` verifies those values and produces a gitignored H.264 MP4 for Unreal
+without changing frame count or timing. `SSimCopterMenuCloudBackdrop` keeps the exact movie centred
+under the exact 4:3 menu art. Its largest always-clear live sky crop, `(427,29)-(640,315)`, repeats
+behind that frame so wider viewports are animated edge to edge without stretching the authentic
+composition or exposing the movie's cyan compression matte.
+
 ## Remake divergences (all deliberate)
 
 - **No city preview movies.** Each career panel runs `city<N>_s.smk` (`FUN_00407c50(2, ...)`
   appends `_s.smk`), and the panel shows the city's name instead.
-- **The main-menu sky moves again, with explicit fallback provenance.** `FUN_0044d070` opens
-  `menusky.smk` as the backdrop, but that file is a zero-byte CD stub in the reference install.
-  `SSimCopterMainMenu` therefore pans two copies of shipped `SKYCOOL.BMP` behind the keyed menu art.
-  This restores the intended animated cloudy background without claiming the missing Smacker
-  frames were decoded.
 - **No file dialog.** `SSimCopterUserCityPicker` lists the same `.sc2` files on menu4.bmp — the
   original's keyboard-shortcut list page — keeping title string 40. Its rectangles are *measured*
   off that bitmap, not decoded, because the original never lays a file list on it.
@@ -91,6 +100,11 @@ is four border strips, left/top/right/bottom, because the middle is where the pr
   already covers them.
 
 ## Verified
+
+The authentic menu sky update built clean on 2026-08-01, and all six `SimCopter.FrontEnd.*` tests
+passed, including the new decoded movie timing/aspect/full-screen-extension coverage. The generated
+movie itself was probed as H.264, 640x480, 201 frames, `1000/71` fps, 14.271 seconds. It was not
+verified on screen.
 
 Built clean, all 128 automation tests pass (five new ones under `SimCopter.FrontEnd.*` cover both
 selection wheels, the two layouts and the career graph), and every rectangle above was drawn back

@@ -103,6 +103,43 @@ using SimCopterFrontEnd::ENavigation;
 using SimCopterFrontEnd::GetNavigationTarget;
 }
 
+namespace SimCopterMenuSkyLayout
+{
+using SimCopterFrontEnd::FRect;
+
+// MENUSKY.SMK's header: SMK2, 640x480, 201 frames, -7100 duration field. A negative Smacker
+// duration is hundred-thousandths of a second per frame, so -7100 is exactly 71 ms/frame.
+constexpr float MovieWidth = 640.0f;
+constexpr float MovieHeight = 480.0f;
+constexpr int32 FrameCount = 201;
+constexpr int32 FrameDurationMilliseconds = 71;
+
+// The movie deliberately encodes palette index 254 under the opaque main1/main2/main3 art. This
+// right-hand opening is the largest rectangle that is sky in every frame. Repeating that live
+// crop beyond the legacy frame extends the same animated cloud field across widescreen margins;
+// the exact 640x480 movie remains centred under the original furniture.
+constexpr FRect ExtensionSource{427.0f, 29.0f, 640.0f, 315.0f};
+
+constexpr FRect GetCenteredMovieRect(const float ViewWidth, const float ViewHeight)
+{
+	const float WidthScale = ViewWidth / MovieWidth;
+	const float HeightScale = ViewHeight / MovieHeight;
+	const float Scale = WidthScale < HeightScale ? WidthScale : HeightScale;
+	const float Width = MovieWidth * Scale;
+	const float Height = MovieHeight * Scale;
+	return FRect{
+		(ViewWidth - Width) * 0.5f,
+		(ViewHeight - Height) * 0.5f,
+		(ViewWidth + Width) * 0.5f,
+		(ViewHeight + Height) * 0.5f };
+}
+
+constexpr float GetExtensionTileWidth(const float ViewHeight)
+{
+	return ViewHeight * ExtensionSource.Width() / ExtensionSource.Height();
+}
+}
+
 // Which item was chosen. The values are the original's own indices, which are also the message
 // values FUN_0045f250 posts and FUN_0044c710 switches on.
 enum class ESimCopterMainMenuItem : uint8

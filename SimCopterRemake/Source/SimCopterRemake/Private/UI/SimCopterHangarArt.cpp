@@ -8,6 +8,8 @@
 #include "Ground/SimCopterPopulationSprite.h"
 #include "HAL/FileManager.h"
 #include "ImageUtils.h"
+#include "MediaPlayer.h"
+#include "MediaTexture.h"
 #include "Misc/Paths.h"
 #include "Styling/SlateBrush.h"
 
@@ -48,6 +50,10 @@ void USimCopterHangarArt::SetOriginalGameRoot(const FString& InOriginalGameRoot)
 	}
 
 	OriginalGameRoot = InOriginalGameRoot;
+	StopMenuSkyMovie();
+	MenuSkyMovieBrush.Reset();
+	MenuSkyTexture = nullptr;
+	MenuSkyPlayer = nullptr;
 	Textures.Reset();
 	Brushes.Reset();
 }
@@ -132,6 +138,85 @@ const FSlateBrush* USimCopterHangarArt::GetBundledSlateImage(const FString& File
 	Brushes.Add(CacheKey, Brush);
 
 	return &Brush.Get();
+}
+
+FString USimCopterHangarArt::ResolveMenuSkyMoviePath() const
+{
+	// Generated is intentionally gitignored alongside the user's original art. The bake tool
+	// preserves the original frame count and timing while changing only the unsupported Smacker
+	// container/codec into a Media Foundation-readable MP4.
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Generated/Movies/MENUSKY.mp4")));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Movies/MENUSKY.mp4")));
+	if (!OriginalGameRoot.IsEmpty())
+	{
+		Candidates.Add(FPaths::Combine(OriginalGameRoot, TEXT("SMK/MENUSKY.mp4")));
+	}
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeFilename(Candidate);
+		if (FPaths::FileExists(Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return FString();
+}
+
+const FSlateBrush* USimCopterHangarArt::GetMenuSkyMovieBrush()
+{
+	const FString MoviePath = ResolveMenuSkyMoviePath();
+	if (MoviePath.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("SimCopter front end: MENUSKY.mp4 has not been baked; run Tools/Unreal/BakeMenuSky.py."));
+		return nullptr;
+	}
+
+	if (MenuSkyPlayer == nullptr)
+	{
+		MenuSkyPlayer = NewObject<UMediaPlayer>(this, TEXT("OriginalMenuSkyPlayer"));
+		MenuSkyPlayer->PlayOnOpen = true;
+	}
+	if (MenuSkyTexture == nullptr)
+	{
+		MenuSkyTexture = NewObject<UMediaTexture>(this, TEXT("OriginalMenuSkyTexture"));
+		MenuSkyTexture->AutoClear = true;
+		MenuSkyTexture->ClearColor = FLinearColor(0.28f, 0.58f, 0.72f, 1.0f);
+		MenuSkyTexture->NewStyleOutput = true;
+		MenuSkyTexture->Filter = TF_Bilinear;
+		MenuSkyTexture->SetMediaPlayer(MenuSkyPlayer);
+		MenuSkyTexture->UpdateResource();
+	}
+	if (!MenuSkyMovieBrush.IsValid())
+	{
+		MenuSkyMovieBrush = MakeShared<FSlateBrush>();
+		MenuSkyMovieBrush->SetResourceObject(MenuSkyTexture);
+		MenuSkyMovieBrush->ImageSize = FVector2D(640.0f, 480.0f);
+		MenuSkyMovieBrush->DrawAs = ESlateBrushDrawType::Image;
+	}
+
+	// SCHOOK: MainMenuSkyMovie 0x0044d070. The original opens MENUSKY.SMK, binds the display
+	// palette, then writes 1 to movie+8: its loop flag. OpenFile is asynchronous, just as the
+	// original movie object is; PlayOnOpen starts it once Media Foundation has the first sample.
+	MenuSkyPlayer->SetLooping(true);
+	if (!MenuSkyPlayer->OpenFile(MoviePath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter front end: could not open '%s'."), *MoviePath);
+		return nullptr;
+	}
+
+	return MenuSkyMovieBrush.Get();
+}
+
+void USimCopterHangarArt::StopMenuSkyMovie()
+{
+	if (MenuSkyPlayer != nullptr)
+	{
+		MenuSkyPlayer->Close();
+	}
 }
 
 const FSlateBrush* USimCopterHangarArt::GetStripFrame(
