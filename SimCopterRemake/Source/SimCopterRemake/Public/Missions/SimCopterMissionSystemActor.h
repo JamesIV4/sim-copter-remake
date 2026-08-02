@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -520,6 +520,10 @@ private:
 	// Guarantees the decoded hospital worker and monitors its BHAV-driven unload (called each Tick,
 	// after ProcessPassengerTransfers).
 	void ProcessMedevacHospitalHandoffs(float DeltaSeconds);
+	void ProcessLevelCompleteLanding(float DeltaSeconds);
+
+	float LevelCompleteLandingTimer = 0.0f;
+	int32 LastDisplayedLandingCountdownSecond = -1;
 	FSimCopterMedevacHandoff* FindMedevacHandoff(int32 EventId);
 	void BeginMedevacHandoff(int32 EventId, ASimCopterHelicopterPawn* Helicopter, const FVector& HospitalCenter);
 	// Returns false when the handoff is finished/aborted and should be cleaned up.

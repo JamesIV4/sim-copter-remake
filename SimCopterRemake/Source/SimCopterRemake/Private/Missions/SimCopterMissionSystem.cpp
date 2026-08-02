@@ -78,6 +78,8 @@ bool FSimCopterMissionSystem::SelectCareerCity(int32 Index)
 	CurrentCityIndex = Index;
 	SetCareerCity(CareerCities[Index]);
 	Score = 0; // FUN_00408210 tail: entering a city clears the city score (session block +0x50)
+	bLevelComplete = false;
+	bLevelCompleteSoundPlayed = false;
 	return true;
 }
 
@@ -88,24 +90,42 @@ void FSimCopterMissionSystem::AdvanceCareerCity()
 		CurrentCityIndex = (CurrentCityIndex + 1) % CareerCities.Num();
 		SetCareerCity(CareerCities[CurrentCityIndex]);
 		Score = 0; // Reset score for new city
+		bLevelComplete = false;
+		bLevelCompleteSoundPlayed = false;
 	}
 }
 
 void FSimCopterMissionSystem::AdvanceCareerIfComplete()
+{
+	CheckLevelCompletion();
+}
+
+bool FSimCopterMissionSystem::CheckLevelCompletion()
 {
 	if (CareerCities.Num() > 0)
 	{
 		const FSimCopterCareerCity& CurCity = CareerCities[CurrentCityIndex];
 		if (CurCity.PointsNeeded > 0 && Score >= CurCity.PointsNeeded)
 		{
-			Cash += CurCity.MoneyEarned;
-			if (World)
+			if (!bLevelComplete)
 			{
-				World->PlayUiSound(0x50); // Level complete
+				bLevelComplete = true;
+				if (World && !bLevelCompleteSoundPlayed)
+				{
+					World->PlayUiSound(0x50); // Level complete
+					bLevelCompleteSoundPlayed = true;
+
+					FSimCopterMissionUiMessage Msg;
+					Msg.Kind = 5;
+					Msg.TextId = 0x50;
+					Msg.MissionName = TEXT("LEVEL GOAL REACHED! Land at the airport to complete the level.");
+					World->OnUiMessage(Msg);
+				}
 			}
-			AdvanceCareerCity();
+			return true;
 		}
 	}
+	return false;
 }
 
 // FSimCopterMissionSystem implementation
@@ -119,6 +139,8 @@ void FSimCopterMissionSystem::Initialize(ISimCopterMissionWorld* InWorld, uint32
 
 	Score = 0;
 	Cash = 0;
+	bLevelComplete = false;
+	bLevelCompleteSoundPlayed = false;
 	DifficultyTier = 1;
 	FrameDeltaEma = 0;
 	SpawnCountdown = 0xb40000;

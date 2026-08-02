@@ -1,4 +1,4 @@
-﻿# SimCopter mission system
+# SimCopter mission system
 
 *"Milestone 5 mission/career layer: scheduler + fire + lifecycle located in exe (2026-07-02); plan at Docs/Milestone5SimulationPlan.md"*
 
@@ -52,3 +52,6 @@ something fire-related is unported or broken). Traps worth keeping here:
 controls are bound but dead, category 4 means "retire silently"). Rescue pickup/delivery
 (`EVT_RescueDelivered`, spawn modes 1/2/0x13 per `FUN_004ccf50`) was also unimplemented until then,
 so fire rescues could never complete either.
+
+**Level completion & airport landing progression (2026-08-02):**
+Reaching `PointsNeeded` during Career Mode (`CityJobs` session) transitions `FSimCopterMissionSystem` into a Level Complete state (`IsLevelComplete() == true`). It plays sound `0x50` once and notifies the player to land at the airport. `Score` is retained on the HUD (does NOT reset to 0 mid-level). Landing on an airport tile (`IsStandingOnAirport() == true`) starts a 10-second timer. After 10 seconds of touchdown, `MoneyEarned` is added, `USimCopterSessionSubsystem` stores `SetCompletedCareerCityIndex(...)`, and the game returns to `/Game/MainMenu`, opening `SSimCopterCareerSelect` with successor campaign mission options (`GetSuccessors(...)`).
