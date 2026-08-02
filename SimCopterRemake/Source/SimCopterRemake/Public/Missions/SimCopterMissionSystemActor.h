@@ -522,6 +522,17 @@ private:
 	void ProcessMedevacHospitalHandoffs(float DeltaSeconds);
 	void ProcessLevelCompleteLanding(float DeltaSeconds);
 
+	// SCHOOK: FireworksInit 0x004916e0 / TubaLeader 443 / TubaInit 444 (march.wav 0x26 sound)
+	void SpawnMarchingBandAtAirport();
+	void UpdateFireworksFX(float DeltaSeconds);
+	void UpdateMarchingBandApproach(const FVector& LandingLocation);
+
+	TArray<TWeakObjectPtr<class ASimCopterGroundAgent>> MarchingBandAgents;
+	bool bMarchingBandSpawned = false;
+	bool bMarchingBandApproaching = false;
+	float FireworksTimer = 0.0f;
+	bool bLevelCompletePromptDisplayed = false;
+
 	float LevelCompleteLandingTimer = 0.0f;
 	int32 LastDisplayedLandingCountdownSecond = -1;
 	FSimCopterMedevacHandoff* FindMedevacHandoff(int32 EventId);

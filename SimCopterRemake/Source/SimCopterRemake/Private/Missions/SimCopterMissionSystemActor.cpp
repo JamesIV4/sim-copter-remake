@@ -25,6 +25,7 @@
 #include "Engine/GameViewportClient.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInterface.h"
 #include "Misc/FileHelper.h"
@@ -3588,14 +3589,141 @@ FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMiss
 	}
 }
 
+// SCHOOK: FireworksInit 0x004916e0 / TubaLeader 443 / TubaInit 444
+// Spawns 8 marching band agents around the airport terminal / helipad perimeter in uniform colors.
+// Sound 0x26 plays march.wav (BHAV 444 rec[23]).
+void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
+{
+	if (bMarchingBandSpawned || GetWorld() == nullptr)
+	{
+		return;
+	}
+
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	const FIntPoint AirportOrigin = TrafficSystem->GetAirportOriginTile();
+	if (AirportOrigin.X < 0 || AirportOrigin.Y < 0)
+	{
+		return;
+	}
+
+	// Sound 0x26 = march.wav (BHAV 444 tuba leader music)
+	PlayUiSound(0x26);
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	constexpr int32 BandCount = 8;
+	for (int32 i = 0; i < BandCount; ++i)
+	{
+		const int32 TileX = AirportOrigin.X + (i % 4);
+		const int32 TileY = AirportOrigin.Y + (i / 4);
+
+		FVector SpawnLocation = FVector::ZeroVector;
+		if (TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, SpawnLocation))
+		{
+			SpawnLocation.Z += 30.0f;
+			ASimCopterGroundAgent* Agent = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
+				ASimCopterGroundAgent::StaticClass(),
+				SpawnLocation,
+				FRotator(0.0f, i * 45.0f, 0.0f),
+				SpawnParams);
+
+			if (Agent != nullptr)
+			{
+				Agent->ConfigureAgent(ESimCopterGroundAgentKind::Pedestrian, TEXT(""), FString(), 220.0f);
+				Agent->ConfigureMarchingBandUniform(i);
+				MarchingBandAgents.Add(Agent);
+			}
+		}
+	}
+
+	bMarchingBandSpawned = true;
+}
+
+// SCHOOK: FireworksInit 0x004916e0 / FUN_004a1750
+// Launches celebratory fireworks bursts over airport helipads.
+void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
+{
+	FireworksTimer += DeltaSeconds;
+	if (FireworksTimer < 0.6f)
+	{
+		return;
+	}
+	FireworksTimer = 0.0f;
+
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr || GetWorld() == nullptr)
+	{
+		return;
+	}
+
+	const FIntPoint AirportOrigin = TrafficSystem->GetAirportOriginTile();
+	if (AirportOrigin.X < 0 || AirportOrigin.Y < 0)
+	{
+		return;
+	}
+
+	const int32 OffsetX = FMath::RandRange(0, 3);
+	const int32 OffsetY = FMath::RandRange(0, 3);
+
+	FVector BurstLocation = FVector::ZeroVector;
+	if (TrafficSystem->TryGetTileCenterWorldLocation(AirportOrigin.X + OffsetX, AirportOrigin.Y + OffsetY, BurstLocation))
+	{
+		BurstLocation.Z += FMath::RandRange(2500.0f, 5000.0f);
+		PlayUiSound(0x4);
+
+		if (FireSmokeComponent != nullptr)
+		{
+			const FLinearColor Colors[] = { FLinearColor::Red, FLinearColor::Yellow, FLinearColor::Blue, FLinearColor::Green, FLinearColor::White };
+			const FLinearColor Color = Colors[FMath::RandRange(0, 4)];
+			FireSmokeComponent->SpawnRing(BurstLocation, 16, 800.0f, 300.0f, 150.0f, Color, 1.5f, -200.0f);
+		}
+	}
+}
+
+// SCHOOK: TubaInit 444 / BHAV 1014 / FUN_004c68f0
+// Commands the airport marching band agents to march toward the player's landed helicopter.
+void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& LandingLocation)
+{
+	if (bMarchingBandApproaching)
+	{
+		return;
+	}
+	bMarchingBandApproaching = true;
+
+	int32 Index = 0;
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
+	{
+		ASimCopterGroundAgent* Agent = WeakAgent.Get();
+		if (Agent != nullptr)
+		{
+			Agent->SetMissionScriptedMover();
+			const float Angle = Index * (2.0f * UE_PI / 8.0f);
+			const FVector Offset(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
+			Agent->SetMoveTarget(LandingLocation + Offset);
+			Index++;
+		}
+	}
+}
+
 void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 {
 	if (SessionMode != ESimCopterMissionSessionMode::CityJobs || !MissionSystem.IsLevelComplete())
 	{
-		LevelCompleteLandingTimer = 0.0f;
-		LastDisplayedLandingCountdownSecond = -1;
+		bLevelCompletePromptDisplayed = false;
 		return;
 	}
+
+	// 1. SCHOOK: TubaLeader 443 / TubaInit 444 - spawn airport celebration marching band
+	SpawnMarchingBandAtAirport();
+
+	// 2. SCHOOK: FireworksInit 0x004916e0 - launch fireworks bursts over airport
+	UpdateFireworksFX(DeltaTime);
 
 	ASimCopterHelicopterPawn* PlayerHelicopter = Cast<ASimCopterHelicopterPawn>(
 		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
@@ -3604,32 +3732,30 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 
 	if (!bLandedAtAirport)
 	{
-		if (LevelCompleteLandingTimer > 0.0f)
-		{
-			LevelCompleteLandingTimer = 0.0f;
-			LastDisplayedLandingCountdownSecond = -1;
-		}
 		return;
 	}
 
-	LevelCompleteLandingTimer += DeltaTime;
+	// 3. Marching band approaches player's landed helicopter
+	UpdateMarchingBandApproach(PlayerHelicopter->GetActorLocation());
 
-	constexpr float RequiredTime = 10.0f;
-	const int32 SecondsRemaining = FMath::Max(0, FMath::CeilToInt(RequiredTime - LevelCompleteLandingTimer));
-
-	if (SecondsRemaining != LastDisplayedLandingCountdownSecond)
+	// 4. Prompt: "Level Complete! Press Enter to advance to level select."
+	if (!bLevelCompletePromptDisplayed)
 	{
-		LastDisplayedLandingCountdownSecond = SecondsRemaining;
-
-		FString CountdownText = FString::Printf(
-			TEXT("Level Complete! Returning to Level Select in %d second%s..."),
-			SecondsRemaining,
-			(SecondsRemaining == 1) ? TEXT("") : TEXT("s"));
-
-		PushMissionLogMessage(CountdownText, FLinearColor::Green);
+		bLevelCompletePromptDisplayed = true;
+		PushMissionLogMessage(
+			TEXT("Level Complete! Press Enter to advance to level select."),
+			FLinearColor::Green);
 	}
 
-	if (LevelCompleteLandingTimer >= RequiredTime)
+	// 5. User input check: Enter key, Space, or Gamepad FaceButton Bottom
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	const bool bAdvancing = (PC != nullptr && (
+		PC->WasInputKeyJustPressed(EKeys::Enter) ||
+		PC->WasInputKeyJustPressed(EKeys::SpaceBar) ||
+		PC->WasInputKeyJustPressed(EKeys::Virtual_Gamepad_Accept) ||
+		PC->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Bottom)));
+
+	if (bAdvancing)
 	{
 		const SimCopterMissions::FSimCopterCareerCity& CurCity = MissionSystem.GetCareerCity();
 		MissionSystem.AddCash(CurCity.MoneyEarned);
@@ -3646,3 +3772,4 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 		UGameplayStatics::OpenLevel(this, FName(USimCopterSessionSubsystem::GetMainMenuLevelName()));
 	}
 }
+
