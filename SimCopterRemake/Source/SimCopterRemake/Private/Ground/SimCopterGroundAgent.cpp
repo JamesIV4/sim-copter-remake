@@ -4463,3 +4463,9 @@ FString ASimCopterGroundAgent::ResolveOriginalGameRoot() const
 
 	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
 }
+
+void ASimCopterGroundAgent::ConfigureMarchingBandUniform(int32 BandIndex)
+{
+	SetPedestrianFigureClothesOffset((BandIndex % 5) * 8 + 4);
+	MovementSpeedCmPerSec = 220.0f;
+}

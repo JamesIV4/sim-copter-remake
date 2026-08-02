@@ -200,6 +200,8 @@ public:
 	// figure is built (i.e. before ConfigureAgent).
 	void SetPedestrianFigureName(const FString& NewFigureName) { PedestrianFigureName = NewFigureName; }
 
+	void ConfigureMarchingBandUniform(int32 BandIndex);
+
 	float GetCapsuleHalfHeightCm() const;
 
 	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
