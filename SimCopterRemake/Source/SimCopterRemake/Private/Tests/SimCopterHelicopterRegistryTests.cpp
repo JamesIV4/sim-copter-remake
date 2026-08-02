@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "Misc/AutomationTest.h"
 
 // Regression gates for the decoded helicopter/equipment tables. Every expected value here
@@ -262,6 +263,27 @@ bool FSimCopterEquipmentStateTest::RunTest(const FString& Parameters)
 	Ammo.ClearDebugOverlay();
 	TestEqual(TEXT("overlay grants cleared"), Ammo.DebugGrantedEquipmentMask, 0);
 	TestEqual(TEXT("overlay ammo cleared"), Ammo.DebugTearGasRounds, 0);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCrosshairVisibilityTest,
+	"SimCopter.Model.CrosshairVisibility",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterCrosshairVisibilityTest::RunTest(const FString& Parameters)
+{
+	// Standard helicopters show crosshair only in Cockpit and Rescue views.
+	TestFalse(TEXT("Non-Apache Chase no crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Chase, false));
+	TestFalse(TEXT("Non-Apache Orbit no crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Orbit, false));
+	TestTrue(TEXT("Non-Apache Rescue crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Rescue, false));
+	TestTrue(TEXT("Non-Apache Cockpit crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Cockpit, false));
+
+	// Apache helicopter shows crosshair in behind-airframe views (Chase & Orbit) as well.
+	TestTrue(TEXT("Apache Chase crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Chase, true));
+	TestTrue(TEXT("Apache Orbit crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Orbit, true));
+	TestTrue(TEXT("Apache Rescue crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Rescue, true));
+	TestTrue(TEXT("Apache Cockpit crosshair"), CameraModeShowsCrosshair(ESimCopterCameraMode::Cockpit, true));
 
 	return true;
 }

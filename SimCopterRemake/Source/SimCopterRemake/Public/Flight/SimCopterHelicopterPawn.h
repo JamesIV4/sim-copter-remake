@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -55,6 +55,8 @@ enum class ESimCopterCameraMode : uint8
 	// First person from the pilot's seat: no boom, and a crosshair for aiming the tools.
 	Cockpit
 };
+
+SIMCOPTERREMAKE_API bool CameraModeShowsCrosshair(ESimCopterCameraMode Mode, bool bIsApache = false);
 
 enum class ESimCopterControllerMode : uint8
 {
@@ -396,6 +398,9 @@ public:
 	int32 GetHelicopterTypeIndex() const { return ActiveHelicopterTypeIndex; }
 
 	const FSimCopterHelicopterDefinition* GetHelicopterDefinition() const;
+
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Model")
+	bool IsApacheHelicopter() const;
 
 	// Transactional live model switch (prepare -> validate -> commit). Returns false and
 	// leaves the current helicopter completely untouched when validation fails; the reason

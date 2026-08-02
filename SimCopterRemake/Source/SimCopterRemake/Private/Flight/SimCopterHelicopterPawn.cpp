@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterPawn.h"
 
@@ -174,11 +174,6 @@ int32 GetCameraModeIndex(ESimCopterCameraMode Mode)
 	}
 }
 
-// Views that draw the aiming crosshair: the two the player actually aims a tool from.
-bool CameraModeShowsCrosshair(ESimCopterCameraMode Mode)
-{
-	return Mode == ESimCopterCameraMode::Cockpit || Mode == ESimCopterCameraMode::Rescue;
-}
 
 // The cockpit view rides at the pilot's eye instead of on a boom, which changes how the
 // framing, zoom and collision handling below apply.
@@ -499,6 +494,17 @@ void ReadFloatControl(const FSimCopterTweakSection& Section, const TCHAR* LabelP
 	}
 }
 
+}
+
+// Views that draw the aiming crosshair: Cockpit and Rescue normally, plus Chase and Orbit
+// for the Apache so its missiles and gun can be aimed from behind the airframe.
+bool CameraModeShowsCrosshair(ESimCopterCameraMode Mode, bool bIsApache)
+{
+	if (bIsApache && (Mode == ESimCopterCameraMode::Chase || Mode == ESimCopterCameraMode::Orbit))
+	{
+		return true;
+	}
+	return Mode == ESimCopterCameraMode::Cockpit || Mode == ESimCopterCameraMode::Rescue;
 }
 
 ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
@@ -1231,6 +1237,12 @@ const FSimCopterHelicopterDefinition* ASimCopterHelicopterPawn::GetHelicopterDef
 	return SimCopterHelicopterRegistry::FindByDisplayName(HelicopterTypeName);
 }
 
+bool ASimCopterHelicopterPawn::IsApacheHelicopter() const
+{
+	const FSimCopterHelicopterDefinition* Definition = GetHelicopterDefinition();
+	return Definition != nullptr && Definition->bApacheArmament;
+}
+
 void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
 {
 	bUsingOriginalMesh = bUseOriginalMesh;
@@ -1708,6 +1720,7 @@ void ASimCopterHelicopterPawn::CommitHelicopterModel(FSimCopterPreparedHelicopte
 	SyncPassengerFlightModelCount();
 	RefreshDashboardSeats();
 	RefreshWaterControlsWidget();
+	UpdateCrosshairVisibility();
 }
 
 bool ASimCopterHelicopterPawn::SwitchHelicopterModel(int32 TypeIndex)
@@ -3016,7 +3029,7 @@ void ASimCopterHelicopterPawn::UpdateCrosshairVisibility()
 	if (CrosshairComponent != nullptr)
 	{
 		CrosshairComponent->SetVisibility(
-			CrosshairWidget.IsValid() && CameraModeShowsCrosshair(CameraMode));
+			CrosshairWidget.IsValid() && CameraModeShowsCrosshair(CameraMode, IsApacheHelicopter()));
 	}
 }
 
@@ -3051,6 +3064,14 @@ void ASimCopterHelicopterPawn::UpdateCrosshairWorldLocation()
 			// original cockpit crosshair height when the player cycles away from it.
 			AimPoint -= FVector::UpVector * FMath::Max(0.0f, CockpitCrosshairDownOffsetCm);
 		}
+	}
+	else if (IsApacheHelicopter() && (CameraMode == ESimCopterCameraMode::Chase || CameraMode == ESimCopterCameraMode::Orbit))
+	{
+		// Orient crosshair along the exact firing vector of Apache missiles and machine gun.
+		FVector Muzzle = FVector::ZeroVector;
+		FVector Direction = FVector::ForwardVector;
+		ResolveToolMuzzle(Muzzle, Direction);
+		AimPoint = Muzzle + Direction * OffsetCm;
 	}
 
 	CrosshairComponent->SetWorldLocation(AimPoint);
