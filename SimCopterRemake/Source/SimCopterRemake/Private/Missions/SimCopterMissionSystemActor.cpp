@@ -3820,26 +3820,36 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 }
 
 // SCHOOK: TubaInit 444 / BHAV 1014 / FUN_004c68f0
-// Commands the airport marching band agents to march toward the player's landed location.
+// Commands the airport marching band agents to march toward the player's landed location and wave upon arrival.
 void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& LandingLocation)
 {
-	if (bMarchingBandApproaching)
+	if (!bMarchingBandApproaching)
 	{
-		return;
-	}
-	bMarchingBandApproaching = true;
+		bMarchingBandApproaching = true;
 
-	int32 Index = 0;
+		int32 Index = 0;
+		for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
+		{
+			ASimCopterGroundAgent* Agent = WeakAgent.Get();
+			if (Agent != nullptr)
+			{
+				Agent->SetMissionScriptedMover();
+				const float Angle = Index * (2.0f * UE_PI / 8.0f);
+				const FVector Offset(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
+				Agent->SetMoveTarget(LandingLocation + Offset);
+				Index++;
+			}
+		}
+	}
+
+	// Check if agents arrived at their target position around the landed player
 	for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
 	{
 		ASimCopterGroundAgent* Agent = WeakAgent.Get();
-		if (Agent != nullptr)
+		if (Agent != nullptr && Agent->IsNearMoveTarget(150.0f))
 		{
-			Agent->SetMissionScriptedMover();
-			const float Angle = Index * (2.0f * UE_PI / 8.0f);
-			const FVector Offset(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
-			Agent->SetMoveTarget(LandingLocation + Offset);
-			Index++;
+			Agent->ClearMoveTarget();
+			Agent->SetForcedPedestrianFigureClip(TEXT("Wave"));
 		}
 	}
 }

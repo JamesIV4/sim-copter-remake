@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Formats/SimCopterPrivAnimReader.h"
 
@@ -13,7 +13,7 @@ int32 FPrivAnimModel::FindFigureIndex(const FString& FigureName) const
 {
 	for (int32 Index = 0; Index < Figures.Num(); ++Index)
 	{
-		if (Figures[Index].Name == FigureName)
+		if (Figures[Index].Name.Equals(FigureName, ESearchCase::IgnoreCase))
 		{
 			return Index;
 		}
