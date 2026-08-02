@@ -533,11 +533,15 @@ private:
 	// SCHOOK: FireworksInit 0x004916e0 / TubaLeader 443 / TubaInit 444 (march.wav 0x26 sound)
 	void SpawnMarchingBandAtAirport();
 	void UpdateFireworksFX(float DeltaSeconds);
-	void UpdateMarchingBandApproach(const FVector& LandingLocation);
+	void UpdateMarchingBandApproach(const FVector& PlayerLocation, float DeltaSeconds);
 
 	TArray<TWeakObjectPtr<class ASimCopterGroundAgent>> MarchingBandAgents;
 	bool bMarchingBandSpawned = false;
 	bool bMarchingBandApproaching = false;
+	int32 MarchingBandVoiceSlot = INDEX_NONE;
+	void StopMarchingBandAudio();
+	float MarchingBandTargetUpdateTimer = 2.0f;
+	FVector LastMarchingBandPlayerLocation = FVector::ZeroVector;
 	float FireworksTimer = 0.0f;
 	float NextFireworksInterval = 0.5f;
 	TArray<FSimCopterActiveFireworkRocket> ActiveFireworkRockets;

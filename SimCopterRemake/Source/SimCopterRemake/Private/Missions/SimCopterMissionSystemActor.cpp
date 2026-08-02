@@ -273,8 +273,21 @@ void ASimCopterMissionSystemActor::BeginPlay()
 	}
 }
 
+void ASimCopterMissionSystemActor::StopMarchingBandAudio()
+{
+	if (MarchingBandVoiceSlot != INDEX_NONE)
+	{
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+		{
+			Audio->ReleaseVoiceSlot(MarchingBandVoiceSlot);
+		}
+		MarchingBandVoiceSlot = INDEX_NONE;
+	}
+}
+
 void ASimCopterMissionSystemActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	StopMarchingBandAudio();
 	for (FSimCopterMedevacHandoff& Handoff : MedevacHandoffs)
 	{
 		EndMedevacHandoff(Handoff, /*bResolvePatients*/ false);
@@ -461,6 +474,16 @@ bool ASimCopterMissionSystemActor::RestoreRuntimeSaveState(const TArray<uint8>& 
 	}
 
 	SessionElapsedSeconds = FMath::Max(0.0f, SessionElapsedSeconds);
+	StopMarchingBandAudio();
+	bMarchingBandSpawned = false;
+	bMarchingBandApproaching = false;
+	MarchingBandTargetUpdateTimer = 2.0f;
+	LastMarchingBandPlayerLocation = FVector::ZeroVector;
+	MarchingBandAgents.Reset();
+	ActiveFireworkRockets.Reset();
+	FireworksTimer = 0.0f;
+	bLevelCompletePromptDisplayed = false;
+	PromptRefreshTimer = 0.0f;
 	UpdateFireVisuals(0.0f);
 	RefreshMessageLogWidget();
 	return true;
@@ -3644,8 +3667,18 @@ void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
 		return;
 	}
 
-	// Sound 0x26 = march.wav (BHAV 444 tuba leader music)
-	PlayUiSound(0x26);
+	// Play Voice Event 38 = march.wav (BHAV 444 tuba leader music)
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		StopMarchingBandAudio();
+		MarchingBandVoiceSlot = Audio->AcquireVoiceSlot();
+		if (MarchingBandVoiceSlot != INDEX_NONE)
+		{
+			FVector AirportLocation = FVector::ZeroVector;
+			TrafficSystem->TryGetTileCenterWorldLocation(AirportOrigin.X, AirportOrigin.Y, AirportLocation);
+			Audio->PlayVoiceEvent(MarchingBandVoiceSlot, 38, AirportLocation, 0, false, SimCopterSoundFlags::Loop);
+		}
+	}
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
@@ -3820,36 +3853,84 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 }
 
 // SCHOOK: TubaInit 444 / BHAV 1014 / FUN_004c68f0
-// Commands the airport marching band agents to march toward the player's landed location and wave upon arrival.
-void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& LandingLocation)
+// Commands the airport marching band agents to march toward and center on the player, waving when arrived.
+void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& PlayerLocation, float DeltaSeconds)
 {
-	if (!bMarchingBandApproaching)
-	{
-		bMarchingBandApproaching = true;
+	bMarchingBandApproaching = true;
 
-		int32 Index = 0;
-		for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
+	// Continuously update 3D music loop location to center on the player every frame
+	if (MarchingBandVoiceSlot != INDEX_NONE)
+	{
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 		{
-			ASimCopterGroundAgent* Agent = WeakAgent.Get();
-			if (Agent != nullptr)
-			{
-				Agent->SetMissionScriptedMover();
-				const float Angle = Index * (2.0f * UE_PI / 8.0f);
-				const FVector Offset(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
-				Agent->SetMoveTarget(LandingLocation + Offset);
-				Index++;
-			}
+			Audio->SetPosition(MarchingBandVoiceSlot, PlayerLocation);
 		}
 	}
 
-	// Check if agents arrived at their target position around the landed player
+	// 2-second interval timer for re-evaluating whether player moved to a new location
+	MarchingBandTargetUpdateTimer += DeltaSeconds;
+	const bool bTimerFired = MarchingBandTargetUpdateTimer >= 2.0f;
+	if (bTimerFired)
+	{
+		MarchingBandTargetUpdateTimer = 0.0f;
+	}
+
+	const bool bPlayerMoved = bTimerFired && FVector::Dist2D(LastMarchingBandPlayerLocation, PlayerLocation) > 180.0f;
+	if (bPlayerMoved || LastMarchingBandPlayerLocation.IsZero())
+	{
+		LastMarchingBandPlayerLocation = PlayerLocation;
+	}
+
+	int32 Index = 0;
+	const int32 BandCount = MarchingBandAgents.Num();
 	for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
 	{
 		ASimCopterGroundAgent* Agent = WeakAgent.Get();
-		if (Agent != nullptr && Agent->IsNearMoveTarget(150.0f))
+		if (Agent != nullptr)
 		{
-			Agent->ClearMoveTarget();
-			Agent->SetForcedPedestrianFigureClip(TEXT("Wave"));
+			const float Angle = Index * (2.0f * UE_PI / FMath::Max(BandCount, 1));
+			const FVector TargetPos = PlayerLocation + FVector(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
+			const float DistToTarget = FVector::Dist2D(Agent->GetActorLocation(), TargetPos);
+
+			if (Agent->HasMoveTarget())
+			{
+				if (DistToTarget <= 160.0f)
+				{
+					// Arrived at destination around player: stop moving and face player to wave
+					Agent->ClearMoveTarget();
+					Agent->SetMissionAwaitingRescue(true);
+					FRotator FaceRot = (PlayerLocation - Agent->GetActorLocation()).Rotation();
+					FaceRot.Pitch = 0.0f;
+					FaceRot.Roll = 0.0f;
+					Agent->SetActorRotation(FaceRot);
+				}
+				else if (bPlayerMoved)
+				{
+					// Player moved significantly (evaluated on 2s interval): update move target
+					Agent->SetMoveTarget(TargetPos);
+				}
+			}
+			else
+			{
+				if ((bPlayerMoved || !bMarchingBandApproaching) && DistToTarget > 200.0f)
+				{
+					// Player moved away: resume marching toward new slot position
+					Agent->SetMissionScriptedMover();
+					Agent->SetMoveTarget(TargetPos);
+					Agent->SetMissionAwaitingRescue(true);
+				}
+				else
+				{
+					// Keep facing the player while waving at destination
+					Agent->SetMissionAwaitingRescue(true);
+					FRotator FaceRot = (PlayerLocation - Agent->GetActorLocation()).Rotation();
+					FaceRot.Pitch = 0.0f;
+					FaceRot.Roll = 0.0f;
+					Agent->SetActorRotation(FaceRot);
+				}
+			}
+
+			Index++;
 		}
 	}
 }
@@ -3922,7 +4003,7 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 	}
 
 	// 3. Marching band approaches player
-	UpdateMarchingBandApproach(PlayerPawn->GetActorLocation());
+	UpdateMarchingBandApproach(PlayerPawn->GetActorLocation(), DeltaTime);
 
 	// 4. Prompt: "Level Complete! Press Enter to advance to level select."
 	// Persistent message with bDestroyOnTimeout = false (stays on HUD until player leaves helipad).
