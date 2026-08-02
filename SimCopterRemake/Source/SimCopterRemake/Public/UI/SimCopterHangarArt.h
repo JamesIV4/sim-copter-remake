@@ -7,6 +7,8 @@
 #include "SimCopterHangarArt.generated.h"
 
 class UTexture2D;
+class UMediaPlayer;
+class UMediaTexture;
 struct FSlateBrush;
 
 // Quarter turns applied after a sub-rectangle is cut out. The cockpit's dispatch strip needs
@@ -69,6 +71,12 @@ public:
 	// from GetBitmap because these images are modern RGBA files, not original paletted BMPs.
 	const FSlateBrush* GetBundledSlateImage(const FString& FileName);
 
+	// The transcoded original MENUSKY.SMK loop. Smacker is not a UE-supported runtime format,
+	// so Tools/Unreal/BakeMenuSky.py produces the media file without changing its 201 frames or
+	// 71 ms cadence. Null keeps the front end usable when the user's original data was not baked.
+	const FSlateBrush* GetMenuSkyMovieBrush();
+	void StopMenuSkyMovie();
+
 	// One frame of a horizontal strip: button.bmp is three 100x28 frames (normal, pressed,
 	// disabled) and cat_btn.bmp three 86x28 ones.
 	const FSlateBrush* GetStripFrame(const FString& FileName, int32 FrameIndex, int32 FrameCount);
@@ -99,14 +107,22 @@ private:
 	UPROPERTY(Transient)
 	TMap<FString, TObjectPtr<UTexture2D>> Textures;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMediaPlayer> MenuSkyPlayer;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMediaTexture> MenuSkyTexture;
+
 	// Brushes point at the textures above; they are plain structs, so they live outside the
 	// UPROPERTY graph and are keyed the same way.
 	TMap<FString, TSharedPtr<FSlateBrush>> Brushes;
+	TSharedPtr<FSlateBrush> MenuSkyMovieBrush;
 
 	FString OriginalGameRoot;
 
 	// Resolves BMP/<FileName> case-insensitively; empty when it is not there.
 	FString ResolveBitmapPath(const FString& FileName) const;
+	FString ResolveMenuSkyMoviePath() const;
 
 	// An empty Source takes the whole bitmap.
 	const FSlateBrush* BuildBrush(

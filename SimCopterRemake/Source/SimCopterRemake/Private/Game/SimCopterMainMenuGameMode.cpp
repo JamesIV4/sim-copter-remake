@@ -198,6 +198,11 @@ void ASimCopterMainMenuGameMode::EnterScreen(const ESimCopterFrontEndScreen NewS
 
 void ASimCopterMainMenuGameMode::CloseScreen()
 {
+	if (Art != nullptr)
+	{
+		Art->StopMenuSkyMovie();
+	}
+
 	if (!ScreenWidget.IsValid())
 	{
 		return;

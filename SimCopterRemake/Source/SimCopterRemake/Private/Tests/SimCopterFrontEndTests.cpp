@@ -90,6 +90,38 @@ bool FSimCopterMainMenuLayoutTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMenuSkyLayoutTest,
+	"SimCopter.FrontEnd.MenuSkyLayout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMenuSkyLayoutTest::RunTest(const FString& Parameters)
+{
+	using namespace SimCopterMenuSkyLayout;
+
+	// MENUSKY.SMK's actual SMK2 header and FFmpeg frame count. Keeping these together catches a
+	// transcode or playback change that silently alters the original loop cadence.
+	TestEqual(TEXT("movie width"), MovieWidth, 640.0f);
+	TestEqual(TEXT("movie height"), MovieHeight, 480.0f);
+	TestEqual(TEXT("movie has 201 frames"), FrameCount, 201);
+	TestEqual(TEXT("each frame is 71 ms"), FrameDurationMilliseconds, 71);
+	TestEqual(TEXT("the loop is 14.271 seconds"), FrameCount * FrameDurationMilliseconds, 14271);
+
+	const FRect Original = GetCenteredMovieRect(640.0f, 480.0f);
+	TestEqual(TEXT("4:3 movie starts at the left edge"), Original.Left, 0.0f);
+	TestEqual(TEXT("4:3 movie starts at the top edge"), Original.Top, 0.0f);
+	TestEqual(TEXT("4:3 movie fills its original screen"), Original.Right, 640.0f);
+	TestEqual(TEXT("4:3 movie fills its original height"), Original.Bottom, 480.0f);
+
+	const FRect Widescreen = GetCenteredMovieRect(1920.0f, 1080.0f);
+	TestEqual(TEXT("16:9 preserves the original aspect"), Widescreen.Width() / Widescreen.Height(), 4.0f / 3.0f);
+	TestEqual(TEXT("16:9 frame fills the viewport height"), Widescreen.Height(), 1080.0f);
+	TestEqual(TEXT("16:9 leaves equal animated margins"), Widescreen.Left, 1920.0f - Widescreen.Right);
+	TestTrue(TEXT("the extension crop has positive width"), GetExtensionTileWidth(1080.0f) > 0.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterCareerSelectNavigationTest,
 	"SimCopter.FrontEnd.CareerSelectNavigation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
