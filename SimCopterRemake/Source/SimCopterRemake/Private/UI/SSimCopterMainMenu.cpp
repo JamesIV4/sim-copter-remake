@@ -54,14 +54,16 @@ public:
 		FallbackCloudBrush = Args._FallbackCloudBrush;
 		if (MovieBrush != nullptr)
 		{
+			const float U0 = SimCopterMenuSkyLayout::ExtensionSource.Left / SimCopterMenuSkyLayout::MovieWidth;
+			const float V0 = SimCopterMenuSkyLayout::ExtensionSource.Top / SimCopterMenuSkyLayout::MovieHeight;
+			const float U1 = SimCopterMenuSkyLayout::ExtensionSource.Right / SimCopterMenuSkyLayout::MovieWidth;
+			const float V1 = SimCopterMenuSkyLayout::ExtensionSource.Bottom / SimCopterMenuSkyLayout::MovieHeight;
+
 			ExtensionBrush = *MovieBrush;
-			ExtensionBrush.SetUVRegion(FBox2f(
-				FVector2f(
-					SimCopterMenuSkyLayout::ExtensionSource.Left / SimCopterMenuSkyLayout::MovieWidth,
-					SimCopterMenuSkyLayout::ExtensionSource.Top / SimCopterMenuSkyLayout::MovieHeight),
-				FVector2f(
-					SimCopterMenuSkyLayout::ExtensionSource.Right / SimCopterMenuSkyLayout::MovieWidth,
-					SimCopterMenuSkyLayout::ExtensionSource.Bottom / SimCopterMenuSkyLayout::MovieHeight)));
+			ExtensionBrush.SetUVRegion(FBox2f(FVector2f(U0, V0), FVector2f(U1, V1)));
+
+			FlippedExtensionBrush = *MovieBrush;
+			FlippedExtensionBrush.SetUVRegion(FBox2f(FVector2f(U1, V0), FVector2f(U0, V1)));
 		}
 	}
 
@@ -96,54 +98,140 @@ public:
 
 		if (MovieBrush != nullptr)
 		{
-			// Preserve the crop's aspect ratio and repeat it horizontally. The centred legacy
-			// frame covers nearly all of these tiles; only the extra screen margins remain visible.
 			const float TileWidth = FMath::Max(
 				1.0f,
 				SimCopterMenuSkyLayout::GetExtensionTileWidth(static_cast<float>(Size.Y)));
 			const int32 TileCount = FMath::Max(1, FMath::CeilToInt(static_cast<float>(Size.X) / TileWidth));
 			for (int32 Tile = 0; Tile < TileCount; ++Tile)
 			{
+				const FSlateBrush* BrushToUse = (Tile % 2 == 0) ? &ExtensionBrush : &FlippedExtensionBrush;
 				FSlateDrawElement::MakeBox(
 					OutDrawElements,
 					LayerId + 1,
 					AllottedGeometry.ToPaintGeometry(
 						FVector2f(TileWidth, Size.Y),
 						FSlateLayoutTransform(FVector2f(static_cast<float>(Tile) * TileWidth, 0.0f))),
-					&ExtensionBrush,
+					BrushToUse,
 					ESlateDrawEffect::None,
 					InWidgetStyle.GetColorAndOpacityTint());
 			}
 
 			const FRect MovieRect = SimCopterMenuSkyLayout::GetCenteredMovieRect(Size.X, Size.Y);
-			FSlateDrawElement::MakeBox(
-				OutDrawElements,
-				LayerId + 2,
-				AllottedGeometry.ToPaintGeometry(
-					FVector2f(MovieRect.Width(), MovieRect.Height()),
-					FSlateLayoutTransform(FVector2f(MovieRect.Left, MovieRect.Top))),
-				MovieBrush,
-				ESlateDrawEffect::None,
-				InWidgetStyle.GetColorAndOpacityTint());
+			const float BlendWidth = FMath::Min(64.0f, MovieRect.Width() * 0.25f);
+
+			if (MovieRect.Left > 0.0f && BlendWidth > 0.0f)
+			{
+				const int32 BlendSteps = 32;
+				const float StepWidth = BlendWidth / static_cast<float>(BlendSteps);
+				const FLinearColor BaseTint = InWidgetStyle.GetColorAndOpacityTint();
+
+				// Left transition blend (Alpha 0 -> 1)
+				for (int32 Step = 0; Step < BlendSteps; ++Step)
+				{
+					const float X0 = MovieRect.Left + static_cast<float>(Step) * StepWidth;
+					const float X1 = X0 + StepWidth;
+					const float Progress = (static_cast<float>(Step) + 0.5f) / static_cast<float>(BlendSteps);
+					const float Alpha = 0.5f * (1.0f - FMath::Cos(UE_PI * Progress));
+
+					FSlateBrush SliceBrush = *MovieBrush;
+					const float U0 = (X0 - MovieRect.Left) / MovieRect.Width();
+					const float U1 = (X1 - MovieRect.Left) / MovieRect.Width();
+					SliceBrush.SetUVRegion(FBox2f(FVector2f(U0, 0.0f), FVector2f(U1, 1.0f)));
+
+					FSlateDrawElement::MakeBox(
+						OutDrawElements,
+						LayerId + 2,
+						AllottedGeometry.ToPaintGeometry(
+							FVector2f(StepWidth, MovieRect.Height()),
+							FSlateLayoutTransform(FVector2f(X0, MovieRect.Top))),
+						&SliceBrush,
+						ESlateDrawEffect::None,
+						BaseTint * FLinearColor(1.0f, 1.0f, 1.0f, Alpha));
+				}
+
+				// Opaque center region
+				const float CenterLeft = MovieRect.Left + BlendWidth;
+				const float CenterRight = MovieRect.Right - BlendWidth;
+				const float CenterWidth = CenterRight - CenterLeft;
+				if (CenterWidth > 0.0f)
+				{
+					FSlateBrush CenterBrush = *MovieBrush;
+					const float U0 = BlendWidth / MovieRect.Width();
+					const float U1 = 1.0f - U0;
+					CenterBrush.SetUVRegion(FBox2f(FVector2f(U0, 0.0f), FVector2f(U1, 1.0f)));
+
+					FSlateDrawElement::MakeBox(
+						OutDrawElements,
+						LayerId + 2,
+						AllottedGeometry.ToPaintGeometry(
+							FVector2f(CenterWidth, MovieRect.Height()),
+							FSlateLayoutTransform(FVector2f(CenterLeft, MovieRect.Top))),
+						&CenterBrush,
+						ESlateDrawEffect::None,
+						BaseTint);
+				}
+
+				// Right transition blend (Alpha 1 -> 0)
+				for (int32 Step = 0; Step < BlendSteps; ++Step)
+				{
+					const float X0 = MovieRect.Right - BlendWidth + static_cast<float>(Step) * StepWidth;
+					const float X1 = X0 + StepWidth;
+					const float Progress = (static_cast<float>(Step) + 0.5f) / static_cast<float>(BlendSteps);
+					const float Alpha = 0.5f * (1.0f + FMath::Cos(UE_PI * Progress));
+
+					FSlateBrush SliceBrush = *MovieBrush;
+					const float U0 = (X0 - MovieRect.Left) / MovieRect.Width();
+					const float U1 = (X1 - MovieRect.Left) / MovieRect.Width();
+					SliceBrush.SetUVRegion(FBox2f(FVector2f(U0, 0.0f), FVector2f(U1, 1.0f)));
+
+					FSlateDrawElement::MakeBox(
+						OutDrawElements,
+						LayerId + 2,
+						AllottedGeometry.ToPaintGeometry(
+							FVector2f(StepWidth, MovieRect.Height()),
+							FSlateLayoutTransform(FVector2f(X0, MovieRect.Top))),
+						&SliceBrush,
+						ESlateDrawEffect::None,
+						BaseTint * FLinearColor(1.0f, 1.0f, 1.0f, Alpha));
+				}
+			}
+			else
+			{
+				FSlateDrawElement::MakeBox(
+					OutDrawElements,
+					LayerId + 2,
+					AllottedGeometry.ToPaintGeometry(
+						FVector2f(MovieRect.Width(), MovieRect.Height()),
+						FSlateLayoutTransform(FVector2f(MovieRect.Left, MovieRect.Top))),
+					MovieBrush,
+					ESlateDrawEffect::None,
+					InWidgetStyle.GetColorAndOpacityTint());
+			}
+
 			return LayerId + 2;
 		}
 
 		if (FallbackCloudBrush != nullptr)
 		{
 			const float Width = FMath::Max(1.0f, static_cast<float>(Size.X));
+			FSlateBrush FlippedFallback = *FallbackCloudBrush;
+			FlippedFallback.SetUVRegion(FBox2f(FVector2f(1.0f, 0.0f), FVector2f(0.0f, 1.0f)));
+
 			for (int32 Copy = -1; Copy <= 1; ++Copy)
 			{
 				const float X = static_cast<float>(Copy) * Width - ScrollPixels;
+				const FSlateBrush* BrushToUse = (FMath::Abs(Copy) % 2 == 0) ? FallbackCloudBrush : &FlippedFallback;
 				FSlateDrawElement::MakeBox(
 					OutDrawElements,
 					LayerId + 1,
 					AllottedGeometry.ToPaintGeometry(Size, FSlateLayoutTransform(FVector2f(X, 0.0f))),
-					FallbackCloudBrush,
+					BrushToUse,
 					ESlateDrawEffect::None,
 					InWidgetStyle.GetColorAndOpacityTint());
 			}
+			return LayerId + 1;
 		}
-		return LayerId + 1;
+		return LayerId;
 	}
 
 	virtual FVector2D ComputeDesiredSize(float) const override
@@ -155,6 +243,7 @@ private:
 	const FSlateBrush* MovieBrush = nullptr;
 	const FSlateBrush* FallbackCloudBrush = nullptr;
 	FSlateBrush ExtensionBrush;
+	FSlateBrush FlippedExtensionBrush;
 	float ScrollPixels = 0.0f;
 };
 }
