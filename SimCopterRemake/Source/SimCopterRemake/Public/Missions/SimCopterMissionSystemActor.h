@@ -60,6 +60,7 @@ struct FSimCopterMissionLogEntry
 	FString Text;
 	FLinearColor Color = FLinearColor::White;
 	float RemainingSeconds = 0.0f;
+	bool bDestroyOnTimeout = true;
 };
 
 struct FSimCopterMissionWorldMarkerEntry
@@ -68,6 +69,13 @@ struct FSimCopterMissionWorldMarkerEntry
 	FString Label;
 	FString Detail;
 	FLinearColor Color = FLinearColor::White;
+};
+
+struct FSimCopterActiveFireworkRocket
+{
+	FVector ApexLocation = FVector::ZeroVector;
+	FLinearColor BurstColor = FLinearColor::White;
+	float TimeRemaining = 1.8f;
 };
 
 UCLASS()
@@ -531,7 +539,10 @@ private:
 	bool bMarchingBandSpawned = false;
 	bool bMarchingBandApproaching = false;
 	float FireworksTimer = 0.0f;
+	float NextFireworksInterval = 0.5f;
+	TArray<FSimCopterActiveFireworkRocket> ActiveFireworkRockets;
 	bool bLevelCompletePromptDisplayed = false;
+	float PromptRefreshTimer = 0.0f;
 
 	float LevelCompleteLandingTimer = 0.0f;
 	int32 LastDisplayedLandingCountdownSecond = -1;
@@ -545,7 +556,8 @@ private:
 	void EnsureMessageLogWidget();
 	void RemoveMessageLogWidget();
 	void RefreshMessageLogWidget();
-	void PushMissionLogMessage(const FString& Text, const FLinearColor& Color);
+	void PushMissionLogMessage(const FString& Text, const FLinearColor& Color, bool bDestroyOnTimeout = true);
+	void ClearMissionLogMessage(const FString& Text);
 	FString FormatMissionUiMessage(const SimCopterMissions::FSimCopterMissionUiMessage& Message, FLinearColor& OutColor) const;
 	// Mirrors the HUD line into the career log the hangar's Mission Log page prints.
 	void WriteCareerLogEntry(const SimCopterMissions::FSimCopterMissionUiMessage& Message);

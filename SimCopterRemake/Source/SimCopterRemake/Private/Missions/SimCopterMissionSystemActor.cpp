@@ -503,11 +503,14 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	bool bChangedLog = false;
 	for (int32 Index = MissionMessageLog.Num() - 1; Index >= 0; --Index)
 	{
-		MissionMessageLog[Index].RemainingSeconds -= DeltaTime;
-		if (MissionMessageLog[Index].RemainingSeconds <= 0.0f)
+		if (MissionMessageLog[Index].bDestroyOnTimeout)
 		{
-			MissionMessageLog.RemoveAt(Index);
-			bChangedLog = true;
+			MissionMessageLog[Index].RemainingSeconds -= DeltaTime;
+			if (MissionMessageLog[Index].RemainingSeconds <= 0.0f)
+			{
+				MissionMessageLog.RemoveAt(Index);
+				bChangedLog = true;
+			}
 		}
 	}
 
@@ -3529,17 +3532,30 @@ bool ASimCopterMissionSystemActor::ProjectMissionMarkerToScreen(const FVector& W
 	return true;
 }
 
-void ASimCopterMissionSystemActor::PushMissionLogMessage(const FString& Text, const FLinearColor& Color)
+void ASimCopterMissionSystemActor::PushMissionLogMessage(const FString& Text, const FLinearColor& Color, bool bDestroyOnTimeout)
 {
 	if (!bShowMissionMessageLog)
 	{
 		return;
 	}
 
+	for (FSimCopterMissionLogEntry& Existing : MissionMessageLog)
+	{
+		if (Existing.Text == Text)
+		{
+			Existing.Color = Color;
+			Existing.RemainingSeconds = MessageLogDurationSeconds;
+			Existing.bDestroyOnTimeout = bDestroyOnTimeout;
+			RefreshMessageLogWidget();
+			return;
+		}
+	}
+
 	FSimCopterMissionLogEntry Entry;
 	Entry.Text = Text;
 	Entry.Color = Color;
 	Entry.RemainingSeconds = MessageLogDurationSeconds;
+	Entry.bDestroyOnTimeout = bDestroyOnTimeout;
 	MissionMessageLog.Insert(Entry, 0);
 
 	while (MissionMessageLog.Num() > MaxMessageLogEntries)
@@ -3549,6 +3565,23 @@ void ASimCopterMissionSystemActor::PushMissionLogMessage(const FString& Text, co
 
 	UE_LOG(LogTemp, Display, TEXT("[Mission] %s"), *Text);
 	RefreshMessageLogWidget();
+}
+
+void ASimCopterMissionSystemActor::ClearMissionLogMessage(const FString& Text)
+{
+	bool bRemoved = false;
+	for (int32 Index = MissionMessageLog.Num() - 1; Index >= 0; --Index)
+	{
+		if (MissionMessageLog[Index].Text == Text)
+		{
+			MissionMessageLog.RemoveAt(Index);
+			bRemoved = true;
+		}
+	}
+	if (bRemoved)
+	{
+		RefreshMessageLogWidget();
+	}
 }
 
 FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMissions::FSimCopterMissionUiMessage& Message, FLinearColor& OutColor) const
@@ -3645,16 +3678,75 @@ void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
 	bMarchingBandSpawned = true;
 }
 
-// SCHOOK: FireworksInit 0x004916e0 / FUN_004a1750
-// Launches celebratory fireworks bursts over airport helipads.
+// SCHOOK: FireworksInit 0x004916e0 / FUN_0048e0b0 / FUN_0048ed00
+// Faithfully launches fireworks rockets with ascent trails, apex burst rings, and falling ember sparkles.
+// - Launch Whistle: Sound 0x17 (TGSHWH.WAV) 3D whistle played AT LAUNCH (t = 0s)
+// - Apex Boom: Sound 0x07 (BOOM1.WAV) 3D explosion played AT APEX DETONATION (t = 1.8s)
+// - Randomized Interval (FUN_0048ed00): 0.5s to 1.5s delay (0x8000 to 0x18000 fixed point)
+// - Spread Formula (FUN_0048e0b0): (_rand() & 0x1f) angular dispersion multiplier
+// - Rocket Ascent (FUN_0048e0b0 param 7): lifespan 0x1cccc (1.8s), upward velocity ~2500 cm/s, trail puffs (FUN_004af220 class 1)
+// - Explosion Ring (FUN_0048e0b0 param 9): lifespan 0xe666 (0.9s), radial burst speed 1200 cm/s
+// - Falling Sparkles (FUN_0048e0b0 param 8): lifespan 0x60000 (6.0s), gravity drift -250 cm/s^2 (-0x280000)
 void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 {
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+
+	// 1. Advance active rockets in flight. Trigger detonation explosion ring, sparkles, and boom sound AT APEX (t = 1.8s).
+	for (int32 Index = ActiveFireworkRockets.Num() - 1; Index >= 0; --Index)
+	{
+		FSimCopterActiveFireworkRocket& Rocket = ActiveFireworkRockets[Index];
+		Rocket.TimeRemaining -= DeltaSeconds;
+		if (Rocket.TimeRemaining <= 0.0f)
+		{
+			if (FireSmokeComponent != nullptr)
+			{
+				// Apex Burst Ring (FUN_0048e0b0 param 9: 32 particles, 1.2s lifespan, 1500 cm/s radial speed)
+				FireSmokeComponent->SpawnRing(
+					Rocket.ApexLocation,
+					32,
+					1500.0f,
+					250.0f,
+					25.0f,
+					Rocket.BurstColor,
+					1.2f,
+					-200.0f);
+
+				// Apex Falling Embers / Sparkles (FUN_0048e0b0 param 8: 6.0s lifespan, -250 cm/s^2 gravity drift)
+				for (int32 Spark = 0; Spark < 24; ++Spark)
+				{
+					const FVector SparkVel(
+						FMath::RandRange(-500.0f, 500.0f),
+						FMath::RandRange(-500.0f, 500.0f),
+						FMath::RandRange(-100.0f, 400.0f));
+
+					FireSmokeComponent->SpawnParticle(
+						Rocket.ApexLocation,
+						SparkVel,
+						18.0f,
+						Rocket.BurstColor,
+						6.0f,
+						-250.0f); // SCHOOK: DAT_005d62e0 gravity drift
+				}
+			}
+
+			// Play 3D explosion / boom sound AT DETONATION (Sound 0x07: BOOM1.WAV)
+			if (Audio != nullptr)
+			{
+				Audio->Play3D(0x07, Rocket.ApexLocation); // SCHOOK: BOOM1 0x07 detonation boom
+			}
+
+			ActiveFireworkRockets.RemoveAt(Index);
+		}
+	}
+
+	// 2. Check launch timer interval
 	FireworksTimer += DeltaSeconds;
-	if (FireworksTimer < 0.6f)
+	if (FireworksTimer < NextFireworksInterval)
 	{
 		return;
 	}
 	FireworksTimer = 0.0f;
+	NextFireworksInterval = FMath::RandRange(0.5f, 1.5f); // SCHOOK: FUN_0048ed00 timer 0x8000 - 0x18000
 
 	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
 	if (TrafficSystem == nullptr || GetWorld() == nullptr)
@@ -3671,23 +3763,64 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 	const int32 OffsetX = FMath::RandRange(0, 3);
 	const int32 OffsetY = FMath::RandRange(0, 3);
 
-	FVector BurstLocation = FVector::ZeroVector;
-	if (TrafficSystem->TryGetTileCenterWorldLocation(AirportOrigin.X + OffsetX, AirportOrigin.Y + OffsetY, BurstLocation))
+	FVector GroundLocation = FVector::ZeroVector;
+	if (TrafficSystem->TryGetTileCenterWorldLocation(AirportOrigin.X + OffsetX, AirportOrigin.Y + OffsetY, GroundLocation))
 	{
-		BurstLocation.Z += FMath::RandRange(2500.0f, 5000.0f);
-		PlayUiSound(0x4);
+		GroundLocation.Z += 20.0f; // Helipad ground level
+
+		const FLinearColor PaletteColors[] = {
+			FLinearColor(1.0f, 0.2f, 0.2f, 1.0f),  // Bright Red
+			FLinearColor(1.0f, 0.85f, 0.1f, 1.0f), // Gold / Yellow
+			FLinearColor(0.2f, 0.6f, 1.0f, 1.0f),  // Electric Blue
+			FLinearColor(0.2f, 1.0f, 0.4f, 1.0f),  // Emerald Green
+			FLinearColor(1.0f, 0.4f, 0.9f, 1.0f),  // Magenta
+			FLinearColor(1.0f, 1.0f, 1.0f, 1.0f)   // Silver White
+		};
+		const FLinearColor BurstColor = PaletteColors[FMath::RandRange(0, 5)];
+
+		// Rocket launch apex location & Ghidra (_rand() & 0x1f) angular dispersion spread
+		const float AscentHeightCm = FMath::RandRange(2500.0f, 4500.0f);
+		const float SpreadX = ((FMath::Rand() & 0x1F) - 15.5f) * 14.0f; // SCHOOK: FUN_0048e0b0 lines 107-113
+		const float SpreadY = ((FMath::Rand() & 0x1F) - 15.5f) * 14.0f;
+		const FVector RocketVelocity(SpreadX, SpreadY, AscentHeightCm / 1.8f);
+		const FVector ApexLocation = GroundLocation + FVector(SpreadX * 1.8f, SpreadY * 1.8f, AscentHeightCm);
+
+		// Play launch whistling sound AT LAUNCH (Sound 0x17: TGSHWH.WAV)
+		if (Audio != nullptr)
+		{
+			Audio->Play3D(0x17, GroundLocation); // SCHOOK: TGSHWH 0x17 tear gas launch whistle
+		}
 
 		if (FireSmokeComponent != nullptr)
 		{
-			const FLinearColor Colors[] = { FLinearColor::Red, FLinearColor::Yellow, FLinearColor::Blue, FLinearColor::Green, FLinearColor::White };
-			const FLinearColor Color = Colors[FMath::RandRange(0, 4)];
-			FireSmokeComponent->SpawnRing(BurstLocation, 16, 800.0f, 300.0f, 150.0f, Color, 1.5f, -200.0f);
+			// 1. Rocket Tracer Particle (FUN_0048e0b0 param 7: 1.8s ascent tracer)
+			FireSmokeComponent->SpawnParticle(
+				GroundLocation,
+				RocketVelocity,
+				24.0f,
+				FLinearColor(1.0f, 0.9f, 0.6f, 1.0f),
+				1.8f,
+				0.0f);
+
+			// 2. Ascent Trail Puffs (FUN_004af220 effect class 1 along ascent vector)
+			for (int32 Step = 1; Step <= 4; ++Step)
+			{
+				const FVector TrailPos = FMath::Lerp(GroundLocation, ApexLocation, Step / 4.0f);
+				FireSmokeComponent->SpawnTilePuff(TrailPos, 1);
+			}
 		}
+
+		// Register in-flight rocket for apex detonation explosion 1.8s later
+		FSimCopterActiveFireworkRocket NewRocket;
+		NewRocket.ApexLocation = ApexLocation;
+		NewRocket.BurstColor = BurstColor;
+		NewRocket.TimeRemaining = 1.8f;
+		ActiveFireworkRockets.Add(NewRocket);
 	}
 }
 
 // SCHOOK: TubaInit 444 / BHAV 1014 / FUN_004c68f0
-// Commands the airport marching band agents to march toward the player's landed helicopter.
+// Commands the airport marching band agents to march toward the player's landed location.
 void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& LandingLocation)
 {
 	if (bMarchingBandApproaching)
@@ -3715,7 +3848,11 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 {
 	if (SessionMode != ESimCopterMissionSessionMode::CityJobs || !MissionSystem.IsLevelComplete())
 	{
-		bLevelCompletePromptDisplayed = false;
+		if (bLevelCompletePromptDisplayed)
+		{
+			bLevelCompletePromptDisplayed = false;
+			ClearMissionLogMessage(TEXT("Level Complete! Press Enter to advance to level select."));
+		}
 		return;
 	}
 
@@ -3725,33 +3862,73 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 	// 2. SCHOOK: FireworksInit 0x004916e0 - launch fireworks bursts over airport
 	UpdateFireworksFX(DeltaTime);
 
-	ASimCopterHelicopterPawn* PlayerHelicopter = Cast<ASimCopterHelicopterPawn>(
-		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
-
-	bool bLandedAtAirport = (PlayerHelicopter != nullptr && PlayerHelicopter->IsStandingOnAirport());
-
-	if (!bLandedAtAirport)
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (PlayerPawn == nullptr)
 	{
+		if (bLevelCompletePromptDisplayed)
+		{
+			bLevelCompletePromptDisplayed = false;
+			ClearMissionLogMessage(TEXT("Level Complete! Press Enter to advance to level select."));
+		}
 		return;
 	}
 
-	// 3. Marching band approaches player's landed helicopter
-	UpdateMarchingBandApproach(PlayerHelicopter->GetActorLocation());
+	bool bLandedAtAirport = false;
+	ASimCopterHelicopterPawn* PlayerHelicopter = Cast<ASimCopterHelicopterPawn>(PlayerPawn);
+	if (PlayerHelicopter != nullptr)
+	{
+		bLandedAtAirport = PlayerHelicopter->IsStandingOnAirport();
+	}
+	else
+	{
+		// Player is on foot or controlling ground pawn: test position against airport 4x4 tile footprint
+		ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+		ASimCity2000CityActor* City = Cast<ASimCity2000CityActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCity2000CityActor::StaticClass()));
+
+		if (TrafficSystem != nullptr && City != nullptr)
+		{
+			const FIntPoint AirportOrigin = TrafficSystem->GetAirportOriginTile();
+			float SurfaceZ = 0.0f;
+			uint8 TerrainClass = 0xff;
+			FIntPoint Tile = FIntPoint::ZeroValue;
+			if (AirportOrigin.X >= 0 && AirportOrigin.Y >= 0 &&
+				City->TryGetWaterGameplaySurface(PlayerPawn->GetActorLocation(), SurfaceZ, TerrainClass, &Tile))
+			{
+				bLandedAtAirport = (Tile.X >= AirportOrigin.X && Tile.X <= AirportOrigin.X + 3 &&
+					Tile.Y >= AirportOrigin.Y && Tile.Y <= AirportOrigin.Y + 3);
+			}
+		}
+	}
+
+	if (!bLandedAtAirport)
+	{
+		if (bLevelCompletePromptDisplayed)
+		{
+			bLevelCompletePromptDisplayed = false;
+			ClearMissionLogMessage(TEXT("Level Complete! Press Enter to advance to level select."));
+		}
+		return;
+	}
+
+	// 3. Marching band approaches player
+	UpdateMarchingBandApproach(PlayerPawn->GetActorLocation());
 
 	// 4. Prompt: "Level Complete! Press Enter to advance to level select."
+	// Persistent message with bDestroyOnTimeout = false (stays on HUD until player leaves helipad).
 	if (!bLevelCompletePromptDisplayed)
 	{
 		bLevelCompletePromptDisplayed = true;
 		PushMissionLogMessage(
 			TEXT("Level Complete! Press Enter to advance to level select."),
-			FLinearColor::Green);
+			FLinearColor::Green,
+			/*bDestroyOnTimeout=*/false);
 	}
 
-	// 5. User input check: Enter key, Space, or Gamepad FaceButton Bottom
+	// 5. User input check: Enter key ONLY for M&K (or gamepad accept button)
 	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	const bool bAdvancing = (PC != nullptr && (
 		PC->WasInputKeyJustPressed(EKeys::Enter) ||
-		PC->WasInputKeyJustPressed(EKeys::SpaceBar) ||
 		PC->WasInputKeyJustPressed(EKeys::Virtual_Gamepad_Accept) ||
 		PC->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Bottom)));
 

@@ -73,6 +73,7 @@ struct FSimCopterEffectSlot
 	int32 GeoObjectId = INDEX_NONE;
 	bool bTrajectory = false;
 	bool bApplyGravity = false;
+	float GravityCmPerSec2 = 0.0f;
 	bool bBurstEmitted = false;
 };
 
