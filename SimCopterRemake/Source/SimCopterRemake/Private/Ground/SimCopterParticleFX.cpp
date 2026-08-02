@@ -317,7 +317,7 @@ int32 USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool Pool)
 	case ESimCopterEffectPool::Geo10: return 10;
 	case ESimCopterEffectPool::Geo2: return 2;
 	case ESimCopterEffectPool::Debris30: return 30;
-	case ESimCopterEffectPool::Wash20: return 20;
+	case ESimCopterEffectPool::Wash20: return 300;
 	case ESimCopterEffectPool::Trajectory70: return 70;
 	case ESimCopterEffectPool::Fire25: return 25;
 	case ESimCopterEffectPool::SplashColumns20: return 20;
@@ -595,7 +595,7 @@ void USimCopterParticleFXComponent::SpawnHardLanding(const FVector& World, bool,
 }
 
 void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FVector& VelocityCmPerSec,
-	float, const FLinearColor& Color, float LifeSeconds, float)
+	float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
 {
 	if (!SpawnEffect(ESimCopterEffectType::RotorWash, World, VelocityCmPerSec))
 	{
@@ -606,7 +606,10 @@ void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FV
 		if (Slot.bActive && Slot.Type == ESimCopterEffectType::RotorWash && Slot.Position.Equals(World))
 		{
 			Slot.Life1616 = SecondsToFixed(LifeSeconds);
-			Slot.PaletteIndex = Color.B > Color.R ? 0x09 : 0x08;
+			Slot.SizeCm = SizeCm > 0.0f ? SizeCm : 20.0f;
+			Slot.bApplyGravity = FMath::Abs(GravityCmPerSec2) > 0.01f;
+			Slot.GravityCmPerSec2 = GravityCmPerSec2;
+			Slot.PaletteIndex = Color.B > Color.R ? 0x09 : (Color.G > Color.R ? 0x73 : 0x7B);
 			Slot.PointPaletteIndices[0] = Slot.PaletteIndex;
 			break;
 		}
@@ -957,7 +960,10 @@ void USimCopterParticleFXComponent::UpdateSlots(float DeltaTime)
 
 		if (Slot.bApplyGravity)
 		{
-			Slot.Velocity.Z -= SimCopterEffectFX::GravityCmPerSec2 * DeltaTime;
+			const float GravityAcc = FMath::Abs(Slot.GravityCmPerSec2) > 0.01f
+				? FMath::Abs(Slot.GravityCmPerSec2)
+				: SimCopterEffectFX::GravityCmPerSec2;
+			Slot.Velocity.Z -= GravityAcc * DeltaTime;
 		}
 		Slot.Position += Slot.Velocity * DeltaTime;
 		Slot.Cell = GetCellForWorld(Slot.Position);
