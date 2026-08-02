@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "UI/SSimCopterMainMenu.h"
 
@@ -27,6 +27,10 @@ const TCHAR* const HoseCorner = TEXT("MAIN3.BMP");
 const TCHAR* const LampStrip = TEXT("MAIN4.BMP");
 const TCHAR* const KeyStrip = TEXT("MAIN5.BMP");
 const TCHAR* const FallbackCloudStrip = TEXT("SKYCOOL.BMP");
+
+const TCHAR* const UpscaledMenuPage = TEXT("MAIN1-upscaled-rows-off.png");
+const TCHAR* const UpscaledHoseTop = TEXT("MAIN2-upscaled.png");
+const TCHAR* const UpscaledHoseCorner = TEXT("MAIN3-upscaled.png");
 
 // The selection tick FUN_0045ed60 plays, and the looping backing track FUN_0045f3d0 starts.
 const TCHAR* const SelectionSound = TEXT("menu");
@@ -169,67 +173,125 @@ void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 		? ArtObject->GetBitmap(FallbackCloudStrip, /*bColorKeyed=*/false)
 		: nullptr;
 
-	// main1.bmp, then the two hose pieces that bridge it to the screen edges. The page falls back
-	// to a plain panel without the artwork, but the hoses are pure decoration: draw them only when
-	// they are really there, or the fallback leaves two grey blocks hanging off the panel.
-	AddAt(Canvas, FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
-		MakePageImage(ArtObject, MenuPage));
+	const FSlateBrush* UpscaledPageBrush = ArtObject != nullptr
+		? ArtObject->GetBundledSlateImage(UpscaledMenuPage)
+		: nullptr;
+
+	TArray<const FSlateBrush*> UpscaledRowOnBrushes;
 	if (ArtObject != nullptr)
 	{
-		if (const FSlateBrush* Brush = ArtObject->GetBitmap(HoseTop, /*bColorKeyed=*/true))
+		for (int32 Index = 0; Index < ItemCount; ++Index)
+		{
+			const FString RowFileName = FString::Printf(TEXT("MAIN1-upscaled-row%d-on.png"), Index + 1);
+			if (const FSlateBrush* RowBrush = ArtObject->GetBundledSlateImage(RowFileName))
+			{
+				UpscaledRowOnBrushes.Add(RowBrush);
+			}
+		}
+	}
+
+	const bool bUseUpscaledArt = (UpscaledPageBrush != nullptr && UpscaledRowOnBrushes.Num() == ItemCount);
+
+	if (bUseUpscaledArt)
+	{
+		AddAt(
+			Canvas,
+			FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
+			SNew(SImage).Image(UpscaledPageBrush));
+	}
+	else
+	{
+		AddAt(
+			Canvas,
+			FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
+			MakePageImage(ArtObject, MenuPage));
+	}
+
+	if (ArtObject != nullptr)
+	{
+		const FSlateBrush* HoseTopBrush = ArtObject->GetBundledSlateImage(UpscaledHoseTop);
+		if (HoseTopBrush == nullptr)
+		{
+			HoseTopBrush = ArtObject->GetBitmap(HoseTop, /*bColorKeyed=*/true);
+		}
+		if (HoseTopBrush != nullptr)
 		{
 			AddAt(Canvas, FRect{ HoseTopX, HoseTopY, HoseTopX + HoseTopWidth, HoseTopY + HoseTopHeight },
-				SNew(SImage).Image(Brush));
+				SNew(SImage).Image(HoseTopBrush));
 		}
-		if (const FSlateBrush* Brush = ArtObject->GetBitmap(HoseCorner, /*bColorKeyed=*/true))
+
+		const FSlateBrush* HoseCornerBrush = ArtObject->GetBundledSlateImage(UpscaledHoseCorner);
+		if (HoseCornerBrush == nullptr)
+		{
+			HoseCornerBrush = ArtObject->GetBitmap(HoseCorner, /*bColorKeyed=*/true);
+		}
+		if (HoseCornerBrush != nullptr)
 		{
 			AddAt(
 				Canvas,
 				FRect{ HoseCornerX, HoseCornerY, HoseCornerX + HoseCornerWidth, HoseCornerY + HoseCornerHeight },
-				SNew(SImage).Image(Brush));
+				SNew(SImage).Image(HoseCornerBrush));
 		}
 	}
 
-	// The two sprite columns. Both strips are two columns wide; the row's brush is picked per
-	// frame from the live selection, which is what FUN_0045fe10's `+= 0x3c` does to its source.
-	for (int32 Index = 0; Index < ItemCount; ++Index)
+	if (bUseUpscaledArt)
 	{
-		const auto AddStripCell = [&](
-			const TCHAR* FileName,
-			const float PageLeft,
-			const float PageTop,
-			const float ColumnWidth,
-			const float SourceTop,
-			const float SourceBottom)
+		// Instead of MAIN4.BMP and MAIN5.BMP strips, overlay MAIN1-upscaled-row1-on.png .. row5-on.png
+		// for whichever row is currently selected.
+		AddAt(
+			Canvas,
+			FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
+			SNew(SImage)
+			.Visibility(EVisibility::HitTestInvisible)
+			.Image_Lambda([this, UpscaledRowOnBrushes]()
+			{
+				return (SelectedIndex >= 0 && SelectedIndex < UpscaledRowOnBrushes.Num())
+					? UpscaledRowOnBrushes[SelectedIndex]
+					: nullptr;
+			}));
+	}
+	else
+	{
+		// Original fallback: lamp & key strips from MAIN4.BMP and MAIN5.BMP
+		for (int32 Index = 0; Index < ItemCount; ++Index)
 		{
-			if (ArtObject == nullptr)
+			const auto AddStripCell = [&](
+				const TCHAR* FileName,
+				const float PageLeft,
+				const float PageTop,
+				const float ColumnWidth,
+				const float SourceTop,
+				const float SourceBottom)
 			{
-				return;
-			}
-
-			const int32 Top = FMath::RoundToInt(SourceTop);
-			const int32 Bottom = FMath::RoundToInt(SourceBottom);
-			const int32 Width = FMath::RoundToInt(ColumnWidth);
-			const FSlateBrush* Off = ArtObject->GetSubImage(FileName, FIntRect(0, Top, Width, Bottom), /*bColorKeyed=*/false);
-			const FSlateBrush* On = ArtObject->GetSubImage(FileName, FIntRect(Width, Top, Width * 2, Bottom), /*bColorKeyed=*/false);
-			if (Off == nullptr)
-			{
-				return;
-			}
-
-			AddAt(
-				Canvas,
-				FRect{ PageX + PageLeft, PageY + PageTop, PageX + PageLeft + ColumnWidth, PageY + PageTop + (SourceBottom - SourceTop) },
-				SNew(SImage)
-				.Visibility(EVisibility::HitTestInvisible)
-				.Image_Lambda([this, Index, Off, On]()
+				if (ArtObject == nullptr)
 				{
-					return (SelectedIndex == Index && On != nullptr) ? On : Off;
-				}));
-		};
+					return;
+				}
 
-		AddStripCell(KeyStrip, KeyX, KeyTop[Index], KeyColumnWidth, KeySourceTop[Index], KeySourceBottom[Index]);
-		AddStripCell(LampStrip, LampX, LampTop[Index], LampColumnWidth, LampSourceTop[Index], LampSourceBottom[Index]);
+				const int32 Top = FMath::RoundToInt(SourceTop);
+				const int32 Bottom = FMath::RoundToInt(SourceBottom);
+				const int32 Width = FMath::RoundToInt(ColumnWidth);
+				const FSlateBrush* Off = ArtObject->GetSubImage(FileName, FIntRect(0, Top, Width, Bottom), /*bColorKeyed=*/false);
+				const FSlateBrush* On = ArtObject->GetSubImage(FileName, FIntRect(Width, Top, Width * 2, Bottom), /*bColorKeyed=*/false);
+				if (Off == nullptr)
+				{
+					return;
+				}
+
+				AddAt(
+					Canvas,
+					FRect{ PageX + PageLeft, PageY + PageTop, PageX + PageLeft + ColumnWidth, PageY + PageTop + (SourceBottom - SourceTop) },
+					SNew(SImage)
+					.Visibility(EVisibility::HitTestInvisible)
+					.Image_Lambda([this, Index, Off, On]()
+					{
+						return (SelectedIndex == Index && On != nullptr) ? On : Off;
+					}));
+			};
+
+			AddStripCell(KeyStrip, KeyX, KeyTop[Index], KeyColumnWidth, KeySourceTop[Index], KeySourceBottom[Index]);
+			AddStripCell(LampStrip, LampX, LampTop[Index], LampColumnWidth, LampSourceTop[Index], LampSourceBottom[Index]);
+		}
 	}
 
 	// The item labels, then a transparent hit row over each one. The label goes in first so the
