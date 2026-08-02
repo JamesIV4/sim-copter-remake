@@ -506,6 +506,7 @@ public:
 
 	// Everything FSimCopterCheckup needs to price this aircraft where it is standing.
 	FSimCopterCheckupState BuildCheckupState() const;
+	bool IsStandingOnAirport() const;
 
 	// FUN_004385c0: charge the funds and apply the three purchases, in the original's order.
 	void ApplyCheckupOrder(const FSimCopterCheckupOrder& Order);
@@ -1711,9 +1712,6 @@ private:
 
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
-
-	// True on any of the twelve published helipad tiles around the hangar's middle 2x2 plot.
-	bool IsStandingOnAirport() const;
 
 	// Remake airport-landing policy plus the once-per-touchdown latch.
 	void UpdateCheckupOffer();

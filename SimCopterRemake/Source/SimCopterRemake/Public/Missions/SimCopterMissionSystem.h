@@ -491,6 +491,8 @@ public:
 	bool LoadCareerData(const FString& TweakFilePath);
 	void AdvanceCareerCity();
 	void AdvanceCareerIfComplete();
+	bool IsLevelComplete() const { return bLevelComplete; }
+	bool CheckLevelCompletion();
 
 	// FUN_004080c0 (single city, DAT_00518d50 = 1) and FUN_00407f30 (career, = 2) both open a
 	// session with $1000 and 0 points. (Both also write two still-unidentified session fields,
@@ -635,6 +637,8 @@ private:
 	// Career/session state (original globals).
 	int32 Score = 0;                  // career base +0x50
 	int32 Cash = 0;                   // career base +0x40
+	bool bLevelComplete = false;
+	bool bLevelCompleteSoundPlayed = false;
 	int32 DifficultyTier = 1;         // DAT_004f9740 (city difficulty + 1)
 	int32 CumulativeWeights[8] = {0}; // DAT_00581738[0..7]
 

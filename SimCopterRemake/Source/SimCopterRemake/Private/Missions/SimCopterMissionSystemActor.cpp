@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Audio/SimCopterAudioSubsystem.h"
@@ -13,6 +13,7 @@
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterHangar.h"
 #include "Game/SimCopterCareerSubsystem.h"
+#include "Game/SimCopterSessionSubsystem.h"
 #include "UI/SimCopterHangarShop.h"
 #include "UI/SimCopterMissionMarkerLayout.h"
 #include "Audio.h"
@@ -494,7 +495,8 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	// (DAT_00518d50 = 1) has no city to advance to.
 	if (SessionMode == ESimCopterMissionSessionMode::CityJobs)
 	{
-		MissionSystem.AdvanceCareerIfComplete();
+		MissionSystem.CheckLevelCompletion();
+		ProcessLevelCompleteLanding(DeltaTime);
 	}
 
 	bool bChangedLog = false;
@@ -3583,5 +3585,64 @@ FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMiss
 	default:
 		OutColor = FLinearColor::White;
 		return FString();
+	}
+}
+
+void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
+{
+	if (SessionMode != ESimCopterMissionSessionMode::CityJobs || !MissionSystem.IsLevelComplete())
+	{
+		LevelCompleteLandingTimer = 0.0f;
+		LastDisplayedLandingCountdownSecond = -1;
+		return;
+	}
+
+	ASimCopterHelicopterPawn* PlayerHelicopter = Cast<ASimCopterHelicopterPawn>(
+		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+
+	bool bLandedAtAirport = (PlayerHelicopter != nullptr && PlayerHelicopter->IsStandingOnAirport());
+
+	if (!bLandedAtAirport)
+	{
+		if (LevelCompleteLandingTimer > 0.0f)
+		{
+			LevelCompleteLandingTimer = 0.0f;
+			LastDisplayedLandingCountdownSecond = -1;
+		}
+		return;
+	}
+
+	LevelCompleteLandingTimer += DeltaTime;
+
+	constexpr float RequiredTime = 10.0f;
+	const int32 SecondsRemaining = FMath::Max(0, FMath::CeilToInt(RequiredTime - LevelCompleteLandingTimer));
+
+	if (SecondsRemaining != LastDisplayedLandingCountdownSecond)
+	{
+		LastDisplayedLandingCountdownSecond = SecondsRemaining;
+
+		FString CountdownText = FString::Printf(
+			TEXT("Level Complete! Returning to Level Select in %d second%s..."),
+			SecondsRemaining,
+			(SecondsRemaining == 1) ? TEXT("") : TEXT("s"));
+
+		PushMissionLogMessage(CountdownText, FLinearColor::Green);
+	}
+
+	if (LevelCompleteLandingTimer >= RequiredTime)
+	{
+		const SimCopterMissions::FSimCopterCareerCity& CurCity = MissionSystem.GetCareerCity();
+		MissionSystem.AddCash(CurCity.MoneyEarned);
+
+		const int32 CompletedIndex = MissionSystem.GetCareerCityIndex();
+
+		if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
+			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
+			: nullptr)
+		{
+			Session->SetCompletedCareerCityIndex(CompletedIndex);
+		}
+
+		UGameplayStatics::OpenLevel(this, FName(USimCopterSessionSubsystem::GetMainMenuLevelName()));
 	}
 }

@@ -807,20 +807,45 @@ bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 	System.AddScore(200);
 	System.AdvanceCareerIfComplete(); // Should do nothing
 	
-	if (System.GetCareerCity().Difficulty != 0)
+	if (System.IsLevelComplete())
 	{
-		AddError(TEXT("Should not have advanced city yet."));
+		AddError(TEXT("Should not be level complete at 200 points."));
+		return false;
+	}
+
+	if (System.GetScore() != 200)
+	{
+		AddError(TEXT("Score should remain 200."));
 		return false;
 	}
 	
 	System.AddScore(200);
-	System.AdvanceCareerIfComplete(); // Should advance
+	System.AdvanceCareerIfComplete(); // Should trigger level complete state
 	
-	// Next city (City1) usually has 500 PointsNeeded.
-	// We'll just verify the score reset to 0!
+	if (!System.IsLevelComplete())
+	{
+		AddError(TEXT("Should be level complete at 400 points."));
+		return false;
+	}
+
+	// Score must NOT reset to 0 mid-gameplay upon reaching PointsNeeded
+	if (System.GetScore() != 400)
+	{
+		AddError(TEXT("Score should remain intact (400) upon reaching level completion points."));
+		return false;
+	}
+
+	// Score resets only after level transition finishes and AdvanceCareerCity is called
+	System.AdvanceCareerCity();
 	if (System.GetScore() != 0)
 	{
 		AddError(TEXT("Score should reset to 0 after advancing city."));
+		return false;
+	}
+
+	if (System.IsLevelComplete())
+	{
+		AddError(TEXT("Level complete state should clear for new city."));
 		return false;
 	}
 

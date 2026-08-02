@@ -32,18 +32,29 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// A session left over from a previous city would otherwise be re-applied on the next start.
+	bool bOpenCareerSelect = false;
 	if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 			: nullptr)
 	{
+		if (Session->HasCompletedCareerCity())
+		{
+			bOpenCareerSelect = true;
+		}
 		Session->ClearPendingSession();
 	}
 
 	Art = NewObject<USimCopterHangarArt>(this, TEXT("FrontEndArt"));
 	Art->SetOriginalGameRoot(ResolveOriginalGameRoot());
 
-	EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+	if (bOpenCareerSelect)
+	{
+		EnterScreen(ESimCopterFrontEndScreen::CareerSelect);
+	}
+	else
+	{
+		EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+	}
 }
 
 void ASimCopterMainMenuGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -78,11 +89,22 @@ TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFron
 	{
 	case ESimCopterFrontEndScreen::CareerSelect:
 	{
-		// A new career always offers cities 0, 1 and 2 (FUN_00457c90's null-trio branch). The
-		// successor graph only comes into play once a career is running, which the remake reaches
-		// through the mission system rather than through this screen.
 		TArray<int32> Choices;
-		SimCopterCareerProgression::GetNewCareerChoices(Choices);
+		if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
+			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
+			: nullptr)
+		{
+			if (Session->HasCompletedCareerCity())
+			{
+				SimCopterCareerProgression::GetSuccessors(Session->GetCompletedCareerCityIndex(), Choices);
+				Session->ClearCompletedCareerCity();
+			}
+		}
+
+		if (Choices.Num() == 0)
+		{
+			SimCopterCareerProgression::GetNewCareerChoices(Choices);
+		}
 
 		return SNew(SSimCopterCareerSelect)
 			.Art(Art)

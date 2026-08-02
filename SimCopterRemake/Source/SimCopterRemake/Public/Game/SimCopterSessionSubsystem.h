@@ -59,6 +59,12 @@ public:
 	int32 GetPendingMissionTypeMask() const { return PendingMissionTypeMask; }
 	bool ShouldStartFirstMissionImmediately() const { return bStartFirstMissionImmediately; }
 
+	// --- completed career city tracking for career level transitions ---
+	void SetCompletedCareerCityIndex(int32 InCityIndex) { CompletedCareerCityIndex = InCityIndex; bHasCompletedCareerCity = true; }
+	bool HasCompletedCareerCity() const { return bHasCompletedCareerCity; }
+	int32 GetCompletedCareerCityIndex() const { return CompletedCareerCityIndex; }
+	void ClearCompletedCareerCity() { bHasCompletedCareerCity = false; CompletedCareerCityIndex = INDEX_NONE; }
+
 	// --- city file discovery ---
 
 	// `Reference/SimCopterOriginalGame/cities`, or an empty string when the original game folder is
@@ -82,4 +88,6 @@ private:
 	FString CityFilePath;
 	int32 PendingMissionTypeMask = 0;
 	bool bStartFirstMissionImmediately = false;
+	int32 CompletedCareerCityIndex = INDEX_NONE;
+	bool bHasCompletedCareerCity = false;
 };
