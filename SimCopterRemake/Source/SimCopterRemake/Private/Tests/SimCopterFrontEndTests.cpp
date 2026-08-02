@@ -90,6 +90,33 @@ bool FSimCopterMainMenuLayoutTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterMainMenuUpscaledArtTest,
+	"SimCopter.FrontEnd.MainMenuUpscaledArt",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMainMenuUpscaledArtTest::RunTest(const FString& Parameters)
+{
+	const FString SlateDir = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"));
+
+	const FString BaseFile = FPaths::Combine(SlateDir, TEXT("MAIN1-upscaled-rows-off.png"));
+	TestTrue(TEXT("MAIN1-upscaled-rows-off.png exists in Content/Slate"), FPaths::FileExists(BaseFile));
+
+	for (int32 Row = 1; Row <= 5; ++Row)
+	{
+		const FString RowFile = FPaths::Combine(SlateDir, FString::Printf(TEXT("MAIN1-upscaled-row%d-on.png"), Row));
+		TestTrue(FString::Printf(TEXT("MAIN1-upscaled-row%d-on.png exists in Content/Slate"), Row), FPaths::FileExists(RowFile));
+	}
+
+	const FString HoseTopFile = FPaths::Combine(SlateDir, TEXT("MAIN2-upscaled.png"));
+	TestTrue(TEXT("MAIN2-upscaled.png exists in Content/Slate"), FPaths::FileExists(HoseTopFile));
+
+	const FString HoseCornerFile = FPaths::Combine(SlateDir, TEXT("MAIN3-upscaled.png"));
+	TestTrue(TEXT("MAIN3-upscaled.png exists in Content/Slate"), FPaths::FileExists(HoseCornerFile));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterMenuSkyLayoutTest,
 	"SimCopter.FrontEnd.MenuSkyLayout",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
