@@ -838,27 +838,12 @@ void ASimCopterOnFootPawn::LoadOriginalBodySprite()
 		return;
 	}
 
-	// Preferred: the original privanim "pilot" figure with its real animation clips.
 	if (LoadOriginalBodyFigure())
 	{
 		return;
 	}
 
-	// Fallback: the blocky low-poly 3D body the NPC pedestrians used before the figure decode.
-	const int32 OutfitIndex = FSimCopterPopulationBody::ResolveOutfitIndex(this);
-	FSimCopterPopulationBody::BuildPerson(OriginalBodySpriteComponent, OutfitIndex, OnFootBodyHeightCm * PopulationWorldScale);
-
-	if (BodyVertexColorMaterial != nullptr)
-	{
-		OriginalBodySpriteComponent->SetMaterial(0, BodyVertexColorMaterial);
-	}
-
-	OriginalBodySpriteComponent->SetVisibility(true, true);
-	if (BodyProxyComponent != nullptr)
-	{
-		BodyProxyComponent->SetVisibility(false, true);
-	}
-	bUsingOriginalBodySprite = true;
+	UE_LOG(LogSimCopterOnFootPawn, Error, TEXT("Failed to load original body figure for player."));
 }
 
 bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
@@ -869,14 +854,44 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 		return false;
 	}
 
-	FString RootPath = OriginalGameRoot.Path.TrimStartAndEnd();
+	FString RootPath;
+	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
+	if (!ConfiguredPath.IsEmpty())
+	{
+		const FString FullPath = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
+		{
+			RootPath = FullPath;
+		}
+	}
+
+	if (RootPath.IsEmpty())
+	{
+		const TCHAR* Candidates[] = {
+			TEXT("../Reference/SimCopterOriginalGame"),
+			TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame"),
+			TEXT("../../Reference/SimCopterOriginalGame"),
+			TEXT("../../../Reference/SimCopterOriginalGame"),
+			TEXT("Reference/SimCopterOriginalGame")
+		};
+		for (const TCHAR* Candidate : Candidates)
+		{
+			const FString FullPath = FPaths::IsRelative(Candidate)
+				? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), Candidate))
+				: FPaths::ConvertRelativePathToFull(Candidate);
+			if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
+			{
+				RootPath = FullPath;
+				break;
+			}
+		}
+	}
+
 	if (RootPath.IsEmpty())
 	{
 		return false;
-	}
-	if (FPaths::IsRelative(RootPath))
-	{
-		RootPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), RootPath));
 	}
 
 	FString Error;

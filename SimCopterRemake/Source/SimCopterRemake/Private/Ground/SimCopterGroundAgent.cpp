@@ -3328,35 +3328,13 @@ bool ASimCopterGroundAgent::LoadOriginalPedestrianSpriteFromOriginalGameRoot()
 
 bool ASimCopterGroundAgent::BuildPedestrianBody()
 {
-	// Prefer the decoded original privanim.df figures; the box body is the offline fallback.
-	if (bUseOriginalFigures && BuildPedestrianFigure())
+	if (BuildPedestrianFigure())
 	{
 		return true;
 	}
 
-	LastMeshLoadError.Reset();
-	bUsingPedestrianSprite = false;
-	bUsingPedestrianBody = false;
-	bUsingPedestrianFigure = false;
-	PedestrianSpriteTexture = nullptr;
-	SpriteMaterialInstance = nullptr;
-	OriginalMeshComponent->ClearAllMeshSections();
-	DisableVehicleHeadlights();
-
-	PedestrianOutfitIndex = FSimCopterPopulationBody::ResolveOutfitIndex(this);
-	FSimCopterPopulationBody::BuildPerson(OriginalMeshComponent, PedestrianOutfitIndex, PedestrianBodyHeightCm * PopulationWorldScale);
-
-	if (VertexColorMaterial != nullptr)
-	{
-		OriginalMeshComponent->SetMaterial(0, VertexColorMaterial);
-	}
-
-	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
-	// Feet sit at the capsule bottom; the body is modelled from Z=0 (feet) upward.
-	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight));
-	bUsingPedestrianBody = true;
-	ShowOriginalMesh(true);
-	return true;
+	UE_LOG(LogSimCopterGroundAgent, Error, TEXT("Failed to build pedestrian figure: %s"), *LastMeshLoadError);
+	return false;
 }
 
 bool ASimCopterGroundAgent::BuildPedestrianFigure()
@@ -4451,21 +4429,42 @@ void ASimCopterGroundAgent::FinishPassengerFall(float FallDistanceCm)
 FString ASimCopterGroundAgent::ResolveOriginalGameRoot() const
 {
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString FullPath = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
+		{
+			return FullPath;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
+	const TCHAR* Candidates[] = {
+		TEXT("../Reference/SimCopterOriginalGame"),
+		TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame"),
+		TEXT("../../Reference/SimCopterOriginalGame"),
+		TEXT("../../../Reference/SimCopterOriginalGame"),
+		TEXT("Reference/SimCopterOriginalGame")
+	};
+	for (const TCHAR* Candidate : Candidates)
 	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
+		const FString FullPath = FPaths::IsRelative(Candidate)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), Candidate))
+			: FPaths::ConvertRelativePathToFull(Candidate);
+		if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
+		{
+			return FullPath;
+		}
 	}
 
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return FString();
 }
 
 void ASimCopterGroundAgent::ConfigureMarchingBandUniform(int32 BandIndex)
 {
+	SetPedestrianFigureName(TEXT("TubaExpert"));
 	SetPedestrianFigureClothesOffset((BandIndex % 5) * 8 + 4);
 	MovementSpeedCmPerSec = 220.0f;
+	BuildPedestrianFigure();
 }
