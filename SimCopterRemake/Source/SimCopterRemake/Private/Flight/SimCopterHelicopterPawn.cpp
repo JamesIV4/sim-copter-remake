@@ -2281,13 +2281,8 @@ void ASimCopterHelicopterPawn::ResetTransientInputState()
 	// action Released handlers never arrive. FlushPressedKeys cannot reach the bools below: they
 	// belong to this pawn, and the release it synthesises is delivered through whatever input
 	// stack is current, which during a possession swap is not this one.
-	//
-	// The one that stalled takeoffs: you must shut the engine down to get out (CanExitHelicopter
-	// requires it), so leaving the helicopter means holding the shutdown key through a possession
-	// change. Its release goes missing, bEngineShutdownHeld stays true, and every engine start
-	// from then on is undone about a second later - the rotor never reaches the 300 lift gate and
-	// the collective looks dead. Pressing the descend key again and releasing it clears the bool,
-	// which is exactly the workaround that was found by hand.
+	// Leaving the helicopter no longer requires holding down the shutdown key (Control);
+	// landing/touchdown automatically powers down the engine and allows immediate exit.
 	bEngineStartHeld = false;
 	bEngineShutdownHeld = false;
 	bControllerEngineStartHeld = false;
@@ -2375,7 +2370,7 @@ void ASimCopterHelicopterPawn::UnPossessed()
 
 bool ASimCopterHelicopterPawn::CanExitHelicopter() const
 {
-	return bIsLanded && !bEngineRunning && GroundClearanceCm <= GroundContactTolerance + 18.0f;
+	return bIsLanded && GroundClearanceCm <= GroundContactTolerance + 18.0f;
 }
 
 bool ASimCopterHelicopterPawn::CanTransferMissionPassengers() const
@@ -5800,7 +5795,13 @@ void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 		EngineStartHoldAlpha = 0.0f;
 	}
 
-	if (bAnyEngineShutdownHeld && bEngineRunning && bIsLanded)
+	if (bIsLanded && !bAnyEngineStartHeld)
+	{
+		bEngineRunning = false;
+		EngineShutdownHoldElapsed = 0.0f;
+		EngineShutdownHoldAlpha = 0.0f;
+	}
+	else if (bAnyEngineShutdownHeld && bEngineRunning && bIsLanded)
 	{
 		EngineShutdownHoldElapsed += DeltaSeconds;
 		EngineShutdownHoldAlpha = EngineShutdownHoldSeconds > 0.0f ? FMath::Clamp(EngineShutdownHoldElapsed / EngineShutdownHoldSeconds, 0.0f, 1.0f) : 1.0f;
