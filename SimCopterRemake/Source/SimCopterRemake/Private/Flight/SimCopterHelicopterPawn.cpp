@@ -31,6 +31,7 @@
 #include "Flight/SimCopterPreparedHelicopterModel.h"
 #include "Flight/SimCopterTearGas.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Game/SimCopterCareerSubsystem.h"
 #include "Game/SimCopterSettings.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "Debug/SSimCopterHelicopterDebugPanel.h"
@@ -841,10 +842,11 @@ void ASimCopterHelicopterPawn::BeginPlay()
 		UE_LOG(
 			LogSimCopterHelicopterPawn,
 			Warning,
-			TEXT("'%s' is not a known helicopter type; falling back to runtime type 0."),
-			*HelicopterTypeName);
-		ActiveHelicopterTypeIndex = 0;
-		HelicopterTypeName = SimCopterHelicopterRegistry::GetDefinitions()[0].DisplayName;
+			TEXT("'%s' is not a known helicopter type; falling back to starting runtime type %d."),
+			*HelicopterTypeName,
+			USimCopterCareerSubsystem::StartingHelicopterTypeIndex);
+		ActiveHelicopterTypeIndex = USimCopterCareerSubsystem::StartingHelicopterTypeIndex;
+		HelicopterTypeName = SimCopterHelicopterRegistry::GetDefinitions()[ActiveHelicopterTypeIndex].DisplayName;
 	}
 
 	// Career layer (Phase 7) will own this; for now the map seeds it and debug grants overlay it.

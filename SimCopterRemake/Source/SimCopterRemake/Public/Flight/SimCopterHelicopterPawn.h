@@ -836,7 +836,7 @@ protected:
 	// Seed value only: resolved through SimCopterHelicopterRegistry into
 	// ActiveHelicopterTypeIndex on BeginPlay, after which the index is authoritative.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Tuning")
-	FString HelicopterTypeName = TEXT("Jet Ranger");
+	FString HelicopterTypeName = TEXT("Schweizer 300");
 
 	// Shows the top-left developer panel and bottom-left tool readout. Ctrl+Alt+D toggles both.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Debug")
