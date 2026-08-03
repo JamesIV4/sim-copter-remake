@@ -116,6 +116,7 @@ SIMCOPTERREMAKE_API FIntRect GetButtonRect(int32 ButtonIndex);
 // Where the face is blitted, and which mapbttn.bmp cell to take.
 SIMCOPTERREMAKE_API FIntPoint GetButtonDrawOrigin(int32 ButtonIndex);
 SIMCOPTERREMAKE_API FIntRect GetButtonSourceRect(int32 ButtonIndex, bool bPressed);
+SIMCOPTERREMAKE_API FText GetButtonToolTipText(int32 ButtonIndex);
 
 // --- world inputs -------------------------------------------------------------------------------
 
