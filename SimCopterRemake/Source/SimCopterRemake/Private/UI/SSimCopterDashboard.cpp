@@ -414,6 +414,16 @@ public:
 	{
 		Radio = InArgs._Radio;
 		SetCanTick(false);
+
+		SetToolTipText(TAttribute<FText>::CreateSPLambda(this, [this]()
+		{
+			const USimCopterRadioSubsystem* RadioPtr = Radio.Get();
+			if (RadioPtr != nullptr && !RadioPtr->IsPowered())
+			{
+				return NSLOCTEXT("SimCopterDashboard", "RadioToolTipOff", "Radio (Right-click to turn on)");
+			}
+			return NSLOCTEXT("SimCopterDashboard", "RadioToolTipOn", "Radio (Right-click to turn off)");
+		}));
 	}
 
 	virtual int32 OnPaint(
