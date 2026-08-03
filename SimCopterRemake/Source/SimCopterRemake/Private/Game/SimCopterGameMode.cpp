@@ -4,6 +4,7 @@
 
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterAirport.h"
+#include "City/SimCopterDayNightCycleActor.h"
 #include "City/SimCopterHangar.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Game/SimCopterPlayerController.h"
@@ -25,6 +26,7 @@ ASimCopterGameMode::ASimCopterGameMode()
 	TrafficSystemClass = ASimCopterTrafficSystemActor::StaticClass();
 	MissionSystemClass = ASimCopterMissionSystemActor::StaticClass();
 	HangarClass = ASimCopterHangar::StaticClass();
+	DayNightCycleClass = ASimCopterDayNightCycleActor::StaticClass();
 }
 
 void ASimCopterGameMode::BeginPlay()
@@ -60,6 +62,21 @@ void ASimCopterGameMode::BeginPlay()
 		else
 		{
 			MissionSystemActor = Cast<ASimCopterMissionSystemActor>(ExistingMissionSystems[0]);
+		}
+	}
+
+	// Day/night cycle - spawn before the session is applied so the starting time can be set.
+	if (bSpawnDayNightCycle && DayNightCycleClass != nullptr)
+	{
+		TArray<AActor*> ExistingCycles;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), DayNightCycleClass, ExistingCycles);
+		if (ExistingCycles.Num() == 0)
+		{
+			DayNightCycleActor = GetWorld()->SpawnActor<ASimCopterDayNightCycleActor>(DayNightCycleClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+		}
+		else
+		{
+			DayNightCycleActor = Cast<ASimCopterDayNightCycleActor>(ExistingCycles[0]);
 		}
 	}
 
@@ -242,6 +259,9 @@ void ASimCopterGameMode::ApplyPendingSession()
 	{
 		Actor->StartMissionNow(TypeMask);
 	}
+
+	// Set the day/night starting time from the career city's DayOrNight flag.
+	ApplyDayNightStartingTime();
 }
 
 ASimCopterMissionSystemActor* ASimCopterGameMode::ResolveMissionSystemActor()
@@ -259,6 +279,45 @@ ASimCopterMissionSystemActor* ASimCopterGameMode::ResolveMissionSystemActor()
 	}
 
 	return MissionSystemActor.Get();
+}
+
+ASimCopterDayNightCycleActor* ASimCopterGameMode::ResolveDayNightCycleActor()
+{
+	if (!DayNightCycleActor.IsValid())
+	{
+		DayNightCycleActor = Cast<ASimCopterDayNightCycleActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterDayNightCycleActor::StaticClass()));
+	}
+
+	return DayNightCycleActor.Get();
+}
+
+void ASimCopterGameMode::ApplyDayNightStartingTime()
+{
+	ASimCopterDayNightCycleActor* Cycle = ResolveDayNightCycleActor();
+	if (Cycle == nullptr)
+	{
+		return;
+	}
+
+	// Read the career city's DayOrNight flag from the mission system.
+	ASimCopterMissionSystemActor* MissionActor = ResolveMissionSystemActor();
+	if (MissionActor == nullptr)
+	{
+		return;
+	}
+
+	const int32 DayOrNight = MissionActor->GetSessionCareerCity().DayOrNight;
+
+	// DayOrNight: 1 = day, 0 = night (from career.twk Ctrl8, verified in FUN_0043c540).
+	// Map to a starting time on the 0..1 clock:
+	//   Day  (1) → 0.35  (mid-morning, ~8:30 AM feel: pleasant daylight)
+	//   Night(0) → 0.85  (early night, ~9 PM feel: dark, city lights visible)
+	const float StartTime = (DayOrNight != 0) ? 0.35f : 0.85f;
+	Cycle->SetTimeOfDay(StartTime);
+
+	UE_LOG(LogTemp, Display, TEXT("SimCopter day/night: starting at TimeOfDay=%.2f (%s)"),
+		StartTime, (DayOrNight != 0) ? TEXT("day") : TEXT("night"));
 }
 
 void ASimCopterGameMode::SimMainMenu()
@@ -315,5 +374,34 @@ void ASimCopterGameMode::SimLoadMission(int32 MissionIndex, int32 CareerCityInde
 			UE_LOG(LogTemp, Warning, TEXT("SimLoadMission: %s could not be placed near the camera."),
 				SimCopterMissions::FSimCopterMissionSystem::GetTypeDisplayName(Missions[MissionIndex].TypeMask));
 		}
+	}
+}
+
+void ASimCopterGameMode::SimSetTime(float NormalizedTime)
+{
+	if (ASimCopterDayNightCycleActor* Cycle = ResolveDayNightCycleActor())
+	{
+		Cycle->SetTimeOfDay(FMath::Clamp(NormalizedTime, 0.0f, 0.9999f));
+		UE_LOG(LogTemp, Display, TEXT("SimSetTime: TimeOfDay set to %.3f (pitch %.1f°)"),
+			Cycle->GetTimeOfDay(), Cycle->GetSunPitchDegrees());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimSetTime: no day/night cycle actor in this map."));
+	}
+}
+
+void ASimCopterGameMode::SimPauseTime()
+{
+	if (ASimCopterDayNightCycleActor* Cycle = ResolveDayNightCycleActor())
+	{
+		const bool bNewState = !Cycle->IsCycleEnabled();
+		Cycle->SetCycleEnabled(bNewState);
+		UE_LOG(LogTemp, Display, TEXT("SimPauseTime: cycle %s (TimeOfDay=%.3f)"),
+			bNewState ? TEXT("resumed") : TEXT("paused"), Cycle->GetTimeOfDay());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimPauseTime: no day/night cycle actor in this map."));
 	}
 }
