@@ -102,11 +102,11 @@ protected:
 
 	// Directional light intensity at midnight (moonlight, lux).
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Sun", meta = (ClampMin = "0.0"))
-	float SunIntensityNight = 0.0f;
+	float SunIntensityNight = 0.05f;
 
 	// Sun color at noon.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Sun")
-	FLinearColor SunColorNoon = FLinearColor(1.0f, 0.90f, 0.78f);
+	FLinearColor SunColorNoon = FLinearColor(1.0f, 0.98f, 0.95f);
 
 	// Sun color during sunrise golden hour.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Sun")
@@ -119,12 +119,6 @@ protected:
 	// Moon tint at midnight.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Sun")
 	FLinearColor MoonColor = FLinearColor(0.6f, 0.65f, 0.85f);
-
-	// Hide the directional light once the sun is this far below the horizon.
-	// A negative value preserves some directional sunlight during twilight.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Sun",
-		meta = (ClampMin = "-20.0", ClampMax = "0.0"))
-	float SunHideBelowHorizonDegrees = -6.0f;
 
 	// --- Sky light ---
 
@@ -141,58 +135,36 @@ protected:
 
 	// --- Fog ---
 
-	// Keep the actual amount of fog consistent all day and night.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog",
 		meta = (ClampMin = "0.0"))
 	float FogDensityDay = 0.0436f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog",
 		meta = (ClampMin = "0.0"))
-	float FogDensityNight = 0.4f;
+	float FogDensityNight = 0.0436f;
 
-	// A small baseline inscattering color prevents the fog from disappearing
-	// when the sun is overhead or below the horizon.
-	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog")
-	FLinearColor FogInscatteringDay =
-		FLinearColor(0.035f, 0.045f, 0.060f);
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog")
-	FLinearColor FogInscatteringNight =
-		FLinearColor(0.0f, 0.0f, 0.0f);
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog",
-		meta = (ClampMin = "0.0"))
-	float FogExtinctionScaleDay = 2.42067f;
-
-	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog",
-		meta = (ClampMin = "0.0"))
-	float FogExtinctionScaleNight = 2.745291f;
-
-	// Allow Sky Atmosphere to color the fog without being its only source
-	// of visible fog illumination.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog")
 	FLinearColor FogAtmosphereContributionDay =
-		FLinearColor(0.70f, 0.75f, 0.85f);
+		FLinearColor::White;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog")
 	FLinearColor FogAtmosphereContributionNight =
-		FLinearColor(0.014f, 0.018f, 0.036f);
+		FLinearColor(0.18f, 0.22f, 0.35f);
 
-	// A restrained emissive floor keeps nighttime fog visible without glowing.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog")
 	FLinearColor FogEmissiveDay =
-		FLinearColor(0.382f, 0.594f, 1.0f);
+		FLinearColor(0.382325f, 0.593989f, 1.0f);
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Fog")
 	FLinearColor FogEmissiveNight =
-		FLinearColor(0.159f, 0.213f, 0.422f);
+		FLinearColor(0.004f, 0.007f, 0.015f);
 
 	// --- Exposure ---
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Exposure")
-	float ExposureDay = 1.15f;
+	float ExposureDay = 1.3f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|DayNight|Exposure")
-	float ExposureNight = 2.0f;
+	float ExposureNight = 1.8f;
 
 	// --- Transition band ---
 
