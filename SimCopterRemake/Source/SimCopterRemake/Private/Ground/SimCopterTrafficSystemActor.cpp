@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterTrafficSystemActor.h"
 
@@ -1403,23 +1403,15 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 				{
 					continue;
 				}
-				const uint8 CandidateBuildingId = uint8(GetXbldTileId(CandidateTileX, CandidateTileY));
-				if (CandidateBuildingId != 0 && !IsPedestrianRoadTile(CandidateBuildingId))
-				{
-					// Mission coordinates usually point at the source building. Do not trust a
-					// roof trace or collision adjustment to decide whether a person is outside:
-					// reject every occupied XBLD tile and continue past the whole footprint.
-					continue;
-				}
-
-				const int32 SampleCount = (Ring == 0) ? 6 : 3;
+				// Don't blanket-reject building tiles — meshes rarely fill a whole tile.
+				// Sample more points and let IsMissionGroundSpawnValid's capsule overlap
+				// test reject only locations where building geometry actually overlaps.
+				const int32 SampleCount = (Ring == 0) ? 8 : 5;
 				for (int32 Sample = 0; Sample < SampleCount; ++Sample)
 				{
 					const int32 CandidateIndex = ExistingMissionPeople + Ring * 4 + Sample;
-					const float Angle = bTransportPassenger ? RandomStream.FRandRange(0.0f, 2.0f * PI) : float(CandidateIndex) * GoldenAngleRadians;
-					const float Radius = bTransportPassenger
-						? ActiveTileSize * RandomStream.FRandRange(0.08f, 0.34f)
-						: ActiveTileSize * (Ring == 0 ? (0.12f + 0.05f * float(Sample)) : 0.18f);
+					const float Angle = float(CandidateIndex) * GoldenAngleRadians;
+					const float Radius = ActiveTileSize * (Ring == 0 ? (0.12f + 0.05f * float(Sample)) : 0.18f);
 					FVector CandidateLocation = TileCenter + FVector(FMath::Cos(Angle), FMath::Sin(Angle), 0.0f) * Radius;
 					CandidateLocation.Z += 92.0f;
 					if (IsMissionGroundSpawnValid(CandidateLocation))
@@ -4967,11 +4959,11 @@ bool ASimCopterTrafficSystemActor::TryFindNearestTransportLandTile(
 		}
 
 		const uint8 BuildingId = uint8(GetXbldTileId(FileX, FileY));
-		if (IsPedestrianRoadTile(BuildingId))
+		if (BuildingId != 0 || IsPedestrianRoadTile(BuildingId))
 		{
 			return false;
 		}
-		return !bRequireEmptyTile || BuildingId == 0;
+		return true;
 	};
 
 	for (int32 Pass = 0; Pass < 2; ++Pass)
@@ -6167,6 +6159,12 @@ bool ASimCopterTrafficSystemActor::IsMissionGroundSpawnValid(const FVector& Spaw
 		}
 	}
 
+	// Tile-based XBLD rejection removed: the mesh overlap test above catches
+	// actual building geometry instead of blanket-rejecting entire tiles.
+	int32 FileX = INDEX_NONE;
+	int32 FileY = INDEX_NONE;
+	TryGetPeopleTileCoordinateAtWorldLocation(SpawnLocation, FileX, FileY);
+
 	if (IsPedestrianSpawnLocationOpen(SpawnLocation))
 	{
 		return true;
@@ -6174,9 +6172,7 @@ bool ASimCopterTrafficSystemActor::IsMissionGroundSpawnValid(const FVector& Spaw
 
 	// Road exception: injured people from car accidents may lie on the road surface even where the
 	// open-space probe would reject the point.
-	int32 FileX = INDEX_NONE;
-	int32 FileY = INDEX_NONE;
-	if (TryGetPeopleTileCoordinateAtWorldLocation(SpawnLocation, FileX, FileY))
+	if (FileX != INDEX_NONE && FileY != INDEX_NONE)
 	{
 		return IsPedestrianRoadTile(uint8(GetXbldTileId(FileX, FileY)));
 	}
