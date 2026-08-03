@@ -223,4 +223,32 @@ bool FSimCopterEngineHoldArbitrationTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+class FTestExitHelicopterPawn : public ASimCopterHelicopterPawn
+{
+public:
+	void SetTestState(bool bLanded, float Clearance, float Tolerance)
+	{
+		bIsLanded = bLanded;
+		GroundClearanceCm = Clearance;
+		GroundContactTolerance = Tolerance;
+	}
+};
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCanExitHelicopterTest,
+	"SimCopter.Flight.CanExitHelicopter",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCanExitHelicopterTest::RunTest(const FString& Parameters)
+{
+	FTestExitHelicopterPawn* Pawn = NewObject<FTestExitHelicopterPawn>();
+	Pawn->SetTestState(true, 0.0f, 50.0f);
+	TestTrue(TEXT("Can exit helicopter as soon as landed without holding control"), Pawn->CanExitHelicopter());
+
+	Pawn->SetTestState(false, 0.0f, 50.0f);
+	TestFalse(TEXT("Cannot exit helicopter while airborne"), Pawn->CanExitHelicopter());
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
