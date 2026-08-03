@@ -61,6 +61,11 @@ public:
 	UPROPERTY()
 	float SessionElapsedSeconds = 0.0f;
 
+	// Day/night cycle position (0..1 normalized clock). Saved so loading restores the exact
+	// time of day rather than resetting to the career city's binary flag.
+	UPROPERTY()
+	float TimeOfDay = 0.35f;
+
 	// CSET live city tuning.
 	UPROPERTY()
 	int32 CityDifficulty = 0;

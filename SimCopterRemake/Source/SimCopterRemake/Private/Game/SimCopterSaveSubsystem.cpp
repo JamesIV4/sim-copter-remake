@@ -5,6 +5,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterDayNightCycleActor.h"
 #include "Game/SimCopterCareerProgression.h"
 #include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterOnFootPawn.h"
@@ -307,6 +308,13 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 	Save->CityDayOrNight = City.DayOrNight;
 	Save->CityPointsNeeded = City.PointsNeeded;
 	Save->CityMoneyEarned = City.MoneyEarned;
+
+	// Capture the day/night cycle's current time so loading restores the exact lighting.
+	if (ASimCopterDayNightCycleActor* Cycle = Cast<ASimCopterDayNightCycleActor>(
+			UGameplayStatics::GetActorOfClass(WorldContextObject, ASimCopterDayNightCycleActor::StaticClass())))
+	{
+		Save->TimeOfDay = Cycle->GetTimeOfDay();
+	}
 
 	if (const USimCopterCareerSubsystem* Career = GameInstance->GetSubsystem<USimCopterCareerSubsystem>())
 	{
