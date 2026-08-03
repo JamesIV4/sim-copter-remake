@@ -80,6 +80,23 @@ bool FSimCopterHelicopterRegistryShapeTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("out-of-range type index has no entry"), SimCopterHelicopterRegistry::FindByTypeIndex(9));
 	TestNull(TEXT("negative type index has no entry"), SimCopterHelicopterRegistry::FindByTypeIndex(-1));
 
+	// Alias lookup checks for Schweizer 300
+	const FSimCopterHelicopterDefinition* SchweizerByCorrectName =
+		SimCopterHelicopterRegistry::FindByDisplayName(TEXT("Schweizer 300"));
+	TestNotNull(TEXT("Schweizer 300 lookup by correct name resolves"), SchweizerByCorrectName);
+	if (SchweizerByCorrectName != nullptr)
+	{
+		TestEqual(TEXT("Schweizer 300 correct name returns type 4"), SchweizerByCorrectName->InternalTypeIndex, 4);
+	}
+
+	const FSimCopterHelicopterDefinition* SchweizerByTwkName =
+		SimCopterHelicopterRegistry::FindByDisplayName(TEXT("Schwiezer 300"));
+	TestNotNull(TEXT("Schwiezer 300 lookup by twk section name resolves"), SchweizerByTwkName);
+	if (SchweizerByTwkName != nullptr)
+	{
+		TestEqual(TEXT("Schwiezer 300 twk name returns type 4"), SchweizerByTwkName->InternalTypeIndex, 4);
+	}
+
 	return true;
 }
 

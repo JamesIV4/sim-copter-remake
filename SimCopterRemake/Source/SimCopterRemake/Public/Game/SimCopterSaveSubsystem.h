@@ -91,7 +91,7 @@ public:
 	bool bHasAircraftState = false;
 
 	UPROPERTY()
-	int32 ActiveHelicopterTypeIndex = 0;
+	int32 ActiveHelicopterTypeIndex = USimCopterCareerSubsystem::StartingHelicopterTypeIndex;
 
 	UPROPERTY()
 	int32 CareerEquipmentMask = 0;

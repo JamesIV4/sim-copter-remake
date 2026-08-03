@@ -136,6 +136,13 @@ const FSimCopterHelicopterDefinition* FindByDisplayName(const FString& Name)
 		}
 	}
 
+	// Alias check: heli.twk uses "Schwiezer 300" (original typo) while standard UI uses "Schweizer 300".
+	if (Trimmed.Equals(TEXT("Schweizer 300"), ESearchCase::IgnoreCase) ||
+		Trimmed.Equals(TEXT("Schwiezer 300"), ESearchCase::IgnoreCase))
+	{
+		return FindByTypeIndex(4);
+	}
+
 	return nullptr;
 }
 
