@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
+#include "Ground/SimCopterTrafficSystemActor.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
@@ -1030,3 +1031,31 @@ bool FSimCopterMedevacCasualtyRewardTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("A casualty completion adds no score"), System.GetScore(), ScoreBeforeCompletion);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterTransportBuildingSpawnTest,
+	"SimCopter.Missions.TransportPassengerSpawnOutsideBuildings",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterTransportBuildingSpawnTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCrimeTestWorld City;
+	City.bAnyBuildings = true;
+	FSimCopterMissionSystem System;
+	System.Initialize(&City, 1);
+
+	const int32 TransportId = System.CreateEventOfType(TYPE_Transport);
+	TestTrue(TEXT("Transport mission created"), TransportId != INDEX_NONE);
+
+	const FSimCopterMissionRecord* Record = System.FindRecord(TransportId);
+	TestNotNull(TEXT("Transport record exists"), Record);
+	if (Record != nullptr)
+	{
+		TestTrue(
+			TEXT("Transport passenger pickup tile is on a valid mission building tile"),
+			FSimCopterMissionSystem::IsMissionBuildingTile(City.GetXbldTileId(Record->TileX, Record->TileY)));
+	}
+
+	return true;
+}
+
