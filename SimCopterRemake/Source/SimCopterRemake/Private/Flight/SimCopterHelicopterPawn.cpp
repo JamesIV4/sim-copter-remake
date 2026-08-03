@@ -3126,7 +3126,7 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 	{
 	case ESimCopterHelicopterTool::WaterCannon:
 		Controls = FString::Printf(
-			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK] fire stream   [G] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK] fire stream   [B] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
 			ActiveToolName,
 			*DescribeToolAvailability(ActiveTool),
 			*BucketState);
@@ -3162,7 +3162,7 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 		break;
 	default:
 		Controls = FString::Printf(
-			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK / G] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK / B] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
 			ActiveToolName,
 			*DescribeToolAvailability(ActiveTool),
 			*BucketState);
