@@ -9,7 +9,6 @@
 class ASimCopterTrafficSystemActor;
 class ASimCopterMissionSystemActor;
 class ASimCopterHangar;
-class ASimCopterDayNightCycleActor;
 
 // Game mode for the city level. Opens the session the main menu asked for
 // (USimCopterSessionSubsystem) once the city and mission actors exist.
@@ -37,12 +36,6 @@ public:
 	UFUNCTION(Exec)
 	void SimLoadMission(int32 MissionIndex = -1, int32 CareerCityIndex = 0);
 
-	// Day/night cycle console commands.
-	UFUNCTION(Exec)
-	void SimSetTime(float NormalizedTime);
-	UFUNCTION(Exec)
-	void SimPauseTime();
-
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	bool bSpawnTrafficSystem = true;
@@ -64,26 +57,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Hangar")
 	TSubclassOf<ASimCopterHangar> HangarClass;
 
-	// Day/night cycle. Spawned at city entry and driven from the career city's DayOrNight flag.
-	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|DayNight")
-	bool bSpawnDayNightCycle = true;
-
-	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|DayNight")
-	TSubclassOf<ASimCopterDayNightCycleActor> DayNightCycleClass;
-
 private:
 	TWeakObjectPtr<ASimCopterMissionSystemActor> MissionSystemActor;
-	TWeakObjectPtr<ASimCopterDayNightCycleActor> DayNightCycleActor;
 
 	// Caches (and, when needed, finds) the map's mission system actor; logs and returns null when
 	// the map has none.
 	ASimCopterMissionSystemActor* ResolveMissionSystemActor();
-
-	// Find or spawn the day/night cycle actor.
-	ASimCopterDayNightCycleActor* ResolveDayNightCycleActor();
-
-	// Set the starting time on the day/night cycle from the session's career city.
-	void ApplyDayNightStartingTime();
 
 	// Applies the main menu's choice: the city's scheduled jobs, plus any mission the menu asked to
 	// start straight away. Does nothing when the level was entered without going through the menu,
