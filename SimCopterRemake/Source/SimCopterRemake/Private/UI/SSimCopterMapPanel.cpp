@@ -71,7 +71,10 @@ void SSimCopterMapPanel::Construct(const FArguments& InArgs)
 				Source.Height() * Scale))
 			.Alignment(FVector2D::ZeroVector)
 			[
-				SAssignNew(ButtonImages[ButtonIndex], SImage).Image(GetButtonBrush(ButtonIndex, false))
+				SAssignNew(ButtonImages[ButtonIndex], SImage)
+				.Image(GetButtonBrush(ButtonIndex, false))
+				.Visibility(EVisibility::Visible)
+				.ToolTipText(GetButtonToolTipText(ButtonIndex))
 			];
 	}
 

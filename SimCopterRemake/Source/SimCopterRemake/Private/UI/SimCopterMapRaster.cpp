@@ -88,6 +88,27 @@ FIntRect GetButtonSourceRect(const int32 ButtonIndex, const bool bPressed)
 	return FIntRect(Left, Top, Left + ButtonCellSize, Top + ButtonCellSize);
 }
 
+FText GetButtonToolTipText(const int32 ButtonIndex)
+{
+	switch (static_cast<EButton>(ButtonIndex))
+	{
+	case EButton::ZoomOut:
+		return NSLOCTEXT("SimCopterMap", "ZoomOutToolTip", "Zoom Out");
+	case EButton::ZoomIn:
+		return NSLOCTEXT("SimCopterMap", "ZoomInToolTip", "Zoom In");
+	case EButton::PreviousMission:
+		return NSLOCTEXT("SimCopterMap", "PreviousMissionToolTip", "Previous Mission");
+	case EButton::NextMission:
+		return NSLOCTEXT("SimCopterMap", "NextMissionToolTip", "Next Mission");
+	case EButton::ToggleMissionBlips:
+		return NSLOCTEXT("SimCopterMap", "ToggleMissionBlipsToolTip", "Toggle Mission Markers");
+	case EButton::ToggleServiceBlips:
+		return NSLOCTEXT("SimCopterMap", "ToggleServiceBlipsToolTip", "Toggle Service Vehicle Markers");
+	default:
+		return FText::GetEmpty();
+	}
+}
+
 // --- city grids ---------------------------------------------------------------------------------
 
 bool FSimCopterMapCity::IsValid() const

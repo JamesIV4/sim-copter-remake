@@ -106,7 +106,17 @@ bool FSimCopterMapButtonsTest::RunTest(const FString&)
 			FString::Printf(TEXT("Button %d draws at its rect"), Index),
 			GetButtonDrawOrigin(Index),
 			GetButtonRect(Index).Min);
+
+		const FText ToolTip = GetButtonToolTipText(Index);
+		TestFalse(FString::Printf(TEXT("Button %d tooltip non-empty"), Index), ToolTip.IsEmpty());
 	}
+
+	TestEqual(TEXT("ZoomOut tooltip"), GetButtonToolTipText(0).ToString(), TEXT("Zoom Out"));
+	TestEqual(TEXT("ZoomIn tooltip"), GetButtonToolTipText(1).ToString(), TEXT("Zoom In"));
+	TestEqual(TEXT("PreviousMission tooltip"), GetButtonToolTipText(2).ToString(), TEXT("Previous Mission"));
+	TestEqual(TEXT("NextMission tooltip"), GetButtonToolTipText(3).ToString(), TEXT("Next Mission"));
+	TestEqual(TEXT("ToggleMissionBlips tooltip"), GetButtonToolTipText(4).ToString(), TEXT("Toggle Mission Markers"));
+	TestEqual(TEXT("ToggleServiceBlips tooltip"), GetButtonToolTipText(5).ToString(), TEXT("Toggle Service Vehicle Markers"));
 
 	return true;
 }
