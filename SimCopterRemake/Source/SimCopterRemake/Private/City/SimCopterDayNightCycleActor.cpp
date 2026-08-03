@@ -45,56 +45,45 @@ ASimCopterDayNightCycleActor::ASimCopterDayNightCycleActor()
 	SkyLight->bLowerHemisphereIsBlack = false;
 
 	// --- Height fog (distance haze, warms at sunrise/sunset) ---
+
 	HeightFog =
 		CreateDefaultSubobject<UExponentialHeightFogComponent>(TEXT("HeightFog"));
 
 	HeightFog->SetupAttachment(SceneRoot);
 	HeightFog->SetMobility(EComponentMobility::Movable);
 
-	HeightFog->SetRelativeLocation(
-		FVector(-5600.0f, -50.0f, -6850.0f));
+	// Match the static fog's transform.
+	HeightFog->SetRelativeLocation(FVector(-5600.0f, -50.0f, -6850.0f));
 
-	// Base exponential fog supplies the consistent long-distance haze.
-	HeightFog->SetFogDensity(FogDensityDay);
+	// Standard exponential height fog.
+	HeightFog->SetFogDensity(FogDensityDay); // 0.0436f
 	HeightFog->FogHeightFalloff = 0.2f;
 	HeightFog->FogMaxOpacity = 1.0f;
 	HeightFog->StartDistance = 0.0f;
 	HeightFog->FogCutoffDistance = 0.0f;
 
-	// Provide a small baseline instead of relying entirely on sunlight.
-	HeightFog->SetFogInscatteringColor(FogInscatteringDay);
+	// Let Sky Atmosphere supply the primary fog coloration.
+	HeightFog->SetFogInscatteringColor(FLinearColor::Black);
+	HeightFog->SkyAtmosphereAmbientContributionColorScale =
+		FogAtmosphereContributionDay;
 
-	// Disable the separate directional-inscattering cone.
-	// The volumetric system still receives lighting from the sun.
+	// Directional inscattering.
 	HeightFog->DirectionalInscatteringExponent = 4.0f;
 	HeightFog->DirectionalInscatteringStartDistance = 10000.0f;
 	HeightFog->DirectionalInscatteringLuminance = FLinearColor::Black;
 
-	HeightFog->SkyAtmosphereAmbientContributionColorScale =
-		FogAtmosphereContributionDay;
-
 	// Volumetric fog.
 	HeightFog->bEnableVolumetricFog = true;
-
-	// Zero gives substantially more angle-independent scattering.
-	HeightFog->VolumetricFogScatteringDistribution = 0.0f;
-
-	HeightFog->VolumetricFogAlbedo =
-		FColor(255, 212, 226);
-
-	HeightFog->VolumetricFogEmissive =
-		FogEmissiveDay;
-
-	HeightFog->VolumetricFogExtinctionScale = FogExtinctionScaleDay;
-
-	// Keep volumetric effects relatively local.
-	// The base exponential fog handles the distant city haze.
+	HeightFog->VolumetricFogScatteringDistribution = -0.505606f;
+	HeightFog->VolumetricFogAlbedo = FColor(255, 212, 226);
+	HeightFog->VolumetricFogEmissive = FogEmissiveDay;
+	HeightFog->VolumetricFogExtinctionScale = 2.42067f;
 	HeightFog->VolumetricFogDistance = 15000.0f;
 	HeightFog->VolumetricFogStartDistance = 200.0f;
 	HeightFog->VolumetricFogNearFadeInDistance = 20000.0f;
-
 	HeightFog->VolumetricFogStaticLightingScatteringIntensity = 1.0f;
 
+	// Ensure the dynamically created component renders in-game.
 	HeightFog->SetVisibility(true);
 	HeightFog->SetHiddenInGame(false);
 
@@ -283,88 +272,48 @@ void ASimCopterDayNightCycleActor::ApplyTimeOfDay()
 	const float DayFactor = ComputeDaytimeFactor();
 	const float GoldenAlpha = ComputeGoldenHourAlpha(TimeOfDay);
 
-	// --- Sun rotation and lighting ---
+	// --- Sun rotation ---
 	if (SunLight != nullptr)
 	{
+		// Pitch: negative = looking down (UE convention for directional light pointing at ground).
+		// When sun is at +90° (zenith), the light should point straight down = pitch -90.
+		// When sun is at 0° (horizon), the light is horizontal = pitch 0.
+		// When sun is at -90° (nadir/below), the light points up = pitch +90 (but intensity is ~0).
 		const float LightPitch = -SunPitch;
+		SunLight->SetWorldRotation(FRotator(LightPitch, SunAzimuthDegrees + 180.0f, 0.0f));
 
-		SunLight->SetWorldRotation(
-			FRotator(
-				LightPitch,
-				SunAzimuthDegrees + 180.0f,
-				0.0f));
+		// --- Sun intensity ---
+		// Smoothly interpolate between day and night intensity.
+		const float Intensity = FMath::Lerp(SunIntensityNight, SunIntensityDay, DayFactor);
+		SunLight->SetIntensity(Intensity);
 
-		// Keep the sun active through twilight, but remove it completely
-		// once it is sufficiently below the horizon.
-		const bool bSunShouldBeVisible =
-			SunPitch > SunHideBelowHorizonDegrees;
+		// --- Sun color ---
+		// Base: lerp between noon color and moon color by day factor.
+		FLinearColor BaseColor = FLinearColor::LerpUsingHSV(MoonColor, SunColorNoon, DayFactor);
 
-		SunLight->SetVisibility(bSunShouldBeVisible, true);
-
-		if (!bSunShouldBeVisible)
+		// Golden hour override: blend toward sunrise or sunset color.
+		if (GoldenAlpha > 0.0f)
 		{
-			// Explicitly eliminate both ordinary and volumetric contribution
-			// during the night.
-			SunLight->SetIntensity(0.0f);
-			SunLight->SetVolumetricScatteringIntensity(0.0f);
+			// Determine if we're closer to sunrise or sunset.
+			const float DistSunrise = FMath::Min(
+				FMath::Abs(TimeOfDay - SunriseTime),
+				1.0f - FMath::Abs(TimeOfDay - SunriseTime));
+			const float DistSunset = FMath::Min(
+				FMath::Abs(TimeOfDay - SunsetTime),
+				1.0f - FMath::Abs(TimeOfDay - SunsetTime));
+
+			const FLinearColor& GoldenColor = (DistSunrise < DistSunset) ? SunColorSunrise : SunColorSunset;
+
+			// Smooth golden hour blend with a power curve for more dramatic centre peak.
+			const float GoldenStrength = FMath::Pow(GoldenAlpha, 0.7f);
+			BaseColor = FLinearColor::LerpUsingHSV(BaseColor, GoldenColor, GoldenStrength);
 		}
-		else
-		{
-			// Restore the light's fog contribution after sunrise.
-			SunLight->SetVolumetricScatteringIntensity(1.0f);
 
-			// DayFactor smoothly raises the intensity through sunrise.
-			const float Intensity =
-				FMath::Lerp(
-					SunIntensityNight,
-					SunIntensityDay,
-					DayFactor);
+		SunLight->SetLightColor(BaseColor);
 
-			SunLight->SetIntensity(Intensity);
-
-			// Warm daylight base color.
-			FLinearColor BaseColor =
-				FLinearColor::LerpUsingHSV(
-					MoonColor,
-					SunColorNoon,
-					DayFactor);
-
-			// Stronger warmth around sunrise and sunset.
-			if (GoldenAlpha > 0.0f)
-			{
-				const float DistSunrise = FMath::Min(
-					FMath::Abs(TimeOfDay - SunriseTime),
-					1.0f - FMath::Abs(TimeOfDay - SunriseTime));
-
-				const float DistSunset = FMath::Min(
-					FMath::Abs(TimeOfDay - SunsetTime),
-					1.0f - FMath::Abs(TimeOfDay - SunsetTime));
-
-				const FLinearColor& GoldenColor =
-					(DistSunrise < DistSunset)
-						? SunColorSunrise
-						: SunColorSunset;
-
-				const float GoldenStrength =
-					FMath::Pow(GoldenAlpha, 0.7f);
-
-				BaseColor = FLinearColor::LerpUsingHSV(
-					BaseColor,
-					GoldenColor,
-					GoldenStrength);
-			}
-
-			SunLight->SetLightColor(BaseColor);
-
-			const float HorizonSoftening =
-				1.0f - FMath::Abs(SunPitch) / 90.0f;
-
-			SunLight->LightSourceAngle =
-				FMath::Lerp(
-					0.7f,
-					3.5f,
-					HorizonSoftening * HorizonSoftening);
-		}
+		// Widen the source angle near the horizon for softer, warmer shadows at sunrise/sunset.
+		const float HorizonSoftening = (1.0f - FMath::Abs(SunPitch) / 90.0f);
+		SunLight->LightSourceAngle = FMath::Lerp(0.7f, 3.5f, HorizonSoftening * HorizonSoftening);
 	}
 
 	// --- Sky light ---
@@ -386,66 +335,67 @@ void ASimCopterDayNightCycleActor::ApplyTimeOfDay()
 	// --- Height fog ---
 	if (HeightFog != nullptr)
 	{
-		// Keep the physical amount of fog constant.
-		// Day and night currently have the same default density.
-		HeightFog->SetFogDensity(FogDensityDay);
+		// Preserve approximately the same amount of fog throughout the cycle.
+		const float CurrentFogDensity =
+			FMath::Lerp(FogDensityNight, FogDensityDay, DayFactor);
 
-		// Keep the phase function neutral so fog visibility does not strongly
-		// depend on whether the sun is low, vertical, or below the horizon.
-		HeightFog->SetVolumetricFogScatteringDistribution(0.0f);
+		HeightFog->SetFogDensity(CurrentFogDensity);
 
-		// Increase extinction smoothly as daylight fades.
-		// DayFactor: 0.0 at night, 1.0 during full daytime.
-		const float CurrentExtinctionScale = FMath::Lerp(
-			FogExtinctionScaleNight,
-			FogExtinctionScaleDay,
-			DayFactor);
+		// Keep the optical characteristics identical to the static fog.
+		HeightFog->SetVolumetricFogScatteringDistribution(-0.505606f);
+		HeightFog->SetVolumetricFogExtinctionScale(2.42067f);
 
-		HeightFog->SetVolumetricFogExtinctionScale(CurrentExtinctionScale);
-
-		// Only transition the visible tint, not the amount of fog.
-		FLinearColor CurrentInscattering =
-			FMath::Lerp(
-				FogInscatteringNight,
-				FogInscatteringDay,
-				DayFactor);
-
-		// Give sunrise and sunset a small warm tint without increasing density.
-		if (GoldenAlpha > 0.0f)
-		{
-			const FLinearColor GoldenFogColor(
-				0.09f,
-				0.045f,
-				0.018f);
-
-			CurrentInscattering = FMath::Lerp(
-				CurrentInscattering,
-				GoldenFogColor,
-				GoldenAlpha * 0.15f);
-		}
-
-		HeightFog->SetFogInscatteringColor(CurrentInscattering);
+		// Keep these black so Sky Atmosphere supplies the primary fog color.
+		HeightFog->SetFogInscatteringColor(FLinearColor::Black);
 		HeightFog->SetDirectionalInscatteringColor(FLinearColor::Black);
 
-		// Retain meaningful atmospheric illumination at night.
-		const FLinearColor AtmosphereContribution =
+		// Reduce atmospheric illumination at night, but do not nearly eliminate it.
+		FLinearColor AtmosphereContribution =
 			FMath::Lerp(
 				FogAtmosphereContributionNight,
 				FogAtmosphereContributionDay,
 				DayFactor);
 
+		// Add a subtle warm contribution near sunrise and sunset.
+		if (GoldenAlpha > 0.0f)
+		{
+			const FLinearColor GoldenAtmosphere(
+				1.0f,
+				0.55f,
+				0.22f);
+
+			AtmosphereContribution = FMath::Lerp(
+				AtmosphereContribution,
+				GoldenAtmosphere,
+				GoldenAlpha * 0.25f);
+		}
+
 		HeightFog->SetSkyAtmosphereAmbientContributionColorScale(
 			AtmosphereContribution);
 
-		// Maintain a small illumination floor so dark fog remains visible.
-		const FLinearColor CurrentEmissive =
+		// Keep some low-level illumination at night so the fog remains visible.
+		FLinearColor CurrentEmissive =
 			FMath::Lerp(
 				FogEmissiveNight,
 				FogEmissiveDay,
 				DayFactor);
 
+		if (GoldenAlpha > 0.0f)
+		{
+			const FLinearColor GoldenEmissive(
+				0.4f,
+				0.12f,
+				0.025f);
+
+			CurrentEmissive = FMath::Lerp(
+				CurrentEmissive,
+				GoldenEmissive,
+				GoldenAlpha * 0.2f);
+		}
+
 		HeightFog->SetVolumetricFogEmissive(CurrentEmissive);
 	}
+
 
 	// --- Exposure ---
 	if (PostProcessVolume != nullptr)
