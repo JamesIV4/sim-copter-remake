@@ -2,6 +2,8 @@ import unreal
 
 
 MATERIAL_DIR = "/Game/Materials"
+# Where BakeCityAtlas.py writes the decoded original art and its material instances.
+BAKED_ATLAS_DIR = "/Game/Generated/CityAtlas"
 
 
 def ensure_directory(path):
@@ -308,6 +310,114 @@ def create_sprite_texture_material():
 
     unreal.MaterialEditingLibrary.recompile_material(material)
     save(f"{MATERIAL_DIR}/M_SimCopterSpriteTexture")
+
+
+# Sprite cards (Maxis face type 2 - trees, signs) and the rare direct-image polygons (face type 13)
+# used to hang off M_SimCopterSpriteTexture, which is UNLIT: it writes the decoded palette colour
+# straight into Emissive. That is right for fire and particle kernels, which are their own light
+# source, but it is wrong for a tree. An unlit surface holds one fixed brightness while everything
+# around it tracks the sun, so under the day/night sequence the trees read INVERTED - washed-out
+# dark cards at noon next to sunlit ground, then glowing cards at midnight next to a dark city.
+#
+# This is the same material for the same geometry, but Default Lit and sharing the city's SelfIllum
+# / Roughness / Specular parameters, so a tree now brightens and darkens with the rest of the city.
+#
+# The shading normal is the catch. A card is a crossed pair of VERTICAL quads (AppendMaxisSpriteCard),
+# each quad emitted with both windings, so its geometric normals are horizontal and point opposite
+# ways on the two halves. Lit off those, a tree would go black under a high sun (N.L ~ 0) and would
+# show a seam down the middle where the crossed quads meet. So the normal is biased towards world up:
+# at the default 1.0 the card shades exactly like the flat ground it stands on, which is the whole
+# point - the tree tracks the sun in step with the tile underneath it. Lower it to let the geometric
+# normal back in (the face-type-13 polygons are the only geometry here with meaningful normals).
+SPRITE_CARD_NORMAL_CODE = (
+    "float3 up = float3(0.0, 0.0, 1.0);\n"
+    "float3 geo = normalize(BaseNormal);\n"
+    "float3 blended = lerp(geo, up, saturate(UpBias));\n"
+    "return dot(blended, blended) < 1e-6 ? up : normalize(blended);"
+)
+
+
+def create_lit_sprite_texture_material():
+    """Masked, LIT card material for the city's original sprite art (trees, signs).
+
+    Same chroma-keyed sampling as M_SimCopterSpriteTexture - the bake writes palette index 0 into
+    texture alpha and the mask drops those texels - but shaded by the scene instead of self-lit.
+    See SPRITE_CARD_NORMAL_CODE above for why the normal is pushed towards world up."""
+    material = create_or_load_material("M_SimCopterLitSpriteTexture")
+    clear_expressions(material)
+
+    material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+    material.set_editor_property("opacity_mask_clip_value", 0.5)
+    # Kept two-sided to match the unlit material it replaces, so nothing that was visible before
+    # disappears. The card geometry already emits both windings; this only covers the type-13 faces.
+    material.set_editor_property("two_sided", True)
+
+    texture = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTextureSampleParameter2D, -400, 0
+    )
+    texture.set_editor_property("parameter_name", "Texture")
+
+    unreal.MaterialEditingLibrary.connect_material_property(
+        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
+    )
+    unreal.MaterialEditingLibrary.connect_material_property(
+        texture, "A", unreal.MaterialProperty.MP_OPACITY_MASK
+    )
+    add_shading_nodes(material, texture, "RGB")
+
+    base_normal = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVertexNormalWS, -900, 760
+    )
+    up_bias = add_scalar_parameter(material, "CardNormalUpBias", 1.0, 3, 880)
+    normal = add_custom_node(
+        material, "SpriteCardNormal", SPRITE_CARD_NORMAL_CODE, ["BaseNormal", "UpBias"], -560, 780,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(base_normal, "", normal, "BaseNormal")
+    unreal.MaterialEditingLibrary.connect_material_expressions(up_bias, "", normal, "UpBias")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        normal, "", unreal.MaterialProperty.MP_NORMAL
+    )
+
+    # The blended normal is world-space, so it must not be interpreted as tangent-space.
+    material.set_editor_property("tangent_space_normal", False)
+    # The trees ride on the merged city mesh AND on the per-model instanced building meshes, which
+    # are Nanite; both usage flags have to be baked in or the engine patches them at runtime.
+    material.set_editor_property("used_with_instanced_static_meshes", True)
+    material.set_editor_property("used_with_nanite", True)
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(f"{MATERIAL_DIR}/M_SimCopterLitSpriteTexture")
+
+
+def reparent_baked_direct_image_instances():
+    """Point already-baked MI_CityImage_* instances at the lit card material.
+
+    The MI_CityImage_* / T_CityImage_* assets are decoded original art, so they are gitignored and
+    only exist on a machine that has run BakeCityAtlas.py. Re-baking them costs a full per-pixel
+    Python decode of SIM3D.BMP; re-parenting is the same result in a second, and it is idempotent -
+    an instance already on the lit parent is left alone."""
+    lit_parent = unreal.EditorAssetLibrary.load_asset(f"{MATERIAL_DIR}/M_SimCopterLitSpriteTexture")
+    old_parent = unreal.EditorAssetLibrary.load_asset(f"{MATERIAL_DIR}/M_SimCopterSpriteTexture")
+    if lit_parent is None:
+        return
+
+    if not unreal.EditorAssetLibrary.does_directory_exist(BAKED_ATLAS_DIR):
+        unreal.log(f"No {BAKED_ATLAS_DIR}; nothing to re-parent (run BakeCityAtlas.py first).")
+        return
+
+    reparented = []
+    for asset_path in unreal.EditorAssetLibrary.list_assets(BAKED_ATLAS_DIR, recursive=False):
+        name = asset_path.split("/")[-1].split(".")[0]
+        if not name.startswith("MI_CityImage_"):
+            continue
+        instance = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if instance is None or instance.get_editor_property("parent") != old_parent:
+            continue
+        instance.set_editor_property("parent", lit_parent)
+        unreal.EditorAssetLibrary.save_asset(f"{BAKED_ATLAS_DIR}/{name}", only_if_is_dirty=False)
+        reparented.append(name)
+
+    unreal.log(f"SPRITE CARD RE-PARENT: {len(reparented)} MI_CityImage_* instances now lit.")
 
 
 def add_custom_node(material, name, code, inputs, x, y, output_type=None):
@@ -777,6 +887,10 @@ create_if_missing("M_SimCopterLitTexture", create_lit_texture_material)
 create_if_missing("M_SimCopterLitVertexColor", create_lit_vertex_color_material)
 create_if_missing("M_SimCopterRotorDisc", create_rotor_disc_material)
 create_if_missing("M_SimCopterSpriteTexture", create_sprite_texture_material)
+# Not in the delete-and-recreate list below: MI_CityImage_* instances hold a hard reference to this
+# parent, and deleting the asset would null it out. To re-tune it, delete it by hand and re-run -
+# the re-parent pass at the end re-attaches the instances.
+create_if_missing("M_SimCopterLitSpriteTexture", create_lit_sprite_texture_material)
 # The water material's shader is fully defined here and still being tuned, so rebuild it every run.
 # Delete any existing asset first and recreate it fresh: reloading an existing material and clearing
 # its expressions asserts (!IsRooted in DeleteMaterialExpression) in this engine build, whereas a
@@ -790,3 +904,4 @@ create_water_material()
 create_terrain_material()
 create_particle_fx_material()
 create_particle_fx_soft_material()
+reparent_baked_direct_image_instances()

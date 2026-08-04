@@ -11,8 +11,10 @@ What it produces:
                          Page 20 is the SKY.BMP image-4 exception. T_TerrainLow is TILED1 image 0.
   * MI_CityPage_<id>     MaterialInstanceConstant (parent M_SimCopterCityAtlas) per page, used by
                          building/road faces (in-cell UV in TexCoord0, cell col/row in TexCoord1).
-  * T/MI_CityImage_<id>  Direct SIM3D image textures for rare face type 13 geometry. These use the
-                         regular lit texture parent and preserve Maxis' repeating raw UVs.
+  * T/MI_CityImage_<id>  Direct SIM3D image textures for the sprite cards (face type 2 - trees and
+                         signs) and the rare face type 13 geometry. These carry the palette-index-0
+                         alpha key, hang off the masked LIT card parent, and preserve Maxis'
+                         repeating raw UVs.
   * MI_TerrainLow/High   MaterialInstanceConstant (parent M_SimCopterLitTexture) for the terrain
                          surface, which already bakes page UVs on the CPU.
 
@@ -29,8 +31,11 @@ import unreal
 OUTPUT_DIR = "/Game/Generated/CityAtlas"
 ATLAS_MATERIAL = "/Game/Materials/M_SimCopterCityAtlas"
 TERRAIN_MATERIAL = "/Game/Materials/M_SimCopterLitTexture"
-# Masked, so palette index 0 punches out of tree/sign sprite cards.
-SPRITE_MATERIAL = "/Game/Materials/M_SimCopterSpriteTexture"
+# Masked, so palette index 0 punches out of tree/sign sprite cards, and LIT, so they track the
+# day/night sequence with the rest of the city. The unlit M_SimCopterSpriteTexture that used to be
+# here holds one fixed brightness, which reads inverted under a moving sun - dark trees at noon,
+# glowing trees at midnight. It is still the right parent for fire and particle kernels.
+SPRITE_MATERIAL = "/Game/Materials/M_SimCopterLitSpriteTexture"
 SKY_PAGE_ID = 20          # face TextureAtlasIndex 20 resolves to SKY.BMP image 4, not SIM3D image 20
 SKY_IMAGE_INDEX = 4
 TERRAIN_HIGH_PAGE_ID = 13  # SIM3D.BMP image 13 doubles as the high terrain page (0x0d)
