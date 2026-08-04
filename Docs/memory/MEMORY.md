@@ -11,7 +11,8 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 - [Building and running](build-and-run.md) — always compile with `RebuildUnrealCpp.bat` at the repo root (it pins `-NoLiveCoding`); feed it empty stdin or its trailing `pause` hangs.
 - [SimCopter Ghidra workflow](simcopter-ghidra-workflow.md) — MAIN PATH: ghidra-bridge instant queries over `.ghidra-exports`; re-agent for parity/LLM loops; analyzeHeadless only for scan/bytes/decompileforce. Use `dump-asm` whenever the value you want is a stack-built struct (dialog rects, font sizes) — the decompile aliases those slots, the assembly does not.
 - [SimCopter live memory rip](simcopter-live-memory-rip.md) — read the live process with ReadProcessMemory for `.data` ONLY (SimCopterX relocates `.text` in memory; read code from Ghidra); per-region `.data` calibration.
-- [SimCopter in-game verification](simcopter-ingame-verification.md) — RARELY: only for a problem a build + automation test cannot settle (AGENTS.md §6). How-to if it is: launch `-game -windowed`, drive/screenshot the Slate UI from PowerShell, poll the log for readiness; centred panels shift and stale click coords silently no-op.
+- [Editor MCP](editor-mcp.md) — the running editor is queryable/drivable over MCP (`Docs/EditorMcpWorkflow.md`). The config is `SimCopterRemake/.mcp.json`, in the **.uproject folder** — a client started at the repo root loads no tools at all; `Tools/Unreal/McpCall.ps1` is the raw-HTTP fallback. Everything hides behind `call_tool`, schemas are strict, and never guess an object's `refPath`.
+- [SimCopter in-game verification](simcopter-ingame-verification.md) — RARELY: only for a problem a build + automation test cannot settle (AGENTS.md §7). How-to if it is: launch `-game -windowed`, drive/screenshot the Slate UI from PowerShell, poll the log for readiness; centred panels shift and stale click coords silently no-op.
 
 ## File formats and city data
 

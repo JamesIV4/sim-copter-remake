@@ -52,7 +52,7 @@ Automation tests live in `Source/SimCopterRemake/Private/Tests/` (20 files) and 
 ```
 
 Prefer a headless test over a manual check when the logic is pure (fixed-point maths, table
-lookups, parsers). Gameplay and rendering still need the real game — see §6.
+lookups, parsers). Gameplay and rendering still need the real game — see §7.
 
 ## 4. Layout
 
@@ -92,7 +92,35 @@ This is a **decompile-and-port** project, not a reimagining. When you touch port
   read the disassembly or the raw `.rdata` bytes before believing it. The memory notes list
   several functions where this bit.
 
-## 6. Verifying in-game
+## 6. The editor MCP
+
+The project runs Unreal's **ModelContextProtocol** plugin, so a running editor can be queried and
+driven directly: the loaded level, any actor or asset's properties, the output log, the automation
+tests, the Slate UI. Reach for it before guessing at a `.umap` you cannot read, and before launching
+the game.
+
+**The config is `SimCopterRemake/.mcp.json` — in the `.uproject` folder, not the repo root.** A
+client started at the repo root silently comes up with no MCP tools; that is the usual reason they
+appear "missing". Start from `SimCopterRemake/`, or use the raw-HTTP fallback:
+
+```powershell
+Tools\Unreal\McpCall.ps1 tools/call '{"name":"list_toolsets","arguments":{}}'
+```
+
+Two things surprise everyone: `tools/list` returns only `list_toolsets` / `describe_toolset` /
+`call_tool`, so every real call is nested inside `call_tool`; and the schemas are strict, requiring
+arguments that look optional. `describe_toolset` first, always.
+
+**Do not run a headless `UnrealEditor-Cmd` (§3's automation tests, the Python bakes) while you need
+the editor's MCP.** It binds port 8000 too, and the instance that loses the race logs
+`HttpListener unable to bind` and never retries — the editor then has no server while looking fine.
+`ModelContextProtocol.StartServer` in the editor console fixes it without a restart. Full workflow,
+the toolsets worth knowing and the traps: [Docs/EditorMcpWorkflow.md](Docs/EditorMcpWorkflow.md).
+
+It cannot build C++ — the open editor holds a Live Coding session and the link fails (§2). Build
+with the editor closed, then reopen and place new classes through MCP.
+
+## 7. Verifying in-game
 
 **Don't.** Not as a routine step. Launching the game, driving the front end, boarding a
 helicopter and synthesizing input is slow, it takes over the machine's foreground window and
@@ -102,8 +130,8 @@ console but *not* gameplay input, so most interactive checks cannot be driven fr
 anyway.
 
 Default instead to: build clean, cover the logic with an automation test (§3), get ground truth
-from the decompile (§5) — then say plainly what you did *not* verify on screen and leave that
-last check to whoever is at the keyboard. "Built and unit-tested; not verified in-game" is a
+from the decompile (§5), ask the running editor over MCP (§6) — then say plainly what you did *not*
+verify on screen and leave that last check to whoever is at the keyboard. "Built and unit-tested; not verified in-game" is a
 complete report, not an admission.
 
 Reserve an actual run for a genuinely complex problem that nothing cheaper can settle — a
@@ -122,7 +150,7 @@ level. `Docs/memory/simcopter-ingame-verification.md` covers driving and screens
 UI from PowerShell — including the trap that centred panels shift, so stale click coordinates
 silently no-op.
 
-## 7. Style
+## 8. Style
 
 - Match the surrounding code: Unreal naming (`F`/`U`/`A` prefixes, `b` for bools), tabs, and the
   existing comment density.
