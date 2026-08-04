@@ -957,6 +957,16 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
 	float SearchLightIntensity = 650000.0f;
 
+	// How much of the scene's exposure is divided back out of the beam. 1 - the default - makes the
+	// searchlight hold the same presence on screen whatever the sun is doing; 0 is the raw physical
+	// light, which at 650,000 unitless is ~1,000 candelas, a hand torch against the day sequence's
+	// 120,000 lux sun. That is why the beam vanished when the celestial vault went in: the sun went
+	// up by ~30,000x (the old day/night actor ran it at 4 lux) and auto exposure went with it.
+	// Everything unlit in the remake is compensated the same way - see CreateSimCopterMaterials.py's
+	// add_exposure_independent_emissive and USimCopterFlashingLightsComponent.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SearchLightExposureCompensation = 1.0f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "100.0"))
 	float SearchLightRangeCm = 5200.0f;
 

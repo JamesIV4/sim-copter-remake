@@ -137,8 +137,16 @@ protected:
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UProceduralMeshComponent> MeshComponent;
+	// Pushes the world's current effect emissive value into both card materials. They are unlit, so
+	// their brightness is absolute and has to track the sun or they tonemap to black - see
+	// USimCopterEffectExposureSubsystem.
+	void ApplyEffectExposure();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> CardMaterial;
+	// Instance of CardMaterial (or of CardMaterialOverride) carrying the exposure scale.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> CardMaterialInstance;
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> KernelMaterial;
 	UPROPERTY(Transient)

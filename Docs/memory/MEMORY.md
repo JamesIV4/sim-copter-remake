@@ -57,6 +57,7 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 
 
+- [SimCopter exposure scale](simcopter-exposure-scale.md) — the `CelestialVaultDaySequenceActor` runs the sun at 120,000 lux where the old day/night actor ran it at 4, so every unlit effect card went BLACK and every gameplay light went invisible — nothing about them changed, the scale under them did. Emissive goes through `EyeAdaptationInverse` and lights through `InverseExposureBlend`; unitless x 16/10000 = candelas, so a "650,000" searchlight is a hand torch.
 - [SimCopter sprite-card lighting](simcopter-sprite-card-lighting.md) — trees/signs (Maxis face type 2) were the only unlit city surface, so under the day sequence they read INVERTED: dark at noon, glowing at midnight. Now `M_SimCopterLitSpriteTexture`, masked + Default Lit, with the card normal biased to world up (crossed vertical quads would otherwise go black under a high sun). Fire and particle kernels stay unlit on purpose; people's figure heads still don't.
 - [SimCopter shared vehicle material](simcopter-vehicle-material.md) — `M_SimCopterLitVertexColor` is shared by the vehicles AND the city; only the vehicles go through `USimCopterVehicleMaterialSubsystem`'s instance, so a metallic helicopter does not chrome the skyline. `SetScalarParameterValue` on a parameter the material lacks is silently ignored — check the asset before debugging a dead slider.
 

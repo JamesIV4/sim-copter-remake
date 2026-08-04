@@ -2,9 +2,11 @@
 
 #include "Ground/SimCopterFlashingLights.h"
 
+#include "City/SimCopterEffectExposure.h"
 #include "Components/PointLightComponent.h"
 #include "Formats/MaxisMeshReader.h"
 #include "GameFramework/PlayerController.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterEffectRasterizer.h"
 #include "Kismet/GameplayStatics.h"
@@ -313,7 +315,20 @@ void USimCopterFlashingLightsComponent::RebuildCards(
 	}
 
 	MeshComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
-	if (CardMaterial != nullptr)
+	// The card is unlit, so its colour is an absolute number of nits and has to be put on the same
+	// scale as the sun or the marker draws as a black square. See USimCopterEffectExposureSubsystem.
+	if (CardMaterialInstance == nullptr && CardMaterial != nullptr)
+	{
+		CardMaterialInstance = UMaterialInstanceDynamic::Create(CardMaterial, this);
+	}
+	if (CardMaterialInstance != nullptr)
+	{
+		CardMaterialInstance->SetScalarParameterValue(
+			USimCopterEffectExposureSubsystem::GetEmissiveNitsParameterName(),
+			USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(GetWorld()));
+		MeshComponent->SetMaterial(0, CardMaterialInstance);
+	}
+	else if (CardMaterial != nullptr)
 	{
 		MeshComponent->SetMaterial(0, CardMaterial);
 	}
@@ -368,6 +383,16 @@ void USimCopterFlashingLightsComponent::UpdatePointLights(const TArray<FLitLight
 			Light->bAllowMegaLights = true;
 			Light->bUseInverseSquaredFalloff = false;
 			Light->SetIntensityUnits(ELightUnits::Unitless);
+			// Divide the exposure back out, so a marker keeps the same presence on screen at noon
+			// and at midnight. The level's day sequence runs a physically scaled sun at 120,000 lux
+			// where the day/night actor it replaced ran it at 4, and auto exposure follows the sun:
+			// a beacon tuned against the old scale simply has no visible contribution left under
+			// the new one. These are gameplay markers - the original stamped them straight into the
+			// frame buffer with no lighting model at all - so constant screen presence IS the
+			// authentic behaviour, and it does not need retuning the next time the sky changes.
+			// The effect cards get the identical treatment in the material (EyeAdaptationInverse,
+			// see CreateSimCopterMaterials.py).
+			Light->SetInverseExposureBlend(1.0f);
 			Light->RegisterComponent();
 			PointLights[Index] = Light;
 		}

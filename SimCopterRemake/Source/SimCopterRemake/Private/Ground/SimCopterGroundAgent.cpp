@@ -3601,6 +3601,10 @@ void ASimCopterGroundAgent::ConfigureVehicleHeadlights(const FBox& VehicleLocalB
 		Light->SetRelativeLocation(FVector(FrontX, SideSigns[Index] * SideY, HeadlightZ));
 		Light->SetRelativeRotation(BeamRotation);
 		Light->SetIntensity(HeadlightIntensity);
+		// Exposure independent, like every other gameplay light here: 9,000 unitless is ~14 candelas
+		// once the engine converts it, and the level's day sequence runs the sun at 120,000 lux, so
+		// the raw beam contributes nothing a tonemapper can show. See SearchLightExposureCompensation.
+		Light->SetInverseExposureBlend(1.0f);
 		Light->SetAttenuationRadius(HeadlightAttenuationRadiusCm);
 		Light->SetInnerConeAngle(11.0f);
 		Light->SetOuterConeAngle(26.0f);

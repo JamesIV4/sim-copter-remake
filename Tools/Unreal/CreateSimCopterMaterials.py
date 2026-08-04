@@ -101,6 +101,65 @@ def add_shading_nodes(material, color_expression, color_output):
     )
 
 
+# Every UNLIT surface in the remake is a flat palette colour written straight into Emissive,
+# because that is literally what the original did: the software renderer stamped the palette entry
+# into the frame buffer and there was no lighting model to consult. Emissive is a number of nits,
+# though, and a fixed number of nits is only a fixed *brightness* while the exposure holds still.
+#
+# It stopped holding still. The level's CelestialVaultDaySequenceActor runs a physically scaled sun
+# at 120,000 lux; the day/night actor it replaced ("New TOD system", 2026-08-03) ran it at 4 lux
+# (SimCopterDayNightCycleActor::SunIntensityDay). Auto exposure follows the sun, so the exposure now
+# sits ~30,000x higher than everything here was tuned against, and an emissive of 1.4 tonemaps to
+# BLACK next to a road at ~23,000 nits. That is what turned the fire, the water spray, the dust, the
+# tear gas and the blinking marker cards into black quads.
+#
+# So the emissive has to be a real number of nits, on the same scale as the sun lighting the city.
+# `EmissiveNits` is that number, and `USimCopterEffectExposureSubsystem` writes it every frame from
+# the level's actual key light: a card sits EffectBrightness times as bright as white ground under
+# the same sun, which holds at noon, at dusk and at midnight without anything being retuned.
+#
+# **The obvious fix does not work here.** A `MaterialExpressionEyeAdaptationInverse` divides out the
+# exposure in the shader and would need no C++ at all - it is what this was written with first. It
+# had no effect whatsoever in game (verified: the rebuilt material was live, the material compiled
+# clean, the cards stayed black), and the node is documented as experimental access to the eye
+# adaptation RT for post process materials. Do not "simplify" back to it without testing on screen.
+#
+# The lights are the same problem with a different fix: `ULocalLightComponent::InverseExposureBlend`
+# reads the exposure on the RENDERER side, not out of a shader buffer, and that one does work.
+# See USimCopterFlashingLightsComponent.
+EMISSIVE_NITS_DEFAULT = 26000.0
+
+
+def add_scene_scaled_emissive(material, color_expression, color_output, x, y):
+    """Wire `color_expression * EmissiveNits` into Emissive.
+
+    Returns the EmissiveNits parameter. The default alone is a sane sunlit value, so the cards read
+    correctly even with nothing driving the parameter (the material preview, or a level with no day
+    sequence); the subsystem only makes it track the sun."""
+    nits = add_scalar_parameter(material, "EmissiveNits", EMISSIVE_NITS_DEFAULT, 4, y + 200)
+    scaled = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, x, y
+    )
+    # Each of these returns False rather than raising when a pin name is wrong, and a dropped
+    # emissive connection looks exactly like the bug this is here to fix, so they are checked.
+    connections = (
+        ("A", unreal.MaterialEditingLibrary.connect_material_expressions(
+            color_expression, color_output, scaled, "A")),
+        ("B", unreal.MaterialEditingLibrary.connect_material_expressions(nits, "", scaled, "B")),
+        ("EmissiveColor", unreal.MaterialEditingLibrary.connect_material_property(
+            scaled, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)),
+    )
+    failed = [name for name, ok in connections if not ok]
+    if failed:
+        unreal.log_error(
+            f"{material.get_name()}: EmissiveNits pins not connected: {', '.join(failed)}. "
+            "Emissive will render BLACK."
+        )
+    else:
+        unreal.log(f"{material.get_name()}: emissive scaled by EmissiveNits.")
+    return nits
+
+
 def create_lit_texture_material():
     material = create_or_load_material("M_SimCopterLitTexture")
     clear_expressions(material)
@@ -387,6 +446,39 @@ def create_lit_sprite_texture_material():
     material.set_editor_property("used_with_nanite", True)
     unreal.MaterialEditingLibrary.recompile_material(material)
     save(f"{MATERIAL_DIR}/M_SimCopterLitSpriteTexture")
+
+
+def upgrade_sprite_texture_emissive():
+    """Give the already-built M_SimCopterSpriteTexture an EmissiveNits scale, in place.
+
+    The particle KERNELS (the original's FIREPTS point sprites) draw on this material, and so do the
+    pedestrian sprites and the privanim figure heads, so it went black under the day sequence with
+    everything else unlit. It is not in the delete-and-recreate list - a material instance may hold
+    it as a parent, and deleting the asset would null that out - so this edits the existing graph
+    instead: add the two nodes, re-point Emissive at them, leave everything else alone.
+
+    Idempotent: a material that already has the parameter is skipped, so re-running is free."""
+    path = f"{MATERIAL_DIR}/M_SimCopterSpriteTexture"
+    material = unreal.EditorAssetLibrary.load_asset(path)
+    if material is None:
+        return
+
+    expressions = unreal.MaterialEditingLibrary.get_material_expressions(material)
+    if any(isinstance(e, unreal.MaterialExpressionScalarParameter) and
+           e.get_editor_property("parameter_name") == "EmissiveNits" for e in expressions):
+        unreal.log("M_SimCopterSpriteTexture already carries EmissiveNits; skipping.")
+        return
+
+    texture = next(
+        (e for e in expressions if isinstance(e, unreal.MaterialExpressionTextureSampleParameter2D)),
+        None)
+    if texture is None:
+        unreal.log_error("M_SimCopterSpriteTexture has no texture sample to scale; left alone.")
+        return
+
+    add_scene_scaled_emissive(material, texture, "RGB", -180, -160)
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(path)
 
 
 def reparent_baked_direct_image_instances():
@@ -768,9 +860,9 @@ def create_particle_fx_material():
     # The VertexColor node's RGB comes from its default (unnamed) output; "RGB" is NOT a valid pin
     # name and silently fails to connect, leaving emissive black.
     unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "", boost, "A")
-    unreal.MaterialEditingLibrary.connect_material_property(
-        boost, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
-    )
+    # ...and the boost reaches Emissive scaled into real nits, or the card is black under the day
+    # sequence's 120,000 lux sun. See add_scene_scaled_emissive.
+    add_scene_scaled_emissive(material, boost, "", -180, -160)
 
     dither = add_custom_node(
         material,
@@ -810,9 +902,8 @@ def create_particle_fx_soft_material():
     # Use the VertexColor node's default (unnamed) RGB output; "RGB" is not a valid pin name and
     # silently fails, which is what left the soft particles emitting black.
     unreal.MaterialEditingLibrary.connect_material_expressions(vertex_color, "", boost, "A")
-    unreal.MaterialEditingLibrary.connect_material_property(
-        boost, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
-    )
+    # Scene-scaled for the same reason as the masked card above.
+    add_scene_scaled_emissive(material, boost, "", -180, -160)
 
     tex_coord = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionTextureCoordinate, -700, 260
@@ -904,4 +995,5 @@ create_water_material()
 create_terrain_material()
 create_particle_fx_material()
 create_particle_fx_soft_material()
+upgrade_sprite_texture_emissive()
 reparent_baked_direct_image_instances()
