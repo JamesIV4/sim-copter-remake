@@ -5,6 +5,7 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterEffectExposure.h"
 #include "Engine/World.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/MaxisMeshLibrary.h"
@@ -1302,6 +1303,11 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 		}
 	}
 
+	// Both card materials are UNLIT - the original stamped a palette colour into the frame buffer -
+	// so their brightness is an absolute number of nits that has to be put on the same scale as the
+	// sun lighting the city, or the cards tonemap to black. See USimCopterEffectExposureSubsystem.
+	ApplyEffectExposure();
+
 	if (Kernels.Vertices.IsEmpty())
 	{
 		MeshComponent->ClearMeshSection(0);
@@ -1338,10 +1344,37 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 			Solids.Colors,
 			Solids.Tangents,
 			false);
-		if (UMaterialInterface* Material =
-			CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get())
+		if (UMaterialInterface* Material = CardMaterialInstance != nullptr
+			? static_cast<UMaterialInterface*>(CardMaterialInstance.Get())
+			: (CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get()))
 		{
 			MeshComponent->SetMaterial(1, Material);
 		}
+	}
+}
+
+void USimCopterParticleFXComponent::ApplyEffectExposure()
+{
+	UMaterialInterface* Parent =
+		CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get();
+	if (CardMaterialInstance == nullptr ||
+		(Parent != nullptr && CardMaterialInstance->Parent != Parent))
+	{
+		// Rebuilt rather than kept when the override changes, so a material swapped in the details
+		// panel still gets the exposure scale rather than silently reverting to the black default.
+		CardMaterialInstance = Parent != nullptr ? UMaterialInstanceDynamic::Create(Parent, this) : nullptr;
+	}
+
+	const float Nits = USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(GetWorld());
+	const FName ParameterName = USimCopterEffectExposureSubsystem::GetEmissiveNitsParameterName();
+	if (CardMaterialInstance != nullptr)
+	{
+		CardMaterialInstance->SetScalarParameterValue(ParameterName, Nits);
+	}
+	if (KernelMaterialInstance != nullptr)
+	{
+		// The kernels ride M_SimCopterSpriteTexture, which is unlit for the same reason and needs
+		// the same scale. A material without the parameter ignores this silently.
+		KernelMaterialInstance->SetScalarParameterValue(ParameterName, Nits);
 	}
 }

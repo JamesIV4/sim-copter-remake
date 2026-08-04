@@ -685,6 +685,10 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	SearchLightComponent->InnerConeAngle = 8.0f;
 	SearchLightComponent->OuterConeAngle = 20.0f;
 	SearchLightComponent->SetLightColor(SearchLightBeamColor.ToFColor(true));
+	// See SearchLightExposureCompensation: without this the beam is invisible under the day
+	// sequence's physically scaled sun. Set on the property directly - the setter is a no-op on a
+	// default subobject, before the component is registered.
+	SearchLightComponent->InverseExposureBlend = SearchLightExposureCompensation;
 	SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -5740,6 +5744,7 @@ void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
 		80.0f);
 
 	SearchLightComponent->SetIntensity(SearchLightIntensity);
+	SearchLightComponent->SetInverseExposureBlend(SearchLightExposureCompensation);
 	SearchLightComponent->AttenuationRadius = FMath::Max(SearchLightRangeCm, BeamLength);
 	SearchLightComponent->OuterConeAngle = OuterConeAngleDeg;
 	SearchLightComponent->InnerConeAngle = FMath::Clamp(OuterConeAngleDeg * 0.45f, 1.0f, OuterConeAngleDeg);

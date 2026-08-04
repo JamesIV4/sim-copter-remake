@@ -233,6 +233,11 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> CardMaterial;
 
+	// Instance of CardMaterial carrying the scene's current effect emissive value, because the card
+	// material is unlit - see USimCopterEffectExposureSubsystem.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> CardMaterialInstance;
+
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UPointLightComponent>> PointLights;
 
