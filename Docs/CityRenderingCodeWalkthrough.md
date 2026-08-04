@@ -125,15 +125,23 @@ Important rules:
 
 - It returns globally unique object ids, not GEOM table indexes.
 - Object ids are resolved through `FMaxisMeshLibrary::FindObjectByObjectId`.
-- `0x43..0x46` use `IsOriginalTerrainTileFlat` to choose flat versus sloped primary meshes.
-- `0x45`, `0x46`, `0x4d`, and `0x4e` add secondary side objects.
+- `0x43..0x46` use `IsOriginalTerrainTileFlat` to choose flat versus sloped meshes.
+- `0x43`, `0x44`, `0x45`, `0x46`, `0x4d`, and `0x4e` add secondary side objects.
+- `0x43`/`0x44` (power line over road) deliberately diverge from the original: it packs road and pylon into one object (`RD67`/`RD68`, `RD67H`/`RD68H` on a slope), whose road half is a different slab from the street either side and reads as a raised block across the crossing. The remake splits it the way the original already splits the rail crossing - ordinary straight road as the primary, crossing object as the secondary - and `FPlacedObjectRoadFaceFilter` drops the secondary's road surface (face type 15, materials 48 and 128) and centre line (face type 20/material 112), so only its pylon (15/208) and wires (20/50) survive. Those tiles are also added to the terrain flatten set, or the crossing still stands proud of the street. The wires must survive: the dynamic power-line span builder only covers `XBLD 0x0e..0x1c`, so nothing else carries the line across that tile.
 - Several ids add `BitVariant`, derived from `XBIT & 0x02`, to choose paired `F` variants.
 
 This matters because the public `XBLD` heuristic table is not sufficient for bridges. Orientation is baked into object choice, so a wrong object id can look like a rotation bug.
 
 ## Road Markings
 
-The original software renderer drew road details as vector-thin line primitives stored in the `RD*` GEO meshes as face type 20/material 112 endpoint pairs. The remake converts those exact authored lines into narrow planar ribbons in a separate non-colliding `RoadMarkingMeshComponent`, using the same placed-mesh transform as the road itself. Markings therefore follow the asphalt across ordinary roads, ramps, bridge approaches, and decks instead of being projected onto terrain. Source endpoint order is not a reliable winding signal, so the ribbons emit both triangle windings and remain visible with backface culling. `TL63..TL66` raised caps (`XBLD 0x3f..0x42`) do not contain authored line records; only those four pieces retain procedural dashes, placed on the cap's object-top plane. Existing authored lines on `RD67`/`RD68` and bridge pieces such as `RD73`/`RD74` are no longer duplicated.
+Yellow lines are drawn procedurally, into a separate non-colliding `RoadMarkingMeshComponent`, from the opening table in `GetOriginalRoadMarkingOpeningMask`. That table is what fixes the settled look: `AppendRoadMarkingsForTile` lays two dashes across a tile whose two openings face each other and one across a corner, and `AppendTiledDashedRoadMarkingSegment`'s `DashFillRatio` sets how much of each period is painted.
+
+Two consequences of driving it from the opening mask rather than from the meshes:
+
+- **Intersections stay unmarked.** `AppendRoadMarkingsForTile` returns early unless the tile has exactly two openings, so the tee (`0x27..0x2a`) and crossroad (`0x2b`) ids - which declare three and four - never emit a line. That is deliberate; do not "fix" the early return.
+- **The `RD*` objects' own lines must not also render.** Every surface-road mesh carries the same markings as face type 20/material 112 endpoint pairs, and drawing both gives two cadences over one another. `bBuildVectorLines` is false for `XBLD 0x1d..0x2b`, `0x3f..0x42` and `0x0e..0x1c`, and `FPlacedObjectRoadFaceFilter` suppresses the pair on the power crossings (below). An earlier revision rendered those authored endpoints as ribbons instead of the procedural dashes; it was reverted because it replaced the tuned frequency and spacing with whatever each piece happened to author.
+
+Dash **height** comes from the asphalt plane `TryBuildPlacedRoadSurfaceProfile` extracts from the placed road object - the same plane traffic drives on - not from the terrain grid. `AppendRoadMarkingsForTile` is therefore called *after* the mesh block in the tile loop, so `RoadSurfaceProfiles[TileIndex]` is populated by the time it runs; move it back above and every ramp's dashes drop onto the terrain wedge under the deck. The conditioned terrain is only the fallback for a tile that placed no road mesh, with `TL63..TL66` (`XBLD 0x3f..0x42`) falling back to one height step above their tile origin.
 
 ## Building Base Dispatch
 
