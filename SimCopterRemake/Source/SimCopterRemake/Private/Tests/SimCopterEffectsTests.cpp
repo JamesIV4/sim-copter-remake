@@ -15,7 +15,15 @@ bool FSimCopterEffectsPoolTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("SMOKE pool"), USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Smoke10), 10);
 	TestEqual(TEXT("DEBRIS pool"), USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Debris30), 30);
-	TestEqual(TEXT("wash trajectory pool"), USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Wash20), 20);
+
+	// DELIBERATE DIVERGENCE. The enum names in this file record the ORIGINAL's pool sizes, and the
+	// original's wash pool was 20 - but the remake's fireworks reuse the RotorWash particle type for
+	// their burst rings and falling embers (SpawnRing/SpawnParticle -> ESimCopterEffectType::RotorWash),
+	// which is 32 + 24 slots per rocket with several rockets in the air at once. At 20 the ring came
+	// out as a handful of sparks. 300 is what makes the display read, and it is what shipped in
+	// da0d8bc "Fireworks fixes"; the name stays Wash20 because it still names the original's pool.
+	TestEqual(TEXT("wash trajectory pool, widened for the fireworks"),
+		USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Wash20), 300);
 	TestEqual(TEXT("three point trajectory pool"), USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Trajectory70), 70);
 	TestEqual(TEXT("fire pool"), USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Fire25), 25);
 	TestEqual(TEXT("two-slot GEO pool"), USimCopterParticleFXComponent::GetPoolCapacity(ESimCopterEffectPool::Geo2), 2);

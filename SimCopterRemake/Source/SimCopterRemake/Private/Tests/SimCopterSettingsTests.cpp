@@ -2,6 +2,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Game/SimCopterSettings.h"
 #include "Misc/AutomationTest.h"
 #include "UI/SSimCopterCheckupSlider.h"
 #include "UI/SSimCopterCitySettings.h"
@@ -327,6 +328,128 @@ bool FSimCopterControlSettingsTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("The Settings key is bound"), bFoundSettingsKey);
 		TestTrue(TEXT("Axis mappings were read too"), bFoundAxis);
 	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterDisplayResolutionTest,
+	"SimCopter.Settings.DisplayResolution",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterDisplayResolutionTest::RunTest(const FString& Parameters)
+{
+	using namespace SimCopterDisplay;
+
+	const auto MakeMonitor = [](const FIntPoint Native, const FIntRect Rect, const bool bPrimary)
+	{
+		FMonitor Monitor;
+		Monitor.NativeResolution = Native;
+		Monitor.DisplayRect = Rect;
+		Monitor.bIsPrimary = bPrimary;
+		return Monitor;
+	};
+
+	// A 4K primary with a 1080p panel to its right - the layout that makes "which screen is the game
+	// actually on" a question worth answering.
+	const FMonitor Primary4K = MakeMonitor(FIntPoint(3840, 2160), FIntRect(0, 0, 3840, 2160), true);
+	const FMonitor Secondary1080 = MakeMonitor(FIntPoint(1920, 1080), FIntRect(3840, 0, 5760, 1080), false);
+	const TArray<FMonitor> TwoMonitors = { Primary4K, Secondary1080 };
+
+	{
+		TestEqual(TEXT("A window on the primary takes the primary's native size"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(100, 100, 1380, 820)),
+			FIntPoint(3840, 2160));
+
+		TestEqual(TEXT("A window on the second monitor takes ITS native size, not the primary's"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(4000, 100, 5280, 820)),
+			FIntPoint(1920, 1080));
+	}
+
+	// Straddling is settled by overlap area, not by the window's origin: the monitor showing most of
+	// the window is the one the game is being watched on.
+	{
+		// 200px wide on the 4K, 1080px on the 1080p.
+		TestEqual(TEXT("A straddling window follows the larger overlap"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(3640, 100, 4920, 820)),
+			FIntPoint(1920, 1080));
+
+		// The same window shifted so most of it is back on the 4K.
+		TestEqual(TEXT("...and follows it back the other way"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(2700, 100, 3980, 820)),
+			FIntPoint(3840, 2160));
+	}
+
+	// An unshown window reports a zero rect, which overlaps nothing. That must not come back empty,
+	// or a first run would decline to seed and open at UGameUserSettings' 1280x720 instead.
+	{
+		TestEqual(TEXT("A zero-size window falls back to the primary"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(0, 0, 0, 0)),
+			FIntPoint(3840, 2160));
+
+		TestEqual(TEXT("An off-screen window falls back to the primary"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(-4000, -4000, -3000, -3000)),
+			FIntPoint(3840, 2160));
+
+		const TArray<FMonitor> NoPrimary = { Secondary1080 };
+		TestEqual(TEXT("With no monitor flagged primary, the first usable one wins"),
+			FindNativeResolutionForWindow(NoPrimary, FIntRect(0, 0, 0, 0)),
+			FIntPoint(1920, 1080));
+	}
+
+	// Native resolution is NOT the display rect: Windows scaling makes a 4K panel report a 2560x1440
+	// desktop rect, and seeding from the rect would open the game at the scaled size.
+	{
+		const TArray<FMonitor> Scaled = {
+			MakeMonitor(FIntPoint(3840, 2160), FIntRect(0, 0, 2560, 1440), true)
+		};
+		TestEqual(TEXT("A DPI-scaled monitor still seeds its real panel size"),
+			FindNativeResolutionForWindow(Scaled, FIntRect(0, 0, 1280, 720)),
+			FIntPoint(3840, 2160));
+	}
+
+	// Degenerate inputs answer zero rather than a made-up mode, so the caller can decline to seed.
+	{
+		TestEqual(TEXT("No monitors at all"),
+			FindNativeResolutionForWindow(TArray<FMonitor>(), FIntRect(0, 0, 1280, 720)),
+			FIntPoint::ZeroValue);
+
+		const TArray<FMonitor> Unreported = {
+			MakeMonitor(FIntPoint::ZeroValue, FIntRect(0, 0, 1920, 1080), true)
+		};
+		TestEqual(TEXT("A monitor that reports no native size is not usable"),
+			FindNativeResolutionForWindow(Unreported, FIntRect(0, 0, 1280, 720)),
+			FIntPoint::ZeroValue);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterTimeOfDayFormatTest,
+	"SimCopter.Settings.TimeOfDay",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterTimeOfDayFormatTest::RunTest(const FString& Parameters)
+{
+	const auto Formatted = [](const float Hours)
+	{
+		return USimCopterSettings::FormatTimeOfDay(Hours).ToString();
+	};
+
+	TestEqual(TEXT("Midnight"), Formatted(0.0f), TEXT("00:00"));
+	TestEqual(TEXT("Noon"), Formatted(12.0f), TEXT("12:00"));
+	TestEqual(TEXT("Half past reads as 30 minutes, not 0.5"), Formatted(13.5f), TEXT("13:30"));
+	TestEqual(TEXT("A quarter past"), Formatted(6.25f), TEXT("06:15"));
+	TestEqual(TEXT("Just before midnight"), Formatted(23.99f), TEXT("23:59"));
+
+	// The Static Time slider's top end is exactly 24, which is midnight again - "24:00" would be the
+	// one reading on the clock that does not exist.
+	TestEqual(TEXT("The slider's top end wraps to midnight"), Formatted(24.0f), TEXT("00:00"));
+
+	// The setter clamps, but the formatter is a public static and gets whatever a caller has.
+	TestEqual(TEXT("Negative hours clamp to midnight"), Formatted(-3.0f), TEXT("00:00"));
+	TestEqual(TEXT("Hours past a full day wrap"), Formatted(26.5f), TEXT("02:30"));
 
 	return true;
 }

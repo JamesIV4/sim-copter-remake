@@ -70,9 +70,13 @@ def add_scalar_parameter(material, name, default_value, sort_priority, y):
     return param
 
 
-def add_shading_nodes(material, color_expression, color_output):
+def add_shading_nodes(material, color_expression, color_output, connect_emissive=True):
     """Wires SelfIllum emissive, Roughness, and Specular onto a material whose base
-    color is driven by `color_expression`/`color_output`."""
+    color is driven by `color_expression`/`color_output`.
+
+    Returns the (self_illum_multiply, self_illum_param) pair. Pass connect_emissive=False when the
+    caller has something else to add to Emissive - the city atlas adds its night window glow - and
+    wire the returned multiply into that sum instead."""
     self_illum = add_scalar_parameter(material, "SelfIllum", SELF_ILLUM_DEFAULT, 0, 280)
     roughness = add_scalar_parameter(material, "Roughness", ROUGHNESS_DEFAULT, 1, 430)
     specular = add_scalar_parameter(material, "Specular", SPECULAR_DEFAULT, 2, 580)
@@ -90,15 +94,17 @@ def add_shading_nodes(material, color_expression, color_output):
         self_illum, "", emissive, "B"
     )
 
-    unreal.MaterialEditingLibrary.connect_material_property(
-        emissive, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
-    )
+    if connect_emissive:
+        unreal.MaterialEditingLibrary.connect_material_property(
+            emissive, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
+        )
     unreal.MaterialEditingLibrary.connect_material_property(
         roughness, "", unreal.MaterialProperty.MP_ROUGHNESS
     )
     unreal.MaterialEditingLibrary.connect_material_property(
         specular, "", unreal.MaterialProperty.MP_SPECULAR
     )
+    return emissive, self_illum
 
 
 # Every UNLIT surface in the remake is a flat palette colour written straight into Emissive,
@@ -190,6 +196,79 @@ def create_lit_texture_material():
     save(f"{MATERIAL_DIR}/M_SimCopterLitTexture")
 
 
+# Where USimCopterDayNightSubsystem publishes the night blend every frame. A collection scalar,
+# because MI_CityPage_* are MaterialInstanceConstants and cannot be animated at runtime at all.
+DAY_NIGHT_COLLECTION = f"{MATERIAL_DIR}/MPC_SimCopterDayNight"
+NIGHT_BLEND_PARAMETER = "NightBlend"
+
+# How bright a lit window burns, in nits. NOT scaled to the sun the way the unlit effect cards are
+# (USimCopterEffectExposureSubsystem): a window has a light bulb behind it, so its brightness is
+# absolute and does not follow the sky. At the day sequence's 120,000 lux noon, white ground is
+# ~38,000 nits, so this sits far below daylight and only reads once the sun is down - which is also
+# what the NightBlend fade is doing, so the two agree.
+WINDOW_GLOW_NITS_DEFAULT = 2500.0
+
+# How far BaseColor leans onto the night art. See the long note at the blend itself: the night pages
+# are already-darkened *images* from a renderer with no lighting model, so a full lerp darkens the
+# city twice. 1.0 reproduces the original's exact night pixels if that trade is wanted.
+NIGHT_ALBEDO_STRENGTH_DEFAULT = 0.25
+
+# Luminance a night texel has to clear before it counts as a lit window rather than a dark wall.
+# Measured, not guessed: at 0.55 this picks 7-16% of the three wall pages (2, 39, 40) and *nothing*
+# at all from the two terrain pages (13, 20), whose night art is uniformly darkened with no bright
+# texels in it. See Docs/scratchpad/analyse_night_windows.py.
+WINDOW_GLOW_THRESHOLD_DEFAULT = 0.55
+
+# How hard the mask's edges are. 8 gives roughly an eighth of a luminance unit of ramp, enough to
+# stop the 8-bit palette steps banding into a hard cutout.
+WINDOW_GLOW_CONTRAST_DEFAULT = 8.0
+
+
+def create_day_night_parameter_collection():
+    """The one scalar the city materials read to know what time it is.
+
+    SCHOOK: FUN_004606d0 0x004606d0. The original had no blend - it loaded sky.bmp or skydark.bmp
+    and memcpy'd their pages straight over the live atlas, so the whole city flipped between day and
+    night art in a single frame. The remake's sun moves continuously, so the same two page sets are
+    cross-faded instead, and this is the fade position."""
+    if unreal.EditorAssetLibrary.does_asset_exist(DAY_NIGHT_COLLECTION):
+        collection = unreal.EditorAssetLibrary.load_asset(DAY_NIGHT_COLLECTION)
+    else:
+        collection = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+            "MPC_SimCopterDayNight",
+            MATERIAL_DIR,
+            unreal.MaterialParameterCollection,
+            unreal.MaterialParameterCollectionFactoryNew(),
+        )
+
+    existing = list(collection.get_editor_property("scalar_parameters"))
+    if not any(str(p.get_editor_property("parameter_name")) == NIGHT_BLEND_PARAMETER for p in existing):
+        # FCollectionParameterBase's constructor mints the Guid, so a default-constructed struct is
+        # already uniquely identified - which is what materials bind to, not the name.
+        night_blend = unreal.CollectionScalarParameter()
+        night_blend.set_editor_property("parameter_name", NIGHT_BLEND_PARAMETER)
+        night_blend.set_editor_property("default_value", 0.0)
+        existing.append(night_blend)
+        collection.set_editor_property("scalar_parameters", existing)
+
+    save(DAY_NIGHT_COLLECTION)
+    return collection
+
+
+def add_night_blend_parameter(material, x, y):
+    """A CollectionParameter node reading NightBlend, 0 by day and 1 at night."""
+    collection = unreal.EditorAssetLibrary.load_asset(DAY_NIGHT_COLLECTION)
+    node = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionCollectionParameter, x, y
+    )
+    # Collection FIRST: UMaterialExpressionCollectionParameter::PostEditChangeProperty resolves
+    # ParameterId from ParameterName *through* Collection, so setting the name against a null
+    # collection leaves the node bound to nothing and the material compiles to a constant 0.
+    node.set_editor_property("collection", collection)
+    node.set_editor_property("parameter_name", NIGHT_BLEND_PARAMETER)
+    return node
+
+
 def create_city_atlas_material():
     """City building/road material that samples one full atlas page instead of per-cell slices.
 
@@ -200,7 +279,14 @@ def create_city_atlas_material():
     the dedicated terrain-water material below runs the five-frame texture animation.
     frac() reproduces the per-cell wrap addressing; with the page texture set to nearest filter
     and no mips, this samples exactly the cell the original game used, with no bleed between
-    neighbouring cells."""
+    neighbouring cells.
+
+    NIGHT. The original swapped five atlas pages for their skydark.bmp equivalents after dark
+    (FUN_004606d0 copies skydark images 1..5 over live pages 2, 39, 40, 20 and 13), and those night
+    pages are where the lit building windows are painted. Here both pages are sampled and blended by
+    NightBlend, and the texels the night art draws BRIGHTER than the day art - which is precisely
+    the windows - are additionally pushed into Emissive so they light the street under Lumen instead
+    of just looking yellow."""
     material = create_or_load_material("M_SimCopterCityAtlas")
     clear_expressions(material)
 
@@ -241,10 +327,110 @@ def create_city_atlas_material():
     texture.set_editor_property("parameter_name", "Texture")
     unreal.MaterialEditingLibrary.connect_material_expressions(page_uv, "", texture, "UVs")
 
-    unreal.MaterialEditingLibrary.connect_material_property(
-        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
+    # The skydark.bmp page for this atlas slot. BakeCityAtlas.py sets it on every MI_CityPage_*,
+    # falling back to the day texture for any page without a night variant, so the blend below needs
+    # no per-page special case.
+    night_texture = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTextureSampleParameter2D, -260, 240
     )
-    add_shading_nodes(material, texture, "RGB")
+    night_texture.set_editor_property("parameter_name", "NightTexture")
+    unreal.MaterialEditingLibrary.connect_material_expressions(page_uv, "", night_texture, "UVs")
+
+    night_blend = add_night_blend_parameter(material, -560, 480)
+
+    # BaseColor only leans PART of the way onto the night art, and that is deliberate.
+    #
+    # The original had no lighting model - a texel was stamped into the frame buffer as authored -
+    # so skydark's pages ARE the night image, walls already darkened. Here they are albedo under a
+    # physically scaled sun that has already gone below the horizon, so lerping all the way to them
+    # darkens the city twice and the buildings go to mud. Albedo is a property of the paint, not of
+    # the hour; what should change after dark is the light, and the light already does.
+    #
+    # A little of it is still worth having: skydark is cooler and greyer as well as darker, and that
+    # tint reads as night. 0.25 picks that up without the double darkening. 1.0 reproduces the
+    # original's exact night pixels if that is what is wanted - at the cost above.
+    albedo_strength = add_scalar_parameter(
+        material, "NightAlbedoStrength", NIGHT_ALBEDO_STRENGTH_DEFAULT, 8, 1450
+    )
+    albedo_blend = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -320, 480
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(night_blend, "", albedo_blend, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(albedo_strength, "", albedo_blend, "B")
+
+    blended = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionLinearInterpolate, -60, 40
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(texture, "RGB", blended, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(night_texture, "RGB", blended, "B")
+    unreal.MaterialEditingLibrary.connect_material_expressions(albedo_blend, "", blended, "Alpha")
+
+    unreal.MaterialEditingLibrary.connect_material_property(
+        blended, "", unreal.MaterialProperty.MP_BASE_COLOR
+    )
+    self_illum_emissive, _self_illum = add_shading_nodes(
+        material, blended, "", connect_emissive=False
+    )
+
+    # --- night window glow -------------------------------------------------------------------
+    #
+    # Which texels are windows is not authored anywhere; it is derivable. The night art darkens the
+    # whole page EXCEPT the lit windows, so "brighter at night than by day" plus "bright in absolute
+    # terms" isolates them. Both tests are needed: the first alone catches nothing on the pages that
+    # were only darkened, and the second alone would light pale daylit stone.
+    glow_threshold = add_scalar_parameter(
+        material, "WindowGlowThreshold", WINDOW_GLOW_THRESHOLD_DEFAULT, 5, 1000
+    )
+    glow_contrast = add_scalar_parameter(
+        material, "WindowGlowContrast", WINDOW_GLOW_CONTRAST_DEFAULT, 6, 1150
+    )
+    glow_nits = add_scalar_parameter(
+        material, "WindowGlowNits", WINDOW_GLOW_NITS_DEFAULT, 7, 1300
+    )
+
+    window_mask = add_custom_node(
+        material,
+        "OriginalNightWindowMask",
+        (
+            "float dayLum = dot(DayColor, float3(0.2126, 0.7152, 0.0722));\n"
+            "float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
+            "float gotBrighter = saturate((nightLum - dayLum) * Contrast);\n"
+            "float isBright = saturate((nightLum - Threshold) * Contrast);\n"
+            "return min(gotBrighter, isBright) * saturate(Blend);"
+        ),
+        ["DayColor", "NightColor", "Threshold", "Contrast", "Blend"],
+        -60,
+        900,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT1,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(texture, "RGB", window_mask, "DayColor")
+    unreal.MaterialEditingLibrary.connect_material_expressions(night_texture, "RGB", window_mask, "NightColor")
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_threshold, "", window_mask, "Threshold")
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_contrast, "", window_mask, "Contrast")
+    unreal.MaterialEditingLibrary.connect_material_expressions(night_blend, "", window_mask, "Blend")
+
+    glow_strength = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, 100, 900
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(window_mask, "", glow_strength, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_nits, "", glow_strength, "B")
+
+    # Tinted by the night art itself, so a window keeps the colour it was painted rather than all of
+    # them turning the same white.
+    glow_color = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, 240, 780
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(night_texture, "RGB", glow_color, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_strength, "", glow_color, "B")
+
+    emissive_sum = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionAdd, 380, 500
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(self_illum_emissive, "", emissive_sum, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_color, "", emissive_sum, "B")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        emissive_sum, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
+    )
 
     # Some original pool/pond faces are authored exactly on a terrain or pad plane. Lift only the
     # page-20 water cells in the vertex shader so the lower surface cannot win the depth test.
@@ -990,6 +1176,9 @@ create_if_missing("M_SimCopterLitSpriteTexture", create_lit_sprite_texture_mater
 for _tuned in ("M_SimCopterCityAtlas", "M_SimCopterWater", "M_SimCopterTerrain", "M_SimCopterParticleFX", "M_SimCopterParticleFXSoft"):
     if unreal.EditorAssetLibrary.does_asset_exist(f"{MATERIAL_DIR}/{_tuned}"):
         unreal.EditorAssetLibrary.delete_asset(f"{MATERIAL_DIR}/{_tuned}")
+# Before the atlas material: its CollectionParameter node has to be able to load the collection, or
+# it binds to nothing and NightBlend compiles to a constant 0.
+create_day_night_parameter_collection()
 create_city_atlas_material()
 create_water_material()
 create_terrain_material()

@@ -24,15 +24,18 @@ public class SimCopterRemake : ModuleRules
 		// USimCopterMoonDiscComponent reaches its MoonDiscComponent property to override the moon
 		// disc's material brightness. Both plugins are already enabled in the .uproject (DaySequence
 		// via CelestialVault's own dependency), so this only adds the link, not a new plugin.
-		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "RenderCore", "MediaAssets", "DaySequence", "CelestialVault" });
+		// ApplicationCore for FDisplayMetrics, which seeds the first run's resolution from the
+		// monitor the game opened on; RHI for IsRayTracingEnabled, which decides whether the
+		// Settings page may offer Hardware Lumen.
+		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "RenderCore", "RHI", "ApplicationCore", "MediaAssets", "DaySequence", "CelestialVault" });
 
 		// The Graphics page replaces the original's render.bmp options with Unreal's, so it drives
-		// NVIDIA's two blueprint libraries directly rather than poking console variables. Both
+		// NVIDIA's blueprint libraries directly rather than poking console variables. All three
 		// plugins are already required by the .uproject; they publish WITH_DLSS / WITH_STREAMLINE
 		// as 0 off Windows, so the call sites stay guarded and this stays Windows-only.
 		if (Target.Platform.IsInGroup(UnrealPlatformGroup.Windows))
 		{
-			PrivateDependencyModuleNames.AddRange(new string[] { "DLSSBlueprint", "StreamlineDLSSGBlueprint" });
+			PrivateDependencyModuleNames.AddRange(new string[] { "DLSSBlueprint", "StreamlineDLSSGBlueprint", "StreamlineReflexBlueprint" });
 		}
 
 		// Uncomment if you are using online features
