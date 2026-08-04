@@ -10,6 +10,42 @@ class USimCopterAudioSubsystem;
 class USimCopterRadioSubsystem;
 
 /**
+ * Picking the resolution the game should open at, kept free of the engine's display plumbing so it
+ * can be tested without a monitor.
+ *
+ * `UGameUserSettings` seeds a brand new ini from `[/Script/Engine.GameUserSettings]` defaults, which
+ * is 1280x720 - not the display's own size. On a first run that opens a small window on a 4K panel
+ * and looks broken, so the first launch takes the native resolution of whichever monitor the game
+ * actually came up on.
+ */
+namespace SimCopterDisplay
+{
+/** One monitor, in virtual-desktop coordinates. */
+struct FMonitor
+{
+	/** The panel's real pixel size, which is NOT DisplayRect when Windows is scaling it. */
+	FIntPoint NativeResolution = FIntPoint::ZeroValue;
+
+	/** Where the monitor sits on the virtual desktop. */
+	FIntRect DisplayRect = FIntRect(0, 0, 0, 0);
+
+	bool bIsPrimary = false;
+};
+
+/**
+ * Native resolution of the monitor the window is on: the one it overlaps most, falling back to the
+ * primary and then to the first listed. Zero when there are no monitors or none report a size.
+ *
+ * Overlap area rather than window centre, because a window straddling two monitors renders on the
+ * one showing most of it, and a zero-size window (which is what an unshown window reports) has no
+ * centre worth trusting.
+ */
+SIMCOPTERREMAKE_API FIntPoint FindNativeResolutionForWindow(
+	const TArray<FMonitor>& Monitors,
+	const FIntRect& WindowRect);
+}
+
+/**
  * DLSS super resolution quality, mirroring NVIDIA's UDLSSMode so the settings store does not have
  * to include the plugin's header (and so the value that lands in the ini stays stable if the
  * plugin ever renumbers). Whether DLSS runs at all is a separate flag, because that is the shape
@@ -35,6 +71,44 @@ enum class ESimCopterFrameGenMode : uint8
 	Off = 0,
 	On,
 	Auto,
+};
+
+/**
+ * NVIDIA Reflex low latency, mirroring `EStreamlineReflexMode` so the ini value stays stable if the
+ * plugin ever renumbers (its own enum is deliberately sparse - Boost is 3, not 2).
+ */
+UENUM()
+enum class ESimCopterReflexMode : uint8
+{
+	Off = 0,
+	On,
+	OnBoost,
+};
+
+/**
+ * Lumen, as the three choices a player actually cares about.
+ *
+ * Hardware and Software are the same GI method - `r.DynamicGlobalIlluminationMethod 1` - differing
+ * only in `r.Lumen.HardwareRayTracing`, so the dropdown collapses them into one row. Off drops GI to
+ * None and leaves reflections on screen-space, which is the nearest thing to "no Lumen" that still
+ * shows a reflection at all.
+ */
+UENUM()
+enum class ESimCopterLumenMode : uint8
+{
+	HardwareRayTracing = 0,
+	Software,
+	Off,
+};
+
+/** How the Settings screen's Time of Day row drives the level's day sequence. */
+UENUM()
+enum class ESimCopterTimeOfDayMode : uint8
+{
+	/** The day sequence runs, so the sun, the fog and the window lights all move. */
+	Dynamic = 0,
+	/** The clock is pinned to Static Time Of Day Hours and the day cycle is paused. */
+	Static,
 };
 
 /**
@@ -123,6 +197,51 @@ public:
 	int32 GetFrameGenMultiple() const { return FrameGenMultiple; }
 	void SetFrameGenMultiple(int32 Multiple);
 
+	ESimCopterReflexMode GetReflexMode() const { return ReflexMode; }
+	void SetReflexMode(ESimCopterReflexMode Mode) { ReflexMode = Mode; }
+
+	ESimCopterLumenMode GetLumenMode() const { return LumenMode; }
+	void SetLumenMode(ESimCopterLumenMode Mode) { LumenMode = Mode; }
+
+	bool IsVolumetricFogEnabled() const { return bVolumetricFog; }
+	void SetVolumetricFogEnabled(bool bEnabled) { bVolumetricFog = bEnabled; }
+
+	// --- time of day (the remake's; the original's equivalent is career.twk's Day/Night column) ---
+
+	ESimCopterTimeOfDayMode GetTimeOfDayMode() const { return TimeOfDayMode; }
+	void SetTimeOfDayMode(ESimCopterTimeOfDayMode Mode) { TimeOfDayMode = Mode; }
+
+	/** The hour Static mode pins the clock to, 0..24. Ignored in Dynamic. */
+	float GetStaticTimeOfDayHours() const { return StaticTimeOfDayHours; }
+	void SetStaticTimeOfDayHours(float Hours);
+
+	static constexpr float StaticTimeOfDayMinHours = 0.0f;
+	static constexpr float StaticTimeOfDayMaxHours = 24.0f;
+
+	/**
+	 * How long daylight and night each last in real minutes, in Dynamic mode.
+	 *
+	 * These are the player-facing face of `USimCopterDayNightLengthComponent`'s `DayRealMinutes` /
+	 * `NightRealMinutes`, which the day/night subsystem pushes at the level's component. They set the
+	 * two PLATEAU speeds; the transition ramps between them cost a little extra on top, so the
+	 * component's Effective Day/Night Minutes readouts are what a band actually takes.
+	 */
+	float GetDayRealMinutes() const { return DayRealMinutes; }
+	void SetDayRealMinutes(float Minutes);
+
+	float GetNightRealMinutes() const { return NightRealMinutes; }
+	void SetNightRealMinutes(float Minutes);
+
+	/** Half a minute is already a comically fast sunrise; 30 is far longer than a session needs. */
+	static constexpr float CycleLengthMinMinutes = 0.5f;
+	static constexpr float CycleLengthMaxMinutes = 30.0f;
+
+	/** "13:30" for 13.5, for the Settings row's readout. */
+	static FText FormatTimeOfDay(float Hours);
+
+	/** "7.0 min", for the two cycle length rows. */
+	static FText FormatMinutes(float Minutes);
+
 	/** Multiplies the cockpit/dashboard/map overlays. 0.5 .. 2.0. */
 	float GetHudScale() const { return HudScale; }
 	void SetHudScale(float Scale);
@@ -142,6 +261,18 @@ public:
 	/** True when DLSS Frame Generation is offered. */
 	static bool IsFrameGenAvailable();
 
+	/** True when this GPU and driver offer NVIDIA Reflex. */
+	static bool IsReflexAvailable();
+
+	/** True when a Reflex mode is offered - Boost is not on every card that has Reflex at all. */
+	static bool IsReflexModeAvailable(ESimCopterReflexMode Mode);
+
+	/**
+	 * True when hardware ray tracing is actually available, so the Lumen row can fall back to
+	 * Software instead of offering a mode that silently degrades to it.
+	 */
+	static bool IsHardwareRayTracingAvailable();
+
 	/** The DLSS quality modes this GPU offers; empty when DLSS is unavailable. */
 	static void GetAvailableDlssQualities(TArray<ESimCopterDlssQuality>& OutQualities);
 
@@ -154,6 +285,9 @@ public:
 	static FText GetDlssQualityLabel(ESimCopterDlssQuality Quality);
 	static FText GetFrameGenModeLabel(ESimCopterFrameGenMode Mode);
 	static FText GetFrameGenMultipleLabel(int32 Multiple);
+	static FText GetReflexModeLabel(ESimCopterReflexMode Mode);
+	static FText GetLumenModeLabel(ESimCopterLumenMode Mode);
+	static FText GetTimeOfDayModeLabel(ESimCopterTimeOfDayMode Mode);
 
 private:
 	UPROPERTY(Config)
@@ -186,9 +320,49 @@ private:
 	UPROPERTY(Config)
 	int32 FrameGenMultiple = FrameGenMultipleMin;
 
+	/** On by default: Reflex costs nothing when the frame is GPU bound and helps when it is not. */
+	UPROPERTY(Config)
+	ESimCopterReflexMode ReflexMode = ESimCopterReflexMode::On;
+
+	/**
+	 * Hardware by default, because the project ships with `r.Lumen.HardwareRayTracing=True` and
+	 * `r.RayTracing=True` in DefaultEngine.ini. Initialize() drops it to Software on a machine whose
+	 * RHI cannot do it, so the ini travelling to another PC does not leave the row lying.
+	 */
+	UPROPERTY(Config)
+	ESimCopterLumenMode LumenMode = ESimCopterLumenMode::HardwareRayTracing;
+
+	UPROPERTY(Config)
+	bool bVolumetricFog = true;
+
+	UPROPERTY(Config)
+	ESimCopterTimeOfDayMode TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;
+
+	/** Noon, so switching to Static without touching the slider gives full daylight. */
+	UPROPERTY(Config)
+	float StaticTimeOfDayHours = 12.0f;
+
+	/** 7 and 3, matching USimCopterDayNightLengthComponent's own defaults. */
+	UPROPERTY(Config)
+	float DayRealMinutes = 7.0f;
+
+	UPROPERTY(Config)
+	float NightRealMinutes = 3.0f;
+
 	UPROPERTY(Config)
 	float HudScale = 1.0f;
 
+	/**
+	 * False until the resolution has been seeded from the display once. Without it the seeding could
+	 * not tell "never configured" from "the player deliberately chose the same size as the desktop",
+	 * and would re-seed over their choice on every launch.
+	 */
+	UPROPERTY(Config)
+	bool bResolutionSeededFromDisplay = false;
+
 	void ApplySound(const UObject* WorldContextObject);
 	void ApplyGraphics(const UObject* WorldContextObject);
+
+	/** First run only: puts the window on the native resolution of the display it opened on. */
+	void SeedResolutionFromDisplay();
 };

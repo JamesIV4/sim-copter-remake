@@ -103,6 +103,13 @@ private:
 		uint8 DlssQuality = 0;
 		uint8 FrameGenMode = 0;
 		int32 FrameGenMultiple = 2;
+		uint8 ReflexMode = 0;
+		uint8 LumenMode = 0;
+		bool bVolumetricFog = true;
+		uint8 TimeOfDayMode = 0;
+		float StaticTimeOfDayHours = 12.0f;
+		float DayRealMinutes = 7.0f;
+		float NightRealMinutes = 3.0f;
 		float HudScale = 1.0f;
 
 		FIntPoint Resolution = FIntPoint::ZeroValue;
@@ -138,9 +145,22 @@ private:
 		const FText& Label,
 		TFunction<float()> GetAlpha,
 		TFunction<void(float)> SetAlpha,
-		TFunction<FText()> GetText);
+		TFunction<FText()> GetText,
+		TFunction<bool()> IsEnabled = TFunction<bool()>());
+	TSharedRef<SWidget> BuildCheckboxRow(
+		const FText& Label,
+		TFunction<bool()> IsChecked,
+		TFunction<void(bool)> SetChecked);
 
 	void PopulateRows(const TSharedRef<SVerticalBox>& Rows);
+
+	/**
+	 * Pushes the Time of Day rows at the level's day sequence through
+	 * `USimCopterDayNightSubsystem`, so the sun moves while the page is still open. Every other row
+	 * here applies through UGameUserSettings or a console variable, which is why this one needs a
+	 * helper of its own.
+	 */
+	void ApplyTimeOfDay();
 
 	void Accept();
 	void Cancel();

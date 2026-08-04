@@ -8,9 +8,13 @@ project-authored parent materials live in source control.
 What it produces:
   * T_CityPage_<id>      one full 256x256 atlas page per referenced SIM3D.BMP image, nearest
                          filtered + no mips so the renderer's per-cell UV math samples cleanly.
-                         Page 20 is the SKY.BMP image-4 exception. T_TerrainLow is TILED1 image 0.
+                         Pages 2, 13, 20, 39 and 40 come from SKY.BMP instead - the original copies
+                         its images 1..5 over those slots on load. T_TerrainLow is TILED1 image 0.
+  * T_CityNightPage_<id> the same five pages from SKYDARK.BMP, which is what the original loads
+                         after dark. These are the ones with the lit building windows painted on.
   * MI_CityPage_<id>     MaterialInstanceConstant (parent M_SimCopterCityAtlas) per page, used by
                          building/road faces (in-cell UV in TexCoord0, cell col/row in TexCoord1).
+                         Carries both the day and night page; the material blends them on NightBlend.
   * T/MI_CityImage_<id>  Direct SIM3D image textures for the sprite cards (face type 2 - trees and
                          signs) and the rare face type 13 geometry. These carry the palette-index-0
                          alpha key, hang off the masked LIT card parent, and preserve Maxis'
@@ -39,6 +43,13 @@ SPRITE_MATERIAL = "/Game/Materials/M_SimCopterLitSpriteTexture"
 SKY_PAGE_ID = 20          # face TextureAtlasIndex 20 resolves to SKY.BMP image 4, not SIM3D image 20
 SKY_IMAGE_INDEX = 4
 TERRAIN_HIGH_PAGE_ID = 13  # SIM3D.BMP image 13 doubles as the high terrain page (0x0d)
+
+# SCHOOK: FUN_004606d0 0x004606d0. After loading sky.bmp (day) or skydark.bmp (night), the original
+# blits image 0 as the 640x200 sky backdrop and then memcpy's images 1..5 straight over these live
+# atlas pages. So these five pages are NOT SIM3D's - sky.bmp owns them in both lighting states, and
+# the night variants are where the lit building windows are painted. Which file is loaded comes off
+# renderer+0x4f, set by FUN_00460690 from DAT_004f9720 (1 == night).
+SKY_IMAGE_TO_ATLAS_PAGE = {1: 2, 2: 39, 3: 40, 4: SKY_PAGE_ID, 5: TERRAIN_HIGH_PAGE_ID}
 
 
 def reference_root():
@@ -144,7 +155,8 @@ def import_texture(png_path, asset_name):
     return texture
 
 
-def create_material_instance(asset_name, parent_path, texture, identify_mesh_water_cells=False):
+def create_material_instance(asset_name, parent_path, texture, identify_mesh_water_cells=False,
+                             night_texture=None):
     asset_path = f"{OUTPUT_DIR}/{asset_name}"
     parent = unreal.EditorAssetLibrary.load_asset(parent_path)
     existing = unreal.EditorAssetLibrary.load_asset(asset_path)
@@ -156,6 +168,15 @@ def create_material_instance(asset_name, parent_path, texture, identify_mesh_wat
         )
     mic.set_editor_property("parent", parent)
     unreal.MaterialEditingLibrary.set_material_instance_texture_parameter_value(mic, "Texture", texture)
+    # Every atlas page gets a NightTexture. As it happens all five have a night variant, because the
+    # only 256x256 images in SIM3D are the four sky.bmp also owns; the caller still passes the day
+    # texture through for a page without one, so adding a page later cannot leave the parameter unset
+    # and reading the parent's grey checker after dark. The sprite and terrain parents have no such
+    # parameter, and set_material_instance_texture_parameter_value is a no-op on those.
+    if night_texture is not None:
+        unreal.MaterialEditingLibrary.set_material_instance_texture_parameter_value(
+            mic, "NightTexture", night_texture
+        )
     # Legacy parameter name retained so existing page-20 instances keep working. It now identifies
     # static pool/pond cells for the material's constant depth offset; it no longer animates UVs.
     unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value(
@@ -169,6 +190,7 @@ def main():
     palette = read_palette(os.path.join(root, "GEO", "sim3d1.max"))
     sim3d = decode_composite(os.path.join(root, "BMP", "SIM3D.BMP"), palette)
     sky = decode_composite(os.path.join(root, "BMP", "SKY.BMP"), palette)
+    skydark = decode_composite(os.path.join(root, "BMP", "SKYDARK.BMP"), palette)
     tiled1 = decode_composite(os.path.join(root, "BMP", "TILED1.BMP"), palette)
 
     temp_dir = os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()), "CityAtlasBake")
@@ -182,15 +204,32 @@ def main():
     for index, (w, h, rgb, _alpha) in enumerate(sim3d):
         if w == 256 and h == 256:
             page_sources[index] = (w, h, rgb)
-    # The SKY.BMP image-4 exception overrides page 20 regardless of SIM3D image 20.
-    sky_w, sky_h, sky_rgb, _sky_alpha = sky[SKY_IMAGE_INDEX]
-    page_sources[SKY_PAGE_ID] = (sky_w, sky_h, sky_rgb)
+
+    # sky.bmp owns five of the pages outright - it is copied over them on load, in both lighting
+    # states - so those five come from it rather than from SIM3D. Page 20 already had to: SIM3D
+    # image 20 is a degenerate 1x256 strip and was never the page the renderer used.
+    night_sources = {}
+    for image_index, page_id in SKY_IMAGE_TO_ATLAS_PAGE.items():
+        w, h, rgb, _alpha = sky[image_index]
+        page_sources[page_id] = (w, h, rgb)
+        nw, nh, nrgb, _nalpha = skydark[image_index]
+        night_sources[page_id] = (nw, nh, nrgb)
 
     baked_pages = []
+    baked_night_pages = []
     for page_id, (w, h, rgb) in sorted(page_sources.items()):
         png = os.path.join(temp_dir, f"page_{page_id}.png")
         write_png(png, w, h, rgb)
         texture = import_texture(png, f"T_CityPage_{page_id}")
+
+        night_texture = texture
+        if page_id in night_sources:
+            nw, nh, nrgb = night_sources[page_id]
+            night_png = os.path.join(temp_dir, f"page_night_{page_id}.png")
+            write_png(night_png, nw, nh, nrgb)
+            night_texture = import_texture(night_png, f"T_CityNightPage_{page_id}")
+            baked_night_pages.append(page_id)
+
         # SCHOOK: FUN_004814c0. SKY.BMP image 4 (the page-20 exception) contains the exact same
         # water cells 0..9 as TILED1. Mesh-object ponds/pools use base cell 0 or 5 and therefore
         # advance with the terrain water instead of staying on their first frame.
@@ -199,6 +238,7 @@ def main():
             ATLAS_MATERIAL,
             texture,
             identify_mesh_water_cells=(page_id == SKY_PAGE_ID),
+            night_texture=night_texture,
         )
         baked_pages.append(page_id)
 
@@ -224,8 +264,8 @@ def main():
         create_material_instance("MI_TerrainHigh", TERRAIN_MATERIAL, terrain_high)
 
     unreal.log(
-        f"CITY ATLAS BAKE DONE: pages={baked_pages} directImages={len(baked_direct_images)} "
-        f"terrainHigh={'yes' if terrain_high else 'no'}"
+        f"CITY ATLAS BAKE DONE: pages={baked_pages} nightPages={baked_night_pages} "
+        f"directImages={len(baked_direct_images)} terrainHigh={'yes' if terrain_high else 'no'}"
     )
 
 

@@ -3,6 +3,7 @@
 #include "SSimCopterHangarMenu.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
+#include "City/SimCopterDayNight.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
@@ -37,8 +38,16 @@ const FLinearColor PaperInkDim(0.24f, 0.24f, 0.28f, 1.0f);
 const FLinearColor ShellLabel(0.94f, 0.94f, 0.90f, 1.0f);
 const FLinearColor SelectionTint(0.10f, 0.28f, 0.85f, 1.0f);
 
+// SCHOOK: HangarBackdrop 0x0043b6e0 / 0x0043c540 - the shell stores the day/night flag at ui+0x112
+// (`*(uint *)(param_1 + 0x112) = (DAT_004f9720 == 0)`, so the field is "is it DAY") and picks
+// dhangar.bmp or nhangar.bmp off it. Both the original bitmaps and both reconstructions are here;
+// the night pair is used whenever the level's day sequence says it is night.
+const TCHAR* const UpscaledHangarBackdropDay = TEXT("DHANGAR-upscaled.png");
+const TCHAR* const UpscaledHangarBackdropNight = TEXT("NHANGER-upscaled.png");
+const TCHAR* const HangarBackdropDay = TEXT("DHANGAR.BMP");
+const TCHAR* const HangarBackdropNight = TEXT("NHANGAR.BMP");
+
 // The original's button strips: button.bmp is three 100x28 frames, cat_btn.bmp three 86x28.
-const TCHAR* const UpscaledHangarBackdrop = TEXT("DHANGAR-upscaled.png");
 const TCHAR* const ShellButtonStrip = TEXT("BUTTON.BMP");
 const TCHAR* const CatalogButtonStrip = TEXT("CAT_BTN.BMP");
 constexpr int32 ButtonFrameCount = 3;
@@ -320,11 +329,20 @@ void SSimCopterHangarMenu::BuildHangarPage(SConstraintCanvas& Canvas)
 	// The high-resolution reconstruction fills the same viewport backdrop slot as dhangar.bmp.
 	// Keep the original available as a fallback for a missing or unreadable bundled image.
 	USimCopterHangarArt* ArtObject = Art.Get();
-	const FSlateBrush* Backdrop3D =
-		ArtObject != nullptr ? ArtObject->GetBundledSlateImage(UpscaledHangarBackdrop) : nullptr;
+
+	// The shell is entered from the airport, so the flag is read once on open rather than tracked:
+	// the original's was a per-city constant and could not change while the player was inside.
+	const UWorld* World = (GEngine != nullptr && GEngine->GameViewport != nullptr)
+		? GEngine->GameViewport->GetWorld()
+		: nullptr;
+	const bool bNight = USimCopterDayNightSubsystem::IsNightForWorld(World);
+
+	const FSlateBrush* Backdrop3D = ArtObject != nullptr
+		? ArtObject->GetBundledSlateImage(bNight ? UpscaledHangarBackdropNight : UpscaledHangarBackdropDay)
+		: nullptr;
 	if (Backdrop3D == nullptr && ArtObject != nullptr)
 	{
-		Backdrop3D = ArtObject->GetBitmap(TEXT("DHANGAR.BMP"));
+		Backdrop3D = ArtObject->GetBitmap(bNight ? HangarBackdropNight : HangarBackdropDay);
 	}
 	if (Backdrop3D != nullptr && Backdrop.IsValid())
 	{

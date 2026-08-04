@@ -3,7 +3,10 @@
 #include "SSimCopterGraphicsSettings.h"
 
 #include "Brushes/SlateColorBrush.h"
+#include "City/SimCopterDayNight.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/World.h"
 #include "Game/SimCopterSettings.h"
 #include "GameFramework/GameUserSettings.h"
 #include "InputCoreTypes.h"
@@ -11,6 +14,7 @@
 #include "SSimCopterCheckupSlider.h"
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterHangarArt.h"
+#include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -232,7 +236,8 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 	const FText& Label,
 	TFunction<float()> GetAlpha,
 	TFunction<void(float)> SetAlpha,
-	TFunction<FText()> GetText)
+	TFunction<FText()> GetText,
+	TFunction<bool()> IsEnabled)
 {
 	USimCopterHangarArt* ArtObject = Art;
 	const FSlateBrush* Thumb = ArtObject != nullptr ? ArtObject->GetBitmap(ThumbBitmap, /*bColorKeyed=*/false) : nullptr;
@@ -244,6 +249,7 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 	TSharedRef<SSimCopterCheckupSlider> Slider = SNew(SSimCopterCheckupSlider)
 		.ThumbBrush(Thumb)
 		.Orientation(Orient_Horizontal)
+		.IsEnabled_Lambda([IsEnabled]() { return !IsEnabled || IsEnabled(); })
 		.OnValueChanged_Lambda([SetAlpha](const float Alpha)
 		{
 			if (SetAlpha)
@@ -267,7 +273,10 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 					SNew(STextBlock)
 					.Text(Label)
 					.Font(PageFont(RowFontHeight))
-					.ColorAndOpacity(FSlateColor(RowText))
+					.ColorAndOpacity_Lambda([IsEnabled]()
+					{
+						return FSlateColor((!IsEnabled || IsEnabled()) ? RowText : DisabledText);
+					})
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -289,8 +298,53 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 					.Justification(ETextJustify::Right)
 					.Text_Lambda([GetText]() { return GetText ? GetText() : FText::GetEmpty(); })
 					.Font(PageFont(RowFontHeight))
+					.ColorAndOpacity_Lambda([IsEnabled]()
+					{
+						return FSlateColor((!IsEnabled || IsEnabled()) ? RowText : DisabledText);
+					})
+				]
+			]
+		];
+}
+
+TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCheckboxRow(
+	const FText& Label,
+	TFunction<bool()> IsChecked,
+	TFunction<void(bool)> SetChecked)
+{
+	return SNew(SBox)
+		.HeightOverride(RowHeight)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				SNew(SBox)
+				.WidthOverride(RowLabelWidth)
+				[
+					SNew(STextBlock)
+					.Text(Label)
+					.Font(PageFont(RowFontHeight))
 					.ColorAndOpacity(FSlateColor(RowText))
 				]
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.VAlign(VAlign_Center)
+			[
+				SNew(SCheckBox)
+				.IsChecked_Lambda([IsChecked]()
+				{
+					return (IsChecked && IsChecked()) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				})
+				.OnCheckStateChanged_Lambda([SetChecked](const ECheckBoxState State)
+				{
+					if (SetChecked)
+					{
+						SetChecked(State == ECheckBoxState::Checked);
+					}
+				})
 			]
 		];
 }
@@ -433,6 +487,50 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 			return Settings != nullptr && Settings->GetFrameGenMode() == ESimCopterFrameGenMode::On;
 		};
 		AddRow(BuildDropdownRow(LOCTEXT("FrameGenMultiple", "Generated Frames"), Multiple));
+	}
+
+	// ---------------------------------------------------------------------------------------
+	// Reflex. Its own heading rather than a row under DLSS: it is a separate Streamline feature
+	// and it is offered on cards that have no DLSS at all.
+	// ---------------------------------------------------------------------------------------
+
+	if (USimCopterSettings::IsReflexAvailable())
+	{
+		AddRow(BuildHeading(LOCTEXT("HeadingReflex", "NVIDIA Reflex")));
+
+		// Boost is not offered on every card that has Reflex, so the list is what this GPU answers
+		// to rather than all three unconditionally.
+		TArray<ESimCopterReflexMode> Modes;
+		for (const ESimCopterReflexMode Mode : { ESimCopterReflexMode::Off, ESimCopterReflexMode::On, ESimCopterReflexMode::OnBoost })
+		{
+			if (Mode == ESimCopterReflexMode::Off || USimCopterSettings::IsReflexModeAvailable(Mode))
+			{
+				Modes.Add(Mode);
+			}
+		}
+
+		FRowBinding Reflex;
+		Reflex.GetCount = [Modes]() { return Modes.Num(); };
+		Reflex.GetOptionLabel = [Modes](const int32 Index)
+		{
+			return Modes.IsValidIndex(Index)
+				? USimCopterSettings::GetReflexModeLabel(Modes[Index])
+				: FText::GetEmpty();
+		};
+		Reflex.GetIndex = [this, Modes]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr ? FMath::Max(Modes.IndexOfByKey(Settings->GetReflexMode()), 0) : 0;
+		};
+		Reflex.SetIndex = [this, Modes](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this); Settings != nullptr && Modes.IsValidIndex(Index))
+			{
+				Settings->SetReflexMode(Modes[Index]);
+				Settings->ApplyAll(nullptr);
+			}
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("Reflex", "Low Latency"), Reflex));
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -613,6 +711,182 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		}));
 
 	// ---------------------------------------------------------------------------------------
+	// Lighting - the two the city actually notices. Lumen carries the night, because the window
+	// lights and the street lamps are emissive rather than light components.
+	// ---------------------------------------------------------------------------------------
+
+	AddRow(BuildHeading(LOCTEXT("HeadingLighting", "Lighting")));
+
+	{
+		TArray<ESimCopterLumenMode> Modes;
+		if (USimCopterSettings::IsHardwareRayTracingAvailable())
+		{
+			Modes.Add(ESimCopterLumenMode::HardwareRayTracing);
+		}
+		Modes.Add(ESimCopterLumenMode::Software);
+		Modes.Add(ESimCopterLumenMode::Off);
+
+		FRowBinding Lumen;
+		Lumen.GetCount = [Modes]() { return Modes.Num(); };
+		Lumen.GetOptionLabel = [Modes](const int32 Index)
+		{
+			return Modes.IsValidIndex(Index)
+				? USimCopterSettings::GetLumenModeLabel(Modes[Index])
+				: FText::GetEmpty();
+		};
+		Lumen.GetIndex = [this, Modes]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr ? FMath::Max(Modes.IndexOfByKey(Settings->GetLumenMode()), 0) : 0;
+		};
+		Lumen.SetIndex = [this, Modes](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this); Settings != nullptr && Modes.IsValidIndex(Index))
+			{
+				Settings->SetLumenMode(Modes[Index]);
+				Settings->ApplyAll(nullptr);
+			}
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("Lumen", "Lumen"), Lumen));
+	}
+
+	AddRow(BuildCheckboxRow(
+		LOCTEXT("VolumetricFog", "Volumetric Fog"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || Settings->IsVolumetricFogEnabled();
+		},
+		[this](const bool bEnabled)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetVolumetricFogEnabled(bEnabled);
+				Settings->ApplyAll(nullptr);
+			}
+		}));
+
+	// ---------------------------------------------------------------------------------------
+	// World. The original had no equivalent - a city's time of day came from career.twk's
+	// Day/Night column and never moved - so this is entirely the remake's.
+	// ---------------------------------------------------------------------------------------
+
+	AddRow(BuildHeading(LOCTEXT("HeadingWorld", "World")));
+
+	{
+		FRowBinding TimeOfDay;
+		TimeOfDay.GetCount = []() { return 2; };
+		TimeOfDay.GetOptionLabel = [](const int32 Index)
+		{
+			return USimCopterSettings::GetTimeOfDayModeLabel(static_cast<ESimCopterTimeOfDayMode>(Index));
+		};
+		TimeOfDay.GetIndex = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr ? static_cast<int32>(Settings->GetTimeOfDayMode()) : 0;
+		};
+		TimeOfDay.SetIndex = [this](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetTimeOfDayMode(static_cast<ESimCopterTimeOfDayMode>(Index));
+				ApplyTimeOfDay();
+			}
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("TimeOfDayMode", "Time of Day"), TimeOfDay));
+	}
+
+	// Greyed in Dynamic, where the clock is the day sequence's to move and this would do nothing.
+	AddRow(BuildSliderRow(
+		LOCTEXT("StaticTimeOfDay", "Static Time"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const float Hours = Settings != nullptr ? Settings->GetStaticTimeOfDayHours() : 12.0f;
+			return Hours / USimCopterSettings::StaticTimeOfDayMaxHours;
+		},
+		[this](const float Alpha)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetStaticTimeOfDayHours(Alpha * USimCopterSettings::StaticTimeOfDayMaxHours);
+				ApplyTimeOfDay();
+			}
+		},
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return USimCopterSettings::FormatTimeOfDay(
+				Settings != nullptr ? Settings->GetStaticTimeOfDayHours() : 12.0f);
+		},
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr && Settings->GetTimeOfDayMode() == ESimCopterTimeOfDayMode::Static;
+		}));
+
+	// The two halves of the cycle get their own real-world durations, which is the whole point of
+	// USimCopterDayNightLengthComponent - a day sequence otherwise runs one clock at one speed and
+	// splits a 10 minute cycle evenly. Both are greyed in Static, where nothing is moving.
+	{
+		const auto AddCycleLengthRow = [this, &AddRow](
+			const FText& Label,
+			TFunction<float(const USimCopterSettings*)> Getter,
+			TFunction<void(USimCopterSettings*, float)> Setter,
+			const float Fallback)
+		{
+			// The slider runs 0..1 over the whole allowed range rather than 0..Max, so the bottom of
+			// the track is the shortest legal cycle instead of a frozen one.
+			const auto ToAlpha = [](const float Minutes)
+			{
+				return (Minutes - USimCopterSettings::CycleLengthMinMinutes)
+					/ (USimCopterSettings::CycleLengthMaxMinutes - USimCopterSettings::CycleLengthMinMinutes);
+			};
+
+			AddRow(BuildSliderRow(
+				Label,
+				[this, Getter, Fallback, ToAlpha]()
+				{
+					const USimCopterSettings* Settings = GetSettings(this);
+					return ToAlpha(Settings != nullptr ? Getter(Settings) : Fallback);
+				},
+				[this, Setter](const float Alpha)
+				{
+					if (USimCopterSettings* Settings = GetSettings(this))
+					{
+						Setter(Settings, FMath::Lerp(
+							USimCopterSettings::CycleLengthMinMinutes,
+							USimCopterSettings::CycleLengthMaxMinutes,
+							Alpha));
+						ApplyTimeOfDay();
+					}
+				},
+				[this, Getter, Fallback]()
+				{
+					const USimCopterSettings* Settings = GetSettings(this);
+					return USimCopterSettings::FormatMinutes(Settings != nullptr ? Getter(Settings) : Fallback);
+				},
+				[this]()
+				{
+					const USimCopterSettings* Settings = GetSettings(this);
+					return Settings != nullptr && Settings->GetTimeOfDayMode() == ESimCopterTimeOfDayMode::Dynamic;
+				}));
+		};
+
+		AddCycleLengthRow(
+			LOCTEXT("DayLength", "Daytime Length"),
+			[](const USimCopterSettings* S) { return S->GetDayRealMinutes(); },
+			[](USimCopterSettings* S, const float V) { S->SetDayRealMinutes(V); },
+			7.0f);
+
+		AddCycleLengthRow(
+			LOCTEXT("NightLength", "Nighttime Length"),
+			[](const USimCopterSettings* S) { return S->GetNightRealMinutes(); },
+			[](USimCopterSettings* S, const float V) { S->SetNightRealMinutes(V); },
+			3.0f);
+	}
+
+	// ---------------------------------------------------------------------------------------
 	// Interface
 	// ---------------------------------------------------------------------------------------
 
@@ -727,10 +1001,27 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		[](UGameUserSettings* S, const int32 V) { S->SetShadingQuality(V); });
 }
 
+void SSimCopterGraphicsSettings::ApplyTimeOfDay()
+{
+	const UWorld* World = (GEngine != nullptr && GEngine->GameViewport != nullptr)
+		? GEngine->GameViewport->GetWorld()
+		: nullptr;
+	if (USimCopterDayNightSubsystem* DayNight = World != nullptr
+		? World->GetSubsystem<USimCopterDayNightSubsystem>()
+		: nullptr)
+	{
+		DayNight->ApplyTimeOfDaySettings();
+	}
+}
+
 void SSimCopterGraphicsSettings::Accept()
 {
 	if (UGameUserSettings* UserSettings = GetUserSettings())
 	{
+		// The rows already applied as they were changed; OK is what makes it permanent. Confirming
+		// the video mode is what stops a later RevertVideoMode snapping back to whatever the window
+		// happened to be when the page opened.
+		UserSettings->ConfirmVideoMode();
 		UserSettings->SaveSettings();
 	}
 	if (USimCopterSettings* Settings = GetSettings(this))
@@ -750,6 +1041,13 @@ void SSimCopterGraphicsSettings::CaptureEnteredState()
 		Entered.DlssQuality = static_cast<uint8>(Settings->GetDlssQuality());
 		Entered.FrameGenMode = static_cast<uint8>(Settings->GetFrameGenMode());
 		Entered.FrameGenMultiple = Settings->GetFrameGenMultiple();
+		Entered.ReflexMode = static_cast<uint8>(Settings->GetReflexMode());
+		Entered.LumenMode = static_cast<uint8>(Settings->GetLumenMode());
+		Entered.bVolumetricFog = Settings->IsVolumetricFogEnabled();
+		Entered.TimeOfDayMode = static_cast<uint8>(Settings->GetTimeOfDayMode());
+		Entered.StaticTimeOfDayHours = Settings->GetStaticTimeOfDayHours();
+		Entered.DayRealMinutes = Settings->GetDayRealMinutes();
+		Entered.NightRealMinutes = Settings->GetNightRealMinutes();
 		Entered.HudScale = Settings->GetHudScale();
 	}
 
@@ -784,8 +1082,15 @@ void SSimCopterGraphicsSettings::RestoreEnteredState()
 		Settings->SetDlssQuality(static_cast<ESimCopterDlssQuality>(Entered.DlssQuality));
 		Settings->SetFrameGenMode(static_cast<ESimCopterFrameGenMode>(Entered.FrameGenMode));
 		Settings->SetFrameGenMultiple(Entered.FrameGenMultiple);
-		Settings->SetHudScale(Entered.HudScale);
+		Settings->SetReflexMode(static_cast<ESimCopterReflexMode>(Entered.ReflexMode));
+		Settings->SetLumenMode(static_cast<ESimCopterLumenMode>(Entered.LumenMode));
+		Settings->SetVolumetricFogEnabled(Entered.bVolumetricFog);
+		Settings->SetTimeOfDayMode(static_cast<ESimCopterTimeOfDayMode>(Entered.TimeOfDayMode));
+		Settings->SetStaticTimeOfDayHours(Entered.StaticTimeOfDayHours);
+		Settings->SetDayRealMinutes(Entered.DayRealMinutes);
+		Settings->SetNightRealMinutes(Entered.NightRealMinutes);
 		Settings->ApplyAll(nullptr);
+		ApplyTimeOfDay();
 	}
 
 	UGameUserSettings* UserSettings = GetUserSettings();
