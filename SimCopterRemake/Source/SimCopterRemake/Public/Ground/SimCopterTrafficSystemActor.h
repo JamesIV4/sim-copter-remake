@@ -40,8 +40,10 @@ enum class ESimCopterTrafficFlowMode : uint8
 
 // Which car AI drives the traffic. Original = the decoded SimCopter behavior: cars wander the
 // road graph with random turns, queue behind blockers (jams form naturally, and the player's
-// landed helicopter blocks tiles), no traffic lights. Modernized = the remake's traffic-light +
-// blockage-recovery system, kept for comparison/backup.
+// landed helicopter blocks tiles), no traffic lights. This is the default. Modernized = the
+// remake's traffic-light + blockage-recovery system: cars prefer to carry straight on, wait out a
+// red at the intersections, and dig themselves out when stuck. Note that ApplyPlayerRoadBlocking is
+// an Original-mode rule, so a landed helicopter does not stop cars in Modernized.
 UENUM(BlueprintType)
 enum class ESimCopterTrafficAiMode : uint8
 {
@@ -410,6 +412,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float VehicleRightTurnCornerClipTileFraction = 0.14f;
 
+	// Original: the decoded no-stoplight traffic. Switching to Modernized is what turns the
+	// stoplight system on - ApplyTrafficLights is only reached on that branch of ApplyTrafficRules,
+	// and nothing logs that it was skipped, so a car that never stops at a junction means this.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic")
 	ESimCopterTrafficAiMode TrafficAiMode = ESimCopterTrafficAiMode::Original;
 
@@ -439,8 +444,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "0.0"))
 	float NormalTrafficBrakeRate = 5.5f;
 
+	// How long one axis holds green before the other gets it.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "0.5"))
-	float TrafficLightPhaseSeconds = 10.0f;
+	float TrafficLightPhaseSeconds = 5.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal")
 	bool bStaggerTrafficLightPhases = true;

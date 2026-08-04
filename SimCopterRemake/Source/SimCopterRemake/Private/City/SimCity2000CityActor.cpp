@@ -644,6 +644,42 @@ bool IsOriginalTerrainTileFlat(const TArray<int16>& ConditionedCorners, int32 Fi
 	return Corner00 == Corner10 && Corner00 == Corner01 && Corner00 == Corner11;
 }
 
+// Which surface ramps keep the original's untouched tmap instead of the remake's one-step wedge
+// (see the 0x1f..0x22 case in BuildConditionedTerrainCornerSamples).
+//
+// The wedge exists to stop a ramp between two flattened streets from floating, and that is the only
+// case it is wanted in. A ramp climbing onto a bridge deck already has its grade resolved by the
+// raised-span rule and the bridge object's own one-step top, so wedging the ground as well drives
+// it up into the deck; and a ramp beside water must leave the shoreline alone, since raising a
+// corner there pushes land through the water surface. Both keep the decoded behaviour.
+//
+// The neighbourhood is all eight surrounding cells, not just the four edge-sharing ones: this pass
+// writes CORNER samples, and a diagonal neighbour shares one of them.
+bool IsRampTerrainClampSuppressed(const FSimCity2000City& City, int32 FileX, int32 FileY)
+{
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	for (int32 OffsetY = -1; OffsetY <= 1; ++OffsetY)
+	{
+		for (int32 OffsetX = -1; OffsetX <= 1; ++OffsetX)
+		{
+			const int32 NeighborX = FileX + OffsetX;
+			const int32 NeighborY = FileY + OffsetY;
+			if (NeighborX < 0 || NeighborX >= MapSize || NeighborY < 0 || NeighborY >= MapSize)
+			{
+				continue;
+			}
+
+			const FSimCity2000Tile& Neighbor = City.Tiles[NeighborY * MapSize + NeighborX];
+			if (Neighbor.bWater || ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(Neighbor.Building))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 // FUN_004abce0's tmap conditioning, ported exactly. The seeded corner grid (averages of the
 // up-to-4 adjacent tile-center samples, matching the original's seed-then-interpolate fill)
 // is then modified in place:
@@ -700,7 +736,13 @@ TArray<int16> BuildConditionedTerrainCornerSamples(const FSimCity2000City& City)
 			const bool bFlatNetworkTile =
 				Building == 0x1D || Building == 0x1E ||
 				(Building >= 0x23 && Building <= 0x2D) ||
-				(Building >= 0x32 && Building <= 0x3A);
+				(Building >= 0x32 && Building <= 0x3A) ||
+				// Divergence, deliberate: 0x43/0x44 are not in the original's flatten set because
+				// there the power crossing brought its own road slab and its own sloped RD67H/RD68H
+				// variant. The remake gives those tiles the ordinary straight-road piece instead
+				// (GetOriginalBridgeDispatch), so they need the same auto-flatten every other flat
+				// street gets - without it the crossing stands up out of the road as a raised block.
+				Building == 0x43 || Building == 0x44;
 			if (Building >= 0x70 || bFlatNetworkTile)
 			{
 				const int32 Sample = GetTerrainHeightMapSample(Tile);
@@ -708,6 +750,35 @@ TArray<int16> BuildConditionedTerrainCornerSamples(const FSimCity2000City& City)
 				Set(FileX + 1, FileY, Sample);
 				Set(FileX, FileY + 1, Sample);
 				Set(FileX + 1, FileY + 1, Sample);
+			}
+			// Surface road ramps RD31..RD34. Divergence, deliberate: the original leaves the tmap
+			// alone here and lets the piece span whatever grade the ALTM already had, but the remake
+			// flattens every road tile around them, which drags the shared corners to the
+			// neighbours' levels and leaves the ramp deck hanging in the air. Wedge the tile to the
+			// ramp's own grade instead - the same shape as cases 0x3f..0x42 below, but anchored to
+			// this tile's own ALTM sample rather than a neighbouring corner, because that sample is
+			// exactly where GetAverageTerrainSurfaceZ places the ramp mesh. The terrain then meets
+			// the deck at both edges whatever order the sweep visits the neighbours in.
+			//
+			// One step is the right rise: each ramp's authored asphalt climbs 32 mesh units, and
+			// 32 units x 25 cm x the 400/1600 mesh scale = 200 cm = one TerrainHeightScale = 0x20.
+			// The high edges are measured off the meshes (Docs/scratchpad/dump_ramp_direction.py),
+			// not guessed: north, west, south, east - the same order as rail slopes 0x2e..0x31.
+			//
+			// Bridge approaches and shoreline ramps opt out - see IsRampTerrainClampSuppressed.
+			else if (Building >= 0x1F && Building <= 0x22 && !IsRampTerrainClampSuppressed(City, FileX, FileY))
+			{
+				const int32 LowSample = GetTerrainHeightMapSample(Tile);
+				const int32 HighSample = LowSample + 0x20;
+				const bool bHighNorth = Building == 0x1F;
+				const bool bHighWest = Building == 0x20;
+				const bool bHighSouth = Building == 0x21;
+				const bool bHighEast = Building == 0x22;
+				// Grid row FileY is the north edge, column FileX the west edge.
+				Set(FileX, FileY, bHighNorth || bHighWest ? HighSample : LowSample);
+				Set(FileX + 1, FileY, bHighNorth || bHighEast ? HighSample : LowSample);
+				Set(FileX, FileY + 1, bHighSouth || bHighWest ? HighSample : LowSample);
+				Set(FileX + 1, FileY + 1, bHighSouth || bHighEast ? HighSample : LowSample);
 			}
 			else if (Building == 0x3F)
 			{
@@ -755,8 +826,15 @@ FOriginalBridgeDispatch GetOriginalBridgeDispatch(uint8 BuildingId, bool bTileIs
 	case 0x40: return { 0x179 };
 	case 0x41: return { 0x17a };
 	case 0x42: return { 0x17b };
-	case 0x43: return { bTileIsFlat ? 0x128 : 0x17f };
-	case 0x44: return { bTileIsFlat ? 0x129 : 0x180 };
+	// Power line over road. The original packs the road and the pylon into one object (RD67/RD68,
+	// or RD67H/RD68H on a slope), and that packed road half is a different piece of asphalt from the
+	// street either side of it - it reads as a raised block across the crossing and carries its own
+	// centre line at its own cadence. Split it the way 0x45/0x46 split the rail crossing instead:
+	// the ordinary straight-road piece is the primary, so the tile gets the same surface and the
+	// same procedural dashes as its neighbours, and the crossing object rides along as the secondary
+	// for its pylon and wires. AppendMaxisMeshObject drops the secondary's asphalt and centre line.
+	case 0x43: return { bTileIsFlat ? 0x3b : 0x1d, bTileIsFlat ? 0x128 : 0x17f };
+	case 0x44: return { bTileIsFlat ? 0x3c : 0x1e, bTileIsFlat ? 0x129 : 0x180 };
 	case 0x45: return { bTileIsFlat ? 0x3b : 0x1d, 0x2d };
 	case 0x46: return { bTileIsFlat ? 0x3c : 0x1e, 0x2c };
 	case 0x47: return { 0x17d };
@@ -2174,29 +2252,46 @@ uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
 	constexpr uint8 S = static_cast<uint8>(ERoadOpening::South);
 	constexpr uint8 W = static_cast<uint8>(ERoadOpening::West);
 
+	// This procedural table is the road-line system for the whole surface network: it is what sets
+	// the dash frequency (AppendRoadMarkingsForTile's two dashes across a straight tile, one across
+	// a corner) and the spacing (AppendTiledDashedRoadMarkingSegment's DashFillRatio). Rendering the
+	// RD objects' own face-type-20 endpoints instead replaces that cadence with whatever the MAX
+	// exporter authored per piece, so the two cannot both be on.
+	//
+	// The three-and-four-way ids below deliberately declare all of their openings: AppendRoadMarkings-
+	// ForTile only draws a tile with exactly two, which is how yellow lines stay off intersections.
 	switch (BuildingId)
 	{
-	// Every RD surface-road object already carries its exact face-type-20 centre-line segments.
-	// In particular RD31..RD34 author those endpoints on their sloped asphalt plane. Rebuilding
-	// them from the terrain grid painted a second yellow line underneath every road ramp.
+	case 0x1D: return E | W;
+	case 0x1E: return N | S;
+	case 0x1F: return N | S;
+	case 0x20: return E | W;
+	case 0x21: return N | S;
+	case 0x22: return E | W;
+	case 0x23: return S | W;
+	case 0x24: return E | S;
+	case 0x25: return N | E;
+	case 0x26: return N | W;
+	case 0x27: return N | S | W;
+	case 0x28: return E | S | W;
+	case 0x29: return N | E | S;
+	case 0x2A: return N | E | W;
+	case 0x2B: return N | E | S | W;
 	case 0x3F: return N | S;
 	case 0x40: return E | W;
 	case 0x41: return N | S;
 	case 0x42: return E | W;
-	// RD67/RD68 (the power-line-over-road crossing) already carry the original face-type-20
-	// centre-line geometry. The procedural road-marking workaround was added while those mesh
-	// line faces were missing; retaining it now lays a second raised strip/block over the crossing.
-	case 0x43:
-	case 0x44:
-		return 0;
-	// Road/rail crossing meshes also carry their own road line.
-	case 0x45:
-	case 0x46:
-		return 0;
-	// RD73/RD74 are reused by all six simple road-bridge ids and, like RD67/RD68 above,
-	// already carry their face-type-20 centre line on the raised deck. A procedural duplicate
-	// is both unnecessary and dangerous: before the raised-plane fix it was the yellow line seen
-	// on the water/ground under the bridge.
+	// RD67/RD68, the power-line-over-road crossing. Its road half is no longer drawn from the
+	// crossing object at all (see GetOriginalBridgeDispatch), so the tile takes the ordinary
+	// straight-road piece and the ordinary dashes over it. 0x43 carries traffic east-west.
+	case 0x43: return E | W;
+	case 0x44: return N | S;
+	case 0x45: return E | W;
+	case 0x46: return N | S;
+	// RD73/RD74 are reused by all six simple road-bridge ids and already carry their face-type-20
+	// centre line on the raised deck, which the bridge ids do render (they are outside the
+	// bBuildVectorLines exclusion). A procedural duplicate is both unnecessary and dangerous:
+	// before the raised-plane fix it was the yellow line seen on the water/ground under the bridge.
 	case 0x49:
 	case 0x4A:
 	case 0x4D:
@@ -2236,6 +2331,19 @@ FVector2D GetRoadOpeningPoint(ERoadOpening Opening, float TileSize, float EdgeIn
 	}
 }
 
+// Where a tile's dashes sit in Z. The authored asphalt plane pulled off the placed road object is
+// the first choice, because it is the surface the player sees and it climbs every ramp; the
+// conditioned terrain grid is only the fallback for a tile that never placed a road mesh. Drawing
+// on terrain is what left ramp markings hanging in the air below their deck.
+struct FRoadMarkingSurface
+{
+	const FSimCopterRoadSurfaceProfile* RoadSurface = nullptr;
+	float TerrainZOffset = 0.0f; // on top of the terrain grid sample (includes the mesh Z offset)
+	float SurfaceZOffset = 0.0f; // on top of the asphalt plane (which already carries it)
+
+	bool HasRoadSurface() const { return RoadSurface != nullptr && RoadSurface->bValid; }
+};
+
 FVector MakeRoadMarkingWorldPoint(
 	const TArray<int16>& ConditionedCorners,
 	int32 FileX,
@@ -2244,19 +2352,23 @@ FVector MakeRoadMarkingWorldPoint(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
-	const TOptional<float>& SurfaceZOverride,
-	float ZOffset)
+	const FRoadMarkingSurface& Surface)
 {
 	const float CenterX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
 	const float CenterY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
+	const float PointX = CenterX + LocalPoint.X;
+	const float PointY = CenterY + LocalPoint.Y;
+	if (Surface.HasRoadSurface())
+	{
+		return FVector(PointX, PointY, Surface.RoadSurface->Evaluate(FVector2D(PointX, PointY)) + Surface.SurfaceZOffset);
+	}
+
 	const float GridX = static_cast<float>(FileX) + 0.5f + LocalPoint.X / TileSize;
 	const float GridY = static_cast<float>(FileY) + 0.5f - LocalPoint.Y / TileSize;
 	return FVector(
-		CenterX + LocalPoint.X,
-		CenterY + LocalPoint.Y,
-		(SurfaceZOverride.IsSet()
-			? SurfaceZOverride.GetValue()
-			: GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale)) + ZOffset);
+		PointX,
+		PointY,
+		GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale) + Surface.TerrainZOffset);
 }
 
 bool IsVehicleRoadSurfaceTile(const uint8 BuildingId)
@@ -2277,8 +2389,7 @@ void AppendRoadMarkingSegment(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
-	const TOptional<float>& SurfaceZOverride,
-	float ZOffset,
+	const FRoadMarkingSurface& Surface,
 	float Width,
 	const FLinearColor& Color)
 {
@@ -2298,10 +2409,10 @@ void AppendRoadMarkingSegment(
 	const FVector2D P3 = Start - Perp * HalfWidth;
 	const int32 VertexStart = Section.Vertices.Num();
 
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, Surface));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, Surface));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, Surface));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, Surface));
 
 	Section.Triangles.Add(VertexStart);
 	Section.Triangles.Add(VertexStart + 1);
@@ -2311,10 +2422,27 @@ void AppendRoadMarkingSegment(
 	Section.Triangles.Add(VertexStart + 3);
 	Section.TriangleCount += 2;
 
-	const FProcMeshTangent Tangent(Direction.X, Direction.Y, 0.0f);
+	// The ribbon tilts with the asphalt on a ramp, so take its normal and tangent from the emitted
+	// quad rather than assuming a flat, world-up dash.
+	const FVector Along = Section.Vertices[VertexStart + 1] - Section.Vertices[VertexStart];
+	const FVector Across = Section.Vertices[VertexStart + 3] - Section.Vertices[VertexStart];
+	FVector Normal = FVector::CrossProduct(Across, Along).GetSafeNormal();
+	if (Normal.IsNearlyZero())
+	{
+		Normal = FVector::UpVector;
+	}
+	else if (Normal.Z < 0.0f)
+	{
+		Normal = -Normal;
+	}
+
+	const FVector AlongUnit = Along.GetSafeNormal();
+	const FProcMeshTangent Tangent(
+		AlongUnit.IsNearlyZero() ? FVector(Direction.X, Direction.Y, 0.0f) : AlongUnit,
+		false);
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
-		Section.Normals.Add(FVector::UpVector);
+		Section.Normals.Add(Normal);
 		Section.UVs.Add(FVector2D(Index == 1 || Index == 2 ? 1.0f : 0.0f, Index >= 2 ? 1.0f : 0.0f));
 		Section.VertexColors.Add(Color);
 		Section.Tangents.Add(Tangent);
@@ -2331,8 +2459,7 @@ void AppendTiledDashedRoadMarkingSegment(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
-	const TOptional<float>& SurfaceZOverride,
-	float ZOffset,
+	const FRoadMarkingSurface& Surface,
 	float Width,
 	int32 SegmentCount,
 	const FLinearColor& Color)
@@ -2364,8 +2491,7 @@ void AppendTiledDashedRoadMarkingSegment(
 			TileSize,
 			HalfMapSize,
 			TerrainHeightScale,
-			SurfaceZOverride,
-			ZOffset,
+			Surface,
 			Width,
 			Color);
 	}
@@ -2381,7 +2507,9 @@ void AppendRoadMarkingsForTile(
 	float HalfMapSize,
 	float TerrainHeightScale,
 	float TileTerrainSurfaceZ,
-	float ZOffset,
+	const FSimCopterRoadSurfaceProfile* RoadSurface,
+	float TerrainZOffset,
+	float SurfaceZOffset,
 	float Width,
 	const FLinearColor& Color)
 {
@@ -2415,14 +2543,22 @@ void AppendRoadMarkingsForTile(
 		(HasRoadOpening(Openings, ERoadOpening::North) && HasRoadOpening(Openings, ERoadOpening::South)) ||
 		(HasRoadOpening(Openings, ERoadOpening::East) && HasRoadOpening(Openings, ERoadOpening::West));
 	const int32 SegmentCount = bOpposingOpenings ? 2 : 1;
-	// SCHOOK: FUN_004c82c0 returns the placed object's road top, not the tmap below it. The
-	// TL63..TL66 raised caps are a full-height box: their top face is one altitude step above
-	// TileOrigin. Following the conditioned terrain here left these yellow dashes underneath the
-	// visible cap, exactly where the terrain wedge can be seen through the bridge opening.
-	const TOptional<float> SurfaceZOverride =
-		ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(BuildingId)
-		? TOptional<float>(TileTerrainSurfaceZ + TerrainHeightScale)
-		: TOptional<float>();
+	// SCHOOK: FUN_004c82c0 returns the placed object's road top, not the tmap below it. The asphalt
+	// plane extracted from that same placed object is therefore the surface to draw on, and it is
+	// what carries the dashes up a ramp instead of leaving them on the terrain wedge beneath it.
+	// The TL63..TL66 raised caps keep an explicit fallback: their top face is one altitude step
+	// above TileOrigin, which is where the dashes belong if no plane could be extracted.
+	FRoadMarkingSurface Surface;
+	Surface.RoadSurface = RoadSurface;
+	Surface.TerrainZOffset = TerrainZOffset;
+	Surface.SurfaceZOffset = SurfaceZOffset;
+	FSimCopterRoadSurfaceProfile RaisedDeckFallback;
+	if (!Surface.HasRoadSurface() && ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(BuildingId))
+	{
+		RaisedDeckFallback.ReferenceZ = TileTerrainSurfaceZ + TerrainHeightScale + TerrainZOffset - SurfaceZOffset;
+		RaisedDeckFallback.bValid = true;
+		Surface.RoadSurface = &RaisedDeckFallback;
+	}
 	AppendTiledDashedRoadMarkingSegment(
 		Section,
 		ConditionedCorners,
@@ -2433,8 +2569,7 @@ void AppendRoadMarkingsForTile(
 		TileSize,
 		HalfMapSize,
 		TerrainHeightScale,
-		SurfaceZOverride,
-		ZOffset,
+		Surface,
 		Width,
 		SegmentCount,
 		Color);
@@ -2786,73 +2921,6 @@ bool TryBuildPlacedRoadSurfaceProfile(
 	return true;
 }
 
-void AppendAuthoredRoadMarkingLines(
-	FOriginalMeshSectionData& Section,
-	const FMaxisMeshObject& MeshObject,
-	const FVector& TileOrigin,
-	float MeshUnitsPerCentimeter,
-	float MeshScale,
-	float Width,
-	const FLinearColor& Color)
-{
-	const float HalfWidth = Width * 0.5f;
-	for (const FMaxisMeshFace& Face : MeshObject.Faces)
-	{
-		if (Face.FaceType != 20 || Face.MaterialIndex != 112 || Face.VertexIndices.Num() != 2 ||
-			!MeshObject.Vertices.IsValidIndex(Face.VertexIndices[0]) ||
-			!MeshObject.Vertices.IsValidIndex(Face.VertexIndices[1]))
-		{
-			continue;
-		}
-
-		const FVector A = ConvertPlacedCityMeshVertex(
-			MeshObject.Vertices[Face.VertexIndices[0]], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
-		const FVector B = ConvertPlacedCityMeshVertex(
-			MeshObject.Vertices[Face.VertexIndices[1]], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
-		const FVector Direction = (B - A).GetSafeNormal();
-		FVector Across = FVector::CrossProduct(FVector::UpVector, Direction).GetSafeNormal();
-		if (Direction.IsNearlyZero() || Across.IsNearlyZero())
-		{
-			continue;
-		}
-
-		const int32 VertexStart = Section.Vertices.Num();
-		Section.Vertices.Add(A + Across * HalfWidth);
-		Section.Vertices.Add(B + Across * HalfWidth);
-		Section.Vertices.Add(B - Across * HalfWidth);
-		Section.Vertices.Add(A - Across * HalfWidth);
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 1);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.Triangles.Add(VertexStart + 3);
-		// FACE line endpoint order is not a render winding contract. Emit the reverse side too,
-		// just as Append3DVectorLine does, so every authored dash is visible from above regardless
-		// of which endpoint the MAX exporter stored first.
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.Triangles.Add(VertexStart + 1);
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 3);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.TriangleCount += 4;
-
-		FVector Normal = FVector::CrossProduct(Direction, -Across).GetSafeNormal();
-		if (Normal.Z < 0.0f)
-		{
-			Normal = -Normal;
-		}
-		for (int32 VertexIndex = 0; VertexIndex < 4; ++VertexIndex)
-		{
-			Section.Normals.Add(Normal);
-			Section.UVs.Add(FVector2D(VertexIndex == 1 || VertexIndex == 2 ? 1.0f : 0.0f, VertexIndex >= 2 ? 1.0f : 0.0f));
-			Section.VertexColors.Add(Color);
-			Section.Tangents.Add(FProcMeshTangent(Direction.X, Direction.Y, Direction.Z));
-		}
-	}
-}
-
 // Emits a Maxis face-type-2 sprite card as a crossed pair of vertical, double-sided quads.
 // CentreVertex is the card centre in Maxis object space (Y up); the card spans +/-HalfWidth
 // horizontally and +/-HalfHeight vertically about it, so a tree's card sits on the ground.
@@ -2960,6 +3028,32 @@ void AppendMaxisSpriteCard(
 	}
 }
 
+// Lets a placed object contribute everything except its road half. RD67/RD68 and RD67H/RD68H, the
+// power-line-over-road crossings, are the only users: the tile now takes its asphalt from the
+// ordinary straight-road piece and its dashes from the procedural marking system, so the crossing
+// object is placed for its pylon and wires alone.
+//
+// The materials are measured, not guessed (Docs/scratchpad/dump_maxis_object.py). Across RD29L,
+// RD31..RD34, RD67 and RD67H: face type 15 material 48 is the flat asphalt and material 128 the
+// sloped body/kerb that the H and ramp pieces add on top of it; face type 20 material 112 is the
+// yellow centre line. What must survive is face type 15 material 208 - the poles, the only thing
+// in RD67 that reaches full height - and face type 20 material 50, the wires strung at pole top.
+// Dropping only material 48 leaves RD67H's ten material-128 faces standing as a raised block.
+struct FPlacedObjectRoadFaceFilter
+{
+	bool bSkipRoadSurfaceFaces = false;
+	bool bSkipCentreLineFaces = false;
+
+	bool ShouldSkipFace(const FMaxisMeshFace& Face) const
+	{
+		if (bSkipRoadSurfaceFaces && Face.FaceType == 15 && (Face.MaterialIndex == 48 || Face.MaterialIndex == 128))
+		{
+			return true;
+		}
+		return bSkipCentreLineFaces && Face.FaceType == 20 && Face.MaterialIndex == 112;
+	}
+};
+
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
@@ -2973,6 +3067,7 @@ int32 AppendMaxisMeshObject(
 	const TSet<int32>& AvailableBakedDirectImageIds,
 	const FLinearColor& TexturedFaceFallbackColor,
 	bool bBuildVectorLines,
+	const FPlacedObjectRoadFaceFilter& RoadFaceFilter,
 	TMap<int32, FOriginalMeshSectionData>& Sections,
 	int32& OutTexturedTriangleCount)
 {
@@ -2999,6 +3094,11 @@ int32 AppendMaxisMeshObject(
 	{
 		const FMaxisMeshFace& Face = MeshObject.Faces[FaceIndex];
 		if (Face.VertexIndices.Num() < 2)
+		{
+			continue;
+		}
+
+		if (RoadFaceFilter.ShouldSkipFace(Face))
 		{
 			continue;
 		}
@@ -3878,6 +3978,7 @@ void ASimCity2000CityActor::RebuildCity()
 		int32 ModelTexturedTriangles = 0;
 		int32 ModelTriangles = 0;
 		const bool bBuildVectorLines = true; // buildings are never in the line-drawn XBLD ranges
+		const FPlacedObjectRoadFaceFilter NoRoadFaceFilter; // and never carry a road half
 		ModelTriangles += AppendMaxisMeshObject(
 			PrimaryObject,
 			PrimaryColorMap,
@@ -3891,6 +3992,7 @@ void ASimCity2000CityActor::RebuildCity()
 			AvailableBakedDirectImageIds,
 			OriginalTexturedFaceFallbackColor,
 			bBuildVectorLines,
+			NoRoadFaceFilter,
 			ModelSections,
 			ModelTexturedTriangles);
 
@@ -3912,6 +4014,7 @@ void ASimCity2000CityActor::RebuildCity()
 					AvailableBakedDirectImageIds,
 					OriginalTexturedFaceFallbackColor,
 					bBuildVectorLines,
+					NoRoadFaceFilter,
 					ModelSections,
 					ModelTexturedTriangles);
 			}
@@ -4040,23 +4143,6 @@ void ASimCity2000CityActor::RebuildCity()
 				++TerrainCount;
 			}
 
-			if (bRenderRoadMarkings && bRenderRoads)
-			{
-				AppendRoadMarkingsForTile(
-					RoadMarkingSection,
-					ConditionedTerrainCorners,
-					Tile.Building,
-					FileX,
-					FileY,
-					TileSize,
-					HalfMapSize,
-					EffectiveTerrainHeightScale,
-					GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale),
-					OriginalMeshZOffset + RoadMarkingZOffset,
-					RoadMarkingWidth,
-					RoadMarkingColor);
-			}
-
 			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile || bNaturalObjectTile || bRubbleTile))
 			{
 				const FIntPoint Footprint = bBuildingLikeTile
@@ -4151,22 +4237,6 @@ void ASimCity2000CityActor::RebuildCity()
 								RoadSurfaceProfiles[TileIndex]);
 						}
 
-						if (bRenderRoadMarkings && Tile.Building >= 0x1d && Tile.Building <= 0x2b)
-						{
-							// The RD objects contain the original yellow segments at their authored
-							// 3-D endpoints. A surface-aligned ribbon preserves those endpoints without
-							// Append3DVectorLine's vertical cross-quad, and puts ramp markings on asphalt
-							// rather than on the terrain wedge underneath it.
-							AppendAuthoredRoadMarkingLines(
-								RoadMarkingSection,
-								*MeshObject,
-								TileOrigin,
-								OriginalMeshUnitsPerCentimeter,
-								OriginalMeshScale,
-								RoadMarkingWidth,
-								RoadMarkingColor);
-						}
-
 						// Blink markers are face type 25, which AppendMaxisMeshObject drops (a single
 						// vertex is neither a polygon nor one of its two-point lines). Collect them here
 						// for both the instanced-building and the baked-section paths, since the original
@@ -4203,6 +4273,17 @@ void ASimCity2000CityActor::RebuildCity()
 							}
 						}
 						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
+
+						// The power-line-over-road crossings take their asphalt from the ordinary
+						// straight-road primary and their dashes from the procedural marking table, so
+						// the primary's own authored centre line and the crossing object's entire road
+						// half are both suppressed. Everything else the crossing owns - the pylon and
+						// the two-point wire faces that carry the line across the tile - still renders.
+						const bool bPowerLineRoadCrossing = Tile.Building == 0x43 || Tile.Building == 0x44;
+						FPlacedObjectRoadFaceFilter PrimaryRoadFaceFilter;
+						PrimaryRoadFaceFilter.bSkipCentreLineFaces = bPowerLineRoadCrossing;
+						FPlacedObjectRoadFaceFilter SecondaryRoadFaceFilter = PrimaryRoadFaceFilter;
+						SecondaryRoadFaceFilter.bSkipRoadSurfaceFaces = bPowerLineRoadCrossing;
 
 						// Buildings become instances so a single one can be removed later; roads,
 						// bridges and power lines stay baked in the shared sections.
@@ -4260,6 +4341,7 @@ void ASimCity2000CityActor::RebuildCity()
 								AvailableBakedDirectImageIds,
 								OriginalTexturedFaceFallbackColor,
 								bBuildVectorLines,
+								PrimaryRoadFaceFilter,
 								OriginalMeshSections,
 								LastOriginalTexturedTriangleCount);
 
@@ -4282,6 +4364,7 @@ void ASimCity2000CityActor::RebuildCity()
 										AvailableBakedDirectImageIds,
 										OriginalTexturedFaceFallbackColor,
 										bBuildVectorLines,
+										SecondaryRoadFaceFilter,
 										OriginalMeshSections,
 										LastOriginalTexturedTriangleCount);
 								}
@@ -4299,6 +4382,27 @@ void ASimCity2000CityActor::RebuildCity()
 						++LastMissingOriginalMeshTileCount;
 					}
 				}
+			}
+
+			// After the mesh, never before it: the tile's asphalt plane is extracted by the block
+			// above, and the dashes have to sit on that plane to climb a ramp with it.
+			if (bRenderRoadMarkings && bRenderRoads)
+			{
+				AppendRoadMarkingsForTile(
+					RoadMarkingSection,
+					ConditionedTerrainCorners,
+					Tile.Building,
+					FileX,
+					FileY,
+					TileSize,
+					HalfMapSize,
+					EffectiveTerrainHeightScale,
+					GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale),
+					RoadSurfaceProfiles.IsValidIndex(TileIndex) ? &RoadSurfaceProfiles[TileIndex] : nullptr,
+					OriginalMeshZOffset + RoadMarkingZOffset,
+					RoadMarkingZOffset,
+					RoadMarkingWidth,
+					RoadMarkingColor);
 			}
 		}
 	}

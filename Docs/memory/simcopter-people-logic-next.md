@@ -231,7 +231,14 @@ around the head; UE uses an 8-side cylinder, HeadFaceU param tunes which U faces
   Modernized}.** Original mode = no traffic lights, no blockage recovery, uniform random
   turns (bPreferStraight=false in ChooseNextRouteNode), queue-behind-blockers (jams), and
   ApplyPlayerRoadBlocking (grounded player within lane look-ahead stops cars - "You Blocked
-  Traffic!"). Modernized keeps the old traffic-light system untouched. Road family + no-bWater
+  Traffic!"). Modernized = the stoplight system (ApplyTrafficLights: per-approach queue slots,
+  TrafficLightPhaseSeconds per axis, staggered by intersection tile parity) plus blockage
+  recovery and straight-preference turns. **The mode IS the stoplight switch** — ApplyTrafficLights
+  is only reached on the Modernized branch of ApplyTrafficRules and nothing logs that it was
+  skipped, so "the lights stopped working" always means the default moved. Turned on
+  2026-08-04 at 5 s per phase and turned straight back off the same day: the project wants the
+  decoded no-lights traffic. Note the two rules are exclusive: ApplyPlayerRoadBlocking does not
+  run in Modernized, so a landed helicopter does not stop traffic there. Road family + no-bWater
   fix applied to node building (cars now cross bridges; Z comes from agent ground snap hitting
   the bridge deck mesh). Whole-map far cars share the same graph/turn rules.
 - Not yet ported: intersection-graph Dijkstra for emergency vehicles, station->road spawn
