@@ -300,7 +300,7 @@ A genuine feature, currently absent, and cheap once the fill path exists.
    second rope attachment (`& 4`) needs that record's layout, which the career
    loader port covers rather than this one. An explicitly labelled debug button
    can grant and select the water gun for testing: left click then fires it,
-   while `B` still dumps the bucket. This does not assign the capability to a
+   while `G` still dumps the bucket. This does not assign the capability to a
    production helicopter or close the career-data blocker.
 4. **Face `0x1a` class 0 vs class 3 (closed by the renderer port).** Bucket and
    cannon water use the existing decoded selector-kernel path with class 0 and
