@@ -214,6 +214,11 @@ DAY_NIGHT_COLLECTION_SCALARS = (
     # its brightness is absolute. But it is metered against a NIGHT exposure, which is why this is
     # tens of nits and not thousands - the first pass at 2500 bloomed the skyline into one halo.
     ("WindowGlowNits", 25.0),
+    # 1 while the Settings screen's Low Power Graphics is on. The terrain drops its four octaves of
+    # value noise and the water stops displacing; both are per-pixel work over most of the screen and
+    # both are the kind of detail a 1996 software renderer never had anyway. Published by
+    # USimCopterDayNightSubsystem::PublishLowPower.
+    ("LowPower", 0.0),
 )
 NIGHT_BLEND_PARAMETER = "NightBlend"
 
@@ -453,6 +458,14 @@ def create_city_atlas_material():
             "#ifdef LUMEN_CARD_CAPTURE\n"
             "	return 0.0;\n"
             "#endif\n"
+            "\n"
+            "// Broad daylight. The last line multiplies everything by saturate(Blend), so this is the\n"
+            "// same answer for free - and it is the answer for most of the cycle, on every wall in the\n"
+            "// city, which is what makes skipping the two hashes below worth a branch.\n"
+            "if (Blend <= 0.0)\n"
+            "{\n"
+            "	return 0.0;\n"
+            "}\n"
             "\n"
             "float dayLum = dot(DayColor, float3(0.2126, 0.7152, 0.0722));\n"
             "float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
@@ -843,7 +856,7 @@ def add_water_frame_index(material, time, frames_per_second, name, x, y):
 # land normals. So at the shore (weight 0) the water shades like the sloped ground it meets - no
 # lighting seam even where the coastline is angled - while offshore the base slope eases out to level
 # and the wave ripple takes over, so open water reads flat instead of a tilted sheet.
-WATER_WAVE_INPUTS = ["WorldPos", "Time", "Weight", "Amplitude", "WaveLength", "Speed"]
+WATER_WAVE_INPUTS = ["WorldPos", "Time", "Weight", "Amplitude", "WaveLength", "Speed", "LowPower"]
 WATER_NORMAL_INPUTS = WATER_WAVE_INPUTS + ["BaseNormal"]
 WATER_UV_INPUTS = ["BaseUV", "Frame"]
 
@@ -874,8 +887,16 @@ WATER_WAVE_PRELUDE = (
     "float P2 = K2 * (WorldPos.x * 0.3 - WorldPos.y * 0.95) + Time * Speed * 0.8;\n"
 )
 
+# Shoreline vertices carry Weight 0, which already multiplies both waves out to nothing - so the
+# early-out below is the SAME answer, not a simplification, and it is free in both graphics modes.
+# Low Power takes the same exit for the whole surface: the original's sea was a five-frame texture
+# cycle on a flat plane and nothing else, so this loses a wave the 1996 game never had.
 WATER_WPO_CODE = (
-    WATER_WAVE_PRELUDE
+    "if (Weight <= 0.0 || LowPower > 0.5)\n"
+    "{\n"
+    "	return float3(0.0, 0.0, 0.0);\n"
+    "}\n"
+    + WATER_WAVE_PRELUDE
     + "float h = Weight * Amplitude * (0.6 * sin(P1) + 0.4 * sin(P2));\n"
     + "return float3(0.0, 0.0, h);"
 )
@@ -887,8 +908,17 @@ WATER_WPO_CODE = (
 # tiles out (Weight -> 1) the base eases to flat so open water reads level instead of a tilted sheet -
 # the near-shore geometry is genuinely sloped (a height-averaging artifact), and this hides that in the
 # lighting without touching the geometry or the welded shoreline edge.
+#
+# The early-out is exact, not an approximation: at Weight 0 the wave gradient is zero and baseFade is
+# 1, so the expression below collapses to normalize(float3(Nx/Nz, Ny/Nz, 1)), which is BaseNormal's
+# own direction. It is gated on an up-facing normal because the Nz clamp is what would make the two
+# disagree. Low Power takes it for the whole surface, matching the flat WPO above.
 WATER_NORMAL_CODE = (
-    WATER_WAVE_PRELUDE
+    "if ((Weight <= 0.0 || LowPower > 0.5) && BaseNormal.z > 0.0)\n"
+    "{\n"
+    "	return normalize(BaseNormal);\n"
+    "}\n"
+    + WATER_WAVE_PRELUDE
     + "float amp = Weight * Amplitude;\n"
     + "float dHdx = amp * (0.6 * cos(P1) * K1 * 0.7 + 0.4 * cos(P2) * K2 * 0.3);\n"
     + "float dHdy = amp * (0.6 * cos(P1) * K1 * 0.7 + 0.4 * cos(P2) * K2 * (-0.95));\n"
@@ -957,6 +987,9 @@ def create_water_material():
     amplitude = add_scalar_parameter(material, "WaveAmplitude", 28.0, 3, 1040)
     wavelength = add_scalar_parameter(material, "WaveLength", 1100.0, 4, 1140)
     speed = add_scalar_parameter(material, "WaveSpeed", 1.1, 5, 1240)
+    # A collection scalar, not a material parameter: the Settings screen has to be able to move it at
+    # runtime and this material is used through instances that cannot be animated.
+    low_power = add_collection_parameter(material, "LowPower", -1000, 1340)
 
     def wire_wave_inputs(node):
         unreal.MaterialEditingLibrary.connect_material_expressions(world_pos, "", node, "WorldPos")
@@ -965,6 +998,7 @@ def create_water_material():
         unreal.MaterialEditingLibrary.connect_material_expressions(amplitude, "", node, "Amplitude")
         unreal.MaterialEditingLibrary.connect_material_expressions(wavelength, "", node, "WaveLength")
         unreal.MaterialEditingLibrary.connect_material_expressions(speed, "", node, "Speed")
+        unreal.MaterialEditingLibrary.connect_material_expressions(low_power, "", node, "LowPower")
 
     wpo = add_custom_node(
         material, "WaterWPO", WATER_WPO_CODE, WATER_WAVE_INPUTS, -650, 750,
@@ -1005,13 +1039,26 @@ def create_water_material():
 # the crisp pads, ramping to 1 over open ground. Value noise gives an analytic gradient (one 4-corner
 # hash per octave, no finite differences); cell coords are wrapped to keep the sin-hash stable far
 # from the origin.
+#
+# Two exits before any of that runs, and both give exactly `normalize(BaseNormal)` - which is what
+# the last line returns when the gradient is zero:
+#
+#   * Weight 0 is the shoreline and the flat building/road pads, where the whole point is that the
+#     noise contributes nothing. Free in both graphics modes.
+#   * Low Power skips it everywhere. Four octaves is four hashed 4-corner lookups per pixel across
+#     the entire ground plane, which is the most expensive material in the city by area, and what it
+#     buys is relief the original's flat-shaded terrain never had.
 TERRAIN_NOISE_INPUTS = [
-    "WorldPos", "BaseNormal", "Weight",
+    "WorldPos", "BaseNormal", "Weight", "LowPower",
     "AmpFine", "ScaleFine", "AmpMed", "ScaleMed",
     "AmpLarge", "ScaleLarge", "AmpXLarge", "ScaleXLarge",
 ]
 
 TERRAIN_NOISE_CODE = (
+    "if (Weight <= 0.0 || LowPower > 0.5)\n"
+    "{\n"
+    "	return normalize(BaseNormal);\n"
+    "}\n"
     "float amps[4] = { AmpFine, AmpMed, AmpLarge, AmpXLarge };\n"
     "float scales[4] = { max(ScaleFine, 1.0), max(ScaleMed, 1.0), max(ScaleLarge, 1.0), max(ScaleXLarge, 1.0) };\n"
     "float gx = 0.0;\n"
@@ -1072,6 +1119,7 @@ def create_terrain_material():
     scale_large = add_scalar_parameter(material, "NoiseScaleLarge", 3000.0, 8, 1460)
     amp_xlarge = add_scalar_parameter(material, "NoiseAmpXLarge", 400.0, 9, 1540)
     scale_xlarge = add_scalar_parameter(material, "NoiseScaleXLarge", 8000.0, 10, 1620)
+    low_power = add_collection_parameter(material, "LowPower", -1000, 1060)
 
     noise = add_custom_node(
         material, "TerrainNormalNoise", TERRAIN_NOISE_CODE, TERRAIN_NOISE_INPUTS, -650, 800,
@@ -1080,6 +1128,7 @@ def create_terrain_material():
     unreal.MaterialEditingLibrary.connect_material_expressions(world_pos, "", noise, "WorldPos")
     unreal.MaterialEditingLibrary.connect_material_expressions(base_normal, "", noise, "BaseNormal")
     unreal.MaterialEditingLibrary.connect_material_expressions(weight, "R", noise, "Weight")
+    unreal.MaterialEditingLibrary.connect_material_expressions(low_power, "", noise, "LowPower")
     unreal.MaterialEditingLibrary.connect_material_expressions(amp_fine, "", noise, "AmpFine")
     unreal.MaterialEditingLibrary.connect_material_expressions(scale_fine, "", noise, "ScaleFine")
     unreal.MaterialEditingLibrary.connect_material_expressions(amp_med, "", noise, "AmpMed")

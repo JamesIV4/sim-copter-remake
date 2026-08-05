@@ -6,6 +6,7 @@
 #include "DaySequenceActor.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterSettings.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialParameterCollection.h"
@@ -19,6 +20,7 @@ const TCHAR* const SimCopterDayNight::WindowSeedParameterName = TEXT("WindowSeed
 const TCHAR* const SimCopterDayNight::WindowLitFractionParameterName = TEXT("WindowLitFraction");
 const TCHAR* const SimCopterDayNight::WindowRowLitFractionParameterName = TEXT("WindowRowLitFraction");
 const TCHAR* const SimCopterDayNight::WindowGlowNitsParameterName = TEXT("WindowGlowNits");
+const TCHAR* const SimCopterDayNight::LowPowerParameterName = TEXT("LowPower");
 
 namespace
 {
@@ -71,6 +73,7 @@ USimCopterDayNightSubsystem* USimCopterDayNightSubsystem::Get(const UObject* Wor
 void USimCopterDayNightSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	PublishLowPower();
 	Refresh();
 }
 
@@ -89,6 +92,7 @@ TStatId USimCopterDayNightSubsystem::GetStatId() const
 void USimCopterDayNightSubsystem::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	PublishLowPower();
 	ApplyTimeOfDaySettings();
 	Refresh();
 }
@@ -234,6 +238,18 @@ void USimCopterDayNightSubsystem::PublishWindowTuning()
 		PublishScalar(SimCopterDayNight::WindowGlowNitsParameterName, GlowNits);
 		PublishedGlowNits = GlowNits;
 	}
+}
+
+void USimCopterDayNightSubsystem::PublishLowPower()
+{
+	const float LowPower = SimCopterLowPower::IsEnabled() ? 1.0f : 0.0f;
+	if (FMath::IsNearlyEqual(LowPower, PublishedLowPower))
+	{
+		return;
+	}
+
+	PublishScalar(SimCopterDayNight::LowPowerParameterName, LowPower);
+	PublishedLowPower = LowPower;
 }
 
 void USimCopterDayNightSubsystem::RerollNightWindows()

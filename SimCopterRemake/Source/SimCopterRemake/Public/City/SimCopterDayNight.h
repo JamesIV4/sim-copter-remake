@@ -38,6 +38,17 @@ SIMCOPTERREMAKE_API extern const TCHAR* const WindowLitFractionParameterName;
 SIMCOPTERREMAKE_API extern const TCHAR* const WindowRowLitFractionParameterName;
 SIMCOPTERREMAKE_API extern const TCHAR* const WindowGlowNitsParameterName;
 
+/**
+ * 1 while Low Power Graphics is on, and the one number the city's materials read to take their
+ * cheap paths - the terrain drops four octaves of value-noise normals, the water stops displacing
+ * and shades flat, and the night window mask skips its two per-pixel hashes.
+ *
+ * It rides in this collection rather than being pushed at the materials because that is the same
+ * problem NightBlend already solved: MI_CityPage_* are MaterialInstanceConstants and cannot be
+ * animated, so a collection scalar is the only way to move ~40 of them at once.
+ */
+SIMCOPTERREMAKE_API extern const TCHAR* const LowPowerParameterName;
+
 // Fraction of windows lit at night, and the chance a whole floor comes on at once. A city where
 // every window is lit reads as a render, not a city; these are what make it look occupied.
 constexpr float DefaultWindowLitFraction = 0.30f;
@@ -149,6 +160,15 @@ private:
 	/** Pushes the lit fraction, row chance and glow brightness; cheap, only on change. */
 	void PublishWindowTuning();
 
+	/**
+	 * Pushes the low power flag at the city materials.
+	 *
+	 * Called from Tick rather than from Refresh, because Refresh gives up when the level has no day
+	 * sequence and the flag still has to reach the materials there - the main menu and the editor
+	 * both count.
+	 */
+	void PublishLowPower();
+
 	TWeakObjectPtr<ADaySequenceActor> CachedDaySequenceActor;
 
 	UPROPERTY(Transient)
@@ -163,6 +183,7 @@ private:
 	float PublishedLitFraction = -1.0f;
 	float PublishedRowLitFraction = -1.0f;
 	float PublishedGlowNits = -1.0f;
+	float PublishedLowPower = -1.0f;
 
 	/**
 	 * Whether the last evaluated frame counted as night, so the day->night EDGE can be detected.

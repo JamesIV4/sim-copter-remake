@@ -18,6 +18,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "GameFramework/Pawn.h"
 #include "Ground/SimCopterCriminalCar.h"
@@ -251,6 +252,13 @@ void ASimCopterGroundAgent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	AlightAttachmentOnly();
 	BehaviorCarrier.Reset();
 	bRidingHarness = false;
+
+	if (LowPowerChangedHandle.IsValid())
+	{
+		SimCopterLowPower::OnChanged().Remove(LowPowerChangedHandle);
+		LowPowerChangedHandle.Reset();
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -3616,7 +3624,32 @@ void ASimCopterGroundAgent::ConfigureVehicleHeadlights(const FBox& VehicleLocalB
 		Light->SetInnerConeAngle(11.0f);
 		Light->SetOuterConeAngle(26.0f);
 		Light->SetLightColor(FLinearColor(HeadlightColor));
-		Light->SetVisibility(bEnableVehicleHeadlights);
+	}
+
+	bVehicleHeadlightsConfigured = true;
+	RefreshHeadlightVisibility();
+
+	// Subscribed here rather than in BeginPlay so only vehicles are on the list: the city's agents
+	// are mostly pedestrians, and they have no headlights to refresh.
+	if (!LowPowerChangedHandle.IsValid())
+	{
+		LowPowerChangedHandle = SimCopterLowPower::OnChanged().AddWeakLambda(
+			this, [this](bool) { RefreshHeadlightVisibility(); });
+	}
+}
+
+void ASimCopterGroundAgent::RefreshHeadlightVisibility()
+{
+	const bool bVisible =
+		bVehicleHeadlightsConfigured && bEnableVehicleHeadlights && !SimCopterLowPower::IsEnabled();
+
+	if (HeadlightLeft != nullptr)
+	{
+		HeadlightLeft->SetVisibility(bVisible);
+	}
+	if (HeadlightRight != nullptr)
+	{
+		HeadlightRight->SetVisibility(bVisible);
 	}
 }
 
@@ -3631,6 +3664,7 @@ void ASimCopterGroundAgent::RefreshSpriteExposure()
 
 void ASimCopterGroundAgent::DisableVehicleHeadlights()
 {
+	bVehicleHeadlightsConfigured = false;
 	if (HeadlightLeft != nullptr)
 	{
 		HeadlightLeft->SetVisibility(false);

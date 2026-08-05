@@ -82,6 +82,8 @@ indexes volume linearly in [0,10000], so the port is linear over the original's 
   positions and its place in the menu, and lists DLSS super resolution + quality mode, DLSS Frame
   Generation + how many frames it generates, HUD Scale, and every display and scalability setting
   `UGameUserSettings` owns. The original's layout is decoded anyway, in the scratchpad note.
+  Its first row is **Low Power Graphics**, which greys out the Lumen and Volumetric Fog rows while it
+  owns them — see [[simcopter-low-power-mode]].
 - **The Controls page lists bindings instead of drawing a keyboard.** `keyboard.bmp` (506x188) is
   hit-tested key by key and tinted with `keylight.bmp`; **that per-key rect table is not in the
   Ghidra exports** — it sits in an unanalysed gap the way the cockpit flap click-boxes do

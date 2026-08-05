@@ -8,6 +8,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Game/SimCopterLowPowerMode.h"
 #include "GameFramework/GameUserSettings.h"
 #include "GenericPlatform/GenericApplication.h"
 #include "HAL/IConsoleManager.h"
@@ -392,6 +393,56 @@ void USimCopterSettings::SetAutoQuietEnabled(const bool bEnabled)
 // Graphics
 // ---------------------------------------------------------------------------------------------
 
+void USimCopterSettings::ApplyLowPowerScalability()
+{
+	UGameUserSettings* UserSettings = GEngine != nullptr ? GEngine->GetGameUserSettings() : nullptr;
+	if (UserSettings == nullptr)
+	{
+		return;
+	}
+
+	// The two restore fields double as the applied/not-applied latch, so both transitions are
+	// one-shot and re-entering ApplyGraphics never captures Low as the level to go back to.
+	const bool bAlreadyApplied = LowPowerRestoreScalabilityLevel != INDEX_NONE;
+	if (bLowPowerMode == bAlreadyApplied)
+	{
+		return;
+	}
+
+	float ScaleNormalized = 1.0f;
+	float ScaleValue = 100.0f;
+	float MinScaleValue = 100.0f;
+	float MaxScaleValue = 100.0f;
+	UserSettings->GetResolutionScaleInformationEx(ScaleNormalized, ScaleValue, MinScaleValue, MaxScaleValue);
+
+	if (bLowPowerMode)
+	{
+		// GetOverallScalabilityLevel returns -1 once any single group has been moved by hand. Storing
+		// that verbatim would restore nothing, so a custom mix is remembered as the closest preset -
+		// the individual groups are all about to be overwritten either way.
+		const int32 Current = UserSettings->GetOverallScalabilityLevel();
+		LowPowerRestoreScalabilityLevel = Current >= 0 ? Current : 3;
+		LowPowerRestoreResolutionScale = ScaleValue;
+
+		UserSettings->SetOverallScalabilityLevel(SimCopterLowPower::ScalabilityLevel);
+		UserSettings->SetResolutionScaleValueEx(
+			FMath::Clamp(SimCopterLowPower::ScreenPercentage, MinScaleValue, MaxScaleValue));
+	}
+	else
+	{
+		UserSettings->SetOverallScalabilityLevel(FMath::Clamp(LowPowerRestoreScalabilityLevel, 0, 4));
+		if (LowPowerRestoreResolutionScale > 0.0f)
+		{
+			UserSettings->SetResolutionScaleValueEx(
+				FMath::Clamp(LowPowerRestoreResolutionScale, MinScaleValue, MaxScaleValue));
+		}
+		LowPowerRestoreScalabilityLevel = INDEX_NONE;
+		LowPowerRestoreResolutionScale = -1.0f;
+	}
+
+	UserSettings->ApplyNonResolutionSettings();
+}
+
 void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 {
 #if WITH_DLSS
@@ -416,6 +467,20 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 		UStreamlineLibraryReflex::SetReflexMode(ToReflexPluginMode(ReflexMode));
 	}
 #endif
+
+	// Low power first: the scalability half writes at ECVF_SetByScalability and the switch half at
+	// ECVF_SetByGameOverride, so the switches have to come second or the profile would win.
+	ApplyLowPowerScalability();
+	SimCopterLowPower::Apply(bLowPowerMode, /*bExternalUpscalerActive=*/bDlssEnabled && IsDlssAvailable());
+
+	if (bLowPowerMode)
+	{
+		// The Lumen and Volumetric Fog rows are greyed out and their values left stored: the switch
+		// table owns both while the mode is on, and re-running the block below would undo it. What is
+		// stored comes back the moment Low Power is switched off.
+		OnHudScaleChanged.Broadcast(HudScale);
+		return;
+	}
 
 	// Lumen and volumetric fog are console variables rather than UGameUserSettings properties, so
 	// they are driven directly. Hardware and Software are the same GI method; only the tracing

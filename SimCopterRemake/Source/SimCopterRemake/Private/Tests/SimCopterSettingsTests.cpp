@@ -2,7 +2,9 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterSettings.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
 #include "UI/SSimCopterCheckupSlider.h"
 #include "UI/SSimCopterCitySettings.h"
@@ -422,6 +424,96 @@ bool FSimCopterDisplayResolutionTest::RunTest(const FString& Parameters)
 			FIntPoint::ZeroValue);
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterLowPowerModeTest,
+	"SimCopter.Settings.LowPowerMode",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
+{
+	const TArrayView<const SimCopterLowPower::FRenderSwitch> Switches = SimCopterLowPower::GetRenderSwitches();
+	TestTrue(TEXT("The low power switch table is not empty"), Switches.Num() > 0);
+
+	// The whole mode is a list of CVar names, and a name the engine no longer has is a silently
+	// dead optimization: Apply() skips it, the frame stays slow, and nothing looks broken. This is
+	// the check that turns an engine rename into a red test.
+	TSet<FString> Seen;
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		const FString Name(Switch.Name);
+		TestFalse(*FString::Printf(TEXT("'%s' is listed once"), *Name), Seen.Contains(Name));
+		Seen.Add(Name);
+
+		TestNotNull(
+			*FString::Printf(TEXT("'%s' still exists in this engine build"), *Name),
+			IConsoleManager::Get().FindConsoleVariable(Switch.Name));
+
+		TestTrue(*FString::Printf(TEXT("'%s' has a value"), *Name), FCString::Strlen(Switch.LowPowerValue) > 0);
+		TestTrue(*FString::Printf(TEXT("'%s' says why"), *Name), FCString::Strlen(Switch.Why) > 0);
+	}
+
+	// Round trip. Entering has to leave every switch on its low value and leaving has to put back
+	// what was there before, not the engine's compiled-in default - the project overrides several of
+	// these in DefaultEngine.ini, and restoring to the wrong number would quietly change normal mode.
+	const bool bWasEnabled = SimCopterLowPower::IsEnabled();
+
+	TMap<FString, FString> Before;
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name))
+		{
+			Before.Add(FString(Switch.Name), Variable->GetString());
+		}
+	}
+
+	SimCopterLowPower::Apply(/*bLowPower=*/true, /*bExternalUpscalerActive=*/false);
+	TestTrue(TEXT("IsEnabled follows Apply(true)"), SimCopterLowPower::IsEnabled());
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name))
+		{
+			TestEqual(
+				*FString::Printf(TEXT("'%s' is forced low"), Switch.Name),
+				Variable->GetString(),
+				FString(Switch.LowPowerValue));
+		}
+	}
+
+	SimCopterLowPower::Apply(/*bLowPower=*/false, /*bExternalUpscalerActive=*/false);
+	TestFalse(TEXT("IsEnabled follows Apply(false)"), SimCopterLowPower::IsEnabled());
+	for (const TPair<FString, FString>& Pair : Before)
+	{
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Pair.Key))
+		{
+			TestEqual(
+				*FString::Printf(TEXT("'%s' is back where it started"), *Pair.Key),
+				Variable->GetString(),
+				Pair.Value);
+		}
+	}
+
+	// An upscaler owns the anti-aliasing method, so that one switch must stand down while DLSS is
+	// on - forcing FXAA under it stops DLSS engaging at all.
+	SimCopterLowPower::Apply(/*bLowPower=*/true, /*bExternalUpscalerActive=*/true);
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		if (!Switch.bSkipWhileUpscaling)
+		{
+			continue;
+		}
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name))
+		{
+			TestEqual(
+				*FString::Printf(TEXT("'%s' is left alone while upscaling"), Switch.Name),
+				Variable->GetString(),
+				Before.FindRef(FString(Switch.Name)));
+		}
+	}
+
+	SimCopterLowPower::Apply(bWasEnabled, /*bExternalUpscalerActive=*/false);
 	return true;
 }
 
