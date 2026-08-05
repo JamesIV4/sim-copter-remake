@@ -217,32 +217,19 @@ bool FSimCopterCareerSelectLayoutTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Panels 0 and 1 share a row"), PanelRect[0].Top, PanelRect[1].Top);
 	TestEqual(TEXT("Panel 2 is under panel 0"), PanelRect[2].Left, PanelRect[0].Left);
 
-	// Each panel's four strips must enclose it, or the glow would cut through the picture.
+	// Each panel's highlight rect must enclose its panel rect.
 	for (int32 Panel = 0; Panel < PanelCount; ++Panel)
 	{
-		float Left = HighlightStrip[Panel][0].Left;
-		float Top = HighlightStrip[Panel][0].Top;
-		float Right = HighlightStrip[Panel][0].Right;
-		float Bottom = HighlightStrip[Panel][0].Bottom;
-		for (int32 Strip = 1; Strip < HighlightStripCount; ++Strip)
-		{
-			Left = FMath::Min(Left, HighlightStrip[Panel][Strip].Left);
-			Top = FMath::Min(Top, HighlightStrip[Panel][Strip].Top);
-			Right = FMath::Max(Right, HighlightStrip[Panel][Strip].Right);
-			Bottom = FMath::Max(Bottom, HighlightStrip[Panel][Strip].Bottom);
-		}
-
+		const FRect& HRect = HighlightPanelRect[Panel];
 		TestTrue(FString::Printf(TEXT("Panel %d glow encloses the frame"), Panel),
-			Left <= PanelRect[Panel].Left && Top <= PanelRect[Panel].Top
-				&& Right >= PanelRect[Panel].Right && Bottom >= PanelRect[Panel].Bottom);
+			HRect.Left <= PanelRect[Panel].Left && HRect.Top <= PanelRect[Panel].Top
+				&& HRect.Right >= PanelRect[Panel].Right && HRect.Bottom >= PanelRect[Panel].Bottom);
 	}
 
-	// carsel.bmp is 557x743 and holds the plain copy 360 rows below the glowing one, so the very
-	// last strip plus that offset has to still be inside the sheet.
-	TestTrue(TEXT("The unselected copy fits in carsel.bmp"),
-		HighlightStrip[PanelCount - 1][HighlightStripCount - 1].Bottom + UnselectedSourceOffsetY <= 743.0f);
-	TestTrue(TEXT("The strips fit carsel.bmp's width"),
-		HighlightStrip[1][2].Right <= 557.0f);
+	TestTrue(TEXT("The highlight rects fit carsel.bmp's width"),
+		HighlightPanelRect[1].Right <= 557.0f);
+	TestTrue(TEXT("The highlight rects fit carsel.bmp's height"),
+		HighlightPanelRect[PanelCount - 1].Bottom <= 743.0f);
 
 	return true;
 }

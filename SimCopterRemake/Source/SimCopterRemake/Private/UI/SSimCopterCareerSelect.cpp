@@ -77,45 +77,20 @@ void SSimCopterCareerSelect::Construct(const FArguments& InArgs)
 
 	for (int32 Panel = 0; Panel < Cities.Num(); ++Panel)
 	{
-		// The original plays city<N>_s.smk inside the frame; the remake has no Smacker decoder,
-		// so the panel carries the city's name instead - otherwise all three frames are identical
-		// empty plates. This is the one deliberate substitution on this screen. The plate is a
-		// mid-orange, so the name is set light with a hard shadow to stay legible on it.
-		AddAt(
-			Canvas,
-			FRect{
-				PanelRect[Panel].Left + 8.0f,
-				PanelRect[Panel].Top + PanelRect[Panel].Height() * 0.5f - 14.0f,
-				PanelRect[Panel].Right - 8.0f,
-				PanelRect[Panel].Bottom },
-			SNew(STextBlock)
-			.Text(FText::FromString(SimCopterCareerProgression::GetCityName(Cities[Panel])))
-			.Justification(ETextJustify::Center)
-			.Visibility(EVisibility::HitTestInvisible)
-			.Font(PageFont(24, /*bBold=*/true))
-			.ColorAndOpacity(FSlateColor(FLinearColor(0.99f, 0.96f, 0.88f, 1.0f)))
-			.ShadowOffset(FVector2D(1.5f, 1.5f))
-			.ShadowColorAndOpacity(FLinearColor(0.06f, 0.03f, 0.0f, 0.85f)));
-
-		// The four glowing border strips, fading smoothly on selection state changes.
+		// Glowing panel border tile, fading smoothly on selection state changes with soft outer edge mask.
 		if (ArtObject != nullptr)
 		{
-			for (int32 Strip = 0; Strip < HighlightStripCount; ++Strip)
+			const FRect& Rect = HighlightPanelRect[Panel];
+			const FSlateBrush* Brush = ArtObject->GetSubImage(
+				HighlightSheet,
+				FIntRect(
+					FMath::RoundToInt(Rect.Left),
+					FMath::RoundToInt(Rect.Top),
+					FMath::RoundToInt(Rect.Right),
+					FMath::RoundToInt(Rect.Bottom)),
+				/*bColorKeyed=*/false);
+			if (Brush != nullptr)
 			{
-				const FRect& Rect = HighlightStrip[Panel][Strip];
-				const FSlateBrush* Brush = ArtObject->GetSubImage(
-					HighlightSheet,
-					FIntRect(
-						FMath::RoundToInt(Rect.Left),
-						FMath::RoundToInt(Rect.Top),
-						FMath::RoundToInt(Rect.Right),
-						FMath::RoundToInt(Rect.Bottom)),
-					/*bColorKeyed=*/false);
-				if (Brush == nullptr)
-				{
-					continue;
-				}
-
 				AddAt(
 					Canvas,
 					Rect,
@@ -131,6 +106,25 @@ void SSimCopterCareerSelect::Construct(const FArguments& InArgs)
 					}));
 			}
 		}
+
+		// The original plays city<N>_s.smk inside the frame; the remake has no Smacker decoder,
+		// so the panel carries the city's name instead - otherwise all three frames are identical
+		// empty plates. Rendered after the highlight tile graphic so the text sits cleanly on top.
+		AddAt(
+			Canvas,
+			FRect{
+				PanelRect[Panel].Left + 8.0f,
+				PanelRect[Panel].Top + PanelRect[Panel].Height() * 0.5f - 14.0f,
+				PanelRect[Panel].Right - 8.0f,
+				PanelRect[Panel].Bottom },
+			SNew(STextBlock)
+			.Text(FText::FromString(SimCopterCareerProgression::GetCityName(Cities[Panel])))
+			.Justification(ETextJustify::Center)
+			.Visibility(EVisibility::HitTestInvisible)
+			.Font(PageFont(24, /*bBold=*/true))
+			.ColorAndOpacity(FSlateColor(FLinearColor(0.99f, 0.96f, 0.88f, 1.0f)))
+			.ShadowOffset(FVector2D(1.5f, 1.5f))
+			.ShadowColorAndOpacity(FLinearColor(0.06f, 0.03f, 0.0f, 0.85f)));
 
 		AddAt(
 			Canvas,
