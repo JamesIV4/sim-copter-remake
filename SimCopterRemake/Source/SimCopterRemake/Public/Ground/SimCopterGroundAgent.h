@@ -275,6 +275,11 @@ public:
 	// actually reacted.
 	bool ApplyInteraction(const struct FSimCopterInteractionEvent& Event);
 
+	// The airframe ran this person over: interaction mode 12 (BHAV 912 -> 903 "Rxn: Die") plus, for
+	// the criminal this is restricted to, outcome 9 so the mission closes. Latched, so one aircraft
+	// kills them once. Called by ASimCopterTrafficSystemActor::RunOverCriminalsUnderHelicopter.
+	bool ApplyHelicopterRunOver(class ASimCopterHelicopterPawn& Helicopter);
+
 	// The reaction currently running on this agent (INDEX_NONE when none).
 	int32 GetActiveReactionProgramId() const { return BehaviorContext.ActiveReactionProgramId; }
 
@@ -696,6 +701,75 @@ private:
 	FVector BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	float BehaviorStepTimeRemainingSeconds = 0.0f;
 	int32 LastAppliedBehaviorFacing = INDEX_NONE;
+	// FUN_004c9470's move result 10: the step just taken would have put this body inside the
+	// object it was walking toward, so it stopped against it instead. MoveStep raises it,
+	// StepTowardSelectedObject reads it as "arrived".
+	bool bBehaviorStepTouchedSelection = false;
+	// Set only around StepTowardSelectedObject's own move, so a plain op-4 walk is never stopped
+	// by a selection that happens to still be sitting in this person's one selection slot.
+	bool bBehaviorStepSeekingSelection = false;
+
+	// The gap between this walker's body and its current selection, across the deck; <= 0 is
+	// contact (FUN_004c8f70's box overlap, with the selection's own extent). The player's
+	// helicopter is measured against its airframe mesh, not its flight-sweep capsule.
+	float GetSelectionContactGapCm(const FSimCopterPersonContext& Context, const FVector& FromWorldLocation) const;
+	bool IsTouchingSelection(const FSimCopterPersonContext& Context, const FVector& FromWorldLocation) const;
+
+	// Is this worker close enough to hand a casualty through the aircraft's door? Skin contact plus
+	// a reach horizontally, a window vertically so a low hover still works. Riding it counts.
+	bool IsAtHelicopterForHandoff(const class ASimCopterHelicopterPawn& Helicopter) const;
+
+	// Whether a posted hospital worker should notice the aircraft at all yet: it has to be over
+	// their own building, not merely somewhere in the neighbourhood.
+	bool IsHelicopterWithinRoofPostAggro(const class ASimCopterHelicopterPawn& Helicopter) const;
+
+	// How far past the fuselage skin a worker may stand and still reach into the cabin.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float HelicopterHandoffReachCm = 25.0f;
+
+	// The vertical window for that reach, measured feet-to-doorsill. 150 cm is 24 original units:
+	// several times the 5-unit arrival gate, so a helicopter hovering just off the pad can still be
+	// unloaded, while one at any real altitude cannot.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float HelicopterHandoffMaxVerticalCm = 150.0f;
+
+	// How far outside its own footprint a posted roof crew will accept the aircraft.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float HospitalRoofPostAggroMarginCm = 120.0f;
+
+	// Latch for ApplyHelicopterRunOver: BHAV 903 takes several ticks to finish dying and the
+	// overlap stays true throughout.
+	bool bRunOverByHelicopter = false;
+
+public:
+	// FUN_004c8f70's box overlap reduced to the two extents the remake keeps for a pair of bodies.
+	// <= 0 is contact. Pure, so the rule can be tested without a city.
+	static float ComputeContactGapCm(
+		const FVector& FromWorldLocation,
+		const FVector& TargetWorldLocation,
+		float MyRadiusCm,
+		float TargetRadiusCm);
+
+	// The two remake-only gates on the medevac handoff, as pure geometry.
+	//
+	// Reach: skin contact plus ReachCm across the deck, and a vertical WINDOW feet-to-doorsill so a
+	// low hover can still be unloaded while an aircraft at altitude cannot.
+	static bool IsWithinHandoffReach(
+		float AirframeGapCm,
+		float MyRadiusCm,
+		float ReachCm,
+		float DoorsillWorldZ,
+		float FeetWorldZ,
+		float MaxVerticalCm);
+
+	// Aggro: is the aircraft over the posted worker's own building (its square plus a margin)?
+	static bool IsWithinRoofPostAggro(
+		const FVector& HelicopterWorldLocation,
+		const FVector& PostCenterWorldLocation,
+		float PostHalfExtentCm,
+		float MarginCm);
+
+protected:
 
 	void StartOriginalBehavior();
 	void ResetBehaviorProgramOverride();

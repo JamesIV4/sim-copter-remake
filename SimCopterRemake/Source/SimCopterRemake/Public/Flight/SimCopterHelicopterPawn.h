@@ -320,8 +320,32 @@ public:
 	float GetAltimeterUnits() const;
 	float GetAirspeedDialKnots() const;
 
+	// The rendered fuselage's own box, in ModelPivot's frame (so it banks with the airframe and
+	// carries the offset that puts the skids at the bottom of the collision capsule). This is the
+	// visible aircraft, rotors excluded - what "next to the helicopter" has to mean for anyone
+	// walking up to it. False before any body geometry has been built.
+	bool TryGetAirframeLocalBoundsCm(FBox& OutLocalBoundsCm) const;
+
+	// Gap in centimetres from a world point to that box; zero when the point is inside it.
+	// bHorizontalOnly measures across the deck only, which is what a walker standing on the same
+	// surface wants - it must not lose contact because the aircraft's box is taller than they are.
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
-	bool CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const;
+	float GetDistanceToAirframeCm(const FVector& WorldLocation, bool bHorizontalOnly = false) const;
+
+	// The gap arithmetic on its own, so the rule can be tested without a world: BodyFrame is
+	// ModelPivot's world transform, LocalBoundsCm the fuselage box expressed in that frame.
+	static float ComputeAirframeGapCm(
+		const FBox& LocalBoundsCm,
+		const FTransform& BodyFrame,
+		const FVector& WorldLocation,
+		bool bHorizontalOnly);
+
+	// Is a body at WorldLocation touching the airframe, within ToleranceCm of its skin? Measured
+	// against the mesh, never against a radius about the actor origin: the collision capsule is a
+	// 95 cm sphere (InitCapsuleSize clamps its half height up to its radius) sized for the flight
+	// impact sweep, and it bears no relation to how wide the fuselage you can see actually is.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
+	bool CanBeEnteredBy(const FVector& WorldLocation, float ToleranceCm) const;
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
 	void EnterHelicopter(APlayerController* PlayerController, bool bBlendView = true);
@@ -1464,6 +1488,7 @@ private:
 	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
 	mutable TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
+	mutable TWeakObjectPtr<class ASimCopterTrafficSystemActor> CachedTrafficSystem;
 
 	TArray<FVector> RopeNodeWorldPositions;
 	int32 RopeFirstActiveNode = 17;
@@ -1729,6 +1754,15 @@ private:
 
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
+	class ASimCopterTrafficSystemActor* ResolveTrafficSystemActor() const;
+
+	// heli[0x59]'s surface query: the first blocking hit that is not a pawn. People are not
+	// landing surfaces - see the comment on the definition.
+	bool TraceFlightSurface(
+		const FVector& Start,
+		const FVector& End,
+		const FCollisionQueryParams& QueryParams,
+		FHitResult& OutHit) const;
 
 	// Remake airport-landing policy plus the once-per-touchdown latch.
 	void UpdateCheckupOffer();

@@ -350,7 +350,7 @@ void ASimCopterOnFootPawn::ControllerLookPitch(float Value)
 
 void ASimCopterOnFootPawn::Interact()
 {
-	TryEnterHelicopter(HelicopterInteractionRadiusCm);
+	TryEnterHelicopter(HelicopterInteractionReachCm);
 }
 
 void ASimCopterOnFootPawn::ToggleGamePause()
@@ -745,12 +745,12 @@ bool ASimCopterOnFootPawn::TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn
 
 void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 {
-	TryEnterHelicopter(HelicopterAutoEnterRadiusCm);
+	TryEnterHelicopter(HelicopterAutoEnterReachCm);
 }
 
-void ASimCopterOnFootPawn::TryEnterHelicopter(const float SearchRadiusCm)
+void ASimCopterOnFootPawn::TryEnterHelicopter(const float ReachCm)
 {
-	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(SearchRadiusCm);
+	ASimCopterHelicopterPawn* Helicopter = FindHelicopterWithinReach(ReachCm);
 	if (Helicopter == nullptr)
 	{
 		return;
@@ -1064,6 +1064,46 @@ ASimCopterHelicopterPawn* ASimCopterOnFootPawn::FindNearestHelicopter(float Sear
 		if (DistanceSq <= BestDistanceSq)
 		{
 			BestDistanceSq = DistanceSq;
+			BestHelicopter = Helicopter;
+		}
+	}
+
+	return BestHelicopter;
+}
+
+ASimCopterHelicopterPawn* ASimCopterOnFootPawn::FindHelicopterWithinReach(const float ReachCm) const
+{
+	if (GetWorld() == nullptr)
+	{
+		return nullptr;
+	}
+
+	TArray<AActor*> Helicopters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), Helicopters);
+
+	// The avatar's own body counts: the reach starts at its skin, not at its centre line.
+	const float BodyRadiusCm =
+		GetCapsuleComponent() != nullptr ? GetCapsuleComponent()->GetScaledCapsuleRadius() : 0.0f;
+	const float LimitCm = FMath::Max(0.0f, ReachCm);
+
+	ASimCopterHelicopterPawn* BestHelicopter = nullptr;
+	float BestGapCm = TNumericLimits<float>::Max();
+	for (AActor* Actor : Helicopters)
+	{
+		ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
+		if (Helicopter == nullptr)
+		{
+			continue;
+		}
+
+		// Full 3D: a horizontal-only gap would board an aircraft hovering overhead the moment the
+		// avatar walked underneath it.
+		const float GapCm = FMath::Max(
+			0.0f,
+			Helicopter->GetDistanceToAirframeCm(GetActorLocation()) - BodyRadiusCm);
+		if (GapCm <= LimitCm && GapCm < BestGapCm)
+		{
+			BestGapCm = GapCm;
 			BestHelicopter = Helicopter;
 		}
 	}

@@ -2543,6 +2543,15 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 		Handoff.LastOnboardCount = Onboard;
 		Handoff.SecondsWithoutProgress = 0.0f;
 	}
+	else if (ResolveTrafficSystem() != nullptr &&
+		ResolveTrafficSystem()->FindPersonAboardForEvent(
+			Helicopter, Handoff.EventId, ESimCopterMissionPassengerKind::Medevac) != nullptr)
+	{
+		// A real casualty is in the cabin, so there is a real handoff to wait for and
+		// DeliverMedevacDirectly would refuse anyway. Do not run the clock down toward a recovery
+		// that cannot happen - the medic walking over is not a failure.
+		Handoff.SecondsWithoutProgress = 0.0f;
+	}
 	else
 	{
 		Handoff.SecondsWithoutProgress += DeltaSeconds;
@@ -2595,6 +2604,25 @@ void ASimCopterMissionSystemActor::DeliverMedevacDirectly(int32 EventId, ASimCop
 	if (Onboard <= 0)
 	{
 		return;
+	}
+
+	// ABSTRACT SEATS ONLY. This exists for a seat with no person behind it - a legacy save, a test
+	// fixture, a behaviour asset that failed to load - where nothing can ever animate the handoff
+	// and the mission would otherwise never close.
+	//
+	// It must never touch a real casualty. Teleporting one out of the cabin, crediting the delivery
+	// and destroying the actor is precisely what the player sees as "the paramedic snatched my
+	// injured Sim out of the helicopter from several tiles away": the medic was simply still on its
+	// way, or could not reach an aircraft parked off its roof, and this fired at
+	// MedevacBehaviorRecoverySeconds regardless. A real patient waits for a real handoff, however
+	// long that takes - the pilot can always fly somewhere the medic can reach.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
+	{
+		if (TrafficSystem->FindPersonAboardForEvent(
+				Helicopter, EventId, ESimCopterMissionPassengerKind::Medevac) != nullptr)
+		{
+			return;
+		}
 	}
 	ReleaseMissionPassengersFromHelicopter(
 		Helicopter,

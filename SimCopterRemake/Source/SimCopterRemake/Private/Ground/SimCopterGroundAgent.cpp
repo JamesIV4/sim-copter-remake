@@ -693,6 +693,29 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 			continue;
 		}
 
+		// FUN_004c9470 asks FUN_004c9000 about the frame's SELECTED object here - before the tile
+		// class, before the climb gate, before the bump - and an overlap with it is move result 10,
+		// returned without writing the new position. That is the arrival StepTowardSelectedObject is
+		// waiting for: walking into what you walked toward stops you against it. It is never the bump
+		// below, which is why a paramedic can stand at the casualty (or at the helicopter) instead of
+		// circling it forever refusing to occupy the same space, and it is ahead of the tile rules
+		// because the thing you were sent to is reachable whatever it happens to be standing on.
+		//
+		// Deliberately narrower than the original in one way: the original applies this to every move
+		// because each walk frame owns its own selection slot, while the remake keeps one slot per
+		// person (see ops 67/68), so a stale selection could otherwise stop an unrelated walk dead.
+		// And the roof-post containment above stays ahead of it: that is the remake's own guard, and
+		// an aircraft parked off the building must not pull a posted medic over the edge.
+		if (bBehaviorStepSeekingSelection && IsTouchingSelection(Context, TargetLocation))
+		{
+			bBehaviorStepTouchedSelection = true;
+			Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
+			Context.PendingAnimMnemonic = SpeedMnemonic;
+			BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+			BehaviorStepTimeRemainingSeconds = 0.0f;
+			return true;
+		}
+
 		// FUN_004c9470: ambient people (+0x168) may only enter tile classes from their
 		// behavior-class row (DAT_0058ec00); result 3 otherwise. Non-ambient movement keeps
 		// the pre-VM rows as a safety net (missions steer via goto-object opcodes instead).
@@ -1124,11 +1147,23 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 		FoundLocation = Context.SelectedLocation;
 		break;
 	case EBhavObjectClass::PlayerHelicopter:
+	{
 		// DAT_005040d0+0xa4 is the player's helicopter, and it exists whether or not they are
 		// sitting in it - so this must find the airframe, not "whatever body the player is in".
 		// BHAV 291 probes it at one tile to decide a transport passenger may climb aboard.
-		Found = ResolvePlayerHelicopter();
+		ASimCopterHelicopterPawn* PlayerHelicopter = ResolvePlayerHelicopter();
+		// DIVERGENCE, deliberate: a worker posted on a hospital roof does not notice the aircraft
+		// until it is actually over their building. BHAV 263 rec[2] probes ten tiles, which in the
+		// remake means the roof crew broke into a run at a helicopter three or four tiles away and
+		// then walked into the containment clamp at the edge of their own roof, because that is as
+		// far as they are allowed to go. Failing the probe instead leaves them patrolling
+		// (801 -> Walk-10, Idle-10) until there is something they can genuinely reach.
+		if (PlayerHelicopter != nullptr && IsHelicopterWithinRoofPostAggro(*PlayerHelicopter))
+		{
+			Found = PlayerHelicopter;
+		}
 		break;
+	}
 	case EBhavObjectClass::PlayerSpotlight:
 		if (TrafficSystem != nullptr && TrafficSystem->TryGetSpotlightGroundLocation(FoundLocation))
 		{
@@ -1445,8 +1480,19 @@ void ASimCopterGroundAgent::RunMeetSelector(FSimCopterPersonContext& Context, AA
 
 ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSimCopterPersonContext& Context)
 {
-	// FUN_004ca940: turn to face the object, take one ordinary move step, and report arrival once
-	// the two are on the same tile (the original's move result 10 plus a half-tile height gate).
+	// FUN_004ca940: turn to face the object, take one ordinary move step, and report arrival on
+	// move result 10 with under 5 original units of vertical separation.
+	//
+	// Result 10 is CONTACT, not tile co-occupancy. FUN_004c9470 asks FUN_004c9000 what the walker's
+	// body would overlap at the step target; FUN_004c9000 tests the frame's *selected* object first
+	// and FUN_004c8f70 answers with a box overlap of the two bodies' own extents (the walker's
+	// person+0x1c4 radius against the object's +0x10 radius). Only that returns 10 - and it returns
+	// before the position is written, so the walker stops against what it walked up to.
+	//
+	// The remake used to accept "we are on the same tile". A tile is 400 cm: a paramedic entering
+	// the far corner of the helicopter's tile was declared to have arrived and reached into the
+	// cabin from nearly three metres away, which is what "the medics never walk up to the
+	// helicopter" was. Contact is now measured against the aircraft's own airframe box.
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
 	if (!Context.bHasSelection || TrafficSystem == nullptr)
 	{
@@ -1481,6 +1527,8 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
+	// Both ends still have to be somewhere the city knows about; the original's walker cannot leave
+	// the tile grid at all, and neither end having a tile is a remake-only state.
 	int32 MyX = INDEX_NONE;
 	int32 MyY = INDEX_NONE;
 	int32 TheirX = INDEX_NONE;
@@ -1491,10 +1539,9 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
-	// FUN_004ca940 arrives on the same tile within 5 original units of vertical separation. The
-	// original measures between two ground-referenced positions; the remake keeps an actor origin
-	// mid-body, so the comparison has to be feet-to-doorsill or a landed helicopter is permanently
-	// "too high" to climb into - 5 units is only about 31 cm.
+	// The original measures its vertical gate between two ground-referenced positions; the remake
+	// keeps an actor origin mid-body, so the comparison has to be feet-to-doorsill or a landed
+	// helicopter is permanently "too high" to climb into - 5 units is only about 31 cm.
 	const float HeightGateCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 5.0f;
 	float TargetReferenceZ = Context.SelectedLocation.Z;
 	if (!Context.bSelectionIsHarness)
@@ -1505,14 +1552,189 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 		}
 	}
 	const float MyFeetZ = GetActorLocation().Z - GetCapsuleHalfHeightCm();
-	if (MyX == TheirX && MyY == TheirY && FMath::Abs(TargetReferenceZ - MyFeetZ) < HeightGateCm)
+	const bool bHeightGatePassed = FMath::Abs(TargetReferenceZ - MyFeetZ) < HeightGateCm;
+
+	// Already touching it - the step that made contact refused to displace us, exactly as
+	// FUN_004c9470 does when it returns 10.
+	if (bHeightGatePassed && IsTouchingSelection(Context, GetActorLocation()))
 	{
 		return ESimCopterBehaviorStepResult::Arrived;
 	}
 
 	FaceSelectedObject(Context);
+	bBehaviorStepTouchedSelection = false;
+	bBehaviorStepSeekingSelection = true;
 	MoveStep(Context);
+	bBehaviorStepSeekingSelection = false;
+	if (bHeightGatePassed && bBehaviorStepTouchedSelection)
+	{
+		return ESimCopterBehaviorStepResult::Arrived;
+	}
 	return ESimCopterBehaviorStepResult::Moving;
+}
+
+float ASimCopterGroundAgent::ComputeContactGapCm(
+	const FVector& FromWorldLocation,
+	const FVector& TargetWorldLocation,
+	const float MyRadiusCm,
+	const float TargetRadiusCm)
+{
+	return static_cast<float>(FVector::Dist2D(FromWorldLocation, TargetWorldLocation)) -
+		FMath::Max(0.0f, MyRadiusCm) -
+		FMath::Max(0.0f, TargetRadiusCm);
+}
+
+float ASimCopterGroundAgent::GetSelectionContactGapCm(
+	const FSimCopterPersonContext& Context,
+	const FVector& FromWorldLocation) const
+{
+	// FUN_004c8f70's box overlap in remake terms: the gap between this walker's body and the
+	// selection's own extent, measured across the deck (StepTowardSelectedObject owns the vertical
+	// gate). Negative or zero means the two bodies are in contact.
+	const float MyRadiusCm = FMath::Max(1.0f, GetCollisionRadiusCm());
+	const AActor* Target = Context.SelectedObject.Get();
+
+	// The helicopter's collision capsule is a 95 cm sphere sized for the flight impact sweep, so
+	// GetSimpleCollisionRadius would put contact a metre out from a fuselage a fraction of that
+	// across. Measure against the airframe the player can actually see. (Not for a harness
+	// selection: there the selected actor is still the helicopter but the target is its rope end.)
+	const ASimCopterHelicopterPawn* Helicopter =
+		Context.bSelectionIsHarness ? nullptr : Cast<ASimCopterHelicopterPawn>(Target);
+	if (Helicopter != nullptr)
+	{
+		return Helicopter->GetDistanceToAirframeCm(FromWorldLocation, /*bHorizontalOnly=*/true) -
+			MyRadiusCm;
+	}
+
+	// Everyone else keeps the original's cube-vs-cube with the extent the remake already has for
+	// them: their own capsule radius.
+	const float TargetRadiusCm = Target != nullptr ? Target->GetSimpleCollisionRadius() : 0.0f;
+	return ComputeContactGapCm(FromWorldLocation, Context.SelectedLocation, MyRadiusCm, TargetRadiusCm);
+}
+
+bool ASimCopterGroundAgent::ApplyHelicopterRunOver(ASimCopterHelicopterPawn& Helicopter)
+{
+	// The interaction half is the original's, unaltered: FUN_0049a4f0(0xc, ...) routes an airframe
+	// contact to the person reaction table, whose entry 12 is BHAV 912 "Rxn: Large fast vehicle hit"
+	// -> 903 "Rxn: Die" -> 309 "Fall off master". 903 plays the death sounds, posts outcome 10
+	// (EVT_PersonDied), sets attr15 "written off" and despawns them, so nothing about dying needs to
+	// be invented here.
+	if (bRunOverByHelicopter)
+	{
+		return false; // one airframe, one death; the contact test is true for several frames
+	}
+
+	FSimCopterInteractionEvent Event;
+	Event.Mode = 12; // DAT_0058d728[12] - the large-fast-vehicle arm
+	Event.Source = &Helicopter;
+	Event.TargetWorldLocation = GetActorLocation();
+	Event.MissionEventId = MissionEventId;
+	if (!ApplyInteraction(Event))
+	{
+		return false;
+	}
+	bRunOverByHelicopter = true;
+
+	// DIVERGENCE: outcome 9 (EVT_CriminalCaught) as well. The executable has no way to end a crime
+	// mission with the helicopter, so running the criminal down would otherwise kill the target and
+	// leave the job open forever with nobody left to catch. Squashing the one you were sent for is
+	// the job done.
+	PostMissionOutcome(BehaviorContext, 9);
+	return true;
+}
+
+bool ASimCopterGroundAgent::IsWithinRoofPostAggro(
+	const FVector& HelicopterWorldLocation,
+	const FVector& PostCenterWorldLocation,
+	const float PostHalfExtentCm,
+	const float MarginCm)
+{
+	// "Over the building" in the only terms the post has: its own square, widened by a margin so a
+	// pilot who parks with the skids just past the parapet is still served. Height is deliberately
+	// not tested - the crew should be walking to the pad while the aircraft is still coming down.
+	const float LimitCm = FMath::Max(0.0f, PostHalfExtentCm) + FMath::Max(0.0f, MarginCm);
+	const FVector Delta = HelicopterWorldLocation - PostCenterWorldLocation;
+	return FMath::Abs(Delta.X) <= LimitCm && FMath::Abs(Delta.Y) <= LimitCm;
+}
+
+bool ASimCopterGroundAgent::IsWithinHandoffReach(
+	const float AirframeGapCm,
+	const float MyRadiusCm,
+	const float ReachCm,
+	const float DoorsillWorldZ,
+	const float FeetWorldZ,
+	const float MaxVerticalCm)
+{
+	const float AllowedCm = FMath::Max(1.0f, MyRadiusCm) + FMath::Max(0.0f, ReachCm);
+	return AirframeGapCm <= AllowedCm &&
+		FMath::Abs(DoorsillWorldZ - FeetWorldZ) <= FMath::Max(0.0f, MaxVerticalCm);
+}
+
+bool ASimCopterGroundAgent::IsHelicopterWithinRoofPostAggro(const ASimCopterHelicopterPawn& Helicopter) const
+{
+	// Only a posted worker is restricted; everybody else keeps the shipped ten-tile probe.
+	if (!bHasHospitalRoofPost)
+	{
+		return true;
+	}
+	return IsWithinRoofPostAggro(
+		Helicopter.GetActorLocation(),
+		HospitalRoofPostWorldLocation,
+		HospitalRoofPostHalfExtentCm,
+		HospitalRoofPostAggroMarginCm);
+}
+
+bool ASimCopterGroundAgent::IsAtHelicopterForHandoff(const ASimCopterHelicopterPawn& Helicopter) const
+{
+	// Riding it counts, and has to: a medic who climbed aboard unloads a patient in flight, which is
+	// BHAV 263 rec[1] -> 29 -> 31 -> 3 and is meant to work.
+	if (BehaviorCarrier.Get() == &Helicopter)
+	{
+		return true;
+	}
+
+	// Across the deck this is skin contact plus a hand's reach. Vertically it is a window rather
+	// than contact, because taking a casualty out of a helicopter that is still hovering low over
+	// the pad is something the game should allow - what it must not allow is doing it from the far
+	// side of the roof, or from the ground under an aircraft in the air.
+	//
+	// The doorsill is measured the same way StepTowardSelectedObject's vertical gate does it.
+	return IsWithinHandoffReach(
+		Helicopter.GetDistanceToAirframeCm(GetActorLocation(), /*bHorizontalOnly=*/true),
+		GetCollisionRadiusCm(),
+		HelicopterHandoffReachCm,
+		Helicopter.GetActorLocation().Z - Helicopter.GetSimpleCollisionHalfHeight(),
+		GetActorLocation().Z - GetCapsuleHalfHeightCm(),
+		HelicopterHandoffMaxVerticalCm);
+}
+
+bool ASimCopterGroundAgent::IsTouchingSelection(
+	const FSimCopterPersonContext& Context,
+	const FVector& FromWorldLocation) const
+{
+	if (!Context.bHasSelection)
+	{
+		return false;
+	}
+
+	// Two selections have no body to make contact with. The rope end is a point hanging in the air,
+	// and the spotlight's ground spot is a location with no object at all - which the original never
+	// walks to in the first place, since FUN_004ca940 refuses a frame whose selection slot is not an
+	// object. Both keep the older whole-tile acceptance rather than being given an invented radius.
+	if (Context.bSelectionIsHarness || Context.SelectedObject.Get() == nullptr)
+	{
+		const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+		int32 MyX = INDEX_NONE;
+		int32 MyY = INDEX_NONE;
+		int32 TheirX = INDEX_NONE;
+		int32 TheirY = INDEX_NONE;
+		return TrafficSystem != nullptr &&
+			TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(FromWorldLocation, MyX, MyY) &&
+			TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Context.SelectedLocation, TheirX, TheirY) &&
+			MyX == TheirX && MyY == TheirY;
+	}
+
+	return GetSelectionContactGapCm(Context, FromWorldLocation) <= 0.0f;
 }
 
 bool ASimCopterGroundAgent::PushReactionOnSelectedObject(FSimCopterPersonContext& Context, const int32 ProgramId)
@@ -2025,6 +2247,20 @@ bool ASimCopterGroundAgent::PutSelectedPersonOnMe(FSimCopterPersonContext& Conte
 	{
 		return false;
 	}
+
+	// Toting somebody out of the player's cabin has to happen at the aircraft. The teleport below is
+	// the whole of the original's op 44 and it has no distance test, because it cannot need one - in
+	// the shipped graph a walk that ended on contact is what got the walker here. See
+	// DropSelectedPerson for why the remake cannot rely on that alone.
+	if (const ASimCopterHelicopterPawn* Carrier =
+			Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier()))
+	{
+		if (!IsAtHelicopterForHandoff(*Carrier))
+		{
+			return false;
+		}
+	}
+
 	Person->SetActorLocation(GetActorLocation(), false);
 	return Person->BoardCarrier(this, /*bAsHarnessRider*/ false);
 }
@@ -2047,10 +2283,27 @@ bool ASimCopterGroundAgent::DropSelectedPerson(FSimCopterPersonContext& Context)
 	// NotifyMissionPersonDelivered is the idempotent service, so the ordinary hospital route still
 	// runs its full animation and BHAV 282's later request is simply refused as already reported.
 	const bool bIsEmergencyWorker = int32(Context.Attributes[EBhavAttr::State]) == 5;
+	const ASimCopterHelicopterPawn* PlayerCarrier =
+		Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier());
 	const bool bTakenFromPlayer =
-		Cast<ASimCopterHelicopterPawn>(Person->GetBehaviorCarrier()) != nullptr &&
+		PlayerCarrier != nullptr &&
 		Person->MissionEventId != INDEX_NONE &&
 		!Person->HasMissionResolutionReported();
+
+	// You cannot take somebody out of an aircraft you are not standing at. FUN_004cc8d0 carries no
+	// such test and does not need one: in the shipped graph the only way to reach BHAV 263 rec[3] is
+	// through rec[5]'s walk, which ends on physical contact (FUN_004c9470's move result 10), or with
+	// the medic already aboard. The remake can arrive here with neither true - a program restarted
+	// mid-stack, a helicopter that lifted off after the walk, rec[32]'s within-25-units fallback -
+	// and then a casualty visibly leaves the cabin with nobody near it.
+	//
+	// Refusing makes op 47 take its false edge, which in BHAV 263 unwinds to 801's idle and probes
+	// again next loop. That is a retry, not a failure: the medic keeps trying while the pilot is
+	// there to be reached.
+	if (PlayerCarrier != nullptr && !IsAtHelicopterForHandoff(*PlayerCarrier))
+	{
+		return false;
+	}
 
 	if (!Person->AlightFromCarrier())
 	{

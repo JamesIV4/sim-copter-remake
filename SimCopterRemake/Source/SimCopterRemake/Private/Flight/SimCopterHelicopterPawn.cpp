@@ -527,6 +527,14 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CollisionComponent->SetCollisionObjectType(ECC_Pawn);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	// InitCapsuleSize clamps the half height up to the radius, so this shape is a 190 cm sphere -
+	// sized for the flight impact sweep against city geometry (see ApplyFlightModelToActor), not
+	// for the fuselage, which is a fraction of that across. Blocking pawns with it walled the
+	// airframe off behind a metre of invisible air: the avatar was stopped short of the aircraft
+	// on every side, so "walk up to the helicopter and get in" could only ever be a bubble test.
+	// People are not obstacles to an aircraft in the original either - FUN_0048ad50 answers a
+	// person with damage and a bounce, never with a stop - so pawns overlap instead.
+	CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	CollisionComponent->SetCanEverAffectNavigation(false);
 	SetRootComponent(CollisionComponent);
 
@@ -2230,9 +2238,78 @@ float ASimCopterHelicopterPawn::GetAirspeedDialKnots() const
 	return SimCopterFixed::ToFloat(FlightModel.HorizontalSpeed);
 }
 
-bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const
+bool ASimCopterHelicopterPawn::TryGetAirframeLocalBoundsCm(FBox& OutLocalBoundsCm) const
 {
-	return FVector::DistSquared(WorldLocation, GetActorLocation()) <= FMath::Square(RadiusCm);
+	// Same source as UpdateCameraAnchorFromVisibleBody: whichever fuselage is on screen, measured
+	// through its own relative transform so the answer is already in ModelPivot's coordinates.
+	// Rotors are separate components and stay out of it - a 5.2 m disc is not something you board.
+	const USceneComponent* VisibleBody =
+		bUsingOriginalMesh
+			? static_cast<const USceneComponent*>(HeliBodyMeshComponent.Get())
+			: static_cast<const USceneComponent*>(BodyMeshComponent.Get());
+	if (VisibleBody == nullptr)
+	{
+		return false;
+	}
+
+	const FBoxSphereBounds BodyBounds = VisibleBody->CalcBounds(VisibleBody->GetRelativeTransform());
+	if (!(BodyBounds.SphereRadius > UE_SMALL_NUMBER) || BodyBounds.BoxExtent.ContainsNaN())
+	{
+		return false;
+	}
+
+	OutLocalBoundsCm = BodyBounds.GetBox();
+	return OutLocalBoundsCm.IsValid != 0;
+}
+
+float ASimCopterHelicopterPawn::ComputeAirframeGapCm(
+	const FBox& LocalBoundsCm,
+	const FTransform& BodyFrame,
+	const FVector& WorldLocation,
+	const bool bHorizontalOnly)
+{
+	if (LocalBoundsCm.IsValid == 0)
+	{
+		return 0.0f;
+	}
+
+	FVector LocalPoint = BodyFrame.InverseTransformPosition(WorldLocation);
+	if (bHorizontalOnly)
+	{
+		// Project onto the box's own vertical span: someone standing beside the skids and someone
+		// level with the cabin roof are both "at" the aircraft.
+		LocalPoint.Z = FMath::Clamp(LocalPoint.Z, LocalBoundsCm.Min.Z, LocalBoundsCm.Max.Z);
+	}
+	return static_cast<float>(FMath::Sqrt(LocalBoundsCm.ComputeSquaredDistanceToPoint(LocalPoint)));
+}
+
+float ASimCopterHelicopterPawn::GetDistanceToAirframeCm(
+	const FVector& WorldLocation,
+	const bool bHorizontalOnly) const
+{
+	FBox LocalBounds(ForceInit);
+	if (!TryGetAirframeLocalBoundsCm(LocalBounds))
+	{
+		// No fuselage built yet (a headless test, or the frame before the GEO packs load). Fall
+		// back to the collision capsule's radius so the answer is still a gap to a body rather
+		// than a distance to a point.
+		const float CapsuleRadius =
+			CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f;
+		const FVector Delta = WorldLocation - GetActorLocation();
+		const float Distance = static_cast<float>(bHorizontalOnly ? Delta.Size2D() : Delta.Size());
+		return FMath::Max(0.0f, Distance - CapsuleRadius);
+	}
+
+	const FTransform BodyFrame =
+		ModelPivot != nullptr ? ModelPivot->GetComponentTransform() : GetActorTransform();
+	return ComputeAirframeGapCm(LocalBounds, BodyFrame, WorldLocation, bHorizontalOnly);
+}
+
+bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, const float ToleranceCm) const
+{
+	// 3D on purpose: measuring across the deck only would let a body standing under a hovering
+	// aircraft read as touching it.
+	return GetDistanceToAirframeCm(WorldLocation) <= FMath::Max(0.0f, ToleranceCm);
 }
 
 void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerController, const bool bBlendView)
@@ -6101,7 +6178,9 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterFlightSurface), false, this);
 	const FVector Start(Location.X, Location.Y, Location.Z + 20000.0f);
 	const FVector End(Location.X, Location.Y, Location.Z - 30000.0f);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	// heli[0x59]: terrain and objects only. See TraceFlightSurface - a pedestrian's head is not a
+	// landing surface, and this trace starts above the world so it would find one first.
+	if (TraceFlightSurface(Start, End, QueryParams, Hit) && Hit.bBlockingHit)
 	{
 		const int32 SurfaceHeight = SimCopterFixed::FromFloat(Hit.ImpactPoint.Z / Unit);
 		if (!bHasTerrainGrid)
@@ -6220,6 +6299,17 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		SetActorLocation(RestoreLocation, /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
 	}
 
+	// SCHOOK: HelicopterObjectCollision 0x0048ad50 (people arm)
+	// The other half of the original's contact pass, and the reason the swept capsule above no
+	// longer blocks pawns: FUN_0048ad50 walks the objects overlapping the airframe and answers them
+	// with FUN_0049a4f0(0xc, ...) - a reaction on THEM - while the aircraft flies on. Narrowed here
+	// to uncaught criminals; ordinary pedestrians are not touched at all. Nothing in this call can
+	// move the helicopter.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystemActor())
+	{
+		TrafficSystem->RunOverCriminalsUnderHelicopter(*this);
+	}
+
 	// The model owns the position, so this is now a straight read-back; it stays because
 	// SetActorLocation still clamps against the world's own limits.
 	const FVector Applied = GetActorLocation();
@@ -6241,6 +6331,61 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		SimCopterFixed::ToFloat(FlightModel.ClimbSpeed) * Unit);
 }
 
+ASimCopterTrafficSystemActor* ASimCopterHelicopterPawn::ResolveTrafficSystemActor() const
+{
+	// Cached like the city actor: the run-over pass asks for this every frame.
+	if (ASimCopterTrafficSystemActor* Cached = CachedTrafficSystem.Get())
+	{
+		return Cached;
+	}
+	ASimCopterTrafficSystemActor* Found = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	CachedTrafficSystem = Found;
+	return Found;
+}
+
+bool ASimCopterHelicopterPawn::TraceFlightSurface(
+	const FVector& Start,
+	const FVector& End,
+	const FCollisionQueryParams& QueryParams,
+	FHitResult& OutHit) const
+{
+	OutHit = FHitResult();
+	if (GetWorld() == nullptr)
+	{
+		return false;
+	}
+
+	// A person is not a surface. The original's height test reads heli[0x59], the *terrain and
+	// object* top under the aircraft; people are not in that number at all - they are answered
+	// separately by FUN_0048ad50, with damage and a bounce, never with support. Tracing plain
+	// Visibility put a pedestrian's capsule in the role of ground: walk under a descending
+	// helicopter and it touched down on their head, reported itself landed, and sat there.
+	//
+	// Multi-trace and take the first blocking hit that is not a pawn. Pawns are all of it - other
+	// helicopters included, which is the same rule: aircraft do not stack.
+	TArray<FHitResult> Hits;
+	if (!GetWorld()->LineTraceMultiByChannel(Hits, Start, End, ECC_Visibility, QueryParams))
+	{
+		return false;
+	}
+	for (const FHitResult& Hit : Hits)
+	{
+		if (!Hit.bBlockingHit)
+		{
+			continue;
+		}
+		const UPrimitiveComponent* HitComponent = Hit.GetComponent();
+		if (HitComponent != nullptr && HitComponent->GetCollisionObjectType() == ECC_Pawn)
+		{
+			continue;
+		}
+		OutHit = Hit;
+		return true;
+	}
+	return false;
+}
+
 void ASimCopterHelicopterPawn::UpdateGroundProbe()
 {
 	LastGroundHit = FHitResult();
@@ -6255,7 +6400,8 @@ void ASimCopterHelicopterPawn::UpdateGroundProbe()
 	const FVector Start = GetActorLocation();
 	const FVector End = Start - FVector::UpVector * (CapsuleHalfHeight + LandingProbeDistance);
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterGroundProbe), false, this);
-	GetWorld()->LineTraceSingleByChannel(LastGroundHit, Start, End, ECC_Visibility, QueryParams);
+
+	TraceFlightSurface(Start, End, QueryParams, LastGroundHit);
 	if (LastGroundHit.bBlockingHit)
 	{
 		GroundClearanceCm = FMath::Max(0.0f, LastGroundHit.Distance - CapsuleHalfHeight);

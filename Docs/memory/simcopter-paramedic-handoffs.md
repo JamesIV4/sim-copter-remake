@@ -203,6 +203,100 @@ agent (person carrying person, was 40 cm out in front) and `CarriedMissionPerson
 on-foot pawn (the player carrying a casualty, was 48 cm). Both hold the body against the chest
 instead of floating it along ahead of the carrier.
 
+## "Arrived at the object" is CONTACT, not the same tile (2026-08-05)
+
+Reported as "paramedics don't walk up to the helicopter before they pull the patient out", and that
+is exactly what it was. BHAV 263 does send them: rec[2] selects object class **2** (the player's
+helicopter) within ten tiles, rec[17]/rec[7] set the move speed and 50 tries, rec[5] **op 38 walks
+to it**, and only then does rec[31] op 84 select the casualty aboard and rec[3] op 47 take her out.
+The walk was completing instantly.
+
+`ASimCopterGroundAgent::StepTowardSelectedObject` was reporting arrival when the walker and the
+target **shared a tile**. A tile is 400 cm, so a medic entering the far corner of the helicopter's
+tile — up to ~283 cm away on the diagonal — was declared to have arrived and reached into the cabin
+from across the helipad.
+
+The chain says otherwise. `FUN_004ca940` arrives on move **result 10**; `FUN_004c9470` returns 10
+only when `FUN_004c9000`, asked at the **step target**, answers with the frame's own selected
+object; and `FUN_004c9000` decides that with `FUN_004c8f70`, a box overlap of the two bodies' own
+extents (the walker's `person+0x1c4` radius against the object's `+0x10`). It is a **touch test**.
+Two details in it matter:
+
+1. **It returns before the position is written**, so the walker stops *against* what it walked up
+   to rather than standing inside it.
+2. **The selected object is tested first** — ahead of the tile-class rules, the climb gate and the
+   bump. Walking into what you were sent to is arrival, never the result-5 bump, which is what lets
+   a medic stand at a casualty instead of circling one forever refusing to share its space. The
+   remake's port had the same threshold for both (`FindBumpedPedestrian` uses 2x the body radius,
+   and two pedestrians touch at the sum of theirs), so without this ordering the tightened test
+   would have deadlocked every approach to a person.
+
+`MoveStep` now raises `bBehaviorStepTouchedSelection` in that position and returns without
+displacing, and `IsTouchingSelection` / `GetSelectionContactGapCm` / `ComputeContactGapCm` are the
+port of `FUN_004c8f70`. The vertical half is unchanged: the original's 5-unit (`0x50000`)
+feet-to-doorsill gate still applies separately.
+
+Three deliberate divergences, all documented at the call site:
+
+- **The helicopter is measured against its airframe mesh**, not `GetSimpleCollisionRadius()`. That
+  would answer 95 cm — the flight-sweep sphere, see [[simcopter-helicopter-collision]] — and put
+  contact a metre out from the fuselage, which is the bug in a different costume.
+- **Only a walk that is seeking the selection stops on it** (`bBehaviorStepSeekingSelection`). The
+  original applies the rule to every move because each walk frame owns its own selection slot; the
+  remake keeps one slot per person (ops 67/68 are no-ops for that reason), so a stale selection
+  could otherwise stop an unrelated walk dead.
+- **The hospital roof post still wins.** Containment is checked before contact, so an aircraft
+  parked off the building cannot pull a posted medic over the edge.
+- **Selections with no body keep the old whole-tile acceptance**: the rope end is a point in the
+  air and the spotlight's ground spot has no object at all — the original never walks to one
+  (`FUN_004ca940` refuses a frame whose selection slot is not an object), so neither gets an
+  invented radius.
+
+Covered by `SimCopter.Behavior.VM.SelectionContact` and `SimCopter.Interaction.AirframeGap`.
+
+## The snatch was never in the behaviour graph — it was the watchdog (2026-08-05)
+
+**Read this before touching the medevac unload.** Tightening BHAV 263's walk (above) did not stop
+"the paramedic took my casualty from several tiles away". It made it *worse*, and the reason is the
+whole lesson: **the visible handoff and the code that actually empties the cabin were two different
+things.**
+
+`ASimCopterMissionSystemActor::AdvanceMedevacHandoff` ran a `MedevacBehaviorRecoverySeconds` (45 s)
+no-progress timer and then called `DeliverMedevacDirectly`, which **teleports the passenger out of
+the cabin, credits the delivery and destroys the actor**. Nothing about it involved the medic. So:
+
+- a medic that could not reach the aircraft — parked off its roof, or now held to real contact —
+  simply meant the timer ran out and the patient left on its own;
+- making the walk stricter made the timer fire *more often*, which is exactly the report.
+
+That path is now **abstract seats only**: `DeliverMedevacDirectly` refuses outright when
+`FindPersonAboardForEvent` finds a real casualty, and the timer does not accumulate while one is
+aboard. Its remaining purpose — a legacy save or a test seat with no person behind it, which nothing
+can ever animate — is intact. A real patient waits for a real handoff.
+
+Two gates now decide the visible one, both on `ASimCopterGroundAgent`:
+
+- **`IsAtHelicopterForHandoff`**, checked inside `DropSelectedPerson` (op 47) *and*
+  `PutSelectedPersonOnMe` (op 44). Horizontally it is airframe contact plus
+  `HelicopterHandoffReachCm` (25 cm); vertically it is a **window** (`150 cm`, 24 original units)
+  feet-to-doorsill, not contact, because unloading a helicopter still hovering just off the pad is
+  wanted — what is not wanted is doing it from the far side of the roof. Riding the aircraft always
+  counts (BHAV 263 rec[1] -> 29 -> 31 -> 3 is the in-flight unload and is meant to work).
+  **Op 47 now propagates its result** where `FUN_004cc8d0` always returned 1: rec[3]'s false edge is
+  -3, so a refusal unwinds to 801's idle and the medic probes again. A retry, not a dead end.
+- **`IsHelicopterWithinRoofPostAggro`**, checked in `SelectObjectOfClass`'s PlayerHelicopter arm. A
+  posted roof crew does not *notice* the aircraft until it is over their own building (the post
+  square plus `HospitalRoofPostAggroMarginCm`). BHAV 263 rec[2] probes ten tiles, which in the
+  remake meant the crew set off after a helicopter three or four tiles away and then walked into the
+  containment clamp at the edge of their roof, because that is as far as they may go. Altitude is
+  deliberately not tested — they should be walking out while you descend.
+
+`MedevacHospitalHandoffRadiusCm` also came down from **1500 to 900** (nearly four tiles to a bit
+over two, which covers a 3x3 hospital from its recorded tile whether that tile is the centre or a
+corner).
+
+Covered by `SimCopter.Dispatch.MedevacHandoffGates`.
+
 ## Evidence and verification
 
 - Fresh executable output:
