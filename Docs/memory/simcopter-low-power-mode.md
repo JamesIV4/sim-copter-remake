@@ -112,6 +112,63 @@ around it, which `MaterialEditingLibrary.get_statistics` does not count — so t
 confirm this change, and a flat instruction count is not evidence it did nothing. Confirm it in the
 log instead: `LogConfig: Set CVar [[r.Substrate:0]]`.
 
+## The forward renderer: TRIED, BUILT, AND REVERTED (2026-08-05). Do not re-attempt blind.
+
+Forward shading looks like the obvious next lever for a low-end machine. It was implemented in full
+— a `SimCopterRemakeBoot` module at `PostConfigInit`, the preference persisted, a restart notice on
+the page — and then **reverted, because the game crashes with it on**. Everything below is what that
+cost to find out, so the next attempt starts from here instead of from scratch.
+
+**It is not a runtime setting.** `r.ForwardShading` is `ConfigRestartRequired` and is consumed when
+the shader platform is built, long before any `UGameInstanceSubsystem` exists. Applying it needs code
+at `ELoadingPhase::PostConfigInit` — after config, before the RHI.
+
+**Read-only is not the obstacle it looks like.** `FConsoleVariableBase::CanChange` tests **priority
+only**; `ECVF_ReadOnly` is enforced solely on the console-command path. A plain `Set` at
+`ECVF_SetByGameOverride` from a PostConfigInit module works and outranks DefaultEngine.ini's
+`ECVF_SetByProjectSetting`, which the engine then logs as correctly ignored.
+
+**The user's `Engine.ini` is NOT viable storage for any restart-required setting** — this one
+generalises well beyond forward shading. A `[/Script/Engine.RendererSettings]` *or* `[SystemSettings]`
+block in `Saved/Config/<Platform>/Engine.ini` is read early enough and *does* apply, but the editor
+rewrites that file from its in-memory hierarchy on shutdown and **deletes it**. Measured twice, with
+both section names. The failure is vicious: the setting works for exactly one session, and the run
+after it silently reverts while looking like it worked — which is how a "not deterministic" reading of
+the crash below got recorded, wrongly, from a run that was no longer forward at all. Use
+`GGameUserSettingsIni` (nothing prunes it; the flight model's Easy Mode flag lives there).
+
+**The editor asserts under forward, every time, with no project content loaded.** A bare
+start-and-quit is enough:
+
+```
+Shader attempted to bind uniform buffer 'FOpaqueBasePassUniformParameters' at slot
+[Name: SceneTextures, Slot: 13] ... but the shader expected 'TranslucentBasePass'
+Breadcrumbs: ParallelDraw -> BasePass -> Scene
+```
+
+That is upstream — all six project materials compile clean under forward. A `-game` session reached
+the main menu and rendered for minutes with zero asserts, which is what made it look shippable. **It
+is not: the game crashes once a city is actually loaded.** Whatever the real incompatibility is, it
+lives past the main menu and was never isolated.
+
+**And the payoff was doubtful anyway.** Forward roughly TRIPLES every material, because lighting
+moves into the base pass:
+
+| material | deferred | forward |
+| --- | --- | --- |
+| city atlas | 382 | 1087 |
+| terrain | 452 | 1157 |
+| water | 369 | 1073 |
+| lit vertex colour | 340 | 1045 |
+| particle FX | 99 | 315 |
+
+Forward wins where deferred's overhead hurts: many lights per pixel, a fat G-buffer, MSAA wanted.
+Low Power has already removed all of that — no Lumen, no MegaLights, no shadows, and the beacons and
+headlights switched off — so its deferred lighting pass is one directional light and a skylight over
+an already-slim (Substrate-free) G-buffer. Forward would trade that near-free pass for a 3x base pass
+over a city with real overdraw. **The frame was never measured**, on either renderer, so if this is
+picked up again the first step is a profile on the target hardware, not more plumbing.
+
 ## Regenerating
 
 `CreateSimCopterMaterials.py` **deletes and recreates** the atlas material, which nulls every
@@ -130,8 +187,12 @@ the table's uniqueness, every name resolving in this engine build, the value rou
 DLSS stand-down. The materials were rebuilt, re-baked and checked in the editor (all six compile;
 terrain 452 / atlas 382 / water 369 pixel instructions with the branches in).
 
-Re-run after `r.Substrate=False`: every shader recompiled, all six materials still compile, 171
+Re-run after `r.Substrate=False`: every shader recompiled, all six materials still compile, 173
 tests still pass.
+
+The forward-shading experiment above was reverted in full; the tree carries none of it. What it did
+prove is that the *deferred* configuration described in this note builds, tests and runs — that is
+the state to compare any future renderer experiment against.
 
 **Not verified on screen.** Nobody has yet run a city with the box ticked, so the frame-rate gain is
 argued from what each switch does rather than measured, and the "does it still read as a city with
