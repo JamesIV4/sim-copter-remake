@@ -310,7 +310,8 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCheckboxRow(
 	const FText& Label,
 	TFunction<bool()> IsChecked,
-	TFunction<void(bool)> SetChecked)
+	TFunction<void(bool)> SetChecked,
+	TFunction<bool()> IsEnabled)
 {
 	return SNew(SBox)
 		.HeightOverride(RowHeight)
@@ -326,7 +327,10 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCheckboxRow(
 					SNew(STextBlock)
 					.Text(Label)
 					.Font(PageFont(RowFontHeight))
-					.ColorAndOpacity(FSlateColor(RowText))
+					.ColorAndOpacity_Lambda([IsEnabled]()
+					{
+						return FSlateColor((!IsEnabled || IsEnabled()) ? RowText : DisabledText);
+					})
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -334,6 +338,7 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCheckboxRow(
 			.VAlign(VAlign_Center)
 			[
 				SNew(SCheckBox)
+				.IsEnabled_Lambda([IsEnabled]() { return !IsEnabled || IsEnabled(); })
 				.IsChecked_Lambda([IsChecked]()
 				{
 					return (IsChecked && IsChecked()) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
@@ -349,12 +354,51 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCheckboxRow(
 		];
 }
 
+TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildNote(const FText& Text)
+{
+	return SNew(SBox)
+		.Padding(FMargin(0.0f, 0.0f, 8.0f, 4.0f))
+		[
+			SNew(STextBlock)
+			.Text(Text)
+			.Font(PageFont(RowFontHeight - 3))
+			.ColorAndOpacity(FSlateColor(DisabledText))
+			.AutoWrapText(true)
+		];
+}
+
 void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Rows)
 {
 	const auto AddRow = [&Rows](TSharedRef<SWidget> Row)
 	{
 		Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 1.0f))[Row];
 	};
+
+	// ---------------------------------------------------------------------------------------
+	// Performance. First on the page because it moves most of the rows below it: a machine that
+	// needs this needs it before it needs a DLSS quality mode.
+	// ---------------------------------------------------------------------------------------
+
+	AddRow(BuildHeading(LOCTEXT("HeadingPerformance", "Performance")));
+
+	AddRow(BuildCheckboxRow(
+		LOCTEXT("LowPowerMode", "Low Power Graphics"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr && Settings->IsLowPowerMode();
+		},
+		[this](const bool bEnabled)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetLowPowerMode(bEnabled);
+				Settings->ApplyAll(nullptr);
+			}
+		}));
+
+	AddRow(BuildNote(LOCTEXT("LowPowerModeNote",
+		"Simple lighting, no shadows, 75% resolution. For integrated graphics.")));
 
 	// ---------------------------------------------------------------------------------------
 	// Upscaling and frame generation
@@ -747,6 +791,13 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				Settings->ApplyAll(nullptr);
 			}
 		};
+		// Greyed in Low Power, which forces the GI method off and would make this row lie. The stored
+		// value is left alone, so it comes back exactly as it was when the mode is switched off.
+		Lumen.IsEnabled = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsLowPowerMode();
+		};
 		AddRow(BuildDropdownRow(LOCTEXT("Lumen", "Lumen"), Lumen));
 	}
 
@@ -785,7 +836,7 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		[this]()
 		{
 			const USimCopterSettings* Settings = GetSettings(this);
-			return Settings == nullptr || Settings->IsVolumetricFogEnabled();
+			return Settings == nullptr || (Settings->IsVolumetricFogEnabled() && !Settings->IsLowPowerMode());
 		},
 		[this](const bool bEnabled)
 		{
@@ -794,6 +845,13 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				Settings->SetVolumetricFogEnabled(bEnabled);
 				Settings->ApplyAll(nullptr);
 			}
+		},
+		// Greyed and shown clear in Low Power, which forces r.VolumetricFog 0. The stored value is
+		// untouched and comes back when the mode is switched off.
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsLowPowerMode();
 		}));
 
 	// ---------------------------------------------------------------------------------------
@@ -1067,6 +1125,7 @@ void SSimCopterGraphicsSettings::CaptureEnteredState()
 {
 	if (const USimCopterSettings* Settings = GetSettings(this))
 	{
+		Entered.bLowPowerMode = Settings->IsLowPowerMode();
 		Entered.bDlssEnabled = Settings->IsDlssEnabled();
 		Entered.DlssQuality = static_cast<uint8>(Settings->GetDlssQuality());
 		Entered.FrameGenMode = static_cast<uint8>(Settings->GetFrameGenMode());
@@ -1109,6 +1168,9 @@ void SSimCopterGraphicsSettings::RestoreEnteredState()
 {
 	if (USimCopterSettings* Settings = GetSettings(this))
 	{
+		// Before the rest: ApplyAll below re-runs the mode's scalability transition, and the explicit
+		// quality and resolution-scale restores after it are what settle the final state either way.
+		Settings->SetLowPowerMode(Entered.bLowPowerMode);
 		Settings->SetDlssEnabled(Entered.bDlssEnabled);
 		Settings->SetDlssQuality(static_cast<ESimCopterDlssQuality>(Entered.DlssQuality));
 		Settings->SetFrameGenMode(static_cast<ESimCopterFrameGenMode>(Entered.FrameGenMode));

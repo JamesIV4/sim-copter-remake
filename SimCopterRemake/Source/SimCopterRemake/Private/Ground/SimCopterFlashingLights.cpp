@@ -5,6 +5,7 @@
 #include "City/SimCopterEffectExposure.h"
 #include "Components/PointLightComponent.h"
 #include "Formats/MaxisMeshReader.h"
+#include "Game/SimCopterLowPowerMode.h"
 #include "GameFramework/PlayerController.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Ground/SimCopterEffectFX.h"
@@ -336,7 +337,13 @@ void USimCopterFlashingLightsComponent::RebuildCards(
 
 void USimCopterFlashingLightsComponent::UpdatePointLights(const TArray<FLitLight>& LitLights)
 {
-	if (!bCastPointLights || LitLights.IsEmpty())
+	// A city puts hundreds of these on screen at once and the mode has taken MegaLights away, so in
+	// low power the beacons go back to being what the original drew: a coloured card and nothing
+	// else. The cards themselves stay - they are the gameplay-visible part, and they are free.
+	//
+	// No subscription needed: the cards rebuild on every phase step (~2 Hz) and this runs with them,
+	// so a mid-session toggle releases the pool within a blink.
+	if (!bCastPointLights || SimCopterLowPower::IsEnabled() || LitLights.IsEmpty())
 	{
 		ReleasePointLights(0);
 		return;

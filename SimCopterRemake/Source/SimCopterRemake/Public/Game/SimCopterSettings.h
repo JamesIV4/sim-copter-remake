@@ -177,6 +177,18 @@ public:
 
 	// --- graphics (the remake's, control 0x7d5) ---
 
+	/**
+	 * Low Power Graphics: drops overall scalability to Low, renders at 75% screen percentage, and
+	 * switches off everything in `SimCopterLowPowerMode.h`'s table - Lumen, the virtual shadow map,
+	 * MegaLights, the cloud layer, TSR. Live actors drop their local lights with it.
+	 *
+	 * The visual compromises are real and confined to this mode; see the header for what each one
+	 * buys. Everything is restored on the way out, including the scalability level and screen
+	 * percentage that were in force before it was switched on.
+	 */
+	bool IsLowPowerMode() const { return bLowPowerMode; }
+	void SetLowPowerMode(bool bEnabled) { bLowPowerMode = bEnabled; }
+
 	bool IsDlssEnabled() const { return bDlssEnabled; }
 	void SetDlssEnabled(bool bEnabled) { bDlssEnabled = bEnabled; }
 
@@ -324,6 +336,24 @@ private:
 	bool bAutoQuiet = true;
 
 	UPROPERTY(Config)
+	bool bLowPowerMode = false;
+
+	/**
+	 * The overall scalability level and screen percentage in force when Low Power was switched on,
+	 * so switching it off puts them back.
+	 *
+	 * They are also the latch that says the mode's one-shot half has been applied: INDEX_NONE and a
+	 * negative scale mean "not currently applied", which is what stops a second ApplyGraphics from
+	 * capturing Low as the value to restore. Persisted, because the mode itself is - a session that
+	 * starts with it already on must still know what to go back to.
+	 */
+	UPROPERTY(Config)
+	int32 LowPowerRestoreScalabilityLevel = INDEX_NONE;
+
+	UPROPERTY(Config)
+	float LowPowerRestoreResolutionScale = -1.0f;
+
+	UPROPERTY(Config)
 	bool bDlssEnabled = false;
 
 	UPROPERTY(Config)
@@ -380,6 +410,13 @@ private:
 
 	void ApplySound(const UObject* WorldContextObject);
 	void ApplyGraphics(const UObject* WorldContextObject);
+
+	/**
+	 * The half of Low Power Graphics that is a one-shot on the transition rather than a value to
+	 * re-assert: the overall scalability level and the screen percentage, both of which the player
+	 * can still move afterwards from the Quality and Resolution Scale rows.
+	 */
+	void ApplyLowPowerScalability();
 
 	/** First run only: puts the window on the native resolution of the display it opened on. */
 	void SeedResolutionFromDisplay();

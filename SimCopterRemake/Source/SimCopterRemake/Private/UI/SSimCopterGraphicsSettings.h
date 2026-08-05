@@ -99,6 +99,7 @@ private:
 	 */
 	struct FEnteredState
 	{
+		bool bLowPowerMode = false;
 		bool bDlssEnabled = false;
 		uint8 DlssQuality = 0;
 		uint8 FrameGenMode = 0;
@@ -151,7 +152,11 @@ private:
 	TSharedRef<SWidget> BuildCheckboxRow(
 		const FText& Label,
 		TFunction<bool()> IsChecked,
-		TFunction<void(bool)> SetChecked);
+		TFunction<void(bool)> SetChecked,
+		TFunction<bool()> IsEnabled = TFunction<bool()>());
+
+	/** A wrapped line of explanatory text under a row, for the one setting that needs explaining. */
+	TSharedRef<SWidget> BuildNote(const FText& Text);
 
 	void PopulateRows(const TSharedRef<SVerticalBox>& Rows);
 

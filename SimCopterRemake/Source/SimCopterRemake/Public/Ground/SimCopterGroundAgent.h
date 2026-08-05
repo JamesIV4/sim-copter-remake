@@ -791,6 +791,23 @@ private:
 	void DisableVehicleHeadlights();
 
 	/**
+	 * Shows or hides this car's two headlights from `bEnableVehicleHeadlights` and the low power
+	 * setting, which is the only thing that moves after the lights have been placed.
+	 *
+	 * Low Power drops MegaLights, and a busy street is dozens of cars carrying two spotlights each -
+	 * exactly the case the standard deferred light loop is worst at. The beams are the one part of
+	 * the mode's local-light cut that a player is likely to notice, and it is still the right trade:
+	 * the cars keep their own emissive art either way.
+	 */
+	void RefreshHeadlightVisibility();
+
+	/** True between ConfigureVehicleHeadlights and DisableVehicleHeadlights - i.e. "this is a car". */
+	bool bVehicleHeadlightsConfigured = false;
+
+	/** Only cars subscribe, and only once they have headlights, so the list stays short. */
+	FDelegateHandle LowPowerChangedHandle;
+
+	/**
 	 * Re-derives EmissiveNits on the pedestrian sprite and figure head from the world's key light.
 	 *
 	 * Both ride the shared UNLIT `M_SimCopterSpriteTexture`, so what looks like ordinary shading has
