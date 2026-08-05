@@ -5,6 +5,7 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterEffectExposure.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -2813,6 +2814,10 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// Before any of the early returns below: a carried or suspended agent is still on screen, and a
+	// person who kept the sun's noon brightness after dark is exactly the bug this fixes.
+	RefreshSpriteExposure();
+
 	if (AvoidanceMoveTimeRemainingSeconds > 0.0f)
 	{
 		AvoidanceMoveTimeRemainingSeconds = FMath::Max(0.0f, AvoidanceMoveTimeRemainingSeconds - DeltaSeconds);
@@ -3318,6 +3323,7 @@ bool ASimCopterGroundAgent::LoadOriginalPedestrianSpriteFromOriginalGameRoot()
 		SpriteMaterialInstance->SetTextureParameterValue(TEXT("Texture"), PedestrianSpriteTexture);
 		OriginalMeshComponent->SetMaterial(0, SpriteMaterialInstance);
 	}
+	RefreshSpriteExposure();
 
 	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
 	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight));
@@ -3408,6 +3414,7 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 			}
 		}
 	}
+	RefreshSpriteExposure();
 
 	bUsingPedestrianFigure = true; // set before the clip build so RebuildFigureClip can run
 	if (!RebuildFigureClip(TEXT("NoMo")))
@@ -3611,6 +3618,15 @@ void ASimCopterGroundAgent::ConfigureVehicleHeadlights(const FBox& VehicleLocalB
 		Light->SetLightColor(FLinearColor(HeadlightColor));
 		Light->SetVisibility(bEnableVehicleHeadlights);
 	}
+}
+
+void ASimCopterGroundAgent::RefreshSpriteExposure()
+{
+	const UWorld* World = GetWorld();
+	USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
+		SpriteMaterialInstance, World, /*bIsLightSource=*/false);
+	USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
+		FigureHeadMaterialInstance, World, /*bIsLightSource=*/false);
 }
 
 void ASimCopterGroundAgent::DisableVehicleHeadlights()

@@ -206,6 +206,21 @@ public:
 	bool IsVolumetricFogEnabled() const { return bVolumetricFog; }
 	void SetVolumetricFogEnabled(bool bEnabled) { bVolumetricFog = bEnabled; }
 
+	/**
+	 * One knob over everything the remake draws as emissive: the fire and effect cards, the people
+	 * sprites, and the night window lights.
+	 *
+	 * All of those are unlit cards or emissive terms whose brightness is derived from the sun rather
+	 * than authored (see `USimCopterEffectExposureSubsystem`), so one multiplier moves them together
+	 * and keeps their relationship to each other. 1.0 is the derived value; drop it if the bloom
+	 * halos are too strong on your display.
+	 */
+	float GetEmissiveBrightness() const { return EmissiveBrightness; }
+	void SetEmissiveBrightness(float Scale);
+
+	static constexpr float EmissiveBrightnessMin = 0.05f;
+	static constexpr float EmissiveBrightnessMax = 3.0f;
+
 	// --- time of day (the remake's; the original's equivalent is career.twk's Day/Night column) ---
 
 	ESimCopterTimeOfDayMode GetTimeOfDayMode() const { return TimeOfDayMode; }
@@ -334,6 +349,9 @@ private:
 
 	UPROPERTY(Config)
 	bool bVolumetricFog = true;
+
+	UPROPERTY(Config)
+	float EmissiveBrightness = 1.0f;
 
 	UPROPERTY(Config)
 	ESimCopterTimeOfDayMode TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;

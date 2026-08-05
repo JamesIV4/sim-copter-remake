@@ -213,6 +213,7 @@ void USimCopterSettings::Initialize(FSubsystemCollectionBase& Collection)
 	StaticTimeOfDayHours = FMath::Clamp(StaticTimeOfDayHours, StaticTimeOfDayMinHours, StaticTimeOfDayMaxHours);
 	DayRealMinutes = FMath::Clamp(DayRealMinutes, CycleLengthMinMinutes, CycleLengthMaxMinutes);
 	NightRealMinutes = FMath::Clamp(NightRealMinutes, CycleLengthMinMinutes, CycleLengthMaxMinutes);
+	EmissiveBrightness = FMath::Clamp(EmissiveBrightness, EmissiveBrightnessMin, EmissiveBrightnessMax);
 
 	// A stored mode the current GPU cannot do would otherwise leave the page showing something
 	// the renderer quietly ignored - the ini travels between machines.
@@ -447,6 +448,11 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 void USimCopterSettings::SetStaticTimeOfDayHours(const float Hours)
 {
 	StaticTimeOfDayHours = FMath::Clamp(Hours, StaticTimeOfDayMinHours, StaticTimeOfDayMaxHours);
+}
+
+void USimCopterSettings::SetEmissiveBrightness(const float Scale)
+{
+	EmissiveBrightness = FMath::Clamp(Scale, EmissiveBrightnessMin, EmissiveBrightnessMax);
 }
 
 void USimCopterSettings::SetDayRealMinutes(const float Minutes)

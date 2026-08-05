@@ -199,14 +199,23 @@ def create_lit_texture_material():
 # Where USimCopterDayNightSubsystem publishes the night blend every frame. A collection scalar,
 # because MI_CityPage_* are MaterialInstanceConstants and cannot be animated at runtime at all.
 DAY_NIGHT_COLLECTION = f"{MATERIAL_DIR}/MPC_SimCopterDayNight"
-NIGHT_BLEND_PARAMETER = "NightBlend"
 
-# How bright a lit window burns, in nits. NOT scaled to the sun the way the unlit effect cards are
-# (USimCopterEffectExposureSubsystem): a window has a light bulb behind it, so its brightness is
-# absolute and does not follow the sky. At the day sequence's 120,000 lux noon, white ground is
-# ~38,000 nits, so this sits far below daylight and only reads once the sun is down - which is also
-# what the NightBlend fade is doing, so the two agree.
-WINDOW_GLOW_NITS_DEFAULT = 2500.0
+# Everything USimCopterDayNightSubsystem drives per frame. Defaults here are only what the material
+# shows with no subsystem running (the material preview, a level with no day sequence); the real
+# values come from SimCopterDayNight.h and the SimCopter.NightWindows.* console variables.
+DAY_NIGHT_COLLECTION_SCALARS = (
+    ("NightBlend", 0.0),
+    # Re-rolled at every sunset. The material hashes it per window, so one float reshuffles the
+    # whole skyline with no geometry work.
+    ("WindowSeed", 1.0),
+    ("WindowLitFraction", 0.30),
+    ("WindowRowLitFraction", 0.05),
+    # NOT scaled to the sun the way the unlit effect cards are: a window has a bulb behind it, so
+    # its brightness is absolute. But it is metered against a NIGHT exposure, which is why this is
+    # tens of nits and not thousands - the first pass at 2500 bloomed the skyline into one halo.
+    ("WindowGlowNits", 25.0),
+)
+NIGHT_BLEND_PARAMETER = "NightBlend"
 
 # How far BaseColor leans onto the night art. See the long note at the blend itself: the night pages
 # are already-darkened *images* from a renderer with no lighting model, so a full lerp darkens the
@@ -222,6 +231,34 @@ WINDOW_GLOW_THRESHOLD_DEFAULT = 0.55
 # How hard the mask's edges are. 8 gives roughly an eighth of a luminance unit of ramp, enough to
 # stop the 8-bit palette steps banding into a hard cutout.
 WINDOW_GLOW_CONTRAST_DEFAULT = 8.0
+
+# How finely the random-lit roll is diced, per repeat of the atlas cell across a wall.
+#
+# The night art paints several windows into one 32x32 cell, and the cell tiles along the face - so
+# floor(InCellUV) is already "which bay of the building am I on", and subdividing that by this gives
+# roughly one hash bucket per window. It does not have to be exact: the glow mask has ALREADY
+# restricted the effect to window texels, so a bucket landing across two windows just lights both,
+# which reads as one flat with the lights on. Too FINE is the failure that looks wrong - buckets
+# smaller than a window speckle a single pane half-lit.
+WINDOW_RANDOM_GRID_DEFAULT = 2.0
+
+# How the window glow stops strobing in the distance.
+#
+# The atlas pages are imported TF_NEAREST with TMGS_NO_MIPMAPS on purpose - the per-cell UV math
+# needs exact texels and no bleed between neighbouring 32x32 cells. That is fine up close and
+# catastrophic far away: once a screen pixel covers more than one texel, point sampling picks an
+# essentially arbitrary texel, and a different one every frame as the camera moves. For base colour
+# that is ordinary aliasing the temporal AA mostly absorbs. For a bright emissive against a nearly
+# black night scene it is a hard on/off flicker, and it feeds Lumen as well.
+#
+# So the mask fades toward its own STATISTICAL AVERAGE as the texel-to-pixel ratio climbs. Fading to
+# zero would stop the flicker too, but by turning the distant skyline off - which is the wrong cure.
+# This way a far block glows steadily at the brightness its windows average out to.
+WINDOW_ALIAS_RANGE_DEFAULT = 2.0
+
+# What fraction of a wall cell is window, used as that average. Measured, not guessed: the three
+# wall pages put 7-16% of their area above the glow threshold (analyse_night_windows.py).
+WINDOW_AVERAGE_COVERAGE_DEFAULT = 0.12
 
 
 def create_day_night_parameter_collection():
@@ -242,21 +279,30 @@ def create_day_night_parameter_collection():
         )
 
     existing = list(collection.get_editor_property("scalar_parameters"))
-    if not any(str(p.get_editor_property("parameter_name")) == NIGHT_BLEND_PARAMETER for p in existing):
+    present = {str(p.get_editor_property("parameter_name")) for p in existing}
+    added = False
+    for name, default in DAY_NIGHT_COLLECTION_SCALARS:
+        if name in present:
+            continue
         # FCollectionParameterBase's constructor mints the Guid, so a default-constructed struct is
-        # already uniquely identified - which is what materials bind to, not the name.
-        night_blend = unreal.CollectionScalarParameter()
-        night_blend.set_editor_property("parameter_name", NIGHT_BLEND_PARAMETER)
-        night_blend.set_editor_property("default_value", 0.0)
-        existing.append(night_blend)
+        # already uniquely identified - which is what materials bind to, not the name. Existing
+        # parameters are left alone so their Guids survive, or every material referencing them would
+        # have to be re-pointed.
+        parameter = unreal.CollectionScalarParameter()
+        parameter.set_editor_property("parameter_name", name)
+        parameter.set_editor_property("default_value", default)
+        existing.append(parameter)
+        added = True
+
+    if added:
         collection.set_editor_property("scalar_parameters", existing)
 
     save(DAY_NIGHT_COLLECTION)
     return collection
 
 
-def add_night_blend_parameter(material, x, y):
-    """A CollectionParameter node reading NightBlend, 0 by day and 1 at night."""
+def add_collection_parameter(material, parameter_name, x, y):
+    """A CollectionParameter node reading one scalar out of MPC_SimCopterDayNight."""
     collection = unreal.EditorAssetLibrary.load_asset(DAY_NIGHT_COLLECTION)
     node = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionCollectionParameter, x, y
@@ -265,7 +311,7 @@ def add_night_blend_parameter(material, x, y):
     # ParameterId from ParameterName *through* Collection, so setting the name against a null
     # collection leaves the node bound to nothing and the material compiles to a constant 0.
     node.set_editor_property("collection", collection)
-    node.set_editor_property("parameter_name", NIGHT_BLEND_PARAMETER)
+    node.set_editor_property("parameter_name", parameter_name)
     return node
 
 
@@ -336,7 +382,7 @@ def create_city_atlas_material():
     night_texture.set_editor_property("parameter_name", "NightTexture")
     unreal.MaterialEditingLibrary.connect_material_expressions(page_uv, "", night_texture, "UVs")
 
-    night_blend = add_night_blend_parameter(material, -560, 480)
+    night_blend = add_collection_parameter(material, "NightBlend", -560, 480)
 
     # BaseColor only leans PART of the way onto the night art, and that is deliberate.
     #
@@ -384,8 +430,28 @@ def create_city_atlas_material():
     glow_contrast = add_scalar_parameter(
         material, "WindowGlowContrast", WINDOW_GLOW_CONTRAST_DEFAULT, 6, 1150
     )
-    glow_nits = add_scalar_parameter(
-        material, "WindowGlowNits", WINDOW_GLOW_NITS_DEFAULT, 7, 1300
+    random_grid = add_scalar_parameter(
+        material, "WindowRandomGrid", WINDOW_RANDOM_GRID_DEFAULT, 9, 1600
+    )
+    alias_range = add_scalar_parameter(
+        material, "WindowAliasRange", WINDOW_ALIAS_RANGE_DEFAULT, 10, 1750
+    )
+    average_coverage = add_scalar_parameter(
+        material, "WindowAverageCoverage", WINDOW_AVERAGE_COVERAGE_DEFAULT, 11, 1900
+    )
+
+    # Live, so the brightness knob and the nightly re-roll cost one collection write between them
+    # rather than touching every MI_CityPage_*.
+    glow_nits = add_collection_parameter(material, "WindowGlowNits", -560, 620)
+    window_seed = add_collection_parameter(material, "WindowSeed", -560, 700)
+    lit_fraction = add_collection_parameter(material, "WindowLitFraction", -560, 780)
+    row_lit_fraction = add_collection_parameter(material, "WindowRowLitFraction", -560, 860)
+
+    # ObjectPositionWS separates one building from the next: the city places each model as its own
+    # runtime static mesh instance, so this is per-building and two identical towers do not light
+    # identically.
+    object_position = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionObjectPositionWS, -560, 940
     )
 
     window_mask = add_custom_node(
@@ -396,18 +462,68 @@ def create_city_atlas_material():
             "float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
             "float gotBrighter = saturate((nightLum - dayLum) * Contrast);\n"
             "float isBright = saturate((nightLum - Threshold) * Contrast);\n"
-            "return min(gotBrighter, isBright) * saturate(Blend);"
+            "float isWindow = min(gotBrighter, isBright);\n"
+            "\n"
+            "// Not every window is occupied. InCellUV's INTEGER part is which repeat of the atlas\n"
+            "// cell we are on across this wall, so flooring a scaled copy of it gives a stable id\n"
+            "// per window bay; the building's own origin keeps two identical towers apart.\n"
+            "float2 windowCell = floor(InCellUV * max(Grid, 0.001));\n"
+            "float2 building = floor(BuildingOrigin.xy * 0.01);\n"
+            "float buildingId = building.x + building.y * 71.0;\n"
+            "\n"
+            "// Cheap hash: fract(sin(dot)*k) is coarse but this only has to look unpatterned, and\n"
+            "// the seed shifts the whole field so every night draws a different set.\n"
+            "float3 windowKey = float3(windowCell, buildingId) + Seed;\n"
+            "float windowRoll = frac(sin(dot(windowKey, float3(12.9898, 78.233, 37.719))) * 43758.5453);\n"
+            "\n"
+            "// A row is the same hash with the horizontal index dropped, so an entire floor of the\n"
+            "// same building shares one draw - offices left on for the night.\n"
+            "float3 rowKey = float3(0.0, windowCell.y, buildingId) + Seed * 1.7;\n"
+            "float rowRoll = frac(sin(dot(rowKey, float3(39.3468, 11.135, 83.155))) * 24634.6345);\n"
+            "\n"
+            "float lit = max(step(windowRoll, LitFraction), step(rowRoll, RowLitFraction));\n"
+            "\n"
+            "// DISTANCE. These pages are point sampled with no mips, so once one screen pixel spans\n"
+            "// more than a texel the sample is arbitrary and changes every frame - which against a\n"
+            "// black night sky is a hard flicker, not soft aliasing. fwidth on the cell UV measures\n"
+            "// exactly that ratio, independent of resolution and of how the building is angled.\n"
+            "float2 texelDelta = fwidth(InCellUV) * 32.0;\n"
+            "float texelsPerPixel = max(texelDelta.x, texelDelta.y);\n"
+            "float alias = saturate((texelsPerPixel - 1.0) / max(AliasRange, 0.001));\n"
+            "\n"
+            "// Fade to the AVERAGE, not to zero: the far skyline should settle to a steady glow of\n"
+            "// the brightness its windows work out to, not switch itself off.\n"
+            "lit = lerp(lit, saturate(LitFraction + RowLitFraction), alias);\n"
+            "isWindow = lerp(isWindow, saturate(AverageCoverage), alias);\n"
+            "\n"
+            "return isWindow * lit * saturate(Blend);"
         ),
-        ["DayColor", "NightColor", "Threshold", "Contrast", "Blend"],
+        [
+            "DayColor", "NightColor", "Threshold", "Contrast", "Blend",
+            "InCellUV", "BuildingOrigin", "Grid", "Seed", "LitFraction", "RowLitFraction",
+            "AliasRange", "AverageCoverage",
+        ],
         -60,
         900,
         unreal.CustomMaterialOutputType.CMOT_FLOAT1,
     )
-    unreal.MaterialEditingLibrary.connect_material_expressions(texture, "RGB", window_mask, "DayColor")
-    unreal.MaterialEditingLibrary.connect_material_expressions(night_texture, "RGB", window_mask, "NightColor")
-    unreal.MaterialEditingLibrary.connect_material_expressions(glow_threshold, "", window_mask, "Threshold")
-    unreal.MaterialEditingLibrary.connect_material_expressions(glow_contrast, "", window_mask, "Contrast")
-    unreal.MaterialEditingLibrary.connect_material_expressions(night_blend, "", window_mask, "Blend")
+    for source, source_output, pin in (
+        (texture, "RGB", "DayColor"),
+        (night_texture, "RGB", "NightColor"),
+        (glow_threshold, "", "Threshold"),
+        (glow_contrast, "", "Contrast"),
+        (night_blend, "", "Blend"),
+        (in_cell_uv, "", "InCellUV"),
+        (object_position, "", "BuildingOrigin"),
+        (random_grid, "", "Grid"),
+        (window_seed, "", "Seed"),
+        (lit_fraction, "", "LitFraction"),
+        (row_lit_fraction, "", "RowLitFraction"),
+        (alias_range, "", "AliasRange"),
+        (average_coverage, "", "AverageCoverage"),
+    ):
+        if not unreal.MaterialEditingLibrary.connect_material_expressions(source, source_output, window_mask, pin):
+            unreal.log_error(f"M_SimCopterCityAtlas: window mask pin '{pin}' not connected.")
 
     glow_strength = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionMultiply, 100, 900

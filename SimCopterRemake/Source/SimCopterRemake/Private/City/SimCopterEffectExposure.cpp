@@ -4,6 +4,8 @@
 
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/World.h"
+#include "Game/SimCopterSettings.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/UObjectIterator.h"
 
 namespace
@@ -16,7 +18,8 @@ static FAutoConsoleVariableRef CVarSimCopterEffectBrightness(
 	GSimCopterEffectBrightness,
 	TEXT("How bright an unlit effect card (fire, spray, dust, blinking markers) is relative to white ")
 	TEXT("ground under the same light. The materials apply their own authored 1.4 on top of this, so ")
-	TEXT("1 is the original's balance; raise it to make effects pop."),
+	TEXT("1 is the original's balance; raise it to make effects pop. Multiplies the Settings screen's ")
+	TEXT("Emissive Brightness rather than replacing it, so this stays a live tuning knob."),
 	ECVF_Default);
 
 // A directional light can move (the sun does, constantly) but the SET of them almost never changes,
@@ -138,7 +141,7 @@ float USimCopterEffectExposureSubsystem::GetEffectEmissiveNits()
 
 	CachedEmissiveNits = SimCopterEffectExposure::ComputeEffectEmissiveNits(
 		CachedIlluminanceLux,
-		GSimCopterEffectBrightness);
+		GetBrightnessScale(GetWorld()));
 	return CachedEmissiveNits;
 }
 
@@ -155,5 +158,48 @@ float USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(const UWo
 
 	// No world, no subsystem: fall back to a noon-ish value rather than to zero, because zero is
 	// the black card this whole file exists to prevent.
-	return SimCopterEffectExposure::ComputeEffectEmissiveNits(120000.0f);
+	return SimCopterEffectExposure::ComputeEffectEmissiveNits(120000.0f, GetBrightnessScale(World));
+}
+
+float USimCopterEffectExposureSubsystem::GetSurfaceEmissiveNitsForWorld(const UWorld* World)
+{
+	float IlluminanceLux = 120000.0f;
+	if (World != nullptr)
+	{
+		if (USimCopterEffectExposureSubsystem* Subsystem =
+			World->GetSubsystem<USimCopterEffectExposureSubsystem>())
+		{
+			IlluminanceLux = Subsystem->GetKeyIlluminanceLux();
+		}
+	}
+
+	return SimCopterEffectExposure::ComputeEffectEmissiveNits(
+		IlluminanceLux,
+		GetBrightnessScale(World),
+		SimCopterEffectExposure::SurfaceMinimumEmissiveNits);
+}
+
+void USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
+	UMaterialInstanceDynamic* MaterialInstance,
+	const UWorld* World,
+	const bool bIsLightSource)
+{
+	if (MaterialInstance == nullptr)
+	{
+		return;
+	}
+
+	MaterialInstance->SetScalarParameterValue(
+		GetEmissiveNitsParameterName(),
+		bIsLightSource ? GetEffectEmissiveNitsForWorld(World) : GetSurfaceEmissiveNitsForWorld(World));
+}
+
+float USimCopterEffectExposureSubsystem::GetBrightnessScale(const UWorld* World)
+{
+	float Scale = GSimCopterEffectBrightness;
+	if (const USimCopterSettings* Settings = USimCopterSettings::Get(World))
+	{
+		Scale *= Settings->GetEmissiveBrightness();
+	}
+	return FMath::Max(Scale, 0.0f);
 }

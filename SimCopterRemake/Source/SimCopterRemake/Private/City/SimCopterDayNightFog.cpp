@@ -57,6 +57,31 @@ float ComputeFogDensity(
 	const float NightAlpha = ComputeNightAlpha(CurrentHour, SunriseHour, SunsetHour, FadeDurationHours, DayLengthHours, bSmoothFade);
 	return FMath::Lerp(DayFogDensity, NightFogDensity, NightAlpha);
 }
+
+const FLinearColor DefaultDayInscatteringLuminance(0.01f, 0.01f, 0.01f, 1.0f);
+const FLinearColor DefaultNightInscatteringLuminance(0.008f, 0.008f, 0.01f, 1.0f);
+
+FLinearColor ComputeFogInscatteringLuminance(
+	float CurrentHour,
+	float SunriseHour,
+	float SunsetHour,
+	float FadeDurationHours,
+	const FLinearColor& DayLuminance,
+	const FLinearColor& NightLuminance,
+	float DayLengthHours,
+	bool bSmoothFade)
+{
+	const float NightAlpha = ComputeNightAlpha(CurrentHour, SunriseHour, SunsetHour, FadeDurationHours, DayLengthHours, bSmoothFade);
+
+	// The same alpha the density uses, deliberately: that is what "changes at the same time as the
+	// fog" means, and it is why both live behind one ComputeNightAlpha rather than two curves that
+	// could be tuned apart by accident.
+	//
+	// Lerped in LINEAR space, which is the space the values are already in - these come out of the
+	// picker's R/G/B fields, not its sRGB Hex field. Converting to sRGB to interpolate would bend
+	// the ramp for no reason.
+	return FMath::Lerp(DayLuminance, NightLuminance, NightAlpha);
+}
 }
 
 USimCopterDayNightFogComponent::USimCopterDayNightFogComponent()
@@ -102,10 +127,10 @@ void USimCopterDayNightFogComponent::RefreshFromDaySequence()
 
 	// The celestial actor places the sun from GetTimeOfDay() (see its UpdateBodiesMotion), not from
 	// the apparent time, so the fog follows the same clock and cannot drift from the visible sky.
-	ApplyFogDensityForTimeOfDay(DaySequenceActor->GetTimeOfDay());
+	ApplyFogForTimeOfDay(DaySequenceActor->GetTimeOfDay());
 }
 
-void USimCopterDayNightFogComponent::ApplyFogDensityForTimeOfDay(float TimeOfDayHours)
+void USimCopterDayNightFogComponent::ApplyFogForTimeOfDay(float TimeOfDayHours)
 {
 	if (!bEnabled)
 	{
@@ -118,24 +143,54 @@ void USimCopterDayNightFogComponent::ApplyFogDensityForTimeOfDay(float TimeOfDay
 		return;
 	}
 
-	CurrentTimeOfDay = TimeOfDayHours;
-	CurrentFogDensity = SimCopterDayNightFog::ComputeFogDensity(
-		TimeOfDayHours,
-		SunriseHour,
-		SunsetHour,
-		FadeDurationHours,
-		DayFogDensity,
-		NightFogDensity,
-		ResolveDayLengthHours(),
-		bSmoothFade);
+	const float DayLengthHours = ResolveDayLengthHours();
 
-	// SetFogDensity marks the render state dirty every call, so skip the ones that would not change
-	// a pixel. A 24 hour day at a ten minute cycle moves the density by ~1e-4 per frame mid-fade,
-	// which is well clear of this threshold; the flat day and night stretches sit under it and cost
-	// nothing.
-	if (!FMath::IsNearlyEqual(FogComponent->FogDensity, CurrentFogDensity, 1e-5f))
+	CurrentTimeOfDay = TimeOfDayHours;
+	CurrentNightAlpha = SimCopterDayNightFog::ComputeNightAlpha(
+		TimeOfDayHours, SunriseHour, SunsetHour, FadeDurationHours, DayLengthHours, bSmoothFade);
+
+	if (bDriveFogDensity)
 	{
-		FogComponent->SetFogDensity(CurrentFogDensity);
+		CurrentFogDensity = SimCopterDayNightFog::ComputeFogDensity(
+			TimeOfDayHours,
+			SunriseHour,
+			SunsetHour,
+			FadeDurationHours,
+			DayFogDensity,
+			NightFogDensity,
+			DayLengthHours,
+			bSmoothFade);
+
+		// SetFogDensity marks the render state dirty every call, so skip the ones that would not
+		// change a pixel. A 24 hour day at a ten minute cycle moves the density by ~1e-4 per frame
+		// mid-fade, which is well clear of this threshold; the flat day and night stretches sit
+		// under it and cost nothing.
+		if (!FMath::IsNearlyEqual(FogComponent->FogDensity, CurrentFogDensity, 1e-5f))
+		{
+			FogComponent->SetFogDensity(CurrentFogDensity);
+		}
+	}
+
+	if (bDriveInscatteringLuminance)
+	{
+		CurrentInscatteringLuminance = SimCopterDayNightFog::ComputeFogInscatteringLuminance(
+			TimeOfDayHours,
+			SunriseHour,
+			SunsetHour,
+			FadeDurationHours,
+			DayInscatteringLuminance,
+			NightInscatteringLuminance,
+			DayLengthHours,
+			bSmoothFade);
+
+		// A much tighter epsilon than the density's: the whole colour range in play here is
+		// 0.008..0.01, so 1e-5 would swallow the entire fade and the fog would never turn blue.
+		// SetFogInscatteringColor early-outs on an exact match anyway, so this only saves the
+		// float compare.
+		if (!FogComponent->FogInscatteringLuminance.Equals(CurrentInscatteringLuminance, 1e-7f))
+		{
+			FogComponent->SetFogInscatteringColor(CurrentInscatteringLuminance);
+		}
 	}
 }
 

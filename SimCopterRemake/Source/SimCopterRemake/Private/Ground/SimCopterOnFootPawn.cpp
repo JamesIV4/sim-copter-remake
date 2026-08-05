@@ -4,6 +4,7 @@
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/CameraComponent.h"
+#include "City/SimCopterEffectExposure.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -226,6 +227,11 @@ void ASimCopterOnFootPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	// The player's own head is on the same unlit sprite material as everyone else's, so it needs the
+	// same SURFACE exposure - no minimum - or it glows after dark. See ASimCopterGroundAgent.
+	USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
+		FigureHeadMaterialInstance, GetWorld(), /*bIsLightSource=*/false);
 
 	if (MissionPickupCooldownSeconds > 0.0f)
 	{

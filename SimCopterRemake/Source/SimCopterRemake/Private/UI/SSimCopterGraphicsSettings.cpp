@@ -750,6 +750,36 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		AddRow(BuildDropdownRow(LOCTEXT("Lumen", "Lumen"), Lumen));
 	}
 
+	// One knob over everything the remake draws as emissive - the fire and effect cards, the people
+	// sprites, the night window lights. They all derive their brightness from the sun rather than
+	// carrying an authored value, so scaling them together keeps their relationship to each other.
+	AddRow(BuildSliderRow(
+		LOCTEXT("EmissiveBrightness", "Emissive Brightness"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const float Scale = Settings != nullptr ? Settings->GetEmissiveBrightness() : 1.0f;
+			return (Scale - USimCopterSettings::EmissiveBrightnessMin)
+				/ (USimCopterSettings::EmissiveBrightnessMax - USimCopterSettings::EmissiveBrightnessMin);
+		},
+		[this](const float Alpha)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetEmissiveBrightness(FMath::Lerp(
+					USimCopterSettings::EmissiveBrightnessMin,
+					USimCopterSettings::EmissiveBrightnessMax,
+					Alpha));
+			}
+		},
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const float Scale = Settings != nullptr ? Settings->GetEmissiveBrightness() : 1.0f;
+			return FText::Format(
+				LOCTEXT("PercentFormat", "{0}%"), FText::AsNumber(FMath::RoundToInt(Scale * 100.0f)));
+		}));
+
 	AddRow(BuildCheckboxRow(
 		LOCTEXT("VolumetricFog", "Volumetric Fog"),
 		[this]()
@@ -1044,6 +1074,7 @@ void SSimCopterGraphicsSettings::CaptureEnteredState()
 		Entered.ReflexMode = static_cast<uint8>(Settings->GetReflexMode());
 		Entered.LumenMode = static_cast<uint8>(Settings->GetLumenMode());
 		Entered.bVolumetricFog = Settings->IsVolumetricFogEnabled();
+		Entered.EmissiveBrightness = Settings->GetEmissiveBrightness();
 		Entered.TimeOfDayMode = static_cast<uint8>(Settings->GetTimeOfDayMode());
 		Entered.StaticTimeOfDayHours = Settings->GetStaticTimeOfDayHours();
 		Entered.DayRealMinutes = Settings->GetDayRealMinutes();
@@ -1085,6 +1116,7 @@ void SSimCopterGraphicsSettings::RestoreEnteredState()
 		Settings->SetReflexMode(static_cast<ESimCopterReflexMode>(Entered.ReflexMode));
 		Settings->SetLumenMode(static_cast<ESimCopterLumenMode>(Entered.LumenMode));
 		Settings->SetVolumetricFogEnabled(Entered.bVolumetricFog);
+		Settings->SetEmissiveBrightness(Entered.EmissiveBrightness);
 		Settings->SetTimeOfDayMode(static_cast<ESimCopterTimeOfDayMode>(Entered.TimeOfDayMode));
 		Settings->SetStaticTimeOfDayHours(Entered.StaticTimeOfDayHours);
 		Settings->SetDayRealMinutes(Entered.DayRealMinutes);

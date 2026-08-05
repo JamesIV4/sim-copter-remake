@@ -7,6 +7,7 @@
 #include "SimCopterEffectExposure.generated.h"
 
 class UDirectionalLightComponent;
+class UMaterialInstanceDynamic;
 
 /**
  * How bright an unlit effect card has to be to read against the sun that is lighting the city.
@@ -41,6 +42,12 @@ constexpr float DefaultEffectBrightness = 1.0f;
 // disappear instead of being the brightest thing in the frame. This is roughly a candle at arm's
 // length, and at night the exposure makes it glow, which is what a fire should do.
 constexpr float DefaultMinimumEmissiveNits = 1.5f;
+
+// **No floor.** Not everything on the unlit sprite material is a light source: the pedestrian
+// sprites and the privanim figure heads are ordinary surfaces that happen to be drawn as unlit
+// cards, and a floor is precisely what would make them glow after dark. They get the sun's own
+// luminance and nothing else, so they go dark when it does.
+constexpr float SurfaceMinimumEmissiveNits = 0.0f;
 
 // Illuminance in lux on flat ground from a directional light of IntensityLux pointing along
 // LightDirection. Lambert's cosine law with an up-facing surface, so a light at the horizon (or
@@ -85,8 +92,38 @@ public:
 	/** Convenience for call sites that only have a world; null-safe, returns the daylight default. */
 	static float GetEffectEmissiveNitsForWorld(const UWorld* World);
 
+	/**
+	 * Nits for a card standing in for an ordinary SURFACE rather than a light source - the pedestrian
+	 * sprites and the privanim figure heads. Same derivation, no minimum, so they track the sun all
+	 * the way down to black instead of glowing at midnight.
+	 */
+	static float GetSurfaceEmissiveNitsForWorld(const UWorld* World);
+
+	/**
+	 * Writes the right EmissiveNits onto a dynamic instance of the shared unlit sprite material.
+	 *
+	 * **Every consumer of `M_SimCopterSpriteTexture` has to call this.** That material bakes a
+	 * daylight default (`EMISSIVE_NITS_DEFAULT`, 26000) so a card is never black with nothing driving
+	 * it - which means a consumer that creates a MID and forgets the parameter renders at 26000 nits
+	 * forever, day and night. That is exactly how the fire, the pedestrian sprites, the figure heads
+	 * and the mission markers ended up glowing: six MID sites, one of them writing the parameter.
+	 */
+	static void ApplyEmissiveNits(
+		UMaterialInstanceDynamic* MaterialInstance,
+		const UWorld* World,
+		bool bIsLightSource);
+
 	/** The parameter the effect materials expose, written by the drawing components. */
 	static FName GetEmissiveNitsParameterName() { return FName(TEXT("EmissiveNits")); }
+
+	/**
+	 * The player's Emissive Brightness setting, folded into every value above.
+	 *
+	 * Read through here rather than off `USimCopterSettings` directly so the subsystem does not have
+	 * to exist in a world with no game instance (the automation tests, the material preview), and so
+	 * the `SimCopter.Effects.Brightness` console variable can still multiply it for live tuning.
+	 */
+	static float GetBrightnessScale(const UWorld* World);
 
 private:
 	/** Re-resolves the key light if the cached one has gone away. */
