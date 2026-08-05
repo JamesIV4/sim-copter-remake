@@ -54,32 +54,13 @@ constexpr float CancelButtonX = 431.0f;
 constexpr float OkOnlyButtonX = 380.0f;
 constexpr int32 ButtonFontHeight = 14;
 
-// FUN_004590b0's four border strips per panel - left, top, right, bottom. carsel.bmp holds two
-// copies of them in the page's own coordinate space: the glowing frames at y + 0 and the plain
-// ones at y + UnselectedSourceOffsetY, which is how FUN_00458e70 puts a panel back to normal.
-// The remake only ever draws the glowing copy, because career.bmp already prints the plain one.
-constexpr int32 HighlightStripCount = 4;
-constexpr FRect HighlightStrip[PanelCount][HighlightStripCount] = {
-	{
-		{  54.0f,  51.0f,  77.0f, 216.0f },
-		{  77.0f,  51.0f, 276.0f,  69.0f },
-		{ 276.0f,  51.0f, 305.0f, 216.0f },
-		{  77.0f, 180.0f, 276.0f, 216.0f },
-	},
-	{
-		{ 312.0f,  51.0f, 339.0f, 216.0f },
-		{ 339.0f,  51.0f, 537.0f,  69.0f },
-		{ 537.0f,  51.0f, 556.0f, 216.0f },
-		{ 339.0f, 180.0f, 556.0f, 216.0f },
-	},
-	{
-		{  54.0f, 217.0f,  77.0f, 382.0f },
-		{  77.0f, 217.0f, 276.0f, 248.0f },
-		{ 276.0f, 217.0f, 305.0f, 382.0f },
-		{  77.0f, 359.0f, 276.0f, 382.0f },
-	},
+// The highlight panel bounding rectangle per panel in carsel.bmp's coordinate space.
+// Drawn as a single image per panel to remove inner box strips, with soft feathered outer edges.
+constexpr FRect HighlightPanelRect[PanelCount] = {
+	{  54.0f,  51.0f, 305.0f, 216.0f },
+	{ 312.0f,  51.0f, 556.0f, 216.0f },
+	{  54.0f, 217.0f, 305.0f, 382.0f },
 };
-constexpr float UnselectedSourceOffsetY = 360.0f;
 
 // FUN_00458a90's selection wheel. It is hand-written rather than modular - Up and Down are not
 // the inverses of each other - so the table is transcribed instead of derived. INDEX_NONE means
