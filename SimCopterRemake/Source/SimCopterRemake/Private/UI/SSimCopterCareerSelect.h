@@ -114,6 +114,7 @@ public:
 
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual void Tick(const FGeometry& AllottedGeometry, const double CurrentTime, const float DeltaTime) override;
 
 	int32 GetSelectedPanel() const { return SelectedPanel; }
 
@@ -126,6 +127,7 @@ private:
 
 	// screen[0x1d]. The original starts at -1 and FUN_004580b0 immediately selects panel 0.
 	int32 SelectedPanel = 0;
+	float PanelOpacity[SimCopterCareerSelectLayout::PanelCount] = { 1.0f, 0.0f, 0.0f };
 
 	TSharedPtr<STextBlock> CityNameText;
 	TSharedPtr<STextBlock> LevelNameText;
