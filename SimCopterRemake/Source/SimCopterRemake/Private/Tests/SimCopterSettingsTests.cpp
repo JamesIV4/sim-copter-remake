@@ -12,6 +12,7 @@
 #include "UI/SSimCopterCheckupSlider.h"
 #include "UI/SSimCopterCitySettings.h"
 #include "UI/SSimCopterControlSettings.h"
+#include "UI/SSimCopterGraphicsSettings.h"
 #include "UI/SSimCopterSettingsMenu.h"
 #include "UI/SSimCopterSoundSettings.h"
 
@@ -545,6 +546,42 @@ bool FSimCopterTimeOfDayFormatTest::RunTest(const FString& Parameters)
 	// The setter clamps, but the formatter is a public static and gets whatever a caller has.
 	TestEqual(TEXT("Negative hours clamp to midnight"), Formatted(-3.0f), TEXT("00:00"));
 	TestEqual(TEXT("Hours past a full day wrap"), Formatted(26.5f), TEXT("02:30"));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterOverallQualityLabelTest,
+	"SimCopter.Settings.OverallQualityLabels",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterOverallQualityLabelTest::RunTest(const FString& Parameters)
+{
+	// The Overall Quality row is the one dropdown with a sixth entry: UGameUserSettings answers
+	// -1 ("Custom") whenever the eleven scalability groups are not a single preset, which
+	// `FQualityLevels::GetSingleQualityLevel` also reports when the resolution scale is not the
+	// preset's own value - so Low Power Graphics' 75%, the Resolution Scale row and DLSS's
+	// quality-mode percentage all produce it. The row maps that -1 onto index 5, and index 5 has
+	// to read "Custom": clamping it to 0 instead is what made the page announce "Low" over an
+	// Epic mix. Guarding the label contract is what stops that sixth entry going unwired again.
+	const FString Custom = SSimCopterGraphicsSettings::GetQualityLevelLabel(5).ToString();
+	TestEqual(TEXT("Index 5 is the Custom label"), Custom, FString(TEXT("Custom")));
+	TestEqual(TEXT("Out-of-range levels also read Custom"),
+		SSimCopterGraphicsSettings::GetQualityLevelLabel(-1).ToString(), Custom);
+
+	// ...and the five real presets keep their own names, in Unreal's own order.
+	const TCHAR* const Presets[] = { TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Epic"), TEXT("Cinematic") };
+	for (int32 Level = 0; Level < UE_ARRAY_COUNT(Presets); ++Level)
+	{
+		TestEqual(
+			*FString::Printf(TEXT("Level %d label"), Level),
+			SSimCopterGraphicsSettings::GetQualityLevelLabel(Level).ToString(),
+			FString(Presets[Level]));
+		TestNotEqual(
+			*FString::Printf(TEXT("Level %d is not Custom"), Level),
+			SSimCopterGraphicsSettings::GetQualityLevelLabel(Level).ToString(),
+			Custom);
+	}
 
 	return true;
 }
