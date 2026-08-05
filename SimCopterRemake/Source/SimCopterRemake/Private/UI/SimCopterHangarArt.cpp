@@ -40,6 +40,49 @@ const TCHAR* const CatalogTabStripFiles[SimCopterHangarLayout::CatalogTabCount] 
 };
 
 const TCHAR* const UpgradesTabStripFile = TEXT("CAT_EQUT.BMP");
+
+FString GetUpscaledSlateFileName(const FString& OriginalFileName)
+{
+	const FString BaseName = FPaths::GetBaseFilename(OriginalFileName);
+
+	if (BaseName.Equals(TEXT("BUTTON"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MSSN_BTN-upscaled.png"))))
+		{
+			return TEXT("MSSN_BTN-upscaled.png");
+		}
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("BUTTON-upscaled.png"))))
+		{
+			return TEXT("BUTTON-upscaled.png");
+		}
+	}
+	else if (BaseName.Equals(TEXT("MSSN_BTN"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MSSN_BTN-upscaled.png"))))
+		{
+			return TEXT("MSSN_BTN-upscaled.png");
+		}
+	}
+	else if (BaseName.Equals(TEXT("MAIN1"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MAIN1-upscaled-rows-off.png"))))
+		{
+			return TEXT("MAIN1-upscaled-rows-off.png");
+		}
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MAIN1-upscaled.png"))))
+		{
+			return TEXT("MAIN1-upscaled.png");
+		}
+	}
+
+	const FString Candidate = BaseName + TEXT("-upscaled.png");
+	if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), Candidate)))
+	{
+		return Candidate;
+	}
+
+	return FString();
+}
 }
 
 void USimCopterHangarArt::SetOriginalGameRoot(const FString& InOriginalGameRoot)
@@ -92,6 +135,14 @@ FString USimCopterHangarArt::ResolveBitmapPath(const FString& FileName) const
 
 const FSlateBrush* USimCopterHangarArt::GetBitmap(const FString& FileName, const bool bColorKeyed)
 {
+	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
+	if (!UpscaledName.IsEmpty())
+	{
+		if (const FSlateBrush* Upscaled = GetBundledSlateImage(UpscaledName))
+		{
+			return Upscaled;
+		}
+	}
 	return BuildBrush(FileName, FileName, bColorKeyed, FIntRect(), ESimCopterArtRotation::None);
 }
 
@@ -229,10 +280,38 @@ const FSlateBrush* USimCopterHangarArt::GetStripFrame(
 		return nullptr;
 	}
 
-	// The frame width is only known once the bitmap is loaded, so the split stays in BuildBrush;
-	// an all-zero rect with a frame count encoded in the key would not survive the cache. Load
-	// the whole bitmap once to size the frame.
-	const FSlateBrush* Whole = GetBitmap(FileName, /*bColorKeyed=*/true);
+	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
+	if (!UpscaledName.IsEmpty())
+	{
+		if (const FSlateBrush* UpscaledBrush = GetBundledSlateImage(UpscaledName))
+		{
+			const FString CacheKey = FString::Printf(TEXT("StripFrame/%s#%dof%d"), *FileName, FrameIndex, FrameCount);
+			if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
+			{
+				return Existing->IsValid() ? Existing->Get() : nullptr;
+			}
+
+			const float U0 = static_cast<float>(FrameIndex) / static_cast<float>(FrameCount);
+			const float U1 = static_cast<float>(FrameIndex + 1) / static_cast<float>(FrameCount);
+
+			TSharedRef<FSlateBrush> FrameBrush = MakeShared<FSlateBrush>(*UpscaledBrush);
+			FrameBrush->SetUVRegion(FBox2f(FVector2f(U0, 0.0f), FVector2f(U1, 1.0f)));
+
+			const float FrameAspect = (UpscaledBrush->ImageSize.X / static_cast<float>(FrameCount)) / FMath::Max(1.0f, UpscaledBrush->ImageSize.Y);
+			const float FrameHeight = 28.0f;
+			FrameBrush->ImageSize = FVector2D(FrameHeight * FrameAspect, FrameHeight);
+
+			Brushes.Add(CacheKey, FrameBrush);
+			return &FrameBrush.Get();
+		}
+	}
+
+	const FSlateBrush* Whole = BuildBrush(
+		FString::Printf(TEXT("%s-WholeOriginal"), *FileName),
+		FileName,
+		/*bColorKeyed=*/true,
+		FIntRect(),
+		ESimCopterArtRotation::None);
 	if (Whole == nullptr)
 	{
 		return nullptr;
@@ -270,6 +349,59 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 		Source.Max.Y,
 		bColorKeyed ? TEXT("k") : TEXT(""),
 		static_cast<int32>(Rotation));
+
+	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
+	{
+		return Existing->IsValid() ? Existing->Get() : nullptr;
+	}
+
+	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
+	if (!UpscaledName.IsEmpty())
+	{
+		if (const FSlateBrush* UpscaledBrush = GetBundledSlateImage(UpscaledName))
+		{
+			const FSlateBrush* OriginalBrush = BuildBrush(
+				FString::Printf(TEXT("%s-OriginalDimensionsOnly"), *FileName),
+				FileName,
+				bColorKeyed,
+				FIntRect(),
+				ESimCopterArtRotation::None);
+
+			float OrigWidth = OriginalBrush != nullptr ? OriginalBrush->ImageSize.X : 0.0f;
+			float OrigHeight = OriginalBrush != nullptr ? OriginalBrush->ImageSize.Y : 0.0f;
+
+			if (OrigWidth <= 0.0f || OrigHeight <= 0.0f)
+			{
+				const FString BaseName = FPaths::GetBaseFilename(FileName);
+				if (BaseName.Equals(TEXT("CARSEL"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 557.0f;
+					OrigHeight = 743.0f;
+				}
+				else if (BaseName.Equals(TEXT("BUTTON"), ESearchCase::IgnoreCase) || BaseName.Equals(TEXT("MSSN_BTN"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 300.0f;
+					OrigHeight = 28.0f;
+				}
+			}
+
+			if (OrigWidth > 0.0f && OrigHeight > 0.0f)
+			{
+				const float U0 = FMath::Clamp(static_cast<float>(Source.Min.X) / OrigWidth, 0.0f, 1.0f);
+				const float V0 = FMath::Clamp(static_cast<float>(Source.Min.Y) / OrigHeight, 0.0f, 1.0f);
+				const float U1 = FMath::Clamp(static_cast<float>(Source.Max.X) / OrigWidth, 0.0f, 1.0f);
+				const float V1 = FMath::Clamp(static_cast<float>(Source.Max.Y) / OrigHeight, 0.0f, 1.0f);
+
+				TSharedRef<FSlateBrush> SubBrush = MakeShared<FSlateBrush>(*UpscaledBrush);
+				SubBrush->SetUVRegion(FBox2f(FVector2f(U0, V0), FVector2f(U1, V1)));
+				SubBrush->ImageSize = FVector2D(Source.Width(), Source.Height());
+
+				Brushes.Add(CacheKey, SubBrush);
+				return &SubBrush.Get();
+			}
+		}
+	}
+
 	return BuildBrush(CacheKey, FileName, bColorKeyed, Source, Rotation);
 }
 

@@ -37,13 +37,13 @@ constexpr float PageHeight = 435.0f;
 // The page interior, inside the printed metal frame. The original divides this into five wells;
 // the remake lays one list over it on its own backing panel, because there are eighteen rows to
 // place and the printed wells hold three.
-constexpr FRect ListRect{ 56.0f, 44.0f, 538.0f, 302.0f };
+constexpr FRect ListRect{ 56.0f, 44.0f, 538.0f, 332.0f };
 constexpr float RowHeight = 26.0f;
 constexpr float RowLabelWidth = 200.0f;
 
 // FUN_0043df80's two buttons, commands 1 and 2, strings 81 and 82, font height 16. Both rects are
-// degenerate 3x3, so button.bmp's own 100x28 applies. These are the original's positions.
-constexpr float ButtonY = 318.0f;
+// degenerate 3x3, so button.bmp's own 100x28 applies. Positioned to center inside the well.
+constexpr float ButtonY = 347.5f;
 constexpr float OkButtonX = 328.0f;
 constexpr float CancelButtonX = 432.0f;
 constexpr int32 ButtonFontHeight = 16;

@@ -113,6 +113,21 @@ bool FSimCopterMainMenuUpscaledArtTest::RunTest(const FString& Parameters)
 	const FString HoseCornerFile = FPaths::Combine(SlateDir, TEXT("MAIN3-upscaled.png"));
 	TestTrue(TEXT("MAIN3-upscaled.png exists in Content/Slate"), FPaths::FileExists(HoseCornerFile));
 
+	const TCHAR* const NewUpscaledAssets[] = {
+		TEXT("MENU4-upscaled.png"),
+		TEXT("MSSN_BTN-upscaled.png"),
+		TEXT("MAIN1-upscaled.png"),
+		TEXT("RENDER-upscaled.png"),
+		TEXT("CARSEL-upscaled.png"),
+		TEXT("CAREER-upscaled.png"),
+	};
+
+	for (const TCHAR* AssetName : NewUpscaledAssets)
+	{
+		const FString AssetFile = FPaths::Combine(SlateDir, AssetName);
+		TestTrue(FString::Printf(TEXT("%s exists in Content/Slate"), AssetName), FPaths::FileExists(AssetFile));
+	}
+
 	return true;
 }
 

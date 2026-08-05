@@ -265,6 +265,10 @@ void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 	const FSlateBrush* UpscaledPageBrush = ArtObject != nullptr
 		? ArtObject->GetBundledSlateImage(UpscaledMenuPage)
 		: nullptr;
+	if (UpscaledPageBrush == nullptr && ArtObject != nullptr)
+	{
+		UpscaledPageBrush = ArtObject->GetBundledSlateImage(TEXT("MAIN1-upscaled.png"));
+	}
 
 	TArray<const FSlateBrush*> UpscaledRowOnBrushes;
 	if (ArtObject != nullptr)

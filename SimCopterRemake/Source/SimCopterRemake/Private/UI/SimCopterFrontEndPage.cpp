@@ -107,17 +107,17 @@ TSharedRef<SWidget> MakeButton(
 			.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.8f))
 		];
 
-	const FSlateBrush* Normal = Art != nullptr ? Art->GetStripFrame(ButtonStrip, 0, ButtonFrameCount) : nullptr;
+	const FSlateBrush* Normal = Art != nullptr ? Art->GetStripFrame(ButtonStrip, 2, ButtonFrameCount) : nullptr;
 	if (Normal != nullptr)
 	{
-		const FSlateBrush* Pressed = Art->GetStripFrame(ButtonStrip, 1, ButtonFrameCount);
-		const FSlateBrush* Disabled = Art->GetStripFrame(ButtonStrip, 2, ButtonFrameCount);
+		const FSlateBrush* Hovered = Art->GetStripFrame(ButtonStrip, 1, ButtonFrameCount);
+		const FSlateBrush* Pressed = Art->GetStripFrame(ButtonStrip, 0, ButtonFrameCount);
 
 		TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
 		Style->SetNormal(*Normal);
-		Style->SetHovered(*Normal);
+		Style->SetHovered(Hovered != nullptr ? *Hovered : *Normal);
 		Style->SetPressed(Pressed != nullptr ? *Pressed : *Normal);
-		Style->SetDisabled(Disabled != nullptr ? *Disabled : *Normal);
+		Style->SetDisabled(*Normal);
 		Style->SetNormalPadding(FMargin(0.0f));
 		Style->SetPressedPadding(FMargin(0.0f));
 		StyleKeepAlive.Add(Style);

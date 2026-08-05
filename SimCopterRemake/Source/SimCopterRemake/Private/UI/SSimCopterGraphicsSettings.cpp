@@ -3,6 +3,7 @@
 #include "SSimCopterGraphicsSettings.h"
 
 #include "Brushes/SlateColorBrush.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "City/SimCopterDayNight.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -108,10 +109,11 @@ void SSimCopterGraphicsSettings::Construct(const FArguments& InArgs)
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	PopulateRows(Rows);
 
+	static const FSlateRoundedBoxBrush ListPanelBrush(PanelColor, 8.0f);
+
 	AddAtPage(ListRect,
 		SNew(SBorder)
-		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-		.BorderBackgroundColor(PanelColor)
+		.BorderImage(&ListPanelBrush)
 		.Padding(FMargin(8.0f, 6.0f))
 		[
 			SNew(SScrollBox)

@@ -203,11 +203,11 @@ TSharedRef<SWidget> SSimCopterCheckupMenu::BuildButton(const FText& Label, FOnCl
 {
 	USimCopterHangarArt* ArtObject = Art;
 	const FSlateBrush* Normal = ArtObject != nullptr
-		? ArtObject->GetStripFrame(ShellButtonStrip, 0, ButtonFrameCount) : nullptr;
-	const FSlateBrush* Pressed = ArtObject != nullptr
-		? ArtObject->GetStripFrame(ShellButtonStrip, 1, ButtonFrameCount) : nullptr;
-	const FSlateBrush* Disabled = ArtObject != nullptr
 		? ArtObject->GetStripFrame(ShellButtonStrip, 2, ButtonFrameCount) : nullptr;
+	const FSlateBrush* Hovered = ArtObject != nullptr
+		? ArtObject->GetStripFrame(ShellButtonStrip, 1, ButtonFrameCount) : nullptr;
+	const FSlateBrush* Pressed = ArtObject != nullptr
+		? ArtObject->GetStripFrame(ShellButtonStrip, 0, ButtonFrameCount) : nullptr;
 
 	TSharedRef<SButton> Button = SNew(SButton)
 		.OnClicked(OnClicked)
@@ -229,9 +229,9 @@ TSharedRef<SWidget> SSimCopterCheckupMenu::BuildButton(const FText& Label, FOnCl
 	{
 		TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
 		Style->SetNormal(*Normal);
-		Style->SetHovered(*Normal);
+		Style->SetHovered(Hovered != nullptr ? *Hovered : *Normal);
 		Style->SetPressed(Pressed != nullptr ? *Pressed : *Normal);
-		Style->SetDisabled(Disabled != nullptr ? *Disabled : *Normal);
+		Style->SetDisabled(*Normal);
 		Style->SetNormalPadding(FMargin(0.0f));
 		Style->SetPressedPadding(FMargin(0.0f));
 		ButtonStyles.Add(Style);
