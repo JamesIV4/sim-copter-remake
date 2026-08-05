@@ -1,6 +1,6 @@
 ---
 name: simcopter-dlss-resolution-scale
-description: The deprecated DLSS SetDLSSMode() call was stomping r.ScreenPercentage (fixed), and a manual Resolution Scale while DLSS is on crashes NGX_D3D12_EVALUATE_DLSS_EXT (fixed by greying the row + the new Anti-Aliasing Method dropdown). 2026-08-05.
+description: Four linked Graphics-page bugs, 2026-08-05 - DLSS SetDLSSMode() stomping r.ScreenPercentage, a manual Resolution Scale crashing NGX_D3D12_EVALUATE_DLSS_EXT, GameInstanceSubsystem::Initialize() wiping DLSS/FrameGen/Reflex because it runs before PostEngineInit, and Overall Quality reading back as "Low" instead of "Custom".
 metadata:
   type: project
 ---
@@ -86,6 +86,75 @@ on it rather than rejecting it gracefully. **DLSS owns the scale once it is on; 
 so, not just avoid fighting it.** Fixed by disabling (greying) the Resolution Scale row whenever
 `Settings->IsDlssEnabled()`, both in `BuildSliderRow`'s `IsEnabled` and with an explanatory
 `BuildNote` under it.
+
+## The one that actually broke persistence: subsystem init runs before `PostEngineInit`
+
+*Third round on the same complaint — "Super Resolution / Frame Generation / Reflex still don't
+survive a restart" — and the first two answers were wrong. It was never the save path.*
+
+`USimCopterSettings::Initialize()` used to "sanitize" stored values against hardware:
+
+```cpp
+if (bDlssEnabled && !IsDlssAvailable()) { bDlssEnabled = false; }
+if (FrameGenMode != Off && !IsFrameGenAvailable()) { FrameGenMode = Off; }
+if (ReflexMode != Off && !IsReflexModeAvailable(ReflexMode)) { ReflexMode = ...; }
+```
+
+**`USimCopterSettings` is a `UGameInstanceSubsystem`, and those initialize too early to ask.**
+`UGameEngine::Init()` builds the game instance — and so every game-instance subsystem — *before*
+`FEngineLoop::Init()` broadcasts `OnPostEngineInit`, which is when the NVIDIA libraries resolve
+support. The project's own log says it outright:
+
+```
+1893  LogSimCopterAudio:  [Audio] Sound root: ...        <- our subsystems, in order
+1894  LogSimCopterRadio:  [Radio] 5 stations ...
+1896  LogDLSSBlueprint: Error: IsDLSSSupported should not be called before PostEngineInit
+...
+2005  LogDLSS: NVIDIA NGX DLSS supported DLSS-SR=1 DLSS-RR=1   <- 249 ms later, same GPU
+```
+
+So every launch loaded the player's settings and immediately threw the three plugin-backed ones
+away; the next OK wrote the wiped values back to the ini. `LumenMode`, `HudScale`,
+`TimeOfDayMode` and the new `AntiAliasingMethod` all persisted fine throughout — **the settings
+that failed were exactly the ones with a plugin-availability guard**, which is the tell.
+
+This is NOT an editor artifact — it hits packaged builds identically, and `-game` most of all.
+
+Fixed by deleting the sanitization outright rather than deferring it. Availability is already
+checked everywhere it matters: `SSimCopterGraphicsSettings` only *builds* the DLSS, frame
+generation and Reflex rows when the feature is offered, and `ApplyGraphics` guards every plugin
+call with the same query at a point where the answer is true. An unsupported stored value is
+therefore inert rather than a lie, and it now survives a trip to another machine and back. The
+Hardware-Lumen fallback stays, because `IsRayTracingEnabled()` is an engine/RHI query resolved
+during PreInit and cannot produce a false negative.
+
+**General trap: a `UGameInstanceSubsystem::Initialize()` may not ask a plugin whether a feature
+is supported.** Anything gated on `OnPostEngineInit` — every NVIDIA library here — answers "no"
+and logs an error nobody reads. Never let an early answer *mutate* stored state; resolve
+capability at the point of use.
+
+## And a fourth: Overall Quality read back as "Low" whenever anything touched the resolution scale
+
+`UGameUserSettings::GetOverallScalabilityLevel()` returns **-1** (Custom) far more readily than it
+looks, because `FQualityLevels::GetSingleQualityLevel()` requires all eleven groups to agree *and*:
+
+```cpp
+if (GetRenderScaleLevelFromQualityLevel(Target) == ResolutionQuality)
+```
+
+Any resolution scale that is not the preset's own value for that level makes it Custom — so Low
+Power Graphics' 75%, the Resolution Scale row, and DLSS's quality-mode percentage all trigger it.
+The row did `FMath::Clamp(GetOverallScalabilityLevel(), 0, 4)`, turning that -1 into **0 = "Low"**,
+so opening the page announced "Low" over a perfectly good Epic mix. The row's own comment had
+promised "a sixth label the others do not" for years, but `GetCount` returned 5 and the value was
+clamped, so Custom was never wired up. Now six entries, -1 maps to index 5, and selecting Custom
+applies nothing (it describes the ten rows below rather than commanding them).
+`SimCopter.Settings.OverallQualityLabels` locks the label contract.
+
+Worth noting honestly: routing DLSS's percentage through `SetResolutionScaleValueEx` (the fix at
+the top of this note) writes `ScalabilityQuality.ResolutionQuality`, where the old deprecated call
+wrote the `r.ScreenPercentage` CVar directly — so that fix is what made this fourth bug *visible*
+with DLSS on. It was already reachable via Low Power Graphics and the Resolution Scale row.
 
 Added in the same pass: an **Anti-Aliasing Method** dropdown (`ESimCopterAntiAliasingMethod`,
 mirroring engine `EAntiAliasingMethod` value-for-value so `r.AntiAliasingMethod` needs no

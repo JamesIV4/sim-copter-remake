@@ -1100,20 +1100,40 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		AddRow(BuildDropdownRow(Label, Binding));
 	};
 
-	// The overall preset drives all ten at once; it reads back as Custom (-1) once one is moved,
-	// which is why its own row allows a sixth label the others do not.
+	// The overall preset drives all ten at once and reads back as Custom (-1) once the mix is no
+	// longer a single preset, which is why this row carries a sixth label the others do not.
+	//
+	// Six entries, and the -1 is deliberately NOT clamped. `FQualityLevels::GetSingleQualityLevel`
+	// answers -1 unless all eleven groups agree AND
+	// `GetRenderScaleLevelFromQualityLevel(Target) == ResolutionQuality` - so ANY resolution scale
+	// that is not the preset's own value for that level makes it Custom. Low Power Graphics' 75%,
+	// the Resolution Scale row and DLSS's quality-mode percentage all break that equality, which
+	// makes -1 the normal reading here rather than an edge case. Clamping it into 0 is what made
+	// the row announce "Low" over a perfectly good Epic mix every time the page was opened.
 	{
+		// Low, Medium, High, Epic, Cinematic, then Custom.
+		constexpr int32 CustomIndex = 5;
+
 		FRowBinding Overall;
-		Overall.GetCount = []() { return 5; };
+		Overall.GetCount = []() { return CustomIndex + 1; };
+		// GetQualityLevelLabel's default arm is already "Custom", which is where index 5 lands.
 		Overall.GetOptionLabel = [](const int32 Index) { return GetQualityLevelLabel(Index); };
 		Overall.GetIndex = []()
 		{
 			const UGameUserSettings* UserSettings = GetUserSettings();
-			return UserSettings != nullptr ? FMath::Clamp(UserSettings->GetOverallScalabilityLevel(), 0, 4) : 0;
+			if (UserSettings == nullptr)
+			{
+				return CustomIndex;
+			}
+			const int32 Level = UserSettings->GetOverallScalabilityLevel();
+			return (Level >= 0 && Level < CustomIndex) ? Level : CustomIndex;
 		};
 		Overall.SetIndex = [](const int32 Index)
 		{
-			if (UGameUserSettings* UserSettings = GetUserSettings())
+			// Picking "Custom" is not an instruction - it is a description of what the ten rows
+			// below already are - so it applies nothing rather than flattening them to a preset.
+			if (UGameUserSettings* UserSettings = GetUserSettings();
+				UserSettings != nullptr && Index >= 0 && Index < CustomIndex)
 			{
 				UserSettings->SetOverallScalabilityLevel(Index);
 				UserSettings->ApplyNonResolutionSettings();

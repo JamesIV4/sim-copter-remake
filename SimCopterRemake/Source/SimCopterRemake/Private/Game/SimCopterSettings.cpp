@@ -216,33 +216,28 @@ void USimCopterSettings::Initialize(FSubsystemCollectionBase& Collection)
 	NightRealMinutes = FMath::Clamp(NightRealMinutes, CycleLengthMinMinutes, CycleLengthMaxMinutes);
 	EmissiveBrightness = FMath::Clamp(EmissiveBrightness, EmissiveBrightnessMin, EmissiveBrightnessMax);
 
-	// A stored mode the current GPU cannot do would otherwise leave the page showing something
-	// the renderer quietly ignored - the ini travels between machines.
-	if (bDlssEnabled && !IsDlssAvailable())
-	{
-		bDlssEnabled = false;
-	}
-	if (FrameGenMode != ESimCopterFrameGenMode::Off && !IsFrameGenAvailable())
-	{
-		FrameGenMode = ESimCopterFrameGenMode::Off;
-	}
-
-	TArray<int32> Multiples;
-	GetAvailableFrameGenMultiples(Multiples);
-	if (Multiples.Num() > 0 && !Multiples.Contains(FrameGenMultiple))
-	{
-		FrameGenMultiple = Multiples.Last();
-	}
-
-	if (ReflexMode != ESimCopterReflexMode::Off && !IsReflexModeAvailable(ReflexMode))
-	{
-		ReflexMode = IsReflexModeAvailable(ESimCopterReflexMode::On)
-			? ESimCopterReflexMode::On
-			: ESimCopterReflexMode::Off;
-	}
-
-	// Hardware Lumen on a machine with no ray tracing is not an error - the renderer just falls back
-	// to software traces - but the row would then show "Hardware" while software is what is running.
+	// NOTHING PLUGIN-BACKED MAY BE SANITIZED HERE, however tempting it looks.
+	//
+	// This used to clear bDlssEnabled / FrameGenMode / ReflexMode when the matching
+	// Is*Available() said no, so an ini carried to a weaker machine would not leave the page
+	// showing a mode the renderer ignored. It silently destroyed the player's settings on EVERY
+	// launch instead, because a UGameInstanceSubsystem initializes too early to ask:
+	// UGameEngine::Init() builds the game instance (and so this subsystem) BEFORE
+	// FEngineLoop::Init() broadcasts OnPostEngineInit, and the NVIDIA libraries only resolve
+	// support on that delegate. UDLSSLibrary::IsDLSSSupported() answers false and logs
+	// "IsDLSSSupported should not be called before PostEngineInit"; a few hundred ms later the
+	// same GPU reports DLSS-SR=1. The stored value was already gone, and the next OK wrote the
+	// wiped value back to the ini.
+	//
+	// It is not needed anyway - availability is checked everywhere it actually matters:
+	// SSimCopterGraphicsSettings only builds the DLSS, frame generation and Reflex rows when the
+	// feature is offered, and ApplyGraphics guards every plugin call with the same query at a
+	// point where the answer is true. So an unsupported stored value is inert rather than a lie,
+	// and it survives a trip to another machine and back.
+	//
+	// Hardware Lumen is the one fallback that stays: it is an engine/RHI query (IsRayTracingEnabled)
+	// resolved during PreInit, long before any of this, so it cannot produce a false negative. A
+	// machine with no ray tracing really would run software traces while the row said Hardware.
 	if (LumenMode == ESimCopterLumenMode::HardwareRayTracing && !IsHardwareRayTracingAvailable())
 	{
 		LumenMode = ESimCopterLumenMode::Software;
