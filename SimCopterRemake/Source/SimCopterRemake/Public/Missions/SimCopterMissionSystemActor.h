@@ -413,9 +413,14 @@ private:
 	float RescueDropoffHeightCm = 600.0f;
 
 	// How close the helicopter (with medevac patients aboard) must be to the hospital drop-off tile
-	// before the EMT comes out to unload it.
+	// before the EMT comes out to unload it - and the radius the posted roof crew is looked for in.
+	//
+	// 1500 cm was nearly four city tiles: the crew set off toward a helicopter that had merely
+	// landed in the neighbourhood, and the watchdog below started ticking on it. 900 is a little
+	// over two tiles, which covers a 3x3 hospital from its recorded tile whether that tile is the
+	// footprint's centre or a corner, and not much beyond the building itself.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
-	float MedevacHospitalHandoffRadiusCm = 1500.0f;
+	float MedevacHospitalHandoffRadiusCm = 900.0f;
 
 	// Recovery only: if BHAV 263 makes no cabin progress for this long while the helicopter
 	// remains landed at D1, resolve the remaining seat(s) through the established mission service.

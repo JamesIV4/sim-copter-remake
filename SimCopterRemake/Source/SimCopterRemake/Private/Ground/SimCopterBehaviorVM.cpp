@@ -362,8 +362,12 @@ EOpResult ExecOpcode(
 	case 46: // select the person I am carrying (FUN_004cc7d0 -> FUN_004ca650)
 		return World.SelectCarriedPerson(Context, /*bAlsoDropThem*/ false) ? EOpResult::True : EOpResult::False;
 	case 47: // put the selected person down (FUN_004cc8d0)
-		World.DropSelectedPerson(Context);
-		return EOpResult::True;
+		// FUN_004cc8d0 always answers 1. The remake propagates the interaction layer's result
+		// instead, because that layer now refuses one specific thing the original never had to
+		// guard: taking a casualty out of the player's cabin while nowhere near the aircraft (see
+		// ASimCopterGroundAgent::DropSelectedPerson). BHAV 263 rec[3]'s false edge is -3, so a
+		// refusal unwinds to 801's idle and the medic probes again - a retry, not a dead end.
+		return World.DropSelectedPerson(Context) ? EOpResult::True : EOpResult::False;
 	case 48: // make the selection my carrier (FUN_004cc900)
 		return World.BoardSelection(Context) ? EOpResult::True : EOpResult::False;
 	case 51: // set down whoever I am carrying and select them (FUN_004cca00 -> FUN_004ca570)

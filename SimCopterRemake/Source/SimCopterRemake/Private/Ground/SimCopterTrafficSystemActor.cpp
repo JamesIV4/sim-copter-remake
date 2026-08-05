@@ -1523,6 +1523,51 @@ bool ASimCopterTrafficSystemActor::HasArrestedCriminalNear(const FVector& WorldL
 	return false;
 }
 
+int32 ASimCopterTrafficSystemActor::RunOverCriminalsUnderHelicopter(ASimCopterHelicopterPawn& Helicopter)
+{
+	int32 RunOver = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->IsActorBeingDestroyed() || !Agent->IsBehaviorActive())
+		{
+			continue;
+		}
+		// FUN_004c9000's own rule: somebody riding a carrier is not in the cell's object list, so
+		// the airframe cannot hit them - including anyone already aboard this helicopter.
+		if (Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0)
+		{
+			continue;
+		}
+		// The criminal set and nothing else: DAT_0058de80's states 10..13 are BHAV 1300-1303.
+		// Deliberately NOT FUN_004ca350's loop-flag-0 test, which the cop search uses - that also
+		// matches state 3, the rioters (BHAV 850), and a riot is dispersed, not run over.
+		const int32 State = int32(int16(Agent->GetBehaviorAttribute(EBhavAttr::State)));
+		if (State < 10 || State > 13)
+		{
+			continue;
+		}
+		// An arrested criminal is somebody the police already have.
+		if (Agent->GetBehaviorAttribute(EBhavAttr::CriminalCaught) != 0)
+		{
+			continue;
+		}
+		// FUN_004c8f70's box overlap, against the airframe the player can see rather than the
+		// flight-sweep capsule.
+		if (Helicopter.GetDistanceToAirframeCm(Agent->GetActorLocation()) >
+			FMath::Max(1.0f, Agent->GetCollisionRadiusCm()))
+		{
+			continue;
+		}
+
+		if (Agent->ApplyHelicopterRunOver(Helicopter))
+		{
+			++RunOver;
+		}
+	}
+	return RunOver;
+}
+
 int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
 	int32 EventId,
 	const FVector& WorldLocation,

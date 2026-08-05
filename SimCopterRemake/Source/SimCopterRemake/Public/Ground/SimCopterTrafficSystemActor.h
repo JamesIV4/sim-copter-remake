@@ -794,6 +794,16 @@ public:
 	// their feet - i.e. holding the hands-up pose or walking to the police car.
 	bool HasArrestedCriminalNear(const FVector& WorldLocation, float RadiusCm) const;
 
+	// SCHOOK: HelicopterObjectCollision 0x0048ad50 (its people arm, narrowed)
+	// The airframe running somebody over. FUN_0048ad50 hands every object overlapping the aircraft
+	// FUN_0049a4f0(0xc, ...), which for a person is interaction mode 12 -> BHAV 912 "Rxn: Large fast
+	// vehicle hit" -> 903 "Rxn: Die". The remake deliberately serves that to **uncaught criminals
+	// only**: everybody else the aircraft touches is left alone entirely (they already scramble out
+	// from under a descending helicopter), because being able to swat pedestrians with the skids is
+	// not wanted. Squashing the one you were sent to catch also closes the mission.
+	// Returns how many were run over. Never affects the aircraft's motion.
+	int32 RunOverCriminalsUnderHelicopter(class ASimCopterHelicopterPawn& Helicopter);
+
 	// FUN_004ca650: the person whose carrier is Carrier - whoever they are toting.
 	ASimCopterGroundAgent* FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const;
 
