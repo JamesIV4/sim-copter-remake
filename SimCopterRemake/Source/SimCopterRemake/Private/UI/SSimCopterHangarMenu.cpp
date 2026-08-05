@@ -241,9 +241,9 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakeArtButton(
 	const int32 FontSize)
 {
 	USimCopterHangarArt* ArtObject = Art.Get();
-	const FSlateBrush* Normal = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 0, FrameCount) : nullptr;
-	const FSlateBrush* Pressed = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 1, FrameCount) : nullptr;
-	const FSlateBrush* Disabled = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 2, FrameCount) : nullptr;
+	const FSlateBrush* Normal = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 2, FrameCount) : nullptr;
+	const FSlateBrush* Hovered = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 1, FrameCount) : nullptr;
+	const FSlateBrush* Pressed = ArtObject != nullptr ? ArtObject->GetStripFrame(StripFileName, 0, FrameCount) : nullptr;
 
 	TSharedRef<SButton> Button = SNew(SButton)
 		// Focus is required for D-pad navigation and gamepad A activation while the shell owns input.
@@ -267,9 +267,9 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakeArtButton(
 	{
 		TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
 		Style->SetNormal(*Normal);
-		Style->SetHovered(*Normal);
+		Style->SetHovered(Hovered != nullptr ? *Hovered : *Normal);
 		Style->SetPressed(Pressed != nullptr ? *Pressed : *Normal);
-		Style->SetDisabled(Disabled != nullptr ? *Disabled : *Normal);
+		Style->SetDisabled(*Normal);
 		Style->SetNormalPadding(FMargin(0.0f));
 		Style->SetPressedPadding(FMargin(0.0f));
 		ButtonStyles.Add(Style);
