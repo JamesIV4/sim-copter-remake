@@ -398,7 +398,7 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		}));
 
 	AddRow(BuildNote(LOCTEXT("LowPowerModeNote",
-		"Simple lighting, no shadows, 75% resolution. For integrated graphics.")));
+		"Simple lighting, no shadows, 75% resolution. Performance over visuals.")));
 
 	// ---------------------------------------------------------------------------------------
 	// Upscaling and frame generation
