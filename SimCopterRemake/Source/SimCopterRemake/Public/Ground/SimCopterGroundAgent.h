@@ -789,6 +789,16 @@ private:
 	void ShowOriginalMesh(bool bUseOriginalMesh);
 	void ConfigureVehicleHeadlights(const FBox& VehicleLocalBounds);
 	void DisableVehicleHeadlights();
+
+	/**
+	 * Re-derives EmissiveNits on the pedestrian sprite and figure head from the world's key light.
+	 *
+	 * Both ride the shared UNLIT `M_SimCopterSpriteTexture`, so what looks like ordinary shading has
+	 * to be computed instead - and as SURFACES, not light sources, so they have no minimum and go
+	 * dark with the sun. Without it they sat on the material's baked daylight default and glowed all
+	 * night. Cheap enough to run per tick: the subsystem caches its scan for the whole frame.
+	 */
+	void RefreshSpriteExposure();
 	bool TraceGround(FVector& OutGroundLocation) const;
 	void FinishPassengerFall(float FallDistanceCm);
 	FString ResolveOriginalGameRoot() const;

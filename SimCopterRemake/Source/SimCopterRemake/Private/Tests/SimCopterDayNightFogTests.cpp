@@ -122,5 +122,45 @@ bool FSimCopterDayNightFogCurveTest::RunTest(const FString& Parameters)
 			ComputeNightAlpha(10.0f, 3.0f, 9.0f, Fade, ShortDay, false), 1.0f);
 	}
 
+	// The inscattering colour rides the SAME alpha as the density. That is the whole requirement -
+	// a fog that turned blue on its own schedule would read as a bug - so it is pinned rather than
+	// left to two call sites happening to pass the same hours.
+	{
+		const FLinearColor DayColour = DefaultDayInscatteringLuminance;   // sRGB #1A1A1A
+		const FLinearColor NightColour = DefaultNightInscatteringLuminance; // sRGB #15151A
+
+		const auto ColourAt = [&](float Hour)
+		{
+			return ComputeFogInscatteringLuminance(
+				Hour, Sunrise, Sunset, Fade, DayColour, NightColour, Day, /*bSmoothFade*/ false);
+		};
+
+		TestTrue(TEXT("Midday is the day colour"), ColourAt(12.0f).Equals(DayColour, 1e-6f));
+		TestTrue(TEXT("Midnight is the night colour"), ColourAt(0.0f).Equals(NightColour, 1e-6f));
+		TestTrue(TEXT("The colour fade STARTS on sunset, like the density"),
+			ColourAt(18.0f).Equals(DayColour, 1e-6f));
+		TestTrue(TEXT("...and completes one fade later"),
+			ColourAt(19.0f).Equals(NightColour, 1e-6f));
+
+		// Same alpha, checked by reconstructing the colour from the density's alpha rather than by
+		// restating the lerp: if the two ever drift onto different curves, this is what catches it.
+		for (const float Hour : { 5.25f, 6.5f, 12.0f, 18.5f, 22.0f, 3.0f })
+		{
+			const float Alpha = NightAlphaLinear(Hour);
+			const FLinearColor Expected = FMath::Lerp(DayColour, NightColour, Alpha);
+			TestTrue(
+				*FString::Printf(TEXT("Colour at %.2fh tracks the density's alpha"), Hour),
+				ColourAt(Hour).Equals(Expected, 1e-6f));
+		}
+
+		// The night end is dimmer AND bluer; getting either backwards is the kind of thing that only
+		// shows up on screen at 2am, so both are asserted.
+		TestTrue(TEXT("Night is dimmer in red"), NightColour.R < DayColour.R);
+		TestTrue(TEXT("Night is dimmer in green"), NightColour.G < DayColour.G);
+		TestTrue(TEXT("Night keeps its blue"), NightColour.B >= DayColour.B);
+		TestTrue(TEXT("Night is blue-dominant, unlike the neutral day"),
+			NightColour.B > NightColour.R && FMath::IsNearlyEqual(DayColour.B, DayColour.R));
+	}
+
 	return true;
 }

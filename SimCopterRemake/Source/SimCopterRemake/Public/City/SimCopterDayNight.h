@@ -31,8 +31,23 @@ namespace SimCopterDayNight
 // one collection scalar means nothing has to touch ~40 MI_CityPage_* instances per frame.
 SIMCOPTERREMAKE_API extern const TCHAR* const ParameterCollectionPath;
 
-// The scalar the city atlas material blends its day and night pages with.
+// The scalars the city atlas material reads out of that collection.
 SIMCOPTERREMAKE_API extern const TCHAR* const NightBlendParameterName;
+SIMCOPTERREMAKE_API extern const TCHAR* const WindowSeedParameterName;
+SIMCOPTERREMAKE_API extern const TCHAR* const WindowLitFractionParameterName;
+SIMCOPTERREMAKE_API extern const TCHAR* const WindowRowLitFractionParameterName;
+SIMCOPTERREMAKE_API extern const TCHAR* const WindowGlowNitsParameterName;
+
+// Fraction of windows lit at night, and the chance a whole floor comes on at once. A city where
+// every window is lit reads as a render, not a city; these are what make it look occupied.
+constexpr float DefaultWindowLitFraction = 0.30f;
+constexpr float DefaultWindowRowLitFraction = 0.05f;
+
+// How bright a lit window burns, in nits. Absolute rather than derived from the sun, because a
+// window has a bulb behind it - but small, because it is being metered against a night exposure:
+// the first pass at 2500 was four orders of magnitude over the moonlit ground and bloomed the
+// skyline into a wall of halos. Tunable live, see SimCopter.NightWindows.Nits.
+constexpr float DefaultWindowGlowNits = 25.0f;
 
 // Default fade anchors, matching USimCopterDayNightFogComponent's so the fog, the window lights and
 // the pacing all turn over on the same hours.
@@ -92,6 +107,17 @@ public:
 	/** The level's day sequence actor, or null. */
 	ADaySequenceActor* GetDaySequenceActor() const;
 
+	/**
+	 * Picks a new set of lit windows.
+	 *
+	 * Called automatically when the sun goes down and when the Settings screen forces night, which is
+	 * the whole point - the city should not come back with the same windows lit every single night.
+	 * It is one number: the material hashes it per window, so re-rolling the whole skyline costs a
+	 * single collection write and no geometry work at all.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Day/Night")
+	void RerollNightWindows();
+
 	/** Hour the sunset fade starts at; the night blend reaches 1 one fade later. */
 	float SunsetHour = SimCopterDayNight::DefaultSunsetHour;
 
@@ -117,6 +143,12 @@ private:
 	/** Loads the parameter collection once; null when the materials have not been rebuilt. */
 	UMaterialParameterCollection* ResolveParameterCollection();
 
+	/** Writes one scalar into the collection, if it loaded. */
+	void PublishScalar(const TCHAR* ParameterName, float Value);
+
+	/** Pushes the lit fraction, row chance and glow brightness; cheap, only on change. */
+	void PublishWindowTuning();
+
 	TWeakObjectPtr<ADaySequenceActor> CachedDaySequenceActor;
 
 	UPROPERTY(Transient)
@@ -126,8 +158,17 @@ private:
 	float DayLengthHours = SimCopterDayNightFog::DefaultDayLengthHours;
 	float NightAlpha = 0.0f;
 
-	/** Last value written to the collection, so an unchanged blend costs nothing. */
+	/** Last values written to the collection, so an unchanged frame costs nothing. */
 	float PublishedNightBlend = -1.0f;
+	float PublishedLitFraction = -1.0f;
+	float PublishedRowLitFraction = -1.0f;
+	float PublishedGlowNits = -1.0f;
+
+	/**
+	 * Whether the last evaluated frame counted as night, so the day->night EDGE can be detected.
+	 * Re-rolling on "is night" rather than on the edge would reshuffle the windows every frame.
+	 */
+	bool bWasNight = false;
 
 	/** Set once the collection has been looked for and not found, to stop the log repeating. */
 	bool bWarnedMissingCollection = false;

@@ -107,6 +107,53 @@ reproduces the original's exact night pixels at that cost.
 
 The emissive window term is **not** scaled by it - the windows come on fully.
 
+### Not every window is lit
+
+A skyline with every window on reads as a render. The material rolls each window instead:
+`WindowLitFraction` (0.30) per window, plus `WindowRowLitFraction` (0.05) that lights a whole floor
+at once, both hashed off a `WindowSeed` the subsystem **re-rolls at every sunset** - and after any
+seek, so switching to Static midnight from the Settings screen draws a fresh set rather than the one
+from the last time it was night.
+
+The per-window identity is `floor(InCellUV * WindowRandomGrid)` plus the building's own
+`ObjectPositionWS`. `InCellUV`'s **integer** part is already "which repeat of the atlas cell am I on
+across this wall", so it is a stable per-bay index for free; the object position keeps two identical
+towers from lighting identically (the city places each model as its own runtime static mesh
+instance, so this really is per-building). The grid does not have to line up exactly with the art -
+the glow mask has already restricted the effect to window texels, so a bucket spanning two windows
+just lights both, which reads as one flat. **Too fine is the failure that looks wrong**: buckets
+smaller than a window leave a single pane half-lit.
+
+### Why the distant windows flickered
+
+The atlas pages import `TF_NEAREST` with `TMGS_NO_MIPMAPS` **on purpose** - the per-cell UV maths
+needs exact texels and no bleed between neighbouring 32x32 cells. That is right up close and
+catastrophic far away: once a screen pixel spans more than one texel, point sampling picks an
+essentially arbitrary texel, and a different one every frame as the camera moves. On base colour
+that is ordinary aliasing the temporal AA absorbs. On a bright emissive against a nearly black night
+scene it is a hard on/off flicker - and it feeds Lumen too.
+
+Mips are not the fix (they would bleed between cells and break the addressing). Instead the mask
+measures its own texel-to-pixel ratio with `fwidth(InCellUV) * 32` and, past 1, fades toward its
+**statistical average** rather than toward zero:
+
+```hlsl
+float alias = saturate((texelsPerPixel - 1.0) / AliasRange);
+lit       = lerp(lit,       saturate(LitFraction + RowLitFraction), alias);
+isWindow  = lerp(isWindow,  AverageCoverage,                        alias);
+```
+
+Fading to zero also stops the flicker, by switching the distant skyline off - which is the wrong
+cure. This way a far block settles to a steady glow of the brightness its windows average out to.
+`WindowAverageCoverage` (0.12) is measured, not guessed: the wall pages run 7-16% window by area.
+
+### Brightness
+
+`WindowGlowNits` started at 2500 and that was four orders of magnitude over the moonlit ground - the
+skyline bloomed into one continuous halo. It is **25** now, and it lives in the collection rather
+than the material so it can move at runtime: `SimCopter.NightWindows.Nits`, alongside
+`.LitFraction` and `.RowLitFraction`.
+
 ### Deriving the window mask instead of authoring it
 
 Which texels are windows is not recorded anywhere in the data. It is derivable, because the night
@@ -128,6 +175,44 @@ the terrain pages completely dark, which is what the measurements above predict.
 not follow the sky. At the day sequence's 120,000 lux noon white ground is ~38,000 nits, so 2500 sits
 far below daylight and only reads once the sun is down - which is also what `NightBlend` is doing, so
 the two agree without being tied together.
+
+## The trap: one shared unlit material, six consumers, one of them setting the parameter
+
+`M_SimCopterSpriteTexture` is UNLIT - colour goes straight to Emissive - and it bakes a daylight
+`EmissiveNits` default of **26000** so a card is never black with nothing driving it
+([exposure scale](simcopter-exposure-scale.md)). That default is a trap, because a consumer that
+creates a `UMaterialInstanceDynamic` and forgets the parameter renders at 26000 nits **forever, at
+every hour**. Six sites create MIDs from it and originally only one wrote the parameter:
+
+| consumer | what it draws | wrote EmissiveNits? |
+| --- | --- | --- |
+| `USimCopterParticleFXComponent` (kernel + card) | smoke, embers, spray | yes |
+| `USimCopterFireRenderComponent` | **the flames themselves** | no |
+| `ASimCopterGroundAgent::SpriteMaterialInstance` | pedestrian sprites | no |
+| `ASimCopterGroundAgent::FigureHeadMaterialInstance` | privanim heads | no |
+| `ASimCopterOnFootPawn::FigureHeadMaterialInstance` | the player's head | no |
+| `USimCopterFlashingLightsComponent` | blink markers | yes |
+
+So the fire burned at a fixed 26000 while the smoke and embers *rising out of the same fire* tracked
+the sun, and every person in the city glowed all night. All of it is one bug with one shape.
+
+`USimCopterEffectExposureSubsystem::ApplyEmissiveNits(Mid, World, bIsLightSource)` is now the single
+way to write it, and the flag matters:
+
+- **Light source** (fire, kernels, markers): floored at `DefaultMinimumEmissiveNits` (1.5) so a flame
+  is still the brightest thing in frame at midnight.
+- **Surface** (people, heads): floor of **zero**. They are ordinary surfaces that happen to be drawn
+  as unlit cards, and the floor is exactly what would make them glow after dark.
+
+Anything new that draws on this material has to call it. The default is deliberately not lowered:
+a forgotten consumer being too bright is at least visible, where a dark one looks like missing art.
+
+## One knob over all of it
+
+`USimCopterSettings::EmissiveBrightness` (Settings > Graphics > Emissive Brightness, 5%..300%)
+multiplies **everything** derived above - effect cards, people, window lights - because none of them
+carry an authored brightness, so scaling them together preserves their relationship.
+`SimCopter.Effects.Brightness` still multiplies on top for live tuning.
 
 ## Hangar shell
 

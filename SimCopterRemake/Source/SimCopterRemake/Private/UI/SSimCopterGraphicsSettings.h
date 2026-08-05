@@ -106,6 +106,7 @@ private:
 		uint8 ReflexMode = 0;
 		uint8 LumenMode = 0;
 		bool bVolumetricFog = true;
+		float EmissiveBrightness = 1.0f;
 		uint8 TimeOfDayMode = 0;
 		float StaticTimeOfDayHours = 12.0f;
 		float DayRealMinutes = 7.0f;
