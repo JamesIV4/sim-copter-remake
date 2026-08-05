@@ -124,28 +124,46 @@ the glow mask has already restricted the effect to window texels, so a bucket sp
 just lights both, which reads as one flat. **Too fine is the failure that looks wrong**: buckets
 smaller than a window leave a single pane half-lit.
 
-### Why the distant windows flickered
+### Distant windows flickered: it was Lumen, and the fix is `#ifdef LUMEN_CARD_CAPTURE`
 
-The atlas pages import `TF_NEAREST` with `TMGS_NO_MIPMAPS` **on purpose** - the per-cell UV maths
-needs exact texels and no bleed between neighbouring 32x32 cells. That is right up close and
-catastrophic far away: once a screen pixel spans more than one texel, point sampling picks an
-essentially arbitrary texel, and a different one every frame as the camera moves. On base colour
-that is ordinary aliasing the temporal AA absorbs. On a bright emissive against a nearly black night
-scene it is a hard on/off flicker - and it feeds Lumen too.
+**Cause (confirmed on screen 2026-08-05):** Lumen. Its surface cache captures Emissive *through this
+same material*, and the window glow is the worst thing to hand it - a handful of very bright texels
+per building, re-captured at whatever card resolution the distance happens to allow. As cards change
+resolution or get evicted, the indirect contribution pulses, and that is the flicker.
 
-Mips are not the fix (they would bleed between cells and break the addressing). Instead the mask
-measures its own texel-to-pixel ratio with `fwidth(InCellUV) * 32` and, past 1, fades toward its
-**statistical average** rather than toward zero:
+**The fix is one preprocessor guard at the top of the window mask:**
 
 ```hlsl
-float alias = saturate((texelsPerPixel - 1.0) / AliasRange);
-lit       = lerp(lit,       saturate(LitFraction + RowLitFraction), alias);
-isWindow  = lerp(isWindow,  AverageCoverage,                        alias);
+#ifdef LUMEN_CARD_CAPTURE
+	return 0.0;
+#endif
 ```
 
-Fading to zero also stops the flicker, by switching the distant skyline off - which is the wrong
-cure. This way a far block settles to a steady glow of the brightness its windows average out to.
-`WindowAverageCoverage` (0.12) is measured, not guessed: the wall pages run 7-16% window by area.
+`LumenCardPixelShader.usf` does `#define LUMEN_CARD_CAPTURE 1` on line 3, *before* it includes
+`/Engine/Generated/Material.ush` on line 18 - so the define reaches a Custom node's body. The base
+pass has it undefined and draws the windows exactly as before. The windows look identical and simply
+stop lighting anything indirectly.
+
+**Things that are NOT the lever, checked so nobody re-checks them:**
+
+- `bEmissiveLightSource` on the primitive already defaults to **false**, so "turning it off" is a
+  no-op. Turning it *on* makes this worse: it multiplies Lumen's minimum card surface area by 0.2
+  (`LumenMeshCards::GetCardMinSurfaceArea`), so more small emissive detail gets cards.
+- There is **no per-material switch** to exclude emissive from Lumen. The only per-primitive one is
+  `bAffectDynamicIndirectLighting = false`, which drops the primitive out of the Lumen scene
+  entirely - no cards at all, so rays pass through the buildings and light leaks. Far too blunt.
+
+**A distance fade on the mask is also NOT the answer. Tried and reverted the same day.** It measured
+the texel-to-pixel ratio with `fwidth(InCellUV) * 32` and blended the mask toward its statistical
+average past 1 texel per pixel. It did stop the flicker, and it looked far worse: the average
+applies to *every texel of the building*, walls included, so a distant tower emitted uniformly
+instead of showing windows and the whole skyline came up bright. The minification story it rested on
+was wrong anyway - it predicts flicker only once windows go sub-pixel, and the flicker was visible
+while they were still comfortably readable.
+
+If something like this ever needs diagnosing again, `SimCopter.NightWindows.LitFraction 1` with
+`.RowLitFraction 0` makes `lit` a constant and takes the per-pixel hash out of the shader, which
+separates "the roll is unstable" from "something downstream is".
 
 ### Brightness
 

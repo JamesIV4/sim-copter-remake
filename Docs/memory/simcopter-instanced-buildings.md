@@ -45,3 +45,29 @@ cook, no buffer rebuild, and the collision leaves with the instance.
   feed into resolving those ids.
 - `bInstanceBuildingMeshes` on the city actor falls back to the old merged path
   (and disables demolition with it).
+
+## Trees and the park are instanced too (2026-08-05), for a different reason
+
+XBLD 0x06..0x0C are TREE6..TREE12 and 0x0D is LP13, "small park" - 8 models, **3250 placements** in
+the demo city. Baked, every one of them was part of a single *movable* `UProceduralMeshComponent`
+spanning the whole map, and that is what the virtual shadow map objects to: a movable primitive that
+size cannot have its pages cached, so anything touching it invalidates shadow pages across the
+entire city. Pulling them out dropped the merged mesh from ~509k triangles to **434,366**.
+
+They take a **separate** path from buildings (`NaturalObjectInstanceComponents`,
+`bInstanceNaturalObjectMeshes`), not a shared one, because the building path keeps
+`ComponentInstanceBuildings` in lockstep with every instance so a demolition can repair the single
+index a swap-remove displaces. A tree has no building record to be in lockstep with, and mixing them
+would leave that invariant silently half-true.
+
+Their components are **Static**, unlike the buildings' Movable - nothing adds or removes a tree
+after the build, and static is precisely what lets the VSM cache the pages. Buildings have to stay
+Movable because demolition mutates them.
+
+**The park is flattened like a building, and that is a deliberate divergence.** The original treats
+the whole 0x06..0x0D band as natural cover and leaves it on the ALTM grade. But LP13 is not cover -
+it is a flat authored slab with paths printed on it, the same kind of pad a building sits on, and on
+a slope its corners cut into the hill on one side and hang in the air on the other. So 0x0D joins
+the flatten sweep and drops out of `bGroundHuggingObjectTile` (it now takes the pad sample like a
+building instead of the bilinear surface sample). The trees either side of it in the band genuinely
+are foliage and still follow the slope - which is why this is the one id, not the range.
