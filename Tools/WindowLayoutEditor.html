@@ -98,6 +98,9 @@
       </span>
     </div>
     <div class="row"><label>Art dim</label><input type="range" id="dim" min="0" max="100" step="5" value="35"><output id="dimV">35</output></div>
+    <div class="row"><label>Fill opacity</label><input type="range" id="maskAlpha" min="0" max="100" step="5" value="60"><output id="maskAlphaV">60</output></div>
+    <p class="note">Pull the fill down to check your edges against the art underneath. At 0 only the
+      outlines remain, which is the clearest way to spot a texel you missed inside a window.</p>
 
     <h2>Fill helper</h2>
     <div class="row"><label>Brightness</label><input type="range" id="thr" min="0" max="1" step="0.01" value="0.55"><output id="thrV">.55</output></div>
@@ -267,12 +270,37 @@ function draw() {
   }
 
   if (state.mask) {
-    ctx.fillStyle = "#ffd479";
+    const alpha = parseInt($("maskAlpha").value, 10) / 100;
+    if (alpha > 0) {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#ffd479";
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (state.mask[y * size + x]) ctx.fillRect(x * z, y * z, z, z);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // The boundary is drawn at full strength whatever the fill is doing, so turning the fill down
+    // to nothing still shows exactly what is painted - that is the view for checking edges against
+    // the art, and for spotting a texel left unpainted in the middle of a window.
+    ctx.strokeStyle = "#ffd479";
+    ctx.lineWidth = Math.max(1, z * 0.12);
+    ctx.beginPath();
     for (let y = 0; y < size; y++) {
       for (let x = 0; x < size; x++) {
-        if (state.mask[y * size + x]) ctx.fillRect(x * z, y * z, z, z);
+        if (!state.mask[y * size + x]) continue;
+        const px = x * z, py = y * z;
+        // Only edges where a painted texel meets an unpainted one (or the page edge), so the
+        // interior of a blob stays clear instead of turning into a grid of boxes.
+        if (x === 0 || !state.mask[y * size + x - 1]) { ctx.moveTo(px, py); ctx.lineTo(px, py + z); }
+        if (x === size - 1 || !state.mask[y * size + x + 1]) { ctx.moveTo(px + z, py); ctx.lineTo(px + z, py + z); }
+        if (y === 0 || !state.mask[(y - 1) * size + x]) { ctx.moveTo(px, py); ctx.lineTo(px + z, py); }
+        if (y === size - 1 || !state.mask[(y + 1) * size + x]) { ctx.moveTo(px, py + z); ctx.lineTo(px + z, py + z); }
       }
     }
+    ctx.stroke();
   }
 
   if (z >= 6) {
@@ -348,6 +376,7 @@ addEventListener("keydown", e => {
 $("brush").addEventListener("input", () => { state.brush = +$("brush").value; $("brushV").value = state.brush; });
 $("zoom").addEventListener("input", () => { state.zoom = +$("zoom").value; $("zoomV").value = state.zoom; draw(); });
 $("dim").addEventListener("input", () => { $("dimV").value = $("dim").value; draw(); });
+$("maskAlpha").addEventListener("input", () => { $("maskAlphaV").value = $("maskAlpha").value; draw(); });
 $("thr").addEventListener("input", () => { $("thrV").value = (+$("thr").value).toFixed(2).slice(1); });
 $("showArt").addEventListener("change", draw);
 $("showCells").addEventListener("change", draw);

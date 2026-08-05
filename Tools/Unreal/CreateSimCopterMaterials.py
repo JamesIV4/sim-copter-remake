@@ -242,23 +242,13 @@ WINDOW_GLOW_CONTRAST_DEFAULT = 8.0
 # smaller than a window speckle a single pane half-lit.
 WINDOW_RANDOM_GRID_DEFAULT = 2.0
 
-# How the window glow stops strobing in the distance.
-#
-# The atlas pages are imported TF_NEAREST with TMGS_NO_MIPMAPS on purpose - the per-cell UV math
-# needs exact texels and no bleed between neighbouring 32x32 cells. That is fine up close and
-# catastrophic far away: once a screen pixel covers more than one texel, point sampling picks an
-# essentially arbitrary texel, and a different one every frame as the camera moves. For base colour
-# that is ordinary aliasing the temporal AA mostly absorbs. For a bright emissive against a nearly
-# black night scene it is a hard on/off flicker, and it feeds Lumen as well.
-#
-# So the mask fades toward its own STATISTICAL AVERAGE as the texel-to-pixel ratio climbs. Fading to
-# zero would stop the flicker too, but by turning the distant skyline off - which is the wrong cure.
-# This way a far block glows steadily at the brightness its windows average out to.
-WINDOW_ALIAS_RANGE_DEFAULT = 2.0
-
-# What fraction of a wall cell is window, used as that average. Measured, not guessed: the three
-# wall pages put 7-16% of their area above the glow threshold (analyse_night_windows.py).
-WINDOW_AVERAGE_COVERAGE_DEFAULT = 0.12
+# NO DISTANCE FADE ON THE WINDOW MASK. An earlier attempt blended the mask toward its statistical
+# average as the texel-to-pixel ratio climbed, on the theory that the flicker was minification
+# aliasing. It stopped the flicker and looked far worse: the average was applied to EVERY texel of a
+# building, walls included, so a distant tower emitted uniformly instead of showing lit windows -
+# the whole skyline came up bright. Reverted 2026-08-05. If the flicker is worth attacking again,
+# whatever the cure is must keep the emissive confined to window texels; the cause is more likely
+# geometric (LOD/cluster swaps changing the interpolated UV) than a sampling average.
 
 
 def create_day_night_parameter_collection():
@@ -433,12 +423,6 @@ def create_city_atlas_material():
     random_grid = add_scalar_parameter(
         material, "WindowRandomGrid", WINDOW_RANDOM_GRID_DEFAULT, 9, 1600
     )
-    alias_range = add_scalar_parameter(
-        material, "WindowAliasRange", WINDOW_ALIAS_RANGE_DEFAULT, 10, 1750
-    )
-    average_coverage = add_scalar_parameter(
-        material, "WindowAverageCoverage", WINDOW_AVERAGE_COVERAGE_DEFAULT, 11, 1900
-    )
 
     # Live, so the brightness knob and the nightly re-roll cost one collection write between them
     # rather than touching every MI_CityPage_*.
@@ -458,6 +442,18 @@ def create_city_atlas_material():
         material,
         "OriginalNightWindowMask",
         (
+            "// Withheld from Lumen. The surface cache captures Emissive through this very material,\n"
+            "// and the window glow is the worst possible thing to hand it: a few bright texels per\n"
+            "// building, re-captured at whatever card resolution the distance happens to allow, so\n"
+            "// the indirect contribution pulses as cards change resolution or get evicted - which is\n"
+            "// the distant flicker. LUMEN_CARD_CAPTURE is defined at the top of LumenCardPixelShader\n"
+            "// BEFORE it includes the generated material, so it reaches this node; the base pass has\n"
+            "// it undefined and draws the windows exactly as before. Net effect: the windows look\n"
+            "// identical and simply stop lighting anything indirectly.\n"
+            "#ifdef LUMEN_CARD_CAPTURE\n"
+            "	return 0.0;\n"
+            "#endif\n"
+            "\n"
             "float dayLum = dot(DayColor, float3(0.2126, 0.7152, 0.0722));\n"
             "float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
             "float gotBrighter = saturate((nightLum - dayLum) * Contrast);\n"
@@ -482,26 +478,11 @@ def create_city_atlas_material():
             "float rowRoll = frac(sin(dot(rowKey, float3(39.3468, 11.135, 83.155))) * 24634.6345);\n"
             "\n"
             "float lit = max(step(windowRoll, LitFraction), step(rowRoll, RowLitFraction));\n"
-            "\n"
-            "// DISTANCE. These pages are point sampled with no mips, so once one screen pixel spans\n"
-            "// more than a texel the sample is arbitrary and changes every frame - which against a\n"
-            "// black night sky is a hard flicker, not soft aliasing. fwidth on the cell UV measures\n"
-            "// exactly that ratio, independent of resolution and of how the building is angled.\n"
-            "float2 texelDelta = fwidth(InCellUV) * 32.0;\n"
-            "float texelsPerPixel = max(texelDelta.x, texelDelta.y);\n"
-            "float alias = saturate((texelsPerPixel - 1.0) / max(AliasRange, 0.001));\n"
-            "\n"
-            "// Fade to the AVERAGE, not to zero: the far skyline should settle to a steady glow of\n"
-            "// the brightness its windows work out to, not switch itself off.\n"
-            "lit = lerp(lit, saturate(LitFraction + RowLitFraction), alias);\n"
-            "isWindow = lerp(isWindow, saturate(AverageCoverage), alias);\n"
-            "\n"
             "return isWindow * lit * saturate(Blend);"
         ),
         [
             "DayColor", "NightColor", "Threshold", "Contrast", "Blend",
             "InCellUV", "BuildingOrigin", "Grid", "Seed", "LitFraction", "RowLitFraction",
-            "AliasRange", "AverageCoverage",
         ],
         -60,
         900,
@@ -519,8 +500,6 @@ def create_city_atlas_material():
         (window_seed, "", "Seed"),
         (lit_fraction, "", "LitFraction"),
         (row_lit_fraction, "", "RowLitFraction"),
-        (alias_range, "", "AliasRange"),
-        (average_coverage, "", "AverageCoverage"),
     ):
         if not unreal.MaterialEditingLibrary.connect_material_expressions(source, source_output, window_mask, pin):
             unreal.log_error(f"M_SimCopterCityAtlas: window mask pin '{pin}' not connected.")

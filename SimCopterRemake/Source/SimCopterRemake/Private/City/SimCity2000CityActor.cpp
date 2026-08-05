@@ -644,6 +644,13 @@ bool IsOriginalTerrainTileFlat(const TArray<int16>& ConditionedCorners, int32 Fi
 	return Corner00 == Corner10 && Corner00 == Corner01 && Corner00 == Corner11;
 }
 
+// XBLD 0x0D, the only "natural" tile that is a built pad rather than foliage: object 0x143, LP13,
+// named "small park" in the GEO. 0x06..0x0C are TREE6..TREE12, actual trees.
+bool IsOriginalParkTile(uint8 BuildingId)
+{
+	return BuildingId == 0x0D;
+}
+
 // Which surface ramps keep the original's untouched tmap instead of the remake's one-step wedge
 // (see the 0x1f..0x22 case in BuildConditionedTerrainCornerSamples).
 //
@@ -743,7 +750,13 @@ TArray<int16> BuildConditionedTerrainCornerSamples(const FSimCity2000City& City)
 				// (GetOriginalBridgeDispatch), so they need the same auto-flatten every other flat
 				// street gets - without it the crossing stands up out of the road as a raised block.
 				Building == 0x43 || Building == 0x44;
-			if (Building >= 0x70 || bFlatNetworkTile)
+			// Divergence, deliberate: the original leaves 0x0D on whatever grade the ALTM had,
+			// because it treats the whole 0x06..0x0D band as natural cover. But LP13 is not cover -
+			// it is a flat authored slab with paths and benches printed on it, the same kind of pad
+			// every building sits on. On a slope its corners cut into the hill on one side and hang
+			// in the air on the other. The trees either side of it in the band genuinely are foliage
+			// and stay on the slope, which is why this is the one id and not the range.
+			if (Building >= 0x70 || bFlatNetworkTile || IsOriginalParkTile(Building))
 			{
 				const int32 Sample = GetTerrainHeightMapSample(Tile);
 				Set(FileX, FileY, Sample);
@@ -3417,6 +3430,7 @@ void ASimCity2000CityActor::RebuildCity()
 	OriginalTextureMaterials.Reset();
 	WaterTextureMaterials.Reset();
 	ResetBuildingInstances();
+	ResetNaturalObjectInstances();
 
 	TerrainMeshComponent->ClearAllMeshSections();
 	OriginalMeshComponent->ClearAllMeshSections();
@@ -4040,7 +4054,7 @@ void ASimCity2000CityActor::RebuildCity()
 		Component->SetCollisionObjectType(ECC_WorldStatic);
 		Component->SetCollisionResponseToAllChannels(ECR_Block);
 		Component->SetCanEverAffectNavigation(false);
-		// The merged city mesh casts no shadow because it is one unculled 509k-triangle proxy -
+		// The merged city mesh casts no shadow because it is one unculled ~434k-triangle proxy -
 		// shadowing it would mean re-rendering the whole city per light. Instanced buildings are
 		// culled and batched per placement, so they can afford to cast, and being lit they receive
 		// too. This is what puts buildings in each other's and the terrain's shadow.
@@ -4059,6 +4073,88 @@ void ASimCity2000CityActor::RebuildCity()
 		ModelTexturedTriangleCounts.Add(ModelTexturedTriangles);
 		check(ComponentInstanceBuildings.Num() == BuildingInstanceComponents.Num());
 		ModelComponentIndices.Add(Key, ComponentIndex);
+		return ComponentIndex;
+	};
+
+	// Trees and the park, on the same instancing idea as buildings but without the bookkeeping: no
+	// tree can burn down or be demolished, so there is nothing to keep a per-instance record for.
+	// Keyed by object id alone, because a natural tile never carries a secondary object.
+	const bool bUseInstancedNaturalObjects =
+		bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && bInstanceNaturalObjectMeshes;
+	TMap<int32, int32> NaturalObjectComponentIndices;
+	auto ResolveNaturalObjectComponent =
+		[this, &NaturalObjectComponentIndices, &ResolveBuildingSectionMaterial](
+			int32 ObjectId,
+			const FMaxisMeshObject& MeshObject,
+			const TArray<FColor>* ColorMap,
+			bool bRenderBackfaces,
+			bool bTexturesLoaded,
+			const TSet<int32>& TextureKeys,
+			const TSet<int32>& AtlasPageIds,
+			const TSet<int32>& DirectImageIds,
+			const FLinearColor& FallbackColor,
+			float UnitsPerCentimeter,
+			float MeshScale,
+			bool bCollision) -> int32
+	{
+		if (const int32* Existing = NaturalObjectComponentIndices.Find(ObjectId))
+		{
+			return *Existing;
+		}
+
+		// Built at the origin: AppendMaxisMeshObject already folds the global 180-degree city yaw
+		// into its vertices, so a placement adds only the tile translation - the same contract the
+		// building models are built under.
+		TMap<int32, FOriginalMeshSectionData> ModelSections;
+		int32 ModelTexturedTriangles = 0;
+		AppendMaxisMeshObject(
+			MeshObject,
+			ColorMap,
+			FVector::ZeroVector,
+			UnitsPerCentimeter,
+			MeshScale,
+			bRenderBackfaces,
+			bTexturesLoaded,
+			TextureKeys,
+			AtlasPageIds,
+			DirectImageIds,
+			FallbackColor,
+			/*bBuildVectorLines*/ true,
+			FPlacedObjectRoadFaceFilter(),
+			ModelSections,
+			ModelTexturedTriangles);
+
+		UStaticMesh* ModelMesh = BuildBuildingModelStaticMesh(this, ModelSections, ResolveBuildingSectionMaterial);
+		if (ModelMesh == nullptr)
+		{
+			NaturalObjectComponentIndices.Add(ObjectId, INDEX_NONE);
+			return INDEX_NONE;
+		}
+
+		UInstancedStaticMeshComponent* Component = NewObject<UInstancedStaticMeshComponent>(this);
+		Component->SetStaticMesh(ModelMesh);
+		for (int32 SlotIndex = 0; SlotIndex < ModelMesh->GetStaticMaterials().Num(); ++SlotIndex)
+		{
+			UMaterialInterface* SlotMaterial = ModelMesh->GetStaticMaterials()[SlotIndex].MaterialInterface;
+			EnsureInstancedStaticMeshUsage(SlotMaterial);
+			Component->SetMaterial(SlotIndex, SlotMaterial);
+		}
+		Component->SetupAttachment(SceneRoot);
+		Component->SetCollisionEnabled(bCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		Component->SetCollisionObjectType(ECC_WorldStatic);
+		Component->SetCollisionResponseToAllChannels(ECR_Block);
+		Component->SetCanEverAffectNavigation(false);
+		Component->SetCastShadow(bNaturalObjectsCastShadow);
+		// Static, unlike the buildings: nothing ever adds or removes a tree after the build, and a
+		// static instanced component is what lets the virtual shadow map CACHE its pages instead of
+		// re-rendering them. Getting the whole city's foliage out of one movable procedural mesh and
+		// into cacheable instances is the entire point of this path.
+		Component->SetMobility(EComponentMobility::Static);
+		Component->RegisterComponent();
+
+		const int32 ComponentIndex = NaturalObjectInstanceComponents.Add(Component);
+		NaturalObjectModelMeshes.Add(ModelMesh);
+		NaturalObjectComponentIndices.Add(ObjectId, ComponentIndex);
 		return ComponentIndex;
 	};
 
@@ -4101,9 +4197,13 @@ void ASimCity2000CityActor::RebuildCity()
 			const bool bNaturalObjectTile = GetOriginalNaturalObjectId(Tile.Building) != INDEX_NONE;
 			const bool bRubbleTile = GetOriginalRubbleObjectId(Tile.Building) != INDEX_NONE;
 			// Objects on tiles the terrain builder never flattens, so their ground is genuinely sloped:
-			// power lines (0x0E-0x1C), trees and the small park (0x06-0x0D), and rubble (0x01-0x04).
+			// power lines (0x0E-0x1C), trees (0x06-0x0C), and rubble (0x01-0x04). The small park
+			// (0x0D) is flattened like a building now, so it takes the pad sample the same way one
+			// does - see IsOriginalParkTile.
 			const bool bGroundHuggingObjectTile =
-				bNaturalObjectTile || bRubbleTile || (Tile.Building >= 0x0E && Tile.Building <= 0x1C);
+				(bNaturalObjectTile && !IsOriginalParkTile(Tile.Building))
+				|| bRubbleTile
+				|| (Tile.Building >= 0x0E && Tile.Building <= 0x1C);
 
 			if (bRenderTerrain)
 			{
@@ -4285,10 +4385,30 @@ void ASimCity2000CityActor::RebuildCity()
 						FPlacedObjectRoadFaceFilter SecondaryRoadFaceFilter = PrimaryRoadFaceFilter;
 						SecondaryRoadFaceFilter.bSkipRoadSurfaceFaces = bPowerLineRoadCrossing;
 
+						// Trees and the park instance too, but by their own path: no building record,
+						// so a placement is nothing but an AddInstance.
+						int32 NaturalComponentIndex = INDEX_NONE;
+						if (bUseInstancedNaturalObjects && bNaturalObjectTile && NaturalObjectId != INDEX_NONE)
+						{
+							NaturalComponentIndex = ResolveNaturalObjectComponent(
+								NaturalObjectId,
+								*MeshObject,
+								ColorMap,
+								bRenderOriginalMeshBackfaces,
+								bOriginalTexturesLoaded,
+								AvailableOriginalTextureKeys,
+								AvailableBakedAtlasPageIds,
+								AvailableBakedDirectImageIds,
+								OriginalTexturedFaceFallbackColor,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								bEnableOriginalMeshCollision);
+						}
+
 						// Buildings become instances so a single one can be removed later; roads,
 						// bridges and power lines stay baked in the shared sections.
 						int32 PlacedComponentIndex = INDEX_NONE;
-						if (bUseInstancedBuildings && bBuildingLikeTile && !bUseBridgeDispatch)
+						if (NaturalComponentIndex == INDEX_NONE && bUseInstancedBuildings && bBuildingLikeTile && !bUseBridgeDispatch)
 						{
 							FBuildingModelKey ModelKey;
 							ModelKey.PrimaryObjectId = PrimaryObjectId;
@@ -4297,7 +4417,14 @@ void ASimCity2000CityActor::RebuildCity()
 							PlacedComponentIndex = ResolveBuildingModelComponent(ModelKey, *MeshObject, ColorMap);
 						}
 
-						if (PlacedComponentIndex != INDEX_NONE)
+						if (NaturalComponentIndex != INDEX_NONE)
+						{
+							NaturalObjectInstanceComponents[NaturalComponentIndex]->AddInstance(
+								FTransform(TileOrigin), /*bWorldSpace*/ false);
+							++LastNaturalObjectInstanceCount;
+							++LastOriginalMeshTileCount;
+						}
+						else if (PlacedComponentIndex != INDEX_NONE)
 						{
 							const int32 BuildingId = Buildings.AddDefaulted();
 							FSimCopterCityBuilding& Building = Buildings[BuildingId];
@@ -4952,6 +5079,7 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 	LastOriginalMeshTriangleCount = OriginalMeshTriangleCount;
 	LastBuildingModelCount = BuildingInstanceComponents.Num();
+	LastNaturalObjectModelCount = NaturalObjectInstanceComponents.Num();
 
 	LastFlashingLightCount = CityFlashingLightPoints.Num();
 	if (FlashingLightsComponent != nullptr)
@@ -4965,6 +5093,13 @@ void ASimCity2000CityActor::RebuildCity()
 		TEXT("Instanced buildings: %d distinct models, %d placements (each model's geometry and collision built once)."),
 		LastBuildingModelCount,
 		LastBuildingInstanceCount);
+
+	UE_LOG(
+		LogSimCity2000CityActor,
+		Display,
+		TEXT("Instanced natural objects: %d distinct models (TREE6..TREE12 + LP13), %d placements."),
+		LastNaturalObjectModelCount,
+		LastNaturalObjectInstanceCount);
 
 	UE_LOG(
 		LogSimCity2000CityActor,
@@ -5217,6 +5352,21 @@ void ASimCity2000CityActor::ResetBuildingInstances()
 	}
 	LastBuildingModelCount = 0;
 	LastBuildingInstanceCount = 0;
+}
+
+void ASimCity2000CityActor::ResetNaturalObjectInstances()
+{
+	for (UInstancedStaticMeshComponent* Component : NaturalObjectInstanceComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->DestroyComponent();
+		}
+	}
+	NaturalObjectInstanceComponents.Reset();
+	NaturalObjectModelMeshes.Reset();
+	LastNaturalObjectModelCount = 0;
+	LastNaturalObjectInstanceCount = 0;
 }
 
 FSimCopterBuildingPart* ASimCity2000CityActor::FindBuildingPartInComponent(int32 BuildingId, int32 ComponentIndex)
