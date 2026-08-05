@@ -49,6 +49,7 @@
            cursor:pointer; font:inherit; }
   button:hover { background:var(--accent); color:#14161a; }
   button.on { background:var(--accent); color:#14161a; }
+  button:disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
   #scroller { overflow:auto; max-height:78vh; border:1px solid var(--line); border-radius:4px; background:#000; }
   canvas { display:block; image-rendering:pixelated; cursor:crosshair; }
   .note { color:var(--dim); font-size:11px; margin:6px 0 0; }
@@ -78,15 +79,18 @@
     <div class="row"><label>Size</label><input type="range" id="brush" min="1" max="16" step="1" value="2"><output id="brushV">2</output></div>
     <div class="row">
       <label>Mode</label>
-      <span style="flex:1;display:flex;gap:6px">
+      <span style="flex:1;display:flex;gap:4px;flex-wrap:wrap">
         <button id="modePaint" class="on">Paint</button>
         <button id="modeErase">Erase</button>
+        <button id="modeCopyTile">Copy Tile</button>
+        <button id="modePasteTile" disabled>Paste Tile</button>
       </span>
     </div>
     <div class="row"><label>Zoom</label><input type="range" id="zoom" min="2" max="16" step="1" value="6"><output id="zoomV">6</output></div>
     <p class="note">
-      <kbd>right-drag</kbd> erases whatever the mode is. <kbd>[</kbd> / <kbd>]</kbd> resize brush.
-      <kbd>ctrl+Z</kbd> undo.
+      <kbd>right-drag</kbd> erases. <kbd>[</kbd> / <kbd>]</kbd> resize brush.
+      <kbd>ctrl+Z</kbd> undo.<br>
+      <kbd>C</kbd> / <kbd>Ctrl+C</kbd> copy tile under mouse. <kbd>V</kbd> / <kbd>Ctrl+V</kbd> paste tile.
     </p>
 
     <h2>View</h2>
@@ -110,6 +114,19 @@
     </div>
     <p class="note">Optional one-shot starting point from the art's bright texels, so you are
       correcting rather than drawing from nothing. Everything after that is by hand.</p>
+
+    <h2>Tile Tools</h2>
+    <div class="stat"><span>Tile Clipboard</span><b id="clipStatus">Empty</b></div>
+    <div class="row" style="gap:6px;margin-top:6px">
+      <button id="copyCell">Copy Cell</button>
+      <button id="pasteCell" disabled>Paste Cell</button>
+      <button id="pasteAll" disabled>Paste All</button>
+    </div>
+    <p class="note">
+      Click a cell in <b>Copy Tile</b> mode (or hover + <kbd>C</kbd>) to copy its 32x32 pixel mask.<br>
+      Click target cell in <b>Paste Tile</b> mode (or hover + <kbd>V</kbd>) to paste.<br>
+      <b>Paste All</b> replicates the copied 32x32 tile mask across all 64 cells.
+    </p>
 
     <h2>Saved</h2>
     <div class="stat"><span>Painted texels</span><b id="countV">0</b></div>
@@ -143,9 +160,111 @@ const state = {
   mask: null,         // Uint8Array, 1 = window
   zoom: 6,
   brush: 2,
+  mode: "paint",      // "paint" | "erase" | "copyTile" | "pasteTile"
   erase: false,
   undo: [],
+  tileClipboard: null,// { mask: Uint8Array(32*32), sourceCell: number, count: number }
+  hoverCell: -1,
 };
+
+// --- tile helpers ------------------------------------------------------------------------------
+
+function cellFromTexel(x, y) {
+  if (x < 0 || y < 0 || x >= state.size || y >= state.size) return -1;
+  const col = (x / CELL) | 0, rowFromTop = (y / CELL) | 0;
+  const perRow = (state.size / CELL) | 0;
+  const rowFromBottom = perRow - 1 - rowFromTop;
+  return col + rowFromBottom * GRID;
+}
+
+function cellBounds(cellId) {
+  const perRow = (state.size / CELL) | 0;
+  if (cellId < 0 || cellId >= perRow * perRow) return null;
+  const col = cellId % GRID;
+  const rowFromBottom = (cellId / GRID) | 0;
+  const rowFromTop = perRow - 1 - rowFromBottom;
+  return { col, rowFromTop, rowFromBottom, startX: col * CELL, startY: rowFromTop * CELL };
+}
+
+function copyTile(cellId) {
+  const b = cellBounds(cellId);
+  if (!b || !state.mask) return false;
+  const clip = new Uint8Array(CELL * CELL);
+  let count = 0;
+  for (let ty = 0; ty < CELL; ty++) {
+    for (let tx = 0; tx < CELL; tx++) {
+      const v = state.mask[(b.startY + ty) * state.size + (b.startX + tx)];
+      clip[ty * CELL + tx] = v;
+      if (v) count++;
+    }
+  }
+  state.tileClipboard = { mask: clip, sourceCell: cellId, count };
+  updateClipboardUI();
+  return true;
+}
+
+function pasteTile(targetCellId) {
+  if (!state.tileClipboard || !state.mask) return false;
+  const b = cellBounds(targetCellId);
+  if (!b) return false;
+  pushUndo();
+  const clip = state.tileClipboard.mask;
+  for (let ty = 0; ty < CELL; ty++) {
+    for (let tx = 0; tx < CELL; tx++) {
+      state.mask[(b.startY + ty) * state.size + (b.startX + tx)] = clip[ty * CELL + tx];
+    }
+  }
+  changed();
+  return true;
+}
+
+function pasteTileToAll() {
+  if (!state.tileClipboard || !state.mask) return false;
+  pushUndo();
+  const clip = state.tileClipboard.mask;
+  const perRow = (state.size / CELL) | 0;
+  const total = perRow * perRow;
+  for (let c = 0; c < total; c++) {
+    const b = cellBounds(c);
+    if (!b) continue;
+    for (let ty = 0; ty < CELL; ty++) {
+      for (let tx = 0; tx < CELL; tx++) {
+        state.mask[(b.startY + ty) * state.size + (b.startX + tx)] = clip[ty * CELL + tx];
+      }
+    }
+  }
+  changed();
+  return true;
+}
+
+function updateClipboardUI() {
+  const statusEl = $("clipStatus");
+  const pasteBtn = $("pasteCell");
+  const pasteAllBtn = $("pasteAll");
+  const modePasteBtn = $("modePasteTile");
+  if (state.tileClipboard) {
+    if (statusEl) statusEl.textContent = `Cell ${state.tileClipboard.sourceCell} (${state.tileClipboard.count} px)`;
+    if (pasteBtn) pasteBtn.disabled = false;
+    if (pasteAllBtn) pasteAllBtn.disabled = false;
+    if (modePasteBtn) modePasteBtn.disabled = false;
+  } else {
+    if (statusEl) statusEl.textContent = "Empty";
+    if (pasteBtn) pasteBtn.disabled = true;
+    if (pasteAllBtn) pasteAllBtn.disabled = true;
+    if (modePasteBtn) modePasteBtn.disabled = true;
+  }
+}
+
+function setMode(mode) {
+  if (mode === "pasteTile" && !state.tileClipboard) return;
+  state.mode = mode;
+  state.erase = (mode === "erase");
+  $("modePaint").classList.toggle("on", mode === "paint");
+  $("modeErase").classList.toggle("on", mode === "erase");
+  $("modeCopyTile").classList.toggle("on", mode === "copyTile");
+  $("modePasteTile").classList.toggle("on", mode === "pasteTile");
+  draw();
+}
 
 // --- mask --------------------------------------------------------------------------------------
 
@@ -323,6 +442,36 @@ function draw() {
       }
     }
   }
+
+  if (state.hoverCell !== undefined && state.hoverCell >= 0) {
+    const b = cellBounds(state.hoverCell);
+    if (b) {
+      if (state.mode === "copyTile") {
+        ctx.strokeStyle = "#00ffff";
+        ctx.lineWidth = Math.max(2, z * 0.15);
+        ctx.strokeRect(b.startX * z + 0.5, b.startY * z + 0.5, CELL * z - 1, CELL * z - 1);
+        ctx.fillStyle = "rgba(0, 255, 255, 0.18)";
+        ctx.fillRect(b.startX * z, b.startY * z, CELL * z, CELL * z);
+      } else if (state.mode === "pasteTile" && state.tileClipboard) {
+        ctx.strokeStyle = "#ffd479";
+        ctx.lineWidth = Math.max(2, z * 0.15);
+        ctx.strokeRect(b.startX * z + 0.5, b.startY * z + 0.5, CELL * z - 1, CELL * z - 1);
+        ctx.fillStyle = "rgba(255, 212, 121, 0.45)";
+        const clip = state.tileClipboard.mask;
+        for (let ty = 0; ty < CELL; ty++) {
+          for (let tx = 0; tx < CELL; tx++) {
+            if (clip[ty * CELL + tx]) {
+              ctx.fillRect((b.startX + tx) * z, (b.startY + ty) * z, z, z);
+            }
+          }
+        }
+      } else if (state.tileClipboard) {
+        ctx.strokeStyle = "rgba(255, 212, 121, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(b.startX * z + 0.5, b.startY * z + 0.5, CELL * z - 1, CELL * z - 1);
+      }
+    }
+  }
 }
 
 function updateStats() {
@@ -335,7 +484,7 @@ function updateStats() {
 
 // --- input -------------------------------------------------------------------------------------
 
-let drawing = false, forceErase = false;
+let drawing = false, forceErase = false, lastPastedCell = -1;
 
 function texelFromEvent(e) {
   const cv = $("cv"), r = cv.getBoundingClientRect();
@@ -348,28 +497,88 @@ function texelFromEvent(e) {
 $("cv").addEventListener("contextmenu", e => e.preventDefault());
 $("cv").addEventListener("pointerdown", e => {
   if (!state.mask) return;
+  const p = texelFromEvent(e);
+  const cellId = cellFromTexel(p.x, p.y);
+
+  if (state.mode === "copyTile") {
+    if (cellId >= 0 && copyTile(cellId)) {
+      setMode("pasteTile");
+      $("status").textContent = `Copied Cell ${cellId} mask (${state.tileClipboard.count} px). Mode set to Paste Tile.`;
+    }
+    return;
+  }
+
+  if (state.mode === "pasteTile") {
+    if (cellId >= 0 && state.tileClipboard) {
+      drawing = true;
+      lastPastedCell = cellId;
+      pasteTile(cellId);
+      $("status").textContent = `Pasted tile mask to Cell ${cellId}.`;
+      $("cv").setPointerCapture(e.pointerId);
+    }
+    return;
+  }
+
   pushUndo();
   drawing = true; forceErase = e.button === 2;
   const was = state.erase; if (forceErase) state.erase = true;
-  const p = texelFromEvent(e); paintAt(p.x, p.y);
+  paintAt(p.x, p.y);
   state.erase = was;
   $("cv").setPointerCapture(e.pointerId);
   draw();
 });
+
 $("cv").addEventListener("pointermove", e => {
-  if (!drawing) return;
-  const was = state.erase; if (forceErase) state.erase = true;
-  const p = texelFromEvent(e); paintAt(p.x, p.y);
-  state.erase = was;
+  const p = texelFromEvent(e);
+  state.hoverCell = cellFromTexel(p.x, p.y);
+
+  if (drawing) {
+    if (state.mode === "pasteTile") {
+      if (state.hoverCell >= 0 && state.hoverCell !== lastPastedCell && state.tileClipboard) {
+        lastPastedCell = state.hoverCell;
+        pasteTile(state.hoverCell);
+        $("status").textContent = `Pasted tile mask to Cell ${state.hoverCell}.`;
+      }
+    } else {
+      const was = state.erase; if (forceErase) state.erase = true;
+      paintAt(p.x, p.y);
+      state.erase = was;
+    }
+  }
   draw();
 });
-$("cv").addEventListener("pointerup", () => { if (drawing) { drawing = false; changed(); } });
+
+$("cv").addEventListener("pointerup", () => {
+  if (drawing) {
+    drawing = false;
+    lastPastedCell = -1;
+    changed();
+  }
+});
+$("cv").addEventListener("pointerleave", () => {
+  state.hoverCell = -1;
+  draw();
+});
 
 addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
   if (e.key === "[") { state.brush = Math.max(1, state.brush - 1); $("brush").value = state.brush; $("brushV").value = state.brush; }
   if (e.key === "]") { state.brush = Math.min(16, state.brush + 1); $("brush").value = state.brush; $("brushV").value = state.brush; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && state.undo.length) {
     state.mask = state.undo.pop(); changed(); e.preventDefault();
+  }
+  const key = e.key.toLowerCase();
+  if (key === "c" && state.hoverCell >= 0) {
+    if (copyTile(state.hoverCell)) {
+      $("status").textContent = `Copied Cell ${state.hoverCell} mask (${state.tileClipboard.count} px).`;
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    }
+  }
+  if (key === "v" && state.hoverCell >= 0 && state.tileClipboard) {
+    if (pasteTile(state.hoverCell)) {
+      $("status").textContent = `Pasted tile mask to Cell ${state.hoverCell}.`;
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    }
   }
 });
 
@@ -380,8 +589,38 @@ $("maskAlpha").addEventListener("input", () => { $("maskAlphaV").value = $("mask
 $("thr").addEventListener("input", () => { $("thrV").value = (+$("thr").value).toFixed(2).slice(1); });
 $("showArt").addEventListener("change", draw);
 $("showCells").addEventListener("change", draw);
-$("modePaint").addEventListener("click", () => { state.erase = false; $("modePaint").classList.add("on"); $("modeErase").classList.remove("on"); });
-$("modeErase").addEventListener("click", () => { state.erase = true; $("modeErase").classList.add("on"); $("modePaint").classList.remove("on"); });
+$("modePaint").addEventListener("click", () => setMode("paint"));
+$("modeErase").addEventListener("click", () => setMode("erase"));
+$("modeCopyTile").addEventListener("click", () => setMode("copyTile"));
+$("modePasteTile").addEventListener("click", () => setMode("pasteTile"));
+$("copyCell").addEventListener("click", () => {
+  if (state.hoverCell >= 0) {
+    if (copyTile(state.hoverCell)) {
+      setMode("pasteTile");
+      $("status").textContent = `Copied Cell ${state.hoverCell} mask (${state.tileClipboard.count} px). Mode set to Paste Tile.`;
+    }
+  } else {
+    setMode("copyTile");
+    $("status").textContent = "Click a cell on the canvas to copy its mask.";
+  }
+});
+$("pasteCell").addEventListener("click", () => {
+  if (!state.tileClipboard) return;
+  if (state.hoverCell >= 0) {
+    pasteTile(state.hoverCell);
+    $("status").textContent = `Pasted tile mask to Cell ${state.hoverCell}.`;
+  } else {
+    setMode("pasteTile");
+    $("status").textContent = "Click a target cell on the canvas to paste mask.";
+  }
+});
+$("pasteAll").addEventListener("click", () => {
+  if (!state.tileClipboard) return;
+  if (confirm(`Paste 32x32 mask from Cell ${state.tileClipboard.sourceCell} to ALL 64 cells?`)) {
+    pasteTileToAll();
+    $("status").textContent = `Pasted tile mask to ALL 64 cells.`;
+  }
+});
 $("prefill").addEventListener("click", () => prefill(+$("thr").value));
 $("clearAll").addEventListener("click", () => { if (!state.mask) return; pushUndo(); state.mask.fill(0); changed(); });
 
