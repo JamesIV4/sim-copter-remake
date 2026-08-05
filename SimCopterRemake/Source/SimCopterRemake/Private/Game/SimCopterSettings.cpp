@@ -451,7 +451,41 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 		UDLSSLibrary::EnableDLSS(bDlssEnabled);
 		if (bDlssEnabled)
 		{
-			UDLSSLibrary::SetDLSSMode(const_cast<UObject*>(WorldContextObject), ToDlssPluginMode(DlssQuality));
+			// EnableDLSS's own doc is explicit: "To select a DLSS-SR quality mode, set an
+			// appropriate upscale screen percentage with r.ScreenPercentage." The deprecated
+			// SetDLSSMode() used to do exactly that, but as a side effect it force-writes
+			// r.ScreenPercentage at whatever priority the CVar currently holds - which is the same
+			// ECVF_SetByScalability priority the Resolution Scale row and Low Power Graphics use.
+			// ApplyGraphics runs from nearly every row's SetIndex handler and from OK itself, so
+			// with DLSS enabled this silently clobbered whatever the player had just set on the
+			// Resolution Scale row - and outside Low Power Graphics nothing ran afterwards to put
+			// it back (Low Power's own resolution write below happens to run later in this same
+			// function, which is the only reason it looked like the row "worked" there). Routing
+			// the quality mode's percentage through the same UGameUserSettings call the Resolution
+			// Scale row and Low Power Graphics already use keeps there being exactly one owner of
+			// r.ScreenPercentage.
+			bool bIsModeSupported = false;
+			float OptimalScreenPercentage = 100.0f;
+			bool bIsFixedScreenPercentage = false;
+			float MinScreenPercentage = 100.0f;
+			float MaxScreenPercentage = 100.0f;
+			float OptimalSharpnessDeprecated = 0.0f;
+			UGameUserSettings* UserSettings = GEngine != nullptr ? GEngine->GetGameUserSettings() : nullptr;
+			const FIntPoint Resolution = UserSettings != nullptr ? UserSettings->GetScreenResolution() : FIntPoint(1920, 1080);
+			UDLSSLibrary::GetDLSSModeInformation(
+				ToDlssPluginMode(DlssQuality),
+				FVector2D(Resolution.X, Resolution.Y),
+				bIsModeSupported,
+				OptimalScreenPercentage,
+				bIsFixedScreenPercentage,
+				MinScreenPercentage,
+				MaxScreenPercentage,
+				OptimalSharpnessDeprecated);
+			if (bIsModeSupported && UserSettings != nullptr)
+			{
+				UserSettings->SetResolutionScaleValueEx(OptimalScreenPercentage);
+				UserSettings->ApplyNonResolutionSettings();
+			}
 		}
 	}
 #endif
@@ -506,6 +540,14 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 	}
 
 	SetRenderCVar(TEXT("r.VolumetricFog"), bVolumetricFog ? 1 : 0);
+
+	// Left alone while Super Resolution is on: DLSS hooks the TAA/TSR upsample pass itself
+	// (EnableDLSS sets r.TemporalAA.Upscaler) and the row is greyed out on the page for the same
+	// reason Resolution Scale is - see the getter's comment in SimCopterSettings.h.
+	if (!bDlssEnabled)
+	{
+		SetRenderCVar(TEXT("r.AntiAliasingMethod"), static_cast<int32>(AntiAliasingMethod));
+	}
 
 	OnHudScaleChanged.Broadcast(HudScale);
 }
@@ -705,6 +747,18 @@ FText USimCopterSettings::GetLumenModeLabel(const ESimCopterLumenMode Mode)
 	case ESimCopterLumenMode::HardwareRayTracing: return LOCTEXT("LumenHardware", "On (Hardware Lumen)");
 	case ESimCopterLumenMode::Software:           return LOCTEXT("LumenSoftware", "On (Software Lumen)");
 	default:                                      return LOCTEXT("LumenOff", "Off");
+	}
+}
+
+FText USimCopterSettings::GetAntiAliasingMethodLabel(const ESimCopterAntiAliasingMethod Method)
+{
+	switch (Method)
+	{
+	case ESimCopterAntiAliasingMethod::None:       return LOCTEXT("AntiAliasingNone", "None");
+	case ESimCopterAntiAliasingMethod::Fxaa:       return LOCTEXT("AntiAliasingFxaa", "FXAA");
+	case ESimCopterAntiAliasingMethod::TemporalAA: return LOCTEXT("AntiAliasingTaa", "TAA");
+	case ESimCopterAntiAliasingMethod::Smaa:       return LOCTEXT("AntiAliasingSmaa", "SMAA");
+	default:                                       return LOCTEXT("AntiAliasingTsr", "TSR");
 	}
 }
 

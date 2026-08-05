@@ -106,6 +106,7 @@ private:
 		int32 FrameGenMultiple = 2;
 		uint8 ReflexMode = 0;
 		uint8 LumenMode = 0;
+		uint8 AntiAliasingMethod = 4; // ESimCopterAntiAliasingMethod::Tsr
 		bool bVolumetricFog = true;
 		float EmissiveBrightness = 1.0f;
 		uint8 TimeOfDayMode = 0;

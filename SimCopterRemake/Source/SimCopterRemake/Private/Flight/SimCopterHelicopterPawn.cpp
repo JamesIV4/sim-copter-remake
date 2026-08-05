@@ -1640,6 +1640,27 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 	{
 		HeliCannonMeshComponent->SetRelativeLocation(FVector::ZeroVector);
 	}
+
+	// Seat the searchlight a bit ahead of wherever this airframe's water cannon actually sits,
+	// mirroring ResolveToolMuzzle's own priority (barrel tip, then nose muzzle, then the
+	// "3 units up" fallback) so every helicopter type gets a beam that starts in front of its
+	// nozzle instead of a single offset tuned for one mesh. CannonBarrelTipLocalCm is expressed
+	// in HeliCannonMeshComponent's frame, which sits at (0, 0, VerticalOffset) off ModelPivot -
+	// add that back in to land in ModelPivot's frame like NoseMuzzleLocalCm already is.
+	if (SearchLightComponent != nullptr)
+	{
+		FVector MuzzleLocalCm(0.0f, 0.0f, 3.0f * OriginalUnitToCm);
+		if (bUsingOriginalCannonMesh && bHasCannonBarrelTip)
+		{
+			MuzzleLocalCm = CannonBarrelTipLocalCm + FVector(0.0f, 0.0f, VerticalOffset);
+		}
+		else if (bHasNoseMuzzle)
+		{
+			MuzzleLocalCm = NoseMuzzleLocalCm;
+		}
+		SearchLightComponent->SetRelativeLocation(
+			MuzzleLocalCm + FVector(SearchLightForwardOfCannonOffsetCm, 0.0f, 0.0f));
+	}
 	const FMaxisMeshSection CockpitCannonSection = BuildExtendedCockpitCannonSection(
 		Prepared.CannonSection,
 		CockpitCannonRearExtensionCm);

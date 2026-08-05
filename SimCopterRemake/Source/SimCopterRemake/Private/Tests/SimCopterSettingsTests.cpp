@@ -2,10 +2,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Engine/GameInstance.h"
 #include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterSettings.h"
+#include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/Paths.h"
 #include "UI/SSimCopterCheckupSlider.h"
 #include "UI/SSimCopterCitySettings.h"
 #include "UI/SSimCopterControlSettings.h"
@@ -543,6 +546,86 @@ bool FSimCopterTimeOfDayFormatTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Negative hours clamp to midnight"), Formatted(-3.0f), TEXT("00:00"));
 	TestEqual(TEXT("Hours past a full day wrap"), Formatted(26.5f), TEXT("02:30"));
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterGraphicsSettingsPersistenceTest,
+	"SimCopter.Settings.GraphicsPersistence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterGraphicsSettingsPersistenceTest::RunTest(const FString& Parameters)
+{
+	// Everything the Graphics page's rows own that is not UGameUserSettings' own (Super
+	// Resolution, its Quality Mode, Frame Generation and its multiple, Reflex, Lumen, Volumetric
+	// Fog, Low Power) is a UPROPERTY(Config) on USimCopterSettings; clicking OK persists them with
+	// SaveConfig, and USimCopterSettings::Initialize reads them back with LoadConfig. That is the
+	// whole mechanism "click OK, it's still set next time" rests on, so round-trip it directly
+	// against a scratch ini rather than the developer's own GameUserSettings.ini.
+	const FString TestIni = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation/SimCopterGraphicsSettingsPersistenceTest.ini"));
+	IFileManager::Get().Delete(*TestIni);
+
+	// USimCopterSettings is a UGameInstanceSubsystem, so its class carries ClassWithin=GameInstance -
+	// NewObject with no Outer lands in the transient package and UObjectGlobals rejects it. A bare
+	// GameInstance is a valid enough Outer; nothing here calls Init() on it.
+	UGameInstance* Outer = NewObject<UGameInstance>();
+
+	USimCopterSettings* Writer = NewObject<USimCopterSettings>(Outer);
+	Writer->SetDlssEnabled(true);
+	Writer->SetDlssQuality(ESimCopterDlssQuality::Performance);
+	Writer->SetFrameGenMode(ESimCopterFrameGenMode::On);
+	Writer->SetFrameGenMultiple(4);
+	Writer->SetReflexMode(ESimCopterReflexMode::OnBoost);
+	Writer->SetLumenMode(ESimCopterLumenMode::Software);
+	Writer->SetVolumetricFogEnabled(false);
+	Writer->SetLowPowerMode(true);
+	Writer->SaveConfig(CPF_Config, *TestIni);
+
+	USimCopterSettings* Reader = NewObject<USimCopterSettings>(Outer);
+	Reader->LoadConfig(USimCopterSettings::StaticClass(), *TestIni);
+
+	TestTrue(TEXT("Super Resolution enabled round trips"), Reader->IsDlssEnabled());
+	TestEqual(TEXT("Super Resolution quality mode round trips"),
+		int32(Reader->GetDlssQuality()), int32(ESimCopterDlssQuality::Performance));
+	TestEqual(TEXT("Frame Generation mode round trips"),
+		int32(Reader->GetFrameGenMode()), int32(ESimCopterFrameGenMode::On));
+	TestEqual(TEXT("Frame Generation multiple round trips"), Reader->GetFrameGenMultiple(), 4);
+	TestEqual(TEXT("Reflex mode round trips"),
+		int32(Reader->GetReflexMode()), int32(ESimCopterReflexMode::OnBoost));
+	TestEqual(TEXT("Lumen mode round trips"),
+		int32(Reader->GetLumenMode()), int32(ESimCopterLumenMode::Software));
+	TestFalse(TEXT("Volumetric Fog round trips"), Reader->IsVolumetricFogEnabled());
+	TestTrue(TEXT("Low Power Graphics round trips"), Reader->IsLowPowerMode());
+
+	// And the opposite values, so this is not just confirming every field reads back as its own
+	// UPROPERTY default regardless of what SaveConfig actually wrote.
+	USimCopterSettings* Writer2 = NewObject<USimCopterSettings>(Outer);
+	Writer2->SetDlssEnabled(false);
+	Writer2->SetDlssQuality(ESimCopterDlssQuality::UltraQuality);
+	Writer2->SetFrameGenMode(ESimCopterFrameGenMode::Auto);
+	Writer2->SetFrameGenMultiple(3);
+	Writer2->SetReflexMode(ESimCopterReflexMode::Off);
+	Writer2->SetLumenMode(ESimCopterLumenMode::Off);
+	Writer2->SetVolumetricFogEnabled(true);
+	Writer2->SetLowPowerMode(false);
+	Writer2->SaveConfig(CPF_Config, *TestIni);
+
+	USimCopterSettings* Reader2 = NewObject<USimCopterSettings>(Outer);
+	Reader2->LoadConfig(USimCopterSettings::StaticClass(), *TestIni);
+
+	TestFalse(TEXT("Super Resolution disabled round trips"), Reader2->IsDlssEnabled());
+	TestEqual(TEXT("A second quality mode round trips"),
+		int32(Reader2->GetDlssQuality()), int32(ESimCopterDlssQuality::UltraQuality));
+	TestEqual(TEXT("Auto Frame Generation round trips"),
+		int32(Reader2->GetFrameGenMode()), int32(ESimCopterFrameGenMode::Auto));
+	TestEqual(TEXT("A second Frame Generation multiple round trips"), Reader2->GetFrameGenMultiple(), 3);
+	TestEqual(TEXT("Reflex Off round trips"),
+		int32(Reader2->GetReflexMode()), int32(ESimCopterReflexMode::Off));
+	TestEqual(TEXT("Lumen Off round trips"), int32(Reader2->GetLumenMode()), int32(ESimCopterLumenMode::Off));
+	TestTrue(TEXT("Volumetric Fog re-enabled round trips"), Reader2->IsVolumetricFogEnabled());
+	TestFalse(TEXT("Low Power Graphics off round trips"), Reader2->IsLowPowerMode());
+
+	IFileManager::Get().Delete(*TestIni);
 	return true;
 }
 
