@@ -752,7 +752,72 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				UserSettings->GetResolutionScaleInformationEx(Normalized, Current, MinScale, MaxScale);
 			}
 			return FText::Format(LOCTEXT("PercentFormat", "{0}%"), FText::AsNumber(FMath::RoundToInt(Current)));
+		},
+		// Greyed while Super Resolution is on: DLSS owns the scale for its quality mode (see
+		// ApplyGraphics), and setting a resolution scale DLSS did not ask for is what crashed inside
+		// NGX_D3D12_EVALUATE_DLSS_EXT with a source/dest rect DLSS could not evaluate.
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsDlssEnabled();
 		}));
+
+	if (bDlssAvailable)
+	{
+		AddRow(BuildNote(LOCTEXT("ResolutionScaleDlssNote",
+			"Resolution Scale is set by the Super Resolution quality mode while Super Resolution is on.")));
+	}
+
+	{
+		// MSAA is left off the list - see ESimCopterAntiAliasingMethod's comment - so the indices
+		// walked here are the enum's own values, not a dense 0..N-1 range.
+		static const ESimCopterAntiAliasingMethod Methods[] = {
+			ESimCopterAntiAliasingMethod::None,
+			ESimCopterAntiAliasingMethod::Fxaa,
+			ESimCopterAntiAliasingMethod::TemporalAA,
+			ESimCopterAntiAliasingMethod::Tsr,
+			ESimCopterAntiAliasingMethod::Smaa,
+		};
+
+		FRowBinding AntiAliasing;
+		AntiAliasing.GetCount = []() { return UE_ARRAY_COUNT(Methods); };
+		AntiAliasing.GetOptionLabel = [](const int32 Index)
+		{
+			return (Index >= 0 && Index < UE_ARRAY_COUNT(Methods))
+				? USimCopterSettings::GetAntiAliasingMethodLabel(Methods[Index])
+				: FText::GetEmpty();
+		};
+		AntiAliasing.GetIndex = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const ESimCopterAntiAliasingMethod Current =
+				Settings != nullptr ? Settings->GetAntiAliasingMethod() : ESimCopterAntiAliasingMethod::Tsr;
+			for (int32 Index = 0; Index < UE_ARRAY_COUNT(Methods); ++Index)
+			{
+				if (Methods[Index] == Current)
+				{
+					return Index;
+				}
+			}
+			return 0;
+		};
+		AntiAliasing.SetIndex = [this](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this); Settings != nullptr && Index >= 0 && Index < UE_ARRAY_COUNT(Methods))
+			{
+				Settings->SetAntiAliasingMethod(Methods[Index]);
+				Settings->ApplyAll(nullptr);
+			}
+		};
+		// Same reason as Resolution Scale above: DLSS hooks the TAA/TSR upsample pass itself and
+		// picking a different method out from under it is unsupported.
+		AntiAliasing.IsEnabled = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsDlssEnabled();
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("AntiAliasing", "Anti-Aliasing"), AntiAliasing));
+	}
 
 	// ---------------------------------------------------------------------------------------
 	// Lighting - the two the city actually notices. Lumen carries the night, because the window
@@ -1132,6 +1197,7 @@ void SSimCopterGraphicsSettings::CaptureEnteredState()
 		Entered.FrameGenMultiple = Settings->GetFrameGenMultiple();
 		Entered.ReflexMode = static_cast<uint8>(Settings->GetReflexMode());
 		Entered.LumenMode = static_cast<uint8>(Settings->GetLumenMode());
+		Entered.AntiAliasingMethod = static_cast<uint8>(Settings->GetAntiAliasingMethod());
 		Entered.bVolumetricFog = Settings->IsVolumetricFogEnabled();
 		Entered.EmissiveBrightness = Settings->GetEmissiveBrightness();
 		Entered.TimeOfDayMode = static_cast<uint8>(Settings->GetTimeOfDayMode());
@@ -1177,6 +1243,7 @@ void SSimCopterGraphicsSettings::RestoreEnteredState()
 		Settings->SetFrameGenMultiple(Entered.FrameGenMultiple);
 		Settings->SetReflexMode(static_cast<ESimCopterReflexMode>(Entered.ReflexMode));
 		Settings->SetLumenMode(static_cast<ESimCopterLumenMode>(Entered.LumenMode));
+		Settings->SetAntiAliasingMethod(static_cast<ESimCopterAntiAliasingMethod>(Entered.AntiAliasingMethod));
 		Settings->SetVolumetricFogEnabled(Entered.bVolumetricFog);
 		Settings->SetEmissiveBrightness(Entered.EmissiveBrightness);
 		Settings->SetTimeOfDayMode(static_cast<ESimCopterTimeOfDayMode>(Entered.TimeOfDayMode));

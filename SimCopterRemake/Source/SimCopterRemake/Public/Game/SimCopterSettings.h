@@ -101,6 +101,23 @@ enum class ESimCopterLumenMode : uint8
 	Off,
 };
 
+/**
+ * Anti-aliasing method, mirroring Unreal's own `EAntiAliasingMethod` value for value so writing it
+ * to `r.AntiAliasingMethod` needs no remapping. MSAA is left out on purpose: the project runs
+ * deferred shading (`r.ForwardShading=False` in DefaultEngine.ini) and the engine silently forces
+ * MSAA back to None outside forward shading, so listing it would be exactly the kind of dead
+ * control this page otherwise avoids (see the class comment).
+ */
+UENUM()
+enum class ESimCopterAntiAliasingMethod : uint8
+{
+	None = 0,
+	Fxaa = 1,
+	TemporalAA = 2,
+	Tsr = 4,
+	Smaa = 5,
+};
+
 /** How the Settings screen's Time of Day row drives the level's day sequence. */
 UENUM()
 enum class ESimCopterTimeOfDayMode : uint8
@@ -215,6 +232,16 @@ public:
 	ESimCopterLumenMode GetLumenMode() const { return LumenMode; }
 	void SetLumenMode(ESimCopterLumenMode Mode) { LumenMode = Mode; }
 
+	/**
+	 * Greyed out on the page while Super Resolution is on: DLSS hooks the TAA/TSR upsample pass
+	 * itself (`r.TemporalAA.Upscaler`, set by `EnableDLSS`) and ApplyGraphics leaves
+	 * `r.AntiAliasingMethod` alone whenever `bDlssEnabled` is true, the same way it defers to DLSS
+	 * for Resolution Scale - picking a different method out from under it is what produced the
+	 * `NGX_D3D12_EVALUATE_DLSS_EXT` crash the Resolution Scale row could already trigger.
+	 */
+	ESimCopterAntiAliasingMethod GetAntiAliasingMethod() const { return AntiAliasingMethod; }
+	void SetAntiAliasingMethod(ESimCopterAntiAliasingMethod Method) { AntiAliasingMethod = Method; }
+
 	bool IsVolumetricFogEnabled() const { return bVolumetricFog; }
 	void SetVolumetricFogEnabled(bool bEnabled) { bVolumetricFog = bEnabled; }
 
@@ -314,6 +341,7 @@ public:
 	static FText GetFrameGenMultipleLabel(int32 Multiple);
 	static FText GetReflexModeLabel(ESimCopterReflexMode Mode);
 	static FText GetLumenModeLabel(ESimCopterLumenMode Mode);
+	static FText GetAntiAliasingMethodLabel(ESimCopterAntiAliasingMethod Method);
 	static FText GetTimeOfDayModeLabel(ESimCopterTimeOfDayMode Mode);
 
 private:
@@ -376,6 +404,10 @@ private:
 	 */
 	UPROPERTY(Config)
 	ESimCopterLumenMode LumenMode = ESimCopterLumenMode::HardwareRayTracing;
+
+	/** TSR: the project never overrides DefaultFeatureAntiAliasing, so this is what r.AntiAliasingMethod is already running at before the row is ever touched. */
+	UPROPERTY(Config)
+	ESimCopterAntiAliasingMethod AntiAliasingMethod = ESimCopterAntiAliasingMethod::Tsr;
 
 	UPROPERTY(Config)
 	bool bVolumetricFog = true;

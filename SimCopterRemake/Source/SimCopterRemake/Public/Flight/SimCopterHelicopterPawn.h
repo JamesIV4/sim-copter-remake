@@ -974,7 +974,14 @@ protected:
 	float SearchLightBeamLengthCm = 4700.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "20.0"))
-	float SearchLightBeamWidthCm = 1550.0f;
+	float SearchLightBeamWidthCm = 2300.0f;
+
+	// How far ahead of the resolved water-cannon muzzle (barrel tip, or nose muzzle as a
+	// fallback - see ApplyPreparedModelMeshes) the searchlight is seated. Keeps the beam
+	// starting a touch in front of the nozzle on every helicopter type instead of a single
+	// offset tuned for one mesh.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
+	float SearchLightForwardOfCannonOffsetCm = 20.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light")
 	FLinearColor SearchLightBeamColor = FLinearColor(1.0f, 0.94f, 0.58f, 1.0f);

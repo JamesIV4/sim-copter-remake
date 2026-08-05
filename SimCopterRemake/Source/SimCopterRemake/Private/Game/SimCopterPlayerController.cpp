@@ -10,6 +10,7 @@
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSettings.h"
+#include "Ground/SimCopterOnFootPawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "UI/SSimCopterCitySettings.h"
@@ -394,6 +395,16 @@ void ASimCopterPlayerController::CloseScreen()
 
 void ASimCopterPlayerController::RestoreGameInput()
 {
+	// On foot the mouse drives look, so it should come back locked and hidden (view mode) -
+	// the same setup ASimCopterOnFootPawn applies when it's possessed - rather than the
+	// cockpit's free-roaming cursor.
+	if (Cast<ASimCopterOnFootPawn>(GetPawn()) != nullptr)
+	{
+		SetInputMode(FInputModeGameOnly());
+		bShowMouseCursor = false;
+		return;
+	}
+
 	// The cockpit needs the pointer for the dash and the tool flaps, so it is GameAndUI rather
 	// than GameOnly - the same mode the helicopter pawn sets when it is possessed.
 	FInputModeGameAndUI InputMode;
