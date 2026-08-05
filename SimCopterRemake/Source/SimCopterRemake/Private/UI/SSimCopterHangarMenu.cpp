@@ -285,13 +285,22 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakeArtButton(
 
 TSharedRef<SWidget> SSimCopterHangarMenu::MakeHotspot(FOnClicked OnClicked, const FString& ToolTip)
 {
+	TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
+	Style->SetNormal(FSlateNoResource());
+	Style->SetHovered(FSlateNoResource());
+	Style->SetPressed(FSlateNoResource());
+	Style->SetDisabled(FSlateNoResource());
+	Style->SetNormalPadding(FMargin(0.0f));
+	Style->SetPressedPadding(FMargin(0.0f));
+	ButtonStyles.Add(Style);
+
 	TSharedRef<SButton> Button = SNew(SButton)
-		.IsFocusable(true)
-		.ButtonColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f))
+		.IsFocusable(false)
+		.ButtonStyle(&Style.Get())
+		.ButtonColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.0f))
 		.ContentPadding(FMargin(0.0f))
 		.ToolTipText(FText::FromString(ToolTip))
 		.OnClicked(OnClicked);
-	ControllerFocusableWidgets.Add(Button);
 	return Button;
 }
 
@@ -412,8 +421,8 @@ void SSimCopterHangarMenu::BuildCatalogTabs(SConstraintCanvas& Canvas)
 
 	// The "Upgrades" tab (string 435) is printed under the model tabs on both catalog pages.
 	const bool bUpgrades = CatalogRow < 0 || CatalogRow >= CatalogTabCount;
-	AddAt(Canvas, 140.0f, 441.0f, 160.0f, 17.0f,
-		MakePageText(TEXT("Upgrades"), 11, bUpgrades ? SelectionTint : PaperInk, ETextJustify::Left, /*bBold=*/true, /*bWrap=*/false));
+	AddAt(Canvas, 140.0f, 442.0f, 160.0f, 15.0f,
+		MakePageText(TEXT("Upgrades"), 9, bUpgrades ? SelectionTint : PaperInk, ETextJustify::Left, /*bBold=*/true, /*bWrap=*/false));
 	AddAt(Canvas, 134.0f, 439.0f, 174.0f, 20.0f,
 		MakeHotspot(FOnClicked::CreateSP(this, &SSimCopterHangarMenu::HandleSelectCatalogRow, int32(INDEX_NONE)), TEXT("Upgrades")));
 }
@@ -438,17 +447,17 @@ void SSimCopterHangarMenu::BuildCatalogHelicopterPage(SConstraintCanvas& Canvas)
 	// Left panel: History (430) then Specialties (431).
 	AddAt(Canvas, CatalogHistoryX + 6.0f, CatalogHistoryY + 3.0f, CatalogHistoryWidth - 12.0f, 16.0f,
 		MakePageText(TEXT("History"), 11, PaperInk, ETextJustify::Left, true, false));
-	AddAt(Canvas, CatalogHistoryX + 10.0f, CatalogHistoryY + 18.0f, CatalogHistoryWidth - 16.0f, 32.0f,
+	AddAt(Canvas, CatalogHistoryX + 10.0f, CatalogHistoryY + 22.0f, CatalogHistoryWidth - 16.0f, 30.0f,
 		MakePageText(SimCopterHangarShop::GetCatalogHistory(CatalogRow), 9, PaperInkDim, ETextJustify::Left, false, true, CatalogHistoryWidth - 16.0f));
 	AddAt(Canvas, CatalogHistoryX + 6.0f, CatalogHistoryY + 54.0f, CatalogHistoryWidth - 12.0f, 16.0f,
 		MakePageText(TEXT("Specialties"), 11, PaperInk, ETextJustify::Left, true, false));
-	AddAt(Canvas, CatalogHistoryX + 10.0f, CatalogHistoryY + 69.0f, CatalogHistoryWidth - 16.0f, 32.0f,
+	AddAt(Canvas, CatalogHistoryX + 10.0f, CatalogHistoryY + 73.0f, CatalogHistoryWidth - 16.0f, 30.0f,
 		MakePageText(SimCopterHangarShop::GetCatalogSpecialties(CatalogRow), 9, PaperInkDim, ETextJustify::Left, false, true, CatalogHistoryWidth - 16.0f));
 
 	// Right panel: Description (432).
 	AddAt(Canvas, CatalogDescriptionX + 6.0f, CatalogDescriptionY + 3.0f, CatalogDescriptionWidth - 12.0f, 16.0f,
 		MakePageText(TEXT("Description"), 11, PaperInk, ETextJustify::Left, true, false));
-	AddAt(Canvas, CatalogDescriptionX + 10.0f, CatalogDescriptionY + 18.0f, CatalogDescriptionWidth - 16.0f, 86.0f,
+	AddAt(Canvas, CatalogDescriptionX + 10.0f, CatalogDescriptionY + 22.0f, CatalogDescriptionWidth - 16.0f, 82.0f,
 		MakePageText(SimCopterHangarShop::GetCatalogDescription(CatalogRow), 9, PaperInkDim, ETextJustify::Left, false, true, CatalogDescriptionWidth - 16.0f));
 
 	// Funds and value readouts (strings 433 / 434).

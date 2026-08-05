@@ -30,7 +30,7 @@ constexpr float PageWidth = 510.0f;
 constexpr float PageHeight = 436.0f;
 
 // The navy band across the top of the page.
-constexpr FRect TitleRect{ 88.0f, 38.0f, 410.0f, 70.0f };
+constexpr FRect TitleRect{ 88.0f, 45.0f, 410.0f, 75.0f };
 // The big pale list panel, whose printed edges are x 59..455, y 90..338.
 constexpr FRect ListRect{ 64.0f, 95.0f, 450.0f, 333.0f };
 // The printed button plate is x 336..461, y 360..398 - one 100x28 button wide, so Cancel sits on

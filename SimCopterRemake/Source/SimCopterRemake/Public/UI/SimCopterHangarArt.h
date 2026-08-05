@@ -212,15 +212,15 @@ constexpr float UpgradeTextHeight = 96.0f;
 // The bottom-right cell (329,312)-(593,411) holds the readouts and the buttons.
 constexpr float UpgradeFundsLabelX = 338.0f;
 constexpr float UpgradeFundsValueX = 460.0f;
-constexpr float UpgradeFundsRowY = 316.0f;
-constexpr float UpgradeValueRowY = 334.0f;
+constexpr float UpgradeFundsRowY = 311.0f;
+constexpr float UpgradeValueRowY = 327.0f;
 constexpr float UpgradeLabelWidth = 120.0f;
 constexpr float UpgradeValueWidth = 120.0f;
 constexpr float UpgradeBuyX = 355.0f;
-constexpr float UpgradeBuyY = 357.0f;
-constexpr float UpgradeSellY = 385.0f;
-constexpr float UpgradeDoneX = 505.0f;
-constexpr float UpgradeDoneY = 371.0f;
+constexpr float UpgradeBuyY = 348.0f;
+constexpr float UpgradeSellY = 378.0f;
+constexpr float UpgradeDoneX = 478.0f;
+constexpr float UpgradeDoneY = 363.0f;
 constexpr float ShellButtonWidth = 100.0f;
 constexpr float ShellButtonHeight = 28.0f;
 
