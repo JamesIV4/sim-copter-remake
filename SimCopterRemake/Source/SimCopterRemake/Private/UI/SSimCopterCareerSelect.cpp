@@ -97,7 +97,7 @@ void SSimCopterCareerSelect::Construct(const FArguments& InArgs)
 			.ShadowOffset(FVector2D(1.5f, 1.5f))
 			.ShadowColorAndOpacity(FLinearColor(0.06f, 0.03f, 0.0f, 0.85f)));
 
-		// The four glowing border strips, shown only while this panel is the selection.
+		// The four glowing border strips, fading smoothly on selection state changes.
 		if (ArtObject != nullptr)
 		{
 			for (int32 Strip = 0; Strip < HighlightStripCount; ++Strip)
@@ -121,9 +121,13 @@ void SSimCopterCareerSelect::Construct(const FArguments& InArgs)
 					Rect,
 					SNew(SImage)
 					.Image(Brush)
+					.ColorAndOpacity_Lambda([this, Panel]()
+					{
+						return FSlateColor(FLinearColor(1.0f, 1.0f, 1.0f, PanelOpacity[Panel]));
+					})
 					.Visibility_Lambda([this, Panel]()
 					{
-						return SelectedPanel == Panel ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+						return PanelOpacity[Panel] > 0.005f ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
 					}));
 			}
 		}
@@ -263,6 +267,17 @@ FReply SSimCopterCareerSelect::OnKeyDown(const FGeometry& MyGeometry, const FKey
 	}
 
 	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
+}
+
+void SSimCopterCareerSelect::Tick(const FGeometry& AllottedGeometry, const double CurrentTime, const float DeltaTime)
+{
+	SCompoundWidget::Tick(AllottedGeometry, CurrentTime, DeltaTime);
+
+	for (int32 Panel = 0; Panel < PanelCount; ++Panel)
+	{
+		const float Target = (Panel == SelectedPanel) ? 1.0f : 0.0f;
+		PanelOpacity[Panel] = FMath::FInterpTo(PanelOpacity[Panel], Target, static_cast<float>(DeltaTime), 14.0f);
+	}
 }
 
 #undef LOCTEXT_NAMESPACE
