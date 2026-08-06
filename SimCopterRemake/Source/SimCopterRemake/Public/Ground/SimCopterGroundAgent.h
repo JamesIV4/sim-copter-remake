@@ -95,7 +95,18 @@ public:
 	void MoveByTrafficSeparation(const FVector& WorldDelta);
 	void SetAvoidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds, float SpeedMultiplier = 1.0f);
 	void SetAvoidancePathOffset(const FVector& NewWorldOffset, float DurationSeconds, float SpeedMultiplier = 1.0f);
-	void SetGuidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds);
+	// SpeedCmPerSec <= 0 keeps the agent's own MovementSpeedCmPerSec. Pass the shipped program's
+	// walk speed instead, or a guided passenger sprints to the aircraft at the generic pedestrian
+	// speed while their BHAV thinks it is walking at `movespeed`.
+	void SetGuidanceMoveTarget(
+		const FVector& NewTargetLocation,
+		float DurationSeconds,
+		float SpeedCmPerSec = 0.0f);
+
+	// BHAV 291 rec[0] / BHAV 305 rec[5] both set `movespeed := 16`, and one behaviour tick
+	// displaces movespeed/12 original units. At 15 Hz and 6.25 cm per unit that is 125 cm/s - the
+	// speed a passenger walks to the helicopter at in the shipped game.
+	static constexpr float ShippedPassengerWalkSpeedCmPerSec = 16.0f / 12.0f * 6.25f * 15.0f;
 	bool IsAvoidanceMoveActive() const { return AvoidanceMoveTimeRemainingSeconds > 0.0f; }
 	bool IsAvoidancePathOffsetActive() const { return AvoidancePathOffsetTimeRemainingSeconds > 0.0f; }
 	bool IsGuidanceMoveTargetActive() const { return GuidanceMoveTargetTimeRemainingSeconds > 0.0f; }
@@ -158,8 +169,12 @@ public:
 
 	// Marks an uninjured victim who still needs picking up. They keep whatever program or carrier
 	// they are on, but any moment it leaves them standing still they wave for the helicopter
-	// instead of idling. The original binds the same "Wave" clip when a person notices the player
-	// (behavior op 22: face the player, bind "Wave", wait 15).
+	// instead of idling.
+	//
+	// The clip is "WvNo". The old comment here claimed op 22 binds "Wave" when a person notices
+	// the player; op 22 binds nothing (it reads the player's speed and facing into two locals),
+	// and the program that really does wave at the player - BHAV 291 rec[4] - binds "WvNo".
+	// "Wave" is the panic gesture the rioter and Rxn: Ouch programs use.
 	void SetMissionAwaitingRescue(bool bAwaiting) { bMissionWavesWhenIdle = bAwaiting; }
 	void ClearMissionPose();
 	void ResumeNormalPedestrianBehavior();
@@ -201,6 +216,18 @@ public:
 	void SetPedestrianFigureName(const FString& NewFigureName) { PedestrianFigureName = NewFigureName; }
 
 	void ConfigureMarchingBandUniform(int32 BandIndex);
+
+	// DIVERGENCE, deliberate: exempt this walker from FUN_004c9470's tile-class rule. The airport
+	// is tile class 1 (both stamped ids fall through GetTileClassForBuildingId to its catch-all)
+	// and class 1 is in no behaviour row, so anybody standing on the apron refuses every direction
+	// and spins. The level-complete band belongs there, so it is let through.
+	//
+	// This does NOT let them into buildings: the climb gate is what stops a walker at a wall - the
+	// walked surface inside one is the roof, far above the 5-unit allowance - and it still applies,
+	// as does the walk-surface probe. Only "may a person of this class stand on this kind of tile"
+	// is waived.
+	void SetIgnoresTileClassRules(bool bIgnore) { bIgnoresTileClassRules = bIgnore; }
+	bool IgnoresTileClassRules() const { return bIgnoresTileClassRules; }
 
 	float GetCapsuleHalfHeightCm() const;
 
@@ -324,8 +351,23 @@ public:
 	bool IsRidingHarness() const { return BehaviorCarrier.IsValid() && bRidingHarness; }
 	bool HasClaimedPassengerSeat() const { return bClaimedPassengerSeat; }
 	bool IsAtBehaviorHomeTile() const { return IsOnHomeTile(); }
-	bool BoardCarrier(AActor* NewCarrier, bool bAsHarnessRider, bool bAllowAirborneCabinTransfer = false);
+	// bAsCarriedBody separates the two things riding something means. Opcode 44 totes a body: it is
+	// slung across the carrier and visibly carried. Opcodes 12/48 are "get in", which is what a
+	// crew member does to its own vehicle - the original's op 40 then simply stops that person
+	// existing, so it never had to draw them. Passing false is what stops a paramedic being laid
+	// across the bonnet of its ambulance in the corpse pose.
+	bool BoardCarrier(
+		AActor* NewCarrier,
+		bool bAsHarnessRider,
+		bool bAllowAirborneCabinTransfer = false,
+		bool bAsCarriedBody = false);
 	bool AlightFromCarrier();
+
+	// Person states 5/7/8/0xe: an emergency worker the dispatcher put on the ground, not somebody
+	// the player is being scored on. They carry the record they were sent to only so their own
+	// program can post against it.
+	bool IsEmergencyCrewMember() const;
+	static bool IsEmergencyCrewPersonState(int32 PersonState);
 	// Op 58's transfer: a victim on the raised harness climbs into the cabin.
 	bool TransferFromHarnessToCabin();
 	// The mission passenger kind this person counts as, from their spawn state (person+0x148).
@@ -566,6 +608,9 @@ private:
 	FVector AvoidanceMoveTargetLocation = FVector::ZeroVector;
 	FVector AvoidancePathOffset = FVector::ZeroVector;
 	FVector GuidanceMoveTargetLocation = FVector::ZeroVector;
+	// 0 = use MovementSpeedCmPerSec. Not serialised: guidance is re-issued every mission tick, so
+	// a restored agent picks its speed back up on the next one.
+	float GuidanceMoveSpeedCmPerSec = 0.0f;
 	bool bHasMoveTarget = false;
 	float TrafficSpeedScale = 1.0f;
 	float AvoidanceMoveTimeRemainingSeconds = 0.0f;
@@ -738,6 +783,10 @@ private:
 	// overlap stays true throughout.
 	bool bRunOverByHelicopter = false;
 
+	// See SetIgnoresTileClassRules. Not serialised: it is set at spawn by whoever placed this
+	// agent, and the only user is the level-complete band, which is re-spawned rather than saved.
+	bool bIgnoresTileClassRules = false;
+
 public:
 	// FUN_004c8f70's box overlap reduced to the two extents the remake keeps for a pair of bodies.
 	// <= 0 is contact. Pure, so the rule can be tested without a city.
@@ -746,6 +795,18 @@ public:
 		const FVector& TargetWorldLocation,
 		float MyRadiusCm,
 		float TargetRadiusCm);
+
+	// The same overlap against a body that is a BOX rather than a circle, which is what a car is.
+	// Horizontal only; the caller owns the vertical gate. Pure, so it can be tested without a city.
+	static float ComputeBodyGapCm(
+		const FBox& LocalBoundsCm,
+		const FTransform& BodyFrame,
+		const FVector& WorldLocation);
+
+	// This agent's rendered body box, as a gap from WorldLocation across the deck. Used for
+	// vehicles, whose collision capsule is sized for traffic separation and is narrower than the
+	// car it stands for.
+	float GetDistanceToBodyCm(const FVector& WorldLocation) const;
 
 	// The two remake-only gates on the medevac handoff, as pure geometry.
 	//

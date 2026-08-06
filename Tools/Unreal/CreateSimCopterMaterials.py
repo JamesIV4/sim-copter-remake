@@ -227,10 +227,24 @@ NIGHT_BLEND_PARAMETER = "NightBlend"
 # city twice. 1.0 reproduces the original's exact night pixels if that trade is wanted.
 NIGHT_ALBEDO_STRENGTH_DEFAULT = 0.25
 
+# --- authored window masks ---------------------------------------------------------------------
+#
+# The three wall pages (2, 39, 40) are now HAND PAINTED - SimCopterRemake/Content/NightWindows/
+# windows_page_<page>.png, drawn in Tools/WindowLayoutEditor.html and imported by BakeCityAtlas.py.
+# R marks a lit-window texel, G is a per-window byte and B a per-row byte, both from connected-
+# component labelling of the painted shapes, so a "window" is whatever was drawn and a "row" is one
+# floor of that atlas cell.
+#
+# The derived mask below stays, and is not dead code: it is what a page with no painted file falls
+# back to, and it is what made the feature possible before there was a painter. `HasWindowMask` (0
+# on the parent, 1 on an instance the bake found a file for) picks between them.
+WINDOW_MASK_PARAMETER = "WindowTexture"
+HAS_WINDOW_MASK_PARAMETER = "HasWindowMask"
+
 # Luminance a night texel has to clear before it counts as a lit window rather than a dark wall.
 # Measured, not guessed: at 0.55 this picks 7-16% of the three wall pages (2, 39, 40) and *nothing*
 # at all from the two terrain pages (13, 20), whose night art is uniformly darkened with no bright
-# texels in it. See Docs/scratchpad/analyse_night_windows.py.
+# texels in it. See Docs/scratchpad/analyse_night_windows.py. Only the fallback path uses it.
 WINDOW_GLOW_THRESHOLD_DEFAULT = 0.55
 
 # How hard the mask's edges are. 8 gives roughly an eighth of a luminance unit of ramp, enough to
@@ -325,9 +339,10 @@ def create_city_atlas_material():
     NIGHT. The original swapped five atlas pages for their skydark.bmp equivalents after dark
     (FUN_004606d0 copies skydark images 1..5 over live pages 2, 39, 40, 20 and 13), and those night
     pages are where the lit building windows are painted. Here both pages are sampled and blended by
-    NightBlend, and the texels the night art draws BRIGHTER than the day art - which is precisely
-    the windows - are additionally pushed into Emissive so they light the street under Lumen instead
-    of just looking yellow."""
+    NightBlend, and the window texels are additionally pushed into Emissive so they read as lights
+    rather than as yellow paint. Which texels those are comes from the hand-painted
+    Content/NightWindows/windows_page_<page>.png where one exists, and is inferred from the art
+    otherwise."""
     material = create_or_load_material("M_SimCopterCityAtlas")
     clear_expressions(material)
 
@@ -415,10 +430,26 @@ def create_city_atlas_material():
 
     # --- night window glow -------------------------------------------------------------------
     #
-    # Which texels are windows is not authored anywhere; it is derivable. The night art darkens the
-    # whole page EXCEPT the lit windows, so "brighter at night than by day" plus "bright in absolute
-    # terms" isolates them. Both tests are needed: the first alone catches nothing on the pages that
-    # were only darkened, and the second alone would light pale daylit stone.
+    # Which texels are windows is not recorded anywhere in the original data, so there are two ways
+    # to know, and the material carries both. The painted mask (WindowTexture, from
+    # Tools/WindowLayoutEditor.html) is exact and knows where one window ends and the next begins;
+    # the derived one below infers it from the art and is what an unpainted page falls back to.
+    window_mask_texture = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionTextureSampleParameter2D, -260, 500
+    )
+    window_mask_texture.set_editor_property("parameter_name", WINDOW_MASK_PARAMETER)
+    unreal.MaterialEditingLibrary.connect_material_expressions(page_uv, "", window_mask_texture, "UVs")
+
+    # Left on the DEFAULT (Color) sampler type on purpose, even though the mask is data rather than
+    # colour. The two lookups are byte-identical - ProcessMaterialColorTextureLookup and
+    # ProcessMaterialLinearColorTextureLookup both `return TextureValue` - so the only thing the type
+    # changes is which default texture the PARENT validates against, and the parent's default is the
+    # engine's sRGB grey checker. Declaring Linear Color here fails that check and breaks the whole
+    # material for the sake of no shader difference at all. What actually matters is on the texture:
+    # BakeCityAtlas.py imports these with srgb=False and nearest/no-mips, so G and B arrive as the
+    # exact bytes the painter wrote.
+    has_window_mask = add_scalar_parameter(material, HAS_WINDOW_MASK_PARAMETER, 0.0, 3, 880)
+
     glow_threshold = add_scalar_parameter(
         material, "WindowGlowThreshold", WINDOW_GLOW_THRESHOLD_DEFAULT, 5, 1000
     )
@@ -467,16 +498,41 @@ def create_city_atlas_material():
             "	return 0.0;\n"
             "}\n"
             "\n"
-            "float dayLum = dot(DayColor, float3(0.2126, 0.7152, 0.0722));\n"
-            "float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
-            "float gotBrighter = saturate((nightLum - dayLum) * Contrast);\n"
-            "float isBright = saturate((nightLum - Threshold) * Contrast);\n"
-            "float isWindow = min(gotBrighter, isBright);\n"
+            "// Which texels are windows, and which window each one belongs to. Two sources.\n"
+            "float isWindow;\n"
+            "float2 windowCell;\n"
+            "if (HasAuthored > 0.5)\n"
+            "{\n"
+            "	// PAINTED (Tools/WindowLayoutEditor.html): R marks the texel, G is a per-window byte\n"
+            "	// and B a per-row byte, both from connected-component labelling of the drawn shapes -\n"
+            "	// so a window is whatever was painted and a row is one floor of that atlas cell. No\n"
+            "	// dependence on the art's luminance at all, and exact edges.\n"
+            "	isWindow = step(0.5, Authored.r);\n"
+            "	// ONE TILE, ONE DRAW. floor(InCellUV) is which repeat of the atlas cell we are on\n"
+            "	// across this wall, so every window the tile paints lights together - a lit flat, not\n"
+            "	// a scatter of separate panes. The mask's per-window (G) and per-row (B) bytes are\n"
+            "	// deliberately NOT in the key: rolling each painted blob on its own reads as speckle at\n"
+            "	// city distance, where a whole window unit reads as a room with the light on. They stay\n"
+            "	// in the file, so a finer unit is a change to this line and nothing else.\n"
+            "	windowCell = floor(InCellUV);\n"
+            "}\n"
+            "else\n"
+            "{\n"
+            "	// DERIVED, for a page nobody has painted: the night art darkens the whole page EXCEPT\n"
+            "	// the lit windows, so 'brighter at night than by day' plus 'bright in absolute terms'\n"
+            "	// isolates them. Both tests are needed - the first alone catches nothing on a page that\n"
+            "	// was only darkened, the second alone lights pale daylit stone. InCellUV's INTEGER part\n"
+            "	// is which repeat of the cell we are on, so a scaled floor is a stable per-bay id.\n"
+            "	float dayLum = dot(DayColor, float3(0.2126, 0.7152, 0.0722));\n"
+            "	float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
+            "	float gotBrighter = saturate((nightLum - dayLum) * Contrast);\n"
+            "	float isBright = saturate((nightLum - Threshold) * Contrast);\n"
+            "	isWindow = min(gotBrighter, isBright);\n"
+            "	windowCell = floor(InCellUV * max(Grid, 0.001));\n"
+            "}\n"
             "\n"
-            "// Not every window is occupied. InCellUV's INTEGER part is which repeat of the atlas\n"
-            "// cell we are on across this wall, so flooring a scaled copy of it gives a stable id\n"
-            "// per window bay; the building's own origin keeps two identical towers apart.\n"
-            "float2 windowCell = floor(InCellUV * max(Grid, 0.001));\n"
+            "// Not every window is occupied. The building's own origin keeps two identical towers\n"
+            "// from lighting identically.\n"
             "float2 building = floor(BuildingOrigin.xy * 0.01);\n"
             "float buildingId = building.x + building.y * 71.0;\n"
             "\n"
@@ -486,7 +542,8 @@ def create_city_atlas_material():
             "float windowRoll = frac(sin(dot(windowKey, float3(12.9898, 78.233, 37.719))) * 43758.5453);\n"
             "\n"
             "// A row is the same hash with the horizontal index dropped, so an entire floor of the\n"
-            "// same building shares one draw - offices left on for the night.\n"
+            "// same building shares one draw - offices left on for the night. windowCell.y is the\n"
+            "// tile row up the facade, so that is a band of tiles all the way across it.\n"
             "float3 rowKey = float3(0.0, windowCell.y, buildingId) + Seed * 1.7;\n"
             "float rowRoll = frac(sin(dot(rowKey, float3(39.3468, 11.135, 83.155))) * 24634.6345);\n"
             "\n"
@@ -496,6 +553,7 @@ def create_city_atlas_material():
         [
             "DayColor", "NightColor", "Threshold", "Contrast", "Blend",
             "InCellUV", "BuildingOrigin", "Grid", "Seed", "LitFraction", "RowLitFraction",
+            "Authored", "HasAuthored",
         ],
         -60,
         900,
@@ -513,6 +571,8 @@ def create_city_atlas_material():
         (window_seed, "", "Seed"),
         (lit_fraction, "", "LitFraction"),
         (row_lit_fraction, "", "RowLitFraction"),
+        (window_mask_texture, "RGB", "Authored"),
+        (has_window_mask, "", "HasAuthored"),
     ):
         if not unreal.MaterialEditingLibrary.connect_material_expressions(source, source_output, window_mask, pin):
             unreal.log_error(f"M_SimCopterCityAtlas: window mask pin '{pin}' not connected.")

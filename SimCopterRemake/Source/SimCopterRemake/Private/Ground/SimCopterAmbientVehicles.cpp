@@ -9,6 +9,7 @@
 #include "Formats/SimCity2000Reader.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "Ground/SimCopterGroundAgent.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "Kismet/GameplayStatics.h"
@@ -409,6 +410,116 @@ bool ASimCopterAmbientVehiclesActor::RestoreRuntimeSaveState(const TArray<uint8>
 			}
 		}
 		UpdateTrainRoofRiders();
+	}
+	return true;
+}
+
+int32 ASimCopterAmbientVehiclesActor::FindPlaneHitBySegment(
+	const FVector& Start,
+	const FVector& End,
+	FVector& OutImpactWorld) const
+{
+	const FVector Delta = End - Start;
+	if (Delta.IsNearlyZero())
+	{
+		return INDEX_NONE;
+	}
+	const FVector Direction = Delta.GetSafeNormal();
+	const FVector OneOverDirection(
+		Direction.X != 0.0 ? 1.0 / Direction.X : BIG_NUMBER,
+		Direction.Y != 0.0 ? 1.0 / Direction.Y : BIG_NUMBER,
+		Direction.Z != 0.0 ? 1.0 / Direction.Z : BIG_NUMBER);
+
+	int32 BestIndex = INDEX_NONE;
+	double BestDistanceSq = TNumericLimits<double>::Max();
+	for (int32 Index = 0; Index < SimCopterAmbientVehicles::PlaneSlots; ++Index)
+	{
+		const FSimCopterAmbientPlane& Plane = Planes[Index];
+		if (!Plane.bVisible || Plane.bCrashing || Plane.Mesh == nullptr)
+		{
+			continue;
+		}
+
+		// The rendered hull's own world box. A saucer is a wide, flat thing and its bounds are a
+		// fair stand-in for it; the original's test is an object-vs-object overlap of the same
+		// kind (FUN_00491370), not a per-triangle trace.
+		const FBox Box = Plane.Mesh->Bounds.GetBox();
+		if (!Box.IsValid)
+		{
+			continue;
+		}
+
+		FVector HitLocation = FVector::ZeroVector;
+		FVector HitNormal = FVector::ZeroVector;
+		float HitTime = 0.0f;
+		if (!FMath::LineExtentBoxIntersection(
+				Box, Start, End, FVector::ZeroVector, HitLocation, HitNormal, HitTime))
+		{
+			continue;
+		}
+
+		const double DistanceSq = FVector::DistSquared(Start, HitLocation);
+		if (DistanceSq < BestDistanceSq)
+		{
+			BestDistanceSq = DistanceSq;
+			BestIndex = Index;
+			OutImpactWorld = HitLocation;
+		}
+	}
+	return BestIndex;
+}
+
+// SCHOOK: PlaneWeaponHit 0x004b3ba0
+bool ASimCopterAmbientVehiclesActor::ApplyWeaponHitToPlane(const int32 PlaneIndex, const int32 InteractionMode)
+{
+	// FUN_004b3ba0's switch has exactly two arms: case 3 (the missile) and case 7 (the machine
+	// gun). Everything else falls straight out, which is why nothing but the Apache can touch an
+	// aircraft.
+	if (PlaneIndex < 0 || PlaneIndex >= SimCopterAmbientVehicles::PlaneSlots ||
+		(InteractionMode != int32(ESimCopterInteractionMode::Missile) &&
+		 InteractionMode != int32(ESimCopterInteractionMode::MachineGun)))
+	{
+		return false;
+	}
+
+	FSimCopterAmbientPlane& Plane = Planes[PlaneIndex];
+	if (!Plane.bVisible || Plane.bCrashing || Plane.bCrashRequested)
+	{
+		return false;
+	}
+
+	// `*(int *)(iVar1 + 0x54) == 0x12e` - the airliner. Either weapon downs it outright, and the
+	// player is charged for it: FUN_004a89c0 posts event 0x30, EVT_CrashPenaltyC, -100 pts/-$200.
+	if (Plane.ObjectId == SimCopterAmbientVehicles::PlaneObjectId)
+	{
+		Plane.HitCount = 1;
+		Plane.bCrashRequested = true;
+		Plane.EventId = INDEX_NONE;
+		if (ASimCopterMissionSystemActor* Mission = ResolveMissionSystem())
+		{
+			Mission->PostMissionEvent(SimCopterMissions::EVT_CrashPenaltyC, INDEX_NONE, 1, false);
+		}
+		UE_LOG(LogSimCopterAmbientVehicles, Log, TEXT("Airliner shot down; crash penalty posted."));
+		return true;
+	}
+
+	// The UFO. Both arms kill its running lights (the original clears the sign bit on every
+	// face-type-11 card in the model) - that is the tell that a shot connected - but ONLY the
+	// missile arm reaches the `+0x50 += 1` and the ten-hit retirement. Machine-gun fire is
+	// cosmetic against a saucer, and that asymmetry is the whole shape of the fight.
+	if (InteractionMode != int32(ESimCopterInteractionMode::Missile))
+	{
+		return true;
+	}
+
+	++Plane.HitCount;
+	if (IsPlaneDownedByHitCount(Plane.HitCount))
+	{
+		// `*(undefined1 *)(iVar1 + 6) = 1` then `+0x3c = -1`. BeginPlaneCrash pays EVT_UfoResolved
+		// as it starts down, which is where the UFO's money and points come from.
+		Plane.bCrashRequested = true;
+		Plane.EventId = INDEX_NONE;
+		UE_LOG(LogSimCopterAmbientVehicles, Log, TEXT("UFO downed after %d missile hits."), Plane.HitCount);
 	}
 	return true;
 }

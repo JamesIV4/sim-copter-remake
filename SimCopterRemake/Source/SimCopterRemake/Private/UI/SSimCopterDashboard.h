@@ -89,6 +89,8 @@ private:
 	// sprites one cell is showing.
 	int32 GetPointsLevel() const;
 	const FSlateBrush* GetPointsCellBrush(int32 CellIndex) const;
+	// Score over the city's requirement, or just the score in a user city, which has no target.
+	FText GetPointsToolTipText() const;
 
 	// managge.bmp's three states, indexed by SimCopterSegmentedBar::ECell.
 	const FSlateBrush* PointsCellBrushes[3] = { nullptr, nullptr, nullptr };

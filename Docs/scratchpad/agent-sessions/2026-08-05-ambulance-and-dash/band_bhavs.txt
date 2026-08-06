@@ -1,0 +1,37 @@
+﻿=== BHAV 443 'Tuba leader initbhav' (1 records) ===
+  [ 0] CALL 444 'Tuba initbhav (SID 246)'                           T->-3 F->-3
+
+=== BHAV 444 'Tuba initbhav (SID 246)' (32 records) ===
+  [ 0] expr ambient := 0                                            T->1 F->-3
+  [ 1] expr attr17 := 0                                             T->14 F->-3
+  [ 2] bind-anim 'Play'                                             T->16 F->-3
+  [ 3] op15 select nearest obj class a0 within a1 -> local[a3]  args=9,4,7,0 T->28 F->26
+  [ 4] op38 walk to selection local[a0]--  args=0,1,0,0             T->27 F->29
+  [ 5] expr l0 := 20                                                T->6 F->-3
+  [ 6] expr autoturn := 1                                           T->4 F->-3
+  [ 7] op7 local[a0] := rand(a1)  args=0,10,7,0                     T->10 F->-3
+  [ 8] CALL 1014 'Random Turn'                                      T->12 F->-3
+  [ 9] CALL 1014 'Random Turn'                                      T->13 F->-3
+  [10] expr l0 > 2                                                  T->30 F->11
+  [11] CALL 271 'idle -- rand 20 + 1'                               T->17 F->-3
+  [12] CALL 294 'Move rand speed rand time idle rand'               T->9 F->-3
+  [13] CALL 294 'Move rand speed rand time idle rand'               T->17 F->-3
+  [14] expr attr27 := 0                                             T->2 F->-3
+  [15] op57 sound a0  args=37,1,0,1                                 T->3 F->3
+  [16] op79 local[a0] := DAT_00506448  args=3,0,0,0                 T->24 F->-3
+  [17] op79 local[a0] := DAT_00506448  args=2,0,0,0                 T->22 F->-3
+  [18] expr l2 -= l3                                                T->19 F->-3
+  [19] expr l2 > 20                                                 T->20 F->3
+  [20] op79 local[a0] := DAT_00506448  args=3,0,0,0                 T->21 F->-3
+  [21] CALL 297 'rand 1 in 3?'                                      T->15 F->3
+  [22] CALL 261 'idle a bit'                                        T->18 F->-3
+  [23] op57 sound a0  args=38,1,0,1                                 T->3 F->3
+  [24] expr movespeed := 8                                          T->3 F->-3
+  [25] expr attr29 == 444                                           T->7 F->23
+  [26] CALL 261 'idle a bit'                                        T->3 F->-3
+  [27] expr attr29 == 444                                           T->7 F->31
+  [28] CALL 261 'idle a bit'                                        T->5 F->-3
+  [29] CALL 261 'idle a bit'                                        T->25 F->-3
+  [30] CALL 261 'idle a bit'                                        T->8 F->-3
+  [31] CALL 261 'idle a bit'                                        T->23 F->-3
+

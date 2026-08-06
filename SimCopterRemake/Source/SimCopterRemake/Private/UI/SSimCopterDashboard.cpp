@@ -12,6 +12,7 @@
 #include "Rendering/DrawElements.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
+#include "Styling/StyleDefaults.h"
 #include "UI/SimCopterSegmentedBar.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
@@ -855,9 +856,23 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 				static_cast<float>(PointsCellHeight),
 				SNew(SImage)
 				.Image(TAttribute<const FSlateBrush*>::CreateSP(
-					this, &SSimCopterDashboard::GetPointsCellBrush, Cell)));
+					this, &SSimCopterDashboard::GetPointsCellBrush, Cell))
+				.Visibility(EVisibility::HitTestInvisible));
 		}
 	}
+
+	// The bar is fifteen coarse cells, so it can only ever say "roughly this far along". Hovering
+	// gives the actual numbers. One hover target over the whole well rather than per cell - the
+	// reading is the same wherever the pointer is inside it. Drawn last so it is the topmost
+	// widget in the canvas and therefore the one hit testing finds.
+	AddAtPage(*Canvas,
+		PointsBarX,
+		PointsBarY,
+		static_cast<float>(PointsCellCount * PointsCellWidth),
+		static_cast<float>(PointsCellHeight),
+		SNew(SBorder)
+		.BorderImage(FStyleDefaults::GetNoBrush())
+		.ToolTipText(this, &SSimCopterDashboard::GetPointsToolTipText));
 
 	// Six damage lamps, each showing one of damage.bmp's three frames.
 	for (int32 Lamp = 0; Lamp < DamageLampCount; ++Lamp)
@@ -1070,6 +1085,34 @@ int32 SSimCopterDashboard::GetPointsLevel() const
 	}
 	return SimCopterSegmentedBar::GetLevel(
 		Missions->GetSessionScore(), City.PointsNeeded, PointsCellCount);
+}
+
+FText SSimCopterDashboard::GetPointsToolTipText() const
+{
+	const ASimCopterMissionSystemActor* Missions = GetMissionSystem();
+	if (Missions == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+
+	const int32 Score = Missions->GetSessionScore();
+
+	// A user city has no career record and therefore no target to win: there is nothing to be a
+	// fraction of, so the score stands on its own. GetCareerCityInfo failing is exactly that case
+	// (GetSessionCareerCityIndex is INDEX_NONE outside a career).
+	SimCopterMissions::FSimCopterCareerCity City;
+	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City) ||
+		City.PointsNeeded <= 0)
+	{
+		return FText::Format(
+			NSLOCTEXT("SimCopterDashboard", "PointsToolTipUserCity", "Points: {0}"),
+			FText::AsNumber(Score));
+	}
+
+	return FText::Format(
+		NSLOCTEXT("SimCopterDashboard", "PointsToolTipCareer", "Points: {0}/{1}"),
+		FText::AsNumber(Score),
+		FText::AsNumber(City.PointsNeeded));
 }
 
 const FSlateBrush* SSimCopterDashboard::GetPointsCellBrush(const int32 CellIndex) const

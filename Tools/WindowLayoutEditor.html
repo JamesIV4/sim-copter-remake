@@ -16,7 +16,8 @@
   atlas page 1->2, 2->39, 3->40, 4->20, 5->13 (FUN_004606d0). Only 2, 39 and 40 are wall pages with
   windows on them; 13 and 20 are terrain.
 
-  OUT: windows_page_<id>.png, one channel per job -
+  OUT: windows_page_<atlas page>.png, saved into SimCopterRemake/Content/NightWindows/ - that is
+  where BakeCityAtlas.py looks for it, by atlas page, and it is committed. One channel per job -
       R  255 where a texel is a lit window
       G  a stable per-window random byte, so the shader can light a fraction of them
       B  a per-row byte shared by every window on the same row of the same cell, for whole-floor lighting
@@ -72,7 +73,18 @@
       <input type="file" id="files" accept="image/png">
     </div>
     <div class="row" style="margin-top:8px">
-      <label>Atlas page</label><input type="number" id="pageId" value="2" min="0" max="63">
+      <!-- A fixed list, not a number box. The export is named after this, the bake looks the file up
+           by ATLAS page, and the composite indices (1,2,3) overlap the atlas pages (2,39,40) enough
+           that a free-typed number is genuinely ambiguous - windows_page_1.png could mean either,
+           and it took correlating the mask against all three night pages to find out which. -->
+      <label>Atlas page</label>
+      <select id="pageId">
+        <option value="2" selected>2 - wall (SKY image 1)</option>
+        <option value="39">39 - wall (SKY image 2)</option>
+        <option value="40">40 - wall (SKY image 3)</option>
+        <option value="20">20 - terrain (SKY image 4)</option>
+        <option value="13">13 - water/terrain (SKY image 5)</option>
+      </select>
     </div>
 
     <h2>Brush</h2>

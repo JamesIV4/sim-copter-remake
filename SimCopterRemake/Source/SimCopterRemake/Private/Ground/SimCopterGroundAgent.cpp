@@ -456,9 +456,18 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 				SetActorHiddenInGame(true);
 				return;
 			}
+			// An emergency worker is NOT a mission dependency, and must never be caught by the
+			// clause below. It carries the record it was sent to only so its own opcode 13 can post
+			// against it, and it never sets bMissionResolutionReported - that flag belongs to
+			// passengers. So an ambulance medic reaching BHAV 269's op 40 while the medevac record
+			// was still open had its despawn refused, was restarted into BHAV 801, and - already
+			// attached to the ambulance with bBehaviorMoveSuspended set by BoardCarrier - could
+			// never walk or finish again. That is the reported ambulance loop. The crew member's
+			// own vehicle owns its lifetime: op 61 has already messaged it by the time op 40 runs.
 			const bool bUnresolvedMissionPerson =
 				MissionEventId != INDEX_NONE &&
 				!bMissionResolutionReported &&
+				!IsEmergencyCrewMember() &&
 				Missions != nullptr &&
 				Missions->IsMissionEventActive(MissionEventId);
 			const bool bHospitalParamedic = bPersistentHospitalRoofCrew;
@@ -512,9 +521,17 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 	{
 		// A victim still waiting on a pickup waves whenever their program leaves them standing;
 		// the moment it walks them somewhere the walk clip takes back over.
+		//
+		// "WvNo", not "Wave". Both clips ship in every figure and they are not the same gesture -
+		// the shipped bind sites say which is which. "Wave" belongs to panic: 287 'Rioter flee
+		// tree', 289 'Rioter run', 902 'Rxn: Ouch', 1062 'Riot Follower', 805 'Fireman'. "WvNo" is
+		// the one people play while standing about acknowledging somebody - 1020 the mechanic,
+		// 1051/1053/1055 cops at the station, 1201 the rooftop worker, 1203 the park - and, above
+		// all, **291 rec[4]**, which is the transport passenger waving at the player. That is this
+		// exact situation, so it is this exact clip.
 		if (bMissionWavesWhenIdle && BehaviorContext.PendingAnimMnemonic == TEXT("NoMo"))
 		{
-			BehaviorContext.PendingAnimMnemonic = TEXT("Wave");
+			BehaviorContext.PendingAnimMnemonic = TEXT("WvNo");
 		}
 		if (bUsingPedestrianFigure && BehaviorContext.PendingAnimMnemonic != FigureMnemonic)
 		{
@@ -719,7 +736,15 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 		// FUN_004c9470: ambient people (+0x168) may only enter tile classes from their
 		// behavior-class row (DAT_0058ec00); result 3 otherwise. Non-ambient movement keeps
 		// the pre-VM rows as a safety net (missions steer via goto-object opcodes instead).
-		if (bAmbient)
+		//
+		// The exemption is remake-only and is documented on SetIgnoresTileClassRules: the airport
+		// is class 1, which no row accepts, and the level-complete band has to be able to walk
+		// about on it. The climb gate below still keeps them out of buildings.
+		if (bIgnoresTileClassRules)
+		{
+			// fall through to the climb/surface gates
+		}
+		else if (bAmbient)
 		{
 			if (!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
 			{
@@ -1545,10 +1570,67 @@ float ASimCopterGroundAgent::GetSelectionContactGapCm(
 			MyRadiusCm;
 	}
 
+	// A vehicle gets the same treatment for the same reason. FUN_004c8f70 overlaps the object's own
+	// +0x10 extent, and a car's extent is the car - but the remake's vehicle capsule is a 33.75 cm
+	// radius chosen for traffic separation, which is *narrower than the car is long*. A medic
+	// walking up to the nose or tail of its ambulance could be standing in the bodywork and still
+	// measure a positive gap, so BHAV 262's return walk never reported arrival and the handoff at
+	// BHAV 275 was never reached. Measure the rendered body instead.
+	if (const ASimCopterGroundAgent* Vehicle = Cast<ASimCopterGroundAgent>(Target))
+	{
+		if (Vehicle->GetAgentKind() == ESimCopterGroundAgentKind::Vehicle)
+		{
+			return Vehicle->GetDistanceToBodyCm(FromWorldLocation) - MyRadiusCm;
+		}
+	}
+
 	// Everyone else keeps the original's cube-vs-cube with the extent the remake already has for
 	// them: their own capsule radius.
 	const float TargetRadiusCm = Target != nullptr ? Target->GetSimpleCollisionRadius() : 0.0f;
 	return ComputeContactGapCm(FromWorldLocation, Context.SelectedLocation, MyRadiusCm, TargetRadiusCm);
+}
+
+float ASimCopterGroundAgent::ComputeBodyGapCm(
+	const FBox& LocalBoundsCm,
+	const FTransform& BodyFrame,
+	const FVector& WorldLocation)
+{
+	if (LocalBoundsCm.IsValid == 0)
+	{
+		return 0.0f;
+	}
+	FVector LocalPoint = BodyFrame.InverseTransformPosition(WorldLocation);
+	// Across the deck only: the caller owns the vertical gate, exactly as for the airframe.
+	LocalPoint.Z = FMath::Clamp(LocalPoint.Z, LocalBoundsCm.Min.Z, LocalBoundsCm.Max.Z);
+	return static_cast<float>(FMath::Sqrt(LocalBoundsCm.ComputeSquaredDistanceToPoint(LocalPoint)));
+}
+
+float ASimCopterGroundAgent::GetDistanceToBodyCm(const FVector& WorldLocation) const
+{
+	const USceneComponent* VisibleBody =
+		bUsingOriginalMesh
+			? static_cast<const USceneComponent*>(OriginalMeshComponent.Get())
+			: static_cast<const USceneComponent*>(ProxyMeshComponent.Get());
+
+	if (VisibleBody != nullptr)
+	{
+		// Measured through the component's own relative transform, so the box is already in the
+		// actor's frame and turns with it.
+		const FBoxSphereBounds BodyBounds = VisibleBody->CalcBounds(VisibleBody->GetRelativeTransform());
+		if (BodyBounds.SphereRadius > UE_SMALL_NUMBER && !BodyBounds.BoxExtent.ContainsNaN())
+		{
+			const FBox LocalBounds = BodyBounds.GetBox();
+			if (LocalBounds.IsValid != 0)
+			{
+				return ComputeBodyGapCm(LocalBounds, GetActorTransform(), WorldLocation);
+			}
+		}
+	}
+
+	// No mesh built yet (a headless test, or the frame before the GEO packs load). Fall back to
+	// the collision capsule so the answer is still a gap to a body rather than to a point.
+	const float Distance = static_cast<float>(FVector::Dist2D(WorldLocation, GetActorLocation()));
+	return FMath::Max(0.0f, Distance - GetCollisionRadiusCm());
 }
 
 bool ASimCopterGroundAgent::ApplyHelicopterRunOver(ASimCopterHelicopterPawn& Helicopter)
@@ -1914,10 +1996,28 @@ bool ASimCopterGroundAgent::PrepareForPlayerCausedMedevac()
 	return true;
 }
 
+bool ASimCopterGroundAgent::IsEmergencyCrewPersonState(const int32 PersonState)
+{
+	// 5 is the ambulance's Medik (FUN_004bd980(0x0c, 5)); 7/8 are the loop-flag-1 police states
+	// FUN_004ca350 searches for, and 0xe is BHAV 1402's speeder cop. Every passenger state a
+	// mission scores - 1/2/4/6/0x13 - is deliberately absent.
+	switch (PersonState)
+	{
+	case 5: case 7: case 8: case 0xe: return true;
+	default:                          return false;
+	}
+}
+
+bool ASimCopterGroundAgent::IsEmergencyCrewMember() const
+{
+	return IsEmergencyCrewPersonState(int32(BehaviorContext.Attributes[EBhavAttr::State]));
+}
+
 bool ASimCopterGroundAgent::BoardCarrier(
 	AActor* NewCarrier,
 	const bool bAsHarnessRider,
-	const bool bAllowAirborneCabinTransfer)
+	const bool bAllowAirborneCabinTransfer,
+	const bool bAsCarriedBody)
 {
 	if (NewCarrier == nullptr || NewCarrier == this)
 	{
@@ -2019,7 +2119,13 @@ bool ASimCopterGroundAgent::BoardCarrier(
 	}
 	else
 	{
-		SetActorHiddenInGame(false);
+		// Getting into a vehicle puts you inside it. Only a toted body stays on show, because the
+		// carrier is another person and the whole point is that you can see them carrying it.
+		const bool bInsideVehicle =
+			!bAsCarriedBody &&
+			!bAsHarnessRider &&
+			Cast<ASimCopterGroundAgent>(NewCarrier) != nullptr;
+		SetActorHiddenInGame(bInsideVehicle);
 	}
 
 	BehaviorCarrier = NewCarrier;
@@ -2052,12 +2158,18 @@ bool ASimCopterGroundAgent::BoardCarrier(
 	if (USceneComponent* CarrierRoot = NewCarrier->GetRootComponent())
 	{
 		AttachToComponent(CarrierRoot, FAttachmentTransformRules::KeepWorldTransform);
-		if (Cast<ASimCopterGroundAgent>(NewCarrier) != nullptr)
+		if (bAsCarriedBody && Cast<ASimCopterGroundAgent>(NewCarrier) != nullptr)
 		{
 			// Keep a patient visibly slung across the carrier instead of occupying the same
 			// transform and disappearing inside their body. Held against the chest: far enough
 			// out not to intersect, close enough to read as carried rather than floating along
 			// in front of them.
+			//
+			// Gated on bAsCarriedBody since 2026-08-05. This used to fire for anything that rode a
+			// ground agent, so BHAV 269's medic - which walks back to its ambulance and runs op 12
+			// "walk to selection AND board it" - was laid across the ambulance's flank in the
+			// corpse pose and left there. That is the reported "paramedic stuck at the side of the
+			// ambulance": it had already got in.
 			SetActorRelativeLocation(CarriedPersonRelativeOffsetCm);
 			SetActorRelativeRotation(FRotator(0.0f, 90.0f, 88.0f));
 			SetForcedPedestrianFigureClip(TEXT("Dead"));
@@ -2201,7 +2313,11 @@ bool ASimCopterGroundAgent::PutSelectedPersonOnMe(FSimCopterPersonContext& Conte
 	}
 
 	Person->SetActorLocation(GetActorLocation(), false);
-	return Person->BoardCarrier(this, /*bAsHarnessRider*/ false);
+	return Person->BoardCarrier(
+		this,
+		/*bAsHarnessRider*/ false,
+		/*bAllowAirborneCabinTransfer*/ false,
+		/*bAsCarriedBody*/ true);
 }
 
 bool ASimCopterGroundAgent::DropSelectedPerson(FSimCopterPersonContext& Context)
@@ -3777,10 +3893,11 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 
 	const bool bWalking = SpeedAlpha > 0.12f;
 	// Off-program victims (treading water beside the capsized boat, riding the runaway train's
-	// roof) have no behavior VM to bind clips for them, so the wave is chosen here instead.
+	// roof) have no behavior VM to bind clips for them, so the wave is chosen here instead. Same
+	// clip as the VM path above, for the same reason: "WvNo" is the greeting, "Wave" is the panic.
 	const bool bWaving = !bWalking && bMissionWavesWhenIdle;
 	{
-		const FString Desired = bWalking ? TEXT("1Wal") : (bWaving ? TEXT("Wave") : TEXT("NoMo"));
+		const FString Desired = bWalking ? TEXT("1Wal") : (bWaving ? TEXT("WvNo") : TEXT("NoMo"));
 		if (Desired != FigureMnemonic)
 		{
 			RebuildFigureClip(Desired);
@@ -3898,6 +4015,7 @@ void ASimCopterGroundAgent::SetMoveTarget(const FVector& NewTargetLocation)
 {
 	MoveTargetLocation = NewTargetLocation;
 	GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
+	GuidanceMoveSpeedCmPerSec = 0.0f;
 	bHasMoveTarget = true;
 }
 
@@ -3908,6 +4026,7 @@ void ASimCopterGroundAgent::ClearMoveTarget()
 	AvoidancePathOffsetTimeRemainingSeconds = 0.0f;
 	AvoidancePathOffsetSpeedMultiplier = 1.0f;
 	GuidanceMoveTargetTimeRemainingSeconds = 0.0f;
+	GuidanceMoveSpeedCmPerSec = 0.0f;
 }
 
 bool ASimCopterGroundAgent::IsNearMoveTarget(float DistanceCm) const
@@ -4032,10 +4151,14 @@ void ASimCopterGroundAgent::SetAvoidancePathOffset(const FVector& NewWorldOffset
 	AvoidancePathOffsetSpeedMultiplier = FMath::Clamp(SpeedMultiplier, 0.25f, 2.5f);
 }
 
-void ASimCopterGroundAgent::SetGuidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds)
+void ASimCopterGroundAgent::SetGuidanceMoveTarget(
+	const FVector& NewTargetLocation,
+	const float DurationSeconds,
+	const float SpeedCmPerSec)
 {
 	GuidanceMoveTargetLocation = NewTargetLocation;
 	GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, DurationSeconds);
+	GuidanceMoveSpeedCmPerSec = FMath::Max(0.0f, SpeedCmPerSec);
 }
 
 bool ASimCopterGroundAgent::SetForcedPedestrianFigureClip(const FString& Mnemonic)
@@ -4416,7 +4539,14 @@ void ASimCopterGroundAgent::UpdateMovement(float DeltaSeconds)
 	const float EffectiveSpeedScale = TrafficSpeedScale * (bUsingAvoidanceTarget
 		? AvoidanceSpeedMultiplier
 		: (bUsingAvoidancePathOffset ? AvoidancePathOffsetSpeedMultiplier : 1.0f));
-	const FVector DesiredVelocity = DesiredDirection * MovementSpeedCmPerSec * EffectiveSpeedScale;
+	// A guided walk moves at the speed its caller asked for, which for a boarding passenger is the
+	// shipped program's own `movespeed`. Without this the generic pedestrian speed (230 cm/s) took
+	// over the moment guidance engaged, so a passenger crossed the last stretch to the aircraft at
+	// nearly twice the rate BHAV 291 walks at.
+	const float BaseSpeedCmPerSec = (bUsingGuidanceTarget && GuidanceMoveSpeedCmPerSec > 0.0f)
+		? GuidanceMoveSpeedCmPerSec
+		: MovementSpeedCmPerSec;
+	const FVector DesiredVelocity = DesiredDirection * BaseSpeedCmPerSec * EffectiveSpeedScale;
 	CurrentVelocityCmPerSec = FMath::VInterpTo(CurrentVelocityCmPerSec, DesiredVelocity, DeltaSeconds, AgentKind == ESimCopterGroundAgentKind::Vehicle ? 3.0f : 9.0f);
 
 	const FVector Delta = (CurrentVelocityCmPerSec + ExternalVelocityCmPerSec) * DeltaSeconds;

@@ -158,4 +158,23 @@ airframe in seconds. Ported through `ASimCopterMissionSystemActor::GetFireHeight
 takes the flame's world position from the same helper the fire renderer uses so the damage band
 is the fire the player can see.
 
-Related: [[simcopter-heli-flight-model]], [[simcopter-fire-water-fx]], [[simcopter-mission-system]].
+## A wreck goes back to the airport (2026-08-05)
+
+`SimulateFlightStep`'s `bCrashed` arm carried a stale note - "the remake has no pad registry yet,
+so it repairs in place where it crashed". It has had one since the airport port: the same
+`SimCopterAirport::FindFreePadIndex` + `TryGetAirportPadWorldLocation` that city entry parks the
+fleet with, and `PlaceOnHelipad`'s own header already named `FUN_0048a8b0` as the crash respawn.
+`ReturnToAirportAfterCrash` now uses it, marking a pad taken when another aircraft is within
+`CrashRespawnPadClearanceCm` (200 cm, half a tile) so a wreck cannot be dropped onto a parked one.
+No airport, or every pad blocked, leaves the wreck where it fell - the flight model has already
+repaired it there.
+
+**The fall can fail to end.** `bCrashed` is raised when a *Dying* helicopter's altitude reaches
+`Env.SurfaceHeight`; off the map, or over a column whose surface never resolves, that arrival never
+comes and the spiral runs forever. Nothing in the original can reach that state, so there is no
+behaviour to port: `UpdateStuckFallWatchdog` is a remake-only backstop that ends the fall the same
+way an arrival would after `StuckFallRecoverySeconds` (**15 s**). `ResetOnSurface` is what repairs
+the aircraft in both arms - it restores Parked, full hit points and full fuel - so a city with no
+airport still recovers, it just does not move.
+
+Related: [[simcopter-heli-flight-model]], [[simcopter-fire-water-fx]], [[simcopter-mission-system]], [[simcopter-airport-spawn]].

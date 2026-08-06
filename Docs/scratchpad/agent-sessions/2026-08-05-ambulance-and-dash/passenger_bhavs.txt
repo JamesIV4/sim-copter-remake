@@ -1,0 +1,89 @@
+﻿=== BHAV 750 'Transport initbhav' (9 records) ===
+  [ 0] expr l0 := 40                                                T->6 F->-3
+  [ 1] bind-anim 'NoMo'                                             T->2 F->-3
+  [ 2] expr attr14 += 1                                             T->4 F->-3
+  [ 3] op13 post mission outcome a0  args=0,-1,-1,-1                T->5 F->-3
+  [ 4] CALL 291 'Transport go to avatar/get on heli'                T->7 F->-3
+  [ 5] CALL 292 'Transport wait to get off'                         T->-3 F->-3
+  [ 6] op0 wait local[a0]--  args=0,-1,-1,-1                        T->1 F->-3
+  [ 7] expr attr45 == 0                                             T->8 F->5
+  [ 8] expr attr45 := 1                                             T->3 F->-3
+
+=== BHAV 291 'Transport go to avatar/get on heli' (23 records) ===
+  [ 0] expr movespeed := 16                                         T->10 F->-3
+  [ 1] op7 local[a0] := rand(a1)  args=0,40,7,0                     T->9 F->-3
+  [ 2] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,1,7,1 T->5 F->3
+  [ 3] op15 select nearest obj class a0 within a1 -> local[a3]  args=9,4,7,1 T->7 F->19
+  [ 4] bind-anim 'WvNo'                                             T->18 F->-3
+  [ 5] op12 walk to selection AND board it  args=0,1,0,0            T->22 F->20
+  [ 6] op13 post mission outcome a0  args=2,0,0,0                   T->4 F->-3
+  [ 7] op38 walk to selection local[a0]--  args=0,1,0,0             T->6 F->14
+  [ 8] CALL 290 'Transport increment boredom, possibly disappear'   T->15 F->-3
+  [ 9] expr l0 += 30                                                T->2 F->-3
+  [10] expr autoturn := 1                                           T->11 F->-3
+  [11] expr l3 := 0                                                 T->21 F->-3
+  [12] expr l3 := 0                                                 T->4 F->-3
+  [13] expr l3 += 1                                                 T->6 F->-3
+  [14] expr l3 += 1                                                 T->6 F->-3
+  [15] expr l3 > 20                                                 T->16 F->17
+  [16] expr autoturn := 1                                           T->1 F->-3
+  [17] expr autoturn := 0                                           T->1 F->-3
+  [18] CALL 1100 'Idle-5'                                           T->8 F->-3
+  [19] CALL 307 'Inc fail and move through walls if > 4'            T->12 F->-3
+  [20] CALL 307 'Inc fail and move through walls if > 4'            T->13 F->-3
+  [21] expr failcount := 0                                          T->1 F->-3
+  [22] expr failcount := 0                                          T->retT F->-3
+
+=== BHAV 290 'Transport increment boredom, possibly disappear' (8 records) ===
+  [ 0] op7 local[a0] := rand(a1)  args=1,5,7,0                      T->5 F->-3
+  [ 1] expr attr35 > 100                                            T->4 F->retT
+  [ 2] expr attr35 += l0                                            T->1 F->-3
+  [ 3] op74 local[a0] := difficulty tier  args=0,0,0,0              T->6 F->-3
+  [ 4] op13 post mission outcome a0  args=11,0,0,0                  T->7 F->-3
+  [ 5] expr l1 == 0                                                 T->3 F->retT
+  [ 6] expr attr35 += 1                                             T->2 F->-3
+  [ 7] op16 deactivate person  args=-1,-1,-1,-1                     T->-3 F->-3
+
+=== BHAV 700 'Rescue new initbhav' (3 records) ===
+  [ 0] CALL 305 'Rescue try to get on heli or bucket'               T->2 F->-3
+  [ 1] CALL 267 'random motion'                                     T->0 F->-3
+  [ 2] CALL 303 'Rescue try get off heli or bucket if appropriate'  T->1 F->-3
+
+=== BHAV 305 'Rescue try to get on heli or bucket' (26 records) ===
+  [ 0] op86 is my carrier the harness  args=-1,-1,-1,-1             T->13 F->12
+  [ 1] op15 select nearest obj class a0 within a1 -> local[a3]  args=3,6,7,0 T->3 F->15
+  [ 2] op12 walk to selection AND board it  args=0,1,0,0            T->24 F->17
+  [ 3] expr l0 := 40                                                T->5 F->-3
+  [ 4] CALL 258 'Run laterally just a bit'                          T->16 F->16
+  [ 5] expr movespeed := 16                                         T->20 F->-3
+  [ 6] op82 is selection within 25u  args=-1,-1,-1,-1               T->7 F->8
+  [ 7] op48 board selection (no walk)  args=-1,-1,-1,-1             T->24 F->4
+  [ 8] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,2,7,0 T->10 F->4
+  [ 9] op82 is selection within 25u  args=-1,-1,-1,-1               T->7 F->4
+  [10] expr l0 := 40                                                T->11 F->-3
+  [11] op12 walk to selection AND board it  args=0,1,0,0            T->24 F->9
+  [12] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->18 F->1
+  [13] op58 get on heli if harness raised  args=-1,-1,-1,-1         T->18 F->14
+  [14] op66 fall and die  args=-1,-1,-1,-1                          T->18 F->-3
+  [15] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,6,7,0 T->3 F->18
+  [16] CALL 261 'idle a bit'                                        T->1 F->-3
+  [17] CALL 261 'idle a bit'                                        T->6 F->-3
+  [18] CALL 261 'idle a bit'                                        T->retT F->-3
+  [19] CALL 261 'idle a bit'                                        T->21 F->-3
+  [20] expr autoturn := 1                                           T->22 F->-3
+  [21] expr autoturn := 0                                           T->retT F->-3
+  [22] expr thruwalls := 0                                          T->2 F->-3
+  [23] op13 post mission outcome a0  args=0,-1,-1,-1                T->19 F->-3
+  [24] expr attr45 == 0                                             T->25 F->19
+  [25] expr attr45 := 1                                             T->23 F->-3
+
+=== BHAV 303 'Rescue try get off heli or bucket if appropriate' (8 records) ===
+  [ 0] expr state == 2                                              T->7 F->1
+  [ 1] op86 is my carrier the harness  args=-1,-1,-1,-1             T->5 F->4
+  [ 2] op13 post mission outcome a0  args=1,-1,-1,-1                T->3 F->-3
+  [ 3] op16 deactivate person  args=-1,-1,-1,-1                     T->-3 F->-3
+  [ 4] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->5 F->retT
+  [ 5] op17 alight here (test + do)  args=-1,-1,-1,-1               T->2 F->retT
+  [ 6] op63 am I riding something  args=-1,-1,-1,-1                 T->5 F->2
+  [ 7] op87 am I on my home tile  args=-1,-1,-1,-1                  T->retT F->6
+

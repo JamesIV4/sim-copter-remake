@@ -508,7 +508,7 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	SessionElapsedSeconds += DeltaTime;
 
 	MissionSystem.Tick(DeltaTime);
-	ProcessPassengerTransfers();
+	ProcessPassengerTransfers(DeltaTime);
 	ProcessRescueTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
 	UpdateBurningDebris(DeltaTime);
@@ -2137,7 +2137,7 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 	return Delivered;
 }
 
-void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
+void ASimCopterMissionSystemActor::ProcessPassengerTransfers(const float DeltaSeconds)
 {
 	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
 	if (TrafficSystem == nullptr)
@@ -2300,14 +2300,41 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 			// Restore the proven pre-5ff1eaa boarding point. People enter at the helicopter's
 			// midpoint; the side/row cabin-door locations remain correct for exiting passengers.
 			const FVector CabinMidpoint = Helicopter->GetActorLocation();
-			TrafficSystem->GuideMissionPeopleToLocation(
+
+			// Guidance is a BACKSTOP, not the approach. BHAV 750 -> 291 already owns this: a
+			// 40-tick (2.67 s) wait at spawn, then a loop that commits to boarding only inside
+			// ONE TILE, walks at `movespeed := 16` (125 cm/s) in eight octant directions on a
+			// re-rolled rand(40)+30 step budget, and otherwise walks toward the player, waves
+			// ('WvNo'), idles five ticks and accrues boredom (BHAV 290).
+			//
+			// Steering every tick ran straight over all of it - a live guidance target skips the
+			// VM's own movement branch in UpdateMovement entirely - so passengers beelined in at
+			// the generic 230 cm/s from nearly two tiles out and were aboard before the pilot
+			// could set down. Let the shipped program do the walking, and only step in when it
+			// demonstrably has not, the same way the medevac handoff watchdog was demoted.
+			// The clock only runs while there is somebody in range who could be walking in. It is
+			// not "how long has this mission existed" - a passenger three tiles away has not
+			// stalled, they simply have not been collected yet.
+			const bool bPassengerInRange = TrafficSystem->FindMissionPersonNear(
 				Mission.EventId,
 				CabinMidpoint,
-				CabinMidpoint,
-				SeatsAvailable,
 				PassengerPickupRadiusCm,
-				PassengerTransferMaxVerticalDeltaCm,
-				PassengerBoardGuidanceSeconds);
+				PassengerTransferMaxVerticalDeltaCm) != nullptr;
+
+			float& StallSeconds = PassengerBoardStallSeconds.FindOrAdd(Mission.EventId);
+			StallSeconds = bPassengerInRange ? StallSeconds + DeltaSeconds : 0.0f;
+			if (bPassengerInRange && StallSeconds >= PassengerBoardRecoverySeconds)
+			{
+				TrafficSystem->GuideMissionPeopleToLocation(
+					Mission.EventId,
+					CabinMidpoint,
+					CabinMidpoint,
+					SeatsAvailable,
+					PassengerPickupRadiusCm,
+					PassengerTransferMaxVerticalDeltaCm,
+					PassengerBoardGuidanceSeconds,
+					ASimCopterGroundAgent::ShippedPassengerWalkSpeedCmPerSec);
+			}
 
 			// Boarding attaches the passenger to the helicopter and claims their seat as part of
 			// the pickup. BoardCarrier also invokes the idempotent mission action service, so this
@@ -2325,7 +2352,20 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 				continue;
 			}
 
+			// Somebody got in, so the approach is working: the next passenger starts from zero
+			// rather than inheriting a countdown the queue ahead of them ran down.
+			StallSeconds = 0.0f;
 			break;
+		}
+	}
+
+	// Drop entries for missions that are over, so the map cannot grow across a long session.
+	for (auto It = PassengerBoardStallSeconds.CreateIterator(); It; ++It)
+	{
+		const SimCopterMissions::FSimCopterMissionRecord* Record = MissionSystem.FindRecord(It.Key());
+		if (Record == nullptr || !Record->bActive)
+		{
+			It.RemoveCurrent();
 		}
 	}
 }
@@ -3821,9 +3861,25 @@ FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMiss
 	}
 }
 
-// SCHOOK: FireworksInit 0x004916e0 / TubaLeader 443 / TubaInit 444
-// Spawns 8 marching band agents around the airport terminal / helipad perimeter in uniform colors.
-// Sound 0x26 plays march.wav (BHAV 444 rec[23]).
+// SCHOOK: TubaLeader 443 / TubaInit 444 (person states 17 and 18, DAT_0058de80)
+//
+// The band is not a scripted prop - it is eight ordinary people running the shipped programs, and
+// every part of what it does is in BHAV 444:
+//
+//   rec[2]  bind 'Play'                     the instrument animation (NOT a wave)
+//   rec[24] movespeed := 8                  62.5 cm/s at 15 Hz - a march, not a jog
+//   rec[3]  select class 9 within 4 tiles   the player, wherever they are (incl. the cockpit)
+//   rec[4]  op 38 walk to them, autoturn    through MoveStep, so tile classes and the climb gate
+//                                           apply and they cannot cross a building
+//   rec[25]/[27] attr29 == 444 ?            member -> random turns + 'Move rand speed rand time'
+//                                           and a tick-gated 1-in-3 sound 37 (one trombone /
+//                                           trumpet / tuba note out of nine)
+//                                           leader -> sound 38, march.wav, and keep following
+//
+// The old implementation was none of this: it drove the agents with SetMoveTarget on the generic
+// seek mover (which does not sweep or check tiles - hence walking through walls), bound the wave
+// clip instead of 'Play', configured them with an EMPTY original-game root so no behaviour model
+// or figure could load, and played march.wav itself from one looping voice slot at the airport.
 void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
 {
 	if (bMarchingBandSpawned || GetWorld() == nullptr)
@@ -3843,48 +3899,43 @@ void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
 		return;
 	}
 
-	// Play Voice Event 38 = march.wav (BHAV 444 tuba leader music)
-	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
-	{
-		StopMarchingBandAudio();
-		MarchingBandVoiceSlot = Audio->AcquireVoiceSlot();
-		if (MarchingBandVoiceSlot != INDEX_NONE)
-		{
-			FVector AirportLocation = FVector::ZeroVector;
-			TrafficSystem->TryGetTileCenterWorldLocation(AirportOrigin.X, AirportOrigin.Y, AirportLocation);
-			Audio->PlayVoiceEvent(MarchingBandVoiceSlot, 38, AirportLocation, 0, false, SimCopterSoundFlags::Loop);
-		}
-	}
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
+	// One leader on state 17 (BHAV 443) and the rest on state 18 (BHAV 444). Behaviour class 18 is
+	// TubaExpert, the band figure, and TrySpawnMissionPerson resolves the original-game root and
+	// finds a spawn point that is not inside a building - both of which the old path skipped.
 	constexpr int32 BandCount = 8;
-	for (int32 i = 0; i < BandCount; ++i)
+	constexpr int32 TubaLeaderPersonState = 17;
+	constexpr int32 TubaMemberPersonState = 18;
+	constexpr int32 TubaBehaviorClass = 18;
+
+	// On the pads, where the player lands. The airport is tile class 1 - both stamped ids fall
+	// through GetTileClassForBuildingId to its catch-all `return 1`, 0xde being past 0xD2..0xDC and
+	// 0xf6 past 0xE8..0xF5 - and class 1 is in no behaviour row, so a walker there would refuse
+	// every direction and spin. SetIgnoresTileClassRules waives that one rule for the band; the
+	// climb gate still keeps them out of the terminal.
+	for (int32 Index = 0; Index < BandCount; ++Index)
 	{
-		const int32 TileX = AirportOrigin.X + (i % 4);
-		const int32 TileY = AirportOrigin.Y + (i / 4);
+		ASimCopterGroundAgent* Agent = nullptr;
+		const bool bSpawned = TrafficSystem->TrySpawnMissionPerson(
+			Index == 0 ? TubaLeaderPersonState : TubaMemberPersonState,
+			TubaBehaviorClass,
+			AirportOrigin.X + (Index % 4),
+			AirportOrigin.Y + (Index / 4),
+			INDEX_NONE,
+			TEXT("TubaExpert"),
+			&Agent);
 
-		FVector SpawnLocation = FVector::ZeroVector;
-		if (TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, SpawnLocation))
+		if (bSpawned && Agent != nullptr)
 		{
-			SpawnLocation.Z += 30.0f;
-			ASimCopterGroundAgent* Agent = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
-				ASimCopterGroundAgent::StaticClass(),
-				SpawnLocation,
-				FRotator(0.0f, i * 45.0f, 0.0f),
-				SpawnParams);
-
-			if (Agent != nullptr)
-			{
-				Agent->ConfigureAgent(ESimCopterGroundAgentKind::Pedestrian, TEXT(""), FString(), 220.0f);
-				Agent->ConfigureMarchingBandUniform(i);
-				MarchingBandAgents.Add(Agent);
-			}
+			Agent->SetIgnoresTileClassRules(true);
+			// Uniform colours are a remake flourish and stay - the original band is all one figure.
+			// The offset indexes a 14-entry clothes table, so it has to stay inside it: the old
+			// (i % 5) * 8 + 4 ran to 36 and was clamped, giving five members the same outfit.
+			Agent->SetPedestrianFigureClothesOffset((Index % 5) * 3 + 1);
+			MarchingBandAgents.Add(Agent);
 		}
 	}
 
-	bMarchingBandSpawned = true;
+	bMarchingBandSpawned = MarchingBandAgents.Num() > 0;
 }
 
 // SCHOOK: FireworksInit 0x004916e0 / FUN_0048e0b0 / FUN_0048ed00
@@ -3921,6 +3972,12 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 					-200.0f);
 
 				// Apex Falling Embers / Sparkles (FUN_0048e0b0 param 8: 6.0s lifespan, -250 cm/s^2 gravity drift)
+				//
+				// DIVERGENCE, by request: the embers are not all one colour. Each burst carries a
+				// second palette colour and every ember mixes the two by its own amount, with a
+				// little brightness jitter on top - so a shell reads as a shower of sparks rather
+				// than a solid-coloured ring. The original's fireworks are much plainer; this is a
+				// deliberate flourish, not a port.
 				for (int32 Spark = 0; Spark < 24; ++Spark)
 				{
 					const FVector SparkVel(
@@ -3928,12 +3985,21 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 						FMath::RandRange(-500.0f, 500.0f),
 						FMath::RandRange(-100.0f, 400.0f));
 
+					FLinearColor SparkColor = FMath::Lerp(
+						Rocket.BurstColor,
+						Rocket.AccentColor,
+						FMath::FRand());
+					const float Brightness = FMath::FRandRange(0.75f, 1.35f);
+					SparkColor.R *= Brightness;
+					SparkColor.G *= Brightness;
+					SparkColor.B *= Brightness;
+
 					FireSmokeComponent->SpawnParticle(
 						Rocket.ApexLocation,
 						SparkVel,
-						18.0f,
-						Rocket.BurstColor,
-						6.0f,
+						FMath::FRandRange(13.0f, 23.0f),
+						SparkColor,
+						FMath::FRandRange(4.5f, 6.5f),
 						-250.0f); // SCHOOK: DAT_005d62e0 gravity drift
 				}
 			}
@@ -3985,7 +4051,13 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 			FLinearColor(1.0f, 0.4f, 0.9f, 1.0f),  // Magenta
 			FLinearColor(1.0f, 1.0f, 1.0f, 1.0f)   // Silver White
 		};
-		const FLinearColor BurstColor = PaletteColors[FMath::RandRange(0, 5)];
+		// Two colours per shell: the dominant one and an accent the embers mix toward. Picking the
+		// accent from the remaining five guarantees they differ, so no burst comes out flat.
+		constexpr int32 PaletteCount = UE_ARRAY_COUNT(PaletteColors);
+		const int32 BurstIndex = FMath::RandRange(0, PaletteCount - 1);
+		const int32 AccentIndex = (BurstIndex + FMath::RandRange(1, PaletteCount - 1)) % PaletteCount;
+		const FLinearColor BurstColor = PaletteColors[BurstIndex];
+		const FLinearColor AccentColor = PaletteColors[AccentIndex];
 
 		// Rocket launch apex location & Ghidra (_rand() & 0x1f) angular dispersion spread
 		const float AscentHeightCm = FMath::RandRange(2500.0f, 4500.0f);
@@ -4023,92 +4095,24 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 		FSimCopterActiveFireworkRocket NewRocket;
 		NewRocket.ApexLocation = ApexLocation;
 		NewRocket.BurstColor = BurstColor;
+		NewRocket.AccentColor = AccentColor;
 		NewRocket.TimeRemaining = 1.8f;
 		ActiveFireworkRockets.Add(NewRocket);
 	}
 }
 
-// SCHOOK: TubaInit 444 / BHAV 1014 / FUN_004c68f0
-// Commands the airport marching band agents to march toward and center on the player, waving when arrived.
+// The band's approach, the following, the facing, the animation and the music are all BHAV 444's
+// job (see SpawnMarchingBandAtAirport). Nothing steers them from here: rec[3] selects the player at
+// four tiles and rec[4] walks to them through MoveStep, which is what applies the tile-class and
+// climb rules the old scripted mover bypassed. This only drops references to band members the
+// world has reclaimed.
 void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& PlayerLocation, float DeltaSeconds)
 {
 	bMarchingBandApproaching = true;
-
-	// Continuously update 3D music loop location to center on the player every frame
-	if (MarchingBandVoiceSlot != INDEX_NONE)
+	MarchingBandAgents.RemoveAll([](const TWeakObjectPtr<ASimCopterGroundAgent>& Agent)
 	{
-		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
-		{
-			Audio->SetPosition(MarchingBandVoiceSlot, PlayerLocation);
-		}
-	}
-
-	// 2-second interval timer for re-evaluating whether player moved to a new location
-	MarchingBandTargetUpdateTimer += DeltaSeconds;
-	const bool bTimerFired = MarchingBandTargetUpdateTimer >= 2.0f;
-	if (bTimerFired)
-	{
-		MarchingBandTargetUpdateTimer = 0.0f;
-	}
-
-	const bool bPlayerMoved = bTimerFired && FVector::Dist2D(LastMarchingBandPlayerLocation, PlayerLocation) > 180.0f;
-	if (bPlayerMoved || LastMarchingBandPlayerLocation.IsZero())
-	{
-		LastMarchingBandPlayerLocation = PlayerLocation;
-	}
-
-	int32 Index = 0;
-	const int32 BandCount = MarchingBandAgents.Num();
-	for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
-	{
-		ASimCopterGroundAgent* Agent = WeakAgent.Get();
-		if (Agent != nullptr)
-		{
-			const float Angle = Index * (2.0f * UE_PI / FMath::Max(BandCount, 1));
-			const FVector TargetPos = PlayerLocation + FVector(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
-			const float DistToTarget = FVector::Dist2D(Agent->GetActorLocation(), TargetPos);
-
-			if (Agent->HasMoveTarget())
-			{
-				if (DistToTarget <= 160.0f)
-				{
-					// Arrived at destination around player: stop moving and face player to wave
-					Agent->ClearMoveTarget();
-					Agent->SetMissionAwaitingRescue(true);
-					FRotator FaceRot = (PlayerLocation - Agent->GetActorLocation()).Rotation();
-					FaceRot.Pitch = 0.0f;
-					FaceRot.Roll = 0.0f;
-					Agent->SetActorRotation(FaceRot);
-				}
-				else if (bPlayerMoved)
-				{
-					// Player moved significantly (evaluated on 2s interval): update move target
-					Agent->SetMoveTarget(TargetPos);
-				}
-			}
-			else
-			{
-				if ((bPlayerMoved || !bMarchingBandApproaching) && DistToTarget > 200.0f)
-				{
-					// Player moved away: resume marching toward new slot position
-					Agent->SetMissionScriptedMover();
-					Agent->SetMoveTarget(TargetPos);
-					Agent->SetMissionAwaitingRescue(true);
-				}
-				else
-				{
-					// Keep facing the player while waving at destination
-					Agent->SetMissionAwaitingRescue(true);
-					FRotator FaceRot = (PlayerLocation - Agent->GetActorLocation()).Rotation();
-					FaceRot.Pitch = 0.0f;
-					FaceRot.Roll = 0.0f;
-					Agent->SetActorRotation(FaceRot);
-				}
-			}
-
-			Index++;
-		}
-	}
+		return !Agent.IsValid();
+	});
 }
 
 void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)

@@ -297,6 +297,178 @@ corner).
 
 Covered by `SimCopter.Dispatch.MedevacHandoffGates`.
 
+## The street ambulance loop: getting IN is not being CARRIED (2026-08-05)
+
+Reported as "the paramedic is stuck walking into the side of the ambulance and never gets in with
+the patient, and this never takes them to the hospital either". It had already got in. Three
+separate faults, all on the last leg of the shipped graph rather than on the walk.
+
+**1. Boarding a vehicle went down the toted-body path.** `BoardCarrier` keyed its presentation off
+"is the carrier a ground agent", which is true of an ambulance as well as of a person. So BHAV 269
+rec[6] (op 12, *walk to selection AND board it*) laid the medic across the ambulance's flank at
+`CarriedPersonRelativeOffsetCm`, rotated 88 degrees, in the **`Dead` clip**, and left it there in
+plain sight. That is the whole of the visual report. `BoardCarrier` now takes `bAsCarriedBody`;
+only op 44's `PutSelectedPersonOnMe` passes true, and a crew member that gets into a vehicle is
+hidden inside it - which is all the original ever had to do, because its op 40 simply stopped the
+person existing.
+
+**2. The despawn refusal caught the crew.** This is the trap the 2026-07-31 fix above set without
+meaning to. `bUnresolvedMissionPerson` is `MissionEventId != NONE && !bMissionResolutionReported &&
+record still active` - and a **state-5 worker never sets `bMissionResolutionReported`**, because
+that flag belongs to passengers (`NotifyMissionPersonDelivered` writes it). An ambulance medic
+carries the medevac's event id purely so its own opcode 13 can post against it. So the medic
+reached BHAV 269 rec[9]'s op 40, had its despawn refused, was `ResetToState(5)`ed back into BHAV
+801 - and, already attached to the ambulance with `bBehaviorMoveSuspended` set by `BoardCarrier`,
+could neither walk nor ever finish again. **That is the loop.** The guard now excludes
+`IsEmergencyCrewMember()` (states 5/7/8/0xe). The persistent hospital roof crew is a separate arm
+and still gets the refusal, which is what it is for.
+
+**3. A car is a box, not a circle.** `GetSelectionContactGapCm` measured a vehicle with
+`GetSimpleCollisionRadius()` - the **33.75 cm** capsule sized for traffic separation - while the
+body it stands for is around 90 cm long. Approaching the nose or tail, a walker can be standing in
+the bodywork with the circle still reporting a positive gap. `FUN_004c8f70` overlaps the object's
+own extent and that extent is a box, so vehicles now get the same treatment the helicopter's
+airframe already had (`GetDistanceToBodyCm` / `ComputeBodyGapCm`, measured across the deck with the
+caller keeping the vertical gate). Same bug as the 95 cm flight-sweep sphere, one costume along.
+
+Also added, mirroring the police arm directly above it: an ambulance whose deployed medic has
+boarded or gone is recalled instead of sitting out the rest of the 180 s stay. Keyed on a medic the
+slot **can still see** - a null weak pointer cannot tell "climbed in" from "was never recorded", so
+that case keeps the timer.
+
+Covered by `SimCopter.Dispatch.EmergencyCrewStates` and the vehicle half of
+`SimCopter.Behavior.VM.SelectionContact`.
+
+## A medic in your cabin halves the patient's deterioration (BHAV 281)
+
+Worth knowing before anyone "adds" this: it is shipped, and it is ported. **BHAV 281 'Medevac
+adjust health'** picks the denominator of the drain roll from where the patient is and who is with
+them:
+
+| situation | roll | 
+|---|---|
+| aboard the player's helicopter **and opcode 73 finds a hidden state-5 medic** | 1 in **20** |
+| aboard the player's helicopter with no medic, **or** on the ground on a serviceable tile | 1 in **10** |
+| on the ground on a non-serviceable tile | 1 in **3** |
+
+When it hits, `medhealth -= 1 + difficultyTier` (rec[6] then rec[8]/rec[7]). BHAV 280 rec[11] kills
+the patient once `medhealth` falls below 1.
+
+Opcode 73 is `FUN_004cb9c0 -> FUN_004ca4f0(state 5, hidden)`, ported as
+`HasHiddenBehaviorPersonInState`. "Hidden" is the **`Visible` attribute**, which `BoardCarrier`
+zeroes for anyone riding anything - so a paramedic who has climbed into your cabin satisfies it.
+Note the search is **whole-map** in the original too: a medic sitting inside an ambulance on the
+far side of the city also counts. Faithful, and deliberately not narrowed.
+
+## Passengers boarded instantly because guidance outran the BHAV (2026-08-05)
+
+Reported as "passengers get in before I can even set down; the original was janky and did not
+always do it right away". Correct on every count. The shipped approach, from `people.df`:
+
+**BHAV 750 'Transport initbhav'** opens `l0 := 40` / `op0 wait l0--` — **40 ticks = 2.67 s** doing
+nothing (the VM runs at 15 Hz, `BehaviorTickRate`, which does match the original). Then **BHAV 291**:
+
+- `movespeed := 16` → 16/12 units per tick × 6.25 cm × 15 Hz = **125 cm/s**, in eight octant
+  directions, re-faced each tick, with autoturn retries;
+- `l0 := rand(40) + 30` — a step budget **re-rolled every loop**;
+- rec[2] commits to boarding only with the helicopter within **ONE TILE**;
+- otherwise rec[3] walks toward the *player* within four tiles, waves (`WvNo`), `Idle-5`, and
+  accrues boredom (BHAV 290). Those two ranges are different on purpose.
+
+The remake's `ProcessPassengerTransfers` ran `GuideMissionPeopleToLocation` **every mission tick**
+at `PassengerPickupRadiusCm` = **780 cm**. And in `UpdateMovement`:
+
+```cpp
+if (bBehaviorActive && Pedestrian && !IsAvoidanceMoveActive() && !bUsingGuidanceTargetAtStart)
+{ ...the BHAV per-tick walk...; return; }
+```
+
+**A live guidance target skips the VM's movement branch entirely**, so the agent fell through to the
+generic seek mover at `PedestrianSpeedCmPerSec` = **230 cm/s**. Net: trigger range 1.95x, approach
+speed **1.84x**, a straight-line beeline instead of the octant shuffle, and the wave/idle/boredom
+arms never ran at all because guidance never let the program get that far.
+
+Fixed both ways, at the user's direction:
+
+- **Guidance is now a backstop.** `PassengerBoardStallSeconds` per event only accumulates while a
+  helicopter with a free seat is within reach of an uncollected passenger, and guidance engages
+  only past `PassengerBoardRecoverySeconds` (**20 s**) — comfortably longer than 2.67 s of waiting
+  plus a tile of walking. Same demotion the medevac watchdog got; the reset on a successful pickup
+  stops a queue inheriting the countdown.
+- **Retuned when it does fire.** `PassengerPickupRadiusCm` 780 → **400** (BHAV 291's own one-tile
+  probe), and `SetGuidanceMoveTarget` takes a speed so guidance runs at
+  `ShippedPassengerWalkSpeedCmPerSec` (**125 cm/s**) rather than the generic pedestrian speed.
+
+`BoardMissionPeopleTouching` (130 cm) deliberately still runs every tick — that is the arrival
+action, not the approach, and op 12 boards at about the same place anyway.
+
+Separately and by request, `CanTransferMissionPassengers` was relaxed the same day from "Parked" to
+a 60 cm ground-clearance band, which is a different axis but also part of "before I set down".
+
+Analysis and dumps: `Docs/scratchpad/agent-sessions/2026-08-05-ambulance-and-dash/`.
+
+## "Wave" is panic; "WvNo" is the greeting
+
+Both clips ship in **every** figure, and the remake was binding the wrong one for a waiting victim -
+the "weird jig". The shipped bind sites settle it (`find_wave_binds.py` lists all 88):
+
+- **`Wave`** — 287 'Rioter flee tree', 289 'Rioter run', 902 'Rxn: Ouch', 1062 'Riot Follower',
+  805 'Fireman', 260, 666, 888, 1498.
+- **`WvNo`** — **291 rec[4] (the transport passenger waving at the player)**, 1020 the mechanic,
+  1051/1053/1055 cops at the station, 1201 rooftop worker, 1202, 1203 park, 1206 baseball fielder.
+
+The comment that justified `Wave` claimed op 22 binds it "when a person notices the player". Op 22
+binds nothing — it reads the player's speed and facing into two locals. Both remake sites
+(`UpdateOriginalBehavior`'s idle substitution and `UpdateJankyAnimation`'s off-program victims) now
+bind `WvNo`.
+
+## The marching band is BHAV 444, not a script (2026-08-05)
+
+The level-complete band was invented rather than ported. Everything it does is in the shipped data:
+**person state 17 -> BHAV 443 'Tuba leader initbhav'** (which just calls 444) and **state 18 ->
+BHAV 444 'Tuba initbhav (SID 246)'**, figure **TubaExpert** (behaviour class 18).
+
+    rec[2]  bind 'Play'                    the instrument animation - NOT a wave
+    rec[24] movespeed := 8                 62.5 cm/s at 15 Hz: a march
+    rec[3]  select class 9 within 4 tiles  the player, cockpit included
+    rec[4]  op 38 walk, autoturn           via MoveStep, so tile/climb rules apply
+    rec[25]/[27] attr29 == 444 ?
+        member -> 1014 'Random Turn' + 294 'Move rand speed rand time idle rand',
+                  then a tick-gated 1-in-3 **sound 37** - one of NINE instrument
+                  samples (trbna/trbnc_/trbng/trptb/trpte/trptf_/tubab/tubae/tubaf_)
+        leader -> **sound 38 = march.wav**, then keep following
+
+**`attr29` (person+0x17a) is the state's own program id**, and BHAV 444 rec[25]/rec[27] is its only
+shipped reader: it is how a member tells itself from the leader. `ResetToState` now writes it.
+
+Four faults, one cause - the old code drove them with `SetMissionScriptedMover` + `SetMoveTarget`:
+
+- **through walls**: the scripted mover is the generic seek path, which neither sweeps nor consults
+  tile class or the climb gate. `MoveStep` is what enforces those, and `SetMissionScriptedMover`
+  sets `bBehaviorActive = false`, so none of it ran;
+- **no music**: the mission actor played march.wav itself from one looping voice slot. The VM never
+  played anything, and sound 37 - the individual instruments - was never played at all;
+- **the wave**: `SetMissionAwaitingRescue(true)` instead of rec[2]'s `'Play'`;
+- **no figure**: `ConfigureAgent(..., TEXT(""), FString(), ...)` passed an **empty original-game
+  root**, so neither people.df nor the TubaExpert figure could load.
+
+They are now spawned through `TrySpawnMissionPerson` as ordinary VM people and nothing steers them.
+
+**Trap worth knowing: the airport is tile class 1 and nobody may walk on it.**
+`GetTileClassForBuildingId` falls through to its catch-all `return 1` for both stamped ids - 0xde
+(pad) is past the `0xD2..0xDC` range and 0xf6 (terminal) is past `0xE8..0xF5` - and class 1 appears
+in no row of either `GetAllowedTileClasses` or `GetAmbientStateTileClasses`. A band spawned on the
+apron would refuse every direction and spin. The old scripted mover never hit this because it
+bypassed the rules that produce it.
+
+The fix is an **exemption, not a relocation**: `ASimCopterGroundAgent::SetIgnoresTileClassRules(true)`
+on each band member, and `MoveStep` skips the tile-class gate for such a walker. The band spawns on
+the pads, where a mission-success band belongs. A first pass instead searched rings outward for
+tiles a class-18 walker would accept and spawned there — the user's call was that there is no reason
+to keep them off the apron at all, and this is the smaller change: it waives only "may a person of
+this class stand on this kind of tile". **The climb gate and the walk-surface probe still apply, so
+an exempt walker still cannot walk into the terminal.** BHAV 444's four-tile probe does the rest.
+
 ## Evidence and verification
 
 - Fresh executable output:

@@ -222,6 +222,20 @@ public:
 	// actors are recreated; the ambient restore then moves that same component to its saved pose.
 	USceneComponent* GetUfoBeamTargetComponent() const;
 
+	// SCHOOK: PlaneWeaponHit 0x004b3ba0 (via FUN_0049a4f0's class-0x100 arm -> FUN_004b3df0)
+	//
+	// Which aircraft a shot passes through, or INDEX_NONE. The meshes are deliberately left on
+	// NoCollision - giving them a Visibility responder would put a flying saucer in the path of
+	// every downward ground probe in the game - so the Apache asks for a segment test instead.
+	int32 FindPlaneHitBySegment(const FVector& Start, const FVector& End, FVector& OutImpactWorld) const;
+
+	// FUN_004b3ba0's reaction, which only has arms for interaction modes 3 (missile) and
+	// 7 (machine gun). Returns true when the shot counted for anything.
+	bool ApplyWeaponHitToPlane(int32 PlaneIndex, int32 InteractionMode);
+
+	// FUN_004b3ba0's ten-hit retirement (`9 < +0x50`), exposed pure so it can be tested.
+	static bool IsPlaneDownedByHitCount(int32 HitCount) { return HitCount > 9; }
+
 	// The UFO only flies when this is on; the original gated it on DAT_00504084.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Ambient Vehicles")
 	bool bEnableUfo = true;
