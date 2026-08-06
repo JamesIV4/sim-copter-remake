@@ -21,6 +21,7 @@
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterInteraction.h"
+#include "Ground/SimCopterTrafficJam.h"
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
@@ -1065,15 +1066,26 @@ void ASimCopterTrafficSystemActor::UpdateTrafficAudio()
 			continue;
 		}
 
-		const bool bStopped = State->bMissionJammed;
+		// FUN_0049be50 has two horn rolls and the remake needs both now that cars queue up behind a
+		// jam rather than piling into it. The car flying the jam flag 0x200 takes the branch at the
+		// top of the function and rolls 1-in-16 every update. Everything else rolls the wider
+		// 1-in-64, and only once veh+0xaf says it has been standing still for five seconds - which
+		// is exactly the car stuck in the queue behind the jam.
+		const bool bJammed = State->bMissionJammed;
+		const bool bStopped = bJammed || State->bJamQueued;
+		const bool bMaySoundHorn = bJammed ||
+			State->JamHeldSeconds > SimCopterTrafficJam::HornHeldSeconds;
+		const int32 HornOneIn = bJammed
+			? SimCopterTrafficJam::JammedHornOneIn
+			: SimCopterTrafficJam::HeldHornOneIn;
 		const FVector World = Vehicle->GetActorLocation();
 
 		if (bStopped)
 		{
-			// One roll in sixteen per update, and only if that horn is not already sounding.
-			// Three horns share the whole city's traffic, so the already-playing check is what
-			// stops a jam from becoming a wall of noise.
-			if (FMath::RandRange(0, 15) == 0)
+			// Only if that horn is not already sounding: three horns share the whole city's
+			// traffic, so the already-playing check is what stops a jam from becoming a wall of
+			// noise.
+			if (bMaySoundHorn && FMath::RandRange(0, HornOneIn - 1) == 0)
 			{
 				// The original assigns obj[0xdb] once, at spawn. Deriving it from the agent's
 				// identity keeps a given car on a given horn without adding a field.
@@ -5408,6 +5420,11 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 		}
 	}
 
+	// First, and in both AI modes: a jam owns the cars caught in it for the whole frame. Every pass
+	// after this one only ever lowers a speed scale, so the queue's own braking survives them, and
+	// the passes that would steer a car sideways all check IsVehicleHeldInTrafficJam.
+	ApplyTrafficJamQueue(DeltaSeconds);
+
 	if (TrafficAiMode == ESimCopterTrafficAiMode::Original)
 	{
 		// Decoded original behavior: no traffic lights and no blockage recovery. Cars queue
@@ -5440,6 +5457,223 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 	}
 	ApplyVehicleLaneGuidance(DeltaSeconds);
 	UpdatePedestrianAvoidance();
+}
+
+bool ASimCopterTrafficSystemActor::IsVehicleHeldInTrafficJam(const ASimCopterGroundAgent& Vehicle) const
+{
+	const FSimCopterVehicleTrafficState* State =
+		VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	return State != nullptr && (State->bMissionJammed || State->bJamQueued);
+}
+
+// SCHOOK: VehicleMoveCore 0x0049ee30 / VehicleAdvance 0x0049be50 (their jam arms)
+void ASimCopterTrafficSystemActor::ApplyTrafficJamQueue(const float DeltaSeconds)
+{
+	// The overwhelmingly common case is no jam at all, and it has to cost nothing: without this the
+	// pass would be a second O(n^2) neighbour scan on every tick of ordinary traffic.
+	bool bAnyJammedVehicle = false;
+	for (const TPair<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState>& Pair : VehicleTrafficStates)
+	{
+		if (Pair.Value.bMissionJammed)
+		{
+			bAnyJammedVehicle = true;
+			break;
+		}
+	}
+
+	struct FJamQueueEntry
+	{
+		ASimCopterGroundAgent* Vehicle = nullptr;
+		FSimCopterVehicleTrafficState* State = nullptr;
+		FVector Location = FVector::ZeroVector;
+		FVector Heading = FVector::ZeroVector;
+		float RadiusCm = 0.0f;
+		int32 BlockerIndex = INDEX_NONE;
+		float BlockerForwardDistanceCm = 0.0f;
+		bool bJammed = false;
+		bool bQueued = false;
+	};
+
+	TArray<FJamQueueEntry> Entries;
+	Entries.Reserve(bAnyJammedVehicle ? VehicleAgents.Num() : 0);
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+		FSimCopterVehicleTrafficState* State =
+			VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State == nullptr)
+		{
+			continue;
+		}
+
+		// Cleared unconditionally, every tick. A car that has left the chain - because the jam was
+		// cleared, or because the car ahead of it drove off - has to be back on ordinary traffic
+		// rules the same frame, or it would sit still on an empty road forever.
+		State->bJamQueued = false;
+		State->JamBlocker.Reset();
+
+		const FVector Heading = GetAgentTravelDirection(*Vehicle);
+		if (!bAnyJammedVehicle || Heading.IsNearlyZero())
+		{
+			State->JamHeldSeconds = 0.0f;
+			continue;
+		}
+
+		FJamQueueEntry& Entry = Entries.AddDefaulted_GetRef();
+		Entry.Vehicle = Vehicle;
+		Entry.State = State;
+		Entry.Location = Vehicle->GetActorLocation();
+		Entry.Heading = Heading;
+		Entry.RadiusCm = Vehicle->GetCollisionRadiusCm();
+		Entry.bJammed = State->bMissionJammed;
+	}
+
+	if (Entries.Num() == 0)
+	{
+		return;
+	}
+
+	// Pass 1: every car's blocker - the nearest car ahead of it that is going its way.
+	//
+	// FUN_0049ee30's heading test is what makes this safe to run on live two-way traffic. It shows
+	// up twice there and both halves are here: a car outside the dot cone is not a blocker at all,
+	// and the radius one inside the cone imposes shrinks with the angle between the two headings.
+	// Oncoming traffic drops out on both counts, so the far side of the street keeps moving and a
+	// pair of cars sharing a lane can never resolve each other away and swap places.
+	const float LookAhead = FMath::Max(TrafficJamQueueLookAheadCm, ActiveTileSize * 0.5f);
+	const float MaxHeightDeltaCm = ActiveTileSize * FMath::Max(0.05f, TrafficJamQueueHeightToleranceTileFraction);
+
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		FJamQueueEntry& Entry = Entries[Index];
+		const FVector Right(-Entry.Heading.Y, Entry.Heading.X, 0.0f);
+		float BestForwardDistance = TNumericLimits<float>::Max();
+
+		for (int32 OtherIndex = 0; OtherIndex < Entries.Num(); ++OtherIndex)
+		{
+			if (OtherIndex == Index)
+			{
+				continue;
+			}
+			const FJamQueueEntry& Other = Entries[OtherIndex];
+			const FVector ToOther = Other.Location - Entry.Location;
+			// A jam on a bridge deck must not stop the road running under it.
+			if (FMath::Abs(ToOther.Z) > MaxHeightDeltaCm)
+			{
+				continue;
+			}
+
+			const FVector FlatToOther(ToOther.X, ToOther.Y, 0.0f);
+			const float ForwardDistance = FVector::DotProduct(FlatToOther, Entry.Heading);
+			if (ForwardDistance <= 0.0f || ForwardDistance > LookAhead || ForwardDistance >= BestForwardDistance)
+			{
+				continue;
+			}
+
+			const float HeadingDot = FVector::DotProduct(Entry.Heading, Other.Heading);
+			if (!SimCopterTrafficJam::IsSameDirectionBlocker(HeadingDot, /*YieldCount=*/0))
+			{
+				continue;
+			}
+
+			const float LaneWidth = (Entry.RadiusCm + Other.RadiusCm) *
+				SimCopterTrafficJam::GetHeadingBlockScale(HeadingDot) + ActiveTileSize * 0.16f;
+			if (FMath::Abs(FVector::DotProduct(FlatToOther, Right)) > LaneWidth)
+			{
+				continue;
+			}
+
+			BestForwardDistance = ForwardDistance;
+			Entry.BlockerIndex = OtherIndex;
+			Entry.BlockerForwardDistanceCm = ForwardDistance;
+		}
+	}
+
+	// Pass 2: the chain. Each car has at most one blocker, so the "who is behind me" relation is a
+	// forest and one breadth-first walk out from the jammed cars reaches exactly the queue - not
+	// every car that happens to be stopped somewhere else on the map.
+	TArray<TArray<int32>> FollowersByLeader;
+	FollowersByLeader.SetNum(Entries.Num());
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		if (Entries[Index].BlockerIndex != INDEX_NONE)
+		{
+			FollowersByLeader[Entries[Index].BlockerIndex].Add(Index);
+		}
+	}
+
+	TArray<int32> Pending;
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		if (Entries[Index].bJammed)
+		{
+			Entries[Index].bQueued = true;
+			Pending.Add(Index);
+		}
+	}
+	while (Pending.Num() > 0)
+	{
+		const int32 LeaderIndex = Pending.Pop(EAllowShrinking::No);
+		for (const int32 FollowerIndex : FollowersByLeader[LeaderIndex])
+		{
+			if (Entries[FollowerIndex].bQueued)
+			{
+				continue;
+			}
+			Entries[FollowerIndex].bQueued = true;
+			Pending.Add(FollowerIndex);
+		}
+	}
+
+	// Pass 3: hold each car in the chain behind the one in front of it.
+	const float CmPerOriginalUnit = GetPeopleWorldCmPerOriginalUnit();
+	const float SlowDistance = FMath::Max(1.0f, TrafficJamQueueSlowDistanceCm);
+	const float BrakeRate = FMath::Max(0.0f, TrafficJamQueueBrakeRate);
+
+	for (FJamQueueEntry& Entry : Entries)
+	{
+		if (!Entry.bQueued)
+		{
+			Entry.State->JamHeldSeconds = 0.0f;
+			continue;
+		}
+
+		// The jammed car itself stops outright; a follower stops against the car in front of it,
+		// never against the jam. That distinction is the whole point: with everyone measuring
+		// against the jam's own position, every car in the queue wants the same piece of road.
+		float SpeedScale = 0.0f;
+		if (!Entry.bJammed && Entry.BlockerIndex != INDEX_NONE)
+		{
+			const FJamQueueEntry& Leader = Entries[Entry.BlockerIndex];
+			Entry.State->bJamQueued = true;
+			Entry.State->JamBlocker = Leader.Vehicle;
+			SpeedScale = SimCopterTrafficJam::GetQueueSpeedScale(
+				Entry.BlockerForwardDistanceCm,
+				SimCopterTrafficJam::GetQueueHoldDistanceCm(Entry.RadiusCm, Leader.RadiusCm, CmPerOriginalUnit),
+				SlowDistance);
+		}
+
+		// Cancel any dig-out already in flight. FUN_0049be50's blocked branch contains no manoeuvre
+		// of any kind - backing up and steering round the blocker is a remake invention, and it is
+		// what let cars in a jam climb over one another instead of holding the line.
+		// UpdateVehicleBlockageRecovery bars them from starting a new one.
+		if (Entry.State->RecoveryBypassSeconds > 0.0f || Entry.State->RecoveryRejoinSeconds > 0.0f)
+		{
+			Entry.State->RecoveryBypassSeconds = 0.0f;
+			Entry.State->RecoveryRejoinSeconds = 0.0f;
+			Entry.Vehicle->SetAvoidancePathOffset(FVector::ZeroVector, 0.0f);
+		}
+
+		Entry.Vehicle->ApplyTrafficBrake(SpeedScale, DeltaSeconds, BrakeRate);
+		Entry.State->JamHeldSeconds = SpeedScale <= 0.0f
+			? Entry.State->JamHeldSeconds + DeltaSeconds
+			: 0.0f;
+	}
 }
 
 void ASimCopterTrafficSystemActor::ApplyPlayerRoadBlocking()
@@ -5589,6 +5823,15 @@ void ASimCopterTrafficSystemActor::ApplyTrafficLights(float DeltaSeconds)
 			continue;
 		}
 
+		// A jam is not a red light. This queue puts every car on an approach on a slot point
+		// measured off one shared stop line, which is the wrong shape for a jam - the cars converge
+		// on the same few metres of road instead of trailing back from wherever the jam actually
+		// is. ApplyTrafficJamQueue holds them against the car in front of them instead.
+		if (IsVehicleHeldInTrafficJam(*Vehicle))
+		{
+			continue;
+		}
+
 		const int32 TargetNodeIndex = Vehicle->GetRouteTargetNode();
 		const int32 PreviousNodeIndex = Vehicle->GetRoutePrevNode();
 		if (!RoadNodes.IsValidIndex(PreviousNodeIndex))
@@ -5707,6 +5950,14 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing(
 		}
 
 		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State != nullptr && State->bJamQueued)
+		{
+			// ApplyTrafficJamQueue already set this car's speed against the car in front of it, and
+			// it is the only pass that can bring one to an actual stop. These rules bottom out at a
+			// creep (0.12 - 0.18), which is exactly how a queue used to close up into a single pile.
+			continue;
+		}
+
 		if (State != nullptr && State->bMissionJammed)
 		{
 			Vehicle->SetTrafficSpeedScale(0.0f);
@@ -5968,8 +6219,30 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 				const float Distance = DistanceSq > KINDA_SMALL_NUMBER ? FMath::Sqrt(DistanceSq) : 0.0f;
 				const float PushDistance = FMath::Max(0.0f, MinimumDistance - Distance);
 				const FVector Push = SeparationDirection * (PushDistance * 0.5f + 0.5f);
-				A->MoveByTrafficSeparation(-Push);
-				B->MoveByTrafficSeparation(Push);
+
+				// Cars held in a jam hold station. Splitting the push between a follower and the car
+				// it has queued behind walks the leader forwards, and a queue of them conveyor-belts
+				// the whole jam down the street; taking the separation out of the follower alone
+				// pushes it backwards, which is the only direction that cannot slide it past.
+				const FSimCopterVehicleTrafficState* AState =
+					VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(A));
+				const FSimCopterVehicleTrafficState* BState =
+					VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(B));
+				const bool bAHeldInJam = AState != nullptr && (AState->bMissionJammed || AState->bJamQueued);
+				const bool bBHeldInJam = BState != nullptr && (BState->bMissionJammed || BState->bJamQueued);
+				if (AState != nullptr && AState->JamBlocker.Get() == B)
+				{
+					A->MoveByTrafficSeparation(-(Push * 2.0f));
+				}
+				else if (BState != nullptr && BState->JamBlocker.Get() == A)
+				{
+					B->MoveByTrafficSeparation(Push * 2.0f);
+				}
+				else
+				{
+					A->MoveByTrafficSeparation(-Push);
+					B->MoveByTrafficSeparation(Push);
+				}
 				// Before the mark, while RecentCollisionSeconds still says whether this pair were
 				// already touching last frame: the original's collision handler is an EVENT, and
 				// re-rolling it every frame of a sustained overlap would set the whole street alight.
@@ -5981,7 +6254,9 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 					ApplyCollisionCarFireRoll(*A, *B);
 				}
 
-				if (PassIndex == 0)
+				// No bump impulse into or out of a jam: the queue's spacing is a held position, and
+				// throwing velocity at it is what let a nudged car coast out of line.
+				if (PassIndex == 0 && !bAHeldInJam && !bBHeldInJam)
 				{
 					const FVector Impulse = SeparationDirection * VehicleBumpImpulseCmPerSec;
 					A->AddTrafficVelocityImpulse(-Impulse);
@@ -6011,9 +6286,22 @@ void ASimCopterTrafficSystemActor::UpdateVehicleBlockageRecovery()
 		}
 
 		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
-		const bool bCommittedToIntersection = State != nullptr && State->IntersectionCommitSeconds > 0.0f;
-		if (State == nullptr ||
-			State->RecoveryCooldownSeconds > 0.0f ||
+		if (State == nullptr)
+		{
+			continue;
+		}
+
+		// A car in a jam waits it out, full stop. FUN_0049be50's blocked branch reroutes or raises
+		// a jam mission and does nothing else - there is no back-up, no lateral bypass and no
+		// rejoin anywhere in the original, and running them inside a jam is what had cars steering
+		// around each other and passing the queue instead of holding the line behind it.
+		if (State->bMissionJammed || State->bJamQueued)
+		{
+			continue;
+		}
+
+		const bool bCommittedToIntersection = State->IntersectionCommitSeconds > 0.0f;
+		if (State->RecoveryCooldownSeconds > 0.0f ||
 			(!bCommittedToIntersection && (State->bInTrafficLightLine || State->TrafficLightLineGraceSeconds > 0.0f)))
 		{
 			continue;
