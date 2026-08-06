@@ -81,6 +81,20 @@ struct FSimCopterVehicleTrafficState
 	bool bMissionOnFire = false;
 	int32 MissionEventId = INDEX_NONE;
 
+	// --- traffic-jam queue -------------------------------------------------------------------
+	// All three are derived state: ApplyTrafficJamQueue clears and recomputes them every tick, so
+	// none of them is serialised. See Ground/SimCopterTrafficJam.h for what they are ports of.
+	//
+	// This car has stopped in the chain behind a jammed one. Set on the followers only - the car
+	// the jam actually seized carries bMissionJammed instead.
+	bool bJamQueued = false;
+	// The car it has stopped behind. Overlap resolution needs this so it can push the follower
+	// back instead of shoving the leader (and the whole queue with it) down the road.
+	TWeakObjectPtr<ASimCopterGroundAgent> JamBlocker;
+	// veh+0xaf narrowed to the jam: how long this car has been standing still in it. FUN_0049be50
+	// leans on the horn once it passes SimCopterTrafficJam::HornHeldSeconds.
+	float JamHeldSeconds = 0.0f;
+
 	// Was this car stopped last audio tick? FUN_004b8630 plays ACCEL2 on the frame a held car
 	// is let go, so the port needs the previous state to find that edge.
 	bool bAudioWasStopped = false;
@@ -428,6 +442,34 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic")
 	ESimCopterTrafficFlowMode TrafficFlowMode = ESimCopterTrafficFlowMode::Normal;
+
+	// --- Traffic jams --------------------------------------------------------------------------
+	// A jam is the one case the ordinary following rules below cannot express. They never take a
+	// car all the way to a stop - the closest they get is a creep - so a queue behind a stopped car
+	// closes right up until every car in it is standing in the same place. Neither can the stoplight
+	// queue: it drives every car on an approach at a computed slot point off one stop line, which is
+	// the wrong shape for a jam and piles them onto each other.
+	//
+	// ApplyTrafficJamQueue replaces both, for the cars in a jam's chain only. Each car takes the car
+	// in front of it as its blocker and holds FUN_0049ee30's spacing behind it, and no car ever
+	// takes a car coming the other way as a blocker. Traffic with no jam in front of it never enters
+	// this pass and keeps the rules it already had.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "1.0"))
+	float TrafficJamQueueLookAheadCm = 620.0f;
+
+	// How far ahead of the hold point a joining car starts braking. The original needs no
+	// equivalent - it stops dead - so this exists purely to keep the remake's velocity-carrying
+	// cars from overshooting into the back of the queue.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "1.0"))
+	float TrafficJamQueueSlowDistanceCm = 300.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "0.0"))
+	float TrafficJamQueueBrakeRate = 9.0f;
+
+	// Two cars whose heights differ by more than this fraction of a tile are never in the same
+	// queue, so a jam on a bridge deck cannot stop the road running underneath it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "0.05"))
+	float TrafficJamQueueHeightToleranceTileFraction = 0.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "1.0"))
 	float NormalVehicleFollowLookAheadCm = 560.0f;
@@ -907,6 +949,15 @@ public:
 	void ApplyPlayerRoadBlocking();
 	void SyncVehicleTrafficStates(float DeltaSeconds);
 	void ApplyTrafficLights(float DeltaSeconds);
+	// FUN_0049ee30 / FUN_0049be50, narrowed to the cars a traffic jam has stopped. Walks the chain
+	// of same-direction followers back from every bMissionJammed car and holds each one the
+	// original's spacing behind the car in front of it. A tick with no jam anywhere costs one scan
+	// and changes nothing. See Ground/SimCopterTrafficJam.h.
+	void ApplyTrafficJamQueue(float DeltaSeconds);
+	// Is this car standing in a jam - either the car the jam seized or somebody queued behind it?
+	// The rules that would move a car sideways (the stoplight queue, blockage recovery) all check
+	// this and leave it alone.
+	bool IsVehicleHeldInTrafficJam(const ASimCopterGroundAgent& Vehicle) const;
 	void ApplyVehicleFollowing(float LookAheadCm, float StopDistanceCm, float SlowDistanceCm, bool bUseNormalBraking, float DeltaSeconds);
 	void ApplyIntersectionApproachSlowdown(float DeltaSeconds);
 	void ResolveVehicleOverlaps();
