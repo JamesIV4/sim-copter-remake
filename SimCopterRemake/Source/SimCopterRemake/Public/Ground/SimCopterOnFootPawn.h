@@ -112,6 +112,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float GroundProbeDistanceCm = 25000.0f;
 
+	/** How far above the desired spot the ground probe starts. Just enough to clear the surface we
+	    are meant to land on - never enough to catch the roof of an adjacent building. */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float GroundProbeLiftCm = 40.0f;
+
 	// Tallest vertical lip the avatar walks up automatically (curbs, road/sidewalk edges). Handled
 	// by the character movement component's step-up; taller obstacles still block.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))

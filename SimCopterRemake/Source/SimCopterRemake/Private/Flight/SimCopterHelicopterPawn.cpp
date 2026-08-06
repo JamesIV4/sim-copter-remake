@@ -3593,19 +3593,36 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 		DoorOffset.X = static_cast<float>(AirframeBounds.GetCenter().X);
 		DoorOffset.Y = static_cast<float>(AirframeBounds.Max.Y) + ExitClearanceCm;
 	}
+	// The pilot steps out AT THE AIRCRAFT'S OWN HEIGHT. `ApplyFlightModelToActor` pins the root
+	// sphere's bottom to the flight model's Altitude, so that is where the skids meet whatever the
+	// machine is standing on; the actor origin is a whole 190 cm capsule radius above it and is not
+	// a place anybody stands.
+	double DeckZ = GetActorLocation().Z - static_cast<double>(CollisionComponent != nullptr
+		? CollisionComponent->GetScaledCapsuleHalfHeight()
+		: 0.0f);
 	FVector ExitLocation =
 		GetActorLocation() +
 		YawFrame.GetUnitAxis(EAxis::X) * DoorOffset.X +
 		YawFrame.GetUnitAxis(EAxis::Y) * DoorOffset.Y;
 
-	const FVector TraceStart = ExitLocation + FVector::UpVector * 1200.0f;
-	const FVector TraceEnd = ExitLocation - FVector::UpVector * 2200.0f;
+	// DOWNWARD ONLY, from just above that deck. This used to start 1200 cm ABOVE the actor origin -
+	// some fourteen metres up - and take the first blocking hit on the way down, so stepping out
+	// next to anything taller than the aircraft put the pilot on ITS roof, high in the air, falling.
+	// Starting at the deck means the probe can only find the surface the aircraft is on, or a lower
+	// one where the door opens over the lip of a pad. ECC_Camera is the channel walkable surfaces
+	// answer here (the ground agents' own probes use it).
+	const FVector TraceStart = FVector(ExitLocation.X, ExitLocation.Y, DeckZ + PassengerDropProbeLiftCm);
+	const FVector TraceEnd = FVector(ExitLocation.X, ExitLocation.Y, DeckZ - PassengerDropProbeDepthCm);
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterHelicopterExit), false, this);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
+		Hit.bBlockingHit)
 	{
-		ExitLocation.Z = Hit.ImpactPoint.Z + 94.0f;
+		// Never above the aircraft: the lift only exists so the probe starts clear of the deck.
+		DeckZ = FMath::Min(Hit.ImpactPoint.Z, DeckZ);
 	}
+	// Feet on that surface: the on-foot pawn's origin is the middle of its 92 cm capsule.
+	ExitLocation.Z = DeckZ + 94.0;
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
