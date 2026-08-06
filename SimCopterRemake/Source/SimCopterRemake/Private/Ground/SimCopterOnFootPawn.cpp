@@ -1117,11 +1117,19 @@ bool ASimCopterOnFootPawn::ResolveGroundedLocation(const FVector& DesiredLocatio
 		return false;
 	}
 
-	const FVector Start = DesiredLocation + FVector::UpVector * 2000.0f;
+	// DOWNWARD ONLY, from just above where the caller wanted us. Starting 2000 cm up meant the first
+	// blocking hit on the way down could be the ROOF of whatever we were standing next to, which put
+	// the avatar high in the air the moment they stepped out of the helicopter beside a building.
+	// The caller has already picked the height it wants; this only ever settles us onto that surface
+	// or a lower one.
+	const FVector Start = DesiredLocation + FVector::UpVector * GroundProbeLiftCm;
 	const FVector End = DesiredLocation - FVector::UpVector * GroundProbeDistanceCm;
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterOnFootGroundSnap), false, this);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	// ECC_Camera is the channel walkable surfaces answer on in this project - the ground agents, the
+	// traffic system and the helicopter's own exit probe all use it. ECC_Visibility additionally hits
+	// things nobody stands on, which is how this landed the avatar in mid-air with nothing under him.
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
 	{
 		OutLocation = FVector(DesiredLocation.X, DesiredLocation.Y, Hit.ImpactPoint.Z + ActorHalfHeight + 2.0f);
 		return true;
