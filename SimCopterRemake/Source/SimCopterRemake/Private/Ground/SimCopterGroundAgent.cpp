@@ -15,6 +15,7 @@
 #include "Engine/World.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
@@ -4905,25 +4906,12 @@ FString ASimCopterGroundAgent::ResolveOriginalGameRoot() const
 		}
 	}
 
-	const TCHAR* Candidates[] = {
-		TEXT("../Reference/SimCopterOriginalGame"),
-		TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame"),
-		TEXT("../../Reference/SimCopterOriginalGame"),
-		TEXT("../../../Reference/SimCopterOriginalGame"),
-		TEXT("Reference/SimCopterOriginalGame")
-	};
-	for (const TCHAR* Candidate : Candidates)
+	// The figures need privanim specifically, so a root that merely looks like an install is not
+	// good enough here.
+	return SimCopterOriginalGame::ResolveRootBy([](const FString& Root)
 	{
-		const FString FullPath = FPaths::IsRelative(Candidate)
-			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), Candidate))
-			: FPaths::ConvertRelativePathToFull(Candidate);
-		if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
-		{
-			return FullPath;
-		}
-	}
-
-	return FString();
+		return !FSimCopterPrivAnimReader::ResolvePrivAnimPath(Root).IsEmpty();
+	});
 }
 
 void ASimCopterGroundAgent::ConfigureMarchingBandUniform(int32 BandIndex)

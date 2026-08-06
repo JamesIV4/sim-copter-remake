@@ -2,6 +2,7 @@
 
 #include "Game/SimCopterSessionSubsystem.h"
 
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
 
@@ -31,22 +32,7 @@ void USimCopterSessionSubsystem::ClearPendingSession()
 
 FString USimCopterSessionSubsystem::ResolveCitiesDir()
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/cities"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/cities")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/cities")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (IFileManager::Get().DirectoryExists(*Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return FString();
+	return SimCopterOriginalGame::ResolveDirectory(TEXT("cities"));
 }
 
 FString USimCopterSessionSubsystem::ResolveCareerCityFilePath(int32 CareerCityIndex)

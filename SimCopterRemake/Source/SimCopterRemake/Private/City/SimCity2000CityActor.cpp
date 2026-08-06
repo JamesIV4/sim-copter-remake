@@ -14,6 +14,7 @@
 #include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Ground/SimCopterFlashingLights.h"
@@ -5845,18 +5846,22 @@ FString ASimCity2000CityActor::ResolveCityPath() const
 
 FString ASimCity2000CityActor::ResolveOriginalGameRoot() const
 {
+	// The level authors this to the developer checkout's Reference copy, which is right in the
+	// editor and meaningless in a shipped build - so honour it only when it actually points at an
+	// install, and otherwise ask where the player's data really is.
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString Absolute = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (SimCopterOriginalGame::IsOriginalGameRoot(Absolute))
+		{
+			return Absolute;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
-	}
-
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 bool ASimCity2000CityActor::IsRoadLikeTile(uint8 BuildingId)

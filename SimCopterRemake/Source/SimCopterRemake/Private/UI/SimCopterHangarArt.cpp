@@ -7,6 +7,7 @@
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformFileManager.h"
 #include "ImageUtils.h"
 #include "MediaPlayer.h"
 #include "MediaTexture.h"
@@ -208,7 +209,12 @@ FString USimCopterHangarArt::ResolveMenuSkyMoviePath() const
 	{
 		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
 		FPaths::NormalizeFilename(Candidate);
-		if (FPaths::FileExists(Candidate))
+		// Deliberately the PHYSICAL file system, not IFileManager: Media Foundation opens the file
+		// through the OS and cannot see inside a .pak, so a movie that is only staged as UFS
+		// "exists" to Unreal and then decodes nothing, leaving the media texture full of garbage on
+		// screen. Answering "no movie" here gets the SKYCOOL fallback instead, which at least
+		// looks deliberate. DefaultGame.ini stages this folder as NonUFS to keep it a real file.
+		if (IPlatformFile::GetPlatformPhysical().FileExists(*Candidate))
 		{
 			return Candidate;
 		}

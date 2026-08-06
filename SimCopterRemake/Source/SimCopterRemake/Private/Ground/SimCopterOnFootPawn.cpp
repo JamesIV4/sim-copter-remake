@@ -15,6 +15,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -871,24 +872,12 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 
 	if (RootPath.IsEmpty())
 	{
-		const TCHAR* Candidates[] = {
-			TEXT("../Reference/SimCopterOriginalGame"),
-			TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame"),
-			TEXT("../../Reference/SimCopterOriginalGame"),
-			TEXT("../../../Reference/SimCopterOriginalGame"),
-			TEXT("Reference/SimCopterOriginalGame")
-		};
-		for (const TCHAR* Candidate : Candidates)
+		// The figure needs privanim specifically, so a root that merely looks like an install is
+		// not good enough here.
+		RootPath = SimCopterOriginalGame::ResolveRootBy([](const FString& Root)
 		{
-			const FString FullPath = FPaths::IsRelative(Candidate)
-				? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), Candidate))
-				: FPaths::ConvertRelativePathToFull(Candidate);
-			if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
-			{
-				RootPath = FullPath;
-				break;
-			}
-		}
+			return !FSimCopterPrivAnimReader::ResolvePrivAnimPath(Root).IsEmpty();
+		});
 	}
 
 	if (RootPath.IsEmpty())

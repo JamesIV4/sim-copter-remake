@@ -12,6 +12,7 @@
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterHangar.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "UI/SimCopterHangarShop.h"
@@ -79,22 +80,15 @@ const TCHAR* GetMissionDeltaLabel(int32 TextId)
 
 FString ResolveCareerTweakPath()
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/tweak/career.twk"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/tweak/career.twk")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/tweak/career.twk")));
-
-	for (FString Candidate : Candidates)
+	const FString Resolved = SimCopterOriginalGame::ResolveFile(TEXT("tweak/career.twk"));
+	if (!Resolved.IsEmpty())
 	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeFilename(Candidate);
-		if (FPaths::FileExists(Candidate))
-		{
-			return Candidate;
-		}
+		return Resolved;
 	}
 
-	return Candidates.Last();
+	// Nothing found: still hand back the path the player is told to create, so the failure that
+	// follows names somewhere they can act on.
+	return FPaths::Combine(SimCopterOriginalGame::GetPlayerRootDir(), TEXT("tweak/career.twk"));
 }
 
 bool IsValidMissionTile(int32 TileX, int32 TileY)
@@ -1032,21 +1026,7 @@ void ASimCopterMissionSystemActor::UpdateBurningDebris(const float DeltaSeconds)
 
 FString ASimCopterMissionSystemActor::ResolveOriginalGameRootDir() const
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-	return FString();
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 bool ASimCopterMissionSystemActor::TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const

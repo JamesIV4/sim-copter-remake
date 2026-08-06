@@ -69,7 +69,13 @@ SimCopterRemake/Source/SimCopterRemake/{Public,Private}/
 Docs/         plans, walkthroughs, memory, scratchpad
 Tools/        re-agent + ghidra-bridge (Python, venv is gitignored)
 Reference/SimCopterOriginalGame   original game files — user-provided, gitignored
+SimCopter/    the same thing under the name a PLAYER is told to use — gitignored but for its
+              note; `../SimCopter` from the .uproject is the repo root here and the folder
+              beside the .exe in a packaged build
 ```
+
+Every reader finds that data through `Formats/SimCopterOriginalGamePaths.h` — one candidate list,
+not a per-file copy. Add a search root there, never at a call site.
 
 `bUseUnity = false` in `SimCopterRemake.Build.cs`, deliberately: format readers reuse
 same-named helpers in anonymous namespaces, and unity chunking collided them whenever a file

@@ -11,6 +11,7 @@
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
@@ -5271,18 +5272,21 @@ FString ASimCopterTrafficSystemActor::ResolveCityPath() const
 
 FString ASimCopterTrafficSystemActor::ResolveOriginalGameRoot() const
 {
+	// Same rule as the city actor: the authored path is a developer convenience, so it only wins
+	// while it still points at a real install.
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString Absolute = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (SimCopterOriginalGame::IsOriginalGameRoot(Absolute))
+		{
+			return Absolute;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
-	}
-
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 FVector ASimCopterTrafficSystemActor::GetPopulationFocusLocation() const

@@ -25,6 +25,7 @@
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Formats/SimCity2000Reader.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterTweakReader.h"
 #include "Flight/SimCopterControllerInput.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
@@ -8813,18 +8814,21 @@ bool ASimCopterHelicopterPawn::ProbeBucketWater(const FVector& BucketWorldLocati
 
 FString ASimCopterHelicopterPawn::ResolveOriginalGameRoot() const
 {
+	// Same rule as the city actor: the authored path is a developer convenience, so it only wins
+	// while it still points at a real install.
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString Absolute = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (SimCopterOriginalGame::IsOriginalGameRoot(Absolute))
+		{
+			return Absolute;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
-	}
-
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 void ASimCopterHelicopterPawn::ApplyDerivedTuning()
