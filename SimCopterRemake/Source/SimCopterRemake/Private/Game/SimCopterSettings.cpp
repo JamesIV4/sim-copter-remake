@@ -500,7 +500,21 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 	// Low power first: the scalability half writes at ECVF_SetByScalability and the switch half at
 	// ECVF_SetByGameOverride, so the switches have to come second or the profile would win.
 	ApplyLowPowerScalability();
-	SimCopterLowPower::Apply(bLowPowerMode, /*bExternalUpscalerActive=*/bDlssEnabled && IsDlssAvailable());
+	SimCopterLowPower::Apply(bLowPowerMode);
+
+	// Anti-aliasing is the player's in both modes, which is why this sits above the low power early
+	// out rather than below it. Low Power renders at 75% and TSR is the only method that upscales
+	// rather than stretching, so it is worth its price here more than it is at 100%; the mode's
+	// scalability half already has it at AntiAliasingQuality 0. None is still in the dropdown for
+	// anyone who would rather have the milliseconds.
+	//
+	// Left alone while Super Resolution is on: DLSS hooks the TAA/TSR upsample pass itself
+	// (EnableDLSS sets r.TemporalAA.Upscaler) and the row is greyed out on the page for the same
+	// reason Resolution Scale is - see the getter's comment in SimCopterSettings.h.
+	if (!bDlssEnabled)
+	{
+		SetRenderCVar(TEXT("r.AntiAliasingMethod"), static_cast<int32>(AntiAliasingMethod));
+	}
 
 	if (bLowPowerMode)
 	{
@@ -535,14 +549,6 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 	}
 
 	SetRenderCVar(TEXT("r.VolumetricFog"), bVolumetricFog ? 1 : 0);
-
-	// Left alone while Super Resolution is on: DLSS hooks the TAA/TSR upsample pass itself
-	// (EnableDLSS sets r.TemporalAA.Upscaler) and the row is greyed out on the page for the same
-	// reason Resolution Scale is - see the getter's comment in SimCopterSettings.h.
-	if (!bDlssEnabled)
-	{
-		SetRenderCVar(TEXT("r.AntiAliasingMethod"), static_cast<int32>(AntiAliasingMethod));
-	}
 
 	OnHudScaleChanged.Broadcast(HudScale);
 }

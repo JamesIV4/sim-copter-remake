@@ -9,9 +9,10 @@ checkbox. `USimCopterSettings::bLowPowerMode` stores it; `SimCopterLowPowerMode.
 (`Public/Game`, `Private/Game`) is the mode itself.
 
 The city is a few hundred thousand triangles of flat-shaded 8-bit palette art and it was being drawn
-through Lumen, virtual shadow maps, MegaLights, a volumetric cloud layer, volumetric fog and TSR.
-None of that renders anything a SimCopter player would miss, and all of it is priced for a discrete
-GPU.
+through Lumen, virtual shadow maps, MegaLights, a volumetric cloud layer and volumetric fog. None of
+that renders anything a SimCopter player would miss, and all of it is priced for a discrete GPU.
+
+*(TSR was on that list too, until 2026-08-06 — see "Anti-aliasing stayed" below.)*
 
 ## The three layers, and why they are kept apart
 
@@ -33,7 +34,6 @@ GPU.
 
    | Switch | Why scalability does not cover it |
    | --- | --- |
-   | `r.AntiAliasingMethod 1` | Not a scalability group at all. Low only tunes TSR's history; TSR itself is one of the largest items in an iGPU frame. **Stood down while DLSS super resolution is on** — DLSS owns the AA method and forcing FXAA stops it engaging. |
    | `r.DynamicGlobalIlluminationMethod 0`, `r.ReflectionMethod 0`, `r.Lumen.HardwareRayTracing 0` | `GlobalIlluminationQuality@0` sets `r.Lumen.DiffuseIndirect.Allow 0`, which stops Lumen *lighting* but leaves the method as Lumen — the scene still maintains a Lumen scene and surface cache. Dropping the method is what stops that work. |
    | `r.RayTracing.ForceAllRayTracingEffects 0` | The project ships `r.RayTracing=True`. |
    | `r.MegaLights.Allowed 0` | **The trap.** MegaLights is switched on by the level's *global post process volume* (`bOverride_bMegaLights`), so `r.MegaLights.EnableForProject` cannot turn it off — `FSceneView::StartFinalPostprocessSettings` reads that CVar and the volume then blends over it. `r.MegaLights.Allowed` is the scalability gate above both. |
@@ -60,6 +60,36 @@ GPU.
    **Nothing touches per-component cast-shadow flags, on purpose.** `r.ShadowQuality 0` from the Low
    profile clears the `DynamicShadows` show flag, so the city has no dynamic shadows in this mode at
    all — plumbing the flags would be dead code.
+
+## Anti-aliasing stayed: the mode no longer forces FXAA (2026-08-06)
+
+The table used to carry `r.AntiAliasingMethod 1`, and `ApplyGraphics`' low power early-out sat
+*above* the line that writes the player's chosen method — so the Anti-Aliasing row still moved, still
+read back TSR, and did nothing. **Both halves are fixed**: the switch is gone from the table, and the
+`if (!bDlssEnabled) SetRenderCVar(TEXT("r.AntiAliasingMethod"), ...)` write moved above the
+`if (bLowPowerMode) { ... return; }` block, so the row is honest in both modes.
+
+Why TSR is the *right* thing to keep in a mode built for weak GPUs, which is the part that reads
+backwards: **the mode renders at 75%, and TSR is the only method in the dropdown that upscales.**
+FXAA at 75% is a spatial stretch of a blurry image — the mode's worst-looking property, paid for
+with a cheap AA pass. And TSR is not at full price here either: the mode's scalability half applies
+`AntiAliasingQuality@0`, which (checked in `C:\GameDev\UE_5.8\Engine\Config\BaseScalability.ini`)
+sets `r.TSR.History.ScreenPercentage=100` rather than 200, `History.R11G11B10=1`,
+`History.UpdateQuality=0`, and turns off `ShadingRejection.Flickering`, `ReprojectionField`,
+`RejectionAntiAliasingQuality` and `Resurrection`. That section notably does **not** touch
+`r.PostProcessAAQuality`, so Low never disabled AA by itself — the forced FXAA was the whole story.
+
+A player who wants the milliseconds still has **None** in the dropdown. That is the honest control,
+rather than the mode deciding for them.
+
+Two things went with it, because the AA switch was their only user:
+- `FRenderSwitch::bSkipWhileUpscaling` and the `bExternalUpscalerActive` parameter on
+  `SimCopterLowPower::Apply`. The DLSS stand-down is not lost — it lives in `ApplyGraphics`'
+  `if (!bDlssEnabled)` guard, which was always there and is now the only copy.
+- The stand-down half of `SimCopter.Settings.LowPowerMode`. In its place the test asserts
+  `r.AntiAliasingMethod` is **not** in the table, because putting it back would pin it at
+  `ECVF_SetByGameOverride` and silently kill the dropdown all over again — the failure mode where
+  the row still moves and still reads back the stored value.
 
 ## Screen percentage goes through the user setting, not `r.ScreenPercentage`
 
@@ -189,6 +219,10 @@ terrain 452 / atlas 382 / water 369 pixel instructions with the branches in).
 
 Re-run after `r.Substrate=False`: every shader recompiled, all six materials still compile, 173
 tests still pass.
+
+Re-run after the anti-aliasing change above (2026-08-06): built clean, **185 tests pass, 0 fail**
+(`Docs/scratchpad/tests-aa-lowpower.txt`). Still not seen on screen — the "does TSR at 75% actually
+look better than FXAA at 75%" question is argued from what the two passes do, not measured.
 
 The forward-shading experiment above was reverted in full; the tree carries none of it. What it did
 prove is that the *deferred* configuration described in this note builds, tests and runs — that is

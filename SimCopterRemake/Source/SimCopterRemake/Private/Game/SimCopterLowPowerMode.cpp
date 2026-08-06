@@ -26,13 +26,19 @@ using SimCopterLowPower::FRenderSwitch;
 // duplicating a value here would pin it at ECVF_SetByGameOverride and quietly kill its dropdown.
 const FRenderSwitch GRenderSwitches[] =
 {
-	// --- upscaling -----------------------------------------------------------------------------
-
-	{
-		TEXT("r.AntiAliasingMethod"), TEXT("1"), /*bSkipWhileUpscaling=*/true,
-		TEXT("TSR -> FXAA. TSR is a heavy compute upscaler and scalability only tunes its history; ")
-		TEXT("on an integrated GPU it is one of the largest single items in the frame.")
-	},
+	// --- anti-aliasing: NOT here, on purpose ---------------------------------------------------
+	//
+	// This table used to force `r.AntiAliasingMethod 1` (FXAA). It does not any more, and the
+	// Anti-Aliasing row stays live in this mode. The mode renders at 75% screen percentage, and TSR
+	// is the only method in the list that *upscales* - FXAA at 75% is a spatial stretch of a blurry
+	// image, which is the worst-looking thing the mode did. TSR is also not left at its full price:
+	// scalability's `AntiAliasingQuality@0` (which the mode already applies, and which is not a
+	// method switch) takes the history to 100% screen percentage rather than 200%, R11G11B10,
+	// UpdateQuality 0, and drops flickering rejection, the reprojection field and resurrection.
+	//
+	// A player who wants it gone still has None in the dropdown, which is the honest way to spend
+	// that part of the frame elsewhere. Nothing here stands down for DLSS either - `ApplyGraphics`
+	// already skips writing the method while super resolution is on, because DLSS owns it.
 
 	// --- global illumination and reflections ---------------------------------------------------
 	//
@@ -43,20 +49,20 @@ const FRenderSwitch GRenderSwitches[] =
 	// it is not free, and there is nothing shiny in a SimCopter city.
 
 	{
-		TEXT("r.DynamicGlobalIlluminationMethod"), TEXT("0"), false,
+		TEXT("r.DynamicGlobalIlluminationMethod"), TEXT("0"),
 		TEXT("No Lumen at all - no surface cache, no card capture, no radiosity. The city's SelfIllum ")
 		TEXT("floor and the sky light are what keep shadowed faces readable without it.")
 	},
 	{
-		TEXT("r.ReflectionMethod"), TEXT("0"), false,
+		TEXT("r.ReflectionMethod"), TEXT("0"),
 		TEXT("No reflection pass. Reflection captures and the sky light still apply.")
 	},
 	{
-		TEXT("r.Lumen.HardwareRayTracing"), TEXT("0"), false,
+		TEXT("r.Lumen.HardwareRayTracing"), TEXT("0"),
 		TEXT("Belt and braces with the method above, and it is what the Lumen row would have set.")
 	},
 	{
-		TEXT("r.RayTracing.ForceAllRayTracingEffects"), TEXT("0"), false,
+		TEXT("r.RayTracing.ForceAllRayTracingEffects"), TEXT("0"),
 		TEXT("The project ships r.RayTracing=True; this stops every RT effect asking for the scene.")
 	},
 
@@ -67,7 +73,7 @@ const FRenderSwitch GRenderSwitches[] =
 	// every frame. `r.MegaLights.Allowed` is the scalability gate that sits above both.
 
 	{
-		TEXT("r.MegaLights.Allowed"), TEXT("0"), false,
+		TEXT("r.MegaLights.Allowed"), TEXT("0"),
 		TEXT("Back to the standard deferred light loop. Affordable because the mode also stops the ")
 		TEXT("beacons and the car headlights spawning lights - see USimCopterFlashingLightsComponent.")
 	},
@@ -80,7 +86,7 @@ const FRenderSwitch GRenderSwitches[] =
 	// allocation, and Low only shrinks that pool to 512 pages rather than releasing it.
 
 	{
-		TEXT("r.Shadow.Virtual.Enable"), TEXT("0"), false,
+		TEXT("r.Shadow.Virtual.Enable"), TEXT("0"),
 		TEXT("No virtual shadow map pool. With r.ShadowQuality 0 from the Low profile the city has no ")
 		TEXT("dynamic shadows at all in this mode - deliberately, it is the single biggest saving.")
 	},
@@ -88,12 +94,12 @@ const FRenderSwitch GRenderSwitches[] =
 	// --- sky, cloud and fog --------------------------------------------------------------------
 
 	{
-		TEXT("r.VolumetricCloud"), TEXT("0"), false,
+		TEXT("r.VolumetricCloud"), TEXT("0"),
 		TEXT("The CelestialVaultDaySequenceActor carries a volumetric cloud layer, and scalability has ")
 		TEXT("no opinion about it. It is ray-marched per pixel; the sky atmosphere keeps the sky.")
 	},
 	{
-		TEXT("r.VolumetricFog"), TEXT("0"), false,
+		TEXT("r.VolumetricFog"), TEXT("0"),
 		TEXT("Also in the Low shadow profile, but listed because the Settings page has its own ")
 		TEXT("Volumetric Fog row: forcing it here is what lets that row be greyed out honestly.")
 	},
@@ -106,7 +112,7 @@ const FRenderSwitch GRenderSwitches[] =
 	// emissive and read as flat squares with no bloom at all.
 
 	{
-		TEXT("r.BloomQuality"), TEXT("1"), false,
+		TEXT("r.BloomQuality"), TEXT("1"),
 		TEXT("One blur pass instead of five. The night skyline and the fire still glow.")
 	},
 };
@@ -151,25 +157,13 @@ SimCopterLowPower::FOnLowPowerModeChanged& SimCopterLowPower::OnChanged()
 	return GOnChanged;
 }
 
-void SimCopterLowPower::Apply(const bool bLowPower, const bool bExternalUpscalerActive)
+void SimCopterLowPower::Apply(const bool bLowPower)
 {
 	if (bLowPower)
 	{
 		for (const FRenderSwitch& Switch : GRenderSwitches)
 		{
 			const FString Name(Switch.Name);
-
-			if (Switch.bSkipWhileUpscaling && bExternalUpscalerActive)
-			{
-				// DLSS was turned on while the mode was already running, so this one has to go back
-				// even though the mode itself is staying on.
-				if (const FString* Captured = GCapturedValues.Find(Name))
-				{
-					RestoreSwitch(Name, *Captured);
-					GCapturedValues.Remove(Name);
-				}
-				continue;
-			}
 
 			IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name);
 			if (Variable == nullptr)
