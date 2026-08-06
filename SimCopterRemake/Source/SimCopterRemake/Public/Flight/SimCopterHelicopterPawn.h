@@ -374,8 +374,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool IsEngineRunning() const { return bEngineRunning; }
 
+	/** May somebody step OUT of the cabin here? See PassengerAlightClearanceCm. */
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
 	bool CanTransferMissionPassengers() const;
+
+	/** May somebody climb IN here? Looser than the alight, exactly as the original's is. */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	bool CanBoardMissionPassengers() const;
+
+	/**
+	 * How long the aircraft has been continuously inside the alight clearance, in seconds.
+	 *
+	 * The mission-side release paths hold off until this reaches PassengerAlightSettleSeconds, which
+	 * is BHAV 292's own polling period. Without it the mission tick beat the shipped program to the
+	 * cabin door and the fare was out before the pilot had finished landing.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	float GetSecondsWithinAlightClearance() const { return SecondsWithinAlightClearance; }
+
+	/** BHAV 292's polling period; see PassengerAlightSettleSeconds. */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	float GetPassengerAlightSettleSeconds() const { return PassengerAlightSettleSeconds; }
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
 	int32 GetPassengerSeatCount() const { return FlightModel.Tuning.PassengerSeats; }
@@ -415,6 +434,15 @@ public:
 	// Who is aboard, in seat order. The seat window draws one portrait per entry.
 	const TArray<FSimCopterMissionPassengerSlot>& GetMissionPassengerSlots() const { return MissionPassengerSlots; }
 	bool DropPassengerAtSlot(int32 SlotIndex);
+
+	/**
+	 * Where somebody who steps out of the cabin lands: beside the aircraft, on the surface the
+	 * aircraft is standing on. **Feet level** - lift it by the person's own capsule half height to
+	 * place their actor.
+	 *
+	 * Z comes from the root sphere's bottom, which `ApplyFlightModelToActor` pins to the flight
+	 * model's `Altitude`; the actor origin is 190 cm above that and is not where anybody stands.
+	 */
 	FVector GetPassengerDropWorldLocation(int32 SlotIndex = INDEX_NONE) const;
 
 	// Read-only controller presentation state consumed by the radial/passenger Slate layer.
@@ -948,11 +976,47 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
 	float ExitClearanceCm = 40.0f;
 
-	// How high the skids may sit and still let people climb in or step out. 60 cm above the landed
-	// contact tolerance is a low hover: enough that you need not settle and shut down to pick a fare
-	// up, far short of anything that would let one board an aircraft in flight.
+	// How high the aircraft may sit above the ground and still let somebody step OUT of the cabin.
+	//
+	// FUN_004c9bc0, the test behind opcodes 17 and 21, ends on
+	// `(person.Y - FUN_004c82c0(person.pos)) >> 16 < 6` - six original units, 37.5 cm. For a rider
+	// that is the aircraft's own height, because FUN_004c6450 copies the carrier's position onto the
+	// person every tick. GroundClearanceCm is exactly the same quantity (ApplyFlightModelToActor puts
+	// the sphere bottom at the flight model's Altitude), so the shipped number transfers directly and
+	// needs no contact tolerance added to it: FUN_00487160 parks at TerrainHeight + 0x13333, so a
+	// landed helicopter is already sitting 1.2 units up and this leaves 4.8 units of hover over it.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
-	float PassengerTransferClearanceCm = 60.0f;
+	float PassengerAlightClearanceCm = 37.5f;
+
+	// And how high it may sit and still let somebody climb IN. Deliberately the looser of the two,
+	// because the original's is: opcode 12's FUN_004ca940 accepts the board while
+	// `(objectY - personY) & 0xffff0000 < 0x50000` - five units between the doorsill and a walker who
+	// is themselves standing 3 units (0x30000, FUN_004cb190) above the ground, so eight units of
+	// aircraft-above-ground, 50 cm. You may drop to a low hover and have a fare climb aboard; you may
+	// not have them step out onto the roof from the same height.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerBoardClearanceCm = 50.0f;
+
+	// How long the aircraft has to stay inside PassengerAlightClearanceCm before the MISSION layer
+	// will let anybody out. BHAV 292 'Transport wait to get off' loops `local0 := 10` / `op0 wait
+	// local0--` and then BHAV 264, whose own 'idle a bit' is another three ticks, before each probe -
+	// so the shipped program tests this about every thirteenth tick, 0.87 s at the VM's 15 Hz, and
+	// nobody has ever hopped out the instant the skids came into range. The behaviour VM keeps that
+	// cadence for free; the mission-side release, which runs every mission tick, does not, and that
+	// is what emptied the cabin while the pilot was still on the way down.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerAlightSettleSeconds = 13.0f / 15.0f;
+
+	// How far above the aircraft's own deck the passenger drop probe starts. Small on purpose: it is
+	// only there so the trace begins clear of the surface the skids are on, and every centimetre of
+	// it is a centimetre of roof the probe could find instead of the ground.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropProbeLiftCm = 40.0f;
+
+	// And how far below it the probe looks, for the case where somebody steps out over the lip of a
+	// pad or a roof onto the street.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropProbeDepthCm = 1800.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
 	float PassengerDropSideOffsetCm = 175.0f;
@@ -1294,6 +1358,11 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
+
+	// Reset the moment the aircraft rises back out of PassengerAlightClearanceCm, so a bounce off
+	// the pad restarts the wait rather than banking credit toward it.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	float SecondsWithinAlightClearance = 0.0f;
 
 	// The original runs FUN_00444750's service-threshold test while landed. The remake opens on
 	// every airport landing instead so the feature is easy to discover and behaves predictably.

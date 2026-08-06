@@ -206,6 +206,46 @@ bool FSimCopterHospitalRoofPostTest::RunTest(const FString& Parameters)
 			FVector(9000.0f, 0.0f, 0.0f), Post, 0.0f, BodyRadius, HalfHeight, FallTolerance, Out)),
 		int32(FAgent::ERoofPostContainment::AtPost));
 
+	// The step-target half. BHAV 801's entry walk is a one-shot in the original, but the remake
+	// replays it every time it refuses the medic's despawn, so an aimless walk is held to a smaller
+	// square than one that is on its way to the aircraft - otherwise the repeats march the worker
+	// out to the parapet and leave it there. Same building: 45% of 600 is 270, less the 30cm body.
+	constexpr float IdleFraction = 0.45f;
+	const float IdleLimit = HalfExtent * IdleFraction - BodyRadius; // 240
+	const FVector Middle(0.0f, 0.0f, Post.Z + HalfHeight);
+	auto MayStep = [&](const FVector& Target, const FVector& From, float Fraction)
+	{
+		return FAgent::IsWithinRoofPostSquare(Target, From, Post, HalfExtent, BodyRadius, Fraction);
+	};
+
+	TestTrue(
+		TEXT("An aimless walk may mill about the middle"),
+		MayStep(FVector(IdleLimit - 10.0f, 0.0f, Middle.Z), Middle, IdleFraction));
+	TestFalse(
+		TEXT("...but is turned back well short of the parapet"),
+		MayStep(FVector(IdleLimit + 10.0f, 0.0f, Middle.Z), Middle, IdleFraction));
+	TestTrue(
+		TEXT("A walk that is seeking something gets the whole roof"),
+		MayStep(FVector(IdleLimit + 10.0f, 0.0f, Middle.Z), Middle, 1.0f));
+	TestFalse(
+		TEXT("...and still not past its edge"),
+		MayStep(FVector(Limit + 10.0f, 0.0f, Middle.Z), Middle, 1.0f));
+
+	// Standing outside the limit - after a handoff at the pad, a traffic shove, or a reload - must
+	// not refuse every direction, or the worker is pinned exactly where it should not be.
+	const FVector AtParapet(Limit, 0.0f, Middle.Z);
+	TestTrue(
+		TEXT("A worker out at the edge may always walk back in"),
+		MayStep(FVector(Limit - 40.0f, 0.0f, Middle.Z), AtParapet, IdleFraction));
+	TestFalse(
+		TEXT("...but not further out"),
+		MayStep(FVector(Limit + 40.0f, 0.0f, Middle.Z), AtParapet, IdleFraction));
+
+	TestTrue(
+		TEXT("No post means no step is refused"),
+		FAgent::IsWithinRoofPostSquare(
+			FVector(9000.0f, 0.0f, 0.0f), Middle, Post, 0.0f, BodyRadius, IdleFraction));
+
 	return true;
 }
 

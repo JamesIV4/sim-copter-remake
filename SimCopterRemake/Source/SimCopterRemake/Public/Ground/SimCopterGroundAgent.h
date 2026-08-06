@@ -167,6 +167,23 @@ public:
 		float FallToleranceCm,
 		FVector& OutContainedLocation);
 
+	/**
+	 * Pure form of the step-target half of that containment: may a posted worker standing at
+	 * `CurrentLocation` step to `TargetLocation`?
+	 *
+	 * `ExtentFraction` picks how much of the post the walk is entitled to (see
+	 * HospitalRoofPostIdleWanderFraction), and a step that shortens the distance to the post centre
+	 * is always allowed so a worker already outside the limit can walk back in rather than refusing
+	 * every direction. A zero half extent means "unposted", which constrains nobody.
+	 */
+	static bool IsWithinRoofPostSquare(
+		const FVector& TargetLocation,
+		const FVector& CurrentLocation,
+		const FVector& PostCenterWorldLocation,
+		float PostHalfExtentCm,
+		float BodyRadiusCm,
+		float ExtentFraction);
+
 	// Marks an uninjured victim who still needs picking up. They keep whatever program or carrier
 	// they are on, but any moment it leaves them standing still they wave for the helicopter
 	// instead of idling.
@@ -588,6 +605,20 @@ public:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> SpriteMaterial;
 
+	/**
+	 * `M_SimCopterLitSpriteTexture` - the privanim head is an ordinary LIT surface.
+	 *
+	 * It used to share the unlit `M_SimCopterSpriteTexture` with the effect cards, which meant its
+	 * brightness had to be computed from the key light every frame and written as EmissiveNits. A
+	 * head is not a light source and never was: the original had no lighting model at all, so a head
+	 * is simply painted geometry, and the only reason it needed a number here was that the material
+	 * under it could not be lit. Sharing the city's lit card material instead makes it shade off the
+	 * sun exactly like the figure's vertex-coloured body (same SelfIllum/Roughness/Specular), and the
+	 * whole "what brightness should a head be after dark" question stops existing.
+	 */
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> FigureHeadMaterial;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> SpriteMaterialInstance;
 
@@ -715,8 +746,16 @@ private:
 	float HospitalRoofPostHalfExtentCm = 0.0f;
 	// Keeps the posted worker over its own roof. Returns true when it had to intervene.
 	bool ContainToHospitalRoofPost();
-	// Whether a step target is still over the posted roof; unposted people are unconstrained.
-	bool IsWithinHospitalRoofPost(const FVector& WorldLocation) const;
+	/**
+	 * Whether a step target is still inside the posted roof; unposted people are unconstrained.
+	 *
+	 * `ExtentFraction` scales the square: 1.0 is the whole building, which is what a walk that is
+	 * seeking something (the aircraft, a casualty) gets, and HospitalRoofPostIdleWanderFraction is
+	 * what an aimless one gets. A target that is outside the limit but closer to the post centre
+	 * than the walker currently is passes anyway, so a crew member who ends up out at the parapet -
+	 * after a handoff, a traffic shove, or a reload - can always walk back in.
+	 */
+	bool IsWithinHospitalRoofPost(const FVector& WorldLocation, float ExtentFraction = 1.0f) const;
 	bool bPassengerFallActive = false;
 	bool bPassengerFallStarted = false;
 	float PassengerFallStartZ = 0.0f;
@@ -778,6 +817,27 @@ private:
 	// How far outside its own footprint a posted roof crew will accept the aircraft.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
 	float HospitalRoofPostAggroMarginCm = 120.0f;
+
+	/**
+	 * How much of its roof a posted worker will wander over when it has nowhere to be.
+	 *
+	 * BHAV 801 walks exactly once, on the way in: rec[4] clears autoturn and rec[6] calls 'Walk-10',
+	 * ten ticks at movespeed 10 - about half a metre - and the steady-state loop after it is
+	 * Idle-10 / 'idle a bit' / probe, with no walk in it at all. In the original that is the whole
+	 * story, because the probe reaches 272 -> 265 'Medevac disappear' within seconds and the worker
+	 * simply stops existing. The remake has to keep the post staffed, so it refuses that despawn and
+	 * restarts the state program instead - which re-runs the entry, so the once-only half metre
+	 * became half a metre every few seconds, always along the same facing, and the medic marched in
+	 * a straight line to the parapet and stood there. That is the reported "they go to the edge
+	 * every single time".
+	 *
+	 * Two things hold it in: the restart re-rolls the facing (see UpdateOriginalBehavior), so the
+	 * repeats no longer compound into a march, and an aimless walk is held to this fraction of the
+	 * post so the drift stays around the middle. A walk that is actually going somewhere - BHAV 263
+	 * heading for the aircraft - gets the whole roof.
+	 */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.05", ClampMax = "1.0"))
+	float HospitalRoofPostIdleWanderFraction = 0.45f;
 
 	// Latch for ApplyHelicopterRunOver: BHAV 903 takes several ticks to finish dying and the
 	// overlap stays true throughout.
@@ -940,12 +1000,14 @@ protected:
 	FDelegateHandle LowPowerChangedHandle;
 
 	/**
-	 * Re-derives EmissiveNits on the pedestrian sprite and figure head from the world's key light.
+	 * Re-derives EmissiveNits on the legacy PEOPLE1 pedestrian billboard from the world's key light.
 	 *
-	 * Both ride the shared UNLIT `M_SimCopterSpriteTexture`, so what looks like ordinary shading has
-	 * to be computed instead - and as SURFACES, not light sources, so they have no minimum and go
-	 * dark with the sun. Without it they sat on the material's baked daylight default and glowed all
-	 * night. Cheap enough to run per tick: the subsystem caches its scan for the whole frame.
+	 * It rides the shared UNLIT `M_SimCopterSpriteTexture`, so what looks like ordinary shading has
+	 * to be computed instead - and as a SURFACE, not a light source, so it has no minimum and goes
+	 * dark with the sun. Without it the card sat on the material's baked daylight default and glowed
+	 * all night. Cheap enough to run per tick: the subsystem caches its scan for the whole frame.
+	 *
+	 * The figure head is deliberately NOT here any more; see `FigureHeadMaterial`.
 	 */
 	void RefreshSpriteExposure();
 	bool TraceGround(FVector& OutGroundLocation) const;

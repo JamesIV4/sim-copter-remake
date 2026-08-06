@@ -2567,17 +2567,29 @@ bool ASimCopterHelicopterPawn::CanExitHelicopter() const
 bool ASimCopterHelicopterPawn::CanTransferMissionPassengers() const
 {
 	// LOW OR LANDED, never "parked". The original has no flight-state gate on getting in or out:
-	// FUN_004ca940 (opcode 12, the walk-and-board every passenger program reaches) accepts the move
-	// once the walker's body is in contact with the airframe AND the target sits under
-	// `(objectZ - personZ) & 0xffff0000 < 0x50000` - five original units, about 31 cm - and
-	// FUN_004c9bc0 (opcodes 17/21, the alight) asks only for a standable tile and six units of
-	// ground clearance. Requiring ESimCopterFlightState::Parked on top of that meant a fare who had
-	// walked up to a hovering helicopter with its skids a hand's breadth off the road was refused,
-	// which is not how the game plays: you drop to a low hover and they climb aboard.
+	// FUN_004c9bc0 (opcodes 17/21, the alight) asks only for a standable tile and for the person to
+	// be within six original units of the ground under them. Requiring ESimCopterFlightState::Parked
+	// on top of that meant a fare who had walked up to a hovering helicopter with its skids a hand's
+	// breadth off the road was refused, which is not how the game plays.
+	//
+	// A rider's Y *is* the aircraft's Y (FUN_004c6450 copies the carrier's position onto them every
+	// tick) and GroundClearanceCm is that same aircraft-above-ground figure, so the shipped six units
+	// come straight across with no tolerance term - see PassengerAlightClearanceCm. This used to add
+	// GroundContactTolerance to a 60 cm band, 88 cm in all, which is nearly a metre of hover: enough
+	// that a mission's passengers were out of the cabin before the pilot had finished the descent.
 	//
 	// Contact is still enforced, on the walker's side, by StepTowardSelectedObject's own airframe
 	// test - so this stays a pure height band, exactly as the original's is.
-	return GroundClearanceCm <= GroundContactTolerance + PassengerTransferClearanceCm;
+	return GroundClearanceCm < PassengerAlightClearanceCm;
+}
+
+bool ASimCopterHelicopterPawn::CanBoardMissionPassengers() const
+{
+	// FUN_004ca940 (opcode 12, the walk-and-board every passenger program reaches) accepts the move
+	// once the walker's body is in contact with the airframe AND the doorsill sits under
+	// `(objectY - personY) & 0xffff0000 < 0x50000`. See PassengerBoardClearanceCm for why that is
+	// eight units of aircraft-above-ground rather than five.
+	return GroundClearanceCm < PassengerBoardClearanceCm;
 }
 
 bool ASimCopterHelicopterPawn::TryGetRopeEndWorldLocation(FVector& OutWorldLocation) const
@@ -2808,25 +2820,48 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	return true;
 }
 
+// The deck a passenger steps out ONTO: beside the aircraft, at the aircraft's own height. The
+// caller lifts it by the person's capsule half height to place them and lets gravity close any
+// remaining gap - stepping out is a drop, however short.
 FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex) const
 {
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	const float SlotSide = (SlotIndex % 2 == 0) ? 1.0f : -1.0f;
 	const float SlotRowOffset = SlotIndex >= 0 ? float(SlotIndex / 2) * 32.0f : 0.0f;
+	// Z is the flight model's own Altitude: ApplyFlightModelToActor puts the root sphere's BOTTOM
+	// there, so this is where the skids meet whatever the aircraft is standing on, and the actor
+	// origin is a whole 190 cm capsule radius above it.
+	const double DeckZ = GetActorLocation().Z - static_cast<double>(CollisionComponent != nullptr
+		? CollisionComponent->GetScaledCapsuleHalfHeight()
+		: 0.0f);
 	FVector DropLocation =
 		GetActorLocation() +
 		YawFrame.GetUnitAxis(EAxis::Y) * (175.0f * SlotSide) -
 		YawFrame.GetUnitAxis(EAxis::X) * (35.0f + SlotRowOffset);
+	DropLocation.Z = DeckZ;
 
 	if (GetWorld() != nullptr)
 	{
-		const FVector TraceStart = DropLocation + FVector::UpVector * 900.0f;
-		const FVector TraceEnd = DropLocation - FVector::UpVector * 1800.0f;
+		// DOWNWARD ONLY, and from the aircraft's own height. This used to start 900 cm ABOVE the
+		// actor origin - some eleven metres up - and take the first thing it hit on the way down, so
+		// a fare let out beside a helicopter parked next to anything shorter than that was put on
+		// its ROOF instead of on the ground next to the aircraft. Starting at the deck means the
+		// probe can only ever find the surface the aircraft is on or one below it (stepping out over
+		// the lip of a pad), never one above.
+		//
+		// ECC_Camera, not ECC_Visibility: that is the channel pedestrians actually walk on
+		// (TryGetWalkSurfaceZAt, UpdateGroundSnap), and their own capsules ignore it - on Visibility
+		// they block, so a queue of passengers could stack on each other's heads.
+		const FVector TraceStart = DropLocation + FVector::UpVector * PassengerDropProbeLiftCm;
+		const FVector TraceEnd = DropLocation - FVector::UpVector * PassengerDropProbeDepthCm;
 		FHitResult Hit;
 		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterPassengerDrop), false, this);
-		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
+			Hit.bBlockingHit)
 		{
-			DropLocation.Z = Hit.ImpactPoint.Z + 24.0f;
+			// Never above the aircraft: the lift above only exists so the probe starts clear of the
+			// deck itself, and a hit inside it must not push the passenger up onto the skids.
+			DropLocation.Z = FMath::Min(Hit.ImpactPoint.Z, DeckZ);
 		}
 	}
 
@@ -6084,6 +6119,13 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	UpdateGroundProbe();
 	UpdateForwardProbe();
 	UpdateRopeAndBucket(DeltaSeconds);
+
+	// BHAV 292 only asks "may I get out yet?" about every thirteenth tick, so the shipped game has
+	// always had a beat between the skids arriving and the cabin emptying. The mission-side release
+	// runs every mission tick and had none; this is where it gets one.
+	SecondsWithinAlightClearance = CanTransferMissionPassengers()
+		? SecondsWithinAlightClearance + DeltaSeconds
+		: 0.0f;
 
 	// Mirror the simulation status onto the pawn's HUD-facing state.
 	bIsLanded = FlightModel.State == ESimCopterFlightState::Parked;

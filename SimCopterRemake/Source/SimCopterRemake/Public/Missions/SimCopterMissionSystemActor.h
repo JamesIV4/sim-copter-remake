@@ -357,6 +357,16 @@ public:
 
 	// ~End ISimCopterMissionWorld Interface
 
+	/**
+	 * Low enough to unload, AND low enough for long enough.
+	 *
+	 * The behaviour VM gets its pause for free - BHAV 292 waits ten ticks and BHAV 264's own idle
+	 * three more before each probe, and BHAV 700 idles between its calls to 303 - but the mission
+	 * tick has no such loop, so it would open the cabin door on the first frame the skids came into
+	 * range. See ASimCopterHelicopterPawn::PassengerAlightSettleSeconds.
+	 */
+	static bool IsHelicopterSettledForAlight(const ASimCopterHelicopterPawn& Helicopter);
+
 private:
 	UPROPERTY(EditInstanceOnly, Category = "SimCopter|Traffic")
 	TObjectPtr<ASimCopterTrafficSystemActor> SourceTrafficSystem;

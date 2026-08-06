@@ -148,8 +148,12 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	TObjectPtr<ASimCopterHelicopterPawn> ParkedHelicopter;
 
+	/**
+	 * `M_SimCopterLitSpriteTexture` - the pilot's head is an ordinary LIT surface, not a card that
+	 * emits. See `ASimCopterGroundAgent::FigureHeadMaterial`; this is the same head, same reason.
+	 */
 	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInterface> SpriteMaterial;
+	TObjectPtr<UMaterialInterface> FigureHeadMaterial;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> SpriteMaterialInstance;
