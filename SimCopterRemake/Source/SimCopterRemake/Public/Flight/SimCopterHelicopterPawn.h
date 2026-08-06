@@ -921,8 +921,23 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
 	TSubclassOf<ASimCopterOnFootPawn> ExitPawnClass;
 
+	// Fallback door offset, used only while no fuselage has been built to measure (a headless test,
+	// or the frame before the GEO packs load). ExitHelicopter otherwise derives the spot from the
+	// airframe's own box, so the pilot lands against the machine rather than out on the apron.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
-	FVector ExitOffset = FVector(180.0f, 175.0f, 0.0f);
+	FVector ExitOffset = FVector(0.0f, 110.0f, 0.0f);
+
+	// How far outboard of the fuselage skin the pilot is set down. Enough to keep a 30 cm-radius
+	// body out of the model, and no more - stepping out should read as leaving the aircraft, not
+	// as being teleported beside it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
+	float ExitClearanceCm = 40.0f;
+
+	// How high the skids may sit and still let people climb in or step out. 60 cm above the landed
+	// contact tolerance is a low hover: enough that you need not settle and shut down to pick a fare
+	// up, far short of anything that would let one board an aircraft in flight.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerTransferClearanceCm = 60.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
 	float PassengerDropSideOffsetCm = 175.0f;

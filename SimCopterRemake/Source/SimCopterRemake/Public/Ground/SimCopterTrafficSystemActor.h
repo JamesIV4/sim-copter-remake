@@ -922,6 +922,16 @@ public:
 	void MarkVehicleInTrafficLightLine(ASimCopterGroundAgent& Vehicle);
 	void MarkVehicleCommittedToIntersection(ASimCopterGroundAgent& Vehicle);
 	void MarkVehicleCollision(ASimCopterGroundAgent& Vehicle);
+	bool HasRecentVehicleCollision(const ASimCopterGroundAgent& Vehicle) const;
+	// Is this agent one of the three emergency pools' vehicles - the original's veh[5] identity
+	// test (0x11c fire / 0x11d police / 0x11f ambulance)?
+	bool IsDispatchVehicle(const ASimCopterGroundAgent& Vehicle) const;
+	// FUN_004a22e0: a special vehicle striking an ordinary car rolls 1-in-(0x200 >> difficulty) to
+	// set that car alight. Called once per fresh impact, never per frame of a sustained overlap.
+	void ApplyCollisionCarFireRoll(ASimCopterGroundAgent& A, ASimCopterGroundAgent& B);
+	// FUN_0049be50: a blocked emergency vehicle rolls 1-in-(0x40 >> difficulty) to raise a traffic
+	// jam mission. Only the dispatch pools run the original's routine, so only they roll here.
+	void ApplyBlockedVehicleJamRoll(ASimCopterGroundAgent& Vehicle);
 	bool TryStartVehicleRecovery(ASimCopterGroundAgent& Vehicle, FSimCopterVehicleTrafficState& State);
 	ASimCopterGroundAgent* FindClosestBlockingVehicle(const ASimCopterGroundAgent& Vehicle, const FVector& ForwardDirection) const;
 	FVector ChooseVehicleBypassDirection(const ASimCopterGroundAgent& Vehicle, const ASimCopterGroundAgent* BlockingVehicle, const FVector& ForwardDirection) const;

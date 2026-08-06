@@ -407,8 +407,13 @@ public:
 	virtual void MessageOwningVehicle(int32 MessageId) {}
 
 	// Ops 30/60/83, FUN_004cbfd0 / FUN_004cc130: bind "Thro" and launch a projectile, either on
-	// the person's facing or straight at the selection.
-	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) {}
+	// the person's facing or straight at the selection. FUN_004cbfd0 reads the record's own opcode
+	// to choose the type - `*param_3 == 0x3c` (op 60) asks FUN_0048e0b0 for type 4, the arsonist's
+	// firebomb; ops 30 and 83 ask for type 10, the rioter's rock. bIncendiary is that distinction.
+	virtual void ThrowProjectileAtSelection(
+		FSimCopterPersonContext& Context,
+		bool bAtSelection,
+		bool bIncendiary) {}
 
 	// Op 66, FUN_004cbbc0: the fall-and-die handler - detach, drop to the ground, post
 	// EVT_PersonDied and bind "Dead". True when the person has finished dying.

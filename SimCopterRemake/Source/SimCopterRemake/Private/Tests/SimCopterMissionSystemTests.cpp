@@ -14,10 +14,13 @@ namespace
 struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 {
 	int32 BuildingFootprint = 1;
+	// The id every in-bounds tile reports. 0x70 is an unoccupied building in the real XBLD property
+	// table; tests that need occupants (property bit 2) set this to one of the 39 ids that carry it.
+	int32 TileXbldId = 0x70;
 
 	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override
 	{
-		return (TileX >= 0 && TileX < 128 && TileY >= 0 && TileY < 128) ? 0x70 : 0;
+		return (TileX >= 0 && TileX < 128 && TileY >= 0 && TileY < 128) ? TileXbldId : 0;
 	}
 
 	virtual int32 GetBuildingFootprintSize(int32 TileX, int32 TileY) const override
@@ -785,6 +788,126 @@ bool FSimCopterMissionSessionStartTest::RunTest(const FString& Parameters)
 
 	TestFalse(TEXT("Out-of-range cities are rejected"), System.SelectCareerCity(30));
 	TestTrue(TEXT("The career city list is addressable"), System.GetCareerCityByIndex(29) != nullptr);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionsXbldPropertyTableTest, "SimCopter.Missions.XbldPropertyTable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionsXbldPropertyTableTest::RunTest(const FString& Parameters)
+{
+	// DAT_00504848, extracted from SimCopter.exe's .data (see GetXbldPropertyFlags). These are
+	// counts and spot values straight out of the blob in
+	// Docs/scratchpad/agent-sessions/2026-08-05-mission-authenticity/xbld_property_table.bin -
+	// enough that a bad edit to the literal array cannot pass unnoticed.
+	int32 Solid = 0;      // bit 0
+	int32 Buildings = 0;  // bit 1
+	int32 Occupied = 0;   // bit 2
+	for (int32 Id = 0; Id <= 0xff; ++Id)
+	{
+		const uint8 Flags = FSimCopterMissionSystem::GetXbldPropertyFlags(Id);
+		if (Flags & 0x01) ++Solid;
+		if (Flags & 0x02) ++Buildings;
+		if (Flags & 0x04) ++Occupied;
+	}
+	TestEqual(TEXT("117 ids are solid (bit 0)"), Solid, 117);
+	TestEqual(TEXT("57 ids are buildings (bit 1)"), Buildings, 57);
+	TestEqual(TEXT("39 ids have occupants (bit 2)"), Occupied, 39);
+
+	// Occupancy almost implies building: 38 of the 39 occupied ids also carry bit 1. The single
+	// exception is 0xfd, whose byte is 0x05 - solid and occupied, with the building bit clear. That
+	// is what the table says, so it is asserted rather than tidied away; anything else appearing
+	// here means the array has been corrupted.
+	for (int32 Id = 0; Id <= 0xff; ++Id)
+	{
+		const uint8 Flags = FSimCopterMissionSystem::GetXbldPropertyFlags(Id);
+		if ((Flags & 0x04) != 0 && (Flags & 0x02) == 0 && Id != 0xfd)
+		{
+			AddError(FString::Printf(TEXT("id 0x%02x has occupants but is not a building"), Id));
+		}
+	}
+	TestEqual(TEXT("0xfd is the lone solid+occupied non-building"), int32(FSimCopterMissionSystem::GetXbldPropertyFlags(0xfd)), 0x05);
+
+	// The three the fire-rescue placer excludes by hand really do carry the bit; the old stand-in
+	// wrongly denied it to them, which is what made that exclusion look redundant.
+	TestTrue(TEXT("0xd1 (hospital) is occupied"), (FSimCopterMissionSystem::GetXbldPropertyFlags(0xd1) & 0x04) != 0);
+	TestTrue(TEXT("0xd2 is occupied"), (FSimCopterMissionSystem::GetXbldPropertyFlags(0xd2) & 0x04) != 0);
+	TestTrue(TEXT("0xd3 is occupied"), (FSimCopterMissionSystem::GetXbldPropertyFlags(0xd3) & 0x04) != 0);
+
+	// Nothing below 0x81 has occupants - the fact that makes the original's signed-char read in
+	// the scheduled fire-rescue placer unable to ever succeed.
+	for (int32 Id = 0; Id < 0x81; ++Id)
+	{
+		if ((FSimCopterMissionSystem::GetXbldPropertyFlags(Id) & 0x04) != 0)
+		{
+			AddError(FString::Printf(TEXT("id 0x%02x below 0x81 unexpectedly has occupants"), Id));
+		}
+	}
+
+	// Roads (0x1d..0x2b) are not buildings and carry no occupants.
+	TestEqual(TEXT("a road tile has no properties"), int32(FSimCopterMissionSystem::GetXbldPropertyFlags(0x20) & 0x06), 0);
+	// Out of range answers null, as FUN_0049a4d0 does.
+	TestEqual(TEXT("negative ids answer 0"), int32(FSimCopterMissionSystem::GetXbldPropertyFlags(-1)), 0);
+	TestEqual(TEXT("ids past 0xff answer 0"), int32(FSimCopterMissionSystem::GetXbldPropertyFlags(0x100)), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionsBuildingFireDifficultyTest, "SimCopter.Missions.BuildingFireDifficulty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterMissionsBuildingFireDifficultyTest::RunTest(const FString& Parameters)
+{
+	// FUN_004a92f0's param_1 == 1 filter: which buildings a scheduled fire may start in, by tier.
+	// The rolls make individual calls non-deterministic, so assert the shape over many samples -
+	// what matters is that tier 1 is size-1 only and that the bigger sizes open up as tiers rise.
+	FSimCopterTestMissionWorld World;
+
+	// 0x90 carries property bit 2 (occupants); 0x70 is a building without it. Both arms of the
+	// filter are real now that the table is extracted rather than stood in for.
+	constexpr int32 OccupiedId = 0x90;
+	constexpr int32 EmptyId = 0x70;
+
+	auto AcceptRate = [&World](int32 Tier, int32 Footprint, int32 XbldId) -> float
+	{
+		World.BuildingFootprint = Footprint;
+		World.TileXbldId = XbldId;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		FSimCopterCareerCity City;
+		for (int32 i = 0; i < 7; ++i) City.Weights[i] = 10.0f;
+		City.Difficulty = Tier - 1;
+		System.SetCareerCity(City);
+
+		int32 Accepted = 0;
+		constexpr int32 Samples = 400;
+		for (int32 i = 0; i < Samples; ++i)
+		{
+			if (System.IsBuildingFireTargetAllowedByDifficulty(30, 30))
+			{
+				++Accepted;
+			}
+		}
+		return static_cast<float>(Accepted) / static_cast<float>(Samples);
+	};
+
+	// Tier 1 takes 1x1 buildings and nothing else - every fire in an easy city is a shack.
+	TestEqual(TEXT("Tier 1 always accepts a 1x1"), AcceptRate(1, 1, OccupiedId), 1.0f);
+	TestEqual(TEXT("Tier 1 never accepts a 2x2"), AcceptRate(1, 2, OccupiedId), 0.0f);
+	TestEqual(TEXT("Tier 1 never accepts a 4x4"), AcceptRate(1, 4, OccupiedId), 0.0f);
+
+	// Tier 2's size-1 arm is the one-in-three roll...
+	const float Tier2Small = AcceptRate(2, 1, OccupiedId);
+	TestTrue(TEXT("Tier 2 takes a 1x1 about a third of the time"), Tier2Small > 0.2f && Tier2Small < 0.5f);
+	// ...and its other arm wants size 2-3 with NO occupants. This is the arm the old stand-in made
+	// unreachable, because it claimed every building had people in it.
+	TestTrue(TEXT("Tier 2 takes an empty 2x2 most of the time"), AcceptRate(2, 2, EmptyId) > 0.5f);
+	TestTrue(TEXT("Tier 2 rejects an occupied 2x2 except via the 1-in-3"), AcceptRate(2, 2, OccupiedId) < 0.1f);
+
+	// Tiers 3 and 4 invert that: they want the big OCCUPIED buildings tier 1 refused outright.
+	TestTrue(TEXT("Tier 3 accepts an occupied 4x4"), AcceptRate(3, 4, OccupiedId) > 0.5f);
+	TestTrue(TEXT("Tier 4 accepts an occupied 4x4"), AcceptRate(4, 4, OccupiedId) > 0.5f);
+	TestTrue(TEXT("Tier 4 mostly rejects an empty 4x4"), AcceptRate(4, 4, EmptyId) < 0.35f);
+	// ...and tier 4 no longer wants the smallest ones except through its one-in-seven wildcard.
+	TestTrue(TEXT("Tier 4 rarely settles for a 1x1"), AcceptRate(4, 1, OccupiedId) < 0.35f);
 
 	return true;
 }

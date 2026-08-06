@@ -638,9 +638,6 @@ private:
 	void AlightAttachmentOnly();
 	// DAT_005040d0+0xa4: the player's helicopter, in it or not.
 	ASimCopterHelicopterPawn* ResolvePlayerHelicopter() const;
-	// Scatters this person when the player's helicopter is descending onto their tile.
-	void UpdateDescendingHelicopterAvoidance();
-	void Context_FaceAwayFromHelicopter(const FVector& HelicopterLocation);
 	// Keeps a harness rider on the rope end, which is a point on the helicopter rather than a
 	// component this actor can be parented to.
 	void UpdateCarriedTransform();
@@ -816,7 +813,7 @@ protected:
 	virtual void StopPersonVoice() override;
 	virtual int32 GetPlayerHelicopterSpeed() const override;
 	virtual bool HasHiddenPersonInState(int32 State) const override;
-	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) override;
+	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection, bool bIncendiary) override;
 	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool FaceAwayFromSelectedObject(FSimCopterPersonContext& Context) override;

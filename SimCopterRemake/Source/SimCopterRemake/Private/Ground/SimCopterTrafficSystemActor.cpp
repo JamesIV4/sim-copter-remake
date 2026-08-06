@@ -5944,8 +5944,16 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 				const FVector Push = SeparationDirection * (PushDistance * 0.5f + 0.5f);
 				A->MoveByTrafficSeparation(-Push);
 				B->MoveByTrafficSeparation(Push);
+				// Before the mark, while RecentCollisionSeconds still says whether this pair were
+				// already touching last frame: the original's collision handler is an EVENT, and
+				// re-rolling it every frame of a sustained overlap would set the whole street alight.
+				const bool bFreshImpact = PassIndex == 0 && !HasRecentVehicleCollision(*A) && !HasRecentVehicleCollision(*B);
 				MarkVehicleCollision(*A);
 				MarkVehicleCollision(*B);
+				if (bFreshImpact)
+				{
+					ApplyCollisionCarFireRoll(*A, *B);
+				}
 
 				if (PassIndex == 0)
 				{
@@ -5995,8 +6003,58 @@ void ASimCopterTrafficSystemActor::UpdateVehicleBlockageRecovery()
 			continue;
 		}
 
+		ApplyBlockedVehicleJamRoll(*Vehicle);
 		TryStartVehicleRecovery(*Vehicle, *State);
 	}
+}
+
+void ASimCopterTrafficSystemActor::ApplyBlockedVehicleJamRoll(ASimCopterGroundAgent& Vehicle)
+{
+	// SCHOOK: BlockedVehicleJam 0x0049be50 (five sites, all the same test).
+	//
+	// The shared "advance along the road" routine that the three emergency-vehicle state machines
+	// (FUN_004bd770 / FUN_004bd980 / FUN_004bdb50), the criminal car (FUN_004b8630) and the police
+	// on-scene handler (FUN_004b9e40) all call. When one of them is blocked it rolls
+	//     rand() % (0x40 >> difficulty)
+	// and on a zero allocates a 0x800 TYPE_TrafficJam record bound to itself (FUN_0049fe30);
+	// otherwise it just tries to reroute (FUN_0049ea70). So an ambulance stuck in traffic is how a
+	// jam mission gets raised outside the scheduler - 1-in-32 on an easy city, 1-in-4 on a hard one.
+	//
+	// Ordinary ambient cars do NOT run this: FUN_0049be50 has no other callers, which is why the
+	// gate below is the dispatch pools rather than "any blocked vehicle".
+	if (!IsDispatchVehicle(Vehicle))
+	{
+		return;
+	}
+
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Missions == nullptr)
+	{
+		return;
+	}
+
+	// Reaching here is already throttled: the caller skips any vehicle whose RecoveryCooldownSeconds
+	// is still running, so this rolls once per blocked episode rather than once per frame.
+	const int32 Divisor = FMath::Max(1, 0x40 >> FMath::Clamp(Missions->GetMissionDifficultyTier(), 0, 6));
+	if (FMath::RandHelper(Divisor) != 0)
+	{
+		return;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TryGetPeopleTileCoordinateAtWorldLocation(Vehicle.GetActorLocation(), TileX, TileY))
+	{
+		return;
+	}
+
+	// DIVERGENCE, small and named: the original binds the new record to the blocked vehicle itself
+	// (veh+0x113) and jams that car. The remake's TYPE_TrafficJam creator picks its own seed car
+	// from the ambient pool, so the jam forms at the blocked vehicle's tile rather than on the
+	// emergency vehicle - which is what the player wants to see anyway, since an ambulance that
+	// jams itself cannot then drive to its call.
+	Missions->CreateMissionAt(TileX, TileY, SimCopterMissions::TYPE_TrafficJam);
 }
 
 void ASimCopterTrafficSystemActor::ApplyVehicleLaneGuidance(float DeltaSeconds)
@@ -6384,6 +6442,72 @@ void ASimCopterTrafficSystemActor::MarkVehicleCommittedToIntersection(ASimCopter
 	State.IntersectionCommitSeconds = FMath::Max(State.IntersectionCommitSeconds, TrafficLightIntersectionCommitDurationSeconds);
 	State.bInTrafficLightLine = false;
 	State.TrafficLightLineGraceSeconds = 0.0f;
+}
+
+bool ASimCopterTrafficSystemActor::HasRecentVehicleCollision(const ASimCopterGroundAgent& Vehicle) const
+{
+	const FSimCopterVehicleTrafficState* State =
+		VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	return State != nullptr && State->RecentCollisionSeconds > 0.0f;
+}
+
+bool ASimCopterTrafficSystemActor::IsDispatchVehicle(const ASimCopterGroundAgent& Vehicle) const
+{
+	// The original asks the object's own identity byte: veh[5] is the message id its constructor
+	// stamped - 0x11c fire truck, 0x11d police, 0x11f ambulance (emergency_dispatch_decode section
+	// 8), plus 0x190 for the criminal car. The remake keeps that identity in the pools instead, so
+	// membership is the same question.
+	for (int32 ServiceIndex = 0; ServiceIndex < static_cast<int32>(SimCopterDispatch::EService::Count); ++ServiceIndex)
+	{
+		for (const FSimCopterDispatchVehicle& Slot : DispatchVehicles[ServiceIndex])
+		{
+			if (Slot.Agent.Get() == &Vehicle)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void ASimCopterTrafficSystemActor::ApplyCollisionCarFireRoll(
+	ASimCopterGroundAgent& A,
+	ASimCopterGroundAgent& B)
+{
+	// SCHOOK: CollisionCarFire 0x004a22e0, reached from the car-vs-car handler FUN_0049ee30.
+	//
+	// The rule is asymmetric and easy to misread: it only fires when ONE of the pair is a special
+	// vehicle and the other is an ordinary ambient car, and it is the ORDINARY one that burns -
+	//     bVar3 = (B is special); if (bVar3) { bVar3 = (A is special); if (!bVar3) { roll; ignite A; } }
+	// "Special" is `(veh[5] & 0xb) != 0 || 0x11c <= veh[5] <= 0x11f || veh[5] == 400`, i.e. an
+	// emergency vehicle or the criminal car. So this is a fire engine or a fleeing speeder
+	// T-boning somebody, not two commuters bumping in a queue.
+	//
+	// And the rate is the difficulty gradient: `rand() % (0x200 >> difficulty) == 0` is 1-in-256 on
+	// an easy city and 1-in-32 on a hard one, so hard cities generate car fires out of their own
+	// traffic without the scheduler being involved at all.
+	const bool bASpecial = IsDispatchVehicle(A);
+	const bool bBSpecial = IsDispatchVehicle(B);
+	if (bASpecial == bBSpecial)
+	{
+		return; // two ordinary cars, or two special ones: the original ignites neither
+	}
+
+	ASimCopterGroundAgent& Ordinary = bASpecial ? B : A;
+
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Missions == nullptr)
+	{
+		return;
+	}
+
+	const int32 Divisor = FMath::Max(1, 0x200 >> FMath::Clamp(Missions->GetMissionDifficultyTier(), 0, 9));
+	if (FMath::RandHelper(Divisor) != 0)
+	{
+		return;
+	}
+	Missions->CreatePlayerCausedCarFireForVehicle(&Ordinary);
 }
 
 void ASimCopterTrafficSystemActor::MarkVehicleCollision(ASimCopterGroundAgent& Vehicle)

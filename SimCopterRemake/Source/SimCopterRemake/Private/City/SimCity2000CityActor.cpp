@@ -18,6 +18,7 @@
 #include "Formats/SimCity2000Reader.h"
 #include "Ground/SimCopterFlashingLights.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Materials/Material.h"
@@ -3862,6 +3863,25 @@ void ASimCity2000CityActor::RebuildCity()
 			[&](int32 X, int32 Y) { return !IsAnimatedWaterTile(X, Y); });
 	};
 
+	// The same weights again, but addressable by grid corner rather than by vertex index. The
+	// shader reads them out of vertex colour; anything floating ON the water (the boats, and the
+	// people standing on them) has to evaluate the wave on the CPU instead, and needs the weight at
+	// an arbitrary XY to do it. Built here so the two can never disagree about where the shoreline
+	// pinning is - see GetWaterWaveOffsetCm.
+	{
+		constexpr int32 CornerCount = FSimCity2000City::MapSize + 1;
+		WaterCornerWeightGrid.SetNumUninitialized(CornerCount * CornerCount);
+		for (int32 GridY = 0; GridY < CornerCount; ++GridY)
+		{
+			for (int32 GridX = 0; GridX < CornerCount; ++GridX)
+			{
+				WaterCornerWeightGrid[GridY * CornerCount + GridX] =
+					CornerFadeToNearest(GridX, GridY, WaterShoreRamp,
+						[&](int32 X, int32 Y) { return !IsAnimatedWaterTile(X, Y); });
+			}
+		}
+	}
+
 	// Weights are appended in lockstep with the four V0..V3 corners AppendTerrainTileWithHeights adds
 	// for each routed water tile, so this array stays index-aligned with TerrainWaterSection.Vertices.
 	TArray<float> WaterVertexWeights;
@@ -5265,6 +5285,91 @@ bool ASimCity2000CityActor::TryGetWaterGameplaySurface(
 		*OutTile = FIntPoint(FileX, FileY);
 	}
 	return true;
+}
+
+float ASimCity2000CityActor::GetWaterWaveOffsetCm(const FVector& WorldLocation) const
+{
+	// A CPU evaluation of M_SimCopterWater's World Position Offset, kept term-for-term identical to
+	// WATER_WAVE_PRELUDE + WATER_WPO_CODE in Tools/Unreal/CreateSimCopterMaterials.py:
+	//
+	//     K1 = 2*pi / max(WaveLength, 1);   K2 = K1 * 1.7
+	//     P1 = K1 * (X*0.7 + Y*0.7) + T*Speed
+	//     P2 = K2 * (X*0.3 - Y*0.95) + T*Speed*0.8
+	//     h  = Weight * Amplitude * (0.6*sin(P1) + 0.4*sin(P2))
+	//
+	// The vertices move in the vertex shader and nothing on the CPU knows about it, so anything that
+	// is supposed to sit ON the sea - the boats, and the people standing on their decks - has to run
+	// the same arithmetic or it floats on the surface's rest plane while the water heaves through it.
+	// Two things must match or the boat will not track the crest it is drawn on: the shader's Time
+	// node is world time, and Weight is the shoreline-pinning vertex colour, which is why the corner
+	// grid is baked next to the vertex weights rather than approximated here.
+	//
+	// Both of the shader's early-outs are reproduced: Weight 0 (a shoreline vertex welded to the
+	// static land) and Low Power Graphics, which returns a flat surface for the whole sea.
+	const UWorld* World = GetWorld();
+	if (World == nullptr || !bAnimateWaterSurface || WaterWaveAmplitude <= 0.0f)
+	{
+		return 0.0f;
+	}
+	// The shader's LowPower input comes from USimCopterDayNightSubsystem::PublishLowPower, which
+	// reads exactly this. Ask the same source rather than a second copy of the flag.
+	if (SimCopterLowPower::IsEnabled())
+	{
+		return 0.0f;
+	}
+
+	const float Weight = GetWaterWaveWeightAt(WorldLocation);
+	if (Weight <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const FVector Local = GetActorTransform().InverseTransformPosition(WorldLocation);
+	// The shader reads absolute world position; the actor is placed at the origin in the shipped
+	// level, but transform through it anyway so a moved city still lines up with its own material.
+	const FVector WavePos = GetActorTransform().TransformPosition(FVector(Local.X, Local.Y, 0.0f));
+
+	const float K1 = 2.0f * PI / FMath::Max(WaterWaveLength, 1.0f);
+	const float K2 = K1 * 1.7f;
+	const float Time = static_cast<float>(World->GetTimeSeconds());
+	const float P1 = K1 * (static_cast<float>(WavePos.X) * 0.7f + static_cast<float>(WavePos.Y) * 0.7f) +
+		Time * WaterWaveSpeed;
+	const float P2 = K2 * (static_cast<float>(WavePos.X) * 0.3f - static_cast<float>(WavePos.Y) * 0.95f) +
+		Time * WaterWaveSpeed * 0.8f;
+	return Weight * WaterWaveAmplitude * (0.6f * FMath::Sin(P1) + 0.4f * FMath::Sin(P2));
+}
+
+float ASimCity2000CityActor::GetWaterWaveWeightAt(const FVector& WorldLocation) const
+{
+	// Bilinear across the tile's four corner weights - the same interpolation the rasteriser does
+	// to vertex colour between the four verts AppendTerrainTileWithHeights emitted for this tile.
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	constexpr int32 CornerGridSize = MapSize + 1;
+	if (TileSize <= KINDA_SMALL_NUMBER || WaterCornerWeightGrid.Num() != CornerGridSize * CornerGridSize)
+	{
+		return 0.0f;
+	}
+
+	const FVector LocalLocation = GetActorTransform().InverseTransformPosition(WorldLocation);
+	const float HalfMapSize = static_cast<float>(MapSize) * TileSize * 0.5f;
+	const float GridX = (static_cast<float>(LocalLocation.X) + HalfMapSize) / TileSize;
+	const float GridY = (HalfMapSize - static_cast<float>(LocalLocation.Y)) / TileSize;
+	const int32 FileX = FMath::FloorToInt(GridX);
+	const int32 FileY = FMath::FloorToInt(GridY);
+	if (FileX < 0 || FileX >= MapSize || FileY < 0 || FileY >= MapSize)
+	{
+		return 0.0f;
+	}
+
+	const auto CornerWeight = [this](const int32 X, const int32 Y)
+	{
+		return WaterCornerWeightGrid[Y * CornerGridSize + X];
+	};
+	const float FracX = GridX - static_cast<float>(FileX);
+	const float FracY = GridY - static_cast<float>(FileY);
+	const float Top = FMath::Lerp(CornerWeight(FileX, FileY), CornerWeight(FileX + 1, FileY), FracX);
+	const float Bottom = FMath::Lerp(CornerWeight(FileX, FileY + 1), CornerWeight(FileX + 1, FileY + 1), FracX);
+	return FMath::Lerp(Top, Bottom, FracY);
 }
 
 bool ASimCity2000CityActor::TryGetMapTerrainGrids(

@@ -2477,7 +2477,18 @@ bool ASimCopterHelicopterPawn::CanExitHelicopter() const
 
 bool ASimCopterHelicopterPawn::CanTransferMissionPassengers() const
 {
-	return bIsLanded && GroundClearanceCm <= GroundContactTolerance + 60.0f;
+	// LOW OR LANDED, never "parked". The original has no flight-state gate on getting in or out:
+	// FUN_004ca940 (opcode 12, the walk-and-board every passenger program reaches) accepts the move
+	// once the walker's body is in contact with the airframe AND the target sits under
+	// `(objectZ - personZ) & 0xffff0000 < 0x50000` - five original units, about 31 cm - and
+	// FUN_004c9bc0 (opcodes 17/21, the alight) asks only for a standable tile and six units of
+	// ground clearance. Requiring ESimCopterFlightState::Parked on top of that meant a fare who had
+	// walked up to a hovering helicopter with its skids a hand's breadth off the road was refused,
+	// which is not how the game plays: you drop to a low hover and they climb aboard.
+	//
+	// Contact is still enforced, on the walker's side, by StepTowardSelectedObject's own airframe
+	// test - so this stays a pure height band, exactly as the original's is.
+	return GroundClearanceCm <= GroundContactTolerance + PassengerTransferClearanceCm;
 }
 
 bool ASimCopterHelicopterPawn::TryGetRopeEndWorldLocation(FVector& OutWorldLocation) const
@@ -3444,11 +3455,24 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	RemoveControllerOverlayWidget();
 	RemoveHelicopterDebugPanel();
 
+	// The pilot steps out of the cabin door, not onto a spot two and a half metres off the skid.
+	// Measure the offset from the rendered fuselage's own box (the same source boarding uses in
+	// GetDistanceToAirframeCm) so it lands just clear of whichever model is being flown: level with
+	// the middle of the body fore-and-aft, and ExitClearanceCm outboard of its side. ExitOffset is
+	// the fallback for a frame where no fuselage has been built yet - a headless test, or before the
+	// GEO packs load.
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	FVector2D DoorOffset(ExitOffset.X, ExitOffset.Y);
+	FBox AirframeBounds(ForceInit);
+	if (TryGetAirframeLocalBoundsCm(AirframeBounds))
+	{
+		DoorOffset.X = static_cast<float>(AirframeBounds.GetCenter().X);
+		DoorOffset.Y = static_cast<float>(AirframeBounds.Max.Y) + ExitClearanceCm;
+	}
 	FVector ExitLocation =
 		GetActorLocation() +
-		YawFrame.GetUnitAxis(EAxis::X) * ExitOffset.X +
-		YawFrame.GetUnitAxis(EAxis::Y) * ExitOffset.Y;
+		YawFrame.GetUnitAxis(EAxis::X) * DoorOffset.X +
+		YawFrame.GetUnitAxis(EAxis::Y) * DoorOffset.Y;
 
 	const FVector TraceStart = ExitLocation + FVector::UpVector * 1200.0f;
 	const FVector TraceEnd = ExitLocation - FVector::UpVector * 2200.0f;

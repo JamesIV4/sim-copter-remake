@@ -7,12 +7,14 @@
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterEffectExposure.h"
 #include "Engine/World.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "GameFramework/PlayerController.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterEffectRasterizer.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -896,6 +898,27 @@ void USimCopterParticleFXComponent::AdvanceWaterTrajectoryStep(
 			{
 				Mission->ApplyWaterParticleImpact(Impact, Result.DouseStrength1616);
 			}
+		}
+
+		// SCHOOK: WaterHitsPeople 0x00490690. Water does not only put fires out - the impact loop's
+		// class-to-mode table sends the whole water family to interaction mode 4:
+		//     if ((uVar9 & 0xe0) == 0) { ... } else { local_d0 = 4; }
+		// 0xe0 is the cannon (0x20), the bucket (0x40) and type 7 (0x80) together, and mode 4 is
+		// DAT_0058d728[4] = BHAV 908 "Rxn: Water" - which drops a rioter's agitation, exactly as
+		// tear gas does through 907. The remake had the douse half of this line and not the people
+		// half, so hosing a crowd did nothing at all; this is what makes the water cannon a riot
+		// tool and not just a fire hose.
+		if (ASimCopterHelicopterPawn* Helicopter =
+			Cast<ASimCopterHelicopterPawn>(UGameplayStatics::GetActorOfClass(
+				GetWorld(), ASimCopterHelicopterPawn::StaticClass())))
+		{
+			FSimCopterInteractionEvent Event;
+			Event.Mode = ESimCopterInteractionMode::Water;
+			Event.Source = GetOwner();
+			Event.TargetTile = ImpactCell;
+			Event.TargetWorldLocation = Impact;
+			Event.ImpactStrength = static_cast<float>(Result.DouseStrength1616) / Fixed1616Scale;
+			Helicopter->DeliverInteractionToTile(Event);
 		}
 		return;
 	}

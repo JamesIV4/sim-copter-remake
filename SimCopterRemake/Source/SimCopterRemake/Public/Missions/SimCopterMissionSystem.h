@@ -605,6 +605,11 @@ public:
 	// FUN_004a92f0 LAB_004a95ff: the tile carries a building a mission can be attached to.
 	// Medevac, Transport and every on-foot criminal are placed through it.
 	static bool IsMissionBuildingTile(int32 XbldId);
+	// FUN_004a92f0's param_1 == 1 loop: may a scheduled building fire start in this tile's
+	// building, given the current difficulty? Tier 1 allows only 1x1 buildings and each tier up
+	// admits bigger, occupied ones - the escalation the career's fire missions are built on.
+	// Consumes a roll from Rand on tiers 2..4, exactly where the original does.
+	bool IsBuildingFireTargetAllowedByDifficulty(int32 TileX, int32 TileY);
 	static uint8 GetXbldPropertyFlags(int32 XbldId); // FUN_0049a4d0 record byte 0
 	void RunSchedulerOnce();                         // FUN_004a6e60 body (post-cadence)
 
