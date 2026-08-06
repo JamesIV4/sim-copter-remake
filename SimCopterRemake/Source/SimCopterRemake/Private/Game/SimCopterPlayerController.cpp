@@ -6,6 +6,7 @@
 #include "Audio/SimCopterRadio.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Game/SimCopterSaveSubsystem.h"
@@ -72,22 +73,7 @@ void ASimCopterPlayerController::SetupInputComponent()
 
 FString ASimCopterPlayerController::ResolveOriginalGameRoot()
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return FString();
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 void ASimCopterPlayerController::SimSettings()

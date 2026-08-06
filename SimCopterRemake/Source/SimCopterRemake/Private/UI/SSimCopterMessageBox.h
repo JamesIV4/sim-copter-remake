@@ -63,6 +63,21 @@ public:
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 private:
+	using FMakeDialogButton = TFunctionRef<TSharedRef<SWidget>(const FText&, FSimpleDelegate*)>;
+
+	// MBox.bmp present: the decoded page, controls at the rectangles read out of the assembly.
+	TSharedRef<SWidget> BuildPrintedPage(
+		USimCopterHangarArt* Art,
+		const FText& Message,
+		const FMakeDialogButton& MakeDialogButton);
+
+	// MBox.bmp absent - which is the norm for the message that says the original game files are
+	// missing, since that is the same folder. Laid out rather than positioned: the decoded
+	// rectangles are coordinates into a picture that is not being drawn.
+	TSharedRef<SWidget> BuildFallbackPlate(
+		const FText& Message,
+		const FMakeDialogButton& MakeDialogButton);
+
 	bool bConfirm = false;
 	FSimpleDelegate OnDismissed;
 	FSimpleDelegate OnConfirmed;

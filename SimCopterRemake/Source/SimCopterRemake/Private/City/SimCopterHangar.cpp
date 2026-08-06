@@ -15,6 +15,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "GameFramework/Pawn.h"
 #include "Ground/SimCopterPopulationSprite.h"
@@ -679,27 +680,15 @@ void ASimCopterHangar::HandleTriggerBeginOverlap(
 
 FString ASimCopterHangar::ResolveOriginalGameRoot() const
 {
-	if (!OriginalGameRoot.Path.IsEmpty())
+	// Same rule as the city actor: an authored override only wins while it still points at a real
+	// install, so a level saved against a developer checkout does not blank the shell in a
+	// packaged build.
+	if (SimCopterOriginalGame::IsOriginalGameRoot(OriginalGameRoot.Path))
 	{
 		return OriginalGameRoot.Path;
 	}
 
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return FString();
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 void ASimCopterHangar::OpenShell(APlayerController* PlayerController)

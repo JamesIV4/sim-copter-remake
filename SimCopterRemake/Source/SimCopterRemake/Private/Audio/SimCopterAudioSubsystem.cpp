@@ -4,6 +4,7 @@
 #include "Components/AudioComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -170,23 +171,7 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 
 FString USimCopterAudioSubsystem::ResolveSoundRoot() const
 {
-	TArray<FString> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/sound"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/sound")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/sound")));
-	Candidates.Add(TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame/sound"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../../Reference/SimCopterOriginalGame/sound")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-	return FString();
+	return SimCopterOriginalGame::ResolveDirectory(TEXT("sound"));
 }
 
 FString USimCopterAudioSubsystem::ResolveWavPath(const FString& WavName, SimCopterSound::ESoundDir Dir) const

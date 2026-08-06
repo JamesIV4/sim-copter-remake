@@ -2,6 +2,7 @@
 
 #include "SSimCopterUserCityPicker.h"
 
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "InputCoreTypes.h"
 #include "Misc/Paths.h"
 #include "Brushes/SlateColorBrush.h"
@@ -24,6 +25,7 @@ const TCHAR* const PickerPage = TEXT("MENU4.BMP");
 // The navy title band takes light text; the pale list panel takes dark.
 const FLinearColor TitleText(0.90f, 0.93f, 0.98f, 1.0f);
 const FLinearColor ListText(0.08f, 0.08f, 0.09f, 1.0f);
+
 }
 
 void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
@@ -89,15 +91,21 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 	}
 	else
 	{
+		// The "no cities" message is the one thing on this page that shows when MENU4.BMP itself is
+		// missing - both want the same folder - so it lands on MakePageImage's dark fallback plate,
+		// where ListText would be invisible.
+		const bool bHasPage = HasPageBitmap(ArtObject, PickerPage);
 		AddAtPage(ListRect,
 			SNew(STextBlock)
-			.Text(LOCTEXT(
-				"NoCities",
-				"No .sc2 files found. Put the original game folder under Reference/SimCopterOriginalGame."))
+			.Text(FText::Format(
+				LOCTEXT("NoCities", "No .sc2 files found.\n\n{0}"),
+				SimCopterOriginalGame::GetMissingDataHint()))
 			.Justification(ETextJustify::Center)
 			.AutoWrapText(true)
+			.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
+			.LineHeightPercentage(1.15f)
 			.Font(PageFont(ListFontHeight))
-			.ColorAndOpacity(FSlateColor(ListText)));
+			.ColorAndOpacity(FSlateColor(bHasPage ? ListText : PlateTextColor)));
 	}
 
 	AddAtPage(FRect{ AcceptButtonX, ButtonY, AcceptButtonX + ButtonWidth, ButtonY + ButtonHeight },
