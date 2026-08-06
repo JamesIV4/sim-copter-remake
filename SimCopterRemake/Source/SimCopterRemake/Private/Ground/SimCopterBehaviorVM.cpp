@@ -459,12 +459,15 @@ EOpResult ExecOpcode(
 		return World.IsCarrierHarness() ? EOpResult::True : EOpResult::False;
 	case 87: // am I back on the tile I was placed on? (FUN_004cce50)
 		return World.IsOnHomeTile() ? EOpResult::True : EOpResult::False;
-	case 30: // bind "Thro" and launch a projectile along my facing (FUN_004cbfd0)
-	case 60: // the same handler (FUN_004cced0 forwards to it)
-		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false);
+	case 30: // bind "Thro" and launch a projectile along my facing (FUN_004cbfd0): type 10, a rock
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false, /*bIncendiary*/ false);
 		return EOpResult::True;
-	case 83: // face the selection, bind "Thro", throw at it (FUN_004cc130)
-		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ true);
+	case 60: // the same handler via FUN_004cced0, but `*param_3 == 0x3c` selects type 4 instead -
+		// the arsonist's firebomb, the one projectile in the game that starts a building fire.
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false, /*bIncendiary*/ true);
+		return EOpResult::True;
+	case 83: // face the selection, bind "Thro", throw at it (FUN_004cc130): type 10 again
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ true, /*bIncendiary*/ false);
 		return EOpResult::True;
 	case 66: // fall and die (FUN_004cbbc0)
 		World.BeginFallAndDie(Context);

@@ -511,6 +511,7 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	ProcessPassengerTransfers();
 	ProcessRescueTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
+	UpdateBurningDebris(DeltaTime);
 	UpdateFireVisuals(DeltaTime);
 	UpdateFireAudio();
 	UpdateEmergencySirenAudio();
@@ -923,6 +924,110 @@ int32 ASimCopterMissionSystemActor::ApplyWaterParticleImpact(
 	}
 
 	return FlamesHit;
+}
+
+namespace
+{
+	// FUN_0048ed00's class-0x10 arm, the only class it treats this way: the moment the slot's speed
+	// drops under 0x40001 it grounds and takes a fresh life of 0x3c0000 seconds of burning, puffing
+	// smoke every 0x3333 of its sub-timer. Everything else is given a life of 0 and simply stops.
+	constexpr float ArsonBurnSeconds = 60.0f;      // 0x3c0000
+	constexpr float ArsonPuffIntervalSeconds = 0.2f; // 0x3333
+	// The pool the firebomb comes out of (DAT_005d6880), shared with the rioters' thrown rocks.
+	constexpr int32 ArsonDebrisSlots = 30;
+	// The size the burning pool is drawn at, in original units - the debris card's own 0x30000.
+	constexpr float ArsonDebrisSizeUnits = 3.0f;
+}
+
+// SCHOOK: ArsonistFirebomb 0x004cbfd0 -> FUN_0048e0b0 type 4 -> FUN_0048ed00 class 0x10
+void ASimCopterMissionSystemActor::ThrowArsonistFirebomb(const FVector& ThrowerWorldLocation)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+	// A fixed pool, and a full one simply refuses the throw (FUN_0048e0b0 returns null after
+	// walking all thirty slots) - the arsonist's animation still plays either way.
+	if (BurningDebris.Num() >= ArsonDebrisSlots)
+	{
+		return;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(ThrowerWorldLocation, TileX, TileY))
+	{
+		return;
+	}
+
+	// The lob is 75 to 95 degrees above horizontal, so the landing point is the thrower's own tile
+	// and the flight is short. The remake skips the ballistic slot and grounds it where it lands,
+	// which is the only part of the trajectory the 60-second burn and the ignition roll depend on.
+	FVector Landing = ThrowerWorldLocation;
+	float SurfaceZ = 0.0f;
+	if (TraceSurfaceTopZ(ThrowerWorldLocation, SurfaceZ))
+	{
+		Landing.Z = SurfaceZ;
+	}
+
+	FSimCopterBurningDebris& Slot = BurningDebris.AddDefaulted_GetRef();
+	Slot.World = Landing;
+	Slot.Tile = FIntPoint(TileX, TileY);
+	Slot.BurnSecondsRemaining = ArsonBurnSeconds;
+	Slot.PuffSecondsRemaining = 0.0f;
+
+	// FUN_0048e0b0's type-4 arm posts event 7 at spawn with no owning record (the arsonist passes
+	// -1), so the debris is reported to the scoring layer even though nothing owns it yet.
+	MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisCreated, INDEX_NONE, 1, true);
+}
+
+void ASimCopterMissionSystemActor::UpdateBurningDebris(const float DeltaSeconds)
+{
+	if (BurningDebris.Num() == 0 || DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	for (int32 Index = BurningDebris.Num() - 1; Index >= 0; --Index)
+	{
+		FSimCopterBurningDebris& Slot = BurningDebris[Index];
+
+		Slot.PuffSecondsRemaining -= DeltaSeconds;
+		if (Slot.PuffSecondsRemaining <= 0.0f)
+		{
+			Slot.PuffSecondsRemaining = ArsonPuffIntervalSeconds;
+			if (FireSmokeComponent != nullptr)
+			{
+				FireSmokeComponent->SpawnEffect(
+					ESimCopterEffectType::Smoke,
+					Slot.World,
+					FVector::UpVector * (20.0f * SimCopterEffectFX::OriginalUnitToCm),
+					ArsonDebrisSizeUnits * SimCopterEffectFX::OriginalUnitToCm);
+			}
+		}
+
+		Slot.BurnSecondsRemaining -= DeltaSeconds;
+		if (Slot.BurnSecondsRemaining > 0.0f)
+		{
+			continue;
+		}
+
+		// Burned out. The ignition test is FUN_0048ed00's, in its order: the tile must take a fire
+		// and have none already burning nearby (CanIgniteCrashSite is FUN_004a5f60 + FUN_004a6860's
+		// spiral, the same pair the plane crash uses), and then the roll is one in (8 - difficulty),
+		// so an easy city misses far more often than a hard one.
+		const int32 Divisor = FMath::Max(1, 8 - MissionSystem.GetDifficultyTier());
+		if (MissionSystem.CanIgniteCrashSite(Slot.Tile.X, Slot.Tile.Y) &&
+			(MissionSystem.GetRand().Rand() % Divisor) == 0)
+		{
+			CreateMissionAt(Slot.Tile.X, Slot.Tile.Y, SimCopterMissions::TYPE_BuildingFire);
+		}
+
+		// Event 8 either way - the debris is gone whether or not it took the building with it.
+		MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisExpired, INDEX_NONE, 1, true);
+		BurningDebris.RemoveAtSwap(Index);
+	}
 }
 
 FString ASimCopterMissionSystemActor::ResolveOriginalGameRootDir() const

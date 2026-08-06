@@ -321,6 +321,27 @@ public:
 	// impacts are rejected by the particle updater before this boundary.
 	int32 ApplyWaterParticleImpact(const FVector& ImpactWorldLocation, int32 Strength1616);
 
+	// SCHOOK: ArsonistFirebomb 0x004cbfd0 (VM opcode 60 -> FUN_0048e0b0 projectile type 4)
+	//
+	// This is how an arsonist actually starts a fire, and it is the only way they can: BHAV 1301
+	// "Criminal Arsonist" -> 1078 "crim - arsonist unspotted" rec[3]/[4] rolls rand(1000) < 6 each
+	// loop and, on a hit, runs opcode 60. FUN_004cbfd0 binds "Thro" and hands FUN_0048e0b0 a
+	// **type 4** projectile: the 30-slot pool at DAT_005d6880, class flag 0x10, life 0x1e0000, lobbed
+	// along the thrower's facing octant pitched up by (rand % 200) + 0x2ee tenth-degrees - 75.0 to
+	// 94.9 degrees, i.e. very nearly straight up, so it lands on the arsonist's own tile.
+	//
+	// FUN_0048ed00 then owns the rest. Once the slot's speed falls under 0x40001 it grounds
+	// (slot[0xe] := 1), takes a fresh life of 0x3c0000 = 60 s (that longer burn is class 0x10's
+	// alone - every other class gets 0) and puffs smoke every 0x3333 of sub-timer. When THAT life
+	// runs out, and only for class 0x10, on a tile FUN_004a5f60 will take, with no fire already in
+	// FUN_004a6860's spiral: `rand() % (8 - difficulty) == 0` starts a real building fire mission
+	// (FUN_004a7a10). So the firebomb is a delayed, probabilistic ignition, not an instant one -
+	// which is the window the player has to spot the burning debris and douse it first.
+	void ThrowArsonistFirebomb(const FVector& ThrowerWorldLocation);
+
+	// How many burning-debris slots are alight. Exposed for the automation tests.
+	int32 GetBurningDebrisCount() const { return BurningDebris.Num(); }
+
 	// SCHOOK: FireProximityProbe 0x004a5c10
 	// How far a point sits above the top of the nearest flame below it, in original 16.16 units,
 	// or 0 when there is no flame within reach. This is the helicopter's fire-damage and
@@ -471,6 +492,18 @@ private:
 	// and the original game root (for loading the flame GEO meshes once).
 	TWeakObjectPtr<AActor> ResolvedCityActor;
 	bool bFireAssetsInitialized = false;
+
+	// One grounded, burning type-4 projectile - an arsonist's firebomb after it has landed.
+	// See ThrowArsonistFirebomb for the decode this mirrors.
+	struct FSimCopterBurningDebris
+	{
+		FVector World = FVector::ZeroVector;
+		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
+		float BurnSecondsRemaining = 0.0f;
+		float PuffSecondsRemaining = 0.0f;
+	};
+	TArray<FSimCopterBurningDebris> BurningDebris;
+	void UpdateBurningDebris(float DeltaSeconds);
 
 	// Build the per-frame flame draw list from the mission system and push it to the fire
 	// component. Converts each flame's tile to a rooftop-traced world point + growth/flicker.

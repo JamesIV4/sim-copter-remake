@@ -371,17 +371,28 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	}
 	else if (TypeMask == TYPE_BuildingFire)
 	{
+		// FUN_004a92f0's param_1 == 1 arm: ten tries, and the tile has to pass three tests in this
+		// order - it will take a fire (FUN_004a5f60), nothing is already burning inside
+		// FUN_004a6860's spiral, and it survives the DIFFICULTY-GRADED building filter below.
+		// The first tile that passes breaks out and is created at LAB_004a9814; ten failures create
+		// nothing at all.
 		for (int i = 0; i < 10; ++i)
 		{
 			int32 TX, TY;
-			if (TryPickRandomTileNearCamera(TX, TY))
+			if (!TryPickRandomTileNearCamera(TX, TY))
 			{
-				if (IsFireSuitableTile(World ? World->GetXbldTileId(TX, TY) : 0))
-				{
-					int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
-					if (CreatedId != -1) return ReturnCreation(CreatedId);
-				}
+				continue;
 			}
+			if (!IsFireSuitableTile(World ? World->GetXbldTileId(TX, TY) : 0) || IsAnyFireNear(TX, TY))
+			{
+				continue;
+			}
+			if (!IsBuildingFireTargetAllowedByDifficulty(TX, TY))
+			{
+				continue;
+			}
+			const int32 CreatedId = CreateEventAt(TX, TY, TypeMask);
+			if (CreatedId != -1) return ReturnCreation(CreatedId);
 		}
 	}
 	else if (TypeMask == TYPE_Medevac ||
@@ -436,6 +447,21 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	{
 		// The one branch that leaves its loop to create: FUN_004a92f0 jumps to LAB_004a9814 on
 		// the first tile that passes, so a creation failure here is not retried.
+		//
+		// DIVERGENCE, deliberate, and the only one in this function - the original's 0x80010 arm
+		// reads the tile as a SIGNED char:
+		//     cVar2 = *(char *)((&DAT_005910b0)[x] + y);
+		//     pbVar7 = FUN_0049a4d0(cVar2);
+		//     if (pbVar7 != NULL && (*pbVar7 & 4) != 0 && cVar2 != -0x2f && -0x2e && -0x2d) create;
+		// `FUN_0049a4d0` rejects anything below zero, and EVERY id carrying the occupancy bit is
+		// 0x81 or higher, so every one of them sign-extends negative and returns null. The test can
+		// never pass: in the shipped game the Rescue bucket's fire-rescue rolls always burn their
+		// five tries and create nothing. (The emergent path in UpdateFires is unaffected - it reads
+		// the same byte UNSIGNED, which is how trapped occupants appear at all.)
+		//
+		// Reproducing that would delete a whole scheduled mission type, so the id is read unsigned
+		// here. The three explicit exclusions are the original's own and are kept: -0x2f/-0x2e/-0x2d
+		// are 0xd1/0xd2/0xd3, the hospital, police and fire stations, which do carry the bit.
 		for (int i = 0; i < 5; ++i)
 		{
 			int32 TX, TY;
@@ -461,6 +487,61 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	return -1;
 }
 
+bool FSimCopterMissionSystem::IsBuildingFireTargetAllowedByDifficulty(int32 TileX, int32 TileY)
+{
+	// SCHOOK: BuildingFireTargetFilter 0x004a92f0 (the param_1 == 1 loop, 0x004a9500..0x004a9596).
+	//
+	// This is the difficulty gradient nobody notices until it is missing: which BUILDINGS a
+	// scheduled fire is allowed to start in. It reads the scene cell's footprint size (cell+8) and
+	// the XBLD property byte (FUN_0049a4d0, bit 2), and it gets steadily nastier:
+	//
+	//   tier 1  size 1 only. Every fire in an easy city is a one-tile shack.
+	//   tier 2  one try in three takes a size-1; otherwise size 2..3 and NOT occupied.
+	//   tier 3  one try in four takes anything; otherwise size 2..4 and occupied.
+	//   tier 4  one try in seven takes anything; otherwise size 3..4 and occupied.
+	//
+	// So on a hard city fires start in big towers with people in them - which is also what feeds
+	// UpdateFires' TYPE_FireRescue spawn, since that gate reads the same property bit. Without this
+	// filter every tier picked uniformly from whatever the random tile happened to be, and the
+	// career's fire missions did not escalate at all.
+	const int32 Size = World != nullptr ? World->GetBuildingFootprintSize(TileX, TileY) : 0;
+	const uint8 Props = World != nullptr ? GetXbldPropertyFlags(World->GetXbldTileId(TileX, TileY)) : 0;
+	// The original tests `flags != NULL && (*flags & 4)` - a null row is "no property data", which
+	// is not the same as "unoccupied", and the two arms treat it differently.
+	const bool bHasProps = Props != 0;
+	const bool bOccupied = bHasProps && (Props & 4) != 0;
+
+	// NOTE: GetXbldPropertyFlags is still the stand-in that answers 0x04 for every ordinary
+	// building (the real table at DAT_00504848 is static .data and is not in the Ghidra exports).
+	// Under it, tier 3 and tier 4 are exact - they want occupied buildings and every building reads
+	// as occupied - while tier 2's "size 2..3 and NOT occupied" arm can never fire, so a tier-2 city
+	// only ever lights 1x1 buildings through its one-in-three roll. Porting the real table fixes
+	// that arm with no change here.
+	switch (DifficultyTier)
+	{
+	case 1:
+		return Size == 1;
+	case 2:
+		if ((Rand.Rand() % 3) == 0)
+		{
+			return Size == 1;
+		}
+		return Size >= 2 && Size <= 3 && !bOccupied;
+	case 3:
+		if ((Rand.Rand() & 3) == 0)
+		{
+			return true;
+		}
+		return Size >= 2 && Size <= 4 && bOccupied;
+	default:
+		if ((Rand.Rand() % 7) == 0)
+		{
+			return true;
+		}
+		return Size >= 3 && Size <= 4 && bOccupied;
+	}
+}
+
 bool FSimCopterMissionSystem::IsMissionBuildingTile(int32 XbldId)
 {
 	// FUN_004a92f0 LAB_004a95ff, literally: 0x6f < id < 0xdc, minus the three ids at 0xd1-0xd3.
@@ -483,14 +564,52 @@ void FSimCopterMissionSystem::NoteCreationResult(bool bCreated)
 
 uint8 FSimCopterMissionSystem::GetXbldPropertyFlags(int32 BlockId)
 {
-	// FUN_0049a4d0 reads the XBLD property table. Until that table is ported,
-	// treat ordinary SC2 buildings as mission-capable and keep roads/ruins out.
-	const uint8 Id = static_cast<uint8>(BlockId);
-	if (Id >= 0x70 && Id < 0xdc && Id != 0xd1 && Id != 0xd2 && Id != 0xd3)
+	// SCHOOK: XbldPropertyTable DAT_00504848, read through FUN_0049a4d0(id) = base + id * 0x14.
+	//
+	// EXTRACTED FROM THE EXECUTABLE, not inferred. Nothing in the code writes this table, so it is
+	// statically initialised data sitting in SimCopter.exe's .data section: RVA 0x104848 -> file
+	// offset 0x102248 through the PE section headers. The dump script and the raw 5120-byte blob
+	// are in Docs/scratchpad/agent-sessions/2026-08-05-mission-authenticity/ (the mapping is
+	// verified there against six .data strings ghidra-bridge reports at known addresses).
+	//
+	// Each record is 0x14 bytes; only the first byte is a flag word, and its three used bits are
+	// named by their consumers:
+	//   bit 0 (0x01)  solid - FUN_004c40a0 refuses to let a person stand on the tile when set
+	//   bit 1 (0x02)  a real building (57 ids)
+	//   bit 2 (0x04)  the building has PEOPLE IN IT (39 ids) - the flag the fire placer
+	//                 (FUN_004a92f0) and the trapped-occupant spawn (FUN_004a4ac0) both test
+	// The remaining four dwords are a person-emission anchor: FUN_004c2260 builds
+	// (rec+4 + rec+0xc / 3.0, rec+8 + rec+0x10 / 3.0) in 16.16. Nothing in the remake needs them
+	// yet; the blob has them if that changes.
+	//
+	// The previous stand-in answered 0x04 for every id in 0x70..0xdb except 0xd1-0xd3, which was
+	// wrong in both directions: it gave ~105 ids occupants instead of 39, and it denied them to
+	// the hospital/police/fire stations, which really do have bit 2 set.
+	static constexpr uint8 PropertyFlags[256] =
 	{
-		return 0x04;
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,  // 0x00
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x01,  // 0x10
+		0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,  // 0x20
+		0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01,  // 0x30
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,  // 0x40
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,  // 0x50
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,  // 0x60
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // 0x70
+		0x01, 0x06, 0x02, 0x02, 0x00, 0x01, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,  // 0x80
+		0x06, 0x06, 0x06, 0x06, 0x02, 0x02, 0x02, 0x00, 0x00, 0x02, 0x06, 0x06, 0x06, 0x06, 0x01, 0x02,  // 0x90
+		0x02, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x06, 0x06, 0x06, 0x02, 0x06,  // 0xa0
+		0x00, 0x06, 0x06, 0x06, 0x00, 0x02, 0x00, 0x06, 0x06, 0x06, 0x06, 0x06, 0x01, 0x01, 0x01, 0x00,  // 0xb0
+		0x02, 0x02, 0x02, 0x02, 0x06, 0x06, 0x01, 0x01, 0x01, 0x06, 0x06, 0x06, 0x01, 0x01, 0x02, 0x06,  // 0xc0
+		0x00, 0x06, 0x06, 0x06, 0x06, 0x00, 0x06, 0x01, 0x06, 0x06, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00,  // 0xd0
+		0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,  // 0xe0
+		0x01, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x06, 0x06, 0x05, 0x06, 0x06,  // 0xf0
+	};
+	// FUN_0049a4d0 answers null outside 0..0xff, and every caller treats null as "no properties".
+	if (BlockId < 0 || BlockId > 0xff)
+	{
+		return 0;
 	}
-	return 0;
+	return PropertyFlags[BlockId];
 }
 
 bool FSimCopterMissionSystem::TryPickRandomTileNearCamera(int32& OutTX, int32& OutTY)
@@ -946,6 +1065,17 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		Rec.CarsCrashed = FMath::Max(Rec.CarsCrashed, 1);
 		Rec.Name = FString::Printf(TEXT("Car Fire #%d"), TypeSerials[9]);
 		TypeSerials[9]++;
+
+		// SCHOOK: CarFireCasualtyRoll 0x0049fd00's tail. Setting a car alight ends with
+		//     if (rand() % (0x40 >> difficulty) == 0) FUN_004a7a10(x, y, 0x20);
+		// - a chance that somebody was hurt in it, as a separate MedEvac record at the same tile.
+		// The shift is the whole point: 1-in-32 on an easy city, 1-in-4 on a hard one, so on tier 4
+		// a burning car usually comes with a casualty to lift out. Missing entirely before this.
+		const int32 CasualtyDivisor = FMath::Max(1, 0x40 >> FMath::Clamp(DifficultyTier, 0, 6));
+		if ((Rand.Rand() % CasualtyDivisor) == 0)
+		{
+			CreateEventAt(OutX, OutY, TYPE_Medevac);
+		}
 	}
 	else if (TypeMask == TYPE_SpeederEvent)
 	{

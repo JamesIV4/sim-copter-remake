@@ -116,6 +116,12 @@ struct FSimCopterAmbientBoat
 	float MissionTimerSeconds = 0.0f;           // +0x57
 	float WakeTimerSeconds = 0.9f;              // +0x0b (0xe666)
 	FVector World = FVector::ZeroVector;        // +0x97/+0x9b/+0x9f
+	// Remake-only. World is the position on the sea's REST plane, which is what the tile/target
+	// logic and the mission marker read; WaveWorld is where the hull is actually drawn once
+	// M_SimCopterWater's swell is added, and WaveTilt is the wave slope under it. Riders are placed
+	// against the second pair so they heave with the deck rather than the rest plane.
+	FVector WaveWorld = FVector::ZeroVector;
+	FRotator WaveTilt = FRotator::ZeroRotator;
 	TObjectPtr<UProceduralMeshComponent> Mesh;
 };
 
@@ -321,6 +327,40 @@ private:
 	void DestroyWreck(FSimCopterVehicleWreck& Wreck);
 	// True while the mission layer still has a live record for this event.
 	bool IsMissionEventActive(int32 EventId) const;
+
+	// --- boat wave riding and its survivors ---
+	// Adds M_SimCopterWater's vertex-shader swell to a body floating on the sea: the height at the
+	// rest position, plus the pitch/roll of the wave slope measured over the hull's own length.
+	void ApplyWaterWaveToFloatingBody(
+		const FVector& RestWorld,
+		const FVector& Forward,
+		FVector& OutDisplayWorld,
+		FRotator& OutTilt) const;
+	// One survivor in the water beside the capsized boat, holding the offset from the hull they
+	// were spawned at (X ahead, Y to starboard, Z above the sea) so the group drifts and heaves
+	// with the boat instead of being left standing on the rest plane.
+	struct FSimCopterBoatRider
+	{
+		TWeakObjectPtr<class ASimCopterGroundAgent> Person;
+		FVector LocalOffset = FVector::ZeroVector;
+	};
+	// Keeps those survivors with the boat while it heaves, the way the train's roof survivors are
+	// kept on their carriage.
+	void UpdateBoatRiders(const struct FSimCopterAmbientBoat& Boat);
+	void ClearBoatRiders();
+	TArray<FSimCopterBoatRider> BoatRiders;
+
+	// How far fore/aft and abeam the wave slope is sampled to tilt a hull. Roughly a boat length -
+	// sampling closer reads the analytic slope at a point, which pitches a whole boat on ripples
+	// far shorter than it is.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "1.0"))
+	float BoatWaveProbeSpanCm = 120.0f;
+
+	// Peak lateral shove a hovering rotor puts on a boat, in original units per second, ramped by
+	// the same altitude curve FUN_004afb60 uses for its speed boost. Remake addition - see the note
+	// at the call site.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "0.0"))
+	float BoatRotorWashPushUnits = 45.0f;
 
 	// --- train rescue riders ---
 	void UpdateTrainRoofRiders();

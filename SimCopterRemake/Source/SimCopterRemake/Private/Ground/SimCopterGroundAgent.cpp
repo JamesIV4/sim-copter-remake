@@ -1275,74 +1275,6 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	return true;
 }
 
-void ASimCopterGroundAgent::UpdateDescendingHelicopterAvoidance()
-{
-	// NOT FOUND IN THE SHIPPED PROGRAMS - reconstructed. No BHAV a transport fare or an ambient
-	// pedestrian runs contains a "get out from under the helicopter" branch: only the criminal
-	// programs test the airframe's altitude (BHAV 1173 rec[10], opcode 14 case 1). But standing
-	// under a descending helicopter until it lands on you is not what the game does, so the
-	// trigger is remake-side while the pieces are the original's - opcode 14 case 1's altitude
-	// test, and BHAV 904 "Rxn: Run away (dir already set)" pushed through the same reaction path
-	// every tool interaction uses.
-	if (!bBehaviorActive || AgentKind != ESimCopterGroundAgentKind::Pedestrian ||
-		bMissionCarried || bMissionStationary || bBehaviorMoveSuspended || BehaviorCarrier.IsValid())
-	{
-		return;
-	}
-	if (BehaviorContext.ActiveReactionProgramId == SimCopterInteraction::RunAwayReactionProgram)
-	{
-		return; // already scrambling
-	}
-
-	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
-	if (TrafficSystem == nullptr || Helicopter == nullptr)
-	{
-		return;
-	}
-
-	// Only when it is coming down on top of me: same tile, and low enough that the next few
-	// metres of descent land on my head. The altitude band is opcode 14 case 1's, doubled - the
-	// point is to move before the skids arrive, not as they touch.
-	int32 MyX = INDEX_NONE;
-	int32 MyY = INDEX_NONE;
-	int32 HeliX = INDEX_NONE;
-	int32 HeliY = INDEX_NONE;
-	const FVector HelicopterLocation = Helicopter->GetActorLocation();
-	if (!TryGetCurrentTileCoordinate(MyX, MyY) ||
-		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(HelicopterLocation, HeliX, HeliY) ||
-		MyX != HeliX || MyY != HeliY)
-	{
-		return;
-	}
-
-	const float UnitCm = FMath::Max(1.0f, TrafficSystem->GetPeopleWorldCmPerOriginalUnit());
-	const float ClearanceCm =
-		(HelicopterLocation.Z - Helicopter->GetSimpleCollisionHalfHeight()) -
-		(GetActorLocation().Z + GetCapsuleHalfHeightCm());
-	if (ClearanceCm > UnitCm * 8.0f)
-	{
-		return;
-	}
-
-	// Face away from it, then run. BHAV 904 moves on the facing it is given, which is why the
-	// original's name for it is "dir already set".
-	Context_FaceAwayFromHelicopter(HelicopterLocation);
-	PushBehaviorReaction(SimCopterInteraction::RunAwayReactionProgram);
-}
-
-void ASimCopterGroundAgent::Context_FaceAwayFromHelicopter(const FVector& HelicopterLocation)
-{
-	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	if (TrafficSystem == nullptr)
-	{
-		return;
-	}
-	const FVector Away = GetActorLocation() + (GetActorLocation() - HelicopterLocation).GetSafeNormal2D() * 200.0f;
-	BehaviorContext.Attributes[EBhavAttr::Facing] =
-		uint16(TrafficSystem->GetPeopleStoredFacingFromWorldLocations(GetActorLocation(), Away) & 7);
-}
-
 bool ASimCopterGroundAgent::EvaluateProximityTest(const FSimCopterPersonContext& Context, const int32 TestIndex) const
 {
 	// FUN_004caaf0. Case 1 is the only one the shipped criminal and cop programs reach in the
@@ -1470,12 +1402,19 @@ void ASimCopterGroundAgent::RunMeetSelector(FSimCopterPersonContext& Context, AA
 			Context.Attributes[EBhavAttr::Facing] = uint16(Octant);
 		}
 		// FUN_004c6970 case 5: 50/50 between the two conversation clips, then one of nine voice
-		// lines (the remake has no people voice bank yet, so only the animation half runs).
+		// lines. The line is rolled with FUN_004cea00(9) and mapped through the switch at
+		// 0x004c6b3a - which is NOT the identity, and not sorted: cases 0..8 pick voice events
+		// 10, 1, 4, 11, 2, 18, 6, 7, 3. Both halves matter; the animation on its own is a mime.
 		Context.PendingAnimMnemonic = Context.RandomBounded(2) == 0 ? TEXT("2Gab") : TEXT("HipH");
+		static constexpr int32 ChatVoiceEvents[9] = { 10, 1, 4, 11, 2, 18, 6, 7, 3 };
+		const int32 Roll = FMath::Clamp(int32(Context.RandomBounded(9)), 0, 8);
+		PlayPersonVoiceEvent(ChatVoiceEvents[Roll], /*bAllocateSlot=*/true, /*bNonPositional=*/false, /*bForce=*/false);
 		return;
 	}
 
+	// Case 4: shoved by an object rather than met by a person - "Whoa" plus voice event 0x2a.
 	Context.PendingAnimMnemonic = TEXT("Whoa");
+	PlayPersonVoiceEvent(0x2a, /*bAllocateSlot=*/true, /*bNonPositional=*/false, /*bForce=*/false);
 }
 
 ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSimCopterPersonContext& Context)
@@ -2451,16 +2390,35 @@ void ASimCopterGroundAgent::MessageOwningVehicle(const int32 MessageId)
 	}
 }
 
-void ASimCopterGroundAgent::ThrowProjectileAtSelection(FSimCopterPersonContext& Context, const bool bAtSelection)
+void ASimCopterGroundAgent::ThrowProjectileAtSelection(
+	FSimCopterPersonContext& Context,
+	const bool bAtSelection,
+	const bool bIncendiary)
 {
-	// FUN_004cbfd0 / FUN_004cc130 both bind "Thro" and hand a projectile to FUN_0048e0b0. The
-	// remake has no rioter projectile object, so only the animation half is reproduced - which is
-	// the visible half, and stops a rioter standing inert where the original throws something.
+	// FUN_004cbfd0 / FUN_004cc130 both bind "Thro" and hand a projectile to FUN_0048e0b0, but they
+	// ask for different types, and the difference is the whole point:
+	//
+	//   op 60 (FUN_004cced0 -> FUN_004cbfd0 with record[0] == 0x3c) -> type 4, class flag 0x10:
+	//        the arsonist's firebomb, which grounds and can start a building fire.
+	//   ops 30/83                                                   -> type 10, class flag 0x400:
+	//        the rioter's thrown rock, which bounces, hurts whatever it lands on and expires.
+	//
+	// Only the first is modelled as a world object; the rock keeps the animation half, which is
+	// what stops a rioter standing inert where the original throws something.
 	if (bAtSelection)
 	{
 		FaceSelectedObject(Context);
 	}
 	Context.PendingAnimMnemonic = TEXT("Thro");
+
+	if (bIncendiary)
+	{
+		if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			Missions->ThrowArsonistFirebomb(GetActorLocation());
+		}
+	}
 }
 
 bool ASimCopterGroundAgent::BeginFallAndDie(FSimCopterPersonContext& Context)
@@ -3116,7 +3074,6 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 			return;
 		}
 	}
-	UpdateDescendingHelicopterAvoidance();
 	UpdateOriginalBehavior(DeltaSeconds);
 	UpdateMovement(DeltaSeconds);
 	// After every mover and before the ground snap: a worker pushed past the edge of its roof must

@@ -132,6 +132,18 @@ public:
 		uint8& OutTerrainClass,
 		FIntPoint* OutTile = nullptr) const;
 
+	// The vertical displacement M_SimCopterWater applies to the sea at this XY, right now, in world
+	// centimetres. The waves live entirely in the vertex shader, so nothing on the CPU sees them:
+	// this is the same expression evaluated here so that things floating on the sea (the boats, and
+	// the people standing on their decks) ride the surface they are drawn against instead of the
+	// rest plane underneath it. Returns 0 where the shader also returns 0 - at a pinned shoreline
+	// vertex, with water animation off, and under Low Power Graphics.
+	float GetWaterWaveOffsetCm(const FVector& WorldLocation) const;
+
+	// The shoreline pinning weight (the shader's vertex-colour R) at a world XY, bilinear across
+	// the tile's four corners. 0 at the coast, ramping to 1 over WaterShoreRampTiles.
+	float GetWaterWaveWeightAt(const FVector& WorldLocation) const;
+
 	// World Z of the ocean surface, which the terrain build averages over every water vertex.
 	// False before a city has been rebuilt.
 	bool TryGetOceanSurfaceWorldZ(float& OutWorldZ) const
@@ -480,6 +492,11 @@ private:
 	// and particle collision paths. Rendering used to discard both after RebuildCity.
 	TArray<float> WaterGameplayCornerZ;
 	TArray<uint8> WaterGameplayTerrainClasses;
+
+	// The water section's per-corner wave weight (129x129), the same values baked into vertex
+	// colour R for M_SimCopterWater. Kept so GetWaterWaveOffsetCm can evaluate the shader's own
+	// displacement on the CPU without re-deriving where the shoreline pinning is.
+	TArray<float> WaterCornerWeightGrid;
 
 	// The same 129x129 grid in the original's own sample units, kept because the cockpit map
 	// shades ground by shifting the raw sample rather than by any world height.
