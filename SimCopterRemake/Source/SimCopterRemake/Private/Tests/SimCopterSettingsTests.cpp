@@ -459,6 +459,14 @@ bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
 		TestTrue(*FString::Printf(TEXT("'%s' says why"), *Name), FCString::Strlen(Switch.Why) > 0);
 	}
 
+	// The anti-aliasing method belongs to the player in both modes: the mode renders at 75% and TSR
+	// is the only method that upscales rather than stretching. Putting it back in the table would
+	// pin it at ECVF_SetByGameOverride and silently kill the Anti-Aliasing row, which is exactly the
+	// failure this is here to catch - the row would still move and still read back the stored value.
+	TestFalse(
+		TEXT("The anti-aliasing method is left to the Settings page"),
+		Seen.Contains(TEXT("r.AntiAliasingMethod")));
+
 	// Round trip. Entering has to leave every switch on its low value and leaving has to put back
 	// what was there before, not the engine's compiled-in default - the project overrides several of
 	// these in DefaultEngine.ini, and restoring to the wrong number would quietly change normal mode.
@@ -473,7 +481,7 @@ bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	SimCopterLowPower::Apply(/*bLowPower=*/true, /*bExternalUpscalerActive=*/false);
+	SimCopterLowPower::Apply(/*bLowPower=*/true);
 	TestTrue(TEXT("IsEnabled follows Apply(true)"), SimCopterLowPower::IsEnabled());
 	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
 	{
@@ -486,7 +494,7 @@ bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	SimCopterLowPower::Apply(/*bLowPower=*/false, /*bExternalUpscalerActive=*/false);
+	SimCopterLowPower::Apply(/*bLowPower=*/false);
 	TestFalse(TEXT("IsEnabled follows Apply(false)"), SimCopterLowPower::IsEnabled());
 	for (const TPair<FString, FString>& Pair : Before)
 	{
@@ -499,25 +507,7 @@ bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	// An upscaler owns the anti-aliasing method, so that one switch must stand down while DLSS is
-	// on - forcing FXAA under it stops DLSS engaging at all.
-	SimCopterLowPower::Apply(/*bLowPower=*/true, /*bExternalUpscalerActive=*/true);
-	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
-	{
-		if (!Switch.bSkipWhileUpscaling)
-		{
-			continue;
-		}
-		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name))
-		{
-			TestEqual(
-				*FString::Printf(TEXT("'%s' is left alone while upscaling"), Switch.Name),
-				Variable->GetString(),
-				Before.FindRef(FString(Switch.Name)));
-		}
-	}
-
-	SimCopterLowPower::Apply(bWasEnabled, /*bExternalUpscalerActive=*/false);
+	SimCopterLowPower::Apply(bWasEnabled);
 	return true;
 }
 

@@ -10,9 +10,9 @@
  *
  * The remake renders a 1996 game with Unreal 5.8's *defaults*, and the defaults are the expensive
  * part, not the content: the city is a few hundred thousand triangles of flat-shaded 8-bit palette
- * art, but it is drawn through Lumen, virtual shadow maps, MegaLights, a volumetric cloud layer, a
- * volumetric fog volume and TSR. None of that is doing anything a player of SimCopter would miss,
- * and all of it is priced for a discrete GPU.
+ * art, but it is drawn through Lumen, virtual shadow maps, MegaLights, a volumetric cloud layer and
+ * a volumetric fog volume. None of that is doing anything a player of SimCopter would miss, and all
+ * of it is priced for a discrete GPU.
  *
  * The mode has three parts, and they are deliberately kept apart:
  *
@@ -26,7 +26,9 @@
  *
  * 2. **The switches below**, which are the ones scalability does NOT touch - it *tunes* Lumen, the
  *    virtual shadow map and MegaLights rather than switching them off, and it has no opinion at all
- *    about the anti-aliasing method or the cloud layer. This is where the frame actually comes from.
+ *    about the cloud layer. This is where the frame actually comes from. The anti-aliasing *method*
+ *    is deliberately not one of them: the mode renders at 75%, TSR is the only entry in the list
+ *    that upscales, and scalability's AntiAliasingQuality@0 already has it at its cheapest.
  *
  * 3. **The runtime responders**, which read `IsEnabled()`: the hundreds of point lights the
  *    building beacons throw (`USimCopterFlashingLightsComponent`) and the two spotlights on every
@@ -50,13 +52,6 @@ struct FRenderSwitch
 	 */
 	const TCHAR* LowPowerValue;
 
-	/**
-	 * True for switches that must not be forced while an external upscaler (DLSS super resolution)
-	 * is running - it owns the anti-aliasing method itself, and overriding it stops DLSS engaging
-	 * at all. A laptop with an RTX chip is better off keeping DLSS than gaining FXAA.
-	 */
-	bool bSkipWhileUpscaling = false;
-
 	const TCHAR* Why;
 };
 
@@ -78,7 +73,7 @@ SIMCOPTERREMAKE_API bool IsEnabled();
  * Idempotent: re-applying while already on re-asserts the switches (something else may have moved
  * one) without re-capturing the values to restore.
  */
-SIMCOPTERREMAKE_API void Apply(bool bLowPower, bool bExternalUpscalerActive);
+SIMCOPTERREMAKE_API void Apply(bool bLowPower);
 
 /** Fires when `IsEnabled()` changes, so live actors can drop their lights without a level reload. */
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnLowPowerModeChanged, bool /*bEnabled*/);
