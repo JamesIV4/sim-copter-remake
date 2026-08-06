@@ -9,6 +9,7 @@
 #include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
+#include "SceneUtils.h"
 #include "UI/SSimCopterCheckupSlider.h"
 #include "UI/SSimCopterCitySettings.h"
 #include "UI/SSimCopterControlSettings.h"
@@ -508,6 +509,57 @@ bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
 	}
 
 	SimCopterLowPower::Apply(bWasEnabled);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterAntiAliasingMethodTest,
+	"SimCopter.Settings.AntiAliasingMethod",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterAntiAliasingMethodTest::RunTest(const FString& Parameters)
+{
+	// The enum is written straight to r.AntiAliasingMethod with a static_cast and no remapping, so
+	// every value has to keep matching the engine's own. A drift here would be silent: the CVar would
+	// take the number, the renderer would pick a different method than the row says, and the only
+	// symptom would be "anti-aliasing looks wrong".
+	TestEqual(TEXT("None mirrors AAM_None"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::None), static_cast<int32>(AAM_None));
+	TestEqual(TEXT("FXAA mirrors AAM_FXAA"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::Fxaa), static_cast<int32>(AAM_FXAA));
+	TestEqual(TEXT("TAA mirrors AAM_TemporalAA"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::TemporalAA), static_cast<int32>(AAM_TemporalAA));
+	TestEqual(TEXT("SMAA mirrors AAM_SMAA"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::Smaa), static_cast<int32>(AAM_SMAA));
+
+	// TSR carries more weight than the rest: ApplyGraphics forces exactly this value while super
+	// resolution is on, because AAM_TSR is what makes FSceneView choose TemporalUpscale and hand the
+	// frame to DLSS. If this one drifted, DLSS would go back to silently upscaling nothing.
+	TestEqual(TEXT("TSR mirrors AAM_TSR"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::Tsr), static_cast<int32>(AAM_TSR));
+	TestTrue(TEXT("TSR is a temporal accumulation method, which is what DLSS needs"),
+		IsTemporalAccumulationBasedMethod(static_cast<EAntiAliasingMethod>(ESimCopterAntiAliasingMethod::Tsr)));
+	TestFalse(TEXT("None is not, which is why it could not be left applied under DLSS"),
+		IsTemporalAccumulationBasedMethod(static_cast<EAntiAliasingMethod>(ESimCopterAntiAliasingMethod::None)));
+
+	// Every method the page offers has a label of its own - a missing case would fall through to the
+	// default and quietly read "TSR".
+	TestEqual(TEXT("None is labelled"),
+		USimCopterSettings::GetAntiAliasingMethodLabel(ESimCopterAntiAliasingMethod::None).ToString(), FString(TEXT("None")));
+	TestEqual(TEXT("SMAA is labelled"),
+		USimCopterSettings::GetAntiAliasingMethodLabel(ESimCopterAntiAliasingMethod::Smaa).ToString(), FString(TEXT("SMAA")));
+
+	// With no DLSS-capable GPU (which includes this headless run) the stored flag must not make the
+	// page defer to an upscaler that is not running - see USimCopterSettings::IsDlssActive.
+	if (!USimCopterSettings::IsDlssAvailable())
+	{
+		// ClassWithin=GameInstance, so this needs an Outer - same reason as GraphicsPersistence below.
+		USimCopterSettings* Settings = NewObject<USimCopterSettings>(NewObject<UGameInstance>());
+		Settings->SetDlssEnabled(true);
+		TestTrue(TEXT("The stored flag still round trips"), Settings->IsDlssEnabled());
+		TestFalse(TEXT("but DLSS is not active without support"), Settings->IsDlssActive());
+	}
+
 	return true;
 }
 

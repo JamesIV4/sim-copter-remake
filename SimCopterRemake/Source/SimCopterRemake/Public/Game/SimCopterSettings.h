@@ -209,6 +209,17 @@ public:
 	bool IsDlssEnabled() const { return bDlssEnabled; }
 	void SetDlssEnabled(bool bEnabled) { bDlssEnabled = bEnabled; }
 
+	/**
+	 * Super resolution is switched on AND this machine can actually run it.
+	 *
+	 * `bDlssEnabled` alone is not enough to act on: it is a `UPROPERTY(Config)`, so an ini written on
+	 * a machine with an RTX card carries a `true` onto one without, where the whole DLSS section of
+	 * the page is hidden and there is no row to switch it back off. Anything that *defers* to DLSS -
+	 * the anti-aliasing method below, the row's label, whether the row is greyed - has to ask this
+	 * rather than the flag, or it would be deferring to an upscaler that is not running.
+	 */
+	bool IsDlssActive() const { return bDlssEnabled && IsDlssAvailable(); }
+
 	ESimCopterDlssQuality GetDlssQuality() const { return DlssQuality; }
 	void SetDlssQuality(ESimCopterDlssQuality Quality) { DlssQuality = Quality; }
 
@@ -233,11 +244,20 @@ public:
 	void SetLumenMode(ESimCopterLumenMode Mode) { LumenMode = Mode; }
 
 	/**
-	 * Greyed out on the page while Super Resolution is on: DLSS hooks the TAA/TSR upsample pass
-	 * itself (`r.TemporalAA.Upscaler`, set by `EnableDLSS`) and ApplyGraphics leaves
-	 * `r.AntiAliasingMethod` alone whenever `bDlssEnabled` is true, the same way it defers to DLSS
-	 * for Resolution Scale - picking a different method out from under it is what produced the
-	 * `NGX_D3D12_EVALUATE_DLSS_EXT` crash the Resolution Scale row could already trigger.
+	 * The player's anti-aliasing method - what the row stores, which is NOT always what is running.
+	 *
+	 * While super resolution is on, `ApplyGraphics` forces `r.AntiAliasingMethod` to **TSR** and the
+	 * page shows the row as "DLSS", greyed. That is not deference, it is a requirement: DLSS is a
+	 * temporal upscaler, and `FSceneView::SetupAntiAliasingMethod` only sets
+	 * `EPrimaryScreenPercentageMethod::TemporalUpscale` when the method is TSR (or TAA with
+	 * `r.TemporalAA.Upsampling`). With None or FXAA selected the view stays on `SpatialUpscale`, so
+	 * the frame is rendered small and *stretched* and DLSS's upscaler is never invoked at all - the
+	 * Resolution Scale row moves and nothing else happens. The DLSS plugin does the same thing from
+	 * its side (`FDLSSTemporalUpscalerModularFeature::SetupSceneView`: "The TSR is required for the
+	 * DLSS").
+	 *
+	 * This value is never overwritten by that, so switching super resolution off puts the player's
+	 * own pick straight back.
 	 */
 	ESimCopterAntiAliasingMethod GetAntiAliasingMethod() const { return AntiAliasingMethod; }
 	void SetAntiAliasingMethod(ESimCopterAntiAliasingMethod Method) { AntiAliasingMethod = Method; }
