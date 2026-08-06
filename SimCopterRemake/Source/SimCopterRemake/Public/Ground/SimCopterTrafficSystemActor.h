@@ -842,7 +842,10 @@ public:
 		int32 MaxCount,
 		float SearchRadiusCm,
 		float MaxVerticalDeltaCm,
-		float GuidanceSeconds);
+		float GuidanceSeconds,
+		// 0 keeps each agent's own MovementSpeedCmPerSec. Pass the shipped program's walk speed
+		// where one exists, so guidance does not quietly move somebody faster than their own BHAV.
+		float GuidanceSpeedCmPerSec = 0.0f);
 	int32 BoardMissionPeopleTouching(
 		int32 EventId,
 		const FVector& WorldLocation,

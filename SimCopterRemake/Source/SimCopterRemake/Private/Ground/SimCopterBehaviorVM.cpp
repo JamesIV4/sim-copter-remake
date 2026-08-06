@@ -555,6 +555,11 @@ void FSimCopterPersonContext::ResetToState(int32 StateIndex)
 	FFrame Frame;
 	Frame.ProgramId = StatePrograms.IsValidIndex(StateIndex) ? StatePrograms[StateIndex] : StatePrograms[0];
 	Stack.Add(Frame);
+	// The state's own program id, kept where the shipped graph expects to read it back. BHAV 444
+	// rec[25]/rec[27] compares it against 444 to tell a band member from the leader, whose state
+	// 17 starts on 443 ("Tuba leader initbhav", which itself just calls 444). Without this both
+	// take the leader arm and nobody mills about or plays an instrument.
+	Attributes[EBhavAttr::StateProgramId] = uint16(Frame.ProgramId);
 }
 
 // SCHOOK: PersonReactionPush 0x004c1050

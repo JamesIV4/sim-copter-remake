@@ -12,6 +12,12 @@ What it produces:
                          its images 1..5 over those slots on load. T_TerrainLow is TILED1 image 0.
   * T_CityNightPage_<id> the same five pages from SKYDARK.BMP, which is what the original loads
                          after dark. These are the ones with the lit building windows painted on.
+  * T_CityWindowPage_<id> the HAND-PAINTED window mask for that page, from
+                         Content/NightWindows/windows_page_<id>.png (drawn in
+                         Tools/WindowLayoutEditor.html). R marks a lit-window texel, G is a
+                         per-window byte and B a per-row byte. Imported LINEAR so those two arrive
+                         as the exact bytes the painter wrote. A page with no file keeps the
+                         material's derived mask - HasWindowMask stays 0.
   * MI_CityPage_<id>     MaterialInstanceConstant (parent M_SimCopterCityAtlas) per page, used by
                          building/road faces (in-cell UV in TexCoord0, cell col/row in TexCoord1).
                          Carries both the day and night page; the material blends them on NightBlend.
@@ -50,6 +56,11 @@ TERRAIN_HIGH_PAGE_ID = 13  # SIM3D.BMP image 13 doubles as the high terrain page
 # the night variants are where the lit building windows are painted. Which file is loaded comes off
 # renderer+0x4f, set by FUN_00460690 from DAT_004f9720 (1 == night).
 SKY_IMAGE_TO_ATLAS_PAGE = {1: 2, 2: 39, 3: 40, 4: SKY_PAGE_ID, 5: TERRAIN_HIGH_PAGE_ID}
+
+# Hand-painted window masks, named by ATLAS PAGE (2, 39, 40) rather than by the composite index they
+# were painted from. This lives in Content and is COMMITTED - unlike everything else this script
+# touches, it is not original game art, it is hours of hand work that only exists here.
+WINDOW_MASK_SUBDIR = "NightWindows"
 
 
 def reference_root():
@@ -129,7 +140,12 @@ def write_png(path, width, height, rgb, alpha=None):
     open(path, "wb").write(png)
 
 
-def import_texture(png_path, asset_name):
+def window_mask_dir():
+    proj = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
+    return os.path.normpath(os.path.join(proj, "Content", WINDOW_MASK_SUBDIR))
+
+
+def import_texture(png_path, asset_name, srgb=True):
     task = unreal.AssetImportTask()
     task.filename = png_path
     task.destination_path = OUTPUT_DIR
@@ -142,9 +158,11 @@ def import_texture(png_path, asset_name):
 
     asset_path = f"{OUTPUT_DIR}/{asset_name}"
     texture = unreal.EditorAssetLibrary.load_asset(asset_path)
-    # Uncompressed sRGB, nearest, no mips: the per-cell UV math relies on exact texels with no
-    # DXT block bleed or mip averaging between neighbouring 32x32 cells.
-    texture.set_editor_property("srgb", True)
+    # Uncompressed, nearest, no mips: the per-cell UV math relies on exact texels with no DXT block
+    # bleed or mip averaging between neighbouring 32x32 cells. srgb=False for the window masks -
+    # their G and B are per-window and per-row IDs, not colour, and a transfer curve on the way in
+    # would stop `Authored.gb * 255.0` recovering the bytes the painter wrote.
+    texture.set_editor_property("srgb", srgb)
     texture.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_EDITOR_ICON)
     texture.set_editor_property("filter", unreal.TextureFilter.TF_NEAREST)
     texture.set_editor_property("address_x", unreal.TextureAddress.TA_WRAP)
@@ -156,7 +174,7 @@ def import_texture(png_path, asset_name):
 
 
 def create_material_instance(asset_name, parent_path, texture, identify_mesh_water_cells=False,
-                             night_texture=None):
+                             night_texture=None, window_texture=None):
     asset_path = f"{OUTPUT_DIR}/{asset_name}"
     parent = unreal.EditorAssetLibrary.load_asset(parent_path)
     existing = unreal.EditorAssetLibrary.load_asset(asset_path)
@@ -176,6 +194,18 @@ def create_material_instance(asset_name, parent_path, texture, identify_mesh_wat
     if night_texture is not None:
         unreal.MaterialEditingLibrary.set_material_instance_texture_parameter_value(
             mic, "NightTexture", night_texture
+        )
+    # The painted window mask, and the switch that tells the material to trust it. Set together, and
+    # HasWindowMask is written even when there is no mask so that re-running the bake after DELETING
+    # a windows_page_*.png actually puts that page back on the derived mask instead of leaving the
+    # instance pointing at a stale override.
+    if parent_path == ATLAS_MATERIAL:
+        if window_texture is not None:
+            unreal.MaterialEditingLibrary.set_material_instance_texture_parameter_value(
+                mic, "WindowTexture", window_texture
+            )
+        unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value(
+            mic, "HasWindowMask", 1.0 if window_texture is not None else 0.0
         )
     # Legacy parameter name retained so existing page-20 instances keep working. It now identifies
     # static pool/pond cells for the material's constant depth offset; it no longer animates UVs.
@@ -215,8 +245,11 @@ def main():
         nw, nh, nrgb, _nalpha = skydark[image_index]
         night_sources[page_id] = (nw, nh, nrgb)
 
+    mask_dir = window_mask_dir()
+
     baked_pages = []
     baked_night_pages = []
+    baked_window_pages = []
     for page_id, (w, h, rgb) in sorted(page_sources.items()):
         png = os.path.join(temp_dir, f"page_{page_id}.png")
         write_png(png, w, h, rgb)
@@ -230,6 +263,13 @@ def main():
             night_texture = import_texture(night_png, f"T_CityNightPage_{page_id}")
             baked_night_pages.append(page_id)
 
+        # Painted straight from the repo copy - no PNG decode needed here, the import task reads it.
+        window_texture = None
+        mask_png = os.path.join(mask_dir, f"windows_page_{page_id}.png")
+        if os.path.isfile(mask_png):
+            window_texture = import_texture(mask_png, f"T_CityWindowPage_{page_id}", srgb=False)
+            baked_window_pages.append(page_id)
+
         # SCHOOK: FUN_004814c0. SKY.BMP image 4 (the page-20 exception) contains the exact same
         # water cells 0..9 as TILED1. Mesh-object ponds/pools use base cell 0 or 5 and therefore
         # advance with the terrain water instead of staying on their first frame.
@@ -239,8 +279,19 @@ def main():
             texture,
             identify_mesh_water_cells=(page_id == SKY_PAGE_ID),
             night_texture=night_texture,
+            window_texture=window_texture,
         )
         baked_pages.append(page_id)
+
+    # Loud, because a mask silently not being found looks exactly like the derived mask working
+    # slightly worse than expected, and the three wall pages are the whole point of painting them.
+    for page_id in sorted(night_sources):
+        if page_id in (SKY_PAGE_ID, TERRAIN_HIGH_PAGE_ID) or page_id in baked_window_pages:
+            continue
+        unreal.log_warning(
+            f"No windows_page_{page_id}.png in {mask_dir} - atlas page {page_id} is a wall page and "
+            f"falls back to the derived window mask."
+        )
 
     # Direct images are drawn as keyed cards (face types 2 and 13), so they carry the index-0
     # alpha mask and hang off the masked sprite material rather than the opaque lit one.
@@ -265,6 +316,7 @@ def main():
 
     unreal.log(
         f"CITY ATLAS BAKE DONE: pages={baked_pages} nightPages={baked_night_pages} "
+        f"paintedWindowPages={baked_window_pages} "
         f"directImages={len(baked_direct_images)} terrainHigh={'yes' if terrain_high else 'no'}"
     )
 

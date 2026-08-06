@@ -1,7 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
+#include "Ground/SimCopterInteraction.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -147,6 +149,121 @@ bool FSimCopterSelectionContactTest::RunTest(const FString& Parameters)
 	TestTrue(
 		TEXT("A vehicle's own extent widens contact with it"),
 		FAgent::ComputeContactGapCm(Me, FVector(40.0, 0.0, 0.0), BodyRadiusCm, CarRadiusCm) <= 0.0f);
+
+	// ...but a circle is the wrong shape for a car, and that is what stranded the ambulance medic.
+	// FUN_004c8f70 overlaps the object's own BOX. The remake's vehicle capsule is 33.75 cm, while
+	// the body it stands for is ~70 cm long: approaching the nose, a walker could be standing in
+	// the bodywork with the circle still reporting a positive gap, so BHAV 262's return walk never
+	// arrived and the handoff at BHAV 275 was never reached.
+	// 90 cm long, 31 cm wide - the proportions of a remake car, whose length runs well past the
+	// 33.75 cm capsule the traffic separation uses.
+	const FBox CarBody(FVector(-45.0, -15.6, -13.0), FVector(45.0, 15.6, 13.0));
+	const FVector CarOrigin(0.0, 0.0, 0.0);
+	const FTransform CarFrame(FRotator::ZeroRotator, CarOrigin);
+
+	// The blind spot: the circle reaches 33.75 + 8 = 41.75 cm from the centre, but the bumper is
+	// 45 cm out. A walker standing 50 cm along the nose is 3 cm deep in the bodywork and the
+	// circle still calls it clear.
+	const FVector AtTheBumper(50.0, 0.0, 0.0);
+	TestTrue(
+		TEXT("The circle rule leaves a walker at the bumper measuring a positive gap"),
+		FAgent::ComputeContactGapCm(CarOrigin, AtTheBumper, BodyRadiusCm, CarRadiusCm) > 0.0f);
+	TestTrue(
+		TEXT("The box rule has that same walker touching the bodywork"),
+		FAgent::ComputeBodyGapCm(CarBody, CarFrame, AtTheBumper) - BodyRadiusCm <= 0.0f);
+
+	// The box is not a licence to reach further everywhere: off the flank it is much tighter than
+	// the circle, which is the whole point of using the body's real shape.
+	TestEqual(
+		TEXT("A point inside the bodywork has no gap"),
+		FAgent::ComputeBodyGapCm(CarBody, CarFrame, FVector(10.0, 5.0, 0.0)),
+		0.0f);
+	TestTrue(
+		TEXT("Well off the flank is not contact"),
+		FAgent::ComputeBodyGapCm(CarBody, CarFrame, FVector(0.0, 60.0, 0.0)) - BodyRadiusCm > 0.0f);
+
+	// It turns with the vehicle: yaw 90 degrees and the point that was inside the bumper is now
+	// off a flank, 50 cm out from a body only 15.6 cm wide.
+	const FTransform TurnedCar(FRotator(0.0f, 90.0f, 0.0f), CarOrigin);
+	TestEqual(
+		TEXT("The body box yaws with the vehicle"),
+		FAgent::ComputeBodyGapCm(CarBody, TurnedCar, AtTheBumper),
+		50.0f - 15.6f,
+		0.01f);
+
+	// Height inside the body's own span is ignored - the caller owns the vertical gate, exactly as
+	// for the airframe.
+	TestEqual(
+		TEXT("The body gap is measured across the deck only"),
+		FAgent::ComputeBodyGapCm(CarBody, CarFrame, FVector(10.0, 0.0, 200.0)),
+		0.0f);
+
+	// A vehicle with no mesh built yet must not report a false gap.
+	TestEqual(
+		TEXT("An invalid body box answers zero rather than a garbage distance"),
+		FAgent::ComputeBodyGapCm(FBox(ForceInit), CarFrame, FVector(5000.0, 0.0, 0.0)),
+		0.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterUfoHitCountTest,
+	"SimCopter.Ambient.UfoHitCount",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterUfoHitCountTest::RunTest(const FString& Parameters)
+{
+	using FAmbient = ASimCopterAmbientVehiclesActor;
+
+	// FUN_004b3ba0's retirement test is `if (9 < *(int *)(iVar1 + 0x50))`, so the TENTH missile is
+	// the one that downs it - nine hits leave it flying. Before 2026-08-06 nothing incremented that
+	// counter at all (and the meshes were on NoCollision, so nothing could even reach it), which is
+	// why the UFO could not be shot down.
+	TestFalse(TEXT("A fresh UFO is not downed"), FAmbient::IsPlaneDownedByHitCount(0));
+	TestFalse(TEXT("One missile does not down it"), FAmbient::IsPlaneDownedByHitCount(1));
+	TestFalse(TEXT("Nine missiles leave it flying"), FAmbient::IsPlaneDownedByHitCount(9));
+	TestTrue(TEXT("The tenth missile downs it"), FAmbient::IsPlaneDownedByHitCount(10));
+	TestTrue(TEXT("Past ten stays downed"), FAmbient::IsPlaneDownedByHitCount(11));
+
+	// The two modes FUN_004b3ba0 has arms for are the Apache's, and only those. Anything else -
+	// the bucket, tear gas, the megaphone - falls out of its switch without touching an aircraft.
+	TestEqual(TEXT("Missile is interaction mode 3"), int32(ESimCopterInteractionMode::Missile), 3);
+	TestEqual(TEXT("Machine gun is interaction mode 7"), int32(ESimCopterInteractionMode::MachineGun), 7);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterEmergencyCrewStateTest,
+	"SimCopter.Dispatch.EmergencyCrewStates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterEmergencyCrewStateTest::RunTest(const FString& Parameters)
+{
+	using FAgent = ASimCopterGroundAgent;
+
+	// Who counts as crew decides whose despawn may be refused. UpdateOriginalBehavior refuses one
+	// for an "unresolved mission person" so a decoded program cannot erase a mission dependency -
+	// but a worker is not a dependency, it is the thing resolving one. An ambulance medic carries
+	// the medevac's event id and never sets bMissionResolutionReported (that flag belongs to
+	// passengers), so before this split it was refused its op-40 despawn at BHAV 269, restarted
+	// into BHAV 801, and - already attached to the ambulance with its movement suspended - could
+	// neither walk nor finish. That was the reported ambulance loop.
+	TestTrue(TEXT("State 5 is the ambulance medic"), FAgent::IsEmergencyCrewPersonState(5));
+	TestTrue(TEXT("State 7 is police"), FAgent::IsEmergencyCrewPersonState(7));
+	TestTrue(TEXT("State 8 is the foot cop"), FAgent::IsEmergencyCrewPersonState(8));
+	TestTrue(TEXT("State 0xe is the speeder cop"), FAgent::IsEmergencyCrewPersonState(0xe));
+
+	// Every state FUN_004ccf50 case 1 scores as a delivered passenger must stay out of it, or a
+	// casualty could be despawned out from under an open mission.
+	for (const int32 PassengerState : { 1, 2, 4, 6, 0x13 })
+	{
+		TestFalse(
+			FString::Printf(TEXT("Passenger state %d is not crew"), PassengerState),
+			FAgent::IsEmergencyCrewPersonState(PassengerState));
+	}
+	TestFalse(TEXT("An ordinary civilian is not crew"), FAgent::IsEmergencyCrewPersonState(0));
 
 	return true;
 }

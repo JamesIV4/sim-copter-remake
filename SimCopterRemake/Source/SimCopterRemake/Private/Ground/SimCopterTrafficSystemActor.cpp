@@ -1692,7 +1692,8 @@ int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
 	int32 MaxCount,
 	float SearchRadiusCm,
 	float MaxVerticalDeltaCm,
-	float GuidanceSeconds)
+	float GuidanceSeconds,
+	float GuidanceSpeedCmPerSec)
 {
 	if (MaxCount <= 0)
 	{
@@ -1749,7 +1750,7 @@ int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
 
 		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
 		{
-			Agent->SetGuidanceMoveTarget(TargetLocation, GuidanceSeconds);
+			Agent->SetGuidanceMoveTarget(TargetLocation, GuidanceSeconds, GuidanceSpeedCmPerSec);
 			Guided++;
 		}
 	}
@@ -4526,6 +4527,27 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 			{
 				Vehicle.bOfficerDeployed = false;
 				Vehicle.DeployedOfficer.Reset();
+				RecallDispatchVehicle(Vehicle);
+				break;
+			}
+		}
+
+		// The ambulance's equivalent. BHAV 269 rec[17] messages this vehicle (op 61) and rec[9]
+		// then tears the medic down, so the recall normally arrives on its own - but 265
+		// 'Medevac disappear' and every other op-40 arm of the medic's graph end WITHOUT an op 61,
+		// and BHAV 262's search simply finding nobody leaves the medic looping while this slot
+		// waits out the full 180 s stay with nothing left to do. Once the crew member it put on
+		// the ground is aboard or gone, the ambulance's job is over.
+		//
+		// Deliberately keyed on a medic this slot can still see. A null weak pointer cannot tell
+		// "climbed in" apart from "was never recorded", so that case keeps the stay timer.
+		if (Service == SimCopterDispatch::EService::Ambulance)
+		{
+			const ASimCopterGroundAgent* Paramedic = Vehicle.DeployedParamedic.Get();
+			if (Paramedic != nullptr &&
+				(Paramedic->IsActorBeingDestroyed() || Paramedic->IsHidden()))
+			{
+				Vehicle.DeployedParamedic.Reset();
 				RecallDispatchVehicle(Vehicle);
 				break;
 			}

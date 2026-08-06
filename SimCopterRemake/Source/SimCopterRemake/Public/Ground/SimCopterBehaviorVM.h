@@ -75,6 +75,11 @@ namespace EBhavAttr
 	// footstep clips (0x0e/0x28/0x29) or an Elvis noise, and BHAV 800 rec[4] assigns 58 so a
 	// medevac victim owns the EKG. FUN_004c5210 only re-tunes a sound that matches this.
 	constexpr int32 VoiceSet = 38;
+	// +0x17a. The program id this person's STATE started them on. BHAV 444 rec[25]/rec[27] is the
+	// only shipped reader: `attr29 == 444` is how a marching-band member tells itself apart from
+	// the leader, whose state (17) starts on 443 instead. Members mill about and toot single
+	// instrument notes (sound 37); the leader plays march.wav (sound 38) and keeps following you.
+	constexpr int32 StateProgramId = 29;
 	// +0x18e. Which head this person wears - FUN_004c71c0 sets it from the behavior class and
 	// FUN_004c7090 overwrites it with 10 for state 6. BHAV 264 rec[8] tests it against 10 to
 	// decide whether the seat portrait follows the victim's health or the helicopter's speed.

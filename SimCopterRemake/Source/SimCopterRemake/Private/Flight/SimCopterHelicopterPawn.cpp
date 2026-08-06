@@ -1914,6 +1914,95 @@ void ASimCopterHelicopterPawn::PlaceOnHelipad(const FVector& PadSurfaceWorldLoca
 	UpdateGroundProbe();
 }
 
+bool ASimCopterHelicopterPawn::ReturnToAirportAfterCrash()
+{
+	// SCHOOK: HelicopterCrashRespawn 0x0048a8b0
+	// The wreck goes back to the airport, which is where the player's next flight starts from and
+	// where the check-up desk that repairs it lives. FUN_0048b000 picks the pad; an occupied one is
+	// only a tie-break there, and after a crash the fleet is parked, so pad 0 is the usual answer.
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystemActor();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	// Anything else standing on a pad blocks it, so a wreck cannot be dropped onto a parked
+	// aircraft. Pads are 1x1, so "occupied" is a tile match.
+	TBitArray<> PadTaken(false, SimCopterAirport::PadCount);
+	TArray<AActor*> HelicopterActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
+	for (int32 PadIndex = 0; PadIndex < SimCopterAirport::PadCount; ++PadIndex)
+	{
+		FVector PadWorld = FVector::ZeroVector;
+		if (!TrafficSystem->TryGetAirportPadWorldLocation(PadIndex, PadWorld))
+		{
+			PadTaken[PadIndex] = true;
+			continue;
+		}
+		for (const AActor* Other : HelicopterActors)
+		{
+			if (Other != this &&
+				Other != nullptr &&
+				FVector::Dist2D(Other->GetActorLocation(), PadWorld) < CrashRespawnPadClearanceCm)
+			{
+				PadTaken[PadIndex] = true;
+				break;
+			}
+		}
+	}
+
+	auto IsPadTaken = [&PadTaken](int32 PadIndex) { return PadTaken[PadIndex]; };
+	const int32 FreePad = SimCopterAirport::FindFreePadIndex(IsPadTaken, IsPadTaken);
+	FVector PadSurface = FVector::ZeroVector;
+	if (FreePad == INDEX_NONE || !TrafficSystem->TryGetAirportPadWorldLocation(FreePad, PadSurface))
+	{
+		// No airport in this city, or every pad blocked. Leave the wreck where it fell rather than
+		// teleporting it somewhere arbitrary - the flight model has already repaired it in place.
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter crash: no free helipad to return the aircraft to."));
+		return false;
+	}
+
+	// FUN_00484790 clears the orientation outright; the pads have no facing.
+	PlaceOnHelipad(PadSurface, 0.0f);
+	StuckFallSeconds = 0.0f;
+
+	// Anyone riding the wreck comes back with it. Attached passengers already follow the actor;
+	// this is for a player who is somehow not in the cabin but still possessing this pawn.
+	UE_LOG(LogTemp, Display, TEXT("SimCopter crash: aircraft returned to airport pad %d."), FreePad);
+	return true;
+}
+
+void ASimCopterHelicopterPawn::UpdateStuckFallWatchdog(const float DeltaSeconds)
+{
+	// The crash above is raised when a Dying helicopter reaches the ground. It can fail to arrive:
+	// off the edge of the map, or over a column whose surface height never resolves, the aircraft
+	// keeps descending with no ground to meet. Nothing in the original can reach that state, so
+	// there is no behaviour to port - this is a remake-only backstop that ends the fall the same
+	// way an arrival would.
+	if (FlightModel.State != ESimCopterFlightState::Dying)
+	{
+		StuckFallSeconds = 0.0f;
+		return;
+	}
+
+	StuckFallSeconds += DeltaSeconds;
+	if (StuckFallSeconds < StuckFallRecoverySeconds)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning,
+		TEXT("SimCopter crash: aircraft fell for %.1fs without reaching the ground; recovering to the airport."),
+		StuckFallSeconds);
+	StuckFallSeconds = 0.0f;
+	bEngineRunning = false;
+	// ResetOnSurface puts the model back in Parked with full hit points and fuel, which is the
+	// same repair the ordinary crash arm gets. Doing it here as well means a city with no airport
+	// still ends the fall instead of dropping forever.
+	SeedFlightModelFromActor();
+	ReturnToAirportAfterCrash();
+}
+
 float ASimCopterHelicopterPawn::GetFuelFraction() const
 {
 	return HelicopterTuning.FuelGallons > 0.0f ? FMath::Clamp(CurrentFuelGallons / HelicopterTuning.FuelGallons, 0.0f, 1.0f) : 0.0f;
@@ -6004,8 +6093,10 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		0.0f,
 		static_cast<float>(FlightModel.Tuning.MaxDamage));
 
-	// The original respawns a destroyed helicopter at the nearest pad; the
-	// remake has no pad registry yet, so it repairs in place where it crashed.
+	// SCHOOK: HelicopterCrashRespawn 0x0048a8b0
+	// The original respawns a destroyed helicopter on an airport pad. The remake used to repair it
+	// in place where it crashed, because the pad registry did not exist yet - it does now, and it
+	// is the same one city entry parks the fleet on.
 	if (LastFlightEvents.bCrashed)
 	{
 		if (WaterFXComponent != nullptr)
@@ -6016,6 +6107,7 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		}
 		bEngineRunning = false;
 		SeedFlightModelFromActor();
+		ReturnToAirportAfterCrash();
 	}
 	else if ((LastFlightEvents.bGroundBounce || LastFlightEvents.bSplashBounce) && WaterFXComponent != nullptr)
 	{
@@ -6025,6 +6117,10 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 			GetActorLocation(),
 			LastFlightEvents.bSplashBounce || ProbeBucketWater(GetActorLocation()));
 	}
+
+	// After the crash arm above, so a spiral that did reach the ground this frame has already been
+	// dealt with and the watchdog simply resets.
+	UpdateStuckFallWatchdog(DeltaSeconds);
 
 	// Flying into something has its own visual, and it is not the landing one. Both impact arms
 	// of FUN_00484d20 - the elevated-surface branch at LAB_00485605 and the object-overlap branch

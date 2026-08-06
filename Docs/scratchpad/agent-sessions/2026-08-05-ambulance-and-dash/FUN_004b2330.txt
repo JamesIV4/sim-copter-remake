@@ -1,0 +1,108 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b2330
+// Address:   0x004b2330
+// Signature: undefined FUN_004b2330(void)
+// Callers:   1  |  Callees: 2
+// ===========================================
+
+
+
+void __fastcall FUN_004b2330(int *param_1)
+
+
+
+{
+
+  int iVar1;
+
+  int *piVar2;
+
+  int *piVar3;
+
+  int iStack_58;
+
+  int iStack_54;
+
+  int iStack_50;
+
+  int aiStack_40 [16];
+
+  
+
+  if ((char)param_1[1] == '\0') {
+
+    return;
+
+  }
+
+  if (*(char *)((int)param_1 + 5) == '\0') {
+
+    if (param_1[0x15] != 0x12e) {
+
+      if (DAT_00504084 == 0) {
+
+        return;
+
+      }
+
+      if (9 < param_1[0x14]) {
+
+        return;
+
+      }
+
+    }
+
+    iVar1 = param_1[0xd] + DAT_005039a0;
+
+    param_1[0xd] = iVar1;
+
+    if ((*(char *)((int)param_1 + 7) == '\0') && (param_1[0xc] < iVar1)) {
+
+      (**(code **)(*param_1 + 0x10))();
+
+    }
+
+    if (*(char *)((int)param_1 + 5) == '\0') goto LAB_004b23c9;
+
+  }
+
+  (**(code **)(*param_1 + 4))();
+
+  if (*(char *)((int)param_1 + 5) != '\0') {
+
+    iStack_58 = param_1[0x1c];
+
+    iStack_54 = param_1[0x1d];
+
+    iStack_50 = param_1[0x1e];
+
+    piVar2 = param_1 + 0x1f;
+
+    piVar3 = aiStack_40;
+
+    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {
+
+      *piVar3 = *piVar2;
+
+      piVar2 = piVar2 + 1;
+
+      piVar3 = piVar3 + 1;
+
+    }
+
+    FUN_004704d1(param_1[0x18],&iStack_58,3);
+
+  }
+
+LAB_004b23c9:
+
+  FUN_004b23e0();
+
+  return;
+
+}
+
+
+
+

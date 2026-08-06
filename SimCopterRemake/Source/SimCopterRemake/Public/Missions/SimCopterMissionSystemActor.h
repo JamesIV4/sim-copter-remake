@@ -75,6 +75,8 @@ struct FSimCopterActiveFireworkRocket
 {
 	FVector ApexLocation = FVector::ZeroVector;
 	FLinearColor BurstColor = FLinearColor::White;
+	// The second colour this shell's embers mix toward, so a burst is not one flat hue.
+	FLinearColor AccentColor = FLinearColor::White;
 	float TimeRemaining = 1.8f;
 };
 
@@ -398,11 +400,21 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float MissionMarkerAllowedOverlap = 0.5f;
 
+	// BHAV 291 rec[2] probes the player's helicopter at ONE TILE before committing to board, so
+	// that is how far out a passenger is willing to walk to it. This was 780 - nearly two tiles -
+	// which started the approach from twice the range the shipped program does.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
-	float PassengerPickupRadiusCm = 780.0f;
+	float PassengerPickupRadiusCm = 400.0f;
+
+	// How long the shipped walk gets before the mission layer steers a passenger in. Comfortably
+	// longer than BHAV 291 needs from a tile out (2.67 s of BHAV 750's opening wait plus roughly
+	// 3 s of walking at 125 cm/s), so this only fires when the program genuinely cannot get there.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerBoardRecoverySeconds = 20.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
 	float PassengerDropoffRadiusCm = 820.0f;
+
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
 	float PassengerTransferMaxVerticalDeltaCm = 420.0f;
@@ -548,7 +560,12 @@ private:
 	double ServiceJetLastSeconds = -1000.0;
 
 	ASimCopterTrafficSystemActor* ResolveTrafficSystem() const;
-	void ProcessPassengerTransfers();
+	void ProcessPassengerTransfers(float DeltaSeconds);
+	// Per transport mission: how long a helicopter with a free seat has stood within
+	// PassengerPickupRadiusCm of an uncollected passenger without anyone getting in. Only past
+	// PassengerBoardRecoverySeconds does the mission layer start steering them; before that the
+	// shipped BHAV 750 -> 291 walk owns the approach.
+	TMap<int32, float> PassengerBoardStallSeconds;
 	// The rescue half of the transfer loop: winch water/roof/train survivors aboard and set them
 	// down on dry land (FUN_004ccf50 action 1 posts EVT_RescueDelivered for spawn modes 1/2/0x13).
 	void ProcessRescueTransfers();

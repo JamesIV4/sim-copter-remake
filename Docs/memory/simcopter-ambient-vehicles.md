@@ -18,6 +18,26 @@ Traps worth keeping:
 - **Boat slot 0 is `CAPBOAT1`** (GEO 0x163 = capsized boat) and is the boat-rescue boat; slots 1-2
   are ambient `BOAT1` (0x12f). Destroying an *ambient* boat creates a 0x90 rescue; destroying
   CAPBOAT1 kills the mission's people instead.
+- **The UFO fight is `FUN_004b3ba0`**, reached from `FUN_00490690`'s `FUN_0049a4f0` call through the
+  **class-0x100** arm (`FUN_004b3df0`). Ported 2026-08-06; before that it did not work at all, for
+  **three independent reasons** — the ambient meshes are on `NoCollision`, so the Apache's
+  `ECC_Visibility` trace passed straight through them; `ResolveImpact` only ever special-cased
+  `ASimCopterGroundAgent`, so an aircraft would have counted as **terrain** (and opened a building
+  fire in the street below); and `HitCount` was declared, saved, restored, tested at the retirement
+  gate and reset on respawn **but never incremented anywhere**. The rule:
+  - the switch has arms for **modes 3 (missile) and 7 (machine gun) only** — nothing else in the
+    game can touch an aircraft;
+  - **object 0x12e (PLANE1, the airliner) goes down in one hit from either weapon**, sets hit count
+    1, clears its event id, and posts **event 0x30 = `EVT_CrashPenaltyC`, −100 pts / −$200**;
+  - the **UFO** takes `+0x4c = 3` and has the sign bit cleared on every **face-type-11** card in its
+    model — its running lights go out, which is the hit tell — and then **only the missile arm**
+    reaches `+0x50 += 1` and the `9 < +0x50` retirement. **Machine-gun fire is cosmetic against the
+    saucer.** The tenth missile downs it; `BeginPlaneCrash` then pays `EVT_UfoResolved` as it starts
+    its dive, which is where the UFO money/points come from.
+  The remake asks the ambient actor for a segment-vs-hull test (`FindPlaneHitBySegment`) instead of
+  giving the meshes a Visibility responder — **a flying saucer that answered Visibility traces would
+  become "the ground" under every downward probe in the game.** The lights-out visual is not ported;
+  the missile's own detonation is the feedback. Covered by `SimCopter.Ambient.UfoHitCount`.
 - **`Plane Crash($)/(pts)` and `Train Crash($)/(pts)` are dead tuning.** `FUN_004ab170` binds
   0x506008..0x506014 and nothing else in the exe reads them - `FUN_004aabf0` has no branch for
   type bit 0x4 or 0x100. A bare crash mission legitimately pays +0/+0.

@@ -289,6 +289,21 @@ public:
 	// to the aircraft can be put on the same ground.
 	float GetHelipadRestingOriginOffsetCm() const;
 
+	// SCHOOK: HelicopterCrashRespawn 0x0048a8b0
+	// Put a wrecked aircraft back on a free airport pad. False when the city has no airport or
+	// every pad is blocked, in which case the caller leaves it where it fell.
+	bool ReturnToAirportAfterCrash();
+
+	// How close another aircraft has to be to a pad for it to count as parked on it. Pads are one
+	// tile across, so anything inside half a tile is on it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "0.0"))
+	float CrashRespawnPadClearanceCm = 200.0f;
+
+	// How long the death spiral may run without reaching the ground before the aircraft is
+	// recovered anyway. Nothing in the original can reach that state; see UpdateStuckFallWatchdog.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "1.0"))
+	float StuckFallRecoverySeconds = 15.0f;
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	float GetFuelFraction() const;
 
@@ -1695,6 +1710,9 @@ private:
 	void SimulateFlightStep(float DeltaSeconds);
 	void UpdateGroundProbe();
 	void UpdateForwardProbe();
+	// Ends a death spiral that never reaches the ground. Remake-only; see the definition.
+	void UpdateStuckFallWatchdog(float DeltaSeconds);
+	float StuckFallSeconds = 0.0f;
 	void SeedFlightModelFromActor();
 	void ApplyFlightTuningToModel();
 	FSimCopterFlightInputs BuildFlightInputs() const;

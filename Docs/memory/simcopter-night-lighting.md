@@ -91,7 +91,8 @@ continuously where the original had a boolean fixed for the whole city.
 - `BakeCityAtlas.py` bakes `T_CityNightPage_<id>` alongside each page and writes a `NightTexture` on
   every `MI_CityPage_*`. The code still falls back to "night texture = day texture" for a page with
   no night variant, so adding an atlas page later cannot leave an unset texture parameter reading
-  the parent's grey checker after dark.
+  the parent's grey checker after dark. It also imports the painted window masks and writes
+  `WindowTexture` + `HasWindowMask` - see below.
 - `M_SimCopterCityAtlas` samples both pages through the same cell UV, blends Base Color, and adds an
   emissive term for the windows.
 
@@ -115,8 +116,9 @@ at once, both hashed off a `WindowSeed` the subsystem **re-rolls at every sunset
 seek, so switching to Static midnight from the Settings screen draws a fresh set rather than the one
 from the last time it was night.
 
-The per-window identity is `floor(InCellUV * WindowRandomGrid)` plus the building's own
-`ObjectPositionWS`. `InCellUV`'s **integer** part is already "which repeat of the atlas cell am I on
+The identity being rolled is `floor(InCellUV * WindowRandomGrid)` plus the building's own
+`ObjectPositionWS` — on the painted path `WindowRandomGrid` is not used at all and the unit is one
+whole tile, `floor(InCellUV)`; the rest of this section is the derived fallback's version of it. `InCellUV`'s **integer** part is already "which repeat of the atlas cell am I on
 across this wall", so it is a stable per-bay index for free; the object position keeps two identical
 towers from lighting identically (the city places each model as its own runtime static mesh
 instance, so this really is per-building). The grid does not have to line up exactly with the art -
@@ -165,6 +167,39 @@ If something like this ever needs diagnosing again, `SimCopter.NightWindows.LitF
 `.RowLitFraction 0` makes `lit` a constant and takes the per-pixel hash out of the shader, which
 separates "the roll is unstable" from "something downstream is".
 
+#### Re-checked 2026-08-06: the guard is intact, and it was never the whole story
+
+Asked again because Lumen looked like it was back on the windows. The guard is **not** the
+regression - it is present verbatim in the committed `M_SimCopterCityAtlas.uasset` (grep the asset,
+the HLSL is stored as plain text) and nothing has touched it since. Two things worth recording so
+this is not re-derived a third time:
+
+- **UE 5.8 has TWO card-capture entry points**, and the guard reaches both. `LumenCardPixelShader.usf`
+  is the raster path; `LumenCardComputeShader.usf` is the **Nanite** path, and the city is Nanite
+  (`used_with_nanite`), so that is the one that actually matters here. Both `#define
+  LUMEN_CARD_CAPTURE 1` on line 3, before `#include "/Engine/Generated/Material.ush"` on line 18.
+- **The guard only covers the surface cache, and Lumen gathers light two ways.** The other is
+  **screen traces**, which sample the frame that was just drawn - so they see the windows exactly as
+  the base pass drew them, and no material-side guard can reach that path at all. That is the half
+  that was never closed.
+
+The one knob screen tracing has is `r.Lumen.ScreenTracingSource`, and the engine's own text for it
+names this exact failure: 0 is "Scene Color (**noise from small emissive elements**)", 1 is
+"Anti-aliased Scene Color ... **less noise from small emissive elements**". A skyline of 25-nit
+windows over ground at a fraction of a nit is precisely "small emissive elements". The project was on
+0 (the engine default); **it is 1 now**, in `DefaultEngine.ini`.
+
+Read the limit honestly: `GLumenScreenTracingSource` is read in `LumenReflectionTracing.cpp` and
+nowhere else, so this is **reflections only** - the diffuse screen probe gather still traces the
+lit frame. If the windows still push light around after this, the remaining lever is
+`r.Lumen.ScreenProbeGather.ScreenTraces 0`, and it is a much blunter instrument: it takes out every
+screen-space contact bounce in the city, not just the windows.
+
+Things checked and ruled out, so nobody re-checks them: hardware-RT hit lighting (the project pins
+`r.Lumen.HardwareRayTracing.LightingMode=0`, surface cache, so materials are never evaluated in a
+hit shader); the `SelfIllum` floor (0.08 of base colour is ~0.06 nits at a window against the glow's
+25, and it is there by day too); and `bEmissiveLightSource`, which is still false and still a no-op.
+
 ### Brightness
 
 `WindowGlowNits` started at 2500 and that was four orders of magnitude over the moonlit ground - the
@@ -172,10 +207,57 @@ skyline bloomed into one continuous halo. It is **25** now, and it lives in the 
 than the material so it can move at runtime: `SimCopter.NightWindows.Nits`, alongside
 `.LitFraction` and `.RowLitFraction`.
 
-### Deriving the window mask instead of authoring it
+### The window mask is PAINTED now; deriving it is the fallback
 
-Which texels are windows is not recorded anywhere in the data. It is derivable, because the night
-art darkens the whole page *except* the windows:
+Which texels are windows is not recorded anywhere in the data, so there are two ways to know it and
+the material carries both. `HasWindowMask` (0 on the parent, 1 on an instance the bake found a file
+for) picks between them.
+
+**Painted, and this is what ships.** `SimCopterRemake/Content/NightWindows/windows_page_<page>.png`,
+drawn in `Tools/WindowLayoutEditor.html`, imported by `BakeCityAtlas.py` as `T_CityWindowPage_<page>`
+and bound to the `WindowTexture` parameter. All three wall pages (2, 39, 40) are done; 13 and 20 are
+terrain and have no windows to paint. Channels:
+
+| channel | meaning |
+| --- | --- |
+| R | 255 where the texel is a lit window. Binary, so `step(0.5, r)` is the mask. |
+| G | a per-window byte, from connected-component labelling of the painted blobs |
+| B | a per-row byte, shared by every window on the same row **of the same 32x32 cell** |
+
+So a "window" is whatever shape was drawn and a "row" is one floor of one cell - no grid, no spacing
+assumption, and edges that are right rather than nearly right.
+
+Four things about it that are easy to get wrong:
+
+- **The file name is the ATLAS page, not the composite index.** They overlap enough to be genuinely
+  ambiguous - SKY composite images 1, 2, 3 are atlas pages 2, 39, 40, so `windows_page_1.png` and
+  `windows_page_2.png` could each mean either. The first painted file was named for the composite
+  index; it took correlating the mask against all three night pages to find out which page it was
+  (mean night luminance under the mask 0.76 on page 2 against 0.29 and 0.24 on the other two - the
+  answer is never close, so `Docs/scratchpad/agent-sessions/2026-08-06-night-windows/`
+  `verify_window_masks.py` settles it in one run). The painter now offers a fixed *list* of atlas
+  pages instead of a number box, so this cannot recur.
+- **Imported with `srgb=False`.** G and B are IDs, not colour. A transfer curve on the way in stops
+  `Authored.gb * 255.0` recovering the bytes the painter wrote.
+- **The sampler parameter stays on the DEFAULT (Color) type anyway**, which looks contradictory and
+  is not. `ProcessMaterialColorTextureLookup` and `ProcessMaterialLinearColorTextureLookup` both
+  `return TextureValue` - the type changes no shader code at all, only which default texture the
+  *parent* is validated against, and the parent's default is the engine's sRGB grey checker.
+  Declaring Linear Color there breaks the whole material for no gain.
+- **The unit of the lit/unlit roll is one TILE, not one painted blob.** `windowCell =
+  floor(InCellUV)` - which repeat of the atlas cell we are on across this wall - so every window a
+  tile paints comes on together. The mask's G and B are deliberately *not* in the hash key. Rolling
+  each blob separately was tried first and reads as speckle at city distance, where a whole tile
+  reads as a room with the light on. The bytes stay in the file, so a finer unit is a change to that
+  one line and nothing else.
+
+Cost, measured: **389 pixel instructions against 382 before**, vertex unchanged at 172, samplers
+5 -> 6. The extra sample is paid on the terrain pages too, which have no mask; that is the price of
+one material for all five pages.
+
+**The derived mask below is not dead code** - it is what an unpainted page falls back to, and it is
+what made the feature possible before there was a painter. The night art darkens the whole page
+*except* the windows:
 
 ```hlsl
 float gotBrighter = saturate((nightLum - dayLum) * Contrast);
@@ -269,6 +351,19 @@ Editor Python, in this order (the atlas material is deleted and recreated each r
 
 ```
 Tools/Unreal/CreateSimCopterMaterials.py    # MPC_SimCopterDayNight, then M_SimCopterCityAtlas
-Tools/Unreal/BakeCityAtlas.py               # day + night pages, NightTexture on every instance
+Tools/Unreal/BakeCityAtlas.py               # day + night + painted window pages, params on every instance
 Tools/Unreal/ImportSlateArt.py              # the committed Content/Slate PNGs -> .uasset
 ```
+
+Headless is the fast way to check one of these landed, and it is how the painted masks were verified:
+
+```powershell
+& "C:\GameDev\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" <uproject> `
+    -unattended -nop4 -nosplash -stdout -FullStdOutLogOutput `
+    -ExecutePythonScript="<repo>\Tools\Unreal\BakeCityAtlas.py"
+```
+
+**Leave `-NullRHI` off when the point is to know a material compiled.** With it the run succeeds and
+`MaterialEditingLibrary.get_statistics` returns 0/0/0, which is indistinguishable from a broken
+graph. Without it the same call returned 393/172/6 and that is the proof.
+`Docs/scratchpad/agent-sessions/2026-08-06-night-windows/verify_window_wiring.py` is the check.
