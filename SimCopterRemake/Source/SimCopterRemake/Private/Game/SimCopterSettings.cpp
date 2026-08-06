@@ -508,13 +508,14 @@ void USimCopterSettings::ApplyGraphics(const UObject* WorldContextObject)
 	// scalability half already has it at AntiAliasingQuality 0. None is still in the dropdown for
 	// anyone who would rather have the milliseconds.
 	//
-	// Left alone while Super Resolution is on: DLSS hooks the TAA/TSR upsample pass itself
-	// (EnableDLSS sets r.TemporalAA.Upscaler) and the row is greyed out on the page for the same
-	// reason Resolution Scale is - see the getter's comment in SimCopterSettings.h.
-	if (!bDlssEnabled)
-	{
-		SetRenderCVar(TEXT("r.AntiAliasingMethod"), static_cast<int32>(AntiAliasingMethod));
-	}
+	// The one case where it is NOT the player's is super resolution, which needs TSR specifically -
+	// see the getter's comment in SimCopterSettings.h. This used to leave the CVar alone instead,
+	// which was wrong in a way that looked like nothing: with None or FXAA still applied the view
+	// never entered TemporalUpscale, so DLSS was initialised, moved the Resolution Scale row, and
+	// then upscaled nothing. AntiAliasingMethod itself is untouched, so it comes straight back.
+	SetRenderCVar(
+		TEXT("r.AntiAliasingMethod"),
+		static_cast<int32>(IsDlssActive() ? ESimCopterAntiAliasingMethod::Tsr : AntiAliasingMethod));
 
 	if (bLowPowerMode)
 	{

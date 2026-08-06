@@ -757,11 +757,13 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		},
 		// Greyed while Super Resolution is on: DLSS owns the scale for its quality mode (see
 		// ApplyGraphics), and setting a resolution scale DLSS did not ask for is what crashed inside
-		// NGX_D3D12_EVALUATE_DLSS_EXT with a source/dest rect DLSS could not evaluate.
+		// NGX_D3D12_EVALUATE_DLSS_EXT with a source/dest rect DLSS could not evaluate. IsDlssActive
+		// rather than IsDlssEnabled for the same reason as the Anti-Aliasing row below - a config
+		// carried from an RTX machine must not grey a row whose owner is not drawn on this one.
 		[this]()
 		{
 			const USimCopterSettings* Settings = GetSettings(this);
-			return Settings == nullptr || !Settings->IsDlssEnabled();
+			return Settings == nullptr || !Settings->IsDlssActive();
 		}));
 
 	if (bDlssAvailable)
@@ -783,8 +785,18 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 
 		FRowBinding AntiAliasing;
 		AntiAliasing.GetCount = []() { return UE_ARRAY_COUNT(Methods); };
-		AntiAliasing.GetOptionLabel = [](const int32 Index)
+		AntiAliasing.GetOptionLabel = [this](const int32 Index)
 		{
+			// Super resolution does not sit alongside a method, it *is* the method: ApplyGraphics
+			// forces TSR while it is on, because that is the only thing that puts the view into
+			// TemporalUpscale and lets DLSS upscale at all. Reading back "TSR" - or worse, the "None"
+			// the player last picked - would be the row describing something that is not running.
+			// The row is greyed at the same time, so this is only ever the closed combo's text.
+			const USimCopterSettings* Settings = GetSettings(this);
+			if (Settings != nullptr && Settings->IsDlssActive())
+			{
+				return LOCTEXT("AntiAliasingDlss", "DLSS");
+			}
 			return (Index >= 0 && Index < UE_ARRAY_COUNT(Methods))
 				? USimCopterSettings::GetAntiAliasingMethodLabel(Methods[Index])
 				: FText::GetEmpty();
@@ -811,12 +823,14 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				Settings->ApplyAll(nullptr);
 			}
 		};
-		// Same reason as Resolution Scale above: DLSS hooks the TAA/TSR upsample pass itself and
-		// picking a different method out from under it is unsupported.
+		// Greyed while super resolution owns the method, live again the moment it is switched off -
+		// the stored pick is never overwritten, so the row comes back reading what the player chose.
+		// IsDlssActive rather than IsDlssEnabled: a config carried from an RTX machine would
+		// otherwise grey this row on a GPU where the Super Resolution row is not even drawn.
 		AntiAliasing.IsEnabled = [this]()
 		{
 			const USimCopterSettings* Settings = GetSettings(this);
-			return Settings == nullptr || !Settings->IsDlssEnabled();
+			return Settings == nullptr || !Settings->IsDlssActive();
 		};
 		AddRow(BuildDropdownRow(LOCTEXT("AntiAliasing", "Anti-Aliasing"), AntiAliasing));
 	}
