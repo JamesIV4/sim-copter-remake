@@ -293,6 +293,25 @@ every hour**. Six sites create MIDs from it and originally only one wrote the pa
 | `ASimCopterOnFootPawn::FigureHeadMaterialInstance` | the player's head | no |
 | `USimCopterFlashingLightsComponent` | blink markers | yes |
 
+### The heads left this material entirely (2026-08-06)
+
+Reported as "at night people's heads are totally black - and we should not need to set a brightness
+for heads, that's silly", which is the right conclusion. A surface with a zero floor is only ever a
+*computed* imitation of shading, and the imitation fails at both ends: too bright before the floor
+existed, black once it did.
+
+Both `FigureHeadMaterialInstance` rows above are now on **`M_SimCopterLitSpriteTexture`**, the same
+masked Default Lit card material [[simcopter-sprite-card-lighting]] gave the trees, with
+`CardNormalUpBias` set to **0** — that material's default of 1.0 flattens the normal to world up for
+crossed vertical quads, and `AppendBall` gives a head real normals. It shares `SelfIllum` /
+`Roughness` / `Specular` with `M_SimCopterLitVertexColor`, which is the *body*'s material, so the
+head and the body under it now shade identically at every hour and nothing writes a brightness at
+all. `RefreshSpriteExposure` is left with only the legacy PEOPLE1 billboard.
+
+Checked with `Docs/scratchpad/verify_figure_head_material.py` (Default Lit, Masked, and both
+parameters present — a `SetScalarParameterValue` for a parameter the material lacks is silently
+ignored, so this is worth one headless run).
+
 So the fire burned at a fixed 26000 while the smoke and embers *rising out of the same fire* tracked
 the sun, and every person in the city glowed all night. All of it is one bug with one shape.
 

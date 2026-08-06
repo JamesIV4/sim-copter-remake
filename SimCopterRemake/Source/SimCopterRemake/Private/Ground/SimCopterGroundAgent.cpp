@@ -67,6 +67,9 @@ constexpr float PedestrianFallbackZCm = 88.0f;
 constexpr float PedestrianSpriteHeightCm = 162.0f;
 constexpr float PedestrianBodyHeightCm = 176.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
+// The privanim head's material. Masked and chroma-keyed exactly like the unlit sprite material, but
+// Default Lit - see FigureHeadMaterial in the header for why a head must not be an emissive card.
+constexpr const TCHAR* FigureHeadMaterialPath = TEXT("/Game/Materials/M_SimCopterLitSpriteTexture.M_SimCopterLitSpriteTexture");
 
 // FUN_004c1050 mode 1: the spotlight reaction only fires when rng % DAT_0058dc3a == 0.
 // FUN_004c3010 writes 65000 to that global and something else writes a small tuning value;
@@ -121,6 +124,11 @@ TSharedPtr<FPeopleBehaviorModel> GetSharedBehaviorModel(const FString& RootPath)
 UMaterialInterface* LoadSpriteMaterialNoWarn()
 {
 	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, SpriteMaterialPath, nullptr, LOAD_NoWarn));
+}
+
+UMaterialInterface* LoadFigureHeadMaterialNoWarn()
+{
+	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, FigureHeadMaterialPath, nullptr, LOAD_NoWarn));
 }
 }
 
@@ -182,6 +190,7 @@ ASimCopterGroundAgent::ASimCopterGroundAgent()
 	}
 
 	SpriteMaterial = LoadSpriteMaterialNoWarn();
+	FigureHeadMaterial = LoadFigureHeadMaterialNoWarn();
 
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 	AnimationPhase = FMath::FRandRange(0.0f, UE_TWO_PI);
@@ -490,6 +499,17 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 				BehaviorContext.bRequestDespawn = false;
 				BehaviorContext.ResetToState(BehaviorContext.GetStateIndex());
 				ResetBehaviorProgramOverride();
+				if (bHospitalParamedic)
+				{
+					// BHAV 801's entry runs 'Walk-10' once, with autoturn cleared, and the original
+					// never gets there twice - the worker retires. Restarting the program replays
+					// that walk on every refusal, and with the facing left alone every replay went
+					// the same way, so the medic marched half a metre at a time to the edge of its
+					// roof and stayed there. Re-rolling the facing turns the repeat back into what
+					// its single execution reads as: a step somewhere, not a heading.
+					BehaviorContext.Attributes[EBhavAttr::Facing] =
+						uint16(BehaviorContext.RandomBounded(8));
+				}
 				if (!bClaimedPassengerSeat && !BehaviorCarrier.IsValid())
 				{
 					SetActorHiddenInGame(false);
@@ -704,7 +724,14 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 		// A posted hospital worker turns at the edge of its own roof instead of walking to it and
 		// leaning on the containment clamp. Result 3 is the same code the original uses for a tile
 		// the walker may not enter, so the retry loop turns them exactly as it would there.
-		if (!IsWithinHospitalRoofPost(TargetLocation))
+		//
+		// An aimless walk is held to a smaller square around the post than one that is on its way to
+		// something: BHAV 801's entry walk is meant to happen once and the remake replays it every
+		// time it refuses the medic's despawn, which used to march them out to the parapet. See
+		// HospitalRoofPostIdleWanderFraction.
+		if (!IsWithinHospitalRoofPost(
+				TargetLocation,
+				bBehaviorStepSeekingSelection ? 1.0f : HospitalRoofPostIdleWanderFraction))
 		{
 			LastBlockResult = 3;
 			continue;
@@ -884,17 +911,55 @@ void ASimCopterGroundAgent::SetHospitalRoofPost(const FVector& RoofCenterWorldLo
 	bHasHospitalRoofPost = HospitalRoofPostHalfExtentCm > 0.0f;
 }
 
-bool ASimCopterGroundAgent::IsWithinHospitalRoofPost(const FVector& WorldLocation) const
+bool ASimCopterGroundAgent::IsWithinRoofPostSquare(
+	const FVector& TargetLocation,
+	const FVector& CurrentLocation,
+	const FVector& PostCenterWorldLocation,
+	const float PostHalfExtentCm,
+	const float BodyRadiusCm,
+	const float ExtentFraction)
+{
+	if (PostHalfExtentCm <= 0.0f)
+	{
+		return true;
+	}
+
+	auto OffsetFromPost = [&PostCenterWorldLocation](const FVector& Location)
+	{
+		return FMath::Max(
+			FMath::Abs(Location.X - PostCenterWorldLocation.X),
+			FMath::Abs(Location.Y - PostCenterWorldLocation.Y));
+	};
+
+	// Inset by the body radius so the capsule stays over the roof rather than half off it.
+	const float Limit = FMath::Max(
+		1.0f,
+		PostHalfExtentCm * FMath::Clamp(ExtentFraction, 0.0f, 1.0f) - BodyRadiusCm);
+	const float TargetOffset = OffsetFromPost(TargetLocation);
+	if (TargetOffset <= Limit)
+	{
+		return true;
+	}
+
+	// Already outside it - which the whole-roof arm allows, and a shove or a reload can produce
+	// anyway. Refusing every direction from out here would pin the worker against the parapet, so
+	// let anything that heads back toward the middle through.
+	return TargetOffset < OffsetFromPost(CurrentLocation);
+}
+
+bool ASimCopterGroundAgent::IsWithinHospitalRoofPost(const FVector& WorldLocation, const float ExtentFraction) const
 {
 	if (!bHasHospitalRoofPost)
 	{
 		return true;
 	}
-	// Inset by the body radius so the capsule stays over the roof rather than half off it.
-	const float Radius = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f;
-	const float Limit = FMath::Max(1.0f, HospitalRoofPostHalfExtentCm - Radius);
-	return FMath::Abs(WorldLocation.X - HospitalRoofPostWorldLocation.X) <= Limit &&
-		FMath::Abs(WorldLocation.Y - HospitalRoofPostWorldLocation.Y) <= Limit;
+	return IsWithinRoofPostSquare(
+		WorldLocation,
+		GetActorLocation(),
+		HospitalRoofPostWorldLocation,
+		HospitalRoofPostHalfExtentCm,
+		CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f,
+		ExtentFraction);
 }
 
 ASimCopterGroundAgent::ERoofPostContainment ASimCopterGroundAgent::ClampToHospitalRoofPost(
@@ -2069,10 +2134,11 @@ bool ASimCopterGroundAgent::BoardCarrier(
 			}
 		}
 
-		// Normal cabin boarding goes through the same landed/settled gate as the proven mission
-		// transfer path. The one exception is the decoded op-58 harness-to-cabin transition:
-		// winding the rope in is supposed to bring its rider aboard while airborne.
-		if ((!bAllowAirborneCabinTransfer && !Helicopter->CanTransferMissionPassengers()) ||
+		// Normal cabin boarding goes through opcode 12's own height band, which is the looser of the
+		// original's two - climbing in tolerates a lower hover than stepping out does. The one
+		// exception is the decoded op-58 harness-to-cabin transition: winding the rope in is supposed
+		// to bring its rider aboard while airborne.
+		if ((!bAllowAirborneCabinTransfer && !Helicopter->CanBoardMissionPassengers()) ||
 			Helicopter->GetAvailablePassengerSeats() <= 0)
 		{
 			return false;
@@ -3729,11 +3795,11 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 	// pedestrians while the actual casualties wore whatever came up.
 	FigureHeadIndex = ResolveHeadImageIndex();
 	const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
-	if (SpriteMaterial == nullptr)
+	if (FigureHeadMaterial == nullptr)
 	{
-		SpriteMaterial = LoadSpriteMaterialNoWarn();
+		FigureHeadMaterial = LoadFigureHeadMaterialNoWarn();
 	}
-	if (SpriteMaterial != nullptr)
+	if (FigureHeadMaterial != nullptr)
 	{
 		if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[FigureHeadIndex]))
 		{
@@ -3741,10 +3807,15 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 		}
 		if (FigureHeadTexture != nullptr)
 		{
-			FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(SpriteMaterial, this);
+			FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(FigureHeadMaterial, this);
 			if (FigureHeadMaterialInstance != nullptr)
 			{
 				FigureHeadMaterialInstance->SetTextureParameterValue(TEXT("Texture"), FigureHeadTexture);
+				// The material's default 1.0 flattens a card's normal to world up, which is right for
+				// the crossed vertical quads it was written for (a tree) and wrong here: AppendBall
+				// gives the head real normals, and shading it off them is what makes it turn with the
+				// sun in step with the vertex-coloured body it sits on.
+				FigureHeadMaterialInstance->SetScalarParameterValue(TEXT("CardNormalUpBias"), 0.0f);
 			}
 		}
 	}
@@ -3982,11 +4053,11 @@ void ASimCopterGroundAgent::RefreshHeadlightVisibility()
 
 void ASimCopterGroundAgent::RefreshSpriteExposure()
 {
-	const UWorld* World = GetWorld();
+	// Only the PEOPLE1 billboard is still unlit and still needs its brightness computed. The figure
+	// head moved to the lit card material and is shaded by the scene like everything else, so it has
+	// no EmissiveNits to write - which is the point, not an omission.
 	USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
-		SpriteMaterialInstance, World, /*bIsLightSource=*/false);
-	USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
-		FigureHeadMaterialInstance, World, /*bIsLightSource=*/false);
+		SpriteMaterialInstance, GetWorld(), /*bIsLightSource=*/false);
 }
 
 void ASimCopterGroundAgent::DisableVehicleHeadlights()

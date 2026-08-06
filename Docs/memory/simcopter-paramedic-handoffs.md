@@ -407,6 +407,78 @@ a 60 cm ground-clearance band, which is a different axis but also part of "befor
 
 Analysis and dumps: `Docs/scratchpad/agent-sessions/2026-08-05-ambulance-and-dash/`.
 
+## Getting OUT is six units, and it is never tested every frame (2026-08-06)
+
+Reported as "people get out of the helicopter too quickly, giving no time to land first". Both
+halves of the guess in that report were right.
+
+**The height.** Opcodes 17 and 21 both end in `FUN_004c9bc0`, whose last line is
+`(person.Y - FUN_004c82c0(person.pos)) >> 16 < 6` — **six original units, 37.5 cm**. For a rider
+that is the *aircraft's* height, because `FUN_004c6450` copies the carrier's `+0x18/+0x1c/+0x20`
+onto the person every tick. And `GroundClearanceCm` is exactly that quantity with no conversion:
+`ApplyFlightModelToActor` writes `ActorZ = Altitude * 6.25 + CapsuleHalfHeight` and
+`UpdateGroundProbe` takes the same half height back off, so the sphere bottom sits at the flight
+model's `Altitude`. A **landed** helicopter is `TerrainHeight + 0x13333` — 1.2 units, 7.5 cm — so the
+shipped allowance over a parked one is 4.8 units.
+
+The remake was on `GroundContactTolerance (28) + PassengerTransferClearanceCm (60)` = **88 cm**,
+nearly a metre of hover, and the same constant gated boarding. **The original's two gates are
+different numbers and the alight is the tighter one**: opcode 12's `FUN_004ca940` boards while
+`(objectY - personY) & 0xffff0000 < 0x50000`, five units above a walker who is themselves three units
+(`+0x30000`, `FUN_004cb190`) off the ground, so **eight units / 50 cm** of aircraft-above-ground. You
+may drop to a low hover and have a fare climb in; you may not have them step out from there. Now
+`PassengerAlightClearanceCm` (37.5) and `PassengerBoardClearanceCm` (50), and
+`CanBoardMissionPassengers()` alongside `CanTransferMissionPassengers()`.
+
+**The cadence, which is the other half.** BHAV 292 'Transport wait to get off' is
+`local0 := 10` / `op0 wait local0--` / BHAV 264 (whose own 'idle a bit' is three more ticks) before
+each probe, and a failed probe goes back to the ten — so the shipped game asks about every
+**thirteenth tick, 0.87 s**. BHAV 700 does the same for rescues, looping 305 -> 303 -> 267 'random
+motion'. The VM path inherits that for free; **the mission tick had none**, so
+`ProcessPassengerTransfers` / `ProcessRescueTransfers` emptied the cabin on the first frame the gate
+opened, mid-descent. `ASimCopterHelicopterPawn::SecondsWithinAlightClearance` accumulates while the
+aircraft is inside the band and resets when it rises out, and
+`ASimCopterMissionSystemActor::IsHelicopterSettledForAlight` holds the mission-side release until it
+reaches `PassengerAlightSettleSeconds` (13/15 s). Same demotion the boarding guidance and the medevac
+watchdog got: the shipped program acts first, the backstop waits its turn.
+
+Covered by `SimCopter.Flight.PassengerTransferClearance`. Decompiles and BHAV dumps:
+`Docs/scratchpad/agent-sessions/2026-08-06-alight-and-roof-post/`.
+
+## BHAV 801 walks ONCE; refusing the despawn replayed it (2026-08-06)
+
+Reported as "when paramedics are not picking up a patient they go to the edge of the roof every
+single time; they should be near the middle and walk around". The spawn and the post centre were
+never the problem — both are the footprint's scene centre (`Node.Location`, `OriginX + (Size-1)/2`).
+**The march is.**
+
+Read BHAV 801's edges rather than its record list:
+
+    [0] bind 'NoMo' ->5  [5] attr32 := 916 ->2  [2] attr14 := 0 ->4
+    [4] autoturn := 0 ->6
+    [6] CALL 1015 'Walk-10' ->7          <-- ENTRY PATH ONLY
+    [7] Idle-10 ->11  [11] 'idle a bit' ->10  [10] CALL 272 ->1  [1] ... ->11
+
+The steady-state loop is 11 -> 10 -> 1 -> 11 and **`Walk-10` is not in it**. It is ten ticks at
+`movespeed := 10` — `10/12 * 6.25 cm` a tick, about **52 cm, once, with autoturn cleared**. In the
+original that is the worker's whole life: 272 reaches 265 'Medevac disappear' within seconds and it
+is gone. The remake keeps the post staffed by refusing that despawn and `ResetToState`-ing (the
+2026-07-31 fix above), which **re-enters at rec[0] and re-runs the entry walk** — roughly once a
+second, always along the same facing, because nothing re-rolls it and autoturn is off. Eleven
+restarts is 5.7 m. That is a straight line to the containment limit, and then standing on it.
+
+Two changes, both on the repetition rather than on the walk:
+
+- **The restart re-rolls the facing** (`UpdateOriginalBehavior`, the `bHospitalParamedic` arm), so a
+  replayed one-shot reads as a step somewhere rather than as a heading.
+- **An aimless walk is held to `HospitalRoofPostIdleWanderFraction` (0.45) of the post**, so the
+  drift stays around the middle; a walk that is seeking a selection — BHAV 263 rec[5] heading for
+  the aircraft — still gets the whole roof. `IsWithinRoofPostSquare` is the pure static form, and it
+  always allows a step that *shortens* the distance to the post centre, or a worker left out at the
+  parapet by a handoff, a traffic shove or a reload would refuse every direction and be pinned there.
+
+Covered by the step-target half of `SimCopter.Dispatch.HospitalRoofPost`.
+
 ## "Wave" is panic; "WvNo" is the greeting
 
 Both clips ship in **every** figure, and the remake was binding the wrong one for a waiting victim -

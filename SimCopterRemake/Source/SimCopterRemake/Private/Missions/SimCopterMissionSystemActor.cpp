@@ -2042,12 +2042,20 @@ void ASimCopterMissionSystemActor::GetTransferReadyHelicopters(TArray<ASimCopter
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
 	for (AActor* Actor : HelicopterActors)
 	{
+		// The looser of the two height bands, because this list serves boarding as well as the
+		// drop-off; the release below adds the alight gate and its settle time on top.
 		ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
-		if (Helicopter != nullptr && Helicopter->CanTransferMissionPassengers())
+		if (Helicopter != nullptr && Helicopter->CanBoardMissionPassengers())
 		{
 			OutHelicopters.Add(Helicopter);
 		}
 	}
+}
+
+bool ASimCopterMissionSystemActor::IsHelicopterSettledForAlight(const ASimCopterHelicopterPawn& Helicopter)
+{
+	return Helicopter.CanTransferMissionPassengers() &&
+		Helicopter.GetSecondsWithinAlightClearance() >= Helicopter.GetPassengerAlightSettleSeconds();
 }
 
 int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
@@ -2086,11 +2094,17 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 
 		Person->AlightFromCarrier(); // atomically returns this real person's seat
 		const float Side = (Processed & 1) == 0 ? 1.0f : -1.0f;
+		// DropLocation is the deck beside the aircraft, at the aircraft's own height, so the person
+		// stands ON it rather than being buried to the chest in it - the actor origin is the middle
+		// of their capsule.
 		Person->SetActorLocation(
-			DropLocation + FVector(0.0f, Side * (35.0f + 28.0f * float(Processed)), 0.0f),
+			DropLocation + FVector(
+				0.0f,
+				Side * (35.0f + 28.0f * float(Processed)),
+				Person->GetCapsuleHalfHeightCm()),
 			false);
-		// No ground snap: they were let out of the cabin, so they fall the cabin's height onto
-		// whatever is underneath rather than appearing already stood on it.
+		// No ground snap: they were let out of the cabin, so they fall whatever is left of the
+		// cabin's height onto what is underneath rather than appearing already stood on it.
 		if (NotifyMissionPersonDelivered(Person))
 		{
 			Delivered++;
@@ -2250,6 +2264,14 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers(const float DeltaSe
 			for (ASimCopterHelicopterPawn* Helicopter : Helicopters)
 			{
 				if (Helicopter == nullptr || !IsWorldLocationNearTile(Helicopter->GetActorLocation(), Mission.DropoffX, Mission.DropoffY, PassengerDropoffRadiusCm))
+				{
+					continue;
+				}
+
+				// Getting out is BHAV 292's business, and it only probes about every thirteenth
+				// tick. This loop runs every mission tick, so without the same beat it emptied the
+				// cabin the frame the skids came into range - "they get out before I can land".
+				if (!IsHelicopterSettledForAlight(*Helicopter))
 				{
 					continue;
 				}
@@ -2437,7 +2459,7 @@ void ASimCopterMissionSystemActor::ProcessRescueTransfers()
 
 				// Direct cabin entry is a landed-helicopter action. Harness boarding remains valid
 				// in flight and claims its cabin seat only when op 58 winds the rider in.
-				if (bUseHarness || Helicopter->CanTransferMissionPassengers())
+				if (bUseHarness || Helicopter->CanBoardMissionPassengers())
 				{
 					const int32 Boarded = TrafficSystem->BoardMissionPeopleTouching(
 						Mission.EventId,
@@ -2454,7 +2476,10 @@ void ASimCopterMissionSystemActor::ProcessRescueTransfers()
 				}
 			}
 
-			if (Mission.Deliverable <= 0 || !Helicopter->CanTransferMissionPassengers())
+			// BHAV 700's loop reaches 303 'Rescue try get off heli or bucket if appropriate' between
+			// idles, so a survivor never leaves the cabin the instant the aircraft comes into range
+			// either. Same beat as the transport drop-off above.
+			if (Mission.Deliverable <= 0 || !IsHelicopterSettledForAlight(*Helicopter))
 			{
 				continue;
 			}

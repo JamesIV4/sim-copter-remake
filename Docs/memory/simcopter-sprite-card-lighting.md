@@ -57,7 +57,15 @@ mesh and the per-model instanced building meshes (see [[simcopter-instanced-buil
   that list — `MI_CityImage_*` holds a hard reference to it as a parent.
 * **Still unlit, on purpose:** fire (`FIREPTS`), particle-FX kernels and the rotor disc are their
   own light source. Do not "fix" those. See [[simcopter-fire-water-fx]].
-* **Still unlit, and probably wrong:** the pedestrian sprite path and the privanim figure *heads*
-  both build dynamic instances of `M_SimCopterSpriteTexture` (`SpriteMaterialPath` in
-  `SimCopterGroundAgent.cpp` and `SimCopterOnFootPawn.cpp`), so people's heads glow at night the
-  same way the trees did. Left alone as of this note. See [[simcopter-ue-figure-component]].
+* **The figure heads are on this material now too (2026-08-06).** They were the "still unlit, and
+  probably wrong" case this note used to leave open; the interim fix computed their brightness from
+  the key light every frame as a zero-floored surface, which turned "glowing all night" into
+  "totally black all night" and is silly either way — a head is painted geometry, not a card that
+  emits. Both `FigureHeadMaterialInstance` sites (`SimCopterGroundAgent.cpp`,
+  `SimCopterOnFootPawn.cpp`) create their MIDs from `M_SimCopterLitSpriteTexture` and set
+  **`CardNormalUpBias` to 0**: the default 1.0 is for the crossed vertical quads a tree is made of,
+  and `AppendBall` gives a head real normals to shade off. Full note in
+  [[simcopter-night-lighting]]. The legacy PEOPLE1 billboard path
+  (`LoadOriginalPedestrianSpriteFromOriginalGameRoot`, reached only for a pedestrian whose mesh name
+  is a PEOPLE1 one) is the last unlit person surface and keeps its computed exposure.
+  See [[simcopter-ue-figure-component]].

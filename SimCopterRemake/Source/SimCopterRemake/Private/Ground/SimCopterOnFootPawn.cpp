@@ -4,7 +4,6 @@
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/CameraComponent.h"
-#include "City/SimCopterEffectExposure.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -58,11 +57,13 @@ constexpr float PopulationWorldScale = 0.25f;
 constexpr float OnFootCapsuleRadiusCm = 38.0f;
 constexpr float OnFootCapsuleHalfHeightCm = 92.0f;
 constexpr float OnFootBodyHeightCm = 184.0f;
-constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
+// Masked and chroma-keyed like the unlit sprite material the head used to share with the effect
+// cards, but Default Lit - see ASimCopterGroundAgent::FigureHeadMaterial.
+constexpr const TCHAR* FigureHeadMaterialPath = TEXT("/Game/Materials/M_SimCopterLitSpriteTexture.M_SimCopterLitSpriteTexture");
 
-UMaterialInterface* LoadSpriteMaterialNoWarn()
+UMaterialInterface* LoadFigureHeadMaterialNoWarn()
 {
-	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, SpriteMaterialPath, nullptr, LOAD_NoWarn));
+	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, FigureHeadMaterialPath, nullptr, LOAD_NoWarn));
 }
 }
 
@@ -148,7 +149,7 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 		BodyVertexColorMaterial = BodyMaterialFinder.Object;
 	}
 
-	SpriteMaterial = LoadSpriteMaterialNoWarn();
+	FigureHeadMaterial = LoadFigureHeadMaterialNoWarn();
 
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 	HelicopterClass = ASimCopterHelicopterPawn::StaticClass();
@@ -227,11 +228,6 @@ void ASimCopterOnFootPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
-	// The player's own head is on the same unlit sprite material as everyone else's, so it needs the
-	// same SURFACE exposure - no minimum - or it glows after dark. See ASimCopterGroundAgent.
-	USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
-		FigureHeadMaterialInstance, GetWorld(), /*bIsLightSource=*/false);
 
 	if (MissionPickupCooldownSeconds > 0.0f)
 	{
@@ -914,7 +910,7 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 	}
 
 	// Pilot head: the first entry of the head-image table suits the player; texture optional.
-	if (SpriteMaterial != nullptr && FigureHeadMaterialInstance == nullptr)
+	if (FigureHeadMaterial != nullptr && FigureHeadMaterialInstance == nullptr)
 	{
 		const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
 		if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[0]))
@@ -922,10 +918,13 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 			FigureHeadTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, *HeadImage, TEXT("SimCopterPlayerHead"));
 			if (FigureHeadTexture != nullptr)
 			{
-				FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(SpriteMaterial, this);
+				FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(FigureHeadMaterial, this);
 				if (FigureHeadMaterialInstance != nullptr)
 				{
 					FigureHeadMaterialInstance->SetTextureParameterValue(TEXT("Texture"), FigureHeadTexture);
+					// The head is a ball with real normals, not a tree's crossed vertical quads, so
+					// the material's world-up normal bias has to be off. Same reason as the NPCs'.
+					FigureHeadMaterialInstance->SetScalarParameterValue(TEXT("CardNormalUpBias"), 0.0f);
 				}
 			}
 		}

@@ -1,0 +1,87 @@
+﻿=== BHAV 750 'Transport initbhav' (9 records) ===
+  [ 0] expr local0 := 40                                       T->6 F->-3
+  [ 1] bind-anim 'NoMo'                                        T->2 F->-3
+  [ 2] expr attr14 += 1                                        T->4 F->-3
+  [ 3] side-effect  args=0,65535,65535,65535                   T->5 F->-3
+  [ 4] CALL 291 'Transport go to avatar/get on heli'           T->7 F->-3
+  [ 5] CALL 292 'Transport wait to get off'                    T->-3 F->-3
+  [ 6] wait(local[a0]--)  args=0,65535,65535,65535             T->1 F->-3
+  [ 7] expr attr45 == 0                                        T->8 F->5
+  [ 8] expr attr45 := 1                                        T->3 F->-3
+
+=== BHAV 291 'Transport go to avatar/get on heli' (23 records) ===
+  [ 0] expr movespeed(+164) := 16                              T->10 F->-3
+  [ 1] local[a0]:=rand(resolve(a1,scope=a2))  args=0,40,7,0    T->9 F->-3
+  [ 2] threat-probe  args=2,1,7,1                              T->5 F->3
+  [ 3] threat-probe  args=9,4,7,1                              T->7 F->19
+  [ 4] bind-anim 'WvNo'                                        T->18 F->-3
+  [ 5] op12?  args=0,1,0,0                                     T->22 F->20
+  [ 6] side-effect  args=2,0,0,0                               T->4 F->-3
+  [ 7] op38?  args=0,1,0,0                                     T->6 F->14
+  [ 8] CALL 290 'Transport increment boredom, possibly disappear' T->15 F->-3
+  [ 9] expr local0 += 30                                       T->2 F->-3
+  [10] expr autoturn(+16a) := 1                                T->11 F->-3
+  [11] expr local3 := 0                                        T->21 F->-3
+  [12] expr local3 := 0                                        T->4 F->-3
+  [13] expr local3 += 1                                        T->6 F->-3
+  [14] expr local3 += 1                                        T->6 F->-3
+  [15] expr local3 > 20                                        T->16 F->17
+  [16] expr autoturn(+16a) := 1                                T->1 F->-3
+  [17] expr autoturn(+16a) := 0                                T->1 F->-3
+  [18] CALL 1100 'Idle-5'                                      T->8 F->-3
+  [19] CALL 307 'Inc fail and move through walls if > 4'       T->12 F->-3
+  [20] CALL 307 'Inc fail and move through walls if > 4'       T->13 F->-3
+  [21] expr failcount(+192) := 0                               T->1 F->-3
+  [22] expr failcount(+192) := 0                               T->retT F->-3
+
+=== BHAV 292 'Transport wait to get off' (7 records) ===
+  [ 0] expr local0 := 10                                       T->2 F->-3
+  [ 1] CALL 264 'Face vs. speed/health'                        T->3 F->-3
+  [ 2] wait(local[a0]--)  args=0,65535,65535,65535             T->1 F->-3
+  [ 3] threat-probe  args=0,4,7,0                              T->5 F->0
+  [ 4] side-effect  args=1,65535,65535,65535                   T->6 F->-3
+  [ 5] threat-response  args=65535,65535,65535,65535           T->4 F->0
+  [ 6] deactivate  args=65535,65535,65535,65535                T->-3 F->-3
+
+=== BHAV 290 'Transport increment boredom, possibly disappear' (8 records) ===
+  [ 0] local[a0]:=rand(resolve(a1,scope=a2))  args=1,5,7,0     T->5 F->-3
+  [ 1] expr attr35 > 100                                       T->4 F->retT
+  [ 2] expr attr35 += local0                                   T->1 F->-3
+  [ 3] op74?  args=0,0,0,0                                     T->6 F->-3
+  [ 4] side-effect  args=11,0,0,0                              T->7 F->-3
+  [ 5] expr local1 == 0                                        T->3 F->retT
+  [ 6] expr attr35 += 1                                        T->2 F->-3
+  [ 7] deactivate  args=65535,65535,65535,65535                T->-3 F->-3
+
+=== BHAV 1100 'Idle-5' (2 records) ===
+  [ 0] expr local0 := 5                                        T->1 F->1
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->retT
+
+=== BHAV 307 'Inc fail and move through walls if > 4' (3 records) ===
+  [ 0] CALL 261 'idle a bit'                                   T->1 F->-3
+  [ 1] expr failcount(+192) += 1                               T->2 F->-3
+  [ 2] CALL 308 'If fail > 4 move thru walls else no'          T->retT F->-3
+
+=== BHAV 264 'Face vs. speed/health' (12 records) ===
+  [ 0] carried-is-player  args=65535,65535,65535,65535         T->8 F->7
+  [ 1] op55?  args=0,0,0,0                                     T->3 F->-3
+  [ 2] op54?  args=2,0,0,0                                     T->7 F->-3
+  [ 3] expr local0 > 250                                       T->2 F->4
+  [ 4] expr local0 > 125                                       T->6 F->5
+  [ 5] op54?  args=1,0,0,0                                     T->7 F->-3
+  [ 6] op54?  args=0,0,0,0                                     T->7 F->-3
+  [ 7] CALL 261 'idle a bit'                                   T->retT F->-3
+  [ 8] expr attr39 == 10                                       T->9 F->1
+  [ 9] expr attr15 == 0                                        T->10 F->2
+  [10] expr attr34 < 1                                         T->2 F->11
+  [11] expr attr34 < 50                                        T->5 F->6
+
+=== BHAV 261 'idle a bit' (2 records) ===
+  [ 0] expr local0 := 3                                        T->1 F->-3
+  [ 1] wait(local[a0]--)  args=0,0,0,0                         T->retT F->-3
+
+=== BHAV 308 'If fail > 4 move thru walls else no' (3 records) ===
+  [ 0] expr failcount(+192) > 4                                T->1 F->2
+  [ 1] expr movethruwalls(+190) := 1                           T->retT F->-3
+  [ 2] expr movethruwalls(+190) := 0                           T->retT F->-3
+
