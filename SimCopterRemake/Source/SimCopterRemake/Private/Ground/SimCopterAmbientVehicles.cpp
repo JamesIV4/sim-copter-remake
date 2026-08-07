@@ -4,6 +4,7 @@
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCity2000CityActor.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/SimCity2000Reader.h"
@@ -80,6 +81,13 @@ constexpr int32 BoatRescueMinVictims = 3;   // 3 + rand % 3
 constexpr int32 BoatRescueVictimSpread = 3;
 constexpr int32 TrainRescueMinVictims = 1;  // 1 + rand % 3
 constexpr int32 TrainRescueVictimSpread = 3;
+
+// CAPBOAT1's GEO is modelled the right way up - the hull sits below its own y 0 and a short mast
+// with a life ring stands above it (Docs/scratchpad/render_maxis_object.py CAPBOAT1) - so the
+// "capsized" in its name is a rotation the renderer applies, not something baked into the mesh.
+// Rolling the hull 180 degrees about its own keel line turns the bottom up out of the water with
+// the deck underneath, which is the boat the rescue mission is about. Applied to boat slot 0 only.
+constexpr float CapsizedBoatRollDegrees = 180.0f;
 
 // FUN_004c3eb0 spawn modes. 1 = in the water beside the capsized boat, 0x13 = trapped by the train.
 constexpr int32 WaterRescueSpawnMode = 1;
@@ -388,7 +396,7 @@ bool ASimCopterAmbientVehiclesActor::RestoreRuntimeSaveState(const TArray<uint8>
 		if (Boat.Mesh != nullptr)
 		{
 			Boat.Mesh->SetVisibility(Boat.bVisible);
-			if (Boat.bVisible) SetMeshTransform(Boat.Mesh, Boat.World, Boat.Direction);
+			if (Boat.bVisible) SetBoatMeshTransform(Boat, Boat.World, FRotator::ZeroRotator);
 		}
 	}
 	if (Train.LocoMesh != nullptr) Train.LocoMesh->SetVisibility(Train.bVisible);
@@ -1151,6 +1159,36 @@ void ASimCopterAmbientVehiclesActor::SetMeshTransform(
 	}
 }
 
+void ASimCopterAmbientVehiclesActor::SetBoatMeshTransform(
+	const FSimCopterAmbientBoat& Boat,
+	const FVector& World,
+	const FRotator& WaveTilt)
+{
+	// Every boat placement goes through here so the capsize roll can never be missed for a frame -
+	// the mission activation, the save restore and the per-tick update all set the hull's transform.
+	if (Boat.Mesh == nullptr)
+	{
+		return;
+	}
+
+	const float CapsizeRoll = Boat.ObjectId == SimCopterAmbientVehicles::CapsizedBoatObjectId
+		? CapsizedBoatRollDegrees
+		: 0.0f;
+
+	const FRotator HeadingRotator = Boat.Direction.IsNearlyZero() ? FRotator::ZeroRotator : Boat.Direction.Rotation();
+	const FQuat HeadingQuat = HeadingRotator.Quaternion();
+	const FQuat CapsizeQuat = FQuat(FVector::ForwardVector, FMath::DegreesToRadians(CapsizeRoll));
+	const FQuat WaveQuat = WaveTilt.Quaternion();
+
+	const FQuat FinalQuat = HeadingQuat * WaveQuat * CapsizeQuat;
+
+	Boat.Mesh->SetWorldLocationAndRotation(World, FinalQuat);
+	if (!Boat.Mesh->IsVisible())
+	{
+		Boat.Mesh->SetVisibility(true);
+	}
+}
+
 // ---------------------------------------------------------------------------------------------
 // Tick
 // ---------------------------------------------------------------------------------------------
@@ -1714,35 +1752,36 @@ void ASimCopterAmbientVehiclesActor::UpdateBoat(FSimCopterAmbientBoat& Boat, con
 
 	// FUN_004afb60: a low helicopter over the boat's tile makes it run.
 	Boat.SpeedCmPerSec = Boat.BaseSpeedCmPerSec;
-	FVector RotorPushCm = FVector::ZeroVector;
+	FVector TargetRotorPushVelocity = FVector::ZeroVector;
 	if (const APawn* Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
 	{
-		const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
-		int32 PlayerX = INDEX_NONE;
-		int32 PlayerY = INDEX_NONE;
-		if (TrafficSystem != nullptr &&
-			TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Player->GetActorLocation(), PlayerX, PlayerY) &&
-			FIntPoint(PlayerX, PlayerY) == Boat.Tile)
+		// Only a possessed helicopter pawn exerts rotor wash push - not the player walking on foot.
+		if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Player))
 		{
-			const float ScareCeilingCm = BoatHelicopterScareAltitudeUnits * GetCmPerOriginalUnit();
-			const float AltitudeCm = Player->GetActorLocation().Z - Boat.World.Z;
-			if (AltitudeCm >= 0.0f && AltitudeCm <= ScareCeilingCm)
+			const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+			int32 PlayerX = INDEX_NONE;
+			int32 PlayerY = INDEX_NONE;
+			if (TrafficSystem != nullptr &&
+				TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(Helicopter->GetActorLocation(), PlayerX, PlayerY) &&
+				FIntPoint(PlayerX, PlayerY) == Boat.Tile)
 			{
-				const float Alpha = 1.0f - (AltitudeCm / ScareCeilingCm);
-				Boat.SpeedCmPerSec += BoatHelicopterScareBoostUnits * GetCmPerOriginalUnit() * Alpha;
+				const float ScareCeilingCm = BoatHelicopterScareAltitudeUnits * GetCmPerOriginalUnit();
+				const float AltitudeCm = Helicopter->GetActorLocation().Z - Boat.World.Z;
+				if (AltitudeCm >= 0.0f && AltitudeCm <= ScareCeilingCm)
+				{
+					const float Alpha = 1.0f - (AltitudeCm / ScareCeilingCm);
+					Boat.SpeedCmPerSec += BoatHelicopterScareBoostUnits * GetCmPerOriginalUnit() * Alpha;
 
-				// DIVERGENCE, and a deliberate one. FUN_004afb60 only speeds the hull up along its
-				// own heading; there is no lateral term in the original, so a helicopter hovering
-				// beside a boat cannot move it. A rotor throwing enough downwash to raise the
-				// visible wash disc should shove a small boat away from underneath it, so the same
-				// altitude ramp also drives a push directly away from the aircraft. It is applied
-				// as displacement, not as steering: the boat keeps its own course and is simply
-				// slid off the spot, which is what the wash would do.
-				const FVector Away = (Boat.World - Player->GetActorLocation()).GetSafeNormal2D();
-				RotorPushCm = Away * (BoatRotorWashPushUnits * GetCmPerOriginalUnit() * Alpha);
+					const FVector Away = (Boat.World - Helicopter->GetActorLocation()).GetSafeNormal2D();
+					TargetRotorPushVelocity = Away * (BoatRotorWashPushUnits * GetCmPerOriginalUnit() * Alpha);
+				}
 			}
 		}
 	}
+
+	// Smoothly ramp push velocity in/out using exponential decay (EMA)
+	const float PushBlendAlpha = 1.0f - FMath::Exp(-DeltaSeconds / FMath::Max(0.01f, BoatRotorWashSmoothSeconds));
+	Boat.RotorPushVelocityCm = FMath::Lerp(Boat.RotorPushVelocityCm, TargetRotorPushVelocity, PushBlendAlpha);
 
 	// FUN_004af770's wake: an ambient boat drops a small spray behind it, the capsized one puffs.
 	Boat.WakeTimerSeconds -= DeltaSeconds;
@@ -1767,7 +1806,25 @@ void ASimCopterAmbientVehiclesActor::UpdateBoat(FSimCopterAmbientBoat& Boat, con
 	const float StepCm = Boat.SpeedCmPerSec * DeltaSeconds;
 	Boat.DistanceToTargetCm -= StepCm;
 	Boat.World += Boat.Direction * StepCm;
-	Boat.World += RotorPushCm * DeltaSeconds;
+
+	// Apply rotor push, clamping so the displacement cannot push the boat onto land / outside valid water.
+	const FVector ProposedPushWorld = Boat.World + Boat.RotorPushVelocityCm * DeltaSeconds;
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	int32 ProposedX = INDEX_NONE, ProposedY = INDEX_NONE;
+	if (TrafficSystem != nullptr && TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(ProposedPushWorld, ProposedX, ProposedY))
+	{
+		const FIntPoint ProposedTile(ProposedX, ProposedY);
+		const bool bValidWater = bCapsized ? IsOpenWaterTile(ProposedTile) : IsWaterTile(ProposedTile);
+		if (bValidWater)
+		{
+			Boat.World = ProposedPushWorld;
+		}
+		else
+		{
+			Boat.RotorPushVelocityCm = FVector::ZeroVector;
+		}
+	}
+
 	float SurfaceZ = Boat.World.Z;
 	if (TryGetWaterSurfaceZ(Boat.World, SurfaceZ))
 	{
@@ -1793,15 +1850,11 @@ void ASimCopterAmbientVehiclesActor::UpdateBoat(FSimCopterAmbientBoat& Boat, con
 	Boat.WaveWorld = DisplayWorld;
 	Boat.WaveTilt = WaveTilt;
 
-	SetMeshTransform(Boat.Mesh, DisplayWorld, Boat.Direction);
-	if (Boat.Mesh != nullptr)
+	SetBoatMeshTransform(Boat, DisplayWorld, WaveTilt);
+	if (Boat.ObjectId == SimCopterAmbientVehicles::CapsizedBoatObjectId)
 	{
-		FRotator MeshRotation = Boat.Mesh->GetComponentRotation();
-		MeshRotation.Pitch += WaveTilt.Pitch;
-		MeshRotation.Roll += WaveTilt.Roll;
-		Boat.Mesh->SetWorldRotation(MeshRotation);
+		UpdateBoatRiders(Boat);
 	}
-	UpdateBoatRiders(Boat);
 }
 
 void ASimCopterAmbientVehiclesActor::ApplyWaterWaveToFloatingBody(
@@ -1851,7 +1904,7 @@ void ASimCopterAmbientVehiclesActor::ApplyWaterWaveToFloatingBody(
 
 void ASimCopterAmbientVehiclesActor::UpdateBoatRiders(const FSimCopterAmbientBoat& Boat)
 {
-	if (BoatRiders.Num() == 0 || !Boat.bVisible)
+	if (Boat.ObjectId != SimCopterAmbientVehicles::CapsizedBoatObjectId || BoatRiders.Num() == 0 || !Boat.bVisible)
 	{
 		return;
 	}
@@ -1873,7 +1926,7 @@ void ASimCopterAmbientVehiclesActor::UpdateBoatRiders(const FSimCopterAmbientBoa
 	{
 		FSimCopterBoatRider& Rider = BoatRiders[Index];
 		ASimCopterGroundAgent* Person = Rider.Person.Get();
-		if (Person == nullptr || Person->IsActorBeingDestroyed())
+		if (Person == nullptr || Person->IsActorBeingDestroyed() || Person->HasMissionResolutionReported() || Person->MissionEventId == INDEX_NONE)
 		{
 			BoatRiders.RemoveAt(Index);
 			continue;
@@ -1884,15 +1937,14 @@ void ASimCopterAmbientVehiclesActor::UpdateBoatRiders(const FSimCopterAmbientBoa
 			continue;
 		}
 
-		// Their own patch of water: the boat's swell sampled where THEY are, not where the hull is,
-		// so a survivor a few metres off the bow is on the next wave rather than locked to the boat's.
+		// Placed on the sea's REST plane, not on the crest. A survivor treading water is a person
+		// standing on a water tile, and ASimCopterGroundAgent submerges those to the waist and rides
+		// them up the swell sampled at their own XY - so adding the wave here as well would heave
+		// them twice as far as the water they are in.
 		FVector RiderRest =
 			Boat.World + ForwardDir * Rider.LocalOffset.X + RightDir * Rider.LocalOffset.Y;
-		FVector RiderDisplay = RiderRest;
-		FRotator Unused = FRotator::ZeroRotator;
-		ApplyWaterWaveToFloatingBody(RiderRest, ForwardDir, RiderDisplay, Unused);
-		RiderDisplay.Z += Rider.LocalOffset.Z + Person->GetCapsuleHalfHeightCm();
-		Person->SetActorLocation(RiderDisplay, false);
+		RiderRest.Z += Rider.LocalOffset.Z + Person->GetCapsuleHalfHeightCm();
+		Person->SetActorLocation(RiderRest, false);
 	}
 }
 
@@ -2000,7 +2052,7 @@ bool ASimCopterAmbientVehiclesActor::PlaceBoatNearTile(
 				ChooseBoatTarget(Boat);
 				if (Boat.bVisible)
 				{
-					SetMeshTransform(Boat.Mesh, Boat.World, Boat.Direction);
+					SetBoatMeshTransform(Boat, Boat.World, FRotator::ZeroRotator);
 					return true;
 				}
 			}
@@ -2133,6 +2185,11 @@ bool ASimCopterAmbientVehiclesActor::TryActivateBoatRescue(
 
 	Boat.EventId = EventId;
 	Boat.MissionTimerSeconds = TimerSeconds;
+
+	UE_LOG(LogSimCopterAmbientVehicles, Display,
+		TEXT("TryActivateBoatRescue: EventId=%d, Boat[0].ObjectId=0x%03x (CapsizedBoat=0x%03x), Mesh=%s, Tile=(%d,%d)"),
+		EventId, Boat.ObjectId, SimCopterAmbientVehicles::CapsizedBoatObjectId,
+		Boat.Mesh != nullptr ? TEXT("Valid") : TEXT("NULL"), Boat.Tile.X, Boat.Tile.Y);
 
 	// 3 + rand % 3 survivors in the water beside the boat (spawn mode 1).
 	const int32 Count = BoatRescueMinVictims + RandomStream.RandRange(0, BoatRescueVictimSpread - 1);

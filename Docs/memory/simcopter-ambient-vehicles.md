@@ -60,3 +60,32 @@ Traps worth keeping:
 In-game driving: `SimStartMission <mask>` and `SimDumpAmbientVehicles` are Exec commands on both
 the on-foot pawn and the helicopter pawn; `BugItGo X Y Z Pitch Yaw Roll` teleports the camera to a
 position the dump reports. See [[simcopter-ingame-verification]].
+
+## Capsizing, and standing in the water (2026-08-07)
+
+**CAPBOAT1's GEO is modelled the right way up.** The hull sits below its own y 0 with a short mast
+and a life ring above it (`Docs/scratchpad/render_maxis_object.py CAPBOAT1`), so the "cap" in the
+name is a rotation the renderer applies, not something baked into the mesh - the boat-rescue hull
+has to be rolled **180 degrees** about its keel line or it floats upright like an ambient BOAT1.
+Every hull placement now goes through `SetBoatMeshTransform`, not `SetMeshTransform`: the mission
+activation, the save restore and the per-tick update all set a boat's transform, and the roll used
+to be missable at two of the three.
+
+**A person on a water tile is IN the water.** `ASimCopterGroundAgent::UpdateWaterSubmersion` (and
+the same routine on `ASimCopterOnFootPawn`) lerps the figure down over 0.25 s until the surface cuts
+it at the waist - half a capsule height - and then adds `GetWaterWaveOffsetCm` so it heaves on the
+same swell the boats do. Three things to know:
+
+- It is **visual only**: it moves `VisualRoot` / the sprite component, never the capsule. Every
+  height gate the sim measures against a person is a small decoded number (the 37.5 cm alight
+  clearance, the 50 cm boarding band, the medic's contact box - see [[simcopter-paramedic-handoffs]])
+  and sinking the collision body half a body-length would quietly break all of them.
+- "On a water tile" is not enough - a bridge deck, a pier and a hover are all over water. The test
+  is `IsWaterTerrainClass` **plus** feet within `WaterStandingClearanceCm` (40 cm) of the sea's rest
+  plane, which clears the swell's crest but not a deck a terrain step up.
+- `UpdateBoatRiders` therefore places the survivors on the **rest plane** now. It used to add the
+  wave itself; leaving that in would heave them twice as far as the water they are floating in.
+
+Because several places write `VisualRoot`'s relative location (poses, the carried-body layout, the
+walk bob), the water offset is added by `SetVisualRootRelativeLocation`, which remembers the base
+the animation asked for. Writing `VisualRoot->SetRelativeLocation` directly re-introduces the bug.

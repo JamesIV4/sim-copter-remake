@@ -4,6 +4,7 @@
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/CameraComponent.h"
+#include "City/SimCity2000CityActor.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -15,6 +16,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/SimCopterOriginalGamePaths.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -58,6 +60,9 @@ constexpr float PopulationWorldScale = 0.25f;
 constexpr float OnFootCapsuleRadiusCm = 38.0f;
 constexpr float OnFootCapsuleHalfHeightCm = 92.0f;
 constexpr float OnFootBodyHeightCm = 184.0f;
+// Mirrors WaterStandingClearanceCm in SimCopterGroundAgent.cpp: how far above the sea's rest plane
+// the feet may be and still count as in the water rather than on a bridge or pier over it.
+constexpr float WaterStandingClearanceCm = 40.0f;
 // Masked and chroma-keyed like the unlit sprite material the head used to share with the effect
 // cards, but Default Lit - see ASimCopterGroundAgent::FigureHeadMaterial.
 constexpr const TCHAR* FigureHeadMaterialPath = TEXT("/Game/Materials/M_SimCopterLitSpriteTexture.M_SimCopterLitSpriteTexture");
@@ -241,6 +246,8 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 	{
 		return;
 	}
+	// Before the body sprite: it folds WaterVisualOffsetCm into the component Z it writes.
+	UpdateWaterSubmersion(DeltaSeconds);
 	UpdateBodySprite(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
 
@@ -790,6 +797,69 @@ void ASimCopterOnFootPawn::UpdateCamera(float DeltaSeconds)
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitchDeg, 0.0f, 0.0f));
 }
 
+ASimCity2000CityActor* ASimCopterOnFootPawn::ResolveCityActor()
+{
+	if (!CachedCityActor.IsValid())
+	{
+		CachedCityActor = Cast<ASimCity2000CityActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCity2000CityActor::StaticClass()));
+	}
+	return CachedCityActor.Get();
+}
+
+bool ASimCopterOnFootPawn::IsStandingInWater(const ASimCity2000CityActor& City) const
+{
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (Capsule == nullptr)
+	{
+		return false;
+	}
+
+	const FVector Location = GetActorLocation();
+	float SurfaceZ = 0.0f;
+	uint8 TerrainClass = 0xff;
+	if (!City.TryGetWaterGameplaySurface(Location, SurfaceZ, TerrainClass) ||
+		!SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass))
+	{
+		return false;
+	}
+
+	// Over a water tile is not in the water: a bridge deck, a pier and a jump all pass the tile test.
+	// The band has to clear the swell's own crest without reaching a deck a terrain step above.
+	const float FeetZ = Location.Z - Capsule->GetScaledCapsuleHalfHeight();
+	return FeetZ <= SurfaceZ + WaterStandingClearanceCm;
+}
+
+void ASimCopterOnFootPawn::UpdateWaterSubmersion(float DeltaSeconds)
+{
+	ASimCity2000CityActor* City = ResolveCityActor();
+	const bool bInWater = City != nullptr && IsStandingInWater(*City);
+	const float Step = WaterSubmergeLerpSeconds > KINDA_SMALL_NUMBER
+		? DeltaSeconds / WaterSubmergeLerpSeconds
+		: 1.0f;
+	WaterSubmergeAlpha = FMath::Clamp(WaterSubmergeAlpha + (bInWater ? Step : -Step), 0.0f, 1.0f);
+
+	WaterVisualOffsetCm = 0.0f;
+	if (WaterSubmergeAlpha > 0.0f && City != nullptr)
+	{
+		// Half a body down, so the waterline is at the waist, plus this patch of sea's current
+		// displacement - the waves are a vertex-shader effect, so the CPU has to evaluate them.
+		const float WaveCm = City->GetWaterWaveOffsetCm(GetActorLocation());
+		const float HalfBodyCm = OnFootCapsuleHalfHeightCm * PopulationWorldScale;
+		WaterVisualOffsetCm = WaterSubmergeAlpha * (WaveCm - HalfBodyCm);
+	}
+
+	// The box body is the stand-in when the privanim figure is unavailable; UpdateBodySprite owns
+	// the sprite component's Z and folds the same offset in there.
+	if (!bUsingOriginalBodySprite && BodyProxyComponent != nullptr)
+	{
+		BodyProxyComponent->SetRelativeLocation(FVector(
+			0.0f,
+			0.0f,
+			(-OnFootCapsuleHalfHeightCm + 86.0f) * PopulationWorldScale + WaterVisualOffsetCm));
+	}
+}
+
 void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 {
 	if (!bUsingOriginalBodySprite || OriginalBodySpriteComponent == nullptr)
@@ -802,7 +872,9 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 	if (bUsingOriginalFigure)
 	{
 		// The pilot figure animates through the original clip frames - no bob/lean overlay.
-		OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale));
+		// WaterVisualOffsetCm: the same waist-deep sink the box body gets, computed by
+		// UpdateWaterSubmersion before this function runs.
+		OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + WaterVisualOffsetCm));
 		OriginalBodySpriteComponent->SetRelativeRotation(FRotator::ZeroRotator);
 
 		const bool bWalking = SpeedAlpha > 0.12f;
@@ -830,7 +902,7 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 	const float Wave = FMath::Sin(BodySpriteTimeSeconds * 7.5f);
 	const float Bob = FMath::Abs(Wave) * 4.0f * SpeedAlpha * PopulationWorldScale;
 	const float Lean = Wave * 4.0f * SpeedAlpha; // degrees of roll (scale-independent)
-	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + Bob));
+	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + Bob + WaterVisualOffsetCm));
 	OriginalBodySpriteComponent->SetRelativeRotation(FRotator(0.0f, 0.0f, Lean));
 }
 

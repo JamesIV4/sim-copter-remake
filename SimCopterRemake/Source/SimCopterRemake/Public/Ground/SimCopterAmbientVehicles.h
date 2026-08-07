@@ -122,6 +122,7 @@ struct FSimCopterAmbientBoat
 	// against the second pair so they heave with the deck rather than the rest plane.
 	FVector WaveWorld = FVector::ZeroVector;
 	FRotator WaveTilt = FRotator::ZeroRotator;
+	FVector RotorPushVelocityCm = FVector::ZeroVector;
 	TObjectPtr<UProceduralMeshComponent> Mesh;
 };
 
@@ -374,7 +375,11 @@ private:
 	// the same altitude curve FUN_004afb60 uses for its speed boost. Remake addition - see the note
 	// at the call site.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "0.0"))
-	float BoatRotorWashPushUnits = 45.0f;
+	float BoatRotorWashPushUnits = 20.0f;
+
+	// Time constant (seconds) over which rotor wash push ramps in and out smoothly.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "0.01"))
+	float BoatRotorWashSmoothSeconds = 1.5f;
 
 	// --- train rescue riders ---
 	void UpdateTrainRoofRiders();
@@ -385,6 +390,9 @@ private:
 		const FVector& Direction,
 		float ExtraYawDegrees = 0.0f,
 		float ExtraPitchDegrees = 0.0f);
+
+	// Places a hull: heading, the swell's pitch/roll, and CAPBOAT1's 180-degree capsize roll.
+	void SetBoatMeshTransform(const FSimCopterAmbientBoat& Boat, const FVector& World, const FRotator& WaveTilt);
 
 	// --- planes (FUN_004b2330 / FUN_004b2630 / FUN_004b3420 / FUN_004b3530 / FUN_004b2910) ---
 	void UpdatePlane(FSimCopterAmbientPlane& Plane, float DeltaSeconds);
