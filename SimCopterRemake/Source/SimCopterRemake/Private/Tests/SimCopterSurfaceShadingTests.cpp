@@ -109,6 +109,18 @@ bool FSimCopterSurfaceShadingDefaultsTest::RunTest(const FString& Parameters)
 		TEXT("Neither layer can swamp the weight it displaces"),
 		DefaultWaterShoreEdgeNoiseStrength + DefaultWaterShoreEdgeNoiseStrength2 < 1.0f);
 
+	// Frames per second, and the animation only reads as water if both layers are actually moving.
+	// A negative rate would run the hash's frame axis backwards, which is not wrong so much as
+	// meaningless - the publisher floors it at zero, and zero is the documented "freeze".
+	TestTrue(
+		TEXT("Both shoreline layers animate by default"),
+		DefaultWaterShoreEdgeNoiseSpeed > 0.0f && DefaultWaterShoreEdgeNoiseSpeed2 > 0.0f);
+	// The fine layer is the one that shimmers if it is pushed, so it carries the tighter budget:
+	// a few frames a second is churn, dozens is fizz.
+	TestTrue(
+		TEXT("Neither rate is fast enough to read as strobing"),
+		DefaultWaterShoreEdgeNoiseSpeed < 10.0f && DefaultWaterShoreEdgeNoiseSpeed2 < 10.0f);
+
 	// This one is a wavelength in centimetres, not a 0..1 input, so it is excluded from the range
 	// sweep above and checked on its own terms: it has to be shorter than the 400 cm tile or it
 	// lines up with the quad seams it is there to break up.

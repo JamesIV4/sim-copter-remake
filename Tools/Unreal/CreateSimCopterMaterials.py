@@ -118,6 +118,10 @@ SURFACE_SHADING_DEFAULTS = (
     # Second, independent layer - its own amplitude AND wavelength, not an octave of the first.
     ("WaterShoreEdgeNoiseStrength2", 0.2),
     ("WaterShoreEdgeNoiseScale2", 4.0),
+    # Noise FRAMES PER SECOND for each layer - the field is re-rolled at this rate and smoothly
+    # blended between rolls, so it churns in place instead of scrolling. 0 freezes a layer.
+    ("WaterShoreEdgeNoiseSpeed", 0.8),
+    ("WaterShoreEdgeNoiseSpeed2", 3.0),
     # Fine normal-only ripple that keeps open water off being one flat mirror. Wavelength in cm.
     ("WaterDetailNormalStrength", 0.35),
     ("WaterDetailNormalScale", 140.0),
@@ -1372,6 +1376,8 @@ def create_water_material():
     shore_edge_scale = add_collection_parameter(material, "WaterShoreEdgeNoiseScale", -1000, 1940)
     shore_edge_noise2 = add_collection_parameter(material, "WaterShoreEdgeNoiseStrength2", -1000, 2020)
     shore_edge_scale2 = add_collection_parameter(material, "WaterShoreEdgeNoiseScale2", -1000, 2100)
+    shore_edge_speed = add_collection_parameter(material, "WaterShoreEdgeNoiseSpeed", -1000, 2180)
+    shore_edge_speed2 = add_collection_parameter(material, "WaterShoreEdgeNoiseSpeed2", -1000, 2260)
     shore_fade = add_custom_node(
         material,
         "WaterShoreFade",
@@ -1401,8 +1407,32 @@ def create_water_material():
         # curve to make less regular.
         "float w = max(Width, 0.001);\n"
         "float v = saturate(Weight);\n"
+        # ANIMATION IS A THIRD AXIS ON THE HASH, NOT A SCROLL.
+        #
+        # Sliding the sample position would move the pattern across the water, and at these
+        # wavelengths that reads as a conveyor belt - the whole shoreline visibly travelling one way.
+        # What is wanted is the field CHANGING while staying put, so the hash takes an integer frame
+        # number as its z. Speed is therefore in noise frames per second: 0.5 draws a new random
+        # field every two seconds and spends those two seconds moving into it.
+        #
+        # CATMULL-ROM THROUGH FOUR FRAMES, and the reason is worth keeping.
+        #
+        # The first version blended two adjacent frames with a smoothstep, which is C1 and looked
+        # obviously wrong: it read as FRAMEY. Smoothstep is ease-in-ease-out, so the field arrives at
+        # every keyframe with zero velocity, holds, and then rushes to the next one - still, fast,
+        # still, fast, once per frame. Making the easing higher-order (smootherstep) flattens the
+        # ends further and makes the hold LONGER, so the obvious next step is the wrong one.
+        #
+        # What is actually wanted is a curve that passes THROUGH each frame without stopping on it,
+        # which is the ordinary keyframe-interpolation problem and has the ordinary answer: a cubic
+        # through four control points, taking its velocity at each frame from that frame's
+        # neighbours. The field then evolves at a near-constant rate and there is no beat to see.
+        #
+        # It costs four spatial taps per layer instead of two. That is the price of the fix.
+        "#define SHORE_HASH(px, py, pz) frac(sin(dot(float3(px, py, pz), float3(127.1, 311.7, 74.7))) * 43758.5453)\n"
         "float strengths[2] = { NoiseStrength, NoiseStrength2 };\n"
         "float scales[2] = { max(NoiseScale, 1.0), max(NoiseScale2, 1.0) };\n"
+        "float speeds[2] = { Speed, Speed2 };\n"
         "float2 offsets[2] = { float2(0.0, 0.0), float2(37.3, 11.9) };\n"
         "float warp = 0.0;\n"
         "const float M = 256.0;\n"
@@ -1415,19 +1445,46 @@ def create_water_material():
         "	float2 u = f * f * (3.0 - 2.0 * f);\n"
         "	float2 i0 = ip - floor(ip / M) * M;\n"
         "	float2 i1 = i0 + 1.0; i1 = i1 - floor(i1 / M) * M;\n"
-        "	float a = frac(sin(dot(float2(i0.x, i0.y), float2(127.1, 311.7))) * 43758.5453);\n"
-        "	float b = frac(sin(dot(float2(i1.x, i0.y), float2(127.1, 311.7))) * 43758.5453);\n"
-        "	float c = frac(sin(dot(float2(i0.x, i1.y), float2(127.1, 311.7))) * 43758.5453);\n"
-        "	float d = frac(sin(dot(float2(i1.x, i1.y), float2(127.1, 311.7))) * 43758.5453);\n"
-        "	float n = lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);\n"
+        "\n"
+        "	float ft = Time * speeds[o];\n"
+        "	float f0 = floor(ft);\n"
+        "	float tb = ft - f0;\n"
+        "\n"
+        # The four control points: the frame before, the two we are between, and the one after. The
+        # outer two exist only to give the curve its slope at the inner two - that is what stops the
+        # field halting on a keyframe.
+        "	float frames[4];\n"
+        "	[unroll] for (int k = 0; k < 4; k++)\n"
+        "	{\n"
+        # Wrapped like the xy indices are: Time climbs without bound and sin() of a large argument
+        # loses the precision the hash depends on, so without this the water quietly stops changing
+        # after a while. floor() handles the negative k = 0 case correctly.
+        "		float zf = f0 + (float)(k - 1);\n"
+        "		float z = zf - floor(zf / M) * M;\n"
+        "		frames[k] = lerp(lerp(SHORE_HASH(i0.x, i0.y, z), SHORE_HASH(i1.x, i0.y, z), u.x),\n"
+        "		                 lerp(SHORE_HASH(i0.x, i1.y, z), SHORE_HASH(i1.x, i1.y, z), u.x), u.y);\n"
+        "	}\n"
+        "\n"
+        # Catmull-Rom. It can overshoot [0,1] slightly between frames, which is left alone on
+        # purpose - clamping it would put back a flat spot of exactly the kind being removed, and
+        # the warp is saturated at the end anyway.
+        "	float c3 = -0.5 * frames[0] + 1.5 * frames[1] - 1.5 * frames[2] + 0.5 * frames[3];\n"
+        "	float c2 = frames[0] - 2.5 * frames[1] + 2.0 * frames[2] - 0.5 * frames[3];\n"
+        "	float c1 = -0.5 * frames[0] + 0.5 * frames[2];\n"
+        "	float n = ((c3 * tb + c2) * tb + c1) * tb + frames[1];\n"
         "	warp += (n - 0.5) * 2.0 * strengths[o];\n"
         "}\n"
+        "#undef SHORE_HASH\n"
         "v = saturate(v + warp);\n"
         # Smootherstep rather than smoothstep: one more order of continuity, which takes out the
         # faint crease where the ramp starts and stops. Free, and it is the remaining straight line.
         "float t = saturate(v / w);\n"
         "return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);",
-        ["Weight", "Width", "WorldPos", "NoiseStrength", "NoiseScale", "NoiseStrength2", "NoiseScale2"],
+        [
+            "Weight", "Width", "WorldPos", "Time",
+            "NoiseStrength", "NoiseScale", "Speed",
+            "NoiseStrength2", "NoiseScale2", "Speed2",
+        ],
         -820,
         1500,
         unreal.CustomMaterialOutputType.CMOT_FLOAT1,
@@ -1439,6 +1496,9 @@ def create_water_material():
     unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_scale, "", shore_fade, "NoiseScale")
     unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_noise2, "", shore_fade, "NoiseStrength2")
     unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_scale2, "", shore_fade, "NoiseScale2")
+    unreal.MaterialEditingLibrary.connect_material_expressions(time, "", shore_fade, "Time")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_speed, "", shore_fade, "Speed")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_speed2, "", shore_fade, "Speed2")
 
     faded_roughness = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionLinearInterpolate, -600, 1460
