@@ -20,6 +20,15 @@ struct FSimCopterFlashingLightPoint
 	// Raw SIM3D palette index. This is the blink key, not just a colour - see the schedule below.
 	uint8 PaletteIndex = 0;
 	FLinearColor Color = FLinearColor::White;
+	// Whether this marker also throws a real point light when it is lit.
+	//
+	// The point light is a remake addition (see USimCopterFlashingLightsComponent below), and there
+	// is one marker set it must NOT be given: SIGNAL1's. The original round-robins the WHOLE city
+	// through red, yellow and green on an eight-step counter running at 20 Hz, so every traffic
+	// signal in view changes colour several times a second in lockstep. As drawn cards that reads as
+	// a busy, flickering city; as hundreds of coloured lights strobing the streets in unison it is
+	// genuinely unpleasant and a seizure risk. The cards stay, the lights do not.
+	bool bCastPointLight = true;
 };
 
 // SCHOOK: flashing light rasteriser 0x00496c00

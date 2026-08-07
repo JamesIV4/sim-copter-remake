@@ -363,6 +363,24 @@ size of the monitor the game opened on, because `UGameUserSettings` otherwise de
 1280x720. Native resolution, **not** the display rect - a DPI-scaled 4K panel reports a 2560x1440
 rect and seeding from that opens the game at the scaled size.
 
+## A lit window is tungsten, not daylight (2026-08-06)
+
+The glow is `nightTexel * mask * WindowGlowNits` — literally the night art's own pixel, which is why
+a window keeps the colour it was painted. The catch nobody had looked at: **several of `skydark`'s
+lit texels are painted at or near white.** A 256-entry VGA palette shared with the entire city has no
+headroom to spend on warm bulbs, so a good part of the skyline came out reading as fluorescent
+panels rather than lamps — and it was not blown out, it was just white at source.
+
+`WindowGlowTint`, a vector parameter on `M_SimCopterCityAtlas`, now multiplies that product.
+Default `(1.25, 0.97, 0.56)`, which is the chroma `(1.0, 0.78, 0.45)` divided by its own Rec.709
+luminance of 0.803 — so it is **normalised to luminance 1 and changes hue, not exposure**. A warm
+texel gets warmer, a white one stops being white, and the per-window variation in the art survives
+because the tint is a multiply rather than a replace. Re-normalise if you re-tune it, or
+`WindowGlowNits` stops meaning what its own comment says.
+
+Verify with `Docs/scratchpad/verify_window_glow_tint.py` — it prints the parameter and its
+luminance, and the luminance is the half that is easy to get wrong.
+
 ## Regenerating
 
 Editor Python, in this order (the atlas material is deleted and recreated each run, which nulls the

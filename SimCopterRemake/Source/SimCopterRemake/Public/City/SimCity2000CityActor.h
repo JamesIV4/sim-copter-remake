@@ -15,6 +15,8 @@ class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class USceneComponent;
 class USimCopterFlashingLightsComponent;
+class USimCopterSmokeStacksComponent;
+class USimCopterStreetLightsComponent;
 class UStaticMesh;
 class UTexture2D;
 
@@ -222,6 +224,27 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
 	bool bRenderFlashingLights = true;
 
+	// A real spot light under each placed LAMP35..38 head, aimed straight down. See
+	// USimCopterStreetLightsComponent for why the remake adds one at all.
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<USimCopterStreetLightsComponent> StreetLightsComponent;
+
+	// The face-type-26 chimney plumes on the industrial models and the power plants, drawn with
+	// the original's own effect kernel. See USimCopterSmokeStacksComponent.
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<USimCopterSmokeStacksComponent> SmokeStacksComponent;
+
+	// FUN_0047c0c0's second object per scene cell: hydrants, phone boxes, post boxes, litter bins,
+	// street lights and traffic signals on flat road tiles. See SimCopterRoadDecorations.h.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderRoadDecorations = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderStreetLightSpotLights = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderSmokeStacks = true;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City", meta = (FilePathFilter = "sc2"))
 	FFilePath CityFile;
 
@@ -428,6 +451,21 @@ private:
 
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	int32 LastFlashingLightCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastRoadDecorationCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastStreetLightCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastSmokeStackMarkerCount = 0;
+
+	// M_SimCopterSpriteTexture - the masked unlit card material the original's effect kernels are
+	// sampled through, shared with the fire renderer. Nearest-filtered, so FUN_00496da0's
+	// screen-pixel stencils stay hard edged.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> SpriteCardMaterial;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;

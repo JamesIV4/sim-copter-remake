@@ -101,8 +101,14 @@ is seen leaking through the building it sits on.
 units/scale, with a `bApplyCityMeshOrientation` flag because the city builder folds in the global
 180-degree yaw and the helicopter/vehicle mesh path does not ([[simcopter-mesh-orientation-rules]]).
 
-Not yet wired up, though the data is there: `CARPOLIC`, the `UFO`, `PLANE1`, `TRAIN2`, and
-`SIGNAL1` (which the road decoration pass would place — see [[simcopter-road-tile-variants]]).
+**`SIGNAL1` is placed and lit since 2026-08-06** ([[simcopter-road-decorations]]) — and it is the
+one marker set that gets its cards but **no point light**. `FUN_00496c00` strobes the whole world by
+colour at 20 Hz, so every signal in view changes together several times a second; as hundreds of
+coloured lights that is a seizure risk, not a traffic signal. `FSimCopterFlashingLightPoint::
+bCastPointLight` is the per-marker opt-out, defaulting true, and only the city's `SIGNAL1`
+extraction clears it. Do not "fix" the omission.
+
+Still not wired up, though the data is there: `CARPOLIC`, the `UFO`, `PLANE1`, `TRAIN2`.
 
 Separately, face types 15 and 19 carry `lightType == 4` on 99 faces (`BR86`, `TRAIN2`, `RD75`,
 `RD76`). Those are big polygons, not point markers, and are unexamined.
