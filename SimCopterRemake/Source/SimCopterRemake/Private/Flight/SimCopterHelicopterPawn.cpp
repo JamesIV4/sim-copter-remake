@@ -698,6 +698,9 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	// sequence's physically scaled sun. Set on the property directly - the setter is a no-op on a
 	// default subobject, before the component is registered.
 	SearchLightComponent->InverseExposureBlend = SearchLightExposureCompensation;
+	// Set on the property for the same reason as the line above - the setter no-ops on an
+	// unregistered default subobject. See SearchLightIndirectLightingIntensity for why it is not 1.
+	SearchLightComponent->IndirectLightingIntensity = SearchLightIndirectLightingIntensity;
 	SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));

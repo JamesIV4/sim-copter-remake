@@ -1,4 +1,132 @@
-# SimCopter sprite-card lighting (trees and signs)
+# SimCopter sprite-card lighting
+
+## A masked card is SOLID in every representation but the raster (2026-08-07)
+
+The trees cast a full-rectangle shadow under the helicopter's searchlight, and the qualifier is the
+diagnosis: **not under the sun.** The leaves are cut out of a quad by the opacity mask, and that mask
+only exists where a pixel shader runs. A virtual shadow map is rastered, so the sun masks correctly.
+The distance fields and the ray tracing scene run no pixel shader at all, so both carry the card as
+the solid quad it geometrically is — and any local light shadowing against those casts the whole
+rectangle.
+
+The tree instances are now `SetAffectDistanceFieldLighting(false)` +
+`SetVisibleInRayTracing(false)` (`bNaturalObjectsAffectDistanceFieldLighting` /
+`bNaturalObjectsVisibleInRayTracing`). A rectangular shadow is strictly worse than none, and thin
+cards buy little occlusion either way in a city whose GI is dominated by ground and buildings.
+
+Ruled out on the way: these meshes are **not Nanite** (no `NaniteSettings` anywhere in the city
+actor — the material's `used_with_nanite` flag is defensive), so the Nanite programmable-raster
+explanation does not apply here.
+
+## Per-family shading ceilings (2026-08-07)
+
+Making the cards Default Lit fixed the inversion but created a new one at the other end: **in bright
+sun the trees blew out to white.** Two causes stack, and both are in this file's own design.
+
+1. The palette texel can be near 1.0 albedo. Under a physically scaled 120,000-lux sun that
+   tonemaps to white with no help from anything else. Real foliage is 0.15-0.25.
+2. **`CardNormalUpBias` is 1.0**, which is the thing that makes trees shade sanely — and it also
+   means that at noon *every card in the city faces the sun at once*, so the shared 0.3 Specular put
+   one broad highlight across the entire canopy. A leaf is not wet plastic.
+
+Trees, terrain and water now take **roughness, specular and an albedo ceiling** from
+`MPC_SimCopterDayNight` instead of `add_shading_nodes`' shared 0.65/0.3, published live by
+`USimCopterDayNightSubsystem::PublishSurfaceShading` off nine `SimCopter.Shading.*` console
+variables. Defaults in `SimCopterDayNight.h`; the Python mirror is `SURFACE_SHADING_DEFAULTS`.
+
+| family | max brightness | roughness | specular | materials |
+| --- | --- | --- | --- | --- |
+| Tree | 0.42 | 0.92 | 0.02 | `M_SimCopterLitSpriteTexture` |
+| Terrain | 0.55 | 0.88 | 0.04 | `M_SimCopterTerrain` |
+| City | 0.55 | 0.88 | 0.04 | `M_SimCopterCityAtlas`, `M_SimCopterLitTexture`, `M_SimCopterLitVertexColor` |
+| Water | 0.75 | 0.12 | 0.90 | `M_SimCopterWater` |
+
+**City was added after the ground was tuned**, because buildings and roads left on the shared
+0.65/0.3 stood out badly beside a terrain that already looked right — so it starts on the terrain's
+exact numbers and exists to be pulled away from them later, not to differ now. It needs all three
+materials: the atlas pages are most of the city, but the direct-image faces and every flat
+palette-coloured face are the rest, and doing only the atlas leaves buildings standing out on fewer
+faces. **`M_SimCopterLitVertexColor` is also the VEHICLES' material**
+([[simcopter-vehicle-material]]) so cars ride the City ceiling too; roughness and specular were
+already shared with the city, and their MID still overrides Metallic on top.
+
+**The ceiling is on ALBEDO, and it has to be** — a material cannot see its own lit result, so there
+is nothing to clamp after the lighting. Bounding albedo is what bounds diffuse brightness. It is
+also **hue preserving** (`ALBEDO_CEILING_CODE` scales by the brightest channel) rather than a
+per-channel `min`, which would walk a vivid green tree towards the ceiling GREY instead of just
+making it darker.
+
+Water was the same change in the opposite direction: it had been sharing the dirt's matte numbers,
+which is why it had no sun glint. Making it glossy then exposed how it ENDS, which is its own note
+below.
+
+## The water's shoreline: softness was never the problem, SHAPE was
+
+Two separate fixes, and only the second one is interesting.
+
+**Softness** is `WaterShoreRoughness` / `WaterShoreSpecular` easing in over `WaterShoreFadeWidth`
+(0.15) of the wave-weight ramp, so the mirror ends as wet sand instead of on a hard line. Vertex
+colour R is already that mask, so no new vertex data and no re-bake.
+
+**Shape** is the one that reads as a bug. The weight is interpolated **bilinearly across 400 cm
+quads**, so any contour thresholded out of it *traces the grid*: straight runs along tile edges,
+45-degree cuts across quad diagonals, a kink wherever two quads meet. **Softening the ramp cannot
+fix this — a soft grid is still a grid**, and that is the trap: the obvious knob looks like it
+should help and does not.
+
+What fixes it is warping the weight in WORLD SPACE before the ramp
+(`WaterShoreEdgeNoiseStrength` / `...Scale`). Displacing the value displaces the contour laterally,
+by roughly `strength / |grad(weight)|`, so the stair-step becomes a line that wanders across tile
+boundaries instead of along them. **The wavelength has to be several tiles**: at tile scale it just
+adds fizz to the same stair-step, and the wander has to be bigger than the 400 cm step it is hiding.
+Strength is in weight units, so how far it actually moves depends on how fast the weight ramps -
+a shallow coast wanders more than a steep one.
+
+There are **two independent layers** (`...Strength2` / `...Scale2`), each with its own amplitude and
+its own wavelength rather than the second being an octave chained off the first. They sample at
+different world offsets so they cannot line up and reinforce into one wave.
+
+**The tile-scale reasoning above was tested on screen and LOST.** The argument says the wavelength
+must exceed the 400 cm tile so the contour wanders further than the stair-step it hides, and the
+first defaults (900 / 300 cm, strengths 0.18 / 0.06) were picked that way. What actually looks right
+is **25 cm and 4 cm at strengths 0.25 / 0.2** — an order of magnitude finer, which *dissolves* the
+boundary into a stochastic band instead of moving it. Both hide the grid; the fine one hides it
+better, because a wandering line is still a LINE and the eye finds it. The automation test that
+asserted the coarse-than-a-tile floor has been deleted rather than loosened: it was encoding a
+hypothesis, not a fact. Shipping values are `FadeWidth 0.4` with those four.
+
+The ramp is smootherstep rather than smoothstep for the same family of reason: one more order of
+continuity removes the faint crease where the fade starts and stops.
+
+**Three traps when re-running the generator:**
+
+* **`create_day_night_parameter_collection()` must run before ANY material that reads a collection
+  scalar**, and it used to sit two-thirds of the way down the script. A CollectionParameter node
+  resolves its ParameterId from the name *through* the collection, so a material built before the
+  collection has the new scalar keeps a null name and compiles to a **constant 0** — a zero albedo
+  ceiling is a black building. It is not enough for the collection asset to merely exist; it has to
+  already contain the parameter. This is precisely how the City family shipped broken on its first
+  run, caught only by the verifier below.
+
+* `M_SimCopterLitSpriteTexture`, `M_SimCopterLitTexture` and `M_SimCopterLitVertexColor` are all
+  `create_if_missing` rather than in the delete-and-recreate list, so **editing their generator does
+  nothing until the asset is gone**. `Docs/scratchpad/delete_lit_sprite_material.py` deletes all
+  three; then run the create script, then `BakeCityAtlas.py`.
+* **A `create_if_missing` asset can be carrying flags its generator never sets**, and deleting it
+  loses them. `M_SimCopterLitVertexColor` had `used_with_instanced_static_meshes` on disk - the
+  engine patches that flag on at runtime and somebody saved it years ago - while the generator only
+  ever set `used_with_nanite`. The first regeneration dropped it, and the only symptom was a map
+  check warning (it would have rendered wrong in a cooked build). The generator sets it now. Read
+  the map check output after any regenerate, not just the Python log.
+* After that delete, the create script's re-parent pass **cannot rescue those instances**: it only
+  moves instances still on the OLD unlit parent, and a delete leaves them on *null*. In practice the
+  recreated asset keeps the same object path so the references resolved (verified: 68/68 still
+  lit) — but check with `Docs/scratchpad/repair_city_image_parents.py`, which repairs them if not.
+
+Verify the whole thing landed with `Docs/scratchpad/verify_surface_shading.py`. It checks both
+halves, because **a CollectionParameter whose name does not resolve compiles to a constant zero** —
+a zero roughness is a mirror and a zero albedo ceiling is a black surface, and neither says why.
+ (trees and signs)
 
 *"An unlit material does not look constant under a day/night cycle — it looks INVERTED."*
 

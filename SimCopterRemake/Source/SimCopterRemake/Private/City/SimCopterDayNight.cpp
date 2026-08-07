@@ -60,6 +60,206 @@ static FAutoConsoleVariableRef CVarNightWindowNits(
 	TEXT("How bright a lit window burns, in nits, before the Settings screen's Emissive Brightness ")
 	TEXT("is applied. Raise for a brighter skyline; lower if the bloom halos merge."),
 	ECVF_Default);
+
+// --- surface shading ---------------------------------------------------------------------------
+// The collection scalars these publish into. The same nine names are declared on the Python side in
+// Tools/Unreal/CreateSimCopterMaterials.py (SURFACE_SHADING_FAMILIES); they have to agree, or a
+// material silently compiles the parameter to a constant zero and the surface turns black.
+const TCHAR* const SurfaceShadingParameterNames[] = {
+	TEXT("TreeMaxBrightness"),    TEXT("TreeRoughness"),    TEXT("TreeSpecular"),
+	TEXT("TerrainMaxBrightness"), TEXT("TerrainRoughness"), TEXT("TerrainSpecular"),
+	TEXT("CityMaxBrightness"),    TEXT("CityRoughness"),    TEXT("CitySpecular"),
+	TEXT("CityWindowRoughness"), TEXT("CityWindowSpecular"),
+	TEXT("WaterMaxBrightness"),   TEXT("WaterRoughness"),   TEXT("WaterSpecular"),
+	TEXT("WaterShoreRoughness"), TEXT("WaterShoreSpecular"), TEXT("WaterShoreFadeWidth"),
+	TEXT("WaterShoreEdgeNoiseStrength"), TEXT("WaterShoreEdgeNoiseScale"),
+	TEXT("WaterShoreEdgeNoiseStrength2"), TEXT("WaterShoreEdgeNoiseScale2"),
+	TEXT("WaterDetailNormalStrength"), TEXT("WaterDetailNormalScale"),
+};
+
+float GSimCopterTreeMaxBrightness = SimCopterDayNight::DefaultTreeMaxBrightness;
+static FAutoConsoleVariableRef CVarTreeMaxBrightness(
+	TEXT("SimCopter.Shading.TreeMaxBrightness"),
+	GSimCopterTreeMaxBrightness,
+	TEXT("Albedo ceiling for tree and sign cards, 0..1. Hue preserving: the texel is scaled down ")
+	TEXT("until its brightest channel reaches this, so bright palette entries stop clipping to ")
+	TEXT("white at noon. Real foliage is around 0.15-0.25."),
+	ECVF_Default);
+
+float GSimCopterTreeRoughness = SimCopterDayNight::DefaultTreeRoughness;
+static FAutoConsoleVariableRef CVarTreeRoughness(
+	TEXT("SimCopter.Shading.TreeRoughness"),
+	GSimCopterTreeRoughness,
+	TEXT("Roughness of tree and sign cards, 0..1. Near 1 spreads the highlight out; low values ")
+	TEXT("give the canopy a wet sheen, which the world-up card normal makes worse."),
+	ECVF_Default);
+
+float GSimCopterTreeSpecular = SimCopterDayNight::DefaultTreeSpecular;
+static FAutoConsoleVariableRef CVarTreeSpecular(
+	TEXT("SimCopter.Shading.TreeSpecular"),
+	GSimCopterTreeSpecular,
+	TEXT("Reflectivity of tree and sign cards, 0..1 (UE maps this to F0 0..0.08). Leaves are ")
+	TEXT("almost non-specular, so this wants to be near zero."),
+	ECVF_Default);
+
+float GSimCopterTerrainMaxBrightness = SimCopterDayNight::DefaultTerrainMaxBrightness;
+static FAutoConsoleVariableRef CVarTerrainMaxBrightness(
+	TEXT("SimCopter.Shading.TerrainMaxBrightness"),
+	GSimCopterTerrainMaxBrightness,
+	TEXT("Albedo ceiling for the ground, 0..1. Same hue-preserving clamp as the trees."),
+	ECVF_Default);
+
+float GSimCopterTerrainRoughness = SimCopterDayNight::DefaultTerrainRoughness;
+static FAutoConsoleVariableRef CVarTerrainRoughness(
+	TEXT("SimCopter.Shading.TerrainRoughness"),
+	GSimCopterTerrainRoughness,
+	TEXT("Roughness of the ground, 0..1. Earth and grass are matte."),
+	ECVF_Default);
+
+float GSimCopterTerrainSpecular = SimCopterDayNight::DefaultTerrainSpecular;
+static FAutoConsoleVariableRef CVarTerrainSpecular(
+	TEXT("SimCopter.Shading.TerrainSpecular"),
+	GSimCopterTerrainSpecular,
+	TEXT("Reflectivity of the ground, 0..1. Raise it and a whole map of dirt reads as damp stone."),
+	ECVF_Default);
+
+float GSimCopterCityMaxBrightness = SimCopterDayNight::DefaultCityMaxBrightness;
+static FAutoConsoleVariableRef CVarCityMaxBrightness(
+	TEXT("SimCopter.Shading.CityMaxBrightness"),
+	GSimCopterCityMaxBrightness,
+	TEXT("Albedo ceiling for buildings and roads, 0..1 - the atlas pages, the direct-image faces ")
+	TEXT("and the flat palette-coloured ones. The vehicles share the last of those materials, so ")
+	TEXT("this caps them too."),
+	ECVF_Default);
+
+float GSimCopterCityRoughness = SimCopterDayNight::DefaultCityRoughness;
+static FAutoConsoleVariableRef CVarCityRoughness(
+	TEXT("SimCopter.Shading.CityRoughness"),
+	GSimCopterCityRoughness,
+	TEXT("Roughness of buildings and roads, 0..1. Starts at the ground's value so the city does ")
+	TEXT("not stand out beside it; raise the specular instead if glass wants a highlight."),
+	ECVF_Default);
+
+float GSimCopterCitySpecular = SimCopterDayNight::DefaultCitySpecular;
+static FAutoConsoleVariableRef CVarCitySpecular(
+	TEXT("SimCopter.Shading.CitySpecular"),
+	GSimCopterCitySpecular,
+	TEXT("Reflectivity of buildings and roads, 0..1. This is the shine that made the city read as ")
+	TEXT("wet plastic next to matte ground."),
+	ECVF_Default);
+
+float GSimCopterCityWindowRoughness = SimCopterDayNight::DefaultCityWindowRoughness;
+static FAutoConsoleVariableRef CVarCityWindowRoughness(
+	TEXT("SimCopter.Shading.CityWindowRoughness"),
+	GSimCopterCityWindowRoughness,
+	TEXT("Roughness of the WINDOWS, 0..1, where the hand-painted mask says there is a pane. Low, ")
+	TEXT("because glass is the one part of a building that should reflect. Applies by day as well ")
+	TEXT("as by night - a window is glass whether or not the light behind it is on."),
+	ECVF_Default);
+
+float GSimCopterCityWindowSpecular = SimCopterDayNight::DefaultCityWindowSpecular;
+static FAutoConsoleVariableRef CVarCityWindowSpecular(
+	TEXT("SimCopter.Shading.CityWindowSpecular"),
+	GSimCopterCityWindowSpecular,
+	TEXT("Reflectivity of the windows, 0..1. Set it to CitySpecular to turn the glass back off."),
+	ECVF_Default);
+
+float GSimCopterWaterMaxBrightness = SimCopterDayNight::DefaultWaterMaxBrightness;
+static FAutoConsoleVariableRef CVarWaterMaxBrightness(
+	TEXT("SimCopter.Shading.WaterMaxBrightness"),
+	GSimCopterWaterMaxBrightness,
+	TEXT("Albedo ceiling for water, 0..1. Higher than the land's: water carries its brightness in ")
+	TEXT("the specular, and clamping the albedo hard just makes it muddy."),
+	ECVF_Default);
+
+float GSimCopterWaterRoughness = SimCopterDayNight::DefaultWaterRoughness;
+static FAutoConsoleVariableRef CVarWaterRoughness(
+	TEXT("SimCopter.Shading.WaterRoughness"),
+	GSimCopterWaterRoughness,
+	TEXT("Roughness of water, 0..1. This is the sun-glint knob - low is a mirror, high is haze."),
+	ECVF_Default);
+
+float GSimCopterWaterSpecular = SimCopterDayNight::DefaultWaterSpecular;
+static FAutoConsoleVariableRef CVarWaterSpecular(
+	TEXT("SimCopter.Shading.WaterSpecular"),
+	GSimCopterWaterSpecular,
+	TEXT("Reflectivity of water, 0..1 (UE maps this to F0 0..0.08). Water is the one surface in ")
+	TEXT("the city that should be near the dielectric maximum."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreRoughness = SimCopterDayNight::DefaultWaterShoreRoughness;
+static FAutoConsoleVariableRef CVarWaterShoreRoughness(
+	TEXT("SimCopter.Shading.WaterShoreRoughness"),
+	GSimCopterWaterShoreRoughness,
+	TEXT("Roughness at the welded shoreline, 0..1, easing out to WaterRoughness offshore. Matte, ")
+	TEXT("so the reflection ends as wet sand instead of on a hard stair-stepped line."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreSpecular = SimCopterDayNight::DefaultWaterShoreSpecular;
+static FAutoConsoleVariableRef CVarWaterShoreSpecular(
+	TEXT("SimCopter.Shading.WaterShoreSpecular"),
+	GSimCopterWaterShoreSpecular,
+	TEXT("Reflectivity at the shoreline, 0..1, easing out to WaterSpecular offshore."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreFadeWidth = SimCopterDayNight::DefaultWaterShoreFadeWidth;
+static FAutoConsoleVariableRef CVarWaterShoreFadeWidth(
+	TEXT("SimCopter.Shading.WaterShoreFadeWidth"),
+	GSimCopterWaterShoreFadeWidth,
+	TEXT("How far the shoreline fade reaches, as a fraction 0..1 of the water mesh's wave-weight ")
+	TEXT("ramp. Larger pushes the reflection further offshore; 0 restores the hard edge."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreEdgeNoiseStrength = SimCopterDayNight::DefaultWaterShoreEdgeNoiseStrength;
+static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseStrength(
+	TEXT("SimCopter.Shading.WaterShoreEdgeNoiseStrength"),
+	GSimCopterWaterShoreEdgeNoiseStrength,
+	TEXT("How far the shoreline fade's contour wanders off the tile grid, in weight units. This is ")
+	TEXT("the knob that stops the fade tracing tile edges and quad diagonals; 0 puts it back on ")
+	TEXT("the grid. How far it moves on screen depends on how fast the weight ramps, so a shallow ")
+	TEXT("coast wanders more than a steep one."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreEdgeNoiseScale = SimCopterDayNight::DefaultWaterShoreEdgeNoiseScale;
+static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseScale(
+	TEXT("SimCopter.Shading.WaterShoreEdgeNoiseScale"),
+	GSimCopterWaterShoreEdgeNoiseScale,
+	TEXT("Wavelength of that wander in centimetres. Wants to be SEVERAL tiles - at tile scale it ")
+	TEXT("adds fizz to the same stair-step instead of hiding it."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreEdgeNoiseStrength2 = SimCopterDayNight::DefaultWaterShoreEdgeNoiseStrength2;
+static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseStrength2(
+	TEXT("SimCopter.Shading.WaterShoreEdgeNoiseStrength2"),
+	GSimCopterWaterShoreEdgeNoiseStrength2,
+	TEXT("Second, independent shoreline warp layer - its own amplitude, added on top of the first ")
+	TEXT("rather than chained off it. 0 turns it off and leaves layer 1 alone."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreEdgeNoiseScale2 = SimCopterDayNight::DefaultWaterShoreEdgeNoiseScale2;
+static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseScale2(
+	TEXT("SimCopter.Shading.WaterShoreEdgeNoiseScale2"),
+	GSimCopterWaterShoreEdgeNoiseScale2,
+	TEXT("Wavelength of the second layer in centimetres. Unlike layer 1 this one may be FINER than ")
+	TEXT("a tile: layer 1 has already hidden the 400 cm step, so this is only making the resulting ")
+	TEXT("curve less regular."),
+	ECVF_Default);
+
+float GSimCopterWaterDetailNormalStrength = SimCopterDayNight::DefaultWaterDetailNormalStrength;
+static FAutoConsoleVariableRef CVarWaterDetailNormalStrength(
+	TEXT("SimCopter.Shading.WaterDetailNormalStrength"),
+	GSimCopterWaterDetailNormalStrength,
+	TEXT("Strength of the fine normal-only ripple that keeps open water off being one flat mirror. ")
+	TEXT("0 turns it off. It never touches the wave geometry or the welded shoreline."),
+	ECVF_Default);
+
+float GSimCopterWaterDetailNormalScale = SimCopterDayNight::DefaultWaterDetailNormalScale;
+static FAutoConsoleVariableRef CVarWaterDetailNormalScale(
+	TEXT("SimCopter.Shading.WaterDetailNormalScale"),
+	GSimCopterWaterDetailNormalScale,
+	TEXT("Wavelength of that ripple in centimetres. Around a third of the 400 cm tile is what ")
+	TEXT("breaks the quad seams up rather than lining up with them."),
+	ECVF_Default);
 }
 
 USimCopterDayNightSubsystem* USimCopterDayNightSubsystem::Get(const UObject* WorldContextObject)
@@ -93,6 +293,10 @@ void USimCopterDayNightSubsystem::Tick(const float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	PublishLowPower();
+	// From Tick and not from Refresh, for the same reason PublishLowPower is: these have to reach
+	// the materials in a level with no day sequence too (the editor preview, the main menu), and
+	// Refresh gives up early there.
+	PublishSurfaceShading();
 	ApplyTimeOfDaySettings();
 	Refresh();
 }
@@ -237,6 +441,50 @@ void USimCopterDayNightSubsystem::PublishWindowTuning()
 	{
 		PublishScalar(SimCopterDayNight::WindowGlowNitsParameterName, GlowNits);
 		PublishedGlowNits = GlowNits;
+	}
+}
+
+void USimCopterDayNightSubsystem::PublishSurfaceShading()
+{
+	const float Values[SurfaceShadingSlotCount] = {
+		FMath::Clamp(GSimCopterTreeMaxBrightness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterTreeRoughness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterTreeSpecular, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterTerrainMaxBrightness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterTerrainRoughness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterTerrainSpecular, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterCityMaxBrightness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterCityRoughness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterCitySpecular, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterCityWindowRoughness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterCityWindowSpecular, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterMaxBrightness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterRoughness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterSpecular, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterShoreRoughness, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterShoreSpecular, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterShoreFadeWidth, 0.0f, 1.0f),
+		FMath::Clamp(GSimCopterWaterShoreEdgeNoiseStrength, 0.0f, 1.0f),
+		// A wavelength in centimetres, not a 0..1 ratio.
+		FMath::Max(GSimCopterWaterShoreEdgeNoiseScale, 1.0f),
+		FMath::Clamp(GSimCopterWaterShoreEdgeNoiseStrength2, 0.0f, 1.0f),
+		FMath::Max(GSimCopterWaterShoreEdgeNoiseScale2, 1.0f),
+		FMath::Max(GSimCopterWaterDetailNormalStrength, 0.0f),
+		// A wavelength, not a 0..1 ratio - the shader floors it at 1 cm anyway, but keep it sane.
+		FMath::Max(GSimCopterWaterDetailNormalScale, 1.0f),
+	};
+
+	static_assert(UE_ARRAY_COUNT(SurfaceShadingParameterNames) == SurfaceShadingSlotCount,
+		"Every SimCopter.Shading.* knob needs a collection parameter to publish into.");
+
+	for (int32 Slot = 0; Slot < SurfaceShadingSlotCount; ++Slot)
+	{
+		if (FMath::IsNearlyEqual(Values[Slot], PublishedSurfaceShading[Slot]))
+		{
+			continue;
+		}
+		PublishScalar(SurfaceShadingParameterNames[Slot], Values[Slot]);
+		PublishedSurfaceShading[Slot] = Values[Slot];
 	}
 }
 
