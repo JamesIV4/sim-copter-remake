@@ -10,6 +10,7 @@
 #include "Missions/SimCopterMissionSystem.h"
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterMissionCatalog.h"
+#include "UI/SSimCopterToolFlaps.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SBorder.h"
@@ -45,12 +46,18 @@ TSharedRef<SWidget> MakeArrow(const FText& Label, FOnClicked OnClicked)
 }
 }
 
+void SSimCopterHelicopterDebugPanel::SelectTab(ETab Tab)
+{
+	ActiveTab = Tab;
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->SetCalibrationMode(ActiveTab == ETab::Calibration);
+	}
+}
+
 void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 {
 	Pawn = InArgs._Pawn;
-
-	const FLinearColor LabelColor(0.62f, 0.72f, 0.82f, 1.0f);
-	const FLinearColor ValueColor(0.94f, 0.97f, 1.0f, 1.0f);
 
 	ChildSlot
 	[
@@ -63,6 +70,92 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 			.WidthOverride(410.0f)
 			[
 				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					BuildTabHeader()
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SBox)
+					.Visibility_Lambda([this]() { return ActiveTab == ETab::General ? EVisibility::Visible : EVisibility::Collapsed; })
+					[
+						BuildGeneralTabContent()
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SBox)
+					.Visibility_Lambda([this]() { return ActiveTab == ETab::Calibration ? EVisibility::Visible : EVisibility::Collapsed; })
+					[
+						BuildCalibrationTabContent()
+					]
+				]
+			]
+		]
+	];
+}
+
+TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildTabHeader()
+{
+	const FLinearColor ActiveTabColor(0.18f, 0.38f, 0.68f, 1.0f);
+	const FLinearColor InactiveTabColor(0.08f, 0.10f, 0.14f, 1.0f);
+
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot()
+		.FillWidth(0.5f)
+		.Padding(FMargin(0.0f, 0.0f, 2.0f, 6.0f))
+		[
+			SNew(SButton)
+			.IsFocusable(false)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			.ContentPadding(FMargin(4.0f, 4.0f))
+			.ButtonColorAndOpacity_Lambda([this, ActiveTabColor, InactiveTabColor]() {
+				return ActiveTab == ETab::General ? ActiveTabColor : InactiveTabColor;
+			})
+			.OnClicked_Lambda([this]() {
+				SelectTab(ETab::General);
+				return FReply::Handled();
+			})
+			[
+				SNew(STextBlock)
+				.Text(NSLOCTEXT("SimCopterDebug", "TabGeneral", "GENERAL"))
+				.Font(PanelFont(11, true))
+			]
+		]
+		+ SHorizontalBox::Slot()
+		.FillWidth(0.5f)
+		.Padding(FMargin(2.0f, 0.0f, 0.0f, 6.0f))
+		[
+			SNew(SButton)
+			.IsFocusable(false)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			.ContentPadding(FMargin(4.0f, 4.0f))
+			.ButtonColorAndOpacity_Lambda([this, ActiveTabColor, InactiveTabColor]() {
+				return ActiveTab == ETab::Calibration ? ActiveTabColor : InactiveTabColor;
+			})
+			.OnClicked_Lambda([this]() {
+				SelectTab(ETab::Calibration);
+				return FReply::Handled();
+			})
+			[
+				SNew(STextBlock)
+				.Text(NSLOCTEXT("SimCopterDebug", "TabCalibration", "CALIBRATION"))
+				.Font(PanelFont(11, true))
+			]
+		];
+}
+
+TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildGeneralTabContent()
+{
+	const FLinearColor LabelColor(0.62f, 0.72f, 0.82f, 1.0f);
+	const FLinearColor ValueColor(0.94f, 0.97f, 1.0f, 1.0f);
+
+	return SNew(SVerticalBox)
 
 				// --- HELICOPTER ---
 				+ SVerticalBox::Slot()
@@ -1278,10 +1371,285 @@ void SSimCopterHelicopterDebugPanel::Construct(const FArguments& InArgs)
 					.ColorAndOpacity(LabelColor)
 					.AutoWrapText(true)
 					.Font(PanelFont(10))
+				];
+}
+
+TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildCalibrationTabContent()
+{
+	const FLinearColor LabelColor(0.62f, 0.72f, 0.82f, 1.0f);
+	const FLinearColor ValueColor(0.94f, 0.97f, 1.0f, 1.0f);
+
+	auto GetToolFlaps = [this]() -> TSharedPtr<SSimCopterToolFlaps>
+	{
+		if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+		{
+			return Helicopter->GetToolFlapsPanel();
+		}
+		return nullptr;
+	};
+
+	return SNew(SVerticalBox)
+
+		// --- CALIBRATION TOOL HEADER ---
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 4.0f))
+		[
+			SNew(STextBlock)
+			.Text(NSLOCTEXT("SimCopterDebug", "CalibHeader", "COCKPIT FLAP ELEMENT CALIBRATION"))
+			.ColorAndOpacity(ValueColor)
+			.Font(PanelFont(11, true))
+		]
+
+		// Selected Element Row (< Key >)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 4.0f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SBox).WidthOverride(86.0f)
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "CalibElement", "ELEMENT"))
+					.ColorAndOpacity(LabelColor)
+					.Font(PanelFont(10, true))
 				]
 			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(
+					NSLOCTEXT("SimCopterDebug", "CalibPrevKey", "<"),
+					FOnClicked::CreateLambda([GetToolFlaps]() {
+						if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+						{
+							Flaps->CycleSelectedCalibrationKey(-1);
+						}
+						return FReply::Handled();
+					}))
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(6.0f, 0.0f))
+			[
+				SNew(STextBlock)
+				.Text_Lambda([GetToolFlaps]() {
+					if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+					{
+						return Flaps->GetSelectedControlText();
+					}
+					return FText::FromString(TEXT("No Flaps Panel"));
+				})
+				.ColorAndOpacity(ValueColor)
+				.Font(PanelFont(11, true))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(
+					NSLOCTEXT("SimCopterDebug", "CalibNextKey", ">"),
+					FOnClicked::CreateLambda([GetToolFlaps]() {
+						if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+						{
+							Flaps->CycleSelectedCalibrationKey(1);
+						}
+						return FReply::Handled();
+					}))
+			]
 		]
-	];
+
+		// Position Offset (X, Y)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 4.0f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SBox).WidthOverride(86.0f)
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "CalibPos", "OFFSET X/Y"))
+					.ColorAndOpacity(LabelColor)
+					.Font(PanelFont(10))
+				]
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(4.0f, 0.0f))
+			[
+				SNew(STextBlock)
+				.Text_Lambda([GetToolFlaps]() {
+					if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+					{
+						return FText::Format(NSLOCTEXT("SimCopterDebug", "CalibPosFmt", "X: {0}  Y: {1}"), Flaps->GetSelectedXText(), Flaps->GetSelectedYText());
+					}
+					return FText::GetEmpty();
+				})
+				.ColorAndOpacity(ValueColor)
+				.Font(PanelFont(10))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeLeftCoarse", "-1X"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(-1.0f, 0, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeLeft", "-0.1X"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(-0.1f, 0, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeRight", "+0.1X"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0.1f, 0, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeRightCoarse", "+1X"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(1.0f, 0, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(4.0f, 0.0f, 2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeUpCoarse", "-1Y"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, -1.0f, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeUp", "-0.1Y"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, -0.1f, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeDown", "+0.1Y"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, 0.1f, 0, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "NudgeDownCoarse", "+1Y"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, 1.0f, 0, 0); return FReply::Handled(); }))
+			]
+		]
+
+		// Element Scale (ScaleX, ScaleY)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 4.0f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SBox).WidthOverride(86.0f)
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "CalibScale", "SCALE X/Y"))
+					.ColorAndOpacity(LabelColor)
+					.Font(PanelFont(10))
+				]
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(4.0f, 0.0f))
+			[
+				SNew(STextBlock)
+				.Text_Lambda([GetToolFlaps]() {
+					if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+					{
+						return FText::Format(NSLOCTEXT("SimCopterDebug", "CalibScaleFmt", "SX: {0}  SY: {1}"), Flaps->GetSelectedScaleXText(), Flaps->GetSelectedScaleYText());
+					}
+					return FText::GetEmpty();
+				})
+				.ColorAndOpacity(ValueColor)
+				.Font(PanelFont(10))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "DecSX", "-SX"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, 0, -0.05f, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "IncSX", "+SX"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, 0, 0.05f, 0); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(4.0f, 0.0f, 2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "DecSY", "-SY"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, 0, 0, -0.05f); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "IncSY", "+SY"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->NudgeSelectedElement(0, 0, 0, 0.05f); return FReply::Handled(); }))
+			]
+		]
+
+		// Global Scale Row & Action Buttons
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 8.0f, 0.0f, 4.0f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				SNew(SBox).WidthOverride(86.0f)
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "CalibGlobalScale", "GLOBAL SCALE"))
+					.ColorAndOpacity(LabelColor)
+					.Font(PanelFont(10, true))
+				]
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center).Padding(FMargin(4.0f, 0.0f))
+			[
+				SNew(STextBlock)
+				.Text_Lambda([GetToolFlaps]() {
+					if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+					{
+						return Flaps->GetGlobalScaleText();
+					}
+					return FText::GetEmpty();
+				})
+				.ColorAndOpacity(ValueColor)
+				.Font(PanelFont(10, true))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "DecScale", "-"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->SetScale(FMath::Max(0.5f, F->GetScale() - 0.1f)); return FReply::Handled(); }))
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(2.0f, 0.0f))
+			[
+				MakeArrow(NSLOCTEXT("SimCopterDebug", "IncScale", "+"), FOnClicked::CreateLambda([GetToolFlaps]() { if (auto F = GetToolFlaps()) F->SetScale(FMath::Min(5.0f, F->GetScale() + 0.1f)); return FReply::Handled(); }))
+			]
+		]
+
+		// Action Buttons (Reset, Save JSON)
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(FMargin(0.0f, 10.0f, 0.0f, 4.0f))
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(0.5f).Padding(FMargin(0.0f, 0.0f, 4.0f, 0.0f))
+			[
+				SNew(SButton)
+				.IsFocusable(false)
+				.HAlign(HAlign_Center)
+				.ContentPadding(FMargin(6.0f, 4.0f))
+				.OnClicked_Lambda([GetToolFlaps]() {
+					if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+					{
+						Flaps->ResetSelectedElement();
+					}
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "CalibReset", "RESET ELEMENT"))
+					.Font(PanelFont(10, true))
+				]
+			]
+			+ SHorizontalBox::Slot().FillWidth(0.5f).Padding(FMargin(4.0f, 0.0f, 0.0f, 0.0f))
+			[
+				SNew(SButton)
+				.IsFocusable(false)
+				.HAlign(HAlign_Center)
+				.ContentPadding(FMargin(6.0f, 4.0f))
+				.OnClicked_Lambda([GetToolFlaps]() {
+					if (TSharedPtr<SSimCopterToolFlaps> Flaps = GetToolFlaps())
+					{
+						Flaps->SaveCalibrationData();
+					}
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Text(NSLOCTEXT("SimCopterDebug", "CalibSave", "SAVE JSON"))
+					.Font(PanelFont(10, true))
+				]
+			]
+		];
 }
 
 TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildMissionButtons()

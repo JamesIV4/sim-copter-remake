@@ -266,6 +266,14 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void UnPossessed() override;
 
+	void RestoreGameViewportFocus();
+
+	TSharedPtr<class SSimCopterToolFlaps> GetToolFlapsPanel() const { return ToolFlapsPanel; }
+	void SetCalibrationMode(bool bEnable);
+
+	void EnsureToolFlapsWidget(bool bForceCreate = false);
+	void RemoveToolFlapsWidget();
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool LoadTuningFromOriginalGameRoot();
 
@@ -1851,9 +1859,6 @@ private:
 	// goes stale the moment the pawn is unpossessed, and a stuck engine-shutdown bool is what made
 	// takeoffs after a job on foot take forever. Called on both edges of a possession change.
 	void ResetTransientInputState();
-	// Hands keyboard focus back to the game viewport. Under FInputModeGameAndUI a focused Slate
-	// widget swallows keys before the axis bindings run.
-	void RestoreGameViewportFocus();
 	// Releases everything UPlayerInput still believes is held, so a key whose release went missing
 	// during a possession change cannot keep reporting itself as down.
 	static void FlushStuckKeys(AController* ForController);
@@ -1954,8 +1959,6 @@ private:
 	void EnsureWaterControlsWidget();
 	void RemoveWaterControlsWidget();
 	void RefreshWaterControlsWidget();
-	void EnsureToolFlapsWidget();
-	void RemoveToolFlapsWidget();
 	void EnsureCrosshairWidget();
 	void RemoveCrosshairWidget();
 	void EnsureControllerOverlayWidget();
@@ -1967,6 +1970,9 @@ private:
 	void RemoveHelicopterDebugPanel();
 	// Ctrl+Alt+D. Keeps both developer overlays hidden across a re-possession.
 	void ToggleHelicopterDebugPanel();
+	// Ctrl+Alt+M. Toggles control flap layout calibration mode with draggable outline boxes.
+	UFUNCTION(Exec)
+	void SimToggleFlapCalibration();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;
 

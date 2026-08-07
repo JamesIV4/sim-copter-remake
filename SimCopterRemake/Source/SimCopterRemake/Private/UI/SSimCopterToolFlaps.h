@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -6,6 +6,7 @@
 #include "UI/SimCopterFlapLayout.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
+#include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/SCompoundWidget.h"
 
 class ASimCopterHelicopterPawn;
@@ -38,6 +39,38 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual ~SSimCopterToolFlaps() override;
+
+	// Calibration mode: Ctrl+Alt+M toggles draggable element overlays & outlines.
+	void ToggleCalibrationMode();
+	bool IsCalibrationMode() const { return bCalibrationMode; }
+
+	FVector2D GetElementOffset(const FString& Key) const;
+	void SetElementOffset(const FString& Key, const FVector2D& Offset);
+	FVector2D GetElementScale(const FString& Key) const;
+	void SetElementScale(const FString& Key, const FVector2D& ElementScale);
+	void SetScale(float NewScale);
+	float GetScale() const { return Scale; }
+
+	FString GetSelectedCalibrationKey() const { return SelectedCalibrationKey; }
+	void SetSelectedCalibrationKey(const FString& Key);
+	void CycleSelectedCalibrationKey(int32 Direction);
+	void NudgeSelectedElement(float DeltaX, float DeltaY, float DeltaScaleX, float DeltaScaleY);
+	void ResetSelectedElement();
+
+	FText GetSelectedControlText() const;
+	FText GetSelectedXText() const;
+	FText GetSelectedYText() const;
+	FText GetSelectedScaleXText() const;
+	FText GetSelectedScaleYText() const;
+	FText GetGlobalScaleText() const;
+
+	void LoadCalibrationData();
+	void SaveCalibrationData() const;
+
+	virtual bool SupportsKeyboardFocus() const override { return true; }
+	virtual FReply OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 	// Rebinds when possession changes so the flaps follow the controlled helicopter.
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
@@ -78,6 +111,16 @@ private:
 	// that pseudo-entry here avoids turning chase into a fake service in the decoded dispatch core.
 	int32 SelectedDispatchEntry = 0;
 
+	bool bCalibrationMode = false;
+	FString SelectedCalibrationKey;
+	TMap<FString, FVector2D> CalibrationOffsets;
+	TMap<FString, FVector2D> CalibrationScales;
+	TMap<FString, SConstraintCanvas::FSlot*> ElementCanvasSlots;
+	TMap<FString, FVector4f> ElementDefaultBounds;
+	TSharedPtr<class IInputProcessor> CalibrationInputProcessor;
+
+	TSharedRef<SWidget> BuildCalibrationDebugPanel();
+
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 
 	// A canvas holding one panel, sized in screen pixels.
@@ -85,6 +128,16 @@ private:
 
 	// Places Content at page coordinates, scaled on the way in.
 	void AddAtPage(SConstraintCanvas& Canvas, float X, float Y, float Width, float Height, TSharedRef<SWidget> Content) const;
+
+	// Places Content at page coordinates with a calibration key for position offset and outline dragging.
+	void AddAtPageKey(
+		SConstraintCanvas& Canvas,
+		const FString& Key,
+		float DefaultX,
+		float DefaultY,
+		float Width,
+		float Height,
+		TSharedRef<SWidget> Content);
 
 	// Places Content at a page position but at an unscaled screen size, for text.
 	void AddTextAtPage(SConstraintCanvas& Canvas, float CentreX, float CentreY, float ScreenWidth, float ScreenHeight, TSharedRef<SWidget> Content) const;

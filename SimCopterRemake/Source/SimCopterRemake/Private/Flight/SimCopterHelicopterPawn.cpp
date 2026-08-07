@@ -1103,6 +1103,12 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 		IE_Pressed,
 		this,
 		&ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel);
+
+	PlayerInputComponent->BindKey(
+		FInputChord(EKeys::M, false, true, true, false),
+		IE_Pressed,
+		this,
+		&ASimCopterHelicopterPawn::SimToggleFlapCalibration);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
@@ -3445,7 +3451,7 @@ void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()
 #endif
 }
 
-void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
+void ASimCopterHelicopterPawn::EnsureToolFlapsWidget(const bool bForceCreate)
 {
 	if (!bShowToolFlaps ||
 		ToolFlapsWidget.IsValid() ||
@@ -3460,7 +3466,7 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 		FlapArt = NewObject<USimCopterHangarArt>(this, TEXT("FlapArt"));
 	}
 	FlapArt->SetOriginalGameRoot(ResolveOriginalGameRoot());
-	if (!FlapArt->IsUsable())
+	if (!bForceCreate && !FlapArt->IsUsable())
 	{
 		// No BMP folder: the flaps would be four empty rectangles, so draw nothing at all and
 		// leave the water HUD as the only tool readout.
@@ -3501,6 +3507,29 @@ void ASimCopterHelicopterPawn::RemoveToolFlapsWidget()
 	ToolFlapsWidget.Reset();
 }
 
+void ASimCopterHelicopterPawn::SetCalibrationMode(const bool bEnable)
+{
+	if (bEnable)
+	{
+		EnsureToolFlapsWidget(/*bForceCreate=*/true);
+		if (ToolFlapsPanel.IsValid() && !ToolFlapsPanel->IsCalibrationMode())
+		{
+			ToolFlapsPanel->ToggleCalibrationMode();
+		}
+	}
+	else
+	{
+		if (ToolFlapsPanel.IsValid() && ToolFlapsPanel->IsCalibrationMode())
+		{
+			ToolFlapsPanel->ToggleCalibrationMode();
+		}
+		if (FlapArt != nullptr && !FlapArt->IsUsable())
+		{
+			RemoveToolFlapsWidget();
+		}
+	}
+}
+
 void ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel()
 {
 	bShowHelicopterDebugPanel = !bShowHelicopterDebugPanel;
@@ -3511,8 +3540,35 @@ void ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel()
 	}
 	else
 	{
+		SetCalibrationMode(false);
 		RemoveWaterControlsWidget();
 		RemoveHelicopterDebugPanel();
+	}
+}
+
+void ASimCopterHelicopterPawn::SimToggleFlapCalibration()
+{
+	if (!bShowHelicopterDebugPanel)
+	{
+		bShowHelicopterDebugPanel = true;
+		EnsureWaterControlsWidget();
+		EnsureHelicopterDebugPanel();
+	}
+
+	if (HelicopterDebugPanel.IsValid())
+	{
+		SSimCopterHelicopterDebugPanel* DebugPanel = static_cast<SSimCopterHelicopterDebugPanel*>(HelicopterDebugPanel.Get());
+		if (DebugPanel != nullptr)
+		{
+			if (DebugPanel->GetActiveTab() == SSimCopterHelicopterDebugPanel::ETab::Calibration)
+			{
+				ToggleHelicopterDebugPanel();
+			}
+			else
+			{
+				DebugPanel->SelectTab(SSimCopterHelicopterDebugPanel::ETab::Calibration);
+			}
+		}
 	}
 }
 

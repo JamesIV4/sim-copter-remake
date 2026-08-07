@@ -27,7 +27,7 @@ public class SimCopterRemake : ModuleRules
 		// ApplicationCore for FDisplayMetrics, which seeds the first run's resolution from the
 		// monitor the game opened on; RHI for IsRayTracingEnabled, which decides whether the
 		// Settings page may offer Hardware Lumen.
-		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "RenderCore", "RHI", "ApplicationCore", "MediaAssets", "DaySequence", "CelestialVault" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "RenderCore", "RHI", "ApplicationCore", "MediaAssets", "DaySequence", "CelestialVault", "Json", "JsonUtilities" });
 
 		// The Graphics page replaces the original's render.bmp options with Unreal's, so it drives
 		// NVIDIA's blueprint libraries directly rather than poking console variables. All three
