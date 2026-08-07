@@ -1085,6 +1085,20 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float SearchLightExposureCompensation = 1.0f;
 
+	// How much of the beam Lumen bounces, and it needs its own number because of the line above.
+	//
+	// `IndirectLightingIntensity` is exactly the knob: LumenSceneDirectLighting.cpp gathers a light
+	// into the Lumen scene only when `Proxy->GetIndirectLightingScale() > 0`, and then multiplies
+	// that light's colour by the same value - so it is both the gate and the scale, and raising it
+	// costs nothing beyond what Lumen already computes for the light.
+	//
+	// It has to be well above 1 here because SearchLightExposureCompensation is a DIRECT-lighting
+	// trick: it divides the exposure back out on the renderer side, where Lumen does not see it. The
+	// beam's true radiometric output is ~1,000 candelas, so what Lumen was being handed to bounce
+	// was a hand torch - which is why the searchlight lit the ground and nothing around it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
+	float SearchLightIndirectLightingIntensity = 24.0f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "100.0"))
 	float SearchLightRangeCm = 5200.0f;
 

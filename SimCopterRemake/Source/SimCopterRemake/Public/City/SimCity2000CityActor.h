@@ -407,6 +407,26 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bNaturalObjectsCastShadow = true;
 
+	/**
+	 * Whether the tree cards appear in the coarse scene representations - the distance fields and
+	 * the ray tracing scene.
+	 *
+	 * OFF, and this is a correctness fix rather than a performance one. A tree is a MASKED sprite
+	 * card: the leaves are cut out of a rectangle by the opacity mask, and that mask only exists in
+	 * the raster. Neither the distance fields nor the ray tracing scene runs a pixel shader, so both
+	 * carry the card as the solid quad it geometrically is - and anything that shadows against them
+	 * casts the whole rectangle. That is why the sun looks right (a virtual shadow map is rastered,
+	 * so it masks) while a local light does not.
+	 *
+	 * Turn either back on and the trees occlude again, blockily. Neither buys much here: the cards
+	 * are thin and the city's GI is dominated by the ground and the buildings.
+	 */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bNaturalObjectsAffectDistanceFieldLighting = false;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bNaturalObjectsVisibleInRayTracing = false;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalTextures = true;
 

@@ -4210,6 +4210,20 @@ void ASimCity2000CityActor::RebuildCity()
 		Component->SetCollisionResponseToAllChannels(ECR_Block);
 		Component->SetCanEverAffectNavigation(false);
 		Component->SetCastShadow(bNaturalObjectsCastShadow);
+
+		// A tree is a MASKED sprite card, and the mask only exists in the RASTER. Every coarse scene
+		// representation - the distance fields, the ray tracing scene - carries the card as the solid
+		// quad it geometrically is, because none of them run the pixel shader that would cut the
+		// leaves out of it. Anything shadowing against those representations therefore casts the
+		// whole rectangle.
+		//
+		// That is what the sun does NOT do (a virtual shadow map is rastered, so it masks correctly)
+		// and what a local light CAN do, which is exactly the shape of the report: trees casting a
+		// full-card shadow specifically under the helicopter's searchlight. A rectangular shadow is
+		// strictly worse than no shadow, so the cards stay out of both representations by default.
+		Component->SetAffectDistanceFieldLighting(bNaturalObjectsAffectDistanceFieldLighting);
+		Component->SetVisibleInRayTracing(bNaturalObjectsVisibleInRayTracing);
+
 		// Static, unlike the buildings: nothing ever adds or removes a tree after the build, and a
 		// static instanced component is what lets the virtual shadow map CACHE its pages instead of
 		// re-rendering them. Getting the whole city's foliage out of one movable procedural mesh and

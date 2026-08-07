@@ -1,4 +1,33 @@
-# SimCopter exposure scale (why the effects and lights went black)
+# SimCopter exposure scale
+
+## InverseExposureBlend is invisible to Lumen (2026-08-07)
+
+Every gameplay light in the project is physically tiny and made to *look* right by
+`InverseExposureBlend` — the searchlight's 650,000 unitless is ~1,000 candelas, the headlights'
+9,000 is ~14. **That compensation happens on the renderer's deferred-lighting side, and Lumen never
+sees it**, so what Lumen was handed to bounce really was a hand torch. That is the whole reason the
+searchlight and the headlights lit a patch of ground and contributed nothing around it.
+
+The fix is `ULightComponent::IndirectLightingIntensity`, and the engine source is unambiguous about
+it being the right knob — `LumenSceneDirectLighting.cpp` gathers a light into the Lumen scene only
+when
+
+```cpp
+LightSceneInfo->ShouldRenderLightViewIndependent()
+    && LightSceneInfo->Proxy->GetIndirectLightingScale() > 0.0f
+```
+
+and then does `DeferredLightUniforms.LightParameters.Color *= GetIndirectLightingScale()`. So it is
+**both the gate and the scale**, and raising it is free: it multiplies lighting Lumen already
+computes for that light. `SearchLightIndirectLightingIntensity` (24) and
+`HeadlightIndirectLightingIntensity` (8) are the tunables.
+
+**There is no per-light Lumen distance cap to set.** The budget that actually exists is
+`r.LumenScene.DirectLighting.MaxLightsPerTile` — default **8**, valid 4/8/16/32, "pick per tile
+based on their intensity and attenuation". In a city carrying hundreds of beacon point lights that
+budget is the thing most likely to drop the searchlight, and raising it is the lever if the beam's
+bounce comes and goes as you fly. Costs memory and surface-cache time, so move it a notch at a time.
+ (why the effects and lights went black)
 
 *"The sun went up by 30,000x. Nothing else did."*
 

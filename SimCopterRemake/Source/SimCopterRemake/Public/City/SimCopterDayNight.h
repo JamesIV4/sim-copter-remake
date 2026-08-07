@@ -60,6 +60,120 @@ constexpr float DefaultWindowRowLitFraction = 0.05f;
 // skyline into a wall of halos. Tunable live, see SimCopter.NightWindows.Nits.
 constexpr float DefaultWindowGlowNits = 25.0f;
 
+// --- surface shading ceilings -----------------------------------------------------------------
+//
+// Three material families that the day sequence's 120,000-lux sun overdrives, each with its own
+// albedo ceiling, roughness and specular. All nine are published live from the SimCopter.Shading.*
+// console variables, so they can be dialled in while looking at the city instead of by editing a
+// material and re-baking.
+//
+// **The ceiling is a hue-preserving ALBEDO clamp**, not a clamp on the lit result - a material
+// cannot see its own lighting, so albedo is the only lever that bounds how bright a diffuse
+// surface can get. The texel is scaled down until its brightest channel reaches the ceiling, which
+// stops a bright palette entry clipping to white without walking it towards grey the way a
+// per-channel min() would.
+
+// Foliage. Real leaves sit near 0.15-0.25 albedo and are almost non-specular. The sprite cards make
+// it worse than an ordinary surface: their normal is biased to world up (CardNormalUpBias), so at
+// noon EVERY card faces the sun at once and one broad specular lobe washes the whole canopy white.
+constexpr float DefaultTreeMaxBrightness = 0.42f;
+constexpr float DefaultTreeRoughness = 0.92f;
+constexpr float DefaultTreeSpecular = 0.02f;
+
+// Ground. Earth and grass are matte; the shared 0.3 specular and 0.65 roughness the city materials
+// were built with read as damp stone across a whole map of it.
+constexpr float DefaultTerrainMaxBrightness = 0.55f;
+constexpr float DefaultTerrainRoughness = 0.88f;
+constexpr float DefaultTerrainSpecular = 0.04f;
+
+// Buildings and roads: the atlas pages, the direct-image faces and every flat palette-coloured
+// face. Started at the terrain's exact numbers because the ground was tuned first and looked
+// right, and the city standing out beside it was the whole complaint - but it is its own family so
+// painted concrete and asphalt can be pulled away from dirt later without moving the ground.
+//
+// The vertex-colour material is shared with the VEHICLES
+// (Docs/memory/simcopter-vehicle-material.md), so cars ride this ceiling too. Roughness and
+// specular were already shared; only the ceiling is new to them.
+constexpr float DefaultCityMaxBrightness = 0.55f;
+constexpr float DefaultCityRoughness = 0.88f;
+constexpr float DefaultCitySpecular = 0.04f;
+
+// Glass, where the hand-painted window mask says there is a pane
+// (Content/NightWindows/windows_page_<page>.png - pages 2, 39 and 40, the three wall pages).
+//
+// Those masks were painted to decide which texels LIGHT UP at night, but which texels are windows
+// is a fact about the building and not about the hour, so the same data makes them reflective at
+// noon. Glass was the one surface in the city with no way to tell itself apart from the masonry it
+// is set into.
+//
+// Note this is a DIFFERENT question from the glow mask's: that one asks "is this window lit right
+// now" and so early-outs in daylight and applies the ~30% occupancy roll. Every window is glass
+// whether or not anyone is home, so the reflection mask has neither gate. Only the atlas material
+// carries the mask, so only it uses these - the rest of the city stays on the matte City pair.
+constexpr float DefaultCityWindowRoughness = 0.10f;
+constexpr float DefaultCityWindowSpecular = 0.85f;
+
+// Water is the one surface here that SHOULD be glossy, and it was sharing the same matte numbers as
+// the dirt. Low roughness and a near-dielectric-maximum specular give it back its sun glint and its
+// sky reflection.
+constexpr float DefaultWaterMaxBrightness = 0.75f;
+constexpr float DefaultWaterRoughness = 0.12f;
+constexpr float DefaultWaterSpecular = 0.9f;
+
+// --- the shoreline, and the grid it used to show ------------------------------------------------
+//
+// Making water glossy exposed how it ENDS. A near-mirror met the land on a tile-quantised, stair-
+// stepped coastline, so the reflection stopped dead on a hard line and every 400 cm quad seam near
+// it read as part of a grid.
+//
+// The mask for fixing that already existed: vertex-colour R on the water mesh is the wave weight,
+// 0 at the welded shoreline and 1 offshore. Roughness and specular now ease from a matte shoreline
+// pair out to the open-water pair across WaterShoreFadeWidth of that ramp, which turns the hard
+// edge into a beach without any new vertex data or a re-bake.
+constexpr float DefaultWaterShoreRoughness = 0.72f;
+constexpr float DefaultWaterShoreSpecular = 0.12f;
+// Fraction of the weight ramp the fade spans. Smootherstepped, so it has no visible start or end of
+// its own - a linear ramp would just move the hard edge inland.
+constexpr float DefaultWaterShoreFadeWidth = 0.4f;
+
+// ...and the fade's SHAPE, which softness alone cannot fix. The weight is interpolated bilinearly
+// across 400 cm quads, so any contour thresholded out of it traces the grid: straight along tile
+// edges, 45 degrees across quad diagonals, kinked where quads meet. Displacing the weight in world
+// space before the ramp displaces that contour laterally - by roughly strength / |grad(weight)| -
+// which turns the stair-step into a line that wanders over the tile boundaries instead of along
+// them.
+//
+// Strength is in weight units, so how far the contour actually moves depends on how fast the weight
+// ramps on a given coast; a shallow shore wanders more than a steep one. The scale is a wavelength
+// in centimetres.
+//
+// THESE ARE TUNED ON SCREEN AND THEY ARE NOT WHAT THE THEORY PREDICTED. The reasoning above says
+// the wavelength has to exceed the 400 cm tile so the contour WANDERS further than the stair-step
+// it is hiding, and the first defaults (900 / 300 cm) were picked that way. What actually looks
+// right is 25 cm and 4 cm at roughly ten times the strength - far below a tile, which dissolves the
+// boundary into a stochastic band instead of moving it. Both hide the grid; the fine one hides it
+// better, because a wandering line is still a LINE and the eye finds it. Do not "correct" these
+// back up to the tile scale on the strength of the argument - it was tested and lost.
+constexpr float DefaultWaterShoreEdgeNoiseStrength = 0.25f;
+constexpr float DefaultWaterShoreEdgeNoiseScale = 25.0f;
+
+// A second, INDEPENDENT layer - its own amplitude and its own wavelength, not an octave chained off
+// the first, so the two frequencies can be dialled against each other. They are sampled at
+// different world offsets so they cannot line up and reinforce into one wave.
+//
+// Also tuned on screen, and also very fine: 4 cm at nearly layer 1's strength. Between them the two
+// read as a dissolve rather than as a shape, which is the look that won.
+constexpr float DefaultWaterShoreEdgeNoiseStrength2 = 0.2f;
+constexpr float DefaultWaterShoreEdgeNoiseScale2 = 4.0f;
+
+// A fine per-pixel ripple on the NORMAL only - it never touches the wave WPO, so the geometry and
+// the welded shoreline are untouched. Its job is to stop open water being one flat mirror: at
+// roughness 0.12 any large flat span reflects the sky as a single sheet, and every seam in the
+// coarse per-vertex data then reads as a hard edge in that sheet. Strength 0 turns it off.
+constexpr float DefaultWaterDetailNormalStrength = 0.35f;
+// Wavelength in centimetres.
+constexpr float DefaultWaterDetailNormalScale = 140.0f;
+
 // Default fade anchors, matching USimCopterDayNightFogComponent's so the fog, the window lights and
 // the pacing all turn over on the same hours.
 constexpr float DefaultSunriseHour = 6.0f;
@@ -161,6 +275,14 @@ private:
 	void PublishWindowTuning();
 
 	/**
+	 * Pushes the nine SimCopter.Shading.* knobs at the tree, terrain and water materials.
+	 *
+	 * Same change-gated shape as the window tuning, and for the same reason: a collection write
+	 * dirties every material instance sampling it, so an unchanged frame must cost nothing.
+	 */
+	void PublishSurfaceShading();
+
+	/**
 	 * Pushes the low power flag at the city materials.
 	 *
 	 * Called from Tick rather than from Refresh, because Refresh gives up when the level has no day
@@ -184,6 +306,12 @@ private:
 	float PublishedRowLitFraction = -1.0f;
 	float PublishedGlowNits = -1.0f;
 	float PublishedLowPower = -1.0f;
+
+	/** Last value written for each SimCopter.Shading.* knob, in ESurfaceShadingSlot order. */
+	static constexpr int32 SurfaceShadingSlotCount = 23;
+	float PublishedSurfaceShading[SurfaceShadingSlotCount] = {
+		-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f };
 
 	/**
 	 * Whether the last evaluated frame counted as night, so the day->night EDGE can be detected.

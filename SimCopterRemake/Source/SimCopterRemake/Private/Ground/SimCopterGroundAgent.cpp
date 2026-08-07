@@ -4019,6 +4019,9 @@ void ASimCopterGroundAgent::ConfigureVehicleHeadlights(const FBox& VehicleLocalB
 		// once the engine converts it, and the level's day sequence runs the sun at 120,000 lux, so
 		// the raw beam contributes nothing a tonemapper can show. See SearchLightExposureCompensation.
 		Light->SetInverseExposureBlend(1.0f);
+		// ...and because that is a direct-lighting trick Lumen never sees, the beam needs its own
+		// indirect scale or it bounces nothing. See HeadlightIndirectLightingIntensity.
+		Light->SetIndirectLightingIntensity(HeadlightIndirectLightingIntensity);
 		Light->SetAttenuationRadius(HeadlightAttenuationRadiusCm);
 		Light->SetInnerConeAngle(11.0f);
 		Light->SetOuterConeAngle(26.0f);

@@ -363,6 +363,26 @@ size of the monitor the game opened on, because `UGameUserSettings` otherwise de
 1280x720. Native resolution, **not** the display rect - a DPI-scaled 4K panel reports a 2560x1440
 rect and seeding from that opens the game at the scaled size.
 
+## The painted masks are geometry, so they also make glass (2026-08-07)
+
+The masks were painted to decide which texels LIGHT UP at night — but which texels are windows is a
+fact about the building, not about the hour, so the same data now drives **reflection**, day and
+night. Windows take `CityWindowRoughness` / `CityWindowSpecular` (0.10 / 0.85) while the masonry
+around them stays on the matte City pair. Glass was the one surface in the city with no way to tell
+itself apart from the wall it is set into.
+
+**It needed a SECOND mask node, not a reuse of the glow one.** `OriginalNightWindowMask` answers
+"is this window lit right now": it early-outs to zero when `NightBlend <= 0` and multiplies by the
+per-window occupancy roll, because only ~30% of windows have anyone home. Reflection wants neither
+gate — every pane is glass whether or not there is a light behind it — so `OriginalWindowGlassMask`
+is the same painted/derived pair with the time gate and the roll removed. Reusing the glow mask
+would have given reflective windows only at night, and only the lit ones.
+
+Only `M_SimCopterCityAtlas` carries the mask, so only it takes the glass pair; the other two City
+materials stay matte. Painted pages are 2, 39 and 40 — the three wall pages, which is what
+`BakeCityAtlas.py` reports as `paintedWindowPages` — so the derived fallback is effectively dead in
+retail.
+
 ## A lit window is tungsten, not daylight (2026-08-06)
 
 The glow is `nightTexel * mask * WindowGlowNits` — literally the night art's own pixel, which is why

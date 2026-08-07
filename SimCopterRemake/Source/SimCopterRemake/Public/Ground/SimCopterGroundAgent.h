@@ -526,6 +526,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "0.0"))
 	float HeadlightIntensity = 9000.0f;
 
+	// How much of each beam Lumen bounces. LumenSceneDirectLighting.cpp gathers a light into the
+	// Lumen scene only when `Proxy->GetIndirectLightingScale() > 0` and then multiplies its colour
+	// by that value, so this is both the gate and the scale - and it is free, being applied to
+	// lighting Lumen already computes for the light.
+	//
+	// Above 1 for the same reason the searchlight's is: SetInverseExposureBlend(1) is a DIRECT
+	// lighting trick that Lumen never sees, so the 9,000 unitless (~14 candela) beams were handing
+	// Lumen almost no energy to bounce. Lower than the searchlight's, because there are dozens of
+	// cars and their bounce should read as a glow on the road rather than as headlights of their own.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "0.0"))
+	float HeadlightIndirectLightingIntensity = 8.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "100.0"))
 	float HeadlightAttenuationRadiusCm = 1800.0f;
 

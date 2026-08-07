@@ -56,6 +56,85 @@ SPECULAR_DEFAULT = 0.3
 SHADING_GROUP = "City Shading"
 
 
+# --- per-family surface shading -----------------------------------------------------------------
+#
+# The three shared numbers above are a reasonable average for buildings and roads, and they are
+# WRONG for the three surfaces that read as material rather than as architecture:
+#
+#   * Trees blew out to white in bright sun. Two causes stack. The palette texel can be near 1.0
+#     albedo, which under a physically scaled 120,000-lux sun tonemaps to white all by itself; and
+#     the sprite card's normal is biased to world up (CardNormalUpBias), so at noon EVERY card in
+#     the city faces the sun at once and the 0.3 specular puts one broad highlight across the whole
+#     canopy. Real foliage is dark and almost non-specular and never does either.
+#   * The ground was too bright and too shiny for the same albedo reason plus the same 0.3.
+#   * Water was not shiny ENOUGH, because it was sharing the dirt's matte numbers.
+#
+# So those three take their roughness, specular and an ALBEDO CEILING from the day/night collection
+# instead of the shared constants, published live by USimCopterDayNightSubsystem::PublishSurfaceShading
+# off the SimCopter.Shading.* console variables. Live because these are look knobs: they want to be
+# turned while looking at the city at noon, not edited here and re-baked.
+#
+# The ceiling is on ALBEDO because a material cannot see its own lit result - there is nothing to
+# clamp after the lighting. Bounding albedo bounds the diffuse, which is what "too bright" is.
+#
+# **These names must match SurfaceShadingParameterNames in SimCopterDayNight.cpp.** A collection
+# parameter whose name does not resolve compiles to a constant zero, and a zero albedo ceiling is a
+# black surface, not an obviously-broken one.
+SURFACE_SHADING_FAMILIES = ("Tree", "Terrain", "City", "Water")
+
+# Defaults for the collection itself. Only what the material shows with no subsystem running; the
+# real values come from SimCopterDayNight.h. Keep the two in step.
+SURFACE_SHADING_DEFAULTS = (
+    ("TreeMaxBrightness", 0.42),
+    ("TreeRoughness", 0.92),
+    ("TreeSpecular", 0.02),
+    ("TerrainMaxBrightness", 0.55),
+    ("TerrainRoughness", 0.88),
+    ("TerrainSpecular", 0.04),
+    # Buildings and roads. Started at the terrain's exact numbers on purpose - the ground was tuned
+    # first and looked right, and the city standing out beside it was the whole complaint - but they
+    # are their own family so painted concrete and asphalt can be pulled apart from dirt later.
+    ("CityMaxBrightness", 0.55),
+    ("CityRoughness", 0.88),
+    ("CitySpecular", 0.04),
+    # Glass, where the painted window mask says there is a pane. Only the atlas material has the
+    # mask, so only it uses these; the rest of the city stays on the matte pair above.
+    ("CityWindowRoughness", 0.10),
+    ("CityWindowSpecular", 0.85),
+    ("WaterMaxBrightness", 0.75),
+    ("WaterRoughness", 0.12),
+    ("WaterSpecular", 0.9),
+    # Shoreline fade. Matte enough to read as wet sand rather than as a mirror ending, faded across
+    # a bit over half the wave-weight ramp so it has no visible start of its own.
+    ("WaterShoreRoughness", 0.72),
+    ("WaterShoreSpecular", 0.12),
+    ("WaterShoreFadeWidth", 0.4),
+    # World-space warp on the fade's contour, so it stops tracing the tile grid. Strength is in
+    # weight units; scale is a wavelength in cm. Both layers ended up FAR BELOW the 400 cm tile on
+    # screen, which dissolves the boundary rather than moving it - see the note in
+    # SimCopterDayNight.h, the tile-scale reasoning was tested and lost.
+    ("WaterShoreEdgeNoiseStrength", 0.25),
+    ("WaterShoreEdgeNoiseScale", 25.0),
+    # Second, independent layer - its own amplitude AND wavelength, not an octave of the first.
+    ("WaterShoreEdgeNoiseStrength2", 0.2),
+    ("WaterShoreEdgeNoiseScale2", 4.0),
+    # Fine normal-only ripple that keeps open water off being one flat mirror. Wavelength in cm.
+    ("WaterDetailNormalStrength", 0.35),
+    ("WaterDetailNormalScale", 140.0),
+)
+
+# Hue preserving, which is the whole point of doing this with a custom node rather than a Min: a
+# per-channel clamp walks a bright colour towards the ceiling GREY, so a vivid green tree would go
+# pale instead of merely darker. Scaling by the brightest channel keeps the hue and only takes the
+# brightness out.
+ALBEDO_CEILING_CODE = (
+    "float Brightest = max(Color.r, max(Color.g, Color.b));\n"
+    "float Limit = max(Ceiling, 0.0);\n"
+    "if (Brightest <= Limit || Brightest <= 0.0001f) { return Color; }\n"
+    "return Color * (Limit / Brightest);"
+)
+
+
 def add_scalar_parameter(material, name, default_value, sort_priority, y):
     param = unreal.MaterialEditingLibrary.create_material_expression(
         material,
@@ -178,13 +257,9 @@ def create_lit_texture_material():
     )
     texture.set_editor_property("parameter_name", "Texture")
 
-    unreal.MaterialEditingLibrary.connect_material_property(
-        texture,
-        "RGB",
-        unreal.MaterialProperty.MP_BASE_COLOR,
-    )
-
-    add_shading_nodes(material, texture, "RGB")
+    # City family - this carries the direct-image building faces and the hangar shell, which are
+    # building surface like any other and have to sit under the same ceiling as the atlas pages.
+    add_family_shading_nodes(material, texture, "RGB", "City")
 
     material.set_editor_property("two_sided", False)
     material.set_editor_property("used_with_instanced_static_meshes", True)
@@ -219,7 +294,7 @@ DAY_NIGHT_COLLECTION_SCALARS = (
     # both are the kind of detail a 1996 software renderer never had anyway. Published by
     # USimCopterDayNightSubsystem::PublishLowPower.
     ("LowPower", 0.0),
-)
+) + SURFACE_SHADING_DEFAULTS
 NIGHT_BLEND_PARAMETER = "NightBlend"
 
 # How far BaseColor leans onto the night art. See the long note at the blend itself: the night pages
@@ -305,25 +380,107 @@ def create_day_night_parameter_collection():
 
     existing = list(collection.get_editor_property("scalar_parameters"))
     present = {str(p.get_editor_property("parameter_name")) for p in existing}
-    added = False
+    wanted = dict(DAY_NIGHT_COLLECTION_SCALARS)
+    changed = False
+
+    # Refresh the defaults of parameters that already exist, IN PLACE. Retuning a value here used to
+    # do nothing to an asset that already had the parameter, so the collection drifted away from
+    # this file and from SimCopterDayNight.h and read as a stale third opinion. Only the value is
+    # touched - the Guid is what materials bind to and it stays on the existing struct.
+    for parameter in existing:
+        name = str(parameter.get_editor_property("parameter_name"))
+        default = wanted.get(name)
+        if default is None:
+            continue
+        if abs(parameter.get_editor_property("default_value") - default) > 1e-6:
+            parameter.set_editor_property("default_value", default)
+            changed = True
+
     for name, default in DAY_NIGHT_COLLECTION_SCALARS:
         if name in present:
             continue
         # FCollectionParameterBase's constructor mints the Guid, so a default-constructed struct is
         # already uniquely identified - which is what materials bind to, not the name. Existing
-        # parameters are left alone so their Guids survive, or every material referencing them would
-        # have to be re-pointed.
+        # parameters keep theirs above, or every material referencing them would have to be
+        # re-pointed.
         parameter = unreal.CollectionScalarParameter()
         parameter.set_editor_property("parameter_name", name)
         parameter.set_editor_property("default_value", default)
         existing.append(parameter)
-        added = True
+        changed = True
 
-    if added:
+    if changed:
         collection.set_editor_property("scalar_parameters", existing)
 
     save(DAY_NIGHT_COLLECTION)
     return collection
+
+
+def add_family_shading_nodes(
+    material,
+    color_expression,
+    color_output,
+    family,
+    connect_roughness_specular=True,
+    connect_emissive=True,
+):
+    """Shading for one of SURFACE_SHADING_FAMILIES.
+
+    Same shape as add_shading_nodes, except the roughness and specular come from the day/night
+    collection rather than from the shared constants, and the base colour goes through the family's
+    albedo ceiling on the way to MP_BASE_COLOR. Connects BaseColor itself - callers must NOT also
+    wire the raw texture into it, or the clamp is bypassed.
+
+    Pass connect_emissive=False when the caller has something else to add to Emissive (the city
+    atlas adds its night window glow) and sum the returned emissive node into that instead;
+    connect_roughness_specular=False when it wants to blend the two before the pins (the water
+    fades them out towards the shore).
+
+    Returns (clamped_color, emissive, roughness, specular).
+    """
+    assert family in SURFACE_SHADING_FAMILIES, family
+
+    ceiling = add_collection_parameter(material, f"{family}MaxBrightness", -700, 120)
+    clamped = add_custom_node(
+        material,
+        f"{family}AlbedoCeiling",
+        ALBEDO_CEILING_CODE,
+        ["Color", "Ceiling"],
+        -520,
+        60,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT3,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(color_expression, color_output, clamped, "Color")
+    unreal.MaterialEditingLibrary.connect_material_expressions(ceiling, "", clamped, "Ceiling")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        clamped, "", unreal.MaterialProperty.MP_BASE_COLOR
+    )
+
+    # The self-illum floor stays a per-material constant: it is a readability floor for shadowed
+    # faces, not a look knob, and it is shared with every other city surface.
+    self_illum = add_scalar_parameter(material, "SelfIllum", SELF_ILLUM_DEFAULT, 0, 280)
+    emissive = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -180, 250
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(clamped, "", emissive, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(self_illum, "", emissive, "B")
+    if connect_emissive:
+        unreal.MaterialEditingLibrary.connect_material_property(
+            emissive, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
+        )
+
+    roughness = add_collection_parameter(material, f"{family}Roughness", -700, 430)
+    specular = add_collection_parameter(material, f"{family}Specular", -700, 580)
+    # The water blends these against a matte shoreline pair before they reach the pins, so it takes
+    # the nodes and wires them itself.
+    if connect_roughness_specular:
+        unreal.MaterialEditingLibrary.connect_material_property(
+            roughness, "", unreal.MaterialProperty.MP_ROUGHNESS
+        )
+        unreal.MaterialEditingLibrary.connect_material_property(
+            specular, "", unreal.MaterialProperty.MP_SPECULAR
+        )
+    return clamped, emissive, roughness, specular
 
 
 def add_collection_parameter(material, parameter_name, x, y):
@@ -437,11 +594,11 @@ def create_city_atlas_material():
     unreal.MaterialEditingLibrary.connect_material_expressions(night_texture, "RGB", blended, "B")
     unreal.MaterialEditingLibrary.connect_material_expressions(albedo_blend, "", blended, "Alpha")
 
-    unreal.MaterialEditingLibrary.connect_material_property(
-        blended, "", unreal.MaterialProperty.MP_BASE_COLOR
-    )
-    self_illum_emissive, _self_illum = add_shading_nodes(
-        material, blended, "", connect_emissive=False
+    # City family: buildings and roads. The albedo ceiling goes on the DAY/NIGHT-BLENDED colour, not
+    # on the day page, so the clamp is on what actually reaches BaseColor at any hour. Roughness and
+    # specular are wired further down instead of here, because the windows take their own.
+    _clamped, self_illum_emissive, city_roughness, city_specular = add_family_shading_nodes(
+        material, blended, "", "City", connect_roughness_specular=False, connect_emissive=False
     )
 
     # --- night window glow -------------------------------------------------------------------
@@ -592,6 +749,81 @@ def create_city_atlas_material():
     ):
         if not unreal.MaterialEditingLibrary.connect_material_expressions(source, source_output, window_mask, pin):
             unreal.log_error(f"M_SimCopterCityAtlas: window mask pin '{pin}' not connected.")
+
+    # --- glass ------------------------------------------------------------------------------------
+    #
+    # The painted masks say exactly which texels are windows, and that is a fact about the BUILDING,
+    # not about the hour - so the same data that lights a window at night can make it reflective at
+    # noon. Glass was the one surface in the city with no way to tell itself apart from the wall it
+    # is set into; now it has one, and windows take their own roughness/specular while the masonry
+    # around them stays matte.
+    #
+    # This is a SEPARATE node from the glow mask above, and it has to be. That one answers "is this a
+    # window that is LIT RIGHT NOW": it early-outs to zero in daylight and multiplies by the per
+    # window occupancy roll, because only about a third of windows have anyone home. Reflection is a
+    # property of the pane, so it wants neither gate - every window is glass, all day, whether or not
+    # there is a light on behind it.
+    window_glass_mask = add_custom_node(
+        material,
+        "OriginalWindowGlassMask",
+        (
+            "// Painted first, derived as the fallback - the same two sources the glow uses, minus\n"
+            "// the time gate and the occupancy roll.\n"
+            "if (HasAuthored > 0.5)\n"
+            "{\n"
+            "	return step(0.5, Authored.r);\n"
+            "}\n"
+            "\n"
+            "// For an unpainted page: the night art darkens everything EXCEPT the lit windows, so\n"
+            "// 'brighter at night than by day' and 'bright in absolute terms' together isolate them.\n"
+            "// Weaker than the painted mask - it can only see windows that were lit in the art - but\n"
+            "// all three wall pages (2, 39, 40) are painted, so this is effectively dead in retail.\n"
+            "float dayLum = dot(DayColor, float3(0.2126, 0.7152, 0.0722));\n"
+            "float nightLum = dot(NightColor, float3(0.2126, 0.7152, 0.0722));\n"
+            "float gotBrighter = saturate((nightLum - dayLum) * Contrast);\n"
+            "float isBright = saturate((nightLum - Threshold) * Contrast);\n"
+            "return min(gotBrighter, isBright);"
+        ),
+        ["DayColor", "NightColor", "Threshold", "Contrast", "Authored", "HasAuthored"],
+        -60,
+        1300,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT1,
+    )
+    for source, source_output, pin in (
+        (texture, "RGB", "DayColor"),
+        (night_texture, "RGB", "NightColor"),
+        (glow_threshold, "", "Threshold"),
+        (glow_contrast, "", "Contrast"),
+        (window_mask_texture, "RGB", "Authored"),
+        (has_window_mask, "", "HasAuthored"),
+    ):
+        if not unreal.MaterialEditingLibrary.connect_material_expressions(
+            source, source_output, window_glass_mask, pin
+        ):
+            unreal.log_error(f"M_SimCopterCityAtlas: glass mask pin '{pin}' not connected.")
+
+    window_roughness = add_collection_parameter(material, "CityWindowRoughness", -560, 1300)
+    window_specular = add_collection_parameter(material, "CityWindowSpecular", -560, 1380)
+
+    glass_roughness = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionLinearInterpolate, 240, 1300
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(city_roughness, "", glass_roughness, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(window_roughness, "", glass_roughness, "B")
+    unreal.MaterialEditingLibrary.connect_material_expressions(window_glass_mask, "", glass_roughness, "Alpha")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        glass_roughness, "", unreal.MaterialProperty.MP_ROUGHNESS
+    )
+
+    glass_specular = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionLinearInterpolate, 240, 1420
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(city_specular, "", glass_specular, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(window_specular, "", glass_specular, "B")
+    unreal.MaterialEditingLibrary.connect_material_expressions(window_glass_mask, "", glass_specular, "Alpha")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        glass_specular, "", unreal.MaterialProperty.MP_SPECULAR
+    )
 
     glow_strength = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionMultiply, 100, 900
@@ -807,12 +1039,12 @@ def create_lit_sprite_texture_material():
     texture.set_editor_property("parameter_name", "Texture")
 
     unreal.MaterialEditingLibrary.connect_material_property(
-        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
-    )
-    unreal.MaterialEditingLibrary.connect_material_property(
         texture, "A", unreal.MaterialProperty.MP_OPACITY_MASK
     )
-    add_shading_nodes(material, texture, "RGB")
+    # Tree/sign family: BaseColor goes through the albedo ceiling (add_family_shading_nodes wires
+    # MP_BASE_COLOR itself), and roughness/specular come from the live collection. See
+    # SURFACE_SHADING_FAMILIES for why the cards need their own numbers.
+    add_family_shading_nodes(material, texture, "RGB", "Tree")
 
     base_normal = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionVertexNormalWS, -900, 760
@@ -953,7 +1185,7 @@ def add_water_frame_index(material, time, frames_per_second, name, x, y):
 # lighting seam even where the coastline is angled - while offshore the base slope eases out to level
 # and the wave ripple takes over, so open water reads flat instead of a tilted sheet.
 WATER_WAVE_INPUTS = ["WorldPos", "Time", "Weight", "Amplitude", "WaveLength", "Speed", "LowPower"]
-WATER_NORMAL_INPUTS = WATER_WAVE_INPUTS + ["BaseNormal"]
+WATER_NORMAL_INPUTS = WATER_WAVE_INPUTS + ["BaseNormal", "DetailStrength", "DetailScale"]
 WATER_UV_INPUTS = ["BaseUV", "Frame"]
 
 # SCHOOK: FUN_004814c0 advances DAT_00503f68 once its accumulator, fed by the fixed-time delta
@@ -1022,6 +1254,22 @@ WATER_NORMAL_CODE = (
     + "float baseFade = 1.0 - Weight;\n"
     + "float baseX = (BaseNormal.x / bz) * baseFade;\n"
     + "float baseY = (BaseNormal.y / bz) * baseFade;\n"
+    # A fine per-pixel ripple on top, NORMAL ONLY - it never touches the WPO, so the geometry and
+    # the welded shoreline are exactly as before. Its whole job is to stop the surface being a
+    # mirror over large flat spans: at roughness 0.12 anything that survives as a flat area
+    # reflects the sky as one sheet, and every seam in the coarse per-vertex data (the 400 cm
+    # quads, the tile-quantised coast) then reads as a hard edge in that sheet. Breaking the
+    # normal up at a few tens of centimetres scatters those edges into something that reads as
+    # water. Scaled by Weight so the pinned shoreline keeps shading like the land it welds to.
+    + "float detail = DetailStrength * Weight;\n"
+    + "if (detail > 0.0)\n"
+    + "{\n"
+    + "	float kd = 6.2831853 / max(DetailScale, 1.0);\n"
+    + "	float D1 = kd * (WorldPos.x * 0.86 - WorldPos.y * 0.51) + Time * Speed * 2.7;\n"
+    + "	float D2 = kd * (WorldPos.x * 0.42 + WorldPos.y * 0.91) + Time * Speed * 1.9;\n"
+    + "	dHdx += detail * (cos(D1) * kd * 0.86 + cos(D2) * kd * 0.42);\n"
+    + "	dHdy += detail * (cos(D1) * kd * -0.51 + cos(D2) * kd * 0.91);\n"
+    + "}\n"
     + "return normalize(float3(baseX - dHdx, baseY - dHdy, 1.0));"
 )
 
@@ -1065,10 +1313,12 @@ def create_water_material():
         frame_index, "", animated_uv, "Frame"
     )
     unreal.MaterialEditingLibrary.connect_material_expressions(animated_uv, "", texture, "UVs")
-    unreal.MaterialEditingLibrary.connect_material_property(
-        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
+    # Water family - the one surface here that wants to be GLOSSY. It was sharing the shared matte
+    # 0.65/0.3 with the dirt, which is why it had no sun glint. Roughness and specular are wired
+    # below instead of here, because they are faded out towards the shore.
+    _, _, open_roughness, open_specular = add_family_shading_nodes(
+        material, texture, "RGB", "Water", connect_roughness_specular=False
     )
-    add_shading_nodes(material, texture, "RGB")
 
     # Shared wave inputs.
     world_pos = unreal.MaterialEditingLibrary.create_material_expression(
@@ -1105,11 +1355,120 @@ def create_water_material():
         wpo, "", unreal.MaterialProperty.MP_WORLD_POSITION_OFFSET
     )
 
+    # --- shoreline fade ---------------------------------------------------------------------------
+    #
+    # The reflection used to stop DEAD at the coast: open water at roughness 0.12 met the land at a
+    # tile-quantised boundary, so the mirror ended on a hard stair-stepped line and every 400 cm quad
+    # seam near it read as part of a grid.
+    #
+    # Vertex-colour R is already the mask for this - it is the wave weight, 0 at the welded shoreline
+    # and 1 offshore - so the fade needs no new vertex data and no re-bake. Roughness and specular
+    # ease from a matte shoreline pair (wet sand, not a mirror) out to the open-water pair across
+    # WaterShoreFadeWidth of that ramp, which is what turns the hard edge into a beach.
+    shore_roughness = add_collection_parameter(material, "WaterShoreRoughness", -1000, 1460)
+    shore_specular = add_collection_parameter(material, "WaterShoreSpecular", -1000, 1540)
+    shore_fade_width = add_collection_parameter(material, "WaterShoreFadeWidth", -1000, 1620)
+    shore_edge_noise = add_collection_parameter(material, "WaterShoreEdgeNoiseStrength", -1000, 1860)
+    shore_edge_scale = add_collection_parameter(material, "WaterShoreEdgeNoiseScale", -1000, 1940)
+    shore_edge_noise2 = add_collection_parameter(material, "WaterShoreEdgeNoiseStrength2", -1000, 2020)
+    shore_edge_scale2 = add_collection_parameter(material, "WaterShoreEdgeNoiseScale2", -1000, 2100)
+    shore_fade = add_custom_node(
+        material,
+        "WaterShoreFade",
+        # The fade's SHAPE is the problem this solves, not its softness.
+        #
+        # The weight is a per-vertex value interpolated bilinearly across 400 cm quads, so whatever
+        # contour you threshold out of it follows the grid: straight runs along tile edges, 45-degree
+        # cuts across quad diagonals, and a visible kink wherever two quads meet. Softening the ramp
+        # does not help - a soft grid is still a grid.
+        #
+        # Warping the weight in WORLD SPACE does. Displacing the value before the ramp displaces the
+        # contour laterally, by roughly strength / |grad(weight)| - so a couple of octaves of the
+        # same value noise the terrain uses turns the stair-step into a line that wanders across the
+        # tile boundaries instead of tracing them. It is not literally a spline through the corners,
+        # but it is what removes the read of a grid.
+        #
+        # Scaled well above a tile (WaterShoreEdgeNoiseScale) on purpose: at tile scale it would just
+        # add fizz to the same stair-step, and the wander has to be BIGGER than the 400 cm step it is
+        # hiding to hide it.
+        # TWO INDEPENDENT LAYERS, not two octaves of one. An octave chain would lock the second
+        # layer's amplitude and wavelength to the first's; these each carry their own pair so a big
+        # lazy wander and a fine raggedness can be dialled separately. They are sampled at different
+        # world offsets so the two do not line up and reinforce into one bigger wave.
+        #
+        # Only layer 1 has to be coarser than a tile - that is the one hiding the 400 cm step. Layer
+        # 2 is free to be finer, because by then there is no straight edge left to hide, only a
+        # curve to make less regular.
+        "float w = max(Width, 0.001);\n"
+        "float v = saturate(Weight);\n"
+        "float strengths[2] = { NoiseStrength, NoiseStrength2 };\n"
+        "float scales[2] = { max(NoiseScale, 1.0), max(NoiseScale2, 1.0) };\n"
+        "float2 offsets[2] = { float2(0.0, 0.0), float2(37.3, 11.9) };\n"
+        "float warp = 0.0;\n"
+        "const float M = 256.0;\n"
+        "[unroll] for (int o = 0; o < 2; o++)\n"
+        "{\n"
+        "	if (strengths[o] <= 0.0) { continue; }\n"
+        "	float2 p = WorldPos.xy / scales[o] + offsets[o];\n"
+        "	float2 ip = floor(p);\n"
+        "	float2 f = p - ip;\n"
+        "	float2 u = f * f * (3.0 - 2.0 * f);\n"
+        "	float2 i0 = ip - floor(ip / M) * M;\n"
+        "	float2 i1 = i0 + 1.0; i1 = i1 - floor(i1 / M) * M;\n"
+        "	float a = frac(sin(dot(float2(i0.x, i0.y), float2(127.1, 311.7))) * 43758.5453);\n"
+        "	float b = frac(sin(dot(float2(i1.x, i0.y), float2(127.1, 311.7))) * 43758.5453);\n"
+        "	float c = frac(sin(dot(float2(i0.x, i1.y), float2(127.1, 311.7))) * 43758.5453);\n"
+        "	float d = frac(sin(dot(float2(i1.x, i1.y), float2(127.1, 311.7))) * 43758.5453);\n"
+        "	float n = lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);\n"
+        "	warp += (n - 0.5) * 2.0 * strengths[o];\n"
+        "}\n"
+        "v = saturate(v + warp);\n"
+        # Smootherstep rather than smoothstep: one more order of continuity, which takes out the
+        # faint crease where the ramp starts and stops. Free, and it is the remaining straight line.
+        "float t = saturate(v / w);\n"
+        "return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);",
+        ["Weight", "Width", "WorldPos", "NoiseStrength", "NoiseScale", "NoiseStrength2", "NoiseScale2"],
+        -820,
+        1500,
+        unreal.CustomMaterialOutputType.CMOT_FLOAT1,
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(weight, "R", shore_fade, "Weight")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_fade_width, "", shore_fade, "Width")
+    unreal.MaterialEditingLibrary.connect_material_expressions(world_pos, "", shore_fade, "WorldPos")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_noise, "", shore_fade, "NoiseStrength")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_scale, "", shore_fade, "NoiseScale")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_noise2, "", shore_fade, "NoiseStrength2")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_edge_scale2, "", shore_fade, "NoiseScale2")
+
+    faded_roughness = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionLinearInterpolate, -600, 1460
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_roughness, "", faded_roughness, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(open_roughness, "", faded_roughness, "B")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_fade, "", faded_roughness, "Alpha")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        faded_roughness, "", unreal.MaterialProperty.MP_ROUGHNESS
+    )
+
+    faded_specular = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionLinearInterpolate, -600, 1620
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_specular, "", faded_specular, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(open_specular, "", faded_specular, "B")
+    unreal.MaterialEditingLibrary.connect_material_expressions(shore_fade, "", faded_specular, "Alpha")
+    unreal.MaterialEditingLibrary.connect_material_property(
+        faded_specular, "", unreal.MaterialProperty.MP_SPECULAR
+    )
+
     normal = add_custom_node(
         material, "WaterNormal", WATER_NORMAL_CODE, WATER_NORMAL_INPUTS, -650, 1050,
         unreal.CustomMaterialOutputType.CMOT_FLOAT3,
     )
     wire_wave_inputs(normal)
+    detail_strength = add_collection_parameter(material, "WaterDetailNormalStrength", -1000, 1700)
+    detail_scale = add_collection_parameter(material, "WaterDetailNormalScale", -1000, 1780)
+    unreal.MaterialEditingLibrary.connect_material_expressions(detail_strength, "", normal, "DetailStrength")
+    unreal.MaterialEditingLibrary.connect_material_expressions(detail_scale, "", normal, "DetailScale")
     # The mesh's (smoothed, land-welded) rest normal is the base slope the waves ride on.
     base_normal = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionVertexNormalWS, -1000, 1360
@@ -1193,10 +1552,8 @@ def create_terrain_material():
         material, unreal.MaterialExpressionTextureSampleParameter2D, -400, 0
     )
     texture.set_editor_property("parameter_name", "Texture")
-    unreal.MaterialEditingLibrary.connect_material_property(
-        texture, "RGB", unreal.MaterialProperty.MP_BASE_COLOR
-    )
-    add_shading_nodes(material, texture, "RGB")
+    # Ground family: matte, and albedo-capped so a sunlit hillside stops reading as bare highlight.
+    add_family_shading_nodes(material, texture, "RGB", "Terrain")
 
     world_pos = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionWorldPosition, -1000, 700
@@ -1383,16 +1740,24 @@ def create_lit_vertex_color_material():
         0,
     )
 
-    # The VertexColor node's RGB output is its default (unnamed) output pin.
-    unreal.MaterialEditingLibrary.connect_material_property(
-        vertex_color,
-        "",
-        unreal.MaterialProperty.MP_BASE_COLOR,
-    )
-
-    add_shading_nodes(material, vertex_color, "")
+    # City family, and the VertexColor node's RGB output is its default (unnamed) output pin.
+    #
+    # This is the untextured half of the city - every flat palette-coloured building and road face -
+    # so leaving it out would have left buildings standing out exactly as reported, just on fewer
+    # faces. NOTE that it is ALSO the vehicles' material
+    # (Docs/memory/simcopter-vehicle-material.md), so cars now sit under the same albedo ceiling as
+    # the buildings. Roughness and specular were already shared with the city; only the ceiling is
+    # new to them, and a stylised city reads better with its traffic on the same footing. The
+    # vehicles' own MID still overrides Metallic on top, which is the one thing that separated them.
+    add_family_shading_nodes(material, vertex_color, "", "City")
 
     material.set_editor_property("two_sided", False)
+    # The instanced BUILDING components draw with this material, so the flag has to be baked in.
+    # It was missing here for a long time without anyone noticing, because the engine patches the
+    # flag on at runtime and the asset had been saved with it - which only holds until somebody
+    # deletes and regenerates the material, at which point the map check starts warning and a
+    # cooked build renders it wrong. Same reasoning as create_lit_texture_material's.
+    material.set_editor_property("used_with_instanced_static_meshes", True)
     # See note in create_lit_texture_material: needed for the Nanite render path.
     material.set_editor_property("used_with_nanite", True)
     unreal.MaterialEditingLibrary.recompile_material(material)
@@ -1400,6 +1765,16 @@ def create_lit_vertex_color_material():
 
 
 ensure_directory(MATERIAL_DIR)
+# FIRST, before any material that reads a collection scalar - which is now most of them.
+#
+# A CollectionParameter node resolves its ParameterId from the name THROUGH the collection, so if
+# the collection is missing the parameter at the moment the node is created, the node keeps a null
+# name and compiles to a constant 0. It is not enough for the collection asset to exist: adding a
+# new scalar here and reading it from a material built earlier in this same script binds nothing,
+# silently, and a zero albedo ceiling is a black building. That is exactly what happened when the
+# City family went in with this call still further down.
+create_day_night_parameter_collection()
+
 create_if_missing("M_SimCopterLitTexture", create_lit_texture_material)
 create_if_missing("M_SimCopterLitVertexColor", create_lit_vertex_color_material)
 create_if_missing("M_SimCopterRotorDisc", create_rotor_disc_material)
@@ -1416,9 +1791,6 @@ create_if_missing("M_SimCopterLitSpriteTexture", create_lit_sprite_texture_mater
 for _tuned in ("M_SimCopterCityAtlas", "M_SimCopterWater", "M_SimCopterTerrain", "M_SimCopterParticleFX", "M_SimCopterParticleFXSoft"):
     if unreal.EditorAssetLibrary.does_asset_exist(f"{MATERIAL_DIR}/{_tuned}"):
         unreal.EditorAssetLibrary.delete_asset(f"{MATERIAL_DIR}/{_tuned}")
-# Before the atlas material: its CollectionParameter node has to be able to load the collection, or
-# it binds to nothing and NightBlend compiles to a constant 0.
-create_day_night_parameter_collection()
 create_city_atlas_material()
 create_water_material()
 create_terrain_material()
