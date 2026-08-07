@@ -85,10 +85,14 @@ void SSimCopterSoundSettings::Construct(const FArguments& InArgs)
 		HorizontalThumbBrush = VerticalThumbBrush;
 	}
 
+	const FSlateBrush* HorizontalTrackBrush = ArtObject != nullptr
+		? ArtObject->GetBitmap(TEXT("SLIDERBH.BMP"), /*bColorKeyed=*/false) : nullptr;
+
 	// --- Game Volume, command 6 ---
 	AddAtPage(GameVolumeRect,
 		SAssignNew(GameVolumeSlider, SSimCopterCheckupSlider)
 		.ThumbBrush(HorizontalThumbBrush)
+		.TrackBrush(HorizontalTrackBrush)
 		.Orientation(Orient_Horizontal)
 		.OnValueChanged_Lambda([this](const float Alpha)
 		{

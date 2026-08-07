@@ -248,8 +248,11 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 		Thumb = ArtObject->GetBitmap(FallbackThumbBitmap, /*bColorKeyed=*/false);
 	}
 
+	const FSlateBrush* Track = ArtObject != nullptr ? ArtObject->GetBitmap(TEXT("SLIDERBH.BMP"), /*bColorKeyed=*/false) : nullptr;
+
 	TSharedRef<SSimCopterCheckupSlider> Slider = SNew(SSimCopterCheckupSlider)
 		.ThumbBrush(Thumb)
+		.TrackBrush(Track)
 		.Orientation(Orient_Horizontal)
 		.IsEnabled_Lambda([IsEnabled]() { return !IsEnabled || IsEnabled(); })
 		.OnValueChanged_Lambda([SetAlpha](const float Alpha)
