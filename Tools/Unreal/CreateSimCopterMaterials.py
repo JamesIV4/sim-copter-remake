@@ -251,6 +251,22 @@ WINDOW_GLOW_THRESHOLD_DEFAULT = 0.55
 # stop the 8-bit palette steps banding into a hard cutout.
 WINDOW_GLOW_CONTRAST_DEFAULT = 8.0
 
+# --- window glow tint ---------------------------------------------------------------------------
+#
+# The glow below is literally the night texel times the brightness, which is why a window keeps the
+# colour it was painted. The catch is that several of skydark.bmp's lit texels are painted at or
+# near white - a 256-entry VGA palette shared with the whole city has no headroom to spend on warm
+# bulbs - and a white texel gives a white window. A lit window at night is tungsten, so the whole
+# set is pushed amber here while the art's per-window variation survives: a warm texel gets warmer,
+# a white one stops reading as a fluorescent panel.
+#
+# NORMALISED TO LUMINANCE 1 (Rec.709: 0.2126 R + 0.7152 G + 0.0722 B), so this changes the hue and
+# not the exposure. The chroma it stands for is (1.0, 0.78, 0.45); dividing by that colour's 0.803
+# luminance is where the >1 red comes from. Re-normalise if you re-tune it, or WindowGlowNits stops
+# meaning what its comment says.
+WINDOW_GLOW_TINT_PARAMETER = "WindowGlowTint"
+WINDOW_GLOW_TINT_DEFAULT = (1.25, 0.97, 0.56)
+
 # How finely the random-lit roll is diced, per repeat of the atlas cell across a wall.
 #
 # The night art paints several windows into one 32x32 cell, and the cell tiles along the face - so
@@ -591,11 +607,31 @@ def create_city_atlas_material():
     unreal.MaterialEditingLibrary.connect_material_expressions(night_texture, "RGB", glow_color, "A")
     unreal.MaterialEditingLibrary.connect_material_expressions(glow_strength, "", glow_color, "B")
 
+    # ...and then warmed, because a good part of that art is painted white. See the note on
+    # WINDOW_GLOW_TINT_DEFAULT: luminance-normalised, so this is a hue change, not a brightness one.
+    glow_tint = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionVectorParameter, 100, 1000
+    )
+    glow_tint.set_editor_property("parameter_name", WINDOW_GLOW_TINT_PARAMETER)
+    glow_tint.set_editor_property(
+        "default_value",
+        unreal.LinearColor(
+            WINDOW_GLOW_TINT_DEFAULT[0], WINDOW_GLOW_TINT_DEFAULT[1], WINDOW_GLOW_TINT_DEFAULT[2], 1.0
+        ),
+    )
+    glow_tint.set_editor_property("group", SHADING_GROUP)
+
+    tinted_glow = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, 300, 860
+    )
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_color, "", tinted_glow, "A")
+    unreal.MaterialEditingLibrary.connect_material_expressions(glow_tint, "RGB", tinted_glow, "B")
+
     emissive_sum = unreal.MaterialEditingLibrary.create_material_expression(
         material, unreal.MaterialExpressionAdd, 380, 500
     )
     unreal.MaterialEditingLibrary.connect_material_expressions(self_illum_emissive, "", emissive_sum, "A")
-    unreal.MaterialEditingLibrary.connect_material_expressions(glow_color, "", emissive_sum, "B")
+    unreal.MaterialEditingLibrary.connect_material_expressions(tinted_glow, "", emissive_sum, "B")
     unreal.MaterialEditingLibrary.connect_material_property(
         emissive_sum, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR
     )

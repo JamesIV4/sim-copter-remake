@@ -18,6 +18,9 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Ground/SimCopterFlashingLights.h"
+#include "City/SimCopterRoadDecorations.h"
+#include "City/SimCopterSmokeStacks.h"
+#include "City/SimCopterStreetLights.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterSessionSubsystem.h"
@@ -3059,9 +3062,24 @@ struct FPlacedObjectRoadFaceFilter
 	bool bSkipRoadSurfaceFaces = false;
 	bool bSkipCentreLineFaces = false;
 
+	// LAMP35..38 draw their light as GEOMETRY: eighteen face-type-11 quads in three bands under the
+	// head, plus a 14-vertex pool on the pavement. That is how a 1996 software renderer with no
+	// lighting model faked a street light, and next to a real spot light it is just an opaque grey
+	// cone hanging off the lamp and a grey egg painted on the road - which is also what was hiding
+	// the spot light, since the cone encloses its apex. The remake throws actual light instead
+	// (USimCopterStreetLightsComponent), so the fake is dropped.
+	//
+	// Scoped to the lamps on purpose. Face type 11 is the light-CARD type generally, and the rest of
+	// its users - car headlight beams, rotor discs - are wanted.
+	bool bSkipLightConeFaces = false;
+
 	bool ShouldSkipFace(const FMaxisMeshFace& Face) const
 	{
 		if (bSkipRoadSurfaceFaces && Face.FaceType == 15 && (Face.MaterialIndex == 48 || Face.MaterialIndex == 128))
+		{
+			return true;
+		}
+		if (bSkipLightConeFaces && Face.FaceType == SimCopterRoadDecorations::LightCardFaceType)
 		{
 			return true;
 		}
@@ -3318,6 +3336,14 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	FlashingLightsComponent->PointLightAttenuationRadiusCm = 2000.0f;
 	FlashingLightsComponent->PointLightIntensity = 20.0f;
 
+	// Both of these are placed in the same component space as the baked sections, for the same
+	// reason: their offsets are accumulated tile origins.
+	StreetLightsComponent = CreateDefaultSubobject<USimCopterStreetLightsComponent>(TEXT("StreetLightsComponent"));
+	StreetLightsComponent->SetupAttachment(SceneRoot);
+
+	SmokeStacksComponent = CreateDefaultSubobject<USimCopterSmokeStacksComponent>(TEXT("SmokeStacksComponent"));
+	SmokeStacksComponent->SetupAttachment(SceneRoot);
+
 	// Project-authored lit materials replace the engine's emissive/unlit debug materials so the
 	// city responds to the scene's directional/sky lighting and to dynamic night lights (street
 	// lights, car headlights, the helicopter spotlight). Both expose a low "SelfIllum" floor plus
@@ -3334,6 +3360,15 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	if (TexturedMaterialFinder.Succeeded())
 	{
 		TexturedMaterial = TexturedMaterialFinder.Object;
+	}
+
+	// The chimney plumes sample the original effect-selector atlas through the same card material
+	// the flames do (USimCopterFireRenderComponent).
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SpriteCardMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture"));
+	if (SpriteCardMaterialFinder.Succeeded())
+	{
+		SpriteCardMaterial = SpriteCardMaterialFinder.Object;
 	}
 
 	// Water uses the same TILED1 texturing as the terrain, but displaces its vertices in the vertex
@@ -3641,6 +3676,15 @@ void ASimCity2000CityActor::RebuildCity()
 	FOriginalMeshSectionData RoadMarkingSection;
 	// Blink markers gathered from every placed object, in SceneRoot space (see the collection site).
 	TArray<FSimCopterFlashingLightPoint> CityFlashingLightPoints;
+	// The two other marker sets gathered by the same sweep, in the same space: a spot light under
+	// every placed LAMP35..38 head, and every face-type-26 chimney puff.
+	TArray<USimCopterStreetLightsComponent::FPlacement> CityStreetLightPlacements;
+	TArray<USimCopterSmokeStacksComponent::FSmokeMarker> CitySmokeMarkers;
+	// Seeds the street-furniture pick. The original rolls the global rand() as it builds, so its
+	// choice is different every load; hashing the city's own name instead keeps a given city looking
+	// like itself across reloads without making every city identical.
+	const int32 RoadDecorationCitySeed = static_cast<int32>(GetTypeHash(City.CityName));
+	int32 RoadDecorationCount = 0;
 	// Per-vertex "keep flat" flags for the two land terrain sections, index-aligned with their
 	// vertices. Set for tiles under buildings/roads so smooth-normal shading does not round the flat
 	// pads the conditioning creates - the terrain stays crisp where man-made surfaces sit on it.
@@ -4313,9 +4357,26 @@ void ASimCity2000CityActor::RebuildCity()
 							: (RailObjectId != INDEX_NONE
 								? RailObjectId
 								: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId)));
-					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
-						? BridgeDispatch.SecondaryObjectId
-						: BuildingDispatch.SecondaryObjectId;
+					// SCHOOK: RoadDecorations 0x0047c0c0 (its `local_2c == 2` arm)
+					// Nine of the builder's road cases hang a SECOND object off the same scene cell:
+					// street furniture on straight roads, a lamp at a T junction, a signal at a
+					// crossroads. They go at the same tile origin as the slab - the meshes carry
+					// their own in-tile offset - which is exactly what the existing secondary-object
+					// path does, so the decoration rides it. See SimCopterRoadDecorations.h.
+					const int32 RoadDecorationObjectId = (bRenderRoadDecorations && !bUseBridgeDispatch)
+						? SimCopterRoadDecorations::GetRoadDecorationObjectId(
+							Tile.Building,
+							FileX,
+							FileY,
+							bTileIsFlat,
+							SimCopterRoadDecorations::MakeStreetFurnitureRoll(FileX, FileY, RoadDecorationCitySeed))
+						: INDEX_NONE;
+					const int32 SecondaryObjectId = RoadDecorationObjectId != INDEX_NONE
+						? RoadDecorationObjectId
+						: (BridgeDispatch.SecondaryObjectId != INDEX_NONE
+							? BridgeDispatch.SecondaryObjectId
+							: BuildingDispatch.SecondaryObjectId);
+					RoadDecorationCount += RoadDecorationObjectId != INDEX_NONE ? 1 : 0;
 					const uint8 MeshTileId = Tile.Building >= 0x0E && Tile.Building <= 0x1C
 						? ResolvedPowerLineMeshIds[TileIndex]
 						: Tile.Building;
@@ -4379,6 +4440,7 @@ void ASimCity2000CityActor::RebuildCity()
 								if (const FMaxisMeshObject* SecondaryLightObject =
 									MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &SecondaryLightColorMap))
 								{
+									const int32 FirstSecondaryLight = CityFlashingLightPoints.Num();
 									FSimCopterFlashingLightSchedule::ExtractLightPoints(
 										*SecondaryLightObject,
 										SecondaryLightColorMap,
@@ -4386,11 +4448,69 @@ void ASimCity2000CityActor::RebuildCity()
 										OriginalMeshScale,
 										/*bApplyCityMeshOrientation*/ true,
 										CityFlashingLightPoints);
+									// SIGNAL1's six markers keep their cards and lose their lights. The whole
+									// city cycles red/yellow/green off one 20 Hz counter, so every signal in
+									// view changes together several times a second - as hundreds of coloured
+									// point lights that is a strobing street, not a traffic signal.
+									if (SimCopterRoadDecorations::IsTrafficSignalObjectId(SecondaryObjectId))
+									{
+										for (int32 LightIndex = FirstSecondaryLight;
+											LightIndex < CityFlashingLightPoints.Num();
+											++LightIndex)
+										{
+											CityFlashingLightPoints[LightIndex].bCastPointLight = false;
+										}
+									}
 								}
 							}
 							for (int32 LightIndex = FirstLight; LightIndex < CityFlashingLightPoints.Num(); ++LightIndex)
 							{
 								CityFlashingLightPoints[LightIndex].LocalOffset += TileOrigin;
+							}
+						}
+
+						// A placed street light gets a real spot light under its head. The apex,
+						// throw and spread are read out of the lamp's own face-type-11 cards - the
+						// cone the original paints - rather than invented here.
+						if (bRenderStreetLightSpotLights &&
+							SimCopterRoadDecorations::IsStreetLightObjectId(SecondaryObjectId))
+						{
+							const TArray<FColor>* LampColorMap = nullptr;
+							if (const FMaxisMeshObject* LampObject =
+								MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &LampColorMap))
+							{
+								SimCopterRoadDecorations::FStreetLightEmitter Emitter;
+								if (SimCopterRoadDecorations::TryGetStreetLightEmitter(
+									*LampObject,
+									OriginalMeshUnitsPerCentimeter,
+									OriginalMeshScale,
+									/*bApplyCityMeshOrientation*/ true,
+									Emitter))
+								{
+									USimCopterStreetLightsComponent::FPlacement Placement;
+									Placement.Location = Emitter.LocalOffset + TileOrigin;
+									Placement.ConeLengthCm = Emitter.ConeLengthCm;
+									Placement.ConeHalfAngleDegrees = Emitter.ConeHalfAngleDegrees;
+									CityStreetLightPlacements.Add(Placement);
+								}
+							}
+						}
+
+						// Chimney plumes are face type 26 - the effect-marker type, dropped by the
+						// mesh appender for the same single-vertex reason type 25 is. Only eight
+						// shipped models carry any, so this costs nothing on the rest of the city.
+						if (bRenderSmokeStacks)
+						{
+							const int32 FirstMarker = CitySmokeMarkers.Num();
+							USimCopterSmokeStacksComponent::ExtractSmokeMarkers(
+								*MeshObject,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								/*bApplyCityMeshOrientation*/ true,
+								CitySmokeMarkers);
+							for (int32 MarkerIndex = FirstMarker; MarkerIndex < CitySmokeMarkers.Num(); ++MarkerIndex)
+							{
+								CitySmokeMarkers[MarkerIndex].LocalOffset += TileOrigin;
 							}
 						}
 						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
@@ -4405,6 +4525,17 @@ void ASimCity2000CityActor::RebuildCity()
 						PrimaryRoadFaceFilter.bSkipCentreLineFaces = bPowerLineRoadCrossing;
 						FPlacedObjectRoadFaceFilter SecondaryRoadFaceFilter = PrimaryRoadFaceFilter;
 						SecondaryRoadFaceFilter.bSkipRoadSurfaceFaces = bPowerLineRoadCrossing;
+						SecondaryRoadFaceFilter.bSkipLightConeFaces =
+							SimCopterRoadDecorations::IsStreetLightObjectId(SecondaryObjectId);
+
+						// bBuildVectorLines is off across the whole road band because the SLAB carries an
+						// authored centre line the procedural marking system draws instead. A decoration
+						// standing on that same tile has face-type-20 lines of its own - the lamp's three
+						// at the head, the signal's one at the top of its mast - and they are structure,
+						// not road paint. Append3DVectorLine renders them as solid tubes in the face's own
+						// palette colour, which is where the missing arm between the pole and the box went.
+						const bool bSecondaryVectorLines =
+							bBuildVectorLines || RoadDecorationObjectId != INDEX_NONE;
 
 						// Trees and the park instance too, but by their own path: no building record,
 						// so a placement is nothing but an AddInstance.
@@ -4511,7 +4642,7 @@ void ASimCity2000CityActor::RebuildCity()
 										AvailableBakedAtlasPageIds,
 										AvailableBakedDirectImageIds,
 										OriginalTexturedFaceFallbackColor,
-										bBuildVectorLines,
+										bSecondaryVectorLines,
 										SecondaryRoadFaceFilter,
 										OriginalMeshSections,
 										LastOriginalTexturedTriangleCount);
@@ -5108,6 +5239,46 @@ void ASimCity2000CityActor::RebuildCity()
 		FlashingLightsComponent->SetLightPoints(MoveTemp(CityFlashingLightPoints));
 	}
 
+	LastRoadDecorationCount = RoadDecorationCount;
+	LastStreetLightCount = CityStreetLightPlacements.Num();
+	if (StreetLightsComponent != nullptr)
+	{
+		StreetLightsComponent->bEnabled = bRenderStreetLightSpotLights;
+		StreetLightsComponent->SetStreetLights(MoveTemp(CityStreetLightPlacements));
+	}
+
+	LastSmokeStackMarkerCount = CitySmokeMarkers.Num();
+	if (SmokeStacksComponent != nullptr)
+	{
+		SmokeStacksComponent->bEnabled = bRenderSmokeStacks;
+		if (!CitySmokeMarkers.IsEmpty())
+		{
+			// The selector atlas is palette indices, so it must be built from the same shared SIM3D
+			// colour map the city meshes were coloured with.
+			const TArray<FColor>* SmokePalette = MeshLibrary.GetSharedColorMap();
+			FString SmokeError;
+			if (SmokePalette == nullptr || SmokePalette->Num() < 256)
+			{
+				UE_LOG(LogSimCity2000CityActor, Warning,
+					TEXT("Smoke stacks: no shared SIM3D palette, so the chimney plumes were skipped."));
+			}
+			else if (!SmokeStacksComponent->InitSmokeAssets(*SmokePalette, SpriteCardMaterial, SmokeError))
+			{
+				UE_LOG(LogSimCity2000CityActor, Warning,
+					TEXT("Smoke stacks: %s"), *SmokeError);
+			}
+		}
+		SmokeStacksComponent->SetSmokeMarkers(MoveTemp(CitySmokeMarkers));
+	}
+
+	UE_LOG(
+		LogSimCity2000CityActor,
+		Display,
+		TEXT("Road decorations: %d placed (%d street lights); smoke stacks: %d markers."),
+		LastRoadDecorationCount,
+		LastStreetLightCount,
+		LastSmokeStackMarkerCount);
+
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
@@ -5152,6 +5323,13 @@ void ASimCity2000CityActor::Tick(float DeltaSeconds)
 	if (FlashingLightsComponent != nullptr && FlashingLightsComponent->HasLightPoints() && GetWorld() != nullptr)
 	{
 		FlashingLightsComponent->SyncLightsFromPlayerCamera(GetWorld()->GetTimeSeconds());
+	}
+
+	// Same shape: the chimney kernels are camera-facing and re-jittered on the original's own 20 Hz
+	// raster frame, so they rebuild against the live camera like the fire does.
+	if (SmokeStacksComponent != nullptr && SmokeStacksComponent->GetSmokeMarkerCount() > 0 && GetWorld() != nullptr)
+	{
+		SmokeStacksComponent->SyncSmokeFromPlayerCamera(GetWorld()->GetTimeSeconds());
 	}
 }
 

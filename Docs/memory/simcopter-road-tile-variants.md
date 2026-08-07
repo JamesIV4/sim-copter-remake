@@ -115,18 +115,17 @@ centres and `31/64` at their direction-specific high edge (north, west, south, e
 with zero lift at the low edge. Shared-edge waypoints therefore form a continuous low-edge to
 half-height to high-edge grade instead of dipping through terrain or water at tile boundaries.
 
-## Still unported
+## Road decorations — PORTED 2026-08-06
 
-The same switch cases place **decoration objects** on flat road tiles, which the remake does not:
+The same switch cases place **decoration objects** on flat road tiles: litter bins, phone boxes,
+hydrants and post boxes on straight roads, `LAMP35..38` street lights at T junctions, and `SIGNAL1`
+at crossroads. All of it is now in, along with a real spot light under each lamp head and the
+face-type-26 chimney plumes that were missing for the same "single vertex, so the mesh appender
+drops it" reason.
 
-* straight roads (0x1d/0x1e) at odd/odd tile coordinates pick one of four objects at random
-  (`rand() & 0xf` → 0x186/0x188/0x18a/0x18c for 0x1d, 0x187/0x189/0x18b/0x18d for 0x1e);
-* intersections 0x23..0x26 at `(x&3)==3 && (y&3)==3` place 0x181..0x184; 0x27..0x2a place 0x185 at
-  odd/odd; 0x2b places 0x185 unconditionally.
-
-Object 0x185 is `SIGNAL1`, a traffic signal — and it carries face-type-25 blink markers in red,
-yellow and green, so porting these would light the intersections. See
-[[simcopter-flashing-lights]].
+The rule, the object table, the in-tile-offset finding and the divergences are in
+[[simcopter-road-decorations]]. The one thing to carry over here: **the props carry their own
+offset**, so a decoration is placed at the road slab's own tile origin and nothing else.
 
 Related: [[simcopter-instanced-buildings]], [[simcopter-terrain-flattening]],
 [[simcopter-mesh-orientation-rules]].

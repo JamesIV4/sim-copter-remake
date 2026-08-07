@@ -270,11 +270,16 @@ void USimCopterFlashingLightsComponent::RebuildCards(
 			continue;
 		}
 
-		FLitLight& Lit = LitLights.AddDefaulted_GetRef();
-		Lit.World = Center;
-		Lit.Color = Point.Color;
-		Lit.CameraDepthCm = CameraDepth;
-		Lit.CameraDistanceSquared = FVector::DistSquared(Center, CameraLocation);
+		// The card is always drawn; only the added point light is optional. A traffic signal is the
+		// one marker set that opts out - see FSimCopterFlashingLightPoint::bCastPointLight.
+		if (Point.bCastPointLight)
+		{
+			FLitLight& Lit = LitLights.AddDefaulted_GetRef();
+			Lit.World = Center;
+			Lit.Color = Point.Color;
+			Lit.CameraDepthCm = CameraDepth;
+			Lit.CameraDistanceSquared = FVector::DistSquared(Center, CameraLocation);
+		}
 
 		// Never let the card fall below one physical output pixel, or a distant skyline stops
 		// twinkling. Use the live camera projection rather than the original 560x400 raster unit.
