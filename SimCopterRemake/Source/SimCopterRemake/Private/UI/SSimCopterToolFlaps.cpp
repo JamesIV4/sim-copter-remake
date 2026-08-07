@@ -690,7 +690,15 @@ void SSimCopterToolFlaps::AddStripBackground(
 TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 {
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
-	AddStripBackground(*Canvas, ApachePageWidth, ApacheFillBrush);
+	if (const FSlateBrush* BackgroundBrush = GetBrush(TEXT("FLAP2.BMP"), FIntRect(0, 0, PageWidth, PageHeight)))
+	{
+		AddAtPage(*Canvas, 0.0f, 0.0f, ApachePageWidth, static_cast<float>(PageHeight),
+			SNew(SImage).Image(BackgroundBrush));
+	}
+	else
+	{
+		AddStripBackground(*Canvas, ApachePageWidth, ApacheFillBrush);
+	}
 
 	// Two buttons, no readout: each one just fires its weapon. The ammunition is unlimited and
 	// the only limits - the shared 1 s missile cooldown and the pool sizes - are things the
@@ -737,7 +745,15 @@ EVisibility SSimCopterToolFlaps::GetApacheFlapVisibility() const
 TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 {
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
-	AddStripBackground(*Canvas, DispatchPageWidth, DispatchFillBrush);
+	if (const FSlateBrush* BackgroundBrush = GetBrush(TEXT("FLAP-dispatch.BMP"), FIntRect(0, 0, FMath::RoundToInt(DispatchPageWidth), PageHeight)))
+	{
+		AddAtPage(*Canvas, 0.0f, 0.0f, DispatchPageWidth, static_cast<float>(PageHeight),
+			SNew(SImage).Image(BackgroundBrush));
+	}
+	else
+	{
+		AddStripBackground(*Canvas, DispatchPageWidth, DispatchFillBrush);
+	}
 
 	// The service selector: one arrow sprite, turned each way.
 	AddAtPage(*Canvas, 8.0f, 12.0f,

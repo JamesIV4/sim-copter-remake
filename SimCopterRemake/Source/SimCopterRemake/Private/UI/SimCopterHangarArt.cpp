@@ -76,6 +76,14 @@ FString GetUpscaledSlateFileName(const FString& OriginalFileName)
 		}
 	}
 
+	else if (BaseName.Equals(TEXT("SLIDERBH"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("SLIDERBH-no-blue.png"))))
+		{
+			return TEXT("SLIDERBH-no-blue.png");
+		}
+	}
+
 	const FString Candidate = BaseName + TEXT("-upscaled.png");
 	if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), Candidate)))
 	{
@@ -388,6 +396,36 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 				{
 					OrigWidth = 300.0f;
 					OrigHeight = 28.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAPBTN0"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 74.0f;
+					OrigHeight = 29.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAPBTN1"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 38.0f;
+					OrigHeight = 24.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAPBTN2"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 34.0f;
+					OrigHeight = 29.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAP-dispatch"), ESearchCase::IgnoreCase) || BaseName.Equals(TEXT("FLAP_DISPATCH"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 232.0f;
+					OrigHeight = 58.0f;
+				}
+				else if (BaseName.StartsWith(TEXT("FLAP"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 138.0f;
+					OrigHeight = 58.0f;
+				}
+				else if (BaseName.StartsWith(TEXT("SLIDERBH"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 192.0f;
+					OrigHeight = 32.0f;
 				}
 			}
 
