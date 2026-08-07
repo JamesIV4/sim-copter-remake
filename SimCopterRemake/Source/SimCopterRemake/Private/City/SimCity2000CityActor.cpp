@@ -120,6 +120,9 @@ constexpr int32 SimCopterTerrainTextureNameIndex = 100000;
 constexpr uint8 SimCopterHighTerrainTypeBase = 0x40;
 constexpr int32 BakedAtlasPageSectionKeyFlag = 0x10000;
 constexpr int32 BakedDirectImageSectionKeyFlag = 0x20000;
+// Untextured face type 11 - the alpha-blended disc - gets its own section so it can be drawn with
+// a translucent material instead of landing in the opaque INDEX_NONE palette section.
+constexpr int32 TranslucentDiscSectionKeyFlag = 0x40000;
 
 struct FOriginalMeshSectionData
 {
@@ -362,6 +365,11 @@ bool IsBakedAtlasPageSectionKey(int32 SectionKey)
 bool IsBakedDirectImageSectionKey(int32 SectionKey)
 {
 	return (SectionKey & BakedDirectImageSectionKeyFlag) != 0;
+}
+
+bool IsTranslucentDiscSectionKey(int32 SectionKey)
+{
+	return SectionKey != INDEX_NONE && (SectionKey & TranslucentDiscSectionKeyFlag) != 0;
 }
 
 int32 GetBakedSectionAssetIndex(int32 SectionKey)
@@ -3142,9 +3150,16 @@ int32 AppendMaxisMeshObject(
 		const bool bBakedDirectTexturedFace = bUseOriginalTextures && (Face.FaceType == 13 || Face.FaceType == 2) && AvailableBakedDirectImageIds.Contains(Face.MaterialIndex);
 		const bool bRuntimeTexturedFace = bUseOriginalTextures && !bBakedAtlasTexturedFace && !bBakedDirectTexturedFace && IsTexturedMaxisFace(Face.FaceType) && AvailableRuntimeTextureKeys.Contains(TextureKey);
 		const bool bTexturedFace = bBakedAtlasTexturedFace || bBakedDirectTexturedFace || bRuntimeTexturedFace;
+
+		// Face type 11 is the alpha-blended disc (FMaxisProceduralMeshBuilder::IsTranslucentFaceType):
+		// the helicopter's rotor blur, and on city objects the wind power plant's fan wheel (PP200),
+		// AR254's glow panels and the TLNS/TLEW signal cards. It carries a palette colour and no
+		// texture, so left alone it falls into the opaque INDEX_NONE section and draws as a solid
+		// plate - which is what made a windmill a flat teal disc with the tower hidden behind it.
+		const bool bTranslucentDiscFace = !bTexturedFace && FMaxisProceduralMeshBuilder::IsTranslucentFaceType(Face.FaceType);
 		const int32 SectionKey = bBakedAtlasTexturedFace
 			? MakeBakedAtlasPageSectionKey(Face.TextureAtlasIndex)
-			: (bBakedDirectTexturedFace ? MakeBakedDirectImageSectionKey(Face.MaterialIndex) : (bRuntimeTexturedFace ? TextureKey : INDEX_NONE));
+			: (bBakedDirectTexturedFace ? MakeBakedDirectImageSectionKey(Face.MaterialIndex) : (bRuntimeTexturedFace ? TextureKey : (bTranslucentDiscFace ? TranslucentDiscSectionKeyFlag : INDEX_NONE)));
 		FOriginalMeshSectionData& Section = Sections.FindOrAdd(SectionKey);
 		const int32 FaceVertexStart = Section.Vertices.Num();
 		const FLinearColor FaceColor = bTexturedFace
@@ -3272,7 +3287,12 @@ int32 AppendMaxisMeshObject(
 				++OutTexturedTriangleCount;
 			}
 
-			if (bRenderBackfaces)
+			// The disc is drawn with a two-sided translucent material, so it needs no reversed
+			// winding - adding one blends the disc over itself and makes it look solid again,
+			// which is the same trap FMaxisProceduralMeshBuilder documents on the rotor path.
+			// PP200 already ships its wheel as two fans a few centimetres apart for the two
+			// sides, so this face is doubled in the source data before anything here touches it.
+			if (bRenderBackfaces && !bTranslucentDiscFace)
 			{
 				Section.Triangles.Add(FaceVertexStart);
 				Section.Triangles.Add(FaceVertexStart + TriangleIndex + 1);
@@ -3360,6 +3380,15 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	if (TexturedMaterialFinder.Succeeded())
 	{
 		TexturedMaterial = TexturedMaterialFinder.Object;
+	}
+
+	// Shared with the helicopter's rotor blur on purpose: it is the same face type drawn the same
+	// way, and one tuned haze keeps a windmill wheel and a rotor disc reading alike.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BlurDiscMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterRotorDisc.M_SimCopterRotorDisc"));
+	if (BlurDiscMaterialFinder.Succeeded())
+	{
+		BlurDiscMaterial = BlurDiscMaterialFinder.Object;
 	}
 
 	// The chimney plumes sample the original effect-selector atlas through the same card material
@@ -4005,6 +4034,10 @@ void ASimCity2000CityActor::RebuildCity()
 		if (SectionKey == INDEX_NONE)
 		{
 			Resolved = VertexColorMaterial;
+		}
+		else if (IsTranslucentDiscSectionKey(SectionKey))
+		{
+			Resolved = BlurDiscMaterial;
 		}
 		else if (IsBakedAtlasPageSectionKey(SectionKey))
 		{
@@ -5193,7 +5226,11 @@ void ASimCity2000CityActor::RebuildCity()
 
 		UMaterialInterface* SectionMaterial = nullptr;
 		UTexture2D* RuntimeTexture = nullptr;
-		if (IsBakedAtlasPageSectionKey(TextureKey))
+		if (IsTranslucentDiscSectionKey(TextureKey))
+		{
+			SectionMaterial = BlurDiscMaterial;
+		}
+		else if (IsBakedAtlasPageSectionKey(TextureKey))
 		{
 			if (UMaterialInterface* const* BakedMaterial = BakedCityAtlasMaterials.PageMaterials.Find(GetBakedSectionAssetIndex(TextureKey)))
 			{

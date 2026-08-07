@@ -922,7 +922,12 @@ def create_rotor_disc_material():
     The original game draws the rotor as a faint translucent disc over the thin opaque
     blades. This is an Unlit + Translucent material so the disc reads as a soft grey haze
     regardless of scene lighting; DiscColor/DiscOpacity are exposed for tuning. It is drawn
-    on a ProceduralMeshComponent (not Nanite), so the Nanite usage flag is not required."""
+    on a ProceduralMeshComponent (not Nanite), so the Nanite usage flag is not required.
+
+    Face type 11 is not helicopter-only, though: PP200 (the SC2000 wind power plant) models
+    its entire fan wheel as type-11 triangles, and the city draws its buildings as INSTANCED
+    static meshes - hence the instanced-static-mesh usage flag below. Translucent materials
+    are not a Nanite path, so that flag still stays off."""
     material = create_or_load_material("M_SimCopterRotorDisc")
     clear_expressions(material)
 
@@ -957,6 +962,11 @@ def create_rotor_disc_material():
         disc_opacity, "", unreal.MaterialProperty.MP_OPACITY
     )
 
+    # The city's instanced BUILDING components draw the windmill wheel with this material, so the
+    # flag has to be baked in - same reasoning as create_lit_vertex_color_material's. The editor
+    # patches it on at runtime, which is exactly why a missing flag here goes unnoticed until a
+    # cooked build renders the wheel with the default material.
+    material.set_editor_property("used_with_instanced_static_meshes", True)
     unreal.MaterialEditingLibrary.recompile_material(material)
     save(f"{MATERIAL_DIR}/M_SimCopterRotorDisc")
 

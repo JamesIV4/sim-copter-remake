@@ -493,6 +493,15 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> TexturedMaterial;
 
+	// M_SimCopterRotorDisc - the near-translucent haze Maxis face type 11 is drawn with. The
+	// helicopter has used it for its rotor blur all along; the city needs it because face type 11
+	// is not a helicopter-only type. PP200, the SC2000 wind power plant, models its whole fan
+	// wheel as thirty-two type-11 triangles (a twelve-sided disc, drawn twice for the two faces),
+	// and rendered opaque like the rest of a building that wheel is a solid teal plate that hides
+	// the tower, the nacelle and the tail vane behind it. AR254 and TLNS/TLEW carry the type too.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> BlurDiscMaterial;
+
 	// Base material for the undulating water surface (M_SimCopterWater); a dynamic instance is created
 	// per rebuild to feed it the terrain water texture and the wave parameters below.
 	UPROPERTY(Transient)
