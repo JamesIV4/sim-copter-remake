@@ -684,6 +684,29 @@ private:
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
 
+	// --- standing in water ---
+	// Someone on a water tile is IN the sea, not on it: the boat-rescue survivors treading water and
+	// anyone who walks off a quay. The figure drops until the surface cuts it at the waist and then
+	// rides the swell M_SimCopterWater draws, because the capsule sits on the water's rest plane and
+	// the waves live entirely in the vertex shader.
+	//
+	// Deliberately VISUAL only - it moves VisualRoot, never the capsule. Every height gate the sim
+	// measures against a person is a small number with a decoded origin (the 37.5 cm alight
+	// clearance, the 50 cm boarding band, the medic's contact box), and sinking the collision body
+	// half a body-length would quietly break all of them.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population", meta = (ClampMin = "0.0"))
+	float WaterSubmergeLerpSeconds = 0.25f;
+
+	float WaterSubmergeAlpha = 0.0f;
+	float WaterVisualOffsetCm = 0.0f;
+	// The offset the animation/pose code last asked for. The water offset is added on top of it, so
+	// both writers can act without either having to know about the other.
+	FVector VisualRootBaseRelativeLocation = FVector::ZeroVector;
+
+	void UpdateWaterSubmersion(float DeltaSeconds);
+	void SetVisualRootRelativeLocation(const FVector& Local);
+	bool IsStandingInWater() const;
+
 	// Original privanim figure state.
 	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
 	FSimCopterPopulationFigure::FCalibration FigureCalibration;

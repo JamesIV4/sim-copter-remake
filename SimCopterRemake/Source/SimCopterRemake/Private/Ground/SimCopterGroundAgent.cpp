@@ -19,6 +19,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Flight/SimCopterWaterGameplay.h"
 #include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "GameFramework/Pawn.h"
@@ -67,6 +68,11 @@ constexpr float VehicleFallbackZCm = 52.0f;
 constexpr float PedestrianFallbackZCm = 88.0f;
 constexpr float PedestrianSpriteHeightCm = 162.0f;
 constexpr float PedestrianBodyHeightCm = 176.0f;
+// How far above the sea's rest plane a pair of feet may be and still count as standing IN the water
+// rather than on something built over it. The ground snap leaves a person 1 cm proud of whatever it
+// hit, and the swell is +/- WaterWaveAmplitude on top of that, so the band has to clear the crest -
+// but stay well under a bridge deck, which is a whole terrain step up.
+constexpr float WaterStandingClearanceCm = 40.0f;
 constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
 // The privanim head's material. Masked and chroma-keyed exactly like the unlit sprite material, but
 // Default Lit - see FigureHeadMaterial in the header for why a head must not be an emissive card.
@@ -3236,6 +3242,7 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		CurrentVelocityCmPerSec = FVector::ZeroVector;
 		ExternalVelocityCmPerSec = FVector::ZeroVector;
+		UpdateWaterSubmersion(DeltaSeconds);
 		UpdateJankyAnimation(DeltaSeconds);
 		return;
 	}
@@ -3253,6 +3260,7 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 			ExternalVelocityCmPerSec = FVector::ZeroVector;
 			UpdateCarriedTransform();
 			UpdateOriginalBehavior(DeltaSeconds);
+			UpdateWaterSubmersion(DeltaSeconds);
 			UpdateJankyAnimation(DeltaSeconds);
 			return;
 		}
@@ -3266,6 +3274,8 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		UpdateGroundSnap(DeltaSeconds);
 	}
+	// After the snap: the submersion is measured from where the capsule ended up this frame.
+	UpdateWaterSubmersion(DeltaSeconds);
 	UpdateJankyAnimation(DeltaSeconds);
 }
 
@@ -3945,7 +3955,7 @@ void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float Spee
 {
 	// The original figures animate through whole-pose frames - no lean/bob overlay.
 	VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
-	VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+	SetVisualRootRelativeLocation(FVector::ZeroVector);
 
 	if (!ForcedFigureMnemonic.IsEmpty())
 	{
@@ -4340,7 +4350,7 @@ void ASimCopterGroundAgent::ClearMissionPose()
 	if (VisualRoot != nullptr)
 	{
 		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
-		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+		SetVisualRootRelativeLocation(FVector::ZeroVector);
 	}
 }
 
@@ -4405,7 +4415,7 @@ void ASimCopterGroundAgent::SetDroppedInjuredOnGround(const FVector& WorldLocati
 	if (VisualRoot != nullptr)
 	{
 		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
-		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+		SetVisualRootRelativeLocation(FVector::ZeroVector);
 	}
 	SetActorLocation(WorldLocation, false);
 	bSnapToGround = true;
@@ -4440,7 +4450,7 @@ void ASimCopterGroundAgent::BeginPassengerFall(int32 SourceEventId, float Injury
 	if (VisualRoot != nullptr)
 	{
 		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
-		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+		SetVisualRootRelativeLocation(FVector::ZeroVector);
 	}
 	SetForcedPedestrianFigureClip(TEXT("Inju"));
 }
@@ -4790,6 +4800,76 @@ void ASimCopterGroundAgent::UpdateGroundSnap(float DeltaSeconds)
 	}
 }
 
+void ASimCopterGroundAgent::SetVisualRootRelativeLocation(const FVector& Local)
+{
+	VisualRootBaseRelativeLocation = Local;
+	if (VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeLocation(Local + FVector(0.0f, 0.0f, WaterVisualOffsetCm));
+	}
+}
+
+bool ASimCopterGroundAgent::IsStandingInWater() const
+{
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian)
+	{
+		return false;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const ASimCity2000CityActor* City = TrafficSystem != nullptr ? TrafficSystem->GetCityActor() : nullptr;
+	if (City == nullptr)
+	{
+		return false;
+	}
+
+	const FVector Location = GetActorLocation();
+	float SurfaceZ = 0.0f;
+	uint8 TerrainClass = 0xff;
+	if (!City->TryGetWaterGameplaySurface(Location, SurfaceZ, TerrainClass) ||
+		!SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass))
+	{
+		return false;
+	}
+
+	// A bridge deck, a pier and a helicopter in the hover are all "over a water tile" too. Only feet
+	// at the sea plane mean feet in the sea, so the tile test is qualified by the height the ground
+	// snap actually left this person at.
+	const float FeetZ = Location.Z - GetCapsuleHalfHeightCm();
+	return FeetZ <= SurfaceZ + WaterStandingClearanceCm;
+}
+
+void ASimCopterGroundAgent::UpdateWaterSubmersion(float DeltaSeconds)
+{
+	const bool bInWater = IsStandingInWater();
+	const float Step = WaterSubmergeLerpSeconds > KINDA_SMALL_NUMBER
+		? DeltaSeconds / WaterSubmergeLerpSeconds
+		: 1.0f;
+	WaterSubmergeAlpha = FMath::Clamp(WaterSubmergeAlpha + (bInWater ? Step : -Step), 0.0f, 1.0f);
+
+	float Offset = 0.0f;
+	if (WaterSubmergeAlpha > 0.0f)
+	{
+		// Half a body, so the waterline lands at the waist, plus the swell the water material is
+		// displacing this patch of sea by right now - the same CPU evaluation the boats ride.
+		float WaveCm = 0.0f;
+		if (const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
+		{
+			if (const ASimCity2000CityActor* City = TrafficSystem->GetCityActor())
+			{
+				WaveCm = City->GetWaterWaveOffsetCm(GetActorLocation());
+			}
+		}
+		Offset = WaterSubmergeAlpha * (WaveCm - GetCapsuleHalfHeightCm());
+	}
+
+	if (!FMath::IsNearlyEqual(Offset, WaterVisualOffsetCm))
+	{
+		WaterVisualOffsetCm = Offset;
+		SetVisualRootRelativeLocation(VisualRootBaseRelativeLocation);
+	}
+}
+
 void ASimCopterGroundAgent::UpdateJankyAnimation(float DeltaSeconds)
 {
 	if (!bEnableJankyAnimation || VisualRoot == nullptr)
@@ -4806,7 +4886,7 @@ void ASimCopterGroundAgent::UpdateJankyAnimation(float DeltaSeconds)
 		const float Roll = Wave * 1.0f * SpeedAlpha;
 		const float Pitch = FMath::Sin(AnimationTimeSeconds * JankyAnimationRate * 0.7f + AnimationPhase) * 0.65f * SpeedAlpha;
 		VisualRoot->SetRelativeRotation(FRotator(Pitch, 0.0f, Roll));
-		VisualRoot->SetRelativeLocation(FVector::ZeroVector);
+		SetVisualRootRelativeLocation(FVector::ZeroVector);
 	}
 	else if (bUsingPedestrianFigure)
 	{
@@ -4817,7 +4897,7 @@ void ASimCopterGroundAgent::UpdateJankyAnimation(float DeltaSeconds)
 		const float Lean = Wave * 7.0f * SpeedAlpha; // degrees of roll (scale-independent)
 		const float Bob = FMath::Abs(Wave) * 7.0f * SpeedAlpha * PopulationWorldScale;
 		VisualRoot->SetRelativeRotation(FRotator(0.0f, 0.0f, Lean));
-		VisualRoot->SetRelativeLocation(FVector(0.0f, 0.0f, Bob));
+		SetVisualRootRelativeLocation(FVector(0.0f, 0.0f, Bob));
 
 		if (bUsingPedestrianSprite)
 		{

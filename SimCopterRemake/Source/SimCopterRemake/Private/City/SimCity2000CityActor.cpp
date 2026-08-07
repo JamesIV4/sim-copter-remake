@@ -92,6 +92,23 @@ bool IsMaxisSpriteCardFace(const FMaxisMeshFace& Face)
 	return Face.FaceType == 2 && Face.VertexIndices.Num() == 2;
 }
 
+// SIM3D page 2 cell 0 is a digitised photograph of a face - a Maxis test image, not artwork the
+// shipped game ever puts on screen. Exactly four objects sample it, and always as the last face of
+// the model: CO182's wall billboard (one panel) and the front/back pair on CO124, CO126 and CO127's
+// street signs. Those panels are standalone boards, so dropping the faces drops the sign and leaves
+// no hole - there is no wall behind them. Measured with Docs/scratchpad/list_atlas_cell_users.py;
+// the neighbouring cells on the same page are the police shield (8), hospital H (9), helipad
+// crosshair (10) and fire F (11), which is what fixes the cell numbering.
+constexpr uint8 DebugPortraitAtlasPage = 2;
+constexpr uint8 DebugPortraitAtlasCell = 0;
+
+bool IsDebugPortraitFace(const FMaxisMeshFace& Face)
+{
+	return Face.FaceType == 18 &&
+		Face.TextureAtlasIndex == DebugPortraitAtlasPage &&
+		Face.MaterialIndex == DebugPortraitAtlasCell;
+}
+
 int32 MakeMaxisTextureKey(uint8 TextureFile, uint8 TextureNumber)
 {
 	return (static_cast<int32>(TextureFile) << 8) | static_cast<int32>(TextureNumber);
@@ -3140,6 +3157,11 @@ int32 AppendMaxisMeshObject(
 		}
 
 		if (RoadFaceFilter.ShouldSkipFace(Face))
+		{
+			continue;
+		}
+
+		if (IsDebugPortraitFace(Face))
 		{
 			continue;
 		}

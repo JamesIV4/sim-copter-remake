@@ -7,6 +7,7 @@
 #include "Ground/SimCopterPopulationFigure.h"
 #include "SimCopterOnFootPawn.generated.h"
 
+class ASimCity2000CityActor;
 class ASimCopterHelicopterPawn;
 class ASimCopterGroundAgent;
 class UCameraComponent;
@@ -217,6 +218,22 @@ private:
 
 	bool LoadOriginalBodyFigure();
 	bool RebuildPlayerFigureClip(const FString& Mnemonic);
+
+	// --- standing in water ---
+	// The player gets exactly what the pedestrians get (ASimCopterGroundAgent::UpdateWaterSubmersion):
+	// step onto a water tile and the body sinks to the waist over WaterSubmergeLerpSeconds, then rides
+	// M_SimCopterWater's swell. Visual only - the character capsule keeps standing on the sea's rest
+	// plane, so movement, boarding reach and the ground snap are untouched.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|OnFoot", meta = (ClampMin = "0.0"))
+	float WaterSubmergeLerpSeconds = 0.25f;
+
+	float WaterSubmergeAlpha = 0.0f;
+	float WaterVisualOffsetCm = 0.0f;
+	TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
+
+	void UpdateWaterSubmersion(float DeltaSeconds);
+	bool IsStandingInWater(const ASimCity2000CityActor& City) const;
+	ASimCity2000CityActor* ResolveCityActor();
 
 	void MoveForward(float Value);
 	void MoveRight(float Value);
