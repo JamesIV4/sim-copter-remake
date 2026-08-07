@@ -166,6 +166,26 @@ constexpr float DefaultWaterShoreEdgeNoiseScale = 25.0f;
 constexpr float DefaultWaterShoreEdgeNoiseStrength2 = 0.2f;
 constexpr float DefaultWaterShoreEdgeNoiseScale2 = 4.0f;
 
+// How fast each layer's field changes, in NOISE FRAMES PER SECOND. The animation is a third axis on
+// the hash, not a scroll: the field changes where it is instead of travelling across the water,
+// because sliding the sample position reads as a conveyor belt at these wavelengths. 0 freezes a
+// layer.
+//
+// **Interpolated with a Catmull-Rom through four frames, and NOT with a smoothstep between two.**
+// The smoothstep version read as visibly framey, and the reason is what it is for: ease-in-ease-out
+// gives the field zero velocity at every keyframe, so it arrives, holds, and rushes to the next -
+// still, fast, still, fast, once per frame. Going higher-order (smootherstep) flattens the ends
+// further and makes the hold longer, so the obvious next step makes it worse. A cubic through four
+// control points takes its slope at each frame from that frame's neighbours and therefore passes
+// through without stopping, which is the ordinary keyframe-interpolation answer to the ordinary
+// keyframe-interpolation problem. It costs four spatial taps per layer instead of two.
+//
+// Layer 2 is the fine one (4 cm), so its rate is where shimmer would come from if it is pushed:
+// a pattern that fine is already near sub-pixel at altitude, and animating sub-pixel detail
+// sparkles. If the water fizzes when seen from high up, this is the number to bring down.
+constexpr float DefaultWaterShoreEdgeNoiseSpeed = 0.8f;
+constexpr float DefaultWaterShoreEdgeNoiseSpeed2 = 3.0f;
+
 // A fine per-pixel ripple on the NORMAL only - it never touches the wave WPO, so the geometry and
 // the welded shoreline are untouched. Its job is to stop open water being one flat mirror: at
 // roughness 0.12 any large flat span reflects the sky as a single sheet, and every seam in the
@@ -308,10 +328,10 @@ private:
 	float PublishedLowPower = -1.0f;
 
 	/** Last value written for each SimCopter.Shading.* knob, in ESurfaceShadingSlot order. */
-	static constexpr int32 SurfaceShadingSlotCount = 23;
+	static constexpr int32 SurfaceShadingSlotCount = 25;
 	float PublishedSurfaceShading[SurfaceShadingSlotCount] = {
-		-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
-		-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f };
+		-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,
+		-1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f };
 
 	/**
 	 * Whether the last evaluated frame counted as night, so the day->night EDGE can be detected.

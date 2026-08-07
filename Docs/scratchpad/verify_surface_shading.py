@@ -34,6 +34,7 @@ EXTRA = {
         "WaterShoreRoughness", "WaterShoreSpecular", "WaterShoreFadeWidth",
         "WaterShoreEdgeNoiseStrength", "WaterShoreEdgeNoiseScale",
         "WaterShoreEdgeNoiseStrength2", "WaterShoreEdgeNoiseScale2",
+        "WaterShoreEdgeNoiseSpeed", "WaterShoreEdgeNoiseSpeed2",
         "WaterDetailNormalStrength", "WaterDetailNormalScale",
     ),
 }

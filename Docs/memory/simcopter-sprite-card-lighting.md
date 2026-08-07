@@ -98,6 +98,34 @@ hypothesis, not a fact. Shipping values are `FadeWidth 0.4` with those four.
 The ramp is smootherstep rather than smoothstep for the same family of reason: one more order of
 continuity removes the faint crease where the fade starts and stops.
 
+**Both layers animate, and the animation is a THIRD AXIS ON THE HASH, not a scroll**
+(`WaterShoreEdgeNoiseSpeed` / `...Speed2`, in noise FRAMES PER SECOND). The field changes while
+staying put. Sliding the sample position instead - the obvious way to animate noise, and the first
+attempt - reads as a conveyor belt at these wavelengths: the whole shoreline visibly travelling one
+way.
+
+**The frame interpolation is a CATMULL-ROM THROUGH FOUR FRAMES, and the two-frame smoothstep it
+replaced is the interesting failure.** Smoothstep between adjacent frames is C1 and looks wrong
+anyway: ease-in-ease-out means the field reaches every keyframe with *zero velocity*, so it arrives,
+holds, and rushes to the next - still, fast, still, fast, once per frame. On screen that is exactly
+"framey". **The obvious next move makes it worse**: smootherstep flattens the ends further and
+lengthens the hold.
+
+What it wants is a curve that passes *through* each frame without stopping on it - the ordinary
+keyframe-interpolation problem, with the ordinary answer. A cubic through four control points takes
+its slope at each frame from that frame's neighbours, so the field evolves at a near-constant rate
+and there is no beat to see. Costs four spatial taps per layer instead of two. The slight [0,1]
+overshoot between frames is left unclamped on purpose: clamping would reintroduce a flat spot of
+exactly the kind being removed, and the warp is saturated at the end regardless.
+
+The frame index is wrapped modulo 256 like the xy indices already were. Time climbs without bound
+and `sin()` of a large argument loses the precision the hash depends on, so without the wrap the
+water would quietly stop changing after a while.
+
+Layer 2 is the fine one (4 cm), so **its rate is where shimmer comes from**: detail that small is
+near sub-pixel from altitude and animating sub-pixel detail sparkles. If the water fizzes from high
+up, that is the number to bring down, not the strength.
+
 **Three traps when re-running the generator:**
 
 * **`create_day_night_parameter_collection()` must run before ANY material that reads a collection

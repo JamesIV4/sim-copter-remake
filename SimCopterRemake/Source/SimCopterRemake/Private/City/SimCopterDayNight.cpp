@@ -74,6 +74,7 @@ const TCHAR* const SurfaceShadingParameterNames[] = {
 	TEXT("WaterShoreRoughness"), TEXT("WaterShoreSpecular"), TEXT("WaterShoreFadeWidth"),
 	TEXT("WaterShoreEdgeNoiseStrength"), TEXT("WaterShoreEdgeNoiseScale"),
 	TEXT("WaterShoreEdgeNoiseStrength2"), TEXT("WaterShoreEdgeNoiseScale2"),
+	TEXT("WaterShoreEdgeNoiseSpeed"), TEXT("WaterShoreEdgeNoiseSpeed2"),
 	TEXT("WaterDetailNormalStrength"), TEXT("WaterDetailNormalScale"),
 };
 
@@ -243,6 +244,24 @@ static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseScale2(
 	TEXT("Wavelength of the second layer in centimetres. Unlike layer 1 this one may be FINER than ")
 	TEXT("a tile: layer 1 has already hidden the 400 cm step, so this is only making the resulting ")
 	TEXT("curve less regular."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreEdgeNoiseSpeed = SimCopterDayNight::DefaultWaterShoreEdgeNoiseSpeed;
+static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseSpeed(
+	TEXT("SimCopter.Shading.WaterShoreEdgeNoiseSpeed"),
+	GSimCopterWaterShoreEdgeNoiseSpeed,
+	TEXT("How fast layer 1's field changes, in noise FRAMES PER SECOND - it is re-rolled at this ")
+	TEXT("rate and smoothly eased between rolls, so the pattern churns in place rather than ")
+	TEXT("scrolling across the water. 0 freezes the layer."),
+	ECVF_Default);
+
+float GSimCopterWaterShoreEdgeNoiseSpeed2 = SimCopterDayNight::DefaultWaterShoreEdgeNoiseSpeed2;
+static FAutoConsoleVariableRef CVarWaterShoreEdgeNoiseSpeed2(
+	TEXT("SimCopter.Shading.WaterShoreEdgeNoiseSpeed2"),
+	GSimCopterWaterShoreEdgeNoiseSpeed2,
+	TEXT("The same for layer 2, in frames per second. This is the fine layer, so it is where ")
+	TEXT("shimmer comes from: detail that small is near sub-pixel from altitude, and animating ")
+	TEXT("sub-pixel detail sparkles. Bring it down if the water fizzes from high up."),
 	ECVF_Default);
 
 float GSimCopterWaterDetailNormalStrength = SimCopterDayNight::DefaultWaterDetailNormalStrength;
@@ -469,6 +488,9 @@ void USimCopterDayNightSubsystem::PublishSurfaceShading()
 		FMath::Max(GSimCopterWaterShoreEdgeNoiseScale, 1.0f),
 		FMath::Clamp(GSimCopterWaterShoreEdgeNoiseStrength2, 0.0f, 1.0f),
 		FMath::Max(GSimCopterWaterShoreEdgeNoiseScale2, 1.0f),
+		// Frames per second, so no upper bound worth imposing - only "not backwards in time".
+		FMath::Max(GSimCopterWaterShoreEdgeNoiseSpeed, 0.0f),
+		FMath::Max(GSimCopterWaterShoreEdgeNoiseSpeed2, 0.0f),
 		FMath::Max(GSimCopterWaterDetailNormalStrength, 0.0f),
 		// A wavelength, not a 0..1 ratio - the shader floors it at 1 cm anyway, but keep it sane.
 		FMath::Max(GSimCopterWaterDetailNormalScale, 1.0f),
