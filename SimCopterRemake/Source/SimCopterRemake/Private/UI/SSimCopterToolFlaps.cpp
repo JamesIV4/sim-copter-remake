@@ -2,10 +2,20 @@
 
 #include "SSimCopterToolFlaps.h"
 
-#include "Brushes/SlateNoResource.h"
+#include "Brushes/SlateColorBrush.h"
+#include "Dom/JsonObject.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Framework/Application/IInputProcessor.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Ground/SimCopterDispatch.h"
+#include "HAL/FileManager.h"
+#include "HAL/PlatformFileManager.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Rendering/DrawElements.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
@@ -42,6 +52,202 @@ constexpr int32 DispatchEntryCount = PoliceChaseDispatchEntry + 1;
 // the gap above the first panel and the gaps between them read the same.
 constexpr float PanelGapPixels = 12.0f;
 
+FSlateFontInfo FlapFont(const int32 Size, const bool bBold = true);
+
+class FSimCopterFlapCalibrationInputPreProcessor : public IInputProcessor
+{
+public:
+	FSimCopterFlapCalibrationInputPreProcessor(TWeakPtr<SSimCopterToolFlaps> InFlapsPanel)
+		: FlapsPanel(InFlapsPanel)
+	{}
+
+	virtual void Tick(const float DeltaTime, FSlateApplication& SlateApp, TSharedRef<ICursor> Cursor) override {}
+
+	virtual bool HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyEvent& InKeyEvent) override
+	{
+		if (InKeyEvent.GetKey() == EKeys::M && InKeyEvent.IsControlDown() && InKeyEvent.IsAltDown())
+		{
+			if (TSharedPtr<SSimCopterToolFlaps> Flaps = FlapsPanel.Pin())
+			{
+				Flaps->ToggleCalibrationMode();
+				return true;
+			}
+		}
+		return false;
+	}
+
+private:
+	TWeakPtr<SSimCopterToolFlaps> FlapsPanel;
+};
+
+class SSimCopterCalibratableBox : public SCompoundWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SSimCopterCalibratableBox) {}
+		SLATE_DEFAULT_SLOT(FArguments, Content)
+		SLATE_ARGUMENT(FString, ElementKey)
+		SLATE_ARGUMENT(SSimCopterToolFlaps*, OwnerFlaps)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		ElementKey = InArgs._ElementKey;
+		OwnerFlaps = InArgs._OwnerFlaps;
+
+		ChildSlot
+		[
+			InArgs._Content.Widget
+		];
+	}
+
+	virtual int32 OnPaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override
+	{
+		int32 MaxLayer = SCompoundWidget::OnPaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
+
+		if (OwnerFlaps != nullptr && OwnerFlaps->IsCalibrationMode())
+		{
+			MaxLayer++;
+			const bool bIsSelected = (OwnerFlaps->GetSelectedCalibrationKey() == ElementKey);
+			const FLinearColor OutlineColor = bDragging
+				? FLinearColor(1.0f, 0.2f, 0.2f, 1.0f)
+				: (bIsSelected ? FLinearColor(1.0f, 0.85f, 0.0f, 1.0f) : FLinearColor(0.0f, 1.0f, 1.0f, 0.9f));
+
+			const FLinearColor FillColor = bIsSelected
+				? FLinearColor(1.0f, 0.85f, 0.0f, 0.30f)
+				: FLinearColor(0.0f, 0.8f, 1.0f, 0.20f);
+
+			static const FSlateColorBrush FillBrush(FLinearColor::White);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				MaxLayer,
+				AllottedGeometry.ToPaintGeometry(),
+				&FillBrush,
+				ESlateDrawEffect::None,
+				FillColor);
+
+			TArray<FVector2D> Points;
+			const FVector2D Size = AllottedGeometry.GetLocalSize();
+			Points.Add(FVector2D(0.0f, 0.0f));
+			Points.Add(FVector2D(Size.X, 0.0f));
+			Points.Add(FVector2D(Size.X, Size.Y));
+			Points.Add(FVector2D(0.0f, Size.Y));
+			Points.Add(FVector2D(0.0f, 0.0f));
+
+			FSlateDrawElement::MakeLines(
+				OutDrawElements,
+				MaxLayer + 1,
+				AllottedGeometry.ToPaintGeometry(),
+				Points,
+				ESlateDrawEffect::None,
+				OutlineColor,
+				true,
+				bIsSelected ? 2.5f : 1.5f);
+
+			if (bIsSelected && OwnerFlaps != nullptr)
+			{
+				const FVector2D Offset = OwnerFlaps->GetElementOffset(ElementKey);
+				const FVector2D ElemScale = OwnerFlaps->GetElementScale(ElementKey);
+				const FString InfoText = FString::Printf(TEXT("%s\nPos:(%.1f, %.1f) Scale:(%.2f, %.2f)"),
+					*ElementKey, Offset.X, Offset.Y, ElemScale.X, ElemScale.Y);
+
+				FSlateDrawElement::MakeText(
+					OutDrawElements,
+					MaxLayer + 2,
+					AllottedGeometry.ToPaintGeometry(FVector2D(1.0f, 1.0f), FSlateLayoutTransform(FVector2D(2.0f, 2.0f))),
+					InfoText,
+					FlapFont(9, true),
+					ESlateDrawEffect::None,
+					FLinearColor(1.0f, 1.0f, 0.0f, 1.0f));
+				MaxLayer++;
+			}
+
+			MaxLayer += 2;
+		}
+
+		return MaxLayer;
+	}
+
+	virtual FReply OnPreviewMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (OwnerFlaps != nullptr && OwnerFlaps->IsCalibrationMode() && MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+		{
+			OwnerFlaps->SetSelectedCalibrationKey(ElementKey);
+			bDragging = true;
+			DragStartMouse = MouseEvent.GetScreenSpacePosition();
+			InitialOffset = OwnerFlaps->GetElementOffset(ElementKey);
+			return FReply::Handled().CaptureMouse(SharedThis(this));
+		}
+		return FReply::Unhandled();
+	}
+
+	virtual FReply OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (bDragging && HasMouseCapture() && OwnerFlaps != nullptr)
+		{
+			const FVector2D CurrentMouse = MouseEvent.GetScreenSpacePosition();
+			const FVector2D DeltaScreen = CurrentMouse - DragStartMouse;
+			const FVector2D DeltaPage = DeltaScreen / FMath::Max(0.1f, OwnerFlaps->GetScale());
+			OwnerFlaps->SetElementOffset(ElementKey, InitialOffset + DeltaPage);
+			return FReply::Handled();
+		}
+		return FReply::Unhandled();
+	}
+
+	virtual FReply OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (bDragging && HasMouseCapture())
+		{
+			bDragging = false;
+			if (OwnerFlaps != nullptr)
+			{
+				OwnerFlaps->SaveCalibrationData();
+			}
+			return FReply::Handled().ReleaseMouseCapture();
+		}
+		return FReply::Unhandled();
+	}
+
+	virtual FReply OnMouseWheel(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (OwnerFlaps != nullptr && OwnerFlaps->IsCalibrationMode())
+		{
+			const float WheelDelta = MouseEvent.GetWheelDelta();
+			const float Factor = (WheelDelta > 0.0f) ? 1.05f : 0.95f;
+			FVector2D ElementScale = OwnerFlaps->GetElementScale(ElementKey);
+			if (MouseEvent.IsShiftDown())
+			{
+				ElementScale.Y *= Factor;
+			}
+			else if (MouseEvent.IsControlDown())
+			{
+				ElementScale.X *= Factor;
+			}
+			else
+			{
+				ElementScale *= Factor;
+			}
+			OwnerFlaps->SetElementScale(ElementKey, ElementScale);
+			OwnerFlaps->SaveCalibrationData();
+			return FReply::Handled();
+		}
+		return FReply::Unhandled();
+	}
+
+private:
+	FString ElementKey;
+	SSimCopterToolFlaps* OwnerFlaps = nullptr;
+	bool bDragging = false;
+	FVector2D DragStartMouse = FVector2D::ZeroVector;
+	FVector2D InitialOffset = FVector2D::ZeroVector;
+};
+
 // The dispatch strip's background is a tool flap's frame taken apart: the left edge, a slice of
 // bare grid tiled out to width, then the right edge with its dash corner. flap2 is the donor
 // because its rope artwork leaves both of those clear.
@@ -69,7 +275,7 @@ const TCHAR* const OctagonFile = TEXT("FLAPBTN1.BMP");
 const FIntRect OctagonNormal(0, 0, 17, 24);
 const FIntRect OctagonPressed(17, 0, 34, 24);
 
-FSlateFontInfo FlapFont(const int32 Size, const bool bBold = true)
+FSlateFontInfo FlapFont(const int32 Size, const bool bBold)
 {
 	return FCoreStyle::GetDefaultFontStyle(bBold ? TEXT("Bold") : TEXT("Regular"), Size);
 }
@@ -122,13 +328,22 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 		? FMath::Clamp(Pawn->GetSelectedDispatchService(), 0, PoliceChaseDispatchEntry - 1)
 		: 0;
 
+	LoadCalibrationData();
+
+	if (FSlateApplication::IsInitialized())
+	{
+		TSharedRef<FSimCopterFlapCalibrationInputPreProcessor> PreProcessor =
+			MakeShared<FSimCopterFlapCalibrationInputPreProcessor>(SharedThis(this));
+		CalibrationInputProcessor = PreProcessor;
+		FSlateApplication::Get().RegisterInputPreProcessor(PreProcessor);
+	}
+
 	TSharedRef<SVerticalBox> Column = SNew(SVerticalBox);
 	MissionMarkerAvoidancePanels.Reset();
 
-	// The dispatch strip sits above the tools, with the same gap between panels that the column
-	// leaves above itself. A flap the helicopter is not carrying collapses, and a collapsed slot
-	// takes its padding with it, so the gaps never double up.
 	const FMargin PanelGap(0.0f, 0.0f, 0.0f, PanelGapPixels);
+
+	TSharedRef<SWidget> DebugPanel = BuildCalibrationDebugPanel();
 
 	TSharedRef<SWidget> DispatchPanel = BuildDispatchFlap();
 	MissionMarkerAvoidancePanels.Add(DispatchPanel);
@@ -167,8 +382,547 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 
 	ChildSlot
 	[
-		Column
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
+		[
+			DebugPanel
+		]
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Top)
+		[
+			Column
+		]
 	];
+}
+
+SSimCopterToolFlaps::~SSimCopterToolFlaps()
+{
+	if (CalibrationInputProcessor.IsValid() && FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().UnregisterInputPreProcessor(CalibrationInputProcessor);
+		CalibrationInputProcessor.Reset();
+	}
+}
+
+void SSimCopterToolFlaps::ToggleCalibrationMode()
+{
+	bCalibrationMode = !bCalibrationMode;
+	UE_LOG(LogTemp, Log, TEXT("SimCopter Tool Flap Calibration Mode: %s"), bCalibrationMode ? TEXT("ON") : TEXT("OFF"));
+
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		if (APlayerController* PC = Cast<APlayerController>(Helicopter->GetController()))
+		{
+			if (bCalibrationMode)
+			{
+				PC->bShowMouseCursor = true;
+				FInputModeGameAndUI InputMode;
+				InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+				InputMode.SetHideCursorDuringCapture(false);
+				PC->SetInputMode(InputMode);
+			}
+			else
+			{
+				Helicopter->RestoreGameViewportFocus();
+			}
+		}
+
+		if (!bCalibrationMode && (!Art.IsValid() || !Art->IsUsable()))
+		{
+			Helicopter->RemoveToolFlapsWidget();
+			return;
+		}
+	}
+
+	Invalidate(EInvalidateWidgetReason::Paint | EInvalidateWidgetReason::Layout);
+}
+
+FReply SSimCopterToolFlaps::OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.IsControlDown() && InKeyEvent.IsAltDown() && InKeyEvent.GetKey() == EKeys::M)
+	{
+		ToggleCalibrationMode();
+		return FReply::Handled();
+	}
+	return SCompoundWidget::OnPreviewKeyDown(MyGeometry, InKeyEvent);
+}
+
+FReply SSimCopterToolFlaps::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.IsControlDown() && InKeyEvent.IsAltDown() && InKeyEvent.GetKey() == EKeys::M)
+	{
+		ToggleCalibrationMode();
+		return FReply::Handled();
+	}
+	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
+}
+
+FVector2D SSimCopterToolFlaps::GetElementOffset(const FString& Key) const
+{
+	const FVector2D* Found = CalibrationOffsets.Find(Key);
+	return Found != nullptr ? *Found : FVector2D::ZeroVector;
+}
+
+void SSimCopterToolFlaps::SetElementOffset(const FString& Key, const FVector2D& Offset)
+{
+	CalibrationOffsets.Add(Key, Offset);
+
+	if (const FVector4f* Bounds = ElementDefaultBounds.Find(Key))
+	{
+		if (SConstraintCanvas::FSlot** SlotPtr = ElementCanvasSlots.Find(Key))
+		{
+			if (*SlotPtr != nullptr)
+			{
+				const FVector2D ElementScale = GetElementScale(Key);
+				const float PageX = Bounds->X + Offset.X;
+				const float PageY = Bounds->Y + Offset.Y;
+				const float PageW = Bounds->Z * ElementScale.X;
+				const float PageH = Bounds->W * ElementScale.Y;
+				(*SlotPtr)->SetOffset(FMargin(PageX * Scale, PageY * Scale, PageW * Scale, PageH * Scale));
+			}
+		}
+	}
+
+	SaveCalibrationData();
+}
+
+FVector2D SSimCopterToolFlaps::GetElementScale(const FString& Key) const
+{
+	const FVector2D* Found = CalibrationScales.Find(Key);
+	return Found != nullptr ? *Found : FVector2D(1.0f, 1.0f);
+}
+
+void SSimCopterToolFlaps::SetElementScale(const FString& Key, const FVector2D& ElementScale)
+{
+	CalibrationScales.Add(Key, ElementScale);
+
+	if (const FVector4f* Bounds = ElementDefaultBounds.Find(Key))
+	{
+		if (SConstraintCanvas::FSlot** SlotPtr = ElementCanvasSlots.Find(Key))
+		{
+			if (*SlotPtr != nullptr)
+			{
+				const FVector2D Offset = GetElementOffset(Key);
+				const float PageX = Bounds->X + Offset.X;
+				const float PageY = Bounds->Y + Offset.Y;
+				const float PageW = Bounds->Z * ElementScale.X;
+				const float PageH = Bounds->W * ElementScale.Y;
+				(*SlotPtr)->SetOffset(FMargin(PageX * Scale, PageY * Scale, PageW * Scale, PageH * Scale));
+			}
+		}
+	}
+
+	SaveCalibrationData();
+}
+
+void SSimCopterToolFlaps::SetScale(const float NewScale)
+{
+	Scale = FMath::Max(0.5f, NewScale);
+	for (const auto& Pair : ElementDefaultBounds)
+	{
+		SetElementOffset(Pair.Key, GetElementOffset(Pair.Key));
+	}
+	SaveCalibrationData();
+}
+
+void SSimCopterToolFlaps::SetSelectedCalibrationKey(const FString& Key)
+{
+	SelectedCalibrationKey = Key;
+	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void SSimCopterToolFlaps::CycleSelectedCalibrationKey(int32 Direction)
+{
+	TArray<FString> Keys;
+	ElementDefaultBounds.GenerateKeyArray(Keys);
+	if (Keys.Num() == 0)
+	{
+		return;
+	}
+
+	int32 CurrentIndex = Keys.IndexOfByKey(SelectedCalibrationKey);
+	if (CurrentIndex == INDEX_NONE)
+	{
+		CurrentIndex = 0;
+	}
+	else
+	{
+		CurrentIndex = (CurrentIndex + Direction + Keys.Num()) % Keys.Num();
+	}
+	SetSelectedCalibrationKey(Keys[CurrentIndex]);
+}
+
+void SSimCopterToolFlaps::NudgeSelectedElement(float DeltaX, float DeltaY, float DeltaScaleX, float DeltaScaleY)
+{
+	if (SelectedCalibrationKey.IsEmpty())
+	{
+		CycleSelectedCalibrationKey(1);
+	}
+	if (SelectedCalibrationKey.IsEmpty())
+	{
+		return;
+	}
+
+	if (DeltaX != 0.0f || DeltaY != 0.0f)
+	{
+		const FVector2D CurrentOffset = GetElementOffset(SelectedCalibrationKey);
+		SetElementOffset(SelectedCalibrationKey, CurrentOffset + FVector2D(DeltaX, DeltaY));
+	}
+	if (DeltaScaleX != 0.0f || DeltaScaleY != 0.0f)
+	{
+		const FVector2D CurrentScale = GetElementScale(SelectedCalibrationKey);
+		const float NewSx = FMath::Max(0.1f, CurrentScale.X + DeltaScaleX);
+		const float NewSy = FMath::Max(0.1f, CurrentScale.Y + DeltaScaleY);
+		SetElementScale(SelectedCalibrationKey, FVector2D(NewSx, NewSy));
+	}
+	SaveCalibrationData();
+}
+
+void SSimCopterToolFlaps::ResetSelectedElement()
+{
+	if (SelectedCalibrationKey.IsEmpty())
+	{
+		return;
+	}
+	SetElementOffset(SelectedCalibrationKey, FVector2D::ZeroVector);
+	SetElementScale(SelectedCalibrationKey, FVector2D(1.0f, 1.0f));
+	SaveCalibrationData();
+}
+
+FText SSimCopterToolFlaps::GetSelectedControlText() const
+{
+	if (SelectedCalibrationKey.IsEmpty())
+	{
+		return FText::FromString(TEXT("None Selected (Click or < / >)"));
+	}
+	return FText::FromString(SelectedCalibrationKey);
+}
+
+FText SSimCopterToolFlaps::GetSelectedXText() const
+{
+	if (SelectedCalibrationKey.IsEmpty()) return FText::FromString(TEXT("X: 0"));
+	const FVector2D Offset = GetElementOffset(SelectedCalibrationKey);
+	return FText::FromString(FString::Printf(TEXT("X: %+.1f"), Offset.X));
+}
+
+FText SSimCopterToolFlaps::GetSelectedYText() const
+{
+	if (SelectedCalibrationKey.IsEmpty()) return FText::FromString(TEXT("Y: 0"));
+	const FVector2D Offset = GetElementOffset(SelectedCalibrationKey);
+	return FText::FromString(FString::Printf(TEXT("Y: %+.1f"), Offset.Y));
+}
+
+FText SSimCopterToolFlaps::GetSelectedScaleXText() const
+{
+	if (SelectedCalibrationKey.IsEmpty()) return FText::FromString(TEXT("ScaleX: 1.00"));
+	const FVector2D ElementScale = GetElementScale(SelectedCalibrationKey);
+	return FText::FromString(FString::Printf(TEXT("ScaleX: %.2f"), ElementScale.X));
+}
+
+FText SSimCopterToolFlaps::GetSelectedScaleYText() const
+{
+	if (SelectedCalibrationKey.IsEmpty()) return FText::FromString(TEXT("ScaleY: 1.00"));
+	const FVector2D ElementScale = GetElementScale(SelectedCalibrationKey);
+	return FText::FromString(FString::Printf(TEXT("ScaleY: %.2f"), ElementScale.Y));
+}
+
+FText SSimCopterToolFlaps::GetGlobalScaleText() const
+{
+	return FText::FromString(FString::Printf(TEXT("Flap Scale: %.2f"), Scale));
+}
+
+TSharedRef<SWidget> SSimCopterToolFlaps::BuildCalibrationDebugPanel()
+{
+	const FSlateFontInfo Font = FlapFont(11, true);
+	const FSlateFontInfo SmallFont = FlapFont(10, false);
+	const FMargin ButtonPadding(4.0f, 2.0f);
+
+	auto MakeNudgeBtn = [this, SmallFont, ButtonPadding](const FString& Label, float DX, float DY, float DSX, float DSY)
+	{
+		return SNew(SButton)
+			.IsFocusable(false)
+			.ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this, DX, DY, DSX, DSY]() {
+				NudgeSelectedElement(DX, DY, DSX, DSY);
+				return FReply::Handled();
+			})
+			[
+				SNew(STextBlock).Text(FText::FromString(Label)).Font(SmallFont)
+			];
+	};
+
+	TSharedRef<SVerticalBox> PanelContent = SNew(SVerticalBox);
+
+	// Header
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(STextBlock)
+		.Text(FText::FromString(TEXT("FLAP CALIBRATION CONTROL PANEL")))
+		.Font(Font)
+		.ColorAndOpacity(FLinearColor(0.0f, 1.0f, 1.0f, 1.0f))
+	];
+
+	// Control Selection Row
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+		[
+			SNew(SButton)
+			.IsFocusable(false)
+			.ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { CycleSelectedCalibrationKey(-1); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("< Prev"))).Font(SmallFont) ]
+		]
+		+ SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(TAttribute<FText>::CreateSP(this, &SSimCopterToolFlaps::GetSelectedControlText))
+			.Font(SmallFont)
+			.ColorAndOpacity(FLinearColor(1.0f, 0.85f, 0.0f, 1.0f))
+		]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(4.0f, 0.0f, 0.0f, 0.0f)
+		[
+			SNew(SButton)
+			.IsFocusable(false)
+			.ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { CycleSelectedCalibrationKey(1); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("Next >"))).Font(SmallFont) ]
+		]
+	];
+
+	// Position Nudge Row X
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.0f, 0.0f, 6.0f, 0.0f)
+		[ SNew(STextBlock).Text(TAttribute<FText>::CreateSP(this, &SSimCopterToolFlaps::GetSelectedXText)).Font(SmallFont) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-1"), -1.0f, 0.0f, 0.0f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-0.1"), -0.1f, 0.0f, 0.0f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+0.1"), 0.1f, 0.0f, 0.0f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+1"), 1.0f, 0.0f, 0.0f, 0.0f) ]
+	];
+
+	// Position Nudge Row Y
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.0f, 0.0f, 6.0f, 0.0f)
+		[ SNew(STextBlock).Text(TAttribute<FText>::CreateSP(this, &SSimCopterToolFlaps::GetSelectedYText)).Font(SmallFont) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-1"), 0.0f, -1.0f, 0.0f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-0.1"), 0.0f, -0.1f, 0.0f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+0.1"), 0.0f, 0.1f, 0.0f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+1"), 0.0f, 1.0f, 0.0f, 0.0f) ]
+	];
+
+	// Scale Nudge Row X
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.0f, 0.0f, 6.0f, 0.0f)
+		[ SNew(STextBlock).Text(TAttribute<FText>::CreateSP(this, &SSimCopterToolFlaps::GetSelectedScaleXText)).Font(SmallFont) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-0.1"), 0.0f, 0.0f, -0.1f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-0.01"), 0.0f, 0.0f, -0.01f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+0.01"), 0.0f, 0.0f, 0.01f, 0.0f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+0.1"), 0.0f, 0.0f, 0.1f, 0.0f) ]
+	];
+
+	// Scale Nudge Row Y
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.0f, 0.0f, 6.0f, 0.0f)
+		[ SNew(STextBlock).Text(TAttribute<FText>::CreateSP(this, &SSimCopterToolFlaps::GetSelectedScaleYText)).Font(SmallFont) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-0.1"), 0.0f, 0.0f, 0.0f, -0.1f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("-0.01"), 0.0f, 0.0f, 0.0f, -0.01f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+0.01"), 0.0f, 0.0f, 0.0f, 0.01f) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f) [ MakeNudgeBtn(TEXT("+0.1"), 0.0f, 0.0f, 0.0f, 0.1f) ]
+	];
+
+	// Global Flap Scale Row
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.0f, 0.0f, 6.0f, 0.0f)
+		[ SNew(STextBlock).Text(TAttribute<FText>::CreateSP(this, &SSimCopterToolFlaps::GetGlobalScaleText)).Font(SmallFont) ]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
+		[
+			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { SetScale(Scale - 0.1f); SaveCalibrationData(); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("-0.1"))).Font(SmallFont) ]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
+		[
+			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { SetScale(Scale + 0.1f); SaveCalibrationData(); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("+0.1"))).Font(SmallFont) ]
+		]
+	];
+
+	// Actions Row
+	PanelContent->AddSlot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)
+	[
+		SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+		[
+			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { ResetSelectedElement(); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("Reset Element"))).Font(SmallFont) ]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
+		[
+			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { SaveCalibrationData(); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("Save JSON"))).Font(SmallFont) ]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
+		[
+			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
+			.OnClicked_Lambda([this]() { ToggleCalibrationMode(); return FReply::Handled(); })
+			[ SNew(STextBlock).Text(FText::FromString(TEXT("Exit (Ctrl+Alt+M)"))).Font(SmallFont) ]
+		]
+	];
+
+	return SNew(SBox)
+		.Visibility_Lambda([this]() { return bCalibrationMode ? EVisibility::Visible : EVisibility::Collapsed; })
+		.Padding(FMargin(0.0f, 0.0f, 0.0f, 8.0f))
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+			.BorderBackgroundColor(FLinearColor(0.05f, 0.07f, 0.10f, 0.95f))
+			.Padding(FMargin(8.0f))
+			[
+				PanelContent
+			]
+		];
+}
+
+void SSimCopterToolFlaps::LoadCalibrationData()
+{
+	CalibrationOffsets.Reset();
+	CalibrationScales.Reset();
+
+	const FString SavedPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("FlapLayoutCalibration.json"));
+	const FString ContentPath = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("FlapLayoutCalibration.json"));
+
+	FString FilePath = SavedPath;
+	if (!IFileManager::Get().FileExists(*FilePath) && IFileManager::Get().FileExists(*ContentPath))
+	{
+		FilePath = ContentPath;
+	}
+
+	FString JsonString;
+	if (!FFileHelper::LoadFileToString(JsonString, *FilePath))
+	{
+		return;
+	}
+
+	TSharedPtr<FJsonObject> JsonObject;
+	TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+	if (FJsonSerializer::Deserialize(Reader, JsonObject) && JsonObject.IsValid())
+	{
+		double LoadedGlobalScale = 0.0;
+		if (JsonObject->TryGetNumberField(TEXT("GlobalScale"), LoadedGlobalScale) && LoadedGlobalScale > 0.1)
+		{
+			Scale = static_cast<float>(LoadedGlobalScale);
+		}
+
+		for (const auto& Pair : JsonObject->Values)
+		{
+			if (FString(Pair.Key).Equals(TEXT("GlobalScale"), ESearchCase::IgnoreCase))
+			{
+				continue;
+			}
+
+			TSharedPtr<FJsonObject> ValueObj = Pair.Value->AsObject();
+			if (ValueObj.IsValid())
+			{
+				double X = 0.0;
+				double Y = 0.0;
+				double ScaleX = 1.0;
+				double ScaleY = 1.0;
+				ValueObj->TryGetNumberField(TEXT("x"), X);
+				ValueObj->TryGetNumberField(TEXT("y"), Y);
+				ValueObj->TryGetNumberField(TEXT("scaleX"), ScaleX);
+				ValueObj->TryGetNumberField(TEXT("scaleY"), ScaleY);
+				CalibrationOffsets.Add(FString(Pair.Key), FVector2D(X, Y));
+				CalibrationScales.Add(FString(Pair.Key), FVector2D(ScaleX, ScaleY));
+			}
+		}
+	}
+}
+
+void SSimCopterToolFlaps::SaveCalibrationData() const
+{
+	TSharedRef<FJsonObject> JsonObject = MakeShared<FJsonObject>();
+	JsonObject->SetNumberField(TEXT("GlobalScale"), Scale);
+
+	for (const auto& Pair : CalibrationOffsets)
+	{
+		TSharedRef<FJsonObject> EntryObj = MakeShared<FJsonObject>();
+		EntryObj->SetNumberField(TEXT("x"), Pair.Value.X);
+		EntryObj->SetNumberField(TEXT("y"), Pair.Value.Y);
+		const FVector2D ElementScale = GetElementScale(Pair.Key);
+		EntryObj->SetNumberField(TEXT("scaleX"), ElementScale.X);
+		EntryObj->SetNumberField(TEXT("scaleY"), ElementScale.Y);
+		JsonObject->SetObjectField(Pair.Key, EntryObj);
+	}
+
+	FString OutputString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+	if (FJsonSerializer::Serialize(JsonObject, Writer))
+	{
+		const FString SavedPath = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("FlapLayoutCalibration.json"));
+		const FString ContentPath = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("FlapLayoutCalibration.json"));
+
+		FFileHelper::SaveStringToFile(OutputString, *SavedPath);
+		FFileHelper::SaveStringToFile(OutputString, *ContentPath);
+		UE_LOG(LogTemp, Log, TEXT("SimCopter Flap Calibration saved to '%s'."), *SavedPath);
+	}
+}
+
+void SSimCopterToolFlaps::AddAtPageKey(
+	SConstraintCanvas& Canvas,
+	const FString& Key,
+	const float DefaultX,
+	const float DefaultY,
+	const float Width,
+	const float Height,
+	TSharedRef<SWidget> Content)
+{
+	ElementDefaultBounds.Add(Key, FVector4f(DefaultX, DefaultY, Width, Height));
+
+	const FVector2D Offset = GetElementOffset(Key);
+	const FVector2D ElementScale = GetElementScale(Key);
+	const float PageX = DefaultX + Offset.X;
+	const float PageY = DefaultY + Offset.Y;
+	const float PageW = Width * ElementScale.X;
+	const float PageH = Height * ElementScale.Y;
+
+	TSharedRef<SWidget> WrappedContent = SNew(SSimCopterCalibratableBox)
+		.ElementKey(Key)
+		.OwnerFlaps(this)
+		[
+			Content
+		];
+
+	SConstraintCanvas::FSlot* Slot = nullptr;
+	Canvas.AddSlot()
+		.Expose(Slot)
+		.Offset(FMargin(PageX * Scale, PageY * Scale, PageW * Scale, PageH * Scale))
+		.Alignment(FVector2D::ZeroVector)
+		[
+			WrappedContent
+		];
+
+	if (Slot != nullptr)
+	{
+		ElementCanvasSlots.Add(Key, Slot);
+	}
 }
 
 void SSimCopterToolFlaps::AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const
@@ -329,37 +1083,49 @@ void SSimCopterToolFlaps::AddFlapButton(SConstraintCanvas& Canvas, const FButton
 	ButtonStyles.Add(Style);
 	Hotspot->SetButtonStyle(&Style.Get());
 
-	// The pressed sprite, at its own origin rather than the hit box's: the click boxes carry a
-	// pixel or two of slop, and a rocker's halves each take half the sprite.
+	TSharedRef<SConstraintCanvas> ButtonCanvas = SNew(SConstraintCanvas);
+
 	const FIntRect& Frame = Button.Art.PressedFrame;
 	if (const FSlateBrush* Pressed = GetBrush(Button.Art.FileName, Frame))
 	{
 		TWeakPtr<SButton> WeakHotspot = Hotspot;
-		AddAtPage(Canvas,
-			static_cast<float>(Button.ArtOrigin.X),
-			static_cast<float>(Button.ArtOrigin.Y),
-			static_cast<float>(Frame.Width()),
-			static_cast<float>(Frame.Height()),
-			SNew(SImage)
-			.Image(Pressed)
-			// Hidden, never Collapsed: the canvas slot keeps its geometry either way, and the
-			// sprite must not take the click that is lighting it.
-			.Visibility(TAttribute<EVisibility>::CreateLambda([WeakHotspot]()
-			{
-				const TSharedPtr<SButton> Held = WeakHotspot.Pin();
-				return (Held.IsValid() && Held->IsPressed())
-					? EVisibility::HitTestInvisible
-					: EVisibility::Hidden;
-			})));
+		const float ArtRelX = static_cast<float>(Button.ArtOrigin.X - Button.Hit.Min.X);
+		const float ArtRelY = static_cast<float>(Button.ArtOrigin.Y - Button.Hit.Min.Y);
+
+		ButtonCanvas->AddSlot()
+			.Offset(FMargin(ArtRelX * Scale, ArtRelY * Scale, static_cast<float>(Frame.Width()) * Scale, static_cast<float>(Frame.Height()) * Scale))
+			.Alignment(FVector2D::ZeroVector)
+			[
+				SNew(SImage)
+				.Image(Pressed)
+				.Visibility(TAttribute<EVisibility>::CreateLambda([this, WeakHotspot]()
+				{
+					if (bCalibrationMode)
+					{
+						return EVisibility::HitTestInvisible;
+					}
+					const TSharedPtr<SButton> Held = WeakHotspot.Pin();
+					return (Held.IsValid() && Held->IsPressed())
+						? EVisibility::HitTestInvisible
+						: EVisibility::Hidden;
+				}))
+			];
 	}
 
-	// Added last so it sits over the pressed sprite and takes the click.
-	AddAtPage(Canvas,
+	ButtonCanvas->AddSlot()
+		.Offset(FMargin(0.0f, 0.0f, static_cast<float>(Button.Hit.Width()) * Scale, static_cast<float>(Button.Hit.Height()) * Scale))
+		.Alignment(FVector2D::ZeroVector)
+		[
+			Hotspot
+		];
+
+	const FString Key = FString::Printf(TEXT("Button_%s"), GetActionName(Action));
+	AddAtPageKey(Canvas, Key,
 		static_cast<float>(Button.Hit.Min.X),
 		static_cast<float>(Button.Hit.Min.Y),
 		static_cast<float>(Button.Hit.Width()),
 		static_cast<float>(Button.Hit.Height()),
-		Hotspot);
+		ButtonCanvas);
 
 	// The megaphone's button opens a menu instead of firing, so it needs an anchor under its
 	// hit box to hang the menu from.
@@ -384,7 +1150,14 @@ void SSimCopterToolFlaps::AddCanisterCounter(SConstraintCanvas& Canvas)
 {
 	using namespace SimCopterFlapLayout::CanisterCounter;
 
-	const FSlateBrush* Empty = GetBrush(GetLampFileName(), GetLampEmptyFrame());
+	USimCopterHangarArt* ArtObject = Art.Get();
+	const FSlateBrush* Empty = ArtObject != nullptr
+		? ArtObject->GetBitmap(TEXT("red-light.png"), /*bColorKeyed=*/false)
+		: nullptr;
+	if (Empty == nullptr)
+	{
+		Empty = GetBrush(GetLampFileName(), GetLampEmptyFrame());
+	}
 	if (Empty == nullptr)
 	{
 		return;
@@ -393,8 +1166,10 @@ void SSimCopterToolFlaps::AddCanisterCounter(SConstraintCanvas& Canvas)
 	for (int32 Index = 0; Index < LampCount; ++Index)
 	{
 		const FIntPoint Origin = GetLampOrigin(Index);
-		AddAtPage(
+		const FString Key = FString::Printf(TEXT("CanisterLamp_%d"), Index);
+		AddAtPageKey(
 			Canvas,
+			Key,
 			static_cast<float>(Origin.X),
 			static_cast<float>(Origin.Y),
 			static_cast<float>(LampSize),
@@ -408,6 +1183,10 @@ void SSimCopterToolFlaps::AddCanisterCounter(SConstraintCanvas& Canvas)
 
 EVisibility SSimCopterToolFlaps::GetCanisterLampVisibility(const int32 LampIndex) const
 {
+	if (bCalibrationMode)
+	{
+		return EVisibility::HitTestInvisible;
+	}
 	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
 	if (Helicopter == nullptr)
 	{
@@ -441,8 +1220,10 @@ void SSimCopterToolFlaps::AddWaterGauge(SConstraintCanvas& Canvas)
 	for (int32 Index = 0; Index < CellCount; ++Index)
 	{
 		const FIntPoint Origin = GetCellOrigin(Index);
-		AddAtPage(
+		const FString Key = FString::Printf(TEXT("WaterGauge_%d"), Index);
+		AddAtPageKey(
 			Canvas,
+			Key,
 			static_cast<float>(Origin.X),
 			static_cast<float>(Origin.Y),
 			static_cast<float>(CellWidth),
@@ -459,6 +1240,11 @@ const FSlateBrush* SSimCopterToolFlaps::GetWaterGaugeCellBrush(const int32 CellI
 {
 	using namespace SimCopterFlapLayout::WaterGauge;
 
+	if (bCalibrationMode)
+	{
+		return WaterGaugeBrushes[0] != nullptr ? WaterGaugeBrushes[0] : WaterGaugeBrushes[2];
+	}
+
 	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
 	const int32 Level = Helicopter != nullptr
 		? GetLevel(Helicopter->GetBucketWaterPounds(), Helicopter->GetMaxLoadPounds())
@@ -468,6 +1254,10 @@ const FSlateBrush* SSimCopterToolFlaps::GetWaterGaugeCellBrush(const int32 CellI
 
 EVisibility SSimCopterToolFlaps::GetFlapVisibility(const int32 EquipmentMask) const
 {
+	if (bCalibrationMode)
+	{
+		return EVisibility::SelfHitTestInvisible;
+	}
 	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
 	if (Helicopter == nullptr)
 	{
@@ -589,9 +1379,9 @@ void SSimCopterToolFlaps::ReleaseAction(const EAction Action)
 	case EAction::HarnessLower:
 		Helicopter->SetWinchHeldInput(/*bHarness=*/true, 0);
 		break;
-	case EAction::TearGasFire:
 	case EAction::ApacheGunFire:
 	case EAction::ApacheMissileFire:
+	case EAction::TearGasFire:
 		Helicopter->StopPrimaryToolUse();
 		break;
 	default:
@@ -711,14 +1501,14 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 	//
 	// Both strips are right-aligned in the column, so the two buttons are placed by their
 	// distance from the RIGHT edge to line up with DISPATCH and CLEAR above them.
-	AddAtPage(*Canvas, ApachePageWidth - MissileButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
+	AddAtPageKey(*Canvas, TEXT("Apache_MissileBtn"), ApachePageWidth - MissileButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
 		MakeHeldArtButton(OctagonFile, OctagonNormal, OctagonPressed,
 			SimCopterFlapLayout::EAction::ApacheMissileFire,
 			NSLOCTEXT("SimCopterFlaps", "MissileTip", "Fire a missile")));
 	AddTextAtPage(*Canvas, ApachePageWidth - MissileButtonInsetFromRight + 8.5f, 35.0f, 120.0f, 20.0f,
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Missile", "MISSILE"), LabelFontSize));
 
-	AddAtPage(*Canvas, ApachePageWidth - GunButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
+	AddAtPageKey(*Canvas, TEXT("Apache_GunBtn"), ApachePageWidth - GunButtonInsetFromRight, 4.0f, 17.0f, 24.0f,
 		MakeHeldArtButton(OctagonFile, OctagonNormal, OctagonPressed,
 			SimCopterFlapLayout::EAction::ApacheGunFire,
 			NSLOCTEXT("SimCopterFlaps", "GunTip", "Hold to fire the machine gun")));
@@ -734,6 +1524,10 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 
 EVisibility SSimCopterToolFlaps::GetApacheFlapVisibility() const
 {
+	if (bCalibrationMode)
+	{
+		return EVisibility::SelfHitTestInvisible;
+	}
 	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
 	// Both weapons come from the airframe, so one test covers the strip.
 	return (Helicopter != nullptr &&
@@ -756,13 +1550,13 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 	}
 
 	// The service selector: one arrow sprite, turned each way.
-	AddAtPage(*Canvas, 8.0f, 12.0f,
+	AddAtPageKey(*Canvas, TEXT("Dispatch_PrevService"), 8.0f, 12.0f,
 		static_cast<float>(RockerArrowWidth), static_cast<float>(RockerArrowHeight),
 		MakeArtButton(RockerFile, RockerArrowNormal, RockerArrowPressed, ESimCopterArtRotation::Clockwise90,
 			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatchServiceStep, -1),
 			NSLOCTEXT("SimCopterFlaps", "PrevService", "Previous service")));
 
-	AddAtPage(*Canvas, 26.0f, 12.0f, 74.0f, 17.0f,
+	AddAtPageKey(*Canvas, TEXT("Dispatch_ServiceBox"), 26.0f, 12.0f, 74.0f, 17.0f,
 		SNew(SBorder)
 		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
 		.BorderBackgroundColor(FLinearColor(0.02f, 0.02f, 0.03f, 0.85f))
@@ -779,7 +1573,7 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 		.ColorAndOpacity(FlapReadout)
 		.Font(FlapFont(ReadoutFontSize)));
 
-	AddAtPage(*Canvas, 104.0f, 12.0f,
+	AddAtPageKey(*Canvas, TEXT("Dispatch_NextService"), 104.0f, 12.0f,
 		static_cast<float>(RockerArrowWidth), static_cast<float>(RockerArrowHeight),
 		MakeArtButton(RockerFile, RockerArrowNormal, RockerArrowPressed, ESimCopterArtRotation::CounterClockwise90,
 			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatchServiceStep, 1),
@@ -787,14 +1581,14 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 
 	// Dispatch and Clear, spaced so both labels clear each other and neither button
 	// runs into the right edge's dash corner, which starts at DispatchPageWidth - 40.
-	AddAtPage(*Canvas, 126.0f, 4.0f, 17.0f, 24.0f,
+	AddAtPageKey(*Canvas, TEXT("Dispatch_DispatchBtn"), 126.0f, 4.0f, 17.0f, 24.0f,
 		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
 			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatch),
 			NSLOCTEXT("SimCopterFlaps", "DispatchTip", "Dispatch the selected service to the spotlight")));
 	AddTextAtPage(*Canvas, 134.5f, 35.0f, 120.0f, 20.0f,
 		MakeLabel(NSLOCTEXT("SimCopterFlaps", "Dispatch", "DISPATCH"), LabelFontSize));
 
-	AddAtPage(*Canvas, 168.0f, 4.0f, 17.0f, 24.0f,
+	AddAtPageKey(*Canvas, TEXT("Dispatch_ClearBtn"), 168.0f, 4.0f, 17.0f, 24.0f,
 		MakeArtButton(OctagonFile, OctagonNormal, OctagonPressed, ESimCopterArtRotation::None,
 			FOnClicked::CreateSP(this, &SSimCopterToolFlaps::HandleDispatchClear),
 			NSLOCTEXT("SimCopterFlaps", "ClearTip", "Immediately clear all dispatched vehicles")));

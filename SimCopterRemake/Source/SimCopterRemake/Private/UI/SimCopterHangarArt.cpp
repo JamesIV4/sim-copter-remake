@@ -83,6 +83,17 @@ FString GetUpscaledSlateFileName(const FString& OriginalFileName)
 			return TEXT("SLIDERBH-no-blue.png");
 		}
 	}
+	else if (BaseName.StartsWith(TEXT("red-light"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("red-light-upscaled.png"))))
+		{
+			return TEXT("red-light-upscaled.png");
+		}
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("red-light.png"))))
+		{
+			return TEXT("red-light.png");
+		}
+	}
 
 	const FString Candidate = BaseName + TEXT("-upscaled.png");
 	if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), Candidate)))
@@ -370,7 +381,7 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 	}
 
 	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
-	if (!UpscaledName.IsEmpty())
+	if (!UpscaledName.IsEmpty() && Rotation == ESimCopterArtRotation::None)
 	{
 		if (const FSlateBrush* UpscaledBrush = GetBundledSlateImage(UpscaledName))
 		{
@@ -426,6 +437,11 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 				{
 					OrigWidth = 192.0f;
 					OrigHeight = 32.0f;
+				}
+				else if (BaseName.StartsWith(TEXT("red-light"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 33.0f;
+					OrigHeight = 34.0f;
 				}
 			}
 
