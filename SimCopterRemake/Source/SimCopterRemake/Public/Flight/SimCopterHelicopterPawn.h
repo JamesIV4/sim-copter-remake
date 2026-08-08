@@ -935,7 +935,7 @@ protected:
 	// far too small on a modern display, so the art is up-filtered. Lettering is not scaled with
 	// it; SSimCopterToolFlaps lays text out in screen pixels.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.5", ClampMax = "6.0"))
-	float ToolFlapScale = 2.0f;
+	float ToolFlapScale = 1.768292f;
 
 	// USimCopterSettings::OnHudScaleChanged, so the Settings screen's HUD Scale row rebuilds the
 	// cockpit while the player is looking at it.
@@ -1649,6 +1649,10 @@ private:
 	TSharedPtr<SWidget> HelicopterDebugPanel;
 	TSharedPtr<SWidget> ToolFlapsWidget;
 	TSharedPtr<SSimCopterToolFlaps> ToolFlapsPanel;
+	// The flap calibration panel is a viewport layer of its own, not part of the flap column: the
+	// column is right-aligned and only as wide as a flap, so a panel hosted inside it can only ever
+	// be centred on the column. It lives top-middle of the screen, above the flaps' Z order.
+	TSharedPtr<SWidget> FlapCalibrationPanelWidget;
 	// Fixed-pixel aiming reticle hosted by CrosshairComponent at the mode-specific world point.
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;

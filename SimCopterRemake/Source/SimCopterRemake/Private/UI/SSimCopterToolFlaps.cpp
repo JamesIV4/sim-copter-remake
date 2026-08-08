@@ -343,8 +343,6 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 
 	const FMargin PanelGap(0.0f, 0.0f, 0.0f, PanelGapPixels);
 
-	TSharedRef<SWidget> DebugPanel = BuildCalibrationDebugPanel();
-
 	TSharedRef<SWidget> DispatchPanel = BuildDispatchFlap();
 	MissionMarkerAvoidancePanels.Add(DispatchPanel);
 	Column->AddSlot()
@@ -380,22 +378,11 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 			];
 	}
 
+	// Nothing but the flap column: the calibration panel is hosted separately, top-middle of the
+	// screen, because this widget is one flap wide and pinned to the right edge.
 	ChildSlot
 	[
-		SNew(SOverlay)
-		+ SOverlay::Slot()
-		.HAlign(HAlign_Center)
-		.VAlign(VAlign_Top)
-		.Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
-		[
-			DebugPanel
-		]
-		+ SOverlay::Slot()
-		.HAlign(HAlign_Right)
-		.VAlign(VAlign_Top)
-		[
-			Column
-		]
+		Column
 	];
 }
 
@@ -461,10 +448,98 @@ FReply SSimCopterToolFlaps::OnKeyDown(const FGeometry& MyGeometry, const FKeyEve
 	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
 }
 
+FVector2D SSimCopterToolFlaps::GetAuthoritativeDefaultOffset(const FString& Key)
+{
+	if (Key.Equals(TEXT("Button_Megaphone"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.0f, -0.56551747570433109f);
+	}
+	if (Key.Equals(TEXT("Button_Raise harness"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(1.6965524271129933f, 0.0f);
+	}
+	if (Key.Equals(TEXT("Button_Lower harness"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(1.6965524271129933f, 0.56551747570433109f);
+	}
+	if (Key.Equals(TEXT("Button_Raise bucket"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(4.3586223358907823f, 0.0f);
+	}
+	if (Key.Equals(TEXT("Button_Lower bucket"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(4.3586223358907823f, 0.20000000298023224f);
+	}
+	if (Key.Equals(TEXT("Button_Dump bucket"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(3.3931048542259865f, 0.0f);
+	}
+	if (Key.Equals(TEXT("Button_Water cannon"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(1.1310349514086622f, 0.0f);
+	}
+	if (Key.Equals(TEXT("Button_Fire tear gas"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(2.2620699028173243f, 0.0f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_0"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.20000000298023224f, 0.0f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_1"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.46551747421421497f, 0.0f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_2"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.56551747570433109f, 0.0f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_3"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.63103494395808157f, 0.0f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_4"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(1.0310349499185461f, 0.0f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_5"), ESearchCase::IgnoreCase) ||
+		Key.Equals(TEXT("CanisterLamp_6"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.40000000596046448f, -0.20000000298023224f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_7"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.19999998807907104f, -0.20000000298023224f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_8"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.69999999552965164f, -0.20000000298023224f);
+	}
+	if (Key.Equals(TEXT("CanisterLamp_9"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(0.79999999701976776f, -0.20000000298023224f);
+	}
+	return FVector2D::ZeroVector;
+}
+
+FVector2D SSimCopterToolFlaps::GetAuthoritativeDefaultScale(const FString& Key)
+{
+	if (Key.StartsWith(TEXT("CanisterLamp_"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(1.1000000238418579f, 1.1000000238418579f);
+	}
+	if (Key.Equals(TEXT("Dispatch_PrevService"), ESearchCase::IgnoreCase) ||
+		Key.Equals(TEXT("Dispatch_NextService"), ESearchCase::IgnoreCase))
+	{
+		return FVector2D(1.0f, 0.79999995231628418f);
+	}
+	return FVector2D(1.0f, 1.0f);
+}
+
 FVector2D SSimCopterToolFlaps::GetElementOffset(const FString& Key) const
 {
 	const FVector2D* Found = CalibrationOffsets.Find(Key);
-	return Found != nullptr ? *Found : FVector2D::ZeroVector;
+	return Found != nullptr ? *Found : GetAuthoritativeDefaultOffset(Key);
 }
 
 void SSimCopterToolFlaps::SetElementOffset(const FString& Key, const FVector2D& Offset)
@@ -493,7 +568,7 @@ void SSimCopterToolFlaps::SetElementOffset(const FString& Key, const FVector2D& 
 FVector2D SSimCopterToolFlaps::GetElementScale(const FString& Key) const
 {
 	const FVector2D* Found = CalibrationScales.Find(Key);
-	return Found != nullptr ? *Found : FVector2D(1.0f, 1.0f);
+	return Found != nullptr ? *Found : GetAuthoritativeDefaultScale(Key);
 }
 
 void SSimCopterToolFlaps::SetElementScale(const FString& Key, const FVector2D& ElementScale)
@@ -588,8 +663,8 @@ void SSimCopterToolFlaps::ResetSelectedElement()
 	{
 		return;
 	}
-	SetElementOffset(SelectedCalibrationKey, FVector2D::ZeroVector);
-	SetElementScale(SelectedCalibrationKey, FVector2D(1.0f, 1.0f));
+	SetElementOffset(SelectedCalibrationKey, GetAuthoritativeDefaultOffset(SelectedCalibrationKey));
+	SetElementScale(SelectedCalibrationKey, GetAuthoritativeDefaultScale(SelectedCalibrationKey));
 	SaveCalibrationData();
 }
 

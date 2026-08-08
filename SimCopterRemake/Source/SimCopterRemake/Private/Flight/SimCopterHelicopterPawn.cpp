@@ -3495,14 +3495,38 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget(const bool bForceCreate)
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(ToolFlapsWidget.ToSharedRef(), 24);
+
+	// The calibration panel gets a layer of its own so it is not laid out inside the flap column,
+	// which is right-aligned and only as wide as one flap. It collapses itself when calibration
+	// mode is off, and sits above the flaps' Z order so its buttons are never behind one.
+	FlapCalibrationPanelWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
+		[
+			ToolFlaps->BuildCalibrationDebugPanel()
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(FlapCalibrationPanelWidget.ToSharedRef(), 27);
 }
 
 void ASimCopterHelicopterPawn::RemoveToolFlapsWidget()
 {
-	if (GEngine != nullptr && GEngine->GameViewport != nullptr && ToolFlapsWidget.IsValid())
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(ToolFlapsWidget.ToSharedRef());
+		// The panel's delegates bind to the flap widget, so it goes first.
+		if (FlapCalibrationPanelWidget.IsValid())
+		{
+			GEngine->GameViewport->RemoveViewportWidgetContent(FlapCalibrationPanelWidget.ToSharedRef());
+		}
+		if (ToolFlapsWidget.IsValid())
+		{
+			GEngine->GameViewport->RemoveViewportWidgetContent(ToolFlapsWidget.ToSharedRef());
+		}
 	}
+	FlapCalibrationPanelWidget.Reset();
 	ToolFlapsPanel.Reset();
 	ToolFlapsWidget.Reset();
 }
