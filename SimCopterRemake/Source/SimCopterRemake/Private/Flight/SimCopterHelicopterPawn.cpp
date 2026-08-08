@@ -2841,6 +2841,46 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	return true;
 }
 
+void ASimCopterHelicopterPawn::WriteOffPassengersInDestroyedHelicopter()
+{
+	// FUN_004c0ba0 walks the seat manifest while FUN_004bfb20 removes from it. Copy the real-person
+	// pointers first so removing one seat cannot invalidate the next record we still need to visit.
+	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> Occupants;
+	Occupants.Reserve(MissionPassengerSlots.Num());
+	for (const FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
+	{
+		if (Slot.Person.IsValid())
+		{
+			Occupants.AddUnique(Slot.Person);
+		}
+	}
+
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& Occupant : Occupants)
+	{
+		if (ASimCopterGroundAgent* Person = Occupant.Get())
+		{
+			Person->WriteOffInDestroyedHelicopter();
+		}
+	}
+
+	// Legacy pointerless seats cannot post a person-owned mission event, but they must not ride the
+	// repaired aircraft back to the airport. New mission spawns always board their real actor.
+	MissionPassengerSlots.Reset();
+	SyncPassengerFlightModelCount();
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ReactPassengersToDamagingImpact()
+{
+	for (const FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
+	{
+		if (ASimCopterGroundAgent* Person = Slot.Person.Get())
+		{
+			Person->ReactToCabinImpact();
+		}
+	}
+}
+
 // The deck a passenger steps out ONTO: beside the aircraft, at the aircraft's own height. The
 // caller lifts it by the person's capsule half height to place them and lets gravity close any
 // remaining gap - stepping out is a drop, however short.
@@ -6230,6 +6270,19 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	// frame, so a bPadBounce raised here used to be wiped before anything ever played it. That is
 	// why flying into a building was silent even once the impact itself started firing.
 	ApplyFlightModelToActor(DeltaSeconds);
+	const bool bDamagingImpact =
+		LastFlightEvents.DamageTaken > 0 &&
+		(LastFlightEvents.bGroundBounce || LastFlightEvents.bSplashBounce || LastFlightEvents.bPadBounce);
+	if (bDamagingImpact && !LastFlightEvents.bStartedDying)
+	{
+		ReactPassengersToDamagingImpact();
+	}
+	if (LastFlightEvents.bStartedDying)
+	{
+		// SCHOOK: FUN_00484d20 calls FUN_004c0ba0(1) on the transition into the destroyed state.
+		// Ordinary impacts only damage the aircraft; this terminal transition writes off its cabin.
+		WriteOffPassengersInDestroyedHelicopter();
+	}
 
 	// Before anything downstream consumes or clears the events.
 	PlayFlightEventAudio(LastFlightEvents);

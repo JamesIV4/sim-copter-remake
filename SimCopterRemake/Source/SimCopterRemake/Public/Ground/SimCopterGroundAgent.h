@@ -379,7 +379,16 @@ public:
 		bool bAsHarnessRider,
 		bool bAllowAirborneCabinTransfer = false,
 		bool bAsCarriedBody = false);
-	bool AlightFromCarrier();
+	bool AlightFromCarrier(bool bPlayDoorSound = true);
+	// SCHOOK: HelicopterWriteOffPassengers 0x004c0ba0. A helicopter entering its destroyed state
+	// writes off every occupied seat, including medevac patients that ordinary health death keeps
+	// aboard for hospital delivery.
+	void WriteOffInDestroyedHelicopter();
+	// Runtime-observed cabin response to a damaging helicopter impact. Healthy passengers flash
+	// the frightened portrait; a medevac patient loses one normal deterioration quantum and its
+	// already-playing EKG is re-tuned immediately.
+	void ReactToCabinImpact();
+	static int32 ComputeMedevacHealthAfterCabinImpact(int32 Health, int32 DifficultyTier);
 
 	// Person states 5/7/8/0xe: an emergency worker the dispatcher put on the ground, not somebody
 	// the player is being scored on. They carry the record they were sent to only so their own

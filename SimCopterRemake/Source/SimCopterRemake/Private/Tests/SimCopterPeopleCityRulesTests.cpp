@@ -63,6 +63,15 @@ bool FSimCopterPeopleCityRulesClassMapTest::RunTest(const FString& Parameters)
 	RandomState = 0x1234;
 	TestEqual(TEXT("FUN_004c2450 candidate class"), FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(12, RandomState), 5);
 
+	// FUN_004c3eb0 passes -1 for an unspecified mission-person class. FUN_004c71c0 resolves it
+	// through FUN_004c7190; leaving the field at its C++ default made every fare class 0.
+	RandomState = 0x1234;
+	TestEqual(TEXT("FUN_004c7190 unspecified class"), FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(RandomState), 2);
+	RandomState = 1;
+	TestEqual(TEXT("FUN_004c7190 varies mission people"), FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(RandomState), 6);
+	RandomState = 3;
+	TestEqual(TEXT("FUN_004c7190 may choose class zero"), FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(RandomState), 0);
+
 	// FUN_004c71c0: behavior class -> figure (dog/cow/celebrity classes included).
 	TestEqual(TEXT("class 0 figure"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(0), FString(TEXT("Blonde")));
 	TestEqual(TEXT("class 10 figure is the dog"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(10), FString(TEXT("2DOGG")));

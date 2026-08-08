@@ -1462,10 +1462,11 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	// pickup teleported them into a seat, and that pickup is gone. The original passes no
 	// behaviour class at all here - FUN_004c3eb0(-1, 4, ...).
 	Person->InitialPersonState = SpawnMode;
-	if (PersonState != -1)
-	{
-		Person->SetInitialBehaviorClass(PersonState);
-	}
+	// -1 is not class zero. FUN_004c71c0 resolves it through FUN_004c7190, giving ordinary
+	// mission passengers the same varied bodies, heads and voice pitches as the shipped game.
+	Person->SetInitialBehaviorClass(PersonState != -1
+		? PersonState
+		: FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(PeopleRandomState));
 	if (SpawnMode == 3)
 	{
 		// FUN_004c4190's spawn-mode-3 arm writes 7 to person+0x150 before placement. This is the
@@ -1878,10 +1879,9 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
 		}
 
 		Person->InitialPersonState = SpawnMode;
-		if (PersonState != -1)
-		{
-			Person->SetInitialBehaviorClass(PersonState);
-		}
+		Person->SetInitialBehaviorClass(PersonState != -1
+			? PersonState
+			: FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(PeopleRandomState));
 
 		const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
 		Person->MissionEventId = EventId;
@@ -2616,10 +2616,9 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnFallingMissionPassenge
 	}
 
 	Person->InitialPersonState = SpawnMode;
-	if (PersonState != -1)
-	{
-		Person->SetInitialBehaviorClass(PersonState);
-	}
+	Person->SetInitialBehaviorClass(PersonState != -1
+		? PersonState
+		: FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(PeopleRandomState));
 
 	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
 	Person->MissionEventId = EventId;
