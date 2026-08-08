@@ -32,8 +32,8 @@ namespace SimCopterSound
 		ESoundDir Dir = ESoundDir::Root;
 	};
 
-	/** 0x00..0x81 inclusive: every id FUN_00424b70 registers. */
-	inline constexpr int32 NumSlots = 0x82;
+	/** 0x00..0x83 inclusive: every id FUN_00424b70 registers. */
+	inline constexpr int32 NumSlots = 0x84;
 
 	/**
 	 * Slots 0x71..0x7e are a bank, not a fixed sound. FUN_00424b70 seeds all fourteen with

@@ -146,6 +146,8 @@ namespace
 		{ TEXT("BLIP1"), ESoundDir::Root },         // 0x7f
 		{ TEXT("NOEQUIP"), ESoundDir::Root },       // 0x80
 		{ TEXT("FIRESTAR"), ESoundDir::Root },      // 0x81
+		{ TEXT("D1019"), ESoundDir::Language },     // 0x82
+		{ TEXT("D1020"), ESoundDir::Language },     // 0x83
 	};
 
 	// SCHOOK: PersonSpeak 0x004c5210 (the `switch (param_2)` clip picker)
