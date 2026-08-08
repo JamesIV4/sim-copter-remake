@@ -45,6 +45,11 @@ namespace SimCopterSound
 	inline constexpr int32 VoiceBankLast = 0x7e;
 	inline constexpr int32 VoiceBankCount = VoiceBankLast - VoiceBankFirst + 1;
 
+	/** The player keeps the original six-tile reach; NPC footsteps remain shorter-range local detail. */
+	inline constexpr float PlayerFootstepMaxRangeCm = 2400.0f;
+	inline constexpr float PedestrianFootstepMaxRangeCm = 800.0f;
+	inline constexpr float PedestrianFootstepVolumeMultiplier = 1.0f;
+
 	/** Named ids, in registration order. Only ids the port actually references are named. */
 	enum : int32
 	{

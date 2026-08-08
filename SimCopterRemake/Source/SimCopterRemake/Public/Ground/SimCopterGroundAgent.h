@@ -10,6 +10,7 @@
 #include "SimCopterGroundAgent.generated.h"
 
 class ASimCopterHelicopterPawn;
+class UAudioComponent;
 class UCapsuleComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
@@ -765,6 +766,8 @@ private:
 	// person+0x198: 1 when the current voice was started 2D, which is how a looping EKG stays
 	// audible from the cockpit while a 3D moan follows the person around.
 	bool bVoiceIsNonPositional = false;
+	// Polyphonic walking loop, deliberately separate from the dialogue/reaction voice-bank slot.
+	TWeakObjectPtr<UAudioComponent> WalkingSoundComponent;
 	bool bMissionWavesWhenIdle = false;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
@@ -802,6 +805,9 @@ private:
 	int32 ResolveHeadImageIndex() const;
 	// Keeps a playing 3D voice on this person and hands a finished slot back to the bank.
 	void UpdatePersonVoice();
+	// FUN_004c6970's normal-move audio half: own voice on while moving, off at speed zero.
+	void UpdateWalkingVoice(int32 MoveSpeed);
+	void StopWalkingVoice();
 	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);
 
 	// Original behavior-VM state (pedestrians only).

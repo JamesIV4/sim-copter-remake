@@ -3,8 +3,10 @@
 #include "Ground/SimCopterOnFootPawn.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
+#include "Audio/SimCopterSoundTable.h"
 #include "Camera/CameraComponent.h"
 #include "City/SimCity2000CityActor.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -218,6 +220,7 @@ void ASimCopterOnFootPawn::PossessedBy(AController* NewController)
 
 void ASimCopterOnFootPawn::UnPossessed()
 {
+	StopWalkingSound();
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		PlayerController->FlushPressedKeys();
@@ -227,6 +230,7 @@ void ASimCopterOnFootPawn::UnPossessed()
 
 void ASimCopterOnFootPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	StopWalkingSound();
 	RemoveControllerOverlayWidget();
 	Super::EndPlay(EndPlayReason);
 }
@@ -249,6 +253,7 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 	// Before the body sprite: it folds WaterVisualOffsetCm into the component Z it writes.
 	UpdateWaterSubmersion(DeltaSeconds);
 	UpdateBodySprite(DeltaSeconds);
+	UpdateWalkingSound();
 	UpdateCamera(DeltaSeconds);
 
 	// The listener has to follow whoever the player is. Every distance in the mixer is measured
@@ -263,6 +268,53 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 				CameraComponent->GetComponentRotation());
 		}
 	}
+}
+
+// SCHOOK: PersonPostMove 0x004c6970 + PersonPlayVoice 0x004c5210.
+void ASimCopterOnFootPawn::UpdateWalkingSound()
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	const UCharacterMovementComponent* Move = GetCharacterMovement();
+	const float SpeedAlpha = GetVelocity().Size2D() / FMath::Max(1.0f, WalkSpeedCmPerSec);
+	const bool bWalking = IsLocallyControlled() && Move != nullptr && Move->IsMovingOnGround() && SpeedAlpha > 0.12f;
+	if (!bWalking || Audio == nullptr)
+	{
+		StopWalkingSound();
+		return;
+	}
+
+	// FUN_004c1b50 restores the player-person to class 19 (pilot), whose own voice from
+	// FUN_004c71c0 is event 0x29: xFtBoots.wav. The remake currently exposes one walk gait, so
+	// use the original walk selector's speed 4 (speed 8 is its separate 1Run arm).
+	constexpr int32 OriginalWalkSpeed = 4;
+	UAudioComponent* WalkingSound = WalkingSoundComponent.Get();
+	if (WalkingSound == nullptr || !WalkingSound->IsPlaying())
+	{
+		WalkingSound = Audio->PlayAttachedVoiceLoop(
+			SimCopterSound::VOX_FOOTSTEPS_BOOTS,
+			GetRootComponent(),
+			SimCopterSound::GetWalkPacedFrequencyHz(OriginalWalkSpeed),
+			SimCopterSound::PlayerFootstepMaxRangeCm);
+		WalkingSoundComponent = WalkingSound;
+		return;
+	}
+
+	Audio->SetAttachedVoiceLoopFrequencyHz(
+		WalkingSound,
+		SimCopterSound::VOX_FOOTSTEPS_BOOTS,
+		SimCopterSound::GetWalkPacedFrequencyHz(OriginalWalkSpeed));
+}
+
+void ASimCopterOnFootPawn::StopWalkingSound()
+{
+	if (UAudioComponent* WalkingSound = WalkingSoundComponent.Get())
+	{
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+		{
+			Audio->StopAttachedVoiceLoop(WalkingSound);
+		}
+	}
+	WalkingSoundComponent.Reset();
 }
 
 void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

@@ -101,6 +101,15 @@ void USimCopterAudioSubsystem::Deinitialize()
 		}
 	}
 	SlotComponents.Reset();
+	for (const TObjectPtr<UAudioComponent>& Component : AttachedVoiceLoopComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->Stop();
+			Component->DestroyComponent();
+		}
+	}
+	AttachedVoiceLoopComponents.Reset();
 
 	StopStandaloneSounds();
 
@@ -162,6 +171,18 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 				Component->DestroyComponent();
 			}
 			LooseComponents.RemoveAtSwap(Index);
+		}
+	}
+	for (int32 Index = AttachedVoiceLoopComponents.Num() - 1; Index >= 0; --Index)
+	{
+		UAudioComponent* Component = AttachedVoiceLoopComponents[Index].Get();
+		if (Component == nullptr || !Component->IsPlaying())
+		{
+			if (Component != nullptr)
+			{
+				Component->DestroyComponent();
+			}
+			AttachedVoiceLoopComponents.RemoveAtSwap(Index);
 		}
 	}
 
@@ -887,6 +908,100 @@ bool USimCopterAudioSubsystem::PlayVoiceEvent(
 	// FUN_004c5210's tail: param_4 chooses between FUN_0042a1f0 (3D, culled by distance) and
 	// FUN_0042a2a0 (2D, always at full volume).
 	return bNonPositional ? Play2D(Slot, Flags) : Play3D(Slot, WorldLocation, Flags);
+}
+
+UAudioComponent* USimCopterAudioSubsystem::PlayAttachedVoiceLoop(
+	const int32 VoiceEvent,
+	USceneComponent* AttachParent,
+	const int32 FrequencyHz,
+	const float MaxRangeCm,
+	const float VolumeMultiplier)
+{
+	UWorld* World = GetWorld();
+	const SimCopterSound::FVoiceEvent* Event = SimCopterSound::GetVoiceEvent(VoiceEvent);
+	if (World == nullptr || !bSoundsAvailable || AttachParent == nullptr || Event == nullptr || Event->Clips.Num() == 0 ||
+		MaxRangeCm <= 0.0f || FVector::DistSquared(AttachParent->GetComponentLocation(), ListenerLocation) >= FMath::Square(MaxRangeCm))
+	{
+		return nullptr;
+	}
+
+	const int32 Pick = FMath::RandRange(0, Event->Clips.Num() - 1);
+	const FSimCopterPcmClip* Clip = LoadClip(Event->Clips[Pick], SimCopterSound::ESoundDir::Root);
+	if (Clip == nullptr)
+	{
+		return nullptr;
+	}
+	USoundWaveProcedural* Wave = MakeWave(*Clip, /*bLoop=*/true, this);
+	if (Wave == nullptr)
+	{
+		return nullptr;
+	}
+
+	UAudioComponent* Component = NewObject<UAudioComponent>(this);
+	if (Component == nullptr)
+	{
+		return nullptr;
+	}
+	Component->bAutoActivate = false;
+	Component->bAutoDestroy = false;
+	Component->bAllowSpatialization = true;
+	Component->bOverrideAttenuation = true;
+	Component->bStopWhenOwnerDestroyed = true;
+	FSoundAttenuationSettings& Settings = Component->AttenuationOverrides;
+	Settings.bAttenuate = true;
+	Settings.bSpatialize = true;
+	Settings.bAttenuateWithLPF = false;
+	Settings.bEnableOcclusion = false;
+	Settings.bEnableReverbSend = false;
+	Settings.DistanceAlgorithm = EAttenuationDistanceModel::Linear;
+	Settings.AttenuationShape = EAttenuationShape::Sphere;
+	Settings.AttenuationShapeExtents = FVector::ZeroVector;
+	Settings.FalloffDistance = MaxRangeCm;
+	Component->SetSound(Wave);
+	Component->SetPitchMultiplier(FMath::Clamp(
+		static_cast<float>(FMath::Clamp(FrequencyHz, GMinFrequencyHz, GMaxFrequencyHz)) /
+		static_cast<float>(FMath::Max(Clip->SampleRate, 1)),
+		GMinPitchMultiplier,
+		GMaxPitchMultiplier));
+	Component->SetVolumeMultiplier(FMath::Max(0.0f, VolumeMultiplier) * VolumeIndexToGain(MasterVolume));
+	Component->RegisterComponentWithWorld(World);
+	Component->AttachToComponent(AttachParent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Component->Play();
+	AttachedVoiceLoopComponents.Add(Component);
+	return Component;
+}
+
+void USimCopterAudioSubsystem::SetAttachedVoiceLoopFrequencyHz(
+	UAudioComponent* Component,
+	const int32 VoiceEvent,
+	const int32 FrequencyHz)
+{
+	const SimCopterSound::FVoiceEvent* Event = SimCopterSound::GetVoiceEvent(VoiceEvent);
+	if (Component == nullptr || Event == nullptr || Event->Clips.Num() == 0)
+	{
+		return;
+	}
+	const FSimCopterPcmClip* Clip = LoadClip(Event->Clips[0], SimCopterSound::ESoundDir::Root);
+	if (Clip == nullptr)
+	{
+		return;
+	}
+	Component->SetPitchMultiplier(FMath::Clamp(
+		static_cast<float>(FMath::Clamp(FrequencyHz, GMinFrequencyHz, GMaxFrequencyHz)) /
+		static_cast<float>(FMath::Max(Clip->SampleRate, 1)),
+		GMinPitchMultiplier,
+		GMaxPitchMultiplier));
+}
+
+void USimCopterAudioSubsystem::StopAttachedVoiceLoop(UAudioComponent* Component)
+{
+	if (Component == nullptr)
+	{
+		return;
+	}
+	AttachedVoiceLoopComponents.Remove(Component);
+	Component->Stop();
+	Component->DestroyComponent();
 }
 
 // ---------------------------------------------------------------------------------------------
