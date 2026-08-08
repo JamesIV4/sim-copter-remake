@@ -171,6 +171,14 @@ immediately disturb the EKG. The remake therefore applies one **BHAV 281 deterio
 EKG retune path immediately. This provenance distinction matters: the amount is decoded, while the
 impact-to-patient edge is runtime-observed rather than a recovered direct attr34 store.
 
+The ordinary-passenger impact face is a **transient**, not a stored injury state. BHAV 292 waits
+10 ticks, calls BHAV 264 (whose own tail idles another three), and repeats; at the default 15 Hz
+behavior rate the displayed face is therefore reconsidered about every 13 ticks / 0.87 seconds.
+The immediate collision flinch now carries that deadline and then yields back to BHAV 264's exact
+damage-scaled-speed edges (`>250 -> 2`, `>125 -> 0`, otherwise `1`). This deadline is a backstop for
+a temporarily stalled passenger behavior stack. Medevac passengers are excluded because their
+BHAV 264 branch is health-driven and the collision really did lower their health.
+
 The transition to the destroyed helicopter state calls `FUN_004c0ba0(1)`, which sets every
 occupied person's written-off attribute, posts `EVT_PersonDied`, and removes them from the wreck
 through `FUN_004bfb20`. The port now performs that write-off when `bStartedDying` fires, before the
