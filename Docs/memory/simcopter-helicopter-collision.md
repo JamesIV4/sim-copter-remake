@@ -147,6 +147,23 @@ Damage is fidelity, not taste: the burn is now pinned to `OriginalFrameSeconds` 
 other rule before you reach for `ReferenceFrameSeconds` - the climb decay and the EMA window
 belong there, hit points do not.
 
+## Object-contact damage is a packet in the remake (2026-08-08)
+
+`FUN_00484d20` subtracts **4 HP on every 20 Hz frame** in which `FUN_0048ad50` still finds an
+overlapping object. That value is not a complete impact in the executable; it is one tick of a
+sustained AABB contact. The remake's swept capsule emits a single response and rate-limits it with
+the 0.2-second bounce timer, so copying the four-point tick literally reduced a collision to 4 HP.
+The starting Schweizer 300 has 495 HP and consequently needed 124 distinct impacts to be destroyed.
+
+For the remake's discrete swept hit, `NotifyObjectCollision` now uses the shared `[Heli Damage]`
+`Collision Subtract Val` of **27**, the same contact-level value used by the executable's
+rate-limited elevated-surface collision arm. The starting airframe therefore crosses below zero on
+impact 19. The empty-fuel five-times penalty remains unchanged.
+
+This damage is deliberately **not difficulty-scaled**. `career.twk` City0 has `Difficulty=0`, which
+the mission system correctly exposes as runtime tier 1 (`Difficulty + 1`); neither original
+collision arm reads the career difficulty global.
+
 ## Fire damage
 
 `FSimCopterFlightModel::StepTurbulence` has the whole decoded fire arm and always has - it was

@@ -442,6 +442,8 @@ public:
 	// Who is aboard, in seat order. The seat window draws one portrait per entry.
 	const TArray<FSimCopterMissionPassengerSlot>& GetMissionPassengerSlots() const { return MissionPassengerSlots; }
 	bool DropPassengerAtSlot(int32 SlotIndex);
+	void ReactPassengersToDamagingImpact();
+	void WriteOffPassengersInDestroyedHelicopter();
 
 	/**
 	 * Where somebody who steps out of the cabin lands: beside the aircraft, on the surface the

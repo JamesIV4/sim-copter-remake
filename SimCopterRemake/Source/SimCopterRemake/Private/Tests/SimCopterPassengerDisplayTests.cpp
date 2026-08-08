@@ -16,6 +16,7 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Ground/SimCopterBehaviorVM.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterPopulationFigure.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
@@ -171,6 +172,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterPassengerVoiceRateTest::RunTest(const FString& Parameters)
 {
+	TestEqual(TEXT("Impact trauma at tier 0"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(100, 0), 99);
+	TestEqual(TEXT("Impact trauma at tier 3"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(100, 3), 96);
+	TestEqual(TEXT("Impact trauma cannot underflow"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(2, 3), 0);
+
 	// (health * 4 + 0x78) * 0x19, the absolute rate FUN_004c5210 pushes into the buffer while the
 	// EKG loops. This is what makes the beep slow down as a patient dies.
 	TestEqual(TEXT("EKG at full health"), SimCopterSound::GetEkgFrequencyHz(100), 13000);

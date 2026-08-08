@@ -880,7 +880,14 @@ void FSimCopterFlightModel::NotifyObjectCollision(FSimCopterFlightEvents& OutEve
 	{
 		return;
 	}
-	ApplyDamage(4 + (Fuel < 1 ? Tuning.CollisionSubtract * 4 : 0), OutEvents);
+	// SCHOOK: FUN_00484d20 / FUN_0048ad50. The executable subtracts four hit points on
+	// every 20 Hz frame for as long as its tile-object AABBs overlap. The remake turns that
+	// sustained overlap into one swept-capsule impact, then rate-limits the response for 0.2 s;
+	// carrying over the per-frame four made a new Schweizer need 124 separate impacts to die.
+	// CollisionSubtract is the shipped contact-level damage tuning (27) already used by the
+	// executable's rate-limited elevated-surface arm, so use it for the remake's discrete packet.
+	// Mission/city difficulty does not participate in either original collision arm.
+	ApplyDamage(Tuning.CollisionSubtract + (Fuel < 1 ? Tuning.CollisionSubtract * 4 : 0), OutEvents);
 	NotifyWallImpact(OutEvents);
 }
 
@@ -913,7 +920,6 @@ void FSimCopterFlightModel::NotifyWallImpact(FSimCopterFlightEvents& OutEvents)
 	BounceTimer = 0x3333; // 0.2 s
 	OutEvents.bPadBounce = true;
 }
-
 
 
 

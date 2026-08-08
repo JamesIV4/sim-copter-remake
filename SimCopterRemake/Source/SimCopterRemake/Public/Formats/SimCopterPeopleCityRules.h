@@ -43,6 +43,9 @@ public:
 	static uint16 NextPeopleRandomBounded(uint16& RandomState, uint16 Bound);
 
 	// FUN_004c7190/FUN_004c7170 candidate class selection, used by FUN_004c2450.
+	// FUN_004c3eb0 also passes -1 for ordinary mission people; FUN_004c71c0 resolves that sentinel
+	// through this chooser without the ambient spawner's tile-class rejection loop.
+	static int32 ChooseUnspecifiedBehaviorClass(uint16& PeopleRandomState);
 	static int32 ChooseAmbientBehaviorClassForTileClass(int32 TileClass, uint16& PeopleRandomState);
 
 	// FUN_004c71c0: behavior class (person+0x146) -> privanim figure, applied at spawn.

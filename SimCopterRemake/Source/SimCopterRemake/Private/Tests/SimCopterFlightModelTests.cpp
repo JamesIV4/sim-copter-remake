@@ -456,6 +456,40 @@ bool FSimCopterFlightTurbulenceTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterFlightObjectCollisionDamageTest,
+	"SimCopter.Flight.ObjectCollisionDamage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterFlightObjectCollisionDamageTest::RunTest(const FString& Parameters)
+{
+	FSimCopterFlightModel Model;
+	Model.State = ESimCopterFlightState::Flying;
+	Model.Tuning.MaxDamage = 495; // shipped Schweizer 300, the new-career airframe
+	Model.Tuning.CollisionSubtract = 27; // shipped [Heli Damage] tuning
+	Model.HitPoints = Model.Tuning.MaxDamage;
+	Model.Fuel = SimCopterFixed::One;
+
+	FSimCopterFlightEvents Events;
+	Model.NotifyObjectCollision(Events);
+	TestEqual(TEXT("one swept impact applies the contact packet"), Events.DamageTaken, Model.Tuning.CollisionSubtract);
+	TestEqual(TEXT("airframe loses the packet"), Model.HitPoints, Model.Tuning.MaxDamage - Model.Tuning.CollisionSubtract);
+	TestTrue(TEXT("impact starts the bounce response"), Events.bPadBounce);
+
+	const int32 LethalImpactCount = (Model.Tuning.MaxDamage / Model.Tuning.CollisionSubtract) + 1;
+	TestEqual(TEXT("default airframe dies in nineteen impacts"), LethalImpactCount, 19);
+
+	FSimCopterFlightModel EmptyTankModel;
+	EmptyTankModel.State = ESimCopterFlightState::Flying;
+	EmptyTankModel.Tuning.CollisionSubtract = 27;
+	EmptyTankModel.HitPoints = EmptyTankModel.Tuning.MaxDamage;
+	EmptyTankModel.Fuel = 0;
+	FSimCopterFlightEvents EmptyTankEvents;
+	EmptyTankModel.NotifyObjectCollision(EmptyTankEvents);
+	TestEqual(TEXT("empty-tank impact keeps original five-times penalty"), EmptyTankEvents.DamageTaken, 27 * 5);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterFlightEasyModelTest,
 	"SimCopter.Flight.EasyModel",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

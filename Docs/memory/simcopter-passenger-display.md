@@ -154,6 +154,28 @@ Two deliberate divergences, both at their call sites:
 Not reproduced: the player-avatar Elvis-voice easter egg in `FUN_004c71c0`'s
 `person+0x12e == 32000 && shift` arm.
 
+## Mission class -1 and collision consequences (2026-08-08)
+
+`FUN_004c3eb0` receives behavior class **-1** for ordinary mission people, including transport
+fares. That is a sentinel, not class zero: `FUN_004c71c0` resolves it through `FUN_004c7190`,
+which ordinarily selects class 0..9 (with the extremely rare `FUN_004c7170` celebrity arm). The
+remake previously left the C++ field at its default zero, so every unspecified fare inherited the
+same class-0 head, body and voice pitch. Mission spawn paths now call the decoded chooser before
+`ConfigureAgent`, preserving the real actor that later occupies the seat record.
+
+Static decompilation of `FUN_00484d20` shows no direct write to medevac attr34: it damages the
+aircraft, while BHAV 264's damage-scaled opcode-55 speed supplies the ordinary passenger reaction.
+However, observed original runtime behavior is that a damaging impact can worsen a patient and
+immediately disturb the EKG. The remake therefore applies one **BHAV 281 deterioration quantum**
+(`1 + difficulty tier`) on each rate-limited damaging bounce and re-runs `FUN_004c5210`'s existing
+EKG retune path immediately. This provenance distinction matters: the amount is decoded, while the
+impact-to-patient edge is runtime-observed rather than a recovered direct attr34 store.
+
+The transition to the destroyed helicopter state calls `FUN_004c0ba0(1)`, which sets every
+occupied person's written-off attribute, posts `EVT_PersonDied`, and removes them from the wreck
+through `FUN_004bfb20`. The port now performs that write-off when `bStartedDying` fires, before the
+aircraft can be repaired and returned to an airport with passengers still attached.
+
 ## Verification (2026-07-31)
 
 - `RebuildUnrealCpp.bat` — `Result: Succeeded`.
@@ -167,6 +189,17 @@ Not verified on screen; project policy reserves foreground runs for what a build
 and automation cannot settle. The things worth a look when someone is at the keyboard: bandages
 only on casualties, the seat portraits changing row as you fly and as a patient fades, and the EKG
 audibly slowing.
+
+### Verification (2026-08-08 follow-up)
+
+- `RebuildUnrealCpp.bat` — `Result: Succeeded`.
+- `Automation RunTests SimCopter.City.PeopleRules` — 1 passed, including deterministic
+  `FUN_004c7190` class-selection checks.
+- `Automation RunTests SimCopter.Passengers` — 3 passed (face program, heads, voice rates).
+- The later runtime-observed impact-trauma follow-up passed UHT and `git diff --check`, but its C++
+  rebuild was blocked by an active editor Live Coding session; rebuild/test it after closing the
+  editor.
+- Not verified in-game; the remaining visual/audio check is intentionally left for an attended run.
 
 Related: [[simcopter-people-logic-next]], [[simcopter-paramedic-handoffs]], [[simcopter-sound]],
 [[simcopter-population-rendering]], [[simcopter-ue-figure-component]], [[simcopter-checkup-menu]].

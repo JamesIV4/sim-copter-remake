@@ -2362,11 +2362,11 @@ void ASimCopterGroundAgent::AlightAttachmentOnly()
 	}
 }
 
-bool ASimCopterGroundAgent::AlightFromCarrier()
+bool ASimCopterGroundAgent::AlightFromCarrier(const bool bPlayDoorSound)
 {
 	AActor* Carrier = BehaviorCarrier.Get();
 	const bool bLeavingHelicopterCabin =
-		bClaimedPassengerSeat && Carrier != nullptr && Carrier == ResolvePlayerHelicopter();
+		bPlayDoorSound && bClaimedPassengerSeat && Carrier != nullptr && Carrier == ResolvePlayerHelicopter();
 	if (bLeavingHelicopterCabin)
 	{
 		// FUN_004c6360 uses the same event-60 doropn cue when a person leaves a door-bearing
@@ -2408,6 +2408,66 @@ bool ASimCopterGroundAgent::AlightFromCarrier()
 	// is what made a patient lifted out of the cabin appear on the deck with no drop at all.
 	VerticalVelocityCmPerSec = 0.0f;
 	return true;
+}
+
+void ASimCopterGroundAgent::WriteOffInDestroyedHelicopter()
+{
+	// SCHOOK: HelicopterWriteOffPassengers 0x004c0ba0. The original sets person+0x15e, posts
+	// EVT_PersonDied, then calls FUN_004bfb20 to remove the passenger from the wreck. This path is
+	// deliberately separate from BeginFallAndDie: a patient whose own health expires remains in
+	// the cabin for a hospital handoff, but nobody remains aboard a destroyed helicopter.
+	if (int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) != 0)
+	{
+		return;
+	}
+
+	BehaviorContext.Attributes[EBhavAttr::WrittenOff] = 1;
+	AlightFromCarrier(/*bPlayDoorSound=*/false);
+	PostMissionOutcome(BehaviorContext, 10);
+	SetMissionDeadPose();
+}
+
+int32 ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(
+	const int32 Health,
+	const int32 DifficultyTier)
+{
+	// BHAV 281's successful deterioration arm is attr34 -= 1, then attr34 -= difficulty tier.
+	// Reuse that exact quantum for the runtime-observed impact consequence; do not introduce a
+	// second severity scale based on Unreal impulse or centimetres.
+	return FMath::Max(0, Health - (1 + FMath::Max(0, DifficultyTier)));
+}
+
+void ASimCopterGroundAgent::ReactToCabinImpact()
+{
+	if (!bClaimedPassengerSeat ||
+		Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()) == nullptr ||
+		int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) != 0)
+	{
+		return;
+	}
+
+	if (!IsMedevacVictim())
+	{
+		// The normal BHAV 264 speed/damage graph will take ownership again on its next pass. This
+		// immediate write is the short impact flinch instead of waiting for that polling interval.
+		SetSeatPortraitMood(2);
+		return;
+	}
+
+	const int32 Health = ComputeMedevacHealthAfterCabinImpact(
+		int32(BehaviorContext.Attributes[EBhavAttr::MedevacHealth]),
+		GetDifficultyTier());
+	BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = uint16(Health);
+	SetSeatPortraitMood(Health < 1 ? 2 : Health < 50 ? 1 : 0);
+
+	// FUN_004c5210 re-tunes an already-playing EKG from attr34 rather than restarting it. Calling
+	// through the same voice service here makes the pitch change land with the impact; BHAV 302
+	// continues to own the loop and its later updates.
+	PlayPersonVoiceEvent(
+		SimCopterSound::VOX_EKG,
+		/*bAllocateSlot=*/true,
+		/*bNonPositional=*/true,
+		/*bForce=*/false);
 }
 
 bool ASimCopterGroundAgent::TransferFromHarnessToCabin()
