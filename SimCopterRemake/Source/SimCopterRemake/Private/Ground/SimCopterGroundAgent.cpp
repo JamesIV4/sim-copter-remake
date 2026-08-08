@@ -2232,6 +2232,7 @@ bool ASimCopterGroundAgent::BoardCarrier(
 		// FUN_004c6250 copies person+0x18e into the record and seats the face at 1, so the seat
 		// window shows this passenger's own head from the moment they climb in.
 		SeatPortraitMood = 1;
+		CabinImpactPortraitSecondsRemaining = 0.0f;
 		if (Helicopter->AddMissionPassengersForMission(
 				1, MissionEventId, GetMissionPassengerKind(), this) <= 0)
 		{
@@ -2437,6 +2438,14 @@ int32 ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(
 	return FMath::Max(0, Health - (1 + FMath::Max(0, DifficultyTier)));
 }
 
+int32 ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(
+	const int32 DamageScaledSpeed)
+{
+	// BHAV 264 records 3..6. The non-monotonic middle edge is shipped behavior: >250 is
+	// frightened (2), >125 is calm (0), and a slower passenger uses the neutral middle row (1).
+	return DamageScaledSpeed > 250 ? 2 : DamageScaledSpeed > 125 ? 0 : 1;
+}
+
 void ASimCopterGroundAgent::ReactToCabinImpact()
 {
 	if (!bClaimedPassengerSeat ||
@@ -2448,9 +2457,12 @@ void ASimCopterGroundAgent::ReactToCabinImpact()
 
 	if (!IsMedevacVictim())
 	{
-		// The normal BHAV 264 speed/damage graph will take ownership again on its next pass. This
-		// immediate write is the short impact flinch instead of waiting for that polling interval.
+		// This is the short impact flinch instead of waiting for BHAV 264's next polling interval.
+		// BHAV 292 reaches that face program about every 13 behavior ticks; retain the deadline as
+		// a backstop because a temporarily stalled passenger stack otherwise leaves this direct
+		// opcode-54 equivalent latched forever.
 		SetSeatPortraitMood(2);
+		CabinImpactPortraitSecondsRemaining = 13.0f / FMath::Max(BehaviorTickRate, 1.0f);
 		return;
 	}
 
@@ -2468,6 +2480,39 @@ void ASimCopterGroundAgent::ReactToCabinImpact()
 		/*bAllocateSlot=*/true,
 		/*bNonPositional=*/true,
 		/*bForce=*/false);
+}
+
+void ASimCopterGroundAgent::UpdateCabinImpactPortrait(const float DeltaSeconds)
+{
+	if (CabinImpactPortraitSecondsRemaining <= 0.0f)
+	{
+		return;
+	}
+
+	CabinImpactPortraitSecondsRemaining = FMath::Max(
+		0.0f,
+		CabinImpactPortraitSecondsRemaining - FMath::Max(DeltaSeconds, 0.0f));
+	if (CabinImpactPortraitSecondsRemaining > 0.0f)
+	{
+		return;
+	}
+
+	if (!bClaimedPassengerSeat)
+	{
+		return;
+	}
+	if (Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()) == nullptr)
+	{
+		// A restored passenger's actor-name reference is resolved after its payload is read. Keep
+		// the deadline live across that short gap instead of consuming the only recovery attempt.
+		CabinImpactPortraitSecondsRemaining = 0.1f;
+		return;
+	}
+	if (!IsMedevacVictim() && int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) == 0)
+	{
+		SetSeatPortraitMood(ComputePassengerPortraitStateFromDamageScaledSpeed(
+			GetPlayerHelicopterSpeed()));
+	}
 }
 
 bool ASimCopterGroundAgent::TransferFromHarnessToCabin()
@@ -3357,6 +3402,9 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	// Before any of the early returns below: a carried or suspended agent is still on screen, and a
 	// person who kept the sun's noon brightness after dark is exactly the bug this fixes.
 	RefreshSpriteExposure();
+	// A cabin passenger is hidden and movement-suspended, but this display reaction still owns
+	// real time. Run it before both carried early returns so the frightened row cannot latch.
+	UpdateCabinImpactPortrait(DeltaSeconds);
 
 	if (AvoidanceMoveTimeRemainingSeconds > 0.0f)
 	{
@@ -3644,6 +3692,15 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	SerializeAgentBool(Reader, bPassengerFallStarted);
 	Reader << PassengerFallStartZ << PassengerFallInjuryDistanceCm << PassengerFallSourceEventId;
 	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
+	// Version-1 saves already contain SeatPortraitMood but predate the transient impact deadline.
+	// If one captured the old latched frightened row, let it pass through the same recovery once
+	// the carrier reference is relinked instead of preserving that bug forever in the save.
+	CabinImpactPortraitSecondsRemaining =
+		bClaimedPassengerSeat &&
+		SeatPortraitMood == 2 &&
+		int32(BehaviorContext.Attributes[EBhavAttr::State]) != 6
+			? 13.0f / FMath::Max(BehaviorTickRate, 1.0f)
+			: 0.0f;
 
 	BehaviorContext.SelectedObject.Reset();
 	BehaviorCarrier.Reset();

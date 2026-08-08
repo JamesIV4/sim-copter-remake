@@ -292,6 +292,16 @@ bool FSimCopterPassengerFaceProgramTest::RunTest(const FString& Parameters)
 	// A non-casualty's health attribute must not leak into their face.
 	TestEqual(TEXT("A fare with no health ignores it"), RunFaceProgram(Model, 4, 0, 200), 0);
 	TestEqual(TEXT("A fare at full health still follows the speed"), RunFaceProgram(Model, 4, 100, 300), 2);
+	TestEqual(TEXT("Impact recovery at idle uses the neutral face"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(0), 1);
+	TestEqual(TEXT("Impact recovery at the lower edge stays neutral"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(125), 1);
+	TestEqual(TEXT("Impact recovery at cruise uses the calm face"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(126), 0);
+	TestEqual(TEXT("Impact recovery at the upper edge stays calm"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(250), 0);
+	TestEqual(TEXT("Impact recovery keeps genuinely hard flying frightened"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(251), 2);
 
 	// BHAV 800 is what makes the EKG a medevac victim's own voice, which is the only reason
 	// FUN_004c5210 re-tunes it from their health instead of restarting it.

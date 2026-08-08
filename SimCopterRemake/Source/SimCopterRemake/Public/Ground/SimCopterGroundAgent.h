@@ -389,6 +389,9 @@ public:
 	// already-playing EKG is re-tuned immediately.
 	void ReactToCabinImpact();
 	static int32 ComputeMedevacHealthAfterCabinImpact(int32 Health, int32 DifficultyTier);
+	// BHAV 264's non-casualty branch. Exposed for the portrait regression test and used when the
+	// impact flinch expires, so the VM and the remake-only immediate reaction converge on one face.
+	static int32 ComputePassengerPortraitStateFromDamageScaledSpeed(int32 DamageScaledSpeed);
 
 	// Person states 5/7/8/0xe: an emergency worker the dispatcher put on the ground, not somebody
 	// the player is being scored on. They carry the record they were sent to only so their own
@@ -767,6 +770,10 @@ private:
 	// Opcode 54's face index: which people1.bmp row this person's seat portrait is drawn from.
 	// FUN_004c6250 seats every passenger at 1 and BHAV 264 moves it between 0, 1 and 2 from there.
 	int32 SeatPortraitMood = 1;
+	// The immediate collision face is not an original persistent attribute. BHAV 292 revisits
+	// BHAV 264 about every 13 VM ticks, so this deadline guarantees the direct flinch yields back
+	// to the same speed-derived face even if a passenger's behavior stack is temporarily stalled.
+	float CabinImpactPortraitSecondsRemaining = 0.0f;
 
 	// person+0x172 / person+0x174: the voice-bank slot this person has borrowed and the event
 	// currently loaded into it. FUN_004c5210 hands out one of the fourteen and releases it again.
@@ -942,6 +949,7 @@ protected:
 	void StartOriginalBehavior();
 	void ResetBehaviorProgramOverride();
 	void UpdateOriginalBehavior(float DeltaSeconds);
+	void UpdateCabinImpactPortrait(float DeltaSeconds);
 	void ApplyBehaviorFacingRotation();
 	void AdvanceBehaviorFigureFrames(int32 TickCount);
 	// The walked surface at a step target: highest blocking geometry at that column, falling
