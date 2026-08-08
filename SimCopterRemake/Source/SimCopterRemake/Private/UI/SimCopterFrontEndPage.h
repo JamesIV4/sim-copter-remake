@@ -41,6 +41,11 @@ struct FRect
 	constexpr float Height() const { return Bottom - Top; }
 };
 
+// The Open Career, Open User and New User pickers all use MENU4.BMP. Keep their title in the
+// same centered band so the longer save-game headings cannot drift outside the printed panel.
+inline constexpr FRect Menu4PickerTitleRect{ 74.0f, 38.0f, 436.0f, 75.0f };
+constexpr int32 Menu4PickerTitleFontHeight = 16;
+
 // The original's font sizes are Windows font *heights* - the whole cell, internal leading
 // included - so the Slate point size that fills the same box is about three quarters of it. Same
 // conversion the Check-up dialog uses.
