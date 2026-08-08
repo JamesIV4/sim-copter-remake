@@ -431,12 +431,12 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 				}
 				else if (BaseName.Equals(TEXT("FLAP-dispatch"), ESearchCase::IgnoreCase) || BaseName.Equals(TEXT("FLAP_DISPATCH"), ESearchCase::IgnoreCase))
 				{
-					OrigWidth = 198.578475f;
+					OrigWidth = 232.0f;
 					OrigHeight = 58.0f;
 				}
 				else if (BaseName.Equals(TEXT("FLAP-apache-missles-gun"), ESearchCase::IgnoreCase))
 				{
-					OrigWidth = 135.76392f;
+					OrigWidth = 138.0f;
 					OrigHeight = 58.0f;
 				}
 				else if (BaseName.StartsWith(TEXT("FLAP"), ESearchCase::IgnoreCase))
