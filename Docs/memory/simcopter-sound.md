@@ -253,6 +253,25 @@ would be wrong. Audio only.
   sites but hang off agent state the remake models differently; they are listed in
   `Docs/scratchpad/sound/callsites.txt` with the id at every one of the 242 sites.
 
+## Gameplay mappings added 2026-08-08
+
+- Firework mortar launch uses root sound slot `0x17`, `TGSHWH.WAV`, at the ground launch point;
+  the later apex detonation remains slot `0x07`, `BOOM1.WAV`.
+- Player boarding uses slot `0x25`, `DOROPN.WAV`, while player exit uses slot `0x26`,
+  `DORCLS.WAV`. Saved-game possession is intentionally silent. This is a requested one-cue split:
+  the original `FUN_0048a580` command `0x1a` queues both `0x25` and `0x26` during dismount.
+- The player-board cue must run **after possession**. `GetHelicopterAudio()` deliberately rejects
+  an aircraft that is not locally controlled, so calling it before `Possess()` silently drops
+  `DOROPN`; save restore remains silent through the separate no-blend guard.
+- Passenger carrier changes use people voice event 60 (`doropn`) rather than the root-table door
+  pair. `FUN_004c6360` calls `FUN_004c5210(0x3c,1,0,1)` when assigning the player helicopter and
+  when leaving a door-bearing carrier. The event has one clip, so passenger boarding **and**
+  alighting both play `doropn`; there is no `dorcls` people event and no random choice.
+- Career level completion is also fixed, not randomized: vtable entry `0x0044bed0` calls
+  `FUN_0042a3b0(0,0x69,100)`, so it queues language slot `0x69`, `DIS063.WAV`, exactly once.
+  `DIS064` through `DIS068` are adjacent registered assets but this completion path never chooses
+  them and consumes no RNG.
+
 ## Deliberate divergences
 
 1. **Spatialisation over the original's pan.** The original panned +/-12.5% and did all its

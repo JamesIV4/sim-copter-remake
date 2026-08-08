@@ -2253,6 +2253,17 @@ bool ASimCopterGroundAgent::BoardCarrier(
 
 	BehaviorCarrier = NewCarrier;
 	bRidingHarness = bAsHarnessRider;
+	if (Helicopter != nullptr && Helicopter == ResolvePlayerHelicopter() && !bAsHarnessRider)
+	{
+		// SCHOOK: PersonSetCarrier 0x004c6360. Assigning the player's helicopter invokes
+		// FUN_004c5210(0x3c, 1, 0, 1): people voice event 60, whose sole clip is doropn.
+		// Force bypasses the ordinary camera/cabin audibility gate exactly as the original does.
+		PlayPersonVoiceEvent(
+			SimCopterSound::VOX_DOOR_OPEN,
+			/*bAllocateSlot=*/true,
+			/*bNonPositional=*/false,
+			/*bForce=*/true);
+	}
 
 	// Climbing aboard something is a hospital worker leaving its post under its own program (BHAV
 	// 269 boards the vehicle it came from). The carrier owns the transform from here, and holding
@@ -2354,6 +2365,18 @@ void ASimCopterGroundAgent::AlightAttachmentOnly()
 bool ASimCopterGroundAgent::AlightFromCarrier()
 {
 	AActor* Carrier = BehaviorCarrier.Get();
+	const bool bLeavingHelicopterCabin =
+		bClaimedPassengerSeat && Carrier != nullptr && Carrier == ResolvePlayerHelicopter();
+	if (bLeavingHelicopterCabin)
+	{
+		// FUN_004c6360 uses the same event-60 doropn cue when a person leaves a door-bearing
+		// carrier. There is no dorcls entry in the original people voice-event table.
+		PlayPersonVoiceEvent(
+			SimCopterSound::VOX_DOOR_OPEN,
+			/*bAllocateSlot=*/true,
+			/*bNonPositional=*/false,
+			/*bForce=*/true);
+	}
 	if (bClaimedPassengerSeat)
 	{
 		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Carrier))

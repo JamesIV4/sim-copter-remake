@@ -1078,6 +1078,10 @@ int32 SSimCopterDashboard::GetPointsLevel() const
 	{
 		return 0;
 	}
+	if (!SimCopterMissionSession::HasPointsGoal(Missions->GetSessionMode()))
+	{
+		return 0;
+	}
 
 	SimCopterMissions::FSimCopterCareerCity City;
 	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City))
@@ -1098,9 +1102,15 @@ FText SSimCopterDashboard::GetPointsToolTipText() const
 
 	const int32 Score = Missions->GetSessionScore();
 
-	// A user city has no career record and therefore no target to win: there is nothing to be a
-	// fraction of, so the score stands on its own. GetCareerCityInfo failing is exactly that case
-	// (GetSessionCareerCityIndex is INDEX_NONE outside a career).
+	// UserCityJobs adopts City0's scheduler tuning, so the existence of a career data record cannot
+	// determine presentation. Its explicit sandbox mode owns no target and shows only the score.
+	if (!SimCopterMissionSession::HasPointsGoal(Missions->GetSessionMode()))
+	{
+		return FText::Format(
+			NSLOCTEXT("SimCopterDashboard", "PointsToolTipUserCity", "Points: {0}"),
+			FText::AsNumber(Score));
+	}
+
 	SimCopterMissions::FSimCopterCareerCity City;
 	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City) ||
 		City.PointsNeeded <= 0)

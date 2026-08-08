@@ -2422,6 +2422,17 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	ASimCopterOnFootPawn* OutgoingOnFootPawn =
 		Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn());
 	PlayerController->Possess(this);
+	// Sound slots 0x25/0x26 are DOROPN/DORCLS in FUN_00424b70. GetHelicopterAudio deliberately
+	// rejects aircraft the player is not flying, so play only after Possess has set the original's
+	// player-helicopter flag equivalent. A saved-game restore also reaches this function with a
+	// temporary on-foot pawn, hence the blended-transition guard.
+	if (OutgoingOnFootPawn != nullptr && bBlendView)
+	{
+		if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
+		{
+			Audio->Play3D(SimCopterSound::EnterCopterSound, GetActorLocation());
+		}
+	}
 	if (bBlendView)
 	{
 		BlendPossessionViewTarget(
@@ -3649,13 +3660,12 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	{
 		return;
 	}
-	// SCHOOK: HelicopterDismountSound 0x0048a580 (command 0x1a)
-	// The original plays both halves back to back on the way out - the door opens, the pilot
-	// steps down, the door shuts - and stops the winch, which cannot run unattended.
+	// SCHOOK: HelicopterDismountSound 0x0048a580 (command 0x1a) queues slots 0x25 then 0x26.
+	// The requested player-transition mapping uses only DORCLS on exit; boarding owns DOROPN.
+	// The original also stops the winch here, which cannot run unattended.
 	if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
 	{
-		Audio->Play3D(SimCopterSound::SND_DOROPN, GetActorLocation());
-		Audio->Play3D(SimCopterSound::SND_DORCLS, GetActorLocation());
+		Audio->Play3D(SimCopterSound::ExitCopterSound, GetActorLocation());
 		Audio->Stop(SimCopterSound::SND_WINCHLP);
 		Audio->Stop(SimCopterSound::SND_WATERCAN);
 		Audio->Stop(SimCopterSound::SND_MACHGUN1);

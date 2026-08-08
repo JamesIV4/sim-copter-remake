@@ -49,11 +49,23 @@ enum class ESimCopterMissionSessionMode : uint8
 	Pending,
 	// No scheduled jobs (zero-weight city). Fires/jams can still be started by hand.
 	FreeRoam,
-	// The city's difficulty tier and weight vector drive the scheduler, as in both original modes.
+	// A career city's difficulty tier and weight vector drive the scheduler and points goal.
 	CityJobs,
 	// One mission started on demand; scheduled spawning stays off so it runs alone.
 	SingleMission,
+	// A user-loaded city still schedules jobs, but is a sandbox: no career points goal or finish.
+	// Appended to preserve the numeric values stored by earlier runtime-save versions.
+	UserCityJobs,
 };
+
+namespace SimCopterMissionSession
+{
+	/** Only career CityJobs owns a completion threshold or a filling points meter. */
+	inline constexpr bool HasPointsGoal(const ESimCopterMissionSessionMode Mode)
+	{
+		return Mode == ESimCopterMissionSessionMode::CityJobs;
+	}
+}
 
 struct FSimCopterMissionLogEntry
 {
@@ -261,6 +273,10 @@ public:
 	// bFirstJobImmediately rolls the opening job now instead of after the original's 180s countdown.
 	void StartCityJobsSession(int32 CareerCityIndex, bool bFirstJobImmediately = false);
 
+	// User-loaded city sandbox: City0 supplies scheduler tuning, but score has no target and can
+	// never complete/advance a career level.
+	void StartUserCitySession(int32 TuningCityIndex = 0, bool bFirstJobImmediately = false);
+
 	// Start one mission of TypeMask right now through the original placement path
 	// (FUN_004a92f0 -> FUN_004a7a10) and leave scheduled spawning off so it runs alone.
 	// Returns the created event id, or INDEX_NONE when the placer found no suitable tile (or the
@@ -277,7 +293,7 @@ public:
 	int32 GetSessionScore() const { return MissionSystem.GetScore(); }
 	int32 GetSessionCash() const { return MissionSystem.GetCash(); }
 	int32 GetSessionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
-	// Which career city the session adopted, so the dashboard can read its points requirement.
+	// Which career tuning record the session adopted. This is not a points goal in UserCityJobs.
 	int32 GetSessionCareerCityIndex() const { return MissionSystem.GetCareerCityIndex(); }
 	int32 GetActiveMissionCount() const { return MissionSystem.GetActiveMissionCount(); }
 

@@ -1,7 +1,7 @@
 // SimCopter sound table - the slot numbers the original registers into its sound manager.
 //
 // Ported from:
-//   FUN_00424b70  the one-shot registration run: 130 calls of
+//   FUN_00424b70  the one-shot registration run: 132 calls of
 //                 "build path -> new Sound(path, mode) -> manager.SetSlot(obj, id)".
 //                 The manager is the global at 0x0055b1a8; slot pointers live at
 //                 0x0055b1ac + id*4, which is why every play/stop wrapper indexes by id.
@@ -76,7 +76,7 @@ namespace SimCopterSound
 		SND_FIRHOSLP = 0x14, // fire hose loop (looped, 3D)
 		SND_WINCHLP  = 0x15, // winch motor loop
 		SND_SOFTBMP2 = 0x16, // soft touchdown / gentle bump
-		SND_TGSHWH   = 0x17, // tear gas canister launch
+		SND_TGSHWH   = 0x17, // tear gas canister / firework mortar launch
 		SND_TGPOP    = 0x18, // tear gas canister bursts
 		SND_TRAIN1   = 0x19, // train loop (looped, 3D)
 		SND_CRSH2    = 0x1a, // plane / train crash
@@ -108,6 +108,7 @@ namespace SimCopterSound
 		SND_D2001    = 0x4b, // 0x4b..0x5e D2001..D2020 dispatcher lines
 		SND_D2020    = 0x5e,
 		SND_DIS053   = 0x5f, // 0x5f..0x6e DIS053..DIS068 dispatcher lines
+		SND_DIS063   = 0x69, // fixed career level-complete announcement
 		SND_DIS068   = 0x6e,
 
 		SND_ADROPEN  = 0x6f, // ground vehicle door open
@@ -117,7 +118,13 @@ namespace SimCopterSound
 		SND_FIRESTAR = 0x81, // something catches fire
 	};
 
-	/** The registered table, indexed by id. Entries are never null for 0x00..0x81. */
+	/** Semantic gameplay mappings kept beside the original slot ABI so call sites cannot drift. */
+	inline constexpr int32 FireworkMortarSound = SND_TGSHWH;
+	inline constexpr int32 EnterCopterSound = SND_DOROPN;
+	inline constexpr int32 ExitCopterSound = SND_DORCLS;
+	inline constexpr int32 LevelCompleteVoiceSound = SND_DIS063;
+
+	/** The registered table, indexed by id. Entries are never null for 0x00..0x83. */
 	SIMCOPTERREMAKE_API TArrayView<const FSoundSlot> GetSlotTable();
 
 	/** Null for out-of-range ids. */
@@ -186,6 +193,7 @@ namespace SimCopterSound
 		VOX_ELVIS_RANDOM    = 46,  // one of the eight, rolled per play
 		VOX_ELVIS_FIRST     = 47,  // 47..54: atomchg, ftrchkbr, hum, decphum, popon, trnsfrm,
 		VOX_ELVIS_LAST      = 54,  //         spacidle, pasfstB, passlwB - FUN_004c71c0's voice sets
+		VOX_DOOR_OPEN       = 60,  // doropn; carrier changes use this for both boarding and alighting
 
 		/**
 		 * EKG.wav, the medevac heart monitor. BHAV 800 assigns it as a victim's own voice event
