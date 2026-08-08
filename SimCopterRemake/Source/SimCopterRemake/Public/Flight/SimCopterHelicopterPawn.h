@@ -932,8 +932,8 @@ protected:
 	float CockpitCrosshairDownOffsetCm = 200.0f;
 
 	// Original page pixels to screen pixels. A flap is 138x58 in the original's 640x480, which is
-	// far too small on a modern display, so the art is up-filtered. Lettering is not scaled with
-	// it; SSimCopterToolFlaps lays text out in screen pixels.
+	// far too small on a modern display, so the art is up-filtered. Lettering does not inherit this
+	// authored art scale; it has a screen-pixel baseline that follows the separate HUD Scale.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.5", ClampMax = "6.0"))
 	float ToolFlapScale = 1.768292f;
 
@@ -1951,6 +1951,7 @@ private:
 	// ToolFlapScale times the stored HUD scale. Every cockpit overlay is built with this rather
 	// than with ToolFlapScale directly.
 	float GetCockpitScale() const;
+	float GetCockpitHudScale() const;
 
 	void EnsureDashboardWidget();
 	void RemoveDashboardWidget();
