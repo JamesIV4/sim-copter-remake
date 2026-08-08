@@ -39,10 +39,12 @@ class SSimCopterDashboard : public SCompoundWidget
 public:
 	SLATE_BEGIN_ARGS(SSimCopterDashboard)
 		: _Scale(2.0f)
+		, _HudScale(1.0f)
 	{}
 		SLATE_ARGUMENT(TWeakObjectPtr<ASimCopterHelicopterPawn>, Pawn)
 		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterHangarArt>, Art)
 		SLATE_ARGUMENT(float, Scale)
+		SLATE_ARGUMENT(float, HudScale)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -53,6 +55,7 @@ private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
 	float Scale = 2.0f;
+	float HudScale = 1.0f;
 	bool bUseUpscaledDashboardArt = false;
 	bool bUseUpscaledAltimeterArt = false;
 

@@ -2900,8 +2900,13 @@ void ASimCopterHelicopterPawn::SyncPassengerFlightModelCount()
 
 float ASimCopterHelicopterPawn::GetCockpitScale() const
 {
+	return ToolFlapScale * GetCockpitHudScale();
+}
+
+float ASimCopterHelicopterPawn::GetCockpitHudScale() const
+{
 	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
-	return ToolFlapScale * (Settings != nullptr ? Settings->GetHudScale() : 1.0f);
+	return Settings != nullptr ? Settings->GetHudScale() : 1.0f;
 }
 
 void ASimCopterHelicopterPawn::AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const
@@ -2975,7 +2980,8 @@ void ASimCopterHelicopterPawn::EnsureDashboardWidget()
 		SNew(SSimCopterDashboard)
 		.Pawn(this)
 		.Art(FlapArt)
-		.Scale(GetCockpitScale());
+		.Scale(GetCockpitScale())
+		.HudScale(GetCockpitHudScale());
 	DashboardPanel = Dashboard;
 
 	// Bottom-right, where the original's cockpit puts it.
@@ -3482,7 +3488,8 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget(const bool bForceCreate)
 		SNew(SSimCopterToolFlaps)
 		.Pawn(this)
 		.Art(FlapArt)
-		.Scale(GetCockpitScale());
+		.Scale(GetCockpitScale())
+		.HudScale(GetCockpitHudScale());
 	ToolFlapsPanel = ToolFlaps;
 	ToolFlapsWidget =
 		SNew(SOverlay)

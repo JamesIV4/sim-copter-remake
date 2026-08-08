@@ -24,18 +24,20 @@ struct FSlateBrush;
 // buttons.
 //
 // The artwork is 640x480-era pixel art, so it is placed at page coordinates multiplied by Scale
-// and let up-filter. Text is not scaled with it - it is laid out in screen pixels at a readable
-// size, which is why the label boxes below are sized in screen pixels rather than page ones.
+// and let up-filter. Text uses its readable screen-pixel baseline multiplied only by HudScale,
+// independently of the art's authored up-filter scale.
 class SSimCopterToolFlaps : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterToolFlaps)
 		: _Scale(1.768292f)
+		, _HudScale(1.0f)
 	{}
 		SLATE_ARGUMENT(TWeakObjectPtr<ASimCopterHelicopterPawn>, Pawn)
 		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterHangarArt>, Art)
 		// Page pixels to screen pixels. The original ran at 640x480, where a flap was 138x58.
 		SLATE_ARGUMENT(float, Scale)
+		SLATE_ARGUMENT(float, HudScale)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -52,8 +54,10 @@ public:
 	void SetElementOffset(const FString& Key, const FVector2D& Offset);
 	FVector2D GetElementScale(const FString& Key) const;
 	void SetElementScale(const FString& Key, const FVector2D& ElementScale);
+	// Calibration owns the authored art scale; HUD Scale is applied separately at runtime.
 	void SetScale(float NewScale);
-	float GetScale() const { return Scale; }
+	float GetScale() const { return BaseScale; }
+	float GetLayoutScale() const { return Scale; }
 
 	FString GetSelectedCalibrationKey() const { return SelectedCalibrationKey; }
 	void SetSelectedCalibrationKey(const FString& Key);
@@ -102,7 +106,9 @@ private:
 
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
+	float BaseScale = 1.768292f;
 	float Scale = 1.768292f;
+	float HudScale = 1.0f;
 
 	// SButton holds its style by pointer, so the styles have to outlive Construct.
 	TArray<TSharedPtr<FButtonStyle>> ButtonStyles;
@@ -185,6 +191,7 @@ private:
 		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None);
 
 	TSharedRef<SWidget> MakeLabel(const FText& Text, int32 FontSize) const;
+	int32 GetScaledFontSize(int32 BaselineSize) const;
 
 	// The held variant, for a control that fires while the button is down.
 	TSharedRef<SWidget> MakeHeldArtButton(

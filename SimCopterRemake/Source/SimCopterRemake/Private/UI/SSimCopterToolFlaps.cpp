@@ -38,7 +38,8 @@ using namespace SimCopterFlapLayout;
 const FLinearColor FlapLabel(0.94f, 0.94f, 0.90f, 1.0f);
 const FLinearColor FlapReadout(1.0f, 0.86f, 0.42f, 1.0f);
 
-// Text sizes, in screen pixels. They are deliberately independent of the art scale.
+// Text sizes at 100% HUD scale, in screen pixels. They remain independent of the art's authored
+// up-filter scale, but follow the player's HUD Scale setting with the rest of the cockpit.
 constexpr int32 ReadoutFontSize = 13;
 constexpr int32 LabelFontSize = 11;
 
@@ -193,7 +194,7 @@ public:
 		{
 			const FVector2D CurrentMouse = MouseEvent.GetScreenSpacePosition();
 			const FVector2D DeltaScreen = CurrentMouse - DragStartMouse;
-			const FVector2D DeltaPage = DeltaScreen / FMath::Max(0.1f, OwnerFlaps->GetScale());
+			const FVector2D DeltaPage = DeltaScreen / FMath::Max(0.1f, OwnerFlaps->GetLayoutScale());
 			OwnerFlaps->SetElementOffset(ElementKey, InitialOffset + DeltaPage);
 			return FReply::Handled();
 		}
@@ -323,7 +324,9 @@ void SSimCopterToolFlaps::Construct(const FArguments& InArgs)
 {
 	Pawn = InArgs._Pawn;
 	Art = InArgs._Art;
-	Scale = FMath::Max(0.5f, InArgs._Scale);
+	HudScale = FMath::Max(0.1f, InArgs._HudScale);
+	BaseScale = FMath::Max(0.5f, InArgs._Scale / HudScale);
+	Scale = BaseScale * HudScale;
 	SelectedDispatchEntry = Pawn.IsValid()
 		? FMath::Clamp(Pawn->GetSelectedDispatchService(), 0, PoliceChaseDispatchEntry - 1)
 		: 0;
@@ -596,7 +599,8 @@ void SSimCopterToolFlaps::SetElementScale(const FString& Key, const FVector2D& E
 
 void SSimCopterToolFlaps::SetScale(const float NewScale)
 {
-	Scale = FMath::Max(0.5f, NewScale);
+	BaseScale = FMath::Max(0.5f, NewScale);
+	Scale = BaseScale * HudScale;
 	for (const auto& Pair : ElementDefaultBounds)
 	{
 		SetElementOffset(Pair.Key, GetElementOffset(Pair.Key));
@@ -707,7 +711,7 @@ FText SSimCopterToolFlaps::GetSelectedScaleYText() const
 
 FText SSimCopterToolFlaps::GetGlobalScaleText() const
 {
-	return FText::FromString(FString::Printf(TEXT("Flap Scale: %.2f"), Scale));
+	return FText::FromString(FString::Printf(TEXT("Flap Scale: %.2f"), BaseScale));
 }
 
 TSharedRef<SWidget> SSimCopterToolFlaps::BuildCalibrationDebugPanel()
@@ -827,13 +831,13 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildCalibrationDebugPanel()
 		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
 		[
 			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
-			.OnClicked_Lambda([this]() { SetScale(Scale - 0.1f); SaveCalibrationData(); return FReply::Handled(); })
+			.OnClicked_Lambda([this]() { SetScale(BaseScale - 0.1f); SaveCalibrationData(); return FReply::Handled(); })
 			[ SNew(STextBlock).Text(FText::FromString(TEXT("-0.1"))).Font(SmallFont) ]
 		]
 		+ SHorizontalBox::Slot().AutoWidth().Padding(2.0f, 0.0f)
 		[
 			SNew(SButton).IsFocusable(false).ContentPadding(ButtonPadding)
-			.OnClicked_Lambda([this]() { SetScale(Scale + 0.1f); SaveCalibrationData(); return FReply::Handled(); })
+			.OnClicked_Lambda([this]() { SetScale(BaseScale + 0.1f); SaveCalibrationData(); return FReply::Handled(); })
 			[ SNew(STextBlock).Text(FText::FromString(TEXT("+0.1"))).Font(SmallFont) ]
 		]
 	];
@@ -903,7 +907,8 @@ void SSimCopterToolFlaps::LoadCalibrationData()
 		double LoadedGlobalScale = 0.0;
 		if (JsonObject->TryGetNumberField(TEXT("GlobalScale"), LoadedGlobalScale) && LoadedGlobalScale > 0.1)
 		{
-			Scale = static_cast<float>(LoadedGlobalScale);
+			BaseScale = static_cast<float>(LoadedGlobalScale);
+			Scale = BaseScale * HudScale;
 		}
 
 		for (const auto& Pair : JsonObject->Values)
@@ -934,7 +939,7 @@ void SSimCopterToolFlaps::LoadCalibrationData()
 void SSimCopterToolFlaps::SaveCalibrationData() const
 {
 	TSharedRef<FJsonObject> JsonObject = MakeShared<FJsonObject>();
-	JsonObject->SetNumberField(TEXT("GlobalScale"), Scale);
+	JsonObject->SetNumberField(TEXT("GlobalScale"), BaseScale);
 
 	for (const auto& Pair : CalibrationOffsets)
 	{
@@ -1047,10 +1052,14 @@ void SSimCopterToolFlaps::AddTextAtPage(
 	const float ScreenHeight,
 	TSharedRef<SWidget> Content) const
 {
-	// Anchored on the page position but sized in screen pixels, so the lettering keeps one size
-	// whatever the art is scaled to.
+	// Anchor on the scaled page position. The bounds follow only HUD Scale so the readable
+	// screen-pixel baseline is not multiplied by the artwork's separate up-filter scale.
 	Canvas.AddSlot()
-		.Offset(FMargin(CentreX * Scale, CentreY * Scale, ScreenWidth, ScreenHeight))
+		.Offset(FMargin(
+			CentreX * Scale,
+			CentreY * Scale,
+			ScreenWidth * HudScale,
+			ScreenHeight * HudScale))
 		.Alignment(FVector2D(0.5f, 0.5f))
 		[
 			Content
@@ -1086,9 +1095,14 @@ TSharedRef<SWidget> SSimCopterToolFlaps::MakeLabel(const FText& Text, const int3
 		.Text(Text)
 		.Justification(ETextJustify::Center)
 		.ColorAndOpacity(FlapLabel)
-		.ShadowOffset(FVector2D(1.0f, 1.0f))
+		.ShadowOffset(FVector2D(HudScale, HudScale))
 		.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.9f))
-		.Font(FlapFont(FontSize));
+		.Font(FlapFont(GetScaledFontSize(FontSize)));
+}
+
+int32 SSimCopterToolFlaps::GetScaledFontSize(const int32 BaselineSize) const
+{
+	return FMath::Max(1, FMath::RoundToInt(BaselineSize * HudScale));
 }
 
 // --- tool flaps --------------------------------------------------------------------------------
@@ -1646,7 +1660,7 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildDispatchFlap()
 		.Visibility(EVisibility::HitTestInvisible)
 		.Justification(ETextJustify::Center)
 		.ColorAndOpacity(FlapReadout)
-		.Font(FlapFont(ReadoutFontSize)));
+		.Font(FlapFont(GetScaledFontSize(ReadoutFontSize))));
 
 	AddAtPageKey(*Canvas, TEXT("Dispatch_NextService"), 104.0f, 12.0f,
 		static_cast<float>(RockerArrowWidth), static_cast<float>(RockerArrowHeight),

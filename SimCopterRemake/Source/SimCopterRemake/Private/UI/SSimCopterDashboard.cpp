@@ -319,9 +319,9 @@ const FVector2D UpscaledAirspeedNeedleOffset(1.0f, 1.0f);
 
 const FLinearColor ReadoutInk(1.0f, 0.86f, 0.42f, 1.0f);
 
-// Screen pixels, deliberately not scaled with the art: the money well is 74x14 page pixels, which
-// is a lot of room once the panel is up-filtered.
-constexpr int32 MoneyFontSize = 20;
+// Screen pixels, deliberately not scaled with the art. Keep the decoded well and its vertical
+// placement unchanged; the slightly smaller face leaves four-digit balances clear of its frame.
+constexpr int32 MoneyFontSize = 18;
 
 FSlateFontInfo DashFont(const int32 Size)
 {
@@ -526,6 +526,7 @@ void SSimCopterDashboard::Construct(const FArguments& InArgs)
 	Pawn = InArgs._Pawn;
 	Art = InArgs._Art;
 	Scale = FMath::Max(0.5f, InArgs._Scale);
+	HudScale = FMath::Max(0.1f, InArgs._HudScale);
 
 	const FSlateBrush* UpscaledDashboardBrush = nullptr;
 	if (USimCopterHangarArt* ArtObject = Art.Get())
@@ -832,7 +833,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		.Text(this, &SSimCopterDashboard::GetMoneyText)
 		.Justification(ETextJustify::Right)
 		.ColorAndOpacity(ReadoutInk)
-		.Font(DashFont(MoneyFontSize)));
+		.Font(DashFont(FMath::Max(1, FMath::RoundToInt(MoneyFontSize * HudScale)))));
 
 	// The points meter: fifteen cells, each showing one of managge.bmp's three states as the
 	// score climbs towards the city's requirement.
