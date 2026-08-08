@@ -77,6 +77,11 @@ public:
 	const FSlateBrush* GetMenuSkyMovieBrush();
 	void StopMenuSkyMovie();
 
+	// The authentic 200x108 CITY<N>_S.SMK loop shown inside a career-selection panel.
+	// Tools/Unreal/BakeCareerPreviews.py transcodes the user-provided Smacker files for UE.
+	const FSlateBrush* GetCareerCityMovieBrush(int32 CityIndex);
+	void StopCareerCityMovies();
+
 	// One frame of a horizontal strip: button.bmp is three 100x28 frames (normal, pressed,
 	// disabled) and cat_btn.bmp three 86x28 ones.
 	const FSlateBrush* GetStripFrame(const FString& FileName, int32 FrameIndex, int32 FrameCount);
@@ -113,16 +118,24 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMediaTexture> MenuSkyTexture;
 
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<UMediaPlayer>> CareerCityPlayers;
+
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<UMediaTexture>> CareerCityTextures;
+
 	// Brushes point at the textures above; they are plain structs, so they live outside the
 	// UPROPERTY graph and are keyed the same way.
 	TMap<FString, TSharedPtr<FSlateBrush>> Brushes;
 	TSharedPtr<FSlateBrush> MenuSkyMovieBrush;
+	TMap<int32, TSharedPtr<FSlateBrush>> CareerCityMovieBrushes;
 
 	FString OriginalGameRoot;
 
 	// Resolves BMP/<FileName> case-insensitively; empty when it is not there.
 	FString ResolveBitmapPath(const FString& FileName) const;
 	FString ResolveMenuSkyMoviePath() const;
+	FString ResolveCareerCityMoviePath(int32 CityIndex) const;
 
 	// An empty Source takes the whole bitmap.
 	const FSlateBrush* BuildBrush(

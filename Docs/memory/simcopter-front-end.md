@@ -87,8 +87,11 @@ composition or exposing the movie's cyan compression matte.
 
 ## Remake divergences (all deliberate)
 
-- **No city preview movies.** Each career panel runs `city<N>_s.smk` (`FUN_00407c50(2, ...)`
-  appends `_s.smk`), and the panel shows the city's name instead.
+- **Career preview movies are transcoded, not decoded at runtime.** Each career panel runs the
+  authentic `city<N>_s.smk` loop (`FUN_00407c50(2, ...)` appends `_s.smk`). UE cannot decode
+  Smacker directly, so `Tools/Unreal/BakeCareerPreviews.py` preserves each loop's 200x108 image,
+  75 frames and 71 ms cadence in `Content/Generated/Movies/Career/CITY<N>_S.mp4`, which remains
+  gitignored alongside the user's original data.
 - **No file dialog.** `SSimCopterUserCityPicker` lists the same `.sc2` files on menu4.bmp — the
   original's keyboard-shortcut list page — keeping title string 40. Its rectangles are *measured*
   off that bitmap, not decoded, because the original never lays a file list on it.
@@ -100,6 +103,14 @@ composition or exposing the movie's cyan compression matte.
   already covers them.
 
 ## Verified
+
+The career preview restoration built clean on 2026-08-08 and all seven `SimCopter.FrontEnd.*`
+tests passed. `BakeCareerPreviews.py` validated all 30 generated MP4s against the authentic
+200x108, 75-frame, 71 ms source loops. Each live media texture is drawn through a rounded Slate
+mesh with an 8 px alpha-feather. CARSEL's selection glow is painted over it through a second mask:
+the opaque centre is a genuinely hollow rounded opening with its own 4 px feather, so only the
+frame and glow remain above the movie. The media playback and adjusted readout placement were not
+verified on screen.
 
 The authentic menu sky update built clean on 2026-08-01, and all six `SimCopter.FrontEnd.*` tests
 passed, including the new decoded movie timing/aspect/full-screen-extension coverage. The generated

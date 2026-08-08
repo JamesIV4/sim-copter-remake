@@ -214,6 +214,7 @@ void ASimCopterMainMenuGameMode::CloseScreen()
 	if (Art != nullptr)
 	{
 		Art->StopMenuSkyMovie();
+		Art->StopCareerCityMovies();
 	}
 
 	if (!ScreenWidget.IsValid())

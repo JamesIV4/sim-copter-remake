@@ -208,7 +208,8 @@ bool FSimCopterCareerSelectLayoutTest::RunTest(const FString& Parameters)
 {
 	using namespace SimCopterCareerSelectLayout;
 
-	// FUN_00457c90's three panels are the same size; two across the top, one below.
+	// FUN_00457c90's three panels exactly match the 200x108 CITY<N>_S.SMK movies; two are across
+	// the top and one is below.
 	for (int32 Panel = 0; Panel < PanelCount; ++Panel)
 	{
 		TestEqual(FString::Printf(TEXT("Panel %d width"), Panel), PanelRect[Panel].Width(), 200.0f);
@@ -230,6 +231,16 @@ bool FSimCopterCareerSelectLayoutTest::RunTest(const FString& Parameters)
 		HighlightPanelRect[1].Right <= 557.0f);
 	TestTrue(TEXT("The highlight rects fit carsel.bmp's height"),
 		HighlightPanelRect[PanelCount - 1].Bottom <= 743.0f);
+
+	TestEqual(TEXT("Readout font fits the lower-right wells"), ReadoutFontHeight, 16);
+	TestEqual(TEXT("City readout is lowered in its well"), CityNameRect.Top, 239.0f);
+	TestEqual(TEXT("Level readout is lowered in its well"), LevelNameRect.Top, 274.0f);
+	TestEqual(TEXT("Readouts share a horizontal centre"),
+		CityNameRect.Left + CityNameRect.Right, LevelNameRect.Left + LevelNameRect.Right);
+	TestTrue(TEXT("Preview rounded corner leaves room for feather"),
+		PreviewCornerRadius > PreviewFeatherWidth);
+	TestEqual(TEXT("Preview feather is doubled"), PreviewFeatherWidth, 8.0f);
+	TestEqual(TEXT("CARSEL hollow edge stays softly feathered"), HighlightHoleFeatherWidth, 4.0f);
 
 	return true;
 }
