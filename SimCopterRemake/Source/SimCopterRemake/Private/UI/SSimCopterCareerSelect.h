@@ -38,11 +38,18 @@ constexpr FRect PanelRect[PanelCount] = {
 	{  77.0f, 249.0f, 277.0f, 357.0f },
 };
 
+// The movie is clipped before CARSEL's glow is painted over it. A short transparent outer ring
+// softens the crop into the rounded panel opening instead of leaving a hard rectangular edge.
+constexpr float PreviewCornerRadius = 10.0f;
+constexpr float PreviewFeatherWidth = 8.0f;
+constexpr float HighlightHoleCornerRadius = 10.0f;
+constexpr float HighlightHoleFeatherWidth = 4.0f;
+
 // The two readouts in the upper right well: STRINGTABLE 240 + city, then 290 + career level.
 // Font height 18, centred, and a colour written as the bytes b5 f0 00.
-constexpr FRect CityNameRect{ 334.0f, 236.0f, 534.0f, 262.0f };
-constexpr FRect LevelNameRect{ 334.0f, 271.0f, 534.0f, 297.0f };
-constexpr int32 ReadoutFontHeight = 18;
+constexpr FRect CityNameRect{ 334.0f, 239.0f, 534.0f, 265.0f };
+constexpr FRect LevelNameRect{ 334.0f, 274.0f, 534.0f, 300.0f };
+constexpr int32 ReadoutFontHeight = 16;
 inline const FLinearColor ReadoutColor(0xB5 / 255.0f, 0xF0 / 255.0f, 0x00 / 255.0f, 1.0f);
 
 // FUN_004580b0 gives every button a degenerate rect and lets button.bmp size it. A new career

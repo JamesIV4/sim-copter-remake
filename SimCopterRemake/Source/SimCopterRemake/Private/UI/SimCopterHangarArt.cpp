@@ -120,9 +120,13 @@ void USimCopterHangarArt::SetOriginalGameRoot(const FString& InOriginalGameRoot)
 
 	OriginalGameRoot = InOriginalGameRoot;
 	StopMenuSkyMovie();
+	StopCareerCityMovies();
 	MenuSkyMovieBrush.Reset();
 	MenuSkyTexture = nullptr;
 	MenuSkyPlayer = nullptr;
+	CareerCityMovieBrushes.Reset();
+	CareerCityTextures.Reset();
+	CareerCityPlayers.Reset();
 	Textures.Reset();
 	Brushes.Reset();
 }
@@ -298,6 +302,98 @@ void USimCopterHangarArt::StopMenuSkyMovie()
 	if (MenuSkyPlayer != nullptr)
 	{
 		MenuSkyPlayer->Close();
+	}
+}
+
+FString USimCopterHangarArt::ResolveCareerCityMoviePath(const int32 CityIndex) const
+{
+	if (CityIndex < 0 || CityIndex >= 30)
+	{
+		return FString();
+	}
+
+	const FString FileName = FString::Printf(TEXT("CITY%d_S.mp4"), CityIndex);
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Generated/Movies/Career"), FileName));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Movies/Career"), FileName));
+	if (!OriginalGameRoot.IsEmpty())
+	{
+		Candidates.Add(FPaths::Combine(OriginalGameRoot, TEXT("SMK"), FileName));
+	}
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeFilename(Candidate);
+		if (IPlatformFile::GetPlatformPhysical().FileExists(*Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return FString();
+}
+
+const FSlateBrush* USimCopterHangarArt::GetCareerCityMovieBrush(const int32 CityIndex)
+{
+	if (const TSharedPtr<FSlateBrush>* Existing = CareerCityMovieBrushes.Find(CityIndex))
+	{
+		return Existing->IsValid() ? Existing->Get() : nullptr;
+	}
+
+	const FString MoviePath = ResolveCareerCityMoviePath(CityIndex);
+	if (MoviePath.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("SimCopter career select: CITY%d_S.mp4 has not been baked; run Tools/Unreal/BakeCareerPreviews.py."),
+			CityIndex);
+		return nullptr;
+	}
+
+	UMediaPlayer* Player = NewObject<UMediaPlayer>(
+		this, *FString::Printf(TEXT("OriginalCareerCity%dPlayer"), CityIndex));
+	Player->PlayOnOpen = true;
+	Player->SetLooping(true);
+
+	UMediaTexture* Texture = NewObject<UMediaTexture>(
+		this, *FString::Printf(TEXT("OriginalCareerCity%dTexture"), CityIndex));
+	Texture->AutoClear = true;
+	Texture->ClearColor = FLinearColor(0.45f, 0.58f, 0.63f, 1.0f);
+	Texture->NewStyleOutput = true;
+	Texture->Filter = TF_Bilinear;
+	Texture->SetMediaPlayer(Player);
+	Texture->UpdateResource();
+
+	TSharedRef<FSlateBrush> Brush = MakeShared<FSlateBrush>();
+	Brush->SetResourceObject(Texture);
+	Brush->ImageSize = FVector2D(200.0f, 108.0f);
+	Brush->DrawAs = ESlateBrushDrawType::Image;
+
+	CareerCityPlayers.Add(CityIndex, Player);
+	CareerCityTextures.Add(CityIndex, Texture);
+	CareerCityMovieBrushes.Add(CityIndex, Brush);
+
+	// SCHOOK: CareerSelectPage 0x00457c90 / FUN_00407c50(2, city<N>) appends
+	// "_s.smk" and loops that city's 200x108, 75-frame rotating layout inside its panel.
+	if (!Player->OpenFile(MoviePath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter career select: could not open '%s'."), *MoviePath);
+		CareerCityMovieBrushes.Remove(CityIndex);
+		CareerCityTextures.Remove(CityIndex);
+		CareerCityPlayers.Remove(CityIndex);
+		return nullptr;
+	}
+
+	return &Brush.Get();
+}
+
+void USimCopterHangarArt::StopCareerCityMovies()
+{
+	for (const TPair<int32, TObjectPtr<UMediaPlayer>>& Entry : CareerCityPlayers)
+	{
+		if (Entry.Value != nullptr)
+		{
+			Entry.Value->Close();
+		}
 	}
 }
 
