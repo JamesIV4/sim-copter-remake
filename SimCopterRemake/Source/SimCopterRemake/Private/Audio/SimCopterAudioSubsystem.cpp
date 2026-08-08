@@ -117,6 +117,7 @@ void USimCopterAudioSubsystem::Deinitialize()
 		MusicComponent = nullptr;
 	}
 	RadioEndTime = 0.0;
+	ClearRadioVoiceQueue();
 	ClipCache.Reset();
 	bSoundsAvailable = false;
 
@@ -163,6 +164,53 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 			LooseComponents.RemoveAtSwap(Index);
 		}
 	}
+
+	// SCHOOK: DispatchVoicePlay 0x0042a3b0: advance queued radio voice announcements sequentially
+	if (CurrentDispatchVoiceId != INDEX_NONE)
+	{
+		if (!IsPlaying(CurrentDispatchVoiceId) || (CurrentDispatchVoiceEndTime > 0.0 && Now >= CurrentDispatchVoiceEndTime))
+		{
+			CurrentDispatchVoiceId = INDEX_NONE;
+			CurrentDispatchVoiceEndTime = 0.0;
+		}
+	}
+
+	if (CurrentDispatchVoiceId == INDEX_NONE && DispatchVoiceQueue.Num() > 0)
+	{
+		int32 NextId = DispatchVoiceQueue[0];
+		DispatchVoiceQueue.RemoveAt(0);
+		if (Play2D(NextId))
+		{
+			CurrentDispatchVoiceId = NextId;
+			const FSlot& Slot = Slots[NextId];
+			CurrentDispatchVoiceEndTime = Now + static_cast<double>(Slot.Clip.Duration);
+		}
+	}
+}
+
+void USimCopterAudioSubsystem::QueueRadioVoice(int32 SoundId)
+{
+	if (SoundId < 0 || SoundId >= SimCopterSound::NumSlots)
+	{
+		return;
+	}
+	DispatchVoiceQueue.Add(SoundId);
+}
+
+void USimCopterAudioSubsystem::ClearRadioVoiceQueue()
+{
+	if (CurrentDispatchVoiceId != INDEX_NONE)
+	{
+		Stop(CurrentDispatchVoiceId);
+		CurrentDispatchVoiceId = INDEX_NONE;
+		CurrentDispatchVoiceEndTime = 0.0;
+	}
+	DispatchVoiceQueue.Reset();
+}
+
+bool USimCopterAudioSubsystem::IsRadioVoicePlayingOrQueued() const
+{
+	return CurrentDispatchVoiceId != INDEX_NONE || DispatchVoiceQueue.Num() > 0;
 }
 
 // ---------------------------------------------------------------------------------------------
