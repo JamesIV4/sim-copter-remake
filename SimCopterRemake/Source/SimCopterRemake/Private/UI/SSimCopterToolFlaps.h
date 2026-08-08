@@ -30,7 +30,7 @@ class SSimCopterToolFlaps : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterToolFlaps)
-		: _Scale(2.0f)
+		: _Scale(1.768292f)
 	{}
 		SLATE_ARGUMENT(TWeakObjectPtr<ASimCopterHelicopterPawn>, Pawn)
 		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterHangarArt>, Art)
@@ -44,6 +44,9 @@ public:
 	// Calibration mode: Ctrl+Alt+M toggles draggable element overlays & outlines.
 	void ToggleCalibrationMode();
 	bool IsCalibrationMode() const { return bCalibrationMode; }
+
+	static FVector2D GetAuthoritativeDefaultOffset(const FString& Key);
+	static FVector2D GetAuthoritativeDefaultScale(const FString& Key);
 
 	FVector2D GetElementOffset(const FString& Key) const;
 	void SetElementOffset(const FString& Key, const FVector2D& Offset);
@@ -67,6 +70,15 @@ public:
 
 	void LoadCalibrationData();
 	void SaveCalibrationData() const;
+
+	// The calibration control panel, built on demand for whoever hosts it. It is deliberately not
+	// part of this widget's own layout: the flap column is right-aligned and one flap wide, so a
+	// panel inside it renders over the flaps. The pawn puts it in its own top-centre viewport layer
+	// (see ASimCopterHelicopterPawn::EnsureToolFlapsWidget) and keeps this widget alive for as long
+	// as the panel is up - the panel's delegates bind to this.
+	//
+	// It collapses itself whenever calibration mode is off, so the host needs no visibility logic.
+	TSharedRef<SWidget> BuildCalibrationDebugPanel();
 
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 	virtual FReply OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
@@ -95,7 +107,7 @@ private:
 
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
-	float Scale = 2.0f;
+	float Scale = 1.768292f;
 
 	// SButton holds its style by pointer, so the styles have to outlive Construct.
 	TArray<TSharedPtr<FButtonStyle>> ButtonStyles;
@@ -118,8 +130,6 @@ private:
 	TMap<FString, SConstraintCanvas::FSlot*> ElementCanvasSlots;
 	TMap<FString, FVector4f> ElementDefaultBounds;
 	TSharedPtr<class IInputProcessor> CalibrationInputProcessor;
-
-	TSharedRef<SWidget> BuildCalibrationDebugPanel();
 
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 
