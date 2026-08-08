@@ -744,10 +744,46 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 
 	const int32 TypeMask = Record.TypeMask;
 
-	if ((TypeMask & TYPE_BuildingFire) != 0 || (TypeMask & TYPE_PlaneCrash) != 0)
+	if ((TypeMask & TYPE_CarFire) != 0 || (TypeMask & TYPE_CarFireEvent) != 0)
+	{
+		TypeVoiceId = 0x33; // D1004 ("vehicle on fire")
+		const int32 Roll = FMath::RandRange(0, 4);
+		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
+		else if (Roll == 2) ClosingVoiceId = 0x5b; // D2017
+		else if (Roll == 3) ClosingVoiceId = 0x5e; // D2020
+		else ClosingVoiceId = 0x57; // D2013
+	}
+	else if ((TypeMask & TYPE_SpeederEvent) != 0 || (TypeMask & TYPE_Speeder) != 0)
+	{
+		TypeVoiceId = 0x37; // D1008 ("speeder report")
+		const int32 Roll = FMath::RandRange(0, 4);
+		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
+		else if (Roll == 2) ClosingVoiceId = 0x57; // D2013
+		else if (Roll == 3) ClosingVoiceId = 0x4f; // D2005 ("suspect on foot")
+		else ClosingVoiceId = 0x52; // D2008 ("wearing a light colored jacket")
+	}
+	else if ((TypeMask & TYPE_CriminalCar) != 0)
+	{
+		TypeVoiceId = 0x37; // D1008 ("speeder report")
+		ClosingVoiceId = 0x50; // D2006 ("suspect last seen heading west and driving erratically")
+	}
+	else if ((TypeMask & TYPE_PlaneCrash) != 0)
+	{
+		TypeVoiceId = 0x40; // D1017 ("emergency rescue")
+		const int32 Roll = FMath::RandRange(0, 4);
+		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
+		else if (Roll == 2) ClosingVoiceId = 0x5e; // D2020
+		else ClosingVoiceId = 0x57; // D2013
+	}
+	else if ((TypeMask & TYPE_Ufo) != 0)
+	{
+		TypeVoiceId = 0x83; // D1020 ("10-11 in progress" / UFO sighting)
+		ClosingVoiceId = GetRandomClosingFromPool();
+	}
+	else if ((TypeMask & TYPE_BuildingFire) != 0)
 	{
 		const uint8 BldgTile = World->GetXbldTileId(Record.TileX, Record.TileY);
-		TypeVoiceId = (BldgTile < 0x70 || BldgTile > 0xd9) ? 0x30 : 0x31; // D1001 / D1002
+		TypeVoiceId = (BldgTile < 0x70 || BldgTile > 0xd9) ? 0x30 : 0x31; // D1001 / D1002 ("fire report" / "building on fire")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x5e; // D2020
@@ -755,7 +791,7 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 	}
 	else if ((TypeMask & TYPE_Medevac) != 0)
 	{
-		TypeVoiceId = 0x3c; // D1013
+		TypeVoiceId = 0x3c; // D1013 ("medical evac request")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x5c; // D2018
@@ -764,12 +800,12 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 	}
 	else if ((TypeMask & TYPE_Transport) != 0)
 	{
-		TypeVoiceId = 0x35; // D1006
+		TypeVoiceId = 0x35; // D1006 ("transport request")
 		ClosingVoiceId = GetRandomClosingFromPool();
 	}
 	else if ((TypeMask & TYPE_BoatRescue) == TYPE_BoatRescue)
 	{
-		TypeVoiceId = 0x41; // D1018
+		TypeVoiceId = 0x41; // D1018 ("overturned boat sighting")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x59; // D2015
@@ -777,7 +813,7 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 	}
 	else if ((TypeMask & TYPE_TrainRescue) == TYPE_TrainRescue || (TypeMask & TYPE_TrainCrash) != 0)
 	{
-		TypeVoiceId = 0x40; // D1017
+		TypeVoiceId = 0x40; // D1017 ("emergency rescue")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x59; // D2015
@@ -785,32 +821,15 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 	}
 	else if ((TypeMask & TYPE_FireRescue) == TYPE_FireRescue || (TypeMask & TYPE_RescuePeople) != 0)
 	{
-		TypeVoiceId = 0x33; // D1004
+		TypeVoiceId = 0x40; // D1017 ("emergency rescue")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x59; // D2015
 		else ClosingVoiceId = 0x57; // D2013
 	}
-	else if ((TypeMask & TYPE_CriminalCar) != 0)
-	{
-		TypeVoiceId = 0x36; // D1007
-		const int32 Roll = FMath::RandRange(0, 4);
-		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
-		else if (Roll == 2) ClosingVoiceId = 0x58; // D2014
-		else ClosingVoiceId = 0x50; // D2006
-	}
-	else if ((TypeMask & TYPE_SpeederEvent) != 0 || (TypeMask & TYPE_Speeder) != 0)
-	{
-		TypeVoiceId = 0x38; // D1009
-		const int32 Roll = FMath::RandRange(0, 4);
-		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
-		else if (Roll == 2) ClosingVoiceId = 0x57; // D2013
-		else if (Roll == 3) ClosingVoiceId = 0x4f; // D2005
-		else ClosingVoiceId = 0x52; // D2010
-	}
 	else if ((TypeMask & TYPE_CriminalA) != 0)
 	{
-		TypeVoiceId = 0x36; // D1007
+		TypeVoiceId = 0x36; // D1007 ("hold up report")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x58; // D2014
@@ -819,37 +838,28 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 	}
 	else if ((TypeMask & TYPE_CriminalC) != 0)
 	{
-		TypeVoiceId = 0x39; // D1010
+		TypeVoiceId = 0x39; // D1010 ("mugger report")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x58; // D2014
 		else if (Roll == 3) ClosingVoiceId = 0x5a; // D2016
 		else ClosingVoiceId = 0x4f; // D2005
 	}
-	else if ((TypeMask & TYPE_CarFire) != 0)
-	{
-		TypeVoiceId = 0x36; // D1007
-		const int32 Roll = FMath::RandRange(0, 4);
-		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
-		else if (Roll == 2) ClosingVoiceId = 0x5b; // D2017
-		else if (Roll == 3) ClosingVoiceId = 0x5e; // D2020
-		else ClosingVoiceId = 0x57; // D2013
-	}
 	else if ((TypeMask & TYPE_TrafficJam) != 0)
 	{
-		TypeVoiceId = 0x3d; // D1014
+		TypeVoiceId = 0x3d; // D1014 ("traffic jam report")
 		const int32 Roll = FMath::RandRange(0, 4);
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else ClosingVoiceId = 0x58; // D2014
 	}
 	else if ((TypeMask & TYPE_Riot) != 0)
 	{
-		TypeVoiceId = FMath::RandBool() ? 0x3e : 0x3f; // D1015 / D1016
+		TypeVoiceId = 0x3f; // D1016 ("Riot reported")
 		ClosingVoiceId = GetRandomClosingFromPool();
 	}
 	else
 	{
-		TypeVoiceId = 0x30; // D1001
+		TypeVoiceId = 0x30; // D1001 ("fire report")
 		ClosingVoiceId = GetRandomClosingFromPool();
 	}
 

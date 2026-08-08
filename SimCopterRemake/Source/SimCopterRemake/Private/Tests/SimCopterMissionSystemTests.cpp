@@ -1243,6 +1243,52 @@ bool FSimCopterPostAnnouncementVoiceTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Fourth phrase is valid closing detail clip ID"), World.RadioVoiceCalls[3] >= 0x4b);
 	}
 
+	// Verify corrected dispatch voice IDs for specific mission types reported by user:
+	World.RadioVoiceCalls.Reset();
+	const int32 CarFireId = System.CreateEventOfType(TYPE_CarFireEvent);
+	if (CarFireId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 2)
+	{
+		TestEqual(TEXT("Car Fire plays D1004 (0x33 - vehicle on fire)"), World.RadioVoiceCalls[1], 0x33);
+	}
+
+	World.RadioVoiceCalls.Reset();
+	const int32 SpeederId = System.CreateEventOfType(TYPE_SpeederEvent);
+	if (SpeederId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 4)
+	{
+		TestEqual(TEXT("Speeder 0x2000 plays D1008 (0x37 - speeder report)"), World.RadioVoiceCalls[1], 0x37);
+		TestTrue(TEXT("Speeder 0x2000 closing phrase is person-specific clip"),
+			World.RadioVoiceCalls[3] == 0x4f || World.RadioVoiceCalls[3] == 0x52 || World.RadioVoiceCalls[3] == 0x57 || World.RadioVoiceCalls[3] >= 0x4b);
+	}
+
+	World.RadioVoiceCalls.Reset();
+	const int32 SpeederCarId = System.CreateEventOfType(TYPE_CriminalCar);
+	if (SpeederCarId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 4)
+	{
+		TestEqual(TEXT("Speeder Car 0x4000 plays D1008 (0x37 - speeder report)"), World.RadioVoiceCalls[1], 0x37);
+		TestEqual(TEXT("Speeder Car 0x4000 closing phrase is D2006 (0x50 - driving erratically)"), World.RadioVoiceCalls[3], 0x50);
+	}
+
+	World.RadioVoiceCalls.Reset();
+	const int32 PlaneCrashId = System.CreateEventOfType(TYPE_PlaneCrash);
+	if (PlaneCrashId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 2)
+	{
+		TestEqual(TEXT("Plane Crash plays D1017 (0x40 - emergency rescue)"), World.RadioVoiceCalls[1], 0x40);
+	}
+
+	World.RadioVoiceCalls.Reset();
+	const int32 UfoId = System.CreateEventOfType(TYPE_Ufo);
+	if (UfoId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 2)
+	{
+		TestEqual(TEXT("UFO plays D1020 (0x83 - 10-11 in progress)"), World.RadioVoiceCalls[1], 0x83);
+	}
+
+	World.RadioVoiceCalls.Reset();
+	const int32 RiotId = System.CreateEventOfType(TYPE_Riot);
+	if (RiotId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 2)
+	{
+		TestEqual(TEXT("Riot plays D1016 (0x3f - Riot reported)"), World.RadioVoiceCalls[1], 0x3f);
+	}
+
 	return true;
 }
 
