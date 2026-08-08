@@ -101,6 +101,12 @@ FString GetUpscaledSlateFileName(const FString& OriginalFileName)
 		return Candidate;
 	}
 
+	const FString CandidatePng = BaseName + TEXT(".png");
+	if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), CandidatePng)))
+	{
+		return CandidatePng;
+	}
+
 	return FString();
 }
 }
@@ -425,7 +431,12 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 				}
 				else if (BaseName.Equals(TEXT("FLAP-dispatch"), ESearchCase::IgnoreCase) || BaseName.Equals(TEXT("FLAP_DISPATCH"), ESearchCase::IgnoreCase))
 				{
-					OrigWidth = 232.0f;
+					OrigWidth = 198.578475f;
+					OrigHeight = 58.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAP-apache-missles-gun"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 135.76392f;
 					OrigHeight = 58.0f;
 				}
 				else if (BaseName.StartsWith(TEXT("FLAP"), ESearchCase::IgnoreCase))

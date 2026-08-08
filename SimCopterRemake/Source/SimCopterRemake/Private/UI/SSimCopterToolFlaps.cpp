@@ -1555,7 +1555,7 @@ void SSimCopterToolFlaps::AddStripBackground(
 TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 {
 	TSharedRef<SConstraintCanvas> Canvas = SNew(SConstraintCanvas);
-	if (const FSlateBrush* BackgroundBrush = GetBrush(TEXT("FLAP2.BMP"), FIntRect(0, 0, PageWidth, PageHeight)))
+	if (const FSlateBrush* BackgroundBrush = GetBrush(TEXT("FLAP-apache-missles-gun.BMP"), FIntRect(0, 0, FMath::RoundToInt(ApachePageWidth), PageHeight)))
 	{
 		AddAtPage(*Canvas, 0.0f, 0.0f, ApachePageWidth, static_cast<float>(PageHeight),
 			SNew(SImage).Image(BackgroundBrush));

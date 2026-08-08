@@ -92,16 +92,11 @@ public:
 	void AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const;
 
 private:
-	// The dispatch strip's page width. Wider than a tool flap because it carries a service name
-	// and two labelled buttons; its background is a tool flap's frame with the middle tiled out
-	// to width (see BuildDispatchFlap).
-	static constexpr float DispatchPageWidth = 232.0f;
+	// The dispatch strip's page width, matching the un-stretched aspect ratio of FLAP-dispatch-upscaled.png (1527x446 at height 58).
+	static constexpr float DispatchPageWidth = 198.578475f;
 
-	// The Apache armament strip: two buttons and their labels, nothing else. Widened from 110 so
-	// its pair can sit directly under the dispatch strip's - both strips are right-aligned in the
-	// column, so what lines them up is the distance from the right edge, and the dispatch strip
-	// puts DISPATCH at 232 - 126 = 106 and CLEAR at 232 - 168 = 64.
-	static constexpr float ApachePageWidth = 138.0f;
+	// The Apache armament strip's page width, matching the un-stretched aspect ratio of FLAP-apache-missles-gun.png (1051x449 at height 58).
+	static constexpr float ApachePageWidth = 135.76392f;
 	static constexpr float MissileButtonInsetFromRight = 106.0f;
 	static constexpr float GunButtonInsetFromRight = 64.0f;
 
