@@ -55,6 +55,12 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 	}
 
 	bool bSpeederCarPlaced = false;
+	TArray<int32> RadioVoiceCalls;
+
+	virtual void PlayRadioVoice(int32 VoiceId, int32 Volume) override
+	{
+		RadioVoiceCalls.Add(VoiceId);
+	}
 
 	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override
 	{
@@ -1177,6 +1183,64 @@ bool FSimCopterTransportBuildingSpawnTest::RunTest(const FString& Parameters)
 		TestTrue(
 			TEXT("Transport passenger pickup tile is on a valid mission building tile"),
 			FSimCopterMissionSystem::IsMissionBuildingTile(City.GetXbldTileId(Record->TileX, Record->TileY)));
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterDispatchLocationVoiceTest,
+	"SimCopter.Missions.DispatchLocationVoice",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterDispatchLocationVoiceTest::RunTest(const FString& Parameters)
+{
+	// FUN_004aba30 3x3 sector grid tests:
+	// Sector X: 0 (TileX 0..42), 1 (TileX 43..84), 2 (TileX 85..127)
+	// Sector Y: 0 (TileY 0..42), 1 (TileY 43..84), 2 (TileY 85..127)
+
+	TestEqual(TEXT("North-East sector (85, 10) -> L001 (0x42)"), FSimCopterMissionSystem::GetLocationVoiceId(85, 10), 0x42);
+	TestEqual(TEXT("North sector (50, 10) -> L002 (0x43)"), FSimCopterMissionSystem::GetLocationVoiceId(50, 10), 0x43);
+	TestEqual(TEXT("North-West sector (10, 10) -> L003 (0x44)"), FSimCopterMissionSystem::GetLocationVoiceId(10, 10), 0x44);
+	TestEqual(TEXT("East sector (85, 50) -> L004 (0x45)"), FSimCopterMissionSystem::GetLocationVoiceId(85, 50), 0x45);
+	TestEqual(TEXT("Downtown sector (50, 50) -> L005 (0x46)"), FSimCopterMissionSystem::GetLocationVoiceId(50, 50), 0x46);
+	TestEqual(TEXT("West sector (10, 50) -> L006 (0x47)"), FSimCopterMissionSystem::GetLocationVoiceId(10, 50), 0x47);
+	TestEqual(TEXT("South-East sector (85, 90) -> L007 (0x48)"), FSimCopterMissionSystem::GetLocationVoiceId(85, 90), 0x48);
+	TestEqual(TEXT("South sector (50, 90) -> L008 (0x49)"), FSimCopterMissionSystem::GetLocationVoiceId(50, 90), 0x49);
+	TestEqual(TEXT("South-West sector (10, 90) -> L009 (0x4a)"), FSimCopterMissionSystem::GetLocationVoiceId(10, 90), 0x4a);
+
+	TestEqual(TEXT("Out of bounds negative TileX"), FSimCopterMissionSystem::GetLocationVoiceId(-1, 50), -1);
+	TestEqual(TEXT("Out of bounds TileX 128"), FSimCopterMissionSystem::GetLocationVoiceId(128, 50), -1);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPostAnnouncementVoiceTest,
+	"SimCopter.Missions.PostAnnouncementVoice",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPostAnnouncementVoiceTest::RunTest(const FString& Parameters)
+{
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+
+	const int32 MedevacId = System.CreateEventOfType(TYPE_Medevac);
+	TestTrue(TEXT("Medevac event created"), MedevacId != INDEX_NONE);
+
+	// Creating a mission should trigger 4 queued dispatch radio voice calls (FUN_004ab480):
+	// 1. Intro D1000 (0x2f)
+	// 2. Type voice ID D1013 (0x3c)
+	// 3. Location voice ID L005 (0x46 - default camera 64, 64)
+	// 4. Closing detail voice ID
+	TestEqual(TEXT("Four radio voice phrases queued for mission announcement"), World.RadioVoiceCalls.Num(), 4);
+	if (World.RadioVoiceCalls.Num() >= 4)
+	{
+		TestEqual(TEXT("First phrase is D1000 (0x2f)"), World.RadioVoiceCalls[0], 0x2f);
+		TestEqual(TEXT("Second phrase is MedEvac D1013 (0x3c)"), World.RadioVoiceCalls[1], 0x3c);
+		TestEqual(TEXT("Third phrase is Location L005 (0x46) for center tile (64,64)"), World.RadioVoiceCalls[2], 0x46);
+		TestTrue(TEXT("Fourth phrase is valid closing detail clip ID"), World.RadioVoiceCalls[3] >= 0x4b);
 	}
 
 	return true;

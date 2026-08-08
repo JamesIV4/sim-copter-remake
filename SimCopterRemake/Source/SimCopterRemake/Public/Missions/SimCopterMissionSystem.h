@@ -526,6 +526,7 @@ public:
 	bool SelectCareerCity(int32 Index);
 
 	static const TCHAR* GetTypeDisplayName(int32 TypeMask);
+	static int32 GetLocationVoiceId(int32 TileX, int32 TileY); // FUN_004aba30
 
 
 	// Master per-frame update: advances the fps EMA (FUN_0047a760), then runs
@@ -686,7 +687,6 @@ private:
 	void AnnounceCreated(const FSimCopterMissionRecord& Record); // trailer of FUN_004a7a10
 	void PostAnnouncementVoice(const FSimCopterMissionRecord& Record); // FUN_004ab480
 	static int32 GetTypeTextId(int32 TypeMask);   // shared 0x23b..0x24b switch
-	static int32 GetLocationVoiceId(int32 TileX, int32 TileY); // FUN_004aba30
 	bool FindDefaultDestinationTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;
 	// Nearest hospital tile (XBLD id 0xD1 / HO209) to the origin - the medevac drop-off.
 	bool FindNearestHospitalTile(int32 OriginX, int32 OriginY, int32& OutX, int32& OutY) const;

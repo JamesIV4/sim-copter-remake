@@ -1510,7 +1510,7 @@ void ASimCopterMissionSystemActor::PlayRadioVoice(int32 VoiceId, int32 /*QueueTa
 {
 	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 	{
-		Audio->Play2D(VoiceId);
+		Audio->QueueRadioVoice(VoiceId);
 	}
 }
 

@@ -167,6 +167,17 @@ public:
 		bool bNonPositional = false,
 		int32 Flags = 0);
 
+	// --- dispatcher / radio voice queue (SCHOOK: DispatchVoicePlay 0x0042a3b0) ---
+
+	/** Enqueues a dispatcher/radio voice sound ID to play sequentially. */
+	void QueueRadioVoice(int32 SoundId);
+
+	/** Clear any pending queued dispatcher voice announcements. */
+	void ClearRadioVoiceQueue();
+
+	/** True if a dispatcher voice clip is currently playing or queued. */
+	bool IsRadioVoicePlayingOrQueued() const;
+
 	// --- one-off files outside the table ---
 
 	/**
@@ -320,6 +331,11 @@ private:
 	TObjectPtr<UAudioComponent> MusicComponent = nullptr;
 
 	double RadioEndTime = 0.0;
+
+	/** Dispatcher voice queue (SCHOOK: DispatchVoicePlay 0x0042a3b0). */
+	TArray<int32> DispatchVoiceQueue;
+	int32 CurrentDispatchVoiceId = INDEX_NONE;
+	double CurrentDispatchVoiceEndTime = 0.0;
 
 	/** Clips loaded by PlayFile2D / SetFile, keyed by lowercase relative path. */
 	TMap<FString, FSimCopterPcmClip> ClipCache;
