@@ -33,6 +33,7 @@
 #include "SimCopterAudioSubsystem.generated.h"
 
 class UAudioComponent;
+class USceneComponent;
 class USoundAttenuation;
 class USoundWaveProcedural;
 
@@ -166,6 +167,20 @@ public:
 		int32 PitchDeltaHz = 0,
 		bool bNonPositional = false,
 		int32 Flags = 0);
+
+	/**
+	 * A polyphonic attached loop for movement sounds. Unlike PlayVoiceEvent, this does not borrow
+	 * one of the fourteen dialogue slots, so a person's footsteps and voice cannot replace each
+	 * other. MaxRangeCm is a hard start/cutoff radius and the component's attenuation falloff.
+	 */
+	UAudioComponent* PlayAttachedVoiceLoop(
+		int32 VoiceEvent,
+		USceneComponent* AttachParent,
+		int32 FrequencyHz,
+		float MaxRangeCm,
+		float VolumeMultiplier = 1.0f);
+	void SetAttachedVoiceLoopFrequencyHz(UAudioComponent* Component, int32 VoiceEvent, int32 FrequencyHz);
+	void StopAttachedVoiceLoop(UAudioComponent* Component);
 
 	// --- dispatcher / radio voice queue (SCHOOK: DispatchVoicePlay 0x0042a3b0) ---
 
@@ -321,6 +336,10 @@ private:
 	/** Components spawned by PlayFile2D, reaped when they finish. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAudioComponent>> LooseComponents;
+
+	/** Polyphonic movement loops; separate so front-end standalone cleanup cannot stop them. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UAudioComponent>> AttachedVoiceLoopComponents;
 
 	/** The radio's single voice. */
 	UPROPERTY(Transient)

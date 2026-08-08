@@ -10,6 +10,7 @@
 class ASimCity2000CityActor;
 class ASimCopterHelicopterPawn;
 class ASimCopterGroundAgent;
+class UAudioComponent;
 class UCameraComponent;
 class UCapsuleComponent;
 class UMaterialInterface;
@@ -215,6 +216,10 @@ private:
 		bool bHasHeadSection = false;
 	} FigureAnim;
 	bool bUsingOriginalFigure = false;
+	// The original player-person is class 19 (pilot), so its own looping walking voice is boots.
+	TWeakObjectPtr<UAudioComponent> WalkingSoundComponent;
+	void UpdateWalkingSound();
+	void StopWalkingSound();
 
 	bool LoadOriginalBodyFigure();
 	bool RebuildPlayerFigureClip(const FString& Mnemonic);

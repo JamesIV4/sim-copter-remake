@@ -118,6 +118,25 @@ bool FSimCopterPassengerHeadImageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Blonde voice pitch"), FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(0), 500);
 	TestEqual(TEXT("5man voice pitch"), FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(4), 0);
 	TestEqual(TEXT("Elvis voice pitch"), FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(20), -8000);
+	{
+		// FUN_004c71c0's footwear rows. The final 1-in-65000 Elvis override is deterministic for
+		// these seeds and does not fire, so these check the actual class-to-WAV wiring.
+		uint16 BlondeRandom = 0x4242;
+		uint16 PlainRandom = 0x4343;
+		uint16 PilotRandom = 0x4444;
+		TestEqual(
+			TEXT("Blonde walks in heels"),
+			FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(0, BlondeRandom),
+			int32(SimCopterSound::VOX_FOOTSTEPS_HEELS));
+		TestEqual(
+			TEXT("Plain pedestrian walks in shoes"),
+			FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(4, PlainRandom),
+			int32(SimCopterSound::VOX_FOOTSTEPS_SHOES));
+		TestEqual(
+			TEXT("Player pilot walks in boots"),
+			FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(19, PilotRandom),
+			int32(SimCopterSound::VOX_FOOTSTEPS_BOOTS));
+	}
 
 	// The voice set: Elvis and Nessie always speak in the 0x2f..0x36 noises, an ordinary person
 	// gets one of the three footstep clips.
@@ -172,6 +191,25 @@ bool FSimCopterPassengerVoiceRateTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A dying cry does not"), SimCopterSound::IsLoopingVoiceEvent(SimCopterSound::VOX_DYING));
 	TestFalse(TEXT("The EKG is not walk-paced"), SimCopterSound::IsWalkPacedVoiceEvent(SimCopterSound::VOX_EKG));
 	TestTrue(TEXT("Footsteps are"), SimCopterSound::IsWalkPacedVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_BOOTS));
+	TestEqual(TEXT("Player footsteps stop after six city tiles"), SimCopterSound::PlayerFootstepMaxRangeCm, 2400.0f);
+	TestEqual(TEXT("NPC footsteps use the pedestrian range"), SimCopterSound::PedestrianFootstepMaxRangeCm, 800.0f);
+	TestEqual(TEXT("NPC footsteps use full volume"), SimCopterSound::PedestrianFootstepVolumeMultiplier, 1.0f);
+
+	const SimCopterSound::FVoiceEvent* Shoes = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_SHOES);
+	const SimCopterSound::FVoiceEvent* Heels = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_HEELS);
+	const SimCopterSound::FVoiceEvent* Boots = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_BOOTS);
+	if (TestNotNull(TEXT("Shoes event is registered"), Shoes))
+	{
+		TestEqual(TEXT("Shoes event file"), FString(Shoes->Clips[0]), FString(TEXT("xFtShoes")));
+	}
+	if (TestNotNull(TEXT("Heels event is registered"), Heels))
+	{
+		TestEqual(TEXT("Heels event file"), FString(Heels->Clips[0]), FString(TEXT("xFtHeels")));
+	}
+	if (TestNotNull(TEXT("Boots event is registered"), Boots))
+	{
+		TestEqual(TEXT("Boots event file"), FString(Boots->Clips[0]), FString(TEXT("xFtBoots")));
+	}
 
 	// EKG.wav must be a real voice event, or the medevac beep silently plays nothing.
 	const SimCopterSound::FVoiceEvent* Ekg = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_EKG);

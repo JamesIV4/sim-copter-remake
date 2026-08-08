@@ -6,6 +6,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterEffectExposure.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SpotLightComponent.h"
@@ -237,6 +238,7 @@ void ASimCopterGroundAgent::BeginPlay()
 
 void ASimCopterGroundAgent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	StopWalkingVoice();
 	// There are fourteen voice slots for the whole city, so one has to go back the moment its
 	// speaker leaves - a despawning medevac victim otherwise leaves its EKG looping forever.
 	StopPersonVoice();
@@ -867,6 +869,54 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	}
 	Context.PendingAnimMnemonic = LastBlockResult == 1 ? TEXT("FaCl") : (LastBlockResult == 2 ? TEXT("Whoa") : TEXT("NoMo"));
 	return false;
+}
+
+// SCHOOK: PersonPostMove 0x004c6970, normal move results 0/8.
+void ASimCopterGroundAgent::UpdateWalkingVoice(const int32 MoveSpeed)
+{
+	const int32 VoiceSet = int32(BehaviorContext.Attributes[EBhavAttr::VoiceSet]);
+	if (MoveSpeed <= 0)
+	{
+		StopWalkingVoice();
+		return;
+	}
+
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr || FVector::DistSquared(GetActorLocation(), Audio->GetListenerLocation()) >=
+		FMath::Square(SimCopterSound::PedestrianFootstepMaxRangeCm))
+	{
+		StopWalkingVoice();
+		return;
+	}
+
+	UAudioComponent* WalkingSound = WalkingSoundComponent.Get();
+	if (WalkingSound == nullptr || !WalkingSound->IsPlaying())
+	{
+		WalkingSound = Audio->PlayAttachedVoiceLoop(
+			VoiceSet,
+			GetRootComponent(),
+			SimCopterSound::GetWalkPacedFrequencyHz(MoveSpeed),
+			SimCopterSound::PedestrianFootstepMaxRangeCm,
+			SimCopterSound::PedestrianFootstepVolumeMultiplier);
+		WalkingSoundComponent = WalkingSound;
+		return;
+	}
+	Audio->SetAttachedVoiceLoopFrequencyHz(
+		WalkingSound,
+		VoiceSet,
+		SimCopterSound::GetWalkPacedFrequencyHz(MoveSpeed));
+}
+
+void ASimCopterGroundAgent::StopWalkingVoice()
+{
+	if (UAudioComponent* WalkingSound = WalkingSoundComponent.Get())
+	{
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+		{
+			Audio->StopAttachedVoiceLoop(WalkingSound);
+		}
+	}
+	WalkingSoundComponent.Reset();
 }
 
 ASimCopterGroundAgent* ASimCopterGroundAgent::FindBumpedPedestrian(const FVector& StepTargetWorldLocation) const
@@ -2717,7 +2767,6 @@ void ASimCopterGroundAgent::PlayPersonVoiceEvent(
 		StopPersonVoice(); // the param_2 == -1 arm
 		return;
 	}
-
 	// The audibility gate. The original plays when the sound is 2D, when the caller forces it,
 	// when this person is riding the player's cabin - which is what carries an injured
 	// passenger's EKG and moans into the cockpit - or when DAT_00503aa0 == 3, the mode the game
@@ -3242,6 +3291,7 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		CurrentVelocityCmPerSec = FVector::ZeroVector;
 		ExternalVelocityCmPerSec = FVector::ZeroVector;
+		StopWalkingVoice();
 		UpdateWaterSubmersion(DeltaSeconds);
 		UpdateJankyAnimation(DeltaSeconds);
 		return;
@@ -3258,6 +3308,7 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 		{
 			CurrentVelocityCmPerSec = FVector::ZeroVector;
 			ExternalVelocityCmPerSec = FVector::ZeroVector;
+			StopWalkingVoice();
 			UpdateCarriedTransform();
 			UpdateOriginalBehavior(DeltaSeconds);
 			UpdateWaterSubmersion(DeltaSeconds);
@@ -3266,7 +3317,20 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 		}
 	}
 	UpdateOriginalBehavior(DeltaSeconds);
+	const FVector PreMovementLocation = GetActorLocation();
 	UpdateMovement(DeltaSeconds);
+	// Drive footsteps from actual horizontal movement, not merely a non-zero BHAV move-speed
+	// attribute. Blocked, stationary, carried and expired-step people therefore cannot leave a
+	// loop running. Guidance/scripted walkers still get footsteps because they really moved.
+	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
+	{
+		const FVector FrameMovement = GetActorLocation() - PreMovementLocation;
+		const bool bActuallyMoving = FVector(FrameMovement.X, FrameMovement.Y, 0.0f).SizeSquared() > FMath::Square(0.01f);
+		const int32 MoveSpeed = bActuallyMoving
+			? FMath::Max(1, int32(int16(BehaviorContext.Attributes[EBhavAttr::MoveSpeed])))
+			: 0;
+		UpdateWalkingVoice(MoveSpeed);
+	}
 	// After every mover and before the ground snap: a worker pushed past the edge of its roof must
 	// be back over it before the snap reads a surface, or the snap is what drops them to the street.
 	ContainToHospitalRoofPost();
