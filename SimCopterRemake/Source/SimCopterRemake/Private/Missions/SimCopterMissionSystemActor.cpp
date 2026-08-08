@@ -364,6 +364,11 @@ bool ASimCopterMissionSystemActor::RestoreRuntimeSaveState(const TArray<uint8>& 
 	{
 		return false;
 	}
+	// Saves written before UserCityJobs existed serialized user sessions as CityJobs. The outer
+	// session selection is authoritative and has already opened the user sandbox before this live
+	// world payload is applied, so remember it across the legacy mode byte below.
+	const bool bRestoreAsUserCitySandbox =
+		SessionMode == ESimCopterMissionSessionMode::UserCityJobs;
 
 	FMemoryReader Reader(Data, true);
 	uint32 Magic = 0;
@@ -379,11 +384,15 @@ bool ASimCopterMissionSystemActor::RestoreRuntimeSaveState(const TArray<uint8>& 
 	uint8 SelectionHeld = 0;
 	Reader << Mode << SelectionHeld << SessionElapsedSeconds;
 	Reader << ServiceJetSweep.Elevation1616 << ServiceJetSweep.Step1616;
-	if (Mode > static_cast<uint8>(ESimCopterMissionSessionMode::SingleMission))
+	if (Mode > static_cast<uint8>(ESimCopterMissionSessionMode::UserCityJobs))
 	{
 		return false;
 	}
 	SessionMode = static_cast<ESimCopterMissionSessionMode>(Mode);
+	if (bRestoreAsUserCitySandbox)
+	{
+		SessionMode = ESimCopterMissionSessionMode::UserCityJobs;
+	}
 	bSessionSelectionHeld = SelectionHeld != 0;
 
 	int32 HospitalCount = 0;
@@ -825,6 +834,23 @@ void ASimCopterMissionSystemActor::StartCityJobsSession(int32 CareerCityIndex, b
 	{
 		const bool bCreated = MissionSystem.RollScheduledMissionNow();
 		UE_LOG(LogTemp, Display, TEXT("SimCopter session: opening job rolled immediately -> %s"),
+			bCreated ? TEXT("created") : TEXT("nothing placed (the scheduler will try again)"));
+	}
+}
+
+void ASimCopterMissionSystemActor::StartUserCitySession(int32 TuningCityIndex, bool bFirstJobImmediately)
+{
+	// FUN_004080c0 opens original mode 1 with City0's difficulty/weights and the ordinary mission
+	// scheduler. The user-requested sandbox rule deliberately omits the original's rolling score
+	// threshold: jobs and points remain live, but there is no goal, filled meter, or level finish.
+	BeginSession(ESimCopterMissionSessionMode::UserCityJobs, TuningCityIndex, /*bAllowScheduledMissions=*/true);
+	UE_LOG(LogTemp, Display, TEXT("SimCopter session: user city sandbox (tier %d, no points goal)"),
+		MissionSystem.GetDifficultyTier());
+
+	if (bFirstJobImmediately)
+	{
+		const bool bCreated = MissionSystem.RollScheduledMissionNow();
+		UE_LOG(LogTemp, Display, TEXT("SimCopter session: opening user-city job rolled immediately -> %s"),
 			bCreated ? TEXT("created") : TEXT("nothing placed (the scheduler will try again)"));
 	}
 }
@@ -4071,10 +4097,10 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 		const FVector RocketVelocity(SpreadX, SpreadY, AscentHeightCm / 1.8f);
 		const FVector ApexLocation = GroundLocation + FVector(SpreadX * 1.8f, SpreadY * 1.8f, AscentHeightCm);
 
-		// Play launch whistling sound AT LAUNCH (Sound 0x17: TGSHWH.WAV)
+		// Play launch whistling sound AT LAUNCH (Sound 0x17: TGSHWH.WAV).
 		if (Audio != nullptr)
 		{
-			Audio->Play3D(0x17, GroundLocation); // SCHOOK: TGSHWH 0x17 tear gas launch whistle
+			Audio->Play3D(SimCopterSound::FireworkMortarSound, GroundLocation);
 		}
 
 		if (FireSmokeComponent != nullptr)

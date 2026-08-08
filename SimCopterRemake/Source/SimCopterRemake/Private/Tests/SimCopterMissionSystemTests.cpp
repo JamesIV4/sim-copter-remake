@@ -3,7 +3,9 @@
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "Audio/SimCopterSoundTable.h"
 #include "Missions/SimCopterMissionSystem.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
 
@@ -56,10 +58,12 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 
 	bool bSpeederCarPlaced = false;
 	TArray<int32> RadioVoiceCalls;
+	TArray<int32> RadioVoiceQueueTags;
 
 	virtual void PlayRadioVoice(int32 VoiceId, int32 Volume) override
 	{
 		RadioVoiceCalls.Add(VoiceId);
+		RadioVoiceQueueTags.Add(Volume);
 	}
 
 	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override
@@ -922,8 +926,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterEconomyScoreProgressionTest, "SimCopt
 
 bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 {
+	FSimCopterTestMissionWorld World;
 	FSimCopterMissionSystem System;
-	System.Initialize(nullptr, 1);
+	System.Initialize(&World, 1);
 	
 	const FString CareerPath = ResolveCareerTweakPath();
 	
@@ -957,6 +962,13 @@ bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 		AddError(TEXT("Should be level complete at 400 points."));
 		return false;
 	}
+	TestEqual(TEXT("Level completion queues exactly one dispatcher clip"), World.RadioVoiceCalls.Num(), 1);
+	if (World.RadioVoiceCalls.Num() == 1)
+	{
+		TestEqual(TEXT("Original fixed level-complete line is DIS063"),
+			World.RadioVoiceCalls[0], SimCopterSound::SND_DIS063);
+		TestEqual(TEXT("Original completion-list tag is 100"), World.RadioVoiceQueueTags[0], 100);
+	}
 
 	// Score must NOT reset to 0 mid-gameplay upon reaching PointsNeeded
 	if (System.GetScore() != 400)
@@ -979,6 +991,25 @@ bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterUserCityPointsPresentationTest,
+	"SimCopter.Economy.UserCityHasNoPointsGoal",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterUserCityPointsPresentationTest::RunTest(const FString& Parameters)
+{
+	using SimCopterMissionSession::HasPointsGoal;
+	TestTrue(TEXT("Career city jobs own a points goal"),
+		HasPointsGoal(ESimCopterMissionSessionMode::CityJobs));
+	TestFalse(TEXT("User city jobs are a score-only sandbox"),
+		HasPointsGoal(ESimCopterMissionSessionMode::UserCityJobs));
+	TestFalse(TEXT("Free roam has no points goal"),
+		HasPointsGoal(ESimCopterMissionSessionMode::FreeRoam));
+	TestFalse(TEXT("Single-mission mode has no points goal"),
+		HasPointsGoal(ESimCopterMissionSessionMode::SingleMission));
 	return true;
 }
 

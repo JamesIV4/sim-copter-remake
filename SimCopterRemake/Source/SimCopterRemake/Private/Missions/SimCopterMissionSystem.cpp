@@ -1,4 +1,5 @@
 #include "Missions/SimCopterMissionSystem.h"
+#include "Audio/SimCopterSoundTable.h"
 #include "Formats/SimCopterTweakReader.h"
 #include "Serialization/Archive.h"
 
@@ -112,7 +113,10 @@ bool FSimCopterMissionSystem::CheckLevelCompletion()
 				bLevelComplete = true;
 				if (World && !bLevelCompleteSoundPlayed)
 				{
-					World->PlayUiSound(0x50); // Level complete
+					// SCHOOK: CareerLevelCompletePresentation 0x0044bed0. The original queues
+					// FUN_0042a3b0(0, 0x69, 100): DIS063 at full dispatcher volume. Despite the
+					// adjacent DIS064..DIS068 assets, this call is fixed and consumes no RNG.
+					World->PlayRadioVoice(SimCopterSound::LevelCompleteVoiceSound, 100);
 					bLevelCompleteSoundPlayed = true;
 
 					FSimCopterMissionUiMessage Msg;
