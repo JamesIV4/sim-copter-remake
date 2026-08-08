@@ -13,6 +13,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Audio/SimCopterSoundTable.h"
+#include "Engine/Texture2D.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Ground/SimCopterBehaviorVM.h"
@@ -20,6 +21,8 @@
 #include "Ground/SimCopterPopulationFigure.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
+#include "Styling/SlateBrush.h"
+#include "UI/SimCopterHangarArt.h"
 
 namespace
 {
@@ -65,6 +68,46 @@ int32 RunFaceProgram(const FPeopleBehaviorModel& Model, int32 Head, int32 Health
 	return World.LastMood;
 }
 } // namespace
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengerPortraitRenderingTest,
+	"SimCopter.Passengers.PortraitRendering",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPassengerPortraitRenderingTest::RunTest(const FString& Parameters)
+{
+	const FString OriginalGameRoot = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	const FString TexturePath = FPaths::Combine(OriginalGameRoot, TEXT("BMP/PEOPLE1.BMP"));
+	if (!FPaths::FileExists(TexturePath))
+	{
+		AddInfo(TEXT("Original PEOPLE1.BMP not present; skipping passenger portrait rendering validation."));
+		return true;
+	}
+
+	USimCopterHangarArt* Art = NewObject<USimCopterHangarArt>();
+	Art->SetOriginalGameRoot(OriginalGameRoot);
+	const FSlateBrush* Brush = Art->GetSubImage(
+		TEXT("PEOPLE1.BMP"),
+		FIntRect(27, 0, 54, 33),
+		/*bColorKeyed=*/true,
+		ESimCopterArtRotation::None,
+		/*bNearestNeighbor=*/true);
+	if (!TestNotNull(TEXT("Passenger portrait brush"), Brush))
+	{
+		return false;
+	}
+
+	TestEqual(TEXT("Passenger portrait width"), Brush->ImageSize.X, 27.0f);
+	TestEqual(TEXT("Passenger portrait height"), Brush->ImageSize.Y, 33.0f);
+	const UTexture2D* Texture = Cast<UTexture2D>(Brush->GetResourceObject());
+	if (TestNotNull(TEXT("Passenger portrait texture"), Texture))
+	{
+		TestEqual(TEXT("Passenger portrait uses nearest-neighbor sampling"), Texture->Filter, TF_Nearest);
+	}
+
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterPassengerHeadImageTest,

@@ -93,7 +93,8 @@ public:
 		const FString& FileName,
 		const FIntRect& Source,
 		bool bColorKeyed = true,
-		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None);
+		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None,
+		bool bNearestNeighbor = false);
 
 	// Somewhere UObject-shaped to hang a texture the remake builds at runtime rather than loads.
 	// The cockpit map re-uploads its rasterised buffer every tick and its Slate widget cannot own
@@ -143,7 +144,8 @@ private:
 		const FString& FileName,
 		bool bColorKeyed,
 		const FIntRect& Source,
-		ESimCopterArtRotation Rotation);
+		ESimCopterArtRotation Rotation,
+		bool bNearestNeighbor = false);
 };
 
 // Where the hangar shell puts things on the original's 640x480 pages.

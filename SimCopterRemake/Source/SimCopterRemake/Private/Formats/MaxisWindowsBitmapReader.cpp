@@ -121,7 +121,9 @@ bool FMaxisWindowsBitmapReader::LoadPalettedBitmapFromBytes(
 		FColor Color(FileData[Offset + 2], FileData[Offset + 1], FileData[Offset], 255);
 		if (PaletteIndex == TransparentPaletteIndex)
 		{
-			Color.A = 0;
+			// Discard the chroma key's RGB too. Retaining cyan under zero alpha lets filtered UI
+			// samples bleed the key colour back around a sprite's opaque silhouette.
+			Color = FColor::Transparent;
 		}
 		Palette[PaletteIndex] = Color;
 	}

@@ -73,8 +73,8 @@ private:
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 	ASimCopterMissionSystemActor* GetMissionSystem() const;
 
-	const FSlateBrush* GetBrush(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true) const;
-	TSharedRef<SWidget> MakeImage(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true) const;
+	const FSlateBrush* GetBrush(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true, bool bNearestNeighbor = false) const;
+	TSharedRef<SWidget> MakeImage(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true, bool bNearestNeighbor = false) const;
 	void AddAtPage(SConstraintCanvas& Canvas, float X, float Y, float Width, float Height, TSharedRef<SWidget> Content) const;
 
 	TSharedRef<SWidget> BuildSeatWindow();

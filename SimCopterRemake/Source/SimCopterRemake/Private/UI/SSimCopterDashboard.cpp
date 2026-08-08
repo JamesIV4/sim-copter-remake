@@ -607,22 +607,29 @@ ASimCopterMissionSystemActor* SSimCopterDashboard::GetMissionSystem() const
 const FSlateBrush* SSimCopterDashboard::GetBrush(
 	const TCHAR* FileName,
 	const FIntRect& Source,
-	const bool bColorKeyed) const
+	const bool bColorKeyed,
+	const bool bNearestNeighbor) const
 {
 	USimCopterHangarArt* ArtObject = Art.Get();
 	if (ArtObject == nullptr)
 	{
 		return nullptr;
 	}
-	return ArtObject->GetSubImage(FileName, Source, bColorKeyed);
+	return ArtObject->GetSubImage(
+		FileName,
+		Source,
+		bColorKeyed,
+		ESimCopterArtRotation::None,
+		bNearestNeighbor);
 }
 
 TSharedRef<SWidget> SSimCopterDashboard::MakeImage(
 	const TCHAR* FileName,
 	const FIntRect& Source,
-	const bool bColorKeyed) const
+	const bool bColorKeyed,
+	const bool bNearestNeighbor) const
 {
-	const FSlateBrush* Brush = GetBrush(FileName, Source, bColorKeyed);
+	const FSlateBrush* Brush = GetBrush(FileName, Source, bColorKeyed, bNearestNeighbor);
 	if (Brush == nullptr)
 	{
 		return SNullWidget::NullWidget;
@@ -764,7 +771,11 @@ void SSimCopterDashboard::RebuildSeats()
 		const int32 SeatRow = SeatIndex / SeatsPerRow;
 		const float PortraitX = SeatFirstPortraitX + Column2 * SeatPortraitStride;
 		const float PortraitY = SeatWellTop + SeatRow * SeatRowStride;
-		TSharedRef<SWidget> Portrait = MakeImage(TEXT("PEOPLE1.BMP"), Source);
+		TSharedRef<SWidget> Portrait = MakeImage(
+			TEXT("PEOPLE1.BMP"),
+			Source,
+			/*bColorKeyed=*/true,
+			/*bNearestNeighbor=*/true);
 
 		// An occupied seat can be dragged out to put that passenger down; an empty one is scenery.
 		if (Slots.IsValidIndex(SeatIndex))

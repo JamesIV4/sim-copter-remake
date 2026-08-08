@@ -460,7 +460,8 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 	const FString& FileName,
 	const FIntRect& Source,
 	const bool bColorKeyed,
-	const ESimCopterArtRotation Rotation)
+	const ESimCopterArtRotation Rotation,
+	const bool bNearestNeighbor)
 {
 	if (Source.Min.X < 0 || Source.Min.Y < 0 || Source.Width() <= 0 || Source.Height() <= 0)
 	{
@@ -468,14 +469,15 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 	}
 
 	const FString CacheKey = FString::Printf(
-		TEXT("%s@%d,%d,%d,%d%s r%d"),
+		TEXT("%s@%d,%d,%d,%d%s r%d%s"),
 		*FileName,
 		Source.Min.X,
 		Source.Min.Y,
 		Source.Max.X,
 		Source.Max.Y,
 		bColorKeyed ? TEXT("k") : TEXT(""),
-		static_cast<int32>(Rotation));
+		static_cast<int32>(Rotation),
+		bNearestNeighbor ? TEXT(" point") : TEXT(""));
 
 	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
 	{
@@ -483,7 +485,7 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 	}
 
 	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
-	if (!UpscaledName.IsEmpty() && Rotation == ESimCopterArtRotation::None)
+	if (!bNearestNeighbor && !UpscaledName.IsEmpty() && Rotation == ESimCopterArtRotation::None)
 	{
 		if (const FSlateBrush* UpscaledBrush = GetBundledSlateImage(UpscaledName))
 		{
@@ -569,7 +571,7 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 		}
 	}
 
-	return BuildBrush(CacheKey, FileName, bColorKeyed, Source, Rotation);
+	return BuildBrush(CacheKey, FileName, bColorKeyed, Source, Rotation, bNearestNeighbor);
 }
 
 const FSlateBrush* USimCopterHangarArt::GetCatalogDrawing(const int32 CatalogRow)
@@ -592,7 +594,8 @@ const FSlateBrush* USimCopterHangarArt::BuildBrush(
 	const FString& FileName,
 	const bool bColorKeyed,
 	const FIntRect& Source,
-	const ESimCopterArtRotation Rotation)
+	const ESimCopterArtRotation Rotation,
+	const bool bNearestNeighbor)
 {
 	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
 	{
@@ -679,9 +682,10 @@ const FSlateBrush* USimCopterHangarArt::BuildBrush(
 		return nullptr;
 	}
 
-	// The sprite path wants nearest for 27x33 people; a full page scaled up to a modern viewport
-	// wants the opposite, so re-upload with filtering on.
-	Texture->Filter = TF_Bilinear;
+	// Full pages use smooth scaling, but the original 27x33 passenger cells must retain their
+	// exact palette pixels. Point sampling also prevents transparent chroma-key neighbors from
+	// contributing a cyan fringe at the silhouette.
+	Texture->Filter = bNearestNeighbor ? TF_Nearest : TF_Bilinear;
 	Texture->UpdateResource();
 
 	Textures.Add(CacheKey, Texture);
