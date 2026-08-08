@@ -154,6 +154,20 @@ Two deliberate divergences, both at their call sites:
 Not reproduced: the player-avatar Elvis-voice easter egg in `FUN_004c71c0`'s
 `person+0x12e == 32000 && shift` arm.
 
+## Passenger portrait chroma key and scaling (2026-08-08)
+
+`PEOPLE1.BMP` is an 8-bit 324x99 sheet of twelve 27x33 columns and three face rows. Palette
+index 254 is cyan `(0,255,255)` and is the transparent chroma key. Setting only its alpha to zero
+is insufficient for filtered Slate textures: the hidden cyan RGB is interpolated into neighboring
+opaque pixels and appears as a teal outline around the head and shoulders.
+
+The bitmap reader now replaces a keyed palette entry with transparent black, discarding both its
+alpha and RGB. Passenger-slot subimages additionally request their own nearest-neighbor brush
+variant; the cache key includes that sampling choice, and the shared loader continues to use
+bilinear filtering for dashboard pages and other artwork. This preserves the exact original
+palette pixels when each portrait is displayed at the dashboard scale and excludes the keyed
+border completely.
+
 ## Mission class -1 and collision consequences (2026-08-08)
 
 `FUN_004c3eb0` receives behavior class **-1** for ordinary mission people, including transport
@@ -204,6 +218,9 @@ audibly slowing.
 - `Automation RunTests SimCopter.City.PeopleRules` — 1 passed, including deterministic
   `FUN_004c7190` class-selection checks.
 - `Automation RunTests SimCopter.Passengers` — 3 passed (face program, heads, voice rates).
+- Passenger portrait rendering follow-up: `SimCopter.Passengers` — 4 passed, including the real
+  PEOPLE1 crop/filter test; `SimCopter.Formats.MaxisTexture.ReferencePeopleWindowsBitmap` — 1
+  passed, including zero-RGB chroma-key checks.
 - The later runtime-observed impact-trauma follow-up passed UHT and `git diff --check`, but its C++
   rebuild was blocked by an active editor Live Coding session; rebuild/test it after closing the
   editor.
