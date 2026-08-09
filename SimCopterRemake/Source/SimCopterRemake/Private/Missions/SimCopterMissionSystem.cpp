@@ -233,11 +233,11 @@ FSimCopterCareerCity FSimCopterMissionSystem::MakeUserCityDefaults(const FSimCop
 	FSimCopterCareerCity UserCity = BaseCity;
 	UserCity.Difficulty = 0;
 	UserCity.Weights[0] = 30.0f; // Fire
-	// REMAKE DIVERGENCE: user cities start without scheduled crime missions. The player can turn
+	// REMAKE DIVERGENCE: user cities start without scheduled crime or riot missions. The player can turn
 	// them back on in City Settings; the original default for this slot was 90.
 	UserCity.Weights[1] = 0.0f; // Crime
 	UserCity.Weights[2] = 46.0f; // Rescue
-	UserCity.Weights[3] = 40.0f; // Riot
+	UserCity.Weights[3] = 0.0f;  // Riot
 	UserCity.Weights[4] = 60.0f; // Traffic
 	UserCity.Weights[5] = 64.0f; // MedEvac
 	UserCity.Weights[6] = 54.0f; // Transport
