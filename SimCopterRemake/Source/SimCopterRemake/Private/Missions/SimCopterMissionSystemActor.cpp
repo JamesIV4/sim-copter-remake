@@ -133,8 +133,9 @@ FName ResolveMissionMarkerIconName(const FString& Label)
 	if (Label == TEXT("FIRE")) return TEXT("local_fire_department");
 	if (Label == TEXT("JAM")) return TEXT("traffic");
 	if (Label == TEXT("RIOT")) return TEXT("campaign");
-	if (Label == TEXT("SPEEDER")) return TEXT("directions_car");
-	if (Label == TEXT("TARGET")) return TEXT("my_location");
+	if (Label == TEXT("BURGLAR")) return TEXT("directions_car");
+	if (Label == TEXT("ROBBER") || Label == TEXT("ARSONIST") || Label == TEXT("MUGGER")) return TEXT("my_location");
+	if (Label == TEXT("ROOFTOP")) return TEXT("hail");
 	return TEXT("location_on");
 }
 
@@ -642,6 +643,14 @@ bool ASimCopterMissionSystemActor::GetPlayerTile(int32& OutTileX, int32& OutTile
 	OutTileX = 64;
 	OutTileY = 64;
 	return false;
+}
+
+bool ASimCopterMissionSystemActor::IsPlayerOnFoot() const
+{
+	const UWorld* World = GetWorld();
+	const APlayerController* PlayerController =
+		World != nullptr ? UGameplayStatics::GetPlayerController(World, 0) : nullptr;
+	return PlayerController != nullptr && Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn()) != nullptr;
 }
 
 bool ASimCopterMissionSystemActor::IsModalUiActive() const
@@ -1417,11 +1426,16 @@ bool ASimCopterMissionSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 	return false;
 }
 
-bool ASimCopterMissionSystemActor::TrySpawnMissionPerson(int32 Mode, int32 SubState, int32 TileX, int32 TileY, int32 EventId)
+bool ASimCopterMissionSystemActor::TrySpawnMissionPerson(
+	int32 PersonState,
+	int32 BehaviorClass,
+	int32 TileX,
+	int32 TileY,
+	int32 EventId)
 {
 	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
 	{
-		return TrafficSystem->TrySpawnMissionPerson(Mode, SubState, TileX, TileY, EventId);
+		return TrafficSystem->TrySpawnMissionPerson(PersonState, BehaviorClass, TileX, TileY, EventId);
 	}
 	return false;
 }
@@ -1681,12 +1695,16 @@ void ASimCopterMissionSystemActor::UpdateEmergencySirenAudio()
 		bHosing ? FVector::Dist(ServiceJetWorld, Listener) : 0.0);
 }
 
-bool ASimCopterMissionSystemActor::TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY)
+bool ASimCopterMissionSystemActor::TryActivateBurglarCar(
+	int32 EventId,
+	int32 TileX,
+	int32 TileY,
+	int32 CruiseDelay1616)
 {
 	// FUN_004b84f0 -> FUN_004b8540: the traffic system owns the pool and the road placement.
 	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
 	{
-		return TrafficSystem->TryActivateSpeederCar(EventId, TileX, TileY);
+		return TrafficSystem->TryActivateBurglarCar(EventId, TileX, TileY, CruiseDelay1616);
 	}
 	return false;
 }
@@ -2960,7 +2978,7 @@ bool ASimCopterMissionSystemActor::TryFindNearestMedicalTile(
 	int32& OutEventId) const
 {
 	constexpr int32 MedicalMask =
-		SimCopterMissions::TYPE_Medevac | SimCopterMissions::TYPE_RescuePeople | SimCopterMissions::TYPE_FireRescue;
+		SimCopterMissions::TYPE_Medevac | SimCopterMissions::TYPE_RescuePeople | SimCopterMissions::TYPE_RooftopRescue;
 
 	OutEventId = INDEX_NONE;
 	int32 BestCost = TNumericLimits<int32>::Max();
@@ -3095,14 +3113,14 @@ bool ASimCopterMissionSystemActor::ReportTrafficJamCarCleared(int32 EventId)
 	return true;
 }
 
-void ASimCopterMissionSystemActor::ReportSpeederCarCaught(int32 EventId)
+void ASimCopterMissionSystemActor::ReportBurglarCaught(int32 EventId)
 {
 	// FUN_004b8c90: {0x25, eventId, ., ., 1}. This is the one that closes the mission properly -
-	// CriminalsCaught reaches TargetCount and the shared crime completion test passes.
+	// the burglar-specific lifecycle test sees a caught criminal instead of a continuing cycle.
 	MissionSystem.PostEvent(SimCopterMissions::EVT_CriminalCaught, EventId, 1);
 }
 
-void ASimCopterMissionSystemActor::ReportSpeederCarUnresolved(int32 EventId)
+void ASimCopterMissionSystemActor::ReportBurglarSpawnFailed(int32 EventId)
 {
 	// FUN_004b8b60 only posts this when FUN_0049bd00 returned 0, i.e. nowhere to put the driver.
 	// CAT_ExpireSilently makes the update loop skip the completion test, so the record just runs
@@ -3476,7 +3494,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 {
 	OutMarkers.Reset();
 
-	// Speeder tags track the live car, so this needs the traffic system rather than just tiles.
+	// Burglar tags track the live getaway car, so this needs the traffic system rather than tiles.
 	ASimCopterTrafficSystemActor* TrafficSystem = const_cast<ASimCopterMissionSystemActor*>(this)->ResolveTrafficSystem();
 
 	// The hangar's tag is permanent: it is the one marker that is not a job, and it is there so
@@ -3559,7 +3577,11 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			}
 			else
 			{
-				AddTileMarker(Record.TileX, Record.TileY, TEXT("RESCUE"), Record.Name, FLinearColor(0.95f, 0.55f, 0.08f, 1.0f));
+				const TCHAR* RescueLabel =
+					(Record.TypeMask & SimCopterMissions::TYPE_RooftopRescue) == SimCopterMissions::TYPE_RooftopRescue
+						? TEXT("ROOFTOP")
+						: TEXT("RESCUE");
+				AddTileMarker(Record.TileX, Record.TileY, RescueLabel, Record.Name, FLinearColor(0.95f, 0.55f, 0.08f, 1.0f));
 			}
 			continue;
 		}
@@ -3582,28 +3604,27 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			continue;
 		}
 
-		if ((Record.TypeMask & SimCopterMissions::TYPE_CriminalCar) != 0)
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Burglar) != 0)
 		{
-			// The speeder drives away from its spawn tile immediately, so its tag has to follow
-			// the car rather than sit on the tile the mission was created at. The label is the
-			// player's instruction: light it, then send police, then it is done.
+			// FUN_004b8630 republishes the moving car tile. While the burglar is outside, their BHAV
+			// republishes the person's tile instead, so use the record rather than pinning the tag to
+			// the parked car.
 			FVector CarWorld = FVector::ZeroVector;
 			int32 SpotlightMark = 0;
 			bool bStopped = false;
 			if (TrafficSystem != nullptr &&
-				TrafficSystem->TryGetSpeederCarState(Record.EventId, CarWorld, SpotlightMark, bStopped))
+				TrafficSystem->TryGetBurglarCarState(Record.EventId, CarWorld, SpotlightMark, bStopped))
 			{
-				// A stopped car's tag is emitted by the linger pass below instead, so that it
-				// survives the record being retired the instant the mission pays out. Emitting
-				// it here as well would double it up for the frame in between.
-				if (!bStopped)
+				if (bStopped)
 				{
-					// The marker box is a fixed width, so the label stays as short as every other
-					// one here ("FIRE", "JAM", "RIOT"). Progress is carried by colour instead:
-					// red = not lit yet, amber = marked and police can now stop it.
+					AddTileMarker(Record.TileX, Record.TileY, TEXT("BURGLAR"), Record.Name,
+						FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+				}
+				else
+				{
 					FSimCopterMissionWorldMarkerEntry Marker;
 					Marker.WorldLocation = CarWorld;
-					Marker.Label = TEXT("SPEEDER");
+					Marker.Label = TEXT("BURGLAR");
 					Marker.Detail = Record.Name;
 					Marker.Color = SpotlightMark > 0
 						? FLinearColor(1.0f, 0.78f, 0.12f, 1.0f)
@@ -3614,39 +3635,30 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			else
 			{
 				// The car has not been placed yet, or has already been taken away.
-				AddTileMarker(Record.TileX, Record.TileY, TEXT("SPEEDER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+				AddTileMarker(Record.TileX, Record.TileY, TEXT("BURGLAR"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
 			}
 			continue;
 		}
 
-		if ((Record.TypeMask & (SimCopterMissions::TYPE_CriminalA | SimCopterMissions::TYPE_CriminalC |
-			SimCopterMissions::TYPE_SpeederEvent)) != 0)
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Robber) != 0)
 		{
-			AddTileMarker(Record.TileX, Record.TileY, TEXT("TARGET"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			AddTileMarker(Record.TileX, Record.TileY, TEXT("ROBBER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			continue;
+		}
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Arsonist) != 0)
+		{
+			AddTileMarker(Record.TileX, Record.TileY, TEXT("ARSONIST"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			continue;
+		}
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Mugger) != 0)
+		{
+			AddTileMarker(Record.TileX, Record.TileY, TEXT("MUGGER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
 			continue;
 		}
 
 		AddTileMarker(Record.TileX, Record.TileY, TEXT("MISSION"), Record.Name, FLinearColor(0.15f, 0.55f, 1.0f, 1.0f));
 	}
 
-	// A speeder pays out the moment it stops, which retires its record in the same frame and
-	// would take the tag with it. Hold the green one up for a few seconds afterwards so the stop
-	// reads as a result rather than the marker just vanishing. Driven off the car, not a record,
-	// precisely because the record is already gone by then.
-	if (TrafficSystem != nullptr)
-	{
-		TArray<FVector> StoppedSpeeders;
-		TrafficSystem->GetRecentlyStoppedSpeederLocations(StoppedSpeeders);
-		for (const FVector& CarWorld : StoppedSpeeders)
-		{
-			FSimCopterMissionWorldMarkerEntry Marker;
-			Marker.WorldLocation = CarWorld;
-			Marker.Label = TEXT("SPEEDER");
-			Marker.Detail = TEXT("Stopped");
-			Marker.Color = FLinearColor(0.05f, 0.72f, 0.32f, 1.0f);
-			OutMarkers.Add(Marker);
-		}
-	}
 }
 
 bool ASimCopterMissionSystemActor::TryMakeMissionMarkerWorldLocation(int32 TileX, int32 TileY, FVector& OutWorldLocation) const

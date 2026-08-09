@@ -148,6 +148,10 @@ public:
 	// separation, traffic impulses) also displace agents without consulting the walked surface at
 	// all, so the containment is applied to the transform rather than to any one of them.
 	void SetHospitalRoofPost(const FVector& RoofCenterWorldLocation, float HalfExtentCm);
+	// Rooftop-rescue survivors need the same physical containment, but they are mission people,
+	// not permanent hospital staff. Boarding clears the post and their ordinary rescue lifecycle
+	// remains in charge of despawn/save ownership.
+	void SetMissionRoofPost(const FVector& RoofCenterWorldLocation, float HalfExtentCm);
 
 	enum class ERoofPostContainment : uint8
 	{
@@ -203,7 +207,11 @@ public:
 
 	// person+0x170, written by FUN_004c4e10 when an emergency vehicle deploys this person.
 	// Opcode 62 selects this exact starting object before it considers the player helicopter.
-	void SetBehaviorStartingVehicle(AActor* Vehicle) { BehaviorStartingVehicle = Vehicle; }
+	void SetBehaviorStartingVehicle(AActor* Vehicle)
+	{
+		BehaviorStartingVehicle = Vehicle;
+		bBehaviorStartingVehicleMessaged = false;
+	}
 	AActor* GetBehaviorStartingVehicle() const { return BehaviorStartingVehicle.Get(); }
 
 	// BHAV 275 has just used opcode 51 to set this patient down at the ambulance selected by
@@ -262,10 +270,10 @@ public:
 	int32 GetRoutePrevNode() const { return RoutePrevNodeIndex; }
 	int32 GetRoutePlannedNextNode() const { return RoutePlannedNextNodeIndex; }
 
-	// --- Speeder / criminal car (FUN_004b8470's class, message id 0x11e) ---------------------
-	// Turns this vehicle into the mission's speeder. The traffic system drives the rest; see
+	// --- Burglar / criminal car (FUN_004b8470's class, message id 0x11e) ----------------------
+	// Turns this vehicle into the mission's CARROBBR getaway car. The traffic system drives the rest; see
 	// SimCopterCriminalCar.h for the decode.
-	void MakeCriminalCar(int32 InEventId);
+	void MakeCriminalCar(int32 InEventId, int32 CruiseDelay1616);
 	bool IsCriminalCar() const { return bCriminalCar; }
 	int32 GetCriminalEventId() const { return CriminalEventId; }
 
@@ -290,9 +298,9 @@ public:
 	// the car has been marked by the spotlight first.
 	bool TryOrderStop(int32 CallerMessageId);
 
-	// FUN_004b8b60's hold before the car is removed.
-	float GetArrestHoldSeconds() const { return ArrestHoldSeconds; }
-	void SetArrestHoldSeconds(float NewSeconds) { ArrestHoldSeconds = NewSeconds; }
+	// FUN_004b8b60's hold while the burglar is outside the car.
+	float GetBurglarOutsideSeconds() const { return BurglarOutsideSeconds; }
+	void SetBurglarOutsideSeconds(float NewSeconds) { BurglarOutsideSeconds = NewSeconds; }
 
 	// How much of its road speed a pulling-over car still has. The traffic pass resets every
 	// vehicle's speed scale to 1 each frame, so a stop has to be re-asserted from this rather
@@ -300,6 +308,30 @@ public:
 	float GetCriminalStopScale() const { return CriminalStopScale; }
 	void SetCriminalStopScale(float NewScale) { CriminalStopScale = NewScale; }
 	void MarkStopped() { bStopped = true; }
+	void ResumeCriminalCarDriving()
+	{
+		bStopOrdered = false;
+		bStopped = false;
+		CriminalStopScale = 1.0f;
+	}
+	float GetCriminalCruiseSeconds() const { return CriminalCruiseSeconds; }
+	void SetCriminalCruiseSeconds(float NewSeconds) { CriminalCruiseSeconds = NewSeconds; }
+	float GetCriminalSpotlightLostSeconds() const { return CriminalSpotlightLostSeconds; }
+	void SetCriminalSpotlightLostSeconds(float NewSeconds) { CriminalSpotlightLostSeconds = NewSeconds; }
+	uint8 GetBurglarDoorPhase() const { return BurglarDoorPhase; }
+	void SetBurglarDoorPhase(uint8 NewPhase) { BurglarDoorPhase = NewPhase; }
+	bool DidCriminalDriverReturn() const { return bCriminalDriverReturned; }
+	int32 GetCriminalDriverMessage() const { return CriminalDriverMessage; }
+	void SignalCriminalDriverReturned(int32 MessageId)
+	{
+		bCriminalDriverReturned = true;
+		CriminalDriverMessage = MessageId;
+	}
+	void ClearCriminalDriverSignal()
+	{
+		bCriminalDriverReturned = false;
+		CriminalDriverMessage = 0;
+	}
 
 	// The map tile this agent is standing on. Same answer as the behaviour-world override below,
 	// which is private because it is part of that interface rather than this actor's API.
@@ -692,8 +724,13 @@ private:
 	int32 CriminalEventId = INDEX_NONE; // +0x113
 	int32 SpotlightMark = 0;      // +0x11b
 	uint8 CriminalState = 0;      // +0x12b
-	float ArrestHoldSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
+	float BurglarOutsideSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
 	float CriminalStopScale = 1.0f; // stands in for the stop distance at +0xd3
+	float CriminalCruiseSeconds = 0.0f; // +0x137, DAT_00506360 + rand()%DAT_00506364
+	float CriminalSpotlightLostSeconds = 0.0f; // +0x13b, DAT_00506368 = 20.0s
+	uint8 BurglarDoorPhase = 0; // +0x133..+0x136 flags in FUN_004b8b60/FUN_004b8c90
+	bool bCriminalDriverReturned = false; // veh[8], set by people opcode 61
+	int32 CriminalDriverMessage = 0; // veh[0xc], BHAV 1303 returns 1
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
 
@@ -738,6 +775,7 @@ private:
 	TWeakObjectPtr<AActor> BehaviorCarrier;
 	// person+0x170: the emergency vehicle that deployed this crew member.
 	TWeakObjectPtr<AActor> BehaviorStartingVehicle;
+	bool bBehaviorStartingVehicleMessaged = false;
 	// person+0x1a4, written by FUN_004c1050 when an interaction is delivered, and by the move core
 	// when this person walks into somebody.
 	TWeakObjectPtr<AActor> BehaviorInteractionSource;

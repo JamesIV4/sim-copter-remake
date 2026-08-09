@@ -46,7 +46,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterGroundAgent, Log, All);
 namespace
 {
 constexpr uint32 GroundAgentRuntimeSaveMagic = 0x4147454e; // 'AGEN'
-constexpr int32 GroundAgentRuntimeSaveVersion = 1;
+constexpr int32 GroundAgentRuntimeSaveVersion = 3;
 
 void SerializeAgentBool(FArchive& Archive, bool& Value)
 {
@@ -482,10 +482,17 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 			// attached to the ambulance with bBehaviorMoveSuspended set by BoardCarrier - could
 			// never walk or finish again. That is the reported ambulance loop. The crew member's
 			// own vehicle owns its lifetime: op 61 has already messaged it by the time op 40 runs.
+			const ASimCopterGroundAgent* StartingGroundVehicle =
+				Cast<ASimCopterGroundAgent>(BehaviorStartingVehicle.Get());
+			const bool bReturnedBurglar =
+				StartingGroundVehicle != nullptr &&
+				StartingGroundVehicle->IsCriminalCar() &&
+				bBehaviorStartingVehicleMessaged;
 			const bool bUnresolvedMissionPerson =
 				MissionEventId != INDEX_NONE &&
 				!bMissionResolutionReported &&
 				!IsEmergencyCrewMember() &&
+				!bReturnedBurglar &&
 				Missions != nullptr &&
 				Missions->IsMissionEventActive(MissionEventId);
 			const bool bHospitalParamedic = bPersistentHospitalRoofCrew;
@@ -968,6 +975,14 @@ void ASimCopterGroundAgent::SetHospitalRoofPost(const FVector& RoofCenterWorldLo
 	bHasHospitalRoofPost = HospitalRoofPostHalfExtentCm > 0.0f;
 }
 
+void ASimCopterGroundAgent::SetMissionRoofPost(const FVector& RoofCenterWorldLocation, const float HalfExtentCm)
+{
+	bPersistentHospitalRoofCrew = false;
+	HospitalRoofPostWorldLocation = RoofCenterWorldLocation;
+	HospitalRoofPostHalfExtentCm = FMath::Max(0.0f, HalfExtentCm);
+	bHasHospitalRoofPost = HospitalRoofPostHalfExtentCm > 0.0f;
+}
+
 bool ASimCopterGroundAgent::IsWithinRoofPostSquare(
 	const FVector& TargetLocation,
 	const FVector& CurrentLocation,
@@ -1362,9 +1377,9 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	case EBhavObjectClass::FireTruck:
 	case EBhavObjectClass::PoliceCar:
 	case EBhavObjectClass::Ambulance:
-	case EBhavObjectClass::SpeederCar:
+	case EBhavObjectClass::BurglarCar:
 	{
-		int32 ServiceIndex = 3; // FUN_0049b060 kinds 3/4 share the speeder pool.
+		int32 ServiceIndex = 3; // FUN_0049b060 kinds 3/4 share the burglar-car pool.
 		switch (ObjectClass)
 		{
 		case EBhavObjectClass::Ambulance:
@@ -1777,12 +1792,8 @@ bool ASimCopterGroundAgent::ApplyHelicopterRunOver(ASimCopterHelicopterPawn& Hel
 		return false;
 	}
 	bRunOverByHelicopter = true;
-
-	// DIVERGENCE: outcome 9 (EVT_CriminalCaught) as well. The executable has no way to end a crime
-	// mission with the helicopter, so running the criminal down would otherwise kill the target and
-	// leave the job open forever with nobody left to catch. Squashing the one you were sent for is
-	// the job done.
-	PostMissionOutcome(BehaviorContext, 9);
+	// Do not also synthesize outcome 9 (caught). BHAV 903 posts outcome 10 (casualty), and the
+	// retail lifecycle closes crimes on caught + casualties reaching the one target.
 	return true;
 }
 
@@ -2753,6 +2764,7 @@ void ASimCopterGroundAgent::MessageOwningVehicle(const int32 MessageId)
 	// original for a person with no vehicle.
 	if (ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner()))
 	{
+		bBehaviorStartingVehicleMessaged = true;
 		TrafficSystem->NotifyCrewMemberMessagedVehicle(*this, MessageId);
 	}
 }
@@ -3538,7 +3550,11 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 	SerializeAgentBool(Writer, bStopOrdered);
 	SerializeAgentBool(Writer, bStopped);
 	Writer << CriminalEventId << SpotlightMark << CriminalState;
-	Writer << ArrestHoldSeconds << CriminalStopScale;
+	Writer << BurglarOutsideSeconds << CriminalStopScale;
+	Writer << CriminalCruiseSeconds << CriminalSpotlightLostSeconds;
+	SerializeAgentBool(Writer, bCriminalDriverReturned);
+	Writer << CriminalDriverMessage;
+	Writer << BurglarDoorPhase;
 
 	Writer << FigureMnemonic << FigureCurrentFrame << FigureFrameTime << FigureClothesOffset;
 	Writer << FigureHeadIndex << ForcedFigureMnemonic << ForcedFigureClothesOffset;
@@ -3579,6 +3595,7 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 	FName InteractionName = SavedActorName(BehaviorInteractionSource.Get());
 	FName SelectionName = SavedActorName(BehaviorContext.SelectedObject.Get());
 	Writer << CarrierName << StartingName << InteractionName << SelectionName;
+	SerializeAgentBool(Writer, bBehaviorStartingVehicleMessaged);
 	SerializeAgentBool(Writer, bRidingHarness);
 	SerializeAgentBool(Writer, bClaimedPassengerSeat);
 	SerializeAgentBool(Writer, bBehaviorMoveSuspended);
@@ -3617,7 +3634,7 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	Reader << InitialBehaviorAgitation << InitialBehaviorProgramId << MissionEventId;
 	FTransform Transform;
 	Reader << Transform;
-	if (Magic != GroundAgentRuntimeSaveMagic || Version != GroundAgentRuntimeSaveVersion ||
+	if (Magic != GroundAgentRuntimeSaveMagic || Version < 1 || Version > GroundAgentRuntimeSaveVersion ||
 		Kind > static_cast<uint8>(ESimCopterGroundAgentKind::Vehicle) || SavedMovementSpeed <= 0.0f)
 	{
 		return false;
@@ -3643,7 +3660,28 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	SerializeAgentBool(Reader, bStopOrdered);
 	SerializeAgentBool(Reader, bStopped);
 	Reader << CriminalEventId << SpotlightMark << CriminalState;
-	Reader << ArrestHoldSeconds << CriminalStopScale;
+	Reader << BurglarOutsideSeconds << CriminalStopScale;
+	if (Version >= 2)
+	{
+		Reader << CriminalCruiseSeconds << CriminalSpotlightLostSeconds;
+		SerializeAgentBool(Reader, bCriminalDriverReturned);
+		Reader << CriminalDriverMessage;
+	}
+	else
+	{
+		CriminalCruiseSeconds = 0.0f;
+		CriminalSpotlightLostSeconds = 0.0f;
+		bCriminalDriverReturned = false;
+		CriminalDriverMessage = 0;
+	}
+	if (Version >= 3)
+	{
+		Reader << BurglarDoorPhase;
+	}
+	else
+	{
+		BurglarDoorPhase = 0;
+	}
 
 	Reader << FigureMnemonic << FigureCurrentFrame << FigureFrameTime << FigureClothesOffset;
 	Reader << FigureHeadIndex << ForcedFigureMnemonic << ForcedFigureClothesOffset;
@@ -3672,6 +3710,14 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	Reader << BehaviorContext.MegaphoneMessageIndex;
 	Reader << PendingSavedCarrierName << PendingSavedStartingVehicleName;
 	Reader << PendingSavedInteractionSourceName << PendingSavedSelectionName;
+	if (Version >= 2)
+	{
+		SerializeAgentBool(Reader, bBehaviorStartingVehicleMessaged);
+	}
+	else
+	{
+		bBehaviorStartingVehicleMessaged = false;
+	}
 	SerializeAgentBool(Reader, bRidingHarness);
 	SerializeAgentBool(Reader, bClaimedPassengerSeat);
 	SerializeAgentBool(Reader, bBehaviorMoveSuspended);
@@ -4350,7 +4396,7 @@ void ASimCopterGroundAgent::LimitTrafficSpeedScale(float MaxSpeedScale)
 	TrafficSpeedScale = FMath::Min(TrafficSpeedScale, FMath::Clamp(MaxSpeedScale, 0.0f, 1.75f));
 }
 
-void ASimCopterGroundAgent::MakeCriminalCar(const int32 InEventId)
+void ASimCopterGroundAgent::MakeCriminalCar(const int32 InEventId, const int32 CruiseDelay1616)
 {
 	// FUN_004b8540: the pool slot is claimed, the mission event id recorded at +0x113, and the
 	// state machine starts at 0. The fleeing flag is what makes FUN_0049dab0 accept it, and a
@@ -4362,7 +4408,12 @@ void ASimCopterGroundAgent::MakeCriminalCar(const int32 InEventId)
 	CriminalEventId = InEventId;
 	SpotlightMark = 0;
 	CriminalState = static_cast<uint8>(SimCopterCriminalCar::EState::Cruising);
-	ArrestHoldSeconds = 0.0f;
+	BurglarOutsideSeconds = 0.0f;
+	CriminalCruiseSeconds = static_cast<float>(CruiseDelay1616) / 65536.0f;
+	CriminalSpotlightLostSeconds = 0.0f;
+	BurglarDoorPhase = 0;
+	bCriminalDriverReturned = false;
+	CriminalDriverMessage = 0;
 }
 
 bool ASimCopterGroundAgent::TryOrderStop(const int32 CallerMessageId)

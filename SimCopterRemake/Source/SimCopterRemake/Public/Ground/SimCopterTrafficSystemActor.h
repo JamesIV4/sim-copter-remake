@@ -280,11 +280,11 @@ public:
 		double NowSeconds,
 		float DelaySeconds);
 
-	// Centre and roof-surface height of a D1 hospital, with half its footprint width - the square a
-	// posted medic is confined to. Resolved once per roof and cached: the probe is a downward trace,
+	// Centre and roof-surface height of a building, with half its footprint width - the square a
+	// posted medic or rooftop-rescue survivor is confined to. Resolved once per roof and cached,
 	// so re-running it while the player is parked up there would answer the helicopter's hull and
 	// walk the post up onto the aircraft.
-	bool TryGetHospitalRoofPost(int32 TileX, int32 TileY, FVector& OutRoofCenter, float& OutHalfExtentCm);
+	bool TryGetBuildingRoofPost(int32 TileX, int32 TileY, FVector& OutRoofCenter, float& OutHalfExtentCm);
 
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
@@ -698,8 +698,8 @@ private:
 	// Drives EnsureHospitalParamedicAtTile's respawn delay. An absent entry means the roof has
 	// never been staffed, so the first medic posts immediately.
 	TMap<FIntPoint, double> HospitalParamedicLastSeenSeconds;
-	// Per D1 hospital tile: the roof point TryGetHospitalRoofPost resolved, cached for the session.
-	TMap<FIntPoint, FVector> HospitalRoofPostByTile;
+	// Per building tile: the rendered roof point resolved for persistent crew or rescue victims.
+	TMap<FIntPoint, FVector> BuildingRoofPostByTile;
 	TArray<uint8> PeopleTileClasses;
 	TArray<uint8> PeopleTerrainTypes;
 	TArray<uint8> WaterTileFlags;
@@ -795,26 +795,21 @@ public:
 	void ArmNextCarFireTarget(ASimCopterGroundAgent* Vehicle);
 	void ClearNextCarFireTarget();
 
-	// FUN_004b8540: put the mission's speeder on a road tile near (TileX, TileY). Capped at the
-	// original's pool of five.
-	bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY);
+	// FUN_004b8540: put the burglar's CARROBBR getaway car on a road tile near (TileX, TileY).
+	bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616);
 
 	// Vehicle-class arm of FUN_0049a4f0. The person VM cannot handle cars: mode 2 continues
 	// through FUN_0049fc10/FUN_0049f680, where Report Traffic clears a jammed car.
 	bool ApplyVehicleInteraction(ASimCopterGroundAgent& Vehicle, const FSimCopterInteractionEvent& Event);
 
-	// Live position of a mission's speeder, for the world tag that follows it. OutSpotlightMark
-	// is the 0..10 illumination counter and OutStopped is true once it has pulled over, so the
-	// tag can tell the player which of the three things they still have to do.
-	bool TryGetSpeederCarState(
+	// Live position of a mission's burglar car, for the world tag that follows it while driving.
+	// OutSpotlightMark is the 0..10 illumination counter. OutStopped switches the caller to the
+	// mission record tile, which BHAV 1303 updates to follow the burglar while they are outside.
+	bool TryGetBurglarCarState(
 		int32 EventId,
 		FVector& OutWorldLocation,
 		int32& OutSpotlightMark,
 		bool& OutStopped) const;
-
-	// Speeders that have just been pulled over, for the few seconds their tag stays up after the
-	// mission record has already been retired and paid.
-	void GetRecentlyStoppedSpeederLocations(TArray<FVector>& OutWorldLocations) const;
 
 	// Report every car currently on fire (for the mission actor's fire renderer).
 	void GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const;
@@ -824,8 +819,8 @@ public:
 	// FigureName forces a privanim figure (e.g. "Kopp" for a police officer) instead of the random
 	// civilian one; empty keeps the random pick.
 	bool TrySpawnMissionPerson(
-		int32 SpawnMode,
 		int32 PersonState,
+		int32 BehaviorClass,
 		int32 TileX,
 		int32 TileY,
 		int32 EventId,
@@ -842,7 +837,7 @@ public:
 	// vehicle hit" -> 903 "Rxn: Die". The remake deliberately serves that to **uncaught criminals
 	// only**: everybody else the aircraft touches is left alone entirely (they already scramble out
 	// from under a descending helicopter), because being able to swat pedestrians with the skids is
-	// not wanted. Squashing the one you were sent to catch also closes the mission.
+	// not wanted. BHAV 903's casualty outcome closes that crime through the retail lifecycle test.
 	// Returns how many were run over. Never affects the aircraft's motion.
 	int32 RunOverCriminalsUnderHelicopter(class ASimCopterHelicopterPawn& Helicopter);
 
@@ -1041,13 +1036,13 @@ public:
 	// The marker art is missing or unreadable; say so once rather than every tick per vehicle.
 	bool bLoggedDispatchMarkerError = false;
 
-	// --- Speeder cars and police pursuit -----------------------------------------------------
+	// --- Burglar cars and police pursuit -----------------------------------------------------
 	// FUN_004a01f0's inputs, republished by the pawn each frame.
 	FVector SpotlightMarkWorldLocation = FVector::ZeroVector;
 	int32 SpotlightMarkBand = INDEX_NONE;
 	bool bSpotlightMarkActive = false;
 
-	// The live speeders. The original's pool is fixed at five (FUN_00479bb0).
+	// The live burglar cars. The original's pool is fixed at five (FUN_00479bb0).
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> CriminalCars;
 
 	// FUN_004a01f0 + FUN_0049d980: accumulate each speeder's mark from the spotlight and set the
@@ -1065,8 +1060,8 @@ public:
 	// one, so this reproduces that spread around VehicleSpeedCmPerSec's mean.
 	float DrawVehicleSpeedCmPerSec();
 
-	// FUN_004b8b60: siren, officer out, close the mission record, hold, remove.
-	void RunCriminalCarArrest(ASimCopterGroundAgent& Car, float DeltaSeconds);
+	// FUN_004b8b60/FUN_004b8c90: deploy the burglar and resolve return versus capture timeout.
+	void RunBurglarOutsidePhase(ASimCopterGroundAgent& Car, float DeltaSeconds);
 	// Breadth-first road-node route; stands in for FUN_004bef30's Dijkstra + back-links.
 	bool TryPlanRoadRoute(const FIntPoint& FromTile, const FIntPoint& ToTile, TArray<int32>& OutNodes) const;
 	bool TryRetargetDispatchVehicle(FSimCopterDispatchVehicle& Vehicle, const FIntPoint& DestinationTile);

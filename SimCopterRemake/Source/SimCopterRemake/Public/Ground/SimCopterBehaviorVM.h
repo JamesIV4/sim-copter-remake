@@ -111,9 +111,9 @@ namespace EBhavObjectClass
 	constexpr int32 Ambulance = 10;       // FUN_0049b060(0, tile)
 	constexpr int32 PoliceCar = 11;       // FUN_0049b060(1, tile)
 	constexpr int32 FireTruck = 12;       // FUN_0049b060(2, tile)
-	// "Service 3" is the speeder pool, not a fourth emergency service: BHAV 1402 "Cop speeder"
-	// probes it at rec[3] to find the car it was sent to arrest.
-	constexpr int32 SpeederCar = 13;      // FUN_0049b060(3, tile)
+	// "Service 3" is the CARROBBR burglar-car pool, not a fourth emergency service: BHAV 1402
+	// "Cop speeder" probes it at rec[3] to find the car it was sent to arrest.
+	constexpr int32 BurglarCar = 13;      // FUN_0049b060(3, tile)
 	constexpr int32 Civilian = 14;        // FUN_004ca350 state == 0
 	// DAT_005040d0+0xc0, the third object hanging off the player record. Taken to be the
 	// searchlight: the only program that asks for it is 1151 "copf - follow heli", and pointing

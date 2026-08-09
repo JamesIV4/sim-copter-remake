@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 
-// Speeder / criminal cars and the police pursuit that catches them.
+// Burglar getaway cars, recurring robberies, and the police pursuit that catches them.
 //
 // Decoded from SimCopter.exe 2026-07-26. The loop the original builds is:
 //
-//   1. A speeder drives the road network at 1.75x the normal traffic speed.
+//   1. A CARROBBR getaway car drives the road network at 1.75x normal traffic speed.
 //   2. The player holds the searchlight on it. Every tick inside the cone the car's "marked"
 //      counter climbs by 2 to a cap of 10, and while it is above zero the car's speed multiplier
 //      collapses to 1.05x / 1.32x / 1.52x by spotlight band - the tighter the beam, the slower
@@ -18,7 +18,9 @@
 //   4. The order only sticks if the car has been marked. A marked car halts, an unmarked one
 //      keeps going - which is what makes the spotlight the actual gameplay verb rather than
 //      decoration.
-//   5. Once stopped, an officer gets out, the mission record is closed, and the car is removed.
+//   5. Once stopped, the burglar gets out and runs BHAV 1303 -> 1079 to commit a burglary.
+//      If uncaught, they message the same starting car through opcode 61 and the cycle repeats.
+//      If they do not return inside 120 seconds, FUN_004b8c90 posts CriminalCaught and ends it.
 //
 // Functions:
 //
@@ -32,8 +34,9 @@
 //   FUN_004b89a0  vtable[1] - "pull over", the call a police car makes on its target.
 //   FUN_0049e0c0  the shared halt the above defers to: set the stop distance, raise the
 //                 stopping flag, clear the moving flags.
-//   FUN_004b8b60  the arrest: siren, deploy a person (mode 0xf state 0xd), close the mission
-//                 record with EVT_SetCategory value 4, hold 120 s, despawn.
+//   FUN_004b8b60  stop sequence: door sounds, deploy behavior class 0xf / person state 0xd,
+//                 then wait 120 s for that burglar to return.
+//   FUN_004b8c90  timeout = caught; nonzero opcode-61 message = drive away and burgle again.
 //   FUN_0049dab0  the police target filter.
 //   FUN_004a01f0  the spotlight mark accumulator (interaction mode 1).
 //   FUN_0049d980  the speed multiplier the mark feeds.
@@ -58,23 +61,11 @@ constexpr int32 SpotlightMarkMax = 10;
 constexpr int32 PursuitScanRings = 3;
 constexpr int32 PursuitMaxTileSteps = 3;
 
-// FUN_004b8b60: veh[0x10] = 0x780000 before the car is removed - and FUN_004b8c90, which runs
-// when that expires, is what posts the criminal-caught event. So the payout lands at the end of
-// this hold, not the moment the car stops.
-//
-// FUN_004b8630 case 3 has a second exit, veh[8] != 0, and it is confirmed unreachable for a
-// speeder: veh[8]'s only writer anywhere in the binary is FUN_0049aed0, which is reached only
-// from people-VM opcode 60, and across all 137 shipped BHAV programs that opcode appears twice -
-// in "Rioter maybe throw" and "crim - arsonist unspotted", neither of which the arrest's
-// deployed person runs. So the full hold really is the only path here.
-//
-// The remake pays the mission out when the car stops rather than when this expires, so the hold
-// is only how long the stopped car stays parked before it is cleared away.
-constexpr float ArrestHoldSeconds = 120.0f;
-
-// Paying out immediately retires the mission record, which would take its world tag with it in
-// the same frame. Keep the green tag up this long afterwards so the stop actually registers.
-constexpr float ArrestTagLingerSeconds = 3.0f;
+// Initialized-data values read directly from the retail Ghidra project.
+constexpr int32 CruiseBaseDelay1616 = 0x640000;     // DAT_00506360, 100.0 s
+constexpr int32 CruiseDelayModulo1616 = 0x2580000;  // DAT_00506364, 600.0 s divisor
+constexpr float SpotlightLostCooldownSeconds = 20.0f; // DAT_00506368 = 0x140000
+constexpr float BurglarOutsideSeconds = 120.0f;       // veh[0x10] = 0x780000
 
 // FUN_0049dbb0 authors every vehicle's road speed when it is placed:
 //   veh[0xc3] = (rand() & 7) + 0x24  -> 36..43
@@ -90,10 +81,10 @@ constexpr int32 RoadSpeedMaxUnitsPerSecond = 47;
 // multiplier has to stay under this or nothing can ever follow one.
 constexpr float HelicopterTopSpeedUnitsPerSecond = 192.3f;
 
-// FUN_004b8b60's stopped-car person: FUN_0049bd00(0xf, 0xd). This pair is specific to the
-// criminal car; the ambulance vtable method FUN_004b8f60 deploys class 0x0c / state 5.
-constexpr int32 ArrestPersonSpawnMode = 0xf;
-constexpr int32 ArrestPersonState = 0xd;
+// FUN_004b8b60 calls FUN_0049bd00(behavior class 0xf, person state 0xd). TrySpawnMissionPerson's
+// public order is state first, class second, so keep the names explicit and do not swap them.
+constexpr int32 BurglarPersonState = 0xd;
+constexpr int32 BurglarBehaviorClass = 0xf;
 
 // FUN_004b9e40's officer deploy: spawn mode 0xe, and the state depends on the target.
 constexpr int32 OfficerSpawnMode = 0xe;
@@ -108,16 +99,28 @@ enum class EState : uint8
 {
 	// 0: cruising. Watches for the mark and for a stop it can make.
 	Cruising = 0,
-	// 1: the pause the cruise timer drops it into.
-	Idling = 1,
+	// 1: the cruise timer expired; pull over at the next valid road position to burgle.
+	SeekingBurglaryStop = 1,
 	// 2: marked - the siren is up and the car is running from the spotlight.
 	Fleeing = 2,
-	// 3: arrested, holding for ArrestHoldSeconds before it is removed.
-	Arrested = 3,
-	// 4: leaving (the arrest could not place an officer, so the record is closed anyway).
+	// 3: the burglar is outside; wait up to BurglarOutsideSeconds for opcode 61.
+	BurglarOutside = 3,
+	// 4: person placement failed; leave and retire the mission silently.
 	Leaving = 4,
 	// 5: pulling over.
 	Stopping = 5,
+};
+
+// FUN_004b8b60 / FUN_004b8c90 gate person deployment and a successful return on the shared
+// aDrOpen/aDrClose sound slots. The executable stores these as flags at +0x133..+0x136; keeping a
+// compact phase makes the same asynchronous path explicit on the Unreal actor.
+enum class EDoorPhase : uint8
+{
+	None = 0,
+	OpeningForBurglary,
+	ClosingForBurglary,
+	OpeningForReturn,
+	ClosingForReturn,
 };
 
 // FUN_0049dab0. A police car hunts the criminal car by id, or anything flying the fleeing flag -

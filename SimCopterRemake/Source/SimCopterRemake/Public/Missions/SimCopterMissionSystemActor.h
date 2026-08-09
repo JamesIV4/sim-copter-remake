@@ -113,6 +113,7 @@ public:
 	virtual int32 GetBuildingTopHeight1616(int32 TileX, int32 TileY) const override;
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const override;
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const override;
+	virtual bool IsPlayerOnFoot() const override;
 	virtual bool IsModalUiActive() const override;
 
 	virtual void OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId) override;
@@ -168,9 +169,9 @@ public:
 	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) override;
 	virtual void EndTrafficJam(int32 EventId) override;
 	virtual bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY) override;
-	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override;
+	virtual bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616) override;
 	virtual bool TryResolveTransportSpawnTile(int32 OriginX, int32 OriginY, int32& OutTileX, int32& OutTileY) override;
-	virtual bool TrySpawnMissionPerson(int32 Mode, int32 SubState, int32 TileX, int32 TileY, int32 EventId) override;
+	virtual bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId) override;
 	// Stable action boundary used by both the decoded VM and engine-side recovery paths. A real
 	// person owns idempotency; these methods are the only place passenger outcomes reach mission
 	// counters.
@@ -230,14 +231,18 @@ public:
 	// EVT_CarCleared; the mission closes only after every car counted by EVT_JamCarAdded clears.
 	bool ReportTrafficJamCarCleared(int32 EventId);
 
-	// FUN_004b8c90: the arrest has run its course and the car is being taken away. Posts
-	// EVT_CriminalCaught, which takes the record's CriminalsCaught to its TargetCount of 1 and
-	// so completes the mission - notification and payout included.
-	void ReportSpeederCarCaught(int32 EventId);
+	// FUN_004b8c90: the outside phase expired without a nonzero return message. Posts
+	// EVT_CriminalCaught, which flips FUN_004a73e0's burglar-specific caught/casualty test and
+	// completes the mission - notification and payout included.
+	void ReportBurglarCaught(int32 EventId);
 
 	// FUN_004b8b60's failure branch: the arrest could not put anyone on the ground, so the record
 	// is retired with EVT_SetCategory value 4 (CAT_ExpireSilently) - no completion, no payout.
-	void ReportSpeederCarUnresolved(int32 EventId);
+	void ReportBurglarSpawnFailed(int32 EventId);
+
+	// FUN_004b8630 case 0 draw: used initially and whenever a cruise timer expires, pre-arming
+	// the delay that begins after the burglar returns from the burglary now being started.
+	int32 DrawBurglarCruiseDelay1616() { return MissionSystem.DrawBurglarCruiseDelay1616(); }
 
 	// SCHOOK: FireTruckSpray 0x004a5ca0
 	// One shot from a fire truck's monitor: emitter type 6, launched from 30 units above the
