@@ -261,6 +261,27 @@ bool FSimCopterSoundAttenuationTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRadioLiveVolumeTest,
+	"SimCopter.Sound.RadioLiveVolume",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterRadioLiveVolumeTest::RunTest(const FString& Parameters)
+{
+	USimCopterAudioSubsystem* Audio = NewObject<USimCopterAudioSubsystem>();
+	if (!TestNotNull(TEXT("audio subsystem constructs"), Audio))
+	{
+		return false;
+	}
+
+	Audio->SetRadioVolumeMultiplier(0.25f);
+	TestEqual(TEXT("radio gain updates immediately"), Audio->GetRadioVolumeMultiplier(), 0.25f);
+	Audio->SetRadioVolumeMultiplier(-1.0f);
+	TestEqual(TEXT("radio gain clamps at silence"), Audio->GetRadioVolumeMultiplier(), 0.0f);
+	Audio->SetRadioVolumeMultiplier(2.0f);
+	TestEqual(TEXT("radio gain clamps at full"), Audio->GetRadioVolumeMultiplier(), 1.0f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterRotorSoundLawTest,
 	"SimCopter.Sound.RotorLaw",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

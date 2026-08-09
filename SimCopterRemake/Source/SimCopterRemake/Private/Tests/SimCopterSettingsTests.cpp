@@ -234,6 +234,16 @@ bool FSimCopterSoundSettingsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Radio volume is vertical"), RadioVolumeRect.Height() > RadioVolumeRect.Width());
 	TestTrue(TEXT("Tuner is vertical"), TunerRect.Height() > TunerRect.Width());
 
+	// Changing a radio channel returns the dashboard rocker to full volume. Re-selecting the
+	// current channel is not a change and leaves the player's volume alone.
+	USimCopterSettings* Settings = NewObject<USimCopterSettings>(NewObject<UGameInstance>());
+	Settings->SetRadioVolume(VolumeMin);
+	Settings->SetRadioStation(2);
+	TestEqual(TEXT("Changing channel resets radio volume"), Settings->GetRadioVolume(), VolumeMax);
+	Settings->SetRadioVolume(VolumeMin);
+	Settings->SetRadioStation(2);
+	TestEqual(TEXT("Re-selecting the channel preserves volume"), Settings->GetRadioVolume(), VolumeMin);
+
 	// Its label sits under it, and the three toggles sit above theirs.
 	TestTrue(TEXT("Game Volume label is below the fader"), GameVolumeLabelRect.Top >= GameVolumeRect.Bottom);
 	TestTrue(TEXT("Commercials toggle is above its label"), CommercialsToggleRect.Bottom <= CommercialsLabelRect.Top);

@@ -3,7 +3,9 @@
 // table, and the dial mapping the dash tuner uses.
 
 #include "Audio/SimCopterRadio.h"
+#include "Game/SimCopterSettings.h"
 #include "Misc/AutomationTest.h"
+#include "UI/SSimCopterDashboard.h"
 
 using FRng = USimCopterRadioSubsystem::FLaggedFibonacci;
 
@@ -288,6 +290,37 @@ bool FSimCopterRadioDialTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("far left tunes the first station"), StationFor(0.0f, 5), 0);
 	TestEqual(TEXT("far right tunes the last station"), StationFor(1.0f, 5), 4);
 	TestEqual(TEXT("centre tunes the middle station"), StationFor(0.5f, 5), 2);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRadioDashboardVolumeTest,
+	"SimCopter.Radio.DashboardVolume",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterRadioDashboardVolumeTest::RunTest(const FString& Parameters)
+{
+	// SCHOOK: DashRadioVolumeMarker 0x004520a0. The five constants used by FUN_004402a0 make
+	// 10000 / 8000 / 6000 land at top / middle / the start of the off detent respectively.
+	TestEqual(TEXT("maximum is at the 11 label"),
+		SSimCopterDashboard::RadioVolumeToMarkerY(10000), 19);
+	TestEqual(TEXT("8000 is halfway down the logarithmic fader"),
+		SSimCopterDashboard::RadioVolumeToMarkerY(8000), 29);
+	TestEqual(TEXT("6000 reaches the off-detent boundary"),
+		SSimCopterDashboard::RadioVolumeToMarkerY(6000), 34);
+	TestEqual(TEXT("zero paints on the bottom line"),
+		SSimCopterDashboard::RadioVolumeToMarkerY(0), 39);
+
+	// SCHOOK: DashRadioInput 0x00451e30. Clicking the main travel turns the set on at that
+	// volume; y=34 and the remaining five page pixels turn it off.
+	TestEqual(TEXT("top click is full volume"),
+		SSimCopterDashboard::RadioMarkerYToVolume(19), 10000);
+	TestTrue(TEXT("last live click remains audible"),
+		SSimCopterDashboard::RadioMarkerYToVolume(33) >= USimCopterSettings::VolumeMin);
+	TestEqual(TEXT("off detent begins at y 34"),
+		SSimCopterDashboard::RadioMarkerYToVolume(34), 0);
+	TestEqual(TEXT("bottom is off"),
+		SSimCopterDashboard::RadioMarkerYToVolume(39), 0);
 
 	return true;
 }
