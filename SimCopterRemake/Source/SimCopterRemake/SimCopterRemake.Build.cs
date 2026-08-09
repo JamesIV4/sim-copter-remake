@@ -54,7 +54,7 @@ public class SimCopterRemake : ModuleRules
 			string[] RequiredFiles =
 			{
 				"bmp/sim3d.bmp",
-				"cities/demo.sc2",
+				"cities/career/city0.sc2",
 				"geo/sim3d1.max",
 				"sound/coploop2.wav",
 				"tweak/career.twk",

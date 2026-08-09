@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "City/SimCity2000CityActor.h"
 
@@ -3440,7 +3440,7 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 		TerrainMaterial = TerrainMaterialFinder.Object;
 	}
 
-	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/Demo.sc2");
+	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/career/city0.sc2");
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 }
 
