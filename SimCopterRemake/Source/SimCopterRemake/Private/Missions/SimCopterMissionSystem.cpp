@@ -231,7 +231,7 @@ FSimCopterCareerCity FSimCopterMissionSystem::MakeUserCityDefaults(const FSimCop
 	// with a sparse training-job mix, while a new user city opens with the balanced settings shown
 	// by the original City Settings panel.
 	FSimCopterCareerCity UserCity = BaseCity;
-	UserCity.Difficulty = 2;
+	UserCity.Difficulty = 0;
 	UserCity.Weights[0] = 30.0f; // Fire
 	// REMAKE DIVERGENCE: user cities start without scheduled crime missions. The player can turn
 	// them back on in City Settings; the original default for this slot was 90.
