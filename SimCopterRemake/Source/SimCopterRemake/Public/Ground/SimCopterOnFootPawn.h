@@ -195,6 +195,8 @@ private:
 	float LookPitchInput = 0.0f;
 	float MouseLookYawInput = 0.0f;
 	float MouseLookPitchInput = 0.0f;
+	float ControllerLookYawInput = 0.0f;
+	float ControllerLookPitchInput = 0.0f;
 	float CameraPitchDeg = -12.0f;
 	int32 BodySpriteRow = INDEX_NONE;
 	float BodySpriteTimeSeconds = 0.0f;
@@ -246,6 +248,7 @@ private:
 	void LookPitch(float Value);
 	void MouseLookYaw(float Value);
 	void MouseLookPitch(float Value);
+	void ControllerLookYaw(float Value);
 	void ControllerLookPitch(float Value);
 	void Interact();
 	void DropCarriedMissionPerson();

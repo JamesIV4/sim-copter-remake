@@ -129,7 +129,8 @@ enum class ESimCopterTimeOfDayMode : uint8
 };
 
 /**
- * Everything the Settings screen owns, persisted to the user's GameUserSettings ini.
+ * Everything the Settings screen owns. Profile preferences are persisted to the user's
+ * GameUserSettings ini; the time-of-day controls are session state and travel with a saved game.
  *
  * The sound half is the original's, value for value: `FUN_0043f7c0` builds both volume sliders
  * over 320..10000 and the tuner over 0..2, and `FUN_00440130` reads them back. The graphics half
@@ -282,6 +283,9 @@ public:
 
 	// --- time of day (the remake's; the original's equivalent is career.twk's Day/Night column) ---
 
+	/** Restores the defaults for a genuinely new session rather than inheriting the last loaded save. */
+	void ResetSessionTimeOfDaySettings();
+
 	ESimCopterTimeOfDayMode GetTimeOfDayMode() const { return TimeOfDayMode; }
 	void SetTimeOfDayMode(ESimCopterTimeOfDayMode Mode) { TimeOfDayMode = Mode; }
 
@@ -291,6 +295,7 @@ public:
 
 	static constexpr float StaticTimeOfDayMinHours = 0.0f;
 	static constexpr float StaticTimeOfDayMaxHours = 24.0f;
+	static constexpr float DefaultStaticTimeOfDayHours = 12.0f;
 
 	/**
 	 * How long daylight and night each last in real minutes, in Dynamic mode.
@@ -309,6 +314,8 @@ public:
 	/** Half a minute is already a comically fast sunrise; 30 is far longer than a session needs. */
 	static constexpr float CycleLengthMinMinutes = 0.5f;
 	static constexpr float CycleLengthMaxMinutes = 30.0f;
+	static constexpr float DefaultDayRealMinutes = 7.0f;
+	static constexpr float DefaultNightRealMinutes = 3.0f;
 
 	/** "13:30" for 13.5, for the Settings row's readout. */
 	static FText FormatTimeOfDay(float Hours);
@@ -322,6 +329,39 @@ public:
 
 	static constexpr float HudScaleMin = 0.5f;
 	static constexpr float HudScaleMax = 2.0f;
+
+	// --- camera and input (profile-wide remake settings) ---
+
+	float GetOnFootFov() const { return OnFootFov; }
+	void SetOnFootFov(float Degrees);
+
+	float GetHelicopterFov() const { return HelicopterFov; }
+	void SetHelicopterFov(float Degrees);
+
+	float GetCockpitFov() const { return CockpitFov; }
+	void SetCockpitFov(float Degrees);
+
+	static constexpr float FovMin = 60.0f;
+	static constexpr float FovMax = 120.0f;
+	static constexpr float DefaultFov = 78.0f;
+	static constexpr float DefaultCockpitFov = 90.0f;
+
+	float GetMouseSensitivityX() const { return MouseSensitivityX; }
+	void SetMouseSensitivityX(float Scale);
+
+	float GetMouseSensitivityY() const { return MouseSensitivityY; }
+	void SetMouseSensitivityY(float Scale);
+
+	float GetControllerSensitivityX() const { return ControllerSensitivityX; }
+	void SetControllerSensitivityX(float Scale);
+
+	float GetControllerSensitivityY() const { return ControllerSensitivityY; }
+	void SetControllerSensitivityY(float Scale);
+
+	/** Multipliers over the authored camera rates and the engine's mouse-axis calibration. */
+	static constexpr float SensitivityMin = 0.1f;
+	static constexpr float SensitivityMax = 3.0f;
+	static constexpr float DefaultSensitivity = 1.0f;
 
 	/** Broadcast when HudScale changes so live overlays can re-scale without a level reload. */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnHudScaleChanged, float);
@@ -435,22 +475,44 @@ private:
 	UPROPERTY(Config)
 	float EmissiveBrightness = 1.0f;
 
-	UPROPERTY(Config)
+	// Session-owned: these are serialized by USimCopterSaveGame, not GameUserSettings.
+	UPROPERTY(Transient)
 	ESimCopterTimeOfDayMode TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;
 
 	/** Noon, so switching to Static without touching the slider gives full daylight. */
-	UPROPERTY(Config)
-	float StaticTimeOfDayHours = 12.0f;
+	UPROPERTY(Transient)
+	float StaticTimeOfDayHours = DefaultStaticTimeOfDayHours;
 
 	/** 7 and 3, matching USimCopterDayNightLengthComponent's own defaults. */
-	UPROPERTY(Config)
-	float DayRealMinutes = 7.0f;
+	UPROPERTY(Transient)
+	float DayRealMinutes = DefaultDayRealMinutes;
 
-	UPROPERTY(Config)
-	float NightRealMinutes = 3.0f;
+	UPROPERTY(Transient)
+	float NightRealMinutes = DefaultNightRealMinutes;
 
 	UPROPERTY(Config)
 	float HudScale = 1.0f;
+
+	UPROPERTY(Config)
+	float OnFootFov = DefaultFov;
+
+	UPROPERTY(Config)
+	float HelicopterFov = DefaultFov;
+
+	UPROPERTY(Config)
+	float CockpitFov = DefaultCockpitFov;
+
+	UPROPERTY(Config)
+	float MouseSensitivityX = DefaultSensitivity;
+
+	UPROPERTY(Config)
+	float MouseSensitivityY = DefaultSensitivity;
+
+	UPROPERTY(Config)
+	float ControllerSensitivityX = DefaultSensitivity;
+
+	UPROPERTY(Config)
+	float ControllerSensitivityY = DefaultSensitivity;
 
 	/**
 	 * False until the resolution has been seeded from the display once. Without it the seeding could

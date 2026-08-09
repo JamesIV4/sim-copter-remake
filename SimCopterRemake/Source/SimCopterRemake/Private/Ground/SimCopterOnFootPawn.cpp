@@ -20,6 +20,7 @@
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/SimCopterOriginalGamePaths.h"
+#include "Game/SimCopterSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -329,7 +330,7 @@ void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookPitch"), this, &ASimCopterOnFootPawn::MouseLookPitch);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftY"), this, &ASimCopterOnFootPawn::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftX"), this, &ASimCopterOnFootPawn::MoveRight);
-	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightX"), this, &ASimCopterOnFootPawn::LookYaw);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightX"), this, &ASimCopterOnFootPawn::ControllerLookYaw);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightY"), this, &ASimCopterOnFootPawn::ControllerLookPitch);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterOnFootPawn::Interact);
@@ -397,11 +398,16 @@ void ASimCopterOnFootPawn::MouseLookPitch(float Value)
 	MouseLookPitchInput = Value;
 }
 
+void ASimCopterOnFootPawn::ControllerLookYaw(float Value)
+{
+	ControllerLookYawInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
 void ASimCopterOnFootPawn::ControllerLookPitch(float Value)
 {
 	// The existing camera subtracts its look input. Invert the raw gamepad axis so stick-up
 	// raises the view, matching the old Gamepad_RightY mapping.
-	LookPitch(-Value);
+	ControllerLookPitchInput = FMath::Clamp(-Value, -1.0f, 1.0f);
 }
 
 void ASimCopterOnFootPawn::Interact()
@@ -828,7 +834,12 @@ void ASimCopterOnFootPawn::UpdateLookYaw(float DeltaSeconds)
 {
 	// Steer the avatar (and therefore the movement/camera frame) from the look input. Works the
 	// same on the ground and mid-jump, giving air control when combined with the movement input.
-	const float YawDeltaDeg = (LookYawInput + MouseLookYawInput) * LookYawSpeedDegPerSec * DeltaSeconds;
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	const float MouseSensitivity = Settings != nullptr ? Settings->GetMouseSensitivityX() : 1.0f;
+	const float ControllerSensitivity = Settings != nullptr ? Settings->GetControllerSensitivityX() : 1.0f;
+	const float YawDeltaDeg =
+		(LookYawInput + MouseLookYawInput * MouseSensitivity + ControllerLookYawInput * ControllerSensitivity)
+		* LookYawSpeedDegPerSec * DeltaSeconds;
 	if (!FMath::IsNearlyZero(YawDeltaDeg))
 	{
 		AddActorWorldRotation(FRotator(0.0f, YawDeltaDeg, 0.0f));
@@ -837,13 +848,20 @@ void ASimCopterOnFootPawn::UpdateLookYaw(float DeltaSeconds)
 
 void ASimCopterOnFootPawn::UpdateCamera(float DeltaSeconds)
 {
-	if (CameraBoom == nullptr)
+	if (CameraBoom == nullptr || CameraComponent == nullptr)
 	{
 		return;
 	}
 
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	const float MouseSensitivity = Settings != nullptr ? Settings->GetMouseSensitivityY() : 1.0f;
+	const float ControllerSensitivity = Settings != nullptr ? Settings->GetControllerSensitivityY() : 1.0f;
+	CameraComponent->SetFieldOfView(Settings != nullptr ? Settings->GetOnFootFov() : USimCopterSettings::DefaultFov);
+
 	CameraPitchDeg = FMath::Clamp(
-		CameraPitchDeg - (LookPitchInput + MouseLookPitchInput) * LookPitchSpeedDegPerSec * DeltaSeconds,
+		CameraPitchDeg -
+			(LookPitchInput + MouseLookPitchInput * MouseSensitivity + ControllerLookPitchInput * ControllerSensitivity)
+			* LookPitchSpeedDegPerSec * DeltaSeconds,
 		-62.0f,
 		14.0f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitchDeg, 0.0f, 0.0f));

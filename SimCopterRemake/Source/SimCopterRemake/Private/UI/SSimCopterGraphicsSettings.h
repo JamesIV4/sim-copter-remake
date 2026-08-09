@@ -13,7 +13,8 @@ class SVerticalBox;
 class USimCopterHangarArt;
 struct FButtonStyle;
 
-// The Settings screen's "Graphics" sub-dialog - control id 0x7d5, drawn on render.bmp.
+// The Settings screen's "Options" sub-dialog - the original Graphics control id 0x7d5, drawn on
+// render.bmp. The remake groups its expanded rows into Graphics, Gameplay and Input categories.
 //
 // REMAKE DIVERGENCE, and the only page in the port whose *contents* are deliberately not the
 // original's. FUN_0043df80 builds three checkboxes (building textures, ground textures, sky and
@@ -114,6 +115,13 @@ private:
 		float DayRealMinutes = 7.0f;
 		float NightRealMinutes = 3.0f;
 		float HudScale = 1.0f;
+		float OnFootFov = 78.0f;
+		float HelicopterFov = 78.0f;
+		float CockpitFov = 78.0f;
+		float MouseSensitivityX = 1.0f;
+		float MouseSensitivityY = 1.0f;
+		float ControllerSensitivityX = 1.0f;
+		float ControllerSensitivityY = 1.0f;
 
 		FIntPoint Resolution = FIntPoint::ZeroValue;
 		int32 WindowMode = 0;
@@ -143,6 +151,7 @@ private:
 	};
 
 	TSharedRef<SWidget> BuildHeading(const FText& Text);
+	TSharedRef<SWidget> BuildCategoryHeading(const FText& Text);
 	TSharedRef<SWidget> BuildDropdownRow(const FText& Label, FRowBinding Binding);
 	TSharedRef<SWidget> BuildSliderRow(
 		const FText& Label,

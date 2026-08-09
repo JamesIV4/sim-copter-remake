@@ -215,6 +215,13 @@ void USimCopterSettings::Initialize(FSubsystemCollectionBase& Collection)
 	DayRealMinutes = FMath::Clamp(DayRealMinutes, CycleLengthMinMinutes, CycleLengthMaxMinutes);
 	NightRealMinutes = FMath::Clamp(NightRealMinutes, CycleLengthMinMinutes, CycleLengthMaxMinutes);
 	EmissiveBrightness = FMath::Clamp(EmissiveBrightness, EmissiveBrightnessMin, EmissiveBrightnessMax);
+	OnFootFov = FMath::Clamp(OnFootFov, FovMin, FovMax);
+	HelicopterFov = FMath::Clamp(HelicopterFov, FovMin, FovMax);
+	CockpitFov = FMath::Clamp(CockpitFov, FovMin, FovMax);
+	MouseSensitivityX = FMath::Clamp(MouseSensitivityX, SensitivityMin, SensitivityMax);
+	MouseSensitivityY = FMath::Clamp(MouseSensitivityY, SensitivityMin, SensitivityMax);
+	ControllerSensitivityX = FMath::Clamp(ControllerSensitivityX, SensitivityMin, SensitivityMax);
+	ControllerSensitivityY = FMath::Clamp(ControllerSensitivityY, SensitivityMin, SensitivityMax);
 
 	// NOTHING PLUGIN-BACKED MAY BE SANITIZED HERE, however tempting it looks.
 	//
@@ -559,6 +566,14 @@ void USimCopterSettings::SetStaticTimeOfDayHours(const float Hours)
 	StaticTimeOfDayHours = FMath::Clamp(Hours, StaticTimeOfDayMinHours, StaticTimeOfDayMaxHours);
 }
 
+void USimCopterSettings::ResetSessionTimeOfDaySettings()
+{
+	TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;
+	StaticTimeOfDayHours = DefaultStaticTimeOfDayHours;
+	DayRealMinutes = DefaultDayRealMinutes;
+	NightRealMinutes = DefaultNightRealMinutes;
+}
+
 void USimCopterSettings::SetEmissiveBrightness(const float Scale)
 {
 	EmissiveBrightness = FMath::Clamp(Scale, EmissiveBrightnessMin, EmissiveBrightnessMax);
@@ -604,6 +619,41 @@ void USimCopterSettings::SetHudScale(const float Scale)
 	}
 	HudScale = Clamped;
 	OnHudScaleChanged.Broadcast(HudScale);
+}
+
+void USimCopterSettings::SetOnFootFov(const float Degrees)
+{
+	OnFootFov = FMath::Clamp(Degrees, FovMin, FovMax);
+}
+
+void USimCopterSettings::SetHelicopterFov(const float Degrees)
+{
+	HelicopterFov = FMath::Clamp(Degrees, FovMin, FovMax);
+}
+
+void USimCopterSettings::SetCockpitFov(const float Degrees)
+{
+	CockpitFov = FMath::Clamp(Degrees, FovMin, FovMax);
+}
+
+void USimCopterSettings::SetMouseSensitivityX(const float Scale)
+{
+	MouseSensitivityX = FMath::Clamp(Scale, SensitivityMin, SensitivityMax);
+}
+
+void USimCopterSettings::SetMouseSensitivityY(const float Scale)
+{
+	MouseSensitivityY = FMath::Clamp(Scale, SensitivityMin, SensitivityMax);
+}
+
+void USimCopterSettings::SetControllerSensitivityX(const float Scale)
+{
+	ControllerSensitivityX = FMath::Clamp(Scale, SensitivityMin, SensitivityMax);
+}
+
+void USimCopterSettings::SetControllerSensitivityY(const float Scale)
+{
+	ControllerSensitivityY = FMath::Clamp(Scale, SensitivityMin, SensitivityMax);
 }
 
 // ---------------------------------------------------------------------------------------------

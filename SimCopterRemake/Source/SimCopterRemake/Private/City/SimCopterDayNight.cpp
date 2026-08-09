@@ -317,12 +317,32 @@ void USimCopterDayNightSubsystem::Tick(const float DeltaTime)
 	// Refresh gives up early there.
 	PublishSurfaceShading();
 	ApplyTimeOfDaySettings();
+	ApplyPendingSavedTimeOfDay();
 	Refresh();
 }
 
 ADaySequenceActor* USimCopterDayNightSubsystem::GetDaySequenceActor() const
 {
 	return CachedDaySequenceActor.Get();
+}
+
+bool USimCopterDayNightSubsystem::TryGetLiveTimeOfDayHours(float& OutHours)
+{
+	if (const ADaySequenceActor* DaySequenceActor = ResolveDaySequenceActor())
+	{
+		OutHours = DaySequenceActor->GetTimeOfDay();
+		return FMath::IsFinite(OutHours);
+	}
+
+	OutHours = 0.0f;
+	return false;
+}
+
+void USimCopterDayNightSubsystem::RestoreSavedTimeOfDay(const float Hours)
+{
+	PendingSavedTimeOfDayHours = FMath::Clamp(Hours, 0.0f, 24.0f);
+	ApplyTimeOfDaySettings();
+	ApplyPendingSavedTimeOfDay();
 }
 
 ADaySequenceActor* USimCopterDayNightSubsystem::ResolveDaySequenceActor()
@@ -614,5 +634,41 @@ void USimCopterDayNightSubsystem::ApplyTimeOfDaySettings()
 	bWasNight = false;
 
 	// The seek moved the clock; publish the new blend now rather than one frame late.
+	Refresh();
+}
+
+void USimCopterDayNightSubsystem::ApplyPendingSavedTimeOfDay()
+{
+	if (PendingSavedTimeOfDayHours < 0.0f)
+	{
+		return;
+	}
+
+	ADaySequenceActor* DaySequenceActor = ResolveDaySequenceActor();
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	if (DaySequenceActor == nullptr || Settings == nullptr)
+	{
+		return;
+	}
+
+	const float RestoredHours = PendingSavedTimeOfDayHours;
+	PendingSavedTimeOfDayHours = -1.0f;
+
+	// SetTimeOfDay scrubs with Play and therefore resumes the player. Reassert the saved mode after
+	// the seek so a Static save remains pinned while a Dynamic save continues from the saved hour.
+	if (Settings->GetTimeOfDayMode() == ESimCopterTimeOfDayMode::Static)
+	{
+		DaySequenceActor->SetRunDayCycle(false);
+		DaySequenceActor->SetTimeOfDay(RestoredHours);
+		DaySequenceActor->Pause();
+	}
+	else
+	{
+		DaySequenceActor->SetRunDayCycle(true);
+		DaySequenceActor->SetTimeOfDay(RestoredHours);
+		DaySequenceActor->Play();
+	}
+
+	bWasNight = false;
 	Refresh();
 }
