@@ -1013,6 +1013,36 @@ bool FSimCopterUserCityPointsPresentationTest::RunTest(const FString& Parameters
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterUserCityDefaultSettingsTest,
+	"SimCopter.Missions.UserCityDefaultSettings",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterUserCityDefaultSettingsTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCareerCity Base;
+	Base.Difficulty = 0;
+	Base.DayOrNight = 1;
+	Base.PointsNeeded = 400;
+	Base.MoneyEarned = 500;
+	for (float& Weight : Base.Weights)
+	{
+		Weight = 1.0f;
+	}
+
+	const FSimCopterCareerCity UserCity = FSimCopterMissionSystem::MakeUserCityDefaults(Base);
+	TestEqual(TEXT("Difficulty"), UserCity.Difficulty, 2);
+	const float ExpectedWeights[7] = { 30.0f, 90.0f, 46.0f, 40.0f, 60.0f, 64.0f, 54.0f };
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(ExpectedWeights); ++Index)
+	{
+		TestEqual(*FString::Printf(TEXT("Weight %d"), Index), UserCity.Weights[Index], ExpectedWeights[Index]);
+	}
+	TestEqual(TEXT("User-city day setting"), UserCity.DayOrNight, 0);
+	TestEqual(TEXT("Remake-only base points tail is preserved"), UserCity.PointsNeeded, Base.PointsNeeded);
+	TestEqual(TEXT("Remake-only base earnings tail is preserved"), UserCity.MoneyEarned, Base.MoneyEarned);
+	return true;
+}
+
 // The user-visible symptom this guards: a criminal appearing out in the ocean, where nothing
 // on the police side can reach. FUN_004a92f0 sends 0x200/0x2000/0x20000 through LAB_004a95ff,
 // whose only candidate tiles are ones carrying a mission building.

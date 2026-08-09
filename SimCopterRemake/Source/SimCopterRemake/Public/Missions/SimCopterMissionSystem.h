@@ -487,6 +487,10 @@ public:
 	void Initialize(ISimCopterMissionWorld* InWorld, uint32 RandSeed);
 	void SetCareerCity(const FSimCopterCareerCity& City);
 	const FSimCopterCareerCity& GetCareerCity() const { return CareerCity; }
+	// SCHOOK: StartUserCity 0x004080c0. Mode 1 owns a separate nine-dword settings record instead
+	// of scheduling directly from career City0. These are the original user-city defaults shown by
+	// the City Settings panel; the non-settings tail stays attached to the remake's base record.
+	static FSimCopterCareerCity MakeUserCityDefaults(const FSimCopterCareerCity& BaseCity);
 
 	bool LoadCareerData(const FString& TweakFilePath);
 	void AdvanceCareerCity();

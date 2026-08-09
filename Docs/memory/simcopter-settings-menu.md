@@ -67,6 +67,12 @@ Label-to-slider pairing is construction order, which is also `FSimCopterCareerCi
 Difficulty, then Fire, Crime, Rescue, Riot, Traffic, MedEvac, Transport — and the geometry agrees
 (an even slider's label shares its LEFT edge, an odd one's its RIGHT).
 
+`FUN_004080c0` seeds a new user game into the separate `DAT_00518cd0` block instead of leaving it
+on career City0's training mix. The original panel's defaults are **Difficulty 2**, then weights
+**30, 90, 46, 40, 60, 64, 54** for Fire, Crime, Rescue, Riot, Traffic, MedEvac and Transport;
+Day/Night is 0. `FSimCopterMissionSystem::MakeUserCityDefaults` applies that block before a
+`UserCityJobs` session begins, so both the visible thumbs and the live scheduler start together.
+
 **Sound** — Game Volume (cmd 6, horizontal) and the radio's volume (cmd 11) both **320..10000**;
 the tuner (cmd 10) **0..2**. The original maps volume onto the slider logarithmically
 (`FUN_00440020` / `FUN_00440130`, five doubles at 0x4f2180..0x4f21a0); the remake's mixer already

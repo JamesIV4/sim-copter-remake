@@ -773,6 +773,15 @@ void ASimCopterMissionSystemActor::BeginSession(
 		MissionSystem.SelectCareerCity(ClampedIndex);
 	}
 
+	if (Mode == ESimCopterMissionSessionMode::UserCityJobs)
+	{
+		// FUN_004080c0 seeds mode 1's editable DAT_00518cd0 record separately from the career
+		// table. Starting directly from Career City0 made a new user city's panel - and therefore
+		// its actual scheduler mix - disagree with the original game.
+		MissionSystem.SetCareerCity(FSimCopterMissionSystem::MakeUserCityDefaults(
+			MissionSystem.GetCareerCity()));
+	}
+
 	if (!bAllowScheduledMissions)
 	{
 		// The zero-weight city: FUN_004a6d20 sees a weight sum below 1.0 and writes an all-zero
@@ -840,7 +849,7 @@ void ASimCopterMissionSystemActor::StartCityJobsSession(int32 CareerCityIndex, b
 
 void ASimCopterMissionSystemActor::StartUserCitySession(int32 TuningCityIndex, bool bFirstJobImmediately)
 {
-	// FUN_004080c0 opens original mode 1 with City0's difficulty/weights and the ordinary mission
+	// FUN_004080c0 opens original mode 1 with its own editable defaults and the ordinary mission
 	// scheduler. The user-requested sandbox rule deliberately omits the original's rolling score
 	// threshold: jobs and points remain live, but there is no goal, filled meter, or level finish.
 	BeginSession(ESimCopterMissionSessionMode::UserCityJobs, TuningCityIndex, /*bAllowScheduledMissions=*/true);

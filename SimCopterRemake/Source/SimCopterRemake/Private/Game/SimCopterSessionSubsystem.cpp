@@ -16,7 +16,8 @@ void USimCopterSessionSubsystem::RequestCareerCity(int32 InCareerCityIndex)
 void USimCopterSessionSubsystem::RequestUserCity(const FString& InCityFilePath)
 {
 	Kind = ESimCopterSessionKind::User;
-	// FUN_004080c0 seeds a user game with career City0's nine tuning dwords.
+	// Career City0 supplies only the shared base record; BeginSession replaces its settings fields
+	// with FUN_004080c0's separate mode-1 defaults.
 	CareerCityIndex = 0;
 	CityFilePath = InCityFilePath;
 }
