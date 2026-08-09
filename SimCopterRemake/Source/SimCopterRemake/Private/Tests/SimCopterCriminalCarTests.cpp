@@ -25,6 +25,13 @@ bool FSimCopterCriminalCarTargetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("A fleeing target deploys the 0xe officer"), GetOfficerPersonState(true, true), 0xe);
 	TestEqual(TEXT("Every deployed officer uses retail behavior class 0xe"), OfficerBehaviorClass, 0xe);
 
+	// FUN_004a6e60 / FUN_0049be50: the ambient Speeder is maintained independently of the
+	// burglar mission and uses fixed frame/reward cadences.
+	TestEqual(TEXT("The ambient Speeder pool is rechecked every 64 ticks"),
+		SpeederDesignationFrameMask + 1u, 64u);
+	TestEqual(TEXT("Waiting For Cops repeats every ten seconds"),
+		SpeederWaitingRewardSeconds, 10.0f);
+
 	// FUN_0049b000: octile - the larger axis plus half the smaller.
 	TestEqual(TEXT("Same tile"), GetTileStepDistance(FIntPoint(10, 10), FIntPoint(10, 10)), 0);
 	TestEqual(TEXT("Straight run of 4"), GetTileStepDistance(FIntPoint(10, 10), FIntPoint(14, 10)), 4);

@@ -3591,7 +3591,7 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 	SerializeAgentBool(Writer, bStopOrdered);
 	SerializeAgentBool(Writer, bStopped);
 	Writer << CriminalEventId << SpotlightMark << CriminalState;
-	Writer << BurglarOutsideSeconds << CriminalStopScale;
+	Writer << BurglarOutsideSeconds << CriminalStopScale << SpeederRewardCooldownSeconds;
 	Writer << CriminalCruiseSeconds << CriminalSpotlightLostSeconds;
 	SerializeAgentBool(Writer, bCriminalDriverReturned);
 	Writer << CriminalDriverMessage;
@@ -3710,6 +3710,14 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	SerializeAgentBool(Reader, bStopped);
 	Reader << CriminalEventId << SpotlightMark << CriminalState;
 	Reader << BurglarOutsideSeconds << CriminalStopScale;
+	if (Version >= 4)
+	{
+		Reader << SpeederRewardCooldownSeconds;
+	}
+	else
+	{
+		SpeederRewardCooldownSeconds = 0.0f;
+	}
 	if (Version >= 2)
 	{
 		Reader << CriminalCruiseSeconds << CriminalSpotlightLostSeconds;
@@ -4478,6 +4486,7 @@ void ASimCopterGroundAgent::MakeSpeeder()
 	bStopped = false;
 	SpotlightMark = 0;
 	CriminalStopScale = 1.75f;
+	SpeederRewardCooldownSeconds = 0.0f;
 }
 
 void ASimCopterGroundAgent::ClearSpeeder()
@@ -4488,6 +4497,7 @@ void ASimCopterGroundAgent::ClearSpeeder()
 	bStopped = false;
 	SpotlightMark = 0;
 	CriminalStopScale = 1.0f;
+	SpeederRewardCooldownSeconds = 0.0f;
 }
 
 bool ASimCopterGroundAgent::TryOrderStop(const int32 CallerMessageId)

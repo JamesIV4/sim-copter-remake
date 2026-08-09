@@ -1,14 +1,21 @@
 ﻿# SimCopter burglar getaway-car pursuit
 
-*The searchlight is the CARROBBR-pursuit mechanic: police cannot stop an unlit getaway car; decoded and ported 2026-07-26, identity corrected 2026-08-09.*
+*The searchlight is the CARROBBR-pursuit mechanic: police cannot stop an unlit getaway car; decoded and ported 2026-07-26, Speeder identity completed 2026-08-09.*
 
 *Recorded 2026-07-26; ported into the repo 2026-07-29.*
 
-**Correction, 2026-08-09:** mask `0x4000` is the retail **Burglar** mission, not a standalone
-speeder mission. The deployed arguments are behavior class `0xf`, person state `0xd`; state 13
-selects BHAV 1303, which commits a robbery and uses **opcode 61** to message the exact starting
-car. A successful return restarts the driving/burglary cycle. The 120-second path is capture only
-when no nonzero return message arrives. See [the complete alignment note](simcopter-crime-rooftop-rescue.md).
+**Correction, 2026-08-09:** mask `0x4000` is the retail **Burglar** mission, not the Speeder.
+Its deployed arguments are behavior class `0xf`, person state `0xd`; state 13 selects BHAV 1303,
+which commits a robbery and uses **opcode 61** to message the exact starting CARROBBR car. A
+successful return restarts the driving/burglary cycle. The 120-second path is capture only when no
+nonzero return message arrives.
+
+Retail nevertheless has a distinct **ambient Speeder encounter**. `FUN_0049af00` and
+`FUN_0049af70` set vehicle flag `0x800` on an already-live ordinary car; no mission record or
+CARROBBR is created. `FUN_004a6e60` maintains that designation outside the mission scheduler.
+`FUN_0049be50` posts `0x21` “Waiting For Cops!” every ten seconds while the stopped car has no
+police nearby, then `0x26` “Speeder Caught!” when police reach it, both with event id `-1`.
+See [the complete alignment note](simcopter-crime-rooftop-rescue.md).
 
 Criminal cars and police pursuit, decoded and ported 2026-07-26. Notes in repo
 `Docs/scratchpad/ghidra/criminal_car_and_pursuit_decode_20260725.md`; rules in

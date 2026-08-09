@@ -61,6 +61,12 @@ constexpr int32 SpotlightMarkMax = 10;
 constexpr int32 PursuitScanRings = 3;
 constexpr int32 PursuitMaxTileSteps = 3;
 
+// FUN_004a6e60 only calls FUN_0049af70 once every 64 simulation ticks after the first
+// successful designation. FUN_0049be50 repeats event 0x21 at 0xa0000 (10.0 s) while a stopped
+// speeder is still waiting for a police car.
+constexpr uint32 SpeederDesignationFrameMask = 0x3f;
+constexpr float SpeederWaitingRewardSeconds = 10.0f;
+
 // Initialized-data values read directly from the retail Ghidra project.
 constexpr int32 CruiseBaseDelay1616 = 0x640000;     // DAT_00506360, 100.0 s
 constexpr int32 CruiseDelayModulo1616 = 0x2580000;  // DAT_00506364, 600.0 s divisor

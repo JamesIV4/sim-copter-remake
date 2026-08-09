@@ -1035,7 +1035,7 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
-	TryDesignateSpeeder();
+	UpdateSpeederDesignation();
 	UpdateSpeeders(DeltaSeconds);
 	// Speeders take their spotlight mark before the police read it, so a car lit this frame can
 	// be pulled over this frame.
@@ -4153,11 +4153,30 @@ bool ASimCopterTrafficSystemActor::TryDesignateSpeeder(const bool bForceNew)
 
 		Car->MakeSpeeder();
 		LastSpeederAgent = Car;
+		bSpeederDesignationEstablished = true;
 		UE_LOG(LogSimCopterTrafficSystem, Display,
 			TEXT("Speeder: designated ambient vehicle %s (retail flag 0x800)."), *Car->GetName());
 		return true;
 	}
 	return false;
+}
+
+void ASimCopterTrafficSystemActor::UpdateSpeederDesignation()
+{
+	// SCHOOK: SchedulerTick 0x004a6e60. Before the first successful selection retail retries
+	// every tick. Afterwards FUN_0049af70 checks the pool only once per 64 ticks; a caught or
+	// culled speeder therefore is not replaced on the very next frame.
+	if (!bSpeederDesignationEstablished)
+	{
+		bSpeederDesignationEstablished = TryDesignateSpeeder();
+		return;
+	}
+
+	const uint32 PreviousTick = SpeederDesignationTick++;
+	if ((PreviousTick & SimCopterCriminalCar::SpeederDesignationFrameMask) == 0)
+	{
+		TryDesignateSpeeder();
+	}
 }
 
 void ASimCopterTrafficSystemActor::UpdateSpeeders(const float DeltaSeconds)
@@ -4194,15 +4213,49 @@ void ASimCopterTrafficSystemActor::UpdateSpeeders(const float DeltaSeconds)
 				continue;
 			}
 
-			// FUN_0049be50's flag-0x800 capture arm posts event 0x26 without a mission id.
-			// It is an incremental encounter reward, not completion of a Burglar record.
-			if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+			Car->MarkStopped();
+
+			// SCHOOK: SpeederTick 0x0049be50 -> FUN_0049bc60. Once stopped, event 0x21
+			// repeats every ten seconds only while no CARPOLIC is in the local tile sweep. Police
+			// arrival posts event 0x26 from RunDispatchOnSceneAction instead; merely reaching zero
+			// speed is not a capture.
+			bool bPoliceNearby = false;
+			int32 CarX = 0;
+			int32 CarY = 0;
+			if (Car->TryGetTileCoordinate(CarX, CarY))
 			{
-				Missions->PostMissionEvent(
-					SimCopterMissions::EVT_SpeederCaught, INDEX_NONE, 1, /*bSilent=*/false);
+				const int32 PoliceIndex = static_cast<int32>(SimCopterDispatch::EService::Police);
+				for (const FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[PoliceIndex])
+				{
+					int32 PoliceX = 0;
+					int32 PoliceY = 0;
+					if (Vehicle.Agent.IsValid() &&
+						Vehicle.Agent->TryGetTileCoordinate(PoliceX, PoliceY) &&
+						SimCopterCriminalCar::GetTileStepDistance(
+							FIntPoint(CarX, CarY), FIntPoint(PoliceX, PoliceY)) <
+							SimCopterCriminalCar::PursuitMaxTileSteps)
+					{
+						bPoliceNearby = true;
+						break;
+					}
+				}
 			}
-			Car->ClearSpeeder();
-			Car->SetTrafficSpeedScale(0.0f);
+
+			float RewardCooldown = Car->GetSpeederRewardCooldownSeconds();
+			if (RewardCooldown > 0.0f)
+			{
+				Car->SetSpeederRewardCooldownSeconds(RewardCooldown - DeltaSeconds);
+			}
+			else if (!bPoliceNearby)
+			{
+				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+				{
+					Missions->PostMissionEvent(
+						SimCopterMissions::EVT_SpeederPursuit, INDEX_NONE, 1, /*bSilent=*/false);
+				}
+				Car->SetSpeederRewardCooldownSeconds(
+					SimCopterCriminalCar::SpeederWaitingRewardSeconds);
+			}
 			continue;
 		}
 
@@ -4628,6 +4681,21 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 				UE_LOG(LogSimCopterTrafficSystem, Verbose,
 					TEXT("Dispatch: police at (%d,%d) ordered the speeder at (%d,%d) to pull over."),
 					Tile.X, Tile.Y, TargetX, TargetY);
+			}
+
+			if (Target->IsSpeeder() && Target->IsStopped())
+			{
+				// SCHOOK: PoliceUpdate 0x004b9e40 case 4 raises speeder flag 0x1000 once
+				// CARPOLIC reaches the stopped target. SpeederTick 0x0049be50 then posts 0x26
+				// with event id -1 and clears 0x800/0x1000. This is an ambient encounter payout,
+				// never completion of the Burglar record.
+				if (Missions != nullptr)
+				{
+					Missions->PostMissionEvent(
+						SimCopterMissions::EVT_SpeederCaught, INDEX_NONE, 1, /*bSilent=*/false);
+				}
+				Target->ClearSpeeder();
+				bActed = true;
 			}
 		}
 
