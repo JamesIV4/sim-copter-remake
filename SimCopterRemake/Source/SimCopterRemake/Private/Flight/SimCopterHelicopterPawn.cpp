@@ -843,7 +843,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	FlightModel.TurbulenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 20.0f);
 	FlightModel.ReferenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
 	FlightModel.SpeedChaseFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
-	FlightModel.RotorVisualMultiplier = SimCopterFixed::FromFloat(4.0f);
+	FlightModel.RotorVisualMultiplier = SimCopterFixed::FromFloat(3.0f);
 	LoadFlightRateTuning();
 
 	// The editor property is a name; the registry index is what the runtime uses from here on.
