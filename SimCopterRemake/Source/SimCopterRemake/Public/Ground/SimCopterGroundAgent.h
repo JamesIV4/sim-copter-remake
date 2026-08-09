@@ -317,6 +317,8 @@ public:
 	// than written once - which is what let an "arrested" car drive away.
 	float GetCriminalStopScale() const { return CriminalStopScale; }
 	void SetCriminalStopScale(float NewScale) { CriminalStopScale = NewScale; }
+	float GetSpeederRewardCooldownSeconds() const { return SpeederRewardCooldownSeconds; }
+	void SetSpeederRewardCooldownSeconds(float NewSeconds) { SpeederRewardCooldownSeconds = NewSeconds; }
 	void MarkStopped() { bStopped = true; }
 	void ResumeCriminalCarDriving()
 	{
@@ -737,6 +739,7 @@ private:
 	uint8 CriminalState = 0;      // +0x12b
 	float BurglarOutsideSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
 	float CriminalStopScale = 1.0f; // stands in for the stop distance at +0xd3
+	float SpeederRewardCooldownSeconds = 0.0f; // veh +0xd7, event 0x21 repeat timer
 	float CriminalCruiseSeconds = 0.0f; // +0x137, DAT_00506360 + rand()%DAT_00506364
 	float CriminalSpotlightLostSeconds = 0.0f; // +0x13b, DAT_00506368 = 20.0s
 	uint8 BurglarDoorPhase = 0; // +0x133..+0x136 flags in FUN_004b8b60/FUN_004b8c90

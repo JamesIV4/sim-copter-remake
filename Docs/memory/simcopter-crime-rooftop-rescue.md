@@ -1,7 +1,7 @@
 # SimCopter crime, riot, and rooftop-rescue missions
 
-*Decoded and aligned 2026-08-09. This note supersedes the one-shot "speeder mission" conclusion
-in the older pursuit notes.*
+*Decoded and aligned 2026-08-09. This note separates the scheduler's Burglar record from the
+distinct ambient Speeder encounter.*
 
 ## Evidence map
 
@@ -17,6 +17,8 @@ The mission layer is split across these retail paths:
 - `FUN_004ab480`: four-part dispatcher announcement.
 - `DAT_0058de80` plus shipped `X/people.df`: person state to BHAV behavior.
 - `FUN_004b8470` / `FUN_004b8540` / `FUN_004b8630`: the burglar's CARROBBR car.
+- `FUN_0049af00` / `FUN_0049af70`: designate an ordinary ambient car as the Speeder.
+- `FUN_0049be50`: stopped-Speeder waiting/capture events (`0x21` / `0x26`).
 - `FUN_004c4190`: riot-person initialization; `FUN_004c9e20`: agitation-weighted centroid.
 
 The raw lifecycle decompile is in
@@ -39,7 +41,29 @@ These names are pinned by Win32 STRINGTABLE ids 571-583, not inferred from the o
 The original cockpit map uses icon 2 for all four crimes, icon 6 for a riot, and icon 4 for a
 rooftop rescue. Crime missions share `DAT_0057f9a0` as their metadata serial and rescue missions
 share `DAT_0057f9b0`; the visible name nevertheless uses the global event id. The old remake names
-such as `Criminal A #0`, `Speeder #0`, and `Fire Rescue #0` were not retail names.
+such as `Criminal A #0`, `Speeder #0`, and `Fire Rescue #0` were not retail mission-record names.
+
+### Speeder is distinct, but is not a scheduled mission record
+
+Retail Speeder is an ambient vehicle encounter, separate from the `0x4000` Burglar mission.
+`FUN_0049af00` scans the ordinary 70-car pool for one of GEO ids `0x7a`, `0x7d`, `0x7e`, `0x12a`,
+299, or 300, requiring an active ordinary car and rejecting the last selected slot. It raises
+vehicle flag `0x800`; it does not call `FUN_004a7a10`, allocate an event id, create CARROBBR, or
+publish a mission marker/title. `FUN_004a6e60` retries every tick until the first designation,
+then calls the preserving/replacement scan `FUN_0049af70` once every 64 simulation ticks.
+
+The stop flow is also independent. A stopped `0x800` car with no nearby CARPOLIC posts event
+`0x21`, **“Waiting For Cops!”**, once every `0xa0000` (10 seconds), paying `Speeder Inc Points`
+as cash. When police reach it, event `0x26`, **“Speeder Caught!”**, pays `Speeder End Money` and
+`Speeder End Points`, both with event id `-1`; no mission record completes. The remake therefore
+exposes Speeder as a separate debug button backed by the ambient traffic system, not as an alias
+for the Burglar catalog entry.
+
+The shipped D1008 “speeder report” audio is indeed distinct. However, the decoded spawn path does
+not call the dispatcher, and `FUN_004ab480` has no announcement case for the scoring bit `0x2`.
+Likewise, `FUN_004aabf0`'s voice 99 mapping for bit `0x2` belongs to mission-record completion,
+whereas the live ambient path pays through `FUN_004aa150`. Do not invent a scheduled Speeder
+record merely to make those otherwise separate/dead audio branches fire.
 
 ## When the scheduler selects them
 

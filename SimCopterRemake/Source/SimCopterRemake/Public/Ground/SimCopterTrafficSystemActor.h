@@ -721,6 +721,8 @@ private:
 	TMap<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState> VehicleTrafficStates;
 	TWeakObjectPtr<ASimCopterGroundAgent> NextCarFireTarget;
 	TWeakObjectPtr<ASimCopterGroundAgent> LastSpeederAgent;
+	bool bSpeederDesignationEstablished = false;
+	uint32 SpeederDesignationTick = 0;
 	FRandomStream RandomStream;
 	uint16 PeopleRandomState = 1;
 	FTransform ActiveCityToWorldTransform = FTransform::Identity;
@@ -1067,6 +1069,7 @@ public:
 	// speed multiplier it earns.
 	void UpdateCriminalCars(float DeltaSeconds);
 	void UpdateSpeeders(float DeltaSeconds);
+	void UpdateSpeederDesignation();
 
 	// FUN_004b9e40 case 0's three-ring sweep. Returns the nearest speeder within
 	// SimCopterCriminalCar::PursuitMaxTileSteps of FromTile, or null.
