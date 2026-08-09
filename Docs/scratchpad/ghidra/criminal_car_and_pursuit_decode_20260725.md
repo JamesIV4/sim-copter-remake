@@ -1,4 +1,10 @@
-# Criminal / speeder cars and police pursuit - decode
+# Burglar getaway car and police pursuit - historical decode
+
+> **Superseded conclusion (2026-08-09):** the `0x4000` record is the Burglar mission. The person
+> argument pair is behavior class `0xf`, state `0xd`, which runs BHAV 1303 and reaches opcode 61
+> with message 1. The `veh[8]` return arm is therefore live and repeats burglaries. Preserve the
+> raw work below as history, but use `Docs/memory/simcopter-crime-rooftop-rescue.md` for the aligned
+> lifecycle.
 
 Decoded 2026-07-25 from SimCopter.exe via ghidra-bridge, completed and **ported 2026-07-26**.
 See `SimCopterCriminalCar.h` for the ported rules and section 6 below for what was left out.
@@ -148,7 +154,7 @@ the whole feature hang together:
   / `0x18590` (**1.054 / 1.316 / 1.522x**) by band. A tighter beam slows it more.
 
 So: hold the searchlight on the speeder to slow it *and* to make it stoppable, then send police.
-An unmarked speeder cannot be stopped by police at all - `FUN_004b89a0`'s police branch requires
+An unmarked burglar getaway car cannot be stopped by police at all - `FUN_004b89a0`'s police branch requires
 `+0x11b != 0` and no other branch admits a cruising car.
 
 ## 4b. The arrest - `FUN_004b8b60` + `FUN_004b8c90` - Confirmed
@@ -246,8 +252,7 @@ Otherwise 1. The remake already has the intersection predicate as
 
 - [x] `PTR_FUN_004f4cd8[1]` resolved out of `.rdata` and disassembled by hand (section 4).
 - [x] Criminal car as a ground agent with GEO `0x11e` / `CARROBBR`, pool capped at 5.
-- [x] `TYPE_CriminalCar` wired through the existing `TryActivateSpeederCar` hook to a radius-5
-      road placement.
+- [x] `TYPE_Burglar` wired through `TryActivateBurglarCar` to a radius-5 road placement.
 - [x] Radius-3 target scan on the police car, in both the on-scene and chase paths.
 - [x] The tile-step gate (`FUN_0049b000 < 3`) plus the intersection/occupancy half of
       `FUN_0049df60`, asked of the **target**, not the police car.
@@ -268,26 +273,23 @@ record[0x94] = 1                                   ; TargetCount
 FUN_004ab480(record[0x28], record[0x2c], 0x4000)   ; UI announce
 ```
 
-`+0x94` is `TargetCount`. **Missing that one write makes the mission resolve on its first
-update**, because the shared crime completion test is
-`CriminalsCaught + Casualties < TargetCount` and `0 + 0 < 0` is false. Pinned by
-`SimCopter.Missions.SpeederCarStaysOpen`.
+`+0x94` is `TargetCount`, and the retail creator writes 1. The aligned port preserves the write,
+but `FUN_004a73e0` gives this specific type its own test: the burglar remains incomplete exactly
+while both `CriminalsCaught == 0` and `Casualties == 0`. It does not use the shared target-count
+comparison. Pinned by `SimCopter.Missions.BurglarCarStaysOpen`.
 
-Note the record is *not* closed by a "caught" counter: `FUN_004b8b60` posts `EVT_SetCategory`
-value 4 (`CAT_ExpireSilently`), which makes the update loop skip the completion test entirely and
-let the record run out on its own timer with no fanfare.
+The record is closed by `EVT_CriminalCaught` after `FUN_004b8c90`'s no-return path. The category-4
+`CAT_ExpireSilently` event belongs only to `FUN_004b8b60`'s person-placement failure.
 
-## 6. Deliberate divergences
+## 6. Historical divergences
 
-- **The payout happens when the car stops, not 120 s later.** The original posts
+- **Removed 2026-08-09: the payout happened when the car stopped, not 120 s later.** The original posts
   `EVT_CriminalCaught` from `FUN_004b8c90`, at the end of the hold (section 4b). Waiting two
   minutes with no feedback reads as a bug in play, so the remake posts it the moment the car
-  comes to rest and the driver is placed. The hold still runs - it is just how long the stopped
-  car stays parked before it is cleared - and the event is posted exactly once either way.
-- **The arrest sequence is timer-driven, not sound-driven.** `FUN_004b8b60` advances on
-  `FUN_0042a3a0(0x6f)` / `(0x70)` reporting their clips finished. The remake collapses that to
-  the 120 s hold, because the clips are the only thing gating each step and the remake does not
-  play them yet.
+  comes to rest and the driver is placed. The aligned port now waits for the actual no-return path.
+- **Removed 2026-08-09: the port skipped the sound gates.** `FUN_004b8b60` advances on
+  `FUN_0042a3a0(0x6f)` / `(0x70)` reporting their clips finished. The aligned port now plays
+  `aDrOpen` / `aDrClose`, waits on the same slots, and persists that subphase in runtime saves.
 - **`FindPursuitTarget` scans the live speeder list, not the per-tile object map.** The original
   spirals three rings and walks each cell's object list; the remake has no cell object map, so it
   applies the same `FUN_0049b000 < 3` step test to every live speeder. Same answer, because the

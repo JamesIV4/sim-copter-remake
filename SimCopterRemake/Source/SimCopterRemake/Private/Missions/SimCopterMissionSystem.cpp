@@ -5,6 +5,15 @@
 
 namespace SimCopterMissions
 {
+namespace
+{
+// The current storage is pointer-free rather than the original address block, but these two
+// slots preserve its shared family counters: DAT_0057f9a0 for every crime and DAT_0057f9b0 for
+// boat/train/rooftop rescue. The counter is metadata; the visible name uses EventId.
+constexpr int32 SharedCrimeSerialIndex = 6;
+constexpr int32 SharedRescueSerialIndex = 4;
+constexpr int32 RiotSerialIndex = 11;
+}
 
 bool FSimCopterMissionSystem::LoadCareerData(const FString& TweakFilePath)
 {
@@ -326,25 +335,25 @@ void FSimCopterMissionSystem::DispatchScheduledType(int32 Bucket)
 		if (DifficultyTier == 2)
 		{
 			int16 Mask = (static_cast<int16>(RandVal) ^ Shf) - Shf;
-			if ((Mask & 1 ^ Shf) != Shf) CreateEventOfType(TYPE_CriminalA);
-			else CreateEventOfType(TYPE_SpeederEvent);
+			if ((Mask & 1 ^ Shf) != Shf) CreateEventOfType(TYPE_Robber);
+			else CreateEventOfType(TYPE_Arsonist);
 		}
 		else if (DifficultyTier == 4)
 		{
 			int16 Mask = (static_cast<int16>(RandVal) ^ Shf) - Shf;
 			int32 CaseVal = (Mask & 7 ^ Shf) - Shf;
-			if (CaseVal == 0) CreateEventOfType(TYPE_CriminalC);
-			else if (CaseVal == 1) CreateEventOfType(TYPE_CriminalA);
-			else if (CaseVal == 2 || CaseVal == 3) CreateEventOfType(TYPE_SpeederEvent);
-			else CreateEventOfType(TYPE_CriminalCar);
+			if (CaseVal == 0) CreateEventOfType(TYPE_Mugger);
+			else if (CaseVal == 1) CreateEventOfType(TYPE_Robber);
+			else if (CaseVal == 2 || CaseVal == 3) CreateEventOfType(TYPE_Arsonist);
+			else CreateEventOfType(TYPE_Burglar);
 		}
 		else
 		{
 			int32 Mod = Combined % 5;
-			if (Mod == 0) CreateEventOfType(TYPE_CriminalA);
-			else if (Mod == 1) CreateEventOfType(TYPE_SpeederEvent);
-			else if (Mod == 2) CreateEventOfType(TYPE_CriminalC);
-			else CreateEventOfType(TYPE_CriminalCar);
+			if (Mod == 0) CreateEventOfType(TYPE_Robber);
+			else if (Mod == 1) CreateEventOfType(TYPE_Arsonist);
+			else if (Mod == 2) CreateEventOfType(TYPE_Mugger);
+			else CreateEventOfType(TYPE_Burglar);
 		}
 	}
 	else if (Bucket == 3) // Rescue
@@ -352,25 +361,25 @@ void FSimCopterMissionSystem::DispatchScheduledType(int32 Bucket)
 		if (DifficultyTier == 2)
 		{
 			int16 Mask = (static_cast<int16>(RandVal) ^ Shf) - Shf;
-			if ((Mask & 3 ^ Shf) != Shf) CreateEventOfType(TYPE_FireRescue);
+			if ((Mask & 3 ^ Shf) != Shf) CreateEventOfType(TYPE_RooftopRescue);
 			else CreateEventOfType(TYPE_BoatRescue);
 		}
 		else if (DifficultyTier == 3)
 		{
 			int16 Mask = (static_cast<int16>(RandVal) ^ Shf) - Shf;
 			int16 Diff = (Mask & 7 ^ Shf);
-			if (Diff == Shf) CreateEventOfType(TYPE_FireRescue);
+			if (Diff == Shf) CreateEventOfType(TYPE_RooftopRescue);
 			else if (static_cast<uint16>(Diff - Shf) != 1) CreateEventOfType(TYPE_BoatRescue);
 			else CreateEventOfType(TYPE_TrainRescue);
 		}
 		else if (DifficultyTier == 4)
 		{
 			int32 Mod = Combined % 5;
-			if (Mod == 0) CreateEventOfType(TYPE_FireRescue);
+			if (Mod == 0) CreateEventOfType(TYPE_RooftopRescue);
 			else if (Mod == 1) CreateEventOfType(TYPE_TrainRescue);
 			else CreateEventOfType(TYPE_BoatRescue);
 		}
-		else CreateEventOfType(TYPE_FireRescue);
+		else CreateEventOfType(TYPE_RooftopRescue);
 	}
 	else if (Bucket == 4) CreateEventOfType(TYPE_Riot);
 	else if (Bucket == 5) CreateEventOfType(TYPE_TrafficJam);
@@ -422,9 +431,9 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	}
 	else if (TypeMask == TYPE_Medevac ||
 		TypeMask == TYPE_Transport ||
-		TypeMask == TYPE_CriminalA ||
-		TypeMask == TYPE_SpeederEvent ||
-		TypeMask == TYPE_CriminalC)
+		TypeMask == TYPE_Robber ||
+		TypeMask == TYPE_Arsonist ||
+		TypeMask == TYPE_Mugger)
 	{
 		// FUN_004a92f0 LAB_004a95ff. Medevac, Transport and all three on-foot crime types share
 		// one placement rule: five tries, and the tile has to carry a mission building. Criminals
@@ -449,7 +458,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 		TypeMask == TYPE_CarFireEvent ||
 		TypeMask == TYPE_TrafficJam ||
 		TypeMask == TYPE_Riot ||
-		TypeMask == TYPE_CriminalCar)
+		TypeMask == TYPE_Burglar)
 	{
 		// FUN_004a92f0's unfiltered tail. Each of these places something that finds its own
 		// ground - a boat on water, a car on the road network, a rioting crowd - so the tile
@@ -468,7 +477,7 @@ int32 FSimCopterMissionSystem::CreateEventOfType(int32 TypeMask)
 	{
 		return ReturnCreation(CreateEventAt(-1, -1, TypeMask));
 	}
-	else if (TypeMask == TYPE_FireRescue)
+	else if (TypeMask == TYPE_RooftopRescue)
 	{
 		// The one branch that leaves its loop to create: FUN_004a92f0 jumps to LAB_004a9814 on
 		// the first tile that passes, so a creation failure here is not retried.
@@ -526,7 +535,7 @@ bool FSimCopterMissionSystem::IsBuildingFireTargetAllowedByDifficulty(int32 Tile
 	//   tier 4  one try in seven takes anything; otherwise size 3..4 and occupied.
 	//
 	// So on a hard city fires start in big towers with people in them - which is also what feeds
-	// UpdateFires' TYPE_FireRescue spawn, since that gate reads the same property bit. Without this
+	// UpdateFires' TYPE_RooftopRescue spawn, since that gate reads the same property bit. Without this
 	// filter every tier picked uniformly from whatever the random tile happened to be, and the
 	// career's fire missions did not escalate at all.
 	const int32 Size = World != nullptr ? World->GetBuildingFootprintSize(TileX, TileY) : 0;
@@ -762,9 +771,9 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 
 	// DAT_005060c8 table of 6 closing detail slots: D2001, D2003, D2004, D2007, D2011, D2019
 	static const int32 ClosingPool[6] = { 0x4b, 0x4d, 0x4e, 0x51, 0x55, 0x5d };
-	auto GetRandomClosingFromPool = []() -> int32
+	auto GetRandomClosingFromPool = [this]() -> int32
 	{
-		return ClosingPool[FMath::RandRange(0, 5)];
+		return ClosingPool[Rand.Rand() % UE_ARRAY_COUNT(ClosingPool)];
 	};
 
 	const int32 TypeMask = Record.TypeMask;
@@ -778,19 +787,22 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 		else if (Roll == 3) ClosingVoiceId = 0x5e; // D2020
 		else ClosingVoiceId = 0x57; // D2013
 	}
-	else if ((TypeMask & TYPE_SpeederEvent) != 0 || (TypeMask & TYPE_Speeder) != 0)
+	else if ((TypeMask & TYPE_Arsonist) != 0)
 	{
-		TypeVoiceId = 0x37; // D1008 ("speeder report")
-		const int32 Roll = FMath::RandRange(0, 4);
+		TypeVoiceId = 0x38; // D1009 ("arsonist report")
+		const int32 Roll = Rand.Rand() % 5;
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x57; // D2013
 		else if (Roll == 3) ClosingVoiceId = 0x4f; // D2005 ("suspect on foot")
 		else ClosingVoiceId = 0x52; // D2008 ("wearing a light colored jacket")
 	}
-	else if ((TypeMask & TYPE_CriminalCar) != 0)
+	else if ((TypeMask & TYPE_Burglar) != 0)
 	{
-		TypeVoiceId = 0x37; // D1008 ("speeder report")
-		ClosingVoiceId = 0x50; // D2006 ("suspect last seen heading west and driving erratically")
+		TypeVoiceId = 0x36; // D1007 ("hold up report")
+		const int32 Roll = Rand.Rand() % 5;
+		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
+		else if (Roll == 2) ClosingVoiceId = 0x58; // D2014
+		else ClosingVoiceId = 0x50; // D2006 ("suspect last seen heading west and driving erratically")
 	}
 	else if ((TypeMask & TYPE_PlaneCrash) != 0)
 	{
@@ -844,27 +856,29 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 		else if (Roll == 2) ClosingVoiceId = 0x59; // D2015
 		else ClosingVoiceId = 0x54; // D2010
 	}
-	else if ((TypeMask & TYPE_FireRescue) == TYPE_FireRescue || (TypeMask & TYPE_RescuePeople) != 0)
+	else if ((TypeMask & TYPE_RooftopRescue) == TYPE_RooftopRescue)
 	{
 		TypeVoiceId = 0x40; // D1017 ("emergency rescue")
-		const int32 Roll = FMath::RandRange(0, 4);
-		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
-		else if (Roll == 2) ClosingVoiceId = 0x59; // D2015
-		else ClosingVoiceId = 0x57; // D2013
+		ClosingVoiceId = 0x53; // D2009, fixed for the rooftop branch in FUN_004ab480
 	}
-	else if ((TypeMask & TYPE_CriminalA) != 0)
+	else if ((TypeMask & TYPE_RescuePeople) != 0)
+	{
+		TypeVoiceId = 0x40; // other rescue composites retain their own branches above
+		ClosingVoiceId = 0x53;
+	}
+	else if ((TypeMask & TYPE_Robber) != 0)
 	{
 		TypeVoiceId = 0x36; // D1007 ("hold up report")
-		const int32 Roll = FMath::RandRange(0, 4);
+		const int32 Roll = Rand.Rand() % 5;
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x58; // D2014
 		else if (Roll == 3) ClosingVoiceId = 0x5a; // D2016
 		else ClosingVoiceId = 0x4f; // D2005
 	}
-	else if ((TypeMask & TYPE_CriminalC) != 0)
+	else if ((TypeMask & TYPE_Mugger) != 0)
 	{
 		TypeVoiceId = 0x39; // D1010 ("mugger report")
-		const int32 Roll = FMath::RandRange(0, 4);
+		const int32 Roll = Rand.Rand() % 5;
 		if (Roll == 1) ClosingVoiceId = GetRandomClosingFromPool();
 		else if (Roll == 2) ClosingVoiceId = 0x58; // D2014
 		else if (Roll == 3) ClosingVoiceId = 0x5a; // D2016
@@ -879,7 +893,7 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 	}
 	else if ((TypeMask & TYPE_Riot) != 0)
 	{
-		TypeVoiceId = 0x3f; // D1016 ("Riot reported")
+		TypeVoiceId = 0x3e + (Rand.Rand() & 1); // D1015/D1016, both retail riot reports
 		ClosingVoiceId = GetRandomClosingFromPool();
 	}
 	else
@@ -913,7 +927,7 @@ void FSimCopterMissionSystem::PostAnnouncementVoice(const FSimCopterMissionRecor
 int32 FSimCopterMissionSystem::GetTypeTextId(int32 TypeMask)
 {
 	if ((TypeMask & TYPE_Riot) != 0) return 0x23b;
-	if ((TypeMask & TYPE_FireRescue) != 0) return 0x23c;
+	if ((TypeMask & TYPE_RooftopRescue) == TYPE_RooftopRescue) return 0x23c;
 	if ((TypeMask & TYPE_BoatRescue) != 0) return 0x23d;
 	if ((TypeMask & TYPE_TrainRescue) != 0 || (TypeMask & TYPE_TrainCrash) != 0) return 0x23e;
 	if ((TypeMask & TYPE_Medevac) != 0) return 0x23f;
@@ -921,10 +935,10 @@ int32 FSimCopterMissionSystem::GetTypeTextId(int32 TypeMask)
 	if ((TypeMask & TYPE_BuildingFire) != 0 || (TypeMask & TYPE_PlaneCrash) != 0) return 0x241;
 	if ((TypeMask & TYPE_CarFire) != 0) return 0x248;
 	if ((TypeMask & TYPE_TrafficJam) != 0) return 0x249;
-	if ((TypeMask & TYPE_CriminalCar) != 0) return 0x244;
-	if ((TypeMask & TYPE_SpeederEvent) != 0) return 0x245;
-	if ((TypeMask & TYPE_CriminalC) != 0) return 0x246;
-	if ((TypeMask & TYPE_CriminalA) != 0) return 0x247;
+	if ((TypeMask & TYPE_Burglar) != 0) return 0x244;
+	if ((TypeMask & TYPE_Arsonist) != 0) return 0x245;
+	if ((TypeMask & TYPE_Mugger) != 0) return 0x246;
+	if ((TypeMask & TYPE_Robber) != 0) return 0x247;
 	if ((TypeMask & TYPE_Ufo) != 0) return 0x24a;
 	return 0x24b;
 }
@@ -953,13 +967,23 @@ int32 FSimCopterMissionSystem::GetLocationVoiceId(int32 TileX, int32 TileY)
 	return SectorTable[SectorX][SectorY];
 }
 
+int32 FSimCopterMissionSystem::DrawBurglarCruiseDelay1616()
+{
+	// SCHOOK: CriminalCarSpawn 0x004b8540. The globals are initialized data, not tweak controls:
+	// DAT_00506360 = 0x640000 (100 s), DAT_00506364 = 0x2580000 (600 s). MSVC rand() only
+	// returns 0..32767, so the modulo contributes 0..0.49998 s despite the much larger divisor.
+	constexpr int32 BaseDelay1616 = 0x640000;
+	constexpr int32 DelayModulo1616 = 0x2580000;
+	return BaseDelay1616 + static_cast<int16>(Rand.Rand()) % DelayModulo1616;
+}
+
 const TCHAR* FSimCopterMissionSystem::GetTypeDisplayName(int32 TypeMask)
 {
 	// The three rescue masks are composites of the victim bit 0x10 (0x90 boat, 0x110 train,
 	// 0x80010 fire), so they have to match on every bit: a plain "& mask != 0" test claims the
 	// bare 0x100 train crash as a train rescue, and 0x10 as all three.
 	if ((TypeMask & TYPE_Riot) != 0) return TEXT("Riot");
-	if ((TypeMask & TYPE_FireRescue) == TYPE_FireRescue) return TEXT("Fire Rescue");
+	if ((TypeMask & TYPE_RooftopRescue) == TYPE_RooftopRescue) return TEXT("Rooftop Rescue");
 	if ((TypeMask & TYPE_BoatRescue) == TYPE_BoatRescue) return TEXT("Boat Rescue");
 	if ((TypeMask & TYPE_TrainRescue) == TYPE_TrainRescue) return TEXT("Train Rescue");
 	if ((TypeMask & TYPE_TrainCrash) != 0) return TEXT("Train Crash");
@@ -968,10 +992,10 @@ const TCHAR* FSimCopterMissionSystem::GetTypeDisplayName(int32 TypeMask)
 	if ((TypeMask & TYPE_Transport) != 0) return TEXT("Transport");
 	if ((TypeMask & TYPE_CarFire) != 0) return TEXT("Car Fire");
 	if ((TypeMask & TYPE_TrafficJam) != 0) return TEXT("Traffic Jam");
-	if ((TypeMask & TYPE_CriminalCar) != 0) return TEXT("Criminal Car");
-	if ((TypeMask & TYPE_SpeederEvent) != 0) return TEXT("Speeder");
-	if ((TypeMask & TYPE_CriminalC) != 0) return TEXT("Criminal");
-	if ((TypeMask & TYPE_CriminalA) != 0) return TEXT("Criminal");
+	if ((TypeMask & TYPE_Burglar) != 0) return TEXT("Burglar");
+	if ((TypeMask & TYPE_Arsonist) != 0) return TEXT("Arsonist");
+	if ((TypeMask & TYPE_Mugger) != 0) return TEXT("Mugger");
+	if ((TypeMask & TYPE_Robber) != 0) return TEXT("Robber");
 	if ((TypeMask & TYPE_PlaneCrash) != 0) return TEXT("Plane Crash");
 	if ((TypeMask & TYPE_BuildingFire) != 0) return TEXT("Building Fire");
 	if ((TypeMask & TYPE_Ufo) != 0) return TEXT("UFO");
@@ -1082,6 +1106,19 @@ bool FSimCopterMissionSystem::FindDefaultDestinationTile(int32 OriginX, int32 Or
 
 int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 {
+	// SCHOOK: CreateMission 0x004a7a10. The creator walks the live record table and refuses a
+	// second riot before it allocates/spawns anything.
+	if (TypeMask == TYPE_Riot)
+	{
+		for (const FSimCopterMissionRecord& Existing : Records)
+		{
+			if (Existing.bActive && (Existing.TypeMask & TYPE_Riot) != 0)
+			{
+				return -1;
+			}
+		}
+	}
+
 	int32 RecIndex = AllocateRecord();
 	if (RecIndex == INDEX_NONE) return -1;
 
@@ -1201,10 +1238,10 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.TileX = OutX;
 		Rec.TileY = OutY;
-		Rec.Name = FString::Printf(TEXT("Boat Rescue #%d"), TypeSerials[4]);
-		TypeSerials[4]++;
+		Rec.Name = FString::Printf(TEXT("Boat Rescue %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedRescueSerialIndex]++;
 	}
-	else if (TypeMask == TYPE_CriminalA)
+	else if (TypeMask == TYPE_Robber)
 	{
 		bool bSpawned = false;
 		if (World && World->TrySpawnMissionPerson(10, 9, TX, TY, Rec.EventId))
@@ -1218,8 +1255,8 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
-		Rec.Name = FString::Printf(TEXT("Criminal A #%d"), TypeSerials[6]);
-		TypeSerials[6]++;
+		Rec.Name = FString::Printf(TEXT("Robber %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedCrimeSerialIndex]++;
 	}
 	else if (TypeMask == TYPE_TrainRescue)
 	{
@@ -1232,8 +1269,8 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.TileX = OutX;
 		Rec.TileY = OutY;
-		Rec.Name = FString::Printf(TEXT("Train Rescue #%d"), TypeSerials[7]);
-		TypeSerials[7]++;
+		Rec.Name = FString::Printf(TEXT("Train Rescue %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedRescueSerialIndex]++;
 	}
 	else if (TypeMask == TYPE_TrafficJam)
 	{
@@ -1278,7 +1315,7 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			CreateEventAt(OutX, OutY, TYPE_Medevac);
 		}
 	}
-	else if (TypeMask == TYPE_SpeederEvent)
+	else if (TypeMask == TYPE_Arsonist)
 	{
 		bool bSpawned = false;
 		if (World && World->TrySpawnMissionPerson(11, 9, TX, TY, Rec.EventId))
@@ -1291,8 +1328,8 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
-		Rec.Name = FString::Printf(TEXT("Speeder #%d"), TypeSerials[10]);
-		TypeSerials[10]++;
+		Rec.Name = FString::Printf(TEXT("Arsonist %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedCrimeSerialIndex]++;
 	}
 	else if (TypeMask == TYPE_Riot)
 	{
@@ -1304,6 +1341,12 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			{
 				Spawned++;
 			}
+			// The retail loop gives up on the sixth attempt when not one rioter could be placed.
+			if (i > 4 && Spawned == 0)
+			{
+				ReleaseFailedRecord(RecIndex);
+				return -1;
+			}
 		}
 		if (Spawned < 11)
 		{
@@ -1312,10 +1355,15 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 		}
 		Rec.RiotSize = Spawned;
 		Rec.TargetCount = 0; // Elapsed nag periods
-		Rec.Name = FString::Printf(TEXT("Riot #%d"), TypeSerials[11]);
-		TypeSerials[11]++;
+		// FUN_004c9e20 immediately replaces the seed tile with the agitation-weighted crowd centre.
+		if (World)
+		{
+			World->TryGetRiotCentroid(Rec.EventId, Rec.TileX, Rec.TileY);
+		}
+		Rec.Name = FString::Printf(TEXT("Riot %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[RiotSerialIndex]++;
 	}
-	else if (TypeMask == TYPE_CriminalC)
+	else if (TypeMask == TYPE_Mugger)
 	{
 		bool bSpawned = false;
 		if (World && World->TrySpawnMissionPerson(12, 9, TX, TY, Rec.EventId))
@@ -1328,25 +1376,26 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
-		Rec.Name = FString::Printf(TEXT("Criminal C #%d"), TypeSerials[12]);
-		TypeSerials[12]++;
+		Rec.Name = FString::Printf(TEXT("Mugger %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedCrimeSerialIndex]++;
 	}
-	else if (TypeMask == TYPE_CriminalCar)
+	else if (TypeMask == TYPE_Burglar)
 	{
-		if (World && !World->TryActivateSpeederCar(Rec.EventId, TX, TY))
+		const int32 CruiseDelay1616 = DrawBurglarCruiseDelay1616();
+		if (World && !World->TryActivateBurglarCar(Rec.EventId, TX, TY, CruiseDelay1616))
 		{
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
-		// FUN_004a7a10's 0x4000 branch writes 1 to the record's +0x94 right after the car is
-		// placed. Without it TargetCount stays 0, the crime completion test below reads
-		// `0 + 0 < 0` as satisfied, and the mission closes itself on its first update.
+		// FUN_004a7a10's 0x4000 branch writes 1 to record +0x94 immediately after placement.
+		// Preserve that decoded metadata even though FUN_004a73e0's burglar-specific branch tests
+		// caught == 0 && casualties == 0 rather than comparing against TargetCount.
 		Rec.TargetCount = 1;
 		Rec.CriminalsCaught = 0;
-		Rec.Name = FString::Printf(TEXT("Criminal Car #%d"), TypeSerials[13]);
-		TypeSerials[13]++;
+		Rec.Name = FString::Printf(TEXT("Burglar %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedCrimeSerialIndex]++;
 	}
-	else if (TypeMask == TYPE_FireRescue)
+	else if (TypeMask == TYPE_RooftopRescue)
 	{
 		int32 Count = (Rand.Rand() % DifficultyTier) + 1;
 		bool bSpawned = false;
@@ -1363,9 +1412,10 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
-		Rec.Name = FString::Printf(TEXT("Fire Rescue #%d"), TypeSerials[14]);
-		TypeSerials[14]++;
-		FindDefaultDestinationTile(TX, TY, Rec.SecondaryX, Rec.SecondaryY);
+		Rec.Name = FString::Printf(TEXT("Rooftop Rescue %d"), Rec.EventId);
+		Rec.TypeSerial = TypeSerials[SharedRescueSerialIndex]++;
+		// The original explicitly leaves Secondary/Tertiary at -1. Healthy survivors can be put
+		// down on any safe dry surface; a fabricated destination changed both the phase and marker.
 	}
 	else if (TypeMask == TYPE_Ufo)
 	{
@@ -1454,8 +1504,30 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 			continue;
 		}
 
-		// Advance timer
-		Rec.TimeAccum += FrameDeltaEma;
+		// SCHOOK: MissionLifecycle 0x004a73e0. Robbers, arsonists, burglars, muggers and riots
+		// pause their nag clock while the flying player is close enough to be working the scene.
+		// On foot (view mode 3) their clock always advances. FUN_004681f0's tile metric is
+		// min(dx,dy) + 2*max(dx,dy), with the near-scene cutoff at 12.
+		constexpr int32 CrimeAndRiotMask =
+			TYPE_Robber | TYPE_Arsonist | TYPE_Burglar | TYPE_Mugger | TYPE_Riot;
+		bool bAdvanceTimer = true;
+		if ((Rec.TypeMask & CrimeAndRiotMask) != 0 && World != nullptr && !World->IsPlayerOnFoot())
+		{
+			int32 PlayerX = 0;
+			int32 PlayerY = 0;
+			if (World->GetPlayerTile(PlayerX, PlayerY))
+			{
+				const int32 DeltaX = FMath::Abs(PlayerX - Rec.TileX);
+				const int32 DeltaY = FMath::Abs(PlayerY - Rec.TileY);
+				const int32 WeightedDistance =
+					FMath::Min(DeltaX, DeltaY) + 2 * FMath::Max(DeltaX, DeltaY);
+				bAdvanceTimer = WeightedDistance > 12;
+			}
+		}
+		if (bAdvanceTimer)
+		{
+			Rec.TimeAccum += FrameDeltaEma;
+		}
 
 		if (Rec.Category == CAT_CompleteNow)
 		{
@@ -1516,27 +1588,96 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 		{
 			bComplete = false;
 		}
-		if ((Rec.TypeMask & TYPE_RescuePeople) != 0 && Rec.RescueDelivered + Rec.Casualties < Rec.RescueVictims)
+		const bool bRescueIncomplete =
+			(Rec.TypeMask & TYPE_RescuePeople) != 0 &&
+			Rec.RescueDelivered + Rec.Casualties < Rec.RescueVictims;
+		if (bRescueIncomplete)
 		{
 			bComplete = false;
+			if (Rec.TimeAccum > NagInterval)
+			{
+				PostNag(Rec, EVT_NagSos);
+			}
 		}
-		if ((Rec.TypeMask & TYPE_Transport) != 0 && Rec.TransportDelivered + Rec.Casualties + Rec.PassengersLost < Rec.TransportPassengers)
+		else if ((Rec.TypeMask & TYPE_RescuePeople) != 0)
 		{
-			bComplete = false;
+			// The retail walker clears the primary marker as soon as every survivor is delivered
+			// or lost. Secondary/Tertiary were already -1 for Rooftop Rescue.
+			Rec.TileX = -1;
+			Rec.TileY = -1;
 		}
-		if ((Rec.TypeMask & TYPE_Riot) != 0 && Rec.RiotersDispersed + Rec.Casualties + Rec.CriminalsCaught + Rec.RiotersCalmed < Rec.RiotSize)
+		const bool bTransportIncomplete =
+			(Rec.TypeMask & TYPE_Transport) != 0 &&
+			Rec.TransportDelivered + Rec.Casualties + Rec.PassengersLost < Rec.TransportPassengers;
+		if (bTransportIncomplete)
 		{
 			bComplete = false;
+			if (Rec.TimeAccum > NagInterval)
+			{
+				PostNag(Rec, EVT_NagPeopleWaiting);
+			}
+		}
+		const bool bRiotIncomplete =
+			(Rec.TypeMask & TYPE_Riot) != 0 &&
+			Rec.RiotersDispersed + Rec.Casualties + Rec.CriminalsCaught + Rec.RiotersCalmed < Rec.RiotSize;
+		if ((Rec.TypeMask & TYPE_Riot) != 0)
+		{
+			if (bRiotIncomplete)
+			{
+				bComplete = false;
+			}
+			if (LifecyclePassCounter > 12)
+			{
+				LifecyclePassCounter = 0;
+				if (bRiotIncomplete && World != nullptr)
+				{
+					World->TryGetRiotCentroid(Rec.EventId, Rec.TileX, Rec.TileY);
+				}
+			}
+			LifecyclePassCounter++;
+			if (bRiotIncomplete && Rec.TimeAccum > NagInterval)
+			{
+				PostNag(Rec, EVT_NagSos);
+			}
 		}
 		if ((Rec.TypeMask & TYPE_CarFire) != 0 && Rec.CarsDoused + Rec.CarsBurned < Rec.CarsCrashed)
 		{
 			bComplete = false;
 		}
-		if (((Rec.TypeMask & TYPE_CriminalCar) != 0 || (Rec.TypeMask & TYPE_CriminalA) != 0 ||
-			(Rec.TypeMask & TYPE_SpeederEvent) != 0 || (Rec.TypeMask & TYPE_CriminalC) != 0) &&
-			Rec.CriminalsCaught + Rec.Casualties < Rec.TargetCount)
+
+		auto ApplyCrimeLifecycle = [this, &Rec, &bComplete](const int32 TypeBit, const int32 NagCode)
 		{
-			bComplete = false;
+			if ((Rec.TypeMask & TypeBit) == 0)
+			{
+				return;
+			}
+			const bool bIncomplete = Rec.CriminalsCaught + Rec.Casualties < Rec.TargetCount;
+			if (bIncomplete)
+			{
+				bComplete = false;
+				if (Rec.TimeAccum > NagInterval)
+				{
+					PostNag(Rec, NagCode);
+				}
+			}
+		};
+		ApplyCrimeLifecycle(TYPE_Robber, EVT_NagBurglary);
+		ApplyCrimeLifecycle(TYPE_Arsonist, EVT_NagArsonist);
+		ApplyCrimeLifecycle(TYPE_Mugger, EVT_NagMugging);
+
+		if ((Rec.TypeMask & TYPE_Burglar) != 0)
+		{
+			// The getaway-car branch does not compare TargetCount: either the burglar is caught or
+			// dies. Returning to the car leaves both zero and the same mission continues.
+			const bool bIncomplete = Rec.CriminalsCaught == 0 && Rec.Casualties == 0;
+			if (bIncomplete)
+			{
+				bComplete = false;
+				if (Rec.TimeAccum > NagInterval)
+				{
+					PostNag(Rec, EVT_NagBurglary);
+				}
+			}
 		}
 
 		if (bComplete)
@@ -1545,6 +1686,12 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 			DeactivateRecord(i);
 		}
 	}
+}
+
+void FSimCopterMissionSystem::PostNag(FSimCopterMissionRecord& Record, const int32 NagCode)
+{
+	Record.TimeAccum = 0;
+	PostEvent(NagCode, Record.EventId, 1, false);
 }
 
 int32 FSimCopterMissionSystem::AllocateFireObject(int32 TileX, int32 TileY)
@@ -1935,7 +2082,7 @@ void FSimCopterMissionSystem::UpdateFires()
 				World != nullptr &&
 				(GetXbldPropertyFlags(World->GetXbldTileId(Flames[i].TileX, Flames[i].TileY)) & 4) != 0)
 			{
-				if (CreateEventAt(Flames[i].TileX, Flames[i].TileY, TYPE_FireRescue) != -1)
+				if (CreateEventAt(Flames[i].TileX, Flames[i].TileY, TYPE_RooftopRescue) != -1)
 				{
 					FireObject.bRescueSpawned = true;
 				}
@@ -2268,6 +2415,14 @@ void FSimCopterMissionSystem::PostEvent(const FSimCopterMissionEvent& Event)
 	case EVT_AdjustTargetCount:
 		Rec.TargetCount += Event.Value;
 		break;
+	case EVT_NagSos:
+		// FUN_004a89c0 case 0x29: only riots use this field as the number of elapsed
+		// nag periods; it linearly erodes the 6/6 end award in FUN_004aabf0.
+		if ((Rec.TypeMask & TYPE_Riot) != 0)
+		{
+			Rec.TargetCount += Event.Value;
+		}
+		break;
 	default:
 		break;
 	}
@@ -2351,7 +2506,7 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_RioterDispersed:
-		TextId = 0x3ac;
+		TextId = 0x3c1; // "Rioter Has Left!"
 		EarnedPoints = Event.Value * 10;
 		EarnedCash = Event.Value * 10;
 		bPostUi = true;
@@ -2377,6 +2532,37 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 	case EVT_CarBurned:
 		TextId = 0x3b8;
 		EarnedPoints = -(Event.Value * Tuning.CarFirePoints);
+		bPostUi = true;
+		break;
+	case EVT_NagMugging:
+		TextId = 0x3b2; // "Sim Mugged!"
+		EarnedPoints = -(Event.Value * 10);
+		bPostUi = true;
+		break;
+	case EVT_NagSos:
+		TextId = 0x3b3; // "SOS!"
+		EarnedPoints = -(Event.Value *
+			(RecordIndex != INDEX_NONE && (Records[RecordIndex].TypeMask & TYPE_Riot) != 0 ? 20 : 10));
+		bPostUi = true;
+		break;
+	case EVT_NagBurglary:
+		TextId = 0x3b4; // "Burglary Committed!"
+		EarnedPoints = -(Event.Value * 10);
+		bPostUi = true;
+		break;
+	case EVT_NagArsonist:
+		TextId = 0x3b5; // "Arsonist On Loose!"
+		EarnedPoints = -(Event.Value * 10);
+		bPostUi = true;
+		break;
+	case EVT_NagPeopleWaiting:
+		TextId = 0x3b6; // "Sims Waiting!"
+		EarnedPoints = -(Event.Value * 10);
+		bPostUi = true;
+		break;
+	case EVT_NagCarsWaiting:
+		TextId = 0x3b7; // "Cars Waiting!"
+		EarnedPoints = -(Event.Value * 10);
 		bPostUi = true;
 		break;
 	case EVT_CrashPenaltyA: EarnedPoints = -100; EarnedCash = -300; bPostUi = true; break;
@@ -2445,7 +2631,8 @@ void FSimCopterMissionSystem::CompleteMission(FSimCopterMissionRecord& Rec)
 		int32 Pick = ((Rec.TypeMask & TYPE_TrainCrash) != 0) ? Rec.VictimsPickedUp : (Rec.VictimsPickedUp >> 2);
 		EarnedPoints += (Tuning.RescueEndPointsPerPerson * Deliv * Mult) + (Tuning.RescueEndPointsPerPerson * Pick) - (Tuning.RescueEndPointsPerPerson * Rec.Casualties);
 		EarnedCash += (Tuning.RescueEndMoneyPerPerson * Deliv * Mult) + (Tuning.RescueEndMoneyPerPerson * Pick) - (Tuning.RescueEndMoneyPerPerson * Rec.Casualties);
-		VoiceId = ((Rec.TypeMask & TYPE_WaterRescue) == 0) ? 0x68 : 0x67;
+		// FUN_004aabf0: 0x67 for land/roof/train rescues, 0x68 when bit 0x80 marks water.
+		VoiceId = ((Rec.TypeMask & TYPE_WaterRescue) == 0) ? 0x67 : 0x68;
 	}
 	if ((Rec.TypeMask & TYPE_Transport) != 0)
 	{
@@ -2483,7 +2670,8 @@ void FSimCopterMissionSystem::CompleteMission(FSimCopterMissionRecord& Rec)
 		EarnedCash += Mny;
 		VoiceId = 0x65;
 	}
-	if ((Rec.TypeMask & TYPE_CriminalCar) != 0 || (Rec.TypeMask & TYPE_CriminalA) != 0 || (Rec.TypeMask & TYPE_SpeederEvent) != 0 || (Rec.TypeMask & TYPE_CriminalC) != 0)
+	if ((Rec.TypeMask & TYPE_Burglar) != 0 || (Rec.TypeMask & TYPE_Robber) != 0 ||
+		(Rec.TypeMask & TYPE_Arsonist) != 0 || (Rec.TypeMask & TYPE_Mugger) != 0)
 	{
 		EarnedPoints += Tuning.CriminalEndPoints;
 		EarnedCash += Tuning.CriminalEndMoney;
@@ -2502,8 +2690,27 @@ void FSimCopterMissionSystem::CompleteMission(FSimCopterMissionRecord& Rec)
 		EarnedCash = 0;
 	}
 
-	if (EarnedPoints < 1) VoiceId = 0x60;
-	else if (World && VoiceId != -1) World->PlayRadioVoice(VoiceId, 0x96);
+	// SCHOOK: MissionComplete 0x004aabf0. A successful mission first plays its type-specific
+	// dispatch line at volume 0x96, then consumes one MSVC-rand draw for the five-line success
+	// pool at volume 0x32. A non-positive result skips the type line and plays fixed failure 0x60
+	// at volume 0x96. The second call was missing, which also left every later mission RNG draw one
+	// step out of alignment.
+	if (World != nullptr)
+	{
+		if (EarnedPoints < 1)
+		{
+			World->PlayRadioVoice(0x60, 0x96);
+		}
+		else
+		{
+			if (VoiceId != -1)
+			{
+				World->PlayRadioVoice(VoiceId, 0x96);
+			}
+			static constexpr int32 SuccessVoicePool[5] = { 0x6e, 0x6d, 0x6c, 0x6b, 0x6a };
+			World->PlayRadioVoice(SuccessVoicePool[Rand.Rand() % UE_ARRAY_COUNT(SuccessVoicePool)], 0x32);
+		}
+	}
 
 	if (EarnedCash < 0) EarnedCash = 0;
 	if (EarnedPoints != 0) AddScore(EarnedPoints);

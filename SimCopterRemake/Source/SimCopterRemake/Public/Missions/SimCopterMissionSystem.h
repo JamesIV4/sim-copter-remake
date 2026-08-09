@@ -56,15 +56,15 @@ enum EType : int32
 	TYPE_BoatRescue     = 0x90,     // sinking-boat object (DAT_00582840) + mode-1 victims
 	TYPE_TrainCrash     = 0x100,    // marks the train object (DAT_00582afc)
 	TYPE_TrainRescue    = 0x110,    // places the train + mode-0x13 victims
-	TYPE_CriminalA      = 0x200,    // single person, spawn mode 10, state 9
+	TYPE_Robber         = 0x200,    // single person, person state 10, behavior class 9 (BHAV 1300)
 	TYPE_CarFire        = 0x400,    // burning car family bit ([Fire Miss] car controls)
 	TYPE_CarFireEvent   = 0x408,    // scheduler-created car fire (FUN_0049fd00 on a car)
 	TYPE_TrafficJam     = 0x800,    // jam flag 0x200 on a car (FUN_0049fe30)
 	TYPE_Riot           = 0x1000,   // 9..30 requested by difficulty; at least 11 mode-3 people or creation fails
-	TYPE_SpeederEvent   = 0x2000,   // single person, spawn mode 0xb, state 9
-	TYPE_CriminalCar    = 0x4000,   // special speeder car object (FUN_004b8540)
-	TYPE_CriminalC      = 0x20000,  // single person, spawn mode 0xc, state 9
-	TYPE_FireRescue     = 0x80010,  // people trapped at a mission building (mode 2)
+	TYPE_Arsonist       = 0x2000,   // single person, person state 11, behavior class 9 (BHAV 1301)
+	TYPE_Burglar        = 0x4000,   // CARROBBR getaway car and recurring burglar (BHAV 1303)
+	TYPE_Mugger         = 0x20000,  // single person, person state 12, behavior class 9 (BHAV 1302)
+	TYPE_RooftopRescue  = 0x80010,  // people trapped on a mission building roof (person state 2)
 	TYPE_Ufo            = 0x100000, // the UFO event ([General Miss] UFO Money/Points)
 };
 
@@ -118,12 +118,12 @@ enum EEvent : int32
 	EVT_CriminalCaught     = 0x25, // +0xb8
 	EVT_SpeederCaught      = 0x26, // pays Speeder End money+points (no counter)
 	EVT_UfoResolved        = 0x27, // pays UFO Money/Points
-	EVT_NagFire            = 0x28, // reminder events posted by the lifecycle walker;
-	EVT_NagRescueOrRiot    = 0x29, //   each docks 10 score (20 for riot) and posts a
-	EVT_NagCrimeA          = 0x2a, //   "hurry up" HUD message. EVT_NagRescueOrRiot also
-	EVT_NagCrimeB          = 0x2b, //   advances the riot elapsed-period counter (+0x94)
-	EVT_NagTransport       = 0x2c, //   which shrinks the riot end award.
-	EVT_NagJam             = 0x2d,
+	EVT_NagMugging         = 0x28, // -10 points, STRINGTABLE 0x3b2 "Sim Mugged!"
+	EVT_NagSos             = 0x29, // -10 points, or -20 for riot; riot also advances +0x94
+	EVT_NagBurglary        = 0x2a, // -10 points, STRINGTABLE 0x3b4 "Burglary Committed!"
+	EVT_NagArsonist        = 0x2b, // -10 points, STRINGTABLE 0x3b5 "Arsonist On Loose!"
+	EVT_NagPeopleWaiting   = 0x2c, // -10 points, STRINGTABLE 0x3b6 "Sims Waiting!"
+	EVT_NagCarsWaiting     = 0x2d, // -10 points, STRINGTABLE 0x3b7 "Cars Waiting!"
 	EVT_CrashPenaltyA      = 0x2e, // fixed penalties (heli crash variants):
 	EVT_CrashPenaltyB      = 0x2f, //   -100 pts / -300 cash
 	EVT_CrashPenaltyC      = 0x30, //   -100 pts / -200 cash
@@ -187,7 +187,9 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionTuning
 	// reminder interval (timer >> 3) from it every pass.
 	int32 BaseMissionTimer = 0x2580000;  // (16.16 seconds)
 
-	// [Riot Miss] (0x505fcc..0x505fdc)
+	// [Riot Miss] (0x505fcc..0x505fdc). End Money/Points feed FUN_004aabf0. The two
+	// "Penalty" controls and Riot Timer are bound by the tweak loader but have no runtime xrefs in
+	// the retail executable; they are retained as decoded data, not applied as invented rules.
 	int32 RiotEndMoney = 725;
 	int32 RiotEndPoints = 505;
 	int32 RiotEndMoneyPenalty = 0;
@@ -271,7 +273,7 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionTuning
 // codes that write them and the scoring that reads them.
 struct SIMCOPTERREMAKE_API FSimCopterMissionRecord
 {
-	FString Name;                 // +0x00 sprintf "<type name> #<serial>"
+	FString Name;                 // +0x00 sprintf "<retail title> <event id>"
 	int32 TypeSerial = 0;         // +0x20 per-type sequence number
 	int32 EventId = -1;           // +0x24 unique id (global serial)
 	int32 TileX = -1;             // +0x28
@@ -406,6 +408,9 @@ public:
 	virtual int32 GetBuildingTopHeight1616(int32 TileX, int32 TileY) const { return 0; }
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const = 0;    // DAT_0061a618/c
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const = 0;    // DAT_005040d0+0x18
+	// DAT_00503aa0 == 3: view mode 3 is the on-foot player. Crime timers advance nearby only in
+	// this mode; while flying they pause inside the original's 12-step weighted distance.
+	virtual bool IsPlayerOnFoot() const { return false; }
 	// FUN_00408c30, the scheduler's only spawn gate (DAT_005812b4). Despite the name it is not a
 	// UI test: it returns 1 only in career mode (DAT_00518d50 == 2) once the session score has
 	// reached the current city's "Points Needed", i.e. new missions stop arriving as soon as the
@@ -429,9 +434,9 @@ public:
 	// Mask 0x110 (FUN_004b7fd0): put the train on the rails - seeded from a random map tile, not
 	// the placer's - spawn its trapped passengers, and report the train's tile.
 	virtual bool TryActivateTrainRescue(int32 EventId, int32 Timer1616, int32& OutTileX, int32& OutTileY) { return false; }
-	// Mask 0x4000: activate a speeder car (speed = base + rand % range in the
-	// original; the car subsystem owns that roll).
-	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) { return false; }
+	// Mask 0x4000: activate the burglar's CARROBBR getaway car. CruiseDelay1616 is the exact
+	// FUN_004b8540 draw, made by the mission PRNG before the vehicle subsystem takes ownership.
+	virtual bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616) { return false; }
 	// Mask 0x800 / 0x408: find an eligible ambient car (flag bit 1 set, bits
 	// 0x300 clear) and jam it / set it on fire; report its tile.
 	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) { return false; }
@@ -443,10 +448,11 @@ public:
 		OutTileY = OriginY;
 		return true;
 	}
-	// Person spawns (FUN_004c3eb0 -> FUN_004c4190): spawn one person with the
-	// given placement mode/state at the tile, owned by the event. Returns
-	// false when no person slot/placement is available (original -1).
-	virtual bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId) { return false; }
+	// Person spawns (FUN_004c3eb0 -> FUN_004c4190). The original call order is behavior class,
+	// person state; this interface deliberately presents the state first because it drives the
+	// placement/lifecycle and keeps the class override optional (-1). Returns false when no person
+	// slot/placement is available (original -1).
+	virtual bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId) { return false; }
 	// Riot centroid (FUN_004c9e40): speed-weighted average tile of the event's
 	// people. Return false when none exist.
 	virtual bool TryGetRiotCentroid(int32 EventId, int32& OutTileX, int32& OutTileY) const { return false; }
@@ -531,6 +537,8 @@ public:
 
 	static const TCHAR* GetTypeDisplayName(int32 TypeMask);
 	static int32 GetLocationVoiceId(int32 TileX, int32 TileY); // FUN_004aba30
+	// FUN_004b8540 / FUN_004b8630: DAT_00506360 + (short)rand() % DAT_00506364.
+	int32 DrawBurglarCruiseDelay1616();
 
 
 	// Master per-frame update: advances the fps EMA (FUN_0047a760), then runs
@@ -665,7 +673,7 @@ private:
 	int32 ActiveCount = 0;            // DAT_0057f9c8
 	int32 BackgroundCount = 0;        // DAT_0057f9cc
 	int32 NextEventId = 0;            // DAT_0057f9d0
-	int32 TypeSerials[16] = {0};      // DAT_0057f9a0..DAT_0057f9c4 per-type counters
+	int32 TypeSerials[16] = {0};      // DAT_0057f9a0..DAT_0057f9c4 family counters (crimes/rescues share)
 	int32 LifecyclePassCounter = 0;   // riot recenter cadence (every 13th pass)
 	int32 FocusRecordIndex = INDEX_NONE; // DAT_0057f9d8 (current mission pointer)
 

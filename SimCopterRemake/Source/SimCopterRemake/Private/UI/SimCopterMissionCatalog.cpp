@@ -15,12 +15,12 @@ const FSimCopterMissionCatalogEntry GMissionCatalog[] =
 	{ TYPE_PlaneCrash,   TEXT("Plane Crash"),  TEXT("Fire"),      TEXT("tier 2+; PLANE1 dives - a fire, a boat rescue over water, or the crash itself"), true },
 	{ TYPE_TrainCrash,   TEXT("Train Crash"),  TEXT("Fire"),      TEXT("tier 3-4; the train derails, slides for two seconds and blows up"), true },
 
-	{ TYPE_CriminalA,    TEXT("Criminal"),     TEXT("Crime"),     TEXT("one criminal on foot (spawn mode 10, state 9)"), true },
-	{ TYPE_SpeederEvent, TEXT("Speeder"),      TEXT("Crime"),     TEXT("one speeder on foot (spawn mode 0xb, state 9)"), true },
-	{ TYPE_CriminalC,    TEXT("Criminal C"),   TEXT("Crime"),     TEXT("tier 3+ criminal variant (spawn mode 0xc, state 9)"), true },
-	{ TYPE_CriminalCar,  TEXT("Speeder Car"),  TEXT("Crime"),     TEXT("tier 3+ speeder car; light it with the searchlight, then send police (F4/F5) to stop it"), true },
+	{ TYPE_Robber,       TEXT("Robber"),       TEXT("Crime"),     TEXT("one robber on foot (person state 10, behavior class 9)"), true },
+	{ TYPE_Arsonist,     TEXT("Arsonist"),     TEXT("Crime"),     TEXT("one arsonist on foot (person state 11, behavior class 9)"), true },
+	{ TYPE_Mugger,       TEXT("Mugger"),       TEXT("Crime"),     TEXT("one mugger on foot (person state 12, behavior class 9)"), true },
+	{ TYPE_Burglar,      TEXT("Burglar"),      TEXT("Crime"),     TEXT("CARROBBR getaway car; recurring burglaries continue until the burglar is caught"), true },
 
-	{ TYPE_FireRescue,   TEXT("Rescue"),       TEXT("Rescue"),    TEXT("people trapped at a mission building (spawn mode 2)"), true },
+	{ TYPE_RooftopRescue,TEXT("Rooftop Rescue"),TEXT("Rescue"),   TEXT("1..tier people placed on the rendered roof of a mission building"), true },
 	{ TYPE_BoatRescue,   TEXT("Boat Rescue"),  TEXT("Rescue"),    TEXT("tier 2+; CAPBOAT1 in open water with 3-5 survivors (spawn mode 1)"), true },
 	{ TYPE_TrainRescue,  TEXT("Train Rescue"), TEXT("Rescue"),    TEXT("tier 3+; 1-3 passengers trapped by the train (spawn mode 0x13)"), true },
 

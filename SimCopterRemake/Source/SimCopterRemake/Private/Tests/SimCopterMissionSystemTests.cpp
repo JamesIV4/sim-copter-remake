@@ -16,6 +16,9 @@ namespace
 struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 {
 	int32 BuildingFootprint = 1;
+	int32 PlayerTileX = 64;
+	int32 PlayerTileY = 64;
+	bool bPlayerOnFoot = false;
 	// The id every in-bounds tile reports. 0x70 is an unoccupied building in the real XBLD property
 	// table; tests that need occupants (property bit 2) set this to one of the 39 ids that carry it.
 	int32 TileXbldId = 0x70;
@@ -39,13 +42,23 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const override
 	{
-		OutTileX = 64;
-		OutTileY = 64;
+		OutTileX = PlayerTileX;
+		OutTileY = PlayerTileY;
 		return true;
 	}
 
-	virtual bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId) override
+	virtual bool IsPlayerOnFoot() const override
 	{
+		return bPlayerOnFoot;
+	}
+
+	TArray<int32> SpawnPersonStates;
+	TArray<int32> SpawnBehaviorClasses;
+
+	virtual bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId) override
+	{
+		SpawnPersonStates.Add(PersonState);
+		SpawnBehaviorClasses.Add(BehaviorClass);
 		return true;
 	}
 
@@ -56,9 +69,11 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 		return true;
 	}
 
-	bool bSpeederCarPlaced = false;
+	bool bBurglarCarPlaced = false;
+	int32 BurglarCruiseDelay1616 = 0;
 	TArray<int32> RadioVoiceCalls;
 	TArray<int32> RadioVoiceQueueTags;
+	TArray<FSimCopterMissionUiMessage> UiMessages;
 
 	virtual void PlayRadioVoice(int32 VoiceId, int32 Volume) override
 	{
@@ -66,10 +81,16 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 		RadioVoiceQueueTags.Add(Volume);
 	}
 
-	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override
+	virtual bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616) override
 	{
-		bSpeederCarPlaced = true;
+		bBurglarCarPlaced = true;
+		BurglarCruiseDelay1616 = CruiseDelay1616;
 		return true;
+	}
+
+	virtual void OnUiMessage(const FSimCopterMissionUiMessage& Message) override
+	{
+		UiMessages.Add(Message);
 	}
 };
 
@@ -91,7 +112,7 @@ struct FSimCopterCrimeTestWorld : public FSimCopterTestMissionWorld
 		return ((TileX % 2) == 0 && (TileY % 2) == 0) ? 0x80 : 0;
 	}
 
-	virtual bool TrySpawnMissionPerson(int32 SpawnMode, int32 PersonState, int32 TileX, int32 TileY, int32 EventId) override
+	virtual bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId) override
 	{
 		SpawnedTiles.Add(FIntPoint(TileX, TileY));
 		return true;
@@ -101,7 +122,6 @@ struct FSimCopterCrimeTestWorld : public FSimCopterTestMissionWorld
 struct FSimCopterTrafficJamTestWorld : public FSimCopterTestMissionWorld
 {
 	bool bJamStarted = false;
-	TArray<FSimCopterMissionUiMessage> UiMessages;
 
 	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) override
 	{
@@ -111,10 +131,6 @@ struct FSimCopterTrafficJamTestWorld : public FSimCopterTestMissionWorld
 		return true;
 	}
 
-	virtual void OnUiMessage(const FSimCopterMissionUiMessage& Message) override
-	{
-		UiMessages.Add(Message);
-	}
 };
 
 FString ResolveCareerTweakPath()
@@ -610,7 +626,7 @@ bool FSimCopterMissionTypeNameTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("0x100 is a train crash, not a train rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_TrainCrash)), FString(TEXT("Train Crash")));
 	TestEqual(TEXT("0x110 is a train rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_TrainRescue)), FString(TEXT("Train Rescue")));
 	TestEqual(TEXT("0x90 is a boat rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_BoatRescue)), FString(TEXT("Boat Rescue")));
-	TestEqual(TEXT("0x80010 is a fire rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_FireRescue)), FString(TEXT("Fire Rescue")));
+	TestEqual(TEXT("0x80010 is a rooftop rescue"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_RooftopRescue)), FString(TEXT("Rooftop Rescue")));
 	TestEqual(TEXT("0x408 is a car fire"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_CarFireEvent)), FString(TEXT("Car Fire")));
 	TestEqual(TEXT("0x800 is a traffic jam"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_TrafficJam)), FString(TEXT("Traffic Jam")));
 	TestEqual(TEXT("0x20 is a medevac"), FString(FSimCopterMissionSystem::GetTypeDisplayName(TYPE_Medevac)), FString(TEXT("MedEvac")));
@@ -1067,7 +1083,7 @@ bool FSimCopterCrimePlacementTest::RunTest(const FString& Parameters)
 	Ocean.bAnyBuildings = false;
 	FSimCopterMissionSystem OceanSystem;
 	OceanSystem.Initialize(&Ocean, 1);
-	for (const int32 CrimeMask : { int32(TYPE_CriminalA), int32(TYPE_SpeederEvent), int32(TYPE_CriminalC) })
+	for (const int32 CrimeMask : { int32(TYPE_Robber), int32(TYPE_Arsonist), int32(TYPE_Mugger) })
 	{
 		TestEqual(
 			FString::Printf(TEXT("Crime 0x%x is not placed in a city with no buildings"), CrimeMask),
@@ -1084,7 +1100,7 @@ bool FSimCopterCrimePlacementTest::RunTest(const FString& Parameters)
 	CitySystem.Initialize(&City, 1);
 	for (int32 Attempt = 0; Attempt < 40; ++Attempt)
 	{
-		CitySystem.CreateEventOfType(TYPE_CriminalA);
+		CitySystem.CreateEventOfType(TYPE_Robber);
 	}
 	TestTrue(TEXT("Criminals were placed at all"), City.SpawnedTiles.Num() > 0);
 	for (const FIntPoint& Tile : City.SpawnedTiles)
@@ -1097,36 +1113,38 @@ bool FSimCopterCrimePlacementTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterSpeederCarRecordTest, "SimCopter.Missions.SpeederCarStaysOpen", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterBurglarCarRecordTest, "SimCopter.Missions.BurglarCarStaysOpen", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FSimCopterSpeederCarRecordTest::RunTest(const FString& Parameters)
+bool FSimCopterBurglarCarRecordTest::RunTest(const FString& Parameters)
 {
-	// FUN_004a7a10's 0x4000 branch writes 1 to the record's +0x94 once the car is placed. Miss it
-	// and the crime completion test reads `caught + casualties < 0` as already satisfied, so the
-	// mission resolves on its very first update and the player never sees the car.
+	// FUN_004a7a10's 0x4000 branch writes 1 to record +0x94 once the car is placed. The retail
+	// lifecycle has a separate burglar test (caught == 0 && casualties == 0), but the metadata
+	// write is still part of the creator contract and must round-trip exactly.
 	FSimCopterCrimeTestWorld World;
 	World.bAnyBuildings = true;
 	FSimCopterMissionSystem System;
 	System.Initialize(&World, 1);
 
-	const int32 EventId = System.CreateEventOfType(TYPE_CriminalCar);
+	const int32 EventId = System.CreateEventOfType(TYPE_Burglar);
 	if (EventId == -1)
 	{
-		AddError(TEXT("The speeder car mission was not created at all"));
+		AddError(TEXT("The burglar mission was not created at all"));
 		return false;
 	}
-	TestTrue(TEXT("The world was asked to place a speeder car"), World.bSpeederCarPlaced);
+	TestTrue(TEXT("The world was asked to place a burglar car"), World.bBurglarCarPlaced);
+	TestTrue(TEXT("Its decoded initial cruise timer is 100.0..100.5 seconds"),
+		World.BurglarCruiseDelay1616 >= 0x640000 && World.BurglarCruiseDelay1616 <= 0x647fff);
 
 	const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
 	if (Record == nullptr)
 	{
-		AddError(TEXT("No record for the speeder car mission"));
+		AddError(TEXT("No record for the burglar mission"));
 		return false;
 	}
 	TestEqual(TEXT("The record wants one criminal caught"), Record->TargetCount, 1);
 	TestEqual(TEXT("...and starts with none"), Record->CriminalsCaught, 0);
 
-	// Run the system for a while: an uncaught speeder must keep its record open.
+	// Run the system for a while: an uncaught burglar must keep its record open.
 	for (int32 Frame = 0; Frame < 120; ++Frame)
 	{
 		System.Tick(1.0f / 30.0f);
@@ -1135,8 +1153,8 @@ bool FSimCopterSpeederCarRecordTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("The mission is still open four seconds later"),
 		AfterUpdates != nullptr && AfterUpdates->bActive);
 
-	// FUN_004b8c90 posts EVT_CriminalCaught as the car is taken away. That is what takes
-	// CriminalsCaught to TargetCount and completes the mission - the earlier port posted
+	// FUN_004b8c90 posts EVT_CriminalCaught as the car is taken away. That makes the
+	// burglar-specific lifecycle test complete - the earlier port posted
 	// EVT_SetCategory(CAT_ExpireSilently) instead, which is FUN_004b8b60's *failure* branch and
 	// makes the update loop skip the completion test, so nothing was ever paid out.
 	const int32 ScoreBefore = System.GetScore();
@@ -1152,7 +1170,7 @@ bool FSimCopterSpeederCarRecordTest::RunTest(const FString& Parameters)
 	FSimCopterCrimeTestWorld QuietWorld;
 	FSimCopterMissionSystem QuietSystem;
 	QuietSystem.Initialize(&QuietWorld, 1);
-	const int32 QuietEvent = QuietSystem.CreateEventOfType(TYPE_CriminalCar);
+	const int32 QuietEvent = QuietSystem.CreateEventOfType(TYPE_Burglar);
 	if (QuietEvent != -1)
 	{
 		const int32 QuietScoreBefore = QuietSystem.GetScore();
@@ -1161,7 +1179,7 @@ bool FSimCopterSpeederCarRecordTest::RunTest(const FString& Parameters)
 		{
 			QuietSystem.Tick(1.0f / 30.0f);
 		}
-		TestEqual(TEXT("A retired speeder pays nothing"), QuietSystem.GetScore(), QuietScoreBefore);
+		TestEqual(TEXT("A retired burglar pays nothing"), QuietSystem.GetScore(), QuietScoreBefore);
 	}
 
 	return true;
@@ -1313,20 +1331,22 @@ bool FSimCopterPostAnnouncementVoiceTest::RunTest(const FString& Parameters)
 	}
 
 	World.RadioVoiceCalls.Reset();
-	const int32 SpeederId = System.CreateEventOfType(TYPE_SpeederEvent);
-	if (SpeederId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 4)
+	const int32 ArsonistId = System.CreateEventOfType(TYPE_Arsonist);
+	if (ArsonistId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 4)
 	{
-		TestEqual(TEXT("Speeder 0x2000 plays D1008 (0x37 - speeder report)"), World.RadioVoiceCalls[1], 0x37);
-		TestTrue(TEXT("Speeder 0x2000 closing phrase is person-specific clip"),
+		TestEqual(TEXT("Arsonist 0x2000 plays D1009 (0x38)"), World.RadioVoiceCalls[1], 0x38);
+		TestTrue(TEXT("Arsonist closing phrase is person-specific"),
 			World.RadioVoiceCalls[3] == 0x4f || World.RadioVoiceCalls[3] == 0x52 || World.RadioVoiceCalls[3] == 0x57 || World.RadioVoiceCalls[3] >= 0x4b);
 	}
 
 	World.RadioVoiceCalls.Reset();
-	const int32 SpeederCarId = System.CreateEventOfType(TYPE_CriminalCar);
-	if (SpeederCarId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 4)
+	const int32 BurglarId = System.CreateEventOfType(TYPE_Burglar);
+	if (BurglarId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 4)
 	{
-		TestEqual(TEXT("Speeder Car 0x4000 plays D1008 (0x37 - speeder report)"), World.RadioVoiceCalls[1], 0x37);
-		TestEqual(TEXT("Speeder Car 0x4000 closing phrase is D2006 (0x50 - driving erratically)"), World.RadioVoiceCalls[3], 0x50);
+		TestEqual(TEXT("Burglar 0x4000 plays D1007 (0x36)"), World.RadioVoiceCalls[1], 0x36);
+		TestTrue(TEXT("Burglar closing is one of its exact branches"),
+			World.RadioVoiceCalls[3] == 0x50 || World.RadioVoiceCalls[3] == 0x58 ||
+			(World.RadioVoiceCalls[3] >= 0x4b && World.RadioVoiceCalls[3] <= 0x5d));
 	}
 
 	World.RadioVoiceCalls.Reset();
@@ -1347,9 +1367,299 @@ bool FSimCopterPostAnnouncementVoiceTest::RunTest(const FString& Parameters)
 	const int32 RiotId = System.CreateEventOfType(TYPE_Riot);
 	if (RiotId != INDEX_NONE && World.RadioVoiceCalls.Num() >= 2)
 	{
-		TestEqual(TEXT("Riot plays D1016 (0x3f - Riot reported)"), World.RadioVoiceCalls[1], 0x3f);
+		TestTrue(TEXT("Riot alternates between D1015 and D1016"),
+			World.RadioVoiceCalls[1] == 0x3e || World.RadioVoiceCalls[1] == 0x3f);
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCrimeIdentityTest,
+	"SimCopter.Missions.CrimeIdentityAndSpawn",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCrimeIdentityTest::RunTest(const FString& Parameters)
+{
+	struct FCrimeCase
+	{
+		int32 TypeMask;
+		const TCHAR* Title;
+		int32 PersonState;
+		int32 BehaviorClass;
+		int32 TextId;
+	};
+	const FCrimeCase Cases[] =
+	{
+		{ TYPE_Robber,   TEXT("Robber"),   10, 9, 0x247 },
+		{ TYPE_Arsonist, TEXT("Arsonist"), 11, 9, 0x245 },
+		{ TYPE_Mugger,   TEXT("Mugger"),   12, 9, 0x246 },
+		{ TYPE_Burglar,  TEXT("Burglar"),  INDEX_NONE, INDEX_NONE, 0x244 },
+	};
+
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+	for (int32 CaseIndex = 0; CaseIndex < UE_ARRAY_COUNT(Cases); ++CaseIndex)
+	{
+		const FCrimeCase& Crime = Cases[CaseIndex];
+		const int32 EventId = System.CreateEventAt(64, 64, Crime.TypeMask);
+		if (!TestEqual(*FString::Printf(TEXT("%s event id"), Crime.Title), EventId, CaseIndex))
+		{
+			continue;
+		}
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		if (!TestNotNull(*FString::Printf(TEXT("%s record"), Crime.Title), Record))
+		{
+			continue;
+		}
+		TestEqual(*FString::Printf(TEXT("%s retail title"), Crime.Title),
+			Record->Name, FString::Printf(TEXT("%s %d"), Crime.Title, EventId));
+		TestEqual(*FString::Printf(TEXT("%s shares the crime family serial"), Crime.Title),
+			Record->TypeSerial, CaseIndex);
+		TestEqual(*FString::Printf(TEXT("%s STRINGTABLE id"), Crime.Title),
+			World.UiMessages.Last().TextId, Crime.TextId);
+	}
+
+	TestEqual(TEXT("Only the three on-foot crimes spawn people immediately"), World.SpawnPersonStates.Num(), 3);
+	for (int32 Index = 0; Index < 3 && World.SpawnPersonStates.IsValidIndex(Index); ++Index)
+	{
+		TestEqual(*FString::Printf(TEXT("Crime %d person state"), Index), World.SpawnPersonStates[Index], Cases[Index].PersonState);
+		TestEqual(*FString::Printf(TEXT("Crime %d behavior class"), Index), World.SpawnBehaviorClasses[Index], Cases[Index].BehaviorClass);
+	}
+	TestTrue(TEXT("The burglar owns a getaway car instead"), World.bBurglarCarPlaced);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCrimeScoringTest,
+	"SimCopter.Missions.CrimeRewardsPenaltiesAndVoices",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCrimeScoringTest::RunTest(const FString& Parameters)
+{
+	struct FCrimeCase
+	{
+		int32 TypeMask;
+		int32 NagCode;
+		int32 NagTextId;
+	};
+	const FCrimeCase Cases[] =
+	{
+		{ TYPE_Robber,   EVT_NagBurglary, 0x3b4 },
+		{ TYPE_Arsonist, EVT_NagArsonist, 0x3b5 },
+		{ TYPE_Mugger,   EVT_NagMugging,  0x3b2 },
+		{ TYPE_Burglar,  EVT_NagBurglary, 0x3b4 },
+	};
+	FSimCopterCareerCity City;
+
+	for (const FCrimeCase& Crime : Cases)
+	{
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		System.RestoreSessionState(1000, 1000, City);
+		const int32 EventId = System.CreateEventAt(64, 64, Crime.TypeMask);
+		if (!TestTrue(TEXT("Crime fixture created"), EventId != INDEX_NONE))
+		{
+			continue;
+		}
+
+		System.PostEvent(Crime.NagCode, EventId, 1);
+		TestEqual(TEXT("Each crime reminder costs ten points"), System.GetScore(), 990);
+		TestEqual(TEXT("Crime reminder text matches retail"), World.UiMessages.Last().TextId, Crime.NagTextId);
+
+		World.RadioVoiceCalls.Reset();
+		World.RadioVoiceQueueTags.Reset();
+		System.PostEvent(EVT_CriminalCaught, EventId, 1);
+		System.Tick(1.0f / 20.0f);
+		TestEqual(TEXT("Every named crime pays 300 points"), System.GetScore(), 1290);
+		TestEqual(TEXT("Every named crime pays 500 dollars"), System.GetCash(), 1500);
+		TestEqual(TEXT("Crime success has two completion calls"), World.RadioVoiceCalls.Num(), 2);
+		if (World.RadioVoiceCalls.Num() == 2)
+		{
+			TestEqual(TEXT("Crime completion type voice"), World.RadioVoiceCalls[0], 100);
+			TestTrue(TEXT("Crime completion success tag"),
+				World.RadioVoiceCalls[1] >= 0x6a && World.RadioVoiceCalls[1] <= 0x6e);
+			TestEqual(TEXT("Crime completion type volume"), World.RadioVoiceQueueTags[0], 0x96);
+			TestEqual(TEXT("Crime completion tag volume"), World.RadioVoiceQueueTags[1], 0x32);
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCrimeNagDistanceTest,
+	"SimCopter.Missions.CrimeNagDistanceAndOnFoot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterCrimeNagDistanceTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCareerCity City;
+	FSimCopterTestMissionWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+	System.RestoreSessionState(1000, 1000, City);
+	const int32 EventId = System.CreateEventAt(64, 64, TYPE_Robber);
+	TestTrue(TEXT("Nearby crime fixture created"), EventId != INDEX_NONE);
+
+	// Tier 1 nags at 600/8 = 75 seconds. A flying player inside the decoded 12-step metric pauses
+	// that clock, while distance or on-foot view mode makes it advance.
+	for (int32 TickIndex = 0; TickIndex < 1600; ++TickIndex)
+	{
+		System.Tick(1.0f / 20.0f);
+	}
+	TestEqual(TEXT("Working a nearby crime from the helicopter pauses the nag clock"), System.GetScore(), 1000);
+
+	World.PlayerTileX = 0;
+	World.PlayerTileY = 0;
+	for (int32 TickIndex = 0; TickIndex < 1600; ++TickIndex)
+	{
+		System.Tick(1.0f / 20.0f);
+	}
+	TestEqual(TEXT("An ignored distant robber commits one scored burglary after 75 seconds"), System.GetScore(), 990);
+
+	FSimCopterTestMissionWorld FootWorld;
+	FootWorld.bPlayerOnFoot = true;
+	FSimCopterMissionSystem FootSystem;
+	FootSystem.Initialize(&FootWorld, 1);
+	FootSystem.RestoreSessionState(1000, 1000, City);
+	FootSystem.CreateEventAt(64, 64, TYPE_Robber);
+	for (int32 TickIndex = 0; TickIndex < 1600; ++TickIndex)
+	{
+		FootSystem.Tick(1.0f / 20.0f);
+	}
+	TestEqual(TEXT("On-foot view advances the crime clock even at the scene"), FootSystem.GetScore(), 990);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRiotAlignmentTest,
+	"SimCopter.Missions.RiotCountsRewardsAndPenaltyErosion",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterRiotAlignmentTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCareerCity TierTwoCity;
+	TierTwoCity.Difficulty = 1;
+
+	FSimCopterTestMissionWorld DelayedWorld;
+	FSimCopterMissionSystem Delayed;
+	Delayed.Initialize(&DelayedWorld, 1);
+	Delayed.RestoreSessionState(1000, 1000, TierTwoCity);
+	const int32 DelayedId = Delayed.CreateEventAt(40, 40, TYPE_Riot);
+	if (!TestTrue(TEXT("Tier-two riot created"), DelayedId != INDEX_NONE))
+	{
+		return false;
+	}
+	const FSimCopterMissionRecord* DelayedRecord = Delayed.FindRecord(DelayedId);
+	TestTrue(TEXT("Tier two always requests and places sixteen rioters"),
+		DelayedRecord != nullptr && DelayedRecord->RiotSize == 16);
+	TestEqual(TEXT("Every rioter uses person state 3"),
+		DelayedWorld.SpawnPersonStates.FilterByPredicate([](int32 State) { return State == 3; }).Num(), 16);
+	TestEqual(TEXT("A second simultaneous riot is refused"), Delayed.CreateEventAt(80, 80, TYPE_Riot), INDEX_NONE);
+
+	DelayedWorld.RadioVoiceCalls.Reset();
+	DelayedWorld.RadioVoiceQueueTags.Reset();
+	for (int32 Nag = 0; Nag < 6; ++Nag)
+	{
+		Delayed.PostEvent(EVT_NagSos, DelayedId, 1);
+	}
+	DelayedRecord = Delayed.FindRecord(DelayedId);
+	TestEqual(TEXT("Six riot SOS periods cost 120 points"), Delayed.GetScore(), 880);
+	TestTrue(TEXT("Riot record counts six payout-eroding periods"),
+		DelayedRecord != nullptr && DelayedRecord->TargetCount == 6);
+	Delayed.PostEvent(EVT_RioterCalmed, DelayedId, 16);
+	Delayed.Tick(1.0f / 20.0f);
+	TestEqual(TEXT("A riot ignored for six periods earns no end points"), Delayed.GetScore(), 880);
+	TestEqual(TEXT("A riot ignored for six periods earns no end cash"), Delayed.GetCash(), 1000);
+	TestEqual(TEXT("A zero-value riot completion plays only failure"), DelayedWorld.RadioVoiceCalls.Num(), 1);
+	if (DelayedWorld.RadioVoiceCalls.Num() == 1)
+	{
+		TestEqual(TEXT("Riot failure voice"), DelayedWorld.RadioVoiceCalls[0], 0x60);
+		TestEqual(TEXT("Riot failure voice volume"), DelayedWorld.RadioVoiceQueueTags[0], 0x96);
+	}
+
+	FSimCopterTestMissionWorld PromptWorld;
+	FSimCopterMissionSystem Prompt;
+	Prompt.Initialize(&PromptWorld, 1);
+	Prompt.RestoreSessionState(1000, 1000, TierTwoCity);
+	const int32 PromptId = Prompt.CreateEventAt(40, 40, TYPE_Riot);
+	PromptWorld.RadioVoiceCalls.Reset();
+	PromptWorld.RadioVoiceQueueTags.Reset();
+	Prompt.PostEvent(EVT_RioterDispersed, PromptId, 1);
+	Prompt.PostEvent(EVT_RioterCalmed, PromptId, 15);
+	Prompt.Tick(1.0f / 20.0f);
+	TestEqual(TEXT("A dispersed rioter pays ten points plus the prompt 505-point end award"), Prompt.GetScore(), 1515);
+	TestEqual(TEXT("A dispersed rioter pays ten dollars plus the prompt 725-dollar end award"), Prompt.GetCash(), 1735);
+	TestEqual(TEXT("Prompt riot success type voice"), PromptWorld.RadioVoiceCalls[0], 0x66);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRooftopRescueAlignmentTest,
+	"SimCopter.Missions.RooftopRescueCountsPhasesRewardsAndVoices",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterRooftopRescueAlignmentTest::RunTest(const FString& Parameters)
+{
+	FSimCopterCareerCity HardCity;
+	HardCity.Difficulty = 3;
+	FSimCopterTestMissionWorld SpawnWorld;
+	FSimCopterMissionSystem SpawnSystem;
+	SpawnSystem.Initialize(&SpawnWorld, 1);
+	SpawnSystem.SetCareerCity(HardCity);
+	const int32 SpawnId = SpawnSystem.CreateEventAt(64, 64, TYPE_RooftopRescue);
+	const FSimCopterMissionRecord* SpawnRecord = SpawnSystem.FindRecord(SpawnId);
+	if (!TestNotNull(TEXT("Rooftop rescue record"), SpawnRecord))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Retail rooftop title"), SpawnRecord->Name, FString::Printf(TEXT("Rooftop Rescue %d"), SpawnId));
+	TestTrue(TEXT("Hard rooftop rescue has one through four victims"),
+		SpawnRecord->RescueVictims >= 1 && SpawnRecord->RescueVictims <= 4);
+	TestEqual(TEXT("Every requested rooftop victim spawned"), SpawnWorld.SpawnPersonStates.Num(), SpawnRecord->RescueVictims);
+	for (int32 PersonState : SpawnWorld.SpawnPersonStates)
+	{
+		TestEqual(TEXT("Rooftop victim person state"), PersonState, 2);
+	}
+	TestEqual(TEXT("Rooftop rescue has no fabricated secondary X"), SpawnRecord->SecondaryX, -1);
+	TestEqual(TEXT("Rooftop rescue has no fabricated secondary Y"), SpawnRecord->SecondaryY, -1);
+	TestEqual(TEXT("Rooftop rescue has no tertiary X"), SpawnRecord->TertiaryX, -1);
+	TestEqual(TEXT("Rooftop rescue STRINGTABLE id"), SpawnWorld.UiMessages.Last().TextId, 0x23c);
+	TestEqual(TEXT("Rooftop announcement mission voice"), SpawnWorld.RadioVoiceCalls[1], 0x40);
+	TestEqual(TEXT("Rooftop announcement fixed detail voice"), SpawnWorld.RadioVoiceCalls[3], 0x53);
+
+	FSimCopterCareerCity EasyCity;
+	FSimCopterTestMissionWorld RescueWorld;
+	FSimCopterMissionSystem Rescue;
+	Rescue.Initialize(&RescueWorld, 1);
+	Rescue.RestoreSessionState(1000, 1000, EasyCity);
+	const int32 RescueId = Rescue.CreateEventAt(64, 64, TYPE_RooftopRescue);
+	RescueWorld.RadioVoiceCalls.Reset();
+	RescueWorld.RadioVoiceQueueTags.Reset();
+	Rescue.PostEvent(EVT_VictimPickedUp, RescueId, 1);
+	Rescue.PostEvent(EVT_RescueDelivered, RescueId, 1);
+	TestEqual(TEXT("Pickup plus delivery pays 10 plus 50 dollars immediately"), Rescue.GetCash(), 1060);
+	Rescue.Tick(1.0f / 20.0f);
+	TestEqual(TEXT("One rooftop delivery earns 100 end points"), Rescue.GetScore(), 1100);
+	TestEqual(TEXT("One rooftop delivery earns 200 end dollars"), Rescue.GetCash(), 1260);
+	TestEqual(TEXT("Land/roof rescue completion voice"), RescueWorld.RadioVoiceCalls[0], 0x67);
+	TestTrue(TEXT("Rooftop completion success tag"),
+		RescueWorld.RadioVoiceCalls[1] >= 0x6a && RescueWorld.RadioVoiceCalls[1] <= 0x6e);
+
+	FSimCopterTestMissionWorld CasualtyWorld;
+	FSimCopterMissionSystem Casualty;
+	Casualty.Initialize(&CasualtyWorld, 1);
+	Casualty.RestoreSessionState(1000, 1000, EasyCity);
+	const int32 CasualtyId = Casualty.CreateEventAt(64, 64, TYPE_RooftopRescue);
+	CasualtyWorld.RadioVoiceCalls.Reset();
+	CasualtyWorld.RadioVoiceQueueTags.Reset();
+	Casualty.PostEvent(EVT_PersonDied, CasualtyId, 1);
+	Casualty.Tick(1.0f / 20.0f);
+	TestEqual(TEXT("One rooftop casualty costs 100 end points"), Casualty.GetScore(), 900);
+	TestEqual(TEXT("Negative mission cash is floored before touching the wallet"), Casualty.GetCash(), 1000);
+	TestEqual(TEXT("Rooftop casualty failure voice"), CasualtyWorld.RadioVoiceCalls[0], 0x60);
 	return true;
 }
 

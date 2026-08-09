@@ -128,15 +128,18 @@ should be commented as one — it is not a port.
 
 ## 6. Two audits that came back clean
 
-- **People rescued from burning buildings: supported, both ways.** Scheduled, as the Rescue bucket's
-  `TYPE_FireRescue` (spawn mode 2, `(rand % tier) + 1` victims). And *emergently* from a live fire:
-  `SimCopterMissionSystem.cpp:1598` raises one `TYPE_FireRescue` per fire object once the flame's
+- **People rescued from burning buildings: supported, with one retail bug.** Intended as the Rescue
+  bucket's `TYPE_RooftopRescue` (person state 2, `(rand % tier) + 1` victims), but the retail
+  scheduled placer reads occupied XBLD ids as signed and rejects all of them. The remake uses the
+  intended unsigned test deliberately. The unaffected *emergent* live-fire path raises one
+  `TYPE_RooftopRescue` per fire object once the flame's
   burn countdown drops under `(tier * 5 + 15) * 0x40000`, above tier 1, on a tile whose XBLD
   property flags carry bit 2.
 - **Ambient criminals do not exist in the original.** `FUN_004c2450`'s ambient class roll is 0..9
   plus the special 10/17 and the rare 20/11; **behaviour class 15 ("Badguy") is never spawned
   ambiently**, and `DAT_0058ec00`'s ambient rows do not contain it. Criminals exist only as
-  `TYPE_CriminalA` / `TYPE_SpeederEvent` / `TYPE_CriminalC` mission records. The *gameplay* the
+  `TYPE_Robber` / `TYPE_Arsonist` / `TYPE_Mugger` mission records (plus the car-spawned Burglar).
+  The *gameplay* the
   question describes is real and already works, though: a crime-mission criminal walks around
   visibly (BHAV 1174 "crim - walk unspotted") before doing anything, and the pre-emptive arrest is
   the shipped path — spotlight them (object class 16), dispatch police, `1150 copf - chase criminal`

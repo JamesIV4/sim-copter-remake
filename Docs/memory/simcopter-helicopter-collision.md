@@ -134,10 +134,10 @@ the aircraft now passes through people entirely and only *criminals* answer for 
    `FUN_004ca350`'s loop-flag-0 test, which also matches state 3's *rioters* (a riot is dispersed,
    not run over) — and not caught yet. Ordinary pedestrians are untouched; they already scramble out
    from under a descending aircraft (`UpdateDescendingHelicopterAvoidance`).
-   **DIVERGENCE:** the squash also posts outcome 9 (`EVT_CriminalCaught`), because the executable has
-   no way to end a crime mission with the helicopter and killing the target would otherwise leave the
-   job open forever with nobody left to catch. `bRunOverByHelicopter` latches it — 903 takes several
-   ticks to die and the overlap stays true throughout. Nothing in the pass can move the aircraft.
+   BHAV 903 posts only outcome 10 (`EVT_PersonDied`). That casualty alone closes the applicable
+   crime through `FUN_004a73e0`'s original caught-or-casualty condition; the port no longer fabricates
+   outcome 9. `bRunOverByHelicopter` latches the reaction — 903 takes several ticks to die and the
+   overlap stays true throughout. Nothing in the pass can move the aircraft.
 
 ## Fire damage rate
 
