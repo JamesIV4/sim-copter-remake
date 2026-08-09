@@ -80,7 +80,7 @@ package.
 - Repo-level data cannot be a bare runtime dependency because `DeploymentContext.StageFile`
   rejects files outside the project and engine roots. Keep the Build.cs source-to-Intermediate
   mapping and the `[Staging]` remap together. Verify that the NonUFS manifest contains entries such
-  as `SimCopter/cities/Demo.sc2`, `SimCopter/BMP/SIM3D.BMP`,
+  as `SimCopter/cities/career/city0.sc2`, `SimCopter/BMP/SIM3D.BMP`,
   `SimCopter/tweak/career.twk`, and `SimCopter/x/privanim.df` (case follows the source checkout).
 - The editor rewrites `Config/DefaultGame.ini` when packaging settings are touched in the UI and
   **has dropped the whole `[/Script/UnrealEd.ProjectPackagingSettings]` section on the floor**
