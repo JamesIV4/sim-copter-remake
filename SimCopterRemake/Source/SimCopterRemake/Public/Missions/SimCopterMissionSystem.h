@@ -124,14 +124,14 @@ enum EEvent : int32
 	EVT_NagArsonist        = 0x2b, // -10 points, STRINGTABLE 0x3b5 "Arsonist On Loose!"
 	EVT_NagPeopleWaiting   = 0x2c, // -10 points, STRINGTABLE 0x3b6 "Sims Waiting!"
 	EVT_NagCarsWaiting     = 0x2d, // -10 points, STRINGTABLE 0x3b7 "Cars Waiting!"
-	EVT_CrashPenaltyA      = 0x2e, // fixed penalties (heli crash variants):
-	EVT_CrashPenaltyB      = 0x2f, //   -100 pts / -300 cash
-	EVT_CrashPenaltyC      = 0x30, //   -100 pts / -200 cash
-	EVT_CrashPenaltyD      = 0x31, //   -100 pts / -100 cash
-	EVT_CrashPenaltyE      = 0x32, //   -50 pts / -50 cash
-	EVT_CrashPenaltyF      = 0x33, //   -100 pts / -150 cash
-	EVT_CrashPenaltyG      = 0x34, //   -100 pts / -75 cash
-	EVT_CrashPenaltyH      = 0x35, //   -200 pts / -200 cash
+	EVT_CrashPenaltyA      = 0x2e, // -100 pts / no cash: Copter Crashed!
+	EVT_CrashPenaltyB      = 0x2f, // -100 pts / -300 cash: You Hurt A Sim!
+	EVT_CrashPenaltyC      = 0x30, // -100 pts / -200 cash: Plane Shot Down!
+	EVT_CrashPenaltyD      = 0x31, // -100 pts / -100 cash: Boat Sunk!
+	EVT_CrashPenaltyE      = 0x32, //  -50 pts /  -50 cash: You Blocked Traffic!
+	EVT_CrashPenaltyF      = 0x33, // -100 pts / -150 cash: Train Destroyed!
+	EVT_CrashPenaltyG      = 0x34, // -100 pts /  -75 cash: You Caused an Accident!
+	EVT_CrashPenaltyH      = 0x35, // -200 pts / -200 cash: Missile Caused Damage!
 };
 
 // Record categories (+0x54): 0 = active mission (counted vs Max Easy), 2 =
@@ -347,6 +347,10 @@ struct SIMCOPTERREMAKE_API FSimCopterMissionUiMessage
 	FString MissionName;
 	bool bNegative = false;
 };
+
+// SCHOOK: MissionIncrementalScoring 0x004aa150. Exact retail STRINGTABLE text used by score and
+// cash messages; unknown resource ids retain the remake's generic fallback.
+SIMCOPTERREMAKE_API const TCHAR* GetMissionUpdateText(int32 TextId);
 
 // One flame record: exact mirror of the original 0xa0-byte record at
 // DAT_005ce0a0 (0x8c slots). Positions are 16.16 world units.

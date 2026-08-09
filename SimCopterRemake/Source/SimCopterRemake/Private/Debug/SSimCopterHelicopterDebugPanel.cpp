@@ -1657,6 +1657,21 @@ TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildMissionButtons()
 	const TArrayView<const FSimCopterMissionCatalogEntry> Missions = GetSimCopterMissionCatalog();
 
 	TSharedRef<SWrapBox> Box = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D(3.0f, 3.0f));
+	Box->AddSlot()
+	[
+		SNew(SButton)
+		.IsFocusable(false)
+		.ContentPadding(FMargin(6.0f, 1.0f))
+		.ToolTipText(NSLOCTEXT("SimCopterDebug", "SpeederTip",
+			"Ambient traffic encounter: designates an ordinary car with retail flag 0x800. Separate from the Burglar mission; pays Speeder pursuit/caught events without a mission record."))
+		.OnClicked(this, &SSimCopterHelicopterDebugPanel::HandleStartSpeeder)
+		[
+			SNew(STextBlock)
+			.Text(NSLOCTEXT("SimCopterDebug", "Speeder", "Speeder"))
+			.ColorAndOpacity(FLinearColor(0.94f, 0.97f, 1.0f, 1.0f))
+			.Font(PanelFont(10))
+		]
+	];
 	for (const FSimCopterMissionCatalogEntry& Entry : Missions)
 	{
 		// A type whose world hook is still a stub is shown greyed and still clickable, so the
@@ -1704,6 +1719,15 @@ FReply SSimCopterHelicopterDebugPanel::HandleStartMission(int32 TypeMask)
 	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
 	{
 		Helicopter->DebugStartMission(TypeMask);
+	}
+	return FReply::Handled();
+}
+
+FReply SSimCopterHelicopterDebugPanel::HandleStartSpeeder()
+{
+	if (ASimCopterHelicopterPawn* Helicopter = GetPawn())
+	{
+		Helicopter->DebugStartSpeeder();
 	}
 	return FReply::Handled();
 }

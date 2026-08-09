@@ -1439,6 +1439,19 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterCrimeScoringTest::RunTest(const FString& Parameters)
 {
+	TestEqual(
+		TEXT("Burglary reminders use the retail message instead of the generic delta label"),
+		FString(GetMissionUpdateText(0x3b4)),
+		FString(TEXT("Burglary Committed!")));
+	TestEqual(
+		TEXT("The neighboring mugger reminder also resolves through the retail string table"),
+		FString(GetMissionUpdateText(0x3b2)),
+		FString(TEXT("Sim Mugged!")));
+	TestEqual(
+		TEXT("Unknown update ids retain the safe fallback"),
+		FString(GetMissionUpdateText(INDEX_NONE)),
+		FString(TEXT("Mission update")));
+
 	struct FCrimeCase
 	{
 		int32 TypeMask;
@@ -1486,6 +1499,58 @@ bool FSimCopterCrimeScoringTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Crime completion tag volume"), World.RadioVoiceQueueTags[1], 0x32);
 		}
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterIncrementalUpdateAlignmentTest,
+	"SimCopter.Missions.IncrementalUpdateTextAndPenalties",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterIncrementalUpdateAlignmentTest::RunTest(const FString& Parameters)
+{
+	struct FPenaltyCase
+	{
+		int32 Code;
+		int32 TextId;
+		int32 Points;
+		int32 Cash;
+		const TCHAR* Text;
+	};
+	const FPenaltyCase Cases[] =
+	{
+		{ EVT_CrashPenaltyA, 0x3b9, -100,    0, TEXT("Copter Crashed!") },
+		{ EVT_CrashPenaltyB, 0x3ba, -100, -300, TEXT("You Hurt A Sim!") },
+		{ EVT_CrashPenaltyC, 0x3bb, -100, -200, TEXT("Plane Shot Down!") },
+		{ EVT_CrashPenaltyD, 0x3bc, -100, -100, TEXT("Boat Sunk!") },
+		{ EVT_CrashPenaltyE, 0x3bd,  -50,  -50, TEXT("You Blocked Traffic!") },
+		{ EVT_CrashPenaltyF, 0x3be, -100, -150, TEXT("Train Destroyed!") },
+		{ EVT_CrashPenaltyG, 0x3bf, -100,  -75, TEXT("You Caused an Accident!") },
+		{ EVT_CrashPenaltyH, 0x3c0, -200, -200, TEXT("Missile Caused Damage!") },
+	};
+
+	FSimCopterCareerCity City;
+	for (const FPenaltyCase& Penalty : Cases)
+	{
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		System.RestoreSessionState(1000, 1000, City);
+		System.PostEvent(Penalty.Code, INDEX_NONE, 1);
+
+		TestEqual(TEXT("Retail crash penalty points"), System.GetScore(), 1000 + Penalty.Points);
+		TestEqual(TEXT("Retail crash penalty cash"), System.GetCash(), 1000 + Penalty.Cash);
+		TestTrue(TEXT("A scored penalty posts its retail update"), World.UiMessages.Num() > 0);
+		if (World.UiMessages.Num() > 0)
+		{
+			TestEqual(TEXT("Retail crash penalty STRINGTABLE id"), World.UiMessages.Last().TextId, Penalty.TextId);
+		}
+		TestEqual(
+			TEXT("Retail crash penalty text"),
+			FString(GetMissionUpdateText(Penalty.TextId)),
+			FString(Penalty.Text));
+	}
+
 	return true;
 }
 

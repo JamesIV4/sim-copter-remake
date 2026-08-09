@@ -23,6 +23,7 @@ bool FSimCopterCriminalCarTargetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("A stopped non-fleeing target still deploys the plain officer"),
 		GetOfficerPersonState(true, false), 8);
 	TestEqual(TEXT("A fleeing target deploys the 0xe officer"), GetOfficerPersonState(true, true), 0xe);
+	TestEqual(TEXT("Every deployed officer uses retail behavior class 0xe"), OfficerBehaviorClass, 0xe);
 
 	// FUN_0049b000: octile - the larger axis plus half the smaller.
 	TestEqual(TEXT("Same tile"), GetTileStepDistance(FIntPoint(10, 10), FIntPoint(10, 10)), 0);

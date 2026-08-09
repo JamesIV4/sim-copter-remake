@@ -79,6 +79,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	void ClearMoveTarget();
 
+	// Shared vertical gate for every behavior-VM pedestrian step. Rendered buildings are not the
+	// original cell objects, so any BHAV 308 escape that permits a rise must permit the inverse
+	// descent too or a walker can enter a roof surface that it can never leave.
+	static bool IsPedestrianHeightTransitionAllowed(float RiseCm, float MaxStepCm, bool bMoveThroughWalls);
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool HasMoveTarget() const { return bHasMoveTarget; }
 
@@ -276,6 +281,11 @@ public:
 	void MakeCriminalCar(int32 InEventId, int32 CruiseDelay1616);
 	bool IsCriminalCar() const { return bCriminalCar; }
 	int32 GetCriminalEventId() const { return CriminalEventId; }
+	// FUN_0049af00/FUN_0049af70 set veh[4] & 0x800 on an ordinary traffic car. This is the
+	// ambient Speeder encounter, not the Burglar mission's CARROBBR object.
+	void MakeSpeeder();
+	void ClearSpeeder();
+	bool IsSpeeder() const { return bSpeeder; }
 
 	// obj[5] & 8 - the fleeing flag the police target filter tests. A criminal car always flies
 	// it; the same flag is what would make a speeder *person* a valid target.
@@ -535,10 +545,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
 	float BehaviorTickRate = 15.0f;
 
-	// Original per-step vertical gates (FUN_004c9470): one behavior step may rise at most
-	// MaxStepClimb units (person+0x144 = 5) and drop at most MaxStepClimb + 0.5 units;
-	// 1 unit = tile/64 (~6.25cm at a 400cm tile). This is what stops people at building
-	// walls in the original - tile classes alone allow building tiles.
+	// Per-step vertical gate adapted from FUN_004c9470: one ordinary behavior step may rise or
+	// descend at most MaxStepClimb units (person+0x144 = 5). BHAV 308's repeated-failure escape
+	// bypasses the same gate in both directions. 1 unit = tile/64 (~6.25cm at a 400cm tile).
+	// This is what normally stops people at building walls - tile classes alone allow them.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
 	float MaxStepClimbOriginalUnits = 5.0f;
 
@@ -718,6 +728,7 @@ private:
 	// Speeder / criminal car state. Offsets in the comments are the original's, on the class
 	// FUN_004b8470 builds.
 	bool bCriminalCar = false;    // message id 0x11e
+	bool bSpeeder = false;        // ordinary vehicle flag veh[4] & 0x800
 	bool bFleeing = false;        // obj[5] & 8
 	bool bStopOrdered = false;    // veh[4] & 0x10
 	bool bStopped = false;        // veh[4] & 0x20

@@ -595,6 +595,24 @@ bool FSimCopterDispatchFailureTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterDispatchArrivalActionTest,
+	"SimCopter.Dispatch.ArrivalAction",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterDispatchArrivalActionTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("a normal response enters the on-scene action"),
+		DoesDispatchArrivalEnterOnScene(ESimCopterDispatchVehicleState::Responding));
+	TestTrue(TEXT("an F5 chase response also enters the on-scene action"),
+		DoesDispatchArrivalEnterOnScene(ESimCopterDispatchVehicleState::Chasing));
+	TestFalse(TEXT("an on-scene vehicle does not arrive a second time"),
+		DoesDispatchArrivalEnterOnScene(ESimCopterDispatchVehicleState::OnScene));
+	TestFalse(TEXT("a returning vehicle does not run a scene action at its station"),
+		DoesDispatchArrivalEnterOnScene(ESimCopterDispatchVehicleState::Returning));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterDispatchSpiralTest,
 	"SimCopter.Dispatch.Spiral",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

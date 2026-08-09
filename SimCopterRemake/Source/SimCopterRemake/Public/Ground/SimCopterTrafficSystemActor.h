@@ -121,6 +121,15 @@ enum class ESimCopterDispatchVehicleState : uint8
 	Idle
 };
 
+// FUN_004b9e40 cases 2 and 3 both run the service's on-scene action when the vehicle reaches
+// its destination. State 3 keeps re-reading the spotlight only while it is still driving there;
+// it is not a crewless parking mode.
+constexpr bool DoesDispatchArrivalEnterOnScene(ESimCopterDispatchVehicleState State)
+{
+	return State == ESimCopterDispatchVehicleState::Responding ||
+		State == ESimCopterDispatchVehicleState::Chasing;
+}
+
 // One emergency vehicle. Field comments name the original offsets they stand in for.
 struct FSimCopterDispatchVehicle
 {
@@ -711,6 +720,7 @@ private:
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> PedestrianAgents;
 	TMap<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState> VehicleTrafficStates;
 	TWeakObjectPtr<ASimCopterGroundAgent> NextCarFireTarget;
+	TWeakObjectPtr<ASimCopterGroundAgent> LastSpeederAgent;
 	FRandomStream RandomStream;
 	uint16 PeopleRandomState = 1;
 	FTransform ActiveCityToWorldTransform = FTransform::Identity;
@@ -731,6 +741,10 @@ private:
 	FIntPoint SpotlightChaseTile = FIntPoint(INDEX_NONE, INDEX_NONE);
 
 public:
+	// FUN_0049af00/FUN_0049af70: ensure one eligible ordinary traffic car carries the retail
+	// speeder flag. bForceNew is used only by the debug button to select a fresh car.
+	bool TryDesignateSpeeder(bool bForceNew = false);
+
 	// Runs one FUN_004bc680 dispatch transaction for a service and commits the result.
 	// bChaseSpotlight selects initial state 3 (F5) instead of 4 (F2/F3/F4).
 	SimCopterDispatch::EDispatchResult RequestEmergencyDispatch(
@@ -1052,6 +1066,7 @@ public:
 	// FUN_004a01f0 + FUN_0049d980: accumulate each speeder's mark from the spotlight and set the
 	// speed multiplier it earns.
 	void UpdateCriminalCars(float DeltaSeconds);
+	void UpdateSpeeders(float DeltaSeconds);
 
 	// FUN_004b9e40 case 0's three-ring sweep. Returns the nearest speeder within
 	// SimCopterCriminalCar::PursuitMaxTileSteps of FromTile, or null.

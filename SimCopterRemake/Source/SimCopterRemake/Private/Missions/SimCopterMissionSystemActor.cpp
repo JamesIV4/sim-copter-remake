@@ -55,29 +55,6 @@ FString FormatSignedAmount(int32 Value, const TCHAR* Unit)
 	return FString::Printf(TEXT("%+d %s"), Value, Unit);
 }
 
-const TCHAR* GetMissionDeltaLabel(int32 TextId)
-{
-	switch (TextId)
-	{
-	case 0x3a2: return TEXT("Flame started");
-	case 0x3a3: return TEXT("Flame doused");
-	case 0x3a4: return TEXT("Building burned");
-	case 0x3a5: return TEXT("Building saved");
-	case 0x3a6: return TEXT("Debris doused");
-	case 0x3a7: return TEXT("Sim Rescued!");
-	case 0x3a8: return TEXT("Sim Transported!");
-	case 0x3a9: return TEXT("Sim MedEvaced!");
-	case 0x3aa: return TEXT("Sim Picked Up!");
-	case 0x3ad: return TEXT("Car UnJammed!");
-	case 0x3ac: return TEXT("Rioter dispersed");
-	case 0x3b1: return TEXT("Person died");
-	case 0x3b6: return TEXT("Car doused");
-	case 0x3b7: return TEXT("Car cleared");
-	case 0x3b8: return TEXT("Car burned");
-	default: return TEXT("Mission update");
-	}
-}
-
 FString ResolveCareerTweakPath()
 {
 	const FString Resolved = SimCopterOriginalGame::ResolveFile(TEXT("tweak/career.twk"));
@@ -1758,12 +1735,12 @@ void ASimCopterMissionSystemActor::WriteCareerLogEntry(const SimCopterMissions::
 	case 8:
 		// 541 "%s: %s %ld Points"
 		Kind = ESimCopterCareerLogKind::PointsAward;
-		Line = FString::Printf(TEXT("%s: %s %d Points"), *MissionName, GetMissionDeltaLabel(Message.TextId), Message.ValueA);
+		Line = FString::Printf(TEXT("%s: %s %d Points"), *MissionName, SimCopterMissions::GetMissionUpdateText(Message.TextId), Message.ValueA);
 		break;
 	case 9:
 		// 540 "%s: %s %ld Bucks"
 		Kind = ESimCopterCareerLogKind::CashAward;
-		Line = FString::Printf(TEXT("%s: %s %d Bucks"), *MissionName, GetMissionDeltaLabel(Message.TextId), Message.ValueA);
+		Line = FString::Printf(TEXT("%s: %s %d Bucks"), *MissionName, SimCopterMissions::GetMissionUpdateText(Message.TextId), Message.ValueA);
 		break;
 	default:
 		return;
@@ -3940,14 +3917,14 @@ FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMiss
 		OutColor = Message.ValueA < 0 ? FLinearColor(1.0f, 0.38f, 0.32f, 1.0f) : FLinearColor(0.55f, 1.0f, 0.55f, 1.0f);
 		return FString::Printf(
 			TEXT("%s: %s (%s)"),
-			GetMissionDeltaLabel(Message.TextId),
+			SimCopterMissions::GetMissionUpdateText(Message.TextId),
 			*FormatSignedAmount(Message.ValueA, TEXT("points")),
 			*MissionName);
 	case 9:
 		OutColor = Message.ValueA < 0 ? FLinearColor(1.0f, 0.38f, 0.32f, 1.0f) : FLinearColor(1.0f, 0.86f, 0.34f, 1.0f);
 		return FString::Printf(
 			TEXT("%s: %s (%s)"),
-			GetMissionDeltaLabel(Message.TextId),
+			SimCopterMissions::GetMissionUpdateText(Message.TextId),
 			*FormatSignedAmount(Message.ValueA, TEXT("cash")),
 			*MissionName);
 	default:

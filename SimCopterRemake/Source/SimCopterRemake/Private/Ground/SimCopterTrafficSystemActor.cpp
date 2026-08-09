@@ -1035,6 +1035,8 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
+	TryDesignateSpeeder();
+	UpdateSpeeders(DeltaSeconds);
 	// Speeders take their spotlight mark before the police read it, so a car lit this frame can
 	// be pulled over this frame.
 	UpdateCriminalCars(DeltaSeconds);
@@ -4078,7 +4080,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPursuitTarget(const FIn
 	// list and applying the same step test gives the same answer without a per-tile object map.
 	ASimCopterGroundAgent* Best = nullptr;
 	int32 BestSteps = SimCopterCriminalCar::PursuitMaxTileSteps;
-	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
 	{
 		ASimCopterGroundAgent* Car = CarPtr.Get();
 		if (Car == nullptr)
@@ -4105,6 +4107,110 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPursuitTarget(const FIn
 		}
 	}
 	return Best;
+}
+
+bool ASimCopterTrafficSystemActor::TryDesignateSpeeder(const bool bForceNew)
+{
+	ASimCopterGroundAgent* Existing = nullptr;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car != nullptr && Car->IsSpeeder())
+		{
+			Existing = Car;
+			if (!bForceNew)
+			{
+				return true;
+			}
+			Car->ClearSpeeder();
+		}
+	}
+
+	if (Existing != nullptr)
+	{
+		LastSpeederAgent = Existing;
+	}
+
+	// SCHOOK: DesignateSpeeder 0x0049af00/0x0049af70. The executable scans its ordinary
+	// 70-car pool, rejects emergency/mission cars and the previously selected slot, then sets
+	// veh[4] & 0x800. The remake's beamed traffic pool has different model identities, so the
+	// corresponding adaptation selects any live, moving ordinary car.
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr || Car == LastSpeederAgent.Get() || Car->IsCriminalCar() ||
+			IsDispatchVehicle(*Car) || !Car->HasMoveTarget() || Car->IsHidden())
+		{
+			continue;
+		}
+		const FSimCopterVehicleTrafficState* TrafficState =
+			VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Car));
+		if (TrafficState != nullptr &&
+			(TrafficState->bMissionJammed || TrafficState->bMissionOnFire || TrafficState->bJamQueued))
+		{
+			continue;
+		}
+
+		Car->MakeSpeeder();
+		LastSpeederAgent = Car;
+		UE_LOG(LogSimCopterTrafficSystem, Display,
+			TEXT("Speeder: designated ambient vehicle %s (retail flag 0x800)."), *Car->GetName());
+		return true;
+	}
+	return false;
+}
+
+void ASimCopterTrafficSystemActor::UpdateSpeeders(const float DeltaSeconds)
+{
+	const float CmPerUnit = GetPeopleWorldCmPerOriginalUnit();
+	const float MarkRadiusCm =
+		SimCopterCriminalCar::GetSpotlightMarkRadiusOriginalUnits(SpotlightMarkBand) * CmPerUnit;
+
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr || !Car->IsSpeeder())
+		{
+			continue;
+		}
+
+		bool bLit = false;
+		if (bSpotlightMarkActive && MarkRadiusCm > 0.0f)
+		{
+			const FVector Delta = Car->GetActorLocation() - SpotlightMarkWorldLocation;
+			bLit = FVector2D(Delta.X, Delta.Y).SizeSquared() <= FMath::Square(MarkRadiusCm);
+		}
+		Car->SetSpotlightMark(SimCopterCriminalCar::AccumulateSpotlightMark(
+			Car->GetSpotlightMark(), bLit, bSpotlightMarkActive));
+
+		if (Car->IsStopOrdered())
+		{
+			const float Coast = FMath::Max(
+				0.0f, Car->GetCriminalStopScale() - DeltaSeconds * CriminalCarStopBrakeRate);
+			Car->SetCriminalStopScale(Coast);
+			Car->SetTrafficSpeedScale(Coast);
+			if (Coast > 0.0f)
+			{
+				continue;
+			}
+
+			// FUN_0049be50's flag-0x800 capture arm posts event 0x26 without a mission id.
+			// It is an incremental encounter reward, not completion of a Burglar record.
+			if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+			{
+				Missions->PostMissionEvent(
+					SimCopterMissions::EVT_SpeederCaught, INDEX_NONE, 1, /*bSilent=*/false);
+			}
+			Car->ClearSpeeder();
+			Car->SetTrafficSpeedScale(0.0f);
+			continue;
+		}
+
+		// FUN_0049d980 applies the same 1.75x and spotlight-band slowdown to the ordinary
+		// speeder flag as to CARROBBR.
+		Car->SetTrafficSpeedScale(SimCopterCriminalCar::GetFleeingSpeedMultiplier(
+			true, Car->GetSpotlightMark(), SpotlightMarkBand));
+	}
 }
 
 void ASimCopterTrafficSystemActor::RunBurglarOutsidePhase(ASimCopterGroundAgent& Car, const float DeltaSeconds)
@@ -4203,6 +4309,17 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 		if (Car == nullptr)
 		{
 			CriminalCars.RemoveAt(Index);
+			continue;
+		}
+
+		// Mission-owned cars are exempt from ambient distance culling, so retire one explicitly
+		// when its record disappears. FUN_004b8630's pool object belongs to the event for its
+		// whole driving/outside cycle; letting an inactive one return to ambient traffic would
+		// leave CARROBBR and its marker identity alive indefinitely.
+		if (Missions != nullptr && !Missions->IsMissionEventActive(Car->GetCriminalEventId()))
+		{
+			CriminalCars.RemoveAt(Index);
+			Car->Destroy();
 			continue;
 		}
 
@@ -4539,7 +4656,7 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 			ASimCopterGroundAgent* Officer = nullptr;
 			const bool bDeployed = TrySpawnMissionPerson(
 				OfficerState,
-				-1,
+				SimCopterCriminalCar::OfficerBehaviorClass,
 				Tile.X,
 				Tile.Y,
 				Vehicle.TargetEventId,
@@ -4686,16 +4803,11 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 
 		if (HasDispatchVehicleArrived(Vehicle))
 		{
-			if (Vehicle.State == ESimCopterDispatchVehicleState::Chasing)
-			{
-				// A chase unit parks on the spotlight tile but stays in chase mode so it
-				// keeps following when the beam moves again.
-				if (ASimCopterGroundAgent* Agent = Vehicle.Agent.Get())
-				{
-					Agent->ClearMoveTarget();
-				}
-				break;
-			}
+			check(DoesDispatchArrivalEnterOnScene(Vehicle.State));
+			// SCHOOK: PoliceUpdate 0x004b9e40, cases 2 and 3. The F5 chase state only
+			// changes how the destination is acquired while driving. On arrival it calls
+			// FUN_004bd980(0xe, 8/0xe, ...), exactly like a fixed police response, so the
+			// shared on-scene pass must put the officer on foot too.
 			Vehicle.State = ESimCopterDispatchVehicleState::OnScene;
 			Vehicle.StayTimerSeconds = SimCopterDispatch::OnSceneStaySeconds;
 			Vehicle.ActionTimerSeconds = 0.0f;

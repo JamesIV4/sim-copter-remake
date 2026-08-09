@@ -293,7 +293,10 @@ walk-in-place / building walk-through fixed):**
 - **Figure frames advance +1 per behavior tick** in the driver FUN_004c6450 (wrap at ARPP rows),
   so clip playback rate == tick rate, not wall-clock.
 - **FUN_004c82c0 (walked surface) = max(object tops, terrain) at the point** (scene-cell object
-  list DAT_005d9200, else FUN_004ae7a0 terrain). With the climb gate (5 units up, 5.5 down) this
+  list DAT_005d9200, else FUN_004ae7a0 terrain). Retail uses 5 units up and 5.5 down; the rendered-
+  building port now uses a symmetric 5-unit ordinary gate, and BHAV 308's repeated-failure escape
+  bypasses both directions because the ground snap otherwise lets a walker climb onto a roof it
+  can never descend from. With that climb gate this
   is what stops people at building WALLS: the surface inside a footprint is the roof. Tile-class
   checks alone allow building tiles - the remake walked people through building interiors until
   this gate was ported (top-down trace at the step target).

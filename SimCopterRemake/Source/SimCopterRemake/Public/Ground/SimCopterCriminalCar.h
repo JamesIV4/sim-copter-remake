@@ -86,8 +86,9 @@ constexpr float HelicopterTopSpeedUnitsPerSecond = 192.3f;
 constexpr int32 BurglarPersonState = 0xd;
 constexpr int32 BurglarBehaviorClass = 0xf;
 
-// FUN_004b9e40's officer deploy: spawn mode 0xe, and the state depends on the target.
-constexpr int32 OfficerSpawnMode = 0xe;
+// FUN_004b9e40 calls FUN_004bd980(0xe, state): 0xe is the behavior class, not a spawn mode.
+// Class 14 carries the cop's walk-surface rules while the state below selects its BHAV.
+constexpr int32 OfficerBehaviorClass = 0xe;
 // Person states, i.e. BHAV 1401 "Cop foot" and BHAV 1402 "Cop speeder".
 constexpr int32 OfficerStateDefault = 8;
 constexpr int32 OfficerStateAgainstFleeing = 0xe;

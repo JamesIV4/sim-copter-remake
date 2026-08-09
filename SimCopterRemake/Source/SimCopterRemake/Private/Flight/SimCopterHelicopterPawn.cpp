@@ -5010,6 +5010,23 @@ int32 ASimCopterHelicopterPawn::DebugStartMission(int32 TypeMask)
 	return EventId;
 }
 
+bool ASimCopterHelicopterPawn::DebugStartSpeeder()
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		LastDebugMissionStatus = TEXT("No traffic system in this map.");
+		return false;
+	}
+
+	const bool bStarted = TrafficSystem->TryDesignateSpeeder(/*bForceNew=*/true);
+	LastDebugMissionStatus = bStarted
+		? TEXT("Speeder -> designated a new ambient traffic car (no mission record)")
+		: TEXT("Speeder: no eligible ordinary traffic car is currently beamed in.");
+	return bStarted;
+}
+
 // SCHOOK: MegaphoneBroadcast 0x0048a800
 // The megaphone is spotlight-directed and range-gated: FUN_0048a800 only broadcasts while
 // heli[0x150] < 3, then runs FUN_0048ae70(2, spotlightTile, body, -1, messageIndex), which
