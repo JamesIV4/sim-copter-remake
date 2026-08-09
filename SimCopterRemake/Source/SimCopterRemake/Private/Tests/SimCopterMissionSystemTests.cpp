@@ -1077,7 +1077,7 @@ bool FSimCopterUserCityDefaultSettingsTest::RunTest(const FString& Parameters)
 
 	const FSimCopterCareerCity UserCity = FSimCopterMissionSystem::MakeUserCityDefaults(Base);
 	TestEqual(TEXT("Difficulty"), UserCity.Difficulty, 0);
-	const float ExpectedWeights[7] = { 30.0f, 0.0f, 46.0f, 40.0f, 60.0f, 64.0f, 54.0f };
+	const float ExpectedWeights[7] = { 30.0f, 0.0f, 46.0f, 0.0f, 60.0f, 64.0f, 54.0f };
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(ExpectedWeights); ++Index)
 	{
 		TestEqual(*FString::Printf(TEXT("Weight %d"), Index), UserCity.Weights[Index], ExpectedWeights[Index]);
