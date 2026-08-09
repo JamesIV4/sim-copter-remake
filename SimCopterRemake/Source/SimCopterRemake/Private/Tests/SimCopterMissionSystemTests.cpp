@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Misc/AutomationTest.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "Audio/SimCopterSoundTable.h"
 #include "Missions/SimCopterMissionSystem.h"
@@ -1603,6 +1604,71 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterRooftopRescueAlignmentTest::RunTest(const FString& Parameters)
 {
+	TestTrue(
+		TEXT("A horizontal rendered roof accepts a rescue spawn"),
+		ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(FVector::UpVector));
+	TestTrue(
+		TEXT("A nearly-flat imported triangle tolerates normal noise"),
+		ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(FVector(0.0f, 0.1f, 0.995f)));
+	TestFalse(
+		TEXT("A pitched roof rejects the candidate so the sampler retries"),
+		ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(FVector(0.0f, 0.25f, 0.9682458f)));
+	TestFalse(
+		TEXT("A missing surface normal cannot accept a rescue spawn"),
+		ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(FVector::ZeroVector));
+
+	constexpr float OriginalSixUnitGroundBandCm = 37.5f;
+	TestTrue(
+		TEXT("A rescue survivor may leave on terrain"),
+		ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+			ESimCopterMissionPassengerKind::Rescue,
+			/*bIsWater*/ false,
+			7.5f,
+			OriginalSixUnitGroundBandCm));
+	TestFalse(
+		TEXT("A rescue survivor may not complete on a roof"),
+		ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+			ESimCopterMissionPassengerKind::Rescue,
+			/*bIsWater*/ false,
+			150.0f,
+			OriginalSixUnitGroundBandCm));
+	TestFalse(
+		TEXT("A transport passenger may not complete on a roof"),
+		ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+			ESimCopterMissionPassengerKind::Transport,
+			/*bIsWater*/ false,
+			150.0f,
+			OriginalSixUnitGroundBandCm));
+	TestTrue(
+		TEXT("A medevac patient may be handed off on the hospital roof"),
+		ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+			ESimCopterMissionPassengerKind::Medevac,
+			/*bIsWater*/ false,
+			150.0f,
+			OriginalSixUnitGroundBandCm));
+	TestFalse(
+		TEXT("A medevac patient still may not be delivered into water"),
+		ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+			ESimCopterMissionPassengerKind::Medevac,
+			/*bIsWater*/ true,
+			0.0f,
+			OriginalSixUnitGroundBandCm));
+	TestTrue(
+		TEXT("A deployed harness may collect a rooftop survivor while the airframe is too high to board"),
+		ASimCopterMissionSystemActor::IsRescuePickupAvailable(
+			/*bHarnessDeployed*/ true,
+			/*bCanBoardThroughAirframe*/ false));
+	TestFalse(
+		TEXT("An airborne helicopter without a deployed harness cannot collect the survivor"),
+		ASimCopterMissionSystemActor::IsRescuePickupAvailable(
+			/*bHarnessDeployed*/ false,
+			/*bCanBoardThroughAirframe*/ false));
+	TestTrue(
+		TEXT("Direct airframe boarding remains available when the helicopter is low enough"),
+		ASimCopterMissionSystemActor::IsRescuePickupAvailable(
+			/*bHarnessDeployed*/ false,
+			/*bCanBoardThroughAirframe*/ true));
+
 	FSimCopterCareerCity HardCity;
 	HardCity.Difficulty = 3;
 	FSimCopterTestMissionWorld SpawnWorld;

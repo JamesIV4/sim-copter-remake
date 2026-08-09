@@ -1941,6 +1941,61 @@ int32 ASimCopterMissionSystemActor::PostPassengerDelivery(
 	return Delivered;
 }
 
+bool ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+	const ESimCopterMissionPassengerKind Kind,
+	const bool bIsWater,
+	const float HeightAboveTerrainCm,
+	const float GroundToleranceCm)
+{
+	if (bIsWater)
+	{
+		return false;
+	}
+
+	// BHAV 263 deliberately unloads state-6 patients on the D1 hospital roof. Every other passenger
+	// follows FUN_004c9bc0's strict "less than six units above ground" result. Do not ask the scene
+	// trace for "ground" here: in the remake it quite correctly returns a rendered building roof,
+	// which is precisely the surface that must not complete an ordinary rescue or transport.
+	return Kind == ESimCopterMissionPassengerKind::Medevac ||
+		HeightAboveTerrainCm < FMath::Max(0.0f, GroundToleranceCm);
+}
+
+bool ASimCopterMissionSystemActor::IsRescuePickupAvailable(
+	const bool bHarnessDeployed,
+	const bool bCanBoardThroughAirframe)
+{
+	// BHAV 305 -> opcode 48 attaches to the rope end while the aircraft is airborne. Opcode 58
+	// moves that same rider into a cabin seat only after the harness has been wound back in. Do not
+	// apply the landed-airframe boarding gate to the first half of that decoded sequence.
+	return bHarnessDeployed || bCanBoardThroughAirframe;
+}
+
+bool ASimCopterMissionSystemActor::IsPassengerDeliveryLocationAllowed(
+	const ESimCopterMissionPassengerKind Kind,
+	const FVector& FeetWorldLocation) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	float TerrainWorldZ = 0.0f;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(FeetWorldLocation, TileX, TileY) ||
+		!TrafficSystem->TryGetTerrainWorldZAtWorldLocation(FeetWorldLocation, TerrainWorldZ))
+	{
+		return false;
+	}
+
+	return IsPassengerDeliverySurfaceAllowed(
+		Kind,
+		TrafficSystem->IsWaterTile(TileX, TileY),
+		FeetWorldLocation.Z - TerrainWorldZ,
+		TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 6.0f);
+}
+
 bool ASimCopterMissionSystemActor::NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person)
 {
 	if (Person == nullptr ||
@@ -2104,6 +2159,10 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 	{
 		return 0;
 	}
+	if (!IsPassengerDeliveryLocationAllowed(Kind, DropLocation))
+	{
+		return 0;
+	}
 
 	int32 Processed = 0;
 	int32 Delivered = 0;
@@ -2125,17 +2184,10 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 			break;
 		}
 
-		Person->AlightFromCarrier(); // atomically returns this real person's seat
-		const float Side = (Processed & 1) == 0 ? 1.0f : -1.0f;
-		// DropLocation is the deck beside the aircraft, at the aircraft's own height, so the person
-		// stands ON it rather than being buried to the chest in it - the actor origin is the middle
-		// of their capsule.
-		Person->SetActorLocation(
-			DropLocation + FVector(
-				0.0f,
-				Side * (35.0f + 28.0f * float(Processed)),
-				Person->GetCapsuleHalfHeightCm()),
-			false);
+		// Atomically returns this real person's seat and places them at that seat row's door point.
+		// AlightFromCarrier owns the shared VM/recovery transform; adding another mission-side spread
+		// here used to fan later survivors progressively farther away from the aircraft.
+		Person->AlightFromCarrier();
 		// No ground snap: they were let out of the cabin, so they fall whatever is left of the
 		// cabin's height onto what is underneath rather than appearing already stood on it.
 		if (NotifyMissionPersonDelivered(Person))
@@ -2492,7 +2544,7 @@ void ASimCopterMissionSystemActor::ProcessRescueTransfers()
 
 				// Direct cabin entry is a landed-helicopter action. Harness boarding remains valid
 				// in flight and claims its cabin seat only when op 58 winds the rider in.
-				if (bUseHarness || Helicopter->CanBoardMissionPassengers())
+				if (IsRescuePickupAvailable(bUseHarness, Helicopter->CanBoardMissionPassengers()))
 				{
 					const int32 Boarded = TrafficSystem->BoardMissionPeopleTouching(
 						Mission.EventId,
@@ -2513,15 +2565,6 @@ void ASimCopterMissionSystemActor::ProcessRescueTransfers()
 			// idles, so a survivor never leaves the cabin the instant the aircraft comes into range
 			// either. Same beat as the transport drop-off above.
 			if (Mission.Deliverable <= 0 || !IsHelicopterSettledForAlight(*Helicopter))
-			{
-				continue;
-			}
-
-			int32 DropTileX = INDEX_NONE;
-			int32 DropTileY = INDEX_NONE;
-			if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(
-					Helicopter->GetActorLocation(), DropTileX, DropTileY) ||
-				TrafficSystem->IsWaterTile(DropTileX, DropTileY))
 			{
 				continue;
 			}

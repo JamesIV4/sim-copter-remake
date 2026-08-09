@@ -362,6 +362,14 @@ public:
 		const FTransform& BodyFrame,
 		const FVector& WorldLocation,
 		bool bHorizontalOnly);
+	// Door point for an alighting passenger, expressed in the airframe's yaw-local XY plane. The
+	// visible fuselage bounds are authoritative when present; the fallback is only for headless or
+	// pre-mesh frames. Slot rows stay close to the skin instead of being fanned into the apron.
+	static FVector2D ComputePassengerDoorOffsetCm(
+		const FBox& LocalBoundsCm,
+		int32 SlotIndex,
+		float ClearanceCm,
+		const FVector2D& FallbackDoorOffsetCm);
 
 	// Is a body at WorldLocation touching the airframe, within ToleranceCm of its skin? Measured
 	// against the mesh, never against a radius about the actor origin: the collision capsule is a
@@ -452,6 +460,7 @@ public:
 	 *
 	 * Z comes from the root sphere's bottom, which `ApplyFlightModelToActor` pins to the flight
 	 * model's `Altitude`; the actor origin is 190 cm above that and is not where anybody stands.
+	 * XY comes from the rendered airframe skin plus ExitClearanceCm, matching the player's exit.
 	 */
 	FVector GetPassengerDropWorldLocation(int32 SlotIndex = INDEX_NONE) const;
 

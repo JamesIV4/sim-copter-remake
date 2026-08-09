@@ -1343,6 +1343,15 @@ void ASimCopterTrafficSystemActor::DouseBurningVehiclesNear(const FVector& World
 	}
 }
 
+bool ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(const FVector& SurfaceNormal)
+{
+	// Match the airframe's established flat-landing threshold. Requiring exactly 1.0 would reject
+	// harmless floating-point noise on an otherwise horizontal imported triangle; 0.99 still
+	// rejects visible roof pitches while allowing at most about eight degrees of deviation.
+	constexpr float MinFlatNormalZ = 0.99f;
+	return SurfaceNormal.GetSafeNormal().Z >= MinFlatNormalZ;
+}
+
 bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	int32 PersonState,
 	int32 BehaviorClass,
@@ -1431,7 +1440,9 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 			const FVector TraceEnd(Candidate.X, Candidate.Y, MissionRoofCenter.Z - 250.0f);
 			FHitResult Hit;
 			if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
-				Hit.bBlockingHit && FMath::Abs(Hit.ImpactPoint.Z - MissionRoofCenter.Z) <= 100.0f)
+				Hit.bBlockingHit &&
+				FMath::Abs(Hit.ImpactPoint.Z - MissionRoofCenter.Z) <= 100.0f &&
+				IsRooftopRescueSurfaceFlat(Hit.ImpactNormal))
 			{
 				SpawnLocation = Hit.ImpactPoint + FVector::UpVector * 92.0f;
 				bFoundSpawnLocation = true;
