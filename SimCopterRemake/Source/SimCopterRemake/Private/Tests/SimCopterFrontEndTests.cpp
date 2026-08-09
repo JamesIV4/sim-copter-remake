@@ -19,9 +19,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterUserCityDisplayNameTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("Extension and punctuation are removed"),
+	TestEqual(TEXT("Extension and other punctuation are removed while apostrophes remain"),
 		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/KATHY'S_RETREAT!!.SC2")),
-		FString(TEXT("Kathys Retreat")));
+		FString(TEXT("Kathy's Retreat")));
 	TestEqual(TEXT("Dashes survive and start a title-case word"),
 		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/LA-ISLA.sc2")),
 		FString(TEXT("La-Isla")));
