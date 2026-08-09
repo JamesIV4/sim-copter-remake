@@ -463,6 +463,7 @@ public:
 	 * XY comes from the rendered airframe skin plus ExitClearanceCm, matching the player's exit.
 	 */
 	FVector GetPassengerDropWorldLocation(int32 SlotIndex = INDEX_NONE) const;
+	float GetPassengerDropHeightOffsetCm() const;
 
 	// Read-only controller presentation state consumed by the radial/passenger Slate layer.
 	ESimCopterControllerMode GetControllerMode() const { return ControllerMode; }

@@ -2021,11 +2021,21 @@ bool ASimCopterMissionSystemActor::IsPassengerDeliveryLocationAllowed(
 		return false;
 	}
 
+	float DropHeightOffsetCm = 0.0f;
+	if (Kind != ESimCopterMissionPassengerKind::Medevac)
+	{
+		if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass())))
+		{
+			DropHeightOffsetCm = Helicopter->GetPassengerDropHeightOffsetCm();
+		}
+	}
+
 	return IsPassengerDeliverySurfaceAllowed(
 		Kind,
 		TrafficSystem->IsWaterTile(TileX, TileY),
 		FeetWorldLocation.Z - TerrainWorldZ,
-		TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 6.0f);
+		TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 6.0f + DropHeightOffsetCm);
 }
 
 bool ASimCopterMissionSystemActor::NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person)
