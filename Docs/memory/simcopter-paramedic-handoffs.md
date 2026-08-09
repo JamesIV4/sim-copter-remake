@@ -541,6 +541,22 @@ to keep them off the apron at all, and this is the smaller change: it waives onl
 this class stand on this kind of tile". **The climb gate and the walk-surface probe still apply, so
 an exempt walker still cannot walk into the terminal.** BHAV 444's four-tile probe does the rest.
 
+## Passenger gravity starts before a landing surface is known (2026-08-08)
+
+`DropPassengerAtSlot` already releases the real cabin occupant at
+`GetPassengerAirDropWorldLocation` and calls `BeginPassengerFall`; the regression was later in
+`UpdateGroundSnap`. That function returned immediately whenever `TraceGround` could not yet find a
+surface. A passenger dropped above `GroundProbeDistanceCm` therefore hung at cabin height instead
+of descending until the ground entered probe range.
+
+The same order corrupted the impact calculation: `PassengerFallStartZ` was not latched until after
+the first successful trace. If gravity ran before that trace, a tall fall would be measured only
+from the already-lowered position. `UpdateGroundSnap` now latches the release Z before tracing and
+integrates pedestrian gravity even on a trace miss. Once a surface is found, the existing landing
+clamp and `FinishPassengerFall(PassengerFallStartZ - GroundedLocation.Z)` decide the injury from the
+full fall. `SimCopter.Passengers.FallGravity` covers cumulative acceleration while no surface is in
+probe range.
+
 ## Evidence and verification
 
 - Fresh executable output:

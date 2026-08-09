@@ -1,20 +1,17 @@
-Put your original SimCopter (1996) game files in THIS folder.
+This SimCopter Remake package is missing its required original-game data.
 
-SimCopter Remake ships none of the original game's data: it reads the city maps,
-models, bitmaps, sounds and tuning tables straight out of a real install. Without
-them the main menu comes up but no city will load.
+Official project builds automatically include the runtime data from
+Reference\SimCopterOriginalGame. If you see this file beside a packaged build,
+that data was omitted or the package's SimCopter folder was removed.
 
-Copy the CONTENTS of your SimCopter installation directory in here, so that this
-folder ends up looking like:
+To repair the package manually, copy these directories from a SimCopter (1996)
+installation into this folder:
 
     SimCopter\bmp\
     SimCopter\cities\
     SimCopter\geo\
     SimCopter\sound\
     SimCopter\tweak\
-    SimCopter\SimCopter.exe
-    ...
+    SimCopter\x\
 
 Do NOT copy the folder itself in - there should be no SimCopter\SimCopter\bmp.
-
-You can delete this file once the game files are in place.

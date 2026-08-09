@@ -70,6 +70,33 @@ int32 RunFaceProgram(const FPeopleBehaviorModel& Model, int32 Head, int32 Health
 } // namespace
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengerFallGravityTest,
+	"SimCopter.Passengers.FallGravity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPassengerFallGravityTest::RunTest(const FString& Parameters)
+{
+	float VerticalVelocity = 0.0f;
+	float Height = ASimCopterGroundAgent::IntegratePedestrianGravityStep(
+		1000.0f,
+		0.5f,
+		980.0f,
+		VerticalVelocity);
+	TestEqual(TEXT("A released passenger accelerates downward"), VerticalVelocity, -490.0f);
+	TestEqual(TEXT("The first gravity step lowers the passenger"), Height, 755.0f);
+
+	Height = ASimCopterGroundAgent::IntegratePedestrianGravityStep(
+		Height,
+		0.5f,
+		980.0f,
+		VerticalVelocity);
+	TestEqual(TEXT("Gravity accumulates while no surface is in probe range"), VerticalVelocity, -980.0f);
+	TestEqual(TEXT("A second gravity step keeps lowering the passenger"), Height, 265.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterPassengerPortraitRenderingTest,
 	"SimCopter.Passengers.PortraitRendering",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
