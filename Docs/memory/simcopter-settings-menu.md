@@ -72,6 +72,8 @@ on career City0's training mix. The original panel's defaults are **Difficulty 2
 **30, 90, 46, 40, 60, 64, 54** for Fire, Crime, Rescue, Riot, Traffic, MedEvac and Transport;
 Day/Night is 0. `FSimCopterMissionSystem::MakeUserCityDefaults` applies that block before a
 `UserCityJobs` session begins, so both the visible thumbs and the live scheduler start together.
+The panel deliberately renders no numeric readouts: `FUN_00440370` builds only the eight original
+name labels, leaving each thumb position as the value display.
 
 **Sound** — Game Volume (cmd 6, horizontal) and the radio's volume (cmd 11) both **320..10000**;
 the tuner (cmd 10) **0..2**. The original maps volume onto the slider logarithmically

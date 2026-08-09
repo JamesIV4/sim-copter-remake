@@ -3,6 +3,7 @@
 #include "SSimCopterUserCityPicker.h"
 
 #include "Formats/SimCopterOriginalGamePaths.h"
+#include "Formats/SimCity2000Reader.h"
 #include "InputCoreTypes.h"
 #include "Misc/Paths.h"
 #include "Brushes/SlateColorBrush.h"
@@ -29,6 +30,90 @@ const FLinearColor ListText(0.08f, 0.08f, 0.09f, 1.0f);
 
 }
 
+FString SSimCopterUserCityPicker::FormatDisplayName(
+	const FString& FilePath,
+	const FString& EmbeddedCityName)
+{
+	FString SourceName = EmbeddedCityName.TrimStartAndEnd();
+	const bool bUsingEmbeddedName = !SourceName.IsEmpty();
+	if (SourceName.IsEmpty())
+	{
+		SourceName = FPaths::GetCleanFilename(FilePath);
+	}
+
+	// Some filenames contain repeated extensions, and TOKYO's embedded CNAM is itself
+	// "TOKYO.SC2". Neither form should expose SC2 as part of the player-facing city name.
+	while (SourceName.EndsWith(TEXT(".sc2"), ESearchCase::IgnoreCase) ||
+		SourceName.EndsWith(TEXT(" sc2"), ESearchCase::IgnoreCase))
+	{
+		SourceName.LeftChopInline(4);
+		SourceName.TrimEndInline();
+	}
+
+	FString Result;
+	Result.Reserve(SourceName.Len());
+	bool bCapitalizeNext = true;
+	bool bPendingSpace = false;
+
+	for (const TCHAR Character : SourceName)
+	{
+		if (FChar::IsAlnum(Character))
+		{
+			if (bPendingSpace && !Result.IsEmpty() && Result[Result.Len() - 1] != TEXT('-'))
+			{
+				Result.AppendChar(TEXT(' '));
+			}
+			Result.AppendChar(bCapitalizeNext ? FChar::ToUpper(Character) : FChar::ToLower(Character));
+			bCapitalizeNext = false;
+			bPendingSpace = false;
+		}
+		else if (Character == TEXT('-'))
+		{
+			Result.TrimEndInline();
+			if (!Result.IsEmpty() && Result[Result.Len() - 1] != TEXT('-'))
+			{
+				Result.AppendChar(TEXT('-'));
+			}
+			bCapitalizeNext = true;
+			bPendingSpace = false;
+		}
+		else if (Character == TEXT('\'') || Character == 0x2019)
+		{
+			// Removing an apostrophe must not split a possessive/contraction into another word.
+			continue;
+		}
+		else
+		{
+			// Whitespace and other punctuation separate words without surviving in the label.
+			bPendingSpace = !Result.IsEmpty() && Result[Result.Len() - 1] != TEXT('-');
+			bCapitalizeNext = true;
+		}
+	}
+
+	Result.TrimStartAndEndInline();
+	while (Result.EndsWith(TEXT("-")))
+	{
+		Result.LeftChopInline(1);
+	}
+	if (Result.IsEmpty() && bUsingEmbeddedName)
+	{
+		return FormatDisplayName(FilePath);
+	}
+	return Result;
+}
+
+FString SSimCopterUserCityPicker::ReadEmbeddedCityName(const FString& FilePath)
+{
+	FSimCity2000City City;
+	FString Error;
+	if (FSimCity2000Reader::LoadCityFromFile(FilePath, City, Error) &&
+		City.FindFirstChunk(TEXT("CNAM")) != nullptr)
+	{
+		return City.CityName;
+	}
+	return FString();
+}
+
 void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 {
 	OnAccepted = InArgs._OnAccepted;
@@ -36,7 +121,10 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 
 	for (const FString& Path : InArgs._CityFilePaths)
 	{
-		Entries.Add(MakeShared<FString>(Path));
+		TSharedPtr<FSimCopterUserCityEntry> Entry = MakeShared<FSimCopterUserCityEntry>();
+		Entry->FilePath = Path;
+		Entry->DisplayName = FormatDisplayName(Path, ReadEmbeddedCityName(Path));
+		Entries.Add(MoveTemp(Entry));
 	}
 
 	USimCopterHangarArt* ArtObject = InArgs._Art;
@@ -85,12 +173,12 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 		RowStyle->SetSelectedTextColor(FSlateColor(ListText));
 
 		AddAtPage(ListRect,
-			SAssignNew(ListView, SListView<TSharedPtr<FString>>)
+			SAssignNew(ListView, SListView<TSharedPtr<FSimCopterUserCityEntry>>)
 			.ListViewStyle(ListStyle.Get())
 			.ListItemsSource(&Entries)
 			.SelectionMode(ESelectionMode::Single)
 			.OnGenerateRow(this, &SSimCopterUserCityPicker::MakeRow)
-			.OnMouseButtonDoubleClick_Lambda([this](TSharedPtr<FString>) { Accept(); }));
+			.OnMouseButtonDoubleClick_Lambda([this](TSharedPtr<FSimCopterUserCityEntry>) { Accept(); }));
 
 		ListView->SetSelection(Entries[0]);
 	}
@@ -140,15 +228,15 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 }
 
 TSharedRef<ITableRow> SSimCopterUserCityPicker::MakeRow(
-	TSharedPtr<FString> Item,
+	TSharedPtr<FSimCopterUserCityEntry> Item,
 	const TSharedRef<STableViewBase>& OwnerTable)
 {
-	return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
+	return SNew(STableRow<TSharedPtr<FSimCopterUserCityEntry>>, OwnerTable)
 		.Style(RowStyle.Get())
 		.Padding(FMargin(6.0f, 1.0f))
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(Item.IsValid() ? FPaths::GetCleanFilename(*Item) : FString()))
+			.Text(FText::FromString(Item.IsValid() ? Item->DisplayName : FString()))
 			.Font(PageFont(ListFontHeight))
 			.ColorAndOpacity(FSlateColor(ListText))
 		];
@@ -161,10 +249,10 @@ void SSimCopterUserCityPicker::Accept()
 		return;
 	}
 
-	const TArray<TSharedPtr<FString>> Selected = ListView->GetSelectedItems();
+	const TArray<TSharedPtr<FSimCopterUserCityEntry>> Selected = ListView->GetSelectedItems();
 	if (Selected.Num() > 0 && Selected[0].IsValid())
 	{
-		OnAccepted.ExecuteIfBound(*Selected[0]);
+		OnAccepted.ExecuteIfBound(Selected[0]->FilePath);
 	}
 }
 

@@ -42,6 +42,12 @@ constexpr int32 ButtonFontHeight = 14;
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterUserCityChosen, const FString&);
 
+struct FSimCopterUserCityEntry
+{
+	FString FilePath;
+	FString DisplayName;
+};
+
 class SSimCopterUserCityPicker : public SCompoundWidget
 {
 public:
@@ -57,12 +63,16 @@ public:
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
+	// Converts a filename or embedded CNAM string to the picker label. The extension is deliberately
+	// omitted; spaces and dashes are retained, while all other punctuation is removed.
+	static FString FormatDisplayName(const FString& FilePath, const FString& EmbeddedCityName = FString());
+
 private:
-	TArray<TSharedPtr<FString>> Entries;
+	TArray<TSharedPtr<FSimCopterUserCityEntry>> Entries;
 	FOnSimCopterUserCityChosen OnAccepted;
 	FSimpleDelegate OnCancelled;
 
-	TSharedPtr<SListView<TSharedPtr<FString>>> ListView;
+	TSharedPtr<SListView<TSharedPtr<FSimCopterUserCityEntry>>> ListView;
 	TArray<TSharedRef<FButtonStyle>> ButtonStyles;
 
 	// Slate's default list and row styles paint an opaque dark background, which would cover the
@@ -71,6 +81,7 @@ private:
 	TSharedPtr<FTableViewStyle> ListStyle;
 	TSharedPtr<FTableRowStyle> RowStyle;
 
-	TSharedRef<ITableRow> MakeRow(TSharedPtr<FString> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	static FString ReadEmbeddedCityName(const FString& FilePath);
+	TSharedRef<ITableRow> MakeRow(TSharedPtr<FSimCopterUserCityEntry> Item, const TSharedRef<STableViewBase>& OwnerTable);
 	void Accept();
 };
