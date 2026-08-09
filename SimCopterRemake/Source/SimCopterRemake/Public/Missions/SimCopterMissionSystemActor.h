@@ -36,8 +36,8 @@ struct FSimCopterMedevacHandoff
 };
 
 // How the mission layer is running the current city. The original shell offered exactly two session
-// kinds through DAT_00518d50: 1 = user city (FUN_004080c0, weights copied from career City0 and
-// optionally overridden by the city file's own 9-dword 0x5eeeeee record) and 2 = career
+// kinds through DAT_00518d50: 1 = user city (FUN_004080c0, a separate editable settings record,
+// optionally overridden by the city file's own 9-dword 0x5eeeeee resource) and 2 = career
 // (FUN_00407f30, per-city record + cities\career\city<N>.sc2). Both always ran the scheduler, so
 // there is no original "no jobs" mode; free roam is expressed the one way the original data can
 // express it - a city whose seven weights sum to zero, which FUN_004a6d20 collapses into an
@@ -269,12 +269,13 @@ public:
 	void StartFreeRoamSession(int32 CareerCityIndex);
 
 	// Jobs arrive on the city's own schedule, as in both original session kinds. CareerCityIndex
-	// supplies the tuning record; a user city uses City0, the way FUN_004080c0 seeds mode 1.
+	// supplies the tuning record; user mode replaces its first nine fields with the separate
+	// FUN_004080c0 defaults.
 	// bFirstJobImmediately rolls the opening job now instead of after the original's 180s countdown.
 	void StartCityJobsSession(int32 CareerCityIndex, bool bFirstJobImmediately = false);
 
-	// User-loaded city sandbox: City0 supplies scheduler tuning, but score has no target and can
-	// never complete/advance a career level.
+	// User-loaded city sandbox: the original mode-1 defaults supply scheduler tuning, but score has
+	// no target and can never complete/advance a career level.
 	void StartUserCitySession(int32 TuningCityIndex = 0, bool bFirstJobImmediately = false);
 
 	// Start one mission of TypeMask right now through the original placement path

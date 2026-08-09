@@ -57,7 +57,7 @@ so fire rescues could never complete either.
 Reaching `PointsNeeded` during Career Mode (`CityJobs` session) transitions `FSimCopterMissionSystem` into a Level Complete state (`IsLevelComplete() == true`). It queues the original fixed dispatcher line `DIS063.WAV` (slot `0x69`) once, notifies the player to land at the airport, spawns 8 airport marching band agents (BHAV 443 `TubaLeader` / BHAV 444 `TubaInit`, `march.wav` sound `0x26`), and launches celebratory fireworks bursts over the airport (`FireworksInit 0x004916e0`). Each mortar launch plays root sound slot `0x17`, `TGSHWH.WAV`, before the later slot-`0x07` `BOOM1.WAV` apex detonation. `Score` is retained on the HUD (does NOT reset to 0 mid-level). Landing on an airport tile (`IsStandingOnAirport() == true`) causes the marching band to approach the helicopter and displays `"Level Complete! Press Enter to advance to level select."` Pressing `Enter` (or `Space` / `Virtual_Gamepad_Accept`) adds `MoneyEarned`, stores `SetCompletedCareerCityIndex(...)` on `USimCopterSessionSubsystem`, and returns to `/Game/MainMenu`, opening `SSimCopterCareerSelect` with successor campaign mission options (`GetSuccessors(...)`).
 
 **User City sandbox points (2026-08-08):** user-loaded cities now open the explicit
-`UserCityJobs` session mode. They retain City0-derived difficulty/weights and the ordinary job
+`UserCityJobs` session mode. They use the original mode-1 default difficulty/weights and the ordinary job
 scheduler, but never call the career level-completion path. The dashboard tooltip shows only
 `Points: <score>` and the 15-cell points meter remains empty regardless of score. This is a
 requested sandbox divergence from `FUN_0044ba30`/`FUN_00452f50`: the retail original had a rolling

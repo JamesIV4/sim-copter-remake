@@ -175,6 +175,25 @@ void FSimCopterMissionSystem::SetCareerCity(const FSimCopterCareerCity& City)
 	RebuildCumulativeWeights();
 }
 
+FSimCopterCareerCity FSimCopterMissionSystem::MakeUserCityDefaults(const FSimCopterCareerCity& BaseCity)
+{
+	// FUN_004080c0 copies nine dwords into DAT_00518cd0, the mode-1 record returned by
+	// FUN_00407bb0. Keeping this as a distinct record is important: career City0 starts at tier 1
+	// with a sparse training-job mix, while a new user city opens with the balanced settings shown
+	// by the original City Settings panel.
+	FSimCopterCareerCity UserCity = BaseCity;
+	UserCity.Difficulty = 2;
+	UserCity.Weights[0] = 30.0f; // Fire
+	UserCity.Weights[1] = 90.0f; // Crime
+	UserCity.Weights[2] = 46.0f; // Rescue
+	UserCity.Weights[3] = 40.0f; // Riot
+	UserCity.Weights[4] = 60.0f; // Traffic
+	UserCity.Weights[5] = 64.0f; // MedEvac
+	UserCity.Weights[6] = 54.0f; // Transport
+	UserCity.DayOrNight = 0;
+	return UserCity;
+}
+
 void FSimCopterMissionSystem::Tick(float DeltaSeconds)
 {
 	int32 Delta1616 = FMath::Clamp(static_cast<int32>(DeltaSeconds * 65536.0f), 0, 0x7fffffff);

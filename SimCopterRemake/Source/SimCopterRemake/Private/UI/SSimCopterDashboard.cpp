@@ -1163,7 +1163,7 @@ FText SSimCopterDashboard::GetPointsToolTipText() const
 
 	const int32 Score = Missions->GetSessionScore();
 
-	// UserCityJobs adopts City0's scheduler tuning, so the existence of a career data record cannot
+	// UserCityJobs keeps a scheduler tuning record, so the existence of that record cannot
 	// determine presentation. Its explicit sandbox mode owns no target and shows only the score.
 	if (!SimCopterMissionSession::HasPointsGoal(Missions->GetSessionMode()))
 	{
