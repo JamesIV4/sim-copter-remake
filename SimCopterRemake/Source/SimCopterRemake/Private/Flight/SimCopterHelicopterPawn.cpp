@@ -2888,50 +2888,30 @@ FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex)
 {
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	FBox AirframeBounds(ForceInit);
-	TryGetAirframeLocalBoundsCm(AirframeBounds);
-	const FVector2D DoorOffset = ComputePassengerDoorOffsetCm(
-		AirframeBounds,
-		SlotIndex,
-		ExitClearanceCm,
-		FVector2D(-PassengerDropForwardOffsetCm, PassengerDropSideOffsetCm));
-	// Z is the flight model's own Altitude: ApplyFlightModelToActor puts the root sphere's BOTTOM
-	// there, so this is where the skids meet whatever the aircraft is standing on, and the actor
-	// origin is a whole 190 cm capsule radius above it.
-	const double DeckZ = GetActorLocation().Z - static_cast<double>(CollisionComponent != nullptr
+	const FVector MidpointLocal = TryGetAirframeLocalBoundsCm(AirframeBounds)
+		? AirframeBounds.GetCenter()
+		: FVector::ZeroVector;
+
+	// Place on the left side 50 cm to the left of the midpoint of the chopper frame,
+	// at the same vertical position as the helicopter frame's midpoint. Do NOT test for ground.
+	const FVector DropLocal = FVector(MidpointLocal.X, MidpointLocal.Y - 50.0f, MidpointLocal.Z);
+
+	return GetActorLocation() +
+		YawFrame.GetUnitAxis(EAxis::X) * DropLocal.X +
+		YawFrame.GetUnitAxis(EAxis::Y) * DropLocal.Y +
+		FVector::UpVector * DropLocal.Z;
+}
+
+float ASimCopterHelicopterPawn::GetPassengerDropHeightOffsetCm() const
+{
+	FBox AirframeBounds(ForceInit);
+	const float MidpointZ = TryGetAirframeLocalBoundsCm(AirframeBounds)
+		? static_cast<float>(AirframeBounds.GetCenter().Z)
+		: 0.0f;
+	const float CapsuleHalfHeight = CollisionComponent != nullptr
 		? CollisionComponent->GetScaledCapsuleHalfHeight()
-		: 0.0f);
-	FVector DropLocation =
-		GetActorLocation() +
-		YawFrame.GetUnitAxis(EAxis::X) * DoorOffset.X +
-		YawFrame.GetUnitAxis(EAxis::Y) * DoorOffset.Y;
-	DropLocation.Z = DeckZ;
-
-	if (GetWorld() != nullptr)
-	{
-		// DOWNWARD ONLY, and from the aircraft's own height. This used to start 900 cm ABOVE the
-		// actor origin - some eleven metres up - and take the first thing it hit on the way down, so
-		// a fare let out beside a helicopter parked next to anything shorter than that was put on
-		// its ROOF instead of on the ground next to the aircraft. Starting at the deck means the
-		// probe can only ever find the surface the aircraft is on or one below it (stepping out over
-		// the lip of a pad), never one above.
-		//
-		// ECC_Camera, not ECC_Visibility: that is the channel pedestrians actually walk on
-		// (TryGetWalkSurfaceZAt, UpdateGroundSnap), and their own capsules ignore it - on Visibility
-		// they block, so a queue of passengers could stack on each other's heads.
-		const FVector TraceStart = DropLocation + FVector::UpVector * PassengerDropProbeLiftCm;
-		const FVector TraceEnd = DropLocation - FVector::UpVector * PassengerDropProbeDepthCm;
-		FHitResult Hit;
-		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterPassengerDrop), false, this);
-		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
-			Hit.bBlockingHit)
-		{
-			// Never above the aircraft: the lift above only exists so the probe starts clear of the
-			// deck itself, and a hit inside it must not push the passenger up onto the skids.
-			DropLocation.Z = FMath::Min(Hit.ImpactPoint.Z, DeckZ);
-		}
-	}
-
-	return DropLocation;
+		: 0.0f;
+	return MidpointZ + CapsuleHalfHeight;
 }
 
 FVector2D ASimCopterHelicopterPawn::ComputePassengerDoorOffsetCm(
