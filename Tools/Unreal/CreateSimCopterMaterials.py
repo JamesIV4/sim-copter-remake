@@ -37,6 +37,23 @@ def create_if_missing(name, create_func):
     create_func()
 
 
+def ensure_instanced_static_mesh_usage(name):
+    """Persist the ISM shader permutation without rebuilding a hand-tuned material graph."""
+    asset_path = f"{MATERIAL_DIR}/{name}"
+    material = unreal.EditorAssetLibrary.load_asset(asset_path)
+    if material is None:
+        raise RuntimeError(f"Cannot set instanced-static-mesh usage on missing {asset_path}")
+    if material.get_editor_property("used_with_instanced_static_meshes"):
+        return
+
+    material.modify(True)
+    material.set_editor_property("used_with_instanced_static_meshes", True)
+    # RecompileMaterial supplies the PostEditChange that makes the usage flag stick and builds the
+    # shader map for the instanced vertex factory; setting the Python property alone is not enough.
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    unreal.EditorAssetLibrary.save_loaded_asset(material, False)
+
+
 def clear_expressions(material):
     for expression in unreal.MaterialEditingLibrary.get_material_expressions(material):
         unreal.MaterialEditingLibrary.delete_material_expression(material, expression)
@@ -1848,6 +1865,11 @@ create_day_night_parameter_collection()
 create_if_missing("M_SimCopterLitTexture", create_lit_texture_material)
 create_if_missing("M_SimCopterLitVertexColor", create_lit_vertex_color_material)
 create_if_missing("M_SimCopterRotorDisc", create_rotor_disc_material)
+# PP200's fan disc uses the existing rotor material on an InstancedStaticMeshComponent. This must
+# run even when create_if_missing preserves the hand-tuned graph: the first city-side implementation
+# only put the flag in create_rotor_disc_material, so the already-existing asset never received it
+# and Unreal replaced the fan with its opaque default material.
+ensure_instanced_static_mesh_usage("M_SimCopterRotorDisc")
 create_if_missing("M_SimCopterSpriteTexture", create_sprite_texture_material)
 # Not in the delete-and-recreate list below: MI_CityImage_* instances hold a hard reference to this
 # parent, and deleting the asset would null it out. To re-tune it, delete it by hand and re-run -

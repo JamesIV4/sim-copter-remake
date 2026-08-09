@@ -72,6 +72,8 @@ on career City0's training mix. The original panel's defaults are **Difficulty 2
 **30, 90, 46, 40, 60, 64, 54** for Fire, Crime, Rescue, Riot, Traffic, MedEvac and Transport;
 Day/Night is 0. `FSimCopterMissionSystem::MakeUserCityDefaults` applies that block before a
 `UserCityJobs` session begins, so both the visible thumbs and the live scheduler start together.
+The remake deliberately overrides the Crime slot from **90 to 0** for a new user city; crime can
+still be enabled immediately from this panel. All other defaults remain decoded values.
 The panel deliberately renders no numeric readouts: `FUN_00440370` builds only the eight original
 name labels, leaving each thumb position as the value display.
 
@@ -82,6 +84,8 @@ indexes volume linearly in [0,10000], so the port is linear over the original's 
 
 ## Remake divergences (all deliberate)
 
+- **New user cities default Crime to 0 rather than the original 90.** The City Settings slider
+  remains available and still covers 0..100, so this changes only session initialization.
 - **The Graphics page carries Unreal's settings, not the original's.** `render.bmp`'s options
   (building textures, ground textures, sky, fog closeness, three display-resolution modes) are all
   1996 concessions to hardware; this project renders the whole city from a handful of runtime
