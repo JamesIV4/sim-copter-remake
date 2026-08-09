@@ -64,7 +64,7 @@ public:
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 	// Converts a filename or embedded CNAM string to the picker label. The extension is deliberately
-	// omitted; spaces and dashes are retained, while all other punctuation is removed.
+	// omitted; spaces, dashes and single quotes are retained, while other punctuation is removed.
 	static FString FormatDisplayName(const FString& FilePath, const FString& EmbeddedCityName = FString());
 
 private:

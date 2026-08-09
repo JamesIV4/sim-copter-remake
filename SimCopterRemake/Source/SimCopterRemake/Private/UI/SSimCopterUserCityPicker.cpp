@@ -79,8 +79,10 @@ FString SSimCopterUserCityPicker::FormatDisplayName(
 		}
 		else if (Character == TEXT('\'') || Character == 0x2019)
 		{
-			// Removing an apostrophe must not split a possessive/contraction into another word.
-			continue;
+			// Apostrophes are part of authored city names (for example, Kathy's Retreat). They do
+			// not begin a new title-case word.
+			Result.AppendChar(Character);
+			bPendingSpace = false;
 		}
 		else
 		{
