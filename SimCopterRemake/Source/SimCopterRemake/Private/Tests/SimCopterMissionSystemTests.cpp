@@ -1012,6 +1012,34 @@ bool FSimCopterEconomyScoreProgressionTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterArsonistRenderedBuildingTargetTest,
+	"SimCopter.Missions.ArsonistRenderedBuildingTarget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterArsonistRenderedBuildingTargetTest::RunTest(const FString& Parameters)
+{
+	// The crime test city reports roads/empty ground on odd cells and a valid 0x80 building on
+	// even/even cells. A rendered-geometry spawn on (63,63) must therefore recover the adjacent
+	// building instead of leaving opcode 60's firebomb permanently tied to an unsuitable street.
+	FSimCopterCrimeTestWorld World;
+	FSimCopterMissionSystem System;
+	System.Initialize(&World, 1);
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	TestTrue(TEXT("Arsonist firebomb finds a nearby suitable building"),
+		System.FindNearestFireSuitableTile(63, 63, 6, TileX, TileY));
+	TestTrue(TEXT("Resolved arson target passes retail FUN_004a5f60"),
+		FSimCopterMissionSystem::IsFireSuitableTile(World.GetXbldTileId(TileX, TileY)));
+	TestTrue(TEXT("Rendered-building adaptation stays local"),
+		FMath::Max(FMath::Abs(TileX - 63), FMath::Abs(TileY - 63)) <= 1);
+
+	World.bAnyBuildings = false;
+	TestFalse(TEXT("No eligible structure does not invent one"),
+		System.FindNearestFireSuitableTile(63, 63, 6, TileX, TileY));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterUserCityPointsPresentationTest,
 	"SimCopter.Economy.UserCityHasNoPointsGoal",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

@@ -976,6 +976,28 @@ void ASimCopterMissionSystemActor::ThrowArsonistFirebomb(const FVector& ThrowerW
 		return;
 	}
 
+	// Retail's walker and building cells are one occupancy model, so the person can throw while
+	// still standing in a cell that FUN_004a5f60 accepts. The remake correctly keeps a capsule out
+	// of rendered walls, which usually moves that same state-11 person onto a road/sidewalk cell and
+	// made every burnout fail before its difficulty roll. The generic mission-person placer searches
+	// at most footprint + 2 rings (six at the largest footprint), so the intended building is still
+	// within this bounded adaptation.
+	int32 IgnitionTileX = INDEX_NONE;
+	int32 IgnitionTileY = INDEX_NONE;
+	constexpr int32 RenderedBuildingIgnitionSearchRadius = 6;
+	if (!MissionSystem.FindNearestFireSuitableTile(
+		TileX,
+		TileY,
+		RenderedBuildingIgnitionSearchRadius,
+		IgnitionTileX,
+		IgnitionTileY))
+	{
+		// The projectile still exists and burns out when there is no eligible structure; it simply
+		// fails FUN_004a5f60 later, as the retail slot does.
+		IgnitionTileX = TileX;
+		IgnitionTileY = TileY;
+	}
+
 	// The lob is 75 to 95 degrees above horizontal, so the landing point is the thrower's own tile
 	// and the flight is short. The remake skips the ballistic slot and grounds it where it lands,
 	// which is the only part of the trajectory the 60-second burn and the ignition roll depend on.
@@ -988,13 +1010,16 @@ void ASimCopterMissionSystemActor::ThrowArsonistFirebomb(const FVector& ThrowerW
 
 	FSimCopterBurningDebris& Slot = BurningDebris.AddDefaulted_GetRef();
 	Slot.World = Landing;
-	Slot.Tile = FIntPoint(TileX, TileY);
+	Slot.Tile = FIntPoint(IgnitionTileX, IgnitionTileY);
 	Slot.BurnSecondsRemaining = ArsonBurnSeconds;
 	Slot.PuffSecondsRemaining = 0.0f;
 
 	// FUN_0048e0b0's type-4 arm posts event 7 at spawn with no owning record (the arsonist passes
 	// -1), so the debris is reported to the scoring layer even though nothing owns it yet.
 	MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisCreated, INDEX_NONE, 1, true);
+	UE_LOG(LogTemp, Verbose,
+		TEXT("Arsonist firebomb burning at person tile (%d,%d), ignition tile (%d,%d)."),
+		TileX, TileY, IgnitionTileX, IgnitionTileY);
 }
 
 void ASimCopterMissionSystemActor::UpdateBurningDebris(const float DeltaSeconds)
@@ -1412,7 +1437,37 @@ bool ASimCopterMissionSystemActor::TrySpawnMissionPerson(
 {
 	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
 	{
-		return TrafficSystem->TrySpawnMissionPerson(PersonState, BehaviorClass, TileX, TileY, EventId);
+		ASimCopterGroundAgent* Person = nullptr;
+		if (!TrafficSystem->TrySpawnMissionPerson(
+			PersonState, BehaviorClass, TileX, TileY, EventId, FString(), &Person))
+		{
+			return false;
+		}
+
+		// FUN_004c4190 returns the placed person and its first opcode-13 outcome soon publishes
+		// the same coordinates. With rendered buildings the collision-aware spawn may be several
+		// cells from the requested building; publish the actual first position immediately so the
+		// ARSONIST/ROBBER/MUGGER marker cannot point at an apparently empty roof or wall until the
+		// BHAV reaches its first loop.
+		if (Person != nullptr && PersonState >= 10 && PersonState <= 13)
+		{
+			int32 ActualTileX = INDEX_NONE;
+			int32 ActualTileY = INDEX_NONE;
+			if (Person->TryGetTileCoordinate(ActualTileX, ActualTileY))
+			{
+				SimCopterMissions::FSimCopterMissionEvent Move;
+				Move.Code = SimCopterMissions::EVT_SetPrimaryCoords;
+				Move.EventId = EventId;
+				Move.X = ActualTileX;
+				Move.Y = ActualTileY;
+				Move.bSilent = true;
+				MissionSystem.PostEvent(Move);
+				UE_LOG(LogTemp, Display,
+					TEXT("Mission criminal spawned: event %d, state %d, class %d, actor %s, tile (%d,%d)."),
+					EventId, PersonState, BehaviorClass, *Person->GetName(), ActualTileX, ActualTileY);
+			}
+		}
+		return true;
 	}
 	return false;
 }

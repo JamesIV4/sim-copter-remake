@@ -1774,6 +1774,47 @@ bool FSimCopterMissionSystem::CanIgniteCrashSite(int32 TileX, int32 TileY) const
 	return IsFireSuitableTile(World->GetXbldTileId(TileX, TileY)) && !IsAnyFireNear(TileX, TileY);
 }
 
+bool FSimCopterMissionSystem::FindNearestFireSuitableTile(
+	const int32 OriginX,
+	const int32 OriginY,
+	const int32 MaxRadius,
+	int32& OutTileX,
+	int32& OutTileY) const
+{
+	OutTileX = INDEX_NONE;
+	OutTileY = INDEX_NONE;
+	if (World == nullptr || MaxRadius < 0)
+	{
+		return false;
+	}
+
+	for (int32 Radius = 0; Radius <= MaxRadius; ++Radius)
+	{
+		for (int32 OffsetY = -Radius; OffsetY <= Radius; ++OffsetY)
+		{
+			for (int32 OffsetX = -Radius; OffsetX <= Radius; ++OffsetX)
+			{
+				if (Radius > 0 && FMath::Abs(OffsetX) != Radius && FMath::Abs(OffsetY) != Radius)
+				{
+					continue;
+				}
+				const int32 TileX = OriginX + OffsetX;
+				const int32 TileY = OriginY + OffsetY;
+				if (TileX < 0 || TileX >= 128 || TileY < 0 || TileY >= 128 ||
+					!IsFireSuitableTile(World->GetXbldTileId(TileX, TileY)))
+				{
+					continue;
+				}
+
+				OutTileX = TileX;
+				OutTileY = TileY;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 bool FSimCopterMissionSystem::IsAnyFireNear(int32 TileX, int32 TileY) const
 {
 	// FUN_004a6860 walks an outward square spiral with run lengths 1,1,2,2,...,8,8 plus a
