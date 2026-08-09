@@ -68,14 +68,26 @@ SimCopterRemake/Source/SimCopterRemake/{Public,Private}/
     Debug/    dev-only helpers
 Docs/         plans, walkthroughs, memory, scratchpad
 Tools/        re-agent + ghidra-bridge (Python, venv is gitignored)
-Reference/SimCopterOriginalGame   original game files — user-provided, gitignored
-SimCopter/    the same thing under the name a PLAYER is told to use — gitignored but for its
-              note; `../SimCopter` from the .uproject is the repo root here and the folder
-              beside the .exe in a packaged build
+Reference/SimCopterOriginalGame   original game files — user-provided and gitignored, but the
+                                  source for packaged runtime data
+SimCopter/    optional developer override for the same data; `../SimCopter` from the .uproject is
+              the repo root here and the automatically populated folder beside the .exe in a
+              packaged build
 ```
 
 Every reader finds that data through `Formats/SimCopterOriginalGamePaths.h` — one candidate list,
 not a per-file copy. Add a search root there, never at a call site.
+
+Game-target builds automatically stage the runtime-required original directories (`bmp`, `cities`,
+`geo`, `sound`, `tweak`, and `x`) from `Reference/SimCopterOriginalGame` into
+`<package root>/SimCopter`. `SimCopterRemake.Build.cs` declares them as loose NonUFS runtime
+dependencies through a gitignored `Intermediate/OriginalGameStaging` tree, and
+`Config/DefaultGame.ini` remaps that tree to the package root. Do not replace this with a manual
+post-package copy, include the original executable/DLLs/manuals/saves, or stage the files inside a
+pak: the runtime readers need ordinary filesystem paths. A Game build must fail if any of those six
+source directories or its representative required files are absent; an unplayable package is not
+an acceptable fallback. Verify packaging against `Manifest_NonUFSFiles_Win64.txt`, as documented in
+`Docs/memory/simcopter-packaged-build.md`.
 
 `bUseUnity = false` in `SimCopterRemake.Build.cs`, deliberately: format readers reuse
 same-named helpers in anonymous namespaces, and unity chunking collided them whenever a file

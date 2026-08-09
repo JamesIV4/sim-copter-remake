@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+using System.IO;
 using UnrealBuildTool;
 
 public class SimCopterRemake : ModuleRules
@@ -36,6 +37,62 @@ public class SimCopterRemake : ModuleRules
 		if (Target.Platform.IsInGroup(UnrealPlatformGroup.Windows))
 		{
 			PrivateDependencyModuleNames.AddRange(new string[] { "DLSSBlueprint", "StreamlineDLSSGBlueprint", "StreamlineReflexBlueprint" });
+		}
+
+		// A packaged game reads the original data as loose files beside the executable. UAT cannot
+		// stage files directly from the repo-level Reference folder, so game targets first copy the
+		// six runtime data trees into the gitignored project Intermediate folder. DefaultGame.ini's
+		// [Staging] remap then lifts them to <Package>/SimCopter, which is ../SimCopter from the
+		// packaged ProjectDir and therefore the first root SimCopterOriginalGamePaths searches.
+		// Editor targets deliberately skip this 237 MB copy; they read Reference directly.
+		if (Target.Type == TargetType.Game)
+		{
+			string OriginalGameRoot = Path.GetFullPath(Path.Combine(
+				ModuleDirectory, "..", "..", "..", "Reference", "SimCopterOriginalGame"));
+			string StagingRoot = Path.Combine("$(ProjectDir)", "Intermediate", "OriginalGameStaging");
+			string[] RequiredDirectories = { "bmp", "cities", "geo", "sound", "tweak", "x" };
+			string[] RequiredFiles =
+			{
+				"bmp/sim3d.bmp",
+				"cities/demo.sc2",
+				"geo/sim3d1.max",
+				"sound/coploop2.wav",
+				"tweak/career.twk",
+				"x/people.df",
+				"x/privanim.df",
+			};
+
+			foreach (string DirectoryName in RequiredDirectories)
+			{
+				string SourceDirectory = Path.Combine(OriginalGameRoot, DirectoryName);
+				if (!Directory.Exists(SourceDirectory))
+				{
+					throw new BuildException(
+						"Cannot build a playable SimCopterRemake game target: required original-game " +
+						"directory '{0}' is missing. Restore Reference/SimCopterOriginalGame/{1}.",
+						SourceDirectory, DirectoryName);
+				}
+
+				// The tweak folder also contains the original editor executable. The remake only
+				// reads the tables, so keep executable code out of the distributed data payload.
+				string FilePattern = DirectoryName == "tweak" ? "*.twk" : "...";
+				RuntimeDependencies.Add(
+					Path.Combine(StagingRoot, DirectoryName, FilePattern),
+					Path.Combine(SourceDirectory, FilePattern),
+					StagedFileType.NonUFS);
+			}
+
+			foreach (string RelativeFile in RequiredFiles)
+			{
+				string SourceFile = Path.Combine(OriginalGameRoot, RelativeFile);
+				if (!File.Exists(SourceFile))
+				{
+					throw new BuildException(
+						"Cannot build a playable SimCopterRemake game target: required original-game " +
+						"file '{0}' is missing. Restore Reference/SimCopterOriginalGame/{1}.",
+						SourceFile, RelativeFile);
+				}
+			}
 		}
 
 		// Uncomment if you are using online features

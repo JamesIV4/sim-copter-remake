@@ -31,20 +31,17 @@ const TCHAR* const RootMarkers[] =
 	TEXT("tweak"), TEXT("TWEAK"),
 };
 
-// The shipped note. DefaultGame.ini stages this folder as NonUFS and then remaps it to the
-// package root, so in a packaged build the file is already sitting beside the executable before
-// the game has ever run - which is the point of it. This copy is the source for the editor, and
-// the repair path for a player who deleted theirs.
+// Source for the recovery note written only when a custom or damaged build has no bundled data.
 const TCHAR* const PlaceholderSourceRelativePath = TEXT("SimCopter");
 
 // Only if the shipped note has gone missing too. Kept terse deliberately: the file on disk is the
 // one people read, and two long texts drift apart.
 const TCHAR* const PlaceholderFallbackText =
 	TEXT("Put the contents of your original SimCopter (1996) install in THIS folder\r\n")
-	TEXT("- bmp\\, cities\\, geo\\, sound\\, tweak\\ and the rest, not the folder itself.\r\n")
+	TEXT("- bmp\\, cities\\, geo\\, sound\\, tweak\\ and x\\, not the folder itself.\r\n")
 	TEXT("\r\n")
-	TEXT("SimCopter Remake ships none of the original game's data and cannot load a\r\n")
-	TEXT("city without it.\r\n");
+	TEXT("Official project builds include the required data automatically. If you see this,\r\n")
+	TEXT("the package was built without it or the SimCopter folder was removed.\r\n");
 }
 
 const TCHAR* const PlayerRootRelativePath = TEXT("../SimCopter");
@@ -59,8 +56,8 @@ void GetSearchRoots(TArray<FString>& OutRoots)
 {
 	OutRoots.Reset();
 
-	// The folder the player is actually told about wins, so dropping an install in there
-	// overrides whatever a developer checkout happens to have lying around.
+	// Bundled packages put their data here. It also remains the explicit developer override, so it
+	// wins over whatever a checkout happens to have under Reference.
 	OutRoots.Add(GetPlayerRootDir());
 	OutRoots.Add(MakeAbsolute(TEXT("SimCopter")));
 

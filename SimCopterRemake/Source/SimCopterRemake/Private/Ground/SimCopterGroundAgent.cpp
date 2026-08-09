@@ -4962,16 +4962,37 @@ bool ASimCopterGroundAgent::TraceGround(FVector& OutGroundLocation) const
 
 void ASimCopterGroundAgent::UpdateGroundSnap(float DeltaSeconds)
 {
+	const FVector CurrentLocation = GetActorLocation();
+	if (bPassengerFallActive && !bPassengerFallStarted)
+	{
+		// Latch the cabin height before asking whether the landing surface is close enough to trace.
+		// The old order waited for TraceGround to succeed, so a high drop could fall part-way before
+		// this was recorded and its impact distance was measured from the wrong height.
+		bPassengerFallStarted = true;
+		PassengerFallStartZ = CurrentLocation.Z;
+	}
+
 	FVector GroundedLocation;
 	if (!TraceGround(GroundedLocation))
 	{
+		// Gravity is not conditional on already knowing where the person will land. In particular,
+		// a passenger released above GroundProbeDistanceCm must descend until a surface enters probe
+		// range instead of hanging at the helicopter's altitude forever.
+		if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
+		{
+			const float NewZ = IntegratePedestrianGravityStep(
+				CurrentLocation.Z,
+				DeltaSeconds,
+				GravityCmPerSec2,
+				VerticalVelocityCmPerSec);
+			SetActorLocation(FVector(CurrentLocation.X, CurrentLocation.Y, NewZ), false);
+		}
 		return;
 	}
 
 	// Vehicles keep exact instant placement (they always sit on the road/bridge surface).
 	// Pedestrians are affected by gravity: they fall onto the surface below (when spawned in the
 	// air or after walking off a ledge) and rest on it, instead of teleporting every tick.
-	const FVector CurrentLocation = GetActorLocation();
 	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian || CurrentLocation.Z <= GroundedLocation.Z + 1.0f)
 	{
 		VerticalVelocityCmPerSec = 0.0f;
@@ -4984,13 +5005,11 @@ void ASimCopterGroundAgent::UpdateGroundSnap(float DeltaSeconds)
 		return;
 	}
 
-	if (bPassengerFallActive && !bPassengerFallStarted)
-	{
-		bPassengerFallStarted = true;
-		PassengerFallStartZ = CurrentLocation.Z;
-	}
-	VerticalVelocityCmPerSec -= GravityCmPerSec2 * DeltaSeconds;
-	float NewZ = CurrentLocation.Z + VerticalVelocityCmPerSec * DeltaSeconds;
+	float NewZ = IntegratePedestrianGravityStep(
+		CurrentLocation.Z,
+		DeltaSeconds,
+		GravityCmPerSec2,
+		VerticalVelocityCmPerSec);
 	if (NewZ <= GroundedLocation.Z)
 	{
 		NewZ = GroundedLocation.Z;
@@ -5002,6 +5021,17 @@ void ASimCopterGroundAgent::UpdateGroundSnap(float DeltaSeconds)
 		const float FallDistance = FMath::Max(0.0f, PassengerFallStartZ - GroundedLocation.Z);
 		FinishPassengerFall(FallDistance);
 	}
+}
+
+float ASimCopterGroundAgent::IntegratePedestrianGravityStep(
+	const float CurrentZ,
+	const float DeltaSeconds,
+	const float GravityCmPerSec2,
+	float& InOutVerticalVelocityCmPerSec)
+{
+	const float SafeDeltaSeconds = FMath::Max(0.0f, DeltaSeconds);
+	InOutVerticalVelocityCmPerSec -= FMath::Max(0.0f, GravityCmPerSec2) * SafeDeltaSeconds;
+	return CurrentZ + InOutVerticalVelocityCmPerSec * SafeDeltaSeconds;
 }
 
 void ASimCopterGroundAgent::SetVisualRootRelativeLocation(const FVector& Local)

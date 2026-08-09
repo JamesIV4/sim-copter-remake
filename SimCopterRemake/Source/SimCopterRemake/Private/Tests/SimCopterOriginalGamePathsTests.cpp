@@ -21,8 +21,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FSimCopterOriginalGamePathsRootShapeTest::RunTest(const FString& Parameters)
 {
 	// The whole point of `../SimCopter`: one relative path that is the repo root to a developer
-	// and the folder beside the .exe to a player. If this ever stops being ProjectDir's parent,
-	// a packaged build stops finding the folder it told the player to fill.
+	// and the automatically populated data folder beside the .exe in a package. If this ever stops
+	// being ProjectDir's parent, packaged builds stop finding the data Build.cs staged.
 	const FString PlayerRoot = SimCopterOriginalGame::GetPlayerRootDir();
 	TestFalse(TEXT("Player root is not empty"), PlayerRoot.IsEmpty());
 	TestTrue(TEXT("Player root is absolute"), !FPaths::IsRelative(PlayerRoot));
@@ -37,7 +37,7 @@ bool FSimCopterOriginalGamePathsRootShapeTest::RunTest(const FString& Parameters
 	TArray<FString> Roots;
 	SimCopterOriginalGame::GetSearchRoots(Roots);
 	TestTrue(TEXT("There are search roots"), Roots.Num() > 0);
-	TestEqual(TEXT("The player's folder is searched first"), Roots[0], PlayerRoot);
+	TestEqual(TEXT("The bundled-data folder is searched first"), Roots[0], PlayerRoot);
 
 	for (const FString& Root : Roots)
 	{
@@ -48,26 +48,24 @@ bool FSimCopterOriginalGamePathsRootShapeTest::RunTest(const FString& Parameters
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FSimCopterOriginalGamePathsShippedNoteTest,
-	"SimCopter.OriginalGamePaths.ShippedNote",
+	FSimCopterOriginalGamePathsFallbackNoteTest,
+	"SimCopter.OriginalGamePaths.FallbackNote",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FSimCopterOriginalGamePathsShippedNoteTest::RunTest(const FString& Parameters)
+bool FSimCopterOriginalGamePathsFallbackNoteTest::RunTest(const FString& Parameters)
 {
-	// The note has to be readable in Explorer BEFORE the game is ever launched, so it ships rather
-	// than being written at startup. Two bits of DefaultGame.ini name this exact folder - the
-	// NonUFS staging entry and the [Staging] remap that lifts it to the package root - and neither
-	// can be checked by the compiler. Moving or renaming the file without editing both would
-	// silently go back to shipping nothing.
-	const FString ShippedNote = FPaths::Combine(
+	// Normal packages contain the required data and never need this. Keep a source copy in Content
+	// for editor/developer recovery; a damaged package whose Content copy is also absent uses the
+	// concise C++ fallback rather than failing to create any diagnostic note.
+	const FString FallbackNote = FPaths::Combine(
 		FPaths::ProjectContentDir(), TEXT("SimCopter"), SimCopterOriginalGame::PlaceholderFileName);
 
 	TestTrue(
-		*FString::Printf(TEXT("The shipped note is at %s"), *ShippedNote),
-		IFileManager::Get().FileExists(*ShippedNote));
+		*FString::Printf(TEXT("The fallback note source is at %s"), *FallbackNote),
+		IFileManager::Get().FileExists(*FallbackNote));
 
 	FString Contents;
-	if (FFileHelper::LoadFileToString(Contents, *ShippedNote))
+	if (FFileHelper::LoadFileToString(Contents, *FallbackNote))
 	{
 		TestTrue(TEXT("The note says what folder it is about"), Contents.Contains(TEXT("SimCopter")));
 		TestTrue(TEXT("The note is not a stub"), Contents.Len() > 200);
@@ -83,10 +81,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterOriginalGamePathsMarkerTest::RunTest(const FString& Parameters)
 {
-	// The trap this check exists for: the `SimCopter` folder EXISTS from the first launch, because
-	// the game creates it to hold the note telling the player what to put there. A plain
-	// DirectoryExists test would resolve to that empty folder and every reader would come up
-	// empty-handed with nothing in the log to say why.
+	// The trap this check exists for: a custom or damaged build can create the `SimCopter` folder
+	// at first launch solely to hold its recovery note. A plain DirectoryExists test would resolve
+	// to that empty folder and every reader would come up empty-handed with nothing in the log to
+	// say why.
 	const FString Scratch = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Tests/OriginalGamePaths"));
 	IFileManager::Get().DeleteDirectory(*Scratch, /*RequireExists=*/false, /*Tree=*/true);
 

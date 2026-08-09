@@ -198,6 +198,19 @@ occupied person's written-off attribute, posts `EVT_PersonDied`, and removes the
 through `FUN_004bfb20`. The port now performs that write-off when `bStartedDying` fires, before the
 aircraft can be repaired and returned to an airport with passengers still attached.
 
+## Dragging a portrait out of the seat well (2026-08-09)
+
+The passenger drag is a Slate `FDragDropOperation`. `GetDefaultDecorator` is the graphic that
+follows the pointer; passing `.Portrait(nullptr)` to `SSimCopterSeatPortrait` creates a valid drag
+with no decorator, so the drop logic works while the passenger appears to stay in the panel.
+
+Pass the same cached PEOPLE1 brush used by the seat image into the operation. The source widget is
+`Hidden` while dragging (not collapsed, so the seat layout does not move), and the decorator uses
+the source geometry's exact scaled size. Its `OnDragged` keeps the original grab offset under the
+pointer instead of using `FDragDropOperation`'s tooltip-style cursor offset. `SSimCopterSeatWell`
+handles a passenger drop without changing the manifest, and the operation restores the hidden
+source widget; an unhandled drop outside the well still calls `DropPassengerAtSlot`.
+
 ## Verification (2026-07-31)
 
 - `RebuildUnrealCpp.bat` — `Result: Succeeded`.
@@ -225,6 +238,12 @@ audibly slowing.
   rebuild was blocked by an active editor Live Coding session; rebuild/test it after closing the
   editor.
 - Not verified in-game; the remaining visual/audio check is intentionally left for an attended run.
+
+### Verification (2026-08-09 portrait drag follow-up)
+
+- `RebuildUnrealCpp.bat` — `Result: Succeeded`.
+- `Automation RunTests SimCopter.Passengers` — 5 passed.
+- Not verified on screen; the cursor anchoring and return animation need an attended drag check.
 
 Related: [[simcopter-people-logic-next]], [[simcopter-paramedic-handoffs]], [[simcopter-sound]],
 [[simcopter-population-rendering]], [[simcopter-ue-figure-component]], [[simcopter-checkup-menu]].

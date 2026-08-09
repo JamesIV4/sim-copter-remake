@@ -905,6 +905,14 @@ private:
 	bool bIgnoresTileClassRules = false;
 
 public:
+	// One semi-implicit gravity step used by airborne pedestrians. Kept pure so a passenger drop
+	// cannot regress back to depending on a successful ground trace before it starts falling.
+	static float IntegratePedestrianGravityStep(
+		float CurrentZ,
+		float DeltaSeconds,
+		float GravityCmPerSec2,
+		float& InOutVerticalVelocityCmPerSec);
+
 	// FUN_004c8f70's box overlap reduced to the two extents the remake keeps for a pair of bodies.
 	// <= 0 is contact. Pure, so the rule can be tested without a city.
 	static float ComputeContactGapCm(

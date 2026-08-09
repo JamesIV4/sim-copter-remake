@@ -22,6 +22,7 @@
 #include "Widgets/SLeafWidget.h"
 #include "Widgets/SNullWidget.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/SWindow.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace
@@ -40,12 +41,18 @@ public:
 	static TSharedRef<FSimCopterPassengerDragDropOp> New(
 		TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn,
 		int32 InSlotIndex,
-		const FSlateBrush* InPortrait)
+		const FSlateBrush* InPortrait,
+		const FVector2f& InDecoratorSize,
+		const FVector2f& InGrabOffset,
+		const TSharedRef<SWidget>& InSourceWidget)
 	{
 		TSharedRef<FSimCopterPassengerDragDropOp> Operation = MakeShared<FSimCopterPassengerDragDropOp>();
 		Operation->Pawn = InPawn;
 		Operation->SlotIndex = InSlotIndex;
 		Operation->Portrait = InPortrait;
+		Operation->DecoratorSize = InDecoratorSize;
+		Operation->GrabOffset = InGrabOffset;
+		Operation->SourceWidget = InSourceWidget;
 		Operation->Construct();
 		return Operation;
 	}
@@ -56,11 +63,34 @@ public:
 		{
 			return nullptr;
 		}
-		return SNew(SImage).Image(Portrait);
+		return SNew(SBox)
+			.WidthOverride(DecoratorSize.X)
+			.HeightOverride(DecoratorSize.Y)
+			[
+				SNew(SImage).Image(Portrait)
+			];
+	}
+
+	virtual void OnDragged(const FDragDropEvent& DragDropEvent) override
+	{
+		if (CursorDecoratorWindow.IsValid())
+		{
+			// Keep the exact point the player grabbed under the pointer. The base operation offsets a
+			// decorator by the OS cursor size, which reads as a detached tooltip rather than as the
+			// passenger portrait being pulled out of its seat.
+			CursorDecoratorWindow->MoveWindowTo(
+				DragDropEvent.GetScreenSpacePosition() - GrabOffset);
+		}
 	}
 
 	virtual void OnDrop(bool bDropWasHandled, const FPointerEvent& MouseEvent) override
 	{
+		if (const TSharedPtr<SWidget> Source = SourceWidget.Pin())
+		{
+			// A handled drop is the seat well accepting the person back. Hidden preserves the seat's
+			// layout during the drag; restoring it here makes the portrait visibly return in place.
+			Source->SetVisibility(EVisibility::Visible);
+		}
 		if (!bDropWasHandled)
 		{
 			if (ASimCopterHelicopterPawn* Helicopter = Pawn.Get())
@@ -75,6 +105,9 @@ private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	int32 SlotIndex = INDEX_NONE;
 	const FSlateBrush* Portrait = nullptr;
+	FVector2f DecoratorSize = FVector2f::ZeroVector;
+	FVector2f GrabOffset = FVector2f::ZeroVector;
+	TWeakPtr<SWidget> SourceWidget;
 };
 
 // The portrait itself: press and move to start the drag.
@@ -105,10 +138,24 @@ public:
 		return FReply::Unhandled();
 	}
 
-	virtual FReply OnDragDetected(const FGeometry&, const FPointerEvent&) override
+	virtual FReply OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
 	{
+		if (Portrait == nullptr)
+		{
+			return FReply::Unhandled();
+		}
+
+		const FVector2f GrabOffset =
+			MouseEvent.GetScreenSpacePosition() - MyGeometry.GetAbsolutePosition();
+		SetVisibility(EVisibility::Hidden);
 		return FReply::Handled().BeginDragDrop(
-			FSimCopterPassengerDragDropOp::New(Pawn, SlotIndex, Portrait));
+			FSimCopterPassengerDragDropOp::New(
+				Pawn,
+				SlotIndex,
+				Portrait,
+				MyGeometry.GetLocalSize(),
+				GrabOffset,
+				SharedThis(this)));
 	}
 
 private:
@@ -771,11 +818,14 @@ void SSimCopterDashboard::RebuildSeats()
 		const int32 SeatRow = SeatIndex / SeatsPerRow;
 		const float PortraitX = SeatFirstPortraitX + Column2 * SeatPortraitStride;
 		const float PortraitY = SeatWellTop + SeatRow * SeatRowStride;
-		TSharedRef<SWidget> Portrait = MakeImage(
+		const FSlateBrush* PortraitBrush = GetBrush(
 			TEXT("PEOPLE1.BMP"),
 			Source,
 			/*bColorKeyed=*/true,
 			/*bNearestNeighbor=*/true);
+		TSharedRef<SWidget> Portrait = PortraitBrush != nullptr
+			? StaticCastSharedRef<SWidget>(SNew(SImage).Image(PortraitBrush))
+			: SNullWidget::NullWidget;
 
 		// An occupied seat can be dragged out to put that passenger down; an empty one is scenery.
 		if (Slots.IsValidIndex(SeatIndex))
@@ -801,7 +851,7 @@ void SSimCopterDashboard::RebuildSeats()
 			Portrait = SNew(SSimCopterSeatPortrait)
 				.Pawn(Pawn)
 				.SlotIndex(SeatIndex)
-				.Portrait(nullptr)
+				.Portrait(PortraitBrush)
 				[
 					Portrait
 				];
