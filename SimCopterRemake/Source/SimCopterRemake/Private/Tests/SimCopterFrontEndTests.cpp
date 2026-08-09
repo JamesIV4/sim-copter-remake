@@ -6,10 +6,39 @@
 #include "Misc/AutomationTest.h"
 #include "UI/SSimCopterCareerSelect.h"
 #include "UI/SSimCopterMainMenu.h"
+#include "UI/SSimCopterUserCityPicker.h"
 
 // The front end's pure logic: the two decoded selection wheels and the career graph. The pages
 // themselves need artwork and a viewport, so they are left to whoever is at the keyboard; these
 // cover the parts that can be wrong silently. Ground truth: Docs/scratchpad/mainmenu-DECODED.md.
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterUserCityDisplayNameTest,
+	"SimCopter.FrontEnd.UserCityDisplayNames",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterUserCityDisplayNameTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Extension and punctuation are removed"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/KATHY'S_RETREAT!!.SC2")),
+		FString(TEXT("Kathys Retreat")));
+	TestEqual(TEXT("Dashes survive and start a title-case word"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/LA-ISLA.sc2")),
+		FString(TEXT("La-Isla")));
+	TestEqual(TEXT("Repeated SC2 extensions are discarded"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/TOKYO.SC2.SC2")),
+		FString(TEXT("Tokyo")));
+	TestEqual(TEXT("Embedded CNAM wins over the filename"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/capewe~1.sc2"), TEXT("CAPE WELLS")),
+		FString(TEXT("Cape Wells")));
+	TestEqual(TEXT("An SC2 suffix in CNAM is hidden"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/tokyo.sc2"), TEXT("TOKYO.SC2")),
+		FString(TEXT("Tokyo")));
+	TestEqual(TEXT("An unusable embedded name falls back to the filename"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/GOOD-CITY.sc2"), TEXT("!!!")),
+		FString(TEXT("Good-City")));
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterMainMenuNavigationTest,

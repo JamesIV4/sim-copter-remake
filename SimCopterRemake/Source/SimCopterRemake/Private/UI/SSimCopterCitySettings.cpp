@@ -29,8 +29,6 @@ const TCHAR* const ThumbBitmap = TEXT("SLIDERTV.BMP");
 // dialog scales its own because that page's tracks are narrower).
 constexpr float ThumbScale = 1.0f;
 
-// The page's own readout colour, matching the labels the original prints in the same wells.
-const FLinearColor ReadoutColor(0.71f, 0.94f, 0.0f, 1.0f);
 const FLinearColor LabelColor(0.71f, 0.94f, 0.0f, 1.0f);
 }
 
@@ -115,7 +113,6 @@ void SSimCopterCitySettings::Construct(const FArguments& InArgs)
 			.OnValueChanged_Lambda([this, Index](const float Alpha)
 			{
 				SetValueForSlider(Values, Index, FMath::RoundToInt(Alpha * static_cast<float>(GetSliderMax(Index))));
-				RefreshReadouts();
 			});
 
 		Sliders[Index] = Slider;
@@ -124,10 +121,8 @@ void SSimCopterCitySettings::Construct(const FArguments& InArgs)
 
 		AddAtPage(Track, Slider);
 
-		// The label well, and the value in the opposite half of the same well. The original prints
-		// nothing but the name; a bare thumb position cannot be read as a number.
+		// The original prints only the name in each well; the thumb position is the sole value display.
 		const FRect& LabelRect = Labels[Index].Rect;
-		const bool bLabelIsAboveTrack = LabelRect.Top < SliderTop;
 
 		AddAtPage(
 			FRect{ LabelRect.Left, LabelRect.Top, LabelRect.Right, LabelRect.Bottom },
@@ -137,16 +132,6 @@ void SSimCopterCitySettings::Construct(const FArguments& InArgs)
 			.Visibility(EVisibility::HitTestInvisible)
 			.Font(PageFont(LabelFontHeight, /*bBold=*/true))
 			.ColorAndOpacity(FSlateColor(LabelColor)));
-
-		// Just outside the well, on the side away from the troughs, so it never covers the name.
-		const float ReadoutTop = bLabelIsAboveTrack ? LabelRect.Top - 20.0f : LabelRect.Bottom + 2.0f;
-		AddAtPage(
-			FRect{ LabelRect.Left, ReadoutTop, LabelRect.Right, ReadoutTop + 18.0f },
-			SAssignNew(Readouts[Index], STextBlock)
-			.Justification(ETextJustify::Center)
-			.Visibility(EVisibility::HitTestInvisible)
-			.Font(PageFont(ValueFontHeight, /*bBold=*/true))
-			.ColorAndOpacity(FSlateColor(ReadoutColor)));
 	}
 
 	AddAtPage(FRect{ OkButtonX, ButtonY, OkButtonX + ButtonWidth, ButtonY + ButtonHeight },
@@ -174,18 +159,6 @@ void SSimCopterCitySettings::Construct(const FArguments& InArgs)
 		MakeScaledScreen(Canvas)
 	];
 
-	RefreshReadouts();
-}
-
-void SSimCopterCitySettings::RefreshReadouts()
-{
-	for (int32 Index = 0; Index < SliderCount; ++Index)
-	{
-		if (Readouts[Index].IsValid())
-		{
-			Readouts[Index]->SetText(FText::AsNumber(GetValueForSlider(Values, Index)));
-		}
-	}
 }
 
 void SSimCopterCitySettings::Accept()

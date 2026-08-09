@@ -94,7 +94,10 @@ composition or exposing the movie's cyan compression matte.
   gitignored alongside the user's original data.
 - **No file dialog.** `SSimCopterUserCityPicker` lists the same `.sc2` files on menu4.bmp — the
   original's keyboard-shortcut list page — keeping title string 40. Its rectangles are *measured*
-  off that bitmap, not decoded, because the original never lays a file list on it.
+  off that bitmap, not decoded, because the original never lays a file list on it. Display labels
+  prefer the city's internal `CNAM` chunk, fall back to the filename, remove the extension and all
+  punctuation except dashes, strip a trailing `SC2` marker even when it is embedded in `CNAM`, and
+  normalize the result to title case; selection still returns the untouched source path.
 - **Open Career/User Game use an in-app saved-game picker.** The original routes both items through
   a Win32 file dialog (`*.scc` for careers and `*.scu` for user games). The remake instead lists
   its versioned SaveGame slots on `menu4.bmp`, filtered to the same career/user split. See
