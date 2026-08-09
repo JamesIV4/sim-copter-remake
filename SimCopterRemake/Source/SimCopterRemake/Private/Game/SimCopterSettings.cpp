@@ -351,13 +351,17 @@ void USimCopterSettings::ApplySound(const UObject* WorldContextObject)
 
 	if (USimCopterRadioSubsystem* Radio = USimCopterRadioSubsystem::Get(WorldContextObject))
 	{
-		Radio->SetVolume(VolumeIndexToScale(RadioVolume) * (bAutoQuiet ? AutoQuietScale : 1.0f));
 		Radio->SetSlotEnabled(ESimCopterRadioSlot::Dj, bDjEnabled);
 		Radio->SetSlotEnabled(ESimCopterRadioSlot::Commercial, bCommercialsEnabled);
 		if (Radio->GetStationCount() > 0)
 		{
+			// SetStationIndex deliberately returns the rocker to full on a real channel change. During
+			// settings restore the saved volume is authoritative, so settle the station first and apply
+			// that volume last; the opposite order made the dash show the saved low value while the
+			// already-playing radio remained at full gain.
 			Radio->SetStationIndex(FMath::Clamp(RadioStation, 0, Radio->GetStationCount() - 1));
 		}
+		Radio->SetVolume(VolumeIndexToScale(RadioVolume) * (bAutoQuiet ? AutoQuietScale : 1.0f));
 	}
 }
 
@@ -373,7 +377,13 @@ void USimCopterSettings::SetRadioVolume(const int32 Value)
 
 void USimCopterSettings::SetRadioStation(const int32 Index)
 {
-	RadioStation = FMath::Max(Index, 0);
+	const int32 NewStation = FMath::Max(Index, 0);
+	if (NewStation != RadioStation)
+	{
+		// The channel selector physically returns the radio rocker to the top.
+		RadioVolume = VolumeMax;
+	}
+	RadioStation = NewStation;
 }
 
 void USimCopterSettings::SetDjEnabled(const bool bEnabled)

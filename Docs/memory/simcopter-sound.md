@@ -170,7 +170,7 @@ Between items the scheduler waits for the current sound to stop and then for **4
 (`entry+0xc`, starting at -1) — multi-part items played in sequence, which is what the shipped
 `ad013a`/`ad013b` and `ad050a`/`ad050b` pairs are.
 
-## The dash tuner (ported 2026-07-31)
+## The dash tuner and volume fader (tuner ported 2026-07-31; fader 2026-08-09)
 
 The radio lives in **dash4**, the 455x43 strip above the instrument panel: an FM head unit whose
 lit scale is printed 88 / 92 / 96 / 104 / 108. (Those are evenly spaced in *pixels* but not in
@@ -188,6 +188,29 @@ The port therefore hangs the needle's end detents on the outermost printed label
 divides evenly between, which lands the five shipped stations at 22.0, 37.5, 53.0, 68.5, 84.0 —
 within half a pixel of every label. `Docs/scratchpad/sound/radio/preview_needle.py` composites the
 result onto the real artwork so this can be re-checked without launching the game.
+
+The narrow black well beside the printed **11 / 5 / 0** is live too. `FUN_00451980` stores its
+rectangle as **(98,19)-(110,39)**, and `FUN_00451e30` accepts six extra pixels above and below for
+input. `FUN_004520a0` paints the indicator at **x 100..101, y..y+1** in palette index 100 (red),
+using the logarithmic pair `FUN_004402a0` / `FUN_004402d0`; their five doubles at
+`0x004f2180..0x004f21a0` are 0.5, 10000, 0.0005, 1/ln(2), and -2000. The resulting marker positions
+are y=19 at stored volume 10000, y=29 at 8000, and y=34 at 6000. Direct input at y=34 or below is
+the off detent; a live click also powers the set on. The remake preserves this geometry and curve,
+adds drag tracking, and stores the selected volume through `USimCopterSettings`. The bundled
+high-resolution dashboard rebuilt the radio furniture at slightly different positions, so its
+overlays carry art-only corrections: the volume control is 3 page pixels left, its marker travels
+from y=20 through y=41 so the 2px rocker stays inside the groove, and the tuner needle is 4 page
+pixels lower so it meets the display's bottom track. Raw `DASH4.BMP` retains the decoded
+coordinates. Dashboard volume input writes only the stored/live gain — never `ApplyAll`, because
+that also reapplies a possibly stale saved channel. A real channel change resets both the runtime
+and stored radio volume to 10000 before rebuilding that station's playlists. The live gain must be
+forwarded to `USimCopterAudioSubsystem::SetRadioVolumeMultiplier`: `PlayRadioFile` applying it only
+when a new item starts leaves the already-playing `RadioComponent` at its old volume. The audio
+subsystem stores the radio multiplier separately, reapplies it immediately to that component, and
+combines it with the master-volume gain whenever either value changes. Settings restore must set
+the saved station before the saved volume because a real `SetStationIndex` resets runtime volume
+to full; the dashboard paints the live subsystem value when available so runtime and rocker cannot
+silently diverge.
 
 Radio state reaches the dash over a **message bus**, not by polling: `FUN_00430950` publishes a
 7-dword struct under the id `0x5245494f` ("REIO") and `FUN_00430890` reads it back, falling back

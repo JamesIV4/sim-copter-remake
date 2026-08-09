@@ -410,10 +410,25 @@ bool USimCopterAudioSubsystem::PlayRadioFile(const FString& AbsolutePath, float 
 
 	RadioComponent->Stop();
 	RadioComponent->SetSound(Wave);
-	RadioComponent->SetVolumeMultiplier(VolumeMultiplier * VolumeIndexToGain(MasterVolume));
+	SetRadioVolumeMultiplier(VolumeMultiplier);
 	RadioEndTime = FPlatformTime::Seconds() + static_cast<double>(Clip.Duration);
 	RadioComponent->Play();
 	return true;
+}
+
+void USimCopterAudioSubsystem::SetRadioVolumeMultiplier(const float VolumeMultiplier)
+{
+	RadioVolumeMultiplier = FMath::Clamp(VolumeMultiplier, 0.0f, 1.0f);
+	ApplyRadioVolume();
+}
+
+void USimCopterAudioSubsystem::ApplyRadioVolume()
+{
+	if (RadioComponent != nullptr)
+	{
+		RadioComponent->SetVolumeMultiplier(
+			RadioVolumeMultiplier * VolumeIndexToGain(MasterVolume));
+	}
 }
 
 void USimCopterAudioSubsystem::StopRadio()
@@ -849,6 +864,7 @@ void USimCopterAudioSubsystem::SetMasterVolume(int32 Volume)
 	{
 		ApplySlotVolume(Id);
 	}
+	ApplyRadioVolume();
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -228,6 +228,9 @@ public:
 
 	/** Absolute path, because the radio tree is nested well below the slot search roots. */
 	bool PlayRadioFile(const FString& AbsolutePath, float VolumeMultiplier = 1.0f);
+	/** Updates both the stored radio gain and the item that is already playing. */
+	void SetRadioVolumeMultiplier(float VolumeMultiplier);
+	float GetRadioVolumeMultiplier() const { return RadioVolumeMultiplier; }
 	void StopRadio();
 	bool IsRadioPlaying() const;
 
@@ -344,6 +347,7 @@ private:
 	/** The radio's single voice. */
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> RadioComponent = nullptr;
+	float RadioVolumeMultiplier = 1.0f;
 
 	/** The front end's single looping music voice (menuback.wav). */
 	UPROPERTY(Transient)
@@ -373,6 +377,7 @@ private:
 
 	/** Applies VolumeIndex * master to the component. */
 	void ApplySlotVolume(int32 Id);
+	void ApplyRadioVolume();
 
 	static USoundWaveProcedural* MakeWave(const FSimCopterPcmClip& Clip, bool bLoop, UObject* Outer);
 };

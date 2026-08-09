@@ -51,6 +51,11 @@ public:
 
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
 
+	/** SCHOOK: DashRadioVolumeMarker 0x004520a0 - stored volume to DASH4 page-space Y. */
+	static int32 RadioVolumeToMarkerY(int32 Volume);
+	/** SCHOOK: DashRadioInput 0x00451e30 - DASH4 page-space Y to stored volume; zero is off. */
+	static int32 RadioMarkerYToVolume(int32 PageY);
+
 private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
