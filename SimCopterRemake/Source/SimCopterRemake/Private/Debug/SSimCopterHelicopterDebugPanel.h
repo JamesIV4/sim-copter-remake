@@ -79,6 +79,7 @@ private:
 	FReply HandleDispatchClear();
 	// One per entry in the shared mission catalog.
 	FReply HandleStartMission(int32 TypeMask);
+	FReply HandleStartSpeeder();
 
 	EVisibility GetMegaphoneRowVisibility() const;
 	EVisibility GetTearGasRowVisibility() const;

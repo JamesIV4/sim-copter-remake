@@ -736,6 +736,7 @@ public:
 	// type whose tile test finds nothing nearby reports a failure rather than forcing a spawn.
 	// Returns the event id, or INDEX_NONE.
 	int32 DebugStartMission(int32 TypeMask);
+	bool DebugStartSpeeder();
 	FString GetLastDebugMissionStatus() const { return LastDebugMissionStatus; }
 
 	// The decompiled flight simulation state (read-only; for HUD and tests).

@@ -15,6 +15,46 @@ constexpr int32 SharedRescueSerialIndex = 4;
 constexpr int32 RiotSerialIndex = 11;
 }
 
+const TCHAR* GetMissionUpdateText(const int32 TextId)
+{
+	switch (TextId)
+	{
+	case 0x3a2: return TEXT("Fire Spreading!");
+	case 0x3a3: return TEXT("Fire Doused!");
+	case 0x3a4: return TEXT("Fire Destroyed Area!");
+	case 0x3a5: return TEXT("Area Saved!");
+	case 0x3a6: return TEXT("Debris Doused!");
+	case 0x3a7: return TEXT("Sim Rescued!");
+	case 0x3a8: return TEXT("Sim Transported!");
+	case 0x3a9: return TEXT("Sim MedEvaced!");
+	case 0x3aa: return TEXT("Sim Picked Up!");
+	case 0x3ab: return TEXT("Sim Died!");
+	case 0x3ac: return TEXT("Vehicle Doused!");
+	case 0x3ad: return TEXT("Car UnJammed!");
+	case 0x3ae: return TEXT("Vehicle Burned!");
+	case 0x3af: return TEXT("Waiting For Cops!");
+	case 0x3b0: return TEXT("Speeder Caught!");
+	case 0x3b1: return TEXT("UFO Shot Down!");
+	case 0x3b2: return TEXT("Sim Mugged!");
+	case 0x3b3: return TEXT("SOS!");
+	case 0x3b4: return TEXT("Burglary Committed!");
+	case 0x3b5: return TEXT("Arsonist On Loose!");
+	case 0x3b6: return TEXT("Sims Waiting!");
+	case 0x3b7: return TEXT("Cars Waiting!");
+	case 0x3b8: return TEXT("Sim Injured!");
+	case 0x3b9: return TEXT("Copter Crashed!");
+	case 0x3ba: return TEXT("You Hurt A Sim!");
+	case 0x3bb: return TEXT("Plane Shot Down!");
+	case 0x3bc: return TEXT("Boat Sunk!");
+	case 0x3bd: return TEXT("You Blocked Traffic!");
+	case 0x3be: return TEXT("Train Destroyed!");
+	case 0x3bf: return TEXT("You Caused an Accident!");
+	case 0x3c0: return TEXT("Missile Caused Damage!");
+	case 0x3c1: return TEXT("Rioter Has Left!");
+	default: return TEXT("Mission update");
+	}
+}
+
 bool FSimCopterMissionSystem::LoadCareerData(const FString& TweakFilePath)
 {
 	FSimCopterTweakFile TweakFile;
@@ -2513,12 +2553,12 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_PersonDied:
-		TextId = 0x3b1;
+		TextId = 0x3ab;
 		if (RecordIndex == INDEX_NONE) EarnedPoints = -Tuning.PersonDiedPointsPenalty;
 		bPostUi = true;
 		break;
 	case EVT_CarDoused:
-		TextId = 0x3b6;
+		TextId = 0x3ac;
 		EarnedCash = Event.Value * Tuning.CarDousedMoney;
 		bPostUi = true;
 		if (World) World->PlayUiSound(0x1e);
@@ -2530,9 +2570,33 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		if (World) World->PlayUiSound(0x1e);
 		break;
 	case EVT_CarBurned:
-		TextId = 0x3b8;
+		TextId = 0x3ae;
 		EarnedPoints = -(Event.Value * Tuning.CarFirePoints);
 		bPostUi = true;
+		break;
+	case EVT_SpeederPursuit:
+		TextId = 0x3af;
+		EarnedCash = Event.Value * Tuning.SpeederIncPoints;
+		bPostUi = true;
+		if (World) World->PlayUiSound(0x1e);
+		break;
+	case EVT_SpeederCaught:
+		TextId = 0x3b0;
+		EarnedPoints = Event.Value * Tuning.SpeederEndPoints;
+		EarnedCash = Event.Value * Tuning.SpeederEndMoney;
+		bPostUi = true;
+		if (World) World->PlayUiSound(0x1e);
+		break;
+	case EVT_UfoResolved:
+		TextId = 0x3b1;
+		EarnedPoints = Event.Value * Tuning.UfoPoints;
+		EarnedCash = Event.Value * Tuning.UfoMoney;
+		bPostUi = true;
+		if (World)
+		{
+			World->PlayUiSound(0x1e);
+			World->PlayUiSound(0x21);
+		}
 		break;
 	case EVT_NagMugging:
 		TextId = 0x3b2; // "Sim Mugged!"
@@ -2565,13 +2629,14 @@ void FSimCopterMissionSystem::PayIncremental(const FSimCopterMissionEvent& Event
 		EarnedPoints = -(Event.Value * 10);
 		bPostUi = true;
 		break;
-	case EVT_CrashPenaltyA: EarnedPoints = -100; EarnedCash = -300; bPostUi = true; break;
-	case EVT_CrashPenaltyB: EarnedPoints = -100; EarnedCash = -200; bPostUi = true; break;
-	case EVT_CrashPenaltyC: EarnedPoints = -100; EarnedCash = -100; bPostUi = true; break;
-	case EVT_CrashPenaltyD: EarnedPoints = -50; EarnedCash = -50; bPostUi = true; break;
-	case EVT_CrashPenaltyE: EarnedPoints = -100; EarnedCash = -150; bPostUi = true; break;
-	case EVT_CrashPenaltyF: EarnedPoints = -100; EarnedCash = -75; bPostUi = true; break;
-	case EVT_CrashPenaltyG: EarnedPoints = -200; EarnedCash = -200; bPostUi = true; break;
+	case EVT_CrashPenaltyA: TextId = 0x3b9; EarnedPoints = -100; bPostUi = true; break;
+	case EVT_CrashPenaltyB: TextId = 0x3ba; EarnedPoints = -100; EarnedCash = -300; bPostUi = true; break;
+	case EVT_CrashPenaltyC: TextId = 0x3bb; EarnedPoints = -100; EarnedCash = -200; bPostUi = true; break;
+	case EVT_CrashPenaltyD: TextId = 0x3bc; EarnedPoints = -100; EarnedCash = -100; bPostUi = true; break;
+	case EVT_CrashPenaltyE: TextId = 0x3bd; EarnedPoints = -50; EarnedCash = -50; bPostUi = true; break;
+	case EVT_CrashPenaltyF: TextId = 0x3be; EarnedPoints = -100; EarnedCash = -150; bPostUi = true; break;
+	case EVT_CrashPenaltyG: TextId = 0x3bf; EarnedPoints = -100; EarnedCash = -75; bPostUi = true; break;
+	case EVT_CrashPenaltyH: TextId = 0x3c0; EarnedPoints = -200; EarnedCash = -200; bPostUi = true; break;
 	default:
 		break;
 	}

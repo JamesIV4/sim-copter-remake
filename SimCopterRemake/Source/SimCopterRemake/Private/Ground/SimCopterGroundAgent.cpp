@@ -46,7 +46,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterGroundAgent, Log, All);
 namespace
 {
 constexpr uint32 GroundAgentRuntimeSaveMagic = 0x4147454e; // 'AGEN'
-constexpr int32 GroundAgentRuntimeSaveVersion = 3;
+constexpr int32 GroundAgentRuntimeSaveVersion = 4;
 
 void SerializeAgentBool(FArchive& Archive, bool& Value)
 {
@@ -684,6 +684,14 @@ void ASimCopterGroundAgent::SetPedestrianFigureClothesOffset(int32 NewClothesOff
 	}
 }
 
+bool ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(
+	const float RiseCm,
+	const float MaxStepCm,
+	const bool bMoveThroughWalls)
+{
+	return bMoveThroughWalls || FMath::Abs(RiseCm) <= FMath::Max(0.0f, MaxStepCm);
+}
+
 bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 {
 	// FUN_004c6970: every move tick rebinds the clip from the move result and speed -
@@ -715,7 +723,6 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
 	const float CurrentFeetZ = GetActorLocation().Z - HalfHeight;
 	const float MaxClimbCm = MaxStepClimbOriginalUnits * UnitCm;
-	const float MaxDropCm = (MaxStepClimbOriginalUnits + 0.5f) * UnitCm; // -(0x8000 + max) in 16.16
 
 	const int32 StartFacing = int32(Context.Attributes[EBhavAttr::Facing]) & 7;
 	// FUN_004c9300 retries clockwise up to 8 extra facings only while +0x16a is set.
@@ -806,17 +813,16 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 		// column). This - not the tile class - is what stops people at building walls: the
 		// surface there is the roof, far above the 5-unit climb allowance.
 		//
-		// Only the CLIMB arm has BHAV 308's "move through walls" escape. FUN_004c9470 reads
+		// FUN_004c9470's retail test is asymmetric: only the climb arm has BHAV 308's "move
+		// through walls" escape, and its ordinary downward allowance is another half-unit:
 		//     if (maxClimb < rise)      { if (person+0x190 == 0) result = 1; else keep the old Z; }
 		//     else if (rise < -0x8000 - maxClimb) { result = 2; }
-		// so the drop arm is unconditional: no flag has ever let a person step down off a ledge.
-		// The remake wrapped both arms in the flag, and that is how a paramedic walking over to
-		// the helicopter - with the flag left set by BHAV 269, or by 308 after four failed moves -
-		// walked straight off the edge of the hospital roof.
 		//
-		// The original's climb escape keeps the walker's existing Z rather than lifting them onto
-		// whatever they walked into. The remake has no separate walker Z (the ground snap owns it),
-		// so allowing the horizontal step is the whole of that arm here.
+		// RENDERED-BUILDING ADAPTATION: the remake has no separate walker Z; its ground snap puts a
+		// successful horizontal step directly on the rendered roof. Thus the climb escape can put a
+		// person across a gap that the retail drop arm then forbids in reverse. Apply one symmetric
+		// limit, including the escape, so every reachable height can also be left. The hospital roof
+		// post's explicit containment runs above this and still prevents its medic walking off.
 		float SurfaceZ = 0.0f;
 		if (!TryGetWalkSurfaceZAt(TargetLocation, SurfaceZ))
 		{
@@ -831,14 +837,9 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 
 		{
 			const float Rise = SurfaceZ - CurrentFeetZ;
-			if (Rise > MaxClimbCm && !bMoveThroughWalls)
+			if (!IsPedestrianHeightTransitionAllowed(Rise, MaxClimbCm, bMoveThroughWalls))
 			{
-				LastBlockResult = 1; // FaCl recoil
-				continue;
-			}
-			if (Rise < -MaxDropCm)
-			{
-				LastBlockResult = 2; // Whoa
+				LastBlockResult = Rise > 0.0f ? 1 : 2; // FaCl climb / Whoa drop recoil
 				continue;
 			}
 		}
@@ -3585,6 +3586,7 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 	SerializeAgentBool(Writer, bSnapToGround);
 
 	SerializeAgentBool(Writer, bCriminalCar);
+	SerializeAgentBool(Writer, bSpeeder);
 	SerializeAgentBool(Writer, bFleeing);
 	SerializeAgentBool(Writer, bStopOrdered);
 	SerializeAgentBool(Writer, bStopped);
@@ -3695,6 +3697,14 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	SerializeAgentBool(Reader, bSnapToGround);
 
 	SerializeAgentBool(Reader, bCriminalCar);
+	if (Version >= 4)
+	{
+		SerializeAgentBool(Reader, bSpeeder);
+	}
+	else
+	{
+		bSpeeder = false;
+	}
 	SerializeAgentBool(Reader, bFleeing);
 	SerializeAgentBool(Reader, bStopOrdered);
 	SerializeAgentBool(Reader, bStopped);
@@ -4438,13 +4448,16 @@ void ASimCopterGroundAgent::LimitTrafficSpeedScale(float MaxSpeedScale)
 void ASimCopterGroundAgent::MakeCriminalCar(const int32 InEventId, const int32 CruiseDelay1616)
 {
 	// FUN_004b8540: the pool slot is claimed, the mission event id recorded at +0x113, and the
-	// state machine starts at 0. The fleeing flag is what makes FUN_0049dab0 accept it, and a
-	// criminal car flies it from the moment it is placed.
+	// state machine starts at 0. MissionEventId is the remake's shared ownership identity: it
+	// keeps this event object out of ambient distance culling just like every mission person and
+	// vehicle. Without it, CARROBBR vanished on the first population-prune tick whenever the
+	// burglary spawned beyond the ambient traffic radius.
 	bCriminalCar = true;
 	bFleeing = true;
 	bStopOrdered = false;
 	bStopped = false;
 	CriminalEventId = InEventId;
+	MissionEventId = InEventId;
 	SpotlightMark = 0;
 	CriminalState = static_cast<uint8>(SimCopterCriminalCar::EState::Cruising);
 	BurglarOutsideSeconds = 0.0f;
@@ -4455,8 +4468,43 @@ void ASimCopterGroundAgent::MakeCriminalCar(const int32 InEventId, const int32 C
 	CriminalDriverMessage = 0;
 }
 
+void ASimCopterGroundAgent::MakeSpeeder()
+{
+	// SCHOOK: DesignateSpeeder 0x0049af00/0x0049af70. Retail raises flag 0x800 on an
+	// already-live ordinary car; it does not allocate a mission record or use CARROBBR.
+	bSpeeder = true;
+	bFleeing = true;
+	bStopOrdered = false;
+	bStopped = false;
+	SpotlightMark = 0;
+	CriminalStopScale = 1.75f;
+}
+
+void ASimCopterGroundAgent::ClearSpeeder()
+{
+	bSpeeder = false;
+	bFleeing = false;
+	bStopOrdered = false;
+	bStopped = false;
+	SpotlightMark = 0;
+	CriminalStopScale = 1.0f;
+}
+
 bool ASimCopterGroundAgent::TryOrderStop(const int32 CallerMessageId)
 {
+	if (bSpeeder)
+	{
+		// An ordinary speeder uses the shared vehicle halt FUN_0049e0c0. Unlike CARROBBR's
+		// FUN_004b89a0 override, it does not require an illumination mark before police may stop it.
+		if (bStopOrdered || bStopped)
+		{
+			return false;
+		}
+		bStopOrdered = true;
+		CriminalStopScale = TrafficSpeedScale;
+		return true;
+	}
+
 	if (!bCriminalCar)
 	{
 		return false;

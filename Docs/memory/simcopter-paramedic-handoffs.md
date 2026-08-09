@@ -165,6 +165,14 @@ is a remake-only state.
 Still divergent and deliberate: the original also lets +0x190 push through **people and objects**
 (both collision arms only return 4/5 when it is clear); the remake's bump check is not gated by it.
 
+**Rendered-roof follow-up (2026-08-09): height traversal is symmetric in the remake.** Robbers can
+trigger BHAV 308 after repeated failures and the pursuing class-14 cop follows the same route. Since
+the remake's ground snap lifts a successful horizontal step onto the rendered roof (unlike the
+retail old-Z escape above), both could climb a gap which the unconditional drop arm made impossible
+to reverse. `IsPedestrianHeightTransitionAllowed` now uses the same five-unit ordinary limit up and
+down and applies BHAV 308's escape both ways. The hospital post containment runs before this shared
+gate, so the deliberate roof-medic boundary remains intact.
+
 **Containment beats chasing movers.** `MoveStep` gates climbs and drops, but `MoveByTrafficSeparation`
 and `AddTrafficVelocityImpulse` displace agents with no walked-surface check at all, and once the
 body is past the edge `UpdateGroundSnap`'s gravity does the rest. So the fix is on the transform, not

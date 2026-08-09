@@ -312,6 +312,22 @@ On positive completion, `FUN_004aabf0` plays the type-specific completion voice 
 failure `0x60` at volume `0x96`. Consuming that success-pool PRNG draw is required for later mission
 alignment.
 
+## Runtime ownership and police deployment traps
+
+- `FUN_004b9e40` deploys an officer through `FUN_004bd980(0x0e, personState)`. The first value is
+  behavior class 14; it must not be passed as an unspecified/random class. The person state is 8
+  for the robber foot chase (BHAV 1401 -> 1150) and `0x0e` for a fleeing-car stop (BHAV 1402).
+- A `CARROBBR` actor must carry its event in both `CriminalEventId` (the decoded car-state field)
+  and the remake's shared `MissionEventId` ownership field. Population pruning runs before the
+  criminal-car update; without the shared field, a correctly spawned getaway car outside the
+  ambient traffic radius is destroyed before its first state-machine tick. Because mission-owned
+  actors bypass ambient culling, `UpdateCriminalCars` must explicitly destroy the car once its
+  mission record is no longer active.
+- `FUN_004aa150` emits STRINGTABLE ids rather than generic score labels. In particular event
+  `0x2a` emits `0x3b4`, whose retail text is `Burglary Committed!`. The full decoded function is
+  preserved at `Docs/scratchpad/ghidra/mission_incremental_text_004aa150.txt`; ids `0x3a2..0x3c1`
+  are not a sequential set of the remake's former car/death labels and must be mapped directly.
+
 ## Port and verification anchors
 
 - Core records/lifecycle/scoring/voice: `FSimCopterMissionSystem`.
