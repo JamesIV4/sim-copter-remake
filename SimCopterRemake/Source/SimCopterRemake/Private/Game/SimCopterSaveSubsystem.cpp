@@ -4,6 +4,7 @@
 
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "City/SimCopterDayNight.h"
 #include "City/SimCity2000CityActor.h"
 #include "Game/SimCopterCareerProgression.h"
 #include "Ground/SimCopterAmbientVehicles.h"
@@ -101,6 +102,27 @@ bool USimCopterSaveGame::IsStructurallyValid(
 			return false;
 		}
 	}
+	if (CityDifficulty < 0 || CityDifficulty > 3)
+	{
+		OutError = TEXT("The save contains an invalid city difficulty.");
+		return false;
+	}
+	if (FormatVersion >= 3 &&
+		(!bHasTimeOfDayState || !FMath::IsFinite(TimeOfDayHours) || TimeOfDayHours < 0.0f || TimeOfDayHours > 24.0f ||
+		 static_cast<uint8>(TimeOfDayMode) > static_cast<uint8>(ESimCopterTimeOfDayMode::Static) ||
+		 !FMath::IsFinite(StaticTimeOfDayHours) ||
+		 StaticTimeOfDayHours < USimCopterSettings::StaticTimeOfDayMinHours ||
+		 StaticTimeOfDayHours > USimCopterSettings::StaticTimeOfDayMaxHours ||
+		 !FMath::IsFinite(DayRealMinutes) ||
+		 DayRealMinutes < USimCopterSettings::CycleLengthMinMinutes ||
+		 DayRealMinutes > USimCopterSettings::CycleLengthMaxMinutes ||
+		 !FMath::IsFinite(NightRealMinutes) ||
+		 NightRealMinutes < USimCopterSettings::CycleLengthMinMinutes ||
+		 NightRealMinutes > USimCopterSettings::CycleLengthMaxMinutes))
+	{
+		OutError = TEXT("The save contains an invalid time-of-day record.");
+		return false;
+	}
 	if (Cash < 0 || Score < 0 || !FMath::IsFinite(SessionElapsedSeconds))
 	{
 		OutError = TEXT("The save contains an invalid career balance or score.");
@@ -152,6 +174,12 @@ void USimCopterSaveSubsystem::BeginNewGame()
 	CurrentDisplayName.Reset();
 	PendingLoadedGame = nullptr;
 	bPendingMissionStateApplied = false;
+	if (USimCopterSettings* Settings = GetGameInstance() != nullptr
+			? GetGameInstance()->GetSubsystem<USimCopterSettings>()
+			: nullptr)
+	{
+		Settings->ResetSessionTimeOfDaySettings();
+	}
 }
 
 FString USimCopterSaveSubsystem::NormalizeDisplayName(const FString& DisplayName)
@@ -307,6 +335,21 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 	Save->CityDayOrNight = City.DayOrNight;
 	Save->CityPointsNeeded = City.PointsNeeded;
 	Save->CityMoneyEarned = City.MoneyEarned;
+
+	USimCopterDayNightSubsystem* DayNight = WorldContextObject->GetWorld() != nullptr
+		? WorldContextObject->GetWorld()->GetSubsystem<USimCopterDayNightSubsystem>()
+		: nullptr;
+	const USimCopterSettings* Settings = GameInstance->GetSubsystem<USimCopterSettings>();
+	if (DayNight == nullptr || Settings == nullptr || !DayNight->TryGetLiveTimeOfDayHours(Save->TimeOfDayHours))
+	{
+		OutError = TEXT("The live time of day could not be captured.");
+		return nullptr;
+	}
+	Save->bHasTimeOfDayState = true;
+	Save->TimeOfDayMode = Settings->GetTimeOfDayMode();
+	Save->StaticTimeOfDayHours = Settings->GetStaticTimeOfDayHours();
+	Save->DayRealMinutes = Settings->GetDayRealMinutes();
+	Save->NightRealMinutes = Settings->GetNightRealMinutes();
 
 	if (const USimCopterCareerSubsystem* Career = GameInstance->GetSubsystem<USimCopterCareerSubsystem>())
 	{
@@ -604,6 +647,23 @@ bool USimCopterSaveSubsystem::ApplyPendingAircraftState(UWorld* World)
 	if (PendingLoadedGame == nullptr || !bPendingMissionStateApplied)
 	{
 		return false;
+	}
+
+	if (PendingLoadedGame->bHasTimeOfDayState && World != nullptr)
+	{
+		if (USimCopterSettings* Settings = GetGameInstance() != nullptr
+				? GetGameInstance()->GetSubsystem<USimCopterSettings>()
+				: nullptr)
+		{
+			Settings->SetTimeOfDayMode(PendingLoadedGame->TimeOfDayMode);
+			Settings->SetStaticTimeOfDayHours(PendingLoadedGame->StaticTimeOfDayHours);
+			Settings->SetDayRealMinutes(PendingLoadedGame->DayRealMinutes);
+			Settings->SetNightRealMinutes(PendingLoadedGame->NightRealMinutes);
+		}
+		if (USimCopterDayNightSubsystem* DayNight = World->GetSubsystem<USimCopterDayNightSubsystem>())
+		{
+			DayNight->RestoreSavedTimeOfDay(PendingLoadedGame->TimeOfDayHours);
+		}
 	}
 	if (!PendingLoadedGame->bHasAircraftState)
 	{

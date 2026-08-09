@@ -36,8 +36,10 @@ bool FSimCopterSettingsMenuItemsTest::RunTest(const FString& Parameters)
 	// first must map to the SAME command in both.
 	TestEqual(TEXT("User game row 0 is City Settings"),
 		SSimCopterSettingsMenu::GetItemForRow(0, /*bHasCitySettings=*/true), ESimCopterSettingsItem::CitySettings);
-	TestEqual(TEXT("Career row 0 is Graphics"),
+	TestEqual(TEXT("Career row 0 opens the Options command"),
 		SSimCopterSettingsMenu::GetItemForRow(0, /*bHasCitySettings=*/false), ESimCopterSettingsItem::Graphics);
+	TestEqual(TEXT("The old Graphics menu text is now Options"),
+		SSimCopterSettingsMenu::GetItemLabel(ESimCopterSettingsItem::Graphics).ToString(), FString(TEXT("Options")));
 
 	for (int32 Row = 0; Row < FullItemCount - 1; ++Row)
 	{
@@ -589,6 +591,21 @@ bool FSimCopterTimeOfDayFormatTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Negative hours clamp to midnight"), Formatted(-3.0f), TEXT("00:00"));
 	TestEqual(TEXT("Hours past a full day wrap"), Formatted(26.5f), TEXT("02:30"));
 
+	USimCopterSettings* Settings = NewObject<USimCopterSettings>(NewObject<UGameInstance>());
+	Settings->SetTimeOfDayMode(ESimCopterTimeOfDayMode::Static);
+	Settings->SetStaticTimeOfDayHours(2.0f);
+	Settings->SetDayRealMinutes(15.0f);
+	Settings->SetNightRealMinutes(9.0f);
+	Settings->ResetSessionTimeOfDaySettings();
+	TestEqual(TEXT("A new game resets the time mode"),
+		Settings->GetTimeOfDayMode(), ESimCopterTimeOfDayMode::Dynamic);
+	TestEqual(TEXT("A new game resets the static hour"),
+		Settings->GetStaticTimeOfDayHours(), USimCopterSettings::DefaultStaticTimeOfDayHours);
+	TestEqual(TEXT("A new game resets daytime pacing"),
+		Settings->GetDayRealMinutes(), USimCopterSettings::DefaultDayRealMinutes);
+	TestEqual(TEXT("A new game resets nighttime pacing"),
+		Settings->GetNightRealMinutes(), USimCopterSettings::DefaultNightRealMinutes);
+
 	return true;
 }
 
@@ -635,6 +652,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterGraphicsSettingsPersistenceTest::RunTest(const FString& Parameters)
 {
+	TestEqual(TEXT("Fresh profiles default the cockpit FOV to 90 degrees"),
+		USimCopterSettings::DefaultCockpitFov, 90.0f);
+
 	// Everything the Graphics page's rows own that is not UGameUserSettings' own (Super
 	// Resolution, its Quality Mode, Frame Generation and its multiple, Reflex, Lumen, Volumetric
 	// Fog, Low Power) is a UPROPERTY(Config) on USimCopterSettings; clicking OK persists them with
@@ -658,6 +678,17 @@ bool FSimCopterGraphicsSettingsPersistenceTest::RunTest(const FString& Parameter
 	Writer->SetLumenMode(ESimCopterLumenMode::Software);
 	Writer->SetVolumetricFogEnabled(false);
 	Writer->SetLowPowerMode(true);
+	Writer->SetOnFootFov(91.0f);
+	Writer->SetHelicopterFov(103.0f);
+	Writer->SetCockpitFov(72.0f);
+	Writer->SetMouseSensitivityX(1.25f);
+	Writer->SetMouseSensitivityY(0.75f);
+	Writer->SetControllerSensitivityX(1.5f);
+	Writer->SetControllerSensitivityY(0.6f);
+	Writer->SetTimeOfDayMode(ESimCopterTimeOfDayMode::Static);
+	Writer->SetStaticTimeOfDayHours(3.5f);
+	Writer->SetDayRealMinutes(17.0f);
+	Writer->SetNightRealMinutes(13.0f);
 	Writer->SaveConfig(CPF_Config, *TestIni);
 
 	USimCopterSettings* Reader = NewObject<USimCopterSettings>(Outer);
@@ -675,6 +706,21 @@ bool FSimCopterGraphicsSettingsPersistenceTest::RunTest(const FString& Parameter
 		int32(Reader->GetLumenMode()), int32(ESimCopterLumenMode::Software));
 	TestFalse(TEXT("Volumetric Fog round trips"), Reader->IsVolumetricFogEnabled());
 	TestTrue(TEXT("Low Power Graphics round trips"), Reader->IsLowPowerMode());
+	TestEqual(TEXT("On-foot FOV round trips"), Reader->GetOnFootFov(), 91.0f);
+	TestEqual(TEXT("Helicopter FOV round trips"), Reader->GetHelicopterFov(), 103.0f);
+	TestEqual(TEXT("Cockpit FOV round trips"), Reader->GetCockpitFov(), 72.0f);
+	TestEqual(TEXT("Mouse X sensitivity round trips"), Reader->GetMouseSensitivityX(), 1.25f);
+	TestEqual(TEXT("Mouse Y sensitivity round trips"), Reader->GetMouseSensitivityY(), 0.75f);
+	TestEqual(TEXT("Controller X sensitivity round trips"), Reader->GetControllerSensitivityX(), 1.5f);
+	TestEqual(TEXT("Controller Y sensitivity round trips"), Reader->GetControllerSensitivityY(), 0.6f);
+	TestEqual(TEXT("Time-of-day mode is not a profile setting"),
+		Reader->GetTimeOfDayMode(), ESimCopterTimeOfDayMode::Dynamic);
+	TestEqual(TEXT("Static time is not a profile setting"),
+		Reader->GetStaticTimeOfDayHours(), USimCopterSettings::DefaultStaticTimeOfDayHours);
+	TestEqual(TEXT("Daytime length is not a profile setting"),
+		Reader->GetDayRealMinutes(), USimCopterSettings::DefaultDayRealMinutes);
+	TestEqual(TEXT("Nighttime length is not a profile setting"),
+		Reader->GetNightRealMinutes(), USimCopterSettings::DefaultNightRealMinutes);
 
 	// And the opposite values, so this is not just confirming every field reads back as its own
 	// UPROPERTY default regardless of what SaveConfig actually wrote.

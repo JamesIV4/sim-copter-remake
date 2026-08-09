@@ -33,7 +33,7 @@ const FText& SSimCopterSettingsMenu::GetItemLabel(const ESimCopterSettingsItem I
 	// STRINGTABLE 60..67, English.
 	static const FText Labels[FullItemCount] = {
 		LOCTEXT("CitySettings", "City Settings"), // 60
-		LOCTEXT("Graphics", "Graphics"),          // 61
+		LOCTEXT("Options", "Options"),            // remake label for original STRINGTABLE 61
 		LOCTEXT("Sound", "Sound"),                // 62
 		LOCTEXT("Controls", "Controls"),          // 63
 		LOCTEXT("SaveGame", "Save Game"),         // 64

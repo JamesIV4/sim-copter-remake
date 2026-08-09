@@ -158,6 +158,20 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildHeading(const FText& Text)
 		];
 }
 
+TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCategoryHeading(const FText& Text)
+{
+	static const FSlateColorBrush CategoryBrush(FLinearColor(0.16f, 0.18f, 0.12f, 1.0f));
+	return SNew(SBorder)
+		.BorderImage(&CategoryBrush)
+		.Padding(FMargin(8.0f, 5.0f))
+		[
+			SNew(STextBlock)
+			.Text(Text)
+			.Font(PageFont(HeadingFontHeight + 2, /*bBold=*/true))
+			.ColorAndOpacity(FSlateColor(HeadingText))
+		];
+}
+
 TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildDropdownRow(const FText& Label, FRowBinding Binding)
 {
 	// SComboBox keeps a raw pointer to its items source, so the array has to outlive Construct.
@@ -374,9 +388,16 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildNote(const FText& Text)
 
 void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Rows)
 {
-	const auto AddRow = [&Rows](TSharedRef<SWidget> Row)
+	// Populate category containers independently, then attach them in the player-facing order.
+	// This keeps the renderer-heavy implementation below together without letting its source order
+	// dictate where Gameplay and Input appear in the scroll box.
+	TSharedRef<SVerticalBox> GameplayRows = SNew(SVerticalBox);
+	TSharedRef<SVerticalBox> InputRows = SNew(SVerticalBox);
+	TSharedRef<SVerticalBox> GraphicsRows = SNew(SVerticalBox);
+	TSharedRef<SVerticalBox> ActiveRows = GraphicsRows;
+	const auto AddRow = [&ActiveRows](TSharedRef<SWidget> Row)
 	{
-		Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 1.0f))[Row];
+		ActiveRows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 1.0f))[Row];
 	};
 
 	// ---------------------------------------------------------------------------------------
@@ -943,6 +964,7 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 	// Day/Night column and never moved - so this is entirely the remake's.
 	// ---------------------------------------------------------------------------------------
 
+	ActiveRows = GameplayRows;
 	AddRow(BuildHeading(LOCTEXT("HeadingWorld", "World")));
 
 	{
@@ -1089,10 +1111,103 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				LOCTEXT("PercentFormat", "{0}%"), FText::AsNumber(FMath::RoundToInt(Scale * 100.0f)));
 		}));
 
+	const auto AddFovRow = [this, &AddRow](
+		const FText& Label,
+		TFunction<float(const USimCopterSettings*)> Getter,
+		TFunction<void(USimCopterSettings*, float)> Setter,
+		const float DefaultDegrees)
+	{
+		AddRow(BuildSliderRow(
+			Label,
+			[this, Getter, DefaultDegrees]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Degrees = Settings != nullptr ? Getter(Settings) : DefaultDegrees;
+				return (Degrees - USimCopterSettings::FovMin)
+					/ (USimCopterSettings::FovMax - USimCopterSettings::FovMin);
+			},
+			[this, Setter](const float Alpha)
+			{
+				if (USimCopterSettings* Settings = GetSettings(this))
+				{
+					Setter(Settings, FMath::Lerp(USimCopterSettings::FovMin, USimCopterSettings::FovMax, Alpha));
+				}
+			},
+			[this, Getter, DefaultDegrees]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Degrees = Settings != nullptr ? Getter(Settings) : DefaultDegrees;
+				return FText::Format(
+					LOCTEXT("DegreesFormat", "{0} deg"), FText::AsNumber(FMath::RoundToInt(Degrees)));
+			}));
+	};
+
+	AddFovRow(LOCTEXT("OnFootFov", "On-foot FOV"),
+		[](const USimCopterSettings* S) { return S->GetOnFootFov(); },
+		[](USimCopterSettings* S, const float V) { S->SetOnFootFov(V); },
+		USimCopterSettings::DefaultFov);
+	AddFovRow(LOCTEXT("HelicopterFov", "Helicopter FOV"),
+		[](const USimCopterSettings* S) { return S->GetHelicopterFov(); },
+		[](USimCopterSettings* S, const float V) { S->SetHelicopterFov(V); },
+		USimCopterSettings::DefaultFov);
+	AddFovRow(LOCTEXT("CockpitFov", "Cockpit FOV"),
+		[](const USimCopterSettings* S) { return S->GetCockpitFov(); },
+		[](USimCopterSettings* S, const float V) { S->SetCockpitFov(V); },
+		USimCopterSettings::DefaultCockpitFov);
+
+	ActiveRows = InputRows;
+	AddRow(BuildHeading(LOCTEXT("HeadingSensitivity", "Sensitivity")));
+
+	const auto AddSensitivityRow = [this, &AddRow](
+		const FText& Label,
+		TFunction<float(const USimCopterSettings*)> Getter,
+		TFunction<void(USimCopterSettings*, float)> Setter)
+	{
+		AddRow(BuildSliderRow(
+			Label,
+			[this, Getter]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Scale = Settings != nullptr ? Getter(Settings) : USimCopterSettings::DefaultSensitivity;
+				return (Scale - USimCopterSettings::SensitivityMin)
+					/ (USimCopterSettings::SensitivityMax - USimCopterSettings::SensitivityMin);
+			},
+			[this, Setter](const float Alpha)
+			{
+				if (USimCopterSettings* Settings = GetSettings(this))
+				{
+					Setter(Settings, FMath::Lerp(
+						USimCopterSettings::SensitivityMin, USimCopterSettings::SensitivityMax, Alpha));
+				}
+			},
+			[this, Getter]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Scale = Settings != nullptr ? Getter(Settings) : USimCopterSettings::DefaultSensitivity;
+				return FText::Format(
+					LOCTEXT("SensitivityPercentFormat", "{0}%"),
+					FText::AsNumber(FMath::RoundToInt(Scale * 100.0f)));
+			}));
+	};
+
+	AddSensitivityRow(LOCTEXT("MouseSensitivityX", "Mouse Sensitivity (X)"),
+		[](const USimCopterSettings* S) { return S->GetMouseSensitivityX(); },
+		[](USimCopterSettings* S, const float V) { S->SetMouseSensitivityX(V); });
+	AddSensitivityRow(LOCTEXT("MouseSensitivityY", "Mouse Sensitivity (Y)"),
+		[](const USimCopterSettings* S) { return S->GetMouseSensitivityY(); },
+		[](USimCopterSettings* S, const float V) { S->SetMouseSensitivityY(V); });
+	AddSensitivityRow(LOCTEXT("ControllerSensitivityX", "Controller Sensitivity (X)"),
+		[](const USimCopterSettings* S) { return S->GetControllerSensitivityX(); },
+		[](USimCopterSettings* S, const float V) { S->SetControllerSensitivityX(V); });
+	AddSensitivityRow(LOCTEXT("ControllerSensitivityY", "Controller Sensitivity (Y)"),
+		[](const USimCopterSettings* S) { return S->GetControllerSensitivityY(); },
+		[](USimCopterSettings* S, const float V) { S->SetControllerSensitivityY(V); });
+
 	// ---------------------------------------------------------------------------------------
 	// Quality - every scalability group Unreal exposes, plus the overall preset above them.
 	// ---------------------------------------------------------------------------------------
 
+	ActiveRows = GraphicsRows;
 	AddRow(BuildHeading(LOCTEXT("HeadingQuality", "Quality")));
 
 	const auto AddQualityRow = [this, &AddRow](
@@ -1191,6 +1306,13 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 	AddQualityRow(LOCTEXT("Shading", "Shading"),
 		[](const UGameUserSettings* S) { return S->GetShadingQuality(); },
 		[](UGameUserSettings* S, const int32 V) { S->SetShadingQuality(V); });
+
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 3.0f))[BuildCategoryHeading(LOCTEXT("CategoryGameplay", "Gameplay"))];
+	Rows->AddSlot().AutoHeight()[GameplayRows];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 3.0f))[BuildCategoryHeading(LOCTEXT("CategoryInput", "Input"))];
+	Rows->AddSlot().AutoHeight()[InputRows];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 3.0f))[BuildCategoryHeading(LOCTEXT("CategoryGraphics", "Graphics"))];
+	Rows->AddSlot().AutoHeight()[GraphicsRows];
 }
 
 void SSimCopterGraphicsSettings::ApplyTimeOfDay()
@@ -1244,6 +1366,13 @@ void SSimCopterGraphicsSettings::CaptureEnteredState()
 		Entered.DayRealMinutes = Settings->GetDayRealMinutes();
 		Entered.NightRealMinutes = Settings->GetNightRealMinutes();
 		Entered.HudScale = Settings->GetHudScale();
+		Entered.OnFootFov = Settings->GetOnFootFov();
+		Entered.HelicopterFov = Settings->GetHelicopterFov();
+		Entered.CockpitFov = Settings->GetCockpitFov();
+		Entered.MouseSensitivityX = Settings->GetMouseSensitivityX();
+		Entered.MouseSensitivityY = Settings->GetMouseSensitivityY();
+		Entered.ControllerSensitivityX = Settings->GetControllerSensitivityX();
+		Entered.ControllerSensitivityY = Settings->GetControllerSensitivityY();
 	}
 
 	const UGameUserSettings* UserSettings = GetUserSettings();
@@ -1289,6 +1418,14 @@ void SSimCopterGraphicsSettings::RestoreEnteredState()
 		Settings->SetStaticTimeOfDayHours(Entered.StaticTimeOfDayHours);
 		Settings->SetDayRealMinutes(Entered.DayRealMinutes);
 		Settings->SetNightRealMinutes(Entered.NightRealMinutes);
+		Settings->SetHudScale(Entered.HudScale);
+		Settings->SetOnFootFov(Entered.OnFootFov);
+		Settings->SetHelicopterFov(Entered.HelicopterFov);
+		Settings->SetCockpitFov(Entered.CockpitFov);
+		Settings->SetMouseSensitivityX(Entered.MouseSensitivityX);
+		Settings->SetMouseSensitivityY(Entered.MouseSensitivityY);
+		Settings->SetControllerSensitivityX(Entered.ControllerSensitivityX);
+		Settings->SetControllerSensitivityY(Entered.ControllerSensitivityY);
 		Settings->ApplyAll(nullptr);
 		ApplyTimeOfDay();
 	}

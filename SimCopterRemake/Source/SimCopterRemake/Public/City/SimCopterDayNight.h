@@ -249,6 +249,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Day/Night")
 	void ApplyTimeOfDaySettings();
 
+	/** Reads the sequence actor directly, so a save never captures a one-frame-old cached clock. */
+	bool TryGetLiveTimeOfDayHours(float& OutHours);
+
+	/**
+	 * Restores a saved clock after the saved Dynamic/Static settings have been installed.
+	 * If the level actor is not ready yet, Tick keeps the request pending until it appears.
+	 */
+	void RestoreSavedTimeOfDay(float Hours);
+
 	/** The level's day sequence actor, or null. */
 	ADaySequenceActor* GetDaySequenceActor() const;
 
@@ -311,6 +320,9 @@ private:
 	 */
 	void PublishLowPower();
 
+	/** Applies PendingSavedTimeOfDayHours once the level's day sequence actor is available. */
+	void ApplyPendingSavedTimeOfDay();
+
 	TWeakObjectPtr<ADaySequenceActor> CachedDaySequenceActor;
 
 	UPROPERTY(Transient)
@@ -350,4 +362,7 @@ private:
 	float AppliedStaticTimeOfDayHours = -1.0f;
 	float AppliedDayRealMinutes = -1.0f;
 	float AppliedNightRealMinutes = -1.0f;
+
+	/** Negative means no saved clock is waiting to be restored. */
+	float PendingSavedTimeOfDayHours = -1.0f;
 };

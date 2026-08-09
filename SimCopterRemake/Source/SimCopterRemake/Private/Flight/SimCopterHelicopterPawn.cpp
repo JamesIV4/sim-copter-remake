@@ -214,11 +214,11 @@ FSimCopterCameraViewDebugOffset GetDefaultCameraViewDebugOffset(ESimCopterCamera
 		Offset.RotationDeg = FRotator(-24.5, 0.0, 0.0);
 		break;
 	case ESimCopterCameraMode::Cockpit:
-		// The pilot's seat, measured off CameraAnchor (which sits on the cabin roof). 60 cm
+		// The pilot's seat, measured off CameraAnchor (which sits on the cabin roof). 45 cm
 		// down puts the eye level with the cabin; the CANNON object occupies X 27..58 at
 		// Z ~8 in the same body frame, about 69 cm below the roof, so from here it sits just
 		// under the crosshair. Tune from the debug panel's POSITION CM row.
-		Offset.TranslationCm = FVector(10.0, 0.0, -60.0);
+		Offset.TranslationCm = FVector(10.0, 0.0, -45.0);
 		// Level with the nose: the crosshair then marks the model's forward axis, which is the
 		// direction every tool fires along (EmitWaterCannonFrame and friends).
 		Offset.RotationDeg = FRotator::ZeroRotator;
@@ -8236,7 +8236,7 @@ void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 
 void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 {
-	if (CameraBoom == nullptr)
+	if (CameraBoom == nullptr || CameraComponent == nullptr)
 	{
 		return;
 	}
@@ -8246,6 +8246,16 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	// view, which also keeps the crosshair on the aircraft's heading - the line the tools
 	// actually fire along.
 	const bool bFirstPersonView = CameraModeIsFirstPerson(CameraMode);
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	const float MouseSensitivityX = Settings != nullptr ? Settings->GetMouseSensitivityX() : 1.0f;
+	const float MouseSensitivityY = Settings != nullptr ? Settings->GetMouseSensitivityY() : 1.0f;
+	const float ControllerSensitivityX = Settings != nullptr ? Settings->GetControllerSensitivityX() : 1.0f;
+	const float ControllerSensitivityY = Settings != nullptr ? Settings->GetControllerSensitivityY() : 1.0f;
+	CameraComponent->SetFieldOfView(Settings != nullptr
+		? (bFirstPersonView ? Settings->GetCockpitFov() : Settings->GetHelicopterFov())
+		: (bFirstPersonView
+			? USimCopterSettings::DefaultCockpitFov
+			: USimCopterSettings::DefaultFov));
 	// A cockpit eye has no boom to soften. Leaving the spring arm's own lag enabled meant
 	// camera-parented props followed a different transform from the camera calculations below.
 	CameraBoom->bEnableCameraLag = !bFirstPersonView;
@@ -8259,11 +8269,11 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		ControllerMode != ESimCopterControllerMode::DispatchWheel &&
 		ControllerMode != ESimCopterControllerMode::ToolWheel;
 	const float ControllerYawLookInput =
-		bControllerRightStickLooks ? ControllerRightXInput : 0.0f;
+		bControllerRightStickLooks ? ControllerRightXInput * ControllerSensitivityX : 0.0f;
 	// Match right-mouse drag in boom views: stick-up drags the world down. The cockpit's
 	// PitchLookSign below reverses it into ordinary head-look behavior.
 	const float ControllerPitchLookInput =
-		bControllerRightStickLooks ? -ControllerRightYInput : 0.0f;
+		bControllerRightStickLooks ? -ControllerRightYInput * ControllerSensitivityY : 0.0f;
 	float YawLookInput =
 		bFirstPersonView ? 0.0f : CameraYawInput + ControllerYawLookInput;
 	float PitchLookInput = CameraPitchInput + ControllerPitchLookInput;
@@ -8271,14 +8281,14 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	{
 		if (!bFirstPersonView)
 		{
-			YawLookInput += MouseLookYawInput;
+			YawLookInput += MouseLookYawInput * MouseSensitivityX;
 		}
 		// A middle-drag in progress owns vertical mouse travel, so holding both buttons pans
 		// instead of doing both at once - except in the cockpit, where there is no pan for it
 		// to own and the look should keep working.
 		if (!bCameraPanDragActive || bFirstPersonView)
 		{
-			PitchLookInput += MouseLookPitchInput;
+			PitchLookInput += MouseLookPitchInput * MouseSensitivityY;
 		}
 		CameraRecenterDelayRemaining = CameraRecenterDelaySeconds;
 	}
@@ -8295,7 +8305,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	if (!bFirstPersonView && bCameraPanDragActive && !FMath::IsNearlyZero(MouseLookPitchInput))
 	{
 		CameraViewPanOffsetCm = FMath::Clamp(
-			CameraViewPanOffsetCm + MouseLookPitchInput * CameraPanCmPerMouseUnit,
+			CameraViewPanOffsetCm + MouseLookPitchInput * MouseSensitivityY * CameraPanCmPerMouseUnit,
 			-CameraPanMaxOffsetCm,
 			CameraPanMaxOffsetCm);
 	}
