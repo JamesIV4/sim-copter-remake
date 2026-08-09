@@ -48,6 +48,8 @@ public:
 	int32 CollapseCalls = 0;
 	bool bCollapseResult = true;
 	int32 TickCounter = 0;
+	int32 PrimaryCoordinatePosts = 0;
+	int32 IncendiaryThrows = 0;
 	TSet<int32> UnknownOpcodes;
 
 	virtual int32 GetCurrentTileClass() const override { return TileClass; }
@@ -144,6 +146,23 @@ public:
 		return bCollapseResult;
 	}
 	virtual int32 GetBehaviorTickCounter() const override { return TickCounter; }
+	virtual void PostMissionOutcome(FSimCopterPersonContext&, int32 OutcomeCode) override
+	{
+		if (OutcomeCode == 6)
+		{
+			++PrimaryCoordinatePosts;
+		}
+	}
+	virtual void ThrowProjectileAtSelection(
+		FSimCopterPersonContext&,
+		bool,
+		bool bIncendiary) override
+	{
+		if (bIncendiary)
+		{
+			++IncendiaryThrows;
+		}
+	}
 	virtual void OnUnknownOpcode(int32 Opcode) override { UnknownOpcodes.Add(Opcode); }
 };
 } // namespace
@@ -743,6 +762,44 @@ bool FSimCopterBehaviorVMReferenceTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("BHAV 274 looks for a fire"), int32(FireGawk->Records[0].Token), 36);
 			TestEqual(TEXT("BHAV 274 fire search radius"), int32(FireGawk->Records[0].Args[0]), 12);
 			TestEqual(TEXT("BHAV 274 distance lands in local 0"), int32(FireGawk->Records[0].Args[1]), 0);
+		}
+
+		// State 11 is the real Arsonist, not just mission metadata. Run the shipped 1301 -> 1078
+		// graph with no nearby cop/player so it must keep publishing its marker and eventually hit
+		// rand(1000) < 6 -> opcode 60. This catches a dead state binding or a rock/firebomb mix-up.
+		{
+			TestEqual(TEXT("Person state 11 starts BHAV 1301"),
+				FPeopleBehaviorModel::GetStateProgramIds()[11], 1301);
+			TestEqual(TEXT("Person state 11 carries the uncaught-criminal loop flag"),
+				int32(FPeopleBehaviorModel::GetStateLoopFlag(11)), 0);
+			if (const FBhavProgram* CopChase = Model.FindProgram(1150);
+				TestNotNull(TEXT("BHAV 1150 foot-police chase"), CopChase) &&
+				CopChase->Records.IsValidIndex(0))
+			{
+				TestEqual(TEXT("Foot police begin with an object-class probe"),
+					int32(CopChase->Records[0].Token), 15);
+				TestEqual(TEXT("Foot police probe class 6 uncaught criminals"),
+					int32(CopChase->Records[0].Args[0]), 6);
+			}
+
+			FSimCopterPersonContext Context;
+			FStubBehaviorWorld World;
+			Context.Lfsr = 1;
+			Context.ResetToState(11);
+			for (int32 Tick = 0; Tick < 200000 && World.IncendiaryThrows == 0; ++Tick)
+			{
+				const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(Context, Model, World);
+				if (Result == EBhavStepResult::Failed || Result == EBhavStepResult::Stopped)
+				{
+					AddError(FString::Printf(TEXT("Arsonist behavior stopped at tick %d."), Tick));
+					break;
+				}
+			}
+			TestTrue(TEXT("Arsonist republishes its primary marker coordinates"),
+				World.PrimaryCoordinatePosts > 0);
+			TestTrue(TEXT("Arsonist eventually throws opcode 60's incendiary projectile"),
+				World.IncendiaryThrows > 0);
+			TestEqual(TEXT("Arsonist run reaches no unknown opcodes"), World.UnknownOpcodes.Num(), 0);
 		}
 
 		if (const FBhavProgram* RiotValue = Model.FindProgram(852);

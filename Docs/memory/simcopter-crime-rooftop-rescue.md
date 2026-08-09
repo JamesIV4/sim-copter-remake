@@ -176,13 +176,22 @@ An airframe collision instead routes through BHAV 912 -> 903 and posts a casualt
 criminal. That still closes the job because the retail completion test is
 `criminalsCaught + casualties >= 1`; the port no longer fabricates an additional caught outcome.
 
+The rendered-building person placer can move a criminal several cells away from the requested
+building to keep its capsule out of walls. The world adapter now publishes that actual first tile
+as soon as states 10-13 spawn; after that, their normal outcome-6 updates keep the marker following
+them. State 11 retains loop flag 0 (uncaught criminal), and foot-police BHAV 1150 begins by finding
+object class 6, so an Arsonist is available to the same police pursuit path as the other criminals.
+
 Their unspotted behavior differs:
 
 - Robber: BHAV 1174 idles, turns, walks, and republishes the marker. The lifecycle's repeated
   consequence is the `Burglary Committed!` event; catching or killing the one target ends it.
 - Arsonist: BHAV 1078 walks and rolls `rand(1000) < 6` per loop. Success throws opcode 60's type-4
   firebomb. It burns for 60 s after landing and then rolls `1 in (8 - tier)` to start a building
-  fire if the tile is eligible and no nearby fire already owns it.
+  fire if the tile is eligible and no nearby fire already owns it. Because the remake keeps the
+  person capsule outside rendered building walls, the burnout resolves the nearest eligible
+  building cell within the mission placer's maximum six-cell displacement. This preserves the
+  original throw roll, burn time, fire-suitability test, nearby-fire exclusion, and difficulty roll.
 - Mugger: BHAV 1175 probes for an ambient civilian within two tiles, walks to them with ten tries,
   plays sound event 16, and pushes BHAV 903 `Rxn: Die` onto the victim. It otherwise turns and
   walks. Catching or killing the mugger ends the mission.

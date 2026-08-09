@@ -82,6 +82,13 @@ Ported as `ASimCopterMissionSystemActor::ThrowArsonistFirebomb` + `UpdateBurning
 ballistic flight is skipped (a 75-95° lob lands where it started); the 60-second burn, the smoke
 cadence, the tile tests and the difficulty roll are the original's.
 
+One rendered-geometry correction is required: retail people can occupy the same logical building
+cell that accepts the eventual fire, while the remake moves their capsules outside imported walls.
+The firebomb therefore remembers the nearest `FUN_004a5f60`-eligible cell within six cells, which is
+the maximum displacement used by the generic mission-person placer. It still appears and can be
+doused at the arsonist's position. The `6/1000` throw roll, 60-second burn, nearby-fire exclusion,
+and `1 in (8 - difficulty)` ignition roll remain unchanged.
+
 **This also gives riots their fires.** BHAV 288 "Rioter maybe throw" rec[10]/[11] rolls `rand(9)`
 and **one throw in nine is op 60**, not op 30. Wiring the arsonist wired the rioters.
 

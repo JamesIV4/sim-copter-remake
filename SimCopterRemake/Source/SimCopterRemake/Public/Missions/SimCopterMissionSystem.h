@@ -619,6 +619,15 @@ public:
 	// inside FUN_004a6860's spiral. A plane that hits a tile passing this starts a building fire
 	// instead of becoming a mission itself.
 	bool CanIgniteCrashSite(int32 TileX, int32 TileY) const;
+	// RENDERED-BUILDING ADAPTATION for an arsonist's type-4 firebomb. Retail people may stand in
+	// a building cell; the remake keeps their capsules outside the rendered mesh. Resolve the
+	// nearest cell that passes FUN_004a5f60 so the same throw can still reach its intended building.
+	bool FindNearestFireSuitableTile(
+		int32 OriginX,
+		int32 OriginY,
+		int32 MaxRadius,
+		int32& OutTileX,
+		int32& OutTileY) const;
 	// FUN_004a92f0 LAB_004a95ff: the tile carries a building a mission can be attached to.
 	// Medevac, Transport and every on-foot criminal are placed through it.
 	static bool IsMissionBuildingTile(int32 XbldId);
