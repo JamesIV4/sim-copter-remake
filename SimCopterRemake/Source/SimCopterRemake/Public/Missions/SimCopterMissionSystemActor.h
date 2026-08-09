@@ -178,6 +178,22 @@ public:
 	bool NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person);
 	bool NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person);
 	bool NotifyMissionPersonDied(ASimCopterGroundAgent* Person);
+	// FUN_004c9bc0 accepts an ordinary passenger's release only within six original units of
+	// terrain. The remake's rendered roofs are walkable surfaces too, so using the generic walk
+	// surface here would let a rooftop survivor step straight back out and finish where they began.
+	// Medevac is the one exception: its intended destination is the D1 hospital roof.
+	bool IsPassengerDeliveryLocationAllowed(
+		ESimCopterMissionPassengerKind Kind,
+		const FVector& FeetWorldLocation) const;
+	static bool IsPassengerDeliverySurfaceAllowed(
+		ESimCopterMissionPassengerKind Kind,
+		bool bIsWater,
+		float HeightAboveTerrainCm,
+		float GroundToleranceCm);
+	// BHAV 305 may board a rescue through either the airframe or the deployed harness. The harness
+	// branch must stay independent of CanBoardMissionPassengers: its purpose is to pick somebody up
+	// while the aircraft is hovering, then let opcode 58 transfer them into the cabin when raised.
+	static bool IsRescuePickupAvailable(bool bHarnessDeployed, bool bCanBoardThroughAirframe);
 	void NotifyPassengerDroppedFromHelicopter(int32 EventId, ESimCopterMissionPassengerKind Kind, int32 Count);
 	// BHAV 263 only reaches BHAV 269's "get on starting object" arm after it finds no medevac
 	// victim aboard. The mission layer adds the missing temporal context: the helper ride is useful

@@ -2887,8 +2887,13 @@ void ASimCopterHelicopterPawn::ReactPassengersToDamagingImpact()
 FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex) const
 {
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
-	const float SlotSide = (SlotIndex % 2 == 0) ? 1.0f : -1.0f;
-	const float SlotRowOffset = SlotIndex >= 0 ? float(SlotIndex / 2) * 32.0f : 0.0f;
+	FBox AirframeBounds(ForceInit);
+	TryGetAirframeLocalBoundsCm(AirframeBounds);
+	const FVector2D DoorOffset = ComputePassengerDoorOffsetCm(
+		AirframeBounds,
+		SlotIndex,
+		ExitClearanceCm,
+		FVector2D(-PassengerDropForwardOffsetCm, PassengerDropSideOffsetCm));
 	// Z is the flight model's own Altitude: ApplyFlightModelToActor puts the root sphere's BOTTOM
 	// there, so this is where the skids meet whatever the aircraft is standing on, and the actor
 	// origin is a whole 190 cm capsule radius above it.
@@ -2897,8 +2902,8 @@ FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex)
 		: 0.0f);
 	FVector DropLocation =
 		GetActorLocation() +
-		YawFrame.GetUnitAxis(EAxis::Y) * (175.0f * SlotSide) -
-		YawFrame.GetUnitAxis(EAxis::X) * (35.0f + SlotRowOffset);
+		YawFrame.GetUnitAxis(EAxis::X) * DoorOffset.X +
+		YawFrame.GetUnitAxis(EAxis::Y) * DoorOffset.Y;
 	DropLocation.Z = DeckZ;
 
 	if (GetWorld() != nullptr)
@@ -2927,6 +2932,31 @@ FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex)
 	}
 
 	return DropLocation;
+}
+
+FVector2D ASimCopterHelicopterPawn::ComputePassengerDoorOffsetCm(
+	const FBox& LocalBoundsCm,
+	const int32 SlotIndex,
+	const float ClearanceCm,
+	const FVector2D& FallbackDoorOffsetCm)
+{
+	const bool bPositiveSide = SlotIndex >= 0 && (SlotIndex % 2) == 0;
+	const float RowOffsetCm = SlotIndex >= 0 ? float(SlotIndex / 2) * 32.0f : 0.0f;
+	const float SafeClearanceCm = FMath::Max(0.0f, ClearanceCm);
+	if (!LocalBoundsCm.IsValid)
+	{
+		return FVector2D(
+			FallbackDoorOffsetCm.X - RowOffsetCm,
+			FMath::Abs(FallbackDoorOffsetCm.Y) * (bPositiveSide ? 1.0f : -1.0f));
+	}
+
+	// The original leaves the person at the helicopter's own position when it clears their master.
+	// That point is inside the remake's collision body, so adapt it to the nearest safe equivalent:
+	// one body clearance outside the visible skin, not an arbitrary radius around the actor origin.
+	const double SideY = bPositiveSide
+		? LocalBoundsCm.Max.Y + SafeClearanceCm
+		: LocalBoundsCm.Min.Y - SafeClearanceCm;
+	return FVector2D(LocalBoundsCm.GetCenter().X - RowOffsetCm, SideY);
 }
 
 FVector ASimCopterHelicopterPawn::GetPassengerAirDropWorldLocation(int32 SlotIndex) const

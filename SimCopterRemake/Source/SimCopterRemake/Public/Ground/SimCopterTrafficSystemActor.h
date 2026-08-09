@@ -826,6 +826,10 @@ public:
 		int32 EventId,
 		const FString& FigureName = FString(),
 		ASimCopterGroundAgent** OutSpawned = nullptr);
+	// Rendered-building adaptation for state-2 rooftop survivors. The original building cells give
+	// them a flat support point; imported GEO roofs may contain pitches, ridges and decorations.
+	// A rejected trace stays inside TrySpawnMissionPerson's candidate loop, so another point is tried.
+	static bool IsRooftopRescueSurfaceFlat(const FVector& SurfaceNormal);
 
 	// Anyone within RadiusCm who has been arrested (EBhavAttr::CriminalCaught) but is still on
 	// their feet - i.e. holding the hands-up pose or walking to the police car.

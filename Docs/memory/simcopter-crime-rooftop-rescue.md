@@ -131,6 +131,11 @@ trace the top blocking roof surface, sample separated points at that roof height
 it, snap onto the roof, and confine the person to a conservative roof post until boarding. There is
 no street/ground fallback for this mode. Boarding clears the post normally.
 
+Each of the fourteen rooftop sample candidates must also have an upward surface-normal Z of at
+least `0.99` (the same approximately eight-degree flatness threshold used for airframe landings).
+A pitched roof triangle, ridge, or decoration is rejected and the golden-angle sampler tries the
+next position. If no flat point validates, that person spawn fails; it never falls back to ground.
+
 ## Phases and player interactions
 
 ### Robber, Arsonist, and Mugger
@@ -221,6 +226,29 @@ moves to it, boards, and posts the pickup outcome. BHAV 303 handles release when
 posts rescue delivery before deactivation. The mission phase is therefore roof -> aboard/harness ->
 safe release; there is no record-owned destination. It completes when
 `RescueDelivered + Casualties == RescueVictims` and clears its primary marker.
+
+The deployed rescue harness is a valid rooftop pickup even while the airframe is too high for
+direct cabin boarding. BHAV 305 selects and boards the rope end; opcode 58 keeps the survivor on
+it until the harness is raised, then transfers that same person into a free cabin seat. The
+mission-side recovery path uses the rope-end position and the same harness-rider carrier state, so
+it does not require `CanBoardMissionPassengers()` until the rider is wound into the cabin.
+
+**Cabin exit placement (2026-08-09 follow-up):** `FUN_004c6450` keeps a rider at the carrier's
+position and clearing their master in `FUN_004c6360` leaves them there. A literal port would put
+them inside the remake's collision body, so the shared alight action adapts that point to one body
+clearance outside the rendered fuselage bounds. It resolves the passenger's actual seat row before
+returning the seat. The mission recovery path no longer adds its old alternating world-space
+spread, which had moved later survivors progressively farther from the helicopter.
+
+**Rooftop delivery guard (2026-08-09 follow-up):** BHAV 303 reaches opcode 17 before posting its
+delivery outcome. Opcode 17 ends in `FUN_004c9bc0`, whose release test is strictly less than six
+original units above the terrain under the passenger. The remake had replaced that with the
+helicopter's generic landed-surface gate; because rendered building roofs are valid landing and
+walking surfaces, a state-2 survivor could board and immediately step back out on the same or an
+adjacent roof. Both the decoded opcode path and the mission recovery release now require dry,
+terrain-level ground for Rescue and Transport passengers. State-6 MedEvac patients deliberately
+bypass only the height restriction so BHAV 263 can still unload them on the D1 hospital roof; water
+remains invalid for every passenger kind.
 
 ## Reminder timing and penalties
 

@@ -105,6 +105,35 @@ bool FSimCopterAirframeGapTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengerDoorOffsetTest,
+	"SimCopter.Interaction.PassengerDoorOffset",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPassengerDoorOffsetTest::RunTest(const FString& Parameters)
+{
+	using FHeli = ASimCopterHelicopterPawn;
+	const FBox Box = MakeTestAirframeBox();
+	const FVector2D Fallback(-35.0, 175.0);
+
+	const FVector2D RightDoor = FHeli::ComputePassengerDoorOffsetCm(Box, 0, 40.0f, Fallback);
+	TestEqual(TEXT("First seat exits level with the airframe center"), RightDoor.X, 0.0, 0.01);
+	TestEqual(TEXT("Right exit is one body clearance beyond the skin"), RightDoor.Y, 70.0, 0.01);
+
+	const FVector2D LeftDoor = FHeli::ComputePassengerDoorOffsetCm(Box, 1, 40.0f, Fallback);
+	TestEqual(TEXT("Opposite seat exits at the same fore-aft point"), LeftDoor.X, 0.0, 0.01);
+	TestEqual(TEXT("Left exit mirrors against the other skin"), LeftDoor.Y, -70.0, 0.01);
+
+	const FVector2D SecondRow = FHeli::ComputePassengerDoorOffsetCm(Box, 2, 40.0f, Fallback);
+	TestEqual(TEXT("Later survivors shift by one compact seat row"), SecondRow.X, -32.0, 0.01);
+	TestEqual(TEXT("Later survivors remain against the same airframe side"), SecondRow.Y, 70.0, 0.01);
+
+	const FVector2D HeadlessFallback = FHeli::ComputePassengerDoorOffsetCm(
+		FBox(ForceInit), 0, 40.0f, Fallback);
+	TestEqual(TEXT("A headless frame retains the authored fallback"), HeadlessFallback, Fallback);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterSelectionContactTest,
 	"SimCopter.Behavior.VM.SelectionContact",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

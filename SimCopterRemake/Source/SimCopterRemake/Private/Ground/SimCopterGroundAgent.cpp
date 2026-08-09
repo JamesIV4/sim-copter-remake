@@ -2024,9 +2024,9 @@ bool ASimCopterGroundAgent::IsRidingCarrier(const FSimCopterPersonContext& Conte
 
 bool ASimCopterGroundAgent::CanAlightHere() const
 {
-	// Cabin entry/exit already has a proven helicopter-side landing gate. Use that service as the
-	// definitive answer instead of reconstructing landing state from the hidden passenger actor's
-	// attachment transform. The tile check below still prevents rescue delivery onto open water.
+	// Cabin entry/exit already has a proven helicopter-side landing gate. Use that service instead
+	// of reconstructing landing state from the hidden passenger actor's attachment transform. The
+	// delivery service below adds the one distinction that gate cannot make: terrain versus roof.
 	const ASimCopterHelicopterPawn* CabinHelicopter =
 		bClaimedPassengerSeat && !bRidingHarness
 			? Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get())
@@ -2040,10 +2040,23 @@ bool ASimCopterGroundAgent::CanAlightHere() const
 	// stepping out of a helicopter at altitude.
 	//
 	// The tile half is deliberately broad: anywhere that is not open water. Restricting it to the
-	// walkable pedestrian classes meant a helicopter set down on a helipad, a roof or a road
-	// shoulder failed the test and nobody could ever get out - which is what stranded the train
-	// survivors aboard.
+	// walkable pedestrian classes meant a helicopter set down on a helipad or road shoulder failed
+	// the test and nobody could ever get out - which is what stranded the train survivors aboard.
+	// Ordinary roof delivery is rejected separately by IsPassengerDeliveryLocationAllowed; the
+	// state-6 medevac exception remains able to use the hospital helipad.
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (CabinHelicopter != nullptr)
+	{
+		const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+		if (Missions != nullptr &&
+			!Missions->IsPassengerDeliveryLocationAllowed(
+				GetMissionPassengerKind(),
+				CabinHelicopter->GetPassengerDropWorldLocation()))
+		{
+			return false;
+		}
+	}
 	int32 TileX = INDEX_NONE;
 	int32 TileY = INDEX_NONE;
 	if (TrafficSystem != nullptr &&
@@ -2377,8 +2390,27 @@ void ASimCopterGroundAgent::AlightAttachmentOnly()
 bool ASimCopterGroundAgent::AlightFromCarrier(const bool bPlayDoorSound)
 {
 	AActor* Carrier = BehaviorCarrier.Get();
+	ASimCopterHelicopterPawn* CabinHelicopter =
+		bClaimedPassengerSeat ? Cast<ASimCopterHelicopterPawn>(Carrier) : nullptr;
+	FVector CabinDoorWorldLocation = FVector::ZeroVector;
+	bool bPlaceAtCabinDoor = bPlayDoorSound && CabinHelicopter != nullptr;
+	if (bPlaceAtCabinDoor)
+	{
+		int32 PassengerSlotIndex = INDEX_NONE;
+		const TArray<FSimCopterMissionPassengerSlot>& Slots = CabinHelicopter->GetMissionPassengerSlots();
+		for (int32 Index = 0; Index < Slots.Num(); ++Index)
+		{
+			if (Slots[Index].Person.Get() == this)
+			{
+				PassengerSlotIndex = Index;
+				break;
+			}
+		}
+		CabinDoorWorldLocation = CabinHelicopter->GetPassengerDropWorldLocation(PassengerSlotIndex) +
+			FVector::UpVector * GetCapsuleHalfHeightCm();
+	}
 	const bool bLeavingHelicopterCabin =
-		bPlayDoorSound && bClaimedPassengerSeat && Carrier != nullptr && Carrier == ResolvePlayerHelicopter();
+		bPlayDoorSound && CabinHelicopter != nullptr && Carrier == ResolvePlayerHelicopter();
 	if (bLeavingHelicopterCabin)
 	{
 		// FUN_004c6360 uses the same event-60 doropn cue when a person leaves a door-bearing
@@ -2399,6 +2431,13 @@ bool ASimCopterGroundAgent::AlightFromCarrier(const bool bPlayDoorSound)
 	}
 
 	AlightAttachmentOnly();
+	if (bPlaceAtCabinDoor)
+	{
+		// SCHOOK: FUN_004c6360 / FUN_004c6450 leave an alighting person's position at their
+		// carrier. The remake must move that point just outside its rendered fuselage or collision
+		// re-enablement puts the passenger inside the aircraft. Do it while collision is still off.
+		SetActorLocation(CabinDoorWorldLocation, false);
+	}
 	BehaviorCarrier.Reset();
 	bRidingHarness = false;
 	bBehaviorMoveSuspended = false;
