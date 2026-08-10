@@ -7,6 +7,7 @@
 #include "Styling/SlateBrush.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Views/STableRow.h"
 
@@ -42,14 +43,18 @@ void SSimCopterSaveGamePicker::Construct(const FArguments& InArgs)
 
 	AddAt(Canvas, FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
 		MakePageImage(ArtObject, PickerPage));
-	AddAtPage(TitleRect,
-		SNew(STextBlock)
-		.Text(InArgs._Kind == ESimCopterSessionKind::Career
-			? LOCTEXT("CareerTitle", "Open A SimCopter Career Game")
-			: LOCTEXT("UserTitle", "Open A SimCopter User Game"))
-		.Justification(ETextJustify::Center)
-		.Font(PageFont(TitleFontHeight, /*bBold=*/true))
-		.ColorAndOpacity(FSlateColor(TitleText)));
+	AddAtPage(Menu4PickerTitleRect,
+		SNew(SBox)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(InArgs._Kind == ESimCopterSessionKind::Career
+				? LOCTEXT("CareerTitle", "Open A SimCopter Career Game")
+				: LOCTEXT("UserTitle", "Open A SimCopter User Game"))
+			.Justification(ETextJustify::Center)
+			.Font(PageFont(Menu4PickerTitleFontHeight, /*bBold=*/true))
+			.ColorAndOpacity(FSlateColor(TitleText))
+		]);
 
 	if (Entries.Num() > 0)
 	{
@@ -174,4 +179,3 @@ FReply SSimCopterSaveGamePicker::OnKeyDown(
 }
 
 #undef LOCTEXT_NAMESPACE
-

@@ -2,6 +2,8 @@
 
 #include "SSimCopterUserCityPicker.h"
 
+#include "Formats/SimCopterOriginalGamePaths.h"
+#include "Formats/SimCity2000Reader.h"
 #include "InputCoreTypes.h"
 #include "Misc/Paths.h"
 #include "Brushes/SlateColorBrush.h"
@@ -9,6 +11,7 @@
 #include "Styling/SlateBrush.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Views/STableRow.h"
 
@@ -24,6 +27,93 @@ const TCHAR* const PickerPage = TEXT("MENU4.BMP");
 // The navy title band takes light text; the pale list panel takes dark.
 const FLinearColor TitleText(0.90f, 0.93f, 0.98f, 1.0f);
 const FLinearColor ListText(0.08f, 0.08f, 0.09f, 1.0f);
+
+}
+
+FString SSimCopterUserCityPicker::FormatDisplayName(
+	const FString& FilePath,
+	const FString& EmbeddedCityName)
+{
+	FString SourceName = EmbeddedCityName.TrimStartAndEnd();
+	const bool bUsingEmbeddedName = !SourceName.IsEmpty();
+	if (SourceName.IsEmpty())
+	{
+		SourceName = FPaths::GetCleanFilename(FilePath);
+	}
+
+	// Some filenames contain repeated extensions, and TOKYO's embedded CNAM is itself
+	// "TOKYO.SC2". Neither form should expose SC2 as part of the player-facing city name.
+	while (SourceName.EndsWith(TEXT(".sc2"), ESearchCase::IgnoreCase) ||
+		SourceName.EndsWith(TEXT(" sc2"), ESearchCase::IgnoreCase))
+	{
+		SourceName.LeftChopInline(4);
+		SourceName.TrimEndInline();
+	}
+
+	FString Result;
+	Result.Reserve(SourceName.Len());
+	bool bCapitalizeNext = true;
+	bool bPendingSpace = false;
+
+	for (const TCHAR Character : SourceName)
+	{
+		if (FChar::IsAlnum(Character))
+		{
+			if (bPendingSpace && !Result.IsEmpty() && Result[Result.Len() - 1] != TEXT('-'))
+			{
+				Result.AppendChar(TEXT(' '));
+			}
+			Result.AppendChar(bCapitalizeNext ? FChar::ToUpper(Character) : FChar::ToLower(Character));
+			bCapitalizeNext = false;
+			bPendingSpace = false;
+		}
+		else if (Character == TEXT('-'))
+		{
+			Result.TrimEndInline();
+			if (!Result.IsEmpty() && Result[Result.Len() - 1] != TEXT('-'))
+			{
+				Result.AppendChar(TEXT('-'));
+			}
+			bCapitalizeNext = true;
+			bPendingSpace = false;
+		}
+		else if (Character == TEXT('\'') || Character == 0x2019)
+		{
+			// Apostrophes are part of authored city names (for example, Kathy's Retreat). They do
+			// not begin a new title-case word.
+			Result.AppendChar(Character);
+			bPendingSpace = false;
+		}
+		else
+		{
+			// Whitespace and other punctuation separate words without surviving in the label.
+			bPendingSpace = !Result.IsEmpty() && Result[Result.Len() - 1] != TEXT('-');
+			bCapitalizeNext = true;
+		}
+	}
+
+	Result.TrimStartAndEndInline();
+	while (Result.EndsWith(TEXT("-")))
+	{
+		Result.LeftChopInline(1);
+	}
+	if (Result.IsEmpty() && bUsingEmbeddedName)
+	{
+		return FormatDisplayName(FilePath);
+	}
+	return Result;
+}
+
+FString SSimCopterUserCityPicker::ReadEmbeddedCityName(const FString& FilePath)
+{
+	FSimCity2000City City;
+	FString Error;
+	if (FSimCity2000Reader::LoadCityFromFile(FilePath, City, Error) &&
+		City.FindFirstChunk(TEXT("CNAM")) != nullptr)
+	{
+		return City.CityName;
+	}
+	return FString();
 }
 
 void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
@@ -33,7 +123,10 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 
 	for (const FString& Path : InArgs._CityFilePaths)
 	{
-		Entries.Add(MakeShared<FString>(Path));
+		TSharedPtr<FSimCopterUserCityEntry> Entry = MakeShared<FSimCopterUserCityEntry>();
+		Entry->FilePath = Path;
+		Entry->DisplayName = FormatDisplayName(Path, ReadEmbeddedCityName(Path));
+		Entries.Add(MoveTemp(Entry));
 	}
 
 	USimCopterHangarArt* ArtObject = InArgs._Art;
@@ -49,12 +142,16 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 	AddAt(Canvas, FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
 		MakePageImage(ArtObject, PickerPage));
 
-	AddAtPage(TitleRect,
-		SNew(STextBlock)
-		.Text(LOCTEXT("Title", "Open A SimCity File")) // STRINGTABLE 40
-		.Justification(ETextJustify::Center)
-		.Font(PageFont(TitleFontHeight, /*bBold=*/true))
-		.ColorAndOpacity(FSlateColor(TitleText)));
+	AddAtPage(Menu4PickerTitleRect,
+		SNew(SBox)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(LOCTEXT("Title", "Open A SimCity File")) // STRINGTABLE 40
+			.Justification(ETextJustify::Center)
+			.Font(PageFont(Menu4PickerTitleFontHeight, /*bBold=*/true))
+			.ColorAndOpacity(FSlateColor(TitleText))
+		]);
 
 	if (Entries.Num() > 0)
 	{
@@ -78,26 +175,32 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 		RowStyle->SetSelectedTextColor(FSlateColor(ListText));
 
 		AddAtPage(ListRect,
-			SAssignNew(ListView, SListView<TSharedPtr<FString>>)
+			SAssignNew(ListView, SListView<TSharedPtr<FSimCopterUserCityEntry>>)
 			.ListViewStyle(ListStyle.Get())
 			.ListItemsSource(&Entries)
 			.SelectionMode(ESelectionMode::Single)
 			.OnGenerateRow(this, &SSimCopterUserCityPicker::MakeRow)
-			.OnMouseButtonDoubleClick_Lambda([this](TSharedPtr<FString>) { Accept(); }));
+			.OnMouseButtonDoubleClick_Lambda([this](TSharedPtr<FSimCopterUserCityEntry>) { Accept(); }));
 
 		ListView->SetSelection(Entries[0]);
 	}
 	else
 	{
+		// The "no cities" message is the one thing on this page that shows when MENU4.BMP itself is
+		// missing - both want the same folder - so it lands on MakePageImage's dark fallback plate,
+		// where ListText would be invisible.
+		const bool bHasPage = HasPageBitmap(ArtObject, PickerPage);
 		AddAtPage(ListRect,
 			SNew(STextBlock)
-			.Text(LOCTEXT(
-				"NoCities",
-				"No .sc2 files found. Put the original game folder under Reference/SimCopterOriginalGame."))
+			.Text(FText::Format(
+				LOCTEXT("NoCities", "No .sc2 files found.\n\n{0}"),
+				SimCopterOriginalGame::GetMissingDataHint()))
 			.Justification(ETextJustify::Center)
 			.AutoWrapText(true)
+			.WrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping)
+			.LineHeightPercentage(1.15f)
 			.Font(PageFont(ListFontHeight))
-			.ColorAndOpacity(FSlateColor(ListText)));
+			.ColorAndOpacity(FSlateColor(bHasPage ? ListText : PlateTextColor)));
 	}
 
 	AddAtPage(FRect{ AcceptButtonX, ButtonY, AcceptButtonX + ButtonWidth, ButtonY + ButtonHeight },
@@ -127,15 +230,15 @@ void SSimCopterUserCityPicker::Construct(const FArguments& InArgs)
 }
 
 TSharedRef<ITableRow> SSimCopterUserCityPicker::MakeRow(
-	TSharedPtr<FString> Item,
+	TSharedPtr<FSimCopterUserCityEntry> Item,
 	const TSharedRef<STableViewBase>& OwnerTable)
 {
-	return SNew(STableRow<TSharedPtr<FString>>, OwnerTable)
+	return SNew(STableRow<TSharedPtr<FSimCopterUserCityEntry>>, OwnerTable)
 		.Style(RowStyle.Get())
 		.Padding(FMargin(6.0f, 1.0f))
 		[
 			SNew(STextBlock)
-			.Text(FText::FromString(Item.IsValid() ? FPaths::GetCleanFilename(*Item) : FString()))
+			.Text(FText::FromString(Item.IsValid() ? Item->DisplayName : FString()))
 			.Font(PageFont(ListFontHeight))
 			.ColorAndOpacity(FSlateColor(ListText))
 		];
@@ -148,10 +251,10 @@ void SSimCopterUserCityPicker::Accept()
 		return;
 	}
 
-	const TArray<TSharedPtr<FString>> Selected = ListView->GetSelectedItems();
+	const TArray<TSharedPtr<FSimCopterUserCityEntry>> Selected = ListView->GetSelectedItems();
 	if (Selected.Num() > 0 && Selected[0].IsValid())
 	{
-		OnAccepted.ExecuteIfBound(*Selected[0]);
+		OnAccepted.ExecuteIfBound(Selected[0]->FilePath);
 	}
 }
 

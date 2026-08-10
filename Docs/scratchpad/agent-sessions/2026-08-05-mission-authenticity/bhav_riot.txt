@@ -1,0 +1,136 @@
+﻿=== BHAV 850 'Riot!' (8 records) ===
+  [ 0] expr attr19 := 1                                             T->2 F->-3
+  [ 1] CALL 852 'Refigure riot val and turn to it'                  T->7 F->7
+  [ 2] expr autoturn := 0                                           T->3 F->-3
+  [ 3] CALL 900 'Rioter react to spotlight'                         T->4 F->4
+  [ 4] CALL 286 'Rioter react to police car'                        T->1 F->1
+  [ 5] CALL 288 'Rioter maybe throw'                                T->6 F->-3
+  [ 6] CALL 289 'Rioter run'                                        T->3 F->-3
+  [ 7] CALL 311 'Rioter maybe leave riot'                           T->5 F->-3
+
+=== BHAV 1062 'Riot Follower' (14 records) ===
+  [ 0] bind-anim 'Wave'                                             T->3 F->3
+  [ 1] op15 select nearest obj class a0 within a1 -> local[a3]  args=6,3,7,0 T->2 F->11
+  [ 2] op18 face selection  args=-1,-1,-1,-1                        T->4 F->4
+  [ 3] op22 same tile as player -> l[a0]=speed l[a1]=facing  args=0,1,0,0 T->5 F->1
+  [ 4] CALL 1016 'Run-10'                                           T->3 F->3
+  [ 5] bind-anim 'Pani'                                             T->6 F->6
+  [ 6] CALL 1102 'Idle-20'                                          T->8 F->-3
+  [ 7] expr facing := l0                                            T->9 F->9
+  [ 8] op7 local[a0] := rand(a1)  args=0,7,7,0                      T->7 F->7
+  [ 9] CALL 1017 'Run-30'                                           T->3 F->-3
+  [10] CALL 1102 'Idle-20'                                          T->13 F->-3
+  [11] bind-anim 'NoMo'                                             T->10 F->10
+  [12] CALL 1015 'Walk-10'                                          T->1 F->1
+  [13] CALL 1014 'Random Turn'                                      T->12 F->-3
+
+=== BHAV 288 'Rioter maybe throw' (13 records) ===
+  [ 0] CALL 261 'idle a bit'                                        T->5 F->-3
+  [ 1] expr l3 *= 8                                                 T->3 F->-3
+  [ 2] op30 throw projectile on facing  args=-1,-1,-1,-1            T->9 F->9
+  [ 3] op7 local[a0] := rand(a1)  args=2,3,9,0                      T->4 F->-3
+  [ 4] expr l2 == 0                                                 T->7 F->retT
+  [ 5] expr l3 := 12                                                T->6 F->-3
+  [ 6] expr l3 -= logicspeed                                        T->1 F->-3
+  [ 7] bind-anim 'Thro'                                             T->10 F->-3
+  [ 8] op0 wait local[a0]--  args=0,0,0,0                           T->retT F->-3
+  [ 9] expr l0 := 10                                                T->8 F->-3
+  [10] op7 local[a0] := rand(a1)  args=0,9,7,0                      T->11 F->-3
+  [11] expr l0 == 0                                                 T->12 F->2
+  [12] op60 throw projectile on facing  args=-1,-1,-1,-1            T->9 F->9
+
+=== BHAV 311 'Rioter maybe leave riot' (6 records) ===
+  [ 0] expr logicspeed < 3                                          T->1 F->retT
+  [ 1] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,6,7,0 T->3 F->5
+  [ 2] op16 deactivate person  args=-1,-1,-1,-1                     T->-3 F->-3
+  [ 3] op13 post mission outcome a0  args=4,0,0,0                   T->4 F->-3
+  [ 4] expr attr19 := 0                                             T->2 F->-3
+  [ 5] op13 post mission outcome a0  args=5,0,0,0                   T->4 F->-3
+
+=== BHAV 900 'Rioter react to spotlight' (13 records) ===
+  [ 0] op22 same tile as player -> l[a0]=speed l[a1]=facing  args=0,1,0,0 T->1 F->retF
+  [ 1] op15 select nearest obj class a0 within a1 -> local[a3]  args=16,10,7,0 T->8 F->retF
+  [ 2] expr movespeed := 16                                         T->5 F->-3
+  [ 3] op31 face away from linked obj  args=-1,-1,-1,-1             T->6 F->-3
+  [ 4] expr movespeed := 12                                         T->5 F->-3
+  [ 5] CALL 287 'Rioter flee tree'                                  T->retT F->-3
+  [ 6] expr l0 < 2                                                  T->2 F->4
+  [ 7] CALL 288 'Rioter maybe throw'                                T->3 F->-3
+  [ 8] op18 face selection  args=-1,-1,-1,-1                        T->11 F->-3
+  [ 9] op83 face selection, throw at it  args=-1,-1,-1,-1           T->10 F->-3
+  [10] CALL 1100 'Idle-5'                                           T->7 F->-3
+  [11] op7 local[a0] := rand(a1)  args=2,100,7,0                    T->12 F->-3
+  [12] expr l2 == 0                                                 T->9 F->7
+
+=== BHAV 901 'Rxn: Megaphone' (32 records) ===
+  [ 0] expr attr14 += 1                                             T->24 F->-3
+  [ 1] expr attr14 -= 1                                             T->retT F->-3
+  [ 2] op15 select nearest obj class a0 within a1 -> local[a3]  args=16,4,7,0 T->6 F->10
+  [ 3] op31 face away from linked obj  args=-1,-1,-1,-1             T->4 F->4
+  [ 4] CALL 904 'Rxn: Run away (dir already set)'                   T->17 F->-3
+  [ 5] CALL 261 'idle a bit'                                        T->1 F->-3
+  [ 6] expr attr13 == 0                                             T->10 F->18
+  [ 7] expr attr13 == 2                                             T->16 F->15
+  [ 8] CALL 904 'Rxn: Run away (dir already set)'                   T->12 F->-3
+  [ 9] op31 face away from linked obj  args=-1,-1,-1,-1             T->8 F->8
+  [10] expr ambient := l3                                           T->26 F->-3
+  [11] CALL 904 'Rxn: Run away (dir already set)'                   T->14 F->-3
+  [12] op31 face away from linked obj  args=-1,-1,-1,-1             T->11 F->11
+  [13] CALL 904 'Rxn: Run away (dir already set)'                   T->10 F->-3
+  [14] op31 face away from linked obj  args=-1,-1,-1,-1             T->13 F->13
+  [15] expr attr13 == 3                                             T->16 F->28
+  [16] op23 logic speed += a0  args=-1,0,0,0                        T->30 F->-3
+  [17] expr logicspeed < 5                                          T->9 F->10
+  [18] expr attr13 == 1                                             T->19 F->7
+  [19] op22 same tile as player -> l[a0]=speed l[a1]=facing  args=0,1,0,0 T->27 F->10
+  [20] CALL 1104 'Idle-80'                                          T->10 F->-3
+  [21] bind-anim 'Whoa'                                             T->20 F->-3
+  [22] expr l3 := ambient                                           T->23 F->-3
+  [23] expr ambient := 0                                            T->25 F->-3
+  [24] expr l2 := attr19                                            T->22 F->-3
+  [25] expr attr19 := 0                                             T->2 F->-3
+  [26] expr attr19 := l2                                            T->5 F->-3
+  [27] op18 face selection  args=-1,-1,-1,-1                        T->21 F->-3
+  [28] expr attr13 == 4                                             T->29 F->10
+  [29] CALL 950 '?'                                                 T->10 F->-3
+  [30] expr attr33 := 1                                             T->31 F->-3
+  [31] CALL 1100 'Idle-5'                                           T->3 F->-3
+
+=== BHAV 907 'Rxn: Teargas' (20 records) ===
+  [ 0] expr attr14 += 1                                             T->19 F->-3
+  [ 1] expr state == 3                                              T->18 F->2
+  [ 2] op23 logic speed += a0  args=-2,0,0,0                        T->5 F->-3
+  [ 3] op23 logic speed += a0  args=5,0,0,0                         T->7 F->-3
+  [ 4] expr attr14 -= 1                                             T->retT F->-3
+  [ 5] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,8,7,0 T->8 F->10
+  [ 6] op18 face selection  args=-1,-1,-1,-1                        T->9 F->10
+  [ 7] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,8,7,0 T->6 F->10
+  [ 8] op31 face away from linked obj  args=-1,-1,-1,-1             T->10 F->10
+  [ 9] bind-anim 'Thro'                                             T->14 F->-3
+  [10] op7 local[a0] := rand(a1)  args=0,20,7,0                     T->11 F->-3
+  [11] expr l0 == 0                                                 T->13 F->16
+  [12] CALL 287 'Rioter flee tree'                                  T->17 F->-3
+  [13] CALL 906 'Rxn: Swoon'                                        T->-3 F->16
+  [14] CALL 1102 'Idle-20'                                          T->4 F->-3
+  [15] expr movespeed := 20                                         T->12 F->-3
+  [16] expr l0 := movespeed                                         T->15 F->-3
+  [17] expr movespeed := l0                                         T->4 F->-3
+  [18] CALL 296 'rand 1 in 6?'                                      T->3 F->2
+  [19] CALL 309 'Fall off master'                                   T->1 F->-3
+
+=== BHAV 908 'Rxn: Water' (14 records) ===
+  [ 0] expr attr14 += 1                                             T->1 F->-3
+  [ 1] expr state == 3                                              T->13 F->10
+  [ 2] op23 logic speed += a0  args=-1,0,0,0                        T->5 F->-3
+  [ 3] op23 logic speed += a0  args=8,0,0,0                         T->7 F->-3
+  [ 4] expr attr14 -= 1                                             T->retT F->-3
+  [ 5] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,4,7,0 T->8 F->10
+  [ 6] op18 face selection  args=-1,-1,-1,-1                        T->9 F->10
+  [ 7] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,4,7,0 T->6 F->10
+  [ 8] op31 face away from linked obj  args=-1,-1,-1,-1             T->10 F->10
+  [ 9] bind-anim 'Thro'                                             T->12 F->-3
+  [10] CALL 904 'Rxn: Run away (dir already set)'                   T->4 F->-3
+  [11] op32 face away from interaction source  args=-1,-1,-1,-1     T->10 F->10
+  [12] CALL 1102 'Idle-20'                                          T->10 F->-3
+  [13] CALL 296 'rand 1 in 6?'                                      T->3 F->2
+

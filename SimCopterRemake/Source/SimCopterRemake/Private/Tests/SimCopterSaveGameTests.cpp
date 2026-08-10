@@ -60,6 +60,12 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 	Source->CityDayOrNight = 1;
 	Source->CityPointsNeeded = 900;
 	Source->CityMoneyEarned = 250;
+	Source->bHasTimeOfDayState = true;
+	Source->TimeOfDayHours = 21.75f;
+	Source->TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;
+	Source->StaticTimeOfDayHours = 8.25f;
+	Source->DayRealMinutes = 11.0f;
+	Source->NightRealMinutes = 4.5f;
 	Source->OwnedHelicopterMask = 0x12;
 	Source->HelicopterDepreciation = { 0, 10, 20, 30 };
 	Source->bHasAircraftState = true;
@@ -113,6 +119,13 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Cash survives"), Loaded->Cash, 4321);
 	TestEqual(TEXT("Score survives"), Loaded->Score, 876);
 	TestEqual(TEXT("All city weights survive"), Loaded->CityWeights.Num(), 7);
+	TestEqual(TEXT("User city difficulty survives"), Loaded->CityDifficulty, 2);
+	TestTrue(TEXT("Time-of-day state survives"), Loaded->bHasTimeOfDayState);
+	TestEqual(TEXT("Live clock survives"), Loaded->TimeOfDayHours, 21.75f);
+	TestEqual(TEXT("Time-of-day mode survives"), Loaded->TimeOfDayMode, ESimCopterTimeOfDayMode::Dynamic);
+	TestEqual(TEXT("Static hour setting survives"), Loaded->StaticTimeOfDayHours, 8.25f);
+	TestEqual(TEXT("Day length setting survives"), Loaded->DayRealMinutes, 11.0f);
+	TestEqual(TEXT("Night length setting survives"), Loaded->NightRealMinutes, 4.5f);
 	TestEqual(TEXT("Fleet survives"), Loaded->OwnedHelicopterMask, 0x12);
 	TestEqual(TEXT("Log survives"), Loaded->CareerLog.Num(), 1);
 	TestEqual(TEXT("Log text survives"), Loaded->CareerLog[0].Text, Log.Text);
@@ -132,6 +145,11 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 
 	Loaded->FormatVersion = USimCopterSaveGame::CurrentFormatVersion + 1;
 	TestFalse(TEXT("A future version is refused"),
+		Loaded->IsStructurallyValid(ESimCopterSessionKind::Career, Error));
+
+	Loaded->FormatVersion = USimCopterSaveGame::CurrentFormatVersion;
+	Loaded->CityDifficulty = 4;
+	TestFalse(TEXT("An invalid user city difficulty is refused"),
 		Loaded->IsStructurallyValid(ESimCopterSessionKind::Career, Error));
 	return true;
 }

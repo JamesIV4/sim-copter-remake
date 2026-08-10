@@ -4,6 +4,7 @@
 #include "Components/AudioComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -100,6 +101,15 @@ void USimCopterAudioSubsystem::Deinitialize()
 		}
 	}
 	SlotComponents.Reset();
+	for (const TObjectPtr<UAudioComponent>& Component : AttachedVoiceLoopComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->Stop();
+			Component->DestroyComponent();
+		}
+	}
+	AttachedVoiceLoopComponents.Reset();
 
 	StopStandaloneSounds();
 
@@ -116,6 +126,7 @@ void USimCopterAudioSubsystem::Deinitialize()
 		MusicComponent = nullptr;
 	}
 	RadioEndTime = 0.0;
+	ClearRadioVoiceQueue();
 	ClipCache.Reset();
 	bSoundsAvailable = false;
 
@@ -162,6 +173,65 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 			LooseComponents.RemoveAtSwap(Index);
 		}
 	}
+	for (int32 Index = AttachedVoiceLoopComponents.Num() - 1; Index >= 0; --Index)
+	{
+		UAudioComponent* Component = AttachedVoiceLoopComponents[Index].Get();
+		if (Component == nullptr || !Component->IsPlaying())
+		{
+			if (Component != nullptr)
+			{
+				Component->DestroyComponent();
+			}
+			AttachedVoiceLoopComponents.RemoveAtSwap(Index);
+		}
+	}
+
+	// SCHOOK: DispatchVoicePlay 0x0042a3b0: advance queued radio voice announcements sequentially
+	if (CurrentDispatchVoiceId != INDEX_NONE)
+	{
+		if (!IsPlaying(CurrentDispatchVoiceId) || (CurrentDispatchVoiceEndTime > 0.0 && Now >= CurrentDispatchVoiceEndTime))
+		{
+			CurrentDispatchVoiceId = INDEX_NONE;
+			CurrentDispatchVoiceEndTime = 0.0;
+		}
+	}
+
+	if (CurrentDispatchVoiceId == INDEX_NONE && DispatchVoiceQueue.Num() > 0)
+	{
+		int32 NextId = DispatchVoiceQueue[0];
+		DispatchVoiceQueue.RemoveAt(0);
+		if (Play2D(NextId))
+		{
+			CurrentDispatchVoiceId = NextId;
+			const FSlot& Slot = Slots[NextId];
+			CurrentDispatchVoiceEndTime = Now + static_cast<double>(Slot.Clip.Duration);
+		}
+	}
+}
+
+void USimCopterAudioSubsystem::QueueRadioVoice(int32 SoundId)
+{
+	if (SoundId < 0 || SoundId >= SimCopterSound::NumSlots)
+	{
+		return;
+	}
+	DispatchVoiceQueue.Add(SoundId);
+}
+
+void USimCopterAudioSubsystem::ClearRadioVoiceQueue()
+{
+	if (CurrentDispatchVoiceId != INDEX_NONE)
+	{
+		Stop(CurrentDispatchVoiceId);
+		CurrentDispatchVoiceId = INDEX_NONE;
+		CurrentDispatchVoiceEndTime = 0.0;
+	}
+	DispatchVoiceQueue.Reset();
+}
+
+bool USimCopterAudioSubsystem::IsRadioVoicePlayingOrQueued() const
+{
+	return CurrentDispatchVoiceId != INDEX_NONE || DispatchVoiceQueue.Num() > 0;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -170,23 +240,7 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 
 FString USimCopterAudioSubsystem::ResolveSoundRoot() const
 {
-	TArray<FString> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/sound"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/sound")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/sound")));
-	Candidates.Add(TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame/sound"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../../Reference/SimCopterOriginalGame/sound")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-	return FString();
+	return SimCopterOriginalGame::ResolveDirectory(TEXT("sound"));
 }
 
 FString USimCopterAudioSubsystem::ResolveWavPath(const FString& WavName, SimCopterSound::ESoundDir Dir) const
@@ -356,10 +410,25 @@ bool USimCopterAudioSubsystem::PlayRadioFile(const FString& AbsolutePath, float 
 
 	RadioComponent->Stop();
 	RadioComponent->SetSound(Wave);
-	RadioComponent->SetVolumeMultiplier(VolumeMultiplier * VolumeIndexToGain(MasterVolume));
+	SetRadioVolumeMultiplier(VolumeMultiplier);
 	RadioEndTime = FPlatformTime::Seconds() + static_cast<double>(Clip.Duration);
 	RadioComponent->Play();
 	return true;
+}
+
+void USimCopterAudioSubsystem::SetRadioVolumeMultiplier(const float VolumeMultiplier)
+{
+	RadioVolumeMultiplier = FMath::Clamp(VolumeMultiplier, 0.0f, 1.0f);
+	ApplyRadioVolume();
+}
+
+void USimCopterAudioSubsystem::ApplyRadioVolume()
+{
+	if (RadioComponent != nullptr)
+	{
+		RadioComponent->SetVolumeMultiplier(
+			RadioVolumeMultiplier * VolumeIndexToGain(MasterVolume));
+	}
 }
 
 void USimCopterAudioSubsystem::StopRadio()
@@ -795,6 +864,7 @@ void USimCopterAudioSubsystem::SetMasterVolume(int32 Volume)
 	{
 		ApplySlotVolume(Id);
 	}
+	ApplyRadioVolume();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -854,6 +924,100 @@ bool USimCopterAudioSubsystem::PlayVoiceEvent(
 	// FUN_004c5210's tail: param_4 chooses between FUN_0042a1f0 (3D, culled by distance) and
 	// FUN_0042a2a0 (2D, always at full volume).
 	return bNonPositional ? Play2D(Slot, Flags) : Play3D(Slot, WorldLocation, Flags);
+}
+
+UAudioComponent* USimCopterAudioSubsystem::PlayAttachedVoiceLoop(
+	const int32 VoiceEvent,
+	USceneComponent* AttachParent,
+	const int32 FrequencyHz,
+	const float MaxRangeCm,
+	const float VolumeMultiplier)
+{
+	UWorld* World = GetWorld();
+	const SimCopterSound::FVoiceEvent* Event = SimCopterSound::GetVoiceEvent(VoiceEvent);
+	if (World == nullptr || !bSoundsAvailable || AttachParent == nullptr || Event == nullptr || Event->Clips.Num() == 0 ||
+		MaxRangeCm <= 0.0f || FVector::DistSquared(AttachParent->GetComponentLocation(), ListenerLocation) >= FMath::Square(MaxRangeCm))
+	{
+		return nullptr;
+	}
+
+	const int32 Pick = FMath::RandRange(0, Event->Clips.Num() - 1);
+	const FSimCopterPcmClip* Clip = LoadClip(Event->Clips[Pick], SimCopterSound::ESoundDir::Root);
+	if (Clip == nullptr)
+	{
+		return nullptr;
+	}
+	USoundWaveProcedural* Wave = MakeWave(*Clip, /*bLoop=*/true, this);
+	if (Wave == nullptr)
+	{
+		return nullptr;
+	}
+
+	UAudioComponent* Component = NewObject<UAudioComponent>(this);
+	if (Component == nullptr)
+	{
+		return nullptr;
+	}
+	Component->bAutoActivate = false;
+	Component->bAutoDestroy = false;
+	Component->bAllowSpatialization = true;
+	Component->bOverrideAttenuation = true;
+	Component->bStopWhenOwnerDestroyed = true;
+	FSoundAttenuationSettings& Settings = Component->AttenuationOverrides;
+	Settings.bAttenuate = true;
+	Settings.bSpatialize = true;
+	Settings.bAttenuateWithLPF = false;
+	Settings.bEnableOcclusion = false;
+	Settings.bEnableReverbSend = false;
+	Settings.DistanceAlgorithm = EAttenuationDistanceModel::Linear;
+	Settings.AttenuationShape = EAttenuationShape::Sphere;
+	Settings.AttenuationShapeExtents = FVector::ZeroVector;
+	Settings.FalloffDistance = MaxRangeCm;
+	Component->SetSound(Wave);
+	Component->SetPitchMultiplier(FMath::Clamp(
+		static_cast<float>(FMath::Clamp(FrequencyHz, GMinFrequencyHz, GMaxFrequencyHz)) /
+		static_cast<float>(FMath::Max(Clip->SampleRate, 1)),
+		GMinPitchMultiplier,
+		GMaxPitchMultiplier));
+	Component->SetVolumeMultiplier(FMath::Max(0.0f, VolumeMultiplier) * VolumeIndexToGain(MasterVolume));
+	Component->RegisterComponentWithWorld(World);
+	Component->AttachToComponent(AttachParent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	Component->Play();
+	AttachedVoiceLoopComponents.Add(Component);
+	return Component;
+}
+
+void USimCopterAudioSubsystem::SetAttachedVoiceLoopFrequencyHz(
+	UAudioComponent* Component,
+	const int32 VoiceEvent,
+	const int32 FrequencyHz)
+{
+	const SimCopterSound::FVoiceEvent* Event = SimCopterSound::GetVoiceEvent(VoiceEvent);
+	if (Component == nullptr || Event == nullptr || Event->Clips.Num() == 0)
+	{
+		return;
+	}
+	const FSimCopterPcmClip* Clip = LoadClip(Event->Clips[0], SimCopterSound::ESoundDir::Root);
+	if (Clip == nullptr)
+	{
+		return;
+	}
+	Component->SetPitchMultiplier(FMath::Clamp(
+		static_cast<float>(FMath::Clamp(FrequencyHz, GMinFrequencyHz, GMaxFrequencyHz)) /
+		static_cast<float>(FMath::Max(Clip->SampleRate, 1)),
+		GMinPitchMultiplier,
+		GMaxPitchMultiplier));
+}
+
+void USimCopterAudioSubsystem::StopAttachedVoiceLoop(UAudioComponent* Component)
+{
+	if (Component == nullptr)
+	{
+		return;
+	}
+	AttachedVoiceLoopComponents.Remove(Component);
+	Component->Stop();
+	Component->DestroyComponent();
 }
 
 // ---------------------------------------------------------------------------------------------

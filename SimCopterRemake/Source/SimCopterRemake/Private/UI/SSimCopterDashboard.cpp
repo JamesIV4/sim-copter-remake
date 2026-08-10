@@ -6,12 +6,14 @@
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Game/SimCopterSettings.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Rendering/DrawElements.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
+#include "Styling/StyleDefaults.h"
 #include "UI/SimCopterSegmentedBar.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
@@ -21,6 +23,7 @@
 #include "Widgets/SLeafWidget.h"
 #include "Widgets/SNullWidget.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/SWindow.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace
@@ -39,12 +42,18 @@ public:
 	static TSharedRef<FSimCopterPassengerDragDropOp> New(
 		TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn,
 		int32 InSlotIndex,
-		const FSlateBrush* InPortrait)
+		const FSlateBrush* InPortrait,
+		const FVector2f& InDecoratorSize,
+		const FVector2f& InGrabOffset,
+		const TSharedRef<SWidget>& InSourceWidget)
 	{
 		TSharedRef<FSimCopterPassengerDragDropOp> Operation = MakeShared<FSimCopterPassengerDragDropOp>();
 		Operation->Pawn = InPawn;
 		Operation->SlotIndex = InSlotIndex;
 		Operation->Portrait = InPortrait;
+		Operation->DecoratorSize = InDecoratorSize;
+		Operation->GrabOffset = InGrabOffset;
+		Operation->SourceWidget = InSourceWidget;
 		Operation->Construct();
 		return Operation;
 	}
@@ -55,11 +64,34 @@ public:
 		{
 			return nullptr;
 		}
-		return SNew(SImage).Image(Portrait);
+		return SNew(SBox)
+			.WidthOverride(DecoratorSize.X)
+			.HeightOverride(DecoratorSize.Y)
+			[
+				SNew(SImage).Image(Portrait)
+			];
+	}
+
+	virtual void OnDragged(const FDragDropEvent& DragDropEvent) override
+	{
+		if (CursorDecoratorWindow.IsValid())
+		{
+			// Keep the exact point the player grabbed under the pointer. The base operation offsets a
+			// decorator by the OS cursor size, which reads as a detached tooltip rather than as the
+			// passenger portrait being pulled out of its seat.
+			CursorDecoratorWindow->MoveWindowTo(
+				DragDropEvent.GetScreenSpacePosition() - GrabOffset);
+		}
 	}
 
 	virtual void OnDrop(bool bDropWasHandled, const FPointerEvent& MouseEvent) override
 	{
+		if (const TSharedPtr<SWidget> Source = SourceWidget.Pin())
+		{
+			// A handled drop is the seat well accepting the person back. Hidden preserves the seat's
+			// layout during the drag; restoring it here makes the portrait visibly return in place.
+			Source->SetVisibility(EVisibility::Visible);
+		}
 		if (!bDropWasHandled)
 		{
 			if (ASimCopterHelicopterPawn* Helicopter = Pawn.Get())
@@ -74,6 +106,9 @@ private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	int32 SlotIndex = INDEX_NONE;
 	const FSlateBrush* Portrait = nullptr;
+	FVector2f DecoratorSize = FVector2f::ZeroVector;
+	FVector2f GrabOffset = FVector2f::ZeroVector;
+	TWeakPtr<SWidget> SourceWidget;
 };
 
 // The portrait itself: press and move to start the drag.
@@ -104,10 +139,24 @@ public:
 		return FReply::Unhandled();
 	}
 
-	virtual FReply OnDragDetected(const FGeometry&, const FPointerEvent&) override
+	virtual FReply OnDragDetected(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
 	{
+		if (Portrait == nullptr)
+		{
+			return FReply::Unhandled();
+		}
+
+		const FVector2f GrabOffset =
+			MouseEvent.GetScreenSpacePosition() - MyGeometry.GetAbsolutePosition();
+		SetVisibility(EVisibility::Hidden);
 		return FReply::Handled().BeginDragDrop(
-			FSimCopterPassengerDragDropOp::New(Pawn, SlotIndex, Portrait));
+			FSimCopterPassengerDragDropOp::New(
+				Pawn,
+				SlotIndex,
+				Portrait,
+				MyGeometry.GetLocalSize(),
+				GrabOffset,
+				SharedThis(this)));
 	}
 
 private:
@@ -310,6 +359,37 @@ constexpr float RadioBodyY = 15.0f;
 constexpr float RadioBodyWidth = 66.0f;    // 20..86
 constexpr float RadioBodyHeight = 23.0f;   // 15..38
 
+// The volume control beside the 11 / 5 / 0 labels. FUN_00451980 stores (98,19)-(110,39),
+// while FUN_00451e30 accepts another six pixels above and below so the tiny original control is
+// still easy to grab. FUN_004520a0 paints the indicator itself at x 100..101 and y..y+1.
+constexpr float RadioVolumeX = 98.0f;
+constexpr float RadioVolumeTop = 19.0f;
+constexpr float RadioVolumeBottom = 39.0f;
+constexpr float RadioVolumeWidth = 12.0f;
+constexpr float RadioVolumeHitTop = RadioVolumeTop - 6.0f;
+constexpr float RadioVolumeHitBottom = RadioVolumeBottom + 6.0f;
+constexpr float RadioVolumeMarkerX = 100.0f;
+constexpr float RadioVolumeMarkerSize = 2.0f;
+constexpr int32 RadioVolumeOffY = 34;
+
+// FUN_004402a0 / FUN_004402d0's five doubles at 0x004f2180..0x004f21a0. The dashboard fader
+// displays DirectSound's volume logarithmically even though the remake stores the same
+// 320..10000 volume index linearly for its mixer.
+constexpr double RadioVolumeCurveBase = 0.5;
+constexpr double RadioVolumeCurveExponentScale = 0.0005;
+constexpr double RadioVolumeInverseScale = 2000.0;
+
+// DASH4.BMP palette index 100, which both original radio indicators write into the page.
+const FLinearColor RadioIndicatorColor = FLinearColor::FromSRGBColor(FColor(252, 60, 56));
+
+// The replacement panel rebuilt the radio controls around the higher-resolution furniture.
+// Keep FUN_00451980's coordinates for DASH4.BMP, but align the live overlays with the visible
+// groove and lower track when the bundled replacement is active.
+constexpr float UpscaledRadioVolumeXOffset = -3.0f;
+constexpr float UpscaledRadioTunerYOffset = 4.0f;
+constexpr float UpscaledRadioVolumeMarkerTop = 20.0f;
+constexpr float UpscaledRadioVolumeMarkerBottom = 41.0f;
+
 // The upscale reconstructed the three dial faces about one-and-a-half page pixels below the
 // original bitmap centres. Keep the original decoded gauge geometry and compensate only while
 // the replacement panel is active.
@@ -318,9 +398,9 @@ const FVector2D UpscaledAirspeedNeedleOffset(1.0f, 1.0f);
 
 const FLinearColor ReadoutInk(1.0f, 0.86f, 0.42f, 1.0f);
 
-// Screen pixels, deliberately not scaled with the art: the money well is 74x14 page pixels, which
-// is a lot of room once the panel is up-filtered.
-constexpr int32 MoneyFontSize = 20;
+// Screen pixels, deliberately not scaled with the art. Keep the decoded well and its vertical
+// placement unchanged; the slightly smaller face leaves four-digit balances clear of its frame.
+constexpr int32 MoneyFontSize = 18;
 
 FSlateFontInfo DashFont(const int32 Size)
 {
@@ -408,11 +488,13 @@ class SSimCopterRadioTuner : public SLeafWidget
 public:
 	SLATE_BEGIN_ARGS(SSimCopterRadioTuner) {}
 		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterRadioSubsystem>, Radio)
+		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterSettings>, Settings)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs)
 	{
 		Radio = InArgs._Radio;
+		Settings = InArgs._Settings;
 		SetCanTick(false);
 
 		SetToolTipText(TAttribute<FText>::CreateSPLambda(this, [this]()
@@ -449,7 +531,7 @@ public:
 
 		// Dimmed when the set is off, so the dial still reads as tuned to something.
 		const FLinearColor Tint = RadioPtr->IsPowered()
-			? FLinearColor(1.0f, 0.16f, 0.12f, 1.0f)
+			? RadioIndicatorColor
 			: FLinearColor(0.45f, 0.12f, 0.10f, 0.65f);
 
 		FSlateDrawElement::MakeBox(
@@ -506,6 +588,13 @@ public:
 		{
 			RadioPtr->SetPowered(true);
 			RadioPtr->SetStationIndex(Station);
+			if (USimCopterSettings* SettingsPtr = Settings.Get())
+			{
+				// Changing channels returns the set to full volume and persists both values. The
+				// subsystem does the same runtime reset inside SetStationIndex.
+				SettingsPtr->SetRadioStation(Station);
+				SettingsPtr->Save();
+			}
 		}
 		return FReply::Handled();
 	}
@@ -517,7 +606,256 @@ public:
 
 private:
 	TWeakObjectPtr<USimCopterRadioSubsystem> Radio;
+	TWeakObjectPtr<USimCopterSettings> Settings;
 };
+
+/**
+ * The DASH4 radio-volume line. Its widget covers FUN_00451e30's enlarged hit band rather than
+ * only the stored 12x20 rect, so the original two-page-pixel indicator remains practical to drag.
+ */
+class SSimCopterRadioVolume : public SLeafWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SSimCopterRadioVolume) {}
+		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterRadioSubsystem>, Radio)
+		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterSettings>, Settings)
+		SLATE_ARGUMENT(bool, UseUpscaledArt)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs)
+	{
+		Radio = InArgs._Radio;
+		Settings = InArgs._Settings;
+		bUseUpscaledArt = InArgs._UseUpscaledArt;
+		SetCanTick(false);
+		SetToolTipText(NSLOCTEXT(
+			"SimCopterDashboard",
+			"RadioVolumeToolTip",
+			"Radio volume (drag; bottom turns off)"));
+	}
+
+	virtual int32 OnPaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override
+	{
+		const USimCopterRadioSubsystem* RadioPtr = Radio.Get();
+		const USimCopterSettings* SettingsPtr = Settings.Get();
+		if (RadioPtr == nullptr && SettingsPtr == nullptr)
+		{
+			return LayerId;
+		}
+
+		// The live subsystem is authoritative while the dashboard is present. This also keeps console
+		// and other non-Settings channel changes (which return the rocker to full) visually honest.
+		const int32 Volume = RadioPtr != nullptr
+			? FMath::RoundToInt(RadioPtr->GetVolume() * static_cast<float>(USimCopterSettings::VolumeMax))
+			: SettingsPtr->GetRadioVolume();
+		const int32 DecodedMarkerPageY = RadioPtr != nullptr && !RadioPtr->IsPowered()
+			? static_cast<int32>(RadioVolumeBottom)
+			: SSimCopterDashboard::RadioVolumeToMarkerY(Volume);
+		const float MarkerPageY = GetVisualMarkerPageY(static_cast<float>(DecodedMarkerPageY));
+
+		const FVector2D Size = AllottedGeometry.GetLocalSize();
+		const float ScaleX = static_cast<float>(Size.X) / RadioVolumeWidth;
+		const float ScaleY = static_cast<float>(Size.Y) / (RadioVolumeHitBottom - RadioVolumeHitTop);
+		const FVector2f MarkerSize(
+			FMath::Max(1.0f, RadioVolumeMarkerSize * ScaleX),
+			FMath::Max(1.0f, RadioVolumeMarkerSize * ScaleY));
+		const FVector2f MarkerOffset(
+			(RadioVolumeMarkerX - RadioVolumeX) * ScaleX,
+			(MarkerPageY - RadioVolumeHitTop) * ScaleY);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			LayerId,
+			AllottedGeometry.ToPaintGeometry(MarkerSize, FSlateLayoutTransform(MarkerOffset)),
+			FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")),
+			bParentEnabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect,
+			RadioIndicatorColor * InWidgetStyle.GetColorAndOpacityTint());
+		return LayerId + 1;
+	}
+
+	virtual FVector2D ComputeDesiredSize(float) const override
+	{
+		return FVector2D(RadioVolumeWidth, RadioVolumeHitBottom - RadioVolumeHitTop);
+	}
+
+	virtual bool SupportsKeyboardFocus() const override { return false; }
+
+	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+		{
+			return FReply::Unhandled();
+		}
+		SetFromPointer(MyGeometry, MouseEvent);
+		return FReply::Handled().CaptureMouse(SharedThis(this));
+	}
+
+	virtual FReply OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override
+	{
+		if (!HasMouseCapture() || !MouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
+		{
+			return FReply::Unhandled();
+		}
+		SetFromPointer(MyGeometry, MouseEvent);
+		return FReply::Handled();
+	}
+
+	virtual FReply OnMouseButtonUp(const FGeometry&, const FPointerEvent& MouseEvent) override
+	{
+		if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton || !HasMouseCapture())
+		{
+			return FReply::Unhandled();
+		}
+		Save();
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+
+	virtual void OnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override
+	{
+		Save();
+		SLeafWidget::OnMouseCaptureLost(CaptureLostEvent);
+	}
+
+	virtual FCursorReply OnCursorQuery(const FGeometry&, const FPointerEvent&) const override
+	{
+		return FCursorReply::Cursor(EMouseCursor::Hand);
+	}
+
+private:
+	TWeakObjectPtr<USimCopterRadioSubsystem> Radio;
+	TWeakObjectPtr<USimCopterSettings> Settings;
+	bool bUseUpscaledArt = false;
+	bool bChanged = false;
+
+	float GetVisualMarkerPageY(const float DecodedPageY) const
+	{
+		if (!bUseUpscaledArt)
+		{
+			return DecodedPageY;
+		}
+		const float Alpha = (DecodedPageY - RadioVolumeTop) / (RadioVolumeBottom - RadioVolumeTop);
+		return FMath::Lerp(UpscaledRadioVolumeMarkerTop, UpscaledRadioVolumeMarkerBottom, Alpha);
+	}
+
+	float GetDecodedMarkerPageY(const float VisualPageY) const
+	{
+		if (!bUseUpscaledArt)
+		{
+			return VisualPageY;
+		}
+		const float Alpha = (VisualPageY - UpscaledRadioVolumeMarkerTop)
+			/ (UpscaledRadioVolumeMarkerBottom - UpscaledRadioVolumeMarkerTop);
+		return FMath::Lerp(RadioVolumeTop, RadioVolumeBottom, Alpha);
+	}
+
+	void SetFromPointer(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+	{
+		USimCopterRadioSubsystem* RadioPtr = Radio.Get();
+		USimCopterSettings* SettingsPtr = Settings.Get();
+		if (RadioPtr == nullptr && SettingsPtr == nullptr)
+		{
+			return;
+		}
+
+		const FVector2D Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+		const float Height = FMath::Max(static_cast<float>(MyGeometry.GetLocalSize().Y), 1.0f);
+		const float VisualPageY = RadioVolumeHitTop
+			+ static_cast<float>(Local.Y) * (RadioVolumeHitBottom - RadioVolumeHitTop) / Height;
+		const float PageYFloat = GetDecodedMarkerPageY(VisualPageY);
+		const int32 PageY = FMath::Clamp(
+			FMath::FloorToInt(PageYFloat),
+			static_cast<int32>(RadioVolumeTop),
+			static_cast<int32>(RadioVolumeBottom));
+		const int32 Volume = SSimCopterDashboard::RadioMarkerYToVolume(PageY);
+
+		if (Volume == 0)
+		{
+			if (SettingsPtr != nullptr)
+			{
+				SettingsPtr->SetRadioVolume(USimCopterSettings::VolumeMin);
+			}
+			if (RadioPtr != nullptr)
+			{
+				RadioPtr->SetVolume(0.0f);
+				RadioPtr->SetPowered(false);
+			}
+		}
+		else
+		{
+			if (SettingsPtr != nullptr)
+			{
+				SettingsPtr->SetRadioVolume(Volume);
+			}
+			if (RadioPtr != nullptr)
+			{
+				RadioPtr->SetVolume(
+					static_cast<float>(Volume) / static_cast<float>(USimCopterSettings::VolumeMax));
+			}
+			if (RadioPtr != nullptr)
+			{
+				RadioPtr->SetPowered(true);
+			}
+		}
+		bChanged = true;
+	}
+
+	void Save()
+	{
+		if (bChanged)
+		{
+			if (USimCopterSettings* SettingsPtr = Settings.Get())
+			{
+				SettingsPtr->Save();
+			}
+			bChanged = false;
+		}
+	}
+};
+}
+
+int32 SSimCopterDashboard::RadioVolumeToMarkerY(const int32 Volume)
+{
+	// SCHOOK: DashRadioVolumeMarker 0x004520a0. FUN_004402a0 first maps the stored
+	// attenuation index into a linear amplitude, then the dashboard quantises that across 20 px.
+	const int32 Clamped = FMath::Clamp(Volume, 0, USimCopterSettings::VolumeMax);
+	const double Exponent =
+		static_cast<double>(USimCopterSettings::VolumeMax - Clamped) * RadioVolumeCurveExponentScale;
+	const int32 DisplayVolume = static_cast<int32>(
+		static_cast<double>(USimCopterSettings::VolumeMax) * FMath::Pow(RadioVolumeCurveBase, Exponent));
+	return static_cast<int32>(RadioVolumeBottom)
+		+ (DisplayVolume * -static_cast<int32>(RadioVolumeBottom - RadioVolumeTop))
+		/ USimCopterSettings::VolumeMax;
+}
+
+int32 SSimCopterDashboard::RadioMarkerYToVolume(const int32 PageY)
+{
+	// SCHOOK: DashRadioInput 0x00451e30. The final five page pixels are the set's off detent.
+	const int32 ClampedY = FMath::Clamp(
+		PageY,
+		static_cast<int32>(RadioVolumeTop),
+		static_cast<int32>(RadioVolumeBottom));
+	if (ClampedY >= RadioVolumeOffY)
+	{
+		return 0;
+	}
+
+	const int32 DisplayVolume =
+		((static_cast<int32>(RadioVolumeBottom) - ClampedY) * USimCopterSettings::VolumeMax)
+		/ static_cast<int32>(RadioVolumeBottom - RadioVolumeTop);
+	const double Stored = static_cast<double>(USimCopterSettings::VolumeMax)
+		- RadioVolumeInverseScale * FMath::Log2(
+			static_cast<double>(USimCopterSettings::VolumeMax) / static_cast<double>(DisplayVolume));
+	return FMath::Clamp(
+		static_cast<int32>(Stored),
+		USimCopterSettings::VolumeMin,
+		USimCopterSettings::VolumeMax);
 }
 
 void SSimCopterDashboard::Construct(const FArguments& InArgs)
@@ -525,6 +863,7 @@ void SSimCopterDashboard::Construct(const FArguments& InArgs)
 	Pawn = InArgs._Pawn;
 	Art = InArgs._Art;
 	Scale = FMath::Max(0.5f, InArgs._Scale);
+	HudScale = FMath::Max(0.1f, InArgs._HudScale);
 
 	const FSlateBrush* UpscaledDashboardBrush = nullptr;
 	if (USimCopterHangarArt* ArtObject = Art.Get())
@@ -605,22 +944,29 @@ ASimCopterMissionSystemActor* SSimCopterDashboard::GetMissionSystem() const
 const FSlateBrush* SSimCopterDashboard::GetBrush(
 	const TCHAR* FileName,
 	const FIntRect& Source,
-	const bool bColorKeyed) const
+	const bool bColorKeyed,
+	const bool bNearestNeighbor) const
 {
 	USimCopterHangarArt* ArtObject = Art.Get();
 	if (ArtObject == nullptr)
 	{
 		return nullptr;
 	}
-	return ArtObject->GetSubImage(FileName, Source, bColorKeyed);
+	return ArtObject->GetSubImage(
+		FileName,
+		Source,
+		bColorKeyed,
+		ESimCopterArtRotation::None,
+		bNearestNeighbor);
 }
 
 TSharedRef<SWidget> SSimCopterDashboard::MakeImage(
 	const TCHAR* FileName,
 	const FIntRect& Source,
-	const bool bColorKeyed) const
+	const bool bColorKeyed,
+	const bool bNearestNeighbor) const
 {
-	const FSlateBrush* Brush = GetBrush(FileName, Source, bColorKeyed);
+	const FSlateBrush* Brush = GetBrush(FileName, Source, bColorKeyed, bNearestNeighbor);
 	if (Brush == nullptr)
 	{
 		return SNullWidget::NullWidget;
@@ -762,7 +1108,14 @@ void SSimCopterDashboard::RebuildSeats()
 		const int32 SeatRow = SeatIndex / SeatsPerRow;
 		const float PortraitX = SeatFirstPortraitX + Column2 * SeatPortraitStride;
 		const float PortraitY = SeatWellTop + SeatRow * SeatRowStride;
-		TSharedRef<SWidget> Portrait = MakeImage(TEXT("PEOPLE1.BMP"), Source);
+		const FSlateBrush* PortraitBrush = GetBrush(
+			TEXT("PEOPLE1.BMP"),
+			Source,
+			/*bColorKeyed=*/true,
+			/*bNearestNeighbor=*/true);
+		TSharedRef<SWidget> Portrait = PortraitBrush != nullptr
+			? StaticCastSharedRef<SWidget>(SNew(SImage).Image(PortraitBrush))
+			: SNullWidget::NullWidget;
 
 		// An occupied seat can be dragged out to put that passenger down; an empty one is scenery.
 		if (Slots.IsValidIndex(SeatIndex))
@@ -788,7 +1141,7 @@ void SSimCopterDashboard::RebuildSeats()
 			Portrait = SNew(SSimCopterSeatPortrait)
 				.Pawn(Pawn)
 				.SlotIndex(SeatIndex)
-				.Portrait(nullptr)
+				.Portrait(PortraitBrush)
 				[
 					Portrait
 				];
@@ -831,7 +1184,7 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 		.Text(this, &SSimCopterDashboard::GetMoneyText)
 		.Justification(ETextJustify::Right)
 		.ColorAndOpacity(ReadoutInk)
-		.Font(DashFont(MoneyFontSize)));
+		.Font(DashFont(FMath::Max(1, FMath::RoundToInt(MoneyFontSize * HudScale)))));
 
 	// The points meter: fifteen cells, each showing one of managge.bmp's three states as the
 	// score climbs towards the city's requirement.
@@ -855,9 +1208,23 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash6()
 				static_cast<float>(PointsCellHeight),
 				SNew(SImage)
 				.Image(TAttribute<const FSlateBrush*>::CreateSP(
-					this, &SSimCopterDashboard::GetPointsCellBrush, Cell)));
+					this, &SSimCopterDashboard::GetPointsCellBrush, Cell))
+				.Visibility(EVisibility::HitTestInvisible));
 		}
 	}
+
+	// The bar is fifteen coarse cells, so it can only ever say "roughly this far along". Hovering
+	// gives the actual numbers. One hover target over the whole well rather than per cell - the
+	// reading is the same wherever the pointer is inside it. Drawn last so it is the topmost
+	// widget in the canvas and therefore the one hit testing finds.
+	AddAtPage(*Canvas,
+		PointsBarX,
+		PointsBarY,
+		static_cast<float>(PointsCellCount * PointsCellWidth),
+		static_cast<float>(PointsCellHeight),
+		SNew(SBorder)
+		.BorderImage(FStyleDefaults::GetNoBrush())
+		.ToolTipText(this, &SSimCopterDashboard::GetPointsToolTipText));
 
 	// Six damage lamps, each showing one of damage.bmp's three frames.
 	for (int32 Lamp = 0; Lamp < DamageLampCount; ++Lamp)
@@ -1020,10 +1387,30 @@ TSharedRef<SWidget> SSimCopterDashboard::BuildDash4()
 			]
 		]);
 
-	// The radio needle, over the printed scale. Sized to the lit band so the tuner widget's own
-	// local space is the dial: it needs no knowledge of Scale or of where dash4 ended up.
-	AddAtPage(*Canvas, RadioScaleX, RadioScaleY, RadioScaleWidth, RadioScaleHeight,
-		SNew(SSimCopterRadioTuner).Radio(GetRadio()));
+	// The radio needle. Sized to the lit band so the tuner widget's own local space is the dial;
+	// the replacement panel moves that band down to meet its reconstructed bottom track.
+	AddAtPage(
+		*Canvas,
+		RadioScaleX,
+		RadioScaleY + (bUseUpscaledDashboardArt ? UpscaledRadioTunerYOffset : 0.0f),
+		RadioScaleWidth,
+		RadioScaleHeight,
+		SNew(SSimCopterRadioTuner)
+		.Radio(GetRadio())
+		.Settings(GetPawn() != nullptr ? USimCopterSettings::Get(GetPawn()) : nullptr));
+
+	// The missing line beside 11 / 5 / 0. The slot includes FUN_00451e30's six-pixel grab
+	// tolerance, while the widget paints only FUN_004520a0's exact 2x2 indicator.
+	AddAtPage(
+		*Canvas,
+		RadioVolumeX + (bUseUpscaledDashboardArt ? UpscaledRadioVolumeXOffset : 0.0f),
+		RadioVolumeHitTop,
+		RadioVolumeWidth,
+		RadioVolumeHitBottom - RadioVolumeHitTop,
+		SNew(SSimCopterRadioVolume)
+		.Radio(GetRadio())
+		.Settings(GetPawn() != nullptr ? USimCopterSettings::Get(GetPawn()) : nullptr)
+		.UseUpscaledArt(bUseUpscaledDashboardArt));
 
 	return SNew(SBox)
 		.WidthOverride(Dash4Width * Scale)
@@ -1062,6 +1449,10 @@ int32 SSimCopterDashboard::GetPointsLevel() const
 	{
 		return 0;
 	}
+	if (!SimCopterMissionSession::HasPointsGoal(Missions->GetSessionMode()))
+	{
+		return 0;
+	}
 
 	SimCopterMissions::FSimCopterCareerCity City;
 	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City))
@@ -1070,6 +1461,40 @@ int32 SSimCopterDashboard::GetPointsLevel() const
 	}
 	return SimCopterSegmentedBar::GetLevel(
 		Missions->GetSessionScore(), City.PointsNeeded, PointsCellCount);
+}
+
+FText SSimCopterDashboard::GetPointsToolTipText() const
+{
+	const ASimCopterMissionSystemActor* Missions = GetMissionSystem();
+	if (Missions == nullptr)
+	{
+		return FText::GetEmpty();
+	}
+
+	const int32 Score = Missions->GetSessionScore();
+
+	// UserCityJobs keeps a scheduler tuning record, so the existence of that record cannot
+	// determine presentation. Its explicit sandbox mode owns no target and shows only the score.
+	if (!SimCopterMissionSession::HasPointsGoal(Missions->GetSessionMode()))
+	{
+		return FText::Format(
+			NSLOCTEXT("SimCopterDashboard", "PointsToolTipUserCity", "Points: {0}"),
+			FText::AsNumber(Score));
+	}
+
+	SimCopterMissions::FSimCopterCareerCity City;
+	if (!Missions->GetCareerCityInfo(Missions->GetSessionCareerCityIndex(), City) ||
+		City.PointsNeeded <= 0)
+	{
+		return FText::Format(
+			NSLOCTEXT("SimCopterDashboard", "PointsToolTipUserCity", "Points: {0}"),
+			FText::AsNumber(Score));
+	}
+
+	return FText::Format(
+		NSLOCTEXT("SimCopterDashboard", "PointsToolTipCareer", "Points: {0}/{1}"),
+		FText::AsNumber(Score),
+		FText::AsNumber(City.PointsNeeded));
 }
 
 const FSlateBrush* SSimCopterDashboard::GetPointsCellBrush(const int32 CellIndex) const

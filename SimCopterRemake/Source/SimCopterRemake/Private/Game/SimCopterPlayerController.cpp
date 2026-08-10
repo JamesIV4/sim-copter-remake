@@ -6,10 +6,12 @@
 #include "Audio/SimCopterRadio.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSettings.h"
+#include "Ground/SimCopterOnFootPawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "UI/SSimCopterCitySettings.h"
@@ -71,22 +73,7 @@ void ASimCopterPlayerController::SetupInputComponent()
 
 FString ASimCopterPlayerController::ResolveOriginalGameRoot()
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return FString();
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 void ASimCopterPlayerController::SimSettings()
@@ -394,6 +381,16 @@ void ASimCopterPlayerController::CloseScreen()
 
 void ASimCopterPlayerController::RestoreGameInput()
 {
+	// On foot the mouse drives look, so it should come back locked and hidden (view mode) -
+	// the same setup ASimCopterOnFootPawn applies when it's possessed - rather than the
+	// cockpit's free-roaming cursor.
+	if (Cast<ASimCopterOnFootPawn>(GetPawn()) != nullptr)
+	{
+		SetInputMode(FInputModeGameOnly());
+		bShowMouseCursor = false;
+		return;
+	}
+
 	// The cockpit needs the pointer for the dash and the tool flaps, so it is GameAndUI rather
 	// than GameOnly - the same mode the helicopter pawn sets when it is possessed.
 	FInputModeGameAndUI InputMode;

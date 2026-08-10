@@ -1,0 +1,77 @@
+﻿=== BHAV 261 'idle a bit' (2 records) ===
+  [ 0] expr l0 := 3                                                 T->1 F->-3
+  [ 1] op0 wait local[a0]--  args=0,0,0,0                           T->retT F->-3
+
+=== BHAV 1101 'Idle-10' (2 records) ===
+  [ 0] expr l0 := 10                                                T->1 F->1
+  [ 1] op0 wait local[a0]--  args=0,0,0,0                           T->retT F->retT
+
+=== BHAV 1102 'Idle-20' (2 records) ===
+  [ 0] expr l0 := 20                                                T->1 F->1
+  [ 1] op0 wait local[a0]--  args=0,0,0,0                           T->retT F->retT
+
+=== BHAV 1104 'Idle-80' (2 records) ===
+  [ 0] expr l0 := 80                                                T->1 F->1
+  [ 1] op0 wait local[a0]--  args=0,0,0,0                           T->retT F->retT
+
+=== BHAV 267 'random motion' (22 records) ===
+  [ 0] op86 is my carrier the harness  args=-1,-1,-1,-1             T->retT F->20
+  [ 1] op7 local[a0] := rand(a1)  args=1,140,7,0                    T->9 F->-3
+  [ 2] op7 local[a0] := rand(a1)  args=0,4,7,0                      T->11 F->-3
+  [ 3] op4 timed-move local[a0]-- @movespeed  args=1,1,0,0          T->16 F->10
+  [ 4] op7 local[a0] := rand(a1)  args=2,7,7,-1                     T->5 F->-3
+  [ 5] op29 facing := local[a0] & 7  args=2,0,0,0                   T->retT F->-3
+  [ 6] expr l0 *= 4                                                 T->21 F->-3
+  [ 7] CALL 261 'idle a bit'                                        T->17 F->-3
+  [ 8] expr movespeed := l0                                         T->3 F->-3
+  [ 9] CALL 261 'idle a bit'                                        T->2 F->-3
+  [10] CALL 271 'idle -- rand 20 + 1'                               T->14 F->-3
+  [11] expr l0 == 0                                                 T->12 F->6
+  [12] bind-anim 'HipH'                                             T->18 F->-3
+  [13] CALL 271 'idle -- rand 20 + 1'                               T->retT F->-3
+  [14] CALL 1102 'Idle-20'                                          T->4 F->-3
+  [15] op57 sound a0  args=3,0,0,0                                  T->7 F->-3
+  [16] CALL 296 'rand 1 in 6?'                                      T->15 F->7
+  [17] CALL 296 'rand 1 in 6?'                                      T->4 F->retT
+  [18] CALL 296 'rand 1 in 6?'                                      T->19 F->13
+  [19] op57 sound a0  args=36,0,0,0                                 T->13 F->-3
+  [20] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->retT F->1
+  [21] expr l0 += 4                                                 T->8 F->-3
+
+=== BHAV 258 'Run laterally just a bit' (14 records) ===
+  [ 0] CALL 261 'idle a bit'                                        T->1 F->-3
+  [ 1] expr l3 := facing                                            T->2 F->-3
+  [ 2] op7 local[a0] := rand(a1)  args=2,2,7,0                      T->7 F->-3
+  [ 3] expr l2 == 0                                                 T->5 F->4
+  [ 4] expr l0 += 2                                                 T->8 F->-3
+  [ 5] expr l0 -= 2                                                 T->8 F->-3
+  [ 6] expr l0 := 8                                                 T->13 F->-3
+  [ 7] expr l0 := facing                                            T->3 F->-3
+  [ 8] op29 facing := local[a0] & 7  args=0,0,0,0                   T->6 F->-3
+  [ 9] op4 timed-move local[a0]-- @movespeed  args=0,0,0,0          T->10 F->12
+  [10] op29 facing := local[a0] & 7  args=3,0,0,0                   T->retT F->-3
+  [11] op29 facing := local[a0] & 7  args=3,0,0,0                   T->retF F->-3
+  [12] CALL 261 'idle a bit'                                        T->11 F->-3
+  [13] expr movespeed := 3                                          T->9 F->-3
+
+=== BHAV 279 'Drop toted, let fall' (6 records) ===
+  [ 0] op51 set down + select whom I carry  args=-1,-1,-1,-1        T->3 F->3
+  [ 1] CALL 258 'Run laterally just a bit'                          T->4 F->4
+  [ 2] op39 push BHAV a0 onto selection  args=283,0,0,0             T->5 F->-3
+  [ 3] expr attr17 := 1                                             T->1 F->-3
+  [ 4] op67 copy my selection to caller  args=-1,-1,-1,-1           T->retT F->-3
+  [ 5] CALL 261 'idle a bit'                                        T->4 F->-3
+
+=== BHAV 307 'Inc fail and move through walls if > 4' (3 records) ===
+  [ 0] CALL 261 'idle a bit'                                        T->1 F->-3
+  [ 1] expr failcount += 1                                          T->2 F->-3
+  [ 2] CALL 308 'If fail > 4 move thru walls else no'               T->retT F->-3
+
+=== BHAV 265 'Medevac disappear' (3 records) ===
+  [ 0] op51 set down + select whom I carry  args=-1,-1,-1,-1        T->1 F->1
+  [ 1] op40 tear down (despawn)  args=-1,-1,-1,-1                   T->-3 F->-3
+  [ 2] op39 push BHAV a0 onto selection  args=800,0,0,0             T->1 F->-3
+
+=== BHAV 802 'Medevac victim slump' (1 records) ===
+  [ 0] bind-anim 'Slum'                                             T->retT F->-3
+

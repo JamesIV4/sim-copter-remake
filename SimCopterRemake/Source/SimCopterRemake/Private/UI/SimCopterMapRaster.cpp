@@ -754,7 +754,7 @@ void FSimCopterMapRaster::GetMissionIcons(const int32 TypeMask, int32& OutPrimar
 	case 0x10:     // rescue
 	case 0x90:     // boat rescue
 	case 0x110:    // train rescue
-	case 0x80010:  // people trapped at a fire
+	case 0x80010:  // rooftop rescue
 		OutPrimaryIcon = 4;
 		break;
 	case 0x20:     // medevac
@@ -765,11 +765,11 @@ void FSimCopterMapRaster::GetMissionIcons(const int32 TypeMask, int32& OutPrimar
 		OutPrimaryIcon = 3;
 		OutSecondaryIcon = 3;
 		break;
-	case 0x200:    // criminal on foot
-	case 0x2000:   // speeder
-	case 0x4000:   // criminal car
+	case 0x200:    // robber
+	case 0x2000:   // arsonist
+	case 0x4000:   // burglar getaway car
 	case 0x10000:
-	case 0x20000:
+	case 0x20000:  // mugger
 	case 0x40000:
 		OutPrimaryIcon = 2;
 		break;

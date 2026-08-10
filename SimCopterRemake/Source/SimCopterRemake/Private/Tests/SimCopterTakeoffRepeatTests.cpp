@@ -10,6 +10,7 @@
 #include "Flight/SimCopterFlightModel.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Misc/AutomationTest.h"
+#include "Missions/SimCopterMissionSystemActor.h"
 
 namespace
 {
@@ -232,6 +233,11 @@ public:
 		GroundClearanceCm = Clearance;
 		GroundContactTolerance = Tolerance;
 	}
+
+	void SetTestClearance(float Clearance) { GroundClearanceCm = Clearance; }
+	void SetTestSettleSeconds(float Seconds) { SecondsWithinAlightClearance = Seconds; }
+	float GetTestAlightClearance() const { return PassengerAlightClearanceCm; }
+	float GetTestBoardClearance() const { return PassengerBoardClearanceCm; }
 };
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -247,6 +253,60 @@ bool FSimCopterCanExitHelicopterTest::RunTest(const FString& Parameters)
 
 	Pawn->SetTestState(false, 0.0f, 50.0f);
 	TestFalse(TEXT("Cannot exit helicopter while airborne"), Pawn->CanExitHelicopter());
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengerTransferClearanceTest,
+	"SimCopter.Flight.PassengerTransferClearance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+// The two height bands FUN_004c9bc0 and FUN_004ca940 draw, and the settle the mission tick needs so
+// it cannot beat BHAV 292 to the cabin door. GroundClearanceCm is the flight model's own
+// aircraft-above-ground figure (ApplyFlightModelToActor puts the sphere bottom at Altitude), so the
+// shipped unit counts are compared against it directly, with no contact tolerance in between.
+bool FSimCopterPassengerTransferClearanceTest::RunTest(const FString& Parameters)
+{
+	FTestExitHelicopterPawn* Pawn = NewObject<FTestExitHelicopterPawn>();
+
+	constexpr float UnitCm = 6.25f;
+	TestEqual(TEXT("Alight band is FUN_004c9bc0's six original units"), Pawn->GetTestAlightClearance(), 6.0f * UnitCm);
+	TestEqual(TEXT("Board band is opcode 12's eight original units"), Pawn->GetTestBoardClearance(), 8.0f * UnitCm);
+
+	// FUN_00487160 parks at TerrainHeight + 0x13333, so a landed helicopter sits 1.2 units up.
+	Pawn->SetTestClearance(1.2f * UnitCm);
+	TestTrue(TEXT("A parked helicopter may unload"), Pawn->CanTransferMissionPassengers());
+	TestTrue(TEXT("A parked helicopter may be boarded"), Pawn->CanBoardMissionPassengers());
+
+	// The band the old gate allowed: GroundContactTolerance (28) + 60, nearly a metre of hover.
+	Pawn->SetTestClearance(88.0f);
+	TestFalse(TEXT("Nobody steps out from the old 88 cm band"), Pawn->CanTransferMissionPassengers());
+	TestFalse(TEXT("Nor climbs in from it"), Pawn->CanBoardMissionPassengers());
+
+	// Getting in tolerates a lower hover than getting out, exactly as the original's pair does.
+	Pawn->SetTestClearance(45.0f);
+	TestFalse(TEXT("45 cm is too high to step out"), Pawn->CanTransferMissionPassengers());
+	TestTrue(TEXT("45 cm is still low enough to climb in"), Pawn->CanBoardMissionPassengers());
+
+	// And the settle: low enough is not on its own enough for the mission-side release.
+	Pawn->SetTestClearance(0.0f);
+	Pawn->SetTestSettleSeconds(0.0f);
+	TestFalse(
+		TEXT("The frame the skids arrive is too early for the mission-side release"),
+		ASimCopterMissionSystemActor::IsHelicopterSettledForAlight(*Pawn));
+
+	Pawn->SetTestSettleSeconds(Pawn->GetPassengerAlightSettleSeconds());
+	TestTrue(
+		TEXT("BHAV 292's polling period later, it is not"),
+		ASimCopterMissionSystemActor::IsHelicopterSettledForAlight(*Pawn));
+
+	// Rising back out of the band is what resets the clock, so a settled-then-lifted aircraft is
+	// refused on the height alone.
+	Pawn->SetTestClearance(200.0f);
+	TestFalse(
+		TEXT("Lifting off refuses the release however long it had been settled"),
+		ASimCopterMissionSystemActor::IsHelicopterSettledForAlight(*Pawn));
 
 	return true;
 }

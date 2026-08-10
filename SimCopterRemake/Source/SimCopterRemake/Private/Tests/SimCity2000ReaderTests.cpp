@@ -41,7 +41,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCity2000ReferenceCityTest::RunTest(const FString& Parameters)
 {
-	const FString DemoCityPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/cities/Demo.sc2")));
+	FString DemoCityPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/cities/career/city0.sc2")));
+	if (!FPaths::FileExists(DemoCityPath))
+	{
+		DemoCityPath = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/cities/Demo.sc2")));
+	}
 	if (!FPaths::FileExists(DemoCityPath))
 	{
 		AddWarning(FString::Printf(TEXT("Skipping optional reference city test because '%s' is not present."), *DemoCityPath));

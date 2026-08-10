@@ -1,0 +1,736 @@
+// ===========================================
+// Ghidra:    FUN_004c71c0
+// Address:   0x004c71c0
+// Signature: undefined FUN_004c71c0(void)
+// Callers:   6  |  Callees: 4
+// ===========================================
+
+
+
+void __thiscall FUN_004c71c0(int param_1,int param_2)
+
+
+
+{
+
+  short sVar1;
+
+  undefined2 uVar2;
+
+  undefined2 uVar3;
+
+  int iVar4;
+
+  undefined4 *puVar5;
+
+  uint uVar6;
+
+  uint *puVar7;
+
+  int iVar8;
+
+  undefined2 uVar9;
+
+  undefined2 local_4;
+
+  
+
+  if (param_2 == -1) {
+
+    param_2 = FUN_004c7190();
+
+  }
+
+  sVar1 = FUN_004cea00(DAT_0058dc3a);
+
+  if ((sVar1 == 0) && (sVar1 = FUN_004cea00(DAT_0058dc3a), sVar1 == 0)) {
+
+    param_2 = FUN_004c7170();
+
+  }
+
+  uVar9 = 0;
+
+  *(short *)(param_1 + 0x146) = (short)param_2;
+
+  uVar3 = 0xe;
+
+  switch(param_2) {
+
+  case 0:
+
+    local_4 = 4;
+
+    iVar8 = 0x426c6f6e;
+
+    uVar9 = 500;
+
+    uVar3 = 0x28;
+
+    break;
+
+  case 1:
+
+    local_4 = 8;
+
+    iVar8 = 0x576f6d61;
+
+    uVar9 = 400;
+
+    uVar3 = 0x28;
+
+    break;
+
+  case 2:
+
+    local_4 = 6;
+
+    iVar8 = 0x32776f6d;
+
+    uVar9 = 400;
+
+    uVar3 = 0x28;
+
+    break;
+
+  case 3:
+
+    local_4 = 7;
+
+    iVar8 = 0x4368696c;
+
+    uVar9 = 700;
+
+    break;
+
+  case 4:
+
+    local_4 = 5;
+
+    iVar8 = 0x356d616e;
+
+    uVar9 = 0;
+
+    break;
+
+  case 5:
+
+    local_4 = 7;
+
+    iVar8 = 0x6661746d;
+
+    uVar9 = 0xfd44;
+
+    break;
+
+  case 6:
+
+    local_4 = 7;
+
+    iVar8 = 0x424c5545;
+
+    uVar9 = 0xff38;
+
+    uVar3 = 0x29;
+
+    break;
+
+  case 7:
+
+    local_4 = 7;
+
+    iVar8 = 0x53554954;
+
+    uVar9 = 0xfed4;
+
+    break;
+
+  case 8:
+
+    local_4 = 5;
+
+    iVar8 = 0x352e356d;
+
+    uVar9 = 0xff9c;
+
+    break;
+
+  case 9:
+
+    local_4 = 5;
+
+    iVar8 = 0x53484144;
+
+    uVar9 = 300;
+
+    break;
+
+  case 10:
+
+    local_4 = 6;
+
+    iVar8 = 0x32444f47;
+
+    uVar9 = 900;
+
+    sVar1 = FUN_004cea00(200);
+
+    if (sVar1 == 0) {
+
+      uVar2 = FUN_004cea00(8);
+
+      switch(uVar2) {
+
+      case 0:
+
+        uVar3 = 0x2f;
+
+        break;
+
+      case 1:
+
+        uVar3 = 0x30;
+
+        break;
+
+      case 2:
+
+        uVar3 = 0x31;
+
+        break;
+
+      case 3:
+
+        uVar3 = 0x32;
+
+        break;
+
+      case 4:
+
+        uVar3 = 0x33;
+
+        break;
+
+      case 5:
+
+        uVar3 = 0x34;
+
+        break;
+
+      case 6:
+
+        uVar3 = 0x35;
+
+        break;
+
+      case 7:
+
+        uVar3 = 0x36;
+
+      }
+
+    }
+
+    else {
+
+      uVar3 = 0xe;
+
+    }
+
+    break;
+
+  case 0xb:
+
+    local_4 = 9;
+
+    iVar8 = 0x32626c6f;
+
+    uVar9 = 0xfe0c;
+
+    uVar3 = 0x28;
+
+    break;
+
+  case 0xc:
+
+    local_4 = 3;
+
+    iVar8 = 0x4d656469;
+
+    uVar9 = 0xfed4;
+
+    break;
+
+  case 0xd:
+
+    local_4 = 2;
+
+    iVar8 = 0x46697265;
+
+    uVar9 = 0xfed4;
+
+    uVar3 = 0x29;
+
+    break;
+
+  case 0xe:
+
+    local_4 = 1;
+
+    iVar8 = 0x4b6f7070;
+
+    uVar9 = 0xfed4;
+
+    uVar3 = 0x29;
+
+    break;
+
+  case 0xf:
+
+    local_4 = 5;
+
+    iVar8 = 0x42616467;
+
+    uVar9 = 0xfc7c;
+
+    break;
+
+  case 0x10:
+
+    local_4 = 4;
+
+    iVar8 = 0x4e657373;
+
+    uVar9 = 0xfc18;
+
+    uVar2 = FUN_004cea00(8);
+
+    switch(uVar2) {
+
+    case 0:
+
+      uVar3 = 0x2f;
+
+      break;
+
+    case 1:
+
+      uVar3 = 0x30;
+
+      break;
+
+    case 2:
+
+      uVar3 = 0x31;
+
+      break;
+
+    case 3:
+
+      uVar3 = 0x32;
+
+      break;
+
+    case 4:
+
+      uVar3 = 0x33;
+
+      break;
+
+    case 5:
+
+      uVar3 = 0x34;
+
+      break;
+
+    case 6:
+
+      uVar3 = 0x35;
+
+      break;
+
+    case 7:
+
+      uVar3 = 0x36;
+
+    }
+
+    break;
+
+  case 0x11:
+
+    local_4 = 4;
+
+    iVar8 = 0x436f7777;
+
+    uVar9 = 0xfc18;
+
+    sVar1 = FUN_004cea00(200);
+
+    if (sVar1 == 0) {
+
+      uVar2 = FUN_004cea00(8);
+
+      switch(uVar2) {
+
+      case 0:
+
+        uVar3 = 0x2f;
+
+        break;
+
+      case 1:
+
+        uVar3 = 0x30;
+
+        break;
+
+      case 2:
+
+        uVar3 = 0x31;
+
+        break;
+
+      case 3:
+
+        uVar3 = 0x32;
+
+        break;
+
+      case 4:
+
+        uVar3 = 0x33;
+
+        break;
+
+      case 5:
+
+        uVar3 = 0x34;
+
+        break;
+
+      case 6:
+
+        uVar3 = 0x35;
+
+        break;
+
+      case 7:
+
+        uVar3 = 0x36;
+
+      }
+
+    }
+
+    else {
+
+      uVar3 = 0xe;
+
+    }
+
+    break;
+
+  case 0x12:
+
+    local_4 = 7;
+
+    iVar8 = 0x54756261;
+
+    uVar9 = 0xfc18;
+
+    uVar3 = 0x29;
+
+    break;
+
+  case 0x13:
+
+    local_4 = 0;
+
+    iVar8 = 0x70696c6f;
+
+    uVar9 = 0xfc18;
+
+    uVar3 = 0x29;
+
+    break;
+
+  case 0x14:
+
+    local_4 = 7;
+
+    iVar8 = 0x456c7669;
+
+    uVar9 = 0xe0c0;
+
+    uVar2 = FUN_004cea00(8);
+
+    switch(uVar2) {
+
+    case 0:
+
+      uVar3 = 0x2f;
+
+      break;
+
+    case 1:
+
+      uVar3 = 0x30;
+
+      break;
+
+    case 2:
+
+      uVar3 = 0x31;
+
+      break;
+
+    case 3:
+
+      uVar3 = 0x32;
+
+      break;
+
+    case 4:
+
+      uVar3 = 0x33;
+
+      break;
+
+    case 5:
+
+      uVar3 = 0x34;
+
+      break;
+
+    case 6:
+
+      uVar3 = 0x35;
+
+      break;
+
+    case 7:
+
+      uVar3 = 0x36;
+
+    }
+
+    break;
+
+  case 0x15:
+
+    local_4 = 5;
+
+    iVar8 = 0x7377696d;
+
+    uVar9 = 1000;
+
+    break;
+
+  default:
+
+    local_4 = (undefined2)param_1;
+
+    iVar8 = param_1;
+
+  }
+
+  if (((*(short *)(param_1 + 0x12e) == 32000) && (DAT_0051ac58 != 0)) &&
+
+     (iVar4 = FUN_0042de60(1), iVar4 != 0)) {
+
+    uVar2 = FUN_004cea00(8);
+
+    switch(uVar2) {
+
+    case 0:
+
+switchD_004c75d9_caseD_0:
+
+      uVar3 = 0x2f;
+
+      break;
+
+    case 1:
+
+switchD_004c75d9_caseD_1:
+
+      uVar3 = 0x30;
+
+      break;
+
+    case 2:
+
+switchD_004c75d9_caseD_2:
+
+      uVar3 = 0x31;
+
+      break;
+
+    case 3:
+
+switchD_004c75d9_caseD_3:
+
+      uVar3 = 0x32;
+
+      break;
+
+    case 4:
+
+switchD_004c75d9_caseD_4:
+
+      uVar3 = 0x33;
+
+      break;
+
+    case 5:
+
+switchD_004c75d9_caseD_5:
+
+      uVar3 = 0x34;
+
+      break;
+
+    case 6:
+
+switchD_004c75d9_caseD_6:
+
+      uVar3 = 0x35;
+
+      break;
+
+    case 7:
+
+switchD_004c75d9_caseD_7:
+
+      uVar3 = 0x36;
+
+    default:
+
+      break;
+
+    }
+
+switchD_004c75d9_default:
+
+    puVar5 = (undefined4 *)0x0;
+
+    *(undefined2 *)(param_1 + 0x178) = uVar9;
+
+    *(undefined2 *)(param_1 + 0x18c) = uVar3;
+
+    if (DAT_00506bf4 != 0) {
+
+      puVar5 = (undefined4 *)(DAT_00506bf4 + 4);
+
+    }
+
+    puVar7 = (uint *)0x0;
+
+    if (puVar5 != (undefined4 *)0x0) {
+
+      puVar7 = (uint *)*puVar5;
+
+    }
+
+    if (puVar7 != (uint *)0x0) {
+
+      while (*puVar7 != 0) {
+
+        if (*(int *)(((puVar7 == (uint *)0x0) - 1 & *puVar7) + 0x1c) == iVar8) {
+
+          if (puVar7 != (uint *)0x0) {
+
+            uVar6 = *puVar7;
+
+            goto LAB_004c769e;
+
+          }
+
+          break;
+
+        }
+
+        if ((puVar7 == (uint *)0x0) || (puVar7 = (uint *)puVar7[1], puVar7 == (uint *)0x0)) break;
+
+      }
+
+    }
+
+    uVar6 = 0;
+
+LAB_004c769e:
+
+    *(uint *)(param_1 + 0x21c) = uVar6;
+
+    *(int *)(param_1 + 0x218) = iVar8;
+
+    if ((*(short *)(param_1 + 0x18e) == -1) && (*(short *)(param_1 + 0x12e) != 32000)) {
+
+      *(undefined2 *)(param_1 + 0x18e) = local_4;
+
+    }
+
+    if (*(short *)(param_1 + 0x160) == -1) {
+
+      uVar3 = FUN_004cea00(0xe);
+
+      *(undefined2 *)(param_1 + 0x160) = uVar3;
+
+    }
+
+    return;
+
+  }
+
+  sVar1 = FUN_004cea00(DAT_0058dc3a);
+
+  if (sVar1 != 0) goto switchD_004c75d9_default;
+
+  uVar2 = FUN_004cea00(8);
+
+  switch(uVar2) {
+
+  case 0:
+
+    goto switchD_004c75d9_caseD_0;
+
+  case 1:
+
+    goto switchD_004c75d9_caseD_1;
+
+  case 2:
+
+    goto switchD_004c75d9_caseD_2;
+
+  case 3:
+
+    goto switchD_004c75d9_caseD_3;
+
+  case 4:
+
+    goto switchD_004c75d9_caseD_4;
+
+  case 5:
+
+    goto switchD_004c75d9_caseD_5;
+
+  case 6:
+
+    goto switchD_004c75d9_caseD_6;
+
+  case 7:
+
+    goto switchD_004c75d9_caseD_7;
+
+  default:
+
+    goto switchD_004c75d9_default;
+
+  }
+
+}
+
+
+
+

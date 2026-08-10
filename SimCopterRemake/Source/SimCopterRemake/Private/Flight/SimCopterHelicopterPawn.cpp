@@ -25,6 +25,7 @@
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Formats/SimCity2000Reader.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterTweakReader.h"
 #include "Flight/SimCopterControllerInput.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
@@ -213,11 +214,11 @@ FSimCopterCameraViewDebugOffset GetDefaultCameraViewDebugOffset(ESimCopterCamera
 		Offset.RotationDeg = FRotator(-24.5, 0.0, 0.0);
 		break;
 	case ESimCopterCameraMode::Cockpit:
-		// The pilot's seat, measured off CameraAnchor (which sits on the cabin roof). 60 cm
+		// The pilot's seat, measured off CameraAnchor (which sits on the cabin roof). 45 cm
 		// down puts the eye level with the cabin; the CANNON object occupies X 27..58 at
 		// Z ~8 in the same body frame, about 69 cm below the roof, so from here it sits just
 		// under the crosshair. Tune from the debug panel's POSITION CM row.
-		Offset.TranslationCm = FVector(10.0, 0.0, -60.0);
+		Offset.TranslationCm = FVector(10.0, 0.0, -45.0);
 		// Level with the nose: the crosshair then marks the model's forward axis, which is the
 		// direction every tool fires along (EmitWaterCannonFrame and friends).
 		Offset.RotationDeg = FRotator::ZeroRotator;
@@ -527,6 +528,14 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	CollisionComponent->SetCollisionObjectType(ECC_Pawn);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	// InitCapsuleSize clamps the half height up to the radius, so this shape is a 190 cm sphere -
+	// sized for the flight impact sweep against city geometry (see ApplyFlightModelToActor), not
+	// for the fuselage, which is a fraction of that across. Blocking pawns with it walled the
+	// airframe off behind a metre of invisible air: the avatar was stopped short of the aircraft
+	// on every side, so "walk up to the helicopter and get in" could only ever be a bubble test.
+	// People are not obstacles to an aircraft in the original either - FUN_0048ad50 answers a
+	// person with damage and a bounce, never with a stop - so pawns overlap instead.
+	CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	CollisionComponent->SetCanEverAffectNavigation(false);
 	SetRootComponent(CollisionComponent);
 
@@ -685,6 +694,13 @@ ASimCopterHelicopterPawn::ASimCopterHelicopterPawn()
 	SearchLightComponent->InnerConeAngle = 8.0f;
 	SearchLightComponent->OuterConeAngle = 20.0f;
 	SearchLightComponent->SetLightColor(SearchLightBeamColor.ToFColor(true));
+	// See SearchLightExposureCompensation: without this the beam is invisible under the day
+	// sequence's physically scaled sun. Set on the property directly - the setter is a no-op on a
+	// default subobject, before the component is registered.
+	SearchLightComponent->InverseExposureBlend = SearchLightExposureCompensation;
+	// Set on the property for the same reason as the line above - the setter no-ops on an
+	// unregistered default subobject. See SearchLightIndirectLightingIntensity for why it is not 1.
+	SearchLightComponent->IndirectLightingIntensity = SearchLightIndirectLightingIntensity;
 	SearchLightComponent->SetVisibility(bSearchLightStartsEnabled);
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -827,7 +843,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	FlightModel.TurbulenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 20.0f);
 	FlightModel.ReferenceFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
 	FlightModel.SpeedChaseFrameSeconds = SimCopterFixed::FromFloat(1.0f / 60.0f);
-	FlightModel.RotorVisualMultiplier = SimCopterFixed::FromFloat(4.0f);
+	FlightModel.RotorVisualMultiplier = SimCopterFixed::FromFloat(3.0f);
 	LoadFlightRateTuning();
 
 	// The editor property is a name; the registry index is what the runtime uses from here on.
@@ -1087,6 +1103,12 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 		IE_Pressed,
 		this,
 		&ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel);
+
+	PlayerInputComponent->BindKey(
+		FInputChord(EKeys::M, false, true, true, false),
+		IE_Pressed,
+		this,
+		&ASimCopterHelicopterPawn::SimToggleFlapCalibration);
 }
 
 bool ASimCopterHelicopterPawn::LoadTuningFromOriginalGameRoot()
@@ -1636,6 +1658,27 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 	{
 		HeliCannonMeshComponent->SetRelativeLocation(FVector::ZeroVector);
 	}
+
+	// Seat the searchlight a bit ahead of wherever this airframe's water cannon actually sits,
+	// mirroring ResolveToolMuzzle's own priority (barrel tip, then nose muzzle, then the
+	// "3 units up" fallback) so every helicopter type gets a beam that starts in front of its
+	// nozzle instead of a single offset tuned for one mesh. CannonBarrelTipLocalCm is expressed
+	// in HeliCannonMeshComponent's frame, which sits at (0, 0, VerticalOffset) off ModelPivot -
+	// add that back in to land in ModelPivot's frame like NoseMuzzleLocalCm already is.
+	if (SearchLightComponent != nullptr)
+	{
+		FVector MuzzleLocalCm(0.0f, 0.0f, 3.0f * OriginalUnitToCm);
+		if (bUsingOriginalCannonMesh && bHasCannonBarrelTip)
+		{
+			MuzzleLocalCm = CannonBarrelTipLocalCm + FVector(0.0f, 0.0f, VerticalOffset);
+		}
+		else if (bHasNoseMuzzle)
+		{
+			MuzzleLocalCm = NoseMuzzleLocalCm;
+		}
+		SearchLightComponent->SetRelativeLocation(
+			MuzzleLocalCm + FVector(SearchLightForwardOfCannonOffsetCm, 0.0f, 0.0f));
+	}
 	const FMaxisMeshSection CockpitCannonSection = BuildExtendedCockpitCannonSection(
 		Prepared.CannonSection,
 		CockpitCannonRearExtensionCm);
@@ -1879,6 +1922,95 @@ void ASimCopterHelicopterPawn::PlaceOnHelipad(const FVector& PadSurfaceWorldLoca
 	bIsLanded = true;
 	SeedFlightModelFromActor();
 	UpdateGroundProbe();
+}
+
+bool ASimCopterHelicopterPawn::ReturnToAirportAfterCrash()
+{
+	// SCHOOK: HelicopterCrashRespawn 0x0048a8b0
+	// The wreck goes back to the airport, which is where the player's next flight starts from and
+	// where the check-up desk that repairs it lives. FUN_0048b000 picks the pad; an occupied one is
+	// only a tie-break there, and after a crash the fleet is parked, so pad 0 is the usual answer.
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystemActor();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	// Anything else standing on a pad blocks it, so a wreck cannot be dropped onto a parked
+	// aircraft. Pads are 1x1, so "occupied" is a tile match.
+	TBitArray<> PadTaken(false, SimCopterAirport::PadCount);
+	TArray<AActor*> HelicopterActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
+	for (int32 PadIndex = 0; PadIndex < SimCopterAirport::PadCount; ++PadIndex)
+	{
+		FVector PadWorld = FVector::ZeroVector;
+		if (!TrafficSystem->TryGetAirportPadWorldLocation(PadIndex, PadWorld))
+		{
+			PadTaken[PadIndex] = true;
+			continue;
+		}
+		for (const AActor* Other : HelicopterActors)
+		{
+			if (Other != this &&
+				Other != nullptr &&
+				FVector::Dist2D(Other->GetActorLocation(), PadWorld) < CrashRespawnPadClearanceCm)
+			{
+				PadTaken[PadIndex] = true;
+				break;
+			}
+		}
+	}
+
+	auto IsPadTaken = [&PadTaken](int32 PadIndex) { return PadTaken[PadIndex]; };
+	const int32 FreePad = SimCopterAirport::FindFreePadIndex(IsPadTaken, IsPadTaken);
+	FVector PadSurface = FVector::ZeroVector;
+	if (FreePad == INDEX_NONE || !TrafficSystem->TryGetAirportPadWorldLocation(FreePad, PadSurface))
+	{
+		// No airport in this city, or every pad blocked. Leave the wreck where it fell rather than
+		// teleporting it somewhere arbitrary - the flight model has already repaired it in place.
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter crash: no free helipad to return the aircraft to."));
+		return false;
+	}
+
+	// FUN_00484790 clears the orientation outright; the pads have no facing.
+	PlaceOnHelipad(PadSurface, 0.0f);
+	StuckFallSeconds = 0.0f;
+
+	// Anyone riding the wreck comes back with it. Attached passengers already follow the actor;
+	// this is for a player who is somehow not in the cabin but still possessing this pawn.
+	UE_LOG(LogTemp, Display, TEXT("SimCopter crash: aircraft returned to airport pad %d."), FreePad);
+	return true;
+}
+
+void ASimCopterHelicopterPawn::UpdateStuckFallWatchdog(const float DeltaSeconds)
+{
+	// The crash above is raised when a Dying helicopter reaches the ground. It can fail to arrive:
+	// off the edge of the map, or over a column whose surface height never resolves, the aircraft
+	// keeps descending with no ground to meet. Nothing in the original can reach that state, so
+	// there is no behaviour to port - this is a remake-only backstop that ends the fall the same
+	// way an arrival would.
+	if (FlightModel.State != ESimCopterFlightState::Dying)
+	{
+		StuckFallSeconds = 0.0f;
+		return;
+	}
+
+	StuckFallSeconds += DeltaSeconds;
+	if (StuckFallSeconds < StuckFallRecoverySeconds)
+	{
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning,
+		TEXT("SimCopter crash: aircraft fell for %.1fs without reaching the ground; recovering to the airport."),
+		StuckFallSeconds);
+	StuckFallSeconds = 0.0f;
+	bEngineRunning = false;
+	// ResetOnSurface puts the model back in Parked with full hit points and fuel, which is the
+	// same repair the ordinary crash arm gets. Doing it here as well means a city with no airport
+	// still ends the fall instead of dropping forever.
+	SeedFlightModelFromActor();
+	ReturnToAirportAfterCrash();
 }
 
 float ASimCopterHelicopterPawn::GetFuelFraction() const
@@ -2205,9 +2337,78 @@ float ASimCopterHelicopterPawn::GetAirspeedDialKnots() const
 	return SimCopterFixed::ToFloat(FlightModel.HorizontalSpeed);
 }
 
-bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const
+bool ASimCopterHelicopterPawn::TryGetAirframeLocalBoundsCm(FBox& OutLocalBoundsCm) const
 {
-	return FVector::DistSquared(WorldLocation, GetActorLocation()) <= FMath::Square(RadiusCm);
+	// Same source as UpdateCameraAnchorFromVisibleBody: whichever fuselage is on screen, measured
+	// through its own relative transform so the answer is already in ModelPivot's coordinates.
+	// Rotors are separate components and stay out of it - a 5.2 m disc is not something you board.
+	const USceneComponent* VisibleBody =
+		bUsingOriginalMesh
+			? static_cast<const USceneComponent*>(HeliBodyMeshComponent.Get())
+			: static_cast<const USceneComponent*>(BodyMeshComponent.Get());
+	if (VisibleBody == nullptr)
+	{
+		return false;
+	}
+
+	const FBoxSphereBounds BodyBounds = VisibleBody->CalcBounds(VisibleBody->GetRelativeTransform());
+	if (!(BodyBounds.SphereRadius > UE_SMALL_NUMBER) || BodyBounds.BoxExtent.ContainsNaN())
+	{
+		return false;
+	}
+
+	OutLocalBoundsCm = BodyBounds.GetBox();
+	return OutLocalBoundsCm.IsValid != 0;
+}
+
+float ASimCopterHelicopterPawn::ComputeAirframeGapCm(
+	const FBox& LocalBoundsCm,
+	const FTransform& BodyFrame,
+	const FVector& WorldLocation,
+	const bool bHorizontalOnly)
+{
+	if (LocalBoundsCm.IsValid == 0)
+	{
+		return 0.0f;
+	}
+
+	FVector LocalPoint = BodyFrame.InverseTransformPosition(WorldLocation);
+	if (bHorizontalOnly)
+	{
+		// Project onto the box's own vertical span: someone standing beside the skids and someone
+		// level with the cabin roof are both "at" the aircraft.
+		LocalPoint.Z = FMath::Clamp(LocalPoint.Z, LocalBoundsCm.Min.Z, LocalBoundsCm.Max.Z);
+	}
+	return static_cast<float>(FMath::Sqrt(LocalBoundsCm.ComputeSquaredDistanceToPoint(LocalPoint)));
+}
+
+float ASimCopterHelicopterPawn::GetDistanceToAirframeCm(
+	const FVector& WorldLocation,
+	const bool bHorizontalOnly) const
+{
+	FBox LocalBounds(ForceInit);
+	if (!TryGetAirframeLocalBoundsCm(LocalBounds))
+	{
+		// No fuselage built yet (a headless test, or the frame before the GEO packs load). Fall
+		// back to the collision capsule's radius so the answer is still a gap to a body rather
+		// than a distance to a point.
+		const float CapsuleRadius =
+			CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleRadius() : 0.0f;
+		const FVector Delta = WorldLocation - GetActorLocation();
+		const float Distance = static_cast<float>(bHorizontalOnly ? Delta.Size2D() : Delta.Size());
+		return FMath::Max(0.0f, Distance - CapsuleRadius);
+	}
+
+	const FTransform BodyFrame =
+		ModelPivot != nullptr ? ModelPivot->GetComponentTransform() : GetActorTransform();
+	return ComputeAirframeGapCm(LocalBounds, BodyFrame, WorldLocation, bHorizontalOnly);
+}
+
+bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, const float ToleranceCm) const
+{
+	// 3D on purpose: measuring across the deck only would let a body standing under a hovering
+	// aircraft read as touching it.
+	return GetDistanceToAirframeCm(WorldLocation) <= FMath::Max(0.0f, ToleranceCm);
 }
 
 void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerController, const bool bBlendView)
@@ -2221,6 +2422,17 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 	ASimCopterOnFootPawn* OutgoingOnFootPawn =
 		Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn());
 	PlayerController->Possess(this);
+	// Sound slots 0x25/0x26 are DOROPN/DORCLS in FUN_00424b70. GetHelicopterAudio deliberately
+	// rejects aircraft the player is not flying, so play only after Possess has set the original's
+	// player-helicopter flag equivalent. A saved-game restore also reaches this function with a
+	// temporary on-foot pawn, hence the blended-transition guard.
+	if (OutgoingOnFootPawn != nullptr && bBlendView)
+	{
+		if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
+		{
+			Audio->Play3D(SimCopterSound::EnterCopterSound, GetActorLocation());
+		}
+	}
 	if (bBlendView)
 	{
 		BlendPossessionViewTarget(
@@ -2375,7 +2587,30 @@ bool ASimCopterHelicopterPawn::CanExitHelicopter() const
 
 bool ASimCopterHelicopterPawn::CanTransferMissionPassengers() const
 {
-	return bIsLanded && GroundClearanceCm <= GroundContactTolerance + 60.0f;
+	// LOW OR LANDED, never "parked". The original has no flight-state gate on getting in or out:
+	// FUN_004c9bc0 (opcodes 17/21, the alight) asks only for a standable tile and for the person to
+	// be within six original units of the ground under them. Requiring ESimCopterFlightState::Parked
+	// on top of that meant a fare who had walked up to a hovering helicopter with its skids a hand's
+	// breadth off the road was refused, which is not how the game plays.
+	//
+	// A rider's Y *is* the aircraft's Y (FUN_004c6450 copies the carrier's position onto them every
+	// tick) and GroundClearanceCm is that same aircraft-above-ground figure, so the shipped six units
+	// come straight across with no tolerance term - see PassengerAlightClearanceCm. This used to add
+	// GroundContactTolerance to a 60 cm band, 88 cm in all, which is nearly a metre of hover: enough
+	// that a mission's passengers were out of the cabin before the pilot had finished the descent.
+	//
+	// Contact is still enforced, on the walker's side, by StepTowardSelectedObject's own airframe
+	// test - so this stays a pure height band, exactly as the original's is.
+	return GroundClearanceCm < PassengerAlightClearanceCm;
+}
+
+bool ASimCopterHelicopterPawn::CanBoardMissionPassengers() const
+{
+	// FUN_004ca940 (opcode 12, the walk-and-board every passenger program reaches) accepts the move
+	// once the walker's body is in contact with the airframe AND the doorsill sits under
+	// `(objectY - personY) & 0xffff0000 < 0x50000`. See PassengerBoardClearanceCm for why that is
+	// eight units of aircraft-above-ground rather than five.
+	return GroundClearanceCm < PassengerBoardClearanceCm;
 }
 
 bool ASimCopterHelicopterPawn::TryGetRopeEndWorldLocation(FVector& OutWorldLocation) const
@@ -2606,29 +2841,102 @@ bool ASimCopterHelicopterPawn::DropPassengerAtSlot(int32 SlotIndex)
 	return true;
 }
 
-FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex) const
+void ASimCopterHelicopterPawn::WriteOffPassengersInDestroyedHelicopter()
 {
-	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
-	const float SlotSide = (SlotIndex % 2 == 0) ? 1.0f : -1.0f;
-	const float SlotRowOffset = SlotIndex >= 0 ? float(SlotIndex / 2) * 32.0f : 0.0f;
-	FVector DropLocation =
-		GetActorLocation() +
-		YawFrame.GetUnitAxis(EAxis::Y) * (175.0f * SlotSide) -
-		YawFrame.GetUnitAxis(EAxis::X) * (35.0f + SlotRowOffset);
-
-	if (GetWorld() != nullptr)
+	// FUN_004c0ba0 walks the seat manifest while FUN_004bfb20 removes from it. Copy the real-person
+	// pointers first so removing one seat cannot invalidate the next record we still need to visit.
+	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> Occupants;
+	Occupants.Reserve(MissionPassengerSlots.Num());
+	for (const FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
 	{
-		const FVector TraceStart = DropLocation + FVector::UpVector * 900.0f;
-		const FVector TraceEnd = DropLocation - FVector::UpVector * 1800.0f;
-		FHitResult Hit;
-		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterPassengerDrop), false, this);
-		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+		if (Slot.Person.IsValid())
 		{
-			DropLocation.Z = Hit.ImpactPoint.Z + 24.0f;
+			Occupants.AddUnique(Slot.Person);
 		}
 	}
 
-	return DropLocation;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& Occupant : Occupants)
+	{
+		if (ASimCopterGroundAgent* Person = Occupant.Get())
+		{
+			Person->WriteOffInDestroyedHelicopter();
+		}
+	}
+
+	// Legacy pointerless seats cannot post a person-owned mission event, but they must not ride the
+	// repaired aircraft back to the airport. New mission spawns always board their real actor.
+	MissionPassengerSlots.Reset();
+	SyncPassengerFlightModelCount();
+	RefreshDashboardSeats();
+}
+
+void ASimCopterHelicopterPawn::ReactPassengersToDamagingImpact()
+{
+	for (const FSimCopterMissionPassengerSlot& Slot : MissionPassengerSlots)
+	{
+		if (ASimCopterGroundAgent* Person = Slot.Person.Get())
+		{
+			Person->ReactToCabinImpact();
+		}
+	}
+}
+
+// The deck a passenger steps out ONTO: beside the aircraft, at the aircraft's own height. The
+// caller lifts it by the person's capsule half height to place them and lets gravity close any
+// remaining gap - stepping out is a drop, however short.
+FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex) const
+{
+	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	FBox AirframeBounds(ForceInit);
+	const FVector MidpointLocal = TryGetAirframeLocalBoundsCm(AirframeBounds)
+		? AirframeBounds.GetCenter()
+		: FVector::ZeroVector;
+
+	// Place on the left side 50 cm to the left of the midpoint of the chopper frame,
+	// at the same vertical position as the helicopter frame's midpoint. Do NOT test for ground.
+	const FVector DropLocal = FVector(MidpointLocal.X, MidpointLocal.Y - 50.0f, MidpointLocal.Z);
+
+	return GetActorLocation() +
+		YawFrame.GetUnitAxis(EAxis::X) * DropLocal.X +
+		YawFrame.GetUnitAxis(EAxis::Y) * DropLocal.Y +
+		FVector::UpVector * DropLocal.Z;
+}
+
+float ASimCopterHelicopterPawn::GetPassengerDropHeightOffsetCm() const
+{
+	FBox AirframeBounds(ForceInit);
+	const float MidpointZ = TryGetAirframeLocalBoundsCm(AirframeBounds)
+		? static_cast<float>(AirframeBounds.GetCenter().Z)
+		: 0.0f;
+	const float CapsuleHalfHeight = CollisionComponent != nullptr
+		? CollisionComponent->GetScaledCapsuleHalfHeight()
+		: 0.0f;
+	return MidpointZ + CapsuleHalfHeight;
+}
+
+FVector2D ASimCopterHelicopterPawn::ComputePassengerDoorOffsetCm(
+	const FBox& LocalBoundsCm,
+	const int32 SlotIndex,
+	const float ClearanceCm,
+	const FVector2D& FallbackDoorOffsetCm)
+{
+	const bool bPositiveSide = SlotIndex >= 0 && (SlotIndex % 2) == 0;
+	const float RowOffsetCm = SlotIndex >= 0 ? float(SlotIndex / 2) * 32.0f : 0.0f;
+	const float SafeClearanceCm = FMath::Max(0.0f, ClearanceCm);
+	if (!LocalBoundsCm.IsValid)
+	{
+		return FVector2D(
+			FallbackDoorOffsetCm.X - RowOffsetCm,
+			FMath::Abs(FallbackDoorOffsetCm.Y) * (bPositiveSide ? 1.0f : -1.0f));
+	}
+
+	// The original leaves the person at the helicopter's own position when it clears their master.
+	// That point is inside the remake's collision body, so adapt it to the nearest safe equivalent:
+	// one body clearance outside the visible skin, not an arbitrary radius around the actor origin.
+	const double SideY = bPositiveSide
+		? LocalBoundsCm.Max.Y + SafeClearanceCm
+		: LocalBoundsCm.Min.Y - SafeClearanceCm;
+	return FVector2D(LocalBoundsCm.GetCenter().X - RowOffsetCm, SideY);
 }
 
 FVector ASimCopterHelicopterPawn::GetPassengerAirDropWorldLocation(int32 SlotIndex) const
@@ -2653,8 +2961,13 @@ void ASimCopterHelicopterPawn::SyncPassengerFlightModelCount()
 
 float ASimCopterHelicopterPawn::GetCockpitScale() const
 {
+	return ToolFlapScale * GetCockpitHudScale();
+}
+
+float ASimCopterHelicopterPawn::GetCockpitHudScale() const
+{
 	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
-	return ToolFlapScale * (Settings != nullptr ? Settings->GetHudScale() : 1.0f);
+	return Settings != nullptr ? Settings->GetHudScale() : 1.0f;
 }
 
 void ASimCopterHelicopterPawn::AppendMissionMarkerAvoidanceWidgets(TArray<TSharedPtr<SWidget>>& OutWidgets) const
@@ -2728,7 +3041,8 @@ void ASimCopterHelicopterPawn::EnsureDashboardWidget()
 		SNew(SSimCopterDashboard)
 		.Pawn(this)
 		.Art(FlapArt)
-		.Scale(GetCockpitScale());
+		.Scale(GetCockpitScale())
+		.HudScale(GetCockpitHudScale());
 	DashboardPanel = Dashboard;
 
 	// Bottom-right, where the original's cockpit puts it.
@@ -3126,7 +3440,7 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 	{
 	case ESimCopterHelicopterTool::WaterCannon:
 		Controls = FString::Printf(
-			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK] fire stream   [B] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK] fire stream   [G] dump bucket\n[R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
 			ActiveToolName,
 			*DescribeToolAvailability(ActiveTool),
 			*BucketState);
@@ -3162,7 +3476,7 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 		break;
 	default:
 		Controls = FString::Printf(
-			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK / B] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
+			TEXT("TOOL: %s (%s)   %s\n[LEFT CLICK / G] dump   [R] deploy/stow   [PAGE UP] raise   [PAGE DOWN] lower"),
 			ActiveToolName,
 			*DescribeToolAvailability(ActiveTool),
 			*BucketState);
@@ -3204,7 +3518,7 @@ void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()
 #endif
 }
 
-void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
+void ASimCopterHelicopterPawn::EnsureToolFlapsWidget(const bool bForceCreate)
 {
 	if (!bShowToolFlaps ||
 		ToolFlapsWidget.IsValid() ||
@@ -3219,7 +3533,7 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 		FlapArt = NewObject<USimCopterHangarArt>(this, TEXT("FlapArt"));
 	}
 	FlapArt->SetOriginalGameRoot(ResolveOriginalGameRoot());
-	if (!FlapArt->IsUsable())
+	if (!bForceCreate && !FlapArt->IsUsable())
 	{
 		// No BMP folder: the flaps would be four empty rectangles, so draw nothing at all and
 		// leave the water HUD as the only tool readout.
@@ -3235,7 +3549,8 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 		SNew(SSimCopterToolFlaps)
 		.Pawn(this)
 		.Art(FlapArt)
-		.Scale(GetCockpitScale());
+		.Scale(GetCockpitScale())
+		.HudScale(GetCockpitHudScale());
 	ToolFlapsPanel = ToolFlaps;
 	ToolFlapsWidget =
 		SNew(SOverlay)
@@ -3248,16 +3563,63 @@ void ASimCopterHelicopterPawn::EnsureToolFlapsWidget()
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(ToolFlapsWidget.ToSharedRef(), 24);
+
+	// The calibration panel gets a layer of its own so it is not laid out inside the flap column,
+	// which is right-aligned and only as wide as one flap. It collapses itself when calibration
+	// mode is off, and sits above the flaps' Z order so its buttons are never behind one.
+	FlapCalibrationPanelWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.0f, 12.0f, 0.0f, 0.0f))
+		[
+			ToolFlaps->BuildCalibrationDebugPanel()
+		];
+
+	GEngine->GameViewport->AddViewportWidgetContent(FlapCalibrationPanelWidget.ToSharedRef(), 27);
 }
 
 void ASimCopterHelicopterPawn::RemoveToolFlapsWidget()
 {
-	if (GEngine != nullptr && GEngine->GameViewport != nullptr && ToolFlapsWidget.IsValid())
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(ToolFlapsWidget.ToSharedRef());
+		// The panel's delegates bind to the flap widget, so it goes first.
+		if (FlapCalibrationPanelWidget.IsValid())
+		{
+			GEngine->GameViewport->RemoveViewportWidgetContent(FlapCalibrationPanelWidget.ToSharedRef());
+		}
+		if (ToolFlapsWidget.IsValid())
+		{
+			GEngine->GameViewport->RemoveViewportWidgetContent(ToolFlapsWidget.ToSharedRef());
+		}
 	}
+	FlapCalibrationPanelWidget.Reset();
 	ToolFlapsPanel.Reset();
 	ToolFlapsWidget.Reset();
+}
+
+void ASimCopterHelicopterPawn::SetCalibrationMode(const bool bEnable)
+{
+	if (bEnable)
+	{
+		EnsureToolFlapsWidget(/*bForceCreate=*/true);
+		if (ToolFlapsPanel.IsValid() && !ToolFlapsPanel->IsCalibrationMode())
+		{
+			ToolFlapsPanel->ToggleCalibrationMode();
+		}
+	}
+	else
+	{
+		if (ToolFlapsPanel.IsValid() && ToolFlapsPanel->IsCalibrationMode())
+		{
+			ToolFlapsPanel->ToggleCalibrationMode();
+		}
+		if (FlapArt != nullptr && !FlapArt->IsUsable())
+		{
+			RemoveToolFlapsWidget();
+		}
+	}
 }
 
 void ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel()
@@ -3270,8 +3632,35 @@ void ASimCopterHelicopterPawn::ToggleHelicopterDebugPanel()
 	}
 	else
 	{
+		SetCalibrationMode(false);
 		RemoveWaterControlsWidget();
 		RemoveHelicopterDebugPanel();
+	}
+}
+
+void ASimCopterHelicopterPawn::SimToggleFlapCalibration()
+{
+	if (!bShowHelicopterDebugPanel)
+	{
+		bShowHelicopterDebugPanel = true;
+		EnsureWaterControlsWidget();
+		EnsureHelicopterDebugPanel();
+	}
+
+	if (HelicopterDebugPanel.IsValid())
+	{
+		SSimCopterHelicopterDebugPanel* DebugPanel = static_cast<SSimCopterHelicopterDebugPanel*>(HelicopterDebugPanel.Get());
+		if (DebugPanel != nullptr)
+		{
+			if (DebugPanel->GetActiveTab() == SSimCopterHelicopterDebugPanel::ETab::Calibration)
+			{
+				ToggleHelicopterDebugPanel();
+			}
+			else
+			{
+				DebugPanel->SelectTab(SSimCopterHelicopterDebugPanel::ETab::Calibration);
+			}
+		}
 	}
 }
 
@@ -3321,13 +3710,12 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	{
 		return;
 	}
-	// SCHOOK: HelicopterDismountSound 0x0048a580 (command 0x1a)
-	// The original plays both halves back to back on the way out - the door opens, the pilot
-	// steps down, the door shuts - and stops the winch, which cannot run unattended.
+	// SCHOOK: HelicopterDismountSound 0x0048a580 (command 0x1a) queues slots 0x25 then 0x26.
+	// The requested player-transition mapping uses only DORCLS on exit; boarding owns DOROPN.
+	// The original also stops the winch here, which cannot run unattended.
 	if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
 	{
-		Audio->Play3D(SimCopterSound::SND_DOROPN, GetActorLocation());
-		Audio->Play3D(SimCopterSound::SND_DORCLS, GetActorLocation());
+		Audio->Play3D(SimCopterSound::ExitCopterSound, GetActorLocation());
 		Audio->Stop(SimCopterSound::SND_WINCHLP);
 		Audio->Stop(SimCopterSound::SND_WATERCAN);
 		Audio->Stop(SimCopterSound::SND_MACHGUN1);
@@ -3342,20 +3730,50 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	RemoveControllerOverlayWidget();
 	RemoveHelicopterDebugPanel();
 
+	// The pilot steps out of the cabin door, not onto a spot two and a half metres off the skid.
+	// Measure the offset from the rendered fuselage's own box (the same source boarding uses in
+	// GetDistanceToAirframeCm) so it lands just clear of whichever model is being flown: level with
+	// the middle of the body fore-and-aft, and ExitClearanceCm outboard of its side. ExitOffset is
+	// the fallback for a frame where no fuselage has been built yet - a headless test, or before the
+	// GEO packs load.
 	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
+	FVector2D DoorOffset(ExitOffset.X, ExitOffset.Y);
+	FBox AirframeBounds(ForceInit);
+	if (TryGetAirframeLocalBoundsCm(AirframeBounds))
+	{
+		DoorOffset.X = static_cast<float>(AirframeBounds.GetCenter().X);
+		DoorOffset.Y = static_cast<float>(AirframeBounds.Max.Y) + ExitClearanceCm;
+	}
+	// The pilot steps out AT THE AIRCRAFT'S OWN HEIGHT. `ApplyFlightModelToActor` pins the root
+	// sphere's bottom to the flight model's Altitude, so that is where the skids meet whatever the
+	// machine is standing on; the actor origin is a whole 190 cm capsule radius above it and is not
+	// a place anybody stands.
+	double DeckZ = GetActorLocation().Z - static_cast<double>(CollisionComponent != nullptr
+		? CollisionComponent->GetScaledCapsuleHalfHeight()
+		: 0.0f);
 	FVector ExitLocation =
 		GetActorLocation() +
-		YawFrame.GetUnitAxis(EAxis::X) * ExitOffset.X +
-		YawFrame.GetUnitAxis(EAxis::Y) * ExitOffset.Y;
+		YawFrame.GetUnitAxis(EAxis::X) * DoorOffset.X +
+		YawFrame.GetUnitAxis(EAxis::Y) * DoorOffset.Y;
 
-	const FVector TraceStart = ExitLocation + FVector::UpVector * 1200.0f;
-	const FVector TraceEnd = ExitLocation - FVector::UpVector * 2200.0f;
+	// DOWNWARD ONLY, from just above that deck. This used to start 1200 cm ABOVE the actor origin -
+	// some fourteen metres up - and take the first blocking hit on the way down, so stepping out
+	// next to anything taller than the aircraft put the pilot on ITS roof, high in the air, falling.
+	// Starting at the deck means the probe can only find the surface the aircraft is on, or a lower
+	// one where the door opens over the lip of a pad. ECC_Camera is the channel walkable surfaces
+	// answer here (the ground agents' own probes use it).
+	const FVector TraceStart = FVector(ExitLocation.X, ExitLocation.Y, DeckZ + PassengerDropProbeLiftCm);
+	const FVector TraceEnd = FVector(ExitLocation.X, ExitLocation.Y, DeckZ - PassengerDropProbeDepthCm);
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterHelicopterExit), false, this);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
+		Hit.bBlockingHit)
 	{
-		ExitLocation.Z = Hit.ImpactPoint.Z + 94.0f;
+		// Never above the aircraft: the lift only exists so the probe starts clear of the deck.
+		DeckZ = FMath::Min(Hit.ImpactPoint.Z, DeckZ);
 	}
+	// Feet on that surface: the on-foot pawn's origin is the middle of its 92 cm capsule.
+	ExitLocation.Z = DeckZ + 94.0;
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = this;
@@ -4572,6 +4990,23 @@ int32 ASimCopterHelicopterPawn::DebugStartMission(int32 TypeMask)
 	return EventId;
 }
 
+bool ASimCopterHelicopterPawn::DebugStartSpeeder()
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	if (TrafficSystem == nullptr)
+	{
+		LastDebugMissionStatus = TEXT("No traffic system in this map.");
+		return false;
+	}
+
+	const bool bStarted = TrafficSystem->TryDesignateSpeeder(/*bForceNew=*/true);
+	LastDebugMissionStatus = bStarted
+		? TEXT("Speeder -> designated a new ambient traffic car (no mission record)")
+		: TEXT("Speeder: no eligible ordinary traffic car is currently beamed in.");
+	return bStarted;
+}
+
 // SCHOOK: MegaphoneBroadcast 0x0048a800
 // The megaphone is spotlight-directed and range-gated: FUN_0048a800 only broadcasts while
 // heli[0x150] < 3, then runs FUN_0048ae70(2, spotlightTile, body, -1, messageIndex), which
@@ -5740,6 +6175,7 @@ void ASimCopterHelicopterPawn::UpdateSearchLightEffect()
 		80.0f);
 
 	SearchLightComponent->SetIntensity(SearchLightIntensity);
+	SearchLightComponent->SetInverseExposureBlend(SearchLightExposureCompensation);
 	SearchLightComponent->AttenuationRadius = FMath::Max(SearchLightRangeCm, BeamLength);
 	SearchLightComponent->OuterConeAngle = OuterConeAngleDeg;
 	SearchLightComponent->InnerConeAngle = FMath::Clamp(OuterConeAngleDeg * 0.45f, 1.0f, OuterConeAngleDeg);
@@ -5861,6 +6297,19 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	// frame, so a bPadBounce raised here used to be wiped before anything ever played it. That is
 	// why flying into a building was silent even once the impact itself started firing.
 	ApplyFlightModelToActor(DeltaSeconds);
+	const bool bDamagingImpact =
+		LastFlightEvents.DamageTaken > 0 &&
+		(LastFlightEvents.bGroundBounce || LastFlightEvents.bSplashBounce || LastFlightEvents.bPadBounce);
+	if (bDamagingImpact && !LastFlightEvents.bStartedDying)
+	{
+		ReactPassengersToDamagingImpact();
+	}
+	if (LastFlightEvents.bStartedDying)
+	{
+		// SCHOOK: FUN_00484d20 calls FUN_004c0ba0(1) on the transition into the destroyed state.
+		// Ordinary impacts only damage the aircraft; this terminal transition writes off its cabin.
+		WriteOffPassengersInDestroyedHelicopter();
+	}
 
 	// Before anything downstream consumes or clears the events.
 	PlayFlightEventAudio(LastFlightEvents);
@@ -5868,6 +6317,13 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 	UpdateGroundProbe();
 	UpdateForwardProbe();
 	UpdateRopeAndBucket(DeltaSeconds);
+
+	// BHAV 292 only asks "may I get out yet?" about every thirteenth tick, so the shipped game has
+	// always had a beat between the skids arriving and the cabin emptying. The mission-side release
+	// runs every mission tick and had none; this is where it gets one.
+	SecondsWithinAlightClearance = CanTransferMissionPassengers()
+		? SecondsWithinAlightClearance + DeltaSeconds
+		: 0.0f;
 
 	// Mirror the simulation status onto the pawn's HUD-facing state.
 	bIsLanded = FlightModel.State == ESimCopterFlightState::Parked;
@@ -5877,8 +6333,10 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		0.0f,
 		static_cast<float>(FlightModel.Tuning.MaxDamage));
 
-	// The original respawns a destroyed helicopter at the nearest pad; the
-	// remake has no pad registry yet, so it repairs in place where it crashed.
+	// SCHOOK: HelicopterCrashRespawn 0x0048a8b0
+	// The original respawns a destroyed helicopter on an airport pad. The remake used to repair it
+	// in place where it crashed, because the pad registry did not exist yet - it does now, and it
+	// is the same one city entry parks the fleet on.
 	if (LastFlightEvents.bCrashed)
 	{
 		if (WaterFXComponent != nullptr)
@@ -5889,6 +6347,7 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 		}
 		bEngineRunning = false;
 		SeedFlightModelFromActor();
+		ReturnToAirportAfterCrash();
 	}
 	else if ((LastFlightEvents.bGroundBounce || LastFlightEvents.bSplashBounce) && WaterFXComponent != nullptr)
 	{
@@ -5898,6 +6357,10 @@ void ASimCopterHelicopterPawn::SimulateFlightStep(float DeltaSeconds)
 			GetActorLocation(),
 			LastFlightEvents.bSplashBounce || ProbeBucketWater(GetActorLocation()));
 	}
+
+	// After the crash arm above, so a spiral that did reach the ground this frame has already been
+	// dealt with and the watchdog simply resets.
+	UpdateStuckFallWatchdog(DeltaSeconds);
 
 	// Flying into something has its own visual, and it is not the landing one. Both impact arms
 	// of FUN_00484d20 - the elevated-surface branch at LAB_00485605 and the object-overlap branch
@@ -6075,7 +6538,9 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterFlightSurface), false, this);
 	const FVector Start(Location.X, Location.Y, Location.Z + 20000.0f);
 	const FVector End(Location.X, Location.Y, Location.Z - 30000.0f);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	// heli[0x59]: terrain and objects only. See TraceFlightSurface - a pedestrian's head is not a
+	// landing surface, and this trace starts above the world so it would find one first.
+	if (TraceFlightSurface(Start, End, QueryParams, Hit) && Hit.bBlockingHit)
 	{
 		const int32 SurfaceHeight = SimCopterFixed::FromFloat(Hit.ImpactPoint.Z / Unit);
 		if (!bHasTerrainGrid)
@@ -6194,6 +6659,17 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		SetActorLocation(RestoreLocation, /*bSweep=*/false, nullptr, ETeleportType::TeleportPhysics);
 	}
 
+	// SCHOOK: HelicopterObjectCollision 0x0048ad50 (people arm)
+	// The other half of the original's contact pass, and the reason the swept capsule above no
+	// longer blocks pawns: FUN_0048ad50 walks the objects overlapping the airframe and answers them
+	// with FUN_0049a4f0(0xc, ...) - a reaction on THEM - while the aircraft flies on. Narrowed here
+	// to uncaught criminals; ordinary pedestrians are not touched at all. Nothing in this call can
+	// move the helicopter.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystemActor())
+	{
+		TrafficSystem->RunOverCriminalsUnderHelicopter(*this);
+	}
+
 	// The model owns the position, so this is now a straight read-back; it stays because
 	// SetActorLocation still clamps against the world's own limits.
 	const FVector Applied = GetActorLocation();
@@ -6215,6 +6691,61 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 		SimCopterFixed::ToFloat(FlightModel.ClimbSpeed) * Unit);
 }
 
+ASimCopterTrafficSystemActor* ASimCopterHelicopterPawn::ResolveTrafficSystemActor() const
+{
+	// Cached like the city actor: the run-over pass asks for this every frame.
+	if (ASimCopterTrafficSystemActor* Cached = CachedTrafficSystem.Get())
+	{
+		return Cached;
+	}
+	ASimCopterTrafficSystemActor* Found = Cast<ASimCopterTrafficSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterTrafficSystemActor::StaticClass()));
+	CachedTrafficSystem = Found;
+	return Found;
+}
+
+bool ASimCopterHelicopterPawn::TraceFlightSurface(
+	const FVector& Start,
+	const FVector& End,
+	const FCollisionQueryParams& QueryParams,
+	FHitResult& OutHit) const
+{
+	OutHit = FHitResult();
+	if (GetWorld() == nullptr)
+	{
+		return false;
+	}
+
+	// A person is not a surface. The original's height test reads heli[0x59], the *terrain and
+	// object* top under the aircraft; people are not in that number at all - they are answered
+	// separately by FUN_0048ad50, with damage and a bounce, never with support. Tracing plain
+	// Visibility put a pedestrian's capsule in the role of ground: walk under a descending
+	// helicopter and it touched down on their head, reported itself landed, and sat there.
+	//
+	// Multi-trace and take the first blocking hit that is not a pawn. Pawns are all of it - other
+	// helicopters included, which is the same rule: aircraft do not stack.
+	TArray<FHitResult> Hits;
+	if (!GetWorld()->LineTraceMultiByChannel(Hits, Start, End, ECC_Visibility, QueryParams))
+	{
+		return false;
+	}
+	for (const FHitResult& Hit : Hits)
+	{
+		if (!Hit.bBlockingHit)
+		{
+			continue;
+		}
+		const UPrimitiveComponent* HitComponent = Hit.GetComponent();
+		if (HitComponent != nullptr && HitComponent->GetCollisionObjectType() == ECC_Pawn)
+		{
+			continue;
+		}
+		OutHit = Hit;
+		return true;
+	}
+	return false;
+}
+
 void ASimCopterHelicopterPawn::UpdateGroundProbe()
 {
 	LastGroundHit = FHitResult();
@@ -6229,7 +6760,8 @@ void ASimCopterHelicopterPawn::UpdateGroundProbe()
 	const FVector Start = GetActorLocation();
 	const FVector End = Start - FVector::UpVector * (CapsuleHalfHeight + LandingProbeDistance);
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterGroundProbe), false, this);
-	GetWorld()->LineTraceSingleByChannel(LastGroundHit, Start, End, ECC_Visibility, QueryParams);
+
+	TraceFlightSurface(Start, End, QueryParams, LastGroundHit);
 	if (LastGroundHit.bBlockingHit)
 	{
 		GroundClearanceCm = FMath::Max(0.0f, LastGroundHit.Distance - CapsuleHalfHeight);
@@ -7731,7 +8263,7 @@ void ASimCopterHelicopterPawn::UpdateVisuals(float DeltaSeconds)
 
 void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 {
-	if (CameraBoom == nullptr)
+	if (CameraBoom == nullptr || CameraComponent == nullptr)
 	{
 		return;
 	}
@@ -7741,6 +8273,16 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	// view, which also keeps the crosshair on the aircraft's heading - the line the tools
 	// actually fire along.
 	const bool bFirstPersonView = CameraModeIsFirstPerson(CameraMode);
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	const float MouseSensitivityX = Settings != nullptr ? Settings->GetMouseSensitivityX() : 1.0f;
+	const float MouseSensitivityY = Settings != nullptr ? Settings->GetMouseSensitivityY() : 1.0f;
+	const float ControllerSensitivityX = Settings != nullptr ? Settings->GetControllerSensitivityX() : 1.0f;
+	const float ControllerSensitivityY = Settings != nullptr ? Settings->GetControllerSensitivityY() : 1.0f;
+	CameraComponent->SetFieldOfView(Settings != nullptr
+		? (bFirstPersonView ? Settings->GetCockpitFov() : Settings->GetHelicopterFov())
+		: (bFirstPersonView
+			? USimCopterSettings::DefaultCockpitFov
+			: USimCopterSettings::DefaultFov));
 	// A cockpit eye has no boom to soften. Leaving the spring arm's own lag enabled meant
 	// camera-parented props followed a different transform from the camera calculations below.
 	CameraBoom->bEnableCameraLag = !bFirstPersonView;
@@ -7754,11 +8296,11 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 		ControllerMode != ESimCopterControllerMode::DispatchWheel &&
 		ControllerMode != ESimCopterControllerMode::ToolWheel;
 	const float ControllerYawLookInput =
-		bControllerRightStickLooks ? ControllerRightXInput : 0.0f;
+		bControllerRightStickLooks ? ControllerRightXInput * ControllerSensitivityX : 0.0f;
 	// Match right-mouse drag in boom views: stick-up drags the world down. The cockpit's
 	// PitchLookSign below reverses it into ordinary head-look behavior.
 	const float ControllerPitchLookInput =
-		bControllerRightStickLooks ? -ControllerRightYInput : 0.0f;
+		bControllerRightStickLooks ? -ControllerRightYInput * ControllerSensitivityY : 0.0f;
 	float YawLookInput =
 		bFirstPersonView ? 0.0f : CameraYawInput + ControllerYawLookInput;
 	float PitchLookInput = CameraPitchInput + ControllerPitchLookInput;
@@ -7766,14 +8308,14 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	{
 		if (!bFirstPersonView)
 		{
-			YawLookInput += MouseLookYawInput;
+			YawLookInput += MouseLookYawInput * MouseSensitivityX;
 		}
 		// A middle-drag in progress owns vertical mouse travel, so holding both buttons pans
 		// instead of doing both at once - except in the cockpit, where there is no pan for it
 		// to own and the look should keep working.
 		if (!bCameraPanDragActive || bFirstPersonView)
 		{
-			PitchLookInput += MouseLookPitchInput;
+			PitchLookInput += MouseLookPitchInput * MouseSensitivityY;
 		}
 		CameraRecenterDelayRemaining = CameraRecenterDelaySeconds;
 	}
@@ -7790,7 +8332,7 @@ void ASimCopterHelicopterPawn::UpdateCamera(float DeltaSeconds)
 	if (!bFirstPersonView && bCameraPanDragActive && !FMath::IsNearlyZero(MouseLookPitchInput))
 	{
 		CameraViewPanOffsetCm = FMath::Clamp(
-			CameraViewPanOffsetCm + MouseLookPitchInput * CameraPanCmPerMouseUnit,
+			CameraViewPanOffsetCm + MouseLookPitchInput * MouseSensitivityY * CameraPanCmPerMouseUnit,
 			-CameraPanMaxOffsetCm,
 			CameraPanMaxOffsetCm);
 	}
@@ -8462,18 +9004,21 @@ bool ASimCopterHelicopterPawn::ProbeBucketWater(const FVector& BucketWorldLocati
 
 FString ASimCopterHelicopterPawn::ResolveOriginalGameRoot() const
 {
+	// Same rule as the city actor: the authored path is a developer convenience, so it only wins
+	// while it still points at a real install.
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString Absolute = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (SimCopterOriginalGame::IsOriginalGameRoot(Absolute))
+		{
+			return Absolute;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
-	}
-
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 void ASimCopterHelicopterPawn::ApplyDerivedTuning()

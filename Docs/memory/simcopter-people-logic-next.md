@@ -231,7 +231,14 @@ around the head; UE uses an 8-side cylinder, HeadFaceU param tunes which U faces
   Modernized}.** Original mode = no traffic lights, no blockage recovery, uniform random
   turns (bPreferStraight=false in ChooseNextRouteNode), queue-behind-blockers (jams), and
   ApplyPlayerRoadBlocking (grounded player within lane look-ahead stops cars - "You Blocked
-  Traffic!"). Modernized keeps the old traffic-light system untouched. Road family + no-bWater
+  Traffic!"). Modernized = the stoplight system (ApplyTrafficLights: per-approach queue slots,
+  TrafficLightPhaseSeconds per axis, staggered by intersection tile parity) plus blockage
+  recovery and straight-preference turns. **The mode IS the stoplight switch** — ApplyTrafficLights
+  is only reached on the Modernized branch of ApplyTrafficRules and nothing logs that it was
+  skipped, so "the lights stopped working" always means the default moved. Turned on
+  2026-08-04 at 5 s per phase and turned straight back off the same day: the project wants the
+  decoded no-lights traffic. Note the two rules are exclusive: ApplyPlayerRoadBlocking does not
+  run in Modernized, so a landed helicopter does not stop traffic there. Road family + no-bWater
   fix applied to node building (cars now cross bridges; Z comes from agent ground snap hitting
   the bridge deck mesh). Whole-map far cars share the same graph/turn rules.
 - Not yet ported: intersection-graph Dijkstra for emergency vehicles, station->road spawn
@@ -286,7 +293,10 @@ walk-in-place / building walk-through fixed):**
 - **Figure frames advance +1 per behavior tick** in the driver FUN_004c6450 (wrap at ARPP rows),
   so clip playback rate == tick rate, not wall-clock.
 - **FUN_004c82c0 (walked surface) = max(object tops, terrain) at the point** (scene-cell object
-  list DAT_005d9200, else FUN_004ae7a0 terrain). With the climb gate (5 units up, 5.5 down) this
+  list DAT_005d9200, else FUN_004ae7a0 terrain). Retail uses 5 units up and 5.5 down; the rendered-
+  building port now uses a symmetric 5-unit ordinary gate, and BHAV 308's repeated-failure escape
+  bypasses both directions because the ground snap otherwise lets a walker climb onto a roof it
+  can never descend from. With that climb gate this
   is what stops people at building WALLS: the surface inside a footprint is the roof. Tile-class
   checks alone allow building tiles - the remake walked people through building interiors until
   this gate was ported (top-down trace at the step target).

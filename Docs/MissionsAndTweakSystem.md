@@ -168,7 +168,7 @@ Per-city controls (order is fixed: `Ctrl0`..`Ctrl10`):
 
 `Confirmed (exe).` `Points Needed` is the city win condition (it climbs 400 -> 3000): `FUN_00408c30` compares the session score against it and, once reached, stops the scheduler from creating further missions. `$ Earned` (+0x48, read by `FUN_00407b80` clamped to >= 1) _decreases_ 500 -> 100 as cities get harder, so later cities pay less and demand more. A session - career or single city - always opens with $1000 and 0 points (`FUN_00407f30` / `FUN_004080c0`).
 
-`Hypothesis.` `Day or Night` 0/1 selects the lighting/time set; the value is copied to `DAT_004f9720` when a city is entered (and derived from `FUN_00448e80` in single-city mode). Which value means night is still a `Follow-up`.
+`Confirmed (exe).` `Day or Night` 0/1 selects the lighting/time set; the value is copied to `DAT_004f9720` when a city is entered (and derived from `FUN_00448e80` in single-city mode). **`1` is night.** Three separate call sites agree: `FUN_0049a8b0` gives the renderer a dimmer ambient/diffuse for `1` (`0x1999/0x3333/0x1999/0x4ccc` against the day's `0x1999/0x6666/0x4ccc/0xcccc`, 16.16); `FUN_0047a240` calls `FUN_004a03a0(1)` + `FUN_004834f0` for it, which un-hide the face-type-11 light cards (street lamps, headlights); and `FUN_004606d0` loads `skydark.bmp` rather than `sky.bmp`, swapping five atlas pages for their lit-window variants. Full decode in [Docs/memory/simcopter-night-lighting.md](memory/simcopter-night-lighting.md).
 
 ### All 30 cities
 
@@ -330,8 +330,7 @@ Still open:
 
 1. A tweak-tree loader that follows `sim3d.twk` `Class`/`Redirect`/`Prefix`/`Num*` directives and exposes structured `Ctrl<i>_*` controls with their `int`/`double`/`fxpt` types. `FSimCopterTweakReader` reads flat sections but does not model the tree or the control grouping.
 2. The career successor graph (record +0x24/+0x28/+0x2c, hardcoded in `FUN_00408370`) and per-city map swapping. `AdvanceCareerCity` walks the list sequentially instead, and the remake plays whichever `.sc2` the city actor loaded.
-3. The day/night flag mapping (which value is night).
-4. Session block fields +0x44 (0x10) and +0x48 (3); nothing ported reads them yet.
+3. Session block fields +0x44 (0x10) and +0x48 (3); nothing ported reads them yet.
 5. Ambient-vehicle audio. The plane, train and boat sound ids are decoded (`TRAIN1.WAV` 0x19, `CRSH2.WAV` 0x1a, `DIVE1.WAV` 0x1b, `CESSLP1.WAV` 0x1c, from `FUN_00424b70`'s registration order) but the remake has no loader for positional original clips, so the ambient vehicles are silent.
 
 `Plane Crash($)/(pts)` and `Train Crash($)/(pts)` above are a curiosity: `FUN_004ab170` binds all four, and then **nothing in the executable reads them**. `FUN_004aabf0` has no branch for type bit `0x4` or `0x100`, so a crash mission's own completion pays zero. What a crash is worth is whatever it starts - a building fire, a boat rescue for a plane that ditches in the water - plus the doubled per-person rescue award a train crash gives a train rescue (`0x110 | 0x100`).

@@ -229,9 +229,18 @@ void ASimCopterGameMode::ApplyPendingSession()
 		Session->GetSessionKind() == ESimCopterSessionKind::Career ? TEXT("career") : TEXT("user"),
 		*Session->GetCityFilePath());
 
-	Actor->StartCityJobsSession(
-		Session->GetCareerCityIndex(),
-		Session->ShouldStartFirstMissionImmediately());
+	if (Session->GetSessionKind() == ESimCopterSessionKind::Career)
+	{
+		Actor->StartCityJobsSession(
+			Session->GetCareerCityIndex(),
+			Session->ShouldStartFirstMissionImmediately());
+	}
+	else
+	{
+		Actor->StartUserCitySession(
+			/*TuningCityIndex=*/0,
+			Session->ShouldStartFirstMissionImmediately());
+	}
 
 	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
 	{

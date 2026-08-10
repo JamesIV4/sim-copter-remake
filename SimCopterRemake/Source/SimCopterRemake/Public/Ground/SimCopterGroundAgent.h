@@ -10,6 +10,7 @@
 #include "SimCopterGroundAgent.generated.h"
 
 class ASimCopterHelicopterPawn;
+class UAudioComponent;
 class UCapsuleComponent;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
@@ -78,6 +79,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	void ClearMoveTarget();
 
+	// Shared vertical gate for every behavior-VM pedestrian step. Rendered buildings are not the
+	// original cell objects, so any BHAV 308 escape that permits a rise must permit the inverse
+	// descent too or a walker can enter a roof surface that it can never leave.
+	static bool IsPedestrianHeightTransitionAllowed(float RiseCm, float MaxStepCm, bool bMoveThroughWalls);
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool HasMoveTarget() const { return bHasMoveTarget; }
 
@@ -95,7 +101,18 @@ public:
 	void MoveByTrafficSeparation(const FVector& WorldDelta);
 	void SetAvoidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds, float SpeedMultiplier = 1.0f);
 	void SetAvoidancePathOffset(const FVector& NewWorldOffset, float DurationSeconds, float SpeedMultiplier = 1.0f);
-	void SetGuidanceMoveTarget(const FVector& NewTargetLocation, float DurationSeconds);
+	// SpeedCmPerSec <= 0 keeps the agent's own MovementSpeedCmPerSec. Pass the shipped program's
+	// walk speed instead, or a guided passenger sprints to the aircraft at the generic pedestrian
+	// speed while their BHAV thinks it is walking at `movespeed`.
+	void SetGuidanceMoveTarget(
+		const FVector& NewTargetLocation,
+		float DurationSeconds,
+		float SpeedCmPerSec = 0.0f);
+
+	// BHAV 291 rec[0] / BHAV 305 rec[5] both set `movespeed := 16`, and one behaviour tick
+	// displaces movespeed/12 original units. At 15 Hz and 6.25 cm per unit that is 125 cm/s - the
+	// speed a passenger walks to the helicopter at in the shipped game.
+	static constexpr float ShippedPassengerWalkSpeedCmPerSec = 16.0f / 12.0f * 6.25f * 15.0f;
 	bool IsAvoidanceMoveActive() const { return AvoidanceMoveTimeRemainingSeconds > 0.0f; }
 	bool IsAvoidancePathOffsetActive() const { return AvoidancePathOffsetTimeRemainingSeconds > 0.0f; }
 	bool IsGuidanceMoveTargetActive() const { return GuidanceMoveTargetTimeRemainingSeconds > 0.0f; }
@@ -136,6 +153,10 @@ public:
 	// separation, traffic impulses) also displace agents without consulting the walked surface at
 	// all, so the containment is applied to the transform rather than to any one of them.
 	void SetHospitalRoofPost(const FVector& RoofCenterWorldLocation, float HalfExtentCm);
+	// Rooftop-rescue survivors need the same physical containment, but they are mission people,
+	// not permanent hospital staff. Boarding clears the post and their ordinary rescue lifecycle
+	// remains in charge of despawn/save ownership.
+	void SetMissionRoofPost(const FVector& RoofCenterWorldLocation, float HalfExtentCm);
 
 	enum class ERoofPostContainment : uint8
 	{
@@ -156,10 +177,31 @@ public:
 		float FallToleranceCm,
 		FVector& OutContainedLocation);
 
+	/**
+	 * Pure form of the step-target half of that containment: may a posted worker standing at
+	 * `CurrentLocation` step to `TargetLocation`?
+	 *
+	 * `ExtentFraction` picks how much of the post the walk is entitled to (see
+	 * HospitalRoofPostIdleWanderFraction), and a step that shortens the distance to the post centre
+	 * is always allowed so a worker already outside the limit can walk back in rather than refusing
+	 * every direction. A zero half extent means "unposted", which constrains nobody.
+	 */
+	static bool IsWithinRoofPostSquare(
+		const FVector& TargetLocation,
+		const FVector& CurrentLocation,
+		const FVector& PostCenterWorldLocation,
+		float PostHalfExtentCm,
+		float BodyRadiusCm,
+		float ExtentFraction);
+
 	// Marks an uninjured victim who still needs picking up. They keep whatever program or carrier
 	// they are on, but any moment it leaves them standing still they wave for the helicopter
-	// instead of idling. The original binds the same "Wave" clip when a person notices the player
-	// (behavior op 22: face the player, bind "Wave", wait 15).
+	// instead of idling.
+	//
+	// The clip is "WvNo". The old comment here claimed op 22 binds "Wave" when a person notices
+	// the player; op 22 binds nothing (it reads the player's speed and facing into two locals),
+	// and the program that really does wave at the player - BHAV 291 rec[4] - binds "WvNo".
+	// "Wave" is the panic gesture the rioter and Rxn: Ouch programs use.
 	void SetMissionAwaitingRescue(bool bAwaiting) { bMissionWavesWhenIdle = bAwaiting; }
 	void ClearMissionPose();
 	void ResumeNormalPedestrianBehavior();
@@ -170,7 +212,11 @@ public:
 
 	// person+0x170, written by FUN_004c4e10 when an emergency vehicle deploys this person.
 	// Opcode 62 selects this exact starting object before it considers the player helicopter.
-	void SetBehaviorStartingVehicle(AActor* Vehicle) { BehaviorStartingVehicle = Vehicle; }
+	void SetBehaviorStartingVehicle(AActor* Vehicle)
+	{
+		BehaviorStartingVehicle = Vehicle;
+		bBehaviorStartingVehicleMessaged = false;
+	}
 	AActor* GetBehaviorStartingVehicle() const { return BehaviorStartingVehicle.Get(); }
 
 	// BHAV 275 has just used opcode 51 to set this patient down at the ambulance selected by
@@ -202,6 +248,18 @@ public:
 
 	void ConfigureMarchingBandUniform(int32 BandIndex);
 
+	// DIVERGENCE, deliberate: exempt this walker from FUN_004c9470's tile-class rule. The airport
+	// is tile class 1 (both stamped ids fall through GetTileClassForBuildingId to its catch-all)
+	// and class 1 is in no behaviour row, so anybody standing on the apron refuses every direction
+	// and spins. The level-complete band belongs there, so it is let through.
+	//
+	// This does NOT let them into buildings: the climb gate is what stops a walker at a wall - the
+	// walked surface inside one is the roof, far above the 5-unit allowance - and it still applies,
+	// as does the walk-surface probe. Only "may a person of this class stand on this kind of tile"
+	// is waived.
+	void SetIgnoresTileClassRules(bool bIgnore) { bIgnoresTileClassRules = bIgnore; }
+	bool IgnoresTileClassRules() const { return bIgnoresTileClassRules; }
+
 	float GetCapsuleHalfHeightCm() const;
 
 	// Road/sidewalk graph route state, driven by ASimCopterTrafficSystemActor. TargetNode is the
@@ -217,12 +275,17 @@ public:
 	int32 GetRoutePrevNode() const { return RoutePrevNodeIndex; }
 	int32 GetRoutePlannedNextNode() const { return RoutePlannedNextNodeIndex; }
 
-	// --- Speeder / criminal car (FUN_004b8470's class, message id 0x11e) ---------------------
-	// Turns this vehicle into the mission's speeder. The traffic system drives the rest; see
+	// --- Burglar / criminal car (FUN_004b8470's class, message id 0x11e) ----------------------
+	// Turns this vehicle into the mission's CARROBBR getaway car. The traffic system drives the rest; see
 	// SimCopterCriminalCar.h for the decode.
-	void MakeCriminalCar(int32 InEventId);
+	void MakeCriminalCar(int32 InEventId, int32 CruiseDelay1616);
 	bool IsCriminalCar() const { return bCriminalCar; }
 	int32 GetCriminalEventId() const { return CriminalEventId; }
+	// FUN_0049af00/FUN_0049af70 set veh[4] & 0x800 on an ordinary traffic car. This is the
+	// ambient Speeder encounter, not the Burglar mission's CARROBBR object.
+	void MakeSpeeder();
+	void ClearSpeeder();
+	bool IsSpeeder() const { return bSpeeder; }
 
 	// obj[5] & 8 - the fleeing flag the police target filter tests. A criminal car always flies
 	// it; the same flag is what would make a speeder *person* a valid target.
@@ -245,16 +308,42 @@ public:
 	// the car has been marked by the spotlight first.
 	bool TryOrderStop(int32 CallerMessageId);
 
-	// FUN_004b8b60's hold before the car is removed.
-	float GetArrestHoldSeconds() const { return ArrestHoldSeconds; }
-	void SetArrestHoldSeconds(float NewSeconds) { ArrestHoldSeconds = NewSeconds; }
+	// FUN_004b8b60's hold while the burglar is outside the car.
+	float GetBurglarOutsideSeconds() const { return BurglarOutsideSeconds; }
+	void SetBurglarOutsideSeconds(float NewSeconds) { BurglarOutsideSeconds = NewSeconds; }
 
 	// How much of its road speed a pulling-over car still has. The traffic pass resets every
 	// vehicle's speed scale to 1 each frame, so a stop has to be re-asserted from this rather
 	// than written once - which is what let an "arrested" car drive away.
 	float GetCriminalStopScale() const { return CriminalStopScale; }
 	void SetCriminalStopScale(float NewScale) { CriminalStopScale = NewScale; }
+	float GetSpeederRewardCooldownSeconds() const { return SpeederRewardCooldownSeconds; }
+	void SetSpeederRewardCooldownSeconds(float NewSeconds) { SpeederRewardCooldownSeconds = NewSeconds; }
 	void MarkStopped() { bStopped = true; }
+	void ResumeCriminalCarDriving()
+	{
+		bStopOrdered = false;
+		bStopped = false;
+		CriminalStopScale = 1.0f;
+	}
+	float GetCriminalCruiseSeconds() const { return CriminalCruiseSeconds; }
+	void SetCriminalCruiseSeconds(float NewSeconds) { CriminalCruiseSeconds = NewSeconds; }
+	float GetCriminalSpotlightLostSeconds() const { return CriminalSpotlightLostSeconds; }
+	void SetCriminalSpotlightLostSeconds(float NewSeconds) { CriminalSpotlightLostSeconds = NewSeconds; }
+	uint8 GetBurglarDoorPhase() const { return BurglarDoorPhase; }
+	void SetBurglarDoorPhase(uint8 NewPhase) { BurglarDoorPhase = NewPhase; }
+	bool DidCriminalDriverReturn() const { return bCriminalDriverReturned; }
+	int32 GetCriminalDriverMessage() const { return CriminalDriverMessage; }
+	void SignalCriminalDriverReturned(int32 MessageId)
+	{
+		bCriminalDriverReturned = true;
+		CriminalDriverMessage = MessageId;
+	}
+	void ClearCriminalDriverSignal()
+	{
+		bCriminalDriverReturned = false;
+		CriminalDriverMessage = 0;
+	}
 
 	// The map tile this agent is standing on. Same answer as the behaviour-world override below,
 	// which is private because it is part of that interface rather than this actor's API.
@@ -274,6 +363,11 @@ public:
 	// original's acceptance tests and interrupt priority. Returns true when the person
 	// actually reacted.
 	bool ApplyInteraction(const struct FSimCopterInteractionEvent& Event);
+
+	// The airframe ran this person over: interaction mode 12 (BHAV 912 -> 903 "Rxn: Die") plus, for
+	// the criminal this is restricted to, outcome 9 so the mission closes. Latched, so one aircraft
+	// kills them once. Called by ASimCopterTrafficSystemActor::RunOverCriminalsUnderHelicopter.
+	bool ApplyHelicopterRunOver(class ASimCopterHelicopterPawn& Helicopter);
 
 	// The reaction currently running on this agent (INDEX_NONE when none).
 	int32 GetActiveReactionProgramId() const { return BehaviorContext.ActiveReactionProgramId; }
@@ -319,8 +413,35 @@ public:
 	bool IsRidingHarness() const { return BehaviorCarrier.IsValid() && bRidingHarness; }
 	bool HasClaimedPassengerSeat() const { return bClaimedPassengerSeat; }
 	bool IsAtBehaviorHomeTile() const { return IsOnHomeTile(); }
-	bool BoardCarrier(AActor* NewCarrier, bool bAsHarnessRider, bool bAllowAirborneCabinTransfer = false);
-	bool AlightFromCarrier();
+	// bAsCarriedBody separates the two things riding something means. Opcode 44 totes a body: it is
+	// slung across the carrier and visibly carried. Opcodes 12/48 are "get in", which is what a
+	// crew member does to its own vehicle - the original's op 40 then simply stops that person
+	// existing, so it never had to draw them. Passing false is what stops a paramedic being laid
+	// across the bonnet of its ambulance in the corpse pose.
+	bool BoardCarrier(
+		AActor* NewCarrier,
+		bool bAsHarnessRider,
+		bool bAllowAirborneCabinTransfer = false,
+		bool bAsCarriedBody = false);
+	bool AlightFromCarrier(bool bPlayDoorSound = true);
+	// SCHOOK: HelicopterWriteOffPassengers 0x004c0ba0. A helicopter entering its destroyed state
+	// writes off every occupied seat, including medevac patients that ordinary health death keeps
+	// aboard for hospital delivery.
+	void WriteOffInDestroyedHelicopter();
+	// Runtime-observed cabin response to a damaging helicopter impact. Healthy passengers flash
+	// the frightened portrait; a medevac patient loses one normal deterioration quantum and its
+	// already-playing EKG is re-tuned immediately.
+	void ReactToCabinImpact();
+	static int32 ComputeMedevacHealthAfterCabinImpact(int32 Health, int32 DifficultyTier);
+	// BHAV 264's non-casualty branch. Exposed for the portrait regression test and used when the
+	// impact flinch expires, so the VM and the remake-only immediate reaction converge on one face.
+	static int32 ComputePassengerPortraitStateFromDamageScaledSpeed(int32 DamageScaledSpeed);
+
+	// Person states 5/7/8/0xe: an emergency worker the dispatcher put on the ground, not somebody
+	// the player is being scored on. They carry the record they were sent to only so their own
+	// program can post against it.
+	bool IsEmergencyCrewMember() const;
+	static bool IsEmergencyCrewPersonState(int32 PersonState);
 	// Op 58's transfer: a victim on the raised harness climbs into the cabin.
 	bool TransferFromHarnessToCabin();
 	// The mission passenger kind this person counts as, from their spawn state (person+0x148).
@@ -426,10 +547,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
 	float BehaviorTickRate = 15.0f;
 
-	// Original per-step vertical gates (FUN_004c9470): one behavior step may rise at most
-	// MaxStepClimb units (person+0x144 = 5) and drop at most MaxStepClimb + 0.5 units;
-	// 1 unit = tile/64 (~6.25cm at a 400cm tile). This is what stops people at building
-	// walls in the original - tile classes alone allow building tiles.
+	// Per-step vertical gate adapted from FUN_004c9470: one ordinary behavior step may rise or
+	// descend at most MaxStepClimb units (person+0x144 = 5). BHAV 308's repeated-failure escape
+	// bypasses the same gate in both directions. 1 unit = tile/64 (~6.25cm at a 400cm tile).
+	// This is what normally stops people at building walls - tile classes alone allow them.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
 	float MaxStepClimbOriginalUnits = 5.0f;
 
@@ -461,6 +582,18 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "0.0"))
 	float HeadlightIntensity = 9000.0f;
+
+	// How much of each beam Lumen bounces. LumenSceneDirectLighting.cpp gathers a light into the
+	// Lumen scene only when `Proxy->GetIndirectLightingScale() > 0` and then multiplies its colour
+	// by that value, so this is both the gate and the scale - and it is free, being applied to
+	// lighting Lumen already computes for the light.
+	//
+	// Above 1 for the same reason the searchlight's is: SetInverseExposureBlend(1) is a DIRECT
+	// lighting trick that Lumen never sees, so the 9,000 unitless (~14 candela) beams were handing
+	// Lumen almost no energy to bounce. Lower than the searchlight's, because there are dozens of
+	// cars and their bounce should read as a glow on the road rather than as headlights of their own.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "0.0"))
+	float HeadlightIndirectLightingIntensity = 8.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Headlights", meta = (ClampMin = "100.0"))
 	float HeadlightAttenuationRadiusCm = 1800.0f;
@@ -541,6 +674,20 @@ public:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> SpriteMaterial;
 
+	/**
+	 * `M_SimCopterLitSpriteTexture` - the privanim head is an ordinary LIT surface.
+	 *
+	 * It used to share the unlit `M_SimCopterSpriteTexture` with the effect cards, which meant its
+	 * brightness had to be computed from the key light every frame and written as EmissiveNits. A
+	 * head is not a light source and never was: the original had no lighting model at all, so a head
+	 * is simply painted geometry, and the only reason it needed a number here was that the material
+	 * under it could not be lit. Sharing the city's lit card material instead makes it shade off the
+	 * sun exactly like the figure's vertex-coloured body (same SelfIllum/Roughness/Specular), and the
+	 * whole "what brightness should a head be after dark" question stops existing.
+	 */
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> FigureHeadMaterial;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> SpriteMaterialInstance;
 
@@ -561,6 +708,9 @@ private:
 	FVector AvoidanceMoveTargetLocation = FVector::ZeroVector;
 	FVector AvoidancePathOffset = FVector::ZeroVector;
 	FVector GuidanceMoveTargetLocation = FVector::ZeroVector;
+	// 0 = use MovementSpeedCmPerSec. Not serialised: guidance is re-issued every mission tick, so
+	// a restored agent picks its speed back up on the next one.
+	float GuidanceMoveSpeedCmPerSec = 0.0f;
 	bool bHasMoveTarget = false;
 	float TrafficSpeedScale = 1.0f;
 	float AvoidanceMoveTimeRemainingSeconds = 0.0f;
@@ -580,16 +730,46 @@ private:
 	// Speeder / criminal car state. Offsets in the comments are the original's, on the class
 	// FUN_004b8470 builds.
 	bool bCriminalCar = false;    // message id 0x11e
+	bool bSpeeder = false;        // ordinary vehicle flag veh[4] & 0x800
 	bool bFleeing = false;        // obj[5] & 8
 	bool bStopOrdered = false;    // veh[4] & 0x10
 	bool bStopped = false;        // veh[4] & 0x20
 	int32 CriminalEventId = INDEX_NONE; // +0x113
 	int32 SpotlightMark = 0;      // +0x11b
 	uint8 CriminalState = 0;      // +0x12b
-	float ArrestHoldSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
+	float BurglarOutsideSeconds = 0.0f; // +0x10, armed to 0x780000 by FUN_004b8b60
 	float CriminalStopScale = 1.0f; // stands in for the stop distance at +0xd3
+	float SpeederRewardCooldownSeconds = 0.0f; // veh +0xd7, event 0x21 repeat timer
+	float CriminalCruiseSeconds = 0.0f; // +0x137, DAT_00506360 + rand()%DAT_00506364
+	float CriminalSpotlightLostSeconds = 0.0f; // +0x13b, DAT_00506368 = 20.0s
+	uint8 BurglarDoorPhase = 0; // +0x133..+0x136 flags in FUN_004b8b60/FUN_004b8c90
+	bool bCriminalDriverReturned = false; // veh[8], set by people opcode 61
+	int32 CriminalDriverMessage = 0; // veh[0xc], BHAV 1303 returns 1
 	bool bUsingPedestrianSprite = false;
 	bool bUsingPedestrianBody = false;
+
+	// --- standing in water ---
+	// Someone on a water tile is IN the sea, not on it: the boat-rescue survivors treading water and
+	// anyone who walks off a quay. The figure drops until the surface cuts it at the waist and then
+	// rides the swell M_SimCopterWater draws, because the capsule sits on the water's rest plane and
+	// the waves live entirely in the vertex shader.
+	//
+	// Deliberately VISUAL only - it moves VisualRoot, never the capsule. Every height gate the sim
+	// measures against a person is a small number with a decoded origin (the 37.5 cm alight
+	// clearance, the 50 cm boarding band, the medic's contact box), and sinking the collision body
+	// half a body-length would quietly break all of them.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Population", meta = (ClampMin = "0.0"))
+	float WaterSubmergeLerpSeconds = 0.25f;
+
+	float WaterSubmergeAlpha = 0.0f;
+	float WaterVisualOffsetCm = 0.0f;
+	// The offset the animation/pose code last asked for. The water offset is added on top of it, so
+	// both writers can act without either having to know about the other.
+	FVector VisualRootBaseRelativeLocation = FVector::ZeroVector;
+
+	void UpdateWaterSubmersion(float DeltaSeconds);
+	void SetVisualRootRelativeLocation(const FVector& Local);
+	bool IsStandingInWater() const;
 
 	// Original privanim figure state.
 	TSharedPtr<FSimCopterPrivAnimShared> FigureShared;
@@ -609,6 +789,7 @@ private:
 	TWeakObjectPtr<AActor> BehaviorCarrier;
 	// person+0x170: the emergency vehicle that deployed this crew member.
 	TWeakObjectPtr<AActor> BehaviorStartingVehicle;
+	bool bBehaviorStartingVehicleMessaged = false;
 	// person+0x1a4, written by FUN_004c1050 when an interaction is delivered, and by the move core
 	// when this person walks into somebody.
 	TWeakObjectPtr<AActor> BehaviorInteractionSource;
@@ -633,9 +814,6 @@ private:
 	void AlightAttachmentOnly();
 	// DAT_005040d0+0xa4: the player's helicopter, in it or not.
 	ASimCopterHelicopterPawn* ResolvePlayerHelicopter() const;
-	// Scatters this person when the player's helicopter is descending onto their tile.
-	void UpdateDescendingHelicopterAvoidance();
-	void Context_FaceAwayFromHelicopter(const FVector& HelicopterLocation);
 	// Keeps a harness rider on the rope end, which is a point on the helicopter rather than a
 	// component this actor can be parented to.
 	void UpdateCarriedTransform();
@@ -644,6 +822,10 @@ private:
 	// Opcode 54's face index: which people1.bmp row this person's seat portrait is drawn from.
 	// FUN_004c6250 seats every passenger at 1 and BHAV 264 moves it between 0, 1 and 2 from there.
 	int32 SeatPortraitMood = 1;
+	// The immediate collision face is not an original persistent attribute. BHAV 292 revisits
+	// BHAV 264 about every 13 VM ticks, so this deadline guarantees the direct flinch yields back
+	// to the same speed-derived face even if a passenger's behavior stack is temporarily stalled.
+	float CabinImpactPortraitSecondsRemaining = 0.0f;
 
 	// person+0x172 / person+0x174: the voice-bank slot this person has borrowed and the event
 	// currently loaded into it. FUN_004c5210 hands out one of the fourteen and releases it again.
@@ -652,6 +834,8 @@ private:
 	// person+0x198: 1 when the current voice was started 2D, which is how a looping EKG stays
 	// audible from the cockpit while a 3D moan follows the person around.
 	bool bVoiceIsNonPositional = false;
+	// Polyphonic walking loop, deliberately separate from the dialogue/reaction voice-bank slot.
+	TWeakObjectPtr<UAudioComponent> WalkingSoundComponent;
 	bool bMissionWavesWhenIdle = false;
 	bool bMissionStationary = false;
 	bool bMissionCarried = false;
@@ -668,8 +852,16 @@ private:
 	float HospitalRoofPostHalfExtentCm = 0.0f;
 	// Keeps the posted worker over its own roof. Returns true when it had to intervene.
 	bool ContainToHospitalRoofPost();
-	// Whether a step target is still over the posted roof; unposted people are unconstrained.
-	bool IsWithinHospitalRoofPost(const FVector& WorldLocation) const;
+	/**
+	 * Whether a step target is still inside the posted roof; unposted people are unconstrained.
+	 *
+	 * `ExtentFraction` scales the square: 1.0 is the whole building, which is what a walk that is
+	 * seeking something (the aircraft, a casualty) gets, and HospitalRoofPostIdleWanderFraction is
+	 * what an aimless one gets. A target that is outside the limit but closer to the post centre
+	 * than the walker currently is passes anyway, so a crew member who ends up out at the parapet -
+	 * after a handoff, a traffic shove, or a reload - can always walk back in.
+	 */
+	bool IsWithinHospitalRoofPost(const FVector& WorldLocation, float ExtentFraction = 1.0f) const;
 	bool bPassengerFallActive = false;
 	bool bPassengerFallStarted = false;
 	float PassengerFallStartZ = 0.0f;
@@ -681,6 +873,9 @@ private:
 	int32 ResolveHeadImageIndex() const;
 	// Keeps a playing 3D voice on this person and hands a finished slot back to the bank.
 	void UpdatePersonVoice();
+	// FUN_004c6970's normal-move audio half: own voice on while moving, off at speed zero.
+	void UpdateWalkingVoice(int32 MoveSpeed);
+	void StopWalkingVoice();
 	void UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha);
 
 	// Original behavior-VM state (pedestrians only).
@@ -696,10 +891,125 @@ private:
 	FVector BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	float BehaviorStepTimeRemainingSeconds = 0.0f;
 	int32 LastAppliedBehaviorFacing = INDEX_NONE;
+	// FUN_004c9470's move result 10: the step just taken would have put this body inside the
+	// object it was walking toward, so it stopped against it instead. MoveStep raises it,
+	// StepTowardSelectedObject reads it as "arrived".
+	bool bBehaviorStepTouchedSelection = false;
+	// Set only around StepTowardSelectedObject's own move, so a plain op-4 walk is never stopped
+	// by a selection that happens to still be sitting in this person's one selection slot.
+	bool bBehaviorStepSeekingSelection = false;
+
+	// The gap between this walker's body and its current selection, across the deck; <= 0 is
+	// contact (FUN_004c8f70's box overlap, with the selection's own extent). The player's
+	// helicopter is measured against its airframe mesh, not its flight-sweep capsule.
+	float GetSelectionContactGapCm(const FSimCopterPersonContext& Context, const FVector& FromWorldLocation) const;
+	bool IsTouchingSelection(const FSimCopterPersonContext& Context, const FVector& FromWorldLocation) const;
+
+	// Is this worker close enough to hand a casualty through the aircraft's door? Skin contact plus
+	// a reach horizontally, a window vertically so a low hover still works. Riding it counts.
+	bool IsAtHelicopterForHandoff(const class ASimCopterHelicopterPawn& Helicopter) const;
+
+	// Whether a posted hospital worker should notice the aircraft at all yet: it has to be over
+	// their own building, not merely somewhere in the neighbourhood.
+	bool IsHelicopterWithinRoofPostAggro(const class ASimCopterHelicopterPawn& Helicopter) const;
+
+	// How far past the fuselage skin a worker may stand and still reach into the cabin.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float HelicopterHandoffReachCm = 25.0f;
+
+	// The vertical window for that reach, measured feet-to-doorsill. 150 cm is 24 original units:
+	// several times the 5-unit arrival gate, so a helicopter hovering just off the pad can still be
+	// unloaded, while one at any real altitude cannot.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float HelicopterHandoffMaxVerticalCm = 150.0f;
+
+	// How far outside its own footprint a posted roof crew will accept the aircraft.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0"))
+	float HospitalRoofPostAggroMarginCm = 120.0f;
+
+	/**
+	 * How much of its roof a posted worker will wander over when it has nowhere to be.
+	 *
+	 * BHAV 801 walks exactly once, on the way in: rec[4] clears autoturn and rec[6] calls 'Walk-10',
+	 * ten ticks at movespeed 10 - about half a metre - and the steady-state loop after it is
+	 * Idle-10 / 'idle a bit' / probe, with no walk in it at all. In the original that is the whole
+	 * story, because the probe reaches 272 -> 265 'Medevac disappear' within seconds and the worker
+	 * simply stops existing. The remake has to keep the post staffed, so it refuses that despawn and
+	 * restarts the state program instead - which re-runs the entry, so the once-only half metre
+	 * became half a metre every few seconds, always along the same facing, and the medic marched in
+	 * a straight line to the parapet and stood there. That is the reported "they go to the edge
+	 * every single time".
+	 *
+	 * Two things hold it in: the restart re-rolls the facing (see UpdateOriginalBehavior), so the
+	 * repeats no longer compound into a march, and an aimless walk is held to this fraction of the
+	 * post so the drift stays around the middle. A walk that is actually going somewhere - BHAV 263
+	 * heading for the aircraft - gets the whole roof.
+	 */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Behavior", meta = (ClampMin = "0.05", ClampMax = "1.0"))
+	float HospitalRoofPostIdleWanderFraction = 0.45f;
+
+	// Latch for ApplyHelicopterRunOver: BHAV 903 takes several ticks to finish dying and the
+	// overlap stays true throughout.
+	bool bRunOverByHelicopter = false;
+
+	// See SetIgnoresTileClassRules. Not serialised: it is set at spawn by whoever placed this
+	// agent, and the only user is the level-complete band, which is re-spawned rather than saved.
+	bool bIgnoresTileClassRules = false;
+
+public:
+	// One semi-implicit gravity step used by airborne pedestrians. Kept pure so a passenger drop
+	// cannot regress back to depending on a successful ground trace before it starts falling.
+	static float IntegratePedestrianGravityStep(
+		float CurrentZ,
+		float DeltaSeconds,
+		float GravityCmPerSec2,
+		float& InOutVerticalVelocityCmPerSec);
+
+	// FUN_004c8f70's box overlap reduced to the two extents the remake keeps for a pair of bodies.
+	// <= 0 is contact. Pure, so the rule can be tested without a city.
+	static float ComputeContactGapCm(
+		const FVector& FromWorldLocation,
+		const FVector& TargetWorldLocation,
+		float MyRadiusCm,
+		float TargetRadiusCm);
+
+	// The same overlap against a body that is a BOX rather than a circle, which is what a car is.
+	// Horizontal only; the caller owns the vertical gate. Pure, so it can be tested without a city.
+	static float ComputeBodyGapCm(
+		const FBox& LocalBoundsCm,
+		const FTransform& BodyFrame,
+		const FVector& WorldLocation);
+
+	// This agent's rendered body box, as a gap from WorldLocation across the deck. Used for
+	// vehicles, whose collision capsule is sized for traffic separation and is narrower than the
+	// car it stands for.
+	float GetDistanceToBodyCm(const FVector& WorldLocation) const;
+
+	// The two remake-only gates on the medevac handoff, as pure geometry.
+	//
+	// Reach: skin contact plus ReachCm across the deck, and a vertical WINDOW feet-to-doorsill so a
+	// low hover can still be unloaded while an aircraft at altitude cannot.
+	static bool IsWithinHandoffReach(
+		float AirframeGapCm,
+		float MyRadiusCm,
+		float ReachCm,
+		float DoorsillWorldZ,
+		float FeetWorldZ,
+		float MaxVerticalCm);
+
+	// Aggro: is the aircraft over the posted worker's own building (its square plus a margin)?
+	static bool IsWithinRoofPostAggro(
+		const FVector& HelicopterWorldLocation,
+		const FVector& PostCenterWorldLocation,
+		float PostHalfExtentCm,
+		float MarginCm);
+
+protected:
 
 	void StartOriginalBehavior();
 	void ResetBehaviorProgramOverride();
 	void UpdateOriginalBehavior(float DeltaSeconds);
+	void UpdateCabinImpactPortrait(float DeltaSeconds);
 	void ApplyBehaviorFacingRotation();
 	void AdvanceBehaviorFigureFrames(int32 TickCount);
 	// The walked surface at a step target: highest blocking geometry at that column, falling
@@ -742,7 +1052,7 @@ private:
 	virtual void StopPersonVoice() override;
 	virtual int32 GetPlayerHelicopterSpeed() const override;
 	virtual bool HasHiddenPersonInState(int32 State) const override;
-	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) override;
+	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection, bool bIncendiary) override;
 	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool FaceAwayFromSelectedObject(FSimCopterPersonContext& Context) override;
@@ -789,6 +1099,35 @@ private:
 	void ShowOriginalMesh(bool bUseOriginalMesh);
 	void ConfigureVehicleHeadlights(const FBox& VehicleLocalBounds);
 	void DisableVehicleHeadlights();
+
+	/**
+	 * Shows or hides this car's two headlights from `bEnableVehicleHeadlights` and the low power
+	 * setting, which is the only thing that moves after the lights have been placed.
+	 *
+	 * Low Power drops MegaLights, and a busy street is dozens of cars carrying two spotlights each -
+	 * exactly the case the standard deferred light loop is worst at. The beams are the one part of
+	 * the mode's local-light cut that a player is likely to notice, and it is still the right trade:
+	 * the cars keep their own emissive art either way.
+	 */
+	void RefreshHeadlightVisibility();
+
+	/** True between ConfigureVehicleHeadlights and DisableVehicleHeadlights - i.e. "this is a car". */
+	bool bVehicleHeadlightsConfigured = false;
+
+	/** Only cars subscribe, and only once they have headlights, so the list stays short. */
+	FDelegateHandle LowPowerChangedHandle;
+
+	/**
+	 * Re-derives EmissiveNits on the legacy PEOPLE1 pedestrian billboard from the world's key light.
+	 *
+	 * It rides the shared UNLIT `M_SimCopterSpriteTexture`, so what looks like ordinary shading has
+	 * to be computed instead - and as a SURFACE, not a light source, so it has no minimum and goes
+	 * dark with the sun. Without it the card sat on the material's baked daylight default and glowed
+	 * all night. Cheap enough to run per tick: the subsystem caches its scan for the whole frame.
+	 *
+	 * The figure head is deliberately NOT here any more; see `FigureHeadMaterial`.
+	 */
+	void RefreshSpriteExposure();
 	bool TraceGround(FVector& OutGroundLocation) const;
 	void FinishPassengerFall(float FallDistanceCm);
 	FString ResolveOriginalGameRoot() const;

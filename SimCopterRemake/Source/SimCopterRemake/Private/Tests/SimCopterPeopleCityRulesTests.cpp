@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Formats/SimCopterPeopleCityRules.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Misc/AutomationTest.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -63,6 +64,15 @@ bool FSimCopterPeopleCityRulesClassMapTest::RunTest(const FString& Parameters)
 	RandomState = 0x1234;
 	TestEqual(TEXT("FUN_004c2450 candidate class"), FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(12, RandomState), 5);
 
+	// FUN_004c3eb0 passes -1 for an unspecified mission-person class. FUN_004c71c0 resolves it
+	// through FUN_004c7190; leaving the field at its C++ default made every fare class 0.
+	RandomState = 0x1234;
+	TestEqual(TEXT("FUN_004c7190 unspecified class"), FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(RandomState), 2);
+	RandomState = 1;
+	TestEqual(TEXT("FUN_004c7190 varies mission people"), FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(RandomState), 6);
+	RandomState = 3;
+	TestEqual(TEXT("FUN_004c7190 may choose class zero"), FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(RandomState), 0);
+
 	// FUN_004c71c0: behavior class -> figure (dog/cow/celebrity classes included).
 	TestEqual(TEXT("class 0 figure"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(0), FString(TEXT("Blonde")));
 	TestEqual(TEXT("class 10 figure is the dog"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(10), FString(TEXT("2DOGG")));
@@ -70,6 +80,35 @@ bool FSimCopterPeopleCityRulesClassMapTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("class 20 figure is Elvis"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(20), FString(TEXT("Elvis")));
 	TestEqual(TEXT("class 14 figure is the cop"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(14), FString(TEXT("Kopp")));
 	TestEqual(TEXT("class 16 figure is Nessie"), FSimCopterPeopleCityRules::GetFigureNameForBehaviorClass(16), FString(TEXT("Nessie")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPeopleSymmetricHeightStepTest,
+	"SimCopter.City.PeopleRules.SymmetricHeightStep",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPeopleSymmetricHeightStepTest::RunTest(const FString& Parameters)
+{
+	constexpr float MaxStepCm = 31.25f;
+	TestTrue(
+		TEXT("A person may climb exactly the normal step limit"),
+		ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(MaxStepCm, MaxStepCm, false));
+	TestTrue(
+		TEXT("A person may descend exactly the same step limit"),
+		ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(-MaxStepCm, MaxStepCm, false));
+	TestFalse(
+		TEXT("An ordinary person may not climb beyond the step limit"),
+		ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(MaxStepCm + 0.01f, MaxStepCm, false));
+	TestFalse(
+		TEXT("An ordinary person may not descend beyond the same step limit"),
+		ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(-MaxStepCm - 0.01f, MaxStepCm, false));
+	TestTrue(
+		TEXT("BHAV 308 may escape a large upward rendered-building gap"),
+		ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(1000.0f, MaxStepCm, true));
+	TestTrue(
+		TEXT("BHAV 308 may descend the same large rendered-building gap"),
+		ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(-1000.0f, MaxStepCm, true));
 	return true;
 }
 

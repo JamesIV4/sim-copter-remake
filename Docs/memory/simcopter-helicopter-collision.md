@@ -67,6 +67,78 @@ Three follow-on traps, all found on screen after the first fix (2026-08-01):
   centre of the airframe, then two metres down, then the sub-particle ring falling under gravity
   from there. Pass `Hit.ImpactPoint` and `bSubmergeOrigin = false`.
 
+## The capsule is a 190 cm sphere, and it is not the airframe (2026-08-05)
+
+`CollisionComponent->InitCapsuleSize(95.0f, 82.0f)` does **not** make a 95x82 capsule.
+`UCapsuleComponent` clamps the half height up to the radius, so the pawn's root collider is a
+**sphere of radius 95 cm** — around a fuselage that is a fraction of that across. It is sized for
+the swept impact detector above, and it must stay that way; what it must not be is the answer to
+"where is the helicopter" for anything on foot.
+
+Two things were measuring interaction against it, or against the actor origin, and both read as a
+massive invisible hitbox:
+
+- **Boarding.** `HelicopterAutoEnterRadiusCm = 145` fired every tick on origin distance, and
+  `Interact()` reached **620 cm** — a tile and a half in a world where a tile is 400 cm and the
+  avatar is 46 cm tall. You boarded from beside the aircraft without ever touching it.
+- **Blocking pawns.** The sphere blocked `ECC_Pawn`, so the avatar was stopped a metre out from the
+  fuselage flank — it could not have reached the airframe even if the test had asked it to. Pawns
+  now **overlap**: people are not obstacles to an aircraft in the original either (`FUN_0048ad50`
+  answers a person with damage and a bounce, never with a stop), and ground agents never swept
+  against it anyway because they all move with `SetActorLocation(..., bSweep=false)`.
+
+The replacement is `TryGetAirframeLocalBoundsCm` / `GetDistanceToAirframeCm` /
+`ComputeAirframeGapCm`: the **rendered fuselage's own box**, taken from whichever body component is
+visible via `CalcBounds(GetRelativeTransform())` — the same source
+`UpdateCameraAnchorFromVisibleBody` already uses, so it works for the GEO mesh and the placeholder
+cube alike, and it banks with `ModelPivot`. Rotors are separate components and stay out of it.
+
+Traps in it:
+
+- **Use the 3D form for boarding.** The horizontal-only form clamps the query point into the box's
+  vertical span, which is right for a walker standing on the same deck (their vertical gate is
+  applied separately) and completely wrong for entering: it would board an aircraft hovering
+  overhead the moment the avatar walked underneath it.
+- **Rank by the gap, not by origin distance.** `FindHelicopterWithinReach` exists because a long
+  fuselage two metres away can otherwise be "nearer" than the one you are standing against.
+- **Do not resize the root capsule to fix this.** Its half height is the flight model's altitude
+  datum (`Altitude = actorZ - CapsuleHalfHeight`), the body mesh's vertical offset is derived from
+  it so the skids sit at the capsule bottom, `PlaceOnHelipad` rests on it, and the sweep's
+  sensitivity to buildings is tuned around its radius. A capsule cannot be both a fair airframe
+  proxy and small; measure the mesh instead.
+
+Reaches are now gaps from the avatar's own capsule to that box: `HelicopterInteractionReachCm`
+60 cm, `HelicopterAutoEnterReachCm` 4 cm. Covered by `SimCopter.Interaction.AirframeGap`.
+
+The same box is what a paramedic walks up to — see [[simcopter-paramedic-handoffs]].
+
+## People are not obstacles and not ground (2026-08-05)
+
+"We are able to land the helicopter on their head." Three separate mechanisms, all fixed together;
+the aircraft now passes through people entirely and only *criminals* answer for it.
+
+1. **The swept collider blocked pawns.** Fixed with the `ECC_Pawn -> ECR_Overlap` above. A sweep
+   only blocks when both sides block, so this alone settles heli-vs-person for movement.
+2. **A pedestrian's head was a landing surface.** Both of the helicopter's downward queries traced
+   plain `ECC_Visibility`, and one of them (`BuildFlightEnvironment`'s `heli[0x59]` equivalent)
+   starts 200 m *above* the aircraft — so the topmost blocking hit under it was whoever was standing
+   there. That is the whole of "it touched down on their head, reported itself landed, and sat
+   there". `TraceFlightSurface` now multi-traces and takes the first blocking hit that is not an
+   `ECC_Pawn` object; both `UpdateGroundProbe` and the flight environment go through it. This is what
+   the original does anyway: `heli[0x59]` is terrain and objects, and people are answered separately.
+3. **Nothing ran anyone over.** `FUN_0048ad50` hands each object overlapping the airframe
+   `FUN_0049a4f0(0xc, ...)`, whose person arm is reaction table entry 12 -> BHAV 912 "Rxn: Large fast
+   vehicle hit" -> 903 "Rxn: Die" -> 309 "Fall off master": death sounds, outcome 10
+   (`EVT_PersonDied`), attr15 "written off", despawn. `RunOverCriminalsUnderHelicopter` restores that
+   pass **narrowed to the criminal set** — `DAT_0058de80` states **10..13** (BHAV 1300-1303), not
+   `FUN_004ca350`'s loop-flag-0 test, which also matches state 3's *rioters* (a riot is dispersed,
+   not run over) — and not caught yet. Ordinary pedestrians are untouched; they already scramble out
+   from under a descending aircraft (`UpdateDescendingHelicopterAvoidance`).
+   BHAV 903 posts only outcome 10 (`EVT_PersonDied`). That casualty alone closes the applicable
+   crime through `FUN_004a73e0`'s original caught-or-casualty condition; the port no longer fabricates
+   outcome 9. `bRunOverByHelicopter` latches the reaction — 903 takes several ticks to die and the
+   overlap stays true throughout. Nothing in the pass can move the aircraft.
+
 ## Fire damage rate
 
 `ReferenceFrameSeconds` is a **feel** knob the debug panel dials in, and the pawn ships it at
@@ -74,6 +146,23 @@ Three follow-on traps, all found on screen after the first fix (2026-08-01):
 Damage is fidelity, not taste: the burn is now pinned to `OriginalFrameSeconds` (20 Hz). Check any
 other rule before you reach for `ReferenceFrameSeconds` - the climb decay and the EMA window
 belong there, hit points do not.
+
+## Object-contact damage is a packet in the remake (2026-08-08)
+
+`FUN_00484d20` subtracts **4 HP on every 20 Hz frame** in which `FUN_0048ad50` still finds an
+overlapping object. That value is not a complete impact in the executable; it is one tick of a
+sustained AABB contact. The remake's swept capsule emits a single response and rate-limits it with
+the 0.2-second bounce timer, so copying the four-point tick literally reduced a collision to 4 HP.
+The starting Schweizer 300 has 495 HP and consequently needed 124 distinct impacts to be destroyed.
+
+For the remake's discrete swept hit, `NotifyObjectCollision` now uses the shared `[Heli Damage]`
+`Collision Subtract Val` of **27**, the same contact-level value used by the executable's
+rate-limited elevated-surface collision arm. The starting airframe therefore crosses below zero on
+impact 19. The empty-fuel five-times penalty remains unchanged.
+
+This damage is deliberately **not difficulty-scaled**. `career.twk` City0 has `Difficulty=0`, which
+the mission system correctly exposes as runtime tier 1 (`Difficulty + 1`); neither original
+collision arm reads the career difficulty global.
 
 ## Fire damage
 
@@ -86,4 +175,23 @@ airframe in seconds. Ported through `ASimCopterMissionSystemActor::GetFireHeight
 takes the flame's world position from the same helper the fire renderer uses so the damage band
 is the fire the player can see.
 
-Related: [[simcopter-heli-flight-model]], [[simcopter-fire-water-fx]], [[simcopter-mission-system]].
+## A wreck goes back to the airport (2026-08-05)
+
+`SimulateFlightStep`'s `bCrashed` arm carried a stale note - "the remake has no pad registry yet,
+so it repairs in place where it crashed". It has had one since the airport port: the same
+`SimCopterAirport::FindFreePadIndex` + `TryGetAirportPadWorldLocation` that city entry parks the
+fleet with, and `PlaceOnHelipad`'s own header already named `FUN_0048a8b0` as the crash respawn.
+`ReturnToAirportAfterCrash` now uses it, marking a pad taken when another aircraft is within
+`CrashRespawnPadClearanceCm` (200 cm, half a tile) so a wreck cannot be dropped onto a parked one.
+No airport, or every pad blocked, leaves the wreck where it fell - the flight model has already
+repaired it there.
+
+**The fall can fail to end.** `bCrashed` is raised when a *Dying* helicopter's altitude reaches
+`Env.SurfaceHeight`; off the map, or over a column whose surface never resolves, that arrival never
+comes and the spiral runs forever. Nothing in the original can reach that state, so there is no
+behaviour to port: `UpdateStuckFallWatchdog` is a remake-only backstop that ends the fall the same
+way an arrival would after `StuckFallRecoverySeconds` (**15 s**). `ResetOnSurface` is what repairs
+the aircraft in both arms - it restores Parked, full hit points and full fuel - so a city with no
+airport still recovers, it just does not move.
+
+Related: [[simcopter-heli-flight-model]], [[simcopter-fire-water-fx]], [[simcopter-mission-system]], [[simcopter-airport-spawn]].

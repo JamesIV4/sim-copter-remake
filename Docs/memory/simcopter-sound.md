@@ -170,7 +170,7 @@ Between items the scheduler waits for the current sound to stop and then for **4
 (`entry+0xc`, starting at -1) — multi-part items played in sequence, which is what the shipped
 `ad013a`/`ad013b` and `ad050a`/`ad050b` pairs are.
 
-## The dash tuner (ported 2026-07-31)
+## The dash tuner and volume fader (tuner ported 2026-07-31; fader 2026-08-09)
 
 The radio lives in **dash4**, the 455x43 strip above the instrument panel: an FM head unit whose
 lit scale is printed 88 / 92 / 96 / 104 / 108. (Those are evenly spaced in *pixels* but not in
@@ -188,6 +188,29 @@ The port therefore hangs the needle's end detents on the outermost printed label
 divides evenly between, which lands the five shipped stations at 22.0, 37.5, 53.0, 68.5, 84.0 —
 within half a pixel of every label. `Docs/scratchpad/sound/radio/preview_needle.py` composites the
 result onto the real artwork so this can be re-checked without launching the game.
+
+The narrow black well beside the printed **11 / 5 / 0** is live too. `FUN_00451980` stores its
+rectangle as **(98,19)-(110,39)**, and `FUN_00451e30` accepts six extra pixels above and below for
+input. `FUN_004520a0` paints the indicator at **x 100..101, y..y+1** in palette index 100 (red),
+using the logarithmic pair `FUN_004402a0` / `FUN_004402d0`; their five doubles at
+`0x004f2180..0x004f21a0` are 0.5, 10000, 0.0005, 1/ln(2), and -2000. The resulting marker positions
+are y=19 at stored volume 10000, y=29 at 8000, and y=34 at 6000. Direct input at y=34 or below is
+the off detent; a live click also powers the set on. The remake preserves this geometry and curve,
+adds drag tracking, and stores the selected volume through `USimCopterSettings`. The bundled
+high-resolution dashboard rebuilt the radio furniture at slightly different positions, so its
+overlays carry art-only corrections: the volume control is 3 page pixels left, its marker travels
+from y=20 through y=41 so the 2px rocker stays inside the groove, and the tuner needle is 4 page
+pixels lower so it meets the display's bottom track. Raw `DASH4.BMP` retains the decoded
+coordinates. Dashboard volume input writes only the stored/live gain — never `ApplyAll`, because
+that also reapplies a possibly stale saved channel. A real channel change resets both the runtime
+and stored radio volume to 10000 before rebuilding that station's playlists. The live gain must be
+forwarded to `USimCopterAudioSubsystem::SetRadioVolumeMultiplier`: `PlayRadioFile` applying it only
+when a new item starts leaves the already-playing `RadioComponent` at its old volume. The audio
+subsystem stores the radio multiplier separately, reapplies it immediately to that component, and
+combines it with the master-volume gain whenever either value changes. Settings restore must set
+the saved station before the saved volume because a real `SetStationIndex` resets runtime volume
+to full; the dashboard paints the live subsystem value when available so runtime and rocker cannot
+silently diverge.
 
 Radio state reaches the dash over a **message bus**, not by polling: `FUN_00430950` publishes a
 7-dword struct under the id `0x5245494f` ("REIO") and `FUN_00430890` reads it back, falling back
@@ -252,6 +275,25 @@ would be wrong. Audio only.
   0x6f/0x70 the vehicle door pair, and 0x2d/0x2e the passenger screams are decoded with their call
   sites but hang off agent state the remake models differently; they are listed in
   `Docs/scratchpad/sound/callsites.txt` with the id at every one of the 242 sites.
+
+## Gameplay mappings added 2026-08-08
+
+- Firework mortar launch uses root sound slot `0x17`, `TGSHWH.WAV`, at the ground launch point;
+  the later apex detonation remains slot `0x07`, `BOOM1.WAV`.
+- Player boarding uses slot `0x25`, `DOROPN.WAV`, while player exit uses slot `0x26`,
+  `DORCLS.WAV`. Saved-game possession is intentionally silent. This is a requested one-cue split:
+  the original `FUN_0048a580` command `0x1a` queues both `0x25` and `0x26` during dismount.
+- The player-board cue must run **after possession**. `GetHelicopterAudio()` deliberately rejects
+  an aircraft that is not locally controlled, so calling it before `Possess()` silently drops
+  `DOROPN`; save restore remains silent through the separate no-blend guard.
+- Passenger carrier changes use people voice event 60 (`doropn`) rather than the root-table door
+  pair. `FUN_004c6360` calls `FUN_004c5210(0x3c,1,0,1)` when assigning the player helicopter and
+  when leaving a door-bearing carrier. The event has one clip, so passenger boarding **and**
+  alighting both play `doropn`; there is no `dorcls` people event and no random choice.
+- Career level completion is also fixed, not randomized: vtable entry `0x0044bed0` calls
+  `FUN_0042a3b0(0,0x69,100)`, so it queues language slot `0x69`, `DIS063.WAV`, exactly once.
+  `DIS064` through `DIS068` are adjacent registered assets but this completion path never chooses
+  them and consumes no RNG.
 
 ## Deliberate divergences
 

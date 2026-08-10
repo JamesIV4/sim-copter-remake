@@ -3,7 +3,10 @@
 #include "Ground/SimCopterOnFootPawn.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
+#include "Audio/SimCopterSoundTable.h"
 #include "Camera/CameraComponent.h"
+#include "City/SimCity2000CityActor.h"
+#include "Components/AudioComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -15,6 +18,9 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Flight/SimCopterWaterGameplay.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
+#include "Game/SimCopterSettings.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -57,11 +63,16 @@ constexpr float PopulationWorldScale = 0.25f;
 constexpr float OnFootCapsuleRadiusCm = 38.0f;
 constexpr float OnFootCapsuleHalfHeightCm = 92.0f;
 constexpr float OnFootBodyHeightCm = 184.0f;
-constexpr const TCHAR* SpriteMaterialPath = TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture");
+// Mirrors WaterStandingClearanceCm in SimCopterGroundAgent.cpp: how far above the sea's rest plane
+// the feet may be and still count as in the water rather than on a bridge or pier over it.
+constexpr float WaterStandingClearanceCm = 40.0f;
+// Masked and chroma-keyed like the unlit sprite material the head used to share with the effect
+// cards, but Default Lit - see ASimCopterGroundAgent::FigureHeadMaterial.
+constexpr const TCHAR* FigureHeadMaterialPath = TEXT("/Game/Materials/M_SimCopterLitSpriteTexture.M_SimCopterLitSpriteTexture");
 
-UMaterialInterface* LoadSpriteMaterialNoWarn()
+UMaterialInterface* LoadFigureHeadMaterialNoWarn()
 {
-	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, SpriteMaterialPath, nullptr, LOAD_NoWarn));
+	return Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, FigureHeadMaterialPath, nullptr, LOAD_NoWarn));
 }
 }
 
@@ -147,7 +158,7 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 		BodyVertexColorMaterial = BodyMaterialFinder.Object;
 	}
 
-	SpriteMaterial = LoadSpriteMaterialNoWarn();
+	FigureHeadMaterial = LoadFigureHeadMaterialNoWarn();
 
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 	HelicopterClass = ASimCopterHelicopterPawn::StaticClass();
@@ -210,6 +221,7 @@ void ASimCopterOnFootPawn::PossessedBy(AController* NewController)
 
 void ASimCopterOnFootPawn::UnPossessed()
 {
+	StopWalkingSound();
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		PlayerController->FlushPressedKeys();
@@ -219,6 +231,7 @@ void ASimCopterOnFootPawn::UnPossessed()
 
 void ASimCopterOnFootPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	StopWalkingSound();
 	RemoveControllerOverlayWidget();
 	Super::EndPlay(EndPlayReason);
 }
@@ -238,7 +251,10 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 	{
 		return;
 	}
+	// Before the body sprite: it folds WaterVisualOffsetCm into the component Z it writes.
+	UpdateWaterSubmersion(DeltaSeconds);
 	UpdateBodySprite(DeltaSeconds);
+	UpdateWalkingSound();
 	UpdateCamera(DeltaSeconds);
 
 	// The listener has to follow whoever the player is. Every distance in the mixer is measured
@@ -255,6 +271,53 @@ void ASimCopterOnFootPawn::Tick(float DeltaSeconds)
 	}
 }
 
+// SCHOOK: PersonPostMove 0x004c6970 + PersonPlayVoice 0x004c5210.
+void ASimCopterOnFootPawn::UpdateWalkingSound()
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	const UCharacterMovementComponent* Move = GetCharacterMovement();
+	const float SpeedAlpha = GetVelocity().Size2D() / FMath::Max(1.0f, WalkSpeedCmPerSec);
+	const bool bWalking = IsLocallyControlled() && Move != nullptr && Move->IsMovingOnGround() && SpeedAlpha > 0.12f;
+	if (!bWalking || Audio == nullptr)
+	{
+		StopWalkingSound();
+		return;
+	}
+
+	// FUN_004c1b50 restores the player-person to class 19 (pilot), whose own voice from
+	// FUN_004c71c0 is event 0x29: xFtBoots.wav. The remake currently exposes one walk gait, so
+	// use the original walk selector's speed 4 (speed 8 is its separate 1Run arm).
+	constexpr int32 OriginalWalkSpeed = 4;
+	UAudioComponent* WalkingSound = WalkingSoundComponent.Get();
+	if (WalkingSound == nullptr || !WalkingSound->IsPlaying())
+	{
+		WalkingSound = Audio->PlayAttachedVoiceLoop(
+			SimCopterSound::VOX_FOOTSTEPS_BOOTS,
+			GetRootComponent(),
+			SimCopterSound::GetWalkPacedFrequencyHz(OriginalWalkSpeed),
+			SimCopterSound::PlayerFootstepMaxRangeCm);
+		WalkingSoundComponent = WalkingSound;
+		return;
+	}
+
+	Audio->SetAttachedVoiceLoopFrequencyHz(
+		WalkingSound,
+		SimCopterSound::VOX_FOOTSTEPS_BOOTS,
+		SimCopterSound::GetWalkPacedFrequencyHz(OriginalWalkSpeed));
+}
+
+void ASimCopterOnFootPawn::StopWalkingSound()
+{
+	if (UAudioComponent* WalkingSound = WalkingSoundComponent.Get())
+	{
+		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+		{
+			Audio->StopAttachedVoiceLoop(WalkingSound);
+		}
+	}
+	WalkingSoundComponent.Reset();
+}
+
 void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -267,7 +330,7 @@ void ASimCopterOnFootPawn::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis(TEXT("SimCopterMouseLookPitch"), this, &ASimCopterOnFootPawn::MouseLookPitch);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftY"), this, &ASimCopterOnFootPawn::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerLeftX"), this, &ASimCopterOnFootPawn::MoveRight);
-	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightX"), this, &ASimCopterOnFootPawn::LookYaw);
+	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightX"), this, &ASimCopterOnFootPawn::ControllerLookYaw);
 	PlayerInputComponent->BindAxis(TEXT("SimCopterControllerRightY"), this, &ASimCopterOnFootPawn::ControllerLookPitch);
 
 	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterOnFootPawn::Interact);
@@ -335,16 +398,21 @@ void ASimCopterOnFootPawn::MouseLookPitch(float Value)
 	MouseLookPitchInput = Value;
 }
 
+void ASimCopterOnFootPawn::ControllerLookYaw(float Value)
+{
+	ControllerLookYawInput = FMath::Clamp(Value, -1.0f, 1.0f);
+}
+
 void ASimCopterOnFootPawn::ControllerLookPitch(float Value)
 {
 	// The existing camera subtracts its look input. Invert the raw gamepad axis so stick-up
 	// raises the view, matching the old Gamepad_RightY mapping.
-	LookPitch(-Value);
+	ControllerLookPitchInput = FMath::Clamp(-Value, -1.0f, 1.0f);
 }
 
 void ASimCopterOnFootPawn::Interact()
 {
-	TryEnterHelicopter(HelicopterInteractionRadiusCm);
+	TryEnterHelicopter(HelicopterInteractionReachCm);
 }
 
 void ASimCopterOnFootPawn::ToggleGamePause()
@@ -739,12 +807,12 @@ bool ASimCopterOnFootPawn::TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn
 
 void ASimCopterOnFootPawn::TryAutoEnterHelicopter()
 {
-	TryEnterHelicopter(HelicopterAutoEnterRadiusCm);
+	TryEnterHelicopter(HelicopterAutoEnterReachCm);
 }
 
-void ASimCopterOnFootPawn::TryEnterHelicopter(const float SearchRadiusCm)
+void ASimCopterOnFootPawn::TryEnterHelicopter(const float ReachCm)
 {
-	ASimCopterHelicopterPawn* Helicopter = FindNearestHelicopter(SearchRadiusCm);
+	ASimCopterHelicopterPawn* Helicopter = FindHelicopterWithinReach(ReachCm);
 	if (Helicopter == nullptr)
 	{
 		return;
@@ -766,7 +834,12 @@ void ASimCopterOnFootPawn::UpdateLookYaw(float DeltaSeconds)
 {
 	// Steer the avatar (and therefore the movement/camera frame) from the look input. Works the
 	// same on the ground and mid-jump, giving air control when combined with the movement input.
-	const float YawDeltaDeg = (LookYawInput + MouseLookYawInput) * LookYawSpeedDegPerSec * DeltaSeconds;
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	const float MouseSensitivity = Settings != nullptr ? Settings->GetMouseSensitivityX() : 1.0f;
+	const float ControllerSensitivity = Settings != nullptr ? Settings->GetControllerSensitivityX() : 1.0f;
+	const float YawDeltaDeg =
+		(LookYawInput + MouseLookYawInput * MouseSensitivity + ControllerLookYawInput * ControllerSensitivity)
+		* LookYawSpeedDegPerSec * DeltaSeconds;
 	if (!FMath::IsNearlyZero(YawDeltaDeg))
 	{
 		AddActorWorldRotation(FRotator(0.0f, YawDeltaDeg, 0.0f));
@@ -775,16 +848,86 @@ void ASimCopterOnFootPawn::UpdateLookYaw(float DeltaSeconds)
 
 void ASimCopterOnFootPawn::UpdateCamera(float DeltaSeconds)
 {
-	if (CameraBoom == nullptr)
+	if (CameraBoom == nullptr || CameraComponent == nullptr)
 	{
 		return;
 	}
 
+	const USimCopterSettings* Settings = USimCopterSettings::Get(this);
+	const float MouseSensitivity = Settings != nullptr ? Settings->GetMouseSensitivityY() : 1.0f;
+	const float ControllerSensitivity = Settings != nullptr ? Settings->GetControllerSensitivityY() : 1.0f;
+	CameraComponent->SetFieldOfView(Settings != nullptr ? Settings->GetOnFootFov() : USimCopterSettings::DefaultFov);
+
 	CameraPitchDeg = FMath::Clamp(
-		CameraPitchDeg - (LookPitchInput + MouseLookPitchInput) * LookPitchSpeedDegPerSec * DeltaSeconds,
+		CameraPitchDeg -
+			(LookPitchInput + MouseLookPitchInput * MouseSensitivity + ControllerLookPitchInput * ControllerSensitivity)
+			* LookPitchSpeedDegPerSec * DeltaSeconds,
 		-62.0f,
 		14.0f);
 	CameraBoom->SetRelativeRotation(FRotator(CameraPitchDeg, 0.0f, 0.0f));
+}
+
+ASimCity2000CityActor* ASimCopterOnFootPawn::ResolveCityActor()
+{
+	if (!CachedCityActor.IsValid())
+	{
+		CachedCityActor = Cast<ASimCity2000CityActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCity2000CityActor::StaticClass()));
+	}
+	return CachedCityActor.Get();
+}
+
+bool ASimCopterOnFootPawn::IsStandingInWater(const ASimCity2000CityActor& City) const
+{
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (Capsule == nullptr)
+	{
+		return false;
+	}
+
+	const FVector Location = GetActorLocation();
+	float SurfaceZ = 0.0f;
+	uint8 TerrainClass = 0xff;
+	if (!City.TryGetWaterGameplaySurface(Location, SurfaceZ, TerrainClass) ||
+		!SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass))
+	{
+		return false;
+	}
+
+	// Over a water tile is not in the water: a bridge deck, a pier and a jump all pass the tile test.
+	// The band has to clear the swell's own crest without reaching a deck a terrain step above.
+	const float FeetZ = Location.Z - Capsule->GetScaledCapsuleHalfHeight();
+	return FeetZ <= SurfaceZ + WaterStandingClearanceCm;
+}
+
+void ASimCopterOnFootPawn::UpdateWaterSubmersion(float DeltaSeconds)
+{
+	ASimCity2000CityActor* City = ResolveCityActor();
+	const bool bInWater = City != nullptr && IsStandingInWater(*City);
+	const float Step = WaterSubmergeLerpSeconds > KINDA_SMALL_NUMBER
+		? DeltaSeconds / WaterSubmergeLerpSeconds
+		: 1.0f;
+	WaterSubmergeAlpha = FMath::Clamp(WaterSubmergeAlpha + (bInWater ? Step : -Step), 0.0f, 1.0f);
+
+	WaterVisualOffsetCm = 0.0f;
+	if (WaterSubmergeAlpha > 0.0f && City != nullptr)
+	{
+		// Half a body down, so the waterline is at the waist, plus this patch of sea's current
+		// displacement - the waves are a vertex-shader effect, so the CPU has to evaluate them.
+		const float WaveCm = City->GetWaterWaveOffsetCm(GetActorLocation());
+		const float HalfBodyCm = OnFootCapsuleHalfHeightCm * PopulationWorldScale;
+		WaterVisualOffsetCm = WaterSubmergeAlpha * (WaveCm - HalfBodyCm);
+	}
+
+	// The box body is the stand-in when the privanim figure is unavailable; UpdateBodySprite owns
+	// the sprite component's Z and folds the same offset in there.
+	if (!bUsingOriginalBodySprite && BodyProxyComponent != nullptr)
+	{
+		BodyProxyComponent->SetRelativeLocation(FVector(
+			0.0f,
+			0.0f,
+			(-OnFootCapsuleHalfHeightCm + 86.0f) * PopulationWorldScale + WaterVisualOffsetCm));
+	}
 }
 
 void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
@@ -799,7 +942,9 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 	if (bUsingOriginalFigure)
 	{
 		// The pilot figure animates through the original clip frames - no bob/lean overlay.
-		OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale));
+		// WaterVisualOffsetCm: the same waist-deep sink the box body gets, computed by
+		// UpdateWaterSubmersion before this function runs.
+		OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + WaterVisualOffsetCm));
 		OriginalBodySpriteComponent->SetRelativeRotation(FRotator::ZeroRotator);
 
 		const bool bWalking = SpeedAlpha > 0.12f;
@@ -827,7 +972,7 @@ void ASimCopterOnFootPawn::UpdateBodySprite(float DeltaSeconds)
 	const float Wave = FMath::Sin(BodySpriteTimeSeconds * 7.5f);
 	const float Bob = FMath::Abs(Wave) * 4.0f * SpeedAlpha * PopulationWorldScale;
 	const float Lean = Wave * 4.0f * SpeedAlpha; // degrees of roll (scale-independent)
-	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + Bob));
+	OriginalBodySpriteComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -OnFootCapsuleHalfHeightCm * PopulationWorldScale + Bob + WaterVisualOffsetCm));
 	OriginalBodySpriteComponent->SetRelativeRotation(FRotator(0.0f, 0.0f, Lean));
 }
 
@@ -869,24 +1014,12 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 
 	if (RootPath.IsEmpty())
 	{
-		const TCHAR* Candidates[] = {
-			TEXT("../Reference/SimCopterOriginalGame"),
-			TEXT("S:/Repos/sim-copter-remake/Reference/SimCopterOriginalGame"),
-			TEXT("../../Reference/SimCopterOriginalGame"),
-			TEXT("../../../Reference/SimCopterOriginalGame"),
-			TEXT("Reference/SimCopterOriginalGame")
-		};
-		for (const TCHAR* Candidate : Candidates)
+		// The figure needs privanim specifically, so a root that merely looks like an install is
+		// not good enough here.
+		RootPath = SimCopterOriginalGame::ResolveRootBy([](const FString& Root)
 		{
-			const FString FullPath = FPaths::IsRelative(Candidate)
-				? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), Candidate))
-				: FPaths::ConvertRelativePathToFull(Candidate);
-			if (FPaths::DirectoryExists(FullPath) && !FSimCopterPrivAnimReader::ResolvePrivAnimPath(FullPath).IsEmpty())
-			{
-				RootPath = FullPath;
-				break;
-			}
-		}
+			return !FSimCopterPrivAnimReader::ResolvePrivAnimPath(Root).IsEmpty();
+		});
 	}
 
 	if (RootPath.IsEmpty())
@@ -908,7 +1041,7 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 	}
 
 	// Pilot head: the first entry of the head-image table suits the player; texture optional.
-	if (SpriteMaterial != nullptr && FigureHeadMaterialInstance == nullptr)
+	if (FigureHeadMaterial != nullptr && FigureHeadMaterialInstance == nullptr)
 	{
 		const TArray<int32>& HeadTable = FSimCopterPopulationFigure::GetHeadImageTable();
 		if (const FMaxisTextureImage* HeadImage = FigureShared->HeadImages.Find(HeadTable[0]))
@@ -916,10 +1049,13 @@ bool ASimCopterOnFootPawn::LoadOriginalBodyFigure()
 			FigureHeadTexture = FSimCopterPopulationSprite::CreateTextureFromImage(this, *HeadImage, TEXT("SimCopterPlayerHead"));
 			if (FigureHeadTexture != nullptr)
 			{
-				FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(SpriteMaterial, this);
+				FigureHeadMaterialInstance = UMaterialInstanceDynamic::Create(FigureHeadMaterial, this);
 				if (FigureHeadMaterialInstance != nullptr)
 				{
 					FigureHeadMaterialInstance->SetTextureParameterValue(TEXT("Texture"), FigureHeadTexture);
+					// The head is a ball with real normals, not a tree's crossed vertical quads, so
+					// the material's world-up normal bias has to be off. Same reason as the NPCs'.
+					FigureHeadMaterialInstance->SetScalarParameterValue(TEXT("CardNormalUpBias"), 0.0f);
 				}
 			}
 		}
@@ -1065,6 +1201,46 @@ ASimCopterHelicopterPawn* ASimCopterOnFootPawn::FindNearestHelicopter(float Sear
 	return BestHelicopter;
 }
 
+ASimCopterHelicopterPawn* ASimCopterOnFootPawn::FindHelicopterWithinReach(const float ReachCm) const
+{
+	if (GetWorld() == nullptr)
+	{
+		return nullptr;
+	}
+
+	TArray<AActor*> Helicopters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), Helicopters);
+
+	// The avatar's own body counts: the reach starts at its skin, not at its centre line.
+	const float BodyRadiusCm =
+		GetCapsuleComponent() != nullptr ? GetCapsuleComponent()->GetScaledCapsuleRadius() : 0.0f;
+	const float LimitCm = FMath::Max(0.0f, ReachCm);
+
+	ASimCopterHelicopterPawn* BestHelicopter = nullptr;
+	float BestGapCm = TNumericLimits<float>::Max();
+	for (AActor* Actor : Helicopters)
+	{
+		ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
+		if (Helicopter == nullptr)
+		{
+			continue;
+		}
+
+		// Full 3D: a horizontal-only gap would board an aircraft hovering overhead the moment the
+		// avatar walked underneath it.
+		const float GapCm = FMath::Max(
+			0.0f,
+			Helicopter->GetDistanceToAirframeCm(GetActorLocation()) - BodyRadiusCm);
+		if (GapCm <= LimitCm && GapCm < BestGapCm)
+		{
+			BestGapCm = GapCm;
+			BestHelicopter = Helicopter;
+		}
+	}
+
+	return BestHelicopter;
+}
+
 bool ASimCopterOnFootPawn::ResolveGroundedLocation(const FVector& DesiredLocation, float ActorHalfHeight, FVector& OutLocation) const
 {
 	if (GetWorld() == nullptr)
@@ -1072,11 +1248,19 @@ bool ASimCopterOnFootPawn::ResolveGroundedLocation(const FVector& DesiredLocatio
 		return false;
 	}
 
-	const FVector Start = DesiredLocation + FVector::UpVector * 2000.0f;
+	// DOWNWARD ONLY, from just above where the caller wanted us. Starting 2000 cm up meant the first
+	// blocking hit on the way down could be the ROOF of whatever we were standing next to, which put
+	// the avatar high in the air the moment they stepped out of the helicopter beside a building.
+	// The caller has already picked the height it wants; this only ever settles us onto that surface
+	// or a lower one.
+	const FVector Start = DesiredLocation + FVector::UpVector * GroundProbeLiftCm;
 	const FVector End = DesiredLocation - FVector::UpVector * GroundProbeDistanceCm;
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterOnFootGroundSnap), false, this);
-	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, QueryParams) && Hit.bBlockingHit)
+	// ECC_Camera is the channel walkable surfaces answer on in this project - the ground agents, the
+	// traffic system and the helicopter's own exit probe all use it. ECC_Visibility additionally hits
+	// things nobody stands on, which is how this landed the avatar in mid-air with nothing under him.
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
 	{
 		OutLocation = FVector(DesiredLocation.X, DesiredLocation.Y, Hit.ImpactPoint.Z + ActorHalfHeight + 2.0f);
 		return true;

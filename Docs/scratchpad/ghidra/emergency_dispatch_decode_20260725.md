@@ -491,7 +491,13 @@ F2/F3/F4 pass `initialState = 4`; F5 passes `3`.
 - if none, spirals radius 4 outward from the spotlight tile for the nearest road
   tile and drives there;
 - if the target is within `0x600000` of the police car and `FUN_0049df60`
-  allows stopping, invokes the target's `vtable[1]` (the "pull over" call).
+  allows stopping, invokes the target's `vtable[1]` (the "pull over" call);
+- when the car reaches the spotlight/target, calls
+  `FUN_004bd980(0xe, personState, 0x780000, DAT_0051ac50)` to deploy its officer,
+  using person state 8 for an on-foot criminal (BHAV 1401 -> 1150 foot chase) or
+  state `0xe` for a stopped fleeing car. State 3 is therefore not a crewless
+  parked mode: its special spotlight following ends in the normal police
+  on-scene interaction.
 
 This is the help's "F5 issues a special dispatch that allows police to follow
 your spotlight... to help catch a criminal you are chasing who won't stop".

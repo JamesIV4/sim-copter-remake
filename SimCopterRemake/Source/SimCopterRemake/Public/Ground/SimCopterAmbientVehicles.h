@@ -116,6 +116,13 @@ struct FSimCopterAmbientBoat
 	float MissionTimerSeconds = 0.0f;           // +0x57
 	float WakeTimerSeconds = 0.9f;              // +0x0b (0xe666)
 	FVector World = FVector::ZeroVector;        // +0x97/+0x9b/+0x9f
+	// Remake-only. World is the position on the sea's REST plane, which is what the tile/target
+	// logic and the mission marker read; WaveWorld is where the hull is actually drawn once
+	// M_SimCopterWater's swell is added, and WaveTilt is the wave slope under it. Riders are placed
+	// against the second pair so they heave with the deck rather than the rest plane.
+	FVector WaveWorld = FVector::ZeroVector;
+	FRotator WaveTilt = FRotator::ZeroRotator;
+	FVector RotorPushVelocityCm = FVector::ZeroVector;
 	TObjectPtr<UProceduralMeshComponent> Mesh;
 };
 
@@ -215,6 +222,20 @@ public:
 	// Stable component owned by the fixed UFO pool. Restored abductees relink to it after traffic
 	// actors are recreated; the ambient restore then moves that same component to its saved pose.
 	USceneComponent* GetUfoBeamTargetComponent() const;
+
+	// SCHOOK: PlaneWeaponHit 0x004b3ba0 (via FUN_0049a4f0's class-0x100 arm -> FUN_004b3df0)
+	//
+	// Which aircraft a shot passes through, or INDEX_NONE. The meshes are deliberately left on
+	// NoCollision - giving them a Visibility responder would put a flying saucer in the path of
+	// every downward ground probe in the game - so the Apache asks for a segment test instead.
+	int32 FindPlaneHitBySegment(const FVector& Start, const FVector& End, FVector& OutImpactWorld) const;
+
+	// FUN_004b3ba0's reaction, which only has arms for interaction modes 3 (missile) and
+	// 7 (machine gun). Returns true when the shot counted for anything.
+	bool ApplyWeaponHitToPlane(int32 PlaneIndex, int32 InteractionMode);
+
+	// FUN_004b3ba0's ten-hit retirement (`9 < +0x50`), exposed pure so it can be tested.
+	static bool IsPlaneDownedByHitCount(int32 HitCount) { return HitCount > 9; }
 
 	// The UFO only flies when this is on; the original gated it on DAT_00504084.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Ambient Vehicles")
@@ -322,6 +343,44 @@ private:
 	// True while the mission layer still has a live record for this event.
 	bool IsMissionEventActive(int32 EventId) const;
 
+	// --- boat wave riding and its survivors ---
+	// Adds M_SimCopterWater's vertex-shader swell to a body floating on the sea: the height at the
+	// rest position, plus the pitch/roll of the wave slope measured over the hull's own length.
+	void ApplyWaterWaveToFloatingBody(
+		const FVector& RestWorld,
+		const FVector& Forward,
+		FVector& OutDisplayWorld,
+		FRotator& OutTilt) const;
+	// One survivor in the water beside the capsized boat, holding the offset from the hull they
+	// were spawned at (X ahead, Y to starboard, Z above the sea) so the group drifts and heaves
+	// with the boat instead of being left standing on the rest plane.
+	struct FSimCopterBoatRider
+	{
+		TWeakObjectPtr<class ASimCopterGroundAgent> Person;
+		FVector LocalOffset = FVector::ZeroVector;
+	};
+	// Keeps those survivors with the boat while it heaves, the way the train's roof survivors are
+	// kept on their carriage.
+	void UpdateBoatRiders(const struct FSimCopterAmbientBoat& Boat);
+	void ClearBoatRiders();
+	TArray<FSimCopterBoatRider> BoatRiders;
+
+	// How far fore/aft and abeam the wave slope is sampled to tilt a hull. Roughly a boat length -
+	// sampling closer reads the analytic slope at a point, which pitches a whole boat on ripples
+	// far shorter than it is.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "1.0"))
+	float BoatWaveProbeSpanCm = 120.0f;
+
+	// Peak lateral shove a hovering rotor puts on a boat, in original units per second, ramped by
+	// the same altitude curve FUN_004afb60 uses for its speed boost. Remake addition - see the note
+	// at the call site.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "0.0"))
+	float BoatRotorWashPushUnits = 20.0f;
+
+	// Time constant (seconds) over which rotor wash push ramps in and out smoothly.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Boats", meta = (ClampMin = "0.01"))
+	float BoatRotorWashSmoothSeconds = 1.5f;
+
 	// --- train rescue riders ---
 	void UpdateTrainRoofRiders();
 	void ClearTrainRoofRiders();
@@ -331,6 +390,9 @@ private:
 		const FVector& Direction,
 		float ExtraYawDegrees = 0.0f,
 		float ExtraPitchDegrees = 0.0f);
+
+	// Places a hull: heading, the swell's pitch/roll, and CAPBOAT1's 180-degree capsize roll.
+	void SetBoatMeshTransform(const FSimCopterAmbientBoat& Boat, const FVector& World, const FRotator& WaveTilt);
 
 	// --- planes (FUN_004b2330 / FUN_004b2630 / FUN_004b3420 / FUN_004b3530 / FUN_004b2910) ---
 	void UpdatePlane(FSimCopterAmbientPlane& Plane, float DeltaSeconds);

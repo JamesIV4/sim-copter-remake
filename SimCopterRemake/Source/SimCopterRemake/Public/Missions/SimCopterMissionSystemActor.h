@@ -36,8 +36,8 @@ struct FSimCopterMedevacHandoff
 };
 
 // How the mission layer is running the current city. The original shell offered exactly two session
-// kinds through DAT_00518d50: 1 = user city (FUN_004080c0, weights copied from career City0 and
-// optionally overridden by the city file's own 9-dword 0x5eeeeee record) and 2 = career
+// kinds through DAT_00518d50: 1 = user city (FUN_004080c0, a separate editable settings record,
+// optionally overridden by the city file's own 9-dword 0x5eeeeee resource) and 2 = career
 // (FUN_00407f30, per-city record + cities\career\city<N>.sc2). Both always ran the scheduler, so
 // there is no original "no jobs" mode; free roam is expressed the one way the original data can
 // express it - a city whose seven weights sum to zero, which FUN_004a6d20 collapses into an
@@ -49,11 +49,23 @@ enum class ESimCopterMissionSessionMode : uint8
 	Pending,
 	// No scheduled jobs (zero-weight city). Fires/jams can still be started by hand.
 	FreeRoam,
-	// The city's difficulty tier and weight vector drive the scheduler, as in both original modes.
+	// A career city's difficulty tier and weight vector drive the scheduler and points goal.
 	CityJobs,
 	// One mission started on demand; scheduled spawning stays off so it runs alone.
 	SingleMission,
+	// A user-loaded city still schedules jobs, but is a sandbox: no career points goal or finish.
+	// Appended to preserve the numeric values stored by earlier runtime-save versions.
+	UserCityJobs,
 };
+
+namespace SimCopterMissionSession
+{
+	/** Only career CityJobs owns a completion threshold or a filling points meter. */
+	inline constexpr bool HasPointsGoal(const ESimCopterMissionSessionMode Mode)
+	{
+		return Mode == ESimCopterMissionSessionMode::CityJobs;
+	}
+}
 
 struct FSimCopterMissionLogEntry
 {
@@ -75,6 +87,8 @@ struct FSimCopterActiveFireworkRocket
 {
 	FVector ApexLocation = FVector::ZeroVector;
 	FLinearColor BurstColor = FLinearColor::White;
+	// The second colour this shell's embers mix toward, so a burst is not one flat hue.
+	FLinearColor AccentColor = FLinearColor::White;
 	float TimeRemaining = 1.8f;
 };
 
@@ -99,6 +113,7 @@ public:
 	virtual int32 GetBuildingTopHeight1616(int32 TileX, int32 TileY) const override;
 	virtual bool GetCameraTile(int32& OutTileX, int32& OutTileY) const override;
 	virtual bool GetPlayerTile(int32& OutTileX, int32& OutTileY) const override;
+	virtual bool IsPlayerOnFoot() const override;
 	virtual bool IsModalUiActive() const override;
 
 	virtual void OnBuildingFireIgnited(int32 TileX, int32 TileY, int32 EventId) override;
@@ -154,15 +169,31 @@ public:
 	virtual bool TryStartTrafficJam(int32 EventId, int32& OutTileX, int32& OutTileY) override;
 	virtual void EndTrafficJam(int32 EventId) override;
 	virtual bool TryStartCarFire(int32 EventId, int32& OutTileX, int32& OutTileY) override;
-	virtual bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY) override;
+	virtual bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616) override;
 	virtual bool TryResolveTransportSpawnTile(int32 OriginX, int32 OriginY, int32& OutTileX, int32& OutTileY) override;
-	virtual bool TrySpawnMissionPerson(int32 Mode, int32 SubState, int32 TileX, int32 TileY, int32 EventId) override;
+	virtual bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId) override;
 	// Stable action boundary used by both the decoded VM and engine-side recovery paths. A real
 	// person owns idempotency; these methods are the only place passenger outcomes reach mission
 	// counters.
 	bool NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person);
 	bool NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person);
 	bool NotifyMissionPersonDied(ASimCopterGroundAgent* Person);
+	// FUN_004c9bc0 accepts an ordinary passenger's release only within six original units of
+	// terrain. The remake's rendered roofs are walkable surfaces too, so using the generic walk
+	// surface here would let a rooftop survivor step straight back out and finish where they began.
+	// Medevac is the one exception: its intended destination is the D1 hospital roof.
+	bool IsPassengerDeliveryLocationAllowed(
+		ESimCopterMissionPassengerKind Kind,
+		const FVector& FeetWorldLocation) const;
+	static bool IsPassengerDeliverySurfaceAllowed(
+		ESimCopterMissionPassengerKind Kind,
+		bool bIsWater,
+		float HeightAboveTerrainCm,
+		float GroundToleranceCm);
+	// BHAV 305 may board a rescue through either the airframe or the deployed harness. The harness
+	// branch must stay independent of CanBoardMissionPassengers: its purpose is to pick somebody up
+	// while the aircraft is hovering, then let opcode 58 transfer them into the cabin when raised.
+	static bool IsRescuePickupAvailable(bool bHarnessDeployed, bool bCanBoardThroughAirframe);
 	void NotifyPassengerDroppedFromHelicopter(int32 EventId, ESimCopterMissionPassengerKind Kind, int32 Count);
 	// BHAV 263 only reaches BHAV 269's "get on starting object" arm after it finds no medevac
 	// victim aboard. The mission layer adds the missing temporal context: the helper ride is useful
@@ -216,14 +247,18 @@ public:
 	// EVT_CarCleared; the mission closes only after every car counted by EVT_JamCarAdded clears.
 	bool ReportTrafficJamCarCleared(int32 EventId);
 
-	// FUN_004b8c90: the arrest has run its course and the car is being taken away. Posts
-	// EVT_CriminalCaught, which takes the record's CriminalsCaught to its TargetCount of 1 and
-	// so completes the mission - notification and payout included.
-	void ReportSpeederCarCaught(int32 EventId);
+	// FUN_004b8c90: the outside phase expired without a nonzero return message. Posts
+	// EVT_CriminalCaught, which flips FUN_004a73e0's burglar-specific caught/casualty test and
+	// completes the mission - notification and payout included.
+	void ReportBurglarCaught(int32 EventId);
 
 	// FUN_004b8b60's failure branch: the arrest could not put anyone on the ground, so the record
 	// is retired with EVT_SetCategory value 4 (CAT_ExpireSilently) - no completion, no payout.
-	void ReportSpeederCarUnresolved(int32 EventId);
+	void ReportBurglarSpawnFailed(int32 EventId);
+
+	// FUN_004b8630 case 0 draw: used initially and whenever a cruise timer expires, pre-arming
+	// the delay that begins after the burglar returns from the burglary now being started.
+	int32 DrawBurglarCruiseDelay1616() { return MissionSystem.DrawBurglarCruiseDelay1616(); }
 
 	// SCHOOK: FireTruckSpray 0x004a5ca0
 	// One shot from a fire truck's monitor: emitter type 6, launched from 30 units above the
@@ -255,9 +290,14 @@ public:
 	void StartFreeRoamSession(int32 CareerCityIndex);
 
 	// Jobs arrive on the city's own schedule, as in both original session kinds. CareerCityIndex
-	// supplies the tuning record; a user city uses City0, the way FUN_004080c0 seeds mode 1.
+	// supplies the tuning record; user mode replaces its first nine fields with the separate
+	// FUN_004080c0 defaults.
 	// bFirstJobImmediately rolls the opening job now instead of after the original's 180s countdown.
 	void StartCityJobsSession(int32 CareerCityIndex, bool bFirstJobImmediately = false);
+
+	// User-loaded city sandbox: the original mode-1 defaults supply scheduler tuning, but score has
+	// no target and can never complete/advance a career level.
+	void StartUserCitySession(int32 TuningCityIndex = 0, bool bFirstJobImmediately = false);
 
 	// Start one mission of TypeMask right now through the original placement path
 	// (FUN_004a92f0 -> FUN_004a7a10) and leave scheduled spawning off so it runs alone.
@@ -275,7 +315,7 @@ public:
 	int32 GetSessionScore() const { return MissionSystem.GetScore(); }
 	int32 GetSessionCash() const { return MissionSystem.GetCash(); }
 	int32 GetSessionDifficultyTier() const { return MissionSystem.GetDifficultyTier(); }
-	// Which career city the session adopted, so the dashboard can read its points requirement.
+	// Which career tuning record the session adopted. This is not a points goal in UserCityJobs.
 	int32 GetSessionCareerCityIndex() const { return MissionSystem.GetCareerCityIndex(); }
 	int32 GetActiveMissionCount() const { return MissionSystem.GetActiveMissionCount(); }
 
@@ -321,6 +361,27 @@ public:
 	// impacts are rejected by the particle updater before this boundary.
 	int32 ApplyWaterParticleImpact(const FVector& ImpactWorldLocation, int32 Strength1616);
 
+	// SCHOOK: ArsonistFirebomb 0x004cbfd0 (VM opcode 60 -> FUN_0048e0b0 projectile type 4)
+	//
+	// This is how an arsonist actually starts a fire, and it is the only way they can: BHAV 1301
+	// "Criminal Arsonist" -> 1078 "crim - arsonist unspotted" rec[3]/[4] rolls rand(1000) < 6 each
+	// loop and, on a hit, runs opcode 60. FUN_004cbfd0 binds "Thro" and hands FUN_0048e0b0 a
+	// **type 4** projectile: the 30-slot pool at DAT_005d6880, class flag 0x10, life 0x1e0000, lobbed
+	// along the thrower's facing octant pitched up by (rand % 200) + 0x2ee tenth-degrees - 75.0 to
+	// 94.9 degrees, i.e. very nearly straight up, so it lands on the arsonist's own tile.
+	//
+	// FUN_0048ed00 then owns the rest. Once the slot's speed falls under 0x40001 it grounds
+	// (slot[0xe] := 1), takes a fresh life of 0x3c0000 = 60 s (that longer burn is class 0x10's
+	// alone - every other class gets 0) and puffs smoke every 0x3333 of sub-timer. When THAT life
+	// runs out, and only for class 0x10, on a tile FUN_004a5f60 will take, with no fire already in
+	// FUN_004a6860's spiral: `rand() % (8 - difficulty) == 0` starts a real building fire mission
+	// (FUN_004a7a10). So the firebomb is a delayed, probabilistic ignition, not an instant one -
+	// which is the window the player has to spot the burning debris and douse it first.
+	void ThrowArsonistFirebomb(const FVector& ThrowerWorldLocation);
+
+	// How many burning-debris slots are alight. Exposed for the automation tests.
+	int32 GetBurningDebrisCount() const { return BurningDebris.Num(); }
+
 	// SCHOOK: FireProximityProbe 0x004a5c10
 	// How far a point sits above the top of the nearest flame below it, in original 16.16 units,
 	// or 0 when there is no flame within reach. This is the helicopter's fire-damage and
@@ -333,6 +394,16 @@ public:
 	int32 GetFireHeightDelta1616(const FVector& WorldLocation) const;
 
 	// ~End ISimCopterMissionWorld Interface
+
+	/**
+	 * Low enough to unload, AND low enough for long enough.
+	 *
+	 * The behaviour VM gets its pause for free - BHAV 292 waits ten ticks and BHAV 264's own idle
+	 * three more before each probe, and BHAV 700 idles between its calls to 303 - but the mission
+	 * tick has no such loop, so it would open the cabin door on the first frame the skids came into
+	 * range. See ASimCopterHelicopterPawn::PassengerAlightSettleSeconds.
+	 */
+	static bool IsHelicopterSettledForAlight(const ASimCopterHelicopterPawn& Helicopter);
 
 private:
 	UPROPERTY(EditInstanceOnly, Category = "SimCopter|Traffic")
@@ -377,11 +448,21 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float MissionMarkerAllowedOverlap = 0.5f;
 
+	// BHAV 291 rec[2] probes the player's helicopter at ONE TILE before committing to board, so
+	// that is how far out a passenger is willing to walk to it. This was 780 - nearly two tiles -
+	// which started the approach from twice the range the shipped program does.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
-	float PassengerPickupRadiusCm = 780.0f;
+	float PassengerPickupRadiusCm = 400.0f;
+
+	// How long the shipped walk gets before the mission layer steers a passenger in. Comfortably
+	// longer than BHAV 291 needs from a tile out (2.67 s of BHAV 750's opening wait plus roughly
+	// 3 s of walking at 125 cm/s), so this only fires when the program genuinely cannot get there.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerBoardRecoverySeconds = 20.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
 	float PassengerDropoffRadiusCm = 820.0f;
+
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "50.0"))
 	float PassengerTransferMaxVerticalDeltaCm = 420.0f;
@@ -413,9 +494,14 @@ private:
 	float RescueDropoffHeightCm = 600.0f;
 
 	// How close the helicopter (with medevac patients aboard) must be to the hospital drop-off tile
-	// before the EMT comes out to unload it.
+	// before the EMT comes out to unload it - and the radius the posted roof crew is looked for in.
+	//
+	// 1500 cm was nearly four city tiles: the crew set off toward a helicopter that had merely
+	// landed in the neighbourhood, and the watchdog below started ticking on it. 900 is a little
+	// over two tiles, which covers a 3x3 hospital from its recorded tile whether that tile is the
+	// footprint's centre or a corner, and not much beyond the building itself.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "100.0"))
-	float MedevacHospitalHandoffRadiusCm = 1500.0f;
+	float MedevacHospitalHandoffRadiusCm = 900.0f;
 
 	// Recovery only: if BHAV 263 makes no cabin progress for this long while the helicopter
 	// remains landed at D1, resolve the remaining seat(s) through the established mission service.
@@ -467,6 +553,18 @@ private:
 	TWeakObjectPtr<AActor> ResolvedCityActor;
 	bool bFireAssetsInitialized = false;
 
+	// One grounded, burning type-4 projectile - an arsonist's firebomb after it has landed.
+	// See ThrowArsonistFirebomb for the decode this mirrors.
+	struct FSimCopterBurningDebris
+	{
+		FVector World = FVector::ZeroVector;
+		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
+		float BurnSecondsRemaining = 0.0f;
+		float PuffSecondsRemaining = 0.0f;
+	};
+	TArray<FSimCopterBurningDebris> BurningDebris;
+	void UpdateBurningDebris(float DeltaSeconds);
+
 	// Build the per-frame flame draw list from the mission system and push it to the fire
 	// component. Converts each flame's tile to a rooftop-traced world point + growth/flicker.
 	void UpdateFireVisuals(float DeltaSeconds);
@@ -510,7 +608,12 @@ private:
 	double ServiceJetLastSeconds = -1000.0;
 
 	ASimCopterTrafficSystemActor* ResolveTrafficSystem() const;
-	void ProcessPassengerTransfers();
+	void ProcessPassengerTransfers(float DeltaSeconds);
+	// Per transport mission: how long a helicopter with a free seat has stood within
+	// PassengerPickupRadiusCm of an uncollected passenger without anyone getting in. Only past
+	// PassengerBoardRecoverySeconds does the mission layer start steering them; before that the
+	// shipped BHAV 750 -> 291 walk owns the approach.
+	TMap<int32, float> PassengerBoardStallSeconds;
 	// The rescue half of the transfer loop: winch water/roof/train survivors aboard and set them
 	// down on dry land (FUN_004ccf50 action 1 posts EVT_RescueDelivered for spawn modes 1/2/0x13).
 	void ProcessRescueTransfers();

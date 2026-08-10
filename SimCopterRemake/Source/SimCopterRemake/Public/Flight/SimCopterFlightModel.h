@@ -354,8 +354,9 @@ struct SIMCOPTERREMAKE_API FSimCopterFlightModel
 	// direction, bounces up and starts the control-cut bounce timer.
 	void NotifyWallImpact(FSimCopterFlightEvents& OutEvents);
 
-	// Full response for hitting a city object (the master tick charges 4 hit
-	// points - 4 + 4*CollisionSubtract when out of fuel - then bounces).
+	// Full response for a discrete swept city-object hit. The original charged 4 hit points
+	// per overlapping 20 Hz frame; the remake packets that sustained contact with the shared
+	// CollisionSubtract value because its detector emits one rate-limited impact.
 	void NotifyObjectCollision(FSimCopterFlightEvents& OutEvents);
 
 	// The same thing for a wreck already in its death spiral. Movement and effects only: the

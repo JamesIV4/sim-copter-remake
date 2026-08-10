@@ -77,6 +77,11 @@ public:
 	const FSlateBrush* GetMenuSkyMovieBrush();
 	void StopMenuSkyMovie();
 
+	// The authentic 200x108 CITY<N>_S.SMK loop shown inside a career-selection panel.
+	// Tools/Unreal/BakeCareerPreviews.py transcodes the user-provided Smacker files for UE.
+	const FSlateBrush* GetCareerCityMovieBrush(int32 CityIndex);
+	void StopCareerCityMovies();
+
 	// One frame of a horizontal strip: button.bmp is three 100x28 frames (normal, pressed,
 	// disabled) and cat_btn.bmp three 86x28 ones.
 	const FSlateBrush* GetStripFrame(const FString& FileName, int32 FrameIndex, int32 FrameCount);
@@ -88,7 +93,8 @@ public:
 		const FString& FileName,
 		const FIntRect& Source,
 		bool bColorKeyed = true,
-		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None);
+		ESimCopterArtRotation Rotation = ESimCopterArtRotation::None,
+		bool bNearestNeighbor = false);
 
 	// Somewhere UObject-shaped to hang a texture the remake builds at runtime rather than loads.
 	// The cockpit map re-uploads its rasterised buffer every tick and its Slate widget cannot own
@@ -113,16 +119,24 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMediaTexture> MenuSkyTexture;
 
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<UMediaPlayer>> CareerCityPlayers;
+
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<UMediaTexture>> CareerCityTextures;
+
 	// Brushes point at the textures above; they are plain structs, so they live outside the
 	// UPROPERTY graph and are keyed the same way.
 	TMap<FString, TSharedPtr<FSlateBrush>> Brushes;
 	TSharedPtr<FSlateBrush> MenuSkyMovieBrush;
+	TMap<int32, TSharedPtr<FSlateBrush>> CareerCityMovieBrushes;
 
 	FString OriginalGameRoot;
 
 	// Resolves BMP/<FileName> case-insensitively; empty when it is not there.
 	FString ResolveBitmapPath(const FString& FileName) const;
 	FString ResolveMenuSkyMoviePath() const;
+	FString ResolveCareerCityMoviePath(int32 CityIndex) const;
 
 	// An empty Source takes the whole bitmap.
 	const FSlateBrush* BuildBrush(
@@ -130,7 +144,8 @@ private:
 		const FString& FileName,
 		bool bColorKeyed,
 		const FIntRect& Source,
-		ESimCopterArtRotation Rotation);
+		ESimCopterArtRotation Rotation,
+		bool bNearestNeighbor = false);
 };
 
 // Where the hangar shell puts things on the original's 640x480 pages.
@@ -212,15 +227,15 @@ constexpr float UpgradeTextHeight = 96.0f;
 // The bottom-right cell (329,312)-(593,411) holds the readouts and the buttons.
 constexpr float UpgradeFundsLabelX = 338.0f;
 constexpr float UpgradeFundsValueX = 460.0f;
-constexpr float UpgradeFundsRowY = 316.0f;
-constexpr float UpgradeValueRowY = 334.0f;
+constexpr float UpgradeFundsRowY = 311.0f;
+constexpr float UpgradeValueRowY = 327.0f;
 constexpr float UpgradeLabelWidth = 120.0f;
 constexpr float UpgradeValueWidth = 120.0f;
 constexpr float UpgradeBuyX = 355.0f;
-constexpr float UpgradeBuyY = 357.0f;
-constexpr float UpgradeSellY = 385.0f;
-constexpr float UpgradeDoneX = 505.0f;
-constexpr float UpgradeDoneY = 371.0f;
+constexpr float UpgradeBuyY = 348.0f;
+constexpr float UpgradeSellY = 378.0f;
+constexpr float UpgradeDoneX = 478.0f;
+constexpr float UpgradeDoneY = 363.0f;
 constexpr float ShellButtonWidth = 100.0f;
 constexpr float ShellButtonHeight = 28.0f;
 

@@ -15,6 +15,7 @@ const FVector2f FallbackThumbSize(22.0f, 18.0f);
 void SSimCopterCheckupSlider::Construct(const FArguments& InArgs)
 {
 	ThumbBrush = InArgs._ThumbBrush;
+	TrackBrush = InArgs._TrackBrush;
 	ThumbScale = FMath::Max(InArgs._ThumbScale, UE_SMALL_NUMBER);
 	bLocked = InArgs._Locked;
 	Orientation = InArgs._Orientation;
@@ -95,30 +96,48 @@ int32 SSimCopterCheckupSlider::OnPaint(
 	const FGeometry& AllottedGeometry,
 	const FSlateRect& MyCullingRect,
 	FSlateWindowElementList& OutDrawElements,
-	const int32 LayerId,
+	int32 LayerId,
 	const FWidgetStyle& InWidgetStyle,
 	const bool bParentEnabled) const
 {
-	if (ThumbBrush == nullptr)
+	if (ThumbBrush == nullptr && TrackBrush == nullptr)
 	{
 		return LayerId;
 	}
 
-	const FVector2f ThumbSize = GetThumbSize();
-	const FVector2f TopLeft = GetThumbTopLeft(AllottedGeometry.GetLocalSize(), ThumbSize, Value, Orientation);
 	const ESlateDrawEffect Effects = (bParentEnabled && !bLocked)
 		? ESlateDrawEffect::None
 		: ESlateDrawEffect::DisabledEffect;
 
-	FSlateDrawElement::MakeBox(
-		OutDrawElements,
-		LayerId,
-		AllottedGeometry.ToPaintGeometry(ThumbSize, FSlateLayoutTransform(TopLeft)),
-		ThumbBrush,
-		Effects,
-		ThumbBrush->GetTint(InWidgetStyle) * InWidgetStyle.GetColorAndOpacityTint());
+	int32 CurrentLayer = LayerId;
 
-	return LayerId;
+	if (TrackBrush != nullptr)
+	{
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			CurrentLayer,
+			AllottedGeometry.ToPaintGeometry(),
+			TrackBrush,
+			Effects,
+			TrackBrush->GetTint(InWidgetStyle) * InWidgetStyle.GetColorAndOpacityTint());
+		CurrentLayer++;
+	}
+
+	if (ThumbBrush != nullptr)
+	{
+		const FVector2f ThumbSize = GetThumbSize();
+		const FVector2f TopLeft = GetThumbTopLeft(AllottedGeometry.GetLocalSize(), ThumbSize, Value, Orientation);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			CurrentLayer,
+			AllottedGeometry.ToPaintGeometry(ThumbSize, FSlateLayoutTransform(TopLeft)),
+			ThumbBrush,
+			Effects,
+			ThumbBrush->GetTint(InWidgetStyle) * InWidgetStyle.GetColorAndOpacityTint());
+	}
+
+	return CurrentLayer;
 }
 
 FVector2D SSimCopterCheckupSlider::ComputeDesiredSize(float) const

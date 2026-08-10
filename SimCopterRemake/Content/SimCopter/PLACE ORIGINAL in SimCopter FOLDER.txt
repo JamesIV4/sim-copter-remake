@@ -1,0 +1,17 @@
+This SimCopter Remake package is missing its required original-game data.
+
+Official project builds automatically include the runtime data from
+Reference\SimCopterOriginalGame. If you see this file beside a packaged build,
+that data was omitted or the package's SimCopter folder was removed.
+
+To repair the package manually, copy these directories from a SimCopter (1996)
+installation into this folder:
+
+    SimCopter\bmp\
+    SimCopter\cities\
+    SimCopter\geo\
+    SimCopter\sound\
+    SimCopter\tweak\
+    SimCopter\x\
+
+Do NOT copy the folder itself in - there should be no SimCopter\SimCopter\bmp.

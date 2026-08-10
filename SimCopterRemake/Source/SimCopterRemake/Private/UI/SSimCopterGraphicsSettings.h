@@ -13,7 +13,8 @@ class SVerticalBox;
 class USimCopterHangarArt;
 struct FButtonStyle;
 
-// The Settings screen's "Graphics" sub-dialog - control id 0x7d5, drawn on render.bmp.
+// The Settings screen's "Options" sub-dialog - the original Graphics control id 0x7d5, drawn on
+// render.bmp. The remake groups its expanded rows into Graphics, Gameplay and Input categories.
 //
 // REMAKE DIVERGENCE, and the only page in the port whose *contents* are deliberately not the
 // original's. FUN_0043df80 builds three checkboxes (building textures, ground textures, sky and
@@ -37,13 +38,13 @@ constexpr float PageHeight = 435.0f;
 // The page interior, inside the printed metal frame. The original divides this into five wells;
 // the remake lays one list over it on its own backing panel, because there are eighteen rows to
 // place and the printed wells hold three.
-constexpr FRect ListRect{ 56.0f, 44.0f, 538.0f, 302.0f };
+constexpr FRect ListRect{ 56.0f, 44.0f, 538.0f, 332.0f };
 constexpr float RowHeight = 26.0f;
 constexpr float RowLabelWidth = 200.0f;
 
 // FUN_0043df80's two buttons, commands 1 and 2, strings 81 and 82, font height 16. Both rects are
-// degenerate 3x3, so button.bmp's own 100x28 applies. These are the original's positions.
-constexpr float ButtonY = 318.0f;
+// degenerate 3x3, so button.bmp's own 100x28 applies. Positioned to center inside the well.
+constexpr float ButtonY = 347.5f;
 constexpr float OkButtonX = 328.0f;
 constexpr float CancelButtonX = 432.0f;
 constexpr int32 ButtonFontHeight = 16;
@@ -99,11 +100,28 @@ private:
 	 */
 	struct FEnteredState
 	{
+		bool bLowPowerMode = false;
 		bool bDlssEnabled = false;
 		uint8 DlssQuality = 0;
 		uint8 FrameGenMode = 0;
 		int32 FrameGenMultiple = 2;
+		uint8 ReflexMode = 0;
+		uint8 LumenMode = 0;
+		uint8 AntiAliasingMethod = 4; // ESimCopterAntiAliasingMethod::Tsr
+		bool bVolumetricFog = true;
+		float EmissiveBrightness = 1.0f;
+		uint8 TimeOfDayMode = 0;
+		float StaticTimeOfDayHours = 12.0f;
+		float DayRealMinutes = 7.0f;
+		float NightRealMinutes = 3.0f;
 		float HudScale = 1.0f;
+		float OnFootFov = 78.0f;
+		float HelicopterFov = 78.0f;
+		float CockpitFov = 78.0f;
+		float MouseSensitivityX = 1.0f;
+		float MouseSensitivityY = 1.0f;
+		float ControllerSensitivityX = 1.0f;
+		float ControllerSensitivityY = 1.0f;
 
 		FIntPoint Resolution = FIntPoint::ZeroValue;
 		int32 WindowMode = 0;
@@ -133,14 +151,32 @@ private:
 	};
 
 	TSharedRef<SWidget> BuildHeading(const FText& Text);
+	TSharedRef<SWidget> BuildCategoryHeading(const FText& Text);
 	TSharedRef<SWidget> BuildDropdownRow(const FText& Label, FRowBinding Binding);
 	TSharedRef<SWidget> BuildSliderRow(
 		const FText& Label,
 		TFunction<float()> GetAlpha,
 		TFunction<void(float)> SetAlpha,
-		TFunction<FText()> GetText);
+		TFunction<FText()> GetText,
+		TFunction<bool()> IsEnabled = TFunction<bool()>());
+	TSharedRef<SWidget> BuildCheckboxRow(
+		const FText& Label,
+		TFunction<bool()> IsChecked,
+		TFunction<void(bool)> SetChecked,
+		TFunction<bool()> IsEnabled = TFunction<bool()>());
+
+	/** A wrapped line of explanatory text under a row, for the one setting that needs explaining. */
+	TSharedRef<SWidget> BuildNote(const FText& Text);
 
 	void PopulateRows(const TSharedRef<SVerticalBox>& Rows);
+
+	/**
+	 * Pushes the Time of Day rows at the level's day sequence through
+	 * `USimCopterDayNightSubsystem`, so the sun moves while the page is still open. Every other row
+	 * here applies through UGameUserSettings or a console variable, which is why this one needs a
+	 * helper of its own.
+	 */
+	void ApplyTimeOfDay();
 
 	void Accept();
 	void Cancel();

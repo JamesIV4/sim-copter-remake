@@ -12,6 +12,7 @@
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/MaxisMeshLibrary.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterEffectRasterizer.h"
 #include "Ground/SimCopterGroundAgent.h"
@@ -591,6 +592,32 @@ bool USimCopterApachePoolComponent::ResolveImpact(
 	}
 
 	ASimCopterHelicopterPawn* Helicopter = GetHelicopter();
+
+	// Aircraft first. The ambient plane/UFO meshes are on NoCollision on purpose - a flying saucer
+	// that answered Visibility traces would become "the ground" under every downward probe in the
+	// game - so they are not in the world trace at all and have to be asked for separately. They
+	// are also the only thing up there, so testing them before the trace costs nothing.
+	//
+	// SCHOOK: PlaneWeaponHit 0x004b3ba0, reached from FUN_00490690's FUN_0049a4f0 call through the
+	// class-0x100 arm. Modes 3/7 are the missile and the machine gun.
+	if (ASimCopterAmbientVehiclesActor* AmbientVehicles = Cast<ASimCopterAmbientVehiclesActor>(
+			UGameplayStatics::GetActorOfClass(World, ASimCopterAmbientVehiclesActor::StaticClass())))
+	{
+		FVector PlaneImpact = FVector::ZeroVector;
+		const int32 PlaneIndex = AmbientVehicles->FindPlaneHitBySegment(Start, End, PlaneImpact);
+		if (PlaneIndex != INDEX_NONE)
+		{
+			const int32 Mode = Slot.Kind == EKind::Missile
+				? int32(ESimCopterInteractionMode::Missile)
+				: int32(ESimCopterInteractionMode::MachineGun);
+			AmbientVehicles->ApplyWeaponHitToPlane(PlaneIndex, Mode);
+			// The round is spent either way - both weapons are in FUN_00490690's 0x4006 despawn
+			// set - and it is not terrain, so it must not open a building fire in the street below.
+			Detonate(Slot, PlaneImpact, -(End - Start).GetSafeNormal(), /*bHitTerrain=*/false);
+			return true;
+		}
+	}
+
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterApacheSweep), false, Helicopter);
 	TArray<FHitResult> Hits;
 	World->LineTraceMultiByChannel(Hits, Start, End, ECC_Visibility, QueryParams);

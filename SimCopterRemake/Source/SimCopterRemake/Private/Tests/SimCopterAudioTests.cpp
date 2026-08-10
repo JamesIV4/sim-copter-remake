@@ -15,8 +15,8 @@ bool FSimCopterSoundTableTest::RunTest(const FString& Parameters)
 	using namespace SimCopterSound;
 
 	const TArrayView<const FSoundSlot> Table = GetSlotTable();
-	TestEqual(TEXT("FUN_00424b70 registers 0x00..0x81"), Table.Num(), NumSlots);
-	TestEqual(TEXT("slot count is 130"), NumSlots, 0x82);
+	TestEqual(TEXT("FUN_00424b70 registers 0x00..0x83"), Table.Num(), NumSlots);
+	TestEqual(TEXT("slot count is 132"), NumSlots, 0x84);
 
 	for (int32 Id = 0; Id < NumSlots; ++Id)
 	{
@@ -86,6 +86,50 @@ bool FSimCopterSoundTableTest::RunTest(const FString& Parameters)
 	}
 	TestFalse(TEXT("0x70 is not bank"), IsVoiceBankSlot(VoiceBankFirst - 1));
 	TestFalse(TEXT("0x7f is not bank"), IsVoiceBankSlot(VoiceBankLast + 1));
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterGameplaySoundMappingsTest,
+	"SimCopter.Sound.GameplayMappings",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterGameplaySoundMappingsTest::RunTest(const FString& Parameters)
+{
+	using namespace SimCopterSound;
+
+	TestEqual(TEXT("Firework mortar uses sound 0x17"), FireworkMortarSound, SND_TGSHWH);
+	TestEqual(TEXT("Enter copter uses sound 0x25"), EnterCopterSound, SND_DOROPN);
+	TestEqual(TEXT("Exit copter uses sound 0x26"), ExitCopterSound, SND_DORCLS);
+	TestEqual(TEXT("Level complete uses DIS063 at 0x69"), LevelCompleteVoiceSound, SND_DIS063);
+	TestEqual(TEXT("Passenger door changes use people event 60"), VOX_DOOR_OPEN, 60);
+
+	const FSoundSlot* FireworkMortar = GetSlot(FireworkMortarSound);
+	const FSoundSlot* EnterCopter = GetSlot(EnterCopterSound);
+	const FSoundSlot* ExitCopter = GetSlot(ExitCopterSound);
+	const FSoundSlot* LevelComplete = GetSlot(LevelCompleteVoiceSound);
+	if (TestNotNull(TEXT("Firework mortar slot exists"), FireworkMortar))
+	{
+		TestEqual(TEXT("Firework mortar file"), FString(FireworkMortar->Wav), FString(TEXT("TGSHWH")));
+	}
+	if (TestNotNull(TEXT("Enter copter slot exists"), EnterCopter))
+	{
+		TestEqual(TEXT("Enter copter file"), FString(EnterCopter->Wav), FString(TEXT("DOROPN")));
+	}
+	if (TestNotNull(TEXT("Exit copter slot exists"), ExitCopter))
+	{
+		TestEqual(TEXT("Exit copter file"), FString(ExitCopter->Wav), FString(TEXT("DORCLS")));
+	}
+	if (TestNotNull(TEXT("Level complete slot exists"), LevelComplete))
+	{
+		TestEqual(TEXT("Level complete file"), FString(LevelComplete->Wav), FString(TEXT("DIS063")));
+	}
+	const FVoiceEvent* PassengerDoor = GetVoiceEvent(VOX_DOOR_OPEN);
+	if (TestNotNull(TEXT("Passenger door voice event exists"), PassengerDoor))
+	{
+		TestEqual(TEXT("Passenger door event has no randomized alternatives"), PassengerDoor->Clips.Num(), 1);
+		TestEqual(TEXT("Passenger door event file"), FString(PassengerDoor->Clips[0]), FString(TEXT("doropn")));
+	}
 
 	return true;
 }
@@ -213,6 +257,27 @@ bool FSimCopterSoundAttenuationTest::RunTest(const FString& Parameters)
 		USimCopterAudioSubsystem::AudibleRangeUnits * USimCopterAudioSubsystem::OriginalUnitToCm,
 		12000.0f);
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRadioLiveVolumeTest,
+	"SimCopter.Sound.RadioLiveVolume",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterRadioLiveVolumeTest::RunTest(const FString& Parameters)
+{
+	USimCopterAudioSubsystem* Audio = NewObject<USimCopterAudioSubsystem>();
+	if (!TestNotNull(TEXT("audio subsystem constructs"), Audio))
+	{
+		return false;
+	}
+
+	Audio->SetRadioVolumeMultiplier(0.25f);
+	TestEqual(TEXT("radio gain updates immediately"), Audio->GetRadioVolumeMultiplier(), 0.25f);
+	Audio->SetRadioVolumeMultiplier(-1.0f);
+	TestEqual(TEXT("radio gain clamps at silence"), Audio->GetRadioVolumeMultiplier(), 0.0f);
+	Audio->SetRadioVolumeMultiplier(2.0f);
+	TestEqual(TEXT("radio gain clamps at full"), Audio->GetRadioVolumeMultiplier(), 1.0f);
 	return true;
 }
 

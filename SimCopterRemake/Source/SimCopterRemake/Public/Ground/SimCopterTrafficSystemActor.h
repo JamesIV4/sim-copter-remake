@@ -40,8 +40,10 @@ enum class ESimCopterTrafficFlowMode : uint8
 
 // Which car AI drives the traffic. Original = the decoded SimCopter behavior: cars wander the
 // road graph with random turns, queue behind blockers (jams form naturally, and the player's
-// landed helicopter blocks tiles), no traffic lights. Modernized = the remake's traffic-light +
-// blockage-recovery system, kept for comparison/backup.
+// landed helicopter blocks tiles), no traffic lights. This is the default. Modernized = the
+// remake's traffic-light + blockage-recovery system: cars prefer to carry straight on, wait out a
+// red at the intersections, and dig themselves out when stuck. Note that ApplyPlayerRoadBlocking is
+// an Original-mode rule, so a landed helicopter does not stop cars in Modernized.
 UENUM(BlueprintType)
 enum class ESimCopterTrafficAiMode : uint8
 {
@@ -79,6 +81,20 @@ struct FSimCopterVehicleTrafficState
 	bool bMissionOnFire = false;
 	int32 MissionEventId = INDEX_NONE;
 
+	// --- traffic-jam queue -------------------------------------------------------------------
+	// All three are derived state: ApplyTrafficJamQueue clears and recomputes them every tick, so
+	// none of them is serialised. See Ground/SimCopterTrafficJam.h for what they are ports of.
+	//
+	// This car has stopped in the chain behind a jammed one. Set on the followers only - the car
+	// the jam actually seized carries bMissionJammed instead.
+	bool bJamQueued = false;
+	// The car it has stopped behind. Overlap resolution needs this so it can push the follower
+	// back instead of shoving the leader (and the whole queue with it) down the road.
+	TWeakObjectPtr<ASimCopterGroundAgent> JamBlocker;
+	// veh+0xaf narrowed to the jam: how long this car has been standing still in it. FUN_0049be50
+	// leans on the horn once it passes SimCopterTrafficJam::HornHeldSeconds.
+	float JamHeldSeconds = 0.0f;
+
 	// Was this car stopped last audio tick? FUN_004b8630 plays ACCEL2 on the frame a held car
 	// is let go, so the port needs the previous state to find that edge.
 	bool bAudioWasStopped = false;
@@ -104,6 +120,15 @@ enum class ESimCopterDispatchVehicleState : uint8
 	// redispatch candidate (FUN_004bc250).
 	Idle
 };
+
+// FUN_004b9e40 cases 2 and 3 both run the service's on-scene action when the vehicle reaches
+// its destination. State 3 keeps re-reading the spotlight only while it is still driving there;
+// it is not a crewless parking mode.
+constexpr bool DoesDispatchArrivalEnterOnScene(ESimCopterDispatchVehicleState State)
+{
+	return State == ESimCopterDispatchVehicleState::Responding ||
+		State == ESimCopterDispatchVehicleState::Chasing;
+}
 
 // One emergency vehicle. Field comments name the original offsets they stand in for.
 struct FSimCopterDispatchVehicle
@@ -264,11 +289,11 @@ public:
 		double NowSeconds,
 		float DelaySeconds);
 
-	// Centre and roof-surface height of a D1 hospital, with half its footprint width - the square a
-	// posted medic is confined to. Resolved once per roof and cached: the probe is a downward trace,
+	// Centre and roof-surface height of a building, with half its footprint width - the square a
+	// posted medic or rooftop-rescue survivor is confined to. Resolved once per roof and cached,
 	// so re-running it while the player is parked up there would answer the helicopter's hull and
 	// walk the post up onto the aircraft.
-	bool TryGetHospitalRoofPost(int32 TileX, int32 TileY, FVector& OutRoofCenter, float& OutHalfExtentCm);
+	bool TryGetBuildingRoofPost(int32 TileX, int32 TileY, FVector& OutRoofCenter, float& OutHalfExtentCm);
 
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
@@ -410,6 +435,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float VehicleRightTurnCornerClipTileFraction = 0.14f;
 
+	// Original: the decoded no-stoplight traffic. Switching to Modernized is what turns the
+	// stoplight system on - ApplyTrafficLights is only reached on that branch of ApplyTrafficRules,
+	// and nothing logs that it was skipped, so a car that never stops at a junction means this.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic")
 	ESimCopterTrafficAiMode TrafficAiMode = ESimCopterTrafficAiMode::Original;
 
@@ -423,6 +451,34 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic")
 	ESimCopterTrafficFlowMode TrafficFlowMode = ESimCopterTrafficFlowMode::Normal;
+
+	// --- Traffic jams --------------------------------------------------------------------------
+	// A jam is the one case the ordinary following rules below cannot express. They never take a
+	// car all the way to a stop - the closest they get is a creep - so a queue behind a stopped car
+	// closes right up until every car in it is standing in the same place. Neither can the stoplight
+	// queue: it drives every car on an approach at a computed slot point off one stop line, which is
+	// the wrong shape for a jam and piles them onto each other.
+	//
+	// ApplyTrafficJamQueue replaces both, for the cars in a jam's chain only. Each car takes the car
+	// in front of it as its blocker and holds FUN_0049ee30's spacing behind it, and no car ever
+	// takes a car coming the other way as a blocker. Traffic with no jam in front of it never enters
+	// this pass and keeps the rules it already had.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "1.0"))
+	float TrafficJamQueueLookAheadCm = 620.0f;
+
+	// How far ahead of the hold point a joining car starts braking. The original needs no
+	// equivalent - it stops dead - so this exists purely to keep the remake's velocity-carrying
+	// cars from overshooting into the back of the queue.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "1.0"))
+	float TrafficJamQueueSlowDistanceCm = 300.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "0.0"))
+	float TrafficJamQueueBrakeRate = 9.0f;
+
+	// Two cars whose heights differ by more than this fraction of a tile are never in the same
+	// queue, so a jam on a bridge deck cannot stop the road running underneath it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Jam", meta = (ClampMin = "0.05"))
+	float TrafficJamQueueHeightToleranceTileFraction = 0.5f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "1.0"))
 	float NormalVehicleFollowLookAheadCm = 560.0f;
@@ -439,8 +495,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "0.0"))
 	float NormalTrafficBrakeRate = 5.5f;
 
+	// How long one axis holds green before the other gets it.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "0.5"))
-	float TrafficLightPhaseSeconds = 10.0f;
+	float TrafficLightPhaseSeconds = 5.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal")
 	bool bStaggerTrafficLightPhases = true;
@@ -650,8 +707,8 @@ private:
 	// Drives EnsureHospitalParamedicAtTile's respawn delay. An absent entry means the roof has
 	// never been staffed, so the first medic posts immediately.
 	TMap<FIntPoint, double> HospitalParamedicLastSeenSeconds;
-	// Per D1 hospital tile: the roof point TryGetHospitalRoofPost resolved, cached for the session.
-	TMap<FIntPoint, FVector> HospitalRoofPostByTile;
+	// Per building tile: the rendered roof point resolved for persistent crew or rescue victims.
+	TMap<FIntPoint, FVector> BuildingRoofPostByTile;
 	TArray<uint8> PeopleTileClasses;
 	TArray<uint8> PeopleTerrainTypes;
 	TArray<uint8> WaterTileFlags;
@@ -663,6 +720,9 @@ private:
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> PedestrianAgents;
 	TMap<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState> VehicleTrafficStates;
 	TWeakObjectPtr<ASimCopterGroundAgent> NextCarFireTarget;
+	TWeakObjectPtr<ASimCopterGroundAgent> LastSpeederAgent;
+	bool bSpeederDesignationEstablished = false;
+	uint32 SpeederDesignationTick = 0;
 	FRandomStream RandomStream;
 	uint16 PeopleRandomState = 1;
 	FTransform ActiveCityToWorldTransform = FTransform::Identity;
@@ -683,6 +743,10 @@ private:
 	FIntPoint SpotlightChaseTile = FIntPoint(INDEX_NONE, INDEX_NONE);
 
 public:
+	// FUN_0049af00/FUN_0049af70: ensure one eligible ordinary traffic car carries the retail
+	// speeder flag. bForceNew is used only by the debug button to select a fresh car.
+	bool TryDesignateSpeeder(bool bForceNew = false);
+
 	// Runs one FUN_004bc680 dispatch transaction for a service and commits the result.
 	// bChaseSpotlight selects initial state 3 (F5) instead of 4 (F2/F3/F4).
 	SimCopterDispatch::EDispatchResult RequestEmergencyDispatch(
@@ -747,26 +811,21 @@ public:
 	void ArmNextCarFireTarget(ASimCopterGroundAgent* Vehicle);
 	void ClearNextCarFireTarget();
 
-	// FUN_004b8540: put the mission's speeder on a road tile near (TileX, TileY). Capped at the
-	// original's pool of five.
-	bool TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY);
+	// FUN_004b8540: put the burglar's CARROBBR getaway car on a road tile near (TileX, TileY).
+	bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616);
 
 	// Vehicle-class arm of FUN_0049a4f0. The person VM cannot handle cars: mode 2 continues
 	// through FUN_0049fc10/FUN_0049f680, where Report Traffic clears a jammed car.
 	bool ApplyVehicleInteraction(ASimCopterGroundAgent& Vehicle, const FSimCopterInteractionEvent& Event);
 
-	// Live position of a mission's speeder, for the world tag that follows it. OutSpotlightMark
-	// is the 0..10 illumination counter and OutStopped is true once it has pulled over, so the
-	// tag can tell the player which of the three things they still have to do.
-	bool TryGetSpeederCarState(
+	// Live position of a mission's burglar car, for the world tag that follows it while driving.
+	// OutSpotlightMark is the 0..10 illumination counter. OutStopped switches the caller to the
+	// mission record tile, which BHAV 1303 updates to follow the burglar while they are outside.
+	bool TryGetBurglarCarState(
 		int32 EventId,
 		FVector& OutWorldLocation,
 		int32& OutSpotlightMark,
 		bool& OutStopped) const;
-
-	// Speeders that have just been pulled over, for the few seconds their tag stays up after the
-	// mission record has already been retired and paid.
-	void GetRecentlyStoppedSpeederLocations(TArray<FVector>& OutWorldLocations) const;
 
 	// Report every car currently on fire (for the mission actor's fire renderer).
 	void GetBurningVehicles(TArray<FSimCopterBurningVehicle>& Out) const;
@@ -776,17 +835,31 @@ public:
 	// FigureName forces a privanim figure (e.g. "Kopp" for a police officer) instead of the random
 	// civilian one; empty keeps the random pick.
 	bool TrySpawnMissionPerson(
-		int32 SpawnMode,
 		int32 PersonState,
+		int32 BehaviorClass,
 		int32 TileX,
 		int32 TileY,
 		int32 EventId,
 		const FString& FigureName = FString(),
 		ASimCopterGroundAgent** OutSpawned = nullptr);
+	// Rendered-building adaptation for state-2 rooftop survivors. The original building cells give
+	// them a flat support point; imported GEO roofs may contain pitches, ridges and decorations.
+	// A rejected trace stays inside TrySpawnMissionPerson's candidate loop, so another point is tried.
+	static bool IsRooftopRescueSurfaceFlat(const FVector& SurfaceNormal);
 
 	// Anyone within RadiusCm who has been arrested (EBhavAttr::CriminalCaught) but is still on
 	// their feet - i.e. holding the hands-up pose or walking to the police car.
 	bool HasArrestedCriminalNear(const FVector& WorldLocation, float RadiusCm) const;
+
+	// SCHOOK: HelicopterObjectCollision 0x0048ad50 (its people arm, narrowed)
+	// The airframe running somebody over. FUN_0048ad50 hands every object overlapping the aircraft
+	// FUN_0049a4f0(0xc, ...), which for a person is interaction mode 12 -> BHAV 912 "Rxn: Large fast
+	// vehicle hit" -> 903 "Rxn: Die". The remake deliberately serves that to **uncaught criminals
+	// only**: everybody else the aircraft touches is left alone entirely (they already scramble out
+	// from under a descending helicopter), because being able to swat pedestrians with the skids is
+	// not wanted. BHAV 903's casualty outcome closes that crime through the retail lifecycle test.
+	// Returns how many were run over. Never affects the aircraft's motion.
+	int32 RunOverCriminalsUnderHelicopter(class ASimCopterHelicopterPawn& Helicopter);
 
 	// FUN_004ca650: the person whose carrier is Carrier - whoever they are toting.
 	ASimCopterGroundAgent* FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const;
@@ -826,7 +899,10 @@ public:
 		int32 MaxCount,
 		float SearchRadiusCm,
 		float MaxVerticalDeltaCm,
-		float GuidanceSeconds);
+		float GuidanceSeconds,
+		// 0 keeps each agent's own MovementSpeedCmPerSec. Pass the shipped program's walk speed
+		// where one exists, so guidance does not quietly move somebody faster than their own BHAV.
+		float GuidanceSpeedCmPerSec = 0.0f);
 	int32 BoardMissionPeopleTouching(
 		int32 EventId,
 		const FVector& WorldLocation,
@@ -888,6 +964,15 @@ public:
 	void ApplyPlayerRoadBlocking();
 	void SyncVehicleTrafficStates(float DeltaSeconds);
 	void ApplyTrafficLights(float DeltaSeconds);
+	// FUN_0049ee30 / FUN_0049be50, narrowed to the cars a traffic jam has stopped. Walks the chain
+	// of same-direction followers back from every bMissionJammed car and holds each one the
+	// original's spacing behind the car in front of it. A tick with no jam anywhere costs one scan
+	// and changes nothing. See Ground/SimCopterTrafficJam.h.
+	void ApplyTrafficJamQueue(float DeltaSeconds);
+	// Is this car standing in a jam - either the car the jam seized or somebody queued behind it?
+	// The rules that would move a car sideways (the stoplight queue, blockage recovery) all check
+	// this and leave it alone.
+	bool IsVehicleHeldInTrafficJam(const ASimCopterGroundAgent& Vehicle) const;
 	void ApplyVehicleFollowing(float LookAheadCm, float StopDistanceCm, float SlowDistanceCm, bool bUseNormalBraking, float DeltaSeconds);
 	void ApplyIntersectionApproachSlowdown(float DeltaSeconds);
 	void ResolveVehicleOverlaps();
@@ -906,6 +991,16 @@ public:
 	void MarkVehicleInTrafficLightLine(ASimCopterGroundAgent& Vehicle);
 	void MarkVehicleCommittedToIntersection(ASimCopterGroundAgent& Vehicle);
 	void MarkVehicleCollision(ASimCopterGroundAgent& Vehicle);
+	bool HasRecentVehicleCollision(const ASimCopterGroundAgent& Vehicle) const;
+	// Is this agent one of the three emergency pools' vehicles - the original's veh[5] identity
+	// test (0x11c fire / 0x11d police / 0x11f ambulance)?
+	bool IsDispatchVehicle(const ASimCopterGroundAgent& Vehicle) const;
+	// FUN_004a22e0: a special vehicle striking an ordinary car rolls 1-in-(0x200 >> difficulty) to
+	// set that car alight. Called once per fresh impact, never per frame of a sustained overlap.
+	void ApplyCollisionCarFireRoll(ASimCopterGroundAgent& A, ASimCopterGroundAgent& B);
+	// FUN_0049be50: a blocked emergency vehicle rolls 1-in-(0x40 >> difficulty) to raise a traffic
+	// jam mission. Only the dispatch pools run the original's routine, so only they roll here.
+	void ApplyBlockedVehicleJamRoll(ASimCopterGroundAgent& Vehicle);
 	bool TryStartVehicleRecovery(ASimCopterGroundAgent& Vehicle, FSimCopterVehicleTrafficState& State);
 	ASimCopterGroundAgent* FindClosestBlockingVehicle(const ASimCopterGroundAgent& Vehicle, const FVector& ForwardDirection) const;
 	FVector ChooseVehicleBypassDirection(const ASimCopterGroundAgent& Vehicle, const ASimCopterGroundAgent* BlockingVehicle, const FVector& ForwardDirection) const;
@@ -961,18 +1056,20 @@ public:
 	// The marker art is missing or unreadable; say so once rather than every tick per vehicle.
 	bool bLoggedDispatchMarkerError = false;
 
-	// --- Speeder cars and police pursuit -----------------------------------------------------
+	// --- Burglar cars and police pursuit -----------------------------------------------------
 	// FUN_004a01f0's inputs, republished by the pawn each frame.
 	FVector SpotlightMarkWorldLocation = FVector::ZeroVector;
 	int32 SpotlightMarkBand = INDEX_NONE;
 	bool bSpotlightMarkActive = false;
 
-	// The live speeders. The original's pool is fixed at five (FUN_00479bb0).
+	// The live burglar cars. The original's pool is fixed at five (FUN_00479bb0).
 	TArray<TWeakObjectPtr<ASimCopterGroundAgent>> CriminalCars;
 
 	// FUN_004a01f0 + FUN_0049d980: accumulate each speeder's mark from the spotlight and set the
 	// speed multiplier it earns.
 	void UpdateCriminalCars(float DeltaSeconds);
+	void UpdateSpeeders(float DeltaSeconds);
+	void UpdateSpeederDesignation();
 
 	// FUN_004b9e40 case 0's three-ring sweep. Returns the nearest speeder within
 	// SimCopterCriminalCar::PursuitMaxTileSteps of FromTile, or null.
@@ -985,8 +1082,8 @@ public:
 	// one, so this reproduces that spread around VehicleSpeedCmPerSec's mean.
 	float DrawVehicleSpeedCmPerSec();
 
-	// FUN_004b8b60: siren, officer out, close the mission record, hold, remove.
-	void RunCriminalCarArrest(ASimCopterGroundAgent& Car, float DeltaSeconds);
+	// FUN_004b8b60/FUN_004b8c90: deploy the burglar and resolve return versus capture timeout.
+	void RunBurglarOutsidePhase(ASimCopterGroundAgent& Car, float DeltaSeconds);
 	// Breadth-first road-node route; stands in for FUN_004bef30's Dijkstra + back-links.
 	bool TryPlanRoadRoute(const FIntPoint& FromTile, const FIntPoint& ToTile, TArray<int32>& OutNodes) const;
 	bool TryRetargetDispatchVehicle(FSimCopterDispatchVehicle& Vehicle, const FIntPoint& DestinationTile);

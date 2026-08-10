@@ -2,6 +2,7 @@
 
 #include "Game/SimCopterSessionSubsystem.h"
 
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
 
@@ -15,7 +16,8 @@ void USimCopterSessionSubsystem::RequestCareerCity(int32 InCareerCityIndex)
 void USimCopterSessionSubsystem::RequestUserCity(const FString& InCityFilePath)
 {
 	Kind = ESimCopterSessionKind::User;
-	// FUN_004080c0 seeds a user game with career City0's nine tuning dwords.
+	// Career City0 supplies only the shared base record; BeginSession replaces its settings fields
+	// with FUN_004080c0's separate mode-1 defaults.
 	CareerCityIndex = 0;
 	CityFilePath = InCityFilePath;
 }
@@ -31,22 +33,7 @@ void USimCopterSessionSubsystem::ClearPendingSession()
 
 FString USimCopterSessionSubsystem::ResolveCitiesDir()
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/cities"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/cities")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/cities")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (IFileManager::Get().DirectoryExists(*Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return FString();
+	return SimCopterOriginalGame::ResolveDirectory(TEXT("cities"));
 }
 
 FString USimCopterSessionSubsystem::ResolveCareerCityFilePath(int32 CareerCityIndex)

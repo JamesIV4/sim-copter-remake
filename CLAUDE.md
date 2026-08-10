@@ -21,4 +21,10 @@ The three things that bite most often, so they are also here:
    changing ported behaviour, cite the `FUN_004xxxxx` you ported from, and keep the original's
    16.16 fixed-point units.
 
-Everything else — layout, tests, in-game verification, style — is in [AGENTS.md](AGENTS.md).
+Everything else — layout, tests, the editor MCP, in-game verification, style — is in
+[AGENTS.md](AGENTS.md).
+
+One more worth knowing before you go looking for it: the **MCP config is
+`SimCopterRemake/.mcp.json`, in the `.uproject` folder, not the repo root**. A session started at
+the repo root registers no MCP tools at all, which looks identical to the server being down. See
+[Docs/EditorMcpWorkflow.md](Docs/EditorMcpWorkflow.md).

@@ -76,7 +76,11 @@ SIMCOPTERREMAKE_API int32 GetPersonReactionProgram(int32 Mode);
 constexpr int32 SpotlightReactionProgram = 950;
 
 // BHAV 904 "Rxn: Run away (dir already set)" - runs on whatever facing the caller set first.
-// Used by the remake to clear people out from under a descending helicopter.
+// Reached only from the shipped programs that call it (BHAV 274 "Gawk at (or flee) fire" and the
+// 900-series reactions). The remake used to also push it at anyone standing under a descending
+// helicopter; that trigger existed in no shipped program and made a crowd scatter every time the
+// player came down, so it is gone. People stand their ground under the rotors, which is what lets
+// a transport fare walk up to a low hover and climb in.
 constexpr int32 RunAwayReactionProgram = 904;
 
 // FUN_004c1050's interrupt priority: 903 (Die), 915 (Missile/bullet), 912 (Large fast

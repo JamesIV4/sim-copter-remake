@@ -3,7 +3,11 @@
 #include "SSimCopterGraphicsSettings.h"
 
 #include "Brushes/SlateColorBrush.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
+#include "City/SimCopterDayNight.h"
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/World.h"
 #include "Game/SimCopterSettings.h"
 #include "GameFramework/GameUserSettings.h"
 #include "InputCoreTypes.h"
@@ -11,6 +15,7 @@
 #include "SSimCopterCheckupSlider.h"
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterHangarArt.h"
+#include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -104,10 +109,11 @@ void SSimCopterGraphicsSettings::Construct(const FArguments& InArgs)
 	TSharedRef<SVerticalBox> Rows = SNew(SVerticalBox);
 	PopulateRows(Rows);
 
+	static const FSlateRoundedBoxBrush ListPanelBrush(PanelColor, 8.0f);
+
 	AddAtPage(ListRect,
 		SNew(SBorder)
-		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-		.BorderBackgroundColor(PanelColor)
+		.BorderImage(&ListPanelBrush)
 		.Padding(FMargin(8.0f, 6.0f))
 		[
 			SNew(SScrollBox)
@@ -148,6 +154,20 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildHeading(const FText& Text)
 			SNew(STextBlock)
 			.Text(Text)
 			.Font(PageFont(HeadingFontHeight, /*bBold=*/true))
+			.ColorAndOpacity(FSlateColor(HeadingText))
+		];
+}
+
+TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCategoryHeading(const FText& Text)
+{
+	static const FSlateColorBrush CategoryBrush(FLinearColor(0.16f, 0.18f, 0.12f, 1.0f));
+	return SNew(SBorder)
+		.BorderImage(&CategoryBrush)
+		.Padding(FMargin(8.0f, 5.0f))
+		[
+			SNew(STextBlock)
+			.Text(Text)
+			.Font(PageFont(HeadingFontHeight + 2, /*bBold=*/true))
 			.ColorAndOpacity(FSlateColor(HeadingText))
 		];
 }
@@ -232,7 +252,8 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 	const FText& Label,
 	TFunction<float()> GetAlpha,
 	TFunction<void(float)> SetAlpha,
-	TFunction<FText()> GetText)
+	TFunction<FText()> GetText,
+	TFunction<bool()> IsEnabled)
 {
 	USimCopterHangarArt* ArtObject = Art;
 	const FSlateBrush* Thumb = ArtObject != nullptr ? ArtObject->GetBitmap(ThumbBitmap, /*bColorKeyed=*/false) : nullptr;
@@ -241,9 +262,13 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 		Thumb = ArtObject->GetBitmap(FallbackThumbBitmap, /*bColorKeyed=*/false);
 	}
 
+	const FSlateBrush* Track = ArtObject != nullptr ? ArtObject->GetBitmap(TEXT("SLIDERBH.BMP"), /*bColorKeyed=*/false) : nullptr;
+
 	TSharedRef<SSimCopterCheckupSlider> Slider = SNew(SSimCopterCheckupSlider)
 		.ThumbBrush(Thumb)
+		.TrackBrush(Track)
 		.Orientation(Orient_Horizontal)
+		.IsEnabled_Lambda([IsEnabled]() { return !IsEnabled || IsEnabled(); })
 		.OnValueChanged_Lambda([SetAlpha](const float Alpha)
 		{
 			if (SetAlpha)
@@ -267,7 +292,10 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 					SNew(STextBlock)
 					.Text(Label)
 					.Font(PageFont(RowFontHeight))
-					.ColorAndOpacity(FSlateColor(RowText))
+					.ColorAndOpacity_Lambda([IsEnabled]()
+					{
+						return FSlateColor((!IsEnabled || IsEnabled()) ? RowText : DisabledText);
+					})
 				]
 			]
 			+ SHorizontalBox::Slot()
@@ -289,18 +317,114 @@ TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildSliderRow(
 					.Justification(ETextJustify::Right)
 					.Text_Lambda([GetText]() { return GetText ? GetText() : FText::GetEmpty(); })
 					.Font(PageFont(RowFontHeight))
-					.ColorAndOpacity(FSlateColor(RowText))
+					.ColorAndOpacity_Lambda([IsEnabled]()
+					{
+						return FSlateColor((!IsEnabled || IsEnabled()) ? RowText : DisabledText);
+					})
 				]
 			]
 		];
 }
 
+TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildCheckboxRow(
+	const FText& Label,
+	TFunction<bool()> IsChecked,
+	TFunction<void(bool)> SetChecked,
+	TFunction<bool()> IsEnabled)
+{
+	return SNew(SBox)
+		.HeightOverride(RowHeight)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				SNew(SBox)
+				.WidthOverride(RowLabelWidth)
+				[
+					SNew(STextBlock)
+					.Text(Label)
+					.Font(PageFont(RowFontHeight))
+					.ColorAndOpacity_Lambda([IsEnabled]()
+					{
+						return FSlateColor((!IsEnabled || IsEnabled()) ? RowText : DisabledText);
+					})
+				]
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.VAlign(VAlign_Center)
+			[
+				SNew(SCheckBox)
+				.IsEnabled_Lambda([IsEnabled]() { return !IsEnabled || IsEnabled(); })
+				.IsChecked_Lambda([IsChecked]()
+				{
+					return (IsChecked && IsChecked()) ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+				})
+				.OnCheckStateChanged_Lambda([SetChecked](const ECheckBoxState State)
+				{
+					if (SetChecked)
+					{
+						SetChecked(State == ECheckBoxState::Checked);
+					}
+				})
+			]
+		];
+}
+
+TSharedRef<SWidget> SSimCopterGraphicsSettings::BuildNote(const FText& Text)
+{
+	return SNew(SBox)
+		.Padding(FMargin(0.0f, 0.0f, 8.0f, 4.0f))
+		[
+			SNew(STextBlock)
+			.Text(Text)
+			.Font(PageFont(RowFontHeight - 3))
+			.ColorAndOpacity(FSlateColor(DisabledText))
+			.AutoWrapText(true)
+		];
+}
+
 void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Rows)
 {
-	const auto AddRow = [&Rows](TSharedRef<SWidget> Row)
+	// Populate category containers independently, then attach them in the player-facing order.
+	// This keeps the renderer-heavy implementation below together without letting its source order
+	// dictate where Gameplay and Input appear in the scroll box.
+	TSharedRef<SVerticalBox> GameplayRows = SNew(SVerticalBox);
+	TSharedRef<SVerticalBox> InputRows = SNew(SVerticalBox);
+	TSharedRef<SVerticalBox> GraphicsRows = SNew(SVerticalBox);
+	TSharedRef<SVerticalBox> ActiveRows = GraphicsRows;
+	const auto AddRow = [&ActiveRows](TSharedRef<SWidget> Row)
 	{
-		Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 1.0f))[Row];
+		ActiveRows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 1.0f))[Row];
 	};
+
+	// ---------------------------------------------------------------------------------------
+	// Performance. First on the page because it moves most of the rows below it: a machine that
+	// needs this needs it before it needs a DLSS quality mode.
+	// ---------------------------------------------------------------------------------------
+
+	AddRow(BuildHeading(LOCTEXT("HeadingPerformance", "Performance")));
+
+	AddRow(BuildCheckboxRow(
+		LOCTEXT("LowPowerMode", "Low Power Graphics"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr && Settings->IsLowPowerMode();
+		},
+		[this](const bool bEnabled)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetLowPowerMode(bEnabled);
+				Settings->ApplyAll(nullptr);
+			}
+		}));
+
+	AddRow(BuildNote(LOCTEXT("LowPowerModeNote",
+		"Simple lighting, no shadows, 75% resolution. Performance over visuals.")));
 
 	// ---------------------------------------------------------------------------------------
 	// Upscaling and frame generation
@@ -433,6 +557,50 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 			return Settings != nullptr && Settings->GetFrameGenMode() == ESimCopterFrameGenMode::On;
 		};
 		AddRow(BuildDropdownRow(LOCTEXT("FrameGenMultiple", "Generated Frames"), Multiple));
+	}
+
+	// ---------------------------------------------------------------------------------------
+	// Reflex. Its own heading rather than a row under DLSS: it is a separate Streamline feature
+	// and it is offered on cards that have no DLSS at all.
+	// ---------------------------------------------------------------------------------------
+
+	if (USimCopterSettings::IsReflexAvailable())
+	{
+		AddRow(BuildHeading(LOCTEXT("HeadingReflex", "NVIDIA Reflex")));
+
+		// Boost is not offered on every card that has Reflex, so the list is what this GPU answers
+		// to rather than all three unconditionally.
+		TArray<ESimCopterReflexMode> Modes;
+		for (const ESimCopterReflexMode Mode : { ESimCopterReflexMode::Off, ESimCopterReflexMode::On, ESimCopterReflexMode::OnBoost })
+		{
+			if (Mode == ESimCopterReflexMode::Off || USimCopterSettings::IsReflexModeAvailable(Mode))
+			{
+				Modes.Add(Mode);
+			}
+		}
+
+		FRowBinding Reflex;
+		Reflex.GetCount = [Modes]() { return Modes.Num(); };
+		Reflex.GetOptionLabel = [Modes](const int32 Index)
+		{
+			return Modes.IsValidIndex(Index)
+				? USimCopterSettings::GetReflexModeLabel(Modes[Index])
+				: FText::GetEmpty();
+		};
+		Reflex.GetIndex = [this, Modes]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr ? FMath::Max(Modes.IndexOfByKey(Settings->GetReflexMode()), 0) : 0;
+		};
+		Reflex.SetIndex = [this, Modes](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this); Settings != nullptr && Modes.IsValidIndex(Index))
+			{
+				Settings->SetReflexMode(Modes[Index]);
+				Settings->ApplyAll(nullptr);
+			}
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("Reflex", "Low Latency"), Reflex));
 	}
 
 	// ---------------------------------------------------------------------------------------
@@ -610,7 +778,307 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				UserSettings->GetResolutionScaleInformationEx(Normalized, Current, MinScale, MaxScale);
 			}
 			return FText::Format(LOCTEXT("PercentFormat", "{0}%"), FText::AsNumber(FMath::RoundToInt(Current)));
+		},
+		// Greyed while Super Resolution is on: DLSS owns the scale for its quality mode (see
+		// ApplyGraphics), and setting a resolution scale DLSS did not ask for is what crashed inside
+		// NGX_D3D12_EVALUATE_DLSS_EXT with a source/dest rect DLSS could not evaluate. IsDlssActive
+		// rather than IsDlssEnabled for the same reason as the Anti-Aliasing row below - a config
+		// carried from an RTX machine must not grey a row whose owner is not drawn on this one.
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsDlssActive();
 		}));
+
+	if (bDlssAvailable)
+	{
+		AddRow(BuildNote(LOCTEXT("ResolutionScaleDlssNote",
+			"Resolution Scale is set by the Super Resolution quality mode while Super Resolution is on.")));
+	}
+
+	{
+		// MSAA is left off the list - see ESimCopterAntiAliasingMethod's comment - so the indices
+		// walked here are the enum's own values, not a dense 0..N-1 range.
+		static const ESimCopterAntiAliasingMethod Methods[] = {
+			ESimCopterAntiAliasingMethod::None,
+			ESimCopterAntiAliasingMethod::Fxaa,
+			ESimCopterAntiAliasingMethod::TemporalAA,
+			ESimCopterAntiAliasingMethod::Tsr,
+			ESimCopterAntiAliasingMethod::Smaa,
+		};
+
+		FRowBinding AntiAliasing;
+		AntiAliasing.GetCount = []() { return UE_ARRAY_COUNT(Methods); };
+		AntiAliasing.GetOptionLabel = [this](const int32 Index)
+		{
+			// Super resolution does not sit alongside a method, it *is* the method: ApplyGraphics
+			// forces TSR while it is on, because that is the only thing that puts the view into
+			// TemporalUpscale and lets DLSS upscale at all. Reading back "TSR" - or worse, the "None"
+			// the player last picked - would be the row describing something that is not running.
+			// The row is greyed at the same time, so this is only ever the closed combo's text.
+			const USimCopterSettings* Settings = GetSettings(this);
+			if (Settings != nullptr && Settings->IsDlssActive())
+			{
+				return LOCTEXT("AntiAliasingDlss", "DLSS");
+			}
+			return (Index >= 0 && Index < UE_ARRAY_COUNT(Methods))
+				? USimCopterSettings::GetAntiAliasingMethodLabel(Methods[Index])
+				: FText::GetEmpty();
+		};
+		AntiAliasing.GetIndex = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const ESimCopterAntiAliasingMethod Current =
+				Settings != nullptr ? Settings->GetAntiAliasingMethod() : ESimCopterAntiAliasingMethod::Tsr;
+			for (int32 Index = 0; Index < UE_ARRAY_COUNT(Methods); ++Index)
+			{
+				if (Methods[Index] == Current)
+				{
+					return Index;
+				}
+			}
+			return 0;
+		};
+		AntiAliasing.SetIndex = [this](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this); Settings != nullptr && Index >= 0 && Index < UE_ARRAY_COUNT(Methods))
+			{
+				Settings->SetAntiAliasingMethod(Methods[Index]);
+				Settings->ApplyAll(nullptr);
+			}
+		};
+		// Greyed while super resolution owns the method, live again the moment it is switched off -
+		// the stored pick is never overwritten, so the row comes back reading what the player chose.
+		// IsDlssActive rather than IsDlssEnabled: a config carried from an RTX machine would
+		// otherwise grey this row on a GPU where the Super Resolution row is not even drawn.
+		AntiAliasing.IsEnabled = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsDlssActive();
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("AntiAliasing", "Anti-Aliasing"), AntiAliasing));
+	}
+
+	// ---------------------------------------------------------------------------------------
+	// Lighting - the two the city actually notices. Lumen carries the night, because the window
+	// lights and the street lamps are emissive rather than light components.
+	// ---------------------------------------------------------------------------------------
+
+	AddRow(BuildHeading(LOCTEXT("HeadingLighting", "Lighting")));
+
+	{
+		TArray<ESimCopterLumenMode> Modes;
+		if (USimCopterSettings::IsHardwareRayTracingAvailable())
+		{
+			Modes.Add(ESimCopterLumenMode::HardwareRayTracing);
+		}
+		Modes.Add(ESimCopterLumenMode::Software);
+		Modes.Add(ESimCopterLumenMode::Off);
+
+		FRowBinding Lumen;
+		Lumen.GetCount = [Modes]() { return Modes.Num(); };
+		Lumen.GetOptionLabel = [Modes](const int32 Index)
+		{
+			return Modes.IsValidIndex(Index)
+				? USimCopterSettings::GetLumenModeLabel(Modes[Index])
+				: FText::GetEmpty();
+		};
+		Lumen.GetIndex = [this, Modes]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr ? FMath::Max(Modes.IndexOfByKey(Settings->GetLumenMode()), 0) : 0;
+		};
+		Lumen.SetIndex = [this, Modes](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this); Settings != nullptr && Modes.IsValidIndex(Index))
+			{
+				Settings->SetLumenMode(Modes[Index]);
+				Settings->ApplyAll(nullptr);
+			}
+		};
+		// Greyed in Low Power, which forces the GI method off and would make this row lie. The stored
+		// value is left alone, so it comes back exactly as it was when the mode is switched off.
+		Lumen.IsEnabled = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsLowPowerMode();
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("Lumen", "Lumen"), Lumen));
+	}
+
+	// One knob over everything the remake draws as emissive - the fire and effect cards, the people
+	// sprites, the night window lights. They all derive their brightness from the sun rather than
+	// carrying an authored value, so scaling them together keeps their relationship to each other.
+	AddRow(BuildSliderRow(
+		LOCTEXT("EmissiveBrightness", "Emissive Brightness"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const float Scale = Settings != nullptr ? Settings->GetEmissiveBrightness() : 1.0f;
+			return (Scale - USimCopterSettings::EmissiveBrightnessMin)
+				/ (USimCopterSettings::EmissiveBrightnessMax - USimCopterSettings::EmissiveBrightnessMin);
+		},
+		[this](const float Alpha)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetEmissiveBrightness(FMath::Lerp(
+					USimCopterSettings::EmissiveBrightnessMin,
+					USimCopterSettings::EmissiveBrightnessMax,
+					Alpha));
+			}
+		},
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const float Scale = Settings != nullptr ? Settings->GetEmissiveBrightness() : 1.0f;
+			return FText::Format(
+				LOCTEXT("PercentFormat", "{0}%"), FText::AsNumber(FMath::RoundToInt(Scale * 100.0f)));
+		}));
+
+	AddRow(BuildCheckboxRow(
+		LOCTEXT("VolumetricFog", "Volumetric Fog"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || (Settings->IsVolumetricFogEnabled() && !Settings->IsLowPowerMode());
+		},
+		[this](const bool bEnabled)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetVolumetricFogEnabled(bEnabled);
+				Settings->ApplyAll(nullptr);
+			}
+		},
+		// Greyed and shown clear in Low Power, which forces r.VolumetricFog 0. The stored value is
+		// untouched and comes back when the mode is switched off.
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings == nullptr || !Settings->IsLowPowerMode();
+		}));
+
+	// ---------------------------------------------------------------------------------------
+	// World. The original had no equivalent - a city's time of day came from career.twk's
+	// Day/Night column and never moved - so this is entirely the remake's.
+	// ---------------------------------------------------------------------------------------
+
+	ActiveRows = GameplayRows;
+	AddRow(BuildHeading(LOCTEXT("HeadingWorld", "World")));
+
+	{
+		FRowBinding TimeOfDay;
+		TimeOfDay.GetCount = []() { return 2; };
+		TimeOfDay.GetOptionLabel = [](const int32 Index)
+		{
+			return USimCopterSettings::GetTimeOfDayModeLabel(static_cast<ESimCopterTimeOfDayMode>(Index));
+		};
+		TimeOfDay.GetIndex = [this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr ? static_cast<int32>(Settings->GetTimeOfDayMode()) : 0;
+		};
+		TimeOfDay.SetIndex = [this](const int32 Index)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetTimeOfDayMode(static_cast<ESimCopterTimeOfDayMode>(Index));
+				ApplyTimeOfDay();
+			}
+		};
+		AddRow(BuildDropdownRow(LOCTEXT("TimeOfDayMode", "Time of Day"), TimeOfDay));
+	}
+
+	// Greyed in Dynamic, where the clock is the day sequence's to move and this would do nothing.
+	AddRow(BuildSliderRow(
+		LOCTEXT("StaticTimeOfDay", "Static Time"),
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			const float Hours = Settings != nullptr ? Settings->GetStaticTimeOfDayHours() : 12.0f;
+			return Hours / USimCopterSettings::StaticTimeOfDayMaxHours;
+		},
+		[this](const float Alpha)
+		{
+			if (USimCopterSettings* Settings = GetSettings(this))
+			{
+				Settings->SetStaticTimeOfDayHours(Alpha * USimCopterSettings::StaticTimeOfDayMaxHours);
+				ApplyTimeOfDay();
+			}
+		},
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return USimCopterSettings::FormatTimeOfDay(
+				Settings != nullptr ? Settings->GetStaticTimeOfDayHours() : 12.0f);
+		},
+		[this]()
+		{
+			const USimCopterSettings* Settings = GetSettings(this);
+			return Settings != nullptr && Settings->GetTimeOfDayMode() == ESimCopterTimeOfDayMode::Static;
+		}));
+
+	// The two halves of the cycle get their own real-world durations, which is the whole point of
+	// USimCopterDayNightLengthComponent - a day sequence otherwise runs one clock at one speed and
+	// splits a 10 minute cycle evenly. Both are greyed in Static, where nothing is moving.
+	{
+		const auto AddCycleLengthRow = [this, &AddRow](
+			const FText& Label,
+			TFunction<float(const USimCopterSettings*)> Getter,
+			TFunction<void(USimCopterSettings*, float)> Setter,
+			const float Fallback)
+		{
+			// The slider runs 0..1 over the whole allowed range rather than 0..Max, so the bottom of
+			// the track is the shortest legal cycle instead of a frozen one.
+			const auto ToAlpha = [](const float Minutes)
+			{
+				return (Minutes - USimCopterSettings::CycleLengthMinMinutes)
+					/ (USimCopterSettings::CycleLengthMaxMinutes - USimCopterSettings::CycleLengthMinMinutes);
+			};
+
+			AddRow(BuildSliderRow(
+				Label,
+				[this, Getter, Fallback, ToAlpha]()
+				{
+					const USimCopterSettings* Settings = GetSettings(this);
+					return ToAlpha(Settings != nullptr ? Getter(Settings) : Fallback);
+				},
+				[this, Setter](const float Alpha)
+				{
+					if (USimCopterSettings* Settings = GetSettings(this))
+					{
+						Setter(Settings, FMath::Lerp(
+							USimCopterSettings::CycleLengthMinMinutes,
+							USimCopterSettings::CycleLengthMaxMinutes,
+							Alpha));
+						ApplyTimeOfDay();
+					}
+				},
+				[this, Getter, Fallback]()
+				{
+					const USimCopterSettings* Settings = GetSettings(this);
+					return USimCopterSettings::FormatMinutes(Settings != nullptr ? Getter(Settings) : Fallback);
+				},
+				[this]()
+				{
+					const USimCopterSettings* Settings = GetSettings(this);
+					return Settings != nullptr && Settings->GetTimeOfDayMode() == ESimCopterTimeOfDayMode::Dynamic;
+				}));
+		};
+
+		AddCycleLengthRow(
+			LOCTEXT("DayLength", "Daytime Length"),
+			[](const USimCopterSettings* S) { return S->GetDayRealMinutes(); },
+			[](USimCopterSettings* S, const float V) { S->SetDayRealMinutes(V); },
+			7.0f);
+
+		AddCycleLengthRow(
+			LOCTEXT("NightLength", "Nighttime Length"),
+			[](const USimCopterSettings* S) { return S->GetNightRealMinutes(); },
+			[](USimCopterSettings* S, const float V) { S->SetNightRealMinutes(V); },
+			3.0f);
+	}
 
 	// ---------------------------------------------------------------------------------------
 	// Interface
@@ -643,10 +1111,103 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 				LOCTEXT("PercentFormat", "{0}%"), FText::AsNumber(FMath::RoundToInt(Scale * 100.0f)));
 		}));
 
+	const auto AddFovRow = [this, &AddRow](
+		const FText& Label,
+		TFunction<float(const USimCopterSettings*)> Getter,
+		TFunction<void(USimCopterSettings*, float)> Setter,
+		const float DefaultDegrees)
+	{
+		AddRow(BuildSliderRow(
+			Label,
+			[this, Getter, DefaultDegrees]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Degrees = Settings != nullptr ? Getter(Settings) : DefaultDegrees;
+				return (Degrees - USimCopterSettings::FovMin)
+					/ (USimCopterSettings::FovMax - USimCopterSettings::FovMin);
+			},
+			[this, Setter](const float Alpha)
+			{
+				if (USimCopterSettings* Settings = GetSettings(this))
+				{
+					Setter(Settings, FMath::Lerp(USimCopterSettings::FovMin, USimCopterSettings::FovMax, Alpha));
+				}
+			},
+			[this, Getter, DefaultDegrees]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Degrees = Settings != nullptr ? Getter(Settings) : DefaultDegrees;
+				return FText::Format(
+					LOCTEXT("DegreesFormat", "{0} deg"), FText::AsNumber(FMath::RoundToInt(Degrees)));
+			}));
+	};
+
+	AddFovRow(LOCTEXT("OnFootFov", "On-foot FOV"),
+		[](const USimCopterSettings* S) { return S->GetOnFootFov(); },
+		[](USimCopterSettings* S, const float V) { S->SetOnFootFov(V); },
+		USimCopterSettings::DefaultFov);
+	AddFovRow(LOCTEXT("HelicopterFov", "Helicopter FOV"),
+		[](const USimCopterSettings* S) { return S->GetHelicopterFov(); },
+		[](USimCopterSettings* S, const float V) { S->SetHelicopterFov(V); },
+		USimCopterSettings::DefaultFov);
+	AddFovRow(LOCTEXT("CockpitFov", "Cockpit FOV"),
+		[](const USimCopterSettings* S) { return S->GetCockpitFov(); },
+		[](USimCopterSettings* S, const float V) { S->SetCockpitFov(V); },
+		USimCopterSettings::DefaultCockpitFov);
+
+	ActiveRows = InputRows;
+	AddRow(BuildHeading(LOCTEXT("HeadingSensitivity", "Sensitivity")));
+
+	const auto AddSensitivityRow = [this, &AddRow](
+		const FText& Label,
+		TFunction<float(const USimCopterSettings*)> Getter,
+		TFunction<void(USimCopterSettings*, float)> Setter)
+	{
+		AddRow(BuildSliderRow(
+			Label,
+			[this, Getter]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Scale = Settings != nullptr ? Getter(Settings) : USimCopterSettings::DefaultSensitivity;
+				return (Scale - USimCopterSettings::SensitivityMin)
+					/ (USimCopterSettings::SensitivityMax - USimCopterSettings::SensitivityMin);
+			},
+			[this, Setter](const float Alpha)
+			{
+				if (USimCopterSettings* Settings = GetSettings(this))
+				{
+					Setter(Settings, FMath::Lerp(
+						USimCopterSettings::SensitivityMin, USimCopterSettings::SensitivityMax, Alpha));
+				}
+			},
+			[this, Getter]()
+			{
+				const USimCopterSettings* Settings = GetSettings(this);
+				const float Scale = Settings != nullptr ? Getter(Settings) : USimCopterSettings::DefaultSensitivity;
+				return FText::Format(
+					LOCTEXT("SensitivityPercentFormat", "{0}%"),
+					FText::AsNumber(FMath::RoundToInt(Scale * 100.0f)));
+			}));
+	};
+
+	AddSensitivityRow(LOCTEXT("MouseSensitivityX", "Mouse Sensitivity (X)"),
+		[](const USimCopterSettings* S) { return S->GetMouseSensitivityX(); },
+		[](USimCopterSettings* S, const float V) { S->SetMouseSensitivityX(V); });
+	AddSensitivityRow(LOCTEXT("MouseSensitivityY", "Mouse Sensitivity (Y)"),
+		[](const USimCopterSettings* S) { return S->GetMouseSensitivityY(); },
+		[](USimCopterSettings* S, const float V) { S->SetMouseSensitivityY(V); });
+	AddSensitivityRow(LOCTEXT("ControllerSensitivityX", "Controller Sensitivity (X)"),
+		[](const USimCopterSettings* S) { return S->GetControllerSensitivityX(); },
+		[](USimCopterSettings* S, const float V) { S->SetControllerSensitivityX(V); });
+	AddSensitivityRow(LOCTEXT("ControllerSensitivityY", "Controller Sensitivity (Y)"),
+		[](const USimCopterSettings* S) { return S->GetControllerSensitivityY(); },
+		[](USimCopterSettings* S, const float V) { S->SetControllerSensitivityY(V); });
+
 	// ---------------------------------------------------------------------------------------
 	// Quality - every scalability group Unreal exposes, plus the overall preset above them.
 	// ---------------------------------------------------------------------------------------
 
+	ActiveRows = GraphicsRows;
 	AddRow(BuildHeading(LOCTEXT("HeadingQuality", "Quality")));
 
 	const auto AddQualityRow = [this, &AddRow](
@@ -673,20 +1234,40 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 		AddRow(BuildDropdownRow(Label, Binding));
 	};
 
-	// The overall preset drives all ten at once; it reads back as Custom (-1) once one is moved,
-	// which is why its own row allows a sixth label the others do not.
+	// The overall preset drives all ten at once and reads back as Custom (-1) once the mix is no
+	// longer a single preset, which is why this row carries a sixth label the others do not.
+	//
+	// Six entries, and the -1 is deliberately NOT clamped. `FQualityLevels::GetSingleQualityLevel`
+	// answers -1 unless all eleven groups agree AND
+	// `GetRenderScaleLevelFromQualityLevel(Target) == ResolutionQuality` - so ANY resolution scale
+	// that is not the preset's own value for that level makes it Custom. Low Power Graphics' 75%,
+	// the Resolution Scale row and DLSS's quality-mode percentage all break that equality, which
+	// makes -1 the normal reading here rather than an edge case. Clamping it into 0 is what made
+	// the row announce "Low" over a perfectly good Epic mix every time the page was opened.
 	{
+		// Low, Medium, High, Epic, Cinematic, then Custom.
+		constexpr int32 CustomIndex = 5;
+
 		FRowBinding Overall;
-		Overall.GetCount = []() { return 5; };
+		Overall.GetCount = []() { return CustomIndex + 1; };
+		// GetQualityLevelLabel's default arm is already "Custom", which is where index 5 lands.
 		Overall.GetOptionLabel = [](const int32 Index) { return GetQualityLevelLabel(Index); };
 		Overall.GetIndex = []()
 		{
 			const UGameUserSettings* UserSettings = GetUserSettings();
-			return UserSettings != nullptr ? FMath::Clamp(UserSettings->GetOverallScalabilityLevel(), 0, 4) : 0;
+			if (UserSettings == nullptr)
+			{
+				return CustomIndex;
+			}
+			const int32 Level = UserSettings->GetOverallScalabilityLevel();
+			return (Level >= 0 && Level < CustomIndex) ? Level : CustomIndex;
 		};
 		Overall.SetIndex = [](const int32 Index)
 		{
-			if (UGameUserSettings* UserSettings = GetUserSettings())
+			// Picking "Custom" is not an instruction - it is a description of what the ten rows
+			// below already are - so it applies nothing rather than flattening them to a preset.
+			if (UGameUserSettings* UserSettings = GetUserSettings();
+				UserSettings != nullptr && Index >= 0 && Index < CustomIndex)
 			{
 				UserSettings->SetOverallScalabilityLevel(Index);
 				UserSettings->ApplyNonResolutionSettings();
@@ -725,12 +1306,36 @@ void SSimCopterGraphicsSettings::PopulateRows(const TSharedRef<SVerticalBox>& Ro
 	AddQualityRow(LOCTEXT("Shading", "Shading"),
 		[](const UGameUserSettings* S) { return S->GetShadingQuality(); },
 		[](UGameUserSettings* S, const int32 V) { S->SetShadingQuality(V); });
+
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 3.0f))[BuildCategoryHeading(LOCTEXT("CategoryGameplay", "Gameplay"))];
+	Rows->AddSlot().AutoHeight()[GameplayRows];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 3.0f))[BuildCategoryHeading(LOCTEXT("CategoryInput", "Input"))];
+	Rows->AddSlot().AutoHeight()[InputRows];
+	Rows->AddSlot().AutoHeight().Padding(FMargin(0.0f, 3.0f))[BuildCategoryHeading(LOCTEXT("CategoryGraphics", "Graphics"))];
+	Rows->AddSlot().AutoHeight()[GraphicsRows];
+}
+
+void SSimCopterGraphicsSettings::ApplyTimeOfDay()
+{
+	const UWorld* World = (GEngine != nullptr && GEngine->GameViewport != nullptr)
+		? GEngine->GameViewport->GetWorld()
+		: nullptr;
+	if (USimCopterDayNightSubsystem* DayNight = World != nullptr
+		? World->GetSubsystem<USimCopterDayNightSubsystem>()
+		: nullptr)
+	{
+		DayNight->ApplyTimeOfDaySettings();
+	}
 }
 
 void SSimCopterGraphicsSettings::Accept()
 {
 	if (UGameUserSettings* UserSettings = GetUserSettings())
 	{
+		// The rows already applied as they were changed; OK is what makes it permanent. Confirming
+		// the video mode is what stops a later RevertVideoMode snapping back to whatever the window
+		// happened to be when the page opened.
+		UserSettings->ConfirmVideoMode();
 		UserSettings->SaveSettings();
 	}
 	if (USimCopterSettings* Settings = GetSettings(this))
@@ -746,11 +1351,28 @@ void SSimCopterGraphicsSettings::CaptureEnteredState()
 {
 	if (const USimCopterSettings* Settings = GetSettings(this))
 	{
+		Entered.bLowPowerMode = Settings->IsLowPowerMode();
 		Entered.bDlssEnabled = Settings->IsDlssEnabled();
 		Entered.DlssQuality = static_cast<uint8>(Settings->GetDlssQuality());
 		Entered.FrameGenMode = static_cast<uint8>(Settings->GetFrameGenMode());
 		Entered.FrameGenMultiple = Settings->GetFrameGenMultiple();
+		Entered.ReflexMode = static_cast<uint8>(Settings->GetReflexMode());
+		Entered.LumenMode = static_cast<uint8>(Settings->GetLumenMode());
+		Entered.AntiAliasingMethod = static_cast<uint8>(Settings->GetAntiAliasingMethod());
+		Entered.bVolumetricFog = Settings->IsVolumetricFogEnabled();
+		Entered.EmissiveBrightness = Settings->GetEmissiveBrightness();
+		Entered.TimeOfDayMode = static_cast<uint8>(Settings->GetTimeOfDayMode());
+		Entered.StaticTimeOfDayHours = Settings->GetStaticTimeOfDayHours();
+		Entered.DayRealMinutes = Settings->GetDayRealMinutes();
+		Entered.NightRealMinutes = Settings->GetNightRealMinutes();
 		Entered.HudScale = Settings->GetHudScale();
+		Entered.OnFootFov = Settings->GetOnFootFov();
+		Entered.HelicopterFov = Settings->GetHelicopterFov();
+		Entered.CockpitFov = Settings->GetCockpitFov();
+		Entered.MouseSensitivityX = Settings->GetMouseSensitivityX();
+		Entered.MouseSensitivityY = Settings->GetMouseSensitivityY();
+		Entered.ControllerSensitivityX = Settings->GetControllerSensitivityX();
+		Entered.ControllerSensitivityY = Settings->GetControllerSensitivityY();
 	}
 
 	const UGameUserSettings* UserSettings = GetUserSettings();
@@ -780,12 +1402,32 @@ void SSimCopterGraphicsSettings::RestoreEnteredState()
 {
 	if (USimCopterSettings* Settings = GetSettings(this))
 	{
+		// Before the rest: ApplyAll below re-runs the mode's scalability transition, and the explicit
+		// quality and resolution-scale restores after it are what settle the final state either way.
+		Settings->SetLowPowerMode(Entered.bLowPowerMode);
 		Settings->SetDlssEnabled(Entered.bDlssEnabled);
 		Settings->SetDlssQuality(static_cast<ESimCopterDlssQuality>(Entered.DlssQuality));
 		Settings->SetFrameGenMode(static_cast<ESimCopterFrameGenMode>(Entered.FrameGenMode));
 		Settings->SetFrameGenMultiple(Entered.FrameGenMultiple);
+		Settings->SetReflexMode(static_cast<ESimCopterReflexMode>(Entered.ReflexMode));
+		Settings->SetLumenMode(static_cast<ESimCopterLumenMode>(Entered.LumenMode));
+		Settings->SetAntiAliasingMethod(static_cast<ESimCopterAntiAliasingMethod>(Entered.AntiAliasingMethod));
+		Settings->SetVolumetricFogEnabled(Entered.bVolumetricFog);
+		Settings->SetEmissiveBrightness(Entered.EmissiveBrightness);
+		Settings->SetTimeOfDayMode(static_cast<ESimCopterTimeOfDayMode>(Entered.TimeOfDayMode));
+		Settings->SetStaticTimeOfDayHours(Entered.StaticTimeOfDayHours);
+		Settings->SetDayRealMinutes(Entered.DayRealMinutes);
+		Settings->SetNightRealMinutes(Entered.NightRealMinutes);
 		Settings->SetHudScale(Entered.HudScale);
+		Settings->SetOnFootFov(Entered.OnFootFov);
+		Settings->SetHelicopterFov(Entered.HelicopterFov);
+		Settings->SetCockpitFov(Entered.CockpitFov);
+		Settings->SetMouseSensitivityX(Entered.MouseSensitivityX);
+		Settings->SetMouseSensitivityY(Entered.MouseSensitivityY);
+		Settings->SetControllerSensitivityX(Entered.ControllerSensitivityX);
+		Settings->SetControllerSensitivityY(Entered.ControllerSensitivityY);
 		Settings->ApplyAll(nullptr);
+		ApplyTimeOfDay();
 	}
 
 	UGameUserSettings* UserSettings = GetUserSettings();

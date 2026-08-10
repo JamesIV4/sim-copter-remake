@@ -33,6 +33,7 @@
 #include "SimCopterAudioSubsystem.generated.h"
 
 class UAudioComponent;
+class USceneComponent;
 class USoundAttenuation;
 class USoundWaveProcedural;
 
@@ -167,6 +168,31 @@ public:
 		bool bNonPositional = false,
 		int32 Flags = 0);
 
+	/**
+	 * A polyphonic attached loop for movement sounds. Unlike PlayVoiceEvent, this does not borrow
+	 * one of the fourteen dialogue slots, so a person's footsteps and voice cannot replace each
+	 * other. MaxRangeCm is a hard start/cutoff radius and the component's attenuation falloff.
+	 */
+	UAudioComponent* PlayAttachedVoiceLoop(
+		int32 VoiceEvent,
+		USceneComponent* AttachParent,
+		int32 FrequencyHz,
+		float MaxRangeCm,
+		float VolumeMultiplier = 1.0f);
+	void SetAttachedVoiceLoopFrequencyHz(UAudioComponent* Component, int32 VoiceEvent, int32 FrequencyHz);
+	void StopAttachedVoiceLoop(UAudioComponent* Component);
+
+	// --- dispatcher / radio voice queue (SCHOOK: DispatchVoicePlay 0x0042a3b0) ---
+
+	/** Enqueues a dispatcher/radio voice sound ID to play sequentially. */
+	void QueueRadioVoice(int32 SoundId);
+
+	/** Clear any pending queued dispatcher voice announcements. */
+	void ClearRadioVoiceQueue();
+
+	/** True if a dispatcher voice clip is currently playing or queued. */
+	bool IsRadioVoicePlayingOrQueued() const;
+
 	// --- one-off files outside the table ---
 
 	/**
@@ -202,6 +228,9 @@ public:
 
 	/** Absolute path, because the radio tree is nested well below the slot search roots. */
 	bool PlayRadioFile(const FString& AbsolutePath, float VolumeMultiplier = 1.0f);
+	/** Updates both the stored radio gain and the item that is already playing. */
+	void SetRadioVolumeMultiplier(float VolumeMultiplier);
+	float GetRadioVolumeMultiplier() const { return RadioVolumeMultiplier; }
 	void StopRadio();
 	bool IsRadioPlaying() const;
 
@@ -311,15 +340,25 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAudioComponent>> LooseComponents;
 
+	/** Polyphonic movement loops; separate so front-end standalone cleanup cannot stop them. */
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UAudioComponent>> AttachedVoiceLoopComponents;
+
 	/** The radio's single voice. */
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> RadioComponent = nullptr;
+	float RadioVolumeMultiplier = 1.0f;
 
 	/** The front end's single looping music voice (menuback.wav). */
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> MusicComponent = nullptr;
 
 	double RadioEndTime = 0.0;
+
+	/** Dispatcher voice queue (SCHOOK: DispatchVoicePlay 0x0042a3b0). */
+	TArray<int32> DispatchVoiceQueue;
+	int32 CurrentDispatchVoiceId = INDEX_NONE;
+	double CurrentDispatchVoiceEndTime = 0.0;
 
 	/** Clips loaded by PlayFile2D / SetFile, keyed by lowercase relative path. */
 	TMap<FString, FSimCopterPcmClip> ClipCache;
@@ -338,6 +377,7 @@ private:
 
 	/** Applies VolumeIndex * master to the component. */
 	void ApplySlotVolume(int32 Id);
+	void ApplyRadioVolume();
 
 	static USoundWaveProcedural* MakeWave(const FSimCopterPcmClip& Clip, bool bLoop, UObject* Outer);
 };

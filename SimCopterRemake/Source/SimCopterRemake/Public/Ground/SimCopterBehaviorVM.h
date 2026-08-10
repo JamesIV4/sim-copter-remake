@@ -75,6 +75,11 @@ namespace EBhavAttr
 	// footstep clips (0x0e/0x28/0x29) or an Elvis noise, and BHAV 800 rec[4] assigns 58 so a
 	// medevac victim owns the EKG. FUN_004c5210 only re-tunes a sound that matches this.
 	constexpr int32 VoiceSet = 38;
+	// +0x17a. The program id this person's STATE started them on. BHAV 444 rec[25]/rec[27] is the
+	// only shipped reader: `attr29 == 444` is how a marching-band member tells itself apart from
+	// the leader, whose state (17) starts on 443 instead. Members mill about and toot single
+	// instrument notes (sound 37); the leader plays march.wav (sound 38) and keeps following you.
+	constexpr int32 StateProgramId = 29;
 	// +0x18e. Which head this person wears - FUN_004c71c0 sets it from the behavior class and
 	// FUN_004c7090 overwrites it with 10 for state 6. BHAV 264 rec[8] tests it against 10 to
 	// decide whether the seat portrait follows the victim's health or the helicopter's speed.
@@ -106,9 +111,9 @@ namespace EBhavObjectClass
 	constexpr int32 Ambulance = 10;       // FUN_0049b060(0, tile)
 	constexpr int32 PoliceCar = 11;       // FUN_0049b060(1, tile)
 	constexpr int32 FireTruck = 12;       // FUN_0049b060(2, tile)
-	// "Service 3" is the speeder pool, not a fourth emergency service: BHAV 1402 "Cop speeder"
-	// probes it at rec[3] to find the car it was sent to arrest.
-	constexpr int32 SpeederCar = 13;      // FUN_0049b060(3, tile)
+	// "Service 3" is the CARROBBR burglar-car pool, not a fourth emergency service: BHAV 1402
+	// "Cop speeder" probes it at rec[3] to find the car it was sent to arrest.
+	constexpr int32 BurglarCar = 13;      // FUN_0049b060(3, tile)
 	constexpr int32 Civilian = 14;        // FUN_004ca350 state == 0
 	// DAT_005040d0+0xc0, the third object hanging off the player record. Taken to be the
 	// searchlight: the only program that asks for it is 1151 "copf - follow heli", and pointing
@@ -407,8 +412,13 @@ public:
 	virtual void MessageOwningVehicle(int32 MessageId) {}
 
 	// Ops 30/60/83, FUN_004cbfd0 / FUN_004cc130: bind "Thro" and launch a projectile, either on
-	// the person's facing or straight at the selection.
-	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection) {}
+	// the person's facing or straight at the selection. FUN_004cbfd0 reads the record's own opcode
+	// to choose the type - `*param_3 == 0x3c` (op 60) asks FUN_0048e0b0 for type 4, the arsonist's
+	// firebomb; ops 30 and 83 ask for type 10, the rioter's rock. bIncendiary is that distinction.
+	virtual void ThrowProjectileAtSelection(
+		FSimCopterPersonContext& Context,
+		bool bAtSelection,
+		bool bIncendiary) {}
 
 	// Op 66, FUN_004cbbc0: the fall-and-die handler - detach, drop to the ground, post
 	// EVT_PersonDied and bind "Dead". True when the person has finished dying.

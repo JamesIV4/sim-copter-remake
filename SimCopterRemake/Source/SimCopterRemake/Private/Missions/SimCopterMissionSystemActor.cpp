@@ -12,6 +12,7 @@
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterHangar.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "UI/SimCopterHangarShop.h"
@@ -54,47 +55,17 @@ FString FormatSignedAmount(int32 Value, const TCHAR* Unit)
 	return FString::Printf(TEXT("%+d %s"), Value, Unit);
 }
 
-const TCHAR* GetMissionDeltaLabel(int32 TextId)
-{
-	switch (TextId)
-	{
-	case 0x3a2: return TEXT("Flame started");
-	case 0x3a3: return TEXT("Flame doused");
-	case 0x3a4: return TEXT("Building burned");
-	case 0x3a5: return TEXT("Building saved");
-	case 0x3a6: return TEXT("Debris doused");
-	case 0x3a7: return TEXT("Sim Rescued!");
-	case 0x3a8: return TEXT("Sim Transported!");
-	case 0x3a9: return TEXT("Sim MedEvaced!");
-	case 0x3aa: return TEXT("Sim Picked Up!");
-	case 0x3ad: return TEXT("Car UnJammed!");
-	case 0x3ac: return TEXT("Rioter dispersed");
-	case 0x3b1: return TEXT("Person died");
-	case 0x3b6: return TEXT("Car doused");
-	case 0x3b7: return TEXT("Car cleared");
-	case 0x3b8: return TEXT("Car burned");
-	default: return TEXT("Mission update");
-	}
-}
-
 FString ResolveCareerTweakPath()
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame/tweak/career.twk"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame/tweak/career.twk")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame/tweak/career.twk")));
-
-	for (FString Candidate : Candidates)
+	const FString Resolved = SimCopterOriginalGame::ResolveFile(TEXT("tweak/career.twk"));
+	if (!Resolved.IsEmpty())
 	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeFilename(Candidate);
-		if (FPaths::FileExists(Candidate))
-		{
-			return Candidate;
-		}
+		return Resolved;
 	}
 
-	return Candidates.Last();
+	// Nothing found: still hand back the path the player is told to create, so the failure that
+	// follows names somewhere they can act on.
+	return FPaths::Combine(SimCopterOriginalGame::GetPlayerRootDir(), TEXT("tweak/career.twk"));
 }
 
 bool IsValidMissionTile(int32 TileX, int32 TileY)
@@ -139,8 +110,9 @@ FName ResolveMissionMarkerIconName(const FString& Label)
 	if (Label == TEXT("FIRE")) return TEXT("local_fire_department");
 	if (Label == TEXT("JAM")) return TEXT("traffic");
 	if (Label == TEXT("RIOT")) return TEXT("campaign");
-	if (Label == TEXT("SPEEDER")) return TEXT("directions_car");
-	if (Label == TEXT("TARGET")) return TEXT("my_location");
+	if (Label == TEXT("BURGLAR")) return TEXT("directions_car");
+	if (Label == TEXT("ROBBER") || Label == TEXT("ARSONIST") || Label == TEXT("MUGGER")) return TEXT("my_location");
+	if (Label == TEXT("ROOFTOP")) return TEXT("hail");
 	return TEXT("location_on");
 }
 
@@ -370,6 +342,11 @@ bool ASimCopterMissionSystemActor::RestoreRuntimeSaveState(const TArray<uint8>& 
 	{
 		return false;
 	}
+	// Saves written before UserCityJobs existed serialized user sessions as CityJobs. The outer
+	// session selection is authoritative and has already opened the user sandbox before this live
+	// world payload is applied, so remember it across the legacy mode byte below.
+	const bool bRestoreAsUserCitySandbox =
+		SessionMode == ESimCopterMissionSessionMode::UserCityJobs;
 
 	FMemoryReader Reader(Data, true);
 	uint32 Magic = 0;
@@ -385,11 +362,15 @@ bool ASimCopterMissionSystemActor::RestoreRuntimeSaveState(const TArray<uint8>& 
 	uint8 SelectionHeld = 0;
 	Reader << Mode << SelectionHeld << SessionElapsedSeconds;
 	Reader << ServiceJetSweep.Elevation1616 << ServiceJetSweep.Step1616;
-	if (Mode > static_cast<uint8>(ESimCopterMissionSessionMode::SingleMission))
+	if (Mode > static_cast<uint8>(ESimCopterMissionSessionMode::UserCityJobs))
 	{
 		return false;
 	}
 	SessionMode = static_cast<ESimCopterMissionSessionMode>(Mode);
+	if (bRestoreAsUserCitySandbox)
+	{
+		SessionMode = ESimCopterMissionSessionMode::UserCityJobs;
+	}
 	bSessionSelectionHeld = SelectionHeld != 0;
 
 	int32 HospitalCount = 0;
@@ -508,9 +489,10 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	SessionElapsedSeconds += DeltaTime;
 
 	MissionSystem.Tick(DeltaTime);
-	ProcessPassengerTransfers();
+	ProcessPassengerTransfers(DeltaTime);
 	ProcessRescueTransfers();
 	ProcessMedevacHospitalHandoffs(DeltaTime);
+	UpdateBurningDebris(DeltaTime);
 	UpdateFireVisuals(DeltaTime);
 	UpdateFireAudio();
 	UpdateEmergencySirenAudio();
@@ -638,6 +620,14 @@ bool ASimCopterMissionSystemActor::GetPlayerTile(int32& OutTileX, int32& OutTile
 	OutTileX = 64;
 	OutTileY = 64;
 	return false;
+}
+
+bool ASimCopterMissionSystemActor::IsPlayerOnFoot() const
+{
+	const UWorld* World = GetWorld();
+	const APlayerController* PlayerController =
+		World != nullptr ? UGameplayStatics::GetPlayerController(World, 0) : nullptr;
+	return PlayerController != nullptr && Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn()) != nullptr;
 }
 
 bool ASimCopterMissionSystemActor::IsModalUiActive() const
@@ -769,6 +759,15 @@ void ASimCopterMissionSystemActor::BeginSession(
 		MissionSystem.SelectCareerCity(ClampedIndex);
 	}
 
+	if (Mode == ESimCopterMissionSessionMode::UserCityJobs)
+	{
+		// FUN_004080c0 seeds mode 1's editable DAT_00518cd0 record separately from the career
+		// table. Starting directly from Career City0 made a new user city's panel - and therefore
+		// its actual scheduler mix - disagree with the original game.
+		MissionSystem.SetCareerCity(FSimCopterMissionSystem::MakeUserCityDefaults(
+			MissionSystem.GetCareerCity()));
+	}
+
 	if (!bAllowScheduledMissions)
 	{
 		// The zero-weight city: FUN_004a6d20 sees a weight sum below 1.0 and writes an all-zero
@@ -830,6 +829,23 @@ void ASimCopterMissionSystemActor::StartCityJobsSession(int32 CareerCityIndex, b
 	{
 		const bool bCreated = MissionSystem.RollScheduledMissionNow();
 		UE_LOG(LogTemp, Display, TEXT("SimCopter session: opening job rolled immediately -> %s"),
+			bCreated ? TEXT("created") : TEXT("nothing placed (the scheduler will try again)"));
+	}
+}
+
+void ASimCopterMissionSystemActor::StartUserCitySession(int32 TuningCityIndex, bool bFirstJobImmediately)
+{
+	// FUN_004080c0 opens original mode 1 with its own editable defaults and the ordinary mission
+	// scheduler. The user-requested sandbox rule deliberately omits the original's rolling score
+	// threshold: jobs and points remain live, but there is no goal, filled meter, or level finish.
+	BeginSession(ESimCopterMissionSessionMode::UserCityJobs, TuningCityIndex, /*bAllowScheduledMissions=*/true);
+	UE_LOG(LogTemp, Display, TEXT("SimCopter session: user city sandbox (tier %d, no points goal)"),
+		MissionSystem.GetDifficultyTier());
+
+	if (bFirstJobImmediately)
+	{
+		const bool bCreated = MissionSystem.RollScheduledMissionNow();
+		UE_LOG(LogTemp, Display, TEXT("SimCopter session: opening user-city job rolled immediately -> %s"),
 			bCreated ? TEXT("created") : TEXT("nothing placed (the scheduler will try again)"));
 	}
 }
@@ -925,23 +941,138 @@ int32 ASimCopterMissionSystemActor::ApplyWaterParticleImpact(
 	return FlamesHit;
 }
 
+namespace
+{
+	// FUN_0048ed00's class-0x10 arm, the only class it treats this way: the moment the slot's speed
+	// drops under 0x40001 it grounds and takes a fresh life of 0x3c0000 seconds of burning, puffing
+	// smoke every 0x3333 of its sub-timer. Everything else is given a life of 0 and simply stops.
+	constexpr float ArsonBurnSeconds = 60.0f;      // 0x3c0000
+	constexpr float ArsonPuffIntervalSeconds = 0.2f; // 0x3333
+	// The pool the firebomb comes out of (DAT_005d6880), shared with the rioters' thrown rocks.
+	constexpr int32 ArsonDebrisSlots = 30;
+	// The size the burning pool is drawn at, in original units - the debris card's own 0x30000.
+	constexpr float ArsonDebrisSizeUnits = 3.0f;
+}
+
+// SCHOOK: ArsonistFirebomb 0x004cbfd0 -> FUN_0048e0b0 type 4 -> FUN_0048ed00 class 0x10
+void ASimCopterMissionSystemActor::ThrowArsonistFirebomb(const FVector& ThrowerWorldLocation)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+	// A fixed pool, and a full one simply refuses the throw (FUN_0048e0b0 returns null after
+	// walking all thirty slots) - the arsonist's animation still plays either way.
+	if (BurningDebris.Num() >= ArsonDebrisSlots)
+	{
+		return;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(ThrowerWorldLocation, TileX, TileY))
+	{
+		return;
+	}
+
+	// Retail's walker and building cells are one occupancy model, so the person can throw while
+	// still standing in a cell that FUN_004a5f60 accepts. The remake correctly keeps a capsule out
+	// of rendered walls, which usually moves that same state-11 person onto a road/sidewalk cell and
+	// made every burnout fail before its difficulty roll. The generic mission-person placer searches
+	// at most footprint + 2 rings (six at the largest footprint), so the intended building is still
+	// within this bounded adaptation.
+	int32 IgnitionTileX = INDEX_NONE;
+	int32 IgnitionTileY = INDEX_NONE;
+	constexpr int32 RenderedBuildingIgnitionSearchRadius = 6;
+	if (!MissionSystem.FindNearestFireSuitableTile(
+		TileX,
+		TileY,
+		RenderedBuildingIgnitionSearchRadius,
+		IgnitionTileX,
+		IgnitionTileY))
+	{
+		// The projectile still exists and burns out when there is no eligible structure; it simply
+		// fails FUN_004a5f60 later, as the retail slot does.
+		IgnitionTileX = TileX;
+		IgnitionTileY = TileY;
+	}
+
+	// The lob is 75 to 95 degrees above horizontal, so the landing point is the thrower's own tile
+	// and the flight is short. The remake skips the ballistic slot and grounds it where it lands,
+	// which is the only part of the trajectory the 60-second burn and the ignition roll depend on.
+	FVector Landing = ThrowerWorldLocation;
+	float SurfaceZ = 0.0f;
+	if (TraceSurfaceTopZ(ThrowerWorldLocation, SurfaceZ))
+	{
+		Landing.Z = SurfaceZ;
+	}
+
+	FSimCopterBurningDebris& Slot = BurningDebris.AddDefaulted_GetRef();
+	Slot.World = Landing;
+	Slot.Tile = FIntPoint(IgnitionTileX, IgnitionTileY);
+	Slot.BurnSecondsRemaining = ArsonBurnSeconds;
+	Slot.PuffSecondsRemaining = 0.0f;
+
+	// FUN_0048e0b0's type-4 arm posts event 7 at spawn with no owning record (the arsonist passes
+	// -1), so the debris is reported to the scoring layer even though nothing owns it yet.
+	MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisCreated, INDEX_NONE, 1, true);
+	UE_LOG(LogTemp, Verbose,
+		TEXT("Arsonist firebomb burning at person tile (%d,%d), ignition tile (%d,%d)."),
+		TileX, TileY, IgnitionTileX, IgnitionTileY);
+}
+
+void ASimCopterMissionSystemActor::UpdateBurningDebris(const float DeltaSeconds)
+{
+	if (BurningDebris.Num() == 0 || DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	for (int32 Index = BurningDebris.Num() - 1; Index >= 0; --Index)
+	{
+		FSimCopterBurningDebris& Slot = BurningDebris[Index];
+
+		Slot.PuffSecondsRemaining -= DeltaSeconds;
+		if (Slot.PuffSecondsRemaining <= 0.0f)
+		{
+			Slot.PuffSecondsRemaining = ArsonPuffIntervalSeconds;
+			if (FireSmokeComponent != nullptr)
+			{
+				FireSmokeComponent->SpawnEffect(
+					ESimCopterEffectType::Smoke,
+					Slot.World,
+					FVector::UpVector * (20.0f * SimCopterEffectFX::OriginalUnitToCm),
+					ArsonDebrisSizeUnits * SimCopterEffectFX::OriginalUnitToCm);
+			}
+		}
+
+		Slot.BurnSecondsRemaining -= DeltaSeconds;
+		if (Slot.BurnSecondsRemaining > 0.0f)
+		{
+			continue;
+		}
+
+		// Burned out. The ignition test is FUN_0048ed00's, in its order: the tile must take a fire
+		// and have none already burning nearby (CanIgniteCrashSite is FUN_004a5f60 + FUN_004a6860's
+		// spiral, the same pair the plane crash uses), and then the roll is one in (8 - difficulty),
+		// so an easy city misses far more often than a hard one.
+		const int32 Divisor = FMath::Max(1, 8 - MissionSystem.GetDifficultyTier());
+		if (MissionSystem.CanIgniteCrashSite(Slot.Tile.X, Slot.Tile.Y) &&
+			(MissionSystem.GetRand().Rand() % Divisor) == 0)
+		{
+			CreateMissionAt(Slot.Tile.X, Slot.Tile.Y, SimCopterMissions::TYPE_BuildingFire);
+		}
+
+		// Event 8 either way - the debris is gone whether or not it took the building with it.
+		MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisExpired, INDEX_NONE, 1, true);
+		BurningDebris.RemoveAtSwap(Index);
+	}
+}
+
 FString ASimCopterMissionSystemActor::ResolveOriginalGameRootDir() const
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-	return FString();
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 bool ASimCopterMissionSystemActor::TraceSurfaceTopZ(const FVector& WorldXY, float& OutTopZ) const
@@ -1297,11 +1428,46 @@ bool ASimCopterMissionSystemActor::TryStartCarFire(int32 EventId, int32& OutTile
 	return false;
 }
 
-bool ASimCopterMissionSystemActor::TrySpawnMissionPerson(int32 Mode, int32 SubState, int32 TileX, int32 TileY, int32 EventId)
+bool ASimCopterMissionSystemActor::TrySpawnMissionPerson(
+	int32 PersonState,
+	int32 BehaviorClass,
+	int32 TileX,
+	int32 TileY,
+	int32 EventId)
 {
 	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
 	{
-		return TrafficSystem->TrySpawnMissionPerson(Mode, SubState, TileX, TileY, EventId);
+		ASimCopterGroundAgent* Person = nullptr;
+		if (!TrafficSystem->TrySpawnMissionPerson(
+			PersonState, BehaviorClass, TileX, TileY, EventId, FString(), &Person))
+		{
+			return false;
+		}
+
+		// FUN_004c4190 returns the placed person and its first opcode-13 outcome soon publishes
+		// the same coordinates. With rendered buildings the collision-aware spawn may be several
+		// cells from the requested building; publish the actual first position immediately so the
+		// ARSONIST/ROBBER/MUGGER marker cannot point at an apparently empty roof or wall until the
+		// BHAV reaches its first loop.
+		if (Person != nullptr && PersonState >= 10 && PersonState <= 13)
+		{
+			int32 ActualTileX = INDEX_NONE;
+			int32 ActualTileY = INDEX_NONE;
+			if (Person->TryGetTileCoordinate(ActualTileX, ActualTileY))
+			{
+				SimCopterMissions::FSimCopterMissionEvent Move;
+				Move.Code = SimCopterMissions::EVT_SetPrimaryCoords;
+				Move.EventId = EventId;
+				Move.X = ActualTileX;
+				Move.Y = ActualTileY;
+				Move.bSilent = true;
+				MissionSystem.PostEvent(Move);
+				UE_LOG(LogTemp, Display,
+					TEXT("Mission criminal spawned: event %d, state %d, class %d, actor %s, tile (%d,%d)."),
+					EventId, PersonState, BehaviorClass, *Person->GetName(), ActualTileX, ActualTileY);
+			}
+		}
+		return true;
 	}
 	return false;
 }
@@ -1425,7 +1591,7 @@ void ASimCopterMissionSystemActor::PlayRadioVoice(int32 VoiceId, int32 /*QueueTa
 {
 	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 	{
-		Audio->Play2D(VoiceId);
+		Audio->QueueRadioVoice(VoiceId);
 	}
 }
 
@@ -1561,12 +1727,16 @@ void ASimCopterMissionSystemActor::UpdateEmergencySirenAudio()
 		bHosing ? FVector::Dist(ServiceJetWorld, Listener) : 0.0);
 }
 
-bool ASimCopterMissionSystemActor::TryActivateSpeederCar(int32 EventId, int32 TileX, int32 TileY)
+bool ASimCopterMissionSystemActor::TryActivateBurglarCar(
+	int32 EventId,
+	int32 TileX,
+	int32 TileY,
+	int32 CruiseDelay1616)
 {
 	// FUN_004b84f0 -> FUN_004b8540: the traffic system owns the pool and the road placement.
 	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
 	{
-		return TrafficSystem->TryActivateSpeederCar(EventId, TileX, TileY);
+		return TrafficSystem->TryActivateBurglarCar(EventId, TileX, TileY, CruiseDelay1616);
 	}
 	return false;
 }
@@ -1620,12 +1790,12 @@ void ASimCopterMissionSystemActor::WriteCareerLogEntry(const SimCopterMissions::
 	case 8:
 		// 541 "%s: %s %ld Points"
 		Kind = ESimCopterCareerLogKind::PointsAward;
-		Line = FString::Printf(TEXT("%s: %s %d Points"), *MissionName, GetMissionDeltaLabel(Message.TextId), Message.ValueA);
+		Line = FString::Printf(TEXT("%s: %s %d Points"), *MissionName, SimCopterMissions::GetMissionUpdateText(Message.TextId), Message.ValueA);
 		break;
 	case 9:
 		// 540 "%s: %s %ld Bucks"
 		Kind = ESimCopterCareerLogKind::CashAward;
-		Line = FString::Printf(TEXT("%s: %s %d Bucks"), *MissionName, GetMissionDeltaLabel(Message.TextId), Message.ValueA);
+		Line = FString::Printf(TEXT("%s: %s %d Bucks"), *MissionName, SimCopterMissions::GetMissionUpdateText(Message.TextId), Message.ValueA);
 		break;
 	default:
 		return;
@@ -1803,6 +1973,71 @@ int32 ASimCopterMissionSystemActor::PostPassengerDelivery(
 	return Delivered;
 }
 
+bool ASimCopterMissionSystemActor::IsPassengerDeliverySurfaceAllowed(
+	const ESimCopterMissionPassengerKind Kind,
+	const bool bIsWater,
+	const float HeightAboveTerrainCm,
+	const float GroundToleranceCm)
+{
+	if (bIsWater)
+	{
+		return false;
+	}
+
+	// BHAV 263 deliberately unloads state-6 patients on the D1 hospital roof. Every other passenger
+	// follows FUN_004c9bc0's strict "less than six units above ground" result. Do not ask the scene
+	// trace for "ground" here: in the remake it quite correctly returns a rendered building roof,
+	// which is precisely the surface that must not complete an ordinary rescue or transport.
+	return Kind == ESimCopterMissionPassengerKind::Medevac ||
+		HeightAboveTerrainCm < FMath::Max(0.0f, GroundToleranceCm);
+}
+
+bool ASimCopterMissionSystemActor::IsRescuePickupAvailable(
+	const bool bHarnessDeployed,
+	const bool bCanBoardThroughAirframe)
+{
+	// BHAV 305 -> opcode 48 attaches to the rope end while the aircraft is airborne. Opcode 58
+	// moves that same rider into a cabin seat only after the harness has been wound back in. Do not
+	// apply the landed-airframe boarding gate to the first half of that decoded sequence.
+	return bHarnessDeployed || bCanBoardThroughAirframe;
+}
+
+bool ASimCopterMissionSystemActor::IsPassengerDeliveryLocationAllowed(
+	const ESimCopterMissionPassengerKind Kind,
+	const FVector& FeetWorldLocation) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	float TerrainWorldZ = 0.0f;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(FeetWorldLocation, TileX, TileY) ||
+		!TrafficSystem->TryGetTerrainWorldZAtWorldLocation(FeetWorldLocation, TerrainWorldZ))
+	{
+		return false;
+	}
+
+	float DropHeightOffsetCm = 0.0f;
+	if (Kind != ESimCopterMissionPassengerKind::Medevac)
+	{
+		if (const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass())))
+		{
+			DropHeightOffsetCm = Helicopter->GetPassengerDropHeightOffsetCm();
+		}
+	}
+
+	return IsPassengerDeliverySurfaceAllowed(
+		Kind,
+		TrafficSystem->IsWaterTile(TileX, TileY),
+		FeetWorldLocation.Z - TerrainWorldZ,
+		TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 6.0f + DropHeightOffsetCm);
+}
+
 bool ASimCopterMissionSystemActor::NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person)
 {
 	if (Person == nullptr ||
@@ -1937,12 +2172,20 @@ void ASimCopterMissionSystemActor::GetTransferReadyHelicopters(TArray<ASimCopter
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), HelicopterActors);
 	for (AActor* Actor : HelicopterActors)
 	{
+		// The looser of the two height bands, because this list serves boarding as well as the
+		// drop-off; the release below adds the alight gate and its settle time on top.
 		ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Actor);
-		if (Helicopter != nullptr && Helicopter->CanTransferMissionPassengers())
+		if (Helicopter != nullptr && Helicopter->CanBoardMissionPassengers())
 		{
 			OutHelicopters.Add(Helicopter);
 		}
 	}
+}
+
+bool ASimCopterMissionSystemActor::IsHelicopterSettledForAlight(const ASimCopterHelicopterPawn& Helicopter)
+{
+	return Helicopter.CanTransferMissionPassengers() &&
+		Helicopter.GetSecondsWithinAlightClearance() >= Helicopter.GetPassengerAlightSettleSeconds();
 }
 
 int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
@@ -1955,6 +2198,10 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 {
 	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
 	if (Helicopter == nullptr || TrafficSystem == nullptr || MaxCount <= 0)
+	{
+		return 0;
+	}
+	if (!IsPassengerDeliveryLocationAllowed(Kind, DropLocation))
 	{
 		return 0;
 	}
@@ -1979,13 +2226,12 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 			break;
 		}
 
-		Person->AlightFromCarrier(); // atomically returns this real person's seat
-		const float Side = (Processed & 1) == 0 ? 1.0f : -1.0f;
-		Person->SetActorLocation(
-			DropLocation + FVector(0.0f, Side * (35.0f + 28.0f * float(Processed)), 0.0f),
-			false);
-		// No ground snap: they were let out of the cabin, so they fall the cabin's height onto
-		// whatever is underneath rather than appearing already stood on it.
+		// Atomically returns this real person's seat and places them at that seat row's door point.
+		// AlightFromCarrier owns the shared VM/recovery transform; adding another mission-side spread
+		// here used to fan later survivors progressively farther away from the aircraft.
+		Person->AlightFromCarrier();
+		// No ground snap: they were let out of the cabin, so they fall whatever is left of the
+		// cabin's height onto what is underneath rather than appearing already stood on it.
 		if (NotifyMissionPersonDelivered(Person))
 		{
 			Delivered++;
@@ -2032,7 +2278,7 @@ int32 ASimCopterMissionSystemActor::ReleaseMissionPassengersFromHelicopter(
 	return Delivered;
 }
 
-void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
+void ASimCopterMissionSystemActor::ProcessPassengerTransfers(const float DeltaSeconds)
 {
 	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
 	if (TrafficSystem == nullptr)
@@ -2149,6 +2395,14 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 					continue;
 				}
 
+				// Getting out is BHAV 292's business, and it only probes about every thirteenth
+				// tick. This loop runs every mission tick, so without the same beat it emptied the
+				// cabin the frame the skids came into range - "they get out before I can land".
+				if (!IsHelicopterSettledForAlight(*Helicopter))
+				{
+					continue;
+				}
+
 				const int32 OnHelicopter = Helicopter->GetMissionPassengerCount(
 					Mission.EventId,
 					ESimCopterMissionPassengerKind::Transport);
@@ -2195,14 +2449,41 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 			// Restore the proven pre-5ff1eaa boarding point. People enter at the helicopter's
 			// midpoint; the side/row cabin-door locations remain correct for exiting passengers.
 			const FVector CabinMidpoint = Helicopter->GetActorLocation();
-			TrafficSystem->GuideMissionPeopleToLocation(
+
+			// Guidance is a BACKSTOP, not the approach. BHAV 750 -> 291 already owns this: a
+			// 40-tick (2.67 s) wait at spawn, then a loop that commits to boarding only inside
+			// ONE TILE, walks at `movespeed := 16` (125 cm/s) in eight octant directions on a
+			// re-rolled rand(40)+30 step budget, and otherwise walks toward the player, waves
+			// ('WvNo'), idles five ticks and accrues boredom (BHAV 290).
+			//
+			// Steering every tick ran straight over all of it - a live guidance target skips the
+			// VM's own movement branch in UpdateMovement entirely - so passengers beelined in at
+			// the generic 230 cm/s from nearly two tiles out and were aboard before the pilot
+			// could set down. Let the shipped program do the walking, and only step in when it
+			// demonstrably has not, the same way the medevac handoff watchdog was demoted.
+			// The clock only runs while there is somebody in range who could be walking in. It is
+			// not "how long has this mission existed" - a passenger three tiles away has not
+			// stalled, they simply have not been collected yet.
+			const bool bPassengerInRange = TrafficSystem->FindMissionPersonNear(
 				Mission.EventId,
 				CabinMidpoint,
-				CabinMidpoint,
-				SeatsAvailable,
 				PassengerPickupRadiusCm,
-				PassengerTransferMaxVerticalDeltaCm,
-				PassengerBoardGuidanceSeconds);
+				PassengerTransferMaxVerticalDeltaCm) != nullptr;
+
+			float& StallSeconds = PassengerBoardStallSeconds.FindOrAdd(Mission.EventId);
+			StallSeconds = bPassengerInRange ? StallSeconds + DeltaSeconds : 0.0f;
+			if (bPassengerInRange && StallSeconds >= PassengerBoardRecoverySeconds)
+			{
+				TrafficSystem->GuideMissionPeopleToLocation(
+					Mission.EventId,
+					CabinMidpoint,
+					CabinMidpoint,
+					SeatsAvailable,
+					PassengerPickupRadiusCm,
+					PassengerTransferMaxVerticalDeltaCm,
+					PassengerBoardGuidanceSeconds,
+					ASimCopterGroundAgent::ShippedPassengerWalkSpeedCmPerSec);
+			}
 
 			// Boarding attaches the passenger to the helicopter and claims their seat as part of
 			// the pickup. BoardCarrier also invokes the idempotent mission action service, so this
@@ -2220,7 +2501,20 @@ void ASimCopterMissionSystemActor::ProcessPassengerTransfers()
 				continue;
 			}
 
+			// Somebody got in, so the approach is working: the next passenger starts from zero
+			// rather than inheriting a countdown the queue ahead of them ran down.
+			StallSeconds = 0.0f;
 			break;
+		}
+	}
+
+	// Drop entries for missions that are over, so the map cannot grow across a long session.
+	for (auto It = PassengerBoardStallSeconds.CreateIterator(); It; ++It)
+	{
+		const SimCopterMissions::FSimCopterMissionRecord* Record = MissionSystem.FindRecord(It.Key());
+		if (Record == nullptr || !Record->bActive)
+		{
+			It.RemoveCurrent();
 		}
 	}
 }
@@ -2292,7 +2586,7 @@ void ASimCopterMissionSystemActor::ProcessRescueTransfers()
 
 				// Direct cabin entry is a landed-helicopter action. Harness boarding remains valid
 				// in flight and claims its cabin seat only when op 58 winds the rider in.
-				if (bUseHarness || Helicopter->CanTransferMissionPassengers())
+				if (IsRescuePickupAvailable(bUseHarness, Helicopter->CanBoardMissionPassengers()))
 				{
 					const int32 Boarded = TrafficSystem->BoardMissionPeopleTouching(
 						Mission.EventId,
@@ -2309,16 +2603,10 @@ void ASimCopterMissionSystemActor::ProcessRescueTransfers()
 				}
 			}
 
-			if (Mission.Deliverable <= 0 || !Helicopter->CanTransferMissionPassengers())
-			{
-				continue;
-			}
-
-			int32 DropTileX = INDEX_NONE;
-			int32 DropTileY = INDEX_NONE;
-			if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(
-					Helicopter->GetActorLocation(), DropTileX, DropTileY) ||
-				TrafficSystem->IsWaterTile(DropTileX, DropTileY))
+			// BHAV 700's loop reaches 303 'Rescue try get off heli or bucket if appropriate' between
+			// idles, so a survivor never leaves the cabin the instant the aircraft comes into range
+			// either. Same beat as the transport drop-off above.
+			if (Mission.Deliverable <= 0 || !IsHelicopterSettledForAlight(*Helicopter))
 			{
 				continue;
 			}
@@ -2543,6 +2831,15 @@ bool ASimCopterMissionSystemActor::AdvanceMedevacHandoff(FSimCopterMedevacHandof
 		Handoff.LastOnboardCount = Onboard;
 		Handoff.SecondsWithoutProgress = 0.0f;
 	}
+	else if (ResolveTrafficSystem() != nullptr &&
+		ResolveTrafficSystem()->FindPersonAboardForEvent(
+			Helicopter, Handoff.EventId, ESimCopterMissionPassengerKind::Medevac) != nullptr)
+	{
+		// A real casualty is in the cabin, so there is a real handoff to wait for and
+		// DeliverMedevacDirectly would refuse anyway. Do not run the clock down toward a recovery
+		// that cannot happen - the medic walking over is not a failure.
+		Handoff.SecondsWithoutProgress = 0.0f;
+	}
 	else
 	{
 		Handoff.SecondsWithoutProgress += DeltaSeconds;
@@ -2595,6 +2892,25 @@ void ASimCopterMissionSystemActor::DeliverMedevacDirectly(int32 EventId, ASimCop
 	if (Onboard <= 0)
 	{
 		return;
+	}
+
+	// ABSTRACT SEATS ONLY. This exists for a seat with no person behind it - a legacy save, a test
+	// fixture, a behaviour asset that failed to load - where nothing can ever animate the handoff
+	// and the mission would otherwise never close.
+	//
+	// It must never touch a real casualty. Teleporting one out of the cabin, crediting the delivery
+	// and destroying the actor is precisely what the player sees as "the paramedic snatched my
+	// injured Sim out of the helicopter from several tiles away": the medic was simply still on its
+	// way, or could not reach an aircraft parked off its roof, and this fired at
+	// MedevacBehaviorRecoverySeconds regardless. A real patient waits for a real handoff, however
+	// long that takes - the pilot can always fly somewhere the medic can reach.
+	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem())
+	{
+		if (TrafficSystem->FindPersonAboardForEvent(
+				Helicopter, EventId, ESimCopterMissionPassengerKind::Medevac) != nullptr)
+		{
+			return;
+		}
 	}
 	ReleaseMissionPassengersFromHelicopter(
 		Helicopter,
@@ -2747,7 +3063,7 @@ bool ASimCopterMissionSystemActor::TryFindNearestMedicalTile(
 	int32& OutEventId) const
 {
 	constexpr int32 MedicalMask =
-		SimCopterMissions::TYPE_Medevac | SimCopterMissions::TYPE_RescuePeople | SimCopterMissions::TYPE_FireRescue;
+		SimCopterMissions::TYPE_Medevac | SimCopterMissions::TYPE_RescuePeople | SimCopterMissions::TYPE_RooftopRescue;
 
 	OutEventId = INDEX_NONE;
 	int32 BestCost = TNumericLimits<int32>::Max();
@@ -2882,14 +3198,14 @@ bool ASimCopterMissionSystemActor::ReportTrafficJamCarCleared(int32 EventId)
 	return true;
 }
 
-void ASimCopterMissionSystemActor::ReportSpeederCarCaught(int32 EventId)
+void ASimCopterMissionSystemActor::ReportBurglarCaught(int32 EventId)
 {
 	// FUN_004b8c90: {0x25, eventId, ., ., 1}. This is the one that closes the mission properly -
-	// CriminalsCaught reaches TargetCount and the shared crime completion test passes.
+	// the burglar-specific lifecycle test sees a caught criminal instead of a continuing cycle.
 	MissionSystem.PostEvent(SimCopterMissions::EVT_CriminalCaught, EventId, 1);
 }
 
-void ASimCopterMissionSystemActor::ReportSpeederCarUnresolved(int32 EventId)
+void ASimCopterMissionSystemActor::ReportBurglarSpawnFailed(int32 EventId)
 {
 	// FUN_004b8b60 only posts this when FUN_0049bd00 returned 0, i.e. nowhere to put the driver.
 	// CAT_ExpireSilently makes the update loop skip the completion test, so the record just runs
@@ -3263,7 +3579,7 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 {
 	OutMarkers.Reset();
 
-	// Speeder tags track the live car, so this needs the traffic system rather than just tiles.
+	// Burglar tags track the live getaway car, so this needs the traffic system rather than tiles.
 	ASimCopterTrafficSystemActor* TrafficSystem = const_cast<ASimCopterMissionSystemActor*>(this)->ResolveTrafficSystem();
 
 	// The hangar's tag is permanent: it is the one marker that is not a job, and it is there so
@@ -3346,7 +3662,11 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			}
 			else
 			{
-				AddTileMarker(Record.TileX, Record.TileY, TEXT("RESCUE"), Record.Name, FLinearColor(0.95f, 0.55f, 0.08f, 1.0f));
+				const TCHAR* RescueLabel =
+					(Record.TypeMask & SimCopterMissions::TYPE_RooftopRescue) == SimCopterMissions::TYPE_RooftopRescue
+						? TEXT("ROOFTOP")
+						: TEXT("RESCUE");
+				AddTileMarker(Record.TileX, Record.TileY, RescueLabel, Record.Name, FLinearColor(0.95f, 0.55f, 0.08f, 1.0f));
 			}
 			continue;
 		}
@@ -3369,28 +3689,27 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			continue;
 		}
 
-		if ((Record.TypeMask & SimCopterMissions::TYPE_CriminalCar) != 0)
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Burglar) != 0)
 		{
-			// The speeder drives away from its spawn tile immediately, so its tag has to follow
-			// the car rather than sit on the tile the mission was created at. The label is the
-			// player's instruction: light it, then send police, then it is done.
+			// FUN_004b8630 republishes the moving car tile. While the burglar is outside, their BHAV
+			// republishes the person's tile instead, so use the record rather than pinning the tag to
+			// the parked car.
 			FVector CarWorld = FVector::ZeroVector;
 			int32 SpotlightMark = 0;
 			bool bStopped = false;
 			if (TrafficSystem != nullptr &&
-				TrafficSystem->TryGetSpeederCarState(Record.EventId, CarWorld, SpotlightMark, bStopped))
+				TrafficSystem->TryGetBurglarCarState(Record.EventId, CarWorld, SpotlightMark, bStopped))
 			{
-				// A stopped car's tag is emitted by the linger pass below instead, so that it
-				// survives the record being retired the instant the mission pays out. Emitting
-				// it here as well would double it up for the frame in between.
-				if (!bStopped)
+				if (bStopped)
 				{
-					// The marker box is a fixed width, so the label stays as short as every other
-					// one here ("FIRE", "JAM", "RIOT"). Progress is carried by colour instead:
-					// red = not lit yet, amber = marked and police can now stop it.
+					AddTileMarker(Record.TileX, Record.TileY, TEXT("BURGLAR"), Record.Name,
+						FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+				}
+				else
+				{
 					FSimCopterMissionWorldMarkerEntry Marker;
 					Marker.WorldLocation = CarWorld;
-					Marker.Label = TEXT("SPEEDER");
+					Marker.Label = TEXT("BURGLAR");
 					Marker.Detail = Record.Name;
 					Marker.Color = SpotlightMark > 0
 						? FLinearColor(1.0f, 0.78f, 0.12f, 1.0f)
@@ -3401,39 +3720,30 @@ void ASimCopterMissionSystemActor::BuildMissionWorldMarkers(TArray<FSimCopterMis
 			else
 			{
 				// The car has not been placed yet, or has already been taken away.
-				AddTileMarker(Record.TileX, Record.TileY, TEXT("SPEEDER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+				AddTileMarker(Record.TileX, Record.TileY, TEXT("BURGLAR"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
 			}
 			continue;
 		}
 
-		if ((Record.TypeMask & (SimCopterMissions::TYPE_CriminalA | SimCopterMissions::TYPE_CriminalC |
-			SimCopterMissions::TYPE_SpeederEvent)) != 0)
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Robber) != 0)
 		{
-			AddTileMarker(Record.TileX, Record.TileY, TEXT("TARGET"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			AddTileMarker(Record.TileX, Record.TileY, TEXT("ROBBER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			continue;
+		}
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Arsonist) != 0)
+		{
+			AddTileMarker(Record.TileX, Record.TileY, TEXT("ARSONIST"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
+			continue;
+		}
+		if ((Record.TypeMask & SimCopterMissions::TYPE_Mugger) != 0)
+		{
+			AddTileMarker(Record.TileX, Record.TileY, TEXT("MUGGER"), Record.Name, FLinearColor(0.86f, 0.18f, 0.18f, 1.0f));
 			continue;
 		}
 
 		AddTileMarker(Record.TileX, Record.TileY, TEXT("MISSION"), Record.Name, FLinearColor(0.15f, 0.55f, 1.0f, 1.0f));
 	}
 
-	// A speeder pays out the moment it stops, which retires its record in the same frame and
-	// would take the tag with it. Hold the green one up for a few seconds afterwards so the stop
-	// reads as a result rather than the marker just vanishing. Driven off the car, not a record,
-	// precisely because the record is already gone by then.
-	if (TrafficSystem != nullptr)
-	{
-		TArray<FVector> StoppedSpeeders;
-		TrafficSystem->GetRecentlyStoppedSpeederLocations(StoppedSpeeders);
-		for (const FVector& CarWorld : StoppedSpeeders)
-		{
-			FSimCopterMissionWorldMarkerEntry Marker;
-			Marker.WorldLocation = CarWorld;
-			Marker.Label = TEXT("SPEEDER");
-			Marker.Detail = TEXT("Stopped");
-			Marker.Color = FLinearColor(0.05f, 0.72f, 0.32f, 1.0f);
-			OutMarkers.Add(Marker);
-		}
-	}
 }
 
 bool ASimCopterMissionSystemActor::TryMakeMissionMarkerWorldLocation(int32 TileX, int32 TileY, FVector& OutWorldLocation) const
@@ -3672,14 +3982,14 @@ FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMiss
 		OutColor = Message.ValueA < 0 ? FLinearColor(1.0f, 0.38f, 0.32f, 1.0f) : FLinearColor(0.55f, 1.0f, 0.55f, 1.0f);
 		return FString::Printf(
 			TEXT("%s: %s (%s)"),
-			GetMissionDeltaLabel(Message.TextId),
+			SimCopterMissions::GetMissionUpdateText(Message.TextId),
 			*FormatSignedAmount(Message.ValueA, TEXT("points")),
 			*MissionName);
 	case 9:
 		OutColor = Message.ValueA < 0 ? FLinearColor(1.0f, 0.38f, 0.32f, 1.0f) : FLinearColor(1.0f, 0.86f, 0.34f, 1.0f);
 		return FString::Printf(
 			TEXT("%s: %s (%s)"),
-			GetMissionDeltaLabel(Message.TextId),
+			SimCopterMissions::GetMissionUpdateText(Message.TextId),
 			*FormatSignedAmount(Message.ValueA, TEXT("cash")),
 			*MissionName);
 	default:
@@ -3688,9 +3998,25 @@ FString ASimCopterMissionSystemActor::FormatMissionUiMessage(const SimCopterMiss
 	}
 }
 
-// SCHOOK: FireworksInit 0x004916e0 / TubaLeader 443 / TubaInit 444
-// Spawns 8 marching band agents around the airport terminal / helipad perimeter in uniform colors.
-// Sound 0x26 plays march.wav (BHAV 444 rec[23]).
+// SCHOOK: TubaLeader 443 / TubaInit 444 (person states 17 and 18, DAT_0058de80)
+//
+// The band is not a scripted prop - it is eight ordinary people running the shipped programs, and
+// every part of what it does is in BHAV 444:
+//
+//   rec[2]  bind 'Play'                     the instrument animation (NOT a wave)
+//   rec[24] movespeed := 8                  62.5 cm/s at 15 Hz - a march, not a jog
+//   rec[3]  select class 9 within 4 tiles   the player, wherever they are (incl. the cockpit)
+//   rec[4]  op 38 walk to them, autoturn    through MoveStep, so tile classes and the climb gate
+//                                           apply and they cannot cross a building
+//   rec[25]/[27] attr29 == 444 ?            member -> random turns + 'Move rand speed rand time'
+//                                           and a tick-gated 1-in-3 sound 37 (one trombone /
+//                                           trumpet / tuba note out of nine)
+//                                           leader -> sound 38, march.wav, and keep following
+//
+// The old implementation was none of this: it drove the agents with SetMoveTarget on the generic
+// seek mover (which does not sweep or check tiles - hence walking through walls), bound the wave
+// clip instead of 'Play', configured them with an EMPTY original-game root so no behaviour model
+// or figure could load, and played march.wav itself from one looping voice slot at the airport.
 void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
 {
 	if (bMarchingBandSpawned || GetWorld() == nullptr)
@@ -3710,48 +4036,43 @@ void ASimCopterMissionSystemActor::SpawnMarchingBandAtAirport()
 		return;
 	}
 
-	// Play Voice Event 38 = march.wav (BHAV 444 tuba leader music)
-	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
-	{
-		StopMarchingBandAudio();
-		MarchingBandVoiceSlot = Audio->AcquireVoiceSlot();
-		if (MarchingBandVoiceSlot != INDEX_NONE)
-		{
-			FVector AirportLocation = FVector::ZeroVector;
-			TrafficSystem->TryGetTileCenterWorldLocation(AirportOrigin.X, AirportOrigin.Y, AirportLocation);
-			Audio->PlayVoiceEvent(MarchingBandVoiceSlot, 38, AirportLocation, 0, false, SimCopterSoundFlags::Loop);
-		}
-	}
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
+	// One leader on state 17 (BHAV 443) and the rest on state 18 (BHAV 444). Behaviour class 18 is
+	// TubaExpert, the band figure, and TrySpawnMissionPerson resolves the original-game root and
+	// finds a spawn point that is not inside a building - both of which the old path skipped.
 	constexpr int32 BandCount = 8;
-	for (int32 i = 0; i < BandCount; ++i)
+	constexpr int32 TubaLeaderPersonState = 17;
+	constexpr int32 TubaMemberPersonState = 18;
+	constexpr int32 TubaBehaviorClass = 18;
+
+	// On the pads, where the player lands. The airport is tile class 1 - both stamped ids fall
+	// through GetTileClassForBuildingId to its catch-all `return 1`, 0xde being past 0xD2..0xDC and
+	// 0xf6 past 0xE8..0xF5 - and class 1 is in no behaviour row, so a walker there would refuse
+	// every direction and spin. SetIgnoresTileClassRules waives that one rule for the band; the
+	// climb gate still keeps them out of the terminal.
+	for (int32 Index = 0; Index < BandCount; ++Index)
 	{
-		const int32 TileX = AirportOrigin.X + (i % 4);
-		const int32 TileY = AirportOrigin.Y + (i / 4);
+		ASimCopterGroundAgent* Agent = nullptr;
+		const bool bSpawned = TrafficSystem->TrySpawnMissionPerson(
+			Index == 0 ? TubaLeaderPersonState : TubaMemberPersonState,
+			TubaBehaviorClass,
+			AirportOrigin.X + (Index % 4),
+			AirportOrigin.Y + (Index / 4),
+			INDEX_NONE,
+			TEXT("TubaExpert"),
+			&Agent);
 
-		FVector SpawnLocation = FVector::ZeroVector;
-		if (TrafficSystem->TryGetTileCenterWorldLocation(TileX, TileY, SpawnLocation))
+		if (bSpawned && Agent != nullptr)
 		{
-			SpawnLocation.Z += 30.0f;
-			ASimCopterGroundAgent* Agent = GetWorld()->SpawnActor<ASimCopterGroundAgent>(
-				ASimCopterGroundAgent::StaticClass(),
-				SpawnLocation,
-				FRotator(0.0f, i * 45.0f, 0.0f),
-				SpawnParams);
-
-			if (Agent != nullptr)
-			{
-				Agent->ConfigureAgent(ESimCopterGroundAgentKind::Pedestrian, TEXT(""), FString(), 220.0f);
-				Agent->ConfigureMarchingBandUniform(i);
-				MarchingBandAgents.Add(Agent);
-			}
+			Agent->SetIgnoresTileClassRules(true);
+			// Uniform colours are a remake flourish and stay - the original band is all one figure.
+			// The offset indexes a 14-entry clothes table, so it has to stay inside it: the old
+			// (i % 5) * 8 + 4 ran to 36 and was clamped, giving five members the same outfit.
+			Agent->SetPedestrianFigureClothesOffset((Index % 5) * 3 + 1);
+			MarchingBandAgents.Add(Agent);
 		}
 	}
 
-	bMarchingBandSpawned = true;
+	bMarchingBandSpawned = MarchingBandAgents.Num() > 0;
 }
 
 // SCHOOK: FireworksInit 0x004916e0 / FUN_0048e0b0 / FUN_0048ed00
@@ -3788,6 +4109,12 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 					-200.0f);
 
 				// Apex Falling Embers / Sparkles (FUN_0048e0b0 param 8: 6.0s lifespan, -250 cm/s^2 gravity drift)
+				//
+				// DIVERGENCE, by request: the embers are not all one colour. Each burst carries a
+				// second palette colour and every ember mixes the two by its own amount, with a
+				// little brightness jitter on top - so a shell reads as a shower of sparks rather
+				// than a solid-coloured ring. The original's fireworks are much plainer; this is a
+				// deliberate flourish, not a port.
 				for (int32 Spark = 0; Spark < 24; ++Spark)
 				{
 					const FVector SparkVel(
@@ -3795,12 +4122,21 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 						FMath::RandRange(-500.0f, 500.0f),
 						FMath::RandRange(-100.0f, 400.0f));
 
+					FLinearColor SparkColor = FMath::Lerp(
+						Rocket.BurstColor,
+						Rocket.AccentColor,
+						FMath::FRand());
+					const float Brightness = FMath::FRandRange(0.75f, 1.35f);
+					SparkColor.R *= Brightness;
+					SparkColor.G *= Brightness;
+					SparkColor.B *= Brightness;
+
 					FireSmokeComponent->SpawnParticle(
 						Rocket.ApexLocation,
 						SparkVel,
-						18.0f,
-						Rocket.BurstColor,
-						6.0f,
+						FMath::FRandRange(13.0f, 23.0f),
+						SparkColor,
+						FMath::FRandRange(4.5f, 6.5f),
 						-250.0f); // SCHOOK: DAT_005d62e0 gravity drift
 				}
 			}
@@ -3852,7 +4188,13 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 			FLinearColor(1.0f, 0.4f, 0.9f, 1.0f),  // Magenta
 			FLinearColor(1.0f, 1.0f, 1.0f, 1.0f)   // Silver White
 		};
-		const FLinearColor BurstColor = PaletteColors[FMath::RandRange(0, 5)];
+		// Two colours per shell: the dominant one and an accent the embers mix toward. Picking the
+		// accent from the remaining five guarantees they differ, so no burst comes out flat.
+		constexpr int32 PaletteCount = UE_ARRAY_COUNT(PaletteColors);
+		const int32 BurstIndex = FMath::RandRange(0, PaletteCount - 1);
+		const int32 AccentIndex = (BurstIndex + FMath::RandRange(1, PaletteCount - 1)) % PaletteCount;
+		const FLinearColor BurstColor = PaletteColors[BurstIndex];
+		const FLinearColor AccentColor = PaletteColors[AccentIndex];
 
 		// Rocket launch apex location & Ghidra (_rand() & 0x1f) angular dispersion spread
 		const float AscentHeightCm = FMath::RandRange(2500.0f, 4500.0f);
@@ -3861,10 +4203,10 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 		const FVector RocketVelocity(SpreadX, SpreadY, AscentHeightCm / 1.8f);
 		const FVector ApexLocation = GroundLocation + FVector(SpreadX * 1.8f, SpreadY * 1.8f, AscentHeightCm);
 
-		// Play launch whistling sound AT LAUNCH (Sound 0x17: TGSHWH.WAV)
+		// Play launch whistling sound AT LAUNCH (Sound 0x17: TGSHWH.WAV).
 		if (Audio != nullptr)
 		{
-			Audio->Play3D(0x17, GroundLocation); // SCHOOK: TGSHWH 0x17 tear gas launch whistle
+			Audio->Play3D(SimCopterSound::FireworkMortarSound, GroundLocation);
 		}
 
 		if (FireSmokeComponent != nullptr)
@@ -3890,92 +4232,24 @@ void ASimCopterMissionSystemActor::UpdateFireworksFX(float DeltaSeconds)
 		FSimCopterActiveFireworkRocket NewRocket;
 		NewRocket.ApexLocation = ApexLocation;
 		NewRocket.BurstColor = BurstColor;
+		NewRocket.AccentColor = AccentColor;
 		NewRocket.TimeRemaining = 1.8f;
 		ActiveFireworkRockets.Add(NewRocket);
 	}
 }
 
-// SCHOOK: TubaInit 444 / BHAV 1014 / FUN_004c68f0
-// Commands the airport marching band agents to march toward and center on the player, waving when arrived.
+// The band's approach, the following, the facing, the animation and the music are all BHAV 444's
+// job (see SpawnMarchingBandAtAirport). Nothing steers them from here: rec[3] selects the player at
+// four tiles and rec[4] walks to them through MoveStep, which is what applies the tile-class and
+// climb rules the old scripted mover bypassed. This only drops references to band members the
+// world has reclaimed.
 void ASimCopterMissionSystemActor::UpdateMarchingBandApproach(const FVector& PlayerLocation, float DeltaSeconds)
 {
 	bMarchingBandApproaching = true;
-
-	// Continuously update 3D music loop location to center on the player every frame
-	if (MarchingBandVoiceSlot != INDEX_NONE)
+	MarchingBandAgents.RemoveAll([](const TWeakObjectPtr<ASimCopterGroundAgent>& Agent)
 	{
-		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
-		{
-			Audio->SetPosition(MarchingBandVoiceSlot, PlayerLocation);
-		}
-	}
-
-	// 2-second interval timer for re-evaluating whether player moved to a new location
-	MarchingBandTargetUpdateTimer += DeltaSeconds;
-	const bool bTimerFired = MarchingBandTargetUpdateTimer >= 2.0f;
-	if (bTimerFired)
-	{
-		MarchingBandTargetUpdateTimer = 0.0f;
-	}
-
-	const bool bPlayerMoved = bTimerFired && FVector::Dist2D(LastMarchingBandPlayerLocation, PlayerLocation) > 180.0f;
-	if (bPlayerMoved || LastMarchingBandPlayerLocation.IsZero())
-	{
-		LastMarchingBandPlayerLocation = PlayerLocation;
-	}
-
-	int32 Index = 0;
-	const int32 BandCount = MarchingBandAgents.Num();
-	for (TWeakObjectPtr<ASimCopterGroundAgent>& WeakAgent : MarchingBandAgents)
-	{
-		ASimCopterGroundAgent* Agent = WeakAgent.Get();
-		if (Agent != nullptr)
-		{
-			const float Angle = Index * (2.0f * UE_PI / FMath::Max(BandCount, 1));
-			const FVector TargetPos = PlayerLocation + FVector(FMath::Cos(Angle) * 350.0f, FMath::Sin(Angle) * 350.0f, 0.0f);
-			const float DistToTarget = FVector::Dist2D(Agent->GetActorLocation(), TargetPos);
-
-			if (Agent->HasMoveTarget())
-			{
-				if (DistToTarget <= 160.0f)
-				{
-					// Arrived at destination around player: stop moving and face player to wave
-					Agent->ClearMoveTarget();
-					Agent->SetMissionAwaitingRescue(true);
-					FRotator FaceRot = (PlayerLocation - Agent->GetActorLocation()).Rotation();
-					FaceRot.Pitch = 0.0f;
-					FaceRot.Roll = 0.0f;
-					Agent->SetActorRotation(FaceRot);
-				}
-				else if (bPlayerMoved)
-				{
-					// Player moved significantly (evaluated on 2s interval): update move target
-					Agent->SetMoveTarget(TargetPos);
-				}
-			}
-			else
-			{
-				if ((bPlayerMoved || !bMarchingBandApproaching) && DistToTarget > 200.0f)
-				{
-					// Player moved away: resume marching toward new slot position
-					Agent->SetMissionScriptedMover();
-					Agent->SetMoveTarget(TargetPos);
-					Agent->SetMissionAwaitingRescue(true);
-				}
-				else
-				{
-					// Keep facing the player while waving at destination
-					Agent->SetMissionAwaitingRescue(true);
-					FRotator FaceRot = (PlayerLocation - Agent->GetActorLocation()).Rotation();
-					FaceRot.Pitch = 0.0f;
-					FaceRot.Roll = 0.0f;
-					Agent->SetActorRotation(FaceRot);
-				}
-			}
-
-			Index++;
-		}
-	}
+		return !Agent.IsValid();
+	});
 }
 
 void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)

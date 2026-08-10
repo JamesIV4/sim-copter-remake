@@ -7,8 +7,10 @@
 #include "Ground/SimCopterPopulationFigure.h"
 #include "SimCopterOnFootPawn.generated.h"
 
+class ASimCity2000CityActor;
 class ASimCopterHelicopterPawn;
 class ASimCopterGroundAgent;
+class UAudioComponent;
 class UCameraComponent;
 class UCapsuleComponent;
 class UMaterialInterface;
@@ -80,11 +82,19 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Assets")
 	FDirectoryPath OriginalGameRoot;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "100.0"))
-	float HelicopterInteractionRadiusCm = 620.0f;
+	// Both reaches are gaps between the avatar's own body and the *airframe mesh*
+	// (ASimCopterHelicopterPawn::GetDistanceToAirframeCm), not radii about the helicopter's
+	// origin. The old radii were 620 cm and 145 cm measured from that origin: in a world where a
+	// city tile is 400 cm and the avatar is 46 cm tall, the interaction reach covered a tile and a
+	// half in every direction, and the auto-enter bubble swallowed the whole fuselage plus about a
+	// metre of clear air - so the player was boarding from beside the aircraft, never at it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
+	float HelicopterInteractionReachCm = 60.0f;
 
-	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "40.0"))
-	float HelicopterAutoEnterRadiusCm = 145.0f;
+	// Walking into the aircraft boards it. This is skin contact plus a hair of slack for the
+	// discrete movement step, not a proximity bubble.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
+	float HelicopterAutoEnterReachCm = 4.0f;
 
 	// Forward walk speed. The avatar is only ~46cm tall in this 0.25x-scale world, so this is
 	// already several body heights a second; the original's pedestrian shuffle was far slower
@@ -103,6 +113,11 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
 	float GroundProbeDistanceCm = 25000.0f;
+
+	/** How far above the desired spot the ground probe starts. Just enough to clear the surface we
+	    are meant to land on - never enough to catch the roof of an adjacent building. */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float GroundProbeLiftCm = 40.0f;
 
 	// Tallest vertical lip the avatar walks up automatically (curbs, road/sidewalk edges). Handled
 	// by the character movement component's step-up; taller obstacles still block.
@@ -140,8 +155,12 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	TObjectPtr<ASimCopterHelicopterPawn> ParkedHelicopter;
 
+	/**
+	 * `M_SimCopterLitSpriteTexture` - the pilot's head is an ordinary LIT surface, not a card that
+	 * emits. See `ASimCopterGroundAgent::FigureHeadMaterial`; this is the same head, same reason.
+	 */
 	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInterface> SpriteMaterial;
+	TObjectPtr<UMaterialInterface> FigureHeadMaterial;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> SpriteMaterialInstance;
@@ -176,6 +195,8 @@ private:
 	float LookPitchInput = 0.0f;
 	float MouseLookYawInput = 0.0f;
 	float MouseLookPitchInput = 0.0f;
+	float ControllerLookYawInput = 0.0f;
+	float ControllerLookPitchInput = 0.0f;
 	float CameraPitchDeg = -12.0f;
 	int32 BodySpriteRow = INDEX_NONE;
 	float BodySpriteTimeSeconds = 0.0f;
@@ -197,9 +218,29 @@ private:
 		bool bHasHeadSection = false;
 	} FigureAnim;
 	bool bUsingOriginalFigure = false;
+	// The original player-person is class 19 (pilot), so its own looping walking voice is boots.
+	TWeakObjectPtr<UAudioComponent> WalkingSoundComponent;
+	void UpdateWalkingSound();
+	void StopWalkingSound();
 
 	bool LoadOriginalBodyFigure();
 	bool RebuildPlayerFigureClip(const FString& Mnemonic);
+
+	// --- standing in water ---
+	// The player gets exactly what the pedestrians get (ASimCopterGroundAgent::UpdateWaterSubmersion):
+	// step onto a water tile and the body sinks to the waist over WaterSubmergeLerpSeconds, then rides
+	// M_SimCopterWater's swell. Visual only - the character capsule keeps standing on the sea's rest
+	// plane, so movement, boarding reach and the ground snap are untouched.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|OnFoot", meta = (ClampMin = "0.0"))
+	float WaterSubmergeLerpSeconds = 0.25f;
+
+	float WaterSubmergeAlpha = 0.0f;
+	float WaterVisualOffsetCm = 0.0f;
+	TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
+
+	void UpdateWaterSubmersion(float DeltaSeconds);
+	bool IsStandingInWater(const ASimCity2000CityActor& City) const;
+	ASimCity2000CityActor* ResolveCityActor();
 
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -207,13 +248,14 @@ private:
 	void LookPitch(float Value);
 	void MouseLookYaw(float Value);
 	void MouseLookPitch(float Value);
+	void ControllerLookYaw(float Value);
 	void ControllerLookPitch(float Value);
 	void Interact();
 	void DropCarriedMissionPerson();
 	void ToggleGamePause();
 	bool TryBoardCarriedMissionPerson(ASimCopterHelicopterPawn* Helicopter);
 	void TryAutoEnterHelicopter();
-	void TryEnterHelicopter(float SearchRadiusCm);
+	void TryEnterHelicopter(float ReachCm);
 	void EnsureControllerOverlayWidget();
 	void RemoveControllerOverlayWidget();
 
@@ -245,5 +287,9 @@ private:
 	void SnapToGround();
 	void FindOrSpawnParkedHelicopter();
 	ASimCopterHelicopterPawn* FindNearestHelicopter(float SearchRadiusCm) const;
+	// The nearest helicopter whose *airframe* is within ReachCm of the avatar's body, ranked by
+	// that gap rather than by distance to its origin - a long fuselage two metres away can
+	// otherwise be "nearer" than the one you are standing against.
+	ASimCopterHelicopterPawn* FindHelicopterWithinReach(float ReachCm) const;
 	bool ResolveGroundedLocation(const FVector& DesiredLocation, float ActorHalfHeight, FVector& OutLocation) const;
 };

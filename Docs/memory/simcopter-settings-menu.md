@@ -1,9 +1,9 @@
-# SimCopter Settings screen — the in-game options menu and its four sub-dialogs
+# SimCopter Settings screen — the in-game Options menu and its four sub-dialogs
 
 *"The Settings menu is one stack descriptor with TWO variants, and the only difference between
 them is whether the first row is used — which is why an item's command id is the same either way."*
 
-*Recorded 2026-07-31.*
+*Recorded 2026-07-31; Options grouping and profile camera/input settings added 2026-08-09.*
 
 Ported as `SSimCopterSettingsMenu`, `SSimCopterCitySettings`, `SSimCopterSoundSettings`,
 `SSimCopterGraphicsSettings`, `SSimCopterControlSettings` (all `Private/UI`) on the shared
@@ -44,7 +44,7 @@ citations: `Docs/scratchpad/settings-DECODED.md`. Front-end sibling: [[simcopter
 Ghidra never made a function at 0x44c9e0, so it comes from capstone (`asm-0044c9e0.txt`), reached
 from `FUN_0044bf70` on control id 0x7d3. Items, which are also STRINGTABLE 60..67:
 
-0 City Settings -> `cityset.bmp` 0x7d8 · 1 Graphics -> `render.bmp` 0x7d5 · 2 Sound ->
+0 City Settings -> `cityset.bmp` 0x7d8 · 1 Options (the original Graphics command) -> `render.bmp` 0x7d5 · 2 Sound ->
 `sound.bmp` 0x7d6 · 3 Controls -> `input.bmp` 0x7d4 · 4/5 Save / Save As · 6 Leave City, a modal
 Yes/No on string **11** then a second on string **49** · 7 Continue. **Esc is byte-for-byte
 Continue** — the 0x3ea branch resumes and closes, exactly what item 7 does.
@@ -67,6 +67,16 @@ Label-to-slider pairing is construction order, which is also `FSimCopterCareerCi
 Difficulty, then Fire, Crime, Rescue, Riot, Traffic, MedEvac, Transport — and the geometry agrees
 (an even slider's label shares its LEFT edge, an odd one's its RIGHT).
 
+`FUN_004080c0` seeds a new user game into the separate `DAT_00518cd0` block instead of leaving it
+on career City0's training mix. The original panel's defaults are **Difficulty 2**, then weights
+**30, 90, 46, 40, 60, 64, 54** for Fire, Crime, Rescue, Riot, Traffic, MedEvac and Transport;
+Day/Night is 0. `FSimCopterMissionSystem::MakeUserCityDefaults` applies that block before a
+`UserCityJobs` session begins, so both the visible thumbs and the live scheduler start together.
+The remake deliberately overrides the Crime slot from **90 to 0** for a new user city; crime can
+still be enabled immediately from this panel. All other defaults remain decoded values.
+The panel deliberately renders no numeric readouts: `FUN_00440370` builds only the eight original
+name labels, leaving each thumb position as the value display.
+
 **Sound** — Game Volume (cmd 6, horizontal) and the radio's volume (cmd 11) both **320..10000**;
 the tuner (cmd 10) **0..2**. The original maps volume onto the slider logarithmically
 (`FUN_00440020` / `FUN_00440130`, five doubles at 0x4f2180..0x4f21a0); the remake's mixer already
@@ -74,7 +84,13 @@ indexes volume linearly in [0,10000], so the port is linear over the original's 
 
 ## Remake divergences (all deliberate)
 
-- **The Graphics page carries Unreal's settings, not the original's.** `render.bmp`'s options
+- **New user cities default Crime to 0 rather than the original 90.** The City Settings slider
+  remains available and still covers 0..100, so this changes only session initialization.
+- **The menu calls the expanded remake page Options.** Its rows are grouped into Gameplay, Input
+  and Graphics. Gameplay owns the session's Time of Day controls, HUD scale, and independent
+  On-foot / Helicopter / Cockpit FOV rows. Input owns independent Mouse X/Y and Controller X/Y
+  sensitivity multipliers. Graphics owns the renderer, display and quality rows described below.
+- **The Options page carries Unreal's settings, not the original's.** `render.bmp`'s options
   (building textures, ground textures, sky, fog closeness, three display-resolution modes) are all
   1996 concessions to hardware; this project renders the whole city from a handful of runtime
   static meshes and 8-bit palette rasters, so porting the switches would give the player five
@@ -82,6 +98,14 @@ indexes volume linearly in [0,10000], so the port is linear over the original's 
   positions and its place in the menu, and lists DLSS super resolution + quality mode, DLSS Frame
   Generation + how many frames it generates, HUD Scale, and every display and scalability setting
   `UGameUserSettings` owns. The original's layout is decoded anyway, in the scratchpad note.
+  The Graphics group's first row is **Low Power Graphics**, which greys out the Lumen and Volumetric
+  Fog rows while it owns them — see [[simcopter-low-power-mode]].
+- **Persistence follows ownership.** Time of Day mode, Static Time, Daytime Length and Nighttime
+  Length are per-save session state and reset for a new game. The three FOV values and four X/Y
+  sensitivities are profile-wide `GameUserSettings` config and survive independently of saves.
+  Mouse multipliers layer over Unreal's existing mouse axis calibration; controller multipliers
+  are applied only to camera look, leaving the raw right stick unchanged for radial menus, tool
+  selection and flight routing.
 - **The Controls page lists bindings instead of drawing a keyboard.** `keyboard.bmp` (506x188) is
   hit-tested key by key and tinted with `keylight.bmp`; **that per-key rect table is not in the
   Ghidra exports** — it sits in an unanalysed gap the way the cockpit flap click-boxes do
@@ -100,9 +124,11 @@ indexes volume linearly in [0,10000], so the port is linear over the original's 
 
 ## Verified
 
-Built clean, all 134 automation tests pass (six new under `SimCopter.Settings.*` cover the
+Built clean; the focused `SimCopter.Settings.*`, `SimCopter.SaveGame.*` and
+`SimCopter.Controller.*` automation suites pass. The settings coverage includes the
 two-variant item map, both page layouts, the eight slider ranges and their round trip, the volume
-mapping, the new horizontal slider axis and the DefaultInput.ini parse). Every rectangle was drawn
+mapping, the horizontal slider axis, the DefaultInput.ini parse, the Options label, and profile vs
+per-save persistence boundaries. Every rectangle was drawn
 back over the original page art before any of it was written
 (`Docs/scratchpad/overlay_settings_rects.py`), then the pages were run and screenshotted
 (`Docs/scratchpad/shoot_settings_screens.ps1`, shots in `Docs/scratchpad/settings-art/`).

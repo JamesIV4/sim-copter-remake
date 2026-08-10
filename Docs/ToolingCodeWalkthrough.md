@@ -56,7 +56,8 @@ Shared helpers:
 - `save` saves an asset path.
 - `create_or_load_material` reuses an existing material or creates one.
 - `material_exists` checks asset existence.
-- `create_if_missing` avoids clobbering hand-tuned material assets.
+- `create_if_missing` avoids clobbering hand-tuned material assets; the rotor-disc pass separately
+  enforces its saved instanced-static-mesh usage flag because PP200 uses that existing material.
 - `clear_expressions` deletes existing graph expressions when a material is being generated.
 
 Shared shading:

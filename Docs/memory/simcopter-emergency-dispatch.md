@@ -28,6 +28,11 @@ plausible-but-wrong behaviour.
   turns F2-F5 into the clear-dispatch path.
 - Service types 3 and 4 are both police and share one pool/manager; the argument that looks
   like a count (4 or 3) is the **initial vehicle state** at `veh+0x299`. State 3 = chase.
+- State 3 only changes the destination lookup while the car is responding: `FUN_004b9e40`
+  case 2 re-reads the spotlight, but on arrival it still calls
+  `FUN_004bd980(0xe, 8/0xe, ...)` and deploys an officer. Do not leave a chase car parked in
+  state 3 without running the shared on-scene action; state 8 starts the officer's BHAV 1150
+  foot pursuit when the criminal is outside the getaway car.
 - The remake-only cockpit dispatch strip exposes chase as a fourth selector entry,
   `POLICE (CHASE)`, but it must resolve back to the real `Police` service with state 3. Do not
   extend `EService`: the adjacent `CLEAR` button uses the same Shift+F clear path, so both police

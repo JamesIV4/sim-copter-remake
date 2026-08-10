@@ -2,10 +2,18 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "Engine/GameInstance.h"
+#include "Game/SimCopterLowPowerMode.h"
+#include "Game/SimCopterSettings.h"
+#include "HAL/FileManager.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/Paths.h"
+#include "SceneUtils.h"
 #include "UI/SSimCopterCheckupSlider.h"
 #include "UI/SSimCopterCitySettings.h"
 #include "UI/SSimCopterControlSettings.h"
+#include "UI/SSimCopterGraphicsSettings.h"
 #include "UI/SSimCopterSettingsMenu.h"
 #include "UI/SSimCopterSoundSettings.h"
 
@@ -28,8 +36,10 @@ bool FSimCopterSettingsMenuItemsTest::RunTest(const FString& Parameters)
 	// first must map to the SAME command in both.
 	TestEqual(TEXT("User game row 0 is City Settings"),
 		SSimCopterSettingsMenu::GetItemForRow(0, /*bHasCitySettings=*/true), ESimCopterSettingsItem::CitySettings);
-	TestEqual(TEXT("Career row 0 is Graphics"),
+	TestEqual(TEXT("Career row 0 opens the Options command"),
 		SSimCopterSettingsMenu::GetItemForRow(0, /*bHasCitySettings=*/false), ESimCopterSettingsItem::Graphics);
+	TestEqual(TEXT("The old Graphics menu text is now Options"),
+		SSimCopterSettingsMenu::GetItemLabel(ESimCopterSettingsItem::Graphics).ToString(), FString(TEXT("Options")));
 
 	for (int32 Row = 0; Row < FullItemCount - 1; ++Row)
 	{
@@ -224,6 +234,16 @@ bool FSimCopterSoundSettingsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Radio volume is vertical"), RadioVolumeRect.Height() > RadioVolumeRect.Width());
 	TestTrue(TEXT("Tuner is vertical"), TunerRect.Height() > TunerRect.Width());
 
+	// Changing a radio channel returns the dashboard rocker to full volume. Re-selecting the
+	// current channel is not a change and leaves the player's volume alone.
+	USimCopterSettings* Settings = NewObject<USimCopterSettings>(NewObject<UGameInstance>());
+	Settings->SetRadioVolume(VolumeMin);
+	Settings->SetRadioStation(2);
+	TestEqual(TEXT("Changing channel resets radio volume"), Settings->GetRadioVolume(), VolumeMax);
+	Settings->SetRadioVolume(VolumeMin);
+	Settings->SetRadioStation(2);
+	TestEqual(TEXT("Re-selecting the channel preserves volume"), Settings->GetRadioVolume(), VolumeMin);
+
 	// Its label sits under it, and the three toggles sit above theirs.
 	TestTrue(TEXT("Game Volume label is below the fader"), GameVolumeLabelRect.Top >= GameVolumeRect.Bottom);
 	TestTrue(TEXT("Commercials toggle is above its label"), CommercialsToggleRect.Bottom <= CommercialsLabelRect.Top);
@@ -328,6 +348,419 @@ bool FSimCopterControlSettingsTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Axis mappings were read too"), bFoundAxis);
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterDisplayResolutionTest,
+	"SimCopter.Settings.DisplayResolution",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterDisplayResolutionTest::RunTest(const FString& Parameters)
+{
+	using namespace SimCopterDisplay;
+
+	const auto MakeMonitor = [](const FIntPoint Native, const FIntRect Rect, const bool bPrimary)
+	{
+		FMonitor Monitor;
+		Monitor.NativeResolution = Native;
+		Monitor.DisplayRect = Rect;
+		Monitor.bIsPrimary = bPrimary;
+		return Monitor;
+	};
+
+	// A 4K primary with a 1080p panel to its right - the layout that makes "which screen is the game
+	// actually on" a question worth answering.
+	const FMonitor Primary4K = MakeMonitor(FIntPoint(3840, 2160), FIntRect(0, 0, 3840, 2160), true);
+	const FMonitor Secondary1080 = MakeMonitor(FIntPoint(1920, 1080), FIntRect(3840, 0, 5760, 1080), false);
+	const TArray<FMonitor> TwoMonitors = { Primary4K, Secondary1080 };
+
+	{
+		TestEqual(TEXT("A window on the primary takes the primary's native size"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(100, 100, 1380, 820)),
+			FIntPoint(3840, 2160));
+
+		TestEqual(TEXT("A window on the second monitor takes ITS native size, not the primary's"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(4000, 100, 5280, 820)),
+			FIntPoint(1920, 1080));
+	}
+
+	// Straddling is settled by overlap area, not by the window's origin: the monitor showing most of
+	// the window is the one the game is being watched on.
+	{
+		// 200px wide on the 4K, 1080px on the 1080p.
+		TestEqual(TEXT("A straddling window follows the larger overlap"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(3640, 100, 4920, 820)),
+			FIntPoint(1920, 1080));
+
+		// The same window shifted so most of it is back on the 4K.
+		TestEqual(TEXT("...and follows it back the other way"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(2700, 100, 3980, 820)),
+			FIntPoint(3840, 2160));
+	}
+
+	// An unshown window reports a zero rect, which overlaps nothing. That must not come back empty,
+	// or a first run would decline to seed and open at UGameUserSettings' 1280x720 instead.
+	{
+		TestEqual(TEXT("A zero-size window falls back to the primary"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(0, 0, 0, 0)),
+			FIntPoint(3840, 2160));
+
+		TestEqual(TEXT("An off-screen window falls back to the primary"),
+			FindNativeResolutionForWindow(TwoMonitors, FIntRect(-4000, -4000, -3000, -3000)),
+			FIntPoint(3840, 2160));
+
+		const TArray<FMonitor> NoPrimary = { Secondary1080 };
+		TestEqual(TEXT("With no monitor flagged primary, the first usable one wins"),
+			FindNativeResolutionForWindow(NoPrimary, FIntRect(0, 0, 0, 0)),
+			FIntPoint(1920, 1080));
+	}
+
+	// Native resolution is NOT the display rect: Windows scaling makes a 4K panel report a 2560x1440
+	// desktop rect, and seeding from the rect would open the game at the scaled size.
+	{
+		const TArray<FMonitor> Scaled = {
+			MakeMonitor(FIntPoint(3840, 2160), FIntRect(0, 0, 2560, 1440), true)
+		};
+		TestEqual(TEXT("A DPI-scaled monitor still seeds its real panel size"),
+			FindNativeResolutionForWindow(Scaled, FIntRect(0, 0, 1280, 720)),
+			FIntPoint(3840, 2160));
+	}
+
+	// Degenerate inputs answer zero rather than a made-up mode, so the caller can decline to seed.
+	{
+		TestEqual(TEXT("No monitors at all"),
+			FindNativeResolutionForWindow(TArray<FMonitor>(), FIntRect(0, 0, 1280, 720)),
+			FIntPoint::ZeroValue);
+
+		const TArray<FMonitor> Unreported = {
+			MakeMonitor(FIntPoint::ZeroValue, FIntRect(0, 0, 1920, 1080), true)
+		};
+		TestEqual(TEXT("A monitor that reports no native size is not usable"),
+			FindNativeResolutionForWindow(Unreported, FIntRect(0, 0, 1280, 720)),
+			FIntPoint::ZeroValue);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterLowPowerModeTest,
+	"SimCopter.Settings.LowPowerMode",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterLowPowerModeTest::RunTest(const FString& Parameters)
+{
+	const TArrayView<const SimCopterLowPower::FRenderSwitch> Switches = SimCopterLowPower::GetRenderSwitches();
+	TestTrue(TEXT("The low power switch table is not empty"), Switches.Num() > 0);
+
+	// The whole mode is a list of CVar names, and a name the engine no longer has is a silently
+	// dead optimization: Apply() skips it, the frame stays slow, and nothing looks broken. This is
+	// the check that turns an engine rename into a red test.
+	TSet<FString> Seen;
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		const FString Name(Switch.Name);
+		TestFalse(*FString::Printf(TEXT("'%s' is listed once"), *Name), Seen.Contains(Name));
+		Seen.Add(Name);
+
+		TestNotNull(
+			*FString::Printf(TEXT("'%s' still exists in this engine build"), *Name),
+			IConsoleManager::Get().FindConsoleVariable(Switch.Name));
+
+		TestTrue(*FString::Printf(TEXT("'%s' has a value"), *Name), FCString::Strlen(Switch.LowPowerValue) > 0);
+		TestTrue(*FString::Printf(TEXT("'%s' says why"), *Name), FCString::Strlen(Switch.Why) > 0);
+	}
+
+	// The anti-aliasing method belongs to the player in both modes: the mode renders at 75% and TSR
+	// is the only method that upscales rather than stretching. Putting it back in the table would
+	// pin it at ECVF_SetByGameOverride and silently kill the Anti-Aliasing row, which is exactly the
+	// failure this is here to catch - the row would still move and still read back the stored value.
+	TestFalse(
+		TEXT("The anti-aliasing method is left to the Settings page"),
+		Seen.Contains(TEXT("r.AntiAliasingMethod")));
+
+	// Round trip. Entering has to leave every switch on its low value and leaving has to put back
+	// what was there before, not the engine's compiled-in default - the project overrides several of
+	// these in DefaultEngine.ini, and restoring to the wrong number would quietly change normal mode.
+	const bool bWasEnabled = SimCopterLowPower::IsEnabled();
+
+	TMap<FString, FString> Before;
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name))
+		{
+			Before.Add(FString(Switch.Name), Variable->GetString());
+		}
+	}
+
+	SimCopterLowPower::Apply(/*bLowPower=*/true);
+	TestTrue(TEXT("IsEnabled follows Apply(true)"), SimCopterLowPower::IsEnabled());
+	for (const SimCopterLowPower::FRenderSwitch& Switch : Switches)
+	{
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Switch.Name))
+		{
+			TestEqual(
+				*FString::Printf(TEXT("'%s' is forced low"), Switch.Name),
+				Variable->GetString(),
+				FString(Switch.LowPowerValue));
+		}
+	}
+
+	SimCopterLowPower::Apply(/*bLowPower=*/false);
+	TestFalse(TEXT("IsEnabled follows Apply(false)"), SimCopterLowPower::IsEnabled());
+	for (const TPair<FString, FString>& Pair : Before)
+	{
+		if (const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(*Pair.Key))
+		{
+			TestEqual(
+				*FString::Printf(TEXT("'%s' is back where it started"), *Pair.Key),
+				Variable->GetString(),
+				Pair.Value);
+		}
+	}
+
+	SimCopterLowPower::Apply(bWasEnabled);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterAntiAliasingMethodTest,
+	"SimCopter.Settings.AntiAliasingMethod",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterAntiAliasingMethodTest::RunTest(const FString& Parameters)
+{
+	// The enum is written straight to r.AntiAliasingMethod with a static_cast and no remapping, so
+	// every value has to keep matching the engine's own. A drift here would be silent: the CVar would
+	// take the number, the renderer would pick a different method than the row says, and the only
+	// symptom would be "anti-aliasing looks wrong".
+	TestEqual(TEXT("None mirrors AAM_None"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::None), static_cast<int32>(AAM_None));
+	TestEqual(TEXT("FXAA mirrors AAM_FXAA"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::Fxaa), static_cast<int32>(AAM_FXAA));
+	TestEqual(TEXT("TAA mirrors AAM_TemporalAA"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::TemporalAA), static_cast<int32>(AAM_TemporalAA));
+	TestEqual(TEXT("SMAA mirrors AAM_SMAA"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::Smaa), static_cast<int32>(AAM_SMAA));
+
+	// TSR carries more weight than the rest: ApplyGraphics forces exactly this value while super
+	// resolution is on, because AAM_TSR is what makes FSceneView choose TemporalUpscale and hand the
+	// frame to DLSS. If this one drifted, DLSS would go back to silently upscaling nothing.
+	TestEqual(TEXT("TSR mirrors AAM_TSR"),
+		static_cast<int32>(ESimCopterAntiAliasingMethod::Tsr), static_cast<int32>(AAM_TSR));
+	TestTrue(TEXT("TSR is a temporal accumulation method, which is what DLSS needs"),
+		IsTemporalAccumulationBasedMethod(static_cast<EAntiAliasingMethod>(ESimCopterAntiAliasingMethod::Tsr)));
+	TestFalse(TEXT("None is not, which is why it could not be left applied under DLSS"),
+		IsTemporalAccumulationBasedMethod(static_cast<EAntiAliasingMethod>(ESimCopterAntiAliasingMethod::None)));
+
+	// Every method the page offers has a label of its own - a missing case would fall through to the
+	// default and quietly read "TSR".
+	TestEqual(TEXT("None is labelled"),
+		USimCopterSettings::GetAntiAliasingMethodLabel(ESimCopterAntiAliasingMethod::None).ToString(), FString(TEXT("None")));
+	TestEqual(TEXT("SMAA is labelled"),
+		USimCopterSettings::GetAntiAliasingMethodLabel(ESimCopterAntiAliasingMethod::Smaa).ToString(), FString(TEXT("SMAA")));
+
+	// With no DLSS-capable GPU (which includes this headless run) the stored flag must not make the
+	// page defer to an upscaler that is not running - see USimCopterSettings::IsDlssActive.
+	if (!USimCopterSettings::IsDlssAvailable())
+	{
+		// ClassWithin=GameInstance, so this needs an Outer - same reason as GraphicsPersistence below.
+		USimCopterSettings* Settings = NewObject<USimCopterSettings>(NewObject<UGameInstance>());
+		Settings->SetDlssEnabled(true);
+		TestTrue(TEXT("The stored flag still round trips"), Settings->IsDlssEnabled());
+		TestFalse(TEXT("but DLSS is not active without support"), Settings->IsDlssActive());
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterTimeOfDayFormatTest,
+	"SimCopter.Settings.TimeOfDay",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterTimeOfDayFormatTest::RunTest(const FString& Parameters)
+{
+	const auto Formatted = [](const float Hours)
+	{
+		return USimCopterSettings::FormatTimeOfDay(Hours).ToString();
+	};
+
+	TestEqual(TEXT("Midnight"), Formatted(0.0f), TEXT("00:00"));
+	TestEqual(TEXT("Noon"), Formatted(12.0f), TEXT("12:00"));
+	TestEqual(TEXT("Half past reads as 30 minutes, not 0.5"), Formatted(13.5f), TEXT("13:30"));
+	TestEqual(TEXT("A quarter past"), Formatted(6.25f), TEXT("06:15"));
+	TestEqual(TEXT("Just before midnight"), Formatted(23.99f), TEXT("23:59"));
+
+	// The Static Time slider's top end is exactly 24, which is midnight again - "24:00" would be the
+	// one reading on the clock that does not exist.
+	TestEqual(TEXT("The slider's top end wraps to midnight"), Formatted(24.0f), TEXT("00:00"));
+
+	// The setter clamps, but the formatter is a public static and gets whatever a caller has.
+	TestEqual(TEXT("Negative hours clamp to midnight"), Formatted(-3.0f), TEXT("00:00"));
+	TestEqual(TEXT("Hours past a full day wrap"), Formatted(26.5f), TEXT("02:30"));
+
+	USimCopterSettings* Settings = NewObject<USimCopterSettings>(NewObject<UGameInstance>());
+	Settings->SetTimeOfDayMode(ESimCopterTimeOfDayMode::Static);
+	Settings->SetStaticTimeOfDayHours(2.0f);
+	Settings->SetDayRealMinutes(15.0f);
+	Settings->SetNightRealMinutes(9.0f);
+	Settings->ResetSessionTimeOfDaySettings();
+	TestEqual(TEXT("A new game resets the time mode"),
+		Settings->GetTimeOfDayMode(), ESimCopterTimeOfDayMode::Dynamic);
+	TestEqual(TEXT("A new game resets the static hour"),
+		Settings->GetStaticTimeOfDayHours(), USimCopterSettings::DefaultStaticTimeOfDayHours);
+	TestEqual(TEXT("A new game resets daytime pacing"),
+		Settings->GetDayRealMinutes(), USimCopterSettings::DefaultDayRealMinutes);
+	TestEqual(TEXT("A new game resets nighttime pacing"),
+		Settings->GetNightRealMinutes(), USimCopterSettings::DefaultNightRealMinutes);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterOverallQualityLabelTest,
+	"SimCopter.Settings.OverallQualityLabels",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterOverallQualityLabelTest::RunTest(const FString& Parameters)
+{
+	// The Overall Quality row is the one dropdown with a sixth entry: UGameUserSettings answers
+	// -1 ("Custom") whenever the eleven scalability groups are not a single preset, which
+	// `FQualityLevels::GetSingleQualityLevel` also reports when the resolution scale is not the
+	// preset's own value - so Low Power Graphics' 75%, the Resolution Scale row and DLSS's
+	// quality-mode percentage all produce it. The row maps that -1 onto index 5, and index 5 has
+	// to read "Custom": clamping it to 0 instead is what made the page announce "Low" over an
+	// Epic mix. Guarding the label contract is what stops that sixth entry going unwired again.
+	const FString Custom = SSimCopterGraphicsSettings::GetQualityLevelLabel(5).ToString();
+	TestEqual(TEXT("Index 5 is the Custom label"), Custom, FString(TEXT("Custom")));
+	TestEqual(TEXT("Out-of-range levels also read Custom"),
+		SSimCopterGraphicsSettings::GetQualityLevelLabel(-1).ToString(), Custom);
+
+	// ...and the five real presets keep their own names, in Unreal's own order.
+	const TCHAR* const Presets[] = { TEXT("Low"), TEXT("Medium"), TEXT("High"), TEXT("Epic"), TEXT("Cinematic") };
+	for (int32 Level = 0; Level < UE_ARRAY_COUNT(Presets); ++Level)
+	{
+		TestEqual(
+			*FString::Printf(TEXT("Level %d label"), Level),
+			SSimCopterGraphicsSettings::GetQualityLevelLabel(Level).ToString(),
+			FString(Presets[Level]));
+		TestNotEqual(
+			*FString::Printf(TEXT("Level %d is not Custom"), Level),
+			SSimCopterGraphicsSettings::GetQualityLevelLabel(Level).ToString(),
+			Custom);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterGraphicsSettingsPersistenceTest,
+	"SimCopter.Settings.GraphicsPersistence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterGraphicsSettingsPersistenceTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Fresh profiles default the cockpit FOV to 90 degrees"),
+		USimCopterSettings::DefaultCockpitFov, 90.0f);
+
+	// Everything the Graphics page's rows own that is not UGameUserSettings' own (Super
+	// Resolution, its Quality Mode, Frame Generation and its multiple, Reflex, Lumen, Volumetric
+	// Fog, Low Power) is a UPROPERTY(Config) on USimCopterSettings; clicking OK persists them with
+	// SaveConfig, and USimCopterSettings::Initialize reads them back with LoadConfig. That is the
+	// whole mechanism "click OK, it's still set next time" rests on, so round-trip it directly
+	// against a scratch ini rather than the developer's own GameUserSettings.ini.
+	const FString TestIni = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Automation/SimCopterGraphicsSettingsPersistenceTest.ini"));
+	IFileManager::Get().Delete(*TestIni);
+
+	// USimCopterSettings is a UGameInstanceSubsystem, so its class carries ClassWithin=GameInstance -
+	// NewObject with no Outer lands in the transient package and UObjectGlobals rejects it. A bare
+	// GameInstance is a valid enough Outer; nothing here calls Init() on it.
+	UGameInstance* Outer = NewObject<UGameInstance>();
+
+	USimCopterSettings* Writer = NewObject<USimCopterSettings>(Outer);
+	Writer->SetDlssEnabled(true);
+	Writer->SetDlssQuality(ESimCopterDlssQuality::Performance);
+	Writer->SetFrameGenMode(ESimCopterFrameGenMode::On);
+	Writer->SetFrameGenMultiple(4);
+	Writer->SetReflexMode(ESimCopterReflexMode::OnBoost);
+	Writer->SetLumenMode(ESimCopterLumenMode::Software);
+	Writer->SetVolumetricFogEnabled(false);
+	Writer->SetLowPowerMode(true);
+	Writer->SetOnFootFov(91.0f);
+	Writer->SetHelicopterFov(103.0f);
+	Writer->SetCockpitFov(72.0f);
+	Writer->SetMouseSensitivityX(1.25f);
+	Writer->SetMouseSensitivityY(0.75f);
+	Writer->SetControllerSensitivityX(1.5f);
+	Writer->SetControllerSensitivityY(0.6f);
+	Writer->SetTimeOfDayMode(ESimCopterTimeOfDayMode::Static);
+	Writer->SetStaticTimeOfDayHours(3.5f);
+	Writer->SetDayRealMinutes(17.0f);
+	Writer->SetNightRealMinutes(13.0f);
+	Writer->SaveConfig(CPF_Config, *TestIni);
+
+	USimCopterSettings* Reader = NewObject<USimCopterSettings>(Outer);
+	Reader->LoadConfig(USimCopterSettings::StaticClass(), *TestIni);
+
+	TestTrue(TEXT("Super Resolution enabled round trips"), Reader->IsDlssEnabled());
+	TestEqual(TEXT("Super Resolution quality mode round trips"),
+		int32(Reader->GetDlssQuality()), int32(ESimCopterDlssQuality::Performance));
+	TestEqual(TEXT("Frame Generation mode round trips"),
+		int32(Reader->GetFrameGenMode()), int32(ESimCopterFrameGenMode::On));
+	TestEqual(TEXT("Frame Generation multiple round trips"), Reader->GetFrameGenMultiple(), 4);
+	TestEqual(TEXT("Reflex mode round trips"),
+		int32(Reader->GetReflexMode()), int32(ESimCopterReflexMode::OnBoost));
+	TestEqual(TEXT("Lumen mode round trips"),
+		int32(Reader->GetLumenMode()), int32(ESimCopterLumenMode::Software));
+	TestFalse(TEXT("Volumetric Fog round trips"), Reader->IsVolumetricFogEnabled());
+	TestTrue(TEXT("Low Power Graphics round trips"), Reader->IsLowPowerMode());
+	TestEqual(TEXT("On-foot FOV round trips"), Reader->GetOnFootFov(), 91.0f);
+	TestEqual(TEXT("Helicopter FOV round trips"), Reader->GetHelicopterFov(), 103.0f);
+	TestEqual(TEXT("Cockpit FOV round trips"), Reader->GetCockpitFov(), 72.0f);
+	TestEqual(TEXT("Mouse X sensitivity round trips"), Reader->GetMouseSensitivityX(), 1.25f);
+	TestEqual(TEXT("Mouse Y sensitivity round trips"), Reader->GetMouseSensitivityY(), 0.75f);
+	TestEqual(TEXT("Controller X sensitivity round trips"), Reader->GetControllerSensitivityX(), 1.5f);
+	TestEqual(TEXT("Controller Y sensitivity round trips"), Reader->GetControllerSensitivityY(), 0.6f);
+	TestEqual(TEXT("Time-of-day mode is not a profile setting"),
+		Reader->GetTimeOfDayMode(), ESimCopterTimeOfDayMode::Dynamic);
+	TestEqual(TEXT("Static time is not a profile setting"),
+		Reader->GetStaticTimeOfDayHours(), USimCopterSettings::DefaultStaticTimeOfDayHours);
+	TestEqual(TEXT("Daytime length is not a profile setting"),
+		Reader->GetDayRealMinutes(), USimCopterSettings::DefaultDayRealMinutes);
+	TestEqual(TEXT("Nighttime length is not a profile setting"),
+		Reader->GetNightRealMinutes(), USimCopterSettings::DefaultNightRealMinutes);
+
+	// And the opposite values, so this is not just confirming every field reads back as its own
+	// UPROPERTY default regardless of what SaveConfig actually wrote.
+	USimCopterSettings* Writer2 = NewObject<USimCopterSettings>(Outer);
+	Writer2->SetDlssEnabled(false);
+	Writer2->SetDlssQuality(ESimCopterDlssQuality::UltraQuality);
+	Writer2->SetFrameGenMode(ESimCopterFrameGenMode::Auto);
+	Writer2->SetFrameGenMultiple(3);
+	Writer2->SetReflexMode(ESimCopterReflexMode::Off);
+	Writer2->SetLumenMode(ESimCopterLumenMode::Off);
+	Writer2->SetVolumetricFogEnabled(true);
+	Writer2->SetLowPowerMode(false);
+	Writer2->SaveConfig(CPF_Config, *TestIni);
+
+	USimCopterSettings* Reader2 = NewObject<USimCopterSettings>(Outer);
+	Reader2->LoadConfig(USimCopterSettings::StaticClass(), *TestIni);
+
+	TestFalse(TEXT("Super Resolution disabled round trips"), Reader2->IsDlssEnabled());
+	TestEqual(TEXT("A second quality mode round trips"),
+		int32(Reader2->GetDlssQuality()), int32(ESimCopterDlssQuality::UltraQuality));
+	TestEqual(TEXT("Auto Frame Generation round trips"),
+		int32(Reader2->GetFrameGenMode()), int32(ESimCopterFrameGenMode::Auto));
+	TestEqual(TEXT("A second Frame Generation multiple round trips"), Reader2->GetFrameGenMultiple(), 3);
+	TestEqual(TEXT("Reflex Off round trips"),
+		int32(Reader2->GetReflexMode()), int32(ESimCopterReflexMode::Off));
+	TestEqual(TEXT("Lumen Off round trips"), int32(Reader2->GetLumenMode()), int32(ESimCopterLumenMode::Off));
+	TestTrue(TEXT("Volumetric Fog re-enabled round trips"), Reader2->IsVolumetricFogEnabled());
+	TestFalse(TEXT("Low Power Graphics off round trips"), Reader2->IsLowPowerMode());
+
+	IFileManager::Get().Delete(*TestIni);
 	return true;
 }
 

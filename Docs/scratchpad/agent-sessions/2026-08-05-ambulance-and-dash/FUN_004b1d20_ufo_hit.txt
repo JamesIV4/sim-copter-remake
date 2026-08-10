@@ -1,0 +1,256 @@
+﻿// ===========================================
+// Ghidra:    FUN_004b1d20
+// Address:   0x004b1d20
+// Signature: undefined FUN_004b1d20(void)
+// Callers:   1  |  Callees: 9
+// ===========================================
+
+
+
+void FUN_004b1d20(undefined4 param_1,undefined4 param_2,int param_3)
+
+
+
+{
+
+  uint *puVar1;
+
+  int iVar2;
+
+  int iVar3;
+
+  undefined4 uVar4;
+
+  undefined4 local_18;
+
+  undefined4 local_14;
+
+  undefined4 local_8;
+
+  undefined4 local_4;
+
+  
+
+  switch(param_1) {
+
+  case 0:
+
+    iVar3 = (&DAT_00582840)[*(short *)(param_3 + 0xe)];
+
+    puVar1 = (uint *)(iVar3 + 0x33);
+
+    iVar2 = iVar3 + 0x97;
+
+    uVar4 = (&DAT_005d9200)[(*puVar1 & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x37) & 0xff)];
+
+    FUN_004af220(uVar4,iVar2,9);
+
+    FUN_004af220(uVar4,iVar2,0);
+
+    FUN_0042a1f0(0xf,iVar2,0);
+
+    if (*(int *)(iVar3 + 0x7b) == 0x163) {
+
+      FUN_004c3f00(*(undefined4 *)(iVar3 + 0x53));
+
+    }
+
+    else {
+
+      FUN_004a7a10(*puVar1,*(undefined4 *)(iVar3 + 0x37),0x90);
+
+    }
+
+    if (*(char *)(iVar3 + 5) != '\0') {
+
+      FUN_004b0100(puVar1);
+
+      *(undefined1 *)(iVar3 + 5) = 0;
+
+      return;
+
+    }
+
+    break;
+
+  case 3:
+
+    iVar3 = (&DAT_00582840)[*(short *)(param_3 + 0xe)];
+
+    puVar1 = (uint *)(iVar3 + 0x33);
+
+    iVar2 = iVar3 + 0x97;
+
+    uVar4 = (&DAT_005d9200)[(*puVar1 & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x37) & 0xff)];
+
+    FUN_004af220(uVar4,iVar2,9);
+
+    FUN_004af220(uVar4,iVar2,0);
+
+    FUN_0042a1f0(0xf,iVar2,0);
+
+    if (*(int *)(iVar3 + 0x7b) == 0x163) {
+
+      FUN_004c3f00(*(undefined4 *)(iVar3 + 0x53));
+
+    }
+
+    else {
+
+      FUN_004a7a10(*puVar1,*(undefined4 *)(iVar3 + 0x37),0x90);
+
+    }
+
+    if (*(char *)(iVar3 + 5) != '\0') {
+
+      FUN_004b0100(puVar1);
+
+      *(undefined1 *)(iVar3 + 5) = 0;
+
+    }
+
+    local_18 = 0x31;
+
+    local_14 = 0xffffffff;
+
+    local_8 = 1;
+
+    local_4 = 0;
+
+    FUN_004a89c0(&local_18);
+
+    return;
+
+  case 6:
+
+    iVar3 = (&DAT_00582840)[*(short *)(param_3 + 0xe)];
+
+    iVar2 = iVar3 + 0x97;
+
+    uVar4 = (&DAT_005d9200)
+
+            [(*(uint *)(iVar3 + 0x33) & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x37) & 0xff)];
+
+    FUN_004af220(uVar4,iVar2,9);
+
+    FUN_004af220(uVar4,iVar2,0);
+
+    FUN_0042a1f0(0xf,iVar2,0);
+
+    if (*(int *)(iVar3 + 0x7b) == 0x163) {
+
+      FUN_004c3f00(*(undefined4 *)(iVar3 + 0x53));
+
+    }
+
+    else {
+
+      FUN_004a7a10(*(undefined4 *)(iVar3 + 0x33),*(undefined4 *)(iVar3 + 0x37),0x90);
+
+    }
+
+    FUN_004b1040();
+
+    return;
+
+  case 7:
+
+    iVar3 = (&DAT_00582840)[*(short *)(param_3 + 0xe)];
+
+    iVar2 = iVar3 + 0x97;
+
+    uVar4 = (&DAT_005d9200)
+
+            [(*(uint *)(iVar3 + 0x33) & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x37) & 0xff)];
+
+    FUN_004af220(uVar4,iVar2,9);
+
+    FUN_004af220(uVar4,iVar2,0);
+
+    FUN_0042a1f0(0xf,iVar2,0);
+
+    if (*(int *)(iVar3 + 0x7b) == 0x163) {
+
+      FUN_004c3f00(*(undefined4 *)(iVar3 + 0x53));
+
+    }
+
+    else {
+
+      FUN_004a7a10(*(undefined4 *)(iVar3 + 0x33),*(undefined4 *)(iVar3 + 0x37),0x90);
+
+    }
+
+    FUN_004b1040();
+
+    local_18 = 0x31;
+
+    local_14 = 0xffffffff;
+
+    local_8 = 1;
+
+    local_4 = 0;
+
+    FUN_004a89c0(&local_18);
+
+    return;
+
+  case 9:
+
+    iVar3 = (&DAT_00582840)[*(short *)(param_3 + 0xe)];
+
+    iVar2 = iVar3 + 0x97;
+
+    uVar4 = FUN_004afae0((undefined4 *)(iVar3 + 0x33));
+
+    FUN_004af220(uVar4,iVar2,9);
+
+    FUN_004af220(uVar4,iVar2,0);
+
+    FUN_0042a1f0(0xf,iVar2,0);
+
+    if (*(int *)(iVar3 + 0x7b) == 0x163) {
+
+      FUN_004c3f00(*(undefined4 *)(iVar3 + 0x53));
+
+    }
+
+    else {
+
+      FUN_004a7a10(*(undefined4 *)(iVar3 + 0x33),*(undefined4 *)(iVar3 + 0x37),0x90);
+
+    }
+
+    FUN_004b1040();
+
+    return;
+
+  case 0xc:
+
+    FUN_004b2150();
+
+    local_18 = 0x31;
+
+    local_14 = 0xffffffff;
+
+    local_8 = 1;
+
+    local_4 = 0;
+
+    FUN_004a89c0(&local_18);
+
+    return;
+
+  case 0xf:
+
+    FUN_004b2150();
+
+  }
+
+  return;
+
+}
+
+
+
+
