@@ -1,0 +1,22 @@
+{
+  "address": "004d3440",
+  "name": "`scalar_deleting_destructor'",
+  "signature": "void * __thiscall `scalar_deleting_destructor'(filebuf * this, uint param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "void *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual void * __thiscall filebuf::`scalar deleting destructor'(unsigned int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid * __thiscall filebuf::_scalar_deleting_destructor_(filebuf *this,uint param_1)\r\n\r\n{\r\n  ~filebuf(this);\r\n  if ((param_1 & 1) != 0) {\r\n    FUN_004d29a0(this);\r\n  }\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d34d0",
+      "name": "~filebuf"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

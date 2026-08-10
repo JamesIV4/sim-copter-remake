@@ -1,0 +1,28 @@
+{
+  "address": "004c0f80",
+  "name": "FUN_004c0f80",
+  "signature": "undefined FUN_004c0f80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint __fastcall FUN_004c0f80(int param_1)\r\n\r\n{\r\n  uint in_EAX;\r\n  ushort uVar3;\r\n  int iVar1;\r\n  uint uVar2;\r\n  uint uVar4;\r\n  \r\n  if (*(short *)(param_1 + 0x142) == 0) {\r\n    return in_EAX & 0xffff0000;\r\n  }\r\n  if (*(short *)(param_1 + 0x148) != 0) {\r\n    in_EAX = FUN_004cea00(3000);\r\n    if ((short)in_EAX != 0) {\r\n      return in_EAX & 0xffff0000;\r\n    }\r\n  }\r\n  uVar3 = (ushort)(in_EAX >> 0x10);\r\n  if (*(short *)(param_1 + 0x15e) != 0) {\r\n    return (uint)uVar3 << 0x10;\r\n  }\r\n  if (*(short *)(param_1 + 0x12e) == 32000) {\r\n    return (uint)uVar3 << 0x10;\r\n  }\r\n  iVar1 = FUN_0049ad30(param_1 + 0x1cc,*(undefined4 *)(param_1 + 0x1c4));\r\n  if (iVar1 == 0) {\r\n    return 0;\r\n  }\r\n  uVar2 = (uint)(short)((short)DAT_0061a618 - *(short *)(param_1 + 0x12a));\r\n  uVar4 = (int)uVar2 >> 0x1f;\r\n  uVar4 = (uVar2 ^ uVar4) - uVar4;\r\n  if (((short)uVar4 < 9) &&\r\n     (uVar2 = (uint)(short)((short)DAT_0061a61c - *(short *)(param_1 + 300)),\r\n     uVar4 = (int)uVar2 >> 0x1f, uVar4 = (uVar2 ^ uVar4) - uVar4, (short)uVar4 < 9)) {\r\n    return (uint)(*(int *)(param_1 + 0x1a0) != *(int *)(DAT_005040d0 + 0xa4));\r\n  }\r\n  return uVar4 & 0xffff0000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c0f40",
+      "name": "FUN_004c0f40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "0049ad30",
+      "name": "FUN_0049ad30"
+    }
+  ],
+  "data_refs": []
+}

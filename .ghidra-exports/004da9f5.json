@@ -1,0 +1,18 @@
+{
+  "address": "004da9f5",
+  "name": "__seh_longjmp_unwind@4",
+  "signature": "undefined __seh_longjmp_unwind@4(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __seh_longjmp_unwind@4\r\n   \r\n   Libraries: Visual Studio 1998 Debug, Visual Studio 1998 Release, Visual Studio 2003 Debug, Visual\r\n   Studio 2003 Release */\r\n\r\nvoid __seh_longjmp_unwind_4(int param_1)\r\n\r\n{\r\n  __local_unwind2(*(undefined4 *)(param_1 + 0x18),*(undefined4 *)(param_1 + 0x1c));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d455e",
+      "name": "__local_unwind2"
+    }
+  ],
+  "data_refs": []
+}

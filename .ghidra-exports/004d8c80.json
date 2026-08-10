@@ -1,0 +1,39 @@
+{
+  "address": "004d8c80",
+  "name": "__shift",
+  "signature": "undefined __shift(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __shift\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __shift(char *param_1,int param_2)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  char *pcVar3;\r\n  \r\n  if (param_2 != 0) {\r\n    uVar2 = 0xffffffff;\r\n    pcVar3 = param_1;\r\n    do {\r\n      if (uVar2 == 0) break;\r\n      uVar2 = uVar2 - 1;\r\n      cVar1 = *pcVar3;\r\n      pcVar3 = pcVar3 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FID_conflict__memcpy(param_1 + param_2,param_1,~uVar2);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d8940",
+      "name": "__cftoe2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8aa0",
+      "name": "__cftof2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8aa0",
+      "name": "__cftof2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8aa0",
+      "name": "__cftof2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6070",
+      "name": "FID_conflict:_memcpy"
+    }
+  ],
+  "data_refs": []
+}

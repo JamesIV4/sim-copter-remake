@@ -1,0 +1,36 @@
+{
+  "address": "004d34d0",
+  "name": "~filebuf",
+  "signature": "void __thiscall ~filebuf(filebuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual __thiscall filebuf::~filebuf(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall filebuf::~filebuf(filebuf *this)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_004d3540;\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f54bc;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  local_8 = 0;\r\n  if (*(int *)(this + 0x30) < 0) {\r\n    __mtlock(this + 0x34);\r\n  }\r\n  if (*(int *)(this + 0x50) == 0) {\r\n    FUN_004d37b0();\r\n  }\r\n  else {\r\n    close(this);\r\n  }\r\n  local_8 = 0xffffffff;\r\n  FUN_004d354a();\r\n  *unaff_FS_OFFSET = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3440",
+      "name": "`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56e0",
+      "name": "__mtlock"
+    },
+    {
+      "addr": "004d3560",
+      "name": "close"
+    },
+    {
+      "addr": "004d37b0",
+      "name": "FUN_004d37b0"
+    },
+    {
+      "addr": "004d354a",
+      "name": "FUN_004d354a"
+    }
+  ],
+  "data_refs": []
+}

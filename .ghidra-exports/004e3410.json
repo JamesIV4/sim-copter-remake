@@ -1,0 +1,19 @@
+{
+  "address": "004e3410",
+  "name": "FUN_004e3410",
+  "signature": "undefined FUN_004e3410(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004e3410(short *param_1)\r\n\r\n{\r\n  short sVar1;\r\n  short *psVar2;\r\n  short *psVar3;\r\n  \r\n  psVar2 = param_1;\r\n  do {\r\n    psVar3 = psVar2 + 1;\r\n    sVar1 = *psVar2;\r\n    psVar2 = psVar3;\r\n  } while (sVar1 != 0);\r\n  return ((int)psVar3 - (int)param_1 >> 1) + -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0810",
+      "name": "FUN_004e0810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,24 @@
+{
+  "address": "00405e10",
+  "name": "FUN_00405e10",
+  "signature": "undefined FUN_00405e10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_00405e10(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *local_8;\r\n  \r\n  local_8 = (int *)*DAT_00518b80;\r\n  if (local_8 != DAT_00518b80) {\r\n    do {\r\n      if (local_8[2] == param_1) {\r\n        piVar1 = (int *)*local_8;\r\n        *(int **)local_8[1] = piVar1;\r\n        *(int *)(*local_8 + 4) = local_8[1];\r\n        *local_8 = (int)DAT_004f81fc;\r\n        DAT_004f81fc = local_8;\r\n        _DAT_00518b84 = _DAT_00518b84 + -1;\r\n        local_8 = piVar1;\r\n      }\r\n      else {\r\n        local_8 = (int *)*local_8;\r\n      }\r\n    } while (local_8 != DAT_00518b80);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00406d70",
+      "name": "FUN_00406d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b340",
+      "name": "FUN_0042b340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

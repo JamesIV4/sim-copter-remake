@@ -1,0 +1,54 @@
+{
+  "address": "004b2630",
+  "name": "FUN_004b2630",
+  "signature": "undefined FUN_004b2630(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b2630(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  int iVar7;\r\n  int *piVar8;\r\n  undefined4 local_50;\r\n  undefined4 local_4c;\r\n  undefined4 local_48;\r\n  undefined1 local_44 [8];\r\n  uint local_3c;\r\n  int local_38;\r\n  int local_24 [9];\r\n  \r\n  iVar7 = DAT_0061a61c - param_1[9];\r\n  iVar5 = DAT_0061a618 - param_1[8];\r\n  if (0x80 < iVar5) {\r\n    iVar5 = iVar5 - (iVar5 + 0x7fU & 0xffffff00);\r\n  }\r\n  if (iVar5 < -0x80) {\r\n    iVar5 = iVar5 + (0x7fU - iVar5 & 0xffffff00);\r\n  }\r\n  if (0x80 < iVar7) {\r\n    iVar7 = iVar7 - (iVar7 + 0x7fU & 0xffffff00);\r\n  }\r\n  if (iVar7 < -0x80) {\r\n    iVar7 = iVar7 + (0x7fU - iVar7 & 0xffffff00);\r\n  }\r\n  if (iVar5 < 0) {\r\n    iVar5 = -iVar5;\r\n  }\r\n  if (iVar7 < 0) {\r\n    iVar7 = -iVar7;\r\n  }\r\n  iVar2 = (DAT_005a25a0 >> 1) + 4;\r\n  if (((iVar2 < iVar5) || (iVar2 < iVar7)) && (*(char *)((int)param_1 + 7) == '\\0')) {\r\n    if (*(char *)((int)param_1 + 5) != '\\0') {\r\n      if (((&DAT_005d9200)[(param_1[8] & 0xffU) * 0x100 + (param_1[9] & 0xffU)] != 0) &&\r\n         (piVar8 = (int *)((&DAT_005d9200)[(param_1[8] & 0xffU) * 0x100 + (param_1[9] & 0xffU)] +\r\n                          0x10), *piVar8 != 0)) {\r\n        while (piVar1 = (int *)*piVar8, (int)param_1 - (int)piVar1 != -0x58) {\r\n          piVar8 = piVar1;\r\n          if (*piVar1 == 0) {\r\n            *(undefined1 *)((int)param_1 + 5) = 0;\r\n            return;\r\n          }\r\n        }\r\n        *piVar8 = param_1[0x16];\r\n      }\r\n      *(undefined1 *)((int)param_1 + 5) = 0;\r\n      return;\r\n    }\r\n  }\r\n  else {\r\n    if (param_1[0x15] != 0x12e) {\r\n      FUN_004c0d10(param_1 + 0x16);\r\n      if ((param_1[0x13] != 0) && (iVar5 = param_1[0x13] + -1, param_1[0x13] = iVar5, iVar5 == 0)) {\r\n        FUN_004705a9(param_1[0x18],local_24);\r\n        iVar5 = 0;\r\n        uVar3 = FUN_0047031d(param_1[0x18]);\r\n        if (0 < local_24[0]) {\r\n          do {\r\n            FUN_0046f5a5(uVar3,local_44);\r\n            if (local_38 == 0xb) {\r\n              local_3c = local_3c | 0x80000000;\r\n              FUN_0046f5e1(uVar3,local_44);\r\n            }\r\n            iVar5 = iVar5 + 1;\r\n            uVar3 = FUN_00470348(uVar3);\r\n          } while (iVar5 < local_24[0]);\r\n        }\r\n      }\r\n      iVar5 = param_1[0x12] - DAT_005039a0;\r\n      param_1[0x12] = iVar5;\r\n      if (((*(char *)((int)param_1 + 7) == '\\0') && (*(char *)((int)param_1 + 6) == '\\0')) &&\r\n         (iVar5 < 0)) {\r\n        local_48 = 0;\r\n        local_50 = 0;\r\n        local_4c = 0xffff0000;\r\n        param_1[0x12] = 0xb40000;\r\n        FUN_0048e0b0(0xb,param_1 + 8,param_1 + 0x1c,&local_50,1,param_1 + 0x16,0x12c0000,0xffffffff)\r\n        ;\r\n      }\r\n    }\r\n    if (*(char *)((int)param_1 + 6) != '\\0') {\r\n      FUN_004b2910();\r\n    }\r\n    if (*(char *)((int)param_1 + 7) != '\\0') {\r\n      FUN_004b2ab0();\r\n      return;\r\n    }\r\n    iVar5 = *param_1;\r\n    iVar7 = (**(code **)(iVar5 + 0xc))();\r\n    if (iVar7 == 0) {\r\n      FUN_004b2ab0();\r\n      if (param_1[5] < 1) {\r\n        if ((&DAT_005d9200)[(param_1[8] & 0xffU) * 0x100 + (param_1[9] & 0xffU)] != 0) {\r\n          piVar8 = (int *)((&DAT_005d9200)[(param_1[8] & 0xffU) * 0x100 + (param_1[9] & 0xffU)] +\r\n                          0x10);\r\n          iVar7 = *piVar8;\r\n          while (iVar7 != 0) {\r\n            piVar1 = (int *)*piVar8;\r\n            if ((int)param_1 - (int)piVar1 == -0x58) {\r\n              *piVar8 = param_1[0x16];\r\n              break;\r\n            }\r\n            piVar8 = piVar1;\r\n            iVar7 = *piVar1;\r\n          }\r\n        }\r\n        uVar4 = param_1[0x1c] + 0x20000000 >> 0x16;\r\n        uVar6 = 0x20000000 - param_1[0x1e] >> 0x16;\r\n        param_1[8] = uVar4;\r\n        param_1[9] = uVar6;\r\n        iVar7 = (&DAT_005d9200)[(uVar4 & 0xff) * 0x100 + (uVar6 & 0xff)];\r\n        param_1[0x16] = *(int *)(iVar7 + 0x10);\r\n        *(int **)(iVar7 + 0x10) = param_1 + 0x16;\r\n        FUN_004b3420();\r\n      }\r\n      (**(code **)(iVar5 + 8))();\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c0d10",
+      "name": "FUN_004c0d10"
+    },
+    {
+      "addr": "004705a9",
+      "name": "FUN_004705a9"
+    },
+    {
+      "addr": "0047031d",
+      "name": "FUN_0047031d"
+    },
+    {
+      "addr": "0046f5a5",
+      "name": "FUN_0046f5a5"
+    },
+    {
+      "addr": "0046f5e1",
+      "name": "FUN_0046f5e1"
+    },
+    {
+      "addr": "00470348",
+      "name": "FUN_00470348"
+    },
+    {
+      "addr": "0048e0b0",
+      "name": "FUN_0048e0b0"
+    },
+    {
+      "addr": "004b2910",
+      "name": "FUN_004b2910"
+    },
+    {
+      "addr": "004b2ab0",
+      "name": "FUN_004b2ab0"
+    },
+    {
+      "addr": "004b3420",
+      "name": "FUN_004b3420"
+    }
+  ],
+  "data_refs": []
+}

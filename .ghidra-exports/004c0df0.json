@@ -1,0 +1,51 @@
+{
+  "address": "004c0df0",
+  "name": "FUN_004c0df0",
+  "signature": "undefined FUN_004c0df0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid __thiscall FUN_004c0df0(int param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int local_c [3];\r\n  \r\n  if (*(int *)(param_1 + 0x1a0) == 0) {\r\n    iVar1 = FUN_004c82c0(*(undefined4 *)(param_1 + 0x1cc),*(undefined4 *)(param_1 + 0x1d0),\r\n                         *(undefined4 *)(param_1 + 0x1d4));\r\n    if ((int)(*(short *)(param_1 + 0x144) >> 1) + *(int *)(param_1 + 0x1d0) < iVar1) {\r\n      iVar1 = *(int *)(param_1 + 0x1a0);\r\n      if (iVar1 == 0) {\r\n        iVar2 = FUN_004c82c0(*(undefined4 *)(param_1 + 0x1cc),*(int *)(param_1 + 0x1d0),\r\n                             *(undefined4 *)(param_1 + 0x1d4));\r\n      }\r\n      else {\r\n        local_c[0] = *(int *)(param_1 + 0x1cc) - *(int *)(iVar1 + 0x18);\r\n        local_c[1] = 0;\r\n        local_c[2] = *(int *)(param_1 + 0x1d4) - *(int *)(iVar1 + 0x20);\r\n        iVar1 = FUN_0046d770(*(undefined4 *)(iVar1 + 8),iVar1 + 0x24,local_c,\r\n                             *(undefined4 *)(param_1 + 0x1c4));\r\n        iVar2 = FUN_004c82c0(*(undefined4 *)(param_1 + 0x1cc),*(undefined4 *)(param_1 + 0x1d0),\r\n                             *(undefined4 *)(param_1 + 0x1d4));\r\n        iVar2 = iVar2 + iVar1;\r\n      }\r\n      *(int *)(param_1 + 0x1d0) = iVar2 + 0x30000;\r\n    }\r\n  }\r\n  if (*(short *)(param_1 + 0x148) == 0) {\r\n    DAT_0058dc1c = DAT_0058dc1c + -1;\r\n  }\r\n  else {\r\n    _DAT_0058dc1a = _DAT_0058dc1a + -1;\r\n  }\r\n  *(undefined2 *)(param_1 + 0x142) = 0;\r\n  FUN_004c7090(param_2);\r\n  FUN_004c7080(param_3);\r\n  *(undefined2 *)(param_1 + 0x142) = 1;\r\n  if (*(short *)(param_1 + 0x148) == 0) {\r\n    DAT_0058dc1c = DAT_0058dc1c + 1;\r\n    return;\r\n  }\r\n  _DAT_0058dc1a = _DAT_0058dc1a + 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c4e40",
+      "name": "FUN_004c4e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c0f40",
+      "name": "FUN_004c0f40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c4e60",
+      "name": "FUN_004c4e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9b50",
+      "name": "FUN_004c9b50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c82c0",
+      "name": "FUN_004c82c0"
+    },
+    {
+      "addr": "0046d770",
+      "name": "FUN_0046d770"
+    },
+    {
+      "addr": "004c7090",
+      "name": "FUN_004c7090"
+    },
+    {
+      "addr": "004c7080",
+      "name": "FUN_004c7080"
+    }
+  ],
+  "data_refs": []
+}

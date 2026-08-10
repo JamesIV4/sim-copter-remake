@@ -1,0 +1,29 @@
+{
+  "address": "004e05d0",
+  "name": "__fptostr",
+  "signature": "errno_t __cdecl __fptostr(char * _Buf, size_t _SizeInBytes, int _Digits, STRFLT _PtFlt)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef errno_t int",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fptostr\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nerrno_t __cdecl __fptostr(char *_Buf,size_t _SizeInBytes,int _Digits,STRFLT _PtFlt)\r\n\r\n{\r\n  char cVar1;\r\n  size_t sVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  \r\n  pcVar7 = _Buf + 1;\r\n  pcVar5 = *(char **)(_Digits + 0xc);\r\n  *_Buf = '0';\r\n  sVar2 = _SizeInBytes;\r\n  pcVar6 = pcVar7;\r\n  if (0 < (int)_SizeInBytes) {\r\n    do {\r\n      cVar1 = *pcVar5;\r\n      if (cVar1 == '\\0') {\r\n        *pcVar6 = '0';\r\n      }\r\n      else {\r\n        pcVar5 = pcVar5 + 1;\r\n        *pcVar6 = cVar1;\r\n      }\r\n      pcVar6 = pcVar6 + 1;\r\n      _SizeInBytes = _SizeInBytes - 1;\r\n      sVar2 = 0;\r\n    } while (_SizeInBytes != 0);\r\n  }\r\n  *pcVar6 = '\\0';\r\n  if ((-1 < (int)sVar2) && ('4' < *pcVar5)) {\r\n    pcVar6 = pcVar6 + -1;\r\n    cVar1 = *pcVar6;\r\n    while (cVar1 == '9') {\r\n      *pcVar6 = '0';\r\n      pcVar6 = pcVar6 + -1;\r\n      cVar1 = *pcVar6;\r\n    }\r\n    *pcVar6 = *pcVar6 + '\\x01';\r\n  }\r\n  if (*_Buf == '1') {\r\n    *(int *)(_Digits + 4) = *(int *)(_Digits + 4) + 1;\r\n    return sVar2;\r\n  }\r\n  uVar3 = 0xffffffff;\r\n  do {\r\n    pcVar5 = pcVar7;\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    pcVar5 = pcVar7 + 1;\r\n    cVar1 = *pcVar7;\r\n    pcVar7 = pcVar5;\r\n  } while (cVar1 != '\\0');\r\n  uVar3 = ~uVar3;\r\n  pcVar7 = pcVar5 + -uVar3;\r\n  for (uVar4 = uVar3 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *(undefined4 *)_Buf = *(undefined4 *)pcVar7;\r\n    pcVar7 = pcVar7 + 4;\r\n    _Buf = _Buf + 4;\r\n  }\r\n  for (uVar4 = uVar3 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *_Buf = *pcVar7;\r\n    pcVar7 = pcVar7 + 1;\r\n    _Buf = _Buf + 1;\r\n  }\r\n  return uVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d88c0",
+      "name": "__cftoe",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8a30",
+      "name": "__cftof",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8b60",
+      "name": "__cftog",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

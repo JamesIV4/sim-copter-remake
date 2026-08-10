@@ -1,0 +1,19 @@
+{
+  "address": "004e3430",
+  "name": "FUN_004e3430",
+  "signature": "undefined FUN_004e3430(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004e3430(void)\r\n\r\n{\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e2ba0",
+      "name": "__87except",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

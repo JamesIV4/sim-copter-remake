@@ -1,0 +1,112 @@
+{
+  "address": "00410e90",
+  "name": "FUN_00410e90",
+  "signature": "undefined FUN_00410e90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00411200) */\r\n/* WARNING: Removing unreachable block (ram,0x00411265) */\r\n\r\nundefined4\r\nFUN_00410e90(undefined4 param_1,undefined4 param_2,int param_3,undefined4 param_4,int param_5,\r\n            int param_6,int param_7,int param_8,int param_9,int param_10,int param_11,int param_12,\r\n            int param_13,undefined4 param_14,undefined4 param_15,undefined4 param_16)\r\n\r\n{\r\n  char cVar1;\r\n  UINT uID;\r\n  int iVar2;\r\n  int extraout_ECX;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined4 *puVar5;\r\n  char *pcVar6;\r\n  undefined4 *puVar7;\r\n  int in_stack_00000180;\r\n  int in_stack_00000184;\r\n  uint in_stack_0000049c;\r\n  \r\n  FUN_004d2c30();\r\n  _clock();\r\n  FUN_00455dd0();\r\n  FUN_00448170();\r\n  param_2 = 1;\r\n  param_5 = 1;\r\n  param_1 = (undefined4 *)FUN_004d28b0();\r\n  if (param_1 == (undefined4 *)0x0) {\r\n    param_1 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_1[1] = 0;\r\n    param_1[2] = 0;\r\n    *param_1 = 0;\r\n    param_1[3] = 1;\r\n  }\r\n  param_11 = *(int *)(*(int *)(extraout_ECX + 0x3c) + 0xc);\r\n  param_13 = param_11 + -0x14;\r\n  param_12 = *(int *)(*(int *)(extraout_ECX + 0x3c) + 8) / 2;\r\n  param_11 = param_11 + -0x28;\r\n  param_10 = param_12 + -0xb4;\r\n  param_12 = param_12 + 0xb4;\r\n  FUN_00433b20();\r\n  FUN_00448360();\r\n  param_16 = 1;\r\n  FUN_00448400();\r\n  FUN_004472e0();\r\n  param_7 = in_stack_00000180;\r\n  param_6 = in_stack_00000184;\r\n  param_9 = *(int *)(*(int *)(extraout_ECX + 0x3c) + 8) / 2 - in_stack_00000180 / 2;\r\n  param_3 = 0;\r\n  param_4 = 0;\r\n  param_8 = *(int *)(*(int *)(extraout_ECX + 0x3c) + 0xc) / 2 - in_stack_00000184 / 2;\r\n  __beginthread(FUN_00411290,0,&param_3);\r\n  *(uint *)(*(int *)(extraout_ECX + 0x3c) + 0x38) = in_stack_0000049c & 0xff000000;\r\n  do {\r\n    if (param_3 != 0) {\r\n      FUN_00447270();\r\n      if (-1 < param_3) {\r\n        param_1[3] = param_1[3] + -1;\r\n        if ((param_1[3] == 0) && (param_1 != (undefined4 *)0x0)) {\r\n          if (param_1[2] != 0) {\r\n            FUN_004d29a0();\r\n            param_1[2] = 0;\r\n            *param_1 = 0;\r\n          }\r\n          FUN_004d29a0();\r\n        }\r\n        FUN_004482b0();\r\n        return 1;\r\n      }\r\n      param_1[3] = param_1[3] + -1;\r\n      if ((param_1[3] == 0) && (param_1 != (undefined4 *)0x0)) {\r\n        if (param_1[2] != 0) {\r\n          FUN_004d29a0();\r\n          param_1[2] = 0;\r\n          *param_1 = 0;\r\n        }\r\n        FUN_004d29a0();\r\n      }\r\n      FUN_004482b0();\r\n      return 0;\r\n    }\r\n    FUN_00448560();\r\n    if (((DAT_005039d0 & param_2) != 0) && (param_2 < 0x8000)) {\r\n      uID = FUN_00423270();\r\n      LoadStringA(DAT_0051a050,uID,&stack0x0000049c,0xfff);\r\n      uVar3 = 0xffffffff;\r\n      pcVar6 = &stack0x0000049c;\r\n      do {\r\n        if (uVar3 == 0) break;\r\n        uVar3 = uVar3 - 1;\r\n        cVar1 = *pcVar6;\r\n        pcVar6 = pcVar6 + 1;\r\n      } while (cVar1 != '\\0');\r\n      uVar3 = ~uVar3 - 1;\r\n      if (uVar3 == 0xffffffff) {\r\n        ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n        FUN_00401000();\r\n        FUN_004d2060();\r\n      }\r\n      if ((uint)param_1[3] < 2) {\r\n        if (uVar3 != 0) {\r\n          if ((uint)param_1[2] < uVar3) goto LAB_0041110b;\r\n          if (uVar3 != 0) {\r\n            puVar5 = (undefined4 *)&stack0x0000049c;\r\n            puVar7 = (undefined4 *)*param_1;\r\n            for (uVar4 = uVar3 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n              *puVar7 = *puVar5;\r\n              puVar5 = puVar5 + 1;\r\n              puVar7 = puVar7 + 1;\r\n            }\r\n            for (uVar4 = uVar3 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n              *(undefined1 *)puVar7 = *(undefined1 *)puVar5;\r\n              puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n              puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n            }\r\n          }\r\n        }\r\n      }\r\n      else {\r\nLAB_0041110b:\r\n        param_1 = (undefined4 *)0x0;\r\n        iVar2 = FUN_004d28b0();\r\n        if (iVar2 != 0) {\r\n          param_1 = (undefined4 *)FUN_004028e0();\r\n        }\r\n        FUN_00401ed0();\r\n      }\r\n      param_1[1] = uVar3;\r\n      (**(code **)(**(int **)(extraout_ECX + 0x3c) + 0x44))();\r\n      (**(code **)(**(int **)(extraout_ECX + 0x3c) + 0x48))();\r\n      param_5 = param_5 + 1;\r\n      param_2 = param_2 * 2;\r\n    }\r\n    (**(code **)(**(int **)(extraout_ECX + 0x58) + 8))();\r\n    iVar2 = FUN_0042dda0();\r\n    if (iVar2 == 0) {\r\n      Sleep(0x1e);\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d47b0",
+      "name": "_clock"
+    },
+    {
+      "addr": "00455dd0",
+      "name": "FUN_00455dd0"
+    },
+    {
+      "addr": "00448170",
+      "name": "FUN_00448170"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20"
+    },
+    {
+      "addr": "00448360",
+      "name": "FUN_00448360"
+    },
+    {
+      "addr": "00448400",
+      "name": "FUN_00448400"
+    },
+    {
+      "addr": "004472e0",
+      "name": "FUN_004472e0"
+    },
+    {
+      "addr": "004d4610",
+      "name": "__beginthread"
+    },
+    {
+      "addr": "00448560",
+      "name": "FUN_00448560"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004028e0",
+      "name": "FUN_004028e0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "0042dda0",
+      "name": "FUN_0042dda0"
+    },
+    {
+      "addr": "EXTERNAL:0000001b",
+      "name": "Sleep"
+    },
+    {
+      "addr": "00447270",
+      "name": "FUN_00447270"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004482b0",
+      "name": "FUN_004482b0"
+    }
+  ],
+  "data_refs": []
+}

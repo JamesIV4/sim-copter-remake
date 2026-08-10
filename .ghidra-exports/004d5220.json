@@ -1,0 +1,28 @@
+{
+  "address": "004d5220",
+  "name": "___lc_strtolc",
+  "signature": "undefined ___lc_strtolc(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___lc_strtolc\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 ___lc_strtolc(char *param_1,char *param_2)\r\n\r\n{\r\n  char cVar1;\r\n  size_t _Count;\r\n  char *pcVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  \r\n  pcVar2 = param_1;\r\n  for (iVar3 = 0x21; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n    pcVar2[0] = '\\0';\r\n    pcVar2[1] = '\\0';\r\n    pcVar2[2] = '\\0';\r\n    pcVar2[3] = '\\0';\r\n    pcVar2 = pcVar2 + 4;\r\n  }\r\n  *pcVar2 = '\\0';\r\n  if (*param_2 == '\\0') {\r\n    return 0;\r\n  }\r\n  if ((*param_2 != '.') || (param_2[1] == '\\0')) {\r\n    iVar3 = 0;\r\n    do {\r\n      _Count = _strcspn(param_2,\"_.,\");\r\n      if (_Count == 0) {\r\n        return 0xffffffff;\r\n      }\r\n      cVar1 = param_2[_Count];\r\n      if (((iVar3 != 0) || (0x3f < (int)_Count)) || (pcVar2 = param_1, cVar1 == '.')) {\r\n        if (((iVar3 == 1) && ((int)_Count < 0x40)) && (cVar1 != '_')) {\r\n          pcVar2 = param_1 + 0x40;\r\n        }\r\n        else {\r\n          if ((iVar3 != 2) || ((cVar1 != '\\0' && (cVar1 != ',')))) {\r\n            return 0xffffffff;\r\n          }\r\n          pcVar2 = param_1 + 0x80;\r\n        }\r\n      }\r\n      _strncpy(pcVar2,param_2,_Count);\r\n      if ((cVar1 == ',') || (cVar1 == '\\0')) {\r\n        return 0;\r\n      }\r\n      param_2 = param_2 + _Count + 1;\r\n      iVar3 = iVar3 + 1;\r\n    } while( true );\r\n  }\r\n  uVar4 = 0xffffffff;\r\n  pcVar2 = param_2 + 1;\r\n  do {\r\n    pcVar6 = pcVar2;\r\n    if (uVar4 == 0) break;\r\n    uVar4 = uVar4 - 1;\r\n    pcVar6 = pcVar2 + 1;\r\n    cVar1 = *pcVar2;\r\n    pcVar2 = pcVar6;\r\n  } while (cVar1 != '\\0');\r\n  uVar4 = ~uVar4;\r\n  pcVar2 = pcVar6 + -uVar4;\r\n  pcVar6 = param_1 + 0x80;\r\n  for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar6 = *(undefined4 *)pcVar2;\r\n    pcVar2 = pcVar2 + 4;\r\n    pcVar6 = pcVar6 + 4;\r\n  }\r\n  for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *pcVar6 = *pcVar2;\r\n    pcVar2 = pcVar2 + 1;\r\n    pcVar6 = pcVar6 + 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4ff0",
+      "name": "__expandlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dbe30",
+      "name": "_strcspn"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    }
+  ],
+  "data_refs": []
+}

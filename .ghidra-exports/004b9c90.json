@@ -1,0 +1,24 @@
+{
+  "address": "004b9c90",
+  "name": "FUN_004b9c90",
+  "signature": "undefined FUN_004b9c90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_004b9c90(undefined4 param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = FUN_004b9ce0(param_1);\r\n  return iVar1 != 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004b9ce0",
+      "name": "FUN_004b9ce0"
+    }
+  ],
+  "data_refs": []
+}

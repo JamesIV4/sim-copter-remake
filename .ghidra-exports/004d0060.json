@@ -1,0 +1,19 @@
+{
+  "address": "004d0060",
+  "name": "FUN_004d0060",
+  "signature": "undefined FUN_004d0060(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004d0060(int *param_1,int *param_2)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  uVar1 = 0xffffffff;\r\n  if (*(short *)(*param_1 + 0x1a) <= *(short *)(*param_2 + 0x1a)) {\r\n    uVar1 = 1;\r\n  }\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "DATA"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

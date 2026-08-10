@@ -1,0 +1,18 @@
+{
+  "address": "004de55c",
+  "name": "FUN_004de55c",
+  "signature": "undefined FUN_004de55c(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nfloat10 FUN_004de55c(void)\r\n\r\n{\r\n  int unaff_EBP;\r\n  float10 in_ST0;\r\n  float10 fVar1;\r\n  float10 fVar2;\r\n  \r\n  fVar2 = ((float10)1 + ABS(in_ST0)) * ((float10)1 - ABS(in_ST0));\r\n  fVar1 = (float10)0;\r\n  *(ushort *)(unaff_EBP + -0xa0) =\r\n       (ushort)(fVar2 < fVar1) << 8 | (ushort)(NAN(fVar2) || NAN(fVar1)) << 10 |\r\n       (ushort)(fVar2 == fVar1) << 0xe;\r\n  if ((*(byte *)(unaff_EBP + -0x9f) & 1) == 0) {\r\n    return SQRT(fVar2);\r\n  }\r\n  fVar1 = (float10)FUN_004e1b16();\r\n  return fVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e1b16",
+      "name": "FUN_004e1b16"
+    }
+  ],
+  "data_refs": []
+}

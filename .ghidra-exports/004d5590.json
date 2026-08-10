@@ -1,0 +1,24 @@
+{
+  "address": "004d5590",
+  "name": "_sscanf",
+  "signature": "int __cdecl _sscanf(char * _Src, char * _Format, ...)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _sscanf\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _sscanf(char *_Src,char *_Format,...)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  char *local_20;\r\n  int local_1c;\r\n  char *local_18;\r\n  undefined4 local_14;\r\n  \r\n  uVar3 = 0xffffffff;\r\n  local_14 = 0x49;\r\n  local_18 = _Src;\r\n  local_20 = _Src;\r\n  do {\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    cVar1 = *_Src;\r\n    _Src = _Src + 1;\r\n  } while (cVar1 != '\\0');\r\n  local_1c = ~uVar3 - 1;\r\n  iVar2 = FUN_004dc370(&local_20,_Format,&stack0x0000000c);\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00439010",
+      "name": "FUN_00439010",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370"
+    }
+  ],
+  "data_refs": []
+}

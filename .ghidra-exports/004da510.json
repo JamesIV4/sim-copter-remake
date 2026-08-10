@@ -1,0 +1,44 @@
+{
+  "address": "004da510",
+  "name": "__mtinit",
+  "signature": "int __cdecl __mtinit(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mtinit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __mtinit(void)\r\n\r\n{\r\n  _ptiddata _Ptd;\r\n  BOOL BVar1;\r\n  DWORD DVar2;\r\n  pthreadlocinfo unaff_ESI;\r\n  \r\n  __mtinitlocks();\r\n  DAT_00507680 = TlsAlloc();\r\n  if (DAT_00507680 == 0xffffffff) {\r\n    return 0;\r\n  }\r\n  _Ptd = (_ptiddata)FUN_004da750(1,0x74);\r\n  if (_Ptd != (_ptiddata)0x0) {\r\n    BVar1 = TlsSetValue(DAT_00507680,_Ptd);\r\n    if (BVar1 != 0) {\r\n      __initptd(_Ptd,unaff_ESI);\r\n      DVar2 = GetCurrentThreadId();\r\n      _Ptd->_tid = DVar2;\r\n      _Ptd->_thandle = 0xffffffff;\r\n      return 1;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6400",
+      "name": "__mtinitlocks"
+    },
+    {
+      "addr": "EXTERNAL:0000004c",
+      "name": "TlsAlloc"
+    },
+    {
+      "addr": "004da750",
+      "name": "FUN_004da750"
+    },
+    {
+      "addr": "EXTERNAL:00000061",
+      "name": "TlsSetValue"
+    },
+    {
+      "addr": "004da570",
+      "name": "__initptd"
+    },
+    {
+      "addr": "EXTERNAL:0000001f",
+      "name": "GetCurrentThreadId"
+    }
+  ],
+  "data_refs": []
+}

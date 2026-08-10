@@ -1,0 +1,29 @@
+{
+  "address": "004a6370",
+  "name": "FUN_004a6370",
+  "signature": "undefined FUN_004a6370(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a6370(int param_1,int param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  \r\n  if ((param_2 != 6) ||\r\n     (iVar2 = *(int *)(param_1 + 0x88) - DAT_005039a8, *(int *)(param_1 + 0x88) = iVar2, iVar2 < 1))\r\n  {\r\n    *(undefined4 *)(param_1 + 0x88) = 0x8000;\r\n    puVar1 = *(undefined4 **)(**(int **)(param_1 + 0x98) + 0x10);\r\n    while (puVar1 != (undefined4 *)0x0) {\r\n      if (param_2 == 0x10) {\r\n        if ((int)puVar1[7] < *(int *)(param_1 + 0x38) + *(int *)(param_1 + 0x40)) {\r\nLAB_004a6485:\r\n          FUN_0049a4f0(param_2,param_1 + 0x24,puVar1,*(undefined4 *)(param_1 + 0x9c),0);\r\n        }\r\n      }\r\n      else if ((((*(ushort *)(puVar1 + 3) & 4) == 0) ||\r\n               (*(undefined4 **)(DAT_005040d0 + 0xa4) != puVar1)) &&\r\n              ((*(ushort *)(puVar1 + 3) & 0x60) == 0)) {\r\n        if ((((*(int *)(param_1 + 0x3c) + -0xa0000 < (int)(puVar1[4] + puVar1[6])) &&\r\n             ((int)(puVar1[6] - puVar1[4]) < *(int *)(param_1 + 0x3c) + 0xa0000)) &&\r\n            ((*(int *)(param_1 + 0x40) + -0xf0000 < (int)puVar1[7] &&\r\n             (((int)puVar1[7] < *(int *)(param_1 + 0x40) + 0x320000 &&\r\n              (*(int *)(param_1 + 0x44) + -0xa0000 < (int)(puVar1[4] + puVar1[8]))))))) &&\r\n           ((int)(puVar1[8] - puVar1[4]) < *(int *)(param_1 + 0x44) + 0xa0000)) goto LAB_004a6485;\r\n      }\r\n      if ((*(byte *)(puVar1 + 3) & 4) == 0) {\r\n        puVar1 = (undefined4 *)*puVar1;\r\n      }\r\n      else {\r\n        puVar1 = *(undefined4 **)\r\n                  **(undefined4 **)**(undefined4 **)**(undefined4 **)**(undefined4 **)*puVar1;\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a4ac0",
+      "name": "FUN_004a4ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a5fd0",
+      "name": "FUN_004a5fd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049a4f0",
+      "name": "FUN_0049a4f0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,28 @@
+{
+  "address": "00402ba0",
+  "name": "FUN_00402ba0",
+  "signature": "undefined FUN_00402ba0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nBOOL __thiscall FUN_00402ba0(int param_1,LPVOID *param_2)\r\n\r\n{\r\n  BOOL BVar1;\r\n  uint local_104;\r\n  CHAR local_100 [256];\r\n  \r\n  if (*(int *)(param_1 + 8) == 0) {\r\n    return 0;\r\n  }\r\n  wsprintfA(local_100,s__StringFileInfo__04lx_04lx__s_004f816c,(uint)**(ushort **)(param_1 + 4),\r\n            (uint)(*(ushort **)(param_1 + 4))[1],s_Debug_Version_004f81a4);\r\n  BVar1 = VerQueryValueA(*(LPCVOID *)(param_1 + 8),local_100,param_2,&local_104);\r\n  return BVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045c0f0",
+      "name": "FUN_0045c0f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000074",
+      "name": "wsprintfA"
+    },
+    {
+      "addr": "0046350e",
+      "name": "VerQueryValueA"
+    }
+  ],
+  "data_refs": []
+}

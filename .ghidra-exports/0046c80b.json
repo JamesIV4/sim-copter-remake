@@ -1,0 +1,13 @@
+{
+  "address": "0046c80b",
+  "name": "FUN_0046c80b",
+  "signature": "undefined FUN_0046c80b(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined8 __fastcall FUN_0046c80b(undefined4 param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  DAT_004fe768 = 1;\r\n  DAT_004fc1e4 = param_3;\r\n  return CONCAT44(param_2,param_3);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

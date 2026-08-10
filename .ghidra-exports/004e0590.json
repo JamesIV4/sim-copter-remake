@@ -1,0 +1,22 @@
+{
+  "address": "004e0590",
+  "name": "FID_conflict:__atodbl",
+  "signature": "int __cdecl FID_conflict:__atodbl(_CRT_FLOAT * _Result, char * _Str)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __atodbl\r\n    __atoflt\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl FID_conflict___atodbl(_CRT_FLOAT *_Result,char *_Str)\r\n\r\n{\r\n  INTRNCVT_STATUS IVar1;\r\n  char *local_10;\r\n  _LDBL12 local_c;\r\n  \r\n  ___strgtold12(&local_c,&local_10,_Str,0,0,0,0);\r\n  IVar1 = __ld12tof(&local_c,_Result);\r\n  return IVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12"
+    },
+    {
+      "addr": "004e0530",
+      "name": "__ld12tof"
+    }
+  ],
+  "data_refs": []
+}

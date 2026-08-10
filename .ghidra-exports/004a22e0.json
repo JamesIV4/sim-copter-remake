@@ -1,0 +1,49 @@
+{
+  "address": "004a22e0",
+  "name": "FUN_004a22e0",
+  "signature": "undefined FUN_004a22e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004a22e0(int param_1,int param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  int *piVar2;\r\n  bool bVar3;\r\n  int iVar4;\r\n  int *piVar5;\r\n  undefined4 local_18;\r\n  int local_14;\r\n  int local_10;\r\n  int local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  uVar1 = *(uint *)(param_2 + 4);\r\n  if (((uVar1 & 0x20) == 0) && ((*(byte *)(param_1 + 4) & 0x20) == 0)) {\r\n    iVar4 = *(int *)(param_1 + 0x14);\r\n    if ((0x11b < iVar4) && (((iVar4 < 0x11e || (iVar4 == 0x11f)) && ((uVar1 & 0x200) != 0)))) {\r\n      local_14 = *(undefined4 *)(param_2 + 0x113);\r\n      *(uint *)(param_2 + 4) = uVar1 & 0xfffffdff;\r\n      *(undefined4 *)(param_2 + 0xaf) = 0;\r\n      local_4 = 0;\r\n      local_18 = 0x1b;\r\n      local_8 = 1;\r\n      FUN_004a89c0(&local_18);\r\n    }\r\n    if (((*(byte *)(param_2 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = *(int *)(param_2 + 0x14), iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (bVar3) {\r\n      if (((*(byte *)(param_1 + 5) & 0xb) == 0) &&\r\n         ((iVar4 = *(int *)(param_1 + 0x14), iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400))))))\r\n      {\r\n        bVar3 = false;\r\n      }\r\n      else {\r\n        bVar3 = true;\r\n      }\r\n      if (!bVar3) {\r\n        iVar4 = _rand();\r\n        if ((int)(short)iVar4 % (0x200 >> (DAT_004f9740 & 0x1f)) == 0) {\r\n          iVar4 = FUN_004a9a10(0x408);\r\n          *(int *)(param_1 + 0x113) = iVar4;\r\n          if (iVar4 != -1) {\r\n            local_18 = 0;\r\n            local_4 = 0;\r\n            local_8 = 1;\r\n            local_10 = *(int *)(param_1 + 0x30) + 0x20000000 >> 0x16;\r\n            local_c = 0x20000000 - *(int *)(param_1 + 0x38) >> 0x16;\r\n            local_14 = iVar4;\r\n            FUN_004a89c0(&local_18);\r\n            FUN_0042a1f0(7,(int *)(param_1 + 0x30),0);\r\n            FUN_0049fd00(*(undefined4 *)(param_1 + 0x113));\r\n            return;\r\n          }\r\n          uVar1 = *(uint *)(param_1 + 4);\r\n          *(uint *)(param_1 + 4) = uVar1 & 0xfffffeff;\r\n          *(uint *)(param_1 + 4) = uVar1 & 0xfffffcff;\r\n          if ((uVar1 & 2) != 0) {\r\n            if ((uVar1 & 0x400) == 0) {\r\n              FUN_0049cae0(param_1 + 0x88);\r\n            }\r\n            else if (((&DAT_005d9200)\r\n                      [(uint)*(byte *)(param_1 + 0xe3) * 0x100 + (uint)*(byte *)(param_1 + 0xe4)] !=\r\n                      0) && (piVar5 = (int *)((&DAT_005d9200)\r\n                                              [(uint)*(byte *)(param_1 + 0xe3) * 0x100 +\r\n                                               (uint)*(byte *)(param_1 + 0xe4)] + 0x10),\r\n                            *piVar5 != 0)) {\r\n              do {\r\n                piVar2 = (int *)*piVar5;\r\n                if (param_1 - (int)piVar2 == -0x18) {\r\n                  *piVar5 = *(int *)(param_1 + 0x18);\r\n                  *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n                  return;\r\n                }\r\n                piVar5 = piVar2;\r\n              } while (*piVar2 != 0);\r\n              *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n              return;\r\n            }\r\n            *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n            return;\r\n          }\r\n        }\r\n        else {\r\n          uVar1 = *(uint *)(param_1 + 4);\r\n          *(uint *)(param_1 + 4) = uVar1 & 0xfffffeff;\r\n          *(uint *)(param_1 + 4) = uVar1 & 0xfffffcff;\r\n          if ((uVar1 & 2) != 0) {\r\n            if ((uVar1 & 0x400) == 0) {\r\n              FUN_0049cae0(param_1 + 0x88);\r\n            }\r\n            else if ((&DAT_005d9200)\r\n                     [(uint)*(byte *)(param_1 + 0xe3) * 0x100 + (uint)*(byte *)(param_1 + 0xe4)] !=\r\n                     0) {\r\n              piVar5 = (int *)((&DAT_005d9200)\r\n                               [(uint)*(byte *)(param_1 + 0xe3) * 0x100 +\r\n                                (uint)*(byte *)(param_1 + 0xe4)] + 0x10);\r\n              iVar4 = *piVar5;\r\n              while (iVar4 != 0) {\r\n                piVar2 = (int *)*piVar5;\r\n                if (param_1 - (int)piVar2 == -0x18) {\r\n                  *piVar5 = *(int *)(param_1 + 0x18);\r\n                  break;\r\n                }\r\n                piVar5 = piVar2;\r\n                iVar4 = *piVar2;\r\n              }\r\n            }\r\n            *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n          }\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      iVar4 = _rand();\r\n      if ((int)(short)iVar4 % (0x200 >> (DAT_004f9740 & 0x1f)) == 0) {\r\n        iVar4 = FUN_004a9a10(0x408);\r\n        *(int *)(param_2 + 0x113) = iVar4;\r\n        if (iVar4 != -1) {\r\n          local_18 = 0;\r\n          local_4 = 0;\r\n          local_8 = 1;\r\n          local_10 = *(int *)(param_1 + 0x30) + 0x20000000 >> 0x16;\r\n          local_c = 0x20000000 - *(int *)(param_1 + 0x38) >> 0x16;\r\n          local_14 = iVar4;\r\n          FUN_004a89c0(&local_18);\r\n          FUN_0042a1f0(7,(int *)(param_1 + 0x30),0);\r\n          FUN_0049fd00(*(undefined4 *)(param_2 + 0x113));\r\n          return;\r\n        }\r\n        uVar1 = *(uint *)(param_2 + 4);\r\n        *(uint *)(param_2 + 4) = uVar1 & 0xfffffeff;\r\n        *(uint *)(param_2 + 4) = uVar1 & 0xfffffcff;\r\n        if ((uVar1 & 2) != 0) {\r\n          if ((uVar1 & 0x400) == 0) {\r\n            FUN_0049cae0(param_2 + 0x88);\r\n          }\r\n          else if (((&DAT_005d9200)\r\n                    [(uint)*(byte *)(param_2 + 0xe3) * 0x100 + (uint)*(byte *)(param_2 + 0xe4)] != 0\r\n                   ) && (piVar5 = (int *)((&DAT_005d9200)\r\n                                          [(uint)*(byte *)(param_2 + 0xe3) * 0x100 +\r\n                                           (uint)*(byte *)(param_2 + 0xe4)] + 0x10), *piVar5 != 0))\r\n          {\r\n            do {\r\n              piVar2 = (int *)*piVar5;\r\n              if (param_2 - (int)piVar2 == -0x18) {\r\n                *piVar5 = *(int *)(param_2 + 0x18);\r\n                *(uint *)(param_2 + 4) = *(uint *)(param_2 + 4) & 0xfffffffd;\r\n                return;\r\n              }\r\n              piVar5 = piVar2;\r\n            } while (*piVar2 != 0);\r\n            *(uint *)(param_2 + 4) = *(uint *)(param_2 + 4) & 0xfffffffd;\r\n            return;\r\n          }\r\n          *(uint *)(param_2 + 4) = *(uint *)(param_2 + 4) & 0xfffffffd;\r\n          return;\r\n        }\r\n      }\r\n      else {\r\n        uVar1 = *(uint *)(param_2 + 4);\r\n        *(uint *)(param_2 + 4) = uVar1 & 0xfffffeff;\r\n        *(uint *)(param_2 + 4) = uVar1 & 0xfffffcff;\r\n        if ((uVar1 & 2) != 0) {\r\n          if ((uVar1 & 0x400) == 0) {\r\n            FUN_0049cae0(param_2 + 0x88);\r\n          }\r\n          else if (((&DAT_005d9200)\r\n                    [(uint)*(byte *)(param_2 + 0xe3) * 0x100 + (uint)*(byte *)(param_2 + 0xe4)] != 0\r\n                   ) && (piVar5 = (int *)((&DAT_005d9200)\r\n                                          [(uint)*(byte *)(param_2 + 0xe3) * 0x100 +\r\n                                           (uint)*(byte *)(param_2 + 0xe4)] + 0x10), *piVar5 != 0))\r\n          {\r\n            do {\r\n              piVar2 = (int *)*piVar5;\r\n              if (param_2 - (int)piVar2 == -0x18) {\r\n                *piVar5 = *(int *)(param_2 + 0x18);\r\n                *(uint *)(param_2 + 4) = *(uint *)(param_2 + 4) & 0xfffffffd;\r\n                return;\r\n              }\r\n              piVar5 = piVar2;\r\n            } while (*piVar2 != 0);\r\n            *(uint *)(param_2 + 4) = *(uint *)(param_2 + 4) & 0xfffffffd;\r\n            return;\r\n          }\r\n          *(uint *)(param_2 + 4) = *(uint *)(param_2 + 4) & 0xfffffffd;\r\n          return;\r\n        }\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049ee30",
+      "name": "FUN_0049ee30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049ee30",
+      "name": "FUN_0049ee30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004a9a10",
+      "name": "FUN_004a9a10"
+    },
+    {
+      "addr": "0042a1f0",
+      "name": "FUN_0042a1f0"
+    },
+    {
+      "addr": "0049fd00",
+      "name": "FUN_0049fd00"
+    },
+    {
+      "addr": "0049cae0",
+      "name": "FUN_0049cae0"
+    }
+  ],
+  "data_refs": []
+}

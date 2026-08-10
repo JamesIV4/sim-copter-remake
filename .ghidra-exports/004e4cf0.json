@@ -1,0 +1,32 @@
+{
+  "address": "004e4cf0",
+  "name": "FUN_004e4cf0",
+  "signature": "undefined FUN_004e4cf0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004e4cf0(char *param_1)\r\n\r\n{\r\n  size_t sVar1;\r\n  char *_Dest;\r\n  \r\n  sVar1 = _strlen(param_1);\r\n  _Dest = (char *)FUN_004d5f00(sVar1 + 1);\r\n  if (_Dest != (char *)0x0) {\r\n    FID_conflict___mbscpy(_Dest,param_1);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4bc0",
+      "name": "copy_environ",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4df0",
+      "name": "_strlen"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004e4e70",
+      "name": "FID_conflict:__mbscpy"
+    }
+  ],
+  "data_refs": []
+}

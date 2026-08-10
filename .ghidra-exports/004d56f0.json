@@ -1,0 +1,74 @@
+{
+  "address": "004d56f0",
+  "name": "__mtlock",
+  "signature": "undefined __mtlock(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mtlock\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __mtlock(LPCRITICAL_SECTION param_1)\r\n\r\n{\r\n  LeaveCriticalSection(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2310",
+      "name": "flush",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2310",
+      "name": "flush",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d21a0",
+      "name": "opfx",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2220",
+      "name": "osfx",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2220",
+      "name": "osfx",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6fc0",
+      "name": "FUN_004d6fc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6fc0",
+      "name": "FUN_004d6fc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3560",
+      "name": "close",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3560",
+      "name": "close",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d38c0",
+      "name": "setbuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2ad0",
+      "name": "Iostream_init",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

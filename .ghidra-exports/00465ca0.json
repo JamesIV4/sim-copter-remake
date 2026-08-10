@@ -1,0 +1,24 @@
+{
+  "address": "00465ca0",
+  "name": "FUN_00465ca0",
+  "signature": "undefined FUN_00465ca0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_00465ca0(FILE *param_1,undefined4 param_2,undefined2 *param_3,undefined4 param_4)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  size_t sVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  undefined2 *puVar6;\r\n  undefined2 *puVar7;\r\n  undefined4 local_8;\r\n  size_t local_4;\r\n  \r\n  local_8._3_1_ = (undefined1)((uint)param_2 >> 0x18);\r\n  local_8._2_1_ = (undefined1)((uint)param_2 >> 0x10);\r\n  local_8._1_1_ = (undefined1)((uint)param_2 >> 8);\r\n  uVar1 = CONCAT11((char)param_2,local_8._1_1_);\r\n  local_8._0_2_ = CONCAT11(local_8._2_1_,local_8._3_1_);\r\n  local_8 = CONCAT22(uVar1,(undefined2)local_8);\r\n  param_2 = local_8;\r\n  sVar2 = _fread(&param_2,4,1,param_1);\r\n  if (sVar2 == 0) {\r\n    return 0;\r\n  }\r\n  local_8._3_1_ = (undefined1)((uint)param_4 >> 0x18);\r\n  local_8._2_1_ = (undefined1)((uint)param_4 >> 0x10);\r\n  local_8._1_1_ = (undefined1)((uint)param_4 >> 8);\r\n  uVar1 = CONCAT11((char)param_4,local_8._1_1_);\r\n  local_8._0_2_ = CONCAT11(local_8._2_1_,local_8._3_1_);\r\n  local_8 = CONCAT22(uVar1,(undefined2)local_8);\r\n  local_4 = local_8;\r\n  sVar2 = _fread(&local_4,4,1,param_1);\r\n  puVar7 = param_3;\r\n  if (sVar2 != 0) {\r\n    local_8._3_1_ = (undefined1)(local_4 >> 0x18);\r\n    local_8._2_1_ = (undefined1)(local_4 >> 0x10);\r\n    local_8._1_1_ = (undefined1)(local_4 >> 8);\r\n    uVar1 = CONCAT11((char)local_4,local_8._1_1_);\r\n    local_8._0_2_ = CONCAT11(local_8._2_1_,local_8._3_1_);\r\n    local_8 = CONCAT22(uVar1,(undefined2)local_8);\r\n    sVar2 = local_8;\r\n    local_4 = local_8;\r\n    iVar3 = (int)local_8 / 2;\r\n    puVar6 = param_3;\r\n    if (0 < iVar3) {\r\n      do {\r\n        iVar3 = iVar3 + -1;\r\n        local_8._1_1_ = (undefined1)((ushort)*puVar6 >> 8);\r\n        local_8._0_1_ = (undefined1)*puVar6;\r\n        *puVar6 = CONCAT11((undefined1)local_8,local_8._1_1_);\r\n        puVar6 = puVar6 + 1;\r\n      } while (iVar3 != 0);\r\n    }\r\n    sVar2 = _fread(param_3,sVar2,1,param_1);\r\n    if (sVar2 != 0) {\r\n      iVar3 = (int)local_4 / 2;\r\n      if (0 < iVar3) {\r\n        do {\r\n          iVar3 = iVar3 + -1;\r\n          local_8._1_1_ = (undefined1)((ushort)*puVar7 >> 8);\r\n          *puVar7 = CONCAT11((char)*puVar7,local_8._1_1_);\r\n          puVar7 = puVar7 + 1;\r\n        } while (iVar3 != 0);\r\n      }\r\n      DAT_0055d138 = DAT_0055d138 + local_4 + 8;\r\n      return CONCAT22((short)(local_4 + 8 >> 0x10),1);\r\n    }\r\n    uVar4 = (int)local_4 / 2;\r\n    uVar5 = uVar4;\r\n    if (0 < (int)uVar4) {\r\n      do {\r\n        uVar4 = uVar4 - 1;\r\n        local_8._1_1_ = (undefined1)((ushort)*puVar7 >> 8);\r\n        *puVar7 = CONCAT11((char)*puVar7,local_8._1_1_);\r\n        uVar5 = 0;\r\n        puVar7 = puVar7 + 1;\r\n      } while (uVar4 != 0);\r\n    }\r\n    return uVar5 & 0xffff0000;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004654c0",
+      "name": "FUN_004654c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3cb0",
+      "name": "_fread"
+    }
+  ],
+  "data_refs": []
+}

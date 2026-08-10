@@ -1,0 +1,32 @@
+{
+  "address": "004daa10",
+  "name": "__ftime",
+  "signature": "undefined __ftime(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ftime\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __ftime(undefined4 *param_1)\r\n\r\n{\r\n  time_t tVar1;\r\n  _SYSTEMTIME local_34;\r\n  tm local_24;\r\n  \r\n  ___tzset();\r\n  *(short *)((int)param_1 + 6) = (short)(DAT_00506df0 / 0x3c);\r\n  GetLocalTime(&local_34);\r\n  *(WORD *)(param_1 + 1) = local_34.wMilliseconds;\r\n  local_24.tm_year = (local_34._0_4_ & 0xffff) - 0x76c;\r\n  local_24.tm_mday = (int)local_34.wDay;\r\n  local_24.tm_mon = ((uint)local_34._0_4_ >> 0x10) - 1;\r\n  local_24.tm_hour = local_34._8_4_ & 0xffff;\r\n  local_24.tm_isdst = -1;\r\n  local_24.tm_min = (uint)local_34._8_4_ >> 0x10;\r\n  local_24.tm_sec = local_34._12_4_ & 0xffff;\r\n  tVar1 = _mktime(&local_24);\r\n  *(short *)(param_1 + 2) = (short)local_24.tm_isdst;\r\n  *param_1 = (int)tVar1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d47b0",
+      "name": "_clock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d90a0",
+      "name": "___tzset"
+    },
+    {
+      "addr": "EXTERNAL:00000065",
+      "name": "GetLocalTime"
+    },
+    {
+      "addr": "004e0d60",
+      "name": "_mktime"
+    }
+  ],
+  "data_refs": []
+}

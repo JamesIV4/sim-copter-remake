@@ -1,0 +1,24 @@
+{
+  "address": "00491a90",
+  "name": "FUN_00491a90",
+  "signature": "undefined FUN_00491a90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00491a90(undefined4 param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 *puVar4;\r\n  \r\n  puVar2 = (undefined4 *)&DAT_005d4bd0;\r\n  while( true ) {\r\n    puVar3 = puVar2;\r\n    puVar4 = &DAT_0057f320;\r\n    for (iVar1 = 0x12; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar4 = *puVar3;\r\n      puVar3 = puVar3 + 1;\r\n      puVar4 = puVar4 + 1;\r\n    }\r\n    DAT_0057f33c = *(undefined4 *)(DAT_0057f348 + 0x18);\r\n    DAT_0057f340 = *(undefined4 *)(DAT_0057f348 + 0x1c);\r\n    DAT_0057f344 = *(undefined4 *)(DAT_0057f348 + 0x20);\r\n    iVar1 = FUN_00459a80(param_1,s_SAGTSRBDJARTCould_not_create_fir_00504590._0_4_,&DAT_0057f320,\r\n                         0x48);\r\n    if (iVar1 == 0) break;\r\n    puVar2 = puVar2 + 0x12;\r\n    if ((undefined4 *)0x5d4e9f < puVar2) {\r\n      puVar2 = (undefined4 *)&DAT_005d6880;\r\n      while( true ) {\r\n        puVar3 = puVar2;\r\n        puVar4 = &DAT_0057f320;\r\n        for (iVar1 = 0x12; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n          *puVar4 = *puVar3;\r\n          puVar3 = puVar3 + 1;\r\n          puVar4 = puVar4 + 1;\r\n        }\r\n        DAT_0057f33c = *(undefined4 *)(DAT_0057f348 + 0x18);\r\n        DAT_0057f340 = *(undefined4 *)(DAT_0057f348 + 0x1c);\r\n        DAT_0057f344 = *(undefined4 *)(DAT_0057f348 + 0x20);\r\n        iVar1 = FUN_00459a80(param_1,s_SAGTSRBDJARTCould_not_create_fir_00504590._4_4_,&DAT_0057f320\r\n                             ,0x48);\r\n        if (iVar1 == 0) break;\r\n        puVar2 = puVar2 + 0x12;\r\n        if ((undefined4 *)0x5d70ef < puVar2) {\r\n          puVar2 = (undefined4 *)&DAT_005d62e0;\r\n          while( true ) {\r\n            puVar3 = puVar2;\r\n            puVar4 = &DAT_0057f320;\r\n            for (iVar1 = 0x12; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n              *puVar4 = *puVar3;\r\n              puVar3 = puVar3 + 1;\r\n              puVar4 = puVar4 + 1;\r\n            }\r\n            DAT_0057f33c = *(undefined4 *)(DAT_0057f348 + 0x18);\r\n            DAT_0057f340 = *(undefined4 *)(DAT_0057f348 + 0x1c);\r\n            DAT_0057f344 = *(undefined4 *)(DAT_0057f348 + 0x20);\r\n            iVar1 = FUN_00459a80(param_1,s_SAGTSRBDJARTCould_not_create_fir_00504590._8_4_,\r\n                                 &DAT_0057f320,0x48);\r\n            if (iVar1 == 0) break;\r\n            puVar2 = puVar2 + 0x12;\r\n            if ((undefined4 *)0x5d687f < puVar2) {\r\n              return 1;\r\n            }\r\n          }\r\n          return 0;\r\n        }\r\n      }\r\n      return 0;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a6b0",
+      "name": "FUN_0047a6b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00459a80",
+      "name": "FUN_00459a80"
+    }
+  ],
+  "data_refs": []
+}

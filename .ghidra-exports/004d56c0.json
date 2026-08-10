@@ -1,0 +1,34 @@
+{
+  "address": "004d56c0",
+  "name": "__mtlockinit",
+  "signature": "undefined __mtlockinit(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mtlockinit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __mtlockinit(LPCRITICAL_SECTION param_1)\r\n\r\n{\r\n  InitializeCriticalSection(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2c60",
+      "name": "ios",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2c60",
+      "name": "ios",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6c40",
+      "name": "streambuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

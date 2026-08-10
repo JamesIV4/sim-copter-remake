@@ -1,0 +1,28 @@
+{
+  "address": "004d65f0",
+  "name": "_set_new_handler",
+  "signature": "_func_int_uint * __cdecl _set_new_handler(_func_int_uint * param_1)",
+  "calling_convention": "__cdecl",
+  "return_type": "_func_int_uint *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    int (__cdecl*__cdecl _set_new_handler(int (__cdecl*)(unsigned int)))(unsigned int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\n_func_int_uint * __cdecl _set_new_handler(_func_int_uint *param_1)\r\n\r\n{\r\n  _func_int_uint *p_Var1;\r\n  \r\n  __lock(9);\r\n  p_Var1 = DAT_00590588;\r\n  DAT_00590588 = param_1;\r\n  FUN_004d64a0(9);\r\n  return p_Var1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

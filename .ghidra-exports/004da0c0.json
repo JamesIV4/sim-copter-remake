@@ -1,0 +1,32 @@
+{
+  "address": "004da0c0",
+  "name": "CallCatchBlock",
+  "signature": "void * __cdecl CallCatchBlock(EHExceptionRecord * param_1, EHRegistrationNode * param_2, _CONTEXT * param_3, _s_FuncInfo * param_4, void * param_5, int param_6, ulong param_7)",
+  "calling_convention": "__cdecl",
+  "return_type": "void *",
+  "parameter_count": 7,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void * __cdecl CallCatchBlock(struct EHExceptionRecord *,struct EHRegistrationNode *,struct\r\n   _CONTEXT *,struct _s_FuncInfo const *,void *,int,unsigned long)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid * __cdecl\r\nCallCatchBlock(EHExceptionRecord *param_1,EHRegistrationNode *param_2,_CONTEXT *param_3,\r\n              _s_FuncInfo *param_4,void *param_5,int param_6,ulong param_7)\r\n\r\n{\r\n  _ptiddata p_Var1;\r\n  void *pvVar2;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &DAT_004f5848;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  __getptd();\r\n  __getptd();\r\n  p_Var1 = __getptd();\r\n  p_Var1->ptlocinfo = (pthreadlocinfo)param_1;\r\n  p_Var1 = __getptd();\r\n  p_Var1->_ownlocale = (int)param_3;\r\n  local_8 = 1;\r\n  pvVar2 = _CallCatchBlock2(param_2,param_4,param_5,param_6,param_7);\r\n  local_8 = 0xffffffff;\r\n  FUN_004da18d();\r\n  *unaff_FS_OFFSET = local_14;\r\n  return pvVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da020",
+      "name": "CatchIt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004d4330",
+      "name": "_CallCatchBlock2"
+    },
+    {
+      "addr": "004da18d",
+      "name": "FUN_004da18d"
+    }
+  ],
+  "data_refs": []
+}

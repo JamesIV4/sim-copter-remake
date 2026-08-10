@@ -1,0 +1,890 @@
+{
+  "__time64_t": {
+    "name": "__time64_t",
+    "path": "/crtdefs.h",
+    "base_type": "longlong",
+    "size": 8
+  },
+  "_locale_t": {
+    "name": "_locale_t",
+    "path": "/crtdefs.h",
+    "base_type": "localeinfo_struct *",
+    "size": 4
+  },
+  "_onexit_t": {
+    "name": "_onexit_t",
+    "path": "/stdlib.h",
+    "base_type": "_onexit_t *",
+    "size": 4
+  },
+  "_ptiddata": {
+    "name": "_ptiddata",
+    "path": "/mtdll.h",
+    "base_type": "_tiddata *",
+    "size": 4
+  },
+  "_setloc_struct": {
+    "name": "_setloc_struct",
+    "path": "/mtdll.h",
+    "base_type": "setloc_struct",
+    "size": 764
+  },
+  "ATOM": {
+    "name": "ATOM",
+    "path": "/WinDef.h",
+    "base_type": "ushort",
+    "size": 2
+  },
+  "BOOL": {
+    "name": "BOOL",
+    "path": "/WinDef.h",
+    "base_type": "int",
+    "size": 4
+  },
+  "BYTE": {
+    "name": "BYTE",
+    "path": "/WinDef.h",
+    "base_type": "uchar",
+    "size": 1
+  },
+  "CHAR": {
+    "name": "CHAR",
+    "path": "/winnt.h",
+    "base_type": "char",
+    "size": 1
+  },
+  "clock_t": {
+    "name": "clock_t",
+    "path": "/time.h",
+    "base_type": "long",
+    "size": 4
+  },
+  "COLORREF": {
+    "name": "COLORREF",
+    "path": "/WinDef.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "CONTEXT": {
+    "name": "CONTEXT",
+    "path": "/winnt.h",
+    "base_type": "_CONTEXT",
+    "size": 716
+  },
+  "DWORD": {
+    "name": "DWORD",
+    "path": "/WinDef.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "DWORD_PTR": {
+    "name": "DWORD_PTR",
+    "path": "/basetsd.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "errno_t": {
+    "name": "errno_t",
+    "path": "/crtdefs.h",
+    "base_type": "int",
+    "size": 4
+  },
+  "EXCEPTION_RECORD": {
+    "name": "EXCEPTION_RECORD",
+    "path": "/winnt.h",
+    "base_type": "_EXCEPTION_RECORD",
+    "size": 80
+  },
+  "FARPROC": {
+    "name": "FARPROC",
+    "path": "/WinDef.h",
+    "base_type": "FARPROC *",
+    "size": 4
+  },
+  "FILE": {
+    "name": "FILE",
+    "path": "/mbstring.h",
+    "base_type": "_iobuf",
+    "size": 32
+  },
+  "FILETIME": {
+    "name": "FILETIME",
+    "path": "/WinDef.h",
+    "base_type": "_FILETIME",
+    "size": 8
+  },
+  "FLOATING_SAVE_AREA": {
+    "name": "FLOATING_SAVE_AREA",
+    "path": "/winnt.h",
+    "base_type": "_FLOATING_SAVE_AREA",
+    "size": 112
+  },
+  "FLT": {
+    "name": "FLT",
+    "path": "/fltintrn.h",
+    "base_type": "_flt *",
+    "size": 4
+  },
+  "FONTENUMPROCA": {
+    "name": "FONTENUMPROCA",
+    "path": "/wingdi.h",
+    "base_type": "OLDFONTENUMPROCA *",
+    "size": 4
+  },
+  "FOURCC": {
+    "name": "FOURCC",
+    "path": "/mmsystem.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "HANDLE": {
+    "name": "HANDLE",
+    "path": "/winnt.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "HBRUSH": {
+    "name": "HBRUSH",
+    "path": "/WinDef.h",
+    "base_type": "HBRUSH__ *",
+    "size": 4
+  },
+  "HCURSOR": {
+    "name": "HCURSOR",
+    "path": "/WinDef.h",
+    "base_type": "HICON__ *",
+    "size": 4
+  },
+  "HDC": {
+    "name": "HDC",
+    "path": "/WinDef.h",
+    "base_type": "HDC__ *",
+    "size": 4
+  },
+  "HFILE": {
+    "name": "HFILE",
+    "path": "/WinDef.h",
+    "base_type": "int",
+    "size": 4
+  },
+  "HFONT": {
+    "name": "HFONT",
+    "path": "/WinDef.h",
+    "base_type": "HFONT__ *",
+    "size": 4
+  },
+  "HGDIOBJ": {
+    "name": "HGDIOBJ",
+    "path": "/WinDef.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "HGLOBAL": {
+    "name": "HGLOBAL",
+    "path": "/WinDef.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "HICON": {
+    "name": "HICON",
+    "path": "/WinDef.h",
+    "base_type": "HICON__ *",
+    "size": 4
+  },
+  "HINSTANCE": {
+    "name": "HINSTANCE",
+    "path": "/WinDef.h",
+    "base_type": "HINSTANCE__ *",
+    "size": 4
+  },
+  "HKEY": {
+    "name": "HKEY",
+    "path": "/WinDef.h",
+    "base_type": "HKEY__ *",
+    "size": 4
+  },
+  "HLOCAL": {
+    "name": "HLOCAL",
+    "path": "/WinDef.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "HMENU": {
+    "name": "HMENU",
+    "path": "/WinDef.h",
+    "base_type": "HMENU__ *",
+    "size": 4
+  },
+  "HMMIO": {
+    "name": "HMMIO",
+    "path": "/mmsystem.h",
+    "base_type": "HMMIO__ *",
+    "size": 4
+  },
+  "HMODULE": {
+    "name": "HMODULE",
+    "path": "/WinDef.h",
+    "base_type": "HINSTANCE__ *",
+    "size": 4
+  },
+  "HPALETTE": {
+    "name": "HPALETTE",
+    "path": "/WinDef.h",
+    "base_type": "HPALETTE__ *",
+    "size": 4
+  },
+  "HPEN": {
+    "name": "HPEN",
+    "path": "/WinDef.h",
+    "base_type": "HPEN__ *",
+    "size": 4
+  },
+  "HPSTR": {
+    "name": "HPSTR",
+    "path": "/mmsystem.h",
+    "base_type": "char *",
+    "size": 4
+  },
+  "HRSRC": {
+    "name": "HRSRC",
+    "path": "/WinDef.h",
+    "base_type": "HRSRC__ *",
+    "size": 4
+  },
+  "HTASK": {
+    "name": "HTASK",
+    "path": "/WinDef.h",
+    "base_type": "HTASK__ *",
+    "size": 4
+  },
+  "HWND": {
+    "name": "HWND",
+    "path": "/WinDef.h",
+    "base_type": "HWND__ *",
+    "size": 4
+  },
+  "ImageBaseOffset32": {
+    "name": "ImageBaseOffset32",
+    "path": "/",
+    "base_type": "pointer32",
+    "size": 4
+  },
+  "INT": {
+    "name": "INT",
+    "path": "/WinDef.h",
+    "base_type": "int",
+    "size": 4
+  },
+  "INTRNCVT_STATUS": {
+    "name": "INTRNCVT_STATUS",
+    "path": "/fltintrn.h",
+    "base_type": "enum_3272",
+    "size": 4
+  },
+  "LARGE_INTEGER": {
+    "name": "LARGE_INTEGER",
+    "path": "/winnt.h",
+    "base_type": "_LARGE_INTEGER",
+    "size": 8
+  },
+  "LCID": {
+    "name": "LCID",
+    "path": "/winnt.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "LCTYPE": {
+    "name": "LCTYPE",
+    "path": "/winnls.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "LIST_ENTRY": {
+    "name": "LIST_ENTRY",
+    "path": "/winnt.h",
+    "base_type": "_LIST_ENTRY",
+    "size": 8
+  },
+  "locrefcount": {
+    "name": "locrefcount",
+    "path": "/crtdefs.h",
+    "base_type": "localerefcount",
+    "size": 16
+  },
+  "LOGFONTA": {
+    "name": "LOGFONTA",
+    "path": "/wingdi.h",
+    "base_type": "tagLOGFONTA",
+    "size": 60
+  },
+  "LOGPALETTE": {
+    "name": "LOGPALETTE",
+    "path": "/wingdi.h",
+    "base_type": "tagLOGPALETTE",
+    "size": 8
+  },
+  "LONG": {
+    "name": "LONG",
+    "path": "/winnt.h",
+    "base_type": "long",
+    "size": 4
+  },
+  "LONG_PTR": {
+    "name": "LONG_PTR",
+    "path": "/basetsd.h",
+    "base_type": "long",
+    "size": 4
+  },
+  "LONGLONG": {
+    "name": "LONGLONG",
+    "path": "/winnt.h",
+    "base_type": "double",
+    "size": 8
+  },
+  "LPARAM": {
+    "name": "LPARAM",
+    "path": "/WinDef.h",
+    "base_type": "long",
+    "size": 4
+  },
+  "LPBOOL": {
+    "name": "LPBOOL",
+    "path": "/WinDef.h",
+    "base_type": "BOOL *",
+    "size": 4
+  },
+  "LPBYTE": {
+    "name": "LPBYTE",
+    "path": "/WinDef.h",
+    "base_type": "BYTE *",
+    "size": 4
+  },
+  "LPCH": {
+    "name": "LPCH",
+    "path": "/winnt.h",
+    "base_type": "CHAR *",
+    "size": 4
+  },
+  "LPCMMIOINFO": {
+    "name": "LPCMMIOINFO",
+    "path": "/mmsystem.h",
+    "base_type": "MMIOINFO *",
+    "size": 4
+  },
+  "LPCPINFO": {
+    "name": "LPCPINFO",
+    "path": "/winnls.h",
+    "base_type": "_cpinfo *",
+    "size": 4
+  },
+  "LPCRITICAL_SECTION": {
+    "name": "LPCRITICAL_SECTION",
+    "path": "/winbase.h",
+    "base_type": "_RTL_CRITICAL_SECTION *",
+    "size": 4
+  },
+  "LPCSTR": {
+    "name": "LPCSTR",
+    "path": "/winnt.h",
+    "base_type": "CHAR *",
+    "size": 4
+  },
+  "LPCVOID": {
+    "name": "LPCVOID",
+    "path": "/WinDef.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "LPCWSTR": {
+    "name": "LPCWSTR",
+    "path": "/winnt.h",
+    "base_type": "WCHAR *",
+    "size": 4
+  },
+  "LPDWORD": {
+    "name": "LPDWORD",
+    "path": "/WinDef.h",
+    "base_type": "DWORD *",
+    "size": 4
+  },
+  "LPINT": {
+    "name": "LPINT",
+    "path": "/WinDef.h",
+    "base_type": "int *",
+    "size": 4
+  },
+  "LPJOYCAPSA": {
+    "name": "LPJOYCAPSA",
+    "path": "/mmsystem.h",
+    "base_type": "tagJOYCAPSA *",
+    "size": 4
+  },
+  "LPJOYINFO": {
+    "name": "LPJOYINFO",
+    "path": "/mmsystem.h",
+    "base_type": "joyinfo_tag *",
+    "size": 4
+  },
+  "LPJOYINFOEX": {
+    "name": "LPJOYINFOEX",
+    "path": "/mmsystem.h",
+    "base_type": "joyinfoex_tag *",
+    "size": 4
+  },
+  "LPLC_STRINGS": {
+    "name": "LPLC_STRINGS",
+    "path": "/setlocal.h",
+    "base_type": "tagLC_STRINGS *",
+    "size": 4
+  },
+  "LPMEMORYSTATUS": {
+    "name": "LPMEMORYSTATUS",
+    "path": "/winbase.h",
+    "base_type": "_MEMORYSTATUS *",
+    "size": 4
+  },
+  "LPMMCKINFO": {
+    "name": "LPMMCKINFO",
+    "path": "/mmsystem.h",
+    "base_type": "_MMCKINFO *",
+    "size": 4
+  },
+  "LPMMIOINFO": {
+    "name": "LPMMIOINFO",
+    "path": "/mmsystem.h",
+    "base_type": "_MMIOINFO *",
+    "size": 4
+  },
+  "LPMMIOPROC": {
+    "name": "LPMMIOPROC",
+    "path": "/mmsystem.h",
+    "base_type": "MMIOPROC *",
+    "size": 4
+  },
+  "LPMSG": {
+    "name": "LPMSG",
+    "path": "/winuser.h",
+    "base_type": "tagMSG *",
+    "size": 4
+  },
+  "LPOFNHOOKPROC": {
+    "name": "LPOFNHOOKPROC",
+    "path": "/commdlg.h",
+    "base_type": "LPOFNHOOKPROC *",
+    "size": 4
+  },
+  "LPOFSTRUCT": {
+    "name": "LPOFSTRUCT",
+    "path": "/winbase.h",
+    "base_type": "_OFSTRUCT *",
+    "size": 4
+  },
+  "LPOPENFILENAMEA": {
+    "name": "LPOPENFILENAMEA",
+    "path": "/commdlg.h",
+    "base_type": "tagOFNA *",
+    "size": 4
+  },
+  "LPOVERLAPPED": {
+    "name": "LPOVERLAPPED",
+    "path": "/winbase.h",
+    "base_type": "_OVERLAPPED *",
+    "size": 4
+  },
+  "LPPAINTSTRUCT": {
+    "name": "LPPAINTSTRUCT",
+    "path": "/winuser.h",
+    "base_type": "tagPAINTSTRUCT *",
+    "size": 4
+  },
+  "LPPALETTEENTRY": {
+    "name": "LPPALETTEENTRY",
+    "path": "/wingdi.h",
+    "base_type": "tagPALETTEENTRY *",
+    "size": 4
+  },
+  "LPPOINT": {
+    "name": "LPPOINT",
+    "path": "/WinDef.h",
+    "base_type": "tagPOINT *",
+    "size": 4
+  },
+  "LPRECT": {
+    "name": "LPRECT",
+    "path": "/WinDef.h",
+    "base_type": "tagRECT *",
+    "size": 4
+  },
+  "LPSECURITY_ATTRIBUTES": {
+    "name": "LPSECURITY_ATTRIBUTES",
+    "path": "/winbase.h",
+    "base_type": "_SECURITY_ATTRIBUTES *",
+    "size": 4
+  },
+  "LPSTARTUPINFOA": {
+    "name": "LPSTARTUPINFOA",
+    "path": "/winbase.h",
+    "base_type": "_STARTUPINFOA *",
+    "size": 4
+  },
+  "LPSTR": {
+    "name": "LPSTR",
+    "path": "/winnt.h",
+    "base_type": "CHAR *",
+    "size": 4
+  },
+  "LPSYSTEMTIME": {
+    "name": "LPSYSTEMTIME",
+    "path": "/winbase.h",
+    "base_type": "_SYSTEMTIME *",
+    "size": 4
+  },
+  "LPTEXTMETRICA": {
+    "name": "LPTEXTMETRICA",
+    "path": "/wingdi.h",
+    "base_type": "tagTEXTMETRICA *",
+    "size": 4
+  },
+  "LPTHREAD_START_ROUTINE": {
+    "name": "LPTHREAD_START_ROUTINE",
+    "path": "/winbase.h",
+    "base_type": "PTHREAD_START_ROUTINE *",
+    "size": 4
+  },
+  "LPTIME_ZONE_INFORMATION": {
+    "name": "LPTIME_ZONE_INFORMATION",
+    "path": "/winbase.h",
+    "base_type": "_TIME_ZONE_INFORMATION *",
+    "size": 4
+  },
+  "LPTIMECALLBACK": {
+    "name": "LPTIMECALLBACK",
+    "path": "/mmsystem.h",
+    "base_type": "TIMECALLBACK *",
+    "size": 4
+  },
+  "LPTOP_LEVEL_EXCEPTION_FILTER": {
+    "name": "LPTOP_LEVEL_EXCEPTION_FILTER",
+    "path": "/winbase.h",
+    "base_type": "PTOP_LEVEL_EXCEPTION_FILTER *",
+    "size": 4
+  },
+  "LPVOID": {
+    "name": "LPVOID",
+    "path": "/WinDef.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "LPWCH": {
+    "name": "LPWCH",
+    "path": "/winnt.h",
+    "base_type": "WCHAR *",
+    "size": 4
+  },
+  "LPWIN32_FIND_DATAA": {
+    "name": "LPWIN32_FIND_DATAA",
+    "path": "/winbase.h",
+    "base_type": "_WIN32_FIND_DATAA *",
+    "size": 4
+  },
+  "LPWNDCLASSA": {
+    "name": "LPWNDCLASSA",
+    "path": "/winuser.h",
+    "base_type": "tagWNDCLASSA *",
+    "size": 4
+  },
+  "LPWORD": {
+    "name": "LPWORD",
+    "path": "/WinDef.h",
+    "base_type": "WORD *",
+    "size": 4
+  },
+  "LPWSTR": {
+    "name": "LPWSTR",
+    "path": "/winnt.h",
+    "base_type": "WCHAR *",
+    "size": 4
+  },
+  "LRESULT": {
+    "name": "LRESULT",
+    "path": "/WinDef.h",
+    "base_type": "long",
+    "size": 4
+  },
+  "LSTATUS": {
+    "name": "LSTATUS",
+    "path": "/winreg.h",
+    "base_type": "long",
+    "size": 4
+  },
+  "MMCKINFO": {
+    "name": "MMCKINFO",
+    "path": "/mmsystem.h",
+    "base_type": "_MMCKINFO",
+    "size": 20
+  },
+  "MMIOINFO": {
+    "name": "MMIOINFO",
+    "path": "/mmsystem.h",
+    "base_type": "_MMIOINFO",
+    "size": 72
+  },
+  "MMIOPROC": {
+    "name": "MMIOPROC",
+    "path": "/mmsystem.h",
+    "base_type": "MMIOPROC",
+    "size": -1
+  },
+  "MMRESULT": {
+    "name": "MMRESULT",
+    "path": "/mmsystem.h",
+    "base_type": "uint",
+    "size": 4
+  },
+  "MSG": {
+    "name": "MSG",
+    "path": "/winuser.h",
+    "base_type": "tagMSG",
+    "size": 28
+  },
+  "OLDFONTENUMPROCA": {
+    "name": "OLDFONTENUMPROCA",
+    "path": "/wingdi.h",
+    "base_type": "OLDFONTENUMPROCA *",
+    "size": 4
+  },
+  "PAINTSTRUCT": {
+    "name": "PAINTSTRUCT",
+    "path": "/winuser.h",
+    "base_type": "tagPAINTSTRUCT",
+    "size": 64
+  },
+  "PALETTEENTRY": {
+    "name": "PALETTEENTRY",
+    "path": "/wingdi.h",
+    "base_type": "tagPALETTEENTRY",
+    "size": 4
+  },
+  "PCNZCH": {
+    "name": "PCNZCH",
+    "path": "/winnt.h",
+    "base_type": "CHAR *",
+    "size": 4
+  },
+  "PCNZWCH": {
+    "name": "PCNZWCH",
+    "path": "/winnt.h",
+    "base_type": "WCHAR *",
+    "size": 4
+  },
+  "PCONTEXT": {
+    "name": "PCONTEXT",
+    "path": "/winnt.h",
+    "base_type": "CONTEXT *",
+    "size": 4
+  },
+  "PEXCEPTION_RECORD": {
+    "name": "PEXCEPTION_RECORD",
+    "path": "/winnt.h",
+    "base_type": "EXCEPTION_RECORD *",
+    "size": 4
+  },
+  "PHKEY": {
+    "name": "PHKEY",
+    "path": "/WinDef.h",
+    "base_type": "HKEY *",
+    "size": 4
+  },
+  "PLONG": {
+    "name": "PLONG",
+    "path": "/winnt.h",
+    "base_type": "LONG *",
+    "size": 4
+  },
+  "POINT": {
+    "name": "POINT",
+    "path": "/WinDef.h",
+    "base_type": "tagPOINT",
+    "size": 8
+  },
+  "PRTL_CRITICAL_SECTION": {
+    "name": "PRTL_CRITICAL_SECTION",
+    "path": "/winnt.h",
+    "base_type": "_RTL_CRITICAL_SECTION *",
+    "size": 4
+  },
+  "PRTL_CRITICAL_SECTION_DEBUG": {
+    "name": "PRTL_CRITICAL_SECTION_DEBUG",
+    "path": "/winnt.h",
+    "base_type": "_RTL_CRITICAL_SECTION_DEBUG *",
+    "size": 4
+  },
+  "PTHREAD_START_ROUTINE": {
+    "name": "PTHREAD_START_ROUTINE",
+    "path": "/winbase.h",
+    "base_type": "PTHREAD_START_ROUTINE *",
+    "size": 4
+  },
+  "pthreadlocinfo": {
+    "name": "pthreadlocinfo",
+    "path": "/crtdefs.h",
+    "base_type": "threadlocaleinfostruct *",
+    "size": 4
+  },
+  "pthreadmbcinfo": {
+    "name": "pthreadmbcinfo",
+    "path": "/crtdefs.h",
+    "base_type": "threadmbcinfostruct *",
+    "size": 4
+  },
+  "PTOP_LEVEL_EXCEPTION_FILTER": {
+    "name": "PTOP_LEVEL_EXCEPTION_FILTER",
+    "path": "/winbase.h",
+    "base_type": "PTOP_LEVEL_EXCEPTION_FILTER *",
+    "size": 4
+  },
+  "PUINT": {
+    "name": "PUINT",
+    "path": "/WinDef.h",
+    "base_type": "uint *",
+    "size": 4
+  },
+  "PVOID": {
+    "name": "PVOID",
+    "path": "/winnt.h",
+    "base_type": "void *",
+    "size": 4
+  },
+  "RECT": {
+    "name": "RECT",
+    "path": "/WinDef.h",
+    "base_type": "tagRECT",
+    "size": 16
+  },
+  "SHORT": {
+    "name": "SHORT",
+    "path": "/winnt.h",
+    "base_type": "short",
+    "size": 2
+  },
+  "SIZE_T": {
+    "name": "SIZE_T",
+    "path": "/basetsd.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "size_t": {
+    "name": "size_t",
+    "path": "/crtdefs.h",
+    "base_type": "uint",
+    "size": 4
+  },
+  "STRFLT": {
+    "name": "STRFLT",
+    "path": "/fltintrn.h",
+    "base_type": "_strflt *",
+    "size": 4
+  },
+  "SYSTEMTIME": {
+    "name": "SYSTEMTIME",
+    "path": "/winbase.h",
+    "base_type": "_SYSTEMTIME",
+    "size": 16
+  },
+  "TEXTMETRICA": {
+    "name": "TEXTMETRICA",
+    "path": "/wingdi.h",
+    "base_type": "tagTEXTMETRICA",
+    "size": 56
+  },
+  "threadlocinfo": {
+    "name": "threadlocinfo",
+    "path": "/crtdefs.h",
+    "base_type": "threadlocaleinfostruct",
+    "size": 184
+  },
+  "time_t": {
+    "name": "time_t",
+    "path": "/crtdefs.h",
+    "base_type": "longlong",
+    "size": 8
+  },
+  "TIMECALLBACK": {
+    "name": "TIMECALLBACK",
+    "path": "/mmsystem.h",
+    "base_type": "TIMECALLBACK",
+    "size": -1
+  },
+  "UINT": {
+    "name": "UINT",
+    "path": "/WinDef.h",
+    "base_type": "uint",
+    "size": 4
+  },
+  "UINT_PTR": {
+    "name": "UINT_PTR",
+    "path": "/basetsd.h",
+    "base_type": "uint",
+    "size": 4
+  },
+  "uintptr_t": {
+    "name": "uintptr_t",
+    "path": "/vadefs.h",
+    "base_type": "uint",
+    "size": 4
+  },
+  "ULONG_PTR": {
+    "name": "ULONG_PTR",
+    "path": "/basetsd.h",
+    "base_type": "ulong",
+    "size": 4
+  },
+  "va_list": {
+    "name": "va_list",
+    "path": "/vadefs.h",
+    "base_type": "char *",
+    "size": 4
+  },
+  "WCHAR": {
+    "name": "WCHAR",
+    "path": "/winnt.h",
+    "base_type": "wchar_t",
+    "size": 2
+  },
+  "wctype_t": {
+    "name": "wctype_t",
+    "path": "/crtdefs.h",
+    "base_type": "ushort",
+    "size": 2
+  },
+  "wint_t": {
+    "name": "wint_t",
+    "path": "/crtdefs.h",
+    "base_type": "ushort",
+    "size": 2
+  },
+  "WNDCLASSA": {
+    "name": "WNDCLASSA",
+    "path": "/winuser.h",
+    "base_type": "tagWNDCLASSA",
+    "size": 40
+  },
+  "WNDPROC": {
+    "name": "WNDPROC",
+    "path": "/winuser.h",
+    "base_type": "WNDPROC *",
+    "size": 4
+  },
+  "WORD": {
+    "name": "WORD",
+    "path": "/WinDef.h",
+    "base_type": "ushort",
+    "size": 2
+  },
+  "WPARAM": {
+    "name": "WPARAM",
+    "path": "/WinDef.h",
+    "base_type": "uint",
+    "size": 4
+  }
+}

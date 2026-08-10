@@ -1,0 +1,37 @@
+{
+  "address": "004c2260",
+  "name": "FUN_004c2260",
+  "signature": "undefined FUN_004c2260(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c2260(undefined4 param_1,undefined4 param_2,ushort param_3,ushort param_4,\r\n                 undefined2 param_5,undefined4 param_6)\r\n\r\n{\r\n  int iVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  ushort uVar7;\r\n  \r\n  uVar2 = param_3 & 0xff;\r\n  uVar7 = param_4 & 0xff;\r\n  if ((uVar2 < 0x80) && (uVar7 < 0x80)) {\r\n    uVar3 = (ushort)*(byte *)((&DAT_005910b0)[(short)uVar2] + (int)(short)uVar7);\r\n  }\r\n  else {\r\n    uVar3 = (short)(uVar2 - (short)DAT_005d91d0) >> 0xf;\r\n    if ((short)((uVar2 - (short)DAT_005d91d0 ^ uVar3) - uVar3) < 2) {\r\n      uVar2 = (short)(uVar7 - (short)DAT_005d91d4) >> 0xf;\r\n      uVar3 = 0xf6;\r\n      if ((short)((uVar7 - (short)DAT_005d91d4 ^ uVar2) - uVar2) < 2) goto LAB_004c22cf;\r\n    }\r\n    uVar3 = 0xffff;\r\n  }\r\nLAB_004c22cf:\r\n  iVar4 = FUN_0049a4d0((int)(short)uVar3);\r\n  iVar5 = FUN_0046c4bf(*(undefined4 *)(iVar4 + 0xc),0x30000);\r\n  iVar1 = *(int *)(iVar4 + 4);\r\n  iVar6 = FUN_0046c4bf(*(undefined4 *)(iVar4 + 0x10),0x30000);\r\n  FUN_004c2330(param_1,param_2,param_3,param_4,\r\n               CONCAT22((short)((uint)*(int *)(iVar4 + 8) >> 0x10),param_5),param_6,iVar1 + iVar5,\r\n               iVar6 + *(int *)(iVar4 + 8));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049a4d0",
+      "name": "FUN_0049a4d0"
+    },
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "004c2330",
+      "name": "FUN_004c2330"
+    }
+  ],
+  "data_refs": []
+}

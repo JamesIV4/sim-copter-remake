@@ -1,0 +1,53 @@
+{
+  "address": "004dda40",
+  "name": "___crtGetStringTypeW",
+  "signature": "undefined ___crtGetStringTypeW(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___crtGetStringTypeW\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nBOOL ___crtGetStringTypeW\r\n               (DWORD param_1,LPCWSTR param_2,int param_3,LPWORD param_4,UINT param_5,LCID param_6)\r\n\r\n{\r\n  LPWORD pWVar1;\r\n  BOOL in_EAX;\r\n  BOOL BVar2;\r\n  int cbMultiByte;\r\n  LPCSTR lpMultiByteStr;\r\n  int iVar3;\r\n  LPWORD lpCharType;\r\n  BOOL local_4;\r\n  \r\n  local_4 = in_EAX;\r\n  if (DAT_00508490 == 0) {\r\n    local_4 = GetStringTypeW(1,L\"\",1,(LPWORD)&local_4);\r\n    if (local_4 == 0) {\r\n      local_4 = GetStringTypeA(0,1,\"\",1,(LPWORD)&local_4);\r\n      if (local_4 == 0) {\r\n        return 0;\r\n      }\r\n      DAT_00508490 = 2;\r\n    }\r\n    else {\r\n      DAT_00508490 = 1;\r\n    }\r\n  }\r\n  if (DAT_00508490 != 1) {\r\n    if (DAT_00508490 == 2) {\r\n      lpCharType = (LPWORD)0x0;\r\n      local_4 = 0;\r\n      if (param_5 == 0) {\r\n        param_5 = DAT_00507ac8;\r\n      }\r\n      cbMultiByte = WideCharToMultiByte(param_5,0x220,param_2,param_3,(LPSTR)0x0,0,(LPCSTR)0x0,\r\n                                        (LPBOOL)0x0);\r\n      if (cbMultiByte == 0) {\r\n        return 0;\r\n      }\r\n      lpMultiByteStr = (LPCSTR)FUN_004da750(1,cbMultiByte);\r\n      if (lpMultiByteStr == (LPCSTR)0x0) {\r\n        return 0;\r\n      }\r\n      iVar3 = WideCharToMultiByte(param_5,0x220,param_2,param_3,lpMultiByteStr,cbMultiByte,\r\n                                  (LPCSTR)0x0,(LPBOOL)0x0);\r\n      if ((iVar3 != 0) &&\r\n         (lpCharType = (LPWORD)FUN_004d5f00(cbMultiByte * 2 + 2), lpCharType != (LPWORD)0x0)) {\r\n        if (param_6 == 0) {\r\n          param_6 = DAT_00507ab8;\r\n        }\r\n        pWVar1 = lpCharType + param_3;\r\n        *pWVar1 = 0xffff;\r\n        pWVar1[-1] = 0xffff;\r\n        local_4 = GetStringTypeA(param_6,param_1,lpMultiByteStr,cbMultiByte,lpCharType);\r\n        if ((pWVar1[-1] == 0xffff) || (*pWVar1 != 0xffff)) {\r\n          local_4 = 0;\r\n        }\r\n        else {\r\n          FID_conflict__memcpy(param_4,lpCharType,param_3 * 2);\r\n        }\r\n      }\r\n      FUN_004d6010(lpMultiByteStr);\r\n      FUN_004d6010(lpCharType);\r\n    }\r\n    return local_4;\r\n  }\r\n  BVar2 = GetStringTypeW(param_1,param_2,param_3,param_4);\r\n  return BVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4240",
+      "name": "_iswctype",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dbb70",
+      "name": "___init_ctype",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000042",
+      "name": "GetStringTypeW"
+    },
+    {
+      "addr": "EXTERNAL:00000044",
+      "name": "GetStringTypeA"
+    },
+    {
+      "addr": "EXTERNAL:00000043",
+      "name": "WideCharToMultiByte"
+    },
+    {
+      "addr": "004da750",
+      "name": "FUN_004da750"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d6070",
+      "name": "FID_conflict:_memcpy"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

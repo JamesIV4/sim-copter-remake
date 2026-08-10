@@ -1,0 +1,45 @@
+{
+  "address": "004ddc00",
+  "name": "___crtGetStringTypeA",
+  "signature": "BOOL __cdecl ___crtGetStringTypeA(_locale_t _Plocinfo, DWORD _DWInfoType, LPCSTR _LpSrcStr, int _CchSrc, LPWORD _LpCharType, int _Code_page, BOOL _BError)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef BOOL int",
+  "parameter_count": 7,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___crtGetStringTypeA\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nBOOL __cdecl\r\n___crtGetStringTypeA\r\n          (_locale_t _Plocinfo,DWORD _DWInfoType,LPCSTR _LpSrcStr,int _CchSrc,LPWORD _LpCharType,\r\n          int _Code_page,BOOL _BError)\r\n\r\n{\r\n  BOOL BVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  LPCWSTR lpWideCharStr;\r\n  WORD local_2;\r\n  \r\n  iVar3 = DAT_00508494;\r\n  if (DAT_00508494 == 0) {\r\n    BVar1 = GetStringTypeA(0,1,\"\",1,&local_2);\r\n    if (BVar1 == 0) {\r\n      BVar1 = GetStringTypeW(1,L\"\",1,&local_2);\r\n      if (BVar1 == 0) {\r\n        return 0;\r\n      }\r\n      iVar3 = 1;\r\n    }\r\n    else {\r\n      iVar3 = 2;\r\n    }\r\n  }\r\n  DAT_00508494 = iVar3;\r\n  if (iVar3 != 2) {\r\n    if (iVar3 == 1) {\r\n      BVar1 = 0;\r\n      lpWideCharStr = (LPCWSTR)0x0;\r\n      if (_LpCharType == (LPWORD)0x0) {\r\n        _LpCharType = DAT_00507ac8;\r\n      }\r\n      iVar2 = MultiByteToWideChar((UINT)_LpCharType,9,(LPCSTR)_DWInfoType,(int)_LpSrcStr,(LPWSTR)0x0\r\n                                  ,0);\r\n      iVar3 = BVar1;\r\n      if (((iVar2 != 0) &&\r\n          (lpWideCharStr = (LPCWSTR)FUN_004da750(2,iVar2), lpWideCharStr != (LPCWSTR)0x0)) &&\r\n         (iVar2 = MultiByteToWideChar((UINT)_LpCharType,1,(LPCSTR)_DWInfoType,(int)_LpSrcStr,\r\n                                      lpWideCharStr,iVar2), iVar2 != 0)) {\r\n        iVar3 = GetStringTypeW((DWORD)_Plocinfo,lpWideCharStr,iVar2,(LPWORD)_CchSrc);\r\n      }\r\n      FUN_004d6010(lpWideCharStr);\r\n    }\r\n    return iVar3;\r\n  }\r\n  if (_Code_page == 0) {\r\n    _Code_page = DAT_00507ab8;\r\n  }\r\n  BVar1 = GetStringTypeA(_Code_page,(DWORD)_Plocinfo,(LPCSTR)_DWInfoType,(int)_LpSrcStr,\r\n                         (LPWORD)_CchSrc);\r\n  return BVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5700",
+      "name": "__isctype",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dbb70",
+      "name": "___init_ctype",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000044",
+      "name": "GetStringTypeA"
+    },
+    {
+      "addr": "EXTERNAL:00000042",
+      "name": "GetStringTypeW"
+    },
+    {
+      "addr": "EXTERNAL:00000041",
+      "name": "MultiByteToWideChar"
+    },
+    {
+      "addr": "004da750",
+      "name": "FUN_004da750"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

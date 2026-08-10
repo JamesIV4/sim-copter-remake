@@ -1,0 +1,32 @@
+{
+  "address": "004c93c0",
+  "name": "FUN_004c93c0",
+  "signature": "undefined FUN_004c93c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004c93c0(int param_1,undefined4 *param_2,int param_3,undefined4 param_4)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  ushort uVar4;\r\n  undefined4 uVar5;\r\n  undefined4 uVar6;\r\n  \r\n  if (param_3 == 0) {\r\n    return 7;\r\n  }\r\n  FUN_0046cb74(&DAT_004fa2e0,param_2,param_1 + 0x1d8);\r\n  uVar5 = FUN_0046c49d(*param_2,param_3);\r\n  uVar6 = FUN_0046c49d(param_2[2],param_3);\r\n  uVar5 = FUN_0046c49d(uVar5,DAT_005039a8);\r\n  uVar6 = FUN_0046c49d(uVar6,DAT_005039a8);\r\n  uVar3 = (ushort)((uint)uVar6 >> 0x10);\r\n  uVar2 = (short)uVar3 >> 0xf;\r\n  uVar4 = (ushort)((uint)uVar5 >> 0x10);\r\n  uVar1 = (short)uVar4 >> 0xf;\r\n  *(ushort *)(param_1 + 0x164) = ((uVar3 ^ uVar2) - uVar2) + ((uVar4 ^ uVar1) - uVar1);\r\n  uVar5 = FUN_004c9470(param_4,uVar5,uVar6,0,0);\r\n  return uVar5;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c6530",
+      "name": "FUN_004c6530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470"
+    }
+  ],
+  "data_refs": []
+}

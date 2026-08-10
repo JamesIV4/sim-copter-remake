@@ -1,0 +1,18 @@
+{
+  "address": "0041f710",
+  "name": "FUN_0041f710",
+  "signature": "undefined FUN_0041f710(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0041f710(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  \r\n  uVar3 = GetSystemMetrics(0);\r\n  uVar4 = GetSystemMetrics(1);\r\n  iVar1 = *param_1;\r\n  iVar2 = param_1[1];\r\n  iVar6 = (uVar3 >> 1) - ((uint)(param_1[2] - iVar1) >> 1);\r\n  *param_1 = iVar6;\r\n  iVar5 = (uVar4 >> 1) - ((uint)(param_1[3] - iVar2) >> 1);\r\n  param_1[1] = iVar5;\r\n  param_1[2] = iVar6 + (param_1[2] - iVar1);\r\n  param_1[3] = iVar5 + (param_1[3] - iVar2);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000071",
+      "name": "GetSystemMetrics"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,18 @@
+{
+  "address": "004d2860",
+  "name": "$E20",
+  "signature": "undefined __cdecl $E20(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    _$E20\r\n    _$E22\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl _E20(void)\r\n\r\n{\r\n  Iostream_init::Iostream_init\r\n            ((Iostream_init *)&DAT_00590438,(ios *)((int)&DAT_00590440 + *(int *)(DAT_00590440 + 4))\r\n             ,1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2ad0",
+      "name": "Iostream_init"
+    }
+  ],
+  "data_refs": []
+}

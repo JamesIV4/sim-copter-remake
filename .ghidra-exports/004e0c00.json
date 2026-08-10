@@ -1,0 +1,43 @@
+{
+  "address": "004e0c00",
+  "name": "terminate",
+  "signature": "noreturn void __cdecl terminate(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void __cdecl terminate(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl terminate(void)\r\n\r\n{\r\n  _ptiddata p_Var1;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 uStack_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  uStack_14 = *unaff_FS_OFFSET;\r\n  puStack_c = &DAT_004f61e0;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &uStack_14;\r\n  local_8 = 0;\r\n  p_Var1 = __getptd();\r\n  if (p_Var1->_tpxcptinfoptrs != (void *)0x0) {\r\n    local_8 = 1;\r\n    p_Var1 = __getptd();\r\n    (*p_Var1->_tpxcptinfoptrs)();\r\n  }\r\n  local_8 = 0xffffffff;\r\n                    /* WARNING: Subroutine does not return */\r\n  _abort();\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0ced",
+      "name": "terminate",
+      "ref_type": "UNCONDITIONAL_JUMP"
+    },
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency",
+      "ref_type": "COMPUTED_CALL"
+    },
+    {
+      "addr": "004e0b90",
+      "name": "FUN_004e0b90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004e0c75",
+      "name": "_abort"
+    }
+  ],
+  "data_refs": []
+}

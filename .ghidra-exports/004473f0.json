@@ -1,0 +1,62 @@
+{
+  "address": "004473f0",
+  "name": "FUN_004473f0",
+  "signature": "undefined FUN_004473f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004473f0(int param_1)\r\n\r\n{\r\n  short sVar1;\r\n  int iVar2;\r\n  HDC pHVar3;\r\n  HBRUSH hbr;\r\n  RECT local_10;\r\n  \r\n  iVar2 = *(int *)(param_1 + 0x38);\r\n  if (iVar2 == 0) {\r\n    return 0;\r\n  }\r\n  if (*(int *)(param_1 + 4) == 0) {\r\n    *(undefined4 *)(param_1 + 4) = 1;\r\n  }\r\n  else if (*(int *)(param_1 + 4) == 2) {\r\n    pHVar3 = GetDC(*(HWND *)(param_1 + 0x18));\r\n    if (*(int *)(param_1 + 0xc) == 0) {\r\n      if (*(int *)(param_1 + 0x34) != 0) {\r\n        _SmackBufferBlit_32(*(int *)(param_1 + 0x34),pHVar3,*(undefined4 *)(param_1 + 0x24),\r\n                            *(undefined4 *)(param_1 + 0x28),0,0,\r\n                            *(undefined4 *)(*(int *)(param_1 + 0x38) + 4),\r\n                            *(undefined4 *)(*(int *)(param_1 + 0x38) + 8));\r\n      }\r\n    }\r\n    else {\r\n      hbr = CreateSolidBrush((uint)*(byte *)(param_1 + 0x15) << 8 |\r\n                             (uint)*(byte *)(param_1 + 0x14) << 0x10 |\r\n                             (uint)*(byte *)(param_1 + 0x16));\r\n      local_10.left = 0;\r\n      local_10.top = 0;\r\n      local_10.right = *(LONG *)(*(int *)(param_1 + 0x38) + 4);\r\n      local_10.bottom = *(LONG *)(*(int *)(param_1 + 0x38) + 8);\r\n      FillRect(pHVar3,&local_10,hbr);\r\n      DeleteObject(hbr);\r\n    }\r\n    ReleaseDC(*(HWND *)(param_1 + 0x18),pHVar3);\r\n    return 1;\r\n  }\r\n  if (iVar2 == 0) {\r\n    return 2;\r\n  }\r\n  iVar2 = _SmackWait_4(iVar2);\r\n  if (iVar2 == 0) {\r\n    if (*(int *)(param_1 + 0x34) != 0) {\r\n      if (*(int *)(*(int *)(param_1 + 0x38) + 0x68) != 0) {\r\n        _SmackBufferNewPalette_12(*(int *)(param_1 + 0x34),*(int *)(param_1 + 0x38) + 0x6c,0);\r\n        iVar2 = *(int *)(param_1 + 0x34);\r\n        if (*(uint *)(iVar2 + 0x30) < 0x100) {\r\n          _SmackColorRemap_16(*(undefined4 *)(param_1 + 0x38),iVar2 + 0x3c,\r\n                              *(undefined4 *)(iVar2 + 0x2c),*(undefined4 *)(iVar2 + 0x43c));\r\n        }\r\n      }\r\n      _SmackDoFrame_4(*(undefined4 *)(param_1 + 0x38));\r\n      pHVar3 = GetDC(*(HWND *)(param_1 + 0x18));\r\n      do {\r\n        iVar2 = _SmackToBufferRect_8\r\n                          (*(undefined4 *)(param_1 + 0x38),\r\n                           *(undefined4 *)(*(int *)(param_1 + 0x34) + 4));\r\n        if (iVar2 == 0) break;\r\n        iVar2 = *(int *)(param_1 + 0x38);\r\n        sVar1 = _SmackBufferBlit_32(*(undefined4 *)(param_1 + 0x34),pHVar3,\r\n                                    *(undefined4 *)(param_1 + 0x24),*(undefined4 *)(param_1 + 0x28),\r\n                                    *(undefined4 *)(iVar2 + 0x378),*(undefined4 *)(iVar2 + 0x37c),\r\n                                    *(undefined4 *)(iVar2 + 0x380),*(undefined4 *)(iVar2 + 900));\r\n      } while (sVar1 == 0);\r\n      ReleaseDC(*(HWND *)(param_1 + 0x18),pHVar3);\r\n    }\r\n    iVar2 = *(int *)(param_1 + 0x38);\r\n    if ((*(int *)(iVar2 + 0xc) - *(int *)(iVar2 + 0x374) == 1) && (*(int *)(param_1 + 8) == 0)) {\r\n      *(undefined4 *)(param_1 + 4) = 2;\r\n      return 1;\r\n    }\r\n    _SmackNextFrame_4(iVar2);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000da",
+      "name": "_SmackWait@4"
+    },
+    {
+      "addr": "EXTERNAL:000000db",
+      "name": "_SmackBufferNewPalette@12"
+    },
+    {
+      "addr": "EXTERNAL:000000dc",
+      "name": "_SmackColorRemap@16"
+    },
+    {
+      "addr": "EXTERNAL:000000dd",
+      "name": "_SmackDoFrame@4"
+    },
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000de",
+      "name": "_SmackToBufferRect@8"
+    },
+    {
+      "addr": "EXTERNAL:000000df",
+      "name": "_SmackBufferBlit@32"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    },
+    {
+      "addr": "EXTERNAL:000000ad",
+      "name": "CreateSolidBrush"
+    },
+    {
+      "addr": "EXTERNAL:00000082",
+      "name": "FillRect"
+    },
+    {
+      "addr": "EXTERNAL:000000a5",
+      "name": "DeleteObject"
+    },
+    {
+      "addr": "EXTERNAL:000000e0",
+      "name": "_SmackNextFrame@4"
+    }
+  ],
+  "data_refs": []
+}

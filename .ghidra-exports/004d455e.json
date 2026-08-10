@@ -1,0 +1,24 @@
+{
+  "address": "004d455e",
+  "name": "__local_unwind2",
+  "signature": "undefined __local_unwind2(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __local_unwind2\r\n   \r\n   Libraries: Visual Studio 1998 Debug, Visual Studio 1998 Release, Visual Studio 2003 Debug, Visual\r\n   Studio 2003 Release */\r\n\r\nvoid __local_unwind2(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 uStack_1c;\r\n  undefined1 *puStack_18;\r\n  undefined4 local_14;\r\n  int iStack_10;\r\n  \r\n  iStack_10 = param_1;\r\n  puStack_18 = &LAB_004d453c;\r\n  uStack_1c = *unaff_FS_OFFSET;\r\n  *unaff_FS_OFFSET = &uStack_1c;\r\n  while( true ) {\r\n    iVar1 = *(int *)(param_1 + 8);\r\n    iVar2 = *(int *)(param_1 + 0xc);\r\n    if ((iVar2 == -1) || (iVar2 == param_2)) break;\r\n    local_14 = *(undefined4 *)(iVar1 + iVar2 * 0xc);\r\n    *(undefined4 *)(param_1 + 0xc) = local_14;\r\n    if (*(int *)(iVar1 + 4 + iVar2 * 0xc) == 0) {\r\n      FUN_004d45f2(0x101);\r\n      (**(code **)(iVar1 + 8 + iVar2 * 0xc))();\r\n    }\r\n  }\r\n  *unaff_FS_OFFSET = uStack_1c;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da9f5",
+      "name": "__seh_longjmp_unwind@4",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d45f2",
+      "name": "FUN_004d45f2"
+    }
+  ],
+  "data_refs": []
+}

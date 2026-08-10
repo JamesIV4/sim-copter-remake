@@ -1,0 +1,30 @@
+{
+  "address": "0047be90",
+  "name": "FUN_0047be90",
+  "signature": "undefined FUN_0047be90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0047be90(void)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 uVar2;\r\n  uint uVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  undefined1 local_434 [4];\r\n  undefined4 local_430 [2];\r\n  undefined4 local_428;\r\n  undefined4 local_424;\r\n  char local_420 [31];\r\n  undefined1 local_401;\r\n  char local_400 [255];\r\n  undefined1 local_301;\r\n  char local_300 [256];\r\n  char local_200 [256];\r\n  undefined1 local_100 [256];\r\n  \r\n  local_430[0] = 3;\r\n  local_428 = 0;\r\n  local_424 = 1;\r\n  if (DAT_00591d80 == (char *)0x0) {\r\n    local_420[0] = DAT_004f83a8;\r\n  }\r\n  else {\r\n    _strncpy(local_420,DAT_00591d80,0x1f);\r\n    local_401 = 0;\r\n  }\r\n  uVar2 = FUN_00407c00();\r\n  FUN_004d4810(uVar2,local_434,local_100,local_300,local_200);\r\n  uVar3 = 0xffffffff;\r\n  pcVar6 = local_200;\r\n  do {\r\n    pcVar8 = pcVar6;\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    pcVar8 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar8;\r\n  } while (cVar1 != '\\0');\r\n  uVar3 = ~uVar3;\r\n  iVar4 = -1;\r\n  pcVar6 = local_300;\r\n  do {\r\n    pcVar7 = pcVar6;\r\n    if (iVar4 == 0) break;\r\n    iVar4 = iVar4 + -1;\r\n    pcVar7 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar7;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar8 + -uVar3;\r\n  pcVar8 = pcVar7 + -1;\r\n  for (uVar5 = uVar3 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar8 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar8 = pcVar8 + 4;\r\n  }\r\n  for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n    *pcVar8 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar8 = pcVar8 + 1;\r\n  }\r\n  _strncpy(local_400,local_300,0xff);\r\n  local_301 = 0;\r\n  FUN_0048c4a0(local_430,0);\r\n  if (0 < DAT_00503b58) {\r\n    DAT_00503b58 = DAT_00503b58 + -1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "00407c00",
+      "name": "FUN_00407c00"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810"
+    },
+    {
+      "addr": "0048c4a0",
+      "name": "FUN_0048c4a0"
+    }
+  ],
+  "data_refs": []
+}

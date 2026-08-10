@@ -1,0 +1,24 @@
+{
+  "address": "004ddf10",
+  "name": "FUN_004ddf10",
+  "signature": "undefined FUN_004ddf10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ddf10(byte *param_1,undefined4 *param_2,byte *param_3,int *param_4,int *param_5)\r\n\r\n{\r\n  byte bVar1;\r\n  bool bVar2;\r\n  bool bVar3;\r\n  byte *pbVar4;\r\n  uint uVar5;\r\n  byte *pbVar6;\r\n  \r\n  *param_5 = 0;\r\n  *param_4 = 1;\r\n  if (param_2 != (undefined4 *)0x0) {\r\n    *param_2 = param_3;\r\n    param_2 = param_2 + 1;\r\n  }\r\n  if (*param_1 == 0x22) {\r\n    pbVar4 = param_1 + 1;\r\n    bVar1 = *pbVar4;\r\n    while ((bVar1 != 0x22 && (*pbVar4 != 0))) {\r\n      if (((*(byte *)((int)&DAT_00507878 + *pbVar4 + 1) & 4) != 0) &&\r\n         (*param_5 = *param_5 + 1, param_3 != (byte *)0x0)) {\r\n        bVar1 = *pbVar4;\r\n        pbVar4 = pbVar4 + 1;\r\n        *param_3 = bVar1;\r\n        param_3 = param_3 + 1;\r\n      }\r\n      *param_5 = *param_5 + 1;\r\n      if (param_3 != (byte *)0x0) {\r\n        *param_3 = *pbVar4;\r\n        param_3 = param_3 + 1;\r\n      }\r\n      pbVar4 = pbVar4 + 1;\r\n      bVar1 = *pbVar4;\r\n    }\r\n    *param_5 = *param_5 + 1;\r\n    if (param_3 != (byte *)0x0) {\r\n      *param_3 = 0;\r\n      param_3 = param_3 + 1;\r\n    }\r\n    if (*pbVar4 == 0x22) {\r\n      pbVar4 = pbVar4 + 1;\r\n    }\r\n  }\r\n  else {\r\n    do {\r\n      *param_5 = *param_5 + 1;\r\n      if (param_3 != (byte *)0x0) {\r\n        *param_3 = *param_1;\r\n        param_3 = param_3 + 1;\r\n      }\r\n      bVar1 = *param_1;\r\n      pbVar4 = param_1 + 1;\r\n      if ((*(byte *)((int)&DAT_00507878 + bVar1 + 1) & 4) != 0) {\r\n        *param_5 = *param_5 + 1;\r\n        if (param_3 != (byte *)0x0) {\r\n          *param_3 = *pbVar4;\r\n          param_3 = param_3 + 1;\r\n        }\r\n        pbVar4 = param_1 + 2;\r\n      }\r\n      if (bVar1 == 0x20) break;\r\n      if (bVar1 == 0) goto LAB_004ddf80;\r\n      param_1 = pbVar4;\r\n    } while (bVar1 != 9);\r\n    if (bVar1 == 0) {\r\nLAB_004ddf80:\r\n      pbVar4 = pbVar4 + -1;\r\n    }\r\n    else if (param_3 != (byte *)0x0) {\r\n      param_3[-1] = 0;\r\n    }\r\n  }\r\n  bVar3 = false;\r\n  while (*pbVar4 != 0) {\r\n    for (; (*pbVar4 == 0x20 || (*pbVar4 == 9)); pbVar4 = pbVar4 + 1) {\r\n    }\r\n    if (*pbVar4 == 0) break;\r\n    if (param_2 != (undefined4 *)0x0) {\r\n      *param_2 = param_3;\r\n      param_2 = param_2 + 1;\r\n    }\r\n    *param_4 = *param_4 + 1;\r\n    while( true ) {\r\n      bVar2 = true;\r\n      uVar5 = 0;\r\n      bVar1 = *pbVar4;\r\n      while (bVar1 == 0x5c) {\r\n        pbVar4 = pbVar4 + 1;\r\n        uVar5 = uVar5 + 1;\r\n        bVar1 = *pbVar4;\r\n      }\r\n      if (*pbVar4 == 0x22) {\r\n        pbVar6 = pbVar4;\r\n        if ((uVar5 & 1) == 0) {\r\n          if ((!bVar3) || (pbVar6 = pbVar4 + 1, *pbVar6 != 0x22)) {\r\n            bVar2 = false;\r\n            pbVar6 = pbVar4;\r\n          }\r\n          bVar3 = !bVar3;\r\n        }\r\n        uVar5 = uVar5 >> 1;\r\n        pbVar4 = pbVar6;\r\n      }\r\n      while (uVar5 != 0) {\r\n        uVar5 = uVar5 - 1;\r\n        if (param_3 != (byte *)0x0) {\r\n          *param_3 = 0x5c;\r\n          param_3 = param_3 + 1;\r\n        }\r\n        *param_5 = *param_5 + 1;\r\n      }\r\n      bVar1 = *pbVar4;\r\n      if ((bVar1 == 0) || ((!bVar3 && ((bVar1 == 0x20 || (bVar1 == 9)))))) break;\r\n      if (bVar2) {\r\n        if (param_3 == (byte *)0x0) {\r\n          if ((*(byte *)((int)&DAT_00507878 + bVar1 + 1) & 4) != 0) {\r\n            pbVar4 = pbVar4 + 1;\r\n            *param_5 = *param_5 + 1;\r\n          }\r\n          *param_5 = *param_5 + 1;\r\n          goto LAB_004de0af;\r\n        }\r\n        pbVar6 = param_3;\r\n        if ((*(byte *)((int)&DAT_00507878 + bVar1 + 1) & 4) != 0) {\r\n          *param_3 = bVar1;\r\n          pbVar4 = pbVar4 + 1;\r\n          pbVar6 = param_3 + 1;\r\n          *param_5 = *param_5 + 1;\r\n        }\r\n        bVar1 = *pbVar4;\r\n        param_3 = pbVar6 + 1;\r\n        pbVar4 = pbVar4 + 1;\r\n        *pbVar6 = bVar1;\r\n        *param_5 = *param_5 + 1;\r\n      }\r\n      else {\r\nLAB_004de0af:\r\n        pbVar4 = pbVar4 + 1;\r\n      }\r\n    }\r\n    if (param_3 != (byte *)0x0) {\r\n      *param_3 = 0;\r\n      param_3 = param_3 + 1;\r\n    }\r\n    *param_5 = *param_5 + 1;\r\n  }\r\n  if (param_2 != (undefined4 *)0x0) {\r\n    *param_2 = 0;\r\n  }\r\n  *param_4 = *param_4 + 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dde70",
+      "name": "__setargv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dde70",
+      "name": "__setargv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

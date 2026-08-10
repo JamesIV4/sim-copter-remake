@@ -1,0 +1,52 @@
+{
+  "address": "004d5970",
+  "name": "_fseek",
+  "signature": "int __cdecl _fseek(FILE * _File, long _Offset, int _Origin)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _fseek\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _fseek(FILE *_File,long _Offset,int _Origin)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  __lock_file(_File);\r\n  iVar1 = __fseek_lk(_File,_Offset,_Origin);\r\n  __unlock_file(_File);\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465e40",
+      "name": "FUN_00465e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ce4b0",
+      "name": "FUN_004ce4b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d64c0",
+      "name": "__lock_file"
+    },
+    {
+      "addr": "004d59b0",
+      "name": "__fseek_lk"
+    },
+    {
+      "addr": "004d6530",
+      "name": "__unlock_file"
+    }
+  ],
+  "data_refs": []
+}

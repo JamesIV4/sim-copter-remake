@@ -1,0 +1,152 @@
+{
+  "address": "004da590",
+  "name": "__getptd",
+  "signature": "_ptiddata __cdecl __getptd(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef _ptiddata _tiddata *",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __getptd\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\n_ptiddata __cdecl __getptd(void)\r\n\r\n{\r\n  DWORD dwErrCode;\r\n  _ptiddata _Ptd;\r\n  BOOL BVar1;\r\n  DWORD DVar2;\r\n  pthreadlocinfo unaff_EDI;\r\n  \r\n  dwErrCode = GetLastError();\r\n  _Ptd = TlsGetValue(DAT_00507680);\r\n  if (_Ptd == (_ptiddata)0x0) {\r\n    _Ptd = (_ptiddata)FUN_004da750(1,0x74);\r\n    if (_Ptd != (_ptiddata)0x0) {\r\n      BVar1 = TlsSetValue(DAT_00507680,_Ptd);\r\n      if (BVar1 != 0) {\r\n        __initptd(_Ptd,unaff_EDI);\r\n        DVar2 = GetCurrentThreadId();\r\n        _Ptd->_tid = DVar2;\r\n        _Ptd->_thandle = 0xffffffff;\r\n        goto LAB_004da5f3;\r\n      }\r\n    }\r\n    __amsg_exit(0x10);\r\n  }\r\nLAB_004da5f3:\r\n  SetLastError(dwErrCode);\r\n  return _Ptd;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9800",
+      "name": "_gmtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd0d0",
+      "name": "_raise",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9db0",
+      "name": "FindHandlerForForeignException",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d43d0",
+      "name": "_CallSETranslator",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da18d",
+      "name": "FUN_004da18d",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da18d",
+      "name": "FUN_004da18d",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0c00",
+      "name": "terminate",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0c00",
+      "name": "terminate",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da7b0",
+      "name": "__XcptFilter",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5490",
+      "name": "FUN_004d5490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4760",
+      "name": "__endthread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "EXTERNAL:0000004b",
+      "name": "TlsGetValue"
+    },
+    {
+      "addr": "004da750",
+      "name": "FUN_004da750"
+    },
+    {
+      "addr": "EXTERNAL:00000061",
+      "name": "TlsSetValue"
+    },
+    {
+      "addr": "004da570",
+      "name": "__initptd"
+    },
+    {
+      "addr": "EXTERNAL:0000001f",
+      "name": "GetCurrentThreadId"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "EXTERNAL:0000006e",
+      "name": "SetLastError"
+    }
+  ],
+  "data_refs": []
+}

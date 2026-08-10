@@ -1,0 +1,50 @@
+{
+  "address": "004ce070",
+  "name": "FUN_004ce070",
+  "signature": "undefined FUN_004ce070(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nHLOCAL FUN_004ce070(SIZE_T param_1)\r\n\r\n{\r\n  HLOCAL pvVar1;\r\n  int iVar2;\r\n  \r\n  SetLastError(0);\r\n  pvVar1 = LocalAlloc(0x20,param_1);\r\n  if (pvVar1 != (HLOCAL)0x0) {\r\n    iVar2 = FUN_004ce0f0(pvVar1);\r\n    if (iVar2 != 0) {\r\n      FUN_004ce170(iVar2,0,param_1);\r\n      FUN_004ce100(pvVar1);\r\n    }\r\n  }\r\n  return pvVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cdcb0",
+      "name": "FUN_004cdcb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd3e0",
+      "name": "FUN_004cd3e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d1d70",
+      "name": "FUN_004d1d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000006e",
+      "name": "SetLastError"
+    },
+    {
+      "addr": "EXTERNAL:0000006f",
+      "name": "LocalAlloc"
+    },
+    {
+      "addr": "004ce0f0",
+      "name": "FUN_004ce0f0"
+    },
+    {
+      "addr": "004ce170",
+      "name": "FUN_004ce170"
+    },
+    {
+      "addr": "004ce100",
+      "name": "FUN_004ce100"
+    }
+  ],
+  "data_refs": []
+}

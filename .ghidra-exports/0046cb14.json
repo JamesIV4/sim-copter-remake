@@ -1,0 +1,94 @@
+{
+  "address": "0046cb14",
+  "name": "FUN_0046cb14",
+  "signature": "undefined FUN_0046cb14(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046cb14(void)\r\n\r\n{\r\n  FUN_0046c923(&stack0xfffffffc);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a860",
+      "name": "FUN_0047a860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047a860",
+      "name": "FUN_0047a860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047a860",
+      "name": "FUN_0047a860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047b4f0",
+      "name": "FUN_0047b4f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047b0c0",
+      "name": "FUN_0047b0c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00486a30",
+      "name": "FUN_00486a30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ed00",
+      "name": "FUN_0048ed00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ed00",
+      "name": "FUN_0048ed00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ed00",
+      "name": "FUN_0048ed00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049fd00",
+      "name": "FUN_0049fd00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004aeba0",
+      "name": "FUN_004aeba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004aeba0",
+      "name": "FUN_004aeba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004aeba0",
+      "name": "FUN_004aeba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004aeba0",
+      "name": "FUN_004aeba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2ab0",
+      "name": "FUN_004b2ab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c923",
+      "name": "FUN_0046c923"
+    }
+  ],
+  "data_refs": []
+}

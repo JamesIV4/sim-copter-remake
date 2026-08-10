@@ -1,0 +1,24 @@
+{
+  "address": "004de280",
+  "name": "FUN_004de280",
+  "signature": "undefined FUN_004de280(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004de280(void)\r\n\r\n{\r\n  DAT_0061bb74 = HeapCreate(0,0x1000,0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000003c",
+      "name": "HeapCreate"
+    }
+  ],
+  "data_refs": []
+}

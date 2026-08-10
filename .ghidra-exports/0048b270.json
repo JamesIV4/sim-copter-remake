@@ -1,0 +1,24 @@
+{
+  "address": "0048b270",
+  "name": "FUN_0048b270",
+  "signature": "undefined FUN_0048b270(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0048b270(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  int iVar5;\r\n  undefined4 *puVar6;\r\n  \r\n  iVar3 = 0;\r\n  piVar2 = &DAT_005d7110;\r\n  do {\r\n    if (*piVar2 == param_1) {\r\n      puVar6 = &DAT_005d7110 + iVar3 * 0xcf;\r\n      goto LAB_0048b291;\r\n    }\r\n    piVar2 = piVar2 + 0xcf;\r\n    iVar3 = iVar3 + 1;\r\n  } while (piVar2 < &DAT_005d9168);\r\n  puVar6 = (undefined4 *)0x0;\r\nLAB_0048b291:\r\n  if (puVar6 == (undefined4 *)0x0) {\r\n    return;\r\n  }\r\n  puVar6[2] = puVar6[2] & 0xfffffffd;\r\n  iVar3 = FUN_00407a50();\r\n  iVar5 = 0;\r\n  puVar4 = &DAT_005040a8;\r\n  do {\r\n    if ((undefined4 *)*puVar4 == puVar6) {\r\n      if (*(int *)((&DAT_005d9200)[(puVar6[6] & 0xff) * 0x100 + (puVar6[7] & 0xff)] + 0x10) == 0)\r\n      goto LAB_0048b31e;\r\n      piVar2 = (int *)((&DAT_005d9200)[(puVar6[6] & 0xff) * 0x100 + (puVar6[7] & 0xff)] + 0x10);\r\n      goto LAB_0048b2f9;\r\n    }\r\n    puVar4 = puVar4 + 1;\r\n    iVar5 = iVar5 + 1;\r\n  } while (puVar4 < &DAT_005040d0);\r\n  goto LAB_0048b337;\r\n  while (piVar2 = piVar1, *piVar1 != 0) {\r\nLAB_0048b2f9:\r\n    piVar1 = (int *)*piVar2;\r\n    if ((int *)puVar6[0x29] == piVar1) {\r\n      *piVar2 = **(int **)**(undefined4 **)\r\n                            **(undefined4 **)**(undefined4 **)**(undefined4 **)puVar6[0x29];\r\n      break;\r\n    }\r\n  }\r\nLAB_0048b31e:\r\n  (&DAT_005040a8)[iVar5] = 0;\r\n  *(uint *)(iVar3 + 0x44) = *(uint *)(iVar3 + 0x44) & ~(1 << ((byte)param_1 & 0x1f));\r\nLAB_0048b337:\r\n  iVar5 = 0;\r\n  do {\r\n    if ((*(uint *)(iVar3 + 0x44) & 1 << ((byte)iVar5 & 0x1f)) != 0) {\r\n      DAT_005040d0 = &DAT_005d7110 + iVar5 * 0xcf;\r\n      return;\r\n    }\r\n    iVar5 = iVar5 + 1;\r\n  } while (iVar5 < 9);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042d9f0",
+      "name": "FUN_0042d9f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00407a50",
+      "name": "FUN_00407a50"
+    }
+  ],
+  "data_refs": []
+}

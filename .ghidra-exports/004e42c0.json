@@ -1,0 +1,37 @@
+{
+  "address": "004e42c0",
+  "name": "FUN_004e42c0",
+  "signature": "undefined FUN_004e42c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004e42c0(int *param_1,int *param_2)\r\n\r\n{\r\n  byte *pbVar1;\r\n  ushort uVar2;\r\n  int iVar3;\r\n  ushort uVar4;\r\n  ushort uVar5;\r\n  int iVar6;\r\n  short sVar7;\r\n  int iVar8;\r\n  ushort local_1a;\r\n  byte local_18 [2];\r\n  undefined2 uStack_16;\r\n  short local_14 [4];\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  local_18[0] = 0;\r\n  local_18[1] = 0;\r\n  uStack_16 = 0;\r\n  local_14[0] = 0;\r\n  local_14[1] = 0;\r\n  local_14[2] = 0;\r\n  local_14[3] = 0;\r\n  uVar2 = (*(ushort *)((int)param_2 + 10) ^ *(ushort *)((int)param_1 + 10)) & 0x8000;\r\n  uVar4 = *(ushort *)((int)param_1 + 10) & 0x7fff;\r\n  uVar5 = *(ushort *)((int)param_2 + 10) & 0x7fff;\r\n  local_1a = uVar4 + uVar5;\r\n  if (((0x7ffe < uVar4) || (0x7ffe < uVar5)) || (0xbffd < local_1a)) {\r\n    param_1[1] = 0;\r\n    *param_1 = 0;\r\n    param_1[2] = (-(uint)(uVar2 == 0) & 0x80000000) - 0x8000;\r\n    return;\r\n  }\r\n  if (local_1a < 0x3fc0) {\r\n    param_1[2] = 0;\r\n    param_1[1] = 0;\r\n    *param_1 = 0;\r\n    return;\r\n  }\r\n  if (((uVar4 == 0) && (local_1a = local_1a + 1, (param_1[2] & 0x7fffffffU) == 0)) &&\r\n     ((param_1[1] == 0 && (*param_1 == 0)))) {\r\n    *(undefined2 *)((int)param_1 + 10) = 0;\r\n    return;\r\n  }\r\n  if (((uVar5 == 0) && (local_1a = local_1a + 1, (param_2[2] & 0x7fffffffU) == 0)) &&\r\n     ((param_2[1] == 0 && (*param_2 == 0)))) {\r\n    param_1[2] = 0;\r\n    param_1[1] = 0;\r\n    *param_1 = 0;\r\n    return;\r\n  }\r\n  local_8 = 0;\r\n  local_c = 0;\r\n  do {\r\n    iVar6 = 8;\r\n    iVar8 = local_c * 2;\r\n    local_4 = 5 - local_c;\r\n    if (0 < 5 - local_c) {\r\n      pbVar1 = local_18 + local_8;\r\n      do {\r\n        iVar3 = ___addl(*(undefined4 *)pbVar1,\r\n                        (uint)*(ushort *)(iVar6 + (int)param_2) *\r\n                        (uint)*(ushort *)(iVar8 + (int)param_1),pbVar1);\r\n        if (iVar3 != 0) {\r\n          *(short *)((int)local_14 + local_8) = *(short *)((int)local_14 + local_8) + 1;\r\n        }\r\n        iVar8 = iVar8 + 2;\r\n        iVar6 = iVar6 + -2;\r\n        local_4 = local_4 + -1;\r\n      } while (local_4 != 0);\r\n    }\r\n    local_8 = local_8 + 2;\r\n    local_c = local_c + 1;\r\n  } while (local_c < 5);\r\n  local_1a = local_1a + 0xc002;\r\n  if (0 < (short)local_1a) {\r\n    do {\r\n      if ((local_14[3] & 0x8000U) != 0) break;\r\n      ___shl_12(local_18);\r\n      local_1a = local_1a - 1;\r\n    } while (0 < (short)local_1a);\r\n    if (0 < (short)local_1a) goto LAB_004e4493;\r\n  }\r\n  local_1a = local_1a - 1;\r\n  if ((short)local_1a < 0) {\r\n    iVar8 = CONCAT22(uStack_16,CONCAT11(local_18[1],local_18[0]));\r\n    sVar7 = -local_1a;\r\n    local_1a = 0;\r\n    do {\r\n      if ((local_18[0] & 1) != 0) {\r\n        iVar8 = iVar8 + 1;\r\n      }\r\n      ___shr_12(local_18);\r\n      sVar7 = sVar7 + -1;\r\n    } while (sVar7 != 0);\r\n  }\r\n  else {\r\n    iVar8 = CONCAT22(uStack_16,CONCAT11(local_18[1],local_18[0]));\r\n  }\r\n  if (iVar8 != 0) {\r\n    local_18[0] = local_18[0] | 1;\r\n  }\r\nLAB_004e4493:\r\n  iVar6 = CONCAT22(local_14[2],local_14[1]);\r\n  iVar8 = CONCAT22(local_14[0],uStack_16);\r\n  if (0x8000 < CONCAT11(local_18[1],local_18[0])) {\r\n    if (CONCAT22(local_14[0],uStack_16) == -1) {\r\n      iVar8 = 0;\r\n      if (CONCAT22(local_14[2],local_14[1]) == -1) {\r\n        if (local_14[3] == 0xffff) {\r\n          local_14[3] = 0x8000;\r\n          local_1a = local_1a + 1;\r\n          iVar6 = 0;\r\n          iVar8 = 0;\r\n        }\r\n        else {\r\n          local_14[3] = local_14[3] + 1;\r\n          iVar6 = 0;\r\n          iVar8 = 0;\r\n        }\r\n      }\r\n      else {\r\n        iVar6 = CONCAT22(local_14[2],local_14[1]) + 1;\r\n      }\r\n    }\r\n    else {\r\n      iVar8 = CONCAT22(local_14[0],uStack_16) + 1;\r\n      iVar6 = CONCAT22(local_14[2],local_14[1]);\r\n    }\r\n  }\r\n  local_14[0] = (short)((uint)iVar8 >> 0x10);\r\n  uStack_16 = (undefined2)iVar8;\r\n  local_14[2] = (short)((uint)iVar6 >> 0x10);\r\n  local_14[1] = (short)iVar6;\r\n  if (local_1a < 0x7fff) {\r\n    *(undefined2 *)param_1 = uStack_16;\r\n    *(uint *)((int)param_1 + 2) = CONCAT22(local_14[1],local_14[0]);\r\n    *(uint *)((int)param_1 + 6) = CONCAT22(local_14[3],local_14[2]);\r\n    *(ushort *)((int)param_1 + 10) = local_1a | uVar2;\r\n    return;\r\n  }\r\n  param_1[1] = 0;\r\n  *param_1 = 0;\r\n  param_1[2] = (-(uint)(uVar2 == 0) & 0x80000000) - 0x8000;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4570",
+      "name": "___multtenpow12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e3aa0",
+      "name": "___addl"
+    },
+    {
+      "addr": "004e3b40",
+      "name": "___shl_12"
+    },
+    {
+      "addr": "004e3b80",
+      "name": "___shr_12"
+    }
+  ],
+  "data_refs": []
+}

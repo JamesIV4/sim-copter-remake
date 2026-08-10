@@ -1,0 +1,24 @@
+{
+  "address": "004b1800",
+  "name": "FUN_004b1800",
+  "signature": "undefined FUN_004b1800(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004b1800(void)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 uStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 uStack_50;\r\n  undefined4 auStack_40 [16];\r\n  \r\n  piVar3 = &DAT_00582840;\r\n  do {\r\n    piVar1 = (int *)*piVar3;\r\n    if ((char)piVar1[1] != '\\0') {\r\n      if (*(char *)((int)piVar1 + 5) == '\\0') {\r\n        if ((*(int *)((int)piVar1 + 0x4b) < *(int *)((int)piVar1 + 0x4f)) &&\r\n           (*(int *)((int)piVar1 + 0x7b) != 0x163)) {\r\n          (**(code **)(*piVar1 + 0x14))();\r\n        }\r\n        if (*(char *)((int)piVar1 + 5) == '\\0') {\r\n          *(int *)((int)piVar1 + 0x4f) = *(int *)((int)piVar1 + 0x4f) + DAT_005039a0;\r\n          goto LAB_004b1892;\r\n        }\r\n      }\r\n      (**(code **)(*piVar1 + 4))();\r\n      if (*(char *)((int)piVar1 + 5) != '\\0') {\r\n        uStack_58 = *(undefined4 *)((int)piVar1 + 0x97);\r\n        uStack_54 = *(undefined4 *)((int)piVar1 + 0x9b);\r\n        uStack_50 = *(undefined4 *)((int)piVar1 + 0x9f);\r\n        puVar4 = (undefined4 *)((int)piVar1 + 0xa3);\r\n        puVar5 = auStack_40;\r\n        for (iVar2 = 0x10; iVar2 != 0; iVar2 = iVar2 + -1) {\r\n          *puVar5 = *puVar4;\r\n          puVar4 = puVar4 + 1;\r\n          puVar5 = puVar5 + 1;\r\n        }\r\n        FUN_004704d1(*(undefined4 *)((int)piVar1 + 0x87),&uStack_58,3);\r\n      }\r\n    }\r\nLAB_004b1892:\r\n    piVar3 = piVar3 + 1;\r\n    if ((int *)0x58284b < piVar3) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004704d1",
+      "name": "FUN_004704d1"
+    }
+  ],
+  "data_refs": []
+}

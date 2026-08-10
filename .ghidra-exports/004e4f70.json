@@ -1,0 +1,104 @@
+{
+  "address": "004e4f70",
+  "name": "FUN_004e4f70",
+  "signature": "undefined FUN_004e4f70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004e4f70(LPCSTR param_1)\r\n\r\n{\r\n  FatalAppExitA(0,param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047c0c0",
+      "name": "FUN_0047c0c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047c0c0",
+      "name": "FUN_0047c0c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047c0c0",
+      "name": "FUN_0047c0c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00483c20",
+      "name": "FUN_00483c20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048db20",
+      "name": "FUN_0048db20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048db20",
+      "name": "FUN_0048db20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048db20",
+      "name": "FUN_0048db20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00496180",
+      "name": "FUN_00496180",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a2740",
+      "name": "FUN_004a2740",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004abce0",
+      "name": "FUN_004abce0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c3010",
+      "name": "FUN_004c3010",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ceab0",
+      "name": "FUN_004ceab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf480",
+      "name": "FUN_004cf480",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000057",
+      "name": "FatalAppExitA"
+    }
+  ],
+  "data_refs": []
+}

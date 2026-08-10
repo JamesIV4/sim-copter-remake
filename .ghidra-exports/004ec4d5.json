@@ -1,0 +1,13 @@
+{
+  "address": "004ec4d5",
+  "name": "FUN_004ec4d5",
+  "signature": "undefined FUN_004ec4d5(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_004ec4d5(void)\r\n\r\n{\r\n  longlong lVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  undefined4 unaff_retaddr;\r\n  \r\n  do {\r\n    piVar2 = DAT_00516a5c;\r\n    _DAT_00516a60 = DAT_00516a5c;\r\n    if (DAT_00516a5c == DAT_00516af0) {\r\n      return unaff_retaddr;\r\n    }\r\n    DAT_00516a5c = DAT_00516a5c + 5;\r\n    if (DAT_00516af4 < (int)DAT_00516a5c) {\r\n      DAT_00516a5c = DAT_00516af8;\r\n    }\r\n    uVar5 = piVar2[1];\r\n    iVar3 = ((uint)DAT_00516a5c[1] >> 0xc) - (uVar5 >> 0xc);\r\n  } while (iVar3 == 0);\r\n  _DAT_00516a6c = iVar3;\r\n  DAT_00516a64 = *piVar2;\r\n  iVar3 = DAT_00516a5c[1] - uVar5;\r\n  if (iVar3 < 0x1000) {\r\n    iVar3 = 0x1000;\r\n  }\r\n  uVar4 = *DAT_00516a5c - *piVar2;\r\n  _DAT_00516a7c =\r\n       (int)(CONCAT44(((int)uVar4 >> 0x1f) << 0xc | uVar4 >> 0x14,uVar4 * 0x1000) / (longlong)iVar3)\r\n  ;\r\n  lVar1 = (longlong)_DAT_00516a7c * (longlong)(int)(uVar5 & 0xfff);\r\n  DAT_00516ad0 = -((uint)lVar1 >> 0xc | (int)((ulonglong)lVar1 >> 0x20) << 0x14);\r\n  DAT_00516a74 = piVar2[3];\r\n  uVar5 = DAT_00516a5c[3] - piVar2[3];\r\n  DAT_00516a84 = (int)(CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 * 0x10000) /\r\n                      (longlong)(iVar3 << 4));\r\n  uVar5 = piVar2[2] - DAT_0059ea14;\r\n  if (piVar2[2] < DAT_0059ea14) {\r\n    uVar5 = 0;\r\n  }\r\n  iVar6 = (int)(CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 << 0x10) /\r\n               (longlong)DAT_005a2588);\r\n  DAT_00516aa0 = iVar6 * 0x20;\r\n  uVar5 = DAT_00516a5c[2] - DAT_0059ea14;\r\n  if (DAT_00516a5c[2] < DAT_0059ea14) {\r\n    uVar5 = 0;\r\n  }\r\n  uVar5 = (int)(CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 << 0x10) /\r\n               (longlong)DAT_005a2588) * 0x20 + iVar6 * -0x20;\r\n  DAT_00516a94 = (undefined4)\r\n                 (CONCAT44(((int)uVar5 >> 0x1f) << 0x10 | uVar5 >> 0x10,uVar5 * 0x10000) /\r\n                 (longlong)(iVar3 << 4));\r\n  return DAT_00516a94;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

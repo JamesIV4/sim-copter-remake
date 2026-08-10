@@ -1,0 +1,49 @@
+{
+  "address": "004cdb50",
+  "name": "FUN_004cdb50",
+  "signature": "undefined FUN_004cdb50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nDWORD FUN_004cdb50(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  DWORD DVar3;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_20;\r\n  int local_1c;\r\n  undefined4 local_18;\r\n  undefined2 local_12;\r\n  undefined2 uStack_10;\r\n  undefined2 uStack_e;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004cdc27;\r\n  uStack_10 = (undefined2)*unaff_FS_OFFSET;\r\n  uStack_e = (undefined2)((uint)*unaff_FS_OFFSET >> 0x10);\r\n  *unaff_FS_OFFSET = &uStack_10;\r\n  puVar2 = DAT_00506bcc;\r\n  do {\r\n    if (puVar2 == (undefined4 *)0x0) {\r\n      FUN_004cd3e0(&local_18,&local_12,&local_20);\r\n      iVar1 = FUN_004cd630();\r\n      if (iVar1 == 0) {\r\n        iVar1 = FUN_004ce120(local_18);\r\n        if (iVar1 == 0) {\r\n          DVar3 = GetLastError();\r\n        }\r\n        else {\r\n          local_1c = FUN_004d28b0(0x20);\r\n          local_8 = 0;\r\n          puVar2 = (undefined4 *)0x0;\r\n          if (local_1c != 0) {\r\n            puVar2 = (undefined4 *)\r\n                     FUN_004cda40(*(undefined4 *)(param_1 + 0x108),CONCAT22(uStack_10,local_12),\r\n                                  local_18,iVar1,local_20);\r\n          }\r\n          *(undefined4 **)(param_1 + 0x110) = puVar2;\r\n          *puVar2 = DAT_00506bcc;\r\n          DAT_00506bcc = puVar2;\r\nLAB_004cdc47:\r\n          DVar3 = 0;\r\n        }\r\n      }\r\n      else {\r\n        DVar3 = FUN_004cd630();\r\n      }\r\n      *unaff_FS_OFFSET = CONCAT22(uStack_e,uStack_10);\r\n      return DVar3;\r\n    }\r\n    if ((int)*(short *)(puVar2 + 1) == *(int *)(param_1 + 0x108)) {\r\n      puVar2[7] = puVar2[7] + 1;\r\n      *(undefined4 **)(param_1 + 0x110) = puVar2;\r\n      goto LAB_004cdc47;\r\n    }\r\n    puVar2 = (undefined4 *)*puVar2;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd550",
+      "name": "FUN_004cd550",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd5a0",
+      "name": "FUN_004cd5a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004cd3e0",
+      "name": "FUN_004cd3e0"
+    },
+    {
+      "addr": "004cd630",
+      "name": "FUN_004cd630"
+    },
+    {
+      "addr": "004ce120",
+      "name": "FUN_004ce120"
+    },
+    {
+      "addr": "004ce210",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004cda40",
+      "name": "FUN_004cda40"
+    }
+  ],
+  "data_refs": []
+}

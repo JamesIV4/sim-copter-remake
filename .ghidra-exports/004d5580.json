@@ -1,0 +1,39 @@
+{
+  "address": "004d5580",
+  "name": "_atoi",
+  "signature": "int __cdecl _atoi(char * _Str)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _atoi\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _atoi(char *_Str)\r\n\r\n{\r\n  long lVar1;\r\n  \r\n  lVar1 = _atol(_Str);\r\n  return lVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004636b0",
+      "name": "FUN_004636b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54d0",
+      "name": "_atol"
+    }
+  ],
+  "data_refs": []
+}

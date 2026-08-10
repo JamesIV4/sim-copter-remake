@@ -1,0 +1,70 @@
+{
+  "address": "0042e490",
+  "name": "FUN_0042e490",
+  "signature": "undefined FUN_0042e490(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0042e490(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = *(int *)(*(int *)(*(int *)(param_1 + 0x40a4) + 4) + 8);\r\n  if (iVar1 == 4) {\r\n    FUN_00411840();\r\n    FUN_004118c0();\r\n    return;\r\n  }\r\n  if (iVar1 == 5) {\r\n    FUN_00411be0();\r\n    FUN_00411c60();\r\n    return;\r\n  }\r\n  if (iVar1 == 6) {\r\n    FUN_00411fa0();\r\n    FUN_00412070();\r\n    return;\r\n  }\r\n  if (iVar1 == 7) {\r\n    FUN_00413ec0();\r\n    FUN_00413f10();\r\n    return;\r\n  }\r\n  if (iVar1 == 8) {\r\n    FUN_00414560();\r\n    FUN_004145b0();\r\n    return;\r\n  }\r\n  if (iVar1 == 9) {\r\n    FUN_00414940();\r\n    FUN_00414990();\r\n    return;\r\n  }\r\n  if (iVar1 == 0xb) {\r\n    FUN_00414d20();\r\n    FUN_00414d70();\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00411840",
+      "name": "FUN_00411840"
+    },
+    {
+      "addr": "004118c0",
+      "name": "FUN_004118c0"
+    },
+    {
+      "addr": "00411be0",
+      "name": "FUN_00411be0"
+    },
+    {
+      "addr": "00411c60",
+      "name": "FUN_00411c60"
+    },
+    {
+      "addr": "00411fa0",
+      "name": "FUN_00411fa0"
+    },
+    {
+      "addr": "00412070",
+      "name": "FUN_00412070"
+    },
+    {
+      "addr": "00413ec0",
+      "name": "FUN_00413ec0"
+    },
+    {
+      "addr": "00413f10",
+      "name": "FUN_00413f10"
+    },
+    {
+      "addr": "00414560",
+      "name": "FUN_00414560"
+    },
+    {
+      "addr": "004145b0",
+      "name": "FUN_004145b0"
+    },
+    {
+      "addr": "00414940",
+      "name": "FUN_00414940"
+    },
+    {
+      "addr": "00414990",
+      "name": "FUN_00414990"
+    },
+    {
+      "addr": "00414d20",
+      "name": "FUN_00414d20"
+    },
+    {
+      "addr": "00414d70",
+      "name": "FUN_00414d70"
+    }
+  ],
+  "data_refs": []
+}

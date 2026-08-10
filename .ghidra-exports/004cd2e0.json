@@ -1,0 +1,13 @@
+{
+  "address": "004cd2e0",
+  "name": "FUN_004cd2e0",
+  "signature": "undefined FUN_004cd2e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nshort __thiscall FUN_004cd2e0(int *param_1,undefined2 param_2,short param_3,undefined1 **param_4)\r\n\r\n{\r\n  short *psVar1;\r\n  undefined1 auStack_6 [2];\r\n  undefined1 *puStack_4;\r\n  \r\n  if (param_4 == (undefined1 **)0x0) {\r\n    param_4 = &puStack_4;\r\n    puStack_4 = auStack_6;\r\n  }\r\n  *param_4 = (undefined1 *)0x0;\r\n  switch(param_2) {\r\n  case 0:\r\n  case 1:\r\n  case 4:\r\n  case 8:\r\n  case 10:\r\n  case 0xb:\r\n    return 0;\r\n  default:\r\n    (**(code **)(*param_1 + 4))(8);\r\n    return 0;\r\n  case 3:\r\n    break;\r\n  case 7:\r\n    return param_3;\r\n  case 9:\r\n    if (param_3 < 4) {\r\n      psVar1 = (short *)((int)param_1 + ((int)param_3 + (short)param_1[0x3d] * 10) * 2 + -8);\r\n      *param_4 = (undefined1 *)psVar1;\r\n      return *psVar1;\r\n    }\r\n    (**(code **)(*param_1 + 4))(7);\r\n    return 0;\r\n  }\r\n  if (param_3 < 0x30) {\r\n    psVar1 = (short *)((int)param_1 + param_3 * 2 + 0x140);\r\n    *param_4 = (undefined1 *)psVar1;\r\n    return *psVar1;\r\n  }\r\n  (**(code **)(*param_1 + 4))(6);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

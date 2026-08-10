@@ -1,0 +1,28 @@
+{
+  "address": "004932d0",
+  "name": "FUN_004932d0",
+  "signature": "undefined FUN_004932d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004932d0(undefined2 param_1,byte param_2,byte param_3,int param_4)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  undefined3 uVar3;\r\n  uint uVar2;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  ushort local_8;\r\n  byte bStack_6;\r\n  byte bStack_5;\r\n  \r\n  if ((param_2 < 0x80) && (param_3 < 0x80)) {\r\n    local_8 = (*(byte *)((&DAT_00590800)[param_2] + (uint)param_3) & 2) << 0xe |\r\n              (ushort)*(byte *)((&DAT_005910b0)[param_2] + (uint)param_3);\r\n  }\r\n  else {\r\n    local_8 = 0;\r\n  }\r\n  uVar2 = 0;\r\n  iVar5 = 0;\r\n  iVar6 = param_4 + 5;\r\n  do {\r\n    uVar3 = (undefined3)(uVar2 >> 8);\r\n    uVar2 = CONCAT31(uVar3,param_2);\r\n    bStack_6 = param_2;\r\n    bStack_5 = param_3;\r\n    switch(iVar5) {\r\n    case 0:\r\n      bStack_5 = param_3 - 1;\r\n      uVar2 = CONCAT31(uVar3,bStack_5);\r\n      break;\r\n    case 1:\r\n      bStack_6 = param_2 + 1;\r\n      goto LAB_00493376;\r\n    case 2:\r\n      bStack_5 = param_3 + 1;\r\n      uVar2 = CONCAT31(uVar3,bStack_5);\r\n      break;\r\n    case 3:\r\n      bStack_6 = param_2 - 1;\r\nLAB_00493376:\r\n      uVar2 = CONCAT31(uVar3,bStack_6);\r\n    }\r\n    if ((bStack_6 < 0x80) && (bStack_5 < 0x80)) {\r\n      uVar2 = (uint)(ushort)((*(byte *)((&DAT_00590800)[bStack_6] + (uint)bStack_5) & 2) << 0xe |\r\n                            (ushort)*(byte *)((&DAT_005910b0)[bStack_6] + (uint)bStack_5));\r\n    }\r\n    else {\r\n      uVar2 = uVar2 & 0xffff0000;\r\n    }\r\n    if ((bStack_6 < 0x80) && (bStack_5 < 0x80)) {\r\n      iVar4 = 1 << ((byte)iVar5 & 0x1f);\r\n      iVar4 = FUN_004bb970(CONCAT13(bStack_5,CONCAT12(bStack_6,local_8)),uVar2,iVar4,iVar4);\r\n      uVar2 = 0;\r\n      if (iVar4 != 0) {\r\n        if (local_8 < 0x2c) {\r\n          if (local_8 < 0x27) {\r\n            if ((local_8 < 0x1d) || (0x26 < local_8)) goto switchD_004934e0_caseD_805a;\r\n            uVar1 = 8;\r\n          }\r\n          else {\r\n            uVar1 = 10;\r\n          }\r\n        }\r\n        else if (local_8 < 0x51) {\r\n          if (local_8 < 0x49) {\r\n            if (local_8 < 0x3f) goto switchD_004934e0_caseD_805a;\r\n            if (local_8 < 0x47) {\r\n              uVar1 = 8;\r\n            }\r\n            else {\r\n              uVar1 = 0;\r\n            }\r\n          }\r\n          else {\r\nswitchD_004934e0_caseD_806a:\r\n            uVar1 = 4;\r\n          }\r\n        }\r\n        else if (local_8 < 0x5a) {\r\n          if (local_8 < 0x57) {\r\n            if (local_8 < 0x51) goto switchD_004934e0_caseD_805a;\r\n            if (local_8 < 0x57) {\r\nLAB_004934fc:\r\n              uVar1 = 8;\r\n            }\r\n            else {\r\n              uVar1 = 0;\r\n            }\r\n          }\r\n          else {\r\nswitchD_004934e0_caseD_8057:\r\n            uVar1 = 8;\r\n          }\r\n        }\r\n        else if (local_8 < 0x69) {\r\n          if (local_8 < 0x61) {\r\n            if (local_8 < 0x5d) {\r\nswitchD_004934e0_caseD_805a:\r\n              uVar1 = 0;\r\n            }\r\n            else {\r\n              if (local_8 < 0x61) goto switchD_004934e0_caseD_805d;\r\n              uVar1 = 0;\r\n            }\r\n          }\r\n          else {\r\n            uVar1 = 8;\r\n          }\r\n        }\r\n        else if (local_8 < 0x8057) {\r\n          if (0x8050 < local_8) goto LAB_004934fc;\r\n          if (local_8 == 0x69) {\r\n            uVar1 = 10;\r\n          }\r\n          else {\r\n            if (local_8 < 0x6a) goto switchD_004934e0_caseD_805a;\r\n            if (local_8 < 0x6c) goto switchD_004934e0_caseD_806a;\r\n            uVar1 = 0;\r\n          }\r\n        }\r\n        else {\r\n          switch(local_8) {\r\n          case 0x8057:\r\n          case 0x8058:\r\n          case 0x8059:\r\n            goto switchD_004934e0_caseD_8057;\r\n          default:\r\n            goto switchD_004934e0_caseD_805a;\r\n          case 0x805d:\r\n          case 0x805e:\r\n          case 0x805f:\r\n          case 0x8060:\r\nswitchD_004934e0_caseD_805d:\r\n            uVar1 = 10;\r\n            break;\r\n          case 0x806a:\r\n          case 0x806b:\r\n            goto switchD_004934e0_caseD_806a;\r\n          }\r\n        }\r\n        *(undefined2 *)(iVar6 + 3) = uVar1;\r\n        *(byte *)(param_4 + 2) = *(byte *)(param_4 + 2) | '\\x01' << ((byte)iVar5 & 0x1f) & 0xfU;\r\n        uVar2 = FUN_004935a0(param_4,iVar5,CONCAT22(param_1,CONCAT11(bStack_5,bStack_6)));\r\n      }\r\n    }\r\n    iVar6 = iVar6 + 0xb;\r\n    iVar5 = iVar5 + 1;\r\n    if (3 < iVar5) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00491d10",
+      "name": "FUN_00491d10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004bb970",
+      "name": "FUN_004bb970"
+    },
+    {
+      "addr": "004935a0",
+      "name": "FUN_004935a0"
+    }
+  ],
+  "data_refs": []
+}

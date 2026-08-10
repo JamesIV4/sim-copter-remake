@@ -1,0 +1,34 @@
+{
+  "address": "004d56d0",
+  "name": "__mtlockterm",
+  "signature": "undefined __mtlockterm(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mtlockterm\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __mtlockterm(LPCRITICAL_SECTION param_1)\r\n\r\n{\r\n  DeleteCriticalSection(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2cf0",
+      "name": "~ios",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2cf0",
+      "name": "~ios",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6cb0",
+      "name": "~streambuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000020",
+      "name": "DeleteCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,22 @@
+{
+  "address": "004cc470",
+  "name": "FUN_004cc470",
+  "signature": "undefined FUN_004cc470(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004cc470(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  short sVar1;\r\n  ushort local_a;\r\n  ushort local_8;\r\n  undefined2 local_6;\r\n  undefined4 local_4;\r\n  \r\n  local_4 = *(undefined4 *)(param_3 + 4);\r\n  sVar1 = FUN_004ca190(local_4,&local_a,&local_8,&local_6);\r\n  if (sVar1 != 0) {\r\n    sVar1 = FUN_004c8230(*(undefined4 *)(param_1 + 0x1cc),*(undefined4 *)(param_1 + 0x1d4),\r\n                         (int)*(short *)((&DAT_005d9200)\r\n                                         [(local_a & 0xff) * 0x100 + (local_8 & 0xff)] + 2) << 0x10,\r\n                         (int)*(short *)((&DAT_005d9200)\r\n                                         [(local_a & 0xff) * 0x100 + (local_8 & 0xff)] + 6) << 0x10)\r\n    ;\r\n    *(ushort *)(param_1 + 0x140) = sVar1 - 2U & 7;\r\n    *(undefined2 *)(param_1 + -8 + ((int)local_4._2_2_ + *(short *)(param_1 + 0xf4) * 10) * 2) =\r\n         local_6;\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004ca190",
+      "name": "FUN_004ca190"
+    },
+    {
+      "addr": "004c8230",
+      "name": "FUN_004c8230"
+    }
+  ],
+  "data_refs": []
+}

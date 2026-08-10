@@ -1,0 +1,22 @@
+{
+  "address": "004cb370",
+  "name": "FUN_004cb370",
+  "signature": "undefined FUN_004cb370(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004cb370(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  short sVar1;\r\n  undefined4 uVar2;\r\n  short sVar3;\r\n  short local_c;\r\n  short sStack_a;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  uVar2 = *(undefined4 *)(param_3 + 4);\r\n  FUN_00489610(&local_8);\r\n  if ((*(short *)(param_1 + 0x12a) == local_8) && (*(short *)(param_1 + 300) == local_4)) {\r\n    local_c = (short)uVar2;\r\n    *(short *)(param_1 + -8 + ((int)local_c + *(short *)(param_1 + 0xf4) * 10) * 2) =\r\n         (short)*(undefined4 *)(DAT_005040d0 + 0x150);\r\n    sStack_a = (short)((uint)uVar2 >> 0x10);\r\n    sVar1 = *(short *)(param_1 + 0xf4);\r\n    sVar3 = FUN_004c8430(*(undefined4 *)(DAT_005040d0 + 0xa4));\r\n    *(ushort *)(param_1 + -8 + ((int)sStack_a + sVar1 * 10) * 2) = sVar3 - 2U & 7;\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00489610",
+      "name": "FUN_00489610"
+    },
+    {
+      "addr": "004c8430",
+      "name": "FUN_004c8430"
+    }
+  ],
+  "data_refs": []
+}

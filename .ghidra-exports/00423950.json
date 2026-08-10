@@ -1,0 +1,24 @@
+{
+  "address": "00423950",
+  "name": "FUN_00423950",
+  "signature": "undefined FUN_00423950(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00423950(void)\r\n\r\n{\r\n  LCID LVar1;\r\n  uint uVar2;\r\n  \r\n  LVar1 = GetUserDefaultLCID();\r\n  uVar2 = LVar1 & 0xffff;\r\n  if (uVar2 < 0x808) {\r\n    if (uVar2 == 0x807) {\r\n      return 4;\r\n    }\r\n    switch(uVar2) {\r\n    case 0x405:\r\n      return 0x12;\r\n    case 0x406:\r\n      return 8;\r\n    case 0x407:\r\n      return 4;\r\n    case 0x408:\r\n      return 0x13;\r\n    case 0x409:\r\n      return 1;\r\n    case 0x40a:\r\n      return 6;\r\n    case 0x40b:\r\n      return 0x15;\r\n    case 0x40c:\r\n      return 3;\r\n    case 0x40e:\r\n      return 0x16;\r\n    case 0x40f:\r\n      return 0x17;\r\n    case 0x410:\r\n      return 5;\r\n    case 0x413:\r\n      return 7;\r\n    case 0x414:\r\n      return 0x14;\r\n    case 0x415:\r\n      return 9;\r\n    case 0x416:\r\n      return 10;\r\n    case 0x419:\r\n      return 0x10;\r\n    case 0x41b:\r\n      return 0x1a;\r\n    case 0x41d:\r\n      return 0xb;\r\n    case 0x41f:\r\n      return 0x1d;\r\n    }\r\n  }\r\n  else if (uVar2 < 0xc08) {\r\n    if (uVar2 == 0xc07) {\r\n      return 4;\r\n    }\r\n    switch(uVar2) {\r\n    case 0x809:\r\n      return 2;\r\n    case 0x80a:\r\n      return 6;\r\n    case 0x80c:\r\n      return 3;\r\n    case 0x810:\r\n      return 5;\r\n    case 0x813:\r\n      return 3;\r\n    case 0x814:\r\n      return 0x14;\r\n    case 0x816:\r\n      return 10;\r\n    }\r\n  }\r\n  else {\r\n    if (uVar2 < 0x100a) {\r\n      if (uVar2 == 0x1009) {\r\n        return 1;\r\n      }\r\n      if (uVar2 == 0xc09) {\r\n        return 2;\r\n      }\r\n      if (uVar2 == 0xc0a) {\r\n        return 6;\r\n      }\r\n      if (uVar2 != 0xc0c) {\r\n        return 1;\r\n      }\r\n      return 3;\r\n    }\r\n    if (uVar2 == 0x100c) {\r\n      return 3;\r\n    }\r\n    if (uVar2 == 0x1409) {\r\n      return 2;\r\n    }\r\n    if (uVar2 == 0x1809) {\r\n      return 2;\r\n    }\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000015",
+      "name": "GetUserDefaultLCID"
+    }
+  ],
+  "data_refs": []
+}

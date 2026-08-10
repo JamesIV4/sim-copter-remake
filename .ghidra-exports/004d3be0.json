@@ -1,0 +1,40 @@
+{
+  "address": "004d3be0",
+  "name": "flsall",
+  "signature": "undefined __cdecl flsall(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _flsall\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl flsall(int param_1)\r\n\r\n{\r\n  void *_File;\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int _Index;\r\n  int local_4;\r\n  \r\n  iVar2 = 0;\r\n  _Index = 0;\r\n  local_4 = 0;\r\n  __lock(2);\r\n  if (0 < DAT_0061cc90) {\r\n    iVar3 = 0;\r\n    do {\r\n      _File = *(void **)(DAT_0061bc84 + iVar3);\r\n      if ((_File != (void *)0x0) && ((*(byte *)((int)_File + 0xc) & 0x83) != 0)) {\r\n        FID_conflict___lock_file2(_Index,_File);\r\n        iVar1 = *(int *)(DAT_0061bc84 + iVar3);\r\n        if ((*(uint *)(iVar1 + 0xc) & 0x83) != 0) {\r\n          if (param_1 == 1) {\r\n            iVar1 = __fflush_lk(iVar1);\r\n            if (iVar1 != -1) {\r\n              iVar2 = iVar2 + 1;\r\n            }\r\n          }\r\n          else if (((param_1 == 0) && ((*(uint *)(iVar1 + 0xc) & 2) != 0)) &&\r\n                  (iVar1 = __fflush_lk(iVar1), iVar1 == -1)) {\r\n            local_4 = -1;\r\n          }\r\n        }\r\n        FID_conflict___lock_file2(_Index,*(void **)(DAT_0061bc84 + iVar3));\r\n      }\r\n      iVar3 = iVar3 + 4;\r\n      _Index = _Index + 1;\r\n    } while (_Index < DAT_0061cc90);\r\n  }\r\n  FUN_004d64a0(2);\r\n  if (param_1 != 1) {\r\n    iVar2 = local_4;\r\n  }\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3ae0",
+      "name": "_fflush",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d6500",
+      "name": "FID_conflict:__lock_file2"
+    },
+    {
+      "addr": "004d3b20",
+      "name": "__fflush_lk"
+    },
+    {
+      "addr": "004d6570",
+      "name": "FID_conflict:__lock_file2"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

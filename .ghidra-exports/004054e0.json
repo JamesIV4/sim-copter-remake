@@ -1,0 +1,13 @@
+{
+  "address": "004054e0",
+  "name": "FUN_004054e0",
+  "signature": "undefined FUN_004054e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004054e0(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *local_4;\r\n  \r\n  if ((*(int *)(param_1 + 0x54) != 0) &&\r\n     (local_4 = (int *)**(int **)(param_1 + 0x30), *(int **)(param_1 + 0x30) != local_4)) {\r\n    do {\r\n      piVar1 = local_4 + 2;\r\n      local_4 = (int *)*local_4;\r\n      (**(code **)(*(int *)*piVar1 + 0x18))();\r\n    } while ((int *)*(int *)(param_1 + 0x30) != local_4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

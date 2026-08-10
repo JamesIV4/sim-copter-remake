@@ -1,0 +1,36 @@
+{
+  "address": "00482110",
+  "name": "FUN_00482110",
+  "signature": "undefined FUN_00482110(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00482110(void)\r\n\r\n{\r\n  short sVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  DAT_0061a608 = DAT_0061a6ac + 0x20000000 >> 0x16;\r\n  DAT_0061a60c = 0x20000000 - DAT_0061a6b4 >> 0x16;\r\n  iVar2 = ((DAT_0061a6b0 >> 0x10) -\r\n          (uint)*(ushort *)\r\n                 (DAT_005cde80 +\r\n                 (((DAT_0061a60c & DAT_0050616c) << (DAT_00506170 & 0x1f)) +\r\n                 (DAT_0050616c & DAT_0061a608)) * 2)) - DAT_00503b48;\r\n  DAT_00503b48 = DAT_00503b48 + iVar2;\r\n  if (DAT_00503b48 < 0) {\r\n    DAT_00503b48 = 0;\r\n  }\r\n  if (DAT_00503b48 < 100) {\r\n    DAT_0057eadc = 10;\r\n  }\r\n  else {\r\n    DAT_0057eadc = 0xe;\r\n    if (0x9f < DAT_00503b48) {\r\n      DAT_0057eadc = 0x10;\r\n    }\r\n  }\r\n  if (iVar2 < 0) {\r\n    DAT_00503b54 = 0;\r\n    DAT_00503b50 = DAT_00503b50 + 1;\r\n  }\r\n  else if (iVar2 < 1) {\r\n    DAT_00503b50 = 0;\r\n    DAT_00503b54 = 0;\r\n  }\r\n  else {\r\n    DAT_00503b50 = 0;\r\n    DAT_00503b54 = DAT_00503b54 + 1;\r\n  }\r\n  iVar2 = (DAT_00503b48 / 0x28) * 2 + 0x11;\r\n  if (iVar2 < 0x11) {\r\n    iVar2 = 0x11;\r\n  }\r\n  if (0x3d < iVar2) {\r\n    iVar2 = 0x3d;\r\n  }\r\n  if (DAT_004f9738 == 0) {\r\n    iVar2 = DAT_00503b4c;\r\n  }\r\n  iVar4 = DAT_0061a608 - _DAT_0057eb00;\r\n  iVar3 = DAT_0061a60c - _DAT_0057eb04;\r\n  if (DAT_004f96ec == 1) {\r\n    DAT_00503f60 = FUN_004ae3f0();\r\n  }\r\n  if ((DAT_00503b4c != iVar2) && ((10 < DAT_00503b54 || (10 < DAT_00503b50)))) {\r\n    DAT_00503b50 = 0;\r\n    DAT_00503b54 = 0;\r\n    FUN_00478960(iVar2);\r\n    FUN_0047bf90((DAT_005a25a0 / 2 + -3) * 0x400000);\r\n    sVar1 = (short)(DAT_005a25a0 >> 1);\r\n    DAT_005d91f8 = (int)(short)((short)DAT_0061a608 - sVar1);\r\n    DAT_005d91fc = (int)(short)((short)DAT_0061a60c - sVar1);\r\n    FUN_004ae350();\r\n    _DAT_0057eb00 = DAT_0061a608;\r\n    DAT_00503b4c = iVar2;\r\n    _DAT_0057eb04 = DAT_0061a60c;\r\n    DAT_005a2500 = DAT_005a2500 + iVar4 * 0x400000;\r\n    DAT_005a2508 = DAT_005a2508 + iVar3 * -0x400000;\r\n    return;\r\n  }\r\n  if ((iVar4 != 0) || ((iVar3 != 0 || (DAT_00503f60 == 1)))) {\r\n    _DAT_0057eb00 = DAT_0061a608;\r\n    _DAT_0057eb04 = DAT_0061a60c;\r\n    DAT_005d91f8 = DAT_005d91f8 + (short)iVar4;\r\n    DAT_005d91fc = DAT_005d91fc + (short)iVar3;\r\n    FUN_004ae350();\r\n    DAT_005a2500 = DAT_005a2500 + iVar4 * 0x400000;\r\n    DAT_005a2508 = DAT_005a2508 + iVar3 * -0x400000;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ae3f0",
+      "name": "FUN_004ae3f0"
+    },
+    {
+      "addr": "00478960",
+      "name": "FUN_00478960"
+    },
+    {
+      "addr": "0047bf90",
+      "name": "FUN_0047bf90"
+    },
+    {
+      "addr": "004ae350",
+      "name": "FUN_004ae350"
+    }
+  ],
+  "data_refs": []
+}

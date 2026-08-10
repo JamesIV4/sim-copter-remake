@@ -1,0 +1,24 @@
+{
+  "address": "004d8da0",
+  "name": "__openfile",
+  "signature": "FILE * __cdecl __openfile(char * _Filename, char * _Mode, int _ShFlag, FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "FILE *",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n/* Library Function - Single Match\r\n    __openfile\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nFILE * __cdecl __openfile(char *_Filename,char *_Mode,int _ShFlag,FILE *_File)\r\n\r\n{\r\n  char cVar1;\r\n  bool bVar2;\r\n  bool bVar3;\r\n  bool bVar4;\r\n  int iVar5;\r\n  char *pcVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  \r\n  bVar3 = false;\r\n  cVar1 = *_Mode;\r\n  bVar4 = false;\r\n  if (cVar1 == 'a') {\r\n    uVar7 = 0x109;\r\n  }\r\n  else {\r\n    if (cVar1 == 'r') {\r\n      uVar7 = 0;\r\n      uVar8 = DAT_005086d0 | 1;\r\n      goto LAB_004d8ded;\r\n    }\r\n    if (cVar1 != 'w') {\r\n      return (FILE *)0x0;\r\n    }\r\n    uVar7 = 0x301;\r\n  }\r\n  uVar8 = DAT_005086d0 | 2;\r\nLAB_004d8ded:\r\n  bVar2 = true;\r\n  pcVar6 = _Mode + 1;\r\n  cVar1 = *pcVar6;\r\n  while ((cVar1 != '\\0' && (bVar2))) {\r\n    switch(*pcVar6) {\r\n    case '+':\r\n      if ((uVar7 & 2) == 0) {\r\n        uVar7 = uVar7 & 0xfffffffe | 2;\r\n        uVar8 = uVar8 & 0xfffffffc | 0x80;\r\n      }\r\n      else {\r\n        bVar2 = false;\r\n      }\r\n      break;\r\n    default:\r\n      bVar2 = false;\r\n      break;\r\n    case 'D':\r\n      if ((uVar7 & 0x40) == 0) {\r\n        uVar7 = uVar7 | 0x40;\r\n      }\r\n      else {\r\n        bVar2 = false;\r\n      }\r\n      break;\r\n    case 'R':\r\n      if (bVar3) {\r\n        bVar2 = false;\r\n      }\r\n      else {\r\n        bVar3 = true;\r\n        uVar7 = uVar7 | 0x10;\r\n      }\r\n      break;\r\n    case 'S':\r\n      if (bVar3) {\r\n        bVar2 = false;\r\n      }\r\n      else {\r\n        bVar3 = true;\r\n        uVar7 = uVar7 | 0x20;\r\n      }\r\n      break;\r\n    case 'T':\r\n      if ((uVar7 & 0x1000) == 0) {\r\n        uVar7 = uVar7 | 0x1000;\r\n      }\r\n      else {\r\n        bVar2 = false;\r\n      }\r\n      break;\r\n    case 'b':\r\n      if ((uVar7 & 0xc000) == 0) {\r\n        uVar7 = uVar7 | 0x8000;\r\n      }\r\n      else {\r\n        bVar2 = false;\r\n      }\r\n      break;\r\n    case 'c':\r\n      if (bVar4) {\r\n        bVar2 = false;\r\n      }\r\n      else {\r\n        bVar4 = true;\r\n        uVar8 = uVar8 | 0x4000;\r\n      }\r\n      break;\r\n    case 'n':\r\n      if (bVar4) {\r\n        bVar2 = false;\r\n      }\r\n      else {\r\n        bVar4 = true;\r\n        uVar8 = uVar8 & 0xffffbfff;\r\n      }\r\n      break;\r\n    case 't':\r\n      if ((uVar7 & 0xc000) == 0) {\r\n        uVar7 = uVar7 | 0x4000;\r\n      }\r\n      else {\r\n        bVar2 = false;\r\n      }\r\n    }\r\n    pcVar6 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n  }\r\n  iVar5 = FUN_004df2e0(_Filename,uVar7,_ShFlag,0x1a4);\r\n  if (-1 < iVar5) {\r\n    _DAT_005074c0 = _DAT_005074c0 + 1;\r\n    _File->_flag = uVar8;\r\n    _File->_cnt = 0;\r\n    _File->_ptr = (char *)0x0;\r\n    _File->_base = (char *)0x0;\r\n    _File->_tmpfname = (char *)0x0;\r\n    _File->_file = iVar5;\r\n    return _File;\r\n  }\r\n  return (FILE *)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3e70",
+      "name": "__fsopen",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0"
+    }
+  ],
+  "data_refs": []
+}

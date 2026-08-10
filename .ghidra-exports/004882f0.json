@@ -1,0 +1,37 @@
+{
+  "address": "004882f0",
+  "name": "FUN_004882f0",
+  "signature": "undefined FUN_004882f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004882f0(uint *param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  \r\n  param_1[1] = 0;\r\n  uVar2 = FUN_0046cb91(*param_1,param_1[2]);\r\n  FUN_0046c4dc(uVar2,param_1,param_1 + 2);\r\n  do {\r\n    iVar3 = FUN_004679d0(param_1);\r\n    if (0xffff < iVar3) {\r\n      return;\r\n    }\r\n    uVar1 = *param_1;\r\n    if (uVar1 == 0) {\r\n      if ((int)param_1[2] < 1) {\r\n        param_1[2] = 0xffff0000;\r\n      }\r\n      else {\r\n        param_1[2] = 0x10000;\r\n      }\r\n    }\r\n    else {\r\n      uVar4 = param_1[2];\r\n      if (uVar4 == 0) {\r\n        *param_1 = 0xffff0000;\r\n      }\r\n      else if ((int)((uVar1 ^ (int)uVar1 >> 0x1f) - ((int)uVar1 >> 0x1f)) <\r\n               (int)((uVar4 ^ (int)uVar4 >> 0x1f) - ((int)uVar4 >> 0x1f))) {\r\n        if ((int)uVar1 < 1) {\r\n          *param_1 = uVar1 - 1;\r\n        }\r\n        else {\r\n          *param_1 = uVar1 + 1;\r\n        }\r\n      }\r\n      else {\r\n        if ((int)uVar4 < 1) {\r\n          uVar4 = uVar4 - 1;\r\n        }\r\n        else {\r\n          uVar4 = uVar4 + 1;\r\n        }\r\n        param_1[2] = uVar4;\r\n      }\r\n    }\r\n  } while (iVar3 < 0x10000);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a860",
+      "name": "FUN_0047a860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00486e90",
+      "name": "FUN_00486e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046cb91",
+      "name": "FUN_0046cb91"
+    },
+    {
+      "addr": "0046c4dc",
+      "name": "FUN_0046c4dc"
+    },
+    {
+      "addr": "004679d0",
+      "name": "FUN_004679d0"
+    }
+  ],
+  "data_refs": []
+}

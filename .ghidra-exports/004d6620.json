@@ -1,0 +1,38 @@
+{
+  "address": "004d6620",
+  "name": "__callnewh",
+  "signature": "int __cdecl __callnewh(size_t _Size)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __callnewh\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __callnewh(size_t _Size)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  __lock(9);\r\n  if (DAT_00590588 != (code *)0x0) {\r\n    iVar1 = (*DAT_00590588)(_Size);\r\n    if (iVar1 != 0) {\r\n      FUN_004d64a0(9);\r\n      return 1;\r\n    }\r\n  }\r\n  FUN_004d64a0(9);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5f20",
+      "name": "FUN_004d5f20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da750",
+      "name": "FUN_004da750",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6bb0",
+      "name": "FUN_004d6bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

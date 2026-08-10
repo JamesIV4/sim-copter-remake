@@ -1,0 +1,34 @@
+{
+  "address": "0049cb60",
+  "name": "FUN_0049cb60",
+  "signature": "undefined FUN_0049cb60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nint __thiscall FUN_0049cb60(int param_1,int param_2)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int local_4;\r\n  \r\n  if (DAT_0051ac70 != 0) {\r\n    if ((((_DAT_0057f758 & 2) != 0) && (DAT_0057f75c == param_1)) &&\r\n       ((*(uint *)(param_2 + 0x1a) &\r\n        *(uint *)(&DAT_004f4668 + *(int *)(&DAT_004f4648 + *(int *)(param_2 + 0x12) * 4) * 4)) != 0)\r\n       ) {\r\n      _DAT_0057f758 = _DAT_0057f758 & 0xfffffffd;\r\n      return 2;\r\n    }\r\n    if ((((_DAT_0057f758 & 1) != 0) && (DAT_0057f75c == param_1)) &&\r\n       ((*(uint *)(param_2 + 0x1a) &\r\n        *(uint *)(&DAT_004f4668 + *(int *)(&DAT_004f4638 + *(int *)(param_2 + 0x12) * 4) * 4)) != 0)\r\n       ) {\r\n      _DAT_0057f758 = _DAT_0057f758 & 0xfffffffe;\r\n      return 1;\r\n    }\r\n    if ((((_DAT_0057f758 & 0x40) != 0) && (DAT_0057f75c == param_1)) &&\r\n       ((*(uint *)(param_2 + 0x1a) & *(uint *)(&DAT_004f4668 + *(int *)(param_2 + 0x12) * 4)) != 0))\r\n    {\r\n      _DAT_0057f758 = _DAT_0057f758 & 0xffffffbf;\r\n      return 0;\r\n    }\r\n  }\r\n  uVar5 = ~*(uint *)(&DAT_004f4668 + (*(int *)(param_2 + 0x12) + 2U & 3) * 4) &\r\n          *(uint *)(param_2 + 0x1a);\r\n  if ((uVar5 & ~*(uint *)(param_2 + 0x1e)) != 0) {\r\n    iVar3 = _rand();\r\n    uVar1 = (short)(ushort)iVar3 >> 0xf;\r\n    if ((((ushort)iVar3 ^ uVar1) - uVar1 & 3 ^ uVar1) != uVar1) {\r\n      uVar5 = uVar5 & ~*(uint *)(param_2 + 0x1e);\r\n    }\r\n  }\r\n  uVar4 = 0;\r\n  iVar3 = *(int *)(param_2 + 0x12) * 4;\r\n  if ((*(uint *)(&DAT_004f4668 + iVar3) & uVar5) != 0) {\r\n    uVar4 = 4;\r\n  }\r\n  if ((*(uint *)(&DAT_004f4668 + *(int *)(&DAT_004f4638 + iVar3) * 4) & uVar5) != 0) {\r\n    uVar4 = uVar4 | 2;\r\n  }\r\n  if ((*(uint *)(&DAT_004f4668 + *(int *)(&DAT_004f4648 + iVar3) * 4) & uVar5) != 0) {\r\n    uVar4 = uVar4 | 1;\r\n  }\r\n  switch(uVar4) {\r\n  case 0:\r\n    return 3;\r\n  case 1:\r\n    return 2;\r\n  case 2:\r\n    return 1;\r\n  case 3:\r\n    iVar3 = _rand();\r\n    uVar1 = (short)(ushort)iVar3 >> 0xf;\r\n    return ((((ushort)iVar3 ^ uVar1) - uVar1 & 1 ^ uVar1) == uVar1) + 1;\r\n  case 4:\r\n    return 0;\r\n  case 5:\r\n    iVar3 = _rand();\r\n    uVar1 = (short)(ushort)iVar3 >> 0xf;\r\n    if ((((ushort)iVar3 ^ uVar1) - uVar1 & 3 ^ uVar1) == uVar1) {\r\n      return 2;\r\n    }\r\n    return 0;\r\n  case 6:\r\n    iVar3 = _rand();\r\n    uVar1 = (short)(ushort)iVar3 >> 0xf;\r\n    if ((((ushort)iVar3 ^ uVar1) - uVar1 & 3 ^ uVar1) == uVar1) {\r\n      return 1;\r\n    }\r\n    return 0;\r\n  case 7:\r\n    break;\r\n  default:\r\n    return local_4;\r\n  }\r\n  iVar3 = _rand();\r\n  uVar2 = (short)(ushort)iVar3 >> 0xf;\r\n  uVar1 = ((ushort)iVar3 ^ uVar2) - uVar2 & 7 ^ uVar2;\r\n  if (uVar1 == uVar2) {\r\n    return 1;\r\n  }\r\n  if ((ushort)(uVar1 - uVar2) == 1) {\r\n    return 2;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ba930",
+      "name": "FUN_004ba930",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ba930",
+      "name": "FUN_004ba930",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004be7d0",
+      "name": "FUN_004be7d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,34 @@
+{
+  "address": "00449280",
+  "name": "FUN_00449280",
+  "signature": "undefined FUN_00449280(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 __fastcall FUN_00449280(int *param_1)\r\n\r\n{\r\n  DWORD DVar1;\r\n  uint uVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  code *pcVar5;\r\n  LARGE_INTEGER local_8;\r\n  \r\n  pcVar5 = timeGetTime_exref;\r\n  _DAT_004f9658 = _DAT_004f9658 + 1;\r\n  iVar4 = param_1[0xfb1];\r\n  if (param_1[0xfb0] != 0) {\r\n    if (param_1[0xfaf] == 0) {\r\n      QueryPerformanceCounter(&local_8);\r\n      uVar3 = local_8.s.LowPart;\r\n      pcVar5 = timeGetTime_exref;\r\n    }\r\n    else if (param_1[0xfaf] == 1) {\r\n      uVar3 = timeGetTime();\r\n    }\r\n    else {\r\n      DVar1 = timeGetTime();\r\n      uVar3 = DVar1 / 1000;\r\n    }\r\n    iVar4 = (iVar4 - param_1[0xfb0]) + uVar3;\r\n  }\r\n  if ((param_1[0xfaf] == 0) && (param_1[0xfb2] != 0)) {\r\n    iVar4 = MulDiv(iVar4,1000000,param_1[0xfb2]);\r\n  }\r\n  if (999 < iVar4) {\r\n    param_1[0xfb1] = 0;\r\n    param_1[0xfb0] = 0;\r\n    if (param_1[0xfaf] == 0) {\r\n      QueryPerformanceCounter(&local_8);\r\n      uVar3 = local_8.s.LowPart;\r\n    }\r\n    else if (param_1[0xfaf] == 1) {\r\n      uVar3 = (*pcVar5)();\r\n    }\r\n    else {\r\n      uVar2 = (*pcVar5)();\r\n      uVar3 = uVar2 / 1000;\r\n    }\r\n    param_1[0xfb0] = uVar3;\r\n  }\r\n  if ((param_1[0x100c] != 0) || (param_1[6] != 0)) {\r\n    iVar4 = *param_1;\r\n    (**(code **)(iVar4 + 0x3c))();\r\n    (**(code **)(iVar4 + 0x6c))();\r\n    if (param_1[0x102b] != 0) {\r\n      if (param_1[9] != 0) {\r\n        local_8.s.LowPart = local_8.s.LowPart & 0xff000000;\r\n        FUN_00410c60(&local_8);\r\n      }\r\n      (**(code **)(*(int *)param_1[0x16] + 8))();\r\n    }\r\n    if (param_1[9] != 0) {\r\n      param_1[9] = 0;\r\n      local_8.s.LowPart = local_8.s.LowPart & 0xff000000;\r\n      FUN_004109f0(local_8.s.LowPart,0,0x10);\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "EXTERNAL:00000024",
+      "name": "MulDiv"
+    },
+    {
+      "addr": "00410c60",
+      "name": "FUN_00410c60"
+    },
+    {
+      "addr": "004109f0",
+      "name": "FUN_004109f0"
+    }
+  ],
+  "data_refs": []
+}

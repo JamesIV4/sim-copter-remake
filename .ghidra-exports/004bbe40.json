@@ -1,0 +1,24 @@
+{
+  "address": "004bbe40",
+  "name": "FUN_004bbe40",
+  "signature": "undefined FUN_004bbe40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004bbe40(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  \r\n  iVar2 = 0;\r\n  do {\r\n    puVar1 = *(undefined4 **)(DAT_0051af00 + 4 + iVar2);\r\n    if (puVar1 != (undefined4 *)0x0) {\r\n      (**(code **)*puVar1)(1);\r\n    }\r\n    iVar2 = iVar2 + 4;\r\n  } while (iVar2 < 0x10);\r\n  if (DAT_0051af00 != 0) {\r\n    FUN_004d29a0(DAT_0051af00);\r\n  }\r\n  iVar2 = 0;\r\n  do {\r\n    puVar1 = *(undefined4 **)(DAT_0051ac7c + 4 + iVar2);\r\n    if (puVar1 != (undefined4 *)0x0) {\r\n      (**(code **)*puVar1)(1);\r\n    }\r\n    iVar2 = iVar2 + 4;\r\n  } while (iVar2 < 0x10);\r\n  if (DAT_0051ac7c != 0) {\r\n    FUN_004d29a0(DAT_0051ac7c);\r\n  }\r\n  iVar2 = 0;\r\n  do {\r\n    puVar1 = *(undefined4 **)(DAT_0051ac50 + 4 + iVar2);\r\n    if (puVar1 != (undefined4 *)0x0) {\r\n      (**(code **)*puVar1)(1);\r\n    }\r\n    iVar2 = iVar2 + 4;\r\n  } while (iVar2 < 0x10);\r\n  if (DAT_0051ac50 != 0) {\r\n    FUN_004d29a0(DAT_0051ac50);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a240",
+      "name": "FUN_0047a240",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

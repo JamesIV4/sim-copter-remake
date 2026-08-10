@@ -1,0 +1,54 @@
+{
+  "address": "0040d150",
+  "name": "FUN_0040d150",
+  "signature": "undefined FUN_0040d150(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0040d150(void)\r\n\r\n{\r\n  char cVar1;\r\n  UINT uID;\r\n  ostream *poVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  int *extraout_ECX;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined4 *unaff_EBX;\r\n  int unaff_ESI;\r\n  undefined4 *puVar7;\r\n  undefined4 *puVar8;\r\n  char *pcVar9;\r\n  undefined4 *puVar10;\r\n  undefined4 *puStack00000004;\r\n  undefined4 in_stack_0000100c;\r\n  undefined4 in_stack_00001010;\r\n  \r\n  FUN_004d2c30();\r\n  puStack00000004 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puStack00000004 == (undefined4 *)0x0) {\r\n    puStack00000004 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    puStack00000004[1] = 0;\r\n    puStack00000004[2] = 0;\r\n    *puStack00000004 = 0;\r\n    puStack00000004[3] = 1;\r\n  }\r\n  uID = FUN_00423270(in_stack_0000100c,0);\r\n  LoadStringA(DAT_0051a050,uID,&stack0x00000008,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  pcVar9 = &stack0x00000008;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar9;\r\n    pcVar9 = pcVar9 + 1;\r\n  } while (cVar1 != '\\0');\r\n  uVar5 = ~uVar5 - 1;\r\n  if (uVar5 == 0xffffffff) {\r\n    poVar2 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar2);\r\n    FUN_004d2060(1);\r\n  }\r\n  if ((uint)puStack00000004[3] < 2) {\r\n    puVar8 = puStack00000004;\r\n    if (uVar5 == 0) goto LAB_0040d277;\r\n    if (uVar5 <= (uint)puStack00000004[2]) {\r\n      if (uVar5 != 0) {\r\n        puVar7 = (undefined4 *)&stack0x00000008;\r\n        puVar10 = (undefined4 *)*puStack00000004;\r\n        for (uVar6 = uVar5 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n          *puVar10 = *puVar7;\r\n          puVar7 = puVar7 + 1;\r\n          puVar10 = puVar10 + 1;\r\n        }\r\n        for (uVar6 = uVar5 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n          *(undefined1 *)puVar10 = *(undefined1 *)puVar7;\r\n          puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n          puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n        }\r\n      }\r\n      goto LAB_0040d277;\r\n    }\r\n  }\r\n  puVar8 = (undefined4 *)0x0;\r\n  iVar3 = FUN_004d28b0(0x10);\r\n  if (iVar3 != 0) {\r\n    puVar8 = (undefined4 *)FUN_004028e0(&stack0x00000008,uVar5);\r\n  }\r\n  puStack00000004[3] = puStack00000004[3] + -1;\r\n  if ((puStack00000004[3] == 0) && (puStack00000004 != (undefined4 *)0x0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(puStack00000004);\r\n  }\r\nLAB_0040d277:\r\n  puStack00000004 = puVar8;\r\n  puStack00000004[1] = uVar5;\r\n  uVar4 = (**(code **)(*extraout_ECX + 0xe8))(&stack0x00000000,in_stack_00001010);\r\n  unaff_EBX[3] = unaff_EBX[3] + -1;\r\n  if ((unaff_EBX[3] == 0) && (unaff_EBX != (undefined4 *)0x0)) {\r\n    if (unaff_EBX[2] != 0) {\r\n      FUN_004d29a0(*unaff_EBX);\r\n      unaff_EBX[2] = 0;\r\n      *unaff_EBX = 0;\r\n    }\r\n    FUN_004d29a0(unaff_EBX);\r\n  }\r\n  if (unaff_ESI != 0) {\r\n    FUN_004d29a0(unaff_ESI);\r\n  }\r\n  return uVar4;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004028e0",
+      "name": "FUN_004028e0"
+    },
+    {
+      "addr": "00406180",
+      "name": "FUN_00406180"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

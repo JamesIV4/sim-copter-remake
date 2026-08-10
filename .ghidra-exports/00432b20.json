@@ -1,0 +1,68 @@
+{
+  "address": "00432b20",
+  "name": "FUN_00432b20",
+  "signature": "undefined FUN_00432b20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00432d9e) */\r\n/* WARNING: Removing unreachable block (ram,0x00432c64) */\r\n/* WARNING: Removing unreachable block (ram,0x00432dbb) */\r\n/* WARNING: Removing unreachable block (ram,0x00432c32) */\r\n\r\nundefined4 FUN_00432b20(void)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  int extraout_ECX;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  undefined4 *puStack00000004;\r\n  \r\n  FUN_004d2c30();\r\n  puStack00000004 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puStack00000004 == (undefined4 *)0x0) {\r\n    puStack00000004 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    puStack00000004[1] = 0;\r\n    puStack00000004[2] = 0;\r\n    *puStack00000004 = 0;\r\n    puStack00000004[3] = 1;\r\n  }\r\n  puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar2 != (undefined4 *)0x0) {\r\n    puVar2[1] = 0;\r\n    puVar2[2] = 0;\r\n    *puVar2 = 0;\r\n    puVar2[3] = 1;\r\n  }\r\n  uVar5 = 0xffffffff;\r\n  pcVar6 = DAT_004f979c;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(DAT_004f979c,~uVar5 - 1);\r\n  FUN_00401ed0();\r\n  iVar4 = *(int *)(extraout_ECX + 0x1c);\r\n  if (*(int *)(iVar4 + 0xc) == -1) {\r\n    iVar4 = FUN_004d28b0(0x10);\r\n    if (iVar4 == 0) {\r\n      *(undefined4 *)(extraout_ECX + 0x24) = 0;\r\n    }\r\n    else {\r\n      uVar3 = FUN_00402960(extraout_ECX + 0x18,0,*(undefined4 *)(*(int *)(extraout_ECX + 0x1c) + 4))\r\n      ;\r\n      *(undefined4 *)(extraout_ECX + 0x24) = uVar3;\r\n    }\r\n  }\r\n  else {\r\n    *(int *)(extraout_ECX + 0x24) = iVar4;\r\n    *(int *)(iVar4 + 0xc) = *(int *)(iVar4 + 0xc) + 1;\r\n  }\r\n  iVar4 = FUN_00433580();\r\n  if (iVar4 == 0) {\r\n    *(undefined4 *)(extraout_ECX + 0xc) = 1;\r\n    FUN_00433240();\r\n    FUN_00423520(extraout_ECX + 0x10,DAT_004f86d4);\r\n    iVar4 = FUN_00402760(extraout_ECX + 0x18,0,0xffffffff);\r\n    *(uint *)(extraout_ECX + 8) = (uint)(iVar4 == 0);\r\n    FUN_00432ea0();\r\n    FUN_00401ed0();\r\n    FUN_00401ed0();\r\n    return 1;\r\n  }\r\n  *(undefined4 *)(extraout_ECX + 0xc) = 2;\r\n  FUN_00432ea0();\r\n  FUN_00401ed0();\r\n  puStack00000004[3] = puStack00000004[3] + -1;\r\n  if ((puStack00000004[3] == 0) && (puStack00000004 != (undefined4 *)0x0)) {\r\n    FUN_00402830(1);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "00402960",
+      "name": "FUN_00402960"
+    },
+    {
+      "addr": "00433580",
+      "name": "FUN_00433580"
+    },
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00402830",
+      "name": "FUN_00402830"
+    },
+    {
+      "addr": "00433240",
+      "name": "FUN_00433240"
+    },
+    {
+      "addr": "00423520",
+      "name": "FUN_00423520"
+    },
+    {
+      "addr": "00402760",
+      "name": "FUN_00402760"
+    }
+  ],
+  "data_refs": []
+}

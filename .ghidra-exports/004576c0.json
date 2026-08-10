@@ -1,0 +1,26 @@
+{
+  "address": "004576c0",
+  "name": "FUN_004576c0",
+  "signature": "undefined FUN_004576c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * __thiscall FUN_004576c0(undefined4 *param_1,byte param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 *puVar4;\r\n  int *piVar5;\r\n  undefined4 *puVar6;\r\n  \r\n  piVar1 = (int *)param_1[10];\r\n  piVar5 = (int *)*piVar1;\r\n  while (piVar5 != piVar1) {\r\n    piVar2 = (int *)*piVar5;\r\n    *(int *)piVar5[1] = *piVar5;\r\n    *(int *)(*piVar5 + 4) = piVar5[1];\r\n    *piVar5 = (int)DAT_004f99ac;\r\n    DAT_004f99ac = piVar5;\r\n    param_1[0xb] = param_1[0xb] + -1;\r\n    piVar5 = piVar2;\r\n  }\r\n  puVar3 = (undefined4 *)param_1[10];\r\n  *puVar3 = DAT_004f99ac;\r\n  _DAT_004f99a0 = _DAT_004f99a0 + -1;\r\n  DAT_004f99ac = puVar3;\r\n  puVar3 = DAT_004f99b0;\r\n  if (_DAT_004f99a0 == 0) {\r\n    while (puVar3 != (undefined4 *)0x0) {\r\n      DAT_004f99b0 = (undefined4 *)*puVar3;\r\n      FUN_004d29a0(puVar3[1]);\r\n      FUN_004d29a0(puVar3);\r\n      puVar3 = DAT_004f99b0;\r\n    }\r\n    DAT_004f99ac = (undefined4 *)0x0;\r\n    DAT_004f99a8 = 0;\r\n    DAT_004f99a4 = 0;\r\n    DAT_004f99b0 = (undefined4 *)0x0;\r\n  }\r\n  *param_1 = &PTR_FUN_004f3230;\r\n  FUN_00456cb0();\r\n  if ((undefined4 *)param_1[4] != (undefined4 *)0x0) {\r\n    (*(code *)**(undefined4 **)param_1[4])(1);\r\n  }\r\n  puVar3 = (undefined4 *)param_1[2];\r\n  puVar6 = (undefined4 *)*puVar3;\r\n  while (puVar3 != puVar6) {\r\n    puVar4 = (undefined4 *)*puVar6;\r\n    FUN_00457820(puVar6);\r\n    puVar6 = puVar4;\r\n  }\r\n  puVar3 = (undefined4 *)param_1[2];\r\n  *puVar3 = DAT_004f996c;\r\n  _DAT_004f9960 = _DAT_004f9960 + -1;\r\n  DAT_004f996c = puVar3;\r\n  puVar3 = DAT_004f9970;\r\n  if (_DAT_004f9960 == 0) {\r\n    while (puVar3 != (undefined4 *)0x0) {\r\n      DAT_004f9970 = (undefined4 *)*puVar3;\r\n      FUN_004d29a0(puVar3[1]);\r\n      FUN_004d29a0(puVar3);\r\n      puVar3 = DAT_004f9970;\r\n    }\r\n    DAT_004f996c = (undefined4 *)0x0;\r\n    DAT_004f9968 = 0;\r\n    DAT_004f9964 = 0;\r\n    DAT_004f9970 = (undefined4 *)0x0;\r\n  }\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00456cb0",
+      "name": "FUN_00456cb0"
+    },
+    {
+      "addr": "00457820",
+      "name": "FUN_00457820"
+    }
+  ],
+  "data_refs": []
+}

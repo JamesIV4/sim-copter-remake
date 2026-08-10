@@ -1,0 +1,19 @@
+{
+  "address": "00463508",
+  "name": "acmMetrics",
+  "signature": "undefined acmMetrics(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid acmMetrics(void)\r\n\r\n{\r\n                    /* WARNING: Could not recover jumptable at 0x00463508. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  acmMetrics();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041cd40",
+      "name": "FUN_0041cd40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

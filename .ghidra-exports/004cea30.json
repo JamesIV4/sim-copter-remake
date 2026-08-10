@@ -1,0 +1,29 @@
+{
+  "address": "004cea30",
+  "name": "FUN_004cea30",
+  "signature": "undefined FUN_004cea30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004cea30(float *param_1,uint param_2)\r\n\r\n{\r\n  float10 extraout_ST0;\r\n  float10 extraout_ST0_00;\r\n  float10 fVar1;\r\n  float local_4;\r\n  \r\n  FUN_004cea90(param_2);\r\n  FUN_004cea90(param_2 >> 0x10 & 0xff);\r\n  fVar1 = (float10)FUN_004cea90(param_2 >> 8 & 0xff);\r\n  *param_1 = (float)extraout_ST0;\r\n  param_1[1] = (float)extraout_ST0_00;\r\n  param_1[2] = (float)fVar1;\r\n  param_1[3] = local_4;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004cea90",
+      "name": "FUN_004cea90"
+    }
+  ],
+  "data_refs": []
+}

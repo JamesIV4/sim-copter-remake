@@ -1,0 +1,33 @@
+{
+  "address": "004df050",
+  "name": "___crtMessageBoxA",
+  "signature": "int __cdecl ___crtMessageBoxA(LPCSTR _LpText, LPCSTR _LpCaption, UINT _UType)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___crtMessageBoxA\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl ___crtMessageBoxA(LPCSTR _LpText,LPCSTR _LpCaption,UINT _UType)\r\n\r\n{\r\n  HMODULE hModule;\r\n  int iVar1;\r\n  \r\n  iVar1 = 0;\r\n  if (DAT_00508690 != (FARPROC)0x0) {\r\nLAB_004df09f:\r\n    if (DAT_00508694 != (FARPROC)0x0) {\r\n      iVar1 = (*DAT_00508694)();\r\n    }\r\n    if ((iVar1 != 0) && (DAT_00508698 != (FARPROC)0x0)) {\r\n      iVar1 = (*DAT_00508698)(iVar1);\r\n    }\r\n    iVar1 = (*DAT_00508690)(iVar1,_LpText,_LpCaption,_UType);\r\n    return iVar1;\r\n  }\r\n  hModule = LoadLibraryA(\"user32.dll\");\r\n  if (hModule != (HMODULE)0x0) {\r\n    DAT_00508690 = GetProcAddress(hModule,\"MessageBoxA\");\r\n    if (DAT_00508690 != (FARPROC)0x0) {\r\n      DAT_00508694 = GetProcAddress(hModule,\"GetActiveWindow\");\r\n      DAT_00508698 = GetProcAddress(hModule,\"GetLastActivePopup\");\r\n      goto LAB_004df09f;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd330",
+      "name": "FUN_004dd330",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000003a",
+      "name": "LoadLibraryA"
+    },
+    {
+      "addr": "EXTERNAL:0000004e",
+      "name": "GetProcAddress"
+    }
+  ],
+  "data_refs": []
+}

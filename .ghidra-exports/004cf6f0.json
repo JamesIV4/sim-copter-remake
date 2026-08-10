@@ -1,0 +1,30 @@
+{
+  "address": "004cf6f0",
+  "name": "FUN_004cf6f0",
+  "signature": "undefined FUN_004cf6f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall FUN_004cf6f0(undefined4 *param_1,byte param_2)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  int iVar1;\r\n  undefined4 uStack_10;\r\n  undefined1 *puStack_c;\r\n  uint uStack_8;\r\n  \r\n  uStack_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_004cf79d;\r\n  *param_1 = &PTR_FUN_004f50e8;\r\n  *unaff_FS_OFFSET = &uStack_10;\r\n  uStack_8 = 0;\r\n  iVar1 = param_1[10];\r\n  if (iVar1 != 0) {\r\n    uStack_8 = 0;\r\n    FUN_004cf78d(param_1,iVar1);\r\n    FUN_004d29a0(iVar1);\r\n  }\r\n  iVar1 = param_1[0xb];\r\n  if (iVar1 != 0) {\r\n    uStack_8 = uStack_8 & 0xffffff00;\r\n    FUN_004cf795(param_1,iVar1);\r\n    FUN_004d29a0(iVar1);\r\n  }\r\n  uStack_8 = 0xffffffff;\r\n  FUN_004cf7a7();\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1);\r\n  }\r\n  *unaff_FS_OFFSET = uStack_10;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004cf78d",
+      "name": "FUN_004cf78d"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004cf795",
+      "name": "FUN_004cf795"
+    },
+    {
+      "addr": "004cf7a7",
+      "name": "FUN_004cf7a7"
+    }
+  ],
+  "data_refs": []
+}

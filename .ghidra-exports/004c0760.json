@@ -1,0 +1,48 @@
+{
+  "address": "004c0760",
+  "name": "FUN_004c0760",
+  "signature": "undefined FUN_004c0760(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004c0760(undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)\r\n\r\n{\r\n  short sVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int *piVar5;\r\n  int *piVar6;\r\n  int local_58;\r\n  int local_54;\r\n  int local_50;\r\n  int aiStack_40 [16];\r\n  \r\n  FUN_004c7020(param_1,param_2,param_3,param_4);\r\n  piVar2 = DAT_00506444;\r\n  iVar4 = DAT_00506444[0x68];\r\n  if (iVar4 == 0) {\r\n    iVar3 = FUN_004c82c0(DAT_00506444[0x73],DAT_00506444[0x74],DAT_00506444[0x75]);\r\n  }\r\n  else {\r\n    local_58 = DAT_00506444[0x73] - *(int *)(iVar4 + 0x18);\r\n    local_54 = 0;\r\n    local_50 = DAT_00506444[0x75] - *(int *)(iVar4 + 0x20);\r\n    iVar4 = FUN_0046d770(*(undefined4 *)(iVar4 + 8),iVar4 + 0x24,&local_58,DAT_00506444[0x71]);\r\n    iVar3 = FUN_004c82c0(piVar2[0x73],piVar2[0x74],piVar2[0x75]);\r\n    iVar3 = iVar3 + iVar4;\r\n  }\r\n  piVar2[0x74] = iVar3 + 0x30000;\r\n  piVar2 = DAT_00506444;\r\n  (**(code **)(*DAT_00506444 + 8))();\r\n  *(undefined2 *)((int)piVar2 + 0x142) = 1;\r\n  *(undefined2 *)((int)piVar2 + 0x152) = 1;\r\n  if ((short)piVar2[0x52] == 0) {\r\n    DAT_0058dc1c = DAT_0058dc1c + 1;\r\n  }\r\n  else {\r\n    _DAT_0058dc1a = _DAT_0058dc1a + 1;\r\n  }\r\n  if (piVar2[0x89] == 0) {\r\n    FUN_004c68f0(0x4e6f4d6f);\r\n  }\r\n  FUN_004c78c0();\r\n  local_58 = piVar2[0x73];\r\n  local_54 = piVar2[0x74];\r\n  local_50 = piVar2[0x75];\r\n  piVar5 = piVar2 + 0x76;\r\n  piVar6 = aiStack_40;\r\n  for (iVar4 = 0x10; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n    *piVar6 = *piVar5;\r\n    piVar5 = piVar5 + 1;\r\n    piVar6 = piVar6 + 1;\r\n  }\r\n  FUN_004704d1(piVar2[0x6f],&local_58,3);\r\n  sVar1 = *(short *)((int)piVar2 + 0x12e);\r\n  if ((sVar1 != 32000) && (DAT_0058dc3e < sVar1)) {\r\n    DAT_0058dc3e = (int)sVar1;\r\n  }\r\n  *(undefined2 *)((int)DAT_00506444 + 0x152) = 0;\r\n  FUN_004c6360(*(undefined4 *)(DAT_005040d0 + 0xa4));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a240",
+      "name": "FUN_0047a240",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c7020",
+      "name": "FUN_004c7020"
+    },
+    {
+      "addr": "004c82c0",
+      "name": "FUN_004c82c0"
+    },
+    {
+      "addr": "0046d770",
+      "name": "FUN_0046d770"
+    },
+    {
+      "addr": "004c68f0",
+      "name": "FUN_004c68f0"
+    },
+    {
+      "addr": "004c78c0",
+      "name": "FUN_004c78c0"
+    },
+    {
+      "addr": "004704d1",
+      "name": "FUN_004704d1"
+    },
+    {
+      "addr": "004c6360",
+      "name": "FUN_004c6360"
+    }
+  ],
+  "data_refs": []
+}

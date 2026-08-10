@@ -1,0 +1,13 @@
+{
+  "address": "004cb550",
+  "name": "FUN_004cb550",
+  "signature": "undefined FUN_004cb550(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool __thiscall FUN_004cb550(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  uint uVar4;\r\n  \r\n  uVar2 = *(ushort *)(param_1 + 0x12a) & 0xff;\r\n  uVar3 = *(ushort *)(param_1 + 300) & 0xff;\r\n  if ((uVar2 < 0x80) && (uVar3 < 0x80)) {\r\n    uVar2 = (ushort)*(byte *)((&DAT_005910b0)[(short)uVar2] + (int)(short)uVar3);\r\n  }\r\n  else {\r\n    uVar1 = (short)(uVar2 - (short)DAT_005d91d0) >> 0xf;\r\n    if ((1 < (short)((uVar2 - (short)DAT_005d91d0 ^ uVar1) - uVar1)) ||\r\n       (uVar4 = (int)(short)(uVar3 - (short)DAT_005d91d4) >> 0x1f, uVar2 = 0xf6,\r\n       1 < (short)(((int)(short)(uVar3 - (short)DAT_005d91d4) ^ uVar4) - uVar4))) {\r\n      uVar2 = 0xffff;\r\n    }\r\n  }\r\n  return uVar2 == *(ushort *)(param_3 + 4);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

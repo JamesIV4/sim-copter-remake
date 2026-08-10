@@ -1,0 +1,40 @@
+{
+  "address": "004af3b0",
+  "name": "FUN_004af3b0",
+  "signature": "undefined FUN_004af3b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004af3b0(void)\r\n\r\n{\r\n  uint *puVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  uint *puVar4;\r\n  int iVar5;\r\n  uint *puVar6;\r\n  undefined4 *puVar7;\r\n  undefined4 *puVar8;\r\n  int local_80;\r\n  int local_7c;\r\n  undefined1 local_78 [16];\r\n  undefined4 local_68;\r\n  undefined4 local_58;\r\n  undefined4 local_54;\r\n  undefined4 local_50;\r\n  undefined4 local_40 [16];\r\n  \r\n  puVar6 = &DAT_00581788;\r\n  for (iVar5 = 0; (0 < DAT_00506240 && (iVar5 < 0x14)); iVar5 = iVar5 + 1) {\r\n    if ((*puVar6 & 1) != 0) {\r\n      uVar2 = puVar6[6];\r\n      puVar6[6] = uVar2 + 1;\r\n      if ((uVar2 + 1 == 1) && ((*(byte *)((int)puVar6 + 0x2b) & 0x80) == 0)) {\r\n        local_80 = (int)(puVar6[3] + 0x20000000) >> 0x16;\r\n        local_7c = (int)(0x20000000 - puVar6[5]) >> 0x16;\r\n        puVar7 = &DAT_00581b98;\r\n        do {\r\n          puVar8 = puVar7 + 3;\r\n          FUN_0048e0b0(9,&local_80,puVar6 + 3,puVar7,puVar6[10],puVar6[8],0x140000,puVar6[0xc]);\r\n          puVar7 = puVar8;\r\n        } while (puVar8 < &DAT_00581c40);\r\n      }\r\n      if ((int)puVar6[6] < 9) {\r\n        FUN_0046f5a5(puVar6[7],local_78);\r\n        local_68 = (&DAT_00581c40)[puVar6[6]];\r\n        FUN_0046f5e1(puVar6[7],local_78);\r\n        uVar2 = puVar6[8];\r\n        local_58 = *(undefined4 *)(uVar2 + 0x18);\r\n        local_54 = *(undefined4 *)(uVar2 + 0x1c);\r\n        local_50 = *(undefined4 *)(uVar2 + 0x20);\r\n        puVar7 = (undefined4 *)(puVar6[8] + 0x24);\r\n        puVar8 = local_40;\r\n        for (iVar3 = 0x10; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n          *puVar8 = *puVar7;\r\n          puVar7 = puVar7 + 1;\r\n          puVar8 = puVar8 + 1;\r\n        }\r\n        FUN_004704d1(*(undefined4 *)(puVar6[8] + 8),&local_58,3);\r\n      }\r\n      else {\r\n        if (*(uint *)(puVar6[0xb] + 0x10) != 0) {\r\n          puVar4 = (uint *)(puVar6[0xb] + 0x10);\r\n          do {\r\n            puVar1 = (uint *)*puVar4;\r\n            if ((uint *)puVar6[8] == puVar1) {\r\n              *puVar4 = *(uint *)puVar6[8];\r\n              break;\r\n            }\r\n            puVar4 = puVar1;\r\n          } while (*puVar1 != 0);\r\n        }\r\n        *puVar6 = *puVar6 & 0xfffffffe;\r\n        DAT_00506240 = DAT_00506240 + -1;\r\n      }\r\n    }\r\n    puVar6 = puVar6 + 0xd;\r\n  }\r\n  iVar5 = 0;\r\n  puVar6 = &DAT_00581c68;\r\n  do {\r\n    if ((DAT_00506244 < 1) || (99 < iVar5)) {\r\n      return;\r\n    }\r\n    if ((*puVar6 & 1) != 0) {\r\n      uVar2 = puVar6[2] - DAT_005039a8;\r\n      puVar6[2] = uVar2;\r\n      if ((int)uVar2 < 1) {\r\n        if (*(uint *)(puVar6[3] + 0x10) != 0) {\r\n          puVar4 = (uint *)(puVar6[3] + 0x10);\r\n          do {\r\n            puVar1 = (uint *)*puVar4;\r\n            if ((uint *)puVar6[1] == puVar1) {\r\n              *puVar4 = *(uint *)puVar6[1];\r\n              break;\r\n            }\r\n            puVar4 = puVar1;\r\n          } while (*puVar1 != 0);\r\n        }\r\n        *puVar6 = *puVar6 & 0xfffffffe;\r\n        DAT_00506244 = DAT_00506244 + -1;\r\n      }\r\n      else {\r\n        uVar2 = puVar6[1];\r\n        iVar3 = FUN_0046c49d(puVar6[5],DAT_005039a8);\r\n        *(int *)(uVar2 + 0x1c) = *(int *)(uVar2 + 0x1c) + iVar3;\r\n        uVar2 = puVar6[1];\r\n        local_58 = *(undefined4 *)(uVar2 + 0x18);\r\n        local_54 = *(undefined4 *)(uVar2 + 0x1c);\r\n        local_50 = *(undefined4 *)(uVar2 + 0x20);\r\n        puVar7 = (undefined4 *)(puVar6[1] + 0x24);\r\n        puVar8 = local_40;\r\n        for (iVar3 = 0x10; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n          *puVar8 = *puVar7;\r\n          puVar7 = puVar7 + 1;\r\n          puVar8 = puVar8 + 1;\r\n        }\r\n        FUN_004704d1(*(undefined4 *)(puVar6[1] + 8),&local_58,3);\r\n      }\r\n    }\r\n    iVar5 = iVar5 + 1;\r\n    puVar6 = puVar6 + 7;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0048e0b0",
+      "name": "FUN_0048e0b0"
+    },
+    {
+      "addr": "0046f5a5",
+      "name": "FUN_0046f5a5"
+    },
+    {
+      "addr": "0046f5e1",
+      "name": "FUN_0046f5e1"
+    },
+    {
+      "addr": "004704d1",
+      "name": "FUN_004704d1"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

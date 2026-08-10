@@ -1,0 +1,52 @@
+{
+  "address": "00442920",
+  "name": "FUN_00442920",
+  "signature": "undefined FUN_00442920(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall\r\nFUN_00442920(undefined4 *param_1,int param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 *puVar2;\r\n  uint uVar3;\r\n  char *pcVar4;\r\n  LARGE_INTEGER local_50;\r\n  undefined4 local_48;\r\n  undefined4 local_44;\r\n  char local_40 [64];\r\n  \r\n  local_50.s.LowPart = 0;\r\n  local_50.s.HighPart = 0;\r\n  local_48 = 1;\r\n  local_44 = 1;\r\n  FUN_00404040(&local_50,param_3,param_4,param_5,param_6);\r\n  puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar2 == (undefined4 *)0x0) {\r\n    param_1[0x1e] = 0;\r\n  }\r\n  else {\r\n    puVar2[1] = 0;\r\n    puVar2[2] = 0;\r\n    *puVar2 = 0;\r\n    puVar2[3] = 1;\r\n    param_1[0x1e] = puVar2;\r\n  }\r\n  param_1[0x1d] = 0;\r\n  FUN_0041d340();\r\n  *(undefined4 *)((int)param_1 + 0x11a) = 0;\r\n  *(int *)((int)param_1 + 0x116) = param_2;\r\n  *(undefined4 *)((int)param_1 + 0x11e) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x122) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x126) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x12a) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x12e) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x132) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x136) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x13e) = 0x3c;\r\n  *(undefined4 *)((int)param_1 + 0x142) = 0x32;\r\n  *(undefined4 *)((int)param_1 + 0x146) = 400;\r\n  *(undefined4 *)((int)param_1 + 0x13a) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x14a) = 0x1ae;\r\n  *(undefined4 *)((int)param_1 + 0x14e) = 0x16;\r\n  *(undefined4 *)((int)param_1 + 0x152) = 0x192;\r\n  FUN_00460a70();\r\n  *(undefined4 *)((int)param_1 + 0x172) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x176) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x17a) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x17e) = 0;\r\n  QueryPerformanceFrequency(&local_50);\r\n  *(DWORD *)((int)param_1 + 0x17e) = local_50.s.LowPart;\r\n  *(undefined4 *)((int)param_1 + 0x186) = 0;\r\n  *param_1 = &PTR_LAB_004f2608;\r\n  *(undefined4 *)((int)param_1 + 0x182) = 10000;\r\n  FUN_00460e30(0x18,0,0);\r\n  FUN_00423720(0,3,local_40);\r\n  uVar3 = 0xffffffff;\r\n  pcVar4 = local_40;\r\n  do {\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    cVar1 = *pcVar4;\r\n    pcVar4 = pcVar4 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(local_40,~uVar3 - 1);\r\n  *(undefined4 *)((int)param_1 + 0x16a) = 1;\r\n  (*(code *)**(undefined4 **)((int)param_1 + 0x156))();\r\n  if (param_2 == 0) {\r\n    uVar3 = 0xffffffff;\r\n    pcVar4 = PTR_s_credit_bmp_004f9490;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      cVar1 = *pcVar4;\r\n      pcVar4 = pcVar4 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FUN_004017f0(PTR_s_credit_bmp_004f9490,~uVar3 - 1);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00438690",
+      "name": "FUN_00438690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00404040",
+      "name": "FUN_00404040"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0041d340",
+      "name": "FUN_0041d340"
+    },
+    {
+      "addr": "00460a70",
+      "name": "FUN_00460a70"
+    },
+    {
+      "addr": "EXTERNAL:00000014",
+      "name": "QueryPerformanceFrequency"
+    },
+    {
+      "addr": "00460e30",
+      "name": "FUN_00460e30"
+    },
+    {
+      "addr": "00423720",
+      "name": "FUN_00423720"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    }
+  ],
+  "data_refs": []
+}

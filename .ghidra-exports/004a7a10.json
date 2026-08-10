@@ -1,0 +1,184 @@
+{
+  "address": "004a7a10",
+  "name": "FUN_004a7a10",
+  "signature": "undefined FUN_004a7a10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_004a7a10(uint param_1,uint param_2,int param_3)\r\n\r\n{\r\n  ushort uVar1;\r\n  short sVar2;\r\n  byte *pbVar3;\r\n  undefined4 *puVar4;\r\n  int iVar5;\r\n  int *piVar6;\r\n  int iVar7;\r\n  char *_Dest;\r\n  char *pcVar8;\r\n  bool bVar9;\r\n  undefined4 local_14;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  if (DAT_005812b4 != 0) {\r\n    return 0xffffffff;\r\n  }\r\n  iVar5 = 0;\r\n  pbVar3 = &DAT_0057fa28;\r\n  do {\r\n    if ((*pbVar3 & 1) == 0) {\r\n      _Dest = &DAT_0057f9dc + iVar5 * 0xd4;\r\n      break;\r\n    }\r\n    pbVar3 = pbVar3 + 0xd4;\r\n    iVar5 = iVar5 + 1;\r\n    _Dest = local_14;\r\n  } while (pbVar3 < &DAT_00581300);\r\n  if (iVar5 == 0x1e) {\r\n    return 0xffffffff;\r\n  }\r\n  pcVar8 = _Dest;\r\n  for (iVar5 = 0x35; iVar5 != 0; iVar5 = iVar5 + -1) {\r\n    pcVar8[0] = '\\0';\r\n    pcVar8[1] = '\\0';\r\n    pcVar8[2] = '\\0';\r\n    pcVar8[3] = '\\0';\r\n    pcVar8 = pcVar8 + 4;\r\n  }\r\n  _Dest[0x4c] = '\\x01';\r\n  _Dest[0x4d] = '\\0';\r\n  _Dest[0x4e] = '\\0';\r\n  _Dest[0x4f] = '\\0';\r\n  *(uint *)(_Dest + 0x28) = param_1;\r\n  *(uint *)(_Dest + 0x2c) = param_2;\r\n  _Dest[0x30] = -1;\r\n  _Dest[0x31] = -1;\r\n  _Dest[0x32] = -1;\r\n  _Dest[0x33] = -1;\r\n  _Dest[0x34] = -1;\r\n  _Dest[0x35] = -1;\r\n  _Dest[0x36] = -1;\r\n  _Dest[0x37] = -1;\r\n  _Dest[0x38] = -1;\r\n  _Dest[0x39] = -1;\r\n  _Dest[0x3a] = -1;\r\n  _Dest[0x3b] = -1;\r\n  _Dest[0x3c] = -1;\r\n  _Dest[0x3d] = -1;\r\n  _Dest[0x3e] = -1;\r\n  _Dest[0x3f] = -1;\r\n  *(int *)(_Dest + 0x50) = param_3;\r\n  _Dest[0x54] = '\\0';\r\n  _Dest[0x55] = '\\0';\r\n  _Dest[0x56] = '\\0';\r\n  _Dest[0x57] = '\\0';\r\n  _Dest[0x40] = '\\0';\r\n  _Dest[0x41] = '\\0';\r\n  _Dest[0x42] = '\\0';\r\n  _Dest[0x43] = '\\0';\r\n  *(int *)(_Dest + 0x24) = DAT_0057f9d0;\r\n  DAT_0057f9d0 = DAT_0057f9d0 + 1;\r\n  if (param_3 < 5) {\r\n    if (param_3 == 4) {\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005814b8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9ac;\r\n      DAT_0057f9ac = DAT_0057f9ac + 1;\r\n      iVar5 = FUN_004b3aa0(*(undefined4 *)(_Dest + 0x24));\r\n      if (iVar5 == 0) {\r\n        DAT_0057f9ac = DAT_0057f9ac + -1;\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x54] = '\\x02';\r\n      _Dest[0x55] = '\\0';\r\n      _Dest[0x56] = '\\0';\r\n      _Dest[0x57] = '\\0';\r\n    }\r\n    else {\r\n      if (param_3 != 1) goto LAB_004a7b9e;\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581478,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9a4;\r\n      DAT_0057f9a4 = DAT_0057f9a4 + 1;\r\n      puVar4 = (undefined4 *)FUN_004a5080();\r\n      if (puVar4 == (undefined4 *)0x0) {\r\n        DAT_0057f9a4 = DAT_0057f9a4 + -1;\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      *puVar4 = (&DAT_005d9200)[(param_1 & 0xff) * 0x100 + (param_2 & 0xff)];\r\n      iVar5 = FUN_004a5340(puVar4,param_1,param_2,*(undefined4 *)(_Dest + 0x24),1);\r\n      if (iVar5 == 0) {\r\n        DAT_0057f9a4 = DAT_0057f9a4 + -1;\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),1);\r\n    }\r\n  }\r\n  else if (param_3 < 0x41) {\r\n    if (param_3 == 0x40) {\r\n      iVar5 = 0;\r\n      bVar9 = false;\r\n      do {\r\n        FUN_004abb30(param_1,param_2,&local_c,&local_8);\r\n        if ((0x6f < *(byte *)((&DAT_005910b0)[local_c] + local_8)) &&\r\n           (*(byte *)((&DAT_005910b0)[local_c] + local_8) < 0xdc)) break;\r\n        iVar5 = iVar5 + 1;\r\n      } while (iVar5 < 10);\r\n      if (iVar5 == 10) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      *(int *)(_Dest + 0x38) = local_c;\r\n      *(int *)(_Dest + 0x3c) = local_8;\r\n      iVar5 = _rand();\r\n      iVar5 = (int)(short)iVar5 % (_DAT_004f9740 + 1) + 1;\r\n      if (0 < iVar5) {\r\n        do {\r\n          sVar2 = FUN_004c3eb0(0xffffffff,4,*(undefined4 *)(_Dest + 0x38),\r\n                               *(undefined4 *)(_Dest + 0x3c),*(undefined4 *)(_Dest + 0x24),0,0);\r\n          if (-1 < sVar2) {\r\n            bVar9 = true;\r\n            *(int *)(_Dest + 0x88) = *(int *)(_Dest + 0x88) + 1;\r\n          }\r\n          iVar5 = iVar5 + -1;\r\n        } while (iVar5 != 0);\r\n      }\r\n      if (!bVar9) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      *(undefined4 *)(_Dest + 0x30) = *(undefined4 *)(_Dest + 0x28);\r\n      *(undefined4 *)(_Dest + 0x34) = *(undefined4 *)(_Dest + 0x2c);\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581438,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9c4;\r\n      DAT_0057f9c4 = DAT_0057f9c4 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x38),*(undefined4 *)(_Dest + 0x3c),0x40);\r\n    }\r\n    else {\r\n      if (param_3 != 0x20) goto LAB_004a7b9e;\r\n      if (*(char *)((&DAT_005910b0)[param_1] + param_2) == -0x2f) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      bVar9 = false;\r\n      _Dest[0x84] = '\\0';\r\n      _Dest[0x85] = '\\0';\r\n      _Dest[0x86] = '\\0';\r\n      _Dest[0x87] = '\\0';\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _Dest[0x3c] = -1;\r\n      _Dest[0x3d] = -1;\r\n      _Dest[0x3e] = -1;\r\n      _Dest[0x3f] = -1;\r\n      *(uint *)(_Dest + 0x28) = param_1;\r\n      *(uint *)(_Dest + 0x2c) = param_2;\r\n      iVar5 = _rand();\r\n      iVar5 = (int)(short)iVar5 % _DAT_004f9740 + 1;\r\n      if (0 < iVar5) {\r\n        do {\r\n          sVar2 = FUN_004c3eb0(0xffffffff,6,*(undefined4 *)(_Dest + 0x28),\r\n                               *(undefined4 *)(_Dest + 0x2c),*(undefined4 *)(_Dest + 0x24),0,0);\r\n          if (sVar2 != -1) {\r\n            bVar9 = true;\r\n            *(int *)(_Dest + 0x84) = *(int *)(_Dest + 0x84) + 1;\r\n          }\r\n          iVar5 = iVar5 + -1;\r\n        } while (iVar5 != 0);\r\n      }\r\n      if (!bVar9) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005813f8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9a8;\r\n      DAT_0057f9a8 = DAT_0057f9a8 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x20);\r\n    }\r\n  }\r\n  else if (param_3 < 0x101) {\r\n    if (param_3 == 0x100) {\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005814f8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9c0;\r\n      DAT_0057f9c0 = DAT_0057f9c0 + 1;\r\n      iVar5 = FUN_004b7f60(*(undefined4 *)(_Dest + 0x24));\r\n      if (iVar5 == 0) {\r\n        DAT_0057f9c0 = DAT_0057f9c0 + -1;\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x54] = '\\x02';\r\n      _Dest[0x55] = '\\0';\r\n      _Dest[0x56] = '\\0';\r\n      _Dest[0x57] = '\\0';\r\n    }\r\n    else {\r\n      if (param_3 != 0x90) goto LAB_004a7b9e;\r\n      iVar5 = FUN_004b1aa0(param_1,param_2,*(undefined4 *)(_Dest + 0x24),DAT_00505fc8);\r\n      if (iVar5 == 0) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x30] = -1;\r\n      _Dest[0x31] = -1;\r\n      _Dest[0x32] = -1;\r\n      _Dest[0x33] = -1;\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581378,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9b0;\r\n      DAT_0057f9b0 = DAT_0057f9b0 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x90);\r\n    }\r\n  }\r\n  else if (param_3 < 0x201) {\r\n    if (param_3 == 0x200) {\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _Dest[0x3c] = -1;\r\n      _Dest[0x3d] = -1;\r\n      _Dest[0x3e] = -1;\r\n      _Dest[0x3f] = -1;\r\n      _Dest[0x30] = -1;\r\n      _Dest[0x31] = -1;\r\n      _Dest[0x32] = -1;\r\n      _Dest[0x33] = -1;\r\n      _Dest[0x34] = -1;\r\n      _Dest[0x35] = -1;\r\n      _Dest[0x36] = -1;\r\n      _Dest[0x37] = -1;\r\n      *(uint *)(_Dest + 0x28) = param_1;\r\n      *(uint *)(_Dest + 0x2c) = param_2;\r\n      sVar2 = FUN_004c3eb0(9,10,*(undefined4 *)(_Dest + 0x28),param_2,*(undefined4 *)(_Dest + 0x24),\r\n                           0,0);\r\n      if (sVar2 == -1) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x94] = '\\x01';\r\n      _Dest[0x95] = '\\0';\r\n      _Dest[0x96] = '\\0';\r\n      _Dest[0x97] = '\\0';\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005815f8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9a0;\r\n      DAT_0057f9a0 = DAT_0057f9a0 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x200);\r\n    }\r\n    else {\r\n      if (param_3 != 0x110) goto LAB_004a7b9e;\r\n      iVar5 = FUN_004b7fb0(*(undefined4 *)(_Dest + 0x24),DAT_00505fc8);\r\n      if (iVar5 == 0) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x30] = -1;\r\n      _Dest[0x31] = -1;\r\n      _Dest[0x32] = -1;\r\n      _Dest[0x33] = -1;\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005813b8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9b0;\r\n      DAT_0057f9b0 = DAT_0057f9b0 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x110);\r\n    }\r\n  }\r\n  else if (param_3 < 0x801) {\r\n    if (param_3 == 0x800) {\r\n      iVar5 = FUN_0049fca0(*(undefined4 *)(_Dest + 0x24),_Dest + 0x28);\r\n      if (iVar5 == 0) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581678,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9bc;\r\n      DAT_0057f9bc = DAT_0057f9bc + 1;\r\n      _Dest[0x54] = '\\x02';\r\n      _Dest[0x55] = '\\0';\r\n      _Dest[0x56] = '\\0';\r\n      _Dest[0x57] = '\\0';\r\n    }\r\n    else {\r\n      if (param_3 != 0x408) goto LAB_004a7b9e;\r\n      iVar5 = FUN_0049fc40(*(undefined4 *)(_Dest + 0x24),_Dest + 0x28);\r\n      if (iVar5 == 0) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581638,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9bc;\r\n      DAT_0057f9bc = DAT_0057f9bc + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x408);\r\n    }\r\n  }\r\n  else if (param_3 < 0x2001) {\r\n    if (param_3 == 0x2000) {\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _Dest[0x3c] = -1;\r\n      _Dest[0x3d] = -1;\r\n      _Dest[0x3e] = -1;\r\n      _Dest[0x3f] = -1;\r\n      _Dest[0x30] = -1;\r\n      _Dest[0x31] = -1;\r\n      _Dest[0x32] = -1;\r\n      _Dest[0x33] = -1;\r\n      _Dest[0x34] = -1;\r\n      _Dest[0x35] = -1;\r\n      _Dest[0x36] = -1;\r\n      _Dest[0x37] = -1;\r\n      *(uint *)(_Dest + 0x28) = param_1;\r\n      *(uint *)(_Dest + 0x2c) = param_2;\r\n      sVar2 = FUN_004c3eb0(9,0xb,*(undefined4 *)(_Dest + 0x28),param_2,*(undefined4 *)(_Dest + 0x24)\r\n                           ,0,0);\r\n      if (sVar2 == -1) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x94] = '\\x01';\r\n      _Dest[0x95] = '\\0';\r\n      _Dest[0x96] = '\\0';\r\n      _Dest[0x97] = '\\0';\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581578,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9a0;\r\n      DAT_0057f9a0 = DAT_0057f9a0 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x2000);\r\n    }\r\n    else {\r\n      if (param_3 != 0x1000) goto LAB_004a7b9e;\r\n      local_14 = (char *)0x0;\r\n      piVar6 = &DAT_0057fa00;\r\n      do {\r\n        if (*piVar6 != -1) {\r\n          iVar5 = 0;\r\n          puVar4 = (undefined4 *)&DAT_0057f9dc;\r\n          do {\r\n            if (((*(byte *)(puVar4 + 0x13) & 1) != 0) && (puVar4[9] == *piVar6)) goto LAB_004a81bd;\r\n            puVar4 = puVar4 + 0x35;\r\n            iVar5 = iVar5 + 1;\r\n          } while (puVar4 < &DAT_005812b4);\r\n        }\r\n        iVar5 = -1;\r\nLAB_004a81bd:\r\n        if (iVar5 == -1) {\r\n          bVar9 = false;\r\n        }\r\n        else if (((&DAT_0057fa28)[iVar5 * 0xd4] & 1) == 0) {\r\n          bVar9 = false;\r\n        }\r\n        else {\r\n          bVar9 = ((&DAT_0057fa2c)[iVar5 * 0x35] & 0x1000) == 0x1000;\r\n        }\r\n        if (bVar9) {\r\n          iVar5 = (&DAT_0057fa00)[(int)local_14 * 0x35];\r\n          goto LAB_004a820f;\r\n        }\r\n        piVar6 = piVar6 + 0x35;\r\n        local_14 = (char *)((int)local_14 + 1);\r\n      } while (piVar6 < &DAT_005812d8);\r\n      iVar5 = -1;\r\nLAB_004a820f:\r\n      if ((iVar5 != -1) && (*(int *)(_Dest + 0x24) != iVar5)) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      iVar5 = _rand();\r\n      uVar1 = (short)(ushort)iVar5 >> 0xf;\r\n      iVar7 = 0;\r\n      local_10 = 0;\r\n      local_4 = (int)(short)((((ushort)iVar5 ^ uVar1) - uVar1 & 7 ^ uVar1) - uVar1) *\r\n                (_DAT_004f9740 + -2) + 0x10;\r\n      if (0 < local_4) {\r\n        local_14 = (char *)(CONCAT22(local_14._2_2_,(short)param_2) & 0xffff00ff);\r\n        do {\r\n          sVar2 = FUN_004c3eb0(0xffffffff,3,param_1 & 0xff,local_14,*(undefined4 *)(_Dest + 0x24),0,\r\n                               0);\r\n          if (-1 < sVar2) {\r\n            local_10 = local_10 + 1;\r\n          }\r\n          if ((4 < iVar7) && (local_10 == 0)) {\r\n            *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n            DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n            return 0xffffffff;\r\n          }\r\n          iVar7 = iVar7 + 1;\r\n        } while (iVar7 < local_4);\r\n      }\r\n      if (local_10 < 0xb) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      *(int *)(_Dest + 0x80) = local_10;\r\n      FUN_004c9e20(*(undefined4 *)(_Dest + 0x24),_Dest + 0x28);\r\n      _Dest[0x34] = -1;\r\n      _Dest[0x35] = -1;\r\n      _Dest[0x36] = -1;\r\n      _Dest[0x37] = -1;\r\n      _Dest[0x30] = -1;\r\n      _Dest[0x31] = -1;\r\n      _Dest[0x32] = -1;\r\n      _Dest[0x33] = -1;\r\n      _Dest[0x3c] = -1;\r\n      _Dest[0x3d] = -1;\r\n      _Dest[0x3e] = -1;\r\n      _Dest[0x3f] = -1;\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005812f8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9b4;\r\n      DAT_0057f9b4 = DAT_0057f9b4 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x1000);\r\n    }\r\n  }\r\n  else if (param_3 < 0x20001) {\r\n    if (param_3 == 0x20000) {\r\n      _Dest[0x38] = -1;\r\n      _Dest[0x39] = -1;\r\n      _Dest[0x3a] = -1;\r\n      _Dest[0x3b] = -1;\r\n      _Dest[0x3c] = -1;\r\n      _Dest[0x3d] = -1;\r\n      _Dest[0x3e] = -1;\r\n      _Dest[0x3f] = -1;\r\n      _Dest[0x30] = -1;\r\n      _Dest[0x31] = -1;\r\n      _Dest[0x32] = -1;\r\n      _Dest[0x33] = -1;\r\n      _Dest[0x34] = -1;\r\n      _Dest[0x35] = -1;\r\n      _Dest[0x36] = -1;\r\n      _Dest[0x37] = -1;\r\n      *(uint *)(_Dest + 0x28) = param_1;\r\n      *(uint *)(_Dest + 0x2c) = param_2;\r\n      sVar2 = FUN_004c3eb0(9,0xc,*(undefined4 *)(_Dest + 0x28),param_2,*(undefined4 *)(_Dest + 0x24)\r\n                           ,0,0);\r\n      if (sVar2 == -1) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x94] = '\\x01';\r\n      _Dest[0x95] = '\\0';\r\n      _Dest[0x96] = '\\0';\r\n      _Dest[0x97] = '\\0';\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_005815b8,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9a0;\r\n      DAT_0057f9a0 = DAT_0057f9a0 + 1;\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x20000);\r\n    }\r\n    else {\r\n      if (param_3 != 0x4000) {\r\nLAB_004a7b9e:\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _sprintf(_Dest,s__s__d_005044f0,&DAT_00581538,*(undefined4 *)(_Dest + 0x24));\r\n      *(int *)(_Dest + 0x20) = DAT_0057f9a0;\r\n      DAT_0057f9a0 = DAT_0057f9a0 + 1;\r\n      iVar5 = FUN_004b84f0(*(undefined4 *)(_Dest + 0x24),0,param_1,param_2);\r\n      if (iVar5 == 0) {\r\n        *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n        DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n        return 0xffffffff;\r\n      }\r\n      _Dest[0x94] = '\\x01';\r\n      _Dest[0x95] = '\\0';\r\n      _Dest[0x96] = '\\0';\r\n      _Dest[0x97] = '\\0';\r\n      FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x4000);\r\n    }\r\n  }\r\n  else if (param_3 == 0x80010) {\r\n    bVar9 = false;\r\n    *(uint *)(_Dest + 0x28) = param_1;\r\n    *(uint *)(_Dest + 0x2c) = param_2;\r\n    _Dest[0x34] = -1;\r\n    _Dest[0x35] = -1;\r\n    _Dest[0x36] = -1;\r\n    _Dest[0x37] = -1;\r\n    _Dest[0x30] = -1;\r\n    _Dest[0x31] = -1;\r\n    _Dest[0x32] = -1;\r\n    _Dest[0x33] = -1;\r\n    _Dest[0x3c] = -1;\r\n    _Dest[0x3d] = -1;\r\n    _Dest[0x3e] = -1;\r\n    _Dest[0x3f] = -1;\r\n    _Dest[0x38] = -1;\r\n    _Dest[0x39] = -1;\r\n    _Dest[0x3a] = -1;\r\n    _Dest[0x3b] = -1;\r\n    iVar5 = _rand();\r\n    iVar5 = (int)(short)iVar5 % _DAT_004f9740 + 1;\r\n    if (0 < iVar5) {\r\n      do {\r\n        sVar2 = FUN_004c3eb0(0xffffffff,2,*(undefined4 *)(_Dest + 0x28),\r\n                             *(undefined4 *)(_Dest + 0x2c),*(undefined4 *)(_Dest + 0x24),0,0);\r\n        if (-1 < sVar2) {\r\n          bVar9 = true;\r\n          *(int *)(_Dest + 0x8c) = *(int *)(_Dest + 0x8c) + 1;\r\n        }\r\n        iVar5 = iVar5 + -1;\r\n      } while (iVar5 != 0);\r\n    }\r\n    if (!bVar9) {\r\n      *(uint *)(_Dest + 0x4c) = *(uint *)(_Dest + 0x4c) & 0xfffffffe;\r\n      DAT_0057f9d0 = DAT_0057f9d0 + -1;\r\n      return 0xffffffff;\r\n    }\r\n    _sprintf(_Dest,s__s__d_005044f0,&DAT_00581338,*(undefined4 *)(_Dest + 0x24));\r\n    *(int *)(_Dest + 0x20) = DAT_0057f9b0;\r\n    DAT_0057f9b0 = DAT_0057f9b0 + 1;\r\n    FUN_004ab480(*(undefined4 *)(_Dest + 0x28),*(undefined4 *)(_Dest + 0x2c),0x80010);\r\n  }\r\n  else {\r\n    if (param_3 != 0x100000) goto LAB_004a7b9e;\r\n    _sprintf(_Dest,&DAT_004f97ac,&DAT_005816b8);\r\n    _Dest[0x20] = '\\0';\r\n    _Dest[0x21] = '\\0';\r\n    _Dest[0x22] = '\\0';\r\n    _Dest[0x23] = '\\0';\r\n    _Dest[0x24] = -1;\r\n    _Dest[0x25] = -1;\r\n    _Dest[0x26] = -1;\r\n    _Dest[0x27] = -1;\r\n  }\r\n  pcVar8 = DAT_0057f9d8;\r\n  if (((DAT_0057f9d8 == (char *)0x0) && (pcVar8 = _Dest, *(int *)(_Dest + 0x54) == 2)) ||\r\n     (DAT_0057f9d8 = pcVar8, *(int *)(_Dest + 0x54) == 2)) {\r\n    _DAT_0057f9cc = _DAT_0057f9cc + 1;\r\n    DAT_00505fb4 = DAT_00505fac >> 1;\r\n    return *(undefined4 *)(_Dest + 0x24);\r\n  }\r\n  DAT_0057f9c8 = DAT_0057f9c8 + 1;\r\n  DAT_00505fb4 = DAT_00505fac;\r\n  _DAT_00506058 = 5;\r\n  _DAT_00506060 = *(undefined4 *)(_Dest + 0x24);\r\n  if (param_3 < 10) {\r\n    if (param_3 != 9) {\r\n      if (param_3 == 0) {\r\n        _DAT_00506064 = 0x24b;\r\n        goto LAB_004a8859;\r\n      }\r\n      if (param_3 != 1) {\r\n        if (param_3 != 4) {\r\n          _DAT_00506064 = 0x24b;\r\n          goto LAB_004a8859;\r\n        }\r\n        goto LAB_004a87f2;\r\n      }\r\n    }\r\n    _DAT_00506064 = 0x241;\r\n    goto LAB_004a8859;\r\n  }\r\n  if (param_3 < 0x21) {\r\n    if (param_3 == 0x20) {\r\n      _DAT_00506064 = 0x23f;\r\n      goto LAB_004a8859;\r\n    }\r\n    if (param_3 != 0xc) {\r\n      _DAT_00506064 = 0x24b;\r\n      goto LAB_004a8859;\r\n    }\r\nLAB_004a87f2:\r\n    _DAT_00506064 = 0x242;\r\n    goto LAB_004a8859;\r\n  }\r\n  if (param_3 < 0x81) {\r\n    if (param_3 != 0x80) {\r\n      if (param_3 == 0x40) {\r\n        _DAT_00506064 = 0x240;\r\n      }\r\n      else {\r\n        _DAT_00506064 = 0x24b;\r\n      }\r\n      goto LAB_004a8859;\r\n    }\r\n  }\r\n  else {\r\n    if (0x100 < param_3) {\r\n      if (param_3 < 0x111) {\r\n        if (param_3 != 0x110) {\r\n          if (param_3 != 0x108) {\r\n            _DAT_00506064 = 0x24b;\r\n            goto LAB_004a8859;\r\n          }\r\n          goto LAB_004a880e;\r\n        }\r\n      }\r\n      else {\r\n        if (0x200 < param_3) {\r\n          if (param_3 < 0x409) {\r\n            if ((param_3 == 0x408) || (param_3 == 0x400)) {\r\n              _DAT_00506064 = 0x248;\r\n            }\r\n            else {\r\n              _DAT_00506064 = 0x24b;\r\n            }\r\n          }\r\n          else if (param_3 < 0x1001) {\r\n            if (param_3 == 0x1000) {\r\n              _DAT_00506064 = 0x23b;\r\n            }\r\n            else if (param_3 == 0x800) {\r\n              _DAT_00506064 = 0x249;\r\n            }\r\n            else {\r\n              _DAT_00506064 = 0x24b;\r\n            }\r\n          }\r\n          else if (param_3 < 0x4001) {\r\n            if (param_3 == 0x4000) {\r\n              _DAT_00506064 = 0x244;\r\n            }\r\n            else if (param_3 == 0x2000) {\r\n              _DAT_00506064 = 0x245;\r\n            }\r\n            else {\r\n              _DAT_00506064 = 0x24b;\r\n            }\r\n          }\r\n          else {\r\n            if (param_3 < 0x80001) {\r\n              if (param_3 != 0x80000) {\r\n                if (param_3 == 0x20000) {\r\n                  _DAT_00506064 = 0x246;\r\n                }\r\n                else {\r\n                  _DAT_00506064 = 0x24b;\r\n                }\r\n                goto LAB_004a8859;\r\n              }\r\n            }\r\n            else if (param_3 != 0x80010) {\r\n              if (param_3 == 0x100000) {\r\n                _DAT_00506064 = 0x24a;\r\n              }\r\n              else {\r\n                _DAT_00506064 = 0x24b;\r\n              }\r\n              goto LAB_004a8859;\r\n            }\r\n            _DAT_00506064 = 0x23c;\r\n          }\r\n          goto LAB_004a8859;\r\n        }\r\n        if (param_3 == 0x200) {\r\n          _DAT_00506064 = 0x247;\r\n          goto LAB_004a8859;\r\n        }\r\n        if (param_3 != 0x118) {\r\n          _DAT_00506064 = 0x24b;\r\n          goto LAB_004a8859;\r\n        }\r\n      }\r\n      _DAT_00506064 = 0x23e;\r\n      goto LAB_004a8859;\r\n    }\r\n    if (param_3 == 0x100) {\r\nLAB_004a880e:\r\n      _DAT_00506064 = 0x243;\r\n      goto LAB_004a8859;\r\n    }\r\n    if (param_3 != 0x90) {\r\n      _DAT_00506064 = 0x24b;\r\n      goto LAB_004a8859;\r\n    }\r\n  }\r\n  _DAT_00506064 = 0x23d;\r\nLAB_004a8859:\r\n  _DAT_00506068 = 0;\r\n  _DAT_0050606c = 0;\r\n  FUN_0048c4a0(&DAT_00506058,1);\r\n  return *(undefined4 *)(_Dest + 0x24);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0048ed00",
+      "name": "FUN_0048ed00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a4ac0",
+      "name": "FUN_004a4ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049fd00",
+      "name": "FUN_0049fd00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2cd0",
+      "name": "FUN_004b2cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2cd0",
+      "name": "FUN_004b2cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2150",
+      "name": "FUN_004b2150",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047a240",
+      "name": "FUN_0047a240",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "004a5080",
+      "name": "FUN_004a5080"
+    },
+    {
+      "addr": "004a5340",
+      "name": "FUN_004a5340"
+    },
+    {
+      "addr": "004ab480",
+      "name": "FUN_004ab480"
+    },
+    {
+      "addr": "004b3aa0",
+      "name": "FUN_004b3aa0"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004c3eb0",
+      "name": "FUN_004c3eb0"
+    },
+    {
+      "addr": "004abb30",
+      "name": "FUN_004abb30"
+    },
+    {
+      "addr": "004b1aa0",
+      "name": "FUN_004b1aa0"
+    },
+    {
+      "addr": "004b7f60",
+      "name": "FUN_004b7f60"
+    },
+    {
+      "addr": "004b7fb0",
+      "name": "FUN_004b7fb0"
+    },
+    {
+      "addr": "0049fc40",
+      "name": "FUN_0049fc40"
+    },
+    {
+      "addr": "0049fca0",
+      "name": "FUN_0049fca0"
+    },
+    {
+      "addr": "004c9e20",
+      "name": "FUN_004c9e20"
+    },
+    {
+      "addr": "004b84f0",
+      "name": "FUN_004b84f0"
+    },
+    {
+      "addr": "0048c4a0",
+      "name": "FUN_0048c4a0"
+    }
+  ],
+  "data_refs": []
+}

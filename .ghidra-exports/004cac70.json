@@ -1,0 +1,13 @@
+{
+  "address": "004cac70",
+  "name": "FUN_004cac70",
+  "signature": "undefined FUN_004cac70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x004cb076) */\r\n/* WARNING: Removing unreachable block (ram,0x004cb0f5) */\r\n/* WARNING: Removing unreachable block (ram,0x004cacb9) */\r\n\r\nundefined4 __thiscall FUN_004cac70(int *param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  short sVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  ushort uVar4;\r\n  short unaff_BX;\r\n  int unaff_ESI;\r\n  undefined4 uVar5;\r\n  short sStack_18;\r\n  short sStack_e;\r\n  undefined2 uStack_6;\r\n  undefined2 local_4;\r\n  \r\n  uStack_6 = (undefined2)((uint)*(undefined4 *)(param_3 + 4) >> 0x10);\r\n  local_4 = (undefined2)*(undefined4 *)(param_3 + 8);\r\n  sVar1 = (**(code **)(*param_1 + 0x18))(*(undefined4 *)(param_3 + 8),CONCAT22(local_4,uStack_6),0);\r\n  if (unaff_ESI == 0) {\r\n    *(undefined2 *)((int)param_1 + ((int)sStack_e + (short)param_1[0x3d] * 10) * 2 + -8) = 2000;\r\n    uVar5 = 0;\r\n  }\r\n  else {\r\n    uVar2 = unaff_BX - *(short *)((int)param_1 + 0x12a);\r\n    uVar4 = (short)uVar2 >> 0xf;\r\n    uVar4 = (uVar2 ^ uVar4) - uVar4;\r\n    uVar3 = sStack_18 - (short)param_1[0x4b];\r\n    uVar2 = (short)uVar3 >> 0xf;\r\n    uVar2 = (uVar3 ^ uVar2) - uVar2;\r\n    if ((short)uVar4 <= (short)uVar2) {\r\n      uVar4 = uVar2;\r\n    }\r\n    *(ushort *)((int)param_1 + ((int)sStack_e + (short)param_1[0x3d] * 10) * 2 + -8) = uVar4 & 0xff;\r\n    if ((short)(uVar4 & 0xff) < sVar1) {\r\n      uVar5 = 1;\r\n    }\r\n    else {\r\n      uVar5 = 0;\r\n    }\r\n  }\r\n  return uVar5;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,46 @@
+{
+  "address": "00415860",
+  "name": "FUN_00415860",
+  "signature": "undefined FUN_00415860(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00415860(void)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  UINT uID;\r\n  int iVar3;\r\n  ostream *poVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 uVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  char *pcVar10;\r\n  undefined4 *puVar11;\r\n  undefined4 in_stack_00001008;\r\n  int in_stack_0000100c;\r\n  int in_stack_00001010;\r\n  \r\n  FUN_004d2c30();\r\n  uID = FUN_00423270(in_stack_0000100c + 700,in_stack_00001008);\r\n  iVar3 = LoadStringA(DAT_0051a050,uID,&stack0x00000004,0xfff);\r\n  uVar7 = 0xffffffff;\r\n  pcVar10 = &stack0x00000004;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar2 = *pcVar10;\r\n    pcVar10 = pcVar10 + 1;\r\n  } while (cVar2 != '\\0');\r\n  uVar7 = ~uVar7 - 1;\r\n  if (uVar7 == 0xffffffff) {\r\n    poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar4);\r\n    FUN_004d2060(1);\r\n  }\r\n  puVar5 = *(undefined4 **)(in_stack_00001010 + 4);\r\n  if ((uint)puVar5[3] < 2) {\r\n    if (uVar7 == 0) goto LAB_004159e2;\r\n    if (uVar7 <= (uint)puVar5[2]) {\r\n      if (uVar7 != 0) {\r\n        puVar5 = (undefined4 *)*puVar5;\r\n        for (uVar8 = uVar7 >> 2; register0x00000010 = (BADSPACEBASE *)((int)register0x00000010 + 4),\r\n            uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *puVar5 = *(undefined4 *)register0x00000010;\r\n          puVar5 = puVar5 + 1;\r\n        }\r\n        for (uVar8 = uVar7 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *(undefined1 *)puVar5 = *(undefined1 *)register0x00000010;\r\n          register0x00000010 = (BADSPACEBASE *)((int)register0x00000010 + 1);\r\n          puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n        }\r\n      }\r\n      goto LAB_004159e2;\r\n    }\r\n  }\r\n  puVar5 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar5 == (undefined4 *)0x0) {\r\n    puVar5 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    if (uVar7 == 0xffffffff) {\r\n      poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n      FUN_00401000(poVar4);\r\n      FUN_004d2060(1);\r\n    }\r\n    puVar5[1] = uVar7;\r\n    puVar5[2] = uVar7;\r\n    if (uVar7 == 0) {\r\n      *puVar5 = 0;\r\n    }\r\n    else {\r\n      uVar6 = FUN_004d28b0(uVar7);\r\n      *puVar5 = uVar6;\r\n      uVar8 = puVar5[1];\r\n      puVar11 = (undefined4 *)*puVar5;\r\n      for (uVar9 = uVar8 >> 2; register0x00000010 = (BADSPACEBASE *)((int)register0x00000010 + 4),\r\n          uVar9 != 0; uVar9 = uVar9 - 1) {\r\n        *puVar11 = *(undefined4 *)register0x00000010;\r\n        puVar11 = puVar11 + 1;\r\n      }\r\n      for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n        *(undefined1 *)puVar11 = *(undefined1 *)register0x00000010;\r\n        register0x00000010 = (BADSPACEBASE *)((int)register0x00000010 + 1);\r\n        puVar11 = (undefined4 *)((int)puVar11 + 1);\r\n      }\r\n    }\r\n    puVar5[3] = 1;\r\n  }\r\n  piVar1 = (int *)(*(int *)(in_stack_00001010 + 4) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  puVar11 = *(undefined4 **)(in_stack_00001010 + 4);\r\n  if ((puVar11[3] == 0) && (puVar11 != (undefined4 *)0x0)) {\r\n    if (puVar11[2] != 0) {\r\n      FUN_004d29a0(*puVar11);\r\n      puVar11[2] = 0;\r\n      *puVar11 = 0;\r\n    }\r\n    FUN_004d29a0(puVar11);\r\n  }\r\n  *(undefined4 **)(in_stack_00001010 + 4) = puVar5;\r\nLAB_004159e2:\r\n  *(uint *)(*(int *)(in_stack_00001010 + 4) + 4) = uVar7;\r\n  return iVar3;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

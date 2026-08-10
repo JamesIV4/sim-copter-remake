@@ -1,0 +1,24 @@
+{
+  "address": "004dd2f0",
+  "name": "__FF_MSGBANNER",
+  "signature": "void __cdecl __FF_MSGBANNER(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __FF_MSGBANNER\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __FF_MSGBANNER(void)\r\n\r\n{\r\n  if ((DAT_00507234 == 1) || ((DAT_00507234 == 0 && (DAT_00507238 == 1)))) {\r\n    FUN_004dd330(0xfc);\r\n    if (DAT_00508398 != (code *)0x0) {\r\n      (*DAT_00508398)();\r\n    }\r\n    FUN_004dd330(0xff);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dd330",
+      "name": "FUN_004dd330"
+    }
+  ],
+  "data_refs": []
+}

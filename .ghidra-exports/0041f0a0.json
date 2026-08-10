@@ -1,0 +1,46 @@
+{
+  "address": "0041f0a0",
+  "name": "FUN_0041f0a0",
+  "signature": "undefined FUN_0041f0a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall\r\nFUN_0041f0a0(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,char *param_6)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 uVar2;\r\n  BOOL BVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  tagWNDCLASSA local_28;\r\n  \r\n  FUN_004593a0();\r\n  *param_1 = &PTR_LAB_004f13f8;\r\n  param_1[2] = param_2;\r\n  param_1[1] = param_3;\r\n  param_1[3] = param_4;\r\n  param_1[0x26] = 0;\r\n  if (param_6 == (char *)0x0) {\r\n    param_6 = &DAT_004f83a8;\r\n    uVar2 = FUN_004d28b0(4);\r\n    param_1[0x26] = uVar2;\r\n  }\r\n  else {\r\n    uVar4 = 0xffffffff;\r\n    pcVar6 = param_6;\r\n    do {\r\n      if (uVar4 == 0) break;\r\n      uVar4 = uVar4 - 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    uVar2 = FUN_004d28b0(~uVar4);\r\n    param_1[0x26] = uVar2;\r\n  }\r\n  uVar4 = 0xffffffff;\r\n  do {\r\n    pcVar6 = param_6;\r\n    if (uVar4 == 0) break;\r\n    uVar4 = uVar4 - 1;\r\n    pcVar6 = param_6 + 1;\r\n    cVar1 = *param_6;\r\n    param_6 = pcVar6;\r\n  } while (cVar1 != '\\0');\r\n  uVar4 = ~uVar4;\r\n  pcVar6 = pcVar6 + -uVar4;\r\n  pcVar7 = (char *)param_1[0x26];\r\n  for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar7 = pcVar7 + 4;\r\n  }\r\n  for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *pcVar7 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar7 = pcVar7 + 1;\r\n  }\r\n  BVar3 = GetClassInfoA(DAT_0051a050,s_Sparkal_004f99f8,&local_28);\r\n  if (BVar3 == 0) {\r\n    local_28.lpszMenuName = &DAT_004f83a8;\r\n    local_28.lpszClassName = s_Sparkal_004f99f8;\r\n    local_28.hCursor = (HCURSOR)0x0;\r\n    local_28.hbrBackground = GetStockObject(4);\r\n    local_28.cbClsExtra = 0;\r\n    local_28.hInstance = DAT_0051a050;\r\n    local_28.style = 0x20;\r\n    local_28.lpfnWndProc = (WNDPROC)&LAB_00459670;\r\n    local_28.cbWndExtra = 4;\r\n    local_28.hIcon = LoadIconA(DAT_0051a050,&DAT_00000069);\r\n    RegisterClassA(&local_28);\r\n  }\r\n  FUN_0041f230();\r\n  FUN_0041f3f0(param_5);\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004593a0",
+      "name": "FUN_004593a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:0000008b",
+      "name": "GetClassInfoA"
+    },
+    {
+      "addr": "EXTERNAL:000000a3",
+      "name": "GetStockObject"
+    },
+    {
+      "addr": "EXTERNAL:00000091",
+      "name": "LoadIconA"
+    },
+    {
+      "addr": "EXTERNAL:000000a1",
+      "name": "RegisterClassA"
+    },
+    {
+      "addr": "0041f230",
+      "name": "FUN_0041f230"
+    },
+    {
+      "addr": "0041f3f0",
+      "name": "FUN_0041f3f0"
+    }
+  ],
+  "data_refs": []
+}

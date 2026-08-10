@@ -1,0 +1,28 @@
+{
+  "address": "00406a20",
+  "name": "FUN_00406a20",
+  "signature": "undefined FUN_00406a20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_00406a20(LPSTR param_1,LPCSTR param_2,LPCSTR param_3,LPCSTR param_4)\r\n\r\n{\r\n  BOOL BVar1;\r\n  DWORD local_4c;\r\n  HWND local_48;\r\n  HINSTANCE local_44;\r\n  LPCSTR local_40;\r\n  LPSTR local_3c;\r\n  DWORD local_38;\r\n  DWORD local_34;\r\n  LPSTR local_30;\r\n  DWORD local_2c;\r\n  LPSTR local_28;\r\n  DWORD local_24;\r\n  LPCSTR local_20;\r\n  LPCSTR local_1c;\r\n  DWORD local_18;\r\n  WORD local_14;\r\n  WORD local_12;\r\n  LPCSTR local_10;\r\n  LPARAM local_c;\r\n  LPOFNHOOKPROC local_8;\r\n  LPCSTR local_4;\r\n  \r\n  local_4c = 0x4c;\r\n  local_48 = GetActiveWindow();\r\n  local_40 = param_3;\r\n  local_44 = DAT_0051a050;\r\n  local_3c = (LPSTR)0x0;\r\n  local_38 = 0;\r\n  local_34 = 0;\r\n  local_30 = param_1;\r\n  local_28 = (LPSTR)0x0;\r\n  local_14 = 0;\r\n  local_24 = 0;\r\n  local_12 = 0;\r\n  local_20 = param_4;\r\n  local_1c = param_2;\r\n  local_10 = (LPCSTR)0x0;\r\n  local_c = 0;\r\n  local_8 = (LPOFNHOOKPROC)0x0;\r\n  local_2c = 0xff;\r\n  local_18 = 0x200002;\r\n  local_4 = (LPCSTR)0x0;\r\n  BVar1 = GetSaveFileNameA((LPOPENFILENAMEA)&local_4c);\r\n  return -(uint)(BVar1 == 0) & 0x80000000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00406760",
+      "name": "FUN_00406760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000078",
+      "name": "GetActiveWindow"
+    },
+    {
+      "addr": "004634f6",
+      "name": "GetSaveFileNameA"
+    }
+  ],
+  "data_refs": []
+}

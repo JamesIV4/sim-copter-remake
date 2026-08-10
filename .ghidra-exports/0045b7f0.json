@@ -1,0 +1,98 @@
+{
+  "address": "0045b7f0",
+  "name": "FUN_0045b7f0",
+  "signature": "undefined FUN_0045b7f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 __fastcall FUN_0045b7f0(int *param_1)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  HANDLE hThread;\r\n  DWORD DVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  int *piVar7;\r\n  undefined4 *puVar8;\r\n  char *pcVar9;\r\n  LARGE_INTEGER LStack_8;\r\n  \r\n  DAT_00518ba8 = 0xfe;\r\n  puVar8 = &DAT_0051ac58;\r\n  for (iVar5 = 9; iVar5 != 0; iVar5 = iVar5 + -1) {\r\n    *puVar8 = 0;\r\n    puVar8 = puVar8 + 1;\r\n  }\r\n  DAT_0051ac78 = 1;\r\n  DAT_004f979c = (char *)FUN_004d28b0(0x105);\r\n  GetModuleFileNameA((HMODULE)0x0,DAT_004f979c,0x104);\r\n  uVar6 = 0xffffffff;\r\n  pcVar9 = DAT_004f979c;\r\n  do {\r\n    if (uVar6 == 0) break;\r\n    uVar6 = uVar6 - 1;\r\n    cVar1 = *pcVar9;\r\n    pcVar9 = pcVar9 + 1;\r\n  } while (cVar1 != '\\0');\r\n  uVar6 = ~uVar6;\r\n  while ((uVar6 = uVar6 - 1, -1 < (int)uVar6 && (DAT_004f979c[uVar6] != '\\\\'))) {\r\n    DAT_004f979c[uVar6] = '\\0';\r\n  }\r\n  iVar5 = FUN_00432b20();\r\n  if (iVar5 == 0) {\r\n    return 0x80000000;\r\n  }\r\n  iVar5 = FUN_00423950();\r\n  iVar3 = FUN_004232a0(iVar5);\r\n  if (iVar3 != 0) {\r\n    param_1[0x1024] = iVar5;\r\n  }\r\n  iVar5 = *param_1;\r\n  (**(code **)(iVar5 + 0x24))();\r\n  (**(code **)(iVar5 + 0x48))();\r\n  FUN_0045c0f0();\r\n  param_1[0x1023] = 0;\r\n  hThread = GetCurrentThread();\r\n  SetThreadPriority(hThread,param_1[0x1023]);\r\n  iVar3 = param_1[0x1024];\r\n  FUN_00422c90(iVar3);\r\n  FUN_00432e80(iVar3);\r\n  (**(code **)(iVar5 + 0x18))();\r\n  if (DAT_004f83a0 != 0) {\r\n    if (param_1[0x101f] == 0) {\r\n      if (DAT_004f83a0 != 0) {\r\n        FUN_0040ed80();\r\n      }\r\n    }\r\n    else {\r\n      FUN_0040ed70();\r\n    }\r\n  }\r\n  param_1[0xe] = param_1[0x1021];\r\n  if (param_1[0x1021] == 0) {\r\n    piVar7 = param_1 + 0x1010;\r\n  }\r\n  else {\r\n    piVar7 = param_1 + 0x1013;\r\n  }\r\n  iVar3 = piVar7[1];\r\n  iVar2 = piVar7[2];\r\n  param_1[0x1019] = *piVar7;\r\n  param_1[0x101a] = iVar3;\r\n  param_1[0x101b] = iVar2;\r\n  if (((param_1[0x1016] < 0x281) || (param_1[0x1017] < 0x1e1)) || (param_1[0x1018] != 8)) {\r\n    param_1[0xe] = 0;\r\n    param_1[0x1019] = param_1[0x1010];\r\n    param_1[0x101a] = param_1[0x1011];\r\n    param_1[0x101b] = param_1[0x1012];\r\n  }\r\n  DAT_004f9718 = param_1[0x1025];\r\n  DAT_004f971c = param_1[0x1026];\r\n  FUN_00407e20();\r\n  FUN_00408370();\r\n  FUN_004307e0();\r\n  FUN_00411f60();\r\n  (**(code **)(iVar5 + 0x1c))();\r\n  DAT_00592068 = FUN_00468270(0x10000);\r\n  DAT_00592064 = FUN_00468270(0x10000);\r\n  FUN_004635d0();\r\n  FUN_00421dd0();\r\n  _DAT_0057f30c = &DAT_0055b0d0;\r\n  if (param_1[0xfaf] != 1) {\r\n    param_1[0xfaf] = 1;\r\n    param_1[0xfb1] = 0;\r\n    param_1[0xfb0] = 0;\r\n  }\r\n  if (param_1[0xfaf] != 0) {\r\n    if (param_1[0xfaf] == 1) {\r\n      DVar4 = timeGetTime();\r\n      param_1[0xfb0] = DVar4;\r\n      return 0;\r\n    }\r\n    DVar4 = timeGetTime();\r\n    param_1[0xfb0] = DVar4 / 1000;\r\n    return 0;\r\n  }\r\n  QueryPerformanceCounter(&LStack_8);\r\n  param_1[0xfb0] = LStack_8.s.LowPart;\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:0000002b",
+      "name": "GetModuleFileNameA"
+    },
+    {
+      "addr": "00432b20",
+      "name": "FUN_00432b20"
+    },
+    {
+      "addr": "00423950",
+      "name": "FUN_00423950"
+    },
+    {
+      "addr": "004232a0",
+      "name": "FUN_004232a0"
+    },
+    {
+      "addr": "0045c0f0",
+      "name": "FUN_0045c0f0"
+    },
+    {
+      "addr": "EXTERNAL:0000001d",
+      "name": "GetCurrentThread"
+    },
+    {
+      "addr": "EXTERNAL:0000001e",
+      "name": "SetThreadPriority"
+    },
+    {
+      "addr": "00422c90",
+      "name": "FUN_00422c90"
+    },
+    {
+      "addr": "00432e80",
+      "name": "FUN_00432e80"
+    },
+    {
+      "addr": "0040ed70",
+      "name": "FUN_0040ed70"
+    },
+    {
+      "addr": "0040ed80",
+      "name": "FUN_0040ed80"
+    },
+    {
+      "addr": "00407e20",
+      "name": "FUN_00407e20"
+    },
+    {
+      "addr": "00408370",
+      "name": "FUN_00408370"
+    },
+    {
+      "addr": "004307e0",
+      "name": "FUN_004307e0"
+    },
+    {
+      "addr": "00411f60",
+      "name": "FUN_00411f60"
+    },
+    {
+      "addr": "00468270",
+      "name": "FUN_00468270"
+    },
+    {
+      "addr": "004635d0",
+      "name": "FUN_004635d0"
+    },
+    {
+      "addr": "00421dd0",
+      "name": "FUN_00421dd0"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

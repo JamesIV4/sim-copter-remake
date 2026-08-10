@@ -1,0 +1,13 @@
+{
+  "address": "004cb6d0",
+  "name": "FUN_004cb6d0",
+  "signature": "undefined FUN_004cb6d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004cb6d0(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  short sVar1;\r\n  \r\n  sVar1 = *(short *)(param_1 + -8 +\r\n                    ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2);\r\n  *(short *)(param_1 + 0x140) = sVar1;\r\n  if (sVar1 < 0) {\r\n    *(ushort *)(param_1 + 0x140) = sVar1 + (7U - sVar1 & 0xfff8);\r\n  }\r\n  *(ushort *)(param_1 + 0x140) = *(ushort *)(param_1 + 0x140) & 7;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

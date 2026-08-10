@@ -1,0 +1,24 @@
+{
+  "address": "00478055",
+  "name": "FUN_00478055",
+  "signature": "undefined FUN_00478055(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00478055(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int extraout_ECX;\r\n  int unaff_EBX;\r\n  int unaff_EBP;\r\n  int *unaff_ESI;\r\n  int *piVar3;\r\n  int *piVar4;\r\n  \r\n  while (piVar4 = DAT_00502330, unaff_ESI[4] != -0x5a5a5a5b) {\r\n    if ((int)(((uint)((longlong)unaff_EBX * (longlong)unaff_ESI[1]) >> 0x10 |\r\n              (int)((ulonglong)((longlong)unaff_EBX * (longlong)unaff_ESI[1]) >> 0x20) << 0x10) +\r\n              ((uint)((longlong)unaff_EBP * (longlong)unaff_ESI[3]) >> 0x10 |\r\n              (int)((ulonglong)((longlong)unaff_EBP * (longlong)unaff_ESI[3]) >> 0x20) << 0x10) +\r\n              ((uint)((longlong)param_1 * (longlong)unaff_ESI[2]) >> 0x10 |\r\n              (int)((ulonglong)((longlong)param_1 * (longlong)unaff_ESI[2]) >> 0x20) << 0x10) +\r\n             unaff_ESI[4]) < 0) {\r\n      if (unaff_ESI[5] != 0) {\r\n        FUN_00478055();\r\n      }\r\n      if (*(int *)(*unaff_ESI + 0x14) != 0) {\r\n        *DAT_00502330 = *unaff_ESI;\r\n        DAT_00502330 = DAT_00502330 + 4;\r\n        DAT_005a25a4 = DAT_005a25a4 + 1;\r\n      }\r\n      if (unaff_ESI[6] == 0) {\r\n        return;\r\n      }\r\n      FUN_00478055();\r\n      return;\r\n    }\r\n    if (unaff_ESI[6] != 0) {\r\n      FUN_00478055();\r\n      param_1 = extraout_ECX;\r\n    }\r\n    if (*(int *)(*unaff_ESI + 0x14) != 0) {\r\n      *DAT_00502330 = *unaff_ESI;\r\n      DAT_00502330 = DAT_00502330 + 4;\r\n      DAT_005a25a4 = DAT_005a25a4 + 1;\r\n    }\r\n    unaff_ESI = (int *)unaff_ESI[5];\r\n    if (unaff_ESI == (int *)0x0) {\r\n      return;\r\n    }\r\n  }\r\n  while (iVar1 = *unaff_ESI, *(int *)(iVar1 + 0x14) == 0) {\r\n    unaff_ESI = (int *)unaff_ESI[5];\r\n    if (unaff_ESI == (int *)0x0) {\r\n      return;\r\n    }\r\n  }\r\n  iVar2 = *(int *)(*(int *)(*(int *)(iVar1 + 0x40) * 0x20 + 0x4c + iVar1) + 8);\r\n  *DAT_00502330 = iVar1;\r\n  piVar4[1] = iVar2;\r\n  DAT_00502330 = DAT_00502330 + 4;\r\n  DAT_005a25a4 = DAT_005a25a4 + 1;\r\n  DAT_00502340 = piVar4;\r\n  do {\r\n    do {\r\n      unaff_ESI = (int *)unaff_ESI[5];\r\n      if (unaff_ESI == (int *)0x0) {\r\n        return;\r\n      }\r\n      iVar1 = *unaff_ESI;\r\n      DAT_0050233c = unaff_ESI;\r\n    } while (*(int *)(iVar1 + 0x14) == 0);\r\n    iVar2 = *(int *)(*(int *)(*(int *)(iVar1 + 0x40) * 0x20 + 0x4c + iVar1) + 8);\r\n    piVar3 = DAT_00502330 + -4;\r\n    piVar4 = DAT_00502330;\r\n    do {\r\n      if (iVar2 <= piVar3[1]) break;\r\n      *piVar4 = *piVar3;\r\n      piVar4[1] = piVar3[1];\r\n      piVar3 = piVar3 + -6;\r\n      piVar4 = piVar4 + -6;\r\n    } while (DAT_00502340 <= piVar3);\r\n    *piVar4 = iVar1;\r\n    piVar4[1] = iVar2;\r\n    DAT_00502330 = DAT_00502330 + 4;\r\n    DAT_005a25a4 = DAT_005a25a4 + 1;\r\n    unaff_ESI = DAT_0050233c;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00477f90",
+      "name": "FUN_00477f90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00478055",
+      "name": "FUN_00478055"
+    }
+  ],
+  "data_refs": []
+}

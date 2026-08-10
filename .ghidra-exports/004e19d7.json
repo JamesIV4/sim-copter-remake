@@ -1,0 +1,24 @@
+{
+  "address": "004e19d7",
+  "name": "__trandisp2",
+  "signature": "undefined __trandisp2(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __trandisp2\r\n   \r\n   Libraries: Visual Studio 1998, Visual Studio 2003, Visual Studio 2005, Visual Studio 2008 */\r\n\r\nvoid __fastcall __trandisp2(undefined4 param_1,int param_2)\r\n\r\n{\r\n  float10 fVar1;\r\n  char cVar2;\r\n  byte bVar3;\r\n  undefined2 uVar4;\r\n  int unaff_EBP;\r\n  float10 in_ST0;\r\n  float10 in_ST1;\r\n  \r\n  if (*(char *)(param_2 + 0xe) == '\\x05') {\r\n    uVar4 = (undefined2)\r\n            CONCAT31((uint3)((byte)((ushort)*(undefined2 *)(unaff_EBP + -0xa4) >> 8) & 0xfe | 2),\r\n                     0x3f);\r\n  }\r\n  else {\r\n    uVar4 = 0x133f;\r\n  }\r\n  *(undefined2 *)(unaff_EBP + -0xa2) = uVar4;\r\n  fVar1 = (float10)0;\r\n  *(int *)(unaff_EBP + -0x94) = param_2;\r\n  *(ushort *)(unaff_EBP + -0xa0) =\r\n       (ushort)NAN(in_ST0) << 8 | (ushort)(in_ST0 < fVar1) << 9 | (ushort)(in_ST0 != fVar1) << 10 |\r\n       (ushort)(in_ST0 == fVar1) << 0xe;\r\n  *(undefined1 *)(unaff_EBP + -0x90) = 0;\r\n  fVar1 = (float10)0;\r\n  *(ushort *)(unaff_EBP + -0xa0) =\r\n       (ushort)NAN(in_ST1) << 8 | (ushort)(in_ST1 < fVar1) << 9 | (ushort)(in_ST1 != fVar1) << 10 |\r\n       (ushort)(in_ST1 == fVar1) << 0xe;\r\n  bVar3 = (char)(*(char *)(unaff_EBP + -0x9f) << 1) >> 1;\r\n  cVar2 = (char)(*(char *)(unaff_EBP + -0x9f) << 1) >> 1;\r\n                    /* WARNING: Could not recover jumptable at 0x004e1a61. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  (**(code **)(param_2 + (char)((&DAT_0050886c)[(byte)(cVar2 << 1 | cVar2 < '\\0') & 0xf] |\r\n                               (&DAT_0050886c)[(byte)((bVar3 & 7) << 1 | (char)bVar3 < '\\0')] << 2)\r\n              + 0x10))();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd730",
+      "name": "__cintrindisp2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd7ab",
+      "name": "__ctrandisp2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

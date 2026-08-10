@@ -1,0 +1,19 @@
+{
+  "address": "0047b8d0",
+  "name": "FUN_0047b8d0",
+  "signature": "undefined FUN_0047b8d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0047b8d0(undefined4 param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  switch(param_1) {\r\n  case 0x20:\r\n    piVar1 = &DAT_00503b08 + DAT_00503b2c * 3;\r\n    iVar2 = *piVar1;\r\n    *piVar1 = iVar2 + -0x40000;\r\n    if (iVar2 + -0x40000 < DAT_00503af8) {\r\n      *piVar1 = DAT_00503af8;\r\n      return;\r\n    }\r\n    break;\r\n  case 0x21:\r\n    piVar1 = &DAT_00503b08 + DAT_00503b2c * 3;\r\n    iVar2 = *piVar1;\r\n    *piVar1 = iVar2 + 0x40000;\r\n    if (0xc80000 < iVar2 + 0x40000) {\r\n      *piVar1 = 0xc80000;\r\n      return;\r\n    }\r\n    break;\r\n  case 0x22:\r\n    if (DAT_00503aa0 == 2) {\r\n      DAT_00503aac = DAT_00503aac + 0x40000;\r\n      if (0x640000 < DAT_00503aac) {\r\n        DAT_00503aac = 0x640000;\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      piVar1 = &DAT_00503b0c + DAT_00503b2c * 3;\r\n      iVar2 = *piVar1;\r\n      *piVar1 = iVar2 + 0x40000;\r\n      if (0x640000 < iVar2 + 0x40000) {\r\n        *piVar1 = 0x640000;\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 0x23:\r\n    if (DAT_00503aa0 == 2) {\r\n      DAT_00503aac = DAT_00503aac + -0x40000;\r\n      if (DAT_00503aac < 0x10000) {\r\n        DAT_00503aac = 0x10000;\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      piVar1 = &DAT_00503b0c + DAT_00503b2c * 3;\r\n      iVar2 = *piVar1;\r\n      *piVar1 = iVar2 + -0x40000;\r\n      if (iVar2 + -0x40000 < 0) {\r\n        *piVar1 = 0;\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 0x24:\r\n    *(int *)(&DAT_00503b10 + DAT_00503b2c * 0xc) =\r\n         *(int *)(&DAT_00503b10 + DAT_00503b2c * 0xc) + 0x40000;\r\n    return;\r\n  case 0x25:\r\n    *(int *)(&DAT_00503b10 + DAT_00503b2c * 0xc) =\r\n         *(int *)(&DAT_00503b10 + DAT_00503b2c * 0xc) + -0x40000;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004796c0",
+      "name": "FUN_004796c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

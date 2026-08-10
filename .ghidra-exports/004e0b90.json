@@ -1,0 +1,22 @@
+{
+  "address": "004e0b90",
+  "name": "FUN_004e0b90",
+  "signature": "undefined FUN_004e0b90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004e0b90(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  piVar1 = (int *)*param_1;\r\n  if (((*piVar1 == -0x1f928c9d) && (piVar1[4] == 3)) && (piVar1[5] == 0x19930520)) {\r\n                    /* WARNING: Subroutine does not return */\r\n    terminate();\r\n  }\r\n  if (DAT_0059074c != (_func_int *)0x0) {\r\n    iVar2 = _ValidateExecute(DAT_0059074c);\r\n    if (iVar2 != 0) {\r\n      iVar2 = (*DAT_0059074c)(param_1);\r\n      return iVar2;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e0c00",
+      "name": "terminate"
+    },
+    {
+      "addr": "004e0d40",
+      "name": "_ValidateExecute"
+    }
+  ],
+  "data_refs": []
+}

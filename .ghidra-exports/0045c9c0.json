@@ -1,0 +1,24 @@
+{
+  "address": "0045c9c0",
+  "name": "FUN_0045c9c0",
+  "signature": "undefined FUN_0045c9c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0045c9c0(undefined1 *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined1 *puVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  \r\n  iVar1 = 0x50;\r\n  puVar2 = param_1;\r\n  do {\r\n    *puVar2 = 0;\r\n    iVar1 = iVar1 + -1;\r\n    puVar2[1] = 0;\r\n    puVar2 = puVar2 + 2;\r\n  } while (iVar1 != 0);\r\n  iVar1 = 0;\r\n  puVar4 = (undefined4 *)(param_1 + 0xb8);\r\n  for (iVar3 = 0x200; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n    *puVar4 = 0;\r\n    puVar4 = puVar4 + 1;\r\n  }\r\n  do {\r\n    iVar3 = iVar1 + 0xe;\r\n    *(undefined4 *)(param_1 + iVar1 + 0x8b8) = 0;\r\n    *(undefined4 *)(param_1 + iVar1 + 0x8bc) = 0;\r\n    *(undefined4 *)(param_1 + iVar1 + 0x8c0) = 0;\r\n    *(undefined2 *)(param_1 + iVar1 + 0x8c4) = 0;\r\n    iVar1 = iVar3;\r\n  } while (iVar3 < 0x38);\r\n  puVar4 = (undefined4 *)(param_1 + 0x8f0);\r\n  for (iVar1 = 0x50; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n    *puVar4 = 0;\r\n    puVar4 = puVar4 + 1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045c890",
+      "name": "FUN_0045c890",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045ca50",
+      "name": "FUN_0045ca50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

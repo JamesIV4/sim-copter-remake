@@ -1,0 +1,55 @@
+{
+  "address": "004b6680",
+  "name": "FUN_004b6680",
+  "signature": "undefined FUN_004b6680(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004b6680(int param_1,undefined4 param_2)\r\n\r\n{\r\n  short sVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  \r\n  switch(param_2) {\r\n  case 0:\r\n    FUN_004b4f30();\r\n    return;\r\n  case 1:\r\n    *(undefined1 *)(param_1 + 6) = 0;\r\n    uVar3 = *(uint *)(param_1 + 0x11);\r\n    if ((uVar3 & 0x11) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x14) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x12) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x18) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n      return;\r\n    }\r\n    break;\r\n  case 2:\r\n    *(undefined1 *)(param_1 + 6) = 1;\r\n    uVar3 = *(uint *)(param_1 + 0x11);\r\n    if ((uVar3 & 0x11) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x14) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x12) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x18) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n      return;\r\n    }\r\n    break;\r\n  case 3:\r\n    uVar3 = _rand();\r\n    if ((uVar3 & 1) == 0) {\r\n      *(undefined1 *)(param_1 + 6) = 0;\r\n      uVar3 = *(uint *)(param_1 + 0x11);\r\n      if ((uVar3 & 0x11) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x14) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x12) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x18) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      *(undefined1 *)(param_1 + 6) = 1;\r\n      uVar3 = *(uint *)(param_1 + 0x11);\r\n      if ((uVar3 & 0x11) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x14) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x12) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x18) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 4:\r\n    *(undefined1 *)(param_1 + 6) = 1;\r\n    uVar3 = *(uint *)(param_1 + 0x11);\r\n    if ((uVar3 & 0x11) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x14) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x12) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n      return;\r\n    }\r\n    if ((uVar3 & 0x18) != 0) {\r\n      *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n      *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n      return;\r\n    }\r\n    break;\r\n  case 5:\r\n    uVar3 = _rand();\r\n    if ((uVar3 & 1) == 0) {\r\n      FUN_004b7350();\r\n      return;\r\n    }\r\n    FUN_004b7430();\r\n    return;\r\n  case 6:\r\n    uVar2 = _rand();\r\n    *(undefined1 *)(param_1 + 6) = 1;\r\n    uVar3 = *(uint *)(param_1 + 0x11);\r\n    if ((uVar2 & 1) == 0) {\r\n      if ((uVar3 & 0x11) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x14) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x12) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x18) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      if ((uVar3 & 0x11) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x14) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x12) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n        return;\r\n      }\r\n      if ((uVar3 & 0x18) != 0) {\r\n        *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n        *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 7:\r\n    uVar3 = _rand();\r\n    sVar1 = (short)((int)((uint)(ushort)((short)uVar3 >> 0xf) << 0x10 | uVar3 & 0xffff) % 3);\r\n    if (sVar1 == 0) {\r\n      FUN_004b7350();\r\n      return;\r\n    }\r\n    if (sVar1 == 1) {\r\n      FUN_004b73c0();\r\n      return;\r\n    }\r\n    if (sVar1 != 2) {\r\n      return;\r\n    }\r\n    FUN_004b7430();\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b4660",
+      "name": "FUN_004b4660",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b4660",
+      "name": "FUN_004b4660",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b74a0",
+      "name": "FUN_004b74a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b7890",
+      "name": "FUN_004b7890",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004b4f30",
+      "name": "FUN_004b4f30"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004b7430",
+      "name": "FUN_004b7430"
+    },
+    {
+      "addr": "004b7350",
+      "name": "FUN_004b7350"
+    },
+    {
+      "addr": "004b73c0",
+      "name": "FUN_004b73c0"
+    }
+  ],
+  "data_refs": []
+}

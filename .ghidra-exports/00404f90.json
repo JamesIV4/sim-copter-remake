@@ -1,0 +1,13 @@
+{
+  "address": "00404f90",
+  "name": "FUN_00404f90",
+  "signature": "undefined FUN_00404f90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00404f90(int *param_1,int *param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  int *local_4;\r\n  \r\n  piVar1 = (int *)param_1[0xc];\r\n  local_4 = (int *)*piVar1;\r\n  uVar2 = 0;\r\n  if (local_4 != piVar1) {\r\n    while ((int *)local_4[2] != param_2) {\r\n      local_4 = (int *)*local_4;\r\n      if (local_4 == piVar1) {\r\n        return uVar2;\r\n      }\r\n    }\r\n    *(int *)local_4[1] = *local_4;\r\n    *(int *)(*local_4 + 4) = local_4[1];\r\n    *local_4 = (int)DAT_004f81fc;\r\n    DAT_004f81fc = local_4;\r\n    param_1[0xd] = param_1[0xd] + -1;\r\n    iVar3 = (**(code **)(*DAT_004f81e4 + 0x28))(param_2);\r\n    if ((iVar3 != 0) && (param_2 != (int *)0x0)) {\r\n      (**(code **)(*param_2 + 0xc0))(1);\r\n    }\r\n    (**(code **)(*param_1 + 0x40))(1,1);\r\n    uVar2 = 1;\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

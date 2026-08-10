@@ -1,0 +1,74 @@
+{
+  "address": "004d4810",
+  "name": "FUN_004d4810",
+  "signature": "undefined FUN_004d4810(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d4810(byte *param_1,uchar *param_2,uchar *param_3,uchar *param_4,uchar *param_5)\r\n\r\n{\r\n  byte bVar1;\r\n  byte *_Source;\r\n  size_t sVar2;\r\n  byte *pbVar3;\r\n  byte *local_4;\r\n  \r\n  local_4 = (byte *)0x0;\r\n  if (param_1[1] == 0x3a) {\r\n    if (param_2 != (uchar *)0x0) {\r\n      __mbsnbcpy(param_2,param_1,2);\r\n      param_2[2] = '\\0';\r\n    }\r\n    param_1 = param_1 + 2;\r\n  }\r\n  else if (param_2 != (uchar *)0x0) {\r\n    *param_2 = '\\0';\r\n  }\r\n  _Source = (byte *)0x0;\r\n  bVar1 = *param_1;\r\n  pbVar3 = param_1;\r\n  while (bVar1 != 0) {\r\n    bVar1 = *pbVar3;\r\n    if ((*(byte *)((int)&DAT_00507878 + bVar1 + 1) & 4) == 0) {\r\n      if ((bVar1 == 0x2f) || (bVar1 == 0x5c)) {\r\n        _Source = pbVar3 + 1;\r\n      }\r\n      else if (bVar1 == 0x2e) {\r\n        local_4 = pbVar3;\r\n      }\r\n    }\r\n    else {\r\n      pbVar3 = pbVar3 + 1;\r\n    }\r\n    pbVar3 = pbVar3 + 1;\r\n    bVar1 = *pbVar3;\r\n  }\r\n  if (_Source == (byte *)0x0) {\r\n    _Source = param_1;\r\n    if (param_3 != (uchar *)0x0) {\r\n      *param_3 = '\\0';\r\n    }\r\n  }\r\n  else if (param_3 != (uchar *)0x0) {\r\n    sVar2 = (int)_Source - (int)param_1;\r\n    if (0xfe < sVar2) {\r\n      sVar2 = 0xff;\r\n    }\r\n    __mbsnbcpy(param_3,param_1,sVar2);\r\n    param_3[sVar2] = '\\0';\r\n  }\r\n  if ((local_4 == (byte *)0x0) || (local_4 < _Source)) {\r\n    if (param_4 != (uchar *)0x0) {\r\n      sVar2 = (int)pbVar3 - (int)_Source;\r\n      if (0xfe < sVar2) {\r\n        sVar2 = 0xff;\r\n      }\r\n      __mbsnbcpy(param_4,_Source,sVar2);\r\n      param_4[sVar2] = '\\0';\r\n    }\r\n    if (param_5 != (uchar *)0x0) {\r\n      *param_5 = '\\0';\r\n    }\r\n  }\r\n  else {\r\n    if (param_4 != (uchar *)0x0) {\r\n      sVar2 = (int)local_4 - (int)_Source;\r\n      if (0xfe < sVar2) {\r\n        sVar2 = 0xff;\r\n      }\r\n      __mbsnbcpy(param_4,_Source,sVar2);\r\n      param_4[sVar2] = '\\0';\r\n    }\r\n    if (param_5 != (uchar *)0x0) {\r\n      sVar2 = (int)pbVar3 - (int)local_4;\r\n      if (0xfe < sVar2) {\r\n        sVar2 = 0xff;\r\n      }\r\n      __mbsnbcpy(param_5,local_4,sVar2);\r\n      param_5[sVar2] = '\\0';\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00461a50",
+      "name": "FUN_00461a50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041fcd0",
+      "name": "FUN_0041fcd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420670",
+      "name": "FUN_00420670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420670",
+      "name": "FUN_00420670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420670",
+      "name": "FUN_00420670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047bb20",
+      "name": "FUN_0047bb20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047be90",
+      "name": "FUN_0047be90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004daac0",
+      "name": "__mbsnbcpy"
+    }
+  ],
+  "data_refs": []
+}

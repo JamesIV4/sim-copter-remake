@@ -1,0 +1,37 @@
+{
+  "address": "004d9a50",
+  "name": "___InternalCxxFrameHandler",
+  "signature": "undefined ___InternalCxxFrameHandler(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___InternalCxxFrameHandler\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4\r\n___InternalCxxFrameHandler\r\n          (int *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,int *param_5,\r\n          int param_6,undefined4 param_7,undefined4 param_8)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  if (*param_5 != 0x19930520) {\r\n    _inconsistency();\r\n  }\r\n  if ((*(byte *)(param_1 + 1) & 0x66) != 0) {\r\n    if ((param_5[1] != 0) && (param_6 == 0)) {\r\n      ___FrameUnwindToState(param_2,param_4,param_5,0xffffffff);\r\n    }\r\n    return 1;\r\n  }\r\n  if (param_5[3] != 0) {\r\n    if (((*param_1 == -0x1f928c9d) && (0x19930520 < (uint)param_1[5])) &&\r\n       (*(code **)(param_1[7] + 8) != (code *)0x0)) {\r\n      uVar1 = (**(code **)(param_1[7] + 8))\r\n                        (param_1,param_2,param_3,param_4,param_5,param_6,param_7,param_8);\r\n      return uVar1;\r\n    }\r\n    FUN_004d9b10(param_1,param_2,param_3,param_4,param_5,param_8,param_6,param_7);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d42f0",
+      "name": "___CxxFrameHandler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d44b0",
+      "name": "TranslatorGuardHandler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency"
+    },
+    {
+      "addr": "004d9f30",
+      "name": "___FrameUnwindToState"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10"
+    }
+  ],
+  "data_refs": []
+}

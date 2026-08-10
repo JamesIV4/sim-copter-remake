@@ -1,0 +1,176 @@
+{
+  "enum_3272": {
+    "name": "enum_3272",
+    "path": "/fltintrn.h",
+    "size": 4,
+    "values": [
+      {
+        "name": "INTRNCVT_OK",
+        "value": 0
+      },
+      {
+        "name": "INTRNCVT_OVERFLOW",
+        "value": 1
+      },
+      {
+        "name": "INTRNCVT_UNDERFLOW",
+        "value": 2
+      }
+    ]
+  },
+  "SectionFlags": {
+    "name": "SectionFlags",
+    "path": "/PE",
+    "size": 4,
+    "values": [
+      {
+        "name": "IMAGE_SCN_TYPE_NO_PAD",
+        "value": 8
+      },
+      {
+        "name": "IMAGE_SCN_RESERVED_0001",
+        "value": 16
+      },
+      {
+        "name": "IMAGE_SCN_CNT_CODE",
+        "value": 32
+      },
+      {
+        "name": "IMAGE_SCN_CNT_INITIALIZED_DATA",
+        "value": 64
+      },
+      {
+        "name": "IMAGE_SCN_CNT_UNINITIALIZED_DATA",
+        "value": 128
+      },
+      {
+        "name": "IMAGE_SCN_LNK_OTHER",
+        "value": 256
+      },
+      {
+        "name": "IMAGE_SCN_LNK_INFO",
+        "value": 512
+      },
+      {
+        "name": "IMAGE_SCN_RESERVED_0040",
+        "value": 1024
+      },
+      {
+        "name": "IMAGE_SCN_LNK_REMOVE",
+        "value": 2048
+      },
+      {
+        "name": "IMAGE_SCN_LNK_COMDAT",
+        "value": 4096
+      },
+      {
+        "name": "IMAGE_SCN_GPREL",
+        "value": 32768
+      },
+      {
+        "name": "IMAGE_SCN_MEM_16BIT",
+        "value": 131072
+      },
+      {
+        "name": "IMAGE_SCN_MEM_PURGEABLE",
+        "value": 131072
+      },
+      {
+        "name": "IMAGE_SCN_MEM_LOCKED",
+        "value": 262144
+      },
+      {
+        "name": "IMAGE_SCN_MEM_PRELOAD",
+        "value": 524288
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_1BYTES",
+        "value": 1048576
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_2BYTES",
+        "value": 2097152
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_4BYTES",
+        "value": 3145728
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_8BYTES",
+        "value": 4194304
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_16BYTES",
+        "value": 5242880
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_32BYTES",
+        "value": 6291456
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_64BYTES",
+        "value": 7340032
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_128BYTES",
+        "value": 8388608
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_256BYTES",
+        "value": 9437184
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_512BYTES",
+        "value": 10485760
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_1024BYTES",
+        "value": 11534336
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_2048BYTES",
+        "value": 12582912
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_4096BYTES",
+        "value": 13631488
+      },
+      {
+        "name": "IMAGE_SCN_ALIGN_8192BYTES",
+        "value": 14680064
+      },
+      {
+        "name": "IMAGE_SCN_LNK_NRELOC_OVFL",
+        "value": 16777216
+      },
+      {
+        "name": "IMAGE_SCN_MEM_DISCARDABLE",
+        "value": 33554432
+      },
+      {
+        "name": "IMAGE_SCN_MEM_NOT_CACHED",
+        "value": 67108864
+      },
+      {
+        "name": "IMAGE_SCN_MEM_NOT_PAGED",
+        "value": 134217728
+      },
+      {
+        "name": "IMAGE_SCN_MEM_SHARED",
+        "value": 268435456
+      },
+      {
+        "name": "IMAGE_SCN_MEM_EXECUTE",
+        "value": 536870912
+      },
+      {
+        "name": "IMAGE_SCN_MEM_READ",
+        "value": 1073741824
+      },
+      {
+        "name": "IMAGE_SCN_MEM_WRITE",
+        "value": 2147483648
+      }
+    ]
+  }
+}

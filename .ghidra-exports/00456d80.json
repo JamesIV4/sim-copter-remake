@@ -1,0 +1,22 @@
+{
+  "address": "00456d80",
+  "name": "FUN_00456d80",
+  "signature": "undefined FUN_00456d80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00456e82) */\r\n/* WARNING: Removing unreachable block (ram,0x00456de5) */\r\n/* WARNING: Removing unreachable block (ram,0x00456db2) */\r\n\r\nundefined4 __fastcall FUN_00456d80(int *param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  \r\n  uVar1 = 0;\r\n  if ((int *)param_1[4] != (int *)0x0) {\r\n    iVar2 = (**(code **)(*(int *)param_1[4] + 4))();\r\n    if (iVar2 == 0) {\r\n      return 0;\r\n    }\r\n    iVar2 = (**(code **)(*(int *)param_1[4] + 0x34))();\r\n    if (iVar2 != param_1[6]) {\r\n      (**(code **)(*(int *)param_1[4] + 0x10))();\r\n      return 0;\r\n    }\r\n    iVar2 = (**(code **)(*(int *)param_1[4] + 0x44))();\r\n    while (iVar2 != 0) {\r\n      if (((int *)param_1[4])[0x45] != 0xffffff) {\r\n        uVar1 = (**(code **)(*(int *)param_1[4] + 0x1c))();\r\n        (**(code **)(*(int *)param_1[4] + 0x14))();\r\n        uVar3 = FUN_004d28b0(uVar1);\r\n        (**(code **)(*(int *)param_1[4] + 0x40))(uVar3,uVar1);\r\n        (**(code **)(*param_1 + 0x28))(&stack0xffffffec);\r\n        FUN_004d29a0(uVar3);\r\n      }\r\n      iVar2 = (**(code **)(*(int *)param_1[4] + 0x48))();\r\n    }\r\n    (**(code **)(*(int *)param_1[4] + 0x10))();\r\n    param_1[8] = 0;\r\n    uVar1 = 1;\r\n  }\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    }
+  ],
+  "data_refs": []
+}

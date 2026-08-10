@@ -1,0 +1,13 @@
+{
+  "address": "004cba70",
+  "name": "FUN_004cba70",
+  "signature": "undefined FUN_004cba70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 __thiscall FUN_004cba70(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  *(short *)(param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) =\r\n       (short)_DAT_004f9740;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

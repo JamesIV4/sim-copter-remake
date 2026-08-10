@@ -1,0 +1,24 @@
+{
+  "address": "0047b8a0",
+  "name": "FUN_0047b8a0",
+  "signature": "undefined FUN_0047b8a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0047b8a0(void)\r\n\r\n{\r\n  undefined *local_28;\r\n  undefined4 *local_24;\r\n  undefined *local_20;\r\n  \r\n  local_28 = &DAT_00503afc;\r\n  local_24 = &DAT_00503af8;\r\n  local_20 = &DAT_00503b00;\r\n  FUN_00463520(&local_28,3,s_Camera_Parms_00503b34);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00463520",
+      "name": "FUN_00463520"
+    }
+  ],
+  "data_refs": []
+}

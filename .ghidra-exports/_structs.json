@@ -1,0 +1,4839 @@
+{
+  "__lc_time_data": {
+    "name": "__lc_time_data",
+    "path": "/crtdefs.h",
+    "size": 356,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wday_abbr",
+        "type": "char *[7]",
+        "size": 28,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "wday",
+        "type": "char *[7]",
+        "size": 28,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "month_abbr",
+        "type": "char *[12]",
+        "size": 48,
+        "comment": null
+      },
+      {
+        "offset": 104,
+        "name": "month",
+        "type": "char *[12]",
+        "size": 48,
+        "comment": null
+      },
+      {
+        "offset": 152,
+        "name": "ampm",
+        "type": "char *[2]",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 160,
+        "name": "ww_sdatefmt",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 164,
+        "name": "ww_ldatefmt",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 168,
+        "name": "ww_timefmt",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 172,
+        "name": "ww_caltype",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 176,
+        "name": "refcount",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 180,
+        "name": "_W_wday_abbr",
+        "type": "wchar_t *[7]",
+        "size": 28,
+        "comment": null
+      },
+      {
+        "offset": 208,
+        "name": "_W_wday",
+        "type": "wchar_t *[7]",
+        "size": 28,
+        "comment": null
+      },
+      {
+        "offset": 236,
+        "name": "_W_month_abbr",
+        "type": "wchar_t *[12]",
+        "size": 48,
+        "comment": null
+      },
+      {
+        "offset": 284,
+        "name": "_W_month",
+        "type": "wchar_t *[12]",
+        "size": 48,
+        "comment": null
+      },
+      {
+        "offset": 332,
+        "name": "_W_ampm",
+        "type": "wchar_t *[2]",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 340,
+        "name": "_W_ww_sdatefmt",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 344,
+        "name": "_W_ww_ldatefmt",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 348,
+        "name": "_W_ww_timefmt",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 352,
+        "name": "_W_ww_locale_name",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_CONTEXT": {
+    "name": "_CONTEXT",
+    "path": "/excpt.h",
+    "size": 716,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "ContextFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "Dr0",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "Dr1",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "Dr2",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "Dr3",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "Dr6",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "Dr7",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "FloatSave",
+        "type": "FLOATING_SAVE_AREA",
+        "size": 112,
+        "comment": null
+      },
+      {
+        "offset": 140,
+        "name": "SegGs",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 144,
+        "name": "SegFs",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 148,
+        "name": "SegEs",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 152,
+        "name": "SegDs",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 156,
+        "name": "Edi",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 160,
+        "name": "Esi",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 164,
+        "name": "Ebx",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 168,
+        "name": "Edx",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 172,
+        "name": "Ecx",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 176,
+        "name": "Eax",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 180,
+        "name": "Ebp",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 184,
+        "name": "Eip",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 188,
+        "name": "SegCs",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 192,
+        "name": "EFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 196,
+        "name": "Esp",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 200,
+        "name": "SegSs",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 204,
+        "name": "ExtendedRegisters",
+        "type": "BYTE[512]",
+        "size": 512,
+        "comment": null
+      }
+    ]
+  },
+  "_cpinfo": {
+    "name": "_cpinfo",
+    "path": "/winnls.h",
+    "size": 20,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "MaxCharSize",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "DefaultChar",
+        "type": "BYTE[2]",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 6,
+        "name": "LeadByte",
+        "type": "BYTE[12]",
+        "size": 12,
+        "comment": null
+      }
+    ]
+  },
+  "_CRT_DOUBLE": {
+    "name": "_CRT_DOUBLE",
+    "path": "/stdlib.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "x",
+        "type": "double",
+        "size": 8,
+        "comment": null
+      }
+    ]
+  },
+  "_CRT_FLOAT": {
+    "name": "_CRT_FLOAT",
+    "path": "/stdlib.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "f",
+        "type": "float",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_EXCEPTION_POINTERS": {
+    "name": "_EXCEPTION_POINTERS",
+    "path": "/excpt.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "ExceptionRecord",
+        "type": "PEXCEPTION_RECORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "ContextRecord",
+        "type": "PCONTEXT",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_EXCEPTION_RECORD": {
+    "name": "_EXCEPTION_RECORD",
+    "path": "/excpt.h",
+    "size": 80,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "ExceptionCode",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "ExceptionFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "ExceptionRecord",
+        "type": "_EXCEPTION_RECORD *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "ExceptionAddress",
+        "type": "PVOID",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "NumberParameters",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "ExceptionInformation",
+        "type": "ULONG_PTR[15]",
+        "size": 60,
+        "comment": null
+      }
+    ]
+  },
+  "_FILETIME": {
+    "name": "_FILETIME",
+    "path": "/WinDef.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "dwLowDateTime",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "dwHighDateTime",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_FLOATING_SAVE_AREA": {
+    "name": "_FLOATING_SAVE_AREA",
+    "path": "/winnt.h",
+    "size": 112,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "ControlWord",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "StatusWord",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "TagWord",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "ErrorOffset",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "ErrorSelector",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "DataOffset",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "DataSelector",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "RegisterArea",
+        "type": "BYTE[80]",
+        "size": 80,
+        "comment": null
+      },
+      {
+        "offset": 108,
+        "name": "Cr0NpxState",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_flt": {
+    "name": "_flt",
+    "path": "/fltintrn.h",
+    "size": 24,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "flags",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "nbytes",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "lval",
+        "type": "long",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "dval",
+        "type": "double",
+        "size": 8,
+        "comment": null
+      }
+    ]
+  },
+  "_iobuf": {
+    "name": "_iobuf",
+    "path": "/mbstring.h",
+    "size": 32,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "_ptr",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "_cnt",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "_base",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "_flag",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "_file",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "_charbuf",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "_bufsiz",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "_tmpfname",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_is_ctype_compatible": {
+    "name": "_is_ctype_compatible",
+    "path": "/mtdll.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "id",
+        "type": "ulong",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "is_clike",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_LARGE_INTEGER": {
+    "name": "_LARGE_INTEGER",
+    "path": "/winnt.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "s",
+        "type": "_struct_19",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "u",
+        "type": "_struct_20",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "QuadPart",
+        "type": "LONGLONG",
+        "size": 8,
+        "comment": null
+      }
+    ]
+  },
+  "_LDBL12": {
+    "name": "_LDBL12",
+    "path": "/stdlib.h",
+    "size": 12,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "ld12",
+        "type": "uchar[12]",
+        "size": 12,
+        "comment": null
+      }
+    ]
+  },
+  "_LIST_ENTRY": {
+    "name": "_LIST_ENTRY",
+    "path": "/winnt.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Flink",
+        "type": "_LIST_ENTRY *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "Blink",
+        "type": "_LIST_ENTRY *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_MEMORYSTATUS": {
+    "name": "_MEMORYSTATUS",
+    "path": "/winbase.h",
+    "size": 32,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "dwLength",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "dwMemoryLoad",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "dwTotalPhys",
+        "type": "SIZE_T",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "dwAvailPhys",
+        "type": "SIZE_T",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "dwTotalPageFile",
+        "type": "SIZE_T",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "dwAvailPageFile",
+        "type": "SIZE_T",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "dwTotalVirtual",
+        "type": "SIZE_T",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "dwAvailVirtual",
+        "type": "SIZE_T",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_MMCKINFO": {
+    "name": "_MMCKINFO",
+    "path": "/mmsystem.h",
+    "size": 20,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "ckid",
+        "type": "FOURCC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "cksize",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "fccType",
+        "type": "FOURCC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "dwDataOffset",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "dwFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_MMIOINFO": {
+    "name": "_MMIOINFO",
+    "path": "/mmsystem.h",
+    "size": 72,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "dwFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "fccIOProc",
+        "type": "FOURCC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "pIOProc",
+        "type": "LPMMIOPROC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "wErrorRet",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "htask",
+        "type": "HTASK",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "cchBuffer",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "pchBuffer",
+        "type": "HPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "pchNext",
+        "type": "HPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "pchEndRead",
+        "type": "HPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "pchEndWrite",
+        "type": "HPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "lBufOffset",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "lDiskOffset",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "adwInfo",
+        "type": "DWORD[3]",
+        "size": 12,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "dwReserved1",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "dwReserved2",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "hmmio",
+        "type": "HMMIO",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_OFSTRUCT": {
+    "name": "_OFSTRUCT",
+    "path": "/winbase.h",
+    "size": 136,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "cBytes",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 1,
+        "name": "fFixedDisk",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "nErrCode",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "Reserved1",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 6,
+        "name": "Reserved2",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "szPathName",
+        "type": "CHAR[128]",
+        "size": 128,
+        "comment": null
+      }
+    ]
+  },
+  "_OVERLAPPED": {
+    "name": "_OVERLAPPED",
+    "path": "/winbase.h",
+    "size": 20,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Internal",
+        "type": "ULONG_PTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "InternalHigh",
+        "type": "ULONG_PTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "u",
+        "type": "_union_518",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "hEvent",
+        "type": "HANDLE",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_RTL_CRITICAL_SECTION": {
+    "name": "_RTL_CRITICAL_SECTION",
+    "path": "/winnt.h",
+    "size": 24,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "DebugInfo",
+        "type": "PRTL_CRITICAL_SECTION_DEBUG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "LockCount",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "RecursionCount",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "OwningThread",
+        "type": "HANDLE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "LockSemaphore",
+        "type": "HANDLE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "SpinCount",
+        "type": "ULONG_PTR",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_RTL_CRITICAL_SECTION_DEBUG": {
+    "name": "_RTL_CRITICAL_SECTION_DEBUG",
+    "path": "/winnt.h",
+    "size": 32,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Type",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "CreatorBackTraceIndex",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "CriticalSection",
+        "type": "_RTL_CRITICAL_SECTION *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "ProcessLocksList",
+        "type": "LIST_ENTRY",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "EntryCount",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "ContentionCount",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "Flags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "CreatorBackTraceIndexHigh",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 30,
+        "name": "SpareWORD",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "_SECURITY_ATTRIBUTES": {
+    "name": "_SECURITY_ATTRIBUTES",
+    "path": "/winbase.h",
+    "size": 12,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "nLength",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "lpSecurityDescriptor",
+        "type": "LPVOID",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "bInheritHandle",
+        "type": "BOOL",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_STARTUPINFOA": {
+    "name": "_STARTUPINFOA",
+    "path": "/winbase.h",
+    "size": 68,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "cb",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "lpReserved",
+        "type": "LPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "lpDesktop",
+        "type": "LPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "lpTitle",
+        "type": "LPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "dwX",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "dwY",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "dwXSize",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "dwYSize",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "dwXCountChars",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "dwYCountChars",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "dwFillAttribute",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "dwFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "wShowWindow",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 50,
+        "name": "cbReserved2",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "lpReserved2",
+        "type": "LPBYTE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "hStdInput",
+        "type": "HANDLE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "hStdOutput",
+        "type": "HANDLE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "hStdError",
+        "type": "HANDLE",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_strflt": {
+    "name": "_strflt",
+    "path": "/fltintrn.h",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "sign",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "decpt",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "flag",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "mantissa",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_struct_19": {
+    "name": "_struct_19",
+    "path": "/winnt.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "LowPart",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "HighPart",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_struct_20": {
+    "name": "_struct_20",
+    "path": "/winnt.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "LowPart",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "HighPart",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_struct_519": {
+    "name": "_struct_519",
+    "path": "/winbase.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Offset",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "OffsetHigh",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_SYSTEMTIME": {
+    "name": "_SYSTEMTIME",
+    "path": "/winbase.h",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wYear",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wMonth",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wDayOfWeek",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 6,
+        "name": "wDay",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "wHour",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 10,
+        "name": "wMinute",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "wSecond",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 14,
+        "name": "wMilliseconds",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "_tiddata": {
+    "name": "_tiddata",
+    "path": "/mtdll.h",
+    "size": 952,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "_tid",
+        "type": "ulong",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "_thandle",
+        "type": "uintptr_t",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "_terrno",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "_tdoserrno",
+        "type": "ulong",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "_fpds",
+        "type": "uint",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "_holdrand",
+        "type": "ulong",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "_token",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "_wtoken",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "_mtoken",
+        "type": "uchar *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "_errmsg",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "_werrmsg",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "_namebuf0",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "_wnamebuf0",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "_namebuf1",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "_wnamebuf1",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "_asctimebuf",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "_wasctimebuf",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "_gmtimebuf",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 72,
+        "name": "_cvtbuf",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 76,
+        "name": "_con_ch_buf",
+        "type": "uchar[5]",
+        "size": 5,
+        "comment": null
+      },
+      {
+        "offset": 82,
+        "name": "_ch_buf_used",
+        "type": "ushort",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 84,
+        "name": "_initaddr",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 88,
+        "name": "_initarg",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 92,
+        "name": "_pxcptacttab",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 96,
+        "name": "_tpxcptinfoptrs",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 100,
+        "name": "_tfpecode",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 104,
+        "name": "ptmbcinfo",
+        "type": "pthreadmbcinfo",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 108,
+        "name": "ptlocinfo",
+        "type": "pthreadlocinfo",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 112,
+        "name": "_ownlocale",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 116,
+        "name": "_NLG_dwCode",
+        "type": "ulong",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 120,
+        "name": "_terminate",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 124,
+        "name": "_unexpected",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 128,
+        "name": "_translator",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 132,
+        "name": "_purecall",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 136,
+        "name": "_curexception",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 140,
+        "name": "_curcontext",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 144,
+        "name": "_ProcessingThrow",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 148,
+        "name": "_curexcspec",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 152,
+        "name": "_pFrameInfoChain",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 156,
+        "name": "_setloc_data",
+        "type": "_setloc_struct",
+        "size": 764,
+        "comment": null
+      },
+      {
+        "offset": 920,
+        "name": "_reserved1",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 924,
+        "name": "_reserved2",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 928,
+        "name": "_reserved3",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 932,
+        "name": "_reserved4",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 936,
+        "name": "_reserved5",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 940,
+        "name": "_cxxReThrow",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 944,
+        "name": "__initDomain",
+        "type": "ulong",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 948,
+        "name": "_initapartment",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_TIME_ZONE_INFORMATION": {
+    "name": "_TIME_ZONE_INFORMATION",
+    "path": "/winbase.h",
+    "size": 172,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Bias",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "StandardName",
+        "type": "WCHAR[32]",
+        "size": 64,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "StandardDate",
+        "type": "SYSTEMTIME",
+        "size": 16,
+        "comment": null
+      },
+      {
+        "offset": 84,
+        "name": "StandardBias",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 88,
+        "name": "DaylightName",
+        "type": "WCHAR[32]",
+        "size": 64,
+        "comment": null
+      },
+      {
+        "offset": 152,
+        "name": "DaylightDate",
+        "type": "SYSTEMTIME",
+        "size": 16,
+        "comment": null
+      },
+      {
+        "offset": 168,
+        "name": "DaylightBias",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_union_518": {
+    "name": "_union_518",
+    "path": "/winbase.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "s",
+        "type": "_struct_519",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "Pointer",
+        "type": "PVOID",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "_WIN32_FIND_DATAA": {
+    "name": "_WIN32_FIND_DATAA",
+    "path": "/winbase.h",
+    "size": 320,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "dwFileAttributes",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "ftCreationTime",
+        "type": "FILETIME",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "ftLastAccessTime",
+        "type": "FILETIME",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "ftLastWriteTime",
+        "type": "FILETIME",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "nFileSizeHigh",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "nFileSizeLow",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "dwReserved0",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "dwReserved1",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "cFileName",
+        "type": "CHAR[260]",
+        "size": 260,
+        "comment": null
+      },
+      {
+        "offset": 304,
+        "name": "cAlternateFileName",
+        "type": "CHAR[14]",
+        "size": 14,
+        "comment": null
+      }
+    ]
+  },
+  "HBRUSH__": {
+    "name": "HBRUSH__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HDC__": {
+    "name": "HDC__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HFONT__": {
+    "name": "HFONT__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HICON__": {
+    "name": "HICON__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HINSTANCE__": {
+    "name": "HINSTANCE__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HKEY__": {
+    "name": "HKEY__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HMENU__": {
+    "name": "HMENU__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HMMIO__": {
+    "name": "HMMIO__",
+    "path": "/mmsystem.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HPALETTE__": {
+    "name": "HPALETTE__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HPEN__": {
+    "name": "HPEN__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HRSRC__": {
+    "name": "HRSRC__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HTASK__": {
+    "name": "HTASK__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "HWND__": {
+    "name": "HWND__",
+    "path": "/WinDef.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "unused",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_BASE_RELOCATION": {
+    "name": "IMAGE_BASE_RELOCATION",
+    "path": "/PE",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "VirtualAddress",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "SizeOfBlock",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_DATA_DIRECTORY": {
+    "name": "IMAGE_DATA_DIRECTORY",
+    "path": "/PE",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "VirtualAddress",
+        "type": "ImageBaseOffset32",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "Size",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_DOS_HEADER": {
+    "name": "IMAGE_DOS_HEADER",
+    "path": "/DOS",
+    "size": 128,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "e_magic",
+        "type": "char[2]",
+        "size": 2,
+        "comment": "Magic number"
+      },
+      {
+        "offset": 2,
+        "name": "e_cblp",
+        "type": "word",
+        "size": 2,
+        "comment": "Bytes of last page"
+      },
+      {
+        "offset": 4,
+        "name": "e_cp",
+        "type": "word",
+        "size": 2,
+        "comment": "Pages in file"
+      },
+      {
+        "offset": 6,
+        "name": "e_crlc",
+        "type": "word",
+        "size": 2,
+        "comment": "Relocations"
+      },
+      {
+        "offset": 8,
+        "name": "e_cparhdr",
+        "type": "word",
+        "size": 2,
+        "comment": "Size of header in paragraphs"
+      },
+      {
+        "offset": 10,
+        "name": "e_minalloc",
+        "type": "word",
+        "size": 2,
+        "comment": "Minimum extra paragraphs needed"
+      },
+      {
+        "offset": 12,
+        "name": "e_maxalloc",
+        "type": "word",
+        "size": 2,
+        "comment": "Maximum extra paragraphs needed"
+      },
+      {
+        "offset": 14,
+        "name": "e_ss",
+        "type": "word",
+        "size": 2,
+        "comment": "Initial (relative) SS value"
+      },
+      {
+        "offset": 16,
+        "name": "e_sp",
+        "type": "word",
+        "size": 2,
+        "comment": "Initial SP value"
+      },
+      {
+        "offset": 18,
+        "name": "e_csum",
+        "type": "word",
+        "size": 2,
+        "comment": "Checksum"
+      },
+      {
+        "offset": 20,
+        "name": "e_ip",
+        "type": "word",
+        "size": 2,
+        "comment": "Initial IP value"
+      },
+      {
+        "offset": 22,
+        "name": "e_cs",
+        "type": "word",
+        "size": 2,
+        "comment": "Initial (relative) CS value"
+      },
+      {
+        "offset": 24,
+        "name": "e_lfarlc",
+        "type": "word",
+        "size": 2,
+        "comment": "File address of relocation table"
+      },
+      {
+        "offset": 26,
+        "name": "e_ovno",
+        "type": "word",
+        "size": 2,
+        "comment": "Overlay number"
+      },
+      {
+        "offset": 28,
+        "name": "e_res[4]",
+        "type": "word[4]",
+        "size": 8,
+        "comment": "Reserved words"
+      },
+      {
+        "offset": 36,
+        "name": "e_oemid",
+        "type": "word",
+        "size": 2,
+        "comment": "OEM identifier (for e_oeminfo)"
+      },
+      {
+        "offset": 38,
+        "name": "e_oeminfo",
+        "type": "word",
+        "size": 2,
+        "comment": "OEM information; e_oemid specific"
+      },
+      {
+        "offset": 40,
+        "name": "e_res2[10]",
+        "type": "word[10]",
+        "size": 20,
+        "comment": "Reserved words"
+      },
+      {
+        "offset": 60,
+        "name": "e_lfanew",
+        "type": "dword",
+        "size": 4,
+        "comment": "File address of new exe header"
+      },
+      {
+        "offset": 64,
+        "name": "e_program",
+        "type": "byte[64]",
+        "size": 64,
+        "comment": "Actual DOS program"
+      }
+    ]
+  },
+  "IMAGE_FILE_HEADER": {
+    "name": "IMAGE_FILE_HEADER",
+    "path": "/PE",
+    "size": 20,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Machine",
+        "type": "word",
+        "size": 2,
+        "comment": "332"
+      },
+      {
+        "offset": 2,
+        "name": "NumberOfSections",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "TimeDateStamp",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "PointerToSymbolTable",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "NumberOfSymbols",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "SizeOfOptionalHeader",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 18,
+        "name": "Characteristics",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_NT_HEADERS32": {
+    "name": "IMAGE_NT_HEADERS32",
+    "path": "/PE",
+    "size": 248,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Signature",
+        "type": "char[4]",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "FileHeader",
+        "type": "IMAGE_FILE_HEADER",
+        "size": 20,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "OptionalHeader",
+        "type": "IMAGE_OPTIONAL_HEADER32",
+        "size": 224,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_OPTIONAL_HEADER32": {
+    "name": "IMAGE_OPTIONAL_HEADER32",
+    "path": "/PE",
+    "size": 224,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Magic",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "MajorLinkerVersion",
+        "type": "byte",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 3,
+        "name": "MinorLinkerVersion",
+        "type": "byte",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "SizeOfCode",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "SizeOfInitializedData",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "SizeOfUninitializedData",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "AddressOfEntryPoint",
+        "type": "ImageBaseOffset32",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "BaseOfCode",
+        "type": "ImageBaseOffset32",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "BaseOfData",
+        "type": "ImageBaseOffset32",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "ImageBase",
+        "type": "pointer32",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "SectionAlignment",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "FileAlignment",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "MajorOperatingSystemVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 42,
+        "name": "MinorOperatingSystemVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "MajorImageVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 46,
+        "name": "MinorImageVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "MajorSubsystemVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 50,
+        "name": "MinorSubsystemVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "Win32VersionValue",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "SizeOfImage",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "SizeOfHeaders",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "CheckSum",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "Subsystem",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 70,
+        "name": "DllCharacteristics",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 72,
+        "name": "SizeOfStackReserve",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 76,
+        "name": "SizeOfStackCommit",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 80,
+        "name": "SizeOfHeapReserve",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 84,
+        "name": "SizeOfHeapCommit",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 88,
+        "name": "LoaderFlags",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 92,
+        "name": "NumberOfRvaAndSizes",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 96,
+        "name": "DataDirectory",
+        "type": "IMAGE_DATA_DIRECTORY[16]",
+        "size": 128,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DATA_ENTRY": {
+    "name": "IMAGE_RESOURCE_DATA_ENTRY",
+    "path": "/PE",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "OffsetToData",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "Size",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "CodePage",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "Reserved",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DIRECTORY": {
+    "name": "IMAGE_RESOURCE_DIRECTORY",
+    "path": "/PE",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Characteristics",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "TimeDateStamp",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "MajorVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 10,
+        "name": "MinorVersion",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "NumberOfNamedEntries",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 14,
+        "name": "NumberOfIdEntries",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DIRECTORY_ENTRY": {
+    "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY",
+    "path": "/PE",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "NameUnion",
+        "type": "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameUnion",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "DirectoryUnion",
+        "type": "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryUnion",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryStruct": {
+    "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryStruct",
+    "path": "/",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "OffsetToDirectory",
+        "type": "dword:31",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 3,
+        "name": "DataIsDirectory",
+        "type": "dword:1",
+        "size": 1,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryUnion": {
+    "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryUnion",
+    "path": "/",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "OffsetToData",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryStruct",
+        "type": "IMAGE_RESOURCE_DIRECTORY_ENTRY_DirectoryStruct",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameStruct": {
+    "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameStruct",
+    "path": "/PE",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "NameOffset",
+        "type": "dword:31",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 3,
+        "name": "NameIsString",
+        "type": "dword:1",
+        "size": 1,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameUnion": {
+    "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameUnion",
+    "path": "/PE",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameStruct",
+        "type": "IMAGE_RESOURCE_DIRECTORY_ENTRY_NameStruct",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "Name",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "Id",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "IMAGE_SECTION_HEADER": {
+    "name": "IMAGE_SECTION_HEADER",
+    "path": "/PE",
+    "size": 40,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "Name",
+        "type": "char[8]",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "Misc",
+        "type": "Misc",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "VirtualAddress",
+        "type": "ImageBaseOffset32",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "SizeOfRawData",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "PointerToRawData",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "PointerToRelocations",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "PointerToLinenumbers",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "NumberOfRelocations",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 34,
+        "name": "NumberOfLinenumbers",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "Characteristics",
+        "type": "SectionFlags",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "joyinfo_tag": {
+    "name": "joyinfo_tag",
+    "path": "/mmsystem.h",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wXpos",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wYpos",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "wZpos",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "wButtons",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "joyinfoex_tag": {
+    "name": "joyinfoex_tag",
+    "path": "/mmsystem.h",
+    "size": 52,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "dwSize",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "dwFlags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "dwXpos",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "dwYpos",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "dwZpos",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "dwRpos",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "dwUpos",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "dwVpos",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "dwButtons",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "dwButtonNumber",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "dwPOV",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "dwReserved1",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "dwReserved2",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "lconv": {
+    "name": "lconv",
+    "path": "/crtdefs.h",
+    "size": 80,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "decimal_point",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "thousands_sep",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "grouping",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "int_curr_symbol",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "currency_symbol",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "mon_decimal_point",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "mon_thousands_sep",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "mon_grouping",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "positive_sign",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "negative_sign",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "int_frac_digits",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 41,
+        "name": "frac_digits",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 42,
+        "name": "p_cs_precedes",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 43,
+        "name": "p_sep_by_space",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "n_cs_precedes",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 45,
+        "name": "n_sep_by_space",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 46,
+        "name": "p_sign_posn",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 47,
+        "name": "n_sign_posn",
+        "type": "char",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "_W_decimal_point",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "_W_thousands_sep",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "_W_int_curr_symbol",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "_W_currency_symbol",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "_W_mon_decimal_point",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "_W_mon_thousands_sep",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 72,
+        "name": "_W_positive_sign",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 76,
+        "name": "_W_negative_sign",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "localeinfo_struct": {
+    "name": "localeinfo_struct",
+    "path": "/crtdefs.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "locinfo",
+        "type": "pthreadlocinfo",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "mbcinfo",
+        "type": "pthreadmbcinfo",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "localerefcount": {
+    "name": "localerefcount",
+    "path": "/crtdefs.h",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "locale",
+        "type": "char *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wlocale",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "refcount",
+        "type": "int *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "wrefcount",
+        "type": "int *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "Misc": {
+    "name": "Misc",
+    "path": "/PE",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "PhysicalAddress",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 0,
+        "name": "VirtualSize",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "setloc_struct": {
+    "name": "setloc_struct",
+    "path": "/mtdll.h",
+    "size": 764,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "pchLanguage",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "pchCountry",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "iLocState",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "iPrimaryLen",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "bAbbrevLanguage",
+        "type": "BOOL",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "bAbbrevCountry",
+        "type": "BOOL",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "_cachecp",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "_cachein",
+        "type": "wchar_t[131]",
+        "size": 262,
+        "comment": null
+      },
+      {
+        "offset": 290,
+        "name": "_cacheout",
+        "type": "wchar_t[131]",
+        "size": 262,
+        "comment": null
+      },
+      {
+        "offset": 552,
+        "name": "_Loc_c",
+        "type": "_is_ctype_compatible[5]",
+        "size": 40,
+        "comment": null
+      },
+      {
+        "offset": 592,
+        "name": "_cacheLocaleName",
+        "type": "wchar_t[85]",
+        "size": 170,
+        "comment": null
+      }
+    ]
+  },
+  "StringFileInfo": {
+    "name": "StringFileInfo",
+    "path": "/PE",
+    "size": 6,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wValueLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wType",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "StringInfo": {
+    "name": "StringInfo",
+    "path": "/PE",
+    "size": 6,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wValueLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wType",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "StringTable": {
+    "name": "StringTable",
+    "path": "/PE",
+    "size": 6,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wValueLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wType",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "tagJOYCAPSA": {
+    "name": "tagJOYCAPSA",
+    "path": "/mmsystem.h",
+    "size": 404,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wMid",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wPid",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "szPname",
+        "type": "CHAR[32]",
+        "size": 32,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "wXmin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "wXmax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "wYmin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "wYmax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "wZmin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "wZmax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "wNumButtons",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "wPeriodMin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "wPeriodMax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 72,
+        "name": "wRmin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 76,
+        "name": "wRmax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 80,
+        "name": "wUmin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 84,
+        "name": "wUmax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 88,
+        "name": "wVmin",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 92,
+        "name": "wVmax",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 96,
+        "name": "wCaps",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 100,
+        "name": "wMaxAxes",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 104,
+        "name": "wNumAxes",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 108,
+        "name": "wMaxButtons",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 112,
+        "name": "szRegKey",
+        "type": "CHAR[32]",
+        "size": 32,
+        "comment": null
+      },
+      {
+        "offset": 144,
+        "name": "szOEMVxD",
+        "type": "CHAR[260]",
+        "size": 260,
+        "comment": null
+      }
+    ]
+  },
+  "tagLC_STRINGS": {
+    "name": "tagLC_STRINGS",
+    "path": "/setlocal.h",
+    "size": 458,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "szLanguage",
+        "type": "wchar_t[64]",
+        "size": 128,
+        "comment": null
+      },
+      {
+        "offset": 128,
+        "name": "szCountry",
+        "type": "wchar_t[64]",
+        "size": 128,
+        "comment": null
+      },
+      {
+        "offset": 256,
+        "name": "szCodePage",
+        "type": "wchar_t[16]",
+        "size": 32,
+        "comment": null
+      },
+      {
+        "offset": 288,
+        "name": "szLocaleName",
+        "type": "wchar_t[85]",
+        "size": 170,
+        "comment": null
+      }
+    ]
+  },
+  "tagLOGFONTA": {
+    "name": "tagLOGFONTA",
+    "path": "/wingdi.h",
+    "size": 60,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "lfHeight",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "lfWidth",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "lfEscapement",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "lfOrientation",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "lfWeight",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "lfItalic",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 21,
+        "name": "lfUnderline",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 22,
+        "name": "lfStrikeOut",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 23,
+        "name": "lfCharSet",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "lfOutPrecision",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 25,
+        "name": "lfClipPrecision",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 26,
+        "name": "lfQuality",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 27,
+        "name": "lfPitchAndFamily",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "lfFaceName",
+        "type": "CHAR[32]",
+        "size": 32,
+        "comment": null
+      }
+    ]
+  },
+  "tagLOGPALETTE": {
+    "name": "tagLOGPALETTE",
+    "path": "/wingdi.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "palVersion",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "palNumEntries",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "palPalEntry",
+        "type": "PALETTEENTRY[1]",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "tagMSG": {
+    "name": "tagMSG",
+    "path": "/winuser.h",
+    "size": 28,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "hwnd",
+        "type": "HWND",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "message",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "wParam",
+        "type": "WPARAM",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "lParam",
+        "type": "LPARAM",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "time",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "pt",
+        "type": "POINT",
+        "size": 8,
+        "comment": null
+      }
+    ]
+  },
+  "tagOFNA": {
+    "name": "tagOFNA",
+    "path": "/commdlg.h",
+    "size": 88,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "lStructSize",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "hwndOwner",
+        "type": "HWND",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "hInstance",
+        "type": "HINSTANCE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "lpstrFilter",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "lpstrCustomFilter",
+        "type": "LPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "nMaxCustFilter",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "nFilterIndex",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "lpstrFile",
+        "type": "LPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "nMaxFile",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "lpstrFileTitle",
+        "type": "LPSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "nMaxFileTitle",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "lpstrInitialDir",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "lpstrTitle",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "Flags",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "nFileOffset",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 58,
+        "name": "nFileExtension",
+        "type": "WORD",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 60,
+        "name": "lpstrDefExt",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "lCustData",
+        "type": "LPARAM",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 68,
+        "name": "lpfnHook",
+        "type": "LPOFNHOOKPROC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 72,
+        "name": "lpTemplateName",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 76,
+        "name": "pvReserved",
+        "type": "void *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 80,
+        "name": "dwReserved",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 84,
+        "name": "FlagsEx",
+        "type": "DWORD",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "tagPAINTSTRUCT": {
+    "name": "tagPAINTSTRUCT",
+    "path": "/winuser.h",
+    "size": 64,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "hdc",
+        "type": "HDC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "fErase",
+        "type": "BOOL",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "rcPaint",
+        "type": "RECT",
+        "size": 16,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "fRestore",
+        "type": "BOOL",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "fIncUpdate",
+        "type": "BOOL",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "rgbReserved",
+        "type": "BYTE[32]",
+        "size": 32,
+        "comment": null
+      }
+    ]
+  },
+  "tagPALETTEENTRY": {
+    "name": "tagPALETTEENTRY",
+    "path": "/wingdi.h",
+    "size": 4,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "peRed",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 1,
+        "name": "peGreen",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "peBlue",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 3,
+        "name": "peFlags",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      }
+    ]
+  },
+  "tagPOINT": {
+    "name": "tagPOINT",
+    "path": "/WinDef.h",
+    "size": 8,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "x",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "y",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "tagRECT": {
+    "name": "tagRECT",
+    "path": "/WinDef.h",
+    "size": 16,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "left",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "top",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "right",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "bottom",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "tagTEXTMETRICA": {
+    "name": "tagTEXTMETRICA",
+    "path": "/wingdi.h",
+    "size": 56,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "tmHeight",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "tmAscent",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "tmDescent",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "tmInternalLeading",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "tmExternalLeading",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "tmAveCharWidth",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "tmMaxCharWidth",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "tmWeight",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "tmOverhang",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "tmDigitizedAspectX",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "tmDigitizedAspectY",
+        "type": "LONG",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "tmFirstChar",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 45,
+        "name": "tmLastChar",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 46,
+        "name": "tmDefaultChar",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 47,
+        "name": "tmBreakChar",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "tmItalic",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 49,
+        "name": "tmUnderlined",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 50,
+        "name": "tmStruckOut",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 51,
+        "name": "tmPitchAndFamily",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      },
+      {
+        "offset": 52,
+        "name": "tmCharSet",
+        "type": "BYTE",
+        "size": 1,
+        "comment": null
+      }
+    ]
+  },
+  "tagWNDCLASSA": {
+    "name": "tagWNDCLASSA",
+    "path": "/winuser.h",
+    "size": 40,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "style",
+        "type": "UINT",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "lpfnWndProc",
+        "type": "WNDPROC",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "cbClsExtra",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "cbWndExtra",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "hInstance",
+        "type": "HINSTANCE",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "hIcon",
+        "type": "HICON",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "hCursor",
+        "type": "HCURSOR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "hbrBackground",
+        "type": "HBRUSH",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "lpszMenuName",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 36,
+        "name": "lpszClassName",
+        "type": "LPCSTR",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "threadlocaleinfostruct": {
+    "name": "threadlocaleinfostruct",
+    "path": "/crtdefs.h",
+    "size": 184,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "refcount",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "lc_codepage",
+        "type": "uint",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "lc_collate_cp",
+        "type": "uint",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "lc_time_cp",
+        "type": "uint",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "lc_category",
+        "type": "locrefcount[6]",
+        "size": 96,
+        "comment": null
+      },
+      {
+        "offset": 112,
+        "name": "lc_clike",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 116,
+        "name": "mb_cur_max",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 120,
+        "name": "lconv_intl_refcount",
+        "type": "int *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 124,
+        "name": "lconv_num_refcount",
+        "type": "int *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 128,
+        "name": "lconv_mon_refcount",
+        "type": "int *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 132,
+        "name": "lconv",
+        "type": "lconv *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 136,
+        "name": "ctype1_refcount",
+        "type": "int *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 140,
+        "name": "ctype1",
+        "type": "ushort *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 144,
+        "name": "pctype",
+        "type": "ushort *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 148,
+        "name": "pclmap",
+        "type": "uchar *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 152,
+        "name": "pcumap",
+        "type": "uchar *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 156,
+        "name": "lc_time_curr",
+        "type": "__lc_time_data *",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 160,
+        "name": "locale_name",
+        "type": "wchar_t *[6]",
+        "size": 24,
+        "comment": null
+      }
+    ]
+  },
+  "threadmbcinfostruct": {
+    "name": "threadmbcinfostruct",
+    "path": "/crtdefs.h",
+    "size": 544,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "refcount",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "mbcodepage",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "ismbcodepage",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "mbulinfo",
+        "type": "ushort[6]",
+        "size": 12,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "mbctype",
+        "type": "uchar[257]",
+        "size": 257,
+        "comment": null
+      },
+      {
+        "offset": 281,
+        "name": "mbcasemap",
+        "type": "uchar[256]",
+        "size": 256,
+        "comment": null
+      },
+      {
+        "offset": 540,
+        "name": "mblocalename",
+        "type": "wchar_t *",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "tm": {
+    "name": "tm",
+    "path": "/time.h",
+    "size": 36,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "tm_sec",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "tm_min",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 8,
+        "name": "tm_hour",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 12,
+        "name": "tm_mday",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 16,
+        "name": "tm_mon",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 20,
+        "name": "tm_year",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 24,
+        "name": "tm_wday",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 28,
+        "name": "tm_yday",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 32,
+        "name": "tm_isdst",
+        "type": "int",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  },
+  "Var": {
+    "name": "Var",
+    "path": "/PE",
+    "size": 6,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wValueLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wType",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "VarFileInfo": {
+    "name": "VarFileInfo",
+    "path": "/PE",
+    "size": 6,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "wLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "wValueLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "wType",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      }
+    ]
+  },
+  "VS_VERSION_INFO": {
+    "name": "VS_VERSION_INFO",
+    "path": "/PE",
+    "size": 92,
+    "fields": [
+      {
+        "offset": 0,
+        "name": "StructLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 2,
+        "name": "ValueLength",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 4,
+        "name": "StructType",
+        "type": "word",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 6,
+        "name": "Info",
+        "type": "unicode",
+        "size": 32,
+        "comment": null
+      },
+      {
+        "offset": 38,
+        "name": "Padding",
+        "type": "byte[2]",
+        "size": 2,
+        "comment": null
+      },
+      {
+        "offset": 40,
+        "name": "Signature",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 44,
+        "name": "StructVersion",
+        "type": "word[2]",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 48,
+        "name": "FileVersion",
+        "type": "word[4]",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 56,
+        "name": "ProductVersion",
+        "type": "word[4]",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 64,
+        "name": "FileFlagsMask",
+        "type": "dword[2]",
+        "size": 8,
+        "comment": null
+      },
+      {
+        "offset": 72,
+        "name": "FileFlags",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 76,
+        "name": "FileOS",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 80,
+        "name": "FileType",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 84,
+        "name": "FileSubtype",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      },
+      {
+        "offset": 88,
+        "name": "FileTimestamp",
+        "type": "dword",
+        "size": 4,
+        "comment": null
+      }
+    ]
+  }
+}

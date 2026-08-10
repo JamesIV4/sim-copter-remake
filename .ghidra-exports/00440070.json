@@ -1,0 +1,36 @@
+{
+  "address": "00440070",
+  "name": "FUN_00440070",
+  "signature": "undefined FUN_00440070(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00440070(int param_1,int param_2,int param_3)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  FUN_004d5622();\r\n  uVar1 = __ftol();\r\n  FUN_0040ba90(uVar1);\r\n  if (*(int *)(param_2 + 4) == 0) {\r\n    FUN_0040ba90(0);\r\n  }\r\n  FUN_0040bb50(param_3 + -1);\r\n  FUN_0040ba90(*(undefined4 *)(param_2 + 8));\r\n  if (*(int *)(param_2 + 0xc) == 0) {\r\n    uVar1 = 1;\r\n  }\r\n  else {\r\n    uVar1 = 2;\r\n  }\r\n  (**(code **)(**(int **)(param_1 + 0x80) + 0xdc))(uVar1);\r\n  if (*(int *)(param_2 + 0x10) == 0) {\r\n    uVar1 = 1;\r\n  }\r\n  else {\r\n    uVar1 = 2;\r\n  }\r\n  (**(code **)(**(int **)(param_1 + 0x84) + 0xdc))(uVar1);\r\n  if (*(int *)(param_2 + 0x14) == 0) {\r\n    uVar1 = 1;\r\n  }\r\n  else {\r\n    uVar1 = 2;\r\n  }\r\n  (**(code **)(**(int **)(param_1 + 0x88) + 0xdc))(uVar1);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00438200",
+      "name": "FUN_00438200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5622",
+      "name": "FUN_004d5622"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "0040ba90",
+      "name": "FUN_0040ba90"
+    },
+    {
+      "addr": "0040bb50",
+      "name": "FUN_0040bb50"
+    }
+  ],
+  "data_refs": []
+}

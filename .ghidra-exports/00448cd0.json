@@ -1,0 +1,34 @@
+{
+  "address": "00448cd0",
+  "name": "FUN_00448cd0",
+  "signature": "undefined FUN_00448cd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00448cd0(int param_1,int *param_2,int param_3,int param_4)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 *puVar9;\r\n  undefined4 *puVar10;\r\n  \r\n  if (*(int *)(param_1 + 0x38) != 0) {\r\n    puVar1 = (undefined4 *)*param_2;\r\n    iVar6 = (*(code *)*puVar1)();\r\n    if (iVar6 != 0) {\r\n      iVar6 = param_2[5];\r\n      iVar2 = *(int *)(param_1 + 0x34);\r\n      puVar8 = (undefined4 *)(param_3 + param_4 * iVar6 + param_2[4]);\r\n      uVar3 = *(uint *)(iVar2 + 0x10);\r\n      iVar4 = *(int *)(iVar2 + 0x14);\r\n      puVar5 = *(undefined4 **)(iVar2 + 0x448);\r\n      while (0 < iVar4) {\r\n        puVar9 = puVar5;\r\n        puVar10 = puVar8;\r\n        for (uVar7 = uVar3 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n          *puVar10 = *puVar9;\r\n          puVar9 = puVar9 + 1;\r\n          puVar10 = puVar10 + 1;\r\n        }\r\n        for (uVar7 = uVar3 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n          *(undefined1 *)puVar10 = *(undefined1 *)puVar9;\r\n          puVar9 = (undefined4 *)((int)puVar9 + 1);\r\n          puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n        }\r\n        puVar8 = (undefined4 *)((int)puVar8 + iVar6);\r\n        puVar5 = (undefined4 *)((int)puVar5 + uVar3);\r\n      }\r\n      (*(code *)puVar1[1])();\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00448560",
+      "name": "FUN_00448560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448560",
+      "name": "FUN_00448560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448840",
+      "name": "FUN_00448840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448840",
+      "name": "FUN_00448840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

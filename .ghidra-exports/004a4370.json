@@ -1,0 +1,24 @@
+{
+  "address": "004a4370",
+  "name": "FUN_004a4370",
+  "signature": "undefined FUN_004a4370(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a4370(void)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  uint *puVar8;\r\n  int iVar9;\r\n  uint local_8;\r\n  \r\n  puVar8 = &DAT_005d3eb0;\r\n  do {\r\n    uVar1 = *puVar8;\r\n    if ((uVar1 & 1) != 0) {\r\n      uVar5 = (uint)*(byte *)puVar8[4];\r\n      if (((((int)uVar5 < DAT_0057f8c8) ||\r\n           (uVar2 = (uint)((byte *)puVar8[4])[1], (int)uVar2 < DAT_0057f8cc)) ||\r\n          (DAT_0057f8b8 < (int)uVar5)) || (DAT_0057f8bc < (int)uVar2)) {\r\n        *puVar8 = uVar1 & 0xfffffffd;\r\n      }\r\n      else {\r\n        *puVar8 = uVar1 | 2;\r\n        puVar8[6] = ((uint)*(byte *)(puVar8[4] + 1) - DAT_0057f8cc << (DAT_00505f08 & 0x1f)) + 8;\r\n        puVar8[8] = ((uint)*(byte *)puVar8[4] - DAT_0057f8c8 << (DAT_00505f08 & 0x1f)) + 9;\r\n        puVar8[7] = puVar8[6] + DAT_0057f888;\r\n        puVar8[9] = puVar8[8] + DAT_0057f888;\r\n        local_8 = (uint)((byte *)puVar8[4])[1];\r\n        uVar1 = puVar8[2];\r\n        if (uVar1 == 0) {\r\n          uVar3 = 0x1a;\r\n        }\r\n        else if (uVar1 == 1) {\r\n          uVar3 = 0xffffff9a;\r\n        }\r\n        else if (uVar1 == 2) {\r\n          uVar3 = 0xffffffea;\r\n        }\r\n        else {\r\n          uVar3 = 0x70;\r\n        }\r\n        FUN_004a4530(puVar8[8],puVar8[6],\r\n                     (uint)*(byte *)puVar8[5] - (uint)*(byte *)puVar8[4] << (DAT_00505f08 & 0x1f),\r\n                     ((byte *)puVar8[5])[1] - local_8 << (DAT_00505f08 & 0x1f),uVar3);\r\n        if ((puVar8[2] != 0xffffffff) && (DAT_00505f10 != 0)) {\r\n          pcVar7 = (char *)(&DAT_0057f8d8)[puVar8[2]];\r\n          iVar9 = 0;\r\n          pcVar6 = (char *)(puVar8[6] * DAT_00505ed8 + puVar8[8] + DAT_00505ee4);\r\n          if (0 < DAT_0057f888) {\r\n            do {\r\n              iVar4 = 0;\r\n              if (0 < DAT_0057f888) {\r\n                do {\r\n                  if (*pcVar7 != '\\0') {\r\n                    *pcVar6 = *pcVar7;\r\n                  }\r\n                  pcVar7 = pcVar7 + 1;\r\n                  pcVar6 = pcVar6 + 1;\r\n                  iVar4 = iVar4 + 1;\r\n                } while (iVar4 < DAT_0057f888);\r\n              }\r\n              pcVar6 = pcVar6 + (DAT_00505ed8 - DAT_0057f888);\r\n              pcVar7 = pcVar7 + (_DAT_0057f8c0 - DAT_0057f888);\r\n              iVar9 = iVar9 + 1;\r\n            } while (iVar9 < DAT_0057f888);\r\n          }\r\n        }\r\n      }\r\n    }\r\n    puVar8 = puVar8 + 10;\r\n  } while (puVar8 < &DAT_005d41d0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a28e0",
+      "name": "FUN_004a28e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004a4530",
+      "name": "FUN_004a4530"
+    }
+  ],
+  "data_refs": []
+}

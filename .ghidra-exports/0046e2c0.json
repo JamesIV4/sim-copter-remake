@@ -1,0 +1,24 @@
+{
+  "address": "0046e2c0",
+  "name": "FUN_0046e2c0",
+  "signature": "undefined FUN_0046e2c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0046e2c0(int param_1,int param_2,int param_3,int param_4,int param_5)\r\n\r\n{\r\n  int *piVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  undefined4 *puVar6;\r\n  int iVar7;\r\n  uint *puVar8;\r\n  int iVar9;\r\n  int local_20;\r\n  int local_1c;\r\n  int local_18;\r\n  int local_14;\r\n  int local_10;\r\n  int local_c;\r\n  \r\n  if (param_1 == 0) {\r\n    return 0;\r\n  }\r\n  local_c = 0;\r\n  puVar6 = *(undefined4 **)(param_1 + 0x4c);\r\n  if (0 < *(int *)(param_1 + 0x10)) {\r\n    do {\r\n      if ((((*(byte *)(puVar6 + 2) & 4) == 0) &&\r\n          ((-1 < param_4 || (*(int *)(puVar6[0xb] + 8) < -9999)))) &&\r\n         ((param_4 < 1 || (9999 < *(int *)(puVar6[0xb] + 8))))) {\r\n        puVar8 = puVar6 + 0xc;\r\n        iVar7 = 0x75300000;\r\n        iVar9 = puVar6[1];\r\n        local_20 = 0x75300000;\r\n        local_18 = 0x75300000;\r\n        local_10 = -0x75300000;\r\n        local_1c = -0x75300000;\r\n        local_14 = -0x75300000;\r\n        if (0 < iVar9) {\r\n          do {\r\n            uVar2 = *puVar8;\r\n            puVar8 = puVar8 + 1;\r\n            piVar1 = (int *)(*(int *)(param_1 + 8) + (uVar2 >> 4) * 0xc);\r\n            iVar3 = *piVar1;\r\n            if (iVar3 < local_18) {\r\n              local_18 = iVar3;\r\n            }\r\n            iVar4 = piVar1[1];\r\n            if (iVar4 < local_20) {\r\n              local_20 = iVar4;\r\n            }\r\n            iVar5 = piVar1[2];\r\n            if (iVar5 < iVar7) {\r\n              iVar7 = iVar5;\r\n            }\r\n            if (local_14 < iVar3) {\r\n              local_14 = iVar3;\r\n            }\r\n            if (local_1c < iVar4) {\r\n              local_1c = iVar4;\r\n            }\r\n            if (local_10 < iVar5) {\r\n              local_10 = iVar5;\r\n            }\r\n            iVar9 = iVar9 + -1;\r\n          } while (iVar9 != 0);\r\n        }\r\n        if ((((local_20 <= param_3 + param_5) && (param_3 - param_5 <= local_1c)) &&\r\n            (local_18 <= param_2 + param_5)) && (param_2 - param_5 <= local_14)) {\r\n          return local_10 + iVar7 >> 1;\r\n        }\r\n      }\r\n      puVar6 = (undefined4 *)*puVar6;\r\n      local_c = local_c + 1;\r\n    } while (local_c < *(int *)(param_1 + 0x10));\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a4ac0",
+      "name": "FUN_004a4ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a4ac0",
+      "name": "FUN_004a4ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

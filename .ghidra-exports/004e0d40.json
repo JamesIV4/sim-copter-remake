@@ -1,0 +1,29 @@
+{
+  "address": "004e0d40",
+  "name": "_ValidateExecute",
+  "signature": "int __cdecl _ValidateExecute(_func_int * param_1)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    int __cdecl _ValidateExecute(int (__stdcall*)(void))\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _ValidateExecute(_func_int *param_1)\r\n\r\n{\r\n  BOOL BVar1;\r\n  \r\n  BVar1 = IsBadCodePtr((FARPROC)param_1);\r\n  return (uint)(BVar1 == 0);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0b90",
+      "name": "FUN_004e0b90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000035",
+      "name": "IsBadCodePtr"
+    }
+  ],
+  "data_refs": []
+}

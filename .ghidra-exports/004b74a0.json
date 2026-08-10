@@ -1,0 +1,38 @@
+{
+  "address": "004b74a0",
+  "name": "FUN_004b74a0",
+  "signature": "undefined FUN_004b74a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b74a0(int *param_1)\r\n\r\n{\r\n  uint *puVar1;\r\n  code *pcVar2;\r\n  undefined4 *puVar3;\r\n  ushort uVar4;\r\n  bool bVar5;\r\n  bool bVar6;\r\n  bool bVar7;\r\n  short sVar8;\r\n  int iVar9;\r\n  uint uVar10;\r\n  ushort uVar11;\r\n  int iVar12;\r\n  uint uVar13;\r\n  uint uVar14;\r\n  int iVar15;\r\n  uint local_3c;\r\n  uint local_38;\r\n  int local_34;\r\n  int local_30;\r\n  int local_2c;\r\n  int local_28;\r\n  int local_24;\r\n  uint local_20;\r\n  uint local_1c;\r\n  int local_10;\r\n  \r\n  uVar10 = DAT_0061a66c;\r\n  local_1c = DAT_0061a668;\r\n  uVar13 = DAT_0061a664;\r\n  local_34 = 0;\r\n  bVar7 = false;\r\n  bVar6 = false;\r\n  local_20 = DAT_0061a664;\r\n  *(undefined4 *)((int)param_1 + 0x61) = 0;\r\n  local_28 = -1;\r\n  iVar9 = _rand();\r\n  uVar4 = (short)(ushort)iVar9 >> 0xf;\r\n  uVar11 = ((ushort)iVar9 ^ uVar4) - uVar4 & 0xf ^ uVar4;\r\n  sVar8 = uVar11 - uVar4;\r\n  iVar9 = DAT_005a25a0 >> 1;\r\n  if (uVar11 == uVar4) {\r\n    iVar12 = -uVar13 * iVar9;\r\n    iVar15 = uVar10 * iVar9;\r\n  }\r\n  else {\r\n    if (sVar8 == 1) {\r\n      uVar14 = -uVar10;\r\n      uVar10 = uVar13;\r\n    }\r\n    else if (sVar8 == 2) {\r\n      uVar14 = -uVar13;\r\n      uVar10 = -uVar10;\r\n    }\r\n    else {\r\n      iVar9 = iVar9 + 1;\r\n      uVar14 = uVar13;\r\n    }\r\n    iVar15 = uVar14 * iVar9;\r\n    iVar12 = uVar10 * iVar9;\r\n  }\r\n  iVar9 = iVar12 * 0x40;\r\n  local_38 = iVar15 * 0x40 + DAT_0061a6ac + 0x20000000 >> 0x16;\r\n  local_3c = (0x20000000 - DAT_0061a6b4) + iVar12 * -0x40 >> 0x16;\r\n  do {\r\n    local_28 = local_28 + 1;\r\n    switch(local_28) {\r\n    case 0:\r\n    case 4:\r\n      local_28 = 0;\r\n      local_30 = 0;\r\n      local_2c = -1;\r\n      local_34 = local_34 + 1;\r\n      break;\r\n    case 1:\r\n      local_30 = 1;\r\n      goto LAB_004b75d7;\r\n    case 2:\r\n      local_30 = 0;\r\n      local_2c = 1;\r\n      local_34 = local_34 + 1;\r\n      break;\r\n    case 3:\r\n      local_30 = -1;\r\nLAB_004b75d7:\r\n      local_2c = 0;\r\n    }\r\n    if (local_34 == 7) {\r\n      bVar7 = true;\r\n      local_34 = 6;\r\n    }\r\n    local_10 = 0;\r\n    if (0 < local_34) {\r\n      local_24 = local_38 << 2;\r\n      do {\r\n        uVar11 = (ushort)((uint)iVar9 >> 0x10);\r\n        if (((((int)local_38 < 0) || ((int)local_3c < 0)) || (0x7f < (int)local_38)) ||\r\n           (0x7f < (int)local_3c)) {\r\n          uVar13 = (uint)uVar11 << 0x10;\r\n        }\r\n        else {\r\n          uVar13 = CONCAT22(uVar11,(ushort)*(byte *)(*(int *)((int)&DAT_00590800 + local_24) +\r\n                                                    local_3c)) & 0xffff0002;\r\n          uVar13 = CONCAT22((short)(uVar13 >> 0x10),\r\n                            (short)uVar13 << 0xe |\r\n                            (ushort)*(byte *)(*(int *)((int)&DAT_005910b0 + local_24) + local_3c));\r\n        }\r\n        uVar10 = uVar13 & 0xffff;\r\n        if (uVar10 < 0x3b) {\r\n          if ((0x31 < uVar10) || ((0x2b < uVar10 && (uVar10 < 0x2e)))) goto LAB_004b76ca;\r\n        }\r\n        else if (uVar10 < 0x4f) {\r\n          if ((0x4c < uVar10) || ((0x44 < uVar10 && (uVar10 < 0x49)))) {\r\nLAB_004b76ca:\r\n            puVar1 = (uint *)((int)param_1 + 0x35);\r\n            *puVar1 = local_38;\r\n            *(uint *)((int)param_1 + 0x39) = local_3c;\r\n            FUN_004b5290(uVar13);\r\n            if ((*(int *)((int)param_1 + 0x11) == 0) ||\r\n               ((*puVar1 == *(uint *)((int)param_1 + 0x55) &&\r\n                (*(int *)((int)param_1 + 0x59) == *(int *)((int)param_1 + 0x39))))) {\r\nLAB_004b772e:\r\n              bVar5 = false;\r\n            }\r\n            else {\r\n              iVar9 = 0;\r\n              pcVar2 = *(code **)(*param_1 + 0x10);\r\n              do {\r\n                *puVar1 = *(uint *)((int)param_1 + 0x55);\r\n                *(undefined4 *)((int)param_1 + 0x39) = *(undefined4 *)((int)param_1 + 0x59);\r\n                iVar12 = (*pcVar2)(puVar1);\r\n                if (iVar12 == 0) goto LAB_004b772e;\r\n                iVar9 = iVar9 + 1;\r\n                FUN_004b6680(iVar12);\r\n              } while (iVar9 < 6);\r\n              bVar5 = true;\r\n            }\r\n            if (bVar5) {\r\n              local_20 = local_38;\r\n              local_1c = local_3c;\r\n              if (*(int *)((&DAT_005d9200)[(local_38 & 0xff) * 0x100 + (local_3c & 0xff)] + 0x10) ==\r\n                  0) {\r\n                bVar6 = true;\r\n              }\r\n            }\r\n          }\r\n        }\r\n        else if ((uVar10 < 0x805c) && ((0x8059 < uVar10 || ((0x59 < uVar10 && (uVar10 < 0x5c))))))\r\n        goto LAB_004b76ca;\r\n        if (bVar6) {\r\n          *(undefined1 *)((int)param_1 + 5) = 1;\r\n          *(undefined4 *)((int)param_1 + 0xd) = 0;\r\n          *(undefined4 *)((int)param_1 + 0x11) = 0;\r\n          *(undefined4 *)((int)param_1 + 0x2d) = 0;\r\n          *(undefined1 *)((int)param_1 + 6) = 0;\r\n          *(undefined1 *)((int)param_1 + 7) = 0;\r\n          *(undefined1 *)(param_1 + 2) = 0;\r\n          *(undefined1 *)((int)param_1 + 9) = 0;\r\n          *(undefined1 *)((int)param_1 + 0xb) = 0;\r\n          puVar3 = *(undefined4 **)((int)param_1 + 0x1cd);\r\n          *(undefined1 *)(param_1 + 3) = 0;\r\n          *(uint *)((int)param_1 + 0x35) = local_20;\r\n          *(uint *)((int)param_1 + 0x39) = local_1c;\r\n          iVar9 = (&DAT_005d9200)[(local_20 & 0xff) * 0x100 + (local_1c & 0xff)];\r\n          *puVar3 = *(undefined4 *)(iVar9 + 0x10);\r\n          *(undefined4 **)(iVar9 + 0x10) = puVar3;\r\n          iVar9 = *(int *)((int)param_1 + 0x35);\r\n          if ((((iVar9 < 0) || (iVar12 = *(int *)((int)param_1 + 0x39), iVar12 < 0)) ||\r\n              (0x7f < iVar9)) || (0x7f < iVar12)) {\r\n            uVar11 = 0;\r\n          }\r\n          else {\r\n            uVar11 = (*(byte *)((&DAT_00590800)[iVar9] + iVar12) & 2) << 0xe |\r\n                     (ushort)*(byte *)((&DAT_005910b0)[iVar9] + iVar12);\r\n          }\r\n          FUN_004b5290(uVar11);\r\n          FUN_004b6f80();\r\n          FUN_004b7020();\r\n          FUN_004b6a80();\r\n          return;\r\n        }\r\n        local_24 = local_24 + local_30 * 4;\r\n        local_38 = local_38 + local_30;\r\n        local_3c = local_3c + local_2c;\r\n        local_10 = local_10 + 1;\r\n        iVar9 = local_30;\r\n      } while (local_10 < local_34);\r\n    }\r\n    if (bVar7) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004b5290",
+      "name": "FUN_004b5290"
+    },
+    {
+      "addr": "004b6680",
+      "name": "FUN_004b6680"
+    },
+    {
+      "addr": "004b6f80",
+      "name": "FUN_004b6f80"
+    },
+    {
+      "addr": "004b7020",
+      "name": "FUN_004b7020"
+    },
+    {
+      "addr": "004b6a80",
+      "name": "FUN_004b6a80"
+    }
+  ],
+  "data_refs": []
+}

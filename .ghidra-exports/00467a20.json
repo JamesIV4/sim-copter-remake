@@ -1,0 +1,39 @@
+{
+  "address": "00467a20",
+  "name": "FUN_00467a20",
+  "signature": "undefined FUN_00467a20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00467a20(int param_1)\r\n\r\n{\r\n  __ftol(*(undefined4 *)(param_1 + 8));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a01f0",
+      "name": "FUN_004a01f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a01f0",
+      "name": "FUN_004a01f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a01f0",
+      "name": "FUN_004a01f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0370",
+      "name": "FUN_004a0370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

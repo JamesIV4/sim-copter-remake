@@ -1,0 +1,29 @@
+{
+  "address": "00404b90",
+  "name": "FUN_00404b90",
+  "signature": "undefined FUN_00404b90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00404b90(int param_1,int *param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  iVar2 = *(int *)(param_1 + 0x1c) - *(int *)(param_1 + 0x14);\r\n  iVar3 = *(int *)(param_1 + 0x18) - *(int *)(param_1 + 0x10);\r\n  if (*param_2 < 0) {\r\n    *param_2 = 5;\r\n    param_2[2] = param_2[2];\r\n  }\r\n  if (param_2[1] < 0) {\r\n    param_2[1] = 5;\r\n    param_2[3] = param_2[3];\r\n  }\r\n  iVar1 = param_2[2];\r\n  if (iVar3 < iVar1) {\r\n    param_2[2] = iVar3 + -5;\r\n    *param_2 = *param_2 + (iVar3 - iVar1) + -5;\r\n  }\r\n  iVar1 = param_2[3];\r\n  if (iVar2 < iVar1) {\r\n    param_2[3] = iVar2 + -5;\r\n    param_2[1] = param_2[1] + (iVar2 - iVar1) + -5;\r\n  }\r\n  if (((param_2[2] - *param_2) + 5 <= iVar3) && ((param_2[3] - param_2[1]) + 5 <= iVar2)) {\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0040e8d0",
+      "name": "FUN_0040e8d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043c6d0",
+      "name": "FUN_0043c6d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00441970",
+      "name": "FUN_00441970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

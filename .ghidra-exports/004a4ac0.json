@@ -1,0 +1,84 @@
+{
+  "address": "004a4ac0",
+  "name": "FUN_004a4ac0",
+  "signature": "undefined FUN_004a4ac0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nuint FUN_004a4ac0(void)\r\n\r\n{\r\n  byte *pbVar1;\r\n  uint uVar2;\r\n  byte *pbVar3;\r\n  int iVar4;\r\n  uint *puVar5;\r\n  byte *pbVar6;\r\n  int iVar7;\r\n  int iVar8;\r\n  uint *puVar9;\r\n  uint uVar10;\r\n  undefined4 uVar11;\r\n  uint uStack_48;\r\n  uint uStack_44;\r\n  uint uStack_40;\r\n  int iStack_3c;\r\n  uint uStack_38;\r\n  uint uStack_34;\r\n  undefined4 uStack_30;\r\n  undefined4 uStack_2c;\r\n  undefined4 uStack_28;\r\n  undefined4 uStack_24;\r\n  int iStack_20;\r\n  int iStack_1c;\r\n  int iStack_18;\r\n  int iStack_14;\r\n  uint uStack_10;\r\n  int iStack_c;\r\n  int iStack_8;\r\n  int iStack_4;\r\n  \r\n  uVar2 = FUN_0042a3a0(0xd);\r\n  iStack_3c = 0x7800000;\r\n  uStack_10 = uVar2;\r\n  if (DAT_00505f58 != 0) {\r\n    puVar9 = &DAT_005ce0a0;\r\n    iStack_14 = 0x8c;\r\n    uVar10 = uStack_38;\r\n    do {\r\n      if ((*puVar9 & 1) != 0) {\r\n        if (((((*(int *)(puVar9[0x26] + 8) == 0) && (1 < _DAT_004f9740)) &&\r\n             ((int)puVar9[1] < (_DAT_004f9740 * 5 + 0xf) * 0x40000)) &&\r\n            ((pbVar3 = (byte *)FUN_0049a4d0(*(undefined1 *)\r\n                                             ((&DAT_005910b0)[puVar9[0x23]] + puVar9[0x24])),\r\n             pbVar3 != (byte *)0x0 && ((*pbVar3 & 4) != 0)))) &&\r\n           (iVar4 = FUN_004a7a10(puVar9[0x23],puVar9[0x24],0x80010), iVar4 != -1)) {\r\n          *(undefined4 *)(puVar9[0x26] + 8) = 1;\r\n        }\r\n        iVar4 = *(int *)puVar9[0x26];\r\n        iVar7 = *(short *)(iVar4 + 2) * 0x10000 + puVar9[4];\r\n        iVar8 = *(short *)(iVar4 + 4) * 0x10000 + puVar9[5];\r\n        iStack_18 = *(short *)(iVar4 + 6) * 0x10000 + puVar9[6];\r\n        uStack_48 = DAT_0061a6ac - iVar7;\r\n        uStack_44 = DAT_0061a6b0 - iVar8;\r\n        uStack_40 = DAT_0061a6b4 - iStack_18;\r\n        iVar4 = FUN_00468220(&uStack_48);\r\n        if (iVar4 < iStack_3c) {\r\n          iStack_4 = iStack_18;\r\n          iStack_3c = iVar4;\r\n          iStack_20 = iVar7;\r\n          iStack_1c = iVar8;\r\n          iStack_c = iVar7;\r\n          iStack_8 = iVar8;\r\n        }\r\n        uVar2 = puVar9[1] - DAT_005039a8;\r\n        puVar9[1] = uVar2;\r\n        if ((int)uVar2 < 1) {\r\n          if ((int)puVar9[7] < 1) {\r\n            pbVar3 = (byte *)(&DAT_005d9200)[(puVar9[0x23] & 0xff) * 0x100 + (puVar9[0x24] & 0xff)];\r\n            if (*(int *)(pbVar3 + 0xc) != 0) {\r\n              pbVar6 = pbVar3 + 0xc;\r\n              do {\r\n                pbVar1 = *(byte **)pbVar6;\r\n                if ((byte *)puVar9[8] == pbVar1) {\r\n                  *(undefined4 *)pbVar6 = *(undefined4 *)puVar9[8];\r\n                  break;\r\n                }\r\n                pbVar6 = pbVar1;\r\n              } while (*(int *)pbVar1 != 0);\r\n            }\r\n            *puVar9 = *puVar9 & 0xfffffffe;\r\n            *(int *)(puVar9[0x26] + 4) = *(int *)(puVar9[0x26] + 4) + -1;\r\n            DAT_00505f58 = DAT_00505f58 + -1;\r\n            uStack_38 = 3;\r\n            uStack_34 = puVar9[0x27];\r\n            uStack_28 = 1;\r\n            uStack_24 = 0;\r\n            uVar2 = FUN_004a89c0(&uStack_38);\r\n            if (*(int *)(puVar9[0x26] + 4) == 0) {\r\n              *pbVar3 = *pbVar3 & 0xdf;\r\n              uStack_38 = 4;\r\n              uStack_34 = puVar9[0x27];\r\n              uStack_28 = 1;\r\n              uStack_24 = 0;\r\n              FUN_004a89c0(&uStack_38);\r\n              puVar5 = (uint *)FUN_004a8890(puVar9[0x27]);\r\n              if (((puVar5 != (uint *)0x0) && (*puVar5 == puVar9[0x23])) &&\r\n                 (puVar5[1] == puVar9[0x24])) {\r\n                iVar4 = 0;\r\n                pbVar3 = (byte *)&DAT_005ce0a0;\r\n                do {\r\n                  if (((*pbVar3 & 1) != 0) && (*(uint *)(pbVar3 + 0x9c) == puVar9[0x27]))\r\n                  goto LAB_004a4e98;\r\n                  iVar4 = iVar4 + 1;\r\n                  pbVar3 = pbVar3 + 0xa0;\r\n                } while (iVar4 < 0x8c);\r\n                pbVar3 = (byte *)0x0;\r\nLAB_004a4e98:\r\n                if (pbVar3 != (byte *)0x0) {\r\n                  uStack_38 = 0;\r\n                  uStack_34 = *(uint *)(pbVar3 + 0x9c);\r\n                  uStack_30 = *(undefined4 *)(pbVar3 + 0x8c);\r\n                  uStack_2c = *(undefined4 *)(pbVar3 + 0x90);\r\n                  FUN_004a89c0(&uStack_38);\r\n                }\r\n              }\r\n              uVar2 = FUN_004a5fd0(puVar9);\r\n            }\r\n          }\r\n          else if (puVar9[0x25] == 0) {\r\n            puVar9[7] = 0;\r\n          }\r\n          else {\r\n            uStack_48 = puVar9[4];\r\n            uStack_40 = puVar9[6];\r\n            uStack_44 = puVar9[5] + puVar9[3];\r\n            uVar2 = *puVar9;\r\n            if ((uVar2 & 2) == 0) {\r\n              if ((uVar2 & 4) == 0) {\r\n                if ((uVar2 & 8) == 0) {\r\n                  if ((uVar2 & 0x10) == 0) goto LAB_004a4ce7;\r\n                  uVar11 = 1;\r\n                }\r\n                else {\r\n                  uVar11 = 0xffffffff;\r\n                }\r\n                uVar2 = FUN_0046e430(puVar9[0x25],uStack_44,uStack_40,uVar11,0x20000);\r\n                uVar10 = uVar2;\r\n                uStack_48 = uVar2;\r\n              }\r\n              else {\r\n                uVar2 = FUN_0046e2c0(puVar9[0x25],uStack_48,uStack_44,1,0x20000);\r\n                uVar10 = uVar2;\r\n                uStack_40 = uVar2;\r\n              }\r\n            }\r\n            else {\r\n              uVar2 = FUN_0046e2c0(puVar9[0x25],uStack_48,uStack_44,0xffffffff,0x20000);\r\n              uVar10 = uVar2;\r\n              uStack_40 = uVar2;\r\n            }\r\nLAB_004a4ce7:\r\n            if (uVar10 == 0) {\r\n              puVar9[7] = 0;\r\n            }\r\n            else {\r\n              puVar9[7] = puVar9[7] - 1;\r\n              puVar9[2] = _DAT_004f9740 * 0x14 + _DAT_00505f40;\r\n              puVar9[1] = (1 - _DAT_004f9740) * 0x140000 + _DAT_00505f48;\r\n              FUN_0046e600(*(undefined4 *)(puVar9[8] + 4),uStack_48 - puVar9[4],\r\n                           uStack_44 - puVar9[5],uStack_40 - puVar9[6]);\r\n              puVar9[4] = uStack_48;\r\n              puVar9[5] = uStack_44;\r\n              puVar9[6] = uStack_40;\r\n              puVar9[0xf] = iVar7 + uStack_48;\r\n              puVar9[0x10] = iVar8 + uStack_44;\r\n              uVar2 = iStack_18 + uStack_40;\r\n              puVar9[0x11] = uVar2;\r\n            }\r\n          }\r\n        }\r\n        else {\r\n          FUN_004a6370(puVar9,6);\r\n          iVar4 = 1 - _DAT_004f9740;\r\n          DAT_00505f80 = DAT_00505f80 + DAT_005039a8;\r\n          uVar2 = iVar4 * 0x40000 + _DAT_00505f4c;\r\n          if ((int)uVar2 < DAT_00505f80) {\r\n            DAT_00505f80 = 0;\r\n            iVar7 = _rand();\r\n            iVar4 = iVar4 * 10 + _DAT_00505f50;\r\n            uVar2 = (int)(short)iVar7 / iVar4;\r\n            if ((int)(short)iVar7 % iVar4 == 0) {\r\n              uVar2 = FUN_004a4fb0(puVar9);\r\n            }\r\n          }\r\n        }\r\n      }\r\n      puVar9 = puVar9 + 0x28;\r\n      iStack_14 = iStack_14 + -1;\r\n    } while (iStack_14 != 0);\r\n  }\r\n  if (uStack_10 != 1) {\r\n    if (iStack_3c < 0x7800000) {\r\n      uVar2 = FUN_0042a1f0(0xd,&iStack_c,1);\r\n    }\r\n    return uVar2;\r\n  }\r\n  if (iStack_3c < 0x7800000) {\r\n    uVar2 = FUN_0042a2f0(0xd,&iStack_c);\r\n    return uVar2;\r\n  }\r\n  uVar2 = FUN_0042a310(0xd);\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0042a3a0",
+      "name": "FUN_0042a3a0"
+    },
+    {
+      "addr": "0049a4d0",
+      "name": "FUN_0049a4d0"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10"
+    },
+    {
+      "addr": "00468220",
+      "name": "FUN_00468220"
+    },
+    {
+      "addr": "0046e2c0",
+      "name": "FUN_0046e2c0"
+    },
+    {
+      "addr": "0046e430",
+      "name": "FUN_0046e430"
+    },
+    {
+      "addr": "0046e600",
+      "name": "FUN_0046e600"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0"
+    },
+    {
+      "addr": "004a8890",
+      "name": "FUN_004a8890"
+    },
+    {
+      "addr": "004a5fd0",
+      "name": "FUN_004a5fd0"
+    },
+    {
+      "addr": "004a6370",
+      "name": "FUN_004a6370"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004a4fb0",
+      "name": "FUN_004a4fb0"
+    },
+    {
+      "addr": "0042a310",
+      "name": "FUN_0042a310"
+    },
+    {
+      "addr": "0042a2f0",
+      "name": "FUN_0042a2f0"
+    },
+    {
+      "addr": "0042a1f0",
+      "name": "FUN_0042a1f0"
+    }
+  ],
+  "data_refs": []
+}

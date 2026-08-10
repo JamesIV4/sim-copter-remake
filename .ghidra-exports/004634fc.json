@@ -1,0 +1,19 @@
+{
+  "address": "004634fc",
+  "name": "DirectDrawCreate",
+  "signature": "undefined DirectDrawCreate(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid DirectDrawCreate(void)\r\n\r\n{\r\n                    /* WARNING: Could not recover jumptable at 0x004634fc. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  DirectDrawCreate();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041c1e0",
+      "name": "FUN_0041c1e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

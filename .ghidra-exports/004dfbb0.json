@@ -1,0 +1,42 @@
+{
+  "address": "004dfbb0",
+  "name": "_wctomb",
+  "signature": "int __cdecl _wctomb(char * _MbCh, wchar_t _WCh)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _wctomb\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _wctomb(char *_MbCh,wchar_t _WCh)\r\n\r\n{\r\n  int iVar1;\r\n  bool bVar2;\r\n  undefined2 in_stack_0000000a;\r\n  \r\n  bVar2 = DAT_0061cc98 == 0;\r\n  if (bVar2) {\r\n    DAT_0061cc9c = DAT_0061cc9c + 1;\r\n  }\r\n  else {\r\n    __lock(0x13);\r\n  }\r\n  iVar1 = __wctomb_lk(_MbCh,__WCh);\r\n  if (!bVar2) {\r\n    FUN_004d64a0(0x13);\r\n    return iVar1;\r\n  }\r\n  DAT_0061cc9c = DAT_0061cc9c + -1;\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7ad0",
+      "name": "FUN_004d7ad0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7ad0",
+      "name": "FUN_004d7ad0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7ad0",
+      "name": "FUN_004d7ad0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004dfc10",
+      "name": "__wctomb_lk"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

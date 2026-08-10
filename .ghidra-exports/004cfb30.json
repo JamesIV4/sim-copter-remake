@@ -1,0 +1,40 @@
+{
+  "address": "004cfb30",
+  "name": "FUN_004cfb30",
+  "signature": "undefined FUN_004cfb30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_004cfb30(int param_1,float param_2,undefined4 param_3,int *param_4,uint param_5,\r\n            undefined2 param_6,undefined4 param_7,ushort param_8,undefined2 param_9)\r\n\r\n{\r\n  char *pcVar1;\r\n  undefined4 *puVar2;\r\n  char cVar3;\r\n  undefined4 uVar4;\r\n  float fVar5;\r\n  undefined4 uVar6;\r\n  undefined4 uVar7;\r\n  undefined4 uVar8;\r\n  float fVar9;\r\n  undefined4 uVar10;\r\n  undefined4 uVar11;\r\n  float fVar12;\r\n  int iVar13;\r\n  int iVar14;\r\n  undefined4 *puVar15;\r\n  int iVar16;\r\n  char cVar17;\r\n  short sVar18;\r\n  undefined2 uVar19;\r\n  short sVar20;\r\n  undefined4 *unaff_EDI;\r\n  undefined2 uVar21;\r\n  float10 fVar22;\r\n  float10 fVar23;\r\n  float10 fVar24;\r\n  float10 fVar25;\r\n  float10 fVar26;\r\n  float unaff_retaddr;\r\n  size_t sStack_8c;\r\n  int iStack_84;\r\n  int *piStack_70;\r\n  undefined1 auStack_24 [16];\r\n  undefined1 auStack_14 [20];\r\n  \r\n  uVar21 = (undefined2)((uint)unaff_EDI >> 0x10);\r\n  uVar19 = 0;\r\n  if ((*(short *)(param_4[10] + 0x10) != 0) && (*(short *)(*(int *)(param_1 + 0x28) + 0x10) != 0)) {\r\n    iVar13 = (**(code **)(*param_4 + 0x28))(param_5);\r\n    sVar20 = *(short *)(*(int *)(iStack_84 + 0x28) + 0x10);\r\n    sVar18 = 0;\r\n    if (0 < sVar20) {\r\n      do {\r\n        iVar14 = (int)sVar18;\r\n        sVar18 = sVar18 + 1;\r\n        (&DAT_0058f10d)[iVar14 * 0x12] = 0;\r\n        (&DAT_0058f10c)[iVar14 * 0x12] = 0;\r\n      } while (sVar18 < sVar20);\r\n    }\r\n    fVar22 = (float10)fsin((float10)unaff_retaddr);\r\n    fVar23 = (float10)fcos((float10)unaff_retaddr);\r\n    fVar24 = (float10)fsin((float10)param_2);\r\n    sStack_8c = 0;\r\n    sVar18 = 0;\r\n    fVar25 = (float10)fcos((float10)param_2);\r\n    if (0 < sVar20) {\r\n      piStack_70 = &DAT_0058ff10;\r\n      do {\r\n        iVar14 = **(int **)(*(int *)(iStack_84 + 0x28) + 4);\r\n        pcVar1 = (char *)(iVar14 + sVar18 * 0x28);\r\n        cVar3 = *pcVar1;\r\n        uVar19 = (undefined2)((uint)iVar14 >> 0x10);\r\n        if ((cVar3 != '\\0') && ((param_8 & (short)pcVar1[4]) != 0)) {\r\n          puVar2 = (undefined4 *)(iVar13 + sVar18 * 8);\r\n          puVar15 = (undefined4 *)FUN_004cea30(auStack_14,*puVar2);\r\n          uVar4 = *puVar15;\r\n          fVar5 = (float)puVar15[1];\r\n          uVar6 = puVar15[2];\r\n          uVar7 = puVar15[3];\r\n          puVar15 = (undefined4 *)FUN_004cea30(auStack_24,puVar2[1]);\r\n          fVar12 = (float)DAT_00506bf0;\r\n          uVar8 = *puVar15;\r\n          fVar9 = (float)puVar15[1];\r\n          uVar10 = puVar15[2];\r\n          uVar11 = puVar15[3];\r\n          iVar14 = pcVar1[2] * 0x12;\r\n          unaff_EDI = (undefined4 *)(&DAT_0058f100 + iVar14);\r\n          cVar17 = '\\0';\r\n          if (*(int *)(pcVar1 + 0xc) == 0) {\r\nLAB_004cfd2e:\r\n            if (cVar17 == '\\0') goto LAB_004cfd33;\r\n          }\r\n          else {\r\n            iVar16 = (int)*(char *)(*(int *)(pcVar1 + 0xc) + 2);\r\n            cVar17 = (&DAT_0058f10d)[iVar16 * 0x12];\r\n            iVar16 = iVar16 * 0x12;\r\n            if (cVar17 != '\\0') {\r\n              *unaff_EDI = *(undefined4 *)(&DAT_0058f104 + iVar16);\r\n              *(undefined2 *)(&DAT_0058f108 + iVar14) = *(undefined2 *)(iVar16 + 0x58f10a);\r\n              (&DAT_0058f10c)[iVar14] = 1;\r\n              goto LAB_004cfd2e;\r\n            }\r\nLAB_004cfd33:\r\n            FUN_004d0520((float)fVar22,(float)fVar23,(float)fVar24,(float)fVar25,param_7,uVar4,\r\n                         fVar5 + fVar12,uVar6,uVar7,iVar14 + 0x58f102,unaff_EDI,\r\n                         &DAT_0058f108 + iVar14,1);\r\n            (&DAT_0058f10c)[iVar14] = 1;\r\n          }\r\n          if (*pcVar1 == '\\t') {\r\n            fVar26 = (float10)FUN_004cea90(*(undefined1 *)((int)puVar2 + 3));\r\n            *(float *)(iVar14 + 0x58f10e) = (float)fVar26;\r\n          }\r\n          if ((((cVar3 != '\\t') && (cVar3 != '\\f')) && (cVar3 != '\\x0e')) &&\r\n             ((cVar3 != '\\b' && (cVar3 != '\\r')))) {\r\n            FUN_004d0520((float)fVar22,(float)fVar23,(float)fVar24,(float)fVar25,param_7,uVar8,\r\n                         fVar12 + fVar9,uVar10,uVar11,iVar14 + 0x58f106,&DAT_0058f104 + iVar14,\r\n                         iVar14 + 0x58f10a,1);\r\n            (&DAT_0058f10d)[iVar14] = 1;\r\n          }\r\n          sStack_8c = sStack_8c + 1;\r\n          *(undefined4 *)(pcVar1 + 0x10) = *unaff_EDI;\r\n          *(undefined2 *)(pcVar1 + 0x18) = *(undefined2 *)(&DAT_0058f108 + iVar14);\r\n          *(undefined4 *)(pcVar1 + 0x14) = *(undefined4 *)(&DAT_0058f104 + iVar14);\r\n          *(undefined2 *)(pcVar1 + 0x1a) = *(undefined2 *)(iVar14 + 0x58f10a);\r\n          *piStack_70 = (int)pcVar1;\r\n          piStack_70 = piStack_70 + 1;\r\n        }\r\n        uVar21 = (undefined2)((uint)unaff_EDI >> 0x10);\r\n        sVar18 = sVar18 + 1;\r\n      } while (sVar18 < sVar20);\r\n    }\r\n    if (sStack_8c != 0) {\r\n      _qsort(&DAT_0058ff10,sStack_8c,4,FUN_004d0060);\r\n    }\r\n    sVar20 = 0;\r\n    if (0 < (int)sStack_8c) {\r\n      do {\r\n        if ((param_8 & (short)*(char *)((&DAT_0058ff10)[sVar20] + 4)) != 0) {\r\n          FUN_004cf8f0(unaff_retaddr,param_2,(&DAT_0058ff10)[sVar20],param_5 & 0xffff,\r\n                       CONCAT22(uVar21,param_6),param_7,CONCAT22(uVar19,param_9));\r\n        }\r\n        sVar20 = sVar20 + 1;\r\n      } while ((int)sVar20 < (int)sStack_8c);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c7f10",
+      "name": "FUN_004c7f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004cea30",
+      "name": "FUN_004cea30"
+    },
+    {
+      "addr": "004d0520",
+      "name": "FUN_004d0520"
+    },
+    {
+      "addr": "004cea90",
+      "name": "FUN_004cea90"
+    },
+    {
+      "addr": "004d61c0",
+      "name": "_qsort"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0"
+    }
+  ],
+  "data_refs": []
+}

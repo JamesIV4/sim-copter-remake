@@ -1,0 +1,64 @@
+{
+  "address": "004d1820",
+  "name": "FUN_004d1820",
+  "signature": "undefined FUN_004d1820(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d1820(undefined2 *param_1)\r\n\r\n{\r\n  undefined2 local_4;\r\n  undefined2 local_2;\r\n  \r\n  local_2 = *param_1;\r\n  local_4 = param_1[1];\r\n  FUN_004d1870(&local_2);\r\n  FUN_004d1870(&local_4);\r\n  *param_1 = local_4;\r\n  param_1[1] = local_2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ce530",
+      "name": "FUN_004ce530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdfe0",
+      "name": "FUN_004cdfe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d16b0",
+      "name": "FUN_004d16b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf2f0",
+      "name": "FUN_004cf2f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0090",
+      "name": "FUN_004d0090",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0090",
+      "name": "FUN_004d0090",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d1810",
+      "name": "FUN_004d1810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d00e0",
+      "name": "FUN_004d00e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d00e0",
+      "name": "FUN_004d00e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d1870",
+      "name": "FUN_004d1870"
+    }
+  ],
+  "data_refs": []
+}

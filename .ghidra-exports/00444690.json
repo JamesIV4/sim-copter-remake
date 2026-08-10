@@ -1,0 +1,48 @@
+{
+  "address": "00444690",
+  "name": "FUN_00444690",
+  "signature": "undefined FUN_00444690(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00444690(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  \r\n  iVar1 = FUN_0048a380(DAT_005040d0);\r\n  if (iVar1 < 0) {\r\n    iVar1 = 0;\r\n  }\r\n  FUN_0040bb50(iVar1);\r\n  FUN_0040ba90(iVar1);\r\n  iVar1 = FUN_0048a480(DAT_005040d0);\r\n  if (iVar1 < 0) {\r\n    iVar1 = 0;\r\n  }\r\n  FUN_0040bb50(iVar1);\r\n  FUN_0040ba90(iVar1);\r\n  iVar1 = FUN_00407a50();\r\n  if ((*(byte *)(iVar1 + 0x48) & 8) != 0) {\r\n    iVar1 = FUN_0048a560();\r\n    iVar2 = FUN_00407a50();\r\n    FUN_0040bb50(iVar1 - *(int *)(iVar2 + 0x54));\r\n    iVar1 = FUN_0048a560();\r\n    iVar2 = FUN_00407a50();\r\n    FUN_0040ba90(iVar1 - *(int *)(iVar2 + 0x54));\r\n    FUN_004447e0();\r\n    return;\r\n  }\r\n  FUN_0040bb50(0);\r\n  FUN_0040ba90(0);\r\n  FUN_004447e0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00443c20",
+      "name": "FUN_00443c20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0048a380",
+      "name": "FUN_0048a380"
+    },
+    {
+      "addr": "0040bb50",
+      "name": "FUN_0040bb50"
+    },
+    {
+      "addr": "0040ba90",
+      "name": "FUN_0040ba90"
+    },
+    {
+      "addr": "0048a480",
+      "name": "FUN_0048a480"
+    },
+    {
+      "addr": "00407a50",
+      "name": "FUN_00407a50"
+    },
+    {
+      "addr": "0048a560",
+      "name": "FUN_0048a560"
+    },
+    {
+      "addr": "004447e0",
+      "name": "FUN_004447e0"
+    }
+  ],
+  "data_refs": []
+}

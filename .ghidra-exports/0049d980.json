@@ -1,0 +1,29 @@
+{
+  "address": "0049d980",
+  "name": "FUN_0049d980",
+  "signature": "undefined FUN_0049d980(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0049d980(int param_1)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  \r\n  puVar1 = (undefined4 *)(param_1 + 0xef);\r\n  if (*(int *)(param_1 + 0x9e) == 0) {\r\n    uVar3 = *(undefined4 *)(param_1 + 0xc3);\r\n  }\r\n  else {\r\n    uVar3 = *(undefined4 *)(param_1 + 199);\r\n  }\r\n  *puVar1 = uVar3;\r\n  if ((*(byte *)(param_1 + 5) & 8) == 0) {\r\n    return;\r\n  }\r\n  if (0 < *(int *)(param_1 + 0x11b)) {\r\n    iVar2 = *(int *)(DAT_005040d0 + 0x150);\r\n    if (iVar2 == 0) {\r\n      uVar3 = 0x10de1;\r\n      goto LAB_0049d9e4;\r\n    }\r\n    if (iVar2 == 1) {\r\n      uVar3 = 0x150d7;\r\n      goto LAB_0049d9e4;\r\n    }\r\n    if (iVar2 == 2) {\r\n      uVar3 = 0x18590;\r\n      goto LAB_0049d9e4;\r\n    }\r\n  }\r\n  uVar3 = 0x1c000;\r\nLAB_0049d9e4:\r\n  uVar3 = FUN_0046c49d(*puVar1,uVar3);\r\n  *puVar1 = uVar3;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b89e0",
+      "name": "FUN_004b89e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004be6b0",
+      "name": "FUN_004be6b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "004d6d90",
+  "name": "xsgetn",
+  "signature": "int __thiscall xsgetn(streambuf * this, char * param_1, int param_2)",
+  "calling_convention": "__thiscall",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual int __thiscall streambuf::xsgetn(char *,int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __thiscall streambuf::xsgetn(streambuf *this,char *param_1,int param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  int local_8;\r\n  \r\n  local_8 = 0;\r\n  if (*(int *)(this + 8) == 0) {\r\n    if (param_2 != 0) {\r\n      pcVar1 = *(code **)(*(int *)this + 0x20);\r\n      do {\r\n        iVar3 = (*pcVar1)();\r\n        if (iVar3 == -1) {\r\n          return local_8;\r\n        }\r\n        uVar4 = *(int *)(this + 0x2c) - (int)*(char **)(this + 0x28);\r\n        uVar5 = param_2;\r\n        if ((int)uVar4 < param_2) {\r\n          uVar5 = uVar4;\r\n        }\r\n        if (0 < (int)uVar5) {\r\n          param_2 = param_2 - uVar5;\r\n          pcVar6 = *(char **)(this + 0x28);\r\n          pcVar7 = param_1;\r\n          for (uVar4 = uVar5 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n            *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n            pcVar6 = pcVar6 + 4;\r\n            pcVar7 = pcVar7 + 4;\r\n          }\r\n          for (uVar4 = uVar5 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n            *pcVar7 = *pcVar6;\r\n            pcVar6 = pcVar6 + 1;\r\n            pcVar7 = pcVar7 + 1;\r\n          }\r\n          param_1 = param_1 + uVar5;\r\n          *(uint *)(this + 0x28) = *(int *)(this + 0x28) + uVar5;\r\n          local_8 = local_8 + uVar5;\r\n        }\r\n      } while (param_2 != 0);\r\n    }\r\n  }\r\n  else {\r\n    if (*(int *)(this + 0xc) == -1) {\r\n      uVar2 = (**(code **)(*(int *)this + 0x20))();\r\n      *(undefined4 *)(this + 0xc) = uVar2;\r\n    }\r\n    while (param_2 != 0) {\r\n      param_2 = param_2 + -1;\r\n      if (*(int *)(this + 0xc) == -1) {\r\n        return local_8;\r\n      }\r\n      local_8 = local_8 + 1;\r\n      *param_1 = (char)*(int *)(this + 0xc);\r\n      uVar2 = (**(code **)(*(int *)this + 0x20))();\r\n      *(undefined4 *)(this + 0xc) = uVar2;\r\n      param_1 = param_1 + 1;\r\n    }\r\n  }\r\n  return local_8;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

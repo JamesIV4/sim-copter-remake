@@ -1,0 +1,24 @@
+{
+  "address": "004c9170",
+  "name": "FUN_004c9170",
+  "signature": "undefined FUN_004c9170(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * FUN_004c9170(int param_1,int param_2,int param_3,undefined4 param_4)\r\n\r\n{\r\n  short sVar1;\r\n  short sVar2;\r\n  short sVar3;\r\n  undefined4 *puVar4;\r\n  int iVar5;\r\n  undefined4 local_4;\r\n  \r\n  iVar5 = *(int *)((int)&DAT_005d9200 +\r\n                  ((0xe0000000U - param_3 & 0x3fc00000) >> 0x14) +\r\n                  ((param_1 + 0x20000000U & 0x3fc00000) >> 0x16) * 0x400);\r\n  sVar1 = *(short *)(iVar5 + 2);\r\n  puVar4 = *(undefined4 **)(iVar5 + 0xc);\r\n  sVar2 = *(short *)(iVar5 + 6);\r\n  sVar3 = *(short *)(iVar5 + 4);\r\n  while( true ) {\r\n    if (puVar4 == (undefined4 *)0x0) {\r\n      return (undefined4 *)0x0;\r\n    }\r\n    local_4 = 0x200;\r\n    iVar5 = FUN_0046dd20(puVar4[1],param_1 + sVar1 * -0x10000,param_2 + sVar3 * -0x10000,\r\n                         param_3 + sVar2 * -0x10000,&local_4,param_4,0x60000,0,0);\r\n    if (0 < iVar5) break;\r\n    puVar4 = (undefined4 *)*puVar4;\r\n  }\r\n  return puVar4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046dd20",
+      "name": "FUN_0046dd20"
+    }
+  ],
+  "data_refs": []
+}

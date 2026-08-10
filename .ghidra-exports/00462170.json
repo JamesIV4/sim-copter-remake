@@ -1,0 +1,33 @@
+{
+  "address": "00462170",
+  "name": "FUN_00462170",
+  "signature": "undefined FUN_00462170(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __thiscall FUN_00462170(int param_1,int param_2,undefined4 param_3,int param_4)\r\n\r\n{\r\n  int iVar1;\r\n  DWORD DVar2;\r\n  MMRESULT MVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  LPJOYINFOEX pji;\r\n  DWORD *pDVar6;\r\n  joyinfoex_tag local_34;\r\n  \r\n  if (0x10 < param_2) {\r\n    return 0;\r\n  }\r\n  pji = &local_34;\r\n  if (param_4 != 0) {\r\n    pji = (LPJOYINFOEX)(param_1 + 0x19e0 + param_2 * 0x34);\r\n  }\r\n  switch(param_3) {\r\n  case 0:\r\n    DVar2 = 1;\r\n    pDVar6 = &pji->dwXpos;\r\n    break;\r\n  case 1:\r\n    DVar2 = 2;\r\n    pDVar6 = &pji->dwYpos;\r\n    break;\r\n  case 2:\r\n    DVar2 = 4;\r\n    pDVar6 = &pji->dwZpos;\r\n    break;\r\n  case 3:\r\n    DVar2 = 8;\r\n    pDVar6 = &pji->dwRpos;\r\n    break;\r\n  case 4:\r\n    DVar2 = 0x10;\r\n    pDVar6 = &pji->dwUpos;\r\n    break;\r\n  case 5:\r\n    DVar2 = 0x20;\r\n    pDVar6 = &pji->dwVpos;\r\n    break;\r\n  default:\r\n    return 0;\r\n  }\r\n  if (param_4 == 0) {\r\n    pji->dwSize = 0x34;\r\n    pji->dwFlags = DVar2;\r\n    MVar3 = joyGetPosEx(*(UINT *)(param_1 + 0x14 + param_2 * 4),pji);\r\n    if (MVar3 != 0) {\r\n      return 0;\r\n    }\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x54);\r\n  iVar4 = MulDiv(*(int *)(param_1 + 0x58) - iVar1,*pDVar6,0xffff);\r\n  iVar4 = iVar4 + iVar1;\r\n  iVar1 = *(int *)(param_1 + 0x60 + param_2 * 4);\r\n  iVar5 = *(int *)(param_1 + 0x5c);\r\n  if ((iVar4 < iVar5 + iVar1) && (iVar5 - iVar1 < iVar4)) {\r\n    return 0;\r\n  }\r\n  if (iVar4 < 1) {\r\n    iVar5 = iVar5 - *(int *)(param_1 + 0x54);\r\n    return ((iVar4 + iVar1) * iVar5) / (iVar5 - iVar1);\r\n  }\r\n  iVar5 = *(int *)(param_1 + 0x58) - iVar5;\r\n  return ((iVar4 - iVar1) * iVar5) / (iVar5 - iVar1);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462120",
+      "name": "FUN_00462120",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045cbb0",
+      "name": "FUN_0045cbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000cb",
+      "name": "joyGetPosEx"
+    },
+    {
+      "addr": "EXTERNAL:00000024",
+      "name": "MulDiv"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,48 @@
+{
+  "address": "004dffc0",
+  "name": "__tolower_lk",
+  "signature": "undefined __tolower_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __tolower_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __tolower_lk(uint param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  ushort local_8 [2];\r\n  byte local_4;\r\n  byte local_3;\r\n  undefined1 local_2;\r\n  \r\n  if (DAT_00507ab8 == 0) {\r\n    if ((0x40 < (int)param_1) && ((int)param_1 < 0x5b)) {\r\n      param_1 = param_1 + 0x20;\r\n    }\r\n    return param_1;\r\n  }\r\n  if ((int)param_1 < 0x100) {\r\n    if (DAT_0050721c < 2) {\r\n      uVar1 = *(ushort *)(PTR_DAT_00507010 + param_1 * 2) & 1;\r\n    }\r\n    else {\r\n      uVar1 = __isctype(param_1,1);\r\n    }\r\n    if (uVar1 == 0) {\r\n      return param_1;\r\n    }\r\n  }\r\n  local_4 = (byte)(param_1 >> 8);\r\n  if ((PTR_DAT_00507010[(uint)local_4 * 2 + 1] & 0x80) == 0) {\r\n    uVar2 = 1;\r\n    local_3 = 0;\r\n    local_4 = (byte)param_1;\r\n  }\r\n  else {\r\n    uVar2 = 2;\r\n    local_2 = 0;\r\n    local_3 = (byte)param_1;\r\n  }\r\n  iVar3 = FUN_004e3840(DAT_00507ab8,0x100,&local_4,uVar2,local_8,3,0);\r\n  if (iVar3 == 0) {\r\n    return param_1;\r\n  }\r\n  if (iVar3 == 1) {\r\n    return (uint)(byte)local_8[0];\r\n  }\r\n  return (uint)local_8[0];\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e1630",
+      "name": "__strcmpi",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1630",
+      "name": "__strcmpi",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef200",
+      "name": "__strnicmp",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef200",
+      "name": "__strnicmp",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dff50",
+      "name": "_tolower",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5700",
+      "name": "__isctype"
+    },
+    {
+      "addr": "004e3840",
+      "name": "FUN_004e3840"
+    }
+  ],
+  "data_refs": []
+}

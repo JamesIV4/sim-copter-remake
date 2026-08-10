@@ -1,0 +1,50 @@
+{
+  "address": "00463860",
+  "name": "FUN_00463860",
+  "signature": "undefined FUN_00463860(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00463860(char *param_1)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  char cVar2;\r\n  FILE *_File;\r\n  int iVar3;\r\n  size_t sVar4;\r\n  int iVar5;\r\n  undefined4 uVar6;\r\n  int iVar7;\r\n  bool bVar8;\r\n  undefined4 local_18;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  int local_c;\r\n  int local_8;\r\n  undefined4 local_4;\r\n  \r\n  _File = FID_conflict___wfopen(param_1,&DAT_004fa038);\r\n  if (_File == (FILE *)0x0) {\r\n    return 0;\r\n  }\r\n  _fseek(_File,0,2);\r\n  iVar3 = FUN_004d5a50(_File);\r\n  _fseek(_File,0,0);\r\n  sVar4 = _fread(&local_10,4,1,_File);\r\n  if (sVar4 == 0) {\r\n    bVar8 = false;\r\n  }\r\n  else {\r\n    local_18._3_1_ = (undefined1)((uint)local_10 >> 0x18);\r\n    local_18._2_1_ = (undefined1)((uint)local_10 >> 0x10);\r\n    local_18._1_1_ = (undefined1)((uint)local_10 >> 8);\r\n    uVar1 = CONCAT11((char)local_10,local_18._1_1_);\r\n    local_18._0_2_ = CONCAT11(local_18._2_1_,local_18._3_1_);\r\n    local_18 = CONCAT22(uVar1,(undefined2)local_18);\r\n    local_10 = local_18;\r\n    local_14._0_2_ = CONCAT11(DAT_004fa032,DAT_004fa033);\r\n    local_14 = CONCAT22(CONCAT11(DAT_004fa030,DAT_004fa031),(undefined2)local_14);\r\n    if (local_18 == local_14) {\r\n      sVar4 = _fread(&local_8,4,1,_File);\r\n      if (sVar4 == 0) {\r\n        bVar8 = false;\r\n      }\r\n      else {\r\n        local_18._3_1_ = (undefined1)((uint)local_8 >> 0x18);\r\n        local_18._2_1_ = (undefined1)((uint)local_8 >> 0x10);\r\n        local_18._1_1_ = (undefined1)((uint)local_8 >> 8);\r\n        uVar1 = CONCAT11((char)local_8,local_18._1_1_);\r\n        local_18._0_2_ = CONCAT11(local_18._2_1_,local_18._3_1_);\r\n        local_18 = CONCAT22(uVar1,(undefined2)local_18);\r\n        local_8 = local_18;\r\n        sVar4 = _fread(&local_10,4,1,_File);\r\n        bVar8 = false;\r\n        if (sVar4 != 0) {\r\n          local_18._3_1_ = (undefined1)((uint)local_10 >> 0x18);\r\n          local_18._2_1_ = (undefined1)((uint)local_10 >> 0x10);\r\n          local_18._1_1_ = (undefined1)((uint)local_10 >> 8);\r\n          uVar1 = CONCAT11((char)local_10,local_18._1_1_);\r\n          local_18._0_2_ = CONCAT11(local_18._2_1_,local_18._3_1_);\r\n          local_18 = CONCAT22(uVar1,(undefined2)local_18);\r\n          local_10 = local_18;\r\n          local_14._0_2_ = CONCAT11(DAT_004fa02a,DAT_004fa02b);\r\n          local_14 = CONCAT22(CONCAT11(DAT_004fa028,DAT_004fa029),(undefined2)local_14);\r\n          bVar8 = local_14 == local_18;\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      bVar8 = false;\r\n    }\r\n  }\r\n  if (bVar8) {\r\n    uVar6 = 1;\r\n    iVar7 = 4;\r\n    do {\r\n      sVar4 = _fread(&local_4,4,1,_File);\r\n      if (sVar4 == 0) goto LAB_00463b1e;\r\n      local_18._3_1_ = (undefined1)((uint)local_4 >> 0x18);\r\n      local_18._2_1_ = (undefined1)((uint)local_4 >> 0x10);\r\n      local_18._1_1_ = (undefined1)((uint)local_4 >> 8);\r\n      uVar1 = CONCAT11((char)local_4,local_18._1_1_);\r\n      local_18._0_2_ = CONCAT11(local_18._2_1_,local_18._3_1_);\r\n      local_18 = CONCAT22(uVar1,(undefined2)local_18);\r\n      local_4 = local_18;\r\n      sVar4 = _fread(&local_c,4,1,_File);\r\n      if (sVar4 == 0) goto LAB_00463b1e;\r\n      local_10._3_1_ = (undefined1)((uint)local_c >> 0x18);\r\n      cVar2 = (char)local_c;\r\n      local_10._2_1_ = (undefined1)((uint)local_c >> 0x10);\r\n      local_10._1_1_ = (undefined1)((uint)local_c >> 8);\r\n      uVar1 = CONCAT11(cVar2,local_10._1_1_);\r\n      local_10 = CONCAT22(uVar1,CONCAT11(local_10._2_1_,local_10._3_1_));\r\n      local_c = local_10;\r\n      if (((cVar2 < '\\0') || (iVar5 = FUN_004d5a50(_File), iVar3 < local_c + iVar5)) ||\r\n         (iVar5 = _fseek(_File,local_c,1), iVar5 != 0)) goto LAB_00463b1e;\r\n      iVar7 = iVar7 + local_c + 8;\r\n    } while (iVar7 < local_8);\r\n  }\r\n  else {\r\nLAB_00463b1e:\r\n    uVar6 = 0;\r\n  }\r\n  _fclose(_File);\r\n  return uVar6;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041fbf0",
+      "name": "FUN_0041fbf0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041fc50",
+      "name": "FUN_0041fc50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041fcd0",
+      "name": "FUN_0041fcd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3eb0",
+      "name": "FID_conflict:__wfopen"
+    },
+    {
+      "addr": "004d5970",
+      "name": "_fseek"
+    },
+    {
+      "addr": "004d5a50",
+      "name": "FUN_004d5a50"
+    },
+    {
+      "addr": "004d5c30",
+      "name": "_fread"
+    },
+    {
+      "addr": "004d3a40",
+      "name": "_fclose"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004c9e40",
+  "name": "FUN_004c9e40",
+  "signature": "undefined FUN_004c9e40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_004c9e40(int param_1,int *param_2)\r\n\r\n{\r\n  short sVar1;\r\n  uint uVar2;\r\n  short sVar3;\r\n  short sVar4;\r\n  int iVar5;\r\n  short local_6;\r\n  int local_4;\r\n  \r\n  sVar3 = 0;\r\n  local_6 = 0;\r\n  uVar2 = 0;\r\n  local_4 = 0;\r\n  sVar4 = 0;\r\n  if (-1 < DAT_0058dc3e) {\r\n    do {\r\n      iVar5 = DAT_00506444;\r\n      if (sVar4 != 32000) {\r\n        iVar5 = (&DAT_0058e030)[sVar4];\r\n      }\r\n      if ((*(short *)(iVar5 + 0x142) != 0) && (*(int *)(iVar5 + 0x10a) == param_1)) {\r\n        sVar1 = *(short *)(iVar5 + 0x150);\r\n        sVar3 = sVar3 + 1;\r\n        uVar2 = uVar2 + (int)*(short *)(iVar5 + 0x12a) * (int)sVar1;\r\n        local_6 = local_6 + sVar1;\r\n        local_4 = local_4 + (int)*(short *)(iVar5 + 300) * (int)sVar1;\r\n      }\r\n      sVar4 = sVar4 + 1;\r\n    } while (sVar4 <= DAT_0058dc3e);\r\n  }\r\n  if ((sVar3 != 0) && (local_6 != 0)) {\r\n    *param_2 = (int)uVar2 / (int)local_6;\r\n    local_4 = local_4 / (int)local_6;\r\n    param_2[1] = local_4;\r\n    return CONCAT22((short)((uint)local_4 >> 0x10),1);\r\n  }\r\n  return uVar2 & 0xffff0000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c9e20",
+      "name": "FUN_004c9e20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

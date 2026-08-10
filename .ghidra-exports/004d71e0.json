@@ -1,0 +1,49 @@
+{
+  "address": "004d71e0",
+  "name": "FUN_004d71e0",
+  "signature": "undefined FUN_004d71e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004d71e0(uint param_1,char *param_2,uint param_3)\r\n\r\n{\r\n  char cVar1;\r\n  BOOL BVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  ulong local_418;\r\n  DWORD local_414;\r\n  int *local_410;\r\n  int local_40c;\r\n  DWORD local_408;\r\n  char local_404 [1028];\r\n  \r\n  iVar4 = 0;\r\n  local_408 = 0;\r\n  if (param_3 == 0) {\r\n    return 0;\r\n  }\r\n  local_410 = (int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3));\r\n  local_40c = (param_1 & 0x1f) * 0x24;\r\n  if ((*(byte *)(*local_410 + 4 + local_40c) & 0x20) != 0) {\r\n    __lseek_lk(param_1,0,2);\r\n  }\r\n  if ((*(byte *)((undefined4 *)(local_40c + *local_410) + 1) & 0x80) == 0) {\r\n    BVar2 = WriteFile(*(HANDLE *)(local_40c + *local_410),param_2,param_3,&local_414,\r\n                      (LPOVERLAPPED)0x0);\r\n    if (BVar2 == 0) {\r\nLAB_004d7314:\r\n      local_418 = GetLastError();\r\n    }\r\n    else {\r\n      local_418 = 0;\r\n      local_408 = local_414;\r\n    }\r\n  }\r\n  else {\r\n    local_418 = 0;\r\n    pcVar6 = param_2;\r\n    do {\r\n      if (param_3 <= (uint)((int)pcVar6 - (int)param_2)) break;\r\n      pcVar5 = local_404;\r\n      do {\r\n        if (param_3 <= (uint)((int)pcVar6 - (int)param_2)) break;\r\n        cVar1 = *pcVar6;\r\n        pcVar6 = pcVar6 + 1;\r\n        if (cVar1 == '\\n') {\r\n          *pcVar5 = '\\r';\r\n          iVar4 = iVar4 + 1;\r\n          pcVar5 = pcVar5 + 1;\r\n        }\r\n        *pcVar5 = cVar1;\r\n        pcVar5 = pcVar5 + 1;\r\n      } while ((int)pcVar5 - (int)local_404 < 0x400);\r\n      BVar2 = WriteFile(*(HANDLE *)(*local_410 + local_40c),local_404,(int)pcVar5 - (int)local_404,\r\n                        &local_414,(LPOVERLAPPED)0x0);\r\n      if (BVar2 == 0) goto LAB_004d7314;\r\n      local_408 = local_408 + local_414;\r\n    } while ((int)pcVar5 - (int)local_404 <= (int)local_414);\r\n  }\r\n  if (local_408 != 0) {\r\n    return local_408 - iVar4;\r\n  }\r\n  if (local_418 == 0) {\r\n    if (((*(byte *)(*local_410 + 4 + local_40c) & 0x40) != 0) && (*param_2 == '\\x1a')) {\r\n      return 0;\r\n    }\r\n    puVar3 = (undefined4 *)FUN_004da730();\r\n    *puVar3 = 0x1c;\r\n    puVar3 = (undefined4 *)FUN_004da740();\r\n    *puVar3 = 0;\r\n    return -1;\r\n  }\r\n  if (local_418 != 5) {\r\n    __dosmaperr(local_418);\r\n    return -1;\r\n  }\r\n  puVar3 = (undefined4 *)FUN_004da730();\r\n  *puVar3 = 9;\r\n  puVar3 = (undefined4 *)FUN_004da740();\r\n  *puVar3 = 5;\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7160",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7710",
+      "name": "__lseek_lk"
+    },
+    {
+      "addr": "EXTERNAL:00000053",
+      "name": "WriteFile"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,32 @@
+{
+  "address": "004ddd90",
+  "name": "FUN_004ddd90",
+  "signature": "undefined FUN_004ddd90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ddd90(void)\r\n\r\n{\r\n  char cVar1;\r\n  int *piVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  char *pcVar9;\r\n  \r\n  iVar6 = 0;\r\n  cVar1 = *DAT_00507228;\r\n  pcVar7 = DAT_00507228;\r\n  while (cVar1 != '\\0') {\r\n    if (*pcVar7 != '=') {\r\n      iVar6 = iVar6 + 1;\r\n    }\r\n    uVar3 = 0xffffffff;\r\n    pcVar9 = pcVar7;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      cVar1 = *pcVar9;\r\n      pcVar9 = pcVar9 + 1;\r\n    } while (cVar1 != '\\0');\r\n    pcVar7 = pcVar7 + ~uVar3;\r\n    cVar1 = *pcVar7;\r\n  }\r\n  piVar2 = (int *)FUN_004d5f00(iVar6 * 4 + 4);\r\n  DAT_00506c8c = piVar2;\r\n  if (piVar2 == (int *)0x0) {\r\n    __amsg_exit(9);\r\n  }\r\n  cVar1 = *DAT_00507228;\r\n  pcVar7 = DAT_00507228;\r\n  do {\r\n    if (cVar1 == '\\0') {\r\n      FUN_004d6010(DAT_00507228);\r\n      *piVar2 = 0;\r\n      return;\r\n    }\r\n    uVar3 = 0xffffffff;\r\n    pcVar9 = pcVar7;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      cVar1 = *pcVar9;\r\n      pcVar9 = pcVar9 + 1;\r\n    } while (cVar1 != '\\0');\r\n    if (*pcVar7 != '=') {\r\n      iVar6 = FUN_004d5f00(~uVar3);\r\n      *piVar2 = iVar6;\r\n      if (iVar6 == 0) {\r\n        __amsg_exit(9);\r\n      }\r\n      uVar4 = 0xffffffff;\r\n      pcVar9 = pcVar7;\r\n      do {\r\n        pcVar8 = pcVar9;\r\n        if (uVar4 == 0) break;\r\n        uVar4 = uVar4 - 1;\r\n        pcVar8 = pcVar9 + 1;\r\n        cVar1 = *pcVar9;\r\n        pcVar9 = pcVar8;\r\n      } while (cVar1 != '\\0');\r\n      uVar4 = ~uVar4;\r\n      pcVar9 = (char *)*piVar2;\r\n      piVar2 = piVar2 + 1;\r\n      pcVar8 = pcVar8 + -uVar4;\r\n      for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *(undefined4 *)pcVar9 = *(undefined4 *)pcVar8;\r\n        pcVar8 = pcVar8 + 4;\r\n        pcVar9 = pcVar9 + 4;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *pcVar9 = *pcVar8;\r\n        pcVar8 = pcVar8 + 1;\r\n        pcVar9 = pcVar9 + 1;\r\n      }\r\n    }\r\n    pcVar7 = pcVar7 + ~uVar3;\r\n    cVar1 = *pcVar7;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

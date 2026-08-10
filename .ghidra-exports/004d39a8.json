@@ -1,0 +1,834 @@
+{
+  "address": "004d39a8",
+  "name": "__ftol",
+  "signature": "undefined __ftol(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ftol\r\n   \r\n   Library: Visual Studio */\r\n\r\nlonglong __ftol(void)\r\n\r\n{\r\n  float10 in_ST0;\r\n  \r\n  return (longlong)ROUND(in_ST0);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004521a0",
+      "name": "FUN_004521a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452680",
+      "name": "FUN_00452680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452680",
+      "name": "FUN_00452680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6ec0",
+      "name": "FUN_004c6ec0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6ec0",
+      "name": "FUN_004c6ec0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6ec0",
+      "name": "FUN_004c6ec0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004679d0",
+      "name": "FUN_004679d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046e960",
+      "name": "FUN_0046e960",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046e960",
+      "name": "FUN_0046e960",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046e960",
+      "name": "FUN_0046e960",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046eaa0",
+      "name": "FUN_0046eaa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046eaa0",
+      "name": "FUN_0046eaa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046eaa0",
+      "name": "FUN_0046eaa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040b850",
+      "name": "FUN_0040b850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040b960",
+      "name": "FUN_0040b960",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040c500",
+      "name": "FUN_0040c500",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040c550",
+      "name": "FUN_0040c550",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040c5a0",
+      "name": "FUN_0040c5a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040c5f0",
+      "name": "FUN_0040c5f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004563b0",
+      "name": "FUN_004563b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467f30",
+      "name": "FUN_00467f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467f30",
+      "name": "FUN_00467f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467f30",
+      "name": "FUN_00467f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467f30",
+      "name": "FUN_00467f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467f30",
+      "name": "FUN_00467f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00440020",
+      "name": "FUN_00440020",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00440070",
+      "name": "FUN_00440070",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00440130",
+      "name": "FUN_00440130",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00440170",
+      "name": "FUN_00440170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00491370",
+      "name": "FUN_00491370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049e700",
+      "name": "FUN_0049e700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049e700",
+      "name": "FUN_0049e700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bee60",
+      "name": "FUN_004bee60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bee60",
+      "name": "FUN_004bee60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bee60",
+      "name": "FUN_004bee60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bee60",
+      "name": "FUN_004bee60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044ce50",
+      "name": "FUN_0044ce50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044ce50",
+      "name": "FUN_0044ce50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004402a0",
+      "name": "FUN_004402a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004402d0",
+      "name": "FUN_004402d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049e270",
+      "name": "FUN_0049e270",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00467a20",
+      "name": "FUN_00467a20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b89e0",
+      "name": "FUN_004b89e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bacc0",
+      "name": "FUN_004bacc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0520",
+      "name": "FUN_004d0520",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0520",
+      "name": "FUN_004d0520",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0520",
+      "name": "FUN_004d0520",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9f10",
+      "name": "FUN_004c9f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9f10",
+      "name": "FUN_004c9f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0b70",
+      "name": "FUN_004d0b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0b70",
+      "name": "FUN_004d0b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0ea0",
+      "name": "FUN_004d0ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d13e0",
+      "name": "FUN_004d13e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d13e0",
+      "name": "FUN_004d13e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d13e0",
+      "name": "FUN_004d13e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d13e0",
+      "name": "FUN_004d13e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d13e0",
+      "name": "FUN_004d13e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004636b0",
+      "name": "FUN_004636b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ad7c0",
+      "name": "FUN_004ad7c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ceab0",
+      "name": "FUN_004ceab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ccb80",
+      "name": "FUN_004ccb80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,85 @@
+{
+  "address": "0046a530",
+  "name": "FUN_0046a530",
+  "signature": "undefined FUN_0046a530(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nint FUN_0046a530(undefined4 param_1,undefined4 param_2,char *param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  switch(param_2) {\r\n  case 1:\r\n    break;\r\n  case 2:\r\n    iVar2 = FUN_0046acc0(param_1);\r\n    if (iVar2 == 0) {\r\n      return 0;\r\n    }\r\n    iVar2 = 0;\r\n    piVar1 = DAT_005bde4c;\r\n    if (0 < DAT_005bde64) {\r\n      do {\r\n        if ((char *)*piVar1 == param_3) {\r\n          _DAT_004faf30 = 1;\r\n          iVar4 = __write(DAT_005bde50,(void *)DAT_005bde4c[iVar2 * 9 + 1],0);\r\n          if (iVar4 == -1) {\r\n            _DAT_005bdb40 = 3;\r\n            return 0;\r\n          }\r\n          DAT_004faf3c = FUN_00468270(0x10000);\r\n          if (DAT_004faf3c < 0) {\r\n            return 0;\r\n          }\r\n          iVar2 = FUN_0046cfa0(DAT_005bde4c + iVar2 * 9 + 2,1);\r\n          if (iVar2 == 0) {\r\n            return 0;\r\n          }\r\n          *(int *)(iVar2 + 4) = DAT_004faf3c;\r\n          if (99 < DAT_004faf34) {\r\n            _DAT_005bdb40 = 0xc;\r\n            iVar4 = *(int *)(iVar2 + 8);\r\n            if (iVar4 == 1) {\r\n              iVar4 = *(int *)(iVar2 + 0xc);\r\n              if ((&DAT_005bdcb0)[iVar4] == iVar2) {\r\n                DAT_004faf34 = DAT_004faf34 + -1;\r\n                iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n                (&DAT_005bdcb0)[iVar4] = iVar3;\r\n                *(int *)(iVar3 + 0xc) = iVar4;\r\n              }\r\n            }\r\n            else if (iVar4 == 3) {\r\n              iVar4 = *(int *)(iVar2 + 0xc);\r\n              if ((&DAT_005bdcb0)[iVar4] == iVar2) {\r\n                DAT_004faf34 = DAT_004faf34 + -1;\r\n                iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n                (&DAT_005bdcb0)[iVar4] = iVar3;\r\n                *(int *)(iVar3 + 0xc) = iVar4;\r\n              }\r\n            }\r\n            else {\r\n              if (iVar4 != 4) {\r\n                _DAT_005bdb40 = 0xb;\r\n                return 0;\r\n              }\r\n              FUN_0046b500(iVar2);\r\n            }\r\n            if (-1 < *(int *)(iVar2 + 4)) {\r\n              FUN_00468570(*(int *)(iVar2 + 4));\r\n            }\r\n            return 0;\r\n          }\r\n          *(int *)(iVar2 + 0xc) = DAT_004faf34;\r\n          iVar4 = DAT_004faf34;\r\n          DAT_004faf34 = DAT_004faf34 + 1;\r\n          (&DAT_005bdcb0)[iVar4] = iVar2;\r\n          return iVar2;\r\n        }\r\n        iVar2 = iVar2 + 1;\r\n        piVar1 = piVar1 + 9;\r\n      } while (iVar2 < DAT_005bde64);\r\n    }\r\n    _DAT_005bdb40 = 8;\r\n    return 0;\r\n  case 3:\r\n    DAT_004faf3c = FUN_00468270(0x10000);\r\n    if (DAT_004faf3c < 0) {\r\n      return 0;\r\n    }\r\n    iVar2 = FUN_0046cbb0(param_1);\r\n    if (iVar2 != 0) {\r\n      *(int *)(iVar2 + 4) = DAT_004faf3c;\r\n      if (DAT_004faf34 < 100) {\r\n        *(int *)(iVar2 + 0xc) = DAT_004faf34;\r\n        iVar4 = DAT_004faf34;\r\n        DAT_004faf34 = DAT_004faf34 + 1;\r\n        (&DAT_005bdcb0)[iVar4] = iVar2;\r\n        return iVar2;\r\n      }\r\n      _DAT_005bdb40 = 0xc;\r\n      iVar4 = *(int *)(iVar2 + 8);\r\n      if (iVar4 == 1) {\r\n        iVar4 = *(int *)(iVar2 + 0xc);\r\n        if ((&DAT_005bdcb0)[iVar4] == iVar2) {\r\n          DAT_004faf34 = DAT_004faf34 + -1;\r\n          iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n          (&DAT_005bdcb0)[iVar4] = iVar3;\r\n          *(int *)(iVar3 + 0xc) = iVar4;\r\n        }\r\n      }\r\n      else {\r\n        if (iVar4 == 3) {\r\n          iVar4 = *(int *)(iVar2 + 0xc);\r\n          piVar1 = &DAT_005bdcb0 + iVar4;\r\n          iVar3 = *piVar1;\r\n        }\r\n        else {\r\n          if (iVar4 != 4) {\r\n            _DAT_005bdb40 = 0xb;\r\n            return 0;\r\n          }\r\n          iVar4 = *(int *)(iVar2 + 0xc);\r\n          piVar1 = &DAT_005bdcb0 + iVar4;\r\n          iVar3 = *piVar1;\r\n        }\r\n        if (iVar3 == iVar2) {\r\n          DAT_004faf34 = DAT_004faf34 + -1;\r\n          iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n          *piVar1 = iVar3;\r\n          *(int *)(iVar3 + 0xc) = iVar4;\r\n        }\r\n      }\r\n      if (-1 < *(int *)(iVar2 + 4)) {\r\n        FUN_00468570(*(int *)(iVar2 + 4));\r\n      }\r\n      return 0;\r\n    }\r\n    return 0;\r\n  case 4:\r\n    iVar2 = FUN_0046b110(param_1);\r\n    if (iVar2 == 0) {\r\n      return 0;\r\n    }\r\n    iVar2 = 0;\r\n    iVar4 = 0;\r\n    if (0 < DAT_005bde54) {\r\n      do {\r\n        iVar3 = __strcmpi((char *)(DAT_005bde40 + iVar2),param_3);\r\n        if (iVar3 == 0) {\r\n          _DAT_004faf30 = 1;\r\n          iVar2 = __write(DAT_005bde50,*(void **)(iVar4 * 0x15 + 0x11 + DAT_005bde40),0);\r\n          if (iVar2 == -1) {\r\n            _DAT_005bdb40 = 3;\r\n            return 0;\r\n          }\r\n          DAT_004faf3c = FUN_00468270(1000);\r\n          if (DAT_004faf3c < 0) {\r\n            return 0;\r\n          }\r\n          iVar2 = FUN_0046a470();\r\n          if (iVar2 == 0) {\r\n            return 0;\r\n          }\r\n          *(int *)(iVar2 + 4) = DAT_004faf3c;\r\n          if (99 < DAT_004faf34) {\r\n            _DAT_005bdb40 = 0xc;\r\n            iVar4 = *(int *)(iVar2 + 8);\r\n            if (iVar4 == 1) {\r\n              iVar4 = *(int *)(iVar2 + 0xc);\r\n              if ((&DAT_005bdcb0)[iVar4] == iVar2) {\r\n                DAT_004faf34 = DAT_004faf34 + -1;\r\n                iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n                (&DAT_005bdcb0)[iVar4] = iVar3;\r\n                *(int *)(iVar3 + 0xc) = iVar4;\r\n              }\r\n            }\r\n            else {\r\n              if (iVar4 == 3) {\r\n                iVar4 = *(int *)(iVar2 + 0xc);\r\n                piVar1 = &DAT_005bdcb0 + iVar4;\r\n                iVar3 = *piVar1;\r\n              }\r\n              else {\r\n                if (iVar4 != 4) {\r\n                  _DAT_005bdb40 = 0xb;\r\n                  return 0;\r\n                }\r\n                iVar4 = *(int *)(iVar2 + 0xc);\r\n                piVar1 = &DAT_005bdcb0 + iVar4;\r\n                iVar3 = *piVar1;\r\n              }\r\n              if (iVar3 == iVar2) {\r\n                DAT_004faf34 = DAT_004faf34 + -1;\r\n                iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n                *piVar1 = iVar3;\r\n                *(int *)(iVar3 + 0xc) = iVar4;\r\n              }\r\n            }\r\n            if (-1 < *(int *)(iVar2 + 4)) {\r\n              FUN_00468570(*(int *)(iVar2 + 4));\r\n            }\r\n            return 0;\r\n          }\r\n          *(int *)(iVar2 + 0xc) = DAT_004faf34;\r\n          iVar4 = DAT_004faf34;\r\n          DAT_004faf34 = DAT_004faf34 + 1;\r\n          (&DAT_005bdcb0)[iVar4] = iVar2;\r\n          return iVar2;\r\n        }\r\n        iVar2 = iVar2 + 0x15;\r\n        iVar4 = iVar4 + 1;\r\n      } while (iVar4 < DAT_005bde54);\r\n    }\r\n    _DAT_005bdb40 = 7;\r\n    return 0;\r\n  default:\r\n    return 0;\r\n  }\r\n  iVar2 = FUN_0046acc0(param_1);\r\n  if (iVar2 == 0) {\r\n    return 0;\r\n  }\r\n  iVar2 = 0;\r\n  if (0 < DAT_005bde60) {\r\n    iVar4 = 0;\r\n    do {\r\n      iVar3 = __strcmpi((char *)(DAT_005bde48 + iVar4),param_3);\r\n      if (iVar3 == 0) {\r\n        _DAT_004faf30 = 1;\r\n        iVar4 = __write(DAT_005bde50,*(void **)(iVar2 * 0x35 + 0x11 + DAT_005bde48),0);\r\n        if (iVar4 == -1) {\r\n          _DAT_005bdb40 = 3;\r\n          return 0;\r\n        }\r\n        DAT_004faf3c = FUN_00468270(0x10000);\r\n        if (DAT_004faf3c < 0) {\r\n          return 0;\r\n        }\r\n        iVar2 = iVar2 * 0x35 + DAT_005bde48;\r\n        iVar2 = FUN_0046cfa0(iVar2 + 0x19,*(undefined4 *)(iVar2 + 0x15));\r\n        if (iVar2 == 0) {\r\n          return 0;\r\n        }\r\n        *(int *)(iVar2 + 4) = DAT_004faf3c;\r\n        if (99 < DAT_004faf34) {\r\n          _DAT_005bdb40 = 0xc;\r\n          iVar4 = *(int *)(iVar2 + 8);\r\n          if (iVar4 == 1) {\r\n            iVar4 = *(int *)(iVar2 + 0xc);\r\n            if ((&DAT_005bdcb0)[iVar4] == iVar2) {\r\n              DAT_004faf34 = DAT_004faf34 + -1;\r\n              iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n              (&DAT_005bdcb0)[iVar4] = iVar3;\r\n              *(int *)(iVar3 + 0xc) = iVar4;\r\n            }\r\n          }\r\n          else if (iVar4 == 3) {\r\n            iVar4 = *(int *)(iVar2 + 0xc);\r\n            if ((&DAT_005bdcb0)[iVar4] == iVar2) {\r\n              DAT_004faf34 = DAT_004faf34 + -1;\r\n              iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n              (&DAT_005bdcb0)[iVar4] = iVar3;\r\n              *(int *)(iVar3 + 0xc) = iVar4;\r\n            }\r\n          }\r\n          else {\r\n            if (iVar4 != 4) {\r\n              _DAT_005bdb40 = 0xb;\r\n              return 0;\r\n            }\r\n            FUN_0046b500(iVar2);\r\n          }\r\n          if (-1 < *(int *)(iVar2 + 4)) {\r\n            FUN_00468570(*(int *)(iVar2 + 4));\r\n          }\r\n          return 0;\r\n        }\r\n        *(int *)(iVar2 + 0xc) = DAT_004faf34;\r\n        iVar4 = DAT_004faf34;\r\n        DAT_004faf34 = DAT_004faf34 + 1;\r\n        (&DAT_005bdcb0)[iVar4] = iVar2;\r\n        return iVar2;\r\n      }\r\n      iVar4 = iVar4 + 0x35;\r\n      iVar2 = iVar2 + 1;\r\n    } while (iVar2 < DAT_005bde60);\r\n  }\r\n  _DAT_005bdb40 = 7;\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00411fa0",
+      "name": "FUN_00411fa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004606d0",
+      "name": "FUN_004606d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046acc0",
+      "name": "FUN_0046acc0"
+    },
+    {
+      "addr": "004e1630",
+      "name": "__strcmpi"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    },
+    {
+      "addr": "00468270",
+      "name": "FUN_00468270"
+    },
+    {
+      "addr": "0046cfa0",
+      "name": "FUN_0046cfa0"
+    },
+    {
+      "addr": "0046b500",
+      "name": "FUN_0046b500"
+    },
+    {
+      "addr": "00468570",
+      "name": "FUN_00468570"
+    },
+    {
+      "addr": "0046cbb0",
+      "name": "FUN_0046cbb0"
+    },
+    {
+      "addr": "0046b110",
+      "name": "FUN_0046b110"
+    },
+    {
+      "addr": "0046a470",
+      "name": "FUN_0046a470"
+    }
+  ],
+  "data_refs": []
+}

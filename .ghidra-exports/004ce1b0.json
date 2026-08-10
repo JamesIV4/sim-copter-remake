@@ -1,0 +1,43 @@
+{
+  "address": "004ce1b0",
+  "name": "FUN_004ce1b0",
+  "signature": "undefined FUN_004ce1b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ce1b0(HLOCAL param_1)\r\n\r\n{\r\n  SetLastError(0);\r\n  LocalSize(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd7b0",
+      "name": "FUN_004cd7b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd700",
+      "name": "FUN_004cd700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf200",
+      "name": "FUN_004cf200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d1a00",
+      "name": "FUN_004d1a00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000006e",
+      "name": "SetLastError"
+    },
+    {
+      "addr": "EXTERNAL:0000006b",
+      "name": "LocalSize"
+    }
+  ],
+  "data_refs": []
+}

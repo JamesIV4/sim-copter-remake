@@ -1,0 +1,32 @@
+{
+  "address": "004df8f0",
+  "name": "FUN_004df8f0",
+  "signature": "undefined FUN_004df8f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004df8f0(uint param_1,HANDLE param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  \r\n  if (param_1 < DAT_0061bc80) {\r\n    piVar1 = (int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3));\r\n    iVar2 = (param_1 & 0x1f) * 0x24;\r\n    if (*(int *)(*piVar1 + iVar2) == -1) {\r\n      if (DAT_00507238 == 1) {\r\n        if (param_1 == 0) {\r\n          SetStdHandle(0xfffffff6,param_2);\r\n        }\r\n        else if (param_1 == 1) {\r\n          SetStdHandle(0xfffffff5,param_2);\r\n        }\r\n        else if (param_1 == 2) {\r\n          SetStdHandle(0xfffffff4,param_2);\r\n        }\r\n      }\r\n      *(HANDLE *)(*piVar1 + iVar2) = param_2;\r\n      return 0;\r\n    }\r\n  }\r\n  puVar3 = (undefined4 *)FUN_004da730();\r\n  *puVar3 = 9;\r\n  puVar3 = (undefined4 *)FUN_004da740();\r\n  *puVar3 = 0;\r\n  return 0xffffffff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000039",
+      "name": "SetStdHandle"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    }
+  ],
+  "data_refs": []
+}

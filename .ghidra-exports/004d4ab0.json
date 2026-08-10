@@ -1,0 +1,64 @@
+{
+  "address": "004d4ab0",
+  "name": "_setlocale",
+  "signature": "char * __cdecl _setlocale(int _Category, char * _Locale)",
+  "calling_convention": "__cdecl",
+  "return_type": "char *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _setlocale\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nchar * __cdecl _setlocale(int _Category,char *_Locale)\r\n\r\n{\r\n  char cVar1;\r\n  byte bVar2;\r\n  bool bVar3;\r\n  char *pcVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  byte *pbVar8;\r\n  byte *pbVar9;\r\n  size_t sVar10;\r\n  undefined4 *puVar11;\r\n  undefined **ppuVar12;\r\n  char *pcVar13;\r\n  bool bVar14;\r\n  int local_8c;\r\n  int local_88;\r\n  byte local_84 [132];\r\n  \r\n  if ((_Category < 0) || (5 < _Category)) {\r\n    return (char *)0x0;\r\n  }\r\n  __lock(0x13);\r\n  DAT_0061cc98 = DAT_0061cc98 + 1;\r\n  while (DAT_0061cc9c != 0) {\r\n    Sleep(1);\r\n  }\r\n  if (_Category != 0) {\r\n    if (_Locale == (char *)0x0) {\r\n      pcVar4 = (char *)(&DAT_00506e94)[_Category * 3];\r\n    }\r\n    else {\r\n      pcVar4 = (char *)__setlocale_set_cat(_Category,_Locale);\r\n    }\r\n    goto LAB_004d4d49;\r\n  }\r\n  bVar3 = true;\r\n  local_8c = 0;\r\n  if (_Locale != (char *)0x0) {\r\n    if (((*_Locale == 'L') && (_Locale[1] == 'C')) && (_Locale[2] == '_')) {\r\n      do {\r\n        pcVar4 = _strpbrk(_Locale,\"=;\");\r\n        if (((pcVar4 == (char *)0x0) || (sVar10 = (int)pcVar4 - (int)_Locale, sVar10 == 0)) ||\r\n           (*pcVar4 == ';')) {\r\n          FUN_004d64a0(0x13);\r\n          DAT_0061cc98 = DAT_0061cc98 + -1;\r\n          return (char *)0x0;\r\n        }\r\n        local_88 = 1;\r\n        ppuVar12 = &PTR_s_LC_COLLATE_00506e9c;\r\n        do {\r\n          iVar5 = _strncmp(*ppuVar12,_Locale,sVar10);\r\n          if (iVar5 == 0) {\r\n            uVar7 = 0xffffffff;\r\n            pcVar13 = *ppuVar12;\r\n            do {\r\n              if (uVar7 == 0) break;\r\n              uVar7 = uVar7 - 1;\r\n              cVar1 = *pcVar13;\r\n              pcVar13 = pcVar13 + 1;\r\n            } while (cVar1 != '\\0');\r\n            if (~uVar7 - 1 == sVar10) break;\r\n          }\r\n          ppuVar12 = ppuVar12 + 3;\r\n          local_88 = local_88 + 1;\r\n        } while (ppuVar12 < (undefined **)((int)&PTR_s_LC_TIME_00506ecc + 1));\r\n        pcVar4 = pcVar4 + 1;\r\n        sVar10 = _strcspn(pcVar4,\";\");\r\n        if ((sVar10 == 0) && (*pcVar4 != ';')) {\r\n          FUN_004d64a0(0x13);\r\n          DAT_0061cc98 = DAT_0061cc98 + -1;\r\n          return (char *)0x0;\r\n        }\r\n        if (local_88 < 6) {\r\n          _strncpy((char *)local_84,pcVar4,sVar10);\r\n          local_84[sVar10] = 0;\r\n          iVar5 = __setlocale_set_cat(local_88,local_84);\r\n          if (iVar5 != 0) {\r\n            local_8c = local_8c + 1;\r\n          }\r\n        }\r\n      } while ((pcVar4[sVar10] != '\\0') && (_Locale = pcVar4 + sVar10 + 1, *_Locale != '\\0'));\r\n      if (local_8c == 0) {\r\n        pcVar4 = (char *)0x0;\r\n        goto LAB_004d4d49;\r\n      }\r\n    }\r\n    else {\r\n      iVar5 = __expandlocale(_Locale,local_84,0,0,0);\r\n      pcVar4 = (char *)0x0;\r\n      if (iVar5 == 0) goto LAB_004d4d49;\r\n      iVar5 = 0;\r\n      puVar11 = &DAT_00506e94;\r\n      do {\r\n        if (puVar11 != &DAT_00506e94) {\r\n          pbVar8 = local_84;\r\n          pbVar9 = (byte *)*puVar11;\r\n          do {\r\n            bVar2 = *pbVar8;\r\n            bVar14 = bVar2 < *pbVar9;\r\n            if (bVar2 != *pbVar9) {\r\nLAB_004d4ce3:\r\n              iVar6 = (1 - (uint)bVar14) - (uint)(bVar14 != 0);\r\n              goto LAB_004d4ce8;\r\n            }\r\n            if (bVar2 == 0) break;\r\n            bVar2 = pbVar8[1];\r\n            bVar14 = bVar2 < pbVar9[1];\r\n            if (bVar2 != pbVar9[1]) goto LAB_004d4ce3;\r\n            pbVar8 = pbVar8 + 2;\r\n            pbVar9 = pbVar9 + 2;\r\n          } while (bVar2 != 0);\r\n          iVar6 = 0;\r\nLAB_004d4ce8:\r\n          if ((iVar6 == 0) || (iVar6 = __setlocale_set_cat(iVar5,local_84), iVar6 != 0)) {\r\n            local_8c = local_8c + 1;\r\n          }\r\n          else {\r\n            bVar3 = false;\r\n          }\r\n        }\r\n        puVar11 = puVar11 + 3;\r\n        iVar5 = iVar5 + 1;\r\n      } while (puVar11 < (undefined4 *)((int)&PTR_DAT_00506ed0 + 1));\r\n      if (bVar3) {\r\n        pcVar4 = (char *)__setlocale_get_all();\r\n        FUN_004d6010(DAT_00506e94);\r\n        DAT_00506e94 = 0;\r\n        goto LAB_004d4d49;\r\n      }\r\n      if (local_8c == 0) {\r\n        pcVar4 = (char *)0x0;\r\n        goto LAB_004d4d49;\r\n      }\r\n    }\r\n  }\r\n  pcVar4 = (char *)__setlocale_get_all();\r\nLAB_004d4d49:\r\n  FUN_004d64a0(0x13);\r\n  DAT_0061cc98 = DAT_0061cc98 + -1;\r\n  return pcVar4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422c90",
+      "name": "FUN_00422c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "EXTERNAL:0000001b",
+      "name": "Sleep"
+    },
+    {
+      "addr": "004d4d80",
+      "name": "__setlocale_set_cat"
+    },
+    {
+      "addr": "004dbe70",
+      "name": "_strpbrk"
+    },
+    {
+      "addr": "004d6030",
+      "name": "_strncmp"
+    },
+    {
+      "addr": "004dbe30",
+      "name": "_strcspn"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "004d4ff0",
+      "name": "__expandlocale"
+    },
+    {
+      "addr": "004d4f00",
+      "name": "__setlocale_get_all"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,24 @@
+{
+  "address": "00407eb0",
+  "name": "FUN_00407eb0",
+  "signature": "undefined FUN_00407eb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00407eb0(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *local_2c;\r\n  undefined4 *local_28;\r\n  undefined4 *local_24;\r\n  undefined4 *local_20;\r\n  undefined4 *local_1c;\r\n  undefined4 *local_18;\r\n  undefined4 *local_14;\r\n  undefined4 *local_10;\r\n  undefined4 *local_c;\r\n  undefined4 *local_8;\r\n  undefined4 *local_4;\r\n  \r\n  puVar1 = (undefined4 *)&DAT_00518dc8;\r\n  do {\r\n    local_2c = puVar1 + 1;\r\n    local_28 = puVar1 + 2;\r\n    local_24 = puVar1 + 3;\r\n    puVar2 = puVar1 + 0x14;\r\n    local_20 = puVar1 + 4;\r\n    local_1c = puVar1 + 5;\r\n    local_18 = puVar1 + 6;\r\n    local_14 = puVar1 + 7;\r\n    local_10 = puVar1 + 8;\r\n    local_c = puVar1 + 9;\r\n    local_8 = puVar1 + 0x12;\r\n    local_4 = puVar1 + 0x13;\r\n    FUN_00463520(&local_2c,0xb,puVar1[0x11]);\r\n    puVar1 = puVar2;\r\n  } while (puVar2 < &DAT_00519728);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00463520",
+      "name": "FUN_00463520"
+    }
+  ],
+  "data_refs": []
+}

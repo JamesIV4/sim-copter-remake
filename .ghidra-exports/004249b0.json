@@ -1,0 +1,24 @@
+{
+  "address": "004249b0",
+  "name": "FUN_004249b0",
+  "signature": "undefined FUN_004249b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004249b0(void)\r\n\r\n{\r\n  DWORD *pDVar1;\r\n  int iVar2;\r\n  DWORD DVar3;\r\n  DWORD DVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  \r\n  iVar6 = 2;\r\n  DVar3 = timeGetTime();\r\n  do {\r\n    DAT_00519cb8 = DAT_00519cb8 + 1;\r\n    if (0x81 < DAT_00519cb8) {\r\n      DAT_00519cb8 = 0;\r\n    }\r\n    pDVar1 = &DAT_00519cc8 + DAT_00519cb8;\r\n    if (120000 < DVar3 - *pDVar1) {\r\n      DVar4 = timeGetTime();\r\n      *pDVar1 = DVar4;\r\n      if ((int *)(&DAT_0055b1ac)[DAT_00519cb8] != (int *)0x0) {\r\n        iVar2 = *(int *)(&DAT_0055b1ac)[DAT_00519cb8];\r\n        iVar5 = (**(code **)(iVar2 + 0x10))();\r\n        if (iVar5 == 0) {\r\n          (**(code **)(iVar2 + 0x40))();\r\n        }\r\n      }\r\n    }\r\n    iVar6 = iVar6 + -1;\r\n  } while (iVar6 != 0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449aa0",
+      "name": "FUN_00449aa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

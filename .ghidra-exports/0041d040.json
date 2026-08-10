@@ -1,0 +1,13 @@
+{
+  "address": "0041d040",
+  "name": "FUN_0041d040",
+  "signature": "undefined FUN_0041d040(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __fastcall FUN_0041d040(undefined4 *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  \r\n  *param_1 = &PTR_LAB_004f13e8;\r\n  puVar2 = param_1;\r\n  for (iVar1 = 0x90; puVar2 = puVar2 + 1, iVar1 != 0; iVar1 = iVar1 + -1) {\r\n    *puVar2 = 0;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

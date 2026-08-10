@@ -1,0 +1,13 @@
+{
+  "address": "00405700",
+  "name": "FUN_00405700",
+  "signature": "undefined FUN_00405700(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00405700(int *param_1)\r\n\r\n{\r\n  int *unaff_retaddr;\r\n  undefined4 local_8;\r\n  int *local_4;\r\n  \r\n  local_8 = 0;\r\n  local_4 = (int *)0x0;\r\n  (**(code **)(*param_1 + 0xb0))();\r\n  *local_4 = *local_4 - (int)&local_8;\r\n  *unaff_retaddr = *unaff_retaddr - (int)&local_4;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,124 @@
+{
+  "address": "004d5700",
+  "name": "__isctype",
+  "signature": "int __cdecl __isctype(int _C, int _Type)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __isctype\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __isctype(int _C,int _Type)\r\n\r\n{\r\n  LPCSTR _LpSrcStr;\r\n  BOOL BVar1;\r\n  byte bVar2;\r\n  BOOL unaff_EBX;\r\n  undefined4 local_6;\r\n  undefined1 local_2;\r\n  \r\n  if (_C + 1U < 0x101) {\r\n    return (uint)*(ushort *)(PTR_DAT_00507010 + _C * 2) & _Type;\r\n  }\r\n  bVar2 = (byte)((uint)_C >> 8);\r\n  if ((PTR_DAT_00507010[(uint)bVar2 * 2 + 1] & 0x80) == 0) {\r\n    _LpSrcStr = (LPCSTR)0x1;\r\n    local_6._0_3_ = CONCAT12((char)_C,(undefined2)local_6);\r\n    local_6 = (uint)(uint3)local_6;\r\n  }\r\n  else {\r\n    _LpSrcStr = (LPCSTR)0x2;\r\n    local_6._0_3_ = CONCAT12(bVar2,(undefined2)local_6);\r\n    local_2 = 0;\r\n    local_6 = CONCAT13((char)_C,(uint3)local_6);\r\n  }\r\n  BVar1 = ___crtGetStringTypeA\r\n                    ((_locale_t)0x1,(int)&local_6 + 2,_LpSrcStr,(int)&local_6,(LPWORD)0x0,0,\r\n                     unaff_EBX);\r\n  if (BVar1 == 0) {\r\n    return 0;\r\n  }\r\n  return local_6 & 0xffff & _Type;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d54d0",
+      "name": "_atol",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d54d0",
+      "name": "_atol",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dffc0",
+      "name": "__tolower_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e18b0",
+      "name": "_isspace",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5650",
+      "name": "_atof",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd010",
+      "name": "__hextodec",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ddc00",
+      "name": "___crtGetStringTypeA"
+    }
+  ],
+  "data_refs": []
+}

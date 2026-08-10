@@ -1,0 +1,29 @@
+{
+  "address": "004bc110",
+  "name": "FUN_004bc110",
+  "signature": "undefined FUN_004bc110(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbyte FUN_004bc110(byte *param_1)\r\n\r\n{\r\n  byte bVar1;\r\n  undefined2 uVar2;\r\n  bool bVar3;\r\n  char cVar4;\r\n  int iVar5;\r\n  byte bVar6;\r\n  int iVar7;\r\n  byte local_6a;\r\n  byte bStack_69;\r\n  int local_68;\r\n  undefined1 local_60 [48];\r\n  undefined1 local_30 [48];\r\n  \r\n  local_68 = 2;\r\n  uVar2 = *(undefined2 *)param_1;\r\n  bVar6 = *param_1 + param_1[1] & 3;\r\n  do {\r\n    iVar7 = 0;\r\n    do {\r\n      local_6a = (byte)uVar2;\r\n      bStack_69 = (byte)((ushort)uVar2 >> 8);\r\n      switch(bVar6) {\r\n      case 0:\r\n        *param_1 = local_6a;\r\n        param_1[1] = bStack_69 - (char)local_68;\r\n        break;\r\n      case 1:\r\n        cVar4 = (char)local_68;\r\n        goto LAB_004bc17e;\r\n      case 2:\r\n        *param_1 = local_6a;\r\n        param_1[1] = bStack_69 + (char)local_68;\r\n        break;\r\n      case 3:\r\n        cVar4 = -(char)local_68;\r\nLAB_004bc17e:\r\n        *param_1 = local_6a + cVar4;\r\n        param_1[1] = bStack_69;\r\n      }\r\n      if (((*param_1 < 0x80) && (param_1[1] < 0x80)) &&\r\n         ((((bVar1 = *(byte *)((&DAT_005910b0)[*param_1] + (uint)param_1[1]), 0x1c < bVar1 &&\r\n            (bVar1 < 0x2c)) || ((0x3e < bVar1 && (bVar1 < 0x47)))) ||\r\n          ((0x50 < bVar1 && (bVar1 < 0x5a)))))) {\r\n        bVar3 = true;\r\n      }\r\n      else {\r\n        bVar3 = false;\r\n      }\r\n      if ((bVar3) &&\r\n         (iVar5 = FUN_00492240(*(undefined2 *)param_1,*(undefined2 *)param_1,local_60,local_30),\r\n         iVar5 != 0)) {\r\n        return bVar6;\r\n      }\r\n      iVar7 = iVar7 + 1;\r\n      bVar6 = bVar6 + 1 & 3;\r\n    } while (iVar7 < 4);\r\n    local_68 = local_68 + 1;\r\n    if (4 < local_68) {\r\n      return 0xff;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004bcc80",
+      "name": "FUN_004bcc80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bcc80",
+      "name": "FUN_004bcc80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00492240",
+      "name": "FUN_00492240"
+    }
+  ],
+  "data_refs": []
+}

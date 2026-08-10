@@ -1,0 +1,24 @@
+{
+  "address": "00408c30",
+  "name": "FUN_00408c30",
+  "signature": "undefined FUN_00408c30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00408c43) */\r\n/* WARNING: Removing unreachable block (ram,0x00408c6d) */\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_00408c30(void)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (DAT_00518d50 == 2) {\r\n    iVar1 = *(int *)(&DAT_00518e10 + DAT_00518d64 * 0x50);\r\n    if (iVar1 < 1) {\r\n      iVar1 = 1;\r\n    }\r\n    if (iVar1 <= DAT_00518dbc) {\r\n      return 1;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044ba30",
+      "name": "FUN_0044ba30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

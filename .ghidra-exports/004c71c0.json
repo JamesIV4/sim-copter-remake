@@ -1,0 +1,61 @@
+{
+  "address": "004c71c0",
+  "name": "FUN_004c71c0",
+  "signature": "undefined FUN_004c71c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004c71c0(int param_1,int param_2)\r\n\r\n{\r\n  short sVar1;\r\n  undefined2 uVar2;\r\n  undefined2 uVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  uint uVar6;\r\n  uint *puVar7;\r\n  int iVar8;\r\n  undefined2 uVar9;\r\n  undefined2 local_4;\r\n  \r\n  if (param_2 == -1) {\r\n    param_2 = FUN_004c7190();\r\n  }\r\n  sVar1 = FUN_004cea00(DAT_0058dc3a);\r\n  if ((sVar1 == 0) && (sVar1 = FUN_004cea00(DAT_0058dc3a), sVar1 == 0)) {\r\n    param_2 = FUN_004c7170();\r\n  }\r\n  uVar9 = 0;\r\n  *(short *)(param_1 + 0x146) = (short)param_2;\r\n  uVar3 = 0xe;\r\n  switch(param_2) {\r\n  case 0:\r\n    local_4 = 4;\r\n    iVar8 = 0x426c6f6e;\r\n    uVar9 = 500;\r\n    uVar3 = 0x28;\r\n    break;\r\n  case 1:\r\n    local_4 = 8;\r\n    iVar8 = 0x576f6d61;\r\n    uVar9 = 400;\r\n    uVar3 = 0x28;\r\n    break;\r\n  case 2:\r\n    local_4 = 6;\r\n    iVar8 = 0x32776f6d;\r\n    uVar9 = 400;\r\n    uVar3 = 0x28;\r\n    break;\r\n  case 3:\r\n    local_4 = 7;\r\n    iVar8 = 0x4368696c;\r\n    uVar9 = 700;\r\n    break;\r\n  case 4:\r\n    local_4 = 5;\r\n    iVar8 = 0x356d616e;\r\n    uVar9 = 0;\r\n    break;\r\n  case 5:\r\n    local_4 = 7;\r\n    iVar8 = 0x6661746d;\r\n    uVar9 = 0xfd44;\r\n    break;\r\n  case 6:\r\n    local_4 = 7;\r\n    iVar8 = 0x424c5545;\r\n    uVar9 = 0xff38;\r\n    uVar3 = 0x29;\r\n    break;\r\n  case 7:\r\n    local_4 = 7;\r\n    iVar8 = 0x53554954;\r\n    uVar9 = 0xfed4;\r\n    break;\r\n  case 8:\r\n    local_4 = 5;\r\n    iVar8 = 0x352e356d;\r\n    uVar9 = 0xff9c;\r\n    break;\r\n  case 9:\r\n    local_4 = 5;\r\n    iVar8 = 0x53484144;\r\n    uVar9 = 300;\r\n    break;\r\n  case 10:\r\n    local_4 = 6;\r\n    iVar8 = 0x32444f47;\r\n    uVar9 = 900;\r\n    sVar1 = FUN_004cea00(200);\r\n    if (sVar1 == 0) {\r\n      uVar2 = FUN_004cea00(8);\r\n      switch(uVar2) {\r\n      case 0:\r\n        uVar3 = 0x2f;\r\n        break;\r\n      case 1:\r\n        uVar3 = 0x30;\r\n        break;\r\n      case 2:\r\n        uVar3 = 0x31;\r\n        break;\r\n      case 3:\r\n        uVar3 = 0x32;\r\n        break;\r\n      case 4:\r\n        uVar3 = 0x33;\r\n        break;\r\n      case 5:\r\n        uVar3 = 0x34;\r\n        break;\r\n      case 6:\r\n        uVar3 = 0x35;\r\n        break;\r\n      case 7:\r\n        uVar3 = 0x36;\r\n      }\r\n    }\r\n    else {\r\n      uVar3 = 0xe;\r\n    }\r\n    break;\r\n  case 0xb:\r\n    local_4 = 9;\r\n    iVar8 = 0x32626c6f;\r\n    uVar9 = 0xfe0c;\r\n    uVar3 = 0x28;\r\n    break;\r\n  case 0xc:\r\n    local_4 = 3;\r\n    iVar8 = 0x4d656469;\r\n    uVar9 = 0xfed4;\r\n    break;\r\n  case 0xd:\r\n    local_4 = 2;\r\n    iVar8 = 0x46697265;\r\n    uVar9 = 0xfed4;\r\n    uVar3 = 0x29;\r\n    break;\r\n  case 0xe:\r\n    local_4 = 1;\r\n    iVar8 = 0x4b6f7070;\r\n    uVar9 = 0xfed4;\r\n    uVar3 = 0x29;\r\n    break;\r\n  case 0xf:\r\n    local_4 = 5;\r\n    iVar8 = 0x42616467;\r\n    uVar9 = 0xfc7c;\r\n    break;\r\n  case 0x10:\r\n    local_4 = 4;\r\n    iVar8 = 0x4e657373;\r\n    uVar9 = 0xfc18;\r\n    uVar2 = FUN_004cea00(8);\r\n    switch(uVar2) {\r\n    case 0:\r\n      uVar3 = 0x2f;\r\n      break;\r\n    case 1:\r\n      uVar3 = 0x30;\r\n      break;\r\n    case 2:\r\n      uVar3 = 0x31;\r\n      break;\r\n    case 3:\r\n      uVar3 = 0x32;\r\n      break;\r\n    case 4:\r\n      uVar3 = 0x33;\r\n      break;\r\n    case 5:\r\n      uVar3 = 0x34;\r\n      break;\r\n    case 6:\r\n      uVar3 = 0x35;\r\n      break;\r\n    case 7:\r\n      uVar3 = 0x36;\r\n    }\r\n    break;\r\n  case 0x11:\r\n    local_4 = 4;\r\n    iVar8 = 0x436f7777;\r\n    uVar9 = 0xfc18;\r\n    sVar1 = FUN_004cea00(200);\r\n    if (sVar1 == 0) {\r\n      uVar2 = FUN_004cea00(8);\r\n      switch(uVar2) {\r\n      case 0:\r\n        uVar3 = 0x2f;\r\n        break;\r\n      case 1:\r\n        uVar3 = 0x30;\r\n        break;\r\n      case 2:\r\n        uVar3 = 0x31;\r\n        break;\r\n      case 3:\r\n        uVar3 = 0x32;\r\n        break;\r\n      case 4:\r\n        uVar3 = 0x33;\r\n        break;\r\n      case 5:\r\n        uVar3 = 0x34;\r\n        break;\r\n      case 6:\r\n        uVar3 = 0x35;\r\n        break;\r\n      case 7:\r\n        uVar3 = 0x36;\r\n      }\r\n    }\r\n    else {\r\n      uVar3 = 0xe;\r\n    }\r\n    break;\r\n  case 0x12:\r\n    local_4 = 7;\r\n    iVar8 = 0x54756261;\r\n    uVar9 = 0xfc18;\r\n    uVar3 = 0x29;\r\n    break;\r\n  case 0x13:\r\n    local_4 = 0;\r\n    iVar8 = 0x70696c6f;\r\n    uVar9 = 0xfc18;\r\n    uVar3 = 0x29;\r\n    break;\r\n  case 0x14:\r\n    local_4 = 7;\r\n    iVar8 = 0x456c7669;\r\n    uVar9 = 0xe0c0;\r\n    uVar2 = FUN_004cea00(8);\r\n    switch(uVar2) {\r\n    case 0:\r\n      uVar3 = 0x2f;\r\n      break;\r\n    case 1:\r\n      uVar3 = 0x30;\r\n      break;\r\n    case 2:\r\n      uVar3 = 0x31;\r\n      break;\r\n    case 3:\r\n      uVar3 = 0x32;\r\n      break;\r\n    case 4:\r\n      uVar3 = 0x33;\r\n      break;\r\n    case 5:\r\n      uVar3 = 0x34;\r\n      break;\r\n    case 6:\r\n      uVar3 = 0x35;\r\n      break;\r\n    case 7:\r\n      uVar3 = 0x36;\r\n    }\r\n    break;\r\n  case 0x15:\r\n    local_4 = 5;\r\n    iVar8 = 0x7377696d;\r\n    uVar9 = 1000;\r\n    break;\r\n  default:\r\n    local_4 = (undefined2)param_1;\r\n    iVar8 = param_1;\r\n  }\r\n  if (((*(short *)(param_1 + 0x12e) == 32000) && (DAT_0051ac58 != 0)) &&\r\n     (iVar4 = FUN_0042de60(1), iVar4 != 0)) {\r\n    uVar2 = FUN_004cea00(8);\r\n    switch(uVar2) {\r\n    case 0:\r\nswitchD_004c75d9_caseD_0:\r\n      uVar3 = 0x2f;\r\n      break;\r\n    case 1:\r\nswitchD_004c75d9_caseD_1:\r\n      uVar3 = 0x30;\r\n      break;\r\n    case 2:\r\nswitchD_004c75d9_caseD_2:\r\n      uVar3 = 0x31;\r\n      break;\r\n    case 3:\r\nswitchD_004c75d9_caseD_3:\r\n      uVar3 = 0x32;\r\n      break;\r\n    case 4:\r\nswitchD_004c75d9_caseD_4:\r\n      uVar3 = 0x33;\r\n      break;\r\n    case 5:\r\nswitchD_004c75d9_caseD_5:\r\n      uVar3 = 0x34;\r\n      break;\r\n    case 6:\r\nswitchD_004c75d9_caseD_6:\r\n      uVar3 = 0x35;\r\n      break;\r\n    case 7:\r\nswitchD_004c75d9_caseD_7:\r\n      uVar3 = 0x36;\r\n    default:\r\n      break;\r\n    }\r\nswitchD_004c75d9_default:\r\n    puVar5 = (undefined4 *)0x0;\r\n    *(undefined2 *)(param_1 + 0x178) = uVar9;\r\n    *(undefined2 *)(param_1 + 0x18c) = uVar3;\r\n    if (DAT_00506bf4 != 0) {\r\n      puVar5 = (undefined4 *)(DAT_00506bf4 + 4);\r\n    }\r\n    puVar7 = (uint *)0x0;\r\n    if (puVar5 != (undefined4 *)0x0) {\r\n      puVar7 = (uint *)*puVar5;\r\n    }\r\n    if (puVar7 != (uint *)0x0) {\r\n      while (*puVar7 != 0) {\r\n        if (*(int *)(((puVar7 == (uint *)0x0) - 1 & *puVar7) + 0x1c) == iVar8) {\r\n          if (puVar7 != (uint *)0x0) {\r\n            uVar6 = *puVar7;\r\n            goto LAB_004c769e;\r\n          }\r\n          break;\r\n        }\r\n        if ((puVar7 == (uint *)0x0) || (puVar7 = (uint *)puVar7[1], puVar7 == (uint *)0x0)) break;\r\n      }\r\n    }\r\n    uVar6 = 0;\r\nLAB_004c769e:\r\n    *(uint *)(param_1 + 0x21c) = uVar6;\r\n    *(int *)(param_1 + 0x218) = iVar8;\r\n    if ((*(short *)(param_1 + 0x18e) == -1) && (*(short *)(param_1 + 0x12e) != 32000)) {\r\n      *(undefined2 *)(param_1 + 0x18e) = local_4;\r\n    }\r\n    if (*(short *)(param_1 + 0x160) == -1) {\r\n      uVar3 = FUN_004cea00(0xe);\r\n      *(undefined2 *)(param_1 + 0x160) = uVar3;\r\n    }\r\n    return;\r\n  }\r\n  sVar1 = FUN_004cea00(DAT_0058dc3a);\r\n  if (sVar1 != 0) goto switchD_004c75d9_default;\r\n  uVar2 = FUN_004cea00(8);\r\n  switch(uVar2) {\r\n  case 0:\r\n    goto switchD_004c75d9_caseD_0;\r\n  case 1:\r\n    goto switchD_004c75d9_caseD_1;\r\n  case 2:\r\n    goto switchD_004c75d9_caseD_2;\r\n  case 3:\r\n    goto switchD_004c75d9_caseD_3;\r\n  case 4:\r\n    goto switchD_004c75d9_caseD_4;\r\n  case 5:\r\n    goto switchD_004c75d9_caseD_5;\r\n  case 6:\r\n    goto switchD_004c75d9_caseD_6;\r\n  case 7:\r\n    goto switchD_004c75d9_caseD_7;\r\n  default:\r\n    goto switchD_004c75d9_default;\r\n  }\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c4070",
+      "name": "FUN_004c4070",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c1b50",
+      "name": "FUN_004c1b50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c1b50",
+      "name": "FUN_004c1b50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c7d10",
+      "name": "FUN_004c7d10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c7190",
+      "name": "FUN_004c7190"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "004c7170",
+      "name": "FUN_004c7170"
+    },
+    {
+      "addr": "0042de60",
+      "name": "FUN_0042de60"
+    }
+  ],
+  "data_refs": []
+}

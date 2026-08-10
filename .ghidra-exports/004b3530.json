@@ -1,0 +1,46 @@
+{
+  "address": "004b3530",
+  "name": "FUN_004b3530",
+  "signature": "undefined FUN_004b3530(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b3530(int param_1)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  bool bVar3;\r\n  short sVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  int iVar9;\r\n  int iVar10;\r\n  int *piVar11;\r\n  int local_4c [3];\r\n  int local_40;\r\n  undefined4 local_3c;\r\n  int local_38;\r\n  \r\n  iVar10 = 0;\r\n  iVar9 = -1;\r\n  bVar3 = false;\r\n  local_40 = DAT_0061a664;\r\n  local_3c = DAT_0061a668;\r\n  local_38 = DAT_0061a66c;\r\n  *(undefined4 *)(param_1 + 0x34) = 0;\r\n  iVar5 = _rand();\r\n  uVar2 = (short)(ushort)iVar5 >> 0xf;\r\n  uVar1 = ((ushort)iVar5 ^ uVar2) - uVar2 & 7 ^ uVar2;\r\n  sVar4 = uVar1 - uVar2;\r\n  iVar5 = DAT_005a25a0 >> 1;\r\n  if (uVar1 == uVar2) {\r\n    iVar6 = iVar5 * local_38;\r\n    iVar5 = iVar5 * -local_40;\r\n  }\r\n  else if (sVar4 == 1) {\r\n    iVar6 = iVar5 * -local_38;\r\n    iVar5 = iVar5 * local_40;\r\n    local_40 = -local_38;\r\n  }\r\n  else if (sVar4 == 2) {\r\n    iVar6 = iVar5 * -local_40;\r\n    iVar5 = iVar5 * -local_38;\r\n    local_40 = -local_38;\r\n  }\r\n  else {\r\n    iVar6 = (iVar5 + 1) * local_40;\r\n    iVar5 = (iVar5 + 1) * local_38;\r\n  }\r\n  uVar8 = DAT_0061a6ac + iVar6 * 0x40 + 0x20000000 >> 0x16;\r\n  uVar7 = (0x20000000 - DAT_0061a6b4) + iVar5 * -0x40 >> 0x16;\r\n  if (((((int)uVar8 < 3) || (0x7d < (int)uVar8)) || ((int)uVar7 < 3)) || (0x7d < (int)uVar7)) {\r\n    return;\r\n  }\r\n  do {\r\n    iVar9 = iVar9 + 1;\r\n    switch(iVar9) {\r\n    case 0:\r\n    case 4:\r\n      iVar9 = 0;\r\n    case 2:\r\n      iVar10 = iVar10 + 1;\r\n    }\r\n    if (iVar10 == 7) {\r\n      iVar10 = 6;\r\n      bVar3 = true;\r\n    }\r\n    if (0 < iVar10) {\r\n      *(undefined1 *)(param_1 + 7) = 0;\r\n      *(undefined4 *)(param_1 + 0x18) = 0;\r\n      *(uint *)(param_1 + 0x20) = uVar8;\r\n      *(uint *)(param_1 + 0x24) = uVar7;\r\n      *(undefined1 *)(param_1 + 5) = 1;\r\n      iVar5 = (&DAT_005d9200)[(uVar8 & 0xff) * 0x100 + (uVar7 & 0xff)];\r\n      *(undefined4 *)(param_1 + 0x58) = *(undefined4 *)(iVar5 + 0x10);\r\n      *(undefined4 **)(iVar5 + 0x10) = (undefined4 *)(param_1 + 0x58);\r\n      iVar5 = (&DAT_005d9200)\r\n              [(*(uint *)(param_1 + 0x20) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x24) & 0xff)];\r\n      *(int *)(param_1 + 0x70) = (int)*(short *)(iVar5 + 2) << 0x10;\r\n      *(int *)(param_1 + 0x74) = (int)*(short *)(iVar5 + 4) << 0x10;\r\n      *(int *)(param_1 + 0x78) = (int)*(short *)(iVar5 + 6) << 0x10;\r\n      iVar5 = FUN_00488f00(iVar5);\r\n      if (iVar5 < 0x15e0000) {\r\n        *(int *)(param_1 + 0x74) = *(int *)(param_1 + 0x74) + 0x17c0000;\r\n      }\r\n      else {\r\n        *(int *)(param_1 + 0x74) = *(int *)(param_1 + 0x74) + iVar5 + 0x1e0000;\r\n      }\r\n      local_4c[0] = *(short *)((&DAT_005d9200)\r\n                               [(DAT_0061a618 & 0xff) * 0x100 + (DAT_0061a61c & 0xff)] + 2) *\r\n                    0x10000 - *(int *)(param_1 + 0x70);\r\n      local_4c[1] = 0;\r\n      local_4c[2] = *(short *)((&DAT_005d9200)\r\n                               [(DAT_0061a618 & 0xff) * 0x100 + (DAT_0061a61c & 0xff)] + 6) *\r\n                    0x10000 - *(int *)(param_1 + 0x78);\r\n      FUN_00467a80(local_4c);\r\n      FUN_0046cad1(&local_40);\r\n      piVar11 = &local_40;\r\n      uVar7 = _rand();\r\n      FUN_0046cafc((300 - (short)((int)((uint)(ushort)((short)uVar7 >> 0xf) << 0x10 | uVar7 & 0xffff\r\n                                       ) % 600)) * 0x10000,piVar11);\r\n      FUN_0046cb74(local_4c,param_1 + 8,&local_40);\r\n      if ((*(byte *)(param_1 + 100) & 1) != 0) {\r\n        FUN_00467d30(param_1 + 0x7c,param_1 + 8);\r\n      }\r\n      FUN_004b3420();\r\n      if (*(int *)(param_1 + 0x54) != 0x12e) {\r\n        return;\r\n      }\r\n      *(undefined4 *)(param_1 + 0x50) = 0;\r\n      return;\r\n    }\r\n    if (bVar3) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "00488f00",
+      "name": "FUN_00488f00"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80"
+    },
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1"
+    },
+    {
+      "addr": "0046cafc",
+      "name": "FUN_0046cafc"
+    },
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30"
+    },
+    {
+      "addr": "004b3420",
+      "name": "FUN_004b3420"
+    }
+  ],
+  "data_refs": []
+}

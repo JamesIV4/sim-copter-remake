@@ -1,0 +1,18 @@
+{
+  "address": "00455b60",
+  "name": "FUN_00455b60",
+  "signature": "undefined FUN_00455b60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00455b60(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = param_1[0x2d];\r\n  if (iVar1 != 0) {\r\n    if (iVar1 == 1) {\r\n      *(byte *)(param_1[0x2e] + 0x18) = *(byte *)(param_1[0x2e] + 0x18) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 2) {\r\n      *(byte *)(param_1[0x2e] + 0x16) = *(byte *)(param_1[0x2e] + 0x16) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 3) {\r\n      *(byte *)(param_1[0x2e] + 0x1a) = *(byte *)(param_1[0x2e] + 0x1a) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 4) {\r\n      *(byte *)(param_1[0x2e] + 0x20) = *(byte *)(param_1[0x2e] + 0x20) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 6) {\r\n      *(byte *)(param_1[0x2e] + 0x1e) = *(byte *)(param_1[0x2e] + 0x1e) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 7) {\r\n      *(byte *)(param_1[0x2e] + 0x1c) = *(byte *)(param_1[0x2e] + 0x1c) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 8) {\r\n      *(byte *)(param_1[0x2e] + 4) = *(byte *)(param_1[0x2e] + 4) | 0x20;\r\n      return;\r\n    }\r\n    if (iVar1 == 5) {\r\n      (**(code **)(*param_1 + 0xac))(param_1);\r\n      FUN_00455c90();\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00455c90",
+      "name": "FUN_00455c90"
+    }
+  ],
+  "data_refs": []
+}

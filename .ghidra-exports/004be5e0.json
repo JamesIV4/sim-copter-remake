@@ -1,0 +1,46 @@
+{
+  "address": "004be5e0",
+  "name": "FUN_004be5e0",
+  "signature": "undefined FUN_004be5e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004be5e0(int param_1)\r\n\r\n{\r\n  undefined1 uVar1;\r\n  undefined1 uVar2;\r\n  undefined1 uVar3;\r\n  undefined1 uVar4;\r\n  undefined4 uVar5;\r\n  int iVar6;\r\n  undefined2 extraout_var;\r\n  undefined4 *puVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 uStack_e4;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_84;\r\n  undefined4 uStack_80;\r\n  undefined4 uStack_7c;\r\n  undefined4 *puStack_78;\r\n  undefined4 *puStack_74;\r\n  undefined4 uStack_60;\r\n  undefined4 local_30;\r\n  \r\n  uStack_60._0_2_ = *(undefined2 *)(param_1 + 299);\r\n  puStack_74 = &uStack_60;\r\n  puStack_78 = &local_30;\r\n  uStack_80 = CONCAT22(uStack_60._2_2_,(undefined2)uStack_60);\r\n  uStack_84 = 0x4be60e;\r\n  uStack_7c = uStack_80;\r\n  uVar5 = FUN_00492240();\r\n  iVar6 = *(int *)(param_1 + 0x8a) * 0xb + *(int *)(param_1 + 0x7c);\r\n  uVar1 = *(undefined1 *)(iVar6 + 6);\r\n  uVar2 = *(undefined1 *)(iVar6 + 5);\r\n  uVar3 = *local_30;\r\n  puStack_78 = (undefined4 *)CONCAT31((int3)((uint)*(int *)(param_1 + 0x8a) >> 8),uVar3);\r\n  puStack_74 = (undefined4 *)CONCAT31((int3)((uint)iVar6 >> 8),local_30[1]);\r\n  uStack_7c = 0x4be648;\r\n  uVar4 = FUN_00492bc0();\r\n  puStack_78 = (undefined4 *)CONCAT22((undefined2)uStack_60,CONCAT11(uVar2,uVar1));\r\n  puStack_74 = (undefined4 *)CONCAT13(uVar2,CONCAT12(uVar1,CONCAT11(uVar4,uVar3)));\r\n  uStack_7c = 0x4be660;\r\n  FUN_004bef30();\r\n  uStack_84 = CONCAT22(extraout_var,*(undefined2 *)(param_1 + 299));\r\n  puStack_74 = (undefined4 *)0x1;\r\n  puStack_78 = *(undefined4 **)(param_1 + 0x299);\r\n  uStack_7c = 0xffffffff;\r\n  puVar7 = &uStack_60;\r\n  puVar8 = &uStack_b4;\r\n  uStack_80 = uVar5;\r\n  for (iVar6 = 0xb; iVar6 != 0; iVar6 = iVar6 + -1) {\r\n    *puVar8 = *puVar7;\r\n    puVar7 = puVar7 + 1;\r\n    puVar8 = puVar8 + 1;\r\n  }\r\n  *(undefined2 *)puVar8 = *(undefined2 *)puVar7;\r\n  *(undefined1 *)((int)puVar8 + 2) = *(undefined1 *)((int)puVar7 + 2);\r\n  puVar7 = &local_30;\r\n  puVar8 = &uStack_e4;\r\n  for (iVar6 = 0xb; iVar6 != 0; iVar6 = iVar6 + -1) {\r\n    *puVar8 = *puVar7;\r\n    puVar7 = puVar7 + 1;\r\n    puVar8 = puVar8 + 1;\r\n  }\r\n  *(undefined2 *)puVar8 = *(undefined2 *)puVar7;\r\n  *(undefined1 *)((int)puVar8 + 2) = *(undefined1 *)((int)puVar7 + 2);\r\n  FUN_004bdd40();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004bd770",
+      "name": "FUN_004bd770",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bd980",
+      "name": "FUN_004bd980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bdb50",
+      "name": "FUN_004bdb50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00492240",
+      "name": "FUN_00492240"
+    },
+    {
+      "addr": "00492bc0",
+      "name": "FUN_00492bc0"
+    },
+    {
+      "addr": "004bef30",
+      "name": "FUN_004bef30"
+    },
+    {
+      "addr": "004bdd40",
+      "name": "FUN_004bdd40"
+    }
+  ],
+  "data_refs": []
+}

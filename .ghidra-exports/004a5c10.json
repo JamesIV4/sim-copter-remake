@@ -1,0 +1,19 @@
+{
+  "address": "004a5c10",
+  "name": "FUN_004a5c10",
+  "signature": "undefined FUN_004a5c10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nint FUN_004a5c10(byte *param_1,int *param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  if ((*param_1 & 0x20) == 0) {\r\n    return 0;\r\n  }\r\n  puVar1 = *(undefined4 **)(param_1 + 0xc);\r\n  iVar3 = (1 - _DAT_004f9740) * 0x80000 + _DAT_00505f54;\r\n  do {\r\n    if (puVar1 == (undefined4 *)0x0) {\r\n      return 0;\r\n    }\r\n    if ((*(byte *)(puVar1 + 2) & 1) != 0) {\r\n      iVar2 = puVar1[3];\r\n      if ((*param_2 < *(int *)(iVar2 + 0x10) + iVar3) && (*(int *)(iVar2 + 0x10) - iVar3 < *param_2)\r\n         ) {\r\n        if ((param_2[2] < *(int *)(iVar2 + 0x18) + iVar3) &&\r\n           (*(int *)(iVar2 + 0x18) - iVar3 < param_2[2])) {\r\n          iVar3 = (param_2[1] - *(int *)(iVar2 + 8)) - *(int *)(iVar2 + 0x14);\r\n          if (iVar3 != 0) {\r\n            return iVar3;\r\n          }\r\n          return 1;\r\n        }\r\n      }\r\n    }\r\n    puVar1 = (undefined4 *)*puVar1;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00489800",
+      "name": "FUN_00489800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

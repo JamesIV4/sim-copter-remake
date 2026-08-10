@@ -1,0 +1,24 @@
+{
+  "address": "0044d2d0",
+  "name": "FUN_0044d2d0",
+  "signature": "undefined FUN_0044d2d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x0044d382) */\r\n/* WARNING: Removing unreachable block (ram,0x0044d329) */\r\n\r\nundefined4 FUN_0044d2d0(void)\r\n\r\n{\r\n  int *piVar1;\r\n  short sVar2;\r\n  int iVar3;\r\n  char local_24 [12];\r\n  int local_18;\r\n  undefined4 local_14;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  \r\n  local_18 = 0;\r\n  local_14 = 0;\r\n  local_10 = s______________004f96a4._0_4_;\r\n  local_c = s______________004f96a4._4_4_;\r\n  local_8 = s______________004f96a4._8_4_;\r\n  local_24._0_4_ = s_GenuineIntel_004f9694._0_4_;\r\n  local_24._4_4_ = s_GenuineIntel_004f9694._4_4_;\r\n  local_24._8_4_ = s_GenuineIntel_004f9694._8_4_;\r\n  sVar2 = FUN_0044d1d0();\r\n  if (sVar2 != 0) {\r\n    piVar1 = (int *)cpuid_basic_info(0);\r\n    local_10 = piVar1[1];\r\n    local_c = piVar1[2];\r\n    local_8 = piVar1[3];\r\n    iVar3 = *piVar1;\r\n    for (local_18 = 0; local_18 < 0xc; local_18 = local_18 + 1) {\r\n      if (*(char *)((int)&local_10 + local_18) != local_24[local_18]) {\r\n        DAT_00590758 = 1;\r\n      }\r\n      iVar3 = local_18;\r\n    }\r\n    if (0 < iVar3) {\r\n      iVar3 = cpuid_Version_info(1);\r\n      local_14 = *(undefined4 *)(iVar3 + 8);\r\n    }\r\n  }\r\n  return local_14;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043aa10",
+      "name": "FUN_0043aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0044d1d0",
+      "name": "FUN_0044d1d0"
+    }
+  ],
+  "data_refs": []
+}

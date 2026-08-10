@@ -1,0 +1,37 @@
+{
+  "address": "004d4f00",
+  "name": "__setlocale_get_all",
+  "signature": "undefined __setlocale_get_all(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __setlocale_get_all\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nchar * __setlocale_get_all(void)\r\n\r\n{\r\n  undefined **ppuVar1;\r\n  char cVar2;\r\n  byte bVar3;\r\n  bool bVar4;\r\n  byte *pbVar5;\r\n  uint uVar6;\r\n  int iVar7;\r\n  uint uVar8;\r\n  undefined **ppuVar9;\r\n  char *pcVar10;\r\n  byte *pbVar11;\r\n  char *pcVar12;\r\n  char *pcVar13;\r\n  bool bVar14;\r\n  \r\n  bVar4 = true;\r\n  if (DAT_00506e94 == (char *)0x0) {\r\n    DAT_00506e94 = (char *)FUN_004d5f00(0x351);\r\n  }\r\n  *DAT_00506e94 = '\\0';\r\n  ppuVar9 = &PTR_DAT_00506ea0;\r\n  do {\r\n    __strcats(DAT_00506e94,3,ppuVar9[-1],&DAT_004f558c,*ppuVar9);\r\n    if ((undefined **)((int)&PTR_s_LC_TIME_00506ecc + 3) < ppuVar9) {\r\n      if (bVar4) {\r\n        FUN_004d6010(DAT_00506e94);\r\n        DAT_00506e94 = (char *)0x0;\r\n        return PTR_DAT_00506eac;\r\n      }\r\n      return DAT_00506e94;\r\n    }\r\n    uVar6 = 0xffffffff;\r\n    pcVar10 = \";\";\r\n    do {\r\n      pcVar13 = pcVar10;\r\n      if (uVar6 == 0) break;\r\n      uVar6 = uVar6 - 1;\r\n      pcVar13 = pcVar10 + 1;\r\n      cVar2 = *pcVar10;\r\n      pcVar10 = pcVar13;\r\n    } while (cVar2 != '\\0');\r\n    uVar6 = ~uVar6;\r\n    iVar7 = -1;\r\n    pcVar10 = DAT_00506e94;\r\n    do {\r\n      pcVar12 = pcVar10;\r\n      if (iVar7 == 0) break;\r\n      iVar7 = iVar7 + -1;\r\n      pcVar12 = pcVar10 + 1;\r\n      cVar2 = *pcVar10;\r\n      pcVar10 = pcVar12;\r\n    } while (cVar2 != '\\0');\r\n    pcVar10 = pcVar13 + -uVar6;\r\n    pcVar13 = pcVar12 + -1;\r\n    for (uVar8 = uVar6 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined4 *)pcVar13 = *(undefined4 *)pcVar10;\r\n      pcVar10 = pcVar10 + 4;\r\n      pcVar13 = pcVar13 + 4;\r\n    }\r\n    for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n      *pcVar13 = *pcVar10;\r\n      pcVar10 = pcVar10 + 1;\r\n      pcVar13 = pcVar13 + 1;\r\n    }\r\n    ppuVar1 = ppuVar9 + 3;\r\n    pbVar5 = *ppuVar9;\r\n    pbVar11 = *ppuVar1;\r\n    do {\r\n      bVar3 = *pbVar5;\r\n      bVar14 = bVar3 < *pbVar11;\r\n      if (bVar3 != *pbVar11) {\r\nLAB_004d4fb3:\r\n        iVar7 = (1 - (uint)bVar14) - (uint)(bVar14 != 0);\r\n        goto LAB_004d4fb8;\r\n      }\r\n      if (bVar3 == 0) break;\r\n      bVar3 = pbVar5[1];\r\n      bVar14 = bVar3 < pbVar11[1];\r\n      if (bVar3 != pbVar11[1]) goto LAB_004d4fb3;\r\n      pbVar5 = pbVar5 + 2;\r\n      pbVar11 = pbVar11 + 2;\r\n    } while (bVar3 != 0);\r\n    iVar7 = 0;\r\nLAB_004d4fb8:\r\n    ppuVar9 = ppuVar1;\r\n    if (iVar7 != 0) {\r\n      bVar4 = false;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4ab0",
+      "name": "_setlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4ab0",
+      "name": "_setlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d51d0",
+      "name": "__strcats"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

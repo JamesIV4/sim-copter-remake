@@ -1,0 +1,45 @@
+{
+  "address": "00455ea0",
+  "name": "FUN_00455ea0",
+  "signature": "undefined FUN_00455ea0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nMMRESULT FUN_00455ea0(LPSTR param_1,undefined4 *param_2,undefined4 *param_3,LPMMCKINFO param_4)\r\n\r\n{\r\n  HMMIO hmmio;\r\n  LONG LVar1;\r\n  MMRESULT MVar2;\r\n  undefined2 local_26;\r\n  _MMCKINFO local_24;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  hmmio = mmioOpenA(param_1,(LPMMIOINFO)0x0,0x10000);\r\n  if (hmmio == (HMMIO)0x0) {\r\n    MVar2 = 0xe100;\r\n  }\r\n  else {\r\n    MVar2 = mmioDescend(hmmio,param_4,(MMCKINFO *)0x0,0);\r\n    if (MVar2 == 0) {\r\n      if ((param_4->ckid == 0x46464952) && (param_4->fccType == 0x45564157)) {\r\n        local_24.ckid = 0x20746d66;\r\n        MVar2 = mmioDescend(hmmio,&local_24,param_4,0x10);\r\n        if (MVar2 == 0) {\r\n          if (local_24.cksize < 0x10) goto LAB_00455fa7;\r\n          LVar1 = mmioRead(hmmio,(HPSTR)&local_10,0x10);\r\n          if (LVar1 == 0x10) {\r\n            if ((short)local_10 == 1) {\r\n              local_26 = 0;\r\n            }\r\n            else {\r\n              LVar1 = mmioRead(hmmio,(HPSTR)&local_26,2);\r\n              if (LVar1 != 2) {\r\n                MVar2 = 0xe102;\r\n                goto LAB_00455fac;\r\n              }\r\n            }\r\n            *param_3 = local_10;\r\n            param_3[1] = local_c;\r\n            param_3[2] = local_8;\r\n            param_3[3] = local_4;\r\n            *(undefined2 *)(param_3 + 4) = local_26;\r\n            MVar2 = mmioAscend(hmmio,&local_24,0);\r\n            if (MVar2 == 0) goto LAB_00455fbb;\r\n          }\r\n          else {\r\n            MVar2 = 0xe102;\r\n          }\r\n        }\r\n      }\r\n      else {\r\nLAB_00455fa7:\r\n        MVar2 = 0xe101;\r\n      }\r\n    }\r\n  }\r\nLAB_00455fac:\r\n  if (hmmio != (HMMIO)0x0) {\r\n    mmioClose(hmmio,0);\r\n    hmmio = (HMMIO)0x0;\r\n  }\r\nLAB_00455fbb:\r\n  *param_2 = hmmio;\r\n  return MVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041e2d0",
+      "name": "FUN_0041e2d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c3",
+      "name": "mmioOpenA"
+    },
+    {
+      "addr": "EXTERNAL:000000cf",
+      "name": "mmioDescend"
+    },
+    {
+      "addr": "EXTERNAL:000000c2",
+      "name": "mmioRead"
+    },
+    {
+      "addr": "EXTERNAL:000000cd",
+      "name": "mmioAscend"
+    },
+    {
+      "addr": "EXTERNAL:000000c1",
+      "name": "mmioClose"
+    }
+  ],
+  "data_refs": []
+}

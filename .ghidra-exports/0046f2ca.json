@@ -1,0 +1,29 @@
+{
+  "address": "0046f2ca",
+  "name": "FUN_0046f2ca",
+  "signature": "undefined FUN_0046f2ca(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046f2ca(void)\r\n\r\n{\r\n  longlong lVar1;\r\n  \r\n  DAT_004fb000 = 0;\r\n  DAT_004fb00c = 0;\r\n  DAT_004fb008 = DAT_004fb01c << 0xc;\r\n  DAT_004faff4 = (DAT_004fb01c & 0xfffff) << 0xb;\r\n  DAT_004fb010 = DAT_004fb018;\r\n  DAT_004fb004 = DAT_004fb018 << 0xc;\r\n  DAT_004faff0 = (DAT_004fb018 & 0xfffff) << 0xb;\r\n  DAT_004faff8 = (uint)((ulonglong)DAT_004faff0 * 0x1bb6) >> 0xc |\r\n                 (int)((ulonglong)DAT_004faff0 * 0x1bb6 >> 0x20) << 0x14;\r\n  lVar1 = (ulonglong)DAT_004faff8 * (ulonglong)(DAT_004fb014 >> 4);\r\n  DAT_004faffc = (uint)lVar1 >> 0xc | (int)((ulonglong)lVar1 >> 0x20) << 0x14;\r\n  FUN_0046f333();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046f709",
+      "name": "FUN_0046f709",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046f2b0",
+      "name": "FUN_0046f2b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046f333",
+      "name": "FUN_0046f333"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,30 @@
+{
+  "address": "00415440",
+  "name": "FUN_00415440",
+  "signature": "undefined FUN_00415440(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00415440(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  ushort uVar2;\r\n  \r\n  FUN_00404920();\r\n  FUN_00456500(param_1 + 0x1d,0xc9);\r\n  FUN_00456500(param_1 + 0x1f,0x12d);\r\n  piVar1 = param_1 + 0x29;\r\n  FUN_00456500(param_1 + 0x21,0x191);\r\n  uVar2 = GetKeyState(0x90);\r\n  if ((uVar2 & 1) == 0) {\r\n    *piVar1 = 0;\r\n  }\r\n  else {\r\n    *piVar1 = 1;\r\n  }\r\n  uVar2 = GetKeyState(0x14);\r\n  param_1[0x2a] = 1;\r\n  if ((uVar2 & 1) == 0) {\r\n    param_1[0x2a] = 0;\r\n  }\r\n  uVar2 = GetKeyState(0x91);\r\n  param_1[0x2b] = 1;\r\n  if ((uVar2 & 1) == 0) {\r\n    param_1[0x2b] = 0;\r\n  }\r\n  if (*piVar1 == 0) {\r\n    param_1[0x23] = (int)(param_1 + 0x21);\r\n  }\r\n  else {\r\n    param_1[0x23] = (int)(param_1 + 0x1f);\r\n  }\r\n  FUN_00405cd0(param_1);\r\n  (**(code **)(*param_1 + 0x10))(1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00404920",
+      "name": "FUN_00404920"
+    },
+    {
+      "addr": "00456500",
+      "name": "FUN_00456500"
+    },
+    {
+      "addr": "EXTERNAL:0000008d",
+      "name": "GetKeyState"
+    },
+    {
+      "addr": "00405cd0",
+      "name": "FUN_00405cd0"
+    }
+  ],
+  "data_refs": []
+}

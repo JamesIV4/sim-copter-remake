@@ -1,0 +1,42 @@
+{
+  "address": "004d6cb0",
+  "name": "~streambuf",
+  "signature": "void __thiscall ~streambuf(streambuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual __thiscall streambuf::~streambuf(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall streambuf::~streambuf(streambuf *this)\r\n\r\n{\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f56fc;\r\n  __mtlockterm(this + 0x34);\r\n  FUN_004d6e50();\r\n  if ((*(int *)(this + 4) != 0) && (*(int *)(this + 0x10) != 0)) {\r\n    FUN_004d29a0(*(int *)(this + 0x10));\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d6c90",
+      "name": "`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2f02",
+      "name": "FUN_004d2f02",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d354a",
+      "name": "FUN_004d354a",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56d0",
+      "name": "__mtlockterm"
+    },
+    {
+      "addr": "004d6e50",
+      "name": "FUN_004d6e50"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

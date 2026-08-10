@@ -1,0 +1,19 @@
+{
+  "address": "004de610",
+  "name": "__ctrlfp",
+  "signature": "undefined __ctrlfp(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ctrlfp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __ctrlfp(void)\r\n\r\n{\r\n  short in_FPUControlWord;\r\n  \r\n  return (int)in_FPUControlWord;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e2ba0",
+      "name": "__87except",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

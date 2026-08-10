@@ -1,0 +1,13 @@
+{
+  "address": "00474cef",
+  "name": "FUN_00474cef",
+  "signature": "undefined FUN_00474cef(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nint FUN_00474cef(void)\r\n\r\n{\r\n  longlong lVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int unaff_retaddr;\r\n  \r\n  do {\r\n    piVar2 = DAT_0050141c;\r\n    _DAT_00501420 = DAT_0050141c;\r\n    if (DAT_0050141c == DAT_005014b8) {\r\n      return unaff_retaddr;\r\n    }\r\n    DAT_0050141c = DAT_0050141c + 5;\r\n    if (DAT_005014bc < (int)DAT_0050141c) {\r\n      DAT_0050141c = DAT_005014cc;\r\n    }\r\n    uVar5 = piVar2[1];\r\n    iVar3 = ((uint)DAT_0050141c[1] >> 0xc) - (uVar5 >> 0xc);\r\n  } while (iVar3 == 0);\r\n  _DAT_0050142c = iVar3;\r\n  DAT_00501424 = *piVar2;\r\n  iVar3 = DAT_0050141c[1] - uVar5;\r\n  if (iVar3 < 0x1000) {\r\n    iVar3 = 0x1000;\r\n  }\r\n  uVar4 = *DAT_0050141c - *piVar2;\r\n  _DAT_0050143c =\r\n       (int)(CONCAT44(((int)uVar4 >> 0x1f) << 0xc | uVar4 >> 0x14,uVar4 * 0x1000) / (longlong)iVar3)\r\n  ;\r\n  uVar5 = uVar5 & 0xfff;\r\n  lVar1 = (longlong)_DAT_0050143c * (longlong)(int)uVar5;\r\n  DAT_00501490 = -((uint)lVar1 >> 0xc | (int)((ulonglong)lVar1 >> 0x20) << 0x14);\r\n  DAT_00501434 = piVar2[3];\r\n  uVar4 = DAT_0050141c[3] - piVar2[3];\r\n  _DAT_00501444 =\r\n       (int)(CONCAT44(((int)uVar4 >> 0x1f) << 0xc | uVar4 >> 0x14,uVar4 * 0x1000) / (longlong)iVar3)\r\n  ;\r\n  lVar1 = (longlong)_DAT_00501444 * (longlong)(int)uVar5;\r\n  DAT_00501498 = -((uint)lVar1 >> 0xc | (int)((ulonglong)lVar1 >> 0x20) << 0x14);\r\n  DAT_00501438 = piVar2[4];\r\n  uVar4 = DAT_0050141c[4] - piVar2[4];\r\n  _DAT_00501448 =\r\n       (int)(CONCAT44(((int)uVar4 >> 0x1f) << 0xc | uVar4 >> 0x14,uVar4 * 0x1000) / (longlong)iVar3)\r\n  ;\r\n  lVar1 = (longlong)_DAT_00501448 * (longlong)(int)uVar5;\r\n  DAT_0050149c = -((uint)lVar1 >> 0xc | (int)((ulonglong)lVar1 >> 0x20) << 0x14);\r\n  return DAT_0050149c;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

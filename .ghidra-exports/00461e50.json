@@ -1,0 +1,34 @@
+{
+  "address": "00461e50",
+  "name": "FUN_00461e50",
+  "signature": "undefined FUN_00461e50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __fastcall FUN_00461e50(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  UINT UVar2;\r\n  MMRESULT MVar3;\r\n  int iVar4;\r\n  UINT uJoyID;\r\n  int iVar5;\r\n  UINT *local_14;\r\n  joyinfo_tag local_10;\r\n  \r\n  *param_1 = 0;\r\n  iVar4 = 0;\r\n  piVar1 = param_1 + 5;\r\n  do {\r\n    *(undefined1 *)((int)param_1 + iVar4 + 4) = 0;\r\n    iVar4 = iVar4 + 1;\r\n    *piVar1 = 0;\r\n    piVar1[0x13] = 0;\r\n    piVar1 = piVar1 + 1;\r\n  } while (iVar4 < 0x10);\r\n  UVar2 = joyGetNumDevs();\r\n  if (0x10 < (int)UVar2) {\r\n    UVar2 = 0x10;\r\n  }\r\n  uJoyID = 0;\r\n  if (0 < (int)UVar2) {\r\n    do {\r\n      MVar3 = joyGetPos(uJoyID,&local_10);\r\n      if (MVar3 == 0) {\r\n        param_1[*param_1 + 5] = uJoyID;\r\n        *(undefined1 *)(*param_1 + 4 + (int)param_1) = 1;\r\n        joyGetDevCapsA(uJoyID,(LPJOYCAPSA)(param_1 + *param_1 * 0x65 + 0x28),0x194);\r\n        *param_1 = *param_1 + 1;\r\n      }\r\n      uJoyID = uJoyID + 1;\r\n    } while ((int)uJoyID < (int)UVar2);\r\n  }\r\n  iVar4 = 0;\r\n  if (0 < *param_1) {\r\n    local_14 = (UINT *)(param_1 + 0x18);\r\n    do {\r\n      UVar2 = *local_14;\r\n      if (iVar4 < 0) {\r\n        iVar5 = 0;\r\n        if (0 < *param_1) {\r\n          do {\r\n            FUN_00462430(iVar5,UVar2);\r\n            iVar5 = iVar5 + 1;\r\n          } while (iVar5 < *param_1);\r\n        }\r\n      }\r\n      else if (iVar4 < 0x11) {\r\n        joySetThreshold(local_14[-0x13],UVar2);\r\n      }\r\n      local_14 = local_14 + 1;\r\n      iVar4 = iVar4 + 1;\r\n    } while (iVar4 < *param_1);\r\n  }\r\n  return *param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000ca",
+      "name": "joyGetNumDevs"
+    },
+    {
+      "addr": "EXTERNAL:000000c9",
+      "name": "joyGetPos"
+    },
+    {
+      "addr": "EXTERNAL:000000c8",
+      "name": "joyGetDevCapsA"
+    },
+    {
+      "addr": "00462430",
+      "name": "FUN_00462430"
+    },
+    {
+      "addr": "EXTERNAL:000000c7",
+      "name": "joySetThreshold"
+    }
+  ],
+  "data_refs": []
+}

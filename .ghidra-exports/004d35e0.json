@@ -1,0 +1,26 @@
+{
+  "address": "004d35e0",
+  "name": "overflow",
+  "signature": "int __thiscall overflow(filebuf * this, int param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual int __thiscall filebuf::overflow(int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __thiscall filebuf::overflow(filebuf *this,int param_1)\r\n\r\n{\r\n  undefined1 *puVar1;\r\n  int iVar2;\r\n  \r\n  iVar2 = streambuf::allocate((streambuf *)this);\r\n  if (iVar2 == -1) {\r\n    return -1;\r\n  }\r\n  iVar2 = FUN_004d37b0();\r\n  if (iVar2 == -1) {\r\n    return -1;\r\n  }\r\n  if (*(int *)(this + 8) == 0) {\r\n    *(undefined4 *)(this + 0x18) = *(undefined4 *)(this + 0x10);\r\n    *(undefined4 *)(this + 0x1c) = *(undefined4 *)(this + 0x10);\r\n    *(undefined4 *)(this + 0x20) = *(undefined4 *)(this + 0x14);\r\n  }\r\n  if (param_1 != -1) {\r\n    if ((*(int *)(this + 8) == 0) &&\r\n       (puVar1 = *(undefined1 **)(this + 0x1c), puVar1 < *(undefined1 **)(this + 0x20))) {\r\n      *(undefined1 **)(this + 0x1c) = puVar1 + 1;\r\n      *puVar1 = (char)param_1;\r\n    }\r\n    else {\r\n      iVar2 = __write(*(int *)(this + 0x4c),&param_1,1);\r\n      if (iVar2 != 1) {\r\n        return -1;\r\n      }\r\n    }\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d6e70",
+      "name": "allocate"
+    },
+    {
+      "addr": "004d37b0",
+      "name": "FUN_004d37b0"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

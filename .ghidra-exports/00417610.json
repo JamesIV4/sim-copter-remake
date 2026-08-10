@@ -1,0 +1,18 @@
+{
+  "address": "00417610",
+  "name": "FUN_00417610",
+  "signature": "undefined FUN_00417610(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00417610(int param_1,int param_2,int param_3,int *param_4)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  \r\n  if (((((param_2 < *(int *)(param_1 + 0x18e)) || (param_3 < *(int *)(param_1 + 0x192))) ||\r\n       (*(int *)(param_1 + 0x196) <= param_2)) || (*(int *)(param_1 + 0x19a) <= param_3)) &&\r\n     (((param_2 < *(int *)(param_1 + 0x19e) || (param_3 < *(int *)(param_1 + 0x1a2))) ||\r\n      ((*(int *)(param_1 + 0x1a6) <= param_2 || (*(int *)(param_1 + 0x1aa) <= param_3)))))) {\r\n    if ((((param_2 < *(int *)(param_1 + 0x1ae)) || (param_3 < *(int *)(param_1 + 0x1b2))) ||\r\n        ((*(int *)(param_1 + 0x1b6) <= param_2 || (*(int *)(param_1 + 0x1ba) <= param_3)))) &&\r\n       ((((param_2 < *(int *)(param_1 + 0x1be) || (param_3 < *(int *)(param_1 + 0x1c2))) ||\r\n         (*(int *)(param_1 + 0x1c6) <= param_2)) || (*(int *)(param_1 + 0x1ca) <= param_3)))) {\r\n      iVar2 = 2;\r\n      do {\r\n        iVar1 = FUN_00456280(param_2,param_3);\r\n        if (iVar1 != 0) {\r\n          *param_4 = iVar2;\r\n          return 1;\r\n        }\r\n        iVar2 = iVar2 + 1;\r\n      } while (iVar2 < 6);\r\n      iVar2 = 6;\r\n      piVar3 = (int *)(param_1 + 0xbe);\r\n      while (((param_2 < *piVar3 || (param_3 < piVar3[1])) ||\r\n             ((piVar3[2] <= param_2 || (piVar3[3] <= param_3))))) {\r\n        piVar3 = piVar3 + 4;\r\n        iVar2 = iVar2 + 1;\r\n        if (0xd < iVar2) {\r\n          return 0;\r\n        }\r\n      }\r\n      *param_4 = iVar2;\r\n      return 1;\r\n    }\r\n    *param_4 = 1;\r\n    return 1;\r\n  }\r\n  *param_4 = 0;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00456280",
+      "name": "FUN_00456280"
+    }
+  ],
+  "data_refs": []
+}

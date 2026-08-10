@@ -1,0 +1,40 @@
+{
+  "address": "0043aa10",
+  "name": "FUN_0043aa10",
+  "signature": "undefined FUN_0043aa10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint * FUN_0043aa10(uint *param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  undefined8 uVar2;\r\n  undefined2 uVar3;\r\n  BOOL BVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  short sVar7;\r\n  uint local_68;\r\n  int local_64;\r\n  int local_5c;\r\n  uint local_58;\r\n  LARGE_INTEGER local_54;\r\n  uint local_4c;\r\n  LARGE_INTEGER local_48;\r\n  uint local_40;\r\n  uint local_3c;\r\n  LARGE_INTEGER local_38;\r\n  uint local_30;\r\n  uint local_2c;\r\n  uint local_28;\r\n  uint local_24;\r\n  uint local_20;\r\n  uint local_1c;\r\n  uint local_18;\r\n  int local_14;\r\n  int local_10;\r\n  uint local_c;\r\n  int local_8;\r\n  \r\n  uVar3 = FUN_0044d210();\r\n  local_1c = CONCAT22(local_1c._2_2_,uVar3);\r\n  local_18 = FUN_0044d2d0();\r\n  local_30 = 0;\r\n  local_40 = 0;\r\n  local_4c = 0;\r\n  local_10 = 0;\r\n  local_5c = 0;\r\n  local_2c = 0;\r\n  local_28 = 0;\r\n  local_24 = 0;\r\n  local_20 = 0;\r\n  if ((local_1c & 0x8000) == 0) {\r\n    if (param_2 == 0) {\r\n      param_2 = *(int *)(&DAT_004f9298 + (local_1c & 0xffff) * 4);\r\n    }\r\n    else {\r\n      if ((param_2 < 1) || (0x96 < param_2)) {\r\n        *param_1 = 0;\r\n        param_1[1] = 0;\r\n        param_1[2] = 0;\r\n        param_1[3] = 0;\r\n        return param_1;\r\n      }\r\n      local_10 = 1;\r\n    }\r\n    local_58 = param_2 * 4000;\r\n    BVar4 = QueryPerformanceFrequency(&local_38);\r\n    if (BVar4 == 0) {\r\n      *param_1 = local_2c;\r\n      param_1[1] = local_28;\r\n      param_1[2] = local_24;\r\n      param_1[3] = local_20;\r\n    }\r\n    else {\r\n      if (((local_18 & 0x10) == 0) || (local_10 != 0)) {\r\n        if ((local_1c & 0xffff) < 3) {\r\n          local_58 = 0;\r\n          local_c = 0;\r\n          local_30 = 0;\r\n        }\r\n        else {\r\n          local_68 = 0xffffffff;\r\n          for (local_64 = 0; local_64 < 10; local_64 = local_64 + 1) {\r\n            QueryPerformanceCounter(&local_48);\r\n            sVar7 = 4000;\r\n            do {\r\n              for (iVar1 = 0; (0x80000000U >> iVar1 & 1) == 0; iVar1 = iVar1 + 1) {\r\n              }\r\n              sVar7 = sVar7 + -1;\r\n            } while (sVar7 != 0);\r\n            QueryPerformanceCounter(&local_54);\r\n            if (local_54.s.LowPart - local_48._0_4_ < local_68) {\r\n              local_68 = local_54.s.LowPart - local_48._0_4_;\r\n            }\r\n          }\r\n          local_c = (uint)((ulonglong)(local_68 * 100000) / ((ulonglong)local_38.s.LowPart / 10));\r\n          if (local_38.s.LowPart >> 1 < local_c % local_38.s.LowPart) {\r\n            local_c = local_c + 1;\r\n          }\r\n          local_30 = local_58 / local_c;\r\n          if (local_c >> 1 < local_58 % local_c) {\r\n            local_30 = local_30 + 1;\r\n          }\r\n        }\r\n      }\r\n      else {\r\n        do {\r\n          local_5c = local_5c + 1;\r\n          local_4c = local_40;\r\n          local_40 = local_30;\r\n          QueryPerformanceCounter(&local_48);\r\n          local_54.s.LowPart = local_48.s.LowPart;\r\n          local_54.s.HighPart = local_48.s.HighPart;\r\n          while (local_54.s.LowPart - local_48._0_4_ < 0x32) {\r\n            QueryPerformanceCounter(&local_54);\r\n          }\r\n          uVar2 = rdtsc();\r\n          local_14 = (int)uVar2;\r\n          local_48.s.LowPart = local_54.s.LowPart;\r\n          local_48.s.HighPart = local_54.s.HighPart;\r\n          while (local_54.s.LowPart - local_48._0_4_ < 1000) {\r\n            QueryPerformanceCounter(&local_54);\r\n          }\r\n          uVar2 = rdtsc();\r\n          local_8 = (int)uVar2;\r\n          local_58 = local_8 - local_14;\r\n          local_c = (uint)((ulonglong)((local_54.s.LowPart - local_48._0_4_) * 100000) /\r\n                          ((ulonglong)local_38.s.LowPart / 10));\r\n          if (local_38.s.LowPart >> 1 < local_c % local_38.s.LowPart) {\r\n            local_c = local_c + 1;\r\n          }\r\n          local_30 = local_58 / local_c;\r\n          if (local_c >> 1 < local_58 % local_c) {\r\n            local_30 = local_30 + 1;\r\n          }\r\n          local_3c = local_4c + local_40 + local_30;\r\n        } while ((local_5c < 3) ||\r\n                ((local_5c < 0x14 &&\r\n                 (((uVar5 = local_30 * 3 - local_3c, uVar6 = (int)uVar5 >> 0x1f,\r\n                   3 < (int)((uVar5 ^ uVar6) - uVar6) ||\r\n                   (uVar5 = local_40 * 3 - local_3c, uVar6 = (int)uVar5 >> 0x1f,\r\n                   3 < (int)((uVar5 ^ uVar6) - uVar6))) ||\r\n                  (uVar5 = local_4c * 3 - local_3c, uVar6 = (int)uVar5 >> 0x1f,\r\n                  3 < (int)((uVar5 ^ uVar6) - uVar6)))))));\r\n        if ((local_3c + 1) / 3 != local_3c / 3) {\r\n          local_3c = local_3c + 1;\r\n        }\r\n        local_30 = local_3c / 3;\r\n      }\r\n      local_2c = local_58;\r\n      local_28 = local_c;\r\n      local_24 = local_30;\r\n      uVar5 = FUN_0043ae60(local_1c,local_30);\r\n      *param_1 = local_2c;\r\n      param_1[1] = local_28;\r\n      param_1[2] = local_24;\r\n      param_1[3] = uVar5;\r\n    }\r\n  }\r\n  else {\r\n    *param_1 = 0;\r\n    param_1[1] = 0;\r\n    param_1[2] = 0;\r\n    param_1[3] = 0;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00402ce0",
+      "name": "FUN_00402ce0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0044d210",
+      "name": "FUN_0044d210"
+    },
+    {
+      "addr": "0044d2d0",
+      "name": "FUN_0044d2d0"
+    },
+    {
+      "addr": "EXTERNAL:00000014",
+      "name": "QueryPerformanceFrequency"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "0043ae60",
+      "name": "FUN_0043ae60"
+    }
+  ],
+  "data_refs": []
+}

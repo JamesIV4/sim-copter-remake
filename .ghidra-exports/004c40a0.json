@@ -1,0 +1,38 @@
+{
+  "address": "004c40a0",
+  "name": "FUN_004c40a0",
+  "signature": "undefined FUN_004c40a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004c40a0(int param_1,ushort param_2,ushort param_3)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  byte *pbVar3;\r\n  int iVar4;\r\n  ushort uVar5;\r\n  uint uVar6;\r\n  short sVar7;\r\n  \r\n  if (param_1 == 0) {\r\n    return 1;\r\n  }\r\n  uVar2 = param_2 & 0xff;\r\n  uVar5 = param_3 & 0xff;\r\n  if ((uVar2 < 0x80) && (uVar5 < 0x80)) {\r\n    uVar2 = (ushort)*(byte *)((&DAT_005910b0)[(short)uVar2] + (int)(short)uVar5);\r\n  }\r\n  else {\r\n    uVar1 = (short)(uVar2 - (short)DAT_005d91d0) >> 0xf;\r\n    if ((1 < (short)((uVar2 - (short)DAT_005d91d0 ^ uVar1) - uVar1)) ||\r\n       (uVar6 = (int)(short)(uVar5 - (short)DAT_005d91d4) >> 0x1f, uVar2 = 0xf6,\r\n       1 < (short)(((int)(short)(uVar5 - (short)DAT_005d91d4) ^ uVar6) - uVar6))) {\r\n      uVar2 = 0xffff;\r\n    }\r\n  }\r\n  if (((uVar2 != 0xffff) &&\r\n      (pbVar3 = (byte *)FUN_0049a4d0((int)(short)uVar2), pbVar3 != (byte *)0x0)) &&\r\n     ((*pbVar3 & 1) == 0)) {\r\n    sVar7 = 0;\r\n    iVar4 = FUN_004c9220(param_2,param_3);\r\n    do {\r\n      if ((&DAT_0058d750)[(int)sVar7 + param_1 * 10] == iVar4) {\r\n        return 1;\r\n      }\r\n      sVar7 = sVar7 + 1;\r\n    } while (sVar7 < 10);\r\n    return 0;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049a4d0",
+      "name": "FUN_0049a4d0"
+    },
+    {
+      "addr": "004c9220",
+      "name": "FUN_004c9220"
+    }
+  ],
+  "data_refs": []
+}

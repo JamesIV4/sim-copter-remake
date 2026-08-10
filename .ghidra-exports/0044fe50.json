@@ -1,0 +1,30 @@
+{
+  "address": "0044fe50",
+  "name": "FUN_0044fe50",
+  "signature": "undefined FUN_0044fe50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_0044fe50(int *param_1,LONG *param_2,LONG *param_3,LONG *param_4,LONG *param_5,int *param_6,\r\n            int *param_7)\r\n\r\n{\r\n  char cVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  HGDIOBJ unaff_EBX;\r\n  HDC unaff_ESI;\r\n  UINT format;\r\n  LPCSTR pCVar5;\r\n  uint unaff_retaddr;\r\n  HGDIOBJ h;\r\n  tagRECT tStack_18;\r\n  int iStack_8;\r\n  LPCSTR pCStack_4;\r\n  \r\n  piVar2 = (int *)(**(code **)(*param_1 + 0x60))();\r\n  if (piVar2 == (int *)0x0) {\r\n    return 0x65;\r\n  }\r\n  tStack_18.right = *param_4;\r\n  tStack_18.bottom = *param_5;\r\n  if (param_6 == (int *)0x0) {\r\n    iStack_8 = param_1[2];\r\n  }\r\n  else {\r\n    iStack_8 = *param_6;\r\n  }\r\n  if (param_7 == (int *)0x0) {\r\n    pCStack_4 = (LPCSTR)param_1[3];\r\n  }\r\n  else {\r\n    pCStack_4 = (LPCSTR)*param_7;\r\n  }\r\n  iVar3 = (**(code **)(*piVar2 + 0x44))(piVar2,&tStack_18);\r\n  if (iVar3 != 0) {\r\n    return 0x65;\r\n  }\r\n  format = 0x10;\r\n  if ((unaff_retaddr & 1) == 0) {\r\n    if ((unaff_retaddr & 8) != 0) {\r\n      format = 0x12;\r\n    }\r\n  }\r\n  else {\r\n    format = 0x11;\r\n  }\r\n  if ((unaff_retaddr & 2) != 0) {\r\n    format = format | 4;\r\n  }\r\n  if ((unaff_retaddr & 4) == 0) {\r\n    iVar3 = 1;\r\n  }\r\n  else {\r\n    iVar3 = 2;\r\n  }\r\n  SetBkMode(unaff_ESI,iVar3);\r\n  if ((unaff_retaddr & 0x10) != 0) {\r\n    format = format | 0x400;\r\n  }\r\n  if (param_6 == (int *)0x0) {\r\n    if (param_1[0xd] == 0) goto LAB_0044ff5e;\r\n    h = *(HGDIOBJ *)(param_1[0xd] + 0x18);\r\n  }\r\n  else {\r\n    h = (HGDIOBJ)param_6[6];\r\n  }\r\n  unaff_EBX = SelectObject(unaff_ESI,h);\r\nLAB_0044ff5e:\r\n  SetTextColor(unaff_ESI,\r\n               (uint)*(byte *)(param_1 + 0xe) << 0x10 | (uint)*(byte *)((int)param_1 + 0x39) << 8 |\r\n               (uint)*(byte *)((int)param_1 + 0x3a));\r\n  uVar4 = 0xffffffff;\r\n  pCVar5 = pCStack_4;\r\n  do {\r\n    if (uVar4 == 0) break;\r\n    uVar4 = uVar4 - 1;\r\n    cVar1 = *pCVar5;\r\n    pCVar5 = pCVar5 + 1;\r\n  } while (cVar1 != '\\0');\r\n  DrawTextA(unaff_ESI,pCStack_4,~uVar4 - 1,&tStack_18,format);\r\n  if ((unaff_retaddr & 0x10) != 0) {\r\n    *param_2 = tStack_18.left;\r\n    *param_3 = tStack_18.top;\r\n    *param_4 = tStack_18.right;\r\n    *param_5 = tStack_18.bottom;\r\n  }\r\n  if ((param_1[0xd] != 0) || (param_6 != (int *)0x0)) {\r\n    SelectObject(unaff_ESI,unaff_EBX);\r\n  }\r\n  (**(code **)(*piVar2 + 0x68))(piVar2,unaff_ESI);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000b0",
+      "name": "SetBkMode"
+    },
+    {
+      "addr": "EXTERNAL:000000ae",
+      "name": "SelectObject"
+    },
+    {
+      "addr": "EXTERNAL:000000af",
+      "name": "SetTextColor"
+    },
+    {
+      "addr": "EXTERNAL:00000084",
+      "name": "DrawTextA"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "00450900",
+  "name": "FUN_00450900",
+  "signature": "undefined FUN_00450900(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00450900(int param_1,int param_2,int param_3,undefined1 *param_4)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined1 *puVar3;\r\n  undefined1 auStack_400 [1024];\r\n  \r\n  piVar1 = *(int **)(param_1 + 0x54);\r\n  if (piVar1 != (int *)0x0) {\r\n    if (param_2 < param_3 + param_2) {\r\n      iVar2 = param_3;\r\n      puVar3 = auStack_400 + param_2 * 4;\r\n      do {\r\n        *puVar3 = param_4[2];\r\n        iVar2 = iVar2 + -1;\r\n        puVar3[1] = param_4[1];\r\n        puVar3[2] = *param_4;\r\n        puVar3[3] = 5;\r\n        param_4 = param_4 + 4;\r\n        puVar3 = puVar3 + 4;\r\n      } while (iVar2 != 0);\r\n    }\r\n    (**(code **)(*piVar1 + 0x18))(piVar1,0,param_2,param_3,auStack_400 + param_2 * 4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

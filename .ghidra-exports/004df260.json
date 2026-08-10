@@ -1,0 +1,24 @@
+{
+  "address": "004df260",
+  "name": "xtoa",
+  "signature": "undefined __cdecl xtoa(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _xtoa\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl xtoa(uint param_1,char *param_2,uint param_3,int param_4)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  char *pcVar2;\r\n  char cVar3;\r\n  char *pcVar4;\r\n  \r\n  pcVar2 = param_2;\r\n  if (param_4 != 0) {\r\n    *param_2 = '-';\r\n    param_2 = param_2 + 1;\r\n    param_1 = -param_1;\r\n    pcVar2 = param_2;\r\n  }\r\n  do {\r\n    pcVar4 = pcVar2;\r\n    uVar1 = (ulonglong)param_1;\r\n    param_1 = param_1 / param_3;\r\n    cVar3 = (char)(uVar1 % (ulonglong)param_3);\r\n    if ((uint)(uVar1 % (ulonglong)param_3) < 10) {\r\n      cVar3 = cVar3 + '0';\r\n    }\r\n    else {\r\n      cVar3 = cVar3 + 'W';\r\n    }\r\n    *pcVar4 = cVar3;\r\n    pcVar2 = pcVar4 + 1;\r\n  } while (param_1 != 0);\r\n  pcVar4[1] = '\\0';\r\n  do {\r\n    cVar3 = *pcVar4;\r\n    *pcVar4 = *param_2;\r\n    pcVar4 = pcVar4 + -1;\r\n    *param_2 = cVar3;\r\n    param_2 = param_2 + 1;\r\n  } while (param_2 < pcVar4);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004df220",
+      "name": "__itoa",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df220",
+      "name": "__itoa",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

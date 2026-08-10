@@ -1,0 +1,44 @@
+{
+  "address": "0047fef0",
+  "name": "FUN_0047fef0",
+  "signature": "undefined FUN_0047fef0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0047fef0(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int *piVar4;\r\n  int iVar5;\r\n  short sVar6;\r\n  uint uVar7;\r\n  undefined *puVar8;\r\n  \r\n  if ((DAT_0061a640 < 0x1f40001) || (0x31fffff < DAT_0061a640)) {\r\n    FUN_0046cb74(&DAT_0061a664,&DAT_0061a694,&DAT_0055e1c8);\r\n    puVar8 = &DAT_0057ea60;\r\n  }\r\n  else {\r\n    FUN_0046cb74(&DAT_0061a664,&DAT_0061a694,&DAT_0055e178);\r\n    puVar8 = &DAT_0055e208;\r\n  }\r\n  FUN_0046cb74(&DAT_0061a664,&DAT_0061a67c,puVar8);\r\n  FUN_00482110();\r\n  DAT_0055d628 = 0;\r\n  if ((0x31fffff < DAT_0061a640) && (DAT_0061a640 < 0x3840001)) {\r\n    DAT_0055d628 = 1;\r\n    FUN_00482470(DAT_0061a608,DAT_0061a60c,(DAT_00503b48 >> 5) + 5);\r\n    return;\r\n  }\r\n  iVar5 = DAT_00503b48 / 0x5a + 2;\r\n  DAT_0055e170 = 0;\r\n  DAT_0057eaf0 = DAT_0061a6ac + DAT_0061a664 * iVar5 * -0x40;\r\n  _DAT_0057eaf4 = DAT_0061a6b0;\r\n  _DAT_0057eaf8 = DAT_0061a6b4 + DAT_0061a66c * iVar5 * -0x40;\r\n  _DAT_0057eaa0 = DAT_0057eaf0 + 0x20000000 >> 0x16;\r\n  DAT_0057eaa4 = 0x20000000 - _DAT_0057eaf8 >> 0x16;\r\n  if (DAT_0061a664 < 1) {\r\n    _DAT_0055d688 = &DAT_0057eae0;\r\n    if (DAT_0061a66c < 1) {\r\n      _DAT_0055d688 = &DAT_0057eac0;\r\n    }\r\n  }\r\n  else if (DAT_0061a66c < 1) {\r\n    _DAT_0055d688 = &DAT_0055de90;\r\n  }\r\n  else {\r\n    _DAT_0055d688 = &DAT_0055e248;\r\n  }\r\n  FUN_00480390(&DAT_0061a67c,&DAT_0055d690,&DAT_0057eaa8,&DAT_0057eaf0,&DAT_0057eaa0);\r\n  FUN_00480390(&DAT_0061a694,&DAT_0057e258,&DAT_0055d68c,&DAT_0057eaf0,&DAT_0057eaa0);\r\n  iVar5 = DAT_0057eaa8[1];\r\n  iVar1 = DAT_0055d68c[1];\r\n  if (iVar5 == iVar1) {\r\n    FUN_004808d0();\r\n    return;\r\n  }\r\n  iVar2 = *DAT_0055d68c;\r\n  iVar3 = *DAT_0057eaa8;\r\n  if (iVar2 == iVar3) {\r\n    FUN_00480bd0();\r\n    return;\r\n  }\r\n  if ((iVar3 < iVar2) && (iVar1 < iVar5)) {\r\n    if ((DAT_0057eaa4 <= iVar5) && (iVar1 <= DAT_0057eaa4)) {\r\n      uVar7 = iVar2 - 1;\r\n      if (iVar3 < iVar2) {\r\n        do {\r\n          piVar4 = DAT_0055d68c;\r\n          DAT_0055d68c = DAT_0055d68c + 2;\r\n          piVar4[3] = (int)(short)iVar1;\r\n          sVar6 = (short)uVar7;\r\n          uVar7 = (uint)(ushort)(sVar6 - 1);\r\n          *DAT_0055d68c = (int)sVar6;\r\n        } while (*DAT_0057eaa8 < *DAT_0055d68c);\r\n      }\r\n      FUN_00480bd0();\r\n      return;\r\n    }\r\n    uVar7 = iVar5 - 1;\r\n    if (iVar1 < iVar5) {\r\n      do {\r\n        piVar4 = DAT_0057eaa8;\r\n        sVar6 = (short)uVar7;\r\n        uVar7 = (uint)(ushort)(sVar6 - 1);\r\n        DAT_0057eaa8 = DAT_0057eaa8 + 2;\r\n        piVar4[3] = (int)sVar6;\r\n        *DAT_0057eaa8 = (int)(short)iVar3;\r\n      } while (DAT_0055d68c[1] < DAT_0057eaa8[1]);\r\n    }\r\n    FUN_004808d0();\r\n    return;\r\n  }\r\n  if ((iVar3 < iVar2) && (iVar5 < iVar1)) {\r\n    if ((iVar5 <= DAT_0057eaa4) && (DAT_0057eaa4 <= iVar1)) {\r\n      uVar7 = iVar3 + 1;\r\n      if (iVar3 < iVar2) {\r\n        do {\r\n          piVar4 = DAT_0057eaa8;\r\n          DAT_0057eaa8 = DAT_0057eaa8 + 2;\r\n          piVar4[3] = (int)(short)iVar5;\r\n          sVar6 = (short)uVar7;\r\n          uVar7 = (uint)(ushort)(sVar6 + 1);\r\n          *DAT_0057eaa8 = (int)sVar6;\r\n        } while (*DAT_0057eaa8 < *DAT_0055d68c);\r\n      }\r\n      FUN_00480bd0();\r\n      return;\r\n    }\r\n    uVar7 = iVar1 - 1;\r\n    if (iVar5 < iVar1) {\r\n      do {\r\n        piVar4 = DAT_0055d68c;\r\n        sVar6 = (short)uVar7;\r\n        uVar7 = (uint)(ushort)(sVar6 - 1);\r\n        DAT_0055d68c = DAT_0055d68c + 2;\r\n        piVar4[3] = (int)sVar6;\r\n        *DAT_0055d68c = (int)(short)iVar2;\r\n      } while (DAT_0057eaa8[1] < DAT_0055d68c[1]);\r\n    }\r\n    FUN_004808d0();\r\n    return;\r\n  }\r\n  if ((iVar3 <= iVar2) || (iVar1 <= iVar5)) {\r\n    if ((iVar2 < iVar3) && (iVar1 < iVar5)) {\r\n      if ((DAT_0057eaa4 <= iVar5) && (iVar1 <= DAT_0057eaa4)) {\r\n        uVar7 = iVar3 - 1;\r\n        if (iVar2 < iVar3) {\r\n          do {\r\n            piVar4 = DAT_0057eaa8;\r\n            DAT_0057eaa8 = DAT_0057eaa8 + 2;\r\n            piVar4[3] = (int)(short)iVar5;\r\n            sVar6 = (short)uVar7;\r\n            uVar7 = (uint)(ushort)(sVar6 - 1);\r\n            *DAT_0057eaa8 = (int)sVar6;\r\n          } while (*DAT_0055d68c < *DAT_0057eaa8);\r\n        }\r\n        FUN_00480bd0();\r\n        return;\r\n      }\r\n      uVar7 = iVar1 + 1;\r\n      if (iVar1 < iVar5) {\r\n        do {\r\n          piVar4 = DAT_0055d68c;\r\n          sVar6 = (short)uVar7;\r\n          uVar7 = (uint)(ushort)(sVar6 + 1);\r\n          DAT_0055d68c = DAT_0055d68c + 2;\r\n          piVar4[3] = (int)sVar6;\r\n          *DAT_0055d68c = (int)(short)iVar2;\r\n        } while (DAT_0055d68c[1] < DAT_0057eaa8[1]);\r\n      }\r\n      FUN_004808d0();\r\n    }\r\n    return;\r\n  }\r\n  if ((iVar5 <= DAT_0057eaa4) && (DAT_0057eaa4 <= iVar1)) {\r\n    uVar7 = iVar2 + 1;\r\n    if (iVar2 < iVar3) {\r\n      do {\r\n        piVar4 = DAT_0055d68c;\r\n        DAT_0055d68c = DAT_0055d68c + 2;\r\n        piVar4[3] = (int)(short)iVar1;\r\n        sVar6 = (short)uVar7;\r\n        uVar7 = (uint)(ushort)(sVar6 + 1);\r\n        *DAT_0055d68c = (int)sVar6;\r\n      } while (*DAT_0055d68c < *DAT_0057eaa8);\r\n    }\r\n    FUN_00480bd0();\r\n    return;\r\n  }\r\n  uVar7 = iVar5 + 1;\r\n  if (iVar5 < iVar1) {\r\n    do {\r\n      piVar4 = DAT_0057eaa8;\r\n      sVar6 = (short)uVar7;\r\n      uVar7 = (uint)(ushort)(sVar6 + 1);\r\n      DAT_0057eaa8 = DAT_0057eaa8 + 2;\r\n      piVar4[3] = (int)sVar6;\r\n      *DAT_0057eaa8 = (int)(short)iVar3;\r\n    } while (DAT_0057eaa8[1] < DAT_0055d68c[1]);\r\n  }\r\n  FUN_004808d0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "00482110",
+      "name": "FUN_00482110"
+    },
+    {
+      "addr": "00482470",
+      "name": "FUN_00482470"
+    },
+    {
+      "addr": "00480390",
+      "name": "FUN_00480390"
+    },
+    {
+      "addr": "004808d0",
+      "name": "FUN_004808d0"
+    },
+    {
+      "addr": "00480bd0",
+      "name": "FUN_00480bd0"
+    }
+  ],
+  "data_refs": []
+}

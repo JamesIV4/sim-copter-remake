@@ -1,0 +1,18 @@
+{
+  "address": "0043dd90",
+  "name": "FUN_0043dd90",
+  "signature": "undefined FUN_0043dd90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0043dd90(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  \r\n  iVar1 = *(int *)(param_1 + 0x8c);\r\n  iVar2 = *(int *)(param_1 + 0x90) + iVar1;\r\n  *(int *)(param_1 + 0x90) = iVar2;\r\n  if (((iVar1 == 1) && (*(int *)(param_1 + 0x9c) <= iVar2)) || ((iVar1 == -1 && (iVar2 < 0)))) {\r\n    if (*(int *)(param_1 + 0x88) == 2) {\r\n      *(undefined4 *)(param_1 + 0x8c) = 0xffffffff;\r\n      if (iVar1 != 1) {\r\n        *(undefined4 *)(param_1 + 0x8c) = 1;\r\n      }\r\n      if (1 < *(int *)(param_1 + 0x9c)) {\r\n        FUN_0043dd90();\r\n      }\r\n    }\r\n    if (*(int *)(param_1 + 0x88) != 0) {\r\n      if (*(int *)(param_1 + 0x8c) == 1) {\r\n        *(undefined4 *)(param_1 + 0x90) = 0;\r\n        return;\r\n      }\r\n      *(int *)(param_1 + 0x90) = *(int *)(param_1 + 0x9c) + -1;\r\n      return;\r\n    }\r\n    *(undefined4 *)(param_1 + 0x74) = 0;\r\n    *(int *)(param_1 + 0x90) = *(int *)(param_1 + 0x90) - *(int *)(param_1 + 0x8c);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0043dd90",
+      "name": "FUN_0043dd90"
+    }
+  ],
+  "data_refs": []
+}

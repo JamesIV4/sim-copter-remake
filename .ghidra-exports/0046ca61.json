@@ -1,0 +1,19 @@
+{
+  "address": "0046ca61",
+  "name": "FUN_0046ca61",
+  "signature": "undefined FUN_0046ca61(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046ca61(void)\r\n\r\n{\r\n  undefined4 *unaff_EDI;\r\n  \r\n  *unaff_EDI = 0x10000;\r\n  unaff_EDI[1] = 0;\r\n  unaff_EDI[2] = 0;\r\n  unaff_EDI[3] = 0;\r\n  unaff_EDI[4] = 0;\r\n  unaff_EDI[5] = 0x10000;\r\n  unaff_EDI[6] = 0;\r\n  unaff_EDI[7] = 0;\r\n  unaff_EDI[8] = 0;\r\n  unaff_EDI[9] = 0;\r\n  unaff_EDI[10] = 0x10000;\r\n  unaff_EDI[0xb] = 0;\r\n  unaff_EDI[0xc] = 0;\r\n  unaff_EDI[0xd] = 0;\r\n  unaff_EDI[0xe] = 0;\r\n  unaff_EDI[0xf] = 0x10000;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

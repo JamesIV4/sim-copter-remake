@@ -1,0 +1,29 @@
+{
+  "address": "004d6c20",
+  "name": "FUN_004d6c20",
+  "signature": "undefined FUN_004d6c20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d6c20(LPCVOID param_1)\r\n\r\n{\r\n  HeapSize(DAT_0061bb74,0,param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2b40",
+      "name": "__onexit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2b40",
+      "name": "__onexit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000054",
+      "name": "HeapSize"
+    }
+  ],
+  "data_refs": []
+}

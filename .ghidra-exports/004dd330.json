@@ -1,0 +1,55 @@
+{
+  "address": "004dd330",
+  "name": "FUN_004dd330",
+  "signature": "undefined FUN_004dd330(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004dd330(int param_1)\r\n\r\n{\r\n  char cVar1;\r\n  int *piVar2;\r\n  DWORD DVar3;\r\n  HANDLE hFile;\r\n  int iVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  char *pcVar8;\r\n  char *pcVar9;\r\n  CHAR *pCVar10;\r\n  char *pcVar11;\r\n  DWORD local_1a8;\r\n  char local_1a4 [100];\r\n  char acStack_140 [60];\r\n  CHAR local_104 [260];\r\n  \r\n  iVar4 = 0;\r\n  piVar2 = &DAT_00508310;\r\n  do {\r\n    if (*piVar2 == param_1) break;\r\n    piVar2 = piVar2 + 2;\r\n    iVar4 = iVar4 + 1;\r\n  } while (piVar2 < &DAT_00508398);\r\n  if ((&DAT_00508310)[iVar4 * 2] == param_1) {\r\n    if ((DAT_00507234 == 1) || ((DAT_00507234 == 0 && (DAT_00507238 == 1)))) {\r\n      hFile = *(HANDLE *)(DAT_0061bb80 + 0x48);\r\n      if (hFile == (HANDLE)0xffffffff) {\r\n        hFile = GetStdHandle(0xfffffff4);\r\n      }\r\n      pcVar8 = *(char **)(iVar4 * 8 + 0x508314);\r\n      uVar6 = 0xffffffff;\r\n      pcVar9 = pcVar8;\r\n      do {\r\n        if (uVar6 == 0) break;\r\n        uVar6 = uVar6 - 1;\r\n        cVar1 = *pcVar9;\r\n        pcVar9 = pcVar9 + 1;\r\n      } while (cVar1 != '\\0');\r\n      WriteFile(hFile,pcVar8,~uVar6 - 1,&local_1a8,(LPOVERLAPPED)0x0);\r\n    }\r\n    else if (param_1 != 0xfc) {\r\n      DVar3 = GetModuleFileNameA((HMODULE)0x0,local_104,0x104);\r\n      if (DVar3 == 0) {\r\n        pcVar8 = \"<program name unknown>\";\r\n        pCVar10 = local_104;\r\n        for (iVar5 = 5; iVar5 != 0; iVar5 = iVar5 + -1) {\r\n          *(undefined4 *)pCVar10 = *(undefined4 *)pcVar8;\r\n          pcVar8 = pcVar8 + 4;\r\n          pCVar10 = pCVar10 + 4;\r\n        }\r\n        *(undefined2 *)pCVar10 = *(undefined2 *)pcVar8;\r\n        pCVar10[2] = pcVar8[2];\r\n      }\r\n      pcVar8 = local_104;\r\n      uVar6 = 0xffffffff;\r\n      pcVar9 = local_104;\r\n      do {\r\n        if (uVar6 == 0) break;\r\n        uVar6 = uVar6 - 1;\r\n        cVar1 = *pcVar9;\r\n        pcVar9 = pcVar9 + 1;\r\n      } while (cVar1 != '\\0');\r\n      if (0x3c < ~uVar6) {\r\n        uVar6 = 0xffffffff;\r\n        pcVar8 = local_104;\r\n        do {\r\n          if (uVar6 == 0) break;\r\n          uVar6 = uVar6 - 1;\r\n          cVar1 = *pcVar8;\r\n          pcVar8 = pcVar8 + 1;\r\n        } while (cVar1 != '\\0');\r\n        pcVar8 = acStack_140 + ~uVar6;\r\n        _strncpy(pcVar8,\"...\",3);\r\n      }\r\n      pcVar9 = \"Runtime Error!\\n\\nProgram: \";\r\n      pcVar11 = local_1a4;\r\n      for (iVar5 = 6; iVar5 != 0; iVar5 = iVar5 + -1) {\r\n        *(undefined4 *)pcVar11 = *(undefined4 *)pcVar9;\r\n        pcVar9 = pcVar9 + 4;\r\n        pcVar11 = pcVar11 + 4;\r\n      }\r\n      *(undefined2 *)pcVar11 = *(undefined2 *)pcVar9;\r\n      uVar6 = 0xffffffff;\r\n      do {\r\n        pcVar9 = pcVar8;\r\n        if (uVar6 == 0) break;\r\n        uVar6 = uVar6 - 1;\r\n        pcVar9 = pcVar8 + 1;\r\n        cVar1 = *pcVar8;\r\n        pcVar8 = pcVar9;\r\n      } while (cVar1 != '\\0');\r\n      uVar6 = ~uVar6;\r\n      iVar5 = -1;\r\n      pcVar8 = local_1a4;\r\n      do {\r\n        pcVar11 = pcVar8;\r\n        if (iVar5 == 0) break;\r\n        iVar5 = iVar5 + -1;\r\n        pcVar11 = pcVar8 + 1;\r\n        cVar1 = *pcVar8;\r\n        pcVar8 = pcVar11;\r\n      } while (cVar1 != '\\0');\r\n      pcVar8 = pcVar9 + -uVar6;\r\n      pcVar9 = pcVar11 + -1;\r\n      for (uVar7 = uVar6 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n        *(undefined4 *)pcVar9 = *(undefined4 *)pcVar8;\r\n        pcVar8 = pcVar8 + 4;\r\n        pcVar9 = pcVar9 + 4;\r\n      }\r\n      for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *pcVar9 = *pcVar8;\r\n        pcVar8 = pcVar8 + 1;\r\n        pcVar9 = pcVar9 + 1;\r\n      }\r\n      uVar6 = 0xffffffff;\r\n      pcVar8 = \"\\n\\n\";\r\n      do {\r\n        pcVar9 = pcVar8;\r\n        if (uVar6 == 0) break;\r\n        uVar6 = uVar6 - 1;\r\n        pcVar9 = pcVar8 + 1;\r\n        cVar1 = *pcVar8;\r\n        pcVar8 = pcVar9;\r\n      } while (cVar1 != '\\0');\r\n      uVar6 = ~uVar6;\r\n      iVar5 = -1;\r\n      pcVar8 = local_1a4;\r\n      do {\r\n        pcVar11 = pcVar8;\r\n        if (iVar5 == 0) break;\r\n        iVar5 = iVar5 + -1;\r\n        pcVar11 = pcVar8 + 1;\r\n        cVar1 = *pcVar8;\r\n        pcVar8 = pcVar11;\r\n      } while (cVar1 != '\\0');\r\n      pcVar8 = pcVar9 + -uVar6;\r\n      pcVar9 = pcVar11 + -1;\r\n      for (uVar7 = uVar6 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n        *(undefined4 *)pcVar9 = *(undefined4 *)pcVar8;\r\n        pcVar8 = pcVar8 + 4;\r\n        pcVar9 = pcVar9 + 4;\r\n      }\r\n      for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *pcVar9 = *pcVar8;\r\n        pcVar8 = pcVar8 + 1;\r\n        pcVar9 = pcVar9 + 1;\r\n      }\r\n      uVar6 = 0xffffffff;\r\n      pcVar8 = *(char **)(iVar4 * 8 + 0x508314);\r\n      do {\r\n        pcVar9 = pcVar8;\r\n        if (uVar6 == 0) break;\r\n        uVar6 = uVar6 - 1;\r\n        pcVar9 = pcVar8 + 1;\r\n        cVar1 = *pcVar8;\r\n        pcVar8 = pcVar9;\r\n      } while (cVar1 != '\\0');\r\n      uVar6 = ~uVar6;\r\n      iVar4 = -1;\r\n      pcVar8 = local_1a4;\r\n      do {\r\n        pcVar11 = pcVar8;\r\n        if (iVar4 == 0) break;\r\n        iVar4 = iVar4 + -1;\r\n        pcVar11 = pcVar8 + 1;\r\n        cVar1 = *pcVar8;\r\n        pcVar8 = pcVar11;\r\n      } while (cVar1 != '\\0');\r\n      pcVar8 = pcVar9 + -uVar6;\r\n      pcVar9 = pcVar11 + -1;\r\n      for (uVar7 = uVar6 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n        *(undefined4 *)pcVar9 = *(undefined4 *)pcVar8;\r\n        pcVar8 = pcVar8 + 4;\r\n        pcVar9 = pcVar9 + 4;\r\n      }\r\n      for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *pcVar9 = *pcVar8;\r\n        pcVar8 = pcVar8 + 1;\r\n        pcVar9 = pcVar9 + 1;\r\n      }\r\n      ___crtMessageBoxA(local_1a4,\"Microsoft Visual C++ Runtime Library\",0x12010);\r\n      return;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d55e0",
+      "name": "_abort",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd2f0",
+      "name": "__FF_MSGBANNER",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd2f0",
+      "name": "__FF_MSGBANNER",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000002b",
+      "name": "GetModuleFileNameA"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004df050",
+      "name": "___crtMessageBoxA"
+    },
+    {
+      "addr": "EXTERNAL:0000002c",
+      "name": "GetStdHandle"
+    },
+    {
+      "addr": "EXTERNAL:00000053",
+      "name": "WriteFile"
+    }
+  ],
+  "data_refs": []
+}

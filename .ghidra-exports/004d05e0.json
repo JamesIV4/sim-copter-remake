@@ -1,0 +1,29 @@
+{
+  "address": "004d05e0",
+  "name": "FUN_004d05e0",
+  "signature": "undefined FUN_004d05e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004d05e0(float *param_1)\r\n\r\n{\r\n  float fVar1;\r\n  \r\n  if ((float)_DAT_004f5170 <= *param_1) {\r\n    fVar1 = *param_1;\r\n    do {\r\n      fVar1 = fVar1 - _DAT_004f5178;\r\n    } while ((float)_DAT_004f5170 <= fVar1);\r\n    *param_1 = fVar1;\r\n  }\r\n  if (0x80000000 < (uint)*param_1) {\r\n    fVar1 = *param_1;\r\n    do {\r\n      fVar1 = fVar1 + _DAT_004f5178;\r\n    } while (fVar1 < _DAT_004f5168);\r\n    *param_1 = fVar1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c7f10",
+      "name": "FUN_004c7f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c7f10",
+      "name": "FUN_004c7f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf8f0",
+      "name": "FUN_004cf8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

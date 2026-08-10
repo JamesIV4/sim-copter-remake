@@ -1,0 +1,48 @@
+{
+  "address": "004da750",
+  "name": "FUN_004da750",
+  "signature": "undefined FUN_004da750(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nLPVOID FUN_004da750(int param_1,int param_2)\r\n\r\n{\r\n  LPVOID pvVar1;\r\n  int iVar2;\r\n  uint dwBytes;\r\n  \r\n  dwBytes = param_2 * param_1;\r\n  if (dwBytes == 0) {\r\n    dwBytes = 1;\r\n  }\r\n  do {\r\n    if (dwBytes < 0xffffffe1) {\r\n      pvVar1 = HeapAlloc(DAT_0061bb74,8,dwBytes);\r\n    }\r\n    else {\r\n      pvVar1 = (LPVOID)0x0;\r\n    }\r\n    if (pvVar1 != (LPVOID)0x0) {\r\n      return pvVar1;\r\n    }\r\n    if (DAT_005084b0 == 0) {\r\n      return (LPVOID)0x0;\r\n    }\r\n    iVar2 = __callnewh(dwBytes);\r\n  } while (iVar2 != 0);\r\n  return (LPVOID)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4610",
+      "name": "__beginthread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da510",
+      "name": "__mtinit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da590",
+      "name": "__getptd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ddc00",
+      "name": "___crtGetStringTypeA",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dda40",
+      "name": "___crtGetStringTypeW",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000005b",
+      "name": "HeapAlloc"
+    },
+    {
+      "addr": "004d6620",
+      "name": "__callnewh"
+    }
+  ],
+  "data_refs": []
+}

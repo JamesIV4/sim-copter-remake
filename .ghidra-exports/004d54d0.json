@@ -1,0 +1,39 @@
+{
+  "address": "004d54d0",
+  "name": "_atol",
+  "signature": "long __cdecl _atol(char * _Str)",
+  "calling_convention": "__cdecl",
+  "return_type": "long",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _atol\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nlong __cdecl _atol(char *_Str)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  uint _C;\r\n  int iVar3;\r\n  byte *pbVar4;\r\n  \r\n  while( true ) {\r\n    if (DAT_0050721c < 2) {\r\n      uVar1 = *(ushort *)(PTR_DAT_00507010 + (uint)(byte)*_Str * 2) & 8;\r\n    }\r\n    else {\r\n      uVar1 = __isctype((uint)(byte)*_Str,8);\r\n    }\r\n    if (uVar1 == 0) break;\r\n    _Str = _Str + 1;\r\n  }\r\n  uVar1 = (uint)(byte)*_Str;\r\n  pbVar4 = (byte *)(_Str + 1);\r\n  if ((uVar1 == 0x2d) || (_C = uVar1, uVar1 == 0x2b)) {\r\n    _C = (uint)*pbVar4;\r\n    pbVar4 = (byte *)(_Str + 2);\r\n  }\r\n  iVar3 = 0;\r\n  while( true ) {\r\n    if (DAT_0050721c < 2) {\r\n      uVar2 = *(ushort *)(PTR_DAT_00507010 + _C * 2) & 4;\r\n    }\r\n    else {\r\n      uVar2 = __isctype(_C,4);\r\n    }\r\n    if (uVar2 == 0) break;\r\n    iVar3 = (_C - 0x30) + iVar3 * 10;\r\n    _C = (uint)*pbVar4;\r\n    pbVar4 = pbVar4 + 1;\r\n  }\r\n  if (uVar1 == 0x2d) {\r\n    return -iVar3;\r\n  }\r\n  return iVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5580",
+      "name": "_atoi",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9100",
+      "name": "FUN_004d9100",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9100",
+      "name": "FUN_004d9100",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9100",
+      "name": "FUN_004d9100",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5700",
+      "name": "__isctype"
+    }
+  ],
+  "data_refs": []
+}

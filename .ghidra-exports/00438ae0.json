@@ -1,0 +1,13 @@
+{
+  "address": "00438ae0",
+  "name": "FUN_00438ae0",
+  "signature": "undefined FUN_00438ae0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_00438ae0(int *param_1,int *param_2,int param_3,int param_4,int param_5,int param_6,int param_7,\r\n            int param_8,int param_9,int param_10)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined1 *puVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  undefined1 *puVar8;\r\n  int iVar9;\r\n  undefined1 *puStack_1c;\r\n  undefined1 *puStack_14;\r\n  int iStack_10;\r\n  \r\n  puVar1 = (undefined4 *)*param_1;\r\n  (*(code *)*puVar1)();\r\n  puVar2 = (undefined4 *)*param_2;\r\n  (*(code *)*puVar2)();\r\n  iVar3 = param_1[5];\r\n  iVar4 = param_2[5];\r\n  puStack_14 = (undefined1 *)(param_3 + param_4 * iVar3 + param_1[4]);\r\n  iVar6 = -param_10;\r\n  iStack_10 = 0;\r\n  puStack_1c = (undefined1 *)(param_7 + iVar4 * param_8 + param_2[4]);\r\n  if (0 < param_6) {\r\n    do {\r\n      iVar7 = 0;\r\n      puVar5 = puStack_14;\r\n      puVar8 = puStack_1c;\r\n      iVar9 = -param_9;\r\n      if (0 < param_5) {\r\n        do {\r\n          iVar9 = iVar9 + param_5;\r\n          *puVar8 = *puVar5;\r\n          if (-1 < iVar9) {\r\n            iVar9 = iVar9 - param_9;\r\n            puVar5 = puVar5 + 1;\r\n            iVar7 = iVar7 + 1;\r\n          }\r\n          puVar8 = puVar8 + 1;\r\n        } while (iVar7 < param_5);\r\n      }\r\n      puStack_1c = puStack_1c + iVar4;\r\n      iVar6 = iVar6 + param_6;\r\n      if (-1 < iVar6) {\r\n        iVar6 = iVar6 - param_10;\r\n        puStack_14 = puStack_14 + iVar3;\r\n        iStack_10 = iStack_10 + 1;\r\n      }\r\n    } while (iStack_10 < param_6);\r\n  }\r\n  (*(code *)puVar2[1])();\r\n  (*(code *)puVar1[1])();\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

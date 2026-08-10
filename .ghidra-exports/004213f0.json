@@ -1,0 +1,54 @@
+{
+  "address": "004213f0",
+  "name": "FUN_004213f0",
+  "signature": "undefined FUN_004213f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4\r\nFUN_004213f0(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  UINT UVar3;\r\n  undefined4 uVar4;\r\n  int extraout_ECX;\r\n  uint uVar5;\r\n  int *piVar6;\r\n  char *pcVar7;\r\n  undefined4 *puVar8;\r\n  undefined1 *puVar9;\r\n  undefined4 *puVar10;\r\n  \r\n  FUN_004d2c30();\r\n  param_1 = (undefined4 *)FUN_004d28b0();\r\n  if (param_1 == (undefined4 *)0x0) {\r\n    param_1 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_1[1] = 0;\r\n    param_1[2] = 0;\r\n    *param_1 = 0;\r\n    param_1[3] = 1;\r\n  }\r\n  piVar6 = (int *)0x0;\r\n  FUN_00404920();\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    param_3 = 0x50;\r\n    param_4 = 0x17c;\r\n    param_5 = 0x51;\r\n    param_6 = 0x17d;\r\n    piVar6 = (int *)FUN_0043b240(&param_3,1,extraout_ECX,PTR_s_mssn_btn_bmp_004f86b8);\r\n  }\r\n  UVar3 = FUN_00423270();\r\n  LoadStringA(DAT_0051a050,UVar3,(LPSTR)&param_3,0xfff);\r\n  iVar2 = -1;\r\n  pcVar7 = (char *)&param_3;\r\n  do {\r\n    if (iVar2 == 0) break;\r\n    iVar2 = iVar2 + -1;\r\n    cVar1 = *pcVar7;\r\n    pcVar7 = pcVar7 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0();\r\n  iVar2 = *piVar6;\r\n  (**(code **)(iVar2 + 0x58))();\r\n  piVar6 = (int *)0x0;\r\n  (**(code **)(iVar2 + 4))();\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    param_2 = 0x113;\r\n    param_3 = 0x17c;\r\n    param_4 = 0x114;\r\n    param_5 = 0x17d;\r\n    piVar6 = (int *)FUN_0043b240(&param_2,2,extraout_ECX,PTR_s_mssn_btn_bmp_004f86b8,extraout_ECX);\r\n  }\r\n  UVar3 = FUN_00423270(0x213);\r\n  LoadStringA(DAT_0051a050,UVar3,(LPSTR)&param_2,0xfff);\r\n  iVar2 = -1;\r\n  pcVar7 = (char *)&param_2;\r\n  do {\r\n    if (iVar2 == 0) break;\r\n    iVar2 = iVar2 + -1;\r\n    cVar1 = *pcVar7;\r\n    pcVar7 = pcVar7 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&param_2);\r\n  iVar2 = *piVar6;\r\n  (**(code **)(iVar2 + 0x58))();\r\n  piVar6 = (int *)0x0;\r\n  (**(code **)(iVar2 + 4))();\r\n  iVar2 = FUN_004d28b0(0x94);\r\n  if (iVar2 != 0) {\r\n    param_1 = (undefined4 *)0x1d6;\r\n    param_2 = 0x17c;\r\n    param_3 = 0x1d7;\r\n    param_4 = 0x17d;\r\n    piVar6 = (int *)FUN_0043b240(&param_1,3,extraout_ECX,PTR_s_mssn_btn_bmp_004f86b8,extraout_ECX,1)\r\n    ;\r\n  }\r\n  UVar3 = FUN_00423270(0x214,0);\r\n  LoadStringA(DAT_0051a050,UVar3,(LPSTR)&param_1,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  pcVar7 = (char *)&param_1;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar7;\r\n    pcVar7 = pcVar7 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&param_1,~uVar5 - 1);\r\n  iVar2 = *piVar6;\r\n  (**(code **)(iVar2 + 0x58))(&stack0xfffffff8);\r\n  (**(code **)(iVar2 + 4))();\r\n  iVar2 = FUN_004d28b0(0xe4);\r\n  if (iVar2 == 0) {\r\n    *(undefined4 *)(extraout_ECX + 0x74) = 0;\r\n  }\r\n  else {\r\n    param_1 = (undefined4 *)&DAT_00000054;\r\n    param_2 = 0x250;\r\n    param_3 = 0x172;\r\n    uVar4 = FUN_00444d40(&stack0x00000000,4,extraout_ECX,PTR_s_sans_m_4_def_004f86c4,\r\n                         PTR_s_sans_m_4_def_004f86c8,extraout_ECX,1);\r\n    *(undefined4 *)(extraout_ECX + 0x74) = uVar4;\r\n  }\r\n  puVar8 = (undefined4 *)(extraout_ECX + 0x74);\r\n  (**(code **)(*(int *)*puVar8 + 4))();\r\n  (**(code **)(*(int *)*puVar8 + 0x13c))(0x12,0,0);\r\n  (**(code **)(*(int *)*puVar8 + 0x28))(0);\r\n  puVar10 = (undefined4 *)0x0;\r\n  (**(code **)(*(int *)*puVar8 + 0x130))();\r\n  puVar9 = &stack0xffffffe8;\r\n  (**(code **)(*(int *)*puVar8 + 0x138))(&stack0xffffffe8);\r\n  (**(code **)(*(int *)*puVar8 + 0xec))();\r\n  (**(code **)(*(int *)*puVar8 + 0x140))(1,0,PTR_s_msnlog_s_bmp_004f86bc);\r\n  FUN_00421980();\r\n  puVar10[3] = puVar10[3] + -1;\r\n  if ((puVar10[3] == 0) && (puVar10 != (undefined4 *)0x0)) {\r\n    if (puVar10[2] != 0) {\r\n      FUN_004d29a0(*puVar10);\r\n      puVar10[2] = 0;\r\n      *puVar10 = 0;\r\n    }\r\n    FUN_004d29a0(puVar10);\r\n  }\r\n  if (puVar9 != (undefined1 *)0x0) {\r\n    FUN_004d29a0(puVar9);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00404920",
+      "name": "FUN_00404920"
+    },
+    {
+      "addr": "0043b240",
+      "name": "FUN_0043b240"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "00444d40",
+      "name": "FUN_00444d40"
+    },
+    {
+      "addr": "00421980",
+      "name": "FUN_00421980"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

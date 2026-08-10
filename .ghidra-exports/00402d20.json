@@ -1,0 +1,36 @@
+{
+  "address": "00402d20",
+  "name": "FUN_00402d20",
+  "signature": "undefined FUN_00402d20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00402d20(int *param_1)\r\n\r\n{\r\n  HDC hdc;\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  hdc = GetDC((HWND)0x0);\r\n  iVar1 = GetDeviceCaps(hdc,0xe);\r\n  iVar2 = GetDeviceCaps(hdc,0xc);\r\n  ReleaseDC((HWND)0x0,hdc);\r\n  iVar3 = GetSystemMetrics(0);\r\n  *param_1 = iVar3;\r\n  iVar3 = GetSystemMetrics(1);\r\n  param_1[1] = iVar3;\r\n  param_1[2] = iVar2 * iVar1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045ade0",
+      "name": "FUN_0045ade0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000b7",
+      "name": "GetDeviceCaps"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    },
+    {
+      "addr": "EXTERNAL:00000071",
+      "name": "GetSystemMetrics"
+    }
+  ],
+  "data_refs": []
+}

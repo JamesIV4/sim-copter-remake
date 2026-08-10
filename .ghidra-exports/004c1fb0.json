@@ -1,0 +1,39 @@
+{
+  "address": "004c1fb0",
+  "name": "FUN_004c1fb0",
+  "signature": "undefined FUN_004c1fb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004c1fb0(ushort param_1,ushort param_2)\r\n\r\n{\r\n  ushort uVar1;\r\n  int iVar2;\r\n  ushort uVar3;\r\n  ushort uVar4;\r\n  short sVar5;\r\n  \r\n  uVar1 = param_1 & 0xff;\r\n  uVar3 = param_2 & 0xff;\r\n  if ((uVar1 < 0x80) && (uVar3 < 0x80)) {\r\n    uVar4 = (ushort)*(byte *)((&DAT_005910b0)[(short)uVar1] + (int)(short)uVar3);\r\n  }\r\n  else {\r\n    uVar4 = (short)(uVar1 - (short)DAT_005d91d0) >> 0xf;\r\n    if ((1 < (short)((uVar1 - (short)DAT_005d91d0 ^ uVar4) - uVar4)) ||\r\n       (uVar4 = 0xf6, uVar1 = (short)(uVar3 - (short)DAT_005d91d4) >> 0xf,\r\n       1 < (short)((uVar3 - (short)DAT_005d91d4 ^ uVar1) - uVar1))) {\r\n      uVar4 = 0xffff;\r\n    }\r\n  }\r\n  sVar5 = 0;\r\n  if (-1 < DAT_0058dc3e) {\r\n    do {\r\n      iVar2 = DAT_00506444;\r\n      if (sVar5 != 32000) {\r\n        iVar2 = (&DAT_0058e030)[sVar5];\r\n      }\r\n      if ((((*(short *)(iVar2 + 0x142) != 0) &&\r\n           (uVar3 = *(short *)(iVar2 + 0x12a) - param_1, uVar1 = (short)uVar3 >> 0xf,\r\n           (short)((uVar3 ^ uVar1) - uVar1) < 5)) &&\r\n          (uVar3 = *(short *)(iVar2 + 300) - param_2, uVar1 = (short)uVar3 >> 0xf,\r\n          (short)((uVar3 ^ uVar1) - uVar1) < 5)) && (*(ushort *)(iVar2 + 0x16c) == uVar4)) {\r\n        return iVar2;\r\n      }\r\n      sVar5 = sVar5 + 1;\r\n    } while (sVar5 <= DAT_0058dc3e);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c1ea0",
+      "name": "FUN_004c1ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

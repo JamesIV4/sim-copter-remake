@@ -1,0 +1,18 @@
+{
+  "address": "00477f90",
+  "name": "FUN_00477f90",
+  "signature": "undefined FUN_00477f90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00477f90(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  \r\n  DAT_00502334 = &DAT_004fc1e4;\r\n  DAT_00502330 = &DAT_005b0080;\r\n  DAT_005a25a4 = 0;\r\n  if (DAT_004fe768 != 0) {\r\n    _DAT_00502338 = DAT_004fe768;\r\n    do {\r\n      iVar1 = *DAT_00502334;\r\n      *(undefined4 **)(iVar1 + 0x3c) = DAT_00502330;\r\n      *(undefined4 *)(iVar1 + 0x38) = 0;\r\n      _DAT_00502344 = DAT_005a25a4;\r\n      if (*(int *)(iVar1 + 0x34) == 0) {\r\n        iVar2 = *(int *)(iVar1 + 0x10);\r\n        puVar3 = *(undefined4 **)(iVar1 + 0x4c);\r\n        do {\r\n          if (puVar3[5] != 0) {\r\n            *DAT_00502330 = puVar3;\r\n            DAT_00502330 = DAT_00502330 + 4;\r\n            DAT_005a25a4 = DAT_005a25a4 + 1;\r\n          }\r\n          puVar3 = (undefined4 *)*puVar3;\r\n          iVar2 = iVar2 + -1;\r\n        } while (iVar2 != 0);\r\n      }\r\n      else {\r\n        FUN_00478055();\r\n      }\r\n      *(int *)(*DAT_00502334 + 0x38) = DAT_005a25a4 - _DAT_00502344;\r\n      DAT_00502334 = DAT_00502334 + 2;\r\n      _DAT_00502338 = _DAT_00502338 + -1;\r\n    } while (_DAT_00502338 != 0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00478055",
+      "name": "FUN_00478055"
+    }
+  ],
+  "data_refs": []
+}

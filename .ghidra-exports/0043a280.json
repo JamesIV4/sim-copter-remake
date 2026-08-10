@@ -1,0 +1,24 @@
+{
+  "address": "0043a280",
+  "name": "FUN_0043a280",
+  "signature": "undefined FUN_0043a280(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined1 __thiscall FUN_0043a280(int param_1,byte param_2)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = *(int *)(param_1 + 0x28);\r\n  if (((byte)iVar1 <= param_2) && ((uint)param_2 < (uint)(*(int *)(param_1 + 0x2c) + iVar1))) {\r\n    return *(undefined1 *)((*(int *)(param_1 + 0x48) - iVar1) + (uint)param_2);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043a2b0",
+      "name": "FUN_0043a2b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00439f40",
+      "name": "FUN_00439f40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

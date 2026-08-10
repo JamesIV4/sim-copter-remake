@@ -1,0 +1,68 @@
+{
+  "address": "004796c0",
+  "name": "FUN_004796c0",
+  "signature": "undefined FUN_004796c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004796c0(int param_1)\r\n\r\n{\r\n  DAT_0050395c = 0;\r\n  if ((param_1 < 0x20) || (0x25 < param_1)) {\r\n    if (param_1 == 0x35) {\r\n      DAT_004f9718 = DAT_004f9718 ^ 1;\r\n      if (DAT_004f9718 == 0) {\r\n        DAT_0050395c = 0x2a4;\r\n      }\r\n      else {\r\n        DAT_0050395c = 0x2a3;\r\n      }\r\n    }\r\n    else if (param_1 == 0x36) {\r\n      DAT_004f971c = DAT_004f971c ^ 1;\r\n      if (DAT_004f971c == 0) {\r\n        DAT_0050395c = 0x2a6;\r\n      }\r\n      else {\r\n        DAT_0050395c = 0x2a5;\r\n      }\r\n    }\r\n    else if (param_1 == 0x1f) {\r\n      if (DAT_00503aa0 == 0) {\r\n        FUN_0047ba20();\r\n        if (DAT_00503b2c == 0) {\r\n          DAT_0050395c = 0x2a0;\r\n        }\r\n        else if (DAT_00503b2c == 1) {\r\n          DAT_0050395c = 0x2a1;\r\n        }\r\n        else {\r\n          DAT_0050395c = 0x2a2;\r\n        }\r\n      }\r\n    }\r\n    else if (param_1 == 0x1e) {\r\n      FUN_004a9860();\r\n    }\r\n    else if (param_1 == 0x1d) {\r\n      FUN_004a9900();\r\n    }\r\n    else if (param_1 == 0x37) {\r\n      DAT_004f9720 = (uint)(DAT_004f9720 == 0);\r\n      if (DAT_005039d4 != 0) {\r\n        FUN_0049a8b0();\r\n        if (DAT_004f9720 == 1) {\r\n          FUN_004a03a0(1);\r\n          FUN_004834f0();\r\n        }\r\n        else {\r\n          FUN_004a03a0(0);\r\n          FUN_00483700();\r\n        }\r\n        FUN_0047bf90((DAT_005a25a0 / 2 + -3) * 0x400000);\r\n        FUN_00448e60();\r\n      }\r\n    }\r\n    else if ((param_1 == 0x15) && (DAT_00503aa0 != 3)) {\r\n      if (DAT_00503aa0 == 2) {\r\n        DAT_00503aa0 = 0;\r\n        if (DAT_00503b2c == 0) {\r\n          DAT_0050395c = 0x2a0;\r\n        }\r\n        else if (DAT_00503b2c == 1) {\r\n          DAT_0050395c = 0x2a1;\r\n        }\r\n        else {\r\n          DAT_0050395c = 0x2a2;\r\n        }\r\n      }\r\n      else if (DAT_00503aa0 == 0) {\r\n        FUN_0046f610(*(undefined4 *)(*(int *)(DAT_005040d0 + 0xa4) + 8),1);\r\n        if (DAT_004f9728 == 1) {\r\n          FUN_0046f610(*(undefined4 *)(*(int *)(DAT_005040d0 + 0xac) + 8),1);\r\n        }\r\n        DAT_00503aa0 = 1;\r\n        DAT_0050395c = 0x29e;\r\n      }\r\n      else if (DAT_00503aa0 == 1) {\r\n        FUN_0046f610(*(undefined4 *)(*(int *)(DAT_005040d0 + 0xa4) + 8),0);\r\n        DAT_00503aa0 = 2;\r\n        DAT_0050395c = 0x29f;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    FUN_0047b8d0(param_1);\r\n  }\r\n  if (DAT_0050395c != 0) {\r\n    FUN_0048c4c0(&DAT_00503950,1,0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044ac80",
+      "name": "FUN_0044ac80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0047b8d0",
+      "name": "FUN_0047b8d0"
+    },
+    {
+      "addr": "0047ba20",
+      "name": "FUN_0047ba20"
+    },
+    {
+      "addr": "004a9860",
+      "name": "FUN_004a9860"
+    },
+    {
+      "addr": "004a9900",
+      "name": "FUN_004a9900"
+    },
+    {
+      "addr": "0049a8b0",
+      "name": "FUN_0049a8b0"
+    },
+    {
+      "addr": "004a03a0",
+      "name": "FUN_004a03a0"
+    },
+    {
+      "addr": "004834f0",
+      "name": "FUN_004834f0"
+    },
+    {
+      "addr": "00483700",
+      "name": "FUN_00483700"
+    },
+    {
+      "addr": "0047bf90",
+      "name": "FUN_0047bf90"
+    },
+    {
+      "addr": "00448e60",
+      "name": "FUN_00448e60"
+    },
+    {
+      "addr": "0046f610",
+      "name": "FUN_0046f610"
+    },
+    {
+      "addr": "0048c4c0",
+      "name": "FUN_0048c4c0"
+    }
+  ],
+  "data_refs": []
+}

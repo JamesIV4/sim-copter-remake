@@ -1,0 +1,13 @@
+{
+  "address": "00455700",
+  "name": "FUN_00455700",
+  "signature": "undefined FUN_00455700(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00455700(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  iVar3 = 0x10;\r\n  iVar2 = 0;\r\n  iVar1 = iVar3;\r\n  if (0 < *(int *)(param_1 + 0xc4)) {\r\n    do {\r\n      iVar2 = iVar2 + 1;\r\n      iVar3 = iVar1 + 5;\r\n      (**(code **)(**(int **)(param_1 + 0xbc) + 0xc))\r\n                (*(undefined4 *)(param_1 + 0x40),iVar1,0x2b,0,0,5,10);\r\n      iVar1 = iVar3;\r\n    } while (iVar2 < *(int *)(param_1 + 0xc4));\r\n  }\r\n  if (iVar2 < 0xb) {\r\n    (**(code **)(**(int **)(param_1 + 0xbc) + 0xc))\r\n              (*(undefined4 *)(param_1 + 0x40),iVar3,0x2b,5,0,10,10);\r\n    if (iVar2 + 1 < 0xb) {\r\n      iVar1 = 0xb - (iVar2 + 1);\r\n      do {\r\n        iVar3 = iVar3 + 5;\r\n        (**(code **)(**(int **)(param_1 + 0xbc) + 0xc))\r\n                  (*(undefined4 *)(param_1 + 0x40),iVar3,0x2b,10,0,0xf,10);\r\n        iVar1 = iVar1 + -1;\r\n      } while (iVar1 != 0);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

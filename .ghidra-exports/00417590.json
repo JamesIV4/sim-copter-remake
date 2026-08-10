@@ -1,0 +1,18 @@
+{
+  "address": "00417590",
+  "name": "FUN_00417590",
+  "signature": "undefined FUN_00417590(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00417590(int *param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uStack_10;\r\n  int *piStack_c;\r\n  undefined1 local_4 [4];\r\n  \r\n  uStack_10 = 0x41759c;\r\n  piStack_c = param_1;\r\n  FUN_00405cd0();\r\n  if (param_1[0xe] != 0) {\r\n    piStack_c = (int *)local_4;\r\n    uStack_10 = param_3;\r\n    iVar1 = (**(code **)(*param_1 + 0xf4))(param_2);\r\n    if (iVar1 != 0) {\r\n      (*(code *)**(undefined4 **)param_1[0xe])(param_1,param_1[1],0x10001,&uStack_10);\r\n    }\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00405cd0",
+      "name": "FUN_00405cd0"
+    }
+  ],
+  "data_refs": []
+}

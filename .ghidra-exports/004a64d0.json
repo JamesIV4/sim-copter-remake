@@ -1,0 +1,36 @@
+{
+  "address": "004a64d0",
+  "name": "FUN_004a64d0",
+  "signature": "undefined FUN_004a64d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004a64d0(undefined4 param_1)\r\n\r\n{\r\n  byte *pbVar1;\r\n  byte *pbVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  undefined4 *puVar5;\r\n  byte *pbVar6;\r\n  \r\n  iVar3 = FUN_00459a10(param_1,s_ERIFDIFCFire_Parms_00505f8c._0_4_,&DAT_0057f8f8,0xa0);\r\n  if (iVar3 == 0) {\r\n    return 0;\r\n  }\r\n  puVar5 = &DAT_005ce0a0;\r\n  while( true ) {\r\n    *puVar5 = DAT_0057f8f8;\r\n    puVar5[1] = DAT_0057f8fc;\r\n    puVar5[2] = DAT_0057f900;\r\n    puVar5[3] = DAT_0057f904;\r\n    puVar5[7] = DAT_0057f914;\r\n    puVar5[0xf] = DAT_0057f934;\r\n    puVar5[0x10] = DAT_0057f938;\r\n    puVar5[0x11] = DAT_0057f93c;\r\n    puVar5[0x22] = DAT_0057f980;\r\n    puVar5[0x25] = DAT_0057f98c;\r\n    puVar5[0x26] = DAT_0057f990;\r\n    puVar5[0x27] = DAT_0057f994;\r\n    uVar4 = DAT_0057f988;\r\n    puVar5[0x23] = DAT_0057f984;\r\n    puVar5[0x24] = uVar4;\r\n    iVar3 = FUN_00459a50(param_1,s_ERIFDIFCFire_Parms_00505f8c._0_4_,&DAT_0057f8f8,0xa0);\r\n    if ((iVar3 == 0) && (puVar5 != (undefined4 *)&DAT_005d3780)) break;\r\n    puVar5 = puVar5 + 0x28;\r\n    if ((undefined4 *)0x5d381f < puVar5) {\r\n      iVar3 = FUN_00459a10(param_1,s_ERIFDIFCFire_Parms_00505f8c._4_4_,&DAT_0057f8e8,0xc);\r\n      if (iVar3 == 0) {\r\n        return 0;\r\n      }\r\n      puVar5 = &DAT_005d3824;\r\n      while( true ) {\r\n        uVar4 = s_ERIFDIFCFire_Parms_00505f8c._4_4_;\r\n        *puVar5 = DAT_0057f8ec;\r\n        iVar3 = FUN_00459a50(param_1,uVar4,&DAT_0057f8e8,0xc);\r\n        if ((iVar3 == 0) && (puVar5 != (undefined4 *)&DAT_005d3ea8)) break;\r\n        puVar5 = puVar5 + 3;\r\n        if ((undefined4 *)((int)&DAT_005d3eb0 + 3) < puVar5) {\r\n          pbVar6 = (byte *)&DAT_005ce0a0;\r\n          iVar3 = 0x8c;\r\n          DAT_00505f58 = 0;\r\n          do {\r\n            if ((*pbVar6 & 1) != 0) {\r\n              DAT_00505f58 = DAT_00505f58 + 1;\r\n              *(undefined4 **)(pbVar6 + 0x98) = &DAT_005d3820 + *(int *)(pbVar6 + 0x98) * 3;\r\n              if (*(int *)(pbVar6 + 0x94) == -1) {\r\n                pbVar6[0x94] = 0;\r\n                pbVar6[0x95] = 0;\r\n                pbVar6[0x96] = 0;\r\n                pbVar6[0x97] = 0;\r\n              }\r\n              else {\r\n                uVar4 = FUN_00470571(*(int *)(pbVar6 + 0x94));\r\n                *(undefined4 *)(pbVar6 + 0x94) = uVar4;\r\n              }\r\n              **(undefined4 **)(pbVar6 + 0x98) =\r\n                   (&DAT_005d9200)\r\n                   [(*(uint *)(pbVar6 + 0x8c) & 0xff) * 0x100 + (*(uint *)(pbVar6 + 0x90) & 0xff)];\r\n              pbVar1 = pbVar6 + 0x3c;\r\n              pbVar2 = pbVar6 + 0x10;\r\n              *(byte *)**(undefined4 **)(pbVar6 + 0x98) =\r\n                   *(byte *)**(undefined4 **)(pbVar6 + 0x98) | 0x20;\r\n              FUN_0046e600(*(undefined4 *)(*(int *)(pbVar6 + 0x20) + 4),\r\n                           *(int *)pbVar1 - *(int *)pbVar2,\r\n                           *(int *)(pbVar6 + 0x40) - *(int *)(pbVar6 + 0x14),\r\n                           *(int *)(pbVar6 + 0x44) - *(int *)(pbVar6 + 0x18));\r\n              *(undefined4 *)pbVar2 = *(undefined4 *)pbVar1;\r\n              *(undefined4 *)(pbVar6 + 0x14) = *(undefined4 *)(pbVar6 + 0x40);\r\n              *(undefined4 *)(pbVar6 + 0x18) = *(undefined4 *)(pbVar6 + 0x44);\r\n              *(int *)pbVar1 = *(short *)(**(int **)(pbVar6 + 0x98) + 2) * 0x10000 + *(int *)pbVar2;\r\n              *(int *)(pbVar6 + 0x40) =\r\n                   *(short *)(**(int **)(pbVar6 + 0x98) + 4) * 0x10000 + *(int *)(pbVar6 + 0x14);\r\n              *(int *)(pbVar6 + 0x44) =\r\n                   *(short *)(**(int **)(pbVar6 + 0x98) + 6) * 0x10000 + *(int *)(pbVar6 + 0x18);\r\n              **(undefined4 **)(pbVar6 + 0x20) = *(undefined4 *)(**(int **)(pbVar6 + 0x98) + 0xc);\r\n              *(undefined4 *)(**(int **)(pbVar6 + 0x98) + 0xc) = *(undefined4 *)(pbVar6 + 0x20);\r\n            }\r\n            pbVar6 = pbVar6 + 0xa0;\r\n            iVar3 = iVar3 + -1;\r\n          } while (iVar3 != 0);\r\n          return 1;\r\n        }\r\n      }\r\n      return 0;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00459a10",
+      "name": "FUN_00459a10"
+    },
+    {
+      "addr": "00459a50",
+      "name": "FUN_00459a50"
+    },
+    {
+      "addr": "00470571",
+      "name": "FUN_00470571"
+    },
+    {
+      "addr": "0046e600",
+      "name": "FUN_0046e600"
+    }
+  ],
+  "data_refs": []
+}

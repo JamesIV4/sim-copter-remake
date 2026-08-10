@@ -1,0 +1,33 @@
+{
+  "address": "004d6570",
+  "name": "FID_conflict:__lock_file2",
+  "signature": "void __cdecl FID_conflict:__lock_file2(int _Index, void * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __lock_file2\r\n    __unlock_file2\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl FID_conflict___lock_file2(int _Index,void *_File)\r\n\r\n{\r\n  if (_Index < 0x14) {\r\n    FUN_004d64a0(_Index + 0x1c);\r\n    return;\r\n  }\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)((int)_File + 0x20));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3be0",
+      "name": "flsall",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8fb0",
+      "name": "FUN_004d8fb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

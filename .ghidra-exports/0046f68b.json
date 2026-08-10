@@ -1,0 +1,13 @@
+{
+  "address": "0046f68b",
+  "name": "FUN_0046f68b",
+  "signature": "undefined FUN_0046f68b(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046f68b(undefined4 param_1)\r\n\r\n{\r\n  DAT_005b0070 = param_1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

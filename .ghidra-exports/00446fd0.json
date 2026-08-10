@@ -1,0 +1,34 @@
+{
+  "address": "00446fd0",
+  "name": "FUN_00446fd0",
+  "signature": "undefined FUN_00446fd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00446fd0(uint param_1)\r\n\r\n{\r\n  DWORD DVar1;\r\n  uint uVar2;\r\n  DWORD DVar3;\r\n  \r\n  DVar1 = timeGetTime();\r\n  do {\r\n    uVar2 = 0;\r\n    if (DVar1 != 0) {\r\n      DVar3 = timeGetTime();\r\n      uVar2 = DVar3 - DVar1;\r\n    }\r\n  } while (uVar2 < param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449850",
+      "name": "FUN_00449850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00449850",
+      "name": "FUN_00449850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

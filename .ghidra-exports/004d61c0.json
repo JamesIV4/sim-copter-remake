@@ -1,0 +1,28 @@
+{
+  "address": "004d61c0",
+  "name": "_qsort",
+  "signature": "void __cdecl _qsort(void * _Base, size_t _NumOfElements, size_t _SizeOfElements, _PtFuncCompare * _PtFuncCompare)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _qsort\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl\r\n_qsort(void *_Base,size_t _NumOfElements,size_t _SizeOfElements,_PtFuncCompare *_PtFuncCompare)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  void *pvVar3;\r\n  void *pvVar4;\r\n  void *local_f8;\r\n  int local_f4;\r\n  undefined4 auStack_f0 [30];\r\n  int aiStack_78 [30];\r\n  \r\n  if ((_NumOfElements < 2) || (_SizeOfElements == 0)) {\r\n    return;\r\n  }\r\n  local_f4 = 0;\r\n  local_f8 = (void *)((_NumOfElements - 1) * _SizeOfElements + (int)_Base);\r\nLAB_004d61ff:\r\n  uVar1 = (uint)((int)local_f8 - (int)_Base) / _SizeOfElements + 1;\r\n  if (8 < uVar1) {\r\n    swap((void *)((uVar1 >> 1) * _SizeOfElements + (int)_Base),_Base,_SizeOfElements);\r\n    pvVar3 = (void *)((int)local_f8 + _SizeOfElements);\r\n    pvVar4 = _Base;\r\nLAB_004d625c:\r\n    pvVar4 = (void *)((int)pvVar4 + _SizeOfElements);\r\n    if (pvVar4 <= local_f8) goto code_r0x004d6264;\r\n    goto LAB_004d6274;\r\n  }\r\n  shortsort(_Base,local_f8,_SizeOfElements,_PtFuncCompare);\r\n  goto LAB_004d6226;\r\ncode_r0x004d6264:\r\n  iVar2 = (*_PtFuncCompare)(pvVar4,_Base);\r\n  if (iVar2 < 1) goto LAB_004d625c;\r\nLAB_004d6274:\r\n  do {\r\n    pvVar3 = (void *)((int)pvVar3 - _SizeOfElements);\r\n    if (pvVar3 <= _Base) break;\r\n    iVar2 = (*_PtFuncCompare)(pvVar3,_Base);\r\n  } while (-1 < iVar2);\r\n  if (pvVar4 <= pvVar3) {\r\n    swap(pvVar4,pvVar3,_SizeOfElements);\r\n    goto LAB_004d625c;\r\n  }\r\n  swap(_Base,pvVar3,_SizeOfElements);\r\n  if ((int)pvVar3 + (-1 - (int)_Base) < (int)local_f8 - (int)pvVar4) {\r\n    if (pvVar4 < local_f8) {\r\n      auStack_f0[local_f4] = pvVar4;\r\n      aiStack_78[local_f4] = (int)local_f8;\r\n      local_f4 = local_f4 + 1;\r\n    }\r\n    if ((void *)(_SizeOfElements + (int)_Base) < pvVar3) {\r\n      local_f8 = (void *)((int)pvVar3 - _SizeOfElements);\r\n      goto LAB_004d61ff;\r\n    }\r\n  }\r\n  else {\r\n    if ((void *)(_SizeOfElements + (int)_Base) < pvVar3) {\r\n      auStack_f0[local_f4] = _Base;\r\n      aiStack_78[local_f4] = (int)pvVar3 - _SizeOfElements;\r\n      local_f4 = local_f4 + 1;\r\n    }\r\n    _Base = pvVar4;\r\n    if (pvVar4 < local_f8) goto LAB_004d61ff;\r\n  }\r\nLAB_004d6226:\r\n  local_f4 = local_f4 + -1;\r\n  if (local_f4 < 0) {\r\n    return;\r\n  }\r\n  local_f8 = (void *)aiStack_78[local_f4];\r\n  _Base = (void *)auStack_f0[local_f4];\r\n  goto LAB_004d61ff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6320",
+      "name": "shortsort"
+    },
+    {
+      "addr": "004d6380",
+      "name": "swap"
+    }
+  ],
+  "data_refs": []
+}

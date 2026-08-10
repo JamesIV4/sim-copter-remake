@@ -1,0 +1,22 @@
+{
+  "address": "0040d300",
+  "name": "FUN_0040d300",
+  "signature": "undefined FUN_0040d300(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0040d300(int *param_1,undefined4 param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 uVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  int unaff_EBX;\r\n  int *piVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 *puVar9;\r\n  int unaff_retaddr;\r\n  undefined1 local_8 [4];\r\n  int local_4;\r\n  \r\n  local_4 = *param_1;\r\n  iVar2 = (**(code **)(local_4 + 0x14c))(param_2,local_8);\r\n  if (iVar2 == 0) {\r\n    return 0;\r\n  }\r\n  if (unaff_EBX != unaff_retaddr) {\r\n    piVar7 = (int *)(unaff_EBX + 4);\r\n    piVar1 = (int *)(*(int *)(unaff_EBX + 4) + 0xc);\r\n    *piVar1 = *piVar1 + -1;\r\n    puVar3 = (undefined4 *)*piVar7;\r\n    if ((puVar3[3] == 0) && (puVar3 != (undefined4 *)0x0)) {\r\n      if (puVar3[2] != 0) {\r\n        FUN_004d29a0(*puVar3);\r\n        puVar3[2] = 0;\r\n        *puVar3 = 0;\r\n      }\r\n      FUN_004d29a0(puVar3);\r\n    }\r\n    piVar1 = (int *)(*(int *)(unaff_retaddr + 4) + 0xc);\r\n    if (*piVar1 == -1) {\r\n      puVar3 = (undefined4 *)FUN_004d28b0(0x10);\r\n      if (puVar3 == (undefined4 *)0x0) {\r\n        *piVar7 = 0;\r\n      }\r\n      else {\r\n        iVar2 = *(int *)(*(int *)(unaff_retaddr + 4) + 4);\r\n        puVar3[1] = iVar2;\r\n        puVar3[2] = iVar2;\r\n        if (iVar2 == 0) {\r\n          *puVar3 = 0;\r\n        }\r\n        else {\r\n          uVar4 = FUN_004d28b0(iVar2);\r\n          *puVar3 = uVar4;\r\n          puVar8 = (undefined4 *)0x0;\r\n          if ((*(undefined4 **)(unaff_retaddr + 4))[1] != 0) {\r\n            puVar8 = (undefined4 *)**(undefined4 **)(unaff_retaddr + 4);\r\n          }\r\n          uVar6 = puVar3[1];\r\n          puVar9 = (undefined4 *)*puVar3;\r\n          for (uVar5 = uVar6 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n            *puVar9 = *puVar8;\r\n            puVar8 = puVar8 + 1;\r\n            puVar9 = puVar9 + 1;\r\n          }\r\n          for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n            *(undefined1 *)puVar9 = *(undefined1 *)puVar8;\r\n            puVar8 = (undefined4 *)((int)puVar8 + 1);\r\n            puVar9 = (undefined4 *)((int)puVar9 + 1);\r\n          }\r\n        }\r\n        puVar3[3] = 1;\r\n        *piVar7 = (int)puVar3;\r\n      }\r\n    }\r\n    else {\r\n      *piVar7 = *(int *)(unaff_retaddr + 4);\r\n      *piVar1 = *piVar1 + 1;\r\n    }\r\n  }\r\n  (*(code *)param_1[0x10])(1,1);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    }
+  ],
+  "data_refs": []
+}

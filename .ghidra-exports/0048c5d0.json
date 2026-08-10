@@ -1,0 +1,24 @@
+{
+  "address": "0048c5d0",
+  "name": "FUN_0048c5d0",
+  "signature": "undefined FUN_0048c5d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0048c5d0(undefined4 *param_1,int *param_2)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint *puVar4;\r\n  size_t _Count;\r\n  uint *puVar5;\r\n  char *pcVar6;\r\n  uint *puVar7;\r\n  int *local_118;\r\n  uint auStack_114 [4];\r\n  char acStack_104 [260];\r\n  \r\n  local_118 = (int *)**(int **)*param_1;\r\n  if (*(int **)*param_1 != local_118) {\r\n    do {\r\n      puVar7 = (uint *)local_118[2];\r\n      uVar3 = *puVar7;\r\n      if (uVar3 == 1) {\r\n        puVar4 = puVar7;\r\n        puVar5 = auStack_114;\r\n        for (iVar2 = 5; iVar2 != 0; iVar2 = iVar2 + -1) {\r\n          *puVar5 = *puVar4;\r\n          puVar4 = puVar4 + 1;\r\n          puVar5 = puVar5 + 1;\r\n        }\r\n        uVar3 = 0xffffffff;\r\n        pcVar6 = (char *)puVar7[3];\r\n        do {\r\n          if (uVar3 == 0) break;\r\n          uVar3 = uVar3 - 1;\r\n          cVar1 = *pcVar6;\r\n          pcVar6 = pcVar6 + 1;\r\n        } while (cVar1 != '\\0');\r\n        _Count = (~uVar3 | 3) + 1;\r\n        if (0x100 < (int)_Count) {\r\n          _Count = 0x100;\r\n        }\r\n        iVar2 = _Count + 0x10;\r\n        _strncpy(acStack_104,(char *)puVar7[3],_Count);\r\n        puVar7 = auStack_114;\r\n      }\r\n      else if (uVar3 == 2) {\r\n        iVar2 = 0x10;\r\n      }\r\n      else if (uVar3 == 3) {\r\n        iVar2 = 0x130;\r\n      }\r\n      else if (uVar3 == 0xb) {\r\n        iVar2 = 0x10;\r\n      }\r\n      else if ((uVar3 < 4) || (iVar2 = 0x18, 10 < uVar3)) {\r\n        iVar2 = 0xc;\r\n      }\r\n      (**(code **)(*param_2 + 100))(0x434c4f47,puVar7,iVar2);\r\n      local_118 = (int *)*local_118;\r\n    } while ((int *)*(int *)*param_1 != local_118);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    }
+  ],
+  "data_refs": []
+}

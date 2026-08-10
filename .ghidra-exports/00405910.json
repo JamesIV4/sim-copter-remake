@@ -1,0 +1,34 @@
+{
+  "address": "00405910",
+  "name": "FUN_00405910",
+  "signature": "undefined FUN_00405910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00405910(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  int *piVar8;\r\n  int iVar9;\r\n  \r\n  piVar1 = (int *)(param_1 + 0x20);\r\n  *piVar1 = *(int *)(param_1 + 0x10);\r\n  *(undefined4 *)(param_1 + 0x24) = *(undefined4 *)(param_1 + 0x14);\r\n  *(undefined4 *)(param_1 + 0x28) = *(undefined4 *)(param_1 + 0x18);\r\n  *(undefined4 *)(param_1 + 0x2c) = *(undefined4 *)(param_1 + 0x1c);\r\n  iVar4 = *piVar1;\r\n  iVar5 = *(int *)(param_1 + 0x24);\r\n  iVar6 = *(int *)(param_1 + 0x28);\r\n  iVar7 = *(int *)(param_1 + 0x2c);\r\n  piVar8 = *(int **)(param_1 + 0x3c);\r\n  while( true ) {\r\n    if (piVar8 == (int *)0x0) {\r\n      return 0;\r\n    }\r\n    iVar9 = (**(code **)(*piVar8 + 0xc4))();\r\n    if (iVar9 != 0) break;\r\n    piVar2 = piVar8 + 4;\r\n    piVar3 = piVar8 + 5;\r\n    piVar8 = (int *)piVar8[0xf];\r\n    iVar4 = iVar4 + *piVar2;\r\n    iVar6 = iVar6 + *piVar2;\r\n    iVar5 = iVar5 + *piVar3;\r\n    iVar7 = iVar7 + *piVar3;\r\n  }\r\n  *(int *)(param_1 + 0x44) = iVar9;\r\n  *piVar1 = iVar4;\r\n  *(int *)(param_1 + 0x24) = iVar5;\r\n  *(int *)(param_1 + 0x28) = iVar6;\r\n  *(int *)(param_1 + 0x2c) = iVar7;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00406b40",
+      "name": "FUN_00406b40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00421220",
+      "name": "FUN_00421220",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042a7d0",
+      "name": "FUN_0042a7d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043b6e0",
+      "name": "FUN_0043b6e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

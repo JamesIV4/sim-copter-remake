@@ -1,0 +1,41 @@
+{
+  "address": "00422790",
+  "name": "FUN_00422790",
+  "signature": "undefined FUN_00422790(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __fastcall FUN_00422790(undefined4 *param_1)\r\n\r\n{\r\n  tm *ptVar1;\r\n  undefined4 uVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  undefined4 uVar6;\r\n  undefined4 local_24 [4];\r\n  undefined1 local_14 [20];\r\n  \r\n  param_1[1] = 0;\r\n  _time((time_t *)local_24);\r\n  ptVar1 = _localtime((time_t *)local_24);\r\n  if (ptVar1 == (tm *)0x0) {\r\n    local_24[0] = 1;\r\n    ptVar1 = _localtime((time_t *)local_24);\r\n    if (ptVar1 == (tm *)0x0) {\r\n      uVar6 = 1;\r\n      uVar5 = 1;\r\n      uVar4 = 1;\r\n      uVar2 = FUN_00462800(1,1,0x7cd);\r\n      puVar3 = (undefined4 *)FUN_00422850(uVar2,uVar4,uVar5,uVar6);\r\n      uVar2 = puVar3[1];\r\n      *param_1 = *puVar3;\r\n      param_1[1] = uVar2;\r\n      return param_1;\r\n    }\r\n  }\r\n  FUN_00462800(ptVar1->tm_mday,ptVar1->tm_mon + 1,ptVar1->tm_year);\r\n  puVar3 = (undefined4 *)FUN_00422850(local_14,ptVar1->tm_hour,ptVar1->tm_min,ptVar1->tm_sec);\r\n  uVar2 = puVar3[1];\r\n  *param_1 = *puVar3;\r\n  param_1[1] = uVar2;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0048c6c0",
+      "name": "FUN_0048c6c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448e80",
+      "name": "FUN_00448e80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d40a0",
+      "name": "_time"
+    },
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime"
+    },
+    {
+      "addr": "00462800",
+      "name": "FUN_00462800"
+    },
+    {
+      "addr": "00422850",
+      "name": "FUN_00422850"
+    }
+  ],
+  "data_refs": []
+}

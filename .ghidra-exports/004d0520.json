@@ -1,0 +1,37 @@
+{
+  "address": "004d0520",
+  "name": "FUN_004d0520",
+  "signature": "undefined FUN_004d0520(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d0520(undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n                 float param_5,undefined4 param_6,undefined4 param_7,undefined4 param_8,\r\n                 undefined4 param_9,undefined2 *param_10,undefined2 *param_11,undefined2 *param_12,\r\n                 short param_13)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  float local_10;\r\n  float local_c;\r\n  float local_8;\r\n  \r\n  FUN_004d04c0(param_1,param_2,param_3,param_4,param_6,param_7,param_8,param_9,&local_10);\r\n  local_10 = local_10 * param_5;\r\n  local_8 = local_8 * param_5;\r\n  local_c = local_c * param_5;\r\n  if (param_13 != 0) {\r\n    FUN_004d0470(&local_10,0);\r\n  }\r\n  if (param_10 != (undefined2 *)0x0) {\r\n    uVar1 = __ftol();\r\n    *param_10 = uVar1;\r\n  }\r\n  if (param_11 != (undefined2 *)0x0) {\r\n    uVar1 = __ftol();\r\n    *param_11 = uVar1;\r\n  }\r\n  if (param_12 != (undefined2 *)0x0) {\r\n    uVar1 = __ftol();\r\n    *param_12 = uVar1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d04c0",
+      "name": "FUN_004d04c0"
+    },
+    {
+      "addr": "004d0470",
+      "name": "FUN_004d0470"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

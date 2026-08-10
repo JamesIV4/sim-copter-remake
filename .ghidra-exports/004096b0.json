@@ -1,0 +1,22 @@
+{
+  "address": "004096b0",
+  "name": "FUN_004096b0",
+  "signature": "undefined FUN_004096b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004096b0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 *puVar5;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  local_10 = param_1[8];\r\n  local_c = param_1[9];\r\n  local_8 = param_1[10];\r\n  local_4 = param_1[0xb];\r\n  if (param_1[0x1d] != 0) {\r\n    (**(code **)(*(int *)param_1[0x11] + 0x44))(param_1[0x1f],param_1 + 8);\r\n  }\r\n  if (param_1[0x1b] != 0) {\r\n    (**(code **)(*param_1 + 0x2c))(0);\r\n  }\r\n  *(int *)(param_1[0x11] + 0x38) = param_1[0x1e];\r\n  local_10 = local_10 + 5;\r\n  local_c = local_c + 1;\r\n  if (param_1[2] != 0) {\r\n    FUN_004d29a0(param_1[2]);\r\n  }\r\n  iVar1 = FUN_004d28b0(*(int *)(param_1[3] + 4) + 1);\r\n  param_1[2] = iVar1;\r\n  uVar3 = ((undefined4 *)param_1[3])[1];\r\n  if (uVar3 != 0) {\r\n    puVar4 = *(undefined4 **)param_1[3];\r\n    puVar5 = (undefined4 *)param_1[2];\r\n    for (uVar2 = uVar3 >> 2; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n      *puVar5 = *puVar4;\r\n      puVar4 = puVar4 + 1;\r\n      puVar5 = puVar5 + 1;\r\n    }\r\n    for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n      *(undefined1 *)puVar5 = *(undefined1 *)puVar4;\r\n      puVar4 = (undefined4 *)((int)puVar4 + 1);\r\n      puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n    }\r\n  }\r\n  *(undefined1 *)(*(int *)(param_1[3] + 4) + param_1[2]) = 0;\r\n  (**(code **)(*(int *)param_1[0x11] + 0x4c))\r\n            (param_1[2],param_1[0x28],&local_10,&local_c,&local_8,&local_4,param_1 + 0x21);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    }
+  ],
+  "data_refs": []
+}

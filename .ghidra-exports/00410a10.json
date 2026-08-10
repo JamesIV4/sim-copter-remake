@@ -1,0 +1,44 @@
+{
+  "address": "00410a10",
+  "name": "FUN_00410a10",
+  "signature": "undefined FUN_00410a10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00410a10(undefined4 param_1,int param_2,int param_3,int param_4)\r\n\r\n{\r\n  int iVar1;\r\n  uint uVar2;\r\n  int nPriority;\r\n  HANDLE pvVar3;\r\n  DWORD DVar4;\r\n  uint uVar5;\r\n  DWORD DVar6;\r\n  undefined1 *puVar7;\r\n  char *pcVar8;\r\n  int iVar9;\r\n  undefined1 *puVar10;\r\n  undefined4 unaff_ESI;\r\n  byte *pbVar11;\r\n  undefined1 *puVar12;\r\n  int iVar13;\r\n  char *local_20;\r\n  int local_1c;\r\n  int local_c;\r\n  \r\n  uVar2 = param_3 / param_4;\r\n  if (DAT_004f8614 != (int *)0x0) {\r\n    if (0x100 < param_4) {\r\n      param_4 = 0x100;\r\n    }\r\n    nPriority = FUN_004d28b0(param_4 << 10);\r\n    iVar1 = param_4 + -1;\r\n    pvVar3 = GetCurrentThread();\r\n    GetThreadPriority(pvVar3);\r\n    iVar13 = 2;\r\n    pvVar3 = GetCurrentThread();\r\n    SetThreadPriority(pvVar3,iVar13);\r\n    if (0 < param_4) {\r\n      puVar7 = (undefined1 *)(nPriority + 0x2b);\r\n      iVar13 = param_4;\r\n      do {\r\n        iVar9 = 0xeb;\r\n        puVar12 = puVar7;\r\n        do {\r\n          *puVar12 = 5;\r\n          puVar12 = puVar12 + 4;\r\n          iVar9 = iVar9 + -1;\r\n        } while (iVar9 != 0);\r\n        puVar7 = puVar7 + 0x400;\r\n        iVar13 = iVar13 + -1;\r\n      } while (iVar13 != 0);\r\n    }\r\n    iVar13 = 0xec;\r\n    puVar7 = (undefined1 *)(param_2 + 0x2a);\r\n    puVar12 = (undefined1 *)(nPriority + 0x28);\r\n    puVar10 = (undefined1 *)(iVar1 * 0x400 + 0x28 + nPriority);\r\n    do {\r\n      *puVar12 = param_1._2_1_;\r\n      iVar13 = iVar13 + -1;\r\n      puVar12[1] = param_1._1_1_;\r\n      puVar12[2] = (undefined1)param_1;\r\n      *puVar10 = *puVar7;\r\n      puVar10[1] = puVar7[-1];\r\n      puVar10[2] = puVar7[-2];\r\n      puVar7 = puVar7 + 4;\r\n      puVar12 = puVar12 + 4;\r\n      puVar10 = puVar10 + 4;\r\n    } while (iVar13 != 0);\r\n    iVar13 = 0x3f;\r\n    iVar9 = 0x40;\r\n    local_1c = 1;\r\n    if (1 < iVar1) {\r\n      local_20 = (char *)(nPriority + 0x428);\r\n      do {\r\n        DVar4 = timeGetTime();\r\n        if (local_1c % (param_4 >> 2) == 0) {\r\n          iVar9 = iVar9 >> 1;\r\n          iVar13 = iVar9 + -1;\r\n        }\r\n        local_c = 0xec;\r\n        pcVar8 = local_20;\r\n        pbVar11 = (byte *)(param_2 + 0x2a);\r\n        do {\r\n          *pcVar8 = *pbVar11 +\r\n                    (char)((int)(((uint)(byte)pcVar8[-0x400] - (uint)*pbVar11) * iVar13) / iVar9);\r\n          pcVar8[1] = pbVar11[-1] +\r\n                      (char)((int)(((uint)(byte)pcVar8[-0x3ff] - (uint)pbVar11[-1]) * iVar13) /\r\n                            iVar9);\r\n          local_c = local_c + -1;\r\n          pcVar8[2] = pbVar11[-2] +\r\n                      (char)((int)(((uint)(byte)pcVar8[-0x3fe] - (uint)pbVar11[-2]) * iVar13) /\r\n                            iVar9);\r\n          pcVar8 = pcVar8 + 4;\r\n          pbVar11 = pbVar11 + 4;\r\n        } while (local_c != 0);\r\n        (**(code **)(*DAT_004f8610 + 0x58))(DAT_004f8610,1,0);\r\n        (**(code **)(*DAT_004f8614 + 0x18))(DAT_004f8614,0,10,0xec,unaff_ESI);\r\n        do {\r\n          uVar5 = 0;\r\n          if (DVar4 != 0) {\r\n            DVar6 = timeGetTime();\r\n            uVar5 = DVar6 - DVar4;\r\n          }\r\n        } while (uVar5 < uVar2);\r\n        local_20 = local_20 + 0x400;\r\n        local_1c = local_1c + 1;\r\n      } while (local_1c < iVar1);\r\n    }\r\n    (**(code **)(*DAT_004f8610 + 0x58))(DAT_004f8610,1,0);\r\n    (**(code **)(*DAT_004f8614 + 0x18))(DAT_004f8614,0,10,0xec,local_20);\r\n    pvVar3 = GetCurrentThread();\r\n    SetThreadPriority(pvVar3,nPriority);\r\n    FUN_004d29a0(local_20);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004109f0",
+      "name": "FUN_004109f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:0000001d",
+      "name": "GetCurrentThread"
+    },
+    {
+      "addr": "EXTERNAL:0000001c",
+      "name": "GetThreadPriority"
+    },
+    {
+      "addr": "EXTERNAL:0000001e",
+      "name": "SetThreadPriority"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

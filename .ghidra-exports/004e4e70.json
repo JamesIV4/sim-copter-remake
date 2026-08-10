@@ -1,0 +1,19 @@
+{
+  "address": "004e4e70",
+  "name": "FID_conflict:__mbscpy",
+  "signature": "char * __cdecl FID_conflict:__mbscpy(char * _Dest, char * _Source)",
+  "calling_convention": "__cdecl",
+  "return_type": "char *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __mbscpy\r\n    _strcpy\r\n   \r\n   Libraries: Visual Studio 1998 Debug, Visual Studio 1998 Release */\r\n\r\nchar * __cdecl FID_conflict___mbscpy(char *_Dest,char *_Source)\r\n\r\n{\r\n  byte bVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  uint *puVar4;\r\n  \r\n  puVar4 = (uint *)_Dest;\r\n  while (((uint)_Source & 3) != 0) {\r\n    bVar1 = (byte)*(uint *)_Source;\r\n    uVar3 = (uint)bVar1;\r\n    _Source = (char *)((int)_Source + 1);\r\n    if (bVar1 == 0) goto LAB_004e4f58;\r\n    *(byte *)puVar4 = bVar1;\r\n    puVar4 = (uint *)((int)puVar4 + 1);\r\n  }\r\n  do {\r\n    uVar2 = *(uint *)_Source;\r\n    uVar3 = *(uint *)_Source;\r\n    _Source = (char *)((int)_Source + 4);\r\n    if (((uVar2 ^ 0xffffffff ^ uVar2 + 0x7efefeff) & 0x81010100) != 0) {\r\n      if ((char)uVar3 == '\\0') {\r\nLAB_004e4f58:\r\n        *(byte *)puVar4 = (byte)uVar3;\r\n        return _Dest;\r\n      }\r\n      if ((char)(uVar3 >> 8) == '\\0') {\r\n        *(short *)puVar4 = (short)uVar3;\r\n        return _Dest;\r\n      }\r\n      if ((uVar3 & 0xff0000) == 0) {\r\n        *(short *)puVar4 = (short)uVar3;\r\n        *(byte *)((int)puVar4 + 2) = 0;\r\n        return _Dest;\r\n      }\r\n      if ((uVar3 & 0xff000000) == 0) {\r\n        *puVar4 = uVar3;\r\n        return _Dest;\r\n      }\r\n    }\r\n    *puVar4 = uVar3;\r\n    puVar4 = puVar4 + 1;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4cf0",
+      "name": "FUN_004e4cf0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

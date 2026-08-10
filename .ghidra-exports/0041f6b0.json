@@ -1,0 +1,22 @@
+{
+  "address": "0041f6b0",
+  "name": "FUN_0041f6b0",
+  "signature": "undefined FUN_0041f6b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0041f6b0(int param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  int Y;\r\n  uint nWidth;\r\n  uint nHeight;\r\n  int X;\r\n  \r\n  uVar1 = GetSystemMetrics(0);\r\n  uVar2 = GetSystemMetrics(1);\r\n  nWidth = *(int *)(param_1 + 0x80) - *(int *)(param_1 + 0x78);\r\n  nHeight = *(int *)(param_1 + 0x84) - *(int *)(param_1 + 0x7c);\r\n  X = (uVar1 >> 1) - (nWidth >> 1);\r\n  *(int *)(param_1 + 0x78) = X;\r\n  Y = (uVar2 >> 1) - (nHeight >> 1);\r\n  *(int *)(param_1 + 0x7c) = Y;\r\n  MoveWindow(*(HWND *)(param_1 + 0x18),X,Y,nWidth,nHeight,0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000071",
+      "name": "GetSystemMetrics"
+    },
+    {
+      "addr": "EXTERNAL:0000009c",
+      "name": "MoveWindow"
+    }
+  ],
+  "data_refs": []
+}

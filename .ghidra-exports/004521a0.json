@@ -1,0 +1,40 @@
+{
+  "address": "004521a0",
+  "name": "FUN_004521a0",
+  "signature": "undefined FUN_004521a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * __thiscall\r\nFUN_004521a0(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6,undefined4 param_7)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  unkbyte10 extraout_ST0;\r\n  unkbyte10 extraout_ST0_00;\r\n  unkbyte10 extraout_ST0_01;\r\n  \r\n  FUN_004042e0(PTR_s_dash6_bmp_004f98d8,param_2,param_3,param_5,param_6,param_7,0xffffffff);\r\n  param_1[0x1d] = param_4;\r\n  param_1[0x1e] = 0;\r\n  param_1[0x1f] = 0;\r\n  param_1[0x20] = 0;\r\n  param_1[0x21] = 0;\r\n  param_1[0x22] = 0;\r\n  param_1[0x23] = 0;\r\n  param_1[0x24] = 0;\r\n  param_1[0x25] = 0;\r\n  iVar3 = 2;\r\n  param_1[0x27] = 0;\r\n  param_1[0x26] = 0xfffffc18;\r\n  param_1[0x28] = 0;\r\n  do {\r\n    FUN_00452680();\r\n    iVar3 = iVar3 + -1;\r\n  } while (-1 < iVar3);\r\n  piVar1 = param_1 + 0x50;\r\n  iVar3 = 2;\r\n  do {\r\n    FUN_004077e0();\r\n    iVar3 = iVar3 + -1;\r\n  } while (-1 < iVar3);\r\n  param_1[0x5c] = 0x14;\r\n  param_1[0x5d] = 0xc;\r\n  param_1[0x5e] = 0x5e;\r\n  param_1[0x5f] = 0x1a;\r\n  iVar3 = 3;\r\n  param_1[0x60] = 0;\r\n  param_1[0x61] = 0;\r\n  param_1[0x62] = 0;\r\n  param_1[99] = 10000;\r\n  param_1[100] = 10000;\r\n  do {\r\n    FUN_004077e0();\r\n    iVar3 = iVar3 + -1;\r\n  } while (-1 < iVar3);\r\n  *param_1 = &PTR_LAB_004f2e98;\r\n  param_1[0x79] = 0xffffffff;\r\n  param_1[0x2b] = 0xffffffff;\r\n  param_1[0x31] = 0xa1;\r\n  param_1[0x32] = 0x2f;\r\n  param_1[0x2c] = 100;\r\n  if (100 < (int)param_1[0x2a]) {\r\n    param_1[0x2a] = 100;\r\n  }\r\n  param_1[0x2d] = 0x102;\r\n  param_1[0x30] = 0x40566666;\r\n  param_1[0x2e] = 0x1c;\r\n  param_1[0x2f] = 2;\r\n  iVar3 = __ftol();\r\n  fcos((float10)(iVar3 + 0x102) * (float10)_DAT_004f2e50);\r\n  iVar3 = __ftol();\r\n  fsin(extraout_ST0);\r\n  param_1[0x33] = iVar3 + 0xa1;\r\n  iVar2 = __ftol();\r\n  param_1[0x34] = 0x2f - iVar2;\r\n  *piVar1 = 0xa1;\r\n  param_1[0x52] = iVar3 + 0xa1;\r\n  param_1[0x53] = 0x2f - iVar2;\r\n  param_1[0x51] = 0x2f;\r\n  FUN_00452660();\r\n  param_1[0x3e] = 0x13c;\r\n  param_1[0x3f] = 0x26;\r\n  param_1[0x38] = 0xffffffff;\r\n  param_1[0x39] = 100000;\r\n  iVar3 = param_1[0x2f];\r\n  param_1[0x51] = param_1[0x51] - iVar3;\r\n  param_1[0x53] = param_1[0x53] + iVar3;\r\n  *piVar1 = *piVar1 - iVar3;\r\n  param_1[0x52] = param_1[0x52] + iVar3;\r\n  if (100000 < (int)param_1[0x37]) {\r\n    param_1[0x37] = 100000;\r\n  }\r\n  param_1[0x3a] = 0x5a;\r\n  param_1[0x3d] = 0x40666666;\r\n  param_1[0x3b] = 0x18;\r\n  param_1[0x3c] = 2;\r\n  iVar3 = __ftol();\r\n  fcos((float10)(iVar3 + 0x5a) * (float10)_DAT_004f2e50);\r\n  iVar3 = __ftol();\r\n  fsin(extraout_ST0_00);\r\n  piVar1 = param_1 + 0x54;\r\n  param_1[0x40] = iVar3 + 0x13c;\r\n  iVar2 = __ftol();\r\n  param_1[0x41] = 0x26 - iVar2;\r\n  *piVar1 = 0x13c;\r\n  param_1[0x56] = iVar3 + 0x13c;\r\n  param_1[0x57] = 0x26 - iVar2;\r\n  param_1[0x55] = 0x26;\r\n  FUN_00452660();\r\n  param_1[0x4b] = 0x18e;\r\n  param_1[0x4c] = 0x20;\r\n  param_1[0x45] = 0xffffffff;\r\n  param_1[0x46] = 0x19;\r\n  iVar3 = param_1[0x3c];\r\n  *piVar1 = *piVar1 - iVar3;\r\n  param_1[0x56] = param_1[0x56] + iVar3;\r\n  param_1[0x55] = param_1[0x55] - iVar3;\r\n  param_1[0x57] = param_1[0x57] + iVar3;\r\n  if (0x19 < (int)param_1[0x44]) {\r\n    param_1[0x44] = 0x19;\r\n  }\r\n  param_1[0x47] = 0x5a;\r\n  param_1[0x4a] = 0x41600000;\r\n  param_1[0x48] = 0x1a;\r\n  param_1[0x49] = 2;\r\n  iVar3 = __ftol();\r\n  fcos((float10)(iVar3 + 0x5a) * (float10)_DAT_004f2e50);\r\n  iVar3 = __ftol();\r\n  fsin(extraout_ST0_01);\r\n  piVar1 = param_1 + 0x58;\r\n  param_1[0x4d] = iVar3 + 0x18e;\r\n  iVar2 = __ftol();\r\n  param_1[0x4e] = 0x20 - iVar2;\r\n  *piVar1 = 0x18e;\r\n  param_1[0x5a] = iVar3 + 0x18e;\r\n  param_1[0x5b] = 0x20 - iVar2;\r\n  param_1[0x59] = 0x20;\r\n  FUN_00452660();\r\n  param_1[0x69] = 0xde;\r\n  param_1[0x6a] = 7;\r\n  iVar3 = param_1[0x49];\r\n  *piVar1 = *piVar1 - iVar3;\r\n  param_1[0x5a] = param_1[0x5a] + iVar3;\r\n  param_1[0x59] = param_1[0x59] - iVar3;\r\n  param_1[0x5b] = param_1[0x5b] + iVar3;\r\n  param_1[0x6b] = 0x102;\r\n  param_1[0x6c] = 0x12;\r\n  param_1[0x6d] = 0x102;\r\n  param_1[0x6e] = 0x12;\r\n  param_1[0x73] = 0x102;\r\n  param_1[0x6f] = 0x10c;\r\n  param_1[0x70] = 0x3d;\r\n  param_1[0x72] = 0x3c;\r\n  param_1[0x74] = 0x47;\r\n  param_1[0x75] = 0xd2;\r\n  param_1[0x71] = 0xdd;\r\n  param_1[0x76] = 0x11;\r\n  param_1[0x78] = 0x46;\r\n  param_1[0x77] = 0xdd;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00412440",
+      "name": "FUN_00412440",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004042e0",
+      "name": "FUN_004042e0"
+    },
+    {
+      "addr": "00452680",
+      "name": "FUN_00452680"
+    },
+    {
+      "addr": "004077e0",
+      "name": "FUN_004077e0"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "00452660",
+      "name": "FUN_00452660"
+    }
+  ],
+  "data_refs": []
+}

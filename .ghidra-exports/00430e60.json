@@ -1,0 +1,19 @@
+{
+  "address": "00430e60",
+  "name": "FUN_00430e60",
+  "signature": "undefined FUN_00430e60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00430e60(int param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  if (*(int *)(param_1 + 0x1c) == 0) {\r\n    return 0;\r\n  }\r\n                    /* WARNING: Could not recover jumptable at 0x00430e7e. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  uVar1 = (**(code **)(*(int *)(*(int *)(param_1 + 0x20) * 0x98 + *(int *)(param_1 + 4)) + 0xc))();\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004515c0",
+      "name": "FUN_004515c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

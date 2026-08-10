@@ -1,0 +1,19 @@
+{
+  "address": "004dbab0",
+  "name": "fix_grouping",
+  "signature": "undefined __cdecl fix_grouping(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _fix_grouping\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl fix_grouping(char *param_1)\r\n\r\n{\r\n  char *pcVar1;\r\n  char cVar2;\r\n  char *pcVar3;\r\n  \r\n  cVar2 = *param_1;\r\n  do {\r\n    if (cVar2 == '\\0') {\r\n      return;\r\n    }\r\n    while( true ) {\r\n      while ((cVar2 = *param_1, '/' < cVar2 && (cVar2 < ':'))) {\r\n        *param_1 = cVar2 + -0x30;\r\n        param_1 = param_1 + 1;\r\n        if (*param_1 == '\\0') {\r\n          return;\r\n        }\r\n      }\r\n      pcVar3 = param_1;\r\n      if (cVar2 != ';') break;\r\n      do {\r\n        pcVar1 = pcVar3 + 1;\r\n        *pcVar3 = *pcVar1;\r\n        pcVar3 = pcVar1;\r\n      } while (*pcVar1 != '\\0');\r\n      if (*param_1 == '\\0') {\r\n        return;\r\n      }\r\n    }\r\n    param_1 = param_1 + 1;\r\n    cVar2 = *param_1;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

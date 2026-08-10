@@ -1,0 +1,68 @@
+{
+  "address": "004da6b0",
+  "name": "__dosmaperr",
+  "signature": "void __cdecl __dosmaperr(ulong param_1)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __dosmaperr\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __dosmaperr(ulong param_1)\r\n\r\n{\r\n  ulong *puVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  \r\n  puVar1 = (ulong *)FUN_004da740();\r\n  iVar3 = 0;\r\n  *puVar1 = param_1;\r\n  puVar1 = &DAT_00507688;\r\n  do {\r\n    if (*puVar1 == param_1) {\r\n      puVar2 = (undefined4 *)FUN_004da730();\r\n      *puVar2 = *(undefined4 *)(iVar3 * 8 + 0x50768c);\r\n      return;\r\n    }\r\n    puVar1 = puVar1 + 2;\r\n    iVar3 = iVar3 + 1;\r\n  } while (puVar1 < &DAT_005077f0);\r\n  if ((0x12 < param_1) && (param_1 < 0x25)) {\r\n    puVar2 = (undefined4 *)FUN_004da730();\r\n    *puVar2 = 0xd;\r\n    return;\r\n  }\r\n  if ((0xbb < param_1) && (param_1 < 0xcb)) {\r\n    puVar2 = (undefined4 *)FUN_004da730();\r\n    *puVar2 = 8;\r\n    return;\r\n  }\r\n  puVar2 = (undefined4 *)FUN_004da730();\r\n  *puVar2 = 0x16;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4610",
+      "name": "__beginthread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d70d0",
+      "name": "__close_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d71e0",
+      "name": "FUN_004d71e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7460",
+      "name": "FUN_004d7460",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7710",
+      "name": "__lseek_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d49b0",
+      "name": "FUN_004d49b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4970",
+      "name": "FUN_004d4970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

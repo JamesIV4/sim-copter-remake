@@ -1,0 +1,24 @@
+{
+  "address": "004d5f60",
+  "name": "FUN_004d5f60",
+  "signature": "undefined FUN_004d5f60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d5f60(SIZE_T param_1)\r\n\r\n{\r\n  HeapAlloc(DAT_0061bb74,0,param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5f20",
+      "name": "FUN_004d5f20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000005b",
+      "name": "HeapAlloc"
+    }
+  ],
+  "data_refs": []
+}

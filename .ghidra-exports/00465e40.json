@@ -1,0 +1,33 @@
+{
+  "address": "00465e40",
+  "name": "FUN_00465e40",
+  "signature": "undefined FUN_00465e40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_00465e40(FILE *param_1,undefined4 param_2)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  int iVar2;\r\n  size_t sVar3;\r\n  undefined4 local_c;\r\n  undefined4 local_4;\r\n  \r\n  iVar2 = _fseek(param_1,0,0);\r\n  if (iVar2 != 0) {\r\n    return false;\r\n  }\r\n  local_c._0_2_ = CONCAT11(DAT_004fa031,DAT_004fa030);\r\n  local_c = CONCAT22(CONCAT11(DAT_004fa033,DAT_004fa032),(undefined2)local_c);\r\n  local_4 = local_c;\r\n  sVar3 = _fread(&local_4,4,1,param_1);\r\n  if (sVar3 == 0) {\r\n    return false;\r\n  }\r\n  local_c._3_1_ = (undefined1)((uint)param_2 >> 0x18);\r\n  local_c._2_1_ = (undefined1)((uint)param_2 >> 0x10);\r\n  local_c._1_1_ = (undefined1)((uint)param_2 >> 8);\r\n  uVar1 = CONCAT11((char)param_2,local_c._1_1_);\r\n  local_c._0_2_ = CONCAT11(local_c._2_1_,local_c._3_1_);\r\n  local_c = CONCAT22(uVar1,(undefined2)local_c);\r\n  param_2 = local_c;\r\n  sVar3 = _fread(&param_2,4,1,param_1);\r\n  if (sVar3 == 0) {\r\n    return false;\r\n  }\r\n  local_c._0_2_ = CONCAT11(DAT_004fa029,DAT_004fa028);\r\n  local_c = CONCAT22(CONCAT11(DAT_004fa02b,DAT_004fa02a),(undefined2)local_c);\r\n  local_4 = local_c;\r\n  sVar3 = _fread(&local_4,4,1,param_1);\r\n  return sVar3 != 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004654c0",
+      "name": "FUN_004654c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004654c0",
+      "name": "FUN_004654c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5970",
+      "name": "_fseek"
+    },
+    {
+      "addr": "004d3cb0",
+      "name": "_fread"
+    }
+  ],
+  "data_refs": []
+}

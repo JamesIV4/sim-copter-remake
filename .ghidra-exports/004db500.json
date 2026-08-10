@@ -1,0 +1,32 @@
+{
+  "address": "004db500",
+  "name": "storeTimeFmt",
+  "signature": "undefined __cdecl storeTimeFmt(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _storeTimeFmt\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __cdecl storeTimeFmt(int param_1,int param_2)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined1 *puVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  void *unaff_EDI;\r\n  char *local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  local_4 = 0;\r\n  local_8 = 0;\r\n  uVar2 = ___getlocaleinfo((_locale_t)0x0,param_1,(LPCWSTR)&DAT_00000023,(LCTYPE)&local_4,unaff_EDI)\r\n  ;\r\n  uVar3 = ___getlocaleinfo((_locale_t)0x0,param_1,(LPCWSTR)&DAT_00000025,(LCTYPE)&local_8,unaff_EDI)\r\n  ;\r\n  uVar4 = ___getlocaleinfo((_locale_t)0x1,param_1,(LPCWSTR)&DAT_0000001e,(LCTYPE)&local_c,unaff_EDI)\r\n  ;\r\n  uVar4 = uVar2 | uVar3 | uVar4;\r\n  if (uVar4 != 0) {\r\n    return uVar4;\r\n  }\r\n  puVar5 = (undefined1 *)FUN_004d5f00(0xd);\r\n  *(undefined1 **)(param_2 + 0xa8) = puVar5;\r\n  if (local_4 == 0) {\r\n    *puVar5 = 0x68;\r\n    pcVar7 = puVar5 + 1;\r\n    if (local_8 == 0) goto LAB_004db59b;\r\n    *pcVar7 = 'h';\r\n  }\r\n  else {\r\n    *puVar5 = 0x48;\r\n    pcVar7 = puVar5 + 1;\r\n    if (local_8 == 0) goto LAB_004db59b;\r\n    *pcVar7 = 'H';\r\n  }\r\n  pcVar7 = puVar5 + 2;\r\nLAB_004db59b:\r\n  cVar1 = *local_c;\r\n  pcVar6 = local_c;\r\n  while (cVar1 != '\\0') {\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    *pcVar7 = cVar1;\r\n    pcVar7 = pcVar7 + 1;\r\n    cVar1 = *pcVar6;\r\n  }\r\n  *pcVar7 = 'm';\r\n  pcVar6 = pcVar7 + 1;\r\n  if (local_8 != 0) {\r\n    *pcVar6 = 'm';\r\n    pcVar6 = pcVar7 + 2;\r\n  }\r\n  cVar1 = *local_c;\r\n  pcVar7 = local_c;\r\n  while (cVar1 != '\\0') {\r\n    cVar1 = *pcVar7;\r\n    pcVar7 = pcVar7 + 1;\r\n    *pcVar6 = cVar1;\r\n    pcVar6 = pcVar6 + 1;\r\n    cVar1 = *pcVar7;\r\n  }\r\n  *pcVar6 = 's';\r\n  pcVar6[1] = 's';\r\n  pcVar6[2] = '\\0';\r\n  FUN_004d6010(local_c);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

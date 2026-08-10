@@ -1,0 +1,32 @@
+{
+  "address": "004d39d0",
+  "name": "__fpmath",
+  "signature": "void __cdecl __fpmath(int param_1)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n/* Library Function - Single Match\r\n    __fpmath\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __fpmath(int param_1)\r\n\r\n{\r\n  FUN_004d3a00();\r\n  _DAT_00506dbc = FUN_004d8630();\r\n  __setdefaultprecision();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2030",
+      "name": "__cinit",
+      "ref_type": "COMPUTED_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3a00",
+      "name": "FUN_004d3a00"
+    },
+    {
+      "addr": "004d8630",
+      "name": "FUN_004d8630"
+    },
+    {
+      "addr": "004d85c0",
+      "name": "__setdefaultprecision"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004634f0",
+  "name": "GetOpenFileNameA",
+  "signature": "BOOL __stdcall GetOpenFileNameA(LPOPENFILENAMEA param_1)",
+  "calling_convention": "__stdcall",
+  "return_type": "typedef BOOL int",
+  "parameter_count": 1,
+  "is_thunk": true,
+  "decompiled": "\r\nBOOL GetOpenFileNameA(LPOPENFILENAMEA param_1)\r\n\r\n{\r\n  BOOL BVar1;\r\n  \r\n                    /* WARNING: Could not recover jumptable at 0x004634f0. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  BVar1 = GetOpenFileNameA(param_1);\r\n  return BVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004066c0",
+      "name": "FUN_004066c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

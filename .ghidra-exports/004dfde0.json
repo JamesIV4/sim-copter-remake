@@ -1,0 +1,24 @@
+{
+  "address": "004dfde0",
+  "name": "__controlfp",
+  "signature": "uint __cdecl __controlfp(uint _NewValue, uint _Mask)",
+  "calling_convention": "__cdecl",
+  "return_type": "uint",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __controlfp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __cdecl __controlfp(uint _NewValue,uint _Mask)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  uVar1 = __control87(_NewValue,_Mask & 0xfff7ffff);\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d85c0",
+      "name": "__setdefaultprecision",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfda0",
+      "name": "__control87"
+    }
+  ],
+  "data_refs": []
+}

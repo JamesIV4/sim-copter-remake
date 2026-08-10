@@ -1,0 +1,19 @@
+{
+  "address": "004dfcb0",
+  "name": "__aulldiv",
+  "signature": "undefined __aulldiv(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __aulldiv\r\n   \r\n   Library: Visual Studio */\r\n\r\nundefined8 __aulldiv(uint param_1,uint param_2,uint param_3,uint param_4)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  longlong lVar2;\r\n  uint uVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  \r\n  uVar3 = param_1;\r\n  uVar8 = param_4;\r\n  uVar6 = param_2;\r\n  uVar9 = param_3;\r\n  if (param_4 == 0) {\r\n    uVar3 = param_2 / param_3;\r\n    iVar4 = (int)(((ulonglong)param_2 % (ulonglong)param_3 << 0x20 | (ulonglong)param_1) /\r\n                 (ulonglong)param_3);\r\n  }\r\n  else {\r\n    do {\r\n      uVar5 = uVar8 >> 1;\r\n      uVar9 = uVar9 >> 1 | (uint)((uVar8 & 1) != 0) << 0x1f;\r\n      uVar7 = uVar6 >> 1;\r\n      uVar3 = uVar3 >> 1 | (uint)((uVar6 & 1) != 0) << 0x1f;\r\n      uVar8 = uVar5;\r\n      uVar6 = uVar7;\r\n    } while (uVar5 != 0);\r\n    uVar1 = CONCAT44(uVar7,uVar3) / (ulonglong)uVar9;\r\n    iVar4 = (int)uVar1;\r\n    lVar2 = (ulonglong)param_3 * (uVar1 & 0xffffffff);\r\n    uVar3 = (uint)((ulonglong)lVar2 >> 0x20);\r\n    uVar8 = uVar3 + iVar4 * param_4;\r\n    if (((CARRY4(uVar3,iVar4 * param_4)) || (param_2 < uVar8)) ||\r\n       ((param_2 <= uVar8 && (param_1 < (uint)lVar2)))) {\r\n      iVar4 = iVar4 + -1;\r\n    }\r\n    uVar3 = 0;\r\n  }\r\n  return CONCAT44(uVar3,iVar4);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7ad0",
+      "name": "FUN_004d7ad0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

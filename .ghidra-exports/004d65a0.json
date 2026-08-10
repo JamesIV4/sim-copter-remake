@@ -1,0 +1,32 @@
+{
+  "address": "004d65a0",
+  "name": "~type_info",
+  "signature": "void __thiscall ~type_info(type_info * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual __thiscall type_info::~type_info(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall type_info::~type_info(type_info *this)\r\n\r\n{\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f55bc;\r\n  __lock(0x1b);\r\n  if (*(int *)(this + 4) != 0) {\r\n    FUN_004d6010(*(int *)(this + 4));\r\n  }\r\n  FUN_004d64a0(0x1b);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d65d0",
+      "name": "`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

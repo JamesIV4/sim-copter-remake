@@ -1,0 +1,18 @@
+{
+  "address": "0049cde0",
+  "name": "FUN_0049cde0",
+  "signature": "undefined FUN_0049cde0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0049cde0(int *param_1)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  short sVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  byte local_e;\r\n  byte local_d;\r\n  int local_c;\r\n  undefined4 local_8;\r\n  int local_4;\r\n  \r\n  local_4 = DAT_0061a66c;\r\n  local_8 = DAT_0061a668;\r\n  local_c = DAT_0061a664;\r\n  *(undefined4 *)((int)param_1 + 0xcf) = 0;\r\n  iVar4 = _rand();\r\n  uVar2 = (short)(ushort)iVar4 >> 0xf;\r\n  uVar1 = ((ushort)iVar4 ^ uVar2) - uVar2 & 0xf ^ uVar2;\r\n  sVar3 = uVar1 - uVar2;\r\n  iVar4 = DAT_005a25a0 >> 1;\r\n  if (uVar1 == uVar2) {\r\n    iVar6 = local_4 * iVar4;\r\n    iVar5 = -local_c * iVar4;\r\n  }\r\n  else if (sVar3 == 1) {\r\n    iVar6 = -local_4 * iVar4;\r\n    iVar5 = local_c * iVar4;\r\n  }\r\n  else {\r\n    if (sVar3 == 2) {\r\n      iVar6 = -local_c;\r\n      iVar5 = -local_4;\r\n    }\r\n    else {\r\n      iVar4 = iVar4 + 1;\r\n      iVar5 = local_4;\r\n      iVar6 = local_c;\r\n    }\r\n    iVar6 = iVar6 * iVar4;\r\n    iVar5 = iVar5 * iVar4;\r\n  }\r\n  local_e = (byte)((iVar6 + 0x800000) * 0x40 + DAT_0061a6ac >> 0x16);\r\n  local_d = (byte)((iVar5 + 0x800000) * 0x40 - DAT_0061a6b4 >> 0x16);\r\n  if ((DAT_0051ac70 != 0) && ((0x7f < local_e || (0x7f < local_d)))) {\r\n    iVar4 = _rand();\r\n    local_e = (byte)((short)iVar4 >> 7);\r\n    local_e = (((byte)iVar4 ^ local_e) - local_e & 0x7f ^ local_e) - local_e;\r\n    iVar4 = _rand();\r\n    local_d = (byte)((short)iVar4 >> 7);\r\n    local_d = (((byte)iVar4 ^ local_d) - local_d & 0x7f ^ local_d) - local_d;\r\n  }\r\n  (**(code **)(*param_1 + 0x20))(&local_e);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

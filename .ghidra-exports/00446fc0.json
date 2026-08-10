@@ -1,0 +1,13 @@
+{
+  "address": "00446fc0",
+  "name": "timeGetTime",
+  "signature": "DWORD __stdcall timeGetTime(void)",
+  "calling_convention": "__stdcall",
+  "return_type": "typedef DWORD ulong",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nDWORD timeGetTime(void)\r\n\r\n{\r\n  DWORD DVar1;\r\n  \r\n                    /* WARNING: Could not recover jumptable at 0x00446fc0. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  DVar1 = timeGetTime();\r\n  return DVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

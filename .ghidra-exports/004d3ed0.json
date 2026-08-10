@@ -1,0 +1,57 @@
+{
+  "address": "004d3ed0",
+  "name": "_localtime",
+  "signature": "tm * __cdecl _localtime(time_t * _Time)",
+  "calling_convention": "__cdecl",
+  "return_type": "tm *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _localtime\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\ntm * __cdecl _localtime(time_t *_Time)\r\n\r\n{\r\n  tm *ptVar1;\r\n  int iVar2;\r\n  int local_4;\r\n  \r\n  if ((int)*_Time < 0) {\r\n    return (tm *)0x0;\r\n  }\r\n  ___tzset();\r\n  local_4 = (int)*_Time;\r\n  if ((local_4 < 0x3f481) || (0x7ffc0b7e < local_4)) {\r\n    ptVar1 = _gmtime(_Time);\r\n    iVar2 = __isindst(ptVar1);\r\n    if (iVar2 == 0) {\r\n      local_4 = ptVar1->tm_sec - DAT_00506df0;\r\n    }\r\n    else {\r\n      local_4 = (ptVar1->tm_sec - DAT_00506df0) - DAT_00506df8;\r\n    }\r\n    iVar2 = local_4 % 0x3c;\r\n    ptVar1->tm_sec = iVar2;\r\n    if (iVar2 < 0) {\r\n      ptVar1->tm_sec = iVar2 + 0x3c;\r\n      local_4 = local_4 + -0x3c;\r\n    }\r\n    local_4 = ptVar1->tm_min + local_4 / 0x3c;\r\n    iVar2 = local_4 % 0x3c;\r\n    ptVar1->tm_min = iVar2;\r\n    if (iVar2 < 0) {\r\n      ptVar1->tm_min = iVar2 + 0x3c;\r\n      local_4 = local_4 + -0x3c;\r\n    }\r\n    local_4 = ptVar1->tm_hour + local_4 / 0x3c;\r\n    iVar2 = local_4 % 0x18;\r\n    ptVar1->tm_hour = iVar2;\r\n    if (iVar2 < 0) {\r\n      ptVar1->tm_hour = iVar2 + 0x18;\r\n      local_4 = local_4 + -0x18;\r\n    }\r\n    local_4 = local_4 / 0x18;\r\n    if (0 < local_4) {\r\n      ptVar1->tm_wday = (ptVar1->tm_wday + local_4) % 7;\r\n      ptVar1->tm_mday = ptVar1->tm_mday + local_4;\r\n      ptVar1->tm_yday = ptVar1->tm_yday + local_4;\r\n      return ptVar1;\r\n    }\r\n    if (local_4 < 0) {\r\n      ptVar1->tm_wday = (ptVar1->tm_wday + 7 + local_4) % 7;\r\n      iVar2 = ptVar1->tm_mday + local_4;\r\n      ptVar1->tm_mday = iVar2;\r\n      if (iVar2 < 1) {\r\n        ptVar1->tm_mday = iVar2 + 0x1f;\r\n        ptVar1->tm_yday = 0x16c;\r\n        ptVar1->tm_mon = 0xb;\r\n        ptVar1->tm_year = ptVar1->tm_year + -1;\r\n        return ptVar1;\r\n      }\r\n      ptVar1->tm_yday = ptVar1->tm_yday + local_4;\r\n    }\r\n  }\r\n  else {\r\n    local_4 = local_4 - DAT_00506df0;\r\n    ptVar1 = _gmtime((time_t *)&local_4);\r\n    if (DAT_00506df4 != 0) {\r\n      iVar2 = __isindst(ptVar1);\r\n      if (iVar2 != 0) {\r\n        local_4 = local_4 - DAT_00506df8;\r\n        ptVar1 = _gmtime((time_t *)&local_4);\r\n        ptVar1->tm_isdst = 1;\r\n        return ptVar1;\r\n      }\r\n    }\r\n  }\r\n  return ptVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422790",
+      "name": "FUN_00422790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422790",
+      "name": "FUN_00422790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0d70",
+      "name": "__make_time_t",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0d70",
+      "name": "__make_time_t",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004625b0",
+      "name": "FUN_004625b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d90a0",
+      "name": "___tzset"
+    },
+    {
+      "addr": "004d9800",
+      "name": "_gmtime"
+    },
+    {
+      "addr": "004d93e0",
+      "name": "__isindst"
+    }
+  ],
+  "data_refs": []
+}

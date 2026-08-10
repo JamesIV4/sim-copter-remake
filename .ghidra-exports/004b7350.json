@@ -1,0 +1,24 @@
+{
+  "address": "004b7350",
+  "name": "FUN_004b7350",
+  "signature": "undefined FUN_004b7350(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b7350(int param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  *(undefined1 *)(param_1 + 6) = 0;\r\n  uVar1 = *(uint *)(param_1 + 0x11);\r\n  if ((uVar1 & 0x11) != 0) {\r\n    *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x75);\r\n    *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x79);\r\n    return;\r\n  }\r\n  if ((uVar1 & 0x14) != 0) {\r\n    *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x7d);\r\n    *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x81);\r\n    return;\r\n  }\r\n  if ((uVar1 & 0x12) != 0) {\r\n    *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x85);\r\n    *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x89);\r\n    return;\r\n  }\r\n  if ((uVar1 & 0x18) != 0) {\r\n    *(undefined4 *)(param_1 + 0x55) = *(undefined4 *)(param_1 + 0x8d);\r\n    *(undefined4 *)(param_1 + 0x59) = *(undefined4 *)(param_1 + 0x91);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b6680",
+      "name": "FUN_004b6680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b6680",
+      "name": "FUN_004b6680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

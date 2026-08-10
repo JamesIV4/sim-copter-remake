@@ -1,0 +1,28 @@
+{
+  "address": "004a1750",
+  "name": "FUN_004a1750",
+  "signature": "undefined FUN_004a1750(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004a1750(undefined4 param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  \r\n  iVar1 = FUN_00459a10(param_1,0x4155544f,&DAT_0057f3b8,0x396);\r\n  if (iVar1 == 0) {\r\n    return 0;\r\n  }\r\n  iVar1 = 0;\r\n  while( true ) {\r\n    (**(code **)(*(int *)(&DAT_0057f768)[iVar1] + 0x18))(&DAT_0057f3b8);\r\n    iVar2 = FUN_00459a50(param_1,0x4155544f,&DAT_0057f3b8,0x396);\r\n    if ((iVar2 == 0) && (iVar1 != 0x45)) break;\r\n    iVar1 = iVar1 + 1;\r\n    if (0x45 < iVar1) {\r\n      return 1;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00459a10",
+      "name": "FUN_00459a10"
+    },
+    {
+      "addr": "00459a50",
+      "name": "FUN_00459a50"
+    }
+  ],
+  "data_refs": []
+}

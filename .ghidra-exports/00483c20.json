@@ -1,0 +1,116 @@
+{
+  "address": "00483c20",
+  "name": "FUN_00483c20",
+  "signature": "undefined FUN_00483c20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00483c20(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  undefined2 uVar5;\r\n  undefined4 uVar6;\r\n  undefined4 local_30;\r\n  undefined4 local_2c;\r\n  undefined1 local_24 [12];\r\n  undefined4 local_18;\r\n  int local_10;\r\n  \r\n  piVar1 = (int *)(&DAT_005040e0 + *param_1 * 0x5c);\r\n  switch(*param_1) {\r\n  case 0:\r\n    local_30 = FUN_00470571(0x76);\r\n    local_2c = FUN_00470571(0x117);\r\n    uVar2 = FUN_00470571(0x159);\r\n    uVar6 = 0x160;\r\n    break;\r\n  case 1:\r\n    local_30 = FUN_00470571(0x116);\r\n    local_2c = FUN_00470571(0x78);\r\n    uVar2 = FUN_00470571(0x158);\r\n    uVar6 = 0x15f;\r\n    break;\r\n  case 2:\r\n    local_30 = FUN_00470571(0x119);\r\n    local_2c = FUN_00470571(0x11a);\r\n    uVar2 = FUN_00470571(0x15b);\r\n    uVar6 = 0x162;\r\n    break;\r\n  case 3:\r\n    local_30 = FUN_00470571(0x124);\r\n    local_2c = FUN_00470571(0x126);\r\n    uVar2 = FUN_00470571(0x156);\r\n    uVar6 = 0x15d;\r\n    break;\r\n  case 4:\r\n    local_30 = FUN_00470571(0x125);\r\n    local_2c = FUN_00470571(0x127);\r\n    uVar2 = FUN_00470571(0x15a);\r\n    uVar6 = 0x161;\r\n    break;\r\n  case 5:\r\n    local_30 = FUN_00470571(0x141);\r\n    local_2c = FUN_00470571(0x142);\r\n    uVar2 = FUN_00470571(0x155);\r\n    uVar6 = 0x15c;\r\n    break;\r\n  case 6:\r\n    local_30 = FUN_00470571(0x153);\r\n    local_2c = FUN_00470571(0x154);\r\n    uVar2 = FUN_00470571(0x157);\r\n    uVar6 = 0x15e;\r\n    break;\r\n  case 7:\r\n    local_30 = FUN_00470571(0x170);\r\n    local_2c = FUN_00470571(0x172);\r\n    uVar2 = FUN_00470571(0x174);\r\n    uVar6 = 0x176;\r\n    break;\r\n  case 8:\r\n    local_30 = FUN_00470571(0x171);\r\n    local_2c = FUN_00470571(0x173);\r\n    uVar2 = FUN_00470571(0x175);\r\n    uVar6 = 0x177;\r\n    break;\r\n  default:\r\n    local_30 = FUN_00470571(0x76);\r\n    local_2c = FUN_00470571(0x117);\r\n    uVar2 = FUN_00470571(0x159);\r\n    uVar6 = 0x160;\r\n  }\r\n  uVar6 = FUN_00470571(uVar6);\r\n  param_1[2] = 0;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x29] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x2f] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x2a] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x30] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x2b] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x2c] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x2d] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x31] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x2e] = iVar3;\r\n  iVar3 = FUN_00468380(DAT_00504824,100);\r\n  param_1[0x28] = iVar3;\r\n  if (*piVar1 < 1) {\r\n    *(undefined4 *)(param_1[0x29] + 8) = local_30;\r\n    *(undefined4 *)(param_1[0x2b] + 8) = local_2c;\r\n    *(undefined4 *)(param_1[0x2d] + 8) = uVar6;\r\n    *(undefined4 *)(param_1[0x2a] + 8) = uVar2;\r\n  }\r\n  else {\r\n    uVar4 = FUN_00470270(local_30);\r\n    uVar4 = FUN_00468380(DAT_00504824,uVar4);\r\n    uVar4 = FUN_004702c0(local_30,uVar4);\r\n    *(undefined4 *)(param_1[0x29] + 8) = uVar4;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x29] + 8),DAT_005039c0);\r\n    uVar4 = FUN_00470270(local_2c);\r\n    uVar4 = FUN_00468380(DAT_00504824,uVar4);\r\n    uVar4 = FUN_004702c0(local_2c,uVar4);\r\n    *(undefined4 *)(param_1[0x2b] + 8) = uVar4;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x2b] + 8),DAT_005039c0);\r\n    uVar4 = FUN_00470270(uVar2);\r\n    uVar4 = FUN_00468380(DAT_00504824,uVar4);\r\n    uVar2 = FUN_004702c0(uVar2,uVar4);\r\n    *(undefined4 *)(param_1[0x2a] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x2a] + 8),DAT_005039c0);\r\n    uVar2 = FUN_00470270(uVar6);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_004702c0(uVar6,uVar2);\r\n    *(undefined4 *)(param_1[0x2d] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x2d] + 8),DAT_005039c0);\r\n  }\r\n  if (DAT_005040d8 < 1) {\r\n    iVar3 = FUN_00470571(0x16d);\r\n    param_1[0x33] = iVar3;\r\n    iVar3 = FUN_00470571(0x7b);\r\n    param_1[0x32] = iVar3;\r\n    *(int *)(param_1[0x2f] + 8) = iVar3;\r\n    uVar2 = FUN_00470571(0x118);\r\n    *(undefined4 *)(param_1[0x30] + 8) = uVar2;\r\n    uVar2 = FUN_00470571(0x83);\r\n    *(undefined4 *)(param_1[0x2c] + 8) = uVar2;\r\n    uVar2 = FUN_00470571(0x16c);\r\n    *(undefined4 *)(param_1[0x31] + 8) = uVar2;\r\n    uVar2 = FUN_00470571(0x16e);\r\n    *(undefined4 *)(param_1[0x28] + 8) = uVar2;\r\n    FUN_0046cad1(&DAT_0057f268);\r\n    FUN_0046cae4(0xfe980000,&DAT_0057f268);\r\n    FUN_0046cb74(&DAT_004fa2e0,&DAT_0057f230,&DAT_0057f268);\r\n    DAT_005d91e0 = FUN_0046cd20(DAT_005039ac,8);\r\n    _DAT_005d91e4 = FUN_0046cd20(DAT_005039ac,9);\r\n    _DAT_005d91e8 = FUN_0046cd20(DAT_005039ac,10);\r\n    _DAT_005d91ec = FUN_0046cd20(DAT_005039ac,0xb);\r\n  }\r\n  else {\r\n    uVar2 = FUN_00470571(0x7b);\r\n    uVar2 = FUN_00470270(uVar2);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_00470571(0x7b,uVar2);\r\n    uVar2 = FUN_004702c0(uVar2);\r\n    *(undefined4 *)(param_1[0x2f] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x2f] + 8),DAT_005039c0);\r\n    param_1[0x32] = *(int *)(param_1[0x2f] + 8);\r\n    uVar2 = FUN_00470571(0x16d);\r\n    uVar2 = FUN_00470270(uVar2);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_00470571(0x16d,uVar2);\r\n    iVar3 = FUN_004702c0(uVar2);\r\n    param_1[0x33] = iVar3;\r\n    FUN_0047022b(iVar3,DAT_005039c0);\r\n    uVar2 = FUN_00470571(0x118);\r\n    uVar2 = FUN_00470270(uVar2);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_00470571(0x118,uVar2);\r\n    uVar2 = FUN_004702c0(uVar2);\r\n    *(undefined4 *)(param_1[0x30] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x30] + 8),DAT_005039c0);\r\n    uVar2 = FUN_00470571(0x83);\r\n    uVar2 = FUN_00470270(uVar2);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_00470571(0x83,uVar2);\r\n    uVar2 = FUN_004702c0(uVar2);\r\n    *(undefined4 *)(param_1[0x2c] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x2c] + 8),DAT_005039c0);\r\n    uVar2 = FUN_00470571(0x16c);\r\n    uVar2 = FUN_00470270(uVar2);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_00470571(0x16c,uVar2);\r\n    uVar2 = FUN_004702c0(uVar2);\r\n    *(undefined4 *)(param_1[0x31] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x31] + 8),DAT_005039c0);\r\n    uVar2 = FUN_00470571(0x16e);\r\n    uVar2 = FUN_00470270(uVar2);\r\n    uVar2 = FUN_00468380(DAT_00504824,uVar2);\r\n    uVar2 = FUN_00470571(0x16e,uVar2);\r\n    uVar2 = FUN_004702c0(uVar2);\r\n    *(undefined4 *)(param_1[0x28] + 8) = uVar2;\r\n    FUN_0047022b(*(undefined4 *)(param_1[0x28] + 8),DAT_005039c0);\r\n  }\r\n  uVar5 = (undefined2)((int)(param_1 + -0x175c44) / 0x33c);\r\n  *(undefined2 *)(param_1[0x29] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x29] + 0xc) = 5;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x29] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x29] + 0x10) = local_18;\r\n  iVar3 = param_1[0x29];\r\n  uVar2 = FUN_0046e640(*(undefined4 *)(iVar3 + 8));\r\n  *(undefined4 *)(iVar3 + 0x14) = uVar2;\r\n  *(undefined2 *)(param_1[0x2f] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x2f] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x2f] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x2f] + 0x10) = local_18;\r\n  iVar3 = param_1[0x2f];\r\n  uVar2 = FUN_0046e640(*(undefined4 *)(iVar3 + 8));\r\n  *(undefined4 *)(iVar3 + 0x14) = uVar2;\r\n  *(undefined2 *)(param_1[0x30] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x30] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x30] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x30] + 0x10) = local_18;\r\n  *(undefined2 *)(param_1[0x2a] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x2a] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x2a] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x2a] + 0x10) = local_18;\r\n  *(undefined2 *)(param_1[0x2d] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x2d] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x2d] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x2d] + 0x10) = local_18;\r\n  *(undefined2 *)(param_1[0x2b] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x2b] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x2b] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x2b] + 0x10) = local_18;\r\n  *(undefined2 *)(param_1[0x2c] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x2c] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x2c] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x2c] + 0x10) = local_18;\r\n  *(undefined2 *)(param_1[0x31] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x31] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x31] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x31] + 0x10) = local_18;\r\n  *(undefined2 *)(param_1[0x28] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x28] + 0xc) = 0x21;\r\n  FUN_004705a9(*(undefined4 *)(param_1[0x28] + 8),local_24);\r\n  *(undefined4 *)(param_1[0x28] + 0x10) = local_18;\r\n  iVar3 = FUN_0046ec60(0x14,0x78,DAT_00504068);\r\n  if (iVar3 == 0) {\r\n    FUN_004e4f70(s_Could_not_create_heli_rope_00504434);\r\n  }\r\n  FUN_0046f610(iVar3,2);\r\n  FUN_0046f610(iVar3,0);\r\n  FUN_0047022b(iVar3,DAT_005039c0);\r\n  FUN_004705a9(iVar3,local_24);\r\n  param_1[0x62] = local_10;\r\n  param_1[99] = local_10 + 0xe4;\r\n  param_1[100] = local_10 + 0xd8;\r\n  *(int *)(param_1[0x2e] + 8) = iVar3;\r\n  *(undefined2 *)(param_1[0x2e] + 0xe) = uVar5;\r\n  *(undefined2 *)(param_1[0x2e] + 0xc) = 0x21;\r\n  *(undefined4 *)(param_1[0x2e] + 0x10) = 0x20000;\r\n  param_1[0x74] = 0;\r\n  FUN_0046f610(*(undefined4 *)(param_1[0x2a] + 8),1);\r\n  FUN_0046f610(*(undefined4 *)(param_1[0x30] + 8),1);\r\n  FUN_0046f610(*(undefined4 *)(param_1[0x2d] + 8),1);\r\n  DAT_005040d8 = DAT_005040d8 + 1;\r\n  *piVar1 = *piVar1 + 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00470571",
+      "name": "FUN_00470571"
+    },
+    {
+      "addr": "00468380",
+      "name": "FUN_00468380"
+    },
+    {
+      "addr": "00470270",
+      "name": "FUN_00470270"
+    },
+    {
+      "addr": "004702c0",
+      "name": "FUN_004702c0"
+    },
+    {
+      "addr": "0047022b",
+      "name": "FUN_0047022b"
+    },
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1"
+    },
+    {
+      "addr": "0046cae4",
+      "name": "FUN_0046cae4"
+    },
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "0046cd20",
+      "name": "FUN_0046cd20"
+    },
+    {
+      "addr": "004705a9",
+      "name": "FUN_004705a9"
+    },
+    {
+      "addr": "0046e640",
+      "name": "FUN_0046e640"
+    },
+    {
+      "addr": "0046ec60",
+      "name": "FUN_0046ec60"
+    },
+    {
+      "addr": "004e4f70",
+      "name": "FUN_004e4f70"
+    },
+    {
+      "addr": "0046f610",
+      "name": "FUN_0046f610"
+    }
+  ],
+  "data_refs": []
+}

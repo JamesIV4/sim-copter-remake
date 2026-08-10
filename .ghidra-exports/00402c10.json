@@ -1,0 +1,28 @@
+{
+  "address": "00402c10",
+  "name": "FUN_00402c10",
+  "signature": "undefined FUN_00402c10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00402c10(LPSTR param_1)\r\n\r\n{\r\n  byte bVar2;\r\n  DWORD DVar1;\r\n  \r\n  DVar1 = GetVersion();\r\n  bVar2 = (byte)(DVar1 >> 8);\r\n  if (DVar1 < 0x80000000) {\r\n    wsprintfA(param_1,s_Windows_NT__u__u_004f81c8,DVar1 & 0xff,(uint)bVar2);\r\n    return 1;\r\n  }\r\n  wsprintfA(param_1,s_Windows__u__u_004f81b8,DVar1 & 0xff,(uint)bVar2);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045c0f0",
+      "name": "FUN_0045c0f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000012",
+      "name": "GetVersion"
+    },
+    {
+      "addr": "EXTERNAL:00000074",
+      "name": "wsprintfA"
+    }
+  ],
+  "data_refs": []
+}

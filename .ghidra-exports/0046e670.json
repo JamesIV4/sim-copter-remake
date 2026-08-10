@@ -1,0 +1,33 @@
+{
+  "address": "0046e670",
+  "name": "FUN_0046e670",
+  "signature": "undefined FUN_0046e670(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0046e670(void)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  uint uVar3;\r\n  short sStack_2;\r\n  \r\n  FUN_0046b470(&sStack_2,2);\r\n  if (sStack_2 != -1) {\r\n    uVar3 = (uint)DAT_0055d1e0;\r\n    DAT_0055d1e0 = DAT_0055d1e0 + 1;\r\n    iVar1 = uVar3 * 0x1c;\r\n    *(undefined4 *)(DAT_0055d1dc + iVar1) = *(undefined4 *)(DAT_005bdb8c + (_sStack_2 & 0xffff) * 4)\r\n    ;\r\n    FUN_0046b470(DAT_0055d1dc + iVar1 + 4,0x10);\r\n    uVar2 = FUN_0046e670();\r\n    *(undefined4 *)(DAT_0055d1dc + 0x14 + iVar1) = uVar2;\r\n    uVar2 = FUN_0046e670();\r\n    *(undefined4 *)(DAT_0055d1dc + 0x18 + iVar1) = uVar2;\r\n    return DAT_0055d1dc + iVar1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046d170",
+      "name": "FUN_0046d170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046d170",
+      "name": "FUN_0046d170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046b470",
+      "name": "FUN_0046b470"
+    },
+    {
+      "addr": "0046e670",
+      "name": "FUN_0046e670"
+    }
+  ],
+  "data_refs": []
+}

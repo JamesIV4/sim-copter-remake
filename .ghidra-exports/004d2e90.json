@@ -1,0 +1,28 @@
+{
+  "address": "004d2e90",
+  "name": "~strstreambuf",
+  "signature": "void __thiscall ~strstreambuf(strstreambuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual __thiscall strstreambuf::~strstreambuf(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall strstreambuf::~strstreambuf(strstreambuf *this)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_004d2ef8;\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f5464;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  local_8 = 0;\r\n  if ((*(int *)(this + 0x4c) != 0) && (*(int *)(this + 0x10) != 0)) {\r\n    if (*(code **)(this + 0x60) == (code *)0x0) {\r\n      FUN_004d29a0();\r\n    }\r\n    else {\r\n      (**(code **)(this + 0x60))(*(int *)(this + 0x10));\r\n    }\r\n  }\r\n  local_8 = 0xffffffff;\r\n  FUN_004d2f02();\r\n  *unaff_FS_OFFSET = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2d90",
+      "name": "`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d2f02",
+      "name": "FUN_004d2f02"
+    }
+  ],
+  "data_refs": []
+}

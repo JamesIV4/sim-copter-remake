@@ -1,0 +1,24 @@
+{
+  "address": "0045a130",
+  "name": "FUN_0045a130",
+  "signature": "undefined FUN_0045a130(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0045a130(int *param_1)\r\n\r\n{\r\n  if ((-1 < param_1[0x42]) && (param_1[0x4a] == 0)) {\r\n    __write(param_1[0x42],(void *)0x1c,0);\r\n    param_1[0x44] = 0x1c;\r\n    param_1[0x47] = 0;\r\n    (**(code **)(*param_1 + 0x2c))();\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045d110",
+      "name": "FUN_0045d110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

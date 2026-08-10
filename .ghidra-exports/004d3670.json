@@ -1,0 +1,26 @@
+{
+  "address": "004d3670",
+  "name": "underflow",
+  "signature": "int __thiscall underflow(filebuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual int __thiscall filebuf::underflow(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __thiscall filebuf::underflow(filebuf *this)\r\n\r\n{\r\n  void *_DstBuf;\r\n  byte *pbVar1;\r\n  int iVar2;\r\n  uint _MaxCharCount;\r\n  byte local_1;\r\n  \r\n  if (*(byte **)(this + 0x28) < *(byte **)(this + 0x2c)) {\r\n    return (uint)**(byte **)(this + 0x28);\r\n  }\r\n  iVar2 = streambuf::allocate((streambuf *)this);\r\n  if (iVar2 == -1) {\r\n    return -1;\r\n  }\r\n  iVar2 = FUN_004d37b0();\r\n  if (iVar2 == -1) {\r\n    return -1;\r\n  }\r\n  if (*(int *)(this + 8) != 0) {\r\n    iVar2 = __read(*(int *)(this + 0x4c),&local_1,1);\r\n    if (iVar2 < 1) {\r\n      return -1;\r\n    }\r\n    return (uint)local_1;\r\n  }\r\n  _DstBuf = *(void **)(this + 0x10);\r\n  if (_DstBuf < *(void **)(this + 0x14)) {\r\n    _MaxCharCount = (int)*(void **)(this + 0x14) - (int)_DstBuf;\r\n  }\r\n  else {\r\n    _MaxCharCount = 0;\r\n  }\r\n  iVar2 = __read(*(int *)(this + 0x4c),_DstBuf,_MaxCharCount);\r\n  if (iVar2 < 1) {\r\n    return -1;\r\n  }\r\n  *(undefined4 *)(this + 0xc) = 0xffffffff;\r\n  pbVar1 = *(byte **)(this + 0x10);\r\n  *(byte **)(this + 0x24) = pbVar1;\r\n  *(byte **)(this + 0x28) = pbVar1;\r\n  *(byte **)(this + 0x2c) = pbVar1 + iVar2;\r\n  return (uint)*pbVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d6e70",
+      "name": "allocate"
+    },
+    {
+      "addr": "004d37b0",
+      "name": "FUN_004d37b0"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    }
+  ],
+  "data_refs": []
+}

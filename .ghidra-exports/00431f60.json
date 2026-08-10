@@ -1,0 +1,46 @@
+{
+  "address": "00431f60",
+  "name": "FUN_00431f60",
+  "signature": "undefined FUN_00431f60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00431f60(int *param_1,int param_2,undefined4 param_3)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  ostream *poVar6;\r\n  int iVar7;\r\n  undefined4 *puVar8;\r\n  int iVar9;\r\n  bool bVar10;\r\n  \r\n  iVar9 = param_1[1];\r\n  if (param_1[2] == iVar9) {\r\n    iVar5 = (iVar9 - *param_1) / 0x98;\r\n    iVar9 = iVar5 * 2;\r\n    if (iVar5 == 0) {\r\n      iVar9 = 0x1a;\r\n    }\r\n    set_new_handler((_func_void *)0x0);\r\n    iVar5 = FUN_004d28b0(iVar9 * 0x98);\r\n    if (iVar5 == 0) {\r\n      poVar6 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n      FUN_00401000(poVar6);\r\n      FUN_004d2060(1);\r\n    }\r\n    iVar4 = *param_1;\r\n    iVar1 = iVar5;\r\n    while (iVar3 = iVar4, iVar3 != param_2) {\r\n      iVar7 = iVar1 + 0x98;\r\n      bVar10 = iVar1 != 0;\r\n      iVar4 = iVar3 + 0x98;\r\n      iVar1 = iVar7;\r\n      if (bVar10) {\r\n        FUN_0042e970(iVar3);\r\n      }\r\n    }\r\n    if (iVar5 + ((param_2 - *param_1) / 0x98) * 0x98 != 0) {\r\n      FUN_0042e970(param_3);\r\n    }\r\n    iVar1 = param_1[1];\r\n    iVar4 = iVar5 + 0x98 + ((param_2 - *param_1) / 0x98) * 0x98;\r\n    while (iVar3 = param_2, iVar1 != iVar3) {\r\n      iVar7 = iVar4 + 0x98;\r\n      bVar10 = iVar4 != 0;\r\n      iVar4 = iVar7;\r\n      param_2 = iVar3 + 0x98;\r\n      if (bVar10) {\r\n        FUN_0042e970(iVar3);\r\n      }\r\n    }\r\n    puVar2 = (undefined4 *)param_1[1];\r\n    for (puVar8 = (undefined4 *)*param_1; puVar2 != puVar8; puVar8 = puVar8 + 0x26) {\r\n      (**(code **)*puVar8)(0);\r\n    }\r\n    FUN_004d29a0(*param_1);\r\n    param_1[2] = iVar9 * 0x98 + iVar5;\r\n    iVar9 = *param_1;\r\n    *param_1 = iVar5;\r\n    param_1[1] = iVar5 + ((param_1[1] - iVar9) / 0x98) * 0x98 + 0x98;\r\n    return;\r\n  }\r\n  if (iVar9 != 0) {\r\n    FUN_0042e970(iVar9 + -0x98);\r\n  }\r\n  iVar9 = param_1[1] + -0x98;\r\n  while (param_2 != iVar9) {\r\n    iVar9 = iVar9 + -0x98;\r\n    FUN_0042ecc0(iVar9);\r\n  }\r\n  FUN_0042ecc0(param_3);\r\n  param_1[1] = param_1[1] + 0x98;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0042e970",
+      "name": "FUN_0042e970"
+    },
+    {
+      "addr": "0042ecc0",
+      "name": "FUN_0042ecc0"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

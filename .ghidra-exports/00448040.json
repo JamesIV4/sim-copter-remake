@@ -1,0 +1,44 @@
+{
+  "address": "00448040",
+  "name": "FUN_00448040",
+  "signature": "undefined FUN_00448040(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00448040(void)\r\n\r\n{\r\n  int iVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  int *piVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_0044815f;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  uVar3 = DAT_004f95dc;\r\n  if (DAT_0051a4a4 != 0) {\r\n    local_8 = 0;\r\n    DAT_004f95dc = DAT_004f95dc + 1;\r\n    if ((uVar3 & 0x7ff) == 0) {\r\n      DAT_0051a4b0 = DAT_0051a4b0 + 1;\r\n      if ((uint)(DAT_0051a49c - DAT_0051a498 >> 3) <= DAT_0051a4b0) {\r\n        DAT_0051a4b0 = 0;\r\n      }\r\n      piVar4 = (int *)(DAT_0051a4b0 * 8 + DAT_0051a498);\r\n      if (*piVar4 != 0) {\r\n        FUN_004d29a0(*piVar4);\r\n      }\r\n      iVar1 = FUN_004d28b0(*(int *)(piVar4[1] + 4) + 1);\r\n      *piVar4 = iVar1;\r\n      uVar3 = ((undefined4 *)piVar4[1])[1];\r\n      if (uVar3 != 0) {\r\n        puVar5 = *(undefined4 **)piVar4[1];\r\n        puVar6 = (undefined4 *)*piVar4;\r\n        for (uVar2 = uVar3 >> 2; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n          *puVar6 = *puVar5;\r\n          puVar5 = puVar5 + 1;\r\n          puVar6 = puVar6 + 1;\r\n        }\r\n        for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n          *(undefined1 *)puVar6 = *(undefined1 *)puVar5;\r\n          puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n          puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n        }\r\n      }\r\n      *(undefined1 *)(*(int *)(piVar4[1] + 4) + *piVar4) = 0;\r\n      FUN_00447ed0(*piVar4);\r\n    }\r\n    iVar1 = _SmackWait_4(DAT_0051a4a8);\r\n    if (iVar1 == 0) {\r\n      _SmackDoFrame_4(DAT_0051a4a8);\r\n      _SmackNextFrame_4(DAT_0051a4a8);\r\n    }\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00447ed0",
+      "name": "FUN_00447ed0"
+    },
+    {
+      "addr": "EXTERNAL:000000da",
+      "name": "_SmackWait@4"
+    },
+    {
+      "addr": "EXTERNAL:000000dd",
+      "name": "_SmackDoFrame@4"
+    },
+    {
+      "addr": "EXTERNAL:000000e0",
+      "name": "_SmackNextFrame@4"
+    }
+  ],
+  "data_refs": []
+}

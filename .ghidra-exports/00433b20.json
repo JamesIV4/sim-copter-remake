@@ -1,0 +1,112 @@
+{
+  "address": "00433b20",
+  "name": "FUN_00433b20",
+  "signature": "undefined FUN_00433b20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00434109) */\r\n\r\nundefined4 __thiscall FUN_00433b20(int param_1,int param_2,int param_3,char *param_4,char *param_5)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  char *pcVar5;\r\n  undefined4 uVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  size_t _Count;\r\n  int iVar9;\r\n  int iVar10;\r\n  size_t sVar11;\r\n  char *pcVar12;\r\n  int local_234;\r\n  undefined4 *local_230;\r\n  int local_22c;\r\n  undefined4 *local_228;\r\n  int *local_224;\r\n  undefined **local_220;\r\n  uint local_21c;\r\n  int local_118;\r\n  int local_114;\r\n  undefined **local_110;\r\n  undefined1 local_10c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  while( true ) {\r\n    if (param_3 == 0) {\r\n      param_3 = DAT_004f86d4;\r\n    }\r\n    if ((param_2 != 3) && (param_2 != 0xe)) break;\r\n    sVar11 = (*(undefined4 **)(param_1 + 0x1c))[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x1c);\r\n    }\r\n    _strncpy(param_5,pcVar5,sVar11);\r\n    iVar9 = *(int *)(*(int *)(param_1 + 0x1c) + 4);\r\n    local_224 = (int *)(param_1 + 0x2c + param_2 * 8);\r\n    sVar11 = ((undefined4 *)*local_224)[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = *(char **)*local_224;\r\n    }\r\n    _strncpy(param_5 + iVar9,pcVar5,sVar11);\r\n    iVar9 = iVar9 + *(int *)(*local_224 + 4);\r\n    if (param_3 == DAT_004f86d4) {\r\n      sVar11 = (*(undefined4 **)(param_1 + 0x14))[1];\r\n      if (sVar11 == 0) {\r\n        pcVar5 = (char *)0x0;\r\n      }\r\n      else {\r\n        pcVar5 = (char *)**(undefined4 **)(param_1 + 0x14);\r\n      }\r\n      _strncpy(param_5 + iVar9,pcVar5,sVar11);\r\n      iVar9 = iVar9 + *(int *)(*(int *)(param_1 + 0x14) + 4);\r\n    }\r\n    else {\r\n      local_230 = (undefined4 *)FUN_004d28b0(0x10);\r\n      if (local_230 == (undefined4 *)0x0) {\r\n        local_230 = (undefined4 *)0x0;\r\n      }\r\n      else {\r\n        local_230[1] = 0;\r\n        local_230[2] = 0;\r\n        *local_230 = 0;\r\n        local_230[3] = 1;\r\n      }\r\n      local_234 = 0;\r\n      FUN_00423520(&local_234,param_3);\r\n      pcVar5 = (char *)0x0;\r\n      if (local_230[1] != 0) {\r\n        pcVar5 = (char *)*local_230;\r\n      }\r\n      _strncpy(param_5 + iVar9,pcVar5,local_230[1]);\r\n      puVar4 = local_230;\r\n      iVar9 = iVar9 + local_230[1];\r\n      local_230[3] = local_230[3] + -1;\r\n      if ((local_230[3] == 0) && (local_230 != (undefined4 *)0x0)) {\r\n        piVar1 = local_230 + 2;\r\n        if (*piVar1 != 0) {\r\n          FUN_004d29a0(*local_230);\r\n          *piVar1 = 0;\r\n          *puVar4 = 0;\r\n        }\r\n        FUN_004d29a0(puVar4);\r\n      }\r\n      if (local_234 != 0) {\r\n        FUN_004d29a0(local_234);\r\n      }\r\n    }\r\n    uVar7 = 0xffffffff;\r\n    pcVar5 = param_4;\r\n    do {\r\n      pcVar12 = pcVar5;\r\n      if (uVar7 == 0) break;\r\n      uVar7 = uVar7 - 1;\r\n      pcVar12 = pcVar5 + 1;\r\n      cVar2 = *pcVar5;\r\n      pcVar5 = pcVar12;\r\n    } while (cVar2 != '\\0');\r\n    uVar7 = ~uVar7;\r\n    pcVar5 = pcVar12 + -uVar7;\r\n    pcVar12 = param_5 + iVar9;\r\n    for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined4 *)pcVar12 = *(undefined4 *)pcVar5;\r\n      pcVar5 = pcVar5 + 4;\r\n      pcVar12 = pcVar12 + 4;\r\n    }\r\n    for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *pcVar12 = *pcVar5;\r\n      pcVar5 = pcVar5 + 1;\r\n      pcVar12 = pcVar12 + 1;\r\n    }\r\n    local_118 = -1;\r\n    local_114 = 0;\r\n    local_220 = &PTR_FUN_004f1780;\r\n    DAT_00507000 = 0x8000;\r\n    local_21c = local_21c & 0xffffff00;\r\n    iVar9 = FUN_004617a0(param_5);\r\n    local_220 = &PTR_FUN_004f1780;\r\n    if ((-1 < local_118) && (local_114 != 0)) {\r\n      __close(local_118);\r\n    }\r\n    if (iVar9 != 0) {\r\n      return 1;\r\n    }\r\n    sVar11 = (*(undefined4 **)(param_1 + 0x24))[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x24);\r\n    }\r\n    _strncpy(param_5,pcVar5,sVar11);\r\n    iVar9 = *(int *)(*(int *)(param_1 + 0x24) + 4);\r\n    sVar11 = ((undefined4 *)*local_224)[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = *(char **)*local_224;\r\n    }\r\n    _strncpy(param_5 + iVar9,pcVar5,sVar11);\r\n    iVar9 = iVar9 + *(int *)(*local_224 + 4);\r\n    if (param_3 == DAT_004f86d4) {\r\n      sVar11 = (*(undefined4 **)(param_1 + 0x14))[1];\r\n      if (sVar11 == 0) {\r\n        pcVar5 = (char *)0x0;\r\n      }\r\n      else {\r\n        pcVar5 = (char *)**(undefined4 **)(param_1 + 0x14);\r\n      }\r\n      _strncpy(param_5 + iVar9,pcVar5,sVar11);\r\n      iVar9 = iVar9 + *(int *)(*(int *)(param_1 + 0x14) + 4);\r\n    }\r\n    else {\r\n      local_228 = (undefined4 *)FUN_004d28b0(0x10);\r\n      if (local_228 == (undefined4 *)0x0) {\r\n        local_228 = (undefined4 *)0x0;\r\n      }\r\n      else {\r\n        local_228[1] = 0;\r\n        local_228[2] = 0;\r\n        *local_228 = 0;\r\n        local_228[3] = 1;\r\n      }\r\n      local_22c = 0;\r\n      FUN_00423520(&local_22c,param_3);\r\n      pcVar5 = (char *)0x0;\r\n      if (local_228[1] != 0) {\r\n        pcVar5 = (char *)*local_228;\r\n      }\r\n      _strncpy(param_5 + iVar9,pcVar5,local_228[1]);\r\n      puVar4 = local_228;\r\n      iVar9 = iVar9 + local_228[1];\r\n      local_228[3] = local_228[3] + -1;\r\n      if ((local_228[3] == 0) && (local_228 != (undefined4 *)0x0)) {\r\n        FUN_00406180();\r\n        FUN_004d29a0(puVar4);\r\n      }\r\n      if (local_22c != 0) {\r\n        FUN_004d29a0(local_22c);\r\n      }\r\n    }\r\n    uVar7 = 0xffffffff;\r\n    pcVar5 = param_4;\r\n    do {\r\n      pcVar12 = pcVar5;\r\n      if (uVar7 == 0) break;\r\n      uVar7 = uVar7 - 1;\r\n      pcVar12 = pcVar5 + 1;\r\n      cVar2 = *pcVar5;\r\n      pcVar5 = pcVar12;\r\n    } while (cVar2 != '\\0');\r\n    uVar7 = ~uVar7;\r\n    pcVar5 = pcVar12 + -uVar7;\r\n    pcVar12 = param_5 + iVar9;\r\n    for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined4 *)pcVar12 = *(undefined4 *)pcVar5;\r\n      pcVar5 = pcVar5 + 4;\r\n      pcVar12 = pcVar12 + 4;\r\n    }\r\n    for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *pcVar12 = *pcVar5;\r\n      pcVar5 = pcVar5 + 1;\r\n      pcVar12 = pcVar12 + 1;\r\n    }\r\n    if (param_3 == 1) {\r\n      return 1;\r\n    }\r\n    local_8 = -1;\r\n    local_4 = 0;\r\n    local_110 = &PTR_FUN_004f1780;\r\n    DAT_00507000 = 0x8000;\r\n    local_10c = 0;\r\n    iVar9 = FUN_004617a0(param_5);\r\n    local_110 = &PTR_FUN_004f1780;\r\n    if ((-1 < local_8) && (local_4 != 0)) {\r\n      __close(local_8);\r\n    }\r\n    if (iVar9 != 0) {\r\n      return 1;\r\n    }\r\n    param_3 = 1;\r\n  }\r\n  if (param_2 != 5) {\r\n    sVar11 = (*(undefined4 **)(param_1 + 0x1c))[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x1c);\r\n    }\r\n    _strncpy(param_5,pcVar5,sVar11);\r\n    iVar9 = *(int *)(*(int *)(param_1 + 0x1c) + 4);\r\n    local_110 = (undefined **)(param_1 + 0x2c + param_2 * 8);\r\n    sVar11 = *(size_t *)((int)*local_110 + 4);\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = *(char **)*local_110;\r\n    }\r\n    _strncpy(param_5 + iVar9,pcVar5,sVar11);\r\n    uVar7 = 0xffffffff;\r\n    pcVar5 = param_4;\r\n    do {\r\n      pcVar12 = pcVar5;\r\n      if (uVar7 == 0) break;\r\n      uVar7 = uVar7 - 1;\r\n      pcVar12 = pcVar5 + 1;\r\n      cVar2 = *pcVar5;\r\n      pcVar5 = pcVar12;\r\n    } while (cVar2 != '\\0');\r\n    uVar7 = ~uVar7;\r\n    pcVar5 = pcVar12 + -uVar7;\r\n    pcVar12 = param_5 + iVar9 + *(int *)((int)*local_110 + 4);\r\n    for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined4 *)pcVar12 = *(undefined4 *)pcVar5;\r\n      pcVar5 = pcVar5 + 4;\r\n      pcVar12 = pcVar12 + 4;\r\n    }\r\n    for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *pcVar12 = *pcVar5;\r\n      pcVar5 = pcVar5 + 1;\r\n      pcVar12 = pcVar12 + 1;\r\n    }\r\n    local_118 = -1;\r\n    local_114 = 0;\r\n    DAT_00507000 = 0x8000;\r\n    local_220 = &PTR_FUN_004f1780;\r\n    local_21c = local_21c & 0xffffff00;\r\n    iVar9 = FUN_004617a0(param_5);\r\n    local_220 = &PTR_FUN_004f1780;\r\n    if ((-1 < local_118) && (local_114 != 0)) {\r\n      __close(local_118);\r\n    }\r\n    if (iVar9 != 0) {\r\n      return 1;\r\n    }\r\n    if (param_2 == 0xb) {\r\n      return 1;\r\n    }\r\n    sVar11 = (*(undefined4 **)(param_1 + 0x24))[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x24);\r\n    }\r\n    _strncpy(param_5,pcVar5,sVar11);\r\n    iVar9 = *(int *)(*(int *)(param_1 + 0x24) + 4);\r\n    sVar11 = *(size_t *)((int)*local_110 + 4);\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = *(char **)*local_110;\r\n    }\r\n    _strncpy(param_5 + iVar9,pcVar5,sVar11);\r\n    uVar7 = 0xffffffff;\r\n    do {\r\n      pcVar5 = param_4;\r\n      if (uVar7 == 0) break;\r\n      uVar7 = uVar7 - 1;\r\n      pcVar5 = param_4 + 1;\r\n      cVar2 = *param_4;\r\n      param_4 = pcVar5;\r\n    } while (cVar2 != '\\0');\r\n    uVar7 = ~uVar7;\r\n    pcVar5 = pcVar5 + -uVar7;\r\n    pcVar12 = param_5 + iVar9 + *(int *)((int)*local_110 + 4);\r\n    for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined4 *)pcVar12 = *(undefined4 *)pcVar5;\r\n      pcVar5 = pcVar5 + 4;\r\n      pcVar12 = pcVar12 + 4;\r\n    }\r\n    for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *pcVar12 = *pcVar5;\r\n      pcVar5 = pcVar5 + 1;\r\n      pcVar12 = pcVar12 + 1;\r\n    }\r\n    return 1;\r\n  }\r\n  iVar9 = *(int *)(param_1 + 0x1c);\r\n  iVar3 = *(int *)(iVar9 + 4);\r\n  iVar10 = -1;\r\n  if (iVar3 != -1) {\r\n    iVar10 = iVar3;\r\n  }\r\n  if ((iVar3 == iVar10) && (piVar1 = (int *)(iVar9 + 0xc), *piVar1 != -1)) {\r\n    *piVar1 = *piVar1 + 1;\r\n    local_21c = iVar9;\r\n  }\r\n  else {\r\n    iVar9 = FUN_004d28b0(0x10);\r\n    if (iVar9 == 0) {\r\n      local_21c = 0;\r\n    }\r\n    else {\r\n      local_21c = FUN_00402960(param_1 + 0x18,0,iVar10);\r\n    }\r\n  }\r\n  local_220 = (undefined **)0x0;\r\n  iVar9 = (*(undefined4 **)(param_1 + 0x54))[1];\r\n  if (iVar9 == 0) {\r\n    uVar6 = 0;\r\n  }\r\n  else {\r\n    uVar6 = **(undefined4 **)(param_1 + 0x54);\r\n  }\r\n  FUN_00401940(uVar6,iVar9);\r\n  uVar7 = 0xffffffff;\r\n  pcVar5 = (char *)&DAT_004f8650;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar2 = *pcVar5;\r\n    pcVar5 = pcVar5 + 1;\r\n  } while (cVar2 != '\\0');\r\n  FUN_00401940(&DAT_004f8650,~uVar7 - 1);\r\n  iVar9 = FUN_0044ee10(&local_220);\r\n  if (iVar9 == 0) {\r\n    sVar11 = (*(undefined4 **)(param_1 + 0x24))[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x24);\r\n    }\r\n    _strncpy(param_5,pcVar5,sVar11);\r\n    _Count = (*(undefined4 **)(param_1 + 0x54))[1];\r\n    if (_Count != 0) {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x54);\r\n      goto LAB_0043423b;\r\n    }\r\n  }\r\n  else {\r\n    sVar11 = (*(undefined4 **)(param_1 + 0x1c))[1];\r\n    if (sVar11 == 0) {\r\n      pcVar5 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x1c);\r\n    }\r\n    _strncpy(param_5,pcVar5,sVar11);\r\n    _Count = (*(undefined4 **)(param_1 + 0x54))[1];\r\n    if (_Count != 0) {\r\n      pcVar5 = (char *)**(undefined4 **)(param_1 + 0x54);\r\n      goto LAB_0043423b;\r\n    }\r\n  }\r\n  pcVar5 = (char *)0x0;\r\nLAB_0043423b:\r\n  _strncpy(param_5 + sVar11,pcVar5,_Count);\r\n  uVar7 = local_21c;\r\n  param_5[sVar11 + *(int *)(*(int *)(param_1 + 0x54) + 4)] = '\\0';\r\n  *(int *)(local_21c + 0xc) = *(int *)(local_21c + 0xc) + -1;\r\n  if ((*(int *)(local_21c + 0xc) == 0) && (local_21c != 0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(uVar7);\r\n  }\r\n  if (local_220 != (undefined **)0x0) {\r\n    FUN_004d29a0(local_220);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00410e90",
+      "name": "FUN_00410e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411300",
+      "name": "FUN_00411300",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004344d0",
+      "name": "FUN_004344d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00457c90",
+      "name": "FUN_00457c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00457c90",
+      "name": "FUN_00457c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ad0",
+      "name": "FUN_00432ad0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00423520",
+      "name": "FUN_00423520"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004617a0",
+      "name": "FUN_004617a0"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "00406180",
+      "name": "FUN_00406180"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "00402960",
+      "name": "FUN_00402960"
+    },
+    {
+      "addr": "00401940",
+      "name": "FUN_00401940"
+    },
+    {
+      "addr": "0044ee10",
+      "name": "FUN_0044ee10"
+    }
+  ],
+  "data_refs": []
+}

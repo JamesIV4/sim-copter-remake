@@ -1,0 +1,56 @@
+{
+  "address": "004ce120",
+  "name": "FUN_004ce120",
+  "signature": "undefined FUN_004ce120(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ce120(undefined4 param_1)\r\n\r\n{\r\n  SetLastError(0);\r\n  FUN_004ce100(param_1);\r\n  FUN_004ce110(param_1);\r\n  FUN_004ce0f0(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00461b00",
+      "name": "FUN_00461b00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdb50",
+      "name": "FUN_004cdb50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cf200",
+      "name": "FUN_004cf200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d1a00",
+      "name": "FUN_004d1a00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d1d70",
+      "name": "FUN_004d1d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000006e",
+      "name": "SetLastError"
+    },
+    {
+      "addr": "004ce100",
+      "name": "FUN_004ce100"
+    },
+    {
+      "addr": "004ce110",
+      "name": "FUN_004ce110"
+    },
+    {
+      "addr": "004ce0f0",
+      "name": "FUN_004ce0f0"
+    }
+  ],
+  "data_refs": []
+}

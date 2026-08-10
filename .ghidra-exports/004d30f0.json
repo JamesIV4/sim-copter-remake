@@ -1,0 +1,13 @@
+{
+  "address": "004d30f0",
+  "name": "underflow",
+  "signature": "int __thiscall underflow(strstreambuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual int __thiscall strstreambuf::underflow(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __thiscall strstreambuf::underflow(strstreambuf *this)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (*(uint *)(this + 0x2c) <= *(uint *)(this + 0x28)) {\r\n    if (*(uint *)(this + 0x2c) < *(uint *)(this + 0x1c)) {\r\n      iVar1 = *(int *)(this + 0x24);\r\n      *(int *)(this + 0x24) = *(int *)(this + 0x10);\r\n      *(uint *)(this + 0x28) = (*(uint *)(this + 0x28) - iVar1) + *(int *)(this + 0x10);\r\n      *(uint *)(this + 0x2c) = *(uint *)(this + 0x1c);\r\n      *(undefined4 *)(this + 0xc) = 0xffffffff;\r\n    }\r\n    if (*(uint *)(this + 0x2c) <= *(uint *)(this + 0x28)) {\r\n      return -1;\r\n    }\r\n  }\r\n  return (uint)**(byte **)(this + 0x28);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,76 @@
+{
+  "address": "00487bb0",
+  "name": "FUN_00487bb0",
+  "signature": "undefined FUN_00487bb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00487bb0(int *param_1,undefined4 param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  int *piVar3;\r\n  int *piVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 *puVar9;\r\n  int local_64;\r\n  int iStack_60;\r\n  int iStack_5c;\r\n  undefined4 uStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 uStack_50;\r\n  undefined4 auStack_40 [16];\r\n  \r\n  iVar6 = *param_1;\r\n  if (param_1[0x72] < 0) {\r\n    if ((*(byte *)(param_1 + 2) & 1) != 0) {\r\n      iVar5 = FUN_0042a3a0(0x15);\r\n      if (iVar5 == 0) {\r\n        FUN_0042a2a0(0x15,1);\r\n      }\r\n    }\r\n    iVar5 = param_1[0x6f];\r\n    param_1[0x6f] = iVar5 + -1;\r\n    if (iVar5 + -1 == 0x10) {\r\n      FUN_0046f610(*(undefined4 *)(param_1[0x2e] + 8),0);\r\n      if (param_1[0x72] == -1) {\r\n        param_1[0x70] = 0;\r\n        *(int *)(param_1[0x2f] + 8) = param_1[0x32];\r\n        FUN_0046f610(*(undefined4 *)(param_1[0x2f] + 8),0);\r\n      }\r\n      else {\r\n        param_1[0x71] = 0;\r\n        *(int *)(param_1[0x2f] + 8) = param_1[0x33];\r\n        FUN_0046f610(*(undefined4 *)(param_1[0x2f] + 8),0);\r\n      }\r\n    }\r\n  }\r\n  else if (param_1[0x72] < 1) {\r\n    if ((*(byte *)(param_1 + 2) & 1) != 0) {\r\n      iVar5 = FUN_0042a3a0(0x15);\r\n      if (iVar5 == 1) {\r\n        FUN_0042a310(0x15);\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    if ((*(byte *)(param_1 + 2) & 1) != 0) {\r\n      iVar5 = FUN_0042a3a0(0x15);\r\n      if (iVar5 == 0) {\r\n        FUN_0042a2a0(0x15,1);\r\n      }\r\n      FUN_0042a330(0x15,0xa0);\r\n    }\r\n    iVar5 = param_1[0x6f];\r\n    param_1[0x6f] = iVar5 + 1;\r\n    if (iVar5 + 1 == 0x11) {\r\n      FUN_0046f610(*(undefined4 *)(param_1[0x2e] + 8),1);\r\n      FUN_0046f610(*(undefined4 *)(param_1[0x2f] + 8),1);\r\n      if (param_1[0x72] == 1) {\r\n        param_1[0x70] = 1;\r\n      }\r\n      else {\r\n        param_1[0x71] = 1;\r\n      }\r\n    }\r\n  }\r\n  iVar5 = param_1[0x29];\r\n  iVar7 = param_1[0x2e];\r\n  *(undefined4 *)(iVar7 + 0x18) = *(undefined4 *)(iVar5 + 0x18);\r\n  *(undefined4 *)(iVar7 + 0x1c) = *(undefined4 *)(iVar5 + 0x1c);\r\n  *(undefined4 *)(iVar7 + 0x20) = *(undefined4 *)(iVar5 + 0x20);\r\n  if (param_1[0x71] == 0) {\r\n    FUN_0046cb74(&DAT_00504420,&local_64,param_1[0x29] + 0x24);\r\n    *(int *)(param_1[0x2e] + 0x18) = *(int *)(param_1[0x2e] + 0x18) + local_64;\r\n    *(int *)(param_1[0x2e] + 0x1c) = *(int *)(param_1[0x2e] + 0x1c) + iStack_60;\r\n    *(int *)(param_1[0x2e] + 0x20) = *(int *)(param_1[0x2e] + 0x20) + iStack_5c;\r\n  }\r\n  if ((param_1[0x70] != 1) || (param_1[0x71] != 1)) {\r\n    iVar5 = param_1[0x2e];\r\n    uStack_58 = *(undefined4 *)(iVar5 + 0x18);\r\n    uStack_54 = *(undefined4 *)(iVar5 + 0x1c);\r\n    uStack_50 = *(undefined4 *)(iVar5 + 0x20);\r\n    puVar8 = (undefined4 *)(iVar5 + 0x24);\r\n    puVar9 = auStack_40;\r\n    for (iVar7 = 0x10; iVar7 != 0; iVar7 = iVar7 + -1) {\r\n      *puVar9 = *puVar8;\r\n      puVar8 = puVar8 + 1;\r\n      puVar9 = puVar9 + 1;\r\n    }\r\n    FUN_004704d1(*(undefined4 *)(param_1[0x2e] + 8),&uStack_58,3);\r\n    iVar7 = FUN_004ae7a0(uStack_58,uStack_50,0);\r\n    FUN_004883a0(param_1,iVar7,param_2);\r\n    iVar5 = param_1[0x2f];\r\n    param_1[0x68] = *(int *)(iVar5 + 0x18);\r\n    param_1[0x69] = *(int *)(iVar5 + 0x1c);\r\n    param_1[0x6a] = *(int *)(iVar5 + 0x20);\r\n    *(int *)(iVar5 + 0x18) = *(int *)(param_1[0x2e] + 0x18) + *(int *)param_1[100];\r\n    *(int *)(param_1[0x2f] + 0x1c) = *(int *)(param_1[100] + 4) + *(int *)(param_1[0x2e] + 0x1c);\r\n    *(int *)(param_1[0x2f] + 0x20) = *(int *)(param_1[0x2e] + 0x20) + *(int *)(param_1[100] + 8);\r\n    iVar5 = param_1[0x2f];\r\n    if (((*(int *)(iVar5 + 0x1c) <= iVar7 + 0x20000) && (param_1[0x70] == 0)) &&\r\n       (((cVar2 = *(char *)((int)&DAT_005bde80 +\r\n                           ((0xe0000000U - *(int *)(iVar5 + 0x20) & 0x3fc00000) >> 0x16) +\r\n                           ((*(int *)(iVar5 + 0x18) + 0x20000000U & 0x3fc00000) >> 0x16) * 0x100),\r\n         -1 < cVar2 && (cVar2 < '\\x05')) || (('\\x04' < cVar2 && (cVar2 < '\\n')))))) {\r\n      param_1[0x74] = param_1[0x74] + DAT_0050402c;\r\n      FUN_004c0c40();\r\n      if (*(int *)(&DAT_005040e8 + iVar6 * 0x5c) < param_1[0x74]) {\r\n        param_1[0x74] = *(int *)(&DAT_005040e8 + iVar6 * 0x5c);\r\n      }\r\n      else {\r\n        iVar6 = FUN_0042a3a0(10);\r\n        if (iVar6 == 0) {\r\n          FUN_0042a1f0(10,param_1[0x2f] + 0x18,0);\r\n        }\r\n        FUN_004af220(param_2,param_1[0x2f] + 0x18,8);\r\n      }\r\n      FUN_004af220(param_2,param_1[0x2f] + 0x18,3);\r\n    }\r\n    piVar1 = param_1 + 0x65;\r\n    param_1[0x6b] = *piVar1;\r\n    param_1[0x6c] = param_1[0x66];\r\n    piVar3 = (int *)param_1[99];\r\n    param_1[0x6d] = param_1[0x67];\r\n    piVar4 = (int *)param_1[100];\r\n    *piVar1 = *piVar4 - *piVar3;\r\n    param_1[0x66] = piVar4[1] - piVar3[1];\r\n    param_1[0x67] = piVar4[2] - piVar3[2];\r\n    FUN_00467a80(piVar1);\r\n    param_1[0x6e] = param_1[0x6c] - param_1[0x66];\r\n    if (param_1[0x6c] - param_1[0x66] < 0) {\r\n      param_1[0x6e] = 0;\r\n    }\r\n    param_1[0x6e] = param_1[0x6e] * DAT_0050403c;\r\n    FUN_00467f30(param_1[0x2f] + 0x24,piVar1);\r\n    iVar6 = param_1[0x2f];\r\n    uStack_58 = *(undefined4 *)(iVar6 + 0x18);\r\n    uStack_54 = *(undefined4 *)(iVar6 + 0x1c);\r\n    uStack_50 = *(undefined4 *)(iVar6 + 0x20);\r\n    puVar8 = (undefined4 *)(iVar6 + 0x24);\r\n    puVar9 = auStack_40;\r\n    for (iVar5 = 0x10; iVar5 != 0; iVar5 = iVar5 + -1) {\r\n      *puVar9 = *puVar8;\r\n      puVar8 = puVar8 + 1;\r\n      puVar9 = puVar9 + 1;\r\n    }\r\n    FUN_004704d1(*(undefined4 *)(param_1[0x2f] + 8),&uStack_58,3);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00484d20",
+      "name": "FUN_00484d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0042a3a0",
+      "name": "FUN_0042a3a0"
+    },
+    {
+      "addr": "0042a2a0",
+      "name": "FUN_0042a2a0"
+    },
+    {
+      "addr": "0046f610",
+      "name": "FUN_0046f610"
+    },
+    {
+      "addr": "0042a330",
+      "name": "FUN_0042a330"
+    },
+    {
+      "addr": "0042a310",
+      "name": "FUN_0042a310"
+    },
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "004704d1",
+      "name": "FUN_004704d1"
+    },
+    {
+      "addr": "004ae7a0",
+      "name": "FUN_004ae7a0"
+    },
+    {
+      "addr": "004883a0",
+      "name": "FUN_004883a0"
+    },
+    {
+      "addr": "004c0c40",
+      "name": "FUN_004c0c40"
+    },
+    {
+      "addr": "0042a1f0",
+      "name": "FUN_0042a1f0"
+    },
+    {
+      "addr": "004af220",
+      "name": "FUN_004af220"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80"
+    },
+    {
+      "addr": "00467f30",
+      "name": "FUN_00467f30"
+    }
+  ],
+  "data_refs": []
+}

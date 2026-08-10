@@ -1,0 +1,30 @@
+{
+  "address": "004b9c00",
+  "name": "FUN_004b9c00",
+  "signature": "undefined FUN_004b9c00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004b9c00(int param_1,byte *param_2)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  short sVar3;\r\n  \r\n  if ((*param_2 & 2) != 0) {\r\n    FUN_004bebd0(param_2);\r\n    iVar1 = *(int *)(param_1 + 0x299);\r\n    if ((2 < iVar1) && (iVar1 < 5)) {\r\n      FUN_004be890(CONCAT22((short)((uint)iVar1 >> 0x10),*(undefined2 *)(param_1 + 0x12d)));\r\n    }\r\n    *(short *)(param_1 + 0x2b2) = (short)*(undefined4 *)(param_2 + 0x2e7);\r\n    *(undefined4 *)(param_1 + 700) = *(undefined4 *)(param_2 + 0x2eb);\r\n    uVar2 = *(undefined4 *)(param_2 + 0x2ef);\r\n    *(undefined4 *)(param_1 + 0x2c0) = uVar2;\r\n    *(undefined4 *)(param_1 + 0x2c4) = *(undefined4 *)(param_2 + 0x2f3);\r\n    *(undefined4 *)(param_1 + 0x2c8) = *(undefined4 *)(param_2 + 0x2f7);\r\n    sVar3 = FUN_004b9890(CONCAT22((short)((uint)uVar2 >> 0x10),*(undefined2 *)(param_1 + 0x12d)));\r\n    if (sVar3 != 0) {\r\n      FUN_004b9b10();\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004bebd0",
+      "name": "FUN_004bebd0"
+    },
+    {
+      "addr": "004be890",
+      "name": "FUN_004be890"
+    },
+    {
+      "addr": "004b9890",
+      "name": "FUN_004b9890"
+    },
+    {
+      "addr": "004b9b10",
+      "name": "FUN_004b9b10"
+    }
+  ],
+  "data_refs": []
+}

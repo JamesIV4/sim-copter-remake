@@ -1,0 +1,32 @@
+{
+  "address": "00470a10",
+  "name": "FUN_00470a10",
+  "signature": "undefined FUN_00470a10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_00470a10(int param_1,int param_2)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  byte *pbVar6;\r\n  undefined4 *puVar7;\r\n  int local_4;\r\n  \r\n  DAT_0055d1e8 = param_1;\r\n  if (param_2 == 1) {\r\n    uVar1 = FUN_00468380(*(undefined4 *)(param_1 + 4),*(int *)(param_1 + 0x10) << 2);\r\n    *(undefined4 *)(param_1 + 0x14) = uVar1;\r\n  }\r\n  if (*(int *)(param_1 + 0x14) == 0) {\r\n    _DAT_005bdb40 = 4;\r\n    return 1;\r\n  }\r\n  iVar5 = 0;\r\n  if (0 < *(int *)(param_1 + 0x10)) {\r\n    do {\r\n      piVar2 = (int *)FUN_0046cd20(param_1,iVar5);\r\n      if ((*(byte *)(piVar2 + 2) & 4) == 0) {\r\n        iVar4 = piVar2[1];\r\n        puVar7 = &DAT_0055d1f0;\r\n        for (iVar3 = 0x100; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n          *puVar7 = 0;\r\n          puVar7 = puVar7 + 1;\r\n        }\r\n        iVar3 = 0;\r\n        pbVar6 = (byte *)(piVar2 + iVar4 + 3);\r\n        if (0 < *piVar2 * piVar2[1]) {\r\n          do {\r\n            iVar3 = iVar3 + 1;\r\n            (&DAT_0055d1f0)[*pbVar6] = (&DAT_0055d1f0)[*pbVar6] + 1;\r\n            pbVar6 = pbVar6 + 1;\r\n          } while (*piVar2 * piVar2[1] - iVar3 != 0 && iVar3 <= *piVar2 * piVar2[1]);\r\n        }\r\n        iVar4 = 0;\r\n        iVar3 = 0;\r\n        do {\r\n          if (iVar4 < (int)(&DAT_0055d1f0)[iVar3]) {\r\n            iVar4 = (&DAT_0055d1f0)[iVar3];\r\n            local_4 = iVar3;\r\n          }\r\n          iVar3 = iVar3 + 1;\r\n        } while (iVar3 < 0x100);\r\n        *(int *)(*(int *)(param_1 + 0x14) + iVar5 * 4) = local_4;\r\n      }\r\n      else {\r\n        FUN_00470b10(iVar5 * 4 + *(int *)(param_1 + 0x14),piVar2,param_1,param_2);\r\n      }\r\n      iVar5 = iVar5 + 1;\r\n    } while (iVar5 < *(int *)(param_1 + 0x10));\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00468380",
+      "name": "FUN_00468380"
+    },
+    {
+      "addr": "0046cd20",
+      "name": "FUN_0046cd20"
+    },
+    {
+      "addr": "00470b10",
+      "name": "FUN_00470b10"
+    }
+  ],
+  "data_refs": []
+}

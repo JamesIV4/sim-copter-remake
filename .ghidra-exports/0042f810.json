@@ -1,0 +1,58 @@
+{
+  "address": "0042f810",
+  "name": "FUN_0042f810",
+  "signature": "undefined FUN_0042f810(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0042f810(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined *puVar2;\r\n  int iVar3;\r\n  int *piVar4;\r\n  int local_30;\r\n  undefined4 *local_2c;\r\n  int *local_24;\r\n  int local_10;\r\n  \r\n  local_2c = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (local_2c == (undefined4 *)0x0) {\r\n    local_2c = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    local_2c[1] = 0;\r\n    local_2c[2] = 0;\r\n    *local_2c = 0;\r\n    local_2c[3] = 1;\r\n  }\r\n  local_30 = 0;\r\n  FUN_0044da30(&local_30,0,1,0);\r\n  FUN_00401ed0();\r\n  if (local_30 != 0) {\r\n    FUN_004d29a0(local_30);\r\n  }\r\n  puVar2 = PTR_DAT_004f8f84;\r\n  iVar3 = FUN_004d28b0(0x10);\r\n  if (iVar3 == 0) {\r\n    local_2c = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    local_2c = (undefined4 *)FUN_0041bd00(puVar2);\r\n  }\r\n  local_30 = 0;\r\n  FUN_0044f330(&local_30,0);\r\n  FUN_00401ed0();\r\n  if (local_30 != 0) {\r\n    FUN_004d29a0(local_30);\r\n  }\r\n  local_24 = *(int **)(param_1 + 0x50);\r\n  piVar4 = (int *)*local_24;\r\n  if ((int *)*local_24 != local_24) {\r\n    do {\r\n      piVar1 = (int *)*piVar4;\r\n      FUN_00423e90(piVar4);\r\n      piVar4 = piVar1;\r\n    } while (piVar1 != local_24);\r\n  }\r\n  FUN_0044ef80(param_1 + 0x48,0);\r\n  FUN_0044e6e0((int *)(param_1 + 0x50),8);\r\n  local_24 = *(int **)(param_1 + 100);\r\n  piVar4 = (int *)*local_24;\r\n  if ((int *)*local_24 != local_24) {\r\n    do {\r\n      piVar1 = (int *)*piVar4;\r\n      FUN_00423e90(piVar4);\r\n      piVar4 = piVar1;\r\n    } while (piVar1 != local_24);\r\n  }\r\n  FUN_0044ef80(param_1 + 0x5c,0);\r\n  FUN_0044e6e0((int *)(param_1 + 100),8);\r\n  local_24 = *(int **)(param_1 + 0x78);\r\n  piVar4 = (int *)*local_24;\r\n  if ((int *)*local_24 != local_24) {\r\n    do {\r\n      piVar1 = (int *)*piVar4;\r\n      FUN_00423e90(piVar4);\r\n      piVar4 = piVar1;\r\n    } while (piVar1 != local_24);\r\n  }\r\n  FUN_0044ef80(param_1 + 0x70,0);\r\n  FUN_0044e6e0((int *)(param_1 + 0x78),8);\r\n  local_24 = *(int **)(param_1 + 0x8c);\r\n  piVar4 = (int *)*local_24;\r\n  if ((int *)*local_24 != local_24) {\r\n    do {\r\n      piVar1 = (int *)*piVar4;\r\n      FUN_00423e90(piVar4);\r\n      piVar4 = piVar1;\r\n    } while (piVar1 != local_24);\r\n  }\r\n  FUN_0044ef80(param_1 + 0x84,0);\r\n  FUN_0044e6e0((int *)(param_1 + 0x8c),8);\r\n  FUN_00401ed0();\r\n  if (local_10 != 0) {\r\n    FUN_004d29a0(local_10);\r\n  }\r\n  FUN_00401f10();\r\n  FUN_00420e60();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0044da30",
+      "name": "FUN_0044da30"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0041bd00",
+      "name": "FUN_0041bd00"
+    },
+    {
+      "addr": "0044f330",
+      "name": "FUN_0044f330"
+    },
+    {
+      "addr": "00423e90",
+      "name": "FUN_00423e90"
+    },
+    {
+      "addr": "0044ef80",
+      "name": "FUN_0044ef80"
+    },
+    {
+      "addr": "0044e6e0",
+      "name": "FUN_0044e6e0"
+    },
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "00420e60",
+      "name": "FUN_00420e60"
+    }
+  ],
+  "data_refs": []
+}

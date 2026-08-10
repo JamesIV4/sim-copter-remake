@@ -1,0 +1,68 @@
+{
+  "address": "004c9000",
+  "name": "FUN_004c9000",
+  "signature": "undefined FUN_004c9000(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 *\r\nFUN_004c9000(undefined4 *param_1,int param_2,undefined4 param_3,int param_4,undefined4 param_5,\r\n            undefined4 *param_6,undefined4 *param_7)\r\n\r\n{\r\n  ushort uVar1;\r\n  short sVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  short sVar6;\r\n  undefined4 *local_4;\r\n  \r\n  sVar6 = -1;\r\n  local_4 = (undefined4 *)0x0;\r\n  puVar5 = *(undefined4 **)\r\n            (*(int *)((int)&DAT_005d9200 +\r\n                     ((0xe0000000U - param_4 & 0x3fc00000) >> 0x14) +\r\n                     ((param_2 + 0x20000000U & 0x3fc00000) >> 0x16) * 0x400) + 0x10);\r\njoined_r0x004c9045:\r\n  if (puVar5 == (undefined4 *)0x0) {\r\n    return local_4;\r\n  }\r\n  if (((*(byte *)(puVar5 + 3) & 4) != 0) || ((-1 < sVar6 && (sVar6 < 9)))) goto joined_r0x004c9066;\r\n  goto LAB_004c908e;\r\njoined_r0x004c9066:\r\n  while (sVar6 = sVar6 + 1, sVar6 < 10) {\r\n    if (puVar5 == (undefined4 *)0x0) goto joined_r0x004c9045;\r\n    if (param_1 == puVar5) break;\r\n    puVar5 = (undefined4 *)*puVar5;\r\n  }\r\n  if (puVar5 == (undefined4 *)0x0) {\r\n    return local_4;\r\n  }\r\n  if (param_1 != puVar5) goto joined_r0x004c9045;\r\nLAB_004c908e:\r\n  if ((((param_1 == puVar5) || ((*(byte *)(puVar5 + 3) & 0x20) == 0)) && (param_6 != puVar5)) &&\r\n     (param_7 != puVar5)) {\r\n    uVar1 = *(ushort *)(puVar5 + 3);\r\n    if ((uVar1 & 0x80) == 0) {\r\n      iVar4 = DAT_00506aec;\r\n      if ((uVar1 & 0x200) != 0) {\r\n        iVar4 = DAT_00506aec * 2;\r\n      }\r\n      uVar3 = FUN_0046c4bf(puVar5[4],iVar4);\r\n    }\r\n    else {\r\n      uVar3 = 0x80000;\r\n    }\r\n    sVar2 = FUN_004c8f70(param_2,param_3,param_4,param_5,puVar5[6],puVar5[7],puVar5[8],uVar3);\r\n    if (sVar2 != 0) {\r\n      if (param_1 == puVar5) {\r\n        return puVar5;\r\n      }\r\n      if (local_4 == (undefined4 *)0x0) {\r\n        if ((*(ushort *)(puVar5 + 3) & 8) != 0) {\r\n          iVar4 = DAT_00506444;\r\n          if (*(short *)((int)puVar5 + 0xe) != 32000) {\r\n            iVar4 = (&DAT_0058e030)[*(short *)((int)puVar5 + 0xe)];\r\n          }\r\n          if (*(short *)(iVar4 + 0x152) == 0) goto LAB_004c9149;\r\n        }\r\n        local_4 = puVar5;\r\n        if (param_1 == (undefined4 *)0x0) {\r\n          return puVar5;\r\n        }\r\n      }\r\n    }\r\n  }\r\nLAB_004c9149:\r\n  puVar5 = (undefined4 *)*puVar5;\r\n  goto joined_r0x004c9045;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bfed0",
+      "name": "FUN_004bfed0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c02a0",
+      "name": "FUN_004c02a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c02a0",
+      "name": "FUN_004c02a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c02a0",
+      "name": "FUN_004c02a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c00b0",
+      "name": "FUN_004c00b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c4190",
+      "name": "FUN_004c4190",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "004c8f70",
+      "name": "FUN_004c8f70"
+    }
+  ],
+  "data_refs": []
+}

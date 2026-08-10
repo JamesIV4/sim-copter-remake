@@ -1,0 +1,52 @@
+{
+  "address": "0043ce10",
+  "name": "FUN_0043ce10",
+  "signature": "undefined FUN_0043ce10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x0043ce7f) */\r\n\r\nundefined4 * __thiscall\r\nFUN_0043ce10(undefined4 *param_1,undefined4 *param_2,undefined4 param_3,int param_4,\r\n            undefined4 param_5,undefined4 param_6,undefined4 param_7,undefined4 param_8,\r\n            undefined4 param_9,undefined *param_10,char *param_11,char *param_12)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  ostream *poVar5;\r\n  int iVar6;\r\n  undefined4 uVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  undefined4 *puVar10;\r\n  int iVar11;\r\n  undefined4 *puVar12;\r\n  char *pcVar13;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  if (param_10 == (undefined *)0x0) {\r\n    param_10 = PTR_s_MBox_bmp_004f9444;\r\n  }\r\n  local_10 = *param_2;\r\n  local_c = param_2[1];\r\n  local_8 = local_10;\r\n  local_4 = local_c;\r\n  FUN_004042e0(param_10,&local_10,param_5,param_6,param_7,param_8,DAT_00518ba8);\r\n  param_1[0x1d] = 0;\r\n  param_1[0x1e] = 0;\r\n  param_1[0x1f] = 0;\r\n  iVar6 = *(int *)(param_4 + 4);\r\n  iVar3 = *(int *)(iVar6 + 4);\r\n  iVar11 = -1;\r\n  if (iVar3 != -1) {\r\n    iVar11 = iVar3;\r\n  }\r\n  if ((iVar11 == iVar3) && (piVar1 = (int *)(iVar6 + 0xc), *piVar1 != -1)) {\r\n    param_1[0x21] = iVar6;\r\n    *piVar1 = *piVar1 + 1;\r\n  }\r\n  else {\r\n    puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n    if (puVar4 == (undefined4 *)0x0) {\r\n      param_1[0x21] = 0;\r\n    }\r\n    else {\r\n      puVar4[1] = iVar11;\r\n      puVar4[2] = iVar11;\r\n      if (iVar11 == 0) {\r\n        *puVar4 = 0;\r\n      }\r\n      else {\r\n        uVar7 = FUN_004d28b0(iVar11);\r\n        *puVar4 = uVar7;\r\n        puVar10 = (undefined4 *)0x0;\r\n        if ((*(undefined4 **)(param_4 + 4))[1] != 0) {\r\n          puVar10 = (undefined4 *)**(undefined4 **)(param_4 + 4);\r\n        }\r\n        uVar8 = puVar4[1];\r\n        puVar12 = (undefined4 *)*puVar4;\r\n        for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n          *puVar12 = *puVar10;\r\n          puVar10 = puVar10 + 1;\r\n          puVar12 = puVar12 + 1;\r\n        }\r\n        for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *(undefined1 *)puVar12 = *(undefined1 *)puVar10;\r\n          puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n          puVar12 = (undefined4 *)((int)puVar12 + 1);\r\n        }\r\n      }\r\n      puVar4[3] = 1;\r\n      param_1[0x21] = puVar4;\r\n    }\r\n  }\r\n  param_1[0x20] = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    param_1[0x23] = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    param_1[0x23] = puVar4;\r\n  }\r\n  param_1[0x22] = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    param_1[0x25] = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    param_1[0x25] = puVar4;\r\n  }\r\n  param_1[0x24] = 0;\r\n  param_1[0x26] = param_3;\r\n  param_1[0x27] = param_9;\r\n  *(undefined1 *)(param_1 + 0x2a) = 0;\r\n  *(undefined1 *)((int)param_1 + 0xa9) = 0;\r\n  *(undefined1 *)((int)param_1 + 0xaa) = 0;\r\n  *param_1 = &PTR_LAB_004f1e10;\r\n  param_1[0x28] = 0;\r\n  param_1[0x29] = 0;\r\n  if (param_11 != (char *)0x0) {\r\n    uVar8 = 0xffffffff;\r\n    pcVar13 = param_11;\r\n    do {\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      cVar2 = *pcVar13;\r\n      pcVar13 = pcVar13 + 1;\r\n    } while (cVar2 != '\\0');\r\n    FUN_004017f0(param_11,~uVar8 - 1);\r\n  }\r\n  if (param_12 == (char *)0x0) {\r\n    return param_1;\r\n  }\r\n  uVar8 = 0xffffffff;\r\n  pcVar13 = param_12;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar2 = *pcVar13;\r\n    pcVar13 = pcVar13 + 1;\r\n  } while (cVar2 != '\\0');\r\n  uVar8 = ~uVar8 - 1;\r\n  if (uVar8 == 0xffffffff) {\r\n    poVar5 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar5);\r\n    FUN_004d2060(1);\r\n  }\r\n  puVar4 = (undefined4 *)param_1[0x25];\r\n  if ((uint)puVar4[3] < 2) {\r\n    if (uVar8 == 0) goto LAB_0043d0a0;\r\n    if (uVar8 <= (uint)puVar4[2]) {\r\n      if (uVar8 != 0) {\r\n        pcVar13 = (char *)*puVar4;\r\n        for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n          *(undefined4 *)pcVar13 = *(undefined4 *)param_12;\r\n          param_12 = param_12 + 4;\r\n          pcVar13 = pcVar13 + 4;\r\n        }\r\n        for (uVar9 = uVar8 & 3; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n          *pcVar13 = *param_12;\r\n          param_12 = param_12 + 1;\r\n          pcVar13 = pcVar13 + 1;\r\n        }\r\n      }\r\n      goto LAB_0043d0a0;\r\n    }\r\n  }\r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    uVar7 = 0;\r\n  }\r\n  else {\r\n    uVar7 = FUN_004028e0(param_12,uVar8);\r\n  }\r\n  FUN_00401ed0();\r\n  param_1[0x25] = uVar7;\r\nLAB_0043d0a0:\r\n  *(uint *)(param_1[0x25] + 4) = uVar8;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00434d50",
+      "name": "FUN_00434d50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004042e0",
+      "name": "FUN_004042e0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "004028e0",
+      "name": "FUN_004028e0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    }
+  ],
+  "data_refs": []
+}

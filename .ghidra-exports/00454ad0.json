@@ -1,0 +1,26 @@
+{
+  "address": "00454ad0",
+  "name": "FUN_00454ad0",
+  "signature": "undefined FUN_00454ad0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00454ad0(int *param_1,int param_2,int param_3)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  if ((((param_2 < DAT_00505ec8) || (DAT_00505ed0 < param_2)) || (param_3 < DAT_00505ecc)) ||\r\n     (DAT_00505ed4 < param_3)) {\r\n    if (((param_2 < param_1[0x3a]) || (param_3 < param_1[0x3b])) ||\r\n       ((param_1[0x3c] <= param_2 || (param_1[0x3d] <= param_3)))) {\r\n      if (((param_2 < param_1[0x3e]) || (param_3 < param_1[0x3f])) ||\r\n         ((param_1[0x40] <= param_2 || (param_1[0x41] <= param_3)))) {\r\n        iVar2 = 0;\r\n        piVar3 = param_1 + 0x2a;\r\n        do {\r\n          if ((((*piVar3 <= param_2) && (piVar3[1] <= param_3)) && (param_2 < piVar3[2])) &&\r\n             (param_3 < piVar3[3])) {\r\n            iVar1 = *param_1;\r\n            (**(code **)(iVar1 + 0xa8))(param_1);\r\n            (**(code **)(iVar1 + 0xdc))(iVar2,1);\r\n            param_1[0x20] = iVar2;\r\n            return 1;\r\n          }\r\n          piVar3 = piVar3 + 4;\r\n          iVar2 = iVar2 + 1;\r\n        } while (iVar2 < 4);\r\n      }\r\n      else {\r\n        iVar2 = param_1[0x1f];\r\n        param_1[0x1f] = (uint)(iVar2 == 0);\r\n        (**(code **)(*param_1 + 0xdc))(5,(uint)(iVar2 == 0));\r\n        FUN_004a3f00(param_1[0x1f]);\r\n      }\r\n    }\r\n    else {\r\n      iVar2 = param_1[0x1e];\r\n      param_1[0x1e] = (uint)(iVar2 == 0);\r\n      (**(code **)(*param_1 + 0xdc))(4,(uint)(iVar2 == 0));\r\n      FUN_004a3ee0(param_1[0x1e]);\r\n    }\r\n  }\r\n  else {\r\n    iVar2 = FUN_004a3d00(param_2 - DAT_00505ec8,param_3 - DAT_00505ecc);\r\n    param_1[0x21] = iVar2;\r\n    if (-1 < iVar2) {\r\n      local_8 = param_2;\r\n      local_4 = param_3;\r\n      (**(code **)(*param_1 + 0xe0))(iVar2,1,&local_8);\r\n    }\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004a3d00",
+      "name": "FUN_004a3d00"
+    },
+    {
+      "addr": "004a3ee0",
+      "name": "FUN_004a3ee0"
+    },
+    {
+      "addr": "004a3f00",
+      "name": "FUN_004a3f00"
+    }
+  ],
+  "data_refs": []
+}

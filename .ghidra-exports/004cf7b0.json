@@ -1,0 +1,34 @@
+{
+  "address": "004cf7b0",
+  "name": "FUN_004cf7b0",
+  "signature": "undefined FUN_004cf7b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint __thiscall FUN_004cf7b0(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  short sVar4;\r\n  uint *puVar5;\r\n  \r\n  sVar4 = 0;\r\n  iVar2 = *(int *)(*(int *)(param_1 + 0x2c) + 0x10);\r\n  if (0 < iVar2) {\r\n    do {\r\n      piVar1 = (int *)(**(int **)(*(int *)(param_1 + 0x2c) + 4) + sVar4 * 8);\r\n      if (*piVar1 == param_2) {\r\n        puVar3 = (undefined4 *)0x0;\r\n        if (DAT_00506c60 != 0) {\r\n          puVar3 = (undefined4 *)(DAT_00506c60 + 4);\r\n        }\r\n        puVar5 = (uint *)0x0;\r\n        if (puVar3 != (undefined4 *)0x0) {\r\n          puVar5 = (uint *)*puVar3;\r\n        }\r\n        if (puVar5 == (uint *)0x0) {\r\n          return 0;\r\n        }\r\n        do {\r\n          if (*puVar5 == 0) {\r\n            return 0;\r\n          }\r\n          if (*(int *)(((puVar5 == (uint *)0x0) - 1 & *puVar5) + 0x1c) == piVar1[1]) {\r\n            if (puVar5 == (uint *)0x0) {\r\n              return 0;\r\n            }\r\n            return *puVar5;\r\n          }\r\n          if (puVar5 == (uint *)0x0) {\r\n            return 0;\r\n          }\r\n          puVar5 = (uint *)puVar5[1];\r\n        } while (puVar5 != (uint *)0x0);\r\n        return 0;\r\n      }\r\n      sVar4 = sVar4 + 1;\r\n    } while (sVar4 < iVar2);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c68f0",
+      "name": "FUN_004c68f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cbbc0",
+      "name": "FUN_004cbbc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cbfd0",
+      "name": "FUN_004cbfd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc130",
+      "name": "FUN_004cc130",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,38 @@
+{
+  "address": "004dbb70",
+  "name": "___init_ctype",
+  "signature": "int __cdecl ___init_ctype(threadlocinfo * _LocInfo)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___init_ctype\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl ___init_ctype(threadlocinfo *_LocInfo)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  undefined2 *puVar3;\r\n  undefined2 *puVar4;\r\n  BOOL BVar5;\r\n  uint uVar6;\r\n  undefined1 *puVar7;\r\n  undefined2 *puVar8;\r\n  BYTE *pBVar9;\r\n  void *unaff_EBP;\r\n  undefined1 *_DWInfoType;\r\n  undefined2 *local_18;\r\n  _cpinfo local_14;\r\n  \r\n  _DWInfoType = (undefined1 *)0x0;\r\n  local_18 = (undefined2 *)0x0;\r\n  if (DAT_00507ab8 == 0) {\r\n    PTR_DAT_00507010 = &DAT_0050701a;\r\n    PTR_DAT_00507014 = &DAT_0050701a;\r\n    FUN_004d6010(DAT_00507aa4);\r\n    FUN_004d6010(DAT_00507aa8);\r\n    DAT_00507aa4 = (undefined2 *)0x0;\r\n    DAT_00507aa8 = (undefined2 *)0x0;\r\n    return 0;\r\n  }\r\n  if ((DAT_00507ac8 != 0) ||\r\n     (iVar2 = ___getlocaleinfo((_locale_t)0x0,(uint)DAT_00507adc,(LPCWSTR)&DAT_0000000b,0x507ac8,\r\n                               unaff_EBP), puVar4 = (undefined2 *)local_14.MaxCharSize,\r\n     puVar3 = (undefined2 *)local_14.MaxCharSize, iVar2 == 0)) {\r\n    puVar3 = (undefined2 *)FUN_004d5f00(0x202);\r\n    puVar4 = (undefined2 *)FUN_004d5f00(0x202);\r\n    _DWInfoType = (undefined1 *)FUN_004d5f00(0x101);\r\n    local_18 = (undefined2 *)FUN_004d5f00(0x202);\r\n    if ((puVar3 != (undefined2 *)0x0) &&\r\n       (((puVar4 != (undefined2 *)0x0 && (_DWInfoType != (undefined1 *)0x0)) &&\r\n        (local_18 != (undefined2 *)0x0)))) {\r\n      iVar2 = 0;\r\n      puVar7 = _DWInfoType;\r\n      do {\r\n        *puVar7 = (char)iVar2;\r\n        puVar7 = puVar7 + 1;\r\n        iVar2 = iVar2 + 1;\r\n      } while (iVar2 < 0x100);\r\n      BVar5 = GetCPInfo(DAT_00507ac8,&local_14);\r\n      if ((BVar5 != 0) && (local_14.MaxCharSize < (undefined2 *)0x3)) {\r\n        DAT_0050721c = local_14.MaxCharSize & 0xffff;\r\n        if (1 < DAT_0050721c) {\r\n          pBVar9 = local_14.LeadByte;\r\n          bVar1 = local_14.LeadByte[0];\r\n          while ((bVar1 != 0 && (pBVar9[1] != 0))) {\r\n            uVar6 = (uint)*pBVar9;\r\n            if (uVar6 <= pBVar9[1]) {\r\n              do {\r\n                _DWInfoType[uVar6] = 0;\r\n                uVar6 = uVar6 + 1;\r\n              } while ((int)uVar6 <= (int)(uint)pBVar9[1]);\r\n            }\r\n            pBVar9 = pBVar9 + 2;\r\n            bVar1 = *pBVar9;\r\n          }\r\n        }\r\n        BVar5 = ___crtGetStringTypeA\r\n                          ((_locale_t)0x1,(DWORD)_DWInfoType,&DAT_00000100,(int)(puVar3 + 1),\r\n                           (LPWORD)0x0,0,(BOOL)unaff_EBP);\r\n        if (BVar5 != 0) {\r\n          *puVar3 = 0;\r\n          iVar2 = 0;\r\n          puVar8 = local_18;\r\n          do {\r\n            *puVar8 = (short)iVar2;\r\n            puVar8 = puVar8 + 1;\r\n            iVar2 = iVar2 + 1;\r\n          } while (iVar2 < 0x100);\r\n          iVar2 = ___crtGetStringTypeW(1,local_18,0x100,puVar4 + 1,0,0);\r\n          if (iVar2 != 0) {\r\n            *puVar4 = 0;\r\n            if (1 < (int)DAT_0050721c) {\r\n              pBVar9 = local_14.LeadByte;\r\n              while ((local_14.LeadByte[0] != 0 && (pBVar9[1] != 0))) {\r\n                uVar6 = (uint)*pBVar9;\r\n                if (uVar6 <= pBVar9[1]) {\r\n                  puVar8 = puVar3 + uVar6 + 1;\r\n                  do {\r\n                    *puVar8 = 0x8000;\r\n                    puVar8 = puVar8 + 1;\r\n                    uVar6 = uVar6 + 1;\r\n                  } while ((int)uVar6 <= (int)(uint)pBVar9[1]);\r\n                }\r\n                pBVar9 = pBVar9 + 2;\r\n                local_14.LeadByte[0] = *pBVar9;\r\n              }\r\n            }\r\n            PTR_DAT_00507010 = (undefined *)(puVar3 + 1);\r\n            PTR_DAT_00507014 = (undefined *)(puVar4 + 1);\r\n            if (DAT_00507aa4 != (undefined2 *)0x0) {\r\n              FUN_004d6010(DAT_00507aa4);\r\n            }\r\n            DAT_00507aa4 = puVar3;\r\n            if (DAT_00507aa8 != (undefined2 *)0x0) {\r\n              FUN_004d6010(DAT_00507aa8);\r\n            }\r\n            DAT_00507aa8 = puVar4;\r\n            FUN_004d6010(_DWInfoType);\r\n            FUN_004d6010(local_18);\r\n            return 0;\r\n          }\r\n        }\r\n      }\r\n    }\r\n  }\r\n  FUN_004d6010(puVar3);\r\n  FUN_004d6010(puVar4);\r\n  FUN_004d6010(_DWInfoType);\r\n  FUN_004d6010(local_18);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "EXTERNAL:00000049",
+      "name": "GetCPInfo"
+    },
+    {
+      "addr": "004ddc00",
+      "name": "___crtGetStringTypeA"
+    },
+    {
+      "addr": "004dda40",
+      "name": "___crtGetStringTypeW"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

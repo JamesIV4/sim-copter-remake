@@ -1,0 +1,24 @@
+{
+  "address": "00408e00",
+  "name": "FUN_00408e00",
+  "signature": "undefined FUN_00408e00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00408e00(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  code *pcVar2;\r\n  code *pcVar3;\r\n  byte *pbVar4;\r\n  int iVar5;\r\n  int local_110;\r\n  int local_10c;\r\n  int local_108;\r\n  int local_104;\r\n  \r\n  iVar5 = 0;\r\n  local_108 = param_1[2];\r\n  local_110 = 0;\r\n  local_10c = 0;\r\n  local_104 = param_1[3];\r\n  iVar1 = *param_1;\r\n  pcVar2 = *(code **)(iVar1 + 0x44);\r\n  (*pcVar2)(0xff,&local_110);\r\n  pcVar3 = *(code **)(iVar1 + 0x4c);\r\n  do {\r\n    local_110 = (iVar5 / 0x2c) * 100 + 10;\r\n    local_10c = (iVar5 % 0x2c) * 10 + 10;\r\n    (*pcVar2)(iVar5,&stack0xfffffee8);\r\n    pbVar4 = (byte *)(iVar5 * 4 + param_1[0x4d]);\r\n    _sprintf((char *)&local_110,s__3d___3d__3d__3d_004f829c,iVar5,(uint)pbVar4[2],(uint)pbVar4[1],\r\n             (uint)*pbVar4);\r\n    (*pcVar3)(&local_110,0,&stack0xfffffee0,&stack0xfffffee4,&stack0xfffffee8,&stack0xfffffeec,0);\r\n    iVar5 = iVar5 + 1;\r\n  } while (iVar5 < 0x100);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00408cb0",
+      "name": "FUN_00408cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    }
+  ],
+  "data_refs": []
+}

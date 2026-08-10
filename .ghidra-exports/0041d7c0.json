@@ -1,0 +1,36 @@
+{
+  "address": "0041d7c0",
+  "name": "FUN_0041d7c0",
+  "signature": "undefined FUN_0041d7c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0041d7c0(int *param_1,int param_2,int param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  undefined4 *puVar7;\r\n  undefined4 *puVar8;\r\n  \r\n  EnterCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  if ((int)param_1 - param_2 != -0x14) {\r\n    *(int *)(param_1[6] + 0xc) = *(int *)(param_1[6] + 0xc) + -1;\r\n    puVar2 = (undefined4 *)param_1[6];\r\n    if ((puVar2[3] == 0) && (puVar2 != (undefined4 *)0x0)) {\r\n      if (puVar2[2] != 0) {\r\n        FUN_004d29a0(*puVar2);\r\n        puVar2[2] = 0;\r\n        *puVar2 = 0;\r\n      }\r\n      FUN_004d29a0(puVar2);\r\n    }\r\n    piVar1 = (int *)(*(int *)(param_2 + 4) + 0xc);\r\n    if (*piVar1 == -1) {\r\n      puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n      if (puVar2 == (undefined4 *)0x0) {\r\n        param_1[6] = 0;\r\n      }\r\n      else {\r\n        iVar4 = *(int *)(*(int *)(param_2 + 4) + 4);\r\n        puVar2[1] = iVar4;\r\n        puVar2[2] = iVar4;\r\n        if (iVar4 == 0) {\r\n          *puVar2 = 0;\r\n        }\r\n        else {\r\n          uVar3 = FUN_004d28b0(iVar4);\r\n          *puVar2 = uVar3;\r\n          puVar7 = (undefined4 *)0x0;\r\n          if ((*(undefined4 **)(param_2 + 4))[1] != 0) {\r\n            puVar7 = (undefined4 *)**(undefined4 **)(param_2 + 4);\r\n          }\r\n          uVar6 = puVar2[1];\r\n          puVar8 = (undefined4 *)*puVar2;\r\n          for (uVar5 = uVar6 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n            *puVar8 = *puVar7;\r\n            puVar7 = puVar7 + 1;\r\n            puVar8 = puVar8 + 1;\r\n          }\r\n          for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n            *(undefined1 *)puVar8 = *(undefined1 *)puVar7;\r\n            puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n            puVar8 = (undefined4 *)((int)puVar8 + 1);\r\n          }\r\n        }\r\n        puVar2[3] = 1;\r\n        param_1[6] = (int)puVar2;\r\n      }\r\n    }\r\n    else {\r\n      param_1[6] = *(int *)(param_2 + 4);\r\n      *piVar1 = *piVar1 + 1;\r\n    }\r\n  }\r\n  param_1[0x13] = param_3;\r\n  param_1[0xc] = 1;\r\n  param_1[7] = 0;\r\n  if (param_3 == 1) {\r\n    param_1[8] = 1;\r\n  }\r\n  if (param_3 == 2) {\r\n    iVar4 = (**(code **)(*param_1 + 0x44))();\r\n    param_1[8] = iVar4;\r\n  }\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

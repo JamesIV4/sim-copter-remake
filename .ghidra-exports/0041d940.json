@@ -1,0 +1,43 @@
+{
+  "address": "0041d940",
+  "name": "FUN_0041d940",
+  "signature": "undefined FUN_0041d940(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0041d940(int *param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  uVar1 = 0;\r\n  EnterCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  if (param_1[8] == 0) {\r\n    if (param_1[1] == 1) {\r\n      uVar1 = (**(code **)(*param_1 + 0x3c))();\r\n    }\r\n    else if (param_1[1] == 0) {\r\n      uVar1 = (**(code **)(*param_1 + 0x38))();\r\n    }\r\n  }\r\n  else {\r\n    uVar1 = 1;\r\n  }\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043b240",
+      "name": "FUN_0043b240",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043b590",
+      "name": "FUN_0043b590",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043b2d0",
+      "name": "FUN_0043b2d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043b3e0",
+      "name": "FUN_0043b3e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

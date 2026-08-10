@@ -1,0 +1,28 @@
+{
+  "address": "004d5c70",
+  "name": "__fread_lk",
+  "signature": "undefined __fread_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fread_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __fread_lk(char *param_1,uint param_2,uint param_3,FILE *param_4)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  uint local_4;\r\n  \r\n  uVar1 = param_3 * param_2;\r\n  if (uVar1 == 0) {\r\n    return 0;\r\n  }\r\n  uVar5 = uVar1;\r\n  if ((param_4->_flag & 0x10cU) == 0) {\r\n    local_4 = 0x1000;\r\n  }\r\n  else {\r\n    local_4 = param_4->_bufsiz;\r\n  }\r\n  while( true ) {\r\n    while( true ) {\r\n      while( true ) {\r\n        if (uVar5 == 0) {\r\n          return param_3;\r\n        }\r\n        if (((param_4->_flag & 0x10cU) == 0) || (uVar3 = param_4->_cnt, uVar3 == 0)) break;\r\n        uVar4 = uVar5;\r\n        if (uVar3 <= uVar5) {\r\n          uVar4 = uVar3;\r\n        }\r\n        uVar5 = uVar5 - uVar4;\r\n        pcVar6 = param_4->_ptr;\r\n        pcVar7 = param_1;\r\n        for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n          *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n          pcVar6 = pcVar6 + 4;\r\n          pcVar7 = pcVar7 + 4;\r\n        }\r\n        for (uVar3 = uVar4 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n          *pcVar7 = *pcVar6;\r\n          pcVar6 = pcVar6 + 1;\r\n          pcVar7 = pcVar7 + 1;\r\n        }\r\n        param_4->_cnt = param_4->_cnt - uVar4;\r\n        param_4->_ptr = param_4->_ptr + uVar4;\r\n        param_1 = param_1 + uVar4;\r\n      }\r\n      if (local_4 <= uVar5) break;\r\n      iVar2 = __filbuf(param_4);\r\n      if (iVar2 == -1) {\r\n        return (uVar1 - uVar5) / param_2;\r\n      }\r\n      uVar5 = uVar5 - 1;\r\n      *param_1 = (char)iVar2;\r\n      local_4 = param_4->_bufsiz;\r\n      param_1 = param_1 + 1;\r\n    }\r\n    uVar3 = uVar5;\r\n    if (local_4 != 0) {\r\n      uVar3 = uVar5 - uVar5 % local_4;\r\n    }\r\n    iVar2 = __read(param_4->_file,param_1,uVar3);\r\n    if (iVar2 == 0) break;\r\n    if (iVar2 == -1) {\r\n      param_4->_flag = param_4->_flag | 0x20;\r\n      return (uVar1 - uVar5) / param_2;\r\n    }\r\n    uVar5 = uVar5 - iVar2;\r\n    param_1 = param_1 + iVar2;\r\n  }\r\n  param_4->_flag = param_4->_flag | 0x10;\r\n  return (uVar1 - uVar5) / param_2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5c30",
+      "name": "_fread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    },
+    {
+      "addr": "004de2a0",
+      "name": "__filbuf"
+    }
+  ],
+  "data_refs": []
+}

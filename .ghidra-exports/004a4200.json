@@ -1,0 +1,36 @@
+{
+  "address": "004a4200",
+  "name": "FUN_004a4200",
+  "signature": "undefined FUN_004a4200(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a4200(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined4 local_c;\r\n  int local_8;\r\n  undefined4 local_4;\r\n  \r\n  iVar4 = 0;\r\n  local_8 = FUN_004a92e0();\r\n  do {\r\n    iVar1 = FUN_004ab3b0(iVar4);\r\n    if ((((iVar1 != 0) && ((*(byte *)(iVar1 + 0x4c) & 1) != 0)) && (*(int *)(iVar1 + 0x54) != 2)) &&\r\n       (local_8 != iVar1)) {\r\n      FUN_004a4000(*(undefined4 *)(iVar1 + 0x50),&local_c,&local_4);\r\n      iVar2 = *(int *)(iVar1 + 0x30);\r\n      if (iVar2 == -1) {\r\n        iVar2 = *(int *)(iVar1 + 0x28);\r\n        if (iVar2 != -1) {\r\n          iVar3 = *(int *)(iVar1 + 0x2c);\r\n          goto LAB_004a4293;\r\n        }\r\n      }\r\n      else {\r\n        iVar3 = *(int *)(iVar1 + 0x34);\r\nLAB_004a4293:\r\n        FUN_004a3a00(iVar2 - param_1 << (DAT_00505f08 & 0x1f),\r\n                     iVar3 - param_2 << (DAT_00505f08 & 0x1f),0,local_c);\r\n      }\r\n      if (*(int *)(iVar1 + 0x38) != -1) {\r\n        FUN_004a3a00(*(int *)(iVar1 + 0x38) - param_1 << (DAT_00505f08 & 0x1f),\r\n                     *(int *)(iVar1 + 0x3c) - param_2 << (DAT_00505f08 & 0x1f),0,local_4);\r\n      }\r\n    }\r\n    iVar4 = iVar4 + 1;\r\n    if (0x1d < iVar4) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a28e0",
+      "name": "FUN_004a28e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004a92e0",
+      "name": "FUN_004a92e0"
+    },
+    {
+      "addr": "004ab3b0",
+      "name": "FUN_004ab3b0"
+    },
+    {
+      "addr": "004a4000",
+      "name": "FUN_004a4000"
+    },
+    {
+      "addr": "004a3a00",
+      "name": "FUN_004a3a00"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "00454390",
+  "name": "FUN_00454390",
+  "signature": "undefined FUN_00454390(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00454390(int param_1,int param_2,undefined4 *param_3)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  \r\n  iVar4 = 0;\r\n  piVar3 = (int *)(DAT_005040d0 + 0x1f0);\r\n  do {\r\n    if (*piVar3 != -1) {\r\n      iVar2 = (piVar3[4] % *(int *)(DAT_005040d0 + 0x1e8)) * 0x20;\r\n      iVar1 = piVar3[4] / *(int *)(DAT_005040d0 + 0x1e8);\r\n      if ((((iVar2 + 0xe <= param_1) && (iVar1 * 0x23 + 10 <= param_2)) && (param_1 < iVar2 + 0x29))\r\n         && (param_2 < iVar1 * 0x23 + 0x2b)) {\r\n        *param_3 = *(undefined4 *)(iVar4 * 0x14 + DAT_005040d0 + 0x1fc);\r\n        return 1;\r\n      }\r\n    }\r\n    piVar3 = piVar3 + 5;\r\n    iVar4 = iVar4 + 1;\r\n    if (0xf < iVar4) {\r\n      return 0;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00454250",
+      "name": "FUN_00454250",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004e06f0",
+  "name": "___dtold",
+  "signature": "undefined ___dtold(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___dtold\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___dtold(uint *param_1,uint *param_2)\r\n\r\n{\r\n  ushort uVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  ushort uVar5;\r\n  \r\n  uVar1 = *(ushort *)((int)param_2 + 6);\r\n  uVar5 = (uVar1 & 0x7ff0) >> 4;\r\n  uVar4 = 0x80000000;\r\n  uVar2 = param_2[1];\r\n  uVar3 = *param_2;\r\n  if (uVar5 == 0) {\r\n    if (((uVar2 & 0xfffff) == 0) && (uVar3 == 0)) {\r\n      *(undefined2 *)(param_1 + 2) = 0;\r\n      param_1[1] = 0;\r\n      *param_1 = 0;\r\n      return;\r\n    }\r\n    uVar5 = 0x3c01;\r\n    uVar4 = 0;\r\n  }\r\n  else if (uVar5 == 0x7ff) {\r\n    uVar5 = 0x7fff;\r\n  }\r\n  else {\r\n    uVar5 = uVar5 + 0x3c00;\r\n  }\r\n  *param_1 = uVar3 << 0xb;\r\n  param_1[1] = (uVar2 & 0xfffff) << 0xb | uVar3 >> 0x15 | uVar4;\r\n  while (uVar4 == 0) {\r\n    uVar5 = uVar5 - 1;\r\n    uVar2 = *param_1;\r\n    uVar3 = param_1[1];\r\n    *param_1 = uVar2 * 2;\r\n    param_1[1] = uVar2 >> 0x1f | uVar3 * 2;\r\n    uVar4 = uVar3 * 2 & 0x80000000;\r\n  }\r\n  *(ushort *)(param_1 + 2) = uVar5 | uVar1 & 0x8000;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0660",
+      "name": "__fltout2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,50 @@
+{
+  "address": "0042b560",
+  "name": "FUN_0042b560",
+  "signature": "undefined FUN_0042b560(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4\r\nFUN_0042b560(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  UINT UVar3;\r\n  undefined4 uVar4;\r\n  int extraout_ECX;\r\n  uint uVar5;\r\n  undefined4 *unaff_ESI;\r\n  int unaff_EDI;\r\n  char *pcVar6;\r\n  \r\n  FUN_004d2c30();\r\n  param_1 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (param_1 == (undefined4 *)0x0) {\r\n    param_1 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_1[1] = 0;\r\n    param_1[2] = 0;\r\n    *param_1 = 0;\r\n    param_1[3] = 1;\r\n  }\r\n  FUN_00404920();\r\n  iVar2 = FUN_004d28b0(0x94);\r\n  if (iVar2 == 0) {\r\n    *(undefined4 *)(extraout_ECX + 0x1d2) = 0;\r\n  }\r\n  else {\r\n    param_2 = 0x1fc;\r\n    param_3 = 0xce;\r\n    param_4 = 0x1fe;\r\n    param_5 = 0xd0;\r\n    uVar4 = FUN_0043b240(&param_2,1,extraout_ECX,PTR_s_cat_btn_bmp_004f8d5c,extraout_ECX,1);\r\n    *(undefined4 *)(extraout_ECX + 0x1d2) = uVar4;\r\n  }\r\n  UVar3 = FUN_00423270(0x1ba,0);\r\n  LoadStringA(DAT_0051a050,UVar3,(LPSTR)&param_2,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  pcVar6 = (char *)&param_2;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&param_2,~uVar5 - 1);\r\n  (**(code **)(**(int **)(extraout_ECX + 0x1d2) + 0x58))(&stack0x00000000);\r\n  (**(code **)(**(int **)(extraout_ECX + 0x1d2) + 4))();\r\n  iVar2 = FUN_004d28b0(0x94);\r\n  if (iVar2 == 0) {\r\n    *(undefined4 *)(extraout_ECX + 0x1d6) = 0;\r\n  }\r\n  else {\r\n    param_1 = (undefined4 *)0x1fc;\r\n    param_2 = 0xec;\r\n    param_3 = 0x1fe;\r\n    param_4 = 0xee;\r\n    uVar4 = FUN_0043b240(&param_1,2,extraout_ECX,PTR_s_cat_btn_bmp_004f8d5c,extraout_ECX,1);\r\n    *(undefined4 *)(extraout_ECX + 0x1d6) = uVar4;\r\n  }\r\n  UVar3 = FUN_00423270(0x1bb,0);\r\n  LoadStringA(DAT_0051a050,UVar3,(LPSTR)&param_1,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  pcVar6 = (char *)&param_1;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&param_1,~uVar5 - 1);\r\n  (**(code **)(**(int **)(extraout_ECX + 0x1d6) + 0x58))(&stack0xfffffffc);\r\n  (**(code **)(**(int **)(extraout_ECX + 0x1d6) + 4))();\r\n  iVar2 = FUN_004d28b0(0x94);\r\n  if (iVar2 == 0) {\r\n    *(undefined4 *)(extraout_ECX + 0x1da) = 0;\r\n  }\r\n  else {\r\n    param_1 = (undefined4 *)0x10a;\r\n    param_2 = 0x1fe;\r\n    param_3 = 0x10c;\r\n    uVar4 = FUN_0043b240(&stack0x00000000,3,extraout_ECX,PTR_s_cat_btn_bmp_004f8d5c,extraout_ECX,1);\r\n    *(undefined4 *)(extraout_ECX + 0x1da) = uVar4;\r\n  }\r\n  UVar3 = FUN_00423270(0x1bc,0);\r\n  LoadStringA(DAT_0051a050,UVar3,&stack0x00000000,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  pcVar6 = (char *)register0x00000010;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x00000000,~uVar5 - 1);\r\n  (**(code **)(**(int **)(extraout_ECX + 0x1da) + 0x58))(&stack0xfffffff8);\r\n  (**(code **)(**(int **)(extraout_ECX + 0x1da) + 4))();\r\n  FUN_0042d420();\r\n  unaff_ESI[3] = unaff_ESI[3] + -1;\r\n  if ((unaff_ESI[3] == 0) && (unaff_ESI != (undefined4 *)0x0)) {\r\n    if (unaff_ESI[2] != 0) {\r\n      FUN_004d29a0(*unaff_ESI);\r\n      unaff_ESI[2] = 0;\r\n      *unaff_ESI = 0;\r\n    }\r\n    FUN_004d29a0(unaff_ESI);\r\n  }\r\n  if (unaff_EDI != 0) {\r\n    FUN_004d29a0(unaff_EDI);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00404920",
+      "name": "FUN_00404920"
+    },
+    {
+      "addr": "0043b240",
+      "name": "FUN_0043b240"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "0042d420",
+      "name": "FUN_0042d420"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

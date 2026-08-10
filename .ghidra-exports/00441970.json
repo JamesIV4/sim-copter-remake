@@ -1,0 +1,22 @@
+{
+  "address": "00441970",
+  "name": "FUN_00441970",
+  "signature": "undefined FUN_00441970(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00441970(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  FUN_0040e8d0();\r\n  iVar3 = *(int *)(param_1[0x33] + 8) / 3;\r\n  iVar1 = *param_1;\r\n  (**(code **)(iVar1 + 0x48))((((param_1[6] - param_1[4]) + -1 + iVar3) / iVar3) * iVar3,0xffffffff)\r\n  ;\r\n  if (param_1[0xf] != 0) {\r\n    iVar3 = param_1[4];\r\n    iVar2 = param_1[5];\r\n    FUN_00404b90(&stack0xffffffe8);\r\n    (**(code **)(iVar1 + 0x44))(iVar3,iVar2);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0040e8d0",
+      "name": "FUN_0040e8d0"
+    },
+    {
+      "addr": "00404b90",
+      "name": "FUN_00404b90"
+    }
+  ],
+  "data_refs": []
+}

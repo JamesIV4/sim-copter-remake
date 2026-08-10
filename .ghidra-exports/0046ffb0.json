@@ -1,0 +1,18 @@
+{
+  "address": "0046ffb0",
+  "name": "FUN_0046ffb0",
+  "signature": "undefined FUN_0046ffb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046ffb0(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  bool bVar7;\r\n  \r\n  DAT_004fe764 = &DAT_004fc1e4;\r\n  DAT_004fe768 = 0;\r\n  DAT_004fe770 = &DAT_004fc1e4;\r\n  puVar4 = &DAT_004fe97c;\r\n  if (&DAT_004fe97c < PTR_DAT_004fe978) {\r\n    do {\r\n      bVar7 = true;\r\n      uVar1 = *puVar4;\r\n      FUN_0047016e();\r\n      iVar2 = DAT_004fc1d8;\r\n      if (!bVar7) {\r\n        puVar5 = DAT_004fe764 + -2;\r\n        puVar6 = DAT_004fe764;\r\n        if (DAT_004fe770 <= puVar5) {\r\n          do {\r\n            if (iVar2 <= (int)puVar5[1]) break;\r\n            for (iVar3 = 2; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n              *puVar6 = *puVar5;\r\n              puVar5 = puVar5 + 1;\r\n              puVar6 = puVar6 + 1;\r\n            }\r\n            puVar5 = puVar5 + -4;\r\n            puVar6 = puVar6 + -4;\r\n          } while (DAT_004fe770 <= puVar5);\r\n        }\r\n        *puVar6 = uVar1;\r\n        puVar6[1] = iVar2;\r\n        DAT_004fe764 = DAT_004fe764 + 2;\r\n        DAT_004fe768 = DAT_004fe768 + 1;\r\n      }\r\n      puVar4 = puVar4 + 1;\r\n    } while (puVar4 < PTR_DAT_004fe978);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0047016e",
+      "name": "FUN_0047016e"
+    }
+  ],
+  "data_refs": []
+}

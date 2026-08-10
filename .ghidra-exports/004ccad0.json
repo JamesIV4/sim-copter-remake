@@ -1,0 +1,13 @@
+{
+  "address": "004ccad0",
+  "name": "FUN_004ccad0",
+  "signature": "undefined FUN_004ccad0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool __thiscall FUN_004ccad0(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  ushort uVar4;\r\n  ushort uVar5;\r\n  ushort uVar6;\r\n  ushort uVar7;\r\n  \r\n  iVar1 = *(int *)(param_2 + 4);\r\n  if (iVar1 == 0) {\r\n    return false;\r\n  }\r\n  uVar5 = (ushort)((uint)(*(int *)(param_1 + 0x1d0) - *(int *)(iVar1 + 0x1c)) >> 0x10);\r\n  uVar3 = (short)uVar5 >> 0xf;\r\n  uVar6 = (ushort)((uint)(*(int *)(param_1 + 0x1d4) - *(int *)(iVar1 + 0x20)) >> 0x10);\r\n  uVar2 = (short)uVar6 >> 0xf;\r\n  uVar7 = (ushort)((uint)(*(int *)(param_1 + 0x1cc) - *(int *)(iVar1 + 0x18)) >> 0x10);\r\n  uVar4 = (short)uVar7 >> 0xf;\r\n  return (ushort)(((uVar5 ^ uVar3) - uVar3) + ((uVar6 ^ uVar2) - uVar2) + ((uVar7 ^ uVar4) - uVar4))\r\n         < 0x19;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

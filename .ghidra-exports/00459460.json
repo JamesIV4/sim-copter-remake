@@ -1,0 +1,26 @@
+{
+  "address": "00459460",
+  "name": "FUN_00459460",
+  "signature": "undefined FUN_00459460(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00459460(undefined4 *param_1)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  \r\n  *param_1 = &PTR_LAB_004f3390;\r\n  if ((HWND)param_1[6] != (HWND)0x0) {\r\n    SetWindowLongA((HWND)param_1[6],0,0);\r\n    DestroyWindow((HWND)param_1[6]);\r\n  }\r\n  if ((HGDIOBJ)param_1[7] != (HGDIOBJ)0x0) {\r\n    DeleteObject((HGDIOBJ)param_1[7]);\r\n  }\r\n  puVar1 = param_1 + 10;\r\n  iVar2 = 0x10;\r\n  do {\r\n    if ((HGDIOBJ)*puVar1 != (HGDIOBJ)0x0) {\r\n      DeleteObject((HGDIOBJ)*puVar1);\r\n    }\r\n    puVar1 = puVar1 + 1;\r\n    iVar2 = iVar2 + -1;\r\n  } while (iVar2 != 0);\r\n  if ((HGDIOBJ)param_1[9] != (HGDIOBJ)0x0) {\r\n    DeleteObject((HGDIOBJ)param_1[9]);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000009e",
+      "name": "SetWindowLongA"
+    },
+    {
+      "addr": "EXTERNAL:00000085",
+      "name": "DestroyWindow"
+    },
+    {
+      "addr": "EXTERNAL:000000a5",
+      "name": "DeleteObject"
+    }
+  ],
+  "data_refs": []
+}

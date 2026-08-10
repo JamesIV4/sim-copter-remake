@@ -1,0 +1,26 @@
+{
+  "address": "00424930",
+  "name": "FUN_00424930",
+  "signature": "undefined FUN_00424930(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_00424930(undefined4 param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  DWORD DVar2;\r\n  int iVar3;\r\n  DWORD *pDVar4;\r\n  undefined4 *puVar5;\r\n  \r\n  uVar1 = FUN_0041cdd0(param_1);\r\n  puVar5 = &DAT_00519a70;\r\n  for (iVar3 = 0x82; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n    *puVar5 = 10000;\r\n    puVar5 = puVar5 + 1;\r\n  }\r\n  DVar2 = timeGetTime();\r\n  DAT_00519cb8 = 0;\r\n  pDVar4 = &DAT_00519cc8;\r\n  for (iVar3 = 0x82; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n    *pDVar4 = DVar2;\r\n    pDVar4 = pDVar4 + 1;\r\n  }\r\n  puVar5 = (undefined4 *)&DAT_00519a18;\r\n  do {\r\n    puVar5 = puVar5 + 7;\r\n    FUN_004012a0();\r\n  } while (puVar5 < &DAT_00519a50);\r\n  _DAT_00519a48 = 3;\r\n  _DAT_00519a2c = 8;\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0041cdd0",
+      "name": "FUN_0041cdd0"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "004012a0",
+      "name": "FUN_004012a0"
+    }
+  ],
+  "data_refs": []
+}

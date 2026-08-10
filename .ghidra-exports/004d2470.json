@@ -1,0 +1,29 @@
+{
+  "address": "004d2470",
+  "name": "~ostream",
+  "signature": "void __thiscall ~ostream(ostream * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual __thiscall ostream::~ostream(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall ostream::~ostream(ostream *this)\r\n\r\n{\r\n  *(undefined ***)(this + *(int *)(*(int *)(this + -8) + 4) + -8) =\r\n       &PTR__scalar_deleting_destructor__004f541c;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d342f",
+      "name": "FUN_004d342f",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d23a0",
+      "name": "`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d25cf",
+      "name": "FUN_004d25cf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

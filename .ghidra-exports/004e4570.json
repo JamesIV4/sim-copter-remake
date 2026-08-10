@@ -1,0 +1,29 @@
+{
+  "address": "004e4570",
+  "name": "___multtenpow12",
+  "signature": "undefined ___multtenpow12(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___multtenpow12\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___multtenpow12(undefined2 *param_1,uint param_2,int param_3)\r\n\r\n{\r\n  ushort *puVar1;\r\n  uint uVar2;\r\n  ushort *puVar3;\r\n  undefined *puVar4;\r\n  uint uVar5;\r\n  ushort local_c;\r\n  undefined4 uStack_a;\r\n  undefined2 uStack_6;\r\n  undefined4 local_4;\r\n  \r\n  puVar4 = &DAT_00508998;\r\n  if (param_2 != 0) {\r\n    if ((int)param_2 < 0) {\r\n      param_2 = -param_2;\r\n      puVar4 = &DAT_00508af8;\r\n    }\r\n    if (param_3 == 0) {\r\n      *param_1 = 0;\r\n    }\r\n    while (param_2 != 0) {\r\n      puVar4 = puVar4 + 0x54;\r\n      uVar5 = (int)param_2 >> 3;\r\n      uVar2 = param_2 & 7;\r\n      param_2 = uVar5;\r\n      if (uVar2 != 0) {\r\n        puVar1 = (ushort *)(puVar4 + uVar2 * 0xc);\r\n        puVar3 = puVar1;\r\n        if (0x7fff < *puVar1) {\r\n          puVar3 = &local_c;\r\n          local_c = (ushort)*(undefined4 *)puVar1;\r\n          uStack_a._0_2_ = (undefined2)((uint)*(undefined4 *)puVar1 >> 0x10);\r\n          uStack_a._2_2_ = (undefined2)*(undefined4 *)(puVar1 + 2);\r\n          uStack_6 = (undefined2)((uint)*(undefined4 *)(puVar1 + 2) >> 0x10);\r\n          local_4 = *(undefined4 *)(puVar1 + 4);\r\n          uStack_a = CONCAT22(uStack_a._2_2_,(undefined2)uStack_a) + -1;\r\n        }\r\n        FUN_004e42c0(param_1,puVar3);\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e2cc0",
+      "name": "___strgtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e42c0",
+      "name": "FUN_004e42c0"
+    }
+  ],
+  "data_refs": []
+}

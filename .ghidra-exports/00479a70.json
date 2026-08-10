@@ -1,0 +1,36 @@
+{
+  "address": "00479a70",
+  "name": "FUN_00479a70",
+  "signature": "undefined FUN_00479a70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00479a70(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int local_4;\r\n  \r\n  uVar1 = DAT_004f3ac0;\r\n  piVar2 = (int *)FUN_00448ec0(DAT_004f3ac0);\r\n  iVar4 = DAT_005a25a0;\r\n  if (piVar2 != (int *)0x0) {\r\n    iVar3 = *piVar2;\r\n    if (iVar3 < 0) {\r\n      iVar3 = 0;\r\n    }\r\n    if (0x18 < iVar3) {\r\n      iVar3 = 0x18;\r\n    }\r\n    iVar3 = (iVar3 * 0x30) / 0x18 + 0xd;\r\n    FUN_00478960(iVar3);\r\n    FUN_0047bf90((DAT_005a25a0 / 2 + -3) * 0x400000);\r\n    if (DAT_005a25a0 == iVar3) {\r\n      iVar4 = (iVar4 - DAT_005a25a0) / 2;\r\n      DAT_005d91f8 = DAT_005d91f8 + iVar4;\r\n      DAT_005d91fc = DAT_005d91fc + iVar4;\r\n    }\r\n    local_4 = ((DAT_005a25a0 * 3 + -0x27) * 8) / 0x30;\r\n    FUN_00448ee0(uVar1,&local_4,4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00448ec0",
+      "name": "FUN_00448ec0"
+    },
+    {
+      "addr": "00478960",
+      "name": "FUN_00478960"
+    },
+    {
+      "addr": "0047bf90",
+      "name": "FUN_0047bf90"
+    },
+    {
+      "addr": "00448ee0",
+      "name": "FUN_00448ee0"
+    }
+  ],
+  "data_refs": []
+}

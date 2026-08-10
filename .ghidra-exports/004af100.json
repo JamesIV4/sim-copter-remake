@@ -1,0 +1,131 @@
+{
+  "address": "004af100",
+  "name": "FUN_004af100",
+  "signature": "undefined FUN_004af100(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004af100(uint param_1,int param_2,int param_3,int param_4,uint param_5,uint param_6)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  uint *puVar3;\r\n  undefined1 local_20 [16];\r\n  undefined4 local_10;\r\n  \r\n  iVar2 = 0;\r\n  puVar3 = &DAT_00581788;\r\n  do {\r\n    if ((*puVar3 & 1) == 0) break;\r\n    iVar2 = iVar2 + 1;\r\n    puVar3 = puVar3 + 0xd;\r\n  } while (iVar2 < 0x14);\r\n  if ((iVar2 != 0x14) && (param_1 != 0)) {\r\n    *puVar3 = *puVar3 | 1;\r\n    iVar2 = 4 << ((byte)param_5 & 0x1f);\r\n    FUN_0046f5a5(puVar3[7],local_20);\r\n    local_10 = DAT_00581c40;\r\n    FUN_0046f5e1(puVar3[7],local_20);\r\n    puVar3[6] = 0xffffffff;\r\n    puVar3[0xb] = param_1;\r\n    puVar3[0xc] = param_6;\r\n    puVar3[10] = param_5;\r\n    FUN_0046e590(*(undefined4 *)(puVar3[8] + 8),iVar2,iVar2);\r\n    puVar3[3] = *(short *)(param_1 + 2) * 0x10000 + param_2;\r\n    puVar3[4] = *(short *)(param_1 + 4) * 0x10000 + param_3;\r\n    puVar3[5] = *(short *)(param_1 + 6) * 0x10000 + param_4;\r\n    uVar1 = puVar3[8];\r\n    *(uint *)(uVar1 + 0x18) = puVar3[3];\r\n    *(uint *)(uVar1 + 0x1c) = puVar3[4];\r\n    *(uint *)(uVar1 + 0x20) = puVar3[5];\r\n    *(int *)(puVar3[8] + 0x10) = iVar2 << 0x10;\r\n    *(int *)(puVar3[8] + 0x1c) = *(int *)(puVar3[8] + 0x1c) + -0x200000;\r\n    FUN_0046cad1(puVar3[8] + 0x24);\r\n    *(undefined4 *)puVar3[8] = *(undefined4 *)(param_1 + 0x10);\r\n    *(uint *)(param_1 + 0x10) = puVar3[8];\r\n    DAT_00506240 = DAT_00506240 + 1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00484d20",
+      "name": "FUN_00484d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00484d20",
+      "name": "FUN_00484d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00484d20",
+      "name": "FUN_00484d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00489ac0",
+      "name": "FUN_00489ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ed00",
+      "name": "FUN_0048ed00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a5fd0",
+      "name": "FUN_004a5fd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049ff00",
+      "name": "FUN_0049ff00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2cd0",
+      "name": "FUN_004b2cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2cd0",
+      "name": "FUN_004b2cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b49b0",
+      "name": "FUN_004b49b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b49b0",
+      "name": "FUN_004b49b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b49b0",
+      "name": "FUN_004b49b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048a8b0",
+      "name": "FUN_0048a8b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046f5a5",
+      "name": "FUN_0046f5a5"
+    },
+    {
+      "addr": "0046f5e1",
+      "name": "FUN_0046f5e1"
+    },
+    {
+      "addr": "0046e590",
+      "name": "FUN_0046e590"
+    },
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1"
+    }
+  ],
+  "data_refs": []
+}

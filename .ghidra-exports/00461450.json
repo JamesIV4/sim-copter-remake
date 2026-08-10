@@ -1,0 +1,106 @@
+{
+  "address": "00461450",
+  "name": "FUN_00461450",
+  "signature": "undefined FUN_00461450(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool __thiscall\r\nFUN_00461450(char *param_1,char *param_2,ushort param_3,undefined4 param_4,int param_5)\r\n\r\n{\r\n  LPCSTR lpFileName;\r\n  char cVar1;\r\n  bool bVar2;\r\n  HANDLE pvVar3;\r\n  undefined4 uVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  char *pcVar7;\r\n  LPCSTR pCVar8;\r\n  char *pcVar9;\r\n  LPCSTR pCVar10;\r\n  CHAR *pCVar11;\r\n  _SECURITY_ATTRIBUTES local_c;\r\n  \r\n  if (-1 < *(int *)(param_1 + 0x108)) {\r\n    return true;\r\n  }\r\n  if (param_2 != (char *)0x0) {\r\n    if (*param_2 == '\\0') {\r\n      return false;\r\n    }\r\n    uVar5 = 0xffffffff;\r\n    do {\r\n      pcVar9 = param_2;\r\n      if (uVar5 == 0) break;\r\n      uVar5 = uVar5 - 1;\r\n      pcVar9 = param_2 + 1;\r\n      cVar1 = *param_2;\r\n      param_2 = pcVar9;\r\n    } while (cVar1 != '\\0');\r\n    uVar5 = ~uVar5;\r\n    pcVar7 = pcVar9 + -uVar5;\r\n    pcVar9 = param_1;\r\n    for (uVar6 = uVar5 >> 2; pcVar9 = pcVar9 + 4, uVar6 != 0; uVar6 = uVar6 - 1) {\r\n      *(undefined4 *)pcVar9 = *(undefined4 *)pcVar7;\r\n      pcVar7 = pcVar7 + 4;\r\n    }\r\n    for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n      *pcVar9 = *pcVar7;\r\n      pcVar7 = pcVar7 + 1;\r\n      pcVar9 = pcVar9 + 1;\r\n    }\r\n  }\r\n  lpFileName = param_1 + 4;\r\n  if (*lpFileName == '\\0') {\r\n    return false;\r\n  }\r\n  if (lpFileName == (LPCSTR)0x0) {\r\nLAB_00461504:\r\n    bVar2 = false;\r\n  }\r\n  else {\r\n    local_c.nLength = 0xc;\r\n    local_c.lpSecurityDescriptor = (LPVOID)0x0;\r\n    local_c.bInheritHandle = 0;\r\n    pvVar3 = CreateFileA(lpFileName,0x80000000,3,&local_c,3,0x80,(HANDLE)0x0);\r\n    if (pvVar3 == (HANDLE)0xffffffff) goto LAB_00461504;\r\n    CloseHandle(pvVar3);\r\n    bVar2 = true;\r\n  }\r\n  if (bVar2) {\r\n    if ((param_3 & 0xf0) == 0) {\r\n      param_3 = param_3 | 0x40;\r\n    }\r\n    uVar4 = FUN_004df2e0(lpFileName,param_3 & 0xfe0f,param_3 & 0xf0);\r\nLAB_004615ef:\r\n    *(undefined4 *)(param_1 + 0x108) = uVar4;\r\n  }\r\n  else {\r\n    if (param_5 == 0) {\r\n      return false;\r\n    }\r\n    uVar5 = *(uint *)(param_1 + 0x108);\r\n    if (uVar5 < 0x80000000) goto LAB_004615fc;\r\n    if (param_1 == (char *)0xfffffffc) {\r\nLAB_0046155d:\r\n      if (*lpFileName != '\\0') {\r\n        if (lpFileName == (LPCSTR)0x0) {\r\nLAB_004615aa:\r\n          bVar2 = false;\r\n        }\r\n        else {\r\n          local_c.nLength = 0xc;\r\n          local_c.lpSecurityDescriptor = (LPVOID)0x0;\r\n          local_c.bInheritHandle = 0;\r\n          pvVar3 = CreateFileA(lpFileName,0x80000000,3,&local_c,3,0x80,(HANDLE)0x0);\r\n          if (pvVar3 == (HANDLE)0xffffffff) goto LAB_004615aa;\r\n          CloseHandle(pvVar3);\r\n          bVar2 = true;\r\n        }\r\n        if (!bVar2) {\r\n          uVar4 = FUN_004ef320(lpFileName,param_3);\r\n          goto LAB_004615ef;\r\n        }\r\n      }\r\n    }\r\n    else if (*lpFileName != '\\0') {\r\n      uVar5 = 0xffffffff;\r\n      pCVar8 = lpFileName;\r\n      do {\r\n        pCVar10 = pCVar8;\r\n        if (uVar5 == 0) break;\r\n        uVar5 = uVar5 - 1;\r\n        pCVar10 = pCVar8 + 1;\r\n        cVar1 = *pCVar8;\r\n        pCVar8 = pCVar10;\r\n      } while (cVar1 != '\\0');\r\n      uVar5 = ~uVar5;\r\n      pCVar8 = pCVar10 + -uVar5;\r\n      pCVar11 = lpFileName;\r\n      for (uVar6 = uVar5 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *(undefined4 *)pCVar11 = *(undefined4 *)pCVar8;\r\n        pCVar8 = pCVar8 + 4;\r\n        pCVar11 = pCVar11 + 4;\r\n      }\r\n      for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *pCVar11 = *pCVar8;\r\n        pCVar8 = pCVar8 + 1;\r\n        pCVar11 = pCVar11 + 1;\r\n      }\r\n      goto LAB_0046155d;\r\n    }\r\n  }\r\n  uVar5 = *(uint *)(param_1 + 0x108);\r\nLAB_004615fc:\r\n  return uVar5 < 0x80000000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044f860",
+      "name": "FUN_0044f860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044fc40",
+      "name": "FUN_0044fc40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00450a70",
+      "name": "FUN_00450a70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461640",
+      "name": "FUN_00461640",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459cd0",
+      "name": "FUN_00459cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433580",
+      "name": "FUN_00433580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461860",
+      "name": "FUN_00461860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461860",
+      "name": "FUN_00461860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459d30",
+      "name": "FUN_00459d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459dc0",
+      "name": "FUN_00459dc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045a0a0",
+      "name": "FUN_0045a0a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00468670",
+      "name": "FUN_00468670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00468970",
+      "name": "FUN_00468970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000002",
+      "name": "CreateFileA"
+    },
+    {
+      "addr": "EXTERNAL:00000005",
+      "name": "CloseHandle"
+    },
+    {
+      "addr": "004ef320",
+      "name": "FUN_004ef320"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "004ccf20",
+  "name": "FUN_004ccf20",
+  "signature": "undefined FUN_004ccf20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004ccf20(int param_1,undefined4 param_2,short *param_3)\r\n\r\n{\r\n  *(short *)(param_1 + 0x1b0) = *(short *)(param_1 + 0x1b0) + 1;\r\n  (*(code *)(&DAT_0058ef78)[*param_3])(param_1,param_2,param_3);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,93 @@
+{
+  "address": "0045d110",
+  "name": "FUN_0045d110",
+  "signature": "undefined FUN_0045d110(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0045d110(int *param_1,undefined1 *param_2)\r\n\r\n{\r\n  bool bVar1;\r\n  undefined4 *puVar2;\r\n  ostream *poVar3;\r\n  int iVar4;\r\n  int *piVar5;\r\n  int *piVar6;\r\n  int *piVar7;\r\n  int local_278 [4];\r\n  undefined1 local_268 [4];\r\n  undefined1 local_264 [4];\r\n  int local_260;\r\n  undefined1 local_104;\r\n  undefined4 local_103;\r\n  \r\n  local_104 = DAT_004f83a8;\r\n  puVar2 = &local_103;\r\n  for (iVar4 = 0x40; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n    *puVar2 = 0;\r\n    puVar2 = puVar2 + 1;\r\n  }\r\n  *(undefined2 *)puVar2 = 0;\r\n  *(undefined1 *)((int)puVar2 + 2) = 0;\r\n  if (param_2 == (undefined1 *)0x0) {\r\n    FUN_00432ab0(0xb,0,PTR_s_input_cfg_004f9b7c,&local_104);\r\n    param_2 = &local_104;\r\n  }\r\n  FUN_00459be0(param_2);\r\n  iVar4 = FUN_00459cd0();\r\n  if (iVar4 == 0) {\r\n    FUN_00459c70();\r\n    return 0;\r\n  }\r\n  iVar4 = FUN_00459e90();\r\n  if (iVar4 != 0) {\r\n    iVar4 = FUN_00459f10();\r\n    if (iVar4 == 0x53435554) {\r\n      iVar4 = FUN_00459f60();\r\n      if (iVar4 == 0x53435554) {\r\n        FUN_0045a130();\r\n        do {\r\n          FUN_0045a3b0(local_278,0x18);\r\n          if (local_278[0] == 0) {\r\nLAB_0045d1f6:\r\n            if ((((local_278[2] == 0x90) || (local_278[2] == 0x2c)) || (local_278[2] == 0x1b)) ||\r\n               ((local_278[2] == 0x11 || (local_278[2] == 0x12)))) goto LAB_0045d263;\r\nLAB_0045d21c:\r\n            if ((((0 < local_278[0]) && ((local_278[0] < 5 && (0xd < local_278[2])))) ||\r\n                (local_278[3] != 0)) || ((local_278[1] < 2 || (0x2c < local_278[1]))))\r\n            goto LAB_0045d263;\r\n            FUN_0045e390(local_278[1],local_268,local_264);\r\n            bVar1 = true;\r\n          }\r\n          else {\r\n            if ((0 < local_278[0]) && (local_278[0] < 5)) {\r\n              if (local_278[0] == 0) goto LAB_0045d1f6;\r\n              goto LAB_0045d21c;\r\n            }\r\nLAB_0045d263:\r\n            bVar1 = false;\r\n          }\r\n          piVar5 = DAT_004f84f4;\r\n          if (bVar1) {\r\n            local_260 = *param_1;\r\n            if (DAT_004f84f8 == (int *)0x0) {\r\n              if (DAT_004f84f0 == DAT_004f84f4) {\r\n                set_new_handler((_func_void *)0x0);\r\n                puVar2 = (undefined4 *)FUN_004d28b0(8);\r\n                if (puVar2 == (undefined4 *)0x0) {\r\n                  poVar3 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n                  FUN_00401000(poVar3);\r\n                  FUN_004d2060(1);\r\n                }\r\n                set_new_handler((_func_void *)0x0);\r\n                iVar4 = FUN_004d28b0(0x1000);\r\n                if (iVar4 == 0) {\r\n                  poVar3 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n                  FUN_00401000(poVar3);\r\n                  FUN_004d2060(1);\r\n                }\r\n                puVar2[1] = iVar4;\r\n                *puVar2 = DAT_004f84fc;\r\n                piVar5 = (int *)puVar2[1];\r\n                DAT_004f84f4 = piVar5 + 8;\r\n                DAT_004f84f0 = piVar5 + 0x400;\r\n                DAT_004f84fc = puVar2;\r\n              }\r\n              else {\r\n                DAT_004f84f4 = DAT_004f84f4 + 8;\r\n              }\r\n            }\r\n            else {\r\n              piVar5 = DAT_004f84f8;\r\n              DAT_004f84f8 = (int *)*DAT_004f84f8;\r\n            }\r\n            if (piVar5 + 2 != (int *)0x0) {\r\n              piVar6 = local_278;\r\n              piVar7 = piVar5 + 2;\r\n              for (iVar4 = 6; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n                *piVar7 = *piVar6;\r\n                piVar6 = piVar6 + 1;\r\n                piVar7 = piVar7 + 1;\r\n              }\r\n            }\r\n            *piVar5 = local_260;\r\n            piVar6 = (int *)(local_260 + 4);\r\n            piVar5[1] = *piVar6;\r\n            *(int **)*piVar6 = piVar5;\r\n            *piVar6 = (int)piVar5;\r\n            param_1[1] = param_1[1] + 1;\r\n          }\r\n          iVar4 = FUN_0045a180();\r\n        } while (iVar4 != 0);\r\n      }\r\n    }\r\n  }\r\n  FUN_00459e60();\r\n  FUN_00459c70();\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004131a0",
+      "name": "FUN_004131a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411f60",
+      "name": "FUN_00411f60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "00459be0",
+      "name": "FUN_00459be0"
+    },
+    {
+      "addr": "00459cd0",
+      "name": "FUN_00459cd0"
+    },
+    {
+      "addr": "00459e90",
+      "name": "FUN_00459e90"
+    },
+    {
+      "addr": "00459f10",
+      "name": "FUN_00459f10"
+    },
+    {
+      "addr": "00459f60",
+      "name": "FUN_00459f60"
+    },
+    {
+      "addr": "0045a130",
+      "name": "FUN_0045a130"
+    },
+    {
+      "addr": "0045a3b0",
+      "name": "FUN_0045a3b0"
+    },
+    {
+      "addr": "0045e390",
+      "name": "FUN_0045e390"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "0045a180",
+      "name": "FUN_0045a180"
+    },
+    {
+      "addr": "00459e60",
+      "name": "FUN_00459e60"
+    },
+    {
+      "addr": "00459c70",
+      "name": "FUN_00459c70"
+    }
+  ],
+  "data_refs": []
+}

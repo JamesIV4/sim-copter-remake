@@ -1,0 +1,28 @@
+{
+  "address": "00462430",
+  "name": "FUN_00462430",
+  "signature": "undefined FUN_00462430(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool __thiscall FUN_00462430(int *param_1,int param_2,UINT param_3)\r\n\r\n{\r\n  MMRESULT MVar1;\r\n  int iVar2;\r\n  \r\n  if (param_2 < 0) {\r\n    iVar2 = 0;\r\n    if (0 < *param_1) {\r\n      do {\r\n        FUN_00462430(iVar2,param_3);\r\n        iVar2 = iVar2 + 1;\r\n      } while (iVar2 < *param_1);\r\n    }\r\n    return true;\r\n  }\r\n  if (param_2 < 0x11) {\r\n    MVar1 = joySetThreshold(param_1[param_2 + 5],param_3);\r\n    return MVar1 == 0;\r\n  }\r\n  return false;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00461e50",
+      "name": "FUN_00461e50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00462430",
+      "name": "FUN_00462430"
+    },
+    {
+      "addr": "EXTERNAL:000000c7",
+      "name": "joySetThreshold"
+    }
+  ],
+  "data_refs": []
+}

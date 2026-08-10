@@ -1,0 +1,22 @@
+{
+  "address": "004affe0",
+  "name": "FUN_004affe0",
+  "signature": "undefined FUN_004affe0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004affe0(int param_1)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  \r\n  iVar2 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x2b),DAT_005039a0);\r\n  iVar3 = *(int *)(param_1 + 0x1f);\r\n  if (iVar3 < iVar2) {\r\n    iVar2 = iVar3;\r\n  }\r\n  *(int *)(param_1 + 0x1f) = iVar3 - iVar2;\r\n  iVar3 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x13),iVar2);\r\n  *(int *)(param_1 + 0x97) = *(int *)(param_1 + 0x97) + iVar3;\r\n  iVar3 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x1b),iVar2);\r\n  *(int *)(param_1 + 0x9f) = *(int *)(param_1 + 0x9f) + iVar3;\r\n  uVar4 = FUN_004ae7a0(*(undefined4 *)(param_1 + 0x97),*(undefined4 *)(param_1 + 0x9f),0);\r\n  *(undefined4 *)(param_1 + 0x9b) = uVar4;\r\n  bVar1 = *(byte *)((int)&DAT_005bde80 +\r\n                   ((0xe0000000U - *(int *)(param_1 + 0x9f) & 0x3fc00000) >> 0x16) +\r\n                   ((*(int *)(param_1 + 0x97) + 0x20000000U & 0x3fc00000) >> 0x16) * 0x100);\r\n  if ((4 < bVar1) && (bVar1 < 10)) {\r\n    *(undefined1 *)(param_1 + 7) = 1;\r\n    return;\r\n  }\r\n  *(undefined1 *)(param_1 + 7) = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "004ae7a0",
+      "name": "FUN_004ae7a0"
+    }
+  ],
+  "data_refs": []
+}

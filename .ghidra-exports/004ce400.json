@@ -1,0 +1,33 @@
+{
+  "address": "004ce400",
+  "name": "FUN_004ce400",
+  "signature": "undefined FUN_004ce400(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004ce400(int param_1)\r\n\r\n{\r\n  short sVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  \r\n  if (*(int *)(param_1 + 0x10c) == 0) {\r\n    uVar2 = 0xffffffcf;\r\n  }\r\n  else {\r\n    sVar1 = FUN_004ce5f0();\r\n    uVar2 = 0;\r\n    if (sVar1 != 0) {\r\n      iVar3 = _fclose(*(FILE **)(param_1 + 0x10c));\r\n      uVar2 = (iVar3 == 0) - 1 & 0xffffffce;\r\n    }\r\n  }\r\n  if (uVar2 == 0) {\r\n    *(undefined4 *)(param_1 + 0x10c) = 0;\r\n    *(undefined4 *)(param_1 + 0x108) = 0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd5f0",
+      "name": "FUN_004cd5f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ce270",
+      "name": "FUN_004ce270",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ce5f0",
+      "name": "FUN_004ce5f0"
+    },
+    {
+      "addr": "004d3a40",
+      "name": "_fclose"
+    }
+  ],
+  "data_refs": []
+}

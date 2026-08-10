@@ -1,0 +1,29 @@
+{
+  "address": "004dd95e",
+  "name": "__fload",
+  "signature": "undefined __fload(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fload\r\n   \r\n   Libraries: Visual Studio 1998, Visual Studio 2003, Visual Studio 2005, Visual Studio 2008 */\r\n\r\nfloat10 __fload(uint param_1,int param_2)\r\n\r\n{\r\n  float10 fVar1;\r\n  \r\n  if ((param_2._2_2_ & 0x7ff0) == 0x7ff0) {\r\n    fVar1 = (float10)CONCAT28(param_2._2_2_ | 0x7fff,\r\n                              CONCAT44(param_2 << 0xb | param_1 >> 0x15,param_1));\r\n  }\r\n  else {\r\n    fVar1 = (float10)(double)CONCAT26(param_2._2_2_,CONCAT24((undefined2)param_2,param_1));\r\n  }\r\n  return fVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd7ab",
+      "name": "__ctrandisp2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd7ab",
+      "name": "__ctrandisp2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd92b",
+      "name": "__ctrandisp1",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

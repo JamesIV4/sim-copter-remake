@@ -1,0 +1,18 @@
+{
+  "address": "004012d0",
+  "name": "FUN_004012d0",
+  "signature": "undefined FUN_004012d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004012d0(int *param_1,undefined4 param_2)\r\n\r\n{\r\n  if (param_1[3] != 0) {\r\n    timeEndPeriod(100);\r\n    param_1[3] = 0;\r\n    (**(code **)(*param_1 + 0x28))();\r\n  }\r\n  (**(code **)(*param_1 + 8))(param_2);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c5",
+      "name": "timeEndPeriod"
+    }
+  ],
+  "data_refs": []
+}

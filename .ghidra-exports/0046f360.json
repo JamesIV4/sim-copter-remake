@@ -1,0 +1,43 @@
+{
+  "address": "0046f360",
+  "name": "FUN_0046f360",
+  "signature": "undefined FUN_0046f360(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0046f360(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  int local_4;\r\n  \r\n  iVar1 = DAT_004faffc;\r\n  iVar2 = DAT_004fb008 << 4;\r\n  local_c = FUN_0046c4bf(DAT_004fb004 << 4,DAT_004faff8 * 0x20);\r\n  local_8 = 0;\r\n  local_4 = 0x10000;\r\n  FUN_00467a80(&local_c);\r\n  DAT_005bdb78 = local_c;\r\n  DAT_005bdb70 = -local_4;\r\n  DAT_005bdb74 = 0;\r\n  DAT_005bdb64 = 0;\r\n  DAT_005bdb68 = local_c;\r\n  DAT_005bdb60 = local_4;\r\n  local_8 = FUN_0046c4bf(iVar2,iVar1 * 0x20);\r\n  local_4 = 0x10000;\r\n  local_c = 0;\r\n  FUN_00467a80(&local_c);\r\n  DAT_005bdb58 = local_8;\r\n  DAT_005bdb54 = -local_4;\r\n  DAT_005bdb50 = 0;\r\n  _DAT_005bdb80 = 0;\r\n  DAT_005bdb88 = local_8;\r\n  DAT_005bdb84 = local_4;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00461120",
+      "name": "FUN_00461120",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461120",
+      "name": "FUN_00461120",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461120",
+      "name": "FUN_00461120",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80"
+    }
+  ],
+  "data_refs": []
+}

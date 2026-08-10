@@ -1,0 +1,74 @@
+{
+  "address": "004d2bd0",
+  "name": "_atexit",
+  "signature": "int __cdecl _atexit(_func_4879 * param_1)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _atexit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _atexit(_func_4879 *param_1)\r\n\r\n{\r\n  _onexit_t p_Var1;\r\n  \r\n  p_Var1 = __onexit((_onexit_t)param_1);\r\n  return -(uint)(p_Var1 == (_onexit_t)0x0);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00402d70",
+      "name": "FUN_00402d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00402f50",
+      "name": "FUN_00402f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00403130",
+      "name": "FUN_00403130",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00423c40",
+      "name": "FUN_00423c40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048c1f0",
+      "name": "FUN_0048c1f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bf8c0",
+      "name": "FUN_004bf8c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bf980",
+      "name": "FUN_004bf980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2820",
+      "name": "FUN_004d2820",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2890",
+      "name": "FUN_004d2890",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2a40",
+      "name": "FUN_004d2a40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2ab0",
+      "name": "FUN_004d2ab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2b40",
+      "name": "__onexit"
+    }
+  ],
+  "data_refs": []
+}

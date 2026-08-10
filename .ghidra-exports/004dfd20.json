@@ -1,0 +1,19 @@
+{
+  "address": "004dfd20",
+  "name": "__aullrem",
+  "signature": "undefined __aullrem(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __aullrem\r\n   \r\n   Library: Visual Studio */\r\n\r\nundefined8 __aullrem(uint param_1,uint param_2,uint param_3,uint param_4)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  longlong lVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  uint uVar10;\r\n  bool bVar11;\r\n  \r\n  uVar3 = param_1;\r\n  uVar4 = param_4;\r\n  uVar9 = param_2;\r\n  uVar10 = param_3;\r\n  if (param_4 == 0) {\r\n    iVar6 = (int)(((ulonglong)param_2 % (ulonglong)param_3 << 0x20 | (ulonglong)param_1) %\r\n                 (ulonglong)param_3);\r\n    iVar7 = 0;\r\n  }\r\n  else {\r\n    do {\r\n      uVar5 = uVar4 >> 1;\r\n      uVar10 = uVar10 >> 1 | (uint)((uVar4 & 1) != 0) << 0x1f;\r\n      uVar8 = uVar9 >> 1;\r\n      uVar3 = uVar3 >> 1 | (uint)((uVar9 & 1) != 0) << 0x1f;\r\n      uVar4 = uVar5;\r\n      uVar9 = uVar8;\r\n    } while (uVar5 != 0);\r\n    uVar1 = CONCAT44(uVar8,uVar3) / (ulonglong)uVar10;\r\n    uVar3 = (int)uVar1 * param_4;\r\n    lVar2 = (uVar1 & 0xffffffff) * (ulonglong)param_3;\r\n    uVar9 = (uint)((ulonglong)lVar2 >> 0x20);\r\n    uVar4 = (uint)lVar2;\r\n    uVar10 = uVar9 + uVar3;\r\n    if (((CARRY4(uVar9,uVar3)) || (param_2 < uVar10)) || ((param_2 <= uVar10 && (param_1 < uVar4))))\r\n    {\r\n      bVar11 = uVar4 < param_3;\r\n      uVar4 = uVar4 - param_3;\r\n      uVar10 = (uVar10 - param_4) - (uint)bVar11;\r\n    }\r\n    iVar6 = -(uVar4 - param_1);\r\n    iVar7 = -(uint)(uVar4 - param_1 != 0) - ((uVar10 - param_2) - (uint)(uVar4 < param_1));\r\n  }\r\n  return CONCAT44(iVar7,iVar6);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7ad0",
+      "name": "FUN_004d7ad0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

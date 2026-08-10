@@ -1,0 +1,37 @@
+{
+  "address": "004d4970",
+  "name": "FUN_004d4970",
+  "signature": "undefined FUN_004d4970(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004d4970(LPCSTR param_1,LPCSTR param_2)\r\n\r\n{\r\n  BOOL BVar1;\r\n  ulong uVar2;\r\n  \r\n  BVar1 = MoveFileA(param_1,param_2);\r\n  uVar2 = 0;\r\n  if (BVar1 == 0) {\r\n    uVar2 = GetLastError();\r\n  }\r\n  if (uVar2 != 0) {\r\n    __dosmaperr(uVar2);\r\n    return 0xffffffff;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000005f",
+      "name": "MoveFileA"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr"
+    }
+  ],
+  "data_refs": []
+}

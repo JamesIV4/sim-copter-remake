@@ -1,0 +1,79 @@
+{
+  "address": "0049a4f0",
+  "name": "FUN_0049a4f0",
+  "signature": "undefined FUN_0049a4f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0049a4f0(undefined4 param_1,undefined4 param_2,int param_3,undefined4 param_4,\r\n                 undefined4 param_5)\r\n\r\n{\r\n  ushort uVar1;\r\n  int iVar2;\r\n  \r\n  uVar1 = *(ushort *)(param_3 + 0xc);\r\n  if ((uVar1 & 0x20) == 0) {\r\n    if ((uVar1 & 4) != 0) {\r\n      FUN_0048b370(param_1,param_2,param_3,param_4,param_5);\r\n      return;\r\n    }\r\n    if ((uVar1 & 8) != 0) {\r\n      FUN_004c1050(param_1,param_2,param_3,param_4,param_5);\r\n      return;\r\n    }\r\n    if ((uVar1 & 0x10) != 0) {\r\n      FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n      return;\r\n    }\r\n    if ((uVar1 & 0x80) == 0) {\r\n      if ((uVar1 & 0x100) != 0) {\r\n        FUN_004b3df0(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      if ((uVar1 & 0x200) != 0) {\r\n        FUN_004b2120(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      if ((uVar1 & 0x400) == 0) {\r\n        return;\r\n      }\r\n      iVar2 = 0;\r\n    }\r\n    else {\r\n      iVar2 = 10;\r\n    }\r\n    switch(param_1) {\r\n    case 0:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 1:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 2:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 3:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 4:\r\n      switch(iVar2) {\r\n      case 0:\r\n        if ((uVar1 & 0x1000) != 0) {\r\n          FUN_004915b0(param_3);\r\n          return;\r\n        }\r\n      }\r\n      break;\r\n    case 5:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 6:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 7:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 8:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 9:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 10:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 0xb:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 0xc:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 0xd:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 0xe:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n        return;\r\n      }\r\n      break;\r\n    case 0xf:\r\n      if (iVar2 == 0xb) {\r\n        FUN_0049fc10(param_1,param_2,param_3,param_4,param_5);\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004883a0",
+      "name": "FUN_004883a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ad50",
+      "name": "FUN_0048ad50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ae70",
+      "name": "FUN_0048ae70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048ed00",
+      "name": "FUN_0048ed00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00490690",
+      "name": "FUN_00490690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6370",
+      "name": "FUN_004a6370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b50a0",
+      "name": "FUN_004b50a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b50a0",
+      "name": "FUN_004b50a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0048b370",
+      "name": "FUN_0048b370"
+    },
+    {
+      "addr": "004c1050",
+      "name": "FUN_004c1050"
+    },
+    {
+      "addr": "0049fc10",
+      "name": "FUN_0049fc10"
+    },
+    {
+      "addr": "004b3df0",
+      "name": "FUN_004b3df0"
+    },
+    {
+      "addr": "004b2120",
+      "name": "FUN_004b2120"
+    },
+    {
+      "addr": "004915b0",
+      "name": "FUN_004915b0"
+    }
+  ],
+  "data_refs": []
+}

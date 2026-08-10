@@ -1,0 +1,29 @@
+{
+  "address": "004d6c40",
+  "name": "streambuf",
+  "signature": "undefined __thiscall streambuf(streambuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    protected: __thiscall streambuf::streambuf(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nstreambuf * __thiscall streambuf::streambuf(streambuf *this)\r\n\r\n{\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f56fc;\r\n  *(undefined4 *)(this + 4) = 0;\r\n  *(undefined4 *)(this + 8) = 0;\r\n  *(undefined4 *)(this + 0x10) = 0;\r\n  *(undefined4 *)(this + 0x14) = 0;\r\n  *(undefined4 *)(this + 0x18) = 0;\r\n  *(undefined4 *)(this + 0x1c) = 0;\r\n  *(undefined4 *)(this + 0x20) = 0;\r\n  *(undefined4 *)(this + 0x24) = 0;\r\n  *(undefined4 *)(this + 0x28) = 0;\r\n  *(undefined4 *)(this + 0x2c) = 0;\r\n  *(undefined4 *)(this + 0xc) = 0xffffffff;\r\n  *(undefined4 *)(this + 0x30) = 0xffffffff;\r\n  __mtlockinit(this + 0x34);\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2db0",
+      "name": "strstreambuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3460",
+      "name": "filebuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56c0",
+      "name": "__mtlockinit"
+    }
+  ],
+  "data_refs": []
+}

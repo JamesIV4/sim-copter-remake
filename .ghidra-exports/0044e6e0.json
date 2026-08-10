@@ -1,0 +1,119 @@
+{
+  "address": "0044e6e0",
+  "name": "FUN_0044e6e0",
+  "signature": "undefined FUN_0044e6e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0044e6e0(int param_1,undefined4 *param_2,uint param_3)\r\n\r\n{\r\n  undefined *puVar1;\r\n  undefined4 uVar2;\r\n  LPCSTR lpFileName;\r\n  int iVar3;\r\n  BOOL BVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 uVar6;\r\n  undefined4 uVar7;\r\n  _WIN32_FIND_DATAA *lpFindFileData;\r\n  int *piVar8;\r\n  int local_1b8;\r\n  undefined4 local_1b4;\r\n  int local_1b0;\r\n  undefined4 local_1ac;\r\n  int local_1a8;\r\n  int local_1a4;\r\n  int local_1a0;\r\n  int local_19c;\r\n  undefined4 local_198;\r\n  HANDLE local_194;\r\n  int local_190;\r\n  undefined4 local_18c;\r\n  int local_188;\r\n  undefined4 local_184;\r\n  int local_180;\r\n  undefined4 local_17c;\r\n  int local_178;\r\n  undefined1 local_160 [4];\r\n  undefined1 local_15c [4];\r\n  undefined1 local_158 [4];\r\n  undefined1 local_154 [20];\r\n  _WIN32_FIND_DATAA local_140;\r\n  \r\n  uVar7 = 0xffffffff;\r\n  uVar6 = 0;\r\n  local_1a0 = param_1;\r\n  uVar2 = FUN_00432130(&local_1b8,param_1 + 8,param_1 + 0x10,0,0xffffffff);\r\n  FUN_00401d00(uVar2,uVar6,uVar7);\r\n  FUN_00401f10();\r\n  FUN_0044d5e0();\r\n  lpFindFileData = &local_140;\r\n  local_1a8 = 0;\r\n  local_1a4 = 0;\r\n  lpFileName = (LPCSTR)FUN_00402640();\r\n  local_194 = FindFirstFileA(lpFileName,lpFindFileData);\r\n  puVar1 = PTR_DAT_004f96c4;\r\n  if (local_194 == (HANDLE)0xffffffff) {\r\n    FUN_00401f10();\r\n    FUN_00401f10();\r\n    uVar2 = 0;\r\n  }\r\n  else {\r\n    if (((byte)local_140.dwFileAttributes & 0x10) == 0) {\r\n      if ((param_3 & 8) != 0) {\r\n        iVar3 = FUN_004d28b0(0x10);\r\n        if (iVar3 == 0) {\r\n          local_1b4 = 0;\r\n        }\r\n        else {\r\n          local_1b4 = FUN_0041bd00(local_140.cFileName);\r\n        }\r\n        local_1b8 = 0;\r\n        FUN_00424420(&local_1b0,*param_2,&local_1b8);\r\n        FUN_00401ed0();\r\n        if (local_1b8 != 0) {\r\n          FUN_004d29a0(local_1b8);\r\n        }\r\n      }\r\n    }\r\n    else if ((param_3 & 4) != 0) {\r\n      FUN_00401c80(local_140.cFileName);\r\n      iVar3 = FUN_004026b0(puVar1,0);\r\n      FUN_00401f10();\r\n      puVar1 = PTR_DAT_004f96c8;\r\n      if (iVar3 == 0) {\r\n        local_1a4 = 1;\r\n        if ((param_3 & 1) != 0) {\r\n          uVar2 = FUN_00401c80(local_140.cFileName);\r\n          FUN_00424420(&local_1b0,*param_2,uVar2);\r\n          FUN_00401f10();\r\n        }\r\n      }\r\n      else {\r\n        FUN_00401c80(local_140.cFileName);\r\n        iVar3 = FUN_004026b0(puVar1,0);\r\n        FUN_00401f10();\r\n        if (iVar3 == 0) {\r\n          local_1a8 = 1;\r\n          if ((param_3 & 2) != 0) {\r\n            iVar3 = FUN_004d28b0(0x10);\r\n            if (iVar3 == 0) {\r\n              local_1b4 = 0;\r\n            }\r\n            else {\r\n              local_1b4 = FUN_0041bd00(local_140.cFileName);\r\n            }\r\n            local_1b8 = 0;\r\n            FUN_00424420(&local_1b0,*param_2,&local_1b8);\r\n            FUN_00401ed0();\r\n            if (local_1b8 != 0) {\r\n              FUN_004d29a0(local_1b8);\r\n            }\r\n          }\r\n        }\r\n        else {\r\n          iVar3 = FUN_004d28b0(0x10);\r\n          if (iVar3 == 0) {\r\n            local_1b4 = 0;\r\n          }\r\n          else {\r\n            local_1b4 = FUN_0041bd00(local_140.cFileName);\r\n          }\r\n          local_1b8 = 0;\r\n          FUN_00424420(&local_1b0,*param_2,&local_1b8);\r\n          FUN_00401ed0();\r\n          if (local_1b8 != 0) {\r\n            FUN_004d29a0(local_1b8);\r\n          }\r\n        }\r\n      }\r\n    }\r\nLAB_0044e9ba:\r\n    BVar4 = FindNextFileA(local_194,&local_140);\r\n    if (BVar4 != 0) {\r\n      if (((byte)local_140.dwFileAttributes & 0x10) == 0) {\r\n        if ((param_3 & 8) != 0) {\r\n          iVar3 = FUN_004d28b0(0x10);\r\n          if (iVar3 == 0) {\r\n            local_17c = 0;\r\n          }\r\n          else {\r\n            local_17c = FUN_0041bd00(local_140.cFileName);\r\n          }\r\n          local_180 = 0;\r\n          FUN_00424420(local_160,*param_2,&local_180);\r\n          FUN_00401ed0();\r\n          if (local_180 != 0) {\r\n            FUN_004d29a0(local_180);\r\n          }\r\n        }\r\n      }\r\n      else if ((param_3 & 4) != 0) {\r\n        if (local_1a4 == 0) {\r\n          iVar3 = FUN_004d28b0(0x10);\r\n          if (iVar3 == 0) {\r\n            local_1b4 = 0;\r\n          }\r\n          else {\r\n            local_1b4 = FUN_0041bd00(local_140.cFileName);\r\n          }\r\n          local_1b8 = 0;\r\n          iVar3 = FUN_004026b0(PTR_DAT_004f96c4,0);\r\n          FUN_00401ed0();\r\n          if (local_1b8 != 0) {\r\n            FUN_004d29a0(local_1b8);\r\n          }\r\n          if (iVar3 == 0) {\r\n            local_1a4 = 1;\r\n            if ((param_3 & 1) != 0) {\r\n              iVar3 = FUN_004d28b0(0x10);\r\n              if (iVar3 == 0) {\r\n                local_1ac = 0;\r\n              }\r\n              else {\r\n                local_1ac = FUN_0041bd00(local_140.cFileName);\r\n              }\r\n              local_1b0 = 0;\r\n              FUN_00424420(local_154,*param_2,&local_1b0);\r\n              FUN_00401ed0();\r\n              if (local_1b0 != 0) {\r\n                FUN_004d29a0(local_1b0);\r\n              }\r\n            }\r\n            goto LAB_0044e9ba;\r\n          }\r\n        }\r\n        if (local_1a8 == 0) {\r\n          iVar3 = FUN_004d28b0(0x10);\r\n          if (iVar3 == 0) {\r\n            local_198 = 0;\r\n          }\r\n          else {\r\n            local_198 = FUN_0041bd00(local_140.cFileName);\r\n          }\r\n          local_19c = 0;\r\n          iVar3 = FUN_004026b0(PTR_DAT_004f96c8,0);\r\n          FUN_00401ed0();\r\n          if (local_19c != 0) {\r\n            FUN_004d29a0(local_19c);\r\n          }\r\n          if (iVar3 == 0) {\r\n            local_1a8 = 1;\r\n            if ((param_3 & 2) != 0) {\r\n              iVar3 = FUN_004d28b0(0x10);\r\n              if (iVar3 == 0) {\r\n                local_18c = 0;\r\n              }\r\n              else {\r\n                local_18c = FUN_0041bd00(local_140.cFileName);\r\n              }\r\n              local_190 = 0;\r\n              FUN_00424420(local_158,*param_2,&local_190);\r\n              FUN_00401ed0();\r\n              if (local_190 != 0) {\r\n                FUN_004d29a0(local_190);\r\n              }\r\n            }\r\n            goto LAB_0044e9ba;\r\n          }\r\n        }\r\n        iVar3 = FUN_004d28b0(0x10);\r\n        if (iVar3 == 0) {\r\n          local_184 = 0;\r\n        }\r\n        else {\r\n          local_184 = FUN_0041bd00(local_140.cFileName);\r\n        }\r\n        local_188 = 0;\r\n        FUN_00424420(local_15c,*param_2,&local_188);\r\n        FUN_00401ed0();\r\n        if (local_188 != 0) {\r\n          FUN_004d29a0(local_188);\r\n        }\r\n      }\r\n      goto LAB_0044e9ba;\r\n    }\r\n    FindClose(local_194);\r\n    if ((((param_3 & 2) != 0) && (local_1a8 != 0)) &&\r\n       (iVar3 = FUN_004026b0(PTR_DAT_004f96c0,0), puVar1 = PTR_DAT_004f96c8, iVar3 == 0)) {\r\n      iVar3 = FUN_004d28b0(0x10);\r\n      if (iVar3 == 0) {\r\n        local_1b4 = 0;\r\n      }\r\n      else {\r\n        local_1b4 = FUN_0041bd00(puVar1);\r\n      }\r\n      piVar8 = &local_1b8;\r\n      local_1b8 = 0;\r\n      puVar5 = (undefined4 *)FUN_00423e70(&local_19c);\r\n      FUN_00424420(&local_1b0,*puVar5,piVar8);\r\n      FUN_00401ed0();\r\n      if (local_1b8 != 0) {\r\n        FUN_004d29a0(local_1b8);\r\n      }\r\n    }\r\n    if ((((param_3 & 1) != 0) && (local_1a4 != 0)) &&\r\n       (iVar3 = FUN_004026b0(PTR_DAT_004f96c0,0), puVar1 = PTR_DAT_004f96c4, iVar3 == 0)) {\r\n      iVar3 = FUN_004d28b0(0x10);\r\n      if (iVar3 == 0) {\r\n        local_1b4 = 0;\r\n      }\r\n      else {\r\n        local_1b4 = FUN_0041bd00(puVar1);\r\n      }\r\n      piVar8 = &local_1b8;\r\n      local_1b8 = 0;\r\n      puVar5 = (undefined4 *)FUN_00423e70(&local_19c);\r\n      FUN_00424420(&local_1b0,*puVar5,piVar8);\r\n      FUN_00401ed0();\r\n      if (local_1b8 != 0) {\r\n        FUN_004d29a0(local_1b8);\r\n      }\r\n    }\r\n    FUN_00401f10();\r\n    uVar2 = FUN_00401ed0();\r\n    if (local_178 != 0) {\r\n      uVar2 = FUN_004d29a0(local_178);\r\n    }\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004338d0",
+      "name": "FUN_004338d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004338d0",
+      "name": "FUN_004338d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004477b0",
+      "name": "FUN_004477b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f810",
+      "name": "FUN_0042f810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f810",
+      "name": "FUN_0042f810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f810",
+      "name": "FUN_0042f810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f810",
+      "name": "FUN_0042f810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004240e0",
+      "name": "FUN_004240e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00432130",
+      "name": "FUN_00432130"
+    },
+    {
+      "addr": "00401d00",
+      "name": "FUN_00401d00"
+    },
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "0044d5e0",
+      "name": "FUN_0044d5e0"
+    },
+    {
+      "addr": "00402640",
+      "name": "FUN_00402640"
+    },
+    {
+      "addr": "EXTERNAL:00000006",
+      "name": "FindFirstFileA"
+    },
+    {
+      "addr": "00401c80",
+      "name": "FUN_00401c80"
+    },
+    {
+      "addr": "004026b0",
+      "name": "FUN_004026b0"
+    },
+    {
+      "addr": "00424420",
+      "name": "FUN_00424420"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0041bd00",
+      "name": "FUN_0041bd00"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "EXTERNAL:0000002a",
+      "name": "FindNextFileA"
+    },
+    {
+      "addr": "EXTERNAL:00000029",
+      "name": "FindClose"
+    },
+    {
+      "addr": "00423e70",
+      "name": "FUN_00423e70"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,18 @@
+{
+  "address": "004cf6b0",
+  "name": "FUN_004cf6b0",
+  "signature": "undefined FUN_004cf6b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004cf6b0(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  \r\n  if (param_2 != 0) {\r\n    for (piVar1 = *(int **)(param_1 + 4); piVar1 != (int *)0x0; piVar1 = (int *)piVar1[1]) {\r\n      if (*piVar1 == param_2) {\r\n        return;\r\n      }\r\n    }\r\n    piVar1 = (int *)FUN_004d28b0(8);\r\n    *piVar1 = param_2;\r\n    piVar1[1] = *(int *)(param_1 + 4);\r\n    *(short *)(param_1 + 8) = *(short *)(param_1 + 8) + 1;\r\n    *(int **)(param_1 + 4) = piVar1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    }
+  ],
+  "data_refs": []
+}

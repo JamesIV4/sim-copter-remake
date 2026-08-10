@@ -1,0 +1,46 @@
+{
+  "address": "004d40a0",
+  "name": "_time",
+  "signature": "time_t __cdecl _time(time_t * _Time)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef time_t __time64_t",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _time\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\ntime_t __cdecl _time(time_t *_Time)\r\n\r\n{\r\n  DWORD DVar1;\r\n  time_t tVar2;\r\n  _SYSTEMTIME local_cc;\r\n  _SYSTEMTIME local_bc;\r\n  _TIME_ZONE_INFORMATION local_ac;\r\n  \r\n  GetLocalTime(&local_bc);\r\n  GetSystemTime(&local_cc);\r\n  if (local_cc.wMinute == DAT_00590520._2_2_) {\r\n    if (local_cc.wHour == (WORD)DAT_00590520) {\r\n      if (local_cc.wDay == DAT_0059051c._2_2_) {\r\n        if (local_cc.wMonth == DAT_00590518._2_2_) {\r\n          if (local_cc.wYear == (WORD)DAT_00590518) goto LAB_004d414d;\r\n        }\r\n      }\r\n    }\r\n  }\r\n  DVar1 = GetTimeZoneInformation(&local_ac);\r\n  DAT_00590510 = 1;\r\n  if (DVar1 != 2) {\r\n    DAT_00590510 = (DVar1 == 1) - 1;\r\n  }\r\n  DAT_00590518._0_2_ = local_cc.wYear;\r\n  DAT_00590518._2_2_ = local_cc.wMonth;\r\n  DAT_0059051c._0_2_ = local_cc.wDayOfWeek;\r\n  DAT_0059051c._2_2_ = local_cc.wDay;\r\n  DAT_00590520._0_2_ = local_cc.wHour;\r\n  DAT_00590520._2_2_ = local_cc.wMinute;\r\n  DAT_00590524._0_2_ = local_cc.wSecond;\r\n  DAT_00590524._2_2_ = local_cc.wMilliseconds;\r\nLAB_004d414d:\r\n  tVar2 = FUN_004d9960(local_bc._0_4_ & 0xffff,(uint)local_bc._0_4_ >> 0x10,local_bc.wDay,\r\n                       local_bc._8_4_ & 0xffff,(uint)local_bc._8_4_ >> 0x10,local_bc._12_4_ & 0xffff\r\n                       ,DAT_00590510);\r\n  if (_Time != (time_t *)0x0) {\r\n    *(int *)_Time = (int)tVar2;\r\n  }\r\n  return tVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422790",
+      "name": "FUN_00422790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004625b0",
+      "name": "FUN_004625b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000065",
+      "name": "GetLocalTime"
+    },
+    {
+      "addr": "EXTERNAL:00000070",
+      "name": "GetSystemTime"
+    },
+    {
+      "addr": "EXTERNAL:00000066",
+      "name": "GetTimeZoneInformation"
+    },
+    {
+      "addr": "004d9960",
+      "name": "FUN_004d9960"
+    }
+  ],
+  "data_refs": []
+}

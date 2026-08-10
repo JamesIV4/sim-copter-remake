@@ -1,0 +1,13 @@
+{
+  "address": "0046c448",
+  "name": "FUN_0046c448",
+  "signature": "undefined FUN_0046c448(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0046c448(uint param_1)\r\n\r\n{\r\n  int iVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  \r\n  iVar1 = 0;\r\n  if (param_1 != 0) {\r\n    if ((int)param_1 < 0) {\r\n      param_1 = -param_1;\r\n    }\r\n    iVar1 = 0x1f;\r\n    if (param_1 != 0) {\r\n      for (; param_1 >> iVar1 == 0; iVar1 = iVar1 + -1) {\r\n      }\r\n    }\r\n    uVar3 = iVar1 - 0x10;\r\n    if (iVar1 < 0x10) {\r\n      uVar3 = param_1 << ((byte)(-uVar3 >> 1) & 0x1f);\r\n    }\r\n    else {\r\n      uVar3 = param_1 >> ((char)(uVar3 >> 1) + ((uVar3 & 1) != 0) & 0x1fU);\r\n    }\r\n    do {\r\n      iVar1 = (int)(CONCAT44(((int)param_1 >> 0x1f) << 0x10 | param_1 >> 0x10,param_1 << 0x10) /\r\n                   (ulonglong)uVar3);\r\n      uVar4 = uVar3 + iVar1;\r\n      uVar3 = uVar4 >> 1;\r\n      uVar2 = iVar1 - uVar3;\r\n      if ((int)uVar2 < 0) {\r\n        uVar2 = -uVar2;\r\n      }\r\n    } while (1 < uVar2);\r\n    iVar1 = uVar3 + ((uVar4 & 1) != 0);\r\n  }\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

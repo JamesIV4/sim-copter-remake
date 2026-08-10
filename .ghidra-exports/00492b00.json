@@ -1,0 +1,28 @@
+{
+  "address": "00492b00",
+  "name": "FUN_00492b00",
+  "signature": "undefined FUN_00492b00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00492b00(int param_1)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  char local_2;\r\n  char cStack_1;\r\n  \r\n  uVar1 = *(undefined2 *)(param_1 + 0xc);\r\n  iVar2 = FUN_004bb900(*(undefined1 *)(param_1 + 0xc),*(undefined1 *)(param_1 + 0xd));\r\n  local_2 = (char)uVar1;\r\n  if (iVar2 == 0) {\r\n    do {\r\n      switch(*(undefined4 *)(param_1 + 0x12)) {\r\n      case 0:\r\n        *(char *)(param_1 + 0xd) = *(char *)(param_1 + 0xd) + -1;\r\n        break;\r\n      case 1:\r\n        *(char *)(param_1 + 0xc) = *(char *)(param_1 + 0xc) + '\\x01';\r\n        break;\r\n      case 2:\r\n        *(char *)(param_1 + 0xd) = *(char *)(param_1 + 0xd) + '\\x01';\r\n        break;\r\n      case 3:\r\n        *(char *)(param_1 + 0xc) = *(char *)(param_1 + 0xc) + -1;\r\n      }\r\n      FUN_00492030(param_1);\r\n      if (*(int *)(param_1 + 0xe) == -2) {\r\n        uVar3 = *(int *)(param_1 + 0x12) + 2U & 3;\r\n        *(uint *)(param_1 + 0x12) = uVar3;\r\n        *(uint *)(param_1 + 0xe) = uVar3;\r\n      }\r\n    } while ((*(char *)(param_1 + 0xc) != local_2) ||\r\n            (cStack_1 = (char)((ushort)uVar1 >> 8), *(char *)(param_1 + 0xd) != cStack_1));\r\n    return;\r\n  }\r\n  *(uint *)(param_1 + 0x12) = *(int *)(param_1 + 0x12) + 2U & 3;\r\n  *(uint *)(param_1 + 0xe) = *(int *)(param_1 + 0xe) + 2U & 3;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049e9a0",
+      "name": "FUN_0049e9a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004bb900",
+      "name": "FUN_004bb900"
+    },
+    {
+      "addr": "00492030",
+      "name": "FUN_00492030"
+    }
+  ],
+  "data_refs": []
+}

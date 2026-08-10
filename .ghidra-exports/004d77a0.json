@@ -1,0 +1,44 @@
+{
+  "address": "004d77a0",
+  "name": "FUN_004d77a0",
+  "signature": "undefined FUN_004d77a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d77a0(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  DWORD DVar2;\r\n  HANDLE hFile;\r\n  byte *pbVar3;\r\n  UINT UVar4;\r\n  UINT UVar5;\r\n  undefined4 *puVar6;\r\n  int *piVar7;\r\n  uint uVar8;\r\n  int iVar9;\r\n  UINT *pUVar10;\r\n  int iVar11;\r\n  _STARTUPINFOA local_44;\r\n  \r\n  puVar1 = (undefined4 *)FUN_004d5f00(0x480);\r\n  if (puVar1 == (undefined4 *)0x0) {\r\n    __amsg_exit(0x1b);\r\n  }\r\n  DAT_0061bc80 = 0x20;\r\n  DAT_0061bb80 = puVar1;\r\n  if (puVar1 < puVar1 + 0x120) {\r\n    do {\r\n      *(undefined1 *)(puVar1 + 1) = 0;\r\n      puVar6 = puVar1 + 9;\r\n      *puVar1 = 0xffffffff;\r\n      *(undefined1 *)((int)puVar1 + 5) = 10;\r\n      puVar1[2] = 0;\r\n      puVar1 = puVar6;\r\n    } while (puVar6 < DAT_0061bb80 + 0x120);\r\n  }\r\n  GetStartupInfoA(&local_44);\r\n  if ((local_44.cbReserved2 != 0) && ((UINT *)local_44.lpReserved2 != (UINT *)0x0)) {\r\n    UVar4 = *(UINT *)local_44.lpReserved2;\r\n    pUVar10 = (UINT *)((int)local_44.lpReserved2 + 4);\r\n    pbVar3 = (byte *)((int)pUVar10 + UVar4);\r\n    if (0x7ff < (int)UVar4) {\r\n      UVar4 = 0x800;\r\n    }\r\n    UVar5 = UVar4;\r\n    if ((int)DAT_0061bc80 < (int)UVar4) {\r\n      piVar7 = &DAT_0061bb84;\r\n      do {\r\n        puVar1 = (undefined4 *)FUN_004d5f00(0x480);\r\n        UVar5 = DAT_0061bc80;\r\n        if (puVar1 == (undefined4 *)0x0) break;\r\n        *piVar7 = (int)puVar1;\r\n        DAT_0061bc80 = DAT_0061bc80 + 0x20;\r\n        if (puVar1 < puVar1 + 0x120) {\r\n          do {\r\n            *(undefined1 *)(puVar1 + 1) = 0;\r\n            puVar6 = puVar1 + 9;\r\n            *puVar1 = 0xffffffff;\r\n            *(undefined1 *)((int)puVar1 + 5) = 10;\r\n            puVar1[2] = 0;\r\n            puVar1 = puVar6;\r\n          } while (puVar6 < (undefined4 *)(*piVar7 + 0x480));\r\n        }\r\n        piVar7 = piVar7 + 1;\r\n        UVar5 = UVar4;\r\n      } while ((int)DAT_0061bc80 < (int)UVar4);\r\n    }\r\n    uVar8 = 0;\r\n    if (0 < (int)UVar5) {\r\n      do {\r\n        if (((*(HANDLE *)pbVar3 != (HANDLE)0xffffffff) && ((*pUVar10 & 1) != 0)) &&\r\n           (DVar2 = GetFileType(*(HANDLE *)pbVar3), DVar2 != 0)) {\r\n          puVar1 = (undefined4 *)\r\n                   ((uVar8 & 0x1f) * 0x24 +\r\n                   *(int *)((int)&DAT_0061bb80 + ((int)(uVar8 & 0xffffffe7) >> 3)));\r\n          *puVar1 = *(undefined4 *)pbVar3;\r\n          *(byte *)(puVar1 + 1) = (byte)*pUVar10;\r\n        }\r\n        uVar8 = uVar8 + 1;\r\n        pUVar10 = (UINT *)((int)pUVar10 + 1);\r\n        pbVar3 = pbVar3 + 4;\r\n      } while ((int)uVar8 < (int)UVar5);\r\n    }\r\n  }\r\n  iVar9 = 0;\r\n  iVar11 = 0;\r\n  do {\r\n    piVar7 = (int *)((int)DAT_0061bb80 + iVar9);\r\n    if (*piVar7 == -1) {\r\n      DVar2 = 0xfffffff6;\r\n      *(undefined1 *)(piVar7 + 1) = 0x81;\r\n      if (iVar9 != 0) {\r\n        DVar2 = (iVar11 == 1) - 0xc;\r\n      }\r\n      hFile = GetStdHandle(DVar2);\r\n      if ((hFile == (HANDLE)0xffffffff) || (DVar2 = GetFileType(hFile), DVar2 == 0)) {\r\n        *(byte *)(piVar7 + 1) = *(byte *)(piVar7 + 1) | 0x40;\r\n      }\r\n      else {\r\n        *piVar7 = (int)hFile;\r\n        if ((DVar2 & 0xff) == 2) {\r\n          *(byte *)(piVar7 + 1) = *(byte *)(piVar7 + 1) | 0x40;\r\n        }\r\n        else if ((DVar2 & 0xff) == 3) {\r\n          *(byte *)(piVar7 + 1) = *(byte *)(piVar7 + 1) | 8;\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      *(byte *)(piVar7 + 1) = *(byte *)(piVar7 + 1) | 0x80;\r\n    }\r\n    iVar9 = iVar9 + 0x24;\r\n    iVar11 = iVar11 + 1;\r\n  } while (iVar9 < 0x6c);\r\n  SetHandleCount(DAT_0061bc80);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "EXTERNAL:0000005d",
+      "name": "GetStartupInfoA"
+    },
+    {
+      "addr": "EXTERNAL:0000004f",
+      "name": "GetFileType"
+    },
+    {
+      "addr": "EXTERNAL:0000002c",
+      "name": "GetStdHandle"
+    },
+    {
+      "addr": "EXTERNAL:00000050",
+      "name": "SetHandleCount"
+    }
+  ],
+  "data_refs": []
+}

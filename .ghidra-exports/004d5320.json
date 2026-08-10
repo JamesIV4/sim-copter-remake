@@ -1,0 +1,24 @@
+{
+  "address": "004d5320",
+  "name": "___lc_lctostr",
+  "signature": "undefined ___lc_lctostr(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___lc_lctostr\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___lc_lctostr(char *param_1,char *param_2)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  char *pcVar4;\r\n  char *pcVar5;\r\n  \r\n  uVar2 = 0xffffffff;\r\n  pcVar4 = param_2;\r\n  do {\r\n    pcVar5 = pcVar4;\r\n    if (uVar2 == 0) break;\r\n    uVar2 = uVar2 - 1;\r\n    pcVar5 = pcVar4 + 1;\r\n    cVar1 = *pcVar4;\r\n    pcVar4 = pcVar5;\r\n  } while (cVar1 != '\\0');\r\n  uVar2 = ~uVar2;\r\n  pcVar4 = pcVar5 + -uVar2;\r\n  pcVar5 = param_1;\r\n  for (uVar3 = uVar2 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n    *(undefined4 *)pcVar5 = *(undefined4 *)pcVar4;\r\n    pcVar4 = pcVar4 + 4;\r\n    pcVar5 = pcVar5 + 4;\r\n  }\r\n  for (uVar2 = uVar2 & 3; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n    *pcVar5 = *pcVar4;\r\n    pcVar4 = pcVar4 + 1;\r\n    pcVar5 = pcVar5 + 1;\r\n  }\r\n  if (param_2[0x40] != '\\0') {\r\n    __strcats(param_1,2,&DAT_004f5594,param_2 + 0x40);\r\n  }\r\n  if (param_2[0x80] != '\\0') {\r\n    __strcats(param_1,2,&DAT_004f96bc,param_2 + 0x80);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4ff0",
+      "name": "__expandlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d51d0",
+      "name": "__strcats"
+    }
+  ],
+  "data_refs": []
+}

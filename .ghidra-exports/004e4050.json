@@ -1,0 +1,29 @@
+{
+  "address": "004e4050",
+  "name": "__mbsnbicoll",
+  "signature": "int __cdecl __mbsnbicoll(uchar * _Str1, uchar * _Str2, size_t _MaxCount)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mbsnbicoll\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __mbsnbicoll(uchar *_Str1,uchar *_Str2,size_t _MaxCount)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (_MaxCount == 0) {\r\n    return 0;\r\n  }\r\n  iVar1 = FUN_004e45f0(DAT_00507980,1,_Str1,_MaxCount,_Str2,_MaxCount,DAT_0050797c);\r\n  if (iVar1 == 0) {\r\n    return 0x7fffffff;\r\n  }\r\n  return iVar1 + -2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0ac0",
+      "name": "FID_conflict:__getenv_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e4b60",
+      "name": "FUN_004e4b60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e45f0",
+      "name": "FUN_004e45f0"
+    }
+  ],
+  "data_refs": []
+}

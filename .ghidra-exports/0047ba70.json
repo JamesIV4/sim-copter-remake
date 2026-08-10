@@ -1,0 +1,29 @@
+{
+  "address": "0047ba70",
+  "name": "FUN_0047ba70",
+  "signature": "undefined FUN_0047ba70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0047ba70(int *param_1)\r\n\r\n{\r\n  short sVar1;\r\n  short sVar2;\r\n  short sVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  undefined4 *puVar7;\r\n  int iVar8;\r\n  int local_8;\r\n  undefined4 local_4;\r\n  \r\n  iVar4 = *param_1;\r\n  iVar5 = param_1[2];\r\n  iVar8 = *(int *)((int)&DAT_005d9200 +\r\n                  ((0xe0000000U - iVar5 & 0x3fc00000) >> 0x14) +\r\n                  ((iVar4 + 0x20000000U & 0x3fc00000) >> 0x16) * 0x400);\r\n  iVar6 = param_1[1];\r\n  sVar1 = *(short *)(iVar8 + 2);\r\n  local_8 = 0;\r\n  sVar2 = *(short *)(iVar8 + 6);\r\n  sVar3 = *(short *)(iVar8 + 4);\r\n  for (puVar7 = *(undefined4 **)(iVar8 + 0xc); puVar7 != (undefined4 *)0x0;\r\n      puVar7 = (undefined4 *)*puVar7) {\r\n    local_4 = puVar7[2];\r\n    iVar8 = FUN_0046dd20(puVar7[1],iVar4 + sVar1 * -0x10000,iVar6 + sVar3 * -0x10000,\r\n                         iVar5 + sVar2 * -0x10000,&local_4,0x10000,0x10000,0,0);\r\n    if (local_8 < iVar8) {\r\n      local_8 = iVar8;\r\n    }\r\n  }\r\n  return local_8;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a860",
+      "name": "FUN_0047a860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047a860",
+      "name": "FUN_0047a860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046dd20",
+      "name": "FUN_0046dd20"
+    }
+  ],
+  "data_refs": []
+}

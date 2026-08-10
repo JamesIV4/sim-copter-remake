@@ -1,0 +1,41 @@
+{
+  "address": "00461f30",
+  "name": "FUN_00461f30",
+  "signature": "undefined FUN_00461f30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00461f30(int param_1,uint param_2,LPBYTE param_3)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 uVar2;\r\n  LSTATUS LVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  char *pcVar7;\r\n  BYTE *pBVar8;\r\n  CHAR *pCVar9;\r\n  undefined4 *puVar10;\r\n  char *pcVar11;\r\n  LPBYTE pBVar12;\r\n  DWORD local_324;\r\n  HKEY local_320;\r\n  HKEY local_31c;\r\n  HKEY local_318;\r\n  HKEY local_314;\r\n  HKEY local_310;\r\n  CHAR local_30c [57];\r\n  undefined4 local_2d3;\r\n  char local_208 [4];\r\n  char local_204 [4];\r\n  char local_200 [4];\r\n  char local_1fc [4];\r\n  char local_1f8;\r\n  undefined4 local_1f7;\r\n  BYTE local_104 [260];\r\n  \r\n  if (param_2 < 0x10) {\r\n    if (*(char *)(param_2 + 4 + param_1) == '\\0') {\r\n      uVar2 = 0;\r\n    }\r\n    else {\r\n      pcVar7 = s_System_CurrentControlSet_Control_004f9cc0;\r\n      pCVar9 = local_30c;\r\n      for (iVar4 = 0xe; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n        *(undefined4 *)pCVar9 = *(undefined4 *)pcVar7;\r\n        pcVar7 = pcVar7 + 4;\r\n        pCVar9 = pCVar9 + 4;\r\n      }\r\n      *pCVar9 = *pcVar7;\r\n      puVar10 = &local_2d3;\r\n      for (iVar4 = 0x32; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n        *puVar10 = 0;\r\n        puVar10 = puVar10 + 1;\r\n      }\r\n      *(undefined2 *)puVar10 = 0;\r\n      *(undefined1 *)((int)puVar10 + 2) = 0;\r\n      local_208 = (char  [4])s_JoystickSettings_004f9cac._0_4_;\r\n      local_204 = (char  [4])s_JoystickSettings_004f9cac._4_4_;\r\n      local_200 = (char  [4])s_JoystickSettings_004f9cac._8_4_;\r\n      local_1fc = (char  [4])s_JoystickSettings_004f9cac._12_4_;\r\n      local_1f8 = s_JoystickSettings_004f9cac[0x10];\r\n      puVar10 = &local_1f7;\r\n      for (iVar4 = 0x3c; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n        *puVar10 = 0;\r\n        puVar10 = puVar10 + 1;\r\n      }\r\n      *(undefined2 *)puVar10 = 0;\r\n      *(undefined1 *)((int)puVar10 + 2) = 0;\r\n      uVar5 = 0xffffffff;\r\n      pcVar7 = (char *)(param_2 * 0x194 + 0xa4 + param_1);\r\n      do {\r\n        pcVar11 = pcVar7;\r\n        if (uVar5 == 0) break;\r\n        uVar5 = uVar5 - 1;\r\n        pcVar11 = pcVar7 + 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar11;\r\n      } while (cVar1 != '\\0');\r\n      uVar5 = ~uVar5;\r\n      pBVar8 = (BYTE *)(pcVar11 + -uVar5);\r\n      pBVar12 = param_3;\r\n      for (uVar6 = uVar5 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *(undefined4 *)pBVar12 = *(undefined4 *)pBVar8;\r\n        pBVar8 = pBVar8 + 4;\r\n        pBVar12 = pBVar12 + 4;\r\n      }\r\n      for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *pBVar12 = *pBVar8;\r\n        pBVar8 = pBVar8 + 1;\r\n        pBVar12 = pBVar12 + 1;\r\n      }\r\n      LVar3 = RegOpenKeyA((HKEY)&DAT_80000002,s_System_CurrentControlSet_Control_004f9cc0,&local_320\r\n                         );\r\n      if (LVar3 == 0) {\r\n        LVar3 = RegOpenKeyA(local_320,(LPCSTR)(param_2 * 0x194 + param_1 + 0x110),&local_31c);\r\n        if (LVar3 == 0) {\r\n          LVar3 = RegOpenKeyA(local_31c,s_CurrentJoystickSettings_004f9c94,&local_318);\r\n          if (LVar3 == 0) {\r\n            wsprintfA(local_30c,s_Joystick_dOEMName_004f9c80,param_2 + 1);\r\n            local_324 = 0x104;\r\n            LVar3 = RegQueryValueExA(local_318,local_30c,(LPDWORD)0x0,(LPDWORD)0x0,local_104,\r\n                                     &local_324);\r\n            if (LVar3 == 0) {\r\n              RegCloseKey((HKEY)s_System_CurrentControlSet_Control_004f9cc0);\r\n              LVar3 = RegOpenKeyA((HKEY)&DAT_80000002,s_System_CurrentControlSet_Control_004f9c30,\r\n                                  &local_314);\r\n              if (LVar3 == 0) {\r\n                LVar3 = RegOpenKeyA(local_314,(LPCSTR)local_104,&local_310);\r\n                if (LVar3 == 0) {\r\n                  local_324 = 0xff;\r\n                  LVar3 = RegQueryValueExA(local_310,s_OEMName_004f9c28,(LPDWORD)0x0,(LPDWORD)0x0,\r\n                                           param_3,&local_324);\r\n                  uVar2 = 0;\r\n                  if (LVar3 == 0) {\r\n                    RegCloseKey((HKEY)s_System_CurrentControlSet_Control_004f9c30);\r\n                    uVar2 = 1;\r\n                  }\r\n                }\r\n                else {\r\n                  uVar2 = 0;\r\n                }\r\n              }\r\n              else {\r\n                uVar2 = 0;\r\n              }\r\n            }\r\n            else {\r\n              uVar2 = 0;\r\n            }\r\n          }\r\n          else {\r\n            uVar2 = 0;\r\n          }\r\n        }\r\n        else {\r\n          uVar2 = 0;\r\n        }\r\n      }\r\n      else {\r\n        uVar2 = 0;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    uVar2 = 0;\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00419530",
+      "name": "FUN_00419530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00449170",
+      "name": "FUN_00449170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000ba",
+      "name": "RegOpenKeyA"
+    },
+    {
+      "addr": "EXTERNAL:00000074",
+      "name": "wsprintfA"
+    },
+    {
+      "addr": "EXTERNAL:000000bc",
+      "name": "RegQueryValueExA"
+    },
+    {
+      "addr": "EXTERNAL:000000bb",
+      "name": "RegCloseKey"
+    }
+  ],
+  "data_refs": []
+}

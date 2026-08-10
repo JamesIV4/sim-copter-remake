@@ -1,0 +1,62 @@
+{
+  "address": "0044ba30",
+  "name": "FUN_0044ba30",
+  "signature": "undefined FUN_0044ba30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0044ba30(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  DWORD DVar3;\r\n  undefined4 uVar4;\r\n  uint uVar5;\r\n  undefined4 unaff_EBX;\r\n  code *pcVar6;\r\n  LARGE_INTEGER local_18;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  if (DAT_0051972c != 0) {\r\n    return 0;\r\n  }\r\n  if (DAT_00518d50 == 1) {\r\n    iVar1 = FUN_00407b30();\r\n    iVar2 = FUN_00407ac0();\r\n    if (iVar1 < iVar2) {\r\n      FUN_00407ae0(0);\r\n      FUN_00407a90(2000);\r\n    }\r\n    return 0;\r\n  }\r\n  if ((DAT_00519728 == 0) && (iVar1 = FUN_00408c30(), iVar1 != 0)) {\r\n    DAT_00519738 = 0;\r\n    DAT_00519734 = 0;\r\n    DAT_00519728 = 1;\r\n    if (DAT_00519730 == 0) {\r\n      QueryPerformanceCounter(&local_18);\r\n    }\r\n    else if (DAT_00519730 == 1) {\r\n      local_18.s.LowPart = timeGetTime();\r\n    }\r\n    else {\r\n      DVar3 = timeGetTime();\r\n      local_18.s.LowPart = DVar3 / 1000;\r\n    }\r\n    DAT_00519734 = local_18.s.LowPart;\r\n    FUN_00491bf0(1);\r\n    uVar4 = FUN_00407b80();\r\n    FUN_00407a90(uVar4);\r\n    local_c = 0;\r\n    local_8 = 0;\r\n    local_10 = 0xb;\r\n    local_4 = FUN_00407b80();\r\n    FUN_0048c4a0(&local_10,1);\r\n    (**(code **)(*param_1 + 0xa4))(1);\r\n  }\r\n  else {\r\n    pcVar6 = timeGetTime_exref;\r\n    uVar5 = DAT_00519738;\r\n    if (DAT_00519728 == 1) {\r\n      if (DAT_00519734 != 0) {\r\n        if (DAT_00519730 == 0) {\r\n          QueryPerformanceCounter(&local_18);\r\n          uVar4 = local_18.s.LowPart;\r\n          pcVar6 = timeGetTime_exref;\r\n        }\r\n        else if (DAT_00519730 == 1) {\r\n          uVar4 = timeGetTime();\r\n        }\r\n        else {\r\n          DVar3 = timeGetTime();\r\n          uVar4 = DVar3 / 1000;\r\n        }\r\n        uVar5 = (uVar5 - DAT_00519734) + uVar4;\r\n      }\r\n      if ((DAT_00519730 == 0) && (DAT_0051973c != 0)) {\r\n        uVar5 = MulDiv(uVar5,1000000,DAT_0051973c);\r\n      }\r\n      if (300000 < uVar5) {\r\n        (**(code **)(*param_1 + 0xa4))(0);\r\n        DAT_00519738 = 0;\r\n        DAT_00519734 = 0;\r\n        if (DAT_00519730 == 0) {\r\n          QueryPerformanceCounter((LARGE_INTEGER *)&stack0xffffffe4);\r\n          DAT_00519734 = unaff_EBX;\r\n          return 0;\r\n        }\r\n        if (DAT_00519730 == 1) {\r\n          DAT_00519734 = (*pcVar6)();\r\n          return 0;\r\n        }\r\n        uVar5 = (*pcVar6)();\r\n        DAT_00519734 = uVar5 / 1000;\r\n        return 0;\r\n      }\r\n      if ((DAT_00503aa0 == 3) &&\r\n         (iVar1 = FUN_004823a0((int)*(short *)(DAT_00506444 + 0x12a),\r\n                               (int)*(short *)(DAT_00506444 + 300),0xf6,2), iVar1 != 0)) {\r\n        DAT_00519728 = 2;\r\n        DAT_00519738 = 0;\r\n        DAT_00519734 = 0;\r\n        if (DAT_00519730 == 0) {\r\n          QueryPerformanceCounter(&local_18);\r\n          DAT_00519734 = local_18.s.LowPart;\r\n          return 0;\r\n        }\r\n        if (DAT_00519730 == 1) {\r\n          DAT_00519734 = (*pcVar6)();\r\n          return 0;\r\n        }\r\n        uVar5 = (*pcVar6)();\r\n        DAT_00519734 = uVar5 / 1000;\r\n        return 0;\r\n      }\r\n    }\r\n    else if (DAT_00519728 == 2) {\r\n      if (DAT_00519734 != 0) {\r\n        if (DAT_00519730 == 0) {\r\n          QueryPerformanceCounter(&local_18);\r\n        }\r\n        else if (DAT_00519730 == 1) {\r\n          local_18.s.LowPart = timeGetTime();\r\n        }\r\n        else {\r\n          DVar3 = timeGetTime();\r\n          local_18.s.LowPart = DVar3 / 1000;\r\n        }\r\n        uVar5 = (uVar5 - DAT_00519734) + local_18.s.LowPart;\r\n      }\r\n      if ((DAT_00519730 == 0) && (DAT_0051973c != 0)) {\r\n        uVar5 = MulDiv(uVar5,1000000,DAT_0051973c);\r\n      }\r\n      if (7000 < uVar5) {\r\n        FUN_00491bf0(0);\r\n        (**(code **)(*param_1 + 0x9c))();\r\n        return 1;\r\n      }\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00407b30",
+      "name": "FUN_00407b30"
+    },
+    {
+      "addr": "00407ac0",
+      "name": "FUN_00407ac0"
+    },
+    {
+      "addr": "00407ae0",
+      "name": "FUN_00407ae0"
+    },
+    {
+      "addr": "00407a90",
+      "name": "FUN_00407a90"
+    },
+    {
+      "addr": "00408c30",
+      "name": "FUN_00408c30"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "00491bf0",
+      "name": "FUN_00491bf0"
+    },
+    {
+      "addr": "00407b80",
+      "name": "FUN_00407b80"
+    },
+    {
+      "addr": "0048c4a0",
+      "name": "FUN_0048c4a0"
+    },
+    {
+      "addr": "EXTERNAL:00000024",
+      "name": "MulDiv"
+    },
+    {
+      "addr": "004823a0",
+      "name": "FUN_004823a0"
+    }
+  ],
+  "data_refs": []
+}

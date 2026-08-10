@@ -1,0 +1,45 @@
+{
+  "address": "004c6ec0",
+  "name": "FUN_004c6ec0",
+  "signature": "undefined FUN_004c6ec0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid __fastcall FUN_004c6ec0(int param_1)\r\n\r\n{\r\n  char cVar1;\r\n  ushort uVar2;\r\n  undefined4 uVar3;\r\n  \r\n  FUN_00479060();\r\n  uVar3 = __ftol();\r\n  uVar3 = __ftol(uVar3);\r\n  uVar3 = FUN_0046cb91(uVar3);\r\n  FUN_00467b50(uVar3);\r\n  cVar1 = __ftol();\r\n  uVar2 = (ushort)(2U - cVar1 & 7);\r\n  *(ushort *)(param_1 + 0x140) = uVar2;\r\n  if (*(int *)(param_1 + 0x238) < 0) {\r\n    *(ushort *)(param_1 + 0x140) = uVar2 + 4 & 7;\r\n  }\r\n  FUN_0047ae30();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c0910",
+      "name": "FUN_004c0910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6530",
+      "name": "FUN_004c6530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00479060",
+      "name": "FUN_00479060"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "0046cb91",
+      "name": "FUN_0046cb91"
+    },
+    {
+      "addr": "00467b50",
+      "name": "FUN_00467b50"
+    },
+    {
+      "addr": "0047ae30",
+      "name": "FUN_0047ae30"
+    }
+  ],
+  "data_refs": []
+}

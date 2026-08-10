@@ -1,0 +1,26 @@
+{
+  "address": "00443710",
+  "name": "FUN_00443710",
+  "signature": "undefined FUN_00443710(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00443710(int param_1)\r\n\r\n{\r\n  DWORD DVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  LARGE_INTEGER local_8;\r\n  \r\n  uVar3 = *(uint *)(param_1 + 0x17a);\r\n  if (*(int *)(param_1 + 0x116) != 0) {\r\n    if (*(int *)(param_1 + 0x176) != 0) {\r\n      if (*(int *)(param_1 + 0x172) == 0) {\r\n        QueryPerformanceCounter(&local_8);\r\n      }\r\n      else if (*(int *)(param_1 + 0x172) == 1) {\r\n        local_8.s.LowPart = timeGetTime();\r\n      }\r\n      else {\r\n        DVar1 = timeGetTime();\r\n        local_8.s.LowPart = DVar1 / 1000;\r\n      }\r\n      uVar3 = (uVar3 - *(int *)(param_1 + 0x176)) + local_8.s.LowPart;\r\n    }\r\n    if ((*(int *)(param_1 + 0x172) == 0) && (*(int *)(param_1 + 0x17e) != 0)) {\r\n      uVar3 = MulDiv(uVar3,1000000,*(int *)(param_1 + 0x17e));\r\n      *(uint *)(param_1 + 0x186) = (uint)(*(uint *)(param_1 + 0x182) < uVar3);\r\n      return 1;\r\n    }\r\n    *(uint *)(param_1 + 0x186) = (uint)(*(uint *)(param_1 + 0x182) < uVar3);\r\n    return 1;\r\n  }\r\n  if (*(int *)(param_1 + 0x176) != 0) {\r\n    if (*(int *)(param_1 + 0x172) == 0) {\r\n      QueryPerformanceCounter(&local_8);\r\n    }\r\n    else if (*(int *)(param_1 + 0x172) == 1) {\r\n      local_8.s.LowPart = timeGetTime();\r\n    }\r\n    else {\r\n      DVar1 = timeGetTime();\r\n      local_8.s.LowPart = DVar1 / 1000;\r\n    }\r\n    uVar3 = (uVar3 - *(int *)(param_1 + 0x176)) + local_8.s.LowPart;\r\n  }\r\n  if ((*(int *)(param_1 + 0x172) == 0) && (*(int *)(param_1 + 0x17e) != 0)) {\r\n    iVar2 = MulDiv(uVar3,1000000,*(int *)(param_1 + 0x17e));\r\n    *(int *)(param_1 + 0x186) = iVar2;\r\n  }\r\n  else {\r\n    *(uint *)(param_1 + 0x186) = uVar3;\r\n  }\r\n  if ((*(uint *)(param_1 + 0x186) <= *(uint *)(param_1 + 0x182)) && (*(int *)(param_1 + 0x48) == 0))\r\n  {\r\n    return 0;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "EXTERNAL:00000024",
+      "name": "MulDiv"
+    }
+  ],
+  "data_refs": []
+}

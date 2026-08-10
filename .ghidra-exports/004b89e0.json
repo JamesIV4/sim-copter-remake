@@ -1,0 +1,26 @@
+{
+  "address": "004b89e0",
+  "name": "FUN_004b89e0",
+  "signature": "undefined FUN_004b89e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b89e0(int param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  FUN_0049d980();\r\n  if (*(int *)(param_1 + 299) == 2) {\r\n    uVar1 = __ftol();\r\n    uVar1 = FUN_0046c49d(*(undefined4 *)(param_1 + 0xef),uVar1);\r\n    *(undefined4 *)(param_1 + 0xef) = uVar1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0049d980",
+      "name": "FUN_0049d980"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

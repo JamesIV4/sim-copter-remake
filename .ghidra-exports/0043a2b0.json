@@ -1,0 +1,45 @@
+{
+  "address": "0043a2b0",
+  "name": "FUN_0043a2b0",
+  "signature": "undefined FUN_0043a2b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_0043a2b0(int *param_1,undefined4 param_2,int *param_3,byte *param_4,int param_5,uint param_6)\r\n\r\n{\r\n  byte bVar1;\r\n  code *pcVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  int iVar5;\r\n  byte *pbVar6;\r\n  byte *pbVar7;\r\n  uint uVar8;\r\n  int iVar9;\r\n  int local_d;\r\n  undefined1 uStack_9;\r\n  int local_4;\r\n  \r\n  if (param_5 != 0) {\r\n    if ((param_6 & 1) == 0) {\r\n      if ((param_6 & 8) == 0) {\r\n        FUN_00439a60(param_4,param_5,&local_4);\r\n        if (local_4 != 0) {\r\n          pbVar6 = param_4 + param_5;\r\n          iVar5 = param_3[1];\r\n          iVar9 = *param_3;\r\n          local_d = iVar5 << 8;\r\n          uStack_9 = (undefined1)((uint)iVar5 >> 0x18);\r\n          for (; param_4 < pbVar6; param_4 = param_4 + 1) {\r\n            local_d._1_3_ = (undefined3)((uint)local_d >> 8);\r\n            FUN_0043a550(param_2,iVar9,CONCAT13(uStack_9,local_d._1_3_),\r\n                         CONCAT31((int3)((uint)iVar5 >> 8),*param_4));\r\n            bVar1 = *param_4;\r\n            local_d = CONCAT31(local_d._1_3_,bVar1);\r\n            iVar5 = FUN_0043a250(local_d);\r\n            if (iVar5 != 0) {\r\n              iVar9 = iVar9 + (uint)*(byte *)((param_1[0x12] - param_1[10]) + (uint)bVar1);\r\n            }\r\n            iVar5 = 0;\r\n          }\r\n        }\r\n      }\r\n      else {\r\n        if (param_5 == 0) {\r\n          iVar5 = 0;\r\n        }\r\n        else {\r\n          pbVar6 = param_4 + param_5 + -1;\r\n          iVar5 = FUN_00439a10(param_4,param_5);\r\n          local_d = iVar5 << 8;\r\n          uStack_9 = (undefined1)((uint)iVar5 >> 0x18);\r\n          local_4 = param_5;\r\n          if (param_4 <= pbVar6) {\r\n            pcVar2 = *(code **)(*param_1 + 0x10);\r\n            do {\r\n              iVar5 = (*pcVar2)(*pbVar6);\r\n              if (iVar5 == 0) {\r\n                if (((byte)param_1[10] <= *pbVar6) &&\r\n                   ((uint)*pbVar6 < (uint)(param_1[0xb] + param_1[10]))) break;\r\n              }\r\n              bVar1 = *pbVar6;\r\n              pbVar6 = pbVar6 + -1;\r\n              iVar5 = FUN_0043a280(bVar1);\r\n              iVar5 = CONCAT13(uStack_9,local_d._1_3_) - iVar5;\r\n              local_d = iVar5 * 0x100;\r\n              uStack_9 = (undefined1)((uint)iVar5 >> 0x18);\r\n              local_4 = local_4 + -1;\r\n            } while (param_4 <= pbVar6);\r\n          }\r\n          iVar5 = CONCAT13(uStack_9,local_d._1_3_);\r\n        }\r\n        if (local_4 != 0) {\r\n          iVar5 = param_3[2] - iVar5;\r\n          local_d = param_3[1] << 8;\r\n          uStack_9 = (undefined1)((uint)param_3[1] >> 0x18);\r\n          pbVar7 = param_4 + local_4;\r\n          pbVar6 = pbVar7;\r\n          if (param_4 < pbVar7) {\r\n            do {\r\n              FUN_0043a550(param_2,iVar5,CONCAT13(uStack_9,local_d._1_3_),\r\n                           CONCAT31((int3)((uint)pbVar6 >> 8),*param_4));\r\n              bVar1 = *param_4;\r\n              local_d = CONCAT31(local_d._1_3_,bVar1);\r\n              iVar9 = FUN_0043a250(local_d);\r\n              pbVar6 = (byte *)0x0;\r\n              if (iVar9 != 0) {\r\n                pbVar6 = (byte *)((uint)bVar1 - param_1[10]);\r\n                iVar5 = iVar5 + (uint)pbVar6[param_1[0x12]];\r\n              }\r\n              param_4 = param_4 + 1;\r\n            } while (param_4 < pbVar7);\r\n            return;\r\n          }\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      if (param_5 == 0) {\r\n        uVar8 = 0;\r\n      }\r\n      else {\r\n        pbVar6 = param_4 + param_5 + -1;\r\n        uVar4 = FUN_00439a10(param_4,param_5);\r\n        local_d._1_3_ = (undefined3)uVar4;\r\n        uStack_9 = (undefined1)((uint)uVar4 >> 0x18);\r\n        local_4 = param_5;\r\n        if (param_4 <= pbVar6) {\r\n          iVar5 = *param_1;\r\n          pcVar2 = *(code **)(iVar5 + 0x10);\r\n          do {\r\n            iVar5 = (*pcVar2)(CONCAT31((int3)((uint)iVar5 >> 8),*pbVar6));\r\n            if (iVar5 == 0) {\r\n              if (((byte)param_1[10] <= *pbVar6) &&\r\n                 ((uint)*pbVar6 < (uint)(param_1[0xb] + param_1[10]))) break;\r\n            }\r\n            bVar1 = *pbVar6;\r\n            iVar9 = FUN_0043a250(bVar1);\r\n            iVar5 = 0;\r\n            if (iVar9 != 0) {\r\n              iVar5 = (uint)bVar1 - param_1[10];\r\n              iVar9 = CONCAT13(uStack_9,local_d._1_3_) - (uint)*(byte *)(iVar5 + param_1[0x12]);\r\n              local_d._1_3_ = (undefined3)iVar9;\r\n              uStack_9 = (undefined1)((uint)iVar9 >> 0x18);\r\n            }\r\n            pbVar6 = pbVar6 + -1;\r\n            local_4 = local_4 + -1;\r\n          } while (param_4 <= pbVar6);\r\n        }\r\n        uVar8 = CONCAT13(uStack_9,local_d._1_3_);\r\n      }\r\n      if (local_4 != 0) {\r\n        iVar5 = param_3[1];\r\n        iVar9 = (*param_3 - (uVar8 >> 1)) + (param_3[2] - *param_3) / 2;\r\n        pbVar6 = param_4 + local_4;\r\n        if (param_4 < pbVar6) {\r\n          do {\r\n            FUN_0043a550(param_2,iVar9,iVar5,*param_4);\r\n            iVar3 = param_1[10];\r\n            bVar1 = *param_4;\r\n            if (((byte)iVar3 <= bVar1) && ((uint)bVar1 < (uint)(param_1[0xb] + iVar3))) {\r\n              iVar9 = iVar9 + (uint)*(byte *)((uint)bVar1 + (param_1[0x12] - iVar3));\r\n            }\r\n            param_4 = param_4 + 1;\r\n          } while (param_4 < pbVar6);\r\n          return;\r\n        }\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043a5c0",
+      "name": "FUN_0043a5c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00439a10",
+      "name": "FUN_00439a10"
+    },
+    {
+      "addr": "0043a250",
+      "name": "FUN_0043a250"
+    },
+    {
+      "addr": "0043a550",
+      "name": "FUN_0043a550"
+    },
+    {
+      "addr": "0043a280",
+      "name": "FUN_0043a280"
+    },
+    {
+      "addr": "00439a60",
+      "name": "FUN_00439a60"
+    }
+  ],
+  "data_refs": []
+}

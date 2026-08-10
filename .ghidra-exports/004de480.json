@@ -1,0 +1,34 @@
+{
+  "address": "004de480",
+  "name": "FUN_004de480",
+  "signature": "undefined FUN_004de480(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004de480(void)\r\n\r\n{\r\n  FILE *_File;\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  iVar2 = 0;\r\n  iVar3 = 3;\r\n  __lock(2);\r\n  if (3 < DAT_0061cc90) {\r\n    iVar4 = 0xc;\r\n    do {\r\n      _File = *(FILE **)(DAT_0061bc84 + iVar4);\r\n      if (_File != (FILE *)0x0) {\r\n        if ((_File->_flag & 0x83) != 0) {\r\n          iVar1 = _fclose(_File);\r\n          if (iVar1 != -1) {\r\n            iVar2 = iVar2 + 1;\r\n          }\r\n        }\r\n        if (0x4f < iVar4) {\r\n          DeleteCriticalSection((LPCRITICAL_SECTION)(*(int *)(DAT_0061bc84 + iVar4) + 0x20));\r\n          FUN_004d6010(*(undefined4 *)(DAT_0061bc84 + iVar4));\r\n          *(undefined4 *)(DAT_0061bc84 + iVar4) = 0;\r\n        }\r\n      }\r\n      iVar4 = iVar4 + 4;\r\n      iVar3 = iVar3 + 1;\r\n    } while (iVar3 < DAT_0061cc90);\r\n  }\r\n  FUN_004d64a0(2);\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d3a40",
+      "name": "_fclose"
+    },
+    {
+      "addr": "EXTERNAL:00000020",
+      "name": "DeleteCriticalSection"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

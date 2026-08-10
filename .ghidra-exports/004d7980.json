@@ -1,0 +1,51 @@
+{
+  "address": "004d7980",
+  "name": "FUN_004d7980",
+  "signature": "undefined FUN_004d7980(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_004d7980(uint param_1,FILE *param_2)\r\n\r\n{\r\n  uint _FileHandle;\r\n  FILE *_File;\r\n  int iVar1;\r\n  undefined *puVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  \r\n  _File = param_2;\r\n  _FileHandle = param_2->_file;\r\n  uVar3 = param_2->_flag;\r\n  if (((uVar3 & 0x82) == 0) || ((uVar3 & 0x40) != 0)) {\r\n    param_2->_flag = uVar3 | 0x20;\r\n    return 0xffffffff;\r\n  }\r\n  if ((uVar3 & 1) != 0) {\r\n    param_2->_cnt = 0;\r\n    if ((param_2->_flag & 0x10U) == 0) {\r\n      param_2->_flag = param_2->_flag | 0x20;\r\n      return 0xffffffff;\r\n    }\r\n    param_2->_ptr = param_2->_base;\r\n    param_2->_flag = param_2->_flag & 0xfffffffe;\r\n  }\r\n  uVar3 = param_2->_flag;\r\n  uVar4 = 0;\r\n  param_2->_flag = uVar3 | 2;\r\n  param_2->_flag = uVar3 & 0xffffffef | 2;\r\n  param_2->_cnt = 0;\r\n  if ((param_2->_flag & 0x10cU) == 0) {\r\n    if ((param_2 == (FILE *)&DAT_00507260) || (param_2 == (FILE *)&DAT_00507280)) {\r\n      iVar1 = FUN_004dfb80(_FileHandle);\r\n      if (iVar1 != 0) goto LAB_004d7a04;\r\n    }\r\n    __getbuf(_File);\r\n  }\r\nLAB_004d7a04:\r\n  if ((_File->_flag & 0x108U) == 0) {\r\n    uVar3 = 1;\r\n    uVar4 = __write(_FileHandle,&param_1,1);\r\n  }\r\n  else {\r\n    uVar3 = (int)_File->_ptr - (int)_File->_base;\r\n    _File->_ptr = _File->_base + 1;\r\n    _File->_cnt = _File->_bufsiz + -1;\r\n    if ((int)uVar3 < 1) {\r\n      puVar2 = &DAT_005075e8;\r\n      if (_FileHandle != 0xffffffff) {\r\n        puVar2 = (undefined *)\r\n                 (*(int *)((int)&DAT_0061bb80 + ((int)(_FileHandle & 0xffffffe7) >> 3)) +\r\n                 (_FileHandle & 0x1f) * 0x24);\r\n      }\r\n      if ((puVar2[4] & 0x20) != 0) {\r\n        __write(_FileHandle,(void *)0x0,2);\r\n      }\r\n    }\r\n    else {\r\n      uVar4 = __write(_FileHandle,_File->_base,uVar3);\r\n    }\r\n    *_File->_base = (char)param_1;\r\n  }\r\n  if (uVar4 != uVar3) {\r\n    _File->_flag = _File->_flag | 0x20;\r\n    return 0xffffffff;\r\n  }\r\n  return param_1 & 0xff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3940",
+      "name": "_sprintf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d41b0",
+      "name": "_vsprintf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d84b0",
+      "name": "write_char",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3cf0",
+      "name": "_fwrite",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfb80",
+      "name": "FUN_004dfb80"
+    },
+    {
+      "addr": "004dfb30",
+      "name": "__getbuf"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

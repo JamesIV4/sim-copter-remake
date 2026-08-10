@@ -1,0 +1,26 @@
+{
+  "address": "00417050",
+  "name": "FUN_00417050",
+  "signature": "undefined FUN_00417050(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00417050(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  FUN_00404a20();\r\n  iVar1 = *(int *)(param_1 + 0x21e);\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)(param_1 + 0x21e) = 0;\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x222);\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)(param_1 + 0x222) = 0;\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x226);\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)(param_1 + 0x226) = 0;\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x22a);\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)(param_1 + 0x22a) = 0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00404a20",
+      "name": "FUN_00404a20"
+    },
+    {
+      "addr": "0044fbb0",
+      "name": "FUN_0044fbb0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

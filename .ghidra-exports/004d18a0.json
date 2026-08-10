@@ -1,0 +1,24 @@
+{
+  "address": "004d18a0",
+  "name": "FUN_004d18a0",
+  "signature": "undefined FUN_004d18a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d18a0(char *param_1)\r\n\r\n{\r\n  char cVar1;\r\n  short sVar2;\r\n  int iVar3;\r\n  char *pcVar4;\r\n  \r\n  iVar3 = -1;\r\n  pcVar4 = param_1;\r\n  do {\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    cVar1 = *pcVar4;\r\n    pcVar4 = pcVar4 + 1;\r\n  } while (cVar1 != '\\0');\r\n  sVar2 = ~(ushort)iVar3 - 1;\r\n  if (0xff < sVar2) {\r\n    sVar2 = 0xff;\r\n  }\r\n  FUN_004ce150(param_1,param_1 + 1,(int)sVar2);\r\n  *param_1 = (char)sVar2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ce2d0",
+      "name": "FUN_004ce2d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ce150",
+      "name": "FUN_004ce150"
+    }
+  ],
+  "data_refs": []
+}

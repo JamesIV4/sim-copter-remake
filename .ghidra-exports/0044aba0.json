@@ -1,0 +1,46 @@
+{
+  "address": "0044aba0",
+  "name": "FUN_0044aba0",
+  "signature": "undefined FUN_0044aba0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0044aba0(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int *local_4;\r\n  \r\n  iVar1 = *(int *)(param_1 + 0x401c);\r\n  if (iVar1 != 0) {\r\n    FUN_00408dd0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)(param_1 + 0x401c) = 0;\r\n  }\r\n  local_4 = (int *)**(int **)(param_1 + 0x40a4);\r\n  if (*(int **)(param_1 + 0x40a4) != local_4) {\r\n    do {\r\n      switch(local_4[2]) {\r\n      case 4:\r\n        FUN_00411b40();\r\n        break;\r\n      case 6:\r\n        FUN_00412f50();\r\n        break;\r\n      case 7:\r\n        FUN_00413f50();\r\n        break;\r\n      case 8:\r\n        FUN_004145f0();\r\n        break;\r\n      case 9:\r\n        FUN_004149d0();\r\n        break;\r\n      case 0xb:\r\n        FUN_00414db0();\r\n      }\r\n      local_4 = (int *)*local_4;\r\n    } while ((int *)*(int *)(param_1 + 0x40a4) != local_4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00408dd0",
+      "name": "FUN_00408dd0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00411b40",
+      "name": "FUN_00411b40"
+    },
+    {
+      "addr": "00412f50",
+      "name": "FUN_00412f50"
+    },
+    {
+      "addr": "00413f50",
+      "name": "FUN_00413f50"
+    },
+    {
+      "addr": "004145f0",
+      "name": "FUN_004145f0"
+    },
+    {
+      "addr": "004149d0",
+      "name": "FUN_004149d0"
+    },
+    {
+      "addr": "00414db0",
+      "name": "FUN_00414db0"
+    }
+  ],
+  "data_refs": []
+}

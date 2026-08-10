@@ -1,0 +1,18 @@
+{
+  "address": "00458a90",
+  "name": "FUN_00458a90",
+  "signature": "undefined FUN_00458a90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00458a90(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  \r\n  if (((param_2 == 0x1b) && (*(int *)(param_1 + 0xb8) != 0)) &&\r\n     (*(undefined4 **)(param_1 + 0x38) != (undefined4 *)0x0)) {\r\n    (**(code **)**(undefined4 **)(param_1 + 0x38))(param_1,*(undefined4 *)(param_1 + 4),0x3ea,0);\r\n  }\r\n  if ((param_2 == 0xd) && (*(undefined4 **)(param_1 + 0x38) != (undefined4 *)0x0)) {\r\n    (**(code **)**(undefined4 **)(param_1 + 0x38))(param_1,*(undefined4 *)(param_1 + 4),0x3e9,0);\r\n  }\r\n  if (((param_2 == 0x25) || (param_2 == 0x27)) || ((param_2 == 0x28 || (param_2 == 0x26)))) {\r\n    iVar1 = *(int *)(param_1 + 0x840);\r\n    (**(code **)(iVar1 + 0x24))(DAT_00519cc0);\r\n    (**(code **)(iVar1 + 8))(0,1);\r\n  }\r\n  if (param_2 == 0x25) {\r\n    iVar1 = *(int *)(param_1 + 0x74);\r\n    if (iVar1 == 0) {\r\n      if (*(int *)(param_1 + 0xb4) == 2) {\r\n        uVar2 = 1;\r\n      }\r\n      else {\r\n        if (*(int *)(param_1 + 0xb4) != 3) {\r\n          return 1;\r\n        }\r\n        uVar2 = 2;\r\n      }\r\n      goto LAB_00458bf9;\r\n    }\r\n    if (iVar1 != 1) {\r\n      if (iVar1 != 2) {\r\n        return 1;\r\n      }\r\n      uVar2 = 1;\r\n      goto LAB_00458bf9;\r\n    }\r\n  }\r\n  else if (param_2 == 0x27) {\r\n    iVar1 = *(int *)(param_1 + 0x74);\r\n    if (iVar1 == 0) {\r\n      if (*(int *)(param_1 + 0xb4) < 2) {\r\n        return 1;\r\n      }\r\n      uVar2 = 1;\r\n      goto LAB_00458bf9;\r\n    }\r\n    if (iVar1 != 1) goto joined_r0x00458bf5;\r\n    if (*(int *)(param_1 + 0xb4) == 3) {\r\n      uVar2 = 2;\r\n      goto LAB_00458bf9;\r\n    }\r\n  }\r\n  else if (param_2 == 0x26) {\r\n    iVar1 = *(int *)(param_1 + 0x74);\r\n    if (iVar1 == 0) {\r\n      if (*(int *)(param_1 + 0xb4) == 3) {\r\n        uVar2 = 2;\r\n      }\r\n      else {\r\n        if (*(int *)(param_1 + 0xb4) != 2) {\r\n          return 1;\r\n        }\r\n        uVar2 = 1;\r\n      }\r\n      goto LAB_00458bf9;\r\n    }\r\n    if (iVar1 != 1) {\r\njoined_r0x00458bf5:\r\n      if (iVar1 != 2) {\r\n        return 1;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    if (param_2 != 0x28) {\r\n      return 1;\r\n    }\r\n    iVar1 = *(int *)(param_1 + 0x74);\r\n    if (iVar1 == 0) {\r\n      if (*(int *)(param_1 + 0xb4) == 3) {\r\n        uVar2 = 2;\r\n      }\r\n      else {\r\n        if (*(int *)(param_1 + 0xb4) != 2) {\r\n          return 1;\r\n        }\r\n        uVar2 = 1;\r\n      }\r\n      goto LAB_00458bf9;\r\n    }\r\n    if (iVar1 != 1) goto joined_r0x00458bf5;\r\n    if (*(int *)(param_1 + 0xb4) == 3) {\r\n      uVar2 = 2;\r\n      goto LAB_00458bf9;\r\n    }\r\n  }\r\n  uVar2 = 0;\r\nLAB_00458bf9:\r\n  FUN_00458d90(uVar2);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00458d90",
+      "name": "FUN_00458d90"
+    }
+  ],
+  "data_refs": []
+}

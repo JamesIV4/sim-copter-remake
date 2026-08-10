@@ -1,0 +1,33 @@
+{
+  "address": "004d9f30",
+  "name": "___FrameUnwindToState",
+  "signature": "undefined ___FrameUnwindToState(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___FrameUnwindToState\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___FrameUnwindToState(int param_1,undefined4 param_2,int param_3,int param_4)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = *unaff_FS_OFFSET;\r\n  puStack_c = &DAT_004f5838;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  for (iVar1 = *(int *)(param_1 + 8); iVar1 != param_4;\r\n      iVar1 = *(int *)(*(int *)(param_3 + 8) + iVar1 * 8)) {\r\n    local_8 = 0xffffffff;\r\n    if ((iVar1 < 0) || (*(int *)(param_3 + 4) <= iVar1)) {\r\n      _inconsistency();\r\n    }\r\n    local_8 = 0;\r\n    iVar2 = *(int *)(*(int *)(param_3 + 8) + 4 + iVar1 * 8);\r\n    if (iVar2 != 0) {\r\n      __CallSettingFrame_12(iVar2,param_1,0x103);\r\n    }\r\n  }\r\n  local_8 = 0xffffffff;\r\n  if (iVar1 != param_4) {\r\n    _inconsistency();\r\n  }\r\n  *(int *)(param_1 + 8) = iVar1;\r\n  *unaff_FS_OFFSET = local_14;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9a50",
+      "name": "___InternalCxxFrameHandler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da020",
+      "name": "CatchIt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency"
+    },
+    {
+      "addr": "004da4c0",
+      "name": "__CallSettingFrame@12"
+    }
+  ],
+  "data_refs": []
+}

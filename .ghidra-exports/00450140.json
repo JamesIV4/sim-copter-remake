@@ -1,0 +1,38 @@
+{
+  "address": "00450140",
+  "name": "FUN_00450140",
+  "signature": "undefined FUN_00450140(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_00450140(int *param_1,int param_2,int param_3,undefined4 param_4,undefined4 param_5,int param_6)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  HPEN pHVar3;\r\n  int iVar4;\r\n  HGDIOBJ pvVar5;\r\n  HDC unaff_ESI;\r\n  int unaff_retaddr;\r\n  undefined1 auStack_c [8];\r\n  int iStack_4;\r\n  \r\n  piVar2 = (int *)(**(code **)(*param_1 + 0x60))();\r\n  if (piVar2 == (int *)0x0) {\r\n    return 0x65;\r\n  }\r\n  pvVar5 = (HGDIOBJ)param_1[0x4a];\r\n  if ((((pvVar5 == (HGDIOBJ)0x0) || (param_1[0x4b] != param_6)) ||\r\n      (*(char *)((int)param_1 + 0x3e) != *(char *)((int)param_1 + 0x132))) ||\r\n     ((*(char *)((int)param_1 + 0x3d) != *(char *)((int)param_1 + 0x131) ||\r\n      ((char)param_1[0x4c] != (char)param_1[0xf])))) {\r\n    if (pvVar5 != (HGDIOBJ)0x0) {\r\n      DeleteObject(pvVar5);\r\n    }\r\n    param_1[0x4b] = param_6;\r\n    param_1[0x4c] = param_1[0xf];\r\n    pHVar3 = CreatePen(0,param_6,\r\n                       (uint)*(byte *)((int)param_1 + 0x3d) << 8 |\r\n                       (uint)*(byte *)(param_1 + 0xf) << 0x10 | (uint)*(byte *)((int)param_1 + 0x3e)\r\n                      );\r\n    param_1[0x4a] = (int)pHVar3;\r\n    if (pHVar3 == (HPEN)0x0) {\r\n      FUN_0040f9f0(&DAT_004f97ac,s_Error_calling_CreatePen___in_CBa_004f97b0);\r\n      return 0x80000000;\r\n    }\r\n  }\r\n  iVar1 = *piVar2;\r\n  iVar4 = (**(code **)(iVar1 + 0x44))(piVar2,auStack_c);\r\n  if (iVar4 != 0) {\r\n    return 0x80000000;\r\n  }\r\n  pvVar5 = SelectObject(unaff_ESI,(HGDIOBJ)param_1[0x4a]);\r\n  MoveToEx(unaff_ESI,iStack_4,unaff_retaddr,(LPPOINT)&stack0xfffffff0);\r\n  LineTo(unaff_ESI,param_2,param_3);\r\n  SelectObject(unaff_ESI,pvVar5);\r\n  (**(code **)(iVar1 + 0x68))(piVar2,unaff_ESI);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000a5",
+      "name": "DeleteObject"
+    },
+    {
+      "addr": "EXTERNAL:000000b3",
+      "name": "CreatePen"
+    },
+    {
+      "addr": "0040f9f0",
+      "name": "FUN_0040f9f0"
+    },
+    {
+      "addr": "EXTERNAL:000000ae",
+      "name": "SelectObject"
+    },
+    {
+      "addr": "EXTERNAL:000000b2",
+      "name": "MoveToEx"
+    },
+    {
+      "addr": "EXTERNAL:000000b1",
+      "name": "LineTo"
+    }
+  ],
+  "data_refs": []
+}

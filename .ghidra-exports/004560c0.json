@@ -1,0 +1,59 @@
+{
+  "address": "004560c0",
+  "name": "FUN_004560c0",
+  "signature": "undefined FUN_004560c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004560c0(undefined4 *param_1)\r\n\r\n{\r\n  if ((HMMIO)*param_1 != (HMMIO)0x0) {\r\n    mmioClose((HMMIO)*param_1,0);\r\n    *param_1 = 0;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041e2d0",
+      "name": "FUN_0041e2d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e2d0",
+      "name": "FUN_0041e2d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e870",
+      "name": "FUN_0041e870",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c1",
+      "name": "mmioClose"
+    }
+  ],
+  "data_refs": []
+}

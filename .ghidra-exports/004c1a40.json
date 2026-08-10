@@ -1,0 +1,22 @@
+{
+  "address": "004c1a40",
+  "name": "FUN_004c1a40",
+  "signature": "undefined FUN_004c1a40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004c1a40(undefined4 param_1,byte param_2)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 uStack_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 uStack_8;\r\n  \r\n  uStack_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_004c1a8f;\r\n  *unaff_FS_OFFSET = &uStack_10;\r\n  uStack_8 = 0xffffffff;\r\n  FUN_004c1a99();\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1);\r\n  }\r\n  *unaff_FS_OFFSET = uStack_10;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c1a99",
+      "name": "FUN_004c1a99"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

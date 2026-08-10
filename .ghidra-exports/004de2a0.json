@@ -1,0 +1,33 @@
+{
+  "address": "004de2a0",
+  "name": "__filbuf",
+  "signature": "int __cdecl __filbuf(FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __filbuf\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __filbuf(FILE *_File)\r\n\r\n{\r\n  uint uVar1;\r\n  byte *pbVar2;\r\n  int iVar3;\r\n  undefined *puVar4;\r\n  \r\n  uVar1 = _File->_flag;\r\n  if (((uVar1 & 0x83) == 0) || ((uVar1 & 0x40) != 0)) {\r\n    return -1;\r\n  }\r\n  if ((uVar1 & 2) != 0) {\r\n    _File->_flag = uVar1 | 0x20;\r\n    return -1;\r\n  }\r\n  _File->_flag = uVar1 | 1;\r\n  if ((uVar1 & 0x10c) == 0) {\r\n    __getbuf(_File);\r\n  }\r\n  else {\r\n    _File->_ptr = _File->_base;\r\n  }\r\n  iVar3 = __read(_File->_file,_File->_base,_File->_bufsiz);\r\n  _File->_cnt = iVar3;\r\n  if ((iVar3 != 0) && (iVar3 != -1)) {\r\n    if ((_File->_flag & 0x82U) == 0) {\r\n      uVar1 = _File->_file;\r\n      puVar4 = &DAT_005075e8;\r\n      if (uVar1 != 0xffffffff) {\r\n        puVar4 = (undefined *)\r\n                 (*(int *)((int)&DAT_0061bb80 + ((int)(uVar1 & 0xffffffe7) >> 3)) +\r\n                 (uVar1 & 0x1f) * 0x24);\r\n      }\r\n      if ((puVar4[4] & 0x82) == 0x82) {\r\n        _File->_flag = _File->_flag | 0x2000;\r\n      }\r\n    }\r\n    if (((_File->_bufsiz == 0x200) && ((_File->_flag & 8U) != 0)) && ((_File->_flag & 0x400U) == 0))\r\n    {\r\n      _File->_bufsiz = 0x1000;\r\n    }\r\n    _File->_cnt = _File->_cnt + -1;\r\n    pbVar2 = (byte *)_File->_ptr;\r\n    _File->_ptr = (char *)(pbVar2 + 1);\r\n    return (uint)*pbVar2;\r\n  }\r\n  _File->_flag = _File->_flag | (-(uint)(iVar3 == 0) & 0xfffffff0) + 0x20;\r\n  _File->_cnt = 0;\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5c70",
+      "name": "__fread_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd050",
+      "name": "__inc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfb30",
+      "name": "__getbuf"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    }
+  ],
+  "data_refs": []
+}

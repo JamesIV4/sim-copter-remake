@@ -1,0 +1,53 @@
+{
+  "address": "004029d0",
+  "name": "FUN_004029d0",
+  "signature": "undefined FUN_004029d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __fastcall FUN_004029d0(undefined4 *param_1)\r\n\r\n{\r\n  HMODULE hModule;\r\n  DWORD dwLen;\r\n  LPVOID lpData;\r\n  BOOL BVar1;\r\n  DWORD local_10c;\r\n  uint local_108;\r\n  CHAR local_104 [260];\r\n  \r\n  *param_1 = &PTR_LAB_004f0034;\r\n  param_1[2] = 0;\r\n  hModule = GetModuleHandleA((LPCSTR)0x0);\r\n  GetModuleFileNameA(hModule,local_104,0x103);\r\n  dwLen = GetFileVersionInfoSizeA(local_104,&local_10c);\r\n  if (dwLen != 0) {\r\n    lpData = (LPVOID)FUN_004d28b0(dwLen);\r\n    param_1[2] = lpData;\r\n    BVar1 = GetFileVersionInfoA(local_104,local_10c,dwLen,lpData);\r\n    if (BVar1 != 0) {\r\n      BVar1 = VerQueryValueA((LPCVOID)param_1[2],s__VarFileInfo_Translation_004f8150,\r\n                             (LPVOID *)(param_1 + 1),&local_108);\r\n      if (BVar1 == 0) {\r\n        FUN_004d29a0(param_1[2]);\r\n        param_1[2] = 0;\r\n      }\r\n    }\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00434720",
+      "name": "FUN_00434720",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045c0f0",
+      "name": "FUN_0045c0f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000056",
+      "name": "GetModuleHandleA"
+    },
+    {
+      "addr": "EXTERNAL:0000002b",
+      "name": "GetModuleFileNameA"
+    },
+    {
+      "addr": "0046351a",
+      "name": "GetFileVersionInfoSizeA"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00463514",
+      "name": "GetFileVersionInfoA"
+    },
+    {
+      "addr": "0046350e",
+      "name": "VerQueryValueA"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

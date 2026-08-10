@@ -1,0 +1,29 @@
+{
+  "address": "004bdc70",
+  "name": "FUN_004bdc70",
+  "signature": "undefined FUN_004bdc70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004bdc70(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  byte local_2;\r\n  byte bStack_1;\r\n  \r\n  if ((*(byte *)(param_1 + 0x2b1) & 0x20) != 0) {\r\n    local_2 = (byte)*(undefined2 *)(param_1 + 0x12d);\r\n    bStack_1 = (byte)((ushort)*(undefined2 *)(param_1 + 0x12d) >> 8);\r\n    if ((&DAT_005d9200)[(uint)local_2 * 0x100 + (uint)bStack_1] != 0) {\r\n      piVar3 = (int *)((&DAT_005d9200)[(uint)local_2 * 0x100 + (uint)bStack_1] + 0x10);\r\n      iVar1 = *piVar3;\r\n      while (iVar1 != 0) {\r\n        piVar2 = (int *)*piVar3;\r\n        if (param_1 - (int)piVar2 == -0x133) {\r\n          *piVar3 = *(int *)(param_1 + 0x133);\r\n          *(byte *)(param_1 + 0x2b1) = *(byte *)(param_1 + 0x2b1) & 0xdf;\r\n          goto LAB_004bdcce;\r\n        }\r\n        piVar3 = piVar2;\r\n        iVar1 = *piVar2;\r\n      }\r\n    }\r\n    *(byte *)(param_1 + 0x2b1) = *(byte *)(param_1 + 0x2b1) & 0xdf;\r\n  }\r\nLAB_004bdcce:\r\n  switch(*(undefined4 *)(param_1 + 0x299)) {\r\n  case 1:\r\n  case 3:\r\n  case 4:\r\n  case 5:\r\n  case 6:\r\n    *(byte *)(param_1 + 0x2b1) = *(byte *)(param_1 + 0x2b1) | 0x10;\r\n    *(undefined4 *)(param_1 + 0x299) = 1;\r\n    return 1;\r\n  case 2:\r\n    return 0;\r\n  default:\r\n    return 0;\r\n  }\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049b3f0",
+      "name": "FUN_0049b3f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049b5c0",
+      "name": "FUN_0049b5c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ba930",
+      "name": "FUN_004ba930",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

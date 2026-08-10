@@ -1,0 +1,29 @@
+{
+  "address": "0043a6a0",
+  "name": "FUN_0043a6a0",
+  "signature": "undefined FUN_0043a6a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_0043a6a0(LPCSTR param_1,LPCSTR param_2,LPCSTR param_3,UINT *param_4)\r\n\r\n{\r\n  UINT UVar1;\r\n  \r\n  UVar1 = GetPrivateProfileIntA(param_1,param_2,-9999,param_3);\r\n  *param_4 = UVar1;\r\n  return UVar1 != 0xffffd8f1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00439010",
+      "name": "FUN_00439010",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00439010",
+      "name": "FUN_00439010",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000004",
+      "name": "GetPrivateProfileIntA"
+    }
+  ],
+  "data_refs": []
+}

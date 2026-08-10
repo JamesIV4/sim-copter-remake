@@ -1,0 +1,33 @@
+{
+  "address": "004d24d0",
+  "name": "ostream_withassign",
+  "signature": "undefined __thiscall ostream_withassign(ostream_withassign * this, streambuf * param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: __thiscall ostream_withassign::ostream_withassign(class streambuf *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nostream_withassign * __thiscall\r\nostream_withassign::ostream_withassign(ostream_withassign *this,streambuf *param_1)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  int in_stack_00000008;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004d2563;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  if (in_stack_00000008 != 0) {\r\n    *(undefined **)this = &DAT_004f5420;\r\n    ios::ios((ios *)(this + 8));\r\n    local_8 = 0;\r\n  }\r\n  ostream::ostream((ostream *)this,param_1);\r\n  *(undefined ***)(this + *(int *)(*(int *)this + 4)) =\r\n       &PTR_FID_conflict__scalar_deleting_destructor__004f542c;\r\n  *unaff_FS_OFFSET = local_10;\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d27a0",
+      "name": "FID_conflict:_$E15",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d29c0",
+      "name": "FID_conflict:_$E15",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c60",
+      "name": "ios"
+    },
+    {
+      "addr": "004d23d0",
+      "name": "ostream"
+    }
+  ],
+  "data_refs": []
+}

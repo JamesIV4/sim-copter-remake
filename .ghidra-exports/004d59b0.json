@@ -1,0 +1,36 @@
+{
+  "address": "004d59b0",
+  "name": "__fseek_lk",
+  "signature": "undefined __fseek_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fseek_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __fseek_lk(FILE *param_1,void *param_2,uint param_3)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  \r\n  if (((param_1->_flag & 0x83U) != 0) && (((param_3 == 0 || (param_3 == 1)) || (param_3 == 2)))) {\r\n    param_1->_flag = param_1->_flag & 0xffffffef;\r\n    if (param_3 == 1) {\r\n      param_3 = 0;\r\n      iVar2 = FUN_004d5a80(param_1);\r\n      param_2 = (void *)((int)param_2 + iVar2);\r\n    }\r\n    __flush(param_1);\r\n    uVar1 = param_1->_flag;\r\n    if ((uVar1 & 0x80) == 0) {\r\n      if ((((uVar1 & 1) != 0) && ((uVar1 & 8) != 0)) && ((uVar1 & 0x400) == 0)) {\r\n        param_1->_bufsiz = 0x200;\r\n      }\r\n    }\r\n    else {\r\n      param_1->_flag = uVar1 & 0xfffffffc;\r\n    }\r\n    iVar2 = __write(param_1->_file,param_2,param_3);\r\n    return -(uint)(iVar2 == -1);\r\n  }\r\n  puVar3 = (undefined4 *)FUN_004da730();\r\n  *puVar3 = 0x16;\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5970",
+      "name": "_fseek",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5a80",
+      "name": "FUN_004d5a80"
+    },
+    {
+      "addr": "004d3b60",
+      "name": "__flush"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

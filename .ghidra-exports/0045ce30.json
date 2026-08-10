@@ -1,0 +1,18 @@
+{
+  "address": "0045ce30",
+  "name": "FUN_0045ce30",
+  "signature": "undefined FUN_0045ce30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0045ce30(int param_1)\r\n\r\n{\r\n  FUN_0042dea0();\r\n  (**(code **)(**(int **)(param_1 + 8) + 0xa8))();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0042dea0",
+      "name": "FUN_0042dea0"
+    }
+  ],
+  "data_refs": []
+}

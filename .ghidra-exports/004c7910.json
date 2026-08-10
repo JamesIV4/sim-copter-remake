@@ -1,0 +1,74 @@
+{
+  "address": "004c7910",
+  "name": "FUN_004c7910",
+  "signature": "undefined FUN_004c7910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004c7910(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  \r\n  piVar2 = (int *)((&DAT_005d9200)\r\n                   [(*(ushort *)(param_1 + 0x12a) & 0xff) * 0x100 +\r\n                    (*(ushort *)(param_1 + 300) & 0xff)] + 0x10);\r\n  if (*(int *)((&DAT_005d9200)\r\n               [(*(ushort *)(param_1 + 0x12a) & 0xff) * 0x100 + (*(ushort *)(param_1 + 300) & 0xff)]\r\n              + 0x10) != 0) {\r\n    while (piVar1 = (int *)*piVar2, param_1 - (int)piVar1 != -0x1b4) {\r\n      piVar2 = piVar1;\r\n      if (*piVar1 == 0) {\r\n        *(undefined2 *)(param_1 + 0x108) = 0;\r\n        return;\r\n      }\r\n    }\r\n    *piVar2 = *(int *)(param_1 + 0x1b4);\r\n  }\r\n  *(undefined2 *)(param_1 + 0x108) = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c0910",
+      "name": "FUN_004c0910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c11f0",
+      "name": "FUN_004c11f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c5fb0",
+      "name": "FUN_004c5fb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c65e0",
+      "name": "FUN_004c65e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bfb20",
+      "name": "FUN_004bfb20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c7d70",
+      "name": "FUN_004c7d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cb830",
+      "name": "FUN_004cb830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ca940",
+      "name": "FUN_004ca940",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc5d0",
+      "name": "FUN_004cc5d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc6a0",
+      "name": "FUN_004cc6a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc730",
+      "name": "FUN_004cc730",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

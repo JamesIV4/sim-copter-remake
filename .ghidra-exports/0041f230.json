@@ -1,0 +1,40 @@
+{
+  "address": "0041f230",
+  "name": "FUN_0041f230",
+  "signature": "undefined FUN_0041f230(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0041f230(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  uint uVar2;\r\n  HWND hWnd;\r\n  DWORD dwStyle;\r\n  tagRECT local_10;\r\n  \r\n  if (param_1[6] != 0) {\r\n    return 0x80000000;\r\n  }\r\n  local_10.right = param_1[2];\r\n  local_10.bottom = param_1[1];\r\n  local_10.top = 0;\r\n  dwStyle = 0x40000;\r\n  local_10.left = 0;\r\n  uVar2 = param_1[3];\r\n  if ((uVar2 & 1) == 0) {\r\n    dwStyle = (-(uint)((uVar2 & 4) == 0) & 0x7f800000) + 0x800000;\r\n  }\r\n  if ((uVar2 & 2) != 0) {\r\n    dwStyle = dwStyle | 0xc00000;\r\n  }\r\n  if ((uVar2 & 8) != 0) {\r\n    dwStyle = dwStyle | 0xc80000;\r\n  }\r\n  if ((uVar2 & 0x10) != 0) {\r\n    dwStyle = dwStyle | 0xb0000;\r\n  }\r\n  piVar1 = param_1 + 0x1e;\r\n  AdjustWindowRectEx(&local_10,dwStyle,0,0x40000);\r\n  *piVar1 = local_10.left;\r\n  param_1[0x1f] = local_10.top;\r\n  param_1[0x20] = local_10.right;\r\n  param_1[0x21] = local_10.bottom;\r\n  (**(code **)(*param_1 + 0x48))(piVar1);\r\n  param_1[0x1a] = *piVar1;\r\n  param_1[0x1b] = param_1[0x1f];\r\n  param_1[0x1c] = param_1[0x20];\r\n  param_1[0x1d] = param_1[0x21];\r\n  hWnd = CreateWindowExA(0x40000,s_Sparkal_004f99f8,(LPCSTR)param_1[0x26],dwStyle,*piVar1,\r\n                         param_1[0x1f],param_1[0x20] - *piVar1,param_1[0x21] - param_1[0x1f],\r\n                         (HWND)0x0,(HMENU)0x0,DAT_0051a050,(LPVOID)0x0);\r\n  param_1[6] = (int)hWnd;\r\n  if (hWnd != (HWND)0x0) {\r\n    SetWindowLongA(hWnd,0,(LONG)param_1);\r\n    ShowWindow((HWND)param_1[6],1);\r\n    SetFocus((HWND)param_1[6]);\r\n    return 0;\r\n  }\r\n  return 0x80000000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041f0a0",
+      "name": "FUN_0041f0a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000008a",
+      "name": "AdjustWindowRectEx"
+    },
+    {
+      "addr": "EXTERNAL:000000a0",
+      "name": "CreateWindowExA"
+    },
+    {
+      "addr": "EXTERNAL:0000009e",
+      "name": "SetWindowLongA"
+    },
+    {
+      "addr": "EXTERNAL:0000007e",
+      "name": "ShowWindow"
+    },
+    {
+      "addr": "EXTERNAL:00000090",
+      "name": "SetFocus"
+    }
+  ],
+  "data_refs": []
+}

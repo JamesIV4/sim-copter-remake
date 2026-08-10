@@ -1,0 +1,32 @@
+{
+  "address": "004e4c30",
+  "name": "__mbschr",
+  "signature": "uchar * __cdecl __mbschr(uchar * _Str, uint _Ch)",
+  "calling_convention": "__cdecl",
+  "return_type": "uchar *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mbschr\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuchar * __cdecl __mbschr(uchar *_Str,uint _Ch)\r\n\r\n{\r\n  byte bVar1;\r\n  uchar *puVar2;\r\n  \r\n  if (DAT_0050797c == 0) {\r\n    puVar2 = (uchar *)_strchr((char *)_Str,_Ch);\r\n    return puVar2;\r\n  }\r\n  __lock(0x19);\r\n  bVar1 = *_Str;\r\n  while (bVar1 != 0) {\r\n    if ((*(byte *)((int)&DAT_00507878 + bVar1 + 1) & 4) == 0) {\r\n      puVar2 = _Str;\r\n      if ((ushort)bVar1 == _Ch) break;\r\n    }\r\n    else {\r\n      if (_Str[1] == '\\0') {\r\n        FUN_004d64a0(0x19);\r\n        return (uchar *)0x0;\r\n      }\r\n      puVar2 = _Str + 1;\r\n      if (CONCAT11(bVar1,_Str[1]) == _Ch) {\r\n        FUN_004d64a0(0x19);\r\n        return _Str;\r\n      }\r\n    }\r\n    _Str = puVar2 + 1;\r\n    bVar1 = puVar2[1];\r\n  }\r\n  FUN_004d64a0(0x19);\r\n  return (uchar *)(-(uint)((ushort)bVar1 == _Ch) & (uint)_Str);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4d30",
+      "name": "_strchr"
+    },
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

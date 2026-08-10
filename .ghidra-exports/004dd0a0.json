@@ -1,0 +1,33 @@
+{
+  "address": "004dd0a0",
+  "name": "__whiteout",
+  "signature": "undefined __whiteout(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __whiteout\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __whiteout(int *param_1,undefined4 param_2)\r\n\r\n{\r\n  int _C;\r\n  int iVar1;\r\n  \r\n  do {\r\n    *param_1 = *param_1 + 1;\r\n    _C = __inc(param_2);\r\n    iVar1 = _isspace(_C);\r\n  } while (iVar1 != 0);\r\n  return _C;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dd050",
+      "name": "__inc"
+    },
+    {
+      "addr": "004e18b0",
+      "name": "_isspace"
+    }
+  ],
+  "data_refs": []
+}

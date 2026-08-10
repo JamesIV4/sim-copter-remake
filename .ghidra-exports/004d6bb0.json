@@ -1,0 +1,46 @@
+{
+  "address": "004d6bb0",
+  "name": "FUN_004d6bb0",
+  "signature": "undefined FUN_004d6bb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nLPVOID FUN_004d6bb0(LPVOID param_1,uint param_2)\r\n\r\n{\r\n  LPVOID pvVar1;\r\n  int iVar2;\r\n  \r\n  if (param_1 == (LPVOID)0x0) {\r\n    pvVar1 = (LPVOID)FUN_004d5f00(param_2);\r\n    return pvVar1;\r\n  }\r\n  if (param_2 != 0) {\r\n    do {\r\n      if (param_2 < 0xffffffe1) {\r\n        pvVar1 = HeapReAlloc(DAT_0061bb74,0,param_1,param_2);\r\n      }\r\n      else {\r\n        pvVar1 = (LPVOID)0x0;\r\n      }\r\n      if (pvVar1 != (LPVOID)0x0) {\r\n        return pvVar1;\r\n      }\r\n      if (DAT_005084b0 == 0) {\r\n        return (LPVOID)0x0;\r\n      }\r\n      iVar2 = __callnewh(param_2);\r\n    } while (iVar2 != 0);\r\n    return (LPVOID)0x0;\r\n  }\r\n  FUN_004d6010(param_1);\r\n  return (LPVOID)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2b40",
+      "name": "__onexit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "EXTERNAL:00000055",
+      "name": "HeapReAlloc"
+    },
+    {
+      "addr": "004d6620",
+      "name": "__callnewh"
+    }
+  ],
+  "data_refs": []
+}

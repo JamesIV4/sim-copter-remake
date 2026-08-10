@@ -1,0 +1,29 @@
+{
+  "address": "00432ad0",
+  "name": "FUN_00432ad0",
+  "signature": "undefined FUN_00432ad0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_00432ad0(undefined4 param_1,undefined4 param_2,undefined4 param_3,char *param_4)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  char *pcVar4;\r\n  \r\n  FUN_00433b20(param_1,param_2,param_3,param_4);\r\n  uVar2 = 0xffffffff;\r\n  pcVar4 = param_4;\r\n  do {\r\n    if (uVar2 == 0) break;\r\n    uVar2 = uVar2 - 1;\r\n    cVar1 = *pcVar4;\r\n    pcVar4 = pcVar4 + 1;\r\n  } while (cVar1 != '\\0');\r\n  for (iVar3 = ~uVar2 - 2; (-1 < iVar3 && (param_4[iVar3] != '\\\\')); iVar3 = iVar3 + -1) {\r\n    param_4[iVar3] = '\\0';\r\n  }\r\n  return 0 < iVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c3010",
+      "name": "FUN_004c3010",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c3010",
+      "name": "FUN_004c3010",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20"
+    }
+  ],
+  "data_refs": []
+}

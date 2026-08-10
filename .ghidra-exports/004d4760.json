@@ -1,0 +1,44 @@
+{
+  "address": "004d4760",
+  "name": "__endthread",
+  "signature": "void __cdecl __endthread(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __endthread\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __endthread(void)\r\n\r\n{\r\n  _ptiddata _Ptd;\r\n  \r\n  if (PTR_FUN_00506dc8 != (undefined *)0x0) {\r\n    (*(code *)PTR_FUN_00506dc8)();\r\n  }\r\n  _Ptd = __getptd();\r\n  if (_Ptd == (_ptiddata)0x0) {\r\n    __amsg_exit(0x10);\r\n  }\r\n  if ((HANDLE)_Ptd->_thandle != (HANDLE)0xffffffff) {\r\n    CloseHandle((HANDLE)_Ptd->_thandle);\r\n  }\r\n  __freeptd(_Ptd);\r\n                    /* WARNING: Subroutine does not return */\r\n  ExitThread(0);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d46a0",
+      "name": "FUN_004d46a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d39f0",
+      "name": "FUN_004d39f0"
+    },
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "EXTERNAL:00000005",
+      "name": "CloseHandle"
+    },
+    {
+      "addr": "004da600",
+      "name": "__freeptd"
+    },
+    {
+      "addr": "EXTERNAL:00000060",
+      "name": "ExitThread"
+    }
+  ],
+  "data_refs": []
+}

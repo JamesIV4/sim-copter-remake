@@ -1,0 +1,26 @@
+{
+  "address": "004ccb80",
+  "name": "FUN_004ccb80",
+  "signature": "undefined FUN_004ccb80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 __thiscall FUN_004ccb80(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  \r\n  FUN_0048a550(DAT_005040d0);\r\n  FUN_0048a530(DAT_005040d0);\r\n  uVar1 = __ftol();\r\n  *(undefined2 *)\r\n   (param_1 + -8 + ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2) = uVar1;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0048a550",
+      "name": "FUN_0048a550"
+    },
+    {
+      "addr": "0048a530",
+      "name": "FUN_0048a530"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

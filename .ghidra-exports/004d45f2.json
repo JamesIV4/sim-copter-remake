@@ -1,0 +1,19 @@
+{
+  "address": "004d45f2",
+  "name": "FUN_004d45f2",
+  "signature": "undefined FUN_004d45f2(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d45f2(void)\r\n\r\n{\r\n  undefined4 in_EAX;\r\n  int unaff_EBP;\r\n  \r\n  DAT_00506dd4 = *(undefined4 *)(unaff_EBP + 8);\r\n  DAT_00506dd0 = in_EAX;\r\n  DAT_00506dd8 = unaff_EBP;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d455e",
+      "name": "__local_unwind2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

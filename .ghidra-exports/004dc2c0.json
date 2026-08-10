@@ -1,0 +1,19 @@
+{
+  "address": "004dc2c0",
+  "name": "testSpecialCtry",
+  "signature": "undefined __cdecl testSpecialCtry(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _testSpecialCtry\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 __cdecl testSpecialCtry(short param_1)\r\n\r\n{\r\n  if (param_1 != 0x354) {\r\n    return 0;\r\n  }\r\n  return 0xc04;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dc270",
+      "name": "trans_ctry_lang",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

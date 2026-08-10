@@ -1,0 +1,28 @@
+{
+  "address": "00453620",
+  "name": "FUN_00453620",
+  "signature": "undefined FUN_00453620(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid __fastcall FUN_00453620(int param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  if ((_DAT_004f992c & 7) == 0) {\r\n    uVar1 = FUN_0046c4bf(DAT_005040d0[0xcc],*(undefined4 *)(&DAT_00504120 + *DAT_005040d0 * 0x5c),\r\n                         0x640000);\r\n    iVar2 = FUN_0046c49d(uVar1);\r\n    iVar2 = iVar2 >> 0x10;\r\n    *(int *)(param_1 + 0x9c) = iVar2;\r\n    if (*(int *)(param_1 + 0xb0) < iVar2) {\r\n      iVar2 = *(int *)(param_1 + 0xb0);\r\n    }\r\n    if (*(int *)(param_1 + 0xa8) != iVar2) {\r\n      *(int *)(param_1 + 0xa8) = iVar2;\r\n      *(undefined4 *)(param_1 + 0xa4) = 1;\r\n      (**(code **)(**(int **)(param_1 + 0x40) + 0xc))\r\n                (*(undefined4 *)(param_1 + 0x7c),*(undefined4 *)(param_1 + 0x140),\r\n                 *(undefined4 *)(param_1 + 0x144),*(undefined4 *)(param_1 + 0x140),\r\n                 *(undefined4 *)(param_1 + 0x144),*(undefined4 *)(param_1 + 0x148),\r\n                 *(undefined4 *)(param_1 + 0x14c));\r\n      iVar2 = *(int *)(param_1 + 0x9c);\r\n      if (iVar2 < 0x1f) {\r\n        iVar3 = 1;\r\n        if (iVar2 < 0xb) {\r\n          iVar3 = 2;\r\n        }\r\n      }\r\n      else {\r\n        iVar3 = 0;\r\n      }\r\n      if ((*(int *)(param_1 + 0xa0) != iVar3) || (iVar2 < 0x1e)) {\r\n        *(int *)(param_1 + 0xa0) = iVar3;\r\n        (**(code **)(**(int **)(param_1 + 0x84) + 0xc))\r\n                  (*(undefined4 *)(param_1 + 0x7c),0x88,0x3b,0,iVar3 * 7,0xc,(iVar3 + 1) * 7);\r\n      }\r\n    }\r\n  }\r\n  iVar3 = *(int *)(DAT_005040d0[0x29] + 0x1c) - DAT_005040d0[0x58] >> 0x10;\r\n  iVar2 = iVar3;\r\n  if (*(int *)(param_1 + 0xe4) < iVar3) {\r\n    iVar2 = *(int *)(param_1 + 0xe4);\r\n  }\r\n  if (*(int *)(param_1 + 0xdc) != iVar2) {\r\n    *(int *)(param_1 + 0xdc) = iVar2;\r\n    *(undefined4 *)(param_1 + 0xd8) = 1;\r\n    (**(code **)(**(int **)(param_1 + 0x40) + 0xc))\r\n              (*(undefined4 *)(param_1 + 0x7c),*(undefined4 *)(param_1 + 0x150),\r\n               *(undefined4 *)(param_1 + 0x154),*(undefined4 *)(param_1 + 0x150),\r\n               *(undefined4 *)(param_1 + 0x154),*(undefined4 *)(param_1 + 0x158),\r\n               *(undefined4 *)(param_1 + 0x15c));\r\n    iVar2 = ((iVar3 * 9) / 100) % 0x5a;\r\n    (**(code **)(**(int **)(param_1 + 0x8c) + 0xc))\r\n              (*(undefined4 *)(param_1 + 0x7c),300,0x22,0,iVar2,8,iVar2 + 9);\r\n  }\r\n  iVar2 = FUN_0046c49d(0xe666,DAT_005040d0[0x4e]);\r\n  iVar2 = iVar2 >> 0x14;\r\n  if (iVar2 < 0) {\r\n    iVar2 = 0;\r\n  }\r\n  if (*(int *)(param_1 + 0x118) < iVar2) {\r\n    iVar2 = *(int *)(param_1 + 0x118);\r\n  }\r\n  if (*(int *)(param_1 + 0x110) != iVar2) {\r\n    *(undefined4 *)(param_1 + 0x10c) = 1;\r\n    *(int *)(param_1 + 0x110) = iVar2;\r\n    (**(code **)(**(int **)(param_1 + 0x40) + 0xc))\r\n              (*(undefined4 *)(param_1 + 0x7c),*(undefined4 *)(param_1 + 0x160),\r\n               *(undefined4 *)(param_1 + 0x164),*(undefined4 *)(param_1 + 0x160),\r\n               *(undefined4 *)(param_1 + 0x164),*(undefined4 *)(param_1 + 0x168),\r\n               *(undefined4 *)(param_1 + 0x16c));\r\n  }\r\n  _DAT_004f992c = _DAT_004f992c + 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00452f50",
+      "name": "FUN_00452f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

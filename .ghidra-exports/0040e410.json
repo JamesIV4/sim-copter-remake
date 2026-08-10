@@ -1,0 +1,18 @@
+{
+  "address": "0040e410",
+  "name": "FUN_0040e410",
+  "signature": "undefined FUN_0040e410(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0040e410(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  code *unaff_EBP;\r\n  \r\n  if (param_1[0x30] != 0) {\r\n    iVar2 = (**(code **)(*param_1 + 0x128))();\r\n    iVar2 = iVar2 - param_1[0x2c];\r\n    if (iVar2 < 0) {\r\n      iVar2 = 0;\r\n    }\r\n    piVar1 = (int *)param_1[0x30];\r\n    piVar1[0x1e] = 0;\r\n    iVar3 = *piVar1;\r\n    (**(code **)(iVar3 + 0x40))(1,1);\r\n    (**(code **)(iVar3 + 0xe0))();\r\n    piVar1 = (int *)param_1[0x30];\r\n    piVar1[0x1f] = iVar2;\r\n    iVar3 = *piVar1;\r\n    (**(code **)(iVar3 + 0x40))(1,1);\r\n    (**(code **)(iVar3 + 0xe0))();\r\n    piVar1 = (int *)param_1[0x30];\r\n    iVar3 = (*unaff_EBP)();\r\n    (**(code **)(*piVar1 + 0xec))(iVar2,iVar3 / param_1[0x2c] + 1);\r\n    uVar4 = (**(code **)(*param_1 + 300))();\r\n    FUN_0040ba90(uVar4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0040ba90",
+      "name": "FUN_0040ba90"
+    }
+  ],
+  "data_refs": []
+}

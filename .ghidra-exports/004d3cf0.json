@@ -1,0 +1,32 @@
+{
+  "address": "004d3cf0",
+  "name": "_fwrite",
+  "signature": "size_t __cdecl _fwrite(void * _Str, size_t _Size, size_t _Count, FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef size_t uint",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _fwrite\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nsize_t __cdecl _fwrite(void *_Str,size_t _Size,size_t _Count,FILE *_File)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  uint local_4;\r\n  \r\n  uVar1 = _Size * _Count;\r\n  if (uVar1 == 0) {\r\n    return 0;\r\n  }\r\n  uVar5 = uVar1;\r\n  if ((_File->_flag & 0x10cU) == 0) {\r\n    local_4 = 0x1000;\r\n  }\r\n  else {\r\n    local_4 = _File->_bufsiz;\r\n  }\r\n  while( true ) {\r\n    while( true ) {\r\n      while( true ) {\r\n        if (uVar5 == 0) {\r\n          return _Count;\r\n        }\r\n        uVar3 = _File->_flag & 0x108;\r\n        if ((uVar3 == 0) || (uVar4 = _File->_cnt, uVar4 == 0)) break;\r\n        uVar3 = uVar5;\r\n        if (uVar4 <= uVar5) {\r\n          uVar3 = uVar4;\r\n        }\r\n        uVar5 = uVar5 - uVar3;\r\n        pcVar6 = _Str;\r\n        pcVar7 = _File->_ptr;\r\n        for (uVar4 = uVar3 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n          pcVar6 = pcVar6 + 4;\r\n          pcVar7 = pcVar7 + 4;\r\n        }\r\n        for (uVar4 = uVar3 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *pcVar7 = *pcVar6;\r\n          pcVar6 = pcVar6 + 1;\r\n          pcVar7 = pcVar7 + 1;\r\n        }\r\n        _File->_cnt = _File->_cnt - uVar3;\r\n        _File->_ptr = _File->_ptr + uVar3;\r\n        _Str = (void *)((int)_Str + uVar3);\r\n      }\r\n      if (local_4 <= uVar5) break;\r\n      iVar2 = FUN_004d7980((int)*(char *)_Str,_File);\r\n      if (iVar2 == -1) {\r\n        return (uVar1 - uVar5) / _Size;\r\n      }\r\n      uVar5 = uVar5 - 1;\r\n      local_4 = _File->_bufsiz;\r\n      _Str = (void *)((int)_Str + 1);\r\n      if ((int)local_4 < 1) {\r\n        local_4 = 1;\r\n      }\r\n    }\r\n    if ((uVar3 != 0) && (iVar2 = __flush(_File), iVar2 != 0)) break;\r\n    uVar3 = uVar5;\r\n    if (local_4 != 0) {\r\n      uVar3 = uVar5 - uVar5 % local_4;\r\n    }\r\n    uVar4 = __write(_File->_file,_Str,uVar3);\r\n    if (uVar4 == 0xffffffff) {\r\n      _File->_flag = _File->_flag | 0x20;\r\n      return (uVar1 - uVar5) / _Size;\r\n    }\r\n    uVar5 = uVar5 - uVar4;\r\n    _Str = (void *)((int)_Str + uVar4);\r\n    if (uVar4 < uVar3) {\r\n      _File->_flag = _File->_flag | 0x20;\r\n      return (uVar1 - uVar5) / _Size;\r\n    }\r\n  }\r\n  return (uVar1 - uVar5) / _Size;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3cb0",
+      "name": "_fread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3b60",
+      "name": "__flush"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    },
+    {
+      "addr": "004d7980",
+      "name": "FUN_004d7980"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004d0170",
+  "name": "FUN_004d0170",
+  "signature": "undefined FUN_004d0170(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004d0170(undefined4 *param_1)\r\n\r\n{\r\n  *param_1 = &PTR_LAB_004f5130;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c7820",
+      "name": "FUN_004c7820",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,130 @@
+{
+  "address": "004477b0",
+  "name": "FUN_004477b0",
+  "signature": "undefined FUN_004477b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_004477b0(void)\r\n\r\n{\r\n  char cVar1;\r\n  bool bVar2;\r\n  undefined *puVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  char *pcVar7;\r\n  undefined4 uVar8;\r\n  uint uVar9;\r\n  uint uVar10;\r\n  char *pcVar11;\r\n  char *pcVar12;\r\n  int local_278;\r\n  undefined4 local_274;\r\n  int *local_270;\r\n  int local_26c;\r\n  undefined4 local_268;\r\n  int local_264;\r\n  undefined4 local_260;\r\n  int *local_25c [10];\r\n  undefined **local_234;\r\n  undefined4 local_230;\r\n  int local_12c;\r\n  int local_128;\r\n  _MEMORYSTATUS local_124;\r\n  char local_104 [260];\r\n  \r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    local_274 = 0;\r\n  }\r\n  else {\r\n    local_274 = FUN_00406b20();\r\n  }\r\n  local_278 = 0;\r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    local_260 = 0;\r\n  }\r\n  else {\r\n    local_260 = FUN_00406b20();\r\n  }\r\n  local_264 = 0;\r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    local_268 = 0;\r\n  }\r\n  else {\r\n    local_268 = FUN_00406b20();\r\n  }\r\n  local_26c = 0;\r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    local_230 = 0;\r\n  }\r\n  else {\r\n    local_230 = FUN_00406b20();\r\n  }\r\n  local_234 = (undefined **)0x0;\r\n  FUN_0044da30(&local_234,0,1,0);\r\n  FUN_00401ed0();\r\n  if (local_234 != (undefined **)0x0) {\r\n    FUN_004d29a0(local_234);\r\n  }\r\n  FUN_0040e0c0();\r\n  local_124.dwLength = 0x20;\r\n  GlobalMemoryStatus(&local_124);\r\n  iVar4 = DAT_0051a49c;\r\n  local_234 = DAT_0051a498;\r\n  iVar6 = FUN_00448d60(DAT_0051a49c,DAT_0051a49c,DAT_0051a498);\r\n  iVar5 = DAT_0051a49c;\r\n  for (; iVar6 != iVar5; iVar6 = iVar6 + 8) {\r\n    FUN_00402870(0);\r\n  }\r\n  _DAT_0051a4b4 = 0x100;\r\n  DAT_0051a49c = DAT_0051a49c - (iVar4 - (int)local_234 & 0xfffffff8U);\r\n  DAT_0051a4a4 = 0;\r\n  DAT_0051a4a8 = 0;\r\n  DAT_0051a4b0 = 0;\r\n  _DAT_0051a4b8 = 0;\r\n  DAT_0051a4bc = 0;\r\n  _DAT_0051a4ac = 0;\r\n  FUN_00432ab0(1,0,PTR_s_movie01_smk_004f95d8,local_104);\r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    local_230 = 0;\r\n  }\r\n  else {\r\n    local_230 = FUN_0041bd00(local_104);\r\n  }\r\n  local_234 = (undefined **)0x0;\r\n  FUN_0044f570(&local_234,&local_278,&local_264);\r\n  FUN_00401ed0();\r\n  if (local_234 != (undefined **)0x0) {\r\n    FUN_004d29a0(local_234);\r\n  }\r\n  FUN_0044ef80(&local_278,0);\r\n  puVar3 = PTR_s_movie___smk_004f95d4;\r\n  iVar6 = FUN_004d28b0(0x10);\r\n  if (iVar6 == 0) {\r\n    local_230 = 0;\r\n  }\r\n  else {\r\n    local_230 = FUN_0041bd00(puVar3);\r\n  }\r\n  local_234 = (undefined **)0x0;\r\n  FUN_0044f330(&local_234,0);\r\n  FUN_00401ed0();\r\n  if (local_234 != (undefined **)0x0) {\r\n    FUN_004d29a0(local_234);\r\n  }\r\n  FUN_0044e6e0(local_25c,8);\r\n  local_270 = (int *)*local_25c[0];\r\n  if (local_25c[0] != local_270) {\r\n    do {\r\n      pcVar7 = (char *)FUN_00402640();\r\n      uVar9 = 0xffffffff;\r\n      do {\r\n        pcVar12 = pcVar7;\r\n        if (uVar9 == 0) break;\r\n        uVar9 = uVar9 - 1;\r\n        pcVar12 = pcVar7 + 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar12;\r\n      } while (cVar1 != '\\0');\r\n      uVar9 = ~uVar9;\r\n      pcVar7 = pcVar12 + -uVar9;\r\n      pcVar12 = local_104;\r\n      for (uVar10 = uVar9 >> 2; uVar10 != 0; uVar10 = uVar10 - 1) {\r\n        *(undefined4 *)pcVar12 = *(undefined4 *)pcVar7;\r\n        pcVar7 = pcVar7 + 4;\r\n        pcVar12 = pcVar12 + 4;\r\n      }\r\n      for (uVar9 = uVar9 & 3; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n        *pcVar12 = *pcVar7;\r\n        pcVar7 = pcVar7 + 1;\r\n        pcVar12 = pcVar12 + 1;\r\n      }\r\n      pcVar7 = (char *)FUN_00402640();\r\n      uVar9 = 0xffffffff;\r\n      do {\r\n        pcVar12 = pcVar7;\r\n        if (uVar9 == 0) break;\r\n        uVar9 = uVar9 - 1;\r\n        pcVar12 = pcVar7 + 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar12;\r\n      } while (cVar1 != '\\0');\r\n      uVar9 = ~uVar9;\r\n      iVar6 = -1;\r\n      pcVar7 = local_104;\r\n      do {\r\n        pcVar11 = pcVar7;\r\n        if (iVar6 == 0) break;\r\n        iVar6 = iVar6 + -1;\r\n        pcVar11 = pcVar7 + 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar11;\r\n      } while (cVar1 != '\\0');\r\n      pcVar7 = pcVar12 + -uVar9;\r\n      pcVar12 = pcVar11 + -1;\r\n      for (uVar10 = uVar9 >> 2; uVar10 != 0; uVar10 = uVar10 - 1) {\r\n        *(undefined4 *)pcVar12 = *(undefined4 *)pcVar7;\r\n        pcVar7 = pcVar7 + 4;\r\n        pcVar12 = pcVar12 + 4;\r\n      }\r\n      for (uVar9 = uVar9 & 3; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n        *pcVar12 = *pcVar7;\r\n        pcVar7 = pcVar7 + 1;\r\n        pcVar12 = pcVar12 + 1;\r\n      }\r\n      uVar9 = 0xffffffff;\r\n      pcVar7 = local_104;\r\n      do {\r\n        if (uVar9 == 0) break;\r\n        uVar9 = uVar9 - 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar7 + 1;\r\n      } while (cVar1 != '\\0');\r\n      FUN_004017f0(local_104,~uVar9 - 1);\r\n      FUN_00447cb0(local_104);\r\n      iVar6 = FUN_00461640();\r\n      if ((iVar6 < 0x8000) || (bVar2 = false, 24000000 < (int)local_124.dwTotalPhys)) {\r\n        bVar2 = true;\r\n      }\r\n      local_234 = &PTR_FUN_004f1780;\r\n      if ((-1 < local_12c) && (local_128 != 0)) {\r\n        __close(local_12c);\r\n      }\r\n      if (bVar2) {\r\n        FUN_0040fcc0(&local_26c);\r\n      }\r\n      local_270 = (int *)*local_270;\r\n    } while (local_25c[0] != local_270);\r\n  }\r\n  DAT_0051a4a4 = 0;\r\n  DAT_0051a4b0 = 0;\r\n  if ((DAT_0051a49c - (int)DAT_0051a498 & 0xfffffff8U) != 0) {\r\n    uVar8 = FUN_00402640();\r\n    uVar8 = FUN_00447ed0(uVar8);\r\n    FUN_0040e1d0();\r\n    FUN_00401f10();\r\n    FUN_00401f10();\r\n    FUN_00420e60();\r\n    FUN_00401ed0();\r\n    if (local_26c != 0) {\r\n      FUN_004d29a0(local_26c);\r\n    }\r\n    FUN_00401ed0();\r\n    if (local_264 != 0) {\r\n      FUN_004d29a0(local_264);\r\n    }\r\n    FUN_00401ed0();\r\n    if (local_278 != 0) {\r\n      FUN_004d29a0(local_278);\r\n    }\r\n    return uVar8;\r\n  }\r\n  FUN_0040e1d0();\r\n  FUN_00401f10();\r\n  FUN_00401f10();\r\n  FUN_00420e60();\r\n  FUN_00401ed0();\r\n  if (local_26c != 0) {\r\n    FUN_004d29a0(local_26c);\r\n  }\r\n  FUN_00401ed0();\r\n  if (local_264 != 0) {\r\n    FUN_004d29a0(local_264);\r\n  }\r\n  FUN_00401ed0();\r\n  if (local_278 != 0) {\r\n    FUN_004d29a0(local_278);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00406b20",
+      "name": "FUN_00406b20"
+    },
+    {
+      "addr": "0044da30",
+      "name": "FUN_0044da30"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0040e0c0",
+      "name": "FUN_0040e0c0"
+    },
+    {
+      "addr": "EXTERNAL:00000008",
+      "name": "GlobalMemoryStatus"
+    },
+    {
+      "addr": "00448d60",
+      "name": "FUN_00448d60"
+    },
+    {
+      "addr": "00402870",
+      "name": "FUN_00402870"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "0041bd00",
+      "name": "FUN_0041bd00"
+    },
+    {
+      "addr": "0044f570",
+      "name": "FUN_0044f570"
+    },
+    {
+      "addr": "0044ef80",
+      "name": "FUN_0044ef80"
+    },
+    {
+      "addr": "0044f330",
+      "name": "FUN_0044f330"
+    },
+    {
+      "addr": "0044e6e0",
+      "name": "FUN_0044e6e0"
+    },
+    {
+      "addr": "00402640",
+      "name": "FUN_00402640"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "00447cb0",
+      "name": "FUN_00447cb0"
+    },
+    {
+      "addr": "00461640",
+      "name": "FUN_00461640"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "0040fcc0",
+      "name": "FUN_0040fcc0"
+    },
+    {
+      "addr": "00447ed0",
+      "name": "FUN_00447ed0"
+    },
+    {
+      "addr": "0040e1d0",
+      "name": "FUN_0040e1d0"
+    },
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "00420e60",
+      "name": "FUN_00420e60"
+    }
+  ],
+  "data_refs": []
+}

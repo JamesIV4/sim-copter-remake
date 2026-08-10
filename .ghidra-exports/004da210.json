@@ -1,0 +1,52 @@
+{
+  "address": "004da210",
+  "name": "BuildCatchObject",
+  "signature": "void __cdecl BuildCatchObject(EHExceptionRecord * param_1, EHRegistrationNode * param_2, _s_HandlerType * param_3, _s_CatchableType * param_4)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void __cdecl BuildCatchObject(struct EHExceptionRecord *,struct EHRegistrationNode *,struct\r\n   _s_HandlerType const *,struct _s_CatchableType const *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl\r\nBuildCatchObject(EHExceptionRecord *param_1,EHRegistrationNode *param_2,_s_HandlerType *param_3,\r\n                _s_CatchableType *param_4)\r\n\r\n{\r\n  EHRegistrationNode *_Dst;\r\n  int iVar1;\r\n  void *pvVar2;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  size_t _Size;\r\n  undefined4 uVar3;\r\n  undefined4 local_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = *unaff_FS_OFFSET;\r\n  puStack_c = &DAT_004f5860;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  if (((*(int *)(param_3 + 4) != 0) && (*(char *)(*(int *)(param_3 + 4) + 8) != '\\0')) &&\r\n     (*(int *)(param_3 + 8) != 0)) {\r\n    _Dst = param_2 + *(int *)(param_3 + 8) + 0xc;\r\n    local_8 = 0;\r\n    if (((byte)*param_3 & 8) == 0) {\r\n      if (((byte)*param_4 & 1) == 0) {\r\n        if (*(int *)(param_4 + 0x18) == 0) {\r\n          iVar1 = FID_conflict__ValidateRead(*(undefined4 *)(param_1 + 0x18),1);\r\n          if ((iVar1 != 0) && (iVar1 = FID_conflict__ValidateRead(_Dst,1), iVar1 != 0)) {\r\n            _Size = *(size_t *)(param_4 + 0x14);\r\n            pvVar2 = AdjustPointer(*(void **)(param_1 + 0x18),(PMD *)(param_4 + 8));\r\n            FID_conflict__memcpy(_Dst,pvVar2,_Size);\r\n            goto LAB_004da3fe;\r\n          }\r\n        }\r\n        else {\r\n          iVar1 = FID_conflict__ValidateRead(*(undefined4 *)(param_1 + 0x18),1);\r\n          if (((iVar1 != 0) && (iVar1 = FID_conflict__ValidateRead(_Dst,1), iVar1 != 0)) &&\r\n             (iVar1 = _ValidateExecute(*(_func_int **)(param_4 + 0x18)), iVar1 != 0)) {\r\n            if (((byte)*param_4 & 4) == 0) {\r\n              pvVar2 = AdjustPointer(*(void **)(param_1 + 0x18),(PMD *)(param_4 + 8));\r\n              FID_conflict__CallMemberFunction1(_Dst,*(undefined4 *)(param_4 + 0x18),pvVar2);\r\n            }\r\n            else {\r\n              uVar3 = 1;\r\n              pvVar2 = AdjustPointer(*(void **)(param_1 + 0x18),(PMD *)(param_4 + 8));\r\n              FID_conflict__CallMemberFunction1(_Dst,*(undefined4 *)(param_4 + 0x18),pvVar2,uVar3);\r\n            }\r\n            goto LAB_004da3fe;\r\n          }\r\n        }\r\n      }\r\n      else {\r\n        iVar1 = FID_conflict__ValidateRead(*(undefined4 *)(param_1 + 0x18),1);\r\n        if ((iVar1 != 0) && (iVar1 = FID_conflict__ValidateRead(_Dst,1), iVar1 != 0)) {\r\n          FID_conflict__memcpy(_Dst,*(void **)(param_1 + 0x18),*(size_t *)(param_4 + 0x14));\r\n          if ((*(int *)(param_4 + 0x14) == 4) && (*(void **)_Dst != (void *)0x0)) {\r\n            pvVar2 = AdjustPointer(*(void **)_Dst,(PMD *)(param_4 + 8));\r\n            *(void **)_Dst = pvVar2;\r\n          }\r\n          goto LAB_004da3fe;\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      iVar1 = FID_conflict__ValidateRead(*(undefined4 *)(param_1 + 0x18),1);\r\n      if ((iVar1 != 0) && (iVar1 = FID_conflict__ValidateRead(_Dst,1), iVar1 != 0)) {\r\n        pvVar2 = *(void **)(param_1 + 0x18);\r\n        *(void **)_Dst = pvVar2;\r\n        pvVar2 = AdjustPointer(pvVar2,(PMD *)(param_4 + 8));\r\n        *(void **)_Dst = pvVar2;\r\n        goto LAB_004da3fe;\r\n      }\r\n    }\r\n    _inconsistency();\r\n  }\r\nLAB_004da3fe:\r\n  *unaff_FS_OFFSET = local_14;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da020",
+      "name": "CatchIt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0d00",
+      "name": "FID_conflict:_ValidateRead"
+    },
+    {
+      "addr": "004e0d20",
+      "name": "FID_conflict:_ValidateRead"
+    },
+    {
+      "addr": "004da490",
+      "name": "AdjustPointer"
+    },
+    {
+      "addr": "004d6070",
+      "name": "FID_conflict:_memcpy"
+    },
+    {
+      "addr": "004e0d40",
+      "name": "_ValidateExecute"
+    },
+    {
+      "addr": "004d4280",
+      "name": "FID_conflict:_CallMemberFunction1"
+    },
+    {
+      "addr": "004d4270",
+      "name": "FID_conflict:_CallMemberFunction1"
+    },
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency"
+    }
+  ],
+  "data_refs": []
+}

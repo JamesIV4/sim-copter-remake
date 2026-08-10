@@ -1,0 +1,42 @@
+{
+  "address": "0042dda0",
+  "name": "FUN_0042dda0",
+  "signature": "undefined FUN_0042dda0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0042dda0(void)\r\n\r\n{\r\n  BOOL BVar1;\r\n  tagMSG local_1c;\r\n  \r\n  BVar1 = PeekMessageA(&local_1c,(HWND)0x0,0,0,1);\r\n  if (BVar1 != 0) {\r\n    TranslateMessage(&local_1c);\r\n    DispatchMessageA(&local_1c);\r\n    return 1;\r\n  }\r\n  if (((byte)DAT_004f95b8[3] & 3) == 3) {\r\n    (**(code **)(*DAT_004f95b8 + 0xc))();\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00410e90",
+      "name": "FUN_00410e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411300",
+      "name": "FUN_00411300",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00446f10",
+      "name": "FUN_00446f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000080",
+      "name": "PeekMessageA"
+    },
+    {
+      "addr": "EXTERNAL:0000007f",
+      "name": "TranslateMessage"
+    },
+    {
+      "addr": "EXTERNAL:00000077",
+      "name": "DispatchMessageA"
+    }
+  ],
+  "data_refs": []
+}

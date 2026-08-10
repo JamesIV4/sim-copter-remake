@@ -1,0 +1,42 @@
+{
+  "address": "004cfed0",
+  "name": "FUN_004cfed0",
+  "signature": "undefined FUN_004cfed0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004cfed0(int param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  undefined4 uVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined1 auStack_24 [4];\r\n  undefined1 uStack_20;\r\n  undefined4 *puStack_14;\r\n  undefined4 uStack_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 uStack_8;\r\n  \r\n  uStack_10 = *unaff_FS_OFFSET;\r\n  uStack_8 = 0xffffffff;\r\n  puStack_c = &LAB_004d003d;\r\n  *unaff_FS_OFFSET = &uStack_10;\r\n  FUN_004ce150(param_1 + 0xc,auStack_24,0x10);\r\n  uStack_20 = 99;\r\n  uVar1 = *(undefined4 *)(DAT_00506bf4 + 10);\r\n  uVar2 = FUN_004d16b0(auStack_24);\r\n  puVar3 = (undefined4 *)FUN_004d1e40(uVar2,0xffffffff);\r\n  if (puVar3 == (undefined4 *)0x0) {\r\n    puVar3 = (undefined4 *)FUN_004d28b0(0x50);\r\n    uStack_8 = 0;\r\n    puStack_14 = puVar3;\r\n    if (puVar3 == (undefined4 *)0x0) {\r\n      puVar3 = (undefined4 *)0x0;\r\n    }\r\n    else {\r\n      *puVar3 = &PTR_LAB_004f5124;\r\n      FUN_004d1c40();\r\n      FUN_004d1b60(0x28,1,0,auStack_24,uVar1,0x41524350);\r\n      *puVar3 = &PTR_LAB_004f512c;\r\n    }\r\n    uStack_8 = 0xffffffff;\r\n  }\r\n  *(undefined4 **)(param_1 + 0x28) = puVar3;\r\n  uStack_20 = 0x4c;\r\n  uVar1 = *(undefined4 *)(DAT_00506bf4 + 10);\r\n  uVar2 = FUN_004d16b0(auStack_24);\r\n  puVar3 = (undefined4 *)FUN_004d1e40(uVar2,0xffffffff);\r\n  if (puVar3 == (undefined4 *)0x0) {\r\n    puVar3 = (undefined4 *)FUN_004d28b0(0x50);\r\n    uStack_8 = 2;\r\n    puStack_14 = puVar3;\r\n    if (puVar3 == (undefined4 *)0x0) {\r\n      puVar3 = (undefined4 *)0x0;\r\n    }\r\n    else {\r\n      *puVar3 = &PTR_LAB_004f5124;\r\n      FUN_004d1c40();\r\n      FUN_004d1b60(8,1,0,auStack_24,uVar1,0x41524c55);\r\n      *puVar3 = &PTR_LAB_004f5128;\r\n    }\r\n    uStack_8 = 0xffffffff;\r\n  }\r\n  *(undefined4 **)(param_1 + 0x2c) = puVar3;\r\n  FUN_004cf850(1);\r\n  *unaff_FS_OFFSET = uStack_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004ce150",
+      "name": "FUN_004ce150"
+    },
+    {
+      "addr": "004d16b0",
+      "name": "FUN_004d16b0"
+    },
+    {
+      "addr": "004d1e40",
+      "name": "FUN_004d1e40"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d1c40",
+      "name": "FUN_004d1c40"
+    },
+    {
+      "addr": "004d1b60",
+      "name": "FUN_004d1b60"
+    },
+    {
+      "addr": "004cf850",
+      "name": "FUN_004cf850"
+    }
+  ],
+  "data_refs": []
+}

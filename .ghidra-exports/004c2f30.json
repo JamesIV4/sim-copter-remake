@@ -1,0 +1,44 @@
+{
+  "address": "004c2f30",
+  "name": "FUN_004c2f30",
+  "signature": "undefined FUN_004c2f30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c2f30(void)\r\n\r\n{\r\n  _SYSTEMTIME local_114;\r\n  undefined1 local_104 [260];\r\n  \r\n  GetSystemTime(&local_114);\r\n  FUN_004ce9c0((local_114._12_4_ & 0xffff) + ((uint)local_114._12_4_ >> 0x10));\r\n  FUN_00432ab0(0xc,0,s_People_df_005064ac,local_104);\r\n  FUN_004c3010(local_104);\r\n  FUN_004c2fc0();\r\n  DAT_00506444 = FUN_004c7980();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c06d0",
+      "name": "FUN_004c06d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000070",
+      "name": "GetSystemTime"
+    },
+    {
+      "addr": "004ce9c0",
+      "name": "FUN_004ce9c0"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "004c3010",
+      "name": "FUN_004c3010"
+    },
+    {
+      "addr": "004c2fc0",
+      "name": "FUN_004c2fc0"
+    },
+    {
+      "addr": "004c7980",
+      "name": "FUN_004c7980"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,43 @@
+{
+  "address": "004d9800",
+  "name": "_gmtime",
+  "signature": "tm * __cdecl _gmtime(time_t * _Time)",
+  "calling_convention": "__cdecl",
+  "return_type": "tm *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _gmtime\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\ntm * __cdecl _gmtime(time_t *_Time)\r\n\r\n{\r\n  bool bVar1;\r\n  _ptiddata p_Var2;\r\n  wchar_t *pwVar3;\r\n  int iVar4;\r\n  tm *ptVar5;\r\n  int iVar6;\r\n  undefined4 *puVar7;\r\n  int *piVar8;\r\n  int iVar9;\r\n  int iVar10;\r\n  \r\n  bVar1 = false;\r\n  iVar9 = (int)*_Time;\r\n  p_Var2 = __getptd();\r\n  if (iVar9 < 0) {\r\n    return (tm *)0x0;\r\n  }\r\n  if (p_Var2->_wasctimebuf == (wchar_t *)0x0) {\r\n    pwVar3 = (wchar_t *)FUN_004d5f00(0x24);\r\n    ptVar5 = (tm *)&DAT_00507658;\r\n    p_Var2->_wasctimebuf = pwVar3;\r\n    if (pwVar3 == (wchar_t *)0x0) goto LAB_004d983d;\r\n  }\r\n  ptVar5 = (tm *)p_Var2->_wasctimebuf;\r\nLAB_004d983d:\r\n  iVar6 = (iVar9 / 0x7861f80) * 4;\r\n  iVar4 = iVar6 + 0x46;\r\n  iVar9 = iVar9 % 0x7861f80;\r\n  iVar10 = iVar9;\r\n  if (0x1e1337f < iVar9) {\r\n    iVar4 = iVar6 + 0x47;\r\n    iVar10 = iVar9 + -0x1e13380;\r\n    if (0x1e1337f < iVar10) {\r\n      iVar4 = iVar6 + 0x48;\r\n      iVar10 = iVar9 + -0x3c26700;\r\n      if (iVar10 < 0x1e28500) {\r\n        bVar1 = true;\r\n      }\r\n      else {\r\n        iVar4 = iVar6 + 0x49;\r\n        iVar10 = iVar9 + -0x5a4ec00;\r\n      }\r\n    }\r\n  }\r\n  ptVar5->tm_year = iVar4;\r\n  ptVar5->tm_yday = iVar10 / 0x15180;\r\n  puVar7 = (undefined4 *)&DAT_005086d8;\r\n  if (!bVar1) {\r\n    puVar7 = &DAT_00508710;\r\n  }\r\n  iVar6 = 1;\r\n  piVar8 = puVar7 + 1;\r\n  iVar9 = *piVar8;\r\n  while (iVar9 < iVar10 / 0x15180) {\r\n    piVar8 = piVar8 + 1;\r\n    iVar6 = iVar6 + 1;\r\n    iVar9 = *piVar8;\r\n  }\r\n  ptVar5->tm_mon = iVar6 + -1;\r\n  ptVar5->tm_mday = ptVar5->tm_yday - puVar7[iVar6 + -1];\r\n  ptVar5->tm_wday = ((int)*_Time / 0x15180 + 4) % 7;\r\n  ptVar5->tm_hour = (iVar10 % 0x15180) / 0xe10;\r\n  iVar9 = (iVar10 % 0x15180) % 0xe10;\r\n  ptVar5->tm_min = iVar9 / 0x3c;\r\n  ptVar5->tm_sec = iVar9 % 0x3c;\r\n  ptVar5->tm_isdst = 0;\r\n  return ptVar5;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0d70",
+      "name": "__make_time_t",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    }
+  ],
+  "data_refs": []
+}

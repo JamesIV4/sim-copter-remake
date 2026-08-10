@@ -1,0 +1,22 @@
+{
+  "address": "004700fc",
+  "name": "FUN_004700fc",
+  "signature": "undefined FUN_004700fc(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004700fc(void)\r\n\r\n{\r\n  int *unaff_ESI;\r\n  int iVar1;\r\n  \r\n  while (*unaff_ESI == 0) {\r\n    iVar1 = unaff_ESI[5];\r\n    if (-1 < (int)(((uint)((longlong)DAT_004fbfd0 * (longlong)unaff_ESI[1]) >> 0x10 |\r\n                   (int)((ulonglong)((longlong)DAT_004fbfd0 * (longlong)unaff_ESI[1]) >> 0x20) <<\r\n                   0x10) + ((uint)((longlong)DAT_004fbfd4 * (longlong)unaff_ESI[2]) >> 0x10 |\r\n                           (int)((ulonglong)((longlong)DAT_004fbfd4 * (longlong)unaff_ESI[2]) >>\r\n                                0x20) << 0x10) +\r\n                   ((uint)((longlong)DAT_004fbfd8 * (longlong)unaff_ESI[3]) >> 0x10 |\r\n                   (int)((ulonglong)((longlong)DAT_004fbfd8 * (longlong)unaff_ESI[3]) >> 0x20) <<\r\n                   0x10) + unaff_ESI[4])) {\r\n      iVar1 = unaff_ESI[6];\r\n    }\r\n    FUN_004700fc();\r\n    unaff_ESI = (int *)(iVar1 + _DAT_005b0074 + _DAT_004fe76c);\r\n  }\r\n  FUN_0047007e();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004700fc",
+      "name": "FUN_004700fc"
+    },
+    {
+      "addr": "0047007e",
+      "name": "FUN_0047007e"
+    }
+  ],
+  "data_refs": []
+}

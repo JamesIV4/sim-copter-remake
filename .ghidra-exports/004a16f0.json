@@ -1,0 +1,29 @@
+{
+  "address": "004a16f0",
+  "name": "FUN_004a16f0",
+  "signature": "undefined FUN_004a16f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004a16f0(int param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  uVar1 = *(uint *)(param_1 + 0xdf);\r\n  if ((uVar1 & 1) != 0) {\r\n    *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n    return;\r\n  }\r\n  if ((uVar1 & 4) != 0) {\r\n    *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n    return;\r\n  }\r\n  if ((uVar1 & 2) != 0) {\r\n    *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n    return;\r\n  }\r\n  if ((uVar1 & 8) != 0) {\r\n    *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a1270",
+      "name": "FUN_004a1270",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a1270",
+      "name": "FUN_004a1270",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a1270",
+      "name": "FUN_004a1270",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

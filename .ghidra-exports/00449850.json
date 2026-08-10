@@ -1,0 +1,70 @@
+{
+  "address": "00449850",
+  "name": "FUN_00449850",
+  "signature": "undefined FUN_00449850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid __fastcall FUN_00449850(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  DWORD DVar2;\r\n  LARGE_INTEGER LStack_8;\r\n  \r\n  if (param_1[0x2e] != 0) {\r\n    _DAT_004f9664 = _DAT_004f9664 + 1;\r\n    if ((param_1[0x2f] == 0) && (param_1[7] == 0)) {\r\n      FUN_0045cbb0();\r\n      DAT_004f9660 = GetTickCount();\r\n      DAT_005039a0 = (int)((DAT_004f9660 - _DAT_004f965c) * 0x10000) / 1000;\r\n      if (DAT_005039a0 < 100) {\r\n        DAT_005039a0 = 100;\r\n      }\r\n      if (0x8000 < DAT_005039a0) {\r\n        DAT_005039a0 = 0x8000;\r\n      }\r\n      FUN_0047a760();\r\n      _DAT_004f965c = DAT_004f9660;\r\n      if ((_DAT_004f9664 & 3) == 0) {\r\n        if ((_DAT_004f9664 & 0x3f) == 0) {\r\n          iVar1 = (**(code **)(*param_1 + 0x90))();\r\n          if (iVar1 != 0) {\r\n            return;\r\n          }\r\n        }\r\n        else if ((DAT_004f9748 != -1) && (DAT_004f9748 != 0)) {\r\n          if (DAT_004f9748 == 0xf6) {\r\n            (**(code **)(*param_1 + 0xac))(0x32);\r\n            return;\r\n          }\r\n          DAT_004f9748 = -1;\r\n        }\r\n        iVar1 = FUN_00412fa0();\r\n        if (iVar1 == 1) {\r\n          iVar1 = FUN_00444750();\r\n          if (iVar1 != 0) {\r\n            FUN_00438540();\r\n          }\r\n        }\r\n        else if (iVar1 == 2) {\r\n          iVar1 = FUN_00444750();\r\n          if (iVar1 != 0) {\r\n            FUN_00438540();\r\n          }\r\n        }\r\n        else if ((iVar1 == 3) && (DAT_00519728 != 2)) {\r\n          DAT_00519728 = 2;\r\n          DAT_00519738 = 0;\r\n          DAT_00519734 = 0;\r\n          if (DAT_00519730 == 0) {\r\n            QueryPerformanceCounter(&LStack_8);\r\n            DAT_00519734 = LStack_8.s.LowPart;\r\n          }\r\n          else if (DAT_00519730 == 1) {\r\n            DAT_00519734 = timeGetTime();\r\n          }\r\n          else {\r\n            DVar2 = timeGetTime();\r\n            DAT_00519734 = DVar2 / 1000;\r\n          }\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      FUN_00446fd0(0x14);\r\n    }\r\n    if ((param_1[7] == 0) && ((param_1[0x2f] == 0 || ((_DAT_004f9664 & 7) == 0)))) {\r\n      iVar1 = FUN_00461120();\r\n      if (iVar1 != 0) {\r\n        FUN_004814c0();\r\n        FUN_00461350();\r\n        if ((DAT_0051ac6c != 0) && (DAT_00503aa0 == 3)) {\r\n          iVar1 = (*(code *)**(undefined4 **)param_1[0xf])();\r\n          if (iVar1 != 0) {\r\n            FUN_004a3b90(*(undefined4 *)(param_1[0xf] + 0x10),*(undefined4 *)(param_1[0xf] + 0x14),\r\n                         0x200,0x144);\r\n            (**(code **)(*(int *)param_1[0xf] + 4))();\r\n          }\r\n        }\r\n        FUN_00421e60(param_1[0xf]);\r\n      }\r\n    }\r\n    if (param_1[0x2f] != 0) {\r\n      FUN_00446fd0(0x14);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0045cbb0",
+      "name": "FUN_0045cbb0"
+    },
+    {
+      "addr": "EXTERNAL:00000001",
+      "name": "GetTickCount"
+    },
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760"
+    },
+    {
+      "addr": "00412fa0",
+      "name": "FUN_00412fa0"
+    },
+    {
+      "addr": "00444750",
+      "name": "FUN_00444750"
+    },
+    {
+      "addr": "00438540",
+      "name": "FUN_00438540"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "00446fd0",
+      "name": "FUN_00446fd0"
+    },
+    {
+      "addr": "00461120",
+      "name": "FUN_00461120"
+    },
+    {
+      "addr": "004814c0",
+      "name": "FUN_004814c0"
+    },
+    {
+      "addr": "00461350",
+      "name": "FUN_00461350"
+    },
+    {
+      "addr": "004a3b90",
+      "name": "FUN_004a3b90"
+    },
+    {
+      "addr": "00421e60",
+      "name": "FUN_00421e60"
+    }
+  ],
+  "data_refs": []
+}

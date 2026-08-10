@@ -1,0 +1,48 @@
+{
+  "address": "0049ab10",
+  "name": "FUN_0049ab10",
+  "signature": "undefined FUN_0049ab10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0049ab10(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined1 local_44 [8];\r\n  uint local_3c;\r\n  int local_34;\r\n  int local_24 [9];\r\n  \r\n  uVar1 = FUN_00470571(7);\r\n  iVar3 = 0;\r\n  FUN_004705a9(uVar1,local_24);\r\n  iVar2 = FUN_0047031d(uVar1);\r\n  if (0 < local_24[0]) {\r\n    do {\r\n      FUN_0046f5a5(iVar2,local_44);\r\n      if (DAT_0057f3b4 == iVar2) {\r\n        DAT_0057f3a8 = local_34;\r\n        local_3c = local_3c | 0x80000000;\r\n        FUN_0046f5e1(iVar2,local_44);\r\n      }\r\n      iVar3 = iVar3 + 1;\r\n      iVar2 = FUN_00470348(iVar2);\r\n    } while (iVar3 < local_24[0]);\r\n  }\r\n  uVar1 = FUN_00470571(0xbb);\r\n  iVar2 = 0;\r\n  FUN_004705a9(uVar1,local_24);\r\n  uVar1 = FUN_0047031d(uVar1);\r\n  if (0 < local_24[0]) {\r\n    do {\r\n      FUN_0046f5a5(uVar1,local_44);\r\n      if (local_34 == DAT_0057f3a8) {\r\n        local_3c = local_3c | 0x80000000;\r\n        FUN_0046f5e1(uVar1,local_44);\r\n      }\r\n      iVar2 = iVar2 + 1;\r\n      uVar1 = FUN_00470348(uVar1);\r\n    } while (iVar2 < local_24[0]);\r\n  }\r\n  uVar1 = FUN_00470571(0xbd);\r\n  iVar2 = 0;\r\n  FUN_004705a9(uVar1,local_24);\r\n  uVar1 = FUN_0047031d(uVar1);\r\n  if (0 < local_24[0]) {\r\n    do {\r\n      FUN_0046f5a5(uVar1,local_44);\r\n      if (local_34 == DAT_0057f3a8) {\r\n        local_3c = local_3c | 0x80000000;\r\n        FUN_0046f5e1(uVar1,local_44);\r\n      }\r\n      iVar2 = iVar2 + 1;\r\n      uVar1 = FUN_00470348(uVar1);\r\n    } while (iVar2 < local_24[0]);\r\n  }\r\n  uVar1 = FUN_00470571(0xbe);\r\n  iVar2 = 0;\r\n  FUN_004705a9(uVar1,local_24);\r\n  uVar1 = FUN_0047031d(uVar1);\r\n  if (0 < local_24[0]) {\r\n    do {\r\n      FUN_0046f5a5(uVar1,local_44);\r\n      if (local_34 == DAT_0057f3a8) {\r\n        local_3c = local_3c | 0x80000000;\r\n        FUN_0046f5e1(uVar1,local_44);\r\n      }\r\n      iVar2 = iVar2 + 1;\r\n      uVar1 = FUN_00470348(uVar1);\r\n    } while (iVar2 < local_24[0]);\r\n  }\r\n  iVar2 = FUN_0046cd20(DAT_005039ac,0x20001);\r\n  DAT_00504820 = *(undefined4 *)(iVar2 + 4);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00470571",
+      "name": "FUN_00470571"
+    },
+    {
+      "addr": "004705a9",
+      "name": "FUN_004705a9"
+    },
+    {
+      "addr": "0047031d",
+      "name": "FUN_0047031d"
+    },
+    {
+      "addr": "0046f5a5",
+      "name": "FUN_0046f5a5"
+    },
+    {
+      "addr": "0046f5e1",
+      "name": "FUN_0046f5e1"
+    },
+    {
+      "addr": "00470348",
+      "name": "FUN_00470348"
+    },
+    {
+      "addr": "0046cd20",
+      "name": "FUN_0046cd20"
+    }
+  ],
+  "data_refs": []
+}

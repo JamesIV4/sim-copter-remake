@@ -1,0 +1,19 @@
+{
+  "address": "004ae3f0",
+  "name": "FUN_004ae3f0",
+  "signature": "undefined FUN_004ae3f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004ae3f0(void)\r\n\r\n{\r\n  short *psVar1;\r\n  ushort uVar2;\r\n  ushort *puVar3;\r\n  ushort *puVar4;\r\n  ushort *puVar5;\r\n  int iVar6;\r\n  ushort *local_4;\r\n  \r\n  DAT_0050618c = DAT_0050618c + DAT_005039a0;\r\n  if (DAT_0050618c < DAT_00506190) {\r\n    return 0;\r\n  }\r\n  DAT_0050618c = 0;\r\n  puVar4 = local_4;\r\n  puVar5 = local_4;\r\n  switch(DAT_00506194) {\r\n  case 0:\r\n  case 2:\r\n    local_4 = &DAT_00506184;\r\n    DAT_00506190 = 0;\r\n    puVar4 = (ushort *)&DAT_005061d8;\r\n    puVar5 = (ushort *)0x0;\r\n    break;\r\n  case 1:\r\n  case 3:\r\n    local_4 = &DAT_00506188;\r\n    DAT_00506190 = 0;\r\n    puVar4 = (ushort *)&DAT_00506198;\r\n    puVar5 = (ushort *)0x1;\r\n  }\r\n  DAT_00506194 = DAT_00506194 + 1;\r\n  if (DAT_00506194 == 4) {\r\n    DAT_00506194 = 0;\r\n  }\r\n  uVar2 = puVar4[*local_4 & 0x1f];\r\n  *local_4 = *local_4 + 1;\r\n  if ((int)puVar5 < 0x80) {\r\n    iVar6 = (int)puVar5 << 8;\r\n    puVar4 = puVar5;\r\n    puVar3 = puVar5;\r\n    do {\r\n      for (; (int)puVar4 < 0x80; puVar4 = puVar4 + 1) {\r\n        if (*(char *)((int)&DAT_005bde80 + iVar6 + (int)puVar4) == '\\x05') {\r\n          psVar1 = (short *)(DAT_005cde80 +\r\n                            (((DAT_0050616c & (uint)puVar4) << (DAT_00506170 & 0x1f)) +\r\n                            (DAT_0050616c & (uint)puVar3)) * 2);\r\n          *psVar1 = *psVar1 + uVar2;\r\n        }\r\n      }\r\n      iVar6 = iVar6 + 0x200;\r\n      puVar3 = puVar3 + 1;\r\n      puVar4 = puVar5;\r\n    } while (iVar6 < 0x8000);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00482110",
+      "name": "FUN_00482110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

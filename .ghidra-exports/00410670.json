@@ -1,0 +1,13 @@
+{
+  "address": "00410670",
+  "name": "FUN_00410670",
+  "signature": "undefined FUN_00410670(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00410670(int param_1,byte *param_2,int *param_3)\r\n\r\n{\r\n  int iVar1;\r\n  byte *pbVar2;\r\n  int local_10;\r\n  \r\n  iVar1 = 0;\r\n  local_10 = 0;\r\n  if (0 < *(int *)(param_1 + 8)) {\r\n    pbVar2 = (byte *)(*(int *)(param_1 + 4) + 1);\r\n    do {\r\n      if (((uint)param_2[2] - (uint)pbVar2[1]) * ((uint)param_2[2] - (uint)pbVar2[1]) * 3 +\r\n          (((uint)*param_2 - (uint)pbVar2[-1]) * ((uint)*param_2 - (uint)pbVar2[-1]) +\r\n          ((uint)param_2[1] - (uint)*pbVar2) * ((uint)param_2[1] - (uint)*pbVar2) * 2) * 2 != -1) {\r\n        local_10 = iVar1;\r\n      }\r\n      pbVar2 = pbVar2 + 4;\r\n      iVar1 = iVar1 + 1;\r\n    } while (iVar1 < *(int *)(param_1 + 8));\r\n  }\r\n  *param_3 = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

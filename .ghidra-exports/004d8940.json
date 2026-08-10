@@ -1,0 +1,29 @@
+{
+  "address": "004d8940",
+  "name": "__cftoe2",
+  "signature": "undefined __cftoe2(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __cftoe2\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined1 * __cftoe2(undefined1 *param_1,int param_2,int param_3,int *param_4,char param_5)\r\n\r\n{\r\n  undefined1 *puVar1;\r\n  undefined1 *puVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  \r\n  if (param_5 != '\\0') {\r\n    __shift(param_1 + (*param_4 == 0x2d),0 < param_2);\r\n  }\r\n  puVar1 = param_1;\r\n  if (*param_4 == 0x2d) {\r\n    puVar1 = param_1 + 1;\r\n    *param_1 = 0x2d;\r\n  }\r\n  puVar2 = puVar1;\r\n  if (0 < param_2) {\r\n    puVar2 = puVar1 + 1;\r\n    *puVar1 = *puVar2;\r\n    *puVar2 = DAT_00507220;\r\n  }\r\n  puVar4 = (undefined4 *)(puVar2 + param_2 + (uint)(param_5 == '\\0'));\r\n  *puVar4 = DAT_004f5828;\r\n  *(undefined2 *)(puVar4 + 1) = DAT_004f582c;\r\n  if (param_3 != 0) {\r\n    *(undefined1 *)puVar4 = 0x45;\r\n  }\r\n  if (*(char *)param_4[3] != '0') {\r\n    iVar3 = param_4[1] + -1;\r\n    if (iVar3 < 0) {\r\n      iVar3 = -iVar3;\r\n      *(undefined1 *)((int)puVar4 + 1) = 0x2d;\r\n    }\r\n    if (99 < iVar3) {\r\n      *(char *)((int)puVar4 + 2) = *(char *)((int)puVar4 + 2) + (char)(iVar3 / 100);\r\n      iVar3 = iVar3 % 100;\r\n    }\r\n    if (9 < iVar3) {\r\n      *(char *)((int)puVar4 + 3) = *(char *)((int)puVar4 + 3) + (char)(iVar3 / 10);\r\n      iVar3 = iVar3 % 10;\r\n    }\r\n    *(char *)(puVar4 + 1) = *(char *)(puVar4 + 1) + (char)iVar3;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d88c0",
+      "name": "__cftoe",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8b60",
+      "name": "__cftog",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d8c80",
+      "name": "__shift"
+    }
+  ],
+  "data_refs": []
+}

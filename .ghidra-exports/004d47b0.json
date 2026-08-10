@@ -1,0 +1,49 @@
+{
+  "address": "004d47b0",
+  "name": "_clock",
+  "signature": "clock_t __cdecl _clock(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef clock_t long",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n/* Library Function - Single Match\r\n    _clock\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nclock_t __cdecl _clock(void)\r\n\r\n{\r\n  int local_c;\r\n  uint local_8;\r\n  \r\n  __ftime(&local_c);\r\n  return (local_8 & 0xffff) + ((local_c - _DAT_00506de0) * 1000 - (uint)DAT_00506de4);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00410e90",
+      "name": "FUN_00410e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411300",
+      "name": "FUN_00411300",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042a7d0",
+      "name": "FUN_0042a7d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004abce0",
+      "name": "FUN_004abce0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004daa10",
+      "name": "__ftime"
+    }
+  ],
+  "data_refs": []
+}

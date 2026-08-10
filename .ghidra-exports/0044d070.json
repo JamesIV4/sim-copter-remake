@@ -1,0 +1,40 @@
+{
+  "address": "0044d070",
+  "name": "FUN_0044d070",
+  "signature": "undefined FUN_0044d070(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0044d070(int param_1)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  char local_210 [260];\r\n  int local_10c;\r\n  int local_108;\r\n  char local_104 [260];\r\n  \r\n  FUN_00432ab0(1,0,PTR_s_menusky_smk_004f9648,local_104);\r\n  local_10c = -1;\r\n  uVar4 = 0xffffffff;\r\n  local_108 = 1;\r\n  DAT_00507000 = 0x8000;\r\n  pcVar6 = local_104;\r\n  do {\r\n    pcVar7 = pcVar6;\r\n    if (uVar4 == 0) break;\r\n    uVar4 = uVar4 - 1;\r\n    pcVar7 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar7;\r\n  } while (cVar1 != '\\0');\r\n  uVar4 = ~uVar4;\r\n  pcVar6 = pcVar7 + -uVar4;\r\n  pcVar7 = local_210;\r\n  for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar7 = pcVar7 + 4;\r\n  }\r\n  for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *pcVar7 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar7 = pcVar7 + 1;\r\n  }\r\n  iVar2 = FUN_004617a0(0);\r\n  if ((-1 < local_10c) && (local_108 != 0)) {\r\n    __close(local_10c);\r\n  }\r\n  if (iVar2 == 0) {\r\n    *(undefined4 *)(param_1 + 0x78) = 0;\r\n    return 0;\r\n  }\r\n  iVar2 = FUN_004d28b0(0x27c);\r\n  if (iVar2 == 0) {\r\n    *(undefined4 *)(param_1 + 0x78) = 0;\r\n  }\r\n  else {\r\n    uVar3 = FUN_00448170();\r\n    *(undefined4 *)(param_1 + 0x78) = uVar3;\r\n  }\r\n  (**(code **)(**(int **)(param_1 + 0x78) + 0x54))();\r\n  (**(code **)(**(int **)(param_1 + 0x78) + 0x10))(local_104,0xfe000,0xffffffff);\r\n  (**(code **)(**(int **)(param_1 + 0x78) + 0x24))(DAT_00519cc0);\r\n  *(undefined4 *)(*(int *)(param_1 + 0x78) + 8) = 1;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "004617a0",
+      "name": "FUN_004617a0"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00448170",
+      "name": "FUN_00448170"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,32 @@
+{
+  "address": "004c7980",
+  "name": "FUN_004c7980",
+  "signature": "undefined FUN_004c7980(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint * FUN_004c7980(void)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004c7a2e;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  piVar1 = (int *)FUN_004d28b0(0x244);\r\n  local_8 = 0;\r\n  if (piVar1 == (int *)0x0) {\r\n    piVar1 = (int *)0x0;\r\n  }\r\n  else {\r\n    FUN_004c7c00(0,DAT_0058de74,0,0,0,32000);\r\n    *piVar1 = (int)&PTR_FUN_004f4fe0;\r\n    piVar1[0x40] = (int)&PTR_FUN_004f4fc8;\r\n    *(undefined2 *)((int)piVar1 + 0x18e) = 0;\r\n  }\r\n  local_8 = 0xffffffff;\r\n  (**(code **)(*piVar1 + 0x1c))();\r\n  *unaff_FS_OFFSET = local_10;\r\n  return piVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c2f30",
+      "name": "FUN_004c2f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004c7c00",
+      "name": "FUN_004c7c00"
+    },
+    {
+      "addr": "004c7d10",
+      "name": "FUN_004c7d10"
+    }
+  ],
+  "data_refs": []
+}

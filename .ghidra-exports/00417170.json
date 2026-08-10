@@ -1,0 +1,13 @@
+{
+  "address": "00417170",
+  "name": "FUN_00417170",
+  "signature": "undefined FUN_00417170(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00417170(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  code *pcVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  \r\n  piVar1 = (int *)param_1[0x10];\r\n  (**(code **)(*piVar1 + 0xc))(param_1[0x11],param_1[8],param_1[9],0,0,piVar1[2],piVar1[3]);\r\n  iVar2 = *param_1;\r\n  pcVar3 = *(code **)(iVar2 + 0xe4);\r\n  iVar5 = 0;\r\n  do {\r\n    iVar4 = iVar5 + 1;\r\n    (*pcVar3)(iVar5);\r\n    iVar5 = iVar4;\r\n  } while (iVar4 < 8);\r\n  pcVar3 = *(code **)(iVar2 + 0xe8);\r\n  iVar5 = 2;\r\n  do {\r\n    iVar4 = iVar5 + 1;\r\n    (*pcVar3)(iVar5);\r\n    iVar5 = iVar4;\r\n  } while (iVar4 < 6);\r\n  (**(code **)(iVar2 + 0xec))();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

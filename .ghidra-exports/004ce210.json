@@ -1,0 +1,44 @@
+{
+  "address": "004ce210",
+  "name": "GetLastError",
+  "signature": "DWORD __stdcall GetLastError(void)",
+  "calling_convention": "__stdcall",
+  "return_type": "typedef DWORD ulong",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nDWORD GetLastError(void)\r\n\r\n{\r\n  DWORD DVar1;\r\n  \r\n                    /* WARNING: Could not recover jumptable at 0x004ce210. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  DVar1 = GetLastError();\r\n  return DVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cdcb0",
+      "name": "FUN_004cdcb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdcb0",
+      "name": "FUN_004cdcb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdcb0",
+      "name": "FUN_004cdcb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd3e0",
+      "name": "FUN_004cd3e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd3e0",
+      "name": "FUN_004cd3e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdb50",
+      "name": "FUN_004cdb50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

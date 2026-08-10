@@ -1,0 +1,52 @@
+{
+  "address": "004e4910",
+  "name": "FUN_004e4910",
+  "signature": "undefined FUN_004e4910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004e4910(uchar *param_1,int param_2)\r\n\r\n{\r\n  uchar uVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  uchar *puVar4;\r\n  int iVar5;\r\n  int *piVar6;\r\n  uchar *puVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  uchar *puVar10;\r\n  uchar *puVar11;\r\n  bool bVar12;\r\n  \r\n  if (((param_1 == (uchar *)0x0) || (puVar4 = __mbschr(param_1,0x3d), puVar4 == (uchar *)0x0)) ||\r\n     (param_1 == puVar4)) {\r\n    return 0xffffffff;\r\n  }\r\n  bVar12 = puVar4[1] == '\\0';\r\n  if (DAT_00506c90 == DAT_00506c8c) {\r\n    DAT_00506c8c = (int *)copy_environ(DAT_00506c8c);\r\n  }\r\n  if (DAT_00506c8c == (int *)0x0) {\r\n    if ((param_2 == 0) || (DAT_00506c94 == (undefined4 *)0x0)) {\r\n      if (bVar12) {\r\n        return 0;\r\n      }\r\n      DAT_00506c8c = (int *)FUN_004d5f00(4);\r\n      if (DAT_00506c8c == (int *)0x0) {\r\n        return 0xffffffff;\r\n      }\r\n      *DAT_00506c8c = 0;\r\n      if (DAT_00506c94 == (undefined4 *)0x0) {\r\n        DAT_00506c94 = (undefined4 *)FUN_004d5f00(4);\r\n        if (DAT_00506c94 == (undefined4 *)0x0) {\r\n          return 0xffffffff;\r\n        }\r\n        *DAT_00506c94 = 0;\r\n      }\r\n    }\r\n    else {\r\n      iVar5 = ___wtomb_environ();\r\n      if (iVar5 != 0) {\r\n        return 0xffffffff;\r\n      }\r\n    }\r\n  }\r\n  piVar6 = DAT_00506c8c;\r\n  iVar5 = FUN_004e4b60(param_1,(int)puVar4 - (int)param_1);\r\n  if ((iVar5 < 0) || (*piVar6 == 0)) {\r\n    if (bVar12) {\r\n      return 0;\r\n    }\r\n    if (iVar5 < 0) {\r\n      iVar5 = -iVar5;\r\n    }\r\n    piVar6 = (int *)FUN_004d6bb0(piVar6,iVar5 * 4 + 8);\r\n    if (piVar6 == (int *)0x0) {\r\n      return 0xffffffff;\r\n    }\r\n    piVar6[iVar5] = (int)param_1;\r\n    (piVar6 + iVar5)[1] = 0;\r\n  }\r\n  else {\r\n    if (!bVar12) {\r\n      piVar6[iVar5] = (int)param_1;\r\n      goto LAB_004e4acd;\r\n    }\r\n    piVar3 = piVar6 + iVar5;\r\n    FUN_004d6010(*piVar3);\r\n    iVar2 = *piVar3;\r\n    while (iVar2 != 0) {\r\n      iVar5 = iVar5 + 1;\r\n      *piVar3 = piVar3[1];\r\n      iVar2 = piVar3[1];\r\n      piVar3 = piVar3 + 1;\r\n    }\r\n    piVar6 = (int *)FUN_004d6bb0(piVar6,iVar5 << 2);\r\n    if (piVar6 == (int *)0x0) goto LAB_004e4acd;\r\n  }\r\n  DAT_00506c8c = piVar6;\r\nLAB_004e4acd:\r\n  if (param_2 != 0) {\r\n    uVar8 = 0xffffffff;\r\n    puVar7 = param_1;\r\n    do {\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      uVar1 = *puVar7;\r\n      puVar7 = puVar7 + 1;\r\n    } while (uVar1 != '\\0');\r\n    puVar7 = (uchar *)FUN_004d5f00(~uVar8 + 1);\r\n    if (puVar7 != (uchar *)0x0) {\r\n      uVar8 = 0xffffffff;\r\n      puVar10 = param_1;\r\n      do {\r\n        puVar11 = puVar10;\r\n        if (uVar8 == 0) break;\r\n        uVar8 = uVar8 - 1;\r\n        puVar11 = puVar10 + 1;\r\n        uVar1 = *puVar10;\r\n        puVar10 = puVar11;\r\n      } while (uVar1 != '\\0');\r\n      uVar8 = ~uVar8;\r\n      puVar10 = puVar11 + -uVar8;\r\n      puVar11 = puVar7;\r\n      for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n        *(undefined4 *)puVar11 = *(undefined4 *)puVar10;\r\n        puVar10 = puVar10 + 4;\r\n        puVar11 = puVar11 + 4;\r\n      }\r\n      for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n        *puVar11 = *puVar10;\r\n        puVar10 = puVar10 + 1;\r\n        puVar11 = puVar11 + 1;\r\n      }\r\n      puVar7[(int)puVar4 - (int)param_1] = '\\0';\r\n      SetEnvironmentVariableA\r\n                ((LPCSTR)puVar7,\r\n                 (LPCSTR)(-(uint)!bVar12 & (uint)(puVar7 + ((int)puVar4 - (int)param_1) + 1)));\r\n      FUN_004d6010(puVar7);\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4090",
+      "name": "___wtomb_environ",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4c30",
+      "name": "__mbschr"
+    },
+    {
+      "addr": "004e4bc0",
+      "name": "copy_environ"
+    },
+    {
+      "addr": "004e4090",
+      "name": "___wtomb_environ"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004e4b60",
+      "name": "FUN_004e4b60"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004d6bb0",
+      "name": "FUN_004d6bb0"
+    },
+    {
+      "addr": "EXTERNAL:0000002d",
+      "name": "SetEnvironmentVariableA"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,22 @@
+{
+  "address": "00468670",
+  "name": "FUN_00468670",
+  "signature": "undefined FUN_00468670(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00468670(int param_1,undefined4 param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  \r\n  if (*(undefined4 **)(param_1 + 4) != (undefined4 *)0x0) {\r\n    (**(code **)**(undefined4 **)(param_1 + 4))(1);\r\n  }\r\n  puVar1 = (undefined4 *)FUN_004d28b0(0x110);\r\n  if (puVar1 == (undefined4 *)0x0) {\r\n    *(undefined4 *)(param_1 + 4) = 0;\r\n  }\r\n  else {\r\n    puVar1[0x42] = 0xffffffff;\r\n    puVar1[0x43] = 0;\r\n    *puVar1 = &PTR_FUN_004f1780;\r\n    DAT_00507000 = 0x8000;\r\n    *(undefined1 *)(puVar1 + 1) = 0;\r\n    *(undefined4 **)(param_1 + 4) = puVar1;\r\n  }\r\n  FUN_00461450(param_2,0,0x180,0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00461450",
+      "name": "FUN_00461450"
+    }
+  ],
+  "data_refs": []
+}

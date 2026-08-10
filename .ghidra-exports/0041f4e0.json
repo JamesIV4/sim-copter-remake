@@ -1,0 +1,38 @@
+{
+  "address": "0041f4e0",
+  "name": "FUN_0041f4e0",
+  "signature": "undefined FUN_0041f4e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0041f4e0(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  HWND hWnd;\r\n  uint uVar2;\r\n  DWORD dwExStyle;\r\n  HMENU pHVar3;\r\n  DWORD dwStyle;\r\n  tagRECT local_10;\r\n  \r\n  uVar2 = GetWindowLongA((HWND)param_1[6],-0x10);\r\n  SetWindowLongA((HWND)param_1[6],-0x10,uVar2 & 0x7fffffff | 0x10cf0000);\r\n  SetRect(&local_10,0,0,param_1[2],param_1[1]);\r\n  hWnd = (HWND)param_1[6];\r\n  dwExStyle = GetWindowLongA(hWnd,-0x14);\r\n  pHVar3 = GetMenu(hWnd);\r\n  uVar2 = (uint)(pHVar3 != (HMENU)0x0);\r\n  dwStyle = GetWindowLongA(hWnd,-0x10);\r\n  piVar1 = param_1 + 0x1e;\r\n  AdjustWindowRectEx(&local_10,dwStyle,uVar2,dwExStyle);\r\n  *piVar1 = local_10.left;\r\n  param_1[0x1f] = local_10.top;\r\n  param_1[0x20] = local_10.right;\r\n  param_1[0x21] = local_10.bottom;\r\n  (**(code **)(*param_1 + 0x48))(piVar1);\r\n  param_1[0x1a] = *piVar1;\r\n  param_1[0x1b] = param_1[0x1f];\r\n  param_1[0x1c] = param_1[0x20];\r\n  param_1[0x1d] = param_1[0x21];\r\n  SetWindowPos((HWND)param_1[6],(HWND)0x0,*piVar1,param_1[0x1f],param_1[0x20] - *piVar1,\r\n               param_1[0x21] - param_1[0x1f],0x14);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000008e",
+      "name": "GetWindowLongA"
+    },
+    {
+      "addr": "EXTERNAL:0000009e",
+      "name": "SetWindowLongA"
+    },
+    {
+      "addr": "EXTERNAL:00000093",
+      "name": "SetRect"
+    },
+    {
+      "addr": "EXTERNAL:0000009a",
+      "name": "GetMenu"
+    },
+    {
+      "addr": "EXTERNAL:0000008a",
+      "name": "AdjustWindowRectEx"
+    },
+    {
+      "addr": "EXTERNAL:00000087",
+      "name": "SetWindowPos"
+    }
+  ],
+  "data_refs": []
+}

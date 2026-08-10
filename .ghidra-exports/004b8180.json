@@ -1,0 +1,28 @@
+{
+  "address": "004b8180",
+  "name": "FUN_004b8180",
+  "signature": "undefined FUN_004b8180(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004b8180(undefined4 param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  \r\n  iVar2 = FUN_00459a10(param_1,0x5452414e,&DAT_00582920,0x1d9);\r\n  if (iVar2 == 0) {\r\n    return 0;\r\n  }\r\n  iVar2 = 0;\r\n  while( true ) {\r\n    iVar3 = (&DAT_00582afc)[iVar2];\r\n    *(undefined4 *)(iVar3 + 4) = DAT_00582924;\r\n    *(undefined4 *)(iVar3 + 8) = DAT_00582928;\r\n    *(undefined1 *)(iVar3 + 0xc) = DAT_0058292c;\r\n    *(undefined4 *)(iVar3 + 0xd) = DAT_0058292d;\r\n    *(undefined4 *)(iVar3 + 0x11) = DAT_00582931;\r\n    *(undefined4 *)(iVar3 + 0x15) = DAT_00582935;\r\n    *(undefined4 *)(iVar3 + 0x19) = DAT_00582939;\r\n    *(undefined4 *)(iVar3 + 0x1d) = DAT_0058293d;\r\n    *(undefined4 *)(iVar3 + 0x21) = DAT_00582941;\r\n    *(undefined4 *)(iVar3 + 0x25) = DAT_00582945;\r\n    *(undefined4 *)(iVar3 + 0x29) = DAT_00582949;\r\n    *(undefined4 *)(iVar3 + 0x2d) = DAT_0058294d;\r\n    *(undefined4 *)(iVar3 + 0x31) = DAT_00582951;\r\n    uVar1 = DAT_00582959;\r\n    *(uint *)(iVar3 + 0x35) = DAT_00582955;\r\n    *(undefined4 *)(iVar3 + 0x39) = uVar1;\r\n    uVar1 = DAT_00582961;\r\n    *(uint *)(iVar3 + 0x3d) = DAT_0058295d;\r\n    *(undefined4 *)(iVar3 + 0x41) = uVar1;\r\n    uVar1 = DAT_00582969;\r\n    *(undefined4 *)(iVar3 + 0x45) = DAT_00582965;\r\n    *(undefined4 *)(iVar3 + 0x49) = uVar1;\r\n    uVar1 = DAT_00582971;\r\n    *(undefined4 *)(iVar3 + 0x4d) = DAT_0058296d;\r\n    *(undefined4 *)(iVar3 + 0x51) = uVar1;\r\n    uVar1 = DAT_00582979;\r\n    *(undefined4 *)(iVar3 + 0x55) = DAT_00582975;\r\n    *(undefined4 *)(iVar3 + 0x59) = uVar1;\r\n    *(undefined4 *)(iVar3 + 0x5d) = DAT_0058297d;\r\n    *(undefined4 *)(iVar3 + 0x61) = DAT_00582981;\r\n    *(undefined4 *)(iVar3 + 0x65) = DAT_00582985;\r\n    *(undefined4 *)(iVar3 + 0x69) = DAT_00582989;\r\n    *(undefined4 *)(iVar3 + 0x6d) = DAT_0058298d;\r\n    *(undefined4 *)(iVar3 + 0x71) = DAT_00582991;\r\n    uVar1 = DAT_00582999;\r\n    *(undefined4 *)(iVar3 + 0x75) = DAT_00582995;\r\n    *(undefined4 *)(iVar3 + 0x79) = uVar1;\r\n    uVar1 = DAT_005829a9;\r\n    *(undefined4 *)(iVar3 + 0x85) = DAT_005829a5;\r\n    *(undefined4 *)(iVar3 + 0x89) = uVar1;\r\n    uVar1 = DAT_005829b1;\r\n    *(undefined4 *)(iVar3 + 0x8d) = DAT_005829ad;\r\n    *(undefined4 *)(iVar3 + 0x91) = uVar1;\r\n    uVar1 = DAT_005829a1;\r\n    *(undefined4 *)(iVar3 + 0x7d) = DAT_0058299d;\r\n    *(undefined4 *)(iVar3 + 0x81) = uVar1;\r\n    *(undefined4 *)(iVar3 + 0xb9) = DAT_005829d9;\r\n    *(undefined4 *)(iVar3 + 0xbd) = DAT_005829dd;\r\n    *(undefined4 *)(iVar3 + 0xc1) = DAT_005829e1;\r\n    puVar5 = &DAT_005829e5;\r\n    puVar6 = (undefined4 *)(iVar3 + 0xc5);\r\n    for (iVar4 = 0x10; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n      *puVar6 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar6 = puVar6 + 1;\r\n    }\r\n    *(undefined4 *)(iVar3 + 0x11d) = DAT_00582a3d;\r\n    *(undefined4 *)(iVar3 + 0x121) = DAT_00582a41;\r\n    *(undefined4 *)(iVar3 + 0x125) = DAT_00582a45;\r\n    puVar5 = &DAT_00582a49;\r\n    puVar6 = (undefined4 *)(iVar3 + 0x129);\r\n    for (iVar4 = 0x10; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n      *puVar6 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar6 = puVar6 + 1;\r\n    }\r\n    *(undefined4 *)(iVar3 + 0x181) = DAT_00582aa1;\r\n    *(undefined4 *)(iVar3 + 0x185) = DAT_00582aa5;\r\n    *(undefined4 *)(iVar3 + 0x189) = DAT_00582aa9;\r\n    puVar5 = &DAT_00582aad;\r\n    puVar6 = (undefined4 *)(iVar3 + 0x18d);\r\n    for (iVar4 = 0x10; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n      *puVar6 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar6 = puVar6 + 1;\r\n    }\r\n    if (*(char *)(iVar3 + 5) != '\\0') {\r\n      puVar5 = *(undefined4 **)(iVar3 + 0x1cd);\r\n      iVar4 = (&DAT_005d9200)\r\n              [(*(uint *)(iVar3 + 0x35) & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x39) & 0xff)];\r\n      *puVar5 = *(undefined4 *)(iVar4 + 0x10);\r\n      *(undefined4 **)(iVar4 + 0x10) = puVar5;\r\n      puVar5 = *(undefined4 **)(iVar3 + 0x1d1);\r\n      iVar4 = (&DAT_005d9200)\r\n              [(*(uint *)(iVar3 + 0x3d) & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x41) & 0xff)];\r\n      *puVar5 = *(undefined4 *)(iVar4 + 0x10);\r\n      *(undefined4 **)(iVar4 + 0x10) = puVar5;\r\n      puVar5 = *(undefined4 **)(iVar3 + 0x1d5);\r\n      iVar3 = (&DAT_005d9200)\r\n              [(*(uint *)(iVar3 + 0x45) & 0xff) * 0x100 + (*(uint *)(iVar3 + 0x49) & 0xff)];\r\n      *puVar5 = *(undefined4 *)(iVar3 + 0x10);\r\n      *(undefined4 **)(iVar3 + 0x10) = puVar5;\r\n    }\r\n    iVar3 = FUN_00459a50(param_1,0x5452414e,&DAT_00582920,0x1d9);\r\n    if ((iVar3 == 0) && (iVar2 != 0)) break;\r\n    iVar2 = iVar2 + 1;\r\n    if (0 < iVar2) {\r\n      return 1;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b8130",
+      "name": "FUN_004b8130",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00459a10",
+      "name": "FUN_00459a10"
+    },
+    {
+      "addr": "00459a50",
+      "name": "FUN_00459a50"
+    }
+  ],
+  "data_refs": []
+}

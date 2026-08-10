@@ -1,0 +1,48 @@
+{
+  "address": "004de0e0",
+  "name": "FUN_004de0e0",
+  "signature": "undefined FUN_004de0e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nLPSTR FUN_004de0e0(void)\r\n\r\n{\r\n  char cVar1;\r\n  WCHAR WVar2;\r\n  LPWCH pWVar3;\r\n  int iVar4;\r\n  LPSTR pCVar5;\r\n  uint uVar6;\r\n  LPWCH pWVar7;\r\n  char *pcVar8;\r\n  WCHAR *pWVar9;\r\n  int cchWideChar;\r\n  LPSTR pCVar11;\r\n  LPWCH local_4;\r\n  WCHAR *pWVar10;\r\n  \r\n  pWVar3 = local_4;\r\n  if (DAT_0050849c == 0) {\r\n    pWVar3 = GetEnvironmentStringsW();\r\n    if (pWVar3 == (LPWCH)0x0) {\r\n      local_4 = (LPWCH)GetEnvironmentStrings();\r\n      if (local_4 == (LPWCH)0x0) {\r\n        return (LPSTR)0x0;\r\n      }\r\n      DAT_0050849c = 2;\r\n    }\r\n    else {\r\n      DAT_0050849c = 1;\r\n    }\r\n  }\r\n  if (DAT_0050849c != 1) {\r\n    if (DAT_0050849c != 2) {\r\n      return (LPSTR)0x0;\r\n    }\r\n    if ((local_4 == (LPWCH)0x0) && (local_4 = (LPWCH)GetEnvironmentStrings(), local_4 == (LPWCH)0x0)\r\n       ) {\r\n      return (LPSTR)0x0;\r\n    }\r\n    cVar1 = (char)*local_4;\r\n    pWVar3 = local_4;\r\n    while (cVar1 != '\\0') {\r\n      do {\r\n        pWVar7 = pWVar3;\r\n        pWVar3 = (LPWCH)((int)pWVar7 + 1);\r\n      } while (*(char *)pWVar3 != '\\0');\r\n      pWVar3 = pWVar7 + 1;\r\n      cVar1 = (char)*pWVar3;\r\n    }\r\n    pcVar8 = (char *)((int)pWVar3 + (1 - (int)local_4));\r\n    pCVar5 = (LPSTR)FUN_004d5f00(pcVar8);\r\n    if (pCVar5 == (LPSTR)0x0) {\r\n      FreeEnvironmentStringsA((LPCH)local_4);\r\n      return (LPSTR)0x0;\r\n    }\r\n    pWVar3 = local_4;\r\n    pCVar11 = pCVar5;\r\n    for (uVar6 = (uint)pcVar8 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n      *(undefined4 *)pCVar11 = *(undefined4 *)pWVar3;\r\n      pWVar3 = pWVar3 + 2;\r\n      pCVar11 = pCVar11 + 4;\r\n    }\r\n    for (uVar6 = (uint)pcVar8 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n      *pCVar11 = (CHAR)*pWVar3;\r\n      pWVar3 = (LPWCH)((int)pWVar3 + 1);\r\n      pCVar11 = pCVar11 + 1;\r\n    }\r\n    FreeEnvironmentStringsA((LPCH)local_4);\r\n    return pCVar5;\r\n  }\r\n  if ((pWVar3 == (LPWCH)0x0) && (pWVar3 = GetEnvironmentStringsW(), pWVar3 == (LPWCH)0x0)) {\r\n    return (LPSTR)0x0;\r\n  }\r\n  WVar2 = *pWVar3;\r\n  pWVar9 = pWVar3;\r\n  while (WVar2 != L'\\0') {\r\n    do {\r\n      pWVar10 = pWVar9;\r\n      pWVar9 = pWVar10 + 1;\r\n    } while (*pWVar9 != L'\\0');\r\n    pWVar9 = pWVar10 + 2;\r\n    WVar2 = *pWVar9;\r\n  }\r\n  cchWideChar = ((int)pWVar9 - (int)pWVar3 >> 1) + 1;\r\n  iVar4 = WideCharToMultiByte(0,0,pWVar3,cchWideChar,(LPSTR)0x0,0,(LPCSTR)0x0,(LPBOOL)0x0);\r\n  if ((iVar4 != 0) && (pCVar5 = (LPSTR)FUN_004d5f00(iVar4), pCVar5 != (LPSTR)0x0)) {\r\n    iVar4 = WideCharToMultiByte(0,0,pWVar3,cchWideChar,pCVar5,iVar4,(LPCSTR)0x0,(LPBOOL)0x0);\r\n    if (iVar4 == 0) {\r\n      FUN_004d6010(pCVar5);\r\n      pCVar5 = (LPSTR)0x0;\r\n    }\r\n    FreeEnvironmentStringsW(pWVar3);\r\n    return pCVar5;\r\n  }\r\n  FreeEnvironmentStringsW(pWVar3);\r\n  return (LPSTR)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000003d",
+      "name": "GetEnvironmentStringsW"
+    },
+    {
+      "addr": "EXTERNAL:0000003f",
+      "name": "GetEnvironmentStrings"
+    },
+    {
+      "addr": "EXTERNAL:00000043",
+      "name": "WideCharToMultiByte"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "EXTERNAL:0000003e",
+      "name": "FreeEnvironmentStringsW"
+    },
+    {
+      "addr": "EXTERNAL:00000040",
+      "name": "FreeEnvironmentStringsA"
+    }
+  ],
+  "data_refs": []
+}

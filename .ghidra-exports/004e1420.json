@@ -1,0 +1,32 @@
+{
+  "address": "004e1420",
+  "name": "FUN_004e1420",
+  "signature": "undefined FUN_004e1420(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_004e1420(wint_t *param_1,undefined4 *param_2,uint param_3,uint param_4)\r\n\r\n{\r\n  wint_t *pwVar1;\r\n  wint_t wVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  undefined4 *puVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  wint_t *pwVar8;\r\n  uint uVar9;\r\n  \r\n  uVar7 = 0;\r\n  wVar2 = *param_1;\r\n  iVar3 = _iswctype(wVar2,8);\r\n  pwVar1 = param_1;\r\n  while (pwVar8 = pwVar1 + 1, iVar3 != 0) {\r\n    wVar2 = *pwVar8;\r\n    iVar3 = _iswctype(wVar2,8);\r\n    pwVar1 = pwVar8;\r\n  }\r\n  if (wVar2 == 0x2d) {\r\n    wVar2 = *pwVar8;\r\n    param_4 = param_4 | 2;\r\n    pwVar8 = pwVar1 + 2;\r\n  }\r\n  else if (wVar2 == 0x2b) {\r\n    wVar2 = *pwVar8;\r\n    pwVar8 = pwVar1 + 2;\r\n  }\r\n  if ((((int)param_3 < 0) || (param_3 == 1)) || (0x24 < (int)param_3)) {\r\n    if (param_2 != (undefined4 *)0x0) {\r\n      *param_2 = param_1;\r\n    }\r\n    return 0;\r\n  }\r\n  if (param_3 == 0) {\r\n    if (wVar2 == 0x30) {\r\n      if ((*pwVar8 == 0x78) || (*pwVar8 == 0x58)) {\r\n        param_3 = 0x10;\r\n      }\r\n      else {\r\n        param_3 = 8;\r\n      }\r\n    }\r\n    else {\r\n      param_3 = 10;\r\n    }\r\n  }\r\n  if (((param_3 == 0x10) && (wVar2 == 0x30)) && ((*pwVar8 == 0x78 || (*pwVar8 == 0x58)))) {\r\n    wVar2 = pwVar8[1];\r\n    pwVar8 = pwVar8 + 2;\r\n  }\r\n  uVar4 = (uint)(0xffffffff / (ulonglong)param_3);\r\n  do {\r\n    iVar3 = _iswctype(wVar2,4);\r\n    if (iVar3 == 0) {\r\n      iVar3 = _iswctype(wVar2,0x103);\r\n      if (iVar3 == 0) {\r\nLAB_004e157c:\r\n        pwVar8 = pwVar8 + -1;\r\n        if ((param_4 & 8) == 0) {\r\n          if (param_2 != (undefined4 *)0x0) {\r\n            pwVar8 = param_1;\r\n          }\r\n          uVar7 = 0;\r\n        }\r\n        else if (((param_4 & 4) != 0) ||\r\n                (((param_4 & 1) == 0 &&\r\n                 ((((param_4 & 2) != 0 && (0x80000000 < uVar7)) ||\r\n                  (((param_4 & 2) == 0 && (0x7fffffff < uVar7)))))))) {\r\n          puVar5 = (undefined4 *)FUN_004da730();\r\n          *puVar5 = 0x22;\r\n          if ((param_4 & 1) == 0) {\r\n            if ((param_4 & 2) == 0) {\r\n              uVar7 = 0x7fffffff;\r\n            }\r\n            else {\r\n              uVar7 = 0x80000000;\r\n            }\r\n          }\r\n          else {\r\n            uVar7 = 0xffffffff;\r\n          }\r\n        }\r\n        if (param_2 != (undefined4 *)0x0) {\r\n          *param_2 = pwVar8;\r\n        }\r\n        if ((param_4 & 2) != 0) {\r\n          uVar7 = -uVar7;\r\n        }\r\n        return uVar7;\r\n      }\r\n      wVar2 = _towupper(wVar2);\r\n      uVar6 = wVar2 - 0x37;\r\n    }\r\n    else {\r\n      uVar6 = wVar2 - 0x30;\r\n    }\r\n    if (param_3 <= uVar6) goto LAB_004e157c;\r\n    uVar9 = param_4 | 8;\r\n    if ((uVar7 < uVar4) || ((uVar4 == uVar7 && (uVar6 <= (uint)(0xffffffff % (ulonglong)param_3)))))\r\n    {\r\n      uVar7 = uVar7 * param_3 + uVar6;\r\n    }\r\n    else {\r\n      uVar9 = param_4 | 0xc;\r\n    }\r\n    wVar2 = *pwVar8;\r\n    pwVar8 = pwVar8 + 1;\r\n    param_4 = uVar9;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e1400",
+      "name": "_wcstol",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4240",
+      "name": "_iswctype"
+    },
+    {
+      "addr": "004e4120",
+      "name": "_towupper"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

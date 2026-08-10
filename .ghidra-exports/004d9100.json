@@ -1,0 +1,61 @@
+{
+  "address": "004d9100",
+  "name": "FUN_004d9100",
+  "signature": "undefined FUN_004d9100(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d9100(void)\r\n\r\n{\r\n  byte bVar1;\r\n  byte bVar2;\r\n  byte *_Source;\r\n  DWORD DVar3;\r\n  int iVar4;\r\n  long lVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  byte *pbVar8;\r\n  byte *pbVar9;\r\n  bool bVar10;\r\n  \r\n  __lock(0xc);\r\n  DAT_00590590 = 0;\r\n  DAT_00507648 = 0xffffffff;\r\n  DAT_00507638 = 0xffffffff;\r\n  _Source = (byte *)FID_conflict___getenv_lk(\"TZ\");\r\n  if (_Source == (byte *)0x0) {\r\n    FUN_004d64a0(0xc);\r\n    DVar3 = GetTimeZoneInformation((LPTIME_ZONE_INFORMATION)&DAT_00590598);\r\n    if (DVar3 != 0) {\r\n      DAT_00506df0 = DAT_00590598 * 0x3c;\r\n      DAT_00590590 = 1;\r\n      if (DAT_005905de != 0) {\r\n        DAT_00506df0 = DAT_00506df0 + DAT_005905ec * 0x3c;\r\n      }\r\n      if ((DAT_00590632 == 0) || (DAT_00590640 == 0)) {\r\n        DAT_00506df4 = 0;\r\n      }\r\n      else {\r\n        DAT_00506df4 = 1;\r\n        DAT_00506df8 = (DAT_00590640 - DAT_005905ec) * 0x3c;\r\n      }\r\n      FID_conflict__mbtowc((wchar_t *)PTR_DAT_00506e80,&DAT_0059059c,0x40);\r\n      FID_conflict__mbtowc((wchar_t *)PTR_DAT_00506e84,&DAT_005905f0,0x40);\r\n      PTR_DAT_00506e84[0x3f] = 0;\r\n      PTR_DAT_00506e80[0x3f] = PTR_DAT_00506e84[0x3f];\r\n      return;\r\n    }\r\n  }\r\n  else {\r\n    if (*_Source != 0) {\r\n      pbVar9 = _Source;\r\n      pbVar8 = DAT_00507630;\r\n      if (DAT_00507630 == (byte *)0x0) {\r\nLAB_004d9268:\r\n        FUN_004d6010(DAT_00507630);\r\n        uVar6 = 0xffffffff;\r\n        pbVar9 = _Source;\r\n        do {\r\n          if (uVar6 == 0) break;\r\n          uVar6 = uVar6 - 1;\r\n          bVar1 = *pbVar9;\r\n          pbVar9 = pbVar9 + 1;\r\n        } while (bVar1 != 0);\r\n        DAT_00507630 = (byte *)FUN_004d5f00(~uVar6);\r\n        if (DAT_00507630 == (byte *)0x0) {\r\n          FUN_004d64a0(0xc);\r\n          return;\r\n        }\r\n        uVar6 = 0xffffffff;\r\n        pbVar9 = _Source;\r\n        do {\r\n          pbVar8 = pbVar9;\r\n          if (uVar6 == 0) break;\r\n          uVar6 = uVar6 - 1;\r\n          pbVar8 = pbVar9 + 1;\r\n          bVar1 = *pbVar9;\r\n          pbVar9 = pbVar8;\r\n        } while (bVar1 != 0);\r\n        uVar6 = ~uVar6;\r\n        pbVar9 = pbVar8 + -uVar6;\r\n        pbVar8 = DAT_00507630;\r\n        for (uVar7 = uVar6 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n          *(undefined4 *)pbVar8 = *(undefined4 *)pbVar9;\r\n          pbVar9 = pbVar9 + 4;\r\n          pbVar8 = pbVar8 + 4;\r\n        }\r\n        for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n          *pbVar8 = *pbVar9;\r\n          pbVar9 = pbVar9 + 1;\r\n          pbVar8 = pbVar8 + 1;\r\n        }\r\n        FUN_004d64a0(0xc);\r\n        pbVar9 = _Source + 3;\r\n        _strncpy(PTR_DAT_00506e80,(char *)_Source,3);\r\n        PTR_DAT_00506e80[3] = 0;\r\n        bVar1 = *pbVar9;\r\n        if (bVar1 == 0x2d) {\r\n          pbVar9 = _Source + 4;\r\n        }\r\n        lVar5 = _atol((char *)pbVar9);\r\n        DAT_00506df0 = lVar5 * 0xe10;\r\n        for (; (bVar2 = *pbVar9, bVar2 == 0x2b || (('/' < (char)bVar2 && ((char)bVar2 < ':'))));\r\n            pbVar9 = pbVar9 + 1) {\r\n        }\r\n        if (*pbVar9 == 0x3a) {\r\n          pbVar9 = pbVar9 + 1;\r\n          lVar5 = _atol((char *)pbVar9);\r\n          DAT_00506df0 = DAT_00506df0 + lVar5 * 0x3c;\r\n          bVar2 = *pbVar9;\r\n          while (('/' < (char)bVar2 && ((char)*pbVar9 < ':'))) {\r\n            pbVar9 = pbVar9 + 1;\r\n            bVar2 = *pbVar9;\r\n          }\r\n          if (*pbVar9 == 0x3a) {\r\n            pbVar9 = pbVar9 + 1;\r\n            lVar5 = _atol((char *)pbVar9);\r\n            DAT_00506df0 = DAT_00506df0 + lVar5;\r\n            bVar2 = *pbVar9;\r\n            while (('/' < (char)bVar2 && ((char)*pbVar9 < ':'))) {\r\n              pbVar9 = pbVar9 + 1;\r\n              bVar2 = *pbVar9;\r\n            }\r\n          }\r\n        }\r\n        if (bVar1 == 0x2d) {\r\n          DAT_00506df0 = -DAT_00506df0;\r\n        }\r\n        DAT_00506df4 = (int)(char)*pbVar9;\r\n        if (DAT_00506df4 != 0) {\r\n          _strncpy(PTR_DAT_00506e84,(char *)pbVar9,3);\r\n          PTR_DAT_00506e84[3] = 0;\r\n          return;\r\n        }\r\n        *PTR_DAT_00506e84 = 0;\r\n        return;\r\n      }\r\n      do {\r\n        bVar1 = *pbVar9;\r\n        bVar10 = bVar1 < *pbVar8;\r\n        if (bVar1 != *pbVar8) {\r\nLAB_004d925b:\r\n          iVar4 = (1 - (uint)bVar10) - (uint)(bVar10 != 0);\r\n          goto LAB_004d9260;\r\n        }\r\n        if (bVar1 == 0) break;\r\n        bVar1 = pbVar9[1];\r\n        bVar10 = bVar1 < pbVar8[1];\r\n        if (bVar1 != pbVar8[1]) goto LAB_004d925b;\r\n        pbVar9 = pbVar9 + 2;\r\n        pbVar8 = pbVar8 + 2;\r\n      } while (bVar1 != 0);\r\n      iVar4 = 0;\r\nLAB_004d9260:\r\n      if (iVar4 != 0) goto LAB_004d9268;\r\n    }\r\n    FUN_004d64a0(0xc);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d90a0",
+      "name": "___tzset",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d90e0",
+      "name": "FUN_004d90e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004e0ac0",
+      "name": "FID_conflict:__getenv_lk"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "EXTERNAL:00000066",
+      "name": "GetTimeZoneInformation"
+    },
+    {
+      "addr": "004e07b0",
+      "name": "FID_conflict:_mbtowc"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004d54d0",
+      "name": "_atol"
+    }
+  ],
+  "data_refs": []
+}

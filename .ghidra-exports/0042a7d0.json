@@ -1,0 +1,104 @@
+{
+  "address": "0042a7d0",
+  "name": "FUN_0042a7d0",
+  "signature": "undefined FUN_0042a7d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * FUN_0042a7d0(void)\r\n\r\n{\r\n  char cVar1;\r\n  undefined *puVar2;\r\n  undefined4 uVar3;\r\n  undefined4 *puVar4;\r\n  clock_t cVar5;\r\n  int iVar6;\r\n  UINT UVar7;\r\n  undefined4 *extraout_ECX;\r\n  uint uVar8;\r\n  int iVar9;\r\n  int *piVar10;\r\n  char *pcVar11;\r\n  int in_stack_000000e4;\r\n  undefined4 in_stack_000000e8;\r\n  int in_stack_000000ec;\r\n  int in_stack_000000f0;\r\n  undefined4 in_stack_000010e8;\r\n  int in_stack_000010ec;\r\n  undefined4 in_stack_000010f0;\r\n  undefined4 in_stack_000010f4;\r\n  \r\n  FUN_004d2c30();\r\n  in_stack_000000e4 = 0;\r\n  in_stack_000000e8 = 0;\r\n  in_stack_000000ec = *(int *)(in_stack_000010ec + 0x18) - *(int *)(in_stack_000010ec + 0x10);\r\n  in_stack_000000f0 = *(int *)(in_stack_000010ec + 0x1c) - *(int *)(in_stack_000010ec + 0x14);\r\n  FUN_00404040(&stack0x000000e4,in_stack_000010e8,in_stack_000010ec,in_stack_000010f0,\r\n               in_stack_000010f4);\r\n  extraout_ECX[0x1d] = 0x50;\r\n  extraout_ECX[0x1e] = 0x1a4;\r\n  extraout_ECX[0x1f] = 0x226;\r\n  iVar9 = 2;\r\n  extraout_ECX[0x20] = 0x1cc;\r\n  extraout_ECX[0x21] = 0x3c;\r\n  extraout_ECX[0x22] = 0x42;\r\n  do {\r\n    FUN_0042b2f0();\r\n    iVar9 = iVar9 + -1;\r\n  } while (-1 < iVar9);\r\n  in_stack_000000e4 = 2;\r\n  do {\r\n    FUN_0042b2f0();\r\n    puVar2 = PTR_s_catsel_wav_004f8d64;\r\n    in_stack_000000e4 = in_stack_000000e4 + -1;\r\n  } while (-1 < in_stack_000000e4);\r\n  iVar9 = FUN_004d28b0(0x10);\r\n  if (iVar9 == 0) {\r\n    in_stack_000000e8 = 0;\r\n  }\r\n  else {\r\n    in_stack_000000e8 = FUN_0041bd00(puVar2);\r\n  }\r\n  in_stack_000000e4 = 0;\r\n  FUN_0041d4c0(&stack0x000000e4,0);\r\n  FUN_00401ed0();\r\n  if (in_stack_000000e4 != 0) {\r\n    FUN_004d29a0(in_stack_000000e4);\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x16e) = 0xffffffff;\r\n  *(undefined4 *)((int)extraout_ECX + 0x172) = 0;\r\n  iVar9 = FUN_004d28b0(0x10);\r\n  if (iVar9 == 0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x17a) = 0;\r\n  }\r\n  else {\r\n    uVar3 = FUN_0041bd00(s_888888888888_004f8d80);\r\n    *(undefined4 *)((int)extraout_ECX + 0x17a) = uVar3;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x176) = 0;\r\n  iVar9 = FUN_004d28b0(0x10);\r\n  if (iVar9 == 0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x182) = 0;\r\n  }\r\n  else {\r\n    uVar3 = FUN_0041bd00(s_888888888888_004f8d80);\r\n    *(undefined4 *)((int)extraout_ECX + 0x182) = uVar3;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x17e) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x186) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x18a) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x18e) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x192) = 0x46;\r\n  *(undefined4 *)((int)extraout_ECX + 0x19a) = 0x138;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1a2) = 0x46;\r\n  *(undefined4 *)((int)extraout_ECX + 0x196) = 0x140;\r\n  *(undefined4 *)((int)extraout_ECX + 0x19e) = 0x168;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1a6) = 0x176;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1aa) = 0xc28;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1d2) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1ae) = 0x19a;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1be) = 0x19a;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1d6) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1da) = 0;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1b2) = 0x14e;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1b6) = 0x140;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1ba) = 0x24e;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1e6) = 0x138;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1de) = 0x4a;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1e2) = 0x12e;\r\n  *(undefined4 *)((int)extraout_ECX + 0x1ea) = 0x140;\r\n  FUN_0042b300(0x4a,0x166,0x138,0x178);\r\n  FUN_0042b300(0x150,0x12e,0x24e,0x140);\r\n  FUN_0042b300(0x200,0x48,0x24e,0x6a);\r\n  FUN_0042b300(0x200,0x8c,0x24e,0xb2);\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x232) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x232) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x22e) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x23a) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x23a) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x236) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x242) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x242) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x23e) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x24a) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x24a) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x246) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x252) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x252) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x24e) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x25a) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x25a) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x256) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x262) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x262) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x25e) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x26a) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x26a) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x266) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x292) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x292) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x28e) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x29a) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x29a) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x296) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x2a2) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x2a2) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x29e) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x2aa) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x2aa) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x2a6) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x2b2) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x2b2) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x2ae) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x2ba) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x2ba) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x2b6) = 0;\r\n  puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar4 == (undefined4 *)0x0) {\r\n    *(undefined4 *)((int)extraout_ECX + 0x2c2) = 0;\r\n  }\r\n  else {\r\n    puVar4[1] = 0;\r\n    puVar4[2] = 0;\r\n    *puVar4 = 0;\r\n    puVar4[3] = 1;\r\n    *(undefined4 **)((int)extraout_ECX + 0x2c2) = puVar4;\r\n  }\r\n  *(undefined4 *)((int)extraout_ECX + 0x2be) = 0;\r\n  *extraout_ECX = &PTR_FUN_004f1600;\r\n  cVar5 = _clock();\r\n  FUN_00455dd0(cVar5);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = PTR_s_catalog_bmp_004f8d50;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  pcVar11 = (char *)0x0;\r\n  FUN_004017f0(PTR_s_catalog_bmp_004f8d50,~uVar8 - 1);\r\n  if ((*(undefined4 **)((int)extraout_ECX + 0x17a))[1] != 0) {\r\n    pcVar11 = (char *)**(undefined4 **)((int)extraout_ECX + 0x17a);\r\n  }\r\n  uVar3 = FUN_00407a70();\r\n  _sprintf(pcVar11,&DAT_004f8d7c,uVar3);\r\n  if ((*(undefined4 **)((int)extraout_ECX + 0x182))[1] == 0) {\r\n    pcVar11 = (char *)0x0;\r\n  }\r\n  else {\r\n    pcVar11 = (char *)**(undefined4 **)((int)extraout_ECX + 0x182);\r\n  }\r\n  puVar4 = extraout_ECX + 0x23;\r\n  _sprintf(pcVar11,&DAT_004f8d7c,0);\r\n  in_stack_000000e4 = 3;\r\n  piVar10 = extraout_ECX + 0x26;\r\n  do {\r\n    uVar3 = FUN_00455e50(9);\r\n    *puVar4 = uVar3;\r\n    puVar4 = puVar4 + 1;\r\n    iVar9 = FUN_00455e50(0x1a6);\r\n    *piVar10 = iVar9 + 0x3c;\r\n    iVar9 = FUN_00455e50(0xe6);\r\n    in_stack_000000e4 = in_stack_000000e4 + -1;\r\n    piVar10[1] = iVar9 + 0x42;\r\n    piVar10 = piVar10 + 2;\r\n  } while (in_stack_000000e4 != 0);\r\n  puVar4 = extraout_ECX + 0x2c;\r\n  iVar9 = 3;\r\n  in_stack_000000e4 = 0;\r\n  piVar10 = extraout_ECX + 0x2f;\r\n  do {\r\n    uVar3 = FUN_00455e50(9);\r\n    *puVar4 = uVar3;\r\n    puVar4 = puVar4 + 1;\r\n    iVar6 = FUN_00455e50(0x1a6);\r\n    *piVar10 = iVar6 + 0x3c;\r\n    iVar6 = FUN_00455e50(0xe6);\r\n    iVar9 = iVar9 + -1;\r\n    piVar10[1] = iVar6 + 0x42;\r\n    piVar10 = piVar10 + 2;\r\n  } while (iVar9 != 0);\r\n  UVar7 = FUN_00423270(0x1ae,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1af,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b0,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b1,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b2,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b3,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b4,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b5,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b6,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b7,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b8,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  UVar7 = FUN_00423270(0x1b9,0);\r\n  LoadStringA(DAT_0051a050,UVar7,(LPSTR)&stack0x000000e4,0xfff);\r\n  uVar8 = 0xffffffff;\r\n  pcVar11 = (char *)&stack0x000000e4;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x000000e4,~uVar8 - 1);\r\n  FUN_0042d030(1);\r\n  FUN_00405910();\r\n  FUN_00405b10(extraout_ECX);\r\n  FUN_00405cd0(extraout_ECX);\r\n  return extraout_ECX;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004144a0",
+      "name": "FUN_004144a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "00404040",
+      "name": "FUN_00404040"
+    },
+    {
+      "addr": "0042b2f0",
+      "name": "FUN_0042b2f0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0041bd00",
+      "name": "FUN_0041bd00"
+    },
+    {
+      "addr": "0041d4c0",
+      "name": "FUN_0041d4c0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0042b300",
+      "name": "FUN_0042b300"
+    },
+    {
+      "addr": "004d47b0",
+      "name": "_clock"
+    },
+    {
+      "addr": "00455dd0",
+      "name": "FUN_00455dd0"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "00407a70",
+      "name": "FUN_00407a70"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "00455e50",
+      "name": "FUN_00455e50"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "0042d030",
+      "name": "FUN_0042d030"
+    },
+    {
+      "addr": "00405910",
+      "name": "FUN_00405910"
+    },
+    {
+      "addr": "00405b10",
+      "name": "FUN_00405b10"
+    },
+    {
+      "addr": "00405cd0",
+      "name": "FUN_00405cd0"
+    }
+  ],
+  "data_refs": []
+}

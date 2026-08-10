@@ -1,0 +1,19 @@
+{
+  "address": "0048a550",
+  "name": "FUN_0048a550",
+  "signature": "undefined FUN_0048a550(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0048a550(int param_1)\r\n\r\n{\r\n  return *(undefined4 *)(param_1 + 0xd0);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ccb80",
+      "name": "FUN_004ccb80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

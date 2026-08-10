@@ -1,0 +1,13 @@
+{
+  "address": "00475a27",
+  "name": "FUN_00475a27",
+  "signature": "undefined FUN_00475a27(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined8 FUN_00475a27(void)\r\n\r\n{\r\n  uint uVar1;\r\n  longlong lVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  undefined4 in_stack_00000018;\r\n  undefined4 in_stack_00000020;\r\n  \r\n  do {\r\n    piVar3 = DAT_005019a0;\r\n    _DAT_005019a4 = DAT_005019a0;\r\n    if (DAT_005019a0 == DAT_00501ad4) {\r\n      return CONCAT44(in_stack_00000018,in_stack_00000020);\r\n    }\r\n    DAT_005019a0 = DAT_005019a0 + -5;\r\n    if ((int)DAT_005019a0 < DAT_00501adc) {\r\n      DAT_005019a0 = DAT_00501ad8;\r\n    }\r\n    uVar1 = piVar3[1];\r\n    iVar4 = ((uint)DAT_005019a0[1] >> 0xc) - (uVar1 >> 0xc);\r\n  } while (iVar4 == 0);\r\n  _DAT_005019b0 = iVar4;\r\n  _DAT_00501ad0 = (&DAT_004fb028)[uVar1 >> 0xc] + DAT_004f973c;\r\n  iVar4 = DAT_005019a0[1] - uVar1;\r\n  if (iVar4 < 0x1000) {\r\n    iVar4 = 0x1000;\r\n  }\r\n  DAT_005019a8 = *piVar3;\r\n  uVar5 = *DAT_005019a0 - DAT_005019a8;\r\n  _DAT_005019c0 =\r\n       (int)(CONCAT44(((int)uVar5 >> 0x1f) << 0xc | uVar5 >> 0x14,uVar5 * 0x1000) / (longlong)iVar4)\r\n  ;\r\n  lVar2 = (longlong)_DAT_005019c0 * (longlong)(int)(uVar1 & 0xfff);\r\n  iVar4 = (int)((ulonglong)lVar2 >> 0x20);\r\n  DAT_00501a14 = -((uint)lVar2 >> 0xc | iVar4 << 0x14);\r\n  return CONCAT44(iVar4,DAT_00501a14);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

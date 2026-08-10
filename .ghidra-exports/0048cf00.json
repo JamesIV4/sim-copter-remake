@@ -1,0 +1,24 @@
+{
+  "address": "0048cf00",
+  "name": "FUN_0048cf00",
+  "signature": "undefined FUN_0048cf00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0048cf00(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  int *piVar4;\r\n  undefined4 *local_c;\r\n  \r\n  for (local_c = (undefined4 *)**(undefined4 **)*param_1; *(undefined4 **)*param_1 != local_c;\r\n      local_c = (undefined4 *)*local_c) {\r\n    piVar2 = (int *)local_c[2];\r\n    if (*piVar2 == 1) {\r\n      FUN_004d29a0(piVar2[3]);\r\n    }\r\n    FUN_004d29a0(local_c[2]);\r\n  }\r\n  param_1 = (int *)*param_1;\r\n  piVar2 = (int *)*param_1;\r\n  piVar4 = (int *)*piVar2;\r\n  while (piVar4 != piVar2) {\r\n    piVar3 = (int *)*piVar4;\r\n    *(int *)piVar4[1] = *piVar4;\r\n    *(int *)(*piVar4 + 4) = piVar4[1];\r\n    *piVar4 = (int)DAT_005044e8;\r\n    piVar1 = param_1 + 1;\r\n    DAT_005044e8 = piVar4;\r\n    *piVar1 = *piVar1 + -1;\r\n    piVar4 = piVar3;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041fcd0",
+      "name": "FUN_0041fcd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

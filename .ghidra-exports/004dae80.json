@@ -1,0 +1,24 @@
+{
+  "address": "004dae80",
+  "name": "___initmbctable",
+  "signature": "undefined ___initmbctable(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___initmbctable\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___initmbctable(void)\r\n\r\n{\r\n  __setmbcp(-3);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dab70",
+      "name": "__setmbcp"
+    }
+  ],
+  "data_refs": []
+}

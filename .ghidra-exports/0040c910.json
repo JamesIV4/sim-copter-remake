@@ -1,0 +1,62 @@
+{
+  "address": "0040c910",
+  "name": "FUN_0040c910",
+  "signature": "undefined FUN_0040c910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * __thiscall\r\nFUN_0040c910(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  ostream *poVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  int iStack_8;\r\n  undefined1 auStack_4 [4];\r\n  \r\n  FUN_00404040(param_2,param_3,param_4,param_5,param_6);\r\n  param_1[0x1e] = 0;\r\n  puVar4 = DAT_004f835c;\r\n  _DAT_004f8354 = _DAT_004f8354 + 1;\r\n  if (DAT_004f8360 == (undefined4 *)0x0) {\r\n    if (DAT_004f8358 == DAT_004f835c) {\r\n      set_new_handler((_func_void *)0x0);\r\n      puVar1 = (undefined4 *)FUN_004d28b0(8);\r\n      if (puVar1 == (undefined4 *)0x0) {\r\n        poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar2);\r\n        FUN_004d2060(1);\r\n      }\r\n      set_new_handler((_func_void *)0x0);\r\n      iVar3 = FUN_004d28b0(0x1000);\r\n      if (iVar3 == 0) {\r\n        poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar2);\r\n        FUN_004d2060(1);\r\n      }\r\n      puVar1[1] = iVar3;\r\n      *puVar1 = DAT_004f8364;\r\n      puVar4 = (undefined4 *)puVar1[1];\r\n      DAT_004f835c = puVar4 + 4;\r\n      DAT_004f8358 = puVar4 + 0x400;\r\n      DAT_004f8364 = puVar1;\r\n    }\r\n    else {\r\n      DAT_004f835c = DAT_004f835c + 4;\r\n    }\r\n  }\r\n  else {\r\n    puVar4 = DAT_004f8360;\r\n    DAT_004f8360 = (undefined4 *)*DAT_004f8360;\r\n  }\r\n  param_1[0x1d] = puVar4;\r\n  *puVar4 = puVar4;\r\n  *(undefined4 *)(param_1[0x1d] + 4) = param_1[0x1d];\r\n  FUN_00460a70();\r\n  *param_1 = &PTR_LAB_004f0b98;\r\n  *(undefined1 *)(param_1 + 0x1f) = 0;\r\n  *(undefined1 *)((int)param_1 + 0x7d) = 0;\r\n  *(undefined1 *)((int)param_1 + 0x7e) = 0;\r\n  *(undefined1 *)(param_1 + 0x20) = 0xff;\r\n  *(undefined1 *)((int)param_1 + 0x81) = 0xff;\r\n  *(undefined1 *)((int)param_1 + 0x82) = 0xff;\r\n  param_1[0x21] = DAT_00518b94;\r\n  param_1[0x22] = DAT_00518b88;\r\n  param_1[0x2a] = 0;\r\n  param_1[0x2c] = 0;\r\n  param_1[0x2d] = 0;\r\n  param_1[0x2f] = 0;\r\n  param_1[0x30] = 0;\r\n  param_1[0x31] = 0;\r\n  param_1[0x2b] = 0xffffffff;\r\n  param_1[0x2e] = 10;\r\n  param_1[0x32] = 0;\r\n  (**(code **)param_1[0x23])();\r\n  iVar3 = FUN_00460ea0(0,auStack_4,&iStack_8);\r\n  if (iVar3 != 0) {\r\n    param_1[0x2e] = iStack_8;\r\n    param_1[0x2c] = (int)(param_1[7] - param_1[5]) / iStack_8;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043b470",
+      "name": "FUN_0043b470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00419fe0",
+      "name": "FUN_00419fe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040e510",
+      "name": "FUN_0040e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00404040",
+      "name": "FUN_00404040"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "00460a70",
+      "name": "FUN_00460a70"
+    },
+    {
+      "addr": "00460ea0",
+      "name": "FUN_00460ea0"
+    }
+  ],
+  "data_refs": []
+}

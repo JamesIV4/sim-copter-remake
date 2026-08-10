@@ -1,0 +1,26 @@
+{
+  "address": "004da7b0",
+  "name": "__XcptFilter",
+  "signature": "int __cdecl __XcptFilter(ulong _ExceptionNum, _EXCEPTION_POINTERS * _ExceptionPtr)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __XcptFilter\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __XcptFilter(ulong _ExceptionNum,_EXCEPTION_POINTERS *_ExceptionPtr)\r\n\r\n{\r\n  code *pcVar1;\r\n  void *pvVar2;\r\n  void *pvVar3;\r\n  _ptiddata p_Var4;\r\n  int *piVar5;\r\n  LONG LVar6;\r\n  int iVar7;\r\n  int iVar8;\r\n  \r\n  p_Var4 = __getptd();\r\n  piVar5 = (int *)xcptlookup(_ExceptionNum,*(undefined4 *)(p_Var4->_con_ch_buf + 4));\r\n  if ((piVar5 == (int *)0x0) || (pcVar1 = (code *)piVar5[2], pcVar1 == (code *)0x0)) {\r\n    LVar6 = UnhandledExceptionFilter(_ExceptionPtr);\r\n    return LVar6;\r\n  }\r\n  if (pcVar1 == (code *)0x5) {\r\n    piVar5[2] = 0;\r\n    return 1;\r\n  }\r\n  if (pcVar1 == (code *)0x1) {\r\n    return -1;\r\n  }\r\n  pvVar2 = p_Var4->_initaddr;\r\n  p_Var4->_initaddr = _ExceptionPtr;\r\n  if (piVar5[1] == 8) {\r\n    if (DAT_00507868 < DAT_0050786c + DAT_00507868) {\r\n      iVar7 = DAT_00507868 * 0xc;\r\n      iVar8 = DAT_00507868;\r\n      do {\r\n        iVar7 = iVar7 + 0xc;\r\n        iVar8 = iVar8 + 1;\r\n        *(undefined4 *)(*(int *)(p_Var4->_con_ch_buf + 4) + -4 + iVar7) = 0;\r\n      } while (iVar8 < DAT_0050786c + DAT_00507868);\r\n    }\r\n    pvVar3 = p_Var4->_initarg;\r\n    iVar8 = *piVar5;\r\n    if (iVar8 == -0x3fffff72) {\r\n      p_Var4->_initarg = (void *)0x83;\r\n    }\r\n    else if (iVar8 == -0x3fffff70) {\r\n      p_Var4->_initarg = (void *)0x81;\r\n    }\r\n    else if (iVar8 == -0x3fffff6f) {\r\n      p_Var4->_initarg = (void *)0x84;\r\n    }\r\n    else if (iVar8 == -0x3fffff6d) {\r\n      p_Var4->_initarg = (void *)0x85;\r\n    }\r\n    else if (iVar8 == -0x3fffff73) {\r\n      p_Var4->_initarg = (void *)0x82;\r\n    }\r\n    else if (iVar8 == -0x3fffff71) {\r\n      p_Var4->_initarg = (void *)0x86;\r\n    }\r\n    else if (iVar8 == -0x3fffff6e) {\r\n      p_Var4->_initarg = (void *)0x8a;\r\n    }\r\n    (*pcVar1)(8,p_Var4->_initarg);\r\n    p_Var4->_initarg = pvVar3;\r\n  }\r\n  else {\r\n    piVar5[2] = 0;\r\n    (*pcVar1)(piVar5[1]);\r\n  }\r\n  p_Var4->_initaddr = pvVar2;\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004da900",
+      "name": "xcptlookup"
+    },
+    {
+      "addr": "EXTERNAL:0000004a",
+      "name": "UnhandledExceptionFilter"
+    }
+  ],
+  "data_refs": []
+}

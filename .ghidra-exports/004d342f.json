@@ -1,0 +1,24 @@
+{
+  "address": "004d342f",
+  "name": "FUN_004d342f",
+  "signature": "undefined FUN_004d342f(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d342f(void)\r\n\r\n{\r\n  int unaff_EBP;\r\n  \r\n  ostream::~ostream(*(ostream **)(unaff_EBP + -0x10));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d33e0",
+      "name": "FUN_004d33e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2470",
+      "name": "~ostream"
+    }
+  ],
+  "data_refs": []
+}

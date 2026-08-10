@@ -1,0 +1,39 @@
+{
+  "address": "00488f00",
+  "name": "FUN_00488f00",
+  "signature": "undefined FUN_00488f00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00488f00(int param_1)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  undefined1 local_24 [12];\r\n  int local_18;\r\n  \r\n  iVar2 = 0;\r\n  for (puVar1 = *(undefined4 **)(param_1 + 0xc); puVar1 != (undefined4 *)0x0;\r\n      puVar1 = (undefined4 *)*puVar1) {\r\n    if (((puVar1[2] & 0x1a4) != 0) && (FUN_004705a9(puVar1[1],local_24), iVar2 < local_18)) {\r\n      iVar2 = local_18;\r\n    }\r\n  }\r\n  return iVar2 * 2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00482570",
+      "name": "FUN_00482570",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b3420",
+      "name": "FUN_004b3420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b3530",
+      "name": "FUN_004b3530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b37e0",
+      "name": "FUN_004b37e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004705a9",
+      "name": "FUN_004705a9"
+    }
+  ],
+  "data_refs": []
+}

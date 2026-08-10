@@ -1,0 +1,24 @@
+{
+  "address": "004d6400",
+  "name": "__mtinitlocks",
+  "signature": "int __cdecl __mtinitlocks(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mtinitlocks\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __mtinitlocks(void)\r\n\r\n{\r\n  int extraout_EAX;\r\n  \r\n  InitializeCriticalSection((LPCRITICAL_SECTION)PTR_DAT_0050751c);\r\n  InitializeCriticalSection((LPCRITICAL_SECTION)PTR_DAT_0050750c);\r\n  InitializeCriticalSection((LPCRITICAL_SECTION)PTR_DAT_005074fc);\r\n  InitializeCriticalSection((LPCRITICAL_SECTION)PTR_DAT_005074dc);\r\n  return extraout_EAX;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da510",
+      "name": "__mtinit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

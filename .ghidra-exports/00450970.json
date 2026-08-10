@@ -1,0 +1,13 @@
+{
+  "address": "00450970",
+  "name": "FUN_00450970",
+  "signature": "undefined FUN_00450970(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00450970(int *param_1,int param_2,int *param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int iStack_10;\r\n  int iStack_c;\r\n  int iStack_8;\r\n  int iStack_4;\r\n  \r\n  piVar1 = (int *)(**(code **)(*param_1 + 0x60))();\r\n  if (piVar1 == (int *)0x0) {\r\n    return 0x65;\r\n  }\r\n  param_1[0x45] = param_2;\r\n  param_1[0x31] = 100;\r\n  param_1[0x16] = 0x6c;\r\n  if (param_3 == (int *)0x0) {\r\n    piVar2 = param_1 + 7;\r\n  }\r\n  else {\r\n    iStack_10 = *param_3;\r\n    iStack_c = param_3[1];\r\n    piVar2 = &iStack_10;\r\n    if (iStack_10 < 0) {\r\n      iStack_10 = 0;\r\n    }\r\n    if (iStack_c < 0) {\r\n      iStack_c = 0;\r\n    }\r\n    iStack_8 = param_3[2];\r\n    if (param_1[9] < param_3[2]) {\r\n      iStack_8 = param_1[9];\r\n    }\r\n    iStack_4 = param_3[3];\r\n    if (param_1[10] < param_3[3]) {\r\n      iStack_4 = param_1[10];\r\n    }\r\n  }\r\n  (**(code **)(*piVar1 + 0x14))(piVar1,piVar2,0,0,0x1000400,param_1 + 0x31);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

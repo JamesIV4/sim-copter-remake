@@ -1,0 +1,24 @@
+{
+  "address": "0040be50",
+  "name": "FUN_0040be50",
+  "signature": "undefined FUN_0040be50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0040be50(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  \r\n  FUN_00404920();\r\n  param_1[0x16] = DAT_00518ba8;\r\n  iVar1 = *param_1;\r\n  uVar3 = (**(code **)(iVar1 + 0x10))(0);\r\n  iVar2 = param_1[0x10];\r\n  if (iVar2 != 0) {\r\n    if (param_1[0x1d] == 0) {\r\n      uVar5 = *(undefined4 *)(iVar2 + 0xc);\r\n      uVar4 = 0xffffffff;\r\n    }\r\n    else {\r\n      uVar5 = 0xffffffff;\r\n      uVar4 = *(undefined4 *)(iVar2 + 0xc);\r\n    }\r\n    (**(code **)(iVar1 + 0x48))(uVar4,uVar5);\r\n  }\r\n  (**(code **)(iVar1 + 0xe0))();\r\n  return uVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043b590",
+      "name": "FUN_0043b590",
+      "ref_type": "COMPUTED_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00404920",
+      "name": "FUN_00404920"
+    }
+  ],
+  "data_refs": []
+}

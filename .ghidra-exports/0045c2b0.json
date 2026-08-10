@@ -1,0 +1,33 @@
+{
+  "address": "0045c2b0",
+  "name": "FUN_0045c2b0",
+  "signature": "undefined FUN_0045c2b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0045c2b0(int param_1,int param_2)\r\n\r\n{\r\n  HANDLE hThread;\r\n  \r\n  if (param_2 == 0) {\r\n    *(undefined4 *)(param_1 + 0x408c) = 0;\r\n  }\r\n  else if (param_2 < 3) {\r\n    *(undefined4 *)(param_1 + 0x408c) = 1;\r\n  }\r\n  else {\r\n    *(undefined4 *)(param_1 + 0x408c) = 2;\r\n    if (6 < param_2) {\r\n      *(undefined4 *)(param_1 + 0x408c) = 0xf;\r\n    }\r\n  }\r\n  hThread = GetCurrentThread();\r\n  SetThreadPriority(hThread,*(int *)(param_1 + 0x408c));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044ac80",
+      "name": "FUN_0044ac80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000001d",
+      "name": "GetCurrentThread"
+    },
+    {
+      "addr": "EXTERNAL:0000001e",
+      "name": "SetThreadPriority"
+    }
+  ],
+  "data_refs": []
+}

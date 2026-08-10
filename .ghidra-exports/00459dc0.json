@@ -1,0 +1,30 @@
+{
+  "address": "00459dc0",
+  "name": "FUN_00459dc0",
+  "signature": "undefined FUN_00459dc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00459dc0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = FUN_004617a0(0);\r\n  if (iVar1 == 0) {\r\n    DAT_00507000 = 0x8000;\r\n    iVar1 = FUN_004616b0(0,0x180);\r\n    if (iVar1 == 0) {\r\n      return 0;\r\n    }\r\n  }\r\n  if (0x7fffffff < (uint)param_1[0x42]) {\r\n    FUN_00461450(0,0x8002,0x180,0);\r\n    if (param_1[0x42] < 0) {\r\n      return 0;\r\n    }\r\n  }\r\n  iVar1 = *param_1;\r\n  (**(code **)(iVar1 + 0x28))();\r\n  if (param_1[0x4b] != 0x4646494d) {\r\n    (**(code **)(iVar1 + 0x68))(1,1,1);\r\n  }\r\n  param_1[0x48] = 2;\r\n  __write(param_1[0x42],(void *)0x0,2);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004617a0",
+      "name": "FUN_004617a0"
+    },
+    {
+      "addr": "004616b0",
+      "name": "FUN_004616b0"
+    },
+    {
+      "addr": "00461450",
+      "name": "FUN_00461450"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

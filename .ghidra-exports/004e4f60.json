@@ -1,0 +1,24 @@
+{
+  "address": "004e4f60",
+  "name": "RtlUnwind",
+  "signature": "void __stdcall RtlUnwind(PVOID TargetFrame, PVOID TargetIp, PEXCEPTION_RECORD ExceptionRecord, PVOID ReturnValue)",
+  "calling_convention": "__stdcall",
+  "return_type": "void",
+  "parameter_count": 4,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid RtlUnwind(PVOID TargetFrame,PVOID TargetIp,PEXCEPTION_RECORD ExceptionRecord,PVOID ReturnValue)\r\n\r\n{\r\n                    /* WARNING: Could not recover jumptable at 0x004e4f60. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  RtlUnwind(TargetFrame,TargetIp,ExceptionRecord,ReturnValue);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4290",
+      "name": "_UnwindNestedFrames",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d451c",
+      "name": "__global_unwind2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

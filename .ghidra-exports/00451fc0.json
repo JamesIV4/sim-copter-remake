@@ -1,0 +1,24 @@
+{
+  "address": "00451fc0",
+  "name": "FUN_00451fc0",
+  "signature": "undefined FUN_00451fc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00451fc0(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  iVar2 = (**(code **)**(undefined4 **)(param_1 + 0x40))();\r\n  if (iVar2 != 0) {\r\n    iVar2 = (**(code **)(**(int **)(param_1 + 0x78) + 0x44))();\r\n    iVar3 = 0x14;\r\n    if (0 < iVar2) {\r\n      iVar3 = (*(int *)(param_1 + 0x7c) * 0x42) / iVar2 + 0x14;\r\n    }\r\n    iVar4 = 0;\r\n    do {\r\n      iVar1 = iVar4 + 0x12;\r\n      iVar4 = iVar4 + 1;\r\n      *(undefined1 *)\r\n       (*(int *)(*(int *)(param_1 + 0x40) + 0x14) * iVar1 +\r\n        *(int *)(*(int *)(param_1 + 0x40) + 0x10) + iVar3) = 0x31;\r\n      *(undefined1 *)\r\n       (*(int *)(*(int *)(param_1 + 0x40) + 0x14) * iVar1 +\r\n        *(int *)(*(int *)(param_1 + 0x40) + 0x10) + 1 + iVar3) = 0x31;\r\n    } while (iVar4 < 5);\r\n    if (iVar2 < 1) {\r\n      iVar2 = 0x14;\r\n    }\r\n    else {\r\n      iVar2 = (param_2 * 0x42) / iVar2 + 0x14;\r\n    }\r\n    iVar3 = 0;\r\n    do {\r\n      iVar4 = iVar3 + 0x12;\r\n      iVar3 = iVar3 + 1;\r\n      *(undefined1 *)\r\n       (*(int *)(*(int *)(param_1 + 0x40) + 0x14) * iVar4 +\r\n        *(int *)(*(int *)(param_1 + 0x40) + 0x10) + iVar2) = 100;\r\n      *(undefined1 *)\r\n       (*(int *)(*(int *)(param_1 + 0x40) + 0x14) * iVar4 +\r\n        *(int *)(*(int *)(param_1 + 0x40) + 0x10) + 1 + iVar2) = 100;\r\n    } while (iVar3 < 5);\r\n    (**(code **)(**(int **)(param_1 + 0x40) + 4))();\r\n    *(int *)(param_1 + 0x7c) = param_2;\r\n    return;\r\n  }\r\n  *(int *)(param_1 + 0x7c) = param_2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00451b60",
+      "name": "FUN_00451b60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00451e30",
+      "name": "FUN_00451e30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

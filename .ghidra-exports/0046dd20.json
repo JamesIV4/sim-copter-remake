@@ -1,0 +1,53 @@
+{
+  "address": "0046dd20",
+  "name": "FUN_0046dd20",
+  "signature": "undefined FUN_0046dd20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0046dd20(int param_1,int param_2,int param_3,int param_4,undefined4 *param_5,int param_6,\r\n                int param_7,int *param_8,undefined4 *param_9)\r\n\r\n{\r\n  uint uVar1;\r\n  bool bVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  uint *puVar8;\r\n  int iVar9;\r\n  undefined4 *puVar10;\r\n  bool bVar11;\r\n  int local_3c;\r\n  int *local_38;\r\n  int local_34;\r\n  int local_30;\r\n  int local_2c;\r\n  int local_28;\r\n  int local_20;\r\n  int local_18;\r\n  int local_14;\r\n  int local_c;\r\n  int local_8;\r\n  \r\n  bVar2 = false;\r\n  if (*(int *)(param_1 + 0x30) * 2 + 0x50000 < param_3) {\r\n    return *(int *)(param_1 + 0x30) >> 3;\r\n  }\r\n  bVar11 = (*(byte *)((int)param_5 + 1) & 2) != 0;\r\n  if (param_9 != (undefined4 *)0x0) {\r\n    *param_9 = 0;\r\n  }\r\n  if (param_1 == 0) {\r\n    return 0;\r\n  }\r\n  local_c = 0x75300000;\r\n  local_20 = 0x75300000;\r\n  local_3c = 0;\r\n  local_8 = 0;\r\n  puVar10 = *(undefined4 **)(param_1 + 0x4c);\r\n  if (0 < *(int *)(param_1 + 0x10)) {\r\n    do {\r\n      if ((puVar10[2] & 4) == 0) {\r\n        if ((puVar10[2] & 0x18004) == 0) {\r\n          iVar5 = *(int *)(puVar10[0xb] + 4);\r\n          if (iVar5 < -100) {\r\n            local_14 = 1;\r\nLAB_0046dedf:\r\n            puVar8 = (uint *)puVar10[7];\r\n            iVar9 = 0x75300000;\r\n            local_18 = 0x75300000;\r\n            local_34 = 0x75300000;\r\n            local_2c = -0x75300000;\r\n            local_28 = -0x75300000;\r\n            local_30 = -0x75300000;\r\n            iVar3 = puVar10[1];\r\n            if (0 < iVar3) {\r\n              do {\r\n                uVar1 = *puVar8;\r\n                puVar8 = puVar8 + 1;\r\n                local_38 = (int *)(*(int *)(param_1 + 8) + (uVar1 >> 4) * 0xc);\r\n                if (*local_38 < local_34) {\r\n                  local_34 = *local_38;\r\n                }\r\n                if (local_38[1] < local_18) {\r\n                  local_18 = local_38[1];\r\n                }\r\n                if (local_38[2] < iVar9) {\r\n                  iVar9 = local_38[2];\r\n                }\r\n                if (local_30 < *local_38) {\r\n                  local_30 = *local_38;\r\n                }\r\n                if (local_28 < local_38[1]) {\r\n                  local_28 = local_38[1];\r\n                }\r\n                if (local_2c < local_38[2]) {\r\n                  local_2c = local_38[2];\r\n                }\r\n                iVar3 = iVar3 + -1;\r\n              } while (iVar3 != 0);\r\n            }\r\n            if ((((local_34 <= param_6 + param_2) && (param_2 - param_6 <= local_30)) &&\r\n                (iVar9 <= param_6 + param_4)) && (param_4 - param_6 <= local_2c)) {\r\n              if (local_14 == 0) {\r\n                if ((local_18 < param_7 + param_3) && (local_18 = param_3, param_3 < local_28))\r\n                goto LAB_0046e081;\r\n              }\r\n              else {\r\n                iVar3 = FUN_0046c49d(local_38[2],*(undefined4 *)(puVar10[0xb] + 8));\r\n                iVar4 = FUN_0046c49d(*local_38,*(undefined4 *)puVar10[0xb]);\r\n                iVar5 = FUN_0046c49d(local_38[1],iVar5);\r\n                iVar6 = FUN_0046c49d(param_4,*(undefined4 *)(puVar10[0xb] + 8));\r\n                iVar7 = FUN_0046c49d(param_2,*(undefined4 *)puVar10[0xb]);\r\n                iVar5 = FUN_0046c4bf((iVar5 + iVar3 + iVar4) - (iVar6 + iVar7),\r\n                                     *(undefined4 *)(puVar10[0xb] + 4));\r\n                if ((local_28 < iVar5) || (iVar5 < local_18)) {\r\nLAB_0046e081:\r\n                  iVar5 = local_18 + local_28 >> 1;\r\n                }\r\n                if (bVar11) {\r\n                  if (local_14 < 0) {\r\n                    if ((param_7 + param_3 <= iVar5) && (bVar2 = true, iVar5 < local_c)) {\r\n                      local_c = iVar5;\r\n                    }\r\n                  }\r\n                  else if (iVar5 < param_3) {\r\n                    if (local_3c < iVar5) {\r\n                      *param_5 = puVar10[3];\r\n                      if (param_8 != (int *)0x0) {\r\n                        if (local_14 < 1) {\r\n                          *param_8 = *(int *)puVar10[0xb];\r\n                          param_8[2] = *(int *)(puVar10[0xb] + 8);\r\n                        }\r\n                        else {\r\n                          *param_8 = (local_34 + local_30 >> 1) - param_2;\r\n                          param_8[2] = (local_2c + iVar9 >> 1) - param_4;\r\n                        }\r\n                        param_8[1] = 0;\r\n                      }\r\n                      local_3c = iVar5;\r\n                      if ((param_9 != (undefined4 *)0x0) && (*(int *)(puVar10[0xb] + 4) < -60000)) {\r\n                        if ((param_2 + -0x10000 < local_34) ||\r\n                           (((local_30 < param_2 + 0x10000 || (param_4 + -0x10000 < iVar9)) ||\r\n                            (local_2c < param_4 + 0x10000)))) {\r\n                          *param_9 = 0;\r\n                        }\r\n                        else {\r\n                          *param_9 = 1;\r\n                        }\r\n                      }\r\n                    }\r\n                    else if (param_3 <= iVar5) goto LAB_0046e22d;\r\n                  }\r\n                  else {\r\nLAB_0046e22d:\r\n                    if (iVar5 < local_20) {\r\n                      local_20 = iVar5;\r\n                    }\r\n                  }\r\n                }\r\n                else if (local_3c < iVar5) {\r\n                  *param_5 = puVar10[3];\r\n                  if (param_8 != (int *)0x0) {\r\n                    param_8[1] = 0;\r\n                    *param_8 = (local_34 + local_30 >> 1) - param_2;\r\n                    param_8[2] = (local_2c + iVar9 >> 1) - param_4;\r\n                  }\r\n                  local_3c = iVar5;\r\n                  if ((param_9 != (undefined4 *)0x0) && (*(int *)(puVar10[0xb] + 4) < -60000)) {\r\n                    if (((param_2 + -0x20000 < local_34) ||\r\n                        ((local_30 < param_2 + 0x20000 || (param_4 + -0x20000 < iVar9)))) ||\r\n                       (local_2c < param_4 + 0x20000)) {\r\n                      *param_9 = 0;\r\n                    }\r\n                    else {\r\n                      *param_9 = 1;\r\n                    }\r\n                  }\r\n                }\r\n              }\r\n            }\r\n          }\r\n          else if (iVar5 < 0x65) {\r\n            if (bVar11) {\r\n              local_14 = 0;\r\n              goto LAB_0046dedf;\r\n            }\r\n          }\r\n          else if (bVar11) {\r\n            local_14 = -1;\r\n            goto LAB_0046dedf;\r\n          }\r\n        }\r\n      }\r\n      else {\r\n        local_38 = (int *)(*(int *)(param_1 + 8) + (*(uint *)puVar10[7] >> 4) * 0xc);\r\n        if ((((*local_38 + -0x40000 <= param_6 + param_2) &&\r\n             (param_2 - param_6 <= *local_38 + 0x40000)) &&\r\n            (local_38[2] + -0x40000 <= param_6 + param_4)) &&\r\n           ((param_4 - param_6 <= local_38[2] + 0x40000 &&\r\n            (iVar5 = *(int *)(*(int *)(param_1 + 8) + (((uint *)puVar10[7])[1] >> 4) * 0xc + 4),\r\n            local_3c < iVar5)))) {\r\n          if (param_9 != (undefined4 *)0x0) {\r\n            *param_9 = 0;\r\n          }\r\n          local_3c = iVar5;\r\n          if (param_8 != (int *)0x0) {\r\n            *param_8 = *local_38 - param_2;\r\n            iVar5 = local_38[2];\r\n            param_8[1] = 0;\r\n            param_8[2] = iVar5 - param_4;\r\n          }\r\n        }\r\n      }\r\n      puVar10 = (undefined4 *)*puVar10;\r\n      local_8 = local_8 + 1;\r\n    } while (local_8 < *(int *)(param_1 + 0x10));\r\n  }\r\n  if (!bVar11) {\r\n    return local_3c;\r\n  }\r\n  if (bVar2) {\r\n    if (local_c <= local_20) {\r\n      return local_3c;\r\n    }\r\n  }\r\n  else if (local_20 == 0x75300000) {\r\n    local_20 = local_3c;\r\n  }\r\n  return local_20;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047ba70",
+      "name": "FUN_0047ba70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c82c0",
+      "name": "FUN_004c82c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004883a0",
+      "name": "FUN_004883a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00488850",
+      "name": "FUN_00488850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004aea90",
+      "name": "FUN_004aea90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9170",
+      "name": "FUN_004c9170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    }
+  ],
+  "data_refs": []
+}

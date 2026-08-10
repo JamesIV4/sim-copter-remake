@@ -1,0 +1,37 @@
+{
+  "address": "004e4090",
+  "name": "___wtomb_environ",
+  "signature": "int __cdecl ___wtomb_environ(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___wtomb_environ\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl ___wtomb_environ(void)\r\n\r\n{\r\n  int iVar1;\r\n  LPSTR lpMultiByteStr;\r\n  int *piVar2;\r\n  \r\n  iVar1 = *DAT_00506c94;\r\n  piVar2 = DAT_00506c94;\r\n  while( true ) {\r\n    if (iVar1 == 0) {\r\n      return 0;\r\n    }\r\n    iVar1 = WideCharToMultiByte(1,0,(LPCWSTR)*piVar2,-1,(LPSTR)0x0,0,(LPCSTR)0x0,(LPBOOL)0x0);\r\n    if (iVar1 == 0) {\r\n      return -1;\r\n    }\r\n    lpMultiByteStr = (LPSTR)FUN_004d5f00(iVar1);\r\n    if (lpMultiByteStr == (LPSTR)0x0) {\r\n      return -1;\r\n    }\r\n    iVar1 = WideCharToMultiByte(1,0,(LPCWSTR)*piVar2,-1,lpMultiByteStr,iVar1,(LPCSTR)0x0,(LPBOOL)0x0\r\n                               );\r\n    if (iVar1 == 0) break;\r\n    piVar2 = piVar2 + 1;\r\n    FUN_004e4910(lpMultiByteStr,0);\r\n    iVar1 = *piVar2;\r\n  }\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0ac0",
+      "name": "FID_conflict:__getenv_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000043",
+      "name": "WideCharToMultiByte"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,39 @@
+{
+  "address": "004a3a00",
+  "name": "FUN_004a3a00",
+  "signature": "undefined FUN_004a3a00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a3a00(int param_1,int param_2,char param_3,undefined4 param_4)\r\n\r\n{\r\n  char *pcVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  iVar3 = 0;\r\n  iVar4 = DAT_00505ed8 >> 1;\r\n  iVar2 = DAT_00505edc >> 1;\r\n  if (param_1 < 0) {\r\n    param_1 = -param_1;\r\n    local_10 = -1;\r\n  }\r\n  else {\r\n    local_10 = 1;\r\n  }\r\n  if (param_2 < 0) {\r\n    local_8 = -DAT_00505ed8;\r\n    param_2 = -param_2;\r\n    local_4 = -1;\r\n  }\r\n  else {\r\n    local_4 = 1;\r\n    local_8 = DAT_00505ed8;\r\n  }\r\n  local_c = 0;\r\n  if (param_2 < param_1) {\r\n    pcVar1 = DAT_00505ee8;\r\n    if (-1 < param_1) {\r\n      do {\r\n        if (param_3 != '\\0') {\r\n          *pcVar1 = param_3;\r\n        }\r\n        iVar3 = iVar3 + param_2;\r\n        if (param_1 < iVar3) {\r\n          iVar3 = iVar3 - param_1;\r\n          pcVar1 = pcVar1 + local_8;\r\n          iVar2 = iVar2 + local_4;\r\n        }\r\n        iVar4 = iVar4 + local_10;\r\n      } while (((-1 < iVar2) && (-1 < iVar4)) &&\r\n              ((iVar2 < DAT_00505edc &&\r\n               ((iVar4 < DAT_00505ed8 &&\r\n                (local_c = local_c + 1, pcVar1 = pcVar1 + local_10, local_c <= param_1))))));\r\n    }\r\n  }\r\n  else {\r\n    pcVar1 = DAT_00505ee8;\r\n    if (-1 < param_2) {\r\n      do {\r\n        if (param_3 != '\\0') {\r\n          *pcVar1 = param_3;\r\n        }\r\n        iVar3 = iVar3 + param_1;\r\n        if (param_2 < iVar3) {\r\n          iVar3 = iVar3 - param_2;\r\n          pcVar1 = pcVar1 + local_10;\r\n          iVar4 = iVar4 + local_10;\r\n        }\r\n        iVar2 = iVar2 + local_4;\r\n      } while ((((-1 < iVar2) && (-1 < iVar4)) && (iVar2 < DAT_00505edc)) &&\r\n              ((iVar4 < DAT_00505ed8 &&\r\n               (local_c = local_c + 1, pcVar1 = pcVar1 + local_8, local_c <= param_2))));\r\n    }\r\n  }\r\n  FUN_004a3f20(param_4,iVar4,iVar2);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a3820",
+      "name": "FUN_004a3820",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a3820",
+      "name": "FUN_004a3820",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a4200",
+      "name": "FUN_004a4200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a4200",
+      "name": "FUN_004a4200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004a3f20",
+      "name": "FUN_004a3f20"
+    }
+  ],
+  "data_refs": []
+}

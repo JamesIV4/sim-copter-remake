@@ -1,0 +1,48 @@
+{
+  "address": "0042d840",
+  "name": "FUN_0042d840",
+  "signature": "undefined FUN_0042d840(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0042d840(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int local_20 [8];\r\n  \r\n  iVar1 = FUN_00407a50();\r\n  iVar2 = FUN_00407a70();\r\n  if (*(int *)(param_1 + 0x16e) == 8) {\r\n    local_20[0] = 0;\r\n    local_20[1] = 1;\r\n    local_20[2] = 3;\r\n    local_20[3] = 4;\r\n    local_20[4] = 2;\r\n    iVar3 = FUN_0048b0f0(local_20[*(int *)(param_1 + 0x172)]);\r\n  }\r\n  else {\r\n    local_20[0] = 4;\r\n    local_20[1] = 0;\r\n    local_20[2] = 1;\r\n    local_20[3] = 8;\r\n    local_20[4] = 3;\r\n    local_20[5] = 5;\r\n    local_20[6] = 6;\r\n    local_20[7] = 7;\r\n    iVar3 = FUN_0048b050(local_20[*(int *)(param_1 + 0x16e)]);\r\n  }\r\n  if (iVar2 < iVar3) {\r\n    return 0;\r\n  }\r\n  FUN_00407a70();\r\n  local_20[0] = 0;\r\n  local_20[1] = 1;\r\n  local_20[2] = 3;\r\n  local_20[3] = 4;\r\n  local_20[4] = 2;\r\n  iVar2 = local_20[*(int *)(param_1 + 0x172)];\r\n  if (*(int *)(param_1 + 0x16e) == 8) {\r\n    iVar3 = FUN_0048b0f0(iVar2);\r\n    *(uint *)(iVar1 + 0x48) = *(uint *)(iVar1 + 0x48) | 1 << ((byte)iVar2 & 0x1f);\r\n    if (iVar2 == 3) {\r\n      *(undefined4 *)(iVar1 + 0x54) = 10;\r\n    }\r\n  }\r\n  else {\r\n    local_20[0] = 4;\r\n    local_20[1] = 0;\r\n    local_20[2] = 1;\r\n    local_20[3] = 8;\r\n    local_20[4] = 3;\r\n    local_20[5] = 5;\r\n    local_20[6] = 6;\r\n    local_20[7] = 7;\r\n    iVar2 = local_20[*(int *)(param_1 + 0x16e)];\r\n    iVar3 = FUN_0048b050(iVar2);\r\n    FUN_0048b1a0(iVar2);\r\n    *(uint *)(iVar1 + 0x44) = *(uint *)(iVar1 + 0x44) | 1 << ((byte)iVar2 & 0x1f);\r\n  }\r\n  FUN_00407a90(-iVar3);\r\n  FUN_0042b840(*(undefined4 *)(param_1 + 0x16e));\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042d6a0",
+      "name": "FUN_0042d6a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00407a50",
+      "name": "FUN_00407a50"
+    },
+    {
+      "addr": "00407a70",
+      "name": "FUN_00407a70"
+    },
+    {
+      "addr": "0048b0f0",
+      "name": "FUN_0048b0f0"
+    },
+    {
+      "addr": "0048b050",
+      "name": "FUN_0048b050"
+    },
+    {
+      "addr": "0048b1a0",
+      "name": "FUN_0048b1a0"
+    },
+    {
+      "addr": "00407a90",
+      "name": "FUN_00407a90"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840"
+    }
+  ],
+  "data_refs": []
+}

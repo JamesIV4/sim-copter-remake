@@ -1,0 +1,13 @@
+{
+  "address": "0046f52a",
+  "name": "FUN_0046f52a",
+  "signature": "undefined FUN_0046f52a(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined8 __thiscall FUN_0046f52a(undefined4 param_1,undefined4 param_2)\r\n\r\n{\r\n  code *pcVar1;\r\n  undefined1 in_CF;\r\n  \r\n  DAT_004fc044 = param_2;\r\n  pcVar1 = (code *)swi(0x31);\r\n  (*pcVar1)();\r\n  if ((bool)in_CF) {\r\n    DAT_004fc044 = 0;\r\n  }\r\n  return CONCAT44(param_1,DAT_004fc044);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

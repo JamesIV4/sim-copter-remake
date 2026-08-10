@@ -1,0 +1,13 @@
+{
+  "address": "004af670",
+  "name": "FUN_004af670",
+  "signature": "undefined FUN_004af670(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004af670(void)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  \r\n  if ((DAT_0058284c & 1) == 0) {\r\n    DAT_0058284c = DAT_0058284c | 1;\r\n    _DAT_00582758 = &PTR_LAB_004f4c80;\r\n    if ((((DAT_0058275c != '\\0') && (DAT_0058275d != '\\0')) &&\r\n        ((&DAT_005d9200)[(DAT_0058278b & 0xff) * 0x100 + (DAT_0058278f & 0xff)] != 0)) &&\r\n       (piVar2 = (int *)((&DAT_005d9200)[(DAT_0058278b & 0xff) * 0x100 + (DAT_0058278f & 0xff)] +\r\n                        0x10), *piVar2 != 0)) {\r\n      while (piVar1 = (int *)*piVar2, piVar1 != &DAT_005827d7) {\r\n        piVar2 = piVar1;\r\n        if (*piVar1 == 0) {\r\n          DAT_0058275c = 0;\r\n          return;\r\n        }\r\n      }\r\n      *piVar2 = DAT_005827d7;\r\n    }\r\n    DAT_0058275c = '\\0';\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

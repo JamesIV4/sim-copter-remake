@@ -1,0 +1,48 @@
+{
+  "address": "004cf8f0",
+  "name": "FUN_004cf8f0",
+  "signature": "undefined FUN_004cf8f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_004cf8f0(int param_1,undefined4 param_2,float param_3,char *param_4,short param_5,short param_6,\r\n            undefined4 param_7,short param_8)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  undefined2 extraout_var;\r\n  int iVar4;\r\n  short sVar5;\r\n  int iVar6;\r\n  undefined2 uVar8;\r\n  undefined4 uVar7;\r\n  undefined4 local_24;\r\n  undefined4 local_18;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined2 local_8;\r\n  undefined2 uStack_6;\r\n  undefined2 local_4;\r\n  \r\n  iVar2 = param_4[2] * 0x12;\r\n  uVar3 = *(undefined4 *)(&DAT_0058f100 + iVar2);\r\n  uVar1 = *(undefined4 *)(&DAT_0058f104 + iVar2);\r\n  local_c = *(undefined4 *)(&DAT_0058f108 + iVar2);\r\n  local_4 = *(undefined2 *)(&DAT_0058f110 + iVar2);\r\n  local_8 = (undefined2)*(undefined4 *)(&DAT_0058f10c + iVar2);\r\n  uStack_6 = (undefined2)((uint)*(undefined4 *)(&DAT_0058f10c + iVar2) >> 0x10);\r\n  local_14._0_2_ = (short)uVar3;\r\n  iVar6 = (int)(short)((short)local_14 + param_6);\r\n  local_14._2_2_ = (short)((uint)uVar3 >> 0x10);\r\n  local_10._0_2_ = (short)uVar1;\r\n  param_6 = param_6 + (short)local_10;\r\n  iVar2 = (int)(short)(local_14._2_2_ + param_5);\r\n  local_10._2_2_ = (short)((uint)uVar1 >> 0x10);\r\n  param_5 = param_5 + local_10._2_2_;\r\n  sVar5 = (short)param_4[3];\r\n  uVar8 = uStack_6;\r\n  if ((param_8 != 0) && (param_4[5] == '\\0')) {\r\n    uVar8 = 0;\r\n    sVar5 = (short)(((int)sVar5 + (int)param_8) % 0xe);\r\n  }\r\n  iVar4 = (int)*param_4;\r\n  uVar7 = CONCAT22(uVar8,sVar5 * 0x10 + 0x24);\r\n  local_14 = (float)uVar3;\r\n  local_10 = uVar1;\r\n  switch(iVar4) {\r\n  case 8:\r\n  case 0xd:\r\n  case 0xe:\r\n    if (iVar4 == 8) {\r\n      uVar3 = 1;\r\n    }\r\n    else if (iVar4 == 0xd) {\r\n      uVar3 = 2;\r\n    }\r\n    else if (iVar4 == 0xe) {\r\n      uVar3 = 0;\r\n    }\r\n    uVar3 = __ftol(uVar7,uVar3);\r\n    FUN_004d06b0(iVar2,iVar6,local_24,uVar3);\r\n    return;\r\n  case 9:\r\n    local_14 = param_3 + (float)CONCAT22(local_4,uStack_6);\r\n    FUN_004d05e0(&local_14);\r\n    uVar3 = __ftol(local_14,0,0x3ff00000,CONCAT22(extraout_var,*(undefined2 *)(param_1 + 0x30)));\r\n    FUN_004d0b70(iVar2,iVar6,local_24,uVar3);\r\n    return;\r\n  case 10:\r\n    uVar3 = __ftol();\r\n    uVar3 = __ftol(uVar7,uVar3);\r\n    FUN_004d0f50(iVar2,iVar6,local_24,(int)param_5,(int)param_6,local_18,uVar3);\r\n    return;\r\n  case 0xb:\r\n    uVar3 = __ftol();\r\n    FUN_004d11d0(iVar2,iVar6,local_24,(int)param_5,(int)param_6,local_18,uVar7,uVar3);\r\n    return;\r\n  case 0xc:\r\n    FUN_004d0650(iVar2,iVar6,uVar7);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cfb30",
+      "name": "FUN_004cfb30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0"
+    },
+    {
+      "addr": "004d05e0",
+      "name": "FUN_004d05e0"
+    },
+    {
+      "addr": "004d0b70",
+      "name": "FUN_004d0b70"
+    },
+    {
+      "addr": "004d0f50",
+      "name": "FUN_004d0f50"
+    },
+    {
+      "addr": "004d11d0",
+      "name": "FUN_004d11d0"
+    },
+    {
+      "addr": "004d0650",
+      "name": "FUN_004d0650"
+    }
+  ],
+  "data_refs": []
+}

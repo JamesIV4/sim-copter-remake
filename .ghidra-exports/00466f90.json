@@ -1,0 +1,24 @@
+{
+  "address": "00466f90",
+  "name": "FUN_00466f90",
+  "signature": "undefined FUN_00466f90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00466f90(int param_1,uint param_2)\r\n\r\n{\r\n  undefined1 uStack_5;\r\n  undefined1 uStack_3;\r\n  undefined1 uStack_1;\r\n  \r\n  for (param_2 = param_2 >> 3; param_2 != 0; param_2 = param_2 - 1) {\r\n    uStack_5 = (undefined1)((ushort)*(undefined2 *)(param_1 + 2) >> 8);\r\n    *(ushort *)(param_1 + 2) = CONCAT11((char)*(undefined2 *)(param_1 + 2),uStack_5);\r\n    uStack_3 = (undefined1)((ushort)*(undefined2 *)(param_1 + 4) >> 8);\r\n    *(ushort *)(param_1 + 4) = CONCAT11((char)*(undefined2 *)(param_1 + 4),uStack_3);\r\n    uStack_1 = (undefined1)((ushort)*(undefined2 *)(param_1 + 6) >> 8);\r\n    *(ushort *)(param_1 + 6) = CONCAT11((char)*(undefined2 *)(param_1 + 6),uStack_1);\r\n    param_1 = param_1 + 8;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00465fe0",
+      "name": "FUN_00465fe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

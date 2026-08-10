@@ -1,0 +1,29 @@
+{
+  "address": "004e18b0",
+  "name": "_isspace",
+  "signature": "int __cdecl _isspace(int _C)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _isspace\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _isspace(int _C)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (1 < DAT_0050721c) {\r\n    iVar1 = __isctype(_C,8);\r\n    return iVar1;\r\n  }\r\n  return *(ushort *)(PTR_DAT_00507010 + _C * 2) & 8;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd0a0",
+      "name": "__whiteout",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5700",
+      "name": "__isctype"
+    }
+  ],
+  "data_refs": []
+}

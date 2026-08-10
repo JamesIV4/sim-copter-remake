@@ -1,0 +1,29 @@
+{
+  "address": "004d3460",
+  "name": "filebuf",
+  "signature": "undefined __thiscall filebuf(filebuf * this, int param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: __thiscall filebuf::filebuf(int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nfilebuf * __thiscall filebuf::filebuf(filebuf *this,int param_1)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004d34b4;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  streambuf::streambuf((streambuf *)this);\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f54bc;\r\n  *(undefined4 *)(this + 0x50) = 0;\r\n  *(int *)(this + 0x4c) = param_1;\r\n  *unaff_FS_OFFSET = local_10;\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d27a0",
+      "name": "FID_conflict:_$E15",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d29c0",
+      "name": "FID_conflict:_$E15",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6c40",
+      "name": "streambuf"
+    }
+  ],
+  "data_refs": []
+}

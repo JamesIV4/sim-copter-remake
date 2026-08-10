@@ -1,0 +1,19 @@
+{
+  "address": "0042d210",
+  "name": "FUN_0042d210",
+  "signature": "undefined FUN_0042d210(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0042d210(int param_1,int param_2,int param_3,int *param_4)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int local_50 [20];\r\n  \r\n  local_50[0] = 0x3a;\r\n  local_50[1] = 0x62;\r\n  local_50[2] = 0x146;\r\n  local_50[3] = 200;\r\n  local_50[4] = 0x3a;\r\n  local_50[5] = 0xcd;\r\n  local_50[6] = 0x146;\r\n  local_50[8] = 0x3a;\r\n  local_50[10] = 0x146;\r\n  local_50[0xd] = 0x62;\r\n  local_50[0xc] = 0x148;\r\n  local_50[0xe] = 0x250;\r\n  local_50[0xf] = 200;\r\n  local_50[0x10] = 0x148;\r\n  local_50[0x11] = 0xcd;\r\n  local_50[7] = 0x12f;\r\n  local_50[9] = 0x136;\r\n  local_50[0xb] = 0x19a;\r\n  local_50[0x13] = 0x12f;\r\n  local_50[0x12] = 0x250;\r\n  if (*(int *)(param_1 + 0x16e) != 8) {\r\n    return 0;\r\n  }\r\n  iVar2 = 0;\r\n  piVar1 = local_50;\r\n  while ((((param_2 < *piVar1 || (param_3 < piVar1[1])) || (piVar1[2] <= param_2)) ||\r\n         (piVar1[3] <= param_3))) {\r\n    piVar1 = piVar1 + 4;\r\n    iVar2 = iVar2 + 1;\r\n    if (&stack0x00000000 <= piVar1) {\r\n      return 0;\r\n    }\r\n  }\r\n  *param_4 = iVar2;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042d360",
+      "name": "FUN_0042d360",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

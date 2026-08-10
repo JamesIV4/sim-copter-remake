@@ -1,0 +1,32 @@
+{
+  "address": "0048d4d0",
+  "name": "FUN_0048d4d0",
+  "signature": "undefined FUN_0048d4d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0048d4d0(int *param_1,char *param_2)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  UINT UVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  CHAR local_220 [96];\r\n  char local_1c0 [96];\r\n  CHAR local_160 [96];\r\n  CHAR local_100 [256];\r\n  \r\n  iVar2 = *param_1;\r\n  if (iVar2 == 8) {\r\n    iVar2 = 0x21d;\r\n  }\r\n  else if (iVar2 == 9) {\r\n    iVar2 = 0x21c;\r\n  }\r\n  else {\r\n    iVar2 = iVar2 + 0x213;\r\n  }\r\n  UVar3 = FUN_00423270(iVar2,0);\r\n  LoadStringA(DAT_0051a050,UVar3,local_100,31999);\r\n  iVar2 = *param_1;\r\n  if (iVar2 != 5) {\r\n    if (iVar2 != 6) {\r\n      if (iVar2 == 7) {\r\n        UVar3 = FUN_00423270(param_1[3],0);\r\n        LoadStringA(DAT_0051a050,UVar3,local_1c0,31999);\r\n        _sprintf(param_2,local_100,local_1c0);\r\n        return 1;\r\n      }\r\n      if (iVar2 != 9) {\r\n        if (iVar2 != 8) {\r\n          return 0;\r\n        }\r\n        UVar3 = FUN_00423270(param_1[3],0);\r\n        LoadStringA(DAT_0051a050,UVar3,local_220,31999);\r\n        if (param_1[2] == -1) {\r\n          uVar4 = 0xffffffff;\r\n          pcVar6 = local_220;\r\n          do {\r\n            pcVar7 = pcVar6;\r\n            if (uVar4 == 0) break;\r\n            uVar4 = uVar4 - 1;\r\n            pcVar7 = pcVar6 + 1;\r\n            cVar1 = *pcVar6;\r\n            pcVar6 = pcVar7;\r\n          } while (cVar1 != '\\0');\r\n          uVar4 = ~uVar4;\r\n          pcVar6 = pcVar7 + -uVar4;\r\n          pcVar7 = local_1c0;\r\n          for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n            *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n            pcVar6 = pcVar6 + 4;\r\n            pcVar7 = pcVar7 + 4;\r\n          }\r\n          for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n            *pcVar7 = *pcVar6;\r\n            pcVar6 = pcVar6 + 1;\r\n            pcVar7 = pcVar7 + 1;\r\n          }\r\n        }\r\n        else {\r\n          _sprintf(local_1c0,s__s__d_005044f0,local_220,param_1[2]);\r\n        }\r\n        UVar3 = FUN_00423270(param_1[4],0);\r\n        LoadStringA(DAT_0051a050,UVar3,local_160,31999);\r\n        _sprintf(param_2,local_100,local_1c0,local_160,param_1[5]);\r\n        return 1;\r\n      }\r\n      UVar3 = FUN_00423270(param_1[3],0);\r\n      LoadStringA(DAT_0051a050,UVar3,local_220,31999);\r\n      if (param_1[2] == -1) {\r\n        uVar4 = 0xffffffff;\r\n        pcVar6 = local_220;\r\n        do {\r\n          pcVar7 = pcVar6;\r\n          if (uVar4 == 0) break;\r\n          uVar4 = uVar4 - 1;\r\n          pcVar7 = pcVar6 + 1;\r\n          cVar1 = *pcVar6;\r\n          pcVar6 = pcVar7;\r\n        } while (cVar1 != '\\0');\r\n        uVar4 = ~uVar4;\r\n        pcVar6 = pcVar7 + -uVar4;\r\n        pcVar7 = local_1c0;\r\n        for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n          *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n          pcVar6 = pcVar6 + 4;\r\n          pcVar7 = pcVar7 + 4;\r\n        }\r\n        for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *pcVar7 = *pcVar6;\r\n          pcVar6 = pcVar6 + 1;\r\n          pcVar7 = pcVar7 + 1;\r\n        }\r\n      }\r\n      else {\r\n        _sprintf(local_1c0,s__s__d_005044f0,local_220,param_1[2]);\r\n      }\r\n      UVar3 = FUN_00423270(param_1[4],0);\r\n      LoadStringA(DAT_0051a050,UVar3,local_160,31999);\r\n      _sprintf(param_2,local_100,local_1c0,local_160,param_1[5]);\r\n      return 1;\r\n    }\r\n    UVar3 = FUN_00423270(param_1[3],0);\r\n    LoadStringA(DAT_0051a050,UVar3,local_220,31999);\r\n    if (param_1[2] == -1) {\r\n      uVar4 = 0xffffffff;\r\n      pcVar6 = local_220;\r\n      do {\r\n        pcVar7 = pcVar6;\r\n        if (uVar4 == 0) break;\r\n        uVar4 = uVar4 - 1;\r\n        pcVar7 = pcVar6 + 1;\r\n        cVar1 = *pcVar6;\r\n        pcVar6 = pcVar7;\r\n      } while (cVar1 != '\\0');\r\n      uVar4 = ~uVar4;\r\n      pcVar6 = pcVar7 + -uVar4;\r\n      pcVar7 = local_1c0;\r\n      for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n        pcVar6 = pcVar6 + 4;\r\n        pcVar7 = pcVar7 + 4;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *pcVar7 = *pcVar6;\r\n        pcVar6 = pcVar6 + 1;\r\n        pcVar7 = pcVar7 + 1;\r\n      }\r\n    }\r\n    else {\r\n      _sprintf(local_1c0,s__s__d_005044f0,local_220,param_1[2]);\r\n    }\r\n    _sprintf(param_2,local_100,local_1c0,param_1[4],param_1[5]);\r\n    return 1;\r\n  }\r\n  UVar3 = FUN_00423270(param_1[3],0);\r\n  LoadStringA(DAT_0051a050,UVar3,local_220,31999);\r\n  if (param_1[2] == -1) {\r\n    uVar4 = 0xffffffff;\r\n    pcVar6 = local_220;\r\n    do {\r\n      pcVar7 = pcVar6;\r\n      if (uVar4 == 0) break;\r\n      uVar4 = uVar4 - 1;\r\n      pcVar7 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar7;\r\n    } while (cVar1 != '\\0');\r\n    uVar4 = ~uVar4;\r\n    pcVar6 = pcVar7 + -uVar4;\r\n    pcVar7 = local_1c0;\r\n    for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n      *(undefined4 *)pcVar7 = *(undefined4 *)pcVar6;\r\n      pcVar6 = pcVar6 + 4;\r\n      pcVar7 = pcVar7 + 4;\r\n    }\r\n    for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n      *pcVar7 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n      pcVar7 = pcVar7 + 1;\r\n    }\r\n  }\r\n  else {\r\n    _sprintf(local_1c0,s__s__d_005044f0,local_220,param_1[2]);\r\n  }\r\n  if (param_1[4] == 0) {\r\n    local_160[0] = '\\0';\r\n  }\r\n  else {\r\n    UVar3 = FUN_00423270(0x224,0);\r\n    LoadStringA(DAT_0051a050,UVar3,local_160,31999);\r\n  }\r\n  if (param_1[5] == 0) {\r\n    local_220[0] = '\\0';\r\n  }\r\n  else {\r\n    UVar3 = FUN_00423270(0x225,0);\r\n    LoadStringA(DAT_0051a050,UVar3,local_220,31999);\r\n  }\r\n  _sprintf(param_2,local_100,local_1c0,local_160,local_220);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0048d040",
+      "name": "FUN_0048d040",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    }
+  ],
+  "data_refs": []
+}

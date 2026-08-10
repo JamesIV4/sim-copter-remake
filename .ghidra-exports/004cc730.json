@@ -1,0 +1,26 @@
+{
+  "address": "004cc730",
+  "name": "FUN_004cc730",
+  "signature": "undefined FUN_004cc730(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_004cc730(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  \r\n  if (*(int *)(param_1 + 4) != 0) {\r\n    piVar1 = (int *)FUN_004c0090(*(int *)(param_1 + 4));\r\n    if (*(short *)((int)piVar1 + 0x172) != -1) {\r\n      *(undefined2 *)(piVar1 + 0x5d) = 0xffff;\r\n      if (*(short *)((int)piVar1 + 0x172) != -1) {\r\n        FUN_0042a310((int)(short)(*(short *)((int)piVar1 + 0x172) + 0x71));\r\n      }\r\n      (&DAT_0058dc42)[*(short *)((int)piVar1 + 0x172)] = 0;\r\n      *(undefined2 *)((int)piVar1 + 0x172) = 0xffff;\r\n    }\r\n    *(undefined2 *)((int)piVar1 + 0x142) = 0;\r\n    if ((short)piVar1[0x52] == 0) {\r\n      DAT_0058dc1c = DAT_0058dc1c + -1;\r\n    }\r\n    else {\r\n      _DAT_0058dc1a = _DAT_0058dc1a + -1;\r\n    }\r\n    FUN_004c7910();\r\n    (**(code **)(*piVar1 + 0x1c))();\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c0090",
+      "name": "FUN_004c0090"
+    },
+    {
+      "addr": "0042a310",
+      "name": "FUN_0042a310"
+    },
+    {
+      "addr": "004c7910",
+      "name": "FUN_004c7910"
+    }
+  ],
+  "data_refs": []
+}

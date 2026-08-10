@@ -1,0 +1,38 @@
+{
+  "address": "004e0660",
+  "name": "__fltout2",
+  "signature": "STRFLT __cdecl __fltout2(_CRT_DOUBLE _Dbl, STRFLT _Flt, char * _ResultStr, size_t _SizeInBytes)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef STRFLT _strflt *",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fltout2\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nSTRFLT __cdecl __fltout2(_CRT_DOUBLE _Dbl,STRFLT _Flt,char *_ResultStr,size_t _SizeInBytes)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  undefined4 local_28;\r\n  undefined4 local_24;\r\n  undefined4 local_20;\r\n  short local_1c;\r\n  char local_1a;\r\n  char local_18 [24];\r\n  \r\n  ___dtold(&local_28,&_Dbl);\r\n  iVar2 = _I10_OUTPUT(local_28,local_24,local_20,0x11,0,&local_1c);\r\n  _Flt->flag = iVar2;\r\n  _Flt->sign = (int)local_1a;\r\n  _Flt->decpt = (int)local_1c;\r\n  uVar3 = 0xffffffff;\r\n  pcVar5 = local_18;\r\n  do {\r\n    pcVar6 = pcVar5;\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    pcVar6 = pcVar5 + 1;\r\n    cVar1 = *pcVar5;\r\n    pcVar5 = pcVar6;\r\n  } while (cVar1 != '\\0');\r\n  uVar3 = ~uVar3;\r\n  pcVar5 = pcVar6 + -uVar3;\r\n  pcVar6 = _ResultStr;\r\n  for (uVar4 = uVar3 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *(undefined4 *)pcVar6 = *(undefined4 *)pcVar5;\r\n    pcVar5 = pcVar5 + 4;\r\n    pcVar6 = pcVar6 + 4;\r\n  }\r\n  for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n    *pcVar6 = *pcVar5;\r\n    pcVar5 = pcVar5 + 1;\r\n    pcVar6 = pcVar6 + 1;\r\n  }\r\n  _Flt->mantissa = _ResultStr;\r\n  return _Flt;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d88c0",
+      "name": "__cftoe",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8a30",
+      "name": "__cftof",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8b60",
+      "name": "__cftog",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e06f0",
+      "name": "___dtold"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT"
+    }
+  ],
+  "data_refs": []
+}

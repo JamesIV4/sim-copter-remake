@@ -1,0 +1,24 @@
+{
+  "address": "00439c30",
+  "name": "FUN_00439c30",
+  "signature": "undefined FUN_00439c30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_00439c30(int param_1,undefined4 param_2,int param_3,int param_4,byte *param_5,int param_6)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  byte *pbVar3;\r\n  int iVar4;\r\n  int *piVar5;\r\n  int *piVar6;\r\n  \r\n  pbVar3 = param_5 + param_6;\r\n  for (; param_5 < pbVar3; param_5 = param_5 + 1) {\r\n    bVar1 = *param_5;\r\n    iVar4 = *(int *)(param_1 + 0x28);\r\n    if (((byte)iVar4 <= bVar1) && ((uint)bVar1 < (uint)(*(int *)(param_1 + 0x2c) + iVar4))) {\r\n      iVar4 = ((uint)bVar1 - iVar4) * 0x10;\r\n      piVar6 = (int *)(*(int *)(param_1 + 0x30) + iVar4);\r\n      piVar5 = (int *)(iVar4 + *(int *)(param_1 + 0x3c));\r\n      iVar4 = *piVar6;\r\n      iVar2 = piVar6[1];\r\n      (**(code **)(**(int **)(param_1 + 0x14) + 0xc))\r\n                (param_2,param_3 + *piVar5,param_4 + piVar5[1],iVar4 + *piVar5,iVar2 + piVar5[1],\r\n                 piVar5[2] + iVar4,piVar5[3] + iVar2);\r\n    }\r\n    iVar4 = *(int *)(param_1 + 0x28);\r\n    bVar1 = *param_5;\r\n    if (((byte)iVar4 <= bVar1) && ((uint)bVar1 < (uint)(*(int *)(param_1 + 0x2c) + iVar4))) {\r\n      param_3 = param_3 + (uint)*(byte *)((*(int *)(param_1 + 0x48) - iVar4) + (uint)bVar1);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00407680",
+      "name": "FUN_00407680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004077f0",
+      "name": "FUN_004077f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

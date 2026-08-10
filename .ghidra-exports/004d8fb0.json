@@ -1,0 +1,48 @@
+{
+  "address": "004d8fb0",
+  "name": "FUN_004d8fb0",
+  "signature": "undefined FUN_004d8fb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * FUN_004d8fb0(void)\r\n\r\n{\r\n  void *_File;\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int _Index;\r\n  undefined4 *puVar3;\r\n  \r\n  _Index = 0;\r\n  puVar3 = (undefined4 *)0x0;\r\n  __lock(2);\r\n  if (0 < DAT_0061cc90) {\r\n    iVar2 = 0;\r\n    do {\r\n      _File = *(void **)(DAT_0061bc84 + iVar2);\r\n      if (_File == (void *)0x0) {\r\n        uVar1 = FUN_004d5f00(0x38);\r\n        *(undefined4 *)(DAT_0061bc84 + _Index * 4) = uVar1;\r\n        iVar2 = *(int *)(DAT_0061bc84 + _Index * 4);\r\n        if (iVar2 != 0) {\r\n          InitializeCriticalSection((LPCRITICAL_SECTION)(iVar2 + 0x20));\r\n          EnterCriticalSection((LPCRITICAL_SECTION)(*(int *)(DAT_0061bc84 + _Index * 4) + 0x20));\r\n          puVar3 = *(undefined4 **)(DAT_0061bc84 + _Index * 4);\r\n        }\r\n        break;\r\n      }\r\n      if ((*(uint *)((int)_File + 0xc) & 0x83) == 0) {\r\n        FID_conflict___lock_file2(_Index,_File);\r\n        if ((*(uint *)((int)*(void **)(DAT_0061bc84 + iVar2) + 0xc) & 0x83) == 0) {\r\n          puVar3 = *(undefined4 **)(DAT_0061bc84 + _Index * 4);\r\n          break;\r\n        }\r\n        FID_conflict___lock_file2(_Index,*(void **)(DAT_0061bc84 + iVar2));\r\n      }\r\n      iVar2 = iVar2 + 4;\r\n      _Index = _Index + 1;\r\n    } while (_Index < DAT_0061cc90);\r\n  }\r\n  if (puVar3 != (undefined4 *)0x0) {\r\n    puVar3[1] = 0;\r\n    puVar3[3] = 0;\r\n    puVar3[2] = 0;\r\n    *puVar3 = 0;\r\n    puVar3[7] = 0;\r\n    puVar3[4] = 0xffffffff;\r\n  }\r\n  FUN_004d64a0(2);\r\n  return puVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3e70",
+      "name": "__fsopen",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d6500",
+      "name": "FID_conflict:__lock_file2"
+    },
+    {
+      "addr": "004d6570",
+      "name": "FID_conflict:__lock_file2"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    },
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

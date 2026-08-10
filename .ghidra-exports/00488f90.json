@@ -1,0 +1,28 @@
+{
+  "address": "00488f90",
+  "name": "FUN_00488f90",
+  "signature": "undefined FUN_00488f90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00488f90(void)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  \r\n  piVar2 = &DAT_005040a8;\r\n  do {\r\n    iVar1 = *piVar2;\r\n    if ((iVar1 != 0) && ((*(uint *)(iVar1 + 8) & 1) == 0)) {\r\n      FUN_00484d20(iVar1);\r\n    }\r\n    piVar2 = piVar2 + 1;\r\n  } while (piVar2 < &DAT_005040d0);\r\n  FUN_00488fd0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00484d20",
+      "name": "FUN_00484d20"
+    },
+    {
+      "addr": "00488fd0",
+      "name": "FUN_00488fd0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "00460f60",
+  "name": "FUN_00460f60",
+  "signature": "undefined FUN_00460f60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint * __thiscall FUN_00460f60(int param_1,int *param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  \r\n  piVar1 = *(int **)(param_1 + 0x10);\r\n  if (param_2 == piVar1) {\r\n    return (int *)0x0;\r\n  }\r\n  if (piVar1 != (int *)0x0) {\r\n    (**(code **)(*piVar1 + 0x20))(0);\r\n  }\r\n  *(int **)(param_1 + 0x10) = param_2;\r\n  (**(code **)(*param_2 + 0x20))(param_1);\r\n  return piVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,48 @@
+{
+  "address": "004636b0",
+  "name": "FUN_004636b0",
+  "signature": "undefined FUN_004636b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004636b0(undefined4 param_1,LPCSTR param_2,int param_3)\r\n\r\n{\r\n  UINT UVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  char *pcVar4;\r\n  char *pcVar5;\r\n  undefined1 uVar6;\r\n  double dVar7;\r\n  CHAR local_15c [16];\r\n  CHAR local_14c [20];\r\n  char local_138 [52];\r\n  CHAR local_104 [260];\r\n  \r\n  _sprintf(local_138,&DAT_004f97ac,s_NumCtrl_004f9fdc);\r\n  FUN_00432ab0(0xd,0,param_1,local_104);\r\n  UVar1 = GetPrivateProfileIntA(param_2,local_138,-0x66,local_104);\r\n  iVar3 = DAT_004f9f58;\r\n  if (UVar1 == 0xffffff9a) {\r\n    DAT_004f9f58 = DAT_004f9f58 + 1;\r\n    *(int *)(&DAT_0059e6f0 + iVar3 * 4) = param_3;\r\n  }\r\n  else {\r\n    iVar3 = 0;\r\n    if (0 < (int)UVar1) {\r\n      do {\r\n        _sprintf(local_138,s__s_d_s_004f9fc4,&DAT_004f9fcc,iVar3,s__Value_004f9fd4);\r\n        GetPrivateProfileStringA\r\n                  (param_2,local_138,s_TWK_ERR_NO_SECTION_004f9f74,local_15c,0xf,local_104);\r\n        _sprintf(local_138,s__s_d_s_004f9fc4,&DAT_004f9fcc,iVar3,s__DataType_004f9fb8);\r\n        uVar6 = &stack0x00000000 == (undefined1 *)0x170;\r\n        GetPrivateProfileStringA\r\n                  (param_2,local_138,s_CORRUPTED_FILE_004f9fa8,local_14c,0x14,local_104);\r\n        iVar2 = 5;\r\n        pcVar4 = local_14c;\r\n        pcVar5 = &DAT_004f9fa0;\r\n        do {\r\n          if (iVar2 == 0) break;\r\n          iVar2 = iVar2 + -1;\r\n          uVar6 = *pcVar4 == *pcVar5;\r\n          pcVar4 = pcVar4 + 1;\r\n          pcVar5 = pcVar5 + 1;\r\n        } while ((bool)uVar6);\r\n        if ((bool)uVar6) {\r\n          _atof(local_15c);\r\n          iVar2 = __ftol();\r\nLAB_00463811:\r\n          **(int **)(&DAT_00592070 + iVar3 * 4 + param_3 * 0xfe) = iVar2;\r\n        }\r\n        else {\r\n          iVar2 = 7;\r\n          pcVar4 = local_14c;\r\n          pcVar5 = s_double_004f9f98;\r\n          do {\r\n            if (iVar2 == 0) break;\r\n            iVar2 = iVar2 + -1;\r\n            uVar6 = *pcVar4 == *pcVar5;\r\n            pcVar4 = pcVar4 + 1;\r\n            pcVar5 = pcVar5 + 1;\r\n          } while ((bool)uVar6);\r\n          if (!(bool)uVar6) {\r\n            iVar2 = _atoi(local_15c);\r\n            goto LAB_00463811;\r\n          }\r\n          dVar7 = _atof(local_15c);\r\n          **(double **)(&DAT_00592070 + iVar3 * 4 + param_3 * 0xfe) = dVar7;\r\n        }\r\n        iVar3 = iVar3 + 1;\r\n        if ((int)UVar1 <= iVar3) {\r\n          return;\r\n        }\r\n      } while( true );\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00463600",
+      "name": "FUN_00463600",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "EXTERNAL:00000004",
+      "name": "GetPrivateProfileIntA"
+    },
+    {
+      "addr": "EXTERNAL:0000000a",
+      "name": "GetPrivateProfileStringA"
+    },
+    {
+      "addr": "004d5650",
+      "name": "_atof"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "004d5580",
+      "name": "_atoi"
+    }
+  ],
+  "data_refs": []
+}

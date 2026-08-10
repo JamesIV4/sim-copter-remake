@@ -1,0 +1,18 @@
+{
+  "address": "004d451c",
+  "name": "__global_unwind2",
+  "signature": "undefined __global_unwind2(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __global_unwind2\r\n   \r\n   Library: Visual Studio */\r\n\r\nvoid __global_unwind2(PVOID param_1)\r\n\r\n{\r\n  RtlUnwind(param_1,(PVOID)0x4d4534,(PEXCEPTION_RECORD)0x0,(PVOID)0x0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e4f60",
+      "name": "RtlUnwind"
+    }
+  ],
+  "data_refs": []
+}

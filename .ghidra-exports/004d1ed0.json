@@ -1,0 +1,70 @@
+{
+  "address": "004d1ed0",
+  "name": "FUN_004d1ed0",
+  "signature": "undefined FUN_004d1ed0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d1ed0(int *param_1,undefined4 param_2,short param_3,undefined4 param_4)\r\n\r\n{\r\n  short sVar1;\r\n  undefined4 uVar2;\r\n  undefined2 *puVar3;\r\n  undefined4 *puVar4;\r\n  short sVar5;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined2 local_14;\r\n  short local_12;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004d1fd2;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  sVar1 = FUN_004d1ff0(0,0);\r\n  (&DAT_00590238)[sVar1 * 2] = param_1;\r\n  (&DAT_0059023c)[sVar1 * 2] = param_2;\r\n  local_12 = FUN_004d19d0(param_1);\r\n  sVar5 = 1;\r\n  sVar1 = FUN_004cd6b0(param_2);\r\n  if (0 < sVar1) {\r\n    do {\r\n      uVar2 = FUN_004cd7b0(param_2,sVar5,0);\r\n      puVar3 = (undefined2 *)FUN_004ce0f0(uVar2);\r\n      local_14 = *puVar3;\r\n      FUN_004d1870(&local_14);\r\n      FUN_004ce100(uVar2);\r\n      puVar4 = (undefined4 *)FUN_004d28b0(0x50);\r\n      local_8 = 0;\r\n      if (puVar4 != (undefined4 *)0x0) {\r\n        *puVar4 = &PTR_LAB_004f5124;\r\n        FUN_004d1c40();\r\n        FUN_004d1a00(uVar2,param_1,(int)param_3,param_4);\r\n      }\r\n      local_8 = 0xffffffff;\r\n      sVar5 = sVar5 + 1;\r\n    } while (sVar5 <= sVar1);\r\n  }\r\n  if (local_12 != 0) {\r\n    (**(code **)(*param_1 + 0xc))();\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ceab0",
+      "name": "FUN_004ceab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ceab0",
+      "name": "FUN_004ceab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ceab0",
+      "name": "FUN_004ceab0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d1ff0",
+      "name": "FUN_004d1ff0"
+    },
+    {
+      "addr": "004d19d0",
+      "name": "FUN_004d19d0"
+    },
+    {
+      "addr": "004cd6b0",
+      "name": "FUN_004cd6b0"
+    },
+    {
+      "addr": "004cd7b0",
+      "name": "FUN_004cd7b0"
+    },
+    {
+      "addr": "004ce0f0",
+      "name": "FUN_004ce0f0"
+    },
+    {
+      "addr": "004d1870",
+      "name": "FUN_004d1870"
+    },
+    {
+      "addr": "004ce100",
+      "name": "FUN_004ce100"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d1c40",
+      "name": "FUN_004d1c40"
+    },
+    {
+      "addr": "004d1a00",
+      "name": "FUN_004d1a00"
+    }
+  ],
+  "data_refs": []
+}

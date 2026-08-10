@@ -1,0 +1,39 @@
+{
+  "address": "00422c30",
+  "name": "FUN_00422c30",
+  "signature": "undefined FUN_00422c30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00422c30(ostream *param_1)\r\n\r\n{\r\n  ostream::operator<<(param_1,'\\0');\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462f00",
+      "name": "FUN_00462f00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462f70",
+      "name": "FUN_00462f70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462b70",
+      "name": "FUN_00462b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28f0",
+      "name": "operator<<"
+    }
+  ],
+  "data_refs": []
+}

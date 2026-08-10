@@ -1,0 +1,34 @@
+{
+  "address": "004cc130",
+  "name": "FUN_004cc130",
+  "signature": "undefined FUN_004cc130(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004cc130(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  short sVar2;\r\n  int iVar3;\r\n  int local_20;\r\n  int local_1c;\r\n  int local_18;\r\n  int local_14;\r\n  int local_10;\r\n  int local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  iVar1 = *(int *)(param_2 + 4);\r\n  if (iVar1 != 0) {\r\n    sVar2 = FUN_004c8430(iVar1);\r\n    if (sVar2 != -1) {\r\n      *(ushort *)(param_1 + 0x140) = sVar2 - 2U & 7;\r\n    }\r\n    if ((*(int *)(param_1 + 0x224) == 0) || (*(int *)(param_1 + 0x220) != 0x5468726f)) {\r\n      iVar3 = FUN_004cf7b0(0x5468726f);\r\n      if (iVar3 != 0) {\r\n        *(int *)(param_1 + 0x224) = iVar3;\r\n      }\r\n      *(undefined4 *)(param_1 + 0x220) = 0x5468726f;\r\n    }\r\n    FUN_004c5210(0x39,1,0,1);\r\n    local_14 = (int)*(short *)(param_1 + 0x12a);\r\n    local_10 = (int)*(short *)(param_1 + 300);\r\n    local_c = *(int *)(param_1 + 0x1cc);\r\n    local_8 = *(undefined4 *)(param_1 + 0x1d0);\r\n    local_4 = *(undefined4 *)(param_1 + 0x1d4);\r\n    local_20 = *(int *)(iVar1 + 0x18) - *(int *)(param_1 + 0x1cc);\r\n    local_1c = *(int *)(iVar1 + 0x1c) - *(int *)(param_1 + 0x1d0);\r\n    local_18 = *(int *)(iVar1 + 0x20) - *(int *)(param_1 + 0x1d4);\r\n    FUN_00467a80(&local_20);\r\n    FUN_0048e0b0(0xe,&local_14,&local_c,&local_20,1,param_1 + 0x1b4,0x12c0000,0xffffffff);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c8430",
+      "name": "FUN_004c8430"
+    },
+    {
+      "addr": "004cf7b0",
+      "name": "FUN_004cf7b0"
+    },
+    {
+      "addr": "004c5210",
+      "name": "FUN_004c5210"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80"
+    },
+    {
+      "addr": "0048e0b0",
+      "name": "FUN_0048e0b0"
+    }
+  ],
+  "data_refs": []
+}

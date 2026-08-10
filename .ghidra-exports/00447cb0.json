@@ -1,0 +1,19 @@
+{
+  "address": "00447cb0",
+  "name": "FUN_00447cb0",
+  "signature": "undefined FUN_00447cb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nchar * __thiscall FUN_00447cb0(char *param_1,char *param_2)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  char *pcVar4;\r\n  char *pcVar5;\r\n  \r\n  *(undefined ***)param_1 = &PTR_FUN_004f1780;\r\n  param_1[0x108] = -1;\r\n  param_1[0x109] = -1;\r\n  param_1[0x10a] = -1;\r\n  param_1[0x10b] = -1;\r\n  param_1[0x10c] = '\\x01';\r\n  param_1[0x10d] = '\\0';\r\n  param_1[0x10e] = '\\0';\r\n  param_1[0x10f] = '\\0';\r\n  DAT_00507000 = 0x8000;\r\n  if (param_2 == (char *)0x0) {\r\n    param_1[4] = '\\0';\r\n    return param_1;\r\n  }\r\n  uVar2 = 0xffffffff;\r\n  do {\r\n    pcVar5 = param_2;\r\n    if (uVar2 == 0) break;\r\n    uVar2 = uVar2 - 1;\r\n    pcVar5 = param_2 + 1;\r\n    cVar1 = *param_2;\r\n    param_2 = pcVar5;\r\n  } while (cVar1 != '\\0');\r\n  uVar2 = ~uVar2;\r\n  pcVar4 = pcVar5 + -uVar2;\r\n  pcVar5 = param_1;\r\n  for (uVar3 = uVar2 >> 2; pcVar5 = pcVar5 + 4, uVar3 != 0; uVar3 = uVar3 - 1) {\r\n    *(undefined4 *)pcVar5 = *(undefined4 *)pcVar4;\r\n    pcVar4 = pcVar4 + 4;\r\n  }\r\n  for (uVar2 = uVar2 & 3; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n    *pcVar5 = *pcVar4;\r\n    pcVar4 = pcVar4 + 1;\r\n    pcVar5 = pcVar5 + 1;\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004477b0",
+      "name": "FUN_004477b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

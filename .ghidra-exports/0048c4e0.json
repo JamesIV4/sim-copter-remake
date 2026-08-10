@@ -1,0 +1,24 @@
+{
+  "address": "0048c4e0",
+  "name": "FUN_0048c4e0",
+  "signature": "undefined FUN_0048c4e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0048c4e0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  code *pcVar2;\r\n  code *pcVar3;\r\n  int iVar4;\r\n  undefined1 *puVar5;\r\n  uint local_268;\r\n  int iStack_264;\r\n  undefined1 auStack_25c [4];\r\n  undefined1 auStack_258 [8];\r\n  undefined1 auStack_250 [12];\r\n  undefined1 *puStack_244;\r\n  undefined1 auStack_240 [252];\r\n  undefined1 auStack_144 [8];\r\n  undefined1 auStack_13c [316];\r\n  \r\n  iVar1 = *param_1;\r\n  (**(code **)(iVar1 + 0x44))();\r\n  pcVar2 = *(code **)(iVar1 + 0x54);\r\n  iVar4 = (*pcVar2)(0x434c4f47);\r\n  while (iVar4 != 0) {\r\n    iVar4 = (**(code **)(iVar1 + 0x18))();\r\n    if ((0xb < iVar4) && (iVar4 < 0x139)) {\r\n      pcVar3 = *(code **)(iVar1 + 0x40);\r\n      (*pcVar3)(&local_268,0xc);\r\n      if (local_268 < 0xc) {\r\n        (*pcVar3)(auStack_25c,0xc);\r\n        if (iStack_264 == 1) {\r\n          (*pcVar3)(auStack_258,0x114);\r\n          puStack_244 = auStack_240;\r\n          puVar5 = auStack_250;\r\n        }\r\n        else {\r\n          (*pcVar3)(auStack_144,0x138);\r\n          puVar5 = auStack_13c;\r\n        }\r\n        FUN_0048c6c0(puVar5,0,0,1);\r\n      }\r\n    }\r\n    iVar4 = (*pcVar2)(0x434c4f47);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0048c6c0",
+      "name": "FUN_0048c6c0"
+    }
+  ],
+  "data_refs": []
+}

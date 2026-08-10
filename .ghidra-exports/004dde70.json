@@ -1,0 +1,36 @@
+{
+  "address": "004dde70",
+  "name": "__setargv",
+  "signature": "int __cdecl __setargv(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n/* Library Function - Single Match\r\n    __setargv\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __setargv(void)\r\n\r\n{\r\n  int iVar1;\r\n  char *pcVar2;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  GetModuleFileNameA((HMODULE)0x0,&DAT_00590648,0x104);\r\n  _DAT_00506c9c = &DAT_00590648;\r\n  pcVar2 = &DAT_00590648;\r\n  if (*DAT_0061cc94 != '\\0') {\r\n    pcVar2 = DAT_0061cc94;\r\n  }\r\n  FUN_004ddf10(pcVar2,0,0,&local_8,&local_4);\r\n  iVar1 = FUN_004d5f00(local_8 * 4 + local_4);\r\n  if (iVar1 == 0) {\r\n    __amsg_exit(8);\r\n  }\r\n  FUN_004ddf10(pcVar2,iVar1,iVar1 + local_8 * 4,&local_8,&local_4);\r\n  _DAT_00506c84 = iVar1;\r\n  _DAT_00506c80 = local_8 + -1;\r\n  return local_8 + -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000002b",
+      "name": "GetModuleFileNameA"
+    },
+    {
+      "addr": "004ddf10",
+      "name": "FUN_004ddf10"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    }
+  ],
+  "data_refs": []
+}

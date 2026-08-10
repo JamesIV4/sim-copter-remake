@@ -1,0 +1,24 @@
+{
+  "address": "0049e5d0",
+  "name": "FUN_0049e5d0",
+  "signature": "undefined FUN_0049e5d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0049e5d0(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = *(byte *)((&DAT_005910b0)[*(byte *)(param_1 + 0x88)] + (uint)*(byte *)(param_1 + 0x89)) -\r\n          0x23;\r\n  switch(iVar1) {\r\n  case 0:\r\n    *(undefined4 *)(param_1 + 0xff) = 10;\r\n    *(undefined4 *)(param_1 + 0xf7) = 0;\r\n    *(undefined4 *)(param_1 + 0x92) =\r\n         *(undefined4 *)\r\n          (&DAT_0058d60c + (((*(int *)(param_1 + 0xf3) == 2) - 1 & 2) + iVar1 * 4) * 0xc);\r\n    return;\r\n  case 1:\r\n    *(undefined4 *)(param_1 + 0xff) = 10;\r\n    *(undefined4 *)(param_1 + 0xf7) = 0;\r\n    *(undefined4 *)(param_1 + 0x92) =\r\n         *(undefined4 *)\r\n          (&DAT_0058d60c +\r\n          ((-(uint)(*(int *)(param_1 + 0xf3) == 3) & 0xfffffffe) + 3 + iVar1 * 4) * 0xc);\r\n    return;\r\n  case 2:\r\n    *(undefined4 *)(param_1 + 0xf7) = 0;\r\n    *(undefined4 *)(param_1 + 0xff) = 10;\r\n    *(undefined4 *)(param_1 + 0x92) =\r\n         *(undefined4 *)\r\n          (&DAT_0058d60c + ((-(uint)(*(int *)(param_1 + 0xf3) == 0) & 2) + iVar1 * 4) * 0xc);\r\n    return;\r\n  case 3:\r\n    *(undefined4 *)(param_1 + 0xff) = 10;\r\n    *(undefined4 *)(param_1 + 0xf7) = 0;\r\n    *(undefined4 *)(param_1 + 0x92) =\r\n         *(undefined4 *)\r\n          (&DAT_0058d60c + ((-(uint)(*(int *)(param_1 + 0xf3) == 1) & 2) + 1 + iVar1 * 4) * 0xc);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049cf10",
+      "name": "FUN_0049cf10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049e270",
+      "name": "FUN_0049e270",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

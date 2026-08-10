@@ -1,0 +1,19 @@
+{
+  "address": "004de5f0",
+  "name": "__clrfp",
+  "signature": "undefined __clrfp(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __clrfp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __clrfp(void)\r\n\r\n{\r\n  short in_FPUStatusWord;\r\n  \r\n  return (int)in_FPUStatusWord;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004de6d0",
+      "name": "__raise_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

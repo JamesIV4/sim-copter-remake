@@ -1,0 +1,24 @@
+{
+  "address": "004dc270",
+  "name": "trans_ctry_lang",
+  "signature": "undefined __cdecl trans_ctry_lang(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _trans_ctry_lang\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nshort __cdecl trans_ctry_lang(ushort param_1)\r\n\r\n{\r\n  short sVar1;\r\n  \r\n  if ((100 < param_1) && (sVar1 = testSpecialCtry(param_1), sVar1 != 0)) {\r\n    return sVar1;\r\n  }\r\n  if ((ushort)((uint)param_1 % 100) < 0x5b) {\r\n    return *(short *)(&DAT_005080c8 + ((uint)param_1 % 100) * 6);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dc2c0",
+      "name": "testSpecialCtry"
+    }
+  ],
+  "data_refs": []
+}

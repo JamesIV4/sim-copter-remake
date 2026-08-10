@@ -1,0 +1,29 @@
+{
+  "address": "004e0260",
+  "name": "__FillZeroMan",
+  "signature": "undefined __FillZeroMan(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __FillZeroMan\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __FillZeroMan(undefined4 *param_1)\r\n\r\n{\r\n  *param_1 = 0;\r\n  param_1[1] = 0;\r\n  param_1[2] = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

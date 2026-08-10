@@ -1,0 +1,24 @@
+{
+  "address": "0046c796",
+  "name": "FUN_0046c796",
+  "signature": "undefined FUN_0046c796(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046c796(void)\r\n\r\n{\r\n  int *unaff_EBX;\r\n  int *unaff_ESI;\r\n  int *unaff_EDI;\r\n  \r\n  *unaff_EDI = ((uint)((longlong)unaff_ESI[2] * (longlong)unaff_EBX[2]) >> 0x10 |\r\n               (int)((ulonglong)((longlong)unaff_ESI[2] * (longlong)unaff_EBX[2]) >> 0x20) << 0x10)\r\n               + ((uint)((longlong)*unaff_ESI * (longlong)*unaff_EBX) >> 0x10 |\r\n                 (int)((ulonglong)((longlong)*unaff_ESI * (longlong)*unaff_EBX) >> 0x20) << 0x10) +\r\n                 ((uint)((longlong)unaff_ESI[1] * (longlong)unaff_EBX[1]) >> 0x10 |\r\n                 (int)((ulonglong)((longlong)unaff_ESI[1] * (longlong)unaff_EBX[1]) >> 0x20) << 0x10\r\n                 ) + unaff_EBX[3];\r\n  unaff_EDI[1] = ((uint)((longlong)unaff_ESI[2] * (longlong)unaff_EBX[6]) >> 0x10 |\r\n                 (int)((ulonglong)((longlong)unaff_ESI[2] * (longlong)unaff_EBX[6]) >> 0x20) << 0x10\r\n                 ) + ((uint)((longlong)*unaff_ESI * (longlong)unaff_EBX[4]) >> 0x10 |\r\n                     (int)((ulonglong)((longlong)*unaff_ESI * (longlong)unaff_EBX[4]) >> 0x20) <<\r\n                     0x10) + ((uint)((longlong)unaff_ESI[1] * (longlong)unaff_EBX[5]) >> 0x10 |\r\n                             (int)((ulonglong)((longlong)unaff_ESI[1] * (longlong)unaff_EBX[5]) >>\r\n                                  0x20) << 0x10) + unaff_EBX[7];\r\n  unaff_EDI[2] = ((uint)((longlong)unaff_ESI[2] * (longlong)unaff_EBX[10]) >> 0x10 |\r\n                 (int)((ulonglong)((longlong)unaff_ESI[2] * (longlong)unaff_EBX[10]) >> 0x20) <<\r\n                 0x10) + ((uint)((longlong)*unaff_ESI * (longlong)unaff_EBX[8]) >> 0x10 |\r\n                         (int)((ulonglong)((longlong)*unaff_ESI * (longlong)unaff_EBX[8]) >> 0x20)\r\n                         << 0x10) +\r\n                         ((uint)((longlong)unaff_ESI[1] * (longlong)unaff_EBX[9]) >> 0x10 |\r\n                         (int)((ulonglong)((longlong)unaff_ESI[1] * (longlong)unaff_EBX[9]) >> 0x20)\r\n                         << 0x10) + unaff_EBX[0xb];\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047016e",
+      "name": "FUN_0047016e",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,32 @@
+{
+  "address": "004b8540",
+  "name": "FUN_004b8540",
+  "signature": "undefined FUN_004b8540(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004b8540(short param_1,short param_2,undefined1 param_3,undefined1 param_4)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  undefined1 local_1a;\r\n  undefined1 local_19;\r\n  undefined4 local_18;\r\n  int local_14;\r\n  uint local_10;\r\n  uint local_c;\r\n  \r\n  local_1a = param_3;\r\n  piVar2 = &DAT_00582b08;\r\n  local_19 = param_4;\r\n  do {\r\n    iVar1 = *piVar2;\r\n    if ((*(uint *)(iVar1 + 4) & 2) == 0) {\r\n      iVar3 = FUN_0049cf10(&local_1a);\r\n      if (iVar3 != 0) {\r\n        local_18 = 0;\r\n        local_10 = (uint)*(byte *)(iVar1 + 0x88);\r\n        local_c = (uint)*(byte *)(iVar1 + 0x89);\r\n        local_14 = (int)param_1;\r\n        FUN_004a89c0(&local_18);\r\n        *(int *)(iVar1 + 0x113) = (int)param_1;\r\n        *(undefined4 *)(iVar1 + 299) = 0;\r\n        *(int *)(iVar1 + 0x12f) = (int)param_2;\r\n        iVar3 = _rand();\r\n        *(int *)(iVar1 + 0x137) = DAT_00506360 + (int)(short)iVar3 % DAT_00506364;\r\n        *(undefined1 *)(iVar1 + 0x135) = 1;\r\n        *(undefined1 *)(iVar1 + 0x136) = 0;\r\n        *(undefined1 *)(iVar1 + 0x133) = 0;\r\n        *(undefined1 *)(iVar1 + 0x134) = 0;\r\n        return 1;\r\n      }\r\n      return 0;\r\n    }\r\n    piVar2 = piVar2 + 1;\r\n  } while (piVar2 < &DAT_00582b1c);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b84f0",
+      "name": "FUN_004b84f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049cf10",
+      "name": "FUN_0049cf10"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,47 @@
+{
+  "address": "004d90a0",
+  "name": "___tzset",
+  "signature": "void __cdecl ___tzset(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___tzset\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl ___tzset(void)\r\n\r\n{\r\n  if (DAT_00507654 == 0) {\r\n    __lock(0xb);\r\n    if (DAT_00507654 == 0) {\r\n      FUN_004d9100();\r\n      DAT_00507654 = DAT_00507654 + 1;\r\n    }\r\n    FUN_004d64a0(0xb);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9960",
+      "name": "FUN_004d9960",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daa10",
+      "name": "__ftime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0d70",
+      "name": "__make_time_t",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d9100",
+      "name": "FUN_004d9100"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,32 @@
+{
+  "address": "004e4120",
+  "name": "_towupper",
+  "signature": "wint_t __cdecl _towupper(wint_t _C)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef wint_t ushort",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _towupper\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nwint_t __cdecl _towupper(wint_t _C)\r\n\r\n{\r\n  bool bVar1;\r\n  undefined2 in_stack_00000006;\r\n  \r\n  if (DAT_00507ab8 == 0) {\r\n    if ((0x60 < _C) && (_C < 0x7b)) {\r\n      return _C - 0x20;\r\n    }\r\n  }\r\n  else {\r\n    bVar1 = DAT_0061cc98 == 0;\r\n    if (bVar1) {\r\n      DAT_0061cc9c = DAT_0061cc9c + 1;\r\n    }\r\n    else {\r\n      __lock(0x13);\r\n    }\r\n    _C = __towupper_lk(__C);\r\n    if (!bVar1) {\r\n      FUN_004d64a0(0x13);\r\n      return _C;\r\n    }\r\n    DAT_0061cc9c = DAT_0061cc9c + -1;\r\n  }\r\n  return _C;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004e41a0",
+      "name": "__towupper_lk"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

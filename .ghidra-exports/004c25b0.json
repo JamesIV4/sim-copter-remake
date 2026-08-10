@@ -1,0 +1,40 @@
+{
+  "address": "004c25b0",
+  "name": "FUN_004c25b0",
+  "signature": "undefined FUN_004c25b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c25b0(ushort param_1,ushort param_2)\r\n\r\n{\r\n  ushort uVar1;\r\n  short sVar2;\r\n  short sVar3;\r\n  undefined2 uVar4;\r\n  int iVar5;\r\n  ushort uVar6;\r\n  ushort uVar7;\r\n  \r\n  uVar1 = param_1 & 0xff;\r\n  uVar6 = param_2 & 0xff;\r\n  if ((uVar1 < 0x80) && (uVar6 < 0x80)) {\r\n    uVar7 = (ushort)*(byte *)((&DAT_005910b0)[(short)uVar1] + (int)(short)uVar6);\r\n  }\r\n  else {\r\n    uVar7 = (short)(uVar1 - (short)DAT_005d91d0) >> 0xf;\r\n    if ((1 < (short)((uVar1 - (short)DAT_005d91d0 ^ uVar7) - uVar7)) ||\r\n       (uVar7 = 0xf6, uVar1 = (short)(uVar6 - (short)DAT_005d91d4) >> 0xf,\r\n       1 < (short)((uVar6 - (short)DAT_005d91d4 ^ uVar1) - uVar1))) {\r\n      uVar7 = 0xffff;\r\n    }\r\n  }\r\n  switch(uVar7) {\r\n  case 0xd1:\r\n    iVar5 = FUN_004c1fb0(param_1,param_2);\r\n    if (iVar5 == 0) {\r\n      sVar3 = 1;\r\n      sVar2 = FUN_004cea00(DAT_0058dc3a >> 2);\r\n      if (sVar2 == 0) {\r\n        sVar3 = FUN_004cea00(0x1e);\r\n        sVar3 = sVar3 + 1;\r\n      }\r\n      if (0 < sVar3) {\r\n        do {\r\n          FUN_004c2260(0xc,5,param_1,param_2,0xffffffff,0);\r\n          sVar3 = sVar3 + -1;\r\n        } while (sVar3 != 0);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 0xd2:\r\n    iVar5 = FUN_004c1fb0(param_1,param_2);\r\n    if (iVar5 == 0) {\r\n      sVar3 = 1;\r\n      sVar2 = FUN_004cea00(DAT_0058dc3a >> 2);\r\n      if (sVar2 == 0) {\r\n        sVar3 = FUN_004cea00(0x1e);\r\n        sVar3 = sVar3 + 1;\r\n      }\r\n      if (0 < sVar3) {\r\n        do {\r\n          FUN_004c2260(0xe,7,param_1,param_2,0xffffffff,0);\r\n          sVar3 = sVar3 + -1;\r\n        } while (sVar3 != 0);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 0xd7:\r\n    iVar5 = FUN_004c1fb0(param_1,param_2);\r\n    if (iVar5 == 0) {\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b5,4,param_1,param_2,0,&DAT_00460000,0xffba0000), sVar3 != 0\r\n         )) {\r\n        uVar4 = FUN_004cea00(10);\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      uVar4 = FUN_004cea00(10);\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,0x140000,0xffba0000), sVar3 != 0)) {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,0x140000,0xffec0000), sVar3 != 0)) {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,&DAT_00460000,0xffec0000), sVar3 != 0\r\n         )) {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,0x2d0000,0xffd30000), sVar3 != 0)) {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,0xffd80000,0xffd80000), sVar3 != 0))\r\n      {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,0x280000,0x280000), sVar3 != 0)) {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n      }\r\n      iVar5 = FUN_004c2ef0();\r\n      if ((iVar5 != 0) &&\r\n         (sVar3 = FUN_004c20b0(uVar7,0x4b6,4,param_1,param_2,0,0xffd80000,0x280000), sVar3 != 0)) {\r\n        *(undefined2 *)(iVar5 + 0x160) = uVar4;\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 0xdb:\r\n    iVar5 = FUN_004c1fb0(param_1,param_2);\r\n    if ((iVar5 == 0) && (iVar5 = FUN_004c2ef0(), iVar5 != 0)) {\r\n      FUN_004c20b0(uVar7,0x4b2,0xffffffff,param_1,param_2,0,0x80000,0x200000);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c2550",
+      "name": "FUN_004c2550",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c1fb0",
+      "name": "FUN_004c1fb0"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "004c2260",
+      "name": "FUN_004c2260"
+    },
+    {
+      "addr": "004c2ef0",
+      "name": "FUN_004c2ef0"
+    },
+    {
+      "addr": "004c20b0",
+      "name": "FUN_004c20b0"
+    }
+  ],
+  "data_refs": []
+}

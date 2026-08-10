@@ -1,0 +1,32 @@
+{
+  "address": "004b1950",
+  "name": "FUN_004b1950",
+  "signature": "undefined FUN_004b1950(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004b1950(undefined4 param_1,undefined4 param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  short sVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  undefined2 extraout_var;\r\n  undefined2 uVar6;\r\n  undefined2 extraout_var_00;\r\n  undefined2 extraout_var_01;\r\n  undefined2 uVar8;\r\n  undefined2 extraout_var_02;\r\n  int *piVar7;\r\n  char *unaff_ESI;\r\n  int iVar9;\r\n  \r\n  piVar2 = DAT_00582840;\r\n  if (*(char *)((int)DAT_00582840 + 5) == '\\x01') {\r\n    return 0;\r\n  }\r\n  iVar4 = (**(code **)(*DAT_00582840 + 0x18))(param_1,param_2);\r\n  if (iVar4 == 0) {\r\n    return 0;\r\n  }\r\n  *(undefined4 *)((int)piVar2 + 0x53) = param_1;\r\n  *(undefined4 *)((int)piVar2 + 0x57) = param_2;\r\n  uVar5 = _rand();\r\n  iVar9 = 0;\r\n  iVar4 = (short)((int)((uint)(ushort)((short)uVar5 >> 0xf) << 0x10 | uVar5 & 0xffff) % 3) + 3;\r\n  uVar6 = extraout_var;\r\n  uVar8 = extraout_var_01;\r\n  if (0 < iVar4) {\r\n    do {\r\n      sVar3 = FUN_004c3eb0(0xffffffff,1,CONCAT22(uVar8,(ushort)*(byte *)((int)piVar2 + 0x33)),\r\n                           CONCAT22(uVar6,(ushort)*(byte *)((int)piVar2 + 0x37)),param_1,\r\n                           (int)piVar2 + 0x7f,0);\r\n      if (-1 < sVar3) {\r\n        iVar9 = iVar9 + 1;\r\n      }\r\n      iVar4 = iVar4 + -1;\r\n      uVar6 = extraout_var_00;\r\n      uVar8 = extraout_var_02;\r\n    } while (iVar4 != 0);\r\n  }\r\n  if (iVar9 != 0) {\r\n    FUN_004a89c0(&stack0xffffffe0);\r\n    FUN_004a89c0(&stack0xffffffe0);\r\n    return (int)piVar2 + 0x7f;\r\n  }\r\n  if (*unaff_ESI != '\\0') {\r\n    if ((&DAT_005d9200)\r\n        [(*(uint *)((int)piVar2 + 0x33) & 0xff) * 0x100 + (*(uint *)((int)piVar2 + 0x37) & 0xff)] !=\r\n        0) {\r\n      piVar7 = (int *)((&DAT_005d9200)\r\n                       [(*(uint *)((int)piVar2 + 0x33) & 0xff) * 0x100 +\r\n                        (*(uint *)((int)piVar2 + 0x37) & 0xff)] + 0x10);\r\n      iVar4 = *piVar7;\r\n      while (iVar4 != 0) {\r\n        piVar1 = (int *)*piVar7;\r\n        if ((int)piVar2 - (int)piVar1 == -0x7f) {\r\n          *piVar7 = *(int *)((int)piVar2 + 0x7f);\r\n          break;\r\n        }\r\n        piVar7 = piVar1;\r\n        iVar4 = *piVar1;\r\n      }\r\n    }\r\n    *unaff_ESI = '\\0';\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b1aa0",
+      "name": "FUN_004b1aa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004c3eb0",
+      "name": "FUN_004c3eb0"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,45 @@
+{
+  "address": "00489630",
+  "name": "FUN_00489630",
+  "signature": "undefined FUN_00489630(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00489630(undefined4 param_1,undefined4 param_2,undefined4 param_3,int param_4)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  int local_48;\r\n  int local_44;\r\n  int local_40;\r\n  int local_3c;\r\n  int local_38;\r\n  int local_34;\r\n  int local_30;\r\n  int local_2c;\r\n  int local_28;\r\n  undefined1 local_24 [12];\r\n  undefined4 local_18;\r\n  \r\n  local_48 = (int)*(short *)(param_4 + 2) << 0x10;\r\n  local_44 = (int)*(short *)(param_4 + 4) << 0x10;\r\n  puVar1 = *(undefined4 **)(param_4 + 0xc);\r\n  local_40 = (int)*(short *)(param_4 + 6) << 0x10;\r\n  while( true ) {\r\n    if (puVar1 == (undefined4 *)0x0) {\r\n      iVar2 = FUN_004912b0(param_1,param_2,param_3,&local_48);\r\n      if (iVar2 < 1) {\r\n        iVar2 = 0;\r\n      }\r\n      return iVar2;\r\n    }\r\n    FUN_004705a9(puVar1[1],local_24);\r\n    FUN_00470613(puVar1[1],&local_30);\r\n    local_3c = local_30 + local_48;\r\n    local_38 = local_44 + local_2c;\r\n    local_34 = local_40 + local_28;\r\n    iVar2 = FUN_00491370(param_1,param_2,param_3,&local_3c,local_18);\r\n    if ((0 < iVar2) &&\r\n       (iVar2 = FUN_0046efe0(param_1,param_2,param_3,&local_48,puVar1[1],0), 0 < iVar2)) break;\r\n    puVar1 = (undefined4 *)*puVar1;\r\n  }\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00489250",
+      "name": "FUN_00489250",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00489250",
+      "name": "FUN_00489250",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004705a9",
+      "name": "FUN_004705a9"
+    },
+    {
+      "addr": "00470613",
+      "name": "FUN_00470613"
+    },
+    {
+      "addr": "00491370",
+      "name": "FUN_00491370"
+    },
+    {
+      "addr": "0046efe0",
+      "name": "FUN_0046efe0"
+    },
+    {
+      "addr": "004912b0",
+      "name": "FUN_004912b0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "0040ed80",
+  "name": "FUN_0040ed80",
+  "signature": "undefined FUN_0040ed80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0040ed80(int param_1)\r\n\r\n{\r\n  ShowWindow(*(HWND *)(param_1 + 0x54),0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00437cc0",
+      "name": "FUN_00437cc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000007e",
+      "name": "ShowWindow"
+    }
+  ],
+  "data_refs": []
+}

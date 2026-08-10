@@ -1,0 +1,37 @@
+{
+  "address": "004d5a50",
+  "name": "FUN_004d5a50",
+  "signature": "undefined FUN_004d5a50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004d5a50(FILE *param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  __lock_file(param_1);\r\n  uVar1 = FUN_004d5a80(param_1);\r\n  __unlock_file(param_1);\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d64c0",
+      "name": "__lock_file"
+    },
+    {
+      "addr": "004d5a80",
+      "name": "FUN_004d5a80"
+    },
+    {
+      "addr": "004d6530",
+      "name": "__unlock_file"
+    }
+  ],
+  "data_refs": []
+}

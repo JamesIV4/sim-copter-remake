@@ -1,0 +1,36 @@
+{
+  "address": "00416560",
+  "name": "FUN_00416560",
+  "signature": "undefined FUN_00416560(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall\r\nFUN_00416560(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  iVar2 = 7;\r\n  FUN_004042e0(PTR_s_joystick_bmp_004f859c,param_2,param_3,param_4,param_5,param_6,0xffffffff);\r\n  param_1[0x1d] = 0;\r\n  do {\r\n    FUN_004077e0();\r\n    iVar2 = iVar2 + -1;\r\n  } while (-1 < iVar2);\r\n  iVar2 = 3;\r\n  do {\r\n    FUN_004077e0();\r\n    iVar2 = iVar2 + -1;\r\n  } while (-1 < iVar2);\r\n  iVar2 = 3;\r\n  do {\r\n    FUN_004077e0();\r\n    iVar2 = iVar2 + -1;\r\n  } while (-1 < iVar2);\r\n  iVar2 = 3;\r\n  do {\r\n    FUN_004560e0();\r\n    iVar2 = iVar2 + -1;\r\n  } while (-1 < iVar2);\r\n  *(undefined4 *)((int)param_1 + 0x21e) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x222) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x226) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x22a) = 0;\r\n  *param_1 = &PTR_LAB_004f0fc0;\r\n  iVar2 = 0;\r\n  do {\r\n    param_1[iVar2 + 0x1e] = 0;\r\n    iVar1 = iVar2 + 1;\r\n    *(undefined1 *)(iVar2 + 0xb0 + (int)param_1) = 0;\r\n    iVar2 = iVar1;\r\n  } while (iVar1 < 0xe);\r\n  *(undefined4 *)((int)param_1 + 0xbe) = 0x16;\r\n  *(undefined4 *)((int)param_1 + 0xc2) = 0x72;\r\n  *(undefined4 *)((int)param_1 + 0xc6) = 0x30;\r\n  *(undefined4 *)((int)param_1 + 0xca) = 0x89;\r\n  *(undefined4 *)((int)param_1 + 0xce) = 0x32;\r\n  *(undefined4 *)((int)param_1 + 0xd2) = 0x7c;\r\n  *(undefined4 *)((int)param_1 + 0xd6) = 0x4c;\r\n  *(undefined4 *)((int)param_1 + 0xe2) = 0x86;\r\n  *(undefined4 *)((int)param_1 + 0xea) = 0x9d;\r\n  *(undefined4 *)((int)param_1 + 0xda) = 0x93;\r\n  *(undefined4 *)((int)param_1 + 0xde) = 0x4e;\r\n  *(undefined4 *)((int)param_1 + 0xe6) = 0x68;\r\n  *(undefined4 *)((int)param_1 + 0xee) = 0x6a;\r\n  *(undefined4 *)((int)param_1 + 0x102) = 0x86;\r\n  *(undefined4 *)((int)param_1 + 0xf2) = 0x90;\r\n  *(undefined4 *)((int)param_1 + 0xfa) = 0xa7;\r\n  *(undefined4 *)((int)param_1 + 0x10a) = 0x9d;\r\n  *(undefined4 *)((int)param_1 + 0xf6) = 0x84;\r\n  *(undefined4 *)((int)param_1 + 0xfe) = 0xc;\r\n  *(undefined4 *)((int)param_1 + 0x106) = 0x26;\r\n  *(undefined4 *)((int)param_1 + 0x10e) = 0x28;\r\n  *(undefined4 *)((int)param_1 + 0x112) = 0x90;\r\n  *(undefined4 *)((int)param_1 + 0x11a) = 0xa7;\r\n  *(undefined4 *)((int)param_1 + 0x116) = 0x42;\r\n  *(undefined4 *)((int)param_1 + 0x126) = 0x60;\r\n  *(undefined4 *)((int)param_1 + 0x12e) = 0x60;\r\n  *(undefined4 *)((int)param_1 + 0x11e) = 0x46;\r\n  *(undefined4 *)((int)param_1 + 0x122) = 0x9a;\r\n  *(undefined4 *)((int)param_1 + 0x12a) = 0xb1;\r\n  *(undefined4 *)((int)param_1 + 0x132) = 0xa4;\r\n  *(undefined4 *)((int)param_1 + 0x136) = 0x7a;\r\n  *(undefined4 *)((int)param_1 + 0x13a) = 0xbb;\r\n  *(undefined4 *)((int)param_1 + 0x13e) = 0x22;\r\n  *(undefined4 *)((int)param_1 + 0x142) = 0x37;\r\n  *(undefined4 *)((int)param_1 + 0x146) = 0x3f;\r\n  *(undefined4 *)((int)param_1 + 0x14e) = 0x2d;\r\n  *(undefined4 *)((int)param_1 + 0x152) = 0x3a;\r\n  *(undefined4 *)((int)param_1 + 0x156) = 0x4a;\r\n  *(undefined4 *)((int)param_1 + 0x15a) = 0x6e;\r\n  *(undefined4 *)((int)param_1 + 0x15e) = 0x77;\r\n  *(undefined4 *)((int)param_1 + 0x162) = 0x54;\r\n  *(undefined4 *)((int)param_1 + 0x166) = 0x94;\r\n  *(undefined4 *)((int)param_1 + 0x16a) = 0x88;\r\n  *(undefined4 *)((int)param_1 + 0x16e) = 0x82;\r\n  *(undefined4 *)((int)param_1 + 0x14a) = 0x6b;\r\n  *(undefined4 *)((int)param_1 + 0x1d2) = 3;\r\n  *(undefined4 *)((int)param_1 + 0x172) = 0x56;\r\n  *(undefined4 *)((int)param_1 + 0x176) = 0x9f;\r\n  *(undefined4 *)((int)param_1 + 0x17a) = 0x8a;\r\n  local_8 = 0x25;\r\n  local_4 = 0x67;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x24;\r\n  local_4 = 0x5f;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x2e;\r\n  local_4 = 0x4b;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x3c;\r\n  local_4 = 0x41;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x40;\r\n  local_4 = 0x43;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x36;\r\n  local_4 = 0x4f;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x30;\r\n  local_4 = 0x5d;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x2e;\r\n  local_4 = 0x6b;\r\n  FUN_00456100(&local_8);\r\n  *(undefined4 *)((int)param_1 + 0x1e6) = 3;\r\n  local_8 = 0x2f;\r\n  local_4 = 0x6a;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x38;\r\n  local_4 = 0x51;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x44;\r\n  local_4 = 0x43;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x4c;\r\n  local_4 = 0x49;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x44;\r\n  local_4 = 0x55;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x3b;\r\n  local_4 = 0x6d;\r\n  FUN_00456100(&local_8);\r\n  *(undefined4 *)((int)param_1 + 0x1fa) = 3;\r\n  local_8 = 0x79;\r\n  local_4 = 0x83;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x82;\r\n  local_4 = 0x6b;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x8b;\r\n  local_4 = 0x5e;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x96;\r\n  local_4 = 0x61;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x8c;\r\n  local_4 = 0x6e;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x84;\r\n  local_4 = 0x87;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x84;\r\n  *(undefined4 *)((int)param_1 + 0x20e) = 3;\r\n  local_4 = 0x87;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x8d;\r\n  local_4 = 0x6d;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x96;\r\n  local_4 = 0x61;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0xa2;\r\n  local_4 = 0x66;\r\n  FUN_00456100(&local_8);\r\n  local_8 = 0x90;\r\n  local_4 = 0x8a;\r\n  FUN_00456100(&local_8);\r\n  *(undefined4 *)((int)param_1 + 0x17e) = 0x1d;\r\n  *(undefined4 *)((int)param_1 + 0x182) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x186) = 0x1e;\r\n  *(undefined4 *)((int)param_1 + 0x18a) = 1;\r\n  *(undefined4 *)((int)param_1 + 0x18e) = 0x44;\r\n  *(undefined4 *)((int)param_1 + 0x19a) = 99;\r\n  *(undefined4 *)((int)param_1 + 0x1a2) = 0x5c;\r\n  *(undefined4 *)((int)param_1 + 0x192) = 0x58;\r\n  *(undefined4 *)((int)param_1 + 0x196) = 0x57;\r\n  *(undefined4 *)((int)param_1 + 0x19e) = 0x67;\r\n  *(undefined4 *)((int)param_1 + 0x1a6) = 0x7f;\r\n  *(undefined4 *)((int)param_1 + 0x1aa) = 0x71;\r\n  *(undefined4 *)((int)param_1 + 0x1ae) = 0x52;\r\n  *(undefined4 *)((int)param_1 + 0x1b6) = 0x67;\r\n  *(undefined4 *)((int)param_1 + 0x1ba) = 0x7d;\r\n  *(undefined4 *)((int)param_1 + 0x1b2) = 99;\r\n  *(undefined4 *)((int)param_1 + 0x1ca) = 0x5c;\r\n  *(undefined4 *)((int)param_1 + 0x1be) = 0x67;\r\n  *(undefined4 *)((int)param_1 + 0x1c2) = 0x50;\r\n  *(undefined4 *)((int)param_1 + 0x1c6) = 0x73;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00417cd0",
+      "name": "FUN_00417cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004042e0",
+      "name": "FUN_004042e0"
+    },
+    {
+      "addr": "004077e0",
+      "name": "FUN_004077e0"
+    },
+    {
+      "addr": "004560e0",
+      "name": "FUN_004560e0"
+    },
+    {
+      "addr": "00456100",
+      "name": "FUN_00456100"
+    }
+  ],
+  "data_refs": []
+}

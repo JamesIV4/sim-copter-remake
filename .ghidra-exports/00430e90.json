@@ -1,0 +1,13 @@
+{
+  "address": "00430e90",
+  "name": "FUN_00430e90",
+  "signature": "undefined FUN_00430e90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00430e90(int param_1)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined **ppuVar5;\r\n  byte *pbVar6;\r\n  byte *pbVar7;\r\n  bool bVar8;\r\n  bool bVar9;\r\n  \r\n  ppuVar5 = &PTR_s_classic__004f8f48;\r\n  do {\r\n    pbVar7 = *ppuVar5;\r\n    uVar3 = 0xffffffff;\r\n    pbVar6 = pbVar7;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      bVar1 = *pbVar6;\r\n      pbVar6 = pbVar6 + 1;\r\n    } while (bVar1 != 0);\r\n    uVar3 = ~uVar3 - 1;\r\n    uVar4 = *(uint *)(*(int *)(param_1 + 4) + 4);\r\n    if (uVar3 <= uVar4) {\r\n      uVar4 = uVar3;\r\n    }\r\n    if ((*(undefined4 **)(param_1 + 4))[1] == 0) {\r\n      if (pbVar7 == (byte *)0x0) {\r\n        iVar2 = 0;\r\n      }\r\n      else {\r\n        iVar2 = -(int)(char)*pbVar7;\r\n      }\r\nLAB_00430f09:\r\n      if (iVar2 == 0) {\r\n        return 1;\r\n      }\r\n    }\r\n    else {\r\n      bVar8 = false;\r\n      iVar2 = 0;\r\n      bVar9 = true;\r\n      pbVar6 = (byte *)**(undefined4 **)(param_1 + 4);\r\n      do {\r\n        if (uVar4 == 0) break;\r\n        uVar4 = uVar4 - 1;\r\n        bVar8 = *pbVar6 < *pbVar7;\r\n        bVar9 = *pbVar6 == *pbVar7;\r\n        pbVar6 = pbVar6 + 1;\r\n        pbVar7 = pbVar7 + 1;\r\n      } while (bVar9);\r\n      if (!bVar9) {\r\n        iVar2 = (1 - (uint)bVar8) - (uint)(bVar8 != 0);\r\n      }\r\n      if (iVar2 == 0) {\r\n        iVar2 = *(int *)(*(int *)(param_1 + 4) + 4) - uVar3;\r\n        goto LAB_00430f09;\r\n      }\r\n    }\r\n    ppuVar5 = ppuVar5 + 1;\r\n    if ((undefined **)((int)&PTR_s_talk__004f8f68 + 3) < ppuVar5) {\r\n      return 0;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

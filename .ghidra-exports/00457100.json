@@ -1,0 +1,30 @@
+{
+  "address": "00457100",
+  "name": "FUN_00457100",
+  "signature": "undefined FUN_00457100(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x0045715f) */\r\n\r\nundefined4 __thiscall FUN_00457100(int *param_1,undefined4 param_2,undefined4 *param_3,uint param_4)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  uint uVar4;\r\n  undefined4 *puVar5;\r\n  int *piVar6;\r\n  code *pcStack_8;\r\n  \r\n  (**(code **)(*param_1 + 0x10))();\r\n  puVar3 = (undefined4 *)FUN_004d28b0(0xc);\r\n  puVar5 = (undefined4 *)0x0;\r\n  if (puVar3 != (undefined4 *)0x0) {\r\n    *puVar3 = 0;\r\n    puVar3[1] = 0;\r\n    puVar3[2] = 0;\r\n    puVar5 = puVar3;\r\n  }\r\n  *puVar5 = param_2;\r\n  puVar5[1] = param_4;\r\n  puVar3 = (undefined4 *)FUN_004d28b0(param_4);\r\n  puVar5[2] = puVar3;\r\n  if (puVar3 != (undefined4 *)0x0) {\r\n    for (uVar4 = param_4 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n      *puVar3 = *param_3;\r\n      param_3 = param_3 + 1;\r\n      puVar3 = puVar3 + 1;\r\n    }\r\n    for (param_4 = param_4 & 3; param_4 != 0; param_4 = param_4 - 1) {\r\n      *(undefined1 *)puVar3 = *(undefined1 *)param_3;\r\n      param_3 = (undefined4 *)((int)param_3 + 1);\r\n      puVar3 = (undefined4 *)((int)puVar3 + 1);\r\n    }\r\n    (**(code **)(*param_1 + 0x30))(param_2);\r\n    iVar2 = param_1[2];\r\n    if (DAT_004f996c == (int *)0x0) {\r\n      if (DAT_004f9964 == DAT_004f9968) {\r\n        FUN_00457250();\r\n      }\r\n      piVar6 = DAT_004f9968;\r\n      DAT_004f9968 = DAT_004f9968 + 5;\r\n    }\r\n    else {\r\n      piVar6 = DAT_004f996c;\r\n      DAT_004f996c = (int *)*DAT_004f996c;\r\n    }\r\n    if (piVar6 != (int *)0xfffffff8) {\r\n      FUN_00456ae0(puVar5);\r\n    }\r\n    *piVar6 = iVar2;\r\n    piVar1 = (int *)(iVar2 + 4);\r\n    piVar6[1] = *piVar1;\r\n    *(int **)*piVar1 = piVar6;\r\n    *piVar1 = (int)piVar6;\r\n    param_1[3] = param_1[3] + 1;\r\n    if (puVar5 != (undefined4 *)0x0) {\r\n      if (puVar5[2] != 0) {\r\n        FUN_004d29a0(puVar5[2]);\r\n      }\r\n      FUN_004d29a0(puVar5);\r\n    }\r\n    param_1[8] = 1;\r\n    if (param_1[1] != 0) {\r\n      (**(code **)(*param_1 + 4))();\r\n    }\r\n    (*pcStack_8)();\r\n    return 1;\r\n  }\r\n  if (puVar5 != (undefined4 *)0x0) {\r\n    FUN_004d29a0(puVar5);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00457250",
+      "name": "FUN_00457250"
+    },
+    {
+      "addr": "00456ae0",
+      "name": "FUN_00456ae0"
+    }
+  ],
+  "data_refs": []
+}

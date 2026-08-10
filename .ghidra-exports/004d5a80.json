@@ -1,0 +1,33 @@
+{
+  "address": "004d5a80",
+  "name": "FUN_004d5a80",
+  "signature": "undefined FUN_004d5a80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004d5a80(undefined4 *param_1)\r\n\r\n{\r\n  uint _FileHandle;\r\n  byte bVar1;\r\n  void *_Buf;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  int *piVar4;\r\n  void *pvVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  uint uVar8;\r\n  int local_4;\r\n  \r\n  _FileHandle = param_1[4];\r\n  if ((int)param_1[1] < 0) {\r\n    param_1[1] = 0;\r\n  }\r\n  _Buf = (void *)__write(_FileHandle,(void *)0x0,1);\r\n  if ((int)_Buf < 0) {\r\n    return -1;\r\n  }\r\n  uVar8 = param_1[3];\r\n  if ((uVar8 & 0x108) == 0) {\r\n    return (int)_Buf - param_1[1];\r\n  }\r\n  pcVar7 = (char *)param_1[2];\r\n  iVar2 = (int)*param_1 - (int)pcVar7;\r\n  local_4 = iVar2;\r\n  if ((uVar8 & 3) == 0) {\r\n    if ((uVar8 & 0x80) == 0) {\r\n      puVar3 = (undefined4 *)FUN_004da730();\r\n      *puVar3 = 0x16;\r\n      return -1;\r\n    }\r\n  }\r\n  else if ((*(byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(_FileHandle & 0xffffffe7) >> 3)) + 4 +\r\n                     (_FileHandle & 0x1f) * 0x24) & 0x80) != 0) {\r\n    for (; pcVar7 < (char *)*param_1; pcVar7 = pcVar7 + 1) {\r\n      if (*pcVar7 == '\\n') {\r\n        local_4 = local_4 + 1;\r\n      }\r\n    }\r\n  }\r\n  if (_Buf != (void *)0x0) {\r\n    if ((uVar8 & 1) != 0) {\r\n      if (param_1[1] == 0) {\r\n        local_4 = 0;\r\n      }\r\n      else {\r\n        uVar8 = param_1[1] + iVar2;\r\n        piVar4 = (int *)((int)&DAT_0061bb80 + ((int)(_FileHandle & 0xffffffe7) >> 3));\r\n        iVar2 = (_FileHandle & 0x1f) * 0x24;\r\n        if ((*(byte *)(*piVar4 + 4 + iVar2) & 0x80) != 0) {\r\n          pvVar5 = (void *)__write(_FileHandle,(void *)0x0,2);\r\n          if (pvVar5 == _Buf) {\r\n            pcVar6 = (char *)param_1[2];\r\n            pcVar7 = pcVar6 + uVar8;\r\n            for (; pcVar6 < pcVar7; pcVar6 = pcVar6 + 1) {\r\n              if (*pcVar6 == '\\n') {\r\n                uVar8 = uVar8 + 1;\r\n              }\r\n            }\r\n            bVar1 = *(byte *)((int)param_1 + 0xd) & 0x20;\r\n          }\r\n          else {\r\n            __write(_FileHandle,_Buf,0);\r\n            if (((0x200 < uVar8) || ((param_1[3] & 8) == 0)) ||\r\n               (uVar8 = 0x200, (param_1[3] & 0x400) != 0)) {\r\n              uVar8 = param_1[6];\r\n            }\r\n            bVar1 = *(byte *)(*piVar4 + 4 + iVar2) & 4;\r\n          }\r\n          if (bVar1 != 0) {\r\n            uVar8 = uVar8 + 1;\r\n          }\r\n        }\r\n        _Buf = (void *)((int)_Buf - uVar8);\r\n      }\r\n    }\r\n    return local_4 + (int)_Buf;\r\n  }\r\n  return local_4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d59b0",
+      "name": "__fseek_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5a50",
+      "name": "FUN_004d5a50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

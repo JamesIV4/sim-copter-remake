@@ -1,0 +1,24 @@
+{
+  "address": "004ddd30",
+  "name": "__ismbblead",
+  "signature": "int __cdecl __ismbblead(uint _C)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ismbblead\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __ismbblead(uint _C)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = x_ismbbtype(_C,0,4);\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ddd50",
+      "name": "x_ismbbtype"
+    }
+  ],
+  "data_refs": []
+}

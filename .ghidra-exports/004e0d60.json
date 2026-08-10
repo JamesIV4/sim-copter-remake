@@ -1,0 +1,24 @@
+{
+  "address": "004e0d60",
+  "name": "_mktime",
+  "signature": "time_t __cdecl _mktime(tm * _Tm)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef time_t __time64_t",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _mktime\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\ntime_t __cdecl _mktime(tm *_Tm)\r\n\r\n{\r\n  time_t tVar1;\r\n  \r\n  tVar1 = __make_time_t(_Tm,1);\r\n  return tVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004daa10",
+      "name": "__ftime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0d70",
+      "name": "__make_time_t"
+    }
+  ],
+  "data_refs": []
+}

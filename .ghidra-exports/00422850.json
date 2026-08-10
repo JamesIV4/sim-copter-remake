@@ -1,0 +1,45 @@
+{
+  "address": "00422850",
+  "name": "FUN_00422850",
+  "signature": "undefined FUN_00422850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nuint * __thiscall FUN_00422850(uint *param_1,int param_2,int param_3,int param_4,int param_5)\r\n\r\n{\r\n  bool bVar1;\r\n  undefined4 uVar2;\r\n  uint *puVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  undefined1 local_20 [24];\r\n  undefined1 local_8 [8];\r\n  \r\n  param_1[1] = 0;\r\n  if (*(int *)(param_2 + 4) == 0) {\r\n    *param_1 = 0;\r\n    return param_1;\r\n  }\r\n  uVar5 = ((param_3 + (*(int *)(param_2 + 4) - _DAT_005199fc) * 0x18) * 0x3c + param_4) * 0x3c +\r\n          -0xe10 + param_5;\r\n  *param_1 = uVar5;\r\n  if (uVar5 != 0) {\r\n    *param_1 = DAT_00506df0 + uVar5;\r\n  }\r\n  if (DAT_00506df4 == 0) {\r\nLAB_00422941:\r\n    bVar1 = false;\r\n  }\r\n  else {\r\n    FUN_00462720(*param_1 / 0x15180,0);\r\n    uVar2 = FUN_00462b20();\r\n    puVar3 = (uint *)FUN_00422630(local_8,uVar2);\r\n    if (*param_1 < *puVar3) goto LAB_00422941;\r\n    FUN_00462800(0x1f,10,uVar2);\r\n    iVar4 = FUN_00462ac0(local_20,7);\r\n    bVar1 = true;\r\n    if ((*(int *)(iVar4 + 4) - _DAT_005199fc) * 0x15180 + DAT_00506df0 + 0xe10U <= *param_1)\r\n    goto LAB_00422941;\r\n  }\r\n  if (!bVar1) {\r\n    uVar5 = *param_1 + 0xe10;\r\n    *param_1 = uVar5;\r\n    if (DAT_00506df4 != 0) {\r\n      FUN_00462720(uVar5 / 0x15180,0);\r\n      uVar2 = FUN_00462b20();\r\n      puVar3 = (uint *)FUN_00422630(local_8,uVar2);\r\n      if (*puVar3 <= *param_1) {\r\n        FUN_00462800(0x1f,10,uVar2);\r\n        iVar4 = FUN_00462ac0(local_20,7);\r\n        bVar1 = true;\r\n        if (*param_1 < (*(int *)(iVar4 + 4) - _DAT_005199fc) * 0x15180 + DAT_00506df0 + 0xe10U)\r\n        goto LAB_00422a81;\r\n      }\r\n    }\r\n    bVar1 = false;\r\nLAB_00422a81:\r\n    if (!bVar1) {\r\n      return param_1;\r\n    }\r\n    *param_1 = 0;\r\n    return param_1;\r\n  }\r\n  uVar5 = *param_1 + 0xe10;\r\n  *param_1 = uVar5;\r\n  if (DAT_00506df4 != 0) {\r\n    FUN_00462720(uVar5 / 0x15180,0);\r\n    uVar2 = FUN_00462b20();\r\n    puVar3 = (uint *)FUN_00422630(local_8,uVar2);\r\n    if (*puVar3 <= *param_1) {\r\n      FUN_00462800(0x1f,10,uVar2);\r\n      iVar4 = FUN_00462ac0(local_20,7);\r\n      bVar1 = true;\r\n      if (*param_1 < (*(int *)(iVar4 + 4) - _DAT_005199fc) * 0x15180 + DAT_00506df0 + 0xe10U)\r\n      goto LAB_004229db;\r\n    }\r\n  }\r\n  bVar1 = false;\r\nLAB_004229db:\r\n  if (!bVar1) {\r\n    return param_1;\r\n  }\r\n  *param_1 = *param_1 - 0xe10;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422790",
+      "name": "FUN_00422790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422790",
+      "name": "FUN_00422790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00462720",
+      "name": "FUN_00462720"
+    },
+    {
+      "addr": "00462b20",
+      "name": "FUN_00462b20"
+    },
+    {
+      "addr": "00422630",
+      "name": "FUN_00422630"
+    },
+    {
+      "addr": "00462800",
+      "name": "FUN_00462800"
+    },
+    {
+      "addr": "00462ac0",
+      "name": "FUN_00462ac0"
+    }
+  ],
+  "data_refs": []
+}

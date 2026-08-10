@@ -1,0 +1,32 @@
+{
+  "address": "004da600",
+  "name": "__freeptd",
+  "signature": "void __cdecl __freeptd(_ptiddata _Ptd)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __freeptd\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __freeptd(_ptiddata _Ptd)\r\n\r\n{\r\n  if (DAT_00507680 != 0xffffffff) {\r\n    if ((_Ptd != (_ptiddata)0x0) || (_Ptd = TlsGetValue(DAT_00507680), _Ptd != (_ptiddata)0x0)) {\r\n      if (_Ptd->_errmsg != (char *)0x0) {\r\n        FUN_004d6010(_Ptd->_errmsg);\r\n      }\r\n      if (_Ptd->_werrmsg != (wchar_t *)0x0) {\r\n        FUN_004d6010(_Ptd->_werrmsg);\r\n      }\r\n      if (_Ptd->_wnamebuf0 != (wchar_t *)0x0) {\r\n        FUN_004d6010(_Ptd->_wnamebuf0);\r\n      }\r\n      if (_Ptd->_wnamebuf1 != (wchar_t *)0x0) {\r\n        FUN_004d6010(_Ptd->_wnamebuf1);\r\n      }\r\n      if (_Ptd->_wasctimebuf != (wchar_t *)0x0) {\r\n        FUN_004d6010(_Ptd->_wasctimebuf);\r\n      }\r\n      if (_Ptd->_gmtimebuf != (void *)0x0) {\r\n        FUN_004d6010(_Ptd->_gmtimebuf);\r\n      }\r\n      FUN_004d6010(_Ptd);\r\n    }\r\n    TlsSetValue(DAT_00507680,(LPVOID)0x0);\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4760",
+      "name": "__endthread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000004b",
+      "name": "TlsGetValue"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "EXTERNAL:00000061",
+      "name": "TlsSetValue"
+    }
+  ],
+  "data_refs": []
+}
