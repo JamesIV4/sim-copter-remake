@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "mcp__Claude_Preview__preview_screenshot",
-      "mcp__unreal-engine__describe_toolset",
-      "mcp__unreal-engine__list_toolsets"
-    ]
-  }
-}
