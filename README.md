@@ -6,7 +6,7 @@
 
 Whether you are rescuing stranded citizens from burning skyscrapers, airlifting boaters off sinking vessels, dousing raging city infernos with water buckets, dispersing traffic jams, or jamming out to the iconic in-game radio stations, this remake delivers the exact gameplay, physics, quirky behaviors, and sandbox shenanigans of the 1996 original without the crashes, crippling view distance, low-resolution limits, or compatibility headaches of 90s software.
 
-## 📸 Screenshots
+## Screenshots
 
 |                    Flight & City Exploration                     |                      Firefighting Operations                      |
 | :--------------------------------------------------------------: | :---------------------------------------------------------------: |
@@ -20,7 +20,7 @@ Whether you are rescuing stranded citizens from burning skyscrapers, airlifting 
 | :----------------------------------------------------------------: | :-------------------------------------------------------------: |
 | [![Rescue Camera](Docs/screenshots/5.png)](Docs/screenshots/5.png) | [![Night City](Docs/screenshots/6.png)](Docs/screenshots/6.png) |
 
-## 🚁 Recreating the Original Experience
+## Recreating the Original Experience
 
 Every core system in SimCopter Remake has been meticulously crafted to match the original 1996 release:
 
@@ -31,7 +31,7 @@ Every core system in SimCopter Remake has been meticulously crafted to match the
 - **Classic Cockpit & Flight Gear:** Control your searchlight, megaphone, water bucket, rescue harness, water cannon, and tear gas directly from the cockpit. The interactive instrumentation panel includes the classic radar screen, fuel gauge, altimeter, speedometer, and passenger seating grid.
 - **Original Radio & Audio Experience:** Listen to all the classic in-game radio stations (Rock, Classical, Jazz, Techno, Mix) complete with retro tunes and hilarious DJ commercials while patrolling the skies.
 
-## ✨ Modern Improvements
+## Modern Improvements
 
 While preserving 100% of the original gameplay feel, the remake upgrades the experience for modern hardware with Unreal Engine 5.8:
 
@@ -41,7 +41,7 @@ While preserving 100% of the original gameplay feel, the remake upgrades the exp
 - **Rock-Solid Windows Compatibility:** Native 64-bit support ensures the game runs fast and stable on modern Windows operating systems without crash-prone emulation or complex patches.
 - **Extended View Distance:** Fly high over sprawling metropolitan areas without heavy 90s distance fog cutting off your view.
 
-## 🛠️ How It Was Made
+## How It Was Made
 
 This project was created through careful **decompilation and re-implementation**.
 
