@@ -13,12 +13,16 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "Audio/SimCopterSoundTable.h"
+#include "Engine/Texture2D.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterPeopleReader.h"
 #include "Ground/SimCopterBehaviorVM.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterPopulationFigure.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
+#include "Styling/SlateBrush.h"
+#include "UI/SimCopterHangarArt.h"
 
 namespace
 {
@@ -64,6 +68,73 @@ int32 RunFaceProgram(const FPeopleBehaviorModel& Model, int32 Head, int32 Health
 	return World.LastMood;
 }
 } // namespace
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengerFallGravityTest,
+	"SimCopter.Passengers.FallGravity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPassengerFallGravityTest::RunTest(const FString& Parameters)
+{
+	float VerticalVelocity = 0.0f;
+	float Height = ASimCopterGroundAgent::IntegratePedestrianGravityStep(
+		1000.0f,
+		0.5f,
+		980.0f,
+		VerticalVelocity);
+	TestEqual(TEXT("A released passenger accelerates downward"), VerticalVelocity, -490.0f);
+	TestEqual(TEXT("The first gravity step lowers the passenger"), Height, 755.0f);
+
+	Height = ASimCopterGroundAgent::IntegratePedestrianGravityStep(
+		Height,
+		0.5f,
+		980.0f,
+		VerticalVelocity);
+	TestEqual(TEXT("Gravity accumulates while no surface is in probe range"), VerticalVelocity, -980.0f);
+	TestEqual(TEXT("A second gravity step keeps lowering the passenger"), Height, 265.0f);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengerPortraitRenderingTest,
+	"SimCopter.Passengers.PortraitRendering",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPassengerPortraitRenderingTest::RunTest(const FString& Parameters)
+{
+	const FString OriginalGameRoot = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	const FString TexturePath = FPaths::Combine(OriginalGameRoot, TEXT("BMP/PEOPLE1.BMP"));
+	if (!FPaths::FileExists(TexturePath))
+	{
+		AddInfo(TEXT("Original PEOPLE1.BMP not present; skipping passenger portrait rendering validation."));
+		return true;
+	}
+
+	USimCopterHangarArt* Art = NewObject<USimCopterHangarArt>();
+	Art->SetOriginalGameRoot(OriginalGameRoot);
+	const FSlateBrush* Brush = Art->GetSubImage(
+		TEXT("PEOPLE1.BMP"),
+		FIntRect(27, 0, 54, 33),
+		/*bColorKeyed=*/true,
+		ESimCopterArtRotation::None,
+		/*bNearestNeighbor=*/true);
+	if (!TestNotNull(TEXT("Passenger portrait brush"), Brush))
+	{
+		return false;
+	}
+
+	TestEqual(TEXT("Passenger portrait width"), Brush->ImageSize.X, 27.0f);
+	TestEqual(TEXT("Passenger portrait height"), Brush->ImageSize.Y, 33.0f);
+	const UTexture2D* Texture = Cast<UTexture2D>(Brush->GetResourceObject());
+	if (TestNotNull(TEXT("Passenger portrait texture"), Texture))
+	{
+		TestEqual(TEXT("Passenger portrait uses nearest-neighbor sampling"), Texture->Filter, TF_Nearest);
+	}
+
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterPassengerHeadImageTest,
@@ -118,6 +189,25 @@ bool FSimCopterPassengerHeadImageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Blonde voice pitch"), FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(0), 500);
 	TestEqual(TEXT("5man voice pitch"), FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(4), 0);
 	TestEqual(TEXT("Elvis voice pitch"), FSimCopterPeopleCityRules::GetVoicePitchDeltaForBehaviorClass(20), -8000);
+	{
+		// FUN_004c71c0's footwear rows. The final 1-in-65000 Elvis override is deterministic for
+		// these seeds and does not fire, so these check the actual class-to-WAV wiring.
+		uint16 BlondeRandom = 0x4242;
+		uint16 PlainRandom = 0x4343;
+		uint16 PilotRandom = 0x4444;
+		TestEqual(
+			TEXT("Blonde walks in heels"),
+			FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(0, BlondeRandom),
+			int32(SimCopterSound::VOX_FOOTSTEPS_HEELS));
+		TestEqual(
+			TEXT("Plain pedestrian walks in shoes"),
+			FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(4, PlainRandom),
+			int32(SimCopterSound::VOX_FOOTSTEPS_SHOES));
+		TestEqual(
+			TEXT("Player pilot walks in boots"),
+			FSimCopterPeopleCityRules::ChooseVoiceSetForBehaviorClass(19, PilotRandom),
+			int32(SimCopterSound::VOX_FOOTSTEPS_BOOTS));
+	}
 
 	// The voice set: Elvis and Nessie always speak in the 0x2f..0x36 noises, an ordinary person
 	// gets one of the three footstep clips.
@@ -152,6 +242,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FSimCopterPassengerVoiceRateTest::RunTest(const FString& Parameters)
 {
+	TestEqual(TEXT("Impact trauma at tier 0"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(100, 0), 99);
+	TestEqual(TEXT("Impact trauma at tier 3"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(100, 3), 96);
+	TestEqual(TEXT("Impact trauma cannot underflow"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(2, 3), 0);
+
 	// (health * 4 + 0x78) * 0x19, the absolute rate FUN_004c5210 pushes into the buffer while the
 	// EKG loops. This is what makes the beep slow down as a patient dies.
 	TestEqual(TEXT("EKG at full health"), SimCopterSound::GetEkgFrequencyHz(100), 13000);
@@ -172,6 +266,25 @@ bool FSimCopterPassengerVoiceRateTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A dying cry does not"), SimCopterSound::IsLoopingVoiceEvent(SimCopterSound::VOX_DYING));
 	TestFalse(TEXT("The EKG is not walk-paced"), SimCopterSound::IsWalkPacedVoiceEvent(SimCopterSound::VOX_EKG));
 	TestTrue(TEXT("Footsteps are"), SimCopterSound::IsWalkPacedVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_BOOTS));
+	TestEqual(TEXT("Player footsteps stop after six city tiles"), SimCopterSound::PlayerFootstepMaxRangeCm, 2400.0f);
+	TestEqual(TEXT("NPC footsteps use the pedestrian range"), SimCopterSound::PedestrianFootstepMaxRangeCm, 800.0f);
+	TestEqual(TEXT("NPC footsteps use full volume"), SimCopterSound::PedestrianFootstepVolumeMultiplier, 1.0f);
+
+	const SimCopterSound::FVoiceEvent* Shoes = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_SHOES);
+	const SimCopterSound::FVoiceEvent* Heels = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_HEELS);
+	const SimCopterSound::FVoiceEvent* Boots = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_FOOTSTEPS_BOOTS);
+	if (TestNotNull(TEXT("Shoes event is registered"), Shoes))
+	{
+		TestEqual(TEXT("Shoes event file"), FString(Shoes->Clips[0]), FString(TEXT("xFtShoes")));
+	}
+	if (TestNotNull(TEXT("Heels event is registered"), Heels))
+	{
+		TestEqual(TEXT("Heels event file"), FString(Heels->Clips[0]), FString(TEXT("xFtHeels")));
+	}
+	if (TestNotNull(TEXT("Boots event is registered"), Boots))
+	{
+		TestEqual(TEXT("Boots event file"), FString(Boots->Clips[0]), FString(TEXT("xFtBoots")));
+	}
 
 	// EKG.wav must be a real voice event, or the medevac beep silently plays nothing.
 	const SimCopterSound::FVoiceEvent* Ekg = SimCopterSound::GetVoiceEvent(SimCopterSound::VOX_EKG);
@@ -249,6 +362,16 @@ bool FSimCopterPassengerFaceProgramTest::RunTest(const FString& Parameters)
 	// A non-casualty's health attribute must not leak into their face.
 	TestEqual(TEXT("A fare with no health ignores it"), RunFaceProgram(Model, 4, 0, 200), 0);
 	TestEqual(TEXT("A fare at full health still follows the speed"), RunFaceProgram(Model, 4, 100, 300), 2);
+	TestEqual(TEXT("Impact recovery at idle uses the neutral face"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(0), 1);
+	TestEqual(TEXT("Impact recovery at the lower edge stays neutral"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(125), 1);
+	TestEqual(TEXT("Impact recovery at cruise uses the calm face"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(126), 0);
+	TestEqual(TEXT("Impact recovery at the upper edge stays calm"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(250), 0);
+	TestEqual(TEXT("Impact recovery keeps genuinely hard flying frightened"),
+		ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(251), 2);
 
 	// BHAV 800 is what makes the EKG a medevac victim's own voice, which is the only reason
 	// FUN_004c5210 re-tunes it from their health instead of restarting it.

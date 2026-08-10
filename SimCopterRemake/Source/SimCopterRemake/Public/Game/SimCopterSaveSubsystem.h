@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
+#include "Game/SimCopterSettings.h"
 #include "GameFramework/SaveGame.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "SimCopterSaveSubsystem.generated.h"
@@ -24,7 +25,7 @@ class SIMCOPTERREMAKE_API USimCopterSaveGame : public USaveGame
 	GENERATED_BODY()
 
 public:
-	static constexpr int32 CurrentFormatVersion = 2;
+	static constexpr int32 CurrentFormatVersion = 3;
 	static const TCHAR* GetFormatMagic() { return TEXT("SimCopterRemakeSave"); }
 
 	UPROPERTY()
@@ -76,6 +77,26 @@ public:
 
 	UPROPERTY()
 	int32 CityMoneyEarned = 0;
+
+	// Version 3: the live clock and every session-owned Time of Day option. These deliberately do
+	// not live in GameUserSettings: two saves may use different clock modes and pacing.
+	UPROPERTY()
+	bool bHasTimeOfDayState = false;
+
+	UPROPERTY()
+	float TimeOfDayHours = 0.0f;
+
+	UPROPERTY()
+	ESimCopterTimeOfDayMode TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;
+
+	UPROPERTY()
+	float StaticTimeOfDayHours = USimCopterSettings::DefaultStaticTimeOfDayHours;
+
+	UPROPERTY()
+	float DayRealMinutes = USimCopterSettings::DefaultDayRealMinutes;
+
+	UPROPERTY()
+	float NightRealMinutes = USimCopterSettings::DefaultNightRealMinutes;
 
 	// Fleet, inventory and log fields from the career block.
 	UPROPERTY()

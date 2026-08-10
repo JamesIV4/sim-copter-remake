@@ -83,7 +83,7 @@ bool AcceptsStopOrder(
 	const bool bAlreadyStopping)
 {
 	// FUN_004b89a0, in its own order.
-	if (State == EState::Arrested || State == EState::Leaving)
+	if (State == EState::BurglarOutside || State == EState::Leaving)
 	{
 		return false;
 	}
@@ -95,7 +95,7 @@ bool AcceptsStopOrder(
 		return true;
 	}
 
-	if (State != EState::Stopping && State != EState::Idling)
+	if (State != EState::Stopping && State != EState::SeekingBurglaryStop)
 	{
 		return false;
 	}

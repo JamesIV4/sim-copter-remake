@@ -39,20 +39,28 @@ class SSimCopterDashboard : public SCompoundWidget
 public:
 	SLATE_BEGIN_ARGS(SSimCopterDashboard)
 		: _Scale(2.0f)
+		, _HudScale(1.0f)
 	{}
 		SLATE_ARGUMENT(TWeakObjectPtr<ASimCopterHelicopterPawn>, Pawn)
 		SLATE_ARGUMENT(TWeakObjectPtr<USimCopterHangarArt>, Art)
 		SLATE_ARGUMENT(float, Scale)
+		SLATE_ARGUMENT(float, HudScale)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
 
+	/** SCHOOK: DashRadioVolumeMarker 0x004520a0 - stored volume to DASH4 page-space Y. */
+	static int32 RadioVolumeToMarkerY(int32 Volume);
+	/** SCHOOK: DashRadioInput 0x00451e30 - DASH4 page-space Y to stored volume; zero is off. */
+	static int32 RadioMarkerYToVolume(int32 PageY);
+
 private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
 	TWeakObjectPtr<USimCopterHangarArt> Art;
 	float Scale = 2.0f;
+	float HudScale = 1.0f;
 	bool bUseUpscaledDashboardArt = false;
 	bool bUseUpscaledAltimeterArt = false;
 
@@ -70,8 +78,8 @@ private:
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
 	ASimCopterMissionSystemActor* GetMissionSystem() const;
 
-	const FSlateBrush* GetBrush(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true) const;
-	TSharedRef<SWidget> MakeImage(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true) const;
+	const FSlateBrush* GetBrush(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true, bool bNearestNeighbor = false) const;
+	TSharedRef<SWidget> MakeImage(const TCHAR* FileName, const FIntRect& Source, bool bColorKeyed = true, bool bNearestNeighbor = false) const;
 	void AddAtPage(SConstraintCanvas& Canvas, float X, float Y, float Width, float Height, TSharedRef<SWidget> Content) const;
 
 	TSharedRef<SWidget> BuildSeatWindow();
@@ -89,6 +97,8 @@ private:
 	// sprites one cell is showing.
 	int32 GetPointsLevel() const;
 	const FSlateBrush* GetPointsCellBrush(int32 CellIndex) const;
+	// Score over the city's requirement, or just the score in a user city, which has no target.
+	FText GetPointsToolTipText() const;
 
 	// managge.bmp's three states, indexed by SimCopterSegmentedBar::ECell.
 	const FSlateBrush* PointsCellBrushes[3] = { nullptr, nullptr, nullptr };

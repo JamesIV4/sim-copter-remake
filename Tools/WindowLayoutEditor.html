@@ -1,0 +1,743 @@
+<meta charset="utf-8">
+<title>SimCopter night window painter</title>
+<!--
+  Paint, by hand, which texels of a night atlas page are lit windows.
+
+  The city atlas material currently DERIVES its window mask from the art (a texel both brighter at
+  night than by day and bright in absolute terms). That is a guess, and it cannot tell where one
+  window ends and the next begins. This paints the answer instead.
+
+  Everything is client side. Double click the file - no server, no build, no network. The pages come
+  from:
+
+      python Docs/scratchpad/dump_sky_pages.py
+
+  which writes Docs/scratchpad/sky-pages/sky_night_<n>.png. The composite index there maps to an
+  atlas page 1->2, 2->39, 3->40, 4->20, 5->13 (FUN_004606d0). Only 2, 39 and 40 are wall pages with
+  windows on them; 13 and 20 are terrain.
+
+  OUT: windows_page_<atlas page>.png, saved into SimCopterRemake/Content/NightWindows/ - that is
+  where BakeCityAtlas.py looks for it, by atlas page, and it is committed. One channel per job -
+      R  255 where a texel is a lit window
+      G  a stable per-window random byte, so the shader can light a fraction of them
+      B  a per-row byte shared by every window on the same row of the same cell, for whole-floor lighting
+  The G and B channels come from connected-component labelling of what you painted, so a "window" is
+  whatever blob you drew - no grid, no spacing, no assumptions.
+
+  Work is autosaved to localStorage on every stroke.
+-->
+<style>
+  :root { --bg:#14161a; --panel:#1c2027; --line:#2e343d; --ink:#d8dee8; --dim:#8b95a5; --accent:#ffd479; }
+  :root[data-theme="light"] { --bg:#eef1f5; --panel:#fff; --line:#ccd3dd; --ink:#1a1e25; --dim:#667; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#eef1f5; --panel:#fff; --line:#ccd3dd; --ink:#1a1e25; --dim:#667; }
+  }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:13px/1.45 ui-monospace,"Cascadia Code",Consolas,monospace; }
+  h1 { font-size:15px; margin:0 0 2px; }
+  h2 { font-size:11px; margin:14px 0 6px; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; }
+  .wrap { display:flex; gap:14px; padding:14px; align-items:flex-start; flex-wrap:wrap; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:12px; }
+  #controls { width:270px; flex:0 0 auto; }
+  #stage { flex:1 1 520px; min-width:0; }
+  .row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+  .row label { flex:0 0 92px; color:var(--dim); }
+  .row input[type=range] { flex:1 1 auto; min-width:50px; }
+  .row output { flex:0 0 34px; text-align:right; }
+  input[type=number] { width:56px; background:var(--bg); color:var(--ink); border:1px solid var(--line);
+                       border-radius:3px; padding:2px 4px; }
+  button { background:var(--line); color:var(--ink); border:0; border-radius:4px; padding:5px 9px;
+           cursor:pointer; font:inherit; }
+  button:hover { background:var(--accent); color:#14161a; }
+  button.on { background:var(--accent); color:#14161a; }
+  button:disabled { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+  #scroller { overflow:auto; max-height:78vh; border:1px solid var(--line); border-radius:4px; background:#000; }
+  canvas { display:block; image-rendering:pixelated; cursor:crosshair; }
+  .note { color:var(--dim); font-size:11px; margin:6px 0 0; }
+  .drop { border:1px dashed var(--line); border-radius:5px; padding:9px; text-align:center; color:var(--dim); }
+  .drop.over { border-color:var(--accent); color:var(--accent); }
+  .stat { display:flex; justify-content:space-between; border-top:1px solid var(--line); padding:3px 0; }
+  textarea { width:100%; height:90px; box-sizing:border-box; background:var(--bg); color:var(--ink);
+             border:1px solid var(--line); border-radius:4px; font:11px/1.4 ui-monospace,monospace; }
+  kbd { background:var(--line); border-radius:3px; padding:0 4px; }
+</style>
+
+<div class="wrap">
+  <div class="panel" id="controls">
+    <h1>Night window painter</h1>
+    <p class="note" id="status">Load a night page to start.</p>
+
+    <h2>Art</h2>
+    <div class="drop" id="drop">
+      Drop <b>sky_night_N.png</b>
+      <input type="file" id="files" accept="image/png">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <!-- A fixed list, not a number box. The export is named after this, the bake looks the file up
+           by ATLAS page, and the composite indices (1,2,3) overlap the atlas pages (2,39,40) enough
+           that a free-typed number is genuinely ambiguous - windows_page_1.png could mean either,
+           and it took correlating the mask against all three night pages to find out which. -->
+      <label>Atlas page</label>
+      <select id="pageId">
+        <option value="2" selected>2 - wall (SKY image 1)</option>
+        <option value="39">39 - wall (SKY image 2)</option>
+        <option value="40">40 - wall (SKY image 3)</option>
+        <option value="20">20 - terrain (SKY image 4)</option>
+        <option value="13">13 - water/terrain (SKY image 5)</option>
+      </select>
+    </div>
+
+    <h2>Brush</h2>
+    <div class="row"><label>Size</label><input type="range" id="brush" min="1" max="16" step="1" value="2"><output id="brushV">2</output></div>
+    <div class="row">
+      <label>Mode</label>
+      <span style="flex:1;display:flex;gap:4px;flex-wrap:wrap">
+        <button id="modePaint" class="on">Paint</button>
+        <button id="modeErase">Erase</button>
+        <button id="modeCopyTile">Copy Tile</button>
+        <button id="modePasteTile" disabled>Paste Tile</button>
+      </span>
+    </div>
+    <div class="row"><label>Zoom</label><input type="range" id="zoom" min="2" max="16" step="1" value="6"><output id="zoomV">6</output></div>
+    <p class="note">
+      <kbd>right-drag</kbd> erases. <kbd>[</kbd> / <kbd>]</kbd> resize brush.
+      <kbd>ctrl+Z</kbd> undo.<br>
+      <kbd>C</kbd> / <kbd>Ctrl+C</kbd> copy tile under mouse. <kbd>V</kbd> / <kbd>Ctrl+V</kbd> paste tile.
+    </p>
+
+    <h2>View</h2>
+    <div class="row">
+      <label>Show</label>
+      <span style="flex:1">
+        <label><input type="checkbox" id="showArt" checked> art</label>
+        <label><input type="checkbox" id="showCells" checked> cells</label>
+      </span>
+    </div>
+    <div class="row"><label>Art dim</label><input type="range" id="dim" min="0" max="100" step="5" value="35"><output id="dimV">35</output></div>
+    <div class="row"><label>Fill opacity</label><input type="range" id="maskAlpha" min="0" max="100" step="5" value="60"><output id="maskAlphaV">60</output></div>
+    <p class="note">Pull the fill down to check your edges against the art underneath. At 0 only the
+      outlines remain, which is the clearest way to spot a texel you missed inside a window.</p>
+
+    <h2>Fill helper</h2>
+    <div class="row"><label>Brightness</label><input type="range" id="thr" min="0" max="1" step="0.01" value="0.55"><output id="thrV">.55</output></div>
+    <div class="row" style="gap:6px">
+      <button id="prefill">Prefill bright</button>
+      <button id="clearAll">Clear</button>
+    </div>
+    <p class="note">Optional one-shot starting point from the art's bright texels, so you are
+      correcting rather than drawing from nothing. Everything after that is by hand.</p>
+
+    <h2>Tile Tools</h2>
+    <div class="stat"><span>Tile Clipboard</span><b id="clipStatus">Empty</b></div>
+    <div class="row" style="gap:6px;margin-top:6px">
+      <button id="copyCell">Copy Cell</button>
+      <button id="pasteCell" disabled>Paste Cell</button>
+      <button id="pasteAll" disabled>Paste All</button>
+    </div>
+    <p class="note">
+      Click a cell in <b>Copy Tile</b> mode (or hover + <kbd>C</kbd>) to copy its 32x32 pixel mask.<br>
+      Click target cell in <b>Paste Tile</b> mode (or hover + <kbd>V</kbd>) to paste.<br>
+      <b>Paste All</b> replicates the copied 32x32 tile mask across all 64 cells.
+    </p>
+
+    <h2>Saved</h2>
+    <div class="stat"><span>Painted texels</span><b id="countV">0</b></div>
+    <div class="stat"><span>Windows found</span><b id="blobV">0</b></div>
+    <div class="row" style="gap:6px;margin-top:8px">
+      <button id="exportPng">Export PNG</button>
+      <button id="save">Copy JSON</button>
+      <button id="load">Load JSON</button>
+    </div>
+    <textarea id="json" spellcheck="false" placeholder="mask JSON in/out"></textarea>
+    <p class="note">Autosaved to this browser on every stroke; reloading the page keeps your work.</p>
+  </div>
+
+  <div class="panel" id="stage">
+    <div id="scroller"><canvas id="cv" width="256" height="256"></canvas></div>
+    <p class="note">Cell ids are <code>col + rowFromBottom*8</code>, counted from the <b>bottom</b>
+      row &mdash; the convention <code>FMaxisTextureReader::ExtractAtlasTile</code> uses, which is
+      easy to get backwards.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const CELL = 32, GRID = 8, STORE = "simcopter.windowmask";
+const $ = id => document.getElementById(id);
+
+const state = {
+  art: null,          // ImageData of the night page
+  size: 256,
+  mask: null,         // Uint8Array, 1 = window
+  zoom: 6,
+  brush: 2,
+  mode: "paint",      // "paint" | "erase" | "copyTile" | "pasteTile"
+  erase: false,
+  undo: [],
+  tileClipboard: null,// { mask: Uint8Array(32*32), sourceCell: number, count: number }
+  hoverCell: -1,
+};
+
+// --- tile helpers ------------------------------------------------------------------------------
+
+function cellFromTexel(x, y) {
+  if (x < 0 || y < 0 || x >= state.size || y >= state.size) return -1;
+  const col = (x / CELL) | 0, rowFromTop = (y / CELL) | 0;
+  const perRow = (state.size / CELL) | 0;
+  const rowFromBottom = perRow - 1 - rowFromTop;
+  return col + rowFromBottom * GRID;
+}
+
+function cellBounds(cellId) {
+  const perRow = (state.size / CELL) | 0;
+  if (cellId < 0 || cellId >= perRow * perRow) return null;
+  const col = cellId % GRID;
+  const rowFromBottom = (cellId / GRID) | 0;
+  const rowFromTop = perRow - 1 - rowFromBottom;
+  return { col, rowFromTop, rowFromBottom, startX: col * CELL, startY: rowFromTop * CELL };
+}
+
+function copyTile(cellId) {
+  const b = cellBounds(cellId);
+  if (!b || !state.mask) return false;
+  const clip = new Uint8Array(CELL * CELL);
+  let count = 0;
+  for (let ty = 0; ty < CELL; ty++) {
+    for (let tx = 0; tx < CELL; tx++) {
+      const v = state.mask[(b.startY + ty) * state.size + (b.startX + tx)];
+      clip[ty * CELL + tx] = v;
+      if (v) count++;
+    }
+  }
+  state.tileClipboard = { mask: clip, sourceCell: cellId, count };
+  updateClipboardUI();
+  return true;
+}
+
+function pasteTile(targetCellId) {
+  if (!state.tileClipboard || !state.mask) return false;
+  const b = cellBounds(targetCellId);
+  if (!b) return false;
+  pushUndo();
+  const clip = state.tileClipboard.mask;
+  for (let ty = 0; ty < CELL; ty++) {
+    for (let tx = 0; tx < CELL; tx++) {
+      state.mask[(b.startY + ty) * state.size + (b.startX + tx)] = clip[ty * CELL + tx];
+    }
+  }
+  changed();
+  return true;
+}
+
+function pasteTileToAll() {
+  if (!state.tileClipboard || !state.mask) return false;
+  pushUndo();
+  const clip = state.tileClipboard.mask;
+  const perRow = (state.size / CELL) | 0;
+  const total = perRow * perRow;
+  for (let c = 0; c < total; c++) {
+    const b = cellBounds(c);
+    if (!b) continue;
+    for (let ty = 0; ty < CELL; ty++) {
+      for (let tx = 0; tx < CELL; tx++) {
+        state.mask[(b.startY + ty) * state.size + (b.startX + tx)] = clip[ty * CELL + tx];
+      }
+    }
+  }
+  changed();
+  return true;
+}
+
+function updateClipboardUI() {
+  const statusEl = $("clipStatus");
+  const pasteBtn = $("pasteCell");
+  const pasteAllBtn = $("pasteAll");
+  const modePasteBtn = $("modePasteTile");
+  if (state.tileClipboard) {
+    if (statusEl) statusEl.textContent = `Cell ${state.tileClipboard.sourceCell} (${state.tileClipboard.count} px)`;
+    if (pasteBtn) pasteBtn.disabled = false;
+    if (pasteAllBtn) pasteAllBtn.disabled = false;
+    if (modePasteBtn) modePasteBtn.disabled = false;
+  } else {
+    if (statusEl) statusEl.textContent = "Empty";
+    if (pasteBtn) pasteBtn.disabled = true;
+    if (pasteAllBtn) pasteAllBtn.disabled = true;
+    if (modePasteBtn) modePasteBtn.disabled = true;
+  }
+}
+
+function setMode(mode) {
+  if (mode === "pasteTile" && !state.tileClipboard) return;
+  state.mode = mode;
+  state.erase = (mode === "erase");
+  $("modePaint").classList.toggle("on", mode === "paint");
+  $("modeErase").classList.toggle("on", mode === "erase");
+  $("modeCopyTile").classList.toggle("on", mode === "copyTile");
+  $("modePasteTile").classList.toggle("on", mode === "pasteTile");
+  draw();
+}
+
+// --- mask --------------------------------------------------------------------------------------
+
+function newMask(size) { state.size = size; state.mask = new Uint8Array(size * size); }
+
+function pushUndo() {
+  if (!state.mask) return;
+  state.undo.push(state.mask.slice());
+  if (state.undo.length > 40) state.undo.shift();
+}
+
+function paintAt(px, py) {
+  if (!state.mask) return;
+  const r = state.brush - 1, v = state.erase ? 0 : 1;
+  for (let y = py - r; y <= py + r; y++) {
+    for (let x = px - r; x <= px + r; x++) {
+      if (x < 0 || y < 0 || x >= state.size || y >= state.size) continue;
+      // Square brush: these are texels on a 32x32 grid, and a round brush just makes it harder to
+      // land a clean window edge.
+      state.mask[y * state.size + x] = v;
+    }
+  }
+}
+
+const srgbToLinear = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+
+function prefill(threshold) {
+  if (!state.art || !state.mask) return;
+  pushUndo();
+  const d = state.art.data;
+  for (let i = 0, n = state.size * state.size; i < n; i++) {
+    const r = srgbToLinear(d[i * 4] / 255), g = srgbToLinear(d[i * 4 + 1] / 255), b = srgbToLinear(d[i * 4 + 2] / 255);
+    // Linear, because that is what the material samples from an sRGB-imported texture.
+    if (0.2126 * r + 0.7152 * g + 0.0722 * b > threshold) state.mask[i] = 1;
+  }
+  changed();
+}
+
+// --- connected components ----------------------------------------------------------------------
+
+// One painted blob is one window. No grid, no spacing: whatever shape was drawn is the unit the
+// lit/unlit roll applies to, which is the entire reason for painting rather than fitting.
+function labelBlobs() {
+  const size = state.size, m = state.mask;
+  const label = new Int32Array(size * size).fill(-1);
+  const blobs = [];
+  const stack = [];
+  for (let start = 0; start < m.length; start++) {
+    if (!m[start] || label[start] >= 0) continue;
+    const id = blobs.length;
+    const blob = { id, count: 0, sumY: 0, cell: -1 };
+    stack.push(start);
+    label[start] = id;
+    while (stack.length) {
+      const p = stack.pop();
+      const x = p % size, y = (p / size) | 0;
+      blob.count++; blob.sumY += y;
+      if (blob.cell < 0) {
+        const col = (x / CELL) | 0, rowFromTop = (y / CELL) | 0;
+        blob.cell = col + ((size / CELL) - 1 - rowFromTop) * GRID;
+      }
+      // 4-connected: diagonals would fuse windows that only touch at a corner.
+      const nbr = [[1,0],[-1,0],[0,1],[0,-1]];
+      for (const [dx, dy] of nbr) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+        const q = ny * size + nx;
+        if (m[q] && label[q] < 0) { label[q] = id; stack.push(q); }
+      }
+    }
+    blob.centreY = blob.sumY / blob.count;
+    blobs.push(blob);
+  }
+  return { label, blobs };
+}
+
+// Deterministic per-blob byte, so exporting twice gives the same texture.
+function hashByte(a, b) {
+  let h = (a * 374761393 + b * 668265263) | 0;
+  h = (h ^ (h >>> 13)) * 1274126177 | 0;
+  return (h ^ (h >>> 16)) & 255;
+}
+
+function buildExport() {
+  const { label, blobs } = labelBlobs();
+  const size = state.size;
+  const out = new Uint8ClampedArray(size * size * 4);
+  for (const b of blobs) {
+    b.randomByte = hashByte(b.id + 1, b.cell + 7);
+    // Rows are per cell, in texels from the cell top, so "a whole floor" means the windows that
+    // share a row WITHIN one atlas cell rather than a band across the whole page.
+    b.rowByte = hashByte(Math.round(b.centreY) % CELL + 1, b.cell + 31);
+  }
+  for (let i = 0; i < size * size; i++) {
+    const id = label[i];
+    if (id < 0) { out[i * 4 + 3] = 255; continue; }
+    out[i * 4] = 255;
+    out[i * 4 + 1] = blobs[id].randomByte;
+    out[i * 4 + 2] = blobs[id].rowByte;
+    out[i * 4 + 3] = 255;
+  }
+  return { pixels: new ImageData(out, size, size), blobs };
+}
+
+// --- drawing -----------------------------------------------------------------------------------
+
+let artCanvas = null;
+
+function changed() { draw(); autosave(); updateStats(); }
+
+function draw() {
+  const cv = $("cv"), ctx = cv.getContext("2d");
+  const z = state.zoom, size = state.size;
+  cv.width = size * z; cv.height = size * z;
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height);
+
+  if (state.art && $("showArt").checked) {
+    ctx.globalAlpha = 1 - parseInt($("dim").value, 10) / 100;
+    ctx.drawImage(artCanvas, 0, 0, cv.width, cv.height);
+    ctx.globalAlpha = 1;
+  }
+
+  if (state.mask) {
+    const alpha = parseInt($("maskAlpha").value, 10) / 100;
+    if (alpha > 0) {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#ffd479";
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (state.mask[y * size + x]) ctx.fillRect(x * z, y * z, z, z);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // The boundary is drawn at full strength whatever the fill is doing, so turning the fill down
+    // to nothing still shows exactly what is painted - that is the view for checking edges against
+    // the art, and for spotting a texel left unpainted in the middle of a window.
+    ctx.strokeStyle = "#ffd479";
+    ctx.lineWidth = Math.max(1, z * 0.12);
+    ctx.beginPath();
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (!state.mask[y * size + x]) continue;
+        const px = x * z, py = y * z;
+        // Only edges where a painted texel meets an unpainted one (or the page edge), so the
+        // interior of a blob stays clear instead of turning into a grid of boxes.
+        if (x === 0 || !state.mask[y * size + x - 1]) { ctx.moveTo(px, py); ctx.lineTo(px, py + z); }
+        if (x === size - 1 || !state.mask[y * size + x + 1]) { ctx.moveTo(px + z, py); ctx.lineTo(px + z, py + z); }
+        if (y === 0 || !state.mask[(y - 1) * size + x]) { ctx.moveTo(px, py); ctx.lineTo(px + z, py); }
+        if (y === size - 1 || !state.mask[(y + 1) * size + x]) { ctx.moveTo(px, py + z); ctx.lineTo(px + z, py + z); }
+      }
+    }
+    ctx.stroke();
+  }
+
+  if (z >= 6) {
+    ctx.strokeStyle = "rgba(255,255,255,.05)";
+    for (let i = 1; i < size; i++) {
+      ctx.beginPath(); ctx.moveTo(i * z, 0); ctx.lineTo(i * z, cv.height); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * z); ctx.lineTo(cv.width, i * z); ctx.stroke();
+    }
+  }
+
+  if ($("showCells").checked) {
+    const perRow = size / CELL;
+    ctx.strokeStyle = "rgba(120,200,255,.55)"; ctx.lineWidth = 1;
+    ctx.font = `${Math.max(9, z * 1.4)}px monospace`; ctx.fillStyle = "rgba(120,200,255,.8)";
+    ctx.textBaseline = "top";
+    for (let r = 0; r < perRow; r++) {
+      for (let c = 0; c < GRID; c++) {
+        ctx.strokeRect(c * CELL * z + .5, r * CELL * z + .5, CELL * z - 1, CELL * z - 1);
+        ctx.fillText(c + (perRow - 1 - r) * GRID, c * CELL * z + 3, r * CELL * z + 2);
+      }
+    }
+  }
+
+  if (state.hoverCell !== undefined && state.hoverCell >= 0) {
+    const b = cellBounds(state.hoverCell);
+    if (b) {
+      if (state.mode === "copyTile") {
+        ctx.strokeStyle = "#00ffff";
+        ctx.lineWidth = Math.max(2, z * 0.15);
+        ctx.strokeRect(b.startX * z + 0.5, b.startY * z + 0.5, CELL * z - 1, CELL * z - 1);
+        ctx.fillStyle = "rgba(0, 255, 255, 0.18)";
+        ctx.fillRect(b.startX * z, b.startY * z, CELL * z, CELL * z);
+      } else if (state.mode === "pasteTile" && state.tileClipboard) {
+        ctx.strokeStyle = "#ffd479";
+        ctx.lineWidth = Math.max(2, z * 0.15);
+        ctx.strokeRect(b.startX * z + 0.5, b.startY * z + 0.5, CELL * z - 1, CELL * z - 1);
+        ctx.fillStyle = "rgba(255, 212, 121, 0.45)";
+        const clip = state.tileClipboard.mask;
+        for (let ty = 0; ty < CELL; ty++) {
+          for (let tx = 0; tx < CELL; tx++) {
+            if (clip[ty * CELL + tx]) {
+              ctx.fillRect((b.startX + tx) * z, (b.startY + ty) * z, z, z);
+            }
+          }
+        }
+      } else if (state.tileClipboard) {
+        ctx.strokeStyle = "rgba(255, 212, 121, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(b.startX * z + 0.5, b.startY * z + 0.5, CELL * z - 1, CELL * z - 1);
+      }
+    }
+  }
+}
+
+function updateStats() {
+  if (!state.mask) return;
+  let n = 0;
+  for (let i = 0; i < state.mask.length; i++) n += state.mask[i];
+  $("countV").textContent = n;
+  $("blobV").textContent = n ? labelBlobs().blobs.length : 0;
+}
+
+// --- input -------------------------------------------------------------------------------------
+
+let drawing = false, forceErase = false, lastPastedCell = -1;
+
+function texelFromEvent(e) {
+  const cv = $("cv"), r = cv.getBoundingClientRect();
+  return {
+    x: Math.floor((e.clientX - r.left) / r.width * state.size),
+    y: Math.floor((e.clientY - r.top) / r.height * state.size),
+  };
+}
+
+$("cv").addEventListener("contextmenu", e => e.preventDefault());
+$("cv").addEventListener("pointerdown", e => {
+  if (!state.mask) return;
+  const p = texelFromEvent(e);
+  const cellId = cellFromTexel(p.x, p.y);
+
+  if (state.mode === "copyTile") {
+    if (cellId >= 0 && copyTile(cellId)) {
+      setMode("pasteTile");
+      $("status").textContent = `Copied Cell ${cellId} mask (${state.tileClipboard.count} px). Mode set to Paste Tile.`;
+    }
+    return;
+  }
+
+  if (state.mode === "pasteTile") {
+    if (cellId >= 0 && state.tileClipboard) {
+      drawing = true;
+      lastPastedCell = cellId;
+      pasteTile(cellId);
+      $("status").textContent = `Pasted tile mask to Cell ${cellId}.`;
+      $("cv").setPointerCapture(e.pointerId);
+    }
+    return;
+  }
+
+  pushUndo();
+  drawing = true; forceErase = e.button === 2;
+  const was = state.erase; if (forceErase) state.erase = true;
+  paintAt(p.x, p.y);
+  state.erase = was;
+  $("cv").setPointerCapture(e.pointerId);
+  draw();
+});
+
+$("cv").addEventListener("pointermove", e => {
+  const p = texelFromEvent(e);
+  state.hoverCell = cellFromTexel(p.x, p.y);
+
+  if (drawing) {
+    if (state.mode === "pasteTile") {
+      if (state.hoverCell >= 0 && state.hoverCell !== lastPastedCell && state.tileClipboard) {
+        lastPastedCell = state.hoverCell;
+        pasteTile(state.hoverCell);
+        $("status").textContent = `Pasted tile mask to Cell ${state.hoverCell}.`;
+      }
+    } else {
+      const was = state.erase; if (forceErase) state.erase = true;
+      paintAt(p.x, p.y);
+      state.erase = was;
+    }
+  }
+  draw();
+});
+
+$("cv").addEventListener("pointerup", () => {
+  if (drawing) {
+    drawing = false;
+    lastPastedCell = -1;
+    changed();
+  }
+});
+$("cv").addEventListener("pointerleave", () => {
+  state.hoverCell = -1;
+  draw();
+});
+
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+  if (e.key === "[") { state.brush = Math.max(1, state.brush - 1); $("brush").value = state.brush; $("brushV").value = state.brush; }
+  if (e.key === "]") { state.brush = Math.min(16, state.brush + 1); $("brush").value = state.brush; $("brushV").value = state.brush; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && state.undo.length) {
+    state.mask = state.undo.pop(); changed(); e.preventDefault();
+  }
+  const key = e.key.toLowerCase();
+  if (key === "c" && state.hoverCell >= 0) {
+    if (copyTile(state.hoverCell)) {
+      $("status").textContent = `Copied Cell ${state.hoverCell} mask (${state.tileClipboard.count} px).`;
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    }
+  }
+  if (key === "v" && state.hoverCell >= 0 && state.tileClipboard) {
+    if (pasteTile(state.hoverCell)) {
+      $("status").textContent = `Pasted tile mask to Cell ${state.hoverCell}.`;
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    }
+  }
+});
+
+$("brush").addEventListener("input", () => { state.brush = +$("brush").value; $("brushV").value = state.brush; });
+$("zoom").addEventListener("input", () => { state.zoom = +$("zoom").value; $("zoomV").value = state.zoom; draw(); });
+$("dim").addEventListener("input", () => { $("dimV").value = $("dim").value; draw(); });
+$("maskAlpha").addEventListener("input", () => { $("maskAlphaV").value = $("maskAlpha").value; draw(); });
+$("thr").addEventListener("input", () => { $("thrV").value = (+$("thr").value).toFixed(2).slice(1); });
+$("showArt").addEventListener("change", draw);
+$("showCells").addEventListener("change", draw);
+$("modePaint").addEventListener("click", () => setMode("paint"));
+$("modeErase").addEventListener("click", () => setMode("erase"));
+$("modeCopyTile").addEventListener("click", () => setMode("copyTile"));
+$("modePasteTile").addEventListener("click", () => setMode("pasteTile"));
+$("copyCell").addEventListener("click", () => {
+  if (state.hoverCell >= 0) {
+    if (copyTile(state.hoverCell)) {
+      setMode("pasteTile");
+      $("status").textContent = `Copied Cell ${state.hoverCell} mask (${state.tileClipboard.count} px). Mode set to Paste Tile.`;
+    }
+  } else {
+    setMode("copyTile");
+    $("status").textContent = "Click a cell on the canvas to copy its mask.";
+  }
+});
+$("pasteCell").addEventListener("click", () => {
+  if (!state.tileClipboard) return;
+  if (state.hoverCell >= 0) {
+    pasteTile(state.hoverCell);
+    $("status").textContent = `Pasted tile mask to Cell ${state.hoverCell}.`;
+  } else {
+    setMode("pasteTile");
+    $("status").textContent = "Click a target cell on the canvas to paste mask.";
+  }
+});
+$("pasteAll").addEventListener("click", () => {
+  if (!state.tileClipboard) return;
+  if (confirm(`Paste 32x32 mask from Cell ${state.tileClipboard.sourceCell} to ALL 64 cells?`)) {
+    pasteTileToAll();
+    $("status").textContent = `Pasted tile mask to ALL 64 cells.`;
+  }
+});
+$("prefill").addEventListener("click", () => prefill(+$("thr").value));
+$("clearAll").addEventListener("click", () => { if (!state.mask) return; pushUndo(); state.mask.fill(0); changed(); });
+
+// --- save / load -------------------------------------------------------------------------------
+
+function maskToBase64() {
+  // Bit-packed: 256x256 is 8 KB packed instead of 64 KB, which keeps it pasteable.
+  const bytes = new Uint8Array(Math.ceil(state.mask.length / 8));
+  for (let i = 0; i < state.mask.length; i++) if (state.mask[i]) bytes[i >> 3] |= 1 << (i & 7);
+  let s = ""; for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+function maskFromBase64(b64, size) {
+  const s = atob(b64), mask = new Uint8Array(size * size);
+  for (let i = 0; i < mask.length; i++) mask[i] = (s.charCodeAt(i >> 3) >> (i & 7)) & 1;
+  return mask;
+}
+
+function snapshot() {
+  return { page: parseInt($("pageId").value, 10), size: state.size, mask: maskToBase64() };
+}
+function autosave() {
+  if (!state.mask) return;
+  try { localStorage.setItem(STORE + "." + $("pageId").value, JSON.stringify(snapshot())); } catch (e) {}
+}
+function restore(pageId) {
+  try {
+    const raw = localStorage.getItem(STORE + "." + pageId);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.size = data.size; state.mask = maskFromBase64(data.mask, data.size);
+    return true;
+  } catch (e) { return false; }
+}
+
+$("save").addEventListener("click", () => {
+  $("json").value = JSON.stringify(snapshot());
+  $("json").select();
+  try { document.execCommand("copy"); } catch (e) {}
+  $("status").textContent = "JSON copied to the box below.";
+});
+$("load").addEventListener("click", () => {
+  try {
+    const data = JSON.parse($("json").value);
+    state.size = data.size; state.mask = maskFromBase64(data.mask, data.size);
+    if (data.page !== undefined) $("pageId").value = data.page;
+    changed();
+    $("status").textContent = "Loaded.";
+  } catch (err) { alert("Could not parse that JSON: " + err.message); }
+});
+
+$("exportPng").addEventListener("click", () => {
+  if (!state.mask) return;
+  const { pixels, blobs } = buildExport();
+  const cv = document.createElement("canvas");
+  cv.width = state.size; cv.height = state.size;
+  cv.getContext("2d").putImageData(pixels, 0, 0);
+  cv.toBlob(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `windows_page_${$("pageId").value}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  });
+  $("status").textContent = `Exported ${blobs.length} windows.`;
+});
+
+// --- image loading -----------------------------------------------------------------------------
+
+function takeFile(file) {
+  const reader = new FileReader();
+  // Data URL, not an object URL: an object URL taints the canvas under file:// and getImageData
+  // then throws, which is the one thing this tool cannot do without.
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      state.art = ctx.getImageData(0, 0, img.width, img.height);
+      artCanvas = c;
+
+      const m = file.name.toLowerCase().match(/_(\d+)\.png$/);
+      const toPage = { 1: 2, 2: 39, 3: 40, 4: 20, 5: 13 };
+      if (m && toPage[m[1]] !== undefined) $("pageId").value = toPage[m[1]];
+
+      if (!state.mask || state.size !== img.width) {
+        if (!restore($("pageId").value)) newMask(img.width);
+      }
+      $("status").textContent = `${file.name} - page ${$("pageId").value}`;
+      changed();
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+$("files").addEventListener("change", e => { if (e.target.files[0]) takeFile(e.target.files[0]); });
+const drop = $("drop");
+["dragenter", "dragover"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files[0]) takeFile(e.dataTransfer.files[0]); });
+$("pageId").addEventListener("change", () => { if (restore($("pageId").value)) changed(); });
+
+newMask(256);
+draw();
+</script>

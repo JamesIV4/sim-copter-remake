@@ -23,6 +23,14 @@ bool FSimCopterCriminalCarTargetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("A stopped non-fleeing target still deploys the plain officer"),
 		GetOfficerPersonState(true, false), 8);
 	TestEqual(TEXT("A fleeing target deploys the 0xe officer"), GetOfficerPersonState(true, true), 0xe);
+	TestEqual(TEXT("Every deployed officer uses retail behavior class 0xe"), OfficerBehaviorClass, 0xe);
+
+	// FUN_004a6e60 / FUN_0049be50: the ambient Speeder is maintained independently of the
+	// burglar mission and uses fixed frame/reward cadences.
+	TestEqual(TEXT("The ambient Speeder pool is rechecked every 64 ticks"),
+		SpeederDesignationFrameMask + 1u, 64u);
+	TestEqual(TEXT("Waiting For Cops repeats every ten seconds"),
+		SpeederWaitingRewardSeconds, 10.0f);
 
 	// FUN_0049b000: octile - the larger axis plus half the smaller.
 	TestEqual(TEXT("Same tile"), GetTileStepDistance(FIntPoint(10, 10), FIntPoint(10, 10)), 0);
@@ -87,8 +95,8 @@ bool FSimCopterCriminalCarSpeedTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("...even one that has somehow been marked"),
 		GetFleeingSpeedMultiplier(false, SpotlightMarkMax, 0), 1.0f, Tolerance);
 
-	// An unmarked speeder runs flat out.
-	TestEqual(TEXT("An unmarked speeder runs at 1.75x"), GetFleeingSpeedMultiplier(true, 0, 1), 1.75f, Tolerance);
+	// An unmarked getaway car runs flat out.
+	TestEqual(TEXT("An unmarked getaway car runs at 1.75x"), GetFleeingSpeedMultiplier(true, 0, 1), 1.75f, Tolerance);
 
 	// Marked, the beam drags it down - and the tighter the band the more it drags.
 	const float Band0 = GetFleeingSpeedMultiplier(true, 2, 0);
@@ -144,15 +152,15 @@ bool FSimCopterCriminalCarStopOrderTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("A marked car pulls over even while already decelerating"),
 		AcceptsStopOrder(EState::Cruising, SpotlightMarkMax, PoliceCarMessageId, true));
 
-	// Two states refuse outright, marked or not: it has already been taken, or it is leaving.
-	TestFalse(TEXT("An arrested car ignores the order"),
-		AcceptsStopOrder(EState::Arrested, SpotlightMarkMax, PoliceCarMessageId, false));
+	// Two states refuse outright, marked or not: the burglar is outside, or the car is leaving.
+	TestFalse(TEXT("A car waiting for its burglar ignores the order"),
+		AcceptsStopOrder(EState::BurglarOutside, SpotlightMarkMax, PoliceCarMessageId, false));
 	TestFalse(TEXT("A leaving car ignores the order"),
 		AcceptsStopOrder(EState::Leaving, SpotlightMarkMax, PoliceCarMessageId, false));
 
 	// A non-police caller falls through to the plain state test, which only two states pass.
-	TestTrue(TEXT("An idling car stops for anyone"),
-		AcceptsStopOrder(EState::Idling, 0, 0, false));
+	TestTrue(TEXT("A car seeking its burglary stop stops for anyone"),
+		AcceptsStopOrder(EState::SeekingBurglaryStop, 0, 0, false));
 	TestTrue(TEXT("A car already pulling over accepts a repeat"),
 		AcceptsStopOrder(EState::Stopping, 0, 0, false));
 	TestFalse(TEXT("A cruising car does not stop for a non-police caller"),
@@ -160,7 +168,7 @@ bool FSimCopterCriminalCarStopOrderTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A fleeing car does not stop for a non-police caller"),
 		AcceptsStopOrder(EState::Fleeing, 0, 0, false));
 	TestFalse(TEXT("...and a car already stopping is not re-ordered"),
-		AcceptsStopOrder(EState::Idling, 0, 0, true));
+		AcceptsStopOrder(EState::SeekingBurglaryStop, 0, 0, true));
 
 	// An unmarked fleeing car is exactly the case the player has to solve with the searchlight:
 	// the police can reach it and still not be able to stop it.

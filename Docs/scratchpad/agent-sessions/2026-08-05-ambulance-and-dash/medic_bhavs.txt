@@ -1,0 +1,185 @@
+﻿=== BHAV 801 'Medevac paramedic new initbhav' (12 records) ===
+  [ 0] bind-anim 'NoMo'                                             T->5 F->-3
+  [ 1] op25 XBLD at my tile == a0  args=209,0,0,0                   T->3 F->9
+  [ 2] expr attr14 := 0                                             T->4 F->-3
+  [ 3] op56 is my tile serviceable  args=-1,-1,-1,-1                T->8 F->9
+  [ 4] expr autoturn := 0                                           T->6 F->-3
+  [ 5] expr attr32 := 916                                           T->2 F->-3
+  [ 6] CALL 1015 'Walk-10'                                          T->7 F->7
+  [ 7] CALL 1101 'Idle-10'                                          T->11 F->-3
+  [ 8] CALL 263 'Pull all med victims off heli'                     T->11 F->-3
+  [ 9] CALL 262 'Put all nearby medevac victims on emerg vehs'      T->11 F->-3
+  [10] CALL 272 'nearest emerg veh on stack'                        T->1 F->-3
+  [11] CALL 261 'idle a bit'                                        T->10 F->-3
+
+=== BHAV 262 'Put all nearby medevac victims on emerg vehs' (56 records) ===
+  [ 0] expr attr43 := 0                                             T->54 F->-3
+  [ 1] op15 select nearest obj class a0 within a1 -> local[a3]  args=5,8,7,0 T->2 F->42
+  [ 2] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->22 F->33
+  [ 3] bind-anim 'Tote'                                             T->6 F->-3
+  [ 4] expr l0 := 40                                                T->8 F->-3
+  [ 5] op38 walk to selection local[a0]--  args=0,0,0,0             T->21 F->55
+  [ 6] expr attr17 := 0                                             T->17 F->-3
+  [ 7] expr attr17 := 1                                             T->43 F->-3
+  [ 8] expr movespeed := 18                                         T->14 F->-3
+  [ 9] CALL 272 'nearest emerg veh on stack'                        T->12 F->-3
+  [10] expr attr43 := 1                                             T->7 F->-3
+  [11] CALL 275 'Put toted med vic on stack object'                 T->10 F->15
+  [12] op71 am I carrying anyone  args=-1,-1,-1,-1                  T->3 F->13
+  [13] expr attr17 := 1                                             T->39 F->-3
+  [14] CALL 261 'idle a bit'                                        T->5 F->-3
+  [15] CALL 279 'Drop toted, let fall'                              T->7 F->-3
+  [16] op57 sound a0  args=21,1,1,1                                 T->19 F->19
+  [17] expr l1 == 0                                                 T->18 F->4
+  [18] expr l1 := 1                                                 T->47 F->-3
+  [19] CALL 261 'idle a bit'                                        T->20 F->-3
+  [20] CALL 261 'idle a bit'                                        T->4 F->-3
+  [21] expr thruwalls := 0                                          T->11 F->-3
+  [22] op17 alight here (test + do)  args=-1,-1,-1,-1               T->33 F->42
+  [23] expr l0 := 80                                                T->27 F->-3
+  [24] op38 walk to selection local[a0]--  args=0,1,0,0             T->37 F->36
+  [25] op39 push BHAV a0 onto selection  args=802,0,0,0             T->49 F->-3
+  [26] op44 put selected person on me  args=-1,-1,-1,-1             T->25 F->-3
+  [27] expr movespeed := 28                                         T->29 F->-3
+  [28] expr autoturn := 1                                           T->23 F->-3
+  [29] CALL 261 'idle a bit'                                        T->24 F->-3
+  [30] op57 sound a0  args=20,1,1,1                                 T->31 F->31
+  [31] CALL 261 'idle a bit'                                        T->32 F->-3
+  [32] CALL 261 'idle a bit'                                        T->28 F->-3
+  [33] expr l2 == 0                                                 T->34 F->28
+  [34] expr l2 := 1                                                 T->46 F->-3
+  [35] expr l1 := 0                                                 T->26 F->-3
+  [36] expr thruwalls := 1                                          T->1 F->-3
+  [37] expr thruwalls := 0                                          T->35 F->-3
+  [38] expr l3 == 0                                                 T->-3 F->-3
+  [39] expr l2 := 0                                                 T->1 F->-3
+  [40] CALL 269 'medic get on starting object'                      T->retT F->-3
+  [41] op57 sound a0  args=19,1,1,1                                 T->45 F->45
+  [42] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->40 F->41
+  [43] CALL 261 'idle a bit'                                        T->44 F->-3
+  [44] CALL 261 'idle a bit'                                        T->39 F->-3
+  [45] CALL 1101 'Idle-10'                                          T->40 F->-3
+  [46] expr attr24 == 65535                                         T->30 F->30
+  [47] expr attr24 == 65535                                         T->16 F->16
+  [48] CALL 1101 'Idle-10'                                          T->50 F->-3
+  [49] op57 sound a0  args=8,0,0,0                                  T->48 F->48
+  [50] expr failcount := 0                                          T->9 F->-3
+  [51] CALL 307 'Inc fail and move through walls if > 4'            T->9 F->-3
+  [52] expr l0 := 0                                                 T->-3 F->-3
+  [53] expr l0 := 1                                                 T->-3 F->-3
+  [54] expr attr14 += 1                                             T->39 F->39
+  [55] op15 select nearest obj class a0 within a1 -> local[a3]  args=10,1,7,3 T->21 F->51
+
+=== BHAV 272 'nearest emerg veh on stack' (12 records) ===
+  [ 0] CALL 261 'idle a bit'                                        T->1 F->-3
+  [ 1] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,10,7,0 T->8 F->9
+  [ 2] op15 select nearest obj class a0 within a1 -> local[a3]  args=10,10,7,1 T->3 F->4
+  [ 3] expr l0 < l1                                                 T->4 F->7
+  [ 4] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,10,7,0 T->7 F->10
+  [ 5] op50 local[a0] := id of selection  args=3,0,0,0              T->6 F->-3
+  [ 6] expr l3 > 0                                                  T->2 F->9
+  [ 7] op67 copy my selection to caller  args=-1,-1,-1,-1           T->11 F->-3
+  [ 8] op14 proximity test case a0  args=0,0,0,0                    T->5 F->9
+  [ 9] expr l0 := 5000                                              T->2 F->-3
+  [10] CALL 265 'Medevac disappear'                                 T->-3 F->-3
+  [11] CALL 261 'idle a bit'                                        T->retT F->-3
+
+=== BHAV 275 'Put toted med vic on stack object' (11 records) ===
+  [ 0] op68 copy caller selection to me  args=-1,-1,-1,-1           T->1 F->-3
+  [ 1] op69 is selection the player heli  args=-1,-1,-1,-1          T->2 F->3
+  [ 2] op46 select the person I carry  args=-1,-1,-1,-1             T->4 F->8
+  [ 3] op51 set down + select whom I carry  args=-1,-1,-1,-1        T->6 F->7
+  [ 4] op67 copy my selection to caller  args=-1,-1,-1,-1           T->retT F->-3
+  [ 5] op67 copy my selection to caller  args=-1,-1,-1,-1           T->retF F->-3
+  [ 6] op39 push BHAV a0 onto selection  args=285,0,0,0             T->7 F->-3
+  [ 7] CALL 1102 'Idle-20'                                          T->retT F->-3
+  [ 8] CALL 279 'Drop toted, let fall'                              T->9 F->-3
+  [ 9] CALL 261 'idle a bit'                                        T->10 F->-3
+  [10] CALL 1104 'Idle-80'                                          T->5 F->-3
+
+=== BHAV 269 'medic get on starting object' (24 records) ===
+  [ 0] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->retT F->1
+  [ 1] op62 select my vehicle else player heli  args=-1,-1,-1,-1    T->8 F->9
+  [ 2] op67 copy my selection to caller  args=-1,-1,-1,-1           T->3 F->-3
+  [ 3] expr l0 := 80                                                T->5 F->-3
+  [ 4] expr movespeed := 18                                         T->6 F->-3
+  [ 5] CALL 261 'idle a bit'                                        T->4 F->-3
+  [ 6] op12 walk to selection AND board it  args=0,1,0,0            T->20 F->21
+  [ 7] CALL 258 'Run laterally just a bit'                          T->1 F->1
+  [ 8] op15 select nearest obj class a0 within a1 -> local[a3]  args=1,10,7,0 T->2 F->19
+  [ 9] op40 tear down (despawn)  args=-1,-1,-1,-1                   T->-3 F->-3
+  [10] expr thruwalls := 1                                          T->7 F->-3
+  [11] expr thruwalls := 0                                          T->13 F->-3
+  [12] expr attr24 == 65535                                         T->11 F->16
+  [13] op57 sound a0  args=22,1,1,1                                 T->retT F->retT
+  [14] CALL 1102 'Idle-20'                                          T->1 F->-3
+  [15] op61 message owning vehicle a0  args=0,0,0,0                 T->9 F->-3
+  [16] expr attr43 == 0                                             T->15 F->18
+  [17] op61 message owning vehicle a0  args=1,0,0,0                 T->9 F->-3
+  [18] expr attr43 == 1                                             T->17 F->17
+  [19] op61 message owning vehicle a0  args=1,0,0,0                 T->9 F->-3
+  [20] CALL 1101 'Idle-10'                                          T->12 F->-3
+  [21] op82 is selection within 25u  args=-1,-1,-1,-1               T->22 F->10
+  [22] op48 board selection (no walk)  args=-1,-1,-1,-1             T->20 F->23
+  [23] CALL 267 'random motion'                                     T->7 F->-3
+
+=== BHAV 285 'update picked up, outta here; disappear' (3 records) ===
+  [ 0] op13 post mission outcome a0  args=0,0,0,0                   T->1 F->-3
+  [ 1] op13 post mission outcome a0  args=1,0,0,0                   T->2 F->-3
+  [ 2] op40 tear down (despawn)  args=-1,-1,-1,-1                   T->-3 F->-3
+
+=== BHAV 263 'Pull all med victims off heli' (33 records) ===
+  [ 0] op84 select medevac victim aboard player  args=-1,-1,-1,-1   T->1 F->19
+  [ 1] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->29 F->2
+  [ 2] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,10,7,0 T->17 F->retT
+  [ 3] op47 drop selected person  args=-1,-1,-1,-1                  T->10 F->-3
+  [ 4] CALL 258 'Run laterally just a bit'                          T->14 F->14
+  [ 5] op38 walk to selection local[a0]--  args=0,1,0,0             T->31 F->32
+  [ 6] CALL 258 'Run laterally just a bit'                          T->2 F->2
+  [ 7] expr l0 := 50                                                T->5 F->-3
+  [ 8] op15 select nearest obj class a0 within a1 -> local[a3]  args=2,1,7,0 T->27 F->23
+  [ 9] bind-anim 'Tote'                                             T->16 F->-3
+  [10] op44 put selected person on me  args=-1,-1,-1,-1             T->24 F->-3
+  [11] expr l0 == 0                                                 T->12 F->4
+  [12] CALL 259 'Scatter direction'                                 T->14 F->-3
+  [13] op4 timed-move local[a0]-- @movespeed  args=0,0,0,512        T->8 F->8
+  [14] expr l0 := 10                                                T->18 F->-3
+  [15] op7 local[a0] := rand(a1)  args=0,2,7,0                      T->11 F->-3
+  [16] expr attr17 := 0                                             T->26 F->-3
+  [17] expr movespeed := 20                                         T->7 F->-3
+  [18] expr movespeed := 18                                         T->13 F->-3
+  [19] CALL 269 'medic get on starting object'                      T->retT F->-3
+  [20] op71 am I carrying anyone  args=-1,-1,-1,-1                  T->15 F->21
+  [21] expr attr17 := 1                                             T->30 F->-3
+  [22] op72 clear selection  args=-1,-1,-1,-1                       T->9 F->-3
+  [23] CALL 279 'Drop toted, let fall'                              T->30 F->-3
+  [24] op39 push BHAV a0 onto selection  args=802,0,0,0             T->25 F->-3
+  [25] CALL 261 'idle a bit'                                        T->22 F->-3
+  [26] expr l3 := 0                                                 T->14 F->-3
+  [27] expr l3 += 1                                                 T->28 F->-3
+  [28] expr l3 > 3                                                  T->23 F->20
+  [29] op17 alight here (test + do)  args=-1,-1,-1,-1               T->31 F->retT
+  [30] CALL 1101 'Idle-10'                                          T->0 F->-3
+  [31] op84 select medevac victim aboard player  args=-1,-1,-1,-1   T->3 F->19
+  [32] op82 is selection within 25u  args=-1,-1,-1,-1               T->31 F->6
+
+=== BHAV 282 'Medevac test for finished' (18 records) ===
+  [ 0] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->retT F->2
+  [ 1] op13 post mission outcome a0  args=1,0,0,0                   T->6 F->-3
+  [ 2] op25 XBLD at my tile == a0  args=209,0,0,0                   T->3 F->retT
+  [ 3] op56 is my tile serviceable  args=-1,-1,-1,-1                T->1 F->retT
+  [ 4] op37 leave the map  args=-1,-1,-1,-1                         T->-3 F->-3
+  [ 5] op70 snap Z to surface/carrier  args=-1,-1,-1,-1             T->4 F->-3
+  [ 6] op63 am I riding something  args=-1,-1,-1,-1                 T->7 F->17
+  [ 7] CALL 1102 'Idle-20'                                          T->6 F->-3
+  [ 8] bind-anim 'Whoa'                                             T->11 F->-3
+  [ 9] CALL 1102 'Idle-20'                                          T->4 F->-3
+  [10] op57 sound a0  args=59,1,0,1                                 T->15 F->15
+  [11] op57 sound a0  args=6,1,0,1                                  T->9 F->9
+  [12] CALL 296 'rand 1 in 6?'                                      T->13 F->8
+  [13] CALL 296 'rand 1 in 6?'                                      T->14 F->8
+  [14] bind-anim 'Whoa'                                             T->10 F->-3
+  [15] CALL 1102 'Idle-20'                                          T->16 F->-3
+  [16] op40 tear down (despawn)  args=-1,-1,-1,-1                   T->-3 F->-3
+  [17] CALL 298 'rand 1 in 2?'                                      T->12 F->8
+

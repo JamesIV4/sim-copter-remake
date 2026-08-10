@@ -8,15 +8,16 @@
 
 class ASimCopterHelicopterPawn;
 
-// Non-shipping developer panel for cycling helicopter models and tools during play.
-//
-// It is owned by the pawn, works in a free-flight map with no ASimCopterMissionSystemActor,
-// and only calls the pawn's public API - never mission internals. Every action it exposes is
-// session state: debug grants and refills never touch career ownership, money, ammunition, or
-// the saved active helicopter (plan section 6).
+// Non-shipping developer panel for cycling helicopter models, tools, and calibrating element layout during play.
 class SSimCopterHelicopterDebugPanel : public SCompoundWidget
 {
 public:
+	enum class ETab : uint8
+	{
+		General,
+		Calibration
+	};
+
 	SLATE_BEGIN_ARGS(SSimCopterHelicopterDebugPanel) {}
 		SLATE_ARGUMENT(TWeakObjectPtr<ASimCopterHelicopterPawn>, Pawn)
 	SLATE_END_ARGS()
@@ -26,10 +27,18 @@ public:
 	// Rebinds when possession changes so the panel follows the controlled helicopter.
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
 
+	void SelectTab(ETab Tab);
+	ETab GetActiveTab() const { return ActiveTab; }
+
 private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
+	ETab ActiveTab = ETab::General;
 
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
+
+	TSharedRef<SWidget> BuildTabHeader();
+	TSharedRef<SWidget> BuildGeneralTabContent();
+	TSharedRef<SWidget> BuildCalibrationTabContent();
 
 	FText GetModelLineText() const;
 	FText GetModelDetailText() const;
@@ -70,6 +79,7 @@ private:
 	FReply HandleDispatchClear();
 	// One per entry in the shared mission catalog.
 	FReply HandleStartMission(int32 TypeMask);
+	FReply HandleStartSpeeder();
 
 	EVisibility GetMegaphoneRowVisibility() const;
 	EVisibility GetTearGasRowVisibility() const;

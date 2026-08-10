@@ -47,7 +47,12 @@ Headless parser test command:
 & "C:\GameDev\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" "S:\Repos\sim-copter-remake\SimCopterRemake\SimCopterRemake.uproject" -unattended -nop4 -nosplash -NullRHI -stdout -FullStdOutLogOutput -ExecCmds="Automation RunTests SimCopter.Formats.SimCity2000; Quit"
 ```
 
-The original game files live under `Reference/SimCopterOriginalGame` on this machine. That folder is ignored by git and should remain user-provided.
+The original game files live under `Reference/SimCopterOriginalGame` on this machine. That source
+folder is ignored by git and remains user-provided. Game-target builds automatically copy the six
+runtime data trees (`bmp`, `cities`, `geo`, `sound`, `tweak/*.twk`, and `x`) into the loose
+`<package root>/SimCopter` folder; do not manually post-copy them or include the original
+executables. See `Docs/memory/simcopter-packaged-build.md` for the Build.cs runtime-dependency and
+staging-remap contract.
 
 ### Running the game: the front end and the city level
 

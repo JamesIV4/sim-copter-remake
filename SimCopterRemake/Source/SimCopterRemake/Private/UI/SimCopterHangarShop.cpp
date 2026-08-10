@@ -110,7 +110,7 @@ struct FMissionTypeName
 
 const FMissionTypeName MissionTypeNames[] = {
 	{ TYPE_Riot,          TEXT("Riot") },            // 571
-	{ TYPE_FireRescue,    TEXT("Rooftop Rescue") },  // 572
+	{ TYPE_RooftopRescue, TEXT("Rooftop Rescue") },  // 572
 	{ TYPE_BoatRescue,    TEXT("Boat Rescue") },     // 573
 	{ TYPE_TrainRescue,   TEXT("Train Rescue") },    // 574
 	{ TYPE_Medevac,       TEXT("Medevac") },         // 575
@@ -118,10 +118,10 @@ const FMissionTypeName MissionTypeNames[] = {
 	{ TYPE_BuildingFire,  TEXT("Fire") },            // 577
 	{ TYPE_PlaneCrash,    TEXT("Plane Crash") },     // 578
 	{ TYPE_TrainCrash,    TEXT("Train Crash") },     // 579
-	{ TYPE_CriminalA,     TEXT("Burglar") },         // 580
-	{ TYPE_CriminalC,     TEXT("Arsonist") },        // 581
-	{ TYPE_SpeederEvent,  TEXT("Mugger") },          // 582
-	{ TYPE_CriminalCar,   TEXT("Robber") },          // 583
+	{ TYPE_Burglar,       TEXT("Burglar") },         // 580
+	{ TYPE_Arsonist,      TEXT("Arsonist") },        // 581
+	{ TYPE_Mugger,        TEXT("Mugger") },          // 582
+	{ TYPE_Robber,        TEXT("Robber") },          // 583
 	{ TYPE_CarFire,       TEXT("Burning Car") },     // 584
 	{ TYPE_TrafficJam,    TEXT("Traffic Jam") },     // 585
 	{ TYPE_Ufo,           TEXT("Non-Mission Event") }, // 587

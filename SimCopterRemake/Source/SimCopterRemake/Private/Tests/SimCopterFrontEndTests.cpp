@@ -6,10 +6,39 @@
 #include "Misc/AutomationTest.h"
 #include "UI/SSimCopterCareerSelect.h"
 #include "UI/SSimCopterMainMenu.h"
+#include "UI/SSimCopterUserCityPicker.h"
 
 // The front end's pure logic: the two decoded selection wheels and the career graph. The pages
 // themselves need artwork and a viewport, so they are left to whoever is at the keyboard; these
 // cover the parts that can be wrong silently. Ground truth: Docs/scratchpad/mainmenu-DECODED.md.
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterUserCityDisplayNameTest,
+	"SimCopter.FrontEnd.UserCityDisplayNames",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterUserCityDisplayNameTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("Extension and other punctuation are removed while apostrophes remain"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/KATHY'S_RETREAT!!.SC2")),
+		FString(TEXT("Kathy's Retreat")));
+	TestEqual(TEXT("Dashes survive and start a title-case word"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/LA-ISLA.sc2")),
+		FString(TEXT("La-Isla")));
+	TestEqual(TEXT("Repeated SC2 extensions are discarded"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/TOKYO.SC2.SC2")),
+		FString(TEXT("Tokyo")));
+	TestEqual(TEXT("Embedded CNAM wins over the filename"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/capewe~1.sc2"), TEXT("CAPE WELLS")),
+		FString(TEXT("Cape Wells")));
+	TestEqual(TEXT("An SC2 suffix in CNAM is hidden"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/tokyo.sc2"), TEXT("TOKYO.SC2")),
+		FString(TEXT("Tokyo")));
+	TestEqual(TEXT("An unusable embedded name falls back to the filename"),
+		SSimCopterUserCityPicker::FormatDisplayName(TEXT("C:/cities/GOOD-CITY.sc2"), TEXT("!!!")),
+		FString(TEXT("Good-City")));
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterMainMenuNavigationTest,
@@ -113,6 +142,21 @@ bool FSimCopterMainMenuUpscaledArtTest::RunTest(const FString& Parameters)
 	const FString HoseCornerFile = FPaths::Combine(SlateDir, TEXT("MAIN3-upscaled.png"));
 	TestTrue(TEXT("MAIN3-upscaled.png exists in Content/Slate"), FPaths::FileExists(HoseCornerFile));
 
+	const TCHAR* const NewUpscaledAssets[] = {
+		TEXT("MENU4-upscaled.png"),
+		TEXT("MSSN_BTN-upscaled.png"),
+		TEXT("MAIN1-upscaled.png"),
+		TEXT("RENDER-upscaled.png"),
+		TEXT("CARSEL-upscaled.png"),
+		TEXT("CAREER-upscaled.png"),
+	};
+
+	for (const TCHAR* AssetName : NewUpscaledAssets)
+	{
+		const FString AssetFile = FPaths::Combine(SlateDir, AssetName);
+		TestTrue(FString::Printf(TEXT("%s exists in Content/Slate"), AssetName), FPaths::FileExists(AssetFile));
+	}
+
 	return true;
 }
 
@@ -193,7 +237,8 @@ bool FSimCopterCareerSelectLayoutTest::RunTest(const FString& Parameters)
 {
 	using namespace SimCopterCareerSelectLayout;
 
-	// FUN_00457c90's three panels are the same size; two across the top, one below.
+	// FUN_00457c90's three panels exactly match the 200x108 CITY<N>_S.SMK movies; two are across
+	// the top and one is below.
 	for (int32 Panel = 0; Panel < PanelCount; ++Panel)
 	{
 		TestEqual(FString::Printf(TEXT("Panel %d width"), Panel), PanelRect[Panel].Width(), 200.0f);
@@ -202,32 +247,29 @@ bool FSimCopterCareerSelectLayoutTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Panels 0 and 1 share a row"), PanelRect[0].Top, PanelRect[1].Top);
 	TestEqual(TEXT("Panel 2 is under panel 0"), PanelRect[2].Left, PanelRect[0].Left);
 
-	// Each panel's four strips must enclose it, or the glow would cut through the picture.
+	// Each panel's highlight rect must enclose its panel rect.
 	for (int32 Panel = 0; Panel < PanelCount; ++Panel)
 	{
-		float Left = HighlightStrip[Panel][0].Left;
-		float Top = HighlightStrip[Panel][0].Top;
-		float Right = HighlightStrip[Panel][0].Right;
-		float Bottom = HighlightStrip[Panel][0].Bottom;
-		for (int32 Strip = 1; Strip < HighlightStripCount; ++Strip)
-		{
-			Left = FMath::Min(Left, HighlightStrip[Panel][Strip].Left);
-			Top = FMath::Min(Top, HighlightStrip[Panel][Strip].Top);
-			Right = FMath::Max(Right, HighlightStrip[Panel][Strip].Right);
-			Bottom = FMath::Max(Bottom, HighlightStrip[Panel][Strip].Bottom);
-		}
-
+		const FRect& HRect = HighlightPanelRect[Panel];
 		TestTrue(FString::Printf(TEXT("Panel %d glow encloses the frame"), Panel),
-			Left <= PanelRect[Panel].Left && Top <= PanelRect[Panel].Top
-				&& Right >= PanelRect[Panel].Right && Bottom >= PanelRect[Panel].Bottom);
+			HRect.Left <= PanelRect[Panel].Left && HRect.Top <= PanelRect[Panel].Top
+				&& HRect.Right >= PanelRect[Panel].Right && HRect.Bottom >= PanelRect[Panel].Bottom);
 	}
 
-	// carsel.bmp is 557x743 and holds the plain copy 360 rows below the glowing one, so the very
-	// last strip plus that offset has to still be inside the sheet.
-	TestTrue(TEXT("The unselected copy fits in carsel.bmp"),
-		HighlightStrip[PanelCount - 1][HighlightStripCount - 1].Bottom + UnselectedSourceOffsetY <= 743.0f);
-	TestTrue(TEXT("The strips fit carsel.bmp's width"),
-		HighlightStrip[1][2].Right <= 557.0f);
+	TestTrue(TEXT("The highlight rects fit carsel.bmp's width"),
+		HighlightPanelRect[1].Right <= 557.0f);
+	TestTrue(TEXT("The highlight rects fit carsel.bmp's height"),
+		HighlightPanelRect[PanelCount - 1].Bottom <= 743.0f);
+
+	TestEqual(TEXT("Readout font fits the lower-right wells"), ReadoutFontHeight, 16);
+	TestEqual(TEXT("City readout is lowered in its well"), CityNameRect.Top, 239.0f);
+	TestEqual(TEXT("Level readout is lowered in its well"), LevelNameRect.Top, 274.0f);
+	TestEqual(TEXT("Readouts share a horizontal centre"),
+		CityNameRect.Left + CityNameRect.Right, LevelNameRect.Left + LevelNameRect.Right);
+	TestTrue(TEXT("Preview rounded corner leaves room for feather"),
+		PreviewCornerRadius > PreviewFeatherWidth);
+	TestEqual(TEXT("Preview feather is doubled"), PreviewFeatherWidth, 8.0f);
+	TestEqual(TEXT("CARSEL hollow edge stays softly feathered"), HighlightHoleFeatherWidth, 4.0f);
 
 	return true;
 }

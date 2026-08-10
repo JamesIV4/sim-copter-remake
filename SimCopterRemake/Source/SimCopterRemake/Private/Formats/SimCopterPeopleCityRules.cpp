@@ -207,6 +207,18 @@ uint16 FSimCopterPeopleCityRules::NextPeopleRandomBounded(uint16& RandomState, u
 	return Bound != 0 ? uint16(NextPeopleRandomRaw(RandomState) % Bound) : 0;
 }
 
+int32 FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(uint16& PeopleRandomState)
+{
+	// SCHOOK: PersonChooseRandomClass 0x004c7190. DAT_0058dc3a starts at 65000; this routine
+	// quarters it, then ordinarily chooses one of the ten human appearance classes. Its very rare
+	// special arm is FUN_004c7170: 60% Elvis (20), 40% class 11.
+	if (NextPeopleRandomBounded(PeopleRandomState, uint16(65000 >> 2)) == 0)
+	{
+		return NextPeopleRandomBounded(PeopleRandomState, 0x14) > 0x0B ? 0x0B : 0x14;
+	}
+	return NextPeopleRandomBounded(PeopleRandomState, 10);
+}
+
 int32 FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(int32 TileClass, uint16& PeopleRandomState)
 {
 	for (int32 Attempt = 0; Attempt < 5; ++Attempt)
@@ -223,17 +235,7 @@ int32 FSimCopterPeopleCityRules::ChooseAmbientBehaviorClassForTileClass(int32 Ti
 		}
 		else
 		{
-			// FUN_004c7190. DAT_0058dc3a is initialized to 65000 by FUN_004c3010; event handlers
-			// can lower it later, but the normal ambient city path starts from this value.
-			if (NextPeopleRandomBounded(PeopleRandomState, uint16(65000 >> 2)) == 0)
-			{
-				// FUN_004c7170: 60% class 20, 40% class 11.
-				CandidateClass = NextPeopleRandomBounded(PeopleRandomState, 0x14) > 0x0B ? 0x0B : 0x14;
-			}
-			else
-			{
-				CandidateClass = NextPeopleRandomBounded(PeopleRandomState, 10);
-			}
+			CandidateClass = ChooseUnspecifiedBehaviorClass(PeopleRandomState);
 		}
 
 		if (GetAmbientStateTileClasses(CandidateClass).Contains(TileClass))

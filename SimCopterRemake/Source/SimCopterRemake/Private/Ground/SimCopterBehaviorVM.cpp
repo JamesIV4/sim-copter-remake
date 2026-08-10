@@ -362,8 +362,12 @@ EOpResult ExecOpcode(
 	case 46: // select the person I am carrying (FUN_004cc7d0 -> FUN_004ca650)
 		return World.SelectCarriedPerson(Context, /*bAlsoDropThem*/ false) ? EOpResult::True : EOpResult::False;
 	case 47: // put the selected person down (FUN_004cc8d0)
-		World.DropSelectedPerson(Context);
-		return EOpResult::True;
+		// FUN_004cc8d0 always answers 1. The remake propagates the interaction layer's result
+		// instead, because that layer now refuses one specific thing the original never had to
+		// guard: taking a casualty out of the player's cabin while nowhere near the aircraft (see
+		// ASimCopterGroundAgent::DropSelectedPerson). BHAV 263 rec[3]'s false edge is -3, so a
+		// refusal unwinds to 801's idle and the medic probes again - a retry, not a dead end.
+		return World.DropSelectedPerson(Context) ? EOpResult::True : EOpResult::False;
 	case 48: // make the selection my carrier (FUN_004cc900)
 		return World.BoardSelection(Context) ? EOpResult::True : EOpResult::False;
 	case 51: // set down whoever I am carrying and select them (FUN_004cca00 -> FUN_004ca570)
@@ -455,12 +459,15 @@ EOpResult ExecOpcode(
 		return World.IsCarrierHarness() ? EOpResult::True : EOpResult::False;
 	case 87: // am I back on the tile I was placed on? (FUN_004cce50)
 		return World.IsOnHomeTile() ? EOpResult::True : EOpResult::False;
-	case 30: // bind "Thro" and launch a projectile along my facing (FUN_004cbfd0)
-	case 60: // the same handler (FUN_004cced0 forwards to it)
-		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false);
+	case 30: // bind "Thro" and launch a projectile along my facing (FUN_004cbfd0): type 10, a rock
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false, /*bIncendiary*/ false);
 		return EOpResult::True;
-	case 83: // face the selection, bind "Thro", throw at it (FUN_004cc130)
-		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ true);
+	case 60: // the same handler via FUN_004cced0, but `*param_3 == 0x3c` selects type 4 instead -
+		// the arsonist's firebomb, the one projectile in the game that starts a building fire.
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ false, /*bIncendiary*/ true);
+		return EOpResult::True;
+	case 83: // face the selection, bind "Thro", throw at it (FUN_004cc130): type 10 again
+		World.ThrowProjectileAtSelection(Context, /*bAtSelection*/ true, /*bIncendiary*/ false);
 		return EOpResult::True;
 	case 66: // fall and die (FUN_004cbbc0)
 		World.BeginFallAndDie(Context);
@@ -548,6 +555,11 @@ void FSimCopterPersonContext::ResetToState(int32 StateIndex)
 	FFrame Frame;
 	Frame.ProgramId = StatePrograms.IsValidIndex(StateIndex) ? StatePrograms[StateIndex] : StatePrograms[0];
 	Stack.Add(Frame);
+	// The state's own program id, kept where the shipped graph expects to read it back. BHAV 444
+	// rec[25]/rec[27] compares it against 444 to tell a band member from the leader, whose state
+	// 17 starts on 443 ("Tuba leader initbhav", which itself just calls 444). Without this both
+	// take the leader arm and nobody mills about or plays an instrument.
+	Attributes[EBhavAttr::StateProgramId] = uint16(Frame.ProgramId);
 }
 
 // SCHOOK: PersonReactionPush 0x004c1050

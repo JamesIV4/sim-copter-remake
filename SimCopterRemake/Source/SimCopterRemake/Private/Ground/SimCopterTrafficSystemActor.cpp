@@ -11,6 +11,7 @@
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Flight/SimCopterHelicopterPawn.h"
@@ -20,6 +21,7 @@
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterInteraction.h"
+#include "Ground/SimCopterTrafficJam.h"
 #include "Kismet/GameplayStatics.h"
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Misc/Paths.h"
@@ -1033,6 +1035,8 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
+	UpdateSpeederDesignation();
+	UpdateSpeeders(DeltaSeconds);
 	// Speeders take their spotlight mark before the police read it, so a car lit this frame can
 	// be pulled over this frame.
 	UpdateCriminalCars(DeltaSeconds);
@@ -1064,15 +1068,26 @@ void ASimCopterTrafficSystemActor::UpdateTrafficAudio()
 			continue;
 		}
 
-		const bool bStopped = State->bMissionJammed;
+		// FUN_0049be50 has two horn rolls and the remake needs both now that cars queue up behind a
+		// jam rather than piling into it. The car flying the jam flag 0x200 takes the branch at the
+		// top of the function and rolls 1-in-16 every update. Everything else rolls the wider
+		// 1-in-64, and only once veh+0xaf says it has been standing still for five seconds - which
+		// is exactly the car stuck in the queue behind the jam.
+		const bool bJammed = State->bMissionJammed;
+		const bool bStopped = bJammed || State->bJamQueued;
+		const bool bMaySoundHorn = bJammed ||
+			State->JamHeldSeconds > SimCopterTrafficJam::HornHeldSeconds;
+		const int32 HornOneIn = bJammed
+			? SimCopterTrafficJam::JammedHornOneIn
+			: SimCopterTrafficJam::HeldHornOneIn;
 		const FVector World = Vehicle->GetActorLocation();
 
 		if (bStopped)
 		{
-			// One roll in sixteen per update, and only if that horn is not already sounding.
-			// Three horns share the whole city's traffic, so the already-playing check is what
-			// stops a jam from becoming a wall of noise.
-			if (FMath::RandRange(0, 15) == 0)
+			// Only if that horn is not already sounding: three horns share the whole city's
+			// traffic, so the already-playing check is what stops a jam from becoming a wall of
+			// noise.
+			if (bMaySoundHorn && FMath::RandRange(0, HornOneIn - 1) == 0)
 			{
 				// The original assigns obj[0xdb] once, at spawn. Deriving it from the agent's
 				// identity keeps a given car on a given horn without adding a field.
@@ -1330,9 +1345,18 @@ void ASimCopterTrafficSystemActor::DouseBurningVehiclesNear(const FVector& World
 	}
 }
 
+bool ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(const FVector& SurfaceNormal)
+{
+	// Match the airframe's established flat-landing threshold. Requiring exactly 1.0 would reject
+	// harmless floating-point noise on an otherwise horizontal imported triangle; 0.99 still
+	// rejects visible roof pitches while allowing at most about eight degrees of deviation.
+	constexpr float MinFlatNormalZ = 0.99f;
+	return SurfaceNormal.GetSafeNormal().Z >= MinFlatNormalZ;
+}
+
 bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
-	int32 SpawnMode,
 	int32 PersonState,
+	int32 BehaviorClass,
 	int32 TileX,
 	int32 TileY,
 	int32 EventId,
@@ -1344,7 +1368,7 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 		*OutSpawned = nullptr;
 	}
 	if (GroundAgentClass == nullptr) return false;
-	const bool bTransportPassenger = SpawnMode == 4;
+	const bool bTransportPassenger = PersonState == 4;
 	if (bTransportPassenger && IsWaterTile(TileX, TileY))
 	{
 		int32 LandX = TileX;
@@ -1372,6 +1396,65 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	const float GoldenAngleRadians = 2.39996323f;
 	FVector SpawnLocation = FVector::ZeroVector;
 	bool bFoundSpawnLocation = false;
+	FVector MissionRoofCenter = FVector::ZeroVector;
+	float MissionRoofHalfExtentCm = 0.0f;
+	float MissionRoofSafeHalfExtentCm = 0.0f;
+
+	if (PersonState == 2)
+	{
+		// SCHOOK: CreateMission 0x004a7a10, person state 2. The original attaches these people to
+		// a mission building. Because the remake's building meshes do not reproduce its cell/object
+		// geometry exactly, resolve the rendered surface at the footprint center and validate every
+		// sampled point against that roof instead of sending the generic placer outside the building.
+		if (!TryGetBuildingRoofPost(TileX, TileY, MissionRoofCenter, MissionRoofHalfExtentCm))
+		{
+			return false;
+		}
+
+		MissionRoofSafeHalfExtentCm = FMath::Max(
+			ActiveTileSize * 0.25f,
+			FMath::Min(MissionRoofHalfExtentCm - 90.0f, MissionRoofHalfExtentCm * 0.58f));
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterMissionRoofSpawn), false, this);
+		for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+		{
+			if (const ASimCopterGroundAgent* Agent = AgentPtr.Get())
+			{
+				QueryParams.AddIgnoredActor(Agent);
+			}
+		}
+		if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
+		{
+			QueryParams.AddIgnoredActor(PlayerPawn);
+		}
+
+		for (int32 Attempt = 0; Attempt < 14 && !bFoundSpawnLocation; ++Attempt)
+		{
+			const int32 CandidateIndex = ExistingMissionPeople + Attempt;
+			const float RadiusFraction = CandidateIndex == 0
+				? 0.0f
+				: FMath::Sqrt(float(CandidateIndex) / 14.0f);
+			const float Angle = float(CandidateIndex) * GoldenAngleRadians;
+			const FVector Candidate = MissionRoofCenter + FVector(
+				FMath::Cos(Angle) * MissionRoofSafeHalfExtentCm * RadiusFraction,
+				FMath::Sin(Angle) * MissionRoofSafeHalfExtentCm * RadiusFraction,
+				0.0f);
+			const FVector TraceStart(Candidate.X, Candidate.Y, MissionRoofCenter.Z + 2000.0f);
+			const FVector TraceEnd(Candidate.X, Candidate.Y, MissionRoofCenter.Z - 250.0f);
+			FHitResult Hit;
+			if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
+				Hit.bBlockingHit &&
+				FMath::Abs(Hit.ImpactPoint.Z - MissionRoofCenter.Z) <= 100.0f &&
+				IsRooftopRescueSurfaceFlat(Hit.ImpactNormal))
+			{
+				SpawnLocation = Hit.ImpactPoint + FVector::UpVector * 92.0f;
+				bFoundSpawnLocation = true;
+			}
+		}
+	}
+	if (PersonState == 2 && !bFoundSpawnLocation)
+	{
+		return false;
+	}
 
 	// The mission tile is usually the building itself (an injured person at an apartment/office), so
 	// searching only that tile buries victims inside the mesh. Search outward from the tile - across
@@ -1448,12 +1531,13 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	// and never so much as looked at the helicopter: that was correct only while an engine-side
 	// pickup teleported them into a seat, and that pickup is gone. The original passes no
 	// behaviour class at all here - FUN_004c3eb0(-1, 4, ...).
-	Person->InitialPersonState = SpawnMode;
-	if (PersonState != -1)
-	{
-		Person->SetInitialBehaviorClass(PersonState);
-	}
-	if (SpawnMode == 3)
+	Person->InitialPersonState = PersonState;
+	// -1 is not class zero. FUN_004c71c0 resolves it through FUN_004c7190, giving ordinary
+	// mission passengers the same varied bodies, heads and voice pitches as the shipped game.
+	Person->SetInitialBehaviorClass(BehaviorClass != -1
+		? BehaviorClass
+		: FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(PeopleRandomState));
+	if (PersonState == 3)
 	{
 		// FUN_004c4190's spawn-mode-3 arm writes 7 to person+0x150 before placement. This is the
 		// agitation BHAV 852 maintains and tear gas / the megaphone can drive below BHAV 311's
@@ -1482,15 +1566,16 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	}
 
 	Person->SnapToGroundImmediate();
-	if (SpawnMode == 6)
+	if (PersonState == 6)
 	{
 		Person->SetMissionInjuredPose();
 	}
-	else if (SpawnMode == 2)
+	else if (PersonState == 2)
 	{
-		// Fire-rescue victims are uninjured, so they keep milling about on their program - but
+		// Rooftop-rescue victims are uninjured, so they keep milling about on their program - but
 		// every time it leaves them standing they wave for the helicopter.
 		Person->SetMissionAwaitingRescue(true);
+		Person->SetMissionRoofPost(MissionRoofCenter, MissionRoofSafeHalfExtentCm);
 	}
 	PedestrianAgents.Add(Person);
 	if (OutSpawned != nullptr)
@@ -1521,6 +1606,51 @@ bool ASimCopterTrafficSystemActor::HasArrestedCriminalNear(const FVector& WorldL
 		}
 	}
 	return false;
+}
+
+int32 ASimCopterTrafficSystemActor::RunOverCriminalsUnderHelicopter(ASimCopterHelicopterPawn& Helicopter)
+{
+	int32 RunOver = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->IsActorBeingDestroyed() || !Agent->IsBehaviorActive())
+		{
+			continue;
+		}
+		// FUN_004c9000's own rule: somebody riding a carrier is not in the cell's object list, so
+		// the airframe cannot hit them - including anyone already aboard this helicopter.
+		if (Agent->GetBehaviorAttribute(EBhavAttr::Visible) == 0)
+		{
+			continue;
+		}
+		// The criminal set and nothing else: DAT_0058de80's states 10..13 are BHAV 1300-1303.
+		// Deliberately NOT FUN_004ca350's loop-flag-0 test, which the cop search uses - that also
+		// matches state 3, the rioters (BHAV 850), and a riot is dispersed, not run over.
+		const int32 State = int32(int16(Agent->GetBehaviorAttribute(EBhavAttr::State)));
+		if (State < 10 || State > 13)
+		{
+			continue;
+		}
+		// An arrested criminal is somebody the police already have.
+		if (Agent->GetBehaviorAttribute(EBhavAttr::CriminalCaught) != 0)
+		{
+			continue;
+		}
+		// FUN_004c8f70's box overlap, against the airframe the player can see rather than the
+		// flight-sweep capsule.
+		if (Helicopter.GetDistanceToAirframeCm(Agent->GetActorLocation()) >
+			FMath::Max(1.0f, Agent->GetCollisionRadiusCm()))
+		{
+			continue;
+		}
+
+		if (Agent->ApplyHelicopterRunOver(Helicopter))
+		{
+			++RunOver;
+		}
+	}
+	return RunOver;
 }
 
 int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
@@ -1647,7 +1777,8 @@ int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
 	int32 MaxCount,
 	float SearchRadiusCm,
 	float MaxVerticalDeltaCm,
-	float GuidanceSeconds)
+	float GuidanceSeconds,
+	float GuidanceSpeedCmPerSec)
 {
 	if (MaxCount <= 0)
 	{
@@ -1704,7 +1835,7 @@ int32 ASimCopterTrafficSystemActor::GuideMissionPeopleToLocation(
 
 		if (ASimCopterGroundAgent* Agent = Candidate.Agent.Get())
 		{
-			Agent->SetGuidanceMoveTarget(TargetLocation, GuidanceSeconds);
+			Agent->SetGuidanceMoveTarget(TargetLocation, GuidanceSeconds, GuidanceSpeedCmPerSec);
 			Guided++;
 		}
 	}
@@ -1819,10 +1950,9 @@ int32 ASimCopterTrafficSystemActor::SpawnMissionPeopleAtWorldLocation(
 		}
 
 		Person->InitialPersonState = SpawnMode;
-		if (PersonState != -1)
-		{
-			Person->SetInitialBehaviorClass(PersonState);
-		}
+		Person->SetInitialBehaviorClass(PersonState != -1
+			? PersonState
+			: FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(PeopleRandomState));
 
 		const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
 		Person->MissionEventId = EventId;
@@ -2197,7 +2327,7 @@ bool ASimCopterTrafficSystemActor::CanPostHospitalParamedic(
 	return Elapsed < 0.0 || Elapsed >= double(FMath::Max(DelaySeconds, 0.0f));
 }
 
-bool ASimCopterTrafficSystemActor::TryGetHospitalRoofPost(
+bool ASimCopterTrafficSystemActor::TryGetBuildingRoofPost(
 	const int32 TileX,
 	const int32 TileY,
 	FVector& OutRoofCenter,
@@ -2212,8 +2342,8 @@ bool ASimCopterTrafficSystemActor::TryGetHospitalRoofPost(
 	const FSimCopterGroundRouteNode& Node = PedestrianNodes[NodeIndex];
 	OutHalfExtentCm = float(FMath::Max(1, Node.PeopleFootprintSize)) * ActiveTileSize * 0.5f;
 
-	const FIntPoint HospitalTile(TileX, TileY);
-	if (const FVector* Cached = HospitalRoofPostByTile.Find(HospitalTile))
+	const FIntPoint BuildingTile(TileX, TileY);
+	if (const FVector* Cached = BuildingRoofPostByTile.Find(BuildingTile))
 	{
 		OutRoofCenter = *Cached;
 		return true;
@@ -2224,7 +2354,28 @@ bool ASimCopterTrafficSystemActor::TryGetHospitalRoofPost(
 	const FVector TraceStart(Node.Location.X, Node.Location.Y, Node.Location.Z + 60000.0f);
 	const FVector TraceEnd(Node.Location.X, Node.Location.Y, Node.Location.Z - 2000.0f);
 	FHitResult Hit;
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterHospitalRoofPost), false, this);
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterBuildingRoofPost), false, this);
+	// This probe is authoritative for both hospital posts and rooftop-rescue victims. Ignore
+	// transient actors so a helicopter hovering over the fire, an existing roof worker, or a car
+	// below the trace cannot be cached as the building's roof for the rest of the level.
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		if (const ASimCopterGroundAgent* Agent = AgentPtr.Get())
+		{
+			QueryParams.AddIgnoredActor(Agent);
+		}
+	}
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		if (const ASimCopterGroundAgent* Agent = AgentPtr.Get())
+		{
+			QueryParams.AddIgnoredActor(Agent);
+		}
+	}
+	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
+	{
+		QueryParams.AddIgnoredActor(PlayerPawn);
+	}
 	if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) ||
 		!Hit.bBlockingHit)
 	{
@@ -2232,7 +2383,7 @@ bool ASimCopterTrafficSystemActor::TryGetHospitalRoofPost(
 	}
 
 	OutRoofCenter = FVector(Node.Location.X, Node.Location.Y, Hit.ImpactPoint.Z);
-	HospitalRoofPostByTile.Add(HospitalTile, OutRoofCenter);
+	BuildingRoofPostByTile.Add(BuildingTile, OutRoofCenter);
 	return true;
 }
 
@@ -2287,7 +2438,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::EnsureHospitalParamedicAtTi
 	// already inbound.
 	FVector RoofCenter = FVector::ZeroVector;
 	float RoofHalfExtentCm = 0.0f;
-	const bool bHasRoofPost = TryGetHospitalRoofPost(TileX, TileY, RoofCenter, RoofHalfExtentCm);
+	const bool bHasRoofPost = TryGetBuildingRoofPost(TileX, TileY, RoofCenter, RoofHalfExtentCm);
 	auto PostMedic = [bHasRoofPost, &RoofCenter, RoofHalfExtentCm](ASimCopterGroundAgent& Medic)
 	{
 		if (bHasRoofPost)
@@ -2441,6 +2592,17 @@ void ASimCopterTrafficSystemActor::NotifyCrewMemberMessagedVehicle(
 	{
 		return;
 	}
+	if (ASimCopterGroundAgent* CriminalCar = Cast<ASimCopterGroundAgent>(StartingVehicle))
+	{
+		if (CriminalCar->IsCriminalCar())
+		{
+			// BHAV 1303 -> opcode 61 -> FUN_0049aed0. A nonzero message means the burglar
+			// finished BHAV 1079, returned to this exact getaway car, and should be allowed to
+			// disappear while the car resumes its recurring burglary loop.
+			CriminalCar->SignalCriminalDriverReturned(MessageId);
+			return;
+		}
+	}
 
 	const int32 AmbulanceIndex = static_cast<int32>(SimCopterDispatch::EService::Ambulance);
 	for (FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[AmbulanceIndex])
@@ -2557,10 +2719,9 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::SpawnFallingMissionPassenge
 	}
 
 	Person->InitialPersonState = SpawnMode;
-	if (PersonState != -1)
-	{
-		Person->SetInitialBehaviorClass(PersonState);
-	}
+	Person->SetInitialBehaviorClass(PersonState != -1
+		? PersonState
+		: FSimCopterPeopleCityRules::ChooseUnspecifiedBehaviorClass(PeopleRandomState));
 
 	const FString MeshName = PedestrianMeshNames.Num() > 0 ? PedestrianMeshNames[RandomStream.RandRange(0, PedestrianMeshNames.Num() - 1)] : FString();
 	Person->MissionEventId = EventId;
@@ -3753,10 +3914,11 @@ void ASimCopterTrafficSystemActor::SetSpotlightMarkSource(
 	bSpotlightMarkActive = bActive;
 }
 
-bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
+bool ASimCopterTrafficSystemActor::TryActivateBurglarCar(
 	const int32 EventId,
 	const int32 TileX,
-	const int32 TileY)
+	const int32 TileY,
+	const int32 CruiseDelay1616)
 {
 	if (GetWorld() == nullptr || GroundAgentClass == nullptr || RoadNodes.Num() == 0)
 	{
@@ -3816,7 +3978,7 @@ bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
 		ActiveOriginalGameRootPath.IsEmpty() ? ResolveOriginalGameRoot() : ActiveOriginalGameRootPath,
 		DrawVehicleSpeedCmPerSec());
 	Car->SnapToGroundImmediate();
-	Car->MakeCriminalCar(EventId);
+	Car->MakeCriminalCar(EventId, CruiseDelay1616);
 
 	if (RoadNodes.IsValidIndex(NextIndex))
 	{
@@ -3836,7 +3998,7 @@ bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
 	VehicleAgents.Add(Car);
 
 	UE_LOG(LogSimCopterTrafficSystem, Display,
-		TEXT("Speeder car for event %d placed on road tile (%d,%d); %d of %d in play."),
+		TEXT("Burglar car for event %d placed on road tile (%d,%d); %d of %d in play."),
 		EventId, RoadTile.X, RoadTile.Y, CriminalCars.Num(), SimCopterCriminalCar::PoolCapacity);
 	return true;
 }
@@ -3844,7 +4006,7 @@ bool ASimCopterTrafficSystemActor::TryActivateSpeederCar(
 // How fast a pulled-over car sheds its speed, in speed-scale per second. The original expresses
 // this as a stop *distance* at veh[0xd3] that the mover consumes; a fixed decay reads the same
 // on screen and does not need the mover's internals.
-static constexpr float SpeederStopBrakeRate = 1.5f;
+static constexpr float CriminalCarStopBrakeRate = 1.5f;
 
 float ASimCopterTrafficSystemActor::DrawVehicleSpeedCmPerSec()
 {
@@ -3858,7 +4020,7 @@ float ASimCopterTrafficSystemActor::DrawVehicleSpeedCmPerSec()
 	return VehicleSpeedCmPerSec * (Units / MeanUnits);
 }
 
-bool ASimCopterTrafficSystemActor::TryGetSpeederCarState(
+bool ASimCopterTrafficSystemActor::TryGetBurglarCarState(
 	const int32 EventId,
 	FVector& OutWorldLocation,
 	int32& OutSpotlightMark,
@@ -3874,32 +4036,10 @@ bool ASimCopterTrafficSystemActor::TryGetSpeederCarState(
 		OutWorldLocation = Car->GetActorLocation();
 		OutSpotlightMark = Car->GetSpotlightMark();
 		OutStopped = Car->GetCriminalState() ==
-			static_cast<uint8>(SimCopterCriminalCar::EState::Arrested);
+			static_cast<uint8>(SimCopterCriminalCar::EState::BurglarOutside);
 		return true;
 	}
 	return false;
-}
-
-void ASimCopterTrafficSystemActor::GetRecentlyStoppedSpeederLocations(TArray<FVector>& OutWorldLocations) const
-{
-	OutWorldLocations.Reset();
-	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
-	{
-		const ASimCopterGroundAgent* Car = CarPtr.Get();
-		if (Car == nullptr ||
-			Car->GetCriminalState() != static_cast<uint8>(SimCopterCriminalCar::EState::Arrested))
-		{
-			continue;
-		}
-		// The hold counts down from ArrestHoldSeconds, so what is left tells us how long ago the
-		// car stopped without needing a second timer.
-		const float SinceStopped =
-			SimCopterCriminalCar::ArrestHoldSeconds - Car->GetArrestHoldSeconds();
-		if (SinceStopped <= SimCopterCriminalCar::ArrestTagLingerSeconds)
-		{
-			OutWorldLocations.Add(Car->GetActorLocation());
-		}
-	}
 }
 
 bool ASimCopterTrafficSystemActor::CanVehicleStopOnTile(const FIntPoint& Tile) const
@@ -3940,7 +4080,7 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPursuitTarget(const FIn
 	// list and applying the same step test gives the same answer without a per-tile object map.
 	ASimCopterGroundAgent* Best = nullptr;
 	int32 BestSteps = SimCopterCriminalCar::PursuitMaxTileSteps;
-	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : CriminalCars)
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
 	{
 		ASimCopterGroundAgent* Car = CarPtr.Get();
 		if (Car == nullptr)
@@ -3969,17 +4109,235 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPursuitTarget(const FIn
 	return Best;
 }
 
-void ASimCopterTrafficSystemActor::RunCriminalCarArrest(ASimCopterGroundAgent& Car, const float DeltaSeconds)
+bool ASimCopterTrafficSystemActor::TryDesignateSpeeder(const bool bForceNew)
 {
-	// FUN_004b8630 case 3 counts veh[0x10] down and then hands over to FUN_004b8c90. Its other
-	// exit, veh[8] != 0, cannot fire for a speeder - see SimCopterCriminalCar.h - so the timer is
-	// the whole story. The mission was already paid out when the car stopped, so this only
-	// clears the wreck and frees its pool slot.
-	const float Remaining = Car.GetArrestHoldSeconds() - DeltaSeconds;
-	Car.SetArrestHoldSeconds(Remaining);
-	if (Remaining > 0.0f)
+	ASimCopterGroundAgent* Existing = nullptr;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car != nullptr && Car->IsSpeeder())
+		{
+			Existing = Car;
+			if (!bForceNew)
+			{
+				return true;
+			}
+			Car->ClearSpeeder();
+		}
+	}
+
+	if (Existing != nullptr)
+	{
+		LastSpeederAgent = Existing;
+	}
+
+	// SCHOOK: DesignateSpeeder 0x0049af00/0x0049af70. The executable scans its ordinary
+	// 70-car pool, rejects emergency/mission cars and the previously selected slot, then sets
+	// veh[4] & 0x800. The remake's beamed traffic pool has different model identities, so the
+	// corresponding adaptation selects any live, moving ordinary car.
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr || Car == LastSpeederAgent.Get() || Car->IsCriminalCar() ||
+			IsDispatchVehicle(*Car) || !Car->HasMoveTarget() || Car->IsHidden())
+		{
+			continue;
+		}
+		const FSimCopterVehicleTrafficState* TrafficState =
+			VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Car));
+		if (TrafficState != nullptr &&
+			(TrafficState->bMissionJammed || TrafficState->bMissionOnFire || TrafficState->bJamQueued))
+		{
+			continue;
+		}
+
+		Car->MakeSpeeder();
+		LastSpeederAgent = Car;
+		bSpeederDesignationEstablished = true;
+		UE_LOG(LogSimCopterTrafficSystem, Display,
+			TEXT("Speeder: designated ambient vehicle %s (retail flag 0x800)."), *Car->GetName());
+		return true;
+	}
+	return false;
+}
+
+void ASimCopterTrafficSystemActor::UpdateSpeederDesignation()
+{
+	// SCHOOK: SchedulerTick 0x004a6e60. Before the first successful selection retail retries
+	// every tick. Afterwards FUN_0049af70 checks the pool only once per 64 ticks; a caught or
+	// culled speeder therefore is not replaced on the very next frame.
+	if (!bSpeederDesignationEstablished)
+	{
+		bSpeederDesignationEstablished = TryDesignateSpeeder();
+		return;
+	}
+
+	const uint32 PreviousTick = SpeederDesignationTick++;
+	if ((PreviousTick & SimCopterCriminalCar::SpeederDesignationFrameMask) == 0)
+	{
+		TryDesignateSpeeder();
+	}
+}
+
+void ASimCopterTrafficSystemActor::UpdateSpeeders(const float DeltaSeconds)
+{
+	const float CmPerUnit = GetPeopleWorldCmPerOriginalUnit();
+	const float MarkRadiusCm =
+		SimCopterCriminalCar::GetSpotlightMarkRadiusOriginalUnits(SpotlightMarkBand) * CmPerUnit;
+
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& CarPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Car = CarPtr.Get();
+		if (Car == nullptr || !Car->IsSpeeder())
+		{
+			continue;
+		}
+
+		bool bLit = false;
+		if (bSpotlightMarkActive && MarkRadiusCm > 0.0f)
+		{
+			const FVector Delta = Car->GetActorLocation() - SpotlightMarkWorldLocation;
+			bLit = FVector2D(Delta.X, Delta.Y).SizeSquared() <= FMath::Square(MarkRadiusCm);
+		}
+		Car->SetSpotlightMark(SimCopterCriminalCar::AccumulateSpotlightMark(
+			Car->GetSpotlightMark(), bLit, bSpotlightMarkActive));
+
+		if (Car->IsStopOrdered())
+		{
+			const float Coast = FMath::Max(
+				0.0f, Car->GetCriminalStopScale() - DeltaSeconds * CriminalCarStopBrakeRate);
+			Car->SetCriminalStopScale(Coast);
+			Car->SetTrafficSpeedScale(Coast);
+			if (Coast > 0.0f)
+			{
+				continue;
+			}
+
+			Car->MarkStopped();
+
+			// SCHOOK: SpeederTick 0x0049be50 -> FUN_0049bc60. Once stopped, event 0x21
+			// repeats every ten seconds only while no CARPOLIC is in the local tile sweep. Police
+			// arrival posts event 0x26 from RunDispatchOnSceneAction instead; merely reaching zero
+			// speed is not a capture.
+			bool bPoliceNearby = false;
+			int32 CarX = 0;
+			int32 CarY = 0;
+			if (Car->TryGetTileCoordinate(CarX, CarY))
+			{
+				const int32 PoliceIndex = static_cast<int32>(SimCopterDispatch::EService::Police);
+				for (const FSimCopterDispatchVehicle& Vehicle : DispatchVehicles[PoliceIndex])
+				{
+					int32 PoliceX = 0;
+					int32 PoliceY = 0;
+					if (Vehicle.Agent.IsValid() &&
+						Vehicle.Agent->TryGetTileCoordinate(PoliceX, PoliceY) &&
+						SimCopterCriminalCar::GetTileStepDistance(
+							FIntPoint(CarX, CarY), FIntPoint(PoliceX, PoliceY)) <
+							SimCopterCriminalCar::PursuitMaxTileSteps)
+					{
+						bPoliceNearby = true;
+						break;
+					}
+				}
+			}
+
+			float RewardCooldown = Car->GetSpeederRewardCooldownSeconds();
+			if (RewardCooldown > 0.0f)
+			{
+				Car->SetSpeederRewardCooldownSeconds(RewardCooldown - DeltaSeconds);
+			}
+			else if (!bPoliceNearby)
+			{
+				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+				{
+					Missions->PostMissionEvent(
+						SimCopterMissions::EVT_SpeederPursuit, INDEX_NONE, 1, /*bSilent=*/false);
+				}
+				Car->SetSpeederRewardCooldownSeconds(
+					SimCopterCriminalCar::SpeederWaitingRewardSeconds);
+			}
+			continue;
+		}
+
+		// FUN_0049d980 applies the same 1.75x and spotlight-band slowdown to the ordinary
+		// speeder flag as to CARROBBR.
+		Car->SetTrafficSpeedScale(SimCopterCriminalCar::GetFleeingSpeedMultiplier(
+			true, Car->GetSpotlightMark(), SpotlightMarkBand));
+	}
+}
+
+void ASimCopterTrafficSystemActor::RunBurglarOutsidePhase(ASimCopterGroundAgent& Car, const float DeltaSeconds)
+{
+	// SCHOOK: CriminalCarTick 0x004b8630 case 3 -> FUN_004b8c90. BHAV 1303's opcode 61 sets
+	// veh[8] and stores its nonzero message in veh[0xc]. That means the burglar made it back:
+	// restart state 0 with the delay that case 0 already armed when the prior cruise expired. A
+	// zero message or the 120-second timeout means the burglar was caught, which is the only path
+	// that pays/completes this mission.
+	ASimCopterMissionSystemActor* Missions = ResolveMissionSystem();
+	if (Missions != nullptr && !Missions->IsMissionEventActive(Car.GetCriminalEventId()))
+	{
+		CriminalCars.Remove(&Car);
+		Car.Destroy();
+		return;
+	}
+
+	const float Remaining = Car.GetBurglarOutsideSeconds() - DeltaSeconds;
+	Car.SetBurglarOutsideSeconds(Remaining);
+	if (!Car.DidCriminalDriverReturn() && Remaining > 0.0f)
 	{
 		return;
+	}
+	if (Car.DidCriminalDriverReturn() && Car.GetCriminalDriverMessage() != 0)
+	{
+		// FUN_004b8c90's nonzero-message arm does not resume immediately: aDrOpen must finish,
+		// then aDrClose must finish. SoundIsPlaying(0x6f/0x70) is the actual state-machine gate.
+		USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+		const SimCopterCriminalCar::EDoorPhase DoorPhase =
+			static_cast<SimCopterCriminalCar::EDoorPhase>(Car.GetBurglarDoorPhase());
+		if (DoorPhase == SimCopterCriminalCar::EDoorPhase::None)
+		{
+			Car.SetBurglarDoorPhase(static_cast<uint8>(SimCopterCriminalCar::EDoorPhase::OpeningForReturn));
+			if (Audio != nullptr)
+			{
+				Audio->Play3D(SimCopterSound::SND_ADROPEN, Car.GetActorLocation());
+			}
+			return;
+		}
+		if (DoorPhase == SimCopterCriminalCar::EDoorPhase::OpeningForReturn)
+		{
+			if (Audio != nullptr && Audio->IsPlaying(SimCopterSound::SND_ADROPEN))
+			{
+				return;
+			}
+			Car.SetBurglarDoorPhase(static_cast<uint8>(SimCopterCriminalCar::EDoorPhase::ClosingForReturn));
+			if (Audio != nullptr)
+			{
+				Audio->Play3D(SimCopterSound::SND_ADRCLOSE, Car.GetActorLocation());
+			}
+			return;
+		}
+		if (DoorPhase == SimCopterCriminalCar::EDoorPhase::ClosingForReturn &&
+			Audio != nullptr && Audio->IsPlaying(SimCopterSound::SND_ADRCLOSE))
+		{
+			return;
+		}
+
+		Car.SetBurglarDoorPhase(static_cast<uint8>(SimCopterCriminalCar::EDoorPhase::None));
+		Car.ClearCriminalDriverSignal();
+		Car.ResumeCriminalCarDriving();
+		Car.SetFleeing(true);
+		Car.SetSpotlightMark(0);
+		Car.SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Cruising));
+		Car.SetTrafficSpeedScale(SimCopterCriminalCar::GetFleeingSpeedMultiplier(true, 0, INDEX_NONE));
+		UE_LOG(LogSimCopterTrafficSystem, Display,
+			TEXT("Burglar returned to event %d's car; the getaway cycle continues."),
+			Car.GetCriminalEventId());
+		return;
+	}
+
+	if (Missions != nullptr)
+	{
+		Missions->ReportBurglarCaught(Car.GetCriminalEventId());
 	}
 
 	CriminalCars.Remove(&Car);
@@ -3996,6 +4354,7 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 	const float CmPerUnit = GetPeopleWorldCmPerOriginalUnit();
 	const float MarkRadiusCm =
 		SimCopterCriminalCar::GetSpotlightMarkRadiusOriginalUnits(SpotlightMarkBand) * CmPerUnit;
+	ASimCopterMissionSystemActor* Missions = ResolveMissionSystem();
 
 	for (int32 Index = CriminalCars.Num() - 1; Index >= 0; --Index)
 	{
@@ -4006,16 +4365,46 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 			continue;
 		}
 
-		const SimCopterCriminalCar::EState State =
-			static_cast<SimCopterCriminalCar::EState>(Car->GetCriminalState());
-		if (State == SimCopterCriminalCar::EState::Arrested ||
-			State == SimCopterCriminalCar::EState::Leaving)
+		// Mission-owned cars are exempt from ambient distance culling, so retire one explicitly
+		// when its record disappears. FUN_004b8630's pool object belongs to the event for its
+		// whole driving/outside cycle; letting an inactive one return to ambient traffic would
+		// leave CARROBBR and its marker identity alive indefinitely.
+		if (Missions != nullptr && !Missions->IsMissionEventActive(Car->GetCriminalEventId()))
 		{
-			// UpdateTrafficInteractions resets every vehicle to full speed each frame, so a
-			// stopped car has to be pinned here every frame or it simply drives off again.
-			Car->SetTrafficSpeedScale(0.0f);
-			RunCriminalCarArrest(*Car, DeltaSeconds);
+			CriminalCars.RemoveAt(Index);
+			Car->Destroy();
 			continue;
+		}
+
+		SimCopterCriminalCar::EState State =
+			static_cast<SimCopterCriminalCar::EState>(Car->GetCriminalState());
+		if (State == SimCopterCriminalCar::EState::Leaving)
+		{
+			CriminalCars.RemoveAt(Index);
+			Car->Destroy();
+			continue;
+		}
+		if (State == SimCopterCriminalCar::EState::BurglarOutside)
+		{
+			Car->SetTrafficSpeedScale(0.0f);
+			RunBurglarOutsidePhase(*Car, DeltaSeconds);
+			continue;
+		}
+
+		int32 CarX = 0;
+		int32 CarY = 0;
+		const bool bHasCarTile = Car->TryGetTileCoordinate(CarX, CarY);
+		if (bHasCarTile && Missions != nullptr)
+		{
+			// Every driving arm of FUN_004b8630 posts event 0 so the mission's proximity timer and
+			// marker follow the moving getaway car rather than its random seed tile.
+			Missions->PostMissionEventAt(
+				SimCopterMissions::EVT_SetPrimaryCoords,
+				Car->GetCriminalEventId(),
+				CarX,
+				CarY,
+				0,
+				/*bSilent=*/true);
 		}
 
 		// FUN_004a01f0. The distance is horizontal only - the beam's ground point against the
@@ -4032,12 +4421,80 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 		Car->SetSpotlightMark(SimCopterCriminalCar::AccumulateSpotlightMark(
 			Car->GetSpotlightMark(), bLit, bSpotlightMarkActive));
 
+		// FUN_004b8630 states 0/1/2. The 100-second cruise naturally produces a burglary even if
+		// the player never finds the car. Spotlighting interrupts that stop and enters the chase;
+		// after the light is gone for 20 seconds it returns to the cruise state.
+		if (State == SimCopterCriminalCar::EState::Cruising)
+		{
+			if (Car->GetSpotlightMark() != 0)
+			{
+				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Fleeing));
+				Car->SetCriminalSpotlightLostSeconds(SimCopterCriminalCar::SpotlightLostCooldownSeconds);
+				State = SimCopterCriminalCar::EState::Fleeing;
+			}
+			else
+			{
+				const float CruiseRemaining = Car->GetCriminalCruiseSeconds();
+				if (CruiseRemaining < 0.0f)
+				{
+					// Case 0 tests the old 16.16 value before subtracting the frame delta. On expiry it
+					// draws and stores the delay for the *following* cycle before state 1 begins.
+					const int32 Delay1616 = Missions != nullptr
+						? Missions->DrawBurglarCruiseDelay1616()
+						: SimCopterCriminalCar::CruiseBaseDelay1616;
+					Car->SetCriminalCruiseSeconds(static_cast<float>(Delay1616) / 65536.0f);
+					Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::SeekingBurglaryStop));
+					State = SimCopterCriminalCar::EState::SeekingBurglaryStop;
+				}
+				else
+				{
+					Car->SetCriminalCruiseSeconds(CruiseRemaining - DeltaSeconds);
+				}
+			}
+		}
+		else if (State == SimCopterCriminalCar::EState::SeekingBurglaryStop)
+		{
+			if (Car->GetSpotlightMark() != 0)
+			{
+				Car->ResumeCriminalCarDriving();
+				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Fleeing));
+				Car->SetCriminalSpotlightLostSeconds(SimCopterCriminalCar::SpotlightLostCooldownSeconds);
+				State = SimCopterCriminalCar::EState::Fleeing;
+			}
+			else if (!Car->IsStopOrdered() && bHasCarTile && CanVehicleStopOnTile(FIntPoint(CarX, CarY)))
+			{
+				Car->TryOrderStop(INDEX_NONE);
+				State = SimCopterCriminalCar::EState::Stopping;
+			}
+		}
+		else if (State == SimCopterCriminalCar::EState::Fleeing)
+		{
+			if (Car->GetSpotlightMark() != 0)
+			{
+				Car->SetCriminalSpotlightLostSeconds(SimCopterCriminalCar::SpotlightLostCooldownSeconds);
+			}
+			else
+			{
+				const float LostRemaining = Car->GetCriminalSpotlightLostSeconds();
+				if (LostRemaining < 0.0f)
+				{
+					Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Cruising));
+					Car->SetCriminalSpotlightLostSeconds(SimCopterCriminalCar::SpotlightLostCooldownSeconds);
+					State = SimCopterCriminalCar::EState::Cruising;
+				}
+				else
+				{
+					Car->SetCriminalSpotlightLostSeconds(LostRemaining - DeltaSeconds);
+				}
+			}
+		}
+
 		if (Car->IsStopOrdered())
 		{
 			// FUN_0049e0c0 sets a stop distance rather than halting outright, so the car coasts
 			// down instead of dropping dead. The scale is carried on the agent because the
 			// traffic pass overwrites TrafficSpeedScale every frame.
-			const float Coast = FMath::Max(0.0f, Car->GetCriminalStopScale() - DeltaSeconds * SpeederStopBrakeRate);
+			const float Coast = FMath::Max(0.0f, Car->GetCriminalStopScale() - DeltaSeconds * CriminalCarStopBrakeRate);
 			Car->SetCriminalStopScale(Coast);
 			Car->SetTrafficSpeedScale(Coast);
 			if (Coast > 0.0f)
@@ -4049,54 +4506,84 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 			Car->MarkStopped();
 			Car->SetFleeing(false);
 
-			int32 CarX = 0;
-			int32 CarY = 0;
 			Car->TryGetTileCoordinate(CarX, CarY);
-
-			// FUN_0049bd00(0xf, 0xd) puts the driver on the ground. Its return value is what
-			// decides the whole outcome: succeed and the arrest runs to a proper completion,
-			// fail and the record is retired silently with no payout.
-			const bool bPersonPlaced = TrySpawnMissionPerson(
-				SimCopterCriminalCar::ArrestPersonSpawnMode,
-				SimCopterCriminalCar::ArrestPersonState,
-				CarX,
-				CarY,
-				Car->GetCriminalEventId());
-
-			if (bPersonPlaced)
+			USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+			const SimCopterCriminalCar::EDoorPhase DoorPhase =
+				static_cast<SimCopterCriminalCar::EDoorPhase>(Car->GetBurglarDoorPhase());
+			if (DoorPhase == SimCopterCriminalCar::EDoorPhase::None)
 			{
-				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Arrested));
-				Car->SetArrestHoldSeconds(SimCopterCriminalCar::ArrestHoldSeconds);
-
-				// DIVERGENCE: the original posts EVT_CriminalCaught from FUN_004b8c90, at the end
-				// of the 120 s hold. Paying out here instead tells the player the job is done the
-				// moment the car stops, rather than leaving them waiting two minutes with no
-				// signal. The car still lingers for the hold, but nothing is owed on it.
-				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
+				// FUN_004b8b60 starts aDrOpen and returns. Person placement is forbidden until
+				// SoundIsPlaying says that shared slot has finished.
+				Car->SetBurglarDoorPhase(
+					static_cast<uint8>(SimCopterCriminalCar::EDoorPhase::OpeningForBurglary));
+				if (Audio != nullptr)
 				{
-					Missions->ReportSpeederCarCaught(Car->GetCriminalEventId());
+					Audio->Play3D(SimCopterSound::SND_ADROPEN, Car->GetActorLocation());
 				}
-				UE_LOG(LogSimCopterTrafficSystem, Display,
-					TEXT("Speeder car for event %d pulled over at (%d,%d); mission paid out, car leaves in %.0fs."),
-					Car->GetCriminalEventId(), CarX, CarY, SimCopterCriminalCar::ArrestHoldSeconds);
+				continue;
 			}
-			else
+			if (DoorPhase == SimCopterCriminalCar::EDoorPhase::OpeningForBurglary &&
+				Audio != nullptr && Audio->IsPlaying(SimCopterSound::SND_ADROPEN))
 			{
-				// FUN_004b8b60's `if (FUN_0049bd00(...) == 0)` branch: state 4, record retired.
-				Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Leaving));
-				Car->SetArrestHoldSeconds(0.0f);
-				if (ASimCopterMissionSystemActor* Missions = ResolveMissionSystem())
-				{
-					Missions->ReportSpeederCarUnresolved(Car->GetCriminalEventId());
-				}
-				UE_LOG(LogSimCopterTrafficSystem, Warning,
-					TEXT("Speeder car for event %d stopped at (%d,%d) but nobody could be put on the ground; retiring it."),
-					Car->GetCriminalEventId(), CarX, CarY);
+				continue;
 			}
+
+			if (DoorPhase == SimCopterCriminalCar::EDoorPhase::OpeningForBurglary)
+			{
+				// FUN_0049bd00(0xf, 0xd): behavior class first, person state second. The remake's
+				// TrySpawnMissionPerson API takes those in the opposite order.
+				ASimCopterGroundAgent* Burglar = nullptr;
+				const bool bPersonPlaced = TrySpawnMissionPerson(
+					SimCopterCriminalCar::BurglarPersonState,
+					SimCopterCriminalCar::BurglarBehaviorClass,
+					CarX,
+					CarY,
+					Car->GetCriminalEventId(),
+					FString(),
+					&Burglar);
+
+				Car->SetBurglarDoorPhase(
+					static_cast<uint8>(SimCopterCriminalCar::EDoorPhase::ClosingForBurglary));
+				if (Audio != nullptr)
+				{
+					Audio->Play3D(SimCopterSound::SND_ADRCLOSE, Car->GetActorLocation());
+				}
+
+				if (bPersonPlaced && Burglar != nullptr)
+				{
+					Burglar->SetBehaviorStartingVehicle(Car);
+				}
+				else
+				{
+					Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::Leaving));
+					if (Missions != nullptr)
+					{
+						Missions->ReportBurglarSpawnFailed(Car->GetCriminalEventId());
+					}
+					UE_LOG(LogSimCopterTrafficSystem, Warning,
+						TEXT("Burglar car for event %d stopped at (%d,%d) but its driver could not be placed; retiring it."),
+						Car->GetCriminalEventId(), CarX, CarY);
+				}
+				continue;
+			}
+
+			if (DoorPhase == SimCopterCriminalCar::EDoorPhase::ClosingForBurglary &&
+				Audio != nullptr && Audio->IsPlaying(SimCopterSound::SND_ADRCLOSE))
+			{
+				continue;
+			}
+
+			Car->SetBurglarDoorPhase(static_cast<uint8>(SimCopterCriminalCar::EDoorPhase::None));
+			Car->ClearCriminalDriverSignal();
+			Car->SetCriminalState(static_cast<uint8>(SimCopterCriminalCar::EState::BurglarOutside));
+			Car->SetBurglarOutsideSeconds(SimCopterCriminalCar::BurglarOutsideSeconds);
+			UE_LOG(LogSimCopterTrafficSystem, Display,
+				TEXT("Burglar left event %d's car at (%d,%d); %.0fs to return before capture."),
+				Car->GetCriminalEventId(), CarX, CarY, SimCopterCriminalCar::BurglarOutsideSeconds);
 			continue;
 		}
 
-		// FUN_0049d980: the mark decides how fast it can run.
+		// FUN_0049d980: the mark decides how fast the getaway car can run.
 		Car->SetTrafficSpeedScale(SimCopterCriminalCar::GetFleeingSpeedMultiplier(
 			Car->IsFleeing(), Car->GetSpotlightMark(), SpotlightMarkBand));
 	}
@@ -4172,9 +4659,9 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 	{
 		bool bActed = false;
 
-		// FUN_004b9e40 case 0: sweep three rings around the car itself for a speeder, and order
+		// FUN_004b9e40 case 0: sweep three rings around the car itself for a getaway car, and order
 		// the nearest one to pull over. The order only sticks against a car the player has held
-		// the searchlight on - an unmarked speeder drives straight past.
+		// the searchlight on - an unmarked getaway car drives straight past.
 		ASimCopterGroundAgent* Target = FindPursuitTarget(Tile);
 		bool bTargetFleeing = false;
 		if (Target != nullptr)
@@ -4194,6 +4681,21 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 				UE_LOG(LogSimCopterTrafficSystem, Verbose,
 					TEXT("Dispatch: police at (%d,%d) ordered the speeder at (%d,%d) to pull over."),
 					Tile.X, Tile.Y, TargetX, TargetY);
+			}
+
+			if (Target->IsSpeeder() && Target->IsStopped())
+			{
+				// SCHOOK: PoliceUpdate 0x004b9e40 case 4 raises speeder flag 0x1000 once
+				// CARPOLIC reaches the stopped target. SpeederTick 0x0049be50 then posts 0x26
+				// with event id -1 and clears 0x800/0x1000. This is an ambient encounter payout,
+				// never completion of the Burglar record.
+				if (Missions != nullptr)
+				{
+					Missions->PostMissionEvent(
+						SimCopterMissions::EVT_SpeederCaught, INDEX_NONE, 1, /*bSilent=*/false);
+				}
+				Target->ClearSpeeder();
+				bActed = true;
 			}
 		}
 
@@ -4222,7 +4724,7 @@ bool ASimCopterTrafficSystemActor::RunDispatchOnSceneAction(SimCopterDispatch::E
 			ASimCopterGroundAgent* Officer = nullptr;
 			const bool bDeployed = TrySpawnMissionPerson(
 				OfficerState,
-				-1,
+				SimCopterCriminalCar::OfficerBehaviorClass,
 				Tile.X,
 				Tile.Y,
 				Vehicle.TargetEventId,
@@ -4369,16 +4871,11 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 
 		if (HasDispatchVehicleArrived(Vehicle))
 		{
-			if (Vehicle.State == ESimCopterDispatchVehicleState::Chasing)
-			{
-				// A chase unit parks on the spotlight tile but stays in chase mode so it
-				// keeps following when the beam moves again.
-				if (ASimCopterGroundAgent* Agent = Vehicle.Agent.Get())
-				{
-					Agent->ClearMoveTarget();
-				}
-				break;
-			}
+			check(DoesDispatchArrivalEnterOnScene(Vehicle.State));
+			// SCHOOK: PoliceUpdate 0x004b9e40, cases 2 and 3. The F5 chase state only
+			// changes how the destination is acquired while driving. On arrival it calls
+			// FUN_004bd980(0xe, 8/0xe, ...), exactly like a fixed police response, so the
+			// shared on-scene pass must put the officer on foot too.
 			Vehicle.State = ESimCopterDispatchVehicleState::OnScene;
 			Vehicle.StayTimerSeconds = SimCopterDispatch::OnSceneStaySeconds;
 			Vehicle.ActionTimerSeconds = 0.0f;
@@ -4481,6 +4978,27 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 			{
 				Vehicle.bOfficerDeployed = false;
 				Vehicle.DeployedOfficer.Reset();
+				RecallDispatchVehicle(Vehicle);
+				break;
+			}
+		}
+
+		// The ambulance's equivalent. BHAV 269 rec[17] messages this vehicle (op 61) and rec[9]
+		// then tears the medic down, so the recall normally arrives on its own - but 265
+		// 'Medevac disappear' and every other op-40 arm of the medic's graph end WITHOUT an op 61,
+		// and BHAV 262's search simply finding nobody leaves the medic looping while this slot
+		// waits out the full 180 s stay with nothing left to do. Once the crew member it put on
+		// the ground is aboard or gone, the ambulance's job is over.
+		//
+		// Deliberately keyed on a medic this slot can still see. A null weak pointer cannot tell
+		// "climbed in" apart from "was never recorded", so that case keeps the stay timer.
+		if (Service == SimCopterDispatch::EService::Ambulance)
+		{
+			const ASimCopterGroundAgent* Paramedic = Vehicle.DeployedParamedic.Get();
+			if (Paramedic != nullptr &&
+				(Paramedic->IsActorBeingDestroyed() || Paramedic->IsHidden()))
+			{
+				Vehicle.DeployedParamedic.Reset();
 				RecallDispatchVehicle(Vehicle);
 				break;
 			}
@@ -5204,18 +5722,21 @@ FString ASimCopterTrafficSystemActor::ResolveCityPath() const
 
 FString ASimCopterTrafficSystemActor::ResolveOriginalGameRoot() const
 {
+	// Same rule as the city actor: the authored path is a developer convenience, so it only wins
+	// while it still points at a real install.
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString Absolute = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (SimCopterOriginalGame::IsOriginalGameRoot(Absolute))
+		{
+			return Absolute;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
-	}
-
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 FVector ASimCopterTrafficSystemActor::GetPopulationFocusLocation() const
@@ -5337,6 +5858,11 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 		}
 	}
 
+	// First, and in both AI modes: a jam owns the cars caught in it for the whole frame. Every pass
+	// after this one only ever lowers a speed scale, so the queue's own braking survives them, and
+	// the passes that would steer a car sideways all check IsVehicleHeldInTrafficJam.
+	ApplyTrafficJamQueue(DeltaSeconds);
+
 	if (TrafficAiMode == ESimCopterTrafficAiMode::Original)
 	{
 		// Decoded original behavior: no traffic lights and no blockage recovery. Cars queue
@@ -5369,6 +5895,223 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 	}
 	ApplyVehicleLaneGuidance(DeltaSeconds);
 	UpdatePedestrianAvoidance();
+}
+
+bool ASimCopterTrafficSystemActor::IsVehicleHeldInTrafficJam(const ASimCopterGroundAgent& Vehicle) const
+{
+	const FSimCopterVehicleTrafficState* State =
+		VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	return State != nullptr && (State->bMissionJammed || State->bJamQueued);
+}
+
+// SCHOOK: VehicleMoveCore 0x0049ee30 / VehicleAdvance 0x0049be50 (their jam arms)
+void ASimCopterTrafficSystemActor::ApplyTrafficJamQueue(const float DeltaSeconds)
+{
+	// The overwhelmingly common case is no jam at all, and it has to cost nothing: without this the
+	// pass would be a second O(n^2) neighbour scan on every tick of ordinary traffic.
+	bool bAnyJammedVehicle = false;
+	for (const TPair<TObjectKey<ASimCopterGroundAgent>, FSimCopterVehicleTrafficState>& Pair : VehicleTrafficStates)
+	{
+		if (Pair.Value.bMissionJammed)
+		{
+			bAnyJammedVehicle = true;
+			break;
+		}
+	}
+
+	struct FJamQueueEntry
+	{
+		ASimCopterGroundAgent* Vehicle = nullptr;
+		FSimCopterVehicleTrafficState* State = nullptr;
+		FVector Location = FVector::ZeroVector;
+		FVector Heading = FVector::ZeroVector;
+		float RadiusCm = 0.0f;
+		int32 BlockerIndex = INDEX_NONE;
+		float BlockerForwardDistanceCm = 0.0f;
+		bool bJammed = false;
+		bool bQueued = false;
+	};
+
+	TArray<FJamQueueEntry> Entries;
+	Entries.Reserve(bAnyJammedVehicle ? VehicleAgents.Num() : 0);
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr)
+		{
+			continue;
+		}
+		FSimCopterVehicleTrafficState* State =
+			VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State == nullptr)
+		{
+			continue;
+		}
+
+		// Cleared unconditionally, every tick. A car that has left the chain - because the jam was
+		// cleared, or because the car ahead of it drove off - has to be back on ordinary traffic
+		// rules the same frame, or it would sit still on an empty road forever.
+		State->bJamQueued = false;
+		State->JamBlocker.Reset();
+
+		const FVector Heading = GetAgentTravelDirection(*Vehicle);
+		if (!bAnyJammedVehicle || Heading.IsNearlyZero())
+		{
+			State->JamHeldSeconds = 0.0f;
+			continue;
+		}
+
+		FJamQueueEntry& Entry = Entries.AddDefaulted_GetRef();
+		Entry.Vehicle = Vehicle;
+		Entry.State = State;
+		Entry.Location = Vehicle->GetActorLocation();
+		Entry.Heading = Heading;
+		Entry.RadiusCm = Vehicle->GetCollisionRadiusCm();
+		Entry.bJammed = State->bMissionJammed;
+	}
+
+	if (Entries.Num() == 0)
+	{
+		return;
+	}
+
+	// Pass 1: every car's blocker - the nearest car ahead of it that is going its way.
+	//
+	// FUN_0049ee30's heading test is what makes this safe to run on live two-way traffic. It shows
+	// up twice there and both halves are here: a car outside the dot cone is not a blocker at all,
+	// and the radius one inside the cone imposes shrinks with the angle between the two headings.
+	// Oncoming traffic drops out on both counts, so the far side of the street keeps moving and a
+	// pair of cars sharing a lane can never resolve each other away and swap places.
+	const float LookAhead = FMath::Max(TrafficJamQueueLookAheadCm, ActiveTileSize * 0.5f);
+	const float MaxHeightDeltaCm = ActiveTileSize * FMath::Max(0.05f, TrafficJamQueueHeightToleranceTileFraction);
+
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		FJamQueueEntry& Entry = Entries[Index];
+		const FVector Right(-Entry.Heading.Y, Entry.Heading.X, 0.0f);
+		float BestForwardDistance = TNumericLimits<float>::Max();
+
+		for (int32 OtherIndex = 0; OtherIndex < Entries.Num(); ++OtherIndex)
+		{
+			if (OtherIndex == Index)
+			{
+				continue;
+			}
+			const FJamQueueEntry& Other = Entries[OtherIndex];
+			const FVector ToOther = Other.Location - Entry.Location;
+			// A jam on a bridge deck must not stop the road running under it.
+			if (FMath::Abs(ToOther.Z) > MaxHeightDeltaCm)
+			{
+				continue;
+			}
+
+			const FVector FlatToOther(ToOther.X, ToOther.Y, 0.0f);
+			const float ForwardDistance = FVector::DotProduct(FlatToOther, Entry.Heading);
+			if (ForwardDistance <= 0.0f || ForwardDistance > LookAhead || ForwardDistance >= BestForwardDistance)
+			{
+				continue;
+			}
+
+			const float HeadingDot = FVector::DotProduct(Entry.Heading, Other.Heading);
+			if (!SimCopterTrafficJam::IsSameDirectionBlocker(HeadingDot, /*YieldCount=*/0))
+			{
+				continue;
+			}
+
+			const float LaneWidth = (Entry.RadiusCm + Other.RadiusCm) *
+				SimCopterTrafficJam::GetHeadingBlockScale(HeadingDot) + ActiveTileSize * 0.16f;
+			if (FMath::Abs(FVector::DotProduct(FlatToOther, Right)) > LaneWidth)
+			{
+				continue;
+			}
+
+			BestForwardDistance = ForwardDistance;
+			Entry.BlockerIndex = OtherIndex;
+			Entry.BlockerForwardDistanceCm = ForwardDistance;
+		}
+	}
+
+	// Pass 2: the chain. Each car has at most one blocker, so the "who is behind me" relation is a
+	// forest and one breadth-first walk out from the jammed cars reaches exactly the queue - not
+	// every car that happens to be stopped somewhere else on the map.
+	TArray<TArray<int32>> FollowersByLeader;
+	FollowersByLeader.SetNum(Entries.Num());
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		if (Entries[Index].BlockerIndex != INDEX_NONE)
+		{
+			FollowersByLeader[Entries[Index].BlockerIndex].Add(Index);
+		}
+	}
+
+	TArray<int32> Pending;
+	for (int32 Index = 0; Index < Entries.Num(); ++Index)
+	{
+		if (Entries[Index].bJammed)
+		{
+			Entries[Index].bQueued = true;
+			Pending.Add(Index);
+		}
+	}
+	while (Pending.Num() > 0)
+	{
+		const int32 LeaderIndex = Pending.Pop(EAllowShrinking::No);
+		for (const int32 FollowerIndex : FollowersByLeader[LeaderIndex])
+		{
+			if (Entries[FollowerIndex].bQueued)
+			{
+				continue;
+			}
+			Entries[FollowerIndex].bQueued = true;
+			Pending.Add(FollowerIndex);
+		}
+	}
+
+	// Pass 3: hold each car in the chain behind the one in front of it.
+	const float CmPerOriginalUnit = GetPeopleWorldCmPerOriginalUnit();
+	const float SlowDistance = FMath::Max(1.0f, TrafficJamQueueSlowDistanceCm);
+	const float BrakeRate = FMath::Max(0.0f, TrafficJamQueueBrakeRate);
+
+	for (FJamQueueEntry& Entry : Entries)
+	{
+		if (!Entry.bQueued)
+		{
+			Entry.State->JamHeldSeconds = 0.0f;
+			continue;
+		}
+
+		// The jammed car itself stops outright; a follower stops against the car in front of it,
+		// never against the jam. That distinction is the whole point: with everyone measuring
+		// against the jam's own position, every car in the queue wants the same piece of road.
+		float SpeedScale = 0.0f;
+		if (!Entry.bJammed && Entry.BlockerIndex != INDEX_NONE)
+		{
+			const FJamQueueEntry& Leader = Entries[Entry.BlockerIndex];
+			Entry.State->bJamQueued = true;
+			Entry.State->JamBlocker = Leader.Vehicle;
+			SpeedScale = SimCopterTrafficJam::GetQueueSpeedScale(
+				Entry.BlockerForwardDistanceCm,
+				SimCopterTrafficJam::GetQueueHoldDistanceCm(Entry.RadiusCm, Leader.RadiusCm, CmPerOriginalUnit),
+				SlowDistance);
+		}
+
+		// Cancel any dig-out already in flight. FUN_0049be50's blocked branch contains no manoeuvre
+		// of any kind - backing up and steering round the blocker is a remake invention, and it is
+		// what let cars in a jam climb over one another instead of holding the line.
+		// UpdateVehicleBlockageRecovery bars them from starting a new one.
+		if (Entry.State->RecoveryBypassSeconds > 0.0f || Entry.State->RecoveryRejoinSeconds > 0.0f)
+		{
+			Entry.State->RecoveryBypassSeconds = 0.0f;
+			Entry.State->RecoveryRejoinSeconds = 0.0f;
+			Entry.Vehicle->SetAvoidancePathOffset(FVector::ZeroVector, 0.0f);
+		}
+
+		Entry.Vehicle->ApplyTrafficBrake(SpeedScale, DeltaSeconds, BrakeRate);
+		Entry.State->JamHeldSeconds = SpeedScale <= 0.0f
+			? Entry.State->JamHeldSeconds + DeltaSeconds
+			: 0.0f;
+	}
 }
 
 void ASimCopterTrafficSystemActor::ApplyPlayerRoadBlocking()
@@ -5518,6 +6261,15 @@ void ASimCopterTrafficSystemActor::ApplyTrafficLights(float DeltaSeconds)
 			continue;
 		}
 
+		// A jam is not a red light. This queue puts every car on an approach on a slot point
+		// measured off one shared stop line, which is the wrong shape for a jam - the cars converge
+		// on the same few metres of road instead of trailing back from wherever the jam actually
+		// is. ApplyTrafficJamQueue holds them against the car in front of them instead.
+		if (IsVehicleHeldInTrafficJam(*Vehicle))
+		{
+			continue;
+		}
+
 		const int32 TargetNodeIndex = Vehicle->GetRouteTargetNode();
 		const int32 PreviousNodeIndex = Vehicle->GetRoutePrevNode();
 		if (!RoadNodes.IsValidIndex(PreviousNodeIndex))
@@ -5636,6 +6388,14 @@ void ASimCopterTrafficSystemActor::ApplyVehicleFollowing(
 		}
 
 		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
+		if (State != nullptr && State->bJamQueued)
+		{
+			// ApplyTrafficJamQueue already set this car's speed against the car in front of it, and
+			// it is the only pass that can bring one to an actual stop. These rules bottom out at a
+			// creep (0.12 - 0.18), which is exactly how a queue used to close up into a single pile.
+			continue;
+		}
+
 		if (State != nullptr && State->bMissionJammed)
 		{
 			Vehicle->SetTrafficSpeedScale(0.0f);
@@ -5897,12 +6657,44 @@ void ASimCopterTrafficSystemActor::ResolveVehicleOverlaps()
 				const float Distance = DistanceSq > KINDA_SMALL_NUMBER ? FMath::Sqrt(DistanceSq) : 0.0f;
 				const float PushDistance = FMath::Max(0.0f, MinimumDistance - Distance);
 				const FVector Push = SeparationDirection * (PushDistance * 0.5f + 0.5f);
-				A->MoveByTrafficSeparation(-Push);
-				B->MoveByTrafficSeparation(Push);
+
+				// Cars held in a jam hold station. Splitting the push between a follower and the car
+				// it has queued behind walks the leader forwards, and a queue of them conveyor-belts
+				// the whole jam down the street; taking the separation out of the follower alone
+				// pushes it backwards, which is the only direction that cannot slide it past.
+				const FSimCopterVehicleTrafficState* AState =
+					VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(A));
+				const FSimCopterVehicleTrafficState* BState =
+					VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(B));
+				const bool bAHeldInJam = AState != nullptr && (AState->bMissionJammed || AState->bJamQueued);
+				const bool bBHeldInJam = BState != nullptr && (BState->bMissionJammed || BState->bJamQueued);
+				if (AState != nullptr && AState->JamBlocker.Get() == B)
+				{
+					A->MoveByTrafficSeparation(-(Push * 2.0f));
+				}
+				else if (BState != nullptr && BState->JamBlocker.Get() == A)
+				{
+					B->MoveByTrafficSeparation(Push * 2.0f);
+				}
+				else
+				{
+					A->MoveByTrafficSeparation(-Push);
+					B->MoveByTrafficSeparation(Push);
+				}
+				// Before the mark, while RecentCollisionSeconds still says whether this pair were
+				// already touching last frame: the original's collision handler is an EVENT, and
+				// re-rolling it every frame of a sustained overlap would set the whole street alight.
+				const bool bFreshImpact = PassIndex == 0 && !HasRecentVehicleCollision(*A) && !HasRecentVehicleCollision(*B);
 				MarkVehicleCollision(*A);
 				MarkVehicleCollision(*B);
+				if (bFreshImpact)
+				{
+					ApplyCollisionCarFireRoll(*A, *B);
+				}
 
-				if (PassIndex == 0)
+				// No bump impulse into or out of a jam: the queue's spacing is a held position, and
+				// throwing velocity at it is what let a nudged car coast out of line.
+				if (PassIndex == 0 && !bAHeldInJam && !bBHeldInJam)
 				{
 					const FVector Impulse = SeparationDirection * VehicleBumpImpulseCmPerSec;
 					A->AddTrafficVelocityImpulse(-Impulse);
@@ -5932,9 +6724,22 @@ void ASimCopterTrafficSystemActor::UpdateVehicleBlockageRecovery()
 		}
 
 		FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Vehicle));
-		const bool bCommittedToIntersection = State != nullptr && State->IntersectionCommitSeconds > 0.0f;
-		if (State == nullptr ||
-			State->RecoveryCooldownSeconds > 0.0f ||
+		if (State == nullptr)
+		{
+			continue;
+		}
+
+		// A car in a jam waits it out, full stop. FUN_0049be50's blocked branch reroutes or raises
+		// a jam mission and does nothing else - there is no back-up, no lateral bypass and no
+		// rejoin anywhere in the original, and running them inside a jam is what had cars steering
+		// around each other and passing the queue instead of holding the line behind it.
+		if (State->bMissionJammed || State->bJamQueued)
+		{
+			continue;
+		}
+
+		const bool bCommittedToIntersection = State->IntersectionCommitSeconds > 0.0f;
+		if (State->RecoveryCooldownSeconds > 0.0f ||
 			(!bCommittedToIntersection && (State->bInTrafficLightLine || State->TrafficLightLineGraceSeconds > 0.0f)))
 		{
 			continue;
@@ -5950,8 +6755,58 @@ void ASimCopterTrafficSystemActor::UpdateVehicleBlockageRecovery()
 			continue;
 		}
 
+		ApplyBlockedVehicleJamRoll(*Vehicle);
 		TryStartVehicleRecovery(*Vehicle, *State);
 	}
+}
+
+void ASimCopterTrafficSystemActor::ApplyBlockedVehicleJamRoll(ASimCopterGroundAgent& Vehicle)
+{
+	// SCHOOK: BlockedVehicleJam 0x0049be50 (five sites, all the same test).
+	//
+	// The shared "advance along the road" routine that the three emergency-vehicle state machines
+	// (FUN_004bd770 / FUN_004bd980 / FUN_004bdb50), the criminal car (FUN_004b8630) and the police
+	// on-scene handler (FUN_004b9e40) all call. When one of them is blocked it rolls
+	//     rand() % (0x40 >> difficulty)
+	// and on a zero allocates a 0x800 TYPE_TrafficJam record bound to itself (FUN_0049fe30);
+	// otherwise it just tries to reroute (FUN_0049ea70). So an ambulance stuck in traffic is how a
+	// jam mission gets raised outside the scheduler - 1-in-32 on an easy city, 1-in-4 on a hard one.
+	//
+	// Ordinary ambient cars do NOT run this: FUN_0049be50 has no other callers, which is why the
+	// gate below is the dispatch pools rather than "any blocked vehicle".
+	if (!IsDispatchVehicle(Vehicle))
+	{
+		return;
+	}
+
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Missions == nullptr)
+	{
+		return;
+	}
+
+	// Reaching here is already throttled: the caller skips any vehicle whose RecoveryCooldownSeconds
+	// is still running, so this rolls once per blocked episode rather than once per frame.
+	const int32 Divisor = FMath::Max(1, 0x40 >> FMath::Clamp(Missions->GetMissionDifficultyTier(), 0, 6));
+	if (FMath::RandHelper(Divisor) != 0)
+	{
+		return;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TryGetPeopleTileCoordinateAtWorldLocation(Vehicle.GetActorLocation(), TileX, TileY))
+	{
+		return;
+	}
+
+	// DIVERGENCE, small and named: the original binds the new record to the blocked vehicle itself
+	// (veh+0x113) and jams that car. The remake's TYPE_TrafficJam creator picks its own seed car
+	// from the ambient pool, so the jam forms at the blocked vehicle's tile rather than on the
+	// emergency vehicle - which is what the player wants to see anyway, since an ambulance that
+	// jams itself cannot then drive to its call.
+	Missions->CreateMissionAt(TileX, TileY, SimCopterMissions::TYPE_TrafficJam);
 }
 
 void ASimCopterTrafficSystemActor::ApplyVehicleLaneGuidance(float DeltaSeconds)
@@ -6339,6 +7194,72 @@ void ASimCopterTrafficSystemActor::MarkVehicleCommittedToIntersection(ASimCopter
 	State.IntersectionCommitSeconds = FMath::Max(State.IntersectionCommitSeconds, TrafficLightIntersectionCommitDurationSeconds);
 	State.bInTrafficLightLine = false;
 	State.TrafficLightLineGraceSeconds = 0.0f;
+}
+
+bool ASimCopterTrafficSystemActor::HasRecentVehicleCollision(const ASimCopterGroundAgent& Vehicle) const
+{
+	const FSimCopterVehicleTrafficState* State =
+		VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(&Vehicle));
+	return State != nullptr && State->RecentCollisionSeconds > 0.0f;
+}
+
+bool ASimCopterTrafficSystemActor::IsDispatchVehicle(const ASimCopterGroundAgent& Vehicle) const
+{
+	// The original asks the object's own identity byte: veh[5] is the message id its constructor
+	// stamped - 0x11c fire truck, 0x11d police, 0x11f ambulance (emergency_dispatch_decode section
+	// 8), plus 0x190 for the criminal car. The remake keeps that identity in the pools instead, so
+	// membership is the same question.
+	for (int32 ServiceIndex = 0; ServiceIndex < static_cast<int32>(SimCopterDispatch::EService::Count); ++ServiceIndex)
+	{
+		for (const FSimCopterDispatchVehicle& Slot : DispatchVehicles[ServiceIndex])
+		{
+			if (Slot.Agent.Get() == &Vehicle)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void ASimCopterTrafficSystemActor::ApplyCollisionCarFireRoll(
+	ASimCopterGroundAgent& A,
+	ASimCopterGroundAgent& B)
+{
+	// SCHOOK: CollisionCarFire 0x004a22e0, reached from the car-vs-car handler FUN_0049ee30.
+	//
+	// The rule is asymmetric and easy to misread: it only fires when ONE of the pair is a special
+	// vehicle and the other is an ordinary ambient car, and it is the ORDINARY one that burns -
+	//     bVar3 = (B is special); if (bVar3) { bVar3 = (A is special); if (!bVar3) { roll; ignite A; } }
+	// "Special" is `(veh[5] & 0xb) != 0 || 0x11c <= veh[5] <= 0x11f || veh[5] == 400`, i.e. an
+	// emergency vehicle or the criminal car. So this is a fire engine or a fleeing speeder
+	// T-boning somebody, not two commuters bumping in a queue.
+	//
+	// And the rate is the difficulty gradient: `rand() % (0x200 >> difficulty) == 0` is 1-in-256 on
+	// an easy city and 1-in-32 on a hard one, so hard cities generate car fires out of their own
+	// traffic without the scheduler being involved at all.
+	const bool bASpecial = IsDispatchVehicle(A);
+	const bool bBSpecial = IsDispatchVehicle(B);
+	if (bASpecial == bBSpecial)
+	{
+		return; // two ordinary cars, or two special ones: the original ignites neither
+	}
+
+	ASimCopterGroundAgent& Ordinary = bASpecial ? B : A;
+
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Missions == nullptr)
+	{
+		return;
+	}
+
+	const int32 Divisor = FMath::Max(1, 0x200 >> FMath::Clamp(Missions->GetMissionDifficultyTier(), 0, 9));
+	if (FMath::RandHelper(Divisor) != 0)
+	{
+		return;
+	}
+	Missions->CreatePlayerCausedCarFireForVehicle(&Ordinary);
 }
 
 void ASimCopterTrafficSystemActor::MarkVehicleCollision(ASimCopterGroundAgent& Vehicle)

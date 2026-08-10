@@ -3,7 +3,7 @@
 *"Keep the original's Save, Save As, and career/user Open behavior, but version the remake's
 payload honestly instead of labelling an incomplete archive `.scc` or `.scu`."*
 
-*Recorded 2026-07-31.*
+*Recorded 2026-07-31; save format 3 added 2026-08-09.*
 
 The implementation is `USimCopterSaveSubsystem` plus `USimCopterSaveGame`, with
 `SSimCopterSaveNameDialog` in the in-city Settings flow and `SSimCopterSaveGamePicker` in the
@@ -40,15 +40,20 @@ would be false until every original chunk, especially BOMB, is implemented. Care
 remain separate and the two Open menu items only list the matching kind, preserving the original's
 visible contract.
 
-## State currently persisted (format version 2)
+## State currently persisted (format version 3)
 
 - session kind and city (career index or portable user-city filename);
-- cash, score, session elapsed time, and the full live city-tuning record;
+- cash, score, session elapsed time, and the full live city-tuning record (including user-city
+  difficulty and all seven mission weights);
+- the live day-sequence hour plus the save's Dynamic/Static mode, Static Time hour, Daytime Length
+  and Nighttime Length. These are session settings, not profile settings: starting a genuinely new
+  game resets them, while loading a save reapplies them before restoring its clock. A pending clock
+  seek remains on `USimCopterDayNightSubsystem` until the level's day-sequence actor is available;
 - owned-helicopter mask, depreciation values, and career log;
 - active helicopter type, purchased equipment, tear-gas ammunition, selected tool, fuel, and
   damage.
 
-Version 2 also carries a pointer-free live-world payload split by the same runtime owners that
+Version 2 and later also carry a pointer-free live-world payload split by the same runtime owners that
 already simulate the port:
 
 - the mission scheduler/PRNG, all 30 mission records, all flame and fire-object slots, active
@@ -89,6 +94,8 @@ port of the original chunk writer. It still does **not** make remake saves compa
 or `.scu`, and must not be advertised that way. Each runtime owner has its own magic/version and
 rejects a malformed or future byte stream instead of interpreting raw UObject memory. Legacy
 format-version-1 remake saves remain header-only and use the old airport-start restore path.
+Format-version-2 saves keep their complete live-world restore and use the new session's default
+time-of-day settings because they predate the clock record.
 
 ## UI and console paths
 
@@ -105,6 +112,7 @@ format-version-1 remake saves remain header-only and use the old airport-start r
 ## Verification
 
 `SimCopter.SaveGame.*` automation covers name/slot normalization, archive serialization and version
-rejection, kind isolation, and the version-2 blob fields. Mission/effect owner round trips have
+rejection, kind isolation, the version-2 blob fields, user-city difficulty, and the version-3 clock
+and time-setting fields. Mission/effect owner round trips have
 focused automation coverage. The implementation is verified through the standard C++ build and
 headless automation; it has not been driven visually in-game.

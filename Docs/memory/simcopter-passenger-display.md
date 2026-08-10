@@ -154,6 +154,63 @@ Two deliberate divergences, both at their call sites:
 Not reproduced: the player-avatar Elvis-voice easter egg in `FUN_004c71c0`'s
 `person+0x12e == 32000 && shift` arm.
 
+## Passenger portrait chroma key and scaling (2026-08-08)
+
+`PEOPLE1.BMP` is an 8-bit 324x99 sheet of twelve 27x33 columns and three face rows. Palette
+index 254 is cyan `(0,255,255)` and is the transparent chroma key. Setting only its alpha to zero
+is insufficient for filtered Slate textures: the hidden cyan RGB is interpolated into neighboring
+opaque pixels and appears as a teal outline around the head and shoulders.
+
+The bitmap reader now replaces a keyed palette entry with transparent black, discarding both its
+alpha and RGB. Passenger-slot subimages additionally request their own nearest-neighbor brush
+variant; the cache key includes that sampling choice, and the shared loader continues to use
+bilinear filtering for dashboard pages and other artwork. This preserves the exact original
+palette pixels when each portrait is displayed at the dashboard scale and excludes the keyed
+border completely.
+
+## Mission class -1 and collision consequences (2026-08-08)
+
+`FUN_004c3eb0` receives behavior class **-1** for ordinary mission people, including transport
+fares. That is a sentinel, not class zero: `FUN_004c71c0` resolves it through `FUN_004c7190`,
+which ordinarily selects class 0..9 (with the extremely rare `FUN_004c7170` celebrity arm). The
+remake previously left the C++ field at its default zero, so every unspecified fare inherited the
+same class-0 head, body and voice pitch. Mission spawn paths now call the decoded chooser before
+`ConfigureAgent`, preserving the real actor that later occupies the seat record.
+
+Static decompilation of `FUN_00484d20` shows no direct write to medevac attr34: it damages the
+aircraft, while BHAV 264's damage-scaled opcode-55 speed supplies the ordinary passenger reaction.
+However, observed original runtime behavior is that a damaging impact can worsen a patient and
+immediately disturb the EKG. The remake therefore applies one **BHAV 281 deterioration quantum**
+(`1 + difficulty tier`) on each rate-limited damaging bounce and re-runs `FUN_004c5210`'s existing
+EKG retune path immediately. This provenance distinction matters: the amount is decoded, while the
+impact-to-patient edge is runtime-observed rather than a recovered direct attr34 store.
+
+The ordinary-passenger impact face is a **transient**, not a stored injury state. BHAV 292 waits
+10 ticks, calls BHAV 264 (whose own tail idles another three), and repeats; at the default 15 Hz
+behavior rate the displayed face is therefore reconsidered about every 13 ticks / 0.87 seconds.
+The immediate collision flinch now carries that deadline and then yields back to BHAV 264's exact
+damage-scaled-speed edges (`>250 -> 2`, `>125 -> 0`, otherwise `1`). This deadline is a backstop for
+a temporarily stalled passenger behavior stack. Medevac passengers are excluded because their
+BHAV 264 branch is health-driven and the collision really did lower their health.
+
+The transition to the destroyed helicopter state calls `FUN_004c0ba0(1)`, which sets every
+occupied person's written-off attribute, posts `EVT_PersonDied`, and removes them from the wreck
+through `FUN_004bfb20`. The port now performs that write-off when `bStartedDying` fires, before the
+aircraft can be repaired and returned to an airport with passengers still attached.
+
+## Dragging a portrait out of the seat well (2026-08-09)
+
+The passenger drag is a Slate `FDragDropOperation`. `GetDefaultDecorator` is the graphic that
+follows the pointer; passing `.Portrait(nullptr)` to `SSimCopterSeatPortrait` creates a valid drag
+with no decorator, so the drop logic works while the passenger appears to stay in the panel.
+
+Pass the same cached PEOPLE1 brush used by the seat image into the operation. The source widget is
+`Hidden` while dragging (not collapsed, so the seat layout does not move), and the decorator uses
+the source geometry's exact scaled size. Its `OnDragged` keeps the original grab offset under the
+pointer instead of using `FDragDropOperation`'s tooltip-style cursor offset. `SSimCopterSeatWell`
+handles a passenger drop without changing the manifest, and the operation restores the hidden
+source widget; an unhandled drop outside the well still calls `DropPassengerAtSlot`.
+
 ## Verification (2026-07-31)
 
 - `RebuildUnrealCpp.bat` — `Result: Succeeded`.
@@ -167,6 +224,26 @@ Not verified on screen; project policy reserves foreground runs for what a build
 and automation cannot settle. The things worth a look when someone is at the keyboard: bandages
 only on casualties, the seat portraits changing row as you fly and as a patient fades, and the EKG
 audibly slowing.
+
+### Verification (2026-08-08 follow-up)
+
+- `RebuildUnrealCpp.bat` — `Result: Succeeded`.
+- `Automation RunTests SimCopter.City.PeopleRules` — 1 passed, including deterministic
+  `FUN_004c7190` class-selection checks.
+- `Automation RunTests SimCopter.Passengers` — 3 passed (face program, heads, voice rates).
+- Passenger portrait rendering follow-up: `SimCopter.Passengers` — 4 passed, including the real
+  PEOPLE1 crop/filter test; `SimCopter.Formats.MaxisTexture.ReferencePeopleWindowsBitmap` — 1
+  passed, including zero-RGB chroma-key checks.
+- The later runtime-observed impact-trauma follow-up passed UHT and `git diff --check`, but its C++
+  rebuild was blocked by an active editor Live Coding session; rebuild/test it after closing the
+  editor.
+- Not verified in-game; the remaining visual/audio check is intentionally left for an attended run.
+
+### Verification (2026-08-09 portrait drag follow-up)
+
+- `RebuildUnrealCpp.bat` — `Result: Succeeded`.
+- `Automation RunTests SimCopter.Passengers` — 5 passed.
+- Not verified on screen; the cursor anchoring and return animation need an attended drag check.
 
 Related: [[simcopter-people-logic-next]], [[simcopter-paramedic-handoffs]], [[simcopter-sound]],
 [[simcopter-population-rendering]], [[simcopter-ue-figure-component]], [[simcopter-checkup-menu]].

@@ -5,13 +5,16 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterEffectExposure.h"
 #include "Engine/World.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterWaterGameplay.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "GameFramework/PlayerController.h"
 #include "Ground/SimCopterEffectFX.h"
 #include "Ground/SimCopterEffectRasterizer.h"
+#include "Ground/SimCopterInteraction.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -896,6 +899,27 @@ void USimCopterParticleFXComponent::AdvanceWaterTrajectoryStep(
 				Mission->ApplyWaterParticleImpact(Impact, Result.DouseStrength1616);
 			}
 		}
+
+		// SCHOOK: WaterHitsPeople 0x00490690. Water does not only put fires out - the impact loop's
+		// class-to-mode table sends the whole water family to interaction mode 4:
+		//     if ((uVar9 & 0xe0) == 0) { ... } else { local_d0 = 4; }
+		// 0xe0 is the cannon (0x20), the bucket (0x40) and type 7 (0x80) together, and mode 4 is
+		// DAT_0058d728[4] = BHAV 908 "Rxn: Water" - which drops a rioter's agitation, exactly as
+		// tear gas does through 907. The remake had the douse half of this line and not the people
+		// half, so hosing a crowd did nothing at all; this is what makes the water cannon a riot
+		// tool and not just a fire hose.
+		if (ASimCopterHelicopterPawn* Helicopter =
+			Cast<ASimCopterHelicopterPawn>(UGameplayStatics::GetActorOfClass(
+				GetWorld(), ASimCopterHelicopterPawn::StaticClass())))
+		{
+			FSimCopterInteractionEvent Event;
+			Event.Mode = ESimCopterInteractionMode::Water;
+			Event.Source = GetOwner();
+			Event.TargetTile = ImpactCell;
+			Event.TargetWorldLocation = Impact;
+			Event.ImpactStrength = static_cast<float>(Result.DouseStrength1616) / Fixed1616Scale;
+			Helicopter->DeliverInteractionToTile(Event);
+		}
 		return;
 	}
 
@@ -1302,6 +1326,11 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 		}
 	}
 
+	// Both card materials are UNLIT - the original stamped a palette colour into the frame buffer -
+	// so their brightness is an absolute number of nits that has to be put on the same scale as the
+	// sun lighting the city, or the cards tonemap to black. See USimCopterEffectExposureSubsystem.
+	ApplyEffectExposure();
+
 	if (Kernels.Vertices.IsEmpty())
 	{
 		MeshComponent->ClearMeshSection(0);
@@ -1338,10 +1367,37 @@ void USimCopterParticleFXComponent::RebuildMesh(const FVector& CameraLocation)
 			Solids.Colors,
 			Solids.Tangents,
 			false);
-		if (UMaterialInterface* Material =
-			CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get())
+		if (UMaterialInterface* Material = CardMaterialInstance != nullptr
+			? static_cast<UMaterialInterface*>(CardMaterialInstance.Get())
+			: (CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get()))
 		{
 			MeshComponent->SetMaterial(1, Material);
 		}
+	}
+}
+
+void USimCopterParticleFXComponent::ApplyEffectExposure()
+{
+	UMaterialInterface* Parent =
+		CardMaterialOverride != nullptr ? CardMaterialOverride.Get() : CardMaterial.Get();
+	if (CardMaterialInstance == nullptr ||
+		(Parent != nullptr && CardMaterialInstance->Parent != Parent))
+	{
+		// Rebuilt rather than kept when the override changes, so a material swapped in the details
+		// panel still gets the exposure scale rather than silently reverting to the black default.
+		CardMaterialInstance = Parent != nullptr ? UMaterialInstanceDynamic::Create(Parent, this) : nullptr;
+	}
+
+	const float Nits = USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(GetWorld());
+	const FName ParameterName = USimCopterEffectExposureSubsystem::GetEmissiveNitsParameterName();
+	if (CardMaterialInstance != nullptr)
+	{
+		CardMaterialInstance->SetScalarParameterValue(ParameterName, Nits);
+	}
+	if (KernelMaterialInstance != nullptr)
+	{
+		// The kernels ride M_SimCopterSpriteTexture, which is unlit for the same reason and needs
+		// the same scale. A material without the parameter ignores this silently.
+		KernelMaterialInstance->SetScalarParameterValue(ParameterName, Nits);
 	}
 }

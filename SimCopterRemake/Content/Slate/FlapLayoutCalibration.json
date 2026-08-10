@@ -1,0 +1,255 @@
+{
+	"GlobalScale": 1.7682919502258301,
+	"Dispatch_DispatchBtn":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_0":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Megaphone":
+	{
+		"x": 0,
+		"y": -0.56551747570433109,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Raise harness":
+	{
+		"x": 1.6965524271129933,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Lower harness":
+	{
+		"x": 1.6965524271129933,
+		"y": 0.56551747570433109,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Raise bucket":
+	{
+		"x": 4.3586223358907823,
+		"y": 0,
+		"scaleX": 0.99999988079071045,
+		"scaleY": 1
+	},
+	"Button_Lower bucket":
+	{
+		"x": 4.3586223358907823,
+		"y": 0.20000000298023224,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Dump bucket":
+	{
+		"x": 3.3931048542259865,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Water cannon":
+	{
+		"x": 1.1310349514086622,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Button_Fire tear gas":
+	{
+		"x": 2.2620699028173243,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"CanisterLamp_4":
+	{
+		"x": 1.0310349499185461,
+		"y": 0,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_3":
+	{
+		"x": 0.63103494395808157,
+		"y": 0,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_2":
+	{
+		"x": 0.56551747570433109,
+		"y": 0,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_1":
+	{
+		"x": 0.46551747421421497,
+		"y": 0,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_6":
+	{
+		"x": 0.40000000596046448,
+		"y": -0.20000000298023224,
+		"scaleX": 1.0999999046325684,
+		"scaleY": 1.0999999046325684
+	},
+	"Dispatch_PrevService":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 0.79999995231628418
+	},
+	"Dispatch_ServiceBox":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Dispatch_NextService":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 0.79999995231628418
+	},
+	"Dispatch_ClearBtn":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Apache_MissileBtn":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"Apache_GunBtn":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_1":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_2":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_3":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_4":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_5":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_6":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_7":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_8":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_9":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"WaterGauge_10":
+	{
+		"x": 0,
+		"y": 0,
+		"scaleX": 1,
+		"scaleY": 1
+	},
+	"CanisterLamp_0":
+	{
+		"x": 0.20000000298023224,
+		"y": 0,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_5":
+	{
+		"x": 0.40000000596046448,
+		"y": -0.20000000298023224,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_7":
+	{
+		"x": 0.19999998807907104,
+		"y": -0.20000000298023224,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_8":
+	{
+		"x": 0.69999999552965164,
+		"y": -0.20000000298023224,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	},
+	"CanisterLamp_9":
+	{
+		"x": 0.79999999701976776,
+		"y": -0.20000000298023224,
+		"scaleX": 1.1000000238418579,
+		"scaleY": 1.1000000238418579
+	}
+}

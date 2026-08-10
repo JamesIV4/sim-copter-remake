@@ -522,6 +522,9 @@ void USimCopterRadioSubsystem::SetStationIndex(int32 Index)
 		return;
 	}
 	StationIndex = Clamped;
+	// The dashboard radio's channel selector returns its volume rocker to the top. Keep this in
+	// the subsystem too so console and Settings-screen channel changes follow the same rule.
+	SetVolume(1.0f);
 	// The playlists are per station, so switching rebuilds them - a fresh shuffle bag, which is
 	// also what the original does when it loads a station's lists.
 	RebuildPlaylists();
@@ -541,6 +544,10 @@ void USimCopterRadioSubsystem::StepStation(int32 Delta)
 void USimCopterRadioSubsystem::SetVolume(float InVolume)
 {
 	Volume = FMath::Clamp(InVolume, 0.0f, 1.0f);
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->SetRadioVolumeMultiplier(Volume);
+	}
 }
 
 float USimCopterRadioSubsystem::GetDialAlpha() const

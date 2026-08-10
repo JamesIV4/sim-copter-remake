@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "City/SimCity2000CityActor.h"
 
@@ -14,10 +14,15 @@
 #include "Formats/MaxisProceduralMeshBuilder.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCity2000Reader.h"
 #include "Ground/SimCopterFlashingLights.h"
+#include "City/SimCopterRoadDecorations.h"
+#include "City/SimCopterSmokeStacks.h"
+#include "City/SimCopterStreetLights.h"
 #include "Flight/SimCopterWaterGameplay.h"
+#include "Game/SimCopterLowPowerMode.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Materials/Material.h"
@@ -87,6 +92,23 @@ bool IsMaxisSpriteCardFace(const FMaxisMeshFace& Face)
 	return Face.FaceType == 2 && Face.VertexIndices.Num() == 2;
 }
 
+// SIM3D page 2 cell 0 is a digitised photograph of a face - a Maxis test image, not artwork the
+// shipped game ever puts on screen. Exactly four objects sample it, and always as the last face of
+// the model: CO182's wall billboard (one panel) and the front/back pair on CO124, CO126 and CO127's
+// street signs. Those panels are standalone boards, so dropping the faces drops the sign and leaves
+// no hole - there is no wall behind them. Measured with Docs/scratchpad/list_atlas_cell_users.py;
+// the neighbouring cells on the same page are the police shield (8), hospital H (9), helipad
+// crosshair (10) and fire F (11), which is what fixes the cell numbering.
+constexpr uint8 DebugPortraitAtlasPage = 2;
+constexpr uint8 DebugPortraitAtlasCell = 0;
+
+bool IsDebugPortraitFace(const FMaxisMeshFace& Face)
+{
+	return Face.FaceType == 18 &&
+		Face.TextureAtlasIndex == DebugPortraitAtlasPage &&
+		Face.MaterialIndex == DebugPortraitAtlasCell;
+}
+
 int32 MakeMaxisTextureKey(uint8 TextureFile, uint8 TextureNumber)
 {
 	return (static_cast<int32>(TextureFile) << 8) | static_cast<int32>(TextureNumber);
@@ -115,6 +137,9 @@ constexpr int32 SimCopterTerrainTextureNameIndex = 100000;
 constexpr uint8 SimCopterHighTerrainTypeBase = 0x40;
 constexpr int32 BakedAtlasPageSectionKeyFlag = 0x10000;
 constexpr int32 BakedDirectImageSectionKeyFlag = 0x20000;
+// Untextured face type 11 - the alpha-blended disc - gets its own section so it can be drawn with
+// a translucent material instead of landing in the opaque INDEX_NONE palette section.
+constexpr int32 TranslucentDiscSectionKeyFlag = 0x40000;
 
 struct FOriginalMeshSectionData
 {
@@ -357,6 +382,11 @@ bool IsBakedAtlasPageSectionKey(int32 SectionKey)
 bool IsBakedDirectImageSectionKey(int32 SectionKey)
 {
 	return (SectionKey & BakedDirectImageSectionKeyFlag) != 0;
+}
+
+bool IsTranslucentDiscSectionKey(int32 SectionKey)
+{
+	return SectionKey != INDEX_NONE && (SectionKey & TranslucentDiscSectionKeyFlag) != 0;
 }
 
 int32 GetBakedSectionAssetIndex(int32 SectionKey)
@@ -644,6 +674,49 @@ bool IsOriginalTerrainTileFlat(const TArray<int16>& ConditionedCorners, int32 Fi
 	return Corner00 == Corner10 && Corner00 == Corner01 && Corner00 == Corner11;
 }
 
+// XBLD 0x0D, the only "natural" tile that is a built pad rather than foliage: object 0x143, LP13,
+// named "small park" in the GEO. 0x06..0x0C are TREE6..TREE12, actual trees.
+bool IsOriginalParkTile(uint8 BuildingId)
+{
+	return BuildingId == 0x0D;
+}
+
+// Which surface ramps keep the original's untouched tmap instead of the remake's one-step wedge
+// (see the 0x1f..0x22 case in BuildConditionedTerrainCornerSamples).
+//
+// The wedge exists to stop a ramp between two flattened streets from floating, and that is the only
+// case it is wanted in. A ramp climbing onto a bridge deck already has its grade resolved by the
+// raised-span rule and the bridge object's own one-step top, so wedging the ground as well drives
+// it up into the deck; and a ramp beside water must leave the shoreline alone, since raising a
+// corner there pushes land through the water surface. Both keep the decoded behaviour.
+//
+// The neighbourhood is all eight surrounding cells, not just the four edge-sharing ones: this pass
+// writes CORNER samples, and a diagonal neighbour shares one of them.
+bool IsRampTerrainClampSuppressed(const FSimCity2000City& City, int32 FileX, int32 FileY)
+{
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	for (int32 OffsetY = -1; OffsetY <= 1; ++OffsetY)
+	{
+		for (int32 OffsetX = -1; OffsetX <= 1; ++OffsetX)
+		{
+			const int32 NeighborX = FileX + OffsetX;
+			const int32 NeighborY = FileY + OffsetY;
+			if (NeighborX < 0 || NeighborX >= MapSize || NeighborY < 0 || NeighborY >= MapSize)
+			{
+				continue;
+			}
+
+			const FSimCity2000Tile& Neighbor = City.Tiles[NeighborY * MapSize + NeighborX];
+			if (Neighbor.bWater || ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(Neighbor.Building))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 // FUN_004abce0's tmap conditioning, ported exactly. The seeded corner grid (averages of the
 // up-to-4 adjacent tile-center samples, matching the original's seed-then-interpolate fill)
 // is then modified in place:
@@ -700,14 +773,55 @@ TArray<int16> BuildConditionedTerrainCornerSamples(const FSimCity2000City& City)
 			const bool bFlatNetworkTile =
 				Building == 0x1D || Building == 0x1E ||
 				(Building >= 0x23 && Building <= 0x2D) ||
-				(Building >= 0x32 && Building <= 0x3A);
-			if (Building >= 0x70 || bFlatNetworkTile)
+				(Building >= 0x32 && Building <= 0x3A) ||
+				// Divergence, deliberate: 0x43/0x44 are not in the original's flatten set because
+				// there the power crossing brought its own road slab and its own sloped RD67H/RD68H
+				// variant. The remake gives those tiles the ordinary straight-road piece instead
+				// (GetOriginalBridgeDispatch), so they need the same auto-flatten every other flat
+				// street gets - without it the crossing stands up out of the road as a raised block.
+				Building == 0x43 || Building == 0x44;
+			// Divergence, deliberate: the original leaves 0x0D on whatever grade the ALTM had,
+			// because it treats the whole 0x06..0x0D band as natural cover. But LP13 is not cover -
+			// it is a flat authored slab with paths and benches printed on it, the same kind of pad
+			// every building sits on. On a slope its corners cut into the hill on one side and hang
+			// in the air on the other. The trees either side of it in the band genuinely are foliage
+			// and stay on the slope, which is why this is the one id and not the range.
+			if (Building >= 0x70 || bFlatNetworkTile || IsOriginalParkTile(Building))
 			{
 				const int32 Sample = GetTerrainHeightMapSample(Tile);
 				Set(FileX, FileY, Sample);
 				Set(FileX + 1, FileY, Sample);
 				Set(FileX, FileY + 1, Sample);
 				Set(FileX + 1, FileY + 1, Sample);
+			}
+			// Surface road ramps RD31..RD34. Divergence, deliberate: the original leaves the tmap
+			// alone here and lets the piece span whatever grade the ALTM already had, but the remake
+			// flattens every road tile around them, which drags the shared corners to the
+			// neighbours' levels and leaves the ramp deck hanging in the air. Wedge the tile to the
+			// ramp's own grade instead - the same shape as cases 0x3f..0x42 below, but anchored to
+			// this tile's own ALTM sample rather than a neighbouring corner, because that sample is
+			// exactly where GetAverageTerrainSurfaceZ places the ramp mesh. The terrain then meets
+			// the deck at both edges whatever order the sweep visits the neighbours in.
+			//
+			// One step is the right rise: each ramp's authored asphalt climbs 32 mesh units, and
+			// 32 units x 25 cm x the 400/1600 mesh scale = 200 cm = one TerrainHeightScale = 0x20.
+			// The high edges are measured off the meshes (Docs/scratchpad/dump_ramp_direction.py),
+			// not guessed: north, west, south, east - the same order as rail slopes 0x2e..0x31.
+			//
+			// Bridge approaches and shoreline ramps opt out - see IsRampTerrainClampSuppressed.
+			else if (Building >= 0x1F && Building <= 0x22 && !IsRampTerrainClampSuppressed(City, FileX, FileY))
+			{
+				const int32 LowSample = GetTerrainHeightMapSample(Tile);
+				const int32 HighSample = LowSample + 0x20;
+				const bool bHighNorth = Building == 0x1F;
+				const bool bHighWest = Building == 0x20;
+				const bool bHighSouth = Building == 0x21;
+				const bool bHighEast = Building == 0x22;
+				// Grid row FileY is the north edge, column FileX the west edge.
+				Set(FileX, FileY, bHighNorth || bHighWest ? HighSample : LowSample);
+				Set(FileX + 1, FileY, bHighNorth || bHighEast ? HighSample : LowSample);
+				Set(FileX, FileY + 1, bHighSouth || bHighWest ? HighSample : LowSample);
+				Set(FileX + 1, FileY + 1, bHighSouth || bHighEast ? HighSample : LowSample);
 			}
 			else if (Building == 0x3F)
 			{
@@ -755,8 +869,15 @@ FOriginalBridgeDispatch GetOriginalBridgeDispatch(uint8 BuildingId, bool bTileIs
 	case 0x40: return { 0x179 };
 	case 0x41: return { 0x17a };
 	case 0x42: return { 0x17b };
-	case 0x43: return { bTileIsFlat ? 0x128 : 0x17f };
-	case 0x44: return { bTileIsFlat ? 0x129 : 0x180 };
+	// Power line over road. The original packs the road and the pylon into one object (RD67/RD68,
+	// or RD67H/RD68H on a slope), and that packed road half is a different piece of asphalt from the
+	// street either side of it - it reads as a raised block across the crossing and carries its own
+	// centre line at its own cadence. Split it the way 0x45/0x46 split the rail crossing instead:
+	// the ordinary straight-road piece is the primary, so the tile gets the same surface and the
+	// same procedural dashes as its neighbours, and the crossing object rides along as the secondary
+	// for its pylon and wires. AppendMaxisMeshObject drops the secondary's asphalt and centre line.
+	case 0x43: return { bTileIsFlat ? 0x3b : 0x1d, bTileIsFlat ? 0x128 : 0x17f };
+	case 0x44: return { bTileIsFlat ? 0x3c : 0x1e, bTileIsFlat ? 0x129 : 0x180 };
 	case 0x45: return { bTileIsFlat ? 0x3b : 0x1d, 0x2d };
 	case 0x46: return { bTileIsFlat ? 0x3c : 0x1e, 0x2c };
 	case 0x47: return { 0x17d };
@@ -2174,29 +2295,46 @@ uint8 GetOriginalRoadMarkingOpeningMask(uint8 BuildingId)
 	constexpr uint8 S = static_cast<uint8>(ERoadOpening::South);
 	constexpr uint8 W = static_cast<uint8>(ERoadOpening::West);
 
+	// This procedural table is the road-line system for the whole surface network: it is what sets
+	// the dash frequency (AppendRoadMarkingsForTile's two dashes across a straight tile, one across
+	// a corner) and the spacing (AppendTiledDashedRoadMarkingSegment's DashFillRatio). Rendering the
+	// RD objects' own face-type-20 endpoints instead replaces that cadence with whatever the MAX
+	// exporter authored per piece, so the two cannot both be on.
+	//
+	// The three-and-four-way ids below deliberately declare all of their openings: AppendRoadMarkings-
+	// ForTile only draws a tile with exactly two, which is how yellow lines stay off intersections.
 	switch (BuildingId)
 	{
-	// Every RD surface-road object already carries its exact face-type-20 centre-line segments.
-	// In particular RD31..RD34 author those endpoints on their sloped asphalt plane. Rebuilding
-	// them from the terrain grid painted a second yellow line underneath every road ramp.
+	case 0x1D: return E | W;
+	case 0x1E: return N | S;
+	case 0x1F: return N | S;
+	case 0x20: return E | W;
+	case 0x21: return N | S;
+	case 0x22: return E | W;
+	case 0x23: return S | W;
+	case 0x24: return E | S;
+	case 0x25: return N | E;
+	case 0x26: return N | W;
+	case 0x27: return N | S | W;
+	case 0x28: return E | S | W;
+	case 0x29: return N | E | S;
+	case 0x2A: return N | E | W;
+	case 0x2B: return N | E | S | W;
 	case 0x3F: return N | S;
 	case 0x40: return E | W;
 	case 0x41: return N | S;
 	case 0x42: return E | W;
-	// RD67/RD68 (the power-line-over-road crossing) already carry the original face-type-20
-	// centre-line geometry. The procedural road-marking workaround was added while those mesh
-	// line faces were missing; retaining it now lays a second raised strip/block over the crossing.
-	case 0x43:
-	case 0x44:
-		return 0;
-	// Road/rail crossing meshes also carry their own road line.
-	case 0x45:
-	case 0x46:
-		return 0;
-	// RD73/RD74 are reused by all six simple road-bridge ids and, like RD67/RD68 above,
-	// already carry their face-type-20 centre line on the raised deck. A procedural duplicate
-	// is both unnecessary and dangerous: before the raised-plane fix it was the yellow line seen
-	// on the water/ground under the bridge.
+	// RD67/RD68, the power-line-over-road crossing. Its road half is no longer drawn from the
+	// crossing object at all (see GetOriginalBridgeDispatch), so the tile takes the ordinary
+	// straight-road piece and the ordinary dashes over it. 0x43 carries traffic east-west.
+	case 0x43: return E | W;
+	case 0x44: return N | S;
+	case 0x45: return E | W;
+	case 0x46: return N | S;
+	// RD73/RD74 are reused by all six simple road-bridge ids and already carry their face-type-20
+	// centre line on the raised deck, which the bridge ids do render (they are outside the
+	// bBuildVectorLines exclusion). A procedural duplicate is both unnecessary and dangerous:
+	// before the raised-plane fix it was the yellow line seen on the water/ground under the bridge.
 	case 0x49:
 	case 0x4A:
 	case 0x4D:
@@ -2236,6 +2374,19 @@ FVector2D GetRoadOpeningPoint(ERoadOpening Opening, float TileSize, float EdgeIn
 	}
 }
 
+// Where a tile's dashes sit in Z. The authored asphalt plane pulled off the placed road object is
+// the first choice, because it is the surface the player sees and it climbs every ramp; the
+// conditioned terrain grid is only the fallback for a tile that never placed a road mesh. Drawing
+// on terrain is what left ramp markings hanging in the air below their deck.
+struct FRoadMarkingSurface
+{
+	const FSimCopterRoadSurfaceProfile* RoadSurface = nullptr;
+	float TerrainZOffset = 0.0f; // on top of the terrain grid sample (includes the mesh Z offset)
+	float SurfaceZOffset = 0.0f; // on top of the asphalt plane (which already carries it)
+
+	bool HasRoadSurface() const { return RoadSurface != nullptr && RoadSurface->bValid; }
+};
+
 FVector MakeRoadMarkingWorldPoint(
 	const TArray<int16>& ConditionedCorners,
 	int32 FileX,
@@ -2244,19 +2395,23 @@ FVector MakeRoadMarkingWorldPoint(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
-	const TOptional<float>& SurfaceZOverride,
-	float ZOffset)
+	const FRoadMarkingSurface& Surface)
 {
 	const float CenterX = GetWorldTileCenterCoordinate(static_cast<float>(FileX), TileSize, HalfMapSize);
 	const float CenterY = -GetWorldTileCenterCoordinate(static_cast<float>(FileY), TileSize, HalfMapSize);
+	const float PointX = CenterX + LocalPoint.X;
+	const float PointY = CenterY + LocalPoint.Y;
+	if (Surface.HasRoadSurface())
+	{
+		return FVector(PointX, PointY, Surface.RoadSurface->Evaluate(FVector2D(PointX, PointY)) + Surface.SurfaceZOffset);
+	}
+
 	const float GridX = static_cast<float>(FileX) + 0.5f + LocalPoint.X / TileSize;
 	const float GridY = static_cast<float>(FileY) + 0.5f - LocalPoint.Y / TileSize;
 	return FVector(
-		CenterX + LocalPoint.X,
-		CenterY + LocalPoint.Y,
-		(SurfaceZOverride.IsSet()
-			? SurfaceZOverride.GetValue()
-			: GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale)) + ZOffset);
+		PointX,
+		PointY,
+		GetTerrainGridBilinearZ(ConditionedCorners, GridX, GridY, TerrainHeightScale) + Surface.TerrainZOffset);
 }
 
 bool IsVehicleRoadSurfaceTile(const uint8 BuildingId)
@@ -2277,8 +2432,7 @@ void AppendRoadMarkingSegment(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
-	const TOptional<float>& SurfaceZOverride,
-	float ZOffset,
+	const FRoadMarkingSurface& Surface,
 	float Width,
 	const FLinearColor& Color)
 {
@@ -2298,10 +2452,10 @@ void AppendRoadMarkingSegment(
 	const FVector2D P3 = Start - Perp * HalfWidth;
 	const int32 VertexStart = Section.Vertices.Num();
 
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
-	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, SurfaceZOverride, ZOffset));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P0, TileSize, HalfMapSize, TerrainHeightScale, Surface));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P1, TileSize, HalfMapSize, TerrainHeightScale, Surface));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P2, TileSize, HalfMapSize, TerrainHeightScale, Surface));
+	Section.Vertices.Add(MakeRoadMarkingWorldPoint(ConditionedCorners, FileX, FileY, P3, TileSize, HalfMapSize, TerrainHeightScale, Surface));
 
 	Section.Triangles.Add(VertexStart);
 	Section.Triangles.Add(VertexStart + 1);
@@ -2311,10 +2465,27 @@ void AppendRoadMarkingSegment(
 	Section.Triangles.Add(VertexStart + 3);
 	Section.TriangleCount += 2;
 
-	const FProcMeshTangent Tangent(Direction.X, Direction.Y, 0.0f);
+	// The ribbon tilts with the asphalt on a ramp, so take its normal and tangent from the emitted
+	// quad rather than assuming a flat, world-up dash.
+	const FVector Along = Section.Vertices[VertexStart + 1] - Section.Vertices[VertexStart];
+	const FVector Across = Section.Vertices[VertexStart + 3] - Section.Vertices[VertexStart];
+	FVector Normal = FVector::CrossProduct(Across, Along).GetSafeNormal();
+	if (Normal.IsNearlyZero())
+	{
+		Normal = FVector::UpVector;
+	}
+	else if (Normal.Z < 0.0f)
+	{
+		Normal = -Normal;
+	}
+
+	const FVector AlongUnit = Along.GetSafeNormal();
+	const FProcMeshTangent Tangent(
+		AlongUnit.IsNearlyZero() ? FVector(Direction.X, Direction.Y, 0.0f) : AlongUnit,
+		false);
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
-		Section.Normals.Add(FVector::UpVector);
+		Section.Normals.Add(Normal);
 		Section.UVs.Add(FVector2D(Index == 1 || Index == 2 ? 1.0f : 0.0f, Index >= 2 ? 1.0f : 0.0f));
 		Section.VertexColors.Add(Color);
 		Section.Tangents.Add(Tangent);
@@ -2331,8 +2502,7 @@ void AppendTiledDashedRoadMarkingSegment(
 	float TileSize,
 	float HalfMapSize,
 	float TerrainHeightScale,
-	const TOptional<float>& SurfaceZOverride,
-	float ZOffset,
+	const FRoadMarkingSurface& Surface,
 	float Width,
 	int32 SegmentCount,
 	const FLinearColor& Color)
@@ -2364,8 +2534,7 @@ void AppendTiledDashedRoadMarkingSegment(
 			TileSize,
 			HalfMapSize,
 			TerrainHeightScale,
-			SurfaceZOverride,
-			ZOffset,
+			Surface,
 			Width,
 			Color);
 	}
@@ -2381,7 +2550,9 @@ void AppendRoadMarkingsForTile(
 	float HalfMapSize,
 	float TerrainHeightScale,
 	float TileTerrainSurfaceZ,
-	float ZOffset,
+	const FSimCopterRoadSurfaceProfile* RoadSurface,
+	float TerrainZOffset,
+	float SurfaceZOffset,
 	float Width,
 	const FLinearColor& Color)
 {
@@ -2415,14 +2586,22 @@ void AppendRoadMarkingsForTile(
 		(HasRoadOpening(Openings, ERoadOpening::North) && HasRoadOpening(Openings, ERoadOpening::South)) ||
 		(HasRoadOpening(Openings, ERoadOpening::East) && HasRoadOpening(Openings, ERoadOpening::West));
 	const int32 SegmentCount = bOpposingOpenings ? 2 : 1;
-	// SCHOOK: FUN_004c82c0 returns the placed object's road top, not the tmap below it. The
-	// TL63..TL66 raised caps are a full-height box: their top face is one altitude step above
-	// TileOrigin. Following the conditioned terrain here left these yellow dashes underneath the
-	// visible cap, exactly where the terrain wedge can be seen through the bridge opening.
-	const TOptional<float> SurfaceZOverride =
-		ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(BuildingId)
-		? TOptional<float>(TileTerrainSurfaceZ + TerrainHeightScale)
-		: TOptional<float>();
+	// SCHOOK: FUN_004c82c0 returns the placed object's road top, not the tmap below it. The asphalt
+	// plane extracted from that same placed object is therefore the surface to draw on, and it is
+	// what carries the dashes up a ramp instead of leaving them on the terrain wedge beneath it.
+	// The TL63..TL66 raised caps keep an explicit fallback: their top face is one altitude step
+	// above TileOrigin, which is where the dashes belong if no plane could be extracted.
+	FRoadMarkingSurface Surface;
+	Surface.RoadSurface = RoadSurface;
+	Surface.TerrainZOffset = TerrainZOffset;
+	Surface.SurfaceZOffset = SurfaceZOffset;
+	FSimCopterRoadSurfaceProfile RaisedDeckFallback;
+	if (!Surface.HasRoadSurface() && ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(BuildingId))
+	{
+		RaisedDeckFallback.ReferenceZ = TileTerrainSurfaceZ + TerrainHeightScale + TerrainZOffset - SurfaceZOffset;
+		RaisedDeckFallback.bValid = true;
+		Surface.RoadSurface = &RaisedDeckFallback;
+	}
 	AppendTiledDashedRoadMarkingSegment(
 		Section,
 		ConditionedCorners,
@@ -2433,8 +2612,7 @@ void AppendRoadMarkingsForTile(
 		TileSize,
 		HalfMapSize,
 		TerrainHeightScale,
-		SurfaceZOverride,
-		ZOffset,
+		Surface,
 		Width,
 		SegmentCount,
 		Color);
@@ -2786,73 +2964,6 @@ bool TryBuildPlacedRoadSurfaceProfile(
 	return true;
 }
 
-void AppendAuthoredRoadMarkingLines(
-	FOriginalMeshSectionData& Section,
-	const FMaxisMeshObject& MeshObject,
-	const FVector& TileOrigin,
-	float MeshUnitsPerCentimeter,
-	float MeshScale,
-	float Width,
-	const FLinearColor& Color)
-{
-	const float HalfWidth = Width * 0.5f;
-	for (const FMaxisMeshFace& Face : MeshObject.Faces)
-	{
-		if (Face.FaceType != 20 || Face.MaterialIndex != 112 || Face.VertexIndices.Num() != 2 ||
-			!MeshObject.Vertices.IsValidIndex(Face.VertexIndices[0]) ||
-			!MeshObject.Vertices.IsValidIndex(Face.VertexIndices[1]))
-		{
-			continue;
-		}
-
-		const FVector A = ConvertPlacedCityMeshVertex(
-			MeshObject.Vertices[Face.VertexIndices[0]], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
-		const FVector B = ConvertPlacedCityMeshVertex(
-			MeshObject.Vertices[Face.VertexIndices[1]], TileOrigin, MeshUnitsPerCentimeter, MeshScale);
-		const FVector Direction = (B - A).GetSafeNormal();
-		FVector Across = FVector::CrossProduct(FVector::UpVector, Direction).GetSafeNormal();
-		if (Direction.IsNearlyZero() || Across.IsNearlyZero())
-		{
-			continue;
-		}
-
-		const int32 VertexStart = Section.Vertices.Num();
-		Section.Vertices.Add(A + Across * HalfWidth);
-		Section.Vertices.Add(B + Across * HalfWidth);
-		Section.Vertices.Add(B - Across * HalfWidth);
-		Section.Vertices.Add(A - Across * HalfWidth);
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 1);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.Triangles.Add(VertexStart + 3);
-		// FACE line endpoint order is not a render winding contract. Emit the reverse side too,
-		// just as Append3DVectorLine does, so every authored dash is visible from above regardless
-		// of which endpoint the MAX exporter stored first.
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.Triangles.Add(VertexStart + 1);
-		Section.Triangles.Add(VertexStart);
-		Section.Triangles.Add(VertexStart + 3);
-		Section.Triangles.Add(VertexStart + 2);
-		Section.TriangleCount += 4;
-
-		FVector Normal = FVector::CrossProduct(Direction, -Across).GetSafeNormal();
-		if (Normal.Z < 0.0f)
-		{
-			Normal = -Normal;
-		}
-		for (int32 VertexIndex = 0; VertexIndex < 4; ++VertexIndex)
-		{
-			Section.Normals.Add(Normal);
-			Section.UVs.Add(FVector2D(VertexIndex == 1 || VertexIndex == 2 ? 1.0f : 0.0f, VertexIndex >= 2 ? 1.0f : 0.0f));
-			Section.VertexColors.Add(Color);
-			Section.Tangents.Add(FProcMeshTangent(Direction.X, Direction.Y, Direction.Z));
-		}
-	}
-}
-
 // Emits a Maxis face-type-2 sprite card as a crossed pair of vertical, double-sided quads.
 // CentreVertex is the card centre in Maxis object space (Y up); the card spans +/-HalfWidth
 // horizontally and +/-HalfHeight vertically about it, so a tree's card sits on the ground.
@@ -2960,6 +3071,47 @@ void AppendMaxisSpriteCard(
 	}
 }
 
+// Lets a placed object contribute everything except its road half. RD67/RD68 and RD67H/RD68H, the
+// power-line-over-road crossings, are the only users: the tile now takes its asphalt from the
+// ordinary straight-road piece and its dashes from the procedural marking system, so the crossing
+// object is placed for its pylon and wires alone.
+//
+// The materials are measured, not guessed (Docs/scratchpad/dump_maxis_object.py). Across RD29L,
+// RD31..RD34, RD67 and RD67H: face type 15 material 48 is the flat asphalt and material 128 the
+// sloped body/kerb that the H and ramp pieces add on top of it; face type 20 material 112 is the
+// yellow centre line. What must survive is face type 15 material 208 - the poles, the only thing
+// in RD67 that reaches full height - and face type 20 material 50, the wires strung at pole top.
+// Dropping only material 48 leaves RD67H's ten material-128 faces standing as a raised block.
+struct FPlacedObjectRoadFaceFilter
+{
+	bool bSkipRoadSurfaceFaces = false;
+	bool bSkipCentreLineFaces = false;
+
+	// LAMP35..38 draw their light as GEOMETRY: eighteen face-type-11 quads in three bands under the
+	// head, plus a 14-vertex pool on the pavement. That is how a 1996 software renderer with no
+	// lighting model faked a street light, and next to a real spot light it is just an opaque grey
+	// cone hanging off the lamp and a grey egg painted on the road - which is also what was hiding
+	// the spot light, since the cone encloses its apex. The remake throws actual light instead
+	// (USimCopterStreetLightsComponent), so the fake is dropped.
+	//
+	// Scoped to the lamps on purpose. Face type 11 is the light-CARD type generally, and the rest of
+	// its users - car headlight beams, rotor discs - are wanted.
+	bool bSkipLightConeFaces = false;
+
+	bool ShouldSkipFace(const FMaxisMeshFace& Face) const
+	{
+		if (bSkipRoadSurfaceFaces && Face.FaceType == 15 && (Face.MaterialIndex == 48 || Face.MaterialIndex == 128))
+		{
+			return true;
+		}
+		if (bSkipLightConeFaces && Face.FaceType == SimCopterRoadDecorations::LightCardFaceType)
+		{
+			return true;
+		}
+		return bSkipCentreLineFaces && Face.FaceType == 20 && Face.MaterialIndex == 112;
+	}
+};
+
 int32 AppendMaxisMeshObject(
 	const FMaxisMeshObject& MeshObject,
 	const TArray<FColor>* ColorMap,
@@ -2973,6 +3125,7 @@ int32 AppendMaxisMeshObject(
 	const TSet<int32>& AvailableBakedDirectImageIds,
 	const FLinearColor& TexturedFaceFallbackColor,
 	bool bBuildVectorLines,
+	const FPlacedObjectRoadFaceFilter& RoadFaceFilter,
 	TMap<int32, FOriginalMeshSectionData>& Sections,
 	int32& OutTexturedTriangleCount)
 {
@@ -3003,15 +3156,32 @@ int32 AppendMaxisMeshObject(
 			continue;
 		}
 
+		if (RoadFaceFilter.ShouldSkipFace(Face))
+		{
+			continue;
+		}
+
+		if (IsDebugPortraitFace(Face))
+		{
+			continue;
+		}
+
 		const int32 TextureKey = GetMaxisFaceTextureKey(Face);
 		const bool bAtlasCellInRange = Face.MaterialIndex < FMaxisTextureReader::AtlasColumnCount * FMaxisTextureReader::AtlasColumnCount;
 		const bool bBakedAtlasTexturedFace = bUseOriginalTextures && Face.FaceType == 18 && bAtlasCellInRange && AvailableBakedAtlasPageIds.Contains(Face.TextureAtlasIndex);
 		const bool bBakedDirectTexturedFace = bUseOriginalTextures && (Face.FaceType == 13 || Face.FaceType == 2) && AvailableBakedDirectImageIds.Contains(Face.MaterialIndex);
 		const bool bRuntimeTexturedFace = bUseOriginalTextures && !bBakedAtlasTexturedFace && !bBakedDirectTexturedFace && IsTexturedMaxisFace(Face.FaceType) && AvailableRuntimeTextureKeys.Contains(TextureKey);
 		const bool bTexturedFace = bBakedAtlasTexturedFace || bBakedDirectTexturedFace || bRuntimeTexturedFace;
+
+		// Face type 11 is the alpha-blended disc (FMaxisProceduralMeshBuilder::IsTranslucentFaceType):
+		// the helicopter's rotor blur, and on city objects the wind power plant's fan wheel (PP200),
+		// AR254's glow panels and the TLNS/TLEW signal cards. It carries a palette colour and no
+		// texture, so left alone it falls into the opaque INDEX_NONE section and draws as a solid
+		// plate - which is what made a windmill a flat teal disc with the tower hidden behind it.
+		const bool bTranslucentDiscFace = !bTexturedFace && FMaxisProceduralMeshBuilder::IsTranslucentFaceType(Face.FaceType);
 		const int32 SectionKey = bBakedAtlasTexturedFace
 			? MakeBakedAtlasPageSectionKey(Face.TextureAtlasIndex)
-			: (bBakedDirectTexturedFace ? MakeBakedDirectImageSectionKey(Face.MaterialIndex) : (bRuntimeTexturedFace ? TextureKey : INDEX_NONE));
+			: (bBakedDirectTexturedFace ? MakeBakedDirectImageSectionKey(Face.MaterialIndex) : (bRuntimeTexturedFace ? TextureKey : (bTranslucentDiscFace ? TranslucentDiscSectionKeyFlag : INDEX_NONE)));
 		FOriginalMeshSectionData& Section = Sections.FindOrAdd(SectionKey);
 		const int32 FaceVertexStart = Section.Vertices.Num();
 		const FLinearColor FaceColor = bTexturedFace
@@ -3139,7 +3309,12 @@ int32 AppendMaxisMeshObject(
 				++OutTexturedTriangleCount;
 			}
 
-			if (bRenderBackfaces)
+			// The disc is drawn with a two-sided translucent material, so it needs no reversed
+			// winding - adding one blends the disc over itself and makes it look solid again,
+			// which is the same trap FMaxisProceduralMeshBuilder documents on the rotor path.
+			// PP200 already ships its wheel as two fans a few centimetres apart for the two
+			// sides, so this face is doubled in the source data before anything here touches it.
+			if (bRenderBackfaces && !bTranslucentDiscFace)
 			{
 				Section.Triangles.Add(FaceVertexStart);
 				Section.Triangles.Add(FaceVertexStart + TriangleIndex + 1);
@@ -3203,6 +3378,14 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	FlashingLightsComponent->PointLightAttenuationRadiusCm = 2000.0f;
 	FlashingLightsComponent->PointLightIntensity = 20.0f;
 
+	// Both of these are placed in the same component space as the baked sections, for the same
+	// reason: their offsets are accumulated tile origins.
+	StreetLightsComponent = CreateDefaultSubobject<USimCopterStreetLightsComponent>(TEXT("StreetLightsComponent"));
+	StreetLightsComponent->SetupAttachment(SceneRoot);
+
+	SmokeStacksComponent = CreateDefaultSubobject<USimCopterSmokeStacksComponent>(TEXT("SmokeStacksComponent"));
+	SmokeStacksComponent->SetupAttachment(SceneRoot);
+
 	// Project-authored lit materials replace the engine's emissive/unlit debug materials so the
 	// city responds to the scene's directional/sky lighting and to dynamic night lights (street
 	// lights, car headlights, the helicopter spotlight). Both expose a low "SelfIllum" floor plus
@@ -3219,6 +3402,24 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 	if (TexturedMaterialFinder.Succeeded())
 	{
 		TexturedMaterial = TexturedMaterialFinder.Object;
+	}
+
+	// Shared with the helicopter's rotor blur on purpose: it is the same face type drawn the same
+	// way, and one tuned haze keeps a windmill wheel and a rotor disc reading alike.
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BlurDiscMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterRotorDisc.M_SimCopterRotorDisc"));
+	if (BlurDiscMaterialFinder.Succeeded())
+	{
+		BlurDiscMaterial = BlurDiscMaterialFinder.Object;
+	}
+
+	// The chimney plumes sample the original effect-selector atlas through the same card material
+	// the flames do (USimCopterFireRenderComponent).
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SpriteCardMaterialFinder(
+		TEXT("/Game/Materials/M_SimCopterSpriteTexture.M_SimCopterSpriteTexture"));
+	if (SpriteCardMaterialFinder.Succeeded())
+	{
+		SpriteCardMaterial = SpriteCardMaterialFinder.Object;
 	}
 
 	// Water uses the same TILED1 texturing as the terrain, but displaces its vertices in the vertex
@@ -3239,7 +3440,7 @@ ASimCity2000CityActor::ASimCity2000CityActor()
 		TerrainMaterial = TerrainMaterialFinder.Object;
 	}
 
-	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/Demo.sc2");
+	CityFile.FilePath = TEXT("../Reference/SimCopterOriginalGame/cities/career/city0.sc2");
 	OriginalGameRoot.Path = TEXT("../Reference/SimCopterOriginalGame");
 }
 
@@ -3317,6 +3518,7 @@ void ASimCity2000CityActor::RebuildCity()
 	OriginalTextureMaterials.Reset();
 	WaterTextureMaterials.Reset();
 	ResetBuildingInstances();
+	ResetNaturalObjectInstances();
 
 	TerrainMeshComponent->ClearAllMeshSections();
 	OriginalMeshComponent->ClearAllMeshSections();
@@ -3525,6 +3727,15 @@ void ASimCity2000CityActor::RebuildCity()
 	FOriginalMeshSectionData RoadMarkingSection;
 	// Blink markers gathered from every placed object, in SceneRoot space (see the collection site).
 	TArray<FSimCopterFlashingLightPoint> CityFlashingLightPoints;
+	// The two other marker sets gathered by the same sweep, in the same space: a spot light under
+	// every placed LAMP35..38 head, and every face-type-26 chimney puff.
+	TArray<USimCopterStreetLightsComponent::FPlacement> CityStreetLightPlacements;
+	TArray<USimCopterSmokeStacksComponent::FSmokeMarker> CitySmokeMarkers;
+	// Seeds the street-furniture pick. The original rolls the global rand() as it builds, so its
+	// choice is different every load; hashing the city's own name instead keeps a given city looking
+	// like itself across reloads without making every city identical.
+	const int32 RoadDecorationCitySeed = static_cast<int32>(GetTypeHash(City.CityName));
+	int32 RoadDecorationCount = 0;
 	// Per-vertex "keep flat" flags for the two land terrain sections, index-aligned with their
 	// vertices. Set for tiles under buildings/roads so smooth-normal shading does not round the flat
 	// pads the conditioning creates - the terrain stays crisp where man-made surfaces sit on it.
@@ -3748,6 +3959,25 @@ void ASimCity2000CityActor::RebuildCity()
 			[&](int32 X, int32 Y) { return !IsAnimatedWaterTile(X, Y); });
 	};
 
+	// The same weights again, but addressable by grid corner rather than by vertex index. The
+	// shader reads them out of vertex colour; anything floating ON the water (the boats, and the
+	// people standing on them) has to evaluate the wave on the CPU instead, and needs the weight at
+	// an arbitrary XY to do it. Built here so the two can never disagree about where the shoreline
+	// pinning is - see GetWaterWaveOffsetCm.
+	{
+		constexpr int32 CornerCount = FSimCity2000City::MapSize + 1;
+		WaterCornerWeightGrid.SetNumUninitialized(CornerCount * CornerCount);
+		for (int32 GridY = 0; GridY < CornerCount; ++GridY)
+		{
+			for (int32 GridX = 0; GridX < CornerCount; ++GridX)
+			{
+				WaterCornerWeightGrid[GridY * CornerCount + GridX] =
+					CornerFadeToNearest(GridX, GridY, WaterShoreRamp,
+						[&](int32 X, int32 Y) { return !IsAnimatedWaterTile(X, Y); });
+			}
+		}
+	}
+
 	// Weights are appended in lockstep with the four V0..V3 corners AppendTerrainTileWithHeights adds
 	// for each routed water tile, so this array stays index-aligned with TerrainWaterSection.Vertices.
 	TArray<float> WaterVertexWeights;
@@ -3827,6 +4057,10 @@ void ASimCity2000CityActor::RebuildCity()
 		{
 			Resolved = VertexColorMaterial;
 		}
+		else if (IsTranslucentDiscSectionKey(SectionKey))
+		{
+			Resolved = BlurDiscMaterial;
+		}
 		else if (IsBakedAtlasPageSectionKey(SectionKey))
 		{
 			if (UMaterialInterface* const* Baked = BakedCityAtlasMaterials.PageMaterials.Find(GetBakedSectionAssetIndex(SectionKey)))
@@ -3878,6 +4112,7 @@ void ASimCity2000CityActor::RebuildCity()
 		int32 ModelTexturedTriangles = 0;
 		int32 ModelTriangles = 0;
 		const bool bBuildVectorLines = true; // buildings are never in the line-drawn XBLD ranges
+		const FPlacedObjectRoadFaceFilter NoRoadFaceFilter; // and never carry a road half
 		ModelTriangles += AppendMaxisMeshObject(
 			PrimaryObject,
 			PrimaryColorMap,
@@ -3891,6 +4126,7 @@ void ASimCity2000CityActor::RebuildCity()
 			AvailableBakedDirectImageIds,
 			OriginalTexturedFaceFallbackColor,
 			bBuildVectorLines,
+			NoRoadFaceFilter,
 			ModelSections,
 			ModelTexturedTriangles);
 
@@ -3912,6 +4148,7 @@ void ASimCity2000CityActor::RebuildCity()
 					AvailableBakedDirectImageIds,
 					OriginalTexturedFaceFallbackColor,
 					bBuildVectorLines,
+					NoRoadFaceFilter,
 					ModelSections,
 					ModelTexturedTriangles);
 			}
@@ -3937,7 +4174,7 @@ void ASimCity2000CityActor::RebuildCity()
 		Component->SetCollisionObjectType(ECC_WorldStatic);
 		Component->SetCollisionResponseToAllChannels(ECR_Block);
 		Component->SetCanEverAffectNavigation(false);
-		// The merged city mesh casts no shadow because it is one unculled 509k-triangle proxy -
+		// The merged city mesh casts no shadow because it is one unculled ~434k-triangle proxy -
 		// shadowing it would mean re-rendering the whole city per light. Instanced buildings are
 		// culled and batched per placement, so they can afford to cast, and being lit they receive
 		// too. This is what puts buildings in each other's and the terrain's shadow.
@@ -3956,6 +4193,102 @@ void ASimCity2000CityActor::RebuildCity()
 		ModelTexturedTriangleCounts.Add(ModelTexturedTriangles);
 		check(ComponentInstanceBuildings.Num() == BuildingInstanceComponents.Num());
 		ModelComponentIndices.Add(Key, ComponentIndex);
+		return ComponentIndex;
+	};
+
+	// Trees and the park, on the same instancing idea as buildings but without the bookkeeping: no
+	// tree can burn down or be demolished, so there is nothing to keep a per-instance record for.
+	// Keyed by object id alone, because a natural tile never carries a secondary object.
+	const bool bUseInstancedNaturalObjects =
+		bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && bInstanceNaturalObjectMeshes;
+	TMap<int32, int32> NaturalObjectComponentIndices;
+	auto ResolveNaturalObjectComponent =
+		[this, &NaturalObjectComponentIndices, &ResolveBuildingSectionMaterial](
+			int32 ObjectId,
+			const FMaxisMeshObject& MeshObject,
+			const TArray<FColor>* ColorMap,
+			bool bRenderBackfaces,
+			bool bTexturesLoaded,
+			const TSet<int32>& TextureKeys,
+			const TSet<int32>& AtlasPageIds,
+			const TSet<int32>& DirectImageIds,
+			const FLinearColor& FallbackColor,
+			float UnitsPerCentimeter,
+			float MeshScale,
+			bool bCollision) -> int32
+	{
+		if (const int32* Existing = NaturalObjectComponentIndices.Find(ObjectId))
+		{
+			return *Existing;
+		}
+
+		// Built at the origin: AppendMaxisMeshObject already folds the global 180-degree city yaw
+		// into its vertices, so a placement adds only the tile translation - the same contract the
+		// building models are built under.
+		TMap<int32, FOriginalMeshSectionData> ModelSections;
+		int32 ModelTexturedTriangles = 0;
+		AppendMaxisMeshObject(
+			MeshObject,
+			ColorMap,
+			FVector::ZeroVector,
+			UnitsPerCentimeter,
+			MeshScale,
+			bRenderBackfaces,
+			bTexturesLoaded,
+			TextureKeys,
+			AtlasPageIds,
+			DirectImageIds,
+			FallbackColor,
+			/*bBuildVectorLines*/ true,
+			FPlacedObjectRoadFaceFilter(),
+			ModelSections,
+			ModelTexturedTriangles);
+
+		UStaticMesh* ModelMesh = BuildBuildingModelStaticMesh(this, ModelSections, ResolveBuildingSectionMaterial);
+		if (ModelMesh == nullptr)
+		{
+			NaturalObjectComponentIndices.Add(ObjectId, INDEX_NONE);
+			return INDEX_NONE;
+		}
+
+		UInstancedStaticMeshComponent* Component = NewObject<UInstancedStaticMeshComponent>(this);
+		Component->SetStaticMesh(ModelMesh);
+		for (int32 SlotIndex = 0; SlotIndex < ModelMesh->GetStaticMaterials().Num(); ++SlotIndex)
+		{
+			UMaterialInterface* SlotMaterial = ModelMesh->GetStaticMaterials()[SlotIndex].MaterialInterface;
+			EnsureInstancedStaticMeshUsage(SlotMaterial);
+			Component->SetMaterial(SlotIndex, SlotMaterial);
+		}
+		Component->SetupAttachment(SceneRoot);
+		Component->SetCollisionEnabled(bCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+		Component->SetCollisionObjectType(ECC_WorldStatic);
+		Component->SetCollisionResponseToAllChannels(ECR_Block);
+		Component->SetCanEverAffectNavigation(false);
+		Component->SetCastShadow(bNaturalObjectsCastShadow);
+
+		// A tree is a MASKED sprite card, and the mask only exists in the RASTER. Every coarse scene
+		// representation - the distance fields, the ray tracing scene - carries the card as the solid
+		// quad it geometrically is, because none of them run the pixel shader that would cut the
+		// leaves out of it. Anything shadowing against those representations therefore casts the
+		// whole rectangle.
+		//
+		// That is what the sun does NOT do (a virtual shadow map is rastered, so it masks correctly)
+		// and what a local light CAN do, which is exactly the shape of the report: trees casting a
+		// full-card shadow specifically under the helicopter's searchlight. A rectangular shadow is
+		// strictly worse than no shadow, so the cards stay out of both representations by default.
+		Component->SetAffectDistanceFieldLighting(bNaturalObjectsAffectDistanceFieldLighting);
+		Component->SetVisibleInRayTracing(bNaturalObjectsVisibleInRayTracing);
+
+		// Static, unlike the buildings: nothing ever adds or removes a tree after the build, and a
+		// static instanced component is what lets the virtual shadow map CACHE its pages instead of
+		// re-rendering them. Getting the whole city's foliage out of one movable procedural mesh and
+		// into cacheable instances is the entire point of this path.
+		Component->SetMobility(EComponentMobility::Static);
+		Component->RegisterComponent();
+
+		const int32 ComponentIndex = NaturalObjectInstanceComponents.Add(Component);
+		NaturalObjectModelMeshes.Add(ModelMesh);
+		NaturalObjectComponentIndices.Add(ObjectId, ComponentIndex);
 		return ComponentIndex;
 	};
 
@@ -3998,9 +4331,13 @@ void ASimCity2000CityActor::RebuildCity()
 			const bool bNaturalObjectTile = GetOriginalNaturalObjectId(Tile.Building) != INDEX_NONE;
 			const bool bRubbleTile = GetOriginalRubbleObjectId(Tile.Building) != INDEX_NONE;
 			// Objects on tiles the terrain builder never flattens, so their ground is genuinely sloped:
-			// power lines (0x0E-0x1C), trees and the small park (0x06-0x0D), and rubble (0x01-0x04).
+			// power lines (0x0E-0x1C), trees (0x06-0x0C), and rubble (0x01-0x04). The small park
+			// (0x0D) is flattened like a building now, so it takes the pad sample the same way one
+			// does - see IsOriginalParkTile.
 			const bool bGroundHuggingObjectTile =
-				bNaturalObjectTile || bRubbleTile || (Tile.Building >= 0x0E && Tile.Building <= 0x1C);
+				(bNaturalObjectTile && !IsOriginalParkTile(Tile.Building))
+				|| bRubbleTile
+				|| (Tile.Building >= 0x0E && Tile.Building <= 0x1C);
 
 			if (bRenderTerrain)
 			{
@@ -4038,23 +4375,6 @@ void ASimCity2000CityActor::RebuildCity()
 					AppendLandDetailWeights(FileX, FileY, bUseHighPageForTile);
 				}
 				++TerrainCount;
-			}
-
-			if (bRenderRoadMarkings && bRenderRoads)
-			{
-				AppendRoadMarkingsForTile(
-					RoadMarkingSection,
-					ConditionedTerrainCorners,
-					Tile.Building,
-					FileX,
-					FileY,
-					TileSize,
-					HalfMapSize,
-					EffectiveTerrainHeightScale,
-					GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale),
-					OriginalMeshZOffset + RoadMarkingZOffset,
-					RoadMarkingWidth,
-					RoadMarkingColor);
 			}
 
 			if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && Tile.Building > 0 && (bRoadLikeTile || bBuildingLikeTile || bNaturalObjectTile || bRubbleTile))
@@ -4106,9 +4426,26 @@ void ASimCity2000CityActor::RebuildCity()
 							: (RailObjectId != INDEX_NONE
 								? RailObjectId
 								: (NaturalObjectId != INDEX_NONE ? NaturalObjectId : BuildingDispatch.PrimaryObjectId)));
-					const int32 SecondaryObjectId = BridgeDispatch.SecondaryObjectId != INDEX_NONE
-						? BridgeDispatch.SecondaryObjectId
-						: BuildingDispatch.SecondaryObjectId;
+					// SCHOOK: RoadDecorations 0x0047c0c0 (its `local_2c == 2` arm)
+					// Nine of the builder's road cases hang a SECOND object off the same scene cell:
+					// street furniture on straight roads, a lamp at a T junction, a signal at a
+					// crossroads. They go at the same tile origin as the slab - the meshes carry
+					// their own in-tile offset - which is exactly what the existing secondary-object
+					// path does, so the decoration rides it. See SimCopterRoadDecorations.h.
+					const int32 RoadDecorationObjectId = (bRenderRoadDecorations && !bUseBridgeDispatch)
+						? SimCopterRoadDecorations::GetRoadDecorationObjectId(
+							Tile.Building,
+							FileX,
+							FileY,
+							bTileIsFlat,
+							SimCopterRoadDecorations::MakeStreetFurnitureRoll(FileX, FileY, RoadDecorationCitySeed))
+						: INDEX_NONE;
+					const int32 SecondaryObjectId = RoadDecorationObjectId != INDEX_NONE
+						? RoadDecorationObjectId
+						: (BridgeDispatch.SecondaryObjectId != INDEX_NONE
+							? BridgeDispatch.SecondaryObjectId
+							: BuildingDispatch.SecondaryObjectId);
+					RoadDecorationCount += RoadDecorationObjectId != INDEX_NONE ? 1 : 0;
 					const uint8 MeshTileId = Tile.Building >= 0x0E && Tile.Building <= 0x1C
 						? ResolvedPowerLineMeshIds[TileIndex]
 						: Tile.Building;
@@ -4151,22 +4488,6 @@ void ASimCity2000CityActor::RebuildCity()
 								RoadSurfaceProfiles[TileIndex]);
 						}
 
-						if (bRenderRoadMarkings && Tile.Building >= 0x1d && Tile.Building <= 0x2b)
-						{
-							// The RD objects contain the original yellow segments at their authored
-							// 3-D endpoints. A surface-aligned ribbon preserves those endpoints without
-							// Append3DVectorLine's vertical cross-quad, and puts ramp markings on asphalt
-							// rather than on the terrain wedge underneath it.
-							AppendAuthoredRoadMarkingLines(
-								RoadMarkingSection,
-								*MeshObject,
-								TileOrigin,
-								OriginalMeshUnitsPerCentimeter,
-								OriginalMeshScale,
-								RoadMarkingWidth,
-								RoadMarkingColor);
-						}
-
 						// Blink markers are face type 25, which AppendMaxisMeshObject drops (a single
 						// vertex is neither a polygon nor one of its two-point lines). Collect them here
 						// for both the instanced-building and the baked-section paths, since the original
@@ -4188,6 +4509,7 @@ void ASimCity2000CityActor::RebuildCity()
 								if (const FMaxisMeshObject* SecondaryLightObject =
 									MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &SecondaryLightColorMap))
 								{
+									const int32 FirstSecondaryLight = CityFlashingLightPoints.Num();
 									FSimCopterFlashingLightSchedule::ExtractLightPoints(
 										*SecondaryLightObject,
 										SecondaryLightColorMap,
@@ -4195,6 +4517,19 @@ void ASimCity2000CityActor::RebuildCity()
 										OriginalMeshScale,
 										/*bApplyCityMeshOrientation*/ true,
 										CityFlashingLightPoints);
+									// SIGNAL1's six markers keep their cards and lose their lights. The whole
+									// city cycles red/yellow/green off one 20 Hz counter, so every signal in
+									// view changes together several times a second - as hundreds of coloured
+									// point lights that is a strobing street, not a traffic signal.
+									if (SimCopterRoadDecorations::IsTrafficSignalObjectId(SecondaryObjectId))
+									{
+										for (int32 LightIndex = FirstSecondaryLight;
+											LightIndex < CityFlashingLightPoints.Num();
+											++LightIndex)
+										{
+											CityFlashingLightPoints[LightIndex].bCastPointLight = false;
+										}
+									}
 								}
 							}
 							for (int32 LightIndex = FirstLight; LightIndex < CityFlashingLightPoints.Num(); ++LightIndex)
@@ -4202,12 +4537,99 @@ void ASimCity2000CityActor::RebuildCity()
 								CityFlashingLightPoints[LightIndex].LocalOffset += TileOrigin;
 							}
 						}
+
+						// A placed street light gets a real spot light under its head. The apex,
+						// throw and spread are read out of the lamp's own face-type-11 cards - the
+						// cone the original paints - rather than invented here.
+						if (bRenderStreetLightSpotLights &&
+							SimCopterRoadDecorations::IsStreetLightObjectId(SecondaryObjectId))
+						{
+							const TArray<FColor>* LampColorMap = nullptr;
+							if (const FMaxisMeshObject* LampObject =
+								MeshLibrary.FindObjectByObjectId(SecondaryObjectId, &LampColorMap))
+							{
+								SimCopterRoadDecorations::FStreetLightEmitter Emitter;
+								if (SimCopterRoadDecorations::TryGetStreetLightEmitter(
+									*LampObject,
+									OriginalMeshUnitsPerCentimeter,
+									OriginalMeshScale,
+									/*bApplyCityMeshOrientation*/ true,
+									Emitter))
+								{
+									USimCopterStreetLightsComponent::FPlacement Placement;
+									Placement.Location = Emitter.LocalOffset + TileOrigin;
+									Placement.ConeLengthCm = Emitter.ConeLengthCm;
+									Placement.ConeHalfAngleDegrees = Emitter.ConeHalfAngleDegrees;
+									CityStreetLightPlacements.Add(Placement);
+								}
+							}
+						}
+
+						// Chimney plumes are face type 26 - the effect-marker type, dropped by the
+						// mesh appender for the same single-vertex reason type 25 is. Only eight
+						// shipped models carry any, so this costs nothing on the rest of the city.
+						if (bRenderSmokeStacks)
+						{
+							const int32 FirstMarker = CitySmokeMarkers.Num();
+							USimCopterSmokeStacksComponent::ExtractSmokeMarkers(
+								*MeshObject,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								/*bApplyCityMeshOrientation*/ true,
+								CitySmokeMarkers);
+							for (int32 MarkerIndex = FirstMarker; MarkerIndex < CitySmokeMarkers.Num(); ++MarkerIndex)
+							{
+								CitySmokeMarkers[MarkerIndex].LocalOffset += TileOrigin;
+							}
+						}
 						const bool bBuildVectorLines = !((Tile.Building >= 0x1D && Tile.Building <= 0x2B) || (Tile.Building >= 0x3F && Tile.Building <= 0x42) || (Tile.Building >= 0x0E && Tile.Building <= 0x1C));
+
+						// The power-line-over-road crossings take their asphalt from the ordinary
+						// straight-road primary and their dashes from the procedural marking table, so
+						// the primary's own authored centre line and the crossing object's entire road
+						// half are both suppressed. Everything else the crossing owns - the pylon and
+						// the two-point wire faces that carry the line across the tile - still renders.
+						const bool bPowerLineRoadCrossing = Tile.Building == 0x43 || Tile.Building == 0x44;
+						FPlacedObjectRoadFaceFilter PrimaryRoadFaceFilter;
+						PrimaryRoadFaceFilter.bSkipCentreLineFaces = bPowerLineRoadCrossing;
+						FPlacedObjectRoadFaceFilter SecondaryRoadFaceFilter = PrimaryRoadFaceFilter;
+						SecondaryRoadFaceFilter.bSkipRoadSurfaceFaces = bPowerLineRoadCrossing;
+						SecondaryRoadFaceFilter.bSkipLightConeFaces =
+							SimCopterRoadDecorations::IsStreetLightObjectId(SecondaryObjectId);
+
+						// bBuildVectorLines is off across the whole road band because the SLAB carries an
+						// authored centre line the procedural marking system draws instead. A decoration
+						// standing on that same tile has face-type-20 lines of its own - the lamp's three
+						// at the head, the signal's one at the top of its mast - and they are structure,
+						// not road paint. Append3DVectorLine renders them as solid tubes in the face's own
+						// palette colour, which is where the missing arm between the pole and the box went.
+						const bool bSecondaryVectorLines =
+							bBuildVectorLines || RoadDecorationObjectId != INDEX_NONE;
+
+						// Trees and the park instance too, but by their own path: no building record,
+						// so a placement is nothing but an AddInstance.
+						int32 NaturalComponentIndex = INDEX_NONE;
+						if (bUseInstancedNaturalObjects && bNaturalObjectTile && NaturalObjectId != INDEX_NONE)
+						{
+							NaturalComponentIndex = ResolveNaturalObjectComponent(
+								NaturalObjectId,
+								*MeshObject,
+								ColorMap,
+								bRenderOriginalMeshBackfaces,
+								bOriginalTexturesLoaded,
+								AvailableOriginalTextureKeys,
+								AvailableBakedAtlasPageIds,
+								AvailableBakedDirectImageIds,
+								OriginalTexturedFaceFallbackColor,
+								OriginalMeshUnitsPerCentimeter,
+								OriginalMeshScale,
+								bEnableOriginalMeshCollision);
+						}
 
 						// Buildings become instances so a single one can be removed later; roads,
 						// bridges and power lines stay baked in the shared sections.
 						int32 PlacedComponentIndex = INDEX_NONE;
-						if (bUseInstancedBuildings && bBuildingLikeTile && !bUseBridgeDispatch)
+						if (NaturalComponentIndex == INDEX_NONE && bUseInstancedBuildings && bBuildingLikeTile && !bUseBridgeDispatch)
 						{
 							FBuildingModelKey ModelKey;
 							ModelKey.PrimaryObjectId = PrimaryObjectId;
@@ -4216,7 +4638,14 @@ void ASimCity2000CityActor::RebuildCity()
 							PlacedComponentIndex = ResolveBuildingModelComponent(ModelKey, *MeshObject, ColorMap);
 						}
 
-						if (PlacedComponentIndex != INDEX_NONE)
+						if (NaturalComponentIndex != INDEX_NONE)
+						{
+							NaturalObjectInstanceComponents[NaturalComponentIndex]->AddInstance(
+								FTransform(TileOrigin), /*bWorldSpace*/ false);
+							++LastNaturalObjectInstanceCount;
+							++LastOriginalMeshTileCount;
+						}
+						else if (PlacedComponentIndex != INDEX_NONE)
 						{
 							const int32 BuildingId = Buildings.AddDefaulted();
 							FSimCopterCityBuilding& Building = Buildings[BuildingId];
@@ -4260,6 +4689,7 @@ void ASimCity2000CityActor::RebuildCity()
 								AvailableBakedDirectImageIds,
 								OriginalTexturedFaceFallbackColor,
 								bBuildVectorLines,
+								PrimaryRoadFaceFilter,
 								OriginalMeshSections,
 								LastOriginalTexturedTriangleCount);
 
@@ -4281,7 +4711,8 @@ void ASimCity2000CityActor::RebuildCity()
 										AvailableBakedAtlasPageIds,
 										AvailableBakedDirectImageIds,
 										OriginalTexturedFaceFallbackColor,
-										bBuildVectorLines,
+										bSecondaryVectorLines,
+										SecondaryRoadFaceFilter,
 										OriginalMeshSections,
 										LastOriginalTexturedTriangleCount);
 								}
@@ -4299,6 +4730,27 @@ void ASimCity2000CityActor::RebuildCity()
 						++LastMissingOriginalMeshTileCount;
 					}
 				}
+			}
+
+			// After the mesh, never before it: the tile's asphalt plane is extracted by the block
+			// above, and the dashes have to sit on that plane to climb a ramp with it.
+			if (bRenderRoadMarkings && bRenderRoads)
+			{
+				AppendRoadMarkingsForTile(
+					RoadMarkingSection,
+					ConditionedTerrainCorners,
+					Tile.Building,
+					FileX,
+					FileY,
+					TileSize,
+					HalfMapSize,
+					EffectiveTerrainHeightScale,
+					GetTerrainTileCenterZ(City, FileX, FileY, EffectiveTerrainHeightScale),
+					RoadSurfaceProfiles.IsValidIndex(TileIndex) ? &RoadSurfaceProfiles[TileIndex] : nullptr,
+					OriginalMeshZOffset + RoadMarkingZOffset,
+					RoadMarkingZOffset,
+					RoadMarkingWidth,
+					RoadMarkingColor);
 			}
 		}
 	}
@@ -4796,7 +5248,11 @@ void ASimCity2000CityActor::RebuildCity()
 
 		UMaterialInterface* SectionMaterial = nullptr;
 		UTexture2D* RuntimeTexture = nullptr;
-		if (IsBakedAtlasPageSectionKey(TextureKey))
+		if (IsTranslucentDiscSectionKey(TextureKey))
+		{
+			SectionMaterial = BlurDiscMaterial;
+		}
+		else if (IsBakedAtlasPageSectionKey(TextureKey))
 		{
 			if (UMaterialInterface* const* BakedMaterial = BakedCityAtlasMaterials.PageMaterials.Find(GetBakedSectionAssetIndex(TextureKey)))
 			{
@@ -4848,6 +5304,7 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 	LastOriginalMeshTriangleCount = OriginalMeshTriangleCount;
 	LastBuildingModelCount = BuildingInstanceComponents.Num();
+	LastNaturalObjectModelCount = NaturalObjectInstanceComponents.Num();
 
 	LastFlashingLightCount = CityFlashingLightPoints.Num();
 	if (FlashingLightsComponent != nullptr)
@@ -4855,12 +5312,59 @@ void ASimCity2000CityActor::RebuildCity()
 		FlashingLightsComponent->SetLightPoints(MoveTemp(CityFlashingLightPoints));
 	}
 
+	LastRoadDecorationCount = RoadDecorationCount;
+	LastStreetLightCount = CityStreetLightPlacements.Num();
+	if (StreetLightsComponent != nullptr)
+	{
+		StreetLightsComponent->bEnabled = bRenderStreetLightSpotLights;
+		StreetLightsComponent->SetStreetLights(MoveTemp(CityStreetLightPlacements));
+	}
+
+	LastSmokeStackMarkerCount = CitySmokeMarkers.Num();
+	if (SmokeStacksComponent != nullptr)
+	{
+		SmokeStacksComponent->bEnabled = bRenderSmokeStacks;
+		if (!CitySmokeMarkers.IsEmpty())
+		{
+			// The selector atlas is palette indices, so it must be built from the same shared SIM3D
+			// colour map the city meshes were coloured with.
+			const TArray<FColor>* SmokePalette = MeshLibrary.GetSharedColorMap();
+			FString SmokeError;
+			if (SmokePalette == nullptr || SmokePalette->Num() < 256)
+			{
+				UE_LOG(LogSimCity2000CityActor, Warning,
+					TEXT("Smoke stacks: no shared SIM3D palette, so the chimney plumes were skipped."));
+			}
+			else if (!SmokeStacksComponent->InitSmokeAssets(*SmokePalette, SpriteCardMaterial, SmokeError))
+			{
+				UE_LOG(LogSimCity2000CityActor, Warning,
+					TEXT("Smoke stacks: %s"), *SmokeError);
+			}
+		}
+		SmokeStacksComponent->SetSmokeMarkers(MoveTemp(CitySmokeMarkers));
+	}
+
+	UE_LOG(
+		LogSimCity2000CityActor,
+		Display,
+		TEXT("Road decorations: %d placed (%d street lights); smoke stacks: %d markers."),
+		LastRoadDecorationCount,
+		LastStreetLightCount,
+		LastSmokeStackMarkerCount);
+
 	UE_LOG(
 		LogSimCity2000CityActor,
 		Display,
 		TEXT("Instanced buildings: %d distinct models, %d placements (each model's geometry and collision built once)."),
 		LastBuildingModelCount,
 		LastBuildingInstanceCount);
+
+	UE_LOG(
+		LogSimCity2000CityActor,
+		Display,
+		TEXT("Instanced natural objects: %d distinct models (TREE6..TREE12 + LP13), %d placements."),
+		LastNaturalObjectModelCount,
+		LastNaturalObjectInstanceCount);
 
 	UE_LOG(
 		LogSimCity2000CityActor,
@@ -4892,6 +5396,13 @@ void ASimCity2000CityActor::Tick(float DeltaSeconds)
 	if (FlashingLightsComponent != nullptr && FlashingLightsComponent->HasLightPoints() && GetWorld() != nullptr)
 	{
 		FlashingLightsComponent->SyncLightsFromPlayerCamera(GetWorld()->GetTimeSeconds());
+	}
+
+	// Same shape: the chimney kernels are camera-facing and re-jittered on the original's own 20 Hz
+	// raster frame, so they rebuild against the live camera like the fire does.
+	if (SmokeStacksComponent != nullptr && SmokeStacksComponent->GetSmokeMarkerCount() > 0 && GetWorld() != nullptr)
+	{
+		SmokeStacksComponent->SyncSmokeFromPlayerCamera(GetWorld()->GetTimeSeconds());
 	}
 }
 
@@ -5028,6 +5539,91 @@ bool ASimCity2000CityActor::TryGetWaterGameplaySurface(
 	return true;
 }
 
+float ASimCity2000CityActor::GetWaterWaveOffsetCm(const FVector& WorldLocation) const
+{
+	// A CPU evaluation of M_SimCopterWater's World Position Offset, kept term-for-term identical to
+	// WATER_WAVE_PRELUDE + WATER_WPO_CODE in Tools/Unreal/CreateSimCopterMaterials.py:
+	//
+	//     K1 = 2*pi / max(WaveLength, 1);   K2 = K1 * 1.7
+	//     P1 = K1 * (X*0.7 + Y*0.7) + T*Speed
+	//     P2 = K2 * (X*0.3 - Y*0.95) + T*Speed*0.8
+	//     h  = Weight * Amplitude * (0.6*sin(P1) + 0.4*sin(P2))
+	//
+	// The vertices move in the vertex shader and nothing on the CPU knows about it, so anything that
+	// is supposed to sit ON the sea - the boats, and the people standing on their decks - has to run
+	// the same arithmetic or it floats on the surface's rest plane while the water heaves through it.
+	// Two things must match or the boat will not track the crest it is drawn on: the shader's Time
+	// node is world time, and Weight is the shoreline-pinning vertex colour, which is why the corner
+	// grid is baked next to the vertex weights rather than approximated here.
+	//
+	// Both of the shader's early-outs are reproduced: Weight 0 (a shoreline vertex welded to the
+	// static land) and Low Power Graphics, which returns a flat surface for the whole sea.
+	const UWorld* World = GetWorld();
+	if (World == nullptr || !bAnimateWaterSurface || WaterWaveAmplitude <= 0.0f)
+	{
+		return 0.0f;
+	}
+	// The shader's LowPower input comes from USimCopterDayNightSubsystem::PublishLowPower, which
+	// reads exactly this. Ask the same source rather than a second copy of the flag.
+	if (SimCopterLowPower::IsEnabled())
+	{
+		return 0.0f;
+	}
+
+	const float Weight = GetWaterWaveWeightAt(WorldLocation);
+	if (Weight <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const FVector Local = GetActorTransform().InverseTransformPosition(WorldLocation);
+	// The shader reads absolute world position; the actor is placed at the origin in the shipped
+	// level, but transform through it anyway so a moved city still lines up with its own material.
+	const FVector WavePos = GetActorTransform().TransformPosition(FVector(Local.X, Local.Y, 0.0f));
+
+	const float K1 = 2.0f * PI / FMath::Max(WaterWaveLength, 1.0f);
+	const float K2 = K1 * 1.7f;
+	const float Time = static_cast<float>(World->GetTimeSeconds());
+	const float P1 = K1 * (static_cast<float>(WavePos.X) * 0.7f + static_cast<float>(WavePos.Y) * 0.7f) +
+		Time * WaterWaveSpeed;
+	const float P2 = K2 * (static_cast<float>(WavePos.X) * 0.3f - static_cast<float>(WavePos.Y) * 0.95f) +
+		Time * WaterWaveSpeed * 0.8f;
+	return Weight * WaterWaveAmplitude * (0.6f * FMath::Sin(P1) + 0.4f * FMath::Sin(P2));
+}
+
+float ASimCity2000CityActor::GetWaterWaveWeightAt(const FVector& WorldLocation) const
+{
+	// Bilinear across the tile's four corner weights - the same interpolation the rasteriser does
+	// to vertex colour between the four verts AppendTerrainTileWithHeights emitted for this tile.
+	constexpr int32 MapSize = FSimCity2000City::MapSize;
+	constexpr int32 CornerGridSize = MapSize + 1;
+	if (TileSize <= KINDA_SMALL_NUMBER || WaterCornerWeightGrid.Num() != CornerGridSize * CornerGridSize)
+	{
+		return 0.0f;
+	}
+
+	const FVector LocalLocation = GetActorTransform().InverseTransformPosition(WorldLocation);
+	const float HalfMapSize = static_cast<float>(MapSize) * TileSize * 0.5f;
+	const float GridX = (static_cast<float>(LocalLocation.X) + HalfMapSize) / TileSize;
+	const float GridY = (HalfMapSize - static_cast<float>(LocalLocation.Y)) / TileSize;
+	const int32 FileX = FMath::FloorToInt(GridX);
+	const int32 FileY = FMath::FloorToInt(GridY);
+	if (FileX < 0 || FileX >= MapSize || FileY < 0 || FileY >= MapSize)
+	{
+		return 0.0f;
+	}
+
+	const auto CornerWeight = [this](const int32 X, const int32 Y)
+	{
+		return WaterCornerWeightGrid[Y * CornerGridSize + X];
+	};
+	const float FracX = GridX - static_cast<float>(FileX);
+	const float FracY = GridY - static_cast<float>(FileY);
+	const float Top = FMath::Lerp(CornerWeight(FileX, FileY), CornerWeight(FileX + 1, FileY), FracX);
+	const float Bottom = FMath::Lerp(CornerWeight(FileX, FileY + 1), CornerWeight(FileX + 1, FileY + 1), FracX);
+	return FMath::Lerp(Top, Bottom, FracY);
+}
+
 bool ASimCity2000CityActor::TryGetMapTerrainGrids(
 	TArray<uint8>& OutTerrainClasses,
 	TArray<uint8>& OutAltitudeShades) const
@@ -5113,6 +5709,21 @@ void ASimCity2000CityActor::ResetBuildingInstances()
 	}
 	LastBuildingModelCount = 0;
 	LastBuildingInstanceCount = 0;
+}
+
+void ASimCity2000CityActor::ResetNaturalObjectInstances()
+{
+	for (UInstancedStaticMeshComponent* Component : NaturalObjectInstanceComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->DestroyComponent();
+		}
+	}
+	NaturalObjectInstanceComponents.Reset();
+	NaturalObjectModelMeshes.Reset();
+	LastNaturalObjectModelCount = 0;
+	LastNaturalObjectInstanceCount = 0;
 }
 
 FSimCopterBuildingPart* ASimCity2000CityActor::FindBuildingPartInComponent(int32 BuildingId, int32 ComponentIndex)
@@ -5486,18 +6097,22 @@ FString ASimCity2000CityActor::ResolveCityPath() const
 
 FString ASimCity2000CityActor::ResolveOriginalGameRoot() const
 {
+	// The level authors this to the developer checkout's Reference copy, which is right in the
+	// editor and meaningless in a shipped build - so honour it only when it actually points at an
+	// install, and otherwise ask where the player's data really is.
 	const FString ConfiguredPath = OriginalGameRoot.Path.TrimStartAndEnd();
-	if (ConfiguredPath.IsEmpty())
+	if (!ConfiguredPath.IsEmpty())
 	{
-		return FString();
+		const FString Absolute = FPaths::IsRelative(ConfiguredPath)
+			? FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath))
+			: FPaths::ConvertRelativePathToFull(ConfiguredPath);
+		if (SimCopterOriginalGame::IsOriginalGameRoot(Absolute))
+		{
+			return Absolute;
+		}
 	}
 
-	if (FPaths::IsRelative(ConfiguredPath))
-	{
-		return FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), ConfiguredPath));
-	}
-
-	return FPaths::ConvertRelativePathToFull(ConfiguredPath);
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 bool ASimCity2000CityActor::IsRoadLikeTile(uint8 BuildingId)

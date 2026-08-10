@@ -38,12 +38,15 @@ class SSimCopterCheckupSlider : public SLeafWidget
 public:
 	SLATE_BEGIN_ARGS(SSimCopterCheckupSlider)
 		: _ThumbBrush(nullptr)
+		, _TrackBrush(nullptr)
 		, _ThumbScale(1.0f)
 		, _Locked(false)
 		, _Orientation(Orient_Vertical)
 	{}
 		// SLIDERTV.BMP, or null when the original artwork is not installed.
 		SLATE_ARGUMENT(const FSlateBrush*, ThumbBrush)
+		// Background track graphic, e.g. SLIDERBH-no-blue.png.
+		SLATE_ARGUMENT(const FSlateBrush*, TrackBrush)
 		// Display scale only; the menu supplies a separately tuned paint/hit rectangle.
 		SLATE_ARGUMENT(float, ThumbScale)
 		// FUN_00444690 leaves a slider with a zero maximum disabled - a full tank, an undamaged
@@ -91,6 +94,7 @@ public:
 
 private:
 	const FSlateBrush* ThumbBrush = nullptr;
+	const FSlateBrush* TrackBrush = nullptr;
 	float ThumbScale = 1.0f;
 	bool bLocked = false;
 	EOrientation Orientation = Orient_Vertical;

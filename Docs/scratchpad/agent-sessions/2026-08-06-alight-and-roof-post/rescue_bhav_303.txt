@@ -1,0 +1,10 @@
+﻿=== BHAV 303 'Rescue try get off heli or bucket if appropriate' (8 records) ===
+  [ 0] expr state(+148) == 2                                   T->7 F->1
+  [ 1] player/carried-probe  args=65535,65535,65535,65535      T->5 F->4
+  [ 2] side-effect  args=1,65535,65535,65535                   T->3 F->-3
+  [ 3] deactivate  args=65535,65535,65535,65535                T->-3 F->-3
+  [ 4] carried-is-player  args=65535,65535,65535,65535         T->5 F->retT
+  [ 5] threat-response  args=65535,65535,65535,65535           T->2 F->retT
+  [ 6] op63?  args=65535,65535,65535,65535                     T->5 F->2
+  [ 7] op87?  args=65535,65535,65535,65535                     T->retT F->6
+

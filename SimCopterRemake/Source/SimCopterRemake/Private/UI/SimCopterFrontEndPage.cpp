@@ -16,6 +16,7 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/Layout/SScaleBox.h"
+#include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace SimCopterFrontEnd
@@ -27,6 +28,24 @@ constexpr int32 ButtonFrameCount = 3;
 
 // Text printed into the original's dark wells.
 const FLinearColor ButtonText(0.94f, 0.94f, 0.90f, 1.0f);
+
+// The look every page falls back to when the original's bitmaps are not there. This is not a
+// corner case to leave rough: the screen that says "put the original game files here" is by
+// definition shown when there are no original game files, so the fallback IS that screen. Built
+// out of the front end's own decoded olive (SimCopterFrontEnd::ItemColor) so it reads as the same
+// machine rather than as a Slate default.
+const FLinearColor PlateEdge(0.31f, 0.33f, 0.19f, 1.0f); // ItemColor, darkened - the outer frame
+const FLinearColor PlateFill(0.075f, 0.080f, 0.070f, 1.0f);
+
+const FSlateBrush* SolidBrush()
+{
+	return FCoreStyle::Get().GetBrush(TEXT("WhiteBrush"));
+}
+
+TSharedRef<SWidget> MakeSolid(const FLinearColor& Color)
+{
+	return SNew(SImage).Image(SolidBrush()).ColorAndOpacity(Color);
+}
 
 USimCopterAudioSubsystem* GetAudio()
 {
@@ -55,6 +74,54 @@ void AddAt(const TSharedRef<SConstraintCanvas>& Canvas, const FRect& Rect, TShar
 		];
 }
 
+const FLinearColor PlateBevelColor(0.20f, 0.21f, 0.19f, 1.0f); // the shadow line inside the frame
+const FLinearColor PlateAccentColor(0x80 / 255.0f, 0x85 / 255.0f, 0x4A / 255.0f, 1.0f);
+const FLinearColor PlateTextColor(0xEA / 255.0f, 0xEF / 255.0f, 0x9A / 255.0f, 1.0f);
+
+bool HasPageBitmap(USimCopterHangarArt* Art, const FString& FileName)
+{
+	return Art != nullptr && Art->GetBitmap(FileName, /*bColorKeyed=*/true) != nullptr;
+}
+
+TSharedRef<SWidget> MakeFallbackPlate(TSharedRef<SWidget> Content)
+{
+	// Concentric borders make the frame, then an olive rule across the head so the plate reads as
+	// a built thing rather than one flat rectangle.
+	return SNew(SBorder)
+		.BorderImage(SolidBrush())
+		.BorderBackgroundColor(PlateEdge)
+		.Padding(FMargin(2.0f))
+		[
+			SNew(SBorder)
+			.BorderImage(SolidBrush())
+			.BorderBackgroundColor(PlateBevelColor)
+			.Padding(FMargin(1.0f))
+			[
+				SNew(SBorder)
+				.BorderImage(SolidBrush())
+				.BorderBackgroundColor(PlateFill)
+				.Padding(FMargin(0.0f))
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SBox)
+						.HeightOverride(5.0f)
+						[
+							MakeSolid(PlateAccentColor)
+						]
+					]
+					+ SVerticalBox::Slot()
+					.FillHeight(1.0f)
+					[
+						Content
+					]
+				]
+			]
+		];
+}
+
 TSharedRef<SWidget> MakePageImage(USimCopterHangarArt* Art, const FString& FileName)
 {
 	// Page backgrounds load opaque; only the original's sprite bitmaps are colour keyed. main1.bmp
@@ -66,9 +133,10 @@ TSharedRef<SWidget> MakePageImage(USimCopterHangarArt* Art, const FString& FileN
 		return SNew(SImage).Image(Brush);
 	}
 
-	return SNew(SBorder)
-		.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-		.BorderBackgroundColor(FLinearColor(0.13f, 0.14f, 0.15f, 1.0f));
+	// No artwork. Callers that print dark text into the original's PALE printed well have to ask
+	// HasPageBitmap and light their text for this - dark on dark is the whole reason this plate
+	// got built.
+	return MakeFallbackPlate(SNullWidget::NullWidget);
 }
 
 TSharedRef<SWidget> MakeScaledScreen(TSharedRef<SWidget> PageContent)
@@ -107,22 +175,41 @@ TSharedRef<SWidget> MakeButton(
 			.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.8f))
 		];
 
-	const FSlateBrush* Normal = Art != nullptr ? Art->GetStripFrame(ButtonStrip, 0, ButtonFrameCount) : nullptr;
+	TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
+
+	const FSlateBrush* Normal = Art != nullptr ? Art->GetStripFrame(ButtonStrip, 2, ButtonFrameCount) : nullptr;
 	if (Normal != nullptr)
 	{
-		const FSlateBrush* Pressed = Art->GetStripFrame(ButtonStrip, 1, ButtonFrameCount);
-		const FSlateBrush* Disabled = Art->GetStripFrame(ButtonStrip, 2, ButtonFrameCount);
+		const FSlateBrush* Hovered = Art->GetStripFrame(ButtonStrip, 1, ButtonFrameCount);
+		const FSlateBrush* Pressed = Art->GetStripFrame(ButtonStrip, 0, ButtonFrameCount);
 
-		TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
 		Style->SetNormal(*Normal);
-		Style->SetHovered(*Normal);
+		Style->SetHovered(Hovered != nullptr ? *Hovered : *Normal);
 		Style->SetPressed(Pressed != nullptr ? *Pressed : *Normal);
-		Style->SetDisabled(Disabled != nullptr ? *Disabled : *Normal);
-		Style->SetNormalPadding(FMargin(0.0f));
-		Style->SetPressedPadding(FMargin(0.0f));
-		StyleKeepAlive.Add(Style);
-		Button->SetButtonStyle(&Style.Get());
+		Style->SetDisabled(*Normal);
 	}
+	else
+	{
+		// button.bmp is missing for the same reason the page bitmap is, so the fallback plate needs
+		// buttons to match. Slate's stock button here is a pale grey lozenge that sits on the dark
+		// plate looking like a bug, and its default text colour is dark on dark.
+		FSlateBrush NormalFallback(*SolidBrush());
+		NormalFallback.TintColor = FSlateColor(PlateBevelColor);
+		FSlateBrush HoveredFallback(*SolidBrush());
+		HoveredFallback.TintColor = FSlateColor(FLinearColor(0.30f, 0.32f, 0.20f, 1.0f));
+		FSlateBrush PressedFallback(*SolidBrush());
+		PressedFallback.TintColor = FSlateColor(FLinearColor(0.05f, 0.05f, 0.04f, 1.0f));
+
+		Style->SetNormal(NormalFallback);
+		Style->SetHovered(HoveredFallback);
+		Style->SetPressed(PressedFallback);
+		Style->SetDisabled(NormalFallback);
+	}
+
+	Style->SetNormalPadding(FMargin(0.0f));
+	Style->SetPressedPadding(FMargin(0.0f));
+	StyleKeepAlive.Add(Style);
+	Button->SetButtonStyle(&Style.Get());
 
 	return Button;
 }

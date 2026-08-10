@@ -7,6 +7,7 @@
 #include "Formats/MaxisWindowsBitmapReader.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformFileManager.h"
 #include "ImageUtils.h"
 #include "MediaPlayer.h"
 #include "MediaTexture.h"
@@ -40,6 +41,74 @@ const TCHAR* const CatalogTabStripFiles[SimCopterHangarLayout::CatalogTabCount] 
 };
 
 const TCHAR* const UpgradesTabStripFile = TEXT("CAT_EQUT.BMP");
+
+FString GetUpscaledSlateFileName(const FString& OriginalFileName)
+{
+	const FString BaseName = FPaths::GetBaseFilename(OriginalFileName);
+
+	if (BaseName.Equals(TEXT("BUTTON"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MSSN_BTN-upscaled.png"))))
+		{
+			return TEXT("MSSN_BTN-upscaled.png");
+		}
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("BUTTON-upscaled.png"))))
+		{
+			return TEXT("BUTTON-upscaled.png");
+		}
+	}
+	else if (BaseName.Equals(TEXT("MSSN_BTN"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MSSN_BTN-upscaled.png"))))
+		{
+			return TEXT("MSSN_BTN-upscaled.png");
+		}
+	}
+	else if (BaseName.Equals(TEXT("MAIN1"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MAIN1-upscaled-rows-off.png"))))
+		{
+			return TEXT("MAIN1-upscaled-rows-off.png");
+		}
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("MAIN1-upscaled.png"))))
+		{
+			return TEXT("MAIN1-upscaled.png");
+		}
+	}
+
+	else if (BaseName.Equals(TEXT("SLIDERBH"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("SLIDERBH-no-blue.png"))))
+		{
+			return TEXT("SLIDERBH-no-blue.png");
+		}
+	}
+	else if (BaseName.StartsWith(TEXT("red-light"), ESearchCase::IgnoreCase))
+	{
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("red-light-upscaled.png"))))
+		{
+			return TEXT("red-light-upscaled.png");
+		}
+		if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), TEXT("red-light.png"))))
+		{
+			return TEXT("red-light.png");
+		}
+	}
+
+	const FString Candidate = BaseName + TEXT("-upscaled.png");
+	if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), Candidate)))
+	{
+		return Candidate;
+	}
+
+	const FString CandidatePng = BaseName + TEXT(".png");
+	if (FPaths::FileExists(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Slate"), CandidatePng)))
+	{
+		return CandidatePng;
+	}
+
+	return FString();
+}
 }
 
 void USimCopterHangarArt::SetOriginalGameRoot(const FString& InOriginalGameRoot)
@@ -51,9 +120,13 @@ void USimCopterHangarArt::SetOriginalGameRoot(const FString& InOriginalGameRoot)
 
 	OriginalGameRoot = InOriginalGameRoot;
 	StopMenuSkyMovie();
+	StopCareerCityMovies();
 	MenuSkyMovieBrush.Reset();
 	MenuSkyTexture = nullptr;
 	MenuSkyPlayer = nullptr;
+	CareerCityMovieBrushes.Reset();
+	CareerCityTextures.Reset();
+	CareerCityPlayers.Reset();
 	Textures.Reset();
 	Brushes.Reset();
 }
@@ -92,6 +165,14 @@ FString USimCopterHangarArt::ResolveBitmapPath(const FString& FileName) const
 
 const FSlateBrush* USimCopterHangarArt::GetBitmap(const FString& FileName, const bool bColorKeyed)
 {
+	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
+	if (!UpscaledName.IsEmpty())
+	{
+		if (const FSlateBrush* Upscaled = GetBundledSlateImage(UpscaledName))
+		{
+			return Upscaled;
+		}
+	}
 	return BuildBrush(FileName, FileName, bColorKeyed, FIntRect(), ESimCopterArtRotation::None);
 }
 
@@ -157,7 +238,12 @@ FString USimCopterHangarArt::ResolveMenuSkyMoviePath() const
 	{
 		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
 		FPaths::NormalizeFilename(Candidate);
-		if (FPaths::FileExists(Candidate))
+		// Deliberately the PHYSICAL file system, not IFileManager: Media Foundation opens the file
+		// through the OS and cannot see inside a .pak, so a movie that is only staged as UFS
+		// "exists" to Unreal and then decodes nothing, leaving the media texture full of garbage on
+		// screen. Answering "no movie" here gets the SKYCOOL fallback instead, which at least
+		// looks deliberate. DefaultGame.ini stages this folder as NonUFS to keep it a real file.
+		if (IPlatformFile::GetPlatformPhysical().FileExists(*Candidate))
 		{
 			return Candidate;
 		}
@@ -219,6 +305,98 @@ void USimCopterHangarArt::StopMenuSkyMovie()
 	}
 }
 
+FString USimCopterHangarArt::ResolveCareerCityMoviePath(const int32 CityIndex) const
+{
+	if (CityIndex < 0 || CityIndex >= 30)
+	{
+		return FString();
+	}
+
+	const FString FileName = FString::Printf(TEXT("CITY%d_S.mp4"), CityIndex);
+	TArray<FString, TInlineAllocator<3>> Candidates;
+	Candidates.Add(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Generated/Movies/Career"), FileName));
+	Candidates.Add(FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Movies/Career"), FileName));
+	if (!OriginalGameRoot.IsEmpty())
+	{
+		Candidates.Add(FPaths::Combine(OriginalGameRoot, TEXT("SMK"), FileName));
+	}
+
+	for (FString Candidate : Candidates)
+	{
+		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
+		FPaths::NormalizeFilename(Candidate);
+		if (IPlatformFile::GetPlatformPhysical().FileExists(*Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return FString();
+}
+
+const FSlateBrush* USimCopterHangarArt::GetCareerCityMovieBrush(const int32 CityIndex)
+{
+	if (const TSharedPtr<FSlateBrush>* Existing = CareerCityMovieBrushes.Find(CityIndex))
+	{
+		return Existing->IsValid() ? Existing->Get() : nullptr;
+	}
+
+	const FString MoviePath = ResolveCareerCityMoviePath(CityIndex);
+	if (MoviePath.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("SimCopter career select: CITY%d_S.mp4 has not been baked; run Tools/Unreal/BakeCareerPreviews.py."),
+			CityIndex);
+		return nullptr;
+	}
+
+	UMediaPlayer* Player = NewObject<UMediaPlayer>(
+		this, *FString::Printf(TEXT("OriginalCareerCity%dPlayer"), CityIndex));
+	Player->PlayOnOpen = true;
+	Player->SetLooping(true);
+
+	UMediaTexture* Texture = NewObject<UMediaTexture>(
+		this, *FString::Printf(TEXT("OriginalCareerCity%dTexture"), CityIndex));
+	Texture->AutoClear = true;
+	Texture->ClearColor = FLinearColor(0.45f, 0.58f, 0.63f, 1.0f);
+	Texture->NewStyleOutput = true;
+	Texture->Filter = TF_Bilinear;
+	Texture->SetMediaPlayer(Player);
+	Texture->UpdateResource();
+
+	TSharedRef<FSlateBrush> Brush = MakeShared<FSlateBrush>();
+	Brush->SetResourceObject(Texture);
+	Brush->ImageSize = FVector2D(200.0f, 108.0f);
+	Brush->DrawAs = ESlateBrushDrawType::Image;
+
+	CareerCityPlayers.Add(CityIndex, Player);
+	CareerCityTextures.Add(CityIndex, Texture);
+	CareerCityMovieBrushes.Add(CityIndex, Brush);
+
+	// SCHOOK: CareerSelectPage 0x00457c90 / FUN_00407c50(2, city<N>) appends
+	// "_s.smk" and loops that city's 200x108, 75-frame rotating layout inside its panel.
+	if (!Player->OpenFile(MoviePath))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimCopter career select: could not open '%s'."), *MoviePath);
+		CareerCityMovieBrushes.Remove(CityIndex);
+		CareerCityTextures.Remove(CityIndex);
+		CareerCityPlayers.Remove(CityIndex);
+		return nullptr;
+	}
+
+	return &Brush.Get();
+}
+
+void USimCopterHangarArt::StopCareerCityMovies()
+{
+	for (const TPair<int32, TObjectPtr<UMediaPlayer>>& Entry : CareerCityPlayers)
+	{
+		if (Entry.Value != nullptr)
+		{
+			Entry.Value->Close();
+		}
+	}
+}
+
 const FSlateBrush* USimCopterHangarArt::GetStripFrame(
 	const FString& FileName,
 	const int32 FrameIndex,
@@ -229,10 +407,38 @@ const FSlateBrush* USimCopterHangarArt::GetStripFrame(
 		return nullptr;
 	}
 
-	// The frame width is only known once the bitmap is loaded, so the split stays in BuildBrush;
-	// an all-zero rect with a frame count encoded in the key would not survive the cache. Load
-	// the whole bitmap once to size the frame.
-	const FSlateBrush* Whole = GetBitmap(FileName, /*bColorKeyed=*/true);
+	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
+	if (!UpscaledName.IsEmpty())
+	{
+		if (const FSlateBrush* UpscaledBrush = GetBundledSlateImage(UpscaledName))
+		{
+			const FString CacheKey = FString::Printf(TEXT("StripFrame/%s#%dof%d"), *FileName, FrameIndex, FrameCount);
+			if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
+			{
+				return Existing->IsValid() ? Existing->Get() : nullptr;
+			}
+
+			const float U0 = static_cast<float>(FrameIndex) / static_cast<float>(FrameCount);
+			const float U1 = static_cast<float>(FrameIndex + 1) / static_cast<float>(FrameCount);
+
+			TSharedRef<FSlateBrush> FrameBrush = MakeShared<FSlateBrush>(*UpscaledBrush);
+			FrameBrush->SetUVRegion(FBox2f(FVector2f(U0, 0.0f), FVector2f(U1, 1.0f)));
+
+			const float FrameAspect = (UpscaledBrush->ImageSize.X / static_cast<float>(FrameCount)) / FMath::Max(1.0f, UpscaledBrush->ImageSize.Y);
+			const float FrameHeight = 28.0f;
+			FrameBrush->ImageSize = FVector2D(FrameHeight * FrameAspect, FrameHeight);
+
+			Brushes.Add(CacheKey, FrameBrush);
+			return &FrameBrush.Get();
+		}
+	}
+
+	const FSlateBrush* Whole = BuildBrush(
+		FString::Printf(TEXT("%s-WholeOriginal"), *FileName),
+		FileName,
+		/*bColorKeyed=*/true,
+		FIntRect(),
+		ESimCopterArtRotation::None);
 	if (Whole == nullptr)
 	{
 		return nullptr;
@@ -254,7 +460,8 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 	const FString& FileName,
 	const FIntRect& Source,
 	const bool bColorKeyed,
-	const ESimCopterArtRotation Rotation)
+	const ESimCopterArtRotation Rotation,
+	const bool bNearestNeighbor)
 {
 	if (Source.Min.X < 0 || Source.Min.Y < 0 || Source.Width() <= 0 || Source.Height() <= 0)
 	{
@@ -262,15 +469,109 @@ const FSlateBrush* USimCopterHangarArt::GetSubImage(
 	}
 
 	const FString CacheKey = FString::Printf(
-		TEXT("%s@%d,%d,%d,%d%s r%d"),
+		TEXT("%s@%d,%d,%d,%d%s r%d%s"),
 		*FileName,
 		Source.Min.X,
 		Source.Min.Y,
 		Source.Max.X,
 		Source.Max.Y,
 		bColorKeyed ? TEXT("k") : TEXT(""),
-		static_cast<int32>(Rotation));
-	return BuildBrush(CacheKey, FileName, bColorKeyed, Source, Rotation);
+		static_cast<int32>(Rotation),
+		bNearestNeighbor ? TEXT(" point") : TEXT(""));
+
+	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
+	{
+		return Existing->IsValid() ? Existing->Get() : nullptr;
+	}
+
+	const FString UpscaledName = GetUpscaledSlateFileName(FileName);
+	if (!bNearestNeighbor && !UpscaledName.IsEmpty() && Rotation == ESimCopterArtRotation::None)
+	{
+		if (const FSlateBrush* UpscaledBrush = GetBundledSlateImage(UpscaledName))
+		{
+			const FSlateBrush* OriginalBrush = BuildBrush(
+				FString::Printf(TEXT("%s-OriginalDimensionsOnly"), *FileName),
+				FileName,
+				bColorKeyed,
+				FIntRect(),
+				ESimCopterArtRotation::None);
+
+			float OrigWidth = OriginalBrush != nullptr ? OriginalBrush->ImageSize.X : 0.0f;
+			float OrigHeight = OriginalBrush != nullptr ? OriginalBrush->ImageSize.Y : 0.0f;
+
+			if (OrigWidth <= 0.0f || OrigHeight <= 0.0f)
+			{
+				const FString BaseName = FPaths::GetBaseFilename(FileName);
+				if (BaseName.Equals(TEXT("CARSEL"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 557.0f;
+					OrigHeight = 743.0f;
+				}
+				else if (BaseName.Equals(TEXT("BUTTON"), ESearchCase::IgnoreCase) || BaseName.Equals(TEXT("MSSN_BTN"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 300.0f;
+					OrigHeight = 28.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAPBTN0"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 74.0f;
+					OrigHeight = 29.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAPBTN1"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 38.0f;
+					OrigHeight = 24.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAPBTN2"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 34.0f;
+					OrigHeight = 29.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAP-dispatch"), ESearchCase::IgnoreCase) || BaseName.Equals(TEXT("FLAP_DISPATCH"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 232.0f;
+					OrigHeight = 58.0f;
+				}
+				else if (BaseName.Equals(TEXT("FLAP-apache-missles-gun"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 138.0f;
+					OrigHeight = 58.0f;
+				}
+				else if (BaseName.StartsWith(TEXT("FLAP"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 138.0f;
+					OrigHeight = 58.0f;
+				}
+				else if (BaseName.StartsWith(TEXT("SLIDERBH"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 192.0f;
+					OrigHeight = 32.0f;
+				}
+				else if (BaseName.StartsWith(TEXT("red-light"), ESearchCase::IgnoreCase))
+				{
+					OrigWidth = 33.0f;
+					OrigHeight = 34.0f;
+				}
+			}
+
+			if (OrigWidth > 0.0f && OrigHeight > 0.0f)
+			{
+				const float U0 = FMath::Clamp(static_cast<float>(Source.Min.X) / OrigWidth, 0.0f, 1.0f);
+				const float V0 = FMath::Clamp(static_cast<float>(Source.Min.Y) / OrigHeight, 0.0f, 1.0f);
+				const float U1 = FMath::Clamp(static_cast<float>(Source.Max.X) / OrigWidth, 0.0f, 1.0f);
+				const float V1 = FMath::Clamp(static_cast<float>(Source.Max.Y) / OrigHeight, 0.0f, 1.0f);
+
+				TSharedRef<FSlateBrush> SubBrush = MakeShared<FSlateBrush>(*UpscaledBrush);
+				SubBrush->SetUVRegion(FBox2f(FVector2f(U0, V0), FVector2f(U1, V1)));
+				SubBrush->ImageSize = FVector2D(Source.Width(), Source.Height());
+
+				Brushes.Add(CacheKey, SubBrush);
+				return &SubBrush.Get();
+			}
+		}
+	}
+
+	return BuildBrush(CacheKey, FileName, bColorKeyed, Source, Rotation, bNearestNeighbor);
 }
 
 const FSlateBrush* USimCopterHangarArt::GetCatalogDrawing(const int32 CatalogRow)
@@ -293,7 +594,8 @@ const FSlateBrush* USimCopterHangarArt::BuildBrush(
 	const FString& FileName,
 	const bool bColorKeyed,
 	const FIntRect& Source,
-	const ESimCopterArtRotation Rotation)
+	const ESimCopterArtRotation Rotation,
+	const bool bNearestNeighbor)
 {
 	if (const TSharedPtr<FSlateBrush>* Existing = Brushes.Find(CacheKey))
 	{
@@ -380,9 +682,10 @@ const FSlateBrush* USimCopterHangarArt::BuildBrush(
 		return nullptr;
 	}
 
-	// The sprite path wants nearest for 27x33 people; a full page scaled up to a modern viewport
-	// wants the opposite, so re-upload with filtering on.
-	Texture->Filter = TF_Bilinear;
+	// Full pages use smooth scaling, but the original 27x33 passenger cells must retain their
+	// exact palette pixels. Point sampling also prevents transparent chroma-key neighbors from
+	// contributing a cyan fringe at the silhouette.
+	Texture->Filter = bNearestNeighbor ? TF_Nearest : TF_Bilinear;
 	Texture->UpdateResource();
 
 	Textures.Add(CacheKey, Texture);

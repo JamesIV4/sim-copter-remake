@@ -10,6 +10,42 @@ class USimCopterAudioSubsystem;
 class USimCopterRadioSubsystem;
 
 /**
+ * Picking the resolution the game should open at, kept free of the engine's display plumbing so it
+ * can be tested without a monitor.
+ *
+ * `UGameUserSettings` seeds a brand new ini from `[/Script/Engine.GameUserSettings]` defaults, which
+ * is 1280x720 - not the display's own size. On a first run that opens a small window on a 4K panel
+ * and looks broken, so the first launch takes the native resolution of whichever monitor the game
+ * actually came up on.
+ */
+namespace SimCopterDisplay
+{
+/** One monitor, in virtual-desktop coordinates. */
+struct FMonitor
+{
+	/** The panel's real pixel size, which is NOT DisplayRect when Windows is scaling it. */
+	FIntPoint NativeResolution = FIntPoint::ZeroValue;
+
+	/** Where the monitor sits on the virtual desktop. */
+	FIntRect DisplayRect = FIntRect(0, 0, 0, 0);
+
+	bool bIsPrimary = false;
+};
+
+/**
+ * Native resolution of the monitor the window is on: the one it overlaps most, falling back to the
+ * primary and then to the first listed. Zero when there are no monitors or none report a size.
+ *
+ * Overlap area rather than window centre, because a window straddling two monitors renders on the
+ * one showing most of it, and a zero-size window (which is what an unshown window reports) has no
+ * centre worth trusting.
+ */
+SIMCOPTERREMAKE_API FIntPoint FindNativeResolutionForWindow(
+	const TArray<FMonitor>& Monitors,
+	const FIntRect& WindowRect);
+}
+
+/**
  * DLSS super resolution quality, mirroring NVIDIA's UDLSSMode so the settings store does not have
  * to include the plugin's header (and so the value that lands in the ini stays stable if the
  * plugin ever renumbers). Whether DLSS runs at all is a separate flag, because that is the shape
@@ -38,7 +74,63 @@ enum class ESimCopterFrameGenMode : uint8
 };
 
 /**
- * Everything the Settings screen owns, persisted to the user's GameUserSettings ini.
+ * NVIDIA Reflex low latency, mirroring `EStreamlineReflexMode` so the ini value stays stable if the
+ * plugin ever renumbers (its own enum is deliberately sparse - Boost is 3, not 2).
+ */
+UENUM()
+enum class ESimCopterReflexMode : uint8
+{
+	Off = 0,
+	On,
+	OnBoost,
+};
+
+/**
+ * Lumen, as the three choices a player actually cares about.
+ *
+ * Hardware and Software are the same GI method - `r.DynamicGlobalIlluminationMethod 1` - differing
+ * only in `r.Lumen.HardwareRayTracing`, so the dropdown collapses them into one row. Off drops GI to
+ * None and leaves reflections on screen-space, which is the nearest thing to "no Lumen" that still
+ * shows a reflection at all.
+ */
+UENUM()
+enum class ESimCopterLumenMode : uint8
+{
+	HardwareRayTracing = 0,
+	Software,
+	Off,
+};
+
+/**
+ * Anti-aliasing method, mirroring Unreal's own `EAntiAliasingMethod` value for value so writing it
+ * to `r.AntiAliasingMethod` needs no remapping. MSAA is left out on purpose: the project runs
+ * deferred shading (`r.ForwardShading=False` in DefaultEngine.ini) and the engine silently forces
+ * MSAA back to None outside forward shading, so listing it would be exactly the kind of dead
+ * control this page otherwise avoids (see the class comment).
+ */
+UENUM()
+enum class ESimCopterAntiAliasingMethod : uint8
+{
+	None = 0,
+	Fxaa = 1,
+	TemporalAA = 2,
+	Tsr = 4,
+	Smaa = 5,
+};
+
+/** How the Settings screen's Time of Day row drives the level's day sequence. */
+UENUM()
+enum class ESimCopterTimeOfDayMode : uint8
+{
+	/** The day sequence runs, so the sun, the fog and the window lights all move. */
+	Dynamic = 0,
+	/** The clock is pinned to Static Time Of Day Hours and the day cycle is paused. */
+	Static,
+};
+
+/**
+ * Everything the Settings screen owns. Profile preferences are persisted to the user's
+ * GameUserSettings ini; the time-of-day controls are session state and travel with a saved game.
  *
  * The sound half is the original's, value for value: `FUN_0043f7c0` builds both volume sliders
  * over 320..10000 and the tuner over 0..2, and `FUN_00440130` reads them back. The graphics half
@@ -103,8 +195,31 @@ public:
 
 	// --- graphics (the remake's, control 0x7d5) ---
 
+	/**
+	 * Low Power Graphics: drops overall scalability to Low, renders at 75% screen percentage, and
+	 * switches off everything in `SimCopterLowPowerMode.h`'s table - Lumen, the virtual shadow map,
+	 * MegaLights, the cloud layer, TSR. Live actors drop their local lights with it.
+	 *
+	 * The visual compromises are real and confined to this mode; see the header for what each one
+	 * buys. Everything is restored on the way out, including the scalability level and screen
+	 * percentage that were in force before it was switched on.
+	 */
+	bool IsLowPowerMode() const { return bLowPowerMode; }
+	void SetLowPowerMode(bool bEnabled) { bLowPowerMode = bEnabled; }
+
 	bool IsDlssEnabled() const { return bDlssEnabled; }
 	void SetDlssEnabled(bool bEnabled) { bDlssEnabled = bEnabled; }
+
+	/**
+	 * Super resolution is switched on AND this machine can actually run it.
+	 *
+	 * `bDlssEnabled` alone is not enough to act on: it is a `UPROPERTY(Config)`, so an ini written on
+	 * a machine with an RTX card carries a `true` onto one without, where the whole DLSS section of
+	 * the page is hidden and there is no row to switch it back off. Anything that *defers* to DLSS -
+	 * the anti-aliasing method below, the row's label, whether the row is greyed - has to ask this
+	 * rather than the flag, or it would be deferring to an upscaler that is not running.
+	 */
+	bool IsDlssActive() const { return bDlssEnabled && IsDlssAvailable(); }
 
 	ESimCopterDlssQuality GetDlssQuality() const { return DlssQuality; }
 	void SetDlssQuality(ESimCopterDlssQuality Quality) { DlssQuality = Quality; }
@@ -123,12 +238,130 @@ public:
 	int32 GetFrameGenMultiple() const { return FrameGenMultiple; }
 	void SetFrameGenMultiple(int32 Multiple);
 
+	ESimCopterReflexMode GetReflexMode() const { return ReflexMode; }
+	void SetReflexMode(ESimCopterReflexMode Mode) { ReflexMode = Mode; }
+
+	ESimCopterLumenMode GetLumenMode() const { return LumenMode; }
+	void SetLumenMode(ESimCopterLumenMode Mode) { LumenMode = Mode; }
+
+	/**
+	 * The player's anti-aliasing method - what the row stores, which is NOT always what is running.
+	 *
+	 * While super resolution is on, `ApplyGraphics` forces `r.AntiAliasingMethod` to **TSR** and the
+	 * page shows the row as "DLSS", greyed. That is not deference, it is a requirement: DLSS is a
+	 * temporal upscaler, and `FSceneView::SetupAntiAliasingMethod` only sets
+	 * `EPrimaryScreenPercentageMethod::TemporalUpscale` when the method is TSR (or TAA with
+	 * `r.TemporalAA.Upsampling`). With None or FXAA selected the view stays on `SpatialUpscale`, so
+	 * the frame is rendered small and *stretched* and DLSS's upscaler is never invoked at all - the
+	 * Resolution Scale row moves and nothing else happens. The DLSS plugin does the same thing from
+	 * its side (`FDLSSTemporalUpscalerModularFeature::SetupSceneView`: "The TSR is required for the
+	 * DLSS").
+	 *
+	 * This value is never overwritten by that, so switching super resolution off puts the player's
+	 * own pick straight back.
+	 */
+	ESimCopterAntiAliasingMethod GetAntiAliasingMethod() const { return AntiAliasingMethod; }
+	void SetAntiAliasingMethod(ESimCopterAntiAliasingMethod Method) { AntiAliasingMethod = Method; }
+
+	bool IsVolumetricFogEnabled() const { return bVolumetricFog; }
+	void SetVolumetricFogEnabled(bool bEnabled) { bVolumetricFog = bEnabled; }
+
+	/**
+	 * One knob over everything the remake draws as emissive: the fire and effect cards, the people
+	 * sprites, and the night window lights.
+	 *
+	 * All of those are unlit cards or emissive terms whose brightness is derived from the sun rather
+	 * than authored (see `USimCopterEffectExposureSubsystem`), so one multiplier moves them together
+	 * and keeps their relationship to each other. 1.0 is the derived value; drop it if the bloom
+	 * halos are too strong on your display.
+	 */
+	float GetEmissiveBrightness() const { return EmissiveBrightness; }
+	void SetEmissiveBrightness(float Scale);
+
+	static constexpr float EmissiveBrightnessMin = 0.05f;
+	static constexpr float EmissiveBrightnessMax = 3.0f;
+
+	// --- time of day (the remake's; the original's equivalent is career.twk's Day/Night column) ---
+
+	/** Restores the defaults for a genuinely new session rather than inheriting the last loaded save. */
+	void ResetSessionTimeOfDaySettings();
+
+	ESimCopterTimeOfDayMode GetTimeOfDayMode() const { return TimeOfDayMode; }
+	void SetTimeOfDayMode(ESimCopterTimeOfDayMode Mode) { TimeOfDayMode = Mode; }
+
+	/** The hour Static mode pins the clock to, 0..24. Ignored in Dynamic. */
+	float GetStaticTimeOfDayHours() const { return StaticTimeOfDayHours; }
+	void SetStaticTimeOfDayHours(float Hours);
+
+	static constexpr float StaticTimeOfDayMinHours = 0.0f;
+	static constexpr float StaticTimeOfDayMaxHours = 24.0f;
+	static constexpr float DefaultStaticTimeOfDayHours = 12.0f;
+
+	/**
+	 * How long daylight and night each last in real minutes, in Dynamic mode.
+	 *
+	 * These are the player-facing face of `USimCopterDayNightLengthComponent`'s `DayRealMinutes` /
+	 * `NightRealMinutes`, which the day/night subsystem pushes at the level's component. They set the
+	 * two PLATEAU speeds; the transition ramps between them cost a little extra on top, so the
+	 * component's Effective Day/Night Minutes readouts are what a band actually takes.
+	 */
+	float GetDayRealMinutes() const { return DayRealMinutes; }
+	void SetDayRealMinutes(float Minutes);
+
+	float GetNightRealMinutes() const { return NightRealMinutes; }
+	void SetNightRealMinutes(float Minutes);
+
+	/** Half a minute is already a comically fast sunrise; 30 is far longer than a session needs. */
+	static constexpr float CycleLengthMinMinutes = 0.5f;
+	static constexpr float CycleLengthMaxMinutes = 30.0f;
+	static constexpr float DefaultDayRealMinutes = 7.0f;
+	static constexpr float DefaultNightRealMinutes = 3.0f;
+
+	/** "13:30" for 13.5, for the Settings row's readout. */
+	static FText FormatTimeOfDay(float Hours);
+
+	/** "7.0 min", for the two cycle length rows. */
+	static FText FormatMinutes(float Minutes);
+
 	/** Multiplies the cockpit/dashboard/map overlays. 0.5 .. 2.0. */
 	float GetHudScale() const { return HudScale; }
 	void SetHudScale(float Scale);
 
 	static constexpr float HudScaleMin = 0.5f;
 	static constexpr float HudScaleMax = 2.0f;
+
+	// --- camera and input (profile-wide remake settings) ---
+
+	float GetOnFootFov() const { return OnFootFov; }
+	void SetOnFootFov(float Degrees);
+
+	float GetHelicopterFov() const { return HelicopterFov; }
+	void SetHelicopterFov(float Degrees);
+
+	float GetCockpitFov() const { return CockpitFov; }
+	void SetCockpitFov(float Degrees);
+
+	static constexpr float FovMin = 60.0f;
+	static constexpr float FovMax = 120.0f;
+	static constexpr float DefaultFov = 78.0f;
+	static constexpr float DefaultCockpitFov = 90.0f;
+
+	float GetMouseSensitivityX() const { return MouseSensitivityX; }
+	void SetMouseSensitivityX(float Scale);
+
+	float GetMouseSensitivityY() const { return MouseSensitivityY; }
+	void SetMouseSensitivityY(float Scale);
+
+	float GetControllerSensitivityX() const { return ControllerSensitivityX; }
+	void SetControllerSensitivityX(float Scale);
+
+	float GetControllerSensitivityY() const { return ControllerSensitivityY; }
+	void SetControllerSensitivityY(float Scale);
+
+	/** Multipliers over the authored camera rates and the engine's mouse-axis calibration. */
+	static constexpr float SensitivityMin = 0.1f;
+	static constexpr float SensitivityMax = 3.0f;
+	static constexpr float DefaultSensitivity = 1.0f;
 
 	/** Broadcast when HudScale changes so live overlays can re-scale without a level reload. */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnHudScaleChanged, float);
@@ -142,6 +375,18 @@ public:
 	/** True when DLSS Frame Generation is offered. */
 	static bool IsFrameGenAvailable();
 
+	/** True when this GPU and driver offer NVIDIA Reflex. */
+	static bool IsReflexAvailable();
+
+	/** True when a Reflex mode is offered - Boost is not on every card that has Reflex at all. */
+	static bool IsReflexModeAvailable(ESimCopterReflexMode Mode);
+
+	/**
+	 * True when hardware ray tracing is actually available, so the Lumen row can fall back to
+	 * Software instead of offering a mode that silently degrades to it.
+	 */
+	static bool IsHardwareRayTracingAvailable();
+
 	/** The DLSS quality modes this GPU offers; empty when DLSS is unavailable. */
 	static void GetAvailableDlssQualities(TArray<ESimCopterDlssQuality>& OutQualities);
 
@@ -154,6 +399,10 @@ public:
 	static FText GetDlssQualityLabel(ESimCopterDlssQuality Quality);
 	static FText GetFrameGenModeLabel(ESimCopterFrameGenMode Mode);
 	static FText GetFrameGenMultipleLabel(int32 Multiple);
+	static FText GetReflexModeLabel(ESimCopterReflexMode Mode);
+	static FText GetLumenModeLabel(ESimCopterLumenMode Mode);
+	static FText GetAntiAliasingMethodLabel(ESimCopterAntiAliasingMethod Method);
+	static FText GetTimeOfDayModeLabel(ESimCopterTimeOfDayMode Mode);
 
 private:
 	UPROPERTY(Config)
@@ -175,6 +424,24 @@ private:
 	bool bAutoQuiet = true;
 
 	UPROPERTY(Config)
+	bool bLowPowerMode = false;
+
+	/**
+	 * The overall scalability level and screen percentage in force when Low Power was switched on,
+	 * so switching it off puts them back.
+	 *
+	 * They are also the latch that says the mode's one-shot half has been applied: INDEX_NONE and a
+	 * negative scale mean "not currently applied", which is what stops a second ApplyGraphics from
+	 * capturing Low as the value to restore. Persisted, because the mode itself is - a session that
+	 * starts with it already on must still know what to go back to.
+	 */
+	UPROPERTY(Config)
+	int32 LowPowerRestoreScalabilityLevel = INDEX_NONE;
+
+	UPROPERTY(Config)
+	float LowPowerRestoreResolutionScale = -1.0f;
+
+	UPROPERTY(Config)
 	bool bDlssEnabled = false;
 
 	UPROPERTY(Config)
@@ -186,9 +453,85 @@ private:
 	UPROPERTY(Config)
 	int32 FrameGenMultiple = FrameGenMultipleMin;
 
+	/** On by default: Reflex costs nothing when the frame is GPU bound and helps when it is not. */
+	UPROPERTY(Config)
+	ESimCopterReflexMode ReflexMode = ESimCopterReflexMode::On;
+
+	/**
+	 * Hardware by default, because the project ships with `r.Lumen.HardwareRayTracing=True` and
+	 * `r.RayTracing=True` in DefaultEngine.ini. Initialize() drops it to Software on a machine whose
+	 * RHI cannot do it, so the ini travelling to another PC does not leave the row lying.
+	 */
+	UPROPERTY(Config)
+	ESimCopterLumenMode LumenMode = ESimCopterLumenMode::HardwareRayTracing;
+
+	/** TSR: the project never overrides DefaultFeatureAntiAliasing, so this is what r.AntiAliasingMethod is already running at before the row is ever touched. */
+	UPROPERTY(Config)
+	ESimCopterAntiAliasingMethod AntiAliasingMethod = ESimCopterAntiAliasingMethod::Tsr;
+
+	UPROPERTY(Config)
+	bool bVolumetricFog = true;
+
+	UPROPERTY(Config)
+	float EmissiveBrightness = 1.0f;
+
+	// Session-owned: these are serialized by USimCopterSaveGame, not GameUserSettings.
+	UPROPERTY(Transient)
+	ESimCopterTimeOfDayMode TimeOfDayMode = ESimCopterTimeOfDayMode::Dynamic;
+
+	/** Noon, so switching to Static without touching the slider gives full daylight. */
+	UPROPERTY(Transient)
+	float StaticTimeOfDayHours = DefaultStaticTimeOfDayHours;
+
+	/** 7 and 3, matching USimCopterDayNightLengthComponent's own defaults. */
+	UPROPERTY(Transient)
+	float DayRealMinutes = DefaultDayRealMinutes;
+
+	UPROPERTY(Transient)
+	float NightRealMinutes = DefaultNightRealMinutes;
+
 	UPROPERTY(Config)
 	float HudScale = 1.0f;
 
+	UPROPERTY(Config)
+	float OnFootFov = DefaultFov;
+
+	UPROPERTY(Config)
+	float HelicopterFov = DefaultFov;
+
+	UPROPERTY(Config)
+	float CockpitFov = DefaultCockpitFov;
+
+	UPROPERTY(Config)
+	float MouseSensitivityX = DefaultSensitivity;
+
+	UPROPERTY(Config)
+	float MouseSensitivityY = DefaultSensitivity;
+
+	UPROPERTY(Config)
+	float ControllerSensitivityX = DefaultSensitivity;
+
+	UPROPERTY(Config)
+	float ControllerSensitivityY = DefaultSensitivity;
+
+	/**
+	 * False until the resolution has been seeded from the display once. Without it the seeding could
+	 * not tell "never configured" from "the player deliberately chose the same size as the desktop",
+	 * and would re-seed over their choice on every launch.
+	 */
+	UPROPERTY(Config)
+	bool bResolutionSeededFromDisplay = false;
+
 	void ApplySound(const UObject* WorldContextObject);
 	void ApplyGraphics(const UObject* WorldContextObject);
+
+	/**
+	 * The half of Low Power Graphics that is a one-shot on the transition rather than a value to
+	 * re-assert: the overall scalability level and the screen percentage, both of which the player
+	 * can still move afterwards from the Quality and Resolution Scale rows.
+	 */
+	void ApplyLowPowerScalability();
+
+	/** First run only: puts the window on the native resolution of the display it opened on. */
+	void SeedResolutionFromDisplay();
 };

@@ -5,6 +5,7 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterCareerProgression.h"
 #include "Game/SimCopterSaveSubsystem.h"
@@ -44,6 +45,11 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 		Session->ClearPendingSession();
 	}
 
+	// The front end is the first thing that runs, so it is where a fresh install learns it has no
+	// original game data: this drops the named folder and its note next to the executable rather
+	// than waiting for the player to pick a city and get a dead end.
+	SimCopterOriginalGame::EnsurePlayerRootFolder();
+
 	Art = NewObject<USimCopterHangarArt>(this, TEXT("FrontEndArt"));
 	Art->SetOriginalGameRoot(ResolveOriginalGameRoot());
 
@@ -65,22 +71,7 @@ void ASimCopterMainMenuGameMode::EndPlay(const EEndPlayReason::Type EndPlayReaso
 
 FString ASimCopterMainMenuGameMode::ResolveOriginalGameRoot() const
 {
-	TArray<FString, TInlineAllocator<3>> Candidates;
-	Candidates.Add(FPaths::ProjectContentDir() / TEXT("OriginalGame"));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("Reference/SimCopterOriginalGame")));
-	Candidates.Add(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
-
-	for (FString Candidate : Candidates)
-	{
-		Candidate = FPaths::ConvertRelativePathToFull(Candidate);
-		FPaths::NormalizeDirectoryName(Candidate);
-		if (FPaths::DirectoryExists(Candidate))
-		{
-			return Candidate;
-		}
-	}
-
-	return FString();
+	return SimCopterOriginalGame::ResolveRoot();
 }
 
 TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFrontEndScreen NewScreen)
@@ -223,6 +214,7 @@ void ASimCopterMainMenuGameMode::CloseScreen()
 	if (Art != nullptr)
 	{
 		Art->StopMenuSkyMovie();
+		Art->StopCareerCityMovies();
 	}
 
 	if (!ScreenWidget.IsValid())
@@ -294,11 +286,13 @@ void ASimCopterMainMenuGameMode::HandleCareerCityChosen(const int32 CareerCityIn
 	if (CityFile.IsEmpty() || !FPaths::FileExists(CityFile))
 	{
 		Session->ClearPendingSession();
+		// Nothing resolved, so make the folder the message names exist before naming it - a player
+		// who has never had the data has nowhere to put it otherwise.
+		SimCopterOriginalGame::EnsurePlayerRootFolder();
 		PendingMessage = FText::Format(
-			LOCTEXT(
-				"MissingCareerCity",
-				"Cannot find {0}.\nThe original game folder has to be in place under Reference/SimCopterOriginalGame."),
-			FText::FromString(USimCopterSessionSubsystem::ResolveCareerCityFilePath(CareerCityIndex)));
+			LOCTEXT("MissingCareerCity", "Cannot find cities/career/city{0}.sc2.\n\n{1}"),
+			FText::AsNumber(CareerCityIndex, &FNumberFormattingOptions::DefaultNoGrouping()),
+			SimCopterOriginalGame::GetMissingDataHint());
 		EnterScreen(ESimCopterFrontEndScreen::Message);
 		return;
 	}

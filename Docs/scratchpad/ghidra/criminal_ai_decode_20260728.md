@@ -1,5 +1,10 @@
 # Criminals, cops and the arrest - decode notes (2026-07-28)
 
+> **Name/opcode correction (2026-08-09):** states 10/11/12/13 are Robber, Arsonist, Mugger, and
+> Burglar. Opcode 61 messages the person's starting vehicle; BHAV 1303 uses it to return to the
+> CARROBBR car and continue the same Burglar mission. See
+> `Docs/memory/simcopter-crime-rooftop-rescue.md`.
+
 Answer to "can the catching-the-criminal code be decoded?": **yes, completely.** It is not engine
 code at all - the whole thing is shipped BHAV data in `X/people.df`, driven by five behaviour
 opcodes the remake had left as stubs. Nothing here is inferred from gameplay; every claim below
@@ -16,10 +21,10 @@ unreachable, and `Tools/people_bhav_dump.py` for the shipped programs.
 |-------|------|------|
 | 7  | 1400 | Cop aerial |
 | 8  | 1401 | Cop foot |
-| 10 | 1300 | Criminal Robber   (`TYPE_CriminalA`, spawn mode 10) |
-| 11 | 1301 | Criminal Arsonist (`TYPE_SpeederEvent`, spawn mode 11) |
-| 12 | 1302 | Criminal Mugger   (`TYPE_CriminalC`, spawn mode 12) |
-| 13 | 1303 | Criminal Car |
+| 10 | 1300 | Criminal Robber (`TYPE_Robber`, person state 10) |
+| 11 | 1301 | Criminal Arsonist (`TYPE_Arsonist`, person state 11) |
+| 12 | 1302 | Criminal Mugger (`TYPE_Mugger`, person state 12) |
+| 13 | 1303 | Criminal Burglar (`TYPE_Burglar`, person state 13; spawned from CARROBBR) |
 | 14 | 1402 | Cop speeder |
 
 Sub-programs: `1170 crim - cops or heli nearby`, `1171 crim - run from cop`,

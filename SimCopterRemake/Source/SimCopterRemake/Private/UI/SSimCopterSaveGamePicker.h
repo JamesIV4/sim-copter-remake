@@ -18,13 +18,11 @@ using SimCopterFrontEnd::FRect;
 
 constexpr float PageWidth = 510.0f;
 constexpr float PageHeight = 436.0f;
-constexpr FRect TitleRect{ 74.0f, 38.0f, 436.0f, 70.0f };
 constexpr FRect ListRect{ 64.0f, 95.0f, 450.0f, 333.0f };
 constexpr float ButtonY = 366.0f;
 constexpr float AcceptButtonX = 349.0f;
 constexpr float CancelButtonX = 243.0f;
-constexpr int32 TitleFontHeight = 22;
-constexpr int32 ListFontHeight = 15;
+constexpr int32 ListFontHeight = 8;
 constexpr int32 ButtonFontHeight = 14;
 }
 
@@ -65,4 +63,3 @@ private:
 		const TSharedRef<STableViewBase>& OwnerTable);
 	void Accept();
 };
-

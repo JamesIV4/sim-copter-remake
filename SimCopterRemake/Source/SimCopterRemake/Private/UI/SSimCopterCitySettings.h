@@ -8,7 +8,6 @@
 #include "Widgets/SCompoundWidget.h"
 
 class SSimCopterCheckupSlider;
-class STextBlock;
 class USimCopterHangarArt;
 struct FButtonStyle;
 
@@ -76,9 +75,6 @@ constexpr float ButtonY = 376.0f;
 constexpr float OkButtonX = 130.0f;
 constexpr float CancelButtonX = 364.0f;
 
-// The remake shows each slider's number, which the original does not: its tracks are printed with
-// detent dots and nothing else, and a 0..100 weight is unreadable from a thumb position alone.
-constexpr int32 ValueFontHeight = 15;
 }
 
 // The eight values, in the order FUN_00440ec0 writes them - which is FSimCopterCareerCity's own
@@ -119,10 +115,8 @@ private:
 	FSimpleDelegate OnCancelled;
 
 	TSharedPtr<SSimCopterCheckupSlider> Sliders[SimCopterCitySettingsLayout::SliderCount];
-	TSharedPtr<STextBlock> Readouts[SimCopterCitySettingsLayout::SliderCount];
 	TArray<TSharedRef<FButtonStyle>> ButtonStyles;
 
-	void RefreshReadouts();
 	/** FUN_00438440's `param_3 != 0` branch: only OK writes the sliders back. */
 	void Accept();
 };

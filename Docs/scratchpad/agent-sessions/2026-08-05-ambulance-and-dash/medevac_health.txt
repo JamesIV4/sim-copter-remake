@@ -1,0 +1,67 @@
+﻿=== BHAV 280 'Medevac sim' (15 records) ===
+  [ 0] CALL 1102 'Idle-20'                                          T->1 F->-3
+  [ 1] expr attr14 := 1                                             T->5 F->-3
+  [ 2] CALL 264 'Face vs. speed/health'                             T->13 F->-3
+  [ 3] CALL 281 'Medevac adjust health'                             T->12 F->-3
+  [ 4] CALL 282 'Medevac test for finished'                         T->10 F->-3
+  [ 5] expr l3 := 0                                                 T->3 F->-3
+  [ 6] expr l3 == 0                                                 T->7 F->4
+  [ 7] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->8 F->4
+  [ 8] expr l3 := 1                                                 T->9 F->-3
+  [ 9] op13 post mission outcome a0  args=0,0,0,0                   T->4 F->-3
+  [10] CALL 1101 'Idle-10'                                          T->3 F->-3
+  [11] expr medhealth < 1                                           T->14 F->6
+  [12] CALL 302 'Medevac play sounds'                               T->2 F->-3
+  [13] CALL 310 'Medevac animate'                                   T->11 F->-3
+  [14] CALL 312 'Die without falling first'                         T->-3 F->-3
+
+=== BHAV 281 'Medevac adjust health' (11 records) ===
+  [ 0] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->1 F->9
+  [ 1] op73 hidden state-5 medic exists  args=-1,-1,-1,-1           T->2 F->10
+  [ 2] expr l0 := 20                                                T->4 F->-3
+  [ 3] expr l0 := 3                                                 T->4 F->-3
+  [ 4] op7 local[a0] := rand(a1)  args=1,0,9,0                      T->5 F->-3
+  [ 5] expr l1 == 0                                                 T->6 F->retT
+  [ 6] expr medhealth -= 1                                          T->8 F->-3
+  [ 7] expr medhealth -= l0                                         T->retT F->-3
+  [ 8] op74 local[a0] := difficulty tier  args=0,0,0,0              T->7 F->-3
+  [ 9] op56 is my tile serviceable  args=-1,-1,-1,-1                T->10 F->3
+  [10] expr l0 := 10                                                T->4 F->-3
+
+=== BHAV 300 'Move 10' (3 records) ===
+  [ 0] expr l0 := 10                                                T->1 F->-3
+  [ 1] op4 timed-move local[a0]-- @movespeed  args=0,0,0,0          T->retT F->2
+  [ 2] CALL 261 'idle a bit'                                        T->retT F->-3
+
+=== BHAV 301 'Medevac param walk to and grab victim' (2 records) ===
+  [ 0] op15 select nearest obj class a0 within a1 -> local[a3]  args=5,7,7,0 T->-3 F->1
+  [ 1] expr thruwalls := 0                                          T->retT F->-3
+
+=== BHAV 302 'Medevac play sounds' (12 records) ===
+  [ 0] CALL 261 'idle a bit'                                        T->10 F->-3
+  [ 1] expr l0 := medhealth                                         T->3 F->-3
+  [ 2] op57 sound a0  args=13,1,0,0                                 T->11 F->11
+  [ 3] expr l0 /= 4                                                 T->6 F->-3
+  [ 4] op7 local[a0] := rand(a1)  args=1,0,9,0                      T->5 F->-3
+  [ 5] expr l1 == 0                                                 T->2 F->8
+  [ 6] expr l0 += 2                                                 T->4 F->-3
+  [ 7] op57 sound a0  args=58,1,1,0                                 T->retT F->retT
+  [ 8] op59 is my carrier the player heli  args=-1,-1,-1,-1         T->7 F->9
+  [ 9] op85 ambient audio  args=-1,-1,-1,-1                         T->retT F->-3
+  [10] expr attr15 == 0                                             T->1 F->9
+  [11] CALL 1101 'Idle-10'                                          T->8 F->-3
+
+=== BHAV 310 'Medevac animate' (4 records) ===
+  [ 0] CALL 261 'idle a bit'                                        T->1 F->-3
+  [ 1] op63 am I riding something  args=-1,-1,-1,-1                 T->3 F->2
+  [ 2] bind-anim 'Inju'                                             T->retT F->-3
+  [ 3] bind-anim 'Slum'                                             T->retT F->-3
+
+=== BHAV 800 'Medevac initbhav' (5 records) ===
+  [ 0] bind-anim 'Dead'                                             T->1 F->-3
+  [ 1] expr attr14 := 1                                             T->4 F->-3
+  [ 2] op70 snap Z to surface/carrier  args=-1,-1,-1,-1             T->3 F->-3
+  [ 3] CALL 280 'Medevac sim'                                       T->-3 F->-3
+  [ 4] expr attr38 := 58                                            T->2 F->-3
+
+--- BHAV 73: MISSING ---

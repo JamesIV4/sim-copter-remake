@@ -266,6 +266,14 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void UnPossessed() override;
 
+	void RestoreGameViewportFocus();
+
+	TSharedPtr<class SSimCopterToolFlaps> GetToolFlapsPanel() const { return ToolFlapsPanel; }
+	void SetCalibrationMode(bool bEnable);
+
+	void EnsureToolFlapsWidget(bool bForceCreate = false);
+	void RemoveToolFlapsWidget();
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool LoadTuningFromOriginalGameRoot();
 
@@ -288,6 +296,21 @@ public:
 	// Where PlaceOnHelipad would put the actor's origin for that pad - so a pawn standing next
 	// to the aircraft can be put on the same ground.
 	float GetHelipadRestingOriginOffsetCm() const;
+
+	// SCHOOK: HelicopterCrashRespawn 0x0048a8b0
+	// Put a wrecked aircraft back on a free airport pad. False when the city has no airport or
+	// every pad is blocked, in which case the caller leaves it where it fell.
+	bool ReturnToAirportAfterCrash();
+
+	// How close another aircraft has to be to a pad for it to count as parked on it. Pads are one
+	// tile across, so anything inside half a tile is on it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "0.0"))
+	float CrashRespawnPadClearanceCm = 200.0f;
+
+	// How long the death spiral may run without reaching the ground before the aircraft is
+	// recovered anyway. Nothing in the original can reach that state; see UpdateStuckFallWatchdog.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Flight", meta = (ClampMin = "1.0"))
+	float StuckFallRecoverySeconds = 15.0f;
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	float GetFuelFraction() const;
@@ -320,8 +343,40 @@ public:
 	float GetAltimeterUnits() const;
 	float GetAirspeedDialKnots() const;
 
+	// The rendered fuselage's own box, in ModelPivot's frame (so it banks with the airframe and
+	// carries the offset that puts the skids at the bottom of the collision capsule). This is the
+	// visible aircraft, rotors excluded - what "next to the helicopter" has to mean for anyone
+	// walking up to it. False before any body geometry has been built.
+	bool TryGetAirframeLocalBoundsCm(FBox& OutLocalBoundsCm) const;
+
+	// Gap in centimetres from a world point to that box; zero when the point is inside it.
+	// bHorizontalOnly measures across the deck only, which is what a walker standing on the same
+	// surface wants - it must not lose contact because the aircraft's box is taller than they are.
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
-	bool CanBeEnteredBy(const FVector& WorldLocation, float RadiusCm) const;
+	float GetDistanceToAirframeCm(const FVector& WorldLocation, bool bHorizontalOnly = false) const;
+
+	// The gap arithmetic on its own, so the rule can be tested without a world: BodyFrame is
+	// ModelPivot's world transform, LocalBoundsCm the fuselage box expressed in that frame.
+	static float ComputeAirframeGapCm(
+		const FBox& LocalBoundsCm,
+		const FTransform& BodyFrame,
+		const FVector& WorldLocation,
+		bool bHorizontalOnly);
+	// Door point for an alighting passenger, expressed in the airframe's yaw-local XY plane. The
+	// visible fuselage bounds are authoritative when present; the fallback is only for headless or
+	// pre-mesh frames. Slot rows stay close to the skin instead of being fanned into the apron.
+	static FVector2D ComputePassengerDoorOffsetCm(
+		const FBox& LocalBoundsCm,
+		int32 SlotIndex,
+		float ClearanceCm,
+		const FVector2D& FallbackDoorOffsetCm);
+
+	// Is a body at WorldLocation touching the airframe, within ToleranceCm of its skin? Measured
+	// against the mesh, never against a radius about the actor origin: the collision capsule is a
+	// 95 cm sphere (InitCapsuleSize clamps its half height up to its radius) sized for the flight
+	// impact sweep, and it bears no relation to how wide the fuselage you can see actually is.
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
+	bool CanBeEnteredBy(const FVector& WorldLocation, float ToleranceCm) const;
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
 	void EnterHelicopter(APlayerController* PlayerController, bool bBlendView = true);
@@ -335,8 +390,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Flight")
 	bool IsEngineRunning() const { return bEngineRunning; }
 
+	/** May somebody step OUT of the cabin here? See PassengerAlightClearanceCm. */
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
 	bool CanTransferMissionPassengers() const;
+
+	/** May somebody climb IN here? Looser than the alight, exactly as the original's is. */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	bool CanBoardMissionPassengers() const;
+
+	/**
+	 * How long the aircraft has been continuously inside the alight clearance, in seconds.
+	 *
+	 * The mission-side release paths hold off until this reaches PassengerAlightSettleSeconds, which
+	 * is BHAV 292's own polling period. Without it the mission tick beat the shipped program to the
+	 * cabin door and the fare was out before the pilot had finished landing.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	float GetSecondsWithinAlightClearance() const { return SecondsWithinAlightClearance; }
+
+	/** BHAV 292's polling period; see PassengerAlightSettleSeconds. */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
+	float GetPassengerAlightSettleSeconds() const { return PassengerAlightSettleSeconds; }
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
 	int32 GetPassengerSeatCount() const { return FlightModel.Tuning.PassengerSeats; }
@@ -376,7 +450,20 @@ public:
 	// Who is aboard, in seat order. The seat window draws one portrait per entry.
 	const TArray<FSimCopterMissionPassengerSlot>& GetMissionPassengerSlots() const { return MissionPassengerSlots; }
 	bool DropPassengerAtSlot(int32 SlotIndex);
+	void ReactPassengersToDamagingImpact();
+	void WriteOffPassengersInDestroyedHelicopter();
+
+	/**
+	 * Where somebody who steps out of the cabin lands: beside the aircraft, on the surface the
+	 * aircraft is standing on. **Feet level** - lift it by the person's own capsule half height to
+	 * place their actor.
+	 *
+	 * Z comes from the root sphere's bottom, which `ApplyFlightModelToActor` pins to the flight
+	 * model's `Altitude`; the actor origin is 190 cm above that and is not where anybody stands.
+	 * XY comes from the rendered airframe skin plus ExitClearanceCm, matching the player's exit.
+	 */
 	FVector GetPassengerDropWorldLocation(int32 SlotIndex = INDEX_NONE) const;
+	float GetPassengerDropHeightOffsetCm() const;
 
 	// Read-only controller presentation state consumed by the radial/passenger Slate layer.
 	ESimCopterControllerMode GetControllerMode() const { return ControllerMode; }
@@ -650,6 +737,7 @@ public:
 	// type whose tile test finds nothing nearby reports a failure rather than forcing a spawn.
 	// Returns the event id, or INDEX_NONE.
 	int32 DebugStartMission(int32 TypeMask);
+	bool DebugStartSpeeder();
 	FString GetLastDebugMissionStatus() const { return LastDebugMissionStatus; }
 
 	// The decompiled flight simulation state (read-only; for HUD and tests).
@@ -857,10 +945,10 @@ protected:
 	float CockpitCrosshairDownOffsetCm = 200.0f;
 
 	// Original page pixels to screen pixels. A flap is 138x58 in the original's 640x480, which is
-	// far too small on a modern display, so the art is up-filtered. Lettering is not scaled with
-	// it; SSimCopterToolFlaps lays text out in screen pixels.
+	// far too small on a modern display, so the art is up-filtered. Lettering does not inherit this
+	// authored art scale; it has a screen-pixel baseline that follows the separate HUD Scale.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.5", ClampMax = "6.0"))
-	float ToolFlapScale = 2.0f;
+	float ToolFlapScale = 1.768292f;
 
 	// USimCopterSettings::OnHudScaleChanged, so the Settings screen's HUD Scale row rebuilds the
 	// cockpit while the player is looking at it.
@@ -897,8 +985,59 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
 	TSubclassOf<ASimCopterOnFootPawn> ExitPawnClass;
 
+	// Fallback door offset, used only while no fuselage has been built to measure (a headless test,
+	// or the frame before the GEO packs load). ExitHelicopter otherwise derives the spot from the
+	// airframe's own box, so the pilot lands against the machine rather than out on the apron.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction")
-	FVector ExitOffset = FVector(180.0f, 175.0f, 0.0f);
+	FVector ExitOffset = FVector(0.0f, 110.0f, 0.0f);
+
+	// How far outboard of the fuselage skin the pilot is set down. Enough to keep a 30 cm-radius
+	// body out of the model, and no more - stepping out should read as leaving the aircraft, not
+	// as being teleported beside it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Interaction", meta = (ClampMin = "0.0"))
+	float ExitClearanceCm = 40.0f;
+
+	// How high the aircraft may sit above the ground and still let somebody step OUT of the cabin.
+	//
+	// FUN_004c9bc0, the test behind opcodes 17 and 21, ends on
+	// `(person.Y - FUN_004c82c0(person.pos)) >> 16 < 6` - six original units, 37.5 cm. For a rider
+	// that is the aircraft's own height, because FUN_004c6450 copies the carrier's position onto the
+	// person every tick. GroundClearanceCm is exactly the same quantity (ApplyFlightModelToActor puts
+	// the sphere bottom at the flight model's Altitude), so the shipped number transfers directly and
+	// needs no contact tolerance added to it: FUN_00487160 parks at TerrainHeight + 0x13333, so a
+	// landed helicopter is already sitting 1.2 units up and this leaves 4.8 units of hover over it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerAlightClearanceCm = 37.5f;
+
+	// And how high it may sit and still let somebody climb IN. Deliberately the looser of the two,
+	// because the original's is: opcode 12's FUN_004ca940 accepts the board while
+	// `(objectY - personY) & 0xffff0000 < 0x50000` - five units between the doorsill and a walker who
+	// is themselves standing 3 units (0x30000, FUN_004cb190) above the ground, so eight units of
+	// aircraft-above-ground, 50 cm. You may drop to a low hover and have a fare climb aboard; you may
+	// not have them step out onto the roof from the same height.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerBoardClearanceCm = 50.0f;
+
+	// How long the aircraft has to stay inside PassengerAlightClearanceCm before the MISSION layer
+	// will let anybody out. BHAV 292 'Transport wait to get off' loops `local0 := 10` / `op0 wait
+	// local0--` and then BHAV 264, whose own 'idle a bit' is another three ticks, before each probe -
+	// so the shipped program tests this about every thirteenth tick, 0.87 s at the VM's 15 Hz, and
+	// nobody has ever hopped out the instant the skids came into range. The behaviour VM keeps that
+	// cadence for free; the mission-side release, which runs every mission tick, does not, and that
+	// is what emptied the cabin while the pilot was still on the way down.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerAlightSettleSeconds = 13.0f / 15.0f;
+
+	// How far above the aircraft's own deck the passenger drop probe starts. Small on purpose: it is
+	// only there so the trace begins clear of the surface the skids are on, and every centimetre of
+	// it is a centimetre of roof the probe could find instead of the ground.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropProbeLiftCm = 40.0f;
+
+	// And how far below it the probe looks, for the case where somebody steps out over the lip of a
+	// pad or a roof onto the street.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
+	float PassengerDropProbeDepthCm = 1800.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
 	float PassengerDropSideOffsetCm = 175.0f;
@@ -957,6 +1096,30 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
 	float SearchLightIntensity = 650000.0f;
 
+	// How much of the scene's exposure is divided back out of the beam. 1 - the default - makes the
+	// searchlight hold the same presence on screen whatever the sun is doing; 0 is the raw physical
+	// light, which at 650,000 unitless is ~1,000 candelas, a hand torch against the day sequence's
+	// 120,000 lux sun. That is why the beam vanished when the celestial vault went in: the sun went
+	// up by ~30,000x (the old day/night actor ran it at 4 lux) and auto exposure went with it.
+	// Everything unlit in the remake is compensated the same way - see CreateSimCopterMaterials.py's
+	// add_exposure_independent_emissive and USimCopterFlashingLightsComponent.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float SearchLightExposureCompensation = 1.0f;
+
+	// How much of the beam Lumen bounces, and it needs its own number because of the line above.
+	//
+	// `IndirectLightingIntensity` is exactly the knob: LumenSceneDirectLighting.cpp gathers a light
+	// into the Lumen scene only when `Proxy->GetIndirectLightingScale() > 0`, and then multiplies
+	// that light's colour by the same value - so it is both the gate and the scale, and raising it
+	// costs nothing beyond what Lumen already computes for the light.
+	//
+	// It has to be well above 1 here because SearchLightExposureCompensation is a DIRECT-lighting
+	// trick: it divides the exposure back out on the renderer side, where Lumen does not see it. The
+	// beam's true radiometric output is ~1,000 candelas, so what Lumen was being handed to bounce
+	// was a hand torch - which is why the searchlight lit the ground and nothing around it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
+	float SearchLightIndirectLightingIntensity = 24.0f;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "100.0"))
 	float SearchLightRangeCm = 5200.0f;
 
@@ -964,7 +1127,14 @@ protected:
 	float SearchLightBeamLengthCm = 4700.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "20.0"))
-	float SearchLightBeamWidthCm = 1550.0f;
+	float SearchLightBeamWidthCm = 2300.0f;
+
+	// How far ahead of the resolved water-cannon muzzle (barrel tip, or nose muzzle as a
+	// fallback - see ApplyPreparedModelMeshes) the searchlight is seated. Keeps the beam
+	// starting a touch in front of the nozzle on every helicopter type instead of a single
+	// offset tuned for one mesh.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light", meta = (ClampMin = "0.0"))
+	float SearchLightForwardOfCannonOffsetCm = 20.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Search Light")
 	FLinearColor SearchLightBeamColor = FLinearColor(1.0f, 0.94f, 0.58f, 1.0f);
@@ -1224,6 +1394,11 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	bool bIsLanded = false;
 
+	// Reset the moment the aircraft rises back out of PassengerAlightClearanceCm, so a bounce off
+	// the pad restarts the wait rather than banking credit toward it.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
+	float SecondsWithinAlightClearance = 0.0f;
+
 	// The original runs FUN_00444750's service-threshold test while landed. The remake opens on
 	// every airport landing instead so the feature is easy to discover and behaves predictably.
 	// Clear this to keep it manual (SimCheckup).
@@ -1447,6 +1622,7 @@ private:
 	// Cached world actors used by the water trajectories and terrain queries.
 	TWeakObjectPtr<ASimCopterMissionSystemActor> CachedMissionSystem;
 	mutable TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
+	mutable TWeakObjectPtr<class ASimCopterTrafficSystemActor> CachedTrafficSystem;
 
 	TArray<FVector> RopeNodeWorldPositions;
 	int32 RopeFirstActiveNode = 17;
@@ -1486,6 +1662,10 @@ private:
 	TSharedPtr<SWidget> HelicopterDebugPanel;
 	TSharedPtr<SWidget> ToolFlapsWidget;
 	TSharedPtr<SSimCopterToolFlaps> ToolFlapsPanel;
+	// The flap calibration panel is a viewport layer of its own, not part of the flap column: the
+	// column is right-aligned and only as wide as a flap, so a panel hosted inside it can only ever
+	// be centred on the column. It lives top-middle of the screen, above the flaps' Z order.
+	TSharedPtr<SWidget> FlapCalibrationPanelWidget;
 	// Fixed-pixel aiming reticle hosted by CrosshairComponent at the mode-specific world point.
 	TSharedPtr<SWidget> CrosshairWidget;
 	TSharedPtr<SWidget> DashboardWidget;
@@ -1638,6 +1818,9 @@ private:
 	void SimulateFlightStep(float DeltaSeconds);
 	void UpdateGroundProbe();
 	void UpdateForwardProbe();
+	// Ends a death spiral that never reaches the ground. Remake-only; see the definition.
+	void UpdateStuckFallWatchdog(float DeltaSeconds);
+	float StuckFallSeconds = 0.0f;
 	void SeedFlightModelFromActor();
 	void ApplyFlightTuningToModel();
 	FSimCopterFlightInputs BuildFlightInputs() const;
@@ -1693,9 +1876,6 @@ private:
 	// goes stale the moment the pawn is unpossessed, and a stuck engine-shutdown bool is what made
 	// takeoffs after a job on foot take forever. Called on both edges of a possession change.
 	void ResetTransientInputState();
-	// Hands keyboard focus back to the game viewport. Under FInputModeGameAndUI a focused Slate
-	// widget swallows keys before the axis bindings run.
-	void RestoreGameViewportFocus();
 	// Releases everything UPlayerInput still believes is held, so a key whose release went missing
 	// during a possession change cannot keep reporting itself as down.
 	static void FlushStuckKeys(AController* ForController);
@@ -1712,6 +1892,15 @@ private:
 
 	ASimCopterMissionSystemActor* ResolveMissionSystem();
 	ASimCity2000CityActor* ResolveCityActor() const;
+	class ASimCopterTrafficSystemActor* ResolveTrafficSystemActor() const;
+
+	// heli[0x59]'s surface query: the first blocking hit that is not a pawn. People are not
+	// landing surfaces - see the comment on the definition.
+	bool TraceFlightSurface(
+		const FVector& Start,
+		const FVector& End,
+		const FCollisionQueryParams& QueryParams,
+		FHitResult& OutHit) const;
 
 	// Remake airport-landing policy plus the once-per-touchdown latch.
 	void UpdateCheckupOffer();
@@ -1775,6 +1964,7 @@ private:
 	// ToolFlapScale times the stored HUD scale. Every cockpit overlay is built with this rather
 	// than with ToolFlapScale directly.
 	float GetCockpitScale() const;
+	float GetCockpitHudScale() const;
 
 	void EnsureDashboardWidget();
 	void RemoveDashboardWidget();
@@ -1787,8 +1977,6 @@ private:
 	void EnsureWaterControlsWidget();
 	void RemoveWaterControlsWidget();
 	void RefreshWaterControlsWidget();
-	void EnsureToolFlapsWidget();
-	void RemoveToolFlapsWidget();
 	void EnsureCrosshairWidget();
 	void RemoveCrosshairWidget();
 	void EnsureControllerOverlayWidget();
@@ -1800,6 +1988,9 @@ private:
 	void RemoveHelicopterDebugPanel();
 	// Ctrl+Alt+D. Keeps both developer overlays hidden across a re-possession.
 	void ToggleHelicopterDebugPanel();
+	// Ctrl+Alt+M. Toggles control flap layout calibration mode with draggable outline boxes.
+	UFUNCTION(Exec)
+	void SimToggleFlapCalibration();
 	FReply HandlePassengerSlotClicked(int32 SlotIndex);
 	FVector GetPassengerAirDropWorldLocation(int32 SlotIndex) const;
 

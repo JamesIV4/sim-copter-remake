@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterFireRenderComponent.h"
+#include "City/SimCopterEffectExposure.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisMeshReader.h"
 #include "GameFramework/PlayerController.h"
@@ -276,6 +277,13 @@ void USimCopterFireRenderComponent::SyncFlames(const TArray<FSimCopterFlameVisua
 	MeshComponent->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UVs, Colors, Tangents, false);
 	if (FlameMaterialInstance != nullptr)
 	{
+		// The flames ride the shared unlit M_SimCopterSpriteTexture, whose baked EmissiveNits default
+		// is a fixed daylight 26000. Without this the fire burned at that value at every hour - four
+		// orders of magnitude over the night exposure - while the smoke and embers beside it, which
+		// come from USimCopterParticleFXComponent, tracked the sun correctly. Same derivation, same
+		// numbers, so the two halves of one fire finally agree.
+		USimCopterEffectExposureSubsystem::ApplyEmissiveNits(
+			FlameMaterialInstance, GetWorld(), /*bIsLightSource=*/true);
 		MeshComponent->SetMaterial(0, FlameMaterialInstance);
 	}
 }

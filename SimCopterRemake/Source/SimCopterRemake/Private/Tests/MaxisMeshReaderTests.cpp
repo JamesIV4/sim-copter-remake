@@ -466,6 +466,9 @@ bool FMaxisWindowsBitmapPeopleReferenceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("PEOPLE1 height"), PeopleSheet.Height, 99);
 	TestEqual(TEXT("PEOPLE1 pixels"), PeopleSheet.Pixels.Num(), 324 * 99);
 	TestEqual(TEXT("PEOPLE1 cyan chroma key alpha"), PeopleSheet.Pixels[27].A, static_cast<uint8>(0));
+	TestEqual(TEXT("PEOPLE1 cyan chroma key red is discarded"), PeopleSheet.Pixels[27].R, static_cast<uint8>(0));
+	TestEqual(TEXT("PEOPLE1 cyan chroma key green is discarded"), PeopleSheet.Pixels[27].G, static_cast<uint8>(0));
+	TestEqual(TEXT("PEOPLE1 cyan chroma key blue is discarded"), PeopleSheet.Pixels[27].B, static_cast<uint8>(0));
 
 	return true;
 }

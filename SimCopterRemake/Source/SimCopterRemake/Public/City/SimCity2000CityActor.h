@@ -15,6 +15,8 @@ class UPrimitiveComponent;
 class UProceduralMeshComponent;
 class USceneComponent;
 class USimCopterFlashingLightsComponent;
+class USimCopterSmokeStacksComponent;
+class USimCopterStreetLightsComponent;
 class UStaticMesh;
 class UTexture2D;
 
@@ -132,6 +134,18 @@ public:
 		uint8& OutTerrainClass,
 		FIntPoint* OutTile = nullptr) const;
 
+	// The vertical displacement M_SimCopterWater applies to the sea at this XY, right now, in world
+	// centimetres. The waves live entirely in the vertex shader, so nothing on the CPU sees them:
+	// this is the same expression evaluated here so that things floating on the sea (the boats, and
+	// the people standing on their decks) ride the surface they are drawn against instead of the
+	// rest plane underneath it. Returns 0 where the shader also returns 0 - at a pinned shoreline
+	// vertex, with water animation off, and under Low Power Graphics.
+	float GetWaterWaveOffsetCm(const FVector& WorldLocation) const;
+
+	// The shoreline pinning weight (the shader's vertex-colour R) at a world XY, bilinear across
+	// the tile's four corners. 0 at the coast, ramping to 1 over WaterShoreRampTiles.
+	float GetWaterWaveWeightAt(const FVector& WorldLocation) const;
+
 	// World Z of the ocean surface, which the terrain build averages over every water vertex.
 	// False before a city has been rebuilt.
 	bool TryGetOceanSurfaceWorldZ(float& OutWorldZ) const
@@ -209,6 +223,27 @@ private:
 	// Buildings, airports, power plants and the traffic signals blink; turn this off to drop them.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
 	bool bRenderFlashingLights = true;
+
+	// A real spot light under each placed LAMP35..38 head, aimed straight down. See
+	// USimCopterStreetLightsComponent for why the remake adds one at all.
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<USimCopterStreetLightsComponent> StreetLightsComponent;
+
+	// The face-type-26 chimney plumes on the industrial models and the power plants, drawn with
+	// the original's own effect kernel. See USimCopterSmokeStacksComponent.
+	UPROPERTY(VisibleAnywhere, Category = "SimCopter|City")
+	TObjectPtr<USimCopterSmokeStacksComponent> SmokeStacksComponent;
+
+	// FUN_0047c0c0's second object per scene cell: hydrants, phone boxes, post boxes, litter bins,
+	// street lights and traffic signals on flat road tiles. See SimCopterRoadDecorations.h.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderRoadDecorations = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderStreetLightSpotLights = true;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|City")
+	bool bRenderSmokeStacks = true;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|City", meta = (FilePathFilter = "sc2"))
 	FFilePath CityFile;
@@ -347,6 +382,51 @@ private:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bInstanceBuildingMeshes = true;
 
+	/**
+	 * Place trees and the small park (XBLD 0x06..0x0D) as instances too, instead of baking them
+	 * into the merged mesh.
+	 *
+	 * They are the most numerous placed object in a city and, unlike roads or power lines, they are
+	 * eight models repeated thousands of times - the exact case an instanced component exists for.
+	 * Baked, every tree in the city is part of ONE procedural mesh primitive spanning the whole map,
+	 * which is what the virtual shadow map complains about: a movable primitive that size cannot be
+	 * cached, so anything touching it invalidates pages across the entire city. Instanced, each tree
+	 * is its own culled, cached, individually-bounded draw.
+	 *
+	 * Unlike buildings this buys no gameplay identity - trees cannot burn down or be demolished -
+	 * so there is no per-tree record, just the instances.
+	 */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bInstanceNaturalObjectMeshes = true;
+
+	/**
+	 * Whether the instanced trees cast shadows. On, because they are lit sprite cards now and a
+	 * tree with no shadow reads as pasted onto the ground. Off is the escape hatch if a dense city
+	 * makes the shadow cost show.
+	 */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bNaturalObjectsCastShadow = true;
+
+	/**
+	 * Whether the tree cards appear in the coarse scene representations - the distance fields and
+	 * the ray tracing scene.
+	 *
+	 * OFF, and this is a correctness fix rather than a performance one. A tree is a MASKED sprite
+	 * card: the leaves are cut out of a rectangle by the opacity mask, and that mask only exists in
+	 * the raster. Neither the distance fields nor the ray tracing scene runs a pixel shader, so both
+	 * carry the card as the solid quad it geometrically is - and anything that shadows against them
+	 * casts the whole rectangle. That is why the sun looks right (a virtual shadow map is rastered,
+	 * so it masks) while a local light does not.
+	 *
+	 * Turn either back on and the trees occlude again, blockily. Neither buys much here: the cards
+	 * are thin and the city's GI is dominated by the ground and the buildings.
+	 */
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bNaturalObjectsAffectDistanceFieldLighting = false;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
+	bool bNaturalObjectsVisibleInRayTracing = false;
+
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Original Meshes")
 	bool bRenderOriginalTextures = true;
 
@@ -392,11 +472,35 @@ private:
 	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
 	int32 LastFlashingLightCount = 0;
 
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastRoadDecorationCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastStreetLightCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastSmokeStackMarkerCount = 0;
+
+	// M_SimCopterSpriteTexture - the masked unlit card material the original's effect kernels are
+	// sampled through, shared with the fire renderer. Nearest-filtered, so FUN_00496da0's
+	// screen-pixel stencils stay hard edged.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> SpriteCardMaterial;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> TexturedMaterial;
+
+	// M_SimCopterRotorDisc - the near-translucent haze Maxis face type 11 is drawn with. The
+	// helicopter has used it for its rotor blur all along; the city needs it because face type 11
+	// is not a helicopter-only type. PP200, the SC2000 wind power plant, models its whole fan
+	// wheel as thirty-two type-11 triangles (a twelve-sided disc, drawn twice for the two faces),
+	// and rendered opaque like the rest of a building that wheel is a solid teal plate that hides
+	// the tower, the nacelle and the tail vane behind it. AR254 and TLNS/TLEW carry the type too.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> BlurDiscMaterial;
 
 	// Base material for the undulating water surface (M_SimCopterWater); a dynamic instance is created
 	// per rebuild to feed it the terrain water texture and the wave parameters below.
@@ -433,12 +537,33 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMesh>> BuildingModelMeshes;
 
+	// One instanced component per distinct tree/park model. Deliberately NOT sharing the building
+	// arrays above: those keep ComponentInstanceBuildings in lockstep with every instance so a
+	// demolition can repair the one index a swap-remove displaces, and trees have no building record
+	// to keep in lockstep with. Mixing them would leave that invariant silently half-true.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UInstancedStaticMeshComponent>> NaturalObjectInstanceComponents;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMesh>> NaturalObjectModelMeshes;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastNaturalObjectModelCount = 0;
+
+	UPROPERTY(VisibleInstanceOnly, Category = "SimCopter|Debug")
+	int32 LastNaturalObjectInstanceCount = 0;
+
 	TArray<uint8> BuildingTileFlags;
 
 	// Conditioned 129x129 terrain vertices and 128x128 class grid retained for the water bucket
 	// and particle collision paths. Rendering used to discard both after RebuildCity.
 	TArray<float> WaterGameplayCornerZ;
 	TArray<uint8> WaterGameplayTerrainClasses;
+
+	// The water section's per-corner wave weight (129x129), the same values baked into vertex
+	// colour R for M_SimCopterWater. Kept so GetWaterWaveOffsetCm can evaluate the shader's own
+	// displacement on the CPU without re-deriving where the shoreline pinning is.
+	TArray<float> WaterCornerWeightGrid;
 
 	// The same 129x129 grid in the original's own sample units, kept because the cockpit map
 	// shades ground by shifting the raw sample rather than by any world height.
@@ -466,6 +591,7 @@ private:
 	int32 RubbleComponentIndices[4] = { INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE };
 
 	void ResetBuildingInstances();
+	void ResetNaturalObjectInstances();
 	// The part of this building held in the given component, or null. At most one exists: a
 	// building's primary, secondary and rubble models are always distinct models.
 	FSimCopterBuildingPart* FindBuildingPartInComponent(int32 BuildingId, int32 ComponentIndex);

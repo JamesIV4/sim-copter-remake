@@ -41,6 +41,11 @@ struct FRect
 	constexpr float Height() const { return Bottom - Top; }
 };
 
+// The Open Career, Open User and New User pickers all use MENU4.BMP. Keep their title in the
+// same centered band so the longer save-game headings cannot drift outside the printed panel.
+inline constexpr FRect Menu4PickerTitleRect{ 74.0f, 38.0f, 436.0f, 75.0f };
+constexpr int32 Menu4PickerTitleFontHeight = 16;
+
 // The original's font sizes are Windows font *heights* - the whole cell, internal leading
 // included - so the Slate point size that fills the same box is about three quarters of it. Same
 // conversion the Check-up dialog uses.
@@ -54,8 +59,29 @@ FSlateFontInfo PageFont(int32 WindowsHeight, bool bBold = false);
 // Places a widget at a page rectangle.
 void AddAt(const TSharedRef<SConstraintCanvas>& Canvas, const FRect& Rect, TSharedRef<SWidget> Widget);
 
-// The page bitmap itself at Rect, or a plain dark panel when the original game folder is absent.
+// The page bitmap itself at Rect, or - when the original game folder is absent - a dark plate in
+// the front end's own palette, headed by an olive rule.
 TSharedRef<SWidget> MakePageImage(USimCopterHangarArt* Art, const FString& FileName);
+
+// Whether MakePageImage will get the real bitmap. A screen that prints dark text into one of the
+// original's PALE printed wells has to ask, because the fallback plate is dark and the same text
+// would vanish into it. This matters most for the message box, which is what tells the player the
+// original game files are missing.
+bool HasPageBitmap(USimCopterHangarArt* Art, const FString& FileName);
+
+// The no-artwork plate, sized to whatever is put in it: olive frame, shadow line, near-black fill,
+// and an olive rule across the head. A screen whose decoded rectangles only make sense against the
+// original bitmap should lay its own content out inside one of these rather than leave controls
+// stranded on a page-sized rectangle with nothing printed on it.
+TSharedRef<SWidget> MakeFallbackPlate(TSharedRef<SWidget> Content);
+
+// That plate's palette, so screens building their own fallback content match it.
+extern const FLinearColor PlateBevelColor;
+extern const FLinearColor PlateAccentColor;
+
+// Text on the plate. The front end's decoded selected-item colour, which is already the brightest
+// thing in the game's own palette and reads cleanly on near-black.
+extern const FLinearColor PlateTextColor;
 
 // Wraps a page-space canvas so it fills the viewport at the original's aspect ratio.
 TSharedRef<SWidget> MakeScaledScreen(TSharedRef<SWidget> PageContent);
