@@ -73,13 +73,30 @@ public class SimCopterRemake : ModuleRules
 						SourceDirectory, DirectoryName);
 				}
 
-				// The tweak folder also contains the original editor executable. The remake only
-				// reads the tables, so keep executable code out of the distributed data payload.
-				string FilePattern = DirectoryName == "tweak" ? "*.twk" : "...";
-				RuntimeDependencies.Add(
-					Path.Combine(StagingRoot, DirectoryName, FilePattern),
-					Path.Combine(SourceDirectory, FilePattern),
-					StagedFileType.NonUFS);
+				// Copy original game files to Intermediate staging tree during target setup
+				// so that produced staged items exist on disk when UBT validates dependencies.
+				string ResolvedStagingRoot = Path.GetFullPath(Path.Combine(
+					ModuleDirectory, "..", "..", "Intermediate", "OriginalGameStaging"));
+				string[] AllFiles = Directory.GetFiles(SourceDirectory, "*", SearchOption.AllDirectories);
+				foreach (string SourceFilePath in AllFiles)
+				{
+					if (DirectoryName == "tweak" && !SourceFilePath.EndsWith(".twk", System.StringComparison.OrdinalIgnoreCase))
+					{
+						continue;
+					}
+
+					string RelativePath = Path.GetRelativePath(OriginalGameRoot, SourceFilePath);
+					string TargetDiskPath = Path.Combine(ResolvedStagingRoot, RelativePath);
+					string StagedManifestPath = Path.Combine(StagingRoot, RelativePath);
+
+					Directory.CreateDirectory(Path.GetDirectoryName(TargetDiskPath));
+					if (!File.Exists(TargetDiskPath) || File.GetLastWriteTimeUtc(SourceFilePath) > File.GetLastWriteTimeUtc(TargetDiskPath))
+					{
+						File.Copy(SourceFilePath, TargetDiskPath, true);
+					}
+
+					RuntimeDependencies.Add(StagedManifestPath, StagedFileType.NonUFS);
+				}
 			}
 
 			foreach (string RelativeFile in RequiredFiles)
