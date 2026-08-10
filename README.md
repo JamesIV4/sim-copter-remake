@@ -1,10 +1,10 @@
 # SimCopter Remake
 
-[![Download Latest Release](https://img.shields.io/badge/Download-Latest%20Release-brightgreen?style=for-the-badge&logo=github)](https://github.com/JamesIV4/sim-copter-remake/releases/latest)
+**SimCopter Remake** is a ground-up reimplementation of Maxis's 1996 PC game _SimCopter_, built in Unreal Engine 5.
 
-**SimCopter Remake** is a modern, faithful re-implementation of Maxis’s classic 1996 PC flight game _SimCopter_. Built from the ground up in Unreal Engine 5, it brings back everything fans loved about taking to the skies in their favorite _SimCity 2000_ cities: now running smoothly on modern PCs with high-definition visuals, widescreen support, dynamic lighting, and responsive controls. It comes packaged with classic cities (such as Cape Wells, Tokyo, and Rio) for an immediate sandbox flight experience, alongside full support for importing any of your own custom _SimCity 2000_ maps.
+The goal is to recreate the original game as faithfully as possible while making it run properly on modern PCs. It retains the original missions, helicopters, flight behavior, city importing, radio stations, and assorted Sim weirdness, but adds modern rendering, widescreen support, longer view distances, improved controls, and native support for current versions of Windows.
 
-Whether you are rescuing stranded citizens from burning skyscrapers, airlifting boaters off sinking vessels, dousing raging city infernos with water buckets, dispersing traffic jams, or jamming out to the iconic in-game radio stations, this remake delivers the exact gameplay, physics, quirky behaviors, and sandbox shenanigans of the 1996 original without the crashes, crippling view distance, low-resolution limits, or compatibility headaches of 90s software.
+Several _SimCity 2000_ cities, including Cape Wells, Tokyo, and Rio, are included so you can start flying right away. You can also import your own `.sc2` cities and fly around them just as you could in the original game.
 
 ## Screenshots
 
@@ -20,31 +20,44 @@ Whether you are rescuing stranded citizens from burning skyscrapers, airlifting 
 | :----------------------------------------------------------------: | :-------------------------------------------------------------: |
 | [![Rescue Camera](Docs/screenshots/5.png)](Docs/screenshots/5.png) | [![Night City](Docs/screenshots/6.png)](Docs/screenshots/6.png) |
 
-## Recreating the Original Experience
+## Recreating the Original Game
 
-Every core system in SimCopter Remake has been meticulously crafted to match the original 1996 release:
+A lot of the work on SimCopter Remake has gone into reproducing how the original game actually behaved rather than simply making a new helicopter game that looks similar.
 
-- **SimCity 2000 Import & Sandbox Cities:** Play through all 30 built-in career cities or load pre-packaged sandbox cities (like Cape Wells, Egypt Falls, Tokyo, and Rio) for a flexible sandbox flight experience. You can also import any custom `.sc2` city file created in _SimCity 2000_: terrain, shorelines, roads, bridges, and buildings load directly into 3D space.
-- **Authentic Flight Physics & Helicopter Fleet:** Fly the full original fleet, from the starter Schweizer 300 up through the Bell 206 JetRanger, MD 500, MBB Bo 105, Eurocopter AS365 Dauphin, and the heavy-lift Boeing CH-47 Chinook. Helicopter handling, rotor speeds, weight physics, and landing mechanics match the original design.
-- **Complete Mission & Career System:** Respond to emergency dispatches across the city to earn money and points. Transport passengers between helipads, airlift medevac patients to hospitals, fight fires, break up riots with your megaphone, drop off police officers to apprehend criminals, and rescue victims stranded on roofs or out at sea.
-- **Goofy Sim Behaviors:** Preserves all the charm of the 1996 release: blocky citizens frantically waving from rooftops, confused pedestrians wandering down highways, and eccentric Sim AI logic.
-- **Classic Cockpit & Flight Gear:** Control your searchlight, megaphone, water bucket, rescue harness, water cannon, and tear gas directly from the cockpit. The interactive instrumentation panel includes the classic radar screen, fuel gauge, altimeter, speedometer, and passenger seating grid.
-- **Original Radio & Audio Experience:** Listen to all the classic in-game radio stations (Rock, Classical, Jazz, Techno, Mix) complete with retro tunes and hilarious DJ commercials while patrolling the skies.
+- **SimCity 2000 cities:** Play the original 30 career cities, load included sandbox cities such as Cape Wells, Egypt Falls, Tokyo, and Rio, or import your own `.sc2` files from _SimCity 2000_. Terrain, water, roads, bridges, and buildings are converted into a flyable 3D city.
+
+- **Original helicopter fleet:** The full helicopter progression returns, starting with the Schweizer 300 and continuing through the Bell 206 JetRanger, MD 500, MBB Bo 105, Eurocopter AS365 Dauphin, and Boeing CH-47 Chinook. Flight and landing behavior are based on the parameters and rules used by the original game.
+
+- **Missions and career progression:** Emergency calls appear throughout the city and completing them earns money and points. Missions include transporting passengers, evacuating medical patients, fighting fires, rescuing people from rooftops and the water, clearing traffic jams, breaking up riots, and helping police apprehend criminals.
+
+- **SimCopter's strange little world:** The remake also keeps the less serious parts of the game: blocky Sims waving frantically from rooftops, pedestrians ending up where they probably shouldn't, and the occasionally questionable logic of 1990s Sim AI.
+
+- **Cockpit equipment:** The searchlight, megaphone, water bucket, rescue harness, water cannon, and tear gas all return, along with the familiar radar, fuel gauge, altimeter, speedometer, and passenger display.
+
+- **Radio stations:** The original Rock, Classical, Jazz, Techno, and Mix stations are supported, including the music, DJs, and wonderfully odd commercials that played while you flew around the city.
 
 ## Modern Improvements
 
-While preserving 100% of the original gameplay feel, the remake upgrades the experience for modern hardware with Unreal Engine 5.8:
+The underlying game is intentionally kept close to the original, but a number of things have been updated where the limitations of a 1996 PC game don't need to be preserved.
 
-- **Modern Graphics & Dynamic Lighting:** Enjoy full high-definition 3D graphics featuring dynamic day/night cycles, glowing city night lights, soft shadows, and realistic reflections and indirect lighting.
-- **High Frame Rates & Widescreen Display:** Native 60+ FPS gameplay with full support for 1080p, 2K, 4K, and ultrawide resolutions. Say goodbye to stretched 640x480 windows or finicky patchers.
-- **Modern Controls & Gamepad Support:** Fly effortlessly using keyboard/mouse setups or modern gamepads (Xbox, PlayStation, dual-stick controllers) with smooth, configurable flight inputs.
-- **Rock-Solid Windows Compatibility:** Native 64-bit support ensures the game runs fast and stable on modern Windows operating systems without crash-prone emulation or complex patches.
-- **Extended View Distance:** Fly high over sprawling metropolitan areas without heavy 90s distance fog cutting off your view.
+- **Modern rendering:** Cities now have a dynamic day/night cycle, nighttime lighting, shadows, reflections, and modern indirect lighting through Unreal Engine 5.8.
+
+- **Higher resolutions and frame rates:** The game supports modern resolutions including 1080p, 1440p, 4K, and ultrawide displays, with frame rates no longer tied to the limitations of the original game.
+
+- **Keyboard, mouse, and controller support:** Controls have been adapted for modern keyboard/mouse setups as well as Xbox, PlayStation, and other dual-stick controllers, with configurable flight inputs.
+
+- **Native modern Windows support:** The remake is a 64-bit application designed to run directly on current Windows systems rather than relying on compatibility modes, wrappers, or emulation.
+
+- **Longer view distance:** The extremely aggressive distance fog of the original game is no longer necessary. You can climb above the city and actually see much more of it beneath you.
 
 ## How It Was Made
 
-This project was created through careful **decompilation and re-implementation**.
+SimCopter Remake was built through a combination of **decompilation, analysis, and reimplementation of the original game**.
 
-Rather than guessing how _SimCopter_ worked or approximating its flight feel, the original 1996 game's internal rules, mathematical formulas, and asset structures were thoroughly analyzed. Every helicopter tuning parameter, city building generator, mission condition, and control rule was carefully ported step-by-step into clean modern code within Unreal Engine 5.
+Instead of trying to recreate SimCopter's behavior by eye, I analyzed the original executable and game data to understand how its systems worked. That includes things such as helicopter parameters, flight calculations, building generation, mission logic, controls, and the formats used by the game's assets and city data.
 
-This means the game doesn't just look like _SimCopter_: it plays on the exact same underlying rules, AI behaviors, and physics that made the 1996 original so charmingly unique, combined with the performance and visual power of a modern game engine.
+Those systems have then been reimplemented in Unreal Engine rather than simply wrapping or modifying the original executable.
+
+That approach matters because SimCopter has a very particular feel. Some of it is intentional, some of it is probably the result of how a PC game was written in 1996, and some of it is just strange. I wanted to preserve that rather than "fixing" the game until it no longer felt like SimCopter.
+
+The result is intended to behave like the game I remember playing in 1996, just without needing a 1996 computer to enjoy it.
