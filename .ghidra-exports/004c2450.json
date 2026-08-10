@@ -1,0 +1,44 @@
+{
+  "address": "004c2450",
+  "name": "FUN_004c2450",
+  "signature": "undefined FUN_004c2450(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004c2450(undefined2 param_1,uint param_2)\r\n\r\n{\r\n  bool bVar1;\r\n  short sVar2;\r\n  short sVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  undefined4 uVar6;\r\n  undefined4 unaff_ESI;\r\n  uint uVar7;\r\n  \r\n  param_2 = param_2 & 0xffff00ff;\r\n  uVar7 = CONCAT22((short)((uint)unaff_ESI >> 0x10),param_1) & 0xffff00ff;\r\n  sVar2 = FUN_004c9cc0(uVar7,param_2,0);\r\n  if (sVar2 == 0) {\r\n    return 0xffff;\r\n  }\r\n  iVar4 = FUN_004c9220(uVar7,param_2);\r\n  sVar2 = FUN_004c9dc0(iVar4,0);\r\n  if (sVar2 == 0) {\r\n    return 0xffff;\r\n  }\r\n  sVar2 = 0;\r\n  bVar1 = false;\r\n  do {\r\n    sVar3 = FUN_004cea00(0x14);\r\n    if (sVar3 == 0) {\r\n      iVar5 = 10;\r\n    }\r\n    else if (sVar3 == 1) {\r\n      iVar5 = 0x11;\r\n    }\r\n    else {\r\n      iVar5 = FUN_004c7190();\r\n    }\r\n    sVar3 = 0;\r\n    do {\r\n      if ((&DAT_0058ec00)[(int)sVar3 + iVar5 * 10] == iVar4) {\r\n        bVar1 = true;\r\n        goto LAB_004c2514;\r\n      }\r\n      sVar3 = sVar3 + 1;\r\n    } while (sVar3 < 10);\r\n    sVar2 = sVar2 + 1;\r\n  } while (sVar2 < 5);\r\nLAB_004c2514:\r\n  if (bVar1) {\r\n    uVar6 = FUN_004c3eb0(iVar5,0,uVar7,param_2,0xffffffff,0,0);\r\n    return uVar6;\r\n  }\r\n  return 0xffff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c2550",
+      "name": "FUN_004c2550",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c9cc0",
+      "name": "FUN_004c9cc0"
+    },
+    {
+      "addr": "004c9220",
+      "name": "FUN_004c9220"
+    },
+    {
+      "addr": "004c9dc0",
+      "name": "FUN_004c9dc0"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "004c7190",
+      "name": "FUN_004c7190"
+    },
+    {
+      "addr": "004c3eb0",
+      "name": "FUN_004c3eb0"
+    }
+  ],
+  "data_refs": []
+}

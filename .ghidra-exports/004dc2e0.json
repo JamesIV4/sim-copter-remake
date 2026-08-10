@@ -1,0 +1,19 @@
+{
+  "address": "004dc2e0",
+  "name": "match_ctry_lang",
+  "signature": "undefined __cdecl match_ctry_lang(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _match_ctry_lang\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nbool __cdecl match_ctry_lang(ushort *param_1,ushort *param_2)\r\n\r\n{\r\n  ushort uVar1;\r\n  uint uVar2;\r\n  ushort *puVar3;\r\n  uint uVar4;\r\n  \r\n  uVar2 = (uint)*param_1 % 100;\r\n  if (0x5a < (ushort)uVar2) {\r\n    return false;\r\n  }\r\n  uVar4 = 0;\r\n  puVar3 = (ushort *)(&DAT_005080c8 + uVar2 * 6);\r\n  do {\r\n    uVar1 = *puVar3;\r\n    if (uVar1 == 0) break;\r\n    if (((uVar1 ^ *param_2) & 0x3ff) == 0) {\r\n      if ((*param_2 & 0xfc00) == 0) {\r\n        *param_2 = uVar1;\r\n      }\r\n      *param_1 = uVar1;\r\n      return true;\r\n    }\r\n    puVar3 = puVar3 + 1;\r\n    uVar4 = uVar4 + 1;\r\n  } while (uVar4 < 3);\r\n  uVar1 = *(ushort *)(&DAT_005080c8 + uVar2 * 6);\r\n  *param_1 = uVar1;\r\n  return uVar1 != 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

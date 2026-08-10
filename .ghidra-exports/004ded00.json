@@ -1,0 +1,24 @@
+{
+  "address": "004ded00",
+  "name": "__set_errno",
+  "signature": "errno_t __cdecl __set_errno(int _Value)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef errno_t int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __set_errno\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nerrno_t __cdecl __set_errno(int _Value)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  \r\n  if (_Value == 1) {\r\n    puVar1 = (undefined4 *)FUN_004da730();\r\n    *puVar1 = 0x21;\r\n    return (errno_t)puVar1;\r\n  }\r\n  if (1 < _Value) {\r\n    if (3 < _Value) {\r\n      return _Value;\r\n    }\r\n    _Value = FUN_004da730();\r\n    *(undefined4 *)_Value = 0x22;\r\n  }\r\n  return _Value;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e2ba0",
+      "name": "__87except",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

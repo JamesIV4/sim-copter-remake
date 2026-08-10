@@ -1,0 +1,30 @@
+{
+  "address": "00452840",
+  "name": "FUN_00452840",
+  "signature": "undefined FUN_00452840(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00452840(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  FUN_00404a20();\r\n  iVar1 = param_1[0x1f];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x1f] = 0;\r\n  }\r\n  iVar1 = param_1[0x20];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x20] = 0;\r\n  }\r\n  iVar1 = param_1[0x21];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x21] = 0;\r\n  }\r\n  iVar1 = param_1[0x1e];\r\n  if (iVar1 != 0) {\r\n    FUN_00438ef0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x1e] = 0;\r\n  }\r\n  iVar1 = param_1[0x22];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x22] = 0;\r\n  }\r\n  iVar1 = param_1[0x23];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x23] = 0;\r\n  }\r\n  iVar1 = param_1[0x24];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x24] = 0;\r\n  }\r\n  iVar1 = param_1[0x25];\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    param_1[0x25] = 0;\r\n  }\r\n  if (-1 < param_1[0x79]) {\r\n    if (param_1 == DAT_004f81e0) {\r\n      (**(code **)(*param_1 + 0xac))(param_1);\r\n    }\r\n    iVar1 = param_1[0x79];\r\n    if (iVar1 == 0) {\r\n      *(byte *)(param_1[0x1d] + 0x5c) = *(byte *)(param_1[0x1d] + 0x5c) & 0xdf;\r\n    }\r\n    else if (iVar1 == 1) {\r\n      *(byte *)(param_1[0x1d] + 0x62) = *(byte *)(param_1[0x1d] + 0x62) & 0xdf;\r\n    }\r\n    else if (iVar1 == 2) {\r\n      *(byte *)(param_1[0x1d] + 0x5e) = *(byte *)(param_1[0x1d] + 0x5e) & 0xdf;\r\n    }\r\n    else if (iVar1 == 3) {\r\n      *(byte *)(param_1[0x1d] + 0x60) = *(byte *)(param_1[0x1d] + 0x60) & 0xdf;\r\n    }\r\n    param_1[0x79] = -1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00404a20",
+      "name": "FUN_00404a20"
+    },
+    {
+      "addr": "0044fbb0",
+      "name": "FUN_0044fbb0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00438ef0",
+      "name": "FUN_00438ef0"
+    }
+  ],
+  "data_refs": []
+}

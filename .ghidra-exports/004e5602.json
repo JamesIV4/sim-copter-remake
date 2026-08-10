@@ -1,0 +1,19 @@
+{
+  "address": "004e5602",
+  "name": "FUN_004e5602",
+  "signature": "undefined FUN_004e5602(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004e5602(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  DAT_00508d08 = &DAT_005a25b0;\r\n  do {\r\n    iVar1 = DAT_00508d08[1];\r\n    iVar2 = *DAT_00508d08;\r\n    iVar3 = DAT_00508d08[2];\r\n    if (0 < iVar3) {\r\n      _DAT_00508cc4 = DAT_00508d08[3];\r\n      _DAT_005a258c = *(undefined4 *)(iVar2 + 0x24);\r\n      if (((((*(uint *)(iVar2 + 8) & 4) == 0) && ((*(uint *)(iVar2 + 8) & 0x8000) == 0)) &&\r\n          ((*(uint *)(iVar2 + 8) & 0x10000) == 0)) &&\r\n         ((*(int *)(iVar2 + 0x10) != 0xb && (DAT_004f9718 == 0)))) {\r\n        _DAT_005a258c = *(undefined4 *)(iVar2 + 0xc);\r\n      }\r\n      iVar4 = *(int *)(iVar2 + 0x10);\r\n      _DAT_00508ccc = _DAT_005a258c;\r\n      if ((((*(uint *)(iVar2 + 8) & 4) == 0) && ((*(uint *)(iVar2 + 8) & 0x8000) == 0)) &&\r\n         (((*(uint *)(iVar2 + 8) & 0x10000) == 0 &&\r\n          ((*(int *)(iVar2 + 0x10) != 0xb && (DAT_0059ea18 <= iVar1)))))) {\r\n        _DAT_00508ccc = *(undefined4 *)(iVar2 + 0xc);\r\n        iVar4 = 0xf;\r\n      }\r\n      iVar4 = iVar4 + _DAT_00508d18;\r\n      _DAT_00508cc0 = iVar3;\r\n      _DAT_0059ea6c = _DAT_00508cc4;\r\n      _DAT_005a24f4 = iVar3;\r\n      if (iVar1 < DAT_0059ea14) {\r\n        if (iVar1 < 0x1900000) {\r\n          if (iVar1 < 0x11c0000) {\r\n            _DAT_005a256c = _DAT_005a256c + 1;\r\n            (*(code *)(&PTR_LAB_00514930)[iVar4])();\r\n          }\r\n          else {\r\n            _DAT_005a256c = _DAT_005a256c + 1;\r\n            (*(code *)(&PTR_LAB_00514a10)[iVar4])();\r\n          }\r\n        }\r\n        else {\r\n          _DAT_005a256c = _DAT_005a256c + 1;\r\n          (*(code *)(&PTR_LAB_00514af0)[iVar4])();\r\n        }\r\n      }\r\n      else {\r\n        _DAT_005a256c = _DAT_005a256c + 1;\r\n        (*(code *)(&PTR_LAB_00514bd0)[iVar4])();\r\n      }\r\n    }\r\n    DAT_00508d08 = DAT_00508d08 + 4;\r\n    DAT_005b0078 = DAT_005b0078 + -1;\r\n  } while (DAT_005b0078 != 0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4fdd",
+      "name": "FUN_004e4fdd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

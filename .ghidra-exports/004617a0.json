@@ -1,0 +1,73 @@
+{
+  "address": "004617a0",
+  "name": "FUN_004617a0",
+  "signature": "undefined FUN_004617a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004617a0(int param_1,LPCSTR param_2)\r\n\r\n{\r\n  HANDLE hObject;\r\n  _SECURITY_ATTRIBUTES local_c;\r\n  \r\n  if ((param_2 == (LPCSTR)0x0) && (param_2 = (LPCSTR)(param_1 + 4), param_2 == (LPCSTR)0x0)) {\r\n    return 0;\r\n  }\r\n  local_c.nLength = 0xc;\r\n  local_c.lpSecurityDescriptor = (LPVOID)0x0;\r\n  local_c.bInheritHandle = 0;\r\n  hObject = CreateFileA(param_2,0x80000000,3,&local_c,3,0x80,(HANDLE)0x0);\r\n  if (hObject != (HANDLE)0xffffffff) {\r\n    CloseHandle(hObject);\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044d070",
+      "name": "FUN_0044d070",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459cd0",
+      "name": "FUN_00459cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044ce50",
+      "name": "FUN_0044ce50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459d30",
+      "name": "FUN_00459d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459dc0",
+      "name": "FUN_00459dc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044cbb0",
+      "name": "FUN_0044cbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044cbb0",
+      "name": "FUN_0044cbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000002",
+      "name": "CreateFileA"
+    },
+    {
+      "addr": "EXTERNAL:00000005",
+      "name": "CloseHandle"
+    }
+  ],
+  "data_refs": []
+}

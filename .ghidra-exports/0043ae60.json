@@ -1,0 +1,19 @@
+{
+  "address": "0043ae60",
+  "name": "FUN_0043ae60",
+  "signature": "undefined FUN_0043ae60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_0043ae60(short param_1,uint param_2)\r\n\r\n{\r\n  ushort local_54 [14];\r\n  ushort local_38 [8];\r\n  ushort local_28 [6];\r\n  ushort local_1c [10];\r\n  int local_8;\r\n  \r\n  local_8 = 0;\r\n  if (param_1 == 3) {\r\n    for (; local_28[local_8] != 0; local_8 = local_8 + 1) {\r\n      if ((int)param_2 <= (int)(local_28[local_8] + 2)) {\r\n        return (uint)local_28[local_8];\r\n      }\r\n    }\r\n  }\r\n  else if (param_1 == 4) {\r\n    for (; local_38[local_8] != 0; local_8 = local_8 + 1) {\r\n      if ((int)param_2 <= (int)(local_38[local_8] + 4)) {\r\n        return (uint)local_38[local_8];\r\n      }\r\n    }\r\n  }\r\n  else if (param_1 == 5) {\r\n    for (; local_54[local_8] != 0; local_8 = local_8 + 1) {\r\n      if ((int)param_2 <= (int)(local_54[local_8] + 5)) {\r\n        return (uint)local_54[local_8];\r\n      }\r\n    }\r\n  }\r\n  else if (param_1 == 6) {\r\n    for (; local_1c[local_8] != 0; local_8 = local_8 + 1) {\r\n      if ((int)param_2 <= (int)(local_1c[local_8] + 5)) {\r\n        return (uint)local_1c[local_8];\r\n      }\r\n    }\r\n  }\r\n  return param_2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043aa10",
+      "name": "FUN_0043aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

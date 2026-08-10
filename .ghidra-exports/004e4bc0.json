@@ -1,0 +1,32 @@
+{
+  "address": "004e4bc0",
+  "name": "copy_environ",
+  "signature": "undefined __cdecl copy_environ(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _copy_environ\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 * __cdecl copy_environ(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 uVar4;\r\n  int *piVar5;\r\n  \r\n  puVar3 = (undefined4 *)0x0;\r\n  if (param_1 != (int *)0x0) {\r\n    iVar1 = *param_1;\r\n    piVar5 = param_1;\r\n    while (iVar1 != 0) {\r\n      piVar5 = piVar5 + 1;\r\n      puVar3 = (undefined4 *)((int)puVar3 + 1);\r\n      iVar1 = *piVar5;\r\n    }\r\n    puVar3 = (undefined4 *)FUN_004d5f00((int)puVar3 * 4 + 4);\r\n    if (puVar3 == (undefined4 *)0x0) {\r\n      __amsg_exit(9);\r\n    }\r\n    iVar1 = *param_1;\r\n    puVar2 = puVar3;\r\n    while (iVar1 != 0) {\r\n      iVar1 = *param_1;\r\n      param_1 = param_1 + 1;\r\n      uVar4 = FUN_004e4cf0(iVar1);\r\n      *puVar2 = uVar4;\r\n      puVar2 = puVar2 + 1;\r\n      iVar1 = *param_1;\r\n    }\r\n    *puVar2 = 0;\r\n  }\r\n  return puVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "004e4cf0",
+      "name": "FUN_004e4cf0"
+    }
+  ],
+  "data_refs": []
+}

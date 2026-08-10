@@ -1,0 +1,28 @@
+{
+  "address": "004cdc60",
+  "name": "FUN_004cdc60",
+  "signature": "undefined FUN_004cdc60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004cdc60(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  \r\n  iVar1 = param_1[7];\r\n  param_1[7] = iVar1 + -1;\r\n  if (iVar1 + -1 == 0) {\r\n    piVar3 = &DAT_00506bcc;\r\n    iVar1 = DAT_00506bcc;\r\n    while (iVar1 != 0) {\r\n      piVar2 = (int *)*piVar3;\r\n      if (param_1 == piVar2) {\r\n        *piVar3 = *(int *)*piVar3;\r\n        break;\r\n      }\r\n      piVar3 = piVar2;\r\n      iVar1 = *piVar2;\r\n    }\r\n    if (param_1 != (int *)0x0) {\r\n      FUN_004cdae0();\r\n      FUN_004d29a0(param_1);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd5f0",
+      "name": "FUN_004cd5f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004cdae0",
+      "name": "FUN_004cdae0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

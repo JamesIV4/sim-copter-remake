@@ -1,0 +1,56 @@
+{
+  "address": "0045c0f0",
+  "name": "FUN_0045c0f0",
+  "signature": "undefined FUN_0045c0f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0045c0f0(int param_1)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  undefined4 local_150 [4];\r\n  char local_140 [32];\r\n  _MEMORYSTATUS local_120;\r\n  char local_100 [256];\r\n  \r\n  FUN_004029d0();\r\n  iVar2 = FUN_00402ac0(local_150);\r\n  if (iVar2 != 0) {\r\n    _sprintf(local_100,&DAT_004f9330,local_150[0]);\r\n    FUN_0040f9f0(local_100);\r\n  }\r\n  iVar2 = FUN_00402b30(local_150);\r\n  if (iVar2 != 0) {\r\n    _sprintf(local_100,s_Version___s_004f9af8,local_150[0]);\r\n    FUN_0040f9f0(local_100);\r\n  }\r\n  iVar2 = FUN_00402ba0(local_150);\r\n  if (iVar2 != 0) {\r\n    _sprintf(local_100,s_Debug_Version___s_004f9ae4,local_150[0]);\r\n    FUN_0040f9f0(local_100);\r\n  }\r\n  iVar2 = FUN_00402c10(local_140);\r\n  if (iVar2 != 0) {\r\n    _sprintf(local_100,s_OS_Version___s_004f9ad4,local_140);\r\n    FUN_0040f9f0(local_100);\r\n  }\r\n  uVar3 = 0xffffffff;\r\n  pcVar5 = &DAT_004f9b08;\r\n  do {\r\n    pcVar6 = pcVar5;\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    pcVar6 = pcVar5 + 1;\r\n    cVar1 = *pcVar5;\r\n    pcVar5 = pcVar6;\r\n  } while (cVar1 != '\\0');\r\n  uVar3 = ~uVar3;\r\n  pcVar5 = pcVar6 + -uVar3;\r\n  pcVar6 = local_140;\r\n  for (uVar4 = uVar3 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *(undefined4 *)pcVar6 = *(undefined4 *)pcVar5;\r\n    pcVar5 = pcVar5 + 4;\r\n    pcVar6 = pcVar6 + 4;\r\n  }\r\n  for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n    *pcVar6 = *pcVar5;\r\n    pcVar5 = pcVar5 + 1;\r\n    pcVar6 = pcVar6 + 1;\r\n  }\r\n  _sprintf(local_100,s_Smacker_Version___s_004f9abc,local_140);\r\n  FUN_0040f9f0(local_100);\r\n  FUN_0040f9f0(s_Current_screen_mode___ld_x__ld__w_004f9a88,*(undefined4 *)(param_1 + 0x4058),\r\n               *(undefined4 *)(param_1 + 0x405c),*(undefined4 *)(param_1 + 0x4060));\r\n  local_120.dwLength = 0x20;\r\n  GlobalMemoryStatus(&local_120);\r\n  FUN_0040f9f0(s_Total_physical_memory___ld_MB_004f9a68,(int)local_120.dwTotalPhys / 0xfa000);\r\n  FUN_0040f9f0(s_Free_physical_memory___ld_MB_004f9a48,(int)local_120.dwAvailPhys / 0xfa000);\r\n  FUN_00402aa0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004029d0",
+      "name": "FUN_004029d0"
+    },
+    {
+      "addr": "00402ac0",
+      "name": "FUN_00402ac0"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "0040f9f0",
+      "name": "FUN_0040f9f0"
+    },
+    {
+      "addr": "00402b30",
+      "name": "FUN_00402b30"
+    },
+    {
+      "addr": "00402ba0",
+      "name": "FUN_00402ba0"
+    },
+    {
+      "addr": "00402c10",
+      "name": "FUN_00402c10"
+    },
+    {
+      "addr": "EXTERNAL:00000008",
+      "name": "GlobalMemoryStatus"
+    },
+    {
+      "addr": "00402aa0",
+      "name": "FUN_00402aa0"
+    }
+  ],
+  "data_refs": []
+}

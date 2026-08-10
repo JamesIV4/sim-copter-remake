@@ -1,0 +1,32 @@
+{
+  "address": "004da18d",
+  "name": "FUN_004da18d",
+  "signature": "undefined FUN_004da18d(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004da18d(void)\r\n\r\n{\r\n  int *piVar1;\r\n  _ptiddata p_Var2;\r\n  int iVar3;\r\n  int unaff_EBP;\r\n  \r\n  **(undefined4 **)(unaff_EBP + -0x20) = *(undefined4 *)(unaff_EBP + -0x2c);\r\n  p_Var2 = __getptd();\r\n  p_Var2->ptlocinfo = *(pthreadlocinfo *)(unaff_EBP + -0x28);\r\n  p_Var2 = __getptd();\r\n  p_Var2->_ownlocale = *(int *)(unaff_EBP + -0x24);\r\n  piVar1 = *(int **)(unaff_EBP + 8);\r\n  if ((((*piVar1 == -0x1f928c9d) && (piVar1[4] == 3)) && (piVar1[5] == 0x19930520)) &&\r\n     (*(int *)(unaff_EBP + -0x1c) != 0)) {\r\n    iVar3 = __abnormal_termination();\r\n    DestructExceptionObject(*(EHExceptionRecord **)(unaff_EBP + 8),(uchar)iVar3);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004d45c6",
+      "name": "__abnormal_termination"
+    },
+    {
+      "addr": "004da410",
+      "name": "DestructExceptionObject"
+    }
+  ],
+  "data_refs": []
+}

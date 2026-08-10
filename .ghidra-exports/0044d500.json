@@ -1,0 +1,19 @@
+{
+  "address": "0044d500",
+  "name": "FUN_0044d500",
+  "signature": "undefined FUN_0044d500(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x0044d5a9) */\r\n/* WARNING: Removing unreachable block (ram,0x0044d550) */\r\n\r\nundefined8 FUN_0044d500(void)\r\n\r\n{\r\n  uint *puVar1;\r\n  uint uVar2;\r\n  byte local_2c [16];\r\n  uint local_1c;\r\n  uint local_18;\r\n  uint local_14;\r\n  uint local_10;\r\n  undefined2 local_c;\r\n  \r\n  local_c = 0xffff;\r\n  local_2c._0_4_ = s_GenuineIntel_004f9694._0_4_;\r\n  local_2c._4_4_ = s_GenuineIntel_004f9694._4_4_;\r\n  local_2c._8_4_ = s_GenuineIntel_004f9694._8_4_;\r\n  puVar1 = (uint *)cpuid_basic_info(0);\r\n  local_14 = puVar1[2];\r\n  local_18 = puVar1[1];\r\n  local_10 = puVar1[3];\r\n  uVar2 = *puVar1;\r\n  for (local_1c = 0; (int)local_1c < 0xc; local_1c = local_1c + 1) {\r\n    local_14 = (uint)local_2c[local_1c];\r\n    if (*(byte *)((int)&local_18 + local_1c) != local_14) {\r\n      DAT_00590758 = 1;\r\n    }\r\n    uVar2 = local_1c;\r\n  }\r\n  if (0 < (int)uVar2) {\r\n    puVar1 = (uint *)cpuid_Version_info(1);\r\n    local_14 = puVar1[2];\r\n    uVar2 = *puVar1 >> 8 & 0xf;\r\n    local_c = (undefined2)uVar2;\r\n  }\r\n  return CONCAT44(local_14,CONCAT22((short)(uVar2 >> 0x10),local_c));\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044d210",
+      "name": "FUN_0044d210",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

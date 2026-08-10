@@ -1,0 +1,22 @@
+{
+  "address": "004db960",
+  "name": "__get_lc_lconv",
+  "signature": "undefined __get_lc_lconv(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __get_lc_lconv\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __get_lc_lconv(int param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  uint uVar10;\r\n  uint uVar11;\r\n  uint uVar12;\r\n  uint uVar13;\r\n  uint uVar14;\r\n  uint uVar15;\r\n  void *unaff_EBP;\r\n  \r\n  uVar15 = (uint)DAT_00507ae4;\r\n  if (param_1 == 0) {\r\n    return 0xffffffff;\r\n  }\r\n  uVar1 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000015,param_1 + 0xc,unaff_EBP);\r\n  uVar2 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000014,param_1 + 0x10,unaff_EBP);\r\n  uVar3 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000016,param_1 + 0x14,unaff_EBP);\r\n  uVar4 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000017,param_1 + 0x18,unaff_EBP);\r\n  uVar5 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000018,param_1 + 0x1cU,unaff_EBP);\r\n  fix_grouping(*(undefined4 *)(param_1 + 0x1cU));\r\n  uVar6 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000050,param_1 + 0x20,unaff_EBP);\r\n  uVar7 = ___getlocaleinfo((_locale_t)0x1,uVar15,(LPCWSTR)&DAT_00000051,param_1 + 0x24,unaff_EBP);\r\n  uVar8 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_0000001a,param_1 + 0x28,unaff_EBP);\r\n  uVar9 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000019,param_1 + 0x29,unaff_EBP);\r\n  uVar10 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000054,param_1 + 0x2a,unaff_EBP);\r\n  uVar11 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000055,param_1 + 0x2b,unaff_EBP);\r\n  uVar12 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000056,param_1 + 0x2c,unaff_EBP);\r\n  uVar13 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000057,param_1 + 0x2d,unaff_EBP);\r\n  uVar14 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000052,param_1 + 0x2e,unaff_EBP);\r\n  uVar15 = ___getlocaleinfo((_locale_t)0x0,uVar15,(LPCWSTR)&DAT_00000053,param_1 + 0x2f,unaff_EBP);\r\n  return uVar1 | uVar2 | uVar3 | uVar4 | uVar5 | uVar6 | uVar7 | uVar8 | uVar9 | uVar10 | uVar11 |\r\n         uVar12 | uVar13 | uVar14 | uVar15;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo"
+    },
+    {
+      "addr": "004dbab0",
+      "name": "fix_grouping"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,28 @@
+{
+  "address": "004e17a0",
+  "name": "__mbtowc_lk",
+  "signature": "undefined __mbtowc_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mbtowc_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __mbtowc_lk(LPWSTR param_1,byte *param_2,uint param_3)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  \r\n  if ((param_2 == (byte *)0x0) || (param_3 == 0)) {\r\n    return 0;\r\n  }\r\n  bVar1 = *param_2;\r\n  if (bVar1 == 0) {\r\n    if (param_1 != (LPWSTR)0x0) {\r\n      *param_1 = L'\\0';\r\n    }\r\n    return 0;\r\n  }\r\n  if (DAT_00507ab8 != 0) {\r\n    if ((PTR_DAT_00507010[(uint)bVar1 * 2 + 1] & 0x80) == 0) {\r\n      iVar2 = MultiByteToWideChar(DAT_00507ac8,9,(LPCSTR)param_2,1,param_1,\r\n                                  (uint)(param_1 != (LPWSTR)0x0));\r\n      if (iVar2 != 0) {\r\n        return 1;\r\n      }\r\n      puVar3 = (undefined4 *)FUN_004da730();\r\n      *puVar3 = 0x2a;\r\n      return 0xffffffff;\r\n    }\r\n    if (((((int)DAT_0050721c < 2) || ((int)param_3 < (int)DAT_0050721c)) ||\r\n        (iVar2 = MultiByteToWideChar(DAT_00507ac8,9,(LPCSTR)param_2,DAT_0050721c,param_1,\r\n                                     (uint)(param_1 != (LPWSTR)0x0)), iVar2 == 0)) &&\r\n       ((param_3 < DAT_0050721c || (param_2[1] == 0)))) {\r\n      puVar3 = (undefined4 *)FUN_004da730();\r\n      *puVar3 = 0x2a;\r\n      return 0xffffffff;\r\n    }\r\n    return DAT_0050721c;\r\n  }\r\n  if (param_1 != (LPWSTR)0x0) {\r\n    *param_1 = (ushort)bVar1;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e1740",
+      "name": "_mbtowc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000041",
+      "name": "MultiByteToWideChar"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

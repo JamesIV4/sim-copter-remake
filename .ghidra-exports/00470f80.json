@@ -1,0 +1,24 @@
+{
+  "address": "00470f80",
+  "name": "FUN_00470f80",
+  "signature": "undefined FUN_00470f80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00470f80(int param_1,int param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int *piVar6;\r\n  undefined4 *local_14;\r\n  int local_10;\r\n  uint *local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  local_14 = *(undefined4 **)(param_1 + 0x4c);\r\n  local_4 = 0;\r\n  if (0 < *(int *)(param_1 + 0x10)) {\r\n    do {\r\n      if ((*(byte *)((int)local_14 + 9) & 0x40) != 0) {\r\n        piVar6 = &DAT_00500940;\r\n        iVar4 = local_14[3];\r\n        if ((iVar4 < 0) || (0x100 < iVar4)) {\r\n          piVar6 = (int *)0x0;\r\n        }\r\n        else {\r\n          for (; (iVar4 < *piVar6 || (piVar6[1] + *piVar6 <= iVar4)); piVar6 = piVar6 + 2) {\r\n          }\r\n        }\r\n        if (piVar6 != (int *)0x0) {\r\n          local_8 = 0;\r\n          local_c = (uint *)local_14[7];\r\n          if (0 < (int)local_14[1]) {\r\n            local_10 = 0;\r\n            do {\r\n              iVar5 = 0;\r\n              puVar1 = (undefined4 *)(param_2 + (*local_c >> 4) * 0xc);\r\n              iVar2 = FUN_0046c49d(DAT_00500a60,*puVar1);\r\n              iVar3 = FUN_0046c49d(DAT_00500a64,puVar1[1]);\r\n              iVar4 = FUN_0046c49d(DAT_00500a68,puVar1[2]);\r\n              iVar4 = iVar2 + iVar3 + iVar4;\r\n              if (0 < iVar4) {\r\n                iVar5 = FUN_0046c49d(iVar4,DAT_00500a90);\r\n              }\r\n              iVar4 = FUN_0046c49d(DAT_00500a70,*puVar1);\r\n              iVar2 = FUN_0046c49d(DAT_00500a74,puVar1[1]);\r\n              iVar3 = FUN_0046c49d(DAT_00500a78,puVar1[2]);\r\n              iVar3 = iVar3 + iVar4 + iVar2;\r\n              if (0 < iVar3) {\r\n                iVar4 = FUN_0046c49d(iVar3,DAT_00500a94);\r\n                iVar5 = iVar5 + iVar4;\r\n              }\r\n              if (iVar5 + _DAT_00500a8c < 0x10000) {\r\n                iVar4 = FUN_0046c49d(piVar6[1] << 0x10,iVar5 + _DAT_00500a8c);\r\n                iVar4 = *piVar6 + (iVar4 >> 0x10);\r\n              }\r\n              else {\r\n                iVar4 = piVar6[1] + -1 + *piVar6;\r\n              }\r\n              local_8 = local_8 + 1;\r\n              local_c = local_c + 1;\r\n              *(int *)(local_14[8] + local_10) = iVar4 << 0x10;\r\n              local_10 = local_10 + 8;\r\n            } while (local_8 < (int)local_14[1]);\r\n          }\r\n        }\r\n      }\r\n      local_4 = local_4 + 1;\r\n      local_14 = (undefined4 *)*local_14;\r\n    } while (local_4 < *(int *)(param_1 + 0x10));\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046eaa0",
+      "name": "FUN_0046eaa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

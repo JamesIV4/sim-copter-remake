@@ -1,0 +1,19 @@
+{
+  "address": "00463514",
+  "name": "GetFileVersionInfoA",
+  "signature": "BOOL __stdcall GetFileVersionInfoA(LPCSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData)",
+  "calling_convention": "__stdcall",
+  "return_type": "typedef BOOL int",
+  "parameter_count": 4,
+  "is_thunk": true,
+  "decompiled": "\r\nBOOL GetFileVersionInfoA(LPCSTR lptstrFilename,DWORD dwHandle,DWORD dwLen,LPVOID lpData)\r\n\r\n{\r\n  BOOL BVar1;\r\n  \r\n                    /* WARNING: Could not recover jumptable at 0x00463514. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  BVar1 = GetFileVersionInfoA(lptstrFilename,dwHandle,dwLen,lpData);\r\n  return BVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004029d0",
+      "name": "FUN_004029d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

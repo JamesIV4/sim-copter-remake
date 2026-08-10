@@ -1,0 +1,36 @@
+{
+  "address": "0045e850",
+  "name": "FUN_0045e850",
+  "signature": "undefined FUN_0045e850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0045e850(undefined4 *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  *param_1 = &PTR_LAB_004f3570;\r\n  iVar3 = (int)(param_1[0x33] - param_1[0x32]) >> 2;\r\n  iVar4 = 0;\r\n  if (0 < iVar3) {\r\n    do {\r\n      piVar1 = *(int **)(param_1[0x32] + iVar4 * 4);\r\n      if (piVar1 != (int *)0x0) {\r\n        (**(code **)(*piVar1 + 0xc0))(1);\r\n      }\r\n      iVar4 = iVar4 + 1;\r\n    } while (iVar4 < iVar3);\r\n  }\r\n  FUN_00404a20();\r\n  FUN_0041d700();\r\n  for (iVar3 = param_1[0x32]; param_1[0x33] != iVar3; iVar3 = iVar3 + 4) {\r\n  }\r\n  FUN_004d29a0(param_1[0x32]);\r\n  *(int *)(param_1[0x1e] + 0xc) = *(int *)(param_1[0x1e] + 0xc) + -1;\r\n  puVar2 = (undefined4 *)param_1[0x1e];\r\n  if ((puVar2[3] == 0) && (puVar2 != (undefined4 *)0x0)) {\r\n    if (puVar2[2] != 0) {\r\n      FUN_004d29a0(*puVar2);\r\n      puVar2[2] = 0;\r\n      *puVar2 = 0;\r\n    }\r\n    FUN_004d29a0(puVar2);\r\n  }\r\n  if (param_1[0x1d] != 0) {\r\n    FUN_004d29a0(param_1[0x1d]);\r\n  }\r\n  FUN_00404710();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045e5d0",
+      "name": "FUN_0045e5d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00404a20",
+      "name": "FUN_00404a20"
+    },
+    {
+      "addr": "0041d700",
+      "name": "FUN_0041d700"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00404710",
+      "name": "FUN_00404710"
+    }
+  ],
+  "data_refs": []
+}

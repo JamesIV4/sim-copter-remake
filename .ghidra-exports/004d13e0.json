@@ -1,0 +1,49 @@
+{
+  "address": "004d13e0",
+  "name": "FUN_004d13e0",
+  "signature": "undefined FUN_004d13e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004d13e0(int param_1,int param_2,int param_3,int param_4,byte param_5)\r\n\r\n{\r\n  byte bVar1;\r\n  byte bVar2;\r\n  byte bVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  int *piVar7;\r\n  \r\n  if ((((-1 < param_1) && (-1 < param_2)) && (-1 < param_3)) &&\r\n     (((param_1 <= DAT_00506c04 && (param_2 <= DAT_00506c04)) && (param_3 <= DAT_00506c08)))) {\r\n    uVar5 = (param_2 - param_1) + 1;\r\n    piVar7 = (int *)(param_3 * DAT_00506c00 + DAT_004f973c + param_1);\r\n    iVar6 = (int)uVar5 >> 2;\r\n    uVar5 = uVar5 & 3;\r\n    if (-1 < iVar6) {\r\n      for (; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        iVar4 = __ftol();\r\n        *(byte *)piVar7 = *(char *)(param_4 + iVar4) + param_5;\r\n        piVar7 = (int *)((int)piVar7 + 1);\r\n      }\r\n      if (iVar6 != 0) {\r\n        do {\r\n          iVar6 = iVar6 + -1;\r\n          iVar4 = __ftol();\r\n          bVar1 = *(byte *)(param_4 + iVar4);\r\n          iVar4 = __ftol();\r\n          bVar2 = *(byte *)(param_4 + iVar4);\r\n          iVar4 = __ftol();\r\n          bVar3 = *(byte *)(param_4 + iVar4);\r\n          iVar4 = __ftol();\r\n          *piVar7 = (((uint)bVar1 * 0x100 + (uint)bVar2) * 0x100 + (uint)bVar3) * 0x100 +\r\n                    (uint)*(byte *)(param_4 + iVar4) + (uint)param_5 * 0x1010101;\r\n          piVar7 = piVar7 + 1;\r\n        } while (iVar6 != 0);\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d0d70",
+      "name": "FUN_004d0d70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d06b0",
+      "name": "FUN_004d06b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

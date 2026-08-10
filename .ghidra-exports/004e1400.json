@@ -1,0 +1,24 @@
+{
+  "address": "004e1400",
+  "name": "_wcstol",
+  "signature": "long __cdecl _wcstol(wchar_t * _Str, wchar_t * * _EndPtr, int _Radix)",
+  "calling_convention": "__cdecl",
+  "return_type": "long",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _wcstol\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nlong __cdecl _wcstol(wchar_t *_Str,wchar_t **_EndPtr,int _Radix)\r\n\r\n{\r\n  long lVar1;\r\n  \r\n  lVar1 = FUN_004e1420(_Str,_EndPtr,_Radix,0);\r\n  return lVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420"
+    }
+  ],
+  "data_refs": []
+}

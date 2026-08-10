@@ -1,0 +1,22 @@
+{
+  "address": "004174f0",
+  "name": "FUN_004174f0",
+  "signature": "undefined FUN_004174f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004174f0(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  \r\n  iVar4 = 6;\r\n  do {\r\n    piVar1 = (int *)(param_2 + iVar4 * 4);\r\n    iVar2 = FUN_004622b0(*(undefined4 *)(param_1 + 0x74),iVar4 + -6,1);\r\n    *piVar1 = iVar2;\r\n    if (iVar2 != 0) {\r\n      *piVar1 = 1;\r\n    }\r\n    iVar4 = iVar4 + 1;\r\n  } while (iVar4 < 0xe);\r\n  iVar4 = 0;\r\n  do {\r\n    iVar2 = iVar4 + 1;\r\n    uVar3 = FUN_00462120(*(undefined4 *)(param_1 + 0x74),iVar4,1);\r\n    *(undefined4 *)(param_2 + -4 + iVar2 * 4) = uVar3;\r\n    iVar4 = iVar2;\r\n  } while (iVar2 < 6);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004622b0",
+      "name": "FUN_004622b0"
+    },
+    {
+      "addr": "00462120",
+      "name": "FUN_00462120"
+    }
+  ],
+  "data_refs": []
+}

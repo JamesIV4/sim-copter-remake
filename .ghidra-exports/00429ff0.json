@@ -1,0 +1,37 @@
+{
+  "address": "00429ff0",
+  "name": "FUN_00429ff0",
+  "signature": "undefined FUN_00429ff0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00429ff0(int param_1,undefined4 param_2)\r\n\r\n{\r\n  char cVar1;\r\n  int *piVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  undefined4 *unaff_EBX;\r\n  int unaff_ESI;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  undefined4 local_10c;\r\n  undefined4 *local_108;\r\n  char local_104 [260];\r\n  \r\n  piVar2 = (int *)(&DAT_0055b1ac)[param_1];\r\n  FUN_00432ab0(2,0,param_2,local_104);\r\n  local_108 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (local_108 == (undefined4 *)0x0) {\r\n    local_108 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    uVar4 = 0xffffffff;\r\n    pcVar7 = local_104;\r\n    do {\r\n      if (uVar4 == 0) break;\r\n      uVar4 = uVar4 - 1;\r\n      cVar1 = *pcVar7;\r\n      pcVar7 = pcVar7 + 1;\r\n    } while (cVar1 != '\\0');\r\n    iVar5 = ~uVar4 - 1;\r\n    local_108[1] = iVar5;\r\n    local_108[2] = iVar5;\r\n    if (iVar5 == 0) {\r\n      *local_108 = 0;\r\n    }\r\n    else {\r\n      uVar3 = FUN_004d28b0(iVar5);\r\n      *local_108 = uVar3;\r\n      uVar4 = local_108[1];\r\n      pcVar7 = local_104;\r\n      pcVar8 = (char *)*local_108;\r\n      for (uVar6 = uVar4 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *(undefined4 *)pcVar8 = *(undefined4 *)pcVar7;\r\n        pcVar7 = pcVar7 + 4;\r\n        pcVar8 = pcVar8 + 4;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *pcVar8 = *pcVar7;\r\n        pcVar7 = pcVar7 + 1;\r\n        pcVar8 = pcVar8 + 1;\r\n      }\r\n    }\r\n    local_108[3] = 1;\r\n  }\r\n  local_10c = 0;\r\n  (**(code **)(*piVar2 + 0x30))(&local_10c,2);\r\n  unaff_EBX[3] = unaff_EBX[3] + -1;\r\n  if ((unaff_EBX[3] == 0) && (unaff_EBX != (undefined4 *)0x0)) {\r\n    if (unaff_EBX[2] != 0) {\r\n      FUN_004d29a0(*unaff_EBX);\r\n      unaff_EBX[2] = 0;\r\n      *unaff_EBX = 0;\r\n    }\r\n    FUN_004d29a0(unaff_EBX);\r\n  }\r\n  if (unaff_ESI != 0) {\r\n    FUN_004d29a0(unaff_ESI);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00488fd0",
+      "name": "FUN_00488fd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00488fd0",
+      "name": "FUN_00488fd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

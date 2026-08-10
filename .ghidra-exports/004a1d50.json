@@ -1,0 +1,44 @@
+{
+  "address": "004a1d50",
+  "name": "FUN_004a1d50",
+  "signature": "undefined FUN_004a1d50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a1d50(void)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  int local_4;\r\n  \r\n  iVar3 = DAT_0057f764;\r\n  if (DAT_0057f764 < 0x7800000) {\r\n    local_c = DAT_0061a6ac;\r\n    local_8 = DAT_0061a6b0;\r\n    local_4 = DAT_0061a6b4 + DAT_0057f764;\r\n    iVar1 = FUN_0042a3a0(0x12);\r\n    if (iVar1 == 0) {\r\n      FUN_0042a1f0(0x12,&local_c,1);\r\n    }\r\n    uVar2 = FUN_0046c4bf(iVar3,0x7800000,0xf0600000);\r\n    iVar3 = FUN_0046c49d(uVar2);\r\n    FUN_0042a360(0x12,iVar3 >> 0x10);\r\n  }\r\n  else {\r\n    iVar3 = FUN_0042a3a0(0x12);\r\n    if (iVar3 == 1) {\r\n      FUN_0042a310(0x12);\r\n    }\r\n  }\r\n  iVar3 = DAT_0057f760;\r\n  if (DAT_0057f760 < 0x7800000) {\r\n    local_c = DAT_0061a6ac;\r\n    local_8 = DAT_0061a6b0;\r\n    local_4 = DAT_0061a6b4 + DAT_0057f760;\r\n    iVar1 = FUN_0042a3a0(0x13);\r\n    if (iVar1 == 0) {\r\n      FUN_0042a1f0(0x13,&local_c,1);\r\n    }\r\n    uVar2 = FUN_0046c4bf(iVar3,0x7800000,0xf0600000);\r\n    iVar3 = FUN_0046c49d(uVar2);\r\n    FUN_0042a360(0x13,iVar3 >> 0x10);\r\n  }\r\n  else {\r\n    iVar3 = FUN_0042a3a0(0x13);\r\n    if (iVar3 == 1) {\r\n      FUN_0042a310(0x13);\r\n    }\r\n  }\r\n  iVar3 = DAT_0057f754;\r\n  if (DAT_0057f754 < 0x7800000) {\r\n    local_c = DAT_0061a6ac;\r\n    local_8 = DAT_0061a6b0;\r\n    local_4 = DAT_0061a6b4 + DAT_0057f754;\r\n    iVar1 = FUN_0042a3a0(0x11);\r\n    if (iVar1 == 0) {\r\n      FUN_0042a1f0(0x11,&local_c,1);\r\n    }\r\n    uVar2 = FUN_0046c4bf(iVar3,0x7800000,0xf0600000);\r\n    iVar3 = FUN_0046c49d(uVar2);\r\n    FUN_0042a360(0x11,iVar3 >> 0x10);\r\n  }\r\n  else {\r\n    iVar3 = FUN_0042a3a0(0x11);\r\n    if (iVar3 == 1) {\r\n      FUN_0042a310(0x11);\r\n    }\r\n  }\r\n  iVar3 = DAT_0057f750;\r\n  if (DAT_0057f750 < 0x7800000) {\r\n    local_c = DAT_0061a6ac;\r\n    local_8 = DAT_0061a6b0;\r\n    local_4 = DAT_0061a6b4 + DAT_0057f750;\r\n    iVar1 = FUN_0042a3a0(0x14);\r\n    if (iVar1 == 0) {\r\n      FUN_0042a1f0(0x14,&local_c,1);\r\n    }\r\n    uVar2 = FUN_0046c4bf(iVar3,0x7800000,0xf0600000);\r\n    iVar3 = FUN_0046c49d(uVar2);\r\n    FUN_0042a360(0x14,iVar3 >> 0x10);\r\n  }\r\n  else {\r\n    iVar3 = FUN_0042a3a0(0x14);\r\n    if (iVar3 == 1) {\r\n      FUN_0042a310(0x14);\r\n    }\r\n  }\r\n  iVar3 = DAT_0057f750;\r\n  if (DAT_0057f750 < 0x7800000) {\r\n    local_c = DAT_0061a6ac;\r\n    local_8 = DAT_0061a6b0;\r\n    local_4 = DAT_0061a6b4 + DAT_0057f750;\r\n    iVar1 = FUN_0042a3a0(0x14);\r\n    if (iVar1 == 0) {\r\n      FUN_0042a1f0(0x14,&local_c,1);\r\n    }\r\n    uVar2 = FUN_0046c4bf(iVar3,0x7800000,0xf0600000);\r\n    iVar3 = FUN_0046c49d(uVar2);\r\n    FUN_0042a360(0x14,iVar3 >> 0x10);\r\n    return;\r\n  }\r\n  iVar3 = FUN_0042a3a0(0x14);\r\n  if (iVar3 == 1) {\r\n    FUN_0042a310(0x14);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0042a3a0",
+      "name": "FUN_0042a3a0"
+    },
+    {
+      "addr": "0042a1f0",
+      "name": "FUN_0042a1f0"
+    },
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "0042a360",
+      "name": "FUN_0042a360"
+    },
+    {
+      "addr": "0042a310",
+      "name": "FUN_0042a310"
+    }
+  ],
+  "data_refs": []
+}

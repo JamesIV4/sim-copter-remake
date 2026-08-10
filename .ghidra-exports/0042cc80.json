@@ -1,0 +1,45 @@
+{
+  "address": "0042cc80",
+  "name": "FUN_0042cc80",
+  "signature": "undefined FUN_0042cc80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0042cc80(int param_1,int param_2,int param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  undefined4 *puVar3;\r\n  ostream *poVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 uVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  char *pcVar10;\r\n  char *pcVar11;\r\n  char *local_48 [4];\r\n  char *local_38;\r\n  char *local_34;\r\n  char *local_30;\r\n  char *local_2c;\r\n  undefined1 *local_28;\r\n  char *local_24 [4];\r\n  char *local_14;\r\n  char *local_10;\r\n  char *local_c;\r\n  char *local_8;\r\n  char *local_4;\r\n  \r\n  local_48[0] = s_cat_schw_bmp_004f8e80;\r\n  local_48[1] = s_cat_jet_bmp_004f8e74;\r\n  local_48[2] = s_cat_hugh_bmp_004f8e64;\r\n  local_48[3] = s_cat_md5_bmp_004f8e58;\r\n  local_38 = s_cat_bell_bmp_004f8e48;\r\n  local_34 = s_cat_aug_bmp_004f8e3c;\r\n  local_30 = s_cat_daup_bmp_004f8e2c;\r\n  local_2c = s_cat_mde_bmp_004f8e20;\r\n  local_28 = &DAT_004f83a8;\r\n  local_24[0] = s_cat_schT_bmp_004f8e10;\r\n  local_24[1] = s_cat_jetT_bmp_004f8e00;\r\n  local_24[2] = s_cat_hugT_bmp_004f8df0;\r\n  local_24[3] = s_cat_md5T_bmp_004f8de0;\r\n  local_14 = s_cat_belT_bmp_004f8dd0;\r\n  local_10 = s_cat_augT_bmp_004f8dc0;\r\n  local_c = s_cat_dauT_bmp_004f8db0;\r\n  local_8 = s_cat_mdeT_bmp_004f8da0;\r\n  uVar7 = 0xffffffff;\r\n  local_4 = s_cat_equT_bmp_004f8d90;\r\n  pcVar10 = local_48[*(int *)(param_1 + 0x16e)];\r\n  pcVar11 = pcVar10;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar2 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar2 != '\\0');\r\n  uVar7 = ~uVar7 - 1;\r\n  if (uVar7 == 0xffffffff) {\r\n    poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar4);\r\n    FUN_004d2060(1);\r\n  }\r\n  puVar5 = *(undefined4 **)(param_2 + 4);\r\n  if ((uint)puVar5[3] < 2) {\r\n    if (uVar7 != 0) {\r\n      if ((uint)puVar5[2] < uVar7) goto LAB_0042cd93;\r\n      if (uVar7 != 0) {\r\n        pcVar11 = (char *)*puVar5;\r\n        for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *(undefined4 *)pcVar11 = *(undefined4 *)pcVar10;\r\n          pcVar10 = pcVar10 + 4;\r\n          pcVar11 = pcVar11 + 4;\r\n        }\r\n        for (uVar8 = uVar7 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *pcVar11 = *pcVar10;\r\n          pcVar10 = pcVar10 + 1;\r\n          pcVar11 = pcVar11 + 1;\r\n        }\r\n      }\r\n    }\r\n  }\r\n  else {\r\nLAB_0042cd93:\r\n    puVar5 = (undefined4 *)FUN_004d28b0(0x10);\r\n    if (puVar5 == (undefined4 *)0x0) {\r\n      puVar5 = (undefined4 *)0x0;\r\n    }\r\n    else {\r\n      if (uVar7 == 0xffffffff) {\r\n        poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n        FUN_00401000(poVar4);\r\n        FUN_004d2060(1);\r\n      }\r\n      puVar5[1] = uVar7;\r\n      puVar5[2] = uVar7;\r\n      if (uVar7 == 0) {\r\n        *puVar5 = 0;\r\n      }\r\n      else {\r\n        uVar6 = FUN_004d28b0(uVar7);\r\n        *puVar5 = uVar6;\r\n        uVar8 = puVar5[1];\r\n        pcVar11 = (char *)*puVar5;\r\n        for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n          *(undefined4 *)pcVar11 = *(undefined4 *)pcVar10;\r\n          pcVar10 = pcVar10 + 4;\r\n          pcVar11 = pcVar11 + 4;\r\n        }\r\n        for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *pcVar11 = *pcVar10;\r\n          pcVar10 = pcVar10 + 1;\r\n          pcVar11 = pcVar11 + 1;\r\n        }\r\n      }\r\n      puVar5[3] = 1;\r\n    }\r\n    piVar1 = (int *)(*(int *)(param_2 + 4) + 0xc);\r\n    *piVar1 = *piVar1 + -1;\r\n    puVar3 = *(undefined4 **)(param_2 + 4);\r\n    if ((puVar3[3] == 0) && (puVar3 != (undefined4 *)0x0)) {\r\n      if (puVar3[2] != 0) {\r\n        FUN_004d29a0(*puVar3);\r\n        puVar3[2] = 0;\r\n        *puVar3 = 0;\r\n      }\r\n      FUN_004d29a0(puVar3);\r\n    }\r\n    *(undefined4 **)(param_2 + 4) = puVar5;\r\n  }\r\n  *(uint *)(*(int *)(param_2 + 4) + 4) = uVar7;\r\n  uVar7 = 0xffffffff;\r\n  pcVar10 = local_24[*(int *)(param_1 + 0x16e)];\r\n  pcVar11 = pcVar10;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar2 = *pcVar11;\r\n    pcVar11 = pcVar11 + 1;\r\n  } while (cVar2 != '\\0');\r\n  uVar7 = ~uVar7 - 1;\r\n  if (uVar7 == 0xffffffff) {\r\n    poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar4);\r\n    FUN_004d2060(1);\r\n  }\r\n  puVar5 = *(undefined4 **)(param_3 + 4);\r\n  if ((uint)puVar5[3] < 2) {\r\n    if (uVar7 == 0) goto LAB_0042cf8d;\r\n    if (uVar7 <= (uint)puVar5[2]) {\r\n      if (uVar7 != 0) {\r\n        pcVar11 = (char *)*puVar5;\r\n        for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *(undefined4 *)pcVar11 = *(undefined4 *)pcVar10;\r\n          pcVar10 = pcVar10 + 4;\r\n          pcVar11 = pcVar11 + 4;\r\n        }\r\n        for (uVar8 = uVar7 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *pcVar11 = *pcVar10;\r\n          pcVar10 = pcVar10 + 1;\r\n          pcVar11 = pcVar11 + 1;\r\n        }\r\n      }\r\n      goto LAB_0042cf8d;\r\n    }\r\n  }\r\n  puVar5 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar5 == (undefined4 *)0x0) {\r\n    puVar5 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    if (uVar7 == 0xffffffff) {\r\n      poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n      FUN_00401000(poVar4);\r\n      FUN_004d2060(1);\r\n    }\r\n    puVar5[1] = uVar7;\r\n    puVar5[2] = uVar7;\r\n    if (uVar7 == 0) {\r\n      *puVar5 = 0;\r\n    }\r\n    else {\r\n      uVar6 = FUN_004d28b0(uVar7);\r\n      *puVar5 = uVar6;\r\n      uVar8 = puVar5[1];\r\n      pcVar11 = (char *)*puVar5;\r\n      for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n        *(undefined4 *)pcVar11 = *(undefined4 *)pcVar10;\r\n        pcVar10 = pcVar10 + 4;\r\n        pcVar11 = pcVar11 + 4;\r\n      }\r\n      for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n        *pcVar11 = *pcVar10;\r\n        pcVar10 = pcVar10 + 1;\r\n        pcVar11 = pcVar11 + 1;\r\n      }\r\n    }\r\n    puVar5[3] = 1;\r\n  }\r\n  piVar1 = (int *)(*(int *)(param_3 + 4) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  puVar3 = *(undefined4 **)(param_3 + 4);\r\n  if ((puVar3[3] == 0) && (puVar3 != (undefined4 *)0x0)) {\r\n    if (puVar3[2] != 0) {\r\n      FUN_004d29a0(*puVar3);\r\n      puVar3[2] = 0;\r\n      *puVar3 = 0;\r\n    }\r\n    FUN_004d29a0(puVar3);\r\n  }\r\n  *(undefined4 **)(param_3 + 4) = puVar5;\r\nLAB_0042cf8d:\r\n  *(uint *)(*(int *)(param_3 + 4) + 4) = uVar7;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,36 @@
+{
+  "address": "004d46a0",
+  "name": "FUN_004d46a0",
+  "signature": "undefined FUN_004d46a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004d46a0(LPVOID param_1)\r\n\r\n{\r\n  BOOL BVar1;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &DAT_004f54f0;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  BVar1 = TlsSetValue(DAT_00507680,param_1);\r\n  if (BVar1 == 0) {\r\n    __amsg_exit(0x10);\r\n  }\r\n  if (PTR_FUN_00506dc4 != (undefined *)0x0) {\r\n    (*(code *)PTR_FUN_00506dc4)();\r\n  }\r\n  local_8 = 0;\r\n  (**(code **)((int)param_1 + 0x48))(*(undefined4 *)((int)param_1 + 0x4c));\r\n  __endthread();\r\n  *unaff_FS_OFFSET = local_14;\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4610",
+      "name": "__beginthread",
+      "ref_type": "DATA"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000061",
+      "name": "TlsSetValue"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "004d39f0",
+      "name": "FUN_004d39f0"
+    },
+    {
+      "addr": "004d4760",
+      "name": "__endthread"
+    }
+  ],
+  "data_refs": []
+}

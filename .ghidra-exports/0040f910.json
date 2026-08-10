@@ -1,0 +1,79 @@
+{
+  "address": "0040f910",
+  "name": "FUN_0040f910",
+  "signature": "undefined FUN_0040f910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0040f910(int param_1)\r\n\r\n{\r\n  HDC hdc;\r\n  int iVar1;\r\n  int nMaxPos;\r\n  int local_60;\r\n  int local_5c;\r\n  tagRECT local_58;\r\n  tagRECT local_48;\r\n  tagTEXTMETRICA local_38;\r\n  \r\n  EnterCriticalSection((LPCRITICAL_SECTION)(param_1 + 0x3c));\r\n  hdc = GetDC(*(HWND *)(param_1 + 0x54));\r\n  GetTextMetricsA(hdc,&local_38);\r\n  ReleaseDC(*(HWND *)(param_1 + 0x54),hdc);\r\n  GetClientRect(*(HWND *)(param_1 + 0x54),&local_48);\r\n  GetClientRect(*(HWND *)(param_1 + 0x58),&local_58);\r\n  nMaxPos = *(int *)(param_1 + 0x20) + (local_58.bottom - local_48.bottom) / local_38.tmHeight;\r\n  if (nMaxPos < 0) {\r\n    nMaxPos = 0;\r\n  }\r\n  GetScrollRange(*(HWND *)(param_1 + 0x54),1,&local_5c,&local_60);\r\n  iVar1 = GetScrollPos(*(HWND *)(param_1 + 0x54),1);\r\n  SetScrollRange(*(HWND *)(param_1 + 0x54),1,0,nMaxPos,1);\r\n  if (local_60 <= iVar1) {\r\n    SetScrollPos(*(HWND *)(param_1 + 0x54),1,nMaxPos,1);\r\n  }\r\n  ShowScrollBar(*(HWND *)(param_1 + 0x54),1,1);\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)(param_1 + 0x3c));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0040f9f0",
+      "name": "FUN_0040f9f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040f610",
+      "name": "FUN_0040f610",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000a4",
+      "name": "GetTextMetricsA"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    },
+    {
+      "addr": "EXTERNAL:0000009d",
+      "name": "GetClientRect"
+    },
+    {
+      "addr": "EXTERNAL:00000098",
+      "name": "GetScrollRange"
+    },
+    {
+      "addr": "EXTERNAL:0000007d",
+      "name": "GetScrollPos"
+    },
+    {
+      "addr": "EXTERNAL:00000096",
+      "name": "SetScrollRange"
+    },
+    {
+      "addr": "EXTERNAL:00000099",
+      "name": "SetScrollPos"
+    },
+    {
+      "addr": "EXTERNAL:00000097",
+      "name": "ShowScrollBar"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

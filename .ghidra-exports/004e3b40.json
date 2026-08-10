@@ -1,0 +1,59 @@
+{
+  "address": "004e3b40",
+  "name": "___shl_12",
+  "signature": "undefined ___shl_12(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___shl_12\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___shl_12(uint *param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  \r\n  uVar1 = *param_1;\r\n  uVar2 = param_1[1];\r\n  *param_1 = uVar1 * 2;\r\n  param_1[1] = uVar2 * 2 | uVar1 >> 0x1f;\r\n  param_1[2] = param_1[2] * 2 | uVar2 >> 0x1f;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e3bc0",
+      "name": "___mtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3bc0",
+      "name": "___mtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3bc0",
+      "name": "___mtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3bc0",
+      "name": "___mtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e42c0",
+      "name": "FUN_004e42c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

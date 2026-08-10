@@ -1,0 +1,59 @@
+{
+  "address": "00439dd0",
+  "name": "FUN_00439dd0",
+  "signature": "undefined FUN_00439dd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00439dd0(int param_1,undefined4 param_2,int *param_3,byte *param_4,int param_5)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  int *piVar8;\r\n  byte *pbVar9;\r\n  int *piVar10;\r\n  byte *pbVar11;\r\n  int local_2c;\r\n  int local_18;\r\n  \r\n  iVar2 = *param_3;\r\n  iVar3 = *(int *)(param_1 + 0x24);\r\n  local_2c = param_3[1];\r\n  iVar4 = param_3[2];\r\n  pbVar9 = param_4 + param_5;\r\n  if ((param_5 != 0) && (local_2c < param_3[3])) {\r\n    do {\r\n      if (pbVar9 <= param_4) {\r\n        return;\r\n      }\r\n      iVar6 = FUN_00439b40(param_4,(int)pbVar9 - (int)param_4,iVar4 - iVar2);\r\n      local_18 = iVar2;\r\n      for (pbVar11 = param_4; pbVar11 < param_4 + iVar6; pbVar11 = pbVar11 + 1) {\r\n        bVar1 = *pbVar11;\r\n        iVar7 = *(int *)(param_1 + 0x28);\r\n        if (((byte)iVar7 <= bVar1) && ((uint)bVar1 < (uint)(*(int *)(param_1 + 0x2c) + iVar7))) {\r\n          iVar7 = ((uint)bVar1 - iVar7) * 0x10;\r\n          piVar10 = (int *)(*(int *)(param_1 + 0x30) + iVar7);\r\n          piVar8 = (int *)(iVar7 + *(int *)(param_1 + 0x3c));\r\n          iVar7 = *piVar10;\r\n          iVar5 = piVar10[1];\r\n          (**(code **)(**(int **)(param_1 + 0x14) + 0x3c))\r\n                    (param_2,local_18 + *piVar8,local_2c + piVar8[1],iVar7 + *piVar8,\r\n                     iVar5 + piVar8[1],piVar8[2] + iVar7,piVar8[3] + iVar5);\r\n        }\r\n        iVar7 = *(int *)(param_1 + 0x28);\r\n        bVar1 = *pbVar11;\r\n        if (((byte)iVar7 <= bVar1) && ((uint)bVar1 < (uint)(*(int *)(param_1 + 0x2c) + iVar7))) {\r\n          local_18 = local_18 + (uint)*(byte *)((*(int *)(param_1 + 0x48) - iVar7) + (uint)bVar1);\r\n        }\r\n      }\r\n      local_2c = local_2c + iVar3;\r\n      param_4 = param_4 + iVar6;\r\n    } while (local_2c < param_3[3]);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00407680",
+      "name": "FUN_00407680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00407680",
+      "name": "FUN_00407680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00439b40",
+      "name": "FUN_00439b40"
+    }
+  ],
+  "data_refs": []
+}

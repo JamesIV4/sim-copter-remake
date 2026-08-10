@@ -1,0 +1,36 @@
+{
+  "address": "004d5f80",
+  "name": "FUN_004d5f80",
+  "signature": "undefined FUN_004d5f80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004d5f80(void)\r\n\r\n{\r\n  BOOL BVar1;\r\n  DWORD DVar2;\r\n  undefined4 *puVar3;\r\n  \r\n  BVar1 = HeapValidate(DAT_0061bb74,0,(LPCVOID)0x0);\r\n  if (BVar1 == 0) {\r\n    DVar2 = GetLastError();\r\n    if (DVar2 != 0x78) {\r\n      return 0xfffffffc;\r\n    }\r\n    puVar3 = (undefined4 *)FUN_004da740();\r\n    *puVar3 = 0x78;\r\n    puVar3 = (undefined4 *)FUN_004da730();\r\n    *puVar3 = 0x28;\r\n  }\r\n  return 0xfffffffe;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00468570",
+      "name": "FUN_00468570",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000005a",
+      "name": "HeapValidate"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

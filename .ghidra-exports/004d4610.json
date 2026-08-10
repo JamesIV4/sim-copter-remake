@@ -1,0 +1,53 @@
+{
+  "address": "004d4610",
+  "name": "__beginthread",
+  "signature": "uintptr_t __cdecl __beginthread(_StartAddress * _StartAddress, uint _StackSize, void * _ArgList)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef uintptr_t uint",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __beginthread\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuintptr_t __cdecl __beginthread(_StartAddress *_StartAddress,uint _StackSize,void *_ArgList)\r\n\r\n{\r\n  _ptiddata _Ptd;\r\n  HANDLE hThread;\r\n  pthreadlocinfo unaff_EDI;\r\n  DWORD DVar1;\r\n  \r\n  DVar1 = 0;\r\n  _Ptd = (_ptiddata)FUN_004da750(1,0x74);\r\n  if (_Ptd != (_ptiddata)0x0) {\r\n    __initptd(_Ptd,unaff_EDI);\r\n    _Ptd->_cvtbuf = (char *)_StartAddress;\r\n    *(void **)_Ptd->_con_ch_buf = _ArgList;\r\n    hThread = CreateThread((LPSECURITY_ATTRIBUTES)0x0,_StackSize,FUN_004d46a0,_Ptd,4,(LPDWORD)_Ptd);\r\n    _Ptd->_thandle = (uintptr_t)hThread;\r\n    if (hThread != (HANDLE)0x0) {\r\n      DVar1 = ResumeThread(hThread);\r\n      if (DVar1 != 0xffffffff) {\r\n        return (uintptr_t)hThread;\r\n      }\r\n    }\r\n    DVar1 = GetLastError();\r\n  }\r\n  FUN_004d6010(_Ptd);\r\n  if (DVar1 != 0) {\r\n    __dosmaperr(DVar1);\r\n  }\r\n  return 0xffffffff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00410e90",
+      "name": "FUN_00410e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411300",
+      "name": "FUN_00411300",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da750",
+      "name": "FUN_004da750"
+    },
+    {
+      "addr": "004da570",
+      "name": "__initptd"
+    },
+    {
+      "addr": "EXTERNAL:00000062",
+      "name": "CreateThread"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr"
+    },
+    {
+      "addr": "EXTERNAL:00000063",
+      "name": "ResumeThread"
+    }
+  ],
+  "data_refs": []
+}

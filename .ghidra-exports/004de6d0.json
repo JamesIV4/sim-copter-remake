@@ -1,0 +1,32 @@
+{
+  "address": "004de6d0",
+  "name": "__raise_exc",
+  "signature": "undefined __raise_exc(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __raise_exc\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __raise_exc(uint *param_1,uint *param_2,uint param_3,int param_4,uint *param_5,uint *param_6)\r\n\r\n{\r\n  uint *puVar1;\r\n  uint *puVar2;\r\n  uint uVar3;\r\n  uint *puVar4;\r\n  DWORD local_4;\r\n  \r\n  puVar1 = param_2;\r\n  param_1[1] = 0;\r\n  param_1[2] = 0;\r\n  param_1[3] = 0;\r\n  if ((param_3 & 0x10) != 0) {\r\n    local_4 = 0xc000008f;\r\n    param_1[1] = param_1[1] | 1;\r\n  }\r\n  if ((param_3 & 2) != 0) {\r\n    local_4 = 0xc0000093;\r\n    param_1[1] = param_1[1] | 2;\r\n  }\r\n  if ((param_3 & 1) != 0) {\r\n    local_4 = 0xc0000091;\r\n    param_1[1] = param_1[1] | 4;\r\n  }\r\n  if ((param_3 & 4) != 0) {\r\n    local_4 = 0xc000008e;\r\n    param_1[1] = param_1[1] | 8;\r\n  }\r\n  if ((param_3 & 8) != 0) {\r\n    local_4 = 0xc0000090;\r\n    param_1[1] = param_1[1] | 0x10;\r\n  }\r\n  uVar3 = param_1[2];\r\n  param_1[2] = ((~*param_2 & 1) << 4 ^ uVar3) & 0x10 ^ uVar3;\r\n  uVar3 = param_1[2];\r\n  param_1[2] = ((uint)((*param_2 & 4) == 0) << 3 ^ uVar3) & 8 ^ uVar3;\r\n  uVar3 = param_1[2];\r\n  param_1[2] = ((uint)((*param_2 & 8) == 0) << 2 ^ uVar3) & 4 ^ uVar3;\r\n  uVar3 = param_1[2];\r\n  param_1[2] = ((uint)((*param_2 & 0x10) == 0) * 2 ^ uVar3) & 2 ^ uVar3;\r\n  uVar3 = param_1[2];\r\n  param_1[2] = ((*param_2 & 0x20) == 0 ^ uVar3) & 1 ^ uVar3;\r\n  uVar3 = __statfp();\r\n  puVar2 = param_6;\r\n  if ((uVar3 & 1) != 0) {\r\n    param_1[3] = param_1[3] | 0x10;\r\n  }\r\n  if ((uVar3 & 4) != 0) {\r\n    param_1[3] = param_1[3] | 8;\r\n  }\r\n  if ((uVar3 & 8) != 0) {\r\n    param_1[3] = param_1[3] | 4;\r\n  }\r\n  if ((uVar3 & 0x10) != 0) {\r\n    param_1[3] = param_1[3] | 2;\r\n  }\r\n  if ((uVar3 & 0x20) != 0) {\r\n    param_1[3] = param_1[3] | 1;\r\n  }\r\n  uVar3 = *puVar1 & 0xc00;\r\n  if (uVar3 < 0x401) {\r\n    if (uVar3 == 0x400) {\r\n      *param_1 = *param_1 & 0xfffffffd | 1;\r\n    }\r\n    else if (uVar3 == 0) {\r\n      *param_1 = *param_1 & 0xfffffffc;\r\n    }\r\n  }\r\n  else if (uVar3 == 0x800) {\r\n    *param_1 = *param_1 & 0xfffffffe | 2;\r\n  }\r\n  else if (uVar3 == 0xc00) {\r\n    *param_1 = *param_1 | 3;\r\n  }\r\n  uVar3 = *puVar1 & 0x300;\r\n  if (uVar3 == 0) {\r\n    *param_1 = *param_1 & 0xffffffeb | 8;\r\n  }\r\n  else if (uVar3 == 0x200) {\r\n    *param_1 = *param_1 & 0xffffffe7 | 4;\r\n  }\r\n  else if (uVar3 == 0x300) {\r\n    *param_1 = *param_1 & 0xffffffe3;\r\n  }\r\n  *param_1 = (param_4 << 5 ^ *param_1) & 0x1ffe0 ^ *param_1;\r\n  param_1[8] = param_1[8] | 1;\r\n  param_1[8] = param_1[8] & 0xffffffe3 | 2;\r\n  param_1[5] = param_5[1];\r\n  param_1[4] = *param_5;\r\n  param_1[0x14] = param_1[0x14] | 1;\r\n  param_1[0x14] = param_1[0x14] & 0xffffffe3 | 2;\r\n  param_1[0x11] = param_6[1];\r\n  param_1[0x10] = *param_6;\r\n  __clrfp();\r\n  RaiseException(local_4,0,1,(ULONG_PTR *)&param_1);\r\n  puVar4 = param_1 + 2;\r\n  if ((*puVar4 & 0x10) != 0) {\r\n    *puVar1 = *puVar1 & 0xfffffffe;\r\n  }\r\n  if ((*puVar4 & 8) != 0) {\r\n    *puVar1 = *puVar1 & 0xfffffffb;\r\n  }\r\n  if ((*puVar4 & 4) != 0) {\r\n    *puVar1 = *puVar1 & 0xfffffff7;\r\n  }\r\n  if ((*puVar4 & 2) != 0) {\r\n    *puVar1 = *puVar1 & 0xffffffef;\r\n  }\r\n  if ((*puVar4 & 1) != 0) {\r\n    *puVar1 = *puVar1 & 0xffffffdf;\r\n  }\r\n  switch(*param_1 & 3) {\r\n  case 0:\r\n    *puVar1 = *puVar1 & 0xfffff3ff;\r\n    break;\r\n  case 1:\r\n    *puVar1 = *puVar1 & 0xfffff7ff | 0x400;\r\n    break;\r\n  case 2:\r\n    *puVar1 = *puVar1 & 0xfffffbff | 0x800;\r\n    break;\r\n  case 3:\r\n    *puVar1 = *puVar1 | 0xc00;\r\n  }\r\n  uVar3 = (*param_1 & 0x1c) >> 2;\r\n  if (uVar3 == 0) {\r\n    *puVar1 = *puVar1 & 0xfffff3ff | 0x300;\r\n  }\r\n  else if (uVar3 == 1) {\r\n    *puVar1 = *puVar1 & 0xfffff3ff | 0x200;\r\n  }\r\n  else if (uVar3 == 2) {\r\n    *puVar1 = *puVar1 & 0xfffff3ff;\r\n  }\r\n  puVar2[1] = param_1[0x11];\r\n  *puVar2 = param_1[0x10];\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e2ba0",
+      "name": "__87except",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004de5d0",
+      "name": "__statfp"
+    },
+    {
+      "addr": "004de5f0",
+      "name": "__clrfp"
+    },
+    {
+      "addr": "EXTERNAL:0000003b",
+      "name": "RaiseException"
+    }
+  ],
+  "data_refs": []
+}

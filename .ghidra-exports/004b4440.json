@@ -1,0 +1,28 @@
+{
+  "address": "004b4440",
+  "name": "FUN_004b4440",
+  "signature": "undefined FUN_004b4440(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b4440(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 uStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 uStack_50;\r\n  undefined4 auStack_40 [16];\r\n  \r\n  if ((char)param_1[1] == '\\0') {\r\n    return;\r\n  }\r\n  if (*(char *)((int)param_1 + 5) == '\\0') {\r\n    if ((*(char *)((int)param_1 + 0xb) == '\\0') &&\r\n       (*(int *)((int)param_1 + 0x5d) < *(int *)((int)param_1 + 0x61))) {\r\n      (**(code **)(*param_1 + 0x14))();\r\n    }\r\n    if (*(char *)((int)param_1 + 5) == '\\0') {\r\n      *(int *)((int)param_1 + 0x61) = *(int *)((int)param_1 + 0x61) + DAT_005039a0;\r\n      goto LAB_004b4553;\r\n    }\r\n  }\r\n  (**(code **)(*param_1 + 4))();\r\n  if (*(char *)((int)param_1 + 5) != '\\0') {\r\n    uStack_58 = *(undefined4 *)((int)param_1 + 0xb9);\r\n    uStack_54 = *(undefined4 *)((int)param_1 + 0xbd);\r\n    uStack_50 = *(undefined4 *)((int)param_1 + 0xc1);\r\n    puVar2 = (undefined4 *)((int)param_1 + 0xc5);\r\n    puVar3 = auStack_40;\r\n    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar3 = *puVar2;\r\n      puVar2 = puVar2 + 1;\r\n      puVar3 = puVar3 + 1;\r\n    }\r\n    FUN_004704d1(*(undefined4 *)((int)param_1 + 0xa9),&uStack_58,3);\r\n    uStack_58 = *(undefined4 *)((int)param_1 + 0x11d);\r\n    uStack_54 = *(undefined4 *)((int)param_1 + 0x121);\r\n    uStack_50 = *(undefined4 *)((int)param_1 + 0x125);\r\n    puVar2 = (undefined4 *)((int)param_1 + 0x129);\r\n    puVar3 = auStack_40;\r\n    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar3 = *puVar2;\r\n      puVar2 = puVar2 + 1;\r\n      puVar3 = puVar3 + 1;\r\n    }\r\n    FUN_004704d1(*(undefined4 *)((int)param_1 + 0x10d),&uStack_58,3);\r\n    uStack_58 = *(undefined4 *)((int)param_1 + 0x181);\r\n    uStack_54 = *(undefined4 *)((int)param_1 + 0x185);\r\n    uStack_50 = *(undefined4 *)((int)param_1 + 0x189);\r\n    puVar2 = (undefined4 *)((int)param_1 + 0x18d);\r\n    puVar3 = auStack_40;\r\n    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar3 = *puVar2;\r\n      puVar2 = puVar2 + 1;\r\n      puVar3 = puVar3 + 1;\r\n    }\r\n    FUN_004704d1(*(undefined4 *)((int)param_1 + 0x171),&uStack_58,3);\r\n  }\r\nLAB_004b4553:\r\n  FUN_004b4570();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b7f40",
+      "name": "FUN_004b7f40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004704d1",
+      "name": "FUN_004704d1"
+    },
+    {
+      "addr": "004b4570",
+      "name": "FUN_004b4570"
+    }
+  ],
+  "data_refs": []
+}

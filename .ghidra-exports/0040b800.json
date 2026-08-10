@@ -1,0 +1,18 @@
+{
+  "address": "0040b800",
+  "name": "FUN_0040b800",
+  "signature": "undefined FUN_0040b800(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0040b800(int *param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  int iVar1;\r\n  undefined1 local_4 [4];\r\n  \r\n  if (DAT_004f81e0 == param_1) {\r\n    iVar1 = (**(code **)(*param_1 + 0xd8))(local_4,param_2,param_3);\r\n    if (iVar1 != 0) {\r\n      FUN_0040ba90(param_2);\r\n    }\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0040ba90",
+      "name": "FUN_0040ba90"
+    }
+  ],
+  "data_refs": []
+}

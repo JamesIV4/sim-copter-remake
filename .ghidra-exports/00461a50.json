@@ -1,0 +1,28 @@
+{
+  "address": "00461a50",
+  "name": "FUN_00461a50",
+  "signature": "undefined FUN_00461a50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00461a50(undefined4 param_1)\r\n\r\n{\r\n  char cVar1;\r\n  BOOL BVar2;\r\n  uint uVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  char local_318 [8];\r\n  DWORD local_310;\r\n  DWORD local_30c;\r\n  DWORD local_308;\r\n  DWORD local_304;\r\n  undefined1 local_300 [256];\r\n  undefined1 local_200 [256];\r\n  undefined1 local_100 [256];\r\n  \r\n  FUN_004d4810(param_1,local_318,local_300,local_200,local_100);\r\n  uVar3 = 0xffffffff;\r\n  pcVar6 = &DAT_004f81b4;\r\n  do {\r\n    pcVar8 = pcVar6;\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    pcVar8 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar8;\r\n  } while (cVar1 != '\\0');\r\n  uVar3 = ~uVar3;\r\n  iVar4 = -1;\r\n  pcVar6 = local_318;\r\n  do {\r\n    pcVar7 = pcVar6;\r\n    if (iVar4 == 0) break;\r\n    iVar4 = iVar4 + -1;\r\n    pcVar7 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar7;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar8 + -uVar3;\r\n  pcVar8 = pcVar7 + -1;\r\n  for (uVar5 = uVar3 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar8 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar8 = pcVar8 + 4;\r\n  }\r\n  for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n    *pcVar8 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar8 = pcVar8 + 1;\r\n  }\r\n  BVar2 = GetDiskFreeSpaceA(local_318,&local_308,&local_30c,&local_310,&local_304);\r\n  if (BVar2 == 0) {\r\n    return 0;\r\n  }\r\n  return local_310 * local_30c * local_308;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00433580",
+      "name": "FUN_00433580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810"
+    },
+    {
+      "addr": "EXTERNAL:00000028",
+      "name": "GetDiskFreeSpaceA"
+    }
+  ],
+  "data_refs": []
+}

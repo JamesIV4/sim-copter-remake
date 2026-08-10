@@ -1,0 +1,36 @@
+{
+  "address": "004d2b40",
+  "name": "__onexit",
+  "signature": "_onexit_t __cdecl __onexit(_onexit_t _Func)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef _onexit_t _onexit_t *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __onexit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\n_onexit_t __cdecl __onexit(_onexit_t _Func)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  \r\n  FID_conflict___lockexit();\r\n  uVar1 = FUN_004d6c20(DAT_0061cca4);\r\n  if (uVar1 < (uint)((int)DAT_0061cca0 + (4 - DAT_0061cca4))) {\r\n    iVar2 = FUN_004d6c20(DAT_0061cca4);\r\n    iVar2 = FUN_004d6bb0(DAT_0061cca4,iVar2 + 0x10);\r\n    if (iVar2 == 0) {\r\n      FID_conflict___lockexit();\r\n      return (_onexit_t)0x0;\r\n    }\r\n    DAT_0061cca0 = (undefined4 *)(((int)DAT_0061cca0 - DAT_0061cca4 & 0xfffffffcU) + iVar2);\r\n    DAT_0061cca4 = iVar2;\r\n  }\r\n  *DAT_0061cca0 = _Func;\r\n  DAT_0061cca0 = DAT_0061cca0 + 1;\r\n  FID_conflict___lockexit();\r\n  return _Func;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2bd0",
+      "name": "_atexit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2160",
+      "name": "FID_conflict:__lockexit"
+    },
+    {
+      "addr": "004d6c20",
+      "name": "FUN_004d6c20"
+    },
+    {
+      "addr": "004d6bb0",
+      "name": "FUN_004d6bb0"
+    },
+    {
+      "addr": "004d2170",
+      "name": "FID_conflict:__lockexit"
+    }
+  ],
+  "data_refs": []
+}

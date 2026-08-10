@@ -1,0 +1,13 @@
+{
+  "address": "004ca350",
+  "name": "FUN_004ca350",
+  "signature": "undefined FUN_004ca350(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __thiscall FUN_004ca350(int param_1,int param_2,int param_3,short param_4,ushort *param_5)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  ushort uVar4;\r\n  ushort uVar5;\r\n  ushort uVar6;\r\n  short sVar7;\r\n  int iVar8;\r\n  ushort local_6;\r\n  int local_4;\r\n  \r\n  local_6 = 0xffff;\r\n  local_4 = 0;\r\n  sVar7 = 0;\r\n  if (-1 < DAT_0058dc3e) {\r\n    do {\r\n      iVar8 = DAT_00506444;\r\n      if (sVar7 != 32000) {\r\n        iVar8 = (&DAT_0058e030)[sVar7];\r\n      }\r\n      if (((((*(short *)(iVar8 + 0x142) != 0) && (param_1 != iVar8)) &&\r\n           ((param_2 == -2 || (*(short *)(iVar8 + 0x14a) == param_2)))) &&\r\n          (((param_3 == -2 || (*(short *)(iVar8 + 0x148) == param_3)) &&\r\n           ((param_2 != 0 || (*(short *)(iVar8 + 0x16e) == 0)))))) &&\r\n         (((((param_3 != 6 || (*(int *)(iVar8 + 0x1a0) == 0)) ||\r\n            ((*(byte *)(*(int *)(iVar8 + 0x1a0) + 0xc) & 8) == 0)) &&\r\n           ((param_4 == 0 || (*(short *)(iVar8 + 0x152) != 0)))) &&\r\n          (uVar3 = (ushort)((uint)(*(int *)(param_1 + 0x1d4) - *(int *)(iVar8 + 0x1d4)) >> 0x10),\r\n          uVar2 = (short)uVar3 >> 0xf,\r\n          uVar4 = (ushort)((uint)(*(int *)(param_1 + 0x1d0) - *(int *)(iVar8 + 0x1d0)) >> 0x10),\r\n          uVar6 = (short)uVar4 >> 0xf,\r\n          uVar5 = (ushort)((uint)(*(int *)(param_1 + 0x1cc) - *(int *)(iVar8 + 0x1cc)) >> 0x10),\r\n          uVar1 = (short)uVar5 >> 0xf,\r\n          uVar6 = ((uVar3 ^ uVar2) - uVar2) + ((uVar4 ^ uVar6) - uVar6) + ((uVar5 ^ uVar1) - uVar1),\r\n          uVar6 < local_6)))) {\r\n        local_6 = uVar6;\r\n        local_4 = iVar8;\r\n      }\r\n      sVar7 = sVar7 + 1;\r\n    } while (sVar7 <= DAT_0058dc3e);\r\n  }\r\n  if ((param_5 != (ushort *)0x0) && (local_4 != 0)) {\r\n    *param_5 = local_6;\r\n  }\r\n  return local_4;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

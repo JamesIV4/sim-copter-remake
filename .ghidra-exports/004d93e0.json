@@ -1,0 +1,42 @@
+{
+  "address": "004d93e0",
+  "name": "__isindst",
+  "signature": "int __cdecl __isindst(tm * _Time)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __isindst\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __isindst(tm *_Time)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  __lock(0xb);\r\n  iVar1 = __isindst_lk(_Time);\r\n  FUN_004d64a0(0xb);\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9960",
+      "name": "FUN_004d9960",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d9410",
+      "name": "__isindst_lk"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

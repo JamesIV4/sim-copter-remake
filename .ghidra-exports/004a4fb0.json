@@ -1,0 +1,28 @@
+{
+  "address": "004a4fb0",
+  "name": "FUN_004a4fb0",
+  "signature": "undefined FUN_004a4fb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a4fb0(int param_1)\r\n\r\n{\r\n  byte *pbVar1;\r\n  ushort uVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  byte *pbVar5;\r\n  int *piVar6;\r\n  undefined4 *puVar7;\r\n  uint uVar8;\r\n  \r\n  iVar3 = _rand();\r\n  uVar2 = (short)(ushort)iVar3 >> 0xf;\r\n  iVar3 = (short)((((ushort)iVar3 ^ uVar2) - uVar2 & 3 ^ uVar2) - uVar2) * 8;\r\n  uVar4 = *(int *)(&DAT_00505f60 + iVar3) + *(int *)(param_1 + 0x8c);\r\n  uVar8 = *(int *)(&DAT_00505f64 + iVar3) + *(int *)(param_1 + 0x90);\r\n  pbVar1 = (byte *)(&DAT_005d9200)[(uVar4 & 0xff) * 0x100 + (uVar8 & 0xff)];\r\n  if (((*pbVar1 & 0x20) == 0) && (*(int *)(pbVar1 + 0xc) != 0)) {\r\n    iVar3 = 0;\r\n    pbVar5 = (byte *)&DAT_005ce0a0;\r\n    do {\r\n      if (((*pbVar5 & 1) != 0) && ((byte *)**(undefined4 **)(pbVar5 + 0x98) == pbVar1)) {\r\n        return;\r\n      }\r\n      iVar3 = iVar3 + 1;\r\n      pbVar5 = pbVar5 + 0xa0;\r\n    } while (iVar3 < 0x8c);\r\n    iVar3 = 0;\r\n    piVar6 = &DAT_005d3824;\r\n    do {\r\n      if (*piVar6 == 0) {\r\n        (&DAT_005d3828)[iVar3 * 3] = 0;\r\n        puVar7 = &DAT_005d3820 + iVar3 * 3;\r\n        goto LAB_004a504d;\r\n      }\r\n      piVar6 = piVar6 + 3;\r\n      iVar3 = iVar3 + 1;\r\n    } while (piVar6 < &DAT_005d3eb4);\r\n    puVar7 = (undefined4 *)0x0;\r\nLAB_004a504d:\r\n    *puVar7 = pbVar1;\r\n    FUN_004a5340(puVar7,uVar4,uVar8,*(undefined4 *)(param_1 + 0x9c),0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a4ac0",
+      "name": "FUN_004a4ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004a5340",
+      "name": "FUN_004a5340"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "0046f2b0",
+  "name": "FUN_0046f2b0",
+  "signature": "undefined FUN_0046f2b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined8 __fastcall FUN_0046f2b0(undefined4 param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  DAT_004fb014 = param_3;\r\n  FUN_0046f2ca();\r\n  return CONCAT44(param_2,param_3);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e5730",
+      "name": "FUN_004e5730",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046f2ca",
+      "name": "FUN_0046f2ca"
+    }
+  ],
+  "data_refs": []
+}

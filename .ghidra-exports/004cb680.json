@@ -1,0 +1,22 @@
+{
+  "address": "004cb680",
+  "name": "FUN_004cb680",
+  "signature": "undefined FUN_004cb680(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004cb680(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 local_14 [2];\r\n  undefined4 local_c;\r\n  char *local_8;\r\n  \r\n  local_c = *(undefined4 *)(param_1 + 0x10a);\r\n  local_14[0] = 1;\r\n  iVar1 = FUN_004c4e60();\r\n  if (iVar1 != -1) {\r\n    local_8 = s_New_rioter__00506af0;\r\n    FUN_0048c4a0(local_14,1);\r\n    return 3;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c4e60",
+      "name": "FUN_004c4e60"
+    },
+    {
+      "addr": "0048c4a0",
+      "name": "FUN_0048c4a0"
+    }
+  ],
+  "data_refs": []
+}

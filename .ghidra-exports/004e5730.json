@@ -1,0 +1,48 @@
+{
+  "address": "004e5730",
+  "name": "FUN_004e5730",
+  "signature": "undefined FUN_004e5730(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004e5730(void)\r\n\r\n{\r\n  FUN_0046f709(&DAT_00514cc8);\r\n  FUN_0046f2b0(0xd555);\r\n  FUN_0046a4e0();\r\n  FUN_0046f4be(1);\r\n  FUN_0046f4cb(0);\r\n  FUN_0046f8e0(0);\r\n  FUN_0046f669();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046f709",
+      "name": "FUN_0046f709"
+    },
+    {
+      "addr": "0046f2b0",
+      "name": "FUN_0046f2b0"
+    },
+    {
+      "addr": "0046a4e0",
+      "name": "FUN_0046a4e0"
+    },
+    {
+      "addr": "0046f4be",
+      "name": "FUN_0046f4be"
+    },
+    {
+      "addr": "0046f4cb",
+      "name": "FUN_0046f4cb"
+    },
+    {
+      "addr": "0046f8e0",
+      "name": "FUN_0046f8e0"
+    },
+    {
+      "addr": "0046f669",
+      "name": "FUN_0046f669"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,18 @@
+{
+  "address": "00447210",
+  "name": "FUN_00447210",
+  "signature": "undefined FUN_00447210(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __thiscall FUN_00447210(int *param_1,char *param_2,undefined4 param_3,undefined4 param_4)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  int *piVar5;\r\n  char *pcVar6;\r\n  int *piVar7;\r\n  \r\n  if (param_2 != (char *)0x0) {\r\n    uVar3 = 0xffffffff;\r\n    do {\r\n      pcVar6 = param_2;\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      pcVar6 = param_2 + 1;\r\n      cVar1 = *param_2;\r\n      param_2 = pcVar6;\r\n    } while (cVar1 != '\\0');\r\n    uVar3 = ~uVar3;\r\n    piVar5 = (int *)(pcVar6 + -uVar3);\r\n    piVar7 = param_1 + 0xf;\r\n    for (uVar4 = uVar3 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n      *piVar7 = *piVar5;\r\n      piVar5 = piVar5 + 1;\r\n      piVar7 = piVar7 + 1;\r\n    }\r\n    for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n      *(char *)piVar7 = (char)*piVar5;\r\n      piVar5 = (int *)((int)piVar5 + 1);\r\n      piVar7 = (int *)((int)piVar7 + 1);\r\n    }\r\n  }\r\n  iVar2 = _SmackOpen_12(param_1 + 0xf,param_3,param_4);\r\n  param_1[0xe] = iVar2;\r\n  (**(code **)(*param_1 + 8))();\r\n  return param_1[0xe];\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000d9",
+      "name": "_SmackOpen@12"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,57 @@
+{
+  "address": "004e1630",
+  "name": "__strcmpi",
+  "signature": "int __cdecl __strcmpi(char * _Str1, char * _Str2)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __strcmpi\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __strcmpi(char *_Str1,char *_Str2)\r\n\r\n{\r\n  char cVar1;\r\n  bool bVar2;\r\n  uint uVar3;\r\n  byte bVar4;\r\n  byte bVar5;\r\n  byte bVar6;\r\n  char cVar7;\r\n  uint uVar9;\r\n  int iVar8;\r\n  \r\n  if (DAT_00507ab8 == 0) {\r\n    bVar6 = 0xff;\r\n    do {\r\n      do {\r\n        cVar7 = '\\0';\r\n        if (bVar6 == 0) goto LAB_004e167e;\r\n        bVar6 = *_Str2;\r\n        _Str2 = _Str2 + 1;\r\n        bVar5 = *_Str1;\r\n        _Str1 = _Str1 + 1;\r\n      } while (bVar5 == bVar6);\r\n      bVar4 = bVar6 + 0xbf + (-((byte)(bVar6 + 0xbf) < 0x1a) & 0x20U) + 0x41;\r\n      bVar5 = bVar5 + 0xbf;\r\n      bVar6 = bVar5 + (-(bVar5 < 0x1a) & 0x20U) + 0x41;\r\n    } while (bVar6 == bVar4);\r\n    cVar7 = (bVar6 < bVar4) * -2 + '\\x01';\r\nLAB_004e167e:\r\n    iVar8 = (int)cVar7;\r\n  }\r\n  else {\r\n    bVar2 = 0 < DAT_0061cc98;\r\n    if (bVar2) {\r\n      __lock(0x13);\r\n    }\r\n    else {\r\n      DAT_0061cc9c = DAT_0061cc9c + 1;\r\n    }\r\n    uVar9 = (uint)bVar2;\r\n    iVar8 = 0xff;\r\n    do {\r\n      do {\r\n        if ((char)iVar8 == '\\0') goto LAB_004e16d7;\r\n        cVar7 = *_Str2;\r\n        iVar8 = CONCAT31((int3)((uint)iVar8 >> 8),cVar7);\r\n        _Str2 = _Str2 + 1;\r\n        cVar1 = *_Str1;\r\n        _Str1 = _Str1 + 1;\r\n      } while (cVar7 == cVar1);\r\n      bVar6 = __tolower_lk(cVar1,iVar8);\r\n      iVar8 = __tolower_lk();\r\n    } while (bVar6 == (byte)iVar8);\r\n    uVar3 = (uint)(bVar6 < (byte)iVar8);\r\n    iVar8 = (1 - uVar3) - (uint)(uVar3 != 0);\r\nLAB_004e16d7:\r\n    if (uVar9 == 0) {\r\n      DAT_0061cc9c = DAT_0061cc9c + -1;\r\n    }\r\n    else {\r\n      FUN_004d64a0(0x13);\r\n    }\r\n  }\r\n  return iVar8;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046a530",
+      "name": "FUN_0046a530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046acc0",
+      "name": "FUN_0046acc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046a530",
+      "name": "FUN_0046a530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046b110",
+      "name": "FUN_0046b110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc1b0",
+      "name": "trans_lang_lang",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc210",
+      "name": "trans_ctry_ctry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004dffc0",
+      "name": "__tolower_lk"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

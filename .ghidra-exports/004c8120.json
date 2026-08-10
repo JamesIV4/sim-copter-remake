@@ -1,0 +1,24 @@
+{
+  "address": "004c8120",
+  "name": "FUN_004c8120",
+  "signature": "undefined FUN_004c8120(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c8120(void)\r\n\r\n{\r\n  undefined4 *local_2c;\r\n  undefined4 *local_28;\r\n  undefined4 *local_24;\r\n  undefined4 *local_20;\r\n  undefined4 *local_1c;\r\n  undefined4 *local_18;\r\n  undefined2 *local_14;\r\n  undefined *local_10;\r\n  undefined2 *local_c;\r\n  undefined4 *local_8;\r\n  undefined4 *local_4;\r\n  \r\n  local_2c = &DAT_0058dc22;\r\n  local_28 = &DAT_0058dc2a;\r\n  local_24 = &DAT_00506428;\r\n  local_20 = &DAT_0050642c;\r\n  local_1c = &DAT_00506430;\r\n  local_18 = &DAT_00506434;\r\n  local_14 = &DAT_0058dc2e;\r\n  local_10 = &DAT_0058dc32;\r\n  local_c = &DAT_0058dc26;\r\n  local_8 = &DAT_00506bf0;\r\n  local_4 = &DAT_0058dc3a;\r\n  FUN_00463520(&local_2c,0xb,s_Figure_Parms_00506adc);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00463520",
+      "name": "FUN_00463520"
+    }
+  ],
+  "data_refs": []
+}

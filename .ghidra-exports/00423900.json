@@ -1,0 +1,32 @@
+{
+  "address": "00423900",
+  "name": "FUN_00423900",
+  "signature": "undefined FUN_00423900(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00423900(undefined4 param_1)\r\n\r\n{\r\n  HDC hdc;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  hdc = GetDC((HWND)0x0);\r\n  if (hdc != (HDC)0x0) {\r\n    local_4 = 0;\r\n    local_8 = param_1;\r\n    EnumFontFamiliesA(hdc,(LPCSTR)0x0,FUN_00423b90,(LPARAM)&local_8);\r\n    ReleaseDC((HWND)0x0,hdc);\r\n    return local_4;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422c90",
+      "name": "FUN_00422c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000ac",
+      "name": "EnumFontFamiliesA"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    }
+  ],
+  "data_refs": []
+}

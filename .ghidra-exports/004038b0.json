@@ -1,0 +1,13 @@
+{
+  "address": "004038b0",
+  "name": "FUN_004038b0",
+  "signature": "undefined FUN_004038b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004038b0(int *param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int *piVar2;\r\n  code *pcVar3;\r\n  int *piVar4;\r\n  int *piVar5;\r\n  int iVar6;\r\n  undefined4 *local_10;\r\n  undefined4 local_4;\r\n  \r\n  puVar1 = (undefined4 *)*DAT_00518b80;\r\n  local_4 = 0;\r\n  param_1[1] = param_1[1] + 1;\r\n  do {\r\n    if (puVar1 == DAT_00518b80) {\r\nLAB_00403907:\r\n      iVar6 = param_1[1];\r\n      param_1[1] = iVar6 + -1;\r\n      if ((iVar6 + -1 < 1) && (param_1[1] = 0, DAT_004f81ec < 1)) {\r\n        DAT_004f81ec = DAT_004f81ec + 1;\r\n        local_10 = *(undefined4 **)param_1[3];\r\n        if (param_1[1] < 1) {\r\n          for (; (undefined4 *)param_1[3] != local_10; local_10 = (undefined4 *)*local_10) {\r\n            piVar2 = (int *)local_10[2];\r\n            pcVar3 = *(code **)(*param_1 + 0x28);\r\n            iVar6 = (*pcVar3)(piVar2);\r\n            if (iVar6 != 0) {\r\n              piVar4 = (int *)piVar2[0xf];\r\n              if (piVar4 == (int *)0x0) {\r\n                if (piVar2 != (int *)0x0) {\r\n                  (**(code **)(*piVar2 + 0xc0))(1);\r\n                }\r\n              }\r\n              else {\r\n                iVar6 = (*pcVar3)(piVar4);\r\n                if (iVar6 != 0) {\r\n                  (**(code **)(*piVar4 + 0x6c))(piVar2);\r\n                }\r\n              }\r\n            }\r\n          }\r\n          piVar2 = (int *)param_1[3];\r\n          piVar4 = (int *)*piVar2;\r\n          while (piVar4 != piVar2) {\r\n            piVar5 = (int *)*piVar4;\r\n            *(int *)piVar4[1] = *piVar4;\r\n            *(int *)(*piVar4 + 4) = piVar4[1];\r\n            *piVar4 = (int)DAT_004f81fc;\r\n            DAT_004f81fc = piVar4;\r\n            param_1[4] = param_1[4] + -1;\r\n            piVar4 = piVar5;\r\n          }\r\n        }\r\n        DAT_004f81ec = DAT_004f81ec + -1;\r\n      }\r\n      return local_4;\r\n    }\r\n    if (((int *)puVar1[2])[0x15] != 0) {\r\n      local_4 = (**(code **)(*(int *)puVar1[2] + 0x98))(param_2,param_3);\r\n      goto LAB_00403907;\r\n    }\r\n    puVar1 = (undefined4 *)*puVar1;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

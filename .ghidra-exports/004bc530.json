@@ -1,0 +1,19 @@
+{
+  "address": "004bc530",
+  "name": "FUN_004bc530",
+  "signature": "undefined FUN_004bc530(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004bc530(int param_1,undefined4 *param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  iVar5 = *(int *)(param_1 + 0x38);\r\n  iVar4 = *(int *)(param_1 + 0x34);\r\n  *(int *)(param_1 + 0x38) = iVar5 + -1;\r\n  *param_2 = *(undefined4 *)(iVar4 + 0xc);\r\n  param_2[1] = *(undefined4 *)(iVar4 + 0x10);\r\n  param_2[2] = *(undefined4 *)(iVar4 + 0x14);\r\n  iVar4 = *(int *)(param_1 + 0x34);\r\n  puVar1 = (undefined4 *)(iVar4 + iVar5 * 0xc);\r\n  *(undefined4 *)(iVar4 + 0xc) = *puVar1;\r\n  *(undefined4 *)(iVar4 + 0x10) = puVar1[1];\r\n  *(undefined4 *)(iVar4 + 0x14) = puVar1[2];\r\n  iVar5 = *(int *)(param_1 + 0x34);\r\n  local_c = *(int *)(iVar5 + 0xc);\r\n  local_8 = *(int *)(iVar5 + 0x10);\r\n  local_4 = *(int *)(iVar5 + 0x14);\r\n  iVar5 = 1;\r\n  if (0 < *(int *)(param_1 + 0x38) / 2) {\r\n    do {\r\n      iVar4 = iVar5 * 2;\r\n      if ((iVar4 < *(int *)(param_1 + 0x38)) &&\r\n         (piVar3 = (int *)(iVar5 * 0x18 + *(int *)(param_1 + 0x34)), piVar3[3] < *piVar3)) {\r\n        iVar4 = iVar4 + 1;\r\n      }\r\n      piVar3 = (int *)(*(int *)(param_1 + 0x34) + iVar4 * 0xc);\r\n      piVar2 = (int *)(*(int *)(param_1 + 0x34) + iVar5 * 0xc);\r\n      if (*piVar2 <= *piVar3) break;\r\n      local_c = *piVar2;\r\n      local_8 = piVar2[1];\r\n      local_4 = piVar2[2];\r\n      *piVar2 = *piVar3;\r\n      piVar2[1] = piVar3[1];\r\n      piVar2[2] = piVar3[2];\r\n      piVar3 = (int *)(*(int *)(param_1 + 0x34) + iVar4 * 0xc);\r\n      *piVar3 = local_c;\r\n      piVar3[1] = local_8;\r\n      piVar3[2] = local_4;\r\n      iVar5 = iVar4;\r\n    } while (iVar4 <= *(int *)(param_1 + 0x38) / 2);\r\n  }\r\n  piVar3 = (int *)(iVar5 * 0xc + *(int *)(param_1 + 0x34));\r\n  *piVar3 = local_c;\r\n  piVar3[1] = local_8;\r\n  piVar3[2] = local_4;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004bc680",
+      "name": "FUN_004bc680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

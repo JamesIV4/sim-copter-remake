@@ -1,0 +1,45 @@
+{
+  "address": "004e0340",
+  "name": "__ld12cvt",
+  "signature": "undefined __ld12cvt(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ld12cvt\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 __ld12cvt(ushort *param_1,uint *param_2,int *param_3)\r\n\r\n{\r\n  ushort uVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  uint local_18;\r\n  uint local_14;\r\n  int local_10;\r\n  undefined1 local_c [12];\r\n  \r\n  uVar1 = param_1[5];\r\n  uVar4 = uVar1 & 0x7fff;\r\n  iVar5 = uVar4 - 0x3fff;\r\n  local_14 = *(uint *)(param_1 + 1);\r\n  local_18 = *(uint *)(param_1 + 3);\r\n  local_10 = (uint)*param_1 << 0x10;\r\n  if (iVar5 == -0x3fff) {\r\n    iVar5 = 0;\r\n    iVar2 = __IsZeroMan(&local_18);\r\n    if (iVar2 == 0) {\r\n      __FillZeroMan(&local_18);\r\n      uVar3 = 2;\r\n    }\r\n    else {\r\n      uVar3 = 0;\r\n    }\r\n  }\r\n  else {\r\n    __CopyMan(local_c,&local_18);\r\n    iVar2 = __RoundMan(&local_18,param_3[2]);\r\n    if (iVar2 != 0) {\r\n      iVar5 = uVar4 - 0x3ffe;\r\n    }\r\n    iVar2 = param_3[1];\r\n    if (iVar5 < iVar2 - param_3[2]) {\r\n      iVar5 = 0;\r\n      __FillZeroMan(&local_18);\r\n      uVar3 = 2;\r\n    }\r\n    else if (iVar2 < iVar5) {\r\n      if (iVar5 < *param_3) {\r\n        iVar5 = iVar5 + param_3[5];\r\n        local_18 = local_18 & 0x7fffffff;\r\n        __ShrMan(&local_18,param_3[3]);\r\n        uVar3 = 0;\r\n      }\r\n      else {\r\n        __FillZeroMan(&local_18);\r\n        local_18 = local_18 | 0x80000000;\r\n        __ShrMan(&local_18,param_3[3]);\r\n        iVar5 = param_3[5] + *param_3;\r\n        uVar3 = 1;\r\n      }\r\n    }\r\n    else {\r\n      __CopyMan(&local_18,local_c);\r\n      __ShrMan(&local_18,iVar2 - iVar5);\r\n      __RoundMan(&local_18,param_3[2]);\r\n      iVar5 = 0;\r\n      __ShrMan(&local_18,param_3[3] + 1);\r\n      uVar3 = 2;\r\n    }\r\n  }\r\n  local_18 = iVar5 << (0x1fU - (char)param_3[3] & 0x1f) | ((uVar1 & 0x8000) == 0) - 1 & 0x80000000 |\r\n             local_18;\r\n  if (param_3[4] == 0x40) {\r\n    param_2[1] = local_18;\r\n    *param_2 = local_14;\r\n    return uVar3;\r\n  }\r\n  if (param_3[4] == 0x20) {\r\n    *param_2 = local_18;\r\n  }\r\n  return uVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0510",
+      "name": "__ld12tod",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0530",
+      "name": "__ld12tof",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0270",
+      "name": "__IsZeroMan"
+    },
+    {
+      "addr": "004e0260",
+      "name": "__FillZeroMan"
+    },
+    {
+      "addr": "004e0240",
+      "name": "__CopyMan"
+    },
+    {
+      "addr": "004e0190",
+      "name": "__RoundMan"
+    },
+    {
+      "addr": "004e0290",
+      "name": "__ShrMan"
+    }
+  ],
+  "data_refs": []
+}

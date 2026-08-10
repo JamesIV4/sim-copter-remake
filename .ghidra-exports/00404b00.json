@@ -1,0 +1,13 @@
+{
+  "address": "00404b00",
+  "name": "FUN_00404b00",
+  "signature": "undefined FUN_00404b00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00404b00(int *param_1,int param_2)\r\n\r\n{\r\n  (**(code **)(*param_1 + 0x4c))\r\n            ((*(int *)(param_2 + 0x18) - *(int *)(param_2 + 0x10)) / 2,\r\n             (*(int *)(param_2 + 0x1c) - *(int *)(param_2 + 0x14)) / 2);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

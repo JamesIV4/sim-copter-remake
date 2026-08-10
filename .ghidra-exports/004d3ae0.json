@@ -1,0 +1,51 @@
+{
+  "address": "004d3ae0",
+  "name": "_fflush",
+  "signature": "int __cdecl _fflush(FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _fflush\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _fflush(FILE *_File)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (_File == (FILE *)0x0) {\r\n    iVar1 = flsall(0);\r\n    return iVar1;\r\n  }\r\n  __lock_file(_File);\r\n  iVar1 = __fflush_lk(_File);\r\n  __unlock_file(_File);\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2220",
+      "name": "osfx",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2220",
+      "name": "osfx",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3be0",
+      "name": "flsall"
+    },
+    {
+      "addr": "004d64c0",
+      "name": "__lock_file"
+    },
+    {
+      "addr": "004d3b20",
+      "name": "__fflush_lk"
+    },
+    {
+      "addr": "004d6530",
+      "name": "__unlock_file"
+    }
+  ],
+  "data_refs": []
+}

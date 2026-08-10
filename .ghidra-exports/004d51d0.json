@@ -1,0 +1,29 @@
+{
+  "address": "004d51d0",
+  "name": "__strcats",
+  "signature": "undefined __strcats(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __strcats\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __strcats(char *param_1,int param_2)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  undefined4 *puVar6;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  char *pcVar9;\r\n  \r\n  iVar5 = 0;\r\n  puVar6 = (undefined4 *)&stack0x0000000c;\r\n  if (0 < param_2) {\r\n    do {\r\n      pcVar7 = (char *)*puVar6;\r\n      puVar6 = puVar6 + 1;\r\n      uVar2 = 0xffffffff;\r\n      do {\r\n        pcVar9 = pcVar7;\r\n        if (uVar2 == 0) break;\r\n        uVar2 = uVar2 - 1;\r\n        pcVar9 = pcVar7 + 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar9;\r\n      } while (cVar1 != '\\0');\r\n      uVar2 = ~uVar2;\r\n      iVar3 = -1;\r\n      pcVar7 = param_1;\r\n      do {\r\n        pcVar8 = pcVar7;\r\n        if (iVar3 == 0) break;\r\n        iVar3 = iVar3 + -1;\r\n        pcVar8 = pcVar7 + 1;\r\n        cVar1 = *pcVar7;\r\n        pcVar7 = pcVar8;\r\n      } while (cVar1 != '\\0');\r\n      iVar5 = iVar5 + 1;\r\n      pcVar7 = pcVar9 + -uVar2;\r\n      pcVar9 = pcVar8 + -1;\r\n      for (uVar4 = uVar2 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *(undefined4 *)pcVar9 = *(undefined4 *)pcVar7;\r\n        pcVar7 = pcVar7 + 4;\r\n        pcVar9 = pcVar9 + 4;\r\n      }\r\n      for (uVar2 = uVar2 & 3; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n        *pcVar9 = *pcVar7;\r\n        pcVar7 = pcVar7 + 1;\r\n        pcVar9 = pcVar9 + 1;\r\n      }\r\n    } while (iVar5 < param_2);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4f00",
+      "name": "__setlocale_get_all",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5320",
+      "name": "___lc_lctostr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5320",
+      "name": "___lc_lctostr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

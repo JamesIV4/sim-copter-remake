@@ -1,0 +1,100 @@
+{
+  "address": "00434720",
+  "name": "FUN_00434720",
+  "signature": "undefined FUN_00434720(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00434d00) */\r\n\r\nvoid FUN_00434720(void)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  UINT UVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  int extraout_ECX;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  int unaff_EBX;\r\n  char *pcVar9;\r\n  char *pcVar10;\r\n  DWORD in_stack_00000058;\r\n  SIZE_T in_stack_00000060;\r\n  \r\n  FUN_004d2c30();\r\n  FUN_004029d0();\r\n  puVar2 = (undefined4 *)FUN_004d28b0();\r\n  if (puVar2 != (undefined4 *)0x0) {\r\n    puVar2[1] = 0;\r\n    puVar2[2] = 0;\r\n    *puVar2 = 0;\r\n    puVar2[3] = 1;\r\n  }\r\n  iVar3 = (**(code **)(**(int **)(extraout_ECX + 0x40) + 0x84))();\r\n  if (iVar3 != 0) {\r\n    FUN_00401ed0();\r\n    if (unaff_EBX != 0) {\r\n      FUN_004d29a0();\r\n    }\r\n    FUN_00402aa0();\r\n    return;\r\n  }\r\n  UVar4 = FUN_00423270();\r\n  LoadStringA(DAT_0051a050,UVar4,&stack0x00000278,0xfff);\r\n  iVar3 = -1;\r\n  pcVar5 = &stack0x00000278;\r\n  do {\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    cVar1 = *pcVar5;\r\n    pcVar5 = pcVar5 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0();\r\n  if (unaff_EBX != 0) {\r\n    FUN_004d29a0();\r\n  }\r\n  pcVar5 = (char *)FUN_004d28b0();\r\n  uVar8 = uRam00000004;\r\n  if (uRam00000004 != 0) {\r\n    pcVar6 = pcRam00000000;\r\n    pcVar10 = pcVar5;\r\n    for (uVar7 = uRam00000004 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n      pcVar6 = pcVar6 + 4;\r\n      pcVar10 = pcVar10 + 4;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *pcVar10 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n      pcVar10 = pcVar10 + 1;\r\n    }\r\n  }\r\n  pcVar5[uRam00000004] = '\\0';\r\n  uVar8 = 0xffffffff;\r\n  pcVar6 = pcVar5;\r\n  do {\r\n    pcVar10 = pcVar6;\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    pcVar10 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar8 = ~uVar8;\r\n  pcVar6 = pcVar10 + -uVar8;\r\n  pcVar10 = &stack0x00000078;\r\n  for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *pcVar10 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  uVar8 = 0xffffffff;\r\n  pcVar6 = (char *)&DAT_004f83b4;\r\n  do {\r\n    pcVar10 = pcVar6;\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    pcVar10 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar8 = ~uVar8;\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000078;\r\n  do {\r\n    pcVar9 = pcVar6;\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    pcVar9 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar9;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar10 + -uVar8;\r\n  pcVar10 = pcVar9 + -1;\r\n  for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *pcVar10 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  iVar3 = FUN_00402b30();\r\n  if (iVar3 != 0) {\r\n    UVar4 = FUN_00423270();\r\n    LoadStringA(DAT_0051a050,UVar4,&stack0x00000278,0xfff);\r\n    iVar3 = -1;\r\n    pcVar6 = &stack0x00000278;\r\n    do {\r\n      if (iVar3 == 0) break;\r\n      iVar3 = iVar3 + -1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FUN_004017f0();\r\n    if (pcVar5 != (char *)0x0) {\r\n      FUN_004d29a0();\r\n    }\r\n    pcVar5 = (char *)FUN_004d28b0();\r\n    uVar8 = uRam00000004;\r\n    if (uRam00000004 != 0) {\r\n      pcVar6 = (char *)FUN_004026a0();\r\n      pcVar10 = pcVar5;\r\n      for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n        *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n        pcVar6 = pcVar6 + 4;\r\n        pcVar10 = pcVar10 + 4;\r\n      }\r\n      for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n        *pcVar10 = *pcVar6;\r\n        pcVar6 = pcVar6 + 1;\r\n        pcVar10 = pcVar10 + 1;\r\n      }\r\n    }\r\n    pcVar5[uRam00000004] = '\\0';\r\n    _sprintf(&stack0x00000018,pcVar5);\r\n    uVar8 = 0xffffffff;\r\n    pcVar6 = &stack0x00000018;\r\n    do {\r\n      pcVar10 = pcVar6;\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      pcVar10 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar10;\r\n    } while (cVar1 != '\\0');\r\n    uVar8 = ~uVar8;\r\n    iVar3 = -1;\r\n    pcVar6 = &stack0x00000078;\r\n    do {\r\n      pcVar9 = pcVar6;\r\n      if (iVar3 == 0) break;\r\n      iVar3 = iVar3 + -1;\r\n      pcVar9 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar9;\r\n    } while (cVar1 != '\\0');\r\n    pcVar6 = pcVar10 + -uVar8;\r\n    pcVar10 = pcVar9 + -1;\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n      pcVar6 = pcVar6 + 4;\r\n      pcVar10 = pcVar10 + 4;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *pcVar10 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n      pcVar10 = pcVar10 + 1;\r\n    }\r\n  }\r\n  FUN_00402c70();\r\n  UVar4 = FUN_00423270();\r\n  LoadStringA(DAT_0051a050,UVar4,&stack0x00000278,0xfff);\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000278;\r\n  do {\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0();\r\n  FUN_00402c90();\r\n  FUN_00402c90();\r\n  pcVar6 = (char *)FUN_00402640();\r\n  _sprintf(&stack0x00000018,pcVar6);\r\n  uVar8 = 0xffffffff;\r\n  pcVar6 = &stack0x00000018;\r\n  do {\r\n    pcVar10 = pcVar6;\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    pcVar10 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar8 = ~uVar8;\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000078;\r\n  do {\r\n    pcVar9 = pcVar6;\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    pcVar9 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar9;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar10 + -uVar8;\r\n  pcVar10 = pcVar9 + -1;\r\n  for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *pcVar10 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  uVar8 = 0xffffffff;\r\n  pcVar6 = (char *)&DAT_004f83b4;\r\n  do {\r\n    pcVar10 = pcVar6;\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    pcVar10 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar8 = ~uVar8;\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000078;\r\n  do {\r\n    pcVar9 = pcVar6;\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    pcVar9 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar9;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar10 + -uVar8;\r\n  pcVar10 = pcVar9 + -1;\r\n  for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *pcVar10 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  in_stack_00000058 = 0x20;\r\n  GlobalMemoryStatus((LPMEMORYSTATUS)&stack0x00000058);\r\n  UVar4 = FUN_00423270();\r\n  LoadStringA(DAT_0051a050,UVar4,&stack0x00000278,0xfff);\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000278;\r\n  do {\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0();\r\n  pcVar6 = (char *)FUN_00402640();\r\n  _sprintf(&stack0x00000018,pcVar6);\r\n  uVar8 = 0xffffffff;\r\n  pcVar6 = &stack0x00000018;\r\n  do {\r\n    pcVar10 = pcVar6;\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    pcVar10 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar8 = ~uVar8;\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000078;\r\n  do {\r\n    pcVar9 = pcVar6;\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    pcVar9 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar9;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar10 + -uVar8;\r\n  pcVar10 = pcVar9 + -1;\r\n  for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *pcVar10 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  FUN_00402cc0();\r\n  UVar4 = FUN_00423270();\r\n  LoadStringA(DAT_0051a050,UVar4,&stack0x00000278,0xfff);\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000278;\r\n  do {\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0();\r\n  pcVar6 = (char *)FUN_00402640();\r\n  uVar8 = 0xffffffff;\r\n  do {\r\n    pcVar10 = pcVar6;\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    pcVar10 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar8 = ~uVar8;\r\n  iVar3 = -1;\r\n  pcVar6 = &stack0x00000078;\r\n  do {\r\n    pcVar9 = pcVar6;\r\n    if (iVar3 == 0) break;\r\n    iVar3 = iVar3 + -1;\r\n    pcVar9 = pcVar6 + 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar9;\r\n  } while (cVar1 != '\\0');\r\n  pcVar6 = pcVar10 + -uVar8;\r\n  pcVar10 = pcVar9 + -1;\r\n  for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n    pcVar6 = pcVar6 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *pcVar10 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  iVar3 = FUN_00402ce0();\r\n  if (iVar3 != 0) {\r\n    UVar4 = FUN_00423270();\r\n    LoadStringA(DAT_0051a050,UVar4,&stack0x00000278,0xfff);\r\n    iVar3 = -1;\r\n    pcVar6 = &stack0x00000278;\r\n    do {\r\n      if (iVar3 == 0) break;\r\n      iVar3 = iVar3 + -1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FUN_004017f0();\r\n    pcVar6 = (char *)FUN_00402640();\r\n    _sprintf(&stack0x00000018,pcVar6);\r\n    uVar8 = 0xffffffff;\r\n    pcVar6 = &stack0x00000018;\r\n    do {\r\n      pcVar10 = pcVar6;\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      pcVar10 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar10;\r\n    } while (cVar1 != '\\0');\r\n    uVar8 = ~uVar8;\r\n    iVar3 = -1;\r\n    pcVar6 = &stack0x00000078;\r\n    do {\r\n      pcVar9 = pcVar6;\r\n      if (iVar3 == 0) break;\r\n      iVar3 = iVar3 + -1;\r\n      pcVar9 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar9;\r\n    } while (cVar1 != '\\0');\r\n    pcVar6 = pcVar10 + -uVar8;\r\n    pcVar10 = pcVar9 + -1;\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *(undefined4 *)pcVar10 = *(undefined4 *)pcVar6;\r\n      pcVar6 = pcVar6 + 4;\r\n      pcVar10 = pcVar10 + 4;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *pcVar10 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n      pcVar10 = pcVar10 + 1;\r\n    }\r\n  }\r\n  iVar3 = FUN_004d28b0();\r\n  if (iVar3 != 0) {\r\n    FUN_0041bd00();\r\n  }\r\n  FUN_00434d50();\r\n  FUN_00401ed0();\r\n  FUN_00401ed0();\r\n  if (pcVar5 != (char *)0x0) {\r\n    FUN_004d29a0();\r\n  }\r\n  FUN_00402aa0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044ac80",
+      "name": "FUN_0044ac80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004029d0",
+      "name": "FUN_004029d0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00402aa0",
+      "name": "FUN_00402aa0"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "00402b30",
+      "name": "FUN_00402b30"
+    },
+    {
+      "addr": "004026a0",
+      "name": "FUN_004026a0"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "00402c70",
+      "name": "FUN_00402c70"
+    },
+    {
+      "addr": "00402c90",
+      "name": "FUN_00402c90"
+    },
+    {
+      "addr": "00402640",
+      "name": "FUN_00402640"
+    },
+    {
+      "addr": "EXTERNAL:00000008",
+      "name": "GlobalMemoryStatus"
+    },
+    {
+      "addr": "00402cc0",
+      "name": "FUN_00402cc0"
+    },
+    {
+      "addr": "00402ce0",
+      "name": "FUN_00402ce0"
+    },
+    {
+      "addr": "0041bd00",
+      "name": "FUN_0041bd00"
+    },
+    {
+      "addr": "00434d50",
+      "name": "FUN_00434d50"
+    }
+  ],
+  "data_refs": []
+}

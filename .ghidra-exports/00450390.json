@@ -1,0 +1,74 @@
+{
+  "address": "00450390",
+  "name": "FUN_00450390",
+  "signature": "undefined FUN_00450390(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_00450390(int *param_1,int *param_2,int param_3,int param_4,int param_5,int param_6,int param_7,\r\n            int param_8)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iStack_84;\r\n  int iStack_80;\r\n  int iStack_7c;\r\n  int iStack_78;\r\n  int iStack_74;\r\n  int iStack_70;\r\n  int iStack_6c;\r\n  int iStack_68;\r\n  undefined4 auStack_64 [2];\r\n  undefined4 uStack_5c;\r\n  \r\n  if (param_3 < param_2[2]) {\r\n    if (param_4 < param_2[3]) {\r\n      iVar5 = (param_7 - param_5) + param_3;\r\n      if (iVar5 < 0) {\r\n        uVar1 = 0;\r\n      }\r\n      else {\r\n        iVar6 = param_4 + (param_8 - param_6);\r\n        if (iVar6 < 0) {\r\n          uVar1 = 0;\r\n        }\r\n        else {\r\n          iVar2 = (**(code **)(*param_1 + 0x60))();\r\n          if (iVar2 == 0) {\r\n            uVar1 = 0x65;\r\n          }\r\n          else {\r\n            piVar3 = (int *)(**(code **)(*param_2 + 0x60))();\r\n            iStack_84 = param_5;\r\n            iStack_80 = param_6;\r\n            iStack_7c = param_7;\r\n            iStack_78 = param_8;\r\n            iVar4 = iVar5 - param_2[2];\r\n            iStack_74 = param_3;\r\n            iStack_70 = param_4;\r\n            iStack_6c = iVar5;\r\n            if (0 < iVar4) {\r\n              iStack_6c = iVar5 - iVar4;\r\n              iStack_7c = param_7 - iVar4;\r\n            }\r\n            if (0 < -param_3) {\r\n              iStack_84 = -param_3 + param_5;\r\n              iStack_74 = 0;\r\n            }\r\n            iVar5 = iVar6 - param_2[3];\r\n            iStack_68 = iVar6;\r\n            if (0 < iVar5) {\r\n              iStack_68 = iVar6 - iVar5;\r\n              iStack_78 = param_8 - iVar5;\r\n            }\r\n            if (0 < -param_4) {\r\n              iStack_70 = 0;\r\n              iStack_80 = -param_4 + param_6;\r\n            }\r\n            uVar1 = 0x1020000;\r\n            auStack_64[0] = 100;\r\n            uStack_5c = 0xcc0020;\r\n            if (param_1[0xc] != 0) {\r\n              uVar1 = 0x1028000;\r\n            }\r\n            uVar1 = (**(code **)(*piVar3 + 0x14))\r\n                              (piVar3,&iStack_74,iVar2,&iStack_84,uVar1,auStack_64);\r\n          }\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      uVar1 = 0;\r\n    }\r\n  }\r\n  else {\r\n    uVar1 = 0;\r\n  }\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448560",
+      "name": "FUN_00448560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448560",
+      "name": "FUN_00448560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418f80",
+      "name": "FUN_00418f80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418f80",
+      "name": "FUN_00418f80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043ecc0",
+      "name": "FUN_0043ecc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004608c0",
+      "name": "FUN_004608c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004608c0",
+      "name": "FUN_004608c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

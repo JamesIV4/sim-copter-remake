@@ -1,0 +1,18 @@
+{
+  "address": "004cb360",
+  "name": "FUN_004cb360",
+  "signature": "undefined FUN_004cb360(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_004cb360(void)\r\n\r\n{\r\n  short sVar1;\r\n  \r\n  sVar1 = FUN_004c9bc0();\r\n  return sVar1 != 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c9bc0",
+      "name": "FUN_004c9bc0"
+    }
+  ],
+  "data_refs": []
+}

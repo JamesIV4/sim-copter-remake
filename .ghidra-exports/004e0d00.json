@@ -1,0 +1,44 @@
+{
+  "address": "004e0d00",
+  "name": "FID_conflict:_ValidateRead",
+  "signature": "undefined FID_conflict:_ValidateRead(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    int __cdecl _ValidateRead(void const *,unsigned int)\r\n    int __cdecl _ValidateWrite(void *,unsigned int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nbool FID_conflict__ValidateRead(void *param_1,UINT_PTR param_2)\r\n\r\n{\r\n  BOOL BVar1;\r\n  \r\n  BVar1 = IsBadReadPtr(param_1,param_2);\r\n  return BVar1 == 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000037",
+      "name": "IsBadReadPtr"
+    }
+  ],
+  "data_refs": []
+}

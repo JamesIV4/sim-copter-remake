@@ -1,0 +1,19 @@
+{
+  "address": "0048c120",
+  "name": "FUN_0048c120",
+  "signature": "undefined FUN_0048c120(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0048c120(undefined4 *param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  int local_40 [16];\r\n  \r\n  piVar1 = param_1 + 10;\r\n  iVar4 = 0;\r\n  do {\r\n    if (*piVar1 == param_2) goto LAB_0048c146;\r\n    piVar1 = piVar1 + 5;\r\n    iVar4 = iVar4 + 1;\r\n  } while (iVar4 < 0x10);\r\n  iVar4 = -1;\r\nLAB_0048c146:\r\n  if (iVar4 == -1) {\r\n    return 0;\r\n  }\r\n  param_1[2] = param_1[2] + -1;\r\n  param_1[iVar4 * 5 + 7] = 0xffffffff;\r\n  param_1[iVar4 * 5 + 8] = 0;\r\n  param_1[iVar4 * 5 + 9] = 0;\r\n  param_1[iVar4 * 5 + 10] = 0xffffffff;\r\n  param_1[iVar4 * 5 + 0xb] = 0;\r\n  param_1[6] = param_1[6] + -1;\r\n  piVar1 = local_40;\r\n  for (iVar4 = 0x10; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n    *piVar1 = 0;\r\n    piVar1 = piVar1 + 1;\r\n  }\r\n  piVar1 = param_1 + 7;\r\n  iVar4 = 0x10;\r\n  do {\r\n    if (*piVar1 != -1) {\r\n      iVar2 = 0;\r\n      if (0 < (int)param_1[1]) {\r\n        piVar3 = local_40;\r\n        do {\r\n          if (*piVar3 == 0) goto LAB_0048c1ac;\r\n          piVar3 = piVar3 + 1;\r\n          iVar2 = iVar2 + 1;\r\n        } while (iVar2 < (int)param_1[1]);\r\n      }\r\n      iVar2 = -1;\r\nLAB_0048c1ac:\r\n      local_40[iVar2] = 1;\r\n      piVar1[4] = iVar2;\r\n    }\r\n    piVar1 = piVar1 + 5;\r\n    iVar4 = iVar4 + -1;\r\n    if (iVar4 == 0) {\r\n      *param_1 = 1;\r\n      return 1;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c62e0",
+      "name": "FUN_004c62e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

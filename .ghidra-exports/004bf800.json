@@ -1,0 +1,18 @@
+{
+  "address": "004bf800",
+  "name": "FUN_004bf800",
+  "signature": "undefined FUN_004bf800(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004bf800(void)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004bf89f;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  FUN_004ce220();\r\n  _DAT_0058dfc4 = 0;\r\n  _DAT_0058dfc0 = 0;\r\n  _DAT_0058dfce = 0;\r\n  _DAT_0058dfca = 0;\r\n  _DAT_0058deb0 = &PTR_LAB_004f38e8;\r\n  *unaff_FS_OFFSET = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004ce220",
+      "name": "FUN_004ce220"
+    }
+  ],
+  "data_refs": []
+}

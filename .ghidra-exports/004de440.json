@@ -1,0 +1,24 @@
+{
+  "address": "004de440",
+  "name": "__ftbuf",
+  "signature": "void __cdecl __ftbuf(int _Flag, FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ftbuf\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __ftbuf(int _Flag,FILE *_File)\r\n\r\n{\r\n  if ((_Flag != 0) && ((_File->_flag & 0x1000) != 0)) {\r\n    __flush(_File);\r\n    _File->_flag = _File->_flag & 0xffffeeff;\r\n    _File->_bufsiz = 0;\r\n    _File->_ptr = (char *)0x0;\r\n    _File->_base = (char *)0x0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5dc0",
+      "name": "_fprintf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3b60",
+      "name": "__flush"
+    }
+  ],
+  "data_refs": []
+}

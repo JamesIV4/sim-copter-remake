@@ -1,0 +1,19 @@
+{
+  "address": "0046ca1c",
+  "name": "FUN_0046ca1c",
+  "signature": "undefined FUN_0046ca1c(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046ca1c(void)\r\n\r\n{\r\n  longlong lVar1;\r\n  int *in_EAX;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined4 unaff_ESI;\r\n  int unaff_EDI;\r\n  \r\n  iVar2 = 3;\r\n  iVar3 = 0;\r\n  DAT_004fafe0 = unaff_ESI;\r\n  do {\r\n    lVar1 = (longlong)*(int *)(iVar3 + unaff_EDI) * (longlong)*in_EAX;\r\n    *(uint *)(iVar3 + unaff_EDI) = (uint)lVar1 >> 0x10 | (int)((ulonglong)lVar1 >> 0x20) << 0x10;\r\n    lVar1 = (longlong)*(int *)(iVar3 + 4 + unaff_EDI) * (longlong)in_EAX[1];\r\n    *(uint *)(iVar3 + 4 + unaff_EDI) = (uint)lVar1 >> 0x10 | (int)((ulonglong)lVar1 >> 0x20) << 0x10\r\n    ;\r\n    lVar1 = (longlong)*(int *)(iVar3 + 8 + unaff_EDI) * (longlong)in_EAX[2];\r\n    *(uint *)(iVar3 + 8 + unaff_EDI) = (uint)lVar1 >> 0x10 | (int)((ulonglong)lVar1 >> 0x20) << 0x10\r\n    ;\r\n    iVar3 = iVar3 + 0x10;\r\n    iVar2 = iVar2 + -1;\r\n  } while (iVar2 != 0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046cb5c",
+      "name": "FUN_0046cb5c",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

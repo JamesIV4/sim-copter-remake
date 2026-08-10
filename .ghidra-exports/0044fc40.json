@@ -1,0 +1,48 @@
+{
+  "address": "0044fc40",
+  "name": "FUN_0044fc40",
+  "signature": "undefined FUN_0044fc40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0044fc40(int *param_1)\r\n\r\n{\r\n  char cVar1;\r\n  char *pcVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  char *pcVar5;\r\n  void *_DstBuf;\r\n  char *pcVar6;\r\n  int iVar7;\r\n  undefined1 local_438 [4];\r\n  uint uStack_434;\r\n  int iStack_430;\r\n  byte local_42a;\r\n  int local_418;\r\n  undefined1 local_410 [16];\r\n  undefined1 local_400 [1024];\r\n  \r\n  pcVar2 = (char *)FUN_004d28b0(0x110);\r\n  if (pcVar2 == (char *)0x0) {\r\n    pcVar2 = (char *)0x0;\r\n  }\r\n  else {\r\n    pcVar6 = (char *)param_1[6];\r\n    pcVar2[0x108] = -1;\r\n    pcVar2[0x109] = -1;\r\n    pcVar2[0x10a] = -1;\r\n    pcVar2[0x10b] = -1;\r\n    pcVar2[0x10c] = '\\x01';\r\n    pcVar2[0x10d] = '\\0';\r\n    pcVar2[0x10e] = '\\0';\r\n    pcVar2[0x10f] = '\\0';\r\n    *(undefined ***)pcVar2 = &PTR_FUN_004f1780;\r\n    DAT_00507000 = 0x8000;\r\n    if (pcVar6 == (char *)0x0) {\r\n      pcVar2[4] = '\\0';\r\n    }\r\n    else {\r\n      uVar3 = 0xffffffff;\r\n      do {\r\n        pcVar5 = pcVar6;\r\n        if (uVar3 == 0) break;\r\n        uVar3 = uVar3 - 1;\r\n        pcVar5 = pcVar6 + 1;\r\n        cVar1 = *pcVar6;\r\n        pcVar6 = pcVar5;\r\n      } while (cVar1 != '\\0');\r\n      uVar3 = ~uVar3;\r\n      pcVar5 = pcVar5 + -uVar3;\r\n      pcVar6 = pcVar2;\r\n      for (uVar4 = uVar3 >> 2; pcVar6 = pcVar6 + 4, uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *(undefined4 *)pcVar6 = *(undefined4 *)pcVar5;\r\n        pcVar5 = pcVar5 + 4;\r\n      }\r\n      for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n        *pcVar6 = *pcVar5;\r\n        pcVar5 = pcVar5 + 1;\r\n        pcVar6 = pcVar6 + 1;\r\n      }\r\n    }\r\n  }\r\n  FUN_00461450(0,0,0x180,0);\r\n  FUN_00461640();\r\n  if (*(uint *)(pcVar2 + 0x108) < 0x80000000) {\r\n    __read(*(uint *)(pcVar2 + 0x108),local_410,0xe);\r\n    __read(*(int *)(pcVar2 + 0x108),local_438,0x28);\r\n    FUN_004ef300(*(undefined4 *)(pcVar2 + 0x108));\r\n    FUN_00461640();\r\n    if (local_418 == 0) {\r\n      local_418 = 1 << (local_42a & 0x1f);\r\n    }\r\n    __read(*(int *)(pcVar2 + 0x108),local_400,local_418 << 2);\r\n    FUN_004ef300(*(undefined4 *)(pcVar2 + 0x108));\r\n    FUN_00461640();\r\n    (**(code **)*param_1)();\r\n    uStack_434 = uStack_434 + 3 & 0xfffffffc;\r\n    _DstBuf = (void *)((iStack_430 + -1) * param_1[5] + param_1[4]);\r\n    iVar7 = 0;\r\n    FUN_00461640();\r\n    FUN_004ef300(*(undefined4 *)(pcVar2 + 0x108));\r\n    if (iStack_430 != 1 && -1 < iStack_430 + -1) {\r\n      do {\r\n        iVar7 = iVar7 + 1;\r\n        __read(*(int *)(pcVar2 + 0x108),_DstBuf,uStack_434);\r\n        FUN_00461640();\r\n        FUN_004ef300(*(undefined4 *)(pcVar2 + 0x108));\r\n        _DstBuf = (void *)((int)_DstBuf - param_1[5]);\r\n      } while (iVar7 < iStack_430 + -1);\r\n    }\r\n    __read(*(int *)(pcVar2 + 0x108),_DstBuf,uStack_434);\r\n    FUN_004ef300(*(undefined4 *)(pcVar2 + 0x108));\r\n    FUN_00461610();\r\n    if (pcVar2 != (char *)0x0) {\r\n      (*(code *)**(undefined4 **)pcVar2)(1);\r\n    }\r\n    (**(code **)(*param_1 + 4))();\r\n    return 0;\r\n  }\r\n  param_1[2] = 0;\r\n  param_1[3] = 0;\r\n  FUN_00461610();\r\n  if (pcVar2 != (char *)0x0) {\r\n    (*(code *)**(undefined4 **)pcVar2)(1);\r\n  }\r\n  return 0x80000006;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044f860",
+      "name": "FUN_0044f860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00461450",
+      "name": "FUN_00461450"
+    },
+    {
+      "addr": "00461640",
+      "name": "FUN_00461640"
+    },
+    {
+      "addr": "00461610",
+      "name": "FUN_00461610"
+    },
+    {
+      "addr": "00433200",
+      "name": "FUN_00433200"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    },
+    {
+      "addr": "004ef300",
+      "name": "FUN_004ef300"
+    }
+  ],
+  "data_refs": []
+}

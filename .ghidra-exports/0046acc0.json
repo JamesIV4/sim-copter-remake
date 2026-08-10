@@ -1,0 +1,57 @@
+{
+  "address": "0046acc0",
+  "name": "FUN_0046acc0",
+  "signature": "undefined FUN_0046acc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_0046acc0(char *param_1)\r\n\r\n{\r\n  char cVar1;\r\n  bool bVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  int *piVar5;\r\n  uint uVar6;\r\n  char *pcVar7;\r\n  char *pcVar8;\r\n  int local_10 [2];\r\n  undefined1 local_8 [8];\r\n  \r\n  iVar3 = __strcmpi((char *)&DAT_005bdba0,param_1);\r\n  if (iVar3 == 0) {\r\n    if (DAT_005bdb90 != (int *)0x0) {\r\n      bVar2 = true;\r\n      goto LAB_0046ae95;\r\n    }\r\n    _DAT_004faf30 = 1;\r\n    iVar3 = __write(DAT_005bde50,(void *)0x0,0);\r\n    if (iVar3 != -1) goto LAB_0046adff;\r\n    _DAT_005bdb40 = 3;\r\n  }\r\n  else {\r\n    if (DAT_005bde50 != 0) {\r\n      __close(DAT_005bde50);\r\n    }\r\n    if (-1 < DAT_004faf38) {\r\n      FUN_00468570(DAT_004faf38);\r\n    }\r\n    bVar2 = false;\r\n    DAT_005bdba0._0_1_ = DAT_004f83a8;\r\n    DAT_005bde50 = 0;\r\n    DAT_005bdb90 = (int *)0x0;\r\n    DAT_005bde48 = (void *)0x0;\r\n    DAT_005bde4c = (void *)0x0;\r\n    DAT_005bde40 = 0;\r\n    DAT_005bde50 = FUN_004df2c0(param_1,0x8000);\r\n    if (DAT_005bde50 == -1) {\r\n      _DAT_005bdb40 = 1;\r\n    }\r\n    else {\r\n      DAT_004faf38 = FUN_00468270(2000);\r\n      if (DAT_004faf38 < 0) {\r\n        bVar2 = false;\r\n        __close(DAT_005bde50);\r\n        _DAT_005bdb40 = 1;\r\n      }\r\n      else {\r\n        uVar4 = 0xffffffff;\r\n        do {\r\n          pcVar7 = param_1;\r\n          if (uVar4 == 0) break;\r\n          uVar4 = uVar4 - 1;\r\n          pcVar7 = param_1 + 1;\r\n          cVar1 = *param_1;\r\n          param_1 = pcVar7;\r\n        } while (cVar1 != '\\0');\r\n        uVar4 = ~uVar4;\r\n        pcVar7 = pcVar7 + -uVar4;\r\n        pcVar8 = (char *)&DAT_005bdba0;\r\n        for (uVar6 = uVar4 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n          *(undefined4 *)pcVar8 = *(undefined4 *)pcVar7;\r\n          pcVar7 = pcVar7 + 4;\r\n          pcVar8 = pcVar8 + 4;\r\n        }\r\n        for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *pcVar8 = *pcVar7;\r\n          pcVar7 = pcVar7 + 1;\r\n          pcVar8 = pcVar8 + 1;\r\n        }\r\n        bVar2 = true;\r\n      }\r\n    }\r\n    if (bVar2) {\r\nLAB_0046adff:\r\n      iVar3 = __read(DAT_005bde50,local_8,8);\r\n      if ((iVar3 == 8) && (iVar3 = __read(DAT_005bde50,&DAT_005bde44,4), iVar3 == 4)) {\r\n        DAT_005bdb90 = (int *)FUN_00468380(DAT_004faf38,DAT_005bde44 << 3);\r\n        if (DAT_005bdb90 == (int *)0x0) {\r\n          _DAT_005bdb40 = 4;\r\n          goto LAB_0046ae93;\r\n        }\r\n        uVar6 = DAT_005bde44 * 8;\r\n        uVar4 = __read(DAT_005bde50,DAT_005bdb90,uVar6);\r\n        bVar2 = true;\r\n        if (uVar4 == uVar6) goto LAB_0046ae95;\r\n      }\r\n      _DAT_005bdb40 = 2;\r\n    }\r\n  }\r\nLAB_0046ae93:\r\n  bVar2 = false;\r\nLAB_0046ae95:\r\n  if (!bVar2) {\r\n    return 0;\r\n  }\r\n  if ((DAT_005bde48 != (void *)0x0) && (DAT_005bde4c != (void *)0x0)) {\r\n    return 1;\r\n  }\r\n  iVar3 = 0;\r\n  piVar5 = DAT_005bdb90;\r\n  if (0 < DAT_005bde44) {\r\n    do {\r\n      if (*piVar5 == 0x4d4f4547) {\r\n        _DAT_004faf30 = 1;\r\n        iVar3 = __write(DAT_005bde50,(void *)DAT_005bdb90[iVar3 * 2 + 1],0);\r\n        if (iVar3 == -1) {\r\n          _DAT_005bdb40 = 3;\r\n          return 0;\r\n        }\r\n        iVar3 = __read(DAT_005bde50,local_10,8);\r\n        if (iVar3 != 8) {\r\n          _DAT_005bdb40 = 2;\r\n          return 0;\r\n        }\r\n        if (local_10[0] != 0x4d4f4547) {\r\n          _DAT_005bdb40 = 6;\r\n          return 0;\r\n        }\r\n        iVar3 = __read(DAT_005bde50,&DAT_005bde60,0x10);\r\n        if (iVar3 == 0x10) {\r\n          DAT_005bde48 = (void *)FUN_00468380(DAT_004faf38,DAT_005bde60 * 0x35);\r\n          DAT_005bde4c = (void *)FUN_00468380(DAT_004faf38,DAT_005bde64 * 0x24);\r\n          if ((DAT_005bde48 == (void *)0x0) && (DAT_005bde4c == (void *)0x0)) {\r\n            DAT_005bde4c = (void *)0x0;\r\n            DAT_005bde48 = (void *)0x0;\r\n            _DAT_005bdb40 = 4;\r\n            return 0;\r\n          }\r\n          _DAT_004faf30 = 1;\r\n          iVar3 = __write(DAT_005bde50,DAT_005bde68,0);\r\n          if (iVar3 == -1) {\r\n            _DAT_005bdb40 = 3;\r\n            return 0;\r\n          }\r\n          uVar4 = DAT_005bde60 * 0x35;\r\n          uVar6 = __read(DAT_005bde50,DAT_005bde48,uVar4);\r\n          if (uVar6 == uVar4) {\r\n            _DAT_004faf30 = 1;\r\n            iVar3 = __write(DAT_005bde50,DAT_005bde6c,0);\r\n            if (iVar3 == -1) {\r\n              _DAT_005bdb40 = 3;\r\n              return 0;\r\n            }\r\n            uVar4 = DAT_005bde64 * 0x24;\r\n            uVar6 = __read(DAT_005bde50,DAT_005bde4c,uVar4);\r\n            if (uVar6 == uVar4) {\r\n              return 1;\r\n            }\r\n            _DAT_005bdb40 = 2;\r\n            return 0;\r\n          }\r\n          _DAT_005bdb40 = 2;\r\n          return 0;\r\n        }\r\n        _DAT_005bdb40 = 2;\r\n        return 0;\r\n      }\r\n      iVar3 = iVar3 + 1;\r\n      piVar5 = piVar5 + 2;\r\n    } while (iVar3 < DAT_005bde44);\r\n  }\r\n  _DAT_005bdb40 = 5;\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046a530",
+      "name": "FUN_0046a530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046a530",
+      "name": "FUN_0046a530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e1630",
+      "name": "__strcmpi"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "00468570",
+      "name": "FUN_00468570"
+    },
+    {
+      "addr": "004df2c0",
+      "name": "FUN_004df2c0"
+    },
+    {
+      "addr": "00468270",
+      "name": "FUN_00468270"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    },
+    {
+      "addr": "00468380",
+      "name": "FUN_00468380"
+    }
+  ],
+  "data_refs": []
+}

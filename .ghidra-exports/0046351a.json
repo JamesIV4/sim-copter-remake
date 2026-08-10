@@ -1,0 +1,19 @@
+{
+  "address": "0046351a",
+  "name": "GetFileVersionInfoSizeA",
+  "signature": "DWORD __stdcall GetFileVersionInfoSizeA(LPCSTR lptstrFilename, LPDWORD lpdwHandle)",
+  "calling_convention": "__stdcall",
+  "return_type": "typedef DWORD ulong",
+  "parameter_count": 2,
+  "is_thunk": true,
+  "decompiled": "\r\nDWORD GetFileVersionInfoSizeA(LPCSTR lptstrFilename,LPDWORD lpdwHandle)\r\n\r\n{\r\n  DWORD DVar1;\r\n  \r\n                    /* WARNING: Could not recover jumptable at 0x0046351a. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  DVar1 = GetFileVersionInfoSizeA(lptstrFilename,lpdwHandle);\r\n  return DVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004029d0",
+      "name": "FUN_004029d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

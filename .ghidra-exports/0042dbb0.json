@@ -1,0 +1,52 @@
+{
+  "address": "0042dbb0",
+  "name": "FUN_0042dbb0",
+  "signature": "undefined FUN_0042dbb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_0042dbb0(undefined4 param_1,undefined4 param_2,char *param_3)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  tagMSG local_4c;\r\n  LARGE_INTEGER local_30;\r\n  uint local_28;\r\n  undefined4 uStack_24;\r\n  undefined1 *local_14;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_0042dd62;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  DAT_0051a050 = param_1;\r\n  local_14 = &stack0xffffffa8;\r\n  DAT_00519ed0 = 0;\r\n  _strncpy(&DAT_00519ed0,param_3,0x17f);\r\n  DAT_0051a04f = 0;\r\n  QueryPerformanceFrequency(&local_30);\r\n  local_28 = local_30.s.LowPart;\r\n  uStack_24 = 0;\r\n  _DAT_0051a054 = (float)local_30._0_4_ + (float)local_30.s.HighPart * _DAT_004f16d8;\r\n  iVar2 = FUN_004d28b0(0x40b4);\r\n  if (iVar2 == 0) {\r\n    DAT_004f95b8 = (int *)0x0;\r\n  }\r\n  else {\r\n    DAT_004f95b8 = (int *)FUN_0045a770();\r\n  }\r\n  if (DAT_004f95b8 != (int *)0x0) {\r\n    iVar2 = (**(code **)(*DAT_004f95b8 + 0x14))();\r\n    if (iVar2 == 0) {\r\n      DAT_004f95b8[3] = DAT_004f95b8[3] | 2;\r\n      FUN_00410d30();\r\n      iVar2 = (**(code **)(*DAT_004f95b8 + 8))();\r\n      if (iVar2 == 0) {\r\n        bVar1 = *(byte *)(DAT_004f95b8 + 3);\r\n        while ((bVar1 & 1) != 0) {\r\n          iVar2 = PeekMessageA(&local_4c,(HWND)0x0,0,0,1);\r\n          while (iVar2 != 0) {\r\n            if (local_4c.message == 0x12) {\r\n              DAT_004f95b8[3] = DAT_004f95b8[3] & 0xfffffffe;\r\n              goto LAB_0042dd2c;\r\n            }\r\n            TranslateMessage(&local_4c);\r\n            DispatchMessageA(&local_4c);\r\n            iVar2 = PeekMessageA(&local_4c,(HWND)0x0,0,0,1);\r\n          }\r\n          if (((byte)DAT_004f95b8[3] & 3) == 3) {\r\n            (**(code **)(*DAT_004f95b8 + 0xc))();\r\n          }\r\n          bVar1 = *(byte *)(DAT_004f95b8 + 3);\r\n        }\r\nLAB_0042dd2c:\r\n        local_8 = 0;\r\n        (**(code **)(*DAT_004f95b8 + 0x10))();\r\n        if (DAT_004f95b8 != (int *)0x0) {\r\n          (**(code **)*DAT_004f95b8)(1);\r\n        }\r\n      }\r\n      else if (DAT_004f95b8 != (int *)0x0) {\r\n        (**(code **)*DAT_004f95b8)(1);\r\n      }\r\n    }\r\n    else if (DAT_004f95b8 != (int *)0x0) {\r\n      (**(code **)*DAT_004f95b8)(1);\r\n    }\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "EXTERNAL:00000014",
+      "name": "QueryPerformanceFrequency"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0045a770",
+      "name": "FUN_0045a770"
+    },
+    {
+      "addr": "00410d30",
+      "name": "FUN_00410d30"
+    },
+    {
+      "addr": "EXTERNAL:00000080",
+      "name": "PeekMessageA"
+    },
+    {
+      "addr": "EXTERNAL:0000007f",
+      "name": "TranslateMessage"
+    },
+    {
+      "addr": "EXTERNAL:00000077",
+      "name": "DispatchMessageA"
+    }
+  ],
+  "data_refs": []
+}

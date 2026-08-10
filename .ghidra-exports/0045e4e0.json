@@ -1,0 +1,39 @@
+{
+  "address": "0045e4e0",
+  "name": "FUN_0045e4e0",
+  "signature": "undefined FUN_0045e4e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbyte FUN_0045e4e0(int param_1)\r\n\r\n{\r\n  if (param_1 == 3) {\r\n    return 4;\r\n  }\r\n  if (param_1 == 4) {\r\n    return 3;\r\n  }\r\n  if (param_1 == 5) {\r\n    return 6;\r\n  }\r\n  if (param_1 == 6) {\r\n    return 5;\r\n  }\r\n  if (param_1 == 7) {\r\n    return 8;\r\n  }\r\n  if (param_1 == 8) {\r\n    return 7;\r\n  }\r\n  if (param_1 == 9) {\r\n    return 10;\r\n  }\r\n  if (param_1 == 10) {\r\n    return 9;\r\n  }\r\n  if (param_1 == 0xb) {\r\n    return 0xc;\r\n  }\r\n  if (param_1 == 0xc) {\r\n    return 0xb;\r\n  }\r\n  if (param_1 == 0xe) {\r\n    return 0xf;\r\n  }\r\n  if (param_1 == 0xf) {\r\n    return 0xe;\r\n  }\r\n  if (param_1 == 0x20) {\r\n    return 0x21;\r\n  }\r\n  if (param_1 == 0x21) {\r\n    return 0x20;\r\n  }\r\n  if (param_1 == 0x22) {\r\n    return 0x23;\r\n  }\r\n  if (param_1 == 0x23) {\r\n    return 0x22;\r\n  }\r\n  if (param_1 == 0x24) {\r\n    return 0x25;\r\n  }\r\n  return -(param_1 == 0x25) & 0x24;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004194b0",
+      "name": "FUN_004194b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418d40",
+      "name": "FUN_00418d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418830",
+      "name": "FUN_00418830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418830",
+      "name": "FUN_00418830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418830",
+      "name": "FUN_00418830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

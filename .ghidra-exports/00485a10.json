@@ -1,0 +1,28 @@
+{
+  "address": "00485a10",
+  "name": "FUN_00485a10",
+  "signature": "undefined FUN_00485a10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_00485a10(int param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  undefined4 uVar8;\r\n  int iVar9;\r\n  \r\n  iVar1 = *(int *)(param_1 + 0x138);\r\n  iVar2 = *(int *)(param_1 + 0xa4);\r\n  iVar3 = *(int *)(iVar2 + 0x18);\r\n  iVar4 = *(int *)(iVar2 + 0x1c);\r\n  iVar2 = *(int *)(iVar2 + 0x20);\r\n  if (iVar1 == 0) {\r\n    return false;\r\n  }\r\n  iVar7 = *(int *)(param_1 + 0x11c);\r\n  iVar9 = iVar1;\r\n  if (DAT_00503aa0 == 0) {\r\n    iVar5 = iVar1 - iVar7;\r\n    if (iVar1 < iVar7) {\r\n      iVar9 = iVar1 + (iVar7 - iVar1 >> 5);\r\n      iVar5 = iVar9 - iVar7;\r\n    }\r\n    if (iVar9 == iVar7 || SBORROW4(iVar9,iVar7) != iVar5 < 0) goto LAB_00485aa8;\r\n    iVar7 = iVar9 - iVar7 >> 5;\r\n  }\r\n  else {\r\n    iVar6 = iVar7 * 2;\r\n    iVar5 = iVar1 + iVar7 * -2;\r\n    if (iVar1 < iVar6) {\r\n      iVar9 = iVar1 + (iVar6 - iVar1 >> 5);\r\n      iVar5 = iVar9 + iVar7 * -2;\r\n    }\r\n    if (iVar9 == iVar6 || SBORROW4(iVar9,iVar6) != iVar5 < 0) goto LAB_00485aa8;\r\n    iVar7 = iVar9 + iVar7 * -2 >> 4;\r\n  }\r\n  iVar9 = iVar9 - iVar7;\r\nLAB_00485aa8:\r\n  if (*(int *)(param_1 + 4) == 0) {\r\n    uVar8 = FUN_0046c49d(iVar1,55000);\r\n    *(undefined4 *)(param_1 + 0x138) = uVar8;\r\n  }\r\n  FUN_0046c49d(*(undefined4 *)(param_1 + 0x100),iVar9);\r\n  FUN_0046c49d(*(undefined4 *)(param_1 + 0x108),iVar9);\r\n  uVar8 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x118),32000);\r\n  FUN_0046c49d(*(undefined4 *)(param_1 + 0x108),uVar8);\r\n  uVar8 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x118),32000);\r\n  FUN_0046c49d(*(undefined4 *)(param_1 + 0x100),uVar8);\r\n  uVar8 = FUN_0046c49d(DAT_005039a8,40000);\r\n  iVar7 = FUN_0046c49d(*(undefined4 *)(param_1 + 0xe0),uVar8);\r\n  uVar8 = FUN_0046c49d(DAT_005039a8,40000);\r\n  iVar9 = FUN_0046c49d(*(undefined4 *)(param_1 + 0xe8),uVar8);\r\n  iVar1 = *(int *)(param_1 + 0xa4);\r\n  *(int *)(iVar1 + 0x18) = iVar3 + iVar7 * param_2;\r\n  *(int *)(iVar1 + 0x1c) = iVar4;\r\n  *(int *)(iVar1 + 0x20) = iVar2 + iVar9 * param_2;\r\n  iVar7 = FUN_00488850(param_1);\r\n  iVar1 = *(int *)(param_1 + 0xa4);\r\n  *(int *)(iVar1 + 0x18) = iVar3;\r\n  *(int *)(iVar1 + 0x1c) = iVar4;\r\n  *(int *)(iVar1 + 0x20) = iVar2;\r\n  return iVar4 < iVar7;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00488980",
+      "name": "FUN_00488980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "00488850",
+      "name": "FUN_00488850"
+    }
+  ],
+  "data_refs": []
+}

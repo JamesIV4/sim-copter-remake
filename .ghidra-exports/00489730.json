@@ -1,0 +1,36 @@
+{
+  "address": "00489730",
+  "name": "FUN_00489730",
+  "signature": "undefined FUN_00489730(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00489730(int param_1,int param_2)\r\n\r\n{\r\n  DAT_0050408c = DAT_0050408c + param_1;\r\n  if (DAT_0050408c < 0x1f40001) {\r\n    if (DAT_0050408c < -0x1f40000) {\r\n      DAT_0050408c = -0x1f40000;\r\n    }\r\n  }\r\n  else {\r\n    DAT_0050408c = 0x1f40000;\r\n  }\r\n  DAT_00504090 = DAT_00504090 + param_2;\r\n  if (DAT_00504090 < 0x1f40001) {\r\n    if (DAT_00504090 < -0x1f40000) {\r\n      DAT_00504090 = -0x1f40000;\r\n    }\r\n  }\r\n  else {\r\n    DAT_00504090 = 0x1f40000;\r\n  }\r\n  FUN_0046cad1(&DAT_0057f268);\r\n  FUN_0046cae4(DAT_0050408c + -0x1680000,&DAT_0057f268);\r\n  FUN_0046cafc(DAT_00504090,&DAT_0057f268);\r\n  FUN_0046cb74(&DAT_004fa2e0,&DAT_0057f230,&DAT_0057f268);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479060",
+      "name": "FUN_00479060",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1"
+    },
+    {
+      "addr": "0046cae4",
+      "name": "FUN_0046cae4"
+    },
+    {
+      "addr": "0046cafc",
+      "name": "FUN_0046cafc"
+    },
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    }
+  ],
+  "data_refs": []
+}

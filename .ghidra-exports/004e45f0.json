@@ -1,0 +1,48 @@
+{
+  "address": "004e45f0",
+  "name": "FUN_004e45f0",
+  "signature": "undefined FUN_004e45f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004e45f0(LCID param_1,DWORD param_2,byte *param_3,int param_4,byte *param_5,int param_6,\r\n                UINT param_7)\r\n\r\n{\r\n  int in_EAX;\r\n  int iVar1;\r\n  BOOL BVar2;\r\n  BYTE *pBVar3;\r\n  PCNZWCH lpWideCharStr;\r\n  int iVar4;\r\n  LPWSTR local_20;\r\n  int local_18;\r\n  _cpinfo local_14;\r\n  \r\n  local_18 = in_EAX;\r\n  if (DAT_005089f0 == 0) {\r\n    local_18 = CompareStringA(0,0,\"\",1,\"\",1);\r\n    if (local_18 == 0) {\r\n      local_18 = CompareStringW(0,0,L\"\",1,L\"\",1);\r\n      if (local_18 == 0) {\r\n        return 0;\r\n      }\r\n      DAT_005089f0 = 1;\r\n    }\r\n    else {\r\n      DAT_005089f0 = 2;\r\n    }\r\n  }\r\n  if (0 < param_4) {\r\n    local_18 = FUN_004e48e0(param_3,param_4);\r\n    param_4 = local_18;\r\n  }\r\n  if (0 < param_6) {\r\n    local_18 = FUN_004e48e0(param_5,param_6);\r\n    param_6 = local_18;\r\n  }\r\n  if (DAT_005089f0 == 2) {\r\n    iVar1 = CompareStringA(param_1,param_2,(PCNZCH)param_3,param_4,(PCNZCH)param_5,param_6);\r\n    return iVar1;\r\n  }\r\n  if (DAT_005089f0 == 1) {\r\n    local_18 = 0;\r\n    local_20 = (LPWSTR)0x0;\r\n    if (param_7 == 0) {\r\n      param_7 = DAT_00507ac8;\r\n    }\r\n    if ((param_4 == 0) || (param_6 == 0)) {\r\n      if (param_6 == param_4) {\r\n        return 2;\r\n      }\r\n      if (1 < param_6) {\r\n        return 1;\r\n      }\r\n      if (1 < param_4) {\r\n        return 3;\r\n      }\r\n      BVar2 = GetCPInfo(param_7,&local_14);\r\n      if (BVar2 == 0) {\r\n        return 0;\r\n      }\r\n      if (0 < param_4) {\r\n        if (local_14.MaxCharSize < 2) {\r\n          return 3;\r\n        }\r\n        pBVar3 = local_14.LeadByte;\r\n        while( true ) {\r\n          if ((local_14.LeadByte[0] == 0) || (pBVar3[1] == 0)) {\r\n            return 3;\r\n          }\r\n          if ((*pBVar3 <= *param_3) && (*param_3 <= pBVar3[1])) break;\r\n          pBVar3 = pBVar3 + 2;\r\n          local_14.LeadByte[0] = *pBVar3;\r\n        }\r\n        return 2;\r\n      }\r\n      if (0 < param_6) {\r\n        if (local_14.MaxCharSize < 2) {\r\n          return 1;\r\n        }\r\n        pBVar3 = local_14.LeadByte;\r\n        while( true ) {\r\n          if ((local_14.LeadByte[0] == 0) || (pBVar3[1] == 0)) {\r\n            return 1;\r\n          }\r\n          if ((*pBVar3 <= *param_5) && (*param_5 <= pBVar3[1])) break;\r\n          pBVar3 = pBVar3 + 2;\r\n          local_14.LeadByte[0] = *pBVar3;\r\n        }\r\n        return 2;\r\n      }\r\n    }\r\n    local_14.MaxCharSize = MultiByteToWideChar(param_7,9,(LPCSTR)param_3,param_4,(LPWSTR)0x0,0);\r\n    if (local_14.MaxCharSize == 0) {\r\n      return 0;\r\n    }\r\n    lpWideCharStr = (PCNZWCH)FUN_004d5f00(local_14.MaxCharSize * 2);\r\n    if (lpWideCharStr == (PCNZWCH)0x0) {\r\n      return 0;\r\n    }\r\n    iVar1 = MultiByteToWideChar(param_7,1,(LPCSTR)param_3,param_4,lpWideCharStr,local_14.MaxCharSize\r\n                               );\r\n    if ((((iVar1 != 0) &&\r\n         (iVar1 = MultiByteToWideChar(param_7,9,(LPCSTR)param_5,param_6,(LPWSTR)0x0,0), iVar1 != 0))\r\n        && (local_20 = (LPWSTR)FUN_004d5f00(iVar1 * 2), local_20 != (LPWSTR)0x0)) &&\r\n       (iVar4 = MultiByteToWideChar(param_7,1,(LPCSTR)param_5,param_6,local_20,iVar1), iVar4 != 0))\r\n    {\r\n      local_18 = CompareStringW(param_1,param_2,lpWideCharStr,local_14.MaxCharSize,local_20,iVar1);\r\n    }\r\n    FUN_004d6010(lpWideCharStr);\r\n    FUN_004d6010(local_20);\r\n  }\r\n  return local_18;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4050",
+      "name": "__mbsnbicoll",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000002f",
+      "name": "CompareStringA"
+    },
+    {
+      "addr": "004e48e0",
+      "name": "FUN_004e48e0"
+    },
+    {
+      "addr": "EXTERNAL:0000002e",
+      "name": "CompareStringW"
+    },
+    {
+      "addr": "EXTERNAL:00000049",
+      "name": "GetCPInfo"
+    },
+    {
+      "addr": "EXTERNAL:00000041",
+      "name": "MultiByteToWideChar"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

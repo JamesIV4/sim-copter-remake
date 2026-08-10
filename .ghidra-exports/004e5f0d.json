@@ -1,0 +1,19 @@
+{
+  "address": "004e5f0d",
+  "name": "FUN_004e5f0d",
+  "signature": "undefined FUN_004e5f0d(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004e5f0d(void)\r\n\r\n{\r\n  int iVar1;\r\n  int extraout_ECX;\r\n  byte bVar2;\r\n  uint extraout_EDX;\r\n  uint uVar3;\r\n  int unaff_EBP;\r\n  int iVar4;\r\n  \r\n  *(undefined4 *)(unaff_EBP + 4) = 1;\r\n  DAT_00515a20 = DAT_004fc1a0;\r\n  iVar1 = 3;\r\n  iVar4 = 0;\r\n  uVar3 = (uint)(*(int *)(*(int *)(*(int *)(unaff_EBP + 0x20) * 4 + _DAT_005a2598) + 8) <\r\n                DAT_004fc1a0);\r\n  do {\r\n    bVar2 = (byte)uVar3 |\r\n            (*(int *)(*(int *)(*(int *)(unaff_EBP + 0x18 + iVar4 * 4) * 4 + _DAT_005a2598) + 8) <\r\n            DAT_00515a20) << 1;\r\n    uVar3 = CONCAT31((int3)(uVar3 >> 8),bVar2);\r\n    if (bVar2 != 0) {\r\n      (*(code *)(&PTR_LAB_00515a24)[uVar3])();\r\n      iVar1 = extraout_ECX;\r\n      uVar3 = extraout_EDX;\r\n    }\r\n    uVar3 = uVar3 >> 1;\r\n    iVar4 = iVar4 + 1;\r\n    iVar1 = iVar1 + -1;\r\n  } while (iVar1 != 0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e5d04",
+      "name": "FUN_004e5d04",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

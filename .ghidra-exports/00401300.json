@@ -1,0 +1,24 @@
+{
+  "address": "00401300",
+  "name": "FUN_00401300",
+  "signature": "undefined FUN_00401300(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00401300(int *param_1)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int *piVar2;\r\n  int unaff_retaddr;\r\n  int *piVar3;\r\n  \r\n  (**(code **)(*param_1 + 0x24))(1000);\r\n  (**(code **)(*param_1 + 0x10))();\r\n  if (param_1[2] != 0) {\r\n    puVar1 = *(undefined4 **)(*(int *)param_1[1] + 8);\r\n    (**(code **)(*(int *)*puVar1 + 0x18))();\r\n    if (unaff_retaddr != 0) {\r\n      (**(code **)(*(int *)*puVar1 + 0xc))();\r\n    }\r\n    piVar3 = *(int **)param_1[1];\r\n    if (piVar3 != (int *)param_1[1]) {\r\n      do {\r\n        piVar2 = (int *)piVar3[2];\r\n        if ((piVar2[5] != 0) && ((undefined4 *)*piVar2 != (undefined4 *)0x0)) {\r\n          (*(code *)**(undefined4 **)*piVar2)(1);\r\n        }\r\n        if (piVar2 != (int *)0x0) {\r\n          *(int *)(piVar2[3] + 0xc) = *(int *)(piVar2[3] + 0xc) + -1;\r\n          puVar1 = (undefined4 *)piVar2[3];\r\n          if ((puVar1[3] == 0) && (puVar1 != (undefined4 *)0x0)) {\r\n            if (puVar1[2] != 0) {\r\n              FUN_004d29a0(*puVar1);\r\n              puVar1[2] = 0;\r\n              *puVar1 = 0;\r\n            }\r\n            FUN_004d29a0(puVar1);\r\n          }\r\n          if (piVar2[2] != 0) {\r\n            FUN_004d29a0(piVar2[2]);\r\n          }\r\n          FUN_004d29a0(piVar2);\r\n        }\r\n        piVar2 = (int *)*piVar3;\r\n        *(int **)piVar3[1] = piVar2;\r\n        *(int *)(*piVar3 + 4) = piVar3[1];\r\n        *piVar3 = (int)DAT_004f8128;\r\n        DAT_004f8128 = piVar3;\r\n        param_1[2] = param_1[2] + -1;\r\n        piVar3 = piVar2;\r\n      } while ((int *)param_1[1] != piVar2);\r\n    }\r\n  }\r\n  (**(code **)(*param_1 + 0x28))();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004011c0",
+      "name": "FUN_004011c0",
+      "ref_type": "COMPUTED_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

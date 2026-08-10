@@ -1,0 +1,40 @@
+{
+  "address": "0046cbb0",
+  "name": "FUN_0046cbb0",
+  "signature": "undefined FUN_0046cbb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * FUN_0046cbb0(undefined4 param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  int *_DstBuf;\r\n  int iVar4;\r\n  int *piVar5;\r\n  int *piVar6;\r\n  undefined1 local_10 [8];\r\n  int local_8;\r\n  \r\n  iVar1 = FUN_004df2c0(param_1,0x8000);\r\n  if (iVar1 == -1) {\r\n    _DAT_005bdb40 = 1;\r\n    return (undefined4 *)0x0;\r\n  }\r\n  iVar2 = __read(iVar1,local_10,0x10);\r\n  if (iVar2 != 0x10) {\r\n    __close(iVar1);\r\n    _DAT_005bdb40 = 2;\r\n    return (undefined4 *)0x0;\r\n  }\r\n  puVar3 = (undefined4 *)FUN_00468380(DAT_004faf3c,(local_8 * 3 + 6) * 4);\r\n  if (puVar3 == (undefined4 *)0x0) {\r\n    _DAT_005bdb40 = 4;\r\n    return (undefined4 *)0x0;\r\n  }\r\n  iVar2 = FUN_004ef340(iVar1);\r\n  _DstBuf = (int *)FUN_00468380(DAT_004faf3c,iVar2);\r\n  if (_DstBuf == (int *)0x0) {\r\n    _DAT_005bdb40 = 4;\r\n    __close(iVar1);\r\n    return (undefined4 *)0x0;\r\n  }\r\n  iVar4 = __read(iVar1,_DstBuf,local_8 * 0xc);\r\n  __read(iVar1,_DstBuf,iVar2 - (iVar4 + 0x10));\r\n  __close(iVar1);\r\n  iVar1 = 0;\r\n  if (0 < local_8) {\r\n    piVar5 = puVar3 + 6;\r\n    piVar6 = _DstBuf;\r\n    do {\r\n      iVar1 = iVar1 + 1;\r\n      *piVar5 = *piVar6;\r\n      piVar5[1] = piVar6[1];\r\n      piVar5[2] = (int)piVar6;\r\n      piVar6 = (int *)((int)piVar6 + (*piVar6 + 4) * piVar6[1] + 0xc);\r\n      piVar5 = piVar5 + 3;\r\n    } while (iVar1 < local_8);\r\n  }\r\n  *puVar3 = _DstBuf;\r\n  puVar3[2] = 3;\r\n  puVar3[3] = 0;\r\n  puVar3[4] = local_8;\r\n  return puVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046a530",
+      "name": "FUN_0046a530",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004df2c0",
+      "name": "FUN_004df2c0"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "00468380",
+      "name": "FUN_00468380"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340"
+    }
+  ],
+  "data_refs": []
+}

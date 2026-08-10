@@ -1,0 +1,19 @@
+{
+  "address": "004d4220",
+  "name": "_JumpToContinuation",
+  "signature": "void __stdcall _JumpToContinuation(void * param_1, EHRegistrationNode * param_2)",
+  "calling_convention": "__stdcall",
+  "return_type": "void",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void __stdcall _JumpToContinuation(void *,struct EHRegistrationNode *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid _JumpToContinuation(void *param_1,EHRegistrationNode *param_2)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  \r\n  *unaff_FS_OFFSET = *(undefined4 *)*unaff_FS_OFFSET;\r\n                    /* WARNING: Could not recover jumptable at 0x004d424c. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  (*param_1)();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da020",
+      "name": "CatchIt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

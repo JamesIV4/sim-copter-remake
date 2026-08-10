@@ -1,0 +1,117 @@
+{
+  "address": "004d49b0",
+  "name": "FUN_004d49b0",
+  "signature": "undefined FUN_004d49b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004d49b0(LPCSTR param_1)\r\n\r\n{\r\n  BOOL BVar1;\r\n  ulong uVar2;\r\n  \r\n  BVar1 = DeleteFileA(param_1);\r\n  uVar2 = 0;\r\n  if (BVar1 == 0) {\r\n    uVar2 = GetLastError();\r\n  }\r\n  if (uVar2 != 0) {\r\n    __dosmaperr(uVar2);\r\n    return 0xffffffff;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00442b10",
+      "name": "FUN_00442b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00437fd0",
+      "name": "FUN_00437fd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000005e",
+      "name": "DeleteFileA"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr"
+    }
+  ],
+  "data_refs": []
+}

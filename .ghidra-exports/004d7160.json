@@ -1,0 +1,100 @@
+{
+  "address": "004d7160",
+  "name": "__write",
+  "signature": "int __cdecl __write(int _FileHandle, void * _Buf, uint _MaxCharCount)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __write\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __write(int _FileHandle,void *_Buf,uint _MaxCharCount)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  \r\n  if (((uint)_FileHandle < DAT_0061bc80) &&\r\n     ((*(byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(_FileHandle & 0xffffffe7U) >> 3)) + 4 +\r\n                (_FileHandle & 0x1fU) * 0x24) & 1) != 0)) {\r\n    __lock_fhandle(_FileHandle);\r\n    iVar1 = FUN_004d71e0(_FileHandle,_Buf,_MaxCharCount);\r\n    __unlock_fhandle(_FileHandle);\r\n    return iVar1;\r\n  }\r\n  puVar2 = (undefined4 *)FUN_004da730();\r\n  *puVar2 = 9;\r\n  puVar2 = (undefined4 *)FUN_004da740();\r\n  *puVar2 = 0;\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3b60",
+      "name": "__flush",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7980",
+      "name": "FUN_004d7980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7980",
+      "name": "FUN_004d7980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00432ea0",
+      "name": "FUN_00432ea0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3cf0",
+      "name": "_fwrite",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045a440",
+      "name": "FUN_0045a440",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045a560",
+      "name": "FUN_0045a560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045a560",
+      "name": "FUN_0045a560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045a560",
+      "name": "FUN_0045a560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045a600",
+      "name": "FUN_0045a600",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d37b0",
+      "name": "FUN_004d37b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d35e0",
+      "name": "overflow",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfa90",
+      "name": "__lock_fhandle"
+    },
+    {
+      "addr": "004d71e0",
+      "name": "FUN_004d71e0"
+    },
+    {
+      "addr": "004dfb00",
+      "name": "__unlock_fhandle"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    }
+  ],
+  "data_refs": []
+}

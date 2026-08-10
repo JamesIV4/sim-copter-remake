@@ -1,0 +1,34 @@
+{
+  "address": "0049e130",
+  "name": "FUN_0049e130",
+  "signature": "undefined FUN_0049e130(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0049e130(int param_1)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  \r\n  puVar1 = *(undefined4 **)\r\n            ((&DAT_005d9200)\r\n             [(uint)*(byte *)(param_1 + 0x88) * 0x100 + (uint)*(byte *)(param_1 + 0x89)] + 0x10);\r\n  while( true ) {\r\n    if (puVar1 == (undefined4 *)0x0) {\r\n      uVar3 = (0x2000000 - **(int **)(param_1 + 0x103)) * 0x10 + *(int *)(param_1 + 0x30) >> 0x16;\r\n      uVar2 = ((*(int **)(param_1 + 0x103))[2] + 0x2000000) * 0x10 - *(int *)(param_1 + 0x38) >>\r\n              0x16;\r\n      if (((char)uVar3 == *(char *)(param_1 + 0x88)) && ((byte)uVar2 == *(byte *)(param_1 + 0x89)))\r\n      {\r\n        return 1;\r\n      }\r\n      puVar1 = *(undefined4 **)((&DAT_005d9200)[(uVar3 & 0xff) * 0x100 + (uVar2 & 0xff)] + 0x10);\r\n      while( true ) {\r\n        if (puVar1 == (undefined4 *)0x0) {\r\n          return 1;\r\n        }\r\n        if (((param_1 - (int)puVar1 != -0x18) && ((*(ushort *)(puVar1 + 3) & 0x10) != 0)) &&\r\n           ((*(int *)(param_1 + 0x8e) ==\r\n             *(int *)((&DAT_0057f768)[*(short *)((int)puVar1 + 0xe)] + 0x8e) &&\r\n            ((*(uint *)((&DAT_0057f768)[*(short *)((int)puVar1 + 0xe)] + 4) & 0x20) == 0)))) break;\r\n        puVar1 = (undefined4 *)*puVar1;\r\n      }\r\n      return 0;\r\n    }\r\n    if ((((param_1 - (int)puVar1 != -0x18) && ((*(ushort *)(puVar1 + 3) & 0x10) != 0)) &&\r\n        (*(int *)(param_1 + 0x8e) == *(int *)((&DAT_0057f768)[*(short *)((int)puVar1 + 0xe)] + 0x8e)\r\n        )) && ((*(uint *)((&DAT_0057f768)[*(short *)((int)puVar1 + 0xe)] + 4) & 0x20) == 0)) break;\r\n    puVar1 = (undefined4 *)*puVar1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049b930",
+      "name": "FUN_0049b930",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049b930",
+      "name": "FUN_0049b930",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0049be50",
+      "name": "FUN_0049be50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bd770",
+      "name": "FUN_004bd770",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

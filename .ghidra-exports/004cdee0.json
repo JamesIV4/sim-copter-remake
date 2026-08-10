@@ -1,0 +1,19 @@
+{
+  "address": "004cdee0",
+  "name": "FUN_004cdee0",
+  "signature": "undefined FUN_004cdee0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nshort * __thiscall FUN_004cdee0(int param_1,int param_2,short param_3)\r\n\r\n{\r\n  short *psVar1;\r\n  short *psVar2;\r\n  short *psVar3;\r\n  short sVar4;\r\n  int *piVar5;\r\n  \r\n  sVar4 = *(short *)(param_1 + 6);\r\n  psVar2 = (short *)0x0;\r\n  psVar3 = psVar2;\r\n  piVar5 = *(int **)(param_1 + 0xc);\r\n  if (0 < sVar4) {\r\n    do {\r\n      if (*piVar5 == param_2) break;\r\n      sVar4 = sVar4 + -1;\r\n      piVar5 = piVar5 + 2;\r\n    } while (0 < sVar4);\r\n    if (0 < sVar4) {\r\n      sVar4 = (short)piVar5[1] + 1;\r\n      psVar1 = (short *)(*(short *)((int)piVar5 + 6) + -2 + (int)*(int **)(param_1 + 0xc));\r\n      if (0 < sVar4) {\r\n        while (psVar3 = psVar1, *psVar3 != param_3) {\r\n          sVar4 = sVar4 + -1;\r\n          psVar1 = psVar3 + 6;\r\n          if (sVar4 < 1) {\r\n            return psVar2;\r\n          }\r\n        }\r\n      }\r\n    }\r\n  }\r\n  return psVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd700",
+      "name": "FUN_004cd700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

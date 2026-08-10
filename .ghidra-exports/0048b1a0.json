@@ -1,0 +1,28 @@
+{
+  "address": "0048b1a0",
+  "name": "FUN_0048b1a0",
+  "signature": "undefined FUN_0048b1a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0048b1a0(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint *puVar4;\r\n  undefined4 *puVar5;\r\n  uint *puVar6;\r\n  uint *puVar7;\r\n  \r\n  iVar2 = 0;\r\n  piVar1 = &DAT_005d7110;\r\n  do {\r\n    if (*piVar1 == param_1) {\r\n      puVar5 = &DAT_005d7110 + iVar2 * 0xcf;\r\n      goto LAB_0048b1c2;\r\n    }\r\n    piVar1 = piVar1 + 0xcf;\r\n    iVar2 = iVar2 + 1;\r\n  } while (piVar1 < &DAT_005d9168);\r\n  puVar5 = (undefined4 *)0x0;\r\nLAB_0048b1c2:\r\n  iVar2 = FUN_00407a50();\r\n  uVar3 = 1 << ((byte)param_1 & 0x1f);\r\n  if ((*(uint *)(iVar2 + 0x44) & uVar3) == 0) {\r\n    if ((param_1 == 2) && (DAT_00504080 == 1)) {\r\n      puVar7 = &DAT_005d91d8;\r\n    }\r\n    else {\r\n      puVar4 = &DAT_005d9170;\r\n      puVar6 = (uint *)0x0;\r\n      do {\r\n        piVar1 = *(int **)((&DAT_005d9200)[(*puVar4 & 0xff) * 0x100 + (puVar4[1] & 0xff)] + 0x10);\r\n        puVar7 = puVar4;\r\n        if (piVar1 == (int *)0x0) break;\r\n        do {\r\n          puVar7 = puVar6;\r\n          if ((*(ushort *)(piVar1 + 3) & 4) != 0) break;\r\n          piVar1 = (int *)*piVar1;\r\n          puVar7 = puVar4;\r\n        } while (piVar1 != (int *)0x0);\r\n        puVar4 = puVar4 + 2;\r\n        puVar6 = puVar7;\r\n      } while (puVar4 != &DAT_005d91d0);\r\n    }\r\n    *(uint *)(iVar2 + 0x44) = *(uint *)(iVar2 + 0x44) | uVar3;\r\n    FUN_00484790(puVar5,*puVar7,puVar7[1]);\r\n    DAT_005040d0 = puVar5;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042d840",
+      "name": "FUN_0042d840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00407a50",
+      "name": "FUN_00407a50"
+    },
+    {
+      "addr": "00484790",
+      "name": "FUN_00484790"
+    }
+  ],
+  "data_refs": []
+}

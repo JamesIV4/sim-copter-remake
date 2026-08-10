@@ -1,0 +1,47 @@
+{
+  "address": "0049ad30",
+  "name": "FUN_0049ad30",
+  "signature": "undefined FUN_0049ad30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_0049ad30(undefined4 param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  FUN_0046cb74(param_1,&local_c,&DAT_004fbfe8);\r\n  if (local_4 + param_2 < 0x10000) {\r\n    return false;\r\n  }\r\n  iVar1 = FUN_0046f8ed();\r\n  if (iVar1 < local_4 - param_2) {\r\n    return false;\r\n  }\r\n  iVar1 = FUN_0046c49d(DAT_005bdb60,local_c + param_2);\r\n  iVar2 = FUN_0046c49d(DAT_005bdb68,local_4);\r\n  if (iVar2 + iVar1 < -100) {\r\n    return false;\r\n  }\r\n  iVar1 = FUN_0046c49d(DAT_005bdb70,local_c - param_2);\r\n  iVar2 = FUN_0046c49d(DAT_005bdb78,local_4);\r\n  if (iVar2 + iVar1 < -100) {\r\n    return false;\r\n  }\r\n  iVar1 = FUN_0046c49d(DAT_005bdb54,local_8 - param_2);\r\n  iVar2 = FUN_0046c49d(DAT_005bdb58,local_4);\r\n  if (iVar2 + iVar1 < -100) {\r\n    return false;\r\n  }\r\n  iVar1 = FUN_0046c49d(DAT_005bdb84,local_8 + param_2);\r\n  iVar2 = FUN_0046c49d(DAT_005bdb88,local_4);\r\n  return -0x65 < iVar2 + iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049f5c0",
+      "name": "FUN_0049f5c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b2910",
+      "name": "FUN_004b2910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c0f80",
+      "name": "FUN_004c0f80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b4660",
+      "name": "FUN_004b4660",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "0046f8ed",
+      "name": "FUN_0046f8ed"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,40 @@
+{
+  "address": "0048bcf0",
+  "name": "FUN_0048bcf0",
+  "signature": "undefined FUN_0048bcf0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0048bcf0(undefined4 param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  byte bVar3;\r\n  undefined4 *puVar4;\r\n  \r\n  iVar1 = FUN_00407a50();\r\n  FUN_00459a10(param_1,DAT_00504004,&DAT_00503aa0,4);\r\n  iVar2 = FUN_00459a10(param_1,DAT_00504000,&DAT_0057eb08,0x724);\r\n  if (iVar2 == 0) {\r\n    return 0;\r\n  }\r\n  bVar3 = 0;\r\n  puVar4 = &DAT_005d7110;\r\n  while( true ) {\r\n    FUN_0048bf40(puVar4 + 0x75);\r\n    if ((*(uint *)(iVar1 + 0x44) & 1 << (bVar3 & 0x1f)) != 0) {\r\n      FUN_0048b4b0(puVar4,&DAT_0057eb08);\r\n    }\r\n    iVar2 = FUN_00459a50(param_1,DAT_00504000,&DAT_0057eb08,0x724);\r\n    if ((iVar2 == 0) && (puVar4 != (undefined4 *)&DAT_005d8af0)) break;\r\n    puVar4 = puVar4 + 0xcf;\r\n    bVar3 = bVar3 + 1;\r\n    if ((undefined4 *)0x5d8e2b < puVar4) {\r\n      return 1;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00407a50",
+      "name": "FUN_00407a50"
+    },
+    {
+      "addr": "00459a10",
+      "name": "FUN_00459a10"
+    },
+    {
+      "addr": "0048bf40",
+      "name": "FUN_0048bf40"
+    },
+    {
+      "addr": "0048b4b0",
+      "name": "FUN_0048b4b0"
+    },
+    {
+      "addr": "00459a50",
+      "name": "FUN_00459a50"
+    }
+  ],
+  "data_refs": []
+}

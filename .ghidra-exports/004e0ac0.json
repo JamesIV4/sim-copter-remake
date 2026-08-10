@@ -1,0 +1,28 @@
+{
+  "address": "004e0ac0",
+  "name": "FID_conflict:__getenv_lk",
+  "signature": "char * __cdecl FID_conflict:__getenv_lk(char * _VarName)",
+  "calling_convention": "__cdecl",
+  "return_type": "char *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __getenv_lk\r\n    _getenv\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nchar * __cdecl FID_conflict___getenv_lk(char *_VarName)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  int *piVar5;\r\n  char *pcVar6;\r\n  \r\n  if (DAT_00506c8c == (int *)0x0) {\r\n    if ((DAT_00506c94 != 0) && (iVar2 = ___wtomb_environ(), iVar2 != 0)) {\r\n      return (char *)0x0;\r\n    }\r\n    if (DAT_00506c8c == (int *)0x0) {\r\n      return (char *)0x0;\r\n    }\r\n  }\r\n  if (_VarName != (char *)0x0) {\r\n    uVar3 = 0xffffffff;\r\n    pcVar6 = _VarName;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    uVar3 = ~uVar3 - 1;\r\n    iVar2 = *DAT_00506c8c;\r\n    piVar5 = DAT_00506c8c;\r\n    while (iVar2 != 0) {\r\n      uVar4 = 0xffffffff;\r\n      pcVar6 = (char *)*piVar5;\r\n      do {\r\n        if (uVar4 == 0) break;\r\n        uVar4 = uVar4 - 1;\r\n        cVar1 = *pcVar6;\r\n        pcVar6 = pcVar6 + 1;\r\n      } while (cVar1 != '\\0');\r\n      if (((uVar3 < ~uVar4 - 1) && (((uchar *)*piVar5)[uVar3] == '=')) &&\r\n         (iVar2 = __mbsnbicoll((uchar *)*piVar5,(uchar *)_VarName,uVar3), iVar2 == 0)) {\r\n        return (char *)(*piVar5 + 1 + uVar3);\r\n      }\r\n      piVar5 = piVar5 + 1;\r\n      iVar2 = *piVar5;\r\n    }\r\n  }\r\n  return (char *)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9100",
+      "name": "FUN_004d9100",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4090",
+      "name": "___wtomb_environ"
+    },
+    {
+      "addr": "004e4050",
+      "name": "__mbsnbicoll"
+    }
+  ],
+  "data_refs": []
+}

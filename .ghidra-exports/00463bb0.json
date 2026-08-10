@@ -1,0 +1,89 @@
+{
+  "address": "00463bb0",
+  "name": "FUN_00463bb0",
+  "signature": "undefined FUN_00463bb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Type propagation algorithm not settling */\r\n\r\nundefined4 FUN_00463bb0(char *param_1)\r\n\r\n{\r\n  char cVar1;\r\n  bool bVar2;\r\n  bool bVar3;\r\n  undefined1 uVar4;\r\n  short sVar5;\r\n  undefined2 uVar6;\r\n  int iVar7;\r\n  undefined4 uVar8;\r\n  FILE *_File;\r\n  size_t sVar9;\r\n  int iVar10;\r\n  uint uVar11;\r\n  uint uVar12;\r\n  undefined2 *puVar13;\r\n  short sVar14;\r\n  char *pcVar15;\r\n  undefined4 *puVar16;\r\n  char *pcVar17;\r\n  char *pcVar18;\r\n  size_t local_45c;\r\n  int local_458;\r\n  undefined4 local_454;\r\n  undefined4 local_450;\r\n  undefined4 local_44c;\r\n  undefined4 local_448;\r\n  undefined4 local_444;\r\n  undefined4 local_440;\r\n  undefined4 local_43c;\r\n  undefined4 local_438;\r\n  undefined4 local_434;\r\n  undefined4 local_430;\r\n  undefined4 local_42c;\r\n  undefined4 local_428;\r\n  undefined4 local_424;\r\n  undefined4 local_420;\r\n  undefined4 local_41c;\r\n  undefined4 local_418;\r\n  undefined4 local_414;\r\n  undefined4 local_410;\r\n  undefined4 local_40c;\r\n  undefined4 local_408;\r\n  int local_404;\r\n  undefined4 local_400;\r\n  undefined4 local_300;\r\n  undefined4 local_200;\r\n  char local_100 [256];\r\n  \r\n  iVar7 = FUN_00463b40(param_1);\r\n  if (iVar7 != 0) {\r\n    uVar8 = FUN_00468970(param_1);\r\n    return uVar8;\r\n  }\r\n  FUN_00468530(DAT_00592064);\r\n  _File = FID_conflict___wfopen(param_1,&DAT_004fa038);\r\n  if (_File == (FILE *)0x0) {\r\n    return 0;\r\n  }\r\n  sVar5 = FUN_004647b0(_File,&local_404);\r\n  if (sVar5 == 0) {\r\nLAB_00463d36:\r\n    _fclose(_File);\r\n    return 0;\r\n  }\r\n  iVar7 = 4;\r\n  bVar2 = false;\r\n  bVar3 = false;\r\n  uVar4 = false;\r\n  do {\r\n    sVar9 = _fread(&local_458,4,1,_File);\r\n    if (sVar9 == 0) goto LAB_00463d36;\r\n    local_454._3_1_ = (undefined1)((uint)local_458 >> 0x18);\r\n    local_454._2_1_ = (undefined1)((uint)local_458 >> 0x10);\r\n    local_454._1_1_ = (undefined1)((uint)local_458 >> 8);\r\n    uVar6 = CONCAT11((char)local_458,local_454._1_1_);\r\n    local_454 = CONCAT22(uVar6,CONCAT11(local_454._2_1_,local_454._3_1_));\r\n    local_458 = local_454;\r\n    sVar9 = _fread(&local_45c,4,1,_File);\r\n    if (sVar9 == 0) goto LAB_00463d36;\r\n    local_450._3_1_ = (undefined1)(local_45c >> 0x18);\r\n    local_450._2_1_ = (undefined1)(local_45c >> 0x10);\r\n    local_450._1_1_ = (undefined1)(local_45c >> 8);\r\n    uVar6 = CONCAT11((char)local_45c,local_450._1_1_);\r\n    local_450 = CONCAT22(uVar6,CONCAT11(local_450._2_1_,local_450._3_1_));\r\n    local_45c = local_450;\r\n    local_300 = CONCAT13(DAT_004fa0e7,CONCAT12(DAT_004fa0e6,CONCAT11(DAT_004fa0e5,DAT_004fa0e4)));\r\n    iVar10 = FUN_00467030(local_300);\r\n    if (iVar10 == local_458) {\r\n      sVar5 = FUN_00464960(_File,local_45c);\r\n      goto joined_r0x00464215;\r\n    }\r\n    local_200 = CONCAT13(DAT_004fa0df,CONCAT12(DAT_004fa0de,CONCAT11(DAT_004fa0dd,DAT_004fa0dc)));\r\n    iVar10 = FUN_00467030(local_200);\r\n    if (iVar10 == local_458) {\r\n      sVar9 = _fread(DAT_00590d70,local_45c,1,_File);\r\n      if (sVar9 != 0) {\r\n        iVar10 = (int)local_45c / 2;\r\n        puVar13 = DAT_00590d70;\r\n        if (0 < iVar10) {\r\n          do {\r\n            uVar6 = FUN_00467010(*puVar13);\r\n            *puVar13 = uVar6;\r\n            iVar10 = iVar10 + -1;\r\n            puVar13 = puVar13 + 1;\r\n          } while (iVar10 != 0);\r\n        }\r\n        goto LAB_00464555;\r\n      }\r\n      goto LAB_00463d36;\r\n    }\r\n    local_400 = CONCAT13(DAT_004fa0d7,CONCAT12(DAT_004fa0d6,CONCAT11(DAT_004fa0d5,DAT_004fa0d4)));\r\n    iVar10 = FUN_00467030(local_400);\r\n    if (iVar10 == local_458) {\r\n      sVar5 = FUN_004653d0(_File,local_45c,DAT_00591a80,0x4000);\r\njoined_r0x00464215:\r\n      if (sVar5 == 0) goto LAB_00463d36;\r\n    }\r\n    else {\r\n      local_44c = CONCAT13(DAT_004fa0cf,CONCAT12(DAT_004fa0ce,CONCAT11(DAT_004fa0cd,DAT_004fa0cc)));\r\n      iVar10 = FUN_00467030(local_44c);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_005910b0,0x4000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_448 = CONCAT13(DAT_004fa0c7,CONCAT12(DAT_004fa0c6,CONCAT11(DAT_004fa0c5,DAT_004fa0c4)));\r\n      iVar10 = FUN_00467030(local_448);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591620,0x4000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_444 = CONCAT13(DAT_004fa0bf,CONCAT12(DAT_004fa0be,CONCAT11(DAT_004fa0bd,DAT_004fa0bc)));\r\n      iVar10 = FUN_00467030(local_444);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591870,0x4000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_440 = CONCAT13(DAT_004fa0b7,CONCAT12(DAT_004fa0b6,CONCAT11(DAT_004fa0b5,DAT_004fa0b4)));\r\n      iVar10 = FUN_00467030(local_440);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591310,0x4000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_43c = CONCAT13(DAT_004fa0af,CONCAT12(DAT_004fa0ae,CONCAT11(DAT_004fa0ad,DAT_004fa0ac)));\r\n      iVar10 = FUN_00467030(local_43c);\r\n      if (iVar10 == local_458) {\r\n        uVar4 = true;\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591094,0x1900);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_438 = CONCAT13(DAT_004fa0a7,CONCAT12(DAT_004fa0a6,CONCAT11(DAT_004fa0a5,DAT_004fa0a4)));\r\n      iVar10 = FUN_00467030(local_438);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591f50,0x4b0);\r\n        if (sVar5 != 0) {\r\n          FUN_00466f90(DAT_00591f50,0x4b0);\r\n          goto LAB_00464555;\r\n        }\r\n        goto LAB_00463d36;\r\n      }\r\n      local_434 = CONCAT13(DAT_004fa09f,CONCAT12(DAT_004fa09e,CONCAT11(DAT_004fa09d,DAT_004fa09c)));\r\n      iVar10 = FUN_00467030(local_434);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00590f80,0x1e0);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_430 = CONCAT13(DAT_004fa097,CONCAT12(DAT_004fa096,CONCAT11(DAT_004fa095,DAT_004fa094)));\r\n      iVar10 = FUN_00467030(local_430);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00590800,0x4000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_42c = CONCAT13(DAT_004fa08f,CONCAT12(DAT_004fa08e,CONCAT11(DAT_004fa08d,DAT_004fa08c)));\r\n      iVar10 = FUN_00467030(local_42c);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00590f90,0x1000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_428 = CONCAT13(DAT_004fa087,CONCAT12(DAT_004fa086,CONCAT11(DAT_004fa085,DAT_004fa084)));\r\n      iVar10 = FUN_00467030(local_428);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591510,0x1000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_424 = CONCAT13(DAT_004fa07f,CONCAT12(DAT_004fa07e,CONCAT11(DAT_004fa07d,DAT_004fa07c)));\r\n      iVar10 = FUN_00467030(local_424);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591c80,0x1000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_420 = CONCAT13(DAT_004fa077,CONCAT12(DAT_004fa076,CONCAT11(DAT_004fa075,DAT_004fa074)));\r\n      iVar10 = FUN_00467030(local_420);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591f60,0x1000);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_41c = CONCAT13(DAT_004fa06f,CONCAT12(DAT_004fa06e,CONCAT11(DAT_004fa06d,DAT_004fa06c)));\r\n      iVar10 = FUN_00467030(local_41c);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00590a00,0x400);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_418 = CONCAT13(DAT_004fa067,CONCAT12(DAT_004fa066,CONCAT11(DAT_004fa065,DAT_004fa064)));\r\n      iVar10 = FUN_00467030(local_418);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591dc0,0x400);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_414 = CONCAT13(DAT_004fa05f,CONCAT12(DAT_004fa05e,CONCAT11(DAT_004fa05d,DAT_004fa05c)));\r\n      iVar10 = FUN_00467030(local_414);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00590770,0x400);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_410 = CONCAT13(DAT_004fa057,CONCAT12(DAT_004fa056,CONCAT11(DAT_004fa055,DAT_004fa054)));\r\n      iVar10 = FUN_00467030(local_410);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591e50,0x400);\r\n        goto joined_r0x00464215;\r\n      }\r\n      local_40c = CONCAT13(DAT_004fa04f,CONCAT12(DAT_004fa04e,CONCAT11(DAT_004fa04d,DAT_004fa04c)));\r\n      iVar10 = FUN_00467030(local_40c);\r\n      if (iVar10 == local_458) {\r\n        sVar5 = FUN_004653d0(_File,local_45c,DAT_00591820,0xd00);\r\n        if (sVar5 == 0) goto LAB_00463d36;\r\n        iVar10 = 0x340;\r\n        puVar16 = DAT_00591820;\r\n        do {\r\n          uVar8 = FUN_00467030(*puVar16);\r\n          *puVar16 = uVar8;\r\n          iVar10 = iVar10 + -1;\r\n          puVar16 = puVar16 + 1;\r\n        } while (iVar10 != 0);\r\n      }\r\n      else {\r\n        local_408 = CONCAT13(DAT_004fa03f,CONCAT12(DAT_004fa03e,CONCAT11(DAT_004fa03d,DAT_004fa03c))\r\n                            );\r\n        iVar10 = FUN_00467030(local_408);\r\n        if (iVar10 != local_458) {\r\n          sVar5 = FUN_00465370(_File,local_45c);\r\n          goto joined_r0x00464215;\r\n        }\r\n        sVar9 = _fread(local_100,local_45c,1,_File);\r\n        if (sVar9 == 0) goto LAB_00463d36;\r\n        bVar3 = true;\r\n      }\r\n    }\r\nLAB_00464555:\r\n    pcVar18 = DAT_00591d80;\r\n    iVar7 = iVar7 + local_45c + 8;\r\n    if (local_404 <= iVar7) {\r\n      bVar2 = true;\r\n    }\r\n  } while (!bVar2);\r\n  if (bVar3) {\r\n    if (local_100[0] != '\\0') {\r\n      *DAT_00591d80 = local_100[0];\r\n      iVar7 = 1;\r\n      if (1 < local_100[0] + 1) {\r\n        do {\r\n          iVar10 = iVar7 + 1;\r\n          pcVar18[iVar7] = local_100[iVar7];\r\n          iVar7 = iVar10;\r\n        } while (iVar10 < local_100[0] + 1);\r\n      }\r\n      pcVar18 = DAT_00591d80;\r\n      iVar7 = 0;\r\n      cVar1 = *DAT_00591d80;\r\n      if ('\\0' < cVar1) {\r\n        do {\r\n          iVar10 = iVar7 + 1;\r\n          pcVar15 = pcVar18 + iVar7;\r\n          iVar7 = iVar7 + 1;\r\n          *pcVar15 = pcVar18[iVar10];\r\n        } while (iVar7 < cVar1);\r\n      }\r\n      pcVar18[iVar7] = '\\0';\r\n      goto LAB_00464693;\r\n    }\r\n    FUN_004d4810(param_1,&local_44c,&local_300,&local_400,&local_200);\r\n    iVar7 = -1;\r\n    pcVar15 = (char *)&local_400;\r\n    do {\r\n      if (iVar7 == 0) break;\r\n      iVar7 = iVar7 + -1;\r\n      cVar1 = *pcVar15;\r\n      pcVar15 = pcVar15 + 1;\r\n    } while (cVar1 != '\\0');\r\n  }\r\n  else {\r\n    FUN_004d4810(param_1,&local_44c,&local_300,&local_400,&local_200);\r\n    iVar7 = -1;\r\n    pcVar15 = (char *)&local_400;\r\n    do {\r\n      if (iVar7 == 0) break;\r\n      iVar7 = iVar7 + -1;\r\n      cVar1 = *pcVar15;\r\n      pcVar15 = pcVar15 + 1;\r\n    } while (cVar1 != '\\0');\r\n  }\r\n  uVar11 = 0xffffffff;\r\n  pcVar15 = (char *)&local_400;\r\n  do {\r\n    pcVar17 = pcVar15;\r\n    if (uVar11 == 0) break;\r\n    uVar11 = uVar11 - 1;\r\n    pcVar17 = pcVar15 + 1;\r\n    cVar1 = *pcVar15;\r\n    pcVar15 = pcVar17;\r\n  } while (cVar1 != '\\0');\r\n  uVar11 = ~uVar11;\r\n  pcVar15 = pcVar17 + -uVar11;\r\n  for (uVar12 = uVar11 >> 2; uVar12 != 0; uVar12 = uVar12 - 1) {\r\n    *(undefined4 *)pcVar18 = *(undefined4 *)pcVar15;\r\n    pcVar15 = pcVar15 + 4;\r\n    pcVar18 = pcVar18 + 4;\r\n  }\r\n  for (uVar11 = uVar11 & 3; uVar11 != 0; uVar11 = uVar11 - 1) {\r\n    *pcVar18 = *pcVar15;\r\n    pcVar15 = pcVar15 + 1;\r\n    pcVar18 = pcVar18 + 1;\r\n  }\r\nLAB_00464693:\r\n  FUN_00464740();\r\n  if ((bool)uVar4) {\r\n    FUN_004646f0();\r\n  }\r\n  else {\r\n    sVar5 = 0;\r\n    do {\r\n      sVar14 = 0;\r\n      do {\r\n        iVar7 = (int)sVar14;\r\n        sVar14 = sVar14 + 1;\r\n        *(undefined1 *)(iVar7 + DAT_00591094 + sVar5 * 0x19) = 0;\r\n      } while (sVar14 < 0x19);\r\n      sVar5 = sVar5 + 1;\r\n    } while (sVar5 < 0x100);\r\n  }\r\n  _fclose(_File);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047bb20",
+      "name": "FUN_0047bb20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047bb20",
+      "name": "FUN_0047bb20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00463b40",
+      "name": "FUN_00463b40"
+    },
+    {
+      "addr": "00468970",
+      "name": "FUN_00468970"
+    },
+    {
+      "addr": "00468530",
+      "name": "FUN_00468530"
+    },
+    {
+      "addr": "004d3eb0",
+      "name": "FID_conflict:__wfopen"
+    },
+    {
+      "addr": "004647b0",
+      "name": "FUN_004647b0"
+    },
+    {
+      "addr": "004d5c30",
+      "name": "_fread"
+    },
+    {
+      "addr": "00467030",
+      "name": "FUN_00467030"
+    },
+    {
+      "addr": "00464960",
+      "name": "FUN_00464960"
+    },
+    {
+      "addr": "004d3a40",
+      "name": "_fclose"
+    },
+    {
+      "addr": "00467010",
+      "name": "FUN_00467010"
+    },
+    {
+      "addr": "004653d0",
+      "name": "FUN_004653d0"
+    },
+    {
+      "addr": "00466f90",
+      "name": "FUN_00466f90"
+    },
+    {
+      "addr": "00465370",
+      "name": "FUN_00465370"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810"
+    },
+    {
+      "addr": "00464740",
+      "name": "FUN_00464740"
+    },
+    {
+      "addr": "004646f0",
+      "name": "FUN_004646f0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004d4280",
+  "name": "FID_conflict:_CallMemberFunction1",
+  "signature": "undefined FID_conflict:_CallMemberFunction1(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    void __stdcall _CallMemberFunction1(void *,void *,void *)\r\n    void __stdcall _CallMemberFunction2(void *,void *,void *,int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid FID_conflict__CallMemberFunction1(undefined4 param_1,code *UNRECOVERED_JUMPTABLE)\r\n\r\n{\r\n  LOCK();\r\n  UNLOCK();\r\n                    /* WARNING: Could not recover jumptable at 0x004d4285. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  (*UNRECOVERED_JUMPTABLE)();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

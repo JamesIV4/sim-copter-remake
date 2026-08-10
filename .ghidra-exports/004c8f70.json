@@ -1,0 +1,24 @@
+{
+  "address": "004c8f70",
+  "name": "FUN_004c8f70",
+  "signature": "undefined FUN_004c8f70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_004c8f70(int param_1,int param_2,int param_3,int param_4,uint param_5,uint param_6,\r\n                 int param_7,int param_8)\r\n\r\n{\r\n  if (param_1 + param_4 < (int)(param_5 - param_8)) {\r\n    return param_5 & 0xffff0000;\r\n  }\r\n  if ((int)(param_5 + param_8) < param_1 - param_4) {\r\n    return param_5 + param_8 & 0xffff0000;\r\n  }\r\n  if (param_2 + param_4 < (int)(param_6 - param_8)) {\r\n    return param_6 & 0xffff0000;\r\n  }\r\n  if ((int)(param_6 + param_8) < param_2 - param_4) {\r\n    return param_6 + param_8 & 0xffff0000;\r\n  }\r\n  if (param_3 + param_4 < param_7 - param_8) {\r\n    return param_3 + param_4 & 0xffff0000;\r\n  }\r\n  return (uint)(param_3 - param_4 <= param_7 + param_8);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c9000",
+      "name": "FUN_004c9000",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

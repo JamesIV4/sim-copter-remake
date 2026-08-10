@@ -1,0 +1,171 @@
+{
+  "address": "004c5210",
+  "name": "FUN_004c5210",
+  "signature": "undefined FUN_004c5210(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_004c5210(int param_1,int param_2,short param_3,short param_4,short param_5)\r\n\r\n{\r\n  char cVar1;\r\n  int *piVar2;\r\n  bool bVar3;\r\n  short sVar4;\r\n  undefined2 uVar5;\r\n  short sVar6;\r\n  int iVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  int iVar10;\r\n  char *pcVar11;\r\n  char *pcVar12;\r\n  char *pcVar13;\r\n  char **ppcVar14;\r\n  char **ppcVar15;\r\n  undefined4 uStack_108;\r\n  char *apcStack_104 [65];\r\n  \r\n  if (param_2 == -1) {\r\n    if (*(short *)(param_1 + 0x172) != -1) {\r\n      *(undefined2 *)(param_1 + 0x174) = 0xffff;\r\n      FUN_0042a310((int)(short)(*(short *)(param_1 + 0x172) + 0x71));\r\n      (&DAT_0058dc42)[*(short *)(param_1 + 0x172)] = 0;\r\n      *(undefined2 *)(param_1 + 0x172) = 0xffff;\r\n    }\r\n  }\r\n  else if ((((DAT_00503aa0 == 3) || (param_4 != 0)) ||\r\n           (*(int *)(DAT_005040d0 + 0xa4) == *(int *)(param_1 + 0x1a0))) || (param_5 != 0)) {\r\n    if (*(short *)(param_1 + 0x172) == -1) {\r\n      if (param_3 == 0) {\r\n        return 1;\r\n      }\r\n      sVar4 = 0;\r\n      do {\r\n        if ((&DAT_0058dc52)[sVar4] == 0) {\r\n          sVar4 = sVar4 + 8;\r\n          goto LAB_004c52e8;\r\n        }\r\n        sVar4 = sVar4 + 1;\r\n      } while (sVar4 < 6);\r\n      sVar4 = -1;\r\nLAB_004c52e8:\r\n      if (sVar4 == -1) {\r\n        FUN_004c5120();\r\n        sVar4 = 0;\r\n        do {\r\n          if ((&DAT_0058dc52)[sVar4] == 0) {\r\n            sVar4 = sVar4 + 8;\r\n            goto LAB_004c5331;\r\n          }\r\n          sVar4 = sVar4 + 1;\r\n        } while (sVar4 < 6);\r\n        sVar4 = -1;\r\nLAB_004c5331:\r\n        if (sVar4 == -1) {\r\n          return 0;\r\n        }\r\n      }\r\n      FUN_004c5100(sVar4);\r\n    }\r\n    if (*(short *)(param_1 + 0x172) == -1) {\r\n      sVar4 = -1;\r\n    }\r\n    else {\r\n      sVar4 = *(short *)(param_1 + 0x172) + 0x71;\r\n    }\r\n    if (*(short *)(param_1 + 0x174) == param_2) {\r\n      iVar7 = FUN_0042a3a0((int)sVar4);\r\n      if (iVar7 != 0) {\r\n        if (*(short *)(param_1 + 0x18c) != *(short *)(param_1 + 0x174)) {\r\n          return 1;\r\n        }\r\n        piVar2 = (int *)(&DAT_0055b1ac)[sVar4];\r\n        if (100 < *(short *)(param_1 + 0x184)) {\r\n          *(undefined2 *)(param_1 + 0x184) = 100;\r\n        }\r\n        if (*(short *)(param_1 + 0x184) < 0) {\r\n          *(undefined2 *)(param_1 + 0x184) = 0;\r\n        }\r\n        if (param_2 == 0x3a) {\r\n          iVar7 = (*(short *)(param_1 + 0x184) * 4 + 0x78) * 0x19;\r\n        }\r\n        else {\r\n          iVar7 = (*(short *)(param_1 + 0x164) * 4 + 0x54) * 0x7d;\r\n        }\r\n        if (iVar7 < 0) {\r\n          iVar7 = 0;\r\n        }\r\n        (**(code **)(*piVar2 + 0x68))(iVar7);\r\n        return 1;\r\n      }\r\n    }\r\n    iVar7 = (int)sVar4;\r\n    bVar3 = false;\r\n    FUN_0042a310(iVar7);\r\n    sVar4 = *(short *)(param_1 + 0x178);\r\n    *(short *)(param_1 + 0x174) = (short)param_2;\r\n    switch(param_2) {\r\n    case 1:\r\n      uVar5 = FUN_004cea00(4);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_assert1_wav_00506ad0;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_assert2_wav_00506ac4;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_assert3_wav_00506ab8;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_assert4_wav_00506aac;\r\n      }\r\n      break;\r\n    case 2:\r\n      uVar5 = FUN_004cea00(4);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_duno1_wav_00506aa0;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_duno2_wav_00506a94;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_duno3_wav_00506a88;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_duno4_wav_00506a7c;\r\n      }\r\n      break;\r\n    case 3:\r\n      uVar5 = FUN_004cea00(5);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_hohum1_wav_00506a70;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_hohum2_wav_00506a64;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_hohum3_wav_00506a58;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_hohum4_wav_00506a4c;\r\n        break;\r\n      case 4:\r\n        pcVar11 = s_hohum5_wav_00506a40;\r\n      }\r\n      break;\r\n    case 4:\r\n      sVar6 = FUN_004cea00(2);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_query1_wav_00506a34;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 1) {\r\n          pcVar11 = s_query2_wav_00506a28;\r\n        }\r\n      }\r\n      break;\r\n    case 5:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_sad1_wav_005064e8;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        pcVar11 = s_sad2_wav_00506a1c;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 2) {\r\n          pcVar11 = s_sad3_wav_00506a10;\r\n        }\r\n      }\r\n      break;\r\n    case 6:\r\n      uVar5 = FUN_004cea00(6);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_titer1_wav_00506a04;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_titer2_wav_005069f8;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_titer3_wav_005069ec;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_titer4_wav_005069e0;\r\n        break;\r\n      case 4:\r\n        pcVar11 = s_titer5_wav_005069d4;\r\n        break;\r\n      case 5:\r\n        pcVar11 = s_titer6_wav_005069c8;\r\n      }\r\n      break;\r\n    case 7:\r\n      uVar5 = FUN_004cea00(6);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_gogirl1_wav_005069bc;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_gogirl2_wav_005069b0;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_gogirl3_wav_005069a4;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_gogirl4_wav_00506998;\r\n        break;\r\n      case 4:\r\n        pcVar11 = s_gogirl5_wav_0050698c;\r\n        break;\r\n      case 5:\r\n        pcVar11 = s_gogirl6_wav_00506980;\r\n      }\r\n      break;\r\n    case 8:\r\n      uVar5 = FUN_004cea00(6);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_grunt1_wav_00506974;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_grunt2_wav_00506968;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_grunt3_wav_0050695c;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_grunt4_wav_00506950;\r\n        break;\r\n      case 4:\r\n        pcVar11 = s_grunt5_wav_00506944;\r\n        break;\r\n      case 5:\r\n        pcVar11 = s_grunt6_wav_00506938;\r\n      }\r\n      break;\r\n    case 9:\r\n      uVar5 = FUN_004cea00(4);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_woh1_wav_0050692c;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_woh2_wav_00506920;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_woh3_wav_00506914;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_woh4_wav_00506908;\r\n      }\r\n      break;\r\n    case 10:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_hey1_wav_005068fc;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        pcVar11 = s_hey2_wav_005068f0;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 2) {\r\n          pcVar11 = s_hey3_wav_005068e4;\r\n        }\r\n      }\r\n      break;\r\n    case 0xb:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_hithere1_wav_005068d4;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        pcVar11 = s_hithere2_wav_005068c4;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 2) {\r\n          pcVar11 = s_hithere3_wav_005068b4;\r\n        }\r\n      }\r\n      break;\r\n    case 0xc:\r\n      sVar6 = FUN_004cea00(2);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_ah1_wav_005068ac;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 1) {\r\n          pcVar11 = s_ah2_wav_005068a4;\r\n        }\r\n      }\r\n      break;\r\n    case 0xd:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_achdie1_wav_00506880;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        pcVar11 = s_achdie2_wav_00506874;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 2) {\r\n          pcVar11 = s_achdie3_wav_00506868;\r\n        }\r\n      }\r\n      break;\r\n    case 0xe:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_xFtShoes_wav_00506628;\r\n      break;\r\n    case 0xf:\r\n      sVar6 = FUN_004cea00(2);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_arrest1_wav_0050685c;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 1) {\r\n          pcVar11 = s_arrest2_wav_00506850;\r\n        }\r\n      }\r\n      break;\r\n    case 0x10:\r\n      sVar6 = FUN_004cea00(2);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_gimme1_wav_00506844;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 1) {\r\n          pcVar11 = s_gimme2_wav_00506838;\r\n        }\r\n      }\r\n      break;\r\n    case 0x11:\r\n      uVar5 = FUN_004cea00(4);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_sinistr1_wav_00506828;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_sinistr2_wav_00506818;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_sinistr3_wav_00506808;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_sinistr4_wav_005067f8;\r\n      }\r\n      break;\r\n    case 0x12:\r\n      uVar5 = FUN_004cea00(4);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_hicute1_wav_005067ec;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_hicute2_wav_005067e0;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_hicute3_wav_005067d4;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_hicute4_wav_005067c8;\r\n      }\r\n      break;\r\n    case 0x13:\r\n      pcVar11 = s_mdvc1_WAV_005065fc;\r\n      break;\r\n    case 0x14:\r\n      pcVar11 = s_mdvc2_WAV_005065f0;\r\n      break;\r\n    case 0x15:\r\n      pcVar11 = s_mdvc3_WAV_005065e4;\r\n      break;\r\n    case 0x16:\r\n      pcVar11 = s_mdvc4_WAV_005065d8;\r\n      break;\r\n    case 0x17:\r\n      pcVar11 = s_pol1_WAV_005065cc;\r\n      break;\r\n    case 0x18:\r\n      pcVar11 = s_pol2_WAV_005065c0;\r\n      break;\r\n    case 0x19:\r\n      pcVar11 = s_pol3_WAV_005065b4;\r\n      break;\r\n    case 0x1a:\r\n      pcVar11 = s_pol4_WAV_005065a8;\r\n      break;\r\n    case 0x1b:\r\n      pcVar11 = s_pol5_WAV_0050659c;\r\n      break;\r\n    case 0x1c:\r\n      pcVar11 = s_pol6_WAV_00506590;\r\n      break;\r\n    case 0x1d:\r\n      pcVar11 = s_grntsplt_WAV_005067b8;\r\n      break;\r\n    case 0x1e:\r\n      sVar6 = FUN_004cea00(2);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_grnthit1_wav_00506798;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 1) {\r\n          pcVar11 = s_grnthit2_wav_00506788;\r\n        }\r\n      }\r\n      break;\r\n    case 0x1f:\r\n      pcVar11 = s_Bodyhit2_WAV_005067a8;\r\n      break;\r\n    case 0x20:\r\n      pcVar11 = s_FallWhsl_WAV_005066e0;\r\n      break;\r\n    case 0x21:\r\n      pcVar11 = s_UFOup_WAV_005066c8;\r\n      break;\r\n    case 0x22:\r\n      pcVar11 = s_bowang_WAV_005066bc;\r\n      break;\r\n    case 0x23:\r\n      pcVar11 = s_ohdrat_WAV_005066b0;\r\n      break;\r\n    case 0x24:\r\n      bVar3 = true;\r\n      pcVar11 = s_chewgum1_WAV_005066a0;\r\n      break;\r\n    case 0x25:\r\n      uVar5 = FUN_004cea00(9);\r\n      pcVar11 = apcStack_104[0];\r\n      switch(uVar5) {\r\n      case 0:\r\n        pcVar11 = s_trbna_WAV_00506584;\r\n        break;\r\n      case 1:\r\n        pcVar11 = s_trbnc__WAV_00506578;\r\n        break;\r\n      case 2:\r\n        pcVar11 = s_trbng_WAV_0050656c;\r\n        break;\r\n      case 3:\r\n        pcVar11 = s_trptb_WAV_00506560;\r\n        break;\r\n      case 4:\r\n        pcVar11 = s_trpte_WAV_00506554;\r\n        break;\r\n      case 5:\r\n        pcVar11 = s_trptf__WAV_00506548;\r\n        break;\r\n      case 6:\r\n        pcVar11 = s_tubab_WAV_0050653c;\r\n        break;\r\n      case 7:\r\n        pcVar11 = s_tubae_WAV_00506530;\r\n        break;\r\n      case 8:\r\n        pcVar11 = s_tubaf__WAV_00506524;\r\n      }\r\n      break;\r\n    case 0x26:\r\n      pcVar11 = s_march_wav_00506518;\r\n      break;\r\n    case 0x27:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        bVar3 = true;\r\n        pcVar11 = s_kissA_WAV_0050650c;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        bVar3 = true;\r\n        pcVar11 = s_kissB_WAV_00506500;\r\n      }\r\n      else if (sVar6 == 2) {\r\n        bVar3 = true;\r\n        pcVar11 = s_kissG_WAV_005064f4;\r\n      }\r\n      else {\r\n        bVar3 = true;\r\n        pcVar11 = apcStack_104[0];\r\n      }\r\n      break;\r\n    case 0x28:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_xFtHeels_wav_00506618;\r\n      break;\r\n    case 0x29:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_xFtBoots_wav_00506608;\r\n      break;\r\n    case 0x2a:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_Bnghyt_WAV_0050674c;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        pcVar11 = s_Bnggng_WAV_00506740;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 2) {\r\n          pcVar11 = s_bngthrm_WAV_00506734;\r\n        }\r\n      }\r\n      break;\r\n    case 0x2b:\r\n      pcVar11 = s_btchmp_WAV_00506728;\r\n      break;\r\n    case 0x2c:\r\n      pcVar11 = s_hithead_WAV_0050671c;\r\n      break;\r\n    case 0x2d:\r\n      pcVar11 = s_spacidle_WAV_0050670c;\r\n      break;\r\n    case 0x2e:\r\n      uVar5 = FUN_004cea00(9);\r\n      switch(uVar5) {\r\n      case 0:\r\n        apcStack_104[0] = s_atomchg_WAV_0050668c;\r\n        break;\r\n      case 1:\r\n        apcStack_104[0] = s_ftrchkbr_WAV_0050667c;\r\n        break;\r\n      case 2:\r\n        apcStack_104[0] = s_hum_WAV_00506674;\r\n        break;\r\n      case 3:\r\n        apcStack_104[0] = s_decphum_WAV_00506668;\r\n        break;\r\n      case 4:\r\n        apcStack_104[0] = s_popon_WAV_0050665c;\r\n        break;\r\n      case 5:\r\n        apcStack_104[0] = s_trnsfrm_WAV_00506650;\r\n        break;\r\n      case 6:\r\n        apcStack_104[0] = s_spacidle_WAV_0050670c;\r\n        break;\r\n      case 7:\r\n        apcStack_104[0] = s_pasfstB_WAV_00506644;\r\n        break;\r\n      case 8:\r\n        apcStack_104[0] = s_passlwB_WAV_00506638;\r\n      }\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = apcStack_104[0];\r\n      break;\r\n    case 0x2f:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_atomchg_WAV_0050668c;\r\n      break;\r\n    case 0x30:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_ftrchkbr_WAV_0050667c;\r\n      break;\r\n    case 0x31:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_hum_WAV_00506674;\r\n      break;\r\n    case 0x32:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_decphum_WAV_00506668;\r\n      break;\r\n    case 0x33:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_popon_WAV_0050665c;\r\n      break;\r\n    case 0x34:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_trnsfrm_WAV_00506650;\r\n      break;\r\n    case 0x35:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_pasfstB_WAV_00506644;\r\n      break;\r\n    case 0x36:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x164) + -1) * 500;\r\n      pcVar11 = s_passlwB_WAV_00506638;\r\n      break;\r\n    case 0x37:\r\n      pcVar11 = s_doorah_WAV_0050688c;\r\n      break;\r\n    case 0x38:\r\n      pcVar11 = s_MORITURI_WAV_005066fc;\r\n      break;\r\n    case 0x39:\r\n      sVar6 = FUN_004cea00(3);\r\n      if (sVar6 == 0) {\r\n        pcVar11 = s_hgun1_wav_0050677c;\r\n      }\r\n      else if (sVar6 == 1) {\r\n        pcVar11 = s_hgun2_wav_00506770;\r\n      }\r\n      else {\r\n        pcVar11 = apcStack_104[0];\r\n        if (sVar6 == 2) {\r\n          pcVar11 = s_hgun3_wav_00506764;\r\n        }\r\n      }\r\n      break;\r\n    case 0x3a:\r\n      bVar3 = true;\r\n      sVar4 = (*(short *)(param_1 + 0x184) + -100) * 100;\r\n      pcVar11 = s_EKG_wav_00506698;\r\n      break;\r\n    case 0x3b:\r\n      pcVar11 = s_spray_wav_00506758;\r\n      break;\r\n    case 0x3c:\r\n      pcVar11 = s_doropn_wav_00506898;\r\n      break;\r\n    case 0x3d:\r\n      pcVar11 = s_slide_wav_005066d4;\r\n      bVar3 = false;\r\n      break;\r\n    case 0x3e:\r\n      pcVar11 = s_REPAIR_WAV_005066f0;\r\n      bVar3 = false;\r\n      break;\r\n    default:\r\n      goto switchD_004c5420_default;\r\n    }\r\n    uStack_108 = 0;\r\n    if ((bVar3) || (*(short *)(param_1 + 0x18c) == param_2)) {\r\n      uStack_108 = 1;\r\n    }\r\n    if ((param_2 < 0x13) || (0x1c < param_2)) {\r\n      pcVar12 = &DAT_0058dd70;\r\n    }\r\n    else {\r\n      pcVar12 = (char *)&DAT_0058dc68;\r\n    }\r\n    uVar8 = 0xffffffff;\r\n    do {\r\n      pcVar13 = pcVar12;\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      pcVar13 = pcVar12 + 1;\r\n      cVar1 = *pcVar12;\r\n      pcVar12 = pcVar13;\r\n    } while (cVar1 != '\\0');\r\n    uVar8 = ~uVar8;\r\n    pcVar12 = pcVar13 + -uVar8;\r\n    ppcVar14 = apcStack_104;\r\n    for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n      *ppcVar14 = *(char **)pcVar12;\r\n      pcVar12 = pcVar12 + 4;\r\n      ppcVar14 = ppcVar14 + 1;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(char *)ppcVar14 = *pcVar12;\r\n      pcVar12 = pcVar12 + 1;\r\n      ppcVar14 = (char **)((int)ppcVar14 + 1);\r\n    }\r\n    uVar8 = 0xffffffff;\r\n    do {\r\n      pcVar12 = pcVar11;\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      pcVar12 = pcVar11 + 1;\r\n      cVar1 = *pcVar11;\r\n      pcVar11 = pcVar12;\r\n    } while (cVar1 != '\\0');\r\n    uVar8 = ~uVar8;\r\n    iVar10 = -1;\r\n    ppcVar14 = apcStack_104;\r\n    do {\r\n      ppcVar15 = ppcVar14;\r\n      if (iVar10 == 0) break;\r\n      iVar10 = iVar10 + -1;\r\n      ppcVar15 = (char **)((int)ppcVar14 + 1);\r\n      cVar1 = *(char *)ppcVar14;\r\n      ppcVar14 = ppcVar15;\r\n    } while (cVar1 != '\\0');\r\n    pcVar11 = pcVar12 + -uVar8;\r\n    pcVar12 = (char *)((int)ppcVar15 + -1);\r\n    for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n      *(undefined4 *)pcVar12 = *(undefined4 *)pcVar11;\r\n      pcVar11 = pcVar11 + 4;\r\n      pcVar12 = pcVar12 + 4;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *pcVar12 = *pcVar11;\r\n      pcVar11 = pcVar11 + 1;\r\n      pcVar12 = pcVar12 + 1;\r\n    }\r\n    FUN_0042a100(iVar7,apcStack_104);\r\n    FUN_0042a330(iVar7,(int)sVar4);\r\n    if (param_4 == 0) {\r\n      FUN_0042a1f0(iVar7,param_1 + 0x1cc);\r\n      *(undefined2 *)(param_1 + 0x198) = 0;\r\n    }\r\n    else {\r\n      FUN_0042a2a0(iVar7,uStack_108);\r\n      *(undefined2 *)(param_1 + 0x198) = 1;\r\n    }\r\n  }\r\nswitchD_004c5420_default:\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c6360",
+      "name": "FUN_004c6360",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6360",
+      "name": "FUN_004c6360",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c0d80",
+      "name": "FUN_004c0d80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cbbc0",
+      "name": "FUN_004cbbc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cbbc0",
+      "name": "FUN_004cbbc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c6970",
+      "name": "FUN_004c6970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ccca0",
+      "name": "FUN_004ccca0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc130",
+      "name": "FUN_004cc130",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc110",
+      "name": "FUN_004cc110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0042a310",
+      "name": "FUN_0042a310"
+    },
+    {
+      "addr": "004c5100",
+      "name": "FUN_004c5100"
+    },
+    {
+      "addr": "004c5120",
+      "name": "FUN_004c5120"
+    },
+    {
+      "addr": "0042a3a0",
+      "name": "FUN_0042a3a0"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "0042a100",
+      "name": "FUN_0042a100"
+    },
+    {
+      "addr": "0042a330",
+      "name": "FUN_0042a330"
+    },
+    {
+      "addr": "0042a1f0",
+      "name": "FUN_0042a1f0"
+    },
+    {
+      "addr": "0042a2a0",
+      "name": "FUN_0042a2a0"
+    }
+  ],
+  "data_refs": []
+}

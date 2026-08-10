@@ -1,0 +1,52 @@
+{
+  "address": "00406d70",
+  "name": "FUN_00406d70",
+  "signature": "undefined FUN_00406d70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00406d70(undefined4 *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  *param_1 = &PTR_FUN_004f02a0;\r\n  FUN_00407540();\r\n  FUN_00405e10(param_1);\r\n  FUN_00405c50(param_1);\r\n  piVar1 = (int *)(*(int *)((int)param_1 + 0x1a2) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  iVar2 = *(int *)((int)param_1 + 0x1a2);\r\n  if ((*(int *)(iVar2 + 0xc) == 0) && (iVar2 != 0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(iVar2);\r\n  }\r\n  if (*(int *)((int)param_1 + 0x19e) != 0) {\r\n    FUN_004d29a0(*(int *)((int)param_1 + 0x19e));\r\n  }\r\n  piVar1 = (int *)(*(int *)((int)param_1 + 0x19a) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  iVar2 = *(int *)((int)param_1 + 0x19a);\r\n  if ((*(int *)(iVar2 + 0xc) == 0) && (iVar2 != 0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(iVar2);\r\n  }\r\n  if (*(int *)((int)param_1 + 0x196) != 0) {\r\n    FUN_004d29a0(*(int *)((int)param_1 + 0x196));\r\n  }\r\n  piVar1 = (int *)(*(int *)((int)param_1 + 0x192) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  iVar2 = *(int *)((int)param_1 + 0x192);\r\n  if ((*(int *)(iVar2 + 0xc) == 0) && (iVar2 != 0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(iVar2);\r\n  }\r\n  if (*(int *)((int)param_1 + 0x18e) != 0) {\r\n    FUN_004d29a0(*(int *)((int)param_1 + 0x18e));\r\n  }\r\n  piVar1 = (int *)(*(int *)((int)param_1 + 0x18a) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  iVar2 = *(int *)((int)param_1 + 0x18a);\r\n  if ((*(int *)(iVar2 + 0xc) == 0) && (iVar2 != 0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(iVar2);\r\n  }\r\n  if (*(int *)((int)param_1 + 0x186) != 0) {\r\n    FUN_004d29a0(*(int *)((int)param_1 + 0x186));\r\n  }\r\n  iVar2 = 4;\r\n  do {\r\n    FUN_00401f10();\r\n    iVar2 = iVar2 + -1;\r\n  } while (-1 < iVar2);\r\n  iVar2 = 8;\r\n  do {\r\n    FUN_00401f10();\r\n    iVar2 = iVar2 + -1;\r\n  } while (-1 < iVar2);\r\n  FUN_0041d700();\r\n  FUN_00404710();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00406d50",
+      "name": "FUN_00406d50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00407540",
+      "name": "FUN_00407540"
+    },
+    {
+      "addr": "00405e10",
+      "name": "FUN_00405e10"
+    },
+    {
+      "addr": "00405c50",
+      "name": "FUN_00405c50"
+    },
+    {
+      "addr": "00406180",
+      "name": "FUN_00406180"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "0041d700",
+      "name": "FUN_0041d700"
+    },
+    {
+      "addr": "00404710",
+      "name": "FUN_00404710"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,34 @@
+{
+  "address": "0043b960",
+  "name": "FUN_0043b960",
+  "signature": "undefined FUN_0043b960(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * __thiscall FUN_0043b960(undefined4 *param_1,byte param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  undefined4 *puVar4;\r\n  int *piVar5;\r\n  \r\n  *param_1 = &PTR_LAB_004f1d38;\r\n  iVar1 = *(int *)((int)param_1 + 0x13e);\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)((int)param_1 + 0x13e) = 0;\r\n  }\r\n  piVar2 = *(int **)((int)param_1 + 0x136);\r\n  piVar5 = (int *)*piVar2;\r\n  while (piVar5 != piVar2) {\r\n    piVar3 = (int *)*piVar5;\r\n    *(int *)piVar5[1] = *piVar5;\r\n    *(int *)(*piVar5 + 4) = piVar5[1];\r\n    FUN_0043ba70();\r\n    *piVar5 = (int)DAT_004f85d8;\r\n    DAT_004f85d8 = piVar5;\r\n    *(int *)((int)param_1 + 0x13a) = *(int *)((int)param_1 + 0x13a) + -1;\r\n    piVar5 = piVar3;\r\n  }\r\n  puVar4 = *(undefined4 **)((int)param_1 + 0x136);\r\n  *puVar4 = DAT_004f85d8;\r\n  _DAT_004f85cc = _DAT_004f85cc + -1;\r\n  DAT_004f85d8 = puVar4;\r\n  puVar4 = DAT_004f85dc;\r\n  if (_DAT_004f85cc == 0) {\r\n    while (puVar4 != (undefined4 *)0x0) {\r\n      DAT_004f85dc = (undefined4 *)*puVar4;\r\n      FUN_004d29a0(puVar4[1]);\r\n      FUN_004d29a0(puVar4);\r\n      puVar4 = DAT_004f85dc;\r\n    }\r\n    DAT_004f85d8 = (undefined4 *)0x0;\r\n    DAT_004f85d4 = 0;\r\n    DAT_004f85d0 = 0;\r\n    DAT_004f85dc = (undefined4 *)0x0;\r\n  }\r\n  FUN_0041d700();\r\n  FUN_00404710();\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0044fbb0",
+      "name": "FUN_0044fbb0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0043ba70",
+      "name": "FUN_0043ba70"
+    },
+    {
+      "addr": "0041d700",
+      "name": "FUN_0041d700"
+    },
+    {
+      "addr": "00404710",
+      "name": "FUN_00404710"
+    }
+  ],
+  "data_refs": []
+}

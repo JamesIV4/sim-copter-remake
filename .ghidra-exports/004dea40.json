@@ -1,0 +1,28 @@
+{
+  "address": "004dea40",
+  "name": "__handle_exc",
+  "signature": "undefined __handle_exc(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __handle_exc\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nbool __handle_exc(uint param_1,double *param_2,uint param_3)\r\n\r\n{\r\n  ulonglong uVar1;\r\n  uint uVar2;\r\n  bool bVar3;\r\n  float10 fVar4;\r\n  undefined8 local_c;\r\n  int local_4;\r\n  \r\n  uVar2 = param_1 & 0x1f;\r\n  if (((param_1 & 8) == 0) || ((param_3 & 1) == 0)) {\r\n    if (((param_1 & 4) == 0) || ((param_3 & 4) == 0)) {\r\n      if (((param_1 & 1) == 0) || ((param_3 & 8) == 0)) {\r\n        if (((param_1 & 2) != 0) && ((param_3 & 0x10) != 0)) {\r\n          bVar3 = (param_1 & 0x10) != 0;\r\n          if (((ulonglong)*param_2 & 0x7fffffff00000000) == 0 && *(int *)param_2 == 0) {\r\n            bVar3 = true;\r\n          }\r\n          else {\r\n            fVar4 = (float10)__decomp(*(undefined4 *)param_2,*(undefined4 *)((int)param_2 + 4),\r\n                                      &local_4);\r\n            local_4 = local_4 + -0x600;\r\n            if (local_4 < -0x432) {\r\n              bVar3 = true;\r\n              local_c = 0.0;\r\n            }\r\n            else {\r\n              local_c = (double)(ulonglong)\r\n                                (SUB87((double)fVar4,0) & 0xfffffffffffff | 0x10000000000000);\r\n              if (local_4 < -0x3fd) {\r\n                local_4 = -0x3fd - local_4;\r\n                do {\r\n                  if ((((ulonglong)local_c & 1) != 0) && (!bVar3)) {\r\n                    bVar3 = true;\r\n                  }\r\n                  uVar2 = (uint)local_c >> 1;\r\n                  uVar1 = (ulonglong)local_c & 0x100000000;\r\n                  local_c._0_4_ = uVar2;\r\n                  if (uVar1 != 0) {\r\n                    local_c._0_4_ = uVar2 | 0x80000000;\r\n                  }\r\n                  local_c = (double)CONCAT44(local_c._4_4_ >> 1,(uint)local_c);\r\n                  local_4 = local_4 + -1;\r\n                } while (local_4 != 0);\r\n              }\r\n              if ((double)fVar4 < 0.0) {\r\n                local_c = -local_c;\r\n              }\r\n            }\r\n            *(uint *)((int)param_2 + 4) = local_c._4_4_;\r\n            *(uint *)param_2 = (uint)local_c;\r\n          }\r\n          if (bVar3) {\r\n            FUN_004de650(0x10);\r\n          }\r\n          uVar2 = param_1 & 0x1d;\r\n        }\r\n      }\r\n      else {\r\n        FUN_004de650(8);\r\n        uVar2 = param_3 & 0xc00;\r\n        if (uVar2 < 0x401) {\r\n          if (uVar2 == 0x400) {\r\n            if (*param_2 <= 0.0) {\r\n              uVar2 = param_1 & 0x1e;\r\n              *param_2 = -(double)CONCAT44(DAT_0050866c,DAT_00508668);\r\n            }\r\n            else {\r\n              uVar2 = param_1 & 0x1e;\r\n              *(undefined4 *)((int)param_2 + 4) = DAT_0050867c;\r\n              *(undefined4 *)param_2 = DAT_00508678;\r\n            }\r\n          }\r\n          else if (uVar2 == 0) {\r\n            if (*param_2 <= 0.0) {\r\n              uVar2 = param_1 & 0x1e;\r\n              *param_2 = -(double)CONCAT44(DAT_0050866c,DAT_00508668);\r\n            }\r\n            else {\r\n              uVar2 = param_1 & 0x1e;\r\n              *(undefined4 *)((int)param_2 + 4) = DAT_0050866c;\r\n              *(undefined4 *)param_2 = DAT_00508668;\r\n            }\r\n          }\r\n          else {\r\n            uVar2 = param_1 & 0x1e;\r\n          }\r\n        }\r\n        else if (uVar2 == 0x800) {\r\n          if (*param_2 <= 0.0) {\r\n            uVar2 = param_1 & 0x1e;\r\n            *param_2 = -(double)CONCAT44(DAT_0050867c,DAT_00508678);\r\n          }\r\n          else {\r\n            uVar2 = param_1 & 0x1e;\r\n            *(undefined4 *)((int)param_2 + 4) = DAT_0050866c;\r\n            *(undefined4 *)param_2 = DAT_00508668;\r\n          }\r\n        }\r\n        else if (uVar2 == 0xc00) {\r\n          if (*param_2 <= 0.0) {\r\n            uVar2 = param_1 & 0x1e;\r\n            *param_2 = -(double)CONCAT44(DAT_0050867c,DAT_00508678);\r\n          }\r\n          else {\r\n            uVar2 = param_1 & 0x1e;\r\n            *(undefined4 *)((int)param_2 + 4) = DAT_0050867c;\r\n            *(undefined4 *)param_2 = DAT_00508678;\r\n          }\r\n        }\r\n        else {\r\n          uVar2 = param_1 & 0x1e;\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      uVar2 = param_1 & 0x1b;\r\n      FUN_004de650(4);\r\n    }\r\n  }\r\n  else {\r\n    uVar2 = param_1 & 0x17;\r\n    FUN_004de650(1);\r\n  }\r\n  if (((param_1 & 0x10) != 0) && ((param_3 & 0x20) != 0)) {\r\n    uVar2 = uVar2 & 0xffffffef;\r\n    FUN_004de650(0x20);\r\n  }\r\n  return uVar2 == 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e2ba0",
+      "name": "__87except",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004de650",
+      "name": "FUN_004de650"
+    },
+    {
+      "addr": "004dee90",
+      "name": "__decomp"
+    }
+  ],
+  "data_refs": []
+}

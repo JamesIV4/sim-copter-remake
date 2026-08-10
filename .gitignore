@@ -35,15 +35,15 @@
 *.VC.VC.opendb
 .idea/
 
-# Reverse-engineering toolset (ghidra-ai-bridge / re-agent) generated data
-/.ghidra-exports
+# Reverse-engineering toolset (ghidra-ai-bridge / re-agent)
 /Tools/re-agent/.venv
 /.cache
-/reports/re-agent
 /re-agent-progress.json
 /re-agent-progress.tmp
 
 # Build output and temporary files
+*.claude
+*.codex
 *.log
 *.tmp
 __pycache__/

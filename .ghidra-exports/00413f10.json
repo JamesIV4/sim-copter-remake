@@ -1,0 +1,24 @@
+{
+  "address": "00413f10",
+  "name": "FUN_00413f10",
+  "signature": "undefined FUN_00413f10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid __fastcall FUN_00413f10(int param_1)\r\n\r\n{\r\n  (**(code **)(**(int **)(*(int *)(param_1 + 0x10) + 0x3c) + 0x74))(*(undefined4 *)(param_1 + 0xc));\r\n  _DAT_0055b3f8 = 0x100;\r\n  _DAT_0055b3fc = 0;\r\n  DAT_0055b3f4 = *(undefined4 *)(param_1 + 0xc);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042e490",
+      "name": "FUN_0042e490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

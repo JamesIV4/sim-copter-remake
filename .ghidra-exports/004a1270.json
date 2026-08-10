@@ -1,0 +1,40 @@
+{
+  "address": "004a1270",
+  "name": "FUN_004a1270",
+  "signature": "undefined FUN_004a1270(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004a1270(int param_1,undefined4 param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  short sVar3;\r\n  \r\n  switch(param_2) {\r\n  case 0:\r\n    uVar2 = *(uint *)(param_1 + 4);\r\n    *(uint *)(param_1 + 4) = uVar2 & 0xfffffeff;\r\n    *(uint *)(param_1 + 4) = uVar2 & 0xfffffcff;\r\n    if ((uVar2 & 2) != 0) {\r\n      if ((uVar2 & 0x400) != 0) {\r\n        FUN_0049cae0(param_1 + 0xe3);\r\n        *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n        return;\r\n      }\r\n      FUN_0049cae0(param_1 + 0x88);\r\n      *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n      return;\r\n    }\r\n    break;\r\n  case 1:\r\n    uVar2 = *(uint *)(param_1 + 0xdf);\r\n    if ((uVar2 & 1) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n      return;\r\n    }\r\n    if ((uVar2 & 4) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n      return;\r\n    }\r\n    if ((uVar2 & 2) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n      return;\r\n    }\r\n    if ((uVar2 & 8) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n      return;\r\n    }\r\n    break;\r\n  case 2:\r\n    uVar2 = *(uint *)(param_1 + 0xdf);\r\n    if ((uVar2 & 1) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n      return;\r\n    }\r\n    if ((uVar2 & 4) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n      return;\r\n    }\r\n    if ((uVar2 & 2) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n      return;\r\n    }\r\n    if ((uVar2 & 8) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n      return;\r\n    }\r\n    break;\r\n  case 3:\r\n    uVar1 = _rand();\r\n    uVar2 = *(uint *)(param_1 + 0xdf);\r\n    if ((uVar1 & 1) == 0) {\r\n      if ((uVar2 & 1) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n        return;\r\n      }\r\n      if ((uVar2 & 4) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n        return;\r\n      }\r\n      if ((uVar2 & 2) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n        return;\r\n      }\r\n      if ((uVar2 & 8) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      if ((uVar2 & 1) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n        return;\r\n      }\r\n      if ((uVar2 & 4) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n        return;\r\n      }\r\n      if ((uVar2 & 2) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n        return;\r\n      }\r\n      if ((uVar2 & 8) != 0) {\r\n        *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 4:\r\n    uVar2 = *(uint *)(param_1 + 0xdf);\r\n    if ((uVar2 & 1) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n      return;\r\n    }\r\n    if ((uVar2 & 4) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n      return;\r\n    }\r\n    if ((uVar2 & 2) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n      return;\r\n    }\r\n    if ((uVar2 & 8) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n      return;\r\n    }\r\n    break;\r\n  case 5:\r\n    uVar2 = _rand();\r\n    if ((uVar2 & 1) != 0) {\r\n      FUN_004a16f0();\r\n      return;\r\n    }\r\n    FUN_004a1630();\r\n    return;\r\n  case 6:\r\n    uVar2 = _rand();\r\n    if ((uVar2 & 1) == 0) {\r\n      FUN_004a16f0();\r\n      return;\r\n    }\r\n    uVar2 = *(uint *)(param_1 + 0xdf);\r\n    if ((uVar2 & 1) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xed);\r\n      return;\r\n    }\r\n    if ((uVar2 & 4) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xeb);\r\n      return;\r\n    }\r\n    if ((uVar2 & 2) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe7);\r\n      return;\r\n    }\r\n    if ((uVar2 & 8) != 0) {\r\n      *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe9);\r\n      return;\r\n    }\r\n    break;\r\n  case 7:\r\n    uVar2 = _rand();\r\n    sVar3 = (short)((int)((uint)(ushort)((short)uVar2 >> 0xf) << 0x10 | uVar2 & 0xffff) % 3);\r\n    if (sVar3 == 0) {\r\n      FUN_004a1630();\r\n      return;\r\n    }\r\n    if (sVar3 != 1) {\r\n      if (sVar3 != 2) {\r\n        return;\r\n      }\r\n      FUN_004a16f0();\r\n      return;\r\n    }\r\n    FUN_004a1690();\r\n    return;\r\n  case 0x10:\r\n    uVar2 = *(uint *)(param_1 + 4);\r\n    *(uint *)(param_1 + 4) = uVar2 & 0xfffffeff;\r\n    *(uint *)(param_1 + 4) = uVar2 & 0xfffffcff;\r\n    if ((uVar2 & 2) != 0) {\r\n      if ((uVar2 & 0x400) != 0) {\r\n        FUN_0049cae0(param_1 + 0xe3);\r\n        *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n        return;\r\n      }\r\n      FUN_0049cae0(param_1 + 0x88);\r\n      *(uint *)(param_1 + 4) = *(uint *)(param_1 + 4) & 0xfffffffd;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049be50",
+      "name": "FUN_0049be50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049cae0",
+      "name": "FUN_0049cae0"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004a16f0",
+      "name": "FUN_004a16f0"
+    },
+    {
+      "addr": "004a1630",
+      "name": "FUN_004a1630"
+    },
+    {
+      "addr": "004a1690",
+      "name": "FUN_004a1690"
+    }
+  ],
+  "data_refs": []
+}

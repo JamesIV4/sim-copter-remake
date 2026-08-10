@@ -1,0 +1,19 @@
+{
+  "address": "0041df60",
+  "name": "FUN_0041df60",
+  "signature": "undefined FUN_0041df60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0041df60(int *param_1,int param_2,int param_3)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int *unaff_EBX;\r\n  int *piVar5;\r\n  int iStack_4;\r\n  \r\n  if (param_1[0xc] != 0) {\r\n    param_1[0xc] = 0;\r\n    (**(code **)(*param_1 + 0x40))();\r\n  }\r\n  if (param_1[8] != 0) {\r\n    uVar2 = (**(code **)(*param_1 + 0x48))();\r\n    return uVar2;\r\n  }\r\n  if ((*(int *)((int)param_1 + 0x6a) == 0) && (iVar3 = (**(code **)(*param_1 + 0x34))(), iVar3 == 0)\r\n     ) {\r\n    return 0;\r\n  }\r\n  if (param_3 == 0) {\r\n    param_3 = param_1[2];\r\n  }\r\n  if (param_2 != 0) {\r\n    param_1[7] = 1;\r\n  }\r\n  iVar3 = param_1[7];\r\n  iVar1 = *param_1;\r\n  iVar4 = (**(code **)(iVar1 + 0x50))();\r\n  if (iVar4 == 0) {\r\n    unaff_EBX = *(int **)((int)param_1 + 0x6a);\r\n  }\r\n  else {\r\n    if (param_3 == 1) {\r\n      (**(code **)(*unaff_EBX + 0x34))(unaff_EBX,0);\r\n      if (((param_1[0x14] == 0) && (param_1[10] != 0)) && (param_1[7] == 0)) {\r\n        (**(code **)(iVar1 + 0x8c))();\r\n      }\r\n      return 1;\r\n    }\r\n    if (param_3 == 2) {\r\n      return 1;\r\n    }\r\n    if ((param_3 == 3) && (iVar4 = (**(code **)(iVar1 + 0x6c))(&stack0xfffffff8), iVar4 == 0)) {\r\n      return 0;\r\n    }\r\n  }\r\n  if (param_1[9] != 10000) {\r\n    (**(code **)(iVar1 + 0x24))(param_1[9]);\r\n  }\r\n  piVar5 = (int *)(uint)(iVar3 != 0);\r\n  iVar4 = (**(code **)(*unaff_EBX + 0x30))(unaff_EBX,0,0);\r\n  if (iVar4 != 0) {\r\n    if (((iVar4 == -0x7787ff6a) && (iVar4 = (**(code **)(iStack_4 + 0x50))(&iStack_4), iVar4 == 0))\r\n       && (iVar3 = (**(code **)(*piVar5 + 0x30))(piVar5,0,0,(int *)(uint)(iVar3 != 0)), iVar3 == 0))\r\n    {\r\n      if (((param_1[0x14] == 0) && (param_1[10] != 0)) && (param_1[7] == 0)) {\r\n        (**(code **)(iVar1 + 0x8c))();\r\n      }\r\n      return 1;\r\n    }\r\n    return 0;\r\n  }\r\n  if (((param_1[0x14] == 0) && (param_1[10] != 0)) && (param_1[7] == 0)) {\r\n    (**(code **)(iVar1 + 0x8c))();\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,36 @@
+{
+  "address": "0041c9e0",
+  "name": "FUN_0041c9e0",
+  "signature": "undefined FUN_0041c9e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0041c9e0(int *param_1,int param_2)\r\n\r\n{\r\n  char cVar1;\r\n  BYTE BVar2;\r\n  BYTE BVar3;\r\n  HDC hdc;\r\n  BYTE *pBVar4;\r\n  BYTE *pBVar5;\r\n  int iVar6;\r\n  undefined4 uVar7;\r\n  BYTE *pBVar8;\r\n  int *piVar9;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  tagPALETTEENTRY local_418 [10];\r\n  BYTE local_3f0 [984];\r\n  int *local_18;\r\n  undefined1 *local_14;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_0041cb61;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  local_14 = &stack0xfffffbdc;\r\n  local_18 = param_1;\r\n  if (param_2 == 0) {\r\n    if (DAT_004f8614 == (int *)0x0) {\r\n      uVar7 = 0;\r\n      goto LAB_0041cb9d;\r\n    }\r\n    (**(code **)(*(int *)param_1[0x13] + 0x7c))((int *)param_1[0x13],DAT_004f8614);\r\n  }\r\n  else {\r\n    if (*(int *)((int)param_1 + 0x14e) == 0) {\r\n      local_14 = &stack0xfffffbdc;\r\n      hdc = GetDC((HWND)0x0);\r\n      if (hdc != (HDC)0x0) {\r\n        GetSystemPaletteEntries(hdc,0,0x100,local_418);\r\n        ReleaseDC((HWND)0x0,hdc);\r\n      }\r\n    }\r\n    else {\r\n      BVar3 = '\\0';\r\n      pBVar4 = &local_418[0].peFlags;\r\n      do {\r\n        *pBVar4 = '\\x02';\r\n        cVar1 = BVar3 + 0xf6;\r\n        ((tagPALETTEENTRY *)(pBVar4 + -3))->peRed = BVar3;\r\n        pBVar8 = pBVar4 + 4;\r\n        BVar3 = BVar3 + '\\x01';\r\n        pBVar4[-2] = '\\0';\r\n        pBVar4[-1] = '\\0';\r\n        pBVar4[0x3d8] = 2;\r\n        pBVar4[0x3d5] = cVar1;\r\n        pBVar4[0x3d6] = 0;\r\n        pBVar4[0x3d7] = 0;\r\n        pBVar4 = pBVar8;\r\n        local_14 = &stack0xfffffbdc;\r\n      } while (pBVar8 < &local_418[10].peFlags);\r\n    }\r\n    pBVar8 = (BYTE *)(param_2 + 0x28);\r\n    pBVar4 = &local_418[10].peBlue;\r\n    do {\r\n      BVar3 = pBVar8[1];\r\n      *pBVar4 = *pBVar8;\r\n      pBVar5 = pBVar4 + 4;\r\n      BVar2 = pBVar8[2];\r\n      pBVar8 = pBVar8 + 4;\r\n      pBVar4[-1] = BVar3;\r\n      ((tagPALETTEENTRY *)(pBVar4 + -2))->peRed = BVar2;\r\n      pBVar4[1] = '\\x05';\r\n      pBVar4 = pBVar5;\r\n    } while (pBVar5 <= &local_418[0xf5].peBlue);\r\n    if (DAT_004f8614 != (int *)0x0) {\r\n      local_8 = 0;\r\n      (**(code **)(*DAT_004f8614 + 8))(DAT_004f8614);\r\n      local_8 = 0xffffffff;\r\n      DAT_004f8614 = (int *)0x0;\r\n    }\r\n    piVar9 = local_18 + 0x15;\r\n    *piVar9 = 0;\r\n    iVar6 = (**(code **)(*DAT_004f8610 + 0x14))(DAT_004f8610,4,local_418,piVar9,0);\r\n    if (iVar6 != 0) {\r\n      uVar7 = 1;\r\n      *piVar9 = 0;\r\n      goto LAB_0041cb9d;\r\n    }\r\n    DAT_004f8614 = (int *)*piVar9;\r\n    local_8 = 2;\r\n    (**(code **)(*local_18 + 0x7c))();\r\n    local_8 = 0xffffffff;\r\n    if (*(HWND *)(local_18[0x4d] + 0x18) != (HWND)0x0) {\r\n      PostMessageA(*(HWND *)(local_18[0x4d] + 0x18),0x30f,0,0);\r\n      uVar7 = 1;\r\n      goto LAB_0041cb9d;\r\n    }\r\n  }\r\n  uVar7 = 1;\r\nLAB_0041cb9d:\r\n  *unaff_FS_OFFSET = local_10;\r\n  return uVar7;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041c3c0",
+      "name": "FUN_0041c3c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000a9",
+      "name": "GetSystemPaletteEntries"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    },
+    {
+      "addr": "EXTERNAL:0000008c",
+      "name": "PostMessageA"
+    }
+  ],
+  "data_refs": []
+}

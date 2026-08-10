@@ -1,0 +1,24 @@
+{
+  "address": "00401b20",
+  "name": "FUN_00401b20",
+  "signature": "undefined FUN_00401b20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __thiscall FUN_00401b20(int param_1,int param_2,uint param_3,uint param_4)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  char *pcVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  \r\n  uVar2 = *(uint *)(*(int *)(param_1 + 4) + 4);\r\n  uVar3 = uVar2 - param_4;\r\n  if (param_3 < uVar3) {\r\n    uVar3 = param_3 + 1;\r\n  }\r\n  if ((uVar2 < param_4) || (param_4 == 0)) {\r\n    return -1;\r\n  }\r\n  do {\r\n    if (uVar3 == 0) {\r\n      return -1;\r\n    }\r\n    uVar5 = 0;\r\n    if (param_4 == 0) {\r\nLAB_00401c53:\r\n      return uVar3 - 1;\r\n    }\r\n    do {\r\n      iVar6 = 0;\r\n      if (uVar2 != 0) {\r\n        iVar6 = **(int **)(param_1 + 4);\r\n      }\r\n    } while ((*(char *)((uVar3 - uVar5) + param_4 + -2 + iVar6) ==\r\n              *(char *)((param_4 - uVar5) + -1 + param_2)) && (uVar5 = uVar5 + 1, uVar5 < param_4));\r\n    if (uVar5 == param_4) goto LAB_00401c53;\r\n    cVar1 = *(char *)((param_4 - uVar5) + -1 + param_2);\r\n    iVar6 = param_4 + (uVar3 - uVar5);\r\n    uVar3 = uVar2;\r\n    if (iVar6 - 3U < uVar2) {\r\n      uVar3 = iVar6 - 2;\r\n    }\r\n    if (uVar2 == 0) {\r\n      iVar6 = -1;\r\n    }\r\n    else {\r\n      while( true ) {\r\n        iVar6 = 0;\r\n        if (uVar2 != 0) {\r\n          iVar6 = **(int **)(param_1 + 4);\r\n        }\r\n        if ((*(char *)(iVar6 + -1 + uVar3) == cVar1) || (uVar3 < 2)) break;\r\n        uVar3 = uVar3 - 1;\r\n      }\r\n      if (uVar3 == 1) {\r\n        pcVar4 = (char *)0x0;\r\n        if (uVar2 != 0) {\r\n          pcVar4 = (char *)**(undefined4 **)(param_1 + 4);\r\n        }\r\n        if (*pcVar4 != cVar1) {\r\n          iVar6 = -1;\r\n          goto LAB_00401c2f;\r\n        }\r\n      }\r\n      iVar6 = uVar3 - 1;\r\n    }\r\nLAB_00401c2f:\r\n    if (iVar6 == -1) {\r\n      return -1;\r\n    }\r\n    uVar3 = (iVar6 - param_4) + 2 + uVar5;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044f570",
+      "name": "FUN_0044f570",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044f570",
+      "name": "FUN_0044f570",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

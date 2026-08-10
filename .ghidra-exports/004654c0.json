@@ -1,0 +1,64 @@
+{
+  "address": "004654c0",
+  "name": "FUN_004654c0",
+  "signature": "undefined FUN_004654c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004654c0(char *param_1)\r\n\r\n{\r\n  short sVar1;\r\n  FILE *_File;\r\n  undefined4 uVar2;\r\n  undefined4 local_28;\r\n  char local_24 [32];\r\n  undefined1 local_4;\r\n  \r\n  _File = FID_conflict___wfopen(param_1,&DAT_004fa108);\r\n  if (_File == (FILE *)0x0) {\r\n    return 0;\r\n  }\r\n  sVar1 = FUN_00465e40(_File,0);\r\n  if (sVar1 != 0) {\r\n    DAT_0055d138 = 4;\r\n    _strncpy(local_24,DAT_00591d80,0x20);\r\n    local_4 = 0;\r\n    FUN_00467990(local_24);\r\n    local_28._0_2_ = CONCAT11(DAT_004fa03d,DAT_004fa03c);\r\n    local_28._0_3_ = CONCAT12(DAT_004fa03e,(undefined2)local_28);\r\n    local_28 = CONCAT13(DAT_004fa03f,(undefined3)local_28);\r\n    uVar2 = FUN_00467030(local_28,local_24);\r\n    sVar1 = FUN_00465ba0(_File,uVar2);\r\n    if (sVar1 != 0) {\r\n      sVar1 = FUN_00466470(_File);\r\n      if (sVar1 != 0) {\r\n        local_28._0_2_ = CONCAT11(DAT_004fa0dd,DAT_004fa0dc);\r\n        local_28._0_3_ = CONCAT12(DAT_004fa0de,(undefined2)local_28);\r\n        local_28 = CONCAT13(DAT_004fa0df,(undefined3)local_28);\r\n        uVar2 = FUN_00467030(local_28,DAT_00590d70,0x8000);\r\n        sVar1 = FUN_00465ca0(_File,uVar2);\r\n        if (sVar1 != 0) {\r\n          local_28._0_2_ = CONCAT11(DAT_004fa0d5,DAT_004fa0d4);\r\n          local_28._0_3_ = CONCAT12(DAT_004fa0d6,(undefined2)local_28);\r\n          local_28 = CONCAT13(DAT_004fa0d7,(undefined3)local_28);\r\n          uVar2 = FUN_00467030(local_28,DAT_00591a80,0x4000);\r\n          sVar1 = FUN_00465fe0(_File,uVar2);\r\n          if (sVar1 != 0) {\r\n            local_28._0_2_ = CONCAT11(DAT_004fa0cd,DAT_004fa0cc);\r\n            local_28._0_3_ = CONCAT12(DAT_004fa0ce,(undefined2)local_28);\r\n            local_28 = CONCAT13(DAT_004fa0cf,(undefined3)local_28);\r\n            uVar2 = FUN_00467030(local_28,DAT_005910b0,0x4000);\r\n            sVar1 = FUN_00465fe0(_File,uVar2);\r\n            if (sVar1 != 0) {\r\n              local_28._0_2_ = CONCAT11(DAT_004fa0c5,DAT_004fa0c4);\r\n              local_28._0_3_ = CONCAT12(DAT_004fa0c6,(undefined2)local_28);\r\n              local_28 = CONCAT13(DAT_004fa0c7,(undefined3)local_28);\r\n              uVar2 = FUN_00467030(local_28,DAT_00591620,0x4000);\r\n              sVar1 = FUN_00465fe0(_File,uVar2);\r\n              if (sVar1 != 0) {\r\n                local_28._0_2_ = CONCAT11(DAT_004fa0bd,DAT_004fa0bc);\r\n                local_28._0_3_ = CONCAT12(DAT_004fa0be,(undefined2)local_28);\r\n                local_28 = CONCAT13(DAT_004fa0bf,(undefined3)local_28);\r\n                uVar2 = FUN_00467030(local_28,DAT_00591870,0x4000);\r\n                sVar1 = FUN_00465fe0(_File,uVar2);\r\n                if (sVar1 != 0) {\r\n                  local_28._0_2_ = CONCAT11(DAT_004fa0b5,DAT_004fa0b4);\r\n                  local_28._0_3_ = CONCAT12(DAT_004fa0b6,(undefined2)local_28);\r\n                  local_28 = CONCAT13(DAT_004fa0b7,(undefined3)local_28);\r\n                  uVar2 = FUN_00467030(local_28,DAT_00591310,0x4000);\r\n                  sVar1 = FUN_00465fe0(_File,uVar2);\r\n                  if (sVar1 != 0) {\r\n                    local_28._0_2_ = CONCAT11(DAT_004fa0ad,DAT_004fa0ac);\r\n                    local_28._0_3_ = CONCAT12(DAT_004fa0ae,(undefined2)local_28);\r\n                    local_28 = CONCAT13(DAT_004fa0af,(undefined3)local_28);\r\n                    uVar2 = FUN_00467030(local_28,DAT_00591094,0x1900);\r\n                    sVar1 = FUN_00465fe0(_File,uVar2);\r\n                    if (sVar1 != 0) {\r\n                      local_28._0_2_ = CONCAT11(DAT_004fa0a5,DAT_004fa0a4);\r\n                      local_28._0_3_ = CONCAT12(DAT_004fa0a6,(undefined2)local_28);\r\n                      local_28 = CONCAT13(DAT_004fa0a7,(undefined3)local_28);\r\n                      uVar2 = FUN_00467030(local_28,DAT_00591f50,0x4b0);\r\n                      sVar1 = FUN_00465fe0(_File,uVar2);\r\n                      if (sVar1 != 0) {\r\n                        local_28._0_2_ = CONCAT11(DAT_004fa09d,DAT_004fa09c);\r\n                        local_28._0_3_ = CONCAT12(DAT_004fa09e,(undefined2)local_28);\r\n                        local_28 = CONCAT13(DAT_004fa09f,(undefined3)local_28);\r\n                        uVar2 = FUN_00467030(local_28,DAT_00590f80,0x1e0);\r\n                        sVar1 = FUN_00465fe0(_File,uVar2);\r\n                        if (sVar1 != 0) {\r\n                          local_28._0_2_ = CONCAT11(DAT_004fa095,DAT_004fa094);\r\n                          local_28._0_3_ = CONCAT12(DAT_004fa096,(undefined2)local_28);\r\n                          local_28 = CONCAT13(DAT_004fa097,(undefined3)local_28);\r\n                          uVar2 = FUN_00467030(local_28,DAT_00590800,0x4000);\r\n                          sVar1 = FUN_00465fe0(_File,uVar2);\r\n                          if (sVar1 != 0) {\r\n                            local_28._0_2_ = CONCAT11(DAT_004fa08d,DAT_004fa08c);\r\n                            local_28._0_3_ = CONCAT12(DAT_004fa08e,(undefined2)local_28);\r\n                            local_28 = CONCAT13(DAT_004fa08f,(undefined3)local_28);\r\n                            uVar2 = FUN_00467030(local_28,DAT_00590f90,0x1000);\r\n                            sVar1 = FUN_00465fe0(_File,uVar2);\r\n                            if (sVar1 != 0) {\r\n                              local_28._0_2_ = CONCAT11(DAT_004fa085,DAT_004fa084);\r\n                              local_28._0_3_ = CONCAT12(DAT_004fa086,(undefined2)local_28);\r\n                              local_28 = CONCAT13(DAT_004fa087,(undefined3)local_28);\r\n                              uVar2 = FUN_00467030(local_28,DAT_00591510,0x1000);\r\n                              sVar1 = FUN_00465fe0(_File,uVar2);\r\n                              if (sVar1 != 0) {\r\n                                local_28._0_2_ = CONCAT11(DAT_004fa07d,DAT_004fa07c);\r\n                                local_28._0_3_ = CONCAT12(DAT_004fa07e,(undefined2)local_28);\r\n                                local_28 = CONCAT13(DAT_004fa07f,(undefined3)local_28);\r\n                                uVar2 = FUN_00467030(local_28,DAT_00591c80,0x1000);\r\n                                sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                if (sVar1 != 0) {\r\n                                  local_28._0_2_ = CONCAT11(DAT_004fa075,DAT_004fa074);\r\n                                  local_28._0_3_ = CONCAT12(DAT_004fa076,(undefined2)local_28);\r\n                                  local_28 = CONCAT13(DAT_004fa077,(undefined3)local_28);\r\n                                  uVar2 = FUN_00467030(local_28,DAT_00591f60,0x1000);\r\n                                  sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                  if (sVar1 != 0) {\r\n                                    local_28._0_2_ = CONCAT11(DAT_004fa06d,DAT_004fa06c);\r\n                                    local_28._0_3_ = CONCAT12(DAT_004fa06e,(undefined2)local_28);\r\n                                    local_28 = CONCAT13(DAT_004fa06f,(undefined3)local_28);\r\n                                    uVar2 = FUN_00467030(local_28,DAT_00590a00,0x400);\r\n                                    sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                    if (sVar1 != 0) {\r\n                                      local_28._0_2_ = CONCAT11(DAT_004fa065,DAT_004fa064);\r\n                                      local_28._0_3_ = CONCAT12(DAT_004fa066,(undefined2)local_28);\r\n                                      local_28 = CONCAT13(DAT_004fa067,(undefined3)local_28);\r\n                                      uVar2 = FUN_00467030(local_28,DAT_00591dc0,0x400);\r\n                                      sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                      if (sVar1 != 0) {\r\n                                        uVar2 = FUN_00465b50(&DAT_004fa05c,DAT_00590770,0x400);\r\n                                        sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                        if (sVar1 != 0) {\r\n                                          uVar2 = FUN_00465b50(&DAT_004fa054,DAT_00591e50,0x400);\r\n                                          sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                          if (sVar1 != 0) {\r\n                                            uVar2 = FUN_00465b50(&DAT_004fa04c,DAT_00591820,0xd00);\r\n                                            sVar1 = FUN_00465fe0(_File,uVar2);\r\n                                            if (sVar1 != 0) {\r\n                                              FUN_00465e40(_File,DAT_0055d138);\r\n                                              _fclose(_File);\r\n                                              return 1;\r\n                                            }\r\n                                          }\r\n                                        }\r\n                                      }\r\n                                    }\r\n                                  }\r\n                                }\r\n                              }\r\n                            }\r\n                          }\r\n                        }\r\n                      }\r\n                    }\r\n                  }\r\n                }\r\n              }\r\n            }\r\n          }\r\n        }\r\n      }\r\n    }\r\n  }\r\n  _fclose(_File);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3eb0",
+      "name": "FID_conflict:__wfopen"
+    },
+    {
+      "addr": "00465e40",
+      "name": "FUN_00465e40"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "00467990",
+      "name": "FUN_00467990"
+    },
+    {
+      "addr": "00467030",
+      "name": "FUN_00467030"
+    },
+    {
+      "addr": "00465ba0",
+      "name": "FUN_00465ba0"
+    },
+    {
+      "addr": "00466470",
+      "name": "FUN_00466470"
+    },
+    {
+      "addr": "00465ca0",
+      "name": "FUN_00465ca0"
+    },
+    {
+      "addr": "00465fe0",
+      "name": "FUN_00465fe0"
+    },
+    {
+      "addr": "00465b50",
+      "name": "FUN_00465b50"
+    },
+    {
+      "addr": "004d3a40",
+      "name": "_fclose"
+    }
+  ],
+  "data_refs": []
+}

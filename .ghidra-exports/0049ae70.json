@@ -1,0 +1,19 @@
+{
+  "address": "0049ae70",
+  "name": "FUN_0049ae70",
+  "signature": "undefined FUN_0049ae70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0049ae70(void)\r\n\r\n{\r\n  _DAT_0057f758 = 0;\r\n  DAT_0057f880 = 0;\r\n  do {\r\n    DAT_0057f880 = DAT_0057f880 + 1;\r\n    if (0x45 < DAT_0057f880) {\r\n      DAT_0057f880 = 0;\r\n    }\r\n  } while ((*(uint *)((&DAT_0057f768)[DAT_0057f880] + 4) & 2) == 0);\r\n  DAT_0057f75c = (&DAT_0057f768)[DAT_0057f880];\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

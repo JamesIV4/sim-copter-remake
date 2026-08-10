@@ -1,0 +1,24 @@
+{
+  "address": "0045a180",
+  "name": "FUN_0045a180",
+  "signature": "undefined FUN_0045a180(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0045a180(int *param_1)\r\n\r\n{\r\n  void *_Buf;\r\n  void *_Buf_00;\r\n  int iVar1;\r\n  \r\n  _Buf = (void *)param_1[0x44];\r\n  iVar1 = param_1[0x42];\r\n  if ((iVar1 < 0) || (param_1[0x4a] != 0)) {\r\n    return 0;\r\n  }\r\n  _Buf_00 = (void *)param_1[0x46];\r\n  if (((int)_Buf_00 < 0x8001) && (0 < (int)_Buf_00)) {\r\n    iVar1 = __write(iVar1,_Buf_00,1);\r\n    if (iVar1 == -1) {\r\n      __write(param_1[0x42],(void *)param_1[0x44],0);\r\n      return 0;\r\n    }\r\n    param_1[0x44] = iVar1;\r\n    if (iVar1 <= (int)_Buf) {\r\n      __write(param_1[0x42],_Buf,0);\r\n      return 0;\r\n    }\r\n    iVar1 = (**(code **)(*param_1 + 0x2c))();\r\n    if (iVar1 == 0) {\r\n      __write(param_1[0x42],_Buf,0);\r\n      return 0;\r\n    }\r\n    param_1[0x47] = param_1[0x47] + 1;\r\n    return 1;\r\n  }\r\n  __write(iVar1,_Buf,0);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045d110",
+      "name": "FUN_0045d110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,18 @@
+{
+  "address": "0040c500",
+  "name": "FUN_0040c500",
+  "signature": "undefined FUN_0040c500(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0040c500(int param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  if (*(int *)(param_1 + 0xb4) == 1) {\r\n    return 0;\r\n  }\r\n  uVar1 = __ftol();\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,45 @@
+{
+  "address": "0045a600",
+  "name": "FUN_0045a600",
+  "signature": "undefined FUN_0045a600(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0045a600(int param_1)\r\n\r\n{\r\n  long _Size;\r\n  undefined4 local_4;\r\n  \r\n  _Size = FUN_004ef300(*(undefined4 *)(param_1 + 0x108));\r\n  __chsize(*(int *)(param_1 + 0x108),_Size);\r\n  local_4 = FUN_00461640();\r\n  __write(*(int *)(param_1 + 0x108),&DAT_00000014,0);\r\n  __write(*(int *)(param_1 + 0x108),&local_4,4);\r\n  *(undefined4 *)(param_1 + 0x124) = 1;\r\n  __write(*(int *)(param_1 + 0x108),(void *)0x0,2);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00459c70",
+      "name": "FUN_00459c70",
+      "ref_type": "COMPUTED_CALL"
+    },
+    {
+      "addr": "0045d3c0",
+      "name": "FUN_0045d3c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ef300",
+      "name": "FUN_004ef300"
+    },
+    {
+      "addr": "004e3440",
+      "name": "__chsize"
+    },
+    {
+      "addr": "00461640",
+      "name": "FUN_00461640"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,24 @@
+{
+  "address": "00479b70",
+  "name": "FUN_00479b70",
+  "signature": "undefined FUN_00479b70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00479b70(void)\r\n\r\n{\r\n  int local_4;\r\n  \r\n  local_4 = ((DAT_005a25a0 * 3 + -0x27) * 8) / 0x30;\r\n  FUN_00448ee0(DAT_004f3ac0,&local_4,4);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449170",
+      "name": "FUN_00449170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00448ee0",
+      "name": "FUN_00448ee0"
+    }
+  ],
+  "data_refs": []
+}

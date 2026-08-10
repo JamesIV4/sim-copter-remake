@@ -1,0 +1,3802 @@
+{
+  "city1": [
+    "004f0380"
+  ],
+  "city2": [
+    "004f0388"
+  ],
+  "city3": [
+    "004f0390"
+  ],
+  "city4": [
+    "004f0398"
+  ],
+  "city5": [
+    "004f03a0"
+  ],
+  "city6": [
+    "004f03a8"
+  ],
+  "city7": [
+    "004f03b0"
+  ],
+  "city8": [
+    "004f03b8"
+  ],
+  "city9": [
+    "004f03c0"
+  ],
+  "city10": [
+    "004f03c8"
+  ],
+  "city11": [
+    "004f03d0"
+  ],
+  "city12": [
+    "004f03d8"
+  ],
+  "city13": [
+    "004f03e0"
+  ],
+  "city14": [
+    "004f03e8"
+  ],
+  "city15": [
+    "004f03f0"
+  ],
+  "city16": [
+    "004f03f8"
+  ],
+  "city17": [
+    "004f0400"
+  ],
+  "city18": [
+    "004f0408"
+  ],
+  "city19": [
+    "004f0410"
+  ],
+  "city20": [
+    "004f0418"
+  ],
+  "city21": [
+    "004f0420"
+  ],
+  "city22": [
+    "004f0428"
+  ],
+  "city23": [
+    "004f0430"
+  ],
+  "city24": [
+    "004f0438"
+  ],
+  "city25": [
+    "004f0440"
+  ],
+  "city26": [
+    "004f0448"
+  ],
+  "city27": [
+    "004f0450"
+  ],
+  "city28": [
+    "004f0458"
+  ],
+  "city29": [
+    "004f0460"
+  ],
+  "new_p": [
+    "004f5430"
+  ],
+  "setnewh.cpp": [
+    "004f543c"
+  ],
+  "sunmontuewedthufrisat": [
+    "004f5500"
+  ],
+  "janfebmaraprmayjunjulaugsepoctnovdec": [
+    "004f5518"
+  ],
+  "lc_time": [
+    "004f5544"
+  ],
+  "lc_numeric": [
+    "004f554c"
+  ],
+  "lc_monetary": [
+    "004f5558"
+  ],
+  "lc_ctype": [
+    "004f5564"
+  ],
+  "lc_collate": [
+    "004f5570"
+  ],
+  "lc_all": [
+    "004f557c"
+  ],
+  "microsoft": [
+    "004f55c8"
+  ],
+  "visual": [
+    "004f55c8",
+    "004f5630"
+  ],
+  "c++": [
+    "004f55c8",
+    "004f5630"
+  ],
+  "runtime": [
+    "004f55c8",
+    "004f5e10",
+    "004f6074"
+  ],
+  "library": [
+    "004f55c8"
+  ],
+  "(press": [
+    "004f55f0"
+  ],
+  "retry": [
+    "004f55f0"
+  ],
+  "debug": [
+    "004f55f0",
+    "004f81a4",
+    "004f8380",
+    "004f83c8",
+    "004f9ae4"
+  ],
+  "the": [
+    "004f55f0",
+    "004f5630"
+  ],
+  "application": [
+    "004f55f0"
+  ],
+  "jit": [
+    "004f55f0"
+  ],
+  "must": [
+    "004f55f0"
+  ],
+  "enabled)": [
+    "004f55f0"
+  ],
+  "for": [
+    "004f5630",
+    "004f5e54",
+    "004f5e8c",
+    "004f5eec",
+    "004f5fa4",
+    "004f5ff4",
+    "004f6020"
+  ],
+  "information": [
+    "004f5630"
+  ],
+  "how": [
+    "004f5630"
+  ],
+  "your": [
+    "004f5630"
+  ],
+  "program": [
+    "004f5630",
+    "004f5fd0"
+  ],
+  "can": [
+    "004f5630"
+  ],
+  "cause": [
+    "004f5630"
+  ],
+  "assertion": [
+    "004f5630",
+    "004f56e4",
+    "005075b0"
+  ],
+  "failure,": [
+    "004f5630"
+  ],
+  "see": [
+    "004f5630"
+  ],
+  "documentation": [
+    "004f5630"
+  ],
+  "asserts": [
+    "004f5630"
+  ],
+  "expression:": [
+    "004f56a0"
+  ],
+  "line:": [
+    "004f56b0"
+  ],
+  "file:": [
+    "004f56b8"
+  ],
+  "<program": [
+    "004f56c0"
+  ],
+  "name": [
+    "004f56c0"
+  ],
+  "unknown>": [
+    "004f56c0"
+  ],
+  "program:": [
+    "004f56d8",
+    "004f6074"
+  ],
+  "failed!": [
+    "004f56e4"
+  ],
+  "null)": [
+    "004f5739"
+  ],
+  "?getcurrentthread": [
+    "004f57b7"
+  ],
+  "setthreadaffinitymask": [
+    "004f57cc"
+  ],
+  "getcurrentprocess": [
+    "004f57e4",
+    "0061e2d0"
+  ],
+  "getprocessaffinitymask": [
+    "004f57f8"
+  ],
+  "kernel32": [
+    "004f5810"
+  ],
+  "united-states": [
+    "004f587c"
+  ],
+  "united-kingdom": [
+    "004f588c"
+  ],
+  "united": [
+    "004f589c",
+    "004f58ac"
+  ],
+  "states": [
+    "004f589c"
+  ],
+  "kingdom": [
+    "004f58ac"
+  ],
+  "turkey": [
+    "004f58c0"
+  ],
+  "switzerland": [
+    "004f58d4"
+  ],
+  "sweden": [
+    "004f58e0"
+  ],
+  "spain": [
+    "004f58f0"
+  ],
+  "south-korea": [
+    "004f58f8"
+  ],
+  "south": [
+    "004f5904"
+  ],
+  "korea": [
+    "004f5904",
+    "004f599c"
+  ],
+  "singapore": [
+    "004f5914"
+  ],
+  "russia": [
+    "004f5920"
+  ],
+  "pr-china": [
+    "004f592c"
+  ],
+  "china": [
+    "004f5938",
+    "004f5a48"
+  ],
+  "portugal": [
+    "004f5944"
+  ],
+  "poland": [
+    "004f5950"
+  ],
+  "norway": [
+    "004f5964"
+  ],
+  "new-zealand": [
+    "004f596c"
+  ],
+  "new": [
+    "004f5978",
+    "00504658",
+    "00506af0"
+  ],
+  "zealand": [
+    "004f5978"
+  ],
+  "netherlands": [
+    "004f5984"
+  ],
+  "mexico": [
+    "004f5990"
+  ],
+  "japan": [
+    "004f59a4"
+  ],
+  "italy": [
+    "004f59ac"
+  ],
+  "ireland": [
+    "004f59b8"
+  ],
+  "iceland": [
+    "004f59c0"
+  ],
+  "hungary": [
+    "004f59c8"
+  ],
+  "hong-kong": [
+    "004f59d0"
+  ],
+  "hong": [
+    "004f59dc"
+  ],
+  "kong": [
+    "004f59dc"
+  ],
+  "holland": [
+    "004f59e8"
+  ],
+  "greece": [
+    "004f59f4"
+  ],
+  "great": [
+    "004f59fc"
+  ],
+  "britain": [
+    "004f59fc",
+    "004f5a60"
+  ],
+  "germany": [
+    "004f5a10"
+  ],
+  "france": [
+    "004f5a1c"
+  ],
+  "finland": [
+    "004f5a24"
+  ],
+  "england": [
+    "004f5a2c"
+  ],
+  "denmark": [
+    "004f5a38"
+  ],
+  "canada": [
+    "004f5a54"
+  ],
+  "belgium": [
+    "004f5a74"
+  ],
+  "austria": [
+    "004f5a84"
+  ],
+  "australia": [
+    "004f5a8c"
+  ],
+  "america": [
+    "004f5a9c"
+  ],
+  "turkish": [
+    "004f5ab0"
+  ],
+  "swiss": [
+    "004f5abc"
+  ],
+  "swedish": [
+    "004f5ac4"
+  ],
+  "spanish-modern": [
+    "004f5ad0"
+  ],
+  "spanish-mexican": [
+    "004f5ae0"
+  ],
+  "spanish": [
+    "004f5af0"
+  ],
+  "russian": [
+    "004f5b00"
+  ],
+  "portuguese-brazilian": [
+    "004f5b14"
+  ],
+  "portuguese": [
+    "004f5b2c"
+  ],
+  "polish": [
+    "004f5b38"
+  ],
+  "norwegian-nynorsk": [
+    "004f5b44"
+  ],
+  "norwegian-bokmal": [
+    "004f5b58"
+  ],
+  "norwegian": [
+    "004f5b6c"
+  ],
+  "korean": [
+    "004f5b88"
+  ],
+  "japanese": [
+    "004f5b98"
+  ],
+  "italian-swiss": [
+    "004f5ba8"
+  ],
+  "italian": [
+    "004f5bb8"
+  ],
+  "irish-english": [
+    "004f5bc8"
+  ],
+  "icelandic": [
+    "004f5bd8"
+  ],
+  "hungarian": [
+    "004f5be4"
+  ],
+  "greek": [
+    "004f5bf4"
+  ],
+  "german-swiss": [
+    "004f5bfc"
+  ],
+  "german-austrian": [
+    "004f5c0c"
+  ],
+  "german": [
+    "004f5c1c"
+  ],
+  "french-swiss": [
+    "004f5c28"
+  ],
+  "french-canadian": [
+    "004f5c38"
+  ],
+  "french-belgian": [
+    "004f5c48"
+  ],
+  "french": [
+    "004f5c58"
+  ],
+  "finnish": [
+    "004f5c6c"
+  ],
+  "english-usa": [
+    "004f5c90"
+  ],
+  "english-us": [
+    "004f5c9c"
+  ],
+  "english-uk": [
+    "004f5ca8"
+  ],
+  "english-nz": [
+    "004f5cb4"
+  ],
+  "english-ire": [
+    "004f5cc0"
+  ],
+  "english-can": [
+    "004f5ccc"
+  ],
+  "english-aus": [
+    "004f5cd8"
+  ],
+  "english-american": [
+    "004f5ce4"
+  ],
+  "english": [
+    "004f5cf8",
+    "004f5de8"
+  ],
+  "dutch-belgian": [
+    "004f5d10"
+  ],
+  "dutch": [
+    "004f5d20"
+  ],
+  "danish": [
+    "004f5d34"
+  ],
+  "chinese-traditional": [
+    "004f5d54"
+  ],
+  "chinese-singapore": [
+    "004f5d68"
+  ],
+  "chinese-simplified": [
+    "004f5d7c"
+  ],
+  "chinese-hongkong": [
+    "004f5d90"
+  ],
+  "chinese": [
+    "004f5da4"
+  ],
+  "canadian": [
+    "004f5db4"
+  ],
+  "belgian": [
+    "004f5dc0"
+  ],
+  "australian": [
+    "004f5dc8"
+  ],
+  "american-english": [
+    "004f5dd4"
+  ],
+  "american": [
+    "004f5de8",
+    "004f5dfc"
+  ],
+  "error": [
+    "004f5e10",
+    "004f5e24",
+    "004f5e34",
+    "004f5e44",
+    "004f5f50",
+    "004f5f74",
+    "004f933c",
+    "004f97b0"
+  ],
+  "tloss": [
+    "004f5e24"
+  ],
+  "sing": [
+    "004f5e34"
+  ],
+  "domain": [
+    "004f5e44"
+  ],
+  "r6027": [
+    "004f5e54"
+  ],
+  "not": [
+    "004f5e54",
+    "004f5e8c",
+    "004f5eec",
+    "004f5fa4",
+    "004f5ff4",
+    "004f6020",
+    "004f604c",
+    "005039d8",
+    "00503f90",
+    "00504434",
+    "00504590",
+    "005045b8",
+    "005045d8",
+    "00506afc"
+  ],
+  "enough": [
+    "004f5e54",
+    "004f5e8c",
+    "004f5eec",
+    "004f5fa4",
+    "004f5ff4",
+    "004f6020"
+  ],
+  "space": [
+    "004f5e54",
+    "004f5e8c",
+    "004f5eec",
+    "004f5fa4",
+    "004f5ff4",
+    "004f6020"
+  ],
+  "lowio": [
+    "004f5e54"
+  ],
+  "initialization": [
+    "004f5e54",
+    "004f5e8c"
+  ],
+  "r6026": [
+    "004f5e8c"
+  ],
+  "stdio": [
+    "004f5e8c"
+  ],
+  "r6025": [
+    "004f5ec4"
+  ],
+  "pure": [
+    "004f5ec4"
+  ],
+  "virtual": [
+    "004f5ec4"
+  ],
+  "function": [
+    "004f5ec4"
+  ],
+  "call": [
+    "004f5ec4"
+  ],
+  "r6024": [
+    "004f5eec"
+  ],
+  "_onexit/atexit": [
+    "004f5eec"
+  ],
+  "table": [
+    "004f5eec",
+    "005039f4"
+  ],
+  "r6019": [
+    "004f5f24"
+  ],
+  "unable": [
+    "004f5f24",
+    "005039f4",
+    "00503a1c",
+    "00503a44",
+    "00505c4c",
+    "00505f14",
+    "00506218"
+  ],
+  "open": [
+    "004f5f24",
+    "005064b8"
+  ],
+  "console": [
+    "004f5f24"
+  ],
+  "device": [
+    "004f5f24"
+  ],
+  "r6018": [
+    "004f5f50"
+  ],
+  "unexpected": [
+    "004f5f50",
+    "004f5f74"
+  ],
+  "heap": [
+    "004f5f50"
+  ],
+  "r6017": [
+    "004f5f74"
+  ],
+  "multithread": [
+    "004f5f74"
+  ],
+  "lock": [
+    "004f5f74"
+  ],
+  "r6016": [
+    "004f5fa4"
+  ],
+  "thread": [
+    "004f5fa4"
+  ],
+  "data": [
+    "004f5fa4"
+  ],
+  "abnormal": [
+    "004f5fd0"
+  ],
+  "termination": [
+    "004f5fd0"
+  ],
+  "r6009": [
+    "004f5ff4"
+  ],
+  "environment": [
+    "004f5ff4"
+  ],
+  "r6008": [
+    "004f6020"
+  ],
+  "arguments": [
+    "004f6020"
+  ],
+  "r6002": [
+    "004f604c"
+  ],
+  "floating": [
+    "004f604c"
+  ],
+  "point": [
+    "004f604c"
+  ],
+  "loaded": [
+    "004f604c"
+  ],
+  "error!": [
+    "004f6074",
+    "004f9334"
+  ],
+  "floor": [
+    "004f610c"
+  ],
+  "getlastactivepopup": [
+    "004f61a0"
+  ],
+  "getactivewindow": [
+    "004f61b4",
+    "0061dbe6"
+  ],
+  "messageboxa": [
+    "004f61c4",
+    "0061de48"
+  ],
+  "user32.dll": [
+    "004f61d0",
+    "0061de8a"
+  ],
+  "h:mm:ss": [
+    "004f6210"
+  ],
+  "dddd,": [
+    "004f6218"
+  ],
+  "mmmm": [
+    "004f6218"
+  ],
+  "dd,": [
+    "004f6218"
+  ],
+  "yyyy": [
+    "004f6218"
+  ],
+  "m/d/yy": [
+    "004f622c"
+  ],
+  "out": [
+    "004f80f0",
+    "004f8130",
+    "004fa304"
+  ],
+  "memory": [
+    "004f80f0",
+    "004fa304",
+    "00506218"
+  ],
+  "length": [
+    "004f8100"
+  ],
+  "exception": [
+    "004f8100",
+    "004f8130"
+  ],
+  "occurred": [
+    "004f8100",
+    "004f8130"
+  ],
+  "range": [
+    "004f8130"
+  ],
+  "\\varfileinfo\\translation": [
+    "004f8150"
+  ],
+  "\\stringfileinfo\\%04lx%04lx\\%s": [
+    "004f816c"
+  ],
+  "productname": [
+    "004f818c"
+  ],
+  "fileversion": [
+    "004f8198"
+  ],
+  "version": [
+    "004f81a4"
+  ],
+  "windows": [
+    "004f81b8",
+    "004f81c8"
+  ],
+  "%u.%u": [
+    "004f81b8",
+    "004f81c8"
+  ],
+  "sans_l_5.def": [
+    "004f8204"
+  ],
+  "sans_s_5.def": [
+    "004f8214"
+  ],
+  "sans_m_5.def": [
+    "004f8224"
+  ],
+  "button5.bmp": [
+    "004f8234"
+  ],
+  "hk.bmp": [
+    "004f8245"
+  ],
+  "invntory.bmp": [
+    "004f824c"
+  ],
+  "b.smk": [
+    "004f8279"
+  ],
+  "s.smk": [
+    "004f8281"
+  ],
+  "%3d:": [
+    "004f829c"
+  ],
+  "%3d": [
+    "004f829c",
+    "004f829c",
+    "004f829c",
+    "00504738"
+  ],
+  "scroll.bmp": [
+    "004f82b0"
+  ],
+  "sliderbh.bmp": [
+    "004f82bc"
+  ],
+  "sliderbv.bmp": [
+    "004f82cc"
+  ],
+  "sliderth.bmp": [
+    "004f82dc"
+  ],
+  "slidertv.bmp": [
+    "004f82ec"
+  ],
+  "radio.bmp": [
+    "004f82fc"
+  ],
+  "check.bmp": [
+    "004f8308"
+  ],
+  "button.bmp": [
+    "004f8314"
+  ],
+  "help": [
+    "004f8368"
+  ],
+  "[topic]": [
+    "004f8368"
+  ],
+  "gui": [
+    "004f8380"
+  ],
+  "window": [
+    "004f8380",
+    "004f83c8",
+    "004f9a2c"
+  ],
+  "save:": [
+    "004f83c8"
+  ],
+  "%ld/%ld,": [
+    "004f83c8"
+  ],
+  "%ld:%ld": [
+    "004f83c8"
+  ],
+  "hrglass.smk": [
+    "004f83f0"
+  ],
+  "flap3.bmp": [
+    "004f8400"
+  ],
+  "flap2.bmp": [
+    "004f840c"
+  ],
+  "flap1.bmp": [
+    "004f8418"
+  ],
+  "flap0.bmp": [
+    "004f8424"
+  ],
+  "dash6.bmp": [
+    "004f8430"
+  ],
+  "dash5.bmp": [
+    "004f843c"
+  ],
+  "dash4.bmp": [
+    "004f8448"
+  ],
+  "dash3.bmp": [
+    "004f8454"
+  ],
+  "dash2.bmp": [
+    "004f8460"
+  ],
+  "dash1.bmp": [
+    "004f846c"
+  ],
+  "dash0.bmp": [
+    "004f8478"
+  ],
+  "career.bmp": [
+    "004f8484"
+  ],
+  "main1.bmp": [
+    "004f8490"
+  ],
+  "sim3d1.max": [
+    "004f84a4"
+  ],
+  "menu4.bmp": [
+    "004f8500"
+  ],
+  "input_b.bmp": [
+    "004f850c"
+  ],
+  "input.bmp": [
+    "004f8518"
+  ],
+  "jhbase.bmp": [
+    "004f8524"
+  ],
+  "jhandle.bmp": [
+    "004f8530"
+  ],
+  "jslider.bmp": [
+    "004f853c"
+  ],
+  "jbutton.bmp": [
+    "004f8548"
+  ],
+  "joystick.bmp": [
+    "004f8554"
+  ],
+  "nontext.bmp": [
+    "004f8564"
+  ],
+  "keylight.bmp": [
+    "004f8570"
+  ],
+  "keyboard.bmp": [
+    "004f8580"
+  ],
+  "sim3d.twk": [
+    "004f8620"
+  ],
+  "sans_m_4.def": [
+    "004f8668"
+  ],
+  "msnlog_b.bmp": [
+    "004f8678"
+  ],
+  "msnlog_s.bmp": [
+    "004f8688"
+  ],
+  "mssn_btn.bmp": [
+    "004f8698"
+  ],
+  "mssnlog.bmp": [
+    "004f86a8"
+  ],
+  "bariel.ttf": [
+    "004f86d8"
+  ],
+  "bulgarian": [
+    "004f86e4"
+  ],
+  "ariel": [
+    "004f86e4"
+  ],
+  "arial": [
+    "004f86f4",
+    "004f9c14"
+  ],
+  "mg_00_??.wav": [
+    "004f86fc"
+  ],
+  "mg_00_01.wav": [
+    "004f870c"
+  ],
+  "xwhoa.wav": [
+    "004f872c"
+  ],
+  "adrclose.wav": [
+    "004f8738"
+  ],
+  "al02.wav": [
+    "004f8748",
+    "004f95a0"
+  ],
+  "al01.wav": [
+    "004f8754",
+    "004f95ac"
+  ],
+  "adropen.wav": [
+    "004f8760"
+  ],
+  "dis068.wav": [
+    "004f876c"
+  ],
+  "dis067.wav": [
+    "004f8778"
+  ],
+  "dis066.wav": [
+    "004f8784"
+  ],
+  "dis065.wav": [
+    "004f8790"
+  ],
+  "dis064.wav": [
+    "004f879c"
+  ],
+  "dis063.wav": [
+    "004f87a8"
+  ],
+  "dis062.wav": [
+    "004f87b4"
+  ],
+  "dis061.wav": [
+    "004f87c0"
+  ],
+  "dis060.wav": [
+    "004f87cc"
+  ],
+  "dis059.wav": [
+    "004f87d8"
+  ],
+  "dis058.wav": [
+    "004f87e4"
+  ],
+  "dis057.wav": [
+    "004f87f0"
+  ],
+  "dis056.wav": [
+    "004f87fc"
+  ],
+  "dis055.wav": [
+    "004f8808"
+  ],
+  "dis054.wav": [
+    "004f8814"
+  ],
+  "dis053.wav": [
+    "004f8820"
+  ],
+  "d2020.wav": [
+    "004f882c"
+  ],
+  "d2019.wav": [
+    "004f8838"
+  ],
+  "d2018.wav": [
+    "004f8844"
+  ],
+  "d2017.wav": [
+    "004f8850"
+  ],
+  "d2016.wav": [
+    "004f885c"
+  ],
+  "d2015.wav": [
+    "004f8868"
+  ],
+  "d2014.wav": [
+    "004f8874"
+  ],
+  "d2013.wav": [
+    "004f8880"
+  ],
+  "d2012.wav": [
+    "004f888c"
+  ],
+  "d2011.wav": [
+    "004f8898"
+  ],
+  "d2010.wav": [
+    "004f88a4"
+  ],
+  "d2009.wav": [
+    "004f88b0"
+  ],
+  "d2008.wav": [
+    "004f88bc"
+  ],
+  "d2007.wav": [
+    "004f88c8"
+  ],
+  "d2006.wav": [
+    "004f88d4"
+  ],
+  "d2005.wav": [
+    "004f88e0"
+  ],
+  "d2004.wav": [
+    "004f88ec"
+  ],
+  "d2003.wav": [
+    "004f88f8"
+  ],
+  "d2002.wav": [
+    "004f8904"
+  ],
+  "d2001.wav": [
+    "004f8910"
+  ],
+  "l009.wav": [
+    "004f891c"
+  ],
+  "l008.wav": [
+    "004f8928"
+  ],
+  "l007.wav": [
+    "004f8934"
+  ],
+  "l006.wav": [
+    "004f8940"
+  ],
+  "l005.wav": [
+    "004f894c"
+  ],
+  "l004.wav": [
+    "004f8958"
+  ],
+  "l003.wav": [
+    "004f8964"
+  ],
+  "l002.wav": [
+    "004f8970"
+  ],
+  "l001.wav": [
+    "004f897c"
+  ],
+  "d1018.wav": [
+    "004f8988"
+  ],
+  "d1017.wav": [
+    "004f8994"
+  ],
+  "d1016.wav": [
+    "004f89a0"
+  ],
+  "d1015.wav": [
+    "004f89ac"
+  ],
+  "d1014.wav": [
+    "004f89b8"
+  ],
+  "d1013.wav": [
+    "004f89c4"
+  ],
+  "d1012.wav": [
+    "004f89d0"
+  ],
+  "d1011.wav": [
+    "004f89dc"
+  ],
+  "d1010.wav": [
+    "004f89e8"
+  ],
+  "d1009.wav": [
+    "004f89f4"
+  ],
+  "d1008.wav": [
+    "004f8a00"
+  ],
+  "d1007.wav": [
+    "004f8a0c"
+  ],
+  "d1006.wav": [
+    "004f8a18"
+  ],
+  "d1005.wav": [
+    "004f8a24"
+  ],
+  "d1004.wav": [
+    "004f8a30"
+  ],
+  "d1003.wav": [
+    "004f8a3c"
+  ],
+  "d1002.wav": [
+    "004f8a48"
+  ],
+  "d1001.wav": [
+    "004f8a54"
+  ],
+  "d1000.wav": [
+    "004f8a60"
+  ],
+  "gasout.wav": [
+    "004f8a6c"
+  ],
+  "tscreech.wav": [
+    "004f8a78"
+  ],
+  "accel2.wav": [
+    "004f8a88"
+  ],
+  "horn3.wav": [
+    "004f8a94"
+  ],
+  "horn2.wav": [
+    "004f8aa0"
+  ],
+  "horn1.wav": [
+    "004f8aac"
+  ],
+  "dorcls.wav": [
+    "004f8ab8"
+  ],
+  "doropn.wav": [
+    "004f8ac4",
+    "00506898"
+  ],
+  "laser.wav": [
+    "004f8ad0"
+  ],
+  "ufo.wav": [
+    "004f8adc"
+  ],
+  "boo.wav": [
+    "004f8ae4"
+  ],
+  "cheer.wav": [
+    "004f8aec"
+  ],
+  "watercan.wav": [
+    "004f8af8"
+  ],
+  "ca_ching.wav": [
+    "004f8b08"
+  ],
+  "help1.wav": [
+    "004f8b18"
+  ],
+  "cesslp1.wav": [
+    "004f8b24"
+  ],
+  "dive1.wav": [
+    "004f8b30"
+  ],
+  "crsh2.wav": [
+    "004f8b3c"
+  ],
+  "train1.wav": [
+    "004f8b48"
+  ],
+  "tgpop.wav": [
+    "004f8b54"
+  ],
+  "tgshwh.wav": [
+    "004f8b60"
+  ],
+  "noequip.wav": [
+    "004f8b6c"
+  ],
+  "firestar.wav": [
+    "004f8b78"
+  ],
+  "blip1.wav": [
+    "004f8b88"
+  ],
+  "softbmp2.wav": [
+    "004f8b94"
+  ],
+  "winchlp.wav": [
+    "004f8ba4"
+  ],
+  "firhoslp.wav": [
+    "004f8bb0"
+  ],
+  "policesi.wav": [
+    "004f8bc0"
+  ],
+  "firesire.wav": [
+    "004f8bd0"
+  ],
+  "ambsrn11.wav": [
+    "004f8be0"
+  ],
+  "firedmg.wav": [
+    "004f8bf0"
+  ],
+  "douse.wav": [
+    "004f8bfc"
+  ],
+  "motorold.wav": [
+    "004f8c08"
+  ],
+  "firelp11.wav": [
+    "004f8c18"
+  ],
+  "mevac.wav": [
+    "004f8c28"
+  ],
+  "firemis2.wav": [
+    "004f8c34"
+  ],
+  "splish.wav": [
+    "004f8c44"
+  ],
+  "kapow4.wav": [
+    "004f8c50"
+  ],
+  "punch3.wav": [
+    "004f8c5c"
+  ],
+  "boom1.wav": [
+    "004f8c68"
+  ],
+  "missile.wav": [
+    "004f8c74"
+  ],
+  "machgun1.wav": [
+    "004f8c80"
+  ],
+  "bldexpl.wav": [
+    "004f8c90"
+  ],
+  "chopstar.wav": [
+    "004f8c9c"
+  ],
+  "chopstop.wav": [
+    "004f8cac"
+  ],
+  "explode.wav": [
+    "004f8cbc"
+  ],
+  "coploop.wav": [
+    "004f8cc8"
+  ],
+  "sans_s_3.def": [
+    "004f8cd4"
+  ],
+  "sans_l_3.def": [
+    "004f8ce4"
+  ],
+  "sans_m_3.def": [
+    "004f8cf4"
+  ],
+  "catsel.wav": [
+    "004f8d04"
+  ],
+  "clip.bmp": [
+    "004f8d10"
+  ],
+  "cat_btn.bmp": [
+    "004f8d1c"
+  ],
+  "stain.bmp": [
+    "004f8d28"
+  ],
+  "cataloge.bmp": [
+    "004f8d34"
+  ],
+  "catalog.bmp": [
+    "004f8d44"
+  ],
+  "cat_equt.bmp": [
+    "004f8d90"
+  ],
+  "cat_mdet.bmp": [
+    "004f8da0"
+  ],
+  "cat_daut.bmp": [
+    "004f8db0"
+  ],
+  "cat_augt.bmp": [
+    "004f8dc0"
+  ],
+  "cat_belt.bmp": [
+    "004f8dd0"
+  ],
+  "cat_md5t.bmp": [
+    "004f8de0"
+  ],
+  "cat_hugt.bmp": [
+    "004f8df0"
+  ],
+  "cat_jett.bmp": [
+    "004f8e00"
+  ],
+  "cat_scht.bmp": [
+    "004f8e10"
+  ],
+  "cat_mde.bmp": [
+    "004f8e20"
+  ],
+  "cat_daup.bmp": [
+    "004f8e2c"
+  ],
+  "cat_aug.bmp": [
+    "004f8e3c"
+  ],
+  "cat_bell.bmp": [
+    "004f8e48"
+  ],
+  "cat_md5.bmp": [
+    "004f8e58"
+  ],
+  "cat_hugh.bmp": [
+    "004f8e64"
+  ],
+  "cat_jet.bmp": [
+    "004f8e74"
+  ],
+  "cat_schw.bmp": [
+    "004f8e80"
+  ],
+  "jingle\\": [
+    "004f8ec4"
+  ],
+  "music\\": [
+    "004f8ed0"
+  ],
+  "stations\\": [
+    "004f8ed8"
+  ],
+  "commercl\\": [
+    "004f8ee4"
+  ],
+  "radio\\": [
+    "004f8ef0"
+  ],
+  "talk\\": [
+    "004f8ef8"
+  ],
+  "easy\\": [
+    "004f8f00"
+  ],
+  "oldies\\": [
+    "004f8f0c"
+  ],
+  "jazz\\": [
+    "004f8f14"
+  ],
+  "country\\": [
+    "004f8f1c"
+  ],
+  "techno\\": [
+    "004f8f28"
+  ],
+  "rock\\": [
+    "004f8f30"
+  ],
+  "classic\\": [
+    "004f8f38"
+  ],
+  "simcopter\\": [
+    "004f8f90"
+  ],
+  "weak\\": [
+    "004f8fa9"
+  ],
+  "onts\\": [
+    "004f8fb5"
+  ],
+  "cities\\career\\": [
+    "004f8fcc"
+  ],
+  "cities\\": [
+    "004f8fdc"
+  ],
+  "sound\\radio\\": [
+    "004f8fe4"
+  ],
+  "sound\\people\\": [
+    "004f8ff4"
+  ],
+  "ound\\": [
+    "004f9005"
+  ],
+  "maxhelp.exe": [
+    "004f901c"
+  ],
+  "toc.htm": [
+    "004f9028"
+  ],
+  "credit.bmp": [
+    "004f9030"
+  ],
+  "mboxcht1.wav": [
+    "004f903c"
+  ],
+  "mboxcht.wav": [
+    "004f904c"
+  ],
+  "mboxcht.bmp": [
+    "004f9058"
+  ],
+  "mboxl6.bmp": [
+    "004f9064"
+  ],
+  "mboxl5.bmp": [
+    "004f9070"
+  ],
+  "mboxl4.bmp": [
+    "004f907c"
+  ],
+  "mboxl3.bmp": [
+    "004f9088"
+  ],
+  "mboxl2d.bmp": [
+    "004f9094"
+  ],
+  "mboxl2.bmp": [
+    "004f90a0"
+  ],
+  "mboxl1.bmp": [
+    "004f90ac"
+  ],
+  "mboxl.bmp": [
+    "004f90b8"
+  ],
+  "button6.bmp": [
+    "004f90c4"
+  ],
+  "button4.bmp": [
+    "004f90d0"
+  ],
+  "button3.bmp": [
+    "004f90dc"
+  ],
+  "button2d.bmp": [
+    "004f90e8"
+  ],
+  "button2.bmp": [
+    "004f90f8"
+  ],
+  "button1.bmp": [
+    "004f9104"
+  ],
+  "mbox6.bmp": [
+    "004f9110"
+  ],
+  "mbox5.bmp": [
+    "004f911c"
+  ],
+  "mbox4.bmp": [
+    "004f9128"
+  ],
+  "mbox3.bmp": [
+    "004f9134"
+  ],
+  "mbox2d.bmp": [
+    "004f9140"
+  ],
+  "mbox2.bmp": [
+    "004f914c"
+  ],
+  "mbox1.bmp": [
+    "004f9158"
+  ],
+  "mbox.bmp": [
+    "004f9164"
+  ],
+  "playmenu.bmp": [
+    "004f9170"
+  ],
+  "%ld,%ld,%ld,%ld": [
+    "004f9204"
+  ],
+  "fontimagefilename": [
+    "004f9214"
+  ],
+  "rectchars": [
+    "004f9228"
+  ],
+  "charactercount": [
+    "004f9234"
+  ],
+  "startcharacter": [
+    "004f9244"
+  ],
+  "characterset": [
+    "004f9254"
+  ],
+  "language": [
+    "004f9264"
+  ],
+  "detail": [
+    "004f9270"
+  ],
+  "height": [
+    "004f927c"
+  ],
+  "header": [
+    "004f9284"
+  ],
+  "pitch": [
+    "004f928c",
+    "004f9b28"
+  ],
+  "menu.wav": [
+    "004f92d8"
+  ],
+  "hnitbutn.bmp": [
+    "004f92e4"
+  ],
+  "hdaybutn.bmp": [
+    "004f92f4"
+  ],
+  "nhangar.bmp": [
+    "004f9304"
+  ],
+  "dhangar.bmp": [
+    "004f9310"
+  ],
+  "code:": [
+    "004f933c"
+  ],
+  "%lu": [
+    "004f933c"
+  ],
+  "sans_l_4.def": [
+    "004f934c"
+  ],
+  "slidchk.bmp": [
+    "004f935c"
+  ],
+  "checkup.bmp": [
+    "004f9368"
+  ],
+  "valk.wav": [
+    "004f9374"
+  ],
+  "credit.smk": [
+    "004f9380"
+  ],
+  "b1_20.bmp": [
+    "004f9399"
+  ],
+  "slidcity.bmp": [
+    "004f93a4"
+  ],
+  "cityset.bmp": [
+    "004f93b4"
+  ],
+  "radiotv.bmp": [
+    "004f93c0"
+  ],
+  "station.bmp": [
+    "004f93cc"
+  ],
+  "sound.bmp": [
+    "004f93d8"
+  ],
+  "rendscrl.bmp": [
+    "004f93e4"
+  ],
+  "ray.bmp": [
+    "004f93f5"
+  ],
+  "cool.bmp": [
+    "004f9400"
+  ],
+  "o.bmp": [
+    "004f940d"
+  ],
+  "x.bmp": [
+    "004f9415"
+  ],
+  "render.bmp": [
+    "004f9438"
+  ],
+  "cost": [
+    "004f94b0"
+  ],
+  "%ld": [
+    "004f94b0",
+    "004f9a48",
+    "004f9a68",
+    "004f9a88",
+    "004f9a88"
+  ],
+  "martian.bmp": [
+    "004f94bc"
+  ],
+  "al20.wav": [
+    "004f94c8"
+  ],
+  "al19.wav": [
+    "004f94d4"
+  ],
+  "al18.wav": [
+    "004f94e0"
+  ],
+  "al17.wav": [
+    "004f94ec"
+  ],
+  "al16.wav": [
+    "004f94f8"
+  ],
+  "al15.wav": [
+    "004f9504"
+  ],
+  "al14.wav": [
+    "004f9510"
+  ],
+  "al13.wav": [
+    "004f951c"
+  ],
+  "al12.wav": [
+    "004f9528"
+  ],
+  "al11.wav": [
+    "004f9534"
+  ],
+  "al10.wav": [
+    "004f9540"
+  ],
+  "al09.wav": [
+    "004f954c"
+  ],
+  "al08.wav": [
+    "004f9558"
+  ],
+  "al07.wav": [
+    "004f9564"
+  ],
+  "al06.wav": [
+    "004f9570"
+  ],
+  "al05.wav": [
+    "004f957c"
+  ],
+  "al04.wav": [
+    "004f9588"
+  ],
+  "al03.wav": [
+    "004f9594"
+  ],
+  "movie01.smk": [
+    "004f95bc"
+  ],
+  "movie??.smk": [
+    "004f95c8"
+  ],
+  "cityride.bmp": [
+    "004f95ec"
+  ],
+  "hangar.wav": [
+    "004f95fc"
+  ],
+  "menusky.smk": [
+    "004f9608"
+  ],
+  "copter.cfg": [
+    "004f9614"
+  ],
+  "intro2.smk": [
+    "004f9620"
+  ],
+  "intro1.smk": [
+    "004f962c"
+  ],
+  "genuineintel": [
+    "004f9694"
+  ],
+  "calling": [
+    "004f97b0"
+  ],
+  "createpen()": [
+    "004f97b0"
+  ],
+  "cbackbuffer::drawline()": [
+    "004f97b0"
+  ],
+  "blast.wav": [
+    "004f97e8"
+  ],
+  "flapbtn2.bmp": [
+    "004f97f4"
+  ],
+  "flapbtn1.bmp": [
+    "004f9804"
+  ],
+  "flapbtn0.bmp": [
+    "004f9814"
+  ],
+  "watergge.bmp": [
+    "004f9824"
+  ],
+  "mapbttn.bmp": [
+    "004f9834"
+  ],
+  "people1.bmp": [
+    "004f9840"
+  ],
+  "seatwin2.bmp": [
+    "004f984c"
+  ],
+  "bootsqur.bmp": [
+    "004f985c"
+  ],
+  "boot.bmp": [
+    "004f986c"
+  ],
+  "altnumbr.bmp": [
+    "004f9878"
+  ],
+  "managge.bmp": [
+    "004f9888"
+  ],
+  "moneygge.def": [
+    "004f9894"
+  ],
+  "fuelcolr.bmp": [
+    "004f98a4"
+  ],
+  "damage.bmp": [
+    "004f98b4"
+  ],
+  "compass1.bmp": [
+    "004f98c0"
+  ],
+  "***don't": [
+    "004f9974"
+  ],
+  "try": [
+    "004f9974"
+  ],
+  "edit": [
+    "004f9974"
+  ],
+  "this": [
+    "004f9974"
+  ],
+  "file***!!!": [
+    "004f9974"
+  ],
+  "career.wav": [
+    "004f99b4"
+  ],
+  "carsel.wav": [
+    "004f99c0"
+  ],
+  "buttonc.bmp": [
+    "004f99cc"
+  ],
+  "carsel.bmp": [
+    "004f99d8"
+  ],
+  "sparkal": [
+    "004f99f8"
+  ],
+  "button.wav": [
+    "004f9a00"
+  ],
+  "debug.txt": [
+    "004f9a20"
+  ],
+  "creation": [
+    "004f9a2c"
+  ],
+  "failed.": [
+    "004f9a2c"
+  ],
+  "free": [
+    "004f9a48"
+  ],
+  "physical": [
+    "004f9a48",
+    "004f9a68"
+  ],
+  "memory:": [
+    "004f9a48",
+    "004f9a68"
+  ],
+  "total": [
+    "004f9a68",
+    "00504658"
+  ],
+  "current": [
+    "004f9a88"
+  ],
+  "screen": [
+    "004f9a88"
+  ],
+  "mode:": [
+    "004f9a88"
+  ],
+  "%ld,": [
+    "004f9a88"
+  ],
+  "with": [
+    "004f9a88"
+  ],
+  "bit": [
+    "004f9a88"
+  ],
+  "color": [
+    "004f9a88",
+    "005039f4"
+  ],
+  "smacker": [
+    "004f9abc"
+  ],
+  "version:": [
+    "004f9abc",
+    "004f9ad4",
+    "004f9ae4",
+    "004f9af8"
+  ],
+  "view": [
+    "004f9b10",
+    "004f9b28",
+    "004f9b40"
+  ],
+  "roll": [
+    "004f9b10"
+  ],
+  "multiplier": [
+    "004f9b10",
+    "004f9b28",
+    "004f9b40"
+  ],
+  "yaw": [
+    "004f9b40"
+  ],
+  "joystick": [
+    "004f9b58"
+  ],
+  "threshold": [
+    "004f9b64"
+  ],
+  "input.cfg": [
+    "004f9b70"
+  ],
+  "lay_b.bmp": [
+    "004f9b81"
+  ],
+  "lay1.bmp": [
+    "004f9b8d"
+  ],
+  "menuback.wav": [
+    "004f9b98"
+  ],
+  "ain5.bmp": [
+    "004f9ba9"
+  ],
+  "ain4.bmp": [
+    "004f9bb5"
+  ],
+  "main3.bmp": [
+    "004f9bc0"
+  ],
+  "main2.bmp": [
+    "004f9bcc"
+  ],
+  "skydark.bmp": [
+    "004f9bf8"
+  ],
+  "sky.bmp": [
+    "004f9c04"
+  ],
+  "oemname": [
+    "004f9c28"
+  ],
+  "system\\currentcontrolset\\control\\mediaproperties\\privateproperties\\joystick\\oem": [
+    "004f9c30"
+  ],
+  "joystick%doemname": [
+    "004f9c80"
+  ],
+  "currentjoysticksettings": [
+    "004f9c94"
+  ],
+  "joysticksettings": [
+    "004f9cac"
+  ],
+  "system\\currentcontrolset\\control\\mediaresources\\joystick": [
+    "004f9cc0"
+  ],
+  "sunday": [
+    "004f9cfc",
+    "004f9d40"
+  ],
+  "saturday": [
+    "004f9d04",
+    "004f9d48"
+  ],
+  "friday": [
+    "004f9d10",
+    "004f9d54"
+  ],
+  "thursday": [
+    "004f9d18",
+    "004f9d5c"
+  ],
+  "wednesday": [
+    "004f9d24",
+    "004f9d68"
+  ],
+  "tuesday": [
+    "004f9d30",
+    "004f9d74"
+  ],
+  "monday": [
+    "004f9d38",
+    "004f9d7c"
+  ],
+  "december": [
+    "004f9d84",
+    "004f9df0"
+  ],
+  "november": [
+    "004f9d90",
+    "004f9dfc"
+  ],
+  "october": [
+    "004f9d9c",
+    "004f9e08"
+  ],
+  "september": [
+    "004f9da4",
+    "004f9e10"
+  ],
+  "august": [
+    "004f9db0",
+    "004f9e1c"
+  ],
+  "april": [
+    "004f9dcc",
+    "004f9e38"
+  ],
+  "march": [
+    "004f9dd4",
+    "004f9e40"
+  ],
+  "february": [
+    "004f9ddc",
+    "004f9e48"
+  ],
+  "january": [
+    "004f9de8",
+    "004f9e54"
+  ],
+  "%2u-%.3s-%.2u": [
+    "004f9efc"
+  ],
+  "%2u%.2u": [
+    "004f9f10"
+  ],
+  "%2u:%.2u": [
+    "004f9f18",
+    "004f9f24"
+  ],
+  "%2u.%2u.%2u": [
+    "004f9f30"
+  ],
+  "%2u-%2u-%2u": [
+    "004f9f3c"
+  ],
+  "%2u/%2u/%2u": [
+    "004f9f48"
+  ],
+  "redirect": [
+    "004f9f5c"
+  ],
+  "no_redirect": [
+    "004f9f68"
+  ],
+  "twk_err_no_section": [
+    "004f9f74"
+  ],
+  "maxissimlabs": [
+    "004f9f88"
+  ],
+  "double": [
+    "004f9f98"
+  ],
+  "corrupted_file": [
+    "004f9fa8"
+  ],
+  "_datatype": [
+    "004f9fb8"
+  ],
+  "%s%d%s": [
+    "004f9fc4"
+  ],
+  "_value": [
+    "004f9fd4"
+  ],
+  "numctrl": [
+    "004f9fdc"
+  ],
+  "ocean": [
+    "004fa0ec"
+  ],
+  "decompress": [
+    "004fa0f4"
+  ],
+  "buffer": [
+    "004fa0f4"
+  ],
+  "compress": [
+    "004fa10c"
+  ],
+  "miscinfo": [
+    "004fa118"
+  ],
+  "paper": [
+    "004fa12c"
+  ],
+  "citystr": [
+    "004fa134"
+  ],
+  "stackpts": [
+    "004fa13c"
+  ],
+  "milcnt": [
+    "004fa148"
+  ],
+  "tilecnt": [
+    "004fa150"
+  ],
+  "indratio": [
+    "004fa158"
+  ],
+  "indrates": [
+    "004fa164"
+  ],
+  "inddemand": [
+    "004fa170"
+  ],
+  "healthratio": [
+    "004fa17c"
+  ],
+  "educateratio": [
+    "004fa188"
+  ],
+  "popratio": [
+    "004fa198"
+  ],
+  "neighborfame": [
+    "004fa1a4"
+  ],
+  "neighborpop": [
+    "004fa1b4"
+  ],
+  "neighborvalue": [
+    "004fa1c0"
+  ],
+  "neighborname": [
+    "004fa1d0"
+  ],
+  "taxpop": [
+    "004fa1e0"
+  ],
+  "zonepop": [
+    "004fa1e8"
+  ],
+  "budgetlist": [
+    "004fa1f0"
+  ],
+  "rogmap": [
+    "004fa1fc"
+  ],
+  "popmap": [
+    "004fa204"
+  ],
+  "firemap": [
+    "004fa20c"
+  ],
+  "policemap": [
+    "004fa214"
+  ],
+  "crimemap": [
+    "004fa220"
+  ],
+  "valuemap": [
+    "004fa22c"
+  ],
+  "pollutemap": [
+    "004fa238"
+  ],
+  "trafficmap": [
+    "004fa244"
+  ],
+  "bitsmap": [
+    "004fa250"
+  ],
+  "auxptr8": [
+    "004fa260"
+  ],
+  "auxptr7": [
+    "004fa268"
+  ],
+  "auxptr6": [
+    "004fa270"
+  ],
+  "auxptr5": [
+    "004fa278"
+  ],
+  "auxptr4": [
+    "004fa280"
+  ],
+  "auxptr3": [
+    "004fa288"
+  ],
+  "auxptr2": [
+    "004fa290"
+  ],
+  "auxptr1": [
+    "004fa298"
+  ],
+  "altmap": [
+    "004fa2a0"
+  ],
+  "graphmax": [
+    "004fa2a8"
+  ],
+  "graphdata": [
+    "004fa2b4"
+  ],
+  "gridscells": [
+    "005038f4"
+  ],
+  "isrotated": [
+    "00503900"
+  ],
+  "whereisit": [
+    "0050390c"
+  ],
+  "gridfaces": [
+    "00503918"
+  ],
+  "gridsfaces": [
+    "00503924"
+  ],
+  "gridvert": [
+    "00503930"
+  ],
+  "gridproj": [
+    "0050393c"
+  ],
+  "gridrot": [
+    "00503948"
+  ],
+  "could": [
+    "005039d8",
+    "00503f90",
+    "00504434",
+    "005045b8",
+    "005045d8"
+  ],
+  "create": [
+    "005039d8",
+    "005039f4",
+    "00504434",
+    "00504590",
+    "005045b8",
+    "005045d8"
+  ],
+  "mem": [
+    "005039d8"
+  ],
+  "pool": [
+    "005039d8"
+  ],
+  "texture": [
+    "005039f4"
+  ],
+  "load": [
+    "00503a1c",
+    "00503a44"
+  ],
+  "tiled1": [
+    "00503a1c"
+  ],
+  "bmp": [
+    "00503a1c"
+  ],
+  "tiled1.bmp": [
+    "00503a38"
+  ],
+  "resources": [
+    "00503a44"
+  ],
+  "sim3d3": [
+    "00503a60"
+  ],
+  "sim3d3.max": [
+    "00503a68"
+  ],
+  "sim3d2": [
+    "00503a74"
+  ],
+  "sim3d2.max": [
+    "00503a7c"
+  ],
+  "sim3d1": [
+    "00503a88"
+  ],
+  "sim3d.bmp": [
+    "00503a90"
+  ],
+  "camera": [
+    "00503b34"
+  ],
+  "parms": [
+    "00503b34",
+    "00505f8c",
+    "00506adc"
+  ],
+  "pengland.sc2": [
+    "00503f70"
+  ],
+  "null": [
+    "00503f80"
+  ],
+  "omap!": [
+    "00503f80"
+  ],
+  "alloc": [
+    "00503f90",
+    "00506218"
+  ],
+  "cell_info": [
+    "00503f90"
+  ],
+  "coploop2.wav": [
+    "00503fac"
+  ],
+  "coploop4.wav": [
+    "00503fbc"
+  ],
+  "coploop3.wav": [
+    "00503fcc"
+  ],
+  "coploop6.wav": [
+    "00503fdc"
+  ],
+  "coploop5.wav": [
+    "00503fec"
+  ],
+  "heli": [
+    "00504434",
+    "00504450",
+    "0050445c",
+    "0050446c",
+    "00506b1c"
+  ],
+  "rope": [
+    "00504434"
+  ],
+  "damage": [
+    "00504450"
+  ],
+  "ropestuff": [
+    "0050445c"
+  ],
+  "landing": [
+    "0050446c"
+  ],
+  "md520": [
+    "0050447c"
+  ],
+  "mdexplorer": [
+    "00504484"
+  ],
+  "dauphin": [
+    "00504490"
+  ],
+  "agusta": [
+    "00504498"
+  ],
+  "schwiezer": [
+    "005044a0"
+  ],
+  "300": [
+    "005044a0"
+  ],
+  "bell": [
+    "005044b0"
+  ],
+  "212": [
+    "005044b0"
+  ],
+  "apache": [
+    "005044bc"
+  ],
+  "hughes": [
+    "005044c4"
+  ],
+  "500": [
+    "005044c4"
+  ],
+  "jet": [
+    "005044d0"
+  ],
+  "ranger": [
+    "005044d0"
+  ],
+  "sagtsrbdjartcould": [
+    "00504590"
+  ],
+  "firework": [
+    "00504590"
+  ],
+  "trajectory": [
+    "005045b8"
+  ],
+  "bullet": [
+    "005045d8"
+  ],
+  "fire": [
+    "005045f4",
+    "00506110"
+  ],
+  "stations:": [
+    "005045f4",
+    "00504608"
+  ],
+  "police": [
+    "00504608"
+  ],
+  "loc": [
+    "0050461c"
+  ],
+  "x=%3d": [
+    "0050461c",
+    "0050461c"
+  ],
+  "y=%3d": [
+    "0050461c",
+    "0050461c"
+  ],
+  "road": [
+    "0050461c",
+    "005046a8"
+  ],
+  "d=%c": [
+    "0050461c"
+  ],
+  "hospitals:": [
+    "00504648"
+  ],
+  "roadgraph": [
+    "00504668"
+  ],
+  "struct": [
+    "00504668",
+    "00504668",
+    "005046a8",
+    "005046a8"
+  ],
+  "size": [
+    "00504668",
+    "00504668",
+    "005046a8",
+    "005046a8"
+  ],
+  "%2d,": [
+    "00504668",
+    "005046a8"
+  ],
+  "intersections": [
+    "00504668",
+    "005046e9"
+  ],
+  "%6d": [
+    "00504668",
+    "005046a8"
+  ],
+  "roadtiles": [
+    "005046a8",
+    "005046e9"
+  ],
+  "connection": [
+    "00504714"
+  ],
+  "|%d:%c%02d%c%02x": [
+    "00504724"
+  ],
+  "be%c": [
+    "00504738"
+  ],
+  "#%2d:": [
+    "00504738"
+  ],
+  "x%3d": [
+    "00504748",
+    "00504764"
+  ],
+  "y%3d": [
+    "00504748",
+    "00504764"
+  ],
+  "t%3d:": [
+    "00504748"
+  ],
+  "turnflags": [
+    "00504764"
+  ],
+  "%4s": [
+    "00504764",
+    "00504764"
+  ],
+  "deadendflags": [
+    "00504764"
+  ],
+  "felevated%c": [
+    "00504764"
+  ],
+  "dump_bm.txt": [
+    "00504810"
+  ],
+  "error:": [
+    "00505c4c"
+  ],
+  "get": [
+    "00505c4c"
+  ],
+  "object": [
+    "00505c4c"
+  ],
+  "allocate": [
+    "00505f14"
+  ],
+  "map": [
+    "00505f14"
+  ],
+  "buffer.": [
+    "00505f14"
+  ],
+  "mapbuf": [
+    "00505f34"
+  ],
+  "erifdifcfire": [
+    "00505f8c"
+  ],
+  "traffic": [
+    "005060e0"
+  ],
+  "miss": [
+    "005060e0",
+    "005060f0",
+    "00506100",
+    "00506110",
+    "0050611c",
+    "0050612c",
+    "0050613c",
+    "00506148",
+    "00506154"
+  ],
+  "speeder": [
+    "005060f0"
+  ],
+  "criminal": [
+    "00506100"
+  ],
+  "medevac": [
+    "0050611c"
+  ],
+  "transport": [
+    "0050612c"
+  ],
+  "rescue": [
+    "0050613c"
+  ],
+  "riot": [
+    "00506148"
+  ],
+  "general": [
+    "00506154"
+  ],
+  "tmap": [
+    "00506218"
+  ],
+  "dis099.wav": [
+    "0050638c"
+  ],
+  "dis105.wav": [
+    "00506398"
+  ],
+  "dis102.wav": [
+    "005063a4"
+  ],
+  "dis096.wav": [
+    "005063b0"
+  ],
+  "dis098.wav": [
+    "005063bc"
+  ],
+  "dis104.wav": [
+    "005063c8"
+  ],
+  "dis101.wav": [
+    "005063d4"
+  ],
+  "dis095.wav": [
+    "005063e0"
+  ],
+  "dis097.wav": [
+    "005063ec"
+  ],
+  "dis103.wav": [
+    "005063f8"
+  ],
+  "0.wav": [
+    "00506409"
+  ],
+  "4.wav": [
+    "00506415"
+  ],
+  "unknown": [
+    "00506468"
+  ],
+  "pointer": [
+    "00506468"
+  ],
+  "convert": [
+    "00506468"
+  ],
+  "saved--flags": [
+    "00506468"
+  ],
+  "%d--ignore": [
+    "00506468"
+  ],
+  "but": [
+    "00506468"
+  ],
+  "report!": [
+    "00506468"
+  ],
+  "people.df": [
+    "005064ac"
+  ],
+  "couldn't": [
+    "005064b8"
+  ],
+  "global": [
+    "005064b8"
+  ],
+  "behavior": [
+    "005064b8"
+  ],
+  "file": [
+    "005064b8",
+    "00506c34",
+    "005075b0"
+  ],
+  "pol1.wav": [
+    "005064dc",
+    "005065cc"
+  ],
+  "sad1.wav": [
+    "005064e8"
+  ],
+  "kissg.wav": [
+    "005064f4"
+  ],
+  "kissb.wav": [
+    "00506500"
+  ],
+  "kissa.wav": [
+    "0050650c"
+  ],
+  "march.wav": [
+    "00506518"
+  ],
+  "tubaf#.wav": [
+    "00506524"
+  ],
+  "tubae.wav": [
+    "00506530"
+  ],
+  "tubab.wav": [
+    "0050653c"
+  ],
+  "trptf#.wav": [
+    "00506548"
+  ],
+  "trpte.wav": [
+    "00506554"
+  ],
+  "trptb.wav": [
+    "00506560"
+  ],
+  "trbng.wav": [
+    "0050656c"
+  ],
+  "trbnc#.wav": [
+    "00506578"
+  ],
+  "trbna.wav": [
+    "00506584"
+  ],
+  "pol6.wav": [
+    "00506590"
+  ],
+  "pol5.wav": [
+    "0050659c"
+  ],
+  "pol4.wav": [
+    "005065a8"
+  ],
+  "pol3.wav": [
+    "005065b4"
+  ],
+  "pol2.wav": [
+    "005065c0"
+  ],
+  "mdvc4.wav": [
+    "005065d8"
+  ],
+  "mdvc3.wav": [
+    "005065e4"
+  ],
+  "mdvc2.wav": [
+    "005065f0"
+  ],
+  "mdvc1.wav": [
+    "005065fc"
+  ],
+  "xftboots.wav": [
+    "00506608"
+  ],
+  "xftheels.wav": [
+    "00506618"
+  ],
+  "xftshoes.wav": [
+    "00506628"
+  ],
+  "passlwb.wav": [
+    "00506638"
+  ],
+  "pasfstb.wav": [
+    "00506644"
+  ],
+  "trnsfrm.wav": [
+    "00506650"
+  ],
+  "popon.wav": [
+    "0050665c"
+  ],
+  "decphum.wav": [
+    "00506668"
+  ],
+  "hum.wav": [
+    "00506674"
+  ],
+  "ftrchkbr.wav": [
+    "0050667c"
+  ],
+  "atomchg.wav": [
+    "0050668c"
+  ],
+  "ekg.wav": [
+    "00506698"
+  ],
+  "chewgum1.wav": [
+    "005066a0"
+  ],
+  "ohdrat.wav": [
+    "005066b0"
+  ],
+  "bowang.wav": [
+    "005066bc"
+  ],
+  "ufoup.wav": [
+    "005066c8"
+  ],
+  "slide.wav": [
+    "005066d4"
+  ],
+  "fallwhsl.wav": [
+    "005066e0"
+  ],
+  "repair.wav": [
+    "005066f0"
+  ],
+  "morituri.wav": [
+    "005066fc"
+  ],
+  "spacidle.wav": [
+    "0050670c"
+  ],
+  "hithead.wav": [
+    "0050671c"
+  ],
+  "btchmp.wav": [
+    "00506728"
+  ],
+  "bngthrm.wav": [
+    "00506734"
+  ],
+  "bnggng.wav": [
+    "00506740"
+  ],
+  "bnghyt.wav": [
+    "0050674c"
+  ],
+  "spray.wav": [
+    "00506758"
+  ],
+  "hgun3.wav": [
+    "00506764"
+  ],
+  "hgun2.wav": [
+    "00506770"
+  ],
+  "hgun1.wav": [
+    "0050677c"
+  ],
+  "grnthit2.wav": [
+    "00506788"
+  ],
+  "grnthit1.wav": [
+    "00506798"
+  ],
+  "bodyhit2.wav": [
+    "005067a8"
+  ],
+  "grntsplt.wav": [
+    "005067b8"
+  ],
+  "hicute4.wav": [
+    "005067c8"
+  ],
+  "hicute3.wav": [
+    "005067d4"
+  ],
+  "hicute2.wav": [
+    "005067e0"
+  ],
+  "hicute1.wav": [
+    "005067ec"
+  ],
+  "sinistr4.wav": [
+    "005067f8"
+  ],
+  "sinistr3.wav": [
+    "00506808"
+  ],
+  "sinistr2.wav": [
+    "00506818"
+  ],
+  "sinistr1.wav": [
+    "00506828"
+  ],
+  "gimme2.wav": [
+    "00506838"
+  ],
+  "gimme1.wav": [
+    "00506844"
+  ],
+  "arrest2.wav": [
+    "00506850"
+  ],
+  "arrest1.wav": [
+    "0050685c"
+  ],
+  "achdie3.wav": [
+    "00506868"
+  ],
+  "achdie2.wav": [
+    "00506874"
+  ],
+  "achdie1.wav": [
+    "00506880"
+  ],
+  "doorah.wav": [
+    "0050688c"
+  ],
+  "ah2.wav": [
+    "005068a4"
+  ],
+  "ah1.wav": [
+    "005068ac"
+  ],
+  "hithere3.wav": [
+    "005068b4"
+  ],
+  "hithere2.wav": [
+    "005068c4"
+  ],
+  "hithere1.wav": [
+    "005068d4"
+  ],
+  "hey3.wav": [
+    "005068e4"
+  ],
+  "hey2.wav": [
+    "005068f0"
+  ],
+  "hey1.wav": [
+    "005068fc"
+  ],
+  "woh4.wav": [
+    "00506908"
+  ],
+  "woh3.wav": [
+    "00506914"
+  ],
+  "woh2.wav": [
+    "00506920"
+  ],
+  "woh1.wav": [
+    "0050692c"
+  ],
+  "grunt6.wav": [
+    "00506938"
+  ],
+  "grunt5.wav": [
+    "00506944"
+  ],
+  "grunt4.wav": [
+    "00506950"
+  ],
+  "grunt3.wav": [
+    "0050695c"
+  ],
+  "grunt2.wav": [
+    "00506968"
+  ],
+  "grunt1.wav": [
+    "00506974"
+  ],
+  "gogirl6.wav": [
+    "00506980"
+  ],
+  "gogirl5.wav": [
+    "0050698c"
+  ],
+  "gogirl4.wav": [
+    "00506998"
+  ],
+  "gogirl3.wav": [
+    "005069a4"
+  ],
+  "gogirl2.wav": [
+    "005069b0"
+  ],
+  "gogirl1.wav": [
+    "005069bc"
+  ],
+  "titer6.wav": [
+    "005069c8"
+  ],
+  "titer5.wav": [
+    "005069d4"
+  ],
+  "titer4.wav": [
+    "005069e0"
+  ],
+  "titer3.wav": [
+    "005069ec"
+  ],
+  "titer2.wav": [
+    "005069f8"
+  ],
+  "titer1.wav": [
+    "00506a04"
+  ],
+  "sad3.wav": [
+    "00506a10"
+  ],
+  "sad2.wav": [
+    "00506a1c"
+  ],
+  "query2.wav": [
+    "00506a28"
+  ],
+  "query1.wav": [
+    "00506a34"
+  ],
+  "hohum5.wav": [
+    "00506a40"
+  ],
+  "hohum4.wav": [
+    "00506a4c"
+  ],
+  "hohum3.wav": [
+    "00506a58"
+  ],
+  "hohum2.wav": [
+    "00506a64"
+  ],
+  "hohum1.wav": [
+    "00506a70"
+  ],
+  "duno4.wav": [
+    "00506a7c"
+  ],
+  "duno3.wav": [
+    "00506a88"
+  ],
+  "duno2.wav": [
+    "00506a94"
+  ],
+  "duno1.wav": [
+    "00506aa0"
+  ],
+  "assert4.wav": [
+    "00506aac"
+  ],
+  "assert3.wav": [
+    "00506ab8"
+  ],
+  "assert2.wav": [
+    "00506ac4"
+  ],
+  "assert1.wav": [
+    "00506ad0"
+  ],
+  "figure": [
+    "00506adc"
+  ],
+  "rioter!": [
+    "00506af0"
+  ],
+  "bucket": [
+    "00506afc"
+  ],
+  "raised!--can": [
+    "00506afc"
+  ],
+  "ignore": [
+    "00506afc",
+    "00506b1c"
+  ],
+  "master": [
+    "00506b1c",
+    "00506ba4"
+  ],
+  "neither": [
+    "00506b1c"
+  ],
+  "harness": [
+    "00506b1c"
+  ],
+  "nor": [
+    "00506b1c"
+  ],
+  "getonheliifharnessraised--can": [
+    "00506b1c"
+  ],
+  "c:\\copter\\source\\x\\y\\yobjsim.cpp": [
+    "00506b68"
+  ],
+  "tree": [
+    "00506b8c"
+  ],
+  "%d,": [
+    "00506b8c"
+  ],
+  "node": [
+    "00506b8c"
+  ],
+  "%d:": [
+    "00506b8c"
+  ],
+  "getonheliifharnessraised": [
+    "00506ba4"
+  ],
+  "privanim.df": [
+    "00506bdc"
+  ],
+  "@assert": [
+    "00506c1f"
+  ],
+  "(%ld)": [
+    "00506c28"
+  ],
+  "failure": [
+    "00506c34"
+  ],
+  "%s,": [
+    "00506c34",
+    "005075b0",
+    "005075b0"
+  ],
+  "line": [
+    "00506c34",
+    "005075b0"
+  ],
+  "%ld:": [
+    "00506c34"
+  ],
+  ".?avostream@@": [
+    "00506cd0"
+  ],
+  ".?avostream_withassign@@": [
+    "00506ce8"
+  ],
+  ".?avstreambuf@@": [
+    "00506d48"
+  ],
+  ".?avstrstreambuf@@": [
+    "00506d60"
+  ],
+  ".?avostrstream@@": [
+    "00506d80"
+  ],
+  ".?avtype_info@@": [
+    "005075a0"
+  ],
+  "failed:": [
+    "005075b0"
+  ],
+  "getmodulefilenamea": [
+    "0061d87a"
+  ],
+  "getmodulehandlea": [
+    "0061d890"
+  ],
+  "getversion": [
+    "0061d8a4"
+  ],
+  "globalunlock": [
+    "0061d8b2"
+  ],
+  "globalalloc": [
+    "0061d8c2"
+  ],
+  "globalfree": [
+    "0061d8d0"
+  ],
+  "queryperformancecounter": [
+    "0061d8de"
+  ],
+  "lockresource": [
+    "0061d8f8"
+  ],
+  "loadresource": [
+    "0061d908"
+  ],
+  "findresourcea": [
+    "0061d918"
+  ],
+  "freeresource": [
+    "0061d928"
+  ],
+  "muldiv": [
+    "0061d938"
+  ],
+  "leavecriticalsection": [
+    "0061d942"
+  ],
+  "entercriticalsection": [
+    "0061d95a"
+  ],
+  "initializecriticalsection": [
+    "0061d972"
+  ],
+  "deletecriticalsection": [
+    "0061d98e"
+  ],
+  "getcurrentthreadid": [
+    "0061d9a6"
+  ],
+  "setthreadpriority": [
+    "0061d9bc"
+  ],
+  "getcurrentthread": [
+    "0061d9d0"
+  ],
+  "getthreadpriority": [
+    "0061d9e4"
+  ],
+  "sleep": [
+    "0061d9f8"
+  ],
+  "_lclose": [
+    "0061da00"
+  ],
+  "getfilesize": [
+    "0061da0a"
+  ],
+  "openfile": [
+    "0061da18"
+  ],
+  "globalhandle": [
+    "0061da24"
+  ],
+  "gettempfilenamea": [
+    "0061da34"
+  ],
+  "getuserdefaultlcid": [
+    "0061da48"
+  ],
+  "queryperformancefrequency": [
+    "0061da5e"
+  ],
+  "getdrivetypea": [
+    "0061da7a"
+  ],
+  "getlogicaldrivestringsa": [
+    "0061da8a"
+  ],
+  "copyfilea": [
+    "0061daa4"
+  ],
+  "globalmemorystatus": [
+    "0061dab0"
+  ],
+  "gettemppatha": [
+    "0061dac6"
+  ],
+  "winexec": [
+    "0061dad6"
+  ],
+  "getprivateprofilestringa": [
+    "0061dae0"
+  ],
+  "getprivateprofileinta": [
+    "0061dafc"
+  ],
+  "gettickcount": [
+    "0061db14"
+  ],
+  "closehandle": [
+    "0061db24"
+  ],
+  "createfilea": [
+    "0061db32"
+  ],
+  "createdirectorya": [
+    "0061db40"
+  ],
+  "findclose": [
+    "0061db54"
+  ],
+  "findnextfilea": [
+    "0061db60"
+  ],
+  "findfirstfilea": [
+    "0061db70"
+  ],
+  "getdiskfreespacea": [
+    "0061db82"
+  ],
+  "kernel32.dll": [
+    "0061db94"
+  ],
+  "wsprintfa": [
+    "0061dba4"
+  ],
+  "getsystemmetrics": [
+    "0061dbb0"
+  ],
+  "releasedc": [
+    "0061dbc4"
+  ],
+  "getdc": [
+    "0061dbd0"
+  ],
+  "loadstringa": [
+    "0061dbd8"
+  ],
+  "destroywindow": [
+    "0061dbf8"
+  ],
+  "invalidaterect": [
+    "0061dc08"
+  ],
+  "movewindow": [
+    "0061dc1a"
+  ],
+  "getclientrect": [
+    "0061dc28"
+  ],
+  "setwindowlonga": [
+    "0061dc38"
+  ],
+  "createwindowexa": [
+    "0061dc4a"
+  ],
+  "registerclassa": [
+    "0061dc5c"
+  ],
+  "loadcursora": [
+    "0061dc6e"
+  ],
+  "loadicona": [
+    "0061dc7c"
+  ],
+  "showwindow": [
+    "0061dc88"
+  ],
+  "endpaint": [
+    "0061dc96"
+  ],
+  "getscrollpos": [
+    "0061dca2"
+  ],
+  "beginpaint": [
+    "0061dcb2"
+  ],
+  "setscrollpos": [
+    "0061dcc0"
+  ],
+  "getscrollrange": [
+    "0061dcd0"
+  ],
+  "showscrollbar": [
+    "0061dce2"
+  ],
+  "setscrollrange": [
+    "0061dcf2"
+  ],
+  "sendmessagea": [
+    "0061dd04"
+  ],
+  "setfocus": [
+    "0061dd14"
+  ],
+  "defwindowproca": [
+    "0061dd20"
+  ],
+  "getwindowlonga": [
+    "0061dd32"
+  ],
+  "getkeystate": [
+    "0061dd44"
+  ],
+  "postmessagea": [
+    "0061dd52"
+  ],
+  "getclassinfoa": [
+    "0061dd62"
+  ],
+  "adjustwindowrectex": [
+    "0061dd72"
+  ],
+  "clienttoscreen": [
+    "0061dd88"
+  ],
+  "getwindowrect": [
+    "0061dd9a"
+  ],
+  "setwindowpos": [
+    "0061ddaa"
+  ],
+  "getmenu": [
+    "0061ddba"
+  ],
+  "setrect": [
+    "0061ddc4"
+  ],
+  "releasecapture": [
+    "0061ddce"
+  ],
+  "getcapture": [
+    "0061dde0"
+  ],
+  "setcapture": [
+    "0061ddee"
+  ],
+  "getasynckeystate": [
+    "0061ddfc"
+  ],
+  "dispatchmessagea": [
+    "0061de10"
+  ],
+  "translatemessage": [
+    "0061de24"
+  ],
+  "peekmessagea": [
+    "0061de38"
+  ],
+  "fillrect": [
+    "0061de56"
+  ],
+  "postquitmessage": [
+    "0061de62"
+  ],
+  "drawtexta": [
+    "0061de74"
+  ],
+  "setcursor": [
+    "0061de80"
+  ],
+  "getdevicecaps": [
+    "0061de98"
+  ],
+  "getstockobject": [
+    "0061dea8"
+  ],
+  "gettextmetricsa": [
+    "0061deba"
+  ],
+  "deleteobject": [
+    "0061decc"
+  ],
+  "realizepalette": [
+    "0061dedc"
+  ],
+  "selectpalette": [
+    "0061deee"
+  ],
+  "createpalette": [
+    "0061defe"
+  ],
+  "getsystempaletteentries": [
+    "0061df0e"
+  ],
+  "removefontresourcea": [
+    "0061df28"
+  ],
+  "addfontresourcea": [
+    "0061df3e"
+  ],
+  "enumfontfamiliesa": [
+    "0061df52"
+  ],
+  "createsolidbrush": [
+    "0061df66"
+  ],
+  "selectobject": [
+    "0061df7a"
+  ],
+  "settextcolor": [
+    "0061df8a"
+  ],
+  "setbkmode": [
+    "0061df9a"
+  ],
+  "lineto": [
+    "0061dfa6"
+  ],
+  "movetoex": [
+    "0061dfb0"
+  ],
+  "createpen": [
+    "0061dfbc"
+  ],
+  "animatepalette": [
+    "0061dfc8"
+  ],
+  "unrealizeobject": [
+    "0061dfda"
+  ],
+  "createfonta": [
+    "0061dfec"
+  ],
+  "gdi32.dll": [
+    "0061dff8"
+  ],
+  "getopenfilenamea": [
+    "0061e004"
+  ],
+  "getsavefilenamea": [
+    "0061e018"
+  ],
+  "comdlg32.dll": [
+    "0061e02a"
+  ],
+  "regclosekey": [
+    "0061e03a"
+  ],
+  "regqueryvalueexa": [
+    "0061e048"
+  ],
+  "regopenkeya": [
+    "0061e05c"
+  ],
+  "advapi32.dll": [
+    "0061e068"
+  ],
+  "timeendperiod": [
+    "0061e078"
+  ],
+  "timebeginperiod": [
+    "0061e088"
+  ],
+  "timesetevent": [
+    "0061e09a"
+  ],
+  "timekillevent": [
+    "0061e0aa"
+  ],
+  "timegettime": [
+    "0061e0ba"
+  ],
+  "mmioclose": [
+    "0061e0c8"
+  ],
+  "mmiodescend": [
+    "0061e0d4"
+  ],
+  "mmioseek": [
+    "0061e0e2"
+  ],
+  "mmioascend": [
+    "0061e0ee"
+  ],
+  "mmioread": [
+    "0061e0fc"
+  ],
+  "mmioopena": [
+    "0061e108"
+  ],
+  "mmiosetinfo": [
+    "0061e114"
+  ],
+  "mmioadvance": [
+    "0061e122"
+  ],
+  "mmiogetinfo": [
+    "0061e130"
+  ],
+  "joysetthreshold": [
+    "0061e13e"
+  ],
+  "joygetdevcapsa": [
+    "0061e150"
+  ],
+  "joygetpos": [
+    "0061e162"
+  ],
+  "joygetnumdevs": [
+    "0061e16e"
+  ],
+  "joygetposex": [
+    "0061e17e"
+  ],
+  "winmm.dll": [
+    "0061e18a"
+  ],
+  "directdrawcreate": [
+    "0061e196"
+  ],
+  "ddraw.dll": [
+    "0061e1a8"
+  ],
+  "smackw32.dll": [
+    "0061e1b2"
+  ],
+  "directsoundcreate": [
+    "0061e1c2"
+  ],
+  "dsound.dll": [
+    "0061e1d4"
+  ],
+  "acmmetrics": [
+    "0061e1e2"
+  ],
+  "msacm32.dll": [
+    "0061e1ee"
+  ],
+  "verqueryvaluea": [
+    "0061e1fc"
+  ],
+  "getfileversioninfoa": [
+    "0061e20e"
+  ],
+  "getfileversioninfosizea": [
+    "0061e224"
+  ],
+  "version.dll": [
+    "0061e23c"
+  ],
+  "getsystemtime": [
+    "0061e24a"
+  ],
+  "localalloc": [
+    "0061e25a"
+  ],
+  "setlasterror": [
+    "0061e268"
+  ],
+  "localfree": [
+    "0061e278"
+  ],
+  "getlasterror": [
+    "0061e284"
+  ],
+  "localsize": [
+    "0061e294"
+  ],
+  "localflags": [
+    "0061e2a0"
+  ],
+  "exitprocess": [
+    "0061e2ae"
+  ],
+  "terminateprocess": [
+    "0061e2bc"
+  ],
+  "gettimezoneinformation": [
+    "0061e2e4"
+  ],
+  "getlocaltime": [
+    "0061e2fe"
+  ],
+  "rtlunwind": [
+    "0061e30e"
+  ],
+  "resumethread": [
+    "0061e31a"
+  ],
+  "createthread": [
+    "0061e32a"
+  ],
+  "tlssetvalue": [
+    "0061e33a"
+  ],
+  "exitthread": [
+    "0061e348"
+  ],
+  "movefilea": [
+    "0061e356"
+  ],
+  "deletefilea": [
+    "0061e362"
+  ],
+  "getstartupinfoa": [
+    "0061e370"
+  ],
+  "getcommandlinea": [
+    "0061e382"
+  ],
+  "heapalloc": [
+    "0061e394"
+  ],
+  "heapvalidate": [
+    "0061e3a0"
+  ],
+  "heapcompact": [
+    "0061e3b0"
+  ],
+  "heapfree": [
+    "0061e3be"
+  ],
+  "fatalappexita": [
+    "0061e3ca"
+  ],
+  "heaprealloc": [
+    "0061e3da"
+  ],
+  "heapsize": [
+    "0061e3e8"
+  ],
+  "writefile": [
+    "0061e3f4"
+  ],
+  "readfile": [
+    "0061e400"
+  ],
+  "setfilepointer": [
+    "0061e40c"
+  ],
+  "sethandlecount": [
+    "0061e41e"
+  ],
+  "getfiletype": [
+    "0061e430"
+  ],
+  "getstdhandle": [
+    "0061e43e"
+  ],
+  "getprocaddress": [
+    "0061e44e"
+  ],
+  "flushfilebuffers": [
+    "0061e460"
+  ],
+  "tlsalloc": [
+    "0061e474"
+  ],
+  "tlsgetvalue": [
+    "0061e480"
+  ],
+  "unhandledexceptionfilter": [
+    "0061e48e"
+  ],
+  "getcpinfo": [
+    "0061e4aa"
+  ],
+  "getacp": [
+    "0061e4b6"
+  ],
+  "getoemcp": [
+    "0061e4c0"
+  ],
+  "isvalidlocale": [
+    "0061e4cc"
+  ],
+  "isvalidcodepage": [
+    "0061e4dc"
+  ],
+  "getstringtypea": [
+    "0061e4ee"
+  ],
+  "widechartomultibyte": [
+    "0061e500"
+  ],
+  "getstringtypew": [
+    "0061e516"
+  ],
+  "multibytetowidechar": [
+    "0061e528"
+  ],
+  "freeenvironmentstringsa": [
+    "0061e53e"
+  ],
+  "getenvironmentstrings": [
+    "0061e558"
+  ],
+  "freeenvironmentstringsw": [
+    "0061e570"
+  ],
+  "getenvironmentstringsw": [
+    "0061e58a"
+  ],
+  "heapcreate": [
+    "0061e5a4"
+  ],
+  "raiseexception": [
+    "0061e5b2"
+  ],
+  "loadlibrarya": [
+    "0061e5c4"
+  ],
+  "setstdhandle": [
+    "0061e5d4"
+  ],
+  "setunhandledexceptionfilter": [
+    "0061e5e4"
+  ],
+  "isbadreadptr": [
+    "0061e602"
+  ],
+  "isbadwriteptr": [
+    "0061e612"
+  ],
+  "isbadcodeptr": [
+    "0061e622"
+  ],
+  "getlocaleinfoa": [
+    "0061e632"
+  ],
+  "getlocaleinfow": [
+    "0061e644"
+  ],
+  "setendoffile": [
+    "0061e656"
+  ],
+  "lcmapstringa": [
+    "0061e666"
+  ],
+  "lcmapstringw": [
+    "0061e676"
+  ],
+  "comparestringa": [
+    "0061e686"
+  ],
+  "comparestringw": [
+    "0061e698"
+  ],
+  "setenvironmentvariablea": [
+    "0061e6aa"
+  ],
+  "registerwindowmessagea": [
+    "0061e6c4"
+  ],
+  "getforegroundwindow": [
+    "0061e6de"
+  ],
+  "none": [
+    "00625de0",
+    "00625e04",
+    "00625e1c",
+    "00625e48",
+    "00625ed0",
+    "00625f0c",
+    "00625f50"
+  ]
+}

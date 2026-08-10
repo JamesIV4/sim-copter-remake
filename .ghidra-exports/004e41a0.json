@@ -1,0 +1,28 @@
+{
+  "address": "004e41a0",
+  "name": "__towupper_lk",
+  "signature": "undefined __towupper_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __towupper_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __towupper_lk(uint param_1)\r\n\r\n{\r\n  int iVar1;\r\n  WCHAR local_2;\r\n  \r\n  if ((WCHAR)param_1 == L'\\xffff') {\r\n    return param_1 & 0xffff;\r\n  }\r\n  if (DAT_00507ab8 == (LPCWSTR)0x0) {\r\n    if ((0x60 < (ushort)(WCHAR)param_1) && ((ushort)(WCHAR)param_1 < 0x7b)) {\r\n      param_1 = (uint)(ushort)((WCHAR)param_1 + L'\uffe0');\r\n    }\r\n    return param_1 & 0xffff;\r\n  }\r\n  if ((ushort)(WCHAR)param_1 < 0x100) {\r\n    iVar1 = _iswctype((WCHAR)param_1,2);\r\n    if (iVar1 == 0) {\r\n      return param_1 & 0xffff;\r\n    }\r\n  }\r\n  iVar1 = ___crtLCMapStringW(DAT_00507ab8,0x200,(LPCWSTR)&param_1,1,&local_2,1);\r\n  if (iVar1 == 0) {\r\n    return param_1 & 0xffff;\r\n  }\r\n  return (uint)(ushort)local_2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4120",
+      "name": "_towupper",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4240",
+      "name": "_iswctype"
+    },
+    {
+      "addr": "004e35f0",
+      "name": "___crtLCMapStringW"
+    }
+  ],
+  "data_refs": []
+}

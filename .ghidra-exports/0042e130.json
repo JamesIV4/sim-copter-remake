@@ -1,0 +1,34 @@
+{
+  "address": "0042e130",
+  "name": "FUN_0042e130",
+  "signature": "undefined FUN_0042e130(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0042e130(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  undefined4 unaff_EBX;\r\n  undefined4 uStack_18;\r\n  undefined4 uStack_10;\r\n  undefined4 uStack_c;\r\n  undefined1 local_8 [4];\r\n  undefined1 local_4 [4];\r\n  \r\n  piVar1 = param_1 + 0xf;\r\n  (**(code **)(*(int *)param_1[0x16] + 4))(local_4,local_8);\r\n  iVar2 = FUN_004d28b0(0x16a);\r\n  if (iVar2 == 0) {\r\n    *piVar1 = 0;\r\n  }\r\n  else {\r\n    iVar2 = FUN_0041c3c0(param_1[0x16],uStack_c,uStack_10,param_1[1],param_1[0x101c],param_1[0xe],0)\r\n    ;\r\n    *piVar1 = iVar2;\r\n  }\r\n  piVar3 = (int *)*piVar1;\r\n  if (piVar3[0x4e] != 0) {\r\n    FUN_00460fa0(piVar3);\r\n    (**(code **)(*(int *)param_1[0x16] + 0x40))();\r\n    iVar2 = FUN_004d28b0(0x78);\r\n    if (iVar2 == 0) {\r\n      param_1[0x10] = 0;\r\n    }\r\n    else {\r\n      piVar3 = param_1 + 5;\r\n      if (param_1 == (int *)0x0) {\r\n        piVar3 = (int *)0x0;\r\n      }\r\n      iVar2 = FUN_00405ef0(&stack0xffffffe0,0,*piVar1,piVar3,1);\r\n      param_1[0x10] = iVar2;\r\n    }\r\n    DAT_004f81e8 = param_1[0x10];\r\n    (**(code **)param_1[0x11])(param_1[0x10]);\r\n    FUN_00437c00();\r\n    return 0;\r\n  }\r\n  if (piVar3 != (int *)0x0) {\r\n    (**(code **)(*piVar3 + 100))(1);\r\n  }\r\n  *piVar1 = 0;\r\n  if (param_1[0xe] == 1) {\r\n    param_1[0xe] = 0;\r\n    iVar2 = (**(code **)(*DAT_004f8610 + 0x50))\r\n                      (DAT_004f8610,*(undefined4 *)(param_1[0x16] + 0x18),0x11);\r\n    if (iVar2 != 0) {\r\n      return 0x80000000;\r\n    }\r\n    iVar2 = (**(code **)(*param_1 + 100))();\r\n    if (iVar2 != 0) {\r\n      return 0x80000000;\r\n    }\r\n    iVar2 = FUN_004d28b0(0x16a);\r\n    if (iVar2 == 0) {\r\n      *piVar1 = 0;\r\n    }\r\n    else {\r\n      iVar2 = FUN_0041c3c0(param_1[0x16],uStack_18,unaff_EBX,param_1[1],param_1[0x101c],param_1[0xe]\r\n                           ,0);\r\n      *piVar1 = iVar2;\r\n    }\r\n    piVar3 = (int *)*piVar1;\r\n    if (piVar3[0x4e] == 0) {\r\n      if (piVar3 != (int *)0x0) {\r\n        (**(code **)(*piVar3 + 100))(1);\r\n      }\r\n      *piVar1 = 0;\r\n      return 0x80000000;\r\n    }\r\n  }\r\n  return 0x80000000;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0041c3c0",
+      "name": "FUN_0041c3c0"
+    },
+    {
+      "addr": "00460fa0",
+      "name": "FUN_00460fa0"
+    },
+    {
+      "addr": "00405ef0",
+      "name": "FUN_00405ef0"
+    },
+    {
+      "addr": "00437c00",
+      "name": "FUN_00437c00"
+    }
+  ],
+  "data_refs": []
+}

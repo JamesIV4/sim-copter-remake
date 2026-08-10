@@ -1,0 +1,55 @@
+{
+  "address": "004d32c0",
+  "name": "ostrstream",
+  "signature": "undefined __thiscall ostrstream(ostrstream * this, char * param_1, int param_2, int param_3)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: __thiscall ostrstream::ostrstream(char *,int,int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nostrstream * __thiscall\r\nostrstream::ostrstream(ostrstream *this,char *param_1,int param_2,int param_3)\r\n\r\n{\r\n  char cVar1;\r\n  strstreambuf *this_00;\r\n  streambuf *psVar2;\r\n  uint uVar3;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  int in_stack_00000010;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  uint local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004d33bf;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  if (in_stack_00000010 != 0) {\r\n    *(undefined **)this = &DAT_004f5490;\r\n    ios::ios((ios *)(this + 8));\r\n    local_8 = 0;\r\n  }\r\n  this_00 = (strstreambuf *)FUN_004d28b0(100);\r\n  local_8 = 1;\r\n  if (this_00 == (strstreambuf *)0x0) {\r\n    psVar2 = (streambuf *)0x0;\r\n  }\r\n  else {\r\n    psVar2 = (streambuf *)strstreambuf::strstreambuf(this_00,param_1,param_2,param_1);\r\n  }\r\n  local_8 = local_8 & 0xffffff00;\r\n  ostream::ostream((ostream *)this,psVar2);\r\n  local_8 = 2;\r\n  *(undefined ***)(this + *(int *)(*(int *)this + 4)) =\r\n       &PTR_FID_conflict__scalar_deleting_destructor__004f549c;\r\n  *(undefined4 *)(this + *(int *)(*(int *)this + 4) + 0x1c) = 1;\r\n  if ((param_3 & 0xcU) != 0) {\r\n    uVar3 = 0xffffffff;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      cVar1 = *param_1;\r\n      param_1 = param_1 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FUN_004d6fc0(~uVar3 - 1,0);\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462f00",
+      "name": "FUN_00462f00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462f70",
+      "name": "FUN_00462f70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462b70",
+      "name": "FUN_00462b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c60",
+      "name": "ios"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d2db0",
+      "name": "strstreambuf"
+    },
+    {
+      "addr": "004d23d0",
+      "name": "ostream"
+    },
+    {
+      "addr": "004d6fc0",
+      "name": "FUN_004d6fc0"
+    }
+  ],
+  "data_refs": []
+}

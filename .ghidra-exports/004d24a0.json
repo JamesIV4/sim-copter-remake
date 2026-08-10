@@ -1,0 +1,26 @@
+{
+  "address": "004d24a0",
+  "name": "FID_conflict:`scalar_deleting_destructor'",
+  "signature": "undefined FID_conflict:`scalar_deleting_destructor'(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    public: virtual void * __thiscall ofstream::`scalar deleting destructor'(unsigned int)\r\n    public: virtual void * __thiscall ostream_withassign::`scalar deleting destructor'(unsigned int)\r\n    public: virtual void * __thiscall ostrstream::`scalar deleting destructor'(unsigned int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nios * __thiscall FID_conflict__scalar_deleting_destructor_(ios *param_1,byte param_2)\r\n\r\n{\r\n  FUN_004d2580();\r\n  ios::~ios(param_1);\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1 + -8);\r\n  }\r\n  return param_1 + -8;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2580",
+      "name": "FUN_004d2580"
+    },
+    {
+      "addr": "004d2cf0",
+      "name": "~ios"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

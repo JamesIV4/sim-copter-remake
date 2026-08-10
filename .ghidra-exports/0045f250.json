@@ -1,0 +1,13 @@
+{
+  "address": "0045f250",
+  "name": "FUN_0045f250",
+  "signature": "undefined FUN_0045f250(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0045f250(int param_1,int param_2)\r\n\r\n{\r\n  int local_4;\r\n  \r\n  local_4 = *(int *)(param_1 + 0x98) + param_2;\r\n  (**(code **)**(undefined4 **)(param_1 + 0x38))\r\n            (param_1,*(undefined4 *)(param_1 + 4),0x3e9,&local_4);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

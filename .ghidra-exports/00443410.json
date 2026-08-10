@@ -1,0 +1,13 @@
+{
+  "address": "00443410",
+  "name": "FUN_00443410",
+  "signature": "undefined FUN_00443410(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00443410(int param_1)\r\n\r\n{\r\n  byte bVar1;\r\n  int *piVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  undefined4 uVar5;\r\n  byte bVar6;\r\n  uint uVar7;\r\n  int iStack_2c;\r\n  int iStack_28;\r\n  \r\n  uVar7 = *(uint *)(param_1 + 0x13a);\r\n  piVar2 = *(int **)(param_1 + 0x11e);\r\n  iStack_28 = piVar2[3];\r\n  iStack_2c = piVar2[2];\r\n  (**(code **)(*piVar2 + 0xc))\r\n            (*(undefined4 *)(param_1 + 0x40),*(undefined4 *)(param_1 + 0x13e),\r\n             *(int *)(param_1 + 0x142),0,*(int *)(param_1 + 0x142) - *(int *)(param_1 + 0x14e));\r\n  bVar6 = **(byte **)(param_1 + 0x12e);\r\n  *(undefined4 *)(*(int *)(param_1 + 0x40) + 0x38) = *(undefined4 *)(DAT_0055b3f4 + (uint)bVar6 * 4)\r\n  ;\r\n  if (iStack_28 < *(int *)(param_1 + 0x14a) + -0x1c) {\r\n    do {\r\n      if ((uint)(*(int *)(param_1 + 0x126) - *(int *)(param_1 + 0x122) >> 3) <= uVar7) break;\r\n      bVar1 = *(byte *)(*(int *)(param_1 + 0x12e) + uVar7);\r\n      if (bVar6 != bVar1) {\r\n        *(undefined4 *)(*(int *)(param_1 + 0x40) + 0x38) =\r\n             *(undefined4 *)(DAT_0055b3f4 + (uint)bVar1 * 4);\r\n        bVar6 = bVar1;\r\n      }\r\n      puVar3 = *(undefined4 **)(*(int *)(param_1 + 0x122) + 4 + uVar7 * 8);\r\n      iVar4 = puVar3[1];\r\n      if (iVar4 == 0) {\r\n        uVar5 = 0;\r\n      }\r\n      else {\r\n        uVar5 = *puVar3;\r\n      }\r\n      uVar7 = uVar7 + 1;\r\n      (**(code **)(**(int **)(param_1 + 0x40) + 0x48))(uVar5,iVar4,0,&iStack_2c,param_1 + 0x156);\r\n      iStack_28 = iStack_28 + 0x1c;\r\n    } while (iStack_28 < *(int *)(param_1 + 0x14a) + -0x1c);\r\n  }\r\n  (**(code **)(**(int **)(param_1 + 0x11e) + 0xc))\r\n            (*(undefined4 *)(param_1 + 0x40),*(undefined4 *)(param_1 + 0x13e),\r\n             *(int *)(param_1 + 0x14e),0,0,(*(int **)(param_1 + 0x11e))[2],\r\n             *(int *)(param_1 + 0x142) - *(int *)(param_1 + 0x14e));\r\n  piVar2 = *(int **)(param_1 + 0x11e);\r\n  (**(code **)(*piVar2 + 0xc))\r\n            (*(undefined4 *)(param_1 + 0x40),*(undefined4 *)(param_1 + 0x13e),\r\n             *(int *)(param_1 + 0x14a) + -0x1c,0,piVar2[3] + -0x1c,piVar2[2],piVar2[3]);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

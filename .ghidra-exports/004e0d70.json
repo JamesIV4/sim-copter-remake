@@ -1,0 +1,32 @@
+{
+  "address": "004e0d70",
+  "name": "__make_time_t",
+  "signature": "undefined __make_time_t(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __make_time_t\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __make_time_t(int *param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  tm *ptVar3;\r\n  int iVar4;\r\n  uint local_4;\r\n  \r\n  local_4 = param_1[5];\r\n  if ((int)local_4 < 0x45) {\r\n    return -1;\r\n  }\r\n  if (0x8b < (int)local_4) {\r\n    return -1;\r\n  }\r\n  iVar4 = param_1[4];\r\n  if ((iVar4 < 0) || (0xb < iVar4)) {\r\n    local_4 = local_4 + iVar4 / 0xc;\r\n    iVar4 = iVar4 % 0xc;\r\n    param_1[4] = iVar4;\r\n    if (iVar4 < 0) {\r\n      local_4 = local_4 - 1;\r\n      param_1[4] = iVar4 + 0xc;\r\n    }\r\n    if ((int)local_4 < 0x45) {\r\n      return -1;\r\n    }\r\n    if (0x8b < (int)local_4) {\r\n      return -1;\r\n    }\r\n  }\r\n  iVar4 = (&DAT_00508710)[param_1[4]];\r\n  if (((local_4 & 3) == 0) && (1 < param_1[4])) {\r\n    iVar4 = iVar4 + 1;\r\n  }\r\n  iVar4 = ((int)(local_4 - 1) >> 2) + local_4 * 0x16d + -0x63df + iVar4;\r\n  iVar2 = param_1[3];\r\n  iVar1 = iVar2 + iVar4;\r\n  if (iVar4 < 0) {\r\nLAB_004e0e31:\r\n    if ((iVar2 < 0) && (-1 < iVar1)) {\r\n      return -1;\r\n    }\r\n  }\r\n  else {\r\n    if ((-1 < iVar2) && (iVar1 < 0)) {\r\n      return -1;\r\n    }\r\n    if (iVar4 < 0) goto LAB_004e0e31;\r\n  }\r\n  iVar4 = iVar1 * 0x18;\r\n  if (iVar1 != 0 && iVar4 / iVar1 != 0x18) {\r\n    return -1;\r\n  }\r\n  iVar2 = param_1[2];\r\n  iVar1 = iVar4 + iVar2;\r\n  if (iVar4 < 0) {\r\nLAB_004e0e8d:\r\n    if ((iVar2 < 0) && (-1 < iVar1)) {\r\n      return -1;\r\n    }\r\n  }\r\n  else {\r\n    if ((-1 < iVar2) && (iVar1 < 0)) {\r\n      return -1;\r\n    }\r\n    if (iVar4 < 0) goto LAB_004e0e8d;\r\n  }\r\n  iVar4 = iVar1 * 0x3c;\r\n  if (iVar1 != 0 && iVar4 / iVar1 != 0x3c) {\r\n    return -1;\r\n  }\r\n  iVar2 = param_1[1];\r\n  iVar1 = iVar4 + iVar2;\r\n  if (iVar4 < 0) {\r\nLAB_004e0eeb:\r\n    if ((iVar2 < 0) && (-1 < iVar1)) {\r\n      return -1;\r\n    }\r\n  }\r\n  else {\r\n    if ((-1 < iVar2) && (iVar1 < 0)) {\r\n      return -1;\r\n    }\r\n    if (iVar4 < 0) goto LAB_004e0eeb;\r\n  }\r\n  iVar4 = iVar1 * 0x3c;\r\n  if (iVar1 != 0 && iVar4 / iVar1 != 0x3c) {\r\n    return -1;\r\n  }\r\n  iVar1 = *param_1;\r\n  local_4 = iVar4 + iVar1;\r\n  if (-1 < iVar4) {\r\n    if ((-1 < iVar1) && ((int)local_4 < 0)) {\r\n      return -1;\r\n    }\r\n    if (-1 < iVar4) goto LAB_004e0f53;\r\n  }\r\n  if ((iVar1 < 0) && (-1 < (int)local_4)) {\r\n    return -1;\r\n  }\r\nLAB_004e0f53:\r\n  if (param_2 == 0) {\r\n    ptVar3 = _gmtime((time_t *)&local_4);\r\n    if (ptVar3 == (tm *)0x0) {\r\n      return -1;\r\n    }\r\n  }\r\n  else {\r\n    ___tzset();\r\n    local_4 = local_4 + DAT_00506df0;\r\n    ptVar3 = _localtime((time_t *)&local_4);\r\n    if (ptVar3 == (tm *)0x0) {\r\n      return -1;\r\n    }\r\n    if ((0 < param_1[8]) || ((param_1[8] < 0 && (0 < ptVar3->tm_isdst)))) {\r\n      local_4 = local_4 + DAT_00506df8;\r\n      ptVar3 = _localtime((time_t *)&local_4);\r\n    }\r\n  }\r\n  for (iVar4 = 9; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n    *param_1 = ptVar3->tm_sec;\r\n    ptVar3 = (tm *)&ptVar3->tm_min;\r\n    param_1 = param_1 + 1;\r\n  }\r\n  return local_4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0d60",
+      "name": "_mktime",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d90a0",
+      "name": "___tzset"
+    },
+    {
+      "addr": "004d3ed0",
+      "name": "_localtime"
+    },
+    {
+      "addr": "004d9800",
+      "name": "_gmtime"
+    }
+  ],
+  "data_refs": []
+}

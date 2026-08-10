@@ -1,0 +1,29 @@
+{
+  "address": "004da570",
+  "name": "__initptd",
+  "signature": "void __cdecl __initptd(_ptiddata _Ptd, pthreadlocinfo _Locale)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __initptd\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __initptd(_ptiddata _Ptd,pthreadlocinfo _Locale)\r\n\r\n{\r\n  *(undefined **)(_Ptd->_con_ch_buf + 4) = &DAT_005077f0;\r\n  _Ptd->_holdrand = 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4610",
+      "name": "__beginthread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da510",
+      "name": "__mtinit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da590",
+      "name": "__getptd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

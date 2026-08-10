@@ -1,0 +1,18 @@
+{
+  "address": "0046cb2c",
+  "name": "FUN_0046cb2c",
+  "signature": "undefined FUN_0046cb2c(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0046cb2c(void)\r\n\r\n{\r\n  FUN_0046c991(&stack0xfffffffc);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0046c991",
+      "name": "FUN_0046c991"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,37 @@
+{
+  "address": "00463600",
+  "name": "FUN_00463600",
+  "signature": "undefined FUN_00463600(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00463600(byte *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  byte *pbVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  LPCSTR lpAppName;\r\n  byte *pbVar5;\r\n  bool bVar6;\r\n  bool bVar7;\r\n  byte local_230 [300];\r\n  CHAR local_104 [260];\r\n  \r\n  FUN_00432ab0(0xd,0,param_1,local_104);\r\n  if (0 < DAT_004f9f54) {\r\n    iVar4 = 0;\r\n    lpAppName = &DAT_0059213c;\r\n    do {\r\n      GetPrivateProfileStringA\r\n                (lpAppName,s_Redirect_004f9f5c,s_NO_REDIRECT_004f9f68,(LPSTR)local_230,300,local_104\r\n                );\r\n      iVar3 = 0xc;\r\n      bVar6 = false;\r\n      iVar1 = 0;\r\n      bVar7 = true;\r\n      pbVar2 = local_230;\r\n      pbVar5 = (byte *)s_NO_REDIRECT_004f9f68;\r\n      do {\r\n        if (iVar3 == 0) break;\r\n        iVar3 = iVar3 + -1;\r\n        bVar6 = *pbVar2 < *pbVar5;\r\n        bVar7 = *pbVar2 == *pbVar5;\r\n        pbVar2 = pbVar2 + 1;\r\n        pbVar5 = pbVar5 + 1;\r\n      } while (bVar7);\r\n      if (!bVar7) {\r\n        iVar1 = (1 - (uint)bVar6) - (uint)(bVar6 != 0);\r\n      }\r\n      pbVar2 = local_230;\r\n      if (iVar1 == 0) {\r\n        pbVar2 = param_1;\r\n      }\r\n      iVar1 = iVar4 + 1;\r\n      FUN_004636b0(pbVar2,lpAppName,iVar4);\r\n      iVar4 = iVar1;\r\n      lpAppName = lpAppName + 0xfe;\r\n    } while (iVar1 < DAT_004f9f54);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041f760",
+      "name": "FUN_0041f760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "EXTERNAL:0000000a",
+      "name": "GetPrivateProfileStringA"
+    },
+    {
+      "addr": "004636b0",
+      "name": "FUN_004636b0"
+    }
+  ],
+  "data_refs": []
+}

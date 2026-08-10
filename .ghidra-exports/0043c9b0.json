@@ -1,0 +1,40 @@
+{
+  "address": "0043c9b0",
+  "name": "FUN_0043c9b0",
+  "signature": "undefined FUN_0043c9b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0043c9b0(uint param_1,char param_2)\r\n\r\n{\r\n  int iVar1;\r\n  char *lpCaption;\r\n  CHAR local_200 [256];\r\n  CHAR local_100 [256];\r\n  \r\n  if ((param_1 & 0x80000000) != 0) {\r\n    iVar1 = LoadStringA(DAT_0051a050,param_1 & 0x7fffffff,local_200,0xff);\r\n    if (iVar1 == 0) {\r\n      wsprintfA(local_200,s_Error_Code___lu_004f933c,param_1 & 0x7fffffff);\r\n    }\r\n    iVar1 = LoadStringA(DAT_0051a050,0x29a,local_100,0xff);\r\n    if (iVar1 == 0) {\r\n      lpCaption = s_Error__004f9334;\r\n    }\r\n    else {\r\n      lpCaption = local_100;\r\n    }\r\n    MessageBoxA((HWND)0x0,local_200,lpCaption,0x2030);\r\n    FUN_0040f9f0(&DAT_004f9330,local_200);\r\n    if (param_2 != '\\0') {\r\n                    /* WARNING: Subroutine does not return */\r\n      _abort();\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041fa90",
+      "name": "FUN_0041fa90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "EXTERNAL:00000074",
+      "name": "wsprintfA"
+    },
+    {
+      "addr": "EXTERNAL:00000081",
+      "name": "MessageBoxA"
+    },
+    {
+      "addr": "0040f9f0",
+      "name": "FUN_0040f9f0"
+    },
+    {
+      "addr": "004d55e0",
+      "name": "_abort"
+    }
+  ],
+  "data_refs": []
+}

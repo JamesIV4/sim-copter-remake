@@ -1,0 +1,34 @@
+{
+  "address": "00462b70",
+  "name": "FUN_00462b70",
+  "signature": "undefined FUN_00462b70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nchar * __thiscall FUN_00462b70(undefined4 param_1,char *param_2)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  ostrstream local_58 [8];\r\n  ios local_50 [80];\r\n  \r\n  ostrstream::ostrstream(local_58,param_2,4,2);\r\n  uVar1 = FUN_00462bc0(local_58,param_1);\r\n  FUN_00422c30(uVar1);\r\n  FUN_004d33e0();\r\n  ios::~ios(local_50);\r\n  return param_2;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d32c0",
+      "name": "ostrstream"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0"
+    },
+    {
+      "addr": "00422c30",
+      "name": "FUN_00422c30"
+    },
+    {
+      "addr": "004d33e0",
+      "name": "FUN_004d33e0"
+    },
+    {
+      "addr": "004d2cf0",
+      "name": "~ios"
+    }
+  ],
+  "data_refs": []
+}

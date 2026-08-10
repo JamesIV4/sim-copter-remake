@@ -1,0 +1,44 @@
+{
+  "address": "00437fd0",
+  "name": "FUN_00437fd0",
+  "signature": "undefined FUN_00437fd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00437fd0(int *param_1,int *param_2,int param_3)\r\n\r\n{\r\n  code *pcVar1;\r\n  DWORD DVar2;\r\n  CHAR aCStack_208 [260];\r\n  CHAR local_104 [260];\r\n  \r\n  if (*(int *)(*(int *)(param_1[0x1029] + 4) + 8) == 6) {\r\n    (**(code **)(*param_1 + 0x44))();\r\n  }\r\n  if ((param_3 != 0) && (param_2[0x2a] != 0)) {\r\n    DVar2 = GetTempPathA(0x100,local_104);\r\n    if (DVar2 != 0) {\r\n      GetTempFileNameA(local_104,&DAT_004f864c,0,aCStack_208);\r\n    }\r\n    pcVar1 = *(code **)(*param_2 + 0xe8);\r\n    (*pcVar1)(0);\r\n    (*pcVar1)(&stack0xfffffdf4);\r\n    FUN_004131e0();\r\n    FUN_004131a0(aCStack_208);\r\n    FUN_004d49b0(aCStack_208);\r\n    FUN_0045ca30();\r\n  }\r\n  (**(code **)(*param_2 + 0x7c))();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044bf70",
+      "name": "FUN_0044bf70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000009",
+      "name": "GetTempPathA"
+    },
+    {
+      "addr": "EXTERNAL:00000016",
+      "name": "GetTempFileNameA"
+    },
+    {
+      "addr": "004131e0",
+      "name": "FUN_004131e0"
+    },
+    {
+      "addr": "004131a0",
+      "name": "FUN_004131a0"
+    },
+    {
+      "addr": "004d49b0",
+      "name": "FUN_004d49b0"
+    },
+    {
+      "addr": "0045ca30",
+      "name": "FUN_0045ca30"
+    }
+  ],
+  "data_refs": []
+}

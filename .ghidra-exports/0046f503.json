@@ -1,0 +1,13 @@
+{
+  "address": "0046f503",
+  "name": "FUN_0046f503",
+  "signature": "undefined FUN_0046f503(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0046f503(int param_1,int param_2)\r\n\r\n{\r\n  return -(int)(((longlong)(param_1 + DAT_004faff4 * -0x10) * (longlong)param_2) /\r\n               (longlong)(DAT_004faffc << 4));\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

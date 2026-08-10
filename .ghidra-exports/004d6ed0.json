@@ -1,0 +1,34 @@
+{
+  "address": "004d6ed0",
+  "name": "setb",
+  "signature": "void __thiscall setb(streambuf * this, char * param_1, char * param_2, int param_3)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    protected: void __thiscall streambuf::setb(char *,char *,int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall streambuf::setb(streambuf *this,char *param_1,char *param_2,int param_3)\r\n\r\n{\r\n  if ((*(int *)(this + 4) != 0) && (*(int *)(this + 0x10) != 0)) {\r\n    FUN_004d29a0(*(int *)(this + 0x10));\r\n  }\r\n  *(char **)(this + 0x10) = param_1;\r\n  *(int *)(this + 4) = param_3;\r\n  *(char **)(this + 0x14) = param_2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2db0",
+      "name": "strstreambuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2f10",
+      "name": "FUN_004d2f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d38c0",
+      "name": "setbuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

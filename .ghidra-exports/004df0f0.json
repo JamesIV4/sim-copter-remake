@@ -1,0 +1,19 @@
+{
+  "address": "004df0f0",
+  "name": "_strncat",
+  "signature": "char * __cdecl _strncat(char * _Dest, char * _Source, size_t _Count)",
+  "calling_convention": "__cdecl",
+  "return_type": "char *",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _strncat\r\n   \r\n   Libraries: Visual Studio 1998 Debug, Visual Studio 1998 Release */\r\n\r\nchar * __cdecl _strncat(char *_Dest,char *_Source,size_t _Count)\r\n\r\n{\r\n  byte bVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint *puVar5;\r\n  uint *puVar6;\r\n  \r\n  puVar5 = (uint *)_Dest;\r\n  if (_Count == 0) {\r\n    return _Dest;\r\n  }\r\n  do {\r\n    if (((uint)puVar5 & 3) == 0) goto LAB_004df11a;\r\n    uVar4 = *puVar5;\r\n    puVar5 = (uint *)((int)puVar5 + 1);\r\n  } while ((byte)uVar4 != 0);\r\n  goto LAB_004df14b;\r\n  while( true ) {\r\n    if ((uVar4 & 0xff0000) == 0) {\r\n      puVar6 = (uint *)((int)puVar6 + 2);\r\n      goto LAB_004df15b;\r\n    }\r\n    if ((uVar4 & 0xff000000) == 0) break;\r\nLAB_004df11a:\r\n    do {\r\n      puVar6 = puVar5;\r\n      puVar5 = puVar6 + 1;\r\n    } while (((*puVar6 ^ 0xffffffff ^ *puVar6 + 0x7efefeff) & 0x81010100) == 0);\r\n    uVar4 = *puVar6;\r\n    if ((char)uVar4 == '\\0') goto LAB_004df15b;\r\n    if ((char)(uVar4 >> 8) == '\\0') {\r\n      puVar6 = (uint *)((int)puVar6 + 1);\r\n      goto LAB_004df15b;\r\n    }\r\n  }\r\nLAB_004df14b:\r\n  puVar6 = (uint *)((int)puVar5 + -1);\r\nLAB_004df15b:\r\n  if (((uint)_Source & 3) == 0) {\r\n    uVar3 = _Count >> 2;\r\n  }\r\n  else {\r\n    do {\r\n      bVar1 = (byte)*(uint *)_Source;\r\n      uVar4 = (uint)bVar1;\r\n      _Source = (char *)((int)_Source + 1);\r\n      if (bVar1 == 0) goto LAB_004df1aa;\r\n      *(byte *)puVar6 = bVar1;\r\n      puVar6 = (uint *)((int)puVar6 + 1);\r\n      _Count = _Count - 1;\r\n      if (_Count == 0) goto LAB_004df1a0;\r\n    } while (((uint)_Source & 3) != 0);\r\n    uVar3 = _Count >> 2;\r\n  }\r\n  do {\r\n    if (uVar3 == 0) {\r\n      for (uVar4 = _Count & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        uVar3 = *(uint *)_Source;\r\n        _Source = (char *)((int)_Source + 1);\r\n        *(byte *)puVar6 = (byte)uVar3;\r\n        puVar6 = (uint *)((int)puVar6 + 1);\r\n        if ((byte)uVar3 == 0) {\r\n          return _Dest;\r\n        }\r\n      }\r\nLAB_004df1a0:\r\n      *(byte *)puVar6 = 0;\r\n      return _Dest;\r\n    }\r\n    uVar2 = *(uint *)_Source;\r\n    uVar4 = *(uint *)_Source;\r\n    _Source = (char *)((int)_Source + 4);\r\n    if (((uVar2 ^ 0xffffffff ^ uVar2 + 0x7efefeff) & 0x81010100) != 0) {\r\n      if ((char)uVar4 == '\\0') {\r\nLAB_004df1aa:\r\n        *(byte *)puVar6 = (byte)uVar4;\r\n        return _Dest;\r\n      }\r\n      if ((char)(uVar4 >> 8) == '\\0') {\r\n        *(short *)puVar6 = (short)uVar4;\r\n        return _Dest;\r\n      }\r\n      if ((uVar4 & 0xff0000) == 0) {\r\n        *(short *)puVar6 = (short)uVar4;\r\n        *(byte *)((int)puVar6 + 2) = 0;\r\n        return _Dest;\r\n      }\r\n      if ((uVar4 & 0xff000000) == 0) {\r\n        *puVar6 = uVar4;\r\n        return _Dest;\r\n      }\r\n    }\r\n    *puVar6 = uVar4;\r\n    puVar6 = puVar6 + 1;\r\n    uVar3 = uVar3 - 1;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

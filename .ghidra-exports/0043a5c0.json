@@ -1,0 +1,28 @@
+{
+  "address": "0043a5c0",
+  "name": "FUN_0043a5c0",
+  "signature": "undefined FUN_0043a5c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_0043a5c0(int param_1,undefined4 param_2,int *param_3,uint param_4,int param_5,undefined4 param_6\r\n            )\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  iVar1 = *(int *)(param_1 + 0x24);\r\n  iVar2 = param_3[2];\r\n  iVar3 = *param_3;\r\n  if ((param_5 != 0) && (uVar5 = param_4, iVar6 = param_3[1], param_3[1] < param_3[3])) {\r\n    do {\r\n      if (param_4 + param_5 <= uVar5) {\r\n        return;\r\n      }\r\n      iVar4 = FUN_00439b40(uVar5,(param_4 + param_5) - uVar5,iVar2 - iVar3);\r\n      local_10 = *param_3;\r\n      local_8 = param_3[2];\r\n      iVar7 = iVar6 + iVar1;\r\n      local_c = iVar6;\r\n      local_4 = iVar7;\r\n      FUN_0043a2b0(param_2,&local_10,uVar5,iVar4,param_6);\r\n      uVar5 = uVar5 + iVar4;\r\n      iVar6 = iVar7;\r\n    } while (iVar7 < param_3[3]);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00407680",
+      "name": "FUN_00407680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00439b40",
+      "name": "FUN_00439b40"
+    },
+    {
+      "addr": "0043a2b0",
+      "name": "FUN_0043a2b0"
+    }
+  ],
+  "data_refs": []
+}

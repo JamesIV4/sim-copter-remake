@@ -1,0 +1,19 @@
+{
+  "address": "004e4df0",
+  "name": "_strlen",
+  "signature": "size_t __cdecl _strlen(char * _Str)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef size_t uint",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _strlen\r\n   \r\n   Libraries: Visual Studio 1998 Debug, Visual Studio 1998 Release */\r\n\r\nsize_t __cdecl _strlen(char *_Str)\r\n\r\n{\r\n  uint uVar1;\r\n  uint *puVar2;\r\n  uint *puVar3;\r\n  \r\n  puVar2 = (uint *)_Str;\r\n  do {\r\n    if (((uint)puVar2 & 3) == 0) goto LAB_004e4e10;\r\n    uVar1 = *puVar2;\r\n    puVar2 = (uint *)((int)puVar2 + 1);\r\n  } while ((char)uVar1 != '\\0');\r\nLAB_004e4e43:\r\n  return (size_t)((int)puVar2 + (-1 - (int)_Str));\r\nLAB_004e4e10:\r\n  do {\r\n    do {\r\n      puVar3 = puVar2;\r\n      puVar2 = puVar3 + 1;\r\n    } while (((*puVar3 ^ 0xffffffff ^ *puVar3 + 0x7efefeff) & 0x81010100) == 0);\r\n    uVar1 = *puVar3;\r\n    if ((char)uVar1 == '\\0') {\r\n      return (int)puVar3 - (int)_Str;\r\n    }\r\n    if ((char)(uVar1 >> 8) == '\\0') {\r\n      return (size_t)((int)puVar3 + (1 - (int)_Str));\r\n    }\r\n    if ((uVar1 & 0xff0000) == 0) {\r\n      return (size_t)((int)puVar3 + (2 - (int)_Str));\r\n    }\r\n  } while ((uVar1 & 0xff000000) != 0);\r\n  goto LAB_004e4e43;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4cf0",
+      "name": "FUN_004e4cf0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

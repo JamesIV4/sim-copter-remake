@@ -1,0 +1,19 @@
+{
+  "address": "0044d4a0",
+  "name": "FUN_0044d4a0",
+  "signature": "undefined FUN_0044d4a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined2 FUN_0044d4a0(void)\r\n\r\n{\r\n  uint uVar1;\r\n  byte in_AF;\r\n  byte in_TF;\r\n  byte in_IF;\r\n  byte in_NT;\r\n  byte in_AC;\r\n  byte in_VIF;\r\n  byte in_VIP;\r\n  byte in_ID;\r\n  uint uVar2;\r\n  undefined2 local_8;\r\n  \r\n  uVar2 = (uint)(in_NT & 1) * 0x4000 | (uint)(in_IF & 1) * 0x200 | (uint)(in_TF & 1) * 0x100 |\r\n          (uint)((short)(ushort)&stack0xffffffec < 0) * 0x80 |\r\n          (uint)(((uint)&stack0xffffffec & 0xfffc) == 0) * 0x40 | (uint)(in_AF & 1) * 0x10 |\r\n          (uint)((POPCOUNT((ushort)&stack0xffffffec & 0xfc) & 1U) == 0) * 4 |\r\n          (uint)(in_ID & 1) * 0x200000 | (uint)(in_VIP & 1) * 0x100000 |\r\n          (uint)(in_VIF & 1) * 0x80000 | (uint)(in_AC & 1) * 0x40000;\r\n  uVar1 = uVar2 ^ 0x40000;\r\n  local_8 = 3;\r\n  if (((uint)((uVar1 & 0x4000) != 0) * 0x4000 | (uint)((uVar1 & 0x200) != 0) * 0x200 |\r\n       (uint)((uVar1 & 0x100) != 0) * 0x100 | (uint)((uVar1 & 0x80) != 0) * 0x80 |\r\n       (uint)((uVar1 & 0x40) != 0) * 0x40 | (uint)((uVar1 & 0x10) != 0) * 0x10 |\r\n       (uint)((uVar1 & 4) != 0) * 4 | (uint)((uVar1 & 0x200000) != 0) * 0x200000 |\r\n      (uint)((uVar1 & 0x40000) != 0) * 0x40000) != uVar2) {\r\n    local_8 = 0xffff;\r\n  }\r\n  return local_8;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044d210",
+      "name": "FUN_0044d210",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

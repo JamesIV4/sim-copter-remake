@@ -1,0 +1,26 @@
+{
+  "address": "004d88c0",
+  "name": "__cftoe",
+  "signature": "errno_t __cdecl __cftoe(double * _Value, char * _Buf, size_t _SizeInBytes, int _Dec, int _Caps)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef errno_t int",
+  "parameter_count": 5,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __cftoe\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nerrno_t __cdecl __cftoe(double *_Value,char *_Buf,size_t _SizeInBytes,int _Dec,int _Caps)\r\n\r\n{\r\n  STRFLT unaff_EDI;\r\n  _strflt local_28;\r\n  char local_18 [24];\r\n  \r\n  __fltout2((_CRT_DOUBLE)*_Value,&local_28,local_18,(size_t)unaff_EDI);\r\n  __fptostr(_Buf + (uint)(0 < (int)_SizeInBytes) + (uint)(local_28.sign == 0x2d),_SizeInBytes + 1,\r\n            (int)&local_28,unaff_EDI);\r\n  __cftoe2(_Buf,_SizeInBytes,_Dec,&local_28,0);\r\n  return (errno_t)_Buf;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e0660",
+      "name": "__fltout2"
+    },
+    {
+      "addr": "004e05d0",
+      "name": "__fptostr"
+    },
+    {
+      "addr": "004d8940",
+      "name": "__cftoe2"
+    }
+  ],
+  "data_refs": []
+}

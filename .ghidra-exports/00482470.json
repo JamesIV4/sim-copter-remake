@@ -1,0 +1,24 @@
+{
+  "address": "00482470",
+  "name": "FUN_00482470",
+  "signature": "undefined FUN_00482470(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00482470(short param_1,short param_2,int param_3)\r\n\r\n{\r\n  bool bVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  short sVar4;\r\n  int *piVar5;\r\n  int *piVar6;\r\n  int local_c;\r\n  short local_8;\r\n  \r\n  iVar3 = 0;\r\n  bVar1 = false;\r\n  local_c = -1;\r\n  iVar2 = param_3 * param_3 * 8;\r\n  DAT_0055e170 = (int *)(&DAT_0055e250 + iVar2);\r\n  piVar5 = (int *)(&DAT_0055e248 + iVar2);\r\n  sVar4 = -1;\r\n  *DAT_0055e170 = (int)param_1;\r\n  *(int *)(&DAT_0055e254 + iVar2) = (int)param_2;\r\n  do {\r\n    local_c = local_c + 1;\r\n    switch(local_c) {\r\n    case 0:\r\n    case 4:\r\n      sVar4 = 0;\r\n      iVar3 = iVar3 + 1;\r\n      local_8 = -1;\r\n      local_c = 0;\r\n      break;\r\n    case 1:\r\n      sVar4 = 1;\r\n      goto LAB_004824f9;\r\n    case 2:\r\n      iVar3 = iVar3 + 1;\r\n      sVar4 = 0;\r\n      local_8 = 1;\r\n      break;\r\n    case 3:\r\n      sVar4 = -1;\r\nLAB_004824f9:\r\n      local_8 = 0;\r\n    }\r\n    if (param_3 == iVar3) {\r\n      bVar1 = true;\r\n      iVar3 = iVar3 + -1;\r\n    }\r\n    iVar2 = 0;\r\n    piVar6 = piVar5;\r\n    if (0 < iVar3) {\r\n      do {\r\n        param_1 = param_1 + sVar4;\r\n        param_2 = param_2 + local_8;\r\n        *piVar6 = (int)param_1;\r\n        piVar5 = piVar6 + -2;\r\n        piVar6[1] = (int)param_2;\r\n        if (piVar5 < &DAT_0055e258) {\r\n          bVar1 = true;\r\n          break;\r\n        }\r\n        iVar2 = iVar2 + 1;\r\n        piVar6 = piVar5;\r\n      } while (iVar2 < iVar3);\r\n    }\r\n    if (bVar1) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004827c0",
+      "name": "FUN_004827c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

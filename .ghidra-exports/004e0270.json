@@ -1,0 +1,19 @@
+{
+  "address": "004e0270",
+  "name": "__IsZeroMan",
+  "signature": "undefined __IsZeroMan(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __IsZeroMan\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 __IsZeroMan(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = 0;\r\n  do {\r\n    if (*param_1 != 0) {\r\n      return 0;\r\n    }\r\n    param_1 = param_1 + 1;\r\n    iVar1 = iVar1 + 1;\r\n  } while (iVar1 < 3);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "0041dc00",
+  "name": "FUN_0041dc00",
+  "signature": "undefined FUN_0041dc00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0041dc00(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  int local_4;\r\n  \r\n  if (DAT_004f861c == (int *)0x0) {\r\n    return 0;\r\n  }\r\n  if (param_2 == 0) {\r\n    local_10 = *(undefined4 *)(param_1 + 0x8e);\r\n    local_c = *(undefined4 *)(param_1 + 0x54);\r\n    local_4 = param_1 + 0x58;\r\n    local_14 = 0x14;\r\n    local_8 = 0;\r\n    iVar2 = (**(code **)(*DAT_004f861c + 0xc))(DAT_004f861c,&local_14,param_1 + 0x6a,0);\r\n  }\r\n  else {\r\n    iVar2 = (**(code **)(*DAT_004f861c + 0xc))(DAT_004f861c,param_2,param_1 + 0x6a,0);\r\n  }\r\n  if (iVar2 != 0) {\r\n    piVar1 = *(int **)(param_1 + 0x6a);\r\n    if (piVar1 != (int *)0x0) {\r\n      (**(code **)(*piVar1 + 8))(piVar1);\r\n      *(undefined4 *)(param_1 + 0x6a) = 0;\r\n    }\r\n    return 0;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

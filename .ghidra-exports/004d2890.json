@@ -1,0 +1,18 @@
+{
+  "address": "004d2890",
+  "name": "FUN_004d2890",
+  "signature": "undefined FUN_004d2890(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d2890(void)\r\n\r\n{\r\n  _atexit(FUN_004d28a0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2bd0",
+      "name": "_atexit"
+    }
+  ],
+  "data_refs": []
+}

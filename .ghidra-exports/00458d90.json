@@ -1,0 +1,29 @@
+{
+  "address": "00458d90",
+  "name": "FUN_00458d90",
+  "signature": "undefined FUN_00458d90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00458d90(int *param_1,int param_2)\r\n\r\n{\r\n  undefined4 local_18;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  if ((param_2 < param_1[0x2d]) && (-1 < param_2)) {\r\n    if (param_1[0x1d] != param_2) {\r\n      param_1[0x1d] = param_2;\r\n      local_18 = 0x14c;\r\n      local_14 = 0xee;\r\n      local_10 = 0x14c;\r\n      local_c = 0xee;\r\n      local_8 = 0x210;\r\n      local_4 = 0x128;\r\n      (**(code **)(*(int *)param_1[0x20f] + 0x2c))(param_1[0x10],&local_18,&local_10);\r\n      (**(code **)(*(int *)param_1[0x20d] + 0xdc))(param_1[param_2 + 0x2a] + 0xf0);\r\n      (**(code **)(*(int *)param_1[0x20e] + 0xdc))\r\n                (*(int *)(&DAT_00518dc8 + param_1[param_2 + 0x2a] * 0x50) + 0x122);\r\n      FUN_004589f0();\r\n      (**(code **)(*param_1 + 0x40))(1,1);\r\n    }\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004580b0",
+      "name": "FUN_004580b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00458a90",
+      "name": "FUN_00458a90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004589f0",
+      "name": "FUN_004589f0"
+    }
+  ],
+  "data_refs": []
+}

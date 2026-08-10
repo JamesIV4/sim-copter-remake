@@ -1,0 +1,19 @@
+{
+  "address": "004d1780",
+  "name": "FUN_004d1780",
+  "signature": "undefined FUN_004d1780(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004d1780(byte *param_1,byte *param_2)\r\n\r\n{\r\n  byte bVar1;\r\n  byte bVar2;\r\n  byte bVar3;\r\n  short sVar4;\r\n  ushort uVar5;\r\n  \r\n  bVar1 = *param_2;\r\n  uVar5 = (ushort)*param_1;\r\n  if ((ushort)bVar1 < (ushort)*param_1) {\r\n    uVar5 = (ushort)bVar1;\r\n  }\r\n  sVar4 = 1;\r\n  if (uVar5 != 0) {\r\n    do {\r\n      bVar2 = param_1[sVar4];\r\n      bVar3 = param_2[sVar4];\r\n      if ((0x60 < bVar2) && (bVar2 < 0x7b)) {\r\n        bVar2 = bVar2 - 0x20;\r\n      }\r\n      if ((0x60 < bVar3) && (bVar3 < 0x7b)) {\r\n        bVar3 = bVar3 - 0x20;\r\n      }\r\n      if (bVar3 < bVar2) {\r\n        return 1;\r\n      }\r\n      if (bVar3 != bVar2) {\r\n        return -1;\r\n      }\r\n      sVar4 = sVar4 + 1;\r\n    } while (sVar4 <= (short)uVar5);\r\n  }\r\n  if (bVar1 < *param_1) {\r\n    return 1;\r\n  }\r\n  return -(uint)(*param_1 < bVar1);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ce290",
+      "name": "FUN_004ce290",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

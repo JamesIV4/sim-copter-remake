@@ -1,0 +1,68 @@
+{
+  "address": "004d6530",
+  "name": "__unlock_file",
+  "signature": "void __cdecl __unlock_file(FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __unlock_file\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __unlock_file(FILE *_File)\r\n\r\n{\r\n  if (((FILE *)0x50723f < _File) && (_File < (FILE *)0x5074a1)) {\r\n    FUN_004d64a0(((int)(_File + -0x28392) >> 5) + 0x1c);\r\n    return;\r\n  }\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)(_File + 1));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3a40",
+      "name": "_fclose",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3ae0",
+      "name": "_fflush",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3e70",
+      "name": "__fsopen",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5dc0",
+      "name": "_fprintf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004def80",
+      "name": "FUN_004def80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5970",
+      "name": "_fseek",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5a50",
+      "name": "FUN_004d5a50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5c30",
+      "name": "_fread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3cb0",
+      "name": "_fread",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

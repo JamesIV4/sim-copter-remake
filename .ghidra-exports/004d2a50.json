@@ -1,0 +1,28 @@
+{
+  "address": "004d2a50",
+  "name": "FUN_004d2a50",
+  "signature": "undefined FUN_004d2a50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d2a50(void)\r\n\r\n{\r\n  FUN_004d2580();\r\n  ios::~ios((ios *)&DAT_005904a8);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2a40",
+      "name": "FUN_004d2a40",
+      "ref_type": "DATA"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2580",
+      "name": "FUN_004d2580"
+    },
+    {
+      "addr": "004d2cf0",
+      "name": "~ios"
+    }
+  ],
+  "data_refs": []
+}

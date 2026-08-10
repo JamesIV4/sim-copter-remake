@@ -1,0 +1,24 @@
+{
+  "address": "004d6e70",
+  "name": "allocate",
+  "signature": "int __thiscall allocate(streambuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    protected: int __thiscall streambuf::allocate(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __thiscall streambuf::allocate(streambuf *this)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if ((*(int *)(this + 8) == 0) && (*(int *)(this + 0x10) == 0)) {\r\n    iVar1 = (**(code **)(*(int *)this + 0x28))();\r\n    return (-(uint)(iVar1 == -1) & 0xfffffffe) + 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d35e0",
+      "name": "overflow",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3670",
+      "name": "underflow",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

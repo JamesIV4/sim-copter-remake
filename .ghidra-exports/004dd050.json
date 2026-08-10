@@ -1,0 +1,109 @@
+{
+  "address": "004dd050",
+  "name": "__inc",
+  "signature": "undefined __inc(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __inc\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __inc(FILE *param_1)\r\n\r\n{\r\n  byte *pbVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  \r\n  iVar2 = param_1->_cnt + -1;\r\n  param_1->_cnt = iVar2;\r\n  if (-1 < iVar2) {\r\n    pbVar1 = (byte *)param_1->_ptr;\r\n    param_1->_ptr = (char *)(pbVar1 + 1);\r\n    return (uint)*pbVar1;\r\n  }\r\n  uVar3 = __filbuf(param_1);\r\n  return uVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd0a0",
+      "name": "__whiteout",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004de2a0",
+      "name": "__filbuf"
+    }
+  ],
+  "data_refs": []
+}

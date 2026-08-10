@@ -1,0 +1,48 @@
+{
+  "address": "004e3840",
+  "name": "FUN_004e3840",
+  "signature": "undefined FUN_004e3840(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004e3840(LCID param_1,uint param_2,LPCSTR param_3,int param_4,LPWSTR param_5,int param_6,\r\n                UINT param_7)\r\n\r\n{\r\n  int iVar1;\r\n  LPCWSTR lpWideCharStr;\r\n  int iVar2;\r\n  LPCWSTR lpDestStr;\r\n  \r\n  if (DAT_005089e8 == 0) {\r\n    iVar1 = LCMapStringA(0,0x100,\"\",1,(LPSTR)0x0,0);\r\n    if (iVar1 == 0) {\r\n      iVar1 = LCMapStringW(0,0x100,L\"\",1,(LPWSTR)0x0,0);\r\n      if (iVar1 == 0) {\r\n        return 0;\r\n      }\r\n      DAT_005089e8 = 1;\r\n    }\r\n    else {\r\n      DAT_005089e8 = 2;\r\n    }\r\n  }\r\n  if (0 < param_4) {\r\n    param_4 = FUN_004e3a70(param_3,param_4);\r\n  }\r\n  if (DAT_005089e8 == 2) {\r\n    iVar1 = LCMapStringA(param_1,param_2,param_3,param_4,(LPSTR)param_5,param_6);\r\n    return iVar1;\r\n  }\r\n  if (DAT_005089e8 != 1) {\r\n    return DAT_005089e8;\r\n  }\r\n  lpDestStr = (LPCWSTR)0x0;\r\n  if (param_7 == 0) {\r\n    param_7 = DAT_00507ac8;\r\n  }\r\n  iVar1 = MultiByteToWideChar(param_7,9,param_3,param_4,(LPWSTR)0x0,0);\r\n  if (iVar1 == 0) {\r\n    return 0;\r\n  }\r\n  lpWideCharStr = (LPCWSTR)FUN_004d5f00(iVar1 * 2);\r\n  if (lpWideCharStr == (LPCWSTR)0x0) {\r\n    return 0;\r\n  }\r\n  iVar2 = MultiByteToWideChar(param_7,1,param_3,param_4,lpWideCharStr,iVar1);\r\n  if ((iVar2 != 0) &&\r\n     (iVar2 = LCMapStringW(param_1,param_2,lpWideCharStr,iVar1,(LPWSTR)0x0,0), iVar2 != 0)) {\r\n    if ((param_2 & 0x400) == 0) {\r\n      lpDestStr = (LPCWSTR)FUN_004d5f00(iVar2 * 2);\r\n      if ((lpDestStr == (LPCWSTR)0x0) ||\r\n         (iVar1 = LCMapStringW(param_1,param_2,lpWideCharStr,iVar1,lpDestStr,iVar2), iVar1 == 0))\r\n      goto LAB_004e39bb;\r\n      if (param_6 == 0) {\r\n        iVar2 = WideCharToMultiByte(param_7,0x220,lpDestStr,iVar2,(LPSTR)0x0,0,(LPCSTR)0x0,\r\n                                    (LPBOOL)0x0);\r\n        iVar1 = iVar2;\r\n      }\r\n      else {\r\n        iVar2 = WideCharToMultiByte(param_7,0x220,lpDestStr,iVar2,(LPSTR)param_5,param_6,(LPCSTR)0x0\r\n                                    ,(LPBOOL)0x0);\r\n        iVar1 = iVar2;\r\n      }\r\n    }\r\n    else {\r\n      if (param_6 == 0) goto LAB_004e3a52;\r\n      if (param_6 < iVar2) goto LAB_004e39bb;\r\n      iVar1 = LCMapStringW(param_1,param_2,lpWideCharStr,iVar1,param_5,param_6);\r\n    }\r\n    if (iVar1 != 0) {\r\nLAB_004e3a52:\r\n      FUN_004d6010(lpWideCharStr);\r\n      FUN_004d6010(lpDestStr);\r\n      return iVar2;\r\n    }\r\n  }\r\nLAB_004e39bb:\r\n  FUN_004d6010(lpWideCharStr);\r\n  FUN_004d6010(lpDestStr);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dffc0",
+      "name": "__tolower_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000031",
+      "name": "LCMapStringA"
+    },
+    {
+      "addr": "EXTERNAL:00000030",
+      "name": "LCMapStringW"
+    },
+    {
+      "addr": "004e3a70",
+      "name": "FUN_004e3a70"
+    },
+    {
+      "addr": "EXTERNAL:00000041",
+      "name": "MultiByteToWideChar"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "EXTERNAL:00000043",
+      "name": "WideCharToMultiByte"
+    }
+  ],
+  "data_refs": []
+}

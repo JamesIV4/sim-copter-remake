@@ -1,0 +1,13 @@
+{
+  "address": "004a3ec0",
+  "name": "thunk_FUN_004a9900",
+  "signature": "undefined thunk_FUN_004a9900(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid thunk_FUN_004a9900(void)\r\n\r\n{\r\n  int iVar1;\r\n  undefined *puVar2;\r\n  undefined *puVar3;\r\n  int iVar4;\r\n  \r\n  puVar3 = DAT_0057f9d8;\r\n  if (DAT_0057f9d8 != (undefined *)0x0) {\r\n    iVar1 = (int)(DAT_0057f9d8 + -0x57f9dc) / 0xd4;\r\n    if (-1 < iVar1 + -1) {\r\n      puVar2 = &DAT_0057f9dc + (iVar1 + -1) * 0xd4;\r\n      do {\r\n        if (((*(uint *)(puVar2 + 0x4c) & 1) != 0) && (*(int *)(puVar2 + 0x54) != 2)) {\r\n          DAT_0057f9d8 = puVar2;\r\n          return;\r\n        }\r\n        puVar2 = puVar2 + -0xd4;\r\n      } while ((undefined *)0x57f9db < puVar2);\r\n    }\r\n    iVar4 = 0x1d;\r\n    if (iVar1 < 0x1d) {\r\n      puVar3 = &DAT_005811e0;\r\n      while (((*(uint *)(puVar3 + 0x4c) & 1) == 0 || (*(int *)(puVar3 + 0x54) == 2))) {\r\n        puVar3 = puVar3 + -0xd4;\r\n        iVar4 = iVar4 + -1;\r\n        if (iVar4 <= iVar1) {\r\n          return;\r\n        }\r\n      }\r\n    }\r\n  }\r\n  DAT_0057f9d8 = puVar3;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

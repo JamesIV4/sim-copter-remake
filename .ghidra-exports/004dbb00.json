@@ -1,0 +1,18 @@
+{
+  "address": "004dbb00",
+  "name": "__free_lc_lconv",
+  "signature": "undefined __free_lc_lconv(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __free_lc_lconv\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __free_lc_lconv(int param_1)\r\n\r\n{\r\n  if ((param_1 != 0) && (*(undefined **)(param_1 + 0xc) != &DAT_00508804)) {\r\n    FUN_004d6010(*(undefined **)(param_1 + 0xc));\r\n    FUN_004d6010(*(undefined4 *)(param_1 + 0x10));\r\n    FUN_004d6010(*(undefined4 *)(param_1 + 0x14));\r\n    FUN_004d6010(*(undefined4 *)(param_1 + 0x18));\r\n    FUN_004d6010(*(undefined4 *)(param_1 + 0x1c));\r\n    FUN_004d6010(*(undefined4 *)(param_1 + 0x20));\r\n    FUN_004d6010(*(undefined4 *)(param_1 + 0x24));\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

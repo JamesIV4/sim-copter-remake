@@ -1,0 +1,24 @@
+{
+  "address": "0041c180",
+  "name": "FUN_0041c180",
+  "signature": "undefined FUN_0041c180(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0041c180(int *param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  iVar2 = *(int *)(param_2 + 8);\r\n  *(undefined4 *)(param_2 + 8) = *(undefined4 *)(iVar2 + 0xc);\r\n  if (DAT_004f85f8 != *(int *)(iVar2 + 0xc)) {\r\n    *(int *)(*(int *)(iVar2 + 0xc) + 4) = param_2;\r\n  }\r\n  *(undefined4 *)(iVar2 + 4) = *(undefined4 *)(param_2 + 4);\r\n  if (*(int *)(*param_1 + 4) != param_2) {\r\n    piVar1 = (int *)(*(int *)(param_2 + 4) + 0xc);\r\n    if (*piVar1 != param_2) {\r\n      *(int *)(*(int *)(param_2 + 4) + 8) = iVar2;\r\n      *(int *)(iVar2 + 0xc) = param_2;\r\n      *(int *)(param_2 + 4) = iVar2;\r\n      return;\r\n    }\r\n    *piVar1 = iVar2;\r\n    *(int *)(iVar2 + 0xc) = param_2;\r\n    *(int *)(param_2 + 4) = iVar2;\r\n    return;\r\n  }\r\n  *(int *)(*param_1 + 4) = iVar2;\r\n  *(int *)(iVar2 + 0xc) = param_2;\r\n  *(int *)(param_2 + 4) = iVar2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041b4c0",
+      "name": "FUN_0041b4c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041b4c0",
+      "name": "FUN_0041b4c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "0041a5a0",
+  "name": "FUN_0041a5a0",
+  "signature": "undefined FUN_0041a5a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0041a5a0(int *param_1,int *param_2,int param_3,int param_4)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined4 uVar5;\r\n  \r\n  if (param_1[0x1d] != 0) {\r\n    return 0;\r\n  }\r\n  if ((param_3 == 3) || (param_3 == 4)) {\r\n    if (param_4 == 0x10002) {\r\n      piVar1 = (int *)param_1[0x1e];\r\n      piVar2 = (int *)param_1[0x1f];\r\n      if (param_2 == piVar1) {\r\n        iVar3 = (**(code **)(*piVar2 + 300))();\r\n        iVar4 = (**(code **)(*piVar1 + 300))();\r\n        if (iVar3 != iVar4) {\r\n          piVar1 = (int *)param_1[0x1f];\r\n          uVar5 = (**(code **)(*(int *)param_1[0x1e] + 300))();\r\n          (**(code **)(*piVar1 + 0x124))(uVar5);\r\n          return 1;\r\n        }\r\n      }\r\n      else if (param_2 == piVar2) {\r\n        iVar3 = (**(code **)(*piVar2 + 300))();\r\n        iVar4 = (**(code **)(*piVar1 + 300))();\r\n        if (iVar3 != iVar4) {\r\n          piVar1 = (int *)param_1[0x1e];\r\n          uVar5 = (**(code **)(*(int *)param_1[0x1f] + 300))();\r\n          (**(code **)(*piVar1 + 0x124))(uVar5);\r\n          return 1;\r\n        }\r\n      }\r\n    }\r\n    else if (param_4 == 0x10001) {\r\n      piVar1 = (int *)param_1[0x1e];\r\n      piVar2 = (int *)param_1[0x1f];\r\n      if (param_2 == piVar1) {\r\n        iVar3 = (**(code **)(*piVar2 + 0xf4))();\r\n        iVar4 = (**(code **)(*piVar1 + 0xf4))();\r\n        if (iVar3 != iVar4) {\r\n          piVar1 = (int *)param_1[0x1f];\r\n          uVar5 = (**(code **)(*(int *)param_1[0x1e] + 0xf4))();\r\n          (**(code **)(*piVar1 + 0xf0))(uVar5);\r\n          return 1;\r\n        }\r\n      }\r\n      else if (param_2 == piVar2) {\r\n        iVar3 = (**(code **)(*piVar2 + 0xf4))();\r\n        iVar4 = (**(code **)(*piVar1 + 0xf4))();\r\n        if (iVar3 != iVar4) {\r\n          piVar1 = (int *)param_1[0x1e];\r\n          uVar5 = (**(code **)(*(int *)param_1[0x1f] + 0xf4))();\r\n          (**(code **)(*piVar1 + 0xf0))(uVar5);\r\n        }\r\n      }\r\n    }\r\n  }\r\n  else if (param_3 == 1) {\r\n    if ((undefined4 *)param_1[0xe] != (undefined4 *)0x0) {\r\n      (*(code *)**(undefined4 **)param_1[0xe])(param_1,param_1[1],0x3e9,0);\r\n    }\r\n    (**(code **)(*param_1 + 0x7c))();\r\n    return 1;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

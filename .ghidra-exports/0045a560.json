@@ -1,0 +1,24 @@
+{
+  "address": "0045a560",
+  "name": "FUN_0045a560",
+  "signature": "undefined FUN_0045a560(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0045a560(int param_1,undefined4 param_2,void *param_3,uint param_4)\r\n\r\n{\r\n  uint _MaxCharCount;\r\n  int iVar1;\r\n  int local_4;\r\n  \r\n  _MaxCharCount = param_4;\r\n  local_4 = param_4 + 8;\r\n  if ((*(int *)(param_1 + 0x108) < 0) || (*(int *)(param_1 + 0x120) != 2)) {\r\n    return 0;\r\n  }\r\n  *(undefined4 *)(param_1 + 0x124) = 0;\r\n  __write(*(int *)(param_1 + 0x108),&param_2,4);\r\n  __write(*(int *)(param_1 + 0x108),&local_4,4);\r\n  iVar1 = __write(*(int *)(param_1 + 0x108),param_3,_MaxCharCount);\r\n  if ((iVar1 != -1) && (iVar1 != 0)) {\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045d3c0",
+      "name": "FUN_0045d3c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

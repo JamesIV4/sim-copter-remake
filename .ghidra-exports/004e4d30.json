@@ -1,0 +1,19 @@
+{
+  "address": "004e4d30",
+  "name": "_strchr",
+  "signature": "char * __cdecl _strchr(char * _Str, int _Val)",
+  "calling_convention": "__cdecl",
+  "return_type": "char *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _strchr\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nchar * __cdecl _strchr(char *_Str,int _Val)\r\n\r\n{\r\n  uint uVar1;\r\n  char cVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  uint *puVar5;\r\n  \r\n  while (((uint)_Str & 3) != 0) {\r\n    uVar1 = *(uint *)_Str;\r\n    if ((char)uVar1 == (char)_Val) {\r\n      return (char *)(uint *)_Str;\r\n    }\r\n    _Str = (char *)((int)_Str + 1);\r\n    if ((char)uVar1 == '\\0') {\r\n      return (char *)0x0;\r\n    }\r\n  }\r\n  while( true ) {\r\n    while( true ) {\r\n      uVar1 = *(uint *)_Str;\r\n      uVar4 = uVar1 ^ CONCAT22(CONCAT11((char)_Val,(char)_Val),CONCAT11((char)_Val,(char)_Val));\r\n      uVar3 = uVar1 ^ 0xffffffff ^ uVar1 + 0x7efefeff;\r\n      puVar5 = (uint *)((int)_Str + 4);\r\n      if (((uVar4 ^ 0xffffffff ^ uVar4 + 0x7efefeff) & 0x81010100) != 0) break;\r\n      _Str = (char *)puVar5;\r\n      if ((uVar3 & 0x81010100) != 0) {\r\n        if ((uVar3 & 0x1010100) != 0) {\r\n          return (char *)0x0;\r\n        }\r\n        if ((uVar1 + 0x7efefeff & 0x80000000) == 0) {\r\n          return (char *)0x0;\r\n        }\r\n      }\r\n    }\r\n    uVar1 = *(uint *)_Str;\r\n    if ((char)uVar1 == (char)_Val) {\r\n      return (char *)(uint *)_Str;\r\n    }\r\n    if ((char)uVar1 == '\\0') {\r\n      return (char *)0x0;\r\n    }\r\n    cVar2 = (char)(uVar1 >> 8);\r\n    if (cVar2 == (char)_Val) {\r\n      return (char *)((int)_Str + 1);\r\n    }\r\n    if (cVar2 == '\\0') {\r\n      return (char *)0x0;\r\n    }\r\n    cVar2 = (char)(uVar1 >> 0x10);\r\n    if (cVar2 == (char)_Val) {\r\n      return (char *)((int)_Str + 2);\r\n    }\r\n    if (cVar2 == '\\0') break;\r\n    cVar2 = (char)(uVar1 >> 0x18);\r\n    if (cVar2 == (char)_Val) {\r\n      return (char *)((int)_Str + 3);\r\n    }\r\n    _Str = (char *)puVar5;\r\n    if (cVar2 == '\\0') {\r\n      return (char *)0x0;\r\n    }\r\n  }\r\n  return (char *)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4c30",
+      "name": "__mbschr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

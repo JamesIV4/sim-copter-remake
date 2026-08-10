@@ -1,0 +1,19 @@
+{
+  "address": "0045fe10",
+  "name": "FUN_0045fe10",
+  "signature": "undefined FUN_0045fe10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0045fe10(int param_1,undefined4 *param_2,undefined4 *param_3)\r\n\r\n{\r\n  param_2[1] = 0x1f;\r\n  *param_2 = 0x14e;\r\n  *param_3 = 0;\r\n  param_3[2] = 0x3c;\r\n  param_3[1] = 0;\r\n  param_3[3] = 0x38;\r\n  param_2[3] = 0x57;\r\n  param_2[2] = 0x14e;\r\n  param_3[4] = 0;\r\n  param_3[6] = 0x3c;\r\n  param_3[5] = 0x38;\r\n  param_3[7] = 0x78;\r\n  param_2[5] = 0x97;\r\n  param_2[4] = 0x14e;\r\n  param_3[8] = 0;\r\n  param_3[10] = 0x3c;\r\n  param_3[9] = 0x78;\r\n  param_3[0xb] = 0xb8;\r\n  param_2[7] = 0xd7;\r\n  param_2[6] = 0x14e;\r\n  param_3[0xc] = 0;\r\n  param_3[0xe] = 0x3c;\r\n  param_3[0xd] = 0xb8;\r\n  param_3[0xf] = 0xf8;\r\n  param_2[9] = 0x117;\r\n  param_2[8] = 0x14e;\r\n  param_3[0x10] = 0;\r\n  param_3[0x12] = 0x3c;\r\n  param_3[0x13] = 0x138;\r\n  param_3[0x11] = 0xf8;\r\n  param_3[*(int *)(param_1 + 0xd4) * 4] = param_3[*(int *)(param_1 + 0xd4) * 4] + 0x3c;\r\n  param_3[*(int *)(param_1 + 0xd4) * 4 + 2] = param_3[*(int *)(param_1 + 0xd4) * 4 + 2] + 0x3c;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045fcf0",
+      "name": "FUN_0045fcf0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

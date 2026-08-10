@@ -1,0 +1,39 @@
+{
+  "address": "004c9dc0",
+  "name": "FUN_004c9dc0",
+  "signature": "undefined FUN_004c9dc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004c9dc0(int param_1,int param_2)\r\n\r\n{\r\n  if (param_2 != 0) {\r\n    if (*(short *)(param_2 + 0x12e) == 32000) {\r\n      return 1;\r\n    }\r\n    if (param_2 != 0) {\r\n      return 1;\r\n    }\r\n  }\r\n  if (param_1 != -1) {\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004bfed0",
+      "name": "FUN_004bfed0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2450",
+      "name": "FUN_004c2450",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9470",
+      "name": "FUN_004c9470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c9bc0",
+      "name": "FUN_004c9bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ccc40",
+      "name": "FUN_004ccc40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

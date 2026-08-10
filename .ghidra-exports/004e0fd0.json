@@ -1,0 +1,363 @@
+{
+  "address": "004e0fd0",
+  "name": "___getlocaleinfo",
+  "signature": "int __cdecl ___getlocaleinfo(_locale_t _Locale, int _Lc_type, LPCWSTR _LocaleName, LCTYPE _FieldType, void * _Address)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 5,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___getlocaleinfo\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl\r\n___getlocaleinfo(_locale_t _Locale,int _Lc_type,LPCWSTR _LocaleName,LCTYPE _FieldType,void *_Address\r\n                )\r\n\r\n{\r\n  bool bVar1;\r\n  size_t _Count;\r\n  DWORD DVar2;\r\n  LPSTR _LpLCData;\r\n  byte *pbVar3;\r\n  char *_Dest;\r\n  int iVar4;\r\n  uint uVar5;\r\n  byte local_80 [128];\r\n  \r\n  if (_Locale != (_locale_t)0x1) {\r\n    if (_Locale != (_locale_t)0x0) {\r\n      return -1;\r\n    }\r\n    iVar4 = ___crtGetLocaleInfoW(_Lc_type,_LocaleName,&DAT_00590750,4,0);\r\n    if (iVar4 != 0) {\r\n      pbVar3 = &DAT_00590750;\r\n      *(undefined1 *)_FieldType = 0;\r\n      while( true ) {\r\n        local_80[0] = *pbVar3;\r\n        if (DAT_0050721c < 2) {\r\n          uVar5 = *(ushort *)(PTR_DAT_00507010 + (uint)local_80[0] * 2) & 4;\r\n        }\r\n        else {\r\n          uVar5 = __isctype((uint)local_80[0],4);\r\n        }\r\n        if (uVar5 == 0) break;\r\n        pbVar3 = pbVar3 + 2;\r\n        *(byte *)_FieldType = local_80[0] + *(char *)_FieldType * '\\n' + -0x30;\r\n        if (&DAT_00590758 <= pbVar3) {\r\n          return 0;\r\n        }\r\n      }\r\n      return 0;\r\n    }\r\n    return -1;\r\n  }\r\n  pbVar3 = local_80;\r\n  bVar1 = false;\r\n  _Count = ___crtGetLocaleInfoA((_locale_t)_Lc_type,_LocaleName,(LCTYPE)local_80,&DAT_00000080,0);\r\n  if (_Count == 0) {\r\n    DVar2 = GetLastError();\r\n    if (((DVar2 != 0x7a) ||\r\n        (_LpLCData = (LPSTR)___crtGetLocaleInfoA((_locale_t)_Lc_type,_LocaleName,0,(LPSTR)0x0,0),\r\n        _LpLCData == (LPSTR)0x0)) ||\r\n       (pbVar3 = (byte *)FUN_004d5f00(_LpLCData), pbVar3 == (byte *)0x0)) goto LAB_004e10a7;\r\n    bVar1 = true;\r\n    _Count = ___crtGetLocaleInfoA((_locale_t)_Lc_type,_LocaleName,(LCTYPE)pbVar3,_LpLCData,0);\r\n    if (_Count == 0) goto LAB_004e10a7;\r\n  }\r\n  _Dest = (char *)FUN_004d5f00(_Count);\r\n  *(char **)_FieldType = _Dest;\r\n  if (_Dest != (char *)0x0) {\r\n    _strncpy(_Dest,(char *)pbVar3,_Count);\r\n    if (bVar1) {\r\n      FUN_004d6010(pbVar3);\r\n    }\r\n    return 0;\r\n  }\r\nLAB_004e10a7:\r\n  if (bVar1) {\r\n    FUN_004d6010(pbVar3);\r\n  }\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daf40",
+      "name": "__get_lc_time",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db500",
+      "name": "storeTimeFmt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db500",
+      "name": "storeTimeFmt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db500",
+      "name": "storeTimeFmt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db600",
+      "name": "___init_numeric",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db600",
+      "name": "___init_numeric",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db600",
+      "name": "___init_numeric",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dbb70",
+      "name": "___init_ctype",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004db960",
+      "name": "__get_lc_lconv",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e12c0",
+      "name": "___crtGetLocaleInfoA"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004e1190",
+      "name": "___crtGetLocaleInfoW"
+    },
+    {
+      "addr": "004d5700",
+      "name": "__isctype"
+    }
+  ],
+  "data_refs": []
+}

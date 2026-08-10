@@ -1,0 +1,38 @@
+{
+  "address": "00409b50",
+  "name": "FUN_00409b50",
+  "signature": "undefined FUN_00409b50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __fastcall FUN_00409b50(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined1 *puVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  undefined1 *puVar8;\r\n  int *piStack_8c;\r\n  int iStack_88;\r\n  int iStack_84;\r\n  undefined4 *puStack_80;\r\n  undefined4 *puStack_7c;\r\n  int *piStack_78;\r\n  int *piStack_74;\r\n  undefined1 *puStack_70;\r\n  undefined1 *puStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 uStack_50;\r\n  undefined1 *puStack_4c;\r\n  int iStack_48;\r\n  int local_44;\r\n  undefined4 auStack_40 [16];\r\n  \r\n  puStack_70 = (undefined1 *)0x1;\r\n  piStack_74 = (int *)0x409b60;\r\n  local_44 = FUN_00404930();\r\n  if (local_44 != 0) {\r\n    iVar2 = *(int *)(param_1[0x10] + 8);\r\n    puStack_70 = (undefined1 *)0x409b7c;\r\n    iVar1 = (**(code **)(*param_1 + 0xd8))();\r\n    iVar2 = param_1[4] + iVar2 / iVar1;\r\n    iVar1 = param_1[7] - param_1[5];\r\n    param_1[6] = iVar2;\r\n    puVar5 = (undefined1 *)(iVar2 - param_1[4]);\r\n    param_1[0x1f] = iVar1 + -0xc;\r\n    if (*(int *)(param_1[3] + 4) != 0) {\r\n      puStack_70 = (undefined1 *)auStack_40;\r\n      piStack_74 = (int *)0x0;\r\n      piStack_78 = (int *)0x0;\r\n      puStack_7c = (undefined4 *)0x409bb7;\r\n      FUN_00423720();\r\n      puStack_70 = (undefined1 *)0x1c;\r\n      piStack_74 = (int *)0x409bc1;\r\n      iVar2 = FUN_004d28b0();\r\n      if (iVar2 == 0) {\r\n        puStack_58 = (undefined1 *)0x0;\r\n      }\r\n      else {\r\n        puStack_70 = (undefined1 *)0x1;\r\n        puStack_7c = (undefined4 *)param_1[0x1f];\r\n        puStack_80 = auStack_40;\r\n        piStack_74 = (int *)0x0;\r\n        piStack_78 = (int *)0x0;\r\n        iStack_84 = 0x409bde;\r\n        puStack_58 = (undefined1 *)FUN_00460b10();\r\n      }\r\n      uStack_50 = 5;\r\n      uStack_54 = 0;\r\n      *(int *)(param_1[0x10] + 0x38) = param_1[0x23];\r\n      puStack_70 = (undefined1 *)param_1[2];\r\n      puStack_4c = puVar5;\r\n      iStack_48 = iVar1;\r\n      if (puStack_70 != (undefined1 *)0x0) {\r\n        piStack_74 = (int *)0x409c1d;\r\n        FUN_004d29a0();\r\n      }\r\n      puStack_70 = (undefined1 *)(*(int *)(param_1[3] + 4) + 1);\r\n      piStack_74 = (int *)0x409c2d;\r\n      iVar2 = FUN_004d28b0();\r\n      param_1[2] = iVar2;\r\n      uVar4 = ((undefined4 *)param_1[3])[1];\r\n      if (uVar4 != 0) {\r\n        puVar6 = *(undefined4 **)param_1[3];\r\n        puVar7 = (undefined4 *)param_1[2];\r\n        for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n          *puVar7 = *puVar6;\r\n          puVar6 = puVar6 + 1;\r\n          puVar7 = puVar7 + 1;\r\n        }\r\n        for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *(undefined1 *)puVar7 = *(undefined1 *)puVar6;\r\n          puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n          puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n        }\r\n      }\r\n      piStack_78 = (int *)&puStack_4c;\r\n      puStack_70 = puStack_58;\r\n      puStack_7c = &uStack_50;\r\n      *(undefined1 *)(*(int *)(param_1[3] + 4) + param_1[2]) = 0;\r\n      piStack_74 = &iStack_48;\r\n      puStack_80 = &uStack_54;\r\n      iStack_88 = param_1[2];\r\n      iStack_84 = 1;\r\n      piStack_8c = (int *)0x409c84;\r\n      (**(code **)(*(int *)param_1[0x10] + 0x4c))();\r\n      piStack_8c = (int *)param_1[2];\r\n      puStack_70 = puVar5;\r\n      if (piStack_8c != (int *)0x0) {\r\n        FUN_004d29a0();\r\n      }\r\n      piStack_8c = (int *)(*(int *)(param_1[3] + 4) + 1);\r\n      iVar2 = FUN_004d28b0();\r\n      param_1[2] = iVar2;\r\n      uVar4 = ((undefined4 *)param_1[3])[1];\r\n      if (uVar4 != 0) {\r\n        puVar6 = *(undefined4 **)param_1[3];\r\n        puVar7 = (undefined4 *)param_1[2];\r\n        for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n          *puVar7 = *puVar6;\r\n          puVar6 = puVar6 + 1;\r\n          puVar7 = puVar7 + 1;\r\n        }\r\n        for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *(undefined1 *)puVar7 = *(undefined1 *)puVar6;\r\n          puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n          puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n        }\r\n      }\r\n      piStack_8c = piStack_74;\r\n      *(undefined1 *)(*(int *)(param_1[3] + 4) + param_1[2]) = 0;\r\n      puVar8 = &stack0xffffff9c;\r\n      (**(code **)(*(int *)param_1[0x10] + 0x4c))\r\n                (param_1[2],1,&puStack_70,&stack0xffffff94,&stack0xffffff98,puVar8);\r\n      piStack_8c = (int *)(param_1[0x20] + (int)puVar5 * 2);\r\n      iStack_84 = (int)puVar5 * 3 + param_1[0x20];\r\n      iStack_88 = iStack_88 + param_1[0x21];\r\n      puStack_80 = (undefined4 *)((int)puStack_80 + param_1[0x21]);\r\n      *(int *)(param_1[0x10] + 0x38) = param_1[0x24];\r\n      if (param_1[2] != 0) {\r\n        FUN_004d29a0(param_1[2]);\r\n      }\r\n      iVar2 = FUN_004d28b0(*(int *)(param_1[3] + 4) + 1);\r\n      param_1[2] = iVar2;\r\n      uVar4 = ((undefined4 *)param_1[3])[1];\r\n      if (uVar4 != 0) {\r\n        puVar6 = *(undefined4 **)param_1[3];\r\n        puVar7 = (undefined4 *)param_1[2];\r\n        for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n          *puVar7 = *puVar6;\r\n          puVar6 = puVar6 + 1;\r\n          puVar7 = puVar7 + 1;\r\n        }\r\n        for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *(undefined1 *)puVar7 = *(undefined1 *)puVar6;\r\n          puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n          puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n        }\r\n      }\r\n      *(undefined1 *)(*(int *)(param_1[3] + 4) + param_1[2]) = 0;\r\n      (**(code **)(*(int *)param_1[0x10] + 0x4c))\r\n                (param_1[2],1,&piStack_8c,&iStack_88,&iStack_84,&puStack_80,puVar8);\r\n      if (puStack_58 != (undefined1 *)0x0) {\r\n        puStack_70 = (undefined1 *)0x409dbe;\r\n        FUN_00460cd0();\r\n        puStack_70 = puStack_58;\r\n        piStack_74 = (int *)0x409dc8;\r\n        FUN_004d29a0();\r\n      }\r\n    }\r\n  }\r\n  return local_44;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00404930",
+      "name": "FUN_00404930"
+    },
+    {
+      "addr": "00423720",
+      "name": "FUN_00423720"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00460b10",
+      "name": "FUN_00460b10"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00460cd0",
+      "name": "FUN_00460cd0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,44 @@
+{
+  "address": "004808d0",
+  "name": "FUN_004808d0",
+  "signature": "undefined FUN_004808d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004808d0(void)\r\n\r\n{\r\n  ushort uVar1;\r\n  ushort *puVar2;\r\n  ushort *puVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  short sVar7;\r\n  uint uVar8;\r\n  uint *puVar9;\r\n  short sVar10;\r\n  uint uVar11;\r\n  int *local_20;\r\n  uint *local_1c;\r\n  int local_18;\r\n  int local_14;\r\n  int local_10;\r\n  uint *local_c;\r\n  uint *local_8;\r\n  uint local_4;\r\n  \r\n  iVar6 = 0x20000000 - _DAT_0057eaf8 >> 0x16;\r\n  uVar11 = DAT_0057eaa8[1];\r\n  if ((int)uVar11 < iVar6) {\r\n    local_14 = 1;\r\n    local_c = (uint *)&DAT_0055d690;\r\n    local_8 = (uint *)&DAT_0057e258;\r\n    local_1c = DAT_0055d68c;\r\n    puVar9 = DAT_0057eaa8;\r\n  }\r\n  else {\r\n    local_14 = -1;\r\n    local_8 = (uint *)&DAT_0055d690;\r\n    local_c = (uint *)&DAT_0057e258;\r\n    local_1c = DAT_0057eaa8;\r\n    puVar9 = DAT_0055d68c;\r\n  }\r\n  local_20 = &DAT_0055e258;\r\n  local_4 = local_14 + iVar6;\r\n  if (uVar11 != local_4) {\r\n    local_18._0_2_ = (short)(DAT_0061a6ac + 0x20000000 >> 0x16);\r\n    local_10 = (int)(short)local_18;\r\n    local_18 = DAT_0061a6ac + 0x20000000 >> 0x16;\r\n    do {\r\n      uVar8 = *puVar9;\r\n      sVar10 = (short)uVar11;\r\n      if ((int)uVar8 < local_18) {\r\n        do {\r\n          if ((int)*local_1c < (int)uVar8) break;\r\n          uVar4 = uVar11 & 0xff;\r\n          uVar5 = uVar8 & 0xff;\r\n          puVar2 = (ushort *)(&DAT_005d9200)[uVar5 * 0x100 + uVar4];\r\n          uVar1 = *puVar2;\r\n          *puVar2 = uVar1 & 0xfff7;\r\n          sVar7 = (short)uVar8;\r\n          if ((((short)puVar2[4] < 2) || ((uVar1 & 1) == 0)) ||\r\n             ((ushort *)(&DAT_005d9200)[uVar5 * 0x100 + (local_14 + uVar11 & 0xff)] != puVar2)) {\r\n            *local_20 = (int)sVar7;\r\n            local_20[1] = (int)sVar10;\r\n          }\r\n          else {\r\n            puVar3 = (ushort *)(&DAT_005d9200)[uVar5 * 0x100 + uVar4];\r\n            uVar5 = uVar8;\r\n            while (puVar3 == puVar2) {\r\n              uVar5 = uVar5 + 1;\r\n              puVar3 = (ushort *)(&DAT_005d9200)[(uVar5 & 0xff) * 0x100 + uVar4];\r\n            }\r\n            if ((int)(uVar5 - 1) < local_18) {\r\n              FUN_00480ec0(uVar8,1,local_14,puVar9,local_c,&local_20);\r\n              uVar8 = uVar5 - 1;\r\n            }\r\n            *local_20 = (int)sVar7;\r\n            local_20[1] = (int)sVar10;\r\n          }\r\n          local_20 = local_20 + 2;\r\n          uVar8 = uVar8 + 1;\r\n        } while ((int)uVar8 < local_18);\r\n      }\r\n      uVar8 = *local_1c;\r\n      if (local_18 < (int)uVar8) {\r\n        do {\r\n          if ((int)uVar8 < (int)*puVar9) break;\r\n          uVar4 = uVar11 & 0xff;\r\n          uVar5 = uVar8 & 0xff;\r\n          puVar2 = (ushort *)(&DAT_005d9200)[uVar5 * 0x100 + uVar4];\r\n          uVar1 = *puVar2;\r\n          *puVar2 = uVar1 & 0xfff7;\r\n          sVar7 = (short)uVar8;\r\n          if ((((short)puVar2[4] < 2) || ((uVar1 & 1) == 0)) ||\r\n             ((ushort *)(&DAT_005d9200)[uVar5 * 0x100 + (local_14 + uVar11 & 0xff)] != puVar2)) {\r\n            *local_20 = (int)sVar7;\r\n            local_20[1] = (int)sVar10;\r\n          }\r\n          else {\r\n            puVar3 = (ushort *)(&DAT_005d9200)[uVar5 * 0x100 + uVar4];\r\n            uVar5 = uVar8;\r\n            while (puVar3 == puVar2) {\r\n              uVar5 = uVar5 - 1;\r\n              puVar3 = (ushort *)(&DAT_005d9200)[(uVar5 & 0xff) * 0x100 + uVar4];\r\n            }\r\n            if (local_18 < (int)(uVar5 + 1)) {\r\n              FUN_00480ec0(uVar8,0xffffffff,local_14,local_1c,local_8,&local_20);\r\n              uVar8 = uVar5 + 1;\r\n            }\r\n            *local_20 = (int)sVar7;\r\n            local_20[1] = (int)sVar10;\r\n          }\r\n          local_20 = local_20 + 2;\r\n          uVar8 = uVar8 - 1;\r\n        } while (local_18 < (int)uVar8);\r\n      }\r\n      if (((int)*puVar9 <= local_10) && (local_10 <= (int)*local_1c)) {\r\n        *local_20 = local_10;\r\n        local_20[1] = (int)sVar10;\r\n        local_20 = local_20 + 2;\r\n      }\r\n      uVar8 = puVar9[1];\r\n      for (; (uVar8 == uVar11 && (local_c < puVar9)); puVar9 = puVar9 + -2) {\r\n        uVar8 = puVar9[-1];\r\n      }\r\n      uVar8 = local_1c[1];\r\n      for (; (uVar8 == uVar11 && (local_8 < local_1c)); local_1c = local_1c + -2) {\r\n        uVar8 = local_1c[-1];\r\n      }\r\n      uVar11 = uVar11 + local_14;\r\n    } while (local_4 != uVar11);\r\n  }\r\n  DAT_0055e170 = local_20 + -2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047fef0",
+      "name": "FUN_0047fef0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00480ec0",
+      "name": "FUN_00480ec0"
+    }
+  ],
+  "data_refs": []
+}

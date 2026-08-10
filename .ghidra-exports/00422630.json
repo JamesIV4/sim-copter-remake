@@ -1,0 +1,53 @@
+{
+  "address": "00422630",
+  "name": "FUN_00422630",
+  "signature": "undefined FUN_00422630(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00422630(int *param_1,uint param_2)\r\n\r\n{\r\n  int iVar1;\r\n  undefined1 local_24 [36];\r\n  \r\n  if (0x7c2 < param_2) {\r\n    FUN_00462800(0x1f,3,param_2);\r\n    iVar1 = FUN_00462ac0(local_24,7);\r\n    iVar1 = (*(int *)(iVar1 + 4) - _DAT_005199fc) * 0x15180 + 0x956a0 + DAT_00506df0;\r\n    param_1[1] = 0;\r\n    *param_1 = iVar1;\r\n    return;\r\n  }\r\n  if (param_2 == 0x7b6) {\r\n    iVar1 = FUN_00462800(6,1,0x7b6);\r\n    iVar1 = (*(int *)(iVar1 + 4) - _DAT_005199fc) * 0x15180 + 0x1c20 + DAT_00506df0;\r\n    param_1[1] = 0;\r\n    *param_1 = iVar1;\r\n    return;\r\n  }\r\n  if (param_2 == 0x7b7) {\r\n    iVar1 = FUN_00462800(0x17,2,0x7b7);\r\n    iVar1 = (*(int *)(iVar1 + 4) - _DAT_005199fc) * 0x15180 + 0x1c20 + DAT_00506df0;\r\n    param_1[1] = 0;\r\n    *param_1 = iVar1;\r\n    return;\r\n  }\r\n  FUN_00462800(0x1e,4,param_2);\r\n  iVar1 = FUN_00462ac0(local_24,7);\r\n  iVar1 = (*(int *)(iVar1 + 4) - _DAT_005199fc) * 0x15180 + 0x1c20 + DAT_00506df0;\r\n  param_1[1] = 0;\r\n  *param_1 = iVar1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422850",
+      "name": "FUN_00422850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422850",
+      "name": "FUN_00422850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422850",
+      "name": "FUN_00422850",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422510",
+      "name": "FUN_00422510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422aa0",
+      "name": "FUN_00422aa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422b60",
+      "name": "FUN_00422b60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00462800",
+      "name": "FUN_00462800"
+    },
+    {
+      "addr": "00462ac0",
+      "name": "FUN_00462ac0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,39 @@
+{
+  "address": "004d2080",
+  "name": "__exit",
+  "signature": "noreturn void __cdecl __exit(int _Code)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __exit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __exit(int _Code)\r\n\r\n{\r\n  FUN_004d20a0(_Code,1,0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d55e0",
+      "name": "_abort",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd0d0",
+      "name": "_raise",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit",
+      "ref_type": "COMPUTED_CALL_TERMINATOR"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d20a0",
+      "name": "FUN_004d20a0"
+    }
+  ],
+  "data_refs": []
+}

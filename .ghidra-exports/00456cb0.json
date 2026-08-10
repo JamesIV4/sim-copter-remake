@@ -1,0 +1,24 @@
+{
+  "address": "00456cb0",
+  "name": "FUN_00456cb0",
+  "signature": "undefined FUN_00456cb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00456cb0(int param_1)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  char *pcVar4;\r\n  int *piVar5;\r\n  char *pcVar6;\r\n  char local_2c [44];\r\n  \r\n  pcVar4 = s____Don_t_try_to_edit_this_file___004f9974;\r\n  pcVar6 = local_2c;\r\n  for (iVar2 = 10; iVar2 != 0; iVar2 = iVar2 + -1) {\r\n    *(undefined4 *)pcVar6 = *(undefined4 *)pcVar4;\r\n    pcVar4 = pcVar4 + 4;\r\n    pcVar6 = pcVar6 + 4;\r\n  }\r\n  *pcVar6 = *pcVar4;\r\n  if (*(int *)(param_1 + 0x20) == 0) {\r\n    return 0;\r\n  }\r\n  if (*(int **)(param_1 + 0x10) == (int *)0x0) {\r\n    return 0;\r\n  }\r\n  iVar2 = (**(code **)(**(int **)(param_1 + 0x10) + 8))\r\n                    (*(undefined4 *)(param_1 + 0x14),*(undefined4 *)(param_1 + 0x18),\r\n                     *(undefined4 *)(param_1 + 0x1c));\r\n  if (iVar2 == 0) {\r\n    return 0;\r\n  }\r\n  uVar3 = 0xffffffff;\r\n  pcVar4 = &stack0xffffffc8;\r\n  do {\r\n    if (uVar3 == 0) break;\r\n    uVar3 = uVar3 - 1;\r\n    cVar1 = *pcVar4;\r\n    pcVar4 = pcVar4 + 1;\r\n  } while (cVar1 != '\\0');\r\n  (**(code **)(**(int **)(param_1 + 0x10) + 100))(0xffffff,&stack0xffffffc8,~uVar3 - 1 & 0xfffffffc)\r\n  ;\r\n  piVar5 = (int *)**(int **)(param_1 + 8);\r\n  if (piVar5 != *(int **)(param_1 + 8)) {\r\n    do {\r\n      (**(code **)(**(int **)(param_1 + 0x10) + 100))(piVar5[2],piVar5[4],piVar5[3]);\r\n      piVar5 = (int *)*piVar5;\r\n    } while ((int *)*(int *)(param_1 + 8) != piVar5);\r\n  }\r\n  (**(code **)(**(int **)(param_1 + 0x10) + 0x6c))();\r\n  (**(code **)(**(int **)(param_1 + 0x10) + 0x10))();\r\n  *(undefined4 *)(param_1 + 0x20) = 0;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00456b50",
+      "name": "FUN_00456b50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004576c0",
+      "name": "FUN_004576c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

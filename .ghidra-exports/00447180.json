@@ -1,0 +1,22 @@
+{
+  "address": "00447180",
+  "name": "FUN_00447180",
+  "signature": "undefined FUN_00447180(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00447180(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  \r\n  if (param_1[0xd] != 0) {\r\n    return 1;\r\n  }\r\n  iVar1 = param_1[0xe];\r\n  if (iVar1 == 0) {\r\n    return 0;\r\n  }\r\n  puVar2 = (undefined4 *)\r\n           _SmackBufferOpen_24(param_1[6],0,*(undefined4 *)(iVar1 + 4),*(undefined4 *)(iVar1 + 8),\r\n                               param_1[0xb],param_1[0xc]);\r\n  param_1[0xd] = (int)puVar2;\r\n  if (puVar2 == (undefined4 *)0x0) {\r\n    return 0;\r\n  }\r\n  _SmackToBuffer_28(param_1[0xe],0,0,puVar2[4],puVar2[5],puVar2[0x112],*puVar2);\r\n  param_1[7] = *(int *)(param_1[0xe] + 4);\r\n  param_1[8] = *(int *)(param_1[0xe] + 8);\r\n  (**(code **)(*param_1 + 0x44))(param_1[6]);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000d8",
+      "name": "_SmackBufferOpen@24"
+    },
+    {
+      "addr": "EXTERNAL:000000d7",
+      "name": "_SmackToBuffer@28"
+    }
+  ],
+  "data_refs": []
+}

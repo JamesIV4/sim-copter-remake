@@ -1,0 +1,13 @@
+{
+  "address": "00403e30",
+  "name": "FUN_00403e30",
+  "signature": "undefined FUN_00403e30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00403e30(int param_1)\r\n\r\n{\r\n  undefined4 *local_4;\r\n  \r\n  local_4 = (undefined4 *)*DAT_00518bc0;\r\n  while( true ) {\r\n    if (local_4 == DAT_00518bc0) {\r\n      return 0;\r\n    }\r\n    if (local_4[2] == param_1) break;\r\n    local_4 = (undefined4 *)*local_4;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

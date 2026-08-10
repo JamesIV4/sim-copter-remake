@@ -1,0 +1,32 @@
+{
+  "address": "00408f30",
+  "name": "FUN_00408f30",
+  "signature": "undefined FUN_00408f30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall FUN_00408f30(undefined4 *param_1,uint param_2,int param_3)\r\n\r\n{\r\n  HMODULE hModule;\r\n  HRSRC hResInfo;\r\n  HGLOBAL hResData;\r\n  LPVOID pvVar1;\r\n  \r\n  param_1[1] = param_2;\r\n  *param_1 = &PTR_LAB_004f04d0;\r\n  param_1[2] = 0;\r\n  param_1[3] = 0;\r\n  hModule = DAT_0051a050;\r\n  param_1[4] = 0;\r\n  param_1[6] = 0;\r\n  param_1[5] = hModule;\r\n  if (param_3 != 0) {\r\n    hResInfo = FindResourceA(hModule,(LPCSTR)(param_2 & 0xffff),&DAT_0000000a);\r\n    param_1[4] = hResInfo;\r\n    if (hResInfo != (HRSRC)0x0) {\r\n      hResData = LoadResource((HMODULE)param_1[5],hResInfo);\r\n      param_1[6] = hResData;\r\n      if (hResData != (HGLOBAL)0x0) {\r\n        pvVar1 = LockResource(hResData);\r\n        param_1[2] = pvVar1;\r\n      }\r\n    }\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00456500",
+      "name": "FUN_00456500",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000026",
+      "name": "FindResourceA"
+    },
+    {
+      "addr": "EXTERNAL:00000027",
+      "name": "LoadResource"
+    },
+    {
+      "addr": "EXTERNAL:0000000d",
+      "name": "LockResource"
+    }
+  ],
+  "data_refs": []
+}

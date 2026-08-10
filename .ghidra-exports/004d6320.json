@@ -1,0 +1,24 @@
+{
+  "address": "004d6320",
+  "name": "shortsort",
+  "signature": "undefined __cdecl shortsort(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _shortsort\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl shortsort(uint param_1,uint param_2,int param_3,code *param_4)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  \r\n  while (uVar2 = param_1, uVar1 = param_1, param_1 < param_2) {\r\n    while (uVar1 = uVar1 + param_3, uVar1 <= param_2) {\r\n      iVar3 = (*param_4)(uVar1,uVar2);\r\n      if (0 < iVar3) {\r\n        uVar2 = uVar1;\r\n      }\r\n    }\r\n    swap(uVar2,param_2,param_3);\r\n    param_2 = param_2 - param_3;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d61c0",
+      "name": "_qsort",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6380",
+      "name": "swap"
+    }
+  ],
+  "data_refs": []
+}

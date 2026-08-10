@@ -1,0 +1,204 @@
+{
+  "address": "004a92f0",
+  "name": "FUN_004a92f0",
+  "signature": "undefined FUN_004a92f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a92f0(int param_1)\r\n\r\n{\r\n  byte bVar1;\r\n  char cVar2;\r\n  short sVar3;\r\n  bool bVar4;\r\n  ushort uVar5;\r\n  int iVar6;\r\n  byte *pbVar7;\r\n  uint uVar8;\r\n  int iVar9;\r\n  int iVar10;\r\n  uint local_c;\r\n  uint local_8;\r\n  int local_4;\r\n  \r\n  bVar4 = 0x13 < DAT_00506074;\r\n  if (bVar4) {\r\n    DAT_00506074 = 0;\r\n  }\r\n  DAT_00505fc0 = (uint)bVar4;\r\n  local_4 = DAT_0057f9c8 + _DAT_0057f9cc;\r\n  if (param_1 < 5) {\r\n    if (param_1 == 4) {\r\n      local_c = 0xffffffff;\r\n      local_8 = 0xffffffff;\r\n    }\r\n    else {\r\n      if (param_1 != 1) goto LAB_004a981c;\r\n      iVar10 = 0;\r\n      do {\r\n        FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n        iVar6 = FUN_004a5f60(local_8,local_c);\r\n        if ((iVar6 == 0) || (iVar6 = FUN_004a6860(local_8,local_c), iVar6 != 0)) goto LAB_004a9596;\r\n        iVar6 = (&DAT_005d9200)[(local_8 & 0xff) * 0x100 + (local_c & 0xff)];\r\n        pbVar7 = (byte *)FUN_0049a4d0(*(undefined1 *)((&DAT_005910b0)[local_8] + local_c));\r\n        if (_DAT_004f9740 == 1) {\r\n          sVar3 = *(short *)(iVar6 + 8);\r\njoined_r0x004a9529:\r\n          if (sVar3 == 1) break;\r\n        }\r\n        else {\r\n          if (_DAT_004f9740 == 2) {\r\n            uVar8 = _rand();\r\n            if ((short)((int)((uint)(ushort)((short)uVar8 >> 0xf) << 0x10 | uVar8 & 0xffff) % 3) ==\r\n                0) {\r\n              sVar3 = *(short *)(iVar6 + 8);\r\n              goto joined_r0x004a9529;\r\n            }\r\n            if (((*(short *)(iVar6 + 8) < 2) || (3 < *(short *)(iVar6 + 8))) ||\r\n               ((pbVar7 != (byte *)0x0 && ((*pbVar7 & 4) != 0)))) goto LAB_004a9596;\r\n            break;\r\n          }\r\n          if (_DAT_004f9740 == 3) {\r\n            iVar9 = _rand();\r\n            uVar5 = (short)(ushort)iVar9 >> 0xf;\r\n            if ((((ushort)iVar9 ^ uVar5) - uVar5 & 3 ^ uVar5) == uVar5) break;\r\n            if (((1 < *(short *)(iVar6 + 8)) && (*(short *)(iVar6 + 8) < 5)) &&\r\n               (pbVar7 != (byte *)0x0)) {\r\n              bVar1 = *pbVar7;\r\njoined_r0x004a9594:\r\n              if ((bVar1 & 4) != 0) break;\r\n            }\r\n          }\r\n          else {\r\n            uVar8 = _rand();\r\n            if ((short)((int)((uint)(ushort)((short)uVar8 >> 0xf) << 0x10 | uVar8 & 0xffff) % 7) ==\r\n                0) break;\r\n            if (((2 < *(short *)(iVar6 + 8)) && (*(short *)(iVar6 + 8) < 5)) &&\r\n               (pbVar7 != (byte *)0x0)) {\r\n              bVar1 = *pbVar7;\r\n              goto joined_r0x004a9594;\r\n            }\r\n          }\r\n        }\r\nLAB_004a9596:\r\n        iVar10 = iVar10 + 1;\r\n      } while (iVar10 < 10);\r\n      if (iVar10 == 10) goto LAB_004a981c;\r\n    }\r\nLAB_004a9814:\r\n    FUN_004a7a10(local_8,local_c,param_1);\r\n    goto LAB_004a981c;\r\n  }\r\n  if (param_1 < 0x21) {\r\n    if (param_1 == 0x20) goto LAB_004a95ff;\r\n    if (param_1 != 0x10) goto LAB_004a981c;\r\n  }\r\n  else if (param_1 < 0x91) {\r\n    if (param_1 != 0x90) {\r\n      if (param_1 != 0x40) goto LAB_004a981c;\r\nLAB_004a95ff:\r\n      iVar10 = 0;\r\n      do {\r\n        FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n        bVar1 = *(byte *)((&DAT_005910b0)[local_8] + local_c);\r\n        if ((((0x6f < bVar1) && (bVar1 < 0xdc)) && (bVar1 != 0xd1)) &&\r\n           (((bVar1 != 0xd2 && (bVar1 != 0xd3)) &&\r\n            (iVar6 = FUN_004a7a10(local_8,local_c,param_1), -1 < iVar6)))) break;\r\n        iVar10 = iVar10 + 1;\r\n      } while (iVar10 < 5);\r\n      goto LAB_004a981c;\r\n    }\r\n  }\r\n  else {\r\n    if (0x110 < param_1) {\r\n      if (param_1 < 0x409) {\r\n        if (param_1 == 0x408) {\r\n          iVar10 = 0;\r\n          do {\r\n            FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n            iVar6 = FUN_004a7a10(local_8,local_c,0x408);\r\n            if (-1 < iVar6) break;\r\n            iVar10 = iVar10 + 1;\r\n          } while (iVar10 < 5);\r\n          goto LAB_004a981c;\r\n        }\r\n        if (param_1 != 0x200) goto LAB_004a981c;\r\n      }\r\n      else {\r\n        if (param_1 < 0x1001) {\r\n          if (param_1 == 0x1000) {\r\n            iVar10 = 0;\r\n            do {\r\n              FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n              iVar6 = FUN_004a7a10(local_8,local_c,0x1000);\r\n              if (-1 < iVar6) break;\r\n              iVar10 = iVar10 + 1;\r\n            } while (iVar10 < 5);\r\n          }\r\n          else if (param_1 == 0x800) {\r\n            iVar10 = 0;\r\n            do {\r\n              FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n              iVar6 = FUN_004a7a10(local_8,local_c,0x800);\r\n              if (-1 < iVar6) break;\r\n              iVar10 = iVar10 + 1;\r\n            } while (iVar10 < 5);\r\n          }\r\n          goto LAB_004a981c;\r\n        }\r\n        if (param_1 < 0x4001) {\r\n          if (param_1 == 0x4000) {\r\n            iVar10 = 0;\r\n            do {\r\n              FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n              iVar6 = FUN_004a7a10(local_8,local_c,0x4000);\r\n              if (-1 < iVar6) break;\r\n              iVar10 = iVar10 + 1;\r\n            } while (iVar10 < 5);\r\n            goto LAB_004a981c;\r\n          }\r\n          if (param_1 != 0x2000) goto LAB_004a981c;\r\n        }\r\n        else if (param_1 < 0x20001) {\r\n          if ((param_1 != 0x20000) && (param_1 != 0x10000)) goto LAB_004a981c;\r\n        }\r\n        else if (param_1 != 0x40000) {\r\n          if (param_1 == 0x80010) {\r\n            iVar10 = 0;\r\n            do {\r\n              FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n              cVar2 = *(char *)((&DAT_005910b0)[local_8] + local_c);\r\n              pbVar7 = (byte *)FUN_0049a4d0(cVar2);\r\n              if ((((pbVar7 != (byte *)0x0) && ((*pbVar7 & 4) != 0)) && (cVar2 != -0x2f)) &&\r\n                 ((cVar2 != -0x2e && (cVar2 != -0x2d)))) goto LAB_004a9814;\r\n              iVar10 = iVar10 + 1;\r\n            } while (iVar10 < 5);\r\n          }\r\n          goto LAB_004a981c;\r\n        }\r\n      }\r\n      goto LAB_004a95ff;\r\n    }\r\n    if (param_1 != 0x110) {\r\n      if (param_1 != 0x100) goto LAB_004a981c;\r\n      local_c = 0xffffffff;\r\n      local_8 = 0xffffffff;\r\n      goto LAB_004a9814;\r\n    }\r\n  }\r\n  iVar10 = 0;\r\n  do {\r\n    FUN_004abb30(DAT_0061a618,DAT_0061a61c,&local_8,&local_c);\r\n    iVar6 = FUN_004a7a10(local_8,local_c,param_1);\r\n    if (-1 < iVar6) break;\r\n    iVar10 = iVar10 + 1;\r\n  } while (iVar10 < 5);\r\nLAB_004a981c:\r\n  if (local_4 < DAT_0057f9c8 + _DAT_0057f9cc) {\r\n    DAT_00505fc0 = 1;\r\n    DAT_00506074 = 0;\r\n    return;\r\n  }\r\n  DAT_00506074 = DAT_00506074 + 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004abb30",
+      "name": "FUN_004abb30"
+    },
+    {
+      "addr": "004a5f60",
+      "name": "FUN_004a5f60"
+    },
+    {
+      "addr": "004a6860",
+      "name": "FUN_004a6860"
+    },
+    {
+      "addr": "0049a4d0",
+      "name": "FUN_0049a4d0"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10"
+    }
+  ],
+  "data_refs": []
+}

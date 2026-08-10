@@ -1,0 +1,52 @@
+{
+  "address": "004daac0",
+  "name": "__mbsnbcpy",
+  "signature": "uchar * __cdecl __mbsnbcpy(uchar * _Dest, uchar * _Source, size_t _Count)",
+  "calling_convention": "__cdecl",
+  "return_type": "uchar *",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __mbsnbcpy\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuchar * __cdecl __mbsnbcpy(uchar *_Dest,uchar *_Source,size_t _Count)\r\n\r\n{\r\n  byte bVar1;\r\n  uchar *puVar2;\r\n  size_t sVar3;\r\n  byte *pbVar4;\r\n  byte *pbVar5;\r\n  \r\n  if (DAT_0050797c == 0) {\r\n    puVar2 = (uchar *)_strncpy((char *)_Dest,(char *)_Source,_Count);\r\n    return puVar2;\r\n  }\r\n  __lock(0x19);\r\n  pbVar5 = _Dest;\r\n  do {\r\n    while( true ) {\r\n      pbVar4 = pbVar5;\r\n      sVar3 = _Count;\r\n      pbVar5 = pbVar4;\r\n      if (_Count == 0) goto joined_r0x004dab33;\r\n      sVar3 = _Count - 1;\r\n      bVar1 = *_Source;\r\n      if ((*(byte *)((int)&DAT_00507878 + bVar1 + 1) & 4) == 0) break;\r\n      *pbVar4 = bVar1;\r\n      pbVar5 = pbVar4 + 1;\r\n      if (sVar3 == 0) {\r\n        *pbVar4 = 0;\r\n        goto joined_r0x004dab33;\r\n      }\r\n      bVar1 = _Source[1];\r\n      sVar3 = _Count - 2;\r\n      *pbVar5 = bVar1;\r\n      pbVar5 = pbVar4 + 2;\r\n      _Source = _Source + 2;\r\n      _Count = sVar3;\r\n      if (bVar1 == 0) {\r\n        *pbVar4 = 0;\r\n        goto joined_r0x004dab33;\r\n      }\r\n    }\r\n    *pbVar4 = bVar1;\r\n    pbVar5 = pbVar4 + 1;\r\n    _Source = _Source + 1;\r\n    _Count = sVar3;\r\n  } while (bVar1 != 0);\r\njoined_r0x004dab33:\r\n  for (; sVar3 != 0; sVar3 = sVar3 - 1) {\r\n    *pbVar5 = 0;\r\n    pbVar5 = pbVar5 + 1;\r\n  }\r\n  FUN_004d64a0(0x19);\r\n  return _Dest;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

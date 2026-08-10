@@ -1,0 +1,28 @@
+{
+  "address": "004dfda0",
+  "name": "__control87",
+  "signature": "uint __cdecl __control87(uint _NewValue, uint _Mask)",
+  "calling_convention": "__cdecl",
+  "return_type": "uint",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __control87\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __cdecl __control87(uint _NewValue,uint _Mask)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  uVar1 = __abstract_cw();\r\n  uVar1 = ~_Mask & uVar1 | _Mask & _NewValue;\r\n  __hw_cw(uVar1);\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dfde0",
+      "name": "__controlfp",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfe00",
+      "name": "__abstract_cw"
+    },
+    {
+      "addr": "004dfeb0",
+      "name": "__hw_cw"
+    }
+  ],
+  "data_refs": []
+}

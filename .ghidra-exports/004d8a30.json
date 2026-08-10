@@ -1,0 +1,26 @@
+{
+  "address": "004d8a30",
+  "name": "__cftof",
+  "signature": "errno_t __cdecl __cftof(double * _Value, char * _Buf, size_t _SizeInBytes, int _Dec)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef errno_t int",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __cftof\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nerrno_t __cdecl __cftof(double *_Value,char *_Buf,size_t _SizeInBytes,int _Dec)\r\n\r\n{\r\n  STRFLT unaff_EDI;\r\n  _strflt local_28;\r\n  char local_18 [24];\r\n  \r\n  __fltout2((_CRT_DOUBLE)*_Value,&local_28,local_18,(size_t)unaff_EDI);\r\n  __fptostr(_Buf + (local_28.sign == 0x2d),local_28.decpt + _SizeInBytes,(int)&local_28,unaff_EDI);\r\n  __cftof2(_Buf,_SizeInBytes,&local_28,0);\r\n  return (errno_t)_Buf;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004e0660",
+      "name": "__fltout2"
+    },
+    {
+      "addr": "004e05d0",
+      "name": "__fptostr"
+    },
+    {
+      "addr": "004d8aa0",
+      "name": "__cftof2"
+    }
+  ],
+  "data_refs": []
+}

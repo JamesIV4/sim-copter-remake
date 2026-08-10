@@ -1,0 +1,13 @@
+{
+  "address": "004ca6d0",
+  "name": "FUN_004ca6d0",
+  "signature": "undefined FUN_004ca6d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004ca6d0(int param_1)\r\n\r\n{\r\n  *(undefined2 *)(param_1 + 0x17e) = 1;\r\n  return 0xffffffff;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

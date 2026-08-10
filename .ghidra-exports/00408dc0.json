@@ -1,0 +1,94 @@
+{
+  "address": "00408dc0",
+  "name": "FUN_00408dc0",
+  "signature": "undefined FUN_00408dc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00408dc0(undefined4 param_1)\r\n\r\n{\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00411900",
+      "name": "FUN_00411900",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411ca0",
+      "name": "FUN_00411ca0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411fa0",
+      "name": "FUN_00411fa0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00413d80",
+      "name": "FUN_00413d80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004144a0",
+      "name": "FUN_004144a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00414880",
+      "name": "FUN_00414880",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00414c60",
+      "name": "FUN_00414c60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004455e0",
+      "name": "FUN_004455e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00408cb0",
+      "name": "FUN_00408cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00413ec0",
+      "name": "FUN_00413ec0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00414560",
+      "name": "FUN_00414560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00414940",
+      "name": "FUN_00414940",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00414d20",
+      "name": "FUN_00414d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411840",
+      "name": "FUN_00411840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044ce50",
+      "name": "FUN_0044ce50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411be0",
+      "name": "FUN_00411be0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

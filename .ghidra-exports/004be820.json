@@ -1,0 +1,34 @@
+{
+  "address": "004be820",
+  "name": "FUN_004be820",
+  "signature": "undefined FUN_004be820(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004be820(int param_1,uint param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  \r\n  if ((*(byte *)(param_1 + 0x2b1) & 0x20) != 0) {\r\n    if ((&DAT_005d9200)[(param_2 & 0xff) * 0x100 + (param_2 >> 8 & 0xff)] != 0) {\r\n      piVar3 = (int *)((&DAT_005d9200)[(param_2 & 0xff) * 0x100 + (param_2 >> 8 & 0xff)] + 0x10);\r\n      iVar1 = *piVar3;\r\n      while (iVar1 != 0) {\r\n        piVar2 = (int *)*piVar3;\r\n        if (param_1 - (int)piVar2 == -0x133) {\r\n          *piVar3 = *(int *)(param_1 + 0x133);\r\n          *(byte *)(param_1 + 0x2b1) = *(byte *)(param_1 + 0x2b1) & 0xdf;\r\n          return;\r\n        }\r\n        piVar3 = piVar2;\r\n        iVar1 = *piVar2;\r\n      }\r\n    }\r\n    *(byte *)(param_1 + 0x2b1) = *(byte *)(param_1 + 0x2b1) & 0xdf;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ba930",
+      "name": "FUN_004ba930",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b9e40",
+      "name": "FUN_004b9e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b9e40",
+      "name": "FUN_004b9e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b9e40",
+      "name": "FUN_004b9e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

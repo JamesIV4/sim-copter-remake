@@ -1,0 +1,43 @@
+{
+  "address": "00434d50",
+  "name": "FUN_00434d50",
+  "signature": "undefined FUN_00434d50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint * __thiscall FUN_00434d50(int *param_1,int param_2,undefined4 param_3,undefined4 param_4)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  undefined *puVar4;\r\n  undefined *puVar5;\r\n  undefined *puVar6;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  switch(*(undefined4 *)(*(int *)(param_1[0x1029] + 4) + 8)) {\r\n  case 4:\r\n    local_14 = CONCAT13(local_14._3_1_,0x1f1510);\r\n    local_c = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xda850a);\r\n    local_4 = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xffdad3);\r\n    puVar4 = PTR_s_button6_bmp_004f91c0;\r\n    puVar5 = PTR_s_MBoxl6_bmp_004f91e0;\r\n    puVar6 = PTR_s_MBox6_bmp_004f91a0;\r\n    break;\r\n  case 5:\r\n    local_14 = CONCAT13(local_14._3_1_,0x4d526b);\r\n    local_c = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0x7bbdce);\r\n    local_4 = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xf0f0);\r\n    puVar4 = PTR_s_button1_bmp_004f91a8;\r\n    puVar5 = PTR_s_MBoxl1_bmp_004f91c8;\r\n    puVar6 = PTR_s_MBox1_bmp_004f9188;\r\n    break;\r\n  default:\r\n    local_14 = CONCAT13(local_14._3_1_,0x1f1510);\r\n    local_c = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xda850a);\r\n    local_4 = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xffdad3);\r\n    puVar4 = PTR_s_button_bmp_004f91a4;\r\n    puVar5 = PTR_s_MBoxl_bmp_004f91c4;\r\n    puVar6 = PTR_s_MBox_bmp_004f9184;\r\n    break;\r\n  case 7:\r\n    if ((param_1[0x2dc] == 0) || (*(int *)(param_1[0x2dc] + 0x112) == 0)) {\r\n      local_14 = CONCAT13(local_14._3_1_,0x411f19);\r\n      local_c = local_14;\r\n      local_14 = CONCAT13(local_14._3_1_,0xaa7a30);\r\n      local_4 = local_14;\r\n      local_14 = CONCAT13(local_14._3_1_,0xeaca70);\r\n      puVar4 = PTR_s_button2_bmp_004f91ac;\r\n      puVar5 = PTR_s_MBoxl2_bmp_004f91cc;\r\n      puVar6 = PTR_s_MBox2_bmp_004f918c;\r\n    }\r\n    else {\r\n      local_14 = CONCAT13(local_14._3_1_,0x392118);\r\n      local_c = local_14;\r\n      local_14 = CONCAT13(local_14._3_1_,0xc0954a);\r\n      local_4 = local_14;\r\n      local_14 = CONCAT13(local_14._3_1_,0xeaca70);\r\n      puVar4 = PTR_s_button2d_bmp_004f91b0;\r\n      puVar5 = PTR_s_MBoxl2d_bmp_004f91d0;\r\n      puVar6 = PTR_s_MBox2d_bmp_004f9190;\r\n    }\r\n    break;\r\n  case 8:\r\n    local_14 = CONCAT13(local_14._3_1_,0x4a1815);\r\n    local_c = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xac8a44);\r\n    local_4 = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xffd694);\r\n    puVar4 = PTR_s_button3_bmp_004f91b4;\r\n    puVar5 = PTR_s_MBoxl3_bmp_004f91d4;\r\n    puVar6 = PTR_s_MBox3_bmp_004f9194;\r\n    break;\r\n  case 9:\r\n    local_14 = CONCAT13(local_14._3_1_,0x4a1815);\r\n    local_c = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xb58940);\r\n    local_4 = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xeaca70);\r\n    puVar4 = PTR_s_button4_bmp_004f91b8;\r\n    puVar5 = PTR_s_MBoxl4_bmp_004f91d8;\r\n    puVar6 = PTR_s_MBox4_bmp_004f9198;\r\n    break;\r\n  case 0xb:\r\n    local_14 = CONCAT13(local_14._3_1_,0x4a1815);\r\n    local_c = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xb58940);\r\n    local_4 = local_14;\r\n    local_14 = CONCAT13(local_14._3_1_,0xeaca70);\r\n    puVar4 = PTR_s_button5_bmp_004f91bc;\r\n    puVar5 = PTR_s_MBoxl5_bmp_004f91dc;\r\n    puVar6 = PTR_s_MBox5_bmp_004f919c;\r\n  }\r\n  local_8 = local_14;\r\n  iVar2 = FUN_004d28b0(0xb4);\r\n  if (iVar2 == 0) {\r\n    piVar3 = (int *)0x0;\r\n  }\r\n  else {\r\n    piVar3 = param_1 + 5;\r\n    if (param_1 == (int *)0x0) {\r\n      piVar3 = (int *)0x0;\r\n    }\r\n    local_14 = 0;\r\n    local_10 = 0;\r\n    piVar3 = (int *)FUN_0043ce10(&local_14,param_4,param_3,param_2,param_1[0x10],piVar3,1,1,puVar6,\r\n                                 puVar4,puVar5);\r\n  }\r\n  if (piVar3 != (int *)0x0) {\r\n    iVar2 = *piVar3;\r\n    (**(code **)(iVar2 + 0xd8))(&local_c);\r\n    (**(code **)(iVar2 + 0xdc))(&local_8,&local_c);\r\n    (**(code **)(iVar2 + 4))();\r\n    if (param_2 == 0x7dd) {\r\n      iVar1 = param_1[0x10];\r\n      (**(code **)(iVar2 + 0x4c))\r\n                ((*(int *)(iVar1 + 0x18) - *(int *)(iVar1 + 0x10)) / 2 + -0x28,\r\n                 (*(int *)(iVar1 + 0x1c) - *(int *)(iVar1 + 0x14)) / 2 + -0x28);\r\n    }\r\n    else {\r\n      (**(code **)(iVar2 + 0x50))(param_1[0x10]);\r\n    }\r\n    (**(code **)(*param_1 + 0x40))();\r\n  }\r\n  return piVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00435140",
+      "name": "FUN_00435140",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00434720",
+      "name": "FUN_00434720",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004352f0",
+      "name": "FUN_004352f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0043ce10",
+      "name": "FUN_0043ce10"
+    }
+  ],
+  "data_refs": []
+}

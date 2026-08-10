@@ -1,0 +1,183 @@
+{
+  "address": "004d6430",
+  "name": "__lock",
+  "signature": "void __cdecl __lock(int _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __lock\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __lock(int _File)\r\n\r\n{\r\n  int *piVar1;\r\n  LPCRITICAL_SECTION lpCriticalSection;\r\n  \r\n  piVar1 = (int *)(&DAT_005074d8 + _File * 4);\r\n  if (*piVar1 == 0) {\r\n    lpCriticalSection = (LPCRITICAL_SECTION)FUN_004d5f00(0x18);\r\n    if (lpCriticalSection == (LPCRITICAL_SECTION)0x0) {\r\n      __amsg_exit(0x11);\r\n    }\r\n    __lock(0x11);\r\n    if (*piVar1 == 0) {\r\n      InitializeCriticalSection(lpCriticalSection);\r\n      *piVar1 = (int)lpCriticalSection;\r\n    }\r\n    else {\r\n      FUN_004d6010();\r\n    }\r\n    FUN_004d64a0(0x11);\r\n  }\r\n  EnterCriticalSection((LPCRITICAL_SECTION)*piVar1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2160",
+      "name": "FID_conflict:__lockexit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3be0",
+      "name": "flsall",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d64c0",
+      "name": "__lock_file",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6500",
+      "name": "FID_conflict:__lock_file2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d65f0",
+      "name": "_set_new_handler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6620",
+      "name": "__callnewh",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8fb0",
+      "name": "FUN_004d8fb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d90a0",
+      "name": "___tzset",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9100",
+      "name": "FUN_004d9100",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d93e0",
+      "name": "__isindst",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dab70",
+      "name": "__setmbcp",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dfa90",
+      "name": "__lock_fhandle",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e07b0",
+      "name": "FID_conflict:_mbtowc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e4c30",
+      "name": "__mbschr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dfbb0",
+      "name": "_wctomb",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd0d0",
+      "name": "_raise",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1630",
+      "name": "__strcmpi",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df7b0",
+      "name": "__alloc_osfhnd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df7b0",
+      "name": "__alloc_osfhnd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4ab0",
+      "name": "_setlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e4120",
+      "name": "_towupper",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004daac0",
+      "name": "__mbsnbcpy",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d65a0",
+      "name": "~type_info",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004de480",
+      "name": "FUN_004de480",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef200",
+      "name": "__strnicmp",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1740",
+      "name": "_mbtowc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dff50",
+      "name": "_tolower",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d90e0",
+      "name": "FUN_004d90e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "004b9b10",
+  "name": "FUN_004b9b10",
+  "signature": "undefined FUN_004b9b10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b9b10(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  \r\n  iVar2 = *(int *)(param_1 + 0x2b4);\r\n  piVar1 = (int *)(param_1 + 0x2c0);\r\n  if (iVar2 == 0) {\r\n    iVar2 = *(int *)(param_1 + 0x2b8);\r\n    *piVar1 = *(int *)(iVar2 + 0x18);\r\n    *(undefined4 *)(param_1 + 0x2c4) = *(undefined4 *)(iVar2 + 0x1c);\r\n    *(undefined4 *)(param_1 + 0x2c8) = *(undefined4 *)(iVar2 + 0x20);\r\n  }\r\n  else {\r\n    *piVar1 = *(short *)(**(int **)(iVar2 + 0x98) + 2) * 0x10000 + *(int *)(iVar2 + 0x10);\r\n    *(int *)(param_1 + 0x2c4) =\r\n         *(short *)(**(int **)(iVar2 + 0x98) + 4) * 0x10000 + *(int *)(iVar2 + 0x14);\r\n    *(int *)(param_1 + 0x2c8) =\r\n         *(short *)(**(int **)(iVar2 + 0x98) + 6) * 0x10000 + *(int *)(iVar2 + 0x18);\r\n  }\r\n  *piVar1 = *piVar1 - *(int *)(param_1 + 0x30);\r\n  *(int *)(param_1 + 0x2c4) = *(int *)(param_1 + 0x2c4) - *(int *)(param_1 + 0x34);\r\n  *(int *)(param_1 + 0x2c8) = *(int *)(param_1 + 0x2c8) - *(int *)(param_1 + 0x38);\r\n  uVar3 = FUN_00467a80(piVar1);\r\n  *(undefined4 *)(param_1 + 700) = uVar3;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b9c00",
+      "name": "FUN_004b9c00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b9790",
+      "name": "FUN_004b9790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80"
+    }
+  ],
+  "data_refs": []
+}

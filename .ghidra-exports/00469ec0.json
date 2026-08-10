@@ -1,0 +1,19 @@
+{
+  "address": "00469ec0",
+  "name": "FUN_00469ec0",
+  "signature": "undefined FUN_00469ec0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00469ec0(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  uint *puVar4;\r\n  int *piVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  int iVar8;\r\n  uint uVar9;\r\n  \r\n  if (0x7ffe < *(uint *)(param_2 + 0xed0)) {\r\n    uVar7 = 0;\r\n    iVar6 = 0x13a;\r\n    puVar4 = (uint *)(param_2 + 0xecc);\r\n    do {\r\n      puVar4[0x13b] = uVar7;\r\n      uVar9 = *puVar4 + 1 >> 1;\r\n      uVar7 = uVar7 + uVar9;\r\n      *puVar4 = uVar9;\r\n      iVar6 = iVar6 + -1;\r\n      puVar4 = puVar4 + -1;\r\n    } while (iVar6 != 0);\r\n    *(uint *)(param_2 + 0xed0) = uVar7;\r\n  }\r\n  piVar5 = (int *)(param_2 + 0x9e0 + param_1 * 4);\r\n  iVar6 = param_2 + param_1 * 4;\r\n  iVar8 = param_1;\r\n  if (*(int *)(iVar6 + 0x9e4) == *piVar5) {\r\n    do {\r\n      piVar1 = piVar5 + -1;\r\n      iVar8 = iVar8 + -1;\r\n      iVar2 = *piVar5;\r\n      piVar5 = piVar5 + -1;\r\n    } while (iVar2 == *piVar1);\r\n  }\r\n  if (iVar8 < param_1) {\r\n    piVar5 = (int *)(param_2 + 0x4f8 + iVar8 * 4);\r\n    iVar2 = *(int *)(iVar6 + 0x4f8);\r\n    iVar3 = *piVar5;\r\n    *piVar5 = iVar2;\r\n    *(int *)(iVar6 + 0x4f8) = iVar3;\r\n    *(int *)(param_2 + 0x10 + iVar3 * 4) = param_1;\r\n    *(int *)(param_2 + 0x10 + iVar2 * 4) = iVar8;\r\n  }\r\n  piVar5 = (int *)(param_2 + 0x9e4 + iVar8 * 4);\r\n  *piVar5 = *piVar5 + 1;\r\n  iVar8 = iVar8 + -1;\r\n  if (-1 < iVar8) {\r\n    piVar5 = (int *)(param_2 + 0xed0 + iVar8 * 4);\r\n    do {\r\n      *piVar5 = *piVar5 + 1;\r\n      piVar5 = piVar5 + -1;\r\n      iVar8 = iVar8 + -1;\r\n    } while (-1 < iVar8);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046a310",
+      "name": "FUN_0046a310",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

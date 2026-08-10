@@ -1,0 +1,76 @@
+{
+  "address": "0047bb20",
+  "name": "FUN_0047bb20",
+  "signature": "undefined FUN_0047bb20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_0047bb20(void)\r\n\r\n{\r\n  char cVar1;\r\n  short sVar2;\r\n  char *pcVar3;\r\n  char *pcVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  int iVar9;\r\n  char *pcVar10;\r\n  undefined1 auStack_538 [4];\r\n  undefined4 auStack_534 [2];\r\n  undefined4 uStack_52c;\r\n  undefined4 uStack_528;\r\n  char acStack_524 [31];\r\n  undefined1 uStack_505;\r\n  char acStack_504 [255];\r\n  undefined1 uStack_405;\r\n  char local_404 [260];\r\n  char acStack_300 [256];\r\n  char acStack_200 [256];\r\n  undefined1 auStack_100 [256];\r\n  \r\n  if (DAT_00503b58 == 0) {\r\n    sVar2 = FUN_00467070();\r\n    if (sVar2 != 0) {\r\n      return 1;\r\n    }\r\n    DAT_00503b58 = DAT_00503b58 + 1;\r\n  }\r\n  pcVar3 = (char *)FUN_00407c00();\r\n  sVar2 = FUN_00463bb0(pcVar3);\r\n  if (sVar2 == 0) {\r\n    FUN_00432ab0(6,0,s_pengland_sc2_00503f70,local_404);\r\n    sVar2 = FUN_00463bb0(local_404);\r\n    if (sVar2 == 0) {\r\n      return 1;\r\n    }\r\n    uVar7 = 0xffffffff;\r\n    pcVar3 = local_404;\r\n    do {\r\n      pcVar10 = pcVar3;\r\n      if (uVar7 == 0) break;\r\n      uVar7 = uVar7 - 1;\r\n      pcVar10 = pcVar3 + 1;\r\n      cVar1 = *pcVar3;\r\n      pcVar3 = pcVar10;\r\n    } while (cVar1 != '\\0');\r\n    uVar7 = ~uVar7;\r\n    pcVar4 = (char *)FUN_00407c00();\r\n    pcVar3 = pcVar10 + -uVar7;\r\n    for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined4 *)pcVar4 = *(undefined4 *)pcVar3;\r\n      pcVar3 = pcVar3 + 4;\r\n      pcVar4 = pcVar4 + 4;\r\n    }\r\n    for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *pcVar4 = *pcVar3;\r\n      pcVar3 = pcVar3 + 1;\r\n      pcVar4 = pcVar4 + 1;\r\n    }\r\n    pcVar3 = local_404;\r\n  }\r\n  FUN_004abce0();\r\n  DAT_0050407c = 0;\r\n  DAT_00504080 = 0;\r\n  DAT_00504084 = 0;\r\n  sVar2 = FUN_0047c0c0();\r\n  if (sVar2 != 0) {\r\n    return 1;\r\n  }\r\n  FUN_00483910();\r\n  puVar5 = (undefined4 *)&DAT_0055dea0;\r\n  do {\r\n    *(undefined2 *)puVar5 = 4;\r\n    puVar6 = puVar5 + 6;\r\n    *(undefined2 *)((int)puVar5 + 2) = 0;\r\n    *(undefined2 *)(puVar5 + 1) = 0;\r\n    *(undefined2 *)((int)puVar5 + 6) = 0;\r\n    *(undefined2 *)(puVar5 + 2) = 1;\r\n    *(undefined2 *)((int)puVar5 + 10) = 1;\r\n    puVar5[3] = 0;\r\n    puVar5[4] = 0;\r\n    puVar5[5] = 0;\r\n    puVar5 = puVar6;\r\n  } while (puVar6 < &DAT_0055e170);\r\n  _DAT_0055e24c = 0;\r\n  _DAT_0055de98 = DAT_005a24a8 * 2;\r\n  _DAT_0055de90 = DAT_005a24a8 * 4;\r\n  _DAT_0055de94 = DAT_005a24a8 * 6;\r\n  _DAT_0057eae0 = 0;\r\n  _DAT_0055de9c = 0;\r\n  _DAT_0057eac8 = 0;\r\n  _DAT_0055d61c = 0;\r\n  _DAT_0055d620 = 0;\r\n  _DAT_0057eab4 = 0;\r\n  _DAT_0055d618 = 0xffc00000;\r\n  _DAT_0057eab0 = 0x400000;\r\n  _DAT_0057eab8 = 0;\r\n  _DAT_0055e248 = _DAT_0055de98;\r\n  _DAT_0055e250 = _DAT_0055de90;\r\n  _DAT_0055e254 = _DAT_0055de94;\r\n  _DAT_0057eac0 = _DAT_0055de94;\r\n  _DAT_0057eac4 = _DAT_0055de90;\r\n  _DAT_0057eacc = _DAT_0055de98;\r\n  _DAT_0057eae4 = _DAT_0055de98;\r\n  _DAT_0057eae8 = _DAT_0055de94;\r\n  _DAT_0057eaec = _DAT_0055de90;\r\n  FUN_0046cad1(&DAT_0055d648);\r\n  _DAT_0055d638 = 0;\r\n  _DAT_0055d634 = 0;\r\n  _DAT_0055d630 = 0;\r\n  _DAT_0057eb00 = 0x80;\r\n  _DAT_0057eb04 = 0x80;\r\n  DAT_005a2500 = 0;\r\n  DAT_005a2508 = 0;\r\n  DAT_005d91f8 = (int)(short)(0x80 - (short)(DAT_005a25a0 >> 1));\r\n  DAT_005d91fc = DAT_005d91f8;\r\n  FUN_004ae350();\r\n  FUN_0047bf90((DAT_005a25a0 / 2 + -3) * 0x400000);\r\n  FUN_00467bb0(&DAT_0057ea60,0xccb0000,&DAT_004fa2d0);\r\n  FUN_00467bb0(&DAT_0055e1c8,0x1450000,&DAT_004fa2d0);\r\n  FUN_00467bb0(&DAT_0055e208,0xc4e0000,&DAT_004fa2d0);\r\n  FUN_00467bb0(&DAT_0055e178,0x1c20000,&DAT_004fa2d0);\r\n  uStack_52c = 0;\r\n  uStack_528 = 0;\r\n  auStack_534[0] = 3;\r\n  if (DAT_00591d80 == (char *)0x0) {\r\n    acStack_524[0] = DAT_004f83a8;\r\n  }\r\n  else {\r\n    _strncpy(acStack_524,DAT_00591d80,0x1f);\r\n    uStack_505 = 0;\r\n  }\r\n  FUN_004d4810(pcVar3,auStack_538,auStack_100,acStack_300,acStack_200);\r\n  uVar7 = 0xffffffff;\r\n  pcVar3 = acStack_200;\r\n  do {\r\n    pcVar10 = pcVar3;\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    pcVar10 = pcVar3 + 1;\r\n    cVar1 = *pcVar3;\r\n    pcVar3 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar7 = ~uVar7;\r\n  iVar9 = -1;\r\n  pcVar3 = acStack_300;\r\n  do {\r\n    pcVar4 = pcVar3;\r\n    if (iVar9 == 0) break;\r\n    iVar9 = iVar9 + -1;\r\n    pcVar4 = pcVar3 + 1;\r\n    cVar1 = *pcVar3;\r\n    pcVar3 = pcVar4;\r\n  } while (cVar1 != '\\0');\r\n  pcVar3 = pcVar10 + -uVar7;\r\n  pcVar10 = pcVar4 + -1;\r\n  for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar3;\r\n    pcVar3 = pcVar3 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n    *pcVar10 = *pcVar3;\r\n    pcVar3 = pcVar3 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  _strncpy(acStack_504,acStack_300,0xff);\r\n  uStack_405 = 0;\r\n  FUN_0048c4a0(auStack_534,0);\r\n  DAT_0055d624 = &DAT_00503b60;\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a240",
+      "name": "FUN_0047a240",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00467070",
+      "name": "FUN_00467070"
+    },
+    {
+      "addr": "00407c00",
+      "name": "FUN_00407c00"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "004abce0",
+      "name": "FUN_004abce0"
+    },
+    {
+      "addr": "0047c0c0",
+      "name": "FUN_0047c0c0"
+    },
+    {
+      "addr": "00483910",
+      "name": "FUN_00483910"
+    },
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1"
+    },
+    {
+      "addr": "004ae350",
+      "name": "FUN_004ae350"
+    },
+    {
+      "addr": "0047bf90",
+      "name": "FUN_0047bf90"
+    },
+    {
+      "addr": "00467bb0",
+      "name": "FUN_00467bb0"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "004d4810",
+      "name": "FUN_004d4810"
+    },
+    {
+      "addr": "0048c4a0",
+      "name": "FUN_0048c4a0"
+    }
+  ],
+  "data_refs": []
+}

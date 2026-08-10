@@ -1,0 +1,34 @@
+{
+  "address": "004387d0",
+  "name": "FUN_004387d0",
+  "signature": "undefined FUN_004387d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004387d0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  \r\n  iVar1 = *param_1;\r\n  (**(code **)(iVar1 + 0x40))();\r\n  FUN_00424a30();\r\n  piVar3 = (int *)0x0;\r\n  FUN_00430a50(1);\r\n  iVar2 = FUN_004d28b0(0x592);\r\n  if (iVar2 != 0) {\r\n    piVar3 = (int *)FUN_004455e0(param_1[0x10]);\r\n  }\r\n  iVar2 = *piVar3;\r\n  (**(code **)(iVar2 + 4))();\r\n  (**(code **)(iVar2 + 0xbc))();\r\n  FUN_00430a50(0);\r\n  FUN_00424a60();\r\n  (**(code **)(iVar1 + 0x44))();\r\n  param_1[9] = 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00424a30",
+      "name": "FUN_00424a30"
+    },
+    {
+      "addr": "00430a50",
+      "name": "FUN_00430a50"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004455e0",
+      "name": "FUN_004455e0"
+    },
+    {
+      "addr": "00424a60",
+      "name": "FUN_00424a60"
+    }
+  ],
+  "data_refs": []
+}

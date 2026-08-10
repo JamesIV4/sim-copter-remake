@@ -1,0 +1,38 @@
+{
+  "address": "00457890",
+  "name": "FUN_00457890",
+  "signature": "undefined FUN_00457890(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00457890(int param_1,undefined4 param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  ostream *poVar4;\r\n  int iVar5;\r\n  int *piVar6;\r\n  \r\n  iVar2 = *(int *)(param_1 + 0x28);\r\n  if (DAT_004f99ac == (int *)0x0) {\r\n    if (DAT_004f99a4 == DAT_004f99a8) {\r\n      set_new_handler((_func_void *)0x0);\r\n      puVar3 = (undefined4 *)FUN_004d28b0(8);\r\n      if (puVar3 == (undefined4 *)0x0) {\r\n        poVar4 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar4);\r\n        FUN_004d2060(1);\r\n      }\r\n      set_new_handler((_func_void *)0x0);\r\n      iVar5 = FUN_004d28b0(0x1000);\r\n      if (iVar5 == 0) {\r\n        poVar4 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar4);\r\n        FUN_004d2060(1);\r\n      }\r\n      puVar3[1] = iVar5;\r\n      *puVar3 = DAT_004f99b0;\r\n      DAT_004f99a8 = (int *)puVar3[1];\r\n      DAT_004f99a4 = DAT_004f99a8 + 0x400;\r\n      DAT_004f99b0 = puVar3;\r\n    }\r\n    piVar6 = DAT_004f99a8;\r\n    DAT_004f99a8 = DAT_004f99a8 + 4;\r\n  }\r\n  else {\r\n    piVar6 = DAT_004f99ac;\r\n    DAT_004f99ac = (int *)*DAT_004f99ac;\r\n  }\r\n  if (piVar6 != (int *)0xfffffff8) {\r\n    FUN_00423be0(param_2);\r\n  }\r\n  *piVar6 = iVar2;\r\n  piVar1 = (int *)(iVar2 + 4);\r\n  piVar6[1] = *piVar1;\r\n  *(int **)*piVar1 = piVar6;\r\n  *piVar1 = (int)piVar6;\r\n  *(int *)(param_1 + 0x2c) = *(int *)(param_1 + 0x2c) + 1;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "00423be0",
+      "name": "FUN_00423be0"
+    }
+  ],
+  "data_refs": []
+}

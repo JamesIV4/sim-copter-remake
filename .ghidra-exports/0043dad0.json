@@ -1,0 +1,24 @@
+{
+  "address": "0043dad0",
+  "name": "FUN_0043dad0",
+  "signature": "undefined FUN_0043dad0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall\r\nFUN_0043dad0(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6,undefined4 param_7,undefined4 param_8,int param_9)\r\n\r\n{\r\n  FUN_004042e0(param_2,param_3,param_5,param_6,param_7,param_8,0xffffffff);\r\n  param_1[0x26] = param_4;\r\n  param_1[0x28] = param_9;\r\n  *param_1 = &PTR_LAB_004f1ef8;\r\n  param_1[0x1d] = 0;\r\n  param_1[0x1e] = 0;\r\n  param_1[0x20] = 0;\r\n  param_1[0x21] = 0;\r\n  param_1[0x24] = 0;\r\n  param_1[0x25] = 0;\r\n  param_1[0x1f] = 0x53;\r\n  param_1[0x22] = 1;\r\n  param_1[0x23] = 1;\r\n  param_1[0x27] = 0xffffffff;\r\n  if (param_9 != -1) {\r\n    (**(code **)(*(int *)param_1[0x10] + 8))(1,param_9);\r\n  }\r\n  param_1[6] = param_1[4] + param_1[0x26];\r\n  param_1[10] = param_1[8] + param_1[0x26];\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043d0c0",
+      "name": "FUN_0043d0c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004042e0",
+      "name": "FUN_004042e0"
+    }
+  ],
+  "data_refs": []
+}

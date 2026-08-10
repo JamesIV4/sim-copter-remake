@@ -1,0 +1,36 @@
+{
+  "address": "00437ad0",
+  "name": "FUN_00437ad0",
+  "signature": "undefined FUN_00437ad0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00437ad0(void)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  undefined4 uVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  int unaff_EBX;\r\n  char *pcVar8;\r\n  char *pcVar9;\r\n  undefined4 *local_88;\r\n  undefined4 *local_84;\r\n  char local_80 [128];\r\n  \r\n  iVar4 = FUN_0045bff0(0x78,local_80);\r\n  if (iVar4 == 0) {\r\n    return 0;\r\n  }\r\n  iVar4 = 0;\r\n  do {\r\n    if (local_80[iVar4] == '_') {\r\n      local_80[iVar4] = ' ';\r\n    }\r\n    iVar4 = iVar4 + 1;\r\n  } while (iVar4 < 0x80);\r\n  local_84 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (local_84 == (undefined4 *)0x0) {\r\n    local_84 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    uVar6 = 0xffffffff;\r\n    pcVar8 = local_80;\r\n    do {\r\n      if (uVar6 == 0) break;\r\n      uVar6 = uVar6 - 1;\r\n      cVar2 = *pcVar8;\r\n      pcVar8 = pcVar8 + 1;\r\n    } while (cVar2 != '\\0');\r\n    iVar4 = ~uVar6 - 1;\r\n    local_84[1] = iVar4;\r\n    local_84[2] = iVar4;\r\n    if (iVar4 == 0) {\r\n      *local_84 = 0;\r\n    }\r\n    else {\r\n      uVar5 = FUN_004d28b0(iVar4);\r\n      *local_84 = uVar5;\r\n      uVar6 = local_84[1];\r\n      pcVar8 = local_80;\r\n      pcVar9 = (char *)*local_84;\r\n      for (uVar7 = uVar6 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n        *(undefined4 *)pcVar9 = *(undefined4 *)pcVar8;\r\n        pcVar8 = pcVar8 + 4;\r\n        pcVar9 = pcVar9 + 4;\r\n      }\r\n      for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *pcVar9 = *pcVar8;\r\n        pcVar8 = pcVar8 + 1;\r\n        pcVar9 = pcVar9 + 1;\r\n      }\r\n    }\r\n    local_84[3] = 1;\r\n  }\r\n  local_88 = (undefined4 *)0x0;\r\n  uVar5 = FUN_00435680(&local_88);\r\n  puVar3 = local_88;\r\n  local_88[3] = local_88[3] + -1;\r\n  if ((local_88[3] == 0) && (local_88 != (undefined4 *)0x0)) {\r\n    piVar1 = local_88 + 2;\r\n    if (*piVar1 != 0) {\r\n      FUN_004d29a0(*local_88);\r\n      *piVar1 = 0;\r\n      *puVar3 = 0;\r\n    }\r\n    FUN_004d29a0(puVar3);\r\n  }\r\n  if (unaff_EBX != 0) {\r\n    FUN_004d29a0(unaff_EBX);\r\n  }\r\n  return uVar5;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0045bff0",
+      "name": "FUN_0045bff0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

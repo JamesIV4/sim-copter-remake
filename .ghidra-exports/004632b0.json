@@ -1,0 +1,34 @@
+{
+  "address": "004632b0",
+  "name": "FUN_004632b0",
+  "signature": "undefined FUN_004632b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004632b0(void)\r\n\r\n{\r\n  byte bVar1;\r\n  UINT uID;\r\n  int iVar2;\r\n  int extraout_ECX;\r\n  byte *pbVar3;\r\n  byte *pbVar4;\r\n  int iVar5;\r\n  bool bVar6;\r\n  undefined4 in_stack_00001004;\r\n  byte *in_stack_00001008;\r\n  int in_stack_0000100c;\r\n  \r\n  FUN_004d2c30();\r\n  if ((in_stack_0000100c == 0) &&\r\n     (in_stack_0000100c = *(int *)(extraout_ECX + 0xc), in_stack_0000100c == 0)) {\r\n    in_stack_0000100c = DAT_004f86d4;\r\n  }\r\n  iVar5 = 1;\r\n  do {\r\n    uID = FUN_00423270(iVar5 + 499,in_stack_0000100c);\r\n    LoadStringA(DAT_0051a050,uID,&stack0x00000000,31999);\r\n    pbVar3 = (byte *)register0x00000010;\r\n    pbVar4 = in_stack_00001008;\r\n    do {\r\n      bVar1 = *pbVar3;\r\n      bVar6 = bVar1 < *pbVar4;\r\n      if (bVar1 != *pbVar4) {\r\nLAB_00463331:\r\n        iVar2 = (1 - (uint)bVar6) - (uint)(bVar6 != 0);\r\n        goto LAB_00463336;\r\n      }\r\n      if (bVar1 == 0) break;\r\n      bVar1 = pbVar3[1];\r\n      bVar6 = bVar1 < pbVar4[1];\r\n      if (bVar1 != pbVar4[1]) goto LAB_00463331;\r\n      pbVar3 = pbVar3 + 2;\r\n      pbVar4 = pbVar4 + 2;\r\n    } while (bVar1 != 0);\r\n    iVar2 = 0;\r\nLAB_00463336:\r\n    if (iVar2 == 0) goto LAB_00463342;\r\n    iVar5 = iVar5 + 1;\r\n  } while (iVar5 < 8);\r\n  iVar5 = 0;\r\nLAB_00463342:\r\n  if (iVar5 == 0) {\r\n    FUN_004625b0();\r\n  }\r\n  else {\r\n    FUN_00462ac0(in_stack_00001004,iVar5);\r\n  }\r\n  return in_stack_00001004;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "00462ac0",
+      "name": "FUN_00462ac0"
+    },
+    {
+      "addr": "004625b0",
+      "name": "FUN_004625b0"
+    }
+  ],
+  "data_refs": []
+}

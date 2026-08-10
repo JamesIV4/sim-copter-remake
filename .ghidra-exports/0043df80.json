@@ -1,0 +1,94 @@
+{
+  "address": "0043df80",
+  "name": "FUN_0043df80",
+  "signature": "undefined FUN_0043df80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x0043dff0) */\r\n\r\nundefined4\r\nFUN_0043df80(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  UINT UVar3;\r\n  DWORD DVar4;\r\n  int *extraout_ECX;\r\n  uint uVar5;\r\n  int unaff_EBX;\r\n  int *piVar6;\r\n  int *piVar7;\r\n  char *pcVar8;\r\n  undefined **ppuVar9;\r\n  undefined *puVar10;\r\n  undefined4 *puVar11;\r\n  LARGE_INTEGER LStack_c4;\r\n  undefined4 *puStack_bc;\r\n  undefined *puStack_b8;\r\n  undefined4 uStack_b4;\r\n  undefined4 uStack_b0;\r\n  CHAR aCStack_ac [4];\r\n  undefined4 *puStack_a8;\r\n  undefined *puStack_a4;\r\n  undefined4 uStack_a0;\r\n  int *piStack_9c;\r\n  undefined4 *puStack_98;\r\n  undefined4 uStack_94;\r\n  undefined *puStack_90;\r\n  undefined4 uStack_8c;\r\n  undefined4 uStack_88;\r\n  undefined4 *puStack_84;\r\n  undefined *puStack_80;\r\n  undefined4 uStack_7c;\r\n  undefined4 uStack_78;\r\n  undefined4 uStack_74;\r\n  undefined4 *puStack_70;\r\n  undefined *puStack_6c;\r\n  undefined4 uStack_68;\r\n  undefined4 uStack_64;\r\n  undefined4 uStack_60;\r\n  undefined4 **ppuStack_5c;\r\n  undefined *puStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 uStack_50;\r\n  undefined4 *puStack_4c;\r\n  undefined4 uStack_48;\r\n  undefined *puStack_44;\r\n  undefined4 uStack_40;\r\n  undefined1 *puStack_3c;\r\n  undefined4 uStack_38;\r\n  undefined *puStack_34;\r\n  undefined4 uStack_30;\r\n  undefined4 *puStack_2c;\r\n  undefined4 uStack_28;\r\n  undefined *puStack_24;\r\n  undefined4 uStack_20;\r\n  undefined4 uStack_1c;\r\n  undefined4 uStack_18;\r\n  undefined4 uStack_14;\r\n  \r\n  FUN_004d2c30();\r\n  uStack_14 = 0x10;\r\n  uStack_18 = 0x43df97;\r\n  param_1 = (undefined4 *)FUN_004d28b0();\r\n  if (param_1 == (undefined4 *)0x0) {\r\n    param_1 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_1[1] = 0;\r\n    param_1[2] = 0;\r\n    *param_1 = 0;\r\n    param_1[3] = 1;\r\n  }\r\n  uStack_14 = 0x43dfcc;\r\n  FUN_00404920();\r\n  uStack_14 = 1;\r\n  uStack_18 = 0x43dfd5;\r\n  iVar2 = (**(code **)(*extraout_ECX + 0x10))();\r\n  if (iVar2 == 0) {\r\n    iRam0000000c = iRam0000000c + -1;\r\n    if (unaff_EBX != 0) {\r\n      uStack_1c = 0x43e011;\r\n      FUN_004d29a0();\r\n    }\r\n    return 0;\r\n  }\r\n  uStack_18 = 0xa4;\r\n  piVar6 = (int *)0x0;\r\n  uStack_1c = 0x43e030;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    param_1 = (undefined4 *)0x8a;\r\n    param_2 = 0x46;\r\n    param_3 = 0x114;\r\n    puStack_2c = &param_1;\r\n    uStack_18 = 1;\r\n    param_4 = 0x5a;\r\n    puStack_24 = (undefined *)0x47;\r\n    uStack_28 = 0;\r\n    uStack_30 = 0x43e06b;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  uStack_18 = 0;\r\n  uStack_1c = 0;\r\n  uStack_20 = 0x12;\r\n  puStack_24 = (undefined *)0x43e07d;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  puStack_24 = &DAT_0051a490;\r\n  piVar6 = (int *)0x0;\r\n  uStack_28 = 0x43e08f;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  uStack_28 = 0xa4;\r\n  puStack_2c = (undefined4 *)0x43e099;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    puStack_3c = &stack0xfffffff4;\r\n    uStack_28 = 1;\r\n    puStack_34 = (undefined *)0x48;\r\n    uStack_38 = 0;\r\n    uStack_40 = 0x43e0d4;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  uStack_28 = 0;\r\n  puStack_2c = (undefined4 *)0x0;\r\n  uStack_30 = 0x12;\r\n  puStack_34 = (undefined *)0x43e0e6;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  puStack_34 = &DAT_0051a490;\r\n  piVar6 = (int *)0x0;\r\n  uStack_38 = 0x43e0f8;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  uStack_38 = 0xa4;\r\n  puStack_3c = (undefined1 *)0x43e102;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_1c = 0x8a;\r\n    uStack_18 = 0x9c;\r\n    uStack_14 = 0x114;\r\n    puStack_4c = &uStack_1c;\r\n    uStack_38 = 1;\r\n    puStack_44 = (undefined *)0x49;\r\n    uStack_48 = 0;\r\n    uStack_50 = 0x43e13d;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  uStack_38 = 0;\r\n  puStack_3c = (undefined1 *)0x0;\r\n  uStack_40 = 0x12;\r\n  puStack_44 = (undefined *)0x43e14f;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  puStack_44 = &DAT_0051a490;\r\n  piVar6 = (int *)0x0;\r\n  uStack_48 = 0x43e161;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  uStack_48 = 0xa4;\r\n  puStack_4c = (undefined4 *)0x43e16b;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    puStack_2c = (undefined4 *)0x4a;\r\n    uStack_28 = 0x125;\r\n    puStack_24 = (undefined *)0xfc;\r\n    ppuStack_5c = &puStack_2c;\r\n    uStack_48 = 1;\r\n    uStack_20 = 0x13c;\r\n    uStack_54 = 0x4b;\r\n    puStack_58 = (undefined *)0x0;\r\n    uStack_60 = 0x43e1a6;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  uStack_48 = 0;\r\n  puStack_4c = (undefined4 *)0x0;\r\n  uStack_50 = 0x10;\r\n  uStack_54 = 0x43e1b8;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  uStack_54 = 8;\r\n  puStack_58 = (undefined *)0x43e1c2;\r\n  (**(code **)(iVar2 + 0xe4))();\r\n  puStack_58 = &DAT_0051a490;\r\n  ppuStack_5c = (undefined4 **)0x43e1cf;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  ppuStack_5c = (undefined4 **)0xa4;\r\n  piVar6 = (int *)0x0;\r\n  uStack_60 = 0x43e1de;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_40 = 0x4a;\r\n    puStack_3c = (undefined1 *)0x142;\r\n    uStack_38 = 0xfc;\r\n    puStack_70 = &uStack_40;\r\n    ppuStack_5c = (undefined4 **)0x1;\r\n    puStack_34 = (undefined *)0x156;\r\n    uStack_68 = 0x4c;\r\n    puStack_6c = (undefined *)0x0;\r\n    uStack_74 = 0x43e219;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  ppuStack_5c = (undefined4 **)0x0;\r\n  uStack_60 = 0;\r\n  uStack_64 = 0x10;\r\n  uStack_68 = 0x43e22b;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  uStack_68 = 8;\r\n  puStack_6c = (undefined *)0x43e235;\r\n  (**(code **)(iVar2 + 0xe4))();\r\n  puStack_6c = &DAT_0051a490;\r\n  puStack_70 = (undefined4 *)0x43e242;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  puStack_70 = (undefined4 *)0xa4;\r\n  piVar6 = (int *)0x0;\r\n  uStack_74 = 0x43e251;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_54 = 0x4a;\r\n    uStack_50 = 0x160;\r\n    puStack_4c = (undefined4 *)0xfc;\r\n    puStack_84 = &uStack_54;\r\n    puStack_70 = (undefined4 *)0x1;\r\n    uStack_48 = 0x174;\r\n    uStack_7c = 0x4d;\r\n    puStack_80 = (undefined *)0x0;\r\n    uStack_88 = 0x43e28c;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  puStack_70 = (undefined4 *)0x0;\r\n  uStack_74 = 0;\r\n  uStack_78 = 0x10;\r\n  uStack_7c = 0x43e29e;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  uStack_7c = 8;\r\n  puStack_80 = (undefined *)0x43e2a8;\r\n  (**(code **)(iVar2 + 0xe4))();\r\n  puStack_80 = &DAT_0051a490;\r\n  puStack_84 = (undefined4 *)0x43e2b5;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  puStack_84 = (undefined4 *)0xa4;\r\n  piVar6 = (int *)0x0;\r\n  uStack_88 = 0x43e2c4;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_68 = 0x4c;\r\n    uStack_64 = 0xf5;\r\n    uStack_60 = 0x8a;\r\n    puStack_98 = &uStack_68;\r\n    puStack_84 = (undefined4 *)0x1;\r\n    ppuStack_5c = (undefined4 **)0x105;\r\n    puStack_90 = (undefined *)0x4e;\r\n    uStack_94 = 0;\r\n    piStack_9c = (int *)0x43e2ff;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  puStack_84 = (undefined4 *)0x0;\r\n  uStack_88 = 0;\r\n  uStack_8c = 0xe;\r\n  puStack_90 = (undefined *)0x43e311;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  puStack_90 = &DAT_0051a490;\r\n  piVar6 = (int *)0x0;\r\n  uStack_94 = 0x43e323;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  uStack_94 = 0xa4;\r\n  puStack_98 = (undefined4 *)0x43e32d;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_78 = 0xde;\r\n    uStack_74 = 0xf5;\r\n    puStack_70 = (undefined4 *)0x120;\r\n    puStack_a8 = &uStack_78;\r\n    uStack_94 = 1;\r\n    puStack_6c = (undefined *)0x105;\r\n    uStack_a0 = 0x4f;\r\n    puStack_a4 = (undefined *)0x0;\r\n    aCStack_ac[0] = 'h';\r\n    aCStack_ac[1] = -0x1d;\r\n    aCStack_ac[2] = 'C';\r\n    aCStack_ac[3] = '\\0';\r\n    piStack_9c = extraout_ECX;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  uStack_94 = 8;\r\n  puStack_98 = (undefined4 *)0x43e376;\r\n  (**(code **)(iVar2 + 0xe4))();\r\n  puStack_98 = (undefined4 *)0x0;\r\n  piStack_9c = (int *)0x0;\r\n  uStack_a0 = 0xe;\r\n  puStack_a4 = (undefined *)0x43e384;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  puStack_a4 = &DAT_0051a490;\r\n  piVar6 = (int *)0x0;\r\n  puStack_a8 = (undefined4 *)0x43e396;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  puStack_a8 = (undefined4 *)0xa4;\r\n  aCStack_ac[0] = -0x60;\r\n  aCStack_ac[1] = -0x1d;\r\n  aCStack_ac[2] = 'C';\r\n  aCStack_ac[3] = '\\0';\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_8c = 0x8e;\r\n    uStack_88 = 0xf5;\r\n    puStack_84 = (undefined4 *)0xda;\r\n    puStack_bc = &uStack_8c;\r\n    puStack_a8 = (undefined4 *)0x1;\r\n    puStack_80 = (undefined *)0x105;\r\n    uStack_b4 = 0x50;\r\n    puStack_b8 = (undefined *)0x0;\r\n    LStack_c4.s.HighPart = 0x43e3db;\r\n    piVar6 = (int *)FUN_004090d0();\r\n  }\r\n  iVar2 = *piVar6;\r\n  puStack_a8 = (undefined4 *)0x1;\r\n  aCStack_ac[0] = -0x17;\r\n  aCStack_ac[1] = -0x1d;\r\n  aCStack_ac[2] = 'C';\r\n  aCStack_ac[3] = '\\0';\r\n  (**(code **)(iVar2 + 0xe4))();\r\n  aCStack_ac[0] = '\\0';\r\n  aCStack_ac[1] = '\\0';\r\n  aCStack_ac[2] = '\\0';\r\n  aCStack_ac[3] = '\\0';\r\n  uStack_b0 = 0;\r\n  uStack_b4 = 0xe;\r\n  puStack_b8 = (undefined *)0x43e3f7;\r\n  (**(code **)(iVar2 + 0xe0))();\r\n  puStack_b8 = &DAT_0051a490;\r\n  puStack_bc = (undefined4 *)0x43e404;\r\n  (**(code **)(iVar2 + 0xe8))();\r\n  puStack_bc = (undefined4 *)0x94;\r\n  LStack_c4.s.HighPart = 0x43e40e;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    extraout_ECX[0x22] = 0;\r\n  }\r\n  else {\r\n    puStack_bc = (undefined4 *)0x1;\r\n    uStack_a0 = 0x4e;\r\n    piStack_9c = (int *)0x40;\r\n    puStack_98 = (undefined4 *)0x51;\r\n    uStack_94 = 0x43;\r\n    LStack_c4.s.LowPart = 0;\r\n    LStack_c4.s.HighPart = (LONG)extraout_ECX;\r\n    iVar2 = FUN_0043b3e0(&uStack_a0,3,extraout_ECX);\r\n    extraout_ECX[0x22] = iVar2;\r\n  }\r\n  puStack_bc = (undefined4 *)0x43e466;\r\n  (**(code **)(*(int *)extraout_ECX[0x22] + 4))();\r\n  puStack_bc = (undefined4 *)0x94;\r\n  LStack_c4.s.HighPart = 0x43e470;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    extraout_ECX[0x23] = 0;\r\n  }\r\n  else {\r\n    puStack_bc = (undefined4 *)0x1;\r\n    uStack_a0 = 0x4e;\r\n    piStack_9c = (int *)0x68;\r\n    puStack_98 = (undefined4 *)0x51;\r\n    uStack_94 = 0x6b;\r\n    LStack_c4.s.LowPart = 0;\r\n    LStack_c4.s.HighPart = (LONG)extraout_ECX;\r\n    iVar2 = FUN_0043b3e0(&uStack_a0,4,extraout_ECX);\r\n    extraout_ECX[0x23] = iVar2;\r\n  }\r\n  puStack_bc = (undefined4 *)0x43e4c8;\r\n  (**(code **)(*(int *)extraout_ECX[0x23] + 4))();\r\n  puStack_bc = (undefined4 *)0x94;\r\n  LStack_c4.s.HighPart = 0x43e4d2;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    extraout_ECX[0x24] = 0;\r\n  }\r\n  else {\r\n    puStack_bc = (undefined4 *)0x1;\r\n    uStack_a0 = 0x4e;\r\n    piStack_9c = (int *)0x92;\r\n    puStack_98 = (undefined4 *)0x51;\r\n    uStack_94 = 0x95;\r\n    LStack_c4.s.LowPart = 0;\r\n    LStack_c4.s.HighPart = (LONG)extraout_ECX;\r\n    iVar2 = FUN_0043b3e0(&uStack_a0,5,extraout_ECX);\r\n    extraout_ECX[0x24] = iVar2;\r\n  }\r\n  piVar6 = extraout_ECX + 0x25;\r\n  puStack_bc = (undefined4 *)0x43e530;\r\n  (**(code **)(*(int *)extraout_ECX[0x24] + 4))();\r\n  puStack_bc = (undefined4 *)0x84;\r\n  LStack_c4.s.HighPart = 0x43e53a;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    *piVar6 = 0;\r\n  }\r\n  else {\r\n    puStack_bc = (undefined4 *)0x1;\r\n    LStack_c4.s.LowPart = (DWORD)extraout_ECX;\r\n    iVar2 = FUN_0040ab90(6);\r\n    *piVar6 = iVar2;\r\n  }\r\n  puStack_bc = (undefined4 *)0x98;\r\n  piVar7 = (int *)0x0;\r\n  LStack_c4.s.HighPart = 0x43e567;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    uStack_a0 = 0x10a;\r\n    piStack_9c = (int *)0x124;\r\n    puStack_98 = (undefined4 *)0x10d;\r\n    puStack_bc = (undefined4 *)0x1;\r\n    uStack_94 = 0x127;\r\n    LStack_c4.s.LowPart = 0;\r\n    LStack_c4._4_4_ = extraout_ECX;\r\n    piVar7 = (int *)FUN_0043b2d0(*piVar6,&uStack_a0,7,extraout_ECX);\r\n  }\r\n  iVar2 = *piVar7;\r\n  puStack_bc = (undefined4 *)0x43e5af;\r\n  (**(code **)(iVar2 + 4))();\r\n  puStack_bc = (undefined4 *)0x1;\r\n  piVar7 = (int *)0x0;\r\n  LStack_c4.s.HighPart = 0x43e5be;\r\n  (**(code **)(iVar2 + 0xdc))();\r\n  LStack_c4.s.HighPart = 0x98;\r\n  LStack_c4.s.LowPart = 0x43e5c8;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    puStack_a4 = (undefined *)0x10a;\r\n    uStack_a0 = 0x140;\r\n    piStack_9c = (int *)0x10d;\r\n    LStack_c4.s.HighPart = 1;\r\n    puStack_98 = (undefined4 *)0x143;\r\n    LStack_c4._0_4_ = extraout_ECX;\r\n    piVar7 = (int *)FUN_0043b2d0(*piVar6,&puStack_a4,8,extraout_ECX,0);\r\n  }\r\n  iVar2 = *piVar7;\r\n  LStack_c4.s.HighPart = 0x43e610;\r\n  (**(code **)(iVar2 + 4))();\r\n  LStack_c4.s.HighPart = 1;\r\n  LStack_c4.s.LowPart = 0x43e61a;\r\n  (**(code **)(iVar2 + 0xdc))();\r\n  LStack_c4.s.LowPart = 0x98;\r\n  piVar7 = (int *)0x0;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 != 0) {\r\n    puStack_a8 = (undefined4 *)0x10a;\r\n    puStack_a4 = (undefined *)0x15c;\r\n    uStack_a0 = 0x10d;\r\n    LStack_c4.s.LowPart = 1;\r\n    piStack_9c = (int *)0x15f;\r\n    piVar7 = (int *)FUN_0043b2d0(*piVar6,&puStack_a8,9,extraout_ECX,0,extraout_ECX);\r\n  }\r\n  iVar2 = *piVar7;\r\n  LStack_c4.s.LowPart = 0x43e670;\r\n  (**(code **)(iVar2 + 4))();\r\n  LStack_c4.s.LowPart = 1;\r\n  (**(code **)(iVar2 + 0xdc))();\r\n  iVar2 = FUN_004d28b0(0xb4);\r\n  if (iVar2 == 0) {\r\n    extraout_ECX[0x26] = 0;\r\n  }\r\n  else {\r\n    aCStack_ac[0] = 'H';\r\n    aCStack_ac[1] = '\\0';\r\n    aCStack_ac[2] = '\\0';\r\n    aCStack_ac[3] = '\\0';\r\n    puStack_a8 = (undefined4 *)0xd5;\r\n    puStack_a4 = (undefined *)0x4b;\r\n    uStack_a0 = 0xd8;\r\n    iVar2 = FUN_0040af00(aCStack_ac,10,0,extraout_ECX,extraout_ECX,1,0,PTR_s_rendscrl_bmp_004f9470,8\r\n                        );\r\n    extraout_ECX[0x26] = iVar2;\r\n  }\r\n  (**(code **)(*(int *)extraout_ECX[0x26] + 4))();\r\n  FUN_0040bb20(0);\r\n  piVar6 = (int *)0x0;\r\n  FUN_0040bb50(0x18);\r\n  iVar2 = FUN_004d28b0(0x94);\r\n  if (iVar2 != 0) {\r\n    aCStack_ac[0] = 'H';\r\n    aCStack_ac[1] = '\\x01';\r\n    aCStack_ac[2] = '\\0';\r\n    aCStack_ac[3] = '\\0';\r\n    puStack_a8 = (undefined4 *)0x13e;\r\n    puStack_a4 = (undefined *)0x14b;\r\n    uStack_a0 = 0x141;\r\n    piVar6 = (int *)FUN_0043b240(aCStack_ac,1,extraout_ECX,0,extraout_ECX,1);\r\n  }\r\n  UVar3 = FUN_00423270(0x51,0);\r\n  LoadStringA(DAT_0051a050,UVar3,aCStack_ac,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  pcVar8 = aCStack_ac;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *pcVar8;\r\n    pcVar8 = pcVar8 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(aCStack_ac,~uVar5 - 1);\r\n  iVar2 = *piVar6;\r\n  puVar11 = &uStack_b4;\r\n  (**(code **)(iVar2 + 0x58))();\r\n  puVar10 = &DAT_0051a490;\r\n  (**(code **)(iVar2 + 0xec))(&DAT_0051a488);\r\n  piVar6 = (int *)0x0;\r\n  (**(code **)(iVar2 + 4))();\r\n  iVar2 = FUN_004d28b0(0x94);\r\n  if (iVar2 != 0) {\r\n    puStack_b8 = (undefined *)0x1b0;\r\n    uStack_b4 = 0x13e;\r\n    uStack_b0 = 0x1b3;\r\n    aCStack_ac[0] = 'A';\r\n    aCStack_ac[1] = '\\x01';\r\n    aCStack_ac[2] = '\\0';\r\n    aCStack_ac[3] = '\\0';\r\n    piVar6 = (int *)FUN_0043b240(&puStack_b8,2,extraout_ECX,0,extraout_ECX,1);\r\n  }\r\n  UVar3 = FUN_00423270(0x52,0);\r\n  LoadStringA(DAT_0051a050,UVar3,(LPSTR)&puStack_b8,0xfff);\r\n  uVar5 = 0xffffffff;\r\n  ppuVar9 = &puStack_b8;\r\n  do {\r\n    if (uVar5 == 0) break;\r\n    uVar5 = uVar5 - 1;\r\n    cVar1 = *(char *)ppuVar9;\r\n    ppuVar9 = (undefined **)((int)ppuVar9 + 1);\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&puStack_b8,~uVar5 - 1);\r\n  iVar2 = *piVar6;\r\n  (**(code **)(iVar2 + 0x58))(&LStack_c4.s.HighPart);\r\n  (**(code **)(iVar2 + 0xec))(&DAT_0051a488,&DAT_0051a490);\r\n  (**(code **)(iVar2 + 4))();\r\n  if (extraout_ECX[0x29] != 1) {\r\n    extraout_ECX[0x2b] = 0;\r\n    extraout_ECX[0x2a] = 0;\r\n    extraout_ECX[0x29] = 1;\r\n  }\r\n  if (extraout_ECX[0x29] == 0) {\r\n    QueryPerformanceCounter(&LStack_c4);\r\n    extraout_ECX[0x2a] = LStack_c4.s.LowPart;\r\n  }\r\n  else {\r\n    if (extraout_ECX[0x29] == 1) {\r\n      uVar5 = timeGetTime();\r\n    }\r\n    else {\r\n      DVar4 = timeGetTime();\r\n      uVar5 = DVar4 / 1000;\r\n    }\r\n    extraout_ECX[0x2a] = uVar5;\r\n  }\r\n  FUN_00405b10(extraout_ECX);\r\n  FUN_00405cd0(extraout_ECX);\r\n  puVar11[3] = puVar11[3] + -1;\r\n  if ((puVar11[3] == 0) && (puVar11 != (undefined4 *)0x0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(puVar11);\r\n  }\r\n  if (puVar10 != (undefined *)0x0) {\r\n    FUN_004d29a0(puVar10);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00404920",
+      "name": "FUN_00404920"
+    },
+    {
+      "addr": "00406180",
+      "name": "FUN_00406180"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004090d0",
+      "name": "FUN_004090d0"
+    },
+    {
+      "addr": "0043b3e0",
+      "name": "FUN_0043b3e0"
+    },
+    {
+      "addr": "0040ab90",
+      "name": "FUN_0040ab90"
+    },
+    {
+      "addr": "0043b2d0",
+      "name": "FUN_0043b2d0"
+    },
+    {
+      "addr": "0040af00",
+      "name": "FUN_0040af00"
+    },
+    {
+      "addr": "0040bb20",
+      "name": "FUN_0040bb20"
+    },
+    {
+      "addr": "0040bb50",
+      "name": "FUN_0040bb50"
+    },
+    {
+      "addr": "0043b240",
+      "name": "FUN_0043b240"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "00405b10",
+      "name": "FUN_00405b10"
+    },
+    {
+      "addr": "00405cd0",
+      "name": "FUN_00405cd0"
+    }
+  ],
+  "data_refs": []
+}

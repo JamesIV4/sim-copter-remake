@@ -1,0 +1,87 @@
+{
+  "address": "004c2550",
+  "name": "FUN_004c2550",
+  "signature": "undefined FUN_004c2550(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004c2550(undefined2 param_1,undefined2 param_2,short param_3)\r\n\r\n{\r\n  ushort uVar1;\r\n  \r\n  FUN_004c25b0(param_1,param_2);\r\n  if (DAT_0058dc1c < DAT_0058dc22) {\r\n    uVar1 = FUN_004cea00(CONCAT22(DAT_0058dc1c >> 0xf,0xd - _DAT_0058dc18));\r\n    if ((uVar1 < 3) && (0 < param_3)) {\r\n      do {\r\n        FUN_004c2450(param_1,param_2);\r\n        param_3 = param_3 + -1;\r\n      } while (param_3 != 0);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c2ba0",
+      "name": "FUN_004c2ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c25b0",
+      "name": "FUN_004c25b0"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "004c2450",
+      "name": "FUN_004c2450"
+    }
+  ],
+  "data_refs": []
+}

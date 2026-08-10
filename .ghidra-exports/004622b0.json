@@ -1,0 +1,29 @@
+{
+  "address": "004622b0",
+  "name": "FUN_004622b0",
+  "signature": "undefined FUN_004622b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint __thiscall FUN_004622b0(int param_1,int param_2,int param_3,int param_4)\r\n\r\n{\r\n  LPJOYINFOEX pji;\r\n  MMRESULT MVar1;\r\n  joyinfoex_tag local_34;\r\n  \r\n  if ((param_2 < 0x11) && (param_3 < 0x21)) {\r\n    pji = &local_34;\r\n    if (param_4 == 0) {\r\n      local_34.dwSize = 0x34;\r\n      local_34.dwFlags = 0x80;\r\n      MVar1 = joyGetPosEx(*(UINT *)(param_1 + 0x14 + param_2 * 4),pji);\r\n      if (MVar1 != 0) {\r\n        return 0;\r\n      }\r\n    }\r\n    else {\r\n      pji = (LPJOYINFOEX)(param_1 + 0x19e0 + param_2 * 0x34);\r\n    }\r\n    return *(uint *)(&DAT_004f38f8 + param_3 * 4) & pji->dwButtons;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004174f0",
+      "name": "FUN_004174f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045cbb0",
+      "name": "FUN_0045cbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000cb",
+      "name": "joyGetPosEx"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,52 @@
+{
+  "address": "004d9b10",
+  "name": "FUN_004d9b10",
+  "signature": "undefined FUN_004d9b10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d9b10(pthreadlocinfo param_1,EHRegistrationNode *param_2,_CONTEXT *param_3,void *param_4\r\n                 ,_s_FuncInfo *param_5,char param_6,int param_7,EHRegistrationNode *param_8)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  byte *pbVar3;\r\n  _ptiddata p_Var4;\r\n  int iVar5;\r\n  int iVar6;\r\n  _s_HandlerType *p_Var7;\r\n  int *piVar8;\r\n  byte *pbVar9;\r\n  int iVar10;\r\n  byte *pbVar11;\r\n  bool bVar12;\r\n  _s_TryBlockMapEntry *local_18;\r\n  uint local_c;\r\n  uint local_8;\r\n  uint *local_4;\r\n  \r\n  iVar2 = *(int *)(param_2 + 8);\r\n  if ((iVar2 < -1) || (*(int *)(param_5 + 4) <= iVar2)) {\r\n    _inconsistency();\r\n  }\r\n  if ((((param_1->refcount == -0x1f928c9d) && (param_1->lc_category[0].locale == (char *)0x3)) &&\r\n      (param_1->lc_category[0].wlocale == (wchar_t *)0x19930520)) &&\r\n     (param_1->lc_category[0].wrefcount == (int *)0x0)) {\r\n    p_Var4 = __getptd();\r\n    if (p_Var4->ptlocinfo == (pthreadlocinfo)0x0) {\r\n      return;\r\n    }\r\n    p_Var4 = __getptd();\r\n    param_1 = p_Var4->ptlocinfo;\r\n    p_Var4 = __getptd();\r\n    param_3 = (_CONTEXT *)p_Var4->_ownlocale;\r\n    iVar5 = FID_conflict__ValidateRead(param_1,1);\r\n    if (iVar5 == 0) {\r\n      _inconsistency();\r\n    }\r\n    if (((param_1->refcount == -0x1f928c9d) && (param_1->lc_category[0].locale == (char *)0x3)) &&\r\n       ((param_1->lc_category[0].wlocale == (wchar_t *)0x19930520 &&\r\n        (param_1->lc_category[0].wrefcount == (int *)0x0)))) {\r\n      _inconsistency();\r\n    }\r\n  }\r\n  if (((param_1->refcount != -0x1f928c9d) || (param_1->lc_category[0].locale != (char *)0x3)) ||\r\n     (param_1->lc_category[0].wlocale != (wchar_t *)0x19930520)) {\r\n    if (param_6 == '\\0') {\r\n      FindHandlerForForeignException\r\n                ((EHExceptionRecord *)param_1,param_2,param_3,param_4,param_5,iVar2,param_7,param_8)\r\n      ;\r\n      return;\r\n    }\r\n                    /* WARNING: Subroutine does not return */\r\n    terminate();\r\n  }\r\n  local_18 = GetRangeOfTrysToCheck(param_5,param_7,iVar2,&local_c,&local_8);\r\n  if (local_c < local_8) {\r\n    do {\r\n      if ((*(int *)local_18 <= iVar2) && (iVar2 <= *(int *)(local_18 + 4))) {\r\n        p_Var7 = *(_s_HandlerType **)(local_18 + 0x10);\r\n        for (iVar5 = *(int *)(local_18 + 0xc); iVar5 != 0; iVar5 = iVar5 + -1) {\r\n          piVar8 = (int *)param_1->lc_category[0].wrefcount[3];\r\n          for (iVar6 = *piVar8; iVar6 != 0; iVar6 = iVar6 + -1) {\r\n            piVar8 = piVar8 + 1;\r\n            iVar10 = *(int *)(p_Var7 + 4);\r\n            local_4 = (uint *)param_1->lc_category[0].wrefcount;\r\n            pbVar3 = (byte *)*piVar8;\r\n            if ((iVar10 == 0) || (*(char *)(iVar10 + 8) == '\\0')) {\r\nLAB_004d9cd1:\r\n              bVar12 = true;\r\n            }\r\n            else {\r\n              if (*(int *)(pbVar3 + 4) == iVar10) {\r\nLAB_004d9ca9:\r\n                if (((((*pbVar3 & 2) == 0) || (((byte)*p_Var7 & 8) != 0)) &&\r\n                    (((*local_4 & 1) == 0 || (((byte)*p_Var7 & 1) != 0)))) &&\r\n                   (((*local_4 & 2) == 0 || (((byte)*p_Var7 & 2) != 0)))) goto LAB_004d9cd1;\r\n              }\r\n              else {\r\n                pbVar9 = (byte *)(iVar10 + 8);\r\n                pbVar11 = (byte *)(*(int *)(pbVar3 + 4) + 8);\r\n                do {\r\n                  bVar1 = *pbVar9;\r\n                  bVar12 = bVar1 < *pbVar11;\r\n                  if (bVar1 != *pbVar11) {\r\nLAB_004d9ca0:\r\n                    iVar10 = (1 - (uint)bVar12) - (uint)(bVar12 != 0);\r\n                    goto LAB_004d9ca5;\r\n                  }\r\n                  if (bVar1 == 0) break;\r\n                  bVar1 = pbVar9[1];\r\n                  bVar12 = bVar1 < pbVar11[1];\r\n                  if (bVar1 != pbVar11[1]) goto LAB_004d9ca0;\r\n                  pbVar9 = pbVar9 + 2;\r\n                  pbVar11 = pbVar11 + 2;\r\n                } while (bVar1 != 0);\r\n                iVar10 = 0;\r\nLAB_004d9ca5:\r\n                if (iVar10 == 0) goto LAB_004d9ca9;\r\n              }\r\n              bVar12 = false;\r\n            }\r\n            if (bVar12) {\r\n              CatchIt((EHExceptionRecord *)param_1,param_2,param_3,param_4,param_5,p_Var7,\r\n                      (_s_CatchableType *)*piVar8,local_18,param_7,param_8);\r\n              goto LAB_004d9d2f;\r\n            }\r\n          }\r\n          p_Var7 = p_Var7 + 0x10;\r\n        }\r\n      }\r\nLAB_004d9d2f:\r\n      local_18 = local_18 + 0x14;\r\n      local_c = local_c + 1;\r\n    } while (local_c < local_8);\r\n  }\r\n  if (param_6 == '\\0') {\r\n    return;\r\n  }\r\n  DestructExceptionObject((EHExceptionRecord *)param_1,'\\x01');\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9a50",
+      "name": "___InternalCxxFrameHandler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency"
+    },
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004e0d00",
+      "name": "FID_conflict:_ValidateRead"
+    },
+    {
+      "addr": "004d9e90",
+      "name": "GetRangeOfTrysToCheck"
+    },
+    {
+      "addr": "004da020",
+      "name": "CatchIt"
+    },
+    {
+      "addr": "004da410",
+      "name": "DestructExceptionObject"
+    },
+    {
+      "addr": "004d9db0",
+      "name": "FindHandlerForForeignException"
+    },
+    {
+      "addr": "004e0c00",
+      "name": "terminate"
+    }
+  ],
+  "data_refs": []
+}

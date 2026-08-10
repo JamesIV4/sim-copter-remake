@@ -1,0 +1,48 @@
+{
+  "address": "0040ab90",
+  "name": "FUN_0040ab90",
+  "signature": "undefined FUN_0040ab90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * __thiscall\r\nFUN_0040ab90(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  ostream *poVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = 0;\r\n  local_10 = 0;\r\n  local_c = 1;\r\n  local_8 = 1;\r\n  FUN_00404040(&local_14,param_2,param_3,param_4,param_5);\r\n  param_1[0x1e] = 0;\r\n  puVar4 = DAT_004f8344;\r\n  _DAT_004f8350 = _DAT_004f8350 + 1;\r\n  if (DAT_004f8348 == (undefined4 *)0x0) {\r\n    if (DAT_004f8340 == DAT_004f8344) {\r\n      set_new_handler((_func_void *)0x0);\r\n      puVar1 = (undefined4 *)FUN_004d28b0(8);\r\n      if (puVar1 == (undefined4 *)0x0) {\r\n        poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar2);\r\n        FUN_004d2060(1);\r\n      }\r\n      set_new_handler((_func_void *)0x0);\r\n      iVar3 = FUN_004d28b0(0xffc);\r\n      if (iVar3 == 0) {\r\n        poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar2);\r\n        FUN_004d2060(1);\r\n      }\r\n      puVar1[1] = iVar3;\r\n      *puVar1 = DAT_004f834c;\r\n      puVar4 = (undefined4 *)puVar1[1];\r\n      DAT_004f8344 = puVar4 + 3;\r\n      DAT_004f8340 = puVar4 + 0x3ff;\r\n      DAT_004f834c = puVar1;\r\n    }\r\n    else {\r\n      DAT_004f8344 = DAT_004f8344 + 3;\r\n    }\r\n  }\r\n  else {\r\n    puVar4 = DAT_004f8348;\r\n    DAT_004f8348 = (undefined4 *)*DAT_004f8348;\r\n  }\r\n  param_1[0x1d] = puVar4;\r\n  *puVar4 = puVar4;\r\n  *(undefined4 *)(param_1[0x1d] + 4) = param_1[0x1d];\r\n  param_1[0x1f] = 0;\r\n  param_1[0x20] = 0;\r\n  *param_1 = &PTR_LAB_004f08b0;\r\n  FUN_00404c80();\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043df80",
+      "name": "FUN_0043df80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00404040",
+      "name": "FUN_00404040"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "00404c80",
+      "name": "FUN_00404c80"
+    }
+  ],
+  "data_refs": []
+}

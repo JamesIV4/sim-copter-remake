@@ -1,0 +1,41 @@
+{
+  "address": "00447ed0",
+  "name": "FUN_00447ed0",
+  "signature": "undefined FUN_00447ed0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nint FUN_00447ed0(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_00448032;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  if (DAT_0051a4a8 != 0) {\r\n    local_8 = 0;\r\n    _SmackClose_4(DAT_0051a4a8);\r\n    DAT_0051a4a8 = 0;\r\n  }\r\n  piVar1 = DAT_0051a498;\r\n  local_8 = 0xffffffff;\r\n  if (param_1 == 0) {\r\n    if ((DAT_0051a49c - (int)DAT_0051a498 & 0xfffffff8U) == 0) {\r\n      iVar2 = 0;\r\n      goto LAB_00447f89;\r\n    }\r\n    if (*DAT_0051a498 != 0) {\r\n      FUN_004d29a0(*DAT_0051a498);\r\n    }\r\n    iVar2 = FUN_004d28b0(*(int *)(piVar1[1] + 4) + 1);\r\n    *piVar1 = iVar2;\r\n    uVar4 = ((undefined4 *)piVar1[1])[1];\r\n    if (uVar4 != 0) {\r\n      puVar5 = *(undefined4 **)piVar1[1];\r\n      puVar6 = (undefined4 *)*piVar1;\r\n      for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n        *puVar6 = *puVar5;\r\n        puVar5 = puVar5 + 1;\r\n        puVar6 = puVar6 + 1;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *(undefined1 *)puVar6 = *(undefined1 *)puVar5;\r\n        puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n        puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n      }\r\n    }\r\n    *(undefined1 *)(*(int *)(piVar1[1] + 4) + *piVar1) = 0;\r\n    param_1 = *piVar1;\r\n  }\r\n  local_8 = 2;\r\n  iVar2 = _SmackOpen_12(param_1,0x200,0xffffffff);\r\n  DAT_0051a4a8 = iVar2;\r\n  if (iVar2 == 0) {\r\n    DAT_0051a4a4 = 0;\r\n  }\r\n  else {\r\n    _DAT_0051a4b8 = *(undefined4 *)(iVar2 + 4);\r\n    DAT_0051a4bc = *(undefined4 *)(iVar2 + 8);\r\n  }\r\nLAB_00447f89:\r\n  *unaff_FS_OFFSET = local_10;\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004477b0",
+      "name": "FUN_004477b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448040",
+      "name": "FUN_00448040",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000d4",
+      "name": "_SmackClose@4"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:000000d9",
+      "name": "_SmackOpen@12"
+    }
+  ],
+  "data_refs": []
+}

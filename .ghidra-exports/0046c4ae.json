@@ -1,0 +1,13 @@
+{
+  "address": "0046c4ae",
+  "name": "FUN_0046c4ae",
+  "signature": "undefined FUN_0046c4ae(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_0046c4ae(int param_1,int param_2)\r\n\r\n{\r\n  return (uint)((longlong)param_1 * (longlong)param_2) >> 0xc |\r\n         (int)((ulonglong)((longlong)param_1 * (longlong)param_2) >> 0x20) << 0x14;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

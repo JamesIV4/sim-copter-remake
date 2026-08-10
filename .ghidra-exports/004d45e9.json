@@ -1,0 +1,24 @@
+{
+  "address": "004d45e9",
+  "name": "FUN_004d45e9",
+  "signature": "undefined FUN_004d45e9(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004d45e9(undefined4 param_1)\r\n\r\n{\r\n  undefined4 in_EAX;\r\n  undefined4 unaff_EBP;\r\n  \r\n  DAT_00506dd4 = param_1;\r\n  DAT_00506dd0 = in_EAX;\r\n  DAT_00506dd8 = unaff_EBP;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da4c0",
+      "name": "__CallSettingFrame@12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da4c0",
+      "name": "__CallSettingFrame@12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

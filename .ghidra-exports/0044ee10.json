@@ -1,0 +1,51 @@
+{
+  "address": "0044ee10",
+  "name": "FUN_0044ee10",
+  "signature": "undefined FUN_0044ee10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_0044ee10(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  HANDLE hFindFile;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  _WIN32_FIND_DATAA local_140;\r\n  \r\n  puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  puVar6 = (undefined4 *)0x0;\r\n  if (puVar2 != (undefined4 *)0x0) {\r\n    puVar2[1] = 0;\r\n    puVar2[2] = 0;\r\n    *puVar2 = 0;\r\n    puVar2[3] = 1;\r\n    puVar6 = puVar2;\r\n  }\r\n  if (*param_1 != 0) {\r\n    FUN_004d29a0(*param_1);\r\n  }\r\n  iVar3 = FUN_004d28b0(*(int *)(param_1[1] + 4) + 1);\r\n  *param_1 = iVar3;\r\n  uVar5 = ((undefined4 *)param_1[1])[1];\r\n  if (uVar5 != 0) {\r\n    puVar2 = *(undefined4 **)param_1[1];\r\n    puVar7 = (undefined4 *)*param_1;\r\n    for (uVar4 = uVar5 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n      *puVar7 = *puVar2;\r\n      puVar2 = puVar2 + 1;\r\n      puVar7 = puVar7 + 1;\r\n    }\r\n    for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n      *(undefined1 *)puVar7 = *(undefined1 *)puVar2;\r\n      puVar2 = (undefined4 *)((int)puVar2 + 1);\r\n      puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n    }\r\n  }\r\n  *(undefined1 *)(*(int *)(param_1[1] + 4) + *param_1) = 0;\r\n  hFindFile = FindFirstFileA((LPCSTR)*param_1,&local_140);\r\n  if (hFindFile != (HANDLE)0xffffffff) {\r\n    FindClose(hFindFile);\r\n  }\r\n  piVar1 = puVar6 + 3;\r\n  *piVar1 = *piVar1 + -1;\r\n  if ((*piVar1 == 0) && (puVar6 != (undefined4 *)0x0)) {\r\n    if (puVar6[2] != 0) {\r\n      FUN_004d29a0(*puVar6);\r\n      puVar6[2] = 0;\r\n      *puVar6 = 0;\r\n    }\r\n    FUN_004d29a0(puVar6);\r\n  }\r\n  return hFindFile != (HANDLE)0xffffffff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00431940",
+      "name": "FUN_00431940",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420670",
+      "name": "FUN_00420670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420670",
+      "name": "FUN_00420670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "EXTERNAL:00000006",
+      "name": "FindFirstFileA"
+    },
+    {
+      "addr": "EXTERNAL:00000029",
+      "name": "FindClose"
+    }
+  ],
+  "data_refs": []
+}

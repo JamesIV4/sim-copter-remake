@@ -1,0 +1,22 @@
+{
+  "address": "004cc410",
+  "name": "FUN_004cc410",
+  "signature": "undefined FUN_004cc410(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004cc410(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  short sVar1;\r\n  bool bVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  \r\n  bVar2 = true;\r\n  uVar4 = 0;\r\n  if (*(short *)(param_3 + 4) != -1) {\r\n    sVar1 = *(short *)(param_1 + -8 +\r\n                      ((int)*(short *)(param_3 + 4) + *(short *)(param_1 + 0xf4) * 10) * 2);\r\n    iVar3 = FUN_004abb00(0x20);\r\n    if (sVar1 <= iVar3) {\r\n      bVar2 = false;\r\n    }\r\n  }\r\n  if (bVar2) {\r\n    uVar4 = 3;\r\n    FUN_004c9b50();\r\n  }\r\n  return uVar4;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004abb00",
+      "name": "FUN_004abb00"
+    },
+    {
+      "addr": "004c9b50",
+      "name": "FUN_004c9b50"
+    }
+  ],
+  "data_refs": []
+}

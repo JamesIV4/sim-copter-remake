@@ -1,0 +1,29 @@
+{
+  "address": "004d2160",
+  "name": "FID_conflict:__lockexit",
+  "signature": "void __cdecl FID_conflict:__lockexit(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __lockexit\r\n    __unlockexit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl FID_conflict___lockexit(void)\r\n\r\n{\r\n  __lock(0xd);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d20a0",
+      "name": "FUN_004d20a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2b40",
+      "name": "__onexit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    }
+  ],
+  "data_refs": []
+}

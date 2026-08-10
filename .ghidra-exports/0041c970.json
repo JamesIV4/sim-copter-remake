@@ -1,0 +1,13 @@
+{
+  "address": "0041c970",
+  "name": "FUN_0041c970",
+  "signature": "undefined FUN_0041c970(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0041c970(void)\r\n\r\n{\r\n  int iVar1;\r\n  int local_4;\r\n  \r\n  do {\r\n    iVar1 = (**(code **)(*DAT_004f8610 + 0x44))(DAT_004f8610,&local_4);\r\n    if (local_4 != 0) {\r\n      return;\r\n    }\r\n  } while (iVar1 == 0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

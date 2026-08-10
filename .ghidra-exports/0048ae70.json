@@ -1,0 +1,34 @@
+{
+  "address": "0048ae70",
+  "name": "FUN_0048ae70",
+  "signature": "undefined FUN_0048ae70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0048ae70(int param_1,uint *param_2,undefined4 *param_3,undefined4 param_4,\r\n                 undefined4 param_5)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  bool bVar2;\r\n  int local_24;\r\n  int local_20;\r\n  int local_1c;\r\n  int local_18;\r\n  int local_14;\r\n  uint local_10;\r\n  uint local_c;\r\n  int local_4;\r\n  \r\n  local_24 = 0;\r\n  bVar2 = false;\r\n  local_18 = -1;\r\n  if (param_1 == 1) {\r\n    local_14 = 3;\r\n  }\r\n  else {\r\n    if (param_1 != 2) {\r\n      return;\r\n    }\r\n    local_14 = 5;\r\n  }\r\n  local_10 = *param_2;\r\n  local_c = param_2[1];\r\n  do {\r\n    local_18 = local_18 + 1;\r\n    switch(local_18) {\r\n    case 0:\r\n    case 4:\r\n      local_24 = local_24 + 1;\r\n      local_18 = 0;\r\n      local_20 = 0;\r\n      local_1c = -1;\r\n      break;\r\n    case 1:\r\n      local_20 = 1;\r\n      goto LAB_0048af1e;\r\n    case 2:\r\n      local_20 = 0;\r\n      local_1c = 1;\r\n      local_24 = local_24 + 1;\r\n      break;\r\n    case 3:\r\n      local_20 = -1;\r\nLAB_0048af1e:\r\n      local_1c = 0;\r\n    }\r\n    if (local_14 == local_24) {\r\n      bVar2 = true;\r\n      local_24 = local_24 + -1;\r\n    }\r\n    if (0 < local_24) {\r\n      local_4 = local_24;\r\n      do {\r\n        puVar1 = *(undefined4 **)\r\n                  ((&DAT_005d9200)[(local_10 & 0xff) * 0x100 + (local_c & 0xff)] + 0x10);\r\n        while (puVar1 != (undefined4 *)0x0) {\r\n          if ((((*(ushort *)(puVar1 + 3) & 4) == 0) && (param_3 != puVar1)) &&\r\n             ((*(ushort *)(puVar1 + 3) & 0x60) == 0)) {\r\n            FUN_0049a4f0(param_1,param_3,puVar1,param_4,param_5);\r\n          }\r\n          if ((*(byte *)(puVar1 + 3) & 4) == 0) {\r\n            puVar1 = (undefined4 *)*puVar1;\r\n          }\r\n          else {\r\n            puVar1 = *(undefined4 **)\r\n                      **(undefined4 **)**(undefined4 **)**(undefined4 **)**(undefined4 **)*puVar1;\r\n          }\r\n        }\r\n        local_10 = local_10 + local_20;\r\n        local_c = local_c + local_1c;\r\n        local_4 = local_4 + -1;\r\n      } while (local_4 != 0);\r\n    }\r\n    if (bVar2) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00489250",
+      "name": "FUN_00489250",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048a800",
+      "name": "FUN_0048a800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048a800",
+      "name": "FUN_0048a800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049a4f0",
+      "name": "FUN_0049a4f0"
+    }
+  ],
+  "data_refs": []
+}

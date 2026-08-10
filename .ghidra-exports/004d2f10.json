@@ -1,0 +1,32 @@
+{
+  "address": "004d2f10",
+  "name": "FUN_004d2f10",
+  "signature": "undefined FUN_004d2f10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004d2f10(streambuf *param_1)\r\n\r\n{\r\n  streambuf *psVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  char *pcVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  int iVar8;\r\n  char *pcVar9;\r\n  char *pcVar10;\r\n  \r\n  uVar5 = *(uint *)(param_1 + 0x14);\r\n  uVar7 = *(uint *)(param_1 + 0x10);\r\n  psVar1 = param_1 + 0x50;\r\n  iVar3 = *(int *)psVar1;\r\n  if (uVar7 < uVar5) {\r\n    iVar6 = iVar3;\r\n    if (iVar3 < 2) {\r\n      iVar6 = 1;\r\n    }\r\n    if ((int)((iVar6 - uVar7) + uVar5) < iVar3) {\r\n      iVar3 = *(int *)psVar1;\r\n      goto LAB_004d2f75;\r\n    }\r\n  }\r\n  else {\r\n    iVar6 = iVar3;\r\n    if (iVar3 < 2) {\r\n      iVar6 = 1;\r\n    }\r\n    if (iVar6 < iVar3) {\r\n      iVar3 = *(int *)psVar1;\r\n      goto LAB_004d2f75;\r\n    }\r\n  }\r\n  if (uVar7 < uVar5) {\r\n    iVar3 = *(int *)psVar1;\r\n    if (iVar3 < 2) {\r\n      iVar3 = 1;\r\n    }\r\n    iVar3 = (iVar3 - uVar7) + uVar5;\r\n  }\r\n  else {\r\n    iVar3 = *(int *)psVar1;\r\n    if (iVar3 < 2) {\r\n      iVar3 = 1;\r\n    }\r\n  }\r\nLAB_004d2f75:\r\n  iVar6 = 0;\r\n  if (*(code **)(param_1 + 0x5c) == (code *)0x0) {\r\n    pcVar4 = (char *)FUN_004d28b0(iVar3);\r\n  }\r\n  else {\r\n    pcVar4 = (char *)(**(code **)(param_1 + 0x5c))();\r\n  }\r\n  if (pcVar4 == (char *)0x0) {\r\n    return 0xffffffff;\r\n  }\r\n  pcVar9 = *(char **)(param_1 + 0x10);\r\n  if (pcVar9 < *(char **)(param_1 + 0x14)) {\r\n    uVar5 = (int)*(char **)(param_1 + 0x14) - (int)pcVar9;\r\n    pcVar10 = pcVar4;\r\n    for (uVar7 = uVar5 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *(undefined4 *)pcVar10 = *(undefined4 *)pcVar9;\r\n      pcVar9 = pcVar9 + 4;\r\n      pcVar10 = pcVar10 + 4;\r\n    }\r\n    for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n      *pcVar10 = *pcVar9;\r\n      pcVar9 = pcVar9 + 1;\r\n      pcVar10 = pcVar10 + 1;\r\n    }\r\n    iVar6 = (int)pcVar4 - *(int *)(param_1 + 0x10);\r\n  }\r\n  if (*(code **)(param_1 + 0x60) == (code *)0x0) {\r\n    FUN_004d29a0(*(undefined4 *)(param_1 + 0x10));\r\n  }\r\n  else {\r\n    (**(code **)(param_1 + 0x60))(*(undefined4 *)(param_1 + 0x10));\r\n  }\r\n  streambuf::setb(param_1,pcVar4,pcVar4 + iVar3,0);\r\n  if ((iVar6 != 0) && (*(int *)(param_1 + 0x2c) != 0)) {\r\n    *(int *)(param_1 + 0x24) = *(int *)(param_1 + 0x24) + iVar6;\r\n    *(int *)(param_1 + 0x28) = *(int *)(param_1 + 0x28) + iVar6;\r\n    *(int *)(param_1 + 0x2c) = *(int *)(param_1 + 0x2c) + iVar6;\r\n    *(undefined4 *)(param_1 + 0xc) = 0xffffffff;\r\n  }\r\n  if (*(int *)(param_1 + 0x20) != 0) {\r\n    iVar3 = *(int *)(param_1 + 0x18);\r\n    iVar2 = *(int *)(param_1 + 0x1c);\r\n    iVar8 = iVar3 + iVar6;\r\n    iVar6 = *(int *)(param_1 + 0x20) + iVar6;\r\n    *(int *)(param_1 + 0x18) = iVar8;\r\n    *(int *)(param_1 + 0x1c) = iVar8;\r\n    *(int *)(param_1 + 0x20) = iVar6;\r\n    if (iVar6 != 0) {\r\n      *(int *)(param_1 + 0x1c) = (iVar2 - iVar3) + iVar8;\r\n    }\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3060",
+      "name": "overflow",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d6ed0",
+      "name": "setb"
+    }
+  ],
+  "data_refs": []
+}

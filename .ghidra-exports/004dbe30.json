@@ -1,0 +1,24 @@
+{
+  "address": "004dbe30",
+  "name": "_strcspn",
+  "signature": "size_t __cdecl _strcspn(char * _Str, char * _Control)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef size_t uint",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _strcspn\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nsize_t __cdecl _strcspn(char *_Str,char *_Control)\r\n\r\n{\r\n  byte bVar1;\r\n  size_t sVar2;\r\n  byte abStack_28 [32];\r\n  \r\n  abStack_28[0x1c] = 0;\r\n  abStack_28[0x1d] = 0;\r\n  abStack_28[0x1e] = 0;\r\n  abStack_28[0x1f] = 0;\r\n  abStack_28[0x18] = 0;\r\n  abStack_28[0x19] = 0;\r\n  abStack_28[0x1a] = 0;\r\n  abStack_28[0x1b] = 0;\r\n  abStack_28[0x14] = 0;\r\n  abStack_28[0x15] = 0;\r\n  abStack_28[0x16] = 0;\r\n  abStack_28[0x17] = 0;\r\n  abStack_28[0x10] = 0;\r\n  abStack_28[0x11] = 0;\r\n  abStack_28[0x12] = 0;\r\n  abStack_28[0x13] = 0;\r\n  abStack_28[0xc] = 0;\r\n  abStack_28[0xd] = 0;\r\n  abStack_28[0xe] = 0;\r\n  abStack_28[0xf] = 0;\r\n  abStack_28[8] = 0;\r\n  abStack_28[9] = 0;\r\n  abStack_28[10] = 0;\r\n  abStack_28[0xb] = 0;\r\n  abStack_28[4] = 0;\r\n  abStack_28[5] = 0;\r\n  abStack_28[6] = 0;\r\n  abStack_28[7] = 0;\r\n  abStack_28[0] = 0;\r\n  abStack_28[1] = 0;\r\n  abStack_28[2] = 0;\r\n  abStack_28[3] = 0;\r\n  while( true ) {\r\n    bVar1 = *_Control;\r\n    if (bVar1 == 0) break;\r\n    _Control = _Control + 1;\r\n    abStack_28[(int)(uint)bVar1 >> 3] = abStack_28[(int)(uint)bVar1 >> 3] | '\\x01' << (bVar1 & 7);\r\n  }\r\n  sVar2 = 0xffffffff;\r\n  do {\r\n    sVar2 = sVar2 + 1;\r\n    bVar1 = *_Str;\r\n    if (bVar1 == 0) {\r\n      return sVar2;\r\n    }\r\n    _Str = _Str + 1;\r\n  } while ((abStack_28[(int)(uint)bVar1 >> 3] >> (bVar1 & 7) & 1) == 0);\r\n  return sVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4ab0",
+      "name": "_setlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5220",
+      "name": "___lc_strtolc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

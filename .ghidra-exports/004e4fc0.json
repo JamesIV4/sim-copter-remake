@@ -1,0 +1,19 @@
+{
+  "address": "004e4fc0",
+  "name": "FUN_004e4fc0",
+  "signature": "undefined FUN_004e4fc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined8 __fastcall FUN_004e4fc0(undefined4 param_1,undefined4 param_2)\r\n\r\n{\r\n  undefined4 in_EAX;\r\n  \r\n  PTR_LAB_004fc178 = &LAB_004e4fcd;\r\n  return CONCAT44(param_2,in_EAX);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

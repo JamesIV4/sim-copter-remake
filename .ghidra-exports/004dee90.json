@@ -1,0 +1,24 @@
+{
+  "address": "004dee90",
+  "name": "__decomp",
+  "signature": "undefined __decomp(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __decomp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nfloat10 __decomp(uint param_1,uint param_2,int *param_3)\r\n\r\n{\r\n  ushort uVar1;\r\n  int iVar2;\r\n  double dVar3;\r\n  byte bVar4;\r\n  int iVar5;\r\n  float10 fVar6;\r\n  double local_8;\r\n  \r\n  if ((param_2 & 0x7fffffff) == 0 && param_1 == 0) {\r\n    iVar5 = 0;\r\n    local_8 = 0.0;\r\n  }\r\n  else if (((param_2 & 0x7ff00000) == 0) && (((param_2 & 0xfffff) != 0 || (param_1 != 0)))) {\r\n    dVar3 = (double)CONCAT17(param_2._3_1_,CONCAT16(param_2._2_1_,CONCAT24((ushort)param_2,param_1))\r\n                            );\r\n    iVar5 = -0x3fd;\r\n    if ((param_2 & 0x100000) == 0) {\r\n      do {\r\n        bVar4 = param_2._2_1_;\r\n        iVar2 = CONCAT13(param_2._3_1_,CONCAT12(param_2._2_1_,(ushort)param_2)) << 1;\r\n        param_2._0_2_ = (ushort)iVar2;\r\n        param_2._2_1_ = (byte)((uint)iVar2 >> 0x10);\r\n        param_2._3_1_ = (byte)((uint)iVar2 >> 0x18);\r\n        if ((param_1 & 0x80000000) != 0) {\r\n          param_2._0_2_ = (ushort)param_2 | 1;\r\n        }\r\n        iVar5 = iVar5 + -1;\r\n        param_1 = param_1 << 1;\r\n      } while ((bVar4 & 8) == 0);\r\n    }\r\n    uVar1 = CONCAT11(param_2._3_1_,param_2._2_1_) & 0xffef;\r\n    param_2._2_1_ = (byte)uVar1;\r\n    param_2._3_1_ = (byte)(uVar1 >> 8);\r\n    if (dVar3 < 0.0) {\r\n      param_2._3_1_ = param_2._3_1_ | 0x80;\r\n    }\r\n    fVar6 = (float10)__set_exp(param_1,CONCAT13(param_2._3_1_,\r\n                                                CONCAT12(param_2._2_1_,(ushort)param_2)),0);\r\n    local_8 = (double)fVar6;\r\n  }\r\n  else {\r\n    iVar5 = (short)(((ushort)(param_2 >> 0x10) & 0x7ff0) >> 4) + -0x3fe;\r\n    fVar6 = (float10)__set_exp(param_1,param_2,0);\r\n    local_8 = (double)fVar6;\r\n  }\r\n  *param_3 = iVar5;\r\n  return (float10)local_8;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dea40",
+      "name": "__handle_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dede0",
+      "name": "__set_exp"
+    }
+  ],
+  "data_refs": []
+}

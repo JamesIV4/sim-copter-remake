@@ -1,0 +1,24 @@
+{
+  "address": "004d5490",
+  "name": "FUN_004d5490",
+  "signature": "undefined FUN_004d5490(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d5490(ulong param_1)\r\n\r\n{\r\n  _ptiddata p_Var1;\r\n  \r\n  p_Var1 = __getptd();\r\n  p_Var1->_holdrand = param_1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004abce0",
+      "name": "FUN_004abce0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    }
+  ],
+  "data_refs": []
+}

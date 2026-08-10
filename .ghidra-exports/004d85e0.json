@@ -1,0 +1,24 @@
+{
+  "address": "004d85e0",
+  "name": "__ms_p5_test_fdiv",
+  "signature": "undefined __ms_p5_test_fdiv(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ms_p5_test_fdiv\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined1 __ms_p5_test_fdiv(void)\r\n\r\n{\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d8630",
+      "name": "FUN_004d8630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8630",
+      "name": "FUN_004d8630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

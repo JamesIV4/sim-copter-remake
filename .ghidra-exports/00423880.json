@@ -1,0 +1,24 @@
+{
+  "address": "00423880",
+  "name": "FUN_00423880",
+  "signature": "undefined FUN_00423880(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00423880(byte param_1,byte *param_2)\r\n\r\n{\r\n  if (((param_1 < 0x41) || (0x5a < param_1)) && ((param_1 < 0xc0 || (0xdf < param_1)))) {\r\n    *param_2 = param_1;\r\n    return 1;\r\n  }\r\n  *param_2 = param_1 + 0x20;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422f50",
+      "name": "FUN_00422f50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043d670",
+      "name": "FUN_0043d670",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

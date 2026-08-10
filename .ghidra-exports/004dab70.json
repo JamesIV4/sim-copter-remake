@@ -1,0 +1,44 @@
+{
+  "address": "004dab70",
+  "name": "__setmbcp",
+  "signature": "int __cdecl __setmbcp(int _CodePage)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __setmbcp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __setmbcp(int _CodePage)\r\n\r\n{\r\n  byte *pbVar1;\r\n  byte bVar2;\r\n  UINT CodePage;\r\n  UINT *pUVar3;\r\n  BOOL BVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  BYTE *pBVar8;\r\n  byte *pbVar9;\r\n  undefined4 *puVar10;\r\n  int local_18;\r\n  _cpinfo local_14;\r\n  \r\n  __lock(0x19);\r\n  CodePage = getSystemCP(_CodePage);\r\n  if (DAT_0050797c == CodePage) {\r\n    FUN_004d64a0(0x19);\r\n    return 0;\r\n  }\r\n  if (CodePage == 0) {\r\n    setSBCS();\r\n    FUN_004d64a0(0x19);\r\n    return 0;\r\n  }\r\n  local_18 = 0;\r\n  pUVar3 = &DAT_005079a0;\r\n  do {\r\n    if (*pUVar3 == CodePage) {\r\n      uVar5 = 0;\r\n      puVar10 = &DAT_00507878;\r\n      for (iVar6 = 0x40; iVar6 != 0; iVar6 = iVar6 + -1) {\r\n        *puVar10 = 0;\r\n        puVar10 = puVar10 + 1;\r\n      }\r\n      *(undefined1 *)puVar10 = 0;\r\n      do {\r\n        pbVar9 = &DAT_005079b0 + (local_18 * 6 + uVar5) * 8;\r\n        bVar2 = *pbVar9;\r\n        while ((bVar2 != 0 && (pbVar9[1] != 0))) {\r\n          uVar7 = (uint)*pbVar9;\r\n          if (uVar7 <= pbVar9[1]) {\r\n            bVar2 = (&DAT_00507998)[uVar5];\r\n            do {\r\n              pbVar1 = (byte *)((int)&DAT_00507878 + uVar7 + 1);\r\n              *pbVar1 = *pbVar1 | bVar2;\r\n              uVar7 = uVar7 + 1;\r\n            } while (uVar7 <= pbVar9[1]);\r\n          }\r\n          pbVar9 = pbVar9 + 2;\r\n          bVar2 = *pbVar9;\r\n        }\r\n        uVar5 = uVar5 + 1;\r\n      } while (uVar5 < 4);\r\n      DAT_0050797c = CodePage;\r\n      DAT_00507980 = _CPtoLCID(CodePage);\r\n      DAT_0050798c = *(undefined4 *)(&DAT_005079a8 + local_18 * 0x30);\r\n      DAT_00507988 = *(undefined4 *)(&DAT_005079a4 + local_18 * 0x30);\r\n      DAT_00507990 = *(undefined4 *)(local_18 * 0x30 + 0x5079ac);\r\n      FUN_004d64a0(0x19);\r\n      return 0;\r\n    }\r\n    pUVar3 = pUVar3 + 0xc;\r\n    local_18 = local_18 + 1;\r\n  } while (pUVar3 < &DAT_00507a90);\r\n  BVar4 = GetCPInfo(CodePage,&local_14);\r\n  if (BVar4 == 1) {\r\n    puVar10 = &DAT_00507878;\r\n    for (iVar6 = 0x40; iVar6 != 0; iVar6 = iVar6 + -1) {\r\n      *puVar10 = 0;\r\n      puVar10 = puVar10 + 1;\r\n    }\r\n    *(undefined1 *)puVar10 = 0;\r\n    if (local_14.MaxCharSize < 2) {\r\n      DAT_00507980 = 0;\r\n      DAT_0050797c = 0;\r\n    }\r\n    else {\r\n      pBVar8 = local_14.LeadByte;\r\n      while ((local_14.LeadByte[0] != 0 && (pBVar8[1] != 0))) {\r\n        uVar5 = (uint)*pBVar8;\r\n        if (uVar5 <= pBVar8[1]) {\r\n          do {\r\n            pbVar9 = (byte *)((int)&DAT_00507878 + uVar5 + 1);\r\n            *pbVar9 = *pbVar9 | 4;\r\n            uVar5 = uVar5 + 1;\r\n          } while (uVar5 <= pBVar8[1]);\r\n        }\r\n        pBVar8 = pBVar8 + 2;\r\n        local_14.LeadByte[0] = *pBVar8;\r\n      }\r\n      uVar5 = 1;\r\n      do {\r\n        pbVar9 = (byte *)((int)&DAT_00507878 + uVar5 + 1);\r\n        *pbVar9 = *pbVar9 | 8;\r\n        uVar5 = uVar5 + 1;\r\n      } while (uVar5 < 0xff);\r\n      DAT_0050797c = CodePage;\r\n      DAT_00507980 = _CPtoLCID(CodePage);\r\n    }\r\n    DAT_00507988 = 0;\r\n    DAT_0050798c = 0;\r\n    DAT_00507990 = 0;\r\n    FUN_004d64a0(0x19);\r\n    return 0;\r\n  }\r\n  if (DAT_00507994 == 0) {\r\n    FUN_004d64a0(0x19);\r\n    return -1;\r\n  }\r\n  setSBCS();\r\n  FUN_004d64a0(0x19);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dae80",
+      "name": "___initmbctable",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004dada0",
+      "name": "getSystemCP"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "004dae50",
+      "name": "setSBCS"
+    },
+    {
+      "addr": "EXTERNAL:00000049",
+      "name": "GetCPInfo"
+    },
+    {
+      "addr": "004dadf0",
+      "name": "_CPtoLCID"
+    }
+  ],
+  "data_refs": []
+}

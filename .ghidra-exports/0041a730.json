@@ -1,0 +1,66 @@
+{
+  "address": "0041a730",
+  "name": "FUN_0041a730",
+  "signature": "undefined FUN_0041a730(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0041a730(int param_1,undefined4 *param_2,int param_3,undefined4 *param_4,undefined4 param_5\r\n                 ,int param_6,undefined4 param_7,undefined4 param_8,CHAR param_9,undefined4 param_10\r\n                 ,CHAR param_11)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  UINT uID;\r\n  int extraout_ECX;\r\n  uint uVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  char *pcVar6;\r\n  undefined4 *puVar7;\r\n  int *in_stack_00001030;\r\n  \r\n  FUN_004d2c30();\r\n  param_7 = 0;\r\n  param_8 = 0;\r\n  param_9 = param_11;\r\n  FUN_0041a990();\r\n  param_4 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (param_4 == (undefined4 *)0x0) {\r\n    param_4 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_4[1] = 0;\r\n    param_4[2] = 0;\r\n    *param_4 = 0;\r\n    param_4[3] = 1;\r\n  }\r\n  param_3 = 0;\r\n  param_2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (param_2 == (undefined4 *)0x0) {\r\n    param_2 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_2[1] = 0;\r\n    param_2[2] = 0;\r\n    *param_2 = 0;\r\n    param_2[3] = 1;\r\n  }\r\n  *(undefined4 *)(extraout_ECX + 0x74) = 1;\r\n  param_1 = 0;\r\n  for (puVar7 = *(undefined4 **)*in_stack_00001030; (undefined4 *)*in_stack_00001030 != puVar7;\r\n      puVar7 = (undefined4 *)*puVar7) {\r\n    iVar2 = puVar7[3];\r\n    if ((0 < iVar2) && (iVar2 < 0x42)) {\r\n      FUN_0041b4c0(&param_11,puVar7 + 3);\r\n    }\r\n  }\r\n  iVar2 = *(int *)(param_6 + 8);\r\n  do {\r\n    if (iVar2 == param_6) {\r\n      *(undefined4 *)(extraout_ECX + 0x74) = 0;\r\n      FUN_00401ed0();\r\n      if (param_1 != 0) {\r\n        FUN_004d29a0(param_1);\r\n      }\r\n      FUN_00401ed0();\r\n      if (param_3 != 0) {\r\n        FUN_004d29a0(param_3);\r\n      }\r\n      FUN_0041abc0();\r\n      return;\r\n    }\r\n    uID = FUN_00423270(*(int *)(iVar2 + 0x10) + 0x96,0);\r\n    LoadStringA(DAT_0051a050,uID,&param_11,0xfff);\r\n    uVar3 = 0xffffffff;\r\n    pcVar6 = &param_11;\r\n    do {\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FUN_004017f0(&param_11,~uVar3 - 1);\r\n    iVar4 = 0;\r\n    for (puVar7 = *(undefined4 **)*in_stack_00001030; (undefined4 *)*in_stack_00001030 != puVar7;\r\n        puVar7 = (undefined4 *)*puVar7) {\r\n      iVar5 = iVar4;\r\n      if ((puVar7[3] == *(int *)(iVar2 + 0x10)) && (puVar7[2] == 0)) {\r\n        iVar5 = iVar4 + 1;\r\n        FUN_0041ad30(&param_1,puVar7[4],puVar7[5],iVar4);\r\n      }\r\n      iVar4 = iVar5;\r\n    }\r\n    (**(code **)(**(int **)(extraout_ECX + 0x78) + 0xe8))(&param_3,0xffffffff);\r\n    (**(code **)(**(int **)(extraout_ECX + 0x7c) + 0xe8))(&stack0xfffffffc,0xffffffff);\r\n    FUN_00402490(0,0xffffffff);\r\n    FUN_00402490(0,0xffffffff);\r\n    FUN_0041a940();\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "0041a990",
+      "name": "FUN_0041a990"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0041b4c0",
+      "name": "FUN_0041b4c0"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30"
+    },
+    {
+      "addr": "00402490",
+      "name": "FUN_00402490"
+    },
+    {
+      "addr": "0041a940",
+      "name": "FUN_0041a940"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0041abc0",
+      "name": "FUN_0041abc0"
+    }
+  ],
+  "data_refs": []
+}

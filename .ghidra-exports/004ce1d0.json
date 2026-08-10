@@ -1,0 +1,38 @@
+{
+  "address": "004ce1d0",
+  "name": "FUN_004ce1d0",
+  "signature": "undefined FUN_004ce1d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_004ce1d0(HLOCAL param_1)\r\n\r\n{\r\n  UINT UVar1;\r\n  uint uVar2;\r\n  \r\n  SetLastError(0);\r\n  UVar1 = LocalFlags(param_1);\r\n  uVar2 = 0;\r\n  if ((char)UVar1 != '\\0') {\r\n    uVar2 = 0x80;\r\n  }\r\n  if ((UVar1 & 0xf00) != 0) {\r\n    uVar2 = uVar2 | 0x40;\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cdae0",
+      "name": "FUN_004cdae0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdcb0",
+      "name": "FUN_004cdcb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cdcb0",
+      "name": "FUN_004cdcb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000006e",
+      "name": "SetLastError"
+    },
+    {
+      "addr": "EXTERNAL:0000006a",
+      "name": "LocalFlags"
+    }
+  ],
+  "data_refs": []
+}

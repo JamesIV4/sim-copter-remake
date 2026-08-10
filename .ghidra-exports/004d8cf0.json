@@ -1,0 +1,48 @@
+{
+  "address": "004d8cf0",
+  "name": "__commit",
+  "signature": "int __cdecl __commit(int _FileHandle)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __commit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __commit(int _FileHandle)\r\n\r\n{\r\n  int *piVar1;\r\n  HANDLE hFile;\r\n  BOOL BVar2;\r\n  DWORD *pDVar3;\r\n  undefined4 *puVar4;\r\n  DWORD DVar5;\r\n  int iVar6;\r\n  \r\n  if (DAT_0061bc80 <= (uint)_FileHandle) {\r\nLAB_004d8d7e:\r\n    puVar4 = (undefined4 *)FUN_004da730();\r\n    *puVar4 = 9;\r\n    return -1;\r\n  }\r\n  piVar1 = (int *)((int)&DAT_0061bb80 + ((int)(_FileHandle & 0xffffffe7U) >> 3));\r\n  iVar6 = (_FileHandle & 0x1fU) * 0x24;\r\n  if ((*(byte *)(*piVar1 + 4 + iVar6) & 1) == 0) goto LAB_004d8d7e;\r\n  __lock_fhandle(_FileHandle);\r\n  if ((*(byte *)(*piVar1 + 4 + iVar6) & 1) != 0) {\r\n    DVar5 = 0;\r\n    hFile = (HANDLE)FUN_004dfa40(_FileHandle);\r\n    BVar2 = FlushFileBuffers(hFile);\r\n    if (BVar2 == 0) {\r\n      DVar5 = GetLastError();\r\n    }\r\n    iVar6 = 0;\r\n    if (DVar5 == 0) goto LAB_004d8d6f;\r\n    pDVar3 = (DWORD *)FUN_004da740();\r\n    *pDVar3 = DVar5;\r\n  }\r\n  iVar6 = -1;\r\n  puVar4 = (undefined4 *)FUN_004da730();\r\n  *puVar4 = 9;\r\nLAB_004d8d6f:\r\n  __unlock_fhandle(_FileHandle);\r\n  return iVar6;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3b20",
+      "name": "__fflush_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfa90",
+      "name": "__lock_fhandle"
+    },
+    {
+      "addr": "004dfa40",
+      "name": "FUN_004dfa40"
+    },
+    {
+      "addr": "EXTERNAL:0000004d",
+      "name": "FlushFileBuffers"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004dfb00",
+      "name": "__unlock_fhandle"
+    }
+  ],
+  "data_refs": []
+}

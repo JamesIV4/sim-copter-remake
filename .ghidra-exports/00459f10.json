@@ -1,0 +1,29 @@
+{
+  "address": "00459f10",
+  "name": "FUN_00459f10",
+  "signature": "undefined FUN_00459f10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __fastcall FUN_00459f10(int *param_1)\r\n\r\n{\r\n  bool bVar1;\r\n  int iVar2;\r\n  \r\n  bVar1 = false;\r\n  if (0x7fffffff < (uint)param_1[0x42]) {\r\n    iVar2 = (**(code **)(*param_1 + 4))();\r\n    if (iVar2 == 0) {\r\n      return 0;\r\n    }\r\n    bVar1 = true;\r\n  }\r\n  iVar2 = param_1[0x4d];\r\n  if (bVar1) {\r\n    (**(code **)(*param_1 + 0x10))();\r\n  }\r\n  __write(param_1[0x42],(void *)param_1[0x44],0);\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045d110",
+      "name": "FUN_0045d110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

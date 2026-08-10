@@ -1,0 +1,45 @@
+{
+  "address": "004e1190",
+  "name": "___crtGetLocaleInfoW",
+  "signature": "undefined ___crtGetLocaleInfoW(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___crtGetLocaleInfoW\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint ___crtGetLocaleInfoW(LCID param_1,LCTYPE param_2,LPWSTR param_3,int param_4,UINT param_5)\r\n\r\n{\r\n  int iVar1;\r\n  LPSTR lpLCData;\r\n  \r\n  iVar1 = DAT_0050883c;\r\n  if (DAT_0050883c == 0) {\r\n    iVar1 = GetLocaleInfoW(0,1,(LPWSTR)0x0,0);\r\n    if (iVar1 == 0) {\r\n      iVar1 = GetLocaleInfoA(0,1,(LPSTR)0x0,0);\r\n      if (iVar1 == 0) {\r\n        return 0;\r\n      }\r\n      iVar1 = 2;\r\n    }\r\n    else {\r\n      iVar1 = 1;\r\n    }\r\n  }\r\n  DAT_0050883c = iVar1;\r\n  if (iVar1 == 1) {\r\n    iVar1 = GetLocaleInfoW(param_1,param_2,param_3,param_4);\r\n    return iVar1;\r\n  }\r\n  if (iVar1 == 2) {\r\n    if (param_5 == 0) {\r\n      param_5 = DAT_00507ac8;\r\n    }\r\n    iVar1 = GetLocaleInfoA(param_1,param_2,(LPSTR)0x0,0);\r\n    if (iVar1 == 0) {\r\n      return 0;\r\n    }\r\n    lpLCData = (LPSTR)FUN_004d5f00(iVar1);\r\n    if (lpLCData == (LPSTR)0x0) {\r\n      return 0;\r\n    }\r\n    iVar1 = GetLocaleInfoA(param_1,param_2,lpLCData,iVar1);\r\n    if (iVar1 != 0) {\r\n      if (param_4 == 0) {\r\n        iVar1 = MultiByteToWideChar(param_5,1,lpLCData,-1,(LPWSTR)0x0,0);\r\n      }\r\n      else {\r\n        iVar1 = MultiByteToWideChar(param_5,1,lpLCData,-1,param_3,param_4);\r\n      }\r\n      if (iVar1 != 0) {\r\n        FUN_004d6010(lpLCData);\r\n        return iVar1;\r\n      }\r\n    }\r\n    FUN_004d6010(lpLCData);\r\n    iVar1 = 0;\r\n  }\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000033",
+      "name": "GetLocaleInfoW"
+    },
+    {
+      "addr": "EXTERNAL:00000034",
+      "name": "GetLocaleInfoA"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "EXTERNAL:00000041",
+      "name": "MultiByteToWideChar"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

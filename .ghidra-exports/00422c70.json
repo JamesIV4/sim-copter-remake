@@ -1,0 +1,24 @@
+{
+  "address": "00422c70",
+  "name": "FUN_00422c70",
+  "signature": "undefined FUN_00422c70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00422c70(LPSTR param_1,UINT param_2)\r\n\r\n{\r\n  LoadStringA(DAT_0051a050,param_2,param_1,31999);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a6c30",
+      "name": "FUN_004a6c30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    }
+  ],
+  "data_refs": []
+}

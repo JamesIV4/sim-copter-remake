@@ -1,0 +1,45 @@
+{
+  "address": "0049bd00",
+  "name": "FUN_0049bd00",
+  "signature": "undefined FUN_0049bd00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0049bd00(int param_1,undefined4 param_2,undefined4 param_3)\r\n\r\n{\r\n  int iVar1;\r\n  short sVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined4 uVar5;\r\n  int local_64;\r\n  int local_60;\r\n  int local_5c;\r\n  int local_58 [2];\r\n  int local_50;\r\n  int local_4c;\r\n  int local_48;\r\n  int local_44;\r\n  undefined1 local_40 [64];\r\n  \r\n  local_48 = *(int *)(param_1 + 0x34);\r\n  local_4c = *(int *)(param_1 + 0x30);\r\n  local_44 = *(int *)(param_1 + 0x38);\r\n  FUN_00467d30(local_40,*(undefined4 *)(param_1 + 0x103));\r\n  iVar1 = local_48;\r\n  if (DAT_00582c70 == 1) {\r\n    uVar5 = 0x3840000;\r\n  }\r\n  else {\r\n    uVar5 = 0xa8c0000;\r\n  }\r\n  iVar3 = 8;\r\n  FUN_0046cafc(uVar5,local_40);\r\n  do {\r\n    iVar4 = 0;\r\n    do {\r\n      FUN_0046cb74(&DAT_004fa2e0,local_58,local_40);\r\n      local_58[0] = iVar3 * local_58[0];\r\n      local_50 = iVar3 * local_50;\r\n      local_64 = local_58[0] + local_4c;\r\n      local_5c = local_50 + local_44;\r\n      local_60 = FUN_004aea90(local_64,local_5c);\r\n      if ((local_60 <= iVar1 + 0x50000) && (iVar1 + -0x50000 <= local_60)) {\r\n        sVar2 = FUN_004c3eb0(param_2,param_3,\r\n                             CONCAT22((short)((uint)(param_1 + 0x18) >> 0x10),\r\n                                      (ushort)*(byte *)(param_1 + 0x88)),\r\n                             CONCAT22((short)((uint)&local_64 >> 0x10),\r\n                                      (ushort)*(byte *)(param_1 + 0x89)),\r\n                             *(undefined4 *)(param_1 + 0x113),param_1 + 0x18,&local_64);\r\n        if (-1 < sVar2) {\r\n          return 1;\r\n        }\r\n        FUN_0046cafc(0x640000,local_40);\r\n      }\r\n      iVar4 = iVar4 + 1;\r\n    } while (iVar4 < 0x24);\r\n    iVar3 = iVar3 + 8;\r\n  } while (iVar3 < 0x21);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b8b60",
+      "name": "FUN_004b8b60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bd980",
+      "name": "FUN_004bd980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30"
+    },
+    {
+      "addr": "0046cafc",
+      "name": "FUN_0046cafc"
+    },
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "004aea90",
+      "name": "FUN_004aea90"
+    },
+    {
+      "addr": "004c3eb0",
+      "name": "FUN_004c3eb0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,45 @@
+{
+  "address": "004c1850",
+  "name": "FUN_004c1850",
+  "signature": "undefined FUN_004c1850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c1850(int *param_1)\r\n\r\n{\r\n  short sVar1;\r\n  int iVar2;\r\n  \r\n  iVar2 = *param_1;\r\n  if (iVar2 != 0) {\r\n    if (iVar2 == 100000) {\r\n      *param_1 = *(int *)(DAT_005040d0 + 0xa4);\r\n      return;\r\n    }\r\n    if (iVar2 == 0x186a1) {\r\n      *param_1 = *(int *)(DAT_005040d0 + 0xbc);\r\n      return;\r\n    }\r\n    if (iVar2 == 0x186a2) {\r\n      iVar2 = FUN_004b1ac0();\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 == 0x186a3) {\r\n      iVar2 = FUN_004b4420();\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 == 0x186a4) {\r\n      *param_1 = *(int *)(DAT_005040d0 + 0xc0);\r\n      return;\r\n    }\r\n    sVar1 = (short)iVar2;\r\n    if (iVar2 < 300000) {\r\n      iVar2 = DAT_00506444;\r\n      if ((short)(sVar1 + -0xd40) != 32000) {\r\n        iVar2 = (&DAT_0058e030)[(short)(sVar1 + -0xd40)];\r\n      }\r\n      *param_1 = iVar2 + 0x1b4;\r\n      return;\r\n    }\r\n    if (iVar2 < 400000) {\r\n      iVar2 = FUN_0049b910((int)(short)(sVar1 + 0x6c20));\r\n      *param_1 = iVar2 + 0x18;\r\n      return;\r\n    }\r\n    if (iVar2 < 410000) {\r\n      iVar2 = FUN_00491c10(0x10,(int)(short)(sVar1 + -0x1a80));\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 < 420000) {\r\n      iVar2 = FUN_00491c10(8,(int)(short)(sVar1 + -0x4190));\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 < 430000) {\r\n      iVar2 = FUN_00491c10(2,(int)(short)(sVar1 + -0x68a0));\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 < 440000) {\r\n      iVar2 = FUN_00491c10(4,(int)(short)(sVar1 + 0x7050));\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 < 500000) {\r\n      iVar2 = FUN_00491c10(0x100,(int)(short)(sVar1 + 0x4940));\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 < 600000) {\r\n      iVar2 = FUN_004b3ff0((int)(short)(sVar1 + 0x5ee0));\r\n      *param_1 = iVar2;\r\n      return;\r\n    }\r\n    if (iVar2 < 700000) {\r\n      *param_1 = (&DAT_005d71b4)[(short)(sVar1 + -0x27c0) * 0xcf];\r\n      return;\r\n    }\r\n    *param_1 = 0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c14b0",
+      "name": "FUN_004c14b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c14b0",
+      "name": "FUN_004c14b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004b1ac0",
+      "name": "FUN_004b1ac0"
+    },
+    {
+      "addr": "004b4420",
+      "name": "FUN_004b4420"
+    },
+    {
+      "addr": "0049b910",
+      "name": "FUN_0049b910"
+    },
+    {
+      "addr": "00491c10",
+      "name": "FUN_00491c10"
+    },
+    {
+      "addr": "004b3ff0",
+      "name": "FUN_004b3ff0"
+    }
+  ],
+  "data_refs": []
+}

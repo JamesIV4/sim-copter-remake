@@ -1,0 +1,33 @@
+{
+  "address": "00455fd0",
+  "name": "FUN_00455fd0",
+  "signature": "undefined FUN_00455fd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00455fd0(undefined4 *param_1,LPMMCKINFO param_2,MMCKINFO *param_3)\r\n\r\n{\r\n  LONG LVar1;\r\n  \r\n  LVar1 = mmioSeek((HMMIO)*param_1,param_3->dwDataOffset + 4,0);\r\n  if (LVar1 != -1) {\r\n    param_2->ckid = 0x61746164;\r\n    mmioDescend((HMMIO)*param_1,param_2,param_3,0x10);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000ce",
+      "name": "mmioSeek"
+    },
+    {
+      "addr": "EXTERNAL:000000cf",
+      "name": "mmioDescend"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,24 @@
+{
+  "address": "004e18e0",
+  "name": "FID_conflict:_ungetc",
+  "signature": "int __cdecl FID_conflict:_ungetc(int _Ch, FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __ungetc_lk\r\n    _ungetc\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl FID_conflict__ungetc(int _Ch,FILE *_File)\r\n\r\n{\r\n  char *pcVar1;\r\n  uint uVar2;\r\n  \r\n  if (_Ch != -1) {\r\n    uVar2 = _File->_flag;\r\n    if (((uVar2 & 1) != 0) || (((uVar2 & 0x80) != 0 && ((uVar2 & 2) == 0)))) {\r\n      if (_File->_base == (char *)0x0) {\r\n        __getbuf(_File);\r\n      }\r\n      if (_File->_base == _File->_ptr) {\r\n        if (_File->_cnt != 0) {\r\n          return -1;\r\n        }\r\n        _File->_ptr = _File->_ptr + 1;\r\n      }\r\n      pcVar1 = _File->_ptr;\r\n      if ((_File->_flag & 0x40) == 0) {\r\n        _File->_ptr = pcVar1 + -1;\r\n        pcVar1[-1] = (char)_Ch;\r\n      }\r\n      else {\r\n        _File->_ptr = pcVar1 + -1;\r\n        if (pcVar1[-1] != (char)_Ch) {\r\n          _File->_ptr = pcVar1;\r\n          return -1;\r\n        }\r\n      }\r\n      _File->_cnt = _File->_cnt + 1;\r\n      uVar2 = _File->_flag & 0xffffffef;\r\n      _File->_flag = uVar2;\r\n      _File->_flag = uVar2 | 1;\r\n      return _Ch & 0xff;\r\n    }\r\n  }\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd080",
+      "name": "FUN_004dd080",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfb30",
+      "name": "__getbuf"
+    }
+  ],
+  "data_refs": []
+}

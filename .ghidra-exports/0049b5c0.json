@@ -1,0 +1,36 @@
+{
+  "address": "0049b5c0",
+  "name": "FUN_0049b5c0",
+  "signature": "undefined FUN_0049b5c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0049b5c0(int param_1,short param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  \r\n  if ((*(byte *)(param_1 + 4) & 2) == 0) {\r\n    return 0;\r\n  }\r\n  if (param_2 != 1) {\r\n    return 1;\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x14);\r\n  if ((iVar1 < 0x11c) || ((0x11d < iVar1 && (iVar1 != 0x11f)))) {\r\n    return 0;\r\n  }\r\n  if (iVar1 == 0x11c) {\r\n    (**(code **)(**(int **)(DAT_0051af00 + 0x10) + 0x24))(DAT_00519cc0);\r\n    iVar1 = FUN_004d28b0(0x18);\r\n    if (iVar1 == 0) {\r\n      uVar3 = 0;\r\n    }\r\n    else {\r\n      uVar3 = FUN_00401030(*(undefined4 *)(DAT_0051af00 + 0x10),500,0);\r\n    }\r\n  }\r\n  else {\r\n    if (iVar1 == 0x11d) {\r\n      (**(code **)(**(int **)(DAT_0051ac50 + 0x10) + 0x24))(DAT_00519cc0);\r\n      iVar2 = FUN_004d28b0(0x18);\r\n      iVar1 = DAT_0051ac50;\r\n    }\r\n    else {\r\n      if (iVar1 != 0x11f) goto LAB_0049b6d5;\r\n      (**(code **)(**(int **)(DAT_0051ac7c + 0x10) + 0x24))(DAT_00519cc0);\r\n      iVar2 = FUN_004d28b0(0x18);\r\n      iVar1 = DAT_0051ac7c;\r\n    }\r\n    uVar3 = 0;\r\n    if (iVar2 != 0) {\r\n      uVar3 = FUN_00401030(*(undefined4 *)(iVar1 + 0x10),500,0);\r\n    }\r\n  }\r\n  FUN_00401410(uVar3);\r\nLAB_0049b6d5:\r\n  FUN_004bdc70();\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049b3f0",
+      "name": "FUN_0049b3f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00401030",
+      "name": "FUN_00401030"
+    },
+    {
+      "addr": "00401410",
+      "name": "FUN_00401410"
+    },
+    {
+      "addr": "004bdc70",
+      "name": "FUN_004bdc70"
+    }
+  ],
+  "data_refs": []
+}

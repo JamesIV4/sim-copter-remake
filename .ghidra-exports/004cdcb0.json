@@ -1,0 +1,69 @@
+{
+  "address": "004cdcb0",
+  "name": "FUN_004cdcb0",
+  "signature": "undefined FUN_004cdcb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004cdcb0(int param_1,int param_2,int param_3,short param_4)\r\n\r\n{\r\n  DWORD DVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  int iVar4;\r\n  undefined1 local_9;\r\n  undefined4 local_8;\r\n  int local_4;\r\n  \r\n  if (*(int *)(param_2 + 8) != 0) {\r\n    local_9 = FUN_004ce1d0(*(int *)(param_2 + 8));\r\n  }\r\n  iVar4 = *(int *)(param_1 + 0x18) + (*(int *)(param_2 + 4) >> 8);\r\n  FUN_004ce4b0(iVar4);\r\n  DVar1 = FUN_004cd630();\r\n  if (DVar1 == 0) {\r\n    FUN_004ce530(&local_8);\r\n    DVar1 = FUN_004cd630();\r\n    if (DVar1 == 0) {\r\n      if (*(int *)(param_2 + 8) == 0) {\r\n        uVar3 = FUN_004ce070(local_8,0);\r\n        *(undefined4 *)(param_2 + 8) = uVar3;\r\n        DVar1 = GetLastError();\r\n        if (DVar1 != 0) goto LAB_004cdde4;\r\n        local_9 = FUN_004ce1d0(*(undefined4 *)(param_2 + 8));\r\n      }\r\n      else {\r\n        if (param_4 == 0) {\r\n          return;\r\n        }\r\n        iVar2 = FUN_004ce0f0(*(int *)(param_2 + 8));\r\n        if (iVar2 != 0) {\r\n          DVar1 = 0;\r\n          goto LAB_004cdde4;\r\n        }\r\n        FUN_004ce100(*(undefined4 *)(param_2 + 8));\r\n        FUN_004ce0c0(*(undefined4 *)(param_2 + 8),local_8);\r\n        DVar1 = GetLastError();\r\n        if (DVar1 != 0) goto LAB_004cdde4;\r\n      }\r\n      local_4 = FUN_004ce0f0(*(undefined4 *)(param_2 + 8));\r\n      if (local_4 == 0) {\r\n        DVar1 = GetLastError();\r\n      }\r\n      else {\r\n        FUN_004ce4b0(iVar4 + 4);\r\n        DVar1 = FUN_004cd630();\r\n        if (DVar1 == 0) {\r\n          FUN_004ce460(local_4,&local_8);\r\n          DVar1 = FUN_004cd630();\r\n        }\r\n      }\r\n    }\r\n  }\r\nLAB_004cdde4:\r\n  if (*(int *)(param_2 + 8) != 0) {\r\n    FUN_004ce200(*(int *)(param_2 + 8),local_9);\r\n  }\r\n  *(DWORD *)(param_3 + 0x114) = DVar1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd7b0",
+      "name": "FUN_004cd7b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd700",
+      "name": "FUN_004cd700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ce1d0",
+      "name": "FUN_004ce1d0"
+    },
+    {
+      "addr": "004ce4b0",
+      "name": "FUN_004ce4b0"
+    },
+    {
+      "addr": "004cd630",
+      "name": "FUN_004cd630"
+    },
+    {
+      "addr": "004ce530",
+      "name": "FUN_004ce530"
+    },
+    {
+      "addr": "004ce0f0",
+      "name": "FUN_004ce0f0"
+    },
+    {
+      "addr": "004ce100",
+      "name": "FUN_004ce100"
+    },
+    {
+      "addr": "004ce0c0",
+      "name": "FUN_004ce0c0"
+    },
+    {
+      "addr": "004ce210",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004ce070",
+      "name": "FUN_004ce070"
+    },
+    {
+      "addr": "004ce460",
+      "name": "FUN_004ce460"
+    },
+    {
+      "addr": "004ce200",
+      "name": "FUN_004ce200"
+    }
+  ],
+  "data_refs": []
+}

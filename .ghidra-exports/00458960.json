@@ -1,0 +1,13 @@
+{
+  "address": "00458960",
+  "name": "FUN_00458960",
+  "signature": "undefined FUN_00458960(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00458960(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 uVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int *piVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 uStack_4;\r\n  \r\n  iVar6 = 0;\r\n  if (0 < *(int *)(param_1 + 0xb4)) {\r\n    puVar8 = (undefined4 *)(param_1 + 0x7c);\r\n    piVar7 = (int *)(param_1 + 0x1fc);\r\n    do {\r\n      uVar4 = *puVar8;\r\n      piVar1 = piVar7 + 3;\r\n      piVar2 = piVar7 + 2;\r\n      puVar3 = puVar8 + -1;\r\n      puVar8 = puVar8 + 4;\r\n      iVar6 = iVar6 + 1;\r\n      iVar5 = *piVar7;\r\n      piVar7 = piVar7 + 0x9f;\r\n      uStack_4 = (**(code **)(iVar5 + 0xc))\r\n                           (*(undefined4 *)(param_1 + 0x40),*puVar3,uVar4,0,0,*piVar2,*piVar1);\r\n    } while (iVar6 < *(int *)(param_1 + 0xb4));\r\n  }\r\n  iVar6 = *(int *)(param_1 + 0x8da);\r\n  iVar5 = (**(code **)(iVar6 + 0x10))();\r\n  if (iVar5 == 0) {\r\n    (**(code **)(iVar6 + 0x24))(DAT_00519cc0);\r\n    (**(code **)(iVar6 + 8))(0,1);\r\n  }\r\n  return uStack_4;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

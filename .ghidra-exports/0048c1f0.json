@@ -1,0 +1,38 @@
+{
+  "address": "0048c1f0",
+  "name": "FUN_0048c1f0",
+  "signature": "undefined FUN_0048c1f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0048c1f0(void)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  ostream *poVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  \r\n  _DAT_0057f310 = 500;\r\n  _DAT_0057f30c = 0;\r\n  piVar1 = (int *)FUN_004d28b0(8);\r\n  if (piVar1 == (int *)0x0) {\r\n    DAT_0057f308 = (int *)0x0;\r\n  }\r\n  else {\r\n    piVar1[1] = 0;\r\n    puVar5 = DAT_005044e4;\r\n    _DAT_005044dc = _DAT_005044dc + 1;\r\n    if (DAT_005044e8 == (undefined4 *)0x0) {\r\n      if (DAT_005044e0 == DAT_005044e4) {\r\n        set_new_handler((_func_void *)0x0);\r\n        puVar2 = (undefined4 *)FUN_004d28b0(8);\r\n        if (puVar2 == (undefined4 *)0x0) {\r\n          poVar3 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n          FUN_00401000(poVar3);\r\n          FUN_004d2060(1);\r\n        }\r\n        set_new_handler((_func_void *)0x0);\r\n        iVar4 = FUN_004d28b0(0xffc);\r\n        if (iVar4 == 0) {\r\n          poVar3 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n          FUN_00401000(poVar3);\r\n          FUN_004d2060(1);\r\n        }\r\n        puVar2[1] = iVar4;\r\n        *puVar2 = DAT_005044ec;\r\n        puVar5 = (undefined4 *)puVar2[1];\r\n        DAT_005044e4 = puVar5 + 3;\r\n        DAT_005044e0 = puVar5 + 0x3ff;\r\n        DAT_005044ec = puVar2;\r\n      }\r\n      else {\r\n        DAT_005044e4 = DAT_005044e4 + 3;\r\n      }\r\n    }\r\n    else {\r\n      puVar5 = DAT_005044e8;\r\n      DAT_005044e8 = (undefined4 *)*DAT_005044e8;\r\n    }\r\n    *piVar1 = (int)puVar5;\r\n    *puVar5 = puVar5;\r\n    *(int *)(*piVar1 + 4) = *piVar1;\r\n    DAT_0057f308 = piVar1;\r\n  }\r\n  _atexit(FUN_0048c340);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d2bd0",
+      "name": "_atexit"
+    }
+  ],
+  "data_refs": []
+}

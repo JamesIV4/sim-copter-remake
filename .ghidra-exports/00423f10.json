@@ -1,0 +1,52 @@
+{
+  "address": "00423f10",
+  "name": "FUN_00423f10",
+  "signature": "undefined FUN_00423f10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00423f10(void)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  undefined4 uVar5;\r\n  undefined4 *puVar6;\r\n  int *local_c [3];\r\n  \r\n  puVar3 = DAT_00519a54;\r\n  for (puVar6 = DAT_00519a50; puVar6 != puVar3; puVar6 = puVar6 + 2) {\r\n    local_c[0] = (int *)*puVar6;\r\n    piVar1 = (int *)*local_c[0];\r\n    iVar4 = FUN_00424060(local_c);\r\n    while (iVar4 == 0) {\r\n      FUN_00424080();\r\n      *(int *)piVar1[1] = *piVar1;\r\n      *(int *)(*piVar1 + 4) = piVar1[1];\r\n      uVar5 = FUN_00424030(piVar1 + 2);\r\n      FUN_0042a450(uVar5);\r\n      FUN_00424040(piVar1);\r\n      puVar6[1] = puVar6[1] + -1;\r\n      iVar4 = FUN_00424060(local_c);\r\n    }\r\n    puVar2 = (undefined4 *)*puVar6;\r\n    *puVar2 = DAT_004f8360;\r\n    _DAT_004f8354 = _DAT_004f8354 + -1;\r\n    DAT_004f8360 = puVar2;\r\n    puVar2 = DAT_004f8364;\r\n    if (_DAT_004f8354 == 0) {\r\n      while (puVar2 != (undefined4 *)0x0) {\r\n        DAT_004f8364 = (undefined4 *)*puVar2;\r\n        FUN_0042a440(puVar2[1]);\r\n        FUN_0042a430(puVar2);\r\n        puVar2 = DAT_004f8364;\r\n      }\r\n      DAT_004f8360 = (undefined4 *)0x0;\r\n      DAT_004f835c = 0;\r\n      DAT_004f8358 = 0;\r\n      DAT_004f8364 = puVar2;\r\n    }\r\n  }\r\n  FUN_004d29a0(DAT_00519a50);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00423c40",
+      "name": "FUN_00423c40",
+      "ref_type": "DATA"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00424060",
+      "name": "FUN_00424060"
+    },
+    {
+      "addr": "00424080",
+      "name": "FUN_00424080"
+    },
+    {
+      "addr": "00424030",
+      "name": "FUN_00424030"
+    },
+    {
+      "addr": "0042a450",
+      "name": "FUN_0042a450"
+    },
+    {
+      "addr": "00424040",
+      "name": "FUN_00424040"
+    },
+    {
+      "addr": "0042a440",
+      "name": "FUN_0042a440"
+    },
+    {
+      "addr": "0042a430",
+      "name": "FUN_0042a430"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

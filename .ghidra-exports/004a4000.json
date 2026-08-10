@@ -1,0 +1,19 @@
+{
+  "address": "004a4000",
+  "name": "FUN_004a4000",
+  "signature": "undefined FUN_004a4000(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a4000(int param_1,undefined4 *param_2,undefined4 *param_3)\r\n\r\n{\r\n  if (param_1 < 10) {\r\n    if ((param_1 == 9) || (param_1 == 1)) {\r\n      *param_2 = 7;\r\n      *param_3 = 0xffffffff;\r\n      return;\r\n    }\r\n    if (param_1 == 2) {\r\n      *param_2 = 0xffffffff;\r\n      *param_3 = 0xffffffff;\r\n      return;\r\n    }\r\n  }\r\n  else if (param_1 < 0x11) {\r\n    if (param_1 == 0x10) {\r\nLAB_004a414e:\r\n      *param_2 = 4;\r\n      *param_3 = 0xffffffff;\r\n      return;\r\n    }\r\n    if (param_1 == 0xc) {\r\n      *param_2 = 7;\r\n      *param_3 = 1;\r\n      return;\r\n    }\r\n  }\r\n  else if (param_1 < 0x41) {\r\n    if (param_1 == 0x40) {\r\n      *param_2 = 0xffffffff;\r\n      *param_3 = 3;\r\n      return;\r\n    }\r\n    if (param_1 == 0x20) {\r\n      *param_2 = 1;\r\n      *param_3 = 4;\r\n      return;\r\n    }\r\n  }\r\n  else if (param_1 < 0x101) {\r\n    if (param_1 == 0x100) {\r\n      *param_2 = 7;\r\n      *param_3 = 1;\r\n      return;\r\n    }\r\n    if (param_1 == 0x90) goto LAB_004a414e;\r\n  }\r\n  else if (param_1 < 0x201) {\r\n    if (param_1 == 0x200) goto LAB_004a41a2;\r\n    if (param_1 == 0x110) goto LAB_004a414e;\r\n  }\r\n  else if (param_1 < 0x801) {\r\n    if (param_1 == 0x800) {\r\n      *param_2 = 5;\r\n      *param_3 = 5;\r\n      return;\r\n    }\r\n    if (param_1 == 0x408) {\r\n      *param_2 = 7;\r\n      *param_3 = 0xffffffff;\r\n      return;\r\n    }\r\n  }\r\n  else if (param_1 < 0x2001) {\r\n    if (param_1 == 0x2000) goto LAB_004a41a2;\r\n    if (param_1 == 0x1000) {\r\n      *param_2 = 6;\r\n      *param_3 = 0xffffffff;\r\n      return;\r\n    }\r\n  }\r\n  else if (param_1 < 0x10001) {\r\n    if ((param_1 == 0x10000) || (param_1 == 0x4000)) {\r\nLAB_004a41a2:\r\n      *param_2 = 2;\r\n      *param_3 = 0xffffffff;\r\n      return;\r\n    }\r\n  }\r\n  else {\r\n    if ((param_1 == 0x20000) || (param_1 == 0x40000)) goto LAB_004a41a2;\r\n    if (param_1 == 0x80010) goto LAB_004a414e;\r\n  }\r\n  *param_2 = 0xffffffff;\r\n  *param_3 = 0xffffffff;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a4200",
+      "name": "FUN_004a4200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

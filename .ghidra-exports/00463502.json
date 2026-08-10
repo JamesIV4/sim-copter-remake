@@ -1,0 +1,19 @@
+{
+  "address": "00463502",
+  "name": "DirectSoundCreate",
+  "signature": "undefined DirectSoundCreate(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid DirectSoundCreate(void)\r\n\r\n{\r\n                    /* WARNING: Could not recover jumptable at 0x00463502. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  DirectSoundCreate();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041cdd0",
+      "name": "FUN_0041cdd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

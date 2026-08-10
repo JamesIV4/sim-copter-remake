@@ -1,0 +1,26 @@
+{
+  "address": "004ef200",
+  "name": "__strnicmp",
+  "signature": "int __cdecl __strnicmp(char * _Str1, char * _Str2, size_t _MaxCount)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __strnicmp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __strnicmp(char *_Str1,char *_Str2,size_t _MaxCount)\r\n\r\n{\r\n  char cVar1;\r\n  byte bVar2;\r\n  ushort uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  bool bVar7;\r\n  uint uVar8;\r\n  \r\n  iVar5 = 0;\r\n  if (_MaxCount != 0) {\r\n    if (DAT_00507ab8 == 0) {\r\n      do {\r\n        bVar2 = *_Str1;\r\n        cVar1 = *_Str2;\r\n        uVar3 = CONCAT11(bVar2,cVar1);\r\n        if (bVar2 == 0) break;\r\n        uVar3 = CONCAT11(bVar2,cVar1);\r\n        uVar6 = (uint)uVar3;\r\n        if (cVar1 == '\\0') break;\r\n        _Str1 = _Str1 + 1;\r\n        _Str2 = _Str2 + 1;\r\n        if ((0x40 < bVar2) && (bVar2 < 0x5b)) {\r\n          uVar6 = (uint)CONCAT11(bVar2 + 0x20,cVar1);\r\n        }\r\n        uVar3 = (ushort)uVar6;\r\n        bVar2 = (byte)uVar6;\r\n        if ((0x40 < bVar2) && (bVar2 < 0x5b)) {\r\n          uVar3 = (ushort)CONCAT31((int3)(uVar6 >> 8),bVar2 + 0x20);\r\n        }\r\n        bVar2 = (byte)(uVar3 >> 8);\r\n        bVar7 = bVar2 < (byte)uVar3;\r\n        if (bVar2 != (byte)uVar3) goto LAB_004ef25f;\r\n        _MaxCount = _MaxCount - 1;\r\n      } while (_MaxCount != 0);\r\n      iVar5 = 0;\r\n      bVar2 = (byte)(uVar3 >> 8);\r\n      bVar7 = bVar2 < (byte)uVar3;\r\n      if (bVar2 != (byte)uVar3) {\r\nLAB_004ef25f:\r\n        iVar5 = -1;\r\n        if (!bVar7) {\r\n          iVar5 = 1;\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      bVar7 = 0 < DAT_0061cc98;\r\n      if (bVar7) {\r\n        __lock(0x13);\r\n      }\r\n      else {\r\n        DAT_0061cc9c = DAT_0061cc9c + 1;\r\n      }\r\n      uVar8 = (uint)bVar7;\r\n      uVar4 = 0;\r\n      uVar6 = 0;\r\n      do {\r\n        uVar4 = CONCAT31((int3)(uVar4 >> 8),*_Str1);\r\n        uVar6 = CONCAT31((int3)(uVar6 >> 8),*_Str2);\r\n        if ((uVar4 == 0) || (uVar6 == 0)) break;\r\n        _Str1 = _Str1 + 1;\r\n        _Str2 = _Str2 + 1;\r\n        uVar6 = __tolower_lk(uVar6,uVar4);\r\n        uVar4 = __tolower_lk();\r\n        bVar7 = uVar4 < uVar6;\r\n        if (uVar4 != uVar6) goto LAB_004ef2c9;\r\n        _MaxCount = _MaxCount - 1;\r\n      } while (_MaxCount != 0);\r\n      iVar5 = 0;\r\n      bVar7 = uVar4 < uVar6;\r\n      if (uVar4 != uVar6) {\r\nLAB_004ef2c9:\r\n        iVar5 = -1;\r\n        if (!bVar7) {\r\n          iVar5 = 1;\r\n        }\r\n      }\r\n      if (uVar8 == 0) {\r\n        DAT_0061cc9c = DAT_0061cc9c + -1;\r\n      }\r\n      else {\r\n        FUN_004d64a0(0x13);\r\n      }\r\n    }\r\n  }\r\n  return iVar5;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "004dffc0",
+      "name": "__tolower_lk"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "004d9e90",
+  "name": "GetRangeOfTrysToCheck",
+  "signature": "_s_TryBlockMapEntry * __cdecl GetRangeOfTrysToCheck(_s_FuncInfo * param_1, int param_2, int param_3, uint * param_4, uint * param_5)",
+  "calling_convention": "__cdecl",
+  "return_type": "_s_TryBlockMapEntry *",
+  "parameter_count": 5,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    struct _s_TryBlockMapEntry const * __cdecl GetRangeOfTrysToCheck(struct _s_FuncInfo const\r\n   *,int,int,unsigned int *,unsigned int *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\n_s_TryBlockMapEntry * __cdecl\r\nGetRangeOfTrysToCheck(_s_FuncInfo *param_1,int param_2,int param_3,uint *param_4,uint *param_5)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  uint uVar3;\r\n  uint local_c;\r\n  uint local_8;\r\n  \r\n  iVar1 = *(int *)(param_1 + 0x10);\r\n  uVar3 = *(uint *)(param_1 + 0xc);\r\n  local_c = uVar3;\r\n  if (-1 < param_2) {\r\n    piVar2 = (int *)(uVar3 * 0x14 + 4 + iVar1);\r\n    local_8 = uVar3;\r\n    do {\r\n      if (uVar3 == 0xffffffff) {\r\n        _inconsistency();\r\n      }\r\n      uVar3 = uVar3 - 1;\r\n      if (((piVar2[-5] < param_3) && (param_3 <= piVar2[-4])) || (uVar3 == 0xffffffff)) {\r\n        param_2 = param_2 + -1;\r\n        local_c = local_8;\r\n        local_8 = uVar3;\r\n      }\r\n      piVar2 = piVar2 + -5;\r\n    } while (-1 < param_2);\r\n  }\r\n  uVar3 = uVar3 + 1;\r\n  *param_4 = uVar3;\r\n  *param_5 = local_c;\r\n  if ((*(uint *)(param_1 + 0xc) < local_c) || (local_c < uVar3)) {\r\n    _inconsistency();\r\n  }\r\n  return (_s_TryBlockMapEntry *)(iVar1 + uVar3 * 0x14);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9db0",
+      "name": "FindHandlerForForeignException",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency"
+    }
+  ],
+  "data_refs": []
+}

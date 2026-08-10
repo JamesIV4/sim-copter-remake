@@ -1,0 +1,29 @@
+{
+  "address": "004e0510",
+  "name": "__ld12tod",
+  "signature": "INTRNCVT_STATUS __cdecl __ld12tod(_LDBL12 * _Ifp, _CRT_DOUBLE * _D)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef INTRNCVT_STATUS enum_3272",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ld12tod\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nINTRNCVT_STATUS __cdecl __ld12tod(_LDBL12 *_Ifp,_CRT_DOUBLE *_D)\r\n\r\n{\r\n  INTRNCVT_STATUS IVar1;\r\n  \r\n  IVar1 = __ld12cvt(_Ifp,_D,&DAT_005086a0);\r\n  return IVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd9a0",
+      "name": "__fltin2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0550",
+      "name": "FID_conflict:__atodbl",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,32 @@
+{
+  "address": "0041fb80",
+  "name": "FUN_0041fb80",
+  "signature": "undefined FUN_0041fb80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0041fb80(undefined4 *param_1)\r\n\r\n{\r\n  LPCVOID pMem;\r\n  HGLOBAL pvVar1;\r\n  \r\n  *param_1 = &PTR_LAB_004f1458;\r\n  pMem = DAT_004f8274;\r\n  pvVar1 = GlobalHandle(DAT_004f8274);\r\n  GlobalUnlock(pvVar1);\r\n  pvVar1 = GlobalHandle(pMem);\r\n  GlobalFree(pvVar1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000017",
+      "name": "GlobalHandle"
+    },
+    {
+      "addr": "EXTERNAL:00000011",
+      "name": "GlobalUnlock"
+    },
+    {
+      "addr": "EXTERNAL:0000000f",
+      "name": "GlobalFree"
+    }
+  ],
+  "data_refs": []
+}

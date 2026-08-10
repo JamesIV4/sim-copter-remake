@@ -1,0 +1,84 @@
+{
+  "address": "004dfb00",
+  "name": "__unlock_fhandle",
+  "signature": "void __cdecl __unlock_fhandle(int _Filehandle)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __unlock_fhandle\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __unlock_fhandle(int _Filehandle)\r\n\r\n{\r\n  LeaveCriticalSection\r\n            ((LPCRITICAL_SECTION)\r\n             (*(int *)((int)&DAT_0061bb80 + ((int)(_Filehandle & 0xffffffe7U) >> 3)) +\r\n              (_Filehandle & 0x1fU) * 0x24 + 0xc));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7060",
+      "name": "__close",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8cf0",
+      "name": "__commit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3440",
+      "name": "__chsize",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

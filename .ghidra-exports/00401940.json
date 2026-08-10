@@ -1,0 +1,150 @@
+{
+  "address": "00401940",
+  "name": "FUN_00401940",
+  "signature": "undefined FUN_00401940(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00401940(int param_1,undefined4 *param_2,uint param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  ostream *poVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 uVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 *puVar9;\r\n  \r\n  if (-param_3 - 1 <= *(uint *)(*(int *)(param_1 + 4) + 4)) {\r\n    poVar3 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar3);\r\n    FUN_004d2060(1);\r\n  }\r\n  iVar2 = *(int *)(param_1 + 4);\r\n  if ((1 < *(uint *)(iVar2 + 0xc)) || ((uint)(*(int *)(iVar2 + 8) - *(int *)(iVar2 + 4)) < param_3))\r\n  {\r\n    puVar4 = (undefined4 *)FUN_004d28b0(0x10);\r\n    if (puVar4 == (undefined4 *)0x0) {\r\n      puVar4 = (undefined4 *)0x0;\r\n    }\r\n    else {\r\n      puVar8 = (undefined4 *)0x0;\r\n      iVar2 = (*(undefined4 **)(param_1 + 4))[1];\r\n      if (iVar2 != 0) {\r\n        puVar8 = (undefined4 *)**(undefined4 **)(param_1 + 4);\r\n      }\r\n      puVar4[2] = param_3 + iVar2;\r\n      puVar4[1] = iVar2;\r\n      if (puVar4[2] == 0) {\r\n        *puVar4 = 0;\r\n      }\r\n      else {\r\n        uVar5 = FUN_004d28b0(puVar4[2]);\r\n        *puVar4 = uVar5;\r\n        uVar7 = puVar4[1];\r\n        if (uVar7 != 0) {\r\n          puVar9 = (undefined4 *)*puVar4;\r\n          for (uVar6 = uVar7 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n            *puVar9 = *puVar8;\r\n            puVar8 = puVar8 + 1;\r\n            puVar9 = puVar9 + 1;\r\n          }\r\n          for (uVar7 = uVar7 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n            *(undefined1 *)puVar9 = *(undefined1 *)puVar8;\r\n            puVar8 = (undefined4 *)((int)puVar8 + 1);\r\n            puVar9 = (undefined4 *)((int)puVar9 + 1);\r\n          }\r\n        }\r\n      }\r\n      puVar4[3] = 1;\r\n    }\r\n    piVar1 = (int *)(*(int *)(param_1 + 4) + 0xc);\r\n    *piVar1 = *piVar1 + -1;\r\n    puVar8 = *(undefined4 **)(param_1 + 4);\r\n    if ((puVar8[3] == 0) && (puVar8 != (undefined4 *)0x0)) {\r\n      if (puVar8[2] != 0) {\r\n        FUN_004d29a0(*puVar8);\r\n        puVar8[2] = 0;\r\n        *puVar8 = 0;\r\n      }\r\n      FUN_004d29a0(puVar8);\r\n    }\r\n    *(undefined4 **)(param_1 + 4) = puVar4;\r\n  }\r\n  if (param_3 != 0) {\r\n    puVar4 = (undefined4 *)((*(int **)(param_1 + 4))[1] + **(int **)(param_1 + 4));\r\n    for (uVar7 = param_3 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *puVar4 = *param_2;\r\n      param_2 = param_2 + 1;\r\n      puVar4 = puVar4 + 1;\r\n    }\r\n    for (uVar7 = param_3 & 3; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *(undefined1 *)puVar4 = *(undefined1 *)param_2;\r\n      param_2 = (undefined4 *)((int)param_2 + 1);\r\n      puVar4 = (undefined4 *)((int)puVar4 + 1);\r\n    }\r\n  }\r\n  piVar1 = (int *)(*(int *)(param_1 + 4) + 4);\r\n  *piVar1 = *piVar1 + param_3;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0040f9f0",
+      "name": "FUN_0040f9f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004338d0",
+      "name": "FUN_004338d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433b20",
+      "name": "FUN_00433b20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048d040",
+      "name": "FUN_0048d040",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048d040",
+      "name": "FUN_0048d040",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040f610",
+      "name": "FUN_0040f610",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041ad30",
+      "name": "FUN_0041ad30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422c90",
+      "name": "FUN_00422c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433580",
+      "name": "FUN_00433580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043f0e0",
+      "name": "FUN_0043f0e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043f0e0",
+      "name": "FUN_0043f0e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043f0e0",
+      "name": "FUN_0043f0e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043f0e0",
+      "name": "FUN_0043f0e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

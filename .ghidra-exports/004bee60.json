@@ -1,0 +1,24 @@
+{
+  "address": "004bee60",
+  "name": "FUN_004bee60",
+  "signature": "undefined FUN_004bee60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004bee60(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (SQRT((double)*param_1 * _DAT_004f4f20 * (double)*param_1 * _DAT_004f4f20 +\r\n           (double)param_1[1] * _DAT_004f4f20 * (double)param_1[1] * _DAT_004f4f20 +\r\n           (double)param_1[2] * _DAT_004f4f20 * (double)param_1[2] * _DAT_004f4f20) == _DAT_004f4f30\r\n     ) {\r\n    param_1[2] = 0;\r\n    param_1[1] = 0;\r\n    *param_1 = 0;\r\n  }\r\n  else {\r\n    iVar1 = __ftol();\r\n    *param_1 = iVar1;\r\n    iVar1 = __ftol();\r\n    param_1[1] = iVar1;\r\n    iVar1 = __ftol();\r\n    param_1[2] = iVar1;\r\n  }\r\n  __ftol();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049ed20",
+      "name": "FUN_0049ed20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

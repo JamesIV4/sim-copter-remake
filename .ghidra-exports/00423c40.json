@@ -1,0 +1,70 @@
+{
+  "address": "00423c40",
+  "name": "FUN_00423c40",
+  "signature": "undefined FUN_00423c40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00423c40(void)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  ostream *poVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  bool bVar8;\r\n  undefined4 uVar9;\r\n  undefined1 local_1c [4];\r\n  undefined4 *local_18;\r\n  undefined4 *local_14 [5];\r\n  \r\n  puVar7 = DAT_004f835c;\r\n  _DAT_004f8354 = _DAT_004f8354 + 1;\r\n  if (DAT_004f8360 == (undefined4 *)0x0) {\r\n    if (DAT_004f835c == DAT_004f8358) {\r\n      puVar6 = (undefined4 *)FUN_0040ea50(1,0);\r\n      set_new_handler((_func_void *)0x0);\r\n      iVar1 = FUN_004d28b0(0x1000);\r\n      if (iVar1 == 0) {\r\n        poVar3 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n        FUN_00401000(poVar3);\r\n        FUN_004d2060(1);\r\n      }\r\n      puVar6[1] = iVar1;\r\n      *puVar6 = DAT_004f8364;\r\n      puVar7 = (undefined4 *)puVar6[1];\r\n      DAT_004f835c = puVar7 + 4;\r\n      DAT_004f8358 = puVar7 + 0x400;\r\n      DAT_004f8364 = puVar6;\r\n    }\r\n    else {\r\n      DAT_004f835c = DAT_004f835c + 4;\r\n    }\r\n  }\r\n  else {\r\n    puVar7 = DAT_004f8360;\r\n    DAT_004f8360 = (undefined4 *)*DAT_004f8360;\r\n  }\r\n  *puVar7 = puVar7;\r\n  puVar7[1] = puVar7;\r\n  set_new_handler((_func_void *)0x0);\r\n  piVar2 = (int *)FUN_004d28b0(0x28);\r\n  if (piVar2 == (int *)0x0) {\r\n    poVar3 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n    FUN_00401000(poVar3);\r\n    FUN_004d2060(1);\r\n  }\r\n  iVar1 = 4;\r\n  DAT_00519a50 = piVar2;\r\n  do {\r\n    if (piVar2 != (int *)0x0) {\r\n      piVar2[1] = 0;\r\n      _DAT_004f8354 = _DAT_004f8354 + 1;\r\n      iVar4 = FUN_0040d8e0();\r\n      *piVar2 = iVar4;\r\n      *(int *)iVar4 = iVar4;\r\n      *(int *)(*piVar2 + 4) = *piVar2;\r\n      puVar6 = puVar7;\r\n      puVar5 = (undefined4 *)FUN_00423e80(local_14);\r\n      uVar9 = *puVar5;\r\n      puVar5 = (undefined4 *)FUN_00423e70(local_1c);\r\n      FUN_0042a500(*puVar5,uVar9,puVar6);\r\n    }\r\n    bVar8 = iVar1 != 0;\r\n    iVar1 = iVar1 + -1;\r\n    piVar2 = piVar2 + 2;\r\n  } while (bVar8);\r\n  DAT_00519a54 = DAT_00519a50 + 10;\r\n  local_18 = (undefined4 *)*puVar7;\r\n  _DAT_00519a58 = DAT_00519a54;\r\n  local_14[0] = puVar7;\r\n  if (local_18 != puVar7) {\r\n    do {\r\n      puVar6 = (undefined4 *)FUN_00423e50(local_1c,0);\r\n      FUN_00423e90(*puVar6);\r\n    } while (local_14[0] != local_18);\r\n  }\r\n  *puVar7 = DAT_004f8360;\r\n  _DAT_004f8354 = _DAT_004f8354 + -1;\r\n  DAT_004f8360 = puVar7;\r\n  if (_DAT_004f8354 == 0) {\r\n    FUN_0042a4b0();\r\n  }\r\n  DAT_00519a5c = 0;\r\n  DAT_00519a60 = 0;\r\n  DAT_00519a64 = 0;\r\n  DAT_00519a68 = 0;\r\n  DAT_00519a6c = 0;\r\n  _atexit(FUN_00423f10);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0040ea50",
+      "name": "FUN_0040ea50"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "0040d8e0",
+      "name": "FUN_0040d8e0"
+    },
+    {
+      "addr": "00423e80",
+      "name": "FUN_00423e80"
+    },
+    {
+      "addr": "00423e70",
+      "name": "FUN_00423e70"
+    },
+    {
+      "addr": "0042a500",
+      "name": "FUN_0042a500"
+    },
+    {
+      "addr": "00423e50",
+      "name": "FUN_00423e50"
+    },
+    {
+      "addr": "00423e90",
+      "name": "FUN_00423e90"
+    },
+    {
+      "addr": "0042a4b0",
+      "name": "FUN_0042a4b0"
+    },
+    {
+      "addr": "004d2bd0",
+      "name": "_atexit"
+    }
+  ],
+  "data_refs": []
+}

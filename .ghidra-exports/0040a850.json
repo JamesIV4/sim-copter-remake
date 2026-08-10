@@ -1,0 +1,38 @@
+{
+  "address": "0040a850",
+  "name": "FUN_0040a850",
+  "signature": "undefined FUN_0040a850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0040a850(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  ostream *poVar5;\r\n  int *piVar6;\r\n  undefined4 *local_14;\r\n  \r\n  *(int *)(param_1 + 0x94) = param_2;\r\n  piVar6 = DAT_004f8344;\r\n  puVar2 = *(undefined4 **)(param_2 + 0x74);\r\n  local_14 = (undefined4 *)*puVar2;\r\n  while( true ) {\r\n    if (local_14 == puVar2) {\r\n      if (DAT_004f8348 == (int *)0x0) {\r\n        if (DAT_004f8340 == DAT_004f8344) {\r\n          puVar3 = (undefined4 *)FUN_0040ea00(1,0);\r\n          set_new_handler((_func_void *)0x0);\r\n          iVar4 = FUN_004d28b0(0xffc);\r\n          if (iVar4 == 0) {\r\n            poVar5 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n            FUN_00401000(poVar5);\r\n            FUN_004d2060(1);\r\n          }\r\n          puVar3[1] = iVar4;\r\n          *puVar3 = DAT_004f834c;\r\n          piVar6 = (int *)puVar3[1];\r\n          DAT_004f8344 = piVar6 + 3;\r\n          DAT_004f8340 = piVar6 + 0x3ff;\r\n          DAT_004f834c = puVar3;\r\n        }\r\n        else {\r\n          DAT_004f8344 = DAT_004f8344 + 3;\r\n        }\r\n      }\r\n      else {\r\n        piVar6 = DAT_004f8348;\r\n        DAT_004f8348 = (int *)*DAT_004f8348;\r\n      }\r\n      if (piVar6 + 2 != (int *)0x0) {\r\n        piVar6[2] = param_1;\r\n      }\r\n      *piVar6 = (int)puVar2;\r\n      piVar1 = puVar2 + 1;\r\n      piVar6[1] = *piVar1;\r\n      *(int **)*piVar1 = piVar6;\r\n      *piVar1 = (int)piVar6;\r\n      *(int *)(param_2 + 0x78) = *(int *)(param_2 + 0x78) + 1;\r\n      return;\r\n    }\r\n    if (local_14[2] == param_1) break;\r\n    local_14 = (undefined4 *)*local_14;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0040ea00",
+      "name": "FUN_0040ea00"
+    },
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,66 @@
+{
+  "address": "004d49e0",
+  "name": "operator<<",
+  "signature": "ostream * __thiscall operator<<(ostream * this, uint param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "ostream *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: class ostream & __thiscall ostream::operator<<(unsigned int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nostream * __thiscall ostream::operator<<(ostream *this,uint param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  undefined2 local_14;\r\n  undefined1 local_12;\r\n  undefined1 local_11;\r\n  undefined2 local_10;\r\n  undefined1 local_e;\r\n  undefined1 local_d;\r\n  char local_c [12];\r\n  \r\n  local_14 = DAT_004f5540;\r\n  local_12 = DAT_004f5542;\r\n  local_11 = 0;\r\n  local_10 = DAT_004f54e8;\r\n  local_e = DAT_004f54ea;\r\n  local_d = 0;\r\n  iVar2 = opfx(this);\r\n  if (iVar2 != 0) {\r\n    if (param_1 != 0) {\r\n      uVar1 = *(uint *)(this + *(int *)(*(int *)this + 4) + 0x24);\r\n      if ((uVar1 & 0x60) == 0) {\r\n        if ((uVar1 & 0x400) != 0) {\r\n          local_10 = CONCAT11(local_10._1_1_,0x2b);\r\n        }\r\n      }\r\n      else {\r\n        if ((uVar1 & 0x40) == 0) {\r\n          local_14 = CONCAT11(0x6f,(char)local_14);\r\n        }\r\n        else {\r\n          local_14 = CONCAT11(0x58,(char)local_14);\r\n          if ((uVar1 & 0x200) == 0) {\r\n            local_14 = CONCAT11(0x78,(char)local_14);\r\n          }\r\n          local_10 = CONCAT11(local_14._1_1_,(char)local_10);\r\n        }\r\n        if (((byte)this[*(int *)(*(int *)this + 4) + 0x24] & 0x80) != 0) {\r\n          local_10 = CONCAT11(local_10._1_1_,0x30);\r\n        }\r\n      }\r\n    }\r\n    _sprintf(local_c,(char *)&local_14,param_1);\r\n    writepad(this,(char *)&local_10,local_c);\r\n    osfx(this);\r\n  }\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d21a0",
+      "name": "opfx"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "004d25e0",
+      "name": "writepad"
+    },
+    {
+      "addr": "004d2220",
+      "name": "osfx"
+    }
+  ],
+  "data_refs": []
+}

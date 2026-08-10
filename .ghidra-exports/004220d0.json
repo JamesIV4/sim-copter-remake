@@ -1,0 +1,50 @@
+{
+  "address": "004220d0",
+  "name": "FUN_004220d0",
+  "signature": "undefined FUN_004220d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004220d0(int param_1,char *param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  ostream *poVar5;\r\n  undefined4 uVar6;\r\n  DWORD DVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  int iVar10;\r\n  int iVar11;\r\n  char *pcVar12;\r\n  LARGE_INTEGER local_8;\r\n  \r\n  iVar11 = *(int *)(param_1 + 0xc);\r\n  if (iVar11 < 1) {\r\n    return;\r\n  }\r\n  iVar10 = *(int *)(param_1 + 0x48);\r\n  if (iVar10 < iVar11) {\r\n    if (iVar10 < 1) {\r\n      local_8.s.LowPart = *(DWORD *)(param_1 + 0x10);\r\n      uVar8 = 0xffffffff;\r\n      pcVar12 = param_2;\r\n      do {\r\n        if (uVar8 == 0) break;\r\n        uVar8 = uVar8 - 1;\r\n        cVar2 = *pcVar12;\r\n        pcVar12 = pcVar12 + 1;\r\n      } while (cVar2 != '\\0');\r\n      uVar8 = ~uVar8 - 1;\r\n      if (uVar8 == 0xffffffff) {\r\n        poVar5 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n        FUN_00401000(poVar5);\r\n        FUN_004d2060(1);\r\n      }\r\n      puVar3 = *(undefined4 **)(local_8.s.LowPart + 4);\r\n      if ((uint)puVar3[3] < 2) {\r\n        if (uVar8 == 0) goto LAB_00422352;\r\n        if (uVar8 <= (uint)puVar3[2]) {\r\n          if (uVar8 != 0) {\r\n            pcVar12 = (char *)*puVar3;\r\n            for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n              *(undefined4 *)pcVar12 = *(undefined4 *)param_2;\r\n              param_2 = param_2 + 4;\r\n              pcVar12 = pcVar12 + 4;\r\n            }\r\n            for (uVar9 = uVar8 & 3; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n              *pcVar12 = *param_2;\r\n              param_2 = param_2 + 1;\r\n              pcVar12 = pcVar12 + 1;\r\n            }\r\n          }\r\n          goto LAB_00422352;\r\n        }\r\n      }\r\n      iVar11 = FUN_004d28b0(0x10);\r\n      if (iVar11 == 0) {\r\n        uVar6 = 0;\r\n      }\r\n      else {\r\n        uVar6 = FUN_004028e0(param_2,uVar8);\r\n      }\r\n      piVar1 = (int *)(*(int *)(local_8.s.LowPart + 4) + 0xc);\r\n      *piVar1 = *piVar1 + -1;\r\n      if ((*(int *)(*(int *)(local_8.s.LowPart + 4) + 0xc) == 0) &&\r\n         (*(int *)(local_8.s.LowPart + 4) != 0)) {\r\n        FUN_00402830(1);\r\n      }\r\n      *(undefined4 *)(local_8.s.LowPart + 4) = uVar6;\r\nLAB_00422352:\r\n      *(uint *)(*(int *)(local_8.s.LowPart + 4) + 4) = uVar8;\r\n      *(undefined4 *)(param_1 + 0x48) = 1;\r\n      *(undefined4 *)(param_1 + 0x1c) = 0;\r\n      *(undefined4 *)(param_1 + 0x18) = 0;\r\n      if (*(int *)(param_1 + 0x14) == 0) {\r\n        QueryPerformanceCounter(&local_8);\r\n        *(DWORD *)(param_1 + 0x18) = local_8.s.LowPart;\r\n        return;\r\n      }\r\n      if (*(int *)(param_1 + 0x14) != 1) {\r\n        DVar7 = timeGetTime();\r\n        *(uint *)(param_1 + 0x18) = DVar7 / 1000;\r\n        return;\r\n      }\r\n      DVar7 = timeGetTime();\r\n      *(DWORD *)(param_1 + 0x18) = DVar7;\r\n      return;\r\n    }\r\n    iVar11 = iVar10 * 8 + *(int *)(param_1 + 0x10);\r\n    uVar8 = 0xffffffff;\r\n    *(int *)(param_1 + 0x48) = iVar10 + 1;\r\n    pcVar12 = param_2;\r\n    do {\r\n      if (uVar8 == 0) break;\r\n      uVar8 = uVar8 - 1;\r\n      cVar2 = *pcVar12;\r\n      pcVar12 = pcVar12 + 1;\r\n    } while (cVar2 != '\\0');\r\n    uVar8 = ~uVar8 - 1;\r\n    if (uVar8 == 0xffffffff) {\r\n      poVar5 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n      FUN_00401000(poVar5);\r\n      FUN_004d2060(1);\r\n    }\r\n    puVar3 = *(undefined4 **)(iVar11 + 4);\r\n    if ((uint)puVar3[3] < 2) {\r\n      if (uVar8 == 0) goto LAB_00422477;\r\n      if (uVar8 <= (uint)puVar3[2]) {\r\n        if (uVar8 != 0) {\r\n          pcVar12 = (char *)*puVar3;\r\n          for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n            *(undefined4 *)pcVar12 = *(undefined4 *)param_2;\r\n            param_2 = param_2 + 4;\r\n            pcVar12 = pcVar12 + 4;\r\n          }\r\n          for (uVar9 = uVar8 & 3; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n            *pcVar12 = *param_2;\r\n            param_2 = param_2 + 1;\r\n            pcVar12 = pcVar12 + 1;\r\n          }\r\n        }\r\n        goto LAB_00422477;\r\n      }\r\n    }\r\n    iVar10 = FUN_004d28b0(0x10);\r\n    if (iVar10 == 0) {\r\n      uVar6 = 0;\r\n    }\r\n    else {\r\n      uVar6 = FUN_004028e0(param_2,uVar8);\r\n    }\r\n    piVar1 = (int *)(*(int *)(iVar11 + 4) + 0xc);\r\n    *piVar1 = *piVar1 + -1;\r\n    if ((*(int *)(*(int *)(iVar11 + 4) + 0xc) == 0) && (*(int *)(iVar11 + 4) != 0)) {\r\n      FUN_00402830(1);\r\n    }\r\n    *(undefined4 *)(iVar11 + 4) = uVar6;\r\nLAB_00422477:\r\n    *(uint *)(*(int *)(iVar11 + 4) + 4) = uVar8;\r\n    return;\r\n  }\r\n  local_8.s.LowPart = 0;\r\n  if (iVar11 != 1 && -1 < iVar11 + -1) {\r\n    iVar11 = 0;\r\n    do {\r\n      iVar10 = *(int *)(param_1 + 0x10) + iVar11;\r\n      if (iVar10 + 8 != iVar10) {\r\n        piVar1 = (int *)(*(int *)(iVar10 + 4) + 0xc);\r\n        *piVar1 = *piVar1 + -1;\r\n        if ((*(int *)(*(int *)(iVar10 + 4) + 0xc) == 0) && (*(int *)(iVar10 + 4) != 0)) {\r\n          FUN_00402830(1);\r\n        }\r\n        piVar1 = (int *)(*(int *)(iVar10 + 0xc) + 0xc);\r\n        if (*piVar1 == -1) {\r\n          iVar4 = FUN_004d28b0(0x10);\r\n          if (iVar4 == 0) {\r\n            *(undefined4 *)(iVar10 + 4) = 0;\r\n          }\r\n          else {\r\n            uVar6 = FUN_00402960(iVar10 + 8,0,*(undefined4 *)(*(int *)(iVar10 + 0xc) + 4));\r\n            *(undefined4 *)(iVar10 + 4) = uVar6;\r\n          }\r\n        }\r\n        else {\r\n          *(int *)(iVar10 + 4) = *(int *)(iVar10 + 0xc);\r\n          *piVar1 = *piVar1 + 1;\r\n        }\r\n      }\r\n      iVar11 = iVar11 + 8;\r\n      local_8.s.LowPart = local_8.s.LowPart + 1;\r\n    } while ((int)local_8.s.LowPart < *(int *)(param_1 + 0xc) + -1);\r\n  }\r\n  local_8.s.LowPart = *(int *)(param_1 + 0x10) + local_8.s.LowPart * 8;\r\n  uVar8 = 0xffffffff;\r\n  pcVar12 = param_2;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar2 = *pcVar12;\r\n    pcVar12 = pcVar12 + 1;\r\n  } while (cVar2 != '\\0');\r\n  uVar8 = ~uVar8 - 1;\r\n  if (uVar8 == 0xffffffff) {\r\n    poVar5 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar5);\r\n    FUN_004d2060(1);\r\n  }\r\n  puVar3 = *(undefined4 **)(local_8.s.LowPart + 4);\r\n  if ((uint)puVar3[3] < 2) {\r\n    if (uVar8 == 0) goto LAB_00422229;\r\n    if (uVar8 <= (uint)puVar3[2]) {\r\n      if (uVar8 != 0) {\r\n        pcVar12 = (char *)*puVar3;\r\n        for (uVar9 = uVar8 >> 2; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n          *(undefined4 *)pcVar12 = *(undefined4 *)param_2;\r\n          param_2 = param_2 + 4;\r\n          pcVar12 = pcVar12 + 4;\r\n        }\r\n        for (uVar9 = uVar8 & 3; uVar9 != 0; uVar9 = uVar9 - 1) {\r\n          *pcVar12 = *param_2;\r\n          param_2 = param_2 + 1;\r\n          pcVar12 = pcVar12 + 1;\r\n        }\r\n      }\r\n      goto LAB_00422229;\r\n    }\r\n  }\r\n  iVar11 = FUN_004d28b0(0x10);\r\n  if (iVar11 == 0) {\r\n    uVar6 = 0;\r\n  }\r\n  else {\r\n    uVar6 = FUN_004028e0(param_2,uVar8);\r\n  }\r\n  piVar1 = (int *)(*(int *)(local_8.s.LowPart + 4) + 0xc);\r\n  *piVar1 = *piVar1 + -1;\r\n  if ((*(int *)(*(int *)(local_8.s.LowPart + 4) + 0xc) == 0) &&\r\n     (*(int *)(local_8.s.LowPart + 4) != 0)) {\r\n    FUN_00402830(1);\r\n  }\r\n  *(undefined4 *)(local_8.s.LowPart + 4) = uVar6;\r\nLAB_00422229:\r\n  *(uint *)(*(int *)(local_8.s.LowPart + 4) + 4) = uVar8;\r\n  *(undefined4 *)(param_1 + 0x1c) = 0;\r\n  *(undefined4 *)(param_1 + 0x18) = 0;\r\n  if (*(int *)(param_1 + 0x14) == 0) {\r\n    QueryPerformanceCounter(&local_8);\r\n    *(DWORD *)(param_1 + 0x18) = local_8.s.LowPart;\r\n    return;\r\n  }\r\n  if (*(int *)(param_1 + 0x14) != 1) {\r\n    DVar7 = timeGetTime();\r\n    *(uint *)(param_1 + 0x18) = DVar7 / 1000;\r\n    return;\r\n  }\r\n  DVar7 = timeGetTime();\r\n  *(DWORD *)(param_1 + 0x18) = DVar7;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00402830",
+      "name": "FUN_00402830"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00402960",
+      "name": "FUN_00402960"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004028e0",
+      "name": "FUN_004028e0"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

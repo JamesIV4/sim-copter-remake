@@ -1,0 +1,18 @@
+{
+  "address": "0046f585",
+  "name": "FUN_0046f585",
+  "signature": "undefined FUN_0046f585(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0046f585(undefined4 param_1,undefined4 param_2)\r\n\r\n{\r\n  _DAT_00500ab0 = param_2;\r\n  FUN_00471150(param_1);\r\n  FUN_00471150();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00471150",
+      "name": "FUN_00471150"
+    }
+  ],
+  "data_refs": []
+}

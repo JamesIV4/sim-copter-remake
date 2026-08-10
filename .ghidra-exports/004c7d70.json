@@ -1,0 +1,45 @@
+{
+  "address": "004c7d70",
+  "name": "FUN_004c7d70",
+  "signature": "undefined FUN_004c7d70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid __fastcall FUN_004c7d70(int *param_1)\r\n\r\n{\r\n  short sVar1;\r\n  undefined2 uVar2;\r\n  int iVar3;\r\n  \r\n  if (*(short *)((int)param_1 + 0x142) != 0) {\r\n    FUN_004c6360(0);\r\n    iVar3 = FUN_004ca650();\r\n    if (iVar3 != 0) {\r\n      FUN_004c6360(0);\r\n    }\r\n    if (*(short *)((int)param_1 + 0x172) != -1) {\r\n      *(undefined2 *)(param_1 + 0x5d) = 0xffff;\r\n      FUN_0042a310((int)(short)(*(short *)((int)param_1 + 0x172) + 0x71));\r\n      (&DAT_0058dc42)[*(short *)((int)param_1 + 0x172)] = 0;\r\n      *(undefined2 *)((int)param_1 + 0x172) = 0xffff;\r\n    }\r\n    *(undefined2 *)((int)param_1 + 0x142) = 0;\r\n    if ((short)param_1[0x52] == 0) {\r\n      DAT_0058dc1c = DAT_0058dc1c + -1;\r\n    }\r\n    else {\r\n      _DAT_0058dc1a = _DAT_0058dc1a + -1;\r\n    }\r\n    FUN_004c7910();\r\n    (**(code **)(*param_1 + 0x1c))();\r\n  }\r\n  sVar1 = 0;\r\n  do {\r\n    iVar3 = (int)sVar1;\r\n    sVar1 = sVar1 + 1;\r\n    *(undefined2 *)((int)param_1 + iVar3 * 2 + 0x140) = 0;\r\n  } while (sVar1 < 0x30);\r\n  *(undefined2 *)((int)param_1 + 0x1c2) = *(undefined2 *)((int)param_1 + 0x12e);\r\n  *(undefined2 *)((int)param_1 + 0x14e) = *(undefined2 *)((int)param_1 + 0x12e);\r\n  sVar1 = 0;\r\n  do {\r\n    iVar3 = (int)sVar1;\r\n    sVar1 = sVar1 + 1;\r\n    param_1[iVar3 + 0x68] = 0;\r\n  } while (sVar1 < 4);\r\n  param_1[0x8a] = 0x3f800000;\r\n  *(undefined2 *)(param_1 + 0x42) = 0;\r\n  param_1[0x89] = 0;\r\n  *(undefined2 *)((int)param_1 + 0x18e) = 0xffff;\r\n  param_1[0x88] = 0;\r\n  *(undefined2 *)((int)param_1 + 0x186) = 0;\r\n  param_1[0x87] = 0;\r\n  *(undefined2 *)(param_1 + 0x59) = 0;\r\n  *(undefined2 *)((int)param_1 + 0x162) = 1;\r\n  param_1[0x86] = 0;\r\n  param_1[0x41] = -100;\r\n  *(undefined2 *)(param_1 + 0x61) = 100;\r\n  *(undefined2 *)(param_1 + 0x51) = 3;\r\n  *(undefined2 *)((int)param_1 + 0x176) = 1;\r\n  *(undefined2 *)((int)param_1 + 0x172) = 0xffff;\r\n  *(undefined2 *)(param_1 + 0x58) = 0xffff;\r\n  *(undefined2 *)(param_1 + 0x5c) = 0xffff;\r\n  uVar2 = FUN_004cea00(8);\r\n  *(undefined2 *)(param_1 + 0x50) = uVar2;\r\n  *(undefined2 *)(param_1 + 0x60) = 0x392;\r\n  *(undefined2 *)(param_1 + 0x53) = 0;\r\n  *(undefined2 *)(param_1 + 0x54) = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c7c00",
+      "name": "FUN_004c7c00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c7d10",
+      "name": "FUN_004c7d10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c6360",
+      "name": "FUN_004c6360"
+    },
+    {
+      "addr": "004ca650",
+      "name": "FUN_004ca650"
+    },
+    {
+      "addr": "0042a310",
+      "name": "FUN_0042a310"
+    },
+    {
+      "addr": "004c7910",
+      "name": "FUN_004c7910"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    }
+  ],
+  "data_refs": []
+}

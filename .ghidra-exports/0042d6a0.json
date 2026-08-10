@@ -1,0 +1,22 @@
+{
+  "address": "0042d6a0",
+  "name": "FUN_0042d6a0",
+  "signature": "undefined FUN_0042d6a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0042d6a0(int param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  int iVar1;\r\n  bool bVar2;\r\n  uint local_48;\r\n  int local_44;\r\n  int local_40 [16];\r\n  \r\n  if ((param_3 != 1) && (param_3 != 2)) {\r\n    if (param_3 == 3) {\r\n      (**(code **)**(undefined4 **)(param_1 + 0x38))\r\n                (param_1,*(undefined4 *)(param_1 + 4),3,&local_48);\r\n      return 1;\r\n    }\r\n    return 0;\r\n  }\r\n  local_48 = (uint)(7 < *(int *)(param_1 + 0x16e));\r\n  bVar2 = local_48 != 1;\r\n  if (bVar2) {\r\n    local_40[0] = 4;\r\n    local_40[1] = 0;\r\n    local_40[8] = 4;\r\n    local_40[2] = 1;\r\n    local_40[3] = 8;\r\n    local_40[9] = 0;\r\n    local_40[4] = 3;\r\n    local_40[5] = 5;\r\n    local_40[6] = 6;\r\n    local_40[7] = 7;\r\n    local_40[10] = 1;\r\n    local_40[0xb] = 8;\r\n    local_40[0xc] = 3;\r\n    local_40[0xd] = 5;\r\n    local_40[0xe] = 6;\r\n    local_40[0xf] = 7;\r\n    local_44 = local_40[local_40[*(int *)(param_1 + 0x16e)] + 8];\r\n  }\r\n  else {\r\n    local_40[0] = 0;\r\n    local_40[1] = 1;\r\n    local_40[8] = 0;\r\n    local_40[2] = 3;\r\n    local_40[9] = 1;\r\n    local_40[10] = 3;\r\n    local_40[3] = 4;\r\n    local_40[0xb] = 4;\r\n    local_40[4] = 2;\r\n    local_40[0xc] = 2;\r\n    local_44 = local_40[local_40[*(int *)(param_1 + 0x172)] + 8];\r\n  }\r\n  local_40[9] = (int)!bVar2;\r\n  local_40[1] = (int)!bVar2;\r\n  if (param_3 == 1) {\r\n    iVar1 = FUN_0042d840();\r\n    if (iVar1 != 0) {\r\n      (**(code **)**(undefined4 **)(param_1 + 0x38))\r\n                (param_1,*(undefined4 *)(param_1 + 4),1,&local_48);\r\n    }\r\n    return 1;\r\n  }\r\n  iVar1 = FUN_0042d9f0();\r\n  if (iVar1 != 0) {\r\n    (**(code **)**(undefined4 **)(param_1 + 0x38))(param_1,*(undefined4 *)(param_1 + 4),2,&local_48)\r\n    ;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0042d840",
+      "name": "FUN_0042d840"
+    },
+    {
+      "addr": "0042d9f0",
+      "name": "FUN_0042d9f0"
+    }
+  ],
+  "data_refs": []
+}

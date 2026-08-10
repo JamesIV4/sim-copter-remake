@@ -1,0 +1,40 @@
+{
+  "address": "00431b10",
+  "name": "FUN_00431b10",
+  "signature": "undefined FUN_00431b10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00431b10(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  ostream *poVar2;\r\n  \r\n  set_new_handler((_func_void *)0x0);\r\n  iVar1 = FUN_004d28b0(param_1 << 2);\r\n  if (iVar1 == 0) {\r\n    poVar2 = ostream::operator<<((ostream *)&DAT_00590440,s_out_of_memory_004f80f0);\r\n    FUN_00401000(poVar2);\r\n    FUN_004d2060(1);\r\n  }\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042e840",
+      "name": "FUN_0042e840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28c0",
+      "name": "set_new_handler"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    }
+  ],
+  "data_refs": []
+}

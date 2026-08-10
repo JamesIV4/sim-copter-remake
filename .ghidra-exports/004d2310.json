@@ -1,0 +1,33 @@
+{
+  "address": "004d2310",
+  "name": "flush",
+  "signature": "ostream * __thiscall flush(ostream * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "ostream *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: class ostream & __thiscall ostream::flush(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nostream * __thiscall ostream::flush(ostream *this)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (*(int *)(this + *(int *)(*(int *)this + 4) + 0x34) < 0) {\r\n    __mtlock(this + *(int *)(*(int *)this + 4) + 0x38);\r\n  }\r\n  if (*(int *)(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x30) < 0) {\r\n    __mtlock(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x34);\r\n  }\r\n  iVar1 = (**(code **)(**(int **)(this + *(int *)(*(int *)this + 4) + 4) + 4))();\r\n  if (iVar1 == -1) {\r\n    *(uint *)(this + *(int *)(*(int *)this + 4) + 8) =\r\n         *(uint *)(this + *(int *)(*(int *)this + 4) + 8) | 2;\r\n  }\r\n  if (*(int *)(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x30) < 0) {\r\n    __mtlock(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x34);\r\n  }\r\n  if (*(int *)(this + *(int *)(*(int *)this + 4) + 0x34) < 0) {\r\n    __mtlock(this + *(int *)(*(int *)this + 4) + 0x38);\r\n  }\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d21a0",
+      "name": "opfx",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00401020",
+      "name": "FUN_00401020",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56e0",
+      "name": "__mtlock"
+    },
+    {
+      "addr": "004d56f0",
+      "name": "__mtlock"
+    }
+  ],
+  "data_refs": []
+}

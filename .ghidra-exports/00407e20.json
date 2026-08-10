@@ -1,0 +1,19 @@
+{
+  "address": "00407e20",
+  "name": "FUN_00407e20",
+  "signature": "undefined FUN_00407e20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00407e20(void)\r\n\r\n{\r\n  DAT_00518d5c = 1;\r\n  _DAT_00518d60 = 2;\r\n  DAT_00518bc8._0_1_ = 0;\r\n  DAT_00519740 = 0;\r\n  DAT_00518d58 = 0;\r\n  DAT_00518d64 = 0;\r\n  DAT_00518d68 = 0;\r\n  DAT_00518d6c = 0;\r\n  DAT_00518dac = 0;\r\n  _DAT_00518db0 = 0;\r\n  _DAT_00518db4 = 0;\r\n  _DAT_00518db8 = 0;\r\n  DAT_00518dbc = 0;\r\n  _DAT_00518dc0 = 0;\r\n  DAT_00518cd0 = 0;\r\n  _DAT_00518cf0 = 0;\r\n  DAT_00518cf4 = 0;\r\n  DAT_00518cf8 = 0;\r\n  DAT_00518d38 = 0;\r\n  _DAT_00518d3c = 0;\r\n  _DAT_00518d40 = 0;\r\n  _DAT_00518d44 = 0;\r\n  DAT_00518d48 = 0;\r\n  _DAT_00518d4c = 0;\r\n  DAT_00518d50 = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

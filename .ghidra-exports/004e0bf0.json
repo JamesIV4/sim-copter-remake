@@ -1,0 +1,18 @@
+{
+  "address": "004e0bf0",
+  "name": "FUN_004e0bf0",
+  "signature": "undefined FUN_004e0bf0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004e0bf0(void)\r\n\r\n{\r\n  SetUnhandledExceptionFilter(DAT_0059074c);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000038",
+      "name": "SetUnhandledExceptionFilter"
+    }
+  ],
+  "data_refs": []
+}

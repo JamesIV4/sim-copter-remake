@@ -1,0 +1,37 @@
+{
+  "address": "00463b40",
+  "name": "FUN_00463b40",
+  "signature": "undefined FUN_00463b40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_00463b40(char *param_1)\r\n\r\n{\r\n  FILE *_File;\r\n  int iVar1;\r\n  int iVar2;\r\n  byte *pbVar3;\r\n  byte *pbVar4;\r\n  bool bVar5;\r\n  bool bVar6;\r\n  byte local_8 [4];\r\n  undefined1 local_4;\r\n  \r\n  _File = FID_conflict___wfopen(param_1,&DAT_004fa038);\r\n  local_8[0] = DAT_004f83a8;\r\n  if (_File != (FILE *)0x0) {\r\n    _fread(local_8,1,4,_File);\r\n    _fclose(_File);\r\n    local_4 = 0;\r\n  }\r\n  iVar2 = 5;\r\n  bVar5 = false;\r\n  iVar1 = 0;\r\n  bVar6 = true;\r\n  pbVar3 = local_8;\r\n  pbVar4 = &DAT_004fa044;\r\n  do {\r\n    if (iVar2 == 0) break;\r\n    iVar2 = iVar2 + -1;\r\n    bVar5 = *pbVar3 < *pbVar4;\r\n    bVar6 = *pbVar3 == *pbVar4;\r\n    pbVar3 = pbVar3 + 1;\r\n    pbVar4 = pbVar4 + 1;\r\n  } while (bVar6);\r\n  if (!bVar6) {\r\n    iVar1 = (1 - (uint)bVar5) - (uint)(bVar5 != 0);\r\n  }\r\n  return iVar1 == 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041fbf0",
+      "name": "FUN_0041fbf0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3eb0",
+      "name": "FID_conflict:__wfopen"
+    },
+    {
+      "addr": "004d5c30",
+      "name": "_fread"
+    },
+    {
+      "addr": "004d3a40",
+      "name": "_fclose"
+    }
+  ],
+  "data_refs": []
+}

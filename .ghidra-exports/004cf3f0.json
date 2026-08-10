@@ -1,0 +1,13 @@
+{
+  "address": "004cf3f0",
+  "name": "FUN_004cf3f0",
+  "signature": "undefined FUN_004cf3f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004cf3f0(int param_1,short param_2)\r\n\r\n{\r\n  return *(undefined4 *)(*(int *)(*(int *)(param_1 + 0x28) + 4) + param_2 * 4);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

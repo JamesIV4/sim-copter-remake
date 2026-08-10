@@ -1,0 +1,18 @@
+{
+  "address": "0040e750",
+  "name": "FUN_0040e750",
+  "signature": "undefined FUN_0040e750(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0040e750(int *param_1,int param_2,int param_3)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  if ((((-1 < param_2) && (-1 < param_3)) && (param_2 <= param_1[6] - param_1[4])) &&\r\n     (param_3 <= param_1[7] - param_1[5])) {\r\n    iVar3 = param_1[0x2d] + param_3 / param_1[0x2e];\r\n    if (param_1[0x2b] != iVar3) {\r\n      iVar1 = *param_1;\r\n      iVar2 = (**(code **)(iVar1 + 0x128))();\r\n      if (iVar3 < iVar2) {\r\n        (**(code **)(iVar1 + 0xf0))(iVar3);\r\n      }\r\n    }\r\n    FUN_00405cd0(param_1);\r\n    return 1;\r\n  }\r\n  iVar3 = *param_1;\r\n  (**(code **)(iVar3 + 0xac))(param_1);\r\n  if ((undefined4 *)param_1[0xe] != (undefined4 *)0x0) {\r\n    (*(code *)**(undefined4 **)param_1[0xe])(param_1,param_1[1],0x10004,param_1 + 0x2b);\r\n  }\r\n  (**(code **)(iVar3 + 0x7c))();\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00405cd0",
+      "name": "FUN_00405cd0"
+    }
+  ],
+  "data_refs": []
+}

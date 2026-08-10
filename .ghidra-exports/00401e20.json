@@ -1,0 +1,76 @@
+{
+  "address": "00401e20",
+  "name": "FUN_00401e20",
+  "signature": "undefined FUN_00401e20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall\r\nFUN_00401e20(undefined4 *param_1,undefined4 *param_2,uint param_3,int param_4)\r\n\r\n{\r\n  ostream *poVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  undefined4 *puVar6;\r\n  \r\n  if (-param_4 - 1U <= param_3) {\r\n    poVar1 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar1);\r\n    FUN_004d2060(1);\r\n  }\r\n  puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar2 == (undefined4 *)0x0) {\r\n    param_1[1] = 0;\r\n  }\r\n  else {\r\n    puVar2[2] = param_4 + param_3;\r\n    puVar2[1] = param_3;\r\n    if (puVar2[2] == 0) {\r\n      *puVar2 = 0;\r\n    }\r\n    else {\r\n      uVar3 = FUN_004d28b0(puVar2[2]);\r\n      *puVar2 = uVar3;\r\n      uVar5 = puVar2[1];\r\n      if (uVar5 != 0) {\r\n        puVar6 = (undefined4 *)*puVar2;\r\n        for (uVar4 = uVar5 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n          *puVar6 = *param_2;\r\n          param_2 = param_2 + 1;\r\n          puVar6 = puVar6 + 1;\r\n        }\r\n        for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n          *(undefined1 *)puVar6 = *(undefined1 *)param_2;\r\n          param_2 = (undefined4 *)((int)param_2 + 1);\r\n          puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n        }\r\n      }\r\n    }\r\n    puVar2[3] = 1;\r\n    param_1[1] = puVar2;\r\n  }\r\n  *param_1 = 0;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004338d0",
+      "name": "FUN_004338d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f3d0",
+      "name": "FUN_0042f3d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f3d0",
+      "name": "FUN_0042f3d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042f3d0",
+      "name": "FUN_0042f3d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00433580",
+      "name": "FUN_00433580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044d7f0",
+      "name": "FUN_0044d7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0044d7f0",
+      "name": "FUN_0044d7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004240e0",
+      "name": "FUN_004240e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004240e0",
+      "name": "FUN_004240e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    }
+  ],
+  "data_refs": []
+}

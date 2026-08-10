@@ -1,0 +1,78 @@
+{
+  "address": "0041d340",
+  "name": "FUN_0041d340",
+  "signature": "undefined FUN_0041d340(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __fastcall FUN_0041d340(undefined4 *param_1)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  \r\n  puVar1 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar1 == (undefined4 *)0x0) {\r\n    param_1[6] = 0;\r\n  }\r\n  else {\r\n    puVar1[1] = 0;\r\n    puVar1[2] = 0;\r\n    *puVar1 = 0;\r\n    puVar1[3] = 1;\r\n    param_1[6] = puVar1;\r\n  }\r\n  *param_1 = &PTR_LAB_004f1328;\r\n  param_1[5] = 0;\r\n  param_1[3] = 0;\r\n  param_1[4] = 0;\r\n  param_1[7] = 0;\r\n  param_1[8] = 0;\r\n  param_1[10] = 0;\r\n  param_1[0xc] = 0;\r\n  param_1[1] = 1;\r\n  param_1[2] = 3;\r\n  param_1[9] = 10000;\r\n  InitializeCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  *param_1 = &PTR_LAB_004f1358;\r\n  param_1[0x13] = 0;\r\n  param_1[0x15] = 0;\r\n  *(undefined4 *)((int)param_1 + 0x8a) = 0;\r\n  param_1[0x14] = 0;\r\n  *(undefined4 *)((int)param_1 + 0x8e) = 0xe0;\r\n  puVar1 = (undefined4 *)((int)param_1 + 0x6a);\r\n  for (iVar2 = 8; iVar2 != 0; iVar2 = iVar2 + -1) {\r\n    *puVar1 = 0;\r\n    puVar1 = puVar1 + 1;\r\n  }\r\n  *(undefined4 *)((int)param_1 + 0x92) = 0;\r\n  *(undefined4 *)((int)param_1 + 0x96) = 0;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00406b40",
+      "name": "FUN_00406b40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0043b6e0",
+      "name": "FUN_0043b6e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004455e0",
+      "name": "FUN_004455e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00457c90",
+      "name": "FUN_00457c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00457c90",
+      "name": "FUN_00457c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045f290",
+      "name": "FUN_0045f290",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045e5f0",
+      "name": "FUN_0045e5f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00442920",
+      "name": "FUN_00442920",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004bcc80",
+      "name": "FUN_004bcc80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004306e0",
+      "name": "FUN_004306e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,52 @@
+{
+  "address": "004d55e0",
+  "name": "_abort",
+  "signature": "noreturn void __cdecl _abort(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _abort\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl _abort(void)\r\n\r\n{\r\n  FUN_004dd330(10);\r\n  _raise(0x16);\r\n                    /* WARNING: Subroutine does not return */\r\n  __exit(3);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0043c9b0",
+      "name": "FUN_0043c9b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0c75",
+      "name": "_abort",
+      "ref_type": "UNCONDITIONAL_JUMP"
+    },
+    {
+      "addr": "004d1600",
+      "name": "FUN_004d1600",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dd330",
+      "name": "FUN_004dd330"
+    },
+    {
+      "addr": "004dd0d0",
+      "name": "_raise"
+    },
+    {
+      "addr": "004d2080",
+      "name": "__exit"
+    }
+  ],
+  "data_refs": []
+}

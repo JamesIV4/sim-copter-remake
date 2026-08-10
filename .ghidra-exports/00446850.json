@@ -1,0 +1,109 @@
+{
+  "address": "00446850",
+  "name": "FUN_00446850",
+  "signature": "undefined FUN_00446850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall\r\nFUN_00446850(undefined4 *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5)\r\n\r\n{\r\n  *param_1 = param_2;\r\n  param_1[1] = param_3;\r\n  param_1[2] = param_4;\r\n  param_1[3] = param_5;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

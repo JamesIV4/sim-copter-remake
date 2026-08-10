@@ -1,0 +1,24 @@
+{
+  "address": "004ab170",
+  "name": "FUN_004ab170",
+  "signature": "undefined FUN_004ab170(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ab170(void)\r\n\r\n{\r\n  undefined4 *local_50;\r\n  undefined4 *local_4c;\r\n  undefined4 *local_48;\r\n  undefined4 *local_44;\r\n  undefined4 *local_40;\r\n  undefined *local_3c;\r\n  undefined *local_38;\r\n  undefined *local_34;\r\n  undefined4 *local_30;\r\n  undefined4 *local_2c;\r\n  undefined4 *local_28;\r\n  undefined4 *local_24;\r\n  undefined4 *local_20;\r\n  undefined4 *local_1c;\r\n  undefined4 *local_18;\r\n  undefined4 *local_14;\r\n  undefined *local_10;\r\n  undefined4 *local_c;\r\n  undefined4 *local_8;\r\n  undefined4 *local_4;\r\n  \r\n  local_50 = &DAT_00505fa8;\r\n  local_4c = &DAT_00505fa4;\r\n  local_48 = &DAT_00505fb0;\r\n  local_44 = &DAT_00506048;\r\n  local_40 = &DAT_0050604c;\r\n  FUN_00463520(&local_50,5,s_General_Miss_00506154);\r\n  local_50 = &DAT_00505fcc;\r\n  local_4c = &DAT_00505fd0;\r\n  local_48 = (undefined4 *)&DAT_00505fd4;\r\n  local_44 = (undefined4 *)&DAT_00505fd8;\r\n  local_40 = (undefined4 *)&DAT_00505fdc;\r\n  FUN_00463520(&local_50,5,s_Riot_Miss_00506148);\r\n  local_50 = &DAT_00505fe0;\r\n  local_4c = &DAT_00505fe4;\r\n  local_48 = &DAT_00506090;\r\n  FUN_00463520(&local_50,3,s_Rescue_Miss_0050613c);\r\n  local_50 = &DAT_00505ff0;\r\n  local_4c = &DAT_00505ff4;\r\n  local_48 = &DAT_00506094;\r\n  local_44 = &DAT_0050609c;\r\n  FUN_00463520(&local_50,4,s_Transport_Miss_0050612c);\r\n  local_50 = &DAT_00505fe8;\r\n  local_4c = &DAT_00505fec;\r\n  local_48 = &DAT_00506098;\r\n  FUN_00463520(&local_50,3,s_Medevac_Miss_0050611c);\r\n  local_50 = &DAT_00505ff8;\r\n  local_4c = &DAT_00505ffc;\r\n  local_48 = &DAT_00506000;\r\n  local_44 = &DAT_00506004;\r\n  local_40 = (undefined4 *)&DAT_00506008;\r\n  local_3c = &DAT_0050600c;\r\n  local_38 = &DAT_00506010;\r\n  local_34 = &DAT_00506014;\r\n  local_30 = &DAT_00506038;\r\n  local_2c = &DAT_0050603c;\r\n  local_28 = &DAT_00506040;\r\n  local_24 = &DAT_00506044;\r\n  local_20 = &DAT_00506078;\r\n  local_1c = &DAT_0050607c;\r\n  local_18 = &DAT_00506080;\r\n  local_14 = &DAT_00506084;\r\n  local_10 = &DAT_00506088;\r\n  local_c = &DAT_0050608c;\r\n  local_8 = &DAT_005060a0;\r\n  local_4 = &DAT_005060a8;\r\n  FUN_00463520(&local_50,0x14,s_Fire_Miss_00506110);\r\n  local_50 = (undefined4 *)&DAT_00506018;\r\n  local_4c = (undefined4 *)&DAT_0050601c;\r\n  FUN_00463520(&local_50,2,s_Criminal_Miss_00506100);\r\n  local_50 = &DAT_00506020;\r\n  local_4c = &DAT_00506024;\r\n  local_48 = &DAT_00506028;\r\n  FUN_00463520(&local_50,3,s_Speeder_Miss_005060f0);\r\n  local_50 = &DAT_0050602c;\r\n  local_4c = &DAT_00506030;\r\n  local_48 = (undefined4 *)&DAT_00506034;\r\n  FUN_00463520(&local_50,3,s_Traffic_Miss_005060e0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00463520",
+      "name": "FUN_00463520"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "00402c90",
+  "name": "FUN_00402c90",
+  "signature": "undefined FUN_00402c90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_00402c90(int param_1)\r\n\r\n{\r\n  DWORD DVar1;\r\n  \r\n  DVar1 = GetVersion();\r\n  if (param_1 == 0) {\r\n    return DVar1 & 0xff;\r\n  }\r\n  if (param_1 == 1) {\r\n    return DVar1 >> 8 & 0xff;\r\n  }\r\n  return 0xffffffff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00434720",
+      "name": "FUN_00434720",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00434720",
+      "name": "FUN_00434720",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000012",
+      "name": "GetVersion"
+    }
+  ],
+  "data_refs": []
+}

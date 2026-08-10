@@ -1,0 +1,79 @@
+{
+  "address": "00432530",
+  "name": "FUN_00432530",
+  "signature": "undefined FUN_00432530(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00432530(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (*param_1 != 0) {\r\n    iVar1 = param_1[1];\r\n    param_1[3] = iVar1;\r\n    while (iVar1 != 0) {\r\n      iVar1 = *(int *)(param_1[3] + 5);\r\n      FUN_004d29a0(param_1[3]);\r\n      param_1[3] = iVar1;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00411e60",
+      "name": "FUN_00411e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00413cb0",
+      "name": "FUN_00413cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004143d0",
+      "name": "FUN_004143d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004147b0",
+      "name": "FUN_004147b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00414b90",
+      "name": "FUN_00414b90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042de50",
+      "name": "FUN_0042de50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

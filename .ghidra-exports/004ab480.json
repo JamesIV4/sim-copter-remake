@@ -1,0 +1,107 @@
+{
+  "address": "004ab480",
+  "name": "FUN_004ab480",
+  "signature": "undefined FUN_004ab480(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ab480(int param_1,int param_2,int param_3)\r\n\r\n{\r\n  short sVar1;\r\n  ushort uVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  \r\n  iVar6 = -1;\r\n  iVar5 = -1;\r\n  iVar3 = FUN_004aba30(param_1,param_2);\r\n  if (param_3 < 5) {\r\n    if (param_3 != 4) {\r\n      if (param_3 == 1) {\r\n        if ((*(byte *)((&DAT_005910b0)[param_1] + param_2) < 0x70) ||\r\n           (iVar6 = 0x31, 0xd9 < *(byte *)((&DAT_005910b0)[param_1] + param_2))) {\r\n          iVar6 = 0x30;\r\n        }\r\n        uVar4 = _rand();\r\n        sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n        if (sVar1 == 1) {\r\n          uVar4 = _rand();\r\n          iVar5 = *(int *)(&DAT_005060c8 +\r\n                          (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff\r\n                                       ) % 6) * 4);\r\n        }\r\n        else if (sVar1 == 2) {\r\n          iVar5 = 0x5e;\r\n        }\r\n        else {\r\n          iVar5 = 0x57;\r\n        }\r\n      }\r\n      goto LAB_004ab9da;\r\n    }\r\n  }\r\n  else if (param_3 < 0x1d) {\r\n    if ((param_3 != 0x1c) && (param_3 != 0xc)) goto LAB_004ab9da;\r\n  }\r\n  else {\r\n    if (param_3 < 0x41) {\r\n      if (param_3 == 0x40) {\r\n        iVar6 = 0x35;\r\n        _rand();\r\n        uVar4 = _rand();\r\n        iVar5 = *(int *)(&DAT_005060c8 +\r\n                        (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff)\r\n                               % 6) * 4);\r\n      }\r\n      else if (param_3 == 0x20) {\r\n        iVar6 = 0x3c;\r\n        uVar4 = _rand();\r\n        sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n        if (sVar1 == 1) {\r\n          uVar4 = _rand();\r\n          iVar5 = *(int *)(&DAT_005060c8 +\r\n                          (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff\r\n                                       ) % 6) * 4);\r\n        }\r\n        else if (sVar1 == 2) {\r\n          iVar5 = 0x5c;\r\n        }\r\n        else if (sVar1 == 3) {\r\n          iVar5 = 0x5e;\r\n        }\r\n        else {\r\n          iVar5 = 0x5b;\r\n        }\r\n      }\r\n      goto LAB_004ab9da;\r\n    }\r\n    if (param_3 < 0x101) {\r\n      if (param_3 != 0x100) {\r\n        if (param_3 == 0x90) {\r\n          iVar6 = 0x41;\r\n          uVar4 = _rand();\r\n          sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n          if (sVar1 == 1) {\r\n            uVar4 = _rand();\r\n            iVar5 = *(int *)(&DAT_005060c8 +\r\n                            (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                         uVar4 & 0xffff) % 6) * 4);\r\n          }\r\n          else if (sVar1 == 2) {\r\n            iVar5 = 0x59;\r\n          }\r\n          else {\r\n            iVar5 = 0x54;\r\n          }\r\n        }\r\n        goto LAB_004ab9da;\r\n      }\r\n    }\r\n    else if (param_3 < 0x111) {\r\n      if (param_3 == 0x110) {\r\n        iVar6 = 0x40;\r\n        uVar4 = _rand();\r\n        sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n        if (sVar1 == 1) {\r\n          uVar4 = _rand();\r\n          iVar5 = *(int *)(&DAT_005060c8 +\r\n                          (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff\r\n                                       ) % 6) * 4);\r\n        }\r\n        else if (sVar1 == 2) {\r\n          iVar5 = 0x59;\r\n        }\r\n        else {\r\n          iVar5 = 0x54;\r\n        }\r\n        goto LAB_004ab9da;\r\n      }\r\n      if (param_3 != 0x108) goto LAB_004ab9da;\r\n    }\r\n    else {\r\n      if (0x200 < param_3) {\r\n        if (param_3 < 0x801) {\r\n          if (param_3 == 0x800) {\r\n            iVar6 = 0x3d;\r\n            uVar4 = _rand();\r\n            if ((short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5) ==\r\n                1) {\r\n              uVar4 = _rand();\r\n              iVar5 = *(int *)(&DAT_005060c8 +\r\n                              (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                           uVar4 & 0xffff) % 6) * 4);\r\n            }\r\n            else {\r\n              iVar5 = 0x58;\r\n            }\r\n          }\r\n          else if (param_3 == 0x408) {\r\n            iVar6 = 0x33;\r\n            uVar4 = _rand();\r\n            sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5)\r\n            ;\r\n            if (sVar1 == 1) {\r\n              uVar4 = _rand();\r\n              iVar5 = *(int *)(&DAT_005060c8 +\r\n                              (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                           uVar4 & 0xffff) % 6) * 4);\r\n            }\r\n            else if (sVar1 == 2) {\r\n              iVar5 = 0x5b;\r\n            }\r\n            else if (sVar1 == 3) {\r\n              iVar5 = 0x5e;\r\n            }\r\n            else {\r\n              iVar5 = 0x57;\r\n            }\r\n          }\r\n        }\r\n        else if (param_3 < 0x2001) {\r\n          if (param_3 == 0x2000) {\r\n            iVar6 = 0x38;\r\n            uVar4 = _rand();\r\n            sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5)\r\n            ;\r\n            if (sVar1 == 1) {\r\n              uVar4 = _rand();\r\n              iVar5 = *(int *)(&DAT_005060c8 +\r\n                              (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                           uVar4 & 0xffff) % 6) * 4);\r\n            }\r\n            else if (sVar1 == 2) {\r\n              iVar5 = 0x57;\r\n            }\r\n            else if (sVar1 == 3) {\r\n              iVar5 = 0x4f;\r\n            }\r\n            else {\r\n              iVar5 = 0x52;\r\n            }\r\n          }\r\n          else if (param_3 == 0x1000) {\r\n            iVar5 = _rand();\r\n            uVar2 = (short)(ushort)iVar5 >> 0xf;\r\n            iVar6 = (short)((((ushort)iVar5 ^ uVar2) - uVar2 & 1 ^ uVar2) - uVar2) + 0x3e;\r\n            uVar4 = _rand();\r\n            iVar5 = *(int *)(&DAT_005060c8 +\r\n                            (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                         uVar4 & 0xffff) % 6) * 4);\r\n          }\r\n        }\r\n        else if (param_3 == 0x4000) {\r\n          iVar6 = 0x36;\r\n          uVar4 = _rand();\r\n          sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n          if (sVar1 == 1) {\r\n            uVar4 = _rand();\r\n            iVar5 = *(int *)(&DAT_005060c8 +\r\n                            (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                         uVar4 & 0xffff) % 6) * 4);\r\n          }\r\n          else if (sVar1 == 2) {\r\n            iVar5 = 0x58;\r\n          }\r\n          else {\r\n            iVar5 = 0x50;\r\n          }\r\n        }\r\n        else if (param_3 == 0x20000) {\r\n          iVar6 = 0x39;\r\n          uVar4 = _rand();\r\n          sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n          if (sVar1 == 1) {\r\n            uVar4 = _rand();\r\n            iVar5 = *(int *)(&DAT_005060c8 +\r\n                            (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 |\r\n                                         uVar4 & 0xffff) % 6) * 4);\r\n          }\r\n          else if (sVar1 == 2) {\r\n            iVar5 = 0x58;\r\n          }\r\n          else if (sVar1 == 3) {\r\n            iVar5 = 0x5a;\r\n          }\r\n          else {\r\n            iVar5 = 0x4f;\r\n          }\r\n        }\r\n        else if (param_3 == 0x80010) {\r\n          iVar6 = 0x40;\r\n          iVar5 = 0x53;\r\n        }\r\n        goto LAB_004ab9da;\r\n      }\r\n      if (param_3 == 0x200) {\r\n        iVar6 = 0x36;\r\n        uVar4 = _rand();\r\n        sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n        if (sVar1 == 1) {\r\n          uVar4 = _rand();\r\n          iVar5 = *(int *)(&DAT_005060c8 +\r\n                          (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff\r\n                                       ) % 6) * 4);\r\n        }\r\n        else if (sVar1 == 2) {\r\n          iVar5 = 0x58;\r\n        }\r\n        else if (sVar1 == 3) {\r\n          iVar5 = 0x5a;\r\n        }\r\n        else {\r\n          iVar5 = 0x4f;\r\n        }\r\n        goto LAB_004ab9da;\r\n      }\r\n      if (param_3 != 0x118) goto LAB_004ab9da;\r\n    }\r\n  }\r\n  iVar6 = 0x33;\r\n  uVar4 = _rand();\r\n  sVar1 = (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 5);\r\n  if (sVar1 == 1) {\r\n    uVar4 = _rand();\r\n    iVar5 = *(int *)(&DAT_005060c8 +\r\n                    (short)((int)((uint)(ushort)((short)uVar4 >> 0xf) << 0x10 | uVar4 & 0xffff) % 6)\r\n                    * 4);\r\n  }\r\n  else if (sVar1 == 2) {\r\n    iVar5 = 0x59;\r\n  }\r\n  else {\r\n    iVar5 = 0x57;\r\n  }\r\nLAB_004ab9da:\r\n  FUN_0042a3b0(0,0x2f,0x96);\r\n  if (iVar6 != -1) {\r\n    FUN_0042a3b0(0,iVar6,0x32);\r\n  }\r\n  if (iVar3 != -1) {\r\n    FUN_0042a3b0(0,iVar3,0x32);\r\n  }\r\n  if (iVar5 != -1) {\r\n    FUN_0042a3b0(0,iVar5,0x32);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a7a10",
+      "name": "FUN_004a7a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a9a10",
+      "name": "FUN_004a9a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a9a10",
+      "name": "FUN_004a9a10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004aba30",
+      "name": "FUN_004aba30"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "0042a3b0",
+      "name": "FUN_0042a3b0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,70 @@
+{
+  "address": "00439010",
+  "name": "FUN_00439010",
+  "signature": "undefined FUN_00439010(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00439010(undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 uVar2;\r\n  LPCSTR lpFileName;\r\n  UINT UVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  char *pcVar6;\r\n  int *extraout_ECX;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  char *pcVar9;\r\n  undefined4 *puVar10;\r\n  int iVar11;\r\n  int *piVar12;\r\n  \r\n  FUN_004d2c30();\r\n  FUN_00439420(extraout_ECX[0xc],extraout_ECX[0xd]);\r\n  FUN_00439480(extraout_ECX[0x12],extraout_ECX[0x13]);\r\n  piVar12 = extraout_ECX + 8;\r\n  uVar2 = FUN_00402640(piVar12);\r\n  FUN_0043a6a0(s_Header_004f9284,s_Pitch_004f928c,uVar2,piVar12);\r\n  piVar12 = extraout_ECX + 9;\r\n  uVar2 = FUN_00402640(piVar12);\r\n  FUN_0043a6a0(s_Detail_1_004f9270,s_Height_004f927c,uVar2,piVar12);\r\n  lpFileName = (LPCSTR)FUN_00402640();\r\n  UVar3 = GetPrivateProfileIntA(s_Detail_1_004f9270,s_Language_004f9264,-9999,lpFileName);\r\n  extraout_ECX[6] = UVar3;\r\n  if (extraout_ECX[1] != 0) {\r\n    FUN_004d29a0(extraout_ECX[1]);\r\n  }\r\n  iVar4 = FUN_004d28b0(*(int *)(extraout_ECX[2] + 4) + 1);\r\n  extraout_ECX[1] = iVar4;\r\n  uVar8 = *(uint *)(extraout_ECX[2] + 4);\r\n  if (uVar8 != 0) {\r\n    puVar5 = (undefined4 *)FUN_004026a0();\r\n    puVar10 = (undefined4 *)extraout_ECX[1];\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *puVar10 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar10 = puVar10 + 1;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined1 *)puVar10 = *(undefined1 *)puVar5;\r\n      puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n      puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n    }\r\n  }\r\n  *(undefined1 *)(*(int *)(extraout_ECX[2] + 4) + extraout_ECX[1]) = 0;\r\n  UVar3 = GetPrivateProfileIntA\r\n                    (s_Detail_1_004f9270,s_CharacterSet_004f9254,-9999,(LPCSTR)extraout_ECX[1]);\r\n  extraout_ECX[7] = UVar3;\r\n  if (extraout_ECX[1] != 0) {\r\n    FUN_004d29a0(extraout_ECX[1]);\r\n  }\r\n  iVar4 = FUN_004d28b0(*(int *)(extraout_ECX[2] + 4) + 1);\r\n  extraout_ECX[1] = iVar4;\r\n  uVar8 = *(uint *)(extraout_ECX[2] + 4);\r\n  if (uVar8 != 0) {\r\n    puVar5 = (undefined4 *)FUN_004026a0();\r\n    puVar10 = (undefined4 *)extraout_ECX[1];\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *puVar10 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar10 = puVar10 + 1;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined1 *)puVar10 = *(undefined1 *)puVar5;\r\n      puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n      puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n    }\r\n  }\r\n  *(undefined1 *)(*(int *)(extraout_ECX[2] + 4) + extraout_ECX[1]) = 0;\r\n  UVar3 = GetPrivateProfileIntA\r\n                    (s_Detail_1_004f9270,s_StartCharacter_004f9244,-9999,(LPCSTR)extraout_ECX[1]);\r\n  extraout_ECX[10] = UVar3;\r\n  if (extraout_ECX[1] != 0) {\r\n    FUN_004d29a0(extraout_ECX[1]);\r\n  }\r\n  iVar4 = FUN_004d28b0(*(int *)(extraout_ECX[2] + 4) + 1);\r\n  extraout_ECX[1] = iVar4;\r\n  uVar8 = *(uint *)(extraout_ECX[2] + 4);\r\n  if (uVar8 != 0) {\r\n    puVar5 = (undefined4 *)FUN_004026a0();\r\n    puVar10 = (undefined4 *)extraout_ECX[1];\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *puVar10 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar10 = puVar10 + 1;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined1 *)puVar10 = *(undefined1 *)puVar5;\r\n      puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n      puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n    }\r\n  }\r\n  *(undefined1 *)(*(int *)(extraout_ECX[2] + 4) + extraout_ECX[1]) = 0;\r\n  UVar3 = GetPrivateProfileIntA\r\n                    (s_Detail_1_004f9270,s_CharacterCount_004f9234,-9999,(LPCSTR)extraout_ECX[1]);\r\n  extraout_ECX[0xb] = UVar3;\r\n  if (extraout_ECX[1] != 0) {\r\n    FUN_004d29a0(extraout_ECX[1]);\r\n  }\r\n  iVar4 = FUN_004d28b0(*(int *)(extraout_ECX[2] + 4) + 1);\r\n  extraout_ECX[1] = iVar4;\r\n  uVar8 = *(uint *)(extraout_ECX[2] + 4);\r\n  if (uVar8 != 0) {\r\n    puVar5 = (undefined4 *)FUN_004026a0();\r\n    puVar10 = (undefined4 *)extraout_ECX[1];\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *puVar10 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar10 = puVar10 + 1;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined1 *)puVar10 = *(undefined1 *)puVar5;\r\n      puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n      puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n    }\r\n  }\r\n  *(undefined1 *)(*(int *)(extraout_ECX[2] + 4) + extraout_ECX[1]) = 0;\r\n  GetPrivateProfileStringA\r\n            (s_Detail_1_004f9270,s_RectChars_004f9228,&DAT_004f83a8,&stack0x00000114,0x4000,\r\n             (LPCSTR)extraout_ECX[1]);\r\n  if (extraout_ECX[1] != 0) {\r\n    FUN_004d29a0(extraout_ECX[1]);\r\n  }\r\n  iVar4 = FUN_004d28b0(*(int *)(extraout_ECX[2] + 4) + 1);\r\n  extraout_ECX[1] = iVar4;\r\n  uVar8 = ((undefined4 *)extraout_ECX[2])[1];\r\n  if (uVar8 != 0) {\r\n    puVar5 = *(undefined4 **)extraout_ECX[2];\r\n    puVar10 = (undefined4 *)extraout_ECX[1];\r\n    for (uVar7 = uVar8 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *puVar10 = *puVar5;\r\n      puVar5 = puVar5 + 1;\r\n      puVar10 = puVar10 + 1;\r\n    }\r\n    for (uVar8 = uVar8 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n      *(undefined1 *)puVar10 = *(undefined1 *)puVar5;\r\n      puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n      puVar10 = (undefined4 *)((int)puVar10 + 1);\r\n    }\r\n  }\r\n  iVar4 = 0;\r\n  *(undefined1 *)(*(int *)(extraout_ECX[2] + 4) + extraout_ECX[1]) = 0;\r\n  GetPrivateProfileStringA\r\n            (s_Detail_1_004f9270,s_FontImageFileName_004f9214,&DAT_004f83a8,&stack0x00000014,0x100,\r\n             (LPCSTR)extraout_ECX[1]);\r\n  uVar8 = 0xffffffff;\r\n  pcVar6 = &stack0x00000014;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x00000014,~uVar8 - 1);\r\n  pcVar6 = &stack0x00000114;\r\n  while (cVar1 = *pcVar6, cVar1 != '\\0') {\r\n    while ((cVar1 != ' ' && (*pcVar6 != '\\0'))) {\r\n      pcVar6 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n    }\r\n    cVar1 = *pcVar6;\r\n    while ((cVar1 == ' ' && (*pcVar6 != '\\0'))) {\r\n      pcVar6 = pcVar6 + 1;\r\n      cVar1 = *pcVar6;\r\n    }\r\n    iVar4 = iVar4 + 1;\r\n  }\r\n  pcVar6 = &stack0x00000114;\r\n  iVar11 = 0;\r\n  extraout_ECX[0xb] = iVar4;\r\n  if (0 < iVar4) {\r\n    do {\r\n      _sscanf(pcVar6,s__ld__ld__ld__ld_004f9204,&param_1,&param_2,&param_3,&param_4);\r\n      puVar5 = (undefined4 *)extraout_ECX[0xd];\r\n      if ((undefined4 *)extraout_ECX[0xe] == puVar5) {\r\n        FUN_0043a720(puVar5,&param_1);\r\n      }\r\n      else {\r\n        if (puVar5 != (undefined4 *)0x0) {\r\n          *puVar5 = param_1;\r\n          puVar5[1] = param_2;\r\n          puVar5[2] = param_3;\r\n          puVar5[3] = param_4;\r\n        }\r\n        extraout_ECX[0xd] = extraout_ECX[0xd] + 0x10;\r\n      }\r\n      if (iVar11 < iVar4 + -1) {\r\n        if (*pcVar6 != ' ') {\r\n          do {\r\n            pcVar6 = pcVar6 + 1;\r\n          } while (*pcVar6 != ' ');\r\n          if (*pcVar6 != ' ') goto LAB_004393b3;\r\n        }\r\n        do {\r\n          pcVar6 = pcVar6 + 1;\r\n        } while (*pcVar6 == ' ');\r\n      }\r\nLAB_004393b3:\r\n      iVar11 = iVar11 + 1;\r\n    } while (iVar11 < iVar4);\r\n  }\r\n  iVar4 = 0;\r\n  iVar11 = extraout_ECX[0xd] - extraout_ECX[0xc] >> 4;\r\n  if (0 < iVar11) {\r\n    do {\r\n      pcVar9 = (char *)(iVar4 * 0x10 + extraout_ECX[0xc]);\r\n      pcVar6 = (char *)extraout_ECX[0x13];\r\n      if ((char *)extraout_ECX[0x14] == pcVar6) {\r\n        FUN_0043a8f0(pcVar6,&stack0x00000003);\r\n      }\r\n      else {\r\n        if (pcVar6 != (char *)0x0) {\r\n          *pcVar6 = (char)*(undefined4 *)(pcVar9 + 8) - *pcVar9;\r\n        }\r\n        extraout_ECX[0x13] = extraout_ECX[0x13] + 1;\r\n      }\r\n      iVar4 = iVar4 + 1;\r\n    } while (iVar4 < iVar11);\r\n  }\r\n  iVar4 = *extraout_ECX;\r\n  (**(code **)(iVar4 + 0x14))();\r\n  (**(code **)(iVar4 + 0x20))();\r\n  return extraout_ECX[5];\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "00439420",
+      "name": "FUN_00439420"
+    },
+    {
+      "addr": "00439480",
+      "name": "FUN_00439480"
+    },
+    {
+      "addr": "00402640",
+      "name": "FUN_00402640"
+    },
+    {
+      "addr": "0043a6a0",
+      "name": "FUN_0043a6a0"
+    },
+    {
+      "addr": "EXTERNAL:00000004",
+      "name": "GetPrivateProfileIntA"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004026a0",
+      "name": "FUN_004026a0"
+    },
+    {
+      "addr": "EXTERNAL:0000000a",
+      "name": "GetPrivateProfileStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "004d5590",
+      "name": "_sscanf"
+    },
+    {
+      "addr": "0043a720",
+      "name": "FUN_0043a720"
+    },
+    {
+      "addr": "0043a8f0",
+      "name": "FUN_0043a8f0"
+    }
+  ],
+  "data_refs": []
+}

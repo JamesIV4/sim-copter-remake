@@ -1,0 +1,44 @@
+{
+  "address": "00410d30",
+  "name": "FUN_00410d30",
+  "signature": "undefined FUN_00410d30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00410d30(void)\r\n\r\n{\r\n  PALETTEENTRY *pPVar1;\r\n  PALETTEENTRY *pPVar2;\r\n  HDC hdc;\r\n  HPALETTE hPal;\r\n  HPALETTE hPal_00;\r\n  int iVar3;\r\n  LOGPALETTE local_404 [128];\r\n  \r\n  local_404[0].palVersion = 0x300;\r\n  local_404[0].palNumEntries = 0x100;\r\n  pPVar1 = local_404[0].palPalEntry;\r\n  for (iVar3 = 0x100; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n    pPVar1->peRed = '\\0';\r\n    pPVar1->peGreen = '\\0';\r\n    pPVar1->peBlue = '\\0';\r\n    pPVar1->peFlags = '\\0';\r\n    pPVar1 = pPVar1 + 1;\r\n  }\r\n  pPVar1 = local_404[0].palPalEntry;\r\n  do {\r\n    pPVar1->peRed = '\\0';\r\n    pPVar2 = pPVar1 + 1;\r\n    pPVar1->peGreen = '\\0';\r\n    pPVar1->peBlue = '\\0';\r\n    pPVar1->peFlags = '\\x05';\r\n    pPVar1 = pPVar2;\r\n  } while (pPVar2 < &stack0x00000000);\r\n  hdc = GetDC((HWND)0x0);\r\n  if (hdc != (HDC)0x0) {\r\n    hPal = CreatePalette(local_404);\r\n    if (hPal != (HPALETTE)0x0) {\r\n      hPal_00 = SelectPalette(hdc,hPal,0);\r\n      RealizePalette(hdc);\r\n      SelectPalette(hdc,hPal_00,0);\r\n      DeleteObject(hPal);\r\n    }\r\n    ReleaseDC((HWND)0x0,hdc);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042dbb0",
+      "name": "FUN_0042dbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000a8",
+      "name": "CreatePalette"
+    },
+    {
+      "addr": "EXTERNAL:000000a7",
+      "name": "SelectPalette"
+    },
+    {
+      "addr": "EXTERNAL:000000a6",
+      "name": "RealizePalette"
+    },
+    {
+      "addr": "EXTERNAL:000000a5",
+      "name": "DeleteObject"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    }
+  ],
+  "data_refs": []
+}

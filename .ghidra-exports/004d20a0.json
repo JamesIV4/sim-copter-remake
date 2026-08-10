@@ -1,0 +1,49 @@
+{
+  "address": "004d20a0",
+  "name": "FUN_004d20a0",
+  "signature": "undefined FUN_004d20a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004d20a0(UINT param_1,int param_2,int param_3)\r\n\r\n{\r\n  HANDLE hProcess;\r\n  undefined4 *puVar1;\r\n  UINT uExitCode;\r\n  \r\n  FID_conflict___lockexit();\r\n  if (DAT_00506cac == 1) {\r\n    uExitCode = param_1;\r\n    hProcess = GetCurrentProcess();\r\n    TerminateProcess(hProcess,uExitCode);\r\n  }\r\n  _DAT_00506ca8 = 1;\r\n  DAT_00506ca4 = (undefined1)param_3;\r\n  if (param_2 == 0) {\r\n    if ((DAT_0061cca4 != (undefined4 *)0x0) &&\r\n       (puVar1 = (undefined4 *)(DAT_0061cca0 + -4), DAT_0061cca4 <= puVar1)) {\r\n      do {\r\n        if ((code *)*puVar1 != (code *)0x0) {\r\n          (*(code *)*puVar1)();\r\n        }\r\n        puVar1 = puVar1 + -1;\r\n      } while (DAT_0061cca4 <= puVar1);\r\n    }\r\n    __initterm(&DAT_004f80dc,&DAT_004f80e4);\r\n  }\r\n  __initterm(&DAT_004f80e8,&DAT_004f80ec);\r\n  if (param_3 != 0) {\r\n    FID_conflict___lockexit();\r\n    return;\r\n  }\r\n  DAT_00506cac = 1;\r\n                    /* WARNING: Subroutine does not return */\r\n  ExitProcess(param_1);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2080",
+      "name": "__exit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2160",
+      "name": "FID_conflict:__lockexit"
+    },
+    {
+      "addr": "EXTERNAL:00000067",
+      "name": "GetCurrentProcess"
+    },
+    {
+      "addr": "EXTERNAL:00000068",
+      "name": "TerminateProcess"
+    },
+    {
+      "addr": "004d2180",
+      "name": "__initterm"
+    },
+    {
+      "addr": "004d2170",
+      "name": "FID_conflict:__lockexit"
+    },
+    {
+      "addr": "EXTERNAL:00000069",
+      "name": "ExitProcess"
+    }
+  ],
+  "data_refs": []
+}

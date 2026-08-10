@@ -1,0 +1,71 @@
+{
+  "address": "004dfa90",
+  "name": "__lock_fhandle",
+  "signature": "int __cdecl __lock_fhandle(int _Filehandle)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __lock_fhandle\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __lock_fhandle(int _Filehandle)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int extraout_EAX;\r\n  int iVar3;\r\n  \r\n  piVar1 = (int *)((int)&DAT_0061bb80 + ((int)(_Filehandle & 0xffffffe7U) >> 3));\r\n  iVar2 = (_Filehandle & 0x1fU) * 0x24;\r\n  iVar3 = *piVar1 + iVar2;\r\n  if (*(int *)(iVar3 + 8) == 0) {\r\n    __lock(0x11);\r\n    if (*(int *)(iVar3 + 8) == 0) {\r\n      InitializeCriticalSection((LPCRITICAL_SECTION)(iVar3 + 0xc));\r\n      *(int *)(iVar3 + 8) = *(int *)(iVar3 + 8) + 1;\r\n    }\r\n    FUN_004d64a0(0x11);\r\n  }\r\n  EnterCriticalSection((LPCRITICAL_SECTION)(*piVar1 + iVar2 + 0xc));\r\n  return extraout_EAX;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7060",
+      "name": "__close",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8cf0",
+      "name": "__commit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df7b0",
+      "name": "__alloc_osfhnd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3440",
+      "name": "__chsize",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,61 @@
+{
+  "address": "004e34b0",
+  "name": "__chsize_lk",
+  "signature": "undefined __chsize_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __chsize_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __chsize_lk(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  int *piVar4;\r\n  undefined4 *puVar5;\r\n  HANDLE hFile;\r\n  BOOL BVar6;\r\n  DWORD *pDVar7;\r\n  DWORD DVar8;\r\n  int iVar9;\r\n  int iVar10;\r\n  undefined4 in_stack_0000100c;\r\n  int in_stack_00001010;\r\n  \r\n  FUN_004d2c30();\r\n  iVar10 = 0;\r\n  iVar1 = __lseek_lk(in_stack_0000100c,0,1);\r\n  if ((iVar1 == -1) || (iVar2 = __lseek_lk(in_stack_0000100c,0,2), iVar2 == -1)) {\r\n    return -1;\r\n  }\r\n  iVar2 = in_stack_00001010 - iVar2;\r\n  if (iVar2 < 1) {\r\n    if (iVar2 < 0) {\r\n      __lseek_lk(in_stack_0000100c,in_stack_00001010,0);\r\n      hFile = (HANDLE)FUN_004dfa40(in_stack_0000100c);\r\n      BVar6 = SetEndOfFile(hFile);\r\n      iVar10 = -(uint)(BVar6 == 0);\r\n      if (iVar10 == -1) {\r\n        puVar5 = (undefined4 *)FUN_004da730();\r\n        *puVar5 = 0xd;\r\n        pDVar7 = (DWORD *)FUN_004da740();\r\n        DVar8 = GetLastError();\r\n        *pDVar7 = DVar8;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    puVar5 = (undefined4 *)&stack0x00000008;\r\n    for (iVar9 = 0x400; iVar9 != 0; iVar9 = iVar9 + -1) {\r\n      *puVar5 = 0;\r\n      puVar5 = puVar5 + 1;\r\n    }\r\n    uVar3 = __setmode_lk(in_stack_0000100c,0x8000);\r\n    do {\r\n      iVar9 = 0x1000;\r\n      if (iVar2 < 0x1000) {\r\n        iVar9 = iVar2;\r\n      }\r\n      iVar9 = FUN_004d71e0(in_stack_0000100c,&stack0x00000008,iVar9);\r\n      if (iVar9 == -1) {\r\n        piVar4 = (int *)FUN_004da740();\r\n        if (*piVar4 == 5) {\r\n          puVar5 = (undefined4 *)FUN_004da730();\r\n          *puVar5 = 0xd;\r\n        }\r\n        iVar10 = -1;\r\n        break;\r\n      }\r\n      iVar2 = iVar2 - iVar9;\r\n    } while (0 < iVar2);\r\n    __setmode_lk(in_stack_0000100c,uVar3);\r\n  }\r\n  __lseek_lk(in_stack_0000100c,iVar1,0);\r\n  return iVar10;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3440",
+      "name": "__chsize",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d7710",
+      "name": "__lseek_lk"
+    },
+    {
+      "addr": "004df740",
+      "name": "__setmode_lk"
+    },
+    {
+      "addr": "004d71e0",
+      "name": "FUN_004d71e0"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004dfa40",
+      "name": "FUN_004dfa40"
+    },
+    {
+      "addr": "EXTERNAL:00000032",
+      "name": "SetEndOfFile"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    }
+  ],
+  "data_refs": []
+}

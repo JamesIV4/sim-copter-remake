@@ -1,0 +1,60 @@
+{
+  "address": "004ef340",
+  "name": "FUN_004ef340",
+  "signature": "undefined FUN_004ef340(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004ef340(uint param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  \r\n  if ((param_1 < DAT_0061bc80) &&\r\n     ((*(byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3)) + 4 +\r\n                (param_1 & 0x1f) * 0x24) & 1) != 0)) {\r\n    __lock_fhandle(param_1);\r\n    iVar1 = __lseek_lk(param_1,0,1);\r\n    if (iVar1 == -1) {\r\n      iVar3 = -1;\r\n    }\r\n    else {\r\n      iVar3 = __lseek_lk(param_1,0,2);\r\n      if (iVar1 != iVar3) {\r\n        __lseek_lk(param_1,iVar1,0);\r\n      }\r\n    }\r\n    __unlock_fhandle(param_1);\r\n    return iVar3;\r\n  }\r\n  puVar2 = (undefined4 *)FUN_004da730();\r\n  *puVar2 = 9;\r\n  puVar2 = (undefined4 *)FUN_004da740();\r\n  *puVar2 = 0;\r\n  return -1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00461640",
+      "name": "FUN_00461640",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461640",
+      "name": "FUN_00461640",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046cbb0",
+      "name": "FUN_0046cbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461860",
+      "name": "FUN_00461860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00461860",
+      "name": "FUN_00461860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfa90",
+      "name": "__lock_fhandle"
+    },
+    {
+      "addr": "004d7710",
+      "name": "__lseek_lk"
+    },
+    {
+      "addr": "004dfb00",
+      "name": "__unlock_fhandle"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    }
+  ],
+  "data_refs": []
+}

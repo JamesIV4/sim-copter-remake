@@ -1,0 +1,18 @@
+{
+  "address": "00496da0",
+  "name": "FUN_00496da0",
+  "signature": "undefined FUN_00496da0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00496da0(int param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  \r\n  uVar1 = *(uint *)(param_1 + 0xc);\r\n  DAT_0057f3ac = &DAT_00504840;\r\n  iVar2 = 0x5900000 - *(int *)(*(int *)(param_1 + 4) + 8);\r\n  if ((0 < iVar2) && (FUN_0046c4bf(iVar2,0x5900000), (uVar1 & 0x7fffffff) < 0xc)) {\r\n                    /* WARNING: Could not recover jumptable at 0x00496e4e. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n    (*(code *)(&PTR_LAB_0049a41c)[uVar1])();\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    }
+  ],
+  "data_refs": []
+}

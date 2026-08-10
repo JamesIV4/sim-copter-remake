@@ -1,0 +1,33 @@
+{
+  "address": "004d5650",
+  "name": "_atof",
+  "signature": "double __cdecl _atof(char * _String)",
+  "calling_convention": "__cdecl",
+  "return_type": "double",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _atof\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\ndouble __cdecl _atof(char *_String)\r\n\r\n{\r\n  byte bVar1;\r\n  uint uVar2;\r\n  FLT p_Var3;\r\n  byte *pbVar4;\r\n  _flt local_18;\r\n  \r\n  while( true ) {\r\n    if (DAT_0050721c < 2) {\r\n      uVar2 = *(ushort *)(PTR_DAT_00507010 + (uint)(byte)*_String * 2) & 8;\r\n    }\r\n    else {\r\n      uVar2 = __isctype((uint)(byte)*_String,8);\r\n    }\r\n    if (uVar2 == 0) break;\r\n    _String = _String + 1;\r\n  }\r\n  uVar2 = 0xffffffff;\r\n  pbVar4 = (byte *)_String;\r\n  do {\r\n    if (uVar2 == 0) break;\r\n    uVar2 = uVar2 - 1;\r\n    bVar1 = *pbVar4;\r\n    pbVar4 = pbVar4 + 1;\r\n  } while (bVar1 != 0);\r\n  p_Var3 = __fltin2(&local_18,_String,(_locale_t)(~uVar2 - 1));\r\n  return p_Var3->dval;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004636b0",
+      "name": "FUN_004636b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004636b0",
+      "name": "FUN_004636b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5700",
+      "name": "__isctype"
+    },
+    {
+      "addr": "004dd9a0",
+      "name": "__fltin2"
+    }
+  ],
+  "data_refs": []
+}

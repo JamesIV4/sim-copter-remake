@@ -1,0 +1,60 @@
+{
+  "address": "004c6970",
+  "name": "FUN_004c6970",
+  "signature": "undefined FUN_004c6970(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004c6970(int param_1,short param_2,undefined4 param_3,undefined4 param_4)\r\n\r\n{\r\n  short sVar1;\r\n  undefined2 uVar2;\r\n  undefined4 uVar3;\r\n  \r\n  switch(param_3) {\r\n  case 0:\r\n  case 8:\r\n    if (param_2 == 0) {\r\n      if (*(short *)(param_1 + 0x162) != 0) {\r\n        FUN_004c68f0(0x4e6f4d6f);\r\n      }\r\n      if ((*(short *)(param_1 + 0x18c) == *(short *)(param_1 + 0x174)) &&\r\n         (*(short *)(param_1 + 0x176) != 0)) {\r\n        FUN_004c5210(0xffffffff,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n    }\r\n    else if (param_2 < 7) {\r\n      if (*(short *)(param_1 + 0x162) != 0) {\r\n        FUN_004c68f0(0x3157616c);\r\n      }\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210((int)*(short *)(param_1 + 0x18c),*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n    }\r\n    else {\r\n      if (*(short *)(param_1 + 0x162) != 0) {\r\n        FUN_004c68f0(0x3152756e);\r\n      }\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210((int)*(short *)(param_1 + 0x18c),*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 1:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x4661436c);\r\n    }\r\n    if (*(short *)(param_1 + 0x176) != 0) {\r\n      FUN_004c5210(8,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n      return;\r\n    }\r\n    break;\r\n  case 2:\r\n  case 6:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x57686f61);\r\n    }\r\n    if (*(short *)(param_1 + 0x176) != 0) {\r\n      FUN_004c5210(9,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n      return;\r\n    }\r\n    break;\r\n  default:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x4e6f4d6f);\r\n      return;\r\n    }\r\n    break;\r\n  case 4:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x57686f61);\r\n    }\r\n    if (*(short *)(param_1 + 0x176) != 0) {\r\n      FUN_004c5210(0x2a,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n      return;\r\n    }\r\n    break;\r\n  case 5:\r\n    sVar1 = FUN_004c8430(param_4);\r\n    *(short *)(param_1 + 0x140) = sVar1;\r\n    *(ushort *)(param_1 + 0x140) = sVar1 - 2U;\r\n    *(ushort *)(param_1 + 0x140) = sVar1 - 2U & 7;\r\n    FUN_004c0090(param_4);\r\n    sVar1 = FUN_004cea00(2);\r\n    if (sVar1 == 0) {\r\n      if (*(short *)(param_1 + 0x162) != 0) {\r\n        uVar3 = 0x32476162;\r\n        goto LAB_004c6bf2;\r\n      }\r\n    }\r\n    else if (*(short *)(param_1 + 0x162) != 0) {\r\n      uVar3 = 0x48697048;\r\nLAB_004c6bf2:\r\n      FUN_004c68f0(uVar3);\r\n    }\r\n    uVar2 = FUN_004cea00(9);\r\n    switch(uVar2) {\r\n    case 0:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(10,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 1:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(1,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 2:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(4,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 3:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(0xb,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 4:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(2,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 5:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(0x12,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 6:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(6,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    case 7:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(7,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n      break;\r\n    default:\r\n      if (*(short *)(param_1 + 0x176) != 0) {\r\n        FUN_004c5210(3,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 7:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x4e6f4d6f);\r\n      return;\r\n    }\r\n    break;\r\n  case 10:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x4e6f4d6f);\r\n      return;\r\n    }\r\n    break;\r\n  case 0xb:\r\n    if (*(short *)(param_1 + 0x162) != 0) {\r\n      FUN_004c68f0(0x4e6f4d6f);\r\n    }\r\n    if (*(short *)(param_1 + 0x176) != 0) {\r\n      FUN_004c5210(9,*(short *)(param_1 + 0x12e) == 32000,0,0);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c65e0",
+      "name": "FUN_004c65e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ca7d0",
+      "name": "FUN_004ca7d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ca940",
+      "name": "FUN_004ca940",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc330",
+      "name": "FUN_004cc330",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cb790",
+      "name": "FUN_004cb790",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004c68f0",
+      "name": "FUN_004c68f0"
+    },
+    {
+      "addr": "004c5210",
+      "name": "FUN_004c5210"
+    },
+    {
+      "addr": "004c8430",
+      "name": "FUN_004c8430"
+    },
+    {
+      "addr": "004c0090",
+      "name": "FUN_004c0090"
+    },
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    }
+  ],
+  "data_refs": []
+}

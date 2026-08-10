@@ -1,0 +1,19 @@
+{
+  "address": "004da900",
+  "name": "xcptlookup",
+  "signature": "undefined __cdecl xcptlookup(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _xcptlookup\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __cdecl xcptlookup(int param_1,int *param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  \r\n  piVar1 = param_2;\r\n  do {\r\n    if (*piVar1 == param_1) break;\r\n    piVar1 = piVar1 + 3;\r\n  } while (piVar1 < param_2 + DAT_00507874 * 3);\r\n  return -(uint)(*piVar1 == param_1) & (uint)piVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da7b0",
+      "name": "__XcptFilter",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

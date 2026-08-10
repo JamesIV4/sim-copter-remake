@@ -1,0 +1,29 @@
+{
+  "address": "0048d9a0",
+  "name": "FUN_0048d9a0",
+  "signature": "undefined FUN_0048d9a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0048d9a0(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  \r\n  puVar1 = DAT_005044ec;\r\n  while (puVar1 != (undefined4 *)0x0) {\r\n    DAT_005044ec = (undefined4 *)*puVar1;\r\n    FUN_004d29a0(puVar1[1]);\r\n    FUN_004d29a0(puVar1);\r\n    puVar1 = DAT_005044ec;\r\n  }\r\n  DAT_005044ec = puVar1;\r\n  DAT_005044e8 = 0;\r\n  DAT_005044e4 = 0;\r\n  DAT_005044e0 = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0048cc00",
+      "name": "FUN_0048cc00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048cd80",
+      "name": "FUN_0048cd80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

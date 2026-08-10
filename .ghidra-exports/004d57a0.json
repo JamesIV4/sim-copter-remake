@@ -1,0 +1,78 @@
+{
+  "address": "004d57a0",
+  "name": "entry",
+  "signature": "undefined entry(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid entry(void)\r\n\r\n{\r\n  byte bVar1;\r\n  DWORD DVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  HMODULE pHVar5;\r\n  byte *pbVar6;\r\n  int unaff_EDI;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 uVar7;\r\n  _STARTUPINFOA local_74;\r\n  undefined1 *local_1c;\r\n  undefined4 local_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &DAT_004f5598;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  local_1c = &stack0xffffff80;\r\n  DVar2 = GetVersion();\r\n  _DAT_00506c7c = DVar2 >> 8 & 0xff;\r\n  DAT_00506c70 = DVar2 >> 0x10;\r\n  _DAT_00506c78 = DVar2 & 0xff;\r\n  _DAT_00506c74 = _DAT_00506c78 * 0x100 + _DAT_00506c7c;\r\n  FUN_004de280();\r\n  iVar3 = __mtinit();\r\n  if (iVar3 == 0) {\r\n    __amsg_exit(0x10);\r\n  }\r\n  local_8 = 0;\r\n  FUN_004d77a0();\r\n  ___initmbctable();\r\n  DAT_0061cc94 = (byte *)GetCommandLineA();\r\n  DAT_00507228 = FUN_004de0e0();\r\n  if ((DAT_00507228 == 0) || (DAT_0061cc94 == (byte *)0x0)) {\r\n    FUN_004d2060(0xffffffff);\r\n  }\r\n  __setargv();\r\n  FUN_004ddd90();\r\n  __cinit(unaff_EDI);\r\n  bVar1 = *DAT_0061cc94;\r\n  pbVar6 = DAT_0061cc94;\r\n  if (bVar1 == 0x22) {\r\n    pbVar6 = DAT_0061cc94 + 1;\r\n    if (*pbVar6 != 0x22) {\r\n      do {\r\n        if (*pbVar6 == 0) break;\r\n        iVar3 = __ismbblead((uint)*pbVar6);\r\n        if (iVar3 != 0) {\r\n          pbVar6 = pbVar6 + 1;\r\n        }\r\n        pbVar6 = pbVar6 + 1;\r\n      } while (*pbVar6 != 0x22);\r\n      if (*pbVar6 != 0x22) goto LAB_004d58aa;\r\n    }\r\n    pbVar6 = pbVar6 + 1;\r\n  }\r\n  else {\r\n    while (0x20 < bVar1) {\r\n      bVar1 = pbVar6[1];\r\n      pbVar6 = pbVar6 + 1;\r\n    }\r\n  }\r\nLAB_004d58aa:\r\n  bVar1 = *pbVar6;\r\n  while ((bVar1 != 0 && (*pbVar6 < 0x21))) {\r\n    pbVar6 = pbVar6 + 1;\r\n    bVar1 = *pbVar6;\r\n  }\r\n  local_74.dwFlags = 0;\r\n  GetStartupInfoA(&local_74);\r\n  uVar4 = 10;\r\n  if ((local_74.dwFlags & 1) != 0) {\r\n    uVar4 = local_74._48_4_ & 0xffff;\r\n  }\r\n  uVar7 = 0;\r\n  pHVar5 = GetModuleHandleA((LPCSTR)0x0);\r\n  uVar7 = FUN_0042dbb0(pHVar5,uVar7,pbVar6,uVar4);\r\n  FUN_004d2060(uVar7);\r\n  *unaff_FS_OFFSET = local_14;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000012",
+      "name": "GetVersion"
+    },
+    {
+      "addr": "004de280",
+      "name": "FUN_004de280"
+    },
+    {
+      "addr": "004da510",
+      "name": "__mtinit"
+    },
+    {
+      "addr": "004d5940",
+      "name": "__amsg_exit"
+    },
+    {
+      "addr": "004d77a0",
+      "name": "FUN_004d77a0"
+    },
+    {
+      "addr": "004dae80",
+      "name": "___initmbctable"
+    },
+    {
+      "addr": "EXTERNAL:0000005c",
+      "name": "GetCommandLineA"
+    },
+    {
+      "addr": "004de0e0",
+      "name": "FUN_004de0e0"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004dde70",
+      "name": "__setargv"
+    },
+    {
+      "addr": "004ddd90",
+      "name": "FUN_004ddd90"
+    },
+    {
+      "addr": "004d2030",
+      "name": "__cinit"
+    },
+    {
+      "addr": "004ddd30",
+      "name": "__ismbblead"
+    },
+    {
+      "addr": "EXTERNAL:0000005d",
+      "name": "GetStartupInfoA"
+    },
+    {
+      "addr": "EXTERNAL:00000056",
+      "name": "GetModuleHandleA"
+    },
+    {
+      "addr": "0042dbb0",
+      "name": "FUN_0042dbb0"
+    }
+  ],
+  "data_refs": []
+}

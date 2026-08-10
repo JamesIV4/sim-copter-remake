@@ -1,0 +1,24 @@
+{
+  "address": "004d6030",
+  "name": "_strncmp",
+  "signature": "int __cdecl _strncmp(char * _Str1, char * _Str2, size_t _MaxCount)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _strncmp\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _strncmp(char *_Str1,char *_Str2,size_t _MaxCount)\r\n\r\n{\r\n  char cVar1;\r\n  char cVar2;\r\n  size_t sVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  char *pcVar6;\r\n  char *pcVar7;\r\n  \r\n  uVar5 = 0;\r\n  sVar3 = _MaxCount;\r\n  pcVar6 = _Str1;\r\n  if (_MaxCount != 0) {\r\n    do {\r\n      if (sVar3 == 0) break;\r\n      sVar3 = sVar3 - 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    iVar4 = _MaxCount - sVar3;\r\n    do {\r\n      pcVar6 = _Str2;\r\n      pcVar7 = _Str1;\r\n      if (iVar4 == 0) break;\r\n      iVar4 = iVar4 + -1;\r\n      pcVar7 = _Str1 + 1;\r\n      pcVar6 = _Str2 + 1;\r\n      cVar2 = *_Str1;\r\n      cVar1 = *_Str2;\r\n      _Str2 = pcVar6;\r\n      _Str1 = pcVar7;\r\n    } while (cVar1 == cVar2);\r\n    uVar5 = 0;\r\n    if ((byte)pcVar6[-1] <= (byte)pcVar7[-1]) {\r\n      if (pcVar6[-1] == pcVar7[-1]) {\r\n        return 0;\r\n      }\r\n      uVar5 = 0xfffffffe;\r\n    }\r\n    uVar5 = ~uVar5;\r\n  }\r\n  return uVar5;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046d170",
+      "name": "FUN_0046d170",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d4ab0",
+      "name": "_setlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "00409eb0",
+  "name": "FUN_00409eb0",
+  "signature": "undefined FUN_00409eb0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00409eb0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (param_1[0x1e] == 0) {\r\n    return 0;\r\n  }\r\n  iVar1 = *param_1;\r\n  (**(code **)(iVar1 + 0xa8))(param_1);\r\n  (**(code **)(iVar1 + 0xdc))(2);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

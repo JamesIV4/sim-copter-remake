@@ -1,0 +1,49 @@
+{
+  "address": "004d3b60",
+  "name": "__flush",
+  "signature": "int __cdecl __flush(FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __flush\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __flush(FILE *_File)\r\n\r\n{\r\n  uint uVar1;\r\n  uint _MaxCharCount;\r\n  int iVar2;\r\n  \r\n  iVar2 = 0;\r\n  if ((((byte)_File->_flag & 3) == 2) && ((_File->_flag & 0x108U) != 0)) {\r\n    _MaxCharCount = (int)_File->_ptr - (int)_File->_base;\r\n    if (0 < (int)_MaxCharCount) {\r\n      uVar1 = __write(_File->_file,_File->_base,_MaxCharCount);\r\n      if (uVar1 == _MaxCharCount) {\r\n        if ((_File->_flag & 0x80U) != 0) {\r\n          _File->_flag = _File->_flag & 0xfffffffd;\r\n        }\r\n      }\r\n      else {\r\n        _File->_flag = _File->_flag | 0x20;\r\n        iVar2 = -1;\r\n      }\r\n    }\r\n  }\r\n  _File->_ptr = _File->_base;\r\n  _File->_cnt = 0;\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3a80",
+      "name": "__fclose_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3b20",
+      "name": "__fflush_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004de440",
+      "name": "__ftbuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004def80",
+      "name": "FUN_004def80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d59b0",
+      "name": "__fseek_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3cf0",
+      "name": "_fwrite",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

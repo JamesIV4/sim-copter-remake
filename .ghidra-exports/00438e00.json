@@ -1,0 +1,49 @@
+{
+  "address": "00438e00",
+  "name": "FUN_00438e00",
+  "signature": "undefined FUN_00438e00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall FUN_00438e00(undefined4 *param_1,char *param_2,undefined4 param_3)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  char *pcVar7;\r\n  \r\n  puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar2 == (undefined4 *)0x0) {\r\n    param_1[2] = 0;\r\n  }\r\n  else {\r\n    uVar4 = 0xffffffff;\r\n    pcVar7 = param_2;\r\n    do {\r\n      if (uVar4 == 0) break;\r\n      uVar4 = uVar4 - 1;\r\n      cVar1 = *pcVar7;\r\n      pcVar7 = pcVar7 + 1;\r\n    } while (cVar1 != '\\0');\r\n    iVar5 = ~uVar4 - 1;\r\n    puVar2[1] = iVar5;\r\n    puVar2[2] = iVar5;\r\n    if (iVar5 == 0) {\r\n      *puVar2 = 0;\r\n    }\r\n    else {\r\n      uVar3 = FUN_004d28b0(iVar5);\r\n      *puVar2 = uVar3;\r\n      uVar4 = puVar2[1];\r\n      pcVar7 = (char *)*puVar2;\r\n      for (uVar6 = uVar4 >> 2; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n        *(undefined4 *)pcVar7 = *(undefined4 *)param_2;\r\n        param_2 = param_2 + 4;\r\n        pcVar7 = pcVar7 + 4;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *pcVar7 = *param_2;\r\n        param_2 = param_2 + 1;\r\n        pcVar7 = pcVar7 + 1;\r\n      }\r\n    }\r\n    puVar2[3] = 1;\r\n    param_1[2] = puVar2;\r\n  }\r\n  param_1[1] = 0;\r\n  puVar2 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (puVar2 == (undefined4 *)0x0) {\r\n    param_1[4] = 0;\r\n  }\r\n  else {\r\n    puVar2[1] = 0;\r\n    puVar2[2] = 0;\r\n    *puVar2 = 0;\r\n    puVar2[3] = 1;\r\n    param_1[4] = puVar2;\r\n  }\r\n  param_1[3] = 0;\r\n  param_1[5] = 0;\r\n  param_1[6] = param_3;\r\n  param_1[8] = 0;\r\n  param_1[10] = 0;\r\n  param_1[0xb] = 0;\r\n  param_1[0xc] = 0;\r\n  param_1[0xd] = 0;\r\n  param_1[0xe] = 0;\r\n  param_1[0xf] = 0;\r\n  param_1[0x10] = 0;\r\n  param_1[0x11] = 0;\r\n  param_1[0x12] = 0;\r\n  param_1[0x13] = 0;\r\n  param_1[0x14] = 0;\r\n  *param_1 = &PTR_LAB_004f17a8;\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004072d0",
+      "name": "FUN_004072d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004072d0",
+      "name": "FUN_004072d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004072d0",
+      "name": "FUN_004072d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042d030",
+      "name": "FUN_0042d030",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042d030",
+      "name": "FUN_0042d030",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042d030",
+      "name": "FUN_0042d030",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,36 @@
+{
+  "address": "0040e8d0",
+  "name": "FUN_0040e8d0",
+  "signature": "undefined FUN_0040e8d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0040e8d0(int *param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *local_20;\r\n  int local_1c;\r\n  int local_18;\r\n  int local_14;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  undefined1 local_4 [4];\r\n  \r\n  local_1c = 1;\r\n  local_10 = param_1[5];\r\n  local_14 = param_1[4];\r\n  local_8 = local_10 + 1;\r\n  local_c = local_14 + 1;\r\n  for (local_20 = *(undefined4 **)param_1[0x1d]; (undefined4 *)param_1[0x1d] != local_20;\r\n      local_20 = (undefined4 *)*local_20) {\r\n    piVar1 = local_20 + 2;\r\n    if (*piVar1 != 0) {\r\n      FUN_004d29a0(*piVar1);\r\n    }\r\n    iVar2 = FUN_004d28b0(*(int *)(local_20[3] + 4) + 1);\r\n    *piVar1 = iVar2;\r\n    uVar4 = ((undefined4 *)local_20[3])[1];\r\n    if (uVar4 != 0) {\r\n      puVar5 = *(undefined4 **)local_20[3];\r\n      puVar6 = (undefined4 *)*piVar1;\r\n      for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n        *puVar6 = *puVar5;\r\n        puVar5 = puVar5 + 1;\r\n        puVar6 = puVar6 + 1;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *(undefined1 *)puVar6 = *(undefined1 *)puVar5;\r\n        puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n        puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n      }\r\n    }\r\n    *(undefined1 *)(*(int *)(local_20[3] + 4) + *piVar1) = 0;\r\n    FUN_00460ea0(*piVar1,&local_18,local_4);\r\n    if (local_1c < local_18) {\r\n      local_1c = local_18;\r\n    }\r\n  }\r\n  local_c = local_14 + local_1c + 10;\r\n  local_8 = param_1[0x2e] * param_1[0x1e] + local_10;\r\n  FUN_00404b90(&local_14);\r\n  param_1[4] = local_14;\r\n  param_1[5] = local_10;\r\n  param_1[6] = local_c;\r\n  param_1[7] = local_8;\r\n  iVar2 = *param_1;\r\n  (**(code **)(iVar2 + 0x20))();\r\n  (**(code **)(iVar2 + 0x40))(1,1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00441970",
+      "name": "FUN_00441970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00460ea0",
+      "name": "FUN_00460ea0"
+    },
+    {
+      "addr": "00404b90",
+      "name": "FUN_00404b90"
+    }
+  ],
+  "data_refs": []
+}

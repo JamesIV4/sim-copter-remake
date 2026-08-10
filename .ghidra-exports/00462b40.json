@@ -1,0 +1,49 @@
+{
+  "address": "00462b40",
+  "name": "FUN_00462b40",
+  "signature": "undefined FUN_00462b40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_00462b40(void)\r\n\r\n{\r\n  uint local_c;\r\n  undefined1 local_8 [4];\r\n  undefined1 local_4 [4];\r\n  \r\n  FUN_00462940(local_8,local_4,&local_c);\r\n  return local_c % 100;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00463380",
+      "name": "FUN_00463380",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463380",
+      "name": "FUN_00463380",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463380",
+      "name": "FUN_00463380",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463380",
+      "name": "FUN_00463380",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463380",
+      "name": "FUN_00463380",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463380",
+      "name": "FUN_00463380",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00462940",
+      "name": "FUN_00462940"
+    }
+  ],
+  "data_refs": []
+}

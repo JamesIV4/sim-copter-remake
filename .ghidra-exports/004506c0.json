@@ -1,0 +1,24 @@
+{
+  "address": "004506c0",
+  "name": "FUN_004506c0",
+  "signature": "undefined FUN_004506c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_004506c0(int *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5,undefined4 param_6,undefined4 param_7,undefined4 param_8,\r\n            undefined4 param_9,undefined4 param_10)\r\n\r\n{\r\n  undefined4 local_20;\r\n  undefined4 local_1c;\r\n  undefined4 local_18;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  local_20 = param_7;\r\n  local_1c = param_8;\r\n  local_18 = param_9;\r\n  local_14 = param_10;\r\n  local_10 = param_3;\r\n  local_c = param_4;\r\n  local_8 = param_5;\r\n  local_4 = param_6;\r\n  (**(code **)(*param_1 + 0x30))(param_2,&local_10,&local_20);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00448840",
+      "name": "FUN_00448840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448840",
+      "name": "FUN_00448840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

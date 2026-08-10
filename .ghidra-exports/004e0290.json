@@ -1,0 +1,34 @@
+{
+  "address": "004e0290",
+  "name": "__ShrMan",
+  "signature": "undefined __ShrMan(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ShrMan\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __ShrMan(uint *param_1,int param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  byte bVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uint *puVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  \r\n  iVar3 = (int)(param_2 + (param_2 >> 0x1f & 0x1fU)) >> 5;\r\n  bVar2 = (byte)(param_2 >> 0x1f);\r\n  bVar2 = (((byte)param_2 ^ bVar2) - bVar2 & 0x1f ^ bVar2) - bVar2;\r\n  iVar6 = 3;\r\n  uVar4 = 0;\r\n  puVar5 = param_1;\r\n  do {\r\n    uVar1 = *puVar5;\r\n    uVar7 = uVar1 >> (bVar2 & 0x1f);\r\n    *puVar5 = uVar7;\r\n    uVar7 = uVar7 | uVar4;\r\n    uVar4 = (uVar1 & ~(-1 << (bVar2 & 0x1f))) << (0x20 - bVar2 & 0x1f);\r\n    iVar6 = iVar6 + -1;\r\n    *puVar5 = uVar7;\r\n    puVar5 = puVar5 + 1;\r\n  } while (iVar6 != 0);\r\n  iVar6 = 2;\r\n  puVar5 = param_1 + 2;\r\n  param_1 = param_1 + (2 - iVar3);\r\n  do {\r\n    if (iVar6 < iVar3) {\r\n      *puVar5 = 0;\r\n    }\r\n    else {\r\n      *puVar5 = *param_1;\r\n    }\r\n    param_1 = param_1 + -1;\r\n    puVar5 = puVar5 + -1;\r\n    iVar6 = iVar6 + -1;\r\n  } while (-1 < iVar6);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

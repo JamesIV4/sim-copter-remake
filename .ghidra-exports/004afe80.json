@@ -1,0 +1,39 @@
+{
+  "address": "004afe80",
+  "name": "FUN_004afe80",
+  "signature": "undefined FUN_004afe80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004afe80(int param_1)\r\n\r\n{\r\n  uint *puVar1;\r\n  byte bVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined4 uVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  undefined4 local_10 [4];\r\n  \r\n  iVar7 = 0;\r\n  puVar1 = (uint *)(param_1 + 0x43);\r\n  local_10[0] = 0;\r\n  local_10[1] = 0;\r\n  local_10[2] = 0;\r\n  uVar3 = *(uint *)(param_1 + 0x33);\r\n  uVar4 = *(uint *)(param_1 + 0x37);\r\n  local_10[3] = 0;\r\n  *puVar1 = uVar3;\r\n  *(undefined4 *)(param_1 + 0x47) = *(undefined4 *)(param_1 + 0x37);\r\n  *(undefined4 *)(param_1 + 0xf) = 0;\r\n  iVar6 = (uVar3 & 0xff) * 0x100;\r\n  bVar2 = *(byte *)((int)&DAT_005bde80 + iVar6 + (uVar4 - 1 & 0xff));\r\n  if ((4 < bVar2) && (bVar2 < 10)) {\r\n    iVar7 = 1;\r\n    local_10[0] = 1;\r\n  }\r\n  bVar2 = *(byte *)((int)&DAT_005bde80 + iVar6 + (uVar4 + 1 & 0xff));\r\n  if ((4 < bVar2) && (bVar2 < 10)) {\r\n    local_10[iVar7] = 2;\r\n    iVar7 = iVar7 + 1;\r\n  }\r\n  bVar2 = *(byte *)((int)&DAT_005bde80 + (uVar4 & 0xff) + (uVar3 + 1 & 0xff) * 0x100);\r\n  if ((4 < bVar2) && (bVar2 < 10)) {\r\n    local_10[iVar7] = 4;\r\n    iVar7 = iVar7 + 1;\r\n  }\r\n  bVar2 = *(byte *)((int)&DAT_005bde80 + (uVar4 & 0xff) + (uVar3 - 1 & 0xff) * 0x100);\r\n  if ((4 < bVar2) && (bVar2 < 10)) {\r\n    local_10[iVar7] = 8;\r\n    iVar7 = iVar7 + 1;\r\n  }\r\n  if (iVar7 != 0) {\r\n    iVar6 = _rand();\r\n    uVar5 = local_10[(int)(short)iVar6 % iVar7];\r\n    *(undefined4 *)(param_1 + 0xf) = uVar5;\r\n    switch(uVar5) {\r\n    case 1:\r\n      *(int *)(param_1 + 0x47) = *(int *)(param_1 + 0x47) + -1;\r\n      return;\r\n    case 2:\r\n      *(int *)(param_1 + 0x47) = *(int *)(param_1 + 0x47) + 1;\r\n      return;\r\n    case 4:\r\n      *puVar1 = *puVar1 + 1;\r\n      return;\r\n    case 8:\r\n      *puVar1 = *puVar1 - 1;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b0cf0",
+      "name": "FUN_004b0cf0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b10a0",
+      "name": "FUN_004b10a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b14f0",
+      "name": "FUN_004b14f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b06c0",
+      "name": "FUN_004b06c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

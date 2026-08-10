@@ -1,0 +1,52 @@
+{
+  "address": "004e35f0",
+  "name": "___crtLCMapStringW",
+  "signature": "int __cdecl ___crtLCMapStringW(LPCWSTR _LocaleName, DWORD _DWMapFlag, LPCWSTR _LpSrcStr, int _CchSrc, LPWSTR _LpDestStr, int _CchDest)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 6,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___crtLCMapStringW\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl\r\n___crtLCMapStringW(LPCWSTR _LocaleName,DWORD _DWMapFlag,LPCWSTR _LpSrcStr,int _CchSrc,\r\n                  LPWSTR _LpDestStr,int _CchDest)\r\n\r\n{\r\n  int iVar1;\r\n  LPCSTR lpMultiByteStr;\r\n  int iVar2;\r\n  size_t cchDest;\r\n  char *lpDestStr;\r\n  UINT in_stack_0000001c;\r\n  \r\n  if (DAT_005089e4 == 0) {\r\n    iVar1 = LCMapStringW(0,0x100,L\"\",1,(LPWSTR)0x0,0);\r\n    if (iVar1 == 0) {\r\n      iVar1 = LCMapStringA(0,0x100,\"\",1,(LPSTR)0x0,0);\r\n      if (iVar1 == 0) {\r\n        return 0;\r\n      }\r\n      DAT_005089e4 = 2;\r\n    }\r\n    else {\r\n      DAT_005089e4 = 1;\r\n    }\r\n  }\r\n  iVar1 = DAT_005089e4;\r\n  if (0 < _CchSrc) {\r\n    _CchSrc = wcsncnt(_LpSrcStr,_CchSrc);\r\n    iVar1 = DAT_005089e4;\r\n  }\r\n  DAT_005089e4 = iVar1;\r\n  if (iVar1 == 1) {\r\n    iVar1 = LCMapStringW((LCID)_LocaleName,_DWMapFlag,_LpSrcStr,_CchSrc,_LpDestStr,_CchDest);\r\n    return iVar1;\r\n  }\r\n  if (iVar1 == 2) {\r\n    lpDestStr = (char *)0x0;\r\n    if (in_stack_0000001c == 0) {\r\n      in_stack_0000001c = DAT_00507ac8;\r\n    }\r\n    iVar1 = WideCharToMultiByte(in_stack_0000001c,0x220,_LpSrcStr,_CchSrc,(LPSTR)0x0,0,(LPCSTR)0x0,\r\n                                (LPBOOL)0x0);\r\n    if (iVar1 == 0) {\r\n      return 0;\r\n    }\r\n    lpMultiByteStr = (LPCSTR)FUN_004d5f00(iVar1);\r\n    if (lpMultiByteStr == (LPCSTR)0x0) {\r\n      return 0;\r\n    }\r\n    iVar2 = WideCharToMultiByte(in_stack_0000001c,0x220,_LpSrcStr,_CchSrc,lpMultiByteStr,iVar1,\r\n                                (LPCSTR)0x0,(LPBOOL)0x0);\r\n    if ((((iVar2 != 0) &&\r\n         (cchDest = LCMapStringA((LCID)_LocaleName,_DWMapFlag,lpMultiByteStr,iVar1,(LPSTR)0x0,0),\r\n         cchDest != 0)) && (lpDestStr = (char *)FUN_004d5f00(cchDest), lpDestStr != (char *)0x0)) &&\r\n       (iVar1 = LCMapStringA((LCID)_LocaleName,_DWMapFlag,lpMultiByteStr,iVar1,lpDestStr,cchDest),\r\n       iVar1 != 0)) {\r\n      if ((_DWMapFlag & 0x400) != 0) {\r\n        if (_CchDest != 0) {\r\n          if ((int)cchDest <= _CchDest) {\r\n            _CchDest = cchDest;\r\n          }\r\n          _strncpy((char *)_LpDestStr,lpDestStr,_CchDest);\r\n        }\r\nLAB_004e37e3:\r\n        FUN_004d6010(lpMultiByteStr);\r\n        FUN_004d6010(lpDestStr);\r\n        return cchDest;\r\n      }\r\n      if (_CchDest == 0) {\r\n        cchDest = MultiByteToWideChar(in_stack_0000001c,1,lpDestStr,cchDest,(LPWSTR)0x0,0);\r\n      }\r\n      else {\r\n        cchDest = MultiByteToWideChar(in_stack_0000001c,1,lpDestStr,cchDest,_LpDestStr,_CchDest);\r\n      }\r\n      if (cchDest != 0) goto LAB_004e37e3;\r\n    }\r\n    FUN_004d6010(lpMultiByteStr);\r\n    FUN_004d6010(lpDestStr);\r\n    iVar1 = 0;\r\n  }\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e41a0",
+      "name": "__towupper_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000030",
+      "name": "LCMapStringW"
+    },
+    {
+      "addr": "EXTERNAL:00000031",
+      "name": "LCMapStringA"
+    },
+    {
+      "addr": "004e3800",
+      "name": "wcsncnt"
+    },
+    {
+      "addr": "EXTERNAL:00000043",
+      "name": "WideCharToMultiByte"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004d5390",
+      "name": "_strncpy"
+    },
+    {
+      "addr": "EXTERNAL:00000041",
+      "name": "MultiByteToWideChar"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

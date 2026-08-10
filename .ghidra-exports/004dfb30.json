@@ -1,0 +1,34 @@
+{
+  "address": "004dfb30",
+  "name": "__getbuf",
+  "signature": "void __cdecl __getbuf(FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n/* Library Function - Single Match\r\n    __getbuf\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl __getbuf(FILE *_File)\r\n\r\n{\r\n  char *pcVar1;\r\n  \r\n  _DAT_005074c0 = _DAT_005074c0 + 1;\r\n  pcVar1 = (char *)FUN_004d5f00(0x1000);\r\n  _File->_base = pcVar1;\r\n  if (pcVar1 == (char *)0x0) {\r\n    _File->_flag = _File->_flag | 4;\r\n    _File->_base = (char *)&_File->_charbuf;\r\n    _File->_bufsiz = 2;\r\n  }\r\n  else {\r\n    _File->_flag = _File->_flag | 8;\r\n    _File->_bufsiz = 0x1000;\r\n  }\r\n  _File->_ptr = _File->_base;\r\n  _File->_cnt = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7980",
+      "name": "FUN_004d7980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004de2a0",
+      "name": "__filbuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e18e0",
+      "name": "FID_conflict:_ungetc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "004cbb60",
+  "name": "FUN_004cbb60",
+  "signature": "undefined FUN_004cbb60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_004cbb60(int param_1)\r\n\r\n{\r\n  return *(int *)(param_1 + 4) == *(int *)(DAT_005040d0 + 0xa4);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

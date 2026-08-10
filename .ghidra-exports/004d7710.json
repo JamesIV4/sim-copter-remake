@@ -1,0 +1,95 @@
+{
+  "address": "004d7710",
+  "name": "__lseek_lk",
+  "signature": "undefined __lseek_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __lseek_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nDWORD __lseek_lk(uint param_1,LONG param_2,DWORD param_3)\r\n\r\n{\r\n  byte *pbVar1;\r\n  HANDLE hFile;\r\n  undefined4 *puVar2;\r\n  DWORD DVar3;\r\n  ulong uVar4;\r\n  \r\n  hFile = (HANDLE)FUN_004dfa40(param_1);\r\n  if (hFile == (HANDLE)0xffffffff) {\r\n    puVar2 = (undefined4 *)FUN_004da730();\r\n    *puVar2 = 9;\r\n    return 0xffffffff;\r\n  }\r\n  DVar3 = SetFilePointer(hFile,param_2,(PLONG)0x0,param_3);\r\n  uVar4 = 0;\r\n  if (DVar3 == 0xffffffff) {\r\n    uVar4 = GetLastError();\r\n  }\r\n  if (uVar4 != 0) {\r\n    __dosmaperr(uVar4);\r\n    return 0xffffffff;\r\n  }\r\n  pbVar1 = (byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3)) + 4 +\r\n                   (param_1 & 0x1f) * 0x24);\r\n  *pbVar1 = *pbVar1 & 0xfd;\r\n  return DVar3;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d71e0",
+      "name": "FUN_004d71e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7460",
+      "name": "FUN_004d7460",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dfa40",
+      "name": "FUN_004dfa40"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "EXTERNAL:00000051",
+      "name": "SetFilePointer"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr"
+    }
+  ],
+  "data_refs": []
+}

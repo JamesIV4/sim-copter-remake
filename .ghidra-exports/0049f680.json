@@ -1,0 +1,53 @@
+{
+  "address": "0049f680",
+  "name": "FUN_0049f680",
+  "signature": "undefined FUN_0049f680(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_0049f680(int *param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5)\r\n\r\n{\r\n  uint uVar1;\r\n  ushort uVar2;\r\n  bool bVar3;\r\n  int iVar4;\r\n  undefined4 local_18;\r\n  undefined4 local_14;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  switch(param_2) {\r\n  case 0:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (((!bVar3) && (iVar4 = FUN_0049df60(), iVar4 != 0)) && ((*(byte *)(param_1 + 1) & 0x30) == 0)\r\n       ) {\r\n      (**(code **)(*param_1 + 4))(0xffffffff);\r\n      return;\r\n    }\r\n    break;\r\n  case 1:\r\n    FUN_004a01f0(param_3);\r\n    return;\r\n  case 2:\r\n    if (DAT_00503aa0 != 3) {\r\n      FUN_0049d7e0(param_5);\r\n      return;\r\n    }\r\n    break;\r\n  case 3:\r\n    if (((param_1[1] & 0xb00U) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if ((!bVar3) && ((param_1[1] & 0x300U) == 0)) {\r\n      FUN_0049fd00(param_4);\r\n      local_18 = 0x34;\r\n      local_14 = 0xffffffff;\r\n      local_8 = 1;\r\n      local_4 = 0;\r\n      FUN_004a89c0(&local_18);\r\n      return;\r\n    }\r\n    break;\r\n  case 4:\r\n    FUN_0049d660(param_3);\r\n    return;\r\n  case 5:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (((!bVar3) && (iVar4 = FUN_0049df60(), iVar4 != 0)) && ((*(byte *)(param_1 + 1) & 0x30) == 0)\r\n       ) {\r\n      (**(code **)(*param_1 + 4))(0xffffffff);\r\n      return;\r\n    }\r\n    if ((param_1[5] == 0x11e) || ((*(byte *)((int)param_1 + 5) & 8) != 0)) {\r\n      FUN_0049d660(param_3);\r\n      return;\r\n    }\r\n    break;\r\n  case 6:\r\n    if (((param_1[1] & 0xb00U) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if ((!bVar3) && ((param_1[1] & 0x300U) == 0)) {\r\n      FUN_0049fd00(param_4);\r\n      return;\r\n    }\r\n    break;\r\n  case 7:\r\n    uVar1 = param_1[1];\r\n    if (((uVar1 & 0xb00) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (bVar3) {\r\n      if ((param_1[5] == 0x11e) || ((uVar1 & 0x800) != 0)) {\r\n        FUN_0049d660(param_3);\r\n        return;\r\n      }\r\n    }\r\n    else if ((uVar1 & 0x300) == 0) {\r\n      FUN_0049fd00(param_4);\r\n      local_18 = 0x34;\r\n      local_14 = 0xffffffff;\r\n      local_8 = 1;\r\n      local_4 = 0;\r\n      FUN_004a89c0(&local_18);\r\n      return;\r\n    }\r\n    break;\r\n  case 9:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (!bVar3) {\r\n      FUN_0049fd00(param_4);\r\n      return;\r\n    }\r\n    break;\r\n  case 10:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (!bVar3) {\r\n      FUN_0049fd00(param_4);\r\n      *(undefined4 *)((int)param_1 + 0x107) = 0;\r\n      return;\r\n    }\r\n    break;\r\n  case 0xc:\r\n  case 0x11:\r\n    uVar1 = param_1[1];\r\n    if (((uVar1 & 0xb00) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (bVar3) {\r\n      if ((param_1[5] == 0x11e) || ((uVar1 & 0x800) != 0)) {\r\n        FUN_0049d660(param_3);\r\n        return;\r\n      }\r\n    }\r\n    else if ((uVar1 & 0x300) == 0) {\r\n      FUN_0049fd00(param_4);\r\n      local_18 = 0x34;\r\n      local_14 = 0xffffffff;\r\n      local_8 = 1;\r\n      local_4 = 0;\r\n      FUN_004a89c0(&local_18);\r\n      return;\r\n    }\r\n    break;\r\n  case 0xe:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (((!bVar3) && (iVar4 = FUN_0049df60(), iVar4 != 0)) && ((*(byte *)(param_1 + 1) & 0x30) == 0)\r\n       ) {\r\n      (**(code **)(*param_1 + 4))(0xffffffff);\r\n      return;\r\n    }\r\n    if ((param_1[5] == 0x11e) || ((*(byte *)((int)param_1 + 5) & 8) != 0)) {\r\n      FUN_0049d660(param_3);\r\n      return;\r\n    }\r\n    break;\r\n  case 0xf:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (!bVar3) {\r\n      FUN_0049fd00(param_4);\r\n      return;\r\n    }\r\n    break;\r\n  case 0x12:\r\n    if (((*(byte *)((int)param_1 + 5) & 0xb) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if (!bVar3) {\r\n      iVar4 = _rand();\r\n      uVar2 = (short)(ushort)iVar4 >> 0xf;\r\n      if (((((ushort)iVar4 ^ uVar2) - uVar2 & 0xf ^ uVar2) == uVar2) &&\r\n         ((*(byte *)((int)param_1 + 5) & 3) == 0)) {\r\n        FUN_0049fd00(param_4);\r\n        local_18 = 0x34;\r\n        local_14 = 0xffffffff;\r\n        local_8 = 1;\r\n        local_4 = 0;\r\n        FUN_004a89c0(&local_18);\r\n        return;\r\n      }\r\n    }\r\n    break;\r\n  case 0x13:\r\n    if (((param_1[1] & 0xb00U) == 0) &&\r\n       ((iVar4 = param_1[5], iVar4 < 0x11c || ((0x11f < iVar4 && (iVar4 != 400)))))) {\r\n      bVar3 = false;\r\n    }\r\n    else {\r\n      bVar3 = true;\r\n    }\r\n    if ((!bVar3) && ((param_1[1] & 0x300U) == 0)) {\r\n      FUN_0049fd00(param_4);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049fc10",
+      "name": "FUN_0049fc10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049df60",
+      "name": "FUN_0049df60"
+    },
+    {
+      "addr": "004a01f0",
+      "name": "FUN_004a01f0"
+    },
+    {
+      "addr": "0049d7e0",
+      "name": "FUN_0049d7e0"
+    },
+    {
+      "addr": "0049fd00",
+      "name": "FUN_0049fd00"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0"
+    },
+    {
+      "addr": "0049d660",
+      "name": "FUN_0049d660"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

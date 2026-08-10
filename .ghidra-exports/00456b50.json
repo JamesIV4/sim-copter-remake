@@ -1,0 +1,22 @@
+{
+  "address": "00456b50",
+  "name": "FUN_00456b50",
+  "signature": "undefined FUN_00456b50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * __thiscall FUN_00456b50(undefined4 *param_1,byte param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  undefined4 *puVar3;\r\n  int *piVar4;\r\n  \r\n  *param_1 = &PTR_FUN_004f3230;\r\n  FUN_00456cb0();\r\n  if ((undefined4 *)param_1[4] != (undefined4 *)0x0) {\r\n    (*(code *)**(undefined4 **)param_1[4])(1);\r\n  }\r\n  piVar1 = (int *)param_1[2];\r\n  piVar4 = (int *)*piVar1;\r\n  while (piVar4 != piVar1) {\r\n    piVar2 = (int *)*piVar4;\r\n    *(int *)piVar4[1] = *piVar4;\r\n    *(int *)(*piVar4 + 4) = piVar4[1];\r\n    if (piVar4[4] != 0) {\r\n      FUN_004d29a0(piVar4[4]);\r\n    }\r\n    *piVar4 = (int)DAT_004f996c;\r\n    DAT_004f996c = piVar4;\r\n    param_1[3] = param_1[3] + -1;\r\n    piVar4 = piVar2;\r\n  }\r\n  puVar3 = (undefined4 *)param_1[2];\r\n  *puVar3 = DAT_004f996c;\r\n  _DAT_004f9960 = _DAT_004f9960 + -1;\r\n  DAT_004f996c = puVar3;\r\n  puVar3 = DAT_004f9970;\r\n  if (_DAT_004f9960 == 0) {\r\n    while (puVar3 != (undefined4 *)0x0) {\r\n      DAT_004f9970 = (undefined4 *)*puVar3;\r\n      FUN_004d29a0(puVar3[1]);\r\n      FUN_004d29a0(puVar3);\r\n      puVar3 = DAT_004f9970;\r\n    }\r\n    DAT_004f996c = (undefined4 *)0x0;\r\n    DAT_004f9968 = 0;\r\n    DAT_004f9964 = 0;\r\n    DAT_004f9970 = (undefined4 *)0x0;\r\n  }\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00456cb0",
+      "name": "FUN_00456cb0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

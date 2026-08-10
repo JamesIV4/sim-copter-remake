@@ -1,0 +1,62 @@
+{
+  "address": "00492c00",
+  "name": "FUN_00492c00",
+  "signature": "undefined FUN_00492c00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_00492c00(int param_1,int *param_2,byte param_3,char param_4,undefined4 param_5,\r\n            undefined4 param_6,int param_7)\r\n\r\n{\r\n  byte bVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined4 uVar5;\r\n  byte local_a;\r\n  char cStack_9;\r\n  undefined2 uStack_8;\r\n  undefined1 uStack_6;\r\n  undefined1 uStack_5;\r\n  undefined4 local_4;\r\n  \r\n  local_4 = 0;\r\n  uVar5 = *(undefined4 *)(&DAT_004f4418 + param_7 * 4);\r\n  local_a = param_3;\r\n  cStack_9 = param_4;\r\n  iVar2 = FUN_004bb900(param_3,param_4);\r\n  if (iVar2 == 0) {\r\n    if (((byte)param_6 == param_3) && (param_6._1_1_ == param_4)) {\r\n      local_4 = 1;\r\n    }\r\n    do {\r\n      iVar2 = FUN_00494180(uVar5,&uStack_8,CONCAT22(uStack_8,CONCAT11(cStack_9,local_a)),\r\n                           CONCAT13(uStack_6,CONCAT21(uStack_8,cStack_9)));\r\n      switch(CONCAT13(uStack_5,CONCAT12(uStack_6,uStack_8))) {\r\n      case 0:\r\n        cStack_9 = cStack_9 + -1;\r\n        break;\r\n      case 1:\r\n        local_a = local_a + 1;\r\n        break;\r\n      case 2:\r\n        cStack_9 = cStack_9 + '\\x01';\r\n        break;\r\n      case 3:\r\n        local_a = local_a - 1;\r\n      }\r\n      if (((byte)param_6 == local_a) && (param_6._1_1_ == cStack_9)) {\r\n        local_4 = 1;\r\n      }\r\n      uVar5 = CONCAT13(uStack_5,CONCAT12(uStack_6,uStack_8));\r\n      if (iVar2 == -2) goto LAB_00492c4e;\r\n    } while (iVar2 != -1);\r\n  }\r\n  else {\r\n    uStack_8 = (undefined2)uVar5;\r\n    uStack_6 = (undefined1)((uint)uVar5 >> 0x10);\r\n    uStack_5 = (undefined1)((uint)uVar5 >> 0x18);\r\nLAB_00492c4e:\r\n    uVar3 = CONCAT13(uStack_5,CONCAT12(uStack_6,uStack_8)) + 2U & 3;\r\n    uVar4 = (uint)local_a;\r\n    *(uint *)((int)param_2 + 0x12) = uVar3;\r\n    *(uint *)((int)param_2 + 0xe) = uVar3;\r\n    bVar1 = 0;\r\n    if (*(char *)(uVar4 + 0x200 + param_1) != '\\0') {\r\n      do {\r\n        if (*(char *)(*(int *)(param_1 + uVar4 * 4) + 1 + (uint)bVar1 * 0x38) == cStack_9) {\r\n          uVar3 = (uint)bVar1;\r\n          goto LAB_00492c9f;\r\n        }\r\n        bVar1 = bVar1 + 1;\r\n      } while (bVar1 < *(byte *)(uVar4 + 0x200 + param_1));\r\n    }\r\n    uVar3 = 0xff;\r\nLAB_00492c9f:\r\n    iVar2 = *(int *)(param_1 + uVar4 * 4);\r\n    param_2[2] = -1;\r\n    param_2[1] = 0;\r\n    *param_2 = iVar2 + uVar3 * 0x38;\r\n    FUN_00495570(param_2,param_5);\r\n  }\r\n  return local_4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00492630",
+      "name": "FUN_00492630",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004bb900",
+      "name": "FUN_004bb900"
+    },
+    {
+      "addr": "00495570",
+      "name": "FUN_00495570"
+    },
+    {
+      "addr": "00494180",
+      "name": "FUN_00494180"
+    }
+  ],
+  "data_refs": []
+}

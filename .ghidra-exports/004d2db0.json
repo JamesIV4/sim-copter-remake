@@ -1,0 +1,28 @@
+{
+  "address": "004d2db0",
+  "name": "strstreambuf",
+  "signature": "undefined __thiscall strstreambuf(strstreambuf * this, char * param_1, int param_2, char * param_3)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: __thiscall strstreambuf::strstreambuf(char *,int,char *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nstrstreambuf * __thiscall\r\nstrstreambuf::strstreambuf(strstreambuf *this,char *param_1,int param_2,char *param_3)\r\n\r\n{\r\n  char cVar1;\r\n  uint uVar2;\r\n  char *pcVar3;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004d2e7c;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  streambuf::streambuf((streambuf *)this);\r\n  local_8 = 0;\r\n  *(undefined ***)this = &PTR__scalar_deleting_destructor__004f5464;\r\n  *(undefined4 *)(this + 0x4c) = 0;\r\n  *(undefined4 *)(this + 0x58) = 1;\r\n  if (param_2 == 0) {\r\n    uVar2 = 0xffffffff;\r\n    pcVar3 = param_1;\r\n    do {\r\n      if (uVar2 == 0) break;\r\n      uVar2 = uVar2 - 1;\r\n      cVar1 = *pcVar3;\r\n      pcVar3 = pcVar3 + 1;\r\n    } while (cVar1 != '\\0');\r\n    pcVar3 = param_1 + (~uVar2 - 1);\r\n  }\r\n  else if (param_2 < 0) {\r\n    pcVar3 = (char *)0xffffffff;\r\n  }\r\n  else {\r\n    pcVar3 = param_1 + param_2;\r\n  }\r\n  streambuf::setb((streambuf *)this,param_1,pcVar3,0);\r\n  *(char **)(this + 0x24) = param_1;\r\n  *(char **)(this + 0x28) = param_1;\r\n  if (param_3 == (char *)0x0) {\r\n    *(char **)(this + 0x2c) = pcVar3;\r\n    *(undefined4 *)(this + 0x18) = 0;\r\n    *(undefined4 *)(this + 0x1c) = 0;\r\n    *(undefined4 *)(this + 0xc) = 0xffffffff;\r\n    *(undefined4 *)(this + 0x20) = 0;\r\n  }\r\n  else {\r\n    *(char **)(this + 0x2c) = param_3;\r\n    *(char **)(this + 0x18) = param_3;\r\n    *(char **)(this + 0x1c) = param_3;\r\n    *(char **)(this + 0x20) = pcVar3;\r\n    *(undefined4 *)(this + 0xc) = 0xffffffff;\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d32c0",
+      "name": "ostrstream",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6c40",
+      "name": "streambuf"
+    },
+    {
+      "addr": "004d6ed0",
+      "name": "setb"
+    }
+  ],
+  "data_refs": []
+}

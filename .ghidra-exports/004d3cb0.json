@@ -1,0 +1,97 @@
+{
+  "address": "004d3cb0",
+  "name": "_fread",
+  "signature": "size_t __cdecl _fread(void * _DstBuf, size_t _ElementSize, size_t _Count, FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef size_t uint",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    _fread\r\n    _fwrite\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nsize_t __cdecl _fread(void *_DstBuf,size_t _ElementSize,size_t _Count,FILE *_File)\r\n\r\n{\r\n  size_t sVar1;\r\n  \r\n  __lock_file(_File);\r\n  sVar1 = _fwrite(_DstBuf,_ElementSize,_Count,_File);\r\n  __unlock_file(_File);\r\n  return sVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00465ba0",
+      "name": "FUN_00465ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465ba0",
+      "name": "FUN_00465ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465ba0",
+      "name": "FUN_00465ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465ca0",
+      "name": "FUN_00465ca0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465ca0",
+      "name": "FUN_00465ca0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465ca0",
+      "name": "FUN_00465ca0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465e40",
+      "name": "FUN_00465e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465e40",
+      "name": "FUN_00465e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465e40",
+      "name": "FUN_00465e40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465fe0",
+      "name": "FUN_00465fe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465fe0",
+      "name": "FUN_00465fe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465fe0",
+      "name": "FUN_00465fe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d64c0",
+      "name": "__lock_file"
+    },
+    {
+      "addr": "004d3cf0",
+      "name": "_fwrite"
+    },
+    {
+      "addr": "004d6530",
+      "name": "__unlock_file"
+    }
+  ],
+  "data_refs": []
+}

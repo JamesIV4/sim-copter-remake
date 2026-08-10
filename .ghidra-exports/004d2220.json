@@ -1,0 +1,38 @@
+{
+  "address": "004d2220",
+  "name": "osfx",
+  "signature": "void __thiscall osfx(ostream * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: void __thiscall ostream::osfx(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall ostream::osfx(ostream *this)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  *(undefined4 *)(this + *(int *)(*(int *)this + 4) + 0x30) = 0;\r\n  if (((byte)this[*(int *)(*(int *)this + 4) + 0x25] & 0x20) != 0) {\r\n    iVar1 = (**(code **)(**(int **)(this + *(int *)(*(int *)this + 4) + 4) + 4))();\r\n    if (iVar1 == -1) {\r\n      *(undefined4 *)(this + *(int *)(*(int *)this + 4) + 8) = 6;\r\n    }\r\n  }\r\n  if (((byte)this[*(int *)(*(int *)this + 4) + 0x25] & 0x40) != 0) {\r\n    iVar1 = _fflush((FILE *)&DAT_00507260);\r\n    if (iVar1 == -1) {\r\n      *(uint *)(this + *(int *)(*(int *)this + 4) + 8) =\r\n           *(uint *)(this + *(int *)(*(int *)this + 4) + 8) | 2;\r\n    }\r\n    iVar1 = _fflush((FILE *)&DAT_00507280);\r\n    if (iVar1 == -1) {\r\n      *(uint *)(this + *(int *)(*(int *)this + 4) + 8) =\r\n           *(uint *)(this + *(int *)(*(int *)this + 4) + 8) | 2;\r\n    }\r\n  }\r\n  if (*(int *)(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x30) < 0) {\r\n    __mtlock(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x34);\r\n  }\r\n  if (*(int *)(this + *(int *)(*(int *)this + 4) + 0x34) < 0) {\r\n    __mtlock(this + *(int *)(*(int *)this + 4) + 0x38);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d22e0",
+      "name": "operator<<",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d28f0",
+      "name": "operator<<",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d49e0",
+      "name": "operator<<",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3ae0",
+      "name": "_fflush"
+    },
+    {
+      "addr": "004d56f0",
+      "name": "__mtlock"
+    }
+  ],
+  "data_refs": []
+}

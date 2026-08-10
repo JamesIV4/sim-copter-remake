@@ -1,0 +1,28 @@
+{
+  "address": "004b2330",
+  "name": "FUN_004b2330",
+  "signature": "undefined FUN_004b2330(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b2330(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  int iStack_58;\r\n  int iStack_54;\r\n  int iStack_50;\r\n  int aiStack_40 [16];\r\n  \r\n  if ((char)param_1[1] == '\\0') {\r\n    return;\r\n  }\r\n  if (*(char *)((int)param_1 + 5) == '\\0') {\r\n    if (param_1[0x15] != 0x12e) {\r\n      if (DAT_00504084 == 0) {\r\n        return;\r\n      }\r\n      if (9 < param_1[0x14]) {\r\n        return;\r\n      }\r\n    }\r\n    iVar1 = param_1[0xd] + DAT_005039a0;\r\n    param_1[0xd] = iVar1;\r\n    if ((*(char *)((int)param_1 + 7) == '\\0') && (param_1[0xc] < iVar1)) {\r\n      (**(code **)(*param_1 + 0x10))();\r\n    }\r\n    if (*(char *)((int)param_1 + 5) == '\\0') goto LAB_004b23c9;\r\n  }\r\n  (**(code **)(*param_1 + 4))();\r\n  if (*(char *)((int)param_1 + 5) != '\\0') {\r\n    iStack_58 = param_1[0x1c];\r\n    iStack_54 = param_1[0x1d];\r\n    iStack_50 = param_1[0x1e];\r\n    piVar2 = param_1 + 0x1f;\r\n    piVar3 = aiStack_40;\r\n    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *piVar3 = *piVar2;\r\n      piVar2 = piVar2 + 1;\r\n      piVar3 = piVar3 + 1;\r\n    }\r\n    FUN_004704d1(param_1[0x18],&iStack_58,3);\r\n  }\r\nLAB_004b23c9:\r\n  FUN_004b23e0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b3b80",
+      "name": "FUN_004b3b80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004704d1",
+      "name": "FUN_004704d1"
+    },
+    {
+      "addr": "004b23e0",
+      "name": "FUN_004b23e0"
+    }
+  ],
+  "data_refs": []
+}

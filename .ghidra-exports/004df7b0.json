@@ -1,0 +1,48 @@
+{
+  "address": "004df7b0",
+  "name": "__alloc_osfhnd",
+  "signature": "int __cdecl __alloc_osfhnd(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __alloc_osfhnd\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __alloc_osfhnd(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  undefined4 *puVar2;\r\n  int _Filehandle;\r\n  int *piVar3;\r\n  int iVar4;\r\n  int local_4;\r\n  \r\n  _Filehandle = -1;\r\n  iVar4 = 0;\r\n  piVar3 = &DAT_0061bb80;\r\n  __lock(0x12);\r\n  local_4 = 0;\r\n  do {\r\n    puVar1 = (undefined4 *)*piVar3;\r\n    if (puVar1 == (undefined4 *)0x0) {\r\n      puVar1 = (undefined4 *)FUN_004d5f00(0x480);\r\n      if (puVar1 != (undefined4 *)0x0) {\r\n        DAT_0061bc80 = DAT_0061bc80 + 0x20;\r\n        (&DAT_0061bb80)[local_4] = puVar1;\r\n        if (puVar1 < puVar1 + 0x120) {\r\n          do {\r\n            *(undefined1 *)(puVar1 + 1) = 0;\r\n            puVar2 = puVar1 + 9;\r\n            *puVar1 = 0xffffffff;\r\n            *(undefined1 *)((int)puVar1 + 5) = 10;\r\n            puVar1[2] = 0;\r\n            puVar1 = puVar2;\r\n          } while (puVar2 < (undefined4 *)((&DAT_0061bb80)[local_4] + 0x480));\r\n        }\r\n        _Filehandle = local_4 << 5;\r\n        __lock_fhandle(_Filehandle);\r\n      }\r\n      break;\r\n    }\r\n    if (puVar1 < puVar1 + 0x120) {\r\n      do {\r\n        if ((*(byte *)(puVar1 + 1) & 1) == 0) {\r\n          if (puVar1[2] == 0) {\r\n            __lock(0x11);\r\n            if (puVar1[2] == 0) {\r\n              InitializeCriticalSection((LPCRITICAL_SECTION)(puVar1 + 3));\r\n              puVar1[2] = puVar1[2] + 1;\r\n            }\r\n            FUN_004d64a0(0x11);\r\n          }\r\n          EnterCriticalSection((LPCRITICAL_SECTION)(puVar1 + 3));\r\n          if ((*(byte *)(puVar1 + 1) & 1) == 0) {\r\n            *puVar1 = 0xffffffff;\r\n            _Filehandle = iVar4 + ((int)puVar1 - *piVar3) / 0x24;\r\n            break;\r\n          }\r\n          LeaveCriticalSection((LPCRITICAL_SECTION)(puVar1 + 3));\r\n        }\r\n        puVar1 = puVar1 + 9;\r\n      } while (puVar1 < (undefined4 *)(*piVar3 + 0x480));\r\n    }\r\n    if (_Filehandle != -1) break;\r\n    iVar4 = iVar4 + 0x20;\r\n    piVar3 = piVar3 + 1;\r\n    local_4 = local_4 + 1;\r\n  } while (piVar3 < &DAT_0061bc80);\r\n  FUN_004d64a0(0x12);\r\n  return _Filehandle;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6430",
+      "name": "__lock"
+    },
+    {
+      "addr": "EXTERNAL:00000021",
+      "name": "InitializeCriticalSection"
+    },
+    {
+      "addr": "004d64a0",
+      "name": "FUN_004d64a0"
+    },
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004dfa90",
+      "name": "__lock_fhandle"
+    }
+  ],
+  "data_refs": []
+}

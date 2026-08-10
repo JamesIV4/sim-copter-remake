@@ -1,0 +1,33 @@
+{
+  "address": "004d2ad0",
+  "name": "Iostream_init",
+  "signature": "undefined __thiscall Iostream_init(Iostream_init * this, ios * param_1, int param_2)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: __thiscall Iostream_init::Iostream_init(class ios &,int)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nIostream_init * __thiscall\r\nIostream_init::Iostream_init(Iostream_init *this,ios *param_1,int param_2)\r\n\r\n{\r\n  *(undefined4 *)(param_1 + 0x1c) = 1;\r\n  if ((-1 < param_2) && (*(undefined4 **)(param_1 + 0x20) = &DAT_005904a0, 0 < param_2)) {\r\n    if (*(int *)(param_1 + 0x34) < 0) {\r\n      __mtlock(param_1 + 0x38);\r\n    }\r\n    *(uint *)(param_1 + 0x24) = *(uint *)(param_1 + 0x24) | 0x2000;\r\n    if (*(int *)(param_1 + 0x34) < 0) {\r\n      __mtlock(param_1 + 0x38);\r\n    }\r\n  }\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2860",
+      "name": "$E20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2a80",
+      "name": "$E22",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56e0",
+      "name": "__mtlock"
+    },
+    {
+      "addr": "004d56f0",
+      "name": "__mtlock"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,32 @@
+{
+  "address": "004a2740",
+  "name": "FUN_004a2740",
+  "signature": "undefined FUN_004a2740(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a2740(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  undefined4 *puVar2;\r\n  \r\n  _DAT_00505eb8 = 0x40;\r\n  _DAT_00505ebc = 0x16;\r\n  _DAT_00505ec0 = 0xa8;\r\n  _DAT_00505ec4 = 0x66;\r\n  DAT_00505ef8 = 0x14;\r\n  DAT_00505eec = 0x68;\r\n  DAT_00505ef0 = 0x50;\r\n  DAT_00505ec8 = 0x36;\r\n  DAT_00505ecc = 0xd;\r\n  DAT_00505ed0 = 0xb2;\r\n  DAT_00505ed4 = 0x6f;\r\n  DAT_00505ed8 = 0x7c;\r\n  DAT_00505edc = 0x62;\r\n  DAT_00505ee4 = FUN_00468510(DAT_00592068,s_mapbuf_00505f34,0x3178);\r\n  if (DAT_00505ee4 == 0) {\r\n    FUN_004e4f70(s_Unable_to_allocate_map_buffer__00505f14);\r\n  }\r\n  DAT_00505ee0 = DAT_00505ed8 * 9 + DAT_00505ee4 + 10;\r\n  DAT_00505ee8 = (DAT_00505edc / 2) * DAT_00505ed8 + DAT_00505ed8 / 2 + DAT_00505ee4;\r\n  _DAT_00505e80 = DAT_00505eec;\r\n  _DAT_00505e8c = DAT_00505eec;\r\n  _DAT_00505e84 = DAT_00505ef0;\r\n  _DAT_00505e90 = DAT_00505ef0;\r\n  puVar1 = (undefined4 *)FUN_0046cd20(DAT_005039ac,3);\r\n  DAT_0057f8b0 = puVar1[1];\r\n  puVar2 = puVar1 + DAT_0057f8b0 + 3;\r\n  _DAT_0057f8d0 = *puVar1;\r\n  puVar1 = &DAT_0057f890;\r\n  do {\r\n    *puVar1 = puVar2;\r\n    puVar1 = puVar1 + 1;\r\n    puVar2 = (undefined4 *)((int)puVar2 + DAT_0057f8b0);\r\n  } while (puVar1 < &DAT_0057f8b0);\r\n  puVar1 = (undefined4 *)FUN_0046cd20(DAT_005039ac,0xc);\r\n  DAT_0057f888 = puVar1[1];\r\n  puVar2 = puVar1 + DAT_0057f888 + 3;\r\n  _DAT_0057f8c0 = *puVar1;\r\n  puVar1 = &DAT_0057f8d8;\r\n  do {\r\n    *puVar1 = puVar2;\r\n    puVar1 = puVar1 + 1;\r\n    puVar2 = (undefined4 *)((int)puVar2 + DAT_0057f888);\r\n  } while (puVar1 < &DAT_0057f8e4);\r\n  puVar2 = &DAT_005d3eb0;\r\n  do {\r\n    *puVar2 = 0;\r\n    puVar2 = puVar2 + 10;\r\n  } while (puVar2 < &DAT_005d41d0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00468510",
+      "name": "FUN_00468510"
+    },
+    {
+      "addr": "004e4f70",
+      "name": "FUN_004e4f70"
+    },
+    {
+      "addr": "0046cd20",
+      "name": "FUN_0046cd20"
+    }
+  ],
+  "data_refs": []
+}

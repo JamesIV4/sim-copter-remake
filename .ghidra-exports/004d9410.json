@@ -1,0 +1,24 @@
+{
+  "address": "004d9410",
+  "name": "__isindst_lk",
+  "signature": "undefined __isindst_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __isindst_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 __isindst_lk(int *param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  undefined2 uVar3;\r\n  undefined2 uVar4;\r\n  undefined2 uVar5;\r\n  undefined2 uVar6;\r\n  undefined2 uVar7;\r\n  undefined2 uVar8;\r\n  undefined2 uVar9;\r\n  undefined2 uVar10;\r\n  \r\n  if (DAT_00506df4 == 0) {\r\n    return 0;\r\n  }\r\n  iVar2 = param_1[5];\r\n  if ((DAT_00507638 == iVar2) && (DAT_00507648 == iVar2)) goto LAB_004d95ad;\r\n  if (DAT_00590590 == 0) {\r\n    FUN_004d9670(1,1,iVar2,4,1,0,0,2,0,0,0);\r\n    uVar6 = 0;\r\n    uVar4 = 0;\r\n    uVar8 = 0;\r\n    iVar2 = param_1[5];\r\n    uVar10 = 2;\r\n    uVar7 = 0;\r\n    uVar5 = 5;\r\n    uVar3 = 10;\r\nLAB_004d95a1:\r\n    uVar1 = 1;\r\n    uVar9 = 0;\r\n  }\r\n  else {\r\n    if (DAT_00590630 != 0) {\r\n      uVar6 = 0;\r\n      uVar4 = 0;\r\n      uVar8 = DAT_00590636;\r\n    }\r\n    else {\r\n      uVar6 = DAT_00590634;\r\n      uVar4 = DAT_00590636;\r\n      uVar8 = 0;\r\n    }\r\n    FUN_004d9670(1,DAT_00590630 == 0,iVar2,DAT_00590632,uVar4,uVar6,uVar8,DAT_00590638,DAT_0059063a,\r\n                 DAT_0059063c,DAT_0059063e);\r\n    uVar6 = DAT_005905ea;\r\n    uVar4 = DAT_005905e8;\r\n    uVar8 = DAT_005905e6;\r\n    uVar10 = DAT_005905e4;\r\n    uVar3 = DAT_005905de;\r\n    if (DAT_005905dc == 0) {\r\n      iVar2 = param_1[5];\r\n      uVar7 = DAT_005905e0;\r\n      uVar5 = DAT_005905e2;\r\n      goto LAB_004d95a1;\r\n    }\r\n    iVar2 = param_1[5];\r\n    uVar7 = 0;\r\n    uVar5 = 0;\r\n    uVar1 = 0;\r\n    uVar9 = DAT_005905e2;\r\n  }\r\n  FUN_004d9670(0,uVar1,iVar2,uVar3,uVar5,uVar7,uVar9,uVar10,uVar8,uVar4,uVar6);\r\nLAB_004d95ad:\r\n  iVar2 = param_1[7];\r\n  if (DAT_0050763c < DAT_0050764c) {\r\n    if ((iVar2 < DAT_0050763c) || (DAT_0050764c < iVar2)) {\r\n      return 0;\r\n    }\r\n    if ((DAT_0050763c < iVar2) && (iVar2 < DAT_0050764c)) {\r\n      return 1;\r\n    }\r\n  }\r\n  else {\r\n    if (iVar2 < DAT_0050764c) {\r\n      return 1;\r\n    }\r\n    if (DAT_0050763c < iVar2) {\r\n      return 1;\r\n    }\r\n    if ((DAT_0050764c < iVar2) && (iVar2 < DAT_0050763c)) {\r\n      return 0;\r\n    }\r\n  }\r\n  iVar2 = ((param_1[2] * 0x3c + param_1[1]) * 0x3c + *param_1) * 1000;\r\n  if (param_1[7] == DAT_0050763c) {\r\n    if (iVar2 < DAT_00507640) {\r\n      return 0;\r\n    }\r\n  }\r\n  else if (DAT_00507650 <= iVar2) {\r\n    return 0;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d93e0",
+      "name": "__isindst",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d9670",
+      "name": "FUN_004d9670"
+    }
+  ],
+  "data_refs": []
+}

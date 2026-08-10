@@ -1,0 +1,24 @@
+{
+  "address": "004a6c80",
+  "name": "FUN_004a6c80",
+  "signature": "undefined FUN_004a6c80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a6c80(void)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  uint uVar2;\r\n  \r\n  puVar1 = (undefined4 *)&DAT_0057fa28;\r\n  do {\r\n    *puVar1 = 0;\r\n    puVar1 = puVar1 + 0x35;\r\n  } while (puVar1 < &DAT_00581300);\r\n  DAT_0057f9c8 = 0;\r\n  _DAT_0057f9cc = 0;\r\n  DAT_0057f9d8 = 0;\r\n  DAT_0057f9a4 = 1;\r\n  _DAT_0057f9b8 = 1;\r\n  DAT_0057f9c0 = 1;\r\n  DAT_0057f9ac = 1;\r\n  DAT_0057f9bc = 1;\r\n  DAT_0057f9a8 = 1;\r\n  DAT_0057f9b0 = 1;\r\n  DAT_0057f9b4 = 1;\r\n  DAT_0057f9c4 = 1;\r\n  DAT_0057f9a0 = 1;\r\n  DAT_0057f9d0 = 0;\r\n  DAT_00505fb4 = 0xb40000;\r\n  DAT_00505fc0 = 1;\r\n  uVar2 = _rand();\r\n  DAT_005812b4 = 0;\r\n  _DAT_005ce094 =\r\n       (int)(short)((int)((uint)(ushort)((short)uVar2 >> 0xf) << 0x10 | uVar2 & 0xffff) % 100);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a240",
+      "name": "FUN_0047a240",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

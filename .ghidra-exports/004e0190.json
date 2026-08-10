@@ -1,0 +1,33 @@
+{
+  "address": "004e0190",
+  "name": "__RoundMan",
+  "signature": "undefined __RoundMan(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __RoundMan\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined4 __RoundMan(int param_1,int param_2)\r\n\r\n{\r\n  uint *puVar1;\r\n  byte bVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 local_4;\r\n  \r\n  local_4 = 0;\r\n  iVar3 = (int)(param_2 + (param_2 >> 0x1f & 0x1fU)) >> 5;\r\n  bVar2 = (byte)(param_2 >> 0x1f);\r\n  bVar2 = 0x1f - ((((byte)param_2 ^ bVar2) - bVar2 & 0x1f ^ bVar2) - bVar2);\r\n  puVar1 = (uint *)(param_1 + iVar3 * 4);\r\n  if ((*puVar1 & 1 << (bVar2 & 0x1f)) != 0) {\r\n    iVar4 = __ZeroTail(param_1,param_2 + 1);\r\n    if (iVar4 == 0) {\r\n      local_4 = __IncMan(param_1,param_2 + -1);\r\n    }\r\n  }\r\n  iVar3 = iVar3 + 1;\r\n  *puVar1 = *puVar1 & -1 << (bVar2 & 0x1f);\r\n  if (iVar3 < 3) {\r\n    puVar5 = (undefined4 *)(param_1 + iVar3 * 4);\r\n    for (iVar4 = 3 - iVar3; iVar4 != 0; iVar4 = iVar4 + -1) {\r\n      *puVar5 = 0;\r\n      puVar5 = puVar5 + 1;\r\n    }\r\n  }\r\n  return local_4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0340",
+      "name": "__ld12cvt",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e00b0",
+      "name": "__ZeroTail"
+    },
+    {
+      "addr": "004e0120",
+      "name": "__IncMan"
+    }
+  ],
+  "data_refs": []
+}

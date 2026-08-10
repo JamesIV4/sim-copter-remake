@@ -1,0 +1,24 @@
+{
+  "address": "004b5ee0",
+  "name": "FUN_004b5ee0",
+  "signature": "undefined FUN_004b5ee0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b5ee0(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  ushort uVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  uint uVar9;\r\n  \r\n  iVar2 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x2d),DAT_005039a0);\r\n  iVar3 = *(int *)(param_1 + 0x21);\r\n  if (iVar3 < iVar2) {\r\n    iVar2 = iVar3;\r\n  }\r\n  iVar4 = *(int *)(param_1 + 0x1cd);\r\n  *(int *)(param_1 + 0x21) = iVar3 - iVar2;\r\n  iVar3 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x15),iVar2);\r\n  piVar1 = (int *)(iVar4 + 0x18);\r\n  *piVar1 = *piVar1 + iVar3;\r\n  iVar3 = *(int *)(param_1 + 0x1cd);\r\n  iVar4 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x19),iVar2);\r\n  piVar1 = (int *)(iVar3 + 0x1c);\r\n  *piVar1 = *piVar1 + iVar4;\r\n  iVar3 = *(int *)(param_1 + 0x1cd);\r\n  iVar2 = FUN_0046c49d(*(undefined4 *)(param_1 + 0x1d),iVar2);\r\n  piVar1 = (int *)(iVar3 + 0x20);\r\n  *piVar1 = *piVar1 + iVar2;\r\n  uVar9 = *(int *)(*(int *)(param_1 + 0x1cd) + 0x18) + 0x20000000;\r\n  uVar7 = uVar9 & 0xffc00000;\r\n  if (-1 < (int)uVar7) {\r\n    uVar8 = 0x20000000 - *(int *)(*(int *)(param_1 + 0x1cd) + 0x20);\r\n    uVar5 = uVar8 & 0xffc00000;\r\n    if (((-1 < (int)uVar5) && ((int)uVar7 < 0x20000000)) && ((int)uVar5 < 0x20000000)) {\r\n      iVar2 = (int)(uVar9 & 0xffcfffff) >> 0x14;\r\n      iVar3 = (int)uVar8 >> 0x16;\r\n      uVar6 = (*(byte *)(*(int *)((int)&DAT_00590800 + iVar2) + iVar3) & 2) << 0xe |\r\n              (ushort)*(byte *)(*(int *)((int)&DAT_005910b0 + iVar2) + iVar3);\r\n      goto LAB_004b5fb5;\r\n    }\r\n  }\r\n  uVar6 = 0;\r\nLAB_004b5fb5:\r\n  if ((0x35 < uVar6) && (uVar6 < 0x3b)) {\r\n    *(undefined1 *)(param_1 + 7) = 1;\r\n    *(undefined4 *)(param_1 + 0xd) = 0;\r\n    return;\r\n  }\r\n  *(undefined1 *)(param_1 + 7) = 0;\r\n  *(undefined4 *)(param_1 + 0xd) = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b4660",
+      "name": "FUN_004b4660",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

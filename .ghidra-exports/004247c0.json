@@ -1,0 +1,30 @@
+{
+  "address": "004247c0",
+  "name": "FUN_004247c0",
+  "signature": "undefined FUN_004247c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004247c0(int *param_1,int *param_2)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int local_18;\r\n  int local_14;\r\n  int local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  \r\n  local_18 = *param_2 - DAT_0061a748;\r\n  local_14 = param_2[1] - DAT_0061a74c;\r\n  local_10 = param_2[2] - DAT_0061a750;\r\n  FUN_0046cb74(&local_18,&local_c,&DAT_0061a708);\r\n  local_8 = 0;\r\n  uVar2 = FUN_00467a80(&local_c);\r\n  uVar2 = FUN_0046c4bf(uVar2,0x7800000,0xf0600000);\r\n  iVar3 = FUN_0046c49d(uVar2);\r\n  iVar3 = (iVar3 >> 0x10) + 10000;\r\n  iVar4 = FUN_0046c49d(0x27100000,local_c);\r\n  (&DAT_00519a70)[*(int *)((int)param_1 + 0x9a)] = iVar3;\r\n  iVar1 = *param_1;\r\n  (**(code **)(iVar1 + 0x24))((DAT_00519cc0 * iVar3) / 10000);\r\n  (**(code **)(iVar1 + 0x58))((int)((iVar4 >> 0x10) + (iVar4 >> 0x1f & 7U)) >> 3);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "00467a80",
+      "name": "FUN_00467a80"
+    },
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    }
+  ],
+  "data_refs": []
+}

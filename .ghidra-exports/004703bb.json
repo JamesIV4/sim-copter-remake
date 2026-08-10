@@ -1,0 +1,13 @@
+{
+  "address": "004703bb",
+  "name": "FUN_004703bb",
+  "signature": "undefined FUN_004703bb(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004703bb(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  piVar1 = *(int **)(param_1 + 0x48);\r\n  if (param_1 == *piVar1) {\r\n    PTR_DAT_004fe978 = PTR_DAT_004fe978 + -4;\r\n    iVar2 = *(int *)PTR_DAT_004fe978;\r\n    *piVar1 = iVar2;\r\n    *(int **)(iVar2 + 0x48) = piVar1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

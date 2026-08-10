@@ -1,0 +1,32 @@
+{
+  "address": "004d3560",
+  "name": "close",
+  "signature": "filebuf * __thiscall close(filebuf * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "filebuf *",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: class filebuf * __thiscall filebuf::close(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nfilebuf * __thiscall filebuf::close(filebuf *this)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  \r\n  if (*(int *)(this + 0x4c) == -1) {\r\n    return (filebuf *)0x0;\r\n  }\r\n  if (*(int *)(this + 0x30) < 0) {\r\n    __mtlock(this + 0x34);\r\n  }\r\n  iVar1 = (**(code **)(*(int *)this + 4))();\r\n  iVar2 = __close(*(int *)(this + 0x4c));\r\n  if ((iVar2 != -1) && (iVar1 != -1)) {\r\n    *(undefined4 *)(this + 0x4c) = 0xffffffff;\r\n    if (*(int *)(this + 0x30) < 0) {\r\n      __mtlock(this + 0x34);\r\n    }\r\n    return this;\r\n  }\r\n  if (*(int *)(this + 0x30) < 0) {\r\n    __mtlock(this + 0x34);\r\n  }\r\n  return (filebuf *)0x0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d34d0",
+      "name": "~filebuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56e0",
+      "name": "__mtlock"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "004d56f0",
+      "name": "__mtlock"
+    }
+  ],
+  "data_refs": []
+}

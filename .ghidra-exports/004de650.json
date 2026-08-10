@@ -1,0 +1,39 @@
+{
+  "address": "004de650",
+  "name": "FUN_004de650",
+  "signature": "undefined FUN_004de650(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004de650(void)\r\n\r\n{\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dea40",
+      "name": "__handle_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dea40",
+      "name": "__handle_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dea40",
+      "name": "__handle_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dea40",
+      "name": "__handle_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dea40",
+      "name": "__handle_exc",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,18 @@
+{
+  "address": "0045a6a0",
+  "name": "FUN_0045a6a0",
+  "signature": "undefined FUN_0045a6a0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_0045a6a0(void)\r\n\r\n{\r\n  FUN_00410650();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00410650",
+      "name": "FUN_00410650"
+    }
+  ],
+  "data_refs": []
+}

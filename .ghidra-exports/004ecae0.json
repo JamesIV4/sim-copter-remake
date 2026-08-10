@@ -1,0 +1,24 @@
+{
+  "address": "004ecae0",
+  "name": "FUN_004ecae0",
+  "signature": "undefined FUN_004ecae0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004ecae0(void)\r\n\r\n{\r\n  int *piVar1;\r\n  uint *puVar2;\r\n  uint *puVar3;\r\n  int *piVar4;\r\n  int *piVar5;\r\n  \r\n  if (DAT_004fe768 != 0) {\r\n    _DAT_00516da0 = DAT_004fe768;\r\n    DAT_00516da4 = &DAT_004fc1e4;\r\n    do {\r\n      puVar2 = (uint *)*DAT_00516da4;\r\n      _DAT_00516da8 = puVar2[1];\r\n      piVar4 = (int *)puVar2[2];\r\n      piVar5 = *(int **)(puVar2[3] + 0x10);\r\n      DAT_00516dac = &DAT_00508cd0;\r\n      puVar3 = &DAT_005148f0;\r\n      if ((*puVar2 & 0x10) != 0) {\r\n        DAT_005148a0 = DAT_005148a0 + 0xc;\r\n        DAT_00516dac = DAT_005148a0;\r\n        puVar3 = puVar2 + 0x14;\r\n      }\r\n      do {\r\n        *piVar5 = ((uint)((longlong)piVar4[2] * (longlong)(int)puVar3[2]) >> 0x10 |\r\n                  (int)((ulonglong)((longlong)piVar4[2] * (longlong)(int)puVar3[2]) >> 0x20) << 0x10\r\n                  ) + ((uint)((longlong)*piVar4 * (longlong)(int)*puVar3) >> 0x10 |\r\n                      (int)((ulonglong)((longlong)*piVar4 * (longlong)(int)*puVar3) >> 0x20) << 0x10\r\n                      ) + ((uint)((longlong)piVar4[1] * (longlong)(int)puVar3[1]) >> 0x10 |\r\n                          (int)((ulonglong)((longlong)piVar4[1] * (longlong)(int)puVar3[1]) >> 0x20)\r\n                          << 0x10) + puVar3[3];\r\n        piVar5[1] = ((uint)((longlong)piVar4[2] * (longlong)(int)puVar3[6]) >> 0x10 |\r\n                    (int)((ulonglong)((longlong)piVar4[2] * (longlong)(int)puVar3[6]) >> 0x20) <<\r\n                    0x10) + ((uint)((longlong)*piVar4 * (longlong)(int)puVar3[4]) >> 0x10 |\r\n                            (int)((ulonglong)((longlong)*piVar4 * (longlong)(int)puVar3[4]) >> 0x20)\r\n                            << 0x10) +\r\n                            ((uint)((longlong)piVar4[1] * (longlong)(int)puVar3[5]) >> 0x10 |\r\n                            (int)((ulonglong)((longlong)piVar4[1] * (longlong)(int)puVar3[5]) >>\r\n                                 0x20) << 0x10) + puVar3[7];\r\n        piVar1 = piVar5 + 3;\r\n        piVar5[2] = ((uint)((longlong)piVar4[2] * (longlong)(int)puVar3[10]) >> 0x10 |\r\n                    (int)((ulonglong)((longlong)piVar4[2] * (longlong)(int)puVar3[10]) >> 0x20) <<\r\n                    0x10) + ((uint)((longlong)*piVar4 * (longlong)(int)puVar3[8]) >> 0x10 |\r\n                            (int)((ulonglong)((longlong)*piVar4 * (longlong)(int)puVar3[8]) >> 0x20)\r\n                            << 0x10) +\r\n                            ((uint)((longlong)piVar4[1] * (longlong)(int)puVar3[9]) >> 0x10 |\r\n                            (int)((ulonglong)((longlong)piVar4[1] * (longlong)(int)puVar3[9]) >>\r\n                                 0x20) << 0x10) + puVar3[0xb];\r\n        piVar5 = piVar5 + 4;\r\n        *piVar1 = 0;\r\n        piVar4 = piVar4 + 3;\r\n        _DAT_00516da8 = _DAT_00516da8 - 1;\r\n      } while (_DAT_00516da8 != 0);\r\n      FUN_004ee290();\r\n      DAT_00516da4 = DAT_00516da4 + 2;\r\n      _DAT_00516da0 = _DAT_00516da0 + -1;\r\n    } while (_DAT_00516da0 != 0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4fdd",
+      "name": "FUN_004e4fdd",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ee290",
+      "name": "FUN_004ee290"
+    }
+  ],
+  "data_refs": []
+}

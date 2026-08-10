@@ -1,0 +1,29 @@
+{
+  "address": "0046c594",
+  "name": "FUN_0046c594",
+  "signature": "undefined FUN_0046c594(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_0046c594(void)\r\n\r\n{\r\n  int in_EAX;\r\n  uint uVar1;\r\n  \r\n  for (; in_EAX < 0; in_EAX = in_EAX + 0xe100000) {\r\n  }\r\n  for (; 0xe100000 < in_EAX; in_EAX = in_EAX + -0xe100000) {\r\n  }\r\n  DAT_004faf40 = in_EAX;\r\n  uVar1 = in_EAX >> 0x10;\r\n  if (uVar1 < 0x709) {\r\n    if (uVar1 < 0x385) {\r\n      DAT_004fc0b4 = *(int *)(&DAT_0046b530 + uVar1 * 4);\r\n      DAT_004fc0b8 = *(int *)(&DAT_0046c340 + uVar1 * -4);\r\n    }\r\n    else {\r\n      DAT_004fc0b4 = -*(int *)(&DAT_0046b530 + (0x708 - uVar1) * 4);\r\n      DAT_004fc0b8 = *(int *)(&DAT_0046c340 + (0x708 - uVar1) * -4);\r\n    }\r\n  }\r\n  else {\r\n    uVar1 = 0xe10 - uVar1;\r\n    if (uVar1 < 0x385) {\r\n      DAT_004fc0b4 = *(int *)(&DAT_0046b530 + uVar1 * 4);\r\n      DAT_004fc0b8 = -*(int *)(&DAT_0046c340 + uVar1 * -4);\r\n    }\r\n    else {\r\n      DAT_004fc0b4 = -*(int *)(&DAT_0046b530 + (0x708 - uVar1) * 4);\r\n      DAT_004fc0b8 = -*(int *)(&DAT_0046c340 + (0x708 - uVar1) * -4);\r\n    }\r\n  }\r\n  return in_EAX;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046c845",
+      "name": "FUN_0046c845",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046c8b5",
+      "name": "FUN_0046c8b5",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046c923",
+      "name": "FUN_0046c923",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

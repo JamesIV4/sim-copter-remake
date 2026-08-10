@@ -1,0 +1,19 @@
+{
+  "address": "004aba30",
+  "name": "FUN_004aba30",
+  "signature": "undefined FUN_004aba30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004aba30(int param_1,int param_2)\r\n\r\n{\r\n  if ((param_1 < 0) || (0x2a < param_1)) {\r\n    if ((param_1 < 0x2b) || (0x54 < param_1)) {\r\n      if ((0x54 < param_1) && (param_1 < 0x80)) {\r\n        if ((-1 < param_2) && (param_2 < 0x2b)) {\r\n          return 0x42;\r\n        }\r\n        if ((0x2a < param_2) && (param_2 < 0x55)) {\r\n          return 0x45;\r\n        }\r\n        if ((0x54 < param_2) && (param_2 < 0x80)) {\r\n          return 0x48;\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      if ((-1 < param_2) && (param_2 < 0x2b)) {\r\n        return 0x43;\r\n      }\r\n      if ((0x2a < param_2) && (param_2 < 0x55)) {\r\n        return 0x46;\r\n      }\r\n      if ((0x54 < param_2) && (param_2 < 0x80)) {\r\n        return 0x49;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    if ((-1 < param_2) && (param_2 < 0x2b)) {\r\n      return 0x44;\r\n    }\r\n    if ((0x2a < param_2) && (param_2 < 0x55)) {\r\n      return 0x47;\r\n    }\r\n    if ((0x54 < param_2) && (param_2 < 0x80)) {\r\n      return 0x4a;\r\n    }\r\n  }\r\n  return 0xffffffff;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ab480",
+      "name": "FUN_004ab480",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

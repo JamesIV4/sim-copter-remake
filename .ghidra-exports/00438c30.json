@@ -1,0 +1,13 @@
+{
+  "address": "00438c30",
+  "name": "FUN_00438c30",
+  "signature": "undefined FUN_00438c30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_00438c30(int *param_1,int *param_2,int param_3,int param_4,int param_5,int param_6,int param_7,\r\n            int param_8)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  undefined4 *puVar8;\r\n  undefined4 *puVar9;\r\n  \r\n  (**(code **)*param_1)();\r\n  puVar2 = (undefined4 *)*param_2;\r\n  (*(code *)*puVar2)();\r\n  puVar4 = (undefined4 *)param_1[4];\r\n  iVar6 = param_1[3];\r\n  uVar7 = param_1[2];\r\n  if (param_4 < param_6) {\r\n    iVar6 = (iVar6 - param_6) + param_4;\r\n    puVar4 = (undefined4 *)((int)puVar4 + (param_6 - param_4) * param_1[5]);\r\n    param_4 = param_6;\r\n  }\r\n  if (param_3 < param_5) {\r\n    puVar4 = (undefined4 *)((int)puVar4 + (param_5 - param_3));\r\n    uVar7 = (uVar7 - param_5) + param_3;\r\n    param_3 = param_5;\r\n  }\r\n  if (param_7 <= (int)(uVar7 + param_3)) {\r\n    uVar7 = (param_7 - param_3) - 1;\r\n  }\r\n  if (param_8 <= iVar6 + param_4) {\r\n    iVar6 = (param_8 - param_4) + -1;\r\n  }\r\n  iVar3 = param_2[5];\r\n  if ((((uVar7 != 0) && (puVar4 != (undefined4 *)0x0)) && (param_1[5] != 0)) &&\r\n     ((param_2 != (int *)0x0 && (iVar3 != 0)))) {\r\n    puVar1 = (undefined4 *)(param_2[4] + iVar3 * param_4 + param_3);\r\n    while (iVar6 != 0) {\r\n      iVar6 = iVar6 + -1;\r\n      puVar8 = puVar4;\r\n      puVar9 = puVar1;\r\n      for (uVar5 = uVar7 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *puVar9 = *puVar8;\r\n        puVar8 = puVar8 + 1;\r\n        puVar9 = puVar9 + 1;\r\n      }\r\n      for (uVar5 = uVar7 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *(undefined1 *)puVar9 = *(undefined1 *)puVar8;\r\n        puVar8 = (undefined4 *)((int)puVar8 + 1);\r\n        puVar9 = (undefined4 *)((int)puVar9 + 1);\r\n      }\r\n      puVar4 = (undefined4 *)((int)puVar4 + param_1[5]);\r\n      puVar1 = (undefined4 *)((int)puVar1 + iVar3);\r\n    }\r\n  }\r\n  (*(code *)puVar2[1])();\r\n  (**(code **)(*param_1 + 4))();\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

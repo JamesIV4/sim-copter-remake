@@ -1,0 +1,83 @@
+{
+  "address": "00431b80",
+  "name": "FUN_00431b80",
+  "signature": "undefined FUN_00431b80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint * __thiscall FUN_00431b80(int *param_1,int *param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 *puVar4;\r\n  int iVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  undefined4 uVar8;\r\n  undefined4 *puVar9;\r\n  uint uVar10;\r\n  uint uVar11;\r\n  int *piVar12;\r\n  undefined4 *puVar13;\r\n  int *piVar14;\r\n  \r\n  if (param_1 != param_2) {\r\n    puVar1 = (undefined4 *)*param_1;\r\n    puVar2 = (undefined4 *)*param_2;\r\n    puVar3 = (undefined4 *)*puVar1;\r\n    puVar4 = (undefined4 *)*puVar2;\r\n    while ((puVar9 = puVar4, puVar6 = puVar3, puVar1 != puVar6 && (puVar2 != puVar9))) {\r\n      puVar3 = (undefined4 *)*puVar6;\r\n      puVar4 = (undefined4 *)*puVar9;\r\n      if (puVar6 + 2 != puVar9 + 2) {\r\n        *(int *)(puVar6[3] + 0xc) = *(int *)(puVar6[3] + 0xc) + -1;\r\n        iVar5 = puVar6[3];\r\n        if ((*(int *)(iVar5 + 0xc) == 0) && (iVar5 != 0)) {\r\n          FUN_00406180();\r\n          FUN_004d29a0(iVar5);\r\n        }\r\n        piVar14 = (int *)(puVar9[3] + 0xc);\r\n        if (*piVar14 == -1) {\r\n          puVar7 = (undefined4 *)FUN_004d28b0(0x10);\r\n          if (puVar7 == (undefined4 *)0x0) {\r\n            puVar6[3] = 0;\r\n          }\r\n          else {\r\n            iVar5 = *(int *)(puVar9[3] + 4);\r\n            puVar7[1] = iVar5;\r\n            puVar7[2] = iVar5;\r\n            if (iVar5 == 0) {\r\n              *puVar7 = 0;\r\n            }\r\n            else {\r\n              uVar8 = FUN_004d28b0(iVar5);\r\n              *puVar7 = uVar8;\r\n              uVar11 = puVar7[1];\r\n              puVar9 = (undefined4 *)FUN_004026a0();\r\n              puVar13 = (undefined4 *)*puVar7;\r\n              for (uVar10 = uVar11 >> 2; uVar10 != 0; uVar10 = uVar10 - 1) {\r\n                *puVar13 = *puVar9;\r\n                puVar9 = puVar9 + 1;\r\n                puVar13 = puVar13 + 1;\r\n              }\r\n              for (uVar11 = uVar11 & 3; uVar11 != 0; uVar11 = uVar11 - 1) {\r\n                *(undefined1 *)puVar13 = *(undefined1 *)puVar9;\r\n                puVar9 = (undefined4 *)((int)puVar9 + 1);\r\n                puVar13 = (undefined4 *)((int)puVar13 + 1);\r\n              }\r\n            }\r\n            puVar7[3] = 1;\r\n            puVar6[3] = puVar7;\r\n          }\r\n        }\r\n        else {\r\n          puVar6[3] = puVar9[3];\r\n          *piVar14 = *piVar14 + 1;\r\n        }\r\n      }\r\n    }\r\n    if (puVar2 == puVar9) {\r\n      while (puVar1 != puVar6) {\r\n        puVar2 = (undefined4 *)*puVar6;\r\n        FUN_00423e90(puVar6);\r\n        puVar6 = puVar2;\r\n      }\r\n    }\r\n    else if (puVar2 != puVar9) {\r\n      piVar14 = puVar1 + 1;\r\n      do {\r\n        puVar3 = puVar9 + 2;\r\n        puVar9 = (undefined4 *)*puVar9;\r\n        if (DAT_004f8360 == (int *)0x0) {\r\n          if (DAT_004f8358 == DAT_004f835c) {\r\n            FUN_00431d70();\r\n          }\r\n          piVar12 = DAT_004f835c;\r\n          DAT_004f835c = DAT_004f835c + 4;\r\n        }\r\n        else {\r\n          piVar12 = DAT_004f8360;\r\n          DAT_004f8360 = (int *)*DAT_004f8360;\r\n        }\r\n        if (piVar12 != (int *)0xfffffff8) {\r\n          FUN_00401d00(puVar3,0,0xffffffff);\r\n        }\r\n        *piVar12 = (int)puVar1;\r\n        piVar12[1] = *piVar14;\r\n        *(int **)*piVar14 = piVar12;\r\n        *piVar14 = (int)piVar12;\r\n        param_1[1] = param_1[1] + 1;\r\n      } while (puVar2 != puVar9);\r\n    }\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042e970",
+      "name": "FUN_0042e970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042e970",
+      "name": "FUN_0042e970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042e970",
+      "name": "FUN_0042e970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042e970",
+      "name": "FUN_0042e970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042ecc0",
+      "name": "FUN_0042ecc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042ecc0",
+      "name": "FUN_0042ecc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042ecc0",
+      "name": "FUN_0042ecc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0042ecc0",
+      "name": "FUN_0042ecc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00406180",
+      "name": "FUN_00406180"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004026a0",
+      "name": "FUN_004026a0"
+    },
+    {
+      "addr": "00423e90",
+      "name": "FUN_00423e90"
+    },
+    {
+      "addr": "00431d70",
+      "name": "FUN_00431d70"
+    },
+    {
+      "addr": "00401d00",
+      "name": "FUN_00401d00"
+    }
+  ],
+  "data_refs": []
+}

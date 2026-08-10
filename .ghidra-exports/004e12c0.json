@@ -1,0 +1,60 @@
+{
+  "address": "004e12c0",
+  "name": "___crtGetLocaleInfoA",
+  "signature": "int __cdecl ___crtGetLocaleInfoA(_locale_t _Plocinfo, LPCWSTR _LocaleName, LCTYPE _LCType, LPSTR _LpLCData, int _CchData)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 5,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___crtGetLocaleInfoA\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl\r\n___crtGetLocaleInfoA\r\n          (_locale_t _Plocinfo,LPCWSTR _LocaleName,LCTYPE _LCType,LPSTR _LpLCData,int _CchData)\r\n\r\n{\r\n  int iVar1;\r\n  LPWSTR lpLCData;\r\n  \r\n  iVar1 = DAT_00508840;\r\n  if (DAT_00508840 == 0) {\r\n    iVar1 = GetLocaleInfoA(0,1,(LPSTR)0x0,0);\r\n    if (iVar1 == 0) {\r\n      iVar1 = GetLocaleInfoW(0,1,(LPWSTR)0x0,0);\r\n      if (iVar1 == 0) {\r\n        return 0;\r\n      }\r\n      iVar1 = 1;\r\n    }\r\n    else {\r\n      iVar1 = 2;\r\n    }\r\n  }\r\n  DAT_00508840 = iVar1;\r\n  if (iVar1 == 2) {\r\n    iVar1 = GetLocaleInfoA((LCID)_Plocinfo,(LCTYPE)_LocaleName,(LPSTR)_LCType,(int)_LpLCData);\r\n    return iVar1;\r\n  }\r\n  if (iVar1 == 1) {\r\n    if (_CchData == 0) {\r\n      _CchData = DAT_00507ac8;\r\n    }\r\n    iVar1 = GetLocaleInfoW((LCID)_Plocinfo,(LCTYPE)_LocaleName,(LPWSTR)0x0,0);\r\n    if (iVar1 == 0) {\r\n      return 0;\r\n    }\r\n    lpLCData = (LPWSTR)FUN_004d5f00(iVar1 * 2);\r\n    if (lpLCData == (LPWSTR)0x0) {\r\n      return 0;\r\n    }\r\n    iVar1 = GetLocaleInfoW((LCID)_Plocinfo,(LCTYPE)_LocaleName,lpLCData,iVar1);\r\n    if (iVar1 != 0) {\r\n      if (_LpLCData == (LPSTR)0x0) {\r\n        iVar1 = WideCharToMultiByte(_CchData,0x220,lpLCData,-1,(LPSTR)0x0,0,(LPCSTR)0x0,(LPBOOL)0x0)\r\n        ;\r\n      }\r\n      else {\r\n        iVar1 = WideCharToMultiByte(_CchData,0x220,lpLCData,-1,(LPSTR)_LCType,(int)_LpLCData,\r\n                                    (LPCSTR)0x0,(LPBOOL)0x0);\r\n      }\r\n      if (iVar1 != 0) {\r\n        FUN_004d6010(lpLCData);\r\n        return iVar1;\r\n      }\r\n    }\r\n    FUN_004d6010(lpLCData);\r\n    iVar1 = 0;\r\n  }\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0fd0",
+      "name": "___getlocaleinfo",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000034",
+      "name": "GetLocaleInfoA"
+    },
+    {
+      "addr": "EXTERNAL:00000033",
+      "name": "GetLocaleInfoW"
+    },
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "EXTERNAL:00000043",
+      "name": "WideCharToMultiByte"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

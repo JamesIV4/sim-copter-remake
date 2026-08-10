@@ -1,0 +1,36 @@
+{
+  "address": "004d9db0",
+  "name": "FindHandlerForForeignException",
+  "signature": "void __cdecl FindHandlerForForeignException(EHExceptionRecord * param_1, EHRegistrationNode * param_2, _CONTEXT * param_3, void * param_4, _s_FuncInfo * param_5, int param_6, int param_7, EHRegistrationNode * param_8)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 8,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void __cdecl FindHandlerForForeignException(struct EHExceptionRecord *,struct EHRegistrationNode\r\n   *,struct _CONTEXT *,void *,struct _s_FuncInfo const *,int,int,struct EHRegistrationNode *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl\r\nFindHandlerForForeignException\r\n          (EHExceptionRecord *param_1,EHRegistrationNode *param_2,_CONTEXT *param_3,void *param_4,\r\n          _s_FuncInfo *param_5,int param_6,int param_7,EHRegistrationNode *param_8)\r\n\r\n{\r\n  _ptiddata p_Var1;\r\n  int iVar2;\r\n  _s_TryBlockMapEntry *p_Var3;\r\n  int iVar4;\r\n  uint local_8;\r\n  uint local_4;\r\n  \r\n  p_Var1 = __getptd();\r\n  if (((p_Var1->ptmbcinfo == (pthreadmbcinfo)0x0) ||\r\n      (iVar2 = _CallSETranslator(param_1,param_2,param_3,param_4,param_5,param_7,param_8),\r\n      iVar2 == 0)) &&\r\n     (p_Var3 = GetRangeOfTrysToCheck(param_5,param_7,param_6,&local_8,&local_4), local_8 < local_4))\r\n  {\r\n    do {\r\n      if ((*(int *)p_Var3 <= param_6) && (param_6 <= *(int *)(p_Var3 + 4))) {\r\n        iVar4 = *(int *)(p_Var3 + 0xc) * 0x10 + *(int *)(p_Var3 + 0x10);\r\n        iVar2 = *(int *)(iVar4 + -0xc);\r\n        if ((iVar2 == 0) || (*(char *)(iVar2 + 8) == '\\0')) {\r\n          CatchIt(param_1,param_2,param_3,param_4,param_5,(_s_HandlerType *)(iVar4 + -0x10),\r\n                  (_s_CatchableType *)0x0,p_Var3,param_7,param_8);\r\n        }\r\n      }\r\n      p_Var3 = p_Var3 + 0x14;\r\n      local_8 = local_8 + 1;\r\n    } while (local_8 < local_4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    },
+    {
+      "addr": "004d43d0",
+      "name": "_CallSETranslator"
+    },
+    {
+      "addr": "004d9e90",
+      "name": "GetRangeOfTrysToCheck"
+    },
+    {
+      "addr": "004da020",
+      "name": "CatchIt"
+    }
+  ],
+  "data_refs": []
+}

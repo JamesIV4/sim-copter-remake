@@ -1,0 +1,26 @@
+{
+  "address": "0043e9b0",
+  "name": "FUN_0043e9b0",
+  "signature": "undefined FUN_0043e9b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0043e9b0(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  DWORD DVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  code *pcVar5;\r\n  LARGE_INTEGER LStack_40;\r\n  int iStack_38;\r\n  int iStack_34;\r\n  undefined4 uStack_30;\r\n  undefined4 uStack_2c;\r\n  undefined4 uStack_28;\r\n  undefined4 uStack_24;\r\n  LARGE_INTEGER local_8;\r\n  \r\n  pcVar5 = timeGetTime_exref;\r\n  uVar4 = *(uint *)(param_1 + 0xac);\r\n  if (*(int *)(param_1 + 0xa8) != 0) {\r\n    if (*(int *)(param_1 + 0xa4) == 0) {\r\n      QueryPerformanceCounter(&local_8);\r\n      pcVar5 = timeGetTime_exref;\r\n    }\r\n    else if (*(int *)(param_1 + 0xa4) == 1) {\r\n      local_8.s.LowPart = timeGetTime();\r\n    }\r\n    else {\r\n      DVar2 = timeGetTime();\r\n      local_8.s.LowPart = DVar2 / 1000;\r\n    }\r\n    uVar4 = (uVar4 - *(int *)(param_1 + 0xa8)) + local_8.s.LowPart;\r\n  }\r\n  if ((*(int *)(param_1 + 0xa4) == 0) && (*(int *)(param_1 + 0xb0) != 0)) {\r\n    uStack_24 = 0x43ea32;\r\n    uVar4 = MulDiv(uVar4,1000000,*(int *)(param_1 + 0xb0));\r\n  }\r\n  if (0x96 < uVar4) {\r\n    iVar3 = *(int *)(param_1 + 0xb4) + 1;\r\n    *(int *)(param_1 + 0xb4) = iVar3;\r\n    if (200 < iVar3) {\r\n      *(undefined4 *)(param_1 + 0xb4) = 0;\r\n    }\r\n    uStack_24 = *(undefined4 *)(param_1 + 0xb4);\r\n    uStack_30 = *(undefined4 *)(param_1 + 0x40);\r\n    uStack_28 = 0x38;\r\n    uStack_2c = 0x14b;\r\n    iStack_34 = 0x43ea91;\r\n    (**(code **)(**(int **)(param_1 + 0x9c) + 0xc))();\r\n    piVar1 = *(int **)(param_1 + 0xa0);\r\n    iStack_34 = piVar1[3];\r\n    iStack_38 = piVar1[2];\r\n    LStack_40.s.HighPart = 0;\r\n    LStack_40.s.LowPart = 0;\r\n    (**(code **)(*piVar1 + 0xc))(*(undefined4 *)(param_1 + 0x40),0x159,0x6c);\r\n    *(undefined4 *)(param_1 + 0xac) = 0;\r\n    *(undefined4 *)(param_1 + 0xa8) = 0;\r\n    if (*(int *)(param_1 + 0xa4) == 0) {\r\n      QueryPerformanceCounter(&LStack_40);\r\n    }\r\n    else if (*(int *)(param_1 + 0xa4) == 1) {\r\n      LStack_40.s.LowPart = (*pcVar5)();\r\n    }\r\n    else {\r\n      uVar4 = (*pcVar5)();\r\n      LStack_40.s.LowPart = uVar4 / 1000;\r\n    }\r\n    *(undefined4 *)(param_1 + 0xa8) = LStack_40.s.LowPart;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    },
+    {
+      "addr": "EXTERNAL:00000024",
+      "name": "MulDiv"
+    }
+  ],
+  "data_refs": []
+}

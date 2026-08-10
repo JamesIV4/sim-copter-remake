@@ -1,0 +1,32 @@
+{
+  "address": "004a6940",
+  "name": "FUN_004a6940",
+  "signature": "undefined FUN_004a6940(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a6940(void)\r\n\r\n{\r\n  byte bVar1;\r\n  byte bVar2;\r\n  short sVar3;\r\n  byte *pbVar4;\r\n  bool bVar5;\r\n  uint uVar6;\r\n  int iVar7;\r\n  undefined4 uVar8;\r\n  int iVar9;\r\n  uint uVar10;\r\n  undefined4 *puVar11;\r\n  int iVar12;\r\n  uint uVar13;\r\n  int iVar14;\r\n  int *piVar15;\r\n  bool bVar16;\r\n  int local_2c;\r\n  undefined4 *local_24;\r\n  int local_20;\r\n  undefined4 *local_1c;\r\n  int local_18;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  uVar13 = 0;\r\n  iVar14 = 0;\r\n  do {\r\n    uVar10 = 0;\r\n    do {\r\n      iVar9 = iVar14 + uVar10;\r\n      uVar6 = uVar10 & 0xff;\r\n      uVar10 = uVar10 + 1;\r\n      *(undefined4 *)(&DAT_0051af08 + iVar9 * 4) = (&DAT_005d9200)[uVar6 * 0x100 + (uVar13 & 0xff)];\r\n    } while ((int)uVar10 < 0x80);\r\n    iVar14 = iVar14 + 0x80;\r\n    uVar13 = uVar13 + 1;\r\n  } while (iVar14 < 0x4000);\r\n  local_20 = 0;\r\n  local_18 = 0;\r\n  local_2c = 0;\r\n  do {\r\n    iVar14 = 0;\r\n    local_24 = (undefined4 *)(&DAT_0051af08 + local_2c);\r\n    do {\r\n      pbVar4 = (byte *)*local_24;\r\n      if (pbVar4 != (byte *)0x0) {\r\n        sVar3 = *(short *)(pbVar4 + 8);\r\n        piVar15 = (int *)((int)&DAT_005910b0 + local_2c);\r\n        bVar1 = *(byte *)(*piVar15 + iVar14);\r\n        uVar13 = _rand();\r\n        bVar16 = (uVar13 & 3) == 0;\r\n        if ((((bVar1 == 0xf6) || (bVar1 == 0xd1)) || (bVar1 == 0xd2)) || (bVar1 == 0xd3)) {\r\n          bVar16 = true;\r\n        }\r\n        if ((((local_2c < 0) || (iVar14 < 0)) || ((0x1fc < local_2c || (0x7f < iVar14)))) ||\r\n           (((bVar2 = *(byte *)(*piVar15 + iVar14), 0x1c < bVar2 && (bVar2 < 0x6c)) ||\r\n            ((bVar2 < 5 ||\r\n             ((((bVar2 == 0xde || (bVar2 == 0xf6)) || (bVar2 == 0xd2)) ||\r\n              ((bVar2 == 0xd3 || (bVar2 == 0xd1)))))))))) {\r\n          bVar5 = false;\r\n        }\r\n        else {\r\n          bVar5 = true;\r\n        }\r\n        if (!bVar5) {\r\n          bVar16 = true;\r\n        }\r\n        local_c = (int)*(short *)(pbVar4 + 2);\r\n        local_8 = (int)*(short *)(pbVar4 + 4);\r\n        local_4 = (int)*(short *)(pbVar4 + 6);\r\n        iVar9 = (int)sVar3;\r\n        if (local_20 < local_20 + iVar9) {\r\n          local_1c = local_24;\r\n          iVar12 = local_18;\r\n          local_10 = iVar9;\r\n          do {\r\n            iVar7 = iVar14;\r\n            puVar11 = local_1c;\r\n            if (iVar14 < iVar9 + iVar14) {\r\n              do {\r\n                *puVar11 = 0;\r\n                if (!bVar16) {\r\n                  *(undefined1 *)(*piVar15 + iVar7) = 0;\r\n                  *(undefined1 *)((int)&DAT_005bde80 + iVar7 + iVar12) = 10;\r\n                }\r\n                iVar7 = iVar7 + 1;\r\n                puVar11 = puVar11 + 0x80;\r\n              } while (iVar7 < iVar9 + iVar14);\r\n            }\r\n            iVar12 = iVar12 + 0x100;\r\n            piVar15 = piVar15 + 1;\r\n            local_1c = local_1c + 1;\r\n            local_10 = local_10 + -1;\r\n          } while (local_10 != 0);\r\n        }\r\n        if (!bVar16) {\r\n          *pbVar4 = *pbVar4 & 0xfe;\r\n          puVar11 = *(undefined4 **)(pbVar4 + 0xc);\r\n          if ((bVar1 < 6) || (0xc < bVar1)) {\r\n            for (; puVar11 != (undefined4 *)0x0; puVar11 = (undefined4 *)*puVar11) {\r\n              if ((puVar11[2] & 4) != 0) {\r\n                switch(*(undefined2 *)(pbVar4 + 8)) {\r\n                case 1:\r\n                  uVar8 = 0x14f;\r\n                  break;\r\n                case 2:\r\n                  uVar8 = 0x150;\r\n                  break;\r\n                case 3:\r\n                  uVar8 = 0x151;\r\n                  break;\r\n                case 4:\r\n                  uVar8 = 0x152;\r\n                  break;\r\n                default:\r\n                  goto switchD_004a6b88_default;\r\n                }\r\n                uVar8 = FUN_00470571(uVar8);\r\n                puVar11[1] = uVar8;\r\n                puVar11[2] = 0x400;\r\n                *puVar11 = 0;\r\n                break;\r\n              }\r\n            }\r\nswitchD_004a6b88_default:\r\n            uVar13 = _rand();\r\n          }\r\n          else {\r\n            for (; puVar11 != (undefined4 *)0x0; puVar11 = (undefined4 *)*puVar11) {\r\n              if ((puVar11[2] & 8) != 0) {\r\n                uVar8 = FUN_00470571(0x14e);\r\n                puVar11[1] = uVar8;\r\n              }\r\n            }\r\n            uVar13 = _rand();\r\n          }\r\n          if ((uVar13 & 0x1f) == 0) {\r\n            FUN_004af220(pbVar4,&local_c,1);\r\n          }\r\n        }\r\n      }\r\n      local_24 = local_24 + 0x80;\r\n      iVar14 = iVar14 + 1;\r\n    } while (iVar14 < 0x80);\r\n    local_18 = local_18 + 0x100;\r\n    local_2c = local_2c + 4;\r\n    local_20 = local_20 + 1;\r\n    if (0x1ff < local_2c) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004515d0",
+      "name": "FUN_004515d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "00470571",
+      "name": "FUN_00470571"
+    },
+    {
+      "addr": "004af220",
+      "name": "FUN_004af220"
+    }
+  ],
+  "data_refs": []
+}

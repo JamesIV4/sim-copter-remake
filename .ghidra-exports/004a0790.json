@@ -1,0 +1,94 @@
+{
+  "address": "004a0790",
+  "name": "FUN_004a0790",
+  "signature": "undefined FUN_004a0790(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004a0790(ushort param_1,ushort param_2,uint param_3)\r\n\r\n{\r\n  uint *puVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  \r\n  if (param_1 == 0x4b) {\r\n    param_1 = 0x49;\r\n  }\r\n  else if (param_1 == 0x4c) {\r\n    param_1 = 0x4a;\r\n  }\r\n  if (param_2 == 0x4b) {\r\n    param_2 = 0x49;\r\n  }\r\n  else if (param_2 == 0x4c) {\r\n    param_2 = 0x4a;\r\n  }\r\n  uVar2 = (uint)param_1;\r\n  if (uVar2 < 0x6c) {\r\n    if (uVar2 < 0x61) {\r\n      if (uVar2 < 0x49) {\r\n        return 0;\r\n      }\r\n      if (0x50 < uVar2) {\r\n        return 0;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    if (uVar2 < 0x806a) {\r\n      return 0;\r\n    }\r\n    if (0x806b < uVar2) {\r\n      return 0;\r\n    }\r\n  }\r\n  uVar3 = (uint)param_2;\r\n  if (uVar3 < 0x6c) {\r\n    if (uVar3 < 0x61) {\r\n      if (uVar3 < 0x49) {\r\n        return 0;\r\n      }\r\n      if (0x50 < uVar3) {\r\n        return 0;\r\n      }\r\n    }\r\n  }\r\n  else {\r\n    if (uVar3 < 0x806a) {\r\n      return 0;\r\n    }\r\n    if (0x806b < uVar3) {\r\n      return 0;\r\n    }\r\n  }\r\n  for (puVar1 = &DAT_00505c78; uVar2 != *puVar1; puVar1 = puVar1 + 2) {\r\n    if ((*puVar1 == 0) || (s_failure_in_file__s__line__ld___s_00506c34 + 4 < puVar1)) {\r\n      uVar2 = 0;\r\n      goto LAB_004a084a;\r\n    }\r\n  }\r\n  uVar2 = puVar1[1];\r\nLAB_004a084a:\r\n  puVar1 = &DAT_00505c78;\r\n  do {\r\n    if (uVar3 == *puVar1) {\r\n      uVar3 = puVar1[1];\r\nLAB_004a086c:\r\n      if ((((param_3 & 1) != 0) && ((uVar2 & 1) != 0)) && ((uVar3 & 4) != 0)) {\r\n        return 1;\r\n      }\r\n      if ((((param_3 & 4) != 0) && ((uVar2 & 4) != 0)) && ((uVar3 & 1) != 0)) {\r\n        return 1;\r\n      }\r\n      if ((((param_3 & 8) != 0) && ((uVar2 & 8) != 0)) && ((uVar3 & 2) != 0)) {\r\n        return 1;\r\n      }\r\n      if ((((param_3 & 2) != 0) && ((uVar2 & 2) != 0)) && ((uVar3 & 8) != 0)) {\r\n        return 1;\r\n      }\r\n      return 0;\r\n    }\r\n    if ((*puVar1 == 0) || (s_failure_in_file__s__line__ld___s_00506c34 + 4 < puVar1)) {\r\n      uVar3 = 0;\r\n      goto LAB_004a086c;\r\n    }\r\n    puVar1 = puVar1 + 2;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a04c0",
+      "name": "FUN_004a04c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a04c0",
+      "name": "FUN_004a04c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a04c0",
+      "name": "FUN_004a04c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a04c0",
+      "name": "FUN_004a04c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a0d40",
+      "name": "FUN_004a0d40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

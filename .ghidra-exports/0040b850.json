@@ -1,0 +1,18 @@
+{
+  "address": "0040b850",
+  "name": "FUN_0040b850",
+  "signature": "undefined FUN_0040b850(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_0040b850(int param_1,int *param_2)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = __ftol();\r\n  *param_2 = iVar1;\r\n  *param_2 = *(int *)(param_1 + 0x78) + iVar1;\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    }
+  ],
+  "data_refs": []
+}

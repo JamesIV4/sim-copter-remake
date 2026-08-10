@@ -1,0 +1,50 @@
+{
+  "address": "004aabf0",
+  "name": "FUN_004aabf0",
+  "signature": "undefined FUN_004aabf0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004aabf0(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  undefined4 uVar8;\r\n  undefined4 uVar9;\r\n  \r\n  iVar1 = -1;\r\n  iVar6 = 0;\r\n  iVar7 = 0;\r\n  uVar3 = *(uint *)(param_1 + 0x50);\r\n  if ((uVar3 & 8) != 0) {\r\n    iVar7 = *(int *)(param_1 + 0x74) - *(int *)(param_1 + 0x78);\r\n    iVar6 = DAT_00506044 * iVar7;\r\n    iVar7 = DAT_00506040 * iVar7;\r\n    iVar1 = 0x5f;\r\n  }\r\n  if ((uVar3 & 1) != 0) {\r\n    uVar4 = *(uint *)(param_1 + 0x6c) & 1;\r\n    iVar1 = 1 - *(int *)(param_1 + 0x5c);\r\n    iVar6 = ((iVar6 + *(int *)(param_1 + 0x48) * uVar4) - DAT_00506004 * *(int *)(param_1 + 0x68)) +\r\n            DAT_00506004 * iVar1;\r\n    iVar7 = ((iVar7 + *(int *)(param_1 + 0x44) * uVar4) - DAT_00506000 * *(int *)(param_1 + 0x68)) +\r\n            DAT_00506000 * iVar1;\r\n    iVar1 = 0x5f;\r\n  }\r\n  if ((uVar3 & 0x20) != 0) {\r\n    iVar1 = *(int *)(param_1 + 0xa4) >> 2;\r\n    iVar6 = ((iVar6 + DAT_00505fec * *(int *)(param_1 + 0xa0)) -\r\n            DAT_00505fec * *(int *)(param_1 + 0xb4)) + DAT_00505fec * iVar1;\r\n    iVar7 = ((iVar7 + DAT_00505fe8 * *(int *)(param_1 + 0xa0)) -\r\n            DAT_00505fe8 * *(int *)(param_1 + 0xb4)) + DAT_00505fe8 * iVar1;\r\n    iVar1 = 0x67;\r\n  }\r\n  if ((uVar3 & 0x10) != 0) {\r\n    iVar1 = *(int *)(param_1 + 0x98);\r\n    if ((uVar3 & 0x100) == 0) {\r\n      iVar2 = DAT_00505fe4 * iVar1;\r\n      iVar1 = DAT_00505fe0 * iVar1;\r\n      iVar5 = *(int *)(param_1 + 0xa4) >> 2;\r\n    }\r\n    else {\r\n      iVar2 = DAT_00505fe4 * iVar1 * 2;\r\n      iVar5 = *(int *)(param_1 + 0xa4);\r\n      iVar1 = DAT_00505fe0 * iVar1 * 2;\r\n    }\r\n    iVar6 = (iVar6 + iVar2 + DAT_00505fe4 * iVar5) - DAT_00505fe4 * *(int *)(param_1 + 0xb4);\r\n    iVar7 = (iVar7 + iVar1 + DAT_00505fe0 * iVar5) - DAT_00505fe0 * *(int *)(param_1 + 0xb4);\r\n    iVar1 = 0x68 - (uint)((uVar3 & 0x80) == 0);\r\n  }\r\n  if ((uVar3 & 0x40) != 0) {\r\n    iVar1 = *(int *)(param_1 + 0xa4) >> 2;\r\n    iVar6 = ((iVar6 + DAT_00505ff4 * *(int *)(param_1 + 0x9c)) -\r\n            DAT_00505ff4 * *(int *)(param_1 + 0xbc)) + DAT_00505ff4 * iVar1;\r\n    iVar7 = ((iVar7 + DAT_00505ff0 * *(int *)(param_1 + 0x9c)) -\r\n            DAT_00505ff0 * *(int *)(param_1 + 0xbc)) + DAT_00505ff0 * iVar1;\r\n    iVar1 = 0x61;\r\n  }\r\n  if ((uVar3 & 0x1000) != 0) {\r\n    if (*(int *)(param_1 + 0x94) < 6) {\r\n      iVar1 = 6 - *(int *)(param_1 + 0x94);\r\n      iVar6 = iVar6 + (DAT_00505fd0 * iVar1) / 6;\r\n      iVar7 = iVar7 + (DAT_00505fcc * iVar1) / 6;\r\n    }\r\n    iVar1 = 0x66;\r\n  }\r\n  if ((uVar3 & 0x400) != 0) {\r\n    iVar6 = (iVar6 - DAT_0050603c * *(int *)(param_1 + 0xcc)) +\r\n            DAT_0050603c * *(int *)(param_1 + 200);\r\n    iVar7 = (iVar7 - DAT_00506038 * *(int *)(param_1 + 0xcc)) +\r\n            DAT_00506038 * *(int *)(param_1 + 200);\r\n    iVar1 = 0x5f;\r\n  }\r\n  if ((uVar3 & 0x800) != 0) {\r\n    iVar1 = DAT_00506030;\r\n    iVar2 = DAT_0050602c;\r\n    if (*(int *)(param_1 + 0x54) == 2) {\r\n      iVar1 = DAT_00506030 >> 1;\r\n      iVar2 = DAT_0050602c >> 1;\r\n    }\r\n    iVar7 = iVar7 + iVar2;\r\n    iVar6 = iVar6 + iVar1;\r\n    iVar1 = 0x65;\r\n  }\r\n  if ((uVar3 & 0x4000) != 0) {\r\n    iVar6 = iVar6 + _DAT_0050601c;\r\n    iVar7 = iVar7 + _DAT_00506018;\r\n    iVar1 = 100;\r\n  }\r\n  if ((uVar3 & 0x200) != 0) {\r\n    iVar6 = iVar6 + _DAT_0050601c;\r\n    iVar7 = iVar7 + _DAT_00506018;\r\n    iVar1 = 100;\r\n  }\r\n  if ((uVar3 & 0x2000) != 0) {\r\n    iVar6 = iVar6 + _DAT_0050601c;\r\n    iVar7 = iVar7 + _DAT_00506018;\r\n    iVar1 = 100;\r\n  }\r\n  if ((uVar3 & 0x20000) != 0) {\r\n    iVar6 = iVar6 + _DAT_0050601c;\r\n    iVar7 = iVar7 + _DAT_00506018;\r\n    iVar1 = 100;\r\n  }\r\n  if ((uVar3 & 2) != 0) {\r\n    iVar6 = iVar6 + DAT_00506024;\r\n    iVar7 = iVar7 + DAT_00506020;\r\n    iVar1 = 99;\r\n  }\r\n  if (iVar6 < 1) {\r\n    uVar9 = 0x96;\r\n    uVar8 = 0x60;\r\n  }\r\n  else {\r\n    if (iVar1 != -1) {\r\n      FUN_0042a3b0(0,iVar1,0x96);\r\n    }\r\n    uVar3 = _rand();\r\n    uVar9 = 0x32;\r\n    uVar8 = *(undefined4 *)\r\n             (&DAT_005060b0 +\r\n             (short)((int)((uint)(ushort)((short)uVar3 >> 0xf) << 0x10 | uVar3 & 0xffff) % 5) * 4);\r\n  }\r\n  FUN_0042a3b0(0,uVar8,uVar9);\r\n  if (iVar7 < 0) {\r\n    iVar7 = 0;\r\n  }\r\n  _DAT_00506058 = 6;\r\n  _DAT_00506060 = *(undefined4 *)(param_1 + 0x24);\r\n  iVar1 = *(int *)(param_1 + 0x50);\r\n  if (iVar1 < 10) {\r\n    if (iVar1 != 9) {\r\n      if (iVar1 == 0) {\r\n        _DAT_00506064 = 0x24b;\r\n        goto LAB_004ab128;\r\n      }\r\n      if (iVar1 != 1) {\r\n        if (iVar1 != 4) {\r\n          _DAT_00506064 = 0x24b;\r\n          goto LAB_004ab128;\r\n        }\r\n        goto LAB_004ab0c1;\r\n      }\r\n    }\r\n    _DAT_00506064 = 0x241;\r\n    goto LAB_004ab128;\r\n  }\r\n  if (iVar1 < 0x21) {\r\n    if (iVar1 == 0x20) {\r\n      _DAT_00506064 = 0x23f;\r\n      goto LAB_004ab128;\r\n    }\r\n    if (iVar1 != 0xc) {\r\n      _DAT_00506064 = 0x24b;\r\n      goto LAB_004ab128;\r\n    }\r\nLAB_004ab0c1:\r\n    _DAT_00506064 = 0x242;\r\n    goto LAB_004ab128;\r\n  }\r\n  if (iVar1 < 0x81) {\r\n    if (iVar1 != 0x80) {\r\n      if (iVar1 == 0x40) {\r\n        _DAT_00506064 = 0x240;\r\n      }\r\n      else {\r\n        _DAT_00506064 = 0x24b;\r\n      }\r\n      goto LAB_004ab128;\r\n    }\r\n  }\r\n  else {\r\n    if (0x100 < iVar1) {\r\n      if (iVar1 < 0x111) {\r\n        if (iVar1 != 0x110) {\r\n          if (iVar1 != 0x108) {\r\n            _DAT_00506064 = 0x24b;\r\n            goto LAB_004ab128;\r\n          }\r\n          goto LAB_004ab0dd;\r\n        }\r\n      }\r\n      else {\r\n        if (0x200 < iVar1) {\r\n          if (iVar1 < 0x409) {\r\n            if ((iVar1 == 0x408) || (iVar1 == 0x400)) {\r\n              _DAT_00506064 = 0x248;\r\n            }\r\n            else {\r\n              _DAT_00506064 = 0x24b;\r\n            }\r\n          }\r\n          else if (iVar1 < 0x1001) {\r\n            if (iVar1 == 0x1000) {\r\n              _DAT_00506064 = 0x23b;\r\n            }\r\n            else if (iVar1 == 0x800) {\r\n              _DAT_00506064 = 0x249;\r\n            }\r\n            else {\r\n              _DAT_00506064 = 0x24b;\r\n            }\r\n          }\r\n          else if (iVar1 < 0x4001) {\r\n            if (iVar1 == 0x4000) {\r\n              _DAT_00506064 = 0x244;\r\n            }\r\n            else if (iVar1 == 0x2000) {\r\n              _DAT_00506064 = 0x245;\r\n            }\r\n            else {\r\n              _DAT_00506064 = 0x24b;\r\n            }\r\n          }\r\n          else {\r\n            if (iVar1 < 0x80001) {\r\n              if (iVar1 != 0x80000) {\r\n                if (iVar1 == 0x20000) {\r\n                  _DAT_00506064 = 0x246;\r\n                }\r\n                else {\r\n                  _DAT_00506064 = 0x24b;\r\n                }\r\n                goto LAB_004ab128;\r\n              }\r\n            }\r\n            else if (iVar1 != 0x80010) {\r\n              if (iVar1 == 0x100000) {\r\n                _DAT_00506064 = 0x24a;\r\n              }\r\n              else {\r\n                _DAT_00506064 = 0x24b;\r\n              }\r\n              goto LAB_004ab128;\r\n            }\r\n            _DAT_00506064 = 0x23c;\r\n          }\r\n          goto LAB_004ab128;\r\n        }\r\n        if (iVar1 == 0x200) {\r\n          _DAT_00506064 = 0x247;\r\n          goto LAB_004ab128;\r\n        }\r\n        if (iVar1 != 0x118) {\r\n          _DAT_00506064 = 0x24b;\r\n          goto LAB_004ab128;\r\n        }\r\n      }\r\n      _DAT_00506064 = 0x23e;\r\n      goto LAB_004ab128;\r\n    }\r\n    if (iVar1 == 0x100) {\r\nLAB_004ab0dd:\r\n      _DAT_00506064 = 0x243;\r\n      goto LAB_004ab128;\r\n    }\r\n    if (iVar1 != 0x90) {\r\n      _DAT_00506064 = 0x24b;\r\n      goto LAB_004ab128;\r\n    }\r\n  }\r\n  _DAT_00506064 = 0x23d;\r\nLAB_004ab128:\r\n  _DAT_00506068 = iVar6;\r\n  _DAT_0050606c = iVar7;\r\n  FUN_0048c4a0(&DAT_00506058,1);\r\n  FUN_00407b00(iVar6);\r\n  FUN_00407a90(iVar7);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a73e0",
+      "name": "FUN_004a73e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a73e0",
+      "name": "FUN_004a73e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a73e0",
+      "name": "FUN_004a73e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0042a3b0",
+      "name": "FUN_0042a3b0"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "0048c4a0",
+      "name": "FUN_0048c4a0"
+    },
+    {
+      "addr": "00407b00",
+      "name": "FUN_00407b00"
+    },
+    {
+      "addr": "00407a90",
+      "name": "FUN_00407a90"
+    }
+  ],
+  "data_refs": []
+}

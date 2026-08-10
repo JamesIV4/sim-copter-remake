@@ -1,0 +1,13 @@
+{
+  "address": "004703dd",
+  "name": "FUN_004703dd",
+  "signature": "undefined FUN_004703dd(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004703dd(void)\r\n\r\n{\r\n  if (0x5008c3 < (int)(PTR_DAT_005008c0 + -4)) {\r\n    DAT_0050093c = &DAT_005008c4;\r\n    do {\r\n      (**(code **)*DAT_0050093c)((undefined4 *)*DAT_0050093c);\r\n      DAT_0050093c = DAT_0050093c + 1;\r\n    } while ((int)DAT_0050093c < (int)PTR_DAT_005008c0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,28 @@
+{
+  "address": "004c7a60",
+  "name": "FUN_004c7a60",
+  "signature": "undefined FUN_004c7a60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4\r\nFUN_004c7a60(undefined2 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,\r\n            undefined4 param_5)\r\n\r\n{\r\n  undefined2 uVar2;\r\n  int iVar1;\r\n  undefined2 extraout_var;\r\n  int *piVar3;\r\n  short sVar4;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  local_8 = 0xffffffff;\r\n  puStack_c = &LAB_004c7b0b;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  uVar2 = 0;\r\n  sVar4 = 0;\r\n  do {\r\n    if ((&DAT_0058e030)[sVar4] == 0) break;\r\n    sVar4 = sVar4 + 1;\r\n  } while (sVar4 < 500);\r\n  if (sVar4 != 500) {\r\n    iVar1 = FUN_004d28b0(0x22c);\r\n    piVar3 = (int *)0x0;\r\n    local_8 = 0;\r\n    if (iVar1 != 0) {\r\n      piVar3 = (int *)FUN_004c7c00(param_1,param_5,param_2,param_3,param_4,sVar4);\r\n    }\r\n    local_8 = 0xffffffff;\r\n    (&DAT_0058e030)[sVar4] = piVar3;\r\n    (**(code **)(*piVar3 + 0x1c))();\r\n    uVar2 = extraout_var;\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return CONCAT22(uVar2,sVar4);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c2fc0",
+      "name": "FUN_004c2fc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004c7c00",
+      "name": "FUN_004c7c00"
+    }
+  ],
+  "data_refs": []
+}

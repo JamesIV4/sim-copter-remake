@@ -1,0 +1,18 @@
+{
+  "address": "00401780",
+  "name": "FUN_00401780",
+  "signature": "undefined FUN_00401780(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00401780(int param_1,uint param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  DWORD DVar2;\r\n  uint *puVar3;\r\n  DWORD DVar4;\r\n  \r\n  puVar3 = (uint *)(param_1 + 0x10);\r\n  DVar4 = 0;\r\n  if (param_2 != 0) {\r\n    DVar4 = timeGetTime();\r\n  }\r\n  do {\r\n    if (param_2 != 0) {\r\n      uVar1 = 0;\r\n      if (DVar4 != 0) {\r\n        DVar2 = timeGetTime();\r\n        uVar1 = DVar2 - DVar4;\r\n      }\r\n      if (param_2 < uVar1) {\r\n        return 0;\r\n      }\r\n    }\r\n    uVar1 = *puVar3;\r\n    *puVar3 = *puVar3 | 1;\r\n    if ((uVar1 & 1) == 0) {\r\n      return 1;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

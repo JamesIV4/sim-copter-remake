@@ -1,0 +1,60 @@
+{
+  "address": "0047b0c0",
+  "name": "FUN_0047b0c0",
+  "signature": "undefined FUN_0047b0c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0047b0c0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 uVar3;\r\n  undefined4 uVar4;\r\n  undefined4 uVar5;\r\n  int iVar6;\r\n  undefined4 uVar7;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  local_8 = 0;\r\n  local_c = *param_1;\r\n  local_4 = param_1[2];\r\n  iVar1 = FUN_004679d0(&local_c);\r\n  if (iVar1 == 0) {\r\n    uVar7 = 0x10000;\r\n    if (param_1[1] < 0) {\r\n      uVar7 = 0xffff0000;\r\n    }\r\n    uVar5 = 0;\r\n  }\r\n  else {\r\n    uVar5 = FUN_0046c4bf(local_4,iVar1);\r\n    uVar7 = FUN_0046c4bf(local_c,iVar1);\r\n  }\r\n  DAT_0061a63c = FUN_0046cb91(uVar7,uVar5);\r\n  local_8 = param_1[1];\r\n  iVar2 = FUN_004679d0(&local_c);\r\n  if (iVar2 == 0) {\r\n    iVar6 = -0x10000;\r\n    if (*param_1 < 1) {\r\n      iVar6 = 0x10000;\r\n    }\r\n    uVar4 = 0;\r\n  }\r\n  else {\r\n    iVar6 = FUN_0046c4bf(local_8,iVar2);\r\n    iVar6 = -iVar6;\r\n    uVar4 = FUN_0046c4bf(iVar1,iVar2);\r\n  }\r\n  DAT_0061a640 = FUN_0046cb91(iVar6,uVar4);\r\n  uVar3 = FUN_0046c49d(iVar6,0);\r\n  iVar1 = FUN_0046c49d(uVar7,uVar3);\r\n  _DAT_0061a708 = FUN_0046c49d(uVar5,0x10000);\r\n  _DAT_0061a708 = iVar1 + _DAT_0061a708;\r\n  _DAT_0061a70c = FUN_0046c49d(uVar4,0);\r\n  uVar3 = FUN_0046c49d(iVar6,0);\r\n  iVar1 = FUN_0046c49d(uVar5,uVar3);\r\n  _DAT_0061a710 = FUN_0046c49d(uVar7,0x10000);\r\n  _DAT_0061a710 = iVar1 - _DAT_0061a710;\r\n  _DAT_0061a714 = 0;\r\n  uVar3 = FUN_0046c49d(iVar6,0x10000);\r\n  iVar1 = FUN_0046c49d(uVar7,uVar3);\r\n  _DAT_0061a718 = FUN_0046c49d(uVar5,0);\r\n  _DAT_0061a718 = iVar1 - _DAT_0061a718;\r\n  _DAT_0061a71c = FUN_0046c49d(0x10000,uVar4);\r\n  uVar3 = FUN_0046c49d(iVar6,0x10000);\r\n  iVar1 = FUN_0046c49d(uVar5,uVar3);\r\n  _DAT_0061a720 = FUN_0046c49d(uVar7,0);\r\n  _DAT_0061a720 = iVar1 + _DAT_0061a720;\r\n  _DAT_0061a724 = 0;\r\n  _DAT_0061a728 = FUN_0046c49d(uVar7,uVar4);\r\n  _DAT_0061a72c = -iVar6;\r\n  _DAT_0061a730 = FUN_0046c49d(uVar5,uVar4);\r\n  _DAT_0061a734 = 0;\r\n  _DAT_0061a740 = 0;\r\n  _DAT_0061a73c = 0;\r\n  _DAT_0061a738 = 0;\r\n  _DAT_0061a744 = 0x10000;\r\n  if ((DAT_00503aa0 == 0) || (DAT_00503aa0 == 1)) {\r\n    FUN_0046cb14(*(int *)(DAT_005040d0 + 300) >> 1,&DAT_0061a708);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047b4f0",
+      "name": "FUN_0047b4f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047b4f0",
+      "name": "FUN_0047b4f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047b4f0",
+      "name": "FUN_0047b4f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047b4f0",
+      "name": "FUN_0047b4f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047b4f0",
+      "name": "FUN_0047b4f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004679d0",
+      "name": "FUN_004679d0"
+    },
+    {
+      "addr": "0046c4bf",
+      "name": "FUN_0046c4bf"
+    },
+    {
+      "addr": "0046cb91",
+      "name": "FUN_0046cb91"
+    },
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "0046cb14",
+      "name": "FUN_0046cb14"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,48 @@
+{
+  "address": "004c7b30",
+  "name": "FUN_004c7b30",
+  "signature": "undefined FUN_004c7b30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004c7b30(int param_1,short param_2)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  undefined1 local_20 [8];\r\n  uint local_18;\r\n  int local_14;\r\n  int local_10;\r\n  \r\n  uVar1 = FUN_0046edb0(1,0x16);\r\n  *(undefined4 *)(param_1 + 0x1bc) = uVar1;\r\n  FUN_0046f610(uVar1,2);\r\n  FUN_0046f610(*(undefined4 *)(param_1 + 0x1bc),0);\r\n  FUN_0047022b(*(undefined4 *)(param_1 + 0x1bc),DAT_005039c0);\r\n  uVar1 = FUN_0047031d(*(undefined4 *)(param_1 + 0x1bc));\r\n  FUN_0046f5a5(uVar1,local_20);\r\n  if (local_14 == 0x16) {\r\n    local_18 = local_18 & 0x7fffffff;\r\n    local_10 = (int)param_2;\r\n    FUN_0046f5e1(uVar1,local_20);\r\n  }\r\n  *(undefined4 *)(param_1 + 0x1c4) = 0x50000;\r\n  *(undefined4 *)(param_1 + 0x1c8) = 6;\r\n  *(undefined2 *)(param_1 + 0x1c0) = 8;\r\n  FUN_0046cad1(param_1 + 0x1d8);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c7c00",
+      "name": "FUN_004c7c00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046edb0",
+      "name": "FUN_0046edb0"
+    },
+    {
+      "addr": "0046f610",
+      "name": "FUN_0046f610"
+    },
+    {
+      "addr": "0047022b",
+      "name": "FUN_0047022b"
+    },
+    {
+      "addr": "0047031d",
+      "name": "FUN_0047031d"
+    },
+    {
+      "addr": "0046f5a5",
+      "name": "FUN_0046f5a5"
+    },
+    {
+      "addr": "0046f5e1",
+      "name": "FUN_0046f5e1"
+    },
+    {
+      "addr": "0046cad1",
+      "name": "FUN_0046cad1"
+    }
+  ],
+  "data_refs": []
+}

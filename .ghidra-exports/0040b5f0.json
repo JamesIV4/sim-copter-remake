@@ -1,0 +1,13 @@
+{
+  "address": "0040b5f0",
+  "name": "FUN_0040b5f0",
+  "signature": "undefined FUN_0040b5f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0040b5f0(int *param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  undefined4 uVar2;\r\n  int *piVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  \r\n  if (param_1[0x15] == 0) {\r\n    return 1;\r\n  }\r\n  if (param_1[0x12] == 0) {\r\n    return 1;\r\n  }\r\n  iVar4 = *param_1;\r\n  (**(code **)(iVar4 + 0x40))(0,1);\r\n  piVar3 = (int *)param_1[0x29];\r\n  if (piVar3 == (int *)0x0) {\r\n    (**(code **)(*(int *)param_1[0x11] + 0x44))(DAT_00518b8c,param_1 + 8);\r\n    if (param_1[0x1d] == 0) {\r\n      iVar5 = (param_1[7] - param_1[5]) / 2 + param_1[9];\r\n      (**(code **)(*(int *)param_1[0x11] + 0x40))\r\n                (param_1[8] + param_1[0x24],iVar5,param_1[10] - param_1[0x24],iVar5,1);\r\n    }\r\n    else {\r\n      (**(code **)(*(int *)param_1[0x11] + 0x40))\r\n                (param_1[8] + (param_1[6] - param_1[4]) / 2,param_1[9] + param_1[0x24],\r\n                 param_1[10] + (param_1[4] - param_1[6]) / 2,param_1[0xb] - param_1[0x24],1);\r\n    }\r\n    (**(code **)(iVar4 + 0x2c))(0);\r\n  }\r\n  else {\r\n    (**(code **)(*piVar3 + 0xc))(param_1[0x11],param_1[8],param_1[9],0,0,piVar3[2],piVar3[3]);\r\n  }\r\n  uVar1 = (**(code **)(iVar4 + 0xe4))();\r\n  uVar2 = (**(code **)(iVar4 + 0xe8))();\r\n  if (param_1[0x1d] == 0) {\r\n    iVar4 = param_1[0x25] + param_1[8];\r\n    iVar5 = param_1[0x26] + param_1[9];\r\n    piVar3 = (int *)param_1[0x10];\r\n  }\r\n  else {\r\n    iVar4 = param_1[0x25] + param_1[8];\r\n    iVar5 = param_1[0x26] + param_1[9];\r\n    piVar3 = (int *)param_1[0x10];\r\n  }\r\n  (**(code **)(*piVar3 + 0xc))(param_1[0x11],iVar4,iVar5,0,0,uVar1,uVar2);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

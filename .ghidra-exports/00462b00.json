@@ -1,0 +1,19 @@
+{
+  "address": "00462b00",
+  "name": "FUN_00462b00",
+  "signature": "undefined FUN_00462b00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __fastcall FUN_00462b00(int param_1)\r\n\r\n{\r\n  return ((*(int *)(param_1 + 4) + 1U) % 7 + 6) % 7 + 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004631a0",
+      "name": "FUN_004631a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

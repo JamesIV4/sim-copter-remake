@@ -1,0 +1,26 @@
+{
+  "address": "0041d8e0",
+  "name": "FUN_0041d8e0",
+  "signature": "undefined FUN_0041d8e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0041d8e0(int *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  \r\n  EnterCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  if (param_1[0x14] != 0) {\r\n    (**(code **)(*param_1 + 0x88))();\r\n  }\r\n  iVar1 = *param_1;\r\n  iVar2 = (**(code **)(iVar1 + 0x10))();\r\n  if (iVar2 != 0) {\r\n    (**(code **)(iVar1 + 0xc))();\r\n  }\r\n  if (*(int *)((int)param_1 + 0x8a) != 0) {\r\n    FUN_004d29a0(*(int *)((int)param_1 + 0x8a));\r\n    *(undefined4 *)((int)param_1 + 0x8a) = 0;\r\n  }\r\n  (**(code **)(iVar1 + 0x78))();\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xd));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

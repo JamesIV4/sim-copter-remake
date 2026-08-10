@@ -1,0 +1,52 @@
+{
+  "address": "004a6e60",
+  "name": "FUN_004a6e60",
+  "signature": "undefined FUN_004a6e60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a6e60(void)\r\n\r\n{\r\n  short sVar1;\r\n  ushort uVar2;\r\n  ushort uVar3;\r\n  uint uVar4;\r\n  undefined4 uVar5;\r\n  uint uVar6;\r\n  int iVar7;\r\n  \r\n  _DAT_00505fb8 = DAT_00505fa8 + _DAT_004f9740;\r\n  DAT_00505fac = DAT_00505fa4;\r\n  DAT_00505fc8 = DAT_00505fc4;\r\n  switch(_DAT_004f9740) {\r\n  case 1:\r\n    break;\r\n  case 2:\r\n    DAT_00505fc8 = (int)(DAT_00505fc4 * 3 + (DAT_00505fc4 * 3 >> 0x1f & 3U)) >> 2;\r\n    break;\r\n  case 3:\r\n    DAT_00505fc8 = (DAT_00505fc4 * 2) / 3;\r\n    break;\r\n  case 4:\r\n    DAT_00505fc8 = DAT_00505fc4 / 2;\r\n  }\r\n  DAT_0057f998 = DAT_00505fc8 >> 3;\r\n  if (DAT_0057f9c8 < _DAT_00505fb8) {\r\n    DAT_00505fb4 = (DAT_00505fb4 - DAT_005039a8) +\r\n                   ((DAT_0057f9c8 - _DAT_00505fb8) + 1) * DAT_00505fb0;\r\n  }\r\n  if (DAT_00505fbc == 0) {\r\n    DAT_00505fbc = FUN_0049af00();\r\n  }\r\n  else {\r\n    uVar4 = DAT_00506070 + 1;\r\n    uVar6 = DAT_00506070 & 0x3f;\r\n    DAT_00506070 = uVar4;\r\n    if (uVar6 == 0) {\r\n      DAT_00505fbc = FUN_0049af70();\r\n    }\r\n  }\r\n  DAT_005812b4 = FUN_00408c30();\r\n  if ((DAT_00505fb4 < 0) && (DAT_005812b4 == 0)) {\r\n    if (DAT_00505fc0 == 1) {\r\n      uVar5 = FUN_00407bb0(&DAT_00581738);\r\n      FUN_004a6d20(uVar5);\r\n      uVar6 = _rand();\r\n      DAT_0057f9d4 = (int)(short)((int)((uint)(ushort)((short)uVar6 >> 0xf) << 0x10 | uVar6 & 0xffff\r\n                                       ) % 100);\r\n    }\r\n    if (DAT_0057f9d4 < DAT_0058173c) {\r\n      if (_DAT_004f9740 == 2) {\r\n        uVar6 = _rand();\r\n        sVar1 = (short)((int)((uint)(ushort)((short)uVar6 >> 0xf) << 0x10 | uVar6 & 0xffff) % 0xc);\r\n        if (sVar1 == 0) {\r\n          FUN_004a92f0(0x408);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        if (sVar1 != 1) {\r\n          FUN_004a92f0(1);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(4);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      if ((_DAT_004f9740 < 3) || (4 < _DAT_004f9740)) {\r\n        iVar7 = _rand();\r\n        uVar2 = (short)(ushort)iVar7 >> 0xf;\r\n        if ((((ushort)iVar7 ^ uVar2) - uVar2 & 7 ^ uVar2) != uVar2) {\r\n          FUN_004a92f0(1);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x408);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      uVar6 = _rand();\r\n      sVar1 = (short)((int)((uint)(ushort)((short)uVar6 >> 0xf) << 0x10 | uVar6 & 0xffff) % 0xc);\r\n      if (sVar1 == 0) {\r\n        FUN_004a92f0(0x408);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      if (sVar1 != 1) {\r\n        if (sVar1 != 2) {\r\n          FUN_004a92f0(1);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x100);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      FUN_004a92f0(4);\r\n      FUN_004a73e0();\r\n      return;\r\n    }\r\n    if (DAT_0057f9d4 < DAT_00581740) {\r\n      if (_DAT_004f9740 == 2) {\r\n        iVar7 = _rand();\r\n        uVar2 = (short)(ushort)iVar7 >> 0xf;\r\n        if ((((ushort)iVar7 ^ uVar2) - uVar2 & 1 ^ uVar2) != uVar2) {\r\n          FUN_004a92f0(0x200);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x2000);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      if (_DAT_004f9740 != 3) {\r\n        if (_DAT_004f9740 != 4) {\r\n          FUN_004a92f0(0x200);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        iVar7 = _rand();\r\n        uVar2 = (short)(ushort)iVar7 >> 0xf;\r\n        switch((((ushort)iVar7 ^ uVar2) - uVar2 & 7 ^ uVar2) - uVar2) {\r\n        case 0:\r\n          FUN_004a92f0(0x20000);\r\n          FUN_004a73e0();\r\n          return;\r\n        case 1:\r\n          FUN_004a92f0(0x200);\r\n          FUN_004a73e0();\r\n          return;\r\n        case 2:\r\n        case 3:\r\n          FUN_004a92f0(0x2000);\r\n          FUN_004a73e0();\r\n          return;\r\n        default:\r\n          FUN_004a92f0(0x4000);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n      }\r\n      uVar6 = _rand();\r\n      sVar1 = (short)((int)((uint)(ushort)((short)uVar6 >> 0xf) << 0x10 | uVar6 & 0xffff) % 5);\r\n      if (sVar1 == 0) {\r\n        FUN_004a92f0(0x200);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      if (sVar1 != 1) {\r\n        if (sVar1 != 2) {\r\n          FUN_004a92f0(0x20000);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x4000);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      FUN_004a92f0(0x2000);\r\n      FUN_004a73e0();\r\n      return;\r\n    }\r\n    if (DAT_0057f9d4 < DAT_00581744) {\r\n      if (_DAT_004f9740 == 2) {\r\n        iVar7 = _rand();\r\n        uVar2 = (short)(ushort)iVar7 >> 0xf;\r\n        if ((((ushort)iVar7 ^ uVar2) - uVar2 & 3 ^ uVar2) != uVar2) {\r\n          FUN_004a92f0(0x80010);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x90);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      if (_DAT_004f9740 == 3) {\r\n        iVar7 = _rand();\r\n        uVar3 = (short)(ushort)iVar7 >> 0xf;\r\n        uVar2 = ((ushort)iVar7 ^ uVar3) - uVar3 & 7 ^ uVar3;\r\n        if (uVar2 == uVar3) {\r\n          FUN_004a92f0(0x80010);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        if ((ushort)(uVar2 - uVar3) != 1) {\r\n          FUN_004a92f0(0x90);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x110);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      if (_DAT_004f9740 != 4) {\r\n        FUN_004a92f0(0x80010);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      uVar6 = _rand();\r\n      sVar1 = (short)((int)((uint)(ushort)((short)uVar6 >> 0xf) << 0x10 | uVar6 & 0xffff) % 5);\r\n      if (sVar1 != 0) {\r\n        if (sVar1 != 1) {\r\n          FUN_004a92f0(0x90);\r\n          FUN_004a73e0();\r\n          return;\r\n        }\r\n        FUN_004a92f0(0x110);\r\n        FUN_004a73e0();\r\n        return;\r\n      }\r\n      FUN_004a92f0(0x80010);\r\n      FUN_004a73e0();\r\n      return;\r\n    }\r\n    if (DAT_0057f9d4 < DAT_00581748) {\r\n      FUN_004a92f0(0x1000);\r\n      FUN_004a73e0();\r\n      return;\r\n    }\r\n    if (DAT_0057f9d4 < DAT_0058174c) {\r\n      FUN_004a92f0(0x800);\r\n      FUN_004a73e0();\r\n      return;\r\n    }\r\n    if (DAT_0057f9d4 < DAT_00581750) {\r\n      FUN_004a92f0(0x20);\r\n      FUN_004a73e0();\r\n      return;\r\n    }\r\n    if (DAT_00581754 <= DAT_0057f9d4) {\r\n      return;\r\n    }\r\n    FUN_004a92f0(0x40);\r\n  }\r\n  FUN_004a73e0();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a760",
+      "name": "FUN_0047a760",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049af00",
+      "name": "FUN_0049af00"
+    },
+    {
+      "addr": "0049af70",
+      "name": "FUN_0049af70"
+    },
+    {
+      "addr": "00408c30",
+      "name": "FUN_00408c30"
+    },
+    {
+      "addr": "00407bb0",
+      "name": "FUN_00407bb0"
+    },
+    {
+      "addr": "004a6d20",
+      "name": "FUN_004a6d20"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004a92f0",
+      "name": "FUN_004a92f0"
+    },
+    {
+      "addr": "004a73e0",
+      "name": "FUN_004a73e0"
+    }
+  ],
+  "data_refs": []
+}

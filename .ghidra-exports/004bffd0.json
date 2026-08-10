@@ -1,0 +1,24 @@
+{
+  "address": "004bffd0",
+  "name": "FUN_004bffd0",
+  "signature": "undefined FUN_004bffd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004bffd0(int param_1)\r\n\r\n{\r\n  if (param_1 != 0) {\r\n    DAT_00506424 = DAT_00506424 + 1;\r\n    if (4 < DAT_00506424) {\r\n      DAT_00506424 = 0;\r\n    }\r\n    if (DAT_00506424 == 0) {\r\n      if (0x12c0000 < param_1) {\r\n        DAT_0050641c = 9;\r\n        _DAT_00506420 = 8;\r\n        return;\r\n      }\r\n      if (0x960000 < param_1) {\r\n        DAT_0050641c = 7;\r\n        _DAT_00506420 = 6;\r\n        return;\r\n      }\r\n      if (0x640000 < param_1) {\r\n        DAT_0050641c = 6;\r\n        _DAT_00506420 = 5;\r\n        return;\r\n      }\r\n      if (0x410000 < param_1) {\r\n        DAT_0050641c = 5;\r\n        _DAT_00506420 = 4;\r\n        return;\r\n      }\r\n      DAT_0050641c = 4;\r\n      _DAT_00506420 = 4;\r\n      if (0x1e0000 < param_1) {\r\n        return;\r\n      }\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00486e90",
+      "name": "FUN_00486e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c1b50",
+      "name": "FUN_004c1b50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

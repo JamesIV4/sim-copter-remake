@@ -1,0 +1,52 @@
+{
+  "address": "00462bc0",
+  "name": "FUN_00462bc0",
+  "signature": "undefined FUN_00462bc0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nostream * FUN_00462bc0(ostream *param_1,int param_2)\r\n\r\n{\r\n  ostream *poVar1;\r\n  uint uVar2;\r\n  undefined4 uVar3;\r\n  char *pcVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  uint local_cc;\r\n  undefined1 local_c8 [4];\r\n  undefined1 local_c4 [4];\r\n  uint local_c0;\r\n  uint local_bc;\r\n  undefined1 local_b8 [4];\r\n  uint local_b4;\r\n  uint local_b0;\r\n  uint local_ac;\r\n  ostrstream local_a8 [8];\r\n  ios local_a0 [80];\r\n  char local_50 [80];\r\n  \r\n  ostrstream::ostrstream(local_a8,local_50,0x50,2);\r\n  switch(*(undefined4 *)(param_2 + 8)) {\r\n  case 0:\r\n    FUN_00462940(&local_cc,local_c8,local_c4);\r\n    if ((local_cc == 0) || (0xc < local_cc)) {\r\n      pcVar4 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar4 = *(char **)(&DAT_004f9e5c + local_cc * 4);\r\n    }\r\n    FUN_00462940(&local_cc,local_b8,&local_c0);\r\n    FUN_00462940(local_c8,&local_bc,local_c4);\r\n    pcVar6 = &DAT_004f9f0c;\r\n    pcVar5 = &DAT_004f83ec;\r\n    poVar1 = ostream::operator<<((ostream *)local_a8,pcVar4);\r\n    poVar1 = ostream::operator<<(poVar1,pcVar5);\r\n    poVar1 = ostream::operator<<(poVar1,local_bc);\r\n    break;\r\n  case 1:\r\n    FUN_00462940(&local_cc,local_c8,local_c4);\r\n    if ((local_cc == 0) || (0xc < local_cc)) {\r\n      uVar3 = 0;\r\n    }\r\n    else {\r\n      uVar3 = *(undefined4 *)(&DAT_004f9e5c + local_cc * 4);\r\n    }\r\n    FUN_00462940(&local_cc,local_b8,&local_c0);\r\n    FUN_00462940(local_c8,&local_bc,local_c4);\r\n    _sprintf(local_50,s__2u___3s___2u_004f9efc,local_bc,uVar3,local_c0 % 100);\r\n    goto switchD_00462bef_default;\r\n  case 2:\r\n    FUN_00462940(&local_c0,&local_bc,&local_b4);\r\n    FUN_00462940(&local_cc,&local_b0,local_b8);\r\n    FUN_00462940(&local_ac,local_c8,local_c4);\r\n    uVar2 = local_b4 % 100;\r\n    pcVar6 = &DAT_004f96b4;\r\n    pcVar4 = &DAT_004f96b4;\r\n    poVar1 = ostream::operator<<((ostream *)local_a8,local_ac);\r\n    poVar1 = ostream::operator<<(poVar1,pcVar4);\r\n    poVar1 = ostream::operator<<(poVar1,local_b0);\r\n    local_c0 = uVar2;\r\n    break;\r\n  case 3:\r\n    FUN_00462940(&local_c0,&local_bc,&local_b4);\r\n    FUN_00462940(&local_b0,&local_cc,local_b8);\r\n    FUN_00462940(local_c8,&local_ac,local_c4);\r\n    uVar2 = local_b4 % 100;\r\n    pcVar6 = &DAT_004f96b4;\r\n    pcVar4 = &DAT_004f96b4;\r\n    poVar1 = ostream::operator<<((ostream *)local_a8,local_ac);\r\n    poVar1 = ostream::operator<<(poVar1,pcVar4);\r\n    poVar1 = ostream::operator<<(poVar1,local_b0);\r\n    local_c0 = uVar2;\r\n    break;\r\n  case 4:\r\n    FUN_00462940(&local_cc,local_c8,local_c4);\r\n    if ((local_cc == 0) || (0xc < local_cc)) {\r\n      pcVar4 = (char *)0x0;\r\n    }\r\n    else {\r\n      pcVar4 = *(char **)(&DAT_004f9e5c + local_cc * 4);\r\n    }\r\n    FUN_00462940(&local_cc,local_b8,&local_c0);\r\n    FUN_00462940(local_c8,&local_bc,local_c4);\r\n    pcVar6 = &DAT_004f83ec;\r\n    pcVar5 = &DAT_004f83ec;\r\n    poVar1 = ostream::operator<<((ostream *)local_a8,local_bc);\r\n    poVar1 = ostream::operator<<(poVar1,pcVar5);\r\n    poVar1 = ostream::operator<<(poVar1,pcVar4);\r\n    break;\r\n  default:\r\n    goto switchD_00462bef_default;\r\n  }\r\n  poVar1 = ostream::operator<<(poVar1,pcVar6);\r\n  poVar1 = ostream::operator<<(poVar1,local_c0);\r\n  FUN_00422c30(poVar1);\r\nswitchD_00462bef_default:\r\n  ostream::operator<<(param_1,local_50);\r\n  FUN_004d33e0();\r\n  ios::~ios(local_a0);\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462b70",
+      "name": "FUN_00462b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d32c0",
+      "name": "ostrstream"
+    },
+    {
+      "addr": "00462940",
+      "name": "FUN_00462940"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "004d49e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "00422c30",
+      "name": "FUN_00422c30"
+    },
+    {
+      "addr": "004d33e0",
+      "name": "FUN_004d33e0"
+    },
+    {
+      "addr": "004d2cf0",
+      "name": "~ios"
+    }
+  ],
+  "data_refs": []
+}

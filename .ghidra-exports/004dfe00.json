@@ -1,0 +1,19 @@
+{
+  "address": "004dfe00",
+  "name": "__abstract_cw",
+  "signature": "undefined __abstract_cw(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __abstract_cw\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __abstract_cw(ushort param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  ushort uVar2;\r\n  \r\n  uVar1 = 0;\r\n  if ((param_1 & 1) != 0) {\r\n    uVar1 = 0x10;\r\n  }\r\n  if ((param_1 & 4) != 0) {\r\n    uVar1 = uVar1 | 8;\r\n  }\r\n  if ((param_1 & 8) != 0) {\r\n    uVar1 = uVar1 | 4;\r\n  }\r\n  if ((param_1 & 0x10) != 0) {\r\n    uVar1 = uVar1 | 2;\r\n  }\r\n  if ((param_1 & 0x20) != 0) {\r\n    uVar1 = uVar1 | 1;\r\n  }\r\n  if ((param_1 & 2) != 0) {\r\n    uVar1 = uVar1 | 0x80000;\r\n  }\r\n  uVar2 = param_1 & 0xc00;\r\n  if (uVar2 == 0x400) {\r\n    uVar1 = uVar1 | 0x100;\r\n  }\r\n  else if (uVar2 == 0x800) {\r\n    uVar1 = uVar1 | 0x200;\r\n  }\r\n  else if (uVar2 == 0xc00) {\r\n    uVar1 = uVar1 | 0x300;\r\n  }\r\n  if ((param_1 & 0x300) == 0) {\r\n    uVar1 = uVar1 | 0x20000;\r\n  }\r\n  else if ((param_1 & 0x300) == 0x200) {\r\n    uVar1 = uVar1 | 0x10000;\r\n  }\r\n  if ((param_1 & 0x1000) != 0) {\r\n    uVar1 = uVar1 | 0x40000;\r\n  }\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dfda0",
+      "name": "__control87",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

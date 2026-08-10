@@ -1,0 +1,19 @@
+{
+  "address": "004ee763",
+  "name": "FUN_004ee763",
+  "signature": "undefined FUN_004ee763(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ee763(void)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  longlong lVar3;\r\n  longlong lVar4;\r\n  longlong lVar5;\r\n  int unaff_EBX;\r\n  \r\n  *(undefined4 *)(unaff_EBX + 0x14) = 1;\r\n  if (*(int *)(unaff_EBX + 0x10) != 0xb) {\r\n    piVar1 = *(int **)(unaff_EBX + 0x2c);\r\n    piVar2 = (int *)piVar1[3];\r\n    lVar3 = (longlong)*piVar1 * (longlong)(*piVar2 - *DAT_00516dac);\r\n    lVar4 = (longlong)piVar1[1] * (longlong)(piVar2[1] - DAT_00516dac[1]);\r\n    lVar5 = (longlong)piVar1[2] * (longlong)(piVar2[2] - DAT_00516dac[2]);\r\n    if ((int)(((uint)lVar3 >> 0x10 | (int)((ulonglong)lVar3 >> 0x20) << 0x10) +\r\n              ((uint)lVar4 >> 0x10 | (int)((ulonglong)lVar4 >> 0x20) << 0x10) +\r\n             ((uint)lVar5 >> 0x10 | (int)((ulonglong)lVar5 >> 0x20) << 0x10)) < 0) {\r\n      *(undefined4 *)(unaff_EBX + 0x14) = 0;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ee290",
+      "name": "FUN_004ee290",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

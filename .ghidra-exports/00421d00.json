@@ -1,0 +1,22 @@
+{
+  "address": "00421d00",
+  "name": "FUN_00421d00",
+  "signature": "undefined FUN_00421d00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __fastcall FUN_00421d00(undefined4 *param_1)\r\n\r\n{\r\n  param_1[4] = 0;\r\n  param_1[1] = 0x14;\r\n  param_1[6] = 0;\r\n  param_1[7] = 0;\r\n  param_1[8] = 0;\r\n  param_1[2] = 0x14;\r\n  param_1[3] = 3;\r\n  param_1[5] = 1;\r\n  FUN_00460a70();\r\n  param_1[0x12] = 0;\r\n  *(undefined1 *)(param_1 + 0x14) = 0xff;\r\n  *(undefined1 *)((int)param_1 + 0x51) = 0xff;\r\n  *(undefined1 *)((int)param_1 + 0x52) = 0xff;\r\n  *param_1 = &PTR_FUN_004f1548;\r\n  param_1[0x10] = 0x14;\r\n  param_1[0x11] = 5000;\r\n  FUN_00460e30(0x14,0,0);\r\n  (**(code **)param_1[9])();\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00460a70",
+      "name": "FUN_00460a70"
+    },
+    {
+      "addr": "00460e30",
+      "name": "FUN_00460e30"
+    }
+  ],
+  "data_refs": []
+}

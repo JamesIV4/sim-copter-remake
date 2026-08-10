@@ -1,0 +1,13 @@
+{
+  "address": "004cc830",
+  "name": "FUN_004cc830",
+  "signature": "undefined FUN_004cc830(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_004cc830(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  short sVar2;\r\n  int iVar3;\r\n  short sVar4;\r\n  \r\n  iVar1 = -1;\r\n  sVar4 = 0;\r\n  if (0 < *(int *)(DAT_005040d0 + 0x1d8)) {\r\n    do {\r\n      iVar3 = *(int *)(sVar4 * 0x14 + 0x1fc + DAT_005040d0);\r\n      if (iVar3 != -1) {\r\n        sVar2 = (short)iVar3;\r\n        iVar3 = DAT_00506444;\r\n        if (sVar2 != 32000) {\r\n          iVar3 = (&DAT_0058e030)[sVar2];\r\n        }\r\n        if ((*(short *)(iVar3 + 0x148) == 6) || (*(short *)(iVar3 + 0x15e) != 0)) {\r\n          *(int *)(param_1 + 4) = iVar3 + 0x1b4;\r\n          iVar1 = 1;\r\n          break;\r\n        }\r\n      }\r\n      sVar4 = sVar4 + 1;\r\n    } while ((int)sVar4 < *(int *)(DAT_005040d0 + 0x1d8));\r\n  }\r\n  return iVar1 == 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

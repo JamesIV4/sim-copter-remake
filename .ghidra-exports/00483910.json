@@ -1,0 +1,24 @@
+{
+  "address": "00483910",
+  "name": "FUN_00483910",
+  "signature": "undefined FUN_00483910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00483910(void)\r\n\r\n{\r\n  char cVar1;\r\n  undefined4 *puVar2;\r\n  undefined2 *puVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  uint uVar6;\r\n  \r\n  DAT_0061a604 = FUN_00470571(0x18e);\r\n  DAT_0061a600 = FUN_00470571(399);\r\n  puVar2 = &DAT_00619e00;\r\n  puVar3 = &DAT_00619200;\r\n  do {\r\n    *puVar2 = 0;\r\n    puVar2[2] = 0;\r\n    puVar2[3] = 0;\r\n    puVar3[1] = 0;\r\n    puVar3[2] = 0;\r\n    puVar3[3] = 0;\r\n    puVar3[4] = 1;\r\n    puVar3[5] = 0;\r\n    *puVar3 = 1;\r\n    *(undefined4 **)(puVar3 + 6) = puVar2;\r\n    puVar2 = puVar2 + 4;\r\n    *(undefined4 *)(puVar3 + 8) = 0;\r\n    *(undefined4 *)(puVar3 + 10) = 0;\r\n    puVar3 = puVar3 + 0xc;\r\n  } while (puVar2 < &DAT_0061a600);\r\n  uVar4 = 0;\r\n  do {\r\n    uVar5 = 0;\r\n    do {\r\n      cVar1 = *(char *)((&DAT_005910b0)[uVar4] + uVar5);\r\n      if (cVar1 == 'B') {\r\n        if ((int)uVar5 < 0x80) {\r\n          uVar6 = uVar5;\r\n          do {\r\n            *(byte *)(&DAT_005d9200)[(uVar4 & 0xff) * 0x100 + (uVar6 & 0xff)] =\r\n                 *(byte *)(&DAT_005d9200)[(uVar4 & 0xff) * 0x100 + (uVar6 & 0xff)] | 0x40;\r\n            if (*(char *)((&DAT_005910b0)[uVar4] + uVar6) == '@') break;\r\n            uVar6 = uVar6 + 1;\r\n          } while ((int)uVar6 < 0x80);\r\n        }\r\n      }\r\n      else if ((cVar1 == 'A') && ((int)uVar4 < 0x80)) {\r\n        uVar6 = uVar4;\r\n        do {\r\n          *(byte *)(&DAT_005d9200)[(uVar6 & 0xff) * 0x100 + (uVar5 & 0xff)] =\r\n               *(byte *)(&DAT_005d9200)[(uVar6 & 0xff) * 0x100 + (uVar5 & 0xff)] | 0x80;\r\n          if (*(char *)((&DAT_005910b0)[uVar6] + uVar5) == '?') break;\r\n          uVar6 = uVar6 + 1;\r\n        } while ((int)uVar6 < 0x80);\r\n      }\r\n      uVar5 = uVar5 + 1;\r\n    } while ((int)uVar5 < 0x80);\r\n    uVar4 = uVar4 + 1;\r\n    if (0x7f < (int)uVar4) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047bb20",
+      "name": "FUN_0047bb20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00470571",
+      "name": "FUN_00470571"
+    }
+  ],
+  "data_refs": []
+}

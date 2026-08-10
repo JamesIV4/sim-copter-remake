@@ -1,0 +1,28 @@
+{
+  "address": "0048c340",
+  "name": "FUN_0048c340",
+  "signature": "undefined FUN_0048c340(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0048c340(void)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  int *piVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 *local_c;\r\n  \r\n  if (DAT_0057f308 != (int *)0x0) {\r\n    for (local_c = *(undefined4 **)*DAT_0057f308; (undefined4 *)*DAT_0057f308 != local_c;\r\n        local_c = (undefined4 *)*local_c) {\r\n      piVar1 = (int *)local_c[2];\r\n      if (*piVar1 == 1) {\r\n        FUN_004d29a0(piVar1[3]);\r\n      }\r\n      FUN_004d29a0(local_c[2]);\r\n    }\r\n    puVar2 = (undefined4 *)*DAT_0057f308;\r\n    puVar5 = (undefined4 *)*puVar2;\r\n    piVar1 = DAT_0057f308;\r\n    while (DAT_0057f308 = piVar1, puVar5 != puVar2) {\r\n      puVar3 = (undefined4 *)*puVar5;\r\n      FUN_0048c470(puVar5);\r\n      puVar5 = puVar3;\r\n      piVar1 = DAT_0057f308;\r\n    }\r\n    if (piVar1 != (int *)0x0) {\r\n      puVar2 = (undefined4 *)*piVar1;\r\n      puVar5 = (undefined4 *)*puVar2;\r\n      while (puVar5 != puVar2) {\r\n        puVar3 = (undefined4 *)*puVar5;\r\n        FUN_0048c470(puVar5);\r\n        puVar5 = puVar3;\r\n      }\r\n      piVar4 = (int *)*piVar1;\r\n      *piVar4 = (int)DAT_005044e8;\r\n      _DAT_005044dc = _DAT_005044dc + -1;\r\n      DAT_005044e8 = piVar4;\r\n      puVar2 = DAT_005044ec;\r\n      if (_DAT_005044dc == 0) {\r\n        while (puVar2 != (undefined4 *)0x0) {\r\n          DAT_005044ec = (undefined4 *)*puVar2;\r\n          FUN_004d29a0(puVar2[1]);\r\n          FUN_004d29a0(puVar2);\r\n          puVar2 = DAT_005044ec;\r\n        }\r\n        DAT_005044e8 = (int *)0x0;\r\n        DAT_005044e4 = 0;\r\n        DAT_005044e0 = 0;\r\n        DAT_005044ec = (undefined4 *)0x0;\r\n      }\r\n      FUN_004d29a0(piVar1);\r\n    }\r\n    DAT_0057f308 = (int *)0x0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0048c1f0",
+      "name": "FUN_0048c1f0",
+      "ref_type": "DATA"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0048c470",
+      "name": "FUN_0048c470"
+    }
+  ],
+  "data_refs": []
+}

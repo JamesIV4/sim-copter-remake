@@ -1,0 +1,22 @@
+{
+  "address": "0042e350",
+  "name": "FUN_0042e350",
+  "signature": "undefined FUN_0042e350(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0042e350(int param_1)\r\n\r\n{\r\n  FUN_00437c10();\r\n  if (*(int **)(param_1 + 0x40) != (int *)0x0) {\r\n    (**(code **)(**(int **)(param_1 + 0x40) + 0x7c))();\r\n    *(undefined4 *)(param_1 + 0x40) = 0;\r\n  }\r\n  if (*(int *)(param_1 + 0x3c) != 0) {\r\n    FUN_00460fa0(0);\r\n    (**(code **)(**(int **)(param_1 + 0x3c) + 0x68))();\r\n    if (*(int **)(param_1 + 0x3c) != (int *)0x0) {\r\n      (**(code **)(**(int **)(param_1 + 0x3c) + 100))(1);\r\n    }\r\n    *(undefined4 *)(param_1 + 0x3c) = 0;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00437c10",
+      "name": "FUN_00437c10"
+    },
+    {
+      "addr": "00460fa0",
+      "name": "FUN_00460fa0"
+    }
+  ],
+  "data_refs": []
+}

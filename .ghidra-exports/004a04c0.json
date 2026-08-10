@@ -1,0 +1,28 @@
+{
+  "address": "004a04c0",
+  "name": "FUN_004a04c0",
+  "signature": "undefined FUN_004a04c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004a04c0(uint param_1,undefined2 param_2)\r\n\r\n{\r\n  byte bVar1;\r\n  ushort uVar2;\r\n  uint uVar3;\r\n  int iVar4;\r\n  uint uVar5;\r\n  uint extraout_ECX;\r\n  undefined4 uVar6;\r\n  int iVar7;\r\n  undefined4 local_20 [8];\r\n  \r\n  iVar7 = 0;\r\n  local_20[0] = 0;\r\n  local_20[1] = 0;\r\n  local_20[2] = 0;\r\n  local_20[3] = 0;\r\n  local_20[4] = 0;\r\n  *(undefined2 *)(param_1 + 0xe5) = *(undefined2 *)(param_1 + 0xe3);\r\n  local_20[5] = 0;\r\n  bVar1 = (byte)*(undefined2 *)(param_1 + 0xe3);\r\n  local_20[6] = 0;\r\n  local_20[7] = 0;\r\n  uVar3 = (uint)*(byte *)(param_1 + 0xe4);\r\n  *(undefined4 *)(param_1 + 0xdf) = 0;\r\n  iVar4 = uVar3 - 1;\r\n  if (((iVar4 < 0) || (0x7f < bVar1)) || (0x7f < iVar4)) {\r\n    uVar3 = param_1 & 0xffff0000;\r\n  }\r\n  else {\r\n    iVar4 = (&DAT_00590800)[bVar1];\r\n    uVar3 = (uint)(ushort)((*(byte *)(iVar4 + -1 + uVar3) & 2) << 0xe |\r\n                          (ushort)*(byte *)((&DAT_005910b0)[bVar1] + -1 + uVar3));\r\n  }\r\n  uVar6 = CONCAT22((short)((uint)iVar4 >> 0x10),param_2);\r\n  uVar3 = FUN_004a0790(uVar6,uVar3,1);\r\n  if ((uVar3 != 0) && ((*(byte *)(param_1 + 0xe3) & 1) != 0)) {\r\n    local_20[0] = 1;\r\n    iVar7 = 1;\r\n  }\r\n  bVar1 = *(byte *)(param_1 + 0xe3);\r\n  uVar5 = (uint)*(byte *)(param_1 + 0xe4);\r\n  if ((bVar1 < 0x80) && (uVar5 + 1 < 0x80)) {\r\n    uVar3 = (uint)(ushort)((*(byte *)((&DAT_00590800)[bVar1] + 1 + uVar5) & 2) << 0xe |\r\n                          (ushort)*(byte *)((&DAT_005910b0)[bVar1] + 1 + uVar5));\r\n  }\r\n  else {\r\n    uVar3 = uVar3 & 0xffff0000;\r\n  }\r\n  iVar4 = FUN_004a0790(uVar6,uVar3,4);\r\n  if ((iVar4 != 0) && ((*(byte *)(param_1 + 0xe3) & 1) == 0)) {\r\n    local_20[iVar7] = 4;\r\n    iVar7 = iVar7 + 1;\r\n  }\r\n  uVar3 = (uint)*(byte *)(param_1 + 0xe3);\r\n  bVar1 = *(byte *)(param_1 + 0xe4);\r\n  if ((uVar3 + 1 < 0x80) && (bVar1 < 0x80)) {\r\n    uVar2 = (*(byte *)((&DAT_00590804)[uVar3] + (uint)bVar1) & 2) << 0xe |\r\n            (ushort)*(byte *)((&DAT_005910b4)[uVar3] + (uint)bVar1);\r\n  }\r\n  else {\r\n    uVar2 = 0;\r\n  }\r\n  iVar4 = FUN_004a0790(uVar6,uVar2,2);\r\n  if ((iVar4 != 0) && ((*(byte *)(param_1 + 0xe4) & 1) != 0)) {\r\n    local_20[iVar7] = 2;\r\n    iVar7 = iVar7 + 1;\r\n  }\r\n  uVar5 = (uint)*(byte *)(param_1 + 0xe3);\r\n  uVar3 = extraout_ECX;\r\n  if (-1 < (int)(uVar5 - 1)) {\r\n    bVar1 = *(byte *)(param_1 + 0xe4);\r\n    uVar3 = CONCAT31((int3)(extraout_ECX >> 8),bVar1);\r\n    if (((int)(uVar5 - 1) < 0x80) && (bVar1 < 0x80)) {\r\n      uVar3 = CONCAT22((short)(extraout_ECX >> 0x10),\r\n                       (ushort)*(byte *)(*(int *)(&DAT_005907fc + uVar5 * 4) + (uint)bVar1)) &\r\n              0xffff0002;\r\n      uVar3 = CONCAT22((short)(uVar3 >> 0x10),\r\n                       (short)uVar3 << 0xe |\r\n                       (ushort)*(byte *)(*(int *)(&DAT_005910ac + uVar5 * 4) + (uint)bVar1));\r\n      goto LAB_004a06bf;\r\n    }\r\n  }\r\n  uVar3 = uVar3 & 0xffff0000;\r\nLAB_004a06bf:\r\n  iVar4 = FUN_004a0790(uVar6,uVar3,8);\r\n  if ((iVar4 != 0) && ((*(byte *)(param_1 + 0xe4) & 1) == 0)) {\r\n    local_20[iVar7] = 8;\r\n    iVar7 = iVar7 + 1;\r\n  }\r\n  if (iVar7 != 0) {\r\n    iVar4 = _rand();\r\n    uVar6 = local_20[(int)(short)iVar4 % iVar7];\r\n    *(undefined4 *)(param_1 + 0xdf) = uVar6;\r\n    switch(uVar6) {\r\n    case 1:\r\n    case 0x11:\r\n      *(char *)(param_1 + 0xe6) = *(char *)(param_1 + 0xe6) + -1;\r\n      return;\r\n    case 2:\r\n    case 0x12:\r\n      *(char *)(param_1 + 0xe5) = *(char *)(param_1 + 0xe5) + '\\x01';\r\n      return;\r\n    case 4:\r\n    case 0x14:\r\n      *(char *)(param_1 + 0xe6) = *(char *)(param_1 + 0xe6) + '\\x01';\r\n      return;\r\n    case 8:\r\n    case 0x18:\r\n      *(char *)(param_1 + 0xe5) = *(char *)(param_1 + 0xe5) + -1;\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049cf10",
+      "name": "FUN_0049cf10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004a0790",
+      "name": "FUN_004a0790"
+    },
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    }
+  ],
+  "data_refs": []
+}

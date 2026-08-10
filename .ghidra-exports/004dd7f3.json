@@ -1,0 +1,24 @@
+{
+  "address": "004dd7f3",
+  "name": "FUN_004dd7f3",
+  "signature": "undefined FUN_004dd7f3(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004dd7f3(void)\r\n\r\n{\r\n  char cVar1;\r\n  ushort uVar2;\r\n  int unaff_EBP;\r\n  ushort in_FPUStatusWord;\r\n  float10 in_ST0;\r\n  \r\n  *(byte *)(unaff_EBP + -0x2c8) = *(byte *)(unaff_EBP + -0x2c8) & 0xfe;\r\n  if (DAT_00506db8 != 0) {\r\n    return;\r\n  }\r\n  *(double *)(unaff_EBP + -0x2d0) = (double)in_ST0;\r\n  cVar1 = *(char *)(unaff_EBP + -0x90);\r\n  if (cVar1 != '\\0') {\r\n    if ((cVar1 != -1) && (cVar1 != -2)) {\r\n      if (cVar1 == '\\0') {\r\n        return;\r\n      }\r\n      *(int *)(unaff_EBP + -0x8e) = (int)cVar1;\r\n      goto LAB_004dd8c9;\r\n    }\r\n    uVar2 = *(ushort *)(unaff_EBP + -0x2ca) & 0x7ff0;\r\n    if (uVar2 == 0) {\r\n      *(undefined4 *)(unaff_EBP + -0x8e) = 4;\r\n      in_ST0 = (float10)fscale(in_ST0,(float10)_DAT_004f60a8);\r\n      if (ABS(in_ST0) < (float10)_DAT_004f6098) {\r\n        in_ST0 = in_ST0 * (float10)_DAT_004f60b8;\r\n      }\r\n      goto LAB_004dd8c9;\r\n    }\r\n    if (uVar2 == 0x7ff0) {\r\n      *(undefined4 *)(unaff_EBP + -0x8e) = 3;\r\n      in_ST0 = (float10)fscale(in_ST0,(float10)_DAT_004f60a0);\r\n      if ((float10)_DAT_004f6090 < ABS(in_ST0)) {\r\n        in_ST0 = in_ST0 * (float10)_DAT_004f60b0;\r\n      }\r\n      goto LAB_004dd8c9;\r\n    }\r\n  }\r\n  if ((*(ushort *)(unaff_EBP + -0xa4) & 0x20) != 0) {\r\n    return;\r\n  }\r\n  if ((in_FPUStatusWord & 0x20) == 0) {\r\n    return;\r\n  }\r\n  *(undefined4 *)(unaff_EBP + -0x8e) = 8;\r\nLAB_004dd8c9:\r\n  *(int *)(unaff_EBP + -0x8a) = *(int *)(unaff_EBP + -0x94) + 1;\r\n  if ((*(byte *)(unaff_EBP + -0x2c8) & 1) == 0) {\r\n    *(undefined4 *)(unaff_EBP + -0x86) = *(undefined4 *)(unaff_EBP + 8);\r\n    *(undefined4 *)(unaff_EBP + -0x82) = *(undefined4 *)(unaff_EBP + 0xc);\r\n    if (*(char *)(*(int *)(unaff_EBP + -0x94) + 0xd) != '\\x01') {\r\n      *(undefined4 *)(unaff_EBP + -0x7e) = *(undefined4 *)(unaff_EBP + 0x10);\r\n      *(undefined4 *)(unaff_EBP + -0x7a) = *(undefined4 *)(unaff_EBP + 0x14);\r\n    }\r\n  }\r\n  *(double *)(unaff_EBP + -0x76) = (double)in_ST0;\r\n  __87except((int)*(char *)(*(int *)(unaff_EBP + -0x94) + 0xe),unaff_EBP + -0x8e,unaff_EBP + -0xa4);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd7ab",
+      "name": "__ctrandisp2",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd92b",
+      "name": "__ctrandisp1",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

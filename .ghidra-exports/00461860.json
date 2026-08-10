@@ -1,0 +1,49 @@
+{
+  "address": "00461860",
+  "name": "FUN_00461860",
+  "signature": "undefined FUN_00461860(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_00461860(char *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  byte *pbVar2;\r\n  char cVar3;\r\n  int iVar4;\r\n  void *_DstBuf;\r\n  int iVar5;\r\n  uint uVar6;\r\n  uint uVar7;\r\n  int iVar8;\r\n  int iVar9;\r\n  char *pcVar10;\r\n  char *pcVar11;\r\n  byte local_111;\r\n  undefined **local_110;\r\n  char local_10c [260];\r\n  uint local_8;\r\n  int local_4;\r\n  \r\n  local_8 = 0xffffffff;\r\n  local_4 = 1;\r\n  local_110 = &PTR_FUN_004f1780;\r\n  DAT_00507000 = 0x8000;\r\n  iVar9 = 0;\r\n  if (param_1 == (char *)0x0) {\r\n    local_10c[0] = '\\0';\r\n  }\r\n  else {\r\n    uVar6 = 0xffffffff;\r\n    do {\r\n      pcVar10 = param_1;\r\n      if (uVar6 == 0) break;\r\n      uVar6 = uVar6 - 1;\r\n      pcVar10 = param_1 + 1;\r\n      cVar3 = *param_1;\r\n      param_1 = pcVar10;\r\n    } while (cVar3 != '\\0');\r\n    uVar6 = ~uVar6;\r\n    pcVar10 = pcVar10 + -uVar6;\r\n    pcVar11 = local_10c;\r\n    for (uVar7 = uVar6 >> 2; uVar7 != 0; uVar7 = uVar7 - 1) {\r\n      *(undefined4 *)pcVar11 = *(undefined4 *)pcVar10;\r\n      pcVar10 = pcVar10 + 4;\r\n      pcVar11 = pcVar11 + 4;\r\n    }\r\n    for (uVar6 = uVar6 & 3; uVar6 != 0; uVar6 = uVar6 - 1) {\r\n      *pcVar11 = *pcVar10;\r\n      pcVar10 = pcVar10 + 1;\r\n      pcVar11 = pcVar11 + 1;\r\n    }\r\n  }\r\n  iVar4 = FUN_00461450(0,0,0x100,0);\r\n  if (iVar4 != 0) {\r\n    if ((local_8 < 0x80000000) || (iVar9 = FUN_00461450(0,0,0x180,0), iVar9 == 0)) {\r\n      iVar4 = FUN_004ef340(local_8);\r\n    }\r\n    else {\r\n      iVar4 = FUN_004ef340(local_8);\r\n      if ((-1 < (int)local_8) && (iVar9 = __close(local_8), iVar9 == 0)) {\r\n        local_8 = 0xffffffff;\r\n      }\r\n    }\r\n    _DstBuf = (void *)FUN_004d28b0(32000);\r\n    if (_DstBuf == (void *)0x0) {\r\n      iVar9 = 0;\r\n      if (0 < iVar4) {\r\n        do {\r\n          __read(local_8,&local_111,1);\r\n          iVar9 = iVar9 + (uint)local_111;\r\n          iVar4 = iVar4 + -1;\r\n        } while (iVar4 != 0);\r\n      }\r\n    }\r\n    else {\r\n      iVar9 = 0;\r\n      iVar5 = 0;\r\n      if (0 < iVar4) {\r\n        do {\r\n          uVar6 = 32000;\r\n          iVar1 = iVar5 + 32000;\r\n          if (iVar4 < iVar1) {\r\n            uVar6 = iVar4 - iVar5;\r\n          }\r\n          iVar5 = __read(local_8,_DstBuf,uVar6);\r\n          iVar8 = 0;\r\n          if (0 < iVar5) {\r\n            do {\r\n              pbVar2 = (byte *)(iVar8 + (int)_DstBuf);\r\n              iVar8 = iVar8 + 1;\r\n              iVar9 = iVar9 + (uint)*pbVar2;\r\n            } while (iVar8 < iVar5);\r\n          }\r\n          iVar5 = iVar1;\r\n        } while (iVar1 < iVar4);\r\n      }\r\n      FUN_004d29a0(_DstBuf);\r\n    }\r\n    if ((-1 < (int)local_8) && (iVar4 = __close(local_8), iVar4 == 0)) {\r\n      local_8 = 0xffffffff;\r\n    }\r\n  }\r\n  local_110 = &PTR_FUN_004f1780;\r\n  if ((-1 < (int)local_8) && (local_4 != 0)) {\r\n    __close(local_8);\r\n  }\r\n  return iVar9;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041fcd0",
+      "name": "FUN_0041fcd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00461450",
+      "name": "FUN_00461450"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

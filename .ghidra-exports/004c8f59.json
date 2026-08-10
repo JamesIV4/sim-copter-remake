@@ -1,0 +1,18 @@
+{
+  "address": "004c8f59",
+  "name": "FUN_004c8f59",
+  "signature": "undefined FUN_004c8f59(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c8f59(void)\r\n\r\n{\r\n  FUN_004c8090();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c8090",
+      "name": "FUN_004c8090"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,100 @@
+{
+  "address": "004240e0",
+  "name": "FUN_004240e0",
+  "signature": "undefined FUN_004240e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004240e0(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  undefined4 *puVar2;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 uVar6;\r\n  undefined4 uVar7;\r\n  int *piVar8;\r\n  undefined4 uVar9;\r\n  int *piVar10;\r\n  undefined4 *puVar11;\r\n  undefined4 *local_184 [2];\r\n  undefined1 local_17c [4];\r\n  int *local_178;\r\n  undefined4 *local_174;\r\n  int local_170;\r\n  int local_16c;\r\n  int local_168;\r\n  int local_164;\r\n  int local_160;\r\n  int local_15c;\r\n  int *local_158;\r\n  int local_154;\r\n  undefined1 local_150 [4];\r\n  int *local_14c;\r\n  int local_148 [2];\r\n  int local_140 [4];\r\n  int *local_130;\r\n  undefined1 local_128 [36];\r\n  undefined1 local_104 [260];\r\n  \r\n  FUN_00401c80(PTR_s_mg_00____wav_004f8720);\r\n  FUN_00401de0();\r\n  FUN_00401de0();\r\n  uVar9 = 0;\r\n  uVar7 = 1;\r\n  uVar6 = 0;\r\n  uVar1 = FUN_00401de0(0,1,0);\r\n  FUN_0044da30(uVar1,uVar6,uVar7,uVar9);\r\n  FUN_00401f10();\r\n  FUN_0040e0c0();\r\n  FUN_00432ab0(3,0,PTR_s_mg_00_01_wav_004f871c,local_104);\r\n  piVar10 = local_140;\r\n  piVar8 = &local_16c;\r\n  uVar1 = FUN_00401c80(local_104);\r\n  FUN_0044f570(uVar1,piVar8,piVar10);\r\n  FUN_00401f10();\r\n  FUN_0044ef80(&local_16c,0);\r\n  if (local_158[1] == 0) {\r\n    local_154 = 0;\r\n  }\r\n  else {\r\n    local_154 = *local_158;\r\n  }\r\n  local_170 = 0;\r\n  do {\r\n    *(char *)(local_154 + 4) = (char)local_170 + '0';\r\n    FUN_0044f330(&local_15c,0);\r\n    FUN_0042a720(*local_184[0],local_184[0]);\r\n    FUN_0044e6e0(local_184,8);\r\n    local_174 = (undefined4 *)*local_184[0];\r\n    if (local_184[0] != local_174) {\r\n      do {\r\n        puVar11 = local_174;\r\n        uVar1 = *(undefined4 *)(local_174[3] + 4);\r\n        uVar6 = *(undefined4 *)(local_168 + 4);\r\n        uVar7 = FUN_004026a0(uVar6,uVar1);\r\n        FUN_00401e20(uVar7,uVar6,uVar1);\r\n        uVar4 = *(uint *)(puVar11[3] + 4);\r\n        if (uVar4 != 0) {\r\n          puVar2 = (undefined4 *)FUN_004026a0();\r\n          puVar5 = (undefined4 *)(*(int *)(local_168 + 4) + *local_178);\r\n          for (uVar3 = uVar4 >> 2; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n            *puVar5 = *puVar2;\r\n            puVar2 = puVar2 + 1;\r\n            puVar5 = puVar5 + 1;\r\n          }\r\n          for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n            *(undefined1 *)puVar5 = *(undefined1 *)puVar2;\r\n            puVar2 = (undefined4 *)((int)puVar2 + 1);\r\n            puVar5 = (undefined4 *)((int)puVar5 + 1);\r\n          }\r\n        }\r\n        local_178[1] = local_178[1] + *(int *)(puVar11[3] + 4);\r\n        FUN_00401d00(local_17c,0,0xffffffff);\r\n        FUN_00401f10();\r\n        uVar7 = 1;\r\n        uVar1 = *(undefined4 *)(local_160 + 4);\r\n        uVar6 = FUN_004026a0(uVar1,1);\r\n        FUN_00401e20(uVar6,uVar1,uVar7);\r\n        *(undefined1 *)(*(int *)(local_160 + 4) + *local_14c) = 0;\r\n        local_14c[1] = local_14c[1] + 1;\r\n        FUN_00401d00(local_150,0,0xffffffff);\r\n        FUN_00401f10();\r\n        FUN_00424420(local_128,*(undefined4 *)(*local_130 + local_170 * 8),local_148);\r\n        FUN_00401ed0();\r\n        if (local_148[0] != 0) {\r\n          FUN_004d29a0(local_148[0]);\r\n        }\r\n        FUN_00401ed0();\r\n        if (local_164 != 0) {\r\n          FUN_004d29a0(local_164);\r\n        }\r\n        local_174 = (undefined4 *)*local_174;\r\n      } while (local_184[0] != local_174);\r\n    }\r\n    local_170 = local_170 + 1;\r\n  } while (local_170 < 5);\r\n  puVar11 = local_184[0];\r\n  puVar2 = (undefined4 *)FUN_00423e70(local_17c);\r\n  FUN_0042a720(*puVar2,puVar11);\r\n  *local_184[0] = DAT_004f8360;\r\n  DAT_004f8360 = local_184[0];\r\n  _DAT_004f8354 = _DAT_004f8354 + -1;\r\n  if (_DAT_004f8354 == 0) {\r\n    FUN_0042a4b0();\r\n  }\r\n  FUN_00401f10();\r\n  FUN_00401f10();\r\n  FUN_00420e60();\r\n  FUN_00401ed0();\r\n  if (local_140[0] != 0) {\r\n    FUN_004d29a0(local_140[0]);\r\n  }\r\n  FUN_00401ed0();\r\n  if (local_16c != 0) {\r\n    FUN_004d29a0(local_16c);\r\n  }\r\n  FUN_00401ed0();\r\n  if (local_15c != 0) {\r\n    FUN_004d29a0(local_15c);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00424b70",
+      "name": "FUN_00424b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00401c80",
+      "name": "FUN_00401c80"
+    },
+    {
+      "addr": "00401de0",
+      "name": "FUN_00401de0"
+    },
+    {
+      "addr": "0044da30",
+      "name": "FUN_0044da30"
+    },
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "0040e0c0",
+      "name": "FUN_0040e0c0"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "0044f570",
+      "name": "FUN_0044f570"
+    },
+    {
+      "addr": "0044ef80",
+      "name": "FUN_0044ef80"
+    },
+    {
+      "addr": "0044f330",
+      "name": "FUN_0044f330"
+    },
+    {
+      "addr": "0042a720",
+      "name": "FUN_0042a720"
+    },
+    {
+      "addr": "0044e6e0",
+      "name": "FUN_0044e6e0"
+    },
+    {
+      "addr": "004026a0",
+      "name": "FUN_004026a0"
+    },
+    {
+      "addr": "00401e20",
+      "name": "FUN_00401e20"
+    },
+    {
+      "addr": "00401d00",
+      "name": "FUN_00401d00"
+    },
+    {
+      "addr": "00424420",
+      "name": "FUN_00424420"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00423e70",
+      "name": "FUN_00423e70"
+    },
+    {
+      "addr": "0042a4b0",
+      "name": "FUN_0042a4b0"
+    },
+    {
+      "addr": "00420e60",
+      "name": "FUN_00420e60"
+    }
+  ],
+  "data_refs": []
+}

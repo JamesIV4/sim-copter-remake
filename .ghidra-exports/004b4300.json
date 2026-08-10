@@ -1,0 +1,19 @@
+{
+  "address": "004b4300",
+  "name": "FUN_004b4300",
+  "signature": "undefined FUN_004b4300(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b4300(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  \r\n  if (*(char *)(param_1 + 5) != '\\0') {\r\n    if ((&DAT_005d9200)\r\n        [(*(uint *)(param_1 + 0x35) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x39) & 0xff)] != 0) {\r\n      piVar3 = (int *)((&DAT_005d9200)\r\n                       [(*(uint *)(param_1 + 0x35) & 0xff) * 0x100 +\r\n                        (*(uint *)(param_1 + 0x39) & 0xff)] + 0x10);\r\n      iVar1 = *piVar3;\r\n      while (iVar1 != 0) {\r\n        piVar2 = (int *)*piVar3;\r\n        if (*(int **)(param_1 + 0x1cd) == piVar2) {\r\n          *piVar3 = **(int **)(param_1 + 0x1cd);\r\n          break;\r\n        }\r\n        piVar3 = piVar2;\r\n        iVar1 = *piVar2;\r\n      }\r\n    }\r\n    if ((&DAT_005d9200)\r\n        [(*(uint *)(param_1 + 0x3d) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x41) & 0xff)] != 0) {\r\n      piVar3 = (int *)((&DAT_005d9200)\r\n                       [(*(uint *)(param_1 + 0x3d) & 0xff) * 0x100 +\r\n                        (*(uint *)(param_1 + 0x41) & 0xff)] + 0x10);\r\n      iVar1 = *piVar3;\r\n      while (iVar1 != 0) {\r\n        piVar2 = (int *)*piVar3;\r\n        if (*(int **)(param_1 + 0x1d1) == piVar2) {\r\n          *piVar3 = **(int **)(param_1 + 0x1d1);\r\n          break;\r\n        }\r\n        piVar3 = piVar2;\r\n        iVar1 = *piVar2;\r\n      }\r\n    }\r\n    if ((&DAT_005d9200)\r\n        [(*(uint *)(param_1 + 0x45) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x49) & 0xff)] != 0) {\r\n      piVar3 = (int *)((&DAT_005d9200)\r\n                       [(*(uint *)(param_1 + 0x45) & 0xff) * 0x100 +\r\n                        (*(uint *)(param_1 + 0x49) & 0xff)] + 0x10);\r\n      iVar1 = *piVar3;\r\n      while (iVar1 != 0) {\r\n        piVar2 = (int *)*piVar3;\r\n        if (*(int **)(param_1 + 0x1d5) == piVar2) {\r\n          *piVar3 = **(int **)(param_1 + 0x1d5);\r\n          break;\r\n        }\r\n        piVar3 = piVar2;\r\n        iVar1 = *piVar2;\r\n      }\r\n    }\r\n    *(undefined1 *)(param_1 + 5) = 0;\r\n  }\r\n  *(undefined1 *)(param_1 + 6) = 0;\r\n  *(undefined1 *)(param_1 + 7) = 0;\r\n  *(undefined1 *)(param_1 + 8) = 0;\r\n  *(undefined1 *)(param_1 + 9) = 0;\r\n  *(undefined1 *)(param_1 + 10) = 0;\r\n  *(undefined1 *)(param_1 + 0xb) = 0;\r\n  *(undefined1 *)(param_1 + 0xc) = 0;\r\n  *(undefined4 *)(param_1 + 0xd) = 0;\r\n  *(undefined4 *)(param_1 + 0x61) = 0;\r\n  *(undefined4 *)(param_1 + 0x11) = 0;\r\n  *(undefined4 *)(param_1 + 0x2d) = 0;\r\n  *(undefined4 *)(param_1 + 0x35) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x39) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x3d) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x41) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x45) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x49) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x4d) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x51) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x55) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x59) = 0xffffffff;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b7f20",
+      "name": "FUN_004b7f20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

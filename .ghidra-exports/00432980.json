@@ -1,0 +1,22 @@
+{
+  "address": "00432980",
+  "name": "FUN_00432980",
+  "signature": "undefined FUN_00432980(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00432980(void)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  \r\n  iVar3 = 0xe;\r\n  do {\r\n    FUN_00401f10();\r\n    iVar3 = iVar3 + -1;\r\n  } while (-1 < iVar3);\r\n  DAT_0051a18c[3] = DAT_0051a18c[3] + -1;\r\n  puVar2 = DAT_0051a18c;\r\n  if ((DAT_0051a18c[3] == 0) && (DAT_0051a18c != (undefined4 *)0x0)) {\r\n    piVar1 = DAT_0051a18c + 2;\r\n    if (*piVar1 != 0) {\r\n      FUN_004d29a0(*DAT_0051a18c);\r\n      *piVar1 = 0;\r\n      *puVar2 = 0;\r\n    }\r\n    FUN_004d29a0(puVar2);\r\n  }\r\n  if (DAT_0051a188 != 0) {\r\n    FUN_004d29a0(DAT_0051a188);\r\n  }\r\n  DAT_0051a184[3] = DAT_0051a184[3] + -1;\r\n  puVar2 = DAT_0051a184;\r\n  if ((DAT_0051a184[3] == 0) && (DAT_0051a184 != (undefined4 *)0x0)) {\r\n    piVar1 = DAT_0051a184 + 2;\r\n    if (*piVar1 != 0) {\r\n      FUN_004d29a0(*DAT_0051a184);\r\n      *piVar1 = 0;\r\n      *puVar2 = 0;\r\n    }\r\n    FUN_004d29a0(puVar2);\r\n  }\r\n  if (DAT_0051a180 != 0) {\r\n    FUN_004d29a0(DAT_0051a180);\r\n  }\r\n  DAT_0051a17c[3] = DAT_0051a17c[3] + -1;\r\n  puVar2 = DAT_0051a17c;\r\n  if ((DAT_0051a17c[3] == 0) && (DAT_0051a17c != (undefined4 *)0x0)) {\r\n    piVar1 = DAT_0051a17c + 2;\r\n    if (*piVar1 != 0) {\r\n      FUN_004d29a0(*DAT_0051a17c);\r\n      *piVar1 = 0;\r\n      *puVar2 = 0;\r\n    }\r\n    FUN_004d29a0(puVar2);\r\n  }\r\n  if (DAT_0051a178 != 0) {\r\n    FUN_004d29a0(DAT_0051a178);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

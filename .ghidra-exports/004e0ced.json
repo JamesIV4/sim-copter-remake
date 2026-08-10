@@ -1,0 +1,19 @@
+{
+  "address": "004e0ced",
+  "name": "terminate",
+  "signature": "noreturn void __cdecl terminate(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid __cdecl terminate(void)\r\n\r\n{\r\n  _ptiddata p_Var1;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 uStack_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 uStack_8;\r\n  \r\n  uStack_14 = *unaff_FS_OFFSET;\r\n  puStack_c = &DAT_004f61e0;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &uStack_14;\r\n  uStack_8 = 0;\r\n  p_Var1 = __getptd();\r\n  if (p_Var1->_tpxcptinfoptrs != (void *)0x0) {\r\n    uStack_8 = 1;\r\n    p_Var1 = __getptd();\r\n    (*p_Var1->_tpxcptinfoptrs)();\r\n  }\r\n  uStack_8 = 0xffffffff;\r\n                    /* WARNING: Subroutine does not return */\r\n  _abort();\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0c80",
+      "name": "_inconsistency",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

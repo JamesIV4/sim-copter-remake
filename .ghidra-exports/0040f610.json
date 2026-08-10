@@ -1,0 +1,92 @@
+{
+  "address": "0040f610",
+  "name": "FUN_0040f610",
+  "signature": "undefined FUN_0040f610(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0040f610(int *param_1,char *param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  char cVar2;\r\n  DWORD DVar3;\r\n  ostream *poVar4;\r\n  int iVar5;\r\n  int *piVar6;\r\n  uint uVar7;\r\n  uint uVar8;\r\n  char *pcVar9;\r\n  undefined4 *puVar10;\r\n  char *pcVar11;\r\n  int local_68;\r\n  undefined4 *local_64;\r\n  undefined4 local_60;\r\n  undefined4 local_5c;\r\n  undefined4 local_58;\r\n  undefined4 local_54;\r\n  int local_50;\r\n  int local_4c;\r\n  int local_48;\r\n  int local_44;\r\n  int local_40;\r\n  int local_3c;\r\n  int local_38;\r\n  int local_34;\r\n  char local_30 [32];\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  local_64 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (local_64 == (undefined4 *)0x0) {\r\n    local_64 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    local_64[1] = 0;\r\n    local_64[2] = 0;\r\n    *local_64 = 0;\r\n    local_64[3] = 1;\r\n  }\r\n  local_68 = 0;\r\n  DVar3 = GetCurrentThreadId();\r\n  _sprintf(local_30,&DAT_004f83ac,DVar3);\r\n  uVar7 = 0xffffffff;\r\n  pcVar9 = local_30;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar2 = *pcVar9;\r\n    pcVar9 = pcVar9 + 1;\r\n  } while (cVar2 != '\\0');\r\n  uVar7 = ~uVar7 - 1;\r\n  if (uVar7 == 0xffffffff) {\r\n    poVar4 = ostream::operator<<((ostream *)&DAT_005904a0,s_Length_exception_occurred_004f8100);\r\n    FUN_00401000(poVar4);\r\n    FUN_004d2060(1);\r\n  }\r\n  if ((uint)local_64[3] < 2) {\r\n    if (uVar7 != 0) {\r\n      if ((uint)local_64[2] < uVar7) goto LAB_0040f6d1;\r\n      if (uVar7 != 0) {\r\n        pcVar9 = local_30;\r\n        pcVar11 = (char *)*local_64;\r\n        for (uVar8 = uVar7 >> 2; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *(undefined4 *)pcVar11 = *(undefined4 *)pcVar9;\r\n          pcVar9 = pcVar9 + 4;\r\n          pcVar11 = pcVar11 + 4;\r\n        }\r\n        for (uVar8 = uVar7 & 3; uVar8 != 0; uVar8 = uVar8 - 1) {\r\n          *pcVar11 = *pcVar9;\r\n          pcVar9 = pcVar9 + 1;\r\n          pcVar11 = pcVar11 + 1;\r\n        }\r\n      }\r\n    }\r\n  }\r\n  else {\r\nLAB_0040f6d1:\r\n    puVar10 = (undefined4 *)0x0;\r\n    iVar5 = FUN_004d28b0(0x10);\r\n    if (iVar5 != 0) {\r\n      puVar10 = (undefined4 *)FUN_004028e0(local_30,uVar7);\r\n    }\r\n    FUN_00401ed0();\r\n    local_64 = puVar10;\r\n  }\r\n  uVar8 = 0xffffffff;\r\n  local_64[1] = uVar7;\r\n  pcVar9 = param_2;\r\n  do {\r\n    if (uVar8 == 0) break;\r\n    uVar8 = uVar8 - 1;\r\n    cVar2 = *pcVar9;\r\n    pcVar9 = pcVar9 + 1;\r\n  } while (cVar2 != '\\0');\r\n  FUN_00401940(param_2,~uVar8 - 1);\r\n  EnterCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xf));\r\n  if (param_1[8] != 0) {\r\n    local_4c = param_1[5];\r\n    local_48 = param_1[6];\r\n    local_40 = param_1[4];\r\n    local_34 = param_1[7];\r\n    local_50 = param_1[4];\r\n    local_44 = param_1[7];\r\n    local_3c = local_4c;\r\n    local_38 = local_48;\r\n    if (local_48 != local_40) goto LAB_0040f778;\r\n  }\r\n  FUN_004100a0();\r\nLAB_0040f778:\r\n  piVar1 = param_1 + 4;\r\n  if (*piVar1 != 0) {\r\n    FUN_00401d00(&local_68,0,0xffffffff);\r\n  }\r\n  iVar5 = param_1[8];\r\n  *piVar1 = *piVar1 + 8;\r\n  param_1[8] = iVar5 + 1U;\r\n  if ((uint)param_1[0xe] < iVar5 + 1U) {\r\n    do {\r\n      FUN_00402870(0);\r\n      *param_1 = *param_1 + 8;\r\n      piVar6 = param_1 + 8;\r\n      *piVar6 = *piVar6 + -1;\r\n      if (*piVar6 == 0) {\r\nLAB_0040f7f6:\r\n        puVar10 = (undefined4 *)param_1[3];\r\n        param_1[3] = (int)(puVar10 + 1);\r\n        FUN_004d29a0(*puVar10);\r\n        if (param_1[8] == 0) {\r\n          local_60 = 0;\r\n          local_5c = 0;\r\n          local_58 = 0;\r\n          local_54 = 0;\r\n          *param_1 = 0;\r\n          param_1[1] = 0;\r\n          param_1[2] = 0;\r\n          param_1[3] = 0;\r\n          *piVar1 = 0;\r\n          param_1[5] = 0;\r\n          param_1[6] = 0;\r\n          param_1[7] = 0;\r\n          FUN_004d29a0(param_1[9]);\r\n        }\r\n        else {\r\n          piVar6 = (int *)FUN_0040f4b0(*(undefined4 *)param_1[3],(undefined4 *)param_1[3]);\r\n          *param_1 = *piVar6;\r\n          param_1[1] = piVar6[1];\r\n          param_1[2] = piVar6[2];\r\n          param_1[3] = piVar6[3];\r\n        }\r\n      }\r\n      else {\r\n        local_50 = *param_1;\r\n        local_4c = param_1[1];\r\n        local_48 = param_1[2];\r\n        local_44 = param_1[3];\r\n        local_10 = *param_1;\r\n        local_c = param_1[1];\r\n        local_8 = param_1[2];\r\n        local_4 = param_1[3];\r\n        if (local_8 == local_50) goto LAB_0040f7f6;\r\n      }\r\n    } while ((uint)param_1[0xe] < (uint)param_1[8]);\r\n  }\r\n  FUN_0040f910();\r\n  InvalidateRect((HWND)param_1[0x15],(RECT *)0x0,1);\r\n  LeaveCriticalSection((LPCRITICAL_SECTION)(param_1 + 0xf));\r\n  puVar10 = local_64;\r\n  local_64[3] = local_64[3] + -1;\r\n  if ((local_64[3] == 0) && (local_64 != (undefined4 *)0x0)) {\r\n    piVar1 = local_64 + 2;\r\n    if (*piVar1 != 0) {\r\n      FUN_004d29a0(*local_64);\r\n      *piVar1 = 0;\r\n      *puVar10 = 0;\r\n    }\r\n    FUN_004d29a0(puVar10);\r\n  }\r\n  if (local_68 != 0) {\r\n    FUN_004d29a0(local_68);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "EXTERNAL:0000001f",
+      "name": "GetCurrentThreadId"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    },
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000"
+    },
+    {
+      "addr": "004d2060",
+      "name": "FUN_004d2060"
+    },
+    {
+      "addr": "004028e0",
+      "name": "FUN_004028e0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "00401940",
+      "name": "FUN_00401940"
+    },
+    {
+      "addr": "EXTERNAL:00000022",
+      "name": "EnterCriticalSection"
+    },
+    {
+      "addr": "004100a0",
+      "name": "FUN_004100a0"
+    },
+    {
+      "addr": "00401d00",
+      "name": "FUN_00401d00"
+    },
+    {
+      "addr": "00402870",
+      "name": "FUN_00402870"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "0040f4b0",
+      "name": "FUN_0040f4b0"
+    },
+    {
+      "addr": "0040f910",
+      "name": "FUN_0040f910"
+    },
+    {
+      "addr": "EXTERNAL:00000086",
+      "name": "InvalidateRect"
+    },
+    {
+      "addr": "EXTERNAL:00000023",
+      "name": "LeaveCriticalSection"
+    }
+  ],
+  "data_refs": []
+}

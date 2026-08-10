@@ -1,0 +1,24 @@
+{
+  "address": "004e4b60",
+  "name": "FUN_004e4b60",
+  "signature": "undefined FUN_004e4b60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004e4b60(uchar *param_1,size_t param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  \r\n  iVar1 = *DAT_00506c8c;\r\n  piVar2 = DAT_00506c8c;\r\n  while( true ) {\r\n    if (iVar1 == 0) {\r\n      return -((int)piVar2 - (int)DAT_00506c8c >> 2);\r\n    }\r\n    iVar1 = __mbsnbicoll(param_1,(uchar *)*piVar2,param_2);\r\n    if ((iVar1 == 0) &&\r\n       ((*(char *)(*piVar2 + param_2) == '=' || (*(char *)(*piVar2 + param_2) == '\\0')))) break;\r\n    piVar2 = piVar2 + 1;\r\n    iVar1 = *piVar2;\r\n  }\r\n  return (int)piVar2 - (int)DAT_00506c8c >> 2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e4910",
+      "name": "FUN_004e4910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e4050",
+      "name": "__mbsnbicoll"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,44 @@
+{
+  "address": "004e4240",
+  "name": "_iswctype",
+  "signature": "int __cdecl _iswctype(wint_t _C, wctype_t _Type)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _iswctype\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl _iswctype(wint_t _C,wctype_t _Type)\r\n\r\n{\r\n  int iVar1;\r\n  undefined2 in_stack_00000006;\r\n  ushort local_2;\r\n  \r\n  if (_C == 0xffff) {\r\n    return 0;\r\n  }\r\n  if (_C < 0x100) {\r\n    local_2 = *(ushort *)(PTR_DAT_00507014 + (uint)_C * 2);\r\nLAB_004e429c:\r\n    return (uint)(local_2 & _Type);\r\n  }\r\n  if (DAT_00507ab8 != 0) {\r\n    iVar1 = ___crtGetStringTypeW(1,&_C,1,&local_2,0,0);\r\n    if (iVar1 != 0) goto LAB_004e429c;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e41a0",
+      "name": "__towupper_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dda40",
+      "name": "___crtGetStringTypeW"
+    }
+  ],
+  "data_refs": []
+}

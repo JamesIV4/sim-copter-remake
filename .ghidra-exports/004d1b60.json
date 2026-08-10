@@ -1,0 +1,50 @@
+{
+  "address": "004d1b60",
+  "name": "FUN_004d1b60",
+  "signature": "undefined FUN_004d1b60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_004d1b60(int param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,int param_5,\r\n            undefined4 param_6,undefined4 param_7)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  *(undefined4 *)(param_1 + 0x24) = param_6;\r\n  *(undefined4 *)(param_1 + 0x28) = param_7;\r\n  *(undefined4 *)(param_1 + 0x18) = param_2;\r\n  *(undefined4 *)(param_1 + 0x10) = 0xffffffff;\r\n  *(undefined4 *)(param_1 + 0x14) = 0xffffffff;\r\n  if (param_5 == 0) {\r\n    *(undefined4 *)(param_1 + 0x4c) = 0;\r\n    *(undefined1 *)(param_1 + 0x3c) = 0;\r\n  }\r\n  else {\r\n    FUN_004ce150(param_5,param_1 + 0x3c,0x10);\r\n    uVar1 = FUN_004d16b0(param_1 + 0x3c);\r\n    *(undefined4 *)(param_1 + 0x4c) = uVar1;\r\n    FUN_004d1c90();\r\n  }\r\n  *(undefined2 *)(param_1 + 0x20) = 0xffff;\r\n  FUN_004d1cf0(param_3,param_4);\r\n  FUN_004d1d20(0);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cfed0",
+      "name": "FUN_004cfed0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cfed0",
+      "name": "FUN_004cfed0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d18e0",
+      "name": "FUN_004d18e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004ce150",
+      "name": "FUN_004ce150"
+    },
+    {
+      "addr": "004d16b0",
+      "name": "FUN_004d16b0"
+    },
+    {
+      "addr": "004d1c90",
+      "name": "FUN_004d1c90"
+    },
+    {
+      "addr": "004d1cf0",
+      "name": "FUN_004d1cf0"
+    },
+    {
+      "addr": "004d1d20",
+      "name": "FUN_004d1d20"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004e0c75",
+  "name": "_abort",
+  "signature": "noreturn void __cdecl _abort(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": true,
+  "decompiled": "\r\nvoid __cdecl _abort(void)\r\n\r\n{\r\n  FUN_004dd330(10);\r\n  _raise(0x16);\r\n                    /* WARNING: Subroutine does not return */\r\n  __exit(3);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e0c00",
+      "name": "terminate",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

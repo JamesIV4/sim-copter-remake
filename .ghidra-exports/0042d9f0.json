@@ -1,0 +1,48 @@
+{
+  "address": "0042d9f0",
+  "name": "FUN_0042d9f0",
+  "signature": "undefined FUN_0042d9f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0042d9f0(int param_1)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined4 uVar4;\r\n  byte local_20 [32];\r\n  \r\n  iVar2 = FUN_00407a50();\r\n  iVar3 = FUN_00407a50();\r\n  if (*(int *)(param_1 + 0x16e) == 8) {\r\n    local_20[0] = 0;\r\n    local_20[1] = 0;\r\n    local_20[2] = 0;\r\n    local_20[3] = 0;\r\n    local_20[4] = 1;\r\n    local_20[5] = 0;\r\n    local_20[6] = 0;\r\n    local_20[7] = 0;\r\n    local_20[8] = 3;\r\n    local_20[9] = 0;\r\n    local_20[10] = 0;\r\n    local_20[0xb] = 0;\r\n    local_20[0xc] = 4;\r\n    local_20[0xd] = 0;\r\n    local_20[0xe] = 0;\r\n    local_20[0xf] = 0;\r\n    local_20[0x10] = 2;\r\n    local_20[0x11] = 0;\r\n    local_20[0x12] = 0;\r\n    local_20[0x13] = 0;\r\n    if ((*(uint *)(iVar3 + 0x48) & 1 << (local_20[*(int *)(param_1 + 0x172) * 4] & 0x1f)) == 0) {\r\n      return 0;\r\n    }\r\n  }\r\n  else {\r\n    local_20[0] = 4;\r\n    local_20[1] = 0;\r\n    local_20[2] = 0;\r\n    local_20[3] = 0;\r\n    local_20[4] = 0;\r\n    local_20[5] = 0;\r\n    local_20[6] = 0;\r\n    local_20[7] = 0;\r\n    local_20[8] = 1;\r\n    local_20[9] = 0;\r\n    local_20[10] = 0;\r\n    local_20[0xb] = 0;\r\n    local_20[0xc] = 8;\r\n    local_20[0xd] = 0;\r\n    local_20[0xe] = 0;\r\n    local_20[0xf] = 0;\r\n    local_20[0x10] = 3;\r\n    local_20[0x11] = 0;\r\n    local_20[0x12] = 0;\r\n    local_20[0x13] = 0;\r\n    local_20[0x14] = 5;\r\n    local_20[0x15] = 0;\r\n    local_20[0x16] = 0;\r\n    local_20[0x17] = 0;\r\n    local_20[0x18] = 6;\r\n    local_20[0x19] = 0;\r\n    local_20[0x1a] = 0;\r\n    local_20[0x1b] = 0;\r\n    local_20[0x1c] = 7;\r\n    local_20[0x1d] = 0;\r\n    local_20[0x1e] = 0;\r\n    local_20[0x1f] = 0;\r\n    if ((*(uint *)(iVar3 + 0x44) & 1 << (local_20[*(int *)(param_1 + 0x16e) * 4] & 0x1f)) == 0) {\r\n      return 0;\r\n    }\r\n  }\r\n  FUN_00407a70();\r\n  local_20[0] = 0;\r\n  local_20[1] = 0;\r\n  local_20[2] = 0;\r\n  local_20[3] = 0;\r\n  local_20[4] = 1;\r\n  local_20[5] = 0;\r\n  local_20[6] = 0;\r\n  local_20[7] = 0;\r\n  local_20[8] = 3;\r\n  local_20[9] = 0;\r\n  local_20[10] = 0;\r\n  local_20[0xb] = 0;\r\n  local_20[0xc] = 4;\r\n  local_20[0xd] = 0;\r\n  local_20[0xe] = 0;\r\n  local_20[0xf] = 0;\r\n  local_20[0x10] = 2;\r\n  local_20[0x11] = 0;\r\n  local_20[0x12] = 0;\r\n  local_20[0x13] = 0;\r\n  iVar3 = *(int *)(local_20 + *(int *)(param_1 + 0x172) * 4);\r\n  if (*(int *)(param_1 + 0x16e) == 8) {\r\n    uVar4 = FUN_0048b150(iVar3);\r\n    *(uint *)(iVar2 + 0x48) = *(uint *)(iVar2 + 0x48) & ~(1 << ((byte)iVar3 & 0x1f));\r\n    if (iVar3 == 3) {\r\n      *(undefined4 *)(iVar2 + 0x54) = 0;\r\n    }\r\n  }\r\n  else {\r\n    local_20[0] = 4;\r\n    local_20[1] = 0;\r\n    local_20[2] = 0;\r\n    local_20[3] = 0;\r\n    local_20[4] = 0;\r\n    local_20[5] = 0;\r\n    local_20[6] = 0;\r\n    local_20[7] = 0;\r\n    local_20[8] = 1;\r\n    local_20[9] = 0;\r\n    local_20[10] = 0;\r\n    local_20[0xb] = 0;\r\n    local_20[0xc] = 8;\r\n    local_20[0xd] = 0;\r\n    local_20[0xe] = 0;\r\n    local_20[0xf] = 0;\r\n    local_20[0x10] = 3;\r\n    local_20[0x11] = 0;\r\n    local_20[0x12] = 0;\r\n    local_20[0x13] = 0;\r\n    local_20[0x14] = 5;\r\n    local_20[0x15] = 0;\r\n    local_20[0x16] = 0;\r\n    local_20[0x17] = 0;\r\n    local_20[0x18] = 6;\r\n    local_20[0x19] = 0;\r\n    local_20[0x1a] = 0;\r\n    local_20[0x1b] = 0;\r\n    local_20[0x1c] = 7;\r\n    local_20[0x1d] = 0;\r\n    local_20[0x1e] = 0;\r\n    local_20[0x1f] = 0;\r\n    uVar1 = *(undefined4 *)(local_20 + *(int *)(param_1 + 0x16e) * 4);\r\n    uVar4 = FUN_0048b070(uVar1);\r\n    FUN_0048b270(uVar1);\r\n    *(uint *)(iVar2 + 0x44) = *(uint *)(iVar2 + 0x44) & ~(1 << ((byte)uVar1 & 0x1f));\r\n  }\r\n  FUN_00407a90(uVar4);\r\n  FUN_0042b840(*(undefined4 *)(param_1 + 0x16e));\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042d6a0",
+      "name": "FUN_0042d6a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00407a50",
+      "name": "FUN_00407a50"
+    },
+    {
+      "addr": "00407a70",
+      "name": "FUN_00407a70"
+    },
+    {
+      "addr": "0048b150",
+      "name": "FUN_0048b150"
+    },
+    {
+      "addr": "0048b070",
+      "name": "FUN_0048b070"
+    },
+    {
+      "addr": "0048b270",
+      "name": "FUN_0048b270"
+    },
+    {
+      "addr": "00407a90",
+      "name": "FUN_00407a90"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "004df740",
+  "name": "__setmode_lk",
+  "signature": "undefined __setmode_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __setmode_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __setmode_lk(uint param_1,int param_2)\r\n\r\n{\r\n  byte *pbVar1;\r\n  byte bVar2;\r\n  undefined4 *puVar3;\r\n  byte bVar4;\r\n  \r\n  pbVar1 = (byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3)) + 4 +\r\n                   (param_1 & 0x1f) * 0x24);\r\n  bVar2 = *pbVar1;\r\n  if (param_2 == 0x8000) {\r\n    bVar4 = bVar2 & 0x7f;\r\n  }\r\n  else {\r\n    if (param_2 != 0x4000) {\r\n      puVar3 = (undefined4 *)FUN_004da730();\r\n      *puVar3 = 0x16;\r\n      return -1;\r\n    }\r\n    bVar4 = bVar2 | 0x80;\r\n  }\r\n  *pbVar1 = bVar4;\r\n  return (-(uint)((bVar2 & 0x80) == 0) & 0x4000) + 0x4000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    }
+  ],
+  "data_refs": []
+}

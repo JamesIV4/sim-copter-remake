@@ -1,0 +1,19 @@
+{
+  "address": "004dfeb0",
+  "name": "__hw_cw",
+  "signature": "undefined __hw_cw(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __hw_cw\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __hw_cw(void)\r\n\r\n{\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dfda0",
+      "name": "__control87",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

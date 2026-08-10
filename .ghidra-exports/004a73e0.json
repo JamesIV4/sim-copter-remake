@@ -1,0 +1,200 @@
+{
+  "address": "004a73e0",
+  "name": "FUN_004a73e0",
+  "signature": "undefined FUN_004a73e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a73e0(void)\r\n\r\n{\r\n  uint uVar1;\r\n  undefined4 *puVar2;\r\n  int iVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 *puVar5;\r\n  int iVar6;\r\n  undefined4 local_40;\r\n  undefined4 local_3c;\r\n  undefined4 local_30;\r\n  undefined4 local_2c;\r\n  int local_28;\r\n  int local_24;\r\n  int local_20;\r\n  int local_1c;\r\n  int local_18;\r\n  int local_14;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  uint local_4;\r\n  \r\n  puVar5 = (undefined4 *)&DAT_0057f9dc;\r\n  iVar6 = 0;\r\n  do {\r\n    puVar2 = DAT_0057f9d8;\r\n    if ((puVar5[0x13] & 1) != 0) {\r\n      if (((DAT_00503aa0 == 3) || ((puVar5[0x14] & 0x27200) == 0)) ||\r\n         (iVar3 = FUN_004681f0(DAT_005040d0 + 0x18,puVar5 + 10), 0xc < iVar3)) {\r\n        puVar5[0x10] = puVar5[0x10] + DAT_005039a8;\r\n      }\r\n      uVar1 = puVar5[0x14];\r\n      puVar2 = DAT_0057f9d8;\r\n      if ((uVar1 & 0x100000) == 0) {\r\n        iVar3 = puVar5[0x15];\r\n        if (iVar3 == 2) {\r\n          if ((uVar1 & 0x800) != 0) {\r\n            if (puVar5[0x34] == puVar5[0x31]) {\r\n              FUN_004aabf0(puVar5);\r\n              puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n              DAT_0057f9c8 = DAT_0057f9c8 + -1;\r\n              puVar2 = DAT_0057f9d8;\r\n              if (DAT_0057f9d8 == puVar5) {\r\n                puVar4 = (undefined4 *)&DAT_0057f9dc;\r\n                DAT_0057f9d8 = (undefined4 *)0x0;\r\n                do {\r\n                  if (((puVar4[0x13] & 1) != 0) && (puVar2 = puVar4, puVar4[0x15] != 2)) break;\r\n                  puVar4 = puVar4 + 0x35;\r\n                  puVar2 = DAT_0057f9d8;\r\n                } while (puVar4 < &DAT_005812b4);\r\n              }\r\n            }\r\n            else if ((0x5a0000 < (int)puVar5[0x10]) && ((puVar5[0x13] & 1) != 0)) {\r\n              if (uVar1 == 0x800) {\r\n                FUN_004a01a0(puVar5[9]);\r\n                puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n              }\r\n              else {\r\n                puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n              }\r\n              puVar2 = DAT_0057f9d8;\r\n              if (puVar5[0x15] == 2) {\r\n                _DAT_0057f9cc = _DAT_0057f9cc + -1;\r\n              }\r\n              else {\r\n                DAT_0057f9c8 = DAT_0057f9c8 + -1;\r\n              }\r\n            }\r\n          }\r\n        }\r\n        else if (iVar3 == 4) {\r\n          if ((puVar5[0x13] & 1) != 0) {\r\n            if (uVar1 == 0x800) {\r\n              FUN_004a01a0(puVar5[9]);\r\n              puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n            }\r\n            else {\r\n              puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n            }\r\n            puVar2 = DAT_0057f9d8;\r\n            if (puVar5[0x15] == 2) {\r\n              _DAT_0057f9cc = _DAT_0057f9cc + -1;\r\n            }\r\n            else {\r\n              DAT_0057f9c8 = DAT_0057f9c8 + -1;\r\n            }\r\n          }\r\n        }\r\n        else if (iVar3 == 8) {\r\n          FUN_004aabf0(puVar5);\r\n          puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n          DAT_0057f9c8 = DAT_0057f9c8 + -1;\r\n          puVar2 = DAT_0057f9d8;\r\n          if (DAT_0057f9d8 == puVar5) {\r\n            puVar4 = (undefined4 *)&DAT_0057f9dc;\r\n            DAT_0057f9d8 = (undefined4 *)0x0;\r\n            do {\r\n              if (((puVar4[0x13] & 1) != 0) && (puVar2 = puVar4, puVar4[0x15] != 2)) break;\r\n              puVar4 = puVar4 + 0x35;\r\n              puVar2 = DAT_0057f9d8;\r\n            } while (puVar4 < &DAT_005812b4);\r\n          }\r\n        }\r\n        else {\r\n          if (DAT_0057f9d8 == (undefined4 *)0x0) {\r\n            DAT_0057f9d8 = puVar5;\r\n          }\r\n          local_20 = 1;\r\n          local_1c = 1;\r\n          local_24 = 1;\r\n          local_18 = 1;\r\n          local_14 = 1;\r\n          local_10 = 1;\r\n          uVar1 = puVar5[0x14];\r\n          local_c = 1;\r\n          local_8 = 1;\r\n          local_28 = 1;\r\n          local_4 = (uint)((uVar1 & 2) == 0);\r\n          if (((uVar1 & 8) != 0) &&\r\n             ((int)(puVar5[0x1d] + puVar5[0x1e] + puVar5[0x1f]) < (int)puVar5[0x1c])) {\r\n            local_1c = 0;\r\n          }\r\n          if (((uVar1 & 1) != 0) && ((int)(puVar5[0x18] + puVar5[0x19]) < (int)puVar5[0x16])) {\r\n            local_20 = 0;\r\n          }\r\n          if ((uVar1 & 0x20) != 0) {\r\n            if (puVar5[0x29] + puVar5[0x2d] == puVar5[0x21]) {\r\n              puVar5[10] = 0xffffffff;\r\n              puVar5[0xb] = 0xffffffff;\r\n            }\r\n            if (puVar5[0x28] + puVar5[0x2d] != puVar5[0x21]) {\r\n              local_18 = 0;\r\n            }\r\n          }\r\n          if ((*(byte *)(puVar5 + 0x14) & 0x10) != 0) {\r\n            if (puVar5[0x29] + puVar5[0x2d] == puVar5[0x23]) {\r\n              puVar5[10] = 0xffffffff;\r\n              puVar5[0xb] = 0xffffffff;\r\n            }\r\n            else if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x29;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n            if (puVar5[0x26] + puVar5[0x2d] != puVar5[0x23]) {\r\n              local_10 = 0;\r\n            }\r\n          }\r\n          if ((*(byte *)((int)puVar5 + 0x51) & 2) != 0) {\r\n            if ((int)(puVar5[0x2e] + puVar5[0x2d]) < (int)puVar5[0x25]) {\r\n              local_28 = 0;\r\n            }\r\n            if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x2a;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n          }\r\n          if ((*(byte *)((int)puVar5 + 0x51) & 0x20) != 0) {\r\n            if ((int)(puVar5[0x2e] + puVar5[0x2d]) < (int)puVar5[0x25]) {\r\n              local_28 = 0;\r\n            }\r\n            if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x2b;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n          }\r\n          if ((*(byte *)((int)puVar5 + 0x52) & 2) != 0) {\r\n            if ((int)(puVar5[0x2e] + puVar5[0x2d]) < (int)puVar5[0x25]) {\r\n              local_28 = 0;\r\n            }\r\n            if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x28;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n          }\r\n          if ((*(byte *)((int)puVar5 + 0x51) & 0x40) != 0) {\r\n            if ((puVar5[0x2d] == 0) && (puVar5[0x2e] == 0)) {\r\n              local_28 = 0;\r\n            }\r\n            if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x2a;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n          }\r\n          if ((*(byte *)(puVar5 + 0x14) & 0x40) != 0) {\r\n            if (puVar5[0x29] + puVar5[0x2d] + puVar5[0x2f] == puVar5[0x22]) {\r\n              puVar5[0xe] = 0xffffffff;\r\n              puVar5[0xf] = 0xffffffff;\r\n            }\r\n            else if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x2c;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n            if (puVar5[0x27] + puVar5[0x2d] + puVar5[0x2f] != puVar5[0x22]) {\r\n              local_14 = 0;\r\n            }\r\n          }\r\n          if ((*(byte *)((int)puVar5 + 0x51) & 0x10) != 0) {\r\n            if ((int)(puVar5[0x2b] + puVar5[0x2d] + puVar5[0x2e] + puVar5[0x2a]) < (int)puVar5[0x20]\r\n               ) {\r\n              local_24 = 0;\r\n            }\r\n            if ((0xc < DAT_00505fa0) && (DAT_00505fa0 = 0, local_24 == 0)) {\r\n              FUN_004c9e20(iVar6,puVar5 + 10);\r\n            }\r\n            DAT_00505fa0 = DAT_00505fa0 + 1;\r\n            if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x29;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n          }\r\n          if (((puVar5[0x14] & 0x400) != 0) &&\r\n             ((int)(puVar5[0x32] + puVar5[0x33]) < (int)puVar5[0x30])) {\r\n            local_c = 0;\r\n          }\r\n          if ((puVar5[0x14] & 0x800) != 0) {\r\n            if ((int)(puVar5[0x34] + puVar5[0x33]) < (int)puVar5[0x31]) {\r\n              local_8 = 0;\r\n            }\r\n            if (DAT_0057f998 < (int)puVar5[0x10]) {\r\n              puVar5[0x10] = 0;\r\n              local_3c = puVar5[9];\r\n              local_2c = 0;\r\n              local_40 = 0x2d;\r\n              local_30 = 1;\r\n              FUN_004a89c0(&local_40);\r\n            }\r\n          }\r\n          puVar2 = DAT_0057f9d8;\r\n          if ((((((local_20 == 1) && (local_1c == 1)) && (local_24 == 1)) &&\r\n               ((local_18 == 1 && (local_14 == 1)))) &&\r\n              ((local_10 == 1 && ((local_c == 1 && (local_8 == 1)))))) &&\r\n             ((local_28 == 1 && (local_4 == 1)))) {\r\n            FUN_004aabf0(puVar5);\r\n            puVar5[0x13] = puVar5[0x13] & 0xfffffffe;\r\n            DAT_0057f9c8 = DAT_0057f9c8 + -1;\r\n            puVar2 = DAT_0057f9d8;\r\n            if (DAT_0057f9d8 == puVar5) {\r\n              puVar4 = (undefined4 *)&DAT_0057f9dc;\r\n              DAT_0057f9d8 = (undefined4 *)0x0;\r\n              do {\r\n                if (((puVar4[0x13] & 1) != 0) && (puVar2 = puVar4, puVar4[0x15] != 2)) break;\r\n                puVar4 = puVar4 + 0x35;\r\n                puVar2 = DAT_0057f9d8;\r\n              } while (puVar4 < &DAT_005812b4);\r\n            }\r\n          }\r\n        }\r\n      }\r\n    }\r\n    DAT_0057f9d8 = puVar2;\r\n    puVar5 = puVar5 + 0x35;\r\n    iVar6 = iVar6 + 1;\r\n    if ((undefined4 *)0x5812b3 < puVar5) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004a6e60",
+      "name": "FUN_004a6e60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004681f0",
+      "name": "FUN_004681f0"
+    },
+    {
+      "addr": "004aabf0",
+      "name": "FUN_004aabf0"
+    },
+    {
+      "addr": "004a01a0",
+      "name": "FUN_004a01a0"
+    },
+    {
+      "addr": "004a89c0",
+      "name": "FUN_004a89c0"
+    },
+    {
+      "addr": "004c9e20",
+      "name": "FUN_004c9e20"
+    }
+  ],
+  "data_refs": []
+}

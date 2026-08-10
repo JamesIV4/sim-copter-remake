@@ -1,0 +1,44 @@
+{
+  "address": "004a2060",
+  "name": "FUN_004a2060",
+  "signature": "undefined FUN_004a2060(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004a2060(int param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  undefined4 uVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  undefined1 local_44 [12];\r\n  int local_38;\r\n  uint local_34;\r\n  int local_24 [9];\r\n  \r\n  uVar1 = _rand();\r\n  iVar4 = ((short)((int)((uint)(ushort)((short)uVar1 >> 0xf) << 0x10 | uVar1 & 0xffff) % 0xd) + 1) *\r\n          0x10;\r\n  if (iVar4 == 0x30) {\r\n    uVar1 = _rand();\r\n    iVar4 = ((short)((int)((uint)(ushort)((short)uVar1 >> 0xf) << 0x10 | uVar1 & 0xffff) % 5) + 1) *\r\n            0x10 + 0x30;\r\n  }\r\n  FUN_004705a9(*(undefined4 *)(param_1 + 0x20),local_24);\r\n  iVar3 = 0;\r\n  uVar2 = FUN_0047031d(*(undefined4 *)(param_1 + 0x20));\r\n  if (0 < local_24[0]) {\r\n    do {\r\n      FUN_0046f5a5(uVar2,local_44);\r\n      if (local_38 != 0xf) goto switchD_004a210a_caseD_7b;\r\n      uVar1 = local_34 & 0xfffffff0;\r\n      switch(*(undefined4 *)(param_1 + 0x14)) {\r\n      case 0x7a:\r\n        goto joined_r0x004a2132;\r\n      case 0x7d:\r\n        goto joined_r0x004a2140;\r\n      case 0x7e:\r\n        if (uVar1 != 0xa0) break;\r\n        goto LAB_004a2142;\r\n      case 0x12a:\r\njoined_r0x004a2132:\r\n        if (uVar1 == 0x80) {\r\nLAB_004a2142:\r\n          FUN_00471140(uVar2,(local_34 & 0xf) + iVar4);\r\n        }\r\n        break;\r\n      case 299:\r\n        if (uVar1 == 0x30) goto LAB_004a2142;\r\n        break;\r\n      case 300:\r\njoined_r0x004a2140:\r\n        if (uVar1 != 0x50) break;\r\n        goto LAB_004a2142;\r\n      }\r\nswitchD_004a210a_caseD_7b:\r\n      iVar3 = iVar3 + 1;\r\n      uVar2 = FUN_00470348(uVar2);\r\n    } while (iVar3 < local_24[0]);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049dbb0",
+      "name": "FUN_0049dbb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d54a0",
+      "name": "_rand"
+    },
+    {
+      "addr": "004705a9",
+      "name": "FUN_004705a9"
+    },
+    {
+      "addr": "0047031d",
+      "name": "FUN_0047031d"
+    },
+    {
+      "addr": "0046f5a5",
+      "name": "FUN_0046f5a5"
+    },
+    {
+      "addr": "00471140",
+      "name": "FUN_00471140"
+    },
+    {
+      "addr": "00470348",
+      "name": "FUN_00470348"
+    }
+  ],
+  "data_refs": []
+}

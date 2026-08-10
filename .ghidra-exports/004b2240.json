@@ -1,0 +1,24 @@
+{
+  "address": "004b2240",
+  "name": "FUN_004b2240",
+  "signature": "undefined FUN_004b2240(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 * __thiscall FUN_004b2240(undefined4 *param_1,byte param_2)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  \r\n  *param_1 = &PTR_FUN_004f4ca0;\r\n  if (((*(char *)(param_1 + 1) != '\\0') && (*(char *)((int)param_1 + 5) != '\\0')) &&\r\n     ((&DAT_005d9200)[(param_1[8] & 0xff) * 0x100 + (param_1[9] & 0xff)] != 0)) {\r\n    piVar3 = (int *)((&DAT_005d9200)[(param_1[8] & 0xff) * 0x100 + (param_1[9] & 0xff)] + 0x10);\r\n    iVar1 = *piVar3;\r\n    while (iVar1 != 0) {\r\n      piVar2 = (int *)*piVar3;\r\n      if ((int)param_1 - (int)piVar2 == -0x58) {\r\n        *piVar3 = param_1[0x16];\r\n        break;\r\n      }\r\n      piVar3 = piVar2;\r\n      iVar1 = *piVar2;\r\n    }\r\n  }\r\n  *(undefined1 *)(param_1 + 1) = 0;\r\n  if ((param_2 & 1) != 0) {\r\n    FUN_004d29a0(param_1);\r\n  }\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b3a10",
+      "name": "FUN_004b3a10",
+      "ref_type": "COMPUTED_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

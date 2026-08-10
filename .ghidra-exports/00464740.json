@@ -1,0 +1,19 @@
+{
+  "address": "00464740",
+  "name": "FUN_00464740",
+  "signature": "undefined FUN_00464740(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00464740(void)\r\n\r\n{\r\n  uint uVar1;\r\n  short sVar2;\r\n  int iVar3;\r\n  short sVar4;\r\n  \r\n  sVar4 = 0;\r\n  do {\r\n    DAT_00591860[sVar4] = (&DAT_004f9fe8)[sVar4];\r\n    sVar2 = 0;\r\n    do {\r\n      uVar1 = *(uint *)((&DAT_00591820)[sVar4] + sVar2 * 4);\r\n      if ((uint)DAT_00591860[sVar4] < uVar1) {\r\n        DAT_00591860[sVar4] = uVar1;\r\n      }\r\n      sVar2 = sVar2 + 1;\r\n    } while (sVar2 < 0x34);\r\n    sVar4 = sVar4 + 1;\r\n  } while (sVar4 < 0x10);\r\n  sVar4 = 1;\r\n  do {\r\n    iVar3 = (int)sVar4;\r\n    sVar4 = sVar4 + 1;\r\n    DAT_00591860[iVar3] = *DAT_00591860;\r\n  } while (sVar4 < 4);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

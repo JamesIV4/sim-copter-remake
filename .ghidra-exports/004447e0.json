@@ -1,0 +1,57 @@
+{
+  "address": "004447e0",
+  "name": "FUN_004447e0",
+  "signature": "undefined FUN_004447e0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x004448c1) */\r\n\r\nvoid __fastcall FUN_004447e0(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  undefined4 **ppuVar4;\r\n  undefined4 *puStack_74;\r\n  undefined4 uStack_70;\r\n  undefined1 *puVar5;\r\n  undefined4 **ppuStack_64;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  undefined4 *puStack_58;\r\n  undefined4 uStack_54;\r\n  undefined4 *puStack_50;\r\n  undefined4 uStack_44;\r\n  undefined4 uStack_40;\r\n  undefined4 local_3c;\r\n  undefined4 local_38;\r\n  undefined4 *local_34;\r\n  undefined4 local_30;\r\n  undefined4 local_2c;\r\n  undefined4 local_28;\r\n  undefined4 local_24;\r\n  \r\n  puStack_50 = (undefined4 *)0x4447ef;\r\n  local_3c = FUN_0040ba80();\r\n  puStack_50 = (undefined4 *)0x4447fb;\r\n  local_38 = FUN_0040ba80();\r\n  puStack_50 = (undefined4 *)0x444807;\r\n  uStack_54 = (undefined4 *)FUN_0040ba80();\r\n  puStack_50 = DAT_005040d0;\r\n  puStack_58 = (undefined4 *)0x44481b;\r\n  local_34 = uStack_54;\r\n  local_34 = (undefined4 *)FUN_0048a570();\r\n  puStack_50 = &local_30;\r\n  iVar2 = *(int *)(param_1 + 0x80);\r\n  local_30 = *(undefined4 *)(iVar2 + 0x10);\r\n  local_2c = *(undefined4 *)(iVar2 + 0x14);\r\n  uStack_54 = (undefined4 *)0x33;\r\n  local_28 = *(undefined4 *)(iVar2 + 0x18);\r\n  local_24 = *(undefined4 *)(iVar2 + 0x1c);\r\n  puStack_58 = (undefined4 *)0x444851;\r\n  (**(code **)(**(int **)(param_1 + 0x40) + 0x44))();\r\n  puStack_58 = (undefined4 *)0x444856;\r\n  puStack_58 = (undefined4 *)FUN_00407a70();\r\n  ppuStack_64 = (undefined4 **)0x444866;\r\n  _sprintf((char *)&local_28,&DAT_004f8d7c);\r\n  puStack_58 = (undefined4 *)0x10;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    iVar2 = 0;\r\n  }\r\n  else {\r\n    puStack_58 = &local_28;\r\n    iVar2 = FUN_0041bd00();\r\n  }\r\n  puStack_58 = (undefined4 *)&stack0xffffffb4;\r\n  (**(code **)(**(int **)(param_1 + 0x80) + 0xd8))();\r\n  iRam0000000c = iRam0000000c + -1;\r\n  if (puStack_50 != (undefined4 *)0x0) {\r\n    FUN_004d29a0();\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x84);\r\n  puVar7 = &local_3c;\r\n  local_3c = *(undefined4 *)(iVar1 + 0x10);\r\n  local_38 = *(undefined4 *)(iVar1 + 0x14);\r\n  puVar6 = (undefined4 *)0x33;\r\n  local_34 = *(undefined4 **)(iVar1 + 0x18);\r\n  local_30 = *(undefined4 *)(iVar1 + 0x1c);\r\n  ppuStack_64 = (undefined4 **)0x44490b;\r\n  (**(code **)(**(int **)(param_1 + 0x40) + 0x44))();\r\n  ppuStack_64 = (undefined4 **)(iVar2 + (int)puStack_50);\r\n  uStack_70 = 0x444927;\r\n  _sprintf((char *)&local_34,&DAT_004f8d7c);\r\n  ppuStack_64 = (undefined4 **)0x10;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    uStack_54 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    ppuStack_64 = &local_34;\r\n    uStack_54 = (undefined4 *)FUN_0041bd00();\r\n  }\r\n  ppuStack_64 = &puStack_58;\r\n  puStack_58 = (undefined4 *)0x0;\r\n  (**(code **)(**(int **)(param_1 + 0x84) + 0xd8))();\r\n  puStack_58[3] = puStack_58[3] + -1;\r\n  if ((puStack_58[3] == 0) && (puStack_58 != (undefined4 *)0x0)) {\r\n    FUN_00402830();\r\n  }\r\n  if (puVar7 != (undefined4 *)0x0) {\r\n    FUN_004d29a0();\r\n  }\r\n  FUN_00407a70();\r\n  (**(code **)(**(int **)(param_1 + 0x84) + 0xe8))();\r\n  puVar5 = &stack0xffffffb4;\r\n  uStack_70 = 0x32;\r\n  uStack_44 = *(undefined4 *)(*(int *)(param_1 + 0x88) + 0x18);\r\n  uStack_40 = *(undefined4 *)(*(int *)(param_1 + 0x88) + 0x1c);\r\n  puStack_74 = (undefined4 *)0x4449ef;\r\n  (**(code **)(**(int **)(param_1 + 0x40) + 0x44))();\r\n  puStack_74 = puVar6;\r\n  _sprintf((char *)&uStack_44,s_cost____ld_004f94b0);\r\n  puStack_74 = (undefined4 *)0x10;\r\n  iVar2 = FUN_004d28b0();\r\n  if (iVar2 == 0) {\r\n    ppuStack_64 = (undefined4 **)0x0;\r\n  }\r\n  else {\r\n    puStack_74 = &uStack_44;\r\n    ppuStack_64 = (undefined4 **)FUN_0041bd00();\r\n  }\r\n  puStack_74 = (undefined4 *)&stack0xffffff98;\r\n  iVar2 = 0;\r\n  (**(code **)(**(int **)(param_1 + 0x88) + 0xd8))();\r\n  *(int *)(iVar2 + 0xc) = *(int *)(iVar2 + 0xc) + -1;\r\n  if ((*(int *)(iVar2 + 0xc) == 0) && (iVar2 != 0)) {\r\n    FUN_00402830();\r\n  }\r\n  if (puVar5 != (undefined1 *)0x0) {\r\n    FUN_004d29a0();\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x8c);\r\n  ppuVar4 = &puStack_58;\r\n  puStack_58 = *(undefined4 **)(iVar1 + 0x10);\r\n  uStack_54 = *(undefined4 **)(iVar1 + 0x14);\r\n  iVar3 = 0x33;\r\n  puStack_50 = *(undefined4 **)(iVar1 + 0x18);\r\n  (**(code **)(**(int **)(param_1 + 0x40) + 0x44))();\r\n  _sprintf((char *)&puStack_50,s_cost____ld_004f94b0,iVar2);\r\n  iVar2 = FUN_004d28b0(0x10);\r\n  if (iVar2 == 0) {\r\n    uStack_70 = 0;\r\n  }\r\n  else {\r\n    uStack_70 = FUN_0041bd00(&puStack_50);\r\n  }\r\n  puStack_74 = (undefined4 *)0x0;\r\n  (**(code **)(**(int **)(param_1 + 0x8c) + 0xd8))(&puStack_74);\r\n  puStack_74[3] = puStack_74[3] + -1;\r\n  if ((puStack_74[3] == 0) && (puStack_74 != (undefined4 *)0x0)) {\r\n    FUN_00402830(1);\r\n  }\r\n  if (ppuVar4 != (undefined4 **)0x0) {\r\n    FUN_004d29a0(ppuVar4);\r\n  }\r\n  ppuStack_64 = *(undefined4 ***)(*(int *)(param_1 + 0x90) + 0x10);\r\n  puStack_58 = *(undefined4 **)(*(int *)(param_1 + 0x90) + 0x1c);\r\n  (**(code **)(**(int **)(param_1 + 0x40) + 0x44))(0x32,&ppuStack_64);\r\n  _sprintf(&stack0xffffffa4,s_cost____ld_004f94b0,uStack_70);\r\n  iVar2 = FUN_004d28b0(0x10);\r\n  if (iVar2 == 0) {\r\n    puStack_74 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    puStack_74 = (undefined4 *)FUN_0041bd00(&stack0xffffffa4);\r\n  }\r\n  iVar2 = 0;\r\n  (**(code **)(**(int **)(param_1 + 0x90) + 0xd8))(&stack0xffffff88);\r\n  *(int *)(iVar2 + 0xc) = *(int *)(iVar2 + 0xc) + -1;\r\n  if ((*(int *)(iVar2 + 0xc) == 0) && (iVar2 != 0)) {\r\n    FUN_00402830(1);\r\n  }\r\n  if (iVar3 != 0) {\r\n    FUN_004d29a0(iVar3);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00444690",
+      "name": "FUN_00444690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00444690",
+      "name": "FUN_00444690",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0040ba80",
+      "name": "FUN_0040ba80"
+    },
+    {
+      "addr": "0048a570",
+      "name": "FUN_0048a570"
+    },
+    {
+      "addr": "00407a70",
+      "name": "FUN_00407a70"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "0041bd00",
+      "name": "FUN_0041bd00"
+    },
+    {
+      "addr": "00402830",
+      "name": "FUN_00402830"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

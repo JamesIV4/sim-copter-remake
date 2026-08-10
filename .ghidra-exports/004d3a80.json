@@ -1,0 +1,36 @@
+{
+  "address": "004d3a80",
+  "name": "__fclose_lk",
+  "signature": "undefined __fclose_lk(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fclose_lk\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __fclose_lk(FILE *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  \r\n  iVar2 = -1;\r\n  if ((param_1->_flag & 0x83) != 0) {\r\n    iVar2 = __flush(param_1);\r\n    __freebuf(param_1);\r\n    iVar1 = __close(param_1->_file);\r\n    if (iVar1 < 0) {\r\n      iVar2 = -1;\r\n    }\r\n    else if (param_1->_tmpfname != (char *)0x0) {\r\n      FUN_004d6010(param_1->_tmpfname);\r\n      param_1->_tmpfname = (char *)0x0;\r\n    }\r\n  }\r\n  param_1->_flag = 0;\r\n  return iVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3a40",
+      "name": "_fclose",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3b60",
+      "name": "__flush"
+    },
+    {
+      "addr": "004d8cb0",
+      "name": "__freebuf"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    },
+    {
+      "addr": "004d6010",
+      "name": "FUN_004d6010"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "004051c0",
+  "name": "FUN_004051c0",
+  "signature": "undefined FUN_004051c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004051c0(int param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  undefined4 uVar2;\r\n  int *local_4;\r\n  \r\n  piVar1 = *(int **)(param_1 + 0x30);\r\n  local_4 = (int *)*piVar1;\r\n  uVar2 = 0;\r\n  if (piVar1 != local_4) {\r\n    while (local_4[2] != param_2) {\r\n      local_4 = (int *)*local_4;\r\n      if (piVar1 == local_4) {\r\n        return uVar2;\r\n      }\r\n    }\r\n    *(int *)local_4[1] = *local_4;\r\n    *(int *)(*local_4 + 4) = local_4[1];\r\n    *local_4 = (int)DAT_004f81fc;\r\n    DAT_004f81fc = local_4;\r\n    uVar2 = 1;\r\n    *(int *)(param_1 + 0x34) = *(int *)(param_1 + 0x34) + -1;\r\n  }\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

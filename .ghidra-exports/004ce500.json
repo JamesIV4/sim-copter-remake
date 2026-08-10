@@ -1,0 +1,19 @@
+{
+  "address": "004ce500",
+  "name": "FUN_004ce500",
+  "signature": "undefined FUN_004ce500(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint __thiscall FUN_004ce500(int param_1,int param_2)\r\n\r\n{\r\n  uint in_EAX;\r\n  \r\n  if (((*(uint *)(param_1 + 0x108) != 0) && (in_EAX = *(uint *)(param_2 + 0x108), in_EAX != 0)) &&\r\n     (*(uint *)(param_1 + 0x108) == in_EAX)) {\r\n    return CONCAT22((short)(in_EAX >> 0x10),1);\r\n  }\r\n  return in_EAX & 0xffff0000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ce5f0",
+      "name": "FUN_004ce5f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

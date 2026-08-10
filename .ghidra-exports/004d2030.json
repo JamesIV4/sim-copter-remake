@@ -1,0 +1,28 @@
+{
+  "address": "004d2030",
+  "name": "__cinit",
+  "signature": "int __cdecl __cinit(int param_1)",
+  "calling_convention": "__cdecl",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __cinit\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __cdecl __cinit(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (PTR___fpmath_00506dc0 != (undefined *)0x0) {\r\n    (*(code *)PTR___fpmath_00506dc0)();\r\n  }\r\n  __initterm(&DAT_004f80c8,&DAT_004f80d8);\r\n  iVar1 = __initterm(&DAT_004f8000,&DAT_004f80c4);\r\n  return iVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d57a0",
+      "name": "entry",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d39d0",
+      "name": "__fpmath"
+    },
+    {
+      "addr": "004d2180",
+      "name": "__initterm"
+    }
+  ],
+  "data_refs": []
+}

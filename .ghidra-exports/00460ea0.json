@@ -1,0 +1,56 @@
+{
+  "address": "00460ea0",
+  "name": "FUN_00460ea0",
+  "signature": "undefined FUN_00460ea0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_00460ea0(int param_1,LPCSTR param_2,LONG *param_3,LONG *param_4)\r\n\r\n{\r\n  char cVar1;\r\n  HDC hdc;\r\n  HGDIOBJ h;\r\n  uint uVar2;\r\n  LPCSTR pCVar3;\r\n  tagRECT local_10;\r\n  \r\n  if (*(int *)(param_1 + 0x18) == 0) {\r\n    return 0;\r\n  }\r\n  hdc = GetDC((HWND)0x0);\r\n  if (hdc == (HDC)0x0) {\r\n    return 0;\r\n  }\r\n  if (param_2 == (LPCSTR)0x0) {\r\n    param_2 = PTR_DAT_004f9c20;\r\n  }\r\n  h = SelectObject(hdc,*(HGDIOBJ *)(param_1 + 0x18));\r\n  uVar2 = 0xffffffff;\r\n  pCVar3 = param_2;\r\n  do {\r\n    if (uVar2 == 0) break;\r\n    uVar2 = uVar2 - 1;\r\n    cVar1 = *pCVar3;\r\n    pCVar3 = pCVar3 + 1;\r\n  } while (cVar1 != '\\0');\r\n  local_10.left = 0;\r\n  local_10.top = 0;\r\n  local_10.right = 1000000;\r\n  local_10.bottom = 1000000;\r\n  DrawTextA(hdc,param_2,~uVar2 - 1,&local_10,0xc10);\r\n  *param_4 = local_10.bottom;\r\n  *param_3 = local_10.right;\r\n  SelectObject(hdc,h);\r\n  ReleaseDC((HWND)0x0,hdc);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004097f0",
+      "name": "FUN_004097f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004098a0",
+      "name": "FUN_004098a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040cb50",
+      "name": "FUN_0040cb50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040e8d0",
+      "name": "FUN_0040e8d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040c910",
+      "name": "FUN_0040c910",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000073",
+      "name": "GetDC"
+    },
+    {
+      "addr": "EXTERNAL:000000ae",
+      "name": "SelectObject"
+    },
+    {
+      "addr": "EXTERNAL:00000084",
+      "name": "DrawTextA"
+    },
+    {
+      "addr": "EXTERNAL:00000072",
+      "name": "ReleaseDC"
+    }
+  ],
+  "data_refs": []
+}

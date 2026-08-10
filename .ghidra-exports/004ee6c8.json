@@ -1,0 +1,19 @@
+{
+  "address": "004ee6c8",
+  "name": "FUN_004ee6c8",
+  "signature": "undefined FUN_004ee6c8(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004ee6c8(void)\r\n\r\n{\r\n  uint in_EAX;\r\n  int unaff_EBX;\r\n  \r\n  if ((in_EAX & 0x4000000) == 0) {\r\n    if ((in_EAX & 0x8000000) == 0) {\r\n      if ((in_EAX & 0x10000000) == 0) {\r\n        *(undefined4 *)(unaff_EBX + 0x14) = 0;\r\n        return;\r\n      }\r\n      if (((in_EAX >> 0x1a ^\r\n           (uint)(*(int *)(*(int *)(*(int *)(unaff_EBX + 0x2c) + 0xc) + 8) - DAT_00516dac[2]) >>\r\n           0x1c) >> 3 & 1) == 0) {\r\n        *(undefined4 *)(unaff_EBX + 0x14) = 0;\r\n        return;\r\n      }\r\n    }\r\n    else if (((in_EAX >> 0x1a ^\r\n              (uint)(*(int *)(*(int *)(*(int *)(unaff_EBX + 0x2c) + 0xc) + 4) - DAT_00516dac[1]) >>\r\n              0x1c) >> 3 & 1) == 0) {\r\n      *(undefined4 *)(unaff_EBX + 0x14) = 0;\r\n      return;\r\n    }\r\n  }\r\n  else if (((in_EAX >> 0x1a ^\r\n            (uint)(**(int **)(*(int *)(unaff_EBX + 0x2c) + 0xc) - *DAT_00516dac) >> 0x1c) >> 3 & 1)\r\n           == 0) {\r\n    *(undefined4 *)(unaff_EBX + 0x14) = 0;\r\n    return;\r\n  }\r\n  *(undefined4 *)(unaff_EBX + 0x14) = 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004ee290",
+      "name": "FUN_004ee290",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

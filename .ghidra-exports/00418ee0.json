@@ -1,0 +1,29 @@
+{
+  "address": "00418ee0",
+  "name": "FUN_00418ee0",
+  "signature": "undefined FUN_00418ee0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00418ee0(int param_1,int param_2,int param_3,int param_4)\r\n\r\n{\r\n  int *piVar1;\r\n  int *local_8;\r\n  \r\n  local_8 = (int *)**(int **)(param_1 + 0xa0);\r\n  if (*(int **)(param_1 + 0xa0) != local_8) {\r\n    do {\r\n      if (((local_8[2] == param_3) && (param_2 == local_8[3])) && (param_4 == local_8[4])) {\r\n        piVar1 = (int *)*local_8;\r\n        *(int *)local_8[1] = *local_8;\r\n        *(int *)(*local_8 + 4) = local_8[1];\r\n        *local_8 = (int)DAT_004f84f8;\r\n        DAT_004f84f8 = local_8;\r\n        *(int *)(param_1 + 0xa4) = *(int *)(param_1 + 0xa4) + -1;\r\n        local_8 = piVar1;\r\n      }\r\n      else {\r\n        local_8 = (int *)*local_8;\r\n      }\r\n    } while (*(int **)(param_1 + 0xa0) != local_8);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00418830",
+      "name": "FUN_00418830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418830",
+      "name": "FUN_00418830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00418830",
+      "name": "FUN_00418830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

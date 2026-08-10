@@ -1,0 +1,29 @@
+{
+  "address": "004c8230",
+  "name": "FUN_004c8230",
+  "signature": "undefined FUN_004c8230(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined2 FUN_004c8230(int param_1,int param_2,int param_3,int param_4)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  \r\n  param_3 = param_3 - param_1;\r\n  param_4 = param_4 - param_2;\r\n  iVar2 = param_3;\r\n  if (param_3 < 0) {\r\n    iVar2 = -param_3;\r\n  }\r\n  iVar3 = param_4;\r\n  if (param_4 < 0) {\r\n    iVar3 = -param_4;\r\n  }\r\n  if (iVar3 < iVar2 >> 1) {\r\n    uVar1 = 2;\r\n    if (param_3 < 1) {\r\n      return 6;\r\n    }\r\n  }\r\n  else if (iVar2 < iVar3 >> 1) {\r\n    uVar1 = 4;\r\n    if (param_4 < 1) {\r\n      return 0;\r\n    }\r\n  }\r\n  else if (param_3 < 1) {\r\n    uVar1 = 7;\r\n    if (-1 < param_4) {\r\n      uVar1 = 5;\r\n    }\r\n  }\r\n  else {\r\n    uVar1 = 1;\r\n    if (-1 < param_4) {\r\n      return 3;\r\n    }\r\n  }\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c9f10",
+      "name": "FUN_004c9f10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004c8430",
+      "name": "FUN_004c8430",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cc470",
+      "name": "FUN_004cc470",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

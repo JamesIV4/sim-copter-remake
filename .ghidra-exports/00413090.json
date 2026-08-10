@@ -1,0 +1,24 @@
+{
+  "address": "00413090",
+  "name": "FUN_00413090",
+  "signature": "undefined FUN_00413090(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00413090(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  piVar1 = (int *)(param_1 + 0x1c);\r\n  piVar2 = (int *)(param_1 + 0x20);\r\n  FUN_004610a0(piVar1,piVar2);\r\n  iVar3 = *piVar1;\r\n  iVar4 = *piVar2;\r\n  *(int *)(param_1 + 0x24) = iVar3;\r\n  *(int *)(param_1 + 0x28) = iVar4;\r\n  if (DAT_004f9798 == 0) {\r\n    iVar4 = iVar4 + -0x28;\r\n    *(int *)(param_1 + 0x24) = iVar3 + -0x28;\r\n  }\r\n  else if (DAT_004f9798 == 1) {\r\n    iVar4 = iVar4 + -0x50;\r\n    *(int *)(param_1 + 0x24) = iVar3 + -0x50;\r\n  }\r\n  else if (DAT_004f9798 == 2) {\r\n    iVar4 = iVar4 + -100;\r\n    *(int *)(param_1 + 0x24) = iVar3 + -100;\r\n  }\r\n  else {\r\n    if (DAT_004f9798 != 3) goto LAB_00413103;\r\n    iVar4 = iVar4 + -0x80;\r\n    *(int *)(param_1 + 0x24) = iVar3 + -0x80;\r\n  }\r\n  *(int *)(param_1 + 0x28) = iVar4;\r\nLAB_00413103:\r\n  if (*(int *)(param_1 + 0x30) != 0) {\r\n    DAT_004f9760 = *(int *)(param_1 + 0x24) / 2;\r\n    DAT_004f9764 = *(int *)(param_1 + 0x28) / 2;\r\n    DAT_004f976c = *(undefined4 *)(*(int *)(param_1 + 0x3c) + 0x14);\r\n    DAT_004f9780 = *(undefined4 *)(param_1 + 0x24);\r\n    DAT_004f9784 = *(undefined4 *)(param_1 + 0x28);\r\n    DAT_004f978c = *(undefined4 *)(*(int *)(*(int *)(param_1 + 0x10) + 0x3c) + 0x14);\r\n    return;\r\n  }\r\n  DAT_004f9760 = iVar3 / 2;\r\n  DAT_004f9764 = *piVar2 / 2;\r\n  DAT_004f976c = *(undefined4 *)(*(int *)(param_1 + 0x3c) + 0x14);\r\n  DAT_004f9780 = *piVar1;\r\n  DAT_004f9784 = *piVar2;\r\n  DAT_004f978c = *(undefined4 *)(*(int *)(*(int *)(param_1 + 0x10) + 0x3c) + 0x14);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004610a0",
+      "name": "FUN_004610a0"
+    }
+  ],
+  "data_refs": []
+}

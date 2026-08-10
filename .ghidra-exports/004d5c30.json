@@ -1,0 +1,107 @@
+{
+  "address": "004d5c30",
+  "name": "_fread",
+  "signature": "size_t __cdecl _fread(void * _DstBuf, size_t _ElementSize, size_t _Count, FILE * _File)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef size_t uint",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _fread\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nsize_t __cdecl _fread(void *_DstBuf,size_t _ElementSize,size_t _Count,FILE *_File)\r\n\r\n{\r\n  size_t sVar1;\r\n  \r\n  __lock_file(_File);\r\n  sVar1 = __fread_lk(_DstBuf,_ElementSize,_Count,_File);\r\n  __unlock_file(_File);\r\n  return sVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463b40",
+      "name": "FUN_00463b40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ce460",
+      "name": "FUN_004ce460",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004647b0",
+      "name": "FUN_004647b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004647b0",
+      "name": "FUN_004647b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004647b0",
+      "name": "FUN_004647b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004653d0",
+      "name": "FUN_004653d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00465370",
+      "name": "FUN_00465370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d64c0",
+      "name": "__lock_file"
+    },
+    {
+      "addr": "004d5c70",
+      "name": "__fread_lk"
+    },
+    {
+      "addr": "004d6530",
+      "name": "__unlock_file"
+    }
+  ],
+  "data_refs": []
+}

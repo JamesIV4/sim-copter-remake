@@ -1,0 +1,37 @@
+{
+  "address": "004616b0",
+  "name": "FUN_004616b0",
+  "signature": "undefined FUN_004616b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool __thiscall FUN_004616b0(char *param_1,char *param_2,undefined4 param_3)\r\n\r\n{\r\n  LPCSTR lpFileName;\r\n  char cVar1;\r\n  bool bVar2;\r\n  HANDLE hObject;\r\n  uint uVar3;\r\n  uint uVar4;\r\n  char *pcVar5;\r\n  char *pcVar6;\r\n  _SECURITY_ATTRIBUTES local_c;\r\n  \r\n  if (-1 < *(int *)(param_1 + 0x108)) {\r\n    return false;\r\n  }\r\n  if (param_2 != (char *)0x0) {\r\n    if (*param_2 == '\\0') {\r\n      return false;\r\n    }\r\n    uVar3 = 0xffffffff;\r\n    do {\r\n      pcVar6 = param_2;\r\n      if (uVar3 == 0) break;\r\n      uVar3 = uVar3 - 1;\r\n      pcVar6 = param_2 + 1;\r\n      cVar1 = *param_2;\r\n      param_2 = pcVar6;\r\n    } while (cVar1 != '\\0');\r\n    uVar3 = ~uVar3;\r\n    pcVar5 = pcVar6 + -uVar3;\r\n    pcVar6 = param_1;\r\n    for (uVar4 = uVar3 >> 2; pcVar6 = pcVar6 + 4, uVar4 != 0; uVar4 = uVar4 - 1) {\r\n      *(undefined4 *)pcVar6 = *(undefined4 *)pcVar5;\r\n      pcVar5 = pcVar5 + 4;\r\n    }\r\n    for (uVar3 = uVar3 & 3; uVar3 != 0; uVar3 = uVar3 - 1) {\r\n      *pcVar6 = *pcVar5;\r\n      pcVar5 = pcVar5 + 1;\r\n      pcVar6 = pcVar6 + 1;\r\n    }\r\n  }\r\n  lpFileName = param_1 + 4;\r\n  if (*lpFileName == '\\0') {\r\n    return false;\r\n  }\r\n  if (lpFileName != (LPCSTR)0x0) {\r\n    local_c.nLength = 0xc;\r\n    local_c.lpSecurityDescriptor = (LPVOID)0x0;\r\n    local_c.bInheritHandle = 0;\r\n    hObject = CreateFileA(lpFileName,0x80000000,3,&local_c,3,0x80,(HANDLE)0x0);\r\n    if (hObject != (HANDLE)0xffffffff) {\r\n      CloseHandle(hObject);\r\n      bVar2 = true;\r\n      goto LAB_0046175f;\r\n    }\r\n  }\r\n  bVar2 = false;\r\nLAB_0046175f:\r\n  if (bVar2) {\r\n    return false;\r\n  }\r\n  uVar3 = FUN_004ef320(lpFileName,param_3);\r\n  *(uint *)(param_1 + 0x108) = uVar3;\r\n  return uVar3 < 0x80000000;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00459d30",
+      "name": "FUN_00459d30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00459dc0",
+      "name": "FUN_00459dc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000002",
+      "name": "CreateFileA"
+    },
+    {
+      "addr": "EXTERNAL:00000005",
+      "name": "CloseHandle"
+    },
+    {
+      "addr": "004ef320",
+      "name": "FUN_004ef320"
+    }
+  ],
+  "data_refs": []
+}

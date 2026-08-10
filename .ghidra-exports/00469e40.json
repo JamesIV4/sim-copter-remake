@@ -1,0 +1,19 @@
+{
+  "address": "00469e40",
+  "name": "FUN_00469e40",
+  "signature": "undefined FUN_00469e40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00469e40(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int *piVar3;\r\n  \r\n  iVar2 = 0x13a;\r\n  *(undefined4 *)(param_1 + 0x13b8) = 0;\r\n  piVar3 = (int *)(param_1 + 0x9e0);\r\n  do {\r\n    *(int *)(param_1 + 0xc + iVar2 * 4) = iVar2;\r\n    iVar2 = iVar2 + -1;\r\n    *piVar3 = iVar2;\r\n    piVar3[0x13b] = 1;\r\n    piVar3[0x275] = piVar3[0x276] + 1;\r\n    piVar3 = piVar3 + -1;\r\n  } while (0 < iVar2);\r\n  iVar2 = 0x1000;\r\n  *(undefined4 *)(param_1 + 0x9e4) = 0;\r\n  *(undefined4 *)(param_1 + 0x53bc) = 0;\r\n  piVar3 = (int *)(param_1 + 0x53b8);\r\n  do {\r\n    iVar1 = iVar2 + 200;\r\n    iVar2 = iVar2 + -1;\r\n    *piVar3 = piVar3[1] + (int)(10000 / (longlong)iVar1);\r\n    piVar3 = piVar3 + -1;\r\n  } while (0 < iVar2);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00469f70",
+      "name": "FUN_00469f70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

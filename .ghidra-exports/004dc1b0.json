@@ -1,0 +1,24 @@
+{
+  "address": "004dc1b0",
+  "name": "trans_lang_lang",
+  "signature": "undefined __cdecl trans_lang_lang(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _trans_lang_lang\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nundefined2 __cdecl trans_lang_lang(char *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  iVar3 = 99;\r\n  iVar4 = 0;\r\n  do {\r\n    iVar1 = (iVar4 + iVar3) / 2;\r\n    iVar2 = __strcmpi(param_1,*(char **)(iVar1 * 8 + 0x507af8));\r\n    if (iVar2 == 0) {\r\n      return *(undefined2 *)(iVar1 * 8 + 0x507afc);\r\n    }\r\n    if (iVar2 < 0) {\r\n      iVar3 = iVar1;\r\n      iVar1 = iVar4;\r\n    }\r\n    iVar4 = iVar1;\r\n  } while (iVar1 - iVar3 != -1);\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e1630",
+      "name": "__strcmpi"
+    }
+  ],
+  "data_refs": []
+}

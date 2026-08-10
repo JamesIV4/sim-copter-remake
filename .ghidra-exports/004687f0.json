@@ -1,0 +1,24 @@
+{
+  "address": "004687f0",
+  "name": "FUN_004687f0",
+  "signature": "undefined FUN_004687f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004687f0(undefined4 *param_1)\r\n\r\n{\r\n  char cVar1;\r\n  code *pcVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  char *pcVar8;\r\n  undefined2 *puVar9;\r\n  int unaff_ESI;\r\n  char *pcVar10;\r\n  char *pcVar11;\r\n  int unaff_retaddr;\r\n  int local_c [3];\r\n  \r\n  pcVar2 = *(code **)*param_1;\r\n  iVar6 = 0;\r\n  (*pcVar2)(local_c,4);\r\n  iVar7 = unaff_retaddr;\r\n  if (0 < unaff_ESI) {\r\n    do {\r\n      iVar6 = iVar6 + 1;\r\n      (*pcVar2)(iVar7,0x20);\r\n      iVar7 = iVar7 + 0x2e;\r\n    } while (iVar6 < unaff_ESI);\r\n  }\r\n  iVar7 = 0;\r\n  if (0 < unaff_ESI) {\r\n    iVar6 = unaff_retaddr + 0x20;\r\n    do {\r\n      iVar7 = iVar7 + 1;\r\n      (*pcVar2)(iVar6,2);\r\n      iVar6 = iVar6 + 0x2e;\r\n    } while (iVar7 < unaff_ESI);\r\n  }\r\n  iVar7 = 0;\r\n  if (0 < unaff_ESI) {\r\n    iVar6 = unaff_retaddr + 0x22;\r\n    do {\r\n      iVar7 = iVar7 + 1;\r\n      (*pcVar2)(iVar6,4);\r\n      iVar6 = iVar6 + 0x2e;\r\n    } while (iVar7 < unaff_ESI);\r\n  }\r\n  iVar7 = 0;\r\n  if (0 < unaff_ESI) {\r\n    iVar6 = unaff_retaddr + 0x26;\r\n    do {\r\n      iVar7 = iVar7 + 1;\r\n      (*pcVar2)(iVar6,4);\r\n      iVar6 = iVar6 + 0x2e;\r\n    } while (iVar7 < unaff_ESI);\r\n  }\r\n  iVar7 = 0;\r\n  if (0 < unaff_ESI) {\r\n    iVar6 = unaff_retaddr + 0x2a;\r\n    do {\r\n      iVar7 = iVar7 + 1;\r\n      (*pcVar2)(iVar6,4);\r\n      iVar6 = iVar6 + 0x2e;\r\n    } while (iVar7 < unaff_ESI);\r\n  }\r\n  uVar3 = 0;\r\n  pcVar8 = (char *)&DAT_00590ae1;\r\n  local_c[0] = 0;\r\n  puVar9 = (undefined2 *)(unaff_retaddr + 0x20);\r\n  iVar7 = 0;\r\n  do {\r\n    *(undefined2 *)(DAT_00591d88 + local_c[0]) = *puVar9;\r\n    if (*(short *)(DAT_00591d88 + local_c[0]) == 0) {\r\n      uVar4 = 0xffffffff;\r\n      pcVar10 = s_Ocean_004fa0ec;\r\n      do {\r\n        pcVar11 = pcVar10;\r\n        if (uVar4 == 0) break;\r\n        uVar4 = uVar4 - 1;\r\n        pcVar11 = pcVar10 + 1;\r\n        cVar1 = *pcVar10;\r\n        pcVar10 = pcVar11;\r\n      } while (cVar1 != '\\0');\r\n      uVar4 = ~uVar4;\r\n      pcVar10 = pcVar11 + -uVar4;\r\n      pcVar11 = pcVar8;\r\n      for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *(undefined4 *)pcVar11 = *(undefined4 *)pcVar10;\r\n        pcVar10 = pcVar10 + 4;\r\n        pcVar11 = pcVar11 + 4;\r\n      }\r\n      for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *pcVar11 = *pcVar10;\r\n        pcVar10 = pcVar10 + 1;\r\n        pcVar11 = pcVar11 + 1;\r\n      }\r\n      pcVar8[-1] = '\\x05';\r\n    }\r\n    else {\r\n      FUN_00467060(pcVar8,1000,\r\n                   CONCAT22((short)((uint)uVar3 >> 0x10),*(short *)(DAT_00591d88 + local_c[0])));\r\n      iVar6 = -1;\r\n      pcVar10 = pcVar8;\r\n      do {\r\n        if (iVar6 == 0) break;\r\n        iVar6 = iVar6 + -1;\r\n        cVar1 = *pcVar10;\r\n        pcVar10 = pcVar10 + 1;\r\n      } while (cVar1 != '\\0');\r\n      pcVar8[-1] = ~(byte)iVar6 - 1;\r\n    }\r\n    pcVar8 = pcVar8 + 0x20;\r\n    *(undefined4 *)(DAT_00590f70 + iVar7) = *(undefined4 *)(puVar9 + 3);\r\n    local_c[0] = local_c[0] + 2;\r\n    *(undefined4 *)(DAT_00591a7c + iVar7) = *(undefined4 *)(puVar9 + 1);\r\n    uVar3 = *(undefined4 *)(puVar9 + 5);\r\n    *(undefined4 *)(DAT_005910a8 + iVar7) = uVar3;\r\n    puVar9 = puVar9 + 0x17;\r\n    iVar7 = iVar7 + 4;\r\n    if (7 < local_c[0]) {\r\n      return;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00468970",
+      "name": "FUN_00468970",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00467060",
+      "name": "FUN_00467060"
+    }
+  ],
+  "data_refs": []
+}

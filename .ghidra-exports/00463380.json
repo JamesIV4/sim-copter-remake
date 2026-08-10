@@ -1,0 +1,40 @@
+{
+  "address": "00463380",
+  "name": "FUN_00463380",
+  "signature": "undefined FUN_00463380(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nostream * FUN_00463380(ostream *param_1,int param_2)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  char *_Format;\r\n  char local_50 [80];\r\n  \r\n  iVar1 = *(int *)(param_2 + 0xc);\r\n  if (*(int *)(param_2 + 0xc) == 0) {\r\n    iVar1 = DAT_004f86d4;\r\n  }\r\n  switch(iVar1) {\r\n  case 2:\r\n  case 5:\r\n  case 6:\r\n  case 0xe:\r\n  case 0xf:\r\n  case 0x10:\r\n  case 0x22:\r\n  case 0x25:\r\n  case 0x26:\r\n    uVar2 = FUN_00462b40();\r\n    uVar2 = FUN_00462a10(uVar2);\r\n    uVar2 = FUN_00462920(uVar2);\r\n    _Format = s__2u__2u__2u_004f9f48;\r\n    break;\r\n  case 3:\r\n  case 4:\r\n  case 0x12:\r\n  case 0x14:\r\n  case 0x15:\r\n  case 0x20:\r\n  case 0x21:\r\n  case 0x23:\r\n  case 0x24:\r\n    uVar2 = FUN_00462b40();\r\n    uVar2 = FUN_00462a10(uVar2);\r\n    uVar2 = FUN_00462920(uVar2);\r\n    goto LAB_00463458;\r\n  case 7:\r\n  case 8:\r\n  case 10:\r\n    uVar2 = FUN_00462b40();\r\n    uVar2 = FUN_00462a10(uVar2);\r\n    uVar2 = FUN_00462920(uVar2);\r\n    _Format = s__2u__2u__2u_004f9f3c;\r\n    break;\r\n  case 9:\r\n  case 0xb:\r\n  case 0x16:\r\n  case 0x17:\r\n    uVar2 = FUN_00462920();\r\n    uVar2 = FUN_00462a10(uVar2);\r\n    uVar2 = FUN_00462b40(uVar2);\r\nLAB_00463458:\r\n    _Format = s__2u__2u__2u_004f9f30;\r\n    break;\r\n  default:\r\n    uVar2 = FUN_00462b40();\r\n    uVar2 = FUN_00462a10(uVar2);\r\n    uVar2 = FUN_00462920(uVar2);\r\n    _Format = s__2u__2u__2u_004f9f48;\r\n    break;\r\n  case -1:\r\n  case 0:\r\n  case 1:\r\n    uVar2 = FUN_00462b40();\r\n    uVar2 = FUN_00462920(uVar2);\r\n    uVar2 = FUN_00462a10(uVar2);\r\n    _Format = s__2u__2u__2u_004f9f48;\r\n  }\r\n  _sprintf(local_50,_Format,uVar2);\r\n  ostream::operator<<(param_1,local_50);\r\n  return param_1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462f70",
+      "name": "FUN_00462f70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00462b40",
+      "name": "FUN_00462b40"
+    },
+    {
+      "addr": "00462a10",
+      "name": "FUN_00462a10"
+    },
+    {
+      "addr": "00462920",
+      "name": "FUN_00462920"
+    },
+    {
+      "addr": "004d3940",
+      "name": "_sprintf"
+    },
+    {
+      "addr": "004d22e0",
+      "name": "operator<<"
+    }
+  ],
+  "data_refs": []
+}

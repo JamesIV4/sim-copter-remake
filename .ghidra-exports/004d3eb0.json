@@ -1,0 +1,54 @@
+{
+  "address": "004d3eb0",
+  "name": "FID_conflict:__wfopen",
+  "signature": "FILE * __cdecl FID_conflict:__wfopen(char * _Filename, char * _Mode)",
+  "calling_convention": "__cdecl",
+  "return_type": "FILE *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    __wfopen\r\n    _fopen\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nFILE * __cdecl FID_conflict___wfopen(char *_Filename,char *_Mode)\r\n\r\n{\r\n  FILE *pFVar1;\r\n  \r\n  pFVar1 = __fsopen(_Filename,_Mode,0x40);\r\n  return pFVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00495700",
+      "name": "FUN_00495700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463860",
+      "name": "FUN_00463860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463b40",
+      "name": "FUN_00463b40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004654c0",
+      "name": "FUN_004654c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00463bb0",
+      "name": "FUN_00463bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ce320",
+      "name": "FUN_004ce320",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0040ed90",
+      "name": "FUN_0040ed90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d3e70",
+      "name": "__fsopen"
+    }
+  ],
+  "data_refs": []
+}

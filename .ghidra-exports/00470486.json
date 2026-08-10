@@ -1,0 +1,13 @@
+{
+  "address": "00470486",
+  "name": "FUN_00470486",
+  "signature": "undefined FUN_00470486(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00470486(uint *param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  int *piVar2;\r\n  \r\n  *param_1 = *param_1 | 2;\r\n  uVar1 = param_1[1];\r\n  piVar2 = (int *)param_1[2];\r\n  do {\r\n    *piVar2 = *piVar2 - param_1[6];\r\n    piVar2[1] = piVar2[1] - param_1[7];\r\n    piVar2[2] = piVar2[2] - param_1[8];\r\n    piVar2 = piVar2 + 3;\r\n    uVar1 = uVar1 - 1;\r\n  } while (uVar1 != 0);\r\n  param_1[6] = 0;\r\n  param_1[7] = 0;\r\n  param_1[8] = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

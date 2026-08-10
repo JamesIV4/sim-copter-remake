@@ -1,0 +1,19 @@
+{
+  "address": "004dd2b0",
+  "name": "siglookup",
+  "signature": "undefined __cdecl siglookup(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    _siglookup\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __cdecl siglookup(int param_1,uint param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  uVar1 = param_2;\r\n  do {\r\n    if (*(int *)(uVar1 + 4) == param_1) break;\r\n    uVar1 = uVar1 + 0xc;\r\n  } while (uVar1 < param_2 + DAT_00507874 * 0xc);\r\n  return -(uint)(*(int *)(uVar1 + 4) == param_1) & uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd0d0",
+      "name": "_raise",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

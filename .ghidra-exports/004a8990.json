@@ -1,0 +1,19 @@
+{
+  "address": "004a8990",
+  "name": "FUN_004a8990",
+  "signature": "undefined FUN_004a8990(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint FUN_004a8990(void)\r\n\r\n{\r\n  if (DAT_0057f9d8 == 0) {\r\n    return 0;\r\n  }\r\n  return (*(int *)(DAT_0057f9d8 + 0x38) == -1) - 1 & DAT_0057f9d8 + 0x38U;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004a3820",
+      "name": "FUN_004a3820",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

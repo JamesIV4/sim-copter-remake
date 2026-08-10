@@ -1,0 +1,18 @@
+{
+  "address": "004caaf0",
+  "name": "FUN_004caaf0",
+  "signature": "undefined FUN_004caaf0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nuint __thiscall FUN_004caaf0(int param_1,int param_2,int param_3)\r\n\r\n{\r\n  int iVar1;\r\n  ushort uVar2;\r\n  byte bVar3;\r\n  ushort uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  \r\n  uVar5 = 0xffffffff;\r\n  switch(*(undefined2 *)(param_3 + 4)) {\r\n  case 0:\r\n    return (uint)(*(int *)(DAT_005040d0 + 4) == 0);\r\n  case 1:\r\n    uVar4 = (ushort)((uint)(*(int *)(*(int *)(DAT_005040d0 + 0xa4) + 0x1c) -\r\n                           *(int *)(DAT_005040d0 + 0x164)) >> 0x10);\r\n    uVar2 = (short)uVar4 >> 0xf;\r\n    uVar5 = 1;\r\n    if (4 < (short)((uVar4 ^ uVar2) - uVar2)) {\r\n      return 0;\r\n    }\r\n    break;\r\n  case 2:\r\n    iVar1 = *(int *)(param_1 + 0x1a0);\r\n    iVar6 = FUN_004c82c0(*(undefined4 *)(iVar1 + 0x18),*(undefined4 *)(iVar1 + 0x1c),\r\n                         *(undefined4 *)(iVar1 + 0x20));\r\n    uVar5 = 1;\r\n    if (4 < (short)((uint)(*(int *)(iVar1 + 0x1c) - iVar6) >> 0x10)) {\r\n      return 0;\r\n    }\r\n    break;\r\n  case 3:\r\n    iVar1 = *(int *)(param_1 + 0x1a0);\r\n    if (iVar1 == 0) {\r\n      bVar3 = 1;\r\n    }\r\n    else {\r\n      bVar3 = 1;\r\n      if (_DAT_0058dc32 <=\r\n          ABS(((double)*(int *)(param_1 + 0x11a) - (double)*(int *)(iVar1 + 0x20)) * _DAT_004f5038)\r\n          + ABS(((double)*(int *)(param_1 + 0x112) - (double)*(int *)(iVar1 + 0x18)) * _DAT_004f5038\r\n               )) {\r\n        bVar3 = 0;\r\n      }\r\n    }\r\n    return (uint)bVar3;\r\n  case 4:\r\n    iVar1 = *(int *)(param_2 + 4);\r\n    if (iVar1 == 0) {\r\n      return 0;\r\n    }\r\n    if (*(int *)(DAT_005040d0 + 0xa4) == iVar1) {\r\n      uVar4 = (ushort)((uint)(*(int *)(iVar1 + 0x1c) - *(int *)(DAT_005040d0 + 0x164)) >> 0x10);\r\n      uVar2 = (short)uVar4 >> 0xf;\r\n      uVar5 = 1;\r\n      if (4 < (short)((uVar4 ^ uVar2) - uVar2)) {\r\n        return 0;\r\n      }\r\n    }\r\n    else {\r\n      uVar5 = 1;\r\n    }\r\n  }\r\n  return uVar5;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004c82c0",
+      "name": "FUN_004c82c0"
+    }
+  ],
+  "data_refs": []
+}

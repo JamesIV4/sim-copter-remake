@@ -1,0 +1,39 @@
+{
+  "address": "004cdea0",
+  "name": "FUN_004cdea0",
+  "signature": "undefined FUN_004cdea0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint __thiscall FUN_004cdea0(int param_1,int param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  uint uVar2;\r\n  uint uVar3;\r\n  \r\n  uVar3 = *(int *)(param_1 + 0x10) + *(int *)(param_1 + 0xc);\r\n  uVar2 = *(int *)(param_1 + 0x14) + *(int *)(param_1 + 0xc);\r\n  uVar1 = 0;\r\n  if (uVar3 < uVar2) {\r\n    while (uVar1 = uVar3, *(int *)(uVar1 + 8) != param_2) {\r\n      uVar3 = uVar1 + 0xc;\r\n      if (uVar2 <= uVar1 + 0xc) {\r\n        return 0;\r\n      }\r\n    }\r\n  }\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cd8c0",
+      "name": "FUN_004cd8c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd860",
+      "name": "FUN_004cd860",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd9f0",
+      "name": "FUN_004cd9f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd920",
+      "name": "FUN_004cd920",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004cd990",
+      "name": "FUN_004cd990",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

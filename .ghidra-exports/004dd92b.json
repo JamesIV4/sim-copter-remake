@@ -1,0 +1,26 @@
+{
+  "address": "004dd92b",
+  "name": "__ctrandisp1",
+  "signature": "undefined __ctrandisp1(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __ctrandisp1\r\n   \r\n   Library: Visual Studio */\r\n\r\nvoid __ctrandisp1(undefined4 param_1,undefined4 param_2)\r\n\r\n{\r\n  __fload(param_1,param_2);\r\n  __trandisp1();\r\n  FUN_004dd7f3();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004dd95e",
+      "name": "__fload"
+    },
+    {
+      "addr": "004e1970",
+      "name": "__trandisp1"
+    },
+    {
+      "addr": "004dd7f3",
+      "name": "FUN_004dd7f3"
+    }
+  ],
+  "data_refs": []
+}

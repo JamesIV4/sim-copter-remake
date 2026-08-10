@@ -1,0 +1,24 @@
+{
+  "address": "00401020",
+  "name": "FUN_00401020",
+  "signature": "undefined FUN_00401020(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00401020(ostream *param_1)\r\n\r\n{\r\n  ostream::flush(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2310",
+      "name": "flush"
+    }
+  ],
+  "data_refs": []
+}

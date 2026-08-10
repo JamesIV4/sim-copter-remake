@@ -1,0 +1,28 @@
+{
+  "address": "00446810",
+  "name": "FUN_00446810",
+  "signature": "undefined FUN_00446810(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nuint __fastcall FUN_00446810(int *param_1)\r\n\r\n{\r\n  DWORD DVar1;\r\n  uint uVar2;\r\n  LARGE_INTEGER local_8;\r\n  \r\n  if (*param_1 == 0) {\r\n    QueryPerformanceCounter(&local_8);\r\n    return local_8.s.LowPart;\r\n  }\r\n  if (*param_1 != 1) {\r\n    DVar1 = timeGetTime();\r\n    return DVar1 / 1000;\r\n  }\r\n  uVar2 = timeGetTime();\r\n  return uVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00445800",
+      "name": "FUN_00445800",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

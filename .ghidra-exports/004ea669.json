@@ -1,0 +1,13 @@
+{
+  "address": "004ea669",
+  "name": "FUN_004ea669",
+  "signature": "undefined FUN_004ea669(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined8 FUN_004ea669(undefined4 *param_1,undefined4 *param_2)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 *puVar4;\r\n  undefined4 *puVar5;\r\n  \r\n  for (puVar5 = param_1; puVar5 < param_2; puVar5 = puVar5 + 4) {\r\n    iVar2 = -0x7fffffff;\r\n    puVar3 = puVar5;\r\n    puVar4 = puVar5;\r\n    do {\r\n      if (iVar2 < (int)puVar4[1]) {\r\n        iVar2 = puVar4[1];\r\n        puVar3 = puVar4;\r\n      }\r\n      puVar4 = puVar4 + 4;\r\n    } while (puVar4 <= param_2);\r\n    if (puVar3 != puVar5) {\r\n      uVar1 = *puVar3;\r\n      *puVar3 = *puVar5;\r\n      *puVar5 = uVar1;\r\n      uVar1 = puVar5[1];\r\n      puVar5[1] = puVar3[1];\r\n      puVar3[1] = uVar1;\r\n      uVar1 = puVar5[3];\r\n      puVar5[3] = puVar3[3];\r\n      puVar3[3] = uVar1;\r\n      uVar1 = puVar5[2];\r\n      puVar5[2] = puVar3[2];\r\n      puVar3[2] = uVar1;\r\n    }\r\n  }\r\n  return CONCAT44(param_2,param_1);\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

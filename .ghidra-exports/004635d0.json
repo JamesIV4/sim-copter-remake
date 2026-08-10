@@ -1,0 +1,24 @@
+{
+  "address": "004635d0",
+  "name": "FUN_004635d0",
+  "signature": "undefined FUN_004635d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004635d0(void)\r\n\r\n{\r\n  DAT_0059e6e0 = RegisterWindowMessageA(s_MAXISSIMLABS_004f9f88);\r\n  DAT_004f9f54 = 0;\r\n  DAT_004f9f58 = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000076",
+      "name": "RegisterWindowMessageA"
+    }
+  ],
+  "data_refs": []
+}

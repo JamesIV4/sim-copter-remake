@@ -1,0 +1,24 @@
+{
+  "address": "0046c845",
+  "name": "FUN_0046c845",
+  "signature": "undefined FUN_0046c845(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0046c845(void)\r\n\r\n{\r\n  int iVar1;\r\n  longlong lVar2;\r\n  longlong lVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  undefined4 unaff_ESI;\r\n  int unaff_EDI;\r\n  \r\n  DAT_004fafe0 = unaff_ESI;\r\n  DAT_004fafe4 = FUN_0046c594();\r\n  iVar4 = 4;\r\n  iVar5 = 0;\r\n  do {\r\n    iVar1 = *(int *)(iVar5 + 0x10 + unaff_EDI);\r\n    lVar2 = (longlong)*(int *)(iVar5 + 0x20 + unaff_EDI) * (longlong)DAT_004fc0b8;\r\n    lVar3 = (longlong)iVar1 * (longlong)DAT_004fc0b4;\r\n    *(uint *)(iVar5 + 0x10 + unaff_EDI) =\r\n         ((uint)lVar3 >> 0x10 | (int)((ulonglong)lVar3 >> 0x20) << 0x10) +\r\n         ((uint)lVar2 >> 0x10 | (int)((ulonglong)lVar2 >> 0x20) << 0x10);\r\n    lVar2 = (longlong)*(int *)(iVar5 + 0x20 + unaff_EDI) * (longlong)DAT_004fc0b4;\r\n    lVar3 = (longlong)iVar1 * (longlong)DAT_004fc0b8;\r\n    *(uint *)(iVar5 + 0x20 + unaff_EDI) =\r\n         ((uint)lVar2 >> 0x10 | (int)((ulonglong)lVar2 >> 0x20) << 0x10) -\r\n         ((uint)lVar3 >> 0x10 | (int)((ulonglong)lVar3 >> 0x20) << 0x10);\r\n    iVar5 = iVar5 + 4;\r\n    iVar4 = iVar4 + -1;\r\n  } while (iVar4 != 0);\r\n  return DAT_004fafe4;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046cae4",
+      "name": "FUN_0046cae4",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c594",
+      "name": "FUN_0046c594"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "004d2d50",
+  "name": "init",
+  "signature": "void __thiscall init(ios * this, streambuf * param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    protected: void __thiscall ios::init(class streambuf *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall ios::init(ios *this,streambuf *param_1)\r\n\r\n{\r\n  if ((*(int *)(this + 0x1c) != 0) && (*(undefined4 **)(this + 4) != (undefined4 *)0x0)) {\r\n    (**(code **)**(undefined4 **)(this + 4))(1);\r\n  }\r\n  *(streambuf **)(this + 4) = param_1;\r\n  if (param_1 != (streambuf *)0x0) {\r\n    *(uint *)(this + 8) = *(uint *)(this + 8) & 0xfffffffb;\r\n    return;\r\n  }\r\n  *(uint *)(this + 8) = *(uint *)(this + 8) | 4;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d23d0",
+      "name": "ostream",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

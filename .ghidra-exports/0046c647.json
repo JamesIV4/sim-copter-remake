@@ -1,0 +1,19 @@
+{
+  "address": "0046c647",
+  "name": "FUN_0046c647",
+  "signature": "undefined FUN_0046c647(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 __fastcall FUN_0046c647(undefined4 param_1,int param_2)\r\n\r\n{\r\n  int in_EAX;\r\n  undefined4 uVar1;\r\n  float10 fVar2;\r\n  \r\n  _DAT_004faf4c = in_EAX;\r\n  _DAT_004faf50 = in_EAX >> 0x1f;\r\n  _DAT_004faf44 = param_2;\r\n  _DAT_004faf48 = param_2 >> 0x1f;\r\n  fVar2 = (float10)fpatan((float10)(longlong)in_EAX / (float10)_DAT_004faf5c,\r\n                          (float10)(longlong)param_2 / (float10)_DAT_004faf5c);\r\n  if (fVar2 < (float10)0) {\r\n    fVar2 = (float10)3.141592653589793 + (float10)3.141592653589793 + fVar2;\r\n  }\r\n  _DAT_004faf54 = (longlong)ROUND(((float10)_DAT_004faf64 * fVar2) / (float10)3.141592653589793);\r\n  uVar1 = DAT_004faf54;\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046cb91",
+      "name": "FUN_0046cb91",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,37 @@
+{
+  "address": "004d28f0",
+  "name": "operator<<",
+  "signature": "ostream * __thiscall operator<<(ostream * this, uchar param_1)",
+  "calling_convention": "__thiscall",
+  "return_type": "ostream *",
+  "parameter_count": 2,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: class ostream & __thiscall ostream::operator<<(unsigned char)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nostream * __thiscall ostream::operator<<(ostream *this,uchar param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  uchar *puVar2;\r\n  int iVar3;\r\n  uint uVar4;\r\n  uchar local_2;\r\n  undefined1 local_1;\r\n  \r\n  iVar3 = opfx(this);\r\n  if (iVar3 != 0) {\r\n    if (*(int *)(this + *(int *)(*(int *)this + 4) + 0x30) == 0) {\r\n      piVar1 = *(int **)(this + *(int *)(*(int *)this + 4) + 4);\r\n      puVar2 = (uchar *)piVar1[7];\r\n      if (puVar2 < (uchar *)piVar1[8]) {\r\n        piVar1[7] = (int)(puVar2 + 1);\r\n        uVar4 = (uint)param_1;\r\n        *puVar2 = param_1;\r\n      }\r\n      else {\r\n        uVar4 = (**(code **)(*piVar1 + 0x1c))(param_1);\r\n      }\r\n      if ((uVar4 == 0xffffffff) &&\r\n         (iVar3 = (**(code **)(**(int **)(this + *(int *)(*(int *)this + 4) + 4) + 0x1c))(param_1),\r\n         iVar3 == -1)) {\r\n        *(uint *)(this + *(int *)(*(int *)this + 4) + 8) =\r\n             *(uint *)(this + *(int *)(*(int *)this + 4) + 8) | 6;\r\n      }\r\n    }\r\n    else {\r\n      local_1 = 0;\r\n      local_2 = param_1;\r\n      writepad(this,&DAT_004f83a8,(char *)&local_2);\r\n    }\r\n    osfx(this);\r\n  }\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00401000",
+      "name": "FUN_00401000",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422c30",
+      "name": "FUN_00422c30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d21a0",
+      "name": "opfx"
+    },
+    {
+      "addr": "004d25e0",
+      "name": "writepad"
+    },
+    {
+      "addr": "004d2220",
+      "name": "osfx"
+    }
+  ],
+  "data_refs": []
+}

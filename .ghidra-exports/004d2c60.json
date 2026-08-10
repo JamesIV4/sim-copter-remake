@@ -1,0 +1,34 @@
+{
+  "address": "004d2c60",
+  "name": "ios",
+  "signature": "undefined __thiscall ios(ios * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "undefined",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    protected: __thiscall ios::ios(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nios * __thiscall ios::ios(ios *this)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  *(undefined ***)this = &PTR_FUN_004f545c;\r\n  *(undefined4 *)(this + 4) = 0;\r\n  *(undefined4 *)(this + 0xc) = 0;\r\n  *(undefined4 *)(this + 0x10) = 0;\r\n  *(undefined4 *)(this + 0x20) = 0;\r\n  *(undefined4 *)(this + 0x30) = 0;\r\n  *(undefined4 *)(this + 0x1c) = 0;\r\n  *(undefined4 *)(this + 0x24) = 0;\r\n  *(undefined4 *)(this + 8) = 4;\r\n  *(undefined4 *)(this + 0x28) = 6;\r\n  this[0x2c] = (ios)0x20;\r\n  *(undefined4 *)(this + 0x34) = 0xffffffff;\r\n  __mtlockinit(this + 0x38);\r\n  iVar1 = DAT_00506d38;\r\n  DAT_00506d38 = DAT_00506d38 + 1;\r\n  if (iVar1 == 0) {\r\n    __mtlockinit(&DAT_005904f8);\r\n  }\r\n  return this;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d32c0",
+      "name": "ostrstream",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d23d0",
+      "name": "ostream",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d24d0",
+      "name": "ostream_withassign",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56c0",
+      "name": "__mtlockinit"
+    }
+  ],
+  "data_refs": []
+}

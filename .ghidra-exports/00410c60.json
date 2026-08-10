@@ -1,0 +1,24 @@
+{
+  "address": "00410c60",
+  "name": "FUN_00410c60",
+  "signature": "undefined FUN_00410c60(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00410c60(undefined1 *param_1)\r\n\r\n{\r\n  undefined1 uVar1;\r\n  undefined1 uVar2;\r\n  undefined1 uVar3;\r\n  undefined1 *puVar4;\r\n  undefined1 *puVar5;\r\n  undefined1 auStack_3e4 [12];\r\n  undefined1 local_3d8 [984];\r\n  \r\n  uVar1 = param_1[2];\r\n  uVar2 = param_1[1];\r\n  uVar3 = *param_1;\r\n  puVar4 = local_3d8;\r\n  do {\r\n    *puVar4 = uVar1;\r\n    puVar5 = puVar4 + 4;\r\n    puVar4[1] = uVar2;\r\n    puVar4[2] = uVar3;\r\n    puVar4[3] = 5;\r\n    puVar4 = puVar5;\r\n  } while (puVar5 < local_3d8 + 0x3b0);\r\n  (**(code **)(*DAT_004f8610 + 0x58))(DAT_004f8610,1,0);\r\n  (**(code **)(*DAT_004f8614 + 0x18))(DAT_004f8614,0,10,0xec,auStack_3e4);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00449cb0",
+      "name": "FUN_00449cb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00449280",
+      "name": "FUN_00449280",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

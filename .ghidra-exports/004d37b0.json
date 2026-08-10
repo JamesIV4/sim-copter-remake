@@ -1,0 +1,42 @@
+{
+  "address": "004d37b0",
+  "name": "FUN_004d37b0",
+  "signature": "undefined FUN_004d37b0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_004d37b0(int param_1)\r\n\r\n{\r\n  byte bVar1;\r\n  void *_Buf;\r\n  char *pcVar2;\r\n  uint uVar3;\r\n  char *pcVar4;\r\n  int iVar5;\r\n  uint uVar6;\r\n  \r\n  if (*(int *)(param_1 + 0x4c) == -1) {\r\n    return 0xffffffff;\r\n  }\r\n  if (*(int *)(param_1 + 8) == 0) {\r\n    _Buf = *(void **)(param_1 + 0x18);\r\n    if (*(void **)(param_1 + 0x1c) < _Buf) {\r\n      uVar6 = 0;\r\n    }\r\n    else {\r\n      uVar6 = (int)*(void **)(param_1 + 0x1c) - (int)_Buf;\r\n    }\r\n    if ((uVar6 != 0) && (uVar3 = __write(*(int *)(param_1 + 0x4c),_Buf,uVar6), uVar3 != uVar6)) {\r\n      if (0 < (int)uVar3) {\r\n        if (*(int *)(param_1 + 0x20) != 0) {\r\n          *(int *)(param_1 + 0x1c) = *(int *)(param_1 + 0x1c) - uVar3;\r\n        }\r\n        FID_conflict__memcpy\r\n                  (*(void **)(param_1 + 0x18),(void *)(uVar3 + (int)*(void **)(param_1 + 0x18)),\r\n                   uVar6 - uVar3);\r\n      }\r\n      return 0xffffffff;\r\n    }\r\n    iVar5 = 0;\r\n    pcVar4 = *(char **)(param_1 + 0x28);\r\n    pcVar2 = *(char **)(param_1 + 0x2c);\r\n    *(undefined4 *)(param_1 + 0x18) = 0;\r\n    *(undefined4 *)(param_1 + 0x1c) = 0;\r\n    *(undefined4 *)(param_1 + 0x20) = 0;\r\n    if (pcVar4 < pcVar2) {\r\n      iVar5 = (int)pcVar2 - (int)pcVar4;\r\n    }\r\n    if (0 < iVar5) {\r\n      uVar6 = *(uint *)(param_1 + 0x4c);\r\n      bVar1 = *(byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(uVar6 & 0xffffffe7) >> 3)) + 4 +\r\n                       (uVar6 & 0x1f) * 0x24);\r\n      if ((bVar1 & 0x80) != 0) {\r\n        for (; pcVar4 < pcVar2; pcVar4 = pcVar4 + 1) {\r\n          if (*pcVar4 == '\\n') {\r\n            iVar5 = iVar5 + 1;\r\n          }\r\n        }\r\n        if ((bVar1 & 2) != 0) {\r\n          iVar5 = iVar5 + 1;\r\n        }\r\n      }\r\n      iVar5 = __write(uVar6,(void *)-iVar5,1);\r\n      if (iVar5 == -1) {\r\n        return 0xffffffff;\r\n      }\r\n    }\r\n    *(undefined4 *)(param_1 + 0x24) = 0;\r\n    *(undefined4 *)(param_1 + 0x28) = 0;\r\n    *(undefined4 *)(param_1 + 0x2c) = 0;\r\n    *(undefined4 *)(param_1 + 0xc) = 0xffffffff;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d34d0",
+      "name": "~filebuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d35e0",
+      "name": "overflow",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3670",
+      "name": "underflow",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d7160",
+      "name": "__write"
+    },
+    {
+      "addr": "004d6070",
+      "name": "FID_conflict:_memcpy"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write"
+    }
+  ],
+  "data_refs": []
+}

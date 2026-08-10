@@ -1,0 +1,19 @@
+{
+  "address": "00456330",
+  "name": "FUN_00456330",
+  "signature": "undefined FUN_00456330(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool __thiscall FUN_00456330(int param_1,int param_2,int param_3)\r\n\r\n{\r\n  int iVar1;\r\n  bool bVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  bool bVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  \r\n  iVar1 = *(int *)(param_1 + 8);\r\n  iVar3 = *(int *)(param_1 + 0xc) - iVar1 >> 3;\r\n  iVar6 = 0;\r\n  bVar2 = false;\r\n  bVar5 = false;\r\n  iVar4 = iVar3 + -1;\r\n  if (0 < iVar3) {\r\n    do {\r\n      if ((((*(int *)(iVar1 + 4 + iVar6 * 8) <= param_3) &&\r\n           (param_3 < *(int *)(iVar1 + 4 + iVar4 * 8))) ||\r\n          ((*(int *)(iVar1 + 4 + iVar4 * 8) <= param_3 &&\r\n           (param_3 < *(int *)(iVar1 + 4 + iVar6 * 8))))) &&\r\n         (param_2 < *(int *)(iVar1 + iVar6 * 8) +\r\n                    ((*(int *)(iVar1 + iVar4 * 8) - *(int *)(iVar1 + iVar6 * 8)) *\r\n                    (param_3 - *(int *)(iVar1 + 4 + iVar6 * 8))) /\r\n                    (*(int *)(iVar1 + 4 + iVar4 * 8) - *(int *)(iVar1 + 4 + iVar6 * 8)))) {\r\n        bVar5 = !bVar2;\r\n        bVar2 = bVar5;\r\n      }\r\n      iVar7 = iVar6 + 1;\r\n      iVar4 = iVar6;\r\n      iVar6 = iVar7;\r\n    } while (iVar7 < iVar3);\r\n  }\r\n  return bVar5;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00456280",
+      "name": "FUN_00456280",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,29 @@
+{
+  "address": "00448b40",
+  "name": "FUN_00448b40",
+  "signature": "undefined FUN_00448b40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall\r\nFUN_00448b40(int param_1,int *param_2,int param_3,int param_4,uint param_5,uint param_6,uint param_7\r\n            ,uint param_8)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  int iVar6;\r\n  uint uVar7;\r\n  undefined4 *puVar8;\r\n  uint uVar9;\r\n  uint uVar10;\r\n  undefined4 *puVar11;\r\n  uint uVar12;\r\n  undefined4 *puVar13;\r\n  undefined4 *puVar14;\r\n  \r\n  if (*(int *)(param_1 + 0x38) != 0) {\r\n    puVar1 = (undefined4 *)*param_2;\r\n    iVar5 = (*(code *)*puVar1)();\r\n    if (iVar5 != 0) {\r\n      iVar5 = param_2[5];\r\n      iVar2 = param_2[4];\r\n      iVar6 = *(int *)(param_1 + 0x34);\r\n      iVar3 = *(int *)(iVar6 + 0x448);\r\n      iVar4 = *(int *)(iVar6 + 0x10);\r\n      if (param_7 == 0) {\r\n        param_7 = *(uint *)(param_1 + 0x148);\r\n      }\r\n      if (param_8 == 0) {\r\n        param_8 = *(uint *)(param_1 + 0x14c);\r\n      }\r\n      iVar6 = _SmackToBufferRect_8(*(undefined4 *)(param_1 + 0x38),*(undefined4 *)(iVar6 + 4));\r\n      while (iVar6 != 0) {\r\n        iVar6 = *(int *)(param_1 + 0x38);\r\n        uVar12 = *(int *)(iVar6 + 0x378) + param_3;\r\n        uVar9 = *(int *)(iVar6 + 0x37c) + param_4;\r\n        uVar7 = *(uint *)(iVar6 + 0x380);\r\n        iVar6 = *(int *)(iVar6 + 900);\r\n        uVar10 = uVar12;\r\n        if ((param_5 <= uVar12) || (uVar10 = param_5, param_5 <= uVar12 + uVar7)) {\r\n          if (param_7 < uVar12 + uVar7) {\r\n            if (param_7 < uVar10) goto LAB_00448c91;\r\n            uVar7 = param_7 - uVar10;\r\n          }\r\n          uVar12 = uVar9;\r\n          if ((param_6 <= uVar9) || (uVar12 = param_6, param_6 <= uVar9 + iVar6)) {\r\n            if (param_8 < uVar9 + iVar6) {\r\n              if (param_8 < uVar12) goto LAB_00448c91;\r\n              iVar6 = param_8 - uVar12;\r\n            }\r\n            puVar8 = (undefined4 *)(param_3 + param_4 * iVar5 + iVar2 + uVar12 * iVar5 + uVar10);\r\n            puVar11 = (undefined4 *)(iVar3 + uVar12 * iVar4 + uVar10);\r\n            while (iVar6 != 0) {\r\n              puVar13 = puVar11;\r\n              puVar14 = puVar8;\r\n              for (uVar10 = uVar7 >> 2; uVar10 != 0; uVar10 = uVar10 - 1) {\r\n                *puVar14 = *puVar13;\r\n                puVar13 = puVar13 + 1;\r\n                puVar14 = puVar14 + 1;\r\n              }\r\n              for (uVar10 = uVar7 & 3; uVar10 != 0; uVar10 = uVar10 - 1) {\r\n                *(undefined1 *)puVar14 = *(undefined1 *)puVar13;\r\n                puVar13 = (undefined4 *)((int)puVar13 + 1);\r\n                puVar14 = (undefined4 *)((int)puVar14 + 1);\r\n              }\r\n              puVar8 = (undefined4 *)((int)puVar8 + iVar5);\r\n              puVar11 = (undefined4 *)((int)puVar11 + iVar4);\r\n            }\r\n          }\r\n        }\r\nLAB_00448c91:\r\n        iVar6 = _SmackToBufferRect_8\r\n                          (*(undefined4 *)(param_1 + 0x38),\r\n                           *(undefined4 *)(*(int *)(param_1 + 0x34) + 4));\r\n      }\r\n      (*(code *)puVar1[1])();\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00448560",
+      "name": "FUN_00448560",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00448840",
+      "name": "FUN_00448840",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000de",
+      "name": "_SmackToBufferRect@8"
+    }
+  ],
+  "data_refs": []
+}

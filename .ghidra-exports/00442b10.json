@@ -1,0 +1,60 @@
+{
+  "address": "00442b10",
+  "name": "FUN_00442b10",
+  "signature": "undefined FUN_00442b10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00442b10(undefined4 *param_1)\r\n\r\n{\r\n  int iVar1;\r\n  int *piVar2;\r\n  undefined4 uVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  int *piVar8;\r\n  int iStack_8;\r\n  undefined1 auStack_4 [4];\r\n  \r\n  iVar1 = *(int *)((int)param_1 + 0x11e);\r\n  *param_1 = &PTR_LAB_004f2608;\r\n  if (iVar1 != 0) {\r\n    FUN_0044fbb0();\r\n    FUN_004d29a0(iVar1);\r\n    *(undefined4 *)((int)param_1 + 0x11e) = 0;\r\n  }\r\n  if (*(int **)((int)param_1 + 0x11a) != (int *)0x0) {\r\n    (**(code **)(**(int **)((int)param_1 + 0x11a) + 0x30))();\r\n    if (*(undefined4 **)((int)param_1 + 0x11a) != (undefined4 *)0x0) {\r\n      (**(code **)**(undefined4 **)((int)param_1 + 0x11a))(1);\r\n    }\r\n    *(undefined4 *)((int)param_1 + 0x11a) = 0;\r\n  }\r\n  FUN_00404a20();\r\n  iVar1 = param_1[0x1f];\r\n  (**(code **)(iVar1 + 0x20))(auStack_4);\r\n  (**(code **)(iVar1 + 0x28))(iStack_8,(int)(iStack_8 + (iStack_8 >> 0x1f & 3U)) >> 2,0x9c4);\r\n  (**(code **)(iVar1 + 0xc))();\r\n  if (*(int *)(param_1[0x1e] + 4) != 0) {\r\n    if (param_1[0x1d] != 0) {\r\n      FUN_004d29a0(param_1[0x1d]);\r\n    }\r\n    uVar3 = FUN_004d28b0(*(int *)(param_1[0x1e] + 4) + 1);\r\n    param_1[0x1d] = uVar3;\r\n    uVar5 = ((undefined4 *)param_1[0x1e])[1];\r\n    if (uVar5 != 0) {\r\n      puVar6 = *(undefined4 **)param_1[0x1e];\r\n      puVar7 = (undefined4 *)param_1[0x1d];\r\n      for (uVar4 = uVar5 >> 2; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n        *puVar7 = *puVar6;\r\n        puVar6 = puVar6 + 1;\r\n        puVar7 = puVar7 + 1;\r\n      }\r\n      for (uVar5 = uVar5 & 3; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n        *(undefined1 *)puVar7 = *(undefined1 *)puVar6;\r\n        puVar6 = (undefined4 *)((int)puVar6 + 1);\r\n        puVar7 = (undefined4 *)((int)puVar7 + 1);\r\n      }\r\n    }\r\n    *(undefined1 *)(*(int *)(param_1[0x1e] + 4) + param_1[0x1d]) = 0;\r\n    FUN_004d49b0(param_1[0x1d]);\r\n  }\r\n  FUN_00460cd0();\r\n  FUN_004d29a0(*(undefined4 *)((int)param_1 + 0x12e));\r\n  piVar2 = *(int **)((int)param_1 + 0x126);\r\n  for (piVar8 = *(int **)((int)param_1 + 0x122); piVar8 != piVar2; piVar8 = piVar8 + 2) {\r\n    FUN_00401ed0();\r\n    if (*piVar8 != 0) {\r\n      FUN_004d29a0(*piVar8);\r\n    }\r\n  }\r\n  FUN_004d29a0(*(undefined4 *)((int)param_1 + 0x122));\r\n  FUN_0041d700();\r\n  *(int *)(param_1[0x1e] + 0xc) = *(int *)(param_1[0x1e] + 0xc) + -1;\r\n  iVar1 = param_1[0x1e];\r\n  if ((*(int *)(iVar1 + 0xc) == 0) && (iVar1 != 0)) {\r\n    FUN_00406180();\r\n    FUN_004d29a0(iVar1);\r\n  }\r\n  if (param_1[0x1d] != 0) {\r\n    FUN_004d29a0(param_1[0x1d]);\r\n  }\r\n  FUN_00404710();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00442af0",
+      "name": "FUN_00442af0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0044fbb0",
+      "name": "FUN_0044fbb0"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00404a20",
+      "name": "FUN_00404a20"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "004d49b0",
+      "name": "FUN_004d49b0"
+    },
+    {
+      "addr": "00460cd0",
+      "name": "FUN_00460cd0"
+    },
+    {
+      "addr": "00401ed0",
+      "name": "FUN_00401ed0"
+    },
+    {
+      "addr": "0041d700",
+      "name": "FUN_0041d700"
+    },
+    {
+      "addr": "00406180",
+      "name": "FUN_00406180"
+    },
+    {
+      "addr": "00404710",
+      "name": "FUN_00404710"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,34 @@
+{
+  "address": "0046fcd8",
+  "name": "FUN_0046fcd8",
+  "signature": "undefined FUN_0046fcd8(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0046fcd8(void)\r\n\r\n{\r\n  longlong lVar1;\r\n  int iVar2;\r\n  int unaff_EBX;\r\n  int *piVar3;\r\n  int *piVar4;\r\n  \r\n  iVar2 = *(int *)(unaff_EBX + 0x14);\r\n  lVar1 = 0;\r\n  piVar3 = *(int **)(unaff_EBX + 0x18) + (iVar2 + -1) * 5;\r\n  piVar4 = *(int **)(unaff_EBX + 0x18);\r\n  do {\r\n    lVar1 = (longlong)(*piVar3 - *piVar4) * (longlong)(piVar3[1] + piVar4[1]) + lVar1;\r\n    _DAT_004fc194 = (undefined4)lVar1;\r\n    DAT_004fc198 = (undefined4)((ulonglong)lVar1 >> 0x20);\r\n    iVar2 = iVar2 + -1;\r\n    piVar3 = piVar4;\r\n    piVar4 = piVar4 + 5;\r\n  } while (iVar2 != 0);\r\n  if (lVar1 < 0) {\r\n    *(undefined4 *)(unaff_EBX + 0x14) = 0;\r\n    lVar1 = CONCAT44(DAT_004fc198,_DAT_004fc194);\r\n  }\r\n  DAT_004fc198 = (undefined4)((ulonglong)lVar1 >> 0x20);\r\n  _DAT_004fc194 = (undefined4)lVar1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046f979",
+      "name": "FUN_0046f979",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046f979",
+      "name": "FUN_0046f979",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046fbbb",
+      "name": "FUN_0046fbbb",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0046fc4d",
+      "name": "FUN_0046fc4d",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

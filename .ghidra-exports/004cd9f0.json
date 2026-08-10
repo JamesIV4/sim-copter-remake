@@ -1,0 +1,29 @@
+{
+  "address": "004cd9f0",
+  "name": "FUN_004cd9f0",
+  "signature": "undefined FUN_004cd9f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004cd9f0(int param_1,undefined4 param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  piVar1 = (int *)(param_1 + 0x114);\r\n  if (*(int *)(param_1 + 0x110) == 0) {\r\n    *piVar1 = -0x31;\r\n  }\r\n  else {\r\n    *piVar1 = 0;\r\n  }\r\n  if (*piVar1 == 0) {\r\n    iVar2 = FUN_004cdea0(param_2);\r\n    if (iVar2 == 0) {\r\n      *piVar1 = -99;\r\n      return;\r\n    }\r\n    *(undefined4 *)(iVar2 + 8) = 0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004cf200",
+      "name": "FUN_004cf200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d1a00",
+      "name": "FUN_004d1a00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004cdea0",
+      "name": "FUN_004cdea0"
+    }
+  ],
+  "data_refs": []
+}

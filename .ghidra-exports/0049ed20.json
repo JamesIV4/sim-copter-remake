@@ -1,0 +1,28 @@
+{
+  "address": "0049ed20",
+  "name": "FUN_0049ed20",
+  "signature": "undefined FUN_0049ed20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_0049ed20(int param_1,int param_2)\r\n\r\n{\r\n  uint uVar1;\r\n  int iVar2;\r\n  int local_c [3];\r\n  \r\n  iVar2 = FUN_0046c49d(param_2 - *(int *)(param_1 + 0xfb),0x8000);\r\n  local_c[1] = 0;\r\n  local_c[2] = FUN_0046c49d(**(undefined4 **)(param_1 + 0x103),0xffff0000);\r\n  local_c[0] = *(int *)(*(int *)(param_1 + 0x103) + 8);\r\n  FUN_004bee60(local_c);\r\n  uVar1 = *(uint *)(param_1 + 4);\r\n  if ((uVar1 & 0x10) == 0) {\r\n    if (((uVar1 & 0x40) != 0) &&\r\n       (iVar2 = *(int *)(param_1 + 0xab) - iVar2, *(int *)(param_1 + 0xab) = iVar2, iVar2 < 1)) {\r\n      *(undefined4 *)(param_1 + 0xab) = 0;\r\n      *(uint *)(param_1 + 4) = uVar1 & 0xffffff8f;\r\n    }\r\n  }\r\n  else {\r\n    iVar2 = *(int *)(param_1 + 0xab) + iVar2;\r\n    *(int *)(param_1 + 0xab) = iVar2;\r\n    if (0xd0000 < iVar2) {\r\n      *(undefined4 *)(param_1 + 0xab) = 0xd0000;\r\n      *(undefined4 *)(param_1 + 0xd3) = 0x40000;\r\n      *(uint *)(param_1 + 4) = uVar1 & 0xffffffef;\r\n      *(uint *)(param_1 + 4) = uVar1 & 0xffffffef | 0x20;\r\n    }\r\n  }\r\n  local_c[0] = FUN_0046c49d(local_c[0],*(undefined4 *)(param_1 + 0xab));\r\n  iVar2 = FUN_0046c49d(local_c[2],*(undefined4 *)(param_1 + 0xab));\r\n  *(int *)(param_1 + 0x30) = *(int *)(param_1 + 0x30) + local_c[0];\r\n  *(int *)(param_1 + 0x38) = *(int *)(param_1 + 0x38) + iVar2;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0049e700",
+      "name": "FUN_0049e700",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046c49d",
+      "name": "FUN_0046c49d"
+    },
+    {
+      "addr": "004bee60",
+      "name": "FUN_004bee60"
+    }
+  ],
+  "data_refs": []
+}

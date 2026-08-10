@@ -1,0 +1,47 @@
+{
+  "address": "004be910",
+  "name": "FUN_004be910",
+  "signature": "undefined FUN_004be910(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004be910(undefined4 param_1,undefined4 param_2,int param_3,int param_4,undefined4 param_5)\r\n\r\n{\r\n  if ((((param_3 < 0x80) && (-1 < param_3)) && (param_4 < 0x80)) && (-1 < param_4)) {\r\n    switch(param_1) {\r\n    case 1:\r\n      FUN_004b9480(param_1,param_2,param_3,param_4,param_5);\r\n      return;\r\n    case 2:\r\n      FUN_004b8f30(param_1,param_2,param_3,param_4,param_5);\r\n      return;\r\n    case 3:\r\n      FUN_004b9e10(param_1,param_2,param_3,param_4,param_5);\r\n      return;\r\n    case 4:\r\n      FUN_004b9e10(param_1,param_2,param_3,param_4,param_5);\r\n    }\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0048a580",
+      "name": "FUN_0048a580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048a580",
+      "name": "FUN_0048a580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048a580",
+      "name": "FUN_0048a580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0048a580",
+      "name": "FUN_0048a580",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004b9480",
+      "name": "FUN_004b9480"
+    },
+    {
+      "addr": "004b8f30",
+      "name": "FUN_004b8f30"
+    },
+    {
+      "addr": "004b9e10",
+      "name": "FUN_004b9e10"
+    }
+  ],
+  "data_refs": []
+}

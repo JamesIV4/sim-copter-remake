@@ -1,0 +1,40 @@
+{
+  "address": "0042d030",
+  "name": "FUN_0042d030",
+  "signature": "undefined FUN_0042d030(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_0042d030(int param_1)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 uVar2;\r\n  undefined1 local_104 [260];\r\n  \r\n  FUN_00404930(1);\r\n  if (*(int *)(param_1 + 0x18a) == 0) {\r\n    FUN_00432ab0(10,0,PTR_s_sans_m_3_def_004f8d68,local_104);\r\n    iVar1 = FUN_004d28b0(0x54);\r\n    if (iVar1 == 0) {\r\n      *(undefined4 *)(param_1 + 0x18a) = 0;\r\n    }\r\n    else {\r\n      uVar2 = FUN_00438e00(local_104,1);\r\n      *(undefined4 *)(param_1 + 0x18a) = uVar2;\r\n    }\r\n    (**(code **)**(undefined4 **)(param_1 + 0x18a))();\r\n  }\r\n  if (*(int *)(param_1 + 0x18e) == 0) {\r\n    FUN_00432ab0(10,0,PTR_s_sans_l_3_def_004f8d6c,local_104);\r\n    iVar1 = FUN_004d28b0(0x54);\r\n    if (iVar1 == 0) {\r\n      *(undefined4 *)(param_1 + 0x18e) = 0;\r\n    }\r\n    else {\r\n      uVar2 = FUN_00438e00(local_104,1);\r\n      *(undefined4 *)(param_1 + 0x18e) = uVar2;\r\n    }\r\n    (**(code **)**(undefined4 **)(param_1 + 0x18e))();\r\n  }\r\n  if (*(int *)(param_1 + 0x186) == 0) {\r\n    FUN_00432ab0(10,0,PTR_s_sans_s_3_def_004f8d70,local_104);\r\n    iVar1 = FUN_004d28b0(0x54);\r\n    if (iVar1 == 0) {\r\n      *(undefined4 *)(param_1 + 0x186) = 0;\r\n    }\r\n    else {\r\n      uVar2 = FUN_00438e00(local_104,1);\r\n      *(undefined4 *)(param_1 + 0x186) = uVar2;\r\n    }\r\n    (**(code **)**(undefined4 **)(param_1 + 0x186))();\r\n  }\r\n  iVar1 = *(int *)(param_1 + 0x16e);\r\n  if (iVar1 == -1) {\r\n    iVar1 = 0;\r\n  }\r\n  FUN_0042b840(iVar1);\r\n  return *(undefined4 *)(param_1 + 0x40);\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0042a7d0",
+      "name": "FUN_0042a7d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00404930",
+      "name": "FUN_00404930"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00438e00",
+      "name": "FUN_00438e00"
+    },
+    {
+      "addr": "0042b840",
+      "name": "FUN_0042b840"
+    }
+  ],
+  "data_refs": []
+}

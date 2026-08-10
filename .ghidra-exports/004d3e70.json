@@ -1,0 +1,32 @@
+{
+  "address": "004d3e70",
+  "name": "__fsopen",
+  "signature": "FILE * __cdecl __fsopen(char * _Filename, char * _Mode, int _ShFlag)",
+  "calling_convention": "__cdecl",
+  "return_type": "FILE *",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __fsopen\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nFILE * __cdecl __fsopen(char *_Filename,char *_Mode,int _ShFlag)\r\n\r\n{\r\n  FILE *_File;\r\n  FILE *pFVar1;\r\n  \r\n  _File = (FILE *)FUN_004d8fb0();\r\n  if (_File == (FILE *)0x0) {\r\n    return (FILE *)0x0;\r\n  }\r\n  pFVar1 = __openfile(_Filename,_Mode,_ShFlag,_File);\r\n  __unlock_file(_File);\r\n  return pFVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d3eb0",
+      "name": "FID_conflict:__wfopen",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d8fb0",
+      "name": "FUN_004d8fb0"
+    },
+    {
+      "addr": "004d8da0",
+      "name": "__openfile"
+    },
+    {
+      "addr": "004d6530",
+      "name": "__unlock_file"
+    }
+  ],
+  "data_refs": []
+}

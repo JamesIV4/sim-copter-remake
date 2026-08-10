@@ -1,0 +1,33 @@
+{
+  "address": "004bebd0",
+  "name": "FUN_004bebd0",
+  "signature": "undefined FUN_004bebd0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004bebd0(int param_1,byte *param_2)\r\n\r\n{\r\n  byte bVar1;\r\n  byte bVar2;\r\n  int iVar3;\r\n  byte *pbVar4;\r\n  undefined4 *puVar5;\r\n  undefined4 local_4;\r\n  \r\n  if ((*param_2 & 2) != 0) {\r\n    FUN_004a1a60(param_2);\r\n    bVar1 = *(byte *)(param_1 + 0x2b1);\r\n    bVar2 = ((byte)*(undefined4 *)(param_2 + 0x2c3) ^ bVar1) & 1 ^ bVar1;\r\n    *(byte *)(param_1 + 0x2b1) = bVar2;\r\n    bVar2 = ((char)*(undefined4 *)(param_2 + 0x2c7) * '\\x02' ^ bVar2) & 2 ^ bVar2;\r\n    *(byte *)(param_1 + 0x2b1) = bVar2;\r\n    bVar2 = ((char)*(undefined4 *)(param_2 + 0x2cb) << 2 ^ bVar2) & 4 ^ bVar2;\r\n    *(byte *)(param_1 + 0x2b1) = bVar2;\r\n    bVar2 = ((char)*(undefined4 *)(param_2 + 0x2cf) << 3 ^ bVar2) & 8 ^ bVar2;\r\n    *(byte *)(param_1 + 0x2b1) = bVar2;\r\n    bVar2 = ((char)*(undefined4 *)(param_2 + 0x2d3) << 4 ^ bVar2) & 0x10 ^ bVar2;\r\n    *(byte *)(param_1 + 0x2b1) = bVar2;\r\n    bVar2 = ((char)*(undefined4 *)(param_2 + 0x2d7) << 5 ^ bVar2) & 0x20 ^ bVar2;\r\n    *(byte *)(param_1 + 0x2b1) = bVar2;\r\n    *(byte *)(param_1 + 0x2b1) =\r\n         ((char)*(undefined4 *)(param_2 + 0x2db) << 6 ^ bVar2) & 0x40 ^ bVar2;\r\n    *(uint *)(param_2 + 0x2e3) = (uint)(bVar1 >> 7);\r\n    *(undefined2 *)(param_1 + 299) = *(undefined2 *)(param_2 + 0x13b);\r\n    *(undefined2 *)(param_1 + 0x12d) = *(undefined2 *)(param_2 + 0x13d);\r\n    *(undefined4 *)(param_1 + 0x12f) = *(undefined4 *)(param_2 + 0x13f);\r\n    pbVar4 = param_2 + 0x1ab;\r\n    puVar5 = (undefined4 *)(param_1 + 0x197);\r\n    for (iVar3 = 0x40; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n      *puVar5 = *(undefined4 *)pbVar4;\r\n      pbVar4 = pbVar4 + 4;\r\n      puVar5 = puVar5 + 1;\r\n    }\r\n    *(byte *)(param_1 + 0x297) = param_2[0x2ab];\r\n    *(byte *)(param_1 + 0x298) = param_2[0x2af];\r\n    *(undefined4 *)(param_1 + 0x299) = *(undefined4 *)(param_2 + 0x2b3);\r\n    *(undefined4 *)(param_1 + 0x29d) = *(undefined4 *)(param_2 + 0x2b7);\r\n    *(undefined4 *)(param_1 + 0x2a1) = *(undefined4 *)(param_2 + 699);\r\n    *(undefined4 *)(param_1 + 0x2a5) = *(undefined4 *)(param_2 + 0x2bf);\r\n    *(undefined4 *)(param_1 + 0x14b) = *(undefined4 *)(param_2 + 0x15b);\r\n    *(undefined4 *)(param_1 + 0x14f) = *(undefined4 *)(param_2 + 0x15f);\r\n    *(undefined4 *)(param_1 + 0x153) = *(undefined4 *)(param_2 + 0x163);\r\n    pbVar4 = param_2 + 0x167;\r\n    puVar5 = (undefined4 *)(param_1 + 0x157);\r\n    for (iVar3 = 0x10; iVar3 != 0; iVar3 = iVar3 + -1) {\r\n      *puVar5 = *(undefined4 *)pbVar4;\r\n      pbVar4 = pbVar4 + 4;\r\n      puVar5 = puVar5 + 1;\r\n    }\r\n    iVar3 = *(int *)(param_1 + 0x14);\r\n    if (iVar3 == 0x11c) {\r\n      local_4 = 0;\r\n    }\r\n    else if (iVar3 == 0x11d) {\r\n      local_4 = 1;\r\n    }\r\n    else if (iVar3 == 0x11f) {\r\n      local_4 = 2;\r\n    }\r\n    FUN_004a42f0((int)*(short *)(param_1 + 0x26),local_4,0xffffffff,param_1 + 0x88,\r\n                 (undefined2 *)(param_1 + 0x12d));\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b9c00",
+      "name": "FUN_004b9c00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004babe0",
+      "name": "FUN_004babe0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004a1a60",
+      "name": "FUN_004a1a60"
+    },
+    {
+      "addr": "004a42f0",
+      "name": "FUN_004a42f0"
+    }
+  ],
+  "data_refs": []
+}

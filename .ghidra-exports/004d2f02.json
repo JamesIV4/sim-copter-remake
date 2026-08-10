@@ -1,0 +1,24 @@
+{
+  "address": "004d2f02",
+  "name": "FUN_004d2f02",
+  "signature": "undefined FUN_004d2f02(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d2f02(void)\r\n\r\n{\r\n  int unaff_EBP;\r\n  \r\n  streambuf::~streambuf(*(streambuf **)(unaff_EBP + -0x10));\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d2e90",
+      "name": "~strstreambuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d6cb0",
+      "name": "~streambuf"
+    }
+  ],
+  "data_refs": []
+}

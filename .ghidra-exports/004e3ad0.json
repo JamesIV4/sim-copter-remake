@@ -1,0 +1,34 @@
+{
+  "address": "004e3ad0",
+  "name": "___add_12",
+  "signature": "undefined ___add_12(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___add_12\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid ___add_12(undefined4 *param_1,undefined4 *param_2)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  iVar1 = ___addl(*param_1,*param_2,param_1);\r\n  if (iVar1 != 0) {\r\n    iVar1 = ___addl(param_1[1],1,param_1 + 1);\r\n    if (iVar1 != 0) {\r\n      param_1[2] = param_1[2] + 1;\r\n    }\r\n  }\r\n  iVar1 = ___addl(param_1[1],param_2[1],param_1 + 1);\r\n  if (iVar1 != 0) {\r\n    param_1[2] = param_1[2] + 1;\r\n  }\r\n  ___addl(param_1[2],param_2[2],param_1 + 2);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004e3bc0",
+      "name": "___mtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3bc0",
+      "name": "___mtold12",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3cb0",
+      "name": "$I10_OUTPUT",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e3aa0",
+      "name": "___addl"
+    }
+  ],
+  "data_refs": []
+}

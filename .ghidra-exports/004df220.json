@@ -1,0 +1,29 @@
+{
+  "address": "004df220",
+  "name": "__itoa",
+  "signature": "char * __cdecl __itoa(int _Value, char * _Dest, int _Radix)",
+  "calling_convention": "__cdecl",
+  "return_type": "char *",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __itoa\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nchar * __cdecl __itoa(int _Value,char *_Dest,int _Radix)\r\n\r\n{\r\n  if ((_Radix == 10) && (_Value < 0)) {\r\n    xtoa(_Value,_Dest,10,1);\r\n    return _Dest;\r\n  }\r\n  xtoa(_Value,_Dest,_Radix,0);\r\n  return _Dest;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d6660",
+      "name": "__assert",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dbeb0",
+      "name": "___get_qualified_locale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004df260",
+      "name": "xtoa"
+    }
+  ],
+  "data_refs": []
+}

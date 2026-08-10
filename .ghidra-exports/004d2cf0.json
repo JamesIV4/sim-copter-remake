@@ -1,0 +1,69 @@
+{
+  "address": "004d2cf0",
+  "name": "~ios",
+  "signature": "void __thiscall ~ios(ios * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "void",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: virtual __thiscall ios::~ios(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __thiscall ios::~ios(ios *this)\r\n\r\n{\r\n  *(undefined ***)this = &PTR_FUN_004f545c;\r\n  *(undefined4 *)(this + 0x34) = 0xffffffff;\r\n  DAT_00506d38 = DAT_00506d38 + -1;\r\n  if (DAT_00506d38 == 0) {\r\n    __mtlockterm(&DAT_005904f8);\r\n  }\r\n  __mtlockterm(this + 0x38);\r\n  if ((*(int *)(this + 0x1c) != 0) && (*(undefined4 **)(this + 4) != (undefined4 *)0x0)) {\r\n    (**(code **)**(undefined4 **)(this + 4))(1);\r\n  }\r\n  *(undefined4 *)(this + 4) = 0;\r\n  *(undefined4 *)(this + 8) = 4;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00462f00",
+      "name": "FUN_00462f00",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462f70",
+      "name": "FUN_00462f70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462b70",
+      "name": "FUN_00462b70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00462bc0",
+      "name": "FUN_00462bc0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d23a0",
+      "name": "`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d24a0",
+      "name": "FID_conflict:`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2cd0",
+      "name": "FUN_004d2cd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d3290",
+      "name": "FID_conflict:`scalar_deleting_destructor'",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2a50",
+      "name": "FUN_004d2a50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d2830",
+      "name": "FUN_004d2830",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56d0",
+      "name": "__mtlockterm"
+    }
+  ],
+  "data_refs": []
+}

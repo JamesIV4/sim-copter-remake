@@ -1,0 +1,32 @@
+{
+  "address": "004c13f0",
+  "name": "FUN_004c13f0",
+  "signature": "undefined FUN_004c13f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_004c13f0(undefined4 param_1)\r\n\r\n{\r\n  int iVar1;\r\n  short sVar2;\r\n  undefined4 uVar3;\r\n  \r\n  iVar1 = FUN_00459a80(param_1,0x53544154,&DAT_0058dc18,0x4a);\r\n  if (iVar1 == 0) {\r\n    return 0;\r\n  }\r\n  sVar2 = 0;\r\n  while( true ) {\r\n    uVar3 = DAT_00506444;\r\n    if (sVar2 != 32000) {\r\n      uVar3 = (&DAT_0058e030)[sVar2];\r\n    }\r\n    FUN_004c15d0();\r\n    iVar1 = FUN_00459a80(param_1,0x50455253,uVar3,0x22c);\r\n    if (iVar1 == 0) break;\r\n    sVar2 = sVar2 + 1;\r\n    FUN_004c14b0();\r\n    if (499 < sVar2) {\r\n      FUN_004c15d0();\r\n      iVar1 = FUN_00459a80(param_1,0x41564154,DAT_00506444,0x244);\r\n      if (iVar1 != 0) {\r\n        FUN_004c14b0();\r\n        return 1;\r\n      }\r\n      return 0;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004c11e0",
+      "name": "FUN_004c11e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00459a80",
+      "name": "FUN_00459a80"
+    },
+    {
+      "addr": "004c15d0",
+      "name": "FUN_004c15d0"
+    },
+    {
+      "addr": "004c14b0",
+      "name": "FUN_004c14b0"
+    }
+  ],
+  "data_refs": []
+}

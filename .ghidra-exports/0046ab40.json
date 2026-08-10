@@ -1,0 +1,24 @@
+{
+  "address": "0046ab40",
+  "name": "FUN_0046ab40",
+  "signature": "undefined FUN_0046ab40(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 FUN_0046ab40(void)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int iVar4;\r\n  \r\n  iVar4 = DAT_005bdcb0;\r\n  do {\r\n    if (DAT_004faf34 == 0) {\r\n      DAT_005bdcb0 = iVar4;\r\n      return 1;\r\n    }\r\n    DAT_005bdcb0 = iVar4;\r\n    iVar2 = *(int *)(iVar4 + 8);\r\n    if (iVar2 == 1) {\r\n      iVar2 = *(int *)(iVar4 + 0xc);\r\n      if ((&DAT_005bdcb0)[iVar2] == iVar4) {\r\n        DAT_004faf34 = DAT_004faf34 + -1;\r\n        iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n        (&DAT_005bdcb0)[iVar2] = iVar3;\r\n        *(int *)(iVar3 + 0xc) = iVar2;\r\n      }\r\n    }\r\n    else if (iVar2 == 3) {\r\n      iVar2 = *(int *)(iVar4 + 0xc);\r\n      if ((&DAT_005bdcb0)[iVar2] == iVar4) {\r\n        DAT_004faf34 = DAT_004faf34 + -1;\r\n        iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n        (&DAT_005bdcb0)[iVar2] = iVar3;\r\n        *(int *)(iVar3 + 0xc) = iVar2;\r\n      }\r\n    }\r\n    else {\r\n      if (iVar2 != 4) {\r\n        _DAT_005bdb40 = 0xb;\r\n        return 0;\r\n      }\r\n      iVar2 = *(int *)(iVar4 + 0xc);\r\n      if ((&DAT_005bdcb0)[iVar2] == iVar4) {\r\n        DAT_004faf34 = DAT_004faf34 + -1;\r\n        iVar3 = (&DAT_005bdcb0)[DAT_004faf34];\r\n        (&DAT_005bdcb0)[iVar2] = iVar3;\r\n        *(int *)(iVar3 + 0xc) = iVar2;\r\n      }\r\n    }\r\n    piVar1 = (int *)(iVar4 + 4);\r\n    iVar4 = DAT_005bdcb0;\r\n    if (-1 < *piVar1) {\r\n      FUN_00468570(*piVar1);\r\n      iVar4 = DAT_005bdcb0;\r\n    }\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00468570",
+      "name": "FUN_00468570"
+    }
+  ],
+  "data_refs": []
+}

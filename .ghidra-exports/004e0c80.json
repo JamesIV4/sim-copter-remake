@@ -1,0 +1,68 @@
+{
+  "address": "004e0c80",
+  "name": "_inconsistency",
+  "signature": "void __cdecl _inconsistency(void)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void __cdecl _inconsistency(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl _inconsistency(void)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_14;\r\n  undefined1 *puStack_10;\r\n  undefined *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_14 = *unaff_FS_OFFSET;\r\n  puStack_c = &DAT_004f61f8;\r\n  puStack_10 = &LAB_004da938;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  if (PTR_terminate_00508744 != (undefined *)0x0) {\r\n    local_8 = 1;\r\n    (*(code *)PTR_terminate_00508744)();\r\n    return;\r\n  }\r\n  local_8 = 0xffffffff;\r\n                    /* WARNING: Subroutine does not return */\r\n  terminate();\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9a50",
+      "name": "___InternalCxxFrameHandler",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9e90",
+      "name": "GetRangeOfTrysToCheck",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9e90",
+      "name": "GetRangeOfTrysToCheck",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9f30",
+      "name": "___FrameUnwindToState",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9f30",
+      "name": "___FrameUnwindToState",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004e0c00",
+      "name": "terminate"
+    },
+    {
+      "addr": "004e0ced",
+      "name": "terminate"
+    }
+  ],
+  "data_refs": []
+}

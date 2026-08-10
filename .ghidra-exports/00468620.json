@@ -1,0 +1,24 @@
+{
+  "address": "00468620",
+  "name": "FUN_00468620",
+  "signature": "undefined FUN_00468620(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nuint FUN_00468620(void)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  uVar1 = FUN_004d5f00(0x20000);\r\n  if (uVar1 == 0) {\r\n    return 0;\r\n  }\r\n  if ((uVar1 & 0xffff) != 0) {\r\n    uVar1 = (uVar1 & 0xffff0000) + 0x10000;\r\n  }\r\n  DAT_004fa2ec = DAT_004fa2ec + 0x10000;\r\n  if (DAT_004fa2f4 < DAT_004fa2ec) {\r\n    DAT_004fa2f4 = DAT_004fa2ec;\r\n  }\r\n  _DAT_004fa2f8 = _DAT_004fa2f8 + 0x10000;\r\n  return uVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0046ce50",
+      "name": "FUN_0046ce50",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    }
+  ],
+  "data_refs": []
+}

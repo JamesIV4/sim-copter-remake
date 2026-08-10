@@ -1,0 +1,32 @@
+{
+  "address": "00440020",
+  "name": "FUN_00440020",
+  "signature": "undefined FUN_00440020(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00440020(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  FUN_004d5622();\r\n  uVar1 = __ftol();\r\n  FUN_0040ba90(uVar1);\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00438200",
+      "name": "FUN_00438200",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5622",
+      "name": "FUN_004d5622"
+    },
+    {
+      "addr": "004d39a8",
+      "name": "__ftol"
+    },
+    {
+      "addr": "0040ba90",
+      "name": "FUN_0040ba90"
+    }
+  ],
+  "data_refs": []
+}

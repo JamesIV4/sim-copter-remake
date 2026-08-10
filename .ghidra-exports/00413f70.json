@@ -1,0 +1,36 @@
+{
+  "address": "00413f70",
+  "name": "FUN_00413f70",
+  "signature": "undefined FUN_00413f70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Type propagation algorithm not settling */\r\n\r\nvoid __fastcall FUN_00413f70(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int iVar3;\r\n  int *piVar4;\r\n  int *piVar5;\r\n  int local_24 [8];\r\n  int *local_4;\r\n  \r\n  piVar2 = (int *)(param_1 + 0xcc);\r\n  local_4 = (int *)*piVar2;\r\n  piVar1 = (int *)*local_4;\r\n  if ((int *)*local_4 != local_4) {\r\n    do {\r\n      piVar5 = (int *)*piVar1;\r\n      FUN_00411f30(piVar1);\r\n      piVar1 = piVar5;\r\n    } while (piVar5 != local_4);\r\n  }\r\n  local_24[1] = 0;\r\n  local_24[2] = 0;\r\n  local_24[0] = *piVar2;\r\n  local_24[3] = 0;\r\n  local_24[4] = 0;\r\n  local_24[5] = 0;\r\n  local_24[6] = 0;\r\n  piVar1 = (int *)FUN_00413a50();\r\n  if (piVar1 + 2 != (int *)0x0) {\r\n    piVar5 = local_24;\r\n    piVar4 = piVar1 + 2;\r\n    for (iVar3 = 6; piVar5 = (int *)((int)piVar5 + 4), iVar3 != 0; iVar3 = iVar3 + -1) {\r\n      *piVar4 = *piVar5;\r\n      piVar4 = piVar4 + 1;\r\n    }\r\n  }\r\n  *piVar1 = local_24[0];\r\n  piVar5 = (int *)(local_24[0] + 4);\r\n  piVar1[1] = *piVar5;\r\n  *(int **)*piVar5 = piVar1;\r\n  *piVar5 = (int)piVar1;\r\n  *(int *)(param_1 + 0xd0) = *(int *)(param_1 + 0xd0) + 1;\r\n  local_24[2] = 1;\r\n  local_24[4] = 0;\r\n  local_24[5] = 1;\r\n  local_24[6] = 0;\r\n  local_24[3] = 0x1b;\r\n  FUN_00413b40(local_24,*piVar2,local_24 + 1);\r\n  local_24[2] = 1;\r\n  local_24[5] = 1;\r\n  local_24[0] = *piVar2;\r\n  local_24[6] = 0;\r\n  local_24[3] = 0x48;\r\n  local_24[4] = 2;\r\n  piVar1 = (int *)FUN_00413a50();\r\n  if (piVar1 + 2 != (int *)0x0) {\r\n    piVar5 = local_24;\r\n    piVar4 = piVar1 + 2;\r\n    for (iVar3 = 6; piVar5 = (int *)((int)piVar5 + 4), iVar3 != 0; iVar3 = iVar3 + -1) {\r\n      *piVar4 = *piVar5;\r\n      piVar4 = piVar4 + 1;\r\n    }\r\n  }\r\n  *piVar1 = local_24[0];\r\n  piVar5 = (int *)(local_24[0] + 4);\r\n  piVar1[1] = *piVar5;\r\n  *(int **)*piVar5 = piVar1;\r\n  *piVar5 = (int)piVar1;\r\n  *(int *)(param_1 + 0xd0) = *(int *)(param_1 + 0xd0) + 1;\r\n  local_24[2] = 2;\r\n  local_24[0] = *piVar2;\r\n  local_24[4] = 2;\r\n  local_24[3] = 0x43;\r\n  local_24[5] = 1;\r\n  local_24[6] = 0;\r\n  piVar1 = (int *)FUN_00413a50();\r\n  if (piVar1 + 2 != (int *)0x0) {\r\n    piVar5 = local_24;\r\n    piVar4 = piVar1 + 2;\r\n    for (iVar3 = 6; piVar5 = (int *)((int)piVar5 + 4), iVar3 != 0; iVar3 = iVar3 + -1) {\r\n      *piVar4 = *piVar5;\r\n      piVar4 = piVar4 + 1;\r\n    }\r\n  }\r\n  *piVar1 = local_24[0];\r\n  piVar5 = (int *)(local_24[0] + 4);\r\n  piVar1[1] = *piVar5;\r\n  *(int **)*piVar5 = piVar1;\r\n  *piVar5 = (int)piVar1;\r\n  *(int *)(param_1 + 0xd0) = *(int *)(param_1 + 0xd0) + 1;\r\n  local_24[4] = 2;\r\n  local_24[5] = 1;\r\n  local_24[2] = 3;\r\n  local_24[3] = 0x4d;\r\n  local_24[6] = 0;\r\n  FUN_00413b40(local_24,*piVar2,local_24 + 1);\r\n  local_24[4] = 2;\r\n  local_24[5] = 1;\r\n  local_24[2] = 4;\r\n  local_24[3] = 0x49;\r\n  local_24[6] = 0;\r\n  local_24[0] = *piVar2;\r\n  piVar2 = (int *)FUN_00413a50();\r\n  if (piVar2 + 2 != (int *)0x0) {\r\n    piVar1 = local_24;\r\n    piVar5 = piVar2 + 2;\r\n    for (iVar3 = 6; piVar1 = (int *)((int)piVar1 + 4), iVar3 != 0; iVar3 = iVar3 + -1) {\r\n      *piVar5 = *piVar1;\r\n      piVar5 = piVar5 + 1;\r\n    }\r\n  }\r\n  *piVar2 = local_24[0];\r\n  piVar1 = (int *)(local_24[0] + 4);\r\n  piVar2[1] = *piVar1;\r\n  *(int **)*piVar1 = piVar2;\r\n  *piVar1 = (int)piVar2;\r\n  *(int *)(param_1 + 0xd0) = *(int *)(param_1 + 0xd0) + 1;\r\n  FUN_0045ca50();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00413c60",
+      "name": "FUN_00413c60",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00411f30",
+      "name": "FUN_00411f30"
+    },
+    {
+      "addr": "00413a50",
+      "name": "FUN_00413a50"
+    },
+    {
+      "addr": "00413b40",
+      "name": "FUN_00413b40"
+    },
+    {
+      "addr": "0045ca50",
+      "name": "FUN_0045ca50"
+    }
+  ],
+  "data_refs": []
+}

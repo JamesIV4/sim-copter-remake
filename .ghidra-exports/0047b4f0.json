@@ -1,0 +1,57 @@
+{
+  "address": "0047b4f0",
+  "name": "FUN_0047b4f0",
+  "signature": "undefined FUN_0047b4f0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0047b4f0(void)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  undefined4 *puVar3;\r\n  undefined4 *puVar4;\r\n  int local_4c;\r\n  int local_48;\r\n  int local_44;\r\n  undefined4 local_40 [16];\r\n  \r\n  if (DAT_0051ac70 != 0) {\r\n    iVar1 = FUN_0049de20();\r\n    puVar3 = (undefined4 *)(iVar1 + 0x24);\r\n    puVar4 = local_40;\r\n    for (iVar2 = 0x10; iVar2 != 0; iVar2 = iVar2 + -1) {\r\n      *puVar4 = *puVar3;\r\n      puVar3 = puVar3 + 1;\r\n      puVar4 = puVar4 + 1;\r\n    }\r\n    FUN_0046cafc(0xe100000 - _DAT_00503af0,local_40);\r\n    FUN_0046cb74(&DAT_004fa2e0,&local_4c,local_40);\r\n    FUN_0047b0c0(&local_4c);\r\n    return;\r\n  }\r\n  if (DAT_00503aa0 == 3) {\r\n    iVar1 = FUN_004c1a30();\r\n    local_4c = *(int *)(iVar1 + 0x18) - DAT_0061a748;\r\n    local_44 = *(int *)(iVar1 + 0x20) - DAT_0061a750;\r\n    local_48 = (*(int *)(iVar1 + 0x1c) - DAT_0061a74c) + 0xa0000;\r\n    FUN_00467d30(local_40,&local_4c);\r\n    FUN_0046cafc(0xe100000 - _DAT_00503af0,local_40);\r\n    FUN_0046cafc(0xe100000 - _DAT_00503ad8,local_40);\r\n    FUN_0046cae4(0xe100000 - _DAT_00503adc,local_40);\r\n    FUN_0046cb74(&DAT_004fa2e0,&local_4c,local_40);\r\n    FUN_0047b0c0(&local_4c);\r\n    return;\r\n  }\r\n  if (DAT_00503aa0 == 2) {\r\n    local_4c = *(int *)(*(int *)(DAT_005040d0 + 0xa4) + 0x18) - DAT_0061a748;\r\n    local_48 = DAT_0061a624 - DAT_0061a74c;\r\n    local_44 = *(int *)(*(int *)(DAT_005040d0 + 0xa4) + 0x20) - DAT_0061a750;\r\n    FUN_00467d30(local_40,&local_4c);\r\n    FUN_0046cafc(0xe100000 - _DAT_00503af0,local_40);\r\n    FUN_0046cafc(0xe100000 - _DAT_00503ad8,local_40);\r\n    FUN_0046cae4(0xe100000 - _DAT_00503adc,local_40);\r\n    FUN_0046cb74(&DAT_004fa2e0,&local_4c,local_40);\r\n    FUN_0047b0c0(&local_4c);\r\n    return;\r\n  }\r\n  if (DAT_00503aa0 != 0) {\r\n    puVar3 = (undefined4 *)(*(int *)(DAT_005040d0 + 0xa4) + 0x24);\r\n    puVar4 = local_40;\r\n    for (iVar1 = 0x10; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar4 = *puVar3;\r\n      puVar3 = puVar3 + 1;\r\n      puVar4 = puVar4 + 1;\r\n    }\r\n    FUN_0046cafc(0xe100000 - _DAT_00503af0,local_40);\r\n    FUN_0046cafc(0xe100000 - _DAT_00503ad8,local_40);\r\n    FUN_0046cae4(0xe100000 - _DAT_00503adc,local_40);\r\n    FUN_0046cb14(0xe100000 - _DAT_00503ae0,local_40);\r\n    FUN_0046cb74(&DAT_004fa2e0,&local_4c,local_40);\r\n    FUN_0047b0c0(&local_4c);\r\n    return;\r\n  }\r\n  iVar1 = 0x11 - *(int *)(DAT_005040d0 + 0x1bc);\r\n  if (iVar1 < 0) {\r\n    iVar1 = 0;\r\n  }\r\n  local_4c = *(int *)(*(int *)(DAT_005040d0 + 0xa4) + 0x18) - DAT_0061a748;\r\n  local_48 = (*(int *)(&DAT_00503b10 + DAT_00503b2c * 0xc) +\r\n              *(int *)(*(int *)(DAT_005040d0 + 0xa4) + 0x1c) + iVar1 * -0x10000) - DAT_0061a74c;\r\n  local_44 = *(int *)(*(int *)(DAT_005040d0 + 0xa4) + 0x20) - DAT_0061a750;\r\n  FUN_00467d30(local_40,&local_4c);\r\n  FUN_0046cafc(0xe100000 - _DAT_00503af0,local_40);\r\n  FUN_0046cafc(0xe100000 - _DAT_00503ad8,local_40);\r\n  FUN_0046cae4(0xe100000 - _DAT_00503adc,local_40);\r\n  FUN_0046cb74(&DAT_004fa2e0,&local_4c,local_40);\r\n  FUN_0047b0c0(&local_4c);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479060",
+      "name": "FUN_00479060",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00478ec0",
+      "name": "FUN_00478ec0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049de20",
+      "name": "FUN_0049de20"
+    },
+    {
+      "addr": "0046cafc",
+      "name": "FUN_0046cafc"
+    },
+    {
+      "addr": "0046cb74",
+      "name": "FUN_0046cb74"
+    },
+    {
+      "addr": "0047b0c0",
+      "name": "FUN_0047b0c0"
+    },
+    {
+      "addr": "004c1a30",
+      "name": "FUN_004c1a30"
+    },
+    {
+      "addr": "00467d30",
+      "name": "FUN_00467d30"
+    },
+    {
+      "addr": "0046cae4",
+      "name": "FUN_0046cae4"
+    },
+    {
+      "addr": "0046cb14",
+      "name": "FUN_0046cb14"
+    }
+  ],
+  "data_refs": []
+}

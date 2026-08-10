@@ -1,0 +1,100 @@
+{
+  "address": "00422c90",
+  "name": "FUN_00422c90",
+  "signature": "undefined FUN_00422c90(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Removing unreachable block (ram,0x00422eec) */\r\n/* WARNING: Removing unreachable block (ram,0x00422f2d) */\r\n/* WARNING: Removing unreachable block (ram,0x00422d0f) */\r\n\r\nundefined4 FUN_00422c90(undefined4 param_1,undefined4 param_2,int param_3)\r\n\r\n{\r\n  char cVar1;\r\n  int iVar2;\r\n  UINT UVar3;\r\n  int iVar4;\r\n  BOOL BVar5;\r\n  char *pcVar6;\r\n  uint uVar7;\r\n  int in_stack_00001014;\r\n  \r\n  FUN_004d2c30();\r\n  param_1 = (undefined4 *)FUN_004d28b0(0x10);\r\n  if (param_1 == (undefined4 *)0x0) {\r\n    param_1 = (undefined4 *)0x0;\r\n  }\r\n  else {\r\n    param_1[1] = 0;\r\n    param_1[2] = 0;\r\n    *param_1 = 0;\r\n    param_1[3] = 1;\r\n  }\r\n  if (in_stack_00001014 == 0) {\r\n    in_stack_00001014 = 1;\r\n  }\r\n  if (DAT_004f86d4 == in_stack_00001014) {\r\n    param_1[3] = param_1[3] + -1;\r\n    if ((param_1[3] == 0) && (param_1 != (undefined4 *)0x0)) {\r\n      FUN_00402830(1);\r\n    }\r\n    return 0;\r\n  }\r\n  FUN_00401de0();\r\n  UVar3 = FUN_00423270(1,in_stack_00001014);\r\n  LoadStringA(DAT_0051a050,UVar3,&stack0x00000010,0xfff);\r\n  uVar7 = 0xffffffff;\r\n  pcVar6 = &stack0x00000010;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x00000010,~uVar7 - 1);\r\n  iVar4 = *(int *)(param_3 + 4);\r\n  FUN_00401f10();\r\n  iVar2 = DAT_004f86d4;\r\n  if (iVar4 == 0) {\r\n    param_1[3] = param_1[3] + -1;\r\n    if ((param_1[3] == 0) && (param_1 != (undefined4 *)0x0)) {\r\n      FUN_00402830(1);\r\n    }\r\n    return 0;\r\n  }\r\n  iVar4 = FUN_00423490(DAT_004f86d4);\r\n  if ((iVar4 == 0) && (iVar4 = FUN_00423400(iVar2), iVar4 == 0x10)) {\r\n    FUN_00432ab0(10,0,s_Bariel_ttf_004f86d8,&stack0x00000010);\r\n    BVar5 = RemoveFontResourceA(&stack0x00000010);\r\n    if (BVar5 != 0) {\r\n      SendMessageA((HWND)&DAT_0000ffff,0x1d,0,0);\r\n    }\r\n  }\r\n  DAT_004f86d4 = in_stack_00001014;\r\n  iVar4 = FUN_00423490(in_stack_00001014);\r\n  if (((iVar4 == 0) && (iVar4 = FUN_00423400(in_stack_00001014), iVar4 == 0x10)) &&\r\n     (iVar4 = FUN_00423900(s_Bulgarian_Ariel_004f86e4), iVar4 == 0)) {\r\n    FUN_00423850(0x10,0,&stack0x00000010);\r\n    iVar4 = AddFontResourceA(&stack0x00000010);\r\n    if (iVar4 != 0) {\r\n      SendMessageA((HWND)&DAT_0000ffff,0x1d,0,0);\r\n    }\r\n  }\r\n  if (in_stack_00001014 == 0) {\r\n    in_stack_00001014 = DAT_004f86d4;\r\n  }\r\n  UVar3 = FUN_00423270(2,in_stack_00001014);\r\n  iVar4 = LoadStringA(DAT_0051a050,UVar3,&stack0x00000010,0xfff);\r\n  uVar7 = 0xffffffff;\r\n  pcVar6 = &stack0x00000010;\r\n  do {\r\n    if (uVar7 == 0) break;\r\n    uVar7 = uVar7 - 1;\r\n    cVar1 = *pcVar6;\r\n    pcVar6 = pcVar6 + 1;\r\n  } while (cVar1 != '\\0');\r\n  FUN_004017f0(&stack0x00000010,~uVar7 - 1);\r\n  if (iVar4 != 0) {\r\n    uVar7 = 0xffffffff;\r\n    pcVar6 = &DAT_004f81b4;\r\n    do {\r\n      if (uVar7 == 0) break;\r\n      uVar7 = uVar7 - 1;\r\n      cVar1 = *pcVar6;\r\n      pcVar6 = pcVar6 + 1;\r\n    } while (cVar1 != '\\0');\r\n    FUN_00401940(&DAT_004f81b4,~uVar7 - 1);\r\n  }\r\n  pcVar6 = (char *)FUN_00402640();\r\n  _setlocale(0,pcVar6);\r\n  param_1[3] = param_1[3] + -1;\r\n  if ((param_1[3] == 0) && (param_1 != (undefined4 *)0x0)) {\r\n    FUN_00402830(1);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0045b7f0",
+      "name": "FUN_0045b7f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d2c30",
+      "name": "FUN_004d2c30"
+    },
+    {
+      "addr": "004d28b0",
+      "name": "FUN_004d28b0"
+    },
+    {
+      "addr": "00402830",
+      "name": "FUN_00402830"
+    },
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    },
+    {
+      "addr": "00401de0",
+      "name": "FUN_00401de0"
+    },
+    {
+      "addr": "00423270",
+      "name": "FUN_00423270"
+    },
+    {
+      "addr": "EXTERNAL:00000079",
+      "name": "LoadStringA"
+    },
+    {
+      "addr": "004017f0",
+      "name": "FUN_004017f0"
+    },
+    {
+      "addr": "00401f10",
+      "name": "FUN_00401f10"
+    },
+    {
+      "addr": "00423490",
+      "name": "FUN_00423490"
+    },
+    {
+      "addr": "00423400",
+      "name": "FUN_00423400"
+    },
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "EXTERNAL:000000aa",
+      "name": "RemoveFontResourceA"
+    },
+    {
+      "addr": "EXTERNAL:0000007c",
+      "name": "SendMessageA"
+    },
+    {
+      "addr": "00423900",
+      "name": "FUN_00423900"
+    },
+    {
+      "addr": "00423850",
+      "name": "FUN_00423850"
+    },
+    {
+      "addr": "EXTERNAL:000000ab",
+      "name": "AddFontResourceA"
+    },
+    {
+      "addr": "00401940",
+      "name": "FUN_00401940"
+    },
+    {
+      "addr": "00402640",
+      "name": "FUN_00402640"
+    },
+    {
+      "addr": "004d4ab0",
+      "name": "_setlocale"
+    }
+  ],
+  "data_refs": []
+}

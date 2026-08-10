@@ -1,0 +1,24 @@
+{
+  "address": "004e1970",
+  "name": "__trandisp1",
+  "signature": "undefined __trandisp1(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __trandisp1\r\n   \r\n   Library: Visual Studio */\r\n\r\nvoid __fastcall __trandisp1(undefined4 param_1,int param_2)\r\n\r\n{\r\n  float10 fVar1;\r\n  byte bVar2;\r\n  undefined2 uVar3;\r\n  int unaff_EBP;\r\n  float10 in_ST0;\r\n  \r\n  if (*(char *)(param_2 + 0xe) == '\\x05') {\r\n    uVar3 = (undefined2)\r\n            CONCAT31((uint3)((byte)((ushort)*(undefined2 *)(unaff_EBP + -0xa4) >> 8) & 0xfe | 2),\r\n                     0x3f);\r\n  }\r\n  else {\r\n    uVar3 = 0x133f;\r\n  }\r\n  *(undefined2 *)(unaff_EBP + -0xa2) = uVar3;\r\n  fVar1 = (float10)0;\r\n  *(int *)(unaff_EBP + -0x94) = param_2;\r\n  *(ushort *)(unaff_EBP + -0xa0) =\r\n       (ushort)NAN(in_ST0) << 8 | (ushort)(in_ST0 < fVar1) << 9 | (ushort)(in_ST0 != fVar1) << 10 |\r\n       (ushort)(in_ST0 == fVar1) << 0xe;\r\n  *(undefined1 *)(unaff_EBP + -0x90) = 0;\r\n  bVar2 = (char)(*(char *)(unaff_EBP + -0x9f) << 1) >> 1;\r\n                    /* WARNING: Could not recover jumptable at 0x004e19d5. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  (**(code **)(param_2 + (char)(&DAT_0050886c)[(byte)((bVar2 & 7) << 1 | (char)bVar2 < '\\0')] + 0x10\r\n              ))();\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dd76e",
+      "name": "__cintrindisp1",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dd92b",
+      "name": "__ctrandisp1",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

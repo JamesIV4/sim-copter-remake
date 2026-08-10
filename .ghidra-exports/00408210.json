@@ -1,0 +1,36 @@
+{
+  "address": "00408210",
+  "name": "FUN_00408210",
+  "signature": "undefined FUN_00408210(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00408210(int param_1)\r\n\r\n{\r\n  char cVar1;\r\n  DWORD DVar2;\r\n  undefined *puVar3;\r\n  uint uVar4;\r\n  uint uVar5;\r\n  int iVar6;\r\n  int iVar7;\r\n  char *pcVar8;\r\n  char *pcVar9;\r\n  char *pcVar10;\r\n  LARGE_INTEGER local_108;\r\n  char local_100 [256];\r\n  \r\n  iVar7 = DAT_00518d64;\r\n  uVar4 = 0xffffffff;\r\n  pcVar8 = (char *)(&DAT_00518e0c)[param_1 * 0x14];\r\n  do {\r\n    pcVar10 = pcVar8;\r\n    if (uVar4 == 0) break;\r\n    uVar4 = uVar4 - 1;\r\n    pcVar10 = pcVar8 + 1;\r\n    cVar1 = *pcVar8;\r\n    pcVar8 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar4 = ~uVar4;\r\n  pcVar8 = pcVar10 + -uVar4;\r\n  pcVar10 = local_100;\r\n  for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar8;\r\n    pcVar8 = pcVar8 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *pcVar10 = *pcVar8;\r\n    pcVar8 = pcVar8 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  uVar4 = 0xffffffff;\r\n  pcVar8 = PTR_DAT_004f8290;\r\n  do {\r\n    pcVar10 = pcVar8;\r\n    if (uVar4 == 0) break;\r\n    uVar4 = uVar4 - 1;\r\n    pcVar10 = pcVar8 + 1;\r\n    cVar1 = *pcVar8;\r\n    pcVar8 = pcVar10;\r\n  } while (cVar1 != '\\0');\r\n  uVar4 = ~uVar4;\r\n  iVar6 = -1;\r\n  pcVar8 = local_100;\r\n  do {\r\n    pcVar9 = pcVar8;\r\n    if (iVar6 == 0) break;\r\n    iVar6 = iVar6 + -1;\r\n    pcVar9 = pcVar8 + 1;\r\n    cVar1 = *pcVar8;\r\n    pcVar8 = pcVar9;\r\n  } while (cVar1 != '\\0');\r\n  pcVar8 = pcVar10 + -uVar4;\r\n  pcVar10 = pcVar9 + -1;\r\n  for (uVar5 = uVar4 >> 2; uVar5 != 0; uVar5 = uVar5 - 1) {\r\n    *(undefined4 *)pcVar10 = *(undefined4 *)pcVar8;\r\n    pcVar8 = pcVar8 + 4;\r\n    pcVar10 = pcVar10 + 4;\r\n  }\r\n  for (uVar4 = uVar4 & 3; uVar4 != 0; uVar4 = uVar4 - 1) {\r\n    *pcVar10 = *pcVar8;\r\n    pcVar8 = pcVar8 + 1;\r\n    pcVar10 = pcVar10 + 1;\r\n  }\r\n  FUN_00432ab0(7,0,local_100,&DAT_00518bc8);\r\n  iVar7 = iVar7 * 0x50;\r\n  DAT_00518d58 = *(undefined4 *)(&DAT_00518df0 + iVar7);\r\n  DAT_00518d5c = *(undefined4 *)(&DAT_00518df4 + iVar7);\r\n  _DAT_00518d60 = *(undefined4 *)(&DAT_00518df8 + iVar7);\r\n  DAT_00518d64 = param_1;\r\n  FUN_00479940((&DAT_00518dec)[param_1 * 0x14]);\r\n  DAT_00519728 = 0;\r\n  DAT_00519738 = 0;\r\n  DAT_00519734 = 0;\r\n  if (DAT_00519730 == 0) {\r\n    QueryPerformanceCounter(&local_108);\r\n    DAT_00519734 = local_108.s.LowPart;\r\n  }\r\n  else if (DAT_00519730 == 1) {\r\n    DAT_00519734 = timeGetTime();\r\n  }\r\n  else {\r\n    DVar2 = timeGetTime();\r\n    DAT_00519734 = DVar2 / 1000;\r\n  }\r\n  DAT_0051972c = 0;\r\n  puVar3 = &DAT_00518cf8;\r\n  if (DAT_00518d50 != 1) {\r\n    puVar3 = &DAT_00518d6c;\r\n  }\r\n  *(undefined4 *)(puVar3 + 0x50) = 0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044bf70",
+      "name": "FUN_0044bf70",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00432ab0",
+      "name": "FUN_00432ab0"
+    },
+    {
+      "addr": "00479940",
+      "name": "FUN_00479940"
+    },
+    {
+      "addr": "EXTERNAL:0000000e",
+      "name": "QueryPerformanceCounter"
+    },
+    {
+      "addr": "EXTERNAL:000000c0",
+      "name": "timeGetTime"
+    }
+  ],
+  "data_refs": []
+}

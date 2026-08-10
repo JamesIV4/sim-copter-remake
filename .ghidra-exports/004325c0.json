@@ -1,0 +1,18 @@
+{
+  "address": "004325c0",
+  "name": "FUN_004325c0",
+  "signature": "undefined FUN_004325c0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_004325c0(int *param_1,char param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int iVar2;\r\n  \r\n  iVar2 = param_1[1];\r\n  param_1[3] = iVar2;\r\n  do {\r\n    if (iVar2 == 0) {\r\n      iVar2 = 0;\r\nLAB_004325e4:\r\n      if (iVar2 != 0) {\r\n        if (*param_1 == 1) {\r\n          param_1[2] = 0;\r\n          param_1[1] = 0;\r\n        }\r\n        else {\r\n          piVar1 = (int *)(iVar2 + 5);\r\n          if (*(int *)(iVar2 + 1) == 0) {\r\n            param_1[1] = *piVar1;\r\n          }\r\n          else {\r\n            *(int *)(*(int *)(iVar2 + 1) + 5) = *piVar1;\r\n          }\r\n          if (*piVar1 == 0) {\r\n            param_1[2] = *(int *)(iVar2 + 1);\r\n          }\r\n          else {\r\n            *(undefined4 *)(*piVar1 + 1) = *(undefined4 *)(iVar2 + 1);\r\n          }\r\n        }\r\n        *param_1 = *param_1 + -1;\r\n        FUN_004d29a0(iVar2);\r\n      }\r\n      return;\r\n    }\r\n    iVar2 = *(int *)((char *)param_1[3] + 5);\r\n    if (*(char *)param_1[3] == param_2) {\r\n      iVar2 = param_1[3];\r\n      goto LAB_004325e4;\r\n    }\r\n    param_1[3] = iVar2;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004d29a0",
+      "name": "FUN_004d29a0"
+    }
+  ],
+  "data_refs": []
+}

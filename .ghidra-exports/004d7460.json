@@ -1,0 +1,49 @@
+{
+  "address": "004d7460",
+  "name": "FUN_004d7460",
+  "signature": "undefined FUN_004d7460(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint FUN_004d7460(uint param_1,char *param_2,DWORD param_3)\r\n\r\n{\r\n  int *piVar1;\r\n  byte *pbVar2;\r\n  char cVar3;\r\n  int iVar4;\r\n  int iVar5;\r\n  BOOL BVar6;\r\n  DWORD DVar7;\r\n  undefined4 *puVar8;\r\n  byte bVar9;\r\n  char *pcVar10;\r\n  char *pcVar11;\r\n  char *pcVar12;\r\n  char local_d;\r\n  DWORD local_c;\r\n  DWORD local_8;\r\n  char *local_4;\r\n  \r\n  local_c = 0;\r\n  if (param_3 != 0) {\r\n    piVar1 = (int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3));\r\n    iVar4 = (param_1 & 0x1f) * 0x24;\r\n    iVar5 = *piVar1 + iVar4;\r\n    if ((*(byte *)(iVar5 + 4) & 2) == 0) {\r\n      pcVar10 = param_2;\r\n      if (((*(byte *)(iVar5 + 4) & 0x48) != 0) && (*(char *)(iVar5 + 5) != '\\n')) {\r\n        *param_2 = *(char *)(iVar5 + 5);\r\n        pcVar10 = param_2 + 1;\r\n        param_3 = param_3 - 1;\r\n        local_c = 1;\r\n        *(undefined1 *)(*piVar1 + 5 + iVar4) = 10;\r\n      }\r\n      BVar6 = ReadFile(*(HANDLE *)(*piVar1 + iVar4),pcVar10,param_3,&local_8,(LPOVERLAPPED)0x0);\r\n      if (BVar6 == 0) {\r\n        DVar7 = GetLastError();\r\n        if (DVar7 == 5) {\r\n          puVar8 = (undefined4 *)FUN_004da730();\r\n          *puVar8 = 9;\r\n          puVar8 = (undefined4 *)FUN_004da740();\r\n          *puVar8 = 5;\r\n          return -1;\r\n        }\r\n        if (DVar7 != 0x6d) {\r\n          __dosmaperr(DVar7);\r\n          return -1;\r\n        }\r\n        return 0;\r\n      }\r\n      local_c = local_c + local_8;\r\n      pbVar2 = (byte *)(*piVar1 + 4 + iVar4);\r\n      bVar9 = *pbVar2;\r\n      if ((bVar9 & 0x80) != 0) {\r\n        if ((local_8 == 0) || (*param_2 != '\\n')) {\r\n          bVar9 = bVar9 & 0xfb;\r\n        }\r\n        else {\r\n          bVar9 = bVar9 | 4;\r\n        }\r\n        *pbVar2 = bVar9;\r\n        local_4 = param_2 + local_c;\r\n        pcVar10 = param_2;\r\n        pcVar12 = param_2;\r\n        if (param_2 < local_4) {\r\n          do {\r\n            cVar3 = *pcVar10;\r\n            if (cVar3 == '\\x1a') {\r\n              pbVar2 = (byte *)(*piVar1 + 4 + iVar4);\r\n              bVar9 = *pbVar2;\r\n              if ((bVar9 & 0x40) == 0) {\r\n                *pbVar2 = bVar9 | 2;\r\n              }\r\n              break;\r\n            }\r\n            if (cVar3 == '\\r') {\r\n              if (pcVar10 < local_4 + -1) {\r\n                pcVar11 = pcVar10 + 1;\r\n                if (*pcVar11 == '\\n') {\r\n                  pcVar11 = pcVar10 + 2;\r\n                  *pcVar12 = '\\n';\r\n                }\r\n                else {\r\n                  *pcVar12 = '\\r';\r\n                }\r\n                goto LAB_004d7652;\r\n              }\r\n              pcVar11 = pcVar10 + 1;\r\n              local_c = 0;\r\n              BVar6 = ReadFile(*(HANDLE *)(*piVar1 + iVar4),&local_d,1,&local_8,(LPOVERLAPPED)0x0);\r\n              if (BVar6 == 0) {\r\n                local_c = GetLastError();\r\n              }\r\n              if ((local_c != 0) || (local_8 == 0)) {\r\nLAB_004d764f:\r\n                *pcVar12 = '\\r';\r\n                goto LAB_004d7652;\r\n              }\r\n              if ((*(byte *)(*piVar1 + 4 + iVar4) & 0x48) == 0) {\r\n                if ((param_2 == pcVar12) && (local_d == '\\n')) {\r\n                  *pcVar12 = '\\n';\r\n                  goto LAB_004d7652;\r\n                }\r\n                __lseek_lk(param_1,0xffffffff,1);\r\n                if (local_d != '\\n') goto LAB_004d764f;\r\n              }\r\n              else {\r\n                if (local_d == '\\n') {\r\n                  *pcVar12 = '\\n';\r\n                  goto LAB_004d7652;\r\n                }\r\n                *pcVar12 = '\\r';\r\n                pcVar12 = pcVar12 + 1;\r\n                *(char *)(*piVar1 + 5 + iVar4) = local_d;\r\n              }\r\n            }\r\n            else {\r\n              pcVar11 = pcVar10 + 1;\r\n              *pcVar12 = cVar3;\r\nLAB_004d7652:\r\n              pcVar12 = pcVar12 + 1;\r\n            }\r\n            pcVar10 = pcVar11;\r\n          } while (pcVar11 < local_4);\r\n        }\r\n        local_c = (int)pcVar12 - (int)param_2;\r\n      }\r\n      return local_c;\r\n    }\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d73e0",
+      "name": "__read",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:00000052",
+      "name": "ReadFile"
+    },
+    {
+      "addr": "EXTERNAL:0000006c",
+      "name": "GetLastError"
+    },
+    {
+      "addr": "004da730",
+      "name": "FUN_004da730"
+    },
+    {
+      "addr": "004da740",
+      "name": "FUN_004da740"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr"
+    },
+    {
+      "addr": "004d7710",
+      "name": "__lseek_lk"
+    }
+  ],
+  "data_refs": []
+}

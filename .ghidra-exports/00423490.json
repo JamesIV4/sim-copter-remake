@@ -1,0 +1,24 @@
+{
+  "address": "00423490",
+  "name": "FUN_00423490",
+  "signature": "undefined FUN_00423490(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_00423490(int param_1)\r\n\r\n{\r\n  if ((((((param_1 != 1) && (param_1 != 2)) && (param_1 != 3)) &&\r\n       (((param_1 != 4 && (param_1 != 5)) && ((param_1 != 7 && ((param_1 != 8 && (param_1 != 9))))))\r\n       )) && (((param_1 != 10 &&\r\n               ((((((param_1 != 0xb && (param_1 != 0x14)) && (param_1 != 0x15)) &&\r\n                  ((param_1 != 0x16 && (param_1 != 0x17)))) &&\r\n                 ((param_1 != 0x18 && ((param_1 != 0x19 && (param_1 != 6)))))) && (param_1 != 0x26))\r\n               )) && (((param_1 != 0x20 && (param_1 != 0x21)) && (param_1 != 0x22)))))) &&\r\n     (((param_1 != 0x23 && (param_1 != 0x24)) && (param_1 != 0x25)))) {\r\n    return 0;\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00422c90",
+      "name": "FUN_00422c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00422c90",
+      "name": "FUN_00422c90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,24 @@
+{
+  "address": "004dfb80",
+  "name": "FUN_004dfb80",
+  "signature": "undefined FUN_004dfb80(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbyte FUN_004dfb80(uint param_1)\r\n\r\n{\r\n  if (DAT_0061bc80 <= param_1) {\r\n    return 0;\r\n  }\r\n  return *(byte *)(*(int *)((int)&DAT_0061bb80 + ((int)(param_1 & 0xffffffe7) >> 3)) + 4 +\r\n                  (param_1 & 0x1f) * 0x24) & 0x40;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d7980",
+      "name": "FUN_004d7980",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004de3a0",
+      "name": "__stbuf",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

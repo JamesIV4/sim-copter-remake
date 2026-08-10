@@ -1,0 +1,68 @@
+{
+  "address": "004dbeb0",
+  "name": "___get_qualified_locale",
+  "signature": "BOOL __cdecl ___get_qualified_locale(LPLC_STRINGS _LpInStr, UINT * _LpCodePage, LPLC_STRINGS _LpOutStr)",
+  "calling_convention": "__cdecl",
+  "return_type": "typedef BOOL int",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    ___get_qualified_locale\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nBOOL __cdecl ___get_qualified_locale(LPLC_STRINGS _LpInStr,UINT *_LpCodePage,LPLC_STRINGS _LpOutStr)\r\n\r\n{\r\n  ushort extraout_AX;\r\n  long lVar2;\r\n  BOOL BVar3;\r\n  int iVar4;\r\n  wchar_t *_Str;\r\n  wchar_t *pwVar5;\r\n  char *pcVar6;\r\n  bool bVar7;\r\n  ushort local_8c;\r\n  ushort uStack_8a;\r\n  ushort local_88;\r\n  int local_84;\r\n  uint local_80 [32];\r\n  LCID LVar1;\r\n  \r\n  local_84 = 0;\r\n  if ((_LpCodePage == (UINT *)0x0) && (_LpOutStr == (LPLC_STRINGS)0x0)) {\r\n    return 0;\r\n  }\r\n  local_8c = 0;\r\n  uStack_8a = 0;\r\n  local_88 = 0;\r\n  if (((_LpInStr != (LPLC_STRINGS)0x0) && ((char)_LpInStr->szLanguage[0] != '\\0')) &&\r\n     (local_8c = trans_lang_lang(_LpInStr), local_8c == 0)) {\r\n    return 0;\r\n  }\r\n  if (((_LpInStr != (LPLC_STRINGS)0xffffffc0) && ((char)_LpInStr->szLanguage[0x20] != '\\0')) &&\r\n     (uStack_8a = trans_ctry_ctry(_LpInStr->szLanguage + 0x20), uStack_8a == 0)) {\r\n    return 0;\r\n  }\r\n  if (_LpInStr != (LPLC_STRINGS)0xffffff80) {\r\n    _Str = _LpInStr->szCountry;\r\n    bVar7 = (char)*_Str == '\\0';\r\n    if (!bVar7) {\r\n      iVar4 = 4;\r\n      pwVar5 = _Str;\r\n      pcVar6 = \"ACP\";\r\n      do {\r\n        if (iVar4 == 0) break;\r\n        iVar4 = iVar4 + -1;\r\n        bVar7 = (char)*pwVar5 == *pcVar6;\r\n        pwVar5 = (wchar_t *)((int)pwVar5 + 1);\r\n        pcVar6 = pcVar6 + 1;\r\n      } while (bVar7);\r\n      if (!bVar7) {\r\n        iVar4 = 4;\r\n        pwVar5 = _Str;\r\n        pcVar6 = \"OCP\";\r\n        do {\r\n          if (iVar4 == 0) break;\r\n          iVar4 = iVar4 + -1;\r\n          bVar7 = (char)*pwVar5 == *pcVar6;\r\n          pwVar5 = (wchar_t *)((int)pwVar5 + 1);\r\n          pcVar6 = pcVar6 + 1;\r\n        } while (bVar7);\r\n        if (bVar7) {\r\n          local_84 = 1;\r\n        }\r\n        else {\r\n          iVar4 = _atoi((char *)_Str);\r\n          local_88 = (ushort)iVar4;\r\n          if (local_88 == 0) {\r\n            return 0;\r\n          }\r\n        }\r\n      }\r\n    }\r\n  }\r\n  if (local_8c == 0) {\r\n    if (uStack_8a == 0) {\r\n      LVar1 = GetUserDefaultLCID();\r\n      extraout_AX = (ushort)LVar1;\r\n      local_8c = extraout_AX;\r\n      uStack_8a = extraout_AX;\r\n      if (local_88 == 0) {\r\n        local_80[0] = GetUserDefaultLCID();\r\n      }\r\n    }\r\n    else {\r\n      local_8c = trans_ctry_lang(CONCAT22(local_88,uStack_8a));\r\n      uStack_8a = local_8c;\r\n      if (local_88 == 0) {\r\n        local_80[0] = (uint)local_8c;\r\n      }\r\n    }\r\n  }\r\n  else if (uStack_8a == 0) {\r\n    uStack_8a = local_8c;\r\n    if (local_88 == 0) {\r\n      local_80[0] = (uint)local_8c;\r\n    }\r\n  }\r\n  else {\r\n    iVar4 = match_ctry_lang(&uStack_8a,&local_8c);\r\n    if (iVar4 == 0) {\r\n      return 0;\r\n    }\r\n    if (local_88 == 0) {\r\n      local_80[0] = (uint)uStack_8a;\r\n    }\r\n  }\r\n  if (local_88 == 0) {\r\n    iVar4 = ___crtGetLocaleInfoW(local_80[0],(-(uint)(local_84 == 0) & 0xff9) + 0xb,local_80,0x40,0)\r\n    ;\r\n    if (iVar4 == 0) {\r\n      return 0;\r\n    }\r\n    lVar2 = _wcstol((wchar_t *)local_80,(wchar_t **)0x0,10);\r\n    local_88 = (ushort)lVar2;\r\n  }\r\n  BVar3 = IsValidCodePage((uint)local_88);\r\n  if (BVar3 == 0) {\r\n    return 0;\r\n  }\r\n  BVar3 = IsValidLocale((uint)local_8c,1);\r\n  if (BVar3 == 0) {\r\n    return 0;\r\n  }\r\n  if (_LpCodePage != (UINT *)0x0) {\r\n    *_LpCodePage = CONCAT22(uStack_8a,local_8c);\r\n    *(ushort *)(_LpCodePage + 1) = local_88;\r\n  }\r\n  if (_LpOutStr != (LPLC_STRINGS)0x0) {\r\n    iVar4 = ___crtGetLocaleInfoA\r\n                      ((_locale_t)(uint)local_8c,(LPCWSTR)&DAT_00001001,(LCTYPE)_LpOutStr,\r\n                       &DAT_00000040,0);\r\n    if (iVar4 == 0) {\r\n      return 0;\r\n    }\r\n    iVar4 = ___crtGetLocaleInfoA\r\n                      ((_locale_t)(uint)uStack_8a,(LPCWSTR)&DAT_00001002,\r\n                       (LCTYPE)(_LpOutStr->szLanguage + 0x20),&DAT_00000040,0);\r\n    if (iVar4 == 0) {\r\n      return 0;\r\n    }\r\n    __itoa((uint)local_88,(char *)_LpOutStr->szCountry,10);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d4ff0",
+      "name": "__expandlocale",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004dc1b0",
+      "name": "trans_lang_lang"
+    },
+    {
+      "addr": "004dc210",
+      "name": "trans_ctry_ctry"
+    },
+    {
+      "addr": "EXTERNAL:00000015",
+      "name": "GetUserDefaultLCID"
+    },
+    {
+      "addr": "004d5580",
+      "name": "_atoi"
+    },
+    {
+      "addr": "004dc270",
+      "name": "trans_ctry_lang"
+    },
+    {
+      "addr": "004dc2e0",
+      "name": "match_ctry_lang"
+    },
+    {
+      "addr": "004e1190",
+      "name": "___crtGetLocaleInfoW"
+    },
+    {
+      "addr": "004e1400",
+      "name": "_wcstol"
+    },
+    {
+      "addr": "EXTERNAL:00000045",
+      "name": "IsValidCodePage"
+    },
+    {
+      "addr": "EXTERNAL:00000046",
+      "name": "IsValidLocale"
+    },
+    {
+      "addr": "004e12c0",
+      "name": "___crtGetLocaleInfoA"
+    },
+    {
+      "addr": "004df220",
+      "name": "__itoa"
+    }
+  ],
+  "data_refs": []
+}

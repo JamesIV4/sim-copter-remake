@@ -1,0 +1,13 @@
+{
+  "address": "0047041d",
+  "name": "FUN_0047041d",
+  "signature": "undefined FUN_0047041d(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nbool FUN_0047041d(int param_1)\r\n\r\n{\r\n  bool bVar1;\r\n  undefined *puVar2;\r\n  \r\n  puVar2 = PTR_DAT_005008c0;\r\n  bVar1 = (uint)(PTR_DAT_005008c0 + -0x5008c4) >> 2 < 0x1e;\r\n  if (bVar1) {\r\n    *(int *)PTR_DAT_005008c0 = param_1;\r\n    PTR_DAT_005008c0 = PTR_DAT_005008c0 + 4;\r\n    *(undefined **)(param_1 + 4) = puVar2;\r\n  }\r\n  return bVar1;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

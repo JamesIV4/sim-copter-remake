@@ -1,0 +1,24 @@
+{
+  "address": "0048ad50",
+  "name": "FUN_0048ad50",
+  "signature": "undefined FUN_0048ad50(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 FUN_0048ad50(int param_1)\r\n\r\n{\r\n  ushort uVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  int iVar4;\r\n  undefined4 local_10;\r\n  \r\n  local_10 = 0;\r\n  puVar2 = *(undefined4 **)\r\n            ((&DAT_005d9200)\r\n             [(*(uint *)(param_1 + 0x18) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x1c) & 0xff)] +\r\n            0x10);\r\n  while (puVar2 != (undefined4 *)0x0) {\r\n    puVar3 = *(undefined4 **)(param_1 + 0xa4);\r\n    if ((puVar2 != puVar3) &&\r\n       (((uVar1 = *(ushort *)(puVar2 + 3), (uVar1 & 0x20) == 0 || ((uVar1 & 0x1000) != 0)) &&\r\n        ((uVar1 & 0x40) == 0)))) {\r\n      iVar4 = puVar2[4];\r\n      if ((((((int)puVar3[6] < iVar4 + puVar2[6]) && (puVar2[6] - iVar4 < (int)puVar3[6])) &&\r\n           ((int)puVar2[7] < (int)puVar3[7])) &&\r\n          (((int)puVar3[7] < (int)(puVar2[5] + puVar2[7]) && ((int)puVar3[8] < puVar2[8] + iVar4))))\r\n         && (puVar2[8] - iVar4 < (int)puVar3[8])) {\r\n        FUN_0049a4f0(0xc,puVar3,puVar2,0xffffffff,0);\r\n        if ((*(ushort *)(puVar2 + 3) & 0x28) == 0) {\r\n          local_10 = 1;\r\n        }\r\n        if ((*(ushort *)(puVar2 + 3) & 0x1000) != 0) {\r\n          DAT_00504058 = 1;\r\n        }\r\n      }\r\n    }\r\n    if ((*(byte *)(puVar2 + 3) & 4) == 0) {\r\n      puVar2 = (undefined4 *)*puVar2;\r\n    }\r\n    else {\r\n      puVar2 = *(undefined4 **)\r\n                **(undefined4 **)**(undefined4 **)**(undefined4 **)**(undefined4 **)*puVar2;\r\n    }\r\n  }\r\n  return local_10;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00484d20",
+      "name": "FUN_00484d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0049a4f0",
+      "name": "FUN_0049a4f0"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,19 @@
+{
+  "address": "0049de30",
+  "name": "FUN_0049de30",
+  "signature": "undefined FUN_0049de30(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_0049de30(undefined4 param_1)\r\n\r\n{\r\n  _DAT_0057f758 = _DAT_0057f758 | 1 << ((byte)param_1 & 0x1f);\r\n  switch(param_1) {\r\n  case 0:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xffffffbd;\r\n    return;\r\n  case 1:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xffffffbe;\r\n    return;\r\n  case 2:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xfffffff7;\r\n    return;\r\n  case 3:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xfffffffb;\r\n    return;\r\n  case 4:\r\n    do {\r\n      DAT_0057f880 = DAT_0057f880 + -1;\r\n      if (DAT_0057f880 < 0) {\r\n        DAT_0057f880 = 0x45;\r\n      }\r\n    } while ((*(uint *)((&DAT_0057f768)[DAT_0057f880] + 4) & 2) == 0);\r\n    DAT_0057f75c = (int *)(&DAT_0057f768)[DAT_0057f880];\r\n    return;\r\n  case 5:\r\n    do {\r\n      DAT_0057f880 = DAT_0057f880 + 1;\r\n      if (0x45 < DAT_0057f880) {\r\n        DAT_0057f880 = 0;\r\n      }\r\n    } while ((*(uint *)((&DAT_0057f768)[DAT_0057f880] + 4) & 2) == 0);\r\n    DAT_0057f75c = (int *)(&DAT_0057f768)[DAT_0057f880];\r\n    break;\r\n  case 6:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xfffffffc;\r\n    return;\r\n  case 7:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xfffffcff;\r\n    return;\r\n  case 8:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xfffffd7f;\r\n    return;\r\n  case 9:\r\n    _DAT_0057f758 = _DAT_0057f758 & 0xfffffe7f;\r\n    return;\r\n  case 10:\r\n    (**(code **)(*DAT_0057f75c + 4))(DAT_0057f75c[5]);\r\n    return;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0044ac80",
+      "name": "FUN_0044ac80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

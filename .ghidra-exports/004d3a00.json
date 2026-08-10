@@ -1,0 +1,19 @@
+{
+  "address": "004d3a00",
+  "name": "FUN_004d3a00",
+  "signature": "undefined FUN_004d3a00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004d3a00(void)\r\n\r\n{\r\n  PTR_FUN_0050761c = &LAB_004d87f0;\r\n  PTR_FUN_00507620 = &LAB_004d8870;\r\n  PTR_FUN_00507624 = &LAB_004d8780;\r\n  PTR_FUN_00507628 = &LAB_004d8850;\r\n  PTR_FUN_00507618 = &LAB_004d8c10;\r\n  PTR_FUN_0050762c = &LAB_004d8c10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d39d0",
+      "name": "__fpmath",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

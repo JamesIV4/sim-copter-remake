@@ -1,0 +1,24 @@
+{
+  "address": "004a3c00",
+  "name": "FUN_004a3c00",
+  "signature": "undefined FUN_004a3c00(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004a3c00(void)\r\n\r\n{\r\n  int iVar1;\r\n  undefined4 *puVar2;\r\n  undefined4 *puVar3;\r\n  \r\n  if (DAT_004f9750 == 0x20) {\r\n    puVar3 = &DAT_004f9758;\r\n    puVar2 = &DAT_00505e98;\r\n    for (iVar1 = 7; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar2 = *puVar3;\r\n      puVar3 = puVar3 + 1;\r\n      puVar2 = puVar2 + 1;\r\n    }\r\n    puVar3 = &DAT_004f9758;\r\n  }\r\n  else {\r\n    puVar3 = &DAT_004f9778;\r\n    puVar2 = &DAT_00505e98;\r\n    for (iVar1 = 7; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n      *puVar2 = *puVar3;\r\n      puVar3 = puVar3 + 1;\r\n      puVar2 = puVar2 + 1;\r\n    }\r\n    puVar3 = &DAT_004f9778;\r\n  }\r\n  puVar2 = &DAT_00505e78;\r\n  for (iVar1 = 7; iVar1 != 0; iVar1 = iVar1 + -1) {\r\n    *puVar3 = *puVar2;\r\n    puVar2 = puVar2 + 1;\r\n    puVar3 = puVar3 + 1;\r\n  }\r\n  DAT_00505f00 = DAT_004faffc;\r\n  DAT_00505f04 = DAT_004faff8;\r\n  FUN_0046f709(&DAT_00505e78);\r\n  DAT_004faffc = DAT_004faffc * 2;\r\n  DAT_004faff8 = DAT_004faff8 * 2;\r\n  DAT_00505efc = DAT_004f973c;\r\n  DAT_004f973c = DAT_00505ee0;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004827c0",
+      "name": "FUN_004827c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0046f709",
+      "name": "FUN_0046f709"
+    }
+  ],
+  "data_refs": []
+}

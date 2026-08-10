@@ -1,0 +1,29 @@
+{
+  "address": "004b1040",
+  "name": "FUN_004b1040",
+  "signature": "undefined FUN_004b1040(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_004b1040(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  \r\n  if (*(char *)(param_1 + 5) != '\\0') {\r\n    if (((&DAT_005d9200)\r\n         [(*(uint *)(param_1 + 0x33) & 0xff) * 0x100 + (*(uint *)(param_1 + 0x37) & 0xff)] != 0) &&\r\n       (piVar2 = (int *)((&DAT_005d9200)\r\n                         [(*(uint *)(param_1 + 0x33) & 0xff) * 0x100 +\r\n                          (*(uint *)(param_1 + 0x37) & 0xff)] + 0x10), *piVar2 != 0)) {\r\n      while (piVar1 = (int *)*piVar2, param_1 - (int)piVar1 != -0x7f) {\r\n        piVar2 = piVar1;\r\n        if (*piVar1 == 0) {\r\n          *(undefined1 *)(param_1 + 5) = 0;\r\n          return;\r\n        }\r\n      }\r\n      *piVar2 = *(int *)(param_1 + 0x7f);\r\n    }\r\n    *(undefined1 *)(param_1 + 5) = 0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004b1d20",
+      "name": "FUN_004b1d20",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

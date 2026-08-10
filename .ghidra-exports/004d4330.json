@@ -1,0 +1,24 @@
+{
+  "address": "004d4330",
+  "name": "_CallCatchBlock2",
+  "signature": "void * __cdecl _CallCatchBlock2(EHRegistrationNode * param_1, _s_FuncInfo * param_2, void * param_3, int param_4, ulong param_5)",
+  "calling_convention": "__cdecl",
+  "return_type": "void *",
+  "parameter_count": 5,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void * __cdecl _CallCatchBlock2(struct EHRegistrationNode *,struct _s_FuncInfo const *,void\r\n   *,int,unsigned long)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid * __cdecl\r\n_CallCatchBlock2(EHRegistrationNode *param_1,_s_FuncInfo *param_2,void *param_3,int param_4,\r\n                ulong param_5)\r\n\r\n{\r\n  void *pvVar1;\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_14;\r\n  undefined1 *local_10;\r\n  _s_FuncInfo *local_c;\r\n  EHRegistrationNode *local_8;\r\n  int local_4;\r\n  \r\n  local_c = param_2;\r\n  local_8 = param_1;\r\n  local_10 = &LAB_004d43a0;\r\n  local_4 = param_4 + 1;\r\n  local_14 = *unaff_FS_OFFSET;\r\n  *unaff_FS_OFFSET = &local_14;\r\n  pvVar1 = (void *)__CallSettingFrame_12(param_3,param_1,param_5);\r\n  *unaff_FS_OFFSET = local_14;\r\n  return pvVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da4c0",
+      "name": "__CallSettingFrame@12"
+    }
+  ],
+  "data_refs": []
+}

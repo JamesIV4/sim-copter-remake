@@ -1,0 +1,28 @@
+{
+  "address": "0041f060",
+  "name": "FUN_0041f060",
+  "signature": "undefined FUN_0041f060(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_0041f060(int param_1)\r\n\r\n{\r\n  if (*(UINT *)(param_1 + 0x50) != 0) {\r\n    timeKillEvent(*(UINT *)(param_1 + 0x50));\r\n    if (*(int *)(param_1 + 0x96) != 0) {\r\n      *(undefined4 *)(param_1 + 0x96) = 0;\r\n      timeEndPeriod(100);\r\n    }\r\n    *(undefined4 *)(param_1 + 0x50) = 0;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041d700",
+      "name": "FUN_0041d700",
+      "ref_type": "COMPUTED_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000bf",
+      "name": "timeKillEvent"
+    },
+    {
+      "addr": "EXTERNAL:000000c5",
+      "name": "timeEndPeriod"
+    }
+  ],
+  "data_refs": []
+}

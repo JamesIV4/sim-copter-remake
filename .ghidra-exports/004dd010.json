@@ -1,0 +1,29 @@
+{
+  "address": "004dd010",
+  "name": "__hextodec",
+  "signature": "undefined __hextodec(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    __hextodec\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nuint __hextodec(uint param_1)\r\n\r\n{\r\n  uint uVar1;\r\n  \r\n  if (DAT_0050721c < 2) {\r\n    uVar1 = *(ushort *)(PTR_DAT_00507010 + param_1 * 2) & 4;\r\n  }\r\n  else {\r\n    uVar1 = __isctype(param_1,4);\r\n  }\r\n  if (uVar1 != 0) {\r\n    return param_1;\r\n  }\r\n  return (param_1 & 0xffffffdf) - 7;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dc370",
+      "name": "FUN_004dc370",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5700",
+      "name": "__isctype"
+    }
+  ],
+  "data_refs": []
+}

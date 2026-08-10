@@ -1,0 +1,28 @@
+{
+  "address": "00496620",
+  "name": "FUN_00496620",
+  "signature": "undefined FUN_00496620(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00496620(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  \r\n  uVar1 = FUN_00470571(0x13f);\r\n  uVar1 = FUN_00470571(0x128,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x140);\r\n  uVar1 = FUN_00470571(0x129,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x46);\r\n  uVar1 = FUN_00470571(0x2c,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x47);\r\n  uVar1 = FUN_00470571(0x2d,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x48);\r\n  uVar1 = FUN_00470571(0x32,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x49);\r\n  uVar1 = FUN_00470571(0x33,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x4a);\r\n  uVar1 = FUN_00470571(0x34,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x4b);\r\n  uVar1 = FUN_00470571(0x35,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x4c);\r\n  uVar1 = FUN_00470571(0x2e,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x4d);\r\n  uVar1 = FUN_00470571(0x2f,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x4e);\r\n  uVar1 = FUN_00470571(0x30,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x4f);\r\n  uVar1 = FUN_00470571(0x31,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x50);\r\n  uVar1 = FUN_00470571(0x36,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x51);\r\n  uVar1 = FUN_00470571(0x37,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x52);\r\n  uVar1 = FUN_00470571(0x38,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x53);\r\n  uVar1 = FUN_00470571(0x39,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x54);\r\n  uVar1 = FUN_00470571(0x3a,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x10d);\r\n  uVar1 = FUN_00470571(0x10e,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x10d);\r\n  uVar1 = FUN_00470571(0x10f,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x10d);\r\n  uVar1 = FUN_00470571(0x110,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x10e);\r\n  uVar1 = FUN_00470571(0x111,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x10e);\r\n  uVar1 = FUN_00470571(0x112,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x10f);\r\n  uVar1 = FUN_00470571(0x113,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x145);\r\n  uVar1 = FUN_00470571(0x143,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x146);\r\n  uVar1 = FUN_00470571(0x144,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x130);\r\n  uVar1 = FUN_00470571(0x55,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x131);\r\n  uVar1 = FUN_00470571(0x56,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x132);\r\n  uVar1 = FUN_00470571(0x57,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x133);\r\n  uVar1 = FUN_00470571(0x58,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x134);\r\n  uVar1 = FUN_00470571(0x59,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x135);\r\n  uVar1 = FUN_00470571(0x5a,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x136);\r\n  uVar1 = FUN_00470571(0x5b,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x137);\r\n  uVar1 = FUN_00470571(0x5c,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x138);\r\n  uVar1 = FUN_00470571(0x5d,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x139);\r\n  uVar1 = FUN_00470571(0x5e,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x13a);\r\n  uVar1 = FUN_00470571(0x5f,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x13b);\r\n  uVar1 = FUN_00470571(0x60,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x13c);\r\n  uVar1 = FUN_00470571(0x61,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x13d);\r\n  uVar1 = FUN_00470571(0x62,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x13e);\r\n  uVar1 = FUN_00470571(99,uVar1);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x186,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x187,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x18c,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x18d,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x18a,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x18b,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x188,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  uVar1 = FUN_00470571(0x189,0xffffffff);\r\n  FUN_0046ec50(uVar1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00470571",
+      "name": "FUN_00470571"
+    },
+    {
+      "addr": "0046ec50",
+      "name": "FUN_0046ec50"
+    }
+  ],
+  "data_refs": []
+}

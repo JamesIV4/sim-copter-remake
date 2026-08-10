@@ -1,0 +1,24 @@
+{
+  "address": "004b8130",
+  "name": "FUN_004b8130",
+  "signature": "undefined FUN_004b8130(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004b8130(undefined4 param_1)\r\n\r\n{\r\n  FUN_004b8180(param_1);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004b8180",
+      "name": "FUN_004b8180"
+    }
+  ],
+  "data_refs": []
+}

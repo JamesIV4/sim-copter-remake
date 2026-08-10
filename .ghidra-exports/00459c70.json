@@ -1,0 +1,87 @@
+{
+  "address": "00459c70",
+  "name": "FUN_00459c70",
+  "signature": "undefined FUN_00459c70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00459c70(undefined4 *param_1)\r\n\r\n{\r\n  *param_1 = &PTR_LAB_004f33c8;\r\n  if (-1 < (int)param_1[0x42]) {\r\n    if ((param_1[0x48] == 2) && (param_1[0x49] == 0)) {\r\n      (*(code *)PTR_FUN_004f3434)();\r\n    }\r\n    FUN_00461610();\r\n  }\r\n  *param_1 = &PTR_FUN_004f1780;\r\n  if ((-1 < (int)param_1[0x42]) && (param_1[0x43] != 0)) {\r\n    __close(param_1[0x42]);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00420f30",
+      "name": "FUN_00420f30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045d110",
+      "name": "FUN_0045d110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045d110",
+      "name": "FUN_0045d110",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045aa10",
+      "name": "FUN_0045aa10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045d3c0",
+      "name": "FUN_0045d3c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0045d3c0",
+      "name": "FUN_0045d3c0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "0045a600",
+      "name": "FUN_0045a600"
+    },
+    {
+      "addr": "00461610",
+      "name": "FUN_00461610"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close"
+    }
+  ],
+  "data_refs": []
+}

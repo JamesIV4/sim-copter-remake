@@ -1,0 +1,29 @@
+{
+  "address": "00447e20",
+  "name": "FUN_00447e20",
+  "signature": "undefined FUN_00447e20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_00447e20(undefined4 param_1,undefined4 param_2)\r\n\r\n{\r\n  undefined4 *unaff_FS_OFFSET;\r\n  undefined4 local_10;\r\n  undefined1 *puStack_c;\r\n  undefined4 local_8;\r\n  \r\n  local_10 = *unaff_FS_OFFSET;\r\n  puStack_c = &LAB_00447ea4;\r\n  *unaff_FS_OFFSET = &local_10;\r\n  if (DAT_0051a4a8 == 0) {\r\n    DAT_0051a4a4 = 0;\r\n  }\r\n  else {\r\n    _DAT_0051a4ac = param_1;\r\n    _DAT_0051a4b4 = param_2;\r\n    DAT_0051a4a4 = 1;\r\n    local_8 = 0;\r\n    _SmackToBuffer_28(DAT_0051a4a8,0,0,param_2,DAT_0051a4bc,param_1,0);\r\n  }\r\n  *unaff_FS_OFFSET = local_10;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00435680",
+      "name": "FUN_00435680",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000d7",
+      "name": "_SmackToBuffer@28"
+    }
+  ],
+  "data_refs": []
+}

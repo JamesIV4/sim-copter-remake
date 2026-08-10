@@ -1,0 +1,61 @@
+{
+  "address": "00448560",
+  "name": "FUN_00448560",
+  "signature": "undefined FUN_00448560(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall\r\nFUN_00448560(int *param_1,int *param_2,int param_3,int param_4,undefined4 param_5,undefined4 param_6\r\n            ,undefined4 param_7,undefined4 param_8)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  int iVar2;\r\n  int local_10;\r\n  int local_c;\r\n  int local_8;\r\n  int local_4;\r\n  \r\n  if (param_1[-0x4f] == 0) {\r\n    param_1[-0x4f] = 1;\r\n  }\r\n  else if (param_1[-0x4f] == 2) {\r\n    if (param_1[-0x4d] != 0) {\r\n      local_10 = param_3;\r\n      local_8 = param_1[2] + param_3;\r\n      local_c = param_4;\r\n      local_4 = param_1[3] + param_4;\r\n      (**(code **)(*param_1 + 0x44))(param_1[-0x4c],&local_10);\r\n      return 1;\r\n    }\r\n    if (param_1[0x4d] != 0) {\r\n      FUN_00448cd0(param_2,param_3,param_4,param_5,param_6,param_7,param_8);\r\n      return 1;\r\n    }\r\n    FUN_00450390(param_2,param_3,param_4,param_5,param_6,param_7,param_8);\r\n    return 1;\r\n  }\r\n  if (param_1[-0x42] == 0) {\r\n    return 2;\r\n  }\r\n  iVar2 = _SmackWait_4(param_1[-0x42]);\r\n  if (iVar2 == 0) {\r\n    if (param_1[0x4d] == 0) {\r\n      if (param_1[0x4e] == 0) {\r\n        puVar1 = (undefined4 *)*param_1;\r\n        iVar2 = (*(code *)*puVar1)();\r\n        if (iVar2 != 0) {\r\n          _SmackToBuffer_28(param_1[-0x42],0,0,param_1[5],param_1[3],param_1[4],0);\r\n          _SmackDoFrame_4(param_1[-0x42]);\r\n          (*(code *)puVar1[1])();\r\n          FUN_00450390(param_2,param_3,param_4,param_5,param_6,param_7,param_8);\r\n        }\r\n      }\r\n      else {\r\n        puVar1 = (undefined4 *)*param_2;\r\n        iVar2 = (*(code *)*puVar1)();\r\n        if (iVar2 != 0) {\r\n          _SmackToBuffer_28(param_1[-0x42],param_3,param_4,param_2[5],param_2[3],param_2[4],0);\r\n          _SmackDoFrame_4(param_1[-0x42]);\r\n          (*(code *)puVar1[1])();\r\n        }\r\n      }\r\n    }\r\n    else {\r\n      if (*(int *)(param_1[-0x42] + 0x68) != 0) {\r\n        _SmackBufferNewPalette_12(param_1[-0x43],param_1[-0x42] + 0x6c,0);\r\n        iVar2 = param_1[-0x43];\r\n        if (*(uint *)(iVar2 + 0x30) < 0x100) {\r\n          _SmackColorRemap_16(param_1[-0x42],iVar2 + 0x3c,*(undefined4 *)(iVar2 + 0x2c),\r\n                              *(undefined4 *)(iVar2 + 0x43c));\r\n        }\r\n      }\r\n      _SmackDoFrame_4(param_1[-0x42]);\r\n      if ((param_1[-0x45] == 0) && (param_1[-0x44] == 0)) {\r\n        FUN_00448b40(param_2,param_3,param_4,param_5,param_6,param_7,param_8);\r\n      }\r\n      else {\r\n        FUN_00448cd0(param_2,param_3,param_4,param_5,param_6,param_7,param_8);\r\n      }\r\n    }\r\n    iVar2 = param_1[-0x42];\r\n    if ((*(int *)(iVar2 + 0xc) - *(int *)(iVar2 + 0x374) == 1) && (param_1[-0x4e] == 0)) {\r\n      param_1[-0x4f] = 2;\r\n      return 1;\r\n    }\r\n    _SmackNextFrame_4(iVar2);\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00410e90",
+      "name": "FUN_00410e90",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00411300",
+      "name": "FUN_00411300",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000da",
+      "name": "_SmackWait@4"
+    },
+    {
+      "addr": "EXTERNAL:000000db",
+      "name": "_SmackBufferNewPalette@12"
+    },
+    {
+      "addr": "EXTERNAL:000000dc",
+      "name": "_SmackColorRemap@16"
+    },
+    {
+      "addr": "EXTERNAL:000000dd",
+      "name": "_SmackDoFrame@4"
+    },
+    {
+      "addr": "00448b40",
+      "name": "FUN_00448b40"
+    },
+    {
+      "addr": "00448cd0",
+      "name": "FUN_00448cd0"
+    },
+    {
+      "addr": "00450390",
+      "name": "FUN_00450390"
+    },
+    {
+      "addr": "EXTERNAL:000000d7",
+      "name": "_SmackToBuffer@28"
+    },
+    {
+      "addr": "EXTERNAL:000000e0",
+      "name": "_SmackNextFrame@4"
+    }
+  ],
+  "data_refs": []
+}

@@ -1,0 +1,45 @@
+{
+  "address": "004da020",
+  "name": "CatchIt",
+  "signature": "void __cdecl CatchIt(EHExceptionRecord * param_1, EHRegistrationNode * param_2, _CONTEXT * param_3, void * param_4, _s_FuncInfo * param_5, _s_HandlerType * param_6, _s_CatchableType * param_7, _s_TryBlockMapEntry * param_8, int param_9, EHRegistrationNode * param_10)",
+  "calling_convention": "__cdecl",
+  "return_type": "void",
+  "parameter_count": 10,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    void __cdecl CatchIt(struct EHExceptionRecord *,struct EHRegistrationNode *,struct _CONTEXT\r\n   *,void *,struct _s_FuncInfo const *,struct _s_HandlerType const *,struct _s_CatchableType const\r\n   *,struct _s_TryBlockMapEntry const *,int,struct EHRegistrationNode *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nvoid __cdecl\r\nCatchIt(EHExceptionRecord *param_1,EHRegistrationNode *param_2,_CONTEXT *param_3,void *param_4,\r\n       _s_FuncInfo *param_5,_s_HandlerType *param_6,_s_CatchableType *param_7,\r\n       _s_TryBlockMapEntry *param_8,int param_9,EHRegistrationNode *param_10)\r\n\r\n{\r\n  void *pvVar1;\r\n  \r\n  if (param_7 != (_s_CatchableType *)0x0) {\r\n    BuildCatchObject(param_1,param_2,param_6,param_7);\r\n  }\r\n  if (param_10 == (EHRegistrationNode *)0x0) {\r\n    param_10 = param_2;\r\n  }\r\n  _UnwindNestedFrames(param_10,param_1);\r\n  ___FrameUnwindToState(param_2,param_4,param_5,*(undefined4 *)param_8);\r\n  *(int *)(param_2 + 8) = *(int *)(param_8 + 4) + 1;\r\n  pvVar1 = CallCatchBlock(param_1,param_2,param_3,param_5,*(void **)(param_6 + 0xc),param_9,0x100);\r\n  if (pvVar1 != (void *)0x0) {\r\n    _JumpToContinuation(pvVar1,param_2);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d9b10",
+      "name": "FUN_004d9b10",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d9db0",
+      "name": "FindHandlerForForeignException",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject"
+    },
+    {
+      "addr": "004d4290",
+      "name": "_UnwindNestedFrames"
+    },
+    {
+      "addr": "004d9f30",
+      "name": "___FrameUnwindToState"
+    },
+    {
+      "addr": "004da0c0",
+      "name": "CallCatchBlock"
+    },
+    {
+      "addr": "004d4220",
+      "name": "_JumpToContinuation"
+    }
+  ],
+  "data_refs": []
+}

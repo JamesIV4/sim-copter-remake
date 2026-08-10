@@ -1,0 +1,34 @@
+{
+  "address": "0046350e",
+  "name": "VerQueryValueA",
+  "signature": "BOOL __stdcall VerQueryValueA(LPCVOID pBlock, LPCSTR lpSubBlock, LPVOID * lplpBuffer, PUINT puLen)",
+  "calling_convention": "__stdcall",
+  "return_type": "typedef BOOL int",
+  "parameter_count": 4,
+  "is_thunk": true,
+  "decompiled": "\r\nBOOL VerQueryValueA(LPCVOID pBlock,LPCSTR lpSubBlock,LPVOID *lplpBuffer,PUINT puLen)\r\n\r\n{\r\n  BOOL BVar1;\r\n  \r\n                    /* WARNING: Could not recover jumptable at 0x0046350e. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  BVar1 = VerQueryValueA(pBlock,lpSubBlock,lplpBuffer,puLen);\r\n  return BVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004029d0",
+      "name": "FUN_004029d0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00402b30",
+      "name": "FUN_00402b30",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00402ac0",
+      "name": "FUN_00402ac0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "00402ba0",
+      "name": "FUN_00402ba0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

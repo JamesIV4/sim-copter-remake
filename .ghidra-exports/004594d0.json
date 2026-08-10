@@ -1,0 +1,18 @@
+{
+  "address": "004594d0",
+  "name": "FUN_004594d0",
+  "signature": "undefined FUN_004594d0(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __thiscall FUN_004594d0(int param_1,int *param_2,int *param_3)\r\n\r\n{\r\n  tagRECT local_10;\r\n  \r\n  if (*(HWND *)(param_1 + 0x18) != (HWND)0x0) {\r\n    GetClientRect(*(HWND *)(param_1 + 0x18),&local_10);\r\n    *param_2 = local_10.right - local_10.left;\r\n    *param_3 = local_10.bottom - local_10.top;\r\n    return 0;\r\n  }\r\n  *param_3 = 0;\r\n  *param_2 = 0;\r\n  return 0x80000000;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "EXTERNAL:0000009d",
+      "name": "GetClientRect"
+    }
+  ],
+  "data_refs": []
+}

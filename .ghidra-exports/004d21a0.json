@@ -1,0 +1,42 @@
+{
+  "address": "004d21a0",
+  "name": "opfx",
+  "signature": "int __thiscall opfx(ostream * this)",
+  "calling_convention": "__thiscall",
+  "return_type": "int",
+  "parameter_count": 1,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    public: int __thiscall ostream::opfx(void)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\nint __thiscall ostream::opfx(ostream *this)\r\n\r\n{\r\n  int iVar1;\r\n  \r\n  if (*(int *)(this + *(int *)(*(int *)this + 4) + 0x34) < 0) {\r\n    __mtlock(this + *(int *)(*(int *)this + 4) + 0x38);\r\n  }\r\n  iVar1 = *(int *)(*(int *)this + 4);\r\n  if (*(uint *)(this + iVar1 + 8) != 0) {\r\n    *(uint *)(this + iVar1 + 8) = *(uint *)(this + iVar1 + 8) | 2;\r\n    if (*(int *)(this + *(int *)(*(int *)this + 4) + 0x34) < 0) {\r\n      __mtlock(this + *(int *)(*(int *)this + 4) + 0x38);\r\n    }\r\n    return 0;\r\n  }\r\n  if (*(ostream **)(this + iVar1 + 0x20) != (ostream *)0x0) {\r\n    flush(*(ostream **)(this + iVar1 + 0x20));\r\n  }\r\n  if (*(int *)(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x30) < 0) {\r\n    __mtlock(*(int *)(this + *(int *)(*(int *)this + 4) + 4) + 0x34);\r\n  }\r\n  return 1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d22e0",
+      "name": "operator<<",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d28f0",
+      "name": "operator<<",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d49e0",
+      "name": "operator<<",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d56e0",
+      "name": "__mtlock"
+    },
+    {
+      "addr": "004d56f0",
+      "name": "__mtlock"
+    },
+    {
+      "addr": "004d2310",
+      "name": "flush"
+    }
+  ],
+  "data_refs": []
+}

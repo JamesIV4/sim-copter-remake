@@ -1,0 +1,44 @@
+{
+  "address": "004d6070",
+  "name": "FID_conflict:_memcpy",
+  "signature": "void * __cdecl FID_conflict:_memcpy(void * _Dst, void * _Src, size_t _Size)",
+  "calling_convention": "__cdecl",
+  "return_type": "void *",
+  "parameter_count": 3,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Multiple Matches With Different Base Names\r\n    _memcpy\r\n    _memmove\r\n   \r\n   Libraries: Visual Studio 1998 Debug, Visual Studio 1998 Release */\r\n\r\nvoid * __cdecl FID_conflict__memcpy(void *_Dst,void *_Src,size_t _Size)\r\n\r\n{\r\n  uint uVar1;\r\n  int in_EDX;\r\n  uint uVar2;\r\n  undefined4 *puVar3;\r\n  undefined1 *puVar4;\r\n  undefined4 *puVar5;\r\n  undefined1 *puVar6;\r\n  \r\n  if ((_Src < _Dst) && (_Dst < (void *)((int)_Src + _Size))) {\r\n    puVar3 = (undefined4 *)((int)_Src + _Size);\r\n    puVar5 = (undefined4 *)((int)_Dst + _Size);\r\n    if (((uint)puVar5 & 3) == 0) {\r\n      uVar1 = _Size >> 2;\r\n      while( true ) {\r\n        puVar5 = puVar5 + -1;\r\n        puVar3 = puVar3 + -1;\r\n        if (uVar1 == 0) break;\r\n        uVar1 = uVar1 - 1;\r\n        *puVar5 = *puVar3;\r\n      }\r\n      switch(_Size & 3) {\r\n      case 1:\r\nswitchD_004d6139_caseD_1:\r\n        *(undefined1 *)((int)puVar5 + 3) = *(undefined1 *)((int)puVar3 + 3);\r\n        return _Dst;\r\n      case 2:\r\nswitchD_004d6139_caseD_2:\r\n        *(undefined2 *)((int)puVar5 + 2) = *(undefined2 *)((int)puVar3 + 2);\r\n        return _Dst;\r\n      case 3:\r\nswitchD_004d6139_caseD_3:\r\n        *(undefined2 *)((int)puVar5 + 2) = *(undefined2 *)((int)puVar3 + 2);\r\n        *(undefined1 *)((int)puVar5 + 1) = *(undefined1 *)((int)puVar3 + 1);\r\n        return _Dst;\r\n      }\r\n    }\r\n    else {\r\n      puVar4 = (undefined1 *)((int)puVar3 + -1);\r\n      puVar6 = (undefined1 *)((int)puVar5 + -1);\r\n      if (_Size < 0xd) {\r\n        for (; _Size != 0; _Size = _Size - 1) {\r\n          *puVar6 = *puVar4;\r\n          puVar4 = puVar4 + -1;\r\n          puVar6 = puVar6 + -1;\r\n        }\r\n        return _Dst;\r\n      }\r\n      uVar2 = -in_EDX & 3;\r\n      uVar1 = _Size - uVar2;\r\n      for (; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n        *puVar6 = *puVar4;\r\n        puVar4 = puVar4 + -1;\r\n        puVar6 = puVar6 + -1;\r\n      }\r\n      puVar3 = (undefined4 *)(puVar4 + -3);\r\n      puVar5 = (undefined4 *)(puVar6 + -3);\r\n      for (uVar2 = uVar1 >> 2; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n        *puVar5 = *puVar3;\r\n        puVar3 = puVar3 + -1;\r\n        puVar5 = puVar5 + -1;\r\n      }\r\n      switch(uVar1 & 3) {\r\n      case 1:\r\n        goto switchD_004d6139_caseD_1;\r\n      case 2:\r\n        goto switchD_004d6139_caseD_2;\r\n      case 3:\r\n        goto switchD_004d6139_caseD_3;\r\n      }\r\n    }\r\n    return _Dst;\r\n  }\r\n  puVar3 = _Dst;\r\n  if (((uint)_Dst & 3) == 0) {\r\n    for (uVar1 = _Size >> 2; uVar1 != 0; uVar1 = uVar1 - 1) {\r\n      *puVar3 = *(undefined4 *)_Src;\r\n      _Src = (undefined4 *)((int)_Src + 4);\r\n      puVar3 = puVar3 + 1;\r\n    }\r\n    switch(_Size & 3) {\r\n    case 1:\r\nswitchD_004d60a0_caseD_1:\r\n      *(undefined1 *)puVar3 = *(undefined1 *)_Src;\r\n      return _Dst;\r\n    case 2:\r\nswitchD_004d60a0_caseD_2:\r\n      *(undefined2 *)puVar3 = *(undefined2 *)_Src;\r\n      return _Dst;\r\n    case 3:\r\nswitchD_004d60a0_caseD_3:\r\n      *(undefined2 *)puVar3 = *(undefined2 *)_Src;\r\n      *(undefined1 *)((int)puVar3 + 2) = *(undefined1 *)((int)_Src + 2);\r\n      return _Dst;\r\n    }\r\n  }\r\n  else {\r\n    puVar4 = _Dst;\r\n    if (_Size < 0xd) {\r\n      for (; _Size != 0; _Size = _Size - 1) {\r\n        *puVar4 = *(undefined1 *)_Src;\r\n        _Src = (undefined1 *)((int)_Src + 1);\r\n        puVar4 = puVar4 + 1;\r\n      }\r\n      return _Dst;\r\n    }\r\n    uVar2 = -(int)_Dst & 3;\r\n    uVar1 = _Size - uVar2;\r\n    for (; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n      *(undefined1 *)puVar3 = *(undefined1 *)_Src;\r\n      _Src = (undefined4 *)((int)_Src + 1);\r\n      puVar3 = (undefined4 *)((int)puVar3 + 1);\r\n    }\r\n    for (uVar2 = uVar1 >> 2; uVar2 != 0; uVar2 = uVar2 - 1) {\r\n      *puVar3 = *(undefined4 *)_Src;\r\n      _Src = (undefined4 *)((int)_Src + 4);\r\n      puVar3 = puVar3 + 1;\r\n    }\r\n    switch(uVar1 & 3) {\r\n    case 1:\r\n      goto switchD_004d60a0_caseD_1;\r\n    case 2:\r\n      goto switchD_004d60a0_caseD_2;\r\n    case 3:\r\n      goto switchD_004d60a0_caseD_3;\r\n    }\r\n  }\r\n  return _Dst;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004dda40",
+      "name": "___crtGetStringTypeW",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ce150",
+      "name": "FUN_004ce150",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d37b0",
+      "name": "FUN_004d37b0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da210",
+      "name": "BuildCatchObject",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8c80",
+      "name": "__shift",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

@@ -1,0 +1,13 @@
+{
+  "address": "00430950",
+  "name": "FUN_00430950",
+  "signature": "undefined FUN_00430950(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nundefined4 __fastcall FUN_00430950(int param_1)\r\n\r\n{\r\n  undefined4 local_1c;\r\n  undefined4 local_18;\r\n  undefined4 local_14;\r\n  undefined4 local_10;\r\n  undefined4 local_c;\r\n  undefined4 local_8;\r\n  undefined4 local_4;\r\n  \r\n  if (DAT_004f9a14 != (int *)0x0) {\r\n    local_1c = *(undefined4 *)(param_1 + 0x10);\r\n    local_18 = *(undefined4 *)(param_1 + 0x18);\r\n    local_14 = *(undefined4 *)(param_1 + 0x20);\r\n    local_10 = *(undefined4 *)(param_1 + 0x24);\r\n    local_c = *(undefined4 *)(param_1 + 0x28);\r\n    local_8 = *(undefined4 *)(param_1 + 0x2c);\r\n    local_4 = *(undefined4 *)(param_1 + 0x30);\r\n    (**(code **)(*DAT_004f9a14 + 0x2c))(0x5245494f,&local_1c,0x1c);\r\n    return 1;\r\n  }\r\n  return 0;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [],
+  "data_refs": []
+}

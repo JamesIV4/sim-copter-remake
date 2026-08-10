@@ -1,0 +1,28 @@
+{
+  "address": "0046e880",
+  "name": "FUN_0046e880",
+  "signature": "undefined FUN_0046e880(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nundefined4 * FUN_0046e880(int param_1,int param_2)\r\n\r\n{\r\n  undefined4 *puVar1;\r\n  uint uVar2;\r\n  int iVar3;\r\n  \r\n  puVar1 = (undefined4 *)FUN_004d5f00(param_1 + 0xa0 + param_2);\r\n  if (puVar1 == (undefined4 *)0x0) {\r\n    _DAT_005bdb40 = 4;\r\n    return (undefined4 *)0x0;\r\n  }\r\n  *puVar1 = 0;\r\n  puVar1[2] = (uint)(puVar1 + 0xc) & 0xfffffff0;\r\n  uVar2 = ((uint)(puVar1 + 0xc) & 0xfffffff0) + param_1 + 0x10 & 0xfffffff0;\r\n  puVar1[3] = uVar2;\r\n  puVar1[6] = uVar2;\r\n  puVar1[7] = puVar1[3] + param_2 + 0x10U & 0xfffffff0;\r\n  DAT_004fa2ec = DAT_004fa2ec + param_1 + param_2 + 0xa0;\r\n  if (DAT_004fa2f4 < DAT_004fa2ec) {\r\n    DAT_004fa2f4 = DAT_004fa2ec;\r\n  }\r\n  _DAT_004fa2f8 = _DAT_004fa2f8 + param_1 + param_2 + 0xa0;\r\n  iVar3 = FUN_004701e1(puVar1);\r\n  if (iVar3 == 0) {\r\n    _DAT_005bdb40 = 0xe;\r\n    return (undefined4 *)0x0;\r\n  }\r\n  return puVar1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00479bb0",
+      "name": "FUN_00479bb0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d5f00",
+      "name": "FUN_004d5f00"
+    },
+    {
+      "addr": "004701e1",
+      "name": "FUN_004701e1"
+    }
+  ],
+  "data_refs": []
+}

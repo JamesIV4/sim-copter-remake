@@ -1,0 +1,19 @@
+{
+  "address": "00405230",
+  "name": "FUN_00405230",
+  "signature": "undefined FUN_00405230(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __fastcall FUN_00405230(int param_1)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  code *pcVar4;\r\n  int *piVar5;\r\n  int *piVar6;\r\n  int iVar7;\r\n  int *local_c;\r\n  undefined4 *puStack_8;\r\n  \r\n  local_c = (int *)**(undefined4 **)(param_1 + 0x30);\r\n  (**(code **)(*DAT_004f81e4 + 0x30))();\r\n  while (*(int **)(param_1 + 0x30) != local_c) {\r\n    piVar1 = (int *)local_c[2];\r\n    piVar2 = (int *)*local_c;\r\n    *(int **)local_c[1] = piVar2;\r\n    *(int *)(*local_c + 4) = local_c[1];\r\n    *local_c = (int)DAT_004f81fc;\r\n    DAT_004f81fc = local_c;\r\n    *(int *)(param_1 + 0x34) = *(int *)(param_1 + 0x34) + -1;\r\n    iVar7 = (**(code **)(*DAT_004f81e4 + 0x28))(piVar1);\r\n    local_c = piVar2;\r\n    if ((iVar7 != 0) && (piVar1 != (int *)0x0)) {\r\n      (**(code **)(*piVar1 + 0xc0))(1);\r\n    }\r\n  }\r\n  iVar7 = (**(code **)(*DAT_004f81e4 + 0x34))();\r\n  piVar1 = DAT_004f81e4;\r\n  if ((iVar7 < 1) && (DAT_004f81ec < 1)) {\r\n    piVar2 = DAT_004f81e4 + 3;\r\n    DAT_004f81ec = DAT_004f81ec + 1;\r\n    puStack_8 = *(undefined4 **)*piVar2;\r\n    if (DAT_004f81e4[1] < 1) {\r\n      for (; (undefined4 *)*piVar2 != puStack_8; puStack_8 = (undefined4 *)*puStack_8) {\r\n        piVar3 = (int *)puStack_8[2];\r\n        pcVar4 = *(code **)(*piVar1 + 0x28);\r\n        iVar7 = (*pcVar4)(piVar3);\r\n        if (iVar7 != 0) {\r\n          piVar5 = (int *)piVar3[0xf];\r\n          if (piVar5 == (int *)0x0) {\r\n            if (piVar3 != (int *)0x0) {\r\n              (**(code **)(*piVar3 + 0xc0))(1);\r\n            }\r\n          }\r\n          else {\r\n            iVar7 = (*pcVar4)(piVar5);\r\n            if (iVar7 != 0) {\r\n              (**(code **)(*piVar5 + 0x6c))(piVar3);\r\n            }\r\n          }\r\n        }\r\n      }\r\n      piVar2 = (int *)*piVar2;\r\n      piVar3 = (int *)*piVar2;\r\n      while (piVar3 != piVar2) {\r\n        piVar6 = (int *)*piVar3;\r\n        *(int *)piVar3[1] = *piVar3;\r\n        *(int *)(*piVar3 + 4) = piVar3[1];\r\n        *piVar3 = (int)DAT_004f81fc;\r\n        piVar5 = piVar1 + 4;\r\n        DAT_004f81fc = piVar3;\r\n        *piVar5 = *piVar5 + -1;\r\n        piVar3 = piVar6;\r\n      }\r\n    }\r\n    DAT_004f81ec = DAT_004f81ec + -1;\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "00404710",
+      "name": "FUN_00404710",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

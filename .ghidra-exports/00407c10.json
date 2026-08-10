@@ -1,0 +1,24 @@
+{
+  "address": "00407c10",
+  "name": "FUN_00407c10",
+  "signature": "undefined FUN_00407c10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_00407c10(void)\r\n\r\n{\r\n  if (DAT_00518d50 == 1) {\r\n    DAT_00518cf4 = 1;\r\n    return;\r\n  }\r\n  DAT_00518d68 = 1;\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041fcd0",
+      "name": "FUN_0041fcd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004200e0",
+      "name": "FUN_004200e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [],
+  "data_refs": []
+}

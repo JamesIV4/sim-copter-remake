@@ -1,0 +1,28 @@
+{
+  "address": "004d44b0",
+  "name": "TranslatorGuardHandler",
+  "signature": "_EXCEPTION_DISPOSITION __cdecl TranslatorGuardHandler(EHExceptionRecord * param_1, TranslatorGuardRN * param_2, void * param_3, void * param_4)",
+  "calling_convention": "__cdecl",
+  "return_type": "/Demangler/_EXCEPTION_DISPOSITION\n\tDescription: \nValues: \n",
+  "parameter_count": 4,
+  "is_thunk": false,
+  "decompiled": "\r\n/* Library Function - Single Match\r\n    enum _EXCEPTION_DISPOSITION __cdecl TranslatorGuardHandler(struct EHExceptionRecord *,struct\r\n   TranslatorGuardRN *,void *,void *)\r\n   \r\n   Library: Visual Studio 1998 Release */\r\n\r\n_EXCEPTION_DISPOSITION __cdecl\r\nTranslatorGuardHandler\r\n          (EHExceptionRecord *param_1,TranslatorGuardRN *param_2,void *param_3,void *param_4)\r\n\r\n{\r\n  _EXCEPTION_DISPOSITION _Var1;\r\n  \r\n  if (((byte)param_1[4] & 0x66) != 0) {\r\n    *(undefined4 *)(param_2 + 0x24) = 1;\r\n    return 1;\r\n  }\r\n  ___InternalCxxFrameHandler\r\n            (param_1,*(undefined4 *)(param_2 + 0xc),param_3,0,*(undefined4 *)(param_2 + 8),\r\n             *(undefined4 *)(param_2 + 0x10),*(undefined4 *)(param_2 + 0x14),1);\r\n  if (*(int *)(param_2 + 0x24) == 0) {\r\n    _UnwindNestedFrames((EHRegistrationNode *)param_2,param_1);\r\n  }\r\n                    /* WARNING: Could not recover jumptable at 0x004d450f. Too many branches */\r\n                    /* WARNING: Treating indirect jump as call */\r\n  _Var1 = (**(code **)(param_2 + 0x18))();\r\n  return _Var1;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d43d0",
+      "name": "_CallSETranslator",
+      "ref_type": "DATA"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004d9a50",
+      "name": "___InternalCxxFrameHandler"
+    },
+    {
+      "addr": "004d4290",
+      "name": "_UnwindNestedFrames"
+    }
+  ],
+  "data_refs": []
+}

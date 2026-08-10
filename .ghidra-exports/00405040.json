@@ -1,0 +1,18 @@
+{
+  "address": "00405040",
+  "name": "FUN_00405040",
+  "signature": "undefined FUN_00405040(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint __thiscall FUN_00405040(int *param_1,int param_2)\r\n\r\n{\r\n  int *piVar1;\r\n  int *piVar2;\r\n  int *piVar3;\r\n  code *pcVar4;\r\n  int *piVar5;\r\n  undefined4 *puVar6;\r\n  undefined4 *puVar7;\r\n  undefined4 *puVar8;\r\n  int iVar9;\r\n  int *piStack_c;\r\n  int local_8;\r\n  \r\n  piVar2 = *(int **)param_1[0xc];\r\n  local_8 = 0;\r\n  (**(code **)(*DAT_004f81e4 + 0x30))();\r\n  do {\r\n    if (piVar2 == (int *)param_1[0xc]) {\r\nLAB_004050ef:\r\n      iVar9 = (**(code **)(*DAT_004f81e4 + 0x34))();\r\n      piVar2 = DAT_004f81e4;\r\n      if ((iVar9 < 1) && (DAT_004f81ec < 1)) {\r\n        piVar1 = DAT_004f81e4 + 3;\r\n        DAT_004f81ec = DAT_004f81ec + 1;\r\n        piStack_c = *(int **)*piVar1;\r\n        if (DAT_004f81e4[1] < 1) {\r\n          for (; (undefined4 *)*piVar1 != piStack_c; piStack_c = (int *)*piStack_c) {\r\n            piVar3 = (int *)piStack_c[2];\r\n            pcVar4 = *(code **)(*piVar2 + 0x28);\r\n            iVar9 = (*pcVar4)(piVar3);\r\n            if (iVar9 != 0) {\r\n              piVar5 = (int *)piVar3[0xf];\r\n              if (piVar5 == (int *)0x0) {\r\n                if (piVar3 != (int *)0x0) {\r\n                  (**(code **)(*piVar3 + 0xc0))(1);\r\n                }\r\n              }\r\n              else {\r\n                iVar9 = (*pcVar4)(piVar5);\r\n                if (iVar9 != 0) {\r\n                  (**(code **)(*piVar5 + 0x6c))(piVar3);\r\n                }\r\n              }\r\n            }\r\n          }\r\n          puVar6 = (undefined4 *)*piVar1;\r\n          puVar8 = (undefined4 *)*puVar6;\r\n          while (puVar8 != puVar6) {\r\n            puVar7 = (undefined4 *)*puVar8;\r\n            FUN_004048f0(puVar8);\r\n            puVar8 = puVar7;\r\n          }\r\n        }\r\n        DAT_004f81ec = DAT_004f81ec + -1;\r\n      }\r\n      return local_8;\r\n    }\r\n    if (*(int *)(piVar2[2] + 4) == param_2) {\r\n      local_8 = piVar2[2];\r\n      *(int *)piVar2[1] = *piVar2;\r\n      *(int *)(*piVar2 + 4) = piVar2[1];\r\n      *piVar2 = (int)DAT_004f81fc;\r\n      DAT_004f81fc = piVar2;\r\n      param_1[0xd] = param_1[0xd] + -1;\r\n      iVar9 = (**(code **)(*DAT_004f81e4 + 0x28))(local_8);\r\n      if ((iVar9 != 0) && (piStack_c != (int *)0x0)) {\r\n        (**(code **)(*piStack_c + 0xc0))(1);\r\n      }\r\n      (**(code **)(*param_1 + 0x40))(1,1);\r\n      goto LAB_004050ef;\r\n    }\r\n    piVar2 = (int *)*piVar2;\r\n  } while( true );\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004048f0",
+      "name": "FUN_004048f0"
+    }
+  ],
+  "data_refs": []
+}

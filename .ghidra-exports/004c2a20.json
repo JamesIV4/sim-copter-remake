@@ -1,0 +1,22 @@
+{
+  "address": "004c2a20",
+  "name": "FUN_004c2a20",
+  "signature": "undefined FUN_004c2a20(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid FUN_004c2a20(void)\r\n\r\n{\r\n  undefined2 uVar1;\r\n  int iVar2;\r\n  short sVar3;\r\n  undefined2 uVar4;\r\n  undefined2 local_2;\r\n  \r\n  iVar2 = (int)(short)DAT_00518d64;\r\n  sVar3 = (short)((int)(DAT_00518d64 + (DAT_00518d64 >> 0x1f & 7U)) >> 3);\r\n  if (sVar3 < 2) {\r\n    sVar3 = 1;\r\n  }\r\n  uVar4 = local_2;\r\n  if (0 < sVar3) {\r\n    do {\r\n      uVar1 = FUN_004cea00(0xc);\r\n      switch(uVar1) {\r\n      case 0:\r\n        local_2 = (undefined2)DAT_005d9170;\r\n        uVar4 = (undefined2)DAT_005d9174;\r\n        break;\r\n      case 1:\r\n        local_2 = (undefined2)DAT_005d9178;\r\n        uVar4 = (undefined2)DAT_005d917c;\r\n        break;\r\n      case 2:\r\n        local_2 = DAT_005d9180;\r\n        uVar4 = DAT_005d9184;\r\n        break;\r\n      case 3:\r\n        local_2 = DAT_005d9188;\r\n        uVar4 = DAT_005d918c;\r\n        break;\r\n      case 4:\r\n        local_2 = DAT_005d9190;\r\n        uVar4 = DAT_005d9194;\r\n        break;\r\n      case 5:\r\n        local_2 = DAT_005d9198;\r\n        uVar4 = DAT_005d919c;\r\n        break;\r\n      case 6:\r\n        local_2 = DAT_005d91a0;\r\n        uVar4 = DAT_005d91a4;\r\n        break;\r\n      case 7:\r\n        local_2 = DAT_005d91a8;\r\n        uVar4 = DAT_005d91ac;\r\n        break;\r\n      case 8:\r\n        local_2 = DAT_005d91b0;\r\n        uVar4 = DAT_005d91b4;\r\n        break;\r\n      case 9:\r\n        local_2 = DAT_005d91b8;\r\n        uVar4 = DAT_005d91bc;\r\n        break;\r\n      case 10:\r\n        local_2 = DAT_005d91c0;\r\n        uVar4 = DAT_005d91c4;\r\n        break;\r\n      case 0xb:\r\n        local_2 = DAT_005d91c8;\r\n        uVar4 = DAT_005d91cc;\r\n      }\r\n      FUN_004c29d0(local_2,uVar4,iVar2 / 2 + 5);\r\n      sVar3 = sVar3 + -1;\r\n    } while (sVar3 != 0);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [],
+  "callees": [
+    {
+      "addr": "004cea00",
+      "name": "FUN_004cea00"
+    },
+    {
+      "addr": "004c29d0",
+      "name": "FUN_004c29d0"
+    }
+  ],
+  "data_refs": []
+}

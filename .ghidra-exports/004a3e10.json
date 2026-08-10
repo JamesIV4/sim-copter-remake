@@ -1,0 +1,28 @@
+{
+  "address": "004a3e10",
+  "name": "FUN_004a3e10",
+  "signature": "undefined FUN_004a3e10(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\r\n\r\nvoid FUN_004a3e10(void)\r\n\r\n{\r\n  undefined4 uVar1;\r\n  int *piVar2;\r\n  int local_4;\r\n  \r\n  uVar1 = DAT_004f48d0;\r\n  piVar2 = (int *)FUN_00448ec0(DAT_004f48d0);\r\n  if (((piVar2 != (int *)0x0) && (local_4 = *piVar2, -1 < _DAT_00505f08)) && (_DAT_00505f08 < 4)) {\r\n    _DAT_00505f08 = local_4;\r\n    FUN_00448ee0(uVar1,&local_4,4);\r\n  }\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0047a490",
+      "name": "FUN_0047a490",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "00448ec0",
+      "name": "FUN_00448ec0"
+    },
+    {
+      "addr": "00448ee0",
+      "name": "FUN_00448ee0"
+    }
+  ],
+  "data_refs": []
+}

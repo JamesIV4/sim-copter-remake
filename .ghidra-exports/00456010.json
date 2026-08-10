@@ -1,0 +1,37 @@
+{
+  "address": "00456010",
+  "name": "FUN_00456010",
+  "signature": "undefined FUN_00456010(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nMMRESULT FUN_00456010(HMMIO param_1,uint param_2,int param_3,int param_4,uint *param_5)\r\n\r\n{\r\n  uint uVar1;\r\n  MMRESULT MVar2;\r\n  uint uVar3;\r\n  _MMIOINFO local_48;\r\n  \r\n  MVar2 = mmioGetInfo(param_1,&local_48,0);\r\n  if (MVar2 == 0) {\r\n    uVar1 = *(uint *)(param_4 + 4);\r\n    if (uVar1 < param_2) {\r\n      param_2 = uVar1;\r\n    }\r\n    uVar3 = 0;\r\n    *(uint *)(param_4 + 4) = uVar1 - param_2;\r\n    if (param_2 != 0) {\r\n      do {\r\n        if (local_48.pchNext == local_48.pchEndRead) {\r\n          MVar2 = mmioAdvance(param_1,&local_48,0);\r\n          if (MVar2 != 0) goto LAB_00456098;\r\n          if (local_48.pchNext == local_48.pchEndRead) {\r\n            MVar2 = 0xe103;\r\n            goto LAB_00456098;\r\n          }\r\n        }\r\n        uVar3 = uVar3 + 1;\r\n        *(char *)(param_3 + -1 + uVar3) = *local_48.pchNext;\r\n        local_48.pchNext = local_48.pchNext + 1;\r\n      } while (uVar3 < param_2);\r\n    }\r\n    MVar2 = mmioSetInfo(param_1,&local_48,0);\r\n    if (MVar2 == 0) {\r\n      *param_5 = param_2;\r\n      return 0;\r\n    }\r\n  }\r\nLAB_00456098:\r\n  *param_5 = 0;\r\n  return MVar2;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "0041e510",
+      "name": "FUN_0041e510",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "EXTERNAL:000000c6",
+      "name": "mmioGetInfo"
+    },
+    {
+      "addr": "EXTERNAL:000000bd",
+      "name": "mmioAdvance"
+    },
+    {
+      "addr": "EXTERNAL:000000c4",
+      "name": "mmioSetInfo"
+    }
+  ],
+  "data_refs": []
+}

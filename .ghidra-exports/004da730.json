@@ -1,0 +1,229 @@
+{
+  "address": "004da730",
+  "name": "FUN_004da730",
+  "signature": "undefined FUN_004da730(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nint * FUN_004da730(void)\r\n\r\n{\r\n  _ptiddata p_Var1;\r\n  \r\n  p_Var1 = __getptd();\r\n  return &p_Var1->_terrno;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004d5f80",
+      "name": "FUN_004d5f80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5fd0",
+      "name": "FUN_004d5fd0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7060",
+      "name": "__close",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7160",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d71e0",
+      "name": "FUN_004d71e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d71e0",
+      "name": "FUN_004d71e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d73e0",
+      "name": "__read",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7460",
+      "name": "FUN_004d7460",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7710",
+      "name": "__lseek_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d7690",
+      "name": "__write",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8cf0",
+      "name": "__commit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d8cf0",
+      "name": "__commit",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004da6b0",
+      "name": "__dosmaperr",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df9a0",
+      "name": "FUN_004df9a0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dfa40",
+      "name": "FUN_004dfa40",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0810",
+      "name": "FUN_004e0810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0810",
+      "name": "FUN_004e0810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0810",
+      "name": "FUN_004e0810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0810",
+      "name": "FUN_004e0810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e0810",
+      "name": "FUN_004e0810",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ef340",
+      "name": "FUN_004ef340",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dfc10",
+      "name": "__wctomb_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004dfc10",
+      "name": "__wctomb_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df2e0",
+      "name": "FUN_004df2e0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df8f0",
+      "name": "FUN_004df8f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e34b0",
+      "name": "__chsize_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004df740",
+      "name": "__setmode_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d59b0",
+      "name": "__fseek_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004d5a80",
+      "name": "FUN_004d5a80",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e1420",
+      "name": "FUN_004e1420",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ded00",
+      "name": "__set_errno",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004ded00",
+      "name": "__set_errno",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e3440",
+      "name": "__chsize",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e17a0",
+      "name": "__mbtowc_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    },
+    {
+      "addr": "004e17a0",
+      "name": "__mbtowc_lk",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004da590",
+      "name": "__getptd"
+    }
+  ],
+  "data_refs": []
+}

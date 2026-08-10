@@ -1,0 +1,24 @@
+{
+  "address": "00458e70",
+  "name": "FUN_00458e70",
+  "signature": "undefined FUN_00458e70(void)",
+  "calling_convention": "unknown",
+  "return_type": "undefined",
+  "parameter_count": 0,
+  "is_thunk": false,
+  "decompiled": "\r\nvoid __thiscall FUN_00458e70(int param_1,int *param_2,int *param_3)\r\n\r\n{\r\n  int iVar1;\r\n  int iVar2;\r\n  int iVar3;\r\n  int *piVar4;\r\n  int *piVar5;\r\n  int local_e4;\r\n  int local_e0 [19];\r\n  int local_94;\r\n  int local_90 [19];\r\n  int local_44;\r\n  int local_40 [16];\r\n  \r\n  FUN_004590b0(1,1,*(int *)(param_1 + 0x74) == 0);\r\n  FUN_004590b0(0,1,*(int *)(param_1 + 0x74) == 1);\r\n  FUN_004590b0(1,0,*(int *)(param_1 + 0x74) == 2);\r\n  piVar4 = param_2;\r\n  for (piVar5 = local_e0; piVar5 < local_e0 + 0x10; piVar5 = piVar5 + 4) {\r\n    iVar3 = piVar5[1];\r\n    *piVar4 = *piVar5;\r\n    piVar4[1] = iVar3;\r\n    piVar4 = piVar4 + 2;\r\n  }\r\n  piVar5 = param_2 + 8;\r\n  for (piVar4 = local_90; piVar4 < local_90 + 0x10; piVar4 = piVar4 + 4) {\r\n    iVar3 = piVar4[1];\r\n    *piVar5 = *piVar4;\r\n    piVar5[1] = iVar3;\r\n    piVar5 = piVar5 + 2;\r\n  }\r\n  param_2 = param_2 + 0x10;\r\n  for (piVar5 = local_40; piVar5 < &stack0x00000000; piVar5 = piVar5 + 4) {\r\n    iVar3 = piVar5[1];\r\n    *param_2 = *piVar5;\r\n    param_2[1] = iVar3;\r\n    param_2 = param_2 + 2;\r\n  }\r\n  piVar5 = local_e0;\r\n  piVar4 = param_3;\r\n  do {\r\n    if (local_e4 == 0) {\r\n      iVar1 = piVar5[2];\r\n      iVar2 = piVar5[1];\r\n      iVar3 = piVar5[3] + 0x168;\r\n      *piVar4 = *piVar5;\r\n      piVar4[1] = iVar2 + 0x168;\r\n      piVar4[2] = iVar1;\r\n    }\r\n    else {\r\n      iVar3 = piVar5[1];\r\n      *piVar4 = *piVar5;\r\n      iVar1 = piVar5[2];\r\n      piVar4[1] = iVar3;\r\n      iVar3 = piVar5[3];\r\n      piVar4[2] = iVar1;\r\n    }\r\n    piVar4[3] = iVar3;\r\n    piVar5 = piVar5 + 4;\r\n    piVar4 = piVar4 + 4;\r\n  } while (piVar5 < local_e0 + 0x10);\r\n  piVar4 = local_90;\r\n  piVar5 = param_3 + 0x10;\r\n  do {\r\n    if (local_94 == 0) {\r\n      iVar1 = piVar4[2];\r\n      iVar2 = piVar4[1];\r\n      iVar3 = piVar4[3] + 0x168;\r\n      *piVar5 = *piVar4;\r\n      piVar5[1] = iVar2 + 0x168;\r\n      piVar5[2] = iVar1;\r\n    }\r\n    else {\r\n      iVar3 = piVar4[1];\r\n      *piVar5 = *piVar4;\r\n      iVar1 = piVar4[2];\r\n      piVar5[1] = iVar3;\r\n      iVar3 = piVar4[3];\r\n      piVar5[2] = iVar1;\r\n    }\r\n    piVar5[3] = iVar3;\r\n    piVar4 = piVar4 + 4;\r\n    piVar5 = piVar5 + 4;\r\n  } while (piVar4 < local_90 + 0x10);\r\n  piVar5 = local_40;\r\n  param_3 = param_3 + 0x20;\r\n  do {\r\n    if (local_44 == 0) {\r\n      iVar3 = piVar5[2];\r\n      iVar1 = piVar5[1];\r\n      iVar2 = piVar5[3];\r\n      *param_3 = *piVar5;\r\n      param_3[1] = iVar1 + 0x168;\r\n      param_3[2] = iVar3;\r\n      param_3[3] = iVar2 + 0x168;\r\n    }\r\n    else {\r\n      iVar3 = piVar5[1];\r\n      iVar1 = piVar5[2];\r\n      *param_3 = *piVar5;\r\n      iVar2 = piVar5[3];\r\n      param_3[1] = iVar3;\r\n      param_3[2] = iVar1;\r\n      param_3[3] = iVar2;\r\n    }\r\n    piVar5 = piVar5 + 4;\r\n    param_3 = param_3 + 4;\r\n  } while (piVar5 < &stack0x00000000);\r\n  return;\r\n}\r\n\r\n",
+  "callers": [
+    {
+      "addr": "004589f0",
+      "name": "FUN_004589f0",
+      "ref_type": "UNCONDITIONAL_CALL"
+    }
+  ],
+  "callees": [
+    {
+      "addr": "004590b0",
+      "name": "FUN_004590b0"
+    }
+  ],
+  "data_refs": []
+}
