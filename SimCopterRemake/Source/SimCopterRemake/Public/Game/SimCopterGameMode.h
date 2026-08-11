@@ -36,6 +36,13 @@ public:
 	UFUNCTION(Exec)
 	void SimLoadMission(int32 MissionIndex = -1, int32 CareerCityIndex = 0);
 
+	// Throws opcode 60's firebomb where the player is standing, so the arsonist's ignition chain
+	// can be checked without waiting out BHAV 1078's rand(1000) < 6. bBurnOutNow skips the
+	// original's 60-second burn straight to the `1 in (8 - difficulty)` roll; Count repeats the
+	// whole throw, which is the only way to see a one-in-seven event in one sitting.
+	UFUNCTION(Exec)
+	void SimArsonFirebomb(int32 Count = 1, bool bBurnOutNow = false);
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	bool bSpawnTrafficSystem = true;

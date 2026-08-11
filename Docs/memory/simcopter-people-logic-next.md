@@ -1,4 +1,21 @@
-﻿# SimCopter people logic — decoded + ported
+﻿## The behaviour VM tick is NOT once per game frame (measured 2026-08-11)
+
+`FUN_004c5fb0` accumulates the frame delta into `DAT_00506454` and only runs the per-person pass -
+the VM dispatch included - when it passes `DAT_00506450`, which is reloaded to **`0x147a`** = 5242
+in 16.16, i.e. **0.08 s**. The accumulator is then reset to 0 rather than having the threshold
+subtracted, so the real cadence is quantised by the frame rate: 5 frames at 60 fps (12 Hz), 3 at 30,
+2 at 20 (10 Hz). Between ticks the `else` branch only refreshes render transforms
+(`FUN_004704d1`).
+
+So the original's people cadence is **10-12.5 Hz**, and `ASimCopterGroundAgent::BehaviorTickRate`
+(15) is already *faster* than retail - its comment guessing "once per game frame, ~15fps era
+pacing" is wrong on both counts. This matters whenever a shipped program's tick counts are being
+converted to seconds: `Walk-30` is 30 ticks ~ 2.5 s in retail, and every "why is X so rare/slow"
+question about people has to be answered against 12 Hz, not 15 and not 20. Lowering the remake to
+12.5 would slow every walk, idle and street chat, so it has not been changed - but do not raise it
+believing 15 is the authentic figure.
+
+# SimCopter people logic — decoded + ported
 
 *The behavior VM, spawn rules and walked-surface handling for pedestrians. The longest note here;
 the filename keeps its original "next" suffix from when this was still an open goal.*

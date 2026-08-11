@@ -192,6 +192,36 @@ Their unspotted behavior differs:
   person capsule outside rendered building walls, the burnout resolves the nearest eligible
   building cell within the mission placer's maximum six-cell displacement. This preserves the
   original throw roll, burn time, fire-suitability test, nearby-fire exclusion, and difficulty roll.
+
+  **SUPERSEDED BY A DELIBERATE DIVERGENCE — see [[simcopter-pacing-divergences]].** The arsonist
+  now throws on a 50-100 s timer and an eligible site always ignites. The retail behaviour and the
+  measurements that justified changing it are kept below.
+
+  **Arsonist fires are genuinely rare, and the port is not what makes them rare** (re-verified
+  2026-08-11 against `FUN_0048ed00`, dumped to
+  `Docs/scratchpad/ghidra/projectile_update_0048ed00.txt`). One 1078 cycle is Random Turn +
+  `Walk-30` + one roll ≈ 38 behaviour ticks, so at `BehaviorTickRate` 15 that is one throw per
+  ~7 minutes of *unobstructed* arsonist, and then one in 4-7 of those ignites. A stuck arsonist
+  loops far faster (a blocked `Walk-30` aborts on its first tick) and throws from the same spot
+  every time, which is what "repeated puffs of smoke in one place, no fire" looks like.
+  Three details settled at the same time:
+  - `FUN_004cbfd0` passes **`0xffffffff`** as `FUN_0048e0b0`'s last argument, so the debris carries
+    event id -1, `FUN_004a99a0(-1, 1)` finds no record, and the burnout takes the "create a new
+    fire mission" arm. **The other arm is not dead, it just is not the arsonist's** — see
+    [[simcopter-burning-debris-spread]].
+  - The grounded arm never reaches `FUN_00490690`, so **water does not douse burning debris** in
+    the original either. The old comment calling the 60 s burn "the window to douse it" was wrong.
+  - Grounding plays sound `0xb` (`SND_FIREMIS2`) at the debris node — now ported, and the only cue
+    that anything was thrown at all.
+  - `DAT_00504518` / `DAT_00504538`, the 8-entry effect-class and offset tables the puff walks, are
+    runtime-initialised (they read as zero in the PE, and `DAT_00504538` holds a self-referential
+    list head), so Ghidra's array indexing there is aliasing. Do **not** guess puff classes from
+    the decompile; `dump-asm` it first. Scratchpad: `dump_debris_effect_tables.py`,
+    `find_debris_table_writer.py`.
+
+  `SimArsonFirebomb <count> <bBurnOutNow>` on the game mode throws firebombs at the player and can
+  skip the 60 s burn, so the chain is checkable in seconds instead of by waiting out the roll; both
+  the throw and the burn-out result are logged at Log level.
 - Mugger: BHAV 1175 probes for an ambient civilian within two tiles, walks to them with ten tries,
   plays sound event 16, and pushes BHAV 903 `Rxn: Die` onto the victim. It otherwise turns and
   walks. Catching or killing the mugger ends the mission.
@@ -284,6 +314,9 @@ bypass only the height restriction so BHAV 263 can still unload them on the D1 h
 remains invalid for every passenger kind.
 
 ## Reminder timing and penalties
+
+**DIVERGENCE since 2026-08-11: every tier now uses tier 1's row.** See
+[[simcopter-pacing-divergences]]. The retail table:
 
 The reminder interval is the difficulty-scaled 600 s mission timer divided by eight:
 

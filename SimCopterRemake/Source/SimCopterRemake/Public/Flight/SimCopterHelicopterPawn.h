@@ -355,6 +355,39 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Interaction")
 	float GetDistanceToAirframeCm(const FVector& WorldLocation, bool bHorizontalOnly = false) const;
 
+	// Fit the root collider to the aircraft, keeping its BOTTOM on the skids.
+	//
+	// The collider shipped as a 190 cm sphere (InitCapsuleSize clamps the half height up to the
+	// radius), which is more than twice the fuselage in every direction - so it caught bridge
+	// soffits, power spans and overhangs the aircraft visibly passes under, and the only way to
+	// stop that is to make the collider the size of the thing it represents. Unreal's swept
+	// capsule then does the whole job: it reports a hit, and the hit is the jolt and the damage.
+	//
+	// The bottom has to stay put because it IS the altitude datum
+	// (`Altitude = (originZ - halfHeight) / unit`), so the fit returns a ModelPivot offset that
+	// puts the fuselage floor exactly on the new capsule floor. Every consumer - the ground probe,
+	// the clearance readout, the camera anchor, the boarding box - is expressed against one of
+	// those two, so the aircraft does not move on screen and no landing rule changes.
+	static void ComputeAirframeCollisionFit(
+		const FBox& AirframeLocalBoundsCm,
+		float MinRadiusCm,
+		float MinHalfHeightCm,
+		float& OutRadiusCm,
+		float& OutHalfHeightCm,
+		float& OutModelPivotZCm);
+
+	// Applies the above to the live components. Safe to call repeatedly; a model with no body
+	// geometry yet leaves the collider alone.
+	void SyncCollisionCapsuleToAirframe();
+
+	// Floors for the fit, so a degenerate or missing fuselage cannot produce a collider too small
+	// to register anything.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Collision", meta = (ClampMin = "1.0"))
+	float AirframeColliderMinRadiusCm = 20.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Collision", meta = (ClampMin = "1.0"))
+	float AirframeColliderMinHalfHeightCm = 25.0f;
+
 	// The gap arithmetic on its own, so the rule can be tested without a world: BodyFrame is
 	// ModelPivot's world transform, LocalBoundsCm the fuselage box expressed in that frame.
 	static float ComputeAirframeGapCm(

@@ -326,3 +326,40 @@ void ASimCopterGameMode::SimLoadMission(int32 MissionIndex, int32 CareerCityInde
 		}
 	}
 }
+
+void ASimCopterGameMode::SimArsonFirebomb(const int32 Count, const bool bBurnOutNow)
+{
+	ASimCopterMissionSystemActor* Actor = ResolveMissionSystemActor();
+	if (Actor == nullptr)
+	{
+		return;
+	}
+
+	const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	if (PlayerPawn == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimArsonFirebomb: no player pawn to throw from."));
+		return;
+	}
+
+	// The pool is thirty slots (DAT_005d6880) and a full one refuses the throw, exactly as
+	// FUN_0048e0b0 does, so asking for more than that is not an error - it just stops early.
+	const int32 Requested = FMath::Max(1, Count);
+	const int32 Before = Actor->GetBurningDebrisCount();
+	for (int32 Index = 0; Index < Requested; ++Index)
+	{
+		Actor->ThrowArsonistFirebomb(PlayerPawn->GetActorLocation());
+		if (bBurnOutNow)
+		{
+			// One step past the 60-second life takes every live slot straight to its ignition roll.
+			Actor->DebugAdvanceBurningDebris(61.0f);
+		}
+	}
+
+	UE_LOG(LogTemp, Display,
+		TEXT("SimArsonFirebomb: threw %d, %d still burning (was %d). Burn-out results are logged as "
+			 "they happen."),
+		Requested,
+		Actor->GetBurningDebrisCount(),
+		Before);
+}

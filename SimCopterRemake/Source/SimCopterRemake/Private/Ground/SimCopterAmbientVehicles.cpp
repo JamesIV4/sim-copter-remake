@@ -1088,6 +1088,11 @@ void ASimCopterAmbientVehiclesActor::UpdateWrecks(const float DeltaSeconds)
 				Wreck.bBurning = false;
 				if (Mission != nullptr)
 				{
+					// FUN_0049ff00 throws one type-4 projectile carrying the record's own event id
+					// in the same breath as it posts 0x1c, so a vehicle that burns all the way out
+					// leaves something behind that can take a building with it. Thrown first, as it
+					// is there, while the record is still guaranteed live.
+					Mission->SpawnCrashBurningDebris(Wreck.World, Wreck.EventId);
 					Mission->PostMissionEvent(SimCopterMissions::EVT_CarBurned, Wreck.EventId, 1, false);
 				}
 			}
@@ -2852,6 +2857,16 @@ void ASimCopterAmbientVehiclesActor::SpawnCrashDebris(const FVector& World, cons
 		EffectComponent->SpawnEffect(ESimCopterEffectType::Debris, World, Velocity);
 	}
 	EffectComponent->SpawnTilePuff(World, 1);
+
+	// ...and it is type 4 CARRYING THIS RECORD'S EVENT ID, which is what makes it burn for a minute
+	// and then try to set the tile it landed on alight for the crash's own fire, rather than being
+	// a cosmetic shower. The EventId parameter had been accepted and dropped, so wreckage could
+	// never spread. One slot per burst: the pool is thirty deep and shared with the arsonist, and a
+	// derailment calls this once per carriage.
+	if (ASimCopterMissionSystemActor* Mission = ResolveMissionSystem(); Mission != nullptr && EventId != INDEX_NONE)
+	{
+		Mission->SpawnCrashBurningDebris(World, EventId);
+	}
 }
 
 bool ASimCopterAmbientVehiclesActor::TryGetDebugViewTarget(const int32 Which, FVector& OutWorld) const

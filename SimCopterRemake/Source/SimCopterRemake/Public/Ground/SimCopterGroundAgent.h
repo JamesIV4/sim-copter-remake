@@ -84,6 +84,51 @@ public:
 	// descent too or a walker can enter a roof surface that it can never leave.
 	static bool IsPedestrianHeightTransitionAllowed(float RiseCm, float MaxStepCm, bool bMoveThroughWalls);
 
+	// How high a downward walk-surface probe may start: the walker's own feet plus everything they
+	// could step onto, and not one centimetre more.
+	//
+	// FUN_004c82c0 answers with the tallest object ON THE CELL, which in a 2.5D city is always
+	// something the walker is standing under or on. The remake asks rendered geometry the same
+	// question, and there the two differ: a bridge arch, a power span, an elevated rail deck or a
+	// first-floor overhang passes OVER cells whose ground is the street. A probe that starts above
+	// the world and takes its first hit returns that span, so every mesh behaves as a solid box
+	// extruded from its highest point down to the terrain - which is exactly the invisible wall
+	// pedestrians (police included) were stopping at. Starting the probe at this ceiling makes the
+	// first hit the highest surface they could actually step onto, and leaves overhead geometry
+	// where it belongs: overhead. Lateral obstruction is a separate question, answered against the
+	// real mesh by IsPedestrianStepBlockedByGeometry.
+	static float GetPedestrianWalkProbeCeilingZ(float FeetZ, float MaxStepClimbCm, float MarginCm);
+
+	// The swept body IsPedestrianStepBlockedByGeometry pushes from the current position to the step
+	// target. Its bottom sits one climb allowance above the higher of the two surfaces so kerbs,
+	// road lips and the step itself pass underneath it, and it stops one climb allowance short of
+	// full body height so it never scrapes a ceiling the walker fits under.
+	// Which of the three things ContainOutsideBuildingGeometry does with a frame's horizontal
+	// displacement: too small to be worth a scene query, too large to be a walk (a teleport -
+	// boarding, alighting, mission placement, a restored save - where the anchor is meaningless and
+	// must be dropped), or a real step to sweep.
+	enum class EWallContainmentStep : uint8
+	{
+		Ignore,
+		Rebase,
+		Sweep,
+	};
+	static EWallContainmentStep ClassifyWallContainmentStep(
+		float MovedDistanceCm,
+		float MinDistanceCm,
+		float MaxDistanceCm);
+
+	static void ComputePedestrianStepSweepShape(
+		float SourceFeetZ,
+		float TargetSurfaceZ,
+		float MaxStepClimbCm,
+		float CapsuleRadiusCm,
+		float CapsuleHalfHeightCm,
+		float RadiusScale,
+		float& OutRadiusCm,
+		float& OutHalfHeightCm,
+		float& OutCenterZ);
+
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	bool HasMoveTarget() const { return bHasMoveTarget; }
 
@@ -542,8 +587,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior")
 	bool bUseOriginalBehaviors = true;
 
-	// Behavior VM ticks per second. The original ran behavior once per game frame (~15fps era
-	// pacing); movement distance, walk-clip frame rate and idle durations all scale with this.
+	// Behavior VM ticks per second.
+	//
+	// MEASURED 2026-08-11, and it is not "once per game frame" as this comment used to say:
+	// FUN_004c5fb0 accumulates the frame delta and runs the per-person pass only when it passes
+	// DAT_00506450, reloaded to 0x147a = 0.08 s in 16.16. The accumulator is reset to zero rather
+	// than decremented, so retail's real cadence is frame-rate quantised - 12 Hz at 60 fps, 10 Hz
+	// at 20 - and 15 here is already faster than the original, not slower. Movement distance,
+	// walk-clip frame rate and idle durations all scale with this, so converting any shipped
+	// program's tick counts to seconds must use ~12 Hz, not this number and not 20.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
 	float BehaviorTickRate = 15.0f;
 
@@ -629,6 +681,61 @@ public:
 	// the tile-center altitude (and there is no roof to catch the probe).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
 	float PedestrianGroundProbeSlopeHeadroomCm = 110.0f;
+
+	// --- Arsonist fire cadence (DELIBERATE DIVERGENCE) ---
+	//
+	// Retail leaves it to BHAV 1078's `rand(1000) < 6` once per walk cycle, then a 60 s firebomb
+	// burn, then `1 in (8 - tier)` on the burnout. Measured against the shipped behaviour tick that
+	// is a fire every half hour or so, which is not what an Arsonist mission is for: the player is
+	// meant to be racing something.
+	//
+	// So a state-11 arsonist works to a clock. Every time this window elapses he plays the throw
+	// clip and a nearby building catches - no projectile, no burn, no roll. The window is aimed at
+	// the Robber's recurring "Burglary Committed!" (the 75 s nag interval) so the two crimes apply
+	// comparable pressure, and it is redrawn each time so no two runs line up.
+	//
+	// This is the cadence of the FIRE itself, so these two numbers are the only tuning knob. The
+	// firebomb chain still exists and is still faithful - see
+	// ASimCopterMissionSystemActor::ThrowArsonistFirebomb and SpawnCrashBurningDebris - it is just
+	// no longer what an arsonist mission depends on. BHAV 1078's own roll can still throw one.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
+	float ArsonThrowIntervalMinSeconds = 50.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "1.0"))
+	float ArsonThrowIntervalMaxSeconds = 100.0f;
+
+	// Slack above the step-climb allowance where the walk-surface probe starts, so a surface
+	// exactly at the limit is still found. See GetPedestrianWalkProbeCeilingZ.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
+	float PedestrianWalkProbeCeilingMarginCm = 8.0f;
+
+	// Sweep the real mesh between a walker and their step target instead of inferring obstruction
+	// from the height of whatever happens to be overhead. Exposed only so the old column-only
+	// behaviour can be reproduced when diagnosing a movement regression.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement")
+	bool bUseGeometryStepSweep = true;
+
+	// How much of the collision capsule the wall sweep uses. It is inset only enough to keep a
+	// sweep that ends exactly at contact from reading as start-penetrating on the next frame -
+	// which would switch containment off for that frame, since penetrating is its escape hatch.
+	//
+	// It started at 0.8, chosen so a full-width probe would not refuse gaps a person visibly fits
+	// through, and that was wrong at this scale. The population is authored at PopulationWorldScale
+	// against a shrunk world: the capsule is 8 cm in radius, so a 0.8 inset sweeps 6.4 cm - while
+	// the privanim figure is calibrated to a 44 cm body and with its limbs mid-stride is wider than
+	// that. The visible person could therefore overlap a wall while the sweep called it clear.
+	// Anything below about 0.9 is buying passability with body clipping.
+	//
+	// Containment uses the same figure, so the two cannot disagree about where a wall is and shuffle
+	// a walker back and forth against it.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.1", ClampMax = "1.0"))
+	float PedestrianStepSweepRadiusScale = 0.95f;
+
+	// Horizontal displacement in one frame beyond which ContainOutsideBuildingGeometry treats the
+	// move as a teleport and re-anchors instead of sweeping. A pedestrian walks a few centimetres a
+	// frame; anything approaching a tile is a placement, not a step.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "1.0"))
+	float WallContainmentMaxStepCm = 200.0f;
 
 	// A real ramp/elevated-road surface may differ from the route graph's linear sample. Accept
 	// its mesh surface only inside this band; bridges and ordinary road tiles use graph height
@@ -1009,12 +1116,47 @@ protected:
 	void StartOriginalBehavior();
 	void ResetBehaviorProgramOverride();
 	void UpdateOriginalBehavior(float DeltaSeconds);
+	// Runs the arsonist's fire clock. See ArsonThrowIntervalMinSeconds. Called from the TOP of
+	// UpdateOriginalBehavior, above the behaviour-tick gate, because it schedules in wall-clock
+	// seconds and the gate skips most frames.
+	void UpdateArsonistThrowSchedule(float DeltaSeconds);
+	// Seconds until this arsonist's next fire; negative until the first one is armed.
+	float ArsonThrowCountdownSeconds = -1.0f;
+
+	// The last place this walker's body was known to be clear of city geometry, and the point
+	// ContainOutsideBuildingGeometry sweeps forward from.
+	FVector WallContainmentAnchor = FVector::ZeroVector;
+	bool bHasWallContainmentAnchor = false;
 	void UpdateCabinImpactPortrait(float DeltaSeconds);
 	void ApplyBehaviorFacingRotation();
 	void AdvanceBehaviorFigureFrames(int32 TickCount);
-	// The walked surface at a step target: highest blocking geometry at that column, falling
-	// back to the tile's terrain altitude (port of FUN_004c82c0 = max of object tops/terrain).
+	// The walked surface at a step target: the highest blocking geometry the walker could step
+	// onto from where they stand, falling back to the tile's terrain altitude (port of
+	// FUN_004c82c0 = max of object tops/terrain). See GetPedestrianWalkProbeCeilingZ for why the
+	// probe must not start above the walker.
 	bool TryGetWalkSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const;
+
+	// Is there real city geometry between here and the step target? A swept capsule against the
+	// actual mesh, on the Camera channel that agent and player capsules ignore, so this answers
+	// for walls, piers, poles and parapets and never for other people.
+	bool IsPedestrianStepBlockedByGeometry(
+		const FVector& FromWorldLocation,
+		const FVector& ToWorldLocation,
+		float TargetSurfaceZ) const;
+
+	// Keep the body out of the walls, whatever moved it.
+	//
+	// MoveStep is only one of the things that displaces a person: crowd separation, traffic
+	// impulses, avoidance offsets, mission guidance and the alighting placer all write the
+	// transform directly, and none of them consult geometry. So a walker standing against a
+	// building gets nudged and settles half inside it, and nothing ever pushes them back out -
+	// which is exactly what "they phase partway into buildings" is.
+	//
+	// This sweeps the same body IsPedestrianStepBlockedByGeometry uses along the NET horizontal
+	// displacement since the last frame it was clear, so it catches every mover at once instead of
+	// each of them having to remember. Runs after all of them and before the ground snap, beside
+	// ContainToHospitalRoofPost.
+	void ContainOutsideBuildingGeometry();
 
 	// ISimCopterBehaviorWorld
 	virtual int32 GetCurrentTileClass() const override;
