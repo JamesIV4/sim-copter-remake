@@ -375,12 +375,50 @@ public:
 	// alone - every other class gets 0) and puffs smoke every 0x3333 of sub-timer. When THAT life
 	// runs out, and only for class 0x10, on a tile FUN_004a5f60 will take, with no fire already in
 	// FUN_004a6860's spiral: `rand() % (8 - difficulty) == 0` starts a real building fire mission
-	// (FUN_004a7a10). So the firebomb is a delayed, probabilistic ignition, not an instant one -
-	// which is the window the player has to spot the burning debris and douse it first.
+	// (FUN_004a7a10). So the firebomb is a delayed, probabilistic ignition, not an instant one.
+	//
+	// It is NOT a douse opportunity, despite reading like one: the grounded arm of FUN_0048ed00
+	// never reaches FUN_00490690, so water passes straight through burning debris in the original
+	// too. Nothing the player does between the throw and the burnout changes the roll.
+	//
+	// Expect this to be rare. BHAV 1078 rolls rand(1000) < 6 once per walk cycle - roughly one
+	// throw every few minutes of unobserved arsonist - and then only one in (8 - tier) of those
+	// becomes a fire. Both numbers are the executable's. If a session shows no fires at all, read
+	// the ThrowArsonistFirebomb / burnout log lines before suspecting the chain: they say whether
+	// anything was thrown, whether the site was eligible, and how the roll went.
 	void ThrowArsonistFirebomb(const FVector& ThrowerWorldLocation);
+
+	// DELIBERATE DIVERGENCE: the arsonist's fire, started outright.
+	//
+	// Retail routes it through the firebomb - throw, burn for 60 s, then roll. That chain is still
+	// here and still correct for everything that throws burning debris (see SpawnCrashBurningDebris
+	// below), but for the arsonist it is three ways for the fire not to happen stacked in front of
+	// the one thing the mission is about. The scheduler in
+	// ASimCopterGroundAgent::UpdateArsonistThrowSchedule calls this instead: he plays the throw,
+	// and a building catches.
+	//
+	// Returns whether a fire was started. The one gate left is the tile: it has to be something
+	// that burns (FUN_004a5f60), resolved through the same bounded search the firebomb uses because
+	// the remake keeps a person's capsule outside rendered walls.
+	bool StartArsonistFire(const FVector& ArsonistWorldLocation);
+
+	// SCHOOK: CrashBurningDebris 0x0048e0b0 type 4 with a live event id
+	//
+	// The same burning debris an arsonist throws, but owned: FUN_004b2cd0 (plane crash, three of
+	// them), FUN_004b49b0 (train derailment, one per carriage) and FUN_0049ff00 (a burning car
+	// finally going up) all hand FUN_0048e0b0 type 4 with their mission's event id instead of -1.
+	// When it burns out it takes the owning-record arm, so a crash or a car fire can set the
+	// buildings around it alight *without* the nearby-fire exclusion that would otherwise veto
+	// every ignition next to the fire that threw it. That is the game's fire-spread-from-wreckage
+	// mechanic, and nothing was producing it.
+	void SpawnCrashBurningDebris(const FVector& WorldLocation, int32 OwnerEventId);
 
 	// How many burning-debris slots are alight. Exposed for the automation tests.
 	int32 GetBurningDebrisCount() const { return BurningDebris.Num(); }
+
+	// Debug only: run the burning-debris timers forward so the ignition roll above can be observed
+	// now instead of a minute from now. Used by ASimCopterGameMode::SimArsonFirebomb.
+	void DebugAdvanceBurningDebris(const float Seconds) { UpdateBurningDebris(Seconds); }
 
 	// SCHOOK: FireProximityProbe 0x004a5c10
 	// How far a point sits above the top of the nearest flame below it, in original 16.16 units,
@@ -561,9 +599,16 @@ private:
 		FIntPoint Tile = FIntPoint(INDEX_NONE, INDEX_NONE);
 		float BurnSecondsRemaining = 0.0f;
 		float PuffSecondsRemaining = 0.0f;
+		// slot[0x10]: the record that threw this. -1 for an arsonist's firebomb, and a live event id
+		// for a crash site or a burning car. It selects which of FUN_0048ed00's two burnout arms
+		// runs - see FSimCopterMissionSystem::IgniteIntoExistingRecord.
+		int32 OwnerEventId = INDEX_NONE;
 	};
 	TArray<FSimCopterBurningDebris> BurningDebris;
 	void UpdateBurningDebris(float DeltaSeconds);
+	// Shared tail of both spawners: seat the slot on the surface, arm its 60 s burn, play the
+	// grounding sound and post event 7.
+	bool AddBurningDebrisSlot(const FVector& WorldLocation, const FIntPoint& IgnitionTile, int32 OwnerEventId);
 
 	// Build the per-frame flame draw list from the mission system and push it to the fire
 	// component. Converts each flame's tile to a rooftop-traced world point + growth/flicker.

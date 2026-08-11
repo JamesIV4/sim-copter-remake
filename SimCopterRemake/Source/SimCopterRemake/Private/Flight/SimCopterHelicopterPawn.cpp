@@ -893,6 +893,7 @@ void ASimCopterHelicopterPawn::BeginPlay()
 	{
 		LoadHelicopterMeshFromOriginalGameRoot();
 	}
+	SyncCollisionCapsuleToAirframe();
 	UpdateCameraAnchorFromVisibleBody();
 	if (WaterFXComponent != nullptr)
 	{
@@ -1279,6 +1280,8 @@ void ASimCopterHelicopterPawn::ShowOriginalMesh(bool bUseOriginalMesh)
 	{
 		BodyMeshComponent->SetVisibility(!bUseOriginalMesh, true);
 	}
+	// Whichever fuselage is now on screen is the one the collider has to match.
+	SyncCollisionCapsuleToAirframe();
 	UpdateCameraAnchorFromVisibleBody();
 }
 
@@ -2402,6 +2405,98 @@ float ASimCopterHelicopterPawn::GetDistanceToAirframeCm(
 	const FTransform BodyFrame =
 		ModelPivot != nullptr ? ModelPivot->GetComponentTransform() : GetActorTransform();
 	return ComputeAirframeGapCm(LocalBounds, BodyFrame, WorldLocation, bHorizontalOnly);
+}
+
+void ASimCopterHelicopterPawn::ComputeAirframeCollisionFit(
+	const FBox& AirframeLocalBoundsCm,
+	const float MinRadiusCm,
+	const float MinHalfHeightCm,
+	float& OutRadiusCm,
+	float& OutHalfHeightCm,
+	float& OutModelPivotZCm)
+{
+	const FVector Extent = AirframeLocalBoundsCm.GetExtent();
+
+	// Height first: the capsule is as tall as the fuselage and no taller, because everything above
+	// it is the phantom ceiling that stopped the aircraft flying under things.
+	OutHalfHeightCm = FMath::Max(MinHalfHeightCm, static_cast<float>(Extent.Z));
+	// InitCapsuleSize/SetCapsuleSize clamp the half height UP to the radius, so a radius wider than
+	// the half height would silently make the capsule taller again - the exact trap that produced
+	// the 190 cm sphere from InitCapsuleSize(95, 82). Take the fuselage's beam and never exceed the
+	// height. The nose and tail sit outside it, as they did before: this collider has always been
+	// narrower than the aircraft is long.
+	OutRadiusCm = FMath::Clamp(static_cast<float>(Extent.Y), MinRadiusCm, OutHalfHeightCm);
+
+	// Put the fuselage floor on the capsule floor. The capsule bottom is the altitude datum, so
+	// this is what keeps the aircraft resting on the ground at the same height it always did.
+	OutModelPivotZCm = -OutHalfHeightCm - static_cast<float>(AirframeLocalBoundsCm.Min.Z);
+}
+
+// EVENT-DRIVEN, NOT PER FRAME. The only callers are BeginPlay (once the GEO packs have loaded) and
+// ShowOriginalMesh (when the visible fuselage changes), so this runs on the order of once per
+// helicopter model, never on the tick.
+//
+// It has to be code rather than a component hierarchy set up in the editor, for two reasons:
+//
+//   * there is no asset to parent to. The fuselage is a UProceduralMeshComponent built at runtime
+//     from the original GEO files, and its bounds differ per helicopter type - the editor never
+//     sees any of them.
+//   * the collider has to BE the root. MoveComponent sweeps the root component's shape and nothing
+//     else, and the actor's transform is what the flight model drives, so a capsule parented under
+//     the mesh would neither sweep nor define the aircraft's position.
+//
+// What keeps the two from drifting is that both writes come out of one computation and are applied
+// together here; neither value is stored, so calling this again always re-derives the same answer
+// from the current body (the bounds are measured in ModelPivot's own frame, so they do not move
+// when ModelPivot does). The invariant is checked below in non-shipping builds.
+void ASimCopterHelicopterPawn::SyncCollisionCapsuleToAirframe()
+{
+	FBox LocalBounds(ForceInit);
+	if (CollisionComponent == nullptr || ModelPivot == nullptr || !TryGetAirframeLocalBoundsCm(LocalBounds))
+	{
+		return;
+	}
+
+	// The bounds are measured through the body's own relative transform, so they do not move when
+	// ModelPivot does - this is stable to call again after every model switch.
+	float RadiusCm = 0.0f;
+	float HalfHeightCm = 0.0f;
+	float PivotZCm = 0.0f;
+	ComputeAirframeCollisionFit(
+		LocalBounds,
+		AirframeColliderMinRadiusCm,
+		AirframeColliderMinHalfHeightCm,
+		RadiusCm,
+		HalfHeightCm,
+		PivotZCm);
+
+	CollisionComponent->SetCapsuleSize(RadiusCm, HalfHeightCm, /*bUpdateOverlaps=*/true);
+	ModelPivot->SetRelativeLocation(FVector(0.0f, 0.0f, PivotZCm));
+
+#if !UE_BUILD_SHIPPING
+	// The invariant everything downstream depends on: the capsule floor IS the skid plane, and the
+	// flight model calls that the aircraft's altitude. SetCapsuleSize silently clamps the half
+	// height up to the radius, so read the applied value back rather than trusting what we asked
+	// for - that clamp is how the shipped (95, 82) became a 190 cm sphere in the first place.
+	const float AppliedHalfHeight = CollisionComponent->GetUnscaledCapsuleHalfHeight();
+	const float FuselageFloorZ = static_cast<float>(LocalBounds.Min.Z) + PivotZCm;
+	ensureMsgf(
+		FMath::IsNearlyEqual(FuselageFloorZ, -AppliedHalfHeight, 0.5f),
+		TEXT("Helicopter collider floor (%.2f) is not the fuselage floor (%.2f); the altitude datum "
+			 "and the visible aircraft have come apart."),
+		-AppliedHalfHeight,
+		FuselageFloorZ);
+#endif
+
+	UE_LOG(
+		LogSimCopterHelicopterPawn,
+		Display,
+		TEXT("Collider fitted to airframe: radius %.1f, half height %.1f, model pivot Z %.1f "
+			 "(was a %.0f cm sphere)."),
+		RadiusCm,
+		HalfHeightCm,
+		PivotZCm,
+		2.0f * 95.0f);
 }
 
 bool ASimCopterHelicopterPawn::CanBeEnteredBy(const FVector& WorldLocation, const float ToleranceCm) const
@@ -6536,10 +6631,26 @@ FSimCopterFlightEnvironment ASimCopterHelicopterPawn::BuildFlightEnvironment() c
 
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterFlightSurface), false, this);
-	const FVector Start(Location.X, Location.Y, Location.Z + 20000.0f);
+	// heli[0x59] is the terrain and object top UNDER the aircraft. The probe used to start 200 m
+	// above it and take its first hit downward, which is a different number entirely once the city
+	// is real geometry: fly under a bridge arch, a power span or an elevated rail and the first hit
+	// is the deck ABOVE the rotor. The flight model then compares its altitude against a surface it
+	// is beneath, reads that as ground contact, and shoves the aircraft every frame - the invisible
+	// wall in mid-air, and the same fault that walls pedestrians (see
+	// ASimCopterGroundAgent::GetPedestrianWalkProbeCeilingZ).
+	//
+	// Start at the top of the collision body instead. Nothing the aircraft is flying under can then
+	// be its ground, while a roof, a bridge deck it is above, or the terrain still is. A start below
+	// the surface (an airframe that has sunk into geometry) simply misses, and the city grid's own
+	// terrain height above remains the answer - the movement sweep in ApplyFlightModelToActor is
+	// what pushes it back out sideways.
+	//
+	// See TraceFlightSurface for the other half: a pedestrian's head is not a landing surface.
+	const float ProbeStartZ = Location.Z + (CollisionComponent != nullptr
+		? CollisionComponent->GetScaledCapsuleHalfHeight()
+		: 0.0f);
+	const FVector Start(Location.X, Location.Y, ProbeStartZ);
 	const FVector End(Location.X, Location.Y, Location.Z - 30000.0f);
-	// heli[0x59]: terrain and objects only. See TraceFlightSurface - a pedestrian's head is not a
-	// landing surface, and this trace starts above the world so it would find one first.
 	if (TraceFlightSurface(Start, End, QueryParams, Hit) && Hit.bBlockingHit)
 	{
 		const int32 SurfaceHeight = SimCopterFixed::FromFloat(Hit.ImpactPoint.Z / Unit);
@@ -6606,6 +6717,11 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 	// that stops the aircraft while the flight model keeps steering into the obstacle pins it
 	// there, and the blocked position used to be written back into the model so the simulation
 	// believed it too. The sweep is now a detector only.
+	// The collider IS the collision test - no second opinion. An earlier attempt re-swept the
+	// fuselage box as a "narrow phase" to decide whether the capsule's hit really counted; it
+	// suppressed every impact in the game, so nothing took damage or was jolted by anything. The
+	// right fix for a collider that catches things the aircraft should fly under is a collider the
+	// size of the aircraft (SyncCollisionCapsuleToAirframe), not arithmetic on top of a wrong one.
 	FHitResult BlockingHit;
 	RootComponent->MoveComponent(NewLocation - GetActorLocation(), NewRotation.Quaternion(), true, &BlockingHit);
 	if (BlockingHit.IsValidBlockingHit())

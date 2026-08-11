@@ -619,6 +619,25 @@ public:
 	// inside FUN_004a6860's spiral. A plane that hits a tile passing this starts a building fire
 	// instead of becoming a mission itself.
 	bool CanIgniteCrashSite(int32 TileX, int32 TileY) const;
+
+	// SCHOOK: DebrisIgnitesOwningFire 0x0048ed00 (the `FUN_004a99a0(slot[0x10], 1) != 0` arm)
+	//
+	// Burning type-4 debris asks whether its own event id still resolves to a live record, and the
+	// two answers are materially different fires:
+	//
+	//   no record  -> `rand % (8 - tier) == 0` AND FUN_004a6860 finds nothing burning nearby, then
+	//                 FUN_004a7a10 opens a BRAND NEW building-fire mission. This is the arsonist's
+	//                 path (FUN_004cbfd0 passes -1), and CanIgniteCrashSite above is its test.
+	//   a record   -> FUN_004a5080 takes a fire object and, on the same roll, FUN_004a5340 ignites
+	//                 the tile INTO THAT RECORD with flags 0 - and with **no nearby-fire check at
+	//                 all**, which is the whole point: this is how a crash site or a burning car
+	//                 spreads into the buildings around it, where a fire is by definition already
+	//                 close by.
+	//
+	// This is that second arm. Flags 0 is the spread ignition, so each new flame docks the
+	// "Flame($)" penalty as it appears rather than being scored as a fresh mission.
+	bool IgniteIntoExistingRecord(int32 TileX, int32 TileY, int32 EventId);
+
 	// RENDERED-BUILDING ADAPTATION for an arsonist's type-4 firebomb. Retail people may stand in
 	// a building cell; the remake keeps their capsules outside the rendered mesh. Resolve the
 	// nearest cell that passes FUN_004a5f60 so the same throw can still reach its intended building.

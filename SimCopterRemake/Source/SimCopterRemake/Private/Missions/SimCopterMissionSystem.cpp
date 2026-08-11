@@ -298,15 +298,23 @@ void FSimCopterMissionSystem::UpdateSchedulerCadence()
 {
 	MaxEasyWithDifficulty = Tuning.MaxEasy + DifficultyTier;
 	EasyIntervalCache = Tuning.EasyInterval;
-	ScaledMissionTimer = Tuning.BaseMissionTimer;
 
-	switch (DifficultyTier)
-	{
-	case 1: break;
-	case 2: ScaledMissionTimer = static_cast<int32>((static_cast<int64>(Tuning.BaseMissionTimer) * 3 + ((static_cast<int64>(Tuning.BaseMissionTimer) * 3 >> 31) & 3)) >> 2); break;
-	case 3: ScaledMissionTimer = (Tuning.BaseMissionTimer * 2) / 3; break;
-	case 4: ScaledMissionTimer = Tuning.BaseMissionTimer / 2; break;
-	}
+	// DELIBERATE DIVERGENCE: every tier gets tier 1's mission clock.
+	//
+	// FUN_004a6e60 scales the 600 s base timer down as the city gets harder - x3/4, x2/3, then a
+	// half, so a tier-4 job has 300 s and nags every 37.5 s instead of 75. Reproduced faithfully
+	// that reads as missions expiring almost as fast as they arrive: the harder cities also spawn
+	// MORE of them (MaxEasy + tier above), and the two compound. The retail values are kept here
+	// for the record:
+	//
+	//     tier 1  600.0 s   nag 75.00 s      tier 3  400.0 s   nag 50.00 s
+	//     tier 2  450.0 s   nag 56.25 s      tier 4  300.0 s   nag 37.50 s
+	//
+	// Difficulty still escalates through everything else it touches - more concurrent missions,
+	// bigger and occupied buildings for fires (IsBuildingFireTargetAllowedByDifficulty), more
+	// victims per record, harsher crime mix - so this removes the timer pressure only, not the
+	// difficulty. Restore the switch above if per-tier timing is ever wanted back.
+	ScaledMissionTimer = Tuning.BaseMissionTimer;
 
 	NagInterval = ScaledMissionTimer >> 3;
 
@@ -1772,6 +1780,36 @@ bool FSimCopterMissionSystem::CanIgniteCrashSite(int32 TileX, int32 TileY) const
 		return false;
 	}
 	return IsFireSuitableTile(World->GetXbldTileId(TileX, TileY)) && !IsAnyFireNear(TileX, TileY);
+}
+
+bool FSimCopterMissionSystem::IgniteIntoExistingRecord(const int32 TileX, const int32 TileY, const int32 EventId)
+{
+	// The shared gate in front of both arms is FUN_004a5f60 alone; the nearby-fire spiral belongs
+	// to the no-record arm only. See the header for why.
+	if (World == nullptr || !IsFireSuitableTile(World->GetXbldTileId(TileX, TileY)))
+	{
+		return false;
+	}
+	const FSimCopterMissionRecord* Record = FindRecord(EventId);
+	if (Record == nullptr || !Record->bActive)
+	{
+		return false;
+	}
+
+	const int32 FireObjectIndex = AllocateFireObject(TileX, TileY);
+	if (FireObjectIndex == INDEX_NONE)
+	{
+		return false;
+	}
+	// FUN_004a5340 with flags 0: this fire belongs to the record that threw the debris, so it is a
+	// spread, not a new job. Release the object again when the cell refuses it, exactly as
+	// CreateEventAt does on its own failed ignition.
+	if (!IgniteBuilding(FireObjectIndex, TileX, TileY, EventId, 0))
+	{
+		FireObjects[FireObjectIndex].bActive = false;
+		return false;
+	}
+	return true;
 }
 
 bool FSimCopterMissionSystem::FindNearestFireSuitableTile(

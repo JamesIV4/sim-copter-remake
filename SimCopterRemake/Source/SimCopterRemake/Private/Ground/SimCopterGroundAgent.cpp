@@ -436,6 +436,12 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		return;
 	}
 
+	// Above the behaviour-tick gate, and it must stay there. The gate below runs the VM at
+	// BehaviorTickRate, so at 60 fps it returns early on three frames in four - a countdown fed
+	// DeltaSeconds from underneath it only sees a quarter of the elapsed time and takes four times
+	// as long as it says. This is wall-clock scheduling; it does not belong on the VM's clock.
+	UpdateArsonistThrowSchedule(DeltaSeconds);
+
 	BehaviorTickAccumulator += DeltaSeconds * BehaviorTickRate;
 	int32 Steps = FMath::FloorToInt(BehaviorTickAccumulator);
 	if (Steps <= 0)
@@ -692,6 +698,229 @@ bool ASimCopterGroundAgent::IsPedestrianHeightTransitionAllowed(
 	return bMoveThroughWalls || FMath::Abs(RiseCm) <= FMath::Max(0.0f, MaxStepCm);
 }
 
+float ASimCopterGroundAgent::GetPedestrianWalkProbeCeilingZ(
+	const float FeetZ,
+	const float MaxStepClimbCm,
+	const float MarginCm)
+{
+	return FeetZ + FMath::Max(0.0f, MaxStepClimbCm) + FMath::Max(0.0f, MarginCm);
+}
+
+void ASimCopterGroundAgent::ComputePedestrianStepSweepShape(
+	const float SourceFeetZ,
+	const float TargetSurfaceZ,
+	const float MaxStepClimbCm,
+	const float CapsuleRadiusCm,
+	const float CapsuleHalfHeightCm,
+	const float RadiusScale,
+	float& OutRadiusCm,
+	float& OutHalfHeightCm,
+	float& OutCenterZ)
+{
+	// A capsule half height is measured to the centre of the end cap, so full body height is
+	// 2 * CapsuleHalfHeightCm.
+	const float BodyHeightCm = 2.0f * FMath::Max(0.0f, CapsuleHalfHeightCm);
+	// Everything within the climb allowance of the surface is a step, not an obstacle: the walker
+	// is entitled to rise onto it and the climb gate has already said so.
+	//
+	// ...but only up to a point. The climb allowance is the executable's 5 units, which is 31 cm at
+	// a 400 cm tile, while a person in this world is only 44 cm tall - the population is authored
+	// at PopulationWorldScale against a tile that stands in for the original's much larger one. Cut
+	// blindly, that band leaves a 13 cm sliver of body to sweep with and most of a walker passes
+	// through everything. Never give up more than this fraction of the body to it.
+	constexpr float MaxClimbBandFraction = 0.35f;
+	const float ClimbBandCm =
+		FMath::Min(FMath::Max(0.0f, MaxStepClimbCm), BodyHeightCm * MaxClimbBandFraction);
+	// Off the higher of the two ends, so a step UP is measured from where the walker will be
+	// standing rather than from where they are.
+	const float BottomZ = FMath::Max(SourceFeetZ, TargetSurfaceZ) + ClimbBandCm;
+	const float SweepHeightCm = FMath::Max(1.0f, BodyHeightCm - ClimbBandCm);
+	OutRadiusCm = FMath::Max(1.0f, FMath::Max(0.0f, CapsuleRadiusCm) * FMath::Clamp(RadiusScale, 0.1f, 1.0f));
+	// UE requires a capsule's half height to be at least its radius; a body shorter than it is wide
+	// becomes a sphere of that radius, which is the correct degenerate case here.
+	OutHalfHeightCm = FMath::Max(OutRadiusCm, SweepHeightCm * 0.5f);
+	OutCenterZ = BottomZ + OutHalfHeightCm;
+}
+
+bool ASimCopterGroundAgent::IsPedestrianStepBlockedByGeometry(
+	const FVector& FromWorldLocation,
+	const FVector& ToWorldLocation,
+	const float TargetSurfaceZ) const
+{
+	// RENDERED-GEOMETRY ADAPTATION, and the counterpart to GetPedestrianWalkProbeCeilingZ.
+	//
+	// The original decides "is that cell in the way" from the cell's own object heights, which in a
+	// 2.5D city is the same thing as "is there a wall there". The remake renders real meshes, so it
+	// can ask the mesh directly: sweep the walker's body along the step and see whether anything
+	// solid is in it. That blocks at building walls, bridge piers, lamp posts and parapets - the
+	// things that really are in the way - while an arch or a cable overhead, which the old
+	// column-top test could not tell apart from a wall, correctly is not.
+	//
+	// These meshes are 1996 GEO models, a few dozen triangles each, and the city cooks complex
+	// collision once per model (SimCopterRuntimeStaticMesh::Build), so this costs one scene query
+	// per attempted facing.
+	const UWorld* World = GetWorld();
+	if (!bUseGeometryStepSweep || World == nullptr || CollisionComponent == nullptr)
+	{
+		return false;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const float UnitCm = TrafficSystem != nullptr ? TrafficSystem->GetPeopleWorldCmPerOriginalUnit() : 1.0f;
+
+	float RadiusCm = 0.0f;
+	float HalfHeightCm = 0.0f;
+	float CenterZ = 0.0f;
+	ComputePedestrianStepSweepShape(
+		FromWorldLocation.Z - GetCapsuleHalfHeightCm(),
+		TargetSurfaceZ,
+		MaxStepClimbOriginalUnits * UnitCm,
+		CollisionComponent->GetScaledCapsuleRadius(),
+		CollisionComponent->GetScaledCapsuleHalfHeight(),
+		PedestrianStepSweepRadiusScale,
+		RadiusCm,
+		HalfHeightCm,
+		CenterZ);
+
+	const FVector Start(FromWorldLocation.X, FromWorldLocation.Y, CenterZ);
+	const FVector End(ToWorldLocation.X, ToWorldLocation.Y, CenterZ);
+	if (Start.Equals(End))
+	{
+		return false;
+	}
+
+	FHitResult Hit;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterPedestrianStepSweep), false, this);
+	if (!World->SweepSingleByChannel(
+			Hit,
+			Start,
+			End,
+			FQuat::Identity,
+			ECC_Camera,
+			FCollisionShape::MakeCapsule(RadiusCm, HalfHeightCm),
+			QueryParams))
+	{
+		return false;
+	}
+
+	// Already intersecting something at the start of the sweep. Refusing the move would strand
+	// anyone whose spawn or a separation nudge left them clipped into geometry, and there is no
+	// facing that can free them - the sweep is penetrating on all eight. Let them walk out; the
+	// climb gate above still owns where they may end up.
+	return Hit.bBlockingHit && !Hit.bStartPenetrating;
+}
+
+ASimCopterGroundAgent::EWallContainmentStep ASimCopterGroundAgent::ClassifyWallContainmentStep(
+	const float MovedDistanceCm,
+	const float MinDistanceCm,
+	const float MaxDistanceCm)
+{
+	if (MovedDistanceCm <= FMath::Max(0.0f, MinDistanceCm))
+	{
+		return EWallContainmentStep::Ignore;
+	}
+	if (MovedDistanceCm >= FMath::Max(MinDistanceCm, MaxDistanceCm))
+	{
+		return EWallContainmentStep::Rebase;
+	}
+	return EWallContainmentStep::Sweep;
+}
+
+void ASimCopterGroundAgent::ContainOutsideBuildingGeometry()
+{
+	const UWorld* World = GetWorld();
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian ||
+		!bUseGeometryStepSweep ||
+		World == nullptr ||
+		CollisionComponent == nullptr)
+	{
+		return;
+	}
+
+	// Anyone the transform does not belong to keeps no anchor: a rider's position is the carrier's,
+	// and re-entering the world is a teleport by definition. BHAV 308's move-through-walls escape
+	// is honoured here for the same reason MoveStep honours it - a walker it has given up on is
+	// allowed through.
+	if (bMissionCarried ||
+		bBehaviorMoveSuspended ||
+		BehaviorCarrier.IsValid() ||
+		BehaviorContext.Attributes[EBhavAttr::MoveThroughWalls] != 0)
+	{
+		bHasWallContainmentAnchor = false;
+		return;
+	}
+
+	const FVector Current = GetActorLocation();
+	if (!bHasWallContainmentAnchor)
+	{
+		WallContainmentAnchor = Current;
+		bHasWallContainmentAnchor = true;
+		return;
+	}
+
+	// Most people are standing still most of the time; the distance test is what keeps this off the
+	// profile.
+	const float MovedCm = static_cast<float>(FVector::Dist2D(WallContainmentAnchor, Current));
+	const EWallContainmentStep Step =
+		ClassifyWallContainmentStep(MovedCm, /*MinDistanceCm=*/0.5f, WallContainmentMaxStepCm);
+	if (Step != EWallContainmentStep::Sweep)
+	{
+		if (Step == EWallContainmentStep::Rebase)
+		{
+			WallContainmentAnchor = Current;
+		}
+		return;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const float UnitCm = TrafficSystem != nullptr ? TrafficSystem->GetPeopleWorldCmPerOriginalUnit() : 1.0f;
+	const float FeetZ = Current.Z - GetCapsuleHalfHeightCm();
+
+	float RadiusCm = 0.0f;
+	float HalfHeightCm = 0.0f;
+	float CenterZ = 0.0f;
+	ComputePedestrianStepSweepShape(
+		FeetZ,
+		FeetZ,
+		MaxStepClimbOriginalUnits * UnitCm,
+		CollisionComponent->GetScaledCapsuleRadius(),
+		CollisionComponent->GetScaledCapsuleHalfHeight(),
+		PedestrianStepSweepRadiusScale,
+		RadiusCm,
+		HalfHeightCm,
+		CenterZ);
+
+	const FVector From(WallContainmentAnchor.X, WallContainmentAnchor.Y, CenterZ);
+	const FVector To(Current.X, Current.Y, CenterZ);
+	FHitResult Hit;
+	const bool bBlocked = World->SweepSingleByChannel(
+		Hit,
+		From,
+		To,
+		FQuat::Identity,
+		ECC_Camera,
+		FCollisionShape::MakeCapsule(RadiusCm, HalfHeightCm),
+		FCollisionQueryParams(SCENE_QUERY_STAT(SimCopterPedestrianWallContainment), false, this));
+
+	// bStartPenetrating means the anchor itself was already inside something, which is not a state
+	// this can correct by pushing backwards - it would only wedge them deeper. Give up the anchor
+	// and let them walk out; the step sweep applies the same rule.
+	if (bBlocked && Hit.bBlockingHit && !Hit.bStartPenetrating)
+	{
+		// Stop them against the surface, keeping whatever height the movers and the snap chose -
+		// this owns the deck, not the vertical.
+		SetActorLocation(FVector(Hit.Location.X, Hit.Location.Y, Current.Z), false);
+		// ...and take away the push that was driving them in, or they grind along the wall for as
+		// long as whatever nudged them keeps at it.
+		CurrentVelocityCmPerSec = FVector(0.0f, 0.0f, CurrentVelocityCmPerSec.Z);
+		ExternalVelocityCmPerSec = FVector::ZeroVector;
+		BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+		BehaviorStepTimeRemainingSeconds = 0.0f;
+	}
+
+	WallContainmentAnchor = GetActorLocation();
+}
+
 bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 {
 	// FUN_004c6970: every move tick rebinds the clip from the move result and speed -
@@ -842,6 +1071,18 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 				LastBlockResult = Rise > 0.0f ? 1 : 2; // FaCl climb / Whoa drop recoil
 				continue;
 			}
+		}
+
+		// ...and the lateral half of the same question, which the surface height cannot answer.
+		// The probe above deliberately looks under overhead geometry, so on its own it would walk
+		// people straight through a building wall: the highest surface below their feet inside a
+		// wall is the floor the building stands on. Ask the mesh whether the step is actually
+		// clear. BHAV 308's escape passes through here too - a walker it has given up on is
+		// allowed through walls by definition.
+		if (!bMoveThroughWalls && IsPedestrianStepBlockedByGeometry(GetActorLocation(), TargetLocation, SurfaceZ))
+		{
+			LastBlockResult = 1; // FaCl: something solid is in front of them
+			continue;
 		}
 
 		// FUN_004c9470 step 3: something in the target cell is in the way. Walking into another
@@ -1167,12 +1408,28 @@ bool ASimCopterGroundAgent::TryGetWalkSurfaceZAt(const FVector& WorldLocation, f
 		return false;
 	}
 
-	// FUN_004c82c0 returns the highest of object tops and terrain at the point, so the probe
-	// starts far above any roof and takes the first blocking hit downward. The Camera channel
-	// is blocked by city geometry but ignored by agent/player capsules.
-	const float StartZ = GetActorLocation().Z + 12000.0f;
+	// FUN_004c82c0 returns the highest of the CELL's object tops and terrain. The probe used to
+	// start 120 m up and take its first hit downward, which answers a different question in a
+	// rendered city: it returns whatever passes over the column, so a bridge arch, a power span or
+	// an overhang became "the walked surface" and the climb gate in MoveStep then refused every
+	// facing. That is the invisible wall - each mesh acting as a solid box from its highest point
+	// down to the ground.
+	//
+	// Start at the walker's own reachable ceiling instead. The first blocking hit below it is by
+	// construction the highest surface they could step onto, and nothing above them can be
+	// mistaken for ground. Walls are answered separately, against the mesh, by
+	// IsPedestrianStepBlockedByGeometry. The Camera channel is blocked by city geometry but
+	// ignored by agent/player capsules.
+	const float UnitCm = TrafficSystem != nullptr
+		? TrafficSystem->GetPeopleWorldCmPerOriginalUnit()
+		: 1.0f;
+	const float FeetZ = GetActorLocation().Z - GetCapsuleHalfHeightCm();
+	const float StartZ = GetPedestrianWalkProbeCeilingZ(
+		FeetZ,
+		MaxStepClimbOriginalUnits * UnitCm,
+		PedestrianWalkProbeCeilingMarginCm);
 	const FVector Start(WorldLocation.X, WorldLocation.Y, StartZ);
-	const FVector End(WorldLocation.X, WorldLocation.Y, GetActorLocation().Z - GroundProbeDistanceCm);
+	const FVector End(WorldLocation.X, WorldLocation.Y, FeetZ - GroundProbeDistanceCm);
 	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterWalkSurface), false, this);
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Camera, QueryParams) && Hit.bBlockingHit)
@@ -2809,6 +3066,54 @@ void ASimCopterGroundAgent::MessageOwningVehicle(const int32 MessageId)
 	}
 }
 
+// DELIBERATE DIVERGENCE. See ArsonThrowIntervalMinSeconds.
+void ASimCopterGroundAgent::UpdateArsonistThrowSchedule(const float DeltaSeconds)
+{
+	// State 11 is the Arsonist and nobody else; a caught, carried or move-suspended one has stopped
+	// being a threat, and BHAV 1060's caught flag is the same one the criminal programs clear.
+	constexpr int32 ArsonistPersonState = 11;
+	if (int32(BehaviorContext.Attributes[EBhavAttr::State]) != ArsonistPersonState ||
+		BehaviorContext.Attributes[EBhavAttr::CriminalCaught] != 0 ||
+		BehaviorCarrier.IsValid() ||
+		bBehaviorMoveSuspended ||
+		DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	const float MinSeconds = FMath::Max(1.0f, ArsonThrowIntervalMinSeconds);
+	const float MaxSeconds = FMath::Max(MinSeconds, ArsonThrowIntervalMaxSeconds);
+	if (ArsonThrowCountdownSeconds < 0.0f)
+	{
+		// First fire of the mission uses the same window, so the arsonist does not open with one
+		// the instant they are spawned on top of the player.
+		ArsonThrowCountdownSeconds = FMath::FRandRange(MinSeconds, MaxSeconds);
+		return;
+	}
+
+	ArsonThrowCountdownSeconds -= DeltaSeconds;
+	if (ArsonThrowCountdownSeconds > 0.0f)
+	{
+		return;
+	}
+	ArsonThrowCountdownSeconds = FMath::FRandRange(MinSeconds, MaxSeconds);
+
+	// He throws, and a building catches. Bind the clip directly rather than through
+	// Context.PendingAnimMnemonic: this runs on frames the behaviour VM does not, so there is no
+	// guarantee the pipeline that consumes that field is about to run, and if it is, the VM's own
+	// bind would overwrite ours first.
+	if (bUsingPedestrianFigure)
+	{
+		RebuildFigureClip(TEXT("Thro"));
+	}
+
+	if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+	{
+		Missions->StartArsonistFire(GetActorLocation());
+	}
+}
+
 void ASimCopterGroundAgent::ThrowProjectileAtSelection(
 	FSimCopterPersonContext& Context,
 	const bool bAtSelection,
@@ -3517,6 +3822,10 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	// After every mover and before the ground snap: a worker pushed past the edge of its roof must
 	// be back over it before the snap reads a surface, or the snap is what drops them to the street.
 	ContainToHospitalRoofPost();
+	// Same slot, same reason: whatever moved them this frame - a behaviour step, crowd separation, a
+	// traffic impulse, guidance - none of it consulted a wall, so this is where the body is put back
+	// outside one before it settles there.
+	ContainOutsideBuildingGeometry();
 	if (bSnapToGround)
 	{
 		UpdateGroundSnap(DeltaSeconds);

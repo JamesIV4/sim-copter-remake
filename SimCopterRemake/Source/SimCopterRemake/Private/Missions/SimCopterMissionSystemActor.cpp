@@ -1001,25 +1001,127 @@ void ASimCopterMissionSystemActor::ThrowArsonistFirebomb(const FVector& ThrowerW
 	// The lob is 75 to 95 degrees above horizontal, so the landing point is the thrower's own tile
 	// and the flight is short. The remake skips the ballistic slot and grounds it where it lands,
 	// which is the only part of the trajectory the 60-second burn and the ignition roll depend on.
-	FVector Landing = ThrowerWorldLocation;
+	if (!AddBurningDebrisSlot(
+			ThrowerWorldLocation,
+			FIntPoint(IgnitionTileX, IgnitionTileY),
+			/*OwnerEventId=*/INDEX_NONE))
+	{
+		return;
+	}
+
+	// Log, not Verbose: "the arsonist never starts fires" is a report that cannot be checked
+	// without knowing whether anything was thrown at all, and a throw is a rare event, not spam.
+	UE_LOG(LogTemp, Log,
+		TEXT("Arsonist firebomb burning at person tile (%d,%d), ignition tile (%d,%d); %.0fs to the "
+			 "1-in-%d ignition roll."),
+		TileX, TileY, IgnitionTileX, IgnitionTileY,
+		ArsonBurnSeconds,
+		FMath::Max(1, 8 - MissionSystem.GetDifficultyTier()));
+}
+
+bool ASimCopterMissionSystemActor::StartArsonistFire(const FVector& ArsonistWorldLocation)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(ArsonistWorldLocation, TileX, TileY))
+	{
+		return false;
+	}
+
+	// The arsonist is standing on whatever cell the mission placer could keep his capsule out of
+	// walls on - usually the pavement beside the building he came out of - so the fire goes to the
+	// nearest cell that will take one, within the placer's own maximum displacement.
+	int32 FireTileX = INDEX_NONE;
+	int32 FireTileY = INDEX_NONE;
+	constexpr int32 RenderedBuildingIgnitionSearchRadius = 6;
+	if (!MissionSystem.FindNearestFireSuitableTile(
+			TileX, TileY, RenderedBuildingIgnitionSearchRadius, FireTileX, FireTileY))
+	{
+		UE_LOG(LogTemp, Log,
+			TEXT("Arsonist at tile (%d,%d) found nothing within %d cells that will burn."),
+			TileX, TileY, RenderedBuildingIgnitionSearchRadius);
+		return false;
+	}
+
+	// IgniteBuilding refuses a cell that is already alight, so a repeat throw beside a fire he has
+	// already set simply does nothing rather than stacking flames on it.
+	const int32 EventId = CreateMissionAt(FireTileX, FireTileY, SimCopterMissions::TYPE_BuildingFire);
+	UE_LOG(LogTemp, Log,
+		TEXT("Arsonist set a fire at tile (%d,%d) from (%d,%d): %s."),
+		FireTileX, FireTileY, TileX, TileY,
+		EventId != INDEX_NONE ? *FString::Printf(TEXT("event %d"), EventId) : TEXT("refused"));
+	return EventId != INDEX_NONE;
+}
+
+// SCHOOK: CrashBurningDebris 0x004b2cd0 / 0x004b49b0 / 0x0049ff00 -> FUN_0048e0b0 type 4
+void ASimCopterMissionSystemActor::SpawnCrashBurningDebris(
+	const FVector& WorldLocation,
+	const int32 OwnerEventId)
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr || BurningDebris.Num() >= ArsonDebrisSlots)
+	{
+		return;
+	}
+
+	// No rendered-building search here, deliberately. That adaptation exists because the mission
+	// placer pushes a *person* out of the walls they were meant to be standing in; wreckage lands
+	// where it lands, and the original ignites the debris's own tile.
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(WorldLocation, TileX, TileY))
+	{
+		return;
+	}
+
+	AddBurningDebrisSlot(WorldLocation, FIntPoint(TileX, TileY), OwnerEventId);
+}
+
+bool ASimCopterMissionSystemActor::AddBurningDebrisSlot(
+	const FVector& WorldLocation,
+	const FIntPoint& IgnitionTile,
+	const int32 OwnerEventId)
+{
+	// A full pool simply refuses, as FUN_0048e0b0 does after walking all thirty slots.
+	if (BurningDebris.Num() >= ArsonDebrisSlots)
+	{
+		return false;
+	}
+
+	FVector Landing = WorldLocation;
 	float SurfaceZ = 0.0f;
-	if (TraceSurfaceTopZ(ThrowerWorldLocation, SurfaceZ))
+	if (TraceSurfaceTopZ(WorldLocation, SurfaceZ))
 	{
 		Landing.Z = SurfaceZ;
 	}
 
 	FSimCopterBurningDebris& Slot = BurningDebris.AddDefaulted_GetRef();
 	Slot.World = Landing;
-	Slot.Tile = FIntPoint(IgnitionTileX, IgnitionTileY);
+	Slot.Tile = IgnitionTile;
 	Slot.BurnSecondsRemaining = ArsonBurnSeconds;
 	Slot.PuffSecondsRemaining = 0.0f;
+	Slot.OwnerEventId = OwnerEventId;
 
-	// FUN_0048e0b0's type-4 arm posts event 7 at spawn with no owning record (the arsonist passes
-	// -1), so the debris is reported to the scoring layer even though nothing owns it yet.
-	MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisCreated, INDEX_NONE, 1, true);
-	UE_LOG(LogTemp, Verbose,
-		TEXT("Arsonist firebomb burning at person tile (%d,%d), ignition tile (%d,%d)."),
-		TileX, TileY, IgnitionTileX, IgnitionTileY);
+	// The moment FUN_0048ed00 grounds the slot it plays sound 0xb at the debris node
+	// (`FUN_0042a1f0(0xb, puVar11[10] + 0x18, 0)`), which is the only cue the player gets that
+	// something incendiary is on the ground. Without it a firebomb was indistinguishable from a
+	// chimney.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->Play3D(SimCopterSound::SND_FIREMIS2, Landing);
+	}
+
+	// FUN_0048e0b0's type-4 arm posts event 7 at spawn against whatever owns the slot - the
+	// arsonist's -1 (confirmed at FUN_004cbfd0's call site, whose last argument is 0xffffffff), or
+	// the crash record's real id.
+	MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisCreated, OwnerEventId, 1, true);
+	return true;
 }
 
 void ASimCopterMissionSystemActor::UpdateBurningDebris(const float DeltaSeconds)
@@ -1053,19 +1155,54 @@ void ASimCopterMissionSystemActor::UpdateBurningDebris(const float DeltaSeconds)
 			continue;
 		}
 
-		// Burned out. The ignition test is FUN_0048ed00's, in its order: the tile must take a fire
-		// and have none already burning nearby (CanIgniteCrashSite is FUN_004a5f60 + FUN_004a6860's
-		// spiral, the same pair the plane crash uses), and then the roll is one in (8 - difficulty),
-		// so an easy city misses far more often than a hard one.
+		// Burned out. FUN_0048ed00 gates both arms on FUN_004a5f60 alone, then branches on whether
+		// slot[0x10] still resolves to a live record (FUN_004a99a0), and the roll is one in
+		// (8 - difficulty) either way - so an easy city misses far more often than a hard one.
+		//
+		// The arsonist's -1 takes the "open a new mission" arm, which additionally requires
+		// FUN_004a6860's spiral to find nothing burning nearby (that pair is CanIgniteCrashSite).
+		// Wreckage and burning cars carry a real event id and take the other arm, which has no such
+		// exclusion - deliberately, because the fire that threw the debris is right there.
+		//
+		// Faithful on both arms. The arsonist mission no longer rides on this chain at all (see
+		// ASimCopterGroundAgent::ArsonThrowIntervalMinSeconds), so there is nothing left to trade
+		// away here: burning debris keeps the executable's odds, which is what stops a crash site
+		// or a burning car levelling the block around it.
 		const int32 Divisor = FMath::Max(1, 8 - MissionSystem.GetDifficultyTier());
-		if (MissionSystem.CanIgniteCrashSite(Slot.Tile.X, Slot.Tile.Y) &&
-			(MissionSystem.GetRand().Rand() % Divisor) == 0)
+		const bool bOwned = Slot.OwnerEventId != INDEX_NONE && IsMissionEventActive(Slot.OwnerEventId);
+		// The site test stays ahead of the draw: an ineligible tile consumes no PRNG here, in the
+		// original or in this port, and moving the draw in front of it would desynchronise every
+		// later mission roll.
+		const bool bSiteWillBurn = bOwned
+			? SimCopterMissions::FSimCopterMissionSystem::IsFireSuitableTile(
+				GetXbldTileId(Slot.Tile.X, Slot.Tile.Y))
+			: MissionSystem.CanIgniteCrashSite(Slot.Tile.X, Slot.Tile.Y);
+		const bool bRollPassed = bSiteWillBurn && (MissionSystem.GetRand().Rand() % Divisor) == 0;
+		if (bRollPassed)
 		{
-			CreateMissionAt(Slot.Tile.X, Slot.Tile.Y, SimCopterMissions::TYPE_BuildingFire);
+			if (bOwned)
+			{
+				MissionSystem.IgniteIntoExistingRecord(Slot.Tile.X, Slot.Tile.Y, Slot.OwnerEventId);
+			}
+			else
+			{
+				CreateMissionAt(Slot.Tile.X, Slot.Tile.Y, SimCopterMissions::TYPE_BuildingFire);
+			}
 		}
+		UE_LOG(LogTemp, Log,
+			TEXT("Burning debris (%s) expired at tile (%d,%d): site %s, ignition %s."),
+			bOwned ? *FString::Printf(TEXT("event %d"), Slot.OwnerEventId) : TEXT("arsonist"),
+			Slot.Tile.X, Slot.Tile.Y,
+			bSiteWillBurn ? TEXT("eligible") : TEXT("rejected"),
+			!bSiteWillBurn
+				? TEXT("blocked by the site")
+				: (bRollPassed
+					? TEXT("taken")
+					: *FString::Printf(TEXT("missed the 1-in-%d roll"), Divisor)));
 
-		// Event 8 either way - the debris is gone whether or not it took the building with it.
-		MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisExpired, INDEX_NONE, 1, true);
+		// Event 8 either way - the debris is gone whether or not it took the building with it, and
+		// it is reported against the same owner the spawn was.
+		MissionSystem.PostEvent(SimCopterMissions::EVT_DebrisExpired, Slot.OwnerEventId, 1, true);
 		BurningDebris.RemoveAtSwap(Index);
 	}
 }
