@@ -619,6 +619,19 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.1"))
 	float PedestrianAvoidanceSpeedMultiplier = 1.25f;
 
+	// --- Cars hit people (DIVERGENCE - see ESimCopterKnockdownPhase) ---------------------------
+	//
+	// The original has no vehicle-vs-person collision at all: a car and a pedestrian pass straight
+	// through one another. The remake sends them flying instead, and the car is never told - it
+	// does not brake, swerve, lose speed or raise a mission, because none of those exist for it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance")
+	bool bVehiclesKnockDownPedestrians = true;
+
+	// A car below this is parking, queueing or crawling out of a jam, and only shoulders people
+	// aside rather than launching them. Cruising speed is VehicleSpeedCmPerSec (259).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic Avoidance", meta = (ClampMin = "0.0"))
+	float VehicleKnockdownMinSpeedCmPerSec = 95.0f;
+
 	// --- Whole-map population (remake divergence: people/traffic visible across the map) ---
 
 	// Simulate the entire city as lightweight records; near the camera the normal agent pool
@@ -861,6 +874,11 @@ public:
 	// Returns how many were run over. Never affects the aircraft's motion.
 	int32 RunOverCriminalsUnderHelicopter(class ASimCopterHelicopterPawn& Helicopter);
 
+	// The airframe's half of the knockdown (DIVERGENCE - see ESimCopterKnockdownPhase). Everyone the
+	// aircraft flies through goes tumbling, gated on its own minimum ground speed so that landing,
+	// hovering and taxiing among a crowd never launches anybody. Returns how many were struck.
+	int32 KnockDownPedestriansUnderHelicopter(class ASimCopterHelicopterPawn& Helicopter);
+
 	// FUN_004ca650: the person whose carrier is Carrier - whoever they are toting.
 	ASimCopterGroundAgent* FindPersonCarriedBy(const ASimCopterGroundAgent& Carrier) const;
 
@@ -979,6 +997,11 @@ public:
 	void UpdateVehicleBlockageRecovery();
 	void ApplyVehicleLaneGuidance(float DeltaSeconds);
 	void UpdatePedestrianAvoidance();
+
+	// Every car against every nearby pedestrian, once a frame: whoever the bodywork is inside gets
+	// launched. Deliberately one-way - nothing here touches the vehicle. See
+	// bVehiclesKnockDownPedestrians.
+	void UpdatePedestrianVehicleImpacts(float DeltaSeconds);
 	bool IsVehicleSpawnLocationClear(const FVector& SpawnLocation) const;
 	bool IsPedestrianSpawnLocationOpen(const FVector& SpawnLocation) const;
 	// A mission victim may stand here only if it is not buried inside a building mesh, unless the

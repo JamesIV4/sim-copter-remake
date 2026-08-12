@@ -6784,6 +6784,10 @@ void ASimCopterHelicopterPawn::ApplyFlightModelToActor(float DeltaSeconds)
 	if (ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystemActor())
 	{
 		TrafficSystem->RunOverCriminalsUnderHelicopter(*this);
+		// DIVERGENCE, and deliberately after the above so the criminal arm keeps first claim on
+		// anybody it kills: everyone else the airframe flies through is sent tumbling instead of
+		// passed straight through. See ESimCopterKnockdownPhase.
+		TrafficSystem->KnockDownPedestriansUnderHelicopter(*this);
 	}
 
 	// The model owns the position, so this is now a straight read-back; it stays because

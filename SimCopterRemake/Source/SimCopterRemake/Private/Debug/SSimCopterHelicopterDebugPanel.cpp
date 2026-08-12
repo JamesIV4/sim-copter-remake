@@ -6,6 +6,7 @@
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Ground/SimCopterApachePool.h"
 #include "Ground/SimCopterDispatch.h"
+#include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterTearGasPool.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "Styling/CoreStyle.h"
@@ -446,6 +447,145 @@ TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildGeneralTabContent()
 						.MaxFractionalDigits(2)
 						.Value(this, &SSimCopterHelicopterDebugPanel::GetVehicleMetallic)
 						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleVehicleMetallicChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"KnockdownTip",
+						"How far a strike throws the pedestrian it hits. A DIVERGENCE - the original has no "
+						"vehicle-vs-person collision at all - so these are taste, not fidelity, and nothing "
+						"here is anything the executable says.\n\n"
+						"POWER scales the whole launch at once, so the arc keeps its shape and only its size "
+						"changes. It is shared by the cars and the helicopter. UP scales the upward part "
+						"alone, which is the launch ANGLE: above 1 pops them straight up and drops them "
+						"short, below 1 skims them away down the road, and 0 is a flat shove with no air "
+						"under it. UP here is the CARS' - the airframe has its own on the row below, because "
+						"it flies at several times a car's road speed.\n\n"
+						"Neither changes the rule that the strike is proportional to the striker's speed, "
+						"and neither touches the striker - a car never brakes, swerves or slows for anybody."
+						"\n\nWhole population, live, and session only: SimCopter.Knockdown.LaunchScale and "
+						".UpwardScale reach the same two values from the console."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "Knockdown", "KNOCKDOWN"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("POWER x"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(20.0f)
+						// The useful range either side of 1 is small - at 3 a cruising car clears several
+						// tiles - so the spin stays tight and the typed range stays wide.
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(4.0f)
+						.Delta(0.05f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetKnockdownLaunchScale)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleKnockdownLaunchScaleChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("UP x"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(20.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(4.0f)
+						.Delta(0.05f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetKnockdownUpwardScale)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleKnockdownUpwardScaleChanged)
+					]
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 2.0f, 0.0f, 6.0f))
+				[
+					SNew(SHorizontalBox)
+					.ToolTipText(NSLOCTEXT(
+						"SimCopterDebug",
+						"HelicopterKnockdownTip",
+						"The airframe does it too: anybody you fly through goes tumbling the same way a car's "
+						"victim does. Uncaught criminals are unaffected - they keep the decoded run-over "
+						"death (BHAV 912) instead.\n\n"
+						"UP is the aircraft's own launch angle, replacing the cars' UP above and applied on "
+						"top of the shared POWER. It is separate because a helicopter at cruise is several "
+						"times a car's road speed, and one number cannot suit both.\n\n"
+						"MIN is the ground speed below which the airframe knocks nobody down, however close "
+						"it gets. This is what keeps landing, hovering and taxiing among a crowd safe - the "
+						"people under you are usually the ones you came to collect. Horizontal speed only, "
+						"so setting down vertically on somebody never launches them.\n\n"
+						"Live and session only: SimCopter.Knockdown.HelicopterUpwardScale and "
+						".HelicopterMinSpeed."))
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "HelicopterKnockdown", "  airframe"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(9, true))
+						]
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("UP x"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f, 8.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(20.0f)
+						// Tighter than the cars' spin: the aircraft's speed is doing most of the work, so
+						// the useful range sits well under 1.
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(2.0f)
+						.Delta(0.02f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(2)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetHelicopterKnockdownUpwardScale)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleHelicopterKnockdownUpwardScaleChanged)
+					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(STextBlock).Text(FText::FromString(TEXT("MIN"))).ColorAndOpacity(LabelColor).Font(PanelFont(9, true))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin(3.0f, 0.0f))
+					[
+						SNew(SNumericEntryBox<float>)
+						.AllowSpin(true)
+						.MinValue(0.0f)
+						.MaxValue(20000.0f)
+						.MinSliderValue(0.0f)
+						.MaxSliderValue(2000.0f)
+						.Delta(10.0f)
+						.MinFractionalDigits(0)
+						.MaxFractionalDigits(0)
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetHelicopterKnockdownMinSpeed)
+						.OnValueChanged(this, &SSimCopterHelicopterDebugPanel::HandleHelicopterKnockdownMinSpeedChanged)
 					]
 				]
 				+ SVerticalBox::Slot()
@@ -2260,6 +2400,48 @@ void SSimCopterHelicopterDebugPanel::HandleVehicleMetallicChanged(float Value)
 	{
 		HelicopterPawn->SetVehicleMetallic(Value);
 	}
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetKnockdownLaunchScale() const
+{
+	// No pawn dereference: this one belongs to the population, and it is worth being able to set it
+	// from the panel before ever boarding anything.
+	return TOptional<float>(ASimCopterGroundAgent::GetVehicleKnockdownLaunchScale());
+}
+
+void SSimCopterHelicopterDebugPanel::HandleKnockdownLaunchScaleChanged(float Value)
+{
+	ASimCopterGroundAgent::SetVehicleKnockdownLaunchScale(Value);
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetKnockdownUpwardScale() const
+{
+	return TOptional<float>(ASimCopterGroundAgent::GetVehicleKnockdownUpwardScale());
+}
+
+void SSimCopterHelicopterDebugPanel::HandleKnockdownUpwardScaleChanged(float Value)
+{
+	ASimCopterGroundAgent::SetVehicleKnockdownUpwardScale(Value);
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetHelicopterKnockdownUpwardScale() const
+{
+	return TOptional<float>(ASimCopterGroundAgent::GetHelicopterKnockdownUpwardScale());
+}
+
+void SSimCopterHelicopterDebugPanel::HandleHelicopterKnockdownUpwardScaleChanged(float Value)
+{
+	ASimCopterGroundAgent::SetHelicopterKnockdownUpwardScale(Value);
+}
+
+TOptional<float> SSimCopterHelicopterDebugPanel::GetHelicopterKnockdownMinSpeed() const
+{
+	return TOptional<float>(ASimCopterGroundAgent::GetHelicopterKnockdownMinSpeedCmPerSec());
+}
+
+void SSimCopterHelicopterDebugPanel::HandleHelicopterKnockdownMinSpeedChanged(float Value)
+{
+	ASimCopterGroundAgent::SetHelicopterKnockdownMinSpeedCmPerSec(Value);
 }
 
 TOptional<float> SSimCopterHelicopterDebugPanel::GetFlashingLightIntensityScale() const
