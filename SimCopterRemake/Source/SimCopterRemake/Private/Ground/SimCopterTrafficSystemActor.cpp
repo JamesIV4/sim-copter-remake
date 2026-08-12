@@ -1035,6 +1035,9 @@ void ASimCopterTrafficSystemActor::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	UpdateAgentPool(DeltaSeconds);
 	UpdateTrafficInteractions(DeltaSeconds);
+	// After the traffic passes and outside them, because it belongs to neither AI mode: a car that
+	// is moving hits whoever is in front of it whatever the flow model says.
+	UpdatePedestrianVehicleImpacts(DeltaSeconds);
 	UpdateSpeederDesignation();
 	UpdateSpeeders(DeltaSeconds);
 	// Speeders take their spotlight mark before the police read it, so a car lit this frame can
@@ -1651,6 +1654,48 @@ int32 ASimCopterTrafficSystemActor::RunOverCriminalsUnderHelicopter(ASimCopterHe
 		}
 	}
 	return RunOver;
+}
+
+int32 ASimCopterTrafficSystemActor::KnockDownPedestriansUnderHelicopter(ASimCopterHelicopterPawn& Helicopter)
+{
+	// DIVERGENCE, the airframe's half of the car knockdown. The original's people arm of
+	// FUN_0048ad50 answers a contact with FUN_0049a4f0(0xc) - a reaction on the person - and the
+	// remake narrows that to uncaught criminals (RunOverCriminalsUnderHelicopter, which has already
+	// run and which keeps first claim on anyone it kills). This is what happens to everybody else.
+	const FVector HelicopterVelocity = Helicopter.GetVelocityCmPerSec();
+	const float GroundSpeedCmPerSec = static_cast<float>(HelicopterVelocity.Size2D());
+	// The aircraft has to actually be flying through them. Horizontal only, so a vertical descent
+	// onto somebody sets down on them rather than launching them - which is the case this exists
+	// for, since the people underneath are usually the ones being collected.
+	if (GroundSpeedCmPerSec < ASimCopterGroundAgent::GetHelicopterKnockdownMinSpeedCmPerSec())
+	{
+		return 0;
+	}
+
+	int32 KnockedDown = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->WasRunOverByHelicopter() || !Agent->CanBeKnockedDownByVehicle())
+		{
+			continue;
+		}
+
+		// The same contact test the criminal arm uses: the airframe the player can see, not the
+		// 190 cm flight-sweep sphere around it. Full 3D here - unlike a car, the aircraft's height
+		// above a walker is the whole question.
+		if (Helicopter.GetDistanceToAirframeCm(Agent->GetActorLocation()) >
+			FMath::Max(1.0f, Agent->GetCollisionRadiusCm()))
+		{
+			continue;
+		}
+
+		if (Agent->ApplyHelicopterKnockdown(Helicopter, HelicopterVelocity))
+		{
+			++KnockedDown;
+		}
+	}
+	return KnockedDown;
 }
 
 int32 ASimCopterTrafficSystemActor::PickUpMissionPeopleNear(
@@ -6942,6 +6987,103 @@ void ASimCopterTrafficSystemActor::UpdatePedestrianAvoidance()
 				BestOffsetDirection.GetSafeNormal() * PedestrianRoadEscapeDistanceCm,
 				PedestrianAvoidanceDurationSeconds,
 				PedestrianAvoidanceSpeedMultiplier);
+		}
+	}
+}
+
+void ASimCopterTrafficSystemActor::UpdatePedestrianVehicleImpacts(float DeltaSeconds)
+{
+	// DIVERGENCE, whole-cloth. There is nothing in the executable to port here: FUN_0049ee30's
+	// blocking probe only ever considers other vehicles, and the person move core's overlap search
+	// (FUN_004c9000) only ever considers other people, so in the original a car drives through a
+	// crowd without either side noticing. See ESimCopterKnockdownPhase.
+	//
+	// The car's side of the exchange is nothing at all: no brake, no swerve, no speed loss, no
+	// mission. It is the pedestrian who takes all of it.
+	if (!bVehiclesKnockDownPedestrians || PedestrianAgents.Num() == 0 || DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	// A car cannot reach past its own body plus a person's radius, which is well inside a tile.
+	const float ProximityCm = FMath::Max(ActiveTileSize, 400.0f);
+	const float ProximitySq = FMath::Square(ProximityCm);
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& VehiclePtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = VehiclePtr.Get();
+		if (Vehicle == nullptr || Vehicle->IsActorBeingDestroyed())
+		{
+			continue;
+		}
+
+		const FVector VehicleVelocity = Vehicle->GetCurrentVelocityCmPerSec();
+		const float VehicleSpeed = static_cast<float>(VehicleVelocity.Size2D());
+		if (VehicleSpeed < VehicleKnockdownMinSpeedCmPerSec)
+		{
+			continue;
+		}
+
+		// Resolved once per car rather than per candidate, because it walks the rendered mesh's
+		// bounds. The capsule is a 33.75 cm traffic-separation radius on a body nearly three times
+		// that long, so it is the wrong shape to ask "is this person under the car" with - the same
+		// reason GetSelectionContactGapCm measures the body for a medic walking up to its ambulance.
+		FBox VehicleLocalBounds(ForceInit);
+		const bool bHasBodyBounds = Vehicle->TryGetBodyLocalBoundsCm(VehicleLocalBounds);
+		const FTransform VehicleFrame = Vehicle->GetActorTransform();
+		const FVector VehicleLocation = Vehicle->GetActorLocation();
+		// One frame of travel, so a car cannot step over somebody between two overlap tests. At
+		// cruising speed that is a few centimetres against a body ~90 cm long, but one long hitch is
+		// enough to move the whole car past a pedestrian, and that is the frame it would show in.
+		const FVector FrameTravel = VehicleVelocity * DeltaSeconds;
+
+		for (TWeakObjectPtr<ASimCopterGroundAgent>& PedestrianPtr : PedestrianAgents)
+		{
+			ASimCopterGroundAgent* Pedestrian = PedestrianPtr.Get();
+			if (Pedestrian == nullptr)
+			{
+				continue;
+			}
+
+			// Distance before eligibility: this is the inner loop of a vehicles x pedestrians pass,
+			// and nearly every pair fails here.
+			const FVector PedestrianLocation = Pedestrian->GetActorLocation();
+			if (FVector::DistSquared2D(PedestrianLocation, VehicleLocation) > ProximitySq)
+			{
+				continue;
+			}
+			if (!Pedestrian->CanBeKnockedDownByVehicle())
+			{
+				continue;
+			}
+
+			// The vertical gate the body box does not provide: it is measured across the deck only,
+			// so without this a car on a bridge would mow down the people on the quay beneath it.
+			if (FMath::Abs(PedestrianLocation.Z - VehicleLocation.Z) >
+				Vehicle->GetCapsuleHalfHeightCm() + Pedestrian->GetCapsuleHalfHeightCm())
+			{
+				continue;
+			}
+
+			const float ContactRadiusCm = FMath::Max(1.0f, Pedestrian->GetCollisionRadiusCm());
+			// Testing the box back down the road it just came is the same thing as testing the
+			// person forwards along it, which is what these samples are: sample 0 is the car where
+			// it is now, sample 2 is where it was at the start of the frame.
+			float GapCm = TNumericLimits<float>::Max();
+			for (int32 SampleIndex = 0; SampleIndex <= 2; ++SampleIndex)
+			{
+				const FVector SamplePoint = PedestrianLocation + FrameTravel * (0.5f * static_cast<float>(SampleIndex));
+				const float SampleGapCm = bHasBodyBounds
+					? ASimCopterGroundAgent::ComputeBodyGapCm(VehicleLocalBounds, VehicleFrame, SamplePoint)
+					: static_cast<float>(FVector::Dist2D(SamplePoint, VehicleLocation)) - Vehicle->GetCollisionRadiusCm();
+				GapCm = FMath::Min(GapCm, SampleGapCm);
+			}
+			if (GapCm > ContactRadiusCm)
+			{
+				continue;
+			}
+
+			Pedestrian->ApplyVehicleKnockdown(*Vehicle, VehicleVelocity);
 		}
 	}
 }

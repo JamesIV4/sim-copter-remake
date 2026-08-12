@@ -46,7 +46,9 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterGroundAgent, Log, All);
 namespace
 {
 constexpr uint32 GroundAgentRuntimeSaveMagic = 0x4147454e; // 'AGEN'
-constexpr int32 GroundAgentRuntimeSaveVersion = 4;
+// 5 adds the vehicle-knockdown phase. Without it a save taken mid-tumble restored a person with no
+// behaviour VM and a forced clip, i.e. a pedestrian frozen in the recoil pose forever.
+constexpr int32 GroundAgentRuntimeSaveVersion = 5;
 
 void SerializeAgentBool(FArchive& Archive, bool& Value)
 {
@@ -128,6 +130,62 @@ TSharedPtr<FPeopleBehaviorModel> GetSharedBehaviorModel(const FString& RootPath)
 	Cache.Add(Key, Model);
 	return Model;
 }
+
+// --- Hit by a car: the two live tuning knobs (DIVERGENCE - see ESimCopterKnockdownPhase) --------
+//
+// Multipliers over the per-agent gains rather than replacements for them, so the shipped feel is
+// 1.0 and the debug panel's two boxes read as "how hard" and "how steep". They are CVars because
+// the population is hundreds of separate actors and a tuning pass has to reach all of them at once
+// - a per-instance UPROPERTY would only move the one agent you happened to have selected. Session
+// only, like the SimCopter.Shading.* knobs; the shipped values are the defaults above them.
+float GSimCopterKnockdownLaunchScale = 0.7f;
+FAutoConsoleVariableRef CVarKnockdownLaunchScale(
+	TEXT("SimCopter.Knockdown.LaunchScale"),
+	GSimCopterKnockdownLaunchScale,
+	TEXT("How hard a strike throws a pedestrian, as a multiplier over the tuned gains. Scales the ")
+	TEXT("whole launch - forward, sideways and up together - so the arc keeps its shape and only ")
+	TEXT("its size changes. The strike stays proportional to the striker's speed at any setting. ")
+	TEXT("Shared by cars and the helicopter."),
+	ECVF_Default);
+
+float GSimCopterKnockdownUpwardScale = 1.0f;
+FAutoConsoleVariableRef CVarKnockdownUpwardScale(
+	TEXT("SimCopter.Knockdown.UpwardScale"),
+	GSimCopterKnockdownUpwardScale,
+	TEXT("How steep a CAR's throw is: a multiplier on the upward part of the launch alone, applied ")
+	TEXT("on top of LaunchScale. Above 1 pops them up and drops them short; below 1 skims them ")
+	TEXT("down the road. 0 is a purely horizontal shove with no air under it at all."),
+	ECVF_Default);
+
+// The airframe gets its own, because it is not a car: a helicopter at cruise is several times a
+// car's road speed, and sharing one number would either make the aircraft launch people into orbit
+// or flatten the cars to nothing. This default puts a struck pedestrian at roughly twice a car's
+// pop when the aircraft is doing about its cruising speed.
+float GSimCopterHelicopterKnockdownUpwardScale = 0.4f;
+FAutoConsoleVariableRef CVarHelicopterKnockdownUpwardScale(
+	TEXT("SimCopter.Knockdown.HelicopterUpwardScale"),
+	GSimCopterHelicopterKnockdownUpwardScale,
+	TEXT("How steep the HELICOPTER's throw is - the airframe's own replacement for UpwardScale, ")
+	TEXT("applied on top of LaunchScale. Separate from the car's because the aircraft is several ")
+	TEXT("times a car's speed and the same number does not suit both."),
+	ECVF_Default);
+
+// Helicopter only. A car that is crawling out of a jam has VehicleKnockdownMinSpeedCmPerSec on the
+// traffic actor; the aircraft has its own because the case it guards - setting down among a crowd,
+// taxiing on a pad, hovering over a pickup - has no equivalent on the road.
+//
+// Off by default (0): the strike is already proportional to ground speed, so a hover barely nudges
+// anybody without needing a floor, and the threshold is there to be raised if a particular manoeuvre
+// turns out to need protecting.
+float GSimCopterHelicopterKnockdownMinSpeedCmPerSec = 0.0f;
+FAutoConsoleVariableRef CVarHelicopterKnockdownMinSpeed(
+	TEXT("SimCopter.Knockdown.HelicopterMinSpeed"),
+	GSimCopterHelicopterKnockdownMinSpeedCmPerSec,
+	TEXT("Ground speed in cm/s below which the helicopter knocks nobody down, however close the ")
+	TEXT("airframe gets. This is what makes landing, hovering and taxiing among people safe; the ")
+	TEXT("aircraft has to actually be flying through them. Horizontal speed only, so a vertical ")
+	TEXT("descent onto somebody never launches them."),
+	ECVF_Default);
 
 UMaterialInterface* LoadSpriteMaterialNoWarn()
 {
@@ -441,6 +499,8 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 	// DeltaSeconds from underneath it only sees a quarter of the elapsed time and takes four times
 	// as long as it says. This is wall-clock scheduling; it does not belong on the VM's clock.
 	UpdateArsonistThrowSchedule(DeltaSeconds);
+	// Same slot, same reason: a 10-second window measured on the VM's clock would be forty.
+	UpdateRoadJaywalkWindow(DeltaSeconds);
 
 	BehaviorTickAccumulator += DeltaSeconds * BehaviorTickRate;
 	int32 Steps = FMath::FloorToInt(BehaviorTickAccumulator);
@@ -742,6 +802,85 @@ void ASimCopterGroundAgent::ComputePedestrianStepSweepShape(
 	OutCenterZ = BottomZ + OutHalfHeightCm;
 }
 
+bool ASimCopterGroundAgent::IsPedestrianRoadStepAllowed(
+	const bool bAllowedByTileClassRows,
+	const int32 TargetTileClass,
+	const bool bJaywalkWindowOpen,
+	const bool bAlreadyOnRoad)
+{
+	if (!FSimCopterPeopleCityRules::IsRoadTileClass(TargetTileClass))
+	{
+		// Not a road: the tile-class rows own this answer entirely and the window is irrelevant.
+		return bAllowedByTileClassRows;
+	}
+	// Already in the road, so this is not the decision the rule is about. Every facing from the
+	// middle of a road tile lands on the same road tile - a step is about 8 cm and a tile is 400 -
+	// so refusing here does not keep them out of the road, it pins them in it. Let them walk; the
+	// rows still own where they may go once they reach the kerb.
+	if (bAlreadyOnRoad)
+	{
+		return true;
+	}
+	// Stepping out into it. The rows do not get a say either way: closed window is refused, which
+	// is what DAT_0058ec00 says by having no row that contains class 7, and an open one is the hole.
+	return bJaywalkWindowOpen;
+}
+
+bool ASimCopterGroundAgent::AdvanceRoadJaywalkWindow(
+	float& InOutSecondsRemaining,
+	const float DeltaSeconds,
+	const float WindowSeconds)
+{
+	const float SafeWindowSeconds = FMath::Max(KINDA_SMALL_NUMBER, WindowSeconds);
+	InOutSecondsRemaining -= FMath::Max(0.0f, DeltaSeconds);
+	if (InOutSecondsRemaining > 0.0f)
+	{
+		return false;
+	}
+
+	// Rearmed from the deadline rather than from now, so a heavy frame does not stretch every
+	// window after it; but a hitch longer than a whole window must not leave it still in the past.
+	InOutSecondsRemaining += SafeWindowSeconds;
+	if (InOutSecondsRemaining <= 0.0f)
+	{
+		InOutSecondsRemaining = SafeWindowSeconds;
+	}
+	return true;
+}
+
+bool ASimCopterGroundAgent::IsSubjectToRoadRule() const
+{
+	// Ambient street population only, which is the same distinction the executable draws: the
+	// DAT_0058ec00 row test is on the +0x168 arm of FUN_004c9470, and the arm everybody else takes
+	// has no tile-class test in it at all. A paramedic crossing to a casualty, a fare walking to the
+	// helicopter or a cop mid-chase were all sent somewhere by their program, and a kerb that
+	// refused them four times in five would strand the mission that sent them.
+	//
+	// BHAV 308's escape is honoured for the same reason every other gate here honours it: a walker
+	// it has given up on is allowed through.
+	return MissionEventId == INDEX_NONE &&
+		!IsEmergencyCrewMember() &&
+		!bPersistentHospitalRoofCrew &&
+		BehaviorContext.Attributes[EBhavAttr::MoveThroughWalls] == 0;
+}
+
+void ASimCopterGroundAgent::UpdateRoadJaywalkWindow(const float DeltaSeconds)
+{
+	const float WindowSeconds = FMath::Max(KINDA_SMALL_NUMBER, RoadJaywalkWindowSeconds);
+	if (RoadJaywalkWindowSecondsRemaining < 0.0f)
+	{
+		// First tick: start somewhere inside a window rather than at the top of one, so the city's
+		// walkers do not all re-roll on the same frame for the rest of the session.
+		RoadJaywalkWindowSecondsRemaining = FMath::FRandRange(0.0f, WindowSeconds);
+		return;
+	}
+
+	if (AdvanceRoadJaywalkWindow(RoadJaywalkWindowSecondsRemaining, DeltaSeconds, WindowSeconds))
+	{
+		bRoadJaywalkWindowOpen = FMath::FRand() < FMath::Clamp(RoadJaywalkChance, 0.0f, 1.0f);
+	}
+}
+
 bool ASimCopterGroundAgent::IsPedestrianStepBlockedByGeometry(
 	const FVector& FromWorldLocation,
 	const FVector& ToWorldLocation,
@@ -960,6 +1099,12 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	const bool bAmbient = Context.Attributes[EBhavAttr::AmbientFlag] != 0;
 	const int32 BehaviorClass = Context.Attributes[EBhavAttr::BehaviorClass];
 
+	// Resolved once for the whole retry loop: which side of the kerb this walker is starting from.
+	// See IsPedestrianRoadStepAllowed - somebody a car has thrown into the middle of the street has
+	// to be able to walk out of it.
+	const bool bStartingOnRoad =
+		FSimCopterPeopleCityRules::IsRoadTileClass(GetCurrentTileClass());
+
 	int32 LastBlockResult = 0;
 	ASimCopterGroundAgent* BumpedPerson = nullptr;
 	for (int32 Turn = 0; Turn < MaxAttempts; ++Turn)
@@ -1019,23 +1164,29 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 		// The exemption is remake-only and is documented on SetIgnoresTileClassRules: the airport
 		// is class 1, which no row accepts, and the level-complete band has to be able to walk
 		// about on it. The climb gate below still keeps them out of buildings.
-		if (bIgnoresTileClassRules)
+		if (!bIgnoresTileClassRules)
 		{
-			// fall through to the climb/surface gates
-		}
-		else if (bAmbient)
-		{
-			if (!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
+			bool bTileClassAllowed = bAmbient
+				? FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass)
+				: (IsTileClassAllowedForState(BehaviorClass, TargetTileClass) ||
+					FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass));
+
+			// ...and then the road on top of it, in both directions. No DAT_0058ec00 row contains
+			// class 7, so in the executable an ambient walker never steps off the kerb; the safety
+			// net above, which is what actually runs here, does admit roads and had the whole
+			// population wandering down the middle of them. This restores the rule to the branch
+			// that runs and opens the one hole in it - see RoadJaywalkChance.
+			if (IsSubjectToRoadRule())
+			{
+				bTileClassAllowed = IsPedestrianRoadStepAllowed(
+					bTileClassAllowed, TargetTileClass, bRoadJaywalkWindowOpen, bStartingOnRoad);
+			}
+
+			if (!bTileClassAllowed)
 			{
 				LastBlockResult = 3;
 				continue;
 			}
-		}
-		else if (!IsTileClassAllowedForState(BehaviorClass, TargetTileClass) &&
-			!FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass))
-		{
-			LastBlockResult = 3;
-			continue;
 		}
 
 		// The max-climb/drop gate against the walked surface (highest geometry at the target
@@ -2000,26 +2151,41 @@ float ASimCopterGroundAgent::ComputeBodyGapCm(
 	return static_cast<float>(FMath::Sqrt(LocalBoundsCm.ComputeSquaredDistanceToPoint(LocalPoint)));
 }
 
-float ASimCopterGroundAgent::GetDistanceToBodyCm(const FVector& WorldLocation) const
+bool ASimCopterGroundAgent::TryGetBodyLocalBoundsCm(FBox& OutLocalBoundsCm) const
 {
 	const USceneComponent* VisibleBody =
 		bUsingOriginalMesh
 			? static_cast<const USceneComponent*>(OriginalMeshComponent.Get())
 			: static_cast<const USceneComponent*>(ProxyMeshComponent.Get());
-
-	if (VisibleBody != nullptr)
+	if (VisibleBody == nullptr)
 	{
-		// Measured through the component's own relative transform, so the box is already in the
-		// actor's frame and turns with it.
-		const FBoxSphereBounds BodyBounds = VisibleBody->CalcBounds(VisibleBody->GetRelativeTransform());
-		if (BodyBounds.SphereRadius > UE_SMALL_NUMBER && !BodyBounds.BoxExtent.ContainsNaN())
-		{
-			const FBox LocalBounds = BodyBounds.GetBox();
-			if (LocalBounds.IsValid != 0)
-			{
-				return ComputeBodyGapCm(LocalBounds, GetActorTransform(), WorldLocation);
-			}
-		}
+		return false;
+	}
+
+	// Measured through the component's own relative transform, so the box is already in the
+	// actor's frame and turns with it.
+	const FBoxSphereBounds BodyBounds = VisibleBody->CalcBounds(VisibleBody->GetRelativeTransform());
+	if (BodyBounds.SphereRadius <= UE_SMALL_NUMBER || BodyBounds.BoxExtent.ContainsNaN())
+	{
+		return false;
+	}
+
+	const FBox LocalBounds = BodyBounds.GetBox();
+	if (LocalBounds.IsValid == 0)
+	{
+		return false;
+	}
+
+	OutLocalBoundsCm = LocalBounds;
+	return true;
+}
+
+float ASimCopterGroundAgent::GetDistanceToBodyCm(const FVector& WorldLocation) const
+{
+	FBox LocalBounds(ForceInit);
+	if (TryGetBodyLocalBoundsCm(LocalBounds))
+	{
+		return ComputeBodyGapCm(LocalBounds, GetActorTransform(), WorldLocation);
 	}
 
 	// No mesh built yet (a headless test, or the frame before the GEO packs load). Fall back to
@@ -2053,6 +2219,645 @@ bool ASimCopterGroundAgent::ApplyHelicopterRunOver(ASimCopterHelicopterPawn& Hel
 	// Do not also synthesize outcome 9 (caught). BHAV 903 posts outcome 10 (casualty), and the
 	// retail lifecycle closes crimes on caught + casualties reaching the one target.
 	return true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Hit by a car. DIVERGENCE, whole-cloth - see ESimCopterKnockdownPhase for what the original does
+// (nothing) and what this replaces it with.
+// ---------------------------------------------------------------------------------------------
+
+FVector ASimCopterGroundAgent::ComputeVehicleKnockdownLaunchVelocity(
+	const FVector& VehicleVelocityCmPerSec,
+	const FVector& VehicleToPersonOffset,
+	const float ForwardGain,
+	const float LateralGain,
+	const float VerticalGain)
+{
+	const FVector FlatVelocity(VehicleVelocityCmPerSec.X, VehicleVelocityCmPerSec.Y, 0.0f);
+	const float SpeedCmPerSec = static_cast<float>(FlatVelocity.Size());
+	if (SpeedCmPerSec <= KINDA_SMALL_NUMBER)
+	{
+		// A parked car throws nobody. Speed is the only source of energy in this whole exchange.
+		return FVector::ZeroVector;
+	}
+
+	const FVector Forward = FlatVelocity / SpeedCmPerSec;
+	const FVector Right(-Forward.Y, Forward.X, 0.0f);
+	// Which side of the bonnet they were caught on. Exactly on the centre line resolves to a side
+	// rather than to nothing, so a head-on hit still spins off instead of sliding up the road - and
+	// in practice nobody is ever exactly on it, so which side is theirs.
+	const float LateralOffset =
+		static_cast<float>(FVector::DotProduct(FVector(VehicleToPersonOffset.X, VehicleToPersonOffset.Y, 0.0f), Right));
+	const float LateralSign = LateralOffset >= 0.0f ? 1.0f : -1.0f;
+
+	return Forward * (SpeedCmPerSec * FMath::Max(0.0f, ForwardGain)) +
+		Right * (LateralSign * SpeedCmPerSec * FMath::Max(0.0f, LateralGain)) +
+		FVector::UpVector * (SpeedCmPerSec * FMath::Max(0.0f, VerticalGain));
+}
+
+FVector ASimCopterGroundAgent::ComputeKnockdownBounceVelocity(
+	const FVector& VelocityCmPerSec,
+	const FVector& SurfaceNormal,
+	const float Restitution,
+	const float TangentialFriction)
+{
+	const FVector Normal = SurfaceNormal.GetSafeNormal();
+	if (Normal.IsNearlyZero())
+	{
+		return VelocityCmPerSec;
+	}
+
+	const float ApproachSpeed = static_cast<float>(FVector::DotProduct(VelocityCmPerSec, Normal));
+	if (ApproachSpeed >= 0.0f)
+	{
+		// Already leaving the surface: a glancing contact must not re-launch them into it.
+		return VelocityCmPerSec;
+	}
+
+	const FVector Tangential = VelocityCmPerSec - Normal * ApproachSpeed;
+	return Tangential * (1.0f - FMath::Clamp(TangentialFriction, 0.0f, 1.0f)) +
+		Normal * (-ApproachSpeed * FMath::Clamp(Restitution, 0.0f, 0.95f));
+}
+
+float ASimCopterGroundAgent::GetVehicleKnockdownLaunchScale()
+{
+	return GSimCopterKnockdownLaunchScale;
+}
+
+void ASimCopterGroundAgent::SetVehicleKnockdownLaunchScale(const float Scale)
+{
+	GSimCopterKnockdownLaunchScale = FMath::Max(0.0f, Scale);
+}
+
+float ASimCopterGroundAgent::GetVehicleKnockdownUpwardScale()
+{
+	return GSimCopterKnockdownUpwardScale;
+}
+
+void ASimCopterGroundAgent::SetVehicleKnockdownUpwardScale(const float Scale)
+{
+	GSimCopterKnockdownUpwardScale = FMath::Max(0.0f, Scale);
+}
+
+FVector ASimCopterGroundAgent::ComputeKnockdownTumbleAxis(
+	const FVector& LaunchVelocityCmPerSec,
+	const float JitterX,
+	const float JitterY)
+{
+	// Across the flight: the roll a body picks up going over a bonnet.
+	const FVector FlatLaunch(LaunchVelocityCmPerSec.X, LaunchVelocityCmPerSec.Y, 0.0f);
+	const FVector Across = FlatLaunch.IsNearlyZero()
+		? FVector::RightVector
+		: FVector(-FlatLaunch.Y, FlatLaunch.X, 0.0f).GetSafeNormal();
+
+	// Z is dropped, not jittered. A rotation about an axis with any Z in it is partly yaw, and yaw
+	// cannot lay anybody down - the rest pose is a quarter turn about this same axis, so a tilted
+	// one spends part of that turn spinning the body on the spot and leaves the sprawl standing at
+	// an angle instead of lying on the ground.
+	return FVector(Across.X + JitterX, Across.Y + JitterY, 0.0f)
+		.GetSafeNormal(1.e-4, FVector::RightVector);
+}
+
+float ASimCopterGroundAgent::ComputeKnockdownRestSpinDegrees(const float SpinDegrees)
+{
+	// Odd multiples of 90 are the flat ones: 0 and 180 are standing up (the second on their head).
+	return 90.0f + 180.0f * FMath::RoundToFloat((SpinDegrees - 90.0f) / 180.0f);
+}
+
+ESimCopterKnockdownPhase ASimCopterGroundAgent::AdvanceKnockdownRecoveryPhase(
+	const ESimCopterKnockdownPhase Phase,
+	const float PhaseSeconds,
+	const float SettleSeconds,
+	const float ProneSeconds,
+	const bool bInWater)
+{
+	if (Phase == ESimCopterKnockdownPhase::Settle && PhaseSeconds >= FMath::Max(0.0f, SettleSeconds))
+	{
+		// Face down in the sea is not a pose anyone can hold, and the authored lying clip would be
+		// half under the surface anyway: a swimmer goes straight to making for the shore.
+		return bInWater ? ESimCopterKnockdownPhase::WadeToShore : ESimCopterKnockdownPhase::Prone;
+	}
+	if (Phase == ESimCopterKnockdownPhase::Prone && PhaseSeconds >= FMath::Max(0.0f, ProneSeconds))
+	{
+		return bInWater ? ESimCopterKnockdownPhase::WadeToShore : ESimCopterKnockdownPhase::None;
+	}
+	return Phase;
+}
+
+bool ASimCopterGroundAgent::IsBoardingPlayerHelicopter() const
+{
+	// Anyone whose current job is to reach the player's aircraft. Read only by
+	// ApplyHelicopterKnockdown: the AIRFRAME leaves these people alone, the cars do not.
+	//
+	// Their own program has the aircraft - or its rope end - selected and is walking at it. This is
+	// BHAV 291's transport fare, BHAV 305's harness rescue and BHAV 263's hospital medic.
+	if (BehaviorContext.bHasSelection &&
+		(BehaviorContext.bSelectionIsHarness || IsSelectionPlayerHelicopter(BehaviorContext)))
+	{
+		return true;
+	}
+	// The mission layer is steering them into the cabin: GuideMissionPeopleToLocation's stall
+	// backstop, whose target is the cabin midpoint.
+	if (IsGuidanceMoveTargetActive())
+	{
+		return true;
+	}
+	// Waiting to be collected (the wave), or posted somewhere for exactly that purpose - a hospital
+	// roof medic, or a rooftop-rescue survivor sitting on their own roof post.
+	if (bMissionWavesWhenIdle || bPersistentHospitalRoofCrew || bHasHospitalRoofPost)
+	{
+		return true;
+	}
+	// Mid-handoff with a body over their shoulder. Launching the porter strands the patient.
+	return IsCarryingPerson();
+}
+
+bool ASimCopterGroundAgent::CanBeKnockedDownByVehicle() const
+{
+	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian || IsActorBeingDestroyed() || IsHidden())
+	{
+		return false;
+	}
+	if (KnockdownPhase != ESimCopterKnockdownPhase::None)
+	{
+		return false;
+	}
+	// NOBODY IS EXEMPT FOR BEING IMPORTANT. This is deliberately not a list of people too valuable
+	// to be run over - a mission's casualty, a paramedic, a criminal, an arsonist and a rooftop
+	// survivor are all just people standing in a street, and they all get launched. What happens
+	// afterwards is that they carry on from wherever they land with the exact program they were
+	// already running (see FinishKnockdown), so no lifecycle is interrupted by this - only relocated.
+	//
+	// The first exemption is not policy but physics: these are people who are not standing in the
+	// street to be hit at all. Somebody riding a carrier, slung over a medic's shoulder or halfway up
+	// a UFO's beam has their position written by whoever owns them, and somebody already falling out
+	// of a helicopter is in the middle of an arc of their own.
+	if (bMissionCarried ||
+		bBehaviorMoveSuspended ||
+		BehaviorCarrier.IsValid() ||
+		bBeamAbductionActive ||
+		bPassengerFallActive)
+	{
+		return false;
+	}
+	// Note there is no boarding exemption here on purpose: a fare crossing the road to reach you is
+	// fair game for the traffic on it. Only the airframe holds off - see ApplyHelicopterKnockdown.
+	return BehaviorContext.Attributes[EBhavAttr::Visible] != 0;
+}
+
+float ASimCopterGroundAgent::GetHelicopterKnockdownUpwardScale()
+{
+	return GSimCopterHelicopterKnockdownUpwardScale;
+}
+
+void ASimCopterGroundAgent::SetHelicopterKnockdownUpwardScale(const float Scale)
+{
+	GSimCopterHelicopterKnockdownUpwardScale = FMath::Max(0.0f, Scale);
+}
+
+float ASimCopterGroundAgent::GetHelicopterKnockdownMinSpeedCmPerSec()
+{
+	return GSimCopterHelicopterKnockdownMinSpeedCmPerSec;
+}
+
+void ASimCopterGroundAgent::SetHelicopterKnockdownMinSpeedCmPerSec(const float SpeedCmPerSec)
+{
+	GSimCopterHelicopterKnockdownMinSpeedCmPerSec = FMath::Max(0.0f, SpeedCmPerSec);
+}
+
+bool ASimCopterGroundAgent::ApplyVehicleKnockdown(AActor& Vehicle, const FVector& VehicleVelocityCmPerSec)
+{
+	return ApplyKnockdownFrom(Vehicle, VehicleVelocityCmPerSec, GSimCopterKnockdownUpwardScale);
+}
+
+bool ASimCopterGroundAgent::ApplyHelicopterKnockdown(AActor& Helicopter, const FVector& HelicopterVelocityCmPerSec)
+{
+	// The airframe's one extra refusal, and the cars deliberately do not share it: being thrown by
+	// the machine you are walking towards is the pickup failing rather than slapstick, and with the
+	// minimum speed at 0 a hover that drifts a few cm a second would do it to the fare at the door.
+	// A car hitting that same fare on the way over is just traffic.
+	if (IsBoardingPlayerHelicopter())
+	{
+		return false;
+	}
+	// Otherwise identical to a car's but for the steepness. The minimum-speed gate is the caller's,
+	// because it belongs to the aircraft rather than to the person being hit.
+	return ApplyKnockdownFrom(Helicopter, HelicopterVelocityCmPerSec, GSimCopterHelicopterKnockdownUpwardScale);
+}
+
+bool ASimCopterGroundAgent::ApplyKnockdownFrom(
+	AActor& Striker,
+	const FVector& StrikerVelocityCmPerSec,
+	const float UpwardScale)
+{
+	if (!CanBeKnockedDownByVehicle())
+	{
+		return false;
+	}
+
+	// LaunchScale is how hard, UpwardScale is how steep - folded into the gains here rather than
+	// inside the launch maths, so the pure function stays "gains times the striker's speed".
+	const float LaunchScale = FMath::Max(0.0f, GSimCopterKnockdownLaunchScale);
+	const FVector LaunchVelocity = ComputeVehicleKnockdownLaunchVelocity(
+		StrikerVelocityCmPerSec,
+		GetActorLocation() - Striker.GetActorLocation(),
+		KnockdownForwardGain * LaunchScale,
+		KnockdownLateralGain * LaunchScale,
+		KnockdownVerticalGain * LaunchScale * FMath::Max(0.0f, UpwardScale));
+	if (LaunchVelocity.IsNearlyZero())
+	{
+		return false;
+	}
+
+	// Everything the tumble is about to take over, remembered so it can be handed straight back at
+	// the far end. The VM is SUSPENDED, not abandoned: whatever program they were on resumes at the
+	// new position, so a casualty is still a casualty, a medic still has its patient to reach and an
+	// arsonist is still working to his clock - all of them simply somewhere else now.
+	bKnockdownResumeBehaviorActive = bBehaviorActive;
+	bKnockdownResumeMissionStationary = bMissionStationary;
+	KnockdownResumeFigureMnemonic = ForcedFigureMnemonic;
+	// Held still by a mission for the duration, or the wade out of the sea could not walk.
+	bMissionStationary = false;
+	bBehaviorActive = false;
+	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
+	BehaviorStepTimeRemainingSeconds = 0.0f;
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+	ExternalVelocityCmPerSec = FVector::ZeroVector;
+	VerticalVelocityCmPerSec = 0.0f;
+	ClearMoveTarget();
+	AvoidanceMoveTimeRemainingSeconds = 0.0f;
+	AvoidancePathOffsetTimeRemainingSeconds = 0.0f;
+	StopWalkingVoice();
+	// The tumble owns the transform, so the wall-containment anchor from the walk they were doing is
+	// meaningless; it is re-taken when they stand up.
+	bHasWallContainmentAnchor = false;
+	BehaviorInteractionSource = &Striker;
+
+	KnockdownVelocityCmPerSec = LaunchVelocity;
+	bKnockdownLandedInWater = false;
+	// One rigid tumble, about a horizontal axis - see ComputeKnockdownTumbleAxis for why that is not
+	// optional.
+	KnockdownSpinAxis = ComputeKnockdownTumbleAxis(
+		LaunchVelocity, FMath::FRandRange(-0.3f, 0.3f), FMath::FRandRange(-0.3f, 0.3f));
+	KnockdownSpinDegreesPerSecond =
+		static_cast<float>(LaunchVelocity.Size()) * FMath::Max(0.0f, KnockdownSpinDegreesPerSecondPerSpeed) *
+		(FMath::RandBool() ? 1.0f : -1.0f);
+	KnockdownSpinDegrees = 0.0f;
+	KnockdownRestSpinDegrees = 90.0f;
+
+	// "Whoa" is the recoil clip the move core itself binds when something shoves a walker
+	// (FUN_004c6970 result 2), so it is already the game's own "that just happened to me" pose.
+	SetForcedPedestrianFigureClip(TEXT("Whoa"));
+	// Bodyhit2 - the struck-by-an-object line. Forced, because the person is nowhere near the
+	// player's cabin and this is the one moment they should be heard from.
+	PlayPersonVoiceEvent(SimCopterSound::VOX_BODYHIT, /*bAllocateSlot=*/true, /*bNonPositional=*/false, /*bForce=*/true);
+
+	EnterKnockdownPhase(ESimCopterKnockdownPhase::Airborne);
+	return true;
+}
+
+void ASimCopterGroundAgent::EnterKnockdownPhase(const ESimCopterKnockdownPhase NewPhase)
+{
+	KnockdownPhase = NewPhase;
+	KnockdownPhaseSeconds = 0.0f;
+
+	switch (NewPhase)
+	{
+	case ESimCopterKnockdownPhase::Settle:
+		BeginKnockdownRest();
+		break;
+	case ESimCopterKnockdownPhase::Prone:
+		// "Inju", the same pose an injured person on the pavement holds - not "Dead", which is the
+		// corpse the medevac casualties use. Somebody a car has knocked over is hurt and is about to
+		// get up again, and the two clips read differently.
+		//
+		// The authored pose is ALREADY drawn lying, in the figure's own frame, so every part of the
+		// tumble has to come off before it is bound or the two compose - a lying pose turned a
+		// further quarter turn is a body standing on its head.
+		KnockdownVelocityCmPerSec = FVector::ZeroVector;
+		ResetKnockdownVisualTransform();
+		SetForcedPedestrianFigureClip(TEXT("Inju"));
+		break;
+	case ESimCopterKnockdownPhase::WadeToShore:
+		KnockdownVelocityCmPerSec = FVector::ZeroVector;
+		ResetKnockdownVisualTransform();
+		ClearForcedPedestrianFigureClip();
+		if (!BeginWadeToShore())
+		{
+			// No land within reach (or no city to ask): standing up where they are beats treading
+			// water forever, and the ordinary walk rules will take it from there.
+			FinishKnockdown();
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+void ASimCopterGroundAgent::BeginKnockdownRest()
+{
+	KnockdownVelocityCmPerSec = FVector::ZeroVector;
+	// Lay the tumble down where it stopped: same axis, nearest quarter turn about it that leaves
+	// them flat. The result reads as "they landed like that" rather than as a snap to a pose.
+	KnockdownRestSpinDegrees = ComputeKnockdownRestSpinDegrees(KnockdownSpinDegrees);
+}
+
+void ASimCopterGroundAgent::FinishKnockdown(const bool bRestoreAppearance)
+{
+	KnockdownPhase = ESimCopterKnockdownPhase::None;
+	KnockdownPhaseSeconds = 0.0f;
+	KnockdownVelocityCmPerSec = FVector::ZeroVector;
+	KnockdownSpinDegrees = 0.0f;
+	KnockdownRestSpinDegrees = 90.0f;
+	KnockdownSpinDegreesPerSecond = 0.0f;
+	bKnockdownLandedInWater = false;
+	// The tumble belongs to nobody else, so it always comes off - including when a carrier takes the
+	// body over mid-flight and will pose it itself.
+	ResetKnockdownVisualTransform();
+	ClearMoveTarget();
+	CurrentVelocityCmPerSec = FVector::ZeroVector;
+
+	// Continue from where they end up. Nothing here restarts or re-homes anyone: the same behaviour
+	// stack, the same mission pose and the same clip they had when the car arrived, resumed at the
+	// new position. The one thing that has changed about them is which street they are standing in.
+	bMissionStationary = bKnockdownResumeMissionStationary;
+	if (bRestoreAppearance)
+	{
+		if (KnockdownResumeFigureMnemonic.IsEmpty())
+		{
+			ClearForcedPedestrianFigureClip();
+		}
+		else
+		{
+			SetForcedPedestrianFigureClip(KnockdownResumeFigureMnemonic);
+		}
+	}
+	KnockdownResumeFigureMnemonic.Reset();
+
+	if (bKnockdownResumeBehaviorActive)
+	{
+		if (BehaviorModel.IsValid() && bUseOriginalBehaviors && BehaviorContext.Stack.Num() > 0)
+		{
+			bBehaviorActive = true;
+		}
+		else
+		{
+			// Their stack went away underneath them (a save restore, a model that never loaded).
+			// A fresh ambient program is the only thing left to give them.
+			StartOriginalBehavior();
+		}
+	}
+	bKnockdownResumeBehaviorActive = false;
+	bKnockdownResumeMissionStationary = false;
+}
+
+void ASimCopterGroundAgent::ResetKnockdownVisualTransform()
+{
+	// Everything the tumble wrote, put back. The authored poses are drawn in the figure's own upright
+	// frame and compose with whatever is left here, so any residue of the ragdoll shows up as a body
+	// lying at the wrong angle, on its head, or hanging off the ground.
+	ApplyKnockdownVisual(FQuat::Identity, 0.0f);
+	// The tumble is a VisualRoot rotation and never touches the actor, but a walker can be left
+	// pitched or rolled by anything that placed them, and the lying poses assume level ground under a
+	// level body. Keep the facing; flatten the rest.
+	const FRotator ActorRotation = GetActorRotation();
+	if (!FMath::IsNearlyZero(ActorRotation.Pitch) || !FMath::IsNearlyZero(ActorRotation.Roll))
+	{
+		SetActorRotation(FRotator(0.0f, ActorRotation.Yaw, 0.0f));
+	}
+}
+
+void ASimCopterGroundAgent::ApplyKnockdownVisual(const FQuat& Rotation, const float FlatAlpha)
+{
+	if (VisualRoot == nullptr)
+	{
+		return;
+	}
+	VisualRoot->SetRelativeRotation(Rotation);
+	// VisualRoot pivots about the capsule centre, so a body turned on its side hangs half a body
+	// height in the air. Drop it by everything but its own thickness as it goes flat.
+	const float DropCm = FMath::Max(0.0f, GetCapsuleHalfHeightCm() - GetCollisionRadiusCm());
+	SetVisualRootRelativeLocation(FVector(0.0f, 0.0f, -DropCm * FMath::Clamp(FlatAlpha, 0.0f, 1.0f)));
+}
+
+void ASimCopterGroundAgent::AdvanceKnockdownFigureFrames(const float DeltaSeconds)
+{
+	if (!bUsingPedestrianFigure || FigureFrameCount <= 1)
+	{
+		return;
+	}
+	FigureFrameTime += DeltaSeconds * FMath::Max(0.1f, FigureFrameRate);
+	const int32 DesiredFrame = FMath::FloorToInt(FigureFrameTime) % FigureFrameCount;
+	if (DesiredFrame != FigureCurrentFrame)
+	{
+		FigureCurrentFrame = DesiredFrame;
+		FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, FigureCurrentFrame, bFigureHasHeadSection);
+	}
+}
+
+bool ASimCopterGroundAgent::TryGetWaterSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const
+{
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	const ASimCity2000CityActor* City = TrafficSystem != nullptr ? TrafficSystem->GetCityActor() : nullptr;
+	if (City == nullptr)
+	{
+		return false;
+	}
+
+	uint8 TerrainClass = 0xff;
+	return City->TryGetWaterGameplaySurface(WorldLocation, OutSurfaceZ, TerrainClass) &&
+		SimCopterWaterGameplay::IsWaterTerrainClass(TerrainClass);
+}
+
+bool ASimCopterGroundAgent::BeginWadeToShore()
+{
+	ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	int32 TileX = INDEX_NONE;
+	int32 TileY = INDEX_NONE;
+	if (!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(GetActorLocation(), TileX, TileY))
+	{
+		return false;
+	}
+
+	int32 ShoreX = INDEX_NONE;
+	int32 ShoreY = INDEX_NONE;
+	FVector ShoreWorld = FVector::ZeroVector;
+	if (!TrafficSystem->TryFindNearestTransportLandTile(TileX, TileY, ShoreX, ShoreY) ||
+		!TrafficSystem->TryGetTileCenterWorldLocation(ShoreX, ShoreY, ShoreWorld))
+	{
+		return false;
+	}
+
+	// An ordinary move target, so UpdateMovement's target-seeking path walks them out: the walk
+	// clip, the ground snap (which rides them up the shelf and onto the beach) and the wall
+	// containment all apply exactly as they do to anyone else being led somewhere.
+	SetMoveTarget(ShoreWorld);
+	return true;
+}
+
+bool ASimCopterGroundAgent::UpdateKnockdown(const float DeltaSeconds)
+{
+	if (KnockdownPhase == ESimCopterKnockdownPhase::None)
+	{
+		return false;
+	}
+
+	// Here rather than in Tick's knockdown block, because the wade returns false out of the bottom
+	// of this function and the ordinary path only pumps the voice from inside the behaviour VM -
+	// which is stopped. Without this the bodyhit line's slot is never handed back, and the bank is
+	// fourteen slots for the whole city.
+	UpdatePersonVoice();
+
+	KnockdownPhaseSeconds += DeltaSeconds;
+
+	if (KnockdownPhase == ESimCopterKnockdownPhase::WadeToShore)
+	{
+		// Movement is the ordinary move-target path's job this phase; all that is owned here is
+		// when to stop. Out of the water, arrived, or the shore turned out to be unreachable.
+		const bool bReachedLand = !IsStandingInWater();
+		const bool bArrived = !bHasMoveTarget || IsNearMoveTarget(TargetStopDistanceCm);
+		if (bReachedLand || bArrived || KnockdownPhaseSeconds >= KnockdownMaxWadeSeconds)
+		{
+			FinishKnockdown();
+		}
+		return false;
+	}
+
+	if (KnockdownPhase == ESimCopterKnockdownPhase::Airborne)
+	{
+		UpdateKnockdownFlight(DeltaSeconds);
+		AdvanceKnockdownFigureFrames(DeltaSeconds);
+		// The watchdog: a tumble that never finds a surface (spawned over a hole in the collision,
+		// or thrown clean off the map) still has to hand the person back.
+		if (KnockdownPhase == ESimCopterKnockdownPhase::Airborne &&
+			KnockdownPhaseSeconds >= KnockdownMaxFlightSeconds)
+		{
+			bKnockdownLandedInWater = IsStandingInWater();
+			EnterKnockdownPhase(ESimCopterKnockdownPhase::Settle);
+		}
+		return true;
+	}
+
+	// Settle and Prone: lying still, waiting out their part of the recovery.
+	const ESimCopterKnockdownPhase NextPhase = AdvanceKnockdownRecoveryPhase(
+		KnockdownPhase,
+		KnockdownPhaseSeconds,
+		KnockdownSettleSeconds,
+		KnockdownProneSeconds,
+		bKnockdownLandedInWater);
+	if (NextPhase != KnockdownPhase)
+	{
+		if (NextPhase == ESimCopterKnockdownPhase::None)
+		{
+			FinishKnockdown();
+			return false;
+		}
+		EnterKnockdownPhase(NextPhase);
+		return KnockdownPhase != ESimCopterKnockdownPhase::WadeToShore &&
+			KnockdownPhase != ESimCopterKnockdownPhase::None;
+	}
+
+	if (KnockdownPhase == ESimCopterKnockdownPhase::Settle)
+	{
+		// Ease the tumble down onto the deck over the front of the settle, so the last of the spin
+		// carries into the sprawl instead of stopping dead on the frame they land.
+		constexpr float SprawlSeconds = 0.18f;
+		const float Alpha = FMath::Clamp(KnockdownPhaseSeconds / SprawlSeconds, 0.0f, 1.0f);
+		const float AngleDegrees = FMath::Lerp(KnockdownSpinDegrees, KnockdownRestSpinDegrees, Alpha);
+		ApplyKnockdownVisual(
+			FQuat(KnockdownSpinAxis.GetSafeNormal(1.e-4, FVector::RightVector), FMath::DegreesToRadians(AngleDegrees)),
+			Alpha);
+	}
+
+	// Still snap to the ground while lying there: the surface under a body that came to rest on a
+	// slope, a roof or the swell is not a fixed height.
+	if (bSnapToGround)
+	{
+		UpdateGroundSnap(DeltaSeconds);
+	}
+	return true;
+}
+
+void ASimCopterGroundAgent::UpdateKnockdownFlight(const float DeltaSeconds)
+{
+	if (RootComponent == nullptr || DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	KnockdownVelocityCmPerSec.Z -= FMath::Max(0.0f, GravityCmPerSec2) * DeltaSeconds;
+
+	// The whole ragdoll: one rigid turn about one axis, at a rate set by how hard they were hit.
+	KnockdownSpinDegrees += KnockdownSpinDegreesPerSecond * DeltaSeconds;
+	ApplyKnockdownVisual(
+		FQuat(KnockdownSpinAxis.GetSafeNormal(1.e-4, FVector::RightVector), FMath::DegreesToRadians(KnockdownSpinDegrees)),
+		0.0f);
+
+	const FVector StartLocation = GetActorLocation();
+	FVector EndLocation = StartLocation + KnockdownVelocityCmPerSec * DeltaSeconds;
+
+	// Walls, piers, parapets and the sides of buildings. Swept on ECC_Camera for the same reason
+	// every other pedestrian query is: the city mesh blocks it and no agent or player capsule does,
+	// so a tumbling body cannot catch on the crowd it is flying over.
+	if (World != nullptr && CollisionComponent != nullptr)
+	{
+		const float SweepRadiusCm = FMath::Max(1.0f, GetCollisionRadiusCm());
+		FHitResult Hit;
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterKnockdownSweep), false, this);
+		if (World->SweepSingleByChannel(
+				Hit,
+				StartLocation,
+				EndLocation,
+				FQuat::Identity,
+				ECC_Camera,
+				FCollisionShape::MakeSphere(SweepRadiusCm),
+				QueryParams) &&
+			Hit.bBlockingHit && !Hit.bStartPenetrating)
+		{
+			EndLocation = Hit.Location + Hit.ImpactNormal * 0.5f;
+			KnockdownVelocityCmPerSec = ComputeKnockdownBounceVelocity(
+				KnockdownVelocityCmPerSec, Hit.ImpactNormal, KnockdownRestitution, KnockdownTangentialFriction);
+		}
+	}
+
+	SetActorLocation(EndLocation, false);
+
+	// The ground is answered by the walk probe rather than by that sweep, because the probe is what
+	// knows where a pedestrian may stand: the road under a bridge, the roof they were thrown onto,
+	// the sea's own plane. Its answer is a standing height (capsule centre), which is above where
+	// the sphere sweep would have contacted, so it always resolves first.
+	FVector GroundedLocation = FVector::ZeroVector;
+	if (!TraceGround(GroundedLocation) || EndLocation.Z > GroundedLocation.Z)
+	{
+		return;
+	}
+
+	SetActorLocation(FVector(EndLocation.X, EndLocation.Y, GroundedLocation.Z), false);
+	VerticalVelocityCmPerSec = 0.0f;
+
+	float WaterSurfaceZ = 0.0f;
+	const bool bInWater = TryGetWaterSurfaceZAt(GroundedLocation, WaterSurfaceZ) &&
+		GroundedLocation.Z - GetCapsuleHalfHeightCm() <= WaterSurfaceZ + WaterStandingClearanceCm;
+	if (bInWater)
+	{
+		// Water does not bounce anybody. They go in, and that is where the tumble ends.
+		bKnockdownLandedInWater = true;
+		EnterKnockdownPhase(ESimCopterKnockdownPhase::Settle);
+		return;
+	}
+
+	KnockdownVelocityCmPerSec = ComputeKnockdownBounceVelocity(
+		KnockdownVelocityCmPerSec, FVector::UpVector, KnockdownRestitution, KnockdownTangentialFriction);
+	if (KnockdownVelocityCmPerSec.Size() <= FMath::Max(0.0f, KnockdownRestSpeedCmPerSec))
+	{
+		EnterKnockdownPhase(ESimCopterKnockdownPhase::Settle);
+	}
 }
 
 bool ASimCopterGroundAgent::IsWithinRoofPostAggro(
@@ -3775,6 +4580,16 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	{
 		GuidanceMoveTargetTimeRemainingSeconds = FMath::Max(0.0f, GuidanceMoveTargetTimeRemainingSeconds - DeltaSeconds);
 	}
+	// Above both carried early-returns, because they return before the knockdown block below ever
+	// runs: somebody has taken this body over mid-tumble - a winch pickup, a medic hoisting a
+	// casualty, a boarding - and its transform is theirs now. Hand it back before they own it, or
+	// the knockdown state sits latched until they are put down again and then resumes in mid-air.
+	// Their pose is already set, so this must not overwrite it.
+	if (IsKnockedDown() && (bMissionCarried || bBehaviorMoveSuspended || BehaviorCarrier.IsValid()))
+	{
+		FinishKnockdown(/*bRestoreAppearance=*/false);
+	}
+
 	if (bMissionCarried)
 	{
 		CurrentVelocityCmPerSec = FVector::ZeroVector;
@@ -3804,6 +4619,16 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 			return;
 		}
 	}
+	// Somebody a car has just launched. Every phase but the wade owns the transform and the figure
+	// outright, so it runs in place of the behaviour VM, the movers and the janky-animation pass;
+	// the wade returns false and falls through to all three, because walking out of the sea is an
+	// ordinary walk to an ordinary move target.
+	if (UpdateKnockdown(DeltaSeconds))
+	{
+		UpdateWaterSubmersion(DeltaSeconds);
+		return;
+	}
+
 	UpdateOriginalBehavior(DeltaSeconds);
 	const FVector PreMovementLocation = GetActorLocation();
 	UpdateMovement(DeltaSeconds);
@@ -3965,6 +4790,16 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 	SerializeAgentBool(Writer, bPassengerFallActive);
 	SerializeAgentBool(Writer, bPassengerFallStarted);
 	Writer << PassengerFallStartZ << PassengerFallInjuryDistanceCm << PassengerFallSourceEventId;
+
+	uint8 SavedKnockdownPhase = static_cast<uint8>(KnockdownPhase);
+	Writer << SavedKnockdownPhase;
+	Writer << KnockdownVelocityCmPerSec << KnockdownPhaseSeconds;
+	Writer << KnockdownSpinAxis << KnockdownSpinDegrees << KnockdownSpinDegreesPerSecond;
+	Writer << KnockdownRestSpinDegrees;
+	SerializeAgentBool(Writer, bKnockdownLandedInWater);
+	SerializeAgentBool(Writer, bKnockdownResumeBehaviorActive);
+	SerializeAgentBool(Writer, bKnockdownResumeMissionStationary);
+	Writer << KnockdownResumeFigureMnemonic;
 	return !Writer.IsError();
 }
 
@@ -4103,6 +4938,28 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	SerializeAgentBool(Reader, bPassengerFallActive);
 	SerializeAgentBool(Reader, bPassengerFallStarted);
 	Reader << PassengerFallStartZ << PassengerFallInjuryDistanceCm << PassengerFallSourceEventId;
+	if (Version >= 5)
+	{
+		uint8 SavedKnockdownPhase = 0;
+		Reader << SavedKnockdownPhase;
+		Reader << KnockdownVelocityCmPerSec << KnockdownPhaseSeconds;
+		Reader << KnockdownSpinAxis << KnockdownSpinDegrees << KnockdownSpinDegreesPerSecond;
+		Reader << KnockdownRestSpinDegrees;
+		SerializeAgentBool(Reader, bKnockdownLandedInWater);
+		SerializeAgentBool(Reader, bKnockdownResumeBehaviorActive);
+		SerializeAgentBool(Reader, bKnockdownResumeMissionStationary);
+		Reader << KnockdownResumeFigureMnemonic;
+		KnockdownPhase = SavedKnockdownPhase <= static_cast<uint8>(ESimCopterKnockdownPhase::WadeToShore)
+			? static_cast<ESimCopterKnockdownPhase>(SavedKnockdownPhase)
+			: ESimCopterKnockdownPhase::None;
+	}
+	else
+	{
+		KnockdownPhase = ESimCopterKnockdownPhase::None;
+		bKnockdownResumeBehaviorActive = false;
+		bKnockdownResumeMissionStationary = false;
+		KnockdownResumeFigureMnemonic.Reset();
+	}
 	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
 	// Version-1 saves already contain SeatPortraitMood but predate the transient impact deadline.
 	// If one captured the old latched frightened row, let it pass through the same recovery once
@@ -4134,6 +4991,20 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 		FigureCurrentFrame = FMath::Clamp(SavedFrame, 0, FMath::Max(0, FigureFrameCount - 1));
 		FigureFrameTime = SavedFrameTime;
 		FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, FigureCurrentFrame, bFigureHasHeadSection);
+	}
+	// The tumble is a VisualRoot transform, which no clip rebuild restores: put a body that was
+	// saved mid-flight or lying in the road back the way up it was.
+	if (KnockdownPhase == ESimCopterKnockdownPhase::Airborne)
+	{
+		ApplyKnockdownVisual(
+			FQuat(KnockdownSpinAxis.GetSafeNormal(1.e-4, FVector::RightVector), FMath::DegreesToRadians(KnockdownSpinDegrees)),
+			0.0f);
+	}
+	else if (KnockdownPhase == ESimCopterKnockdownPhase::Settle)
+	{
+		ApplyKnockdownVisual(
+			FQuat(KnockdownSpinAxis.GetSafeNormal(1.e-4, FVector::RightVector), FMath::DegreesToRadians(KnockdownRestSpinDegrees)),
+			1.0f);
 	}
 	return true;
 }
@@ -4455,9 +5326,9 @@ bool ASimCopterGroundAgent::BuildPedestrianFigure()
 		return false;
 	}
 
-	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
-	// Feet sit at the capsule bottom; the figure is built from Z=0 (feet) upward.
-	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight));
+	// Feet sit at the capsule bottom; the figure is built from Z=0 (feet) upward. RebuildFigureClip
+	// has already placed the component, including this pose's own ground lift.
+	ApplyFigureGroundOffset();
 	ShowOriginalMesh(true);
 	return true;
 }
@@ -4534,7 +5405,8 @@ bool ASimCopterGroundAgent::RebuildFigureClip(const FString& Mnemonic)
 	const float HeightCm = PedestrianBodyHeightCm * PopulationWorldScale;
 	// Calibrate model units from the standing walk clip so poses like "Dead" keep their scale.
 	const FPrivAnimClip* StandingClip = FigureShared->Model.FindClip(Figure, TEXT("1Wal"));
-	FigureCalibration = FSimCopterPopulationFigure::Calibrate(StandingClip != nullptr ? *StandingClip : *Clip, HeightCm);
+	const FPrivAnimClip& CalibrationClip = StandingClip != nullptr ? *StandingClip : *Clip;
+	FigureCalibration = FSimCopterPopulationFigure::Calibrate(CalibrationClip, HeightCm);
 
 	FSimCopterPopulationFigure::FBuildParams Params;
 	Params.HeightCm = HeightCm;
@@ -4563,8 +5435,27 @@ bool ASimCopterGroundAgent::RebuildFigureClip(const FString& Mnemonic)
 	FigureFrameCount = Clip->FrameCount;
 	FigureCurrentFrame = 0;
 	FigureFrameTime = 0.0f;
+	// Keep this pose out of the ground. Nothing holds a clip other than the calibration one above
+	// the feet plane, and the lying poses are drawn well below it - which is why a casualty was
+	// buried to the shoulders. Measured against the walk cycle's own lowest point, so binding an
+	// ordinary walk or idle moves the figure by nothing.
+	FigureClipGroundLiftCm =
+		FSimCopterPopulationFigure::ComputeClipGroundLiftCm(*Clip, CalibrationClip, FigureCalibration);
+	ApplyFigureGroundOffset();
 	FSimCopterPopulationFigure::ShowFrame(OriginalMeshComponent, FigureFrameCount, 0, bFigureHasHeadSection);
 	return true;
+}
+
+void ASimCopterGroundAgent::ApplyFigureGroundOffset()
+{
+	if (OriginalMeshComponent == nullptr)
+	{
+		return;
+	}
+	// Feet at the capsule bottom, which the ground snap leaves 1 cm proud of the walked surface,
+	// plus whatever this particular pose needs to stay above it.
+	const float HalfHeight = CollisionComponent != nullptr ? CollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
+	OriginalMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, -HalfHeight + FigureClipGroundLiftCm));
 }
 
 void ASimCopterGroundAgent::UpdateFigureAnimation(float DeltaSeconds, float SpeedAlpha)

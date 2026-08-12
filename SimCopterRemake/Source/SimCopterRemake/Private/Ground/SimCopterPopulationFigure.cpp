@@ -412,6 +412,42 @@ FSimCopterPopulationFigure::FCalibration FSimCopterPopulationFigure::Calibrate(c
 	return Calibration;
 }
 
+float FSimCopterPopulationFigure::ComputeClipDropBelowFeetCm(
+	const FPrivAnimClip& Clip,
+	const FCalibration& Calibration)
+{
+	// The model vertical is screen-space y-down and ToLocal negates it, so the LOWEST point of the
+	// pose is its LARGEST model Z. Every frame, not just frame 0: a clip can settle further down as
+	// it plays.
+	int32 MaxZ = -128;
+	for (const FPrivAnimSegment& Segment : Clip.Segments)
+	{
+		MaxZ = FMath::Max(MaxZ, FMath::Max<int32>(Segment.A.Z, Segment.B.Z));
+	}
+	if (MaxZ <= -128)
+	{
+		return 0.0f;
+	}
+
+	// ToLocal's Z, at the lowest point in the clip. Negative means it is below the feet plane.
+	const float LowestLocalZCm = -static_cast<float>(MaxZ) * Calibration.ScaleCmPerUnit + Calibration.FeetOffsetCm;
+	return FMath::Max(0.0f, -LowestLocalZCm);
+}
+
+float FSimCopterPopulationFigure::ComputeClipGroundLiftCm(
+	const FPrivAnimClip& Clip,
+	const FPrivAnimClip& CalibrationClip,
+	const FCalibration& Calibration)
+{
+	// Against the walking figure's own lowest point rather than against the nominal feet plane.
+	// Calibrate reads frame 0, and every shipped walk cycle dips a couple of centimetres below it
+	// mid-stride - that dip is where a pedestrian visibly meets the pavement today, so measuring
+	// from zero instead would lift the entire population off the ground to fix the lying poses.
+	const float ClipDropCm = ComputeClipDropBelowFeetCm(Clip, Calibration);
+	const float CalibrationDropCm = ComputeClipDropBelowFeetCm(CalibrationClip, Calibration);
+	return FMath::Max(0.0f, ClipDropCm - CalibrationDropCm);
+}
+
 bool FSimCopterPopulationFigure::BuildClipSections(
 	UProceduralMeshComponent* MeshComponent,
 	const FPrivAnimFigure& Figure,

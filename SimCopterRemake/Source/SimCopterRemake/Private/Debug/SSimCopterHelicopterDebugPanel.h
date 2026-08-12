@@ -135,6 +135,17 @@ private:
 	void HandleCameraGroundLiftProbeRangeCmChanged(float Value);
 	void HandleCameraGroundLiftFullDistanceCmChanged(float Value);
 
+	// Population-wide, so these go straight to ASimCopterGroundAgent's statics rather than through
+	// the pawn: the value has to reach every pedestrian in the city, not one actor.
+	TOptional<float> GetKnockdownLaunchScale() const;
+	TOptional<float> GetKnockdownUpwardScale() const;
+	void HandleKnockdownLaunchScaleChanged(float Value);
+	void HandleKnockdownUpwardScaleChanged(float Value);
+	TOptional<float> GetHelicopterKnockdownUpwardScale() const;
+	TOptional<float> GetHelicopterKnockdownMinSpeed() const;
+	void HandleHelicopterKnockdownUpwardScaleChanged(float Value);
+	void HandleHelicopterKnockdownMinSpeedChanged(float Value);
+
 	TOptional<float> GetRotorDiscOpacity() const;
 	void HandleRotorDiscOpacityChanged(float Value);
 	TOptional<float> GetRotorDiscColorR() const;

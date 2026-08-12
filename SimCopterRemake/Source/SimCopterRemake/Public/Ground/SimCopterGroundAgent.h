@@ -28,6 +28,36 @@ enum class ESimCopterGroundAgentKind : uint8
 	Vehicle
 };
 
+/**
+ * What a pedestrian who has just been hit by a car is doing.
+ *
+ * DIVERGENCE, deliberate and whole-cloth: the original has no vehicle-vs-person collision of any
+ * kind. `FUN_0049ee30`/`FUN_0049be50` only ever queue a car behind another car, and the person move
+ * core (`FUN_004c9000`) searches for *people*, so a pedestrian and a car simply pass through one
+ * another. Nothing below is ported from anything, and there is no `FUN_004xxxxx` to cite for it.
+ *
+ * The rule the remake adds instead: the car does not brake, does not swerve and loses no speed. The
+ * person takes the whole exchange, launched proportionally to how fast the car was going and then
+ * exaggerated well past what the momentum would really do - the goofy 1996-cartoon reading, not a
+ * physics one. They tumble as one rigid body (a privanim figure is line segments with no skeleton,
+ * so there is nothing to articulate), bounce off the ground, the buildings and into the water, and
+ * once still they get up and walk away. Nobody is hurt and no mission is raised.
+ */
+UENUM(BlueprintType)
+enum class ESimCopterKnockdownPhase : uint8
+{
+	// Walking about their business.
+	None,
+	// Tumbling: ballistic, bouncing off whatever it meets.
+	Airborne,
+	// Come to rest and lying where they landed, still in the sprawl the tumble left them in.
+	Settle,
+	// The authored "Dead" lying pose.
+	Prone,
+	// They landed in the sea, so they wade to the nearest shore before resuming.
+	WadeToShore
+};
+
 UCLASS()
 class SIMCOPTERREMAKE_API ASimCopterGroundAgent : public AActor, public ISimCopterBehaviorWorld
 {
@@ -414,6 +444,151 @@ public:
 	// kills them once. Called by ASimCopterTrafficSystemActor::RunOverCriminalsUnderHelicopter.
 	bool ApplyHelicopterRunOver(class ASimCopterHelicopterPawn& Helicopter);
 
+	// --- Hit by a car (DIVERGENCE - see ESimCopterKnockdownPhase) -----------------------------
+
+	// May a car (or the airframe) launch this person? Nobody is exempt for being important - a
+	// casualty, a medic, a criminal and an arsonist all get thrown, and all carry on from where they
+	// land. The only refusal here is physical: people who are not standing in the street to be hit
+	// at all (riders, carried bodies, UFO catches, mid-fall passengers).
+	bool CanBeKnockedDownByVehicle() const;
+
+	// "Trying to get into the chopper": a fare walking to the door, a rescue victim waving to be
+	// collected, a harness rider's pickup, a hospital roof medic crossing to take a patient, or
+	// anyone carrying a casualty to the cabin.
+	//
+	// **The AIRFRAME alone honours this** (ApplyHelicopterKnockdown): being thrown by the machine you
+	// are walking towards is the pickup failing rather than slapstick. The cars deliberately do not -
+	// a fare crossing a road to reach you is fair game for the traffic on it.
+	bool IsBoardingPlayerHelicopter() const;
+
+	// Launch them. VehicleVelocityCmPerSec is the car's own velocity - the whole force of the hit
+	// comes from it, and the car is not told anything happened. Returns true when the strike landed.
+	// Called by ASimCopterTrafficSystemActor::UpdatePedestrianVehicleImpacts.
+	bool ApplyVehicleKnockdown(AActor& Vehicle, const FVector& VehicleVelocityCmPerSec);
+
+	ESimCopterKnockdownPhase GetKnockdownPhase() const { return KnockdownPhase; }
+	bool IsKnockedDown() const { return KnockdownPhase != ESimCopterKnockdownPhase::None; }
+	FVector GetKnockdownVelocityCmPerSec() const { return KnockdownVelocityCmPerSec; }
+
+	/**
+	 * The two live tuning knobs, shared by the whole population: how hard the throw is, and how
+	 * steep. Both are multipliers over the per-agent gains, so 1.0 is the shipped feel.
+	 *
+	 * Static (backed by `SimCopter.Knockdown.LaunchScale` / `.UpwardScale`) because there are
+	 * hundreds of these actors and a tuning pass has to move all of them at once. The debug panel's
+	 * KNOCKDOWN row drives these; the console reaches the same two values.
+	 */
+	static float GetVehicleKnockdownLaunchScale();
+	static void SetVehicleKnockdownLaunchScale(float Scale);
+	static float GetVehicleKnockdownUpwardScale();
+	static void SetVehicleKnockdownUpwardScale(float Scale);
+
+	// The airframe's own two. It shares POWER with the cars but keeps its own steepness, because it
+	// travels several times a car's speed, and its own minimum speed, because the case that one
+	// guards - landing, hovering and taxiing among the people it came to collect - has no equivalent
+	// on the road.
+	static float GetHelicopterKnockdownUpwardScale();
+	static void SetHelicopterKnockdownUpwardScale(float Scale);
+	static float GetHelicopterKnockdownMinSpeedCmPerSec();
+	static void SetHelicopterKnockdownMinSpeedCmPerSec(float SpeedCmPerSec);
+
+	// The airframe's version of ApplyVehicleKnockdown. Same launch, same tumble, same recovery; the
+	// only differences are which upward scale it uses and that the caller has already applied the
+	// minimum-speed gate. Returns true when the strike landed.
+	bool ApplyHelicopterKnockdown(AActor& Helicopter, const FVector& HelicopterVelocityCmPerSec);
+
+	/**
+	 * The launch, as pure geometry: forward off the bonnet, out to whichever side of the car's
+	 * centre line they were standing on, and up.
+	 *
+	 * Every term scales with the car's speed and nothing else, so "proportional to the speed of the
+	 * car" holds exactly - a car at half speed throws them half as far and half as high. The gains
+	 * are all well above 1 on purpose; that is the exaggeration.
+	 */
+	static FVector ComputeVehicleKnockdownLaunchVelocity(
+		const FVector& VehicleVelocityCmPerSec,
+		const FVector& VehicleToPersonOffset,
+		float ForwardGain,
+		float LateralGain,
+		float VerticalGain);
+
+	// One bounce off a surface: the normal component is reflected and scaled by Restitution, the
+	// tangential component is scraped off by TangentialFriction. A body already moving away from
+	// the surface is left alone, so a grazing contact cannot fling it back in.
+	static FVector ComputeKnockdownBounceVelocity(
+		const FVector& VelocityCmPerSec,
+		const FVector& SurfaceNormal,
+		float Restitution,
+		float TangentialFriction);
+
+	/**
+	 * The road rule and its exemption, as one answer: may this walker step onto a tile of this
+	 * class right now?
+	 *
+	 * Both directions live here. A road tile is refused whatever the tile-class rows said, unless
+	 * this walker's jaywalk window happens to be open - and when it is open the road is allowed
+	 * whatever the rows said. Anything that is not a road is left entirely to the rows.
+	 *
+	 * `bAlreadyOnRoad` is the one that stops this being a trap. The rule is about STEPPING OUT into
+	 * the road, and the executable never has to answer the other case because no ambient walker of
+	 * its own is ever on one. This port does put them there - a car throws them into the middle of
+	 * the street - and a walk step is about 8 cm against a 400 cm tile, so every one of the eight
+	 * facings lands them on the same road tile they are standing on. Refusing all eight leaves them
+	 * frozen in the road until a jaywalk window happens to open, which is tens of seconds away. So
+	 * somebody already in the road may always move: that is how they get out of it.
+	 */
+	static bool IsPedestrianRoadStepAllowed(
+		bool bAllowedByTileClassRows,
+		int32 TargetTileClass,
+		bool bJaywalkWindowOpen,
+		bool bAlreadyOnRoad);
+
+	// Ticks one walker's jaywalk window down and reports when it has run out, i.e. when a fresh roll
+	// is due (the caller owns the dice). Rearms from the deadline rather than from now, so the
+	// windows do not drift, and a hitch longer than a whole window still leaves a positive one.
+	static bool AdvanceRoadJaywalkWindow(
+		float& InOutSecondsRemaining,
+		float DeltaSeconds,
+		float WindowSeconds);
+
+	bool IsRoadJaywalkWindowOpen() const { return bRoadJaywalkWindowOpen; }
+
+	/**
+	 * The axis the body tumbles about: across the flight, which is the roll a body picks up going
+	 * over a bonnet, jittered so no two look alike.
+	 *
+	 * **Always horizontal.** The rest pose is a quarter turn about this same axis, and any Z in it
+	 * is yaw - which spins the body on the spot instead of laying it down, so a tilted axis leaves
+	 * the sprawl standing at an angle. The jitter is therefore in the plane only.
+	 */
+	static FVector ComputeKnockdownTumbleAxis(
+		const FVector& LaunchVelocityCmPerSec,
+		float JitterX,
+		float JitterY);
+
+	// Where a tumble that has stopped at SpinDegrees settles: the nearest quarter turn that puts the
+	// body flat on the deck, which is always an odd multiple of 90 and never more than 90 degrees
+	// away (a whole half turn would leave them standing up again, on their head).
+	static float ComputeKnockdownRestSpinDegrees(float SpinDegrees);
+
+	// The recovery clock: sprawl for SettleSeconds, lie in the authored pose for ProneSeconds, then
+	// get up. Anyone who came down in the water skips the lying pose and wades ashore instead.
+	static ESimCopterKnockdownPhase AdvanceKnockdownRecoveryPhase(
+		ESimCopterKnockdownPhase Phase,
+		float PhaseSeconds,
+		float SettleSeconds,
+		float ProneSeconds,
+		bool bInWater);
+
+	// This agent's rendered body box in its own frame. Public because the car-vs-person overlap
+	// resolves it once per car per frame rather than per candidate pedestrian.
+	bool TryGetBodyLocalBoundsCm(FBox& OutLocalBoundsCm) const;
+
+	// Latched by ApplyHelicopterRunOver. The knockdown pass reads it so a criminal the airframe has
+	// already killed is not also thrown across the street - BHAV 903 is several ticks of dying and
+	// suspending its VM mid-way would leave the body owing a death.
+	bool WasRunOverByHelicopter() const { return bRunOverByHelicopter; }
+
 	// The reaction currently running on this agent (INDEX_NONE when none).
 	int32 GetActiveReactionProgramId() const { return BehaviorContext.ActiveReactionProgramId; }
 
@@ -763,6 +938,85 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Movement", meta = (ClampMin = "0.0"))
 	float GravityCmPerSec2 = 980.0f;
 
+	// --- Walking in the road -------------------------------------------------------------------
+	//
+	// There IS a rule keeping people out of the road, and it is the original's: `FUN_004c9470`
+	// admits an ambient walker only onto the tile classes in its `DAT_0058ec00` behaviour-class row,
+	// and **no row in that table contains class 7**. That is why the shipped game's crowds mill
+	// about on the blocks and never step off the kerb. (Everyone else - a paramedic, a fare, a cop
+	// mid-chase - takes the `person[0x168] == 0` arm, which has no tile-class test at all, only a
+	// refusal to LEAVE a road once on one. Their programs send them places; a kerb cannot be allowed
+	// to stop them.)
+	//
+	// DIVERGENCE: each ambient walker gets a repeating window in which the road rule does not apply
+	// to them. Every RoadJaywalkWindowSeconds they roll RoadJaywalkChance, and on a hit they may
+	// cross for that window. So a fifth of the street population is jaywalking at any moment,
+	// individually and on their own staggered clocks, rather than the crowd being uniformly law
+	// abiding (nobody ever hit by a car) or uniformly lawless (the whole population wandering down
+	// the middle of the road, which is what the remake was doing).
+	//
+	// Roads are also an ambient walker's only route between blocks - their row is otherwise all
+	// building classes - so this doubles as how often they change block at all. Set the chance to 1
+	// for the old free-for-all, or 0 to reproduce the executable exactly.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RoadJaywalkChance = 0.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Behavior", meta = (ClampMin = "0.1"))
+	float RoadJaywalkWindowSeconds = 10.0f;
+
+	// --- Hit by a car (DIVERGENCE - see ESimCopterKnockdownPhase) -----------------------------
+	//
+	// The three gains multiply the car's own speed, so the whole strike stays proportional to it.
+	// They are deliberately far above what momentum would give: a 1996 cartoon, not a crash test.
+	// Vehicles cruise at ASimCopterTrafficSystemActor::VehicleSpeedCmPerSec (259 cm/s at
+	// PopulationWorldScale), so at 2.4x forward a struck pedestrian leaves at ~620 cm/s and, under
+	// the 980 cm/s^2 pedestrian gravity below, clears the better end of a tile before landing.
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownForwardGain = 2.4f;
+
+	// Sideways, away from the car's centre line - a body clipped by the wing spins off to that side
+	// rather than straight down the road.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownLateralGain = 0.55f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownVerticalGain = 1.35f;
+
+	// How much of the approach speed survives a bounce, and how much of the sliding speed each
+	// contact scrapes off. Low restitution and high friction are what stop the tumble in a couple
+	// of hops instead of skittering down the street.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0", ClampMax = "0.95"))
+	float KnockdownRestitution = 0.34f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float KnockdownTangentialFriction = 0.42f;
+
+	// Below this, a body resting on a surface has stopped moving.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownRestSpeedCmPerSec = 45.0f;
+
+	// Degrees of tumble per second per cm/s of launch speed. At the launch speeds above this is a
+	// few turns over the flight, which is what reads as a ragdoll rather than a thrown plank.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownSpinDegreesPerSecondPerSpeed = 1.15f;
+
+	// The recovery beats the player actually sees: lie sprawled, then lie in the authored pose,
+	// then stand up.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownSettleSeconds = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "0.0"))
+	float KnockdownProneSeconds = 3.0f;
+
+	// Watchdogs. A tumble that somehow never finds a surface, or a swim whose shore is unreachable,
+	// must still hand the person back to their behaviour program rather than strand them forever.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "1.0"))
+	float KnockdownMaxFlightSeconds = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Knockdown", meta = (ClampMin = "1.0"))
+	float KnockdownMaxWadeSeconds = 25.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SimCopter|Animation")
 	bool bEnableJankyAnimation = true;
 
@@ -887,6 +1141,10 @@ private:
 	int32 FigureCurrentFrame = 0;
 	int32 FigureClothesOffset = 0;
 	int32 FigureHeadIndex = 0;
+	// How far the currently bound pose has to be raised to keep its art out of the ground. 0 for
+	// every standing and walking clip; the lying ones are drawn below the standing feet plane. See
+	// FSimCopterPopulationFigure::ComputeClipDropBelowFeetCm.
+	float FigureClipGroundLiftCm = 0.0f;
 	float FigureFrameTime = 0.0f;
 	bool bFigureHasHeadSection = false;
 	bool bUsingPedestrianFigure = false;
@@ -975,7 +1233,62 @@ private:
 	float PassengerFallInjuryDistanceCm = 900.0f;
 	int32 PassengerFallSourceEventId = INDEX_NONE;
 
+	// --- Hit by a car (DIVERGENCE - see ESimCopterKnockdownPhase) -----------------------------
+	ESimCopterKnockdownPhase KnockdownPhase = ESimCopterKnockdownPhase::None;
+	FVector KnockdownVelocityCmPerSec = FVector::ZeroVector;
+	// Seconds spent in the current phase; also the flight and wade watchdogs.
+	float KnockdownPhaseSeconds = 0.0f;
+	// The tumble, as one rigid rotation of the whole figure about one axis. A privanim figure has
+	// no skeleton, so this is the entire ragdoll.
+	FVector KnockdownSpinAxis = FVector::RightVector;
+	float KnockdownSpinDegrees = 0.0f;
+	float KnockdownSpinDegreesPerSecond = 0.0f;
+	// Where that tumble is eased to once they are down: the nearest quarter turn that leaves them
+	// flat, so the sprawl reads as where the spin stopped rather than as a canned pose.
+	float KnockdownRestSpinDegrees = 90.0f;
+	bool bKnockdownLandedInWater = false;
+	// What they were doing when the car arrived, handed straight back when they stop rolling. This
+	// is what "continue from where they end up" is made of: the tumble suspends a program, it never
+	// replaces one.
+	bool bKnockdownResumeBehaviorActive = false;
+	bool bKnockdownResumeMissionStationary = false;
+	FString KnockdownResumeFigureMnemonic;
+
+	// Runs the whole knockdown. Returns true while it owns the transform and the figure, which is
+	// every phase except the wade - that one hands movement back to UpdateMovement's ordinary
+	// move-target path so the walk clip, the ground snap and wall containment all apply as usual.
+	// The whole launch, shared by the car and the airframe. They differ only in which upward scale
+	// they hand in; everything after the launch velocity is the same tumble.
+	bool ApplyKnockdownFrom(AActor& Striker, const FVector& StrikerVelocityCmPerSec, float UpwardScale);
+
+	bool UpdateKnockdown(float DeltaSeconds);
+	void UpdateKnockdownFlight(float DeltaSeconds);
+	void EnterKnockdownPhase(ESimCopterKnockdownPhase NewPhase);
+	// Hands the body back to whatever it was doing, at wherever it has ended up. bRestoreAppearance
+	// is false only when somebody else has already taken the body over mid-tumble (a winch, a medic,
+	// a boarding) and has set its pose themselves.
+	void FinishKnockdown(bool bRestoreAppearance = true);
+	// Lays the tumble down: the nearest quarter turn that puts the body flat, kept about the axis
+	// the spin was already using so the sprawl looks like where it stopped rather than a snap.
+	void BeginKnockdownRest();
+	// Applies the tumble (or the sprawl) to VisualRoot, including the drop that keeps a body lying
+	// on its side ON the ground - VisualRoot pivots about the capsule centre, which is half a body
+	// height up.
+	void ApplyKnockdownVisual(const FQuat& Rotation, float FlatAlpha);
+	// Takes every part of the tumble back off, so an authored pose - which is already drawn in the
+	// figure's own upright frame - is not composed on top of it.
+	void ResetKnockdownVisualTransform();
+	// Advances the forced clip's frames while the VM is stopped (a forced clip is otherwise a
+	// single held pose).
+	void AdvanceKnockdownFigureFrames(float DeltaSeconds);
+	// The sea surface at a point, when that point is over water at all.
+	bool TryGetWaterSurfaceZAt(const FVector& WorldLocation, float& OutSurfaceZ) const;
+	// Sends a person who came down in the sea toward the nearest land tile.
+	bool BeginWadeToShore();
+
 	bool RebuildFigureClip(const FString& Mnemonic);
+	// Places the built figure: feet on the capsule bottom, plus the bound pose's own ground lift.
+	void ApplyFigureGroundOffset();
 	// FUN_004c71c0's `local_4` plus FUN_004c7090's state-6 override, clamped to the head table.
 	int32 ResolveHeadImageIndex() const;
 	// Keeps a playing 3D voice on this person and hands a finished slot back to the bank.
@@ -1120,6 +1433,20 @@ protected:
 	// UpdateOriginalBehavior, above the behaviour-tick gate, because it schedules in wall-clock
 	// seconds and the gate skips most frames.
 	void UpdateArsonistThrowSchedule(float DeltaSeconds);
+
+	// Rolls this walker's jaywalk window. Same placement and the same reason: it is a wall-clock
+	// window, and below the behaviour-tick gate it would only see a quarter of the elapsed time at
+	// 60 fps and last four times as long as it says.
+	void UpdateRoadJaywalkWindow(float DeltaSeconds);
+
+	// Whether the road rule applies to this person at all. Ambient street population only - see
+	// RoadJaywalkChance for why a dispatched or mission walker must never be stopped at a kerb.
+	bool IsSubjectToRoadRule() const;
+
+	bool bRoadJaywalkWindowOpen = false;
+	// Negative until the first tick seeds it, which staggers the population: without that every
+	// walker in the city would re-roll on the same frame.
+	float RoadJaywalkWindowSecondsRemaining = -1.0f;
 	// Seconds until this arsonist's next fire; negative until the first one is armed.
 	float ArsonThrowCountdownSeconds = -1.0f;
 

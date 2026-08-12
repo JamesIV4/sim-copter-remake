@@ -97,6 +97,41 @@ public:
 
 	static FCalibration Calibrate(const FPrivAnimClip& StandingClip, float HeightCm);
 
+	/**
+	 * How far below the standing feet plane this clip's art reaches, in cm (0 when none of it does).
+	 *
+	 * The calibration above pins local Z=0 to the feet **of the standing clip**, because scale has to
+	 * come from one pose or every clip would be a different size. Nothing then holds any *other*
+	 * pose above that plane, and a pose drawn lower on the 1996 screen maps straight down through the
+	 * floor: `ToLocal` negates the model's screen-space Y-down vertical, so a vertex further down the
+	 * screen than the standing clip's feet lands at a negative local Z. The lying poses ("Dead",
+	 * "Inju", "Slum") are all drawn low - a body on the ground is at the bottom of its cell - which is
+	 * why a casualty, or anyone knocked over by a car, was buried to the shoulders in the pavement
+	 * with only their head showing.
+	 *
+	 * Measured over every frame of the clip. Note that this is NOT zero for the calibration clip
+	 * itself: `Calibrate` reads frame 0 only, and a walk cycle swings its feet 2-3 cm below that
+	 * frame's plane at population scale. That swing is the ground a walking figure already visibly
+	 * stands on, which is why the lift below is measured against it rather than against zero.
+	 *
+	 * Endpoint-based: the primitive drawn AT the lowest endpoint still extends below it by its own
+	 * radius, a couple of millimetres at population scale.
+	 */
+	static float ComputeClipDropBelowFeetCm(const FPrivAnimClip& Clip, const FCalibration& Calibration);
+
+	/**
+	 * How far to raise this pose so it rests on the same ground the walking figure already does:
+	 * how much deeper it reaches than the clip the calibration came from, and never negative.
+	 *
+	 * Zero for the calibration clip itself and for any pose drawn no lower than it, so binding an
+	 * ordinary walk or idle moves a pedestrian by nothing at all. The lying poses are what this is
+	 * for.
+	 */
+	static float ComputeClipGroundLiftCm(
+		const FPrivAnimClip& Clip,
+		const FPrivAnimClip& CalibrationClip,
+		const FCalibration& Calibration);
+
 	// Emits two mesh sections per frame into the component:
 	//   section Frame*2     = body primitives (vertex-colored)
 	//   section Frame*2 + 1 = head ellipsoid (textured; empty if the figure has no head part)

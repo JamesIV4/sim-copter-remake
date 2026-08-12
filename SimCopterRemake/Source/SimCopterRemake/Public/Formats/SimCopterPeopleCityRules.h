@@ -38,6 +38,12 @@ public:
 	// ambient spawner (FUN_004c2450) and VM opcode 20 (FUN_004cb300).
 	static const TArray<int32>& GetAmbientStateTileClasses(int32 StateIndex);
 
+	// Class 7 is the road: GetTileClassForBuildingId maps every road, crossing, highway and bridge
+	// XBLD (0x1d-0x2b, 0x43-0x44, 0x49-0x50, 0x61-0x69) onto it. Named because it is the one class
+	// that is asked about on its own - it is the surface the traffic is on, and the only class no
+	// row in DAT_0058ec00 grants an ambient walker.
+	static bool IsRoadTileClass(int32 TileClass) { return TileClass == 7; }
+
 	// FUN_004ce9d0/FUN_004cea00: shared people-runtime 16-bit PRNG.
 	static uint16 NextPeopleRandomRaw(uint16& RandomState);
 	static uint16 NextPeopleRandomBounded(uint16& RandomState, uint16 Bound);
