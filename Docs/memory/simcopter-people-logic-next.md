@@ -8,7 +8,17 @@ The gate that decides whether a person accepts an interaction reaction is, in th
     MOV AX,word ptr [EBX + 0x17c]    ; else: same id? reject. new id in {903,915,912,909}
     ...                              ;       and old id not in that set? accept. else reject.
 
-**`person+0x15c` is the player's-cabin seat count, not "a reaction is running".** `FUN_004c6360`
+**CORRECTED 2026-08-12 (same day, later): `person+0x15c` is attr14, the REACTION-DEPTH counter,
+and the seat count is only its other user.** Every 900-series reaction brackets itself with it —
+BHAV 907 'Rxn: Teargas' rec[0] is `attr14 += 1` and rec[4] is `attr14 -= 1`; 908 and 904 do the
+same — so it is non-zero exactly while a reaction is running, which is the "a reaction is active"
+reading the port had originally and this note wrongly threw out. The shipped programs maintain it
+through the ordinary expression opcode, so the port writes nothing; `ApplyInteraction` just reads
+`EBhavAttr::ReactionDepth`. The seating half below is still true — `FUN_004c6250`/`FUN_004c62e0`
+raise the same counter — it simply is not the whole story, and "a passenger" is the rarer of the
+two reasons a person is busy. The paragraph below is kept because the seating mechanism is real:
+
+**`person+0x15c` is also the player's-cabin seat count.** `FUN_004c6360`
 (set-carrier) hands the person to `FUN_004c6250` when the new carrier is `DAT_005040d0+0xa4` - the
 aircraft the player is flying - which adds them to the seat manifest at `DAT_005040d0+0x1d4` and
 increments it; `FUN_004c62e0` decrements it on the way out. So the 903/915/912/909 priority rule
