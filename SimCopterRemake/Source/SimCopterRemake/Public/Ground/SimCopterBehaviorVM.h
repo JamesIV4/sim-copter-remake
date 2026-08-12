@@ -58,6 +58,16 @@ namespace EBhavAttr
 	// mode-13 table entry (914 "Rxn: Person--civil, neutral", the street conversation), and the cop
 	// and paramedic programs set 916 "don't gawk, maybe run" so nobody chats with them.
 	// FUN_004c9470 passes it as FUN_004c1050's param_5.
+	// +0x15c. THE REACTION-DEPTH COUNTER, and the field FUN_004c1050's acceptance gate reads.
+	// Every 900-series reaction brackets itself with it - BHAV 907 'Rxn: Teargas' rec[0] is
+	// `attr14 += 1` and rec[4] is `attr14 -= 1`, and 908/904 do the same - so it is non-zero
+	// exactly while a reaction is running on this person. The shipped programs maintain it through
+	// the ordinary expression opcode, so nothing in the port has to write it.
+	//
+	// It was first read here as a passenger-seat count, because FUN_004c6250/FUN_004c62e0 also
+	// touch it when somebody boards or leaves the player's cabin. Both are true: it counts reasons
+	// this person is busy, and a reaction is one of them.
+	constexpr int32 ReactionDepth = 14;
 	constexpr int32 BumpReaction = 32;
 	// +0x182. Set by BHAV 916 and by the megaphone reaction, and tested by BHAV 600 rec[14]: while it
 	// is 1 the ambient loop keeps clear of the gawk hooks until a 1-in-6 roll clears it.

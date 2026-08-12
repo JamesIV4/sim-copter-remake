@@ -436,6 +436,30 @@ int32 ASimCopterGroundAgent::GetRiotAgitation() const
 bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& Event)
 {
 	// FUN_0049a4f0 routes by object class; only the person class (obj[0xc] & 8) lands here.
+	//
+	// The refusal trace has to be ABOVE every early return, not below them. It was below, so a
+	// crowd that had gone inert reported nothing at all and a tool that reached the right tile
+	// still looked like it had missed - which is exactly the "0 person/people gassed" in the log
+	// while the water cannon had been landing on the same people minutes earlier.
+	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian &&
+		MissionEventId != INDEX_NONE &&
+		int32(BehaviorContext.Attributes[EBhavAttr::State]) == 3)
+	{
+		const TCHAR* Refusal =
+			!bBehaviorActive ? TEXT("behaviour VM is OFF") :
+			(bMissionCarried ? TEXT("carried") :
+			(bMissionStationary ? TEXT("mission-stationary") :
+			(bPassengerFallActive ? TEXT("mid-fall") :
+			(BehaviorContext.Attributes[EBhavAttr::WrittenOff] != 0 ? TEXT("written off") :
+			nullptr))));
+		if (Refusal != nullptr)
+		{
+			SIMCOPTER_RIOT_LOG_AGITATION(
+				TEXT("REACT  event %d rioter '%s' mode %d DROPPED before the reaction table: %s"),
+				MissionEventId, *GetName(), Event.Mode, Refusal);
+		}
+	}
+
 	if (AgentKind != ESimCopterGroundAgentKind::Pedestrian || !bBehaviorActive)
 	{
 		return false;
@@ -498,10 +522,13 @@ bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& E
 		return false;
 	}
 
-	// person+0x15c: only somebody holding one of the player's passenger seats is subject to the
-	// priority rule. Everyone on the street takes whatever they are handed - which is what makes
-	// the megaphone, the tear gas and the water cannon reach a crowd more than once.
-	const bool bAccepted = BehaviorContext.PushReactionProgram(ProgramId, bClaimedPassengerSeat);
+	// person+0x15c is attr14, the reaction-depth counter the 900-series programs keep themselves
+	// (see EBhavAttr::ReactionDepth). Non-zero means a reaction is already running on this person,
+	// and only then does FUN_004c1050 apply the 903/915/912/909 priority rule. A cabin passenger
+	// raises the same counter, which is why this looked like a seat test at first.
+	const bool bBusyInReaction =
+		BehaviorContext.Attributes[EBhavAttr::ReactionDepth] > 0 || bClaimedPassengerSeat;
+	const bool bAccepted = BehaviorContext.PushReactionProgram(ProgramId, bBusyInReaction);
 	if (IsRiotParticipant())
 	{
 		SIMCOPTER_RIOT_LOG_AGITATION(
