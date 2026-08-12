@@ -301,6 +301,88 @@ police order.
 
 ### Riot
 
+**Tracing one (added 2026-08-12).** `LogSimCopterRiot`, gated on `SimCopter.Riot.Log` (default 1),
+records the whole lifecycle: `CREATE` (requested vs placed - **RiotSize is the SPAWNED count, so a
+half-placed crowd needs half as many outcomes**), `SPAWN` per rioter with its agitation seed,
+`REACT` (which tool mode reached whom and whether the reaction was accepted), `AGIT` (every
+agitation change with its delta and the BHAV that made it, flagged when it drops under 3), `EVENT`
+(each counter that moves, with running progress toward RiotSize), `OUTCOME`, `LEAVE` (behaviour
+ended without an outcome), a periodic `CENSUS` (head count plus the agitation histogram) and
+`COMPLETE` with the riot's age. `SimCopter.Riot.LogAgitation 0` drops the two chatty ones and
+`SimCopter.Riot.LogCensusSeconds` sets the census period. `SimStartRiot` on the game mode creates
+one near the camera without waiting for the scheduler.
+
+The thing to look for first: **three of the four completion counters need no player at all.**
+`EVT_RioterCalmed` costs nothing and pays nothing, and a `Casualty` from traffic or the airframe
+counts exactly like a dispersal - so a crowd standing in a road can resolve itself.
+
+### Why a riot ends in seven seconds — measured 2026-08-12
+
+First trace run: five riots, every one over in 7-15 s, every one finished by `calmed` alone
+(dispersed 0, casualties 0, caught 0). Two separate causes, and the first is the shipped
+arithmetic:
+
+**1. BHAV 852 'Refigure riot val and turn to it' is a decay loop below sixteen people.** Its body
+is `riotValue = count * meanAgitation / 15` (opcode 24 writes local1=bearing, local2=mean,
+local3=count; the `/15` is a literal), then agitation is walked exactly one step toward that value
+per pass — rec[4]/[13]/[6] decrement, rec[5]/[11]/[12] increment. `count` is the *other* people
+within a **1-tile radius** (`local0 := 1` at rec[1]); `FUN_004c9f10` sweeps a 3x3 block of scene
+cells, and one scene cell is 64 original units = one city tile.
+
+That makes the fixed point `A == N*A/15`, i.e. **`N == 15` — sixteen people inside the 3x3 block,
+counting yourself.** Anything less and the target sits below the current agitation on every pass,
+so the crowd walks itself down: seeded at 7, five passes at ~1.6 s each, under 3 in about eight
+seconds, and BHAV 311 retires the lot. A tier-1 riot requests `16 - rand(0..7)` = **9-16** and only
+needs 11 placed, so most tier-1 riots are arithmetically doomed from the spawn. Do not "fix" the
+formula before checking the `PROBE` lines: if `count` is well below the head count the crowd is
+simply too spread out, which is a remake placement problem, not the shipped maths.
+
+**2. Rioters posted their leave outcome over and over.** BHAV 311 posts outcome 4/5 then
+`deactivate` (op 16), which in the original ends that person. In the port the despawn hit the
+"unresolved mission person" refusal — a rioter never sets `bMissionResolutionReported`, because
+**that flag belongs to passengers** — so they were `ResetToState(3)`d back into 850 -> 852 -> 311
+with agitation still under 3 and posted the same outcome again next pass. Measured: 11 rioters
+produced **29** calmed events against `RiotSize` 11, and one rioter posted three times. The record
+therefore completed on about a third of its crowd having actually left. Fixed by treating outcome
+4/5 as this person's resolution. **This is the third instance of that same trap** (hospital medic,
+ambulance medic, now rioters): anything that reaches a stop opcode while owning a live
+`MissionEventId` and not being a passenger gets caught by that refusal.
+
+Note also that `JoinLiveRiot` (op 28) never fired once across five riots — no `RiotPersonAdded`
+event was posted at all — so nothing was swelling the crowd back toward the sixteen it needs.
+
+**Second run, 2026-08-12, PROVED the count rule and produced two divergences.** The `PROBE` line
+settled it: an eleven-strong riot measures `count 9, mean 7 -> riotValue 4` on the very first pass —
+the crowd is packed, it is simply too small — and dies in 7.5 s. A sixteen-strong one measured
+`count 15` and **sat at the agitation ceiling of 10 for the twenty seconds it was watched**. The
+`/15` really is tuned for a crowd of sixteen. Both floors now live on
+`FSimCopterMissionSystem::MinimumViableRiotSize`:
+
+1. **Requested and accepted head count floored at 16.** Retail's tier-1 roll is `16 - rand(0..7)` =
+   9-16 and it accepts 11, so most tier-1 riots were unwinnable theatre. Placement also gets
+   `RiotPlacementRetryBudget` extra attempts, because a failed placement now costs viability rather
+   than one body.
+2. **A riot may only be seeded on people tile class 7 (road).** `GetAllowedTileClasses(3)` is the
+   road-only row, so a rioter can walk on nothing else; the unfiltered placer had put one in open
+   country (on a tree), where all eight facings are refused every pass and the crowd huddles on its
+   spawn point forever. The seed tile is now class-checked and the try fails otherwise.
+
+Covered by `SimCopter.Missions.RiotViability`. Test fixtures that create a riot must set the
+world's tile id to a road (`FSimCopterTestMissionWorld::RoadXbldId`).
+
+Still open from that run: **tear gas produced zero mode-5 interactions and zero mode-14 canister
+hits while the megaphone landed 108 and water 424**, and nothing tear-gas-related appears in the
+session log at all — so the launcher is refusing before it ever throws. `TEARGAS` trace lines were
+added to every refusal, the launch (with whether TGSHWH actually played), the burst and each puff;
+the likely answer is simply that the career equipment mask starts at `0x03` (bucket + megaphone) and
+the launcher was never bought. Also unexplained: a rioter animation the user reports as wrong
+("shaking a leg in the air"), which is BHAV 289's `Wave` bind — see the `Wave` != `WvNo` note in
+[[simcopter-paramedic-handoffs]] before assuming the clip table is right.
+
+**`TryGetRiotCentroid` is not implemented** (`ISimCopterMissionWorld`'s base returns false and no
+override exists), so the riot marker never recentres on the crowd. Unrelated to the trace, but it
+is the next thing to check when a riot's map icon looks wrong.
+
 Rioters leave through BHAV 311 once agitation falls below 3. If the helicopter is within six tiles,
 outcome 4 posts `EVT_RioterDispersed` and pays +10 points/+10 cash; otherwise outcome 5 posts
 `EVT_RioterCalmed` with no incremental reward. A riot therefore can finish without a final player

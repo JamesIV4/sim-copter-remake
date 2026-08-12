@@ -174,11 +174,13 @@ struct FSimCopterPersonContext
 	}
 
 	// Interrupt reaction state, mirroring FUN_004c1050's writes:
-	//   person+0x17c  the 900-series reaction id currently running (INDEX_NONE = none)
+	//   person+0x17c  the 900-series reaction id last accepted - a RECORD, not a latch. It is
+	//                 read back only by the cabin-passenger arm of the acceptance test
+	//                 (SimCopterInteraction::CanAcceptReaction), and nothing ever clears it.
 	//   person+0x158  the interaction's param_5
 	//   person+0x15a  the megaphone message index (mode 2 only)
 	//   person+0x1a4  the object that caused the interaction, kept as a plain id/handle here
-	int32 ActiveReactionProgramId = INDEX_NONE;
+	int32 LastReactionProgramId = INDEX_NONE;
 	int32 ReactionParameter = 0;
 	int32 MegaphoneMessageIndex = INDEX_NONE;
 
@@ -186,12 +188,10 @@ struct FSimCopterPersonContext
 	void ResetToState(int32 StateIndex);
 
 	// FUN_004c1050's tail: push a reaction BHAV onto the walk stack so it runs before the
-	// person's normal program resumes. Returns false when the stack is full (the original
-	// pops a frame first) or when the reaction is refused by the priority rules.
-	bool PushReactionProgram(int32 ProgramId);
-
-	// Called when a pushed reaction has run to completion.
-	void ClearActiveReaction() { ActiveReactionProgramId = INDEX_NONE; }
+	// person's normal program resumes. Returns false when the acceptance test refuses it, when
+	// it is already the frame on top of the stack, or when the stack is full (the original pops
+	// a frame first). bCabinPassenger is person+0x15c - see CanAcceptReaction.
+	bool PushReactionProgram(int32 ProgramId, bool bCabinPassenger = false);
 
 	// The original's dedicated people PRNG: FUN_004ce9d0 plus modulo helper FUN_004cea00.
 	uint16 RandomRaw();

@@ -50,25 +50,35 @@ bool IsHighPriorityReaction(int32 ProgramId)
 	return ProgramId == 903 || ProgramId == 915 || ProgramId == 912 || ProgramId == 909;
 }
 
-bool ReactionCanInterrupt(int32 NewProgramId, int32 CurrentProgramId)
+bool CanAcceptReaction(int32 NewProgramId, int32 LastProgramId, bool bCabinPassenger)
 {
 	if (NewProgramId == InvalidReaction)
 	{
 		return false;
 	}
-	if (CurrentProgramId == InvalidReaction)
+	if (!bCabinPassenger)
 	{
-		// Nothing is running - FUN_004c1050's person[0x57] < 1 branch.
+		// `JLE accept`: person+0x15c is zero for everyone on the ground, so the whole priority
+		// block below is skipped and the reaction is taken. The only refusal left for a street
+		// person is the one PushReactionProgram applies - do not re-push the program that is
+		// already the top frame - because that is where the original tests it, against the stack
+		// rather than against person+0x17c.
 		return true;
 	}
-	if (NewProgramId == CurrentProgramId)
+	if (LastProgramId == InvalidReaction)
 	{
-		// The original refuses to restart the reaction that is already playing.
+		// A passenger who has never reacted: `CMP DI,AX` against an unset slot cannot match and
+		// the four priority ids are the only ones that pass. Nothing in the cabin reads a
+		// megaphone anyway, so this only matters for dying, being shot, or falling out.
+		return IsHighPriorityReaction(NewProgramId);
+	}
+	if (NewProgramId == LastProgramId)
+	{
+		// `CMP DI,AX / JZ reject` - a passenger does not repeat their own last reaction.
 		return false;
 	}
-	// A new reaction only wins when it is one of the four priority ids and the running one
-	// is not.
-	return IsHighPriorityReaction(NewProgramId) && !IsHighPriorityReaction(CurrentProgramId);
+	// A new reaction only wins when it is one of the four priority ids and the last one was not.
+	return IsHighPriorityReaction(NewProgramId) && !IsHighPriorityReaction(LastProgramId);
 }
 
 int32 GetSpiralRingsForMode(int32 Mode)

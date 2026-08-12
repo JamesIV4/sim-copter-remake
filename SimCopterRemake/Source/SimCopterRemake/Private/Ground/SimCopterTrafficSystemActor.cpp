@@ -2425,6 +2425,99 @@ bool ASimCopterTrafficSystemActor::MeasureBehaviorCrowd(
 	return false;
 }
 
+// The agitation-weighted centre BHAV 852 turns a rioter toward, exposed so a rioter who has been
+// thrown out of the crowd by a car can be pointed back at it the moment they get up.
+bool ASimCopterTrafficSystemActor::TryGetRiotCrowdCentroid(
+	const int32 EventId,
+	const ASimCopterGroundAgent* Exclude,
+	FVector& OutCentroid) const
+{
+	OutCentroid = FVector::ZeroVector;
+	if (EventId == INDEX_NONE)
+	{
+		return false;
+	}
+
+	FVector Sum = FVector::ZeroVector;
+	int32 Weight = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Person = AgentPtr.Get();
+		if (Person == nullptr || Person == Exclude || Person->IsActorBeingDestroyed() ||
+			Person->MissionEventId != EventId || !Person->IsRiotParticipant())
+		{
+			continue;
+		}
+		// Weighted by agitation, like FUN_004c9e20: the angry middle of the crowd pulls harder than
+		// somebody on the edge who is already about to leave.
+		const int32 Agitation = FMath::Max(1, Person->GetRiotAgitation());
+		Sum += Person->GetActorLocation() * float(Agitation);
+		Weight += Agitation;
+	}
+
+	if (Weight <= 0)
+	{
+		return false;
+	}
+	OutCentroid = Sum / float(Weight);
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::DescribeRiotCrowd(
+	const int32 EventId,
+	FString& OutSummary,
+	int32& OutLiveCount) const
+{
+	OutSummary.Reset();
+	OutLiveCount = 0;
+	if (EventId == INDEX_NONE)
+	{
+		return false;
+	}
+
+	// Buckets chosen around the two numbers the shipped graphs test: BHAV 311 retires below 3,
+	// and FUN_004c4190 seeds a fresh rioter at 7.
+	int32 BelowThree = 0;
+	int32 ThreeToSix = 0;
+	int32 SevenPlus = 0;
+	int32 AgitationSum = 0;
+	int32 Suspended = 0;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Agent = AgentPtr.Get();
+		if (Agent == nullptr || Agent->IsActorBeingDestroyed() ||
+			Agent->MissionEventId != EventId || !Agent->IsRiotParticipant())
+		{
+			continue;
+		}
+		++OutLiveCount;
+		const int32 Agitation = Agent->GetRiotAgitation();
+		AgitationSum += Agitation;
+		if (Agitation < 3) ++BelowThree;
+		else if (Agitation < 7) ++ThreeToSix;
+		else ++SevenPlus;
+		if (!Agent->IsBehaviorActive())
+		{
+			++Suspended;
+		}
+	}
+
+	if (OutLiveCount == 0)
+	{
+		return false;
+	}
+
+	OutSummary = FString::Printf(
+		TEXT("%d standing (mean agitation %.1f): %d below 3 (retiring), %d at 3-6, %d at 7+; %d not running the VM"),
+		OutLiveCount,
+		float(AgitationSum) / float(OutLiveCount),
+		BelowThree,
+		ThreeToSix,
+		SevenPlus,
+		Suspended);
+	return true;
+}
+
 ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindPersonOverlapping(
 	const ASimCopterGroundAgent& From,
 	const FVector& WorldLocation,
@@ -6136,6 +6229,11 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 		ApplyIntersectionApproachSlowdown(DeltaSeconds);
 		ResolveVehicleOverlaps();
 		ApplyVehicleLaneGuidance(DeltaSeconds);
+		// Original AI mode gets this too. It is a divergence either way - retail cars cannot see
+		// people in either mode - and leaving it out of this branch is what made the whole pass
+		// look dead: this is the default mode, so the call at the end of the function was never
+		// reached and cars drove through crowds at full speed.
+		ApplyRioterAvoidance(DeltaSeconds);
 		UpdatePedestrianAvoidance();
 		return;
 	}
@@ -6157,7 +6255,187 @@ void ASimCopterTrafficSystemActor::UpdateTrafficInteractions(float DeltaSeconds)
 		UpdateVehicleBlockageRecovery();
 	}
 	ApplyVehicleLaneGuidance(DeltaSeconds);
+	// After lane guidance, so a car edging around a crowd is not immediately pulled back into its
+	// lane, and before the pedestrian pass so the two do not fight over the same frame.
+	ApplyRioterAvoidance(DeltaSeconds);
 	UpdatePedestrianAvoidance();
+}
+
+// DIVERGENCE, whole-cloth: retail traffic and pedestrians do not see one another at all. The
+// blocking probe in FUN_0049ee30 only collects vehicles and the people move core only collects
+// people, so in the original a car drives straight through a riot without slowing (and the remake's
+// own knockdown divergence then launches whoever it touches). This makes a driver behave like one:
+// slow to a crawl, steer by the smallest angle that clears the crowd, creep forward while still
+// watching, and then pick the road back up.
+//
+// The braking is deliberately not new machinery - it is ApplyTrafficBrake with the traffic-jam
+// queue's own rate and floor (see ApplyTrafficJamQueue and ApplyVehicleFollowing's 0.18 creep), so
+// a car easing past a crowd decelerates exactly like a car easing into a queue, and every later
+// pass that only ever *lowers* a speed scale still composes correctly.
+void ASimCopterTrafficSystemActor::ApplyRioterAvoidance(const float DeltaSeconds)
+{
+	if (RioterAvoidanceLookAheadCm <= 0.0f || PedestrianAgents.Num() == 0)
+	{
+		return;
+	}
+
+	// Collect the rioters once. A riot is 16+ people in a few tiles, so this is a short list and
+	// the common case (no riot anywhere) costs one pass over the pedestrian array.
+	TArray<FVector, TInlineAllocator<32>> RioterLocations;
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		const ASimCopterGroundAgent* Person = AgentPtr.Get();
+		if (Person == nullptr || Person->IsActorBeingDestroyed())
+		{
+			continue;
+		}
+		// IsRiotParticipant() alone is too narrow to drive at people with. It wants state 3 AND a
+		// live MissionEventId, so it drops anyone the tumble has already picked up (a knocked-down
+		// rioter has their VM suspended and their state can be mid-transition) and anyone who has
+		// just posted their leave outcome but is still standing in the road. A driver should be
+		// slowing for all of them, so the corridor takes the wider test: a rioter, or anybody
+		// currently being thrown about by a car.
+		if (Person->IsRiotParticipant() || Person->IsKnockedDown())
+		{
+			RioterLocations.Add(Person->GetActorLocation());
+		}
+	}
+	if (RioterLocations.Num() == 0)
+	{
+		return;
+	}
+
+	// True when any rioter sits inside the swept corridor Origin + Direction * [0, Length].
+	auto IsCorridorBlocked =
+		[&RioterLocations](const FVector& Origin, const FVector& Direction, float Length, float HalfWidth)
+	{
+		for (const FVector& Rioter : RioterLocations)
+		{
+			const FVector ToRioter = FVector(Rioter.X - Origin.X, Rioter.Y - Origin.Y, 0.0f);
+			const float Along = FVector::DotProduct(ToRioter, Direction);
+			if (Along < 0.0f || Along > Length)
+			{
+				continue;
+			}
+			const float Lateral = FMath::Abs(FVector::CrossProduct(Direction, ToRioter).Z);
+			if (Lateral <= HalfWidth)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	for (TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : VehicleAgents)
+	{
+		ASimCopterGroundAgent* Vehicle = AgentPtr.Get();
+		if (Vehicle == nullptr || Vehicle->IsActorBeingDestroyed() || !Vehicle->HasMoveTarget())
+		{
+			continue;
+		}
+		// A jammed car is owned by the queue for the whole frame; it is already stationary and
+		// steering it would fight the jam that put it there.
+		if (IsVehicleHeldInTrafficJam(*Vehicle))
+		{
+			continue;
+		}
+
+		const FVector Origin = Vehicle->GetActorLocation();
+		// Where the car is actually GOING, which is not always where its actor is pointing: the
+		// mesh yaw lags the route and a car mid-turn would otherwise probe into the kerb and see
+		// nothing. Velocity first, then the target it is driving at, then the actor as a last
+		// resort.
+		FVector Heading = Vehicle->GetCurrentVelocityCmPerSec();
+		Heading.Z = 0.0f;
+		if (Heading.SizeSquared() < 1.0f)
+		{
+			Heading = Vehicle->GetMoveTargetLocation() - Origin;
+			Heading.Z = 0.0f;
+		}
+		if (Heading.SizeSquared() < 1.0f)
+		{
+			Heading = Vehicle->GetActorForwardVector();
+			Heading.Z = 0.0f;
+		}
+		if (!Heading.Normalize())
+		{
+			continue;
+		}
+
+		const float BodyHalfWidth = FMath::Max(Vehicle->GetCollisionRadiusCm(), 1.0f) +
+			RioterAvoidanceClearanceCm;
+		if (!IsCorridorBlocked(Origin, Heading, RioterAvoidanceLookAheadCm, BodyHalfWidth))
+		{
+			// Nothing ahead. If an earlier swerve has expired and left the car past its road node,
+			// hand it the next one rather than letting it drive back to a point behind itself.
+			FinishRioterAvoidance(*Vehicle, Heading);
+			continue;
+		}
+
+		// Slowed for as long as anything is in front, whether or not a way round is found: a
+		// driver who cannot see a gap does not keep their foot down.
+		Vehicle->ApplyTrafficBrake(RioterAvoidanceSpeedScale, DeltaSeconds, NormalTrafficBrakeRate);
+
+		// "The nearest angle away": walk out from straight ahead in equal steps and take the first
+		// heading on either side that is clear, so the car deviates as little as it can. Left and
+		// right are tried at the same magnitude before widening.
+		FVector ChosenDirection = FVector::ZeroVector;
+		bool bFoundGap = false;
+		for (int32 Step = 1; Step <= RioterAvoidanceSteerSteps && !bFoundGap; ++Step)
+		{
+			const float Degrees = RioterAvoidanceSteerStepDegrees * float(Step);
+			for (int32 Side = 0; Side < 2 && !bFoundGap; ++Side)
+			{
+				const float Signed = Side == 0 ? Degrees : -Degrees;
+				const FVector Candidate = Heading.RotateAngleAxis(Signed, FVector::UpVector);
+				// The probe along a swerve is shorter than the straight-ahead one: the car only
+				// commits to one short step at a time and re-checks on the next tick.
+				if (!IsCorridorBlocked(Origin, Candidate, RioterAvoidanceStepCm, BodyHalfWidth))
+				{
+					ChosenDirection = Candidate;
+					bFoundGap = true;
+				}
+			}
+		}
+
+		if (!bFoundGap)
+		{
+			// Hemmed in. Stay slow and hold the lane; the crowd moves, and the following pass or
+			// the jam queue will deal with whatever is behind.
+			continue;
+		}
+
+		// One short hop along the chosen heading, at crawl speed. It expires on its own, which is
+		// what returns the car to its road node - no state to unwind if the crowd disperses first.
+		Vehicle->SetAvoidanceMoveTarget(
+			Origin + ChosenDirection * RioterAvoidanceStepCm,
+			RioterAvoidanceStepDurationSeconds,
+			RioterAvoidanceSpeedScale);
+	}
+}
+
+// The tail of a swerve. The car has been driving away from its lane, so the node it was aiming at
+// may now be behind it; steering back to it would make the car turn round. Advance the route
+// instead, exactly as arriving at the node would have.
+void ASimCopterTrafficSystemActor::FinishRioterAvoidance(
+	ASimCopterGroundAgent& Vehicle,
+	const FVector& Heading)
+{
+	if (!Vehicle.HasMoveTarget() || Vehicle.IsAvoidanceMoveActive())
+	{
+		return;
+	}
+
+	const FVector ToTarget = FVector(
+		Vehicle.GetMoveTargetLocation().X - Vehicle.GetActorLocation().X,
+		Vehicle.GetMoveTargetLocation().Y - Vehicle.GetActorLocation().Y,
+		0.0f);
+	if (FVector::DotProduct(ToTarget, Heading) >= 0.0f)
+	{
+		return; // still in front - drive to it normally
+	}
+
+	AssignNextTarget(Vehicle, RoadNodes);
 }
 
 bool ASimCopterTrafficSystemActor::IsVehicleHeldInTrafficJam(const ASimCopterGroundAgent& Vehicle) const

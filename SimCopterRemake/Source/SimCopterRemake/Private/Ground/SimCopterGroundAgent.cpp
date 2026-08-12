@@ -35,6 +35,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Missions/SimCopterMissionSystemActor.h"
+#include "Missions/SimCopterRiotLog.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
 #include "Serialization/MemoryReader.h"
@@ -396,6 +397,39 @@ void ASimCopterGroundAgent::StartOriginalBehavior()
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
 	bBehaviorActive = true;
+
+	if (IsRiotParticipant())
+	{
+		// BHAV 311 retires anyone under agitation 3, so the seed value is the whole margin a
+		// rioter starts with. FUN_004c4190 gives spawn-mode-3 people exactly 7.
+		int32 SpawnX = INDEX_NONE;
+		int32 SpawnY = INDEX_NONE;
+		TryGetCurrentTileCoordinate(SpawnX, SpawnY);
+		SIMCOPTER_RIOT_LOG(
+			TEXT("SPAWN  event %d rioter '%s' agitation %d at tile (%d,%d), program %d"),
+			MissionEventId,
+			*GetName(),
+			GetRiotAgitation(),
+			SpawnX,
+			SpawnY,
+			BehaviorContext.Stack.Num() > 0 ? BehaviorContext.Stack.Last().ProgramId : INDEX_NONE);
+	}
+	LastLoggedRiotAgitation = GetRiotAgitation();
+}
+
+// A state-3 person owned by a live riot record. Everything the trace logs is scoped to these.
+bool ASimCopterGroundAgent::IsRiotParticipant() const
+{
+	return AgentKind == ESimCopterGroundAgentKind::Pedestrian &&
+		MissionEventId != INDEX_NONE &&
+		int32(BehaviorContext.Attributes[EBhavAttr::State]) == 3;
+}
+
+int32 ASimCopterGroundAgent::GetRiotAgitation() const
+{
+	// person+0x150, the op-23 "logic" speed. Signed: a backfire can push it past 0x7fff only in
+	// theory, but the shipped programs compare it as a signed short.
+	return int32(int16(BehaviorContext.Attributes[EBhavAttr::Speed]));
 }
 
 // SCHOOK: PersonInteractionReaction 0x004c1050
@@ -408,16 +442,24 @@ bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& E
 	}
 
 	// Acceptance tests from FUN_004c1050: never react to the helicopter body itself, and skip
-	// people the mission layer has taken over (carried, injured pose, mid-fall) - the original
-	// equivalents are the person+0x15e / person[0x52] / person+0x12e guards.
+	// people the mission layer has taken over (carried, injured pose, mid-fall) - the last of
+	// which stands in for the original's person+0x12e "not a real walker" guard.
 	if (Event.Source == this || bMissionCarried || bMissionStationary || bPassengerFallActive)
 	{
 		return false;
 	}
-	// The two exact guards from the same test: someone riding the player's helicopter is out of
-	// reach of everything, and a medevac victim (state 6) never reacts to anything at all - they are
-	// lying on the ground waiting for a pickup.
+	// The three exact guards from the same test, in the assembly's order: someone riding the
+	// player's helicopter is out of reach of everything (person+0x1a0 vs DAT_005040d0+0xa4), an
+	// already written-off person takes nothing more (person+0x15e), and a medevac victim (state 6,
+	// person+0x148) never reacts at all - they are lying on the ground waiting for a pickup.
 	if (BehaviorCarrier.Get() != nullptr && BehaviorCarrier.Get() == ResolvePlayerHelicopter())
+	{
+		return false;
+	}
+	// `CMP word ptr [EBX + 0x15e],0x0 / JNZ reject`. This is what keeps a reaction off somebody who
+	// is already dying - BHAV 903 sets it - and it has to be here explicitly now that the port no
+	// longer (accidentally) blocks every later reaction with a sticky person+0x17c.
+	if (BehaviorContext.Attributes[EBhavAttr::WrittenOff] != 0)
 	{
 		return false;
 	}
@@ -456,7 +498,22 @@ bool ASimCopterGroundAgent::ApplyInteraction(const FSimCopterInteractionEvent& E
 		return false;
 	}
 
-	if (!BehaviorContext.PushReactionProgram(ProgramId))
+	// person+0x15c: only somebody holding one of the player's passenger seats is subject to the
+	// priority rule. Everyone on the street takes whatever they are handed - which is what makes
+	// the megaphone, the tear gas and the water cannon reach a crowd more than once.
+	const bool bAccepted = BehaviorContext.PushReactionProgram(ProgramId, bClaimedPassengerSeat);
+	if (IsRiotParticipant())
+	{
+		SIMCOPTER_RIOT_LOG_AGITATION(
+			TEXT("REACT  event %d rioter '%s' mode %d -> BHAV %d %s (agitation %d)"),
+			MissionEventId,
+			*GetName(),
+			Event.Mode,
+			ProgramId,
+			bAccepted ? TEXT("accepted") : TEXT("REFUSED"),
+			GetRiotAgitation());
+	}
+	if (!bAccepted)
 	{
 		return false;
 	}
@@ -516,12 +573,43 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		// DAT_00506448, incremented once per behaviour tick by FUN_004c5fb0. Opcode 79 reads it.
 		++BehaviorTickCounter;
 		const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(BehaviorContext, *BehaviorModel, *this);
+
+		// Agitation is data-driven - BHAV 907/908/901/852 all reach it through the generic
+		// attribute writes - so the only place that sees every cause is here, after the tick.
+		if (IsRiotParticipant() && GetRiotAgitation() != LastLoggedRiotAgitation)
+		{
+			const int32 Now = GetRiotAgitation();
+			SIMCOPTER_RIOT_LOG_AGITATION(
+				TEXT("AGIT   event %d rioter '%s' %d -> %d (%+d) in BHAV %d%s"),
+				MissionEventId,
+				*GetName(),
+				LastLoggedRiotAgitation,
+				Now,
+				Now - LastLoggedRiotAgitation,
+				BehaviorContext.Stack.Num() > 0 ? BehaviorContext.Stack.Last().ProgramId : INDEX_NONE,
+				Now < 3 ? TEXT("  <-- BELOW 3, BHAV 311 will retire them") : TEXT(""));
+			LastLoggedRiotAgitation = Now;
+		}
 		if (Result == EBhavStepResult::Completed && InitialBehaviorProgramId != INDEX_NONE)
 		{
 			ResetBehaviorProgramOverride();
 		}
 		if (Result == EBhavStepResult::Stopped || BehaviorContext.bRequestDespawn)
 		{
+			if (IsRiotParticipant())
+			{
+				// A rioter leaving without an outcome does not shrink RiotSize, so this line
+				// distinguishes "the crowd resolved" from "the crowd evaporated".
+				SIMCOPTER_RIOT_LOG(
+					TEXT("LEAVE  event %d rioter '%s' behaviour ended (%s) at agitation %d, ")
+					TEXT("resolution reported: %s, BHAV %d"),
+					MissionEventId,
+					*GetName(),
+					Result == EBhavStepResult::Stopped ? TEXT("stop opcode") : TEXT("despawn request"),
+					GetRiotAgitation(),
+					bMissionResolutionReported ? TEXT("yes") : TEXT("NO"),
+					BehaviorContext.Stack.Num() > 0 ? BehaviorContext.Stack.Last().ProgramId : INDEX_NONE);
+			}
 			ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
 				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
 			const bool bDeadMedevacPatientAboard =
@@ -624,8 +712,12 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		// A victim still waiting on a pickup waves whenever their program leaves them standing;
 		// the moment it walks them somewhere the walk clip takes back over.
 		//
-		// "WvNo", not "Wave". Both clips ship in every figure and they are not the same gesture -
-		// the shipped bind sites say which is which. "Wave" belongs to panic: 287 'Rioter flee
+		// "WvNo", not "Wave". Both clips ship in every figure and they are not the same gesture.
+		// MEASURED from the ARPP poses (2026-08-12, Docs/scratchpad/classify_arlu_clips.py, and
+		// note z is DOWN): "WvNo" moves one arm above the head and its legs travel exactly zero,
+		// while "Wave" swings arms and legs 25 units each - a whole-body flail, which is why a
+		// rioter stuck against a wall replaying it reads as kicking a leg in the air. The bind
+		// sites agree: "Wave" belongs to panic - 287 'Rioter flee
 		// tree', 289 'Rioter run', 902 'Rxn: Ouch', 1062 'Riot Follower', 805 'Fireman'. "WvNo" is
 		// the one people play while standing about acknowledging somebody - 1020 the mechanic,
 		// 1051/1053/1055 cops at the station, 1201 the rooftop worker, 1203 the park - and, above
@@ -2609,6 +2701,40 @@ void ASimCopterGroundAgent::FinishKnockdown(const bool bRestoreAppearance)
 	}
 	bKnockdownResumeBehaviorActive = false;
 	bKnockdownResumeMissionStationary = false;
+
+	// A rioter thrown across the street is still a rioter, and the riot is where they came from.
+	// The tumble hands their program back exactly where it was suspended, which for BHAV 850 means
+	// whatever facing they had when the bumper arrived - usually pointing away from the crowd, so
+	// they wander off and the riot bleeds out one body at a time. Turn them back toward it: BHAV
+	// 852 re-aims them at the agitation-weighted centre on every pass anyway, so this is the same
+	// heading their own program would choose, applied one pass early.
+	TurnRiotParticipantTowardCrowd();
+}
+
+void ASimCopterGroundAgent::TurnRiotParticipantTowardCrowd()
+{
+	if (!IsRiotParticipant() || !bBehaviorActive)
+	{
+		return;
+	}
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	FVector Centroid = FVector::ZeroVector;
+	if (!TrafficSystem->TryGetRiotCrowdCentroid(MissionEventId, this, Centroid))
+	{
+		return;
+	}
+
+	int32 Octant = INDEX_NONE;
+	if (TryGetBehaviorFacingOctantToward(Centroid, Octant))
+	{
+		BehaviorContext.Attributes[EBhavAttr::Facing] = uint16(Octant & 7);
+		LastAppliedBehaviorFacing = INDEX_NONE; // force the visual facing to follow on the next tick
+	}
 }
 
 void ASimCopterGroundAgent::ResetKnockdownVisualTransform()
@@ -2966,7 +3092,7 @@ bool ASimCopterGroundAgent::PushBehaviorReaction(const int32 ProgramId)
 	{
 		return false;
 	}
-	return BehaviorContext.PushReactionProgram(ProgramId);
+	return BehaviorContext.PushReactionProgram(ProgramId, bClaimedPassengerSeat);
 }
 
 void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context, const int32 OutcomeCode)
@@ -3006,6 +3132,32 @@ void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context,
 	case 10: EventCode = SimCopterMissions::EVT_PersonDied; break;
 	case 11: EventCode = SimCopterMissions::EVT_PassengerLost; break;
 	default: break;
+	}
+
+	if (IsRiotParticipant())
+	{
+		// The four outcomes that count toward RiotSize are 4 (dispersed), 5 (calmed), 10 (died)
+		// and 9 (caught). Logging the agitation and the helicopter distance alongside the code is
+		// what separates "the player calmed them" from "they were never agitated" and from
+		// "a car killed them".
+		float HeliTiles = -1.0f;
+		if (const ASimCopterHelicopterPawn* Heli = ResolvePlayerHelicopter())
+		{
+			HeliTiles = float(FVector::Dist2D(GetActorLocation(), Heli->GetActorLocation())) / 400.0f;
+		}
+		SIMCOPTER_RIOT_LOG(
+			TEXT("OUTCOME event %d rioter '%s' outcome %d -> %s (agitation %d, heli %.1f tiles, BHAV %d)"),
+			MissionEventId,
+			*GetName(),
+			OutcomeCode,
+			EventCode == INDEX_NONE ? TEXT("<no mission event>")
+				: (OutcomeCode == 4 ? TEXT("EVT_RioterDispersed +10/+10")
+				: (OutcomeCode == 5 ? TEXT("EVT_RioterCalmed (unpaid)")
+				: (OutcomeCode == 10 ? TEXT("EVT_PersonDied (counts as a casualty)")
+				: TEXT("other")))),
+			GetRiotAgitation(),
+			HeliTiles,
+			BehaviorContext.Stack.Num() > 0 ? BehaviorContext.Stack.Last().ProgramId : INDEX_NONE);
 	}
 
 	if (EventCode == INDEX_NONE)
@@ -3053,6 +3205,20 @@ void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context,
 		}
 		Missions->PostMissionEventAt(EventCode, MissionEventId, TileX, TileY, 0, true);
 		return;
+	}
+
+	// BHAV 311 posts outcome 4/5 and then runs `deactivate` (op 16), and in the original that is
+	// the end of that person. Here the despawn hits the "unresolved mission person" refusal - a
+	// rioter never sets bMissionResolutionReported, because that flag belongs to passengers - which
+	// ResetToState(3)s them straight back into BHAV 850 -> 852 -> 311 with their agitation still
+	// under 3, so they post the SAME outcome again on the next pass, and again, until the record
+	// closes. Measured: 11 rioters produced 29 calmed events against a RiotSize of 11, so the riot
+	// completed on barely a third of its crowd having actually left.
+	//
+	// Leaving the riot IS this person's resolution, so record it and let the despawn happen.
+	if (OutcomeCode == 4 || OutcomeCode == 5)
+	{
+		bMissionResolutionReported = true;
 	}
 
 	Missions->PostMissionEvent(EventCode, MissionEventId, 1, false);
@@ -4311,6 +4477,27 @@ bool ASimCopterGroundAgent::MeasureRiotCrowd(
 			OutFacingOctant = Octant;
 		}
 	}
+
+	if (IsRiotParticipant())
+	{
+		// BHAV 852 turns this into riotValue = count * mean / 15 and then walks agitation one step
+		// toward it, so the target is the whole story: it is a fixed point only when the neighbour
+		// count is 15, i.e. sixteen people inside the 3x3 tile block. Log the inputs and the target
+		// beside the agitation they are steering.
+		const int32 RiotValue = (OutCount * OutAverageAgitation) / 15;
+		SIMCOPTER_RIOT_LOG_AGITATION(
+			TEXT("PROBE  event %d rioter '%s' radius %d: count %d, mean %d -> riotValue %d ")
+			TEXT("(agitation %d, so BHAV 852 will %s)"),
+			MissionEventId,
+			*GetName(),
+			RadiusTiles,
+			OutCount,
+			OutAverageAgitation,
+			RiotValue,
+			GetRiotAgitation(),
+			GetRiotAgitation() > RiotValue ? TEXT("DECREMENT")
+				: (GetRiotAgitation() < RiotValue ? TEXT("increment") : TEXT("hold")));
+	}
 	return true;
 }
 
@@ -4752,7 +4939,7 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 	Writer << BehaviorContext.SelectedLocation;
 	SerializeAgentBool(Writer, BehaviorContext.bHasSelection);
 	SerializeAgentBool(Writer, BehaviorContext.bSelectionIsHarness);
-	Writer << BehaviorContext.ActiveReactionProgramId << BehaviorContext.ReactionParameter;
+	Writer << BehaviorContext.LastReactionProgramId << BehaviorContext.ReactionParameter;
 	Writer << BehaviorContext.MegaphoneMessageIndex;
 
 	auto SavedActorName = [](AActor* Actor) -> FName
@@ -4907,7 +5094,7 @@ bool ASimCopterGroundAgent::RestoreRuntimeSaveState(const TArray<uint8>& Data)
 	Reader << BehaviorContext.SelectedLocation;
 	SerializeAgentBool(Reader, BehaviorContext.bHasSelection);
 	SerializeAgentBool(Reader, BehaviorContext.bSelectionIsHarness);
-	Reader << BehaviorContext.ActiveReactionProgramId << BehaviorContext.ReactionParameter;
+	Reader << BehaviorContext.LastReactionProgramId << BehaviorContext.ReactionParameter;
 	Reader << BehaviorContext.MegaphoneMessageIndex;
 	Reader << PendingSavedCarrierName << PendingSavedStartingVehicleName;
 	Reader << PendingSavedInteractionSourceName << PendingSavedSelectionName;
@@ -5381,8 +5568,12 @@ bool ASimCopterGroundAgent::RebuildFigureClip(const FString& Mnemonic)
 	}
 	const FPrivAnimFigure& Figure = FigureShared->Model.Figures[FigureIndex];
 
-	// FUN_004c68f0: figures keyed '2DOG'/'Coww' substitute their quadruped clips -
-	// 1Wal/1Run/Tote play DgRn, everything else DgSt.
+	// SCHOOK: PersonBindAnim 0x004c68f0. Re-verified 2026-08-12 against the decompile, which
+	// compares the figure name at +0x21c against 0x32444f47 '2DOG' and 0x436f7777 'Coww' and then
+	// rewrites 0x3157616c '1Wal' / 0x3152756e '1Run' / 0x546f7465 'Tote' to 0x4467526e 'DgRn',
+	// everything else to 0x44675374 'DgSt'. The two quadruped clips are junk on a human skeleton
+	// (DgRn's motion sits below the feet), which is the whole reason the substitution is keyed on
+	// the figure and not on the mnemonic.
 	FString EffectiveMnemonic = Mnemonic;
 	if (Figure.Name.StartsWith(TEXT("2DOG")) || Figure.Name.StartsWith(TEXT("Coww")))
 	{

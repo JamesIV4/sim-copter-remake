@@ -251,6 +251,16 @@ public:
 		int32& OutCount,
 		int32& OutAverageAgitation,
 		FVector& OutCentroidWorldLocation) const;
+	// Diagnostic (SimCopter.Riot.Log): a one-line census of the rioters still standing for this
+	// mission record - head count and the agitation histogram, since BHAV 311 retires everyone
+	// under 3. Returns false when the record owns nobody any more.
+	bool DescribeRiotCrowd(int32 EventId, FString& OutSummary, int32& OutLiveCount) const;
+	// The agitation-weighted centre of a riot (FUN_004c9e20's metric), excluding one agent. Used to
+	// turn a rioter a car has thrown clear back toward the crowd they belong to.
+	bool TryGetRiotCrowdCentroid(
+		int32 EventId,
+		const ASimCopterGroundAgent* Exclude,
+		FVector& OutCentroid) const;
 	// FUN_004c9000 restricted to people: the nearest *other* visible pedestrian whose body radius
 	// overlaps WorldLocation. This is the move core's result-5 bump.
 	ASimCopterGroundAgent* FindPersonOverlapping(
@@ -511,6 +521,41 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "0.0"))
 	float NormalTrafficBrakeRate = 5.5f;
+
+	// --- Driving around a riot (divergence; see ApplyRioterAvoidance) ---
+
+	// How far ahead a car looks for rioters. Roughly a tile and a half, so a driver reacts about
+	// as early as they do to the car in front (NormalVehicleFollowLookAheadCm).
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "0.0"))
+	float RioterAvoidanceLookAheadCm = 600.0f;
+
+	// Added to the car's own radius to give the corridor its half width - the room a driver wants
+	// beside somebody, not the width at which they would actually hit them.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "0.0"))
+	float RioterAvoidanceClearanceCm = 45.0f;
+
+	// The crawl a car eases down to, as a fraction of its normal speed. Sits just above the 0.18
+	// creep ApplyVehicleFollowing uses inside a queue, because a car picking its way past a crowd
+	// is still making progress.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float RioterAvoidanceSpeedScale = 0.22f;
+
+	// One swerve hop: how far along the chosen heading the car commits before re-checking.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "1.0"))
+	float RioterAvoidanceStepCm = 240.0f;
+
+	// How long that hop stays the car's target. It expires on its own, and that expiry is what
+	// hands the car back to the road network.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "0.05"))
+	float RioterAvoidanceStepDurationSeconds = 0.6f;
+
+	// The steering search: try +/- this angle, then twice it, and so on, up to Steps. Taking the
+	// first clear heading is what makes the car turn by the *nearest* angle away from the crowd.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "1.0"))
+	float RioterAvoidanceSteerStepDegrees = 15.0f;
+
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Rioters", meta = (ClampMin = "1"))
+	int32 RioterAvoidanceSteerSteps = 6; // 15..90 degrees either side
 
 	// How long one axis holds green before the other gets it.
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic|Normal", meta = (ClampMin = "0.5"))
@@ -1062,6 +1107,15 @@ public:
 	void ResolveVehicleOverlaps();
 	void UpdateVehicleBlockageRecovery();
 	void ApplyVehicleLaneGuidance(float DeltaSeconds);
+	// DIVERGENCE, whole-cloth: retail traffic cannot see people at all. Slows a car that has
+	// rioters in front of it, steers it by the smallest angle that clears them, and creeps it
+	// forward a step at a time - re-checking every tick - until the road ahead is clear again.
+	// Braking reuses ApplyTrafficBrake at the jam queue's rate so it composes with every other
+	// speed-limiting pass. See the definition for the full rationale.
+	void ApplyRioterAvoidance(float DeltaSeconds);
+	// Tail of a swerve: hand the car its next road node when the one it was aiming at has ended up
+	// behind it, so it does not turn round to reach a point it already passed.
+	void FinishRioterAvoidance(ASimCopterGroundAgent& Vehicle, const FVector& Heading);
 	void UpdatePedestrianAvoidance();
 
 	// Every car against every nearby pedestrian, once a frame: whoever the bodywork is inside gets

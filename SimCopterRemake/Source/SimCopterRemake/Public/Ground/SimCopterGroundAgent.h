@@ -589,8 +589,20 @@ public:
 	// suspending its VM mid-way would leave the body owing a death.
 	bool WasRunOverByHelicopter() const { return bRunOverByHelicopter; }
 
-	// The reaction currently running on this agent (INDEX_NONE when none).
-	int32 GetActiveReactionProgramId() const { return BehaviorContext.ActiveReactionProgramId; }
+	// person+0x17c: the last 900-series reaction this agent accepted (INDEX_NONE if never). Not
+	// "the one running" - nothing clears it, and only a cabin passenger's acceptance test reads it.
+	int32 GetLastReactionProgramId() const { return BehaviorContext.LastReactionProgramId; }
+
+	// A state-3 person owned by a mission record: the scope of the SimCopter.Riot.Log trace, and
+	// what traffic slows down for.
+	bool IsRiotParticipant() const;
+	// Point a rioter back at the crowd's agitation-weighted centre. Called when a tumble ends, so
+	// somebody a car has thrown clear rejoins the riot instead of wandering off from wherever they
+	// happened to land facing.
+	void TurnRiotParticipantTowardCrowd();
+	// person+0x150, read signed the way the shipped programs compare it. BHAV 311 retires anyone
+	// under 3; tear gas takes 2 off, water and the megaphone 1.
+	int32 GetRiotAgitation() const;
 
 	// Megaphone message the agent last received (person+0x15a).
 	int32 GetLastMegaphoneMessage() const { return BehaviorContext.MegaphoneMessageIndex; }
@@ -1174,6 +1186,9 @@ private:
 	int32 BehaviorTickCounter = 0;
 	bool bRidingHarness = false;
 	bool bClaimedPassengerSeat = false;
+	// Diagnostic only (SimCopter.Riot.LogAgitation): the agitation the trace last reported, so a
+	// change can be logged with its delta. Deliberately not serialized.
+	int32 LastLoggedRiotAgitation = 0;
 	// True while a carrier owns this person's transform, so UpdateMovement leaves them alone.
 	bool bBehaviorMoveSuspended = false;
 	void AlightAttachmentOnly();

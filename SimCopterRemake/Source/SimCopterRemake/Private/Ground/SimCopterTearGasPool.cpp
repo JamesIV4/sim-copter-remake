@@ -15,6 +15,7 @@
 #include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterParticleFX.h"
 #include "Kismet/GameplayStatics.h"
+#include "Missions/SimCopterRiotLog.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 #include "Serialization/MemoryReader.h"
@@ -388,6 +389,7 @@ void USimCopterTearGasPoolComponent::AdvanceSlot(const int32 SlotIndex, const in
 		{
 			Audio->Play3D(SimCopterSound::SND_TGPOP, Slot.Position);
 		}
+		SIMCOPTER_RIOT_LOG(TEXT("TEARGAS canister burst; the 30 s cloud starts now."));
 		// A burst canister is a cloud, not an object; the model goes away with the pop.
 		if (CanisterMeshes.IsValidIndex(SlotIndex) && CanisterMeshes[SlotIndex] != nullptr)
 		{
@@ -584,5 +586,8 @@ void USimCopterTearGasPoolComponent::EmitCloudPuff(FSlot& Slot)
 	Event.TargetTile = Tile;
 	Event.TargetWorldLocation = FVector(PuffWorld.X, PuffWorld.Y, SurfaceZ);
 	Event.MissionEventId = Slot.MissionEventId;
-	Helicopter->DeliverInteractionToTile(Event);
+	const int32 Affected = Helicopter->DeliverInteractionToTile(Event);
+	SIMCOPTER_RIOT_LOG(
+		TEXT("TEARGAS puff on tile (%d,%d): %d person/people gassed (mode 5 -> BHAV 907)."),
+		Tile.X, Tile.Y, Affected);
 }

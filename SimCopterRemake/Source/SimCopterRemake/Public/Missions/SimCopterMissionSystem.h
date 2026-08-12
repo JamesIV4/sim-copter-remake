@@ -492,6 +492,18 @@ public:
 	static constexpr int32 MaxFlames = 0x8c;  // DAT_005ce0a0 table size
 	static constexpr int32 MaxFireObjects = 0x31; // DAT_005d3820 slots (0x94 bytes / 12)
 
+	// DIVERGENCE (2026-08-12), measured - see the riot arm of CreateEventAt and
+	// Docs/memory/simcopter-crime-rooftop-rescue.md. BHAV 852 walks every rioter's agitation one
+	// step toward `neighbourCount * meanAgitation / 15`, so the crowd only holds its own agitation
+	// when the count reaches 15 - sixteen people inside the 3x3 tile block it measures. Retail's
+	// tier-1 roll asks for 9-16 and accepts 11, and anything under sixteen decays to nothing in
+	// about seven seconds no matter what the player does. Both the request and the acceptance test
+	// are floored here.
+	static constexpr int32 MinimumViableRiotSize = 16;
+	// Extra placement attempts allowed above the requested head count, since a rioter that fails
+	// to place now costs the riot its viability rather than one body.
+	static constexpr int32 RiotPlacementRetryBudget = 16;
+
 	FSimCopterMissionTuning Tuning;
 
 	void Initialize(ISimCopterMissionWorld* InWorld, uint32 RandSeed);

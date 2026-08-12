@@ -4,6 +4,48 @@
 
 *Recorded 2026-08-06.*
 
+## Cars drive around rioters — DIVERGENCE, whole-cloth (2026-08-12)
+
+Retail traffic and pedestrians are invisible to each other: `FUN_0049ee30`'s blocking probe
+collects vehicles only and the people move core collects people only, so in the original a car
+drives through a riot at full speed. `ApplyRioterAvoidance` (traffic system) gives drivers eyes:
+
+- Rioters (state-3 mission people) inside a `RioterAvoidanceLookAheadCm` corridor the width of the
+  car plus `RioterAvoidanceClearanceCm` slow it to `RioterAvoidanceSpeedScale`.
+- **The braking is this note's jam machinery, not a new curve** — `ApplyTrafficBrake` at
+  `NormalTrafficBrakeRate`, with a crawl floor just above `ApplyVehicleFollowing`'s 0.18 creep — so
+  a car easing past a crowd decelerates exactly like one easing into a queue, and it still composes
+  with every other pass, all of which only ever *lower* a speed scale.
+- Steering searches `±RioterAvoidanceSteerStepDegrees`, then twice it, and so on, taking the first
+  clear heading: the car turns by the **nearest** angle away from the crowd, not a fixed swerve.
+- That heading becomes a `SetAvoidanceMoveTarget` hop of `RioterAvoidanceStepCm` lasting
+  `RioterAvoidanceStepDurationSeconds`, so the car commits to one short step and re-checks on the
+  next tick, avoiding further rioters as it goes.
+- The hop **expiring** is what returns the car to the road network — there is no state to unwind if
+  the crowd disperses first. `FinishRioterAvoidance` then checks whether the road node has ended up
+  *behind* the car and calls `AssignNextTarget` if so, because a car that swerved past its node
+  would otherwise turn round to reach it.
+- A car the jam queue owns (`IsVehicleHeldInTrafficJam`) is skipped: it is already stopped and the
+  jam owns it for the frame. A car that finds no clear heading stays slow and holds its lane.
+
+This does **not** replace the knockdown divergence in [[simcopter-vehicle-knockdown]] — a driver who
+cannot avoid somebody still runs them over, and that is still what raises the casualty. It only
+means an ordinary car no longer ploughs through a standing crowd at full speed. **A rioter who does
+get hit is turned back toward the crowd when the tumble ends** (`TurnRiotParticipantTowardCrowd` ->
+`TryGetRiotCrowdCentroid`, the same agitation weighting `FUN_004c9e20` uses): the tumble resumes
+their program on whatever facing they had when the bumper arrived, which is usually away from the
+riot, so without this the crowd bleeds out one body at a time.
+
+**Three things made the first version of this look completely dead, and all three are worth knowing:**
+
+1. `ApplyTrafficAvoidance` has an **early `return` for `TrafficAiMode::Original`** — the default —
+   with its own pass list. A new pass appended after that block never runs. Check both branches.
+2. A car's **actor forward vector is not its heading**: the mesh yaw lags the route, so a car
+   mid-turn probes into the kerb. Take the velocity, then the move target, then the actor.
+3. `IsRiotParticipant()` (state 3 + live `MissionEventId`) is the right test for the log but too
+   narrow to *drive at people* with: it drops anyone mid-tumble or who has just posted their leave
+   outcome and is still standing in the road. The corridor also admits `IsKnockedDown()`.
+
 Ported as `SimCopterTrafficJam` (`Public/Ground/SimCopterTrafficJam.h`) plus
 `ASimCopterTrafficSystemActor::ApplyTrafficJamQueue`. Tests: `SimCopter.Traffic.JamBlockerDirection`,
 `SimCopter.Traffic.JamQueueSpacing`, `SimCopter.Traffic.JamHornThresholds`.
