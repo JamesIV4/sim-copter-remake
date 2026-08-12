@@ -160,6 +160,36 @@ least `0.99` (the same approximately eight-degree flatness threshold used for ai
 A pitched roof triangle, ridge, or decoration is rejected and the golden-angle sampler tries the
 next position. If no flat point validates, that person spawn fails; it never falls back to ground.
 
+**Roof decorations excluded 2026-08-12.** Flatness alone never covered them: a water tank, stair
+head, lift room, chimney or air-conditioning box is *flat on top*, so the normal test waved every
+one of them through and survivors ended up perched on boxes. Two rules were added, both in
+`ASimCopterTrafficSystemActor`, and the second is the one that matters:
+
+1. `TryResolveRoofDeckHeight` — `TryGetBuildingRoofPost` no longer takes a single ray down the
+   middle of the footprint. A decoration is very often bang in the centre of a roof, and that one
+   ray defined *everything* downstream: the confinement square, the ±100 cm band the spawn accepts,
+   the medic's fall tolerance. It now fires 17 probes (centre plus two rings, the outer one rotated
+   half a step off the inner), drops anything more than `RoofDeckMaxSampleDropCm` (600) below the
+   highest — a stepped tower's podium, or the street beside a model narrower than its tile — and
+   takes the **lowest** height band holding at least a quarter of what is left. Lowest, not widest:
+   a decoration always stands *on* the deck and never under it, so "go no higher than you have to"
+   cannot be beaten by an air-conditioning block big enough to cover a third of a small roof, and
+   widest-band can. The cost is that a stepped roof answers its lower setback, which is a fine
+   place to be winched off.
+2. `IsRooftopSpawnFootprintSupported` — a candidate point additionally rings itself with eight
+   probes at `RoofSpawnSupportRadiusCm` (45; the pedestrian spawn capsule is 32) and requires every
+   one to come back within `RoofSpawnSupportToleranceCm` (20) of the candidate's own height. Higher
+   is a wall or the next tank along; lower is the edge of the box being stood on, or the roof edge;
+   *missing* is the parapet lip, where the probe found nothing in the band at all. No decoration is
+   wide enough to pass this, which is the whole point.
+
+The candidate loop itself is now `TryFindClearRoofSpawnPoint`, shared with the hospital roof crew
+so the medic and the post can no longer disagree about where the roof is — `TrySpawnOriginalPersonAtTile`'s
+`bPlaceOnBuildingRoof` arm used to run its own centre trace. The one asymmetry is the failure case:
+a rooftop rescue that finds no clear point simply does not spawn at that building (the scheduler
+tries elsewhere), but a hospital falls back to the deck centre, because a D1 with no medic on its
+roof has no medevac service at all.
+
 ## Phases and player interactions
 
 ### Robber, Arsonist, and Mugger

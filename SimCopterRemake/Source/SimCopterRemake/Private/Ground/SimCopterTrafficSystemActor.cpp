@@ -1357,6 +1357,219 @@ bool ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(const FVector& Sur
 	return SurfaceNormal.GetSafeNormal().Z >= MinFlatNormalZ;
 }
 
+bool ASimCopterTrafficSystemActor::IsRooftopSpawnFootprintSupported(
+	const float CandidateZ,
+	const TArray<float>& SampleHeightsCm,
+	const int32 ExpectedSampleCount,
+	const float ToleranceCm)
+{
+	// A probe that hit nothing is not in the array at all, and that is a rejection in its own
+	// right: there is no surface under that part of the person's footprint.
+	if (ExpectedSampleCount <= 0 || SampleHeightsCm.Num() != ExpectedSampleCount)
+	{
+		return false;
+	}
+
+	const float Tolerance = FMath::Max(ToleranceCm, 0.0f);
+	for (const float SampleZ : SampleHeightsCm)
+	{
+		// Higher is a wall, a tank or the next decoration along; lower is the edge of the box the
+		// candidate is standing on, or the roof edge. Neither is somewhere to put a survivor.
+		if (FMath::Abs(SampleZ - CandidateZ) > Tolerance)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ASimCopterTrafficSystemActor::TryFindClearRoofSpawnPoint(
+	const FVector& RoofCenter,
+	const float SearchHalfExtentCm,
+	const int32 CandidateOffset,
+	FVector& OutSurfacePoint) const
+{
+	if (GetWorld() == nullptr)
+	{
+		return false;
+	}
+
+	constexpr int32 CandidateCount = 14;
+	const float GoldenAngleRadians = 2.39996323f;
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterMissionRoofSpawn), false, this);
+	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
+	{
+		if (const ASimCopterGroundAgent* Agent = AgentPtr.Get())
+		{
+			QueryParams.AddIgnoredActor(Agent);
+		}
+	}
+	if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
+	{
+		QueryParams.AddIgnoredActor(PlayerPawn);
+	}
+
+	for (int32 Attempt = 0; Attempt < CandidateCount; ++Attempt)
+	{
+		// CandidateOffset walks later arrivals off the spiral's earlier points, so a second
+		// survivor does not land on the first one's head.
+		const int32 CandidateIndex = CandidateOffset + Attempt;
+		const float RadiusFraction = CandidateIndex == 0
+			? 0.0f
+			: FMath::Sqrt(FMath::Min(float(CandidateIndex) / float(CandidateCount), 1.0f));
+		const float Angle = float(CandidateIndex) * GoldenAngleRadians;
+		const FVector Candidate = RoofCenter + FVector(
+			FMath::Cos(Angle) * SearchHalfExtentCm * RadiusFraction,
+			FMath::Sin(Angle) * SearchHalfExtentCm * RadiusFraction,
+			0.0f);
+		const FVector TraceStart(Candidate.X, Candidate.Y, RoofCenter.Z + 2000.0f);
+		const FVector TraceEnd(Candidate.X, Candidate.Y, RoofCenter.Z - 250.0f);
+		FHitResult Hit;
+		if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) ||
+			!Hit.bBlockingHit)
+		{
+			continue;
+		}
+
+		const FVector SurfacePoint(Candidate.X, Candidate.Y, float(Hit.ImpactPoint.Z));
+		// On the deck's own height, level, and with the whole footprint on one surface. The last of
+		// the three is what keeps people off the tanks, vents and stair heads: those pass the first
+		// two comfortably.
+		if (FMath::Abs(float(Hit.ImpactPoint.Z) - float(RoofCenter.Z)) <= 100.0f &&
+			IsRooftopRescueSurfaceFlat(Hit.ImpactNormal) &&
+			IsRoofSpawnPointClearOfDecorations(SurfacePoint, float(RoofCenter.Z), QueryParams))
+		{
+			OutSurfacePoint = SurfacePoint;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ASimCopterTrafficSystemActor::IsRoofSpawnPointClearOfDecorations(
+	const FVector& SurfacePoint,
+	const float RoofDeckZ,
+	const FCollisionQueryParams& QueryParams) const
+{
+	if (GetWorld() == nullptr)
+	{
+		return false;
+	}
+
+	constexpr int32 SupportSampleCount = 8;
+	const float SupportRadiusCm = FMath::Max(RoofSpawnSupportRadiusCm, 0.0f);
+	if (SupportRadiusCm <= 0.0f)
+	{
+		return true;
+	}
+
+	TArray<float> SampleHeightsCm;
+	SampleHeightsCm.Reserve(SupportSampleCount);
+	for (int32 Step = 0; Step < SupportSampleCount; ++Step)
+	{
+		const float Angle = float(Step) * (2.0f * PI / float(SupportSampleCount));
+		const FVector SampleStart(
+			SurfacePoint.X + FMath::Cos(Angle) * SupportRadiusCm,
+			SurfacePoint.Y + FMath::Sin(Angle) * SupportRadiusCm,
+			RoofDeckZ + 2000.0f);
+		const FVector SampleEnd(SampleStart.X, SampleStart.Y, RoofDeckZ - 250.0f);
+		FHitResult SampleHit;
+		if (GetWorld()->LineTraceSingleByChannel(SampleHit, SampleStart, SampleEnd, ECC_Camera, QueryParams) &&
+			SampleHit.bBlockingHit)
+		{
+			SampleHeightsCm.Add(float(SampleHit.ImpactPoint.Z));
+		}
+	}
+
+	return IsRooftopSpawnFootprintSupported(
+		float(SurfacePoint.Z),
+		SampleHeightsCm,
+		SupportSampleCount,
+		RoofSpawnSupportToleranceCm);
+}
+
+bool ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+	const TArray<float>& SampleHeightsCm,
+	const float BandToleranceCm,
+	const float MaxSampleDropCm,
+	float& OutRoofDeckZ)
+{
+	if (SampleHeightsCm.Num() == 0)
+	{
+		return false;
+	}
+
+	float HighestSampleCm = SampleHeightsCm[0];
+	for (const float SampleZ : SampleHeightsCm)
+	{
+		HighestSampleCm = FMath::Max(HighestSampleCm, SampleZ);
+	}
+
+	// Pass 1: drop the samples that belong to another level entirely.
+	const float FloorCm = HighestSampleCm - FMath::Max(MaxSampleDropCm, 0.0f);
+	TArray<float> RoofSamples;
+	RoofSamples.Reserve(SampleHeightsCm.Num());
+	for (const float SampleZ : SampleHeightsCm)
+	{
+		if (SampleZ >= FloorCm)
+		{
+			RoofSamples.Add(SampleZ);
+		}
+	}
+
+	// Pass 2: the deck is the LOWEST band that a real share of the probes found. Every sample gets
+	// to nominate the band centred on itself; a band carrying less than MinBandSupportFraction of
+	// the probes is something standing on the roof rather than the roof.
+	//
+	// Lowest rather than widest, deliberately. A decoration always stands ON the deck and never
+	// under it, so "go no higher than you have to" is the rule that cannot be beaten by a big one:
+	// widest-band picks the top of an air-conditioning block that happens to cover a third of a
+	// small roof, and this does not. The cost is that a stepped roof answers its lower setback,
+	// which is a perfectly good place to be winched off.
+	constexpr float MinBandSupportFraction = 0.25f;
+	const int32 MinBandSupport = FMath::Max(1, FMath::CeilToInt(float(RoofSamples.Num()) * MinBandSupportFraction));
+
+	const float Tolerance = FMath::Max(BandToleranceCm, 0.0f);
+	bool bFoundSupportedBand = false;
+	int32 WidestCount = 0;
+	float BestHeightCm = HighestSampleCm;
+	float WidestHeightCm = HighestSampleCm;
+	for (const float Candidate : RoofSamples)
+	{
+		int32 Count = 0;
+		float Sum = 0.0f;
+		for (const float Other : RoofSamples)
+		{
+			if (FMath::Abs(Other - Candidate) <= Tolerance)
+			{
+				++Count;
+				Sum += Other;
+			}
+		}
+
+		// The band's own mean, not the nominating sample: taking the sample would bias the answer
+		// by up to a tolerance depending on which end of the band nominated first.
+		const float BandHeightCm = Sum / float(Count);
+		if (Count >= MinBandSupport && (!bFoundSupportedBand || BandHeightCm < BestHeightCm))
+		{
+			bFoundSupportedBand = true;
+			BestHeightCm = BandHeightCm;
+		}
+		// A roof broken into more bands than the support fraction allows for leaves nothing
+		// qualifying at all; the widest band is the fallback, and there is always one of those.
+		if (Count > WidestCount || (Count == WidestCount && BandHeightCm < WidestHeightCm))
+		{
+			WidestCount = Count;
+			WidestHeightCm = BandHeightCm;
+		}
+	}
+
+	OutRoofDeckZ = bFoundSupportedBand ? BestHeightCm : WidestHeightCm;
+	return true;
+}
+
 bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 	int32 PersonState,
 	int32 BehaviorClass,
@@ -1417,41 +1630,13 @@ bool ASimCopterTrafficSystemActor::TrySpawnMissionPerson(
 		MissionRoofSafeHalfExtentCm = FMath::Max(
 			ActiveTileSize * 0.25f,
 			FMath::Min(MissionRoofHalfExtentCm - 90.0f, MissionRoofHalfExtentCm * 0.58f));
-		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterMissionRoofSpawn), false, this);
-		for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
-		{
-			if (const ASimCopterGroundAgent* Agent = AgentPtr.Get())
-			{
-				QueryParams.AddIgnoredActor(Agent);
-			}
-		}
-		if (const APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(GetWorld(), 0))
-		{
-			QueryParams.AddIgnoredActor(PlayerPawn);
-		}
 
-		for (int32 Attempt = 0; Attempt < 14 && !bFoundSpawnLocation; ++Attempt)
+		FVector RoofSurfacePoint = FVector::ZeroVector;
+		if (TryFindClearRoofSpawnPoint(
+			MissionRoofCenter, MissionRoofSafeHalfExtentCm, ExistingMissionPeople, RoofSurfacePoint))
 		{
-			const int32 CandidateIndex = ExistingMissionPeople + Attempt;
-			const float RadiusFraction = CandidateIndex == 0
-				? 0.0f
-				: FMath::Sqrt(float(CandidateIndex) / 14.0f);
-			const float Angle = float(CandidateIndex) * GoldenAngleRadians;
-			const FVector Candidate = MissionRoofCenter + FVector(
-				FMath::Cos(Angle) * MissionRoofSafeHalfExtentCm * RadiusFraction,
-				FMath::Sin(Angle) * MissionRoofSafeHalfExtentCm * RadiusFraction,
-				0.0f);
-			const FVector TraceStart(Candidate.X, Candidate.Y, MissionRoofCenter.Z + 2000.0f);
-			const FVector TraceEnd(Candidate.X, Candidate.Y, MissionRoofCenter.Z - 250.0f);
-			FHitResult Hit;
-			if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
-				Hit.bBlockingHit &&
-				FMath::Abs(Hit.ImpactPoint.Z - MissionRoofCenter.Z) <= 100.0f &&
-				IsRooftopRescueSurfaceFlat(Hit.ImpactNormal))
-			{
-				SpawnLocation = Hit.ImpactPoint + FVector::UpVector * 92.0f;
-				bFoundSpawnLocation = true;
-			}
+			SpawnLocation = RoofSurfacePoint + FVector::UpVector * 92.0f;
+			bFoundSpawnLocation = true;
 		}
 	}
 	if (PersonState == 2 && !bFoundSpawnLocation)
@@ -2396,9 +2581,6 @@ bool ASimCopterTrafficSystemActor::TryGetBuildingRoofPost(
 
 	// The same probe TrySpawnOriginalPersonAtTile places the medic with, so the post and the
 	// spawn agree on where the roof is.
-	const FVector TraceStart(Node.Location.X, Node.Location.Y, Node.Location.Z + 60000.0f);
-	const FVector TraceEnd(Node.Location.X, Node.Location.Y, Node.Location.Z - 2000.0f);
-	FHitResult Hit;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterBuildingRoofPost), false, this);
 	// This probe is authoritative for both hospital posts and rooftop-rescue victims. Ignore
 	// transient actors so a helicopter hovering over the fire, an existing roof worker, or a car
@@ -2421,13 +2603,49 @@ bool ASimCopterTrafficSystemActor::TryGetBuildingRoofPost(
 	{
 		QueryParams.AddIgnoredActor(PlayerPawn);
 	}
-	if (!GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) ||
-		!Hit.bBlockingHit)
+	// One ray down the middle answers the top of whatever is standing there - and a water tank or
+	// stair head is very often bang in the centre of a roof. Everything downstream hangs off this
+	// height: the square the medic is confined to, the +/-100 cm band the survivor spawn accepts,
+	// the fall tolerance. Probe a grid across the footprint and take the height it agrees on.
+	const float SampleHalfExtentCm = FMath::Max(
+		ActiveTileSize * 0.25f,
+		FMath::Min(OutHalfExtentCm - 90.0f, OutHalfExtentCm * 0.58f));
+
+	TArray<float> SampleHeightsCm;
+	SampleHeightsCm.Reserve(17);
+	auto ProbeRoofHeight = [this, &Node, &QueryParams, &SampleHeightsCm](const float OffsetX, const float OffsetY)
+	{
+		const FVector SampleStart(Node.Location.X + OffsetX, Node.Location.Y + OffsetY, Node.Location.Z + 60000.0f);
+		const FVector SampleEnd(SampleStart.X, SampleStart.Y, Node.Location.Z - 2000.0f);
+		FHitResult SampleHit;
+		if (GetWorld()->LineTraceSingleByChannel(SampleHit, SampleStart, SampleEnd, ECC_Camera, QueryParams) &&
+			SampleHit.bBlockingHit)
+		{
+			SampleHeightsCm.Add(float(SampleHit.ImpactPoint.Z));
+		}
+	};
+
+	ProbeRoofHeight(0.0f, 0.0f);
+	// Two rings, the outer one rotated half a step off the inner, so sixteen probes cover the deck
+	// without ever lining up into a spoke that a single ridge could sit along.
+	for (int32 Ring = 0; Ring < 2; ++Ring)
+	{
+		const float RingRadiusCm = SampleHalfExtentCm * (Ring == 0 ? 0.45f : 0.85f);
+		const float RingPhase = (Ring == 0) ? 0.0f : (PI / 8.0f);
+		for (int32 Step = 0; Step < 8; ++Step)
+		{
+			const float Angle = RingPhase + float(Step) * (PI / 4.0f);
+			ProbeRoofHeight(FMath::Cos(Angle) * RingRadiusCm, FMath::Sin(Angle) * RingRadiusCm);
+		}
+	}
+
+	float RoofDeckZ = 0.0f;
+	if (!TryResolveRoofDeckHeight(SampleHeightsCm, RoofSpawnSupportToleranceCm, RoofDeckMaxSampleDropCm, RoofDeckZ))
 	{
 		return false;
 	}
 
-	OutRoofCenter = FVector(Node.Location.X, Node.Location.Y, Hit.ImpactPoint.Z);
+	OutRoofCenter = FVector(Node.Location.X, Node.Location.Y, RoofDeckZ);
 	BuildingRoofPostByTile.Add(BuildingTile, OutRoofCenter);
 	return true;
 }
@@ -8167,19 +8385,31 @@ bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
 	if (bPlaceOnBuildingRoof)
 	{
 		// On top of the building, not beside it. The open-ground test below would reject a roof
-		// out of hand, so this drops onto the topmost rendered surface over the building instead -
-		// the same ECC_Camera probe the ground agents walk on, which sees the building and not the
-		// terrain underneath it. The probe goes down the middle of the whole footprint (the node's
-		// scene centre), not the scanned tile: a 3x3 hospital is scanned corner-first and a corner
-		// tile can fall outside the model's own roof.
-		const FVector TraceStart(Node.Location.X, Node.Location.Y, Node.Location.Z + 60000.0f);
-		const FVector TraceEnd(Node.Location.X, Node.Location.Y, Node.Location.Z - 2000.0f);
-		FHitResult Hit;
-		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(SimCopterRoofPersonSpawn), false, this);
-		if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_Camera, QueryParams) &&
-			Hit.bBlockingHit)
+		// out of hand, so this goes through the same roof post the rooftop-rescue survivors use -
+		// which resolves the deck rather than the top of whatever decoration happens to stand at
+		// the footprint centre, and which the medic's containment square is measured from, so the
+		// two cannot disagree. It reads the whole footprint (the node's scene centre), not the
+		// scanned tile: a 3x3 hospital is scanned corner-first and a corner tile can fall outside
+		// the model's own roof.
+		FVector RoofCenter = FVector::ZeroVector;
+		float RoofHalfExtentCm = 0.0f;
+		if (TryGetBuildingRoofPost(TileX, TileY, RoofCenter, RoofHalfExtentCm))
 		{
-			SpawnBaseLocation = Hit.ImpactPoint;
+			const float SearchHalfExtentCm = FMath::Max(
+				ActiveTileSize * 0.25f,
+				FMath::Min(RoofHalfExtentCm - 90.0f, RoofHalfExtentCm * 0.58f));
+			FVector RoofSurfacePoint = FVector::ZeroVector;
+			if (TryFindClearRoofSpawnPoint(RoofCenter, SearchHalfExtentCm, /*CandidateOffset*/ 0, RoofSurfacePoint))
+			{
+				SpawnBaseLocation = RoofSurfacePoint;
+			}
+			else
+			{
+				// Nowhere on the deck passed. Unlike a rooftop rescue, which can simply not happen
+				// at this building, a hospital with no medic on its roof has no medevac service at
+				// all - so post them at the deck centre and accept whatever is up there.
+				SpawnBaseLocation = RoofCenter;
+			}
 			bFoundSpawnLocation = true;
 		}
 	}

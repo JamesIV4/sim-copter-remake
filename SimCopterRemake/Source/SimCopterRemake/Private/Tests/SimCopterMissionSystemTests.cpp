@@ -1710,6 +1710,124 @@ bool FSimCopterRooftopRescueAlignmentTest::RunTest(const FString& Parameters)
 		TEXT("A missing surface normal cannot accept a rescue spawn"),
 		ASimCopterTrafficSystemActor::IsRooftopRescueSurfaceFlat(FVector::ZeroVector));
 
+	// Flatness is not enough on an imported GEO roof: a water tank, stair head or air-conditioning
+	// box is flat on top too, and a survivor perched on one cannot be reached. The footprint has to
+	// be supported all round, which no decoration is wide enough to do.
+	constexpr int32 SupportSamples = 8;
+	constexpr float SupportToleranceCm = 20.0f;
+	const float DeckZ = 1000.0f;
+	{
+		const TArray<float> OnTheDeck = { 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f };
+		TestTrue(
+			TEXT("An open deck supports the whole footprint"),
+			ASimCopterTrafficSystemActor::IsRooftopSpawnFootprintSupported(
+				DeckZ, OnTheDeck, SupportSamples, SupportToleranceCm));
+
+		const TArray<float> SeamNoise = { 1012.0f, 994.0f, 1000.0f, 1008.0f, 1000.0f, 1015.0f, 989.0f, 1003.0f };
+		TestTrue(
+			TEXT("Imported triangle seams stay inside the tolerance"),
+			ASimCopterTrafficSystemActor::IsRooftopSpawnFootprintSupported(
+				DeckZ, SeamNoise, SupportSamples, SupportToleranceCm));
+
+		// Standing on the tank: every probe finds the roof a long way below the feet.
+		const TArray<float> OnTheTank = { 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f };
+		TestFalse(
+			TEXT("The top of a decoration is not a spawn point"),
+			ASimCopterTrafficSystemActor::IsRooftopSpawnFootprintSupported(
+				1120.0f, OnTheTank, SupportSamples, SupportToleranceCm));
+
+		// Standing beside one: the tank wall is in the way of a winch line.
+		const TArray<float> BesideTheTank = { 1000.0f, 1000.0f, 1120.0f, 1120.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f };
+		TestFalse(
+			TEXT("A point with a decoration against it is not a spawn point"),
+			ASimCopterTrafficSystemActor::IsRooftopSpawnFootprintSupported(
+				DeckZ, BesideTheTank, SupportSamples, SupportToleranceCm));
+
+		// The roof edge: one probe went past the parapet and found nothing in the band at all.
+		const TArray<float> OverTheEdge = { 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f, 1000.0f };
+		TestFalse(
+			TEXT("A probe that found no surface fails the footprint by absence"),
+			ASimCopterTrafficSystemActor::IsRooftopSpawnFootprintSupported(
+				DeckZ, OverTheEdge, SupportSamples, SupportToleranceCm));
+	}
+
+	// And the height the whole rooftop-rescue band is measured against has to be the deck, not the
+	// decoration that so often stands dead centre of it.
+	{
+		constexpr float BandToleranceCm = 20.0f;
+		constexpr float MaxSampleDropCm = 600.0f;
+		float RoofDeckZ = -1.0f;
+
+		TestFalse(
+			TEXT("A footprint with no surface over it has no roof deck"),
+			ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+				TArray<float>(), BandToleranceCm, MaxSampleDropCm, RoofDeckZ));
+
+		// The hostile case: a block big enough to take the centre probe and the whole inner ring, so
+		// it holds MORE probes than the roof around it. It is still the thing standing on the roof.
+		TArray<float> TankOnDeck;
+		for (int32 Index = 0; Index < 9; ++Index)
+		{
+			TankOnDeck.Add(1150.0f);
+		}
+		for (int32 Index = 0; Index < 8; ++Index)
+		{
+			TankOnDeck.Add(1000.0f);
+		}
+		TestTrue(
+			TEXT("A roof with a tank on it still resolves"),
+			ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+				TankOnDeck, BandToleranceCm, MaxSampleDropCm, RoofDeckZ));
+		TestEqual(TEXT("...to the deck, even when the tank holds more probes"), RoofDeckZ, 1000.0f);
+
+		TArray<float> ChimneyOnDeck;
+		ChimneyOnDeck.Add(1240.0f);
+		for (int32 Index = 0; Index < 16; ++Index)
+		{
+			ChimneyOnDeck.Add(1000.0f);
+		}
+		TestTrue(
+			TEXT("A chimney is one probe against sixteen"),
+			ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+				ChimneyOnDeck, BandToleranceCm, MaxSampleDropCm, RoofDeckZ));
+		TestEqual(TEXT("...so the deck under it wins"), RoofDeckZ, 1000.0f);
+
+		// A tower on a podium is not a decoration: the podium is a different level of the building
+		// and the mission is on the tower, so the drop filter takes the podium out of the vote even
+		// though more probes found it.
+		TArray<float> TowerOnPodium;
+		for (int32 Index = 0; Index < 5; ++Index)
+		{
+			TowerOnPodium.Add(4000.0f);
+		}
+		for (int32 Index = 0; Index < 12; ++Index)
+		{
+			TowerOnPodium.Add(900.0f);
+		}
+		TestTrue(
+			TEXT("A stepped building resolves"),
+			ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+				TowerOnPodium, BandToleranceCm, MaxSampleDropCm, RoofDeckZ));
+		TestEqual(TEXT("...to the tower roof, not the podium below it"), RoofDeckZ, 4000.0f);
+
+		// Two levels of equal support, both well inside the drop filter: take the lower. It is the
+		// one guaranteed to be a deck rather than something sitting on one.
+		const TArray<float> SplitDeck = { 1000.0f, 1000.0f, 1000.0f, 1300.0f, 1300.0f, 1300.0f };
+		TestTrue(
+			TEXT("A half-and-half roof resolves"),
+			ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+				SplitDeck, BandToleranceCm, MaxSampleDropCm, RoofDeckZ));
+		TestEqual(TEXT("...to the lower of the two levels"), RoofDeckZ, 1000.0f);
+
+		// The band's mean, not whichever noisy probe nominated it.
+		const TArray<float> NoisyDeck = { 990.0f, 1000.0f, 1010.0f };
+		TestTrue(
+			TEXT("A noisy deck resolves"),
+			ASimCopterTrafficSystemActor::TryResolveRoofDeckHeight(
+				NoisyDeck, BandToleranceCm, MaxSampleDropCm, RoofDeckZ));
+		TestEqual(TEXT("...to the mean of the band"), RoofDeckZ, 1000.0f);
+	}
+
 	constexpr float OriginalSixUnitGroundBandCm = 37.5f;
 	TestTrue(
 		TEXT("A rescue survivor may leave on terrain"),
