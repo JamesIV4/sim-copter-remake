@@ -295,6 +295,23 @@ public:
 	// walk the post up onto the aircraft.
 	bool TryGetBuildingRoofPost(int32 TileX, int32 TileY, FVector& OutRoofCenter, float& OutHalfExtentCm);
 
+	// Clear surface a person needs all round them before a roof point will take them. The
+	// pedestrian spawn capsule is 32 cm in radius (IsMissionGroundSpawnValid); this is that plus a
+	// margin, which is what puts every rooftop decoration out of reach.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic", meta = (ClampMin = "0.0"))
+	float RoofSpawnSupportRadiusCm = 45.0f;
+
+	// How far two probed heights may differ and still count as the same surface. Wide enough for
+	// the seams and normal noise of an imported triangle fan, far short of any authored step.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic", meta = (ClampMin = "0.0"))
+	float RoofSpawnSupportToleranceCm = 20.0f;
+
+	// Pass 1 of TryResolveRoofDeckHeight: how far below the highest probe over a footprint still
+	// counts as the same roof. Roughly four storeys at this scale - taller than any decoration,
+	// shorter than the step down from a tower to its podium.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|Traffic", meta = (ClampMin = "0.0"))
+	float RoofDeckMaxSampleDropCm = 600.0f;
+
 	// FUN_0049b060(service, tile): the nearest emergency vehicle of a service that is out in the
 	// city. Services 0/1/2 are fire/police/ambulance; the cop programs' "service 3" is the
 	// criminal-car pool. Backs behaviour opcode 15's object classes 10-13.
@@ -859,6 +876,55 @@ public:
 	// them a flat support point; imported GEO roofs may contain pitches, ridges and decorations.
 	// A rejected trace stays inside TrySpawnMissionPerson's candidate loop, so another point is tried.
 	static bool IsRooftopRescueSurfaceFlat(const FVector& SurfaceNormal);
+
+	// The other half of that rule, and the half flatness alone cannot cover: the roof DECORATIONS.
+	// A water tank, stair head, lift room, chimney or air-conditioning box is flat on top, so the
+	// normal test waves it straight through and the survivor ends up perched on a box the player
+	// cannot get a skid near. A person may only stand where their whole footprint rests on one
+	// surface, which no decoration is wide enough to give them.
+	//
+	// SampleHeightsCm holds only the probes that hit something, so ExpectedSampleCount catches the
+	// other failure the same way: a probe that found nothing at all means the candidate is on the
+	// lip of a parapet or overhanging the roof edge.
+	static bool IsRooftopSpawnFootprintSupported(
+		float CandidateZ,
+		const TArray<float>& SampleHeightsCm,
+		int32 ExpectedSampleCount,
+		float ToleranceCm);
+
+	// Which of a set of heights probed over a building footprint is the roof DECK, as opposed to
+	// something standing on it. Two passes:
+	//
+	//   1. Anything more than MaxSampleDropCm below the highest probe is a different level - the
+	//      podium of a stepped tower, or the street beside a model narrower than its tile - and is
+	//      not this roof at all.
+	//   2. Of what is left, the deck is the height band the most probes agree on, ties going to the
+	//      higher band. A decoration is by definition small against the deck it sits on, so it
+	//      never carries the vote; a raised deck covering most of the footprint does, correctly.
+	static bool TryResolveRoofDeckHeight(
+		const TArray<float>& SampleHeightsCm,
+		float BandToleranceCm,
+		float MaxSampleDropCm,
+		float& OutRoofDeckZ);
+
+	// A place on this roof for one more person: a golden-angle spiral out from the deck centre,
+	// taking the first point that is on the deck's own height, level, and clear of decorations.
+	// CandidateOffset is how many people are already up there, so each new arrival starts further
+	// along the spiral. OutSurfacePoint is the surface itself - the caller adds its own eye height.
+	bool TryFindClearRoofSpawnPoint(
+		const FVector& RoofCenter,
+		float SearchHalfExtentCm,
+		int32 CandidateOffset,
+		FVector& OutSurfacePoint) const;
+
+	// The world half of that rule: ring RoofSpawnSupportRadiusCm of probes round a resolved roof
+	// point and put them through IsRooftopSpawnFootprintSupported. RoofDeckZ is the post's own
+	// height, so the probes share the candidate trace's vertical span and a neighbour further than
+	// that below reads as no surface at all.
+	bool IsRoofSpawnPointClearOfDecorations(
+		const FVector& SurfacePoint,
+		float RoofDeckZ,
+		const FCollisionQueryParams& QueryParams) const;
 
 	// Anyone within RadiusCm who has been arrested (EBhavAttr::CriminalCaught) but is still on
 	// their feet - i.e. holding the hands-up pose or walking to the police car.
