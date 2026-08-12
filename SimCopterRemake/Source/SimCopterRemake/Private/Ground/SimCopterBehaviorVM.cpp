@@ -563,15 +563,32 @@ void FSimCopterPersonContext::ResetToState(int32 StateIndex)
 }
 
 // SCHOOK: PersonReactionPush 0x004c1050
-bool FSimCopterPersonContext::PushReactionProgram(int32 ProgramId)
+bool FSimCopterPersonContext::PushReactionProgram(int32 ProgramId, bool bCabinPassenger)
 {
 	if (ProgramId == INDEX_NONE)
 	{
 		return false;
 	}
-	if (!SimCopterInteraction::ReactionCanInterrupt(ProgramId, ActiveReactionProgramId))
+	if (!SimCopterInteraction::CanAcceptReaction(ProgramId, LastReactionProgramId, bCabinPassenger))
 	{
 		return false;
+	}
+
+	// person+0x17c is written on the accepted branch whether or not the push below happens:
+	//     MOV word ptr [EBX + 0x17c],DI
+	//     CMP word ptr [top frame],DI
+	//     JZ  done
+	LastReactionProgramId = ProgramId;
+
+	// `CMP word ptr [EDX + EBX*0x1 + -0x10],DI / JZ done` - the top frame is this reaction
+	// already, so it is left to run instead of being stacked on itself. THIS is the original's
+	// only throttle on repeats, and it is against the stack, not against person+0x17c: a rioter
+	// who has finished running away from one gas puff takes the next one. The interaction still
+	// counts as accepted, which is why the return below is true - the original has already done
+	// every one of its side effects by this point and simply falls out of the function.
+	if (Stack.Num() > 0 && Stack.Last().ProgramId == ProgramId)
+	{
+		return true;
 	}
 
 	// The original drops the deepest frame when the stack is nearly full
@@ -582,13 +599,12 @@ bool FSimCopterPersonContext::PushReactionProgram(int32 ProgramId)
 	}
 	if (Stack.Num() >= MaxStackDepth)
 	{
-		return false;
+		return true;
 	}
 
 	FFrame Frame;
 	Frame.ProgramId = ProgramId;
 	Stack.Add(Frame);
-	ActiveReactionProgramId = ProgramId;
 	return true;
 }
 

@@ -1,4 +1,44 @@
-﻿## The behaviour VM tick is NOT once per game frame (measured 2026-08-11)
+﻿## `FUN_004c1050`'s reaction priority rule applies to PASSENGERS ONLY (2026-08-12)
+
+The gate that decides whether a person accepts an interaction reaction is, in the assembly at
+`0x004c10f5`:
+
+    CMP word ptr [EBX + 0x15c],0x0
+    JLE accept                       ; not in the cabin -> take it, whatever it is
+    MOV AX,word ptr [EBX + 0x17c]    ; else: same id? reject. new id in {903,915,912,909}
+    ...                              ;       and old id not in that set? accept. else reject.
+
+**`person+0x15c` is the player's-cabin seat count, not "a reaction is running".** `FUN_004c6360`
+(set-carrier) hands the person to `FUN_004c6250` when the new carrier is `DAT_005040d0+0xa4` - the
+aircraft the player is flying - which adds them to the seat manifest at `DAT_005040d0+0x1d4` and
+increments it; `FUN_004c62e0` decrements it on the way out. So the 903/915/912/909 priority rule
+only ever governs somebody sitting in your cabin, and **everyone standing in the street accepts
+every reaction they are handed, every time**.
+
+The port had read `person+0x17c` as a general "reaction currently running" latch, set it on every
+accepted interaction and **never cleared it** (`ClearActiveReaction()` shipped with zero callers).
+The first reaction a person ever took therefore made them permanently deaf to every later
+non-priority one - and in a riot that happens within seconds, because a packed crowd bumps itself
+into BHAV 914 "Rxn: Person--civil, neutral" constantly. Net effect: **the megaphone (901), the tear
+gas (907) and the water cannon (908) all silently stopped working on rioters** - the three tools a
+riot exists for - while every individual system downstream of them tested fine in isolation.
+
+Two more parts of the same function that go with it:
+
+- The *only* throttle on a repeated reaction is `CMP word ptr [EDX + EBX*0x1 + -0x10],DI` - "the
+  top stack frame is already this program, so leave it running". It is against the **stack**, not
+  against `person+0x17c`, and the interaction still counts as accepted (every side effect has
+  already been written by then). A rioter who has finished fleeing one gas puff takes the next.
+- `CMP word ptr [EBX + 0x15e],0x0 / JNZ reject`, the "already written off" guard, is what keeps
+  reactions off somebody who is already dying. The port was relying on the sticky latch for that
+  by accident, so it is now an explicit `EBhavAttr::WrittenOff` test in `ApplyInteraction`.
+
+Covered by `SimCopter.Interaction.ReactionTable` and `SimCopter.Interaction.ReactionStack`.
+
+Related: [[simcopter-mission-authenticity]] (what 901/907/908 do to agitation),
+[[simcopter-heli-tools-models]], [[simcopter-crime-rooftop-rescue]].
+
+## The behaviour VM tick is NOT once per game frame (measured 2026-08-11)
 
 `FUN_004c5fb0` accumulates the frame delta into `DAT_00506454` and only runs the per-person pass -
 the VM dispatch included - when it passes `DAT_00506450`, which is reloaded to **`0x147a`** = 5242

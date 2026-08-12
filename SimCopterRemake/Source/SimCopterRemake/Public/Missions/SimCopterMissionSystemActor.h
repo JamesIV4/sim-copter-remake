@@ -172,6 +172,8 @@ public:
 	virtual bool TryActivateBurglarCar(int32 EventId, int32 TileX, int32 TileY, int32 CruiseDelay1616) override;
 	virtual bool TryResolveTransportSpawnTile(int32 OriginX, int32 OriginY, int32& OutTileX, int32& OutTileY) override;
 	virtual bool TrySpawnMissionPerson(int32 PersonState, int32 BehaviorClass, int32 TileX, int32 TileY, int32 EventId) override;
+	// Periodic riot census for the SimCopter.Riot.Log trace; does nothing when it is disabled.
+	void UpdateRiotTrace();
 	// Stable action boundary used by both the decoded VM and engine-side recovery paths. A real
 	// person owns idempotency; these methods are the only place passenger outcomes reach mission
 	// counters.

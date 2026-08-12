@@ -54,6 +54,7 @@
 #include "InputCoreTypes.h"
 #include "Input/Reply.h"
 #include "Missions/SimCopterMissionSystemActor.h"
+#include "Missions/SimCopterRiotLog.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -5353,6 +5354,10 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 			TEXT("%s is not available on the %s."),
 			SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
 			*HelicopterTypeName);
+		if (Tool == ESimCopterHelicopterTool::TearGas)
+		{
+			SIMCOPTER_RIOT_LOG(TEXT("TEARGAS refused: not selectable on the %s."), *HelicopterTypeName);
+		}
 		if (Audio != nullptr)
 		{
 			Audio->Play3D(SimCopterSound::SND_NOEQUIP, GetActorLocation());
@@ -5367,6 +5372,12 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 			TEXT("%s not installed (message 0x%03x)."),
 			SimCopterHelicopterRegistry::GetToolDisplayName(Tool),
 			Equipment != nullptr ? Equipment->MissingMessageId : 0);
+		if (Tool == ESimCopterHelicopterTool::TearGas)
+		{
+			// The career equipment mask starts at 0x03 - bucket and megaphone only - so the
+			// launcher has to be bought or debug-granted before any of this runs.
+			SIMCOPTER_RIOT_LOG(TEXT("TEARGAS refused: the launcher is not fitted (NOEQUIP)."));
+		}
 		if (Audio != nullptr)
 		{
 			Audio->Play3D(SimCopterSound::SND_NOEQUIP, GetActorLocation());
@@ -5409,11 +5420,15 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 		if (ToolCooldownSeconds > 0.0f)
 		{
 			LastToolStatus = FString::Printf(TEXT("Tear gas reloading (%.1fs)."), ToolCooldownSeconds);
+			SIMCOPTER_RIOT_LOG(TEXT("TEARGAS refused: reloading (%.2fs left)."), ToolCooldownSeconds);
 			return false;
 		}
 		if (EquipmentState.GetTearGasRounds() <= 0)
 		{
 			LastToolStatus = TEXT("Out of tear gas rounds (message 0x2ac).");
+			// Silent in the original too - no NOEQUIP, no whistle, nothing happens at all, which
+			// is exactly what "the tear gas does nothing" looks like from the cockpit.
+			SIMCOPTER_RIOT_LOG(TEXT("TEARGAS refused: no rounds loaded (canister count is 0)."));
 			return false;
 		}
 		// FUN_0048e0b0 arms the shared cooldown *before* it looks for a free slot, so a shot that
@@ -5423,13 +5438,25 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 		if (!LaunchTearGasCanister())
 		{
 			LastToolStatus = TEXT("Tear gas pool full (ten canisters already in the air).");
+			SIMCOPTER_RIOT_LOG(TEXT("TEARGAS refused: the ten-slot pool is full."));
 			return false;
 		}
 		EquipmentState.ConsumeTearGasRound();
 		// FUN_0048e0b0's tear-gas branch: the launch whoosh, at the helicopter.
 		if (Audio != nullptr)
 		{
-			Audio->Play3D(SimCopterSound::SND_TGSHWH, GetActorLocation());
+			const bool bWhistled = Audio->Play3D(SimCopterSound::SND_TGSHWH, GetActorLocation());
+			SIMCOPTER_RIOT_LOG(
+				TEXT("TEARGAS fired: %d round(s) left, TGSHWH %s."),
+				EquipmentState.GetTearGasRounds(),
+				bWhistled ? TEXT("played") : TEXT("REFUSED by the audio subsystem"));
+		}
+		else
+		{
+			SIMCOPTER_RIOT_LOG(
+				TEXT("TEARGAS fired: %d round(s) left, but there is NO AUDIO SUBSYSTEM on this ")
+				TEXT("helicopter (not locally controlled?), so no whistle."),
+				EquipmentState.GetTearGasRounds());
 		}
 		LastToolStatus = FString::Printf(
 			TEXT("Tear gas fired (%d round(s) left)."), EquipmentState.GetTearGasRounds());

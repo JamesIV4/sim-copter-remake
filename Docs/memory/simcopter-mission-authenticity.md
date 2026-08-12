@@ -29,8 +29,53 @@ contact is still enforced on the walker's side by `StepTowardSelectedObject`.
 
 ## 2. The interaction vocabulary is 18 clips and a voice bank — and yes, there is a kiss
 
-Every figure carries the **same 18 ARLU mnemonics**: `1Wal 1Run NoMo Whoa FaCl Dead Slum Inju Tote
-DgRn DgSt HipH 2Gab Wave WvNo Thro Play Yumm`. What the player can provoke:
+Every figure carries the **same 18 ARLU mnemonics, in this exact order** (corrected 2026-08-12 by
+reading the file; the order previously written here was wrong, and all 21 figures agree on it):
+
+```
+0 1Wal   1 Inju   2 HipH   3 Whoa   4 DgRn   5 NoMo   6 Tote   7 Yumm   8 2Gab
+9 Dead  10 Slum  11 Wave  12 1Run  13 DgSt  14 WvNo  15 Thro  16 Play  17 FaCl
+```
+
+Clip ids run sequentially from the figure's base (`SUIT` = `227!`..`244!`), so the ordinal and the
+clip id are interchangeable — which is exactly why the wrong order was dangerous to leave lying
+around. Nothing in the port indexes by ordinal (`FPrivAnimFigure::ClipIndexByMnemonic` is keyed by
+the four-character name), so no code was affected.
+
+**What each clip actually depicts, measured rather than inferred** (2026-08-12,
+`Docs/scratchpad/classify_arlu_clips.py`, figure SUIT; "height" is 1.0 at the crown, 0.0 at the
+feet, and the columns are peak travel in each third of the body). Every earlier description in this
+repo was reasoned backwards from where a mnemonic is bound in `people.df`; this is the geometry:
+
+| clip | frames | motion centre | legs | torso | arms/head | what it is |
+|---|---:|---:|---:|---:|---:|---|
+| `1Wal` | 8 | 0.41 | 29 | 22 | 10 | walk, legs leading |
+| `1Run` | 6 | 0.44 | 39 | 18 | 17 | run |
+| `Tote` | 6 | 0.33 | 39 | 9 | 4 | carrying, still a leg cycle |
+| `Whoa` | 4 | 0.70 | 7 | 9 | 12 | upper-body recoil |
+| `Thro` | 4 | 0.81 | 1 | 4 | 36 | one big arm throw |
+| `2Gab` | 4 | 0.73 | 1 | 7 | 8 | talking |
+| `Yumm` | 3 | 0.64 | 3 | 5 | 7 | hand to mouth |
+| `HipH` | 3 | 0.26 | 5 | 5 | 0 | low-body dance |
+| `NoMo` | 3 | 0.30 | 2 | 1 | 0 | idle |
+| `Inju` | 3 | 0.04 | 2 | 1 | 0 | down on the ground, twitching |
+| `FaCl` | 3 | 0.52 | 8 | 1 | 4 | — |
+| `Play` | 4 | 0.47 | 11 | 10 | 10 | instrument |
+| **`Wave`** | 4 | **0.76** | **25** | 21 | **25** | **whole-body flail: arms up AND legs kicking** |
+| **`WvNo`** | 3 | **1.07** | **0** | **0** | **11** | **one arm above the head, nothing else moves** |
+| `Dead` / `Slum` | 1 | — | — | — | — | static poses |
+| `DgRn` / `DgSt` | 8 / 2 | — | — | — | — | quadruped clips; nonsense on a human skeleton |
+
+So the `Wave` vs `WvNo` split recorded elsewhere in this repo **is correct, and now has evidence
+under it**: `WvNo` is the greeting (a raised arm and literally zero leg motion) and `Wave` is the
+panic flail. If somebody reports a rioter "kicking a leg in the air", that is `Wave` rendering
+faithfully — look for why their program keeps failing its move (BHAV 289 rec[8]'s false edge binds
+`Wave`), not for a mis-mapped clip.
+
+**Read ARPP z as DOWN when doing any of this.** Taking the raw z as up puts `WvNo`'s wave at ankle
+height and `Thro`'s arm swing at the feet, which is how a greeting gets mistaken for a kick.
+
+What the player can provoke:
 
 | what | how it is reached |
 |------|-------------------|

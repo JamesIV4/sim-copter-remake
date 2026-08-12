@@ -84,9 +84,32 @@ constexpr int32 SpotlightReactionProgram = 950;
 constexpr int32 RunAwayReactionProgram = 904;
 
 // FUN_004c1050's interrupt priority: 903 (Die), 915 (Missile/bullet), 912 (Large fast
-// vehicle hit) and 909 (Fall) cannot be displaced by a lesser reaction while one is active.
+// vehicle hit) and 909 (Fall) cannot be displaced by a lesser reaction.
 SIMCOPTERREMAKE_API bool IsHighPriorityReaction(int32 ProgramId);
-SIMCOPTERREMAKE_API bool ReactionCanInterrupt(int32 NewProgramId, int32 CurrentProgramId);
+
+// FUN_004c1050's acceptance test, from the assembly at 0x004c10f5:
+//
+//     CMP word ptr [EBX + 0x15c],0x0
+//     JLE accept                       ; not in the cabin - take the reaction, whatever it is
+//     MOV AX,word ptr [EBX + 0x17c]    ; else the priority rule against the last reaction
+//     ...
+//
+// The priority rule is NOT general. `person+0x15c` is the player's-cabin seat count -
+// FUN_004c6250 increments it when FUN_004c6360 hands the person to the aircraft the player is
+// flying and FUN_004c62e0 decrements it when they leave - so it gates only a passenger, who
+// ignores the megaphone, the water and the gas but can still be killed, shot or dropped.
+// **Anyone standing in the street accepts every reaction they are handed, every time.**
+//
+// This is the correction to the port's first reading, which treated person+0x17c as a latch on
+// everyone: a rioter who had reacted to anything once - and in a packed crowd BHAV 914 "Rxn:
+// Person--civil, neutral" fires off the first bump - was deaf to the megaphone, the tear gas and
+// the water cannon for the rest of their life, which is exactly the three tools a riot needs.
+//
+// bCabinPassenger is the remake's person+0x15c: holding one of the helicopter's passenger seats.
+SIMCOPTERREMAKE_API bool CanAcceptReaction(
+	int32 NewProgramId,
+	int32 LastProgramId,
+	bool bCabinPassenger);
 
 // Exact port of FUN_0048ae70's square spiral. Visit order and the tiles it skips are the
 // original's, quirks included: the walk stops mid-leg on the ring where the run length

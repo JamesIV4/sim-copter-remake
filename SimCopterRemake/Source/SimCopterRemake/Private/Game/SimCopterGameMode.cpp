@@ -363,3 +363,29 @@ void ASimCopterGameMode::SimArsonFirebomb(const int32 Count, const bool bBurnOut
 		Actor->GetBurningDebrisCount(),
 		Before);
 }
+
+void ASimCopterGameMode::SimStartRiot()
+{
+	ASimCopterMissionSystemActor* Actor = ResolveMissionSystemActor();
+	if (Actor == nullptr)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SimStartRiot: no mission system in this map."));
+		return;
+	}
+
+	// FUN_004a7a10 refuses a second live riot, so this can legitimately fail; and the placer only
+	// gets its tries around the camera, which is the other way it comes back empty.
+	const int32 EventId = Actor->StartMissionNow(SimCopterMissions::TYPE_Riot);
+	if (EventId == INDEX_NONE)
+	{
+		UE_LOG(LogTemp, Display,
+			TEXT("SimStartRiot: refused - either a riot is already live, or fewer than 11 rioters "
+				 "could be placed near the camera. See the LogSimCopterRiot lines for which."));
+		return;
+	}
+
+	UE_LOG(LogTemp, Display,
+		TEXT("SimStartRiot: riot event %d created. Trace is on LogSimCopterRiot "
+			 "(SimCopter.Riot.Log 0 to silence it)."),
+		EventId);
+}

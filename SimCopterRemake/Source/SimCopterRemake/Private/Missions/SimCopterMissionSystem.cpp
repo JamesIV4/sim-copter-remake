@@ -1,6 +1,8 @@
 #include "Missions/SimCopterMissionSystem.h"
 #include "Audio/SimCopterSoundTable.h"
+#include "Formats/SimCopterPeopleCityRules.h"
 #include "Formats/SimCopterTweakReader.h"
+#include "Missions/SimCopterRiotLog.h"
 #include "Serialization/Archive.h"
 
 namespace SimCopterMissions
@@ -1381,9 +1383,43 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 	}
 	else if (TypeMask == TYPE_Riot)
 	{
-		int32 Count = (Rand.Rand() % 8) * (DifficultyTier - 2) + 16;
+		// DIVERGENCE 1 of 2, and this one is a placement rule the original did not need.
+		// GetAllowedTileClasses(3) is the road-only row, so a rioter may walk on tile class 7 and
+		// nothing else. Put a riot in open country - which the unfiltered placer will happily do,
+		// and did: event 2 of the 2026-08-12 trace landed on a tree in the wilderness - and every
+		// one of the eight facings is refused on every pass, so the crowd huddles on the spot it
+		// spawned and never moves again. Retail's people/terrain are the same shape but its riots
+		// come off the scheduler far less often, so it never showed. Fail the try instead and let
+		// the placer's other four attempts find a street.
+		const int32 SeedTileClass = World != nullptr
+			? FSimCopterPeopleCityRules::GetTileClassForBuildingId(
+				static_cast<uint8>(World->GetXbldTileId(TX, TY)))
+			: INDEX_NONE;
+		if (!FSimCopterPeopleCityRules::IsRoadTileClass(SeedTileClass))
+		{
+			SIMCOPTER_RIOT_LOG(
+				TEXT("CREATE event %d REJECTED: tile (%d,%d) is people tile class %d, not the road ")
+				TEXT("class 7 that state 3 is allowed to walk on - a crowd there would freeze."),
+				Rec.EventId, TX, TY, SeedTileClass);
+			ReleaseFailedRecord(RecIndex);
+			return -1;
+		}
+
+		// DIVERGENCE 2 of 2. Retail asks for `rand(8) * (tier - 2) + 16`, which on tier 1 is
+		// 16 - rand(0..7) = 9..16. Measured 2026-08-12: BHAV 852 drives every rioter's agitation
+		// one step toward `count * mean / 15`, whose fixed point is count == 15 - sixteen people
+		// inside the 3x3 tile block. An eleven-strong riot probes count 9, mean 7 -> target 4, so
+		// it decays 7->2 and BHAV 311 retires the lot in about seven seconds, every time, with the
+		// player unable to affect the outcome. A sixteen-strong one probed count 15 and held at the
+		// agitation ceiling of 10 for as long as it was watched. The riot is therefore floored at
+		// the size its own arithmetic is built around; the tier scaling above it is untouched.
+		int32 Count = FMath::Max((Rand.Rand() % 8) * (DifficultyTier - 2) + 16, MinimumViableRiotSize);
 		int32 Spawned = 0;
-		for (int32 i = 0; i < Count; ++i)
+		// Retail attempts exactly Count placements. Because the head count is now load-bearing
+		// rather than flavour, a failed placement is retried instead of costing a rioter - the
+		// budget is generous but finite so a bad tile still fails fast.
+		const int32 AttemptBudget = Count + RiotPlacementRetryBudget;
+		for (int32 i = 0; i < AttemptBudget && Spawned < Count; ++i)
 		{
 			if (World && World->TrySpawnMissionPerson(3, -1, TX, TY, Rec.EventId))
 			{
@@ -1392,16 +1428,33 @@ int32 FSimCopterMissionSystem::CreateEventAt(int32 TX, int32 TY, int32 TypeMask)
 			// The retail loop gives up on the sixth attempt when not one rioter could be placed.
 			if (i > 4 && Spawned == 0)
 			{
+				SIMCOPTER_RIOT_LOG(
+					TEXT("CREATE event %d ABORTED: six placement attempts at tile (%d,%d) and nobody stood up."),
+					Rec.EventId, TX, TY);
 				ReleaseFailedRecord(RecIndex);
 				return -1;
 			}
 		}
-		if (Spawned < 11)
+		// Retail accepts 11. A record that small cannot hold its own agitation up (see above), so
+		// it would be a mission the player is shown and then cannot influence; refuse it and let
+		// the placer try another street.
+		if (Spawned < MinimumViableRiotSize)
 		{
+			SIMCOPTER_RIOT_LOG(
+				TEXT("CREATE event %d REJECTED: only %d of %d requested rioters placed at (%d,%d); ")
+				TEXT("a riot needs %d to sustain its own agitation."),
+				Rec.EventId, Spawned, Count, TX, TY, MinimumViableRiotSize);
 			ReleaseFailedRecord(RecIndex);
 			return -1;
 		}
 		Rec.RiotSize = Spawned;
+		// RiotSize is the SPAWNED count, not the requested one, and it is the completion target.
+		// A crowd that only half placed needs only half as many outcomes to finish.
+		SimCopterRiotLog::NoteRiotStarted(Rec.EventId);
+		SIMCOPTER_RIOT_LOG(
+			TEXT("CREATE event %d: tier %d requested %d, placed %d -> RiotSize=%d at tile (%d,%d). ")
+			TEXT("Completion needs dispersed+casualties+caught+calmed >= %d."),
+			Rec.EventId, DifficultyTier, Count, Spawned, Rec.RiotSize, TX, TY, Rec.RiotSize);
 		Rec.TargetCount = 0; // Elapsed nag periods
 		// FUN_004c9e20 immediately replaces the seed tile with the agitation-weighted crowd centre.
 		if (World)
@@ -1674,6 +1727,24 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 			{
 				bComplete = false;
 			}
+			else if (bComplete)
+			{
+				// TargetCount is the elapsed nag-period count, and the end award is
+				// ((6 - periods) / 6) of 505 points and $725 - so a riot that finishes fast is
+				// also the one that pays the most.
+				SIMCOPTER_RIOT_LOG(
+					TEXT("COMPLETE event %d after %.1fs: RiotSize %d met by dispersed %d + calmed %d + ")
+					TEXT("casualties %d + caught %d. Elapsed nag periods %d."),
+					Rec.EventId,
+					SimCopterRiotLog::GetRiotAgeSeconds(Rec.EventId),
+					Rec.RiotSize,
+					Rec.RiotersDispersed,
+					Rec.RiotersCalmed,
+					Rec.Casualties,
+					Rec.CriminalsCaught,
+					Rec.TargetCount);
+				SimCopterRiotLog::NoteRiotEnded(Rec.EventId);
+			}
 			if (LifecyclePassCounter > 12)
 			{
 				LifecyclePassCounter = 0;
@@ -1685,6 +1756,12 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 			LifecyclePassCounter++;
 			if (bRiotIncomplete && Rec.TimeAccum > NagInterval)
 			{
+				SIMCOPTER_RIOT_LOG(
+					TEXT("NAG event %d: period %d elapsed with %d/%d resolved (-20 score, end award erodes)."),
+					Rec.EventId,
+					Rec.TargetCount + 1,
+					Rec.RiotersDispersed + Rec.Casualties + Rec.CriminalsCaught + Rec.RiotersCalmed,
+					Rec.RiotSize);
 				PostNag(Rec, EVT_NagSos);
 			}
 		}
@@ -2382,6 +2459,23 @@ void FSimCopterMissionSystem::SpreadFireFrom(const FSimCopterFlame& Flame)
 	}
 }
 
+namespace
+{
+// Only the codes that can move a riot toward completion, plus the ones that change its size.
+const TCHAR* GetRiotEventName(const int32 Code)
+{
+	switch (Code)
+	{
+	case SimCopterMissions::EVT_RioterDispersed: return TEXT("RioterDispersed (BHAV 311, heli within 6 tiles, +10/+10)");
+	case SimCopterMissions::EVT_RioterCalmed:    return TEXT("RioterCalmed (BHAV 311, heli too far, no pay)");
+	case SimCopterMissions::EVT_PersonDied:      return TEXT("Casualty (BHAV 903 - traffic, airframe or collapse)");
+	case SimCopterMissions::EVT_CriminalCaught:  return TEXT("CriminalCaught");
+	case SimCopterMissions::EVT_RiotPersonAdded: return TEXT("RiotPersonAdded (crowd grew)");
+	default:                                     return nullptr;
+	}
+}
+}
+
 void FSimCopterMissionSystem::PostEvent(const FSimCopterMissionEvent& Event)
 {
 	int32 Idx = FindRecordIndex(Event.EventId);
@@ -2393,6 +2487,27 @@ void FSimCopterMissionSystem::PostEvent(const FSimCopterMissionEvent& Event)
 	}
 
 	FSimCopterMissionRecord& Rec = Records[Idx];
+	// One funnel, so one hook: every counter that decides when a riot ends passes through here.
+	if ((Rec.TypeMask & TYPE_Riot) != 0)
+	{
+		if (const TCHAR* RiotEventName = GetRiotEventName(Event.Code))
+		{
+			const int32 Before =
+				Rec.RiotersDispersed + Rec.Casualties + Rec.CriminalsCaught + Rec.RiotersCalmed;
+			SIMCOPTER_RIOT_LOG(
+				TEXT("EVENT event %d %s x%d -> progress %d/%d ")
+				TEXT("(dispersed %d, calmed %d, casualties %d, caught %d)"),
+				Rec.EventId,
+				RiotEventName,
+				Event.Value,
+				Before + (Event.Code == EVT_RiotPersonAdded ? 0 : Event.Value),
+				Rec.RiotSize + (Event.Code == EVT_RiotPersonAdded ? Event.Value : 0),
+				Rec.RiotersDispersed + (Event.Code == EVT_RioterDispersed ? Event.Value : 0),
+				Rec.RiotersCalmed + (Event.Code == EVT_RioterCalmed ? Event.Value : 0),
+				Rec.Casualties + (Event.Code == EVT_PersonDied ? Event.Value : 0),
+				Rec.CriminalsCaught + (Event.Code == EVT_CriminalCaught ? Event.Value : 0));
+		}
+	}
 	switch (Event.Code)
 	{
 	case EVT_SetPrimaryCoords:

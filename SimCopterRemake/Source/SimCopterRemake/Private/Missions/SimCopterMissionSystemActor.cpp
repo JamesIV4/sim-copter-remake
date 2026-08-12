@@ -10,6 +10,7 @@
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "Missions/SimCopterRiotLog.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterHangar.h"
 #include "Formats/SimCopterOriginalGamePaths.h"
@@ -496,6 +497,7 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	UpdateFireVisuals(DeltaTime);
 	UpdateFireAudio();
 	UpdateEmergencySirenAudio();
+	UpdateRiotTrace();
 
 	// Only a scheduled-jobs session walks the career city list; the original's user-city mode
 	// (DAT_00518d50 = 1) has no city to advance to.
@@ -525,6 +527,61 @@ void ASimCopterMissionSystemActor::Tick(float DeltaTime)
 	}
 
 	RefreshMissionMarkerWidget();
+}
+
+// Diagnostic (SimCopter.Riot.Log). A riot ends when four counters between them reach RiotSize,
+// and three of those four can be hit with no player involvement at all, so the useful question is
+// not "did it complete" but "what was the crowd doing while it drained". This prints that.
+void ASimCopterMissionSystemActor::UpdateRiotTrace()
+{
+	if (!SimCopterRiotLog::IsEnabled() || SimCopterRiotLog::GetCensusIntervalSeconds() <= 0.0f)
+	{
+		return;
+	}
+
+	const ASimCopterTrafficSystemActor* TrafficSystem = ResolveTrafficSystem();
+	if (TrafficSystem == nullptr)
+	{
+		return;
+	}
+
+	for (const SimCopterMissions::FSimCopterMissionRecord& Record : MissionSystem.GetRecords())
+	{
+		if (!Record.bActive || (Record.TypeMask & SimCopterMissions::TYPE_Riot) == 0)
+		{
+			continue;
+		}
+		if (!SimCopterRiotLog::ShouldEmitCensus(Record.EventId))
+		{
+			continue;
+		}
+
+		FString Summary;
+		int32 LiveCount = 0;
+		const int32 Resolved =
+			Record.RiotersDispersed + Record.Casualties + Record.CriminalsCaught + Record.RiotersCalmed;
+		if (TrafficSystem->DescribeRiotCrowd(Record.EventId, Summary, LiveCount))
+		{
+			SIMCOPTER_RIOT_LOG(
+				TEXT("CENSUS event %d age %.1fs, progress %d/%d: %s"),
+				Record.EventId,
+				SimCopterRiotLog::GetRiotAgeSeconds(Record.EventId),
+				Resolved,
+				Record.RiotSize,
+				*Summary);
+		}
+		else
+		{
+			// Nobody left on the map but the record is still open: the crowd was destroyed or
+			// recycled rather than resolved, and the mission can never complete on its own.
+			SIMCOPTER_RIOT_LOG(
+				TEXT("CENSUS event %d age %.1fs, progress %d/%d: NO RIOTERS LEFT ON THE MAP"),
+				Record.EventId,
+				SimCopterRiotLog::GetRiotAgeSeconds(Record.EventId),
+				Resolved,
+				Record.RiotSize);
+		}
+	}
 }
 
 int32 ASimCopterMissionSystemActor::GetXbldTileId(int32 TileX, int32 TileY) const

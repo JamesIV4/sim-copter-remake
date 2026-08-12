@@ -23,6 +23,9 @@ struct FSimCopterTestMissionWorld : public ISimCopterMissionWorld
 	// The id every in-bounds tile reports. 0x70 is an unoccupied building in the real XBLD property
 	// table; tests that need occupants (property bit 2) set this to one of the 39 ids that carry it.
 	int32 TileXbldId = 0x70;
+	// A plain road. Riots are placed on people tile class 7 only, because state 3 may walk on
+	// nothing else, so a riot fixture has to stand on one of these.
+	static constexpr int32 RoadXbldId = 0x1d;
 
 	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override
 	{
@@ -659,6 +662,7 @@ bool FSimCopterMissionRuntimeSaveRoundTripTest::RunTest(const FString& Parameter
 	Source.RestoreSessionState(321, 4567, City);
 	Source.GetRand().Seed(0x13579bdu);
 
+	World.TileXbldId = FSimCopterTestMissionWorld::RoadXbldId; // a riot only places on a road
 	const int32 RiotEventId = Source.CreateEventAt(44, 55, TYPE_Riot);
 	if (!TestTrue(TEXT("Riot fixture was created"), RiotEventId != INDEX_NONE))
 	{
@@ -1628,6 +1632,79 @@ bool FSimCopterCrimeNagDistanceTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterRiotViabilityTest,
+	"SimCopter.Missions.RiotViability",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterRiotViabilityTest::RunTest(const FString& Parameters)
+{
+	// Both riot divergences, measured 2026-08-12 and documented on MinimumViableRiotSize:
+	// BHAV 852 steers agitation toward count * mean / 15, so a crowd under sixteen decays to
+	// nothing on its own; and state 3 walks on people tile class 7 only, so a riot anywhere but a
+	// road freezes where it spawned.
+	FSimCopterCareerCity EasyCity;
+	EasyCity.Difficulty = 0; // tier 1, whose retail roll is 16 - rand(0..7) = 9..16
+
+	{
+		// Not a road: refused outright, however many bodies would have fitted.
+		FSimCopterTestMissionWorld Wilderness;
+		Wilderness.TileXbldId = 0; // open ground
+		FSimCopterMissionSystem System;
+		System.Initialize(&Wilderness, 1);
+		System.RestoreSessionState(1000, 1000, EasyCity);
+		TestEqual(
+			TEXT("A riot is refused off the road network"),
+			System.CreateEventAt(40, 40, TYPE_Riot),
+			INDEX_NONE);
+		TestEqual(TEXT("...and no rioter was spawned for it"), Wilderness.SpawnPersonStates.Num(), 0);
+	}
+
+	{
+		FSimCopterTestMissionWorld Street;
+		Street.TileXbldId = FSimCopterTestMissionWorld::RoadXbldId;
+		FSimCopterMissionSystem System;
+		System.Initialize(&Street, 1);
+		System.RestoreSessionState(1000, 1000, EasyCity);
+		const int32 EventId = System.CreateEventAt(40, 40, TYPE_Riot);
+		TestTrue(TEXT("A riot is created on a road"), EventId != INDEX_NONE);
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		TestNotNull(TEXT("Riot record exists"), Record);
+		if (Record != nullptr)
+		{
+			// The whole point: tier 1 no longer produces a crowd that cannot hold its agitation.
+			TestTrue(
+				TEXT("Even a tier-1 riot reaches the size its own arithmetic needs"),
+				Record->RiotSize >= FSimCopterMissionSystem::MinimumViableRiotSize);
+		}
+	}
+
+	{
+		// A street where placement keeps failing must still fail the record rather than create an
+		// undersized one - the acceptance floor is not just the request floor.
+		struct FStubbornWorld : public FSimCopterTestMissionWorld
+		{
+			int32 Placed = 0;
+			virtual bool TrySpawnMissionPerson(int32, int32, int32, int32, int32) override
+			{
+				// Enough to clear retail's old 11, never enough to be viable.
+				return Placed++ < 12;
+			}
+		};
+		FStubbornWorld Crowded;
+		Crowded.TileXbldId = FSimCopterTestMissionWorld::RoadXbldId;
+		FSimCopterMissionSystem System;
+		System.Initialize(&Crowded, 1);
+		System.RestoreSessionState(1000, 1000, EasyCity);
+		TestEqual(
+			TEXT("Twelve rioters is refused, not accepted as retail's 11 would have been"),
+			System.CreateEventAt(40, 40, TYPE_Riot),
+			INDEX_NONE);
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterRiotAlignmentTest,
 	"SimCopter.Missions.RiotCountsRewardsAndPenaltyErosion",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -1638,6 +1715,7 @@ bool FSimCopterRiotAlignmentTest::RunTest(const FString& Parameters)
 	TierTwoCity.Difficulty = 1;
 
 	FSimCopterTestMissionWorld DelayedWorld;
+	DelayedWorld.TileXbldId = FSimCopterTestMissionWorld::RoadXbldId;
 	FSimCopterMissionSystem Delayed;
 	Delayed.Initialize(&DelayedWorld, 1);
 	Delayed.RestoreSessionState(1000, 1000, TierTwoCity);

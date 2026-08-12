@@ -43,6 +43,11 @@ public:
 	UFUNCTION(Exec)
 	void SimArsonFirebomb(int32 Count = 1, bool bBurnOutNow = false);
 
+	// Starts a riot near the camera without waiting for the scheduler's Riot bucket, so the
+	// SimCopter.Riot.Log trace can be exercised on demand. Logs the placer's verdict either way.
+	UFUNCTION(Exec)
+	void SimStartRiot();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "SimCopter|Population")
 	bool bSpawnTrafficSystem = true;
