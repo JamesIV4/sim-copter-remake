@@ -543,6 +543,25 @@ public:
 		bool bJaywalkWindowOpen,
 		bool bAlreadyOnRoad);
 
+	/**
+	 * Does this step get the per-cell rules at all? Only when it actually leaves the cell it
+	 * started in, which is how FUN_004c9470 brackets every one of them.
+	 *
+	 * The guard is load-bearing. One walk tick is MoveSpeed/12 original units - Walk-30 is 10/12,
+	 * about 5 cm - and a tile is 400 cm, so all eight facings normally resolve to the cell the
+	 * walker is already on. Test the rules on every step instead and standing on a cell your row
+	 * does not allow becomes a permanent freeze rather than a boundary you cannot cross.
+	 */
+	static bool ArePedestrianCellRulesEvaluated(
+		int32 FromTileX,
+		int32 FromTileY,
+		int32 ToTileX,
+		int32 ToTileY);
+
+	// FUN_004c9cc0's 0x140000: how far above the terrain a walker has to be standing before a water
+	// cell is a legal step. Twenty original units - a bridge deck or a pier, not a kerb.
+	static constexpr float WaterCrossingDeckClearanceOriginalUnits = 20.0f;
+
 	// Ticks one walker's jaywalk window down and reports when it has run out, i.e. when a fresh roll
 	// is due (the caller owns the dice). Rearms from the deadline rather than from now, so the
 	// windows do not drift, and a hitch longer than a whole window still leaves a positive one.
@@ -583,6 +602,12 @@ public:
 	// This agent's rendered body box in its own frame. Public because the car-vs-person overlap
 	// resolves it once per car per frame rather than per candidate pedestrian.
 	bool TryGetBodyLocalBoundsCm(FBox& OutLocalBoundsCm) const;
+
+	// World Z of the underside of what is drawn - a car's sills, a person's feet. The vertical half
+	// of "have I reached the thing I walked to": StepTowardSelectedObject compares the walker's feet
+	// against this, because a collision capsule sized for traffic separation is not where the body's
+	// bottom is.
+	bool TryGetBodyBottomWorldZ(float& OutWorldZ) const;
 
 	// Latched by ApplyHelicopterRunOver. The knockdown pass reads it so a criminal the airframe has
 	// already killed is not also thrown across the street - BHAV 903 is several ticks of dying and
@@ -1333,6 +1358,9 @@ private:
 	// Set only around StepTowardSelectedObject's own move, so a plain op-4 walk is never stopped
 	// by a selection that happens to still be sitting in this person's one selection slot.
 	bool bBehaviorStepSeekingSelection = false;
+	// FUN_004c9470's result from the last refused step (1 climb, 2 drop, 3 a cell it may not
+	// enter, 5 another body), kept for the goto-object trace. 0 when the last step went through.
+	int32 LastMoveStepBlockResult = 0;
 
 	// The gap between this walker's body and its current selection, across the deck; <= 0 is
 	// contact (FUN_004c8f70's box overlap, with the selection's own extent). The player's
@@ -1454,9 +1482,15 @@ protected:
 	// 60 fps and last four times as long as it says.
 	void UpdateRoadJaywalkWindow(float DeltaSeconds);
 
-	// Whether the road rule applies to this person at all. Ambient street population only - see
-	// RoadJaywalkChance for why a dispatched or mission walker must never be stopped at a kerb.
-	bool IsSubjectToRoadRule() const;
+	// Whether the tile-class rows and the road rule apply to this person at all: FUN_004c9470's
+	// +0x168 arm, i.e. the ambient street population only. See RoadJaywalkChance for why a
+	// dispatched or mission walker must never be stopped at a kerb, and ArePedestrianCellRulesEvaluated
+	// for what applying the rows to one anyway did to a Robber.
+	bool IsAmbientStreetWalker() const;
+
+	// FUN_004c9cc0's water escape, asked about where this walker is standing right now: are they up
+	// on a bridge deck or a pier, the one state in which a person may step into a water cell?
+	bool IsStandingOnRaisedDeck() const;
 
 	bool bRoadJaywalkWindowOpen = false;
 	// Negative until the first tick seeds it, which staggers the population: without that every

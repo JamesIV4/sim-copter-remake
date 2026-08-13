@@ -1753,6 +1753,10 @@ bool FSimCopterRiotAlignmentTest::RunTest(const FString& Parameters)
 	}
 
 	FSimCopterTestMissionWorld PromptWorld;
+	// A riot may only seed on a road cell (MinimumViableRiotSize's second divergence), so a fixture
+	// that leaves the default tile id gets no record at all - and this test then indexed an empty
+	// voice array and took the whole automation run down with it.
+	PromptWorld.TileXbldId = FSimCopterTestMissionWorld::RoadXbldId;
 	FSimCopterMissionSystem Prompt;
 	Prompt.Initialize(&PromptWorld, 1);
 	Prompt.RestoreSessionState(1000, 1000, TierTwoCity);

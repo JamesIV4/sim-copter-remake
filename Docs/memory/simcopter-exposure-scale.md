@@ -83,6 +83,39 @@ Two halves, because the lights and the materials need different mechanisms.
   knob: `SimCopter.Effects.Brightness`. Covers `M_SimCopterParticleFX`, `M_SimCopterParticleFXSoft`
   and `M_SimCopterSpriteTexture` - every card, the FIREPTS kernels, and the flashing markers.
 
+## The hole in the middle of the day (2026-08-12)
+
+The sun model above is right at noon and right at midnight and **wrong for the hour in between**.
+`ComputeGroundIlluminanceLux` is `Intensity * max(-Direction.Z, 0)` — direct sun on FLAT GROUND —
+and that cosine collapses to nothing while the sun is still lighting the sky and every vertical
+face in the city. Through the dawn/dusk window it therefore reports near-darkness for a scene that
+is still bright, the emissive drops to its 1.5-nit floor, and fire, spray, smoke and dust tonemap to
+black against everything around them until the sun is far enough down for the exposure to catch up.
+Reported as "the particles go dark in the fog-change window and then come right".
+
+The fix is to stop estimating the quantity and **measure it**:
+`FSceneView::GetLastAverageSceneLuminance()` is the GPU readback of what the auto exposure metered
+last frame, in nits, and it converges immediately rather than following the exposure's own
+smoothing. `ComputeMeasuredFloorNits` feeds it back in as a floor and the emissive is
+`max(sun model, measured)`. That is continuous by construction — at the crossover the two are equal,
+so there is no step — needs no constant to calibrate, because it is the same physical quantity the
+sun model was estimating the long way round, and can only ever raise a card, so the day look is
+untouched. Live switch: `SimCopter.Effects.MeasuredFloor 0` restores the sun-only behaviour.
+
+Three things to know before touching it:
+
+- **Getting at the readback needs a scene view extension.** `ULocalPlayer::ViewStates` is private
+  with no accessor, and the `GetLastAverageSceneLuminance` / `GetLastEyeAdaptationExposure` pair
+  lives on `FSceneView` and `FSceneViewStateInterface`. `FSimCopterExposureViewExtension` overrides
+  `SetupView` (game thread, so no synchronisation) and ignores scene/reflection/planar captures —
+  letting one of those set the city's effect brightness would make the fire flicker with whatever
+  else happened to be rendering.
+- **The floor is capped at the noon value.** The cards are part of the frame the exposure meters, so
+  an uncapped floor is a positive feedback loop; a screenful of fire would ring.
+- **Light sources only.** `GetSurfaceEmissiveNitsForWorld` deliberately keeps the pure sun model:
+  pedestrian sprites and privanim heads are surfaces drawn unlit, and they are supposed to go dark
+  when the sun does.
+
 ## THE OBVIOUS FIX DOES NOT WORK - do not "simplify" back to it
 
 A `MaterialExpressionEyeAdaptationInverse` in the material does the same division in the shader with

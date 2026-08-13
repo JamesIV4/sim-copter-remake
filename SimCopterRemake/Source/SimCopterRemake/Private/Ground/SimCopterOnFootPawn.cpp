@@ -38,6 +38,7 @@
 #include "ProceduralMeshComponent.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
+#include "SimCopterCollisionChannels.h"
 #include "UI/SSimCopterControllerOverlay.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/SOverlay.h"
@@ -88,6 +89,9 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	Capsule->SetCollisionObjectType(ECC_Pawn);
 	Capsule->SetCollisionResponseToAllChannels(ECR_Block);
 	Capsule->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	// The pilot walks through trees like the rest of the population does - see
+	// SimCopterCollision::Foliage. Only the helicopter collides with one.
+	Capsule->SetCollisionResponseToChannel(SimCopterCollision::Foliage, ECR_Ignore);
 	Capsule->SetCanEverAffectNavigation(false);
 
 	// We render the original sprite/figure, not the default skeletal mesh.

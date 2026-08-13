@@ -1,0 +1,118 @@
+﻿// ===========================================
+// Ghidra:    FUN_004c9cc0
+// Address:   0x004c9cc0
+// Signature: undefined FUN_004c9cc0(void)
+// Callers:   5  |  Callees: 4
+// ===========================================
+
+
+
+undefined4 FUN_004c9cc0(ushort param_1,ushort param_2,int param_3)
+
+
+
+{
+
+  short sVar1;
+
+  int iVar2;
+
+  int iVar3;
+
+  
+
+  if ((((param_3 != 0) && (*(short *)(param_3 + 0x12e) == 32000)) && (DAT_0051ac58 != 0)) &&
+
+     (iVar2 = FUN_0042de60(1), iVar2 != 0)) {
+
+    return 1;
+
+  }
+
+  sVar1 = FUN_004c92a0(param_1,param_2);
+
+  if (sVar1 != 0) {
+
+    if (param_3 != 0) {
+
+      iVar2 = FUN_004ae7a0(*(undefined4 *)(param_3 + 0x1cc),*(undefined4 *)(param_3 + 0x1d4),0);
+
+      iVar3 = FUN_004c82c0(*(undefined4 *)(param_3 + 0x1cc),*(undefined4 *)(param_3 + 0x1d0),
+
+                           *(undefined4 *)(param_3 + 0x1d4));
+
+      if ((0x140000 < iVar3 - iVar2) && (iVar3 <= *(int *)(param_3 + 0x1d0))) {
+
+        return 1;
+
+      }
+
+    }
+
+    return 0;
+
+  }
+
+  if (param_3 != 0) {
+
+    if (*(short *)(param_3 + 0x12e) == 32000) {
+
+      return 1;
+
+    }
+
+    if (param_3 != 0) {
+
+      return 1;
+
+    }
+
+  }
+
+  if ((*(byte *)(&DAT_005d9200)[(param_1 & 0xff) * 0x100 + (param_2 & 0xff)] & 0x20) == 0) {
+
+    return 1;
+
+  }
+
+  return 0;
+
+}
+
+
+
+
+// ===========================================
+// Ghidra:    FUN_004c92a0
+// Address:   0x004c92a0
+// Signature: undefined FUN_004c92a0(void)
+// Callers:   2  |  Callees: 0
+// ===========================================
+
+
+
+undefined4 FUN_004c92a0(ushort param_1,ushort param_2)
+
+
+
+{
+
+  byte bVar1;
+
+  
+
+  bVar1 = *(byte *)((int)&DAT_005bde80 + (param_2 & 0xff) + (param_1 & 0xff) * 0x100);
+
+  if ((4 < bVar1) && ((bVar1 < 5 || (9 < bVar1)))) {
+
+    return 0;
+
+  }
+
+  return 1;
+
+}
+
+
+
+

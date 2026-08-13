@@ -2,8 +2,10 @@
 
 #include "Ground/SimCopterDispatchMarker.h"
 
+#include "City/SimCopterEffectExposure.h"
 #include "Formats/MaxisMeshLibrary.h"
 #include "Formats/MaxisProceduralMeshBuilder.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
 #include "UObject/ConstructorHelpers.h"
@@ -17,6 +19,18 @@ namespace
 constexpr float MarkerModelUnitsPerCentimeter = 2621.44f;
 constexpr float MarkerModelScale = 0.25f;
 constexpr bool bMarkerRenderBackfaces = true;
+
+// A pylon is a beacon, so it carries a little emissive of its own on top of its lit shading -
+// enough to stay legible in shadow and after dark, not enough to read as a light source. A
+// FRACTION of what an effect card emits rather than a number of nits, because the sun here is
+// physically scaled and any constant is wrong at one end of the day or the other.
+static float GSimCopterMarkerEmissiveFraction = 0.12f;
+static FAutoConsoleVariableRef CVarSimCopterMarkerEmissive(
+	TEXT("SimCopter.Dispatch.MarkerEmissive"),
+	GSimCopterMarkerEmissiveFraction,
+	TEXT("Dispatch pylon emissive, as a fraction of an unlit effect card's (fire, spray) under the ")
+	TEXT("same light. 0 turns it off and leaves the pylons purely lit. Default 0.12."),
+	ECVF_Default);
 }
 
 USimCopterDispatchMarkerComponent::USimCopterDispatchMarkerComponent(const FObjectInitializer& ObjectInitializer)
@@ -140,11 +154,27 @@ bool USimCopterDispatchMarkerComponent::EnsureMeshBuilt(const SimCopterDispatch:
 		false);
 	if (VertexColorMaterial != nullptr)
 	{
-		SetMaterial(0, VertexColorMaterial);
+		// Through an instance of its own, never the shared asset: EmissiveNits on
+		// M_SimCopterLitVertexColor defaults to 0 because the untextured city and every vehicle
+		// draw on that same material, and writing the parameter on the parent would set the
+		// skyline glowing.
+		if (MarkerMaterial == nullptr)
+		{
+			MarkerMaterial = UMaterialInstanceDynamic::Create(VertexColorMaterial, this);
+		}
+		UMaterialInterface* SectionMaterial = MarkerMaterial != nullptr
+			? Cast<UMaterialInterface>(MarkerMaterial)
+			: VertexColorMaterial.Get();
+		SetMaterial(0, SectionMaterial);
 	}
 
 	bBuildFailed = false;
 	return true;
+}
+
+float USimCopterDispatchMarkerComponent::GetMarkerEmissiveFraction()
+{
+	return FMath::Max(GSimCopterMarkerEmissiveFraction, 0.0f);
 }
 
 bool USimCopterDispatchMarkerComponent::ShowAt(
@@ -161,6 +191,19 @@ bool USimCopterDispatchMarkerComponent::ShowAt(
 	}
 
 	SetWorldLocation(WorldLocation);
+
+	// Re-written every call rather than once at build: this is the same derived quantity every
+	// other unlit thing in the project rides on, and it moves with the sun all day. ShowAt is
+	// already the per-tick call (the marker re-anchors on its destination cell every frame), so
+	// there is no new tick to pay for.
+	if (MarkerMaterial != nullptr)
+	{
+		MarkerMaterial->SetScalarParameterValue(
+			USimCopterEffectExposureSubsystem::GetEmissiveNitsParameterName(),
+			USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(GetWorld()) *
+				GetMarkerEmissiveFraction());
+	}
+
 	if (!bShown)
 	{
 		bShown = true;
