@@ -9,6 +9,7 @@
 #include "Flight/SimCopterSpotlight.h"
 #include "Flight/SimCopterWinch.h"
 #include "GameFramework/Pawn.h"
+#include "Replay/SimCopterReplayRecordable.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterHelicopterPawn.generated.h"
 
@@ -250,7 +251,9 @@ struct SIMCOPTERREMAKE_API FSimCopterDamageTuning
 };
 
 UCLASS()
-class SIMCOPTERREMAKE_API ASimCopterHelicopterPawn : public APawn
+class SIMCOPTERREMAKE_API ASimCopterHelicopterPawn
+	: public APawn
+	, public ISimCopterReplayRecordable
 {
 	GENERATED_BODY()
 
@@ -261,6 +264,31 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+	// --- ISimCopterReplayRecordable ---
+	//
+	// The airframe's transform plus the two things drawn on top of it that the transform does not
+	// carry: `ModelPivot`'s attitude (the sim's own rotation stays upright and the lean is applied
+	// under it) and both rotor angles.
+	virtual SimCopterReplay::EReplayActorKind GetReplayActorKind() const override;
+	virtual FString GetReplayLabel() const override;
+	virtual void CaptureReplayState(
+		SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+		SimCopterReplay::FReplayActorState& OutState) const override;
+	virtual void ApplyReplayState(
+		const SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+		const SimCopterReplay::FReplayActorState& State) override;
+
+	/**
+	 * Drives the camera rig while the sim is paused for a replay review. `UpdateCamera` normally
+	 * runs from Tick, and the boom, the ground lift and the zoom framing all stop with it - so the
+	 * view would stay wherever the aircraft was when the clip was opened.
+	 */
+	void UpdateCameraForReplay(float DeltaSeconds);
+
+	/** The replay panel's Hide HUD button and the H key. Collapses the cockpit overlays. */
+	void SetHudHiddenForReplay(bool bHide);
+	bool IsHudHiddenForReplay() const { return bHudHiddenForReplay; }
 	// Every possession path lands here, not just EnterHelicopter: the initial spawn, a console
 	// command, and climbing back in after a job on foot.
 	virtual void PossessedBy(AController* NewController) override;
@@ -802,6 +830,8 @@ public:
 	// Persistent offsets edited by the developer panel. Each normal camera view has its own
 	// values; setters update the live camera and flush that view to GameUserSettings.ini.
 	ESimCopterCameraMode GetCameraMode() const { return CameraMode; }
+	/** The replay panel's camera button, which reaches the same four views the C key cycles. */
+	void SetCameraMode(ESimCopterCameraMode NewMode);
 	static bool ShouldUseRopeAutoZoom(
 		ESimCopterCameraMode Mode,
 		float PlayerZoomAlpha,
@@ -1701,6 +1731,9 @@ private:
 	TSharedPtr<SWidget> FlapCalibrationPanelWidget;
 	// Fixed-pixel aiming reticle hosted by CrosshairComponent at the mode-specific world point.
 	TSharedPtr<SWidget> CrosshairWidget;
+	/** Replay's Hide HUD state. Collapses the overlays without tearing them down and rebuilding. */
+	bool bHudHiddenForReplay = false;
+
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
 

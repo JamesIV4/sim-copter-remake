@@ -104,8 +104,14 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-public:	
+public:
 	virtual void Tick(float DeltaTime) override;
+
+	/**
+	 * The replay panel's Hide HUD button and the H key. Collapses the mission message log and the
+	 * on-screen mission markers; the helicopter pawn hides the cockpit's own overlays.
+	 */
+	void SetHudHiddenForReplay(bool bHide);
 
 	// ~Begin ISimCopterMissionWorld Interface
 	virtual int32 GetXbldTileId(int32 TileX, int32 TileY) const override;

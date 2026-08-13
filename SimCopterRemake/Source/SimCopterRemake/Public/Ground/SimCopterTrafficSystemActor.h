@@ -207,6 +207,13 @@ public:
 		int32& OutFileX,
 		int32& OutFileY) const;
 
+	/**
+	 * The class the population is actually spawned from - a Blueprint subclass with authored
+	 * defaults in the shipped level, not the bare C++ class. Replay playback needs it so a
+	 * stand-in matches the crowd it is standing in for.
+	 */
+	TSubclassOf<ASimCopterGroundAgent> GetGroundAgentClass() const { return GroundAgentClass; }
+
 	// The same mapping applied to a direction instead of a point: city-local +X is +tile X and
 	// city-local +Y is -tile Y. The cockpit map's heading needle needs this, because the original
 	// reads the helicopter's facing straight off its world vector and the map's Y runs the other

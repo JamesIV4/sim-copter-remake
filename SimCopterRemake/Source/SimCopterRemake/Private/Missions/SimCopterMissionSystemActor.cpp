@@ -11,6 +11,7 @@
 #include "Ground/SimCopterOnFootPawn.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "Missions/SimCopterRiotLog.h"
+#include "Replay/SimCopterReplayTypes.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterHangar.h"
 #include "Formats/SimCopterOriginalGamePaths.h"
@@ -4102,8 +4103,33 @@ bool ASimCopterMissionSystemActor::ProjectMissionMarkerToScreen(const FVector& W
 	return true;
 }
 
+// `bHide`, not `bHidden`: AActor already has a bHidden bitfield and shadowing it here is an error.
+void ASimCopterMissionSystemActor::SetHudHiddenForReplay(const bool bHide)
+{
+	// Collapsed rather than removed: the marker canvas is repopulated every frame from the live
+	// mission list, and tearing the layer down would make the next frame rebuild all of it.
+	const EVisibility HudVisibility = bHide ? EVisibility::Collapsed : EVisibility::Visible;
+	if (MessageLogWidget.IsValid())
+	{
+		MessageLogWidget->SetVisibility(HudVisibility);
+	}
+	if (MissionMarkerWidget.IsValid())
+	{
+		MissionMarkerWidget->SetVisibility(HudVisibility);
+	}
+}
+
 void ASimCopterMissionSystemActor::PushMissionLogMessage(const FString& Text, const FLinearColor& Color, bool bDestroyOnTimeout)
 {
+	// Every player-facing thing the mission layer says goes through here, which makes it the one
+	// place a replay clip needs to tap to get the game-event half of its timeline: a fire starting,
+	// a mission accepted, a patient delivered, a penalty. Above the bShowMissionMessageLog gate on
+	// purpose - that switch is about the on-screen log, not about whether the event happened.
+	if (SimCopterReplay::IsRecordingEvents())
+	{
+		SimCopterReplay::RecordEvent(SimCopterReplay::EReplayEventKind::MissionMessage, Text, this);
+	}
+
 	if (!bShowMissionMessageLog)
 	{
 		return;

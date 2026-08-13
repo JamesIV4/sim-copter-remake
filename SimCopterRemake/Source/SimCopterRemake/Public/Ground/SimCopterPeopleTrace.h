@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Logging/LogMacros.h"
+#include "Replay/SimCopterReplayTypes.h"
 
 /**
  * Switchable trace for one person's behaviour program - what it selected, where it tried to walk,
@@ -53,23 +54,73 @@ SIMCOPTERREMAKE_API void Emit(const FString& Line);
 SIMCOPTERREMAKE_API const TCHAR* GetPersonStateName(int32 PersonState);
 }
 
+/**
+ * These two macros are ALSO the replay clip's decision feed.
+ *
+ * Every shipped behaviour-VM decision site already calls one of them, so teeing them into
+ * `SimCopterReplay::RecordEvent` gives a replay clip the "what did this actor decide" track without
+ * a second call site anywhere. The two conditions are independent: the log answers to
+ * `SimCopter.People.Trace` and its state filter, while the replay answers only to "is a clip
+ * recording" - a clip should carry the whole city's decisions, not just the states someone happened
+ * to be debugging. The line is formatted once and shared when both want it.
+ *
+ * `ASimCopterGroundAgent::Tick` opens a `SimCopterReplay::FScopedEventSource` around its behaviour
+ * update, which is what attributes a line printed six frames deep in the VM to the right track.
+ *
+ * Nothing is formatted when neither wants it, so the cost with the trace off and no clip recording
+ * is two loads and a branch - the same as before.
+ */
+
 // Always has a format string, so __VA_ARGS__ is never empty (MSVC's conforming preprocessor).
 #define SIMCOPTER_PEOPLE_TRACE(PersonState, ...) \
 	do \
 	{ \
-		if (SimCopterPeopleTrace::IsEnabled() && SimCopterPeopleTrace::ShouldTraceState(PersonState)) \
+		const bool bSimCopterTraceWanted = \
+			SimCopterPeopleTrace::IsEnabled() && SimCopterPeopleTrace::ShouldTraceState(PersonState); \
+		const bool bSimCopterReplayWanted = SimCopterReplay::IsRecordingEvents(); \
+		if (bSimCopterTraceWanted || bSimCopterReplayWanted) \
 		{ \
-			SimCopterPeopleTrace::Emit(FString::Printf(__VA_ARGS__)); \
+			const FString SimCopterTraceLine = FString::Printf(__VA_ARGS__); \
+			if (bSimCopterTraceWanted) \
+			{ \
+				SimCopterPeopleTrace::Emit(SimCopterTraceLine); \
+			} \
+			if (bSimCopterReplayWanted) \
+			{ \
+				SimCopterReplay::RecordEvent( \
+					SimCopterReplay::EReplayEventKind::PersonDecision, \
+					SimCopterTraceLine, \
+					nullptr, \
+					(PersonState)); \
+			} \
 		} \
 	} while (0)
 
+// The opcode trace fires once per VM record - thousands a second across a city - so the replay half
+// is behind its own switch (`SimCopter.Replay.RecordOpcodes`, off by default) rather than riding on
+// "a clip is recording" the way the decision trace does.
 #define SIMCOPTER_PEOPLE_TRACE_OP(PersonState, ...) \
 	do \
 	{ \
-		if (SimCopterPeopleTrace::IsEnabled() && \
+		const bool bSimCopterTraceWanted = \
+			SimCopterPeopleTrace::IsEnabled() && \
 			SimCopterPeopleTrace::AreOpcodesTraced() && \
-			SimCopterPeopleTrace::ShouldTraceState(PersonState)) \
+			SimCopterPeopleTrace::ShouldTraceState(PersonState); \
+		const bool bSimCopterReplayWanted = SimCopterReplay::IsRecordingOpcodeEvents(); \
+		if (bSimCopterTraceWanted || bSimCopterReplayWanted) \
 		{ \
-			SimCopterPeopleTrace::Emit(FString::Printf(__VA_ARGS__)); \
+			const FString SimCopterTraceLine = FString::Printf(__VA_ARGS__); \
+			if (bSimCopterTraceWanted) \
+			{ \
+				SimCopterPeopleTrace::Emit(SimCopterTraceLine); \
+			} \
+			if (bSimCopterReplayWanted) \
+			{ \
+				SimCopterReplay::RecordEvent( \
+					SimCopterReplay::EReplayEventKind::PersonOpcode, \
+					SimCopterTraceLine, \
+					nullptr, \
+					(PersonState)); \
+			} \
 		} \
 	} while (0)
