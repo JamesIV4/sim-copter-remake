@@ -256,16 +256,23 @@ private:
 	 * clip but must not spawn a world of puppets on the way out just to tear them down again.
 	 */
 	void FinishRecording(bool bEnterReview);
-	static void ReplayEventSink(
-		SimCopterReplay::EReplayEventKind Kind,
-		const FString& Text,
-		const AActor* Source,
-		int32 PersonState);
-	void HandleEvent(
-		SimCopterReplay::EReplayEventKind Kind,
-		const FString& Text,
-		const AActor* Source,
-		int32 PersonState);
+	static void ReplayEventSink(const SimCopterReplay::FRecordedEvent& Event);
+	void HandleEvent(const SimCopterReplay::FRecordedEvent& Event);
+
+	/**
+	 * Plays the clip's own recorded audio as the playhead crosses it.
+	 *
+	 * A review freezes the world, so the live mixer has nothing left to say - and whatever it was
+	 * holding when the clip opened would drone underneath the replay at the wrong pitch. Review
+	 * entry silences the game; this is what puts the clip's sound back.
+	 *
+	 * Only forward, continuous motion fires anything. A scrub or a jump re-anchors without playing,
+	 * because replaying two seconds of a busy city's sound effects in one frame is a noise, not a
+	 * replay.
+	 */
+	void FireSoundEventsForPlayhead(float PreviousFrame, float CurrentFrame);
+	/** Frame the sound track was last serviced at, so crossings can be detected. */
+	float LastSoundFrame = 0.0f;
 
 	// --- playback ---
 

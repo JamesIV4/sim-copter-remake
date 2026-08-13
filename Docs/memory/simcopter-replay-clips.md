@@ -101,6 +101,14 @@ without breaking saved clips.
   Recording deliberately stays on the world delta, so opening the Settings screen mid-take does not
   record frames of a stopped world.
 
+- **The free camera's mouse pitch has to be negated.** `SimCopterMouseLookPitch` is mapped at scale
+  -1 because the helicopter's boom views are a *drag* — pulling the mouse down drags the world down,
+  which raises the camera. A free camera is a head, not a drag handle: mouse up must look up.
+
+- **The crosshair is hidden in free camera**, and the pawn cannot work that out for itself — its
+  `CameraMode` is still whatever it was when the operator switched away, so `ApplyCameraView` calls
+  `RefreshCrosshairVisibility` on every view change.
+
 - **`AActor::bHidden` exists.** A `bHidden` parameter on any actor method shadows it and the build
   fails on C4458. Both HUD setters take `bHide`.
 
@@ -150,6 +158,23 @@ without breaking saved clips.
 - **`EnableInput` has to go back to the pawn that was blocked**, held as a weak pointer — not a bool
   plus `GetPawn()`. Getting out of the helicopter while the free camera is live otherwise leaves the
   aircraft permanently deaf to input.
+
+## Audio
+
+A review **silences the live game** (`USimCopterAudioSubsystem::SilenceForReplayReview`) and plays
+the clip's own recorded sound events instead. It has to: the world is frozen, so nothing will ever
+stop the rotor loop, the sirens, the radio or the per-person walking voices — they hang at whatever
+they were doing when the clip opened and drone underneath the replay. Slot stops alone are not
+enough; the attached voice loops are separate polyphonic components and need stopping by hand.
+
+`Play2D`, `Play3D` and `Stop` record `SoundStart`/`SoundStop` events carrying the slot id, the play
+flags and the world position. Recording happens **after** `Play3D`'s audibility reject and its
+already-playing early-out, so a clip only carries the plays that actually made a sound. **A zero
+position is the marker for a 2D play** — that is what playback reads to choose between `Play2D` and
+`Play3D`.
+
+Playback fires them only on **forward, continuous** motion of the playhead. Scrubbing re-anchors
+silently: replaying two seconds of a busy city's effects in one frame is a noise, not a replay.
 
 ## The event track — where the "decisions" come from
 

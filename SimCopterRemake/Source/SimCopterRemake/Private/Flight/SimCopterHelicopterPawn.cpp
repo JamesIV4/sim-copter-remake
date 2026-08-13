@@ -3434,15 +3434,25 @@ void ASimCopterHelicopterPawn::RefreshControllerOverlayRadials()
 
 void ASimCopterHelicopterPawn::UpdateCrosshairVisibility()
 {
-	if (CrosshairComponent != nullptr)
+	if (CrosshairComponent == nullptr)
 	{
-		// The replay panel's Hide HUD covers the crosshair too - it is drawn in the world, but it
-		// is still an instrument, and it is very obviously one in a recorded shot.
-		CrosshairComponent->SetVisibility(
-			!bHudHiddenForReplay
-			&& CrosshairWidget.IsValid()
-			&& CameraModeShowsCrosshair(CameraMode, IsApacheHelicopter()));
+		return;
 	}
+
+	// The free camera is not aiming anything - it is detached from the aircraft entirely - so the
+	// crosshair has no meaning there and would sit in the middle of every shot. The pawn's own
+	// CameraMode is still whatever it was when the operator switched away, so it cannot answer this
+	// on its own.
+	const USimCopterReplaySubsystem* Replay = USimCopterReplaySubsystem::Get(this);
+	const bool bFreeCameraActive = Replay != nullptr && Replay->IsFreeCameraActive();
+
+	// The replay panel's Hide HUD covers the crosshair too - it is drawn in the world, but it is
+	// still an instrument, and it is very obviously one in a recorded shot.
+	CrosshairComponent->SetVisibility(
+		!bHudHiddenForReplay
+		&& !bFreeCameraActive
+		&& CrosshairWidget.IsValid()
+		&& CameraModeShowsCrosshair(CameraMode, IsApacheHelicopter()));
 }
 
 void ASimCopterHelicopterPawn::UpdateCrosshairWorldLocation()

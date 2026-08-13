@@ -668,7 +668,10 @@ void ASimCopterPlayerController::FreeCameraLookPitch(const float Value)
 	}
 	if (ASimCopterReplayFreeCamera* Camera = ResolveActiveFreeCamera())
 	{
-		Camera->AddLookInput(0.0f, Value);
+		// Negated. `SimCopterMouseLookPitch` is mapped at scale -1 because the helicopter's boom
+		// views are a DRAG - pulling the mouse down drags the world down, which raises the camera.
+		// A free camera is a head, not a drag handle: mouse up must look up.
+		Camera->AddLookInput(0.0f, -Value);
 	}
 }
 
