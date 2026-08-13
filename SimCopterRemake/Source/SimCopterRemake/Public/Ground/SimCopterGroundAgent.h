@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Ground/SimCopterBehaviorVM.h"
 #include "Ground/SimCopterPopulationFigure.h"
+#include "Replay/SimCopterReplayRecordable.h"
 #include "UObject/NoExportTypes.h"
 #include "SimCopterGroundAgent.generated.h"
 
@@ -59,7 +60,10 @@ enum class ESimCopterKnockdownPhase : uint8
 };
 
 UCLASS()
-class SIMCOPTERREMAKE_API ASimCopterGroundAgent : public AActor, public ISimCopterBehaviorWorld
+class SIMCOPTERREMAKE_API ASimCopterGroundAgent
+	: public AActor
+	, public ISimCopterBehaviorWorld
+	, public ISimCopterReplayRecordable
 {
 	GENERATED_BODY()
 
@@ -69,6 +73,31 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
+
+	// --- ISimCopterReplayRecordable ---
+	//
+	// A person and a car are the same actor here, so both halves of the crowd are covered by one
+	// implementation. What gets recorded is only what the renderer needs: where the body is, which
+	// way it faces, the tumble the knockdown lays over that, and which privanim clip and frame it
+	// is holding. None of the behaviour VM's state is captured, because playback never runs it.
+	virtual SimCopterReplay::EReplayActorKind GetReplayActorKind() const override;
+	virtual FString GetReplayLabel() const override;
+	virtual int32 GetReplayPersonState() const override;
+	virtual void GetReplaySpawnDescriptor(SimCopterReplay::FReplaySpawnDescriptor& OutDescriptor) const override;
+	virtual void CaptureReplayState(
+		SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+		SimCopterReplay::FReplayActorState& OutState) const override;
+	virtual void ApplyReplayState(
+		const SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+		const SimCopterReplay::FReplayActorState& State) override;
+	virtual void BecomeReplayPuppet() override;
+
+	/**
+	 * True on a replay stand-in: no behaviour program, no movement, no collision, no audio and no
+	 * despawn budget. Set before the actor begins play (playback spawns deferred), because
+	 * `BeginPlay` is where `StartOriginalBehavior` runs and there is no unwinding it afterwards.
+	 */
+	bool IsReplayPuppet() const { return bReplayPuppet; }
 
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Ground Agent")
 	void ConfigureAgent(
@@ -209,6 +238,13 @@ public:
 
 	bool SetForcedPedestrianFigureClip(const FString& Mnemonic);
 	void ClearForcedPedestrianFigureClip();
+
+	/** The privanim clip and frame currently drawn, for the replay recorder. Empty when not a figure. */
+	const FString& GetFigureMnemonic() const { return FigureMnemonic; }
+	int32 GetFigureCurrentFrame() const { return FigureCurrentFrame; }
+	int32 GetPedestrianFigureClothesOffset() const { return FigureClothesOffset; }
+	const FString& GetPedestrianFigureName() const { return PedestrianFigureName; }
+	const FString& GetMeshTableName() const { return MeshTableName; }
 	void SetMissionInjuredPose();
 	// A dead medevac patient remains the same physical person. When they die in the cabin this
 	// pose stops their VM without relinquishing their seat; the state-5 medic may still remove
@@ -1185,6 +1221,8 @@ private:
 	float FigureFrameTime = 0.0f;
 	bool bFigureHasHeadSection = false;
 	bool bUsingPedestrianFigure = false;
+	/** See IsReplayPuppet. */
+	bool bReplayPuppet = false;
 	FString ForcedFigureMnemonic;
 	int32 ForcedFigureClothesOffset = INDEX_NONE;
 	// person+0x1a0 and whether it is the rope end rather than the cabin (op 86 distinguishes them).

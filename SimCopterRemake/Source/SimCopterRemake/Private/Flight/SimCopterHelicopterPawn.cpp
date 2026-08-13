@@ -61,6 +61,7 @@
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
+#include "Replay/SimCopterReplaySubsystem.h"
 #include "Serialization/Archive.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
@@ -3435,8 +3436,12 @@ void ASimCopterHelicopterPawn::UpdateCrosshairVisibility()
 {
 	if (CrosshairComponent != nullptr)
 	{
+		// The replay panel's Hide HUD covers the crosshair too - it is drawn in the world, but it
+		// is still an instrument, and it is very obviously one in a recorded shot.
 		CrosshairComponent->SetVisibility(
-			CrosshairWidget.IsValid() && CameraModeShowsCrosshair(CameraMode, IsApacheHelicopter()));
+			!bHudHiddenForReplay
+			&& CrosshairWidget.IsValid()
+			&& CameraModeShowsCrosshair(CameraMode, IsApacheHelicopter()));
 	}
 }
 
@@ -5523,6 +5528,15 @@ bool ASimCopterHelicopterPawn::TryBeginToolUse(ESimCopterHelicopterTool Tool)
 
 void ASimCopterHelicopterPawn::CycleCameraMode()
 {
+	// While the replay panel is up, C belongs to the replay's own view list - the same four views
+	// plus Free on the end. The player controller drives that (its binding is the one that still
+	// fires with the sim paused), so this must not also cycle or one press would move two.
+	if (const USimCopterReplaySubsystem* Replay = USimCopterReplaySubsystem::Get(this);
+		Replay != nullptr && Replay->IsPanelOpen())
+	{
+		return;
+	}
+
 	switch (CameraMode)
 	{
 	case ESimCopterCameraMode::Chase:
@@ -5540,6 +5554,170 @@ void ASimCopterHelicopterPawn::CycleCameraMode()
 		CameraPitchOffsetDeg = 0.0f;
 		break;
 	}
+	UpdateCrosshairVisibility();
+}
+
+void ASimCopterHelicopterPawn::SetCameraMode(const ESimCopterCameraMode NewMode)
+{
+	if (CameraMode == NewMode)
+	{
+		return;
+	}
+	CameraMode = NewMode;
+	// Returning to Chase clears the drag offsets, exactly as cycling round to it does - otherwise
+	// the panel's camera button and the C key leave the view in two different places.
+	if (CameraMode == ESimCopterCameraMode::Chase)
+	{
+		CameraYawOffsetDeg = 0.0f;
+		CameraPitchOffsetDeg = 0.0f;
+	}
+	UpdateCrosshairVisibility();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Replay
+//
+// NOT a port - the original has no replay. See Docs/memory/simcopter-replay-clips.md.
+// ---------------------------------------------------------------------------------------------
+
+void ASimCopterHelicopterPawn::UpdateCameraForReplay(const float DeltaSeconds)
+{
+	UpdateCamera(DeltaSeconds);
+
+	// The boom's own lag interpolation runs in USpringArmComponent::TickComponent, which is handed
+	// the WORLD delta - and a review freezes the world with near-zero time dilation, so that delta
+	// is ~0 and the lag never converges. The camera would trail the aircraft by an ever-growing
+	// distance and read as frozen. Turning lag off makes the boom snap to the airframe every frame,
+	// which is what a replay wants anyway: the shot should be exactly where the clip says it is,
+	// not a smoothed approximation of it.
+	if (CameraBoom != nullptr)
+	{
+		CameraBoom->bEnableCameraLag = false;
+		CameraBoom->bEnableCameraRotationLag = false;
+	}
+}
+
+SimCopterReplay::EReplayActorKind ASimCopterHelicopterPawn::GetReplayActorKind() const
+{
+	return SimCopterReplay::EReplayActorKind::Helicopter;
+}
+
+FString ASimCopterHelicopterPawn::GetReplayLabel() const
+{
+	return TEXT("Helicopter");
+}
+
+void ASimCopterHelicopterPawn::CaptureReplayState(
+	SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+	SimCopterReplay::FReplayActorState& OutState) const
+{
+	const FVector Location = GetActorLocation();
+	const FRotator Rotation = GetActorRotation();
+	OutState.LocationCm = FVector3f(Location);
+	OutState.RotationDeg = FVector3f(Rotation.Pitch, Rotation.Yaw, Rotation.Roll);
+
+	// The sim's own transform only ever carries yaw (SetActorRotation is called with pitch and roll
+	// zeroed); the bank and the nose-down are drawn by ModelPivot underneath it. Recording the
+	// actor rotation alone would play back a helicopter that flies perfectly level everywhere.
+	OutState.VisualRotationDeg = FVector3f(CurrentPitchDeg, 0.0f, CurrentRollDeg);
+
+	// Tenth-degrees in 16.16, the units FUN_00487740 advances them in.
+	OutState.AuxA = SimCopterFixed::ToFloat(FlightModel.MainRotorAngle) / 10.0f;
+	OutState.AuxB = SimCopterFixed::ToFloat(FlightModel.TailRotorAngle) / 10.0f;
+
+	OutState.Flags = SimCopterReplay::FReplayActorState::FlagNone;
+	if (IsHidden())
+	{
+		OutState.Flags |= SimCopterReplay::FReplayActorState::FlagHidden;
+	}
+	if (FlightModel.bRotorBlurDisc)
+	{
+		OutState.Flags |= SimCopterReplay::FReplayActorState::FlagRotorBlurDisc;
+	}
+}
+
+void ASimCopterHelicopterPawn::ApplyReplayState(
+	const SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+	const SimCopterReplay::FReplayActorState& State)
+{
+	SetActorHiddenInGame(State.IsHidden());
+
+	// The player's own aircraft is what plays back a recorded flight - playback borrows it rather
+	// than spawning a second helicopter with its own audio, rotor wash and collision. Its Tick is
+	// off for the length of the review, so nothing here is going to be overwritten by the flight
+	// model on the next frame; when the review ends the recorder puts the saved transform back
+	// before the pause is released.
+	SetActorLocationAndRotation(
+		FVector(State.LocationCm),
+		FRotator(State.RotationDeg.X, State.RotationDeg.Y, State.RotationDeg.Z),
+		/*bSweep=*/false,
+		/*OutSweepHitResult=*/nullptr,
+		ETeleportType::TeleportPhysics);
+
+	CurrentPitchDeg = State.VisualRotationDeg.X;
+	CurrentRollDeg = State.VisualRotationDeg.Z;
+	if (ModelPivot != nullptr)
+	{
+		ModelPivot->SetRelativeRotation(FRotator(CurrentPitchDeg, 0.0f, CurrentRollDeg));
+	}
+
+	const FRotator MainRotorRotation(0.0f, State.AuxA, 0.0f);
+	const FRotator TailRotorRotation(State.AuxB, 0.0f, 0.0f);
+	if (MainRotorMeshComponent != nullptr)
+	{
+		MainRotorMeshComponent->SetRelativeRotation(MainRotorRotation);
+	}
+	if (TailRotorMeshComponent != nullptr)
+	{
+		TailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
+	}
+	if (HeliMainRotorMeshComponent != nullptr)
+	{
+		HeliMainRotorMeshComponent->SetRelativeRotation(MainRotorRotation);
+		if (MainRotorDiscSectionIndex != INDEX_NONE)
+		{
+			HeliMainRotorMeshComponent->SetMeshSectionVisible(
+				MainRotorDiscSectionIndex,
+				(State.Flags & SimCopterReplay::FReplayActorState::FlagRotorBlurDisc) != 0);
+		}
+	}
+	if (HeliTailRotorMeshComponent != nullptr)
+	{
+		HeliTailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
+	}
+}
+
+// `bHide`, not `bHidden`: AActor already has a bHidden bitfield and shadowing it here is an error.
+void ASimCopterHelicopterPawn::SetHudHiddenForReplay(const bool bHide)
+{
+	if (bHudHiddenForReplay == bHide)
+	{
+		return;
+	}
+	bHudHiddenForReplay = bHide;
+
+	// Collapsed, not removed: the dashboard and the map keep live state (the tuner needle, the
+	// fire raster, the flap lamps) that rebuilding would reset, and the operator toggles this
+	// repeatedly while framing a shot.
+	const EVisibility HudVisibility = bHide ? EVisibility::Collapsed : EVisibility::Visible;
+	const TSharedPtr<SWidget> HudWidgets[] =
+	{
+		DashboardWidget,
+		MapWidget,
+		ToolFlapsWidget,
+		WaterControlsWidget,
+		ControllerOverlayWidget,
+	};
+	for (const TSharedPtr<SWidget>& Widget : HudWidgets)
+	{
+		if (Widget.IsValid())
+		{
+			Widget->SetVisibility(HudVisibility);
+		}
+	}
+
+	// The crosshair is a world component with its own rule (it is only up in the views that aim a
+	// tool), so it goes back through that rather than being forced either way here.
 	UpdateCrosshairVisibility();
 }
 

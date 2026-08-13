@@ -168,6 +168,55 @@ ASimCopterOnFootPawn::ASimCopterOnFootPawn()
 	HelicopterClass = ASimCopterHelicopterPawn::StaticClass();
 }
 
+// ---------------------------------------------------------------------------------------------
+// ISimCopterReplayRecordable
+//
+// NOT a port - the original has no replay. See Docs/memory/simcopter-replay-clips.md.
+// ---------------------------------------------------------------------------------------------
+
+SimCopterReplay::EReplayActorKind ASimCopterOnFootPawn::GetReplayActorKind() const
+{
+	return SimCopterReplay::EReplayActorKind::OnFootPlayer;
+}
+
+FString ASimCopterOnFootPawn::GetReplayLabel() const
+{
+	return TEXT("Player");
+}
+
+void ASimCopterOnFootPawn::CaptureReplayState(
+	SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+	SimCopterReplay::FReplayActorState& OutState) const
+{
+	const FVector Location = GetActorLocation();
+	const FRotator Rotation = GetActorRotation();
+	OutState.LocationCm = FVector3f(Location);
+	OutState.RotationDeg = FVector3f(Rotation.Pitch, Rotation.Yaw, Rotation.Roll);
+	OutState.Flags = IsHidden()
+		? SimCopterReplay::FReplayActorState::FlagHidden
+		: SimCopterReplay::FReplayActorState::FlagNone;
+}
+
+void ASimCopterOnFootPawn::ApplyReplayState(
+	const SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+	const SimCopterReplay::FReplayActorState& State)
+{
+	SetActorHiddenInGame(State.IsHidden());
+	if (State.IsHidden())
+	{
+		return;
+	}
+
+	// TeleportPhysics: this is a character with a movement component, and a swept move would stop
+	// at the first blocking hit rather than following the clip.
+	SetActorLocationAndRotation(
+		FVector(State.LocationCm),
+		FRotator(State.RotationDeg.X, State.RotationDeg.Y, State.RotationDeg.Z),
+		/*bSweep=*/false,
+		/*OutSweepHitResult=*/nullptr,
+		ETeleportType::TeleportPhysics);
+}
+
 void ASimCopterOnFootPawn::BeginPlay()
 {
 	Super::BeginPlay();

@@ -294,7 +294,14 @@ void ASimCopterGroundAgent::BeginPlay()
 	if (AgentKind == ESimCopterGroundAgentKind::Pedestrian)
 	{
 		BuildPedestrianBody();
-		StartOriginalBehavior();
+		// A replay stand-in must never start a behaviour program: it would immediately begin
+		// selecting objects and walking, and there is no way to unwind a running program once
+		// StartOriginalBehavior has pushed its first frame. Playback spawns these deferred so the
+		// flag is already set by the time this runs.
+		if (!bReplayPuppet)
+		{
+			StartOriginalBehavior();
+		}
 	}
 	else if (!MeshTableName.IsEmpty())
 	{
@@ -5019,6 +5026,19 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// A replay stand-in is a prop: the clip says where it is and what pose it holds, and running
+	// any of the below would fight that. Its tick is disabled too, so this is a backstop for the
+	// one frame between spawning and BecomeReplayPuppet taking effect.
+	if (bReplayPuppet)
+	{
+		return;
+	}
+
+	// Everything this agent's behaviour program traces while it is ticking belongs to this actor.
+	// Opening the scope here is what lets the hundreds of existing SIMCOPTER_PEOPLE_TRACE call
+	// sites land on the right replay track without any of them being rewritten.
+	const SimCopterReplay::FScopedEventSource ReplayEventSource(this);
+
 	// Before any of the early returns below: a carried or suspended agent is still on screen, and a
 	// person who kept the sun's noon brightness after dark is exactly the bug this fixes.
 	RefreshSpriteExposure();
@@ -6273,6 +6293,156 @@ bool ASimCopterGroundAgent::SetForcedPedestrianFigureClip(const FString& Mnemoni
 void ASimCopterGroundAgent::ClearForcedPedestrianFigureClip()
 {
 	ForcedFigureMnemonic.Reset();
+}
+
+// ---------------------------------------------------------------------------------------------
+// ISimCopterReplayRecordable
+//
+// NOT a port - the original has no replay. See Docs/memory/simcopter-replay-clips.md.
+// ---------------------------------------------------------------------------------------------
+
+SimCopterReplay::EReplayActorKind ASimCopterGroundAgent::GetReplayActorKind() const
+{
+	return AgentKind == ESimCopterGroundAgentKind::Vehicle
+		? SimCopterReplay::EReplayActorKind::Vehicle
+		: SimCopterReplay::EReplayActorKind::Pedestrian;
+}
+
+FString ASimCopterGroundAgent::GetReplayLabel() const
+{
+	if (AgentKind == ESimCopterGroundAgentKind::Vehicle)
+	{
+		// The GEO name is the most informative thing a car has: CARPOLIC, CARAMBUL, CARFIRE1.
+		// It is also what the criminal-car and dispatch code is written in terms of.
+		return MeshTableName.IsEmpty() ? TEXT("Vehicle") : MeshTableName;
+	}
+	// The person-state names the people trace already uses, so a replay track and a trace line
+	// name the same person the same way.
+	return SimCopterPeopleTrace::GetPersonStateName(GetTracedPersonState());
+}
+
+int32 ASimCopterGroundAgent::GetReplayPersonState() const
+{
+	return AgentKind == ESimCopterGroundAgentKind::Vehicle ? INDEX_NONE : GetTracedPersonState();
+}
+
+void ASimCopterGroundAgent::GetReplaySpawnDescriptor(
+	SimCopterReplay::FReplaySpawnDescriptor& OutDescriptor) const
+{
+	OutDescriptor.MeshTableName = MeshTableName;
+	OutDescriptor.FigureName = PedestrianFigureName;
+	OutDescriptor.BehaviorClass = InitialBehaviorClass;
+	OutDescriptor.ClothesOffset = FigureClothesOffset;
+}
+
+void ASimCopterGroundAgent::CaptureReplayState(
+	SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+	SimCopterReplay::FReplayActorState& OutState) const
+{
+	const FVector Location = GetActorLocation();
+	const FRotator Rotation = GetActorRotation();
+	OutState.LocationCm = FVector3f(Location);
+	OutState.RotationDeg = FVector3f(Rotation.Pitch, Rotation.Yaw, Rotation.Roll);
+
+	if (VisualRoot != nullptr)
+	{
+		// VisualRoot is where everything that moves the *body* without moving the *sim* lands: the
+		// knockdown tumble's rotation and drop, and the water submersion offset. Capturing the
+		// component's own final relative transform picks all of them up at once, and does not care
+		// which system wrote it.
+		const FRotator VisualRotation = VisualRoot->GetRelativeRotation();
+		OutState.VisualRotationDeg =
+			FVector3f(VisualRotation.Pitch, VisualRotation.Yaw, VisualRotation.Roll);
+		const FVector VisualOffset = VisualRoot->GetRelativeLocation();
+		OutState.AuxA = static_cast<float>(VisualOffset.Z);
+	}
+
+	if (bUsingPedestrianFigure && !FigureMnemonic.IsEmpty())
+	{
+		OutState.ClipId = Mnemonics.Intern(FigureMnemonic);
+		OutState.ClipFrame = static_cast<uint16>(FMath::Max(FigureCurrentFrame, 0));
+	}
+
+	// Despawned agents are pooled rather than destroyed, so "hidden" is the difference between a
+	// person who is not in the city and one standing still.
+	OutState.Flags = IsHidden()
+		? SimCopterReplay::FReplayActorState::FlagHidden
+		: SimCopterReplay::FReplayActorState::FlagNone;
+}
+
+void ASimCopterGroundAgent::ApplyReplayState(
+	const SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+	const SimCopterReplay::FReplayActorState& State)
+{
+	SetActorHiddenInGame(State.IsHidden());
+	if (State.IsHidden())
+	{
+		return;
+	}
+
+	// TeleportPhysics, and never a sweep: the clip already knows this body walked through a doorway
+	// and out the other side, and a sweep would stop it at the frame's first blocking hit and then
+	// keep it there for the rest of the shot.
+	SetActorLocationAndRotation(
+		FVector(State.LocationCm),
+		FRotator(State.RotationDeg.X, State.RotationDeg.Y, State.RotationDeg.Z),
+		/*bSweep=*/false,
+		/*OutSweepHitResult=*/nullptr,
+		ETeleportType::TeleportPhysics);
+
+	if (VisualRoot != nullptr)
+	{
+		VisualRoot->SetRelativeRotation(
+			FRotator(State.VisualRotationDeg.X, State.VisualRotationDeg.Y, State.VisualRotationDeg.Z));
+		FVector VisualOffset = VisualRoot->GetRelativeLocation();
+		VisualOffset.Z = State.AuxA;
+		VisualRoot->SetRelativeLocation(VisualOffset);
+	}
+
+	if (!bUsingPedestrianFigure)
+	{
+		return;
+	}
+
+	// A privanim clip is built as one mesh section per frame and shown by toggling section
+	// visibility, so rebuilding is only needed when the clip itself changed - which is a pose
+	// swap, and rare. Holding a frame costs a visibility flag.
+	if (const FString* Mnemonic = Mnemonics.Resolve(State.ClipId))
+	{
+		if (*Mnemonic != FigureMnemonic)
+		{
+			RebuildFigureClip(*Mnemonic);
+		}
+	}
+	if (FigureFrameCount > 0)
+	{
+		FigureCurrentFrame = FMath::Clamp(static_cast<int32>(State.ClipFrame), 0, FigureFrameCount - 1);
+		FSimCopterPopulationFigure::ShowFrame(
+			OriginalMeshComponent, FigureFrameCount, FigureCurrentFrame, bFigureHasHeadSection);
+	}
+}
+
+void ASimCopterGroundAgent::BecomeReplayPuppet()
+{
+	bReplayPuppet = true;
+
+	// A stand-in has no program, no movement and no say in anything: it must not tick, must not be
+	// found by any of the behaviour searches that sweep the world for a person, and must not be
+	// something the helicopter or a car can hit.
+	SetActorTickEnabled(false);
+	PrimaryActorTick.bCanEverTick = false;
+	bBehaviorActive = false;
+	bMissionStationary = true;
+	SetActorEnableCollision(false);
+	if (CollisionComponent != nullptr)
+	{
+		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	// Fourteen voice slots serve the whole city. A crowd of stand-ins claiming them would leave the
+	// live population silent for the length of the review.
+	StopWalkingVoice();
+	StopPersonVoice();
 }
 
 void ASimCopterGroundAgent::SetMissionInjuredPose()

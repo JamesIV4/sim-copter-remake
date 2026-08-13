@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Ground/SimCopterPopulationFigure.h"
+#include "Replay/SimCopterReplayRecordable.h"
 #include "SimCopterOnFootPawn.generated.h"
 
 class ASimCity2000CityActor;
@@ -22,12 +23,27 @@ class UTexture2D;
 class SWidget;
 
 UCLASS()
-class SIMCOPTERREMAKE_API ASimCopterOnFootPawn : public ACharacter
+class SIMCOPTERREMAKE_API ASimCopterOnFootPawn
+	: public ACharacter
+	, public ISimCopterReplayRecordable
 {
 	GENERATED_BODY()
 
 public:
 	ASimCopterOnFootPawn();
+
+	// --- ISimCopterReplayRecordable ---
+	//
+	// Transform only. The on-foot player is a proxy body with no privanim clips and nothing drawn
+	// on a pivot beneath it, so there is nothing else on screen to record.
+	virtual SimCopterReplay::EReplayActorKind GetReplayActorKind() const override;
+	virtual FString GetReplayLabel() const override;
+	virtual void CaptureReplayState(
+		SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+		SimCopterReplay::FReplayActorState& OutState) const override;
+	virtual void ApplyReplayState(
+		const SimCopterReplay::FReplayMnemonicTable& Mnemonics,
+		const SimCopterReplay::FReplayActorState& State) override;
 
 	virtual void BeginPlay() override;
 	// Keyboard focus has to come back to the viewport on every possession, or the pawn's axis

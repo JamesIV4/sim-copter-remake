@@ -33,6 +33,14 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Suppressed here too, not only in the city's player controller: the front end is the first
+	// thing to come up, so setting it on the viewport client from here means the engine's
+	// "PAUSED / START RESUME" overlay can never appear even on the very first pause of a session.
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr)
+	{
+		GEngine->GameViewport->SetSuppressTransitionMessage(true);
+	}
+
 	bool bOpenCareerSelect = false;
 	if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
