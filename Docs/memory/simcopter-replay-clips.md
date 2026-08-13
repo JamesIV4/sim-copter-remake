@@ -183,6 +183,32 @@ both.
 Playback fires them only on **forward, continuous** motion of the playhead. Scrubbing re-anchors
 silently: replaying two seconds of a busy city's effects in one frame is a noise, not a replay.
 
+## Particles: advancing them is only half of it
+
+Two separate things have to be true for a replay to have fire, water, dust and rotor wash in it, and
+doing only the first leaves the picture still:
+
+1. **The pools must advance.** They run on `GetPresentationDeltaSeconds` (below).
+2. **Something must SPAWN into them.** Particles are spawned by *gameplay* — the rotor wash by the
+   helicopter's tick, fire by the mission layer, water by a tool — and a review freezes all of it.
+   With nothing spawning, the particles already in flight simply finish and the replay goes still.
+
+So the creator calls are recorded and re-issued: `FReplayEffectSpawn`, one per call, on its own clip
+track. **Only the OUTERMOST call is recorded** — `SpawnEffect` makes its own tile puff,
+`SpawnHardLanding` makes a puff plus five debris plus a column, and `SpawnRing` makes N particles, so
+recording the inner calls too would have playback issue both the outer call and everything it
+already produces, doubling every effect. A depth counter in the component enforces that.
+
+`SpawnParticle` gets its own record rather than leaning on the inner `SpawnEffect`, because
+everything that makes it what it is — life, size, gravity, colour — is applied to the slot *after*
+that call returns. `SpawnHardLanding`'s debris directions are random and are deliberately re-rolled
+on playback rather than recorded: five chunks of wreckage scattering differently is not something a
+viewer can tell from the take.
+
+A city has several particle components (the helicopter's water/wash, the mission layer's fire and
+smoke, the ambient vehicles' debris), so each spawn carries a **channel** — owner class plus
+component name, interned per clip — and playback resolves it back to the same component.
+
 ## Presentation time: what must keep running while the world is frozen
 
 `SimCopterReplay::GetPresentationDeltaSeconds(WorldDelta)` returns real elapsed time during a

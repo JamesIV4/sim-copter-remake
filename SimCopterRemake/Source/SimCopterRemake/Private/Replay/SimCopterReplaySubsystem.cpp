@@ -12,6 +12,7 @@
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
+#include "Ground/SimCopterParticleFX.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
@@ -138,6 +139,7 @@ void USimCopterReplaySubsystem::Deinitialize()
 	if (ActiveRecorder == this)
 	{
 		SimCopterReplay::SetEventSink(nullptr);
+		SimCopterReplay::SetEffectSink(nullptr);
 		SimCopterReplay::GRecordingEvents = false;
 		SimCopterReplay::GRecordingOpcodeEvents = false;
 		ActiveRecorder = nullptr;
@@ -356,6 +358,7 @@ void USimCopterReplaySubsystem::StartRecording()
 	// flipping the CVar mid-take cannot produce a clip that is half one thing and half another.
 	ActiveRecorder = this;
 	SimCopterReplay::SetEventSink(&USimCopterReplaySubsystem::ReplayEventSink);
+	SimCopterReplay::SetEffectSink(&USimCopterReplaySubsystem::ReplayEffectSink);
 	SimCopterReplay::GRecordingEvents = true;
 	SimCopterReplay::GRecordingOpcodeEvents = CVarReplayRecordOpcodes.GetValueOnGameThread() != 0;
 
@@ -381,6 +384,7 @@ void USimCopterReplaySubsystem::FinishRecording(const bool bEnterReview)
 	SimCopterReplay::GRecordingEvents = false;
 	SimCopterReplay::GRecordingOpcodeEvents = false;
 	SimCopterReplay::SetEventSink(nullptr);
+	SimCopterReplay::SetEffectSink(nullptr);
 	ActiveRecorder = nullptr;
 
 	CloseOpenTracks();
@@ -424,6 +428,7 @@ void USimCopterReplaySubsystem::ResetClip()
 		SimCopterReplay::GRecordingEvents = false;
 		SimCopterReplay::GRecordingOpcodeEvents = false;
 		SimCopterReplay::SetEventSink(nullptr);
+		SimCopterReplay::SetEffectSink(nullptr);
 		ActiveRecorder = nullptr;
 	}
 	if (State == ESimCopterReplayState::Reviewing)
@@ -674,6 +679,163 @@ void USimCopterReplaySubsystem::HandleEvent(const SimCopterReplay::FRecordedEven
 	}
 }
 
+void USimCopterReplaySubsystem::ReplayEffectSink(
+	const FString& ChannelName,
+	const SimCopterReplay::FReplayEffectSpawn& Spawn)
+{
+	if (ActiveRecorder != nullptr)
+	{
+		ActiveRecorder->HandleEffectSpawn(ChannelName, Spawn);
+	}
+}
+
+void USimCopterReplaySubsystem::HandleEffectSpawn(
+	const FString& ChannelName,
+	const SimCopterReplay::FReplayEffectSpawn& Spawn)
+{
+	if (State != ESimCopterReplayState::Recording)
+	{
+		return;
+	}
+
+	int32 ChannelIndex = Clip.EffectChannels.IndexOfByKey(ChannelName);
+	if (ChannelIndex == INDEX_NONE)
+	{
+		// A handful of pools exist in a city, so the linear search costs nothing and the id stays a
+		// single byte in the record.
+		if (Clip.EffectChannels.Num() >= MAX_uint8)
+		{
+			return;
+		}
+		ChannelIndex = Clip.EffectChannels.Add(ChannelName);
+	}
+
+	SimCopterReplay::FReplayEffectSpawn& Recorded = Clip.EffectSpawns.AddDefaulted_GetRef();
+	Recorded = Spawn;
+	Recorded.FrameIndex = FMath::Max(RecordFrameIndex - 1, 0);
+	Recorded.ChannelId = static_cast<uint8>(ChannelIndex);
+}
+
+void USimCopterReplaySubsystem::RebuildEffectChannelMap()
+{
+	EffectChannelComponents.Reset();
+	UWorld* World = GetWorld();
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	for (TObjectIterator<USimCopterParticleFXComponent> It; It; ++It)
+	{
+		USimCopterParticleFXComponent* Component = *It;
+		if (Component == nullptr || Component->GetWorld() != World)
+		{
+			continue;
+		}
+		EffectChannelComponents.Add(Component->GetReplayChannelName(), Component);
+	}
+}
+
+void USimCopterReplaySubsystem::FireEffectSpawnsForPlayhead(
+	const float PreviousFrame,
+	const float CurrentFrame)
+{
+	if (Clip.EffectSpawns.Num() == 0)
+	{
+		return;
+	}
+
+	// Same rule as the sounds: forward and continuous only. Scrubbing across two seconds would
+	// dump every effect in that span into one frame and instantly exhaust the pools.
+	const float Advance = CurrentFrame - PreviousFrame;
+	const float MaxContinuousAdvanceFrames = 1.0f / (Clip.FrameIntervalSeconds * 4.0f);
+	if (Advance <= 0.0f || Advance > MaxContinuousAdvanceFrames)
+	{
+		return;
+	}
+
+	for (const SimCopterReplay::FReplayEffectSpawn& Spawn : Clip.EffectSpawns)
+	{
+		const float SpawnFrame = static_cast<float>(Spawn.FrameIndex);
+		if (SpawnFrame <= PreviousFrame || SpawnFrame > CurrentFrame)
+		{
+			continue;
+		}
+		if (!Clip.EffectChannels.IsValidIndex(Spawn.ChannelId))
+		{
+			continue;
+		}
+
+		const TWeakObjectPtr<USimCopterParticleFXComponent>* Found =
+			EffectChannelComponents.Find(Clip.EffectChannels[Spawn.ChannelId]);
+		USimCopterParticleFXComponent* Effects = Found != nullptr ? Found->Get() : nullptr;
+		if (Effects == nullptr)
+		{
+			continue;
+		}
+
+		const FVector Location(Spawn.LocationCm);
+		const FVector Velocity(Spawn.VelocityCmPerSec);
+		switch (Spawn.Kind)
+		{
+		case SimCopterReplay::EReplayEffectSpawn::Effect:
+			Effects->SpawnEffect(
+				static_cast<ESimCopterEffectType>(Spawn.TypeValue),
+				Location,
+				Velocity,
+				Spawn.SizeCm,
+				Spawn.CellX,
+				Spawn.CellY);
+			break;
+
+		case SimCopterReplay::EReplayEffectSpawn::TilePuff:
+			Effects->SpawnTilePuff(
+				Location,
+				static_cast<uint8>(Spawn.TypeValue),
+				Spawn.CellX,
+				Spawn.CellY);
+			break;
+
+		case SimCopterReplay::EReplayEffectSpawn::SplashColumn:
+			Effects->SpawnSplashColumn(
+				Location,
+				Spawn.TypeValue,
+				Spawn.PaletteIndex,
+				Spawn.CellX,
+				Spawn.CellY,
+				Spawn.GetBoolArgument());
+			break;
+
+		case SimCopterReplay::EReplayEffectSpawn::HardLanding:
+			Effects->SpawnHardLanding(Location, Spawn.GetBoolArgument(), Spawn.CellX, Spawn.CellY);
+			break;
+
+		case SimCopterReplay::EReplayEffectSpawn::Particle:
+			Effects->SpawnParticle(
+				Location,
+				Velocity,
+				Spawn.SizeCm,
+				Spawn.Color,
+				Spawn.LifeSeconds,
+				Spawn.GravityCmPerSec2);
+			break;
+
+		case SimCopterReplay::EReplayEffectSpawn::Ring:
+			// A ring stores its speed and rise in the velocity slot; it has no single direction.
+			Effects->SpawnRing(
+				Location,
+				Spawn.TypeValue,
+				Velocity.X,
+				Velocity.Y,
+				Spawn.SizeCm,
+				Spawn.Color,
+				Spawn.LifeSeconds,
+				Spawn.GravityCmPerSec2);
+			break;
+		}
+	}
+}
+
 void USimCopterReplaySubsystem::AddBookmark(const FString& Text)
 {
 	if (!HasClip() && State != ESimCopterReplayState::Recording)
@@ -754,6 +916,8 @@ void USimCopterReplaySubsystem::EnterReview()
 		Audio->SilenceForReplayReview();
 	}
 	LastSoundFrame = 0.0f;
+	LastEffectFrame = 0.0f;
+	RebuildEffectChannelMap();
 
 	SuspendLiveWorld();
 	BuildPuppets();
@@ -918,6 +1082,8 @@ void USimCopterReplaySubsystem::ApplyPlayhead()
 	const float Frame = PlayheadSeconds / Clip.FrameIntervalSeconds;
 	FireSoundEventsForPlayhead(LastSoundFrame, Frame);
 	LastSoundFrame = Frame;
+	FireEffectSpawnsForPlayhead(LastEffectFrame, Frame);
+	LastEffectFrame = Frame;
 
 	for (int32 TrackIndex = 0; TrackIndex < Clip.Tracks.Num(); ++TrackIndex)
 	{

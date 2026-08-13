@@ -239,6 +239,26 @@ bool FSimCopterReplayClipSerializationTest::RunTest(const FString& Parameters)
 	Sound.PayloadB = 1;      // play flags
 	Sound.WorldLocationCm = FVector3f(400.0f, 800.0f, 120.0f);
 
+	// Particles are spawned by gameplay, and gameplay is frozen during a review - so the creator
+	// calls themselves are recorded and re-issued. Losing this track is the difference between a
+	// replay with fire, water and rotor wash in it and a replay of a city where nothing happens.
+	Written.EffectChannels.Add(TEXT("SimCopterHelicopterPawn.WaterFX"));
+	FReplayEffectSpawn& Spawn = Written.EffectSpawns.AddDefaulted_GetRef();
+	Spawn.FrameIndex = 7;
+	Spawn.Kind = EReplayEffectSpawn::SplashColumn;
+	Spawn.ChannelId = 0;
+	Spawn.TypeValue = 4;
+	Spawn.CellX = 12;
+	Spawn.CellY = 34;
+	Spawn.PaletteIndex = 0x0c;
+	Spawn.Flags = FReplayEffectSpawn::FlagBoolArgument;
+	Spawn.LocationCm = FVector3f(10.0f, 20.0f, 30.0f);
+	Spawn.VelocityCmPerSec = FVector3f(1.0f, 2.0f, 3.0f);
+	Spawn.SizeCm = 40.0f;
+	Spawn.LifeSeconds = 1.5f;
+	Spawn.GravityCmPerSec2 = -980.0f;
+	Spawn.Color = FLinearColor(0.25f, 0.5f, 0.75f, 1.0f);
+
 	TArray<uint8> Bytes;
 	{
 		FMemoryWriter Writer(Bytes);
@@ -262,6 +282,24 @@ bool FSimCopterReplayClipSerializationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Mnemonic list survives"), Read.ClipMnemonics.Num(), 2);
 	TestEqual(TEXT("Track count survives"), Read.Tracks.Num(), 1);
 	TestEqual(TEXT("Event count survives"), Read.Events.Num(), 2);
+	TestEqual(TEXT("Effect channel list survives"), Read.EffectChannels.Num(), 1);
+	TestEqual(TEXT("Effect spawn count survives"), Read.EffectSpawns.Num(), 1);
+
+	if (Read.EffectSpawns.Num() == 1)
+	{
+		const FReplayEffectSpawn& ReadSpawn = Read.EffectSpawns[0];
+		TestEqual(TEXT("Spawn kind survives"), static_cast<int32>(ReadSpawn.Kind), static_cast<int32>(EReplayEffectSpawn::SplashColumn));
+		TestEqual(TEXT("Spawn frame survives"), ReadSpawn.FrameIndex, 7);
+		TestEqual(TEXT("Spawn channel survives"), static_cast<int32>(ReadSpawn.ChannelId), 0);
+		TestEqual(TEXT("Spawn type value survives"), ReadSpawn.TypeValue, 4);
+		TestEqual(TEXT("Spawn cell survives"), ReadSpawn.CellY, 34);
+		TestEqual(TEXT("Spawn palette survives"), static_cast<int32>(ReadSpawn.PaletteIndex), 0x0c);
+		TestTrue(TEXT("Spawn bool argument survives"), ReadSpawn.GetBoolArgument());
+		TestEqual(TEXT("Spawn position survives"), ReadSpawn.LocationCm.Z, 30.0f);
+		TestEqual(TEXT("Spawn size survives"), ReadSpawn.SizeCm, 40.0f);
+		TestEqual(TEXT("Spawn gravity survives"), ReadSpawn.GravityCmPerSec2, -980.0f);
+		TestEqual(TEXT("Spawn colour survives"), ReadSpawn.Color.G, 0.5f);
+	}
 
 	if (Read.Tracks.Num() == 1)
 	{

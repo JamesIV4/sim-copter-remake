@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Replay/SimCopterReplayTypes.h"
 #include "Components/SceneComponent.h"
 #include "SimCopterParticleFX.generated.h"
 
@@ -111,6 +112,14 @@ public:
 	void SpawnRing(const FVector& World, int32 Count, float SpeedCmPerSec, float InitialRiseCmPerSec,
 		float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2 = 0.0f);
 
+	/**
+	 * Identifies this pool in a replay clip: several particle components exist in a city (the
+	 * helicopter's water and rotor wash, the mission layer's fire and smoke, the ambient vehicles'
+	 * debris) and a recorded effect has to be re-issued on the one that made it. Owner class plus
+	 * component name, which is stable for the level's lifetime.
+	 */
+	const FString& GetReplayChannelName() const;
+
 	bool HasActiveParticles() const;
 	int32 GetActiveCount(ESimCopterEffectPool Pool) const;
 	static int32 GetPoolCapacity(ESimCopterEffectPool Pool);
@@ -187,6 +196,26 @@ private:
 
 	FVector GetCameraLocation() const;
 	FIntPoint GetCellForWorld(const FVector& World) const;
+	/**
+	 * Records one creator call into the clip being recorded, if any. Called from each public
+	 * spawn entry point rather than from the shared internals: playback re-issues the same public
+	 * call and lets the existing code do the rest, so nothing about a slot's layout has to be
+	 * reproduced or kept in step.
+	 */
+	void RecordSpawnForReplay(SimCopterReplay::FReplayEffectSpawn& Spawn) const;
+	bool IsOutermostSpawn() const { return ReplaySpawnDepth == 1; }
+
+	/** Cached because it is only used while recording, and it never changes. */
+	mutable FString ReplayChannelName;
+
+	/**
+	 * Nesting depth of the public creators. Only the OUTERMOST call is recorded: `SpawnEffect`
+	 * makes its own tile puff, `SpawnHardLanding` makes a puff, five debris and a column, and
+	 * `SpawnRing` makes N particles - so recording the inner calls too would have playback issue
+	 * both the outer call and everything it already produces, doubling every effect.
+	 */
+	int32 ReplaySpawnDepth = 0;
+
 	bool Allocate(ESimCopterEffectPool Pool, FSimCopterEffectSlot*& OutSlot);
 	void ConfigureEffect(FSimCopterEffectSlot& Slot, ESimCopterEffectType Type, const FVector& World,
 		const FVector& VelocityCmPerSec, float SizeCm, const FIntPoint& Cell);

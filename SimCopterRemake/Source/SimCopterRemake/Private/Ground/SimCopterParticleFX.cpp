@@ -517,13 +517,67 @@ void USimCopterParticleFXComponent::ConfigureEffect(FSimCopterEffectSlot& Slot, 
 	}
 }
 
+namespace
+{
+/** Counts public-creator nesting so only the outermost call is recorded into a replay clip. */
+struct FSimCopterSpawnDepthScope
+{
+	explicit FSimCopterSpawnDepthScope(int32& InDepth) : Depth(InDepth) { ++Depth; }
+	~FSimCopterSpawnDepthScope() { --Depth; }
+	int32& Depth;
+};
+}
+
+const FString& USimCopterParticleFXComponent::GetReplayChannelName() const
+{
+	if (ReplayChannelName.IsEmpty())
+	{
+		// Owner class plus component name. Both are fixed for the level's lifetime, and the pair
+		// separates the helicopter's water pool from the mission layer's fire pool even though a
+		// component name on its own might not.
+		const AActor* Owner = GetOwner();
+		ReplayChannelName = FString::Printf(
+			TEXT("%s.%s"),
+			Owner != nullptr ? *Owner->GetClass()->GetName() : TEXT("None"),
+			*GetFName().ToString());
+	}
+	return ReplayChannelName;
+}
+
+void USimCopterParticleFXComponent::RecordSpawnForReplay(
+	SimCopterReplay::FReplayEffectSpawn& Spawn) const
+{
+	if (!SimCopterReplay::IsRecordingEvents())
+	{
+		return;
+	}
+	SimCopterReplay::RecordEffectSpawn(GetReplayChannelName(), Spawn);
+}
+
 bool USimCopterParticleFXComponent::SpawnEffect(ESimCopterEffectType Type, const FVector& World,
 	const FVector& VelocityCmPerSec, float SizeCm, int32 CellX, int32 CellY)
 {
+	const FSimCopterSpawnDepthScope DepthScope(ReplaySpawnDepth);
+
 	FSimCopterEffectSlot* Slot = nullptr;
 	if (!Allocate(PoolForType(Type), Slot))
 	{
 		return false;
+	}
+
+	// Recorded after the allocation succeeds, so a clip only carries the effects that actually
+	// existed - a pool that was full produced nothing to replay.
+	if (IsOutermostSpawn())
+	{
+		SimCopterReplay::FReplayEffectSpawn Spawn;
+		Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::Effect;
+		Spawn.TypeValue = static_cast<int32>(Type);
+		Spawn.LocationCm = FVector3f(World);
+		Spawn.VelocityCmPerSec = FVector3f(VelocityCmPerSec);
+		Spawn.SizeCm = SizeCm;
+		Spawn.CellX = CellX;
+		Spawn.CellY = CellY;
+		RecordSpawnForReplay(Spawn);
 	}
 	const FIntPoint Cell = CellX == INDEX_NONE || CellY == INDEX_NONE ? GetCellForWorld(World) : FIntPoint(CellX, CellY);
 	ConfigureEffect(*Slot, Type, World, VelocityCmPerSec, SizeCm, Cell);
@@ -542,11 +596,25 @@ bool USimCopterParticleFXComponent::SpawnEffect(ESimCopterEffectType Type, const
 
 bool USimCopterParticleFXComponent::SpawnTilePuff(const FVector& World, uint8 EffectClass, int32 CellX, int32 CellY)
 {
+	const FSimCopterSpawnDepthScope DepthScope(ReplaySpawnDepth);
+
 	FSimCopterEffectSlot* Slot = nullptr;
 	if (!Allocate(ESimCopterEffectPool::TilePuffs100, Slot))
 	{
 		return false;
 	}
+
+	if (IsOutermostSpawn())
+	{
+		SimCopterReplay::FReplayEffectSpawn Spawn;
+		Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::TilePuff;
+		Spawn.TypeValue = static_cast<int32>(EffectClass);
+		Spawn.LocationCm = FVector3f(World);
+		Spawn.CellX = CellX;
+		Spawn.CellY = CellY;
+		RecordSpawnForReplay(Spawn);
+	}
+
 	Slot->Type = ESimCopterEffectType::Smoke;
 	Slot->Position = World;
 	Slot->Cell = CellX == INDEX_NONE || CellY == INDEX_NONE ? GetCellForWorld(World) : FIntPoint(CellX, CellY);
@@ -565,11 +633,26 @@ bool USimCopterParticleFXComponent::SpawnTilePuff(const FVector& World, uint8 Ef
 bool USimCopterParticleFXComponent::SpawnSplashColumn(const FVector& World, int32 ScaleExponent,
 	uint8, int32 CellX, int32 CellY, bool bSubmergeOrigin)
 {
+	const FSimCopterSpawnDepthScope DepthScope(ReplaySpawnDepth);
+
 	FSimCopterEffectSlot* Slot = nullptr;
 	if (!Allocate(ESimCopterEffectPool::SplashColumns20, Slot))
 	{
 		return false;
 	}
+
+	if (IsOutermostSpawn())
+	{
+		SimCopterReplay::FReplayEffectSpawn Spawn;
+		Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::SplashColumn;
+		Spawn.TypeValue = ScaleExponent;
+		Spawn.LocationCm = FVector3f(World);
+		Spawn.CellX = CellX;
+		Spawn.CellY = CellY;
+		Spawn.Flags = bSubmergeOrigin ? SimCopterReplay::FReplayEffectSpawn::FlagBoolArgument : 0;
+		RecordSpawnForReplay(Spawn);
+	}
+
 	Slot->Type = ESimCopterEffectType::SplashSubParticle;
 	Slot->Position = bSubmergeOrigin
 		? World - FVector::UpVector * (32.0f * SimCopterEffectFX::OriginalUnitToCm)
@@ -584,8 +667,24 @@ bool USimCopterParticleFXComponent::SpawnSplashColumn(const FVector& World, int3
 	return true;
 }
 
-void USimCopterParticleFXComponent::SpawnHardLanding(const FVector& World, bool, int32 CellX, int32 CellY)
+void USimCopterParticleFXComponent::SpawnHardLanding(const FVector& World, bool bWaterSurface, int32 CellX, int32 CellY)
 {
+	const FSimCopterSpawnDepthScope DepthScope(ReplaySpawnDepth);
+
+	// The debris directions below are random, so playback re-rolls them rather than reproducing
+	// them exactly - five chunks of wreckage scattering differently is not something a viewer can
+	// tell from the take, and recording the outer call keeps the clip a fraction of the size.
+	if (IsOutermostSpawn())
+	{
+		SimCopterReplay::FReplayEffectSpawn Spawn;
+		Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::HardLanding;
+		Spawn.LocationCm = FVector3f(World);
+		Spawn.CellX = CellX;
+		Spawn.CellY = CellY;
+		Spawn.Flags = bWaterSurface ? SimCopterReplay::FReplayEffectSpawn::FlagBoolArgument : 0;
+		RecordSpawnForReplay(Spawn);
+	}
+
 	SpawnTilePuff(World, 1, CellX, CellY);
 	for (int32 Index = 0; Index < 5; ++Index)
 	{
@@ -601,6 +700,24 @@ void USimCopterParticleFXComponent::SpawnHardLanding(const FVector& World, bool,
 void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FVector& VelocityCmPerSec,
 	float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
 {
+	const FSimCopterSpawnDepthScope DepthScope(ReplaySpawnDepth);
+
+	// Recorded as its own kind rather than leaning on the inner SpawnEffect, because everything
+	// that makes this particle what it is - life, size, gravity, colour - is applied to the slot
+	// AFTER that call returns.
+	if (IsOutermostSpawn())
+	{
+		SimCopterReplay::FReplayEffectSpawn Spawn;
+		Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::Particle;
+		Spawn.LocationCm = FVector3f(World);
+		Spawn.VelocityCmPerSec = FVector3f(VelocityCmPerSec);
+		Spawn.SizeCm = SizeCm;
+		Spawn.LifeSeconds = LifeSeconds;
+		Spawn.GravityCmPerSec2 = GravityCmPerSec2;
+		Spawn.Color = Color;
+		RecordSpawnForReplay(Spawn);
+	}
+
 	if (!SpawnEffect(ESimCopterEffectType::RotorWash, World, VelocityCmPerSec))
 	{
 		return;
@@ -623,6 +740,24 @@ void USimCopterParticleFXComponent::SpawnParticle(const FVector& World, const FV
 void USimCopterParticleFXComponent::SpawnRing(const FVector& World, int32 Count, float SpeedCmPerSec,
 	float InitialRiseCmPerSec, float SizeCm, const FLinearColor& Color, float LifeSeconds, float GravityCmPerSec2)
 {
+	const FSimCopterSpawnDepthScope DepthScope(ReplaySpawnDepth);
+
+	if (IsOutermostSpawn())
+	{
+		SimCopterReplay::FReplayEffectSpawn Spawn;
+		Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::Ring;
+		Spawn.TypeValue = Count;
+		Spawn.LocationCm = FVector3f(World);
+		// A ring has no single velocity; it has a speed and a rise, and its members are laid out
+		// around the circle deterministically from those.
+		Spawn.VelocityCmPerSec = FVector3f(SpeedCmPerSec, InitialRiseCmPerSec, 0.0f);
+		Spawn.SizeCm = SizeCm;
+		Spawn.LifeSeconds = LifeSeconds;
+		Spawn.GravityCmPerSec2 = GravityCmPerSec2;
+		Spawn.Color = Color;
+		RecordSpawnForReplay(Spawn);
+	}
+
 	for (int32 Index = 0; Index < FMath::Clamp(Count, 1, 32); ++Index)
 	{
 		const float Angle = 2.0f * PI * static_cast<float>(Index) / static_cast<float>(Count);
