@@ -24,12 +24,25 @@ constexpr bool bMarkerRenderBackfaces = true;
 // enough to stay legible in shadow and after dark, not enough to read as a light source. A
 // FRACTION of what an effect card emits rather than a number of nits, because the sun here is
 // physically scaled and any constant is wrong at one end of the day or the other.
-static float GSimCopterMarkerEmissiveFraction = 0.12f;
+static float GSimCopterMarkerEmissiveFraction = 0.35f;
 static FAutoConsoleVariableRef CVarSimCopterMarkerEmissive(
 	TEXT("SimCopter.Dispatch.MarkerEmissive"),
 	GSimCopterMarkerEmissiveFraction,
 	TEXT("Dispatch pylon emissive, as a fraction of an unlit effect card's (fire, spray) under the ")
-	TEXT("same light. 0 turns it off and leaves the pylons purely lit. Default 0.12."),
+	TEXT("same light. 0 turns it off and leaves the pylons purely lit. Default 0.35 - a pylon that ")
+	TEXT("reads as a beacon has to be comparable to the ground around it, and anything much under ")
+	TEXT("a quarter is invisible in daylight by construction."),
+	ECVF_Default);
+
+// Diagnostic, per frame, off by default: "0.4 nits at noon" and "the parameter is never written"
+// look exactly the same on screen.
+static int32 GSimCopterMarkerEmissiveLog = 0;
+static FAutoConsoleVariableRef CVarSimCopterMarkerEmissiveLog(
+	TEXT("SimCopter.Dispatch.MarkerLog"),
+	GSimCopterMarkerEmissiveLog,
+	TEXT("Log every dispatch pylon's emissive write to LogSimCopterDispatchMarker each frame: the ")
+	TEXT("nits, the effect brightness behind them, whether the material parameter exists at all, ")
+	TEXT("and whether the pylon is visible."),
 	ECVF_Default);
 }
 
@@ -177,6 +190,72 @@ float USimCopterDispatchMarkerComponent::GetMarkerEmissiveFraction()
 	return FMath::Max(GSimCopterMarkerEmissiveFraction, 0.0f);
 }
 
+void USimCopterDispatchMarkerComponent::ApplyMarkerEmissive()
+{
+	if (MarkerMaterial == nullptr)
+	{
+		if (!bLoggedEmissiveState)
+		{
+			bLoggedEmissiveState = true;
+			UE_LOG(LogSimCopterDispatchMarker, Warning,
+				TEXT("Pylon has no material instance, so it can carry no emissive. Parent material %s."),
+				VertexColorMaterial != nullptr ? TEXT("loaded") : TEXT("MISSING"));
+		}
+		return;
+	}
+
+	const float EffectNits = USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(GetWorld());
+	const float Nits = EffectNits * GetMarkerEmissiveFraction();
+	const FName ParameterName = USimCopterEffectExposureSubsystem::GetEmissiveNitsParameterName();
+	MarkerMaterial->SetScalarParameterValue(ParameterName, Nits);
+
+	// `SetScalarParameterValue` on a name the parent does not have is silently ignored - it is the
+	// single most common way a change like this does nothing at all (see
+	// Docs/memory/simcopter-vehicle-material.md). Read it straight back: if the parent is missing
+	// the parameter, GetScalarParameterValue answers false and we say so once, loudly, instead of
+	// leaving a dead slider.
+	float Readback = 0.0f;
+	const bool bParameterExists = MarkerMaterial->GetScalarParameterValue(ParameterName, Readback);
+	if (!bLoggedEmissiveState)
+	{
+		bLoggedEmissiveState = true;
+		if (!bParameterExists)
+		{
+			UE_LOG(LogSimCopterDispatchMarker, Warning,
+				TEXT("Pylon material '%s' has no '%s' parameter, so the emissive write is being ")
+				TEXT("dropped. Re-run Tools/Unreal/CreateSimCopterMaterials.py with the editor closed."),
+				*GetNameSafe(MarkerMaterial->Parent),
+				*ParameterName.ToString());
+		}
+		else
+		{
+			UE_LOG(LogSimCopterDispatchMarker, Log,
+				TEXT("Pylon emissive live on '%s': %s = %.1f nits (%.0f effect nits x %.3f). ")
+				TEXT("Tune with SimCopter.Dispatch.MarkerEmissive."),
+				*GetNameSafe(MarkerMaterial->Parent),
+				*ParameterName.ToString(),
+				Readback,
+				EffectNits,
+				GetMarkerEmissiveFraction());
+		}
+	}
+
+	// Every frame, but only while somebody has asked: this is the number to watch when the pylon
+	// looks unlit, because "0.4 nits at noon" and "the parameter is not being written" look
+	// identical on screen.
+	if (GSimCopterMarkerEmissiveLog != 0)
+	{
+		UE_LOG(LogSimCopterDispatchMarker, Log,
+			TEXT("Pylon '%s': EmissiveNits %.1f (effect %.0f x fraction %.3f), parameter %s, visible %d"),
+			*GetName(),
+			Readback,
+			EffectNits,
+			GetMarkerEmissiveFraction(),
+			bParameterExists ? TEXT("present") : TEXT("MISSING"),
+			IsVisible() ? 1 : 0);
+	}
+}
+
 bool USimCopterDispatchMarkerComponent::ShowAt(
 	const SimCopterDispatch::EService Service,
 	const FVector& WorldLocation)
@@ -196,13 +275,7 @@ bool USimCopterDispatchMarkerComponent::ShowAt(
 	// other unlit thing in the project rides on, and it moves with the sun all day. ShowAt is
 	// already the per-tick call (the marker re-anchors on its destination cell every frame), so
 	// there is no new tick to pay for.
-	if (MarkerMaterial != nullptr)
-	{
-		MarkerMaterial->SetScalarParameterValue(
-			USimCopterEffectExposureSubsystem::GetEmissiveNitsParameterName(),
-			USimCopterEffectExposureSubsystem::GetEffectEmissiveNitsForWorld(GetWorld()) *
-				GetMarkerEmissiveFraction());
-	}
+	ApplyMarkerEmissive();
 
 	if (!bShown)
 	{

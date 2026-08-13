@@ -7,6 +7,14 @@ Working instructions (build, tests, porting rules, style) are in `AGENTS.md` at 
 
 ## Working practice
 
+- **Traces you can switch on in game** (all off/cheap by default): `SimCopter.People.Trace` +
+  `TraceStates` + `TraceOpcodes` follow one person's behaviour program — selections, goto-object
+  steps, what refused them, outcomes, despawns ([the move core note](simcopter-people-move-core-cell-rules.md));
+  `SimCopter.Riot.Log` follows a riot's lifecycle ([crime/riot](simcopter-crime-rooftop-rescue.md));
+  `SimCopter.Dispatch.MarkerLog` follows a dispatch pylon's emissive write
+  ([vehicle material](simcopter-vehicle-material.md)). Reach for one before theorising — the last
+  three times a behaviour bug was guessed at, the trace disagreed.
+
 - [Agent workspace conventions](agent-workspace-conventions.md) — memories and scratch files live IN THE REPO (`Docs/memory/`, `Docs/scratchpad/`), never in an agent's machine-local dirs.
 - [Building and running](build-and-run.md) — always compile with `RebuildUnrealCpp.bat` at the repo root (it pins `-NoLiveCoding`); feed it empty stdin or its trailing `pause` hangs.
 - [SimCopter Ghidra workflow](simcopter-ghidra-workflow.md) — MAIN PATH: ghidra-bridge instant queries over `.ghidra-exports`; re-agent for parity/LLM loops; analyzeHeadless only for scan/bytes/decompileforce. Use `dump-asm` whenever the value you want is a stack-built struct (dialog rects, font sizes) — the decompile aliases those slots, the assembly does not.

@@ -1544,6 +1544,9 @@ protected:
 		const FSimCopterPersonContext& Context,
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const override;
 	virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutTileDistance) override;
+	virtual FString GetPersonTraceName() const override;
+	// This agent's person state, for SimCopterPeopleTrace's per-state filter.
+	int32 GetTracedPersonState() const;
 	virtual bool EvaluateProximityTest(const FSimCopterPersonContext& Context, int32 TestIndex) const override;
 	virtual int32 GetCurrentTileBuildingId() const override;
 	virtual bool IsCurrentTileServiceable() const override;

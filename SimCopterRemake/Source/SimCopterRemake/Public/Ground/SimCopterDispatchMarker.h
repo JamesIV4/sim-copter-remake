@@ -89,6 +89,11 @@ public:
 	static float GetMarkerEmissiveFraction();
 
 private:
+	// Writes EmissiveNits onto the pylon's own instance and reports, once, whether the parent
+	// material actually carries the parameter - a write to a name a material lacks is silently
+	// dropped, and looks exactly like a value that is simply too low.
+	void ApplyMarkerEmissive();
+
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;
 
@@ -102,6 +107,9 @@ private:
 	SimCopterDispatch::EService BuiltService = SimCopterDispatch::EService::Count;
 	bool bBuildFailed = false;
 	bool bShown = false;
+	// One line per pylon, not one per frame, for the "is this parameter even reaching the material"
+	// answer.
+	bool bLoggedEmissiveState = false;
 	float SpinYawDegrees = 0.0f;
 	FString OriginalGameRoot;
 	FString LastLoadError;

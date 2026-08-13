@@ -5,6 +5,8 @@
 #include "Formats/SimCopterPeopleCityRules.h"
 #include "Ground/SimCopterInteraction.h"
 
+#include "Ground/SimCopterPeopleTrace.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterBehaviorVM, Log, All);
 
 namespace
@@ -661,6 +663,7 @@ EBhavStepResult FSimCopterBehaviorVM::Tick(
 		}
 
 		const FBhavRecord& Record = Program->Records[Frame.RecordIndex];
+		const int32 TracedState = Context.GetStateIndex();
 
 		// Token >= 0x100: call that BHAV id as a subprogram (walker link case).
 		if (Record.Token >= 0x100)
@@ -671,13 +674,36 @@ EBhavStepResult FSimCopterBehaviorVM::Tick(
 				Context.ResetToState(Context.GetStateIndex());
 				return EBhavStepResult::Failed;
 			}
+			SIMCOPTER_PEOPLE_TRACE_OP(TracedState,
+				TEXT("%-18s %-11s BHAV %4d rec %2d  CALL %d"),
+				*World.GetPersonTraceName(),
+				SimCopterPeopleTrace::GetPersonStateName(TracedState),
+				Frame.ProgramId,
+				Frame.RecordIndex,
+				int32(Record.Token));
 			FSimCopterPersonContext::FFrame Callee;
 			Callee.ProgramId = Record.Token;
 			Context.Stack.Add(Callee);
 			continue;
 		}
 
+		const int32 TracedProgramId = Frame.ProgramId;
+		const int32 TracedRecordIndex = Frame.RecordIndex;
 		const EOpResult Result = ExecOpcode(Context, Record, World);
+		SIMCOPTER_PEOPLE_TRACE_OP(TracedState,
+			TEXT("%-18s %-11s BHAV %4d rec %2d  op %-3d args %d,%d,%d,%d -> %s"),
+			*World.GetPersonTraceName(),
+			SimCopterPeopleTrace::GetPersonStateName(TracedState),
+			TracedProgramId,
+			TracedRecordIndex,
+			int32(Record.Token),
+			int32(int16(Record.Args[0])),
+			int32(int16(Record.Args[1])),
+			int32(int16(Record.Args[2])),
+			int32(int16(Record.Args[3])),
+			Result == EOpResult::True ? TEXT("TRUE")
+				: (Result == EOpResult::False ? TEXT("false")
+				: (Result == EOpResult::Yield ? TEXT("yield") : TEXT("STOP"))));
 		if (Result == EOpResult::Yield)
 		{
 			return EBhavStepResult::Ran;

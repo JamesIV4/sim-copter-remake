@@ -28,6 +28,7 @@
 #include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterInteraction.h"
 #include "Ground/SimCopterOnFootPawn.h"
+#include "Ground/SimCopterPeopleTrace.h"
 #include "Ground/SimCopterPopulationBody.h"
 #include "Ground/SimCopterPopulationSprite.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
@@ -683,6 +684,14 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 				Missions != nullptr &&
 				Missions->IsMissionEventActive(MissionEventId);
 			const bool bHospitalParamedic = bPersistentHospitalRoofCrew;
+			SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+				TEXT("%-18s END    %s in BHAV %d -> %s"),
+				*GetPersonTraceName(),
+				Result == EBhavStepResult::Stopped ? TEXT("stop opcode") : TEXT("despawn request"),
+				BehaviorContext.Stack.Num() > 0 ? BehaviorContext.Stack.Last().ProgramId : INDEX_NONE,
+				(bUnresolvedMissionPerson || bHospitalParamedic)
+					? TEXT("REFUSED, restarting the state program")
+					: TEXT("despawning"));
 			if (bUnresolvedMissionPerson || bHospitalParamedic)
 			{
 				// A decoded program may time out or reach Disappear, but that cannot be allowed to
@@ -2034,6 +2043,8 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	}
 	if (!bFoundLocation)
 	{
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s SELECT class %-2d -> nothing found"), *GetPersonTraceName(), ObjectClass);
 		Context.ClearSelection();
 		return false;
 	}
@@ -2048,6 +2059,12 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 		!TryGetCurrentTileCoordinate(MyX, MyY) ||
 		!TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(FoundLocation, TheirX, TheirY))
 	{
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s SELECT class %-2d -> found '%s' but one end has no tile (mine %d,%d theirs %d,%d)"),
+			*GetPersonTraceName(),
+			ObjectClass,
+			Found != nullptr ? *Found->GetName() : TEXT("<location>"),
+			MyX, MyY, TheirX, TheirY);
 		Context.ClearSelection();
 		return false;
 	}
@@ -2057,7 +2074,26 @@ bool ASimCopterGroundAgent::SelectObjectOfClass(
 	Context.bSelectionIsHarness = bFoundHarness;
 	Context.bHasSelection = true;
 	OutTileDistance = FMath::Max(FMath::Abs(TheirX - MyX), FMath::Abs(TheirY - MyY));
+	SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+		TEXT("%-18s SELECT class %-2d -> '%s' at %d tiles (%.0f cm), tile %d,%d"),
+		*GetPersonTraceName(),
+		ObjectClass,
+		Found != nullptr ? *Found->GetName() : TEXT("<location>"),
+		OutTileDistance,
+		FVector::Dist2D(GetActorLocation(), FoundLocation),
+		TheirX,
+		TheirY);
 	return true;
+}
+
+FString ASimCopterGroundAgent::GetPersonTraceName() const
+{
+	return GetName();
+}
+
+int32 ASimCopterGroundAgent::GetTracedPersonState() const
+{
+	return int32(int16(BehaviorContext.Attributes[EBhavAttr::State]));
 }
 
 bool ASimCopterGroundAgent::EvaluateProximityTest(const FSimCopterPersonContext& Context, const int32 TestIndex) const
@@ -2220,6 +2256,10 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
 	if (!Context.bHasSelection || TrafficSystem == nullptr)
 	{
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s GOTO   no target (%s)"),
+			*GetPersonTraceName(),
+			Context.bHasSelection ? TEXT("no traffic system") : TEXT("nothing selected"));
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
@@ -2294,10 +2334,26 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	const float MyFeetZ = GetActorLocation().Z - GetCapsuleHalfHeightCm();
 	const bool bHeightGatePassed = FMath::Abs(TargetReferenceZ - MyFeetZ) < HeightGateCm;
 
+	// One line per goto-object step, which is what a stalled walk looks like from outside: the gap
+	// closing (or not), the height gate, and the move result that ended it. GAP is body-to-body, so
+	// contact is <= 0; SILL/FEET are the two ends of the 5-unit vertical window.
+	const float GapCm = GetSelectionContactGapCm(Context, GetActorLocation());
+	SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+		TEXT("%-18s GOTO   '%s' gap %7.1f cm, gate %s (sill %.1f, feet %.1f, window %.1f)"),
+		*GetPersonTraceName(),
+		Context.SelectedObject.IsValid() ? *Context.SelectedObject->GetName() : TEXT("<location>"),
+		GapCm,
+		bHeightGatePassed ? TEXT("ok ") : TEXT("REFUSED"),
+		TargetReferenceZ,
+		MyFeetZ,
+		HeightGateCm);
+
 	// Already touching it - the step that made contact refused to displace us, exactly as
 	// FUN_004c9470 does when it returns 10.
 	if (bHeightGatePassed && IsTouchingSelection(Context, GetActorLocation()))
 	{
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s GOTO   ARRIVED (already touching)"), *GetPersonTraceName());
 		return ESimCopterBehaviorStepResult::Arrived;
 	}
 
@@ -2308,7 +2364,20 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	bBehaviorStepSeekingSelection = false;
 	if (bHeightGatePassed && bBehaviorStepTouchedSelection)
 	{
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s GOTO   ARRIVED (contact on the step)"), *GetPersonTraceName());
 		return ESimCopterBehaviorStepResult::Arrived;
+	}
+	if (bBehaviorStepTouchedSelection && !bHeightGatePassed)
+	{
+		// The one combination that produces a walker standing ON its target being told it has not
+		// arrived. If this line appears, the height gate is the bug, not the walk.
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s GOTO   TOUCHING but the height gate refused it - sill %.1f vs feet %.1f (window %.1f)"),
+			*GetPersonTraceName(),
+			TargetReferenceZ,
+			MyFeetZ,
+			HeightGateCm);
 	}
 
 	// `bVar5 = -(moveResult == 0) & 2` - the walk continues only on a clean step. Anything else
@@ -2321,20 +2390,18 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	// in its path" includes the other person walking to the same car.
 	if (!bStepped)
 	{
-		// `log LogSimCopterGroundAgent Verbose` when a goto-object walk stalls: this names what
-		// refused it and how far off the target still was, which is the difference between a
-		// geometry problem, a tile-rule problem and a queue of people in a doorway.
-		UE_LOG(LogSimCopterGroundAgent, Verbose,
-			TEXT("'%s' (state %d, BHAV %d) goto-object blocked: move result %d, gap %.0f cm, ")
-			TEXT("height gate %s (target sill %.0f, feet %.0f)"),
-			*GetName(),
-			int32(Context.Attributes[EBhavAttr::State]),
-			Context.Stack.Num() > 0 ? Context.Stack.Last().ProgramId : INDEX_NONE,
+		// What refused the step. 1 = something solid in front (a wall, a kerb, a parapet), 2 = a
+		// drop, 3 = a cell this walker may not enter, 5 = another body - and 5 is the one to expect
+		// when a cop and the robber he just arrested are both walking at the same car.
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s GOTO   BLOCKED, move result %d (%s) - the walk ends here and the program ")
+			TEXT("takes its false edge"),
+			*GetPersonTraceName(),
 			LastMoveStepBlockResult,
-			GetSelectionContactGapCm(Context, GetActorLocation()),
-			bHeightGatePassed ? TEXT("passed") : TEXT("REFUSED"),
-			TargetReferenceZ,
-			MyFeetZ);
+			LastMoveStepBlockResult == 1 ? TEXT("something solid ahead")
+				: (LastMoveStepBlockResult == 2 ? TEXT("a drop")
+				: (LastMoveStepBlockResult == 3 ? TEXT("a cell it may not enter")
+				: (LastMoveStepBlockResult == 5 ? TEXT("another person") : TEXT("unknown")))));
 		return ESimCopterBehaviorStepResult::Blocked;
 	}
 	return ESimCopterBehaviorStepResult::Moving;
@@ -3263,7 +3330,16 @@ bool ASimCopterGroundAgent::IsTouchingSelection(
 bool ASimCopterGroundAgent::PushReactionOnSelectedObject(FSimCopterPersonContext& Context, const int32 ProgramId)
 {
 	ASimCopterGroundAgent* Target = Cast<ASimCopterGroundAgent>(Context.SelectedObject.Get());
-	return Target != nullptr && Target->PushBehaviorReaction(ProgramId);
+	const bool bPushed = Target != nullptr && Target->PushBehaviorReaction(ProgramId);
+	// BHAV 1150 rec[6] is the arrest itself: the cop pushes 1060 'Rx: criminal-caught' onto the
+	// criminal. If that is refused, nothing downstream happens at all.
+	SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+		TEXT("%-18s PUSH   BHAV %d onto '%s' -> %s"),
+		*GetPersonTraceName(),
+		ProgramId,
+		Target != nullptr ? *Target->GetName() : TEXT("<not a person>"),
+		bPushed ? TEXT("accepted") : TEXT("REFUSED"));
+	return bPushed;
 }
 
 bool ASimCopterGroundAgent::PushBehaviorReaction(const int32 ProgramId)
@@ -3407,6 +3483,14 @@ void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context,
 	{
 		bMissionResolutionReported = true;
 	}
+
+	SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+		TEXT("%-18s OUTCOME %d -> mission event %d on record %d%s"),
+		*GetPersonTraceName(),
+		OutcomeCode,
+		EventCode,
+		MissionEventId,
+		bMissionResolutionReported ? TEXT(" (resolution reported)") : TEXT(""));
 
 	Missions->PostMissionEvent(EventCode, MissionEventId, 1, false);
 }

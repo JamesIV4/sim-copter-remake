@@ -114,9 +114,39 @@ Two more remake-side faults in the same walk, both now fixed:
 1150 rec[12]) fall into `is the player's helicopter within 10 tiles ? Idle-20 : op 40`. Standing
 still while you hover and vanishing once you leave is shipped behaviour, not a stall — the original
 gets away with it because the car it walks to is the one that dropped the officer off, a tile or two
-away, and 100 ticks at movespeed 15 covers about two tiles. `log LogSimCopterGroundAgent Verbose`
-prints the move result, the remaining gap and the height gate for every blocked goto-object step,
-which is what to read before assuming anything else.
+away, and 100 ticks at movespeed 15 covers about two tiles.
+
+**None of the three fixes above made the pair walk back, so the next step is measurement, not more
+guessing.** `SimCopterPeopleTrace` (below) exists for exactly this.
+
+## Watching a person's program: `SimCopter.People.Trace`
+
+Off by default, free when off, and filtered by person state so one criminal can be followed through
+a busy city:
+
+```
+SimCopter.People.Trace 1          master switch  -> LogSimCopterPeople
+SimCopter.People.TraceStates 10   just the robber (default "8,10,11,12,13"; * for everyone)
+SimCopter.People.TraceOpcodes 1   every VM record with its opcode, args and result
+```
+
+What each line answers, in the order the arrest chain reaches them:
+
+| line | the question it settles |
+|---|---|
+| `SELECT class 11 -> '<car>' at N tiles` | is there a police car at all, and is it inside the opcode's 10-tile radius? A `-> nothing found` here means they never even start walking. |
+| `PUSH BHAV 1060 onto '<person>'` | did the arrest itself land, or was the reaction refused? |
+| `GOTO '<car>' gap … gate ok/REFUSED` | one line per step: the gap closing or not, and the 5-unit vertical window with both its ends. |
+| `GOTO TOUCHING but the height gate refused it` | the walker is standing on its target and being told it has not arrived — if this appears, the gate is the bug. |
+| `GOTO BLOCKED, move result N` | what stopped the step. 5 is another body, which is what a cop and his prisoner walking at the same car look like. |
+| `OUTCOME 9 -> mission event …` | the arrest was reported, and whether it counted as this person's resolution. |
+| `END stop opcode -> despawning / REFUSED` | op 40 ran; did the "unresolved mission person" refusal catch it? |
+
+With `TraceOpcodes 1` the idle loop is unmistakable: `BHAV 1060 rec 7 op 15 -> TRUE` then
+`CALL 1102` repeating forever is the shipped "the player is watching, stand still" arm.
+
+`SimStartMission 0x200` (on the on-foot pawn, or the helicopter debug panel's mission list) puts a
+Robber next to you rather than waiting for the scheduler.
 
 ## Trees are no longer in anybody's way either
 

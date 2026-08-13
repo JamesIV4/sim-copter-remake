@@ -51,6 +51,15 @@ a constant that is invisible by day or a lamp by night.
 The upgrade lives in `upgrade_lit_vertex_color_emissive()` in `CreateSimCopterMaterials.py` and is
 an in-place edit, not a delete-and-recreate: half the project holds this asset as a parent.
 
+**It did not light the pylons on the first attempt, and there are only two ways that can happen**, so
+the component now tells you which: `ApplyMarkerEmissive` reads the parameter straight back with
+`GetScalarParameterValue` and warns ONCE, loudly, when the parent does not carry it — the silent-drop
+trap above, found by the code instead of by eye. `SimCopter.Dispatch.MarkerLog 1` then prints the
+written nits, the effect brightness behind them and the pylon's visibility every frame, which
+separates "the write is going nowhere" from "0.4 nits at noon is invisible". The fraction also moved
+from 0.12 to **0.35**: a beacon has to be comparable to the ground around it, and under a 120,000-lux
+sun anything much below a quarter of white-ground luminance cannot read as lit by construction.
+
 ## Debug panel knobs added at the same time
 
 * **METALLIC** (0..1) — the subsystem's scalar. 0 is the faithful look; the original had no PBR.
