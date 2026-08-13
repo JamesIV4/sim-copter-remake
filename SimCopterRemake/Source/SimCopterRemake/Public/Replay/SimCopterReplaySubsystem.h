@@ -201,7 +201,9 @@ public:
 	 */
 	bool IsReplayModeActive() const
 	{
-		return bPanelOpen || State == ESimCopterReplayState::Reviewing;
+		return bPanelOpen
+			|| State == ESimCopterReplayState::Reviewing
+			|| State == ESimCopterReplayState::Recording;
 	}
 
 	bool IsSmoothCameraEnabled() const { return bSmoothCamera; }
@@ -319,6 +321,9 @@ private:
 	void FreezeWorldForReview();
 	void ThawWorldAfterReview();
 
+	/** The mission markers and message log are hidden by Hide HUD, and always during a review. */
+	void RefreshMissionHudVisibility();
+
 	void BroadcastChanged();
 
 	static FString GetClipDirectory(const FString& LevelId);
@@ -370,6 +375,12 @@ private:
 		SimCopterReplay::FReplayActorState State;
 		bool bWasHidden = false;
 		bool bWasTickEnabled = true;
+		/**
+		 * True for the mission/traffic/ambient system actors, which are suspended so they cannot
+		 * raise a callout over the clip but have no recorded state to put back - restoring one as
+		 * if it were an actor would move the whole system to the origin.
+		 */
+		bool bIsWorldSystem = false;
 	};
 	TArray<FSuspendedActor> SuspendedActors;
 

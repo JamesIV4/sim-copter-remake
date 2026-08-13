@@ -10,6 +10,7 @@
 #include "Formats/SimCopterOriginalGamePaths.h"
 #include "Game/SimCopterPlayerController.h"
 #include "Game/SimCopterSessionSubsystem.h"
+#include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "HAL/FileManager.h"
@@ -238,6 +239,10 @@ void USimCopterReplaySubsystem::OpenPanel()
 	{
 		return;
 	}
+	// Whether replay mode was ALREADY running - a take in progress, or a review being watched with
+	// the panel down. Tab is show/hide for the controls, so re-opening the panel over one of those
+	// must not disturb anything, least of all the camera the operator has just framed.
+	const bool bResumingExistingSession = IsReplayModeActive();
 	bPanelOpen = true;
 
 	if (LevelId.IsEmpty())
@@ -245,13 +250,16 @@ void USimCopterReplaySubsystem::OpenPanel()
 		LevelId = ResolveLevelId(this, LevelDisplayName);
 	}
 
-	// The panel opens over live play - you record by playing - so it does not pause and it does not
-	// take the camera. Both only happen when a clip is actually being reviewed.
-	if (const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter())
+	if (!bResumingExistingSession)
 	{
-		CameraView = static_cast<ESimCopterReplayCameraView>(Helicopter->GetCameraMode());
+		// Fresh entry into replay mode: start on whatever view the player was already flying, and
+		// remember it so leaving hands the same one back.
+		if (const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter())
+		{
+			CameraView = static_cast<ESimCopterReplayCameraView>(Helicopter->GetCameraMode());
+		}
+		CameraViewBeforePanel = CameraView;
 	}
-	CameraViewBeforePanel = CameraView;
 	EnsureFreeCamera();
 
 	UE_LOG(LogSimCopterReplay, Log, TEXT("Panel opened. %s"), *DescribeState());
@@ -271,12 +279,16 @@ void USimCopterReplaySubsystem::ClosePanel()
 	// the CLOSE button's job, and only CLOSE hands the world back.
 	bPanelOpen = false;
 
-	if (State == ESimCopterReplayState::Reviewing)
+	if (IsReplayModeActive())
 	{
-		// Still reviewing, so the camera and the free camera both stay exactly as they are. An
-		// on-screen indicator takes over from the panel so the player can see the clip is still
-		// running and that Tab brings the controls back.
-		UE_LOG(LogSimCopterReplay, Log, TEXT("Panel hidden, review continues. %s"), *DescribeState());
+		// Still recording or still reviewing, so the camera - including a free camera the operator
+		// has just framed a shot with - stays exactly as it is. An on-screen indicator takes over
+		// from the panel so it is clear the clip is still running and Tab brings the controls back.
+		UE_LOG(
+			LogSimCopterReplay,
+			Log,
+			TEXT("Panel hidden, replay mode continues. %s"),
+			*DescribeState());
 		BroadcastChanged();
 		return;
 	}
@@ -473,6 +485,24 @@ void USimCopterReplaySubsystem::CaptureFrame()
 		if (!TouchedTracks.Contains(TrackIt.Value()))
 		{
 			TrackIt.RemoveCurrent();
+		}
+	}
+
+	// Where every positional loop is THIS frame. A loop is started once and then re-aimed every
+	// tick by whoever owns it, so recording only the start would pin the rotor to wherever the
+	// aircraft was when the take began - which is exactly what made the helicopter sound like it
+	// was next to the listener for the whole replay.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		TArray<TPair<int32, FVector>> ActiveSounds;
+		Audio->GetActivePositionalSounds(ActiveSounds);
+		for (const TPair<int32, FVector>& Sound : ActiveSounds)
+		{
+			SimCopterReplay::FReplayEvent& Move = Clip.Events.AddDefaulted_GetRef();
+			Move.FrameIndex = FrameIndex;
+			Move.Kind = SimCopterReplay::EReplayEventKind::SoundMove;
+			Move.PayloadA = Sound.Key;
+			Move.WorldLocationCm = FVector3f(Sound.Value);
 		}
 	}
 
@@ -685,6 +715,12 @@ void USimCopterReplaySubsystem::GetEventsAroundPlayhead(
 	// happened at the top.
 	for (int32 Index = Clip.Events.Num() - 1; Index >= 0 && OutEvents.Num() < MaxEvents; --Index)
 	{
+		// Sounds are machinery, not decisions - and a positional loop records a move every single
+		// frame, which would bury the list this exists to show.
+		if (Clip.Events[Index].IsSound())
+		{
+			continue;
+		}
 		if (Clip.Events[Index].FrameIndex <= PlayheadFrame)
 		{
 			OutEvents.Add(&Clip.Events[Index]);
@@ -728,6 +764,7 @@ void USimCopterReplaySubsystem::EnterReview()
 	State = ESimCopterReplayState::Reviewing;
 	PlayheadSeconds = 0.0f;
 	bPlaying = false;
+	RefreshMissionHudVisibility();
 	ApplyPlayhead();
 	ApplyCameraView();
 
@@ -754,6 +791,8 @@ void USimCopterReplaySubsystem::LeaveReview()
 
 	ThawWorldAfterReview();
 	State = ESimCopterReplayState::Idle;
+	// After the state change, so the review's unconditional hide is lifted.
+	RefreshMissionHudVisibility();
 
 	UE_LOG(LogSimCopterReplay, Log, TEXT("Review left. %s"), *DescribeState());
 }
@@ -946,6 +985,17 @@ void USimCopterReplaySubsystem::FireSoundEventsForPlayhead(
 			continue;
 		}
 
+		if (Event.Kind == SimCopterReplay::EReplayEventKind::SoundMove)
+		{
+			// Only re-aims something already playing. A move for a slot the replay has not started
+			// must not start it - that is what keeps a clip from waking sounds it never recorded.
+			if (Audio->IsPlaying(Event.PayloadA))
+			{
+				Audio->SetPosition(Event.PayloadA, FVector(Event.WorldLocationCm));
+			}
+			continue;
+		}
+
 		// A zero location is what RecordSoundEvent stores for a 2D play; anything else was a
 		// positioned effect and has to stay positioned, or the whole city's audio collapses onto
 		// the listener.
@@ -1133,6 +1183,24 @@ void USimCopterReplaySubsystem::SuspendLiveWorld()
 		{
 			continue;
 		}
+
+		// The world-owning systems are not recordable, but they must not run either: the time
+		// dilation already reduces their delta to nothing, and this makes it certain. Without it a
+		// mission callout, a dispatch or a scheduler roll can still land in the middle of a review
+		// and announce itself over the clip.
+		if (Actor->IsA<ASimCopterMissionSystemActor>()
+			|| Actor->IsA<ASimCopterTrafficSystemActor>()
+			|| Actor->IsA<ASimCopterAmbientVehiclesActor>())
+		{
+			FSuspendedActor& SuspendedSystem = SuspendedActors.AddDefaulted_GetRef();
+			SuspendedSystem.Actor = Actor;
+			SuspendedSystem.bWasHidden = Actor->IsHidden();
+			SuspendedSystem.bWasTickEnabled = Actor->IsActorTickEnabled();
+			SuspendedSystem.bIsWorldSystem = true;
+			Actor->SetActorTickEnabled(false);
+			continue;
+		}
+
 		ISimCopterReplayRecordable* Recordable = Cast<ISimCopterReplayRecordable>(Actor);
 		if (Recordable == nullptr)
 		{
@@ -1161,15 +1229,20 @@ void USimCopterReplaySubsystem::RestoreLiveWorld()
 		{
 			continue;
 		}
-		if (ISimCopterReplayRecordable* Recordable = Cast<ISimCopterReplayRecordable>(Actor))
+		// A world system was only tick-suspended; it has no recorded transform, and applying one
+		// would move the whole system actor.
+		if (!Suspended.bIsWorldSystem)
 		{
-			// Puts the helicopter (and anything else playback borrowed) back exactly where the sim
-			// left it, before the pause is released and the flight model starts integrating again
-			// from wherever the actor happens to be.
-			Recordable->ApplyReplayState(Mnemonics, Suspended.State);
-			Recordable->EndReplayPlayback();
+			if (ISimCopterReplayRecordable* Recordable = Cast<ISimCopterReplayRecordable>(Actor))
+			{
+				// Puts the helicopter (and anything else playback borrowed) back exactly where the
+				// sim left it, before the world is thawed and the flight model starts integrating
+				// again from wherever the actor happens to be.
+				Recordable->ApplyReplayState(Mnemonics, Suspended.State);
+				Recordable->EndReplayPlayback();
+			}
+			Actor->SetActorHiddenInGame(Suspended.bWasHidden);
 		}
-		Actor->SetActorHiddenInGame(Suspended.bWasHidden);
 		Actor->SetActorTickEnabled(Suspended.bWasTickEnabled);
 	}
 	SuspendedActors.Reset();
@@ -1379,12 +1452,23 @@ void USimCopterReplaySubsystem::SetHudHidden(const bool bHidden)
 	{
 		Helicopter->SetHudHiddenForReplay(bHudHidden);
 	}
-	if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
-			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
-	{
-		Missions->SetHudHiddenForReplay(bHudHidden);
-	}
+	RefreshMissionHudVisibility();
 	BroadcastChanged();
+}
+
+void USimCopterReplaySubsystem::RefreshMissionHudVisibility()
+{
+	ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
+	if (Missions == nullptr)
+	{
+		return;
+	}
+
+	// Always hidden during a review, whatever Hide HUD says. The mission layer is suspended, so its
+	// markers and its message log are frozen leftovers from the live game - a countdown that is not
+	// counting and a callout for a job that is not happening, sitting over somebody else's replay.
+	Missions->SetHudHiddenForReplay(bHudHidden || State == ESimCopterReplayState::Reviewing);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1406,6 +1490,9 @@ void USimCopterReplaySubsystem::FreezeWorldForReview()
 	}
 
 	TimeDilationBeforeReview = WorldSettings->TimeDilation;
+	// Presentation-only systems (the particle pools, the tracers, the gas) read this and switch to
+	// real time, so the clip's fire, water and rotor wash keep running while the sim does not.
+	SimCopterReplay::GReviewFreezeActive = true;
 	// Not zero: the engine clamps global dilation to MinGlobalTimeDilation, and a value it refuses
 	// would be silently corrected. This is small enough that a ten-minute review advances the sim
 	// by well under a frame.
@@ -1423,6 +1510,7 @@ void USimCopterReplaySubsystem::FreezeWorldForReview()
 
 void USimCopterReplaySubsystem::ThawWorldAfterReview()
 {
+	SimCopterReplay::GReviewFreezeActive = false;
 	if (!bWorldFrozen)
 	{
 		return;

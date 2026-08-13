@@ -5,6 +5,7 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Audio/SimCopterSoundTable.h"
 #include "Camera/PlayerCameraManager.h"
+#include "Replay/SimCopterReplayTypes.h"
 #include "City/SimCity2000CityActor.h"
 #include "CollisionShape.h"
 #include "Engine/OverlapResult.h"
@@ -432,7 +433,10 @@ void USimCopterApachePoolComponent::TickComponent(
 		return;
 	}
 
-	StepAccumulator1616 += FMath::RoundToInt(DeltaTime * 65536.0f);
+	// Presentation time: a replay review freezes the world, and tracers frozen in mid-air are the
+	// most obviously wrong thing in a recorded shot.
+	StepAccumulator1616 +=
+		FMath::RoundToInt(SimCopterReplay::GetPresentationDeltaSeconds(DeltaTime) * 65536.0f);
 	int32 Steps = 0;
 	while (StepAccumulator1616 >= SimulationStep1616 && Steps < MaxStepsPerTick)
 	{

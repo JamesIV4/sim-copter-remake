@@ -691,10 +691,22 @@ void ASimCopterPlayerController::FreeCameraLookPressed()
 {
 	const USimCopterReplaySubsystem* Replay = ResolveReplay();
 	bFreeCameraLookHeld = Replay != nullptr && Replay->IsFreeCameraActive();
+	if (bFreeCameraLookHeld)
+	{
+		// The pointer is a distraction the moment it stops being a pointer: while the button is
+		// held it is steering a camera, not clicking anything, and it would otherwise sit in the
+		// middle of the shot being dragged around.
+		bShowMouseCursor = false;
+	}
 }
 
 void ASimCopterPlayerController::FreeCameraLookReleased()
 {
+	if (bFreeCameraLookHeld)
+	{
+		// Only restored by whoever hid it, and only while the panel still needs a pointer.
+		bShowMouseCursor = IsReplayPanelOpen() || IsSettingsOpen();
+	}
 	bFreeCameraLookHeld = false;
 }
 

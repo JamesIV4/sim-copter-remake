@@ -215,7 +215,7 @@ void SSimCopterReplayPanel::Construct(const FArguments& InArgs)
 				SNew(STextBlock)
 				.Text(LOCTEXT(
 					"PanelHint",
-					"Tab hides these controls — a take keeps recording, a review keeps playing    C camera    H hide HUD    Space play/pause    ← → one frame    M marker\n"
+					"Tab hides these controls — a take keeps recording, a review keeps playing    C camera    H hide HUD    P play/pause    ← → one frame    M marker\n"
 					"Free cam: WASD move, Ctrl/Space down/up, hold right mouse to look, wheel FOV.    CLOSE ends the review and hands the city back."))
 				.Font(PanelFont(9))
 				.ColorAndOpacity(FSlateColor(DimText))
@@ -606,6 +606,12 @@ void SSimCopterReplayPanel::RebuildTimelineMarkers()
 	int32 DecisionCount = 0;
 	for (const SimCopterReplay::FReplayEvent& Event : Clip.Events)
 	{
+		// Sounds never get a tick: a positional loop records a move every frame and would paint the
+		// whole bar solid on its own.
+		if (Event.IsSound())
+		{
+			continue;
+		}
 		const bool bAlwaysShow =
 			Event.Kind == SimCopterReplay::EReplayEventKind::MissionMessage
 			|| Event.Kind == SimCopterReplay::EReplayEventKind::Bookmark;
@@ -619,6 +625,12 @@ void SSimCopterReplayPanel::RebuildTimelineMarkers()
 	int32 DecisionIndex = 0;
 	for (const SimCopterReplay::FReplayEvent& Event : Clip.Events)
 	{
+		// Sounds never get a tick: a positional loop records a move every frame and would paint the
+		// whole bar solid on its own.
+		if (Event.IsSound())
+		{
+			continue;
+		}
 		const bool bAlwaysShow =
 			Event.Kind == SimCopterReplay::EReplayEventKind::MissionMessage
 			|| Event.Kind == SimCopterReplay::EReplayEventKind::Bookmark;

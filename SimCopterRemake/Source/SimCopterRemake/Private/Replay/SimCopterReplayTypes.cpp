@@ -11,6 +11,7 @@ namespace SimCopterReplay
 {
 bool GRecordingEvents = false;
 bool GRecordingOpcodeEvents = false;
+bool GReviewFreezeActive = false;
 
 namespace
 {
@@ -56,6 +57,7 @@ const TCHAR* GetEventKindName(const EReplayEventKind Kind)
 	case EReplayEventKind::Bookmark:       return TEXT("MARK");
 	case EReplayEventKind::SoundStart:     return TEXT("SOUND");
 	case EReplayEventKind::SoundStop:      return TEXT("SND-OFF");
+	case EReplayEventKind::SoundMove:      return TEXT("SND-POS");
 	default:                               return TEXT("EVENT");
 	}
 }
@@ -116,6 +118,33 @@ FScopedEventSource::~FScopedEventSource()
 const AActor* GetCurrentEventSource()
 {
 	return GEventSource;
+}
+
+float GetPresentationDeltaSeconds(const float WorldDeltaSeconds)
+{
+	if (!GReviewFreezeActive)
+	{
+		return WorldDeltaSeconds;
+	}
+
+	// Computed once per frame and shared, so two particle pools ticking in the same frame cannot
+	// disagree about how much time passed - which would show up as one effect running at double
+	// speed relative to another.
+	static uint64 CachedFrame = 0;
+	static double CachedRealTime = 0.0;
+	static float CachedDelta = 0.0f;
+
+	const uint64 ThisFrame = GFrameCounter;
+	if (ThisFrame != CachedFrame)
+	{
+		const double Now = FPlatformTime::Seconds();
+		CachedDelta = CachedRealTime > 0.0
+			? static_cast<float>(FMath::Clamp(Now - CachedRealTime, 0.0, 0.1))
+			: 0.0f;
+		CachedRealTime = Now;
+		CachedFrame = ThisFrame;
+	}
+	return CachedDelta;
 }
 
 // ---------------------------------------------------------------------------------------------
