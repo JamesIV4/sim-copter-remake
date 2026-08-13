@@ -23,6 +23,7 @@ const AActor* GEventSource = nullptr;
  * a delegate so the trace path stays a load and a branch.
  */
 void (*GEventSink)(const FRecordedEvent&) = nullptr;
+void (*GEffectSink)(const FString&, const FReplayEffectSpawn&) = nullptr;
 
 /** Half a millimetre and a twentieth of a degree - below what a close camera can resolve. */
 constexpr float LocationEpsilonCm = 0.05f;
@@ -33,6 +34,19 @@ constexpr float AuxEpsilon = 0.05f;
 void SetEventSink(void (*Sink)(const FRecordedEvent&))
 {
 	GEventSink = Sink;
+}
+
+void SetEffectSink(void (*Sink)(const FString&, const FReplayEffectSpawn&))
+{
+	GEffectSink = Sink;
+}
+
+void RecordEffectSpawn(const FString& ChannelName, const FReplayEffectSpawn& Spawn)
+{
+	if (GEffectSink != nullptr)
+	{
+		GEffectSink(ChannelName, Spawn);
+	}
 }
 
 const TCHAR* GetActorKindName(const EReplayActorKind Kind)
@@ -347,6 +361,7 @@ int64 FReplayClip::GetApproximateMemoryBytes() const
 	{
 		Bytes += static_cast<int64>(Event.Text.GetAllocatedSize());
 	}
+	Bytes += static_cast<int64>(EffectSpawns.GetAllocatedSize());
 	return Bytes;
 }
 
@@ -359,8 +374,10 @@ void FReplayClip::Reset()
 	FrameIntervalSeconds = SimCopterReplay::FrameIntervalSeconds;
 	FrameCount = 0;
 	ClipMnemonics.Reset();
+	EffectChannels.Reset();
 	Tracks.Reset();
 	Events.Reset();
+	EffectSpawns.Reset();
 }
 
 int32 FReplayClip::TimeToFrame(const float Seconds) const
@@ -505,6 +522,40 @@ bool FReplayClip::Serialize(FArchive& Archive, FString& OutError)
 		Archive << Event.PayloadB;
 		Archive << Event.WorldLocationCm;
 		Archive << Event.Text;
+	}
+
+	Archive << EffectChannels;
+
+	int32 EffectCount = EffectSpawns.Num();
+	Archive << EffectCount;
+	if (Archive.IsLoading())
+	{
+		if (EffectCount < 0)
+		{
+			OutError = TEXT("That clip file is damaged.");
+			return false;
+		}
+		EffectSpawns.Empty(EffectCount);
+		EffectSpawns.SetNum(EffectCount);
+	}
+	for (FReplayEffectSpawn& Spawn : EffectSpawns)
+	{
+		Archive << Spawn.FrameIndex;
+		uint8 SpawnKindByte = static_cast<uint8>(Spawn.Kind);
+		Archive << SpawnKindByte;
+		Spawn.Kind = static_cast<EReplayEffectSpawn>(SpawnKindByte);
+		Archive << Spawn.ChannelId;
+		Archive << Spawn.TypeValue;
+		Archive << Spawn.CellX;
+		Archive << Spawn.CellY;
+		Archive << Spawn.PaletteIndex;
+		Archive << Spawn.Flags;
+		Archive << Spawn.LocationCm;
+		Archive << Spawn.VelocityCmPerSec;
+		Archive << Spawn.SizeCm;
+		Archive << Spawn.LifeSeconds;
+		Archive << Spawn.GravityCmPerSec2;
+		Archive << Spawn.Color;
 	}
 
 	if (Archive.IsError())

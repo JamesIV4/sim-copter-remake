@@ -276,6 +276,24 @@ private:
 	/** Frame the sound track was last serviced at, so crossings can be detected. */
 	float LastSoundFrame = 0.0f;
 
+	static void ReplayEffectSink(const FString& ChannelName, const SimCopterReplay::FReplayEffectSpawn& Spawn);
+	void HandleEffectSpawn(const FString& ChannelName, const SimCopterReplay::FReplayEffectSpawn& Spawn);
+
+	/**
+	 * Re-issues the clip's particle creator calls as the playhead crosses them.
+	 *
+	 * Letting the particle pools advance on real time was necessary but not sufficient: particles
+	 * are SPAWNED by gameplay - the rotor wash by the helicopter's tick, fire by the mission layer,
+	 * water by a tool - and a review freezes all of it, so with nothing spawning the existing
+	 * particles finish and the replay goes still. Same forward-and-continuous rule as the sounds.
+	 */
+	void FireEffectSpawnsForPlayhead(float PreviousFrame, float CurrentFrame);
+	float LastEffectFrame = 0.0f;
+
+	/** Channel name -> the particle component that owns it, rebuilt when a review starts. */
+	TMap<FString, TWeakObjectPtr<class USimCopterParticleFXComponent>> EffectChannelComponents;
+	void RebuildEffectChannelMap();
+
 	// --- playback ---
 
 	void EnterReview();

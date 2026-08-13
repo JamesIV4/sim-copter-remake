@@ -51,7 +51,7 @@ inline constexpr uint32 ClipFileMagic = 0x50524353u;
  * with a message rather than read hopefully - a half-understood clip plays back as a city full of
  * actors teleporting into the ground, which reads as a physics bug rather than a format one.
  */
-inline constexpr int32 ClipFileVersion = 2;
+inline constexpr int32 ClipFileVersion = 3;
 
 /**
  * 20 Hz. This is the original's own simulation period (`OriginalFrameSeconds`, 0.05 s - see
@@ -254,6 +254,68 @@ struct SIMCOPTERREMAKE_API FReplayEvent
 };
 
 /**
+ * Which of `USimCopterParticleFXComponent`'s creators made an effect, so playback can re-issue the
+ * same call and let the existing code do the rest.
+ */
+enum class EReplayEffectSpawn : uint8
+{
+	/** SpawnEffect - the typed creator, FUN_0048e0b0. Fire, smoke, water, debris. */
+	Effect = 0,
+	/** SpawnTilePuff - FUN_004af220. The rotor wash's dust and spray. */
+	TilePuff,
+	/** SpawnSplashColumn - FUN_004af100 / FUN_004af3b0. */
+	SplashColumn,
+	/** SpawnHardLanding - a puff, five debris items and a column. */
+	HardLanding,
+	/** SpawnParticle - the legacy single-point entry point. */
+	Particle,
+	/** SpawnRing - the legacy ring entry point. */
+	Ring,
+};
+
+/**
+ * One recorded call to a particle creator.
+ *
+ * Particles are SPAWNED by gameplay - the rotor wash by the helicopter's tick, fire by the mission
+ * layer, water by a tool - and a review freezes all of it. Letting the pools advance on real time
+ * was necessary but not sufficient: with nothing spawning, the existing particles simply finish and
+ * the replay goes still. So the spawn calls themselves are recorded and re-issued.
+ */
+struct SIMCOPTERREMAKE_API FReplayEffectSpawn
+{
+	int32 FrameIndex = 0;
+	EReplayEffectSpawn Kind = EReplayEffectSpawn::Effect;
+	/**
+	 * Index into `FReplayClip::EffectChannels`. There are several particle components in a city -
+	 * the helicopter's water/wash, the mission layer's fire and smoke, the ambient vehicles' debris
+	 * - and an effect has to go back to the one that made it.
+	 */
+	uint8 ChannelId = 0;
+	/** Per kind: the effect type, the effect class, the scale exponent, or the ring's count. */
+	int32 TypeValue = 0;
+	int32 CellX = INDEX_NONE;
+	int32 CellY = INDEX_NONE;
+	uint8 PaletteIndex = 0xFF;
+	/** bit0: a splash column's `bSubmergeOrigin`, or a hard landing's `bWaterSurface`. */
+	uint8 Flags = 0;
+	FVector3f LocationCm = FVector3f::ZeroVector;
+	/** Velocity; for a ring, (speed, initial rise, 0). */
+	FVector3f VelocityCmPerSec = FVector3f::ZeroVector;
+	float SizeCm = 0.0f;
+	float LifeSeconds = 0.0f;
+	float GravityCmPerSec2 = 0.0f;
+	FLinearColor Color = FLinearColor::White;
+
+	enum EFlags : uint8
+	{
+		FlagNone = 0,
+		FlagBoolArgument = 1 << 0,
+	};
+
+	bool GetBoolArgument() const { return (Flags & FlagBoolArgument) != 0; }
+};
+
+/**
  * Interning table for privanim clip mnemonics ("1Wal", "NoMo", "Dead", "Wave"). Eighteen of them
  * ship, so two bytes a key beats a string a key by a very wide margin.
  */
@@ -290,8 +352,11 @@ struct SIMCOPTERREMAKE_API FReplayClip
 	float FrameIntervalSeconds = SimCopterReplay::FrameIntervalSeconds;
 	int32 FrameCount = 0;
 	TArray<FString> ClipMnemonics;
+	/** Names of the particle components that made the effects, indexed by `FReplayEffectSpawn::ChannelId`. */
+	TArray<FString> EffectChannels;
 	TArray<FReplayActorTrack> Tracks;
 	TArray<FReplayEvent> Events;
+	TArray<FReplayEffectSpawn> EffectSpawns;
 
 	float GetDurationSeconds() const;
 	int64 GetApproximateMemoryBytes() const;
@@ -343,6 +408,15 @@ SIMCOPTERREMAKE_API void RecordSoundEvent(
 	int32 Flags,
 	const FVector& WorldLocation,
 	bool bHasWorldLocation);
+
+/**
+ * A particle creator was just called. `ChannelName` identifies the component so playback can send
+ * it back to the same one; the recorder interns it.
+ */
+SIMCOPTERREMAKE_API void RecordEffectSpawn(const FString& ChannelName, const FReplayEffectSpawn& Spawn);
+
+SIMCOPTERREMAKE_API void SetEffectSink(
+	void (*Sink)(const FString& ChannelName, const FReplayEffectSpawn& Spawn));
 
 /** Everything one recorded event carries, so the sink signature does not grow a parameter a week. */
 struct SIMCOPTERREMAKE_API FRecordedEvent
