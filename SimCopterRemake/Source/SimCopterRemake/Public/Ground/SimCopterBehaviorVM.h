@@ -244,6 +244,10 @@ public:
 		const FSimCopterPersonContext& Context,
 		FSimCopterBehaviorPlayerTileProbe& OutProbe) const { return false; }
 
+	// Who this is, for the trace prefix only (SimCopterPeopleTrace). Never called unless the trace
+	// is on, so an implementation may build a string.
+	virtual FString GetPersonTraceName() const { return TEXT("person"); }
+
 	// Op 15, FUN_004cac70: find the nearest object of EBhavObjectClass, put it in
 	// Context.SelectedObject/SelectedLocation and report its Chebyshev tile distance. False when
 	// the class is not supported here or nothing matched - the opcode then writes the original's
