@@ -1134,6 +1134,87 @@ def upgrade_sprite_texture_emissive():
     save(path)
 
 
+def upgrade_lit_vertex_color_emissive():
+    """Give the already-built M_SimCopterLitVertexColor an EmissiveNits scale, in place.
+
+    The dispatch pylons (AICON / PICON / FICON) draw on this material and are meant to read as
+    beacons: a low emissive floor so they are still legible against a dark street or a shadowed
+    block, on top of the ordinary lit shading they already get.
+
+    **The default is ZERO, unlike M_SimCopterSpriteTexture's sunlit one.** This material is also the
+    whole untextured city and every vehicle (Docs/memory/simcopter-vehicle-material.md), so a
+    non-zero default would set the skyline glowing. Only the pylon's own MID raises it; everything
+    else keeps the parameter at 0 and renders exactly as before.
+
+    Upgraded in place rather than delete-and-recreate for the same reason as the sprite material:
+    instances and a great many components hold this asset as a parent.
+
+    Idempotent: a material that already has the parameter is skipped, so re-running is free."""
+    path = f"{MATERIAL_DIR}/M_SimCopterLitVertexColor"
+    material = unreal.EditorAssetLibrary.load_asset(path)
+    if material is None:
+        return
+
+    expressions = unreal.MaterialEditingLibrary.get_material_expressions(material)
+    if any(isinstance(e, unreal.MaterialExpressionScalarParameter) and
+           e.get_editor_property("parameter_name") == "EmissiveNits" for e in expressions):
+        unreal.log("M_SimCopterLitVertexColor already carries EmissiveNits; skipping.")
+        return
+
+    vertex_color = next(
+        (e for e in expressions if isinstance(e, unreal.MaterialExpressionVertexColor)), None)
+    if vertex_color is None:
+        unreal.log_error("M_SimCopterLitVertexColor has no VertexColor node to scale; left alone.")
+        return
+
+    # ADDED to whatever is already driving Emissive, never connected over it. This material's
+    # emissive pin already carries `BaseColor * SelfIllum`, the city's readability floor for
+    # shadowed faces (add_family_shading_nodes), and re-pointing the pin at a parameter defaulting
+    # to zero would take that floor away from every untextured building and every car at once.
+    existing = unreal.MaterialEditingLibrary.get_material_property_input_node(
+        material, unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    if existing is None:
+        unreal.log_error(
+            "M_SimCopterLitVertexColor has nothing on Emissive - expected the SelfIllum multiply. "
+            "Left alone rather than guessing."
+        )
+        return
+
+    nits = add_scalar_parameter(material, "EmissiveNits", 0.0, 4, 730)
+    scaled = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionMultiply, -180, 730
+    )
+    summed = unreal.MaterialEditingLibrary.create_material_expression(
+        material, unreal.MaterialExpressionAdd, -60, 600
+    )
+    connections = (
+        ("Multiply.A", unreal.MaterialEditingLibrary.connect_material_expressions(
+            vertex_color, "", scaled, "A")),
+        ("Multiply.B", unreal.MaterialEditingLibrary.connect_material_expressions(
+            nits, "", scaled, "B")),
+        ("Add.A", unreal.MaterialEditingLibrary.connect_material_expressions(
+            existing, "", summed, "A")),
+        ("Add.B", unreal.MaterialEditingLibrary.connect_material_expressions(
+            scaled, "", summed, "B")),
+        ("EmissiveColor", unreal.MaterialEditingLibrary.connect_material_property(
+            summed, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)),
+    )
+    failed = [name for name, ok in connections if not ok]
+    if failed:
+        unreal.log_error(
+            "M_SimCopterLitVertexColor: EmissiveNits pins not connected: "
+            f"{', '.join(failed)}. The dispatch pylons will not glow."
+        )
+    else:
+        unreal.log(
+            "M_SimCopterLitVertexColor: SelfIllum + VertexColor * EmissiveNits (default 0) "
+            "into Emissive."
+        )
+
+    unreal.MaterialEditingLibrary.recompile_material(material)
+    save(path)
+
+
 def reparent_baked_direct_image_instances():
     """Point already-baked MI_CityImage_* instances at the lit card material.
 
@@ -1889,4 +1970,5 @@ create_terrain_material()
 create_particle_fx_material()
 create_particle_fx_soft_material()
 upgrade_sprite_texture_emissive()
+upgrade_lit_vertex_color_emissive()
 reparent_baked_direct_image_instances()

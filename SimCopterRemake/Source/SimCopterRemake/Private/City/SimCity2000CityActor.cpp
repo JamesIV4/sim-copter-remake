@@ -31,6 +31,7 @@
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "ProceduralMeshComponent.h"
+#include "SimCopterCollisionChannels.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCity2000CityActor, Log, All);
@@ -4215,7 +4216,8 @@ void ASimCity2000CityActor::RebuildCity()
 			const FLinearColor& FallbackColor,
 			float UnitsPerCentimeter,
 			float MeshScale,
-			bool bCollision) -> int32
+			bool bCollision,
+			bool bFoliage) -> int32
 	{
 		if (const int32* Existing = NaturalObjectComponentIndices.Find(ObjectId))
 		{
@@ -4261,8 +4263,29 @@ void ASimCity2000CityActor::RebuildCity()
 		}
 		Component->SetupAttachment(SceneRoot);
 		Component->SetCollisionEnabled(bCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
-		Component->SetCollisionObjectType(ECC_WorldStatic);
 		Component->SetCollisionResponseToAllChannels(ECR_Block);
+		if (bFoliage)
+		{
+			// Trees are for the helicopter to hit and for everybody on foot to walk through. Two
+			// halves, because a pedestrian meets a tree in two different ways:
+			//
+			// - Its OBJECT TYPE stops the capsules. The airframe's collider and every pedestrian
+			//   capsule are both ECC_Pawn, so a per-channel response here cannot separate them;
+			//   the walkers opt out of SimCopterCollision::Foliage instead and the helicopter,
+			//   which blocks every channel, still sweeps into one.
+			// - Its RESPONSE to ECC_Camera stops the probes, and those are what actually make a
+			//   tree an obstacle: the walk-surface trace was putting people on a canopy and the
+			//   step sweep was refusing a facing at a trunk. Trace queries ignore object type
+			//   entirely, so this has to be a response.
+			Component->SetCollisionObjectType(SimCopterCollision::Foliage);
+			Component->SetCollisionResponseToChannel(SimCopterCollision::WalkableSurface, ECR_Ignore);
+		}
+		else
+		{
+			// The small park (LP13) takes this arm: it is a flat authored slab with paths printed
+			// on it, so it has to stay ordinary ground that people walk on top of.
+			Component->SetCollisionObjectType(ECC_WorldStatic);
+		}
 		Component->SetCanEverAffectNavigation(false);
 		Component->SetCastShadow(bNaturalObjectsCastShadow);
 
@@ -4623,7 +4646,8 @@ void ASimCity2000CityActor::RebuildCity()
 								OriginalTexturedFaceFallbackColor,
 								OriginalMeshUnitsPerCentimeter,
 								OriginalMeshScale,
-								bEnableOriginalMeshCollision);
+								bEnableOriginalMeshCollision,
+								/*bFoliage*/ !IsOriginalParkTile(Tile.Building));
 						}
 
 						// Buildings become instances so a single one can be removed later; roads,

@@ -137,7 +137,13 @@ enum class ESimCopterBehaviorStepResult : uint8
 {
 	NoTarget, // nothing selected, or no bearing to it
 	Moving,   // took a step; not there yet
-	Arrived   // standing on/next to the target
+	Arrived,  // standing on/next to the target
+	// The step was refused - a wall, a kerb, another body. FUN_004ca940's tail is
+	//     bVar5 = -(moveResult == 0) & 2;
+	// so ONLY a clean step continues the walk; any other move result ends it there and then, and
+	// the caller's false edge decides what happens next. Reporting it as Moving instead left a
+	// walker standing against whatever stopped it, burning its whole tick budget in silence.
+	Blocked
 };
 
 struct FSimCopterPersonContext

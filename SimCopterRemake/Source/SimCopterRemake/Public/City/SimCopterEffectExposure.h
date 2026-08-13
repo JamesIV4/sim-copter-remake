@@ -6,6 +6,7 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "SimCopterEffectExposure.generated.h"
 
+class FSimCopterExposureViewExtension;
 class UDirectionalLightComponent;
 class UMaterialInstanceDynamic;
 
@@ -61,6 +62,34 @@ SIMCOPTERREMAKE_API float ComputeEffectEmissiveNits(
 	float KeyIlluminanceLux,
 	float EffectBrightness = DefaultEffectBrightness,
 	float MinimumNits = DefaultMinimumEmissiveNits);
+
+// The sun's illuminance at noon, and the ceiling on the measured floor below. Also the value the
+// no-world fallbacks use.
+constexpr float NoonIlluminanceLux = 120000.0f;
+
+/**
+ * The measured half of the compensation: an effect card is never dimmer than the luminance the
+ * auto exposure is actually metering.
+ *
+ * The sun model above is `Intensity * max(-Direction.Z, 0)` - direct sun on FLAT GROUND - and that
+ * cosine collapses to nothing while the sun is still lighting the sky and the city's vertical
+ * faces. Through the dawn/dusk window it therefore reports near-darkness for a scene that is still
+ * bright, the emissive falls to its 1.5-nit floor, and fire, spray, smoke and dust tonemap to black
+ * against everything around them. The compensation was never wrong at noon or at midnight; it had
+ * a hole in the hour between.
+ *
+ * `FSceneViewStateInterface::GetLastAverageSceneLuminance()` is that hole measured directly: the
+ * GPU readback of what the exposure metered last frame, in nits, converging immediately rather than
+ * following the exposure's own smoothing. Feeding it in as a floor makes the transition continuous
+ * by construction - at the crossover the two agree, so there is no step - and needs no constant to
+ * calibrate, because it is the same physical quantity the sun model was estimating.
+ *
+ * Capped at the noon value so the loop cannot run away: the cards contribute to the frame the
+ * exposure meters, and a screenful of fire raising its own floor would ring.
+ */
+SIMCOPTERREMAKE_API float ComputeMeasuredFloorNits(
+	float AverageSceneLuminanceNits,
+	float EffectBrightness = DefaultEffectBrightness);
 }
 
 /**
@@ -81,6 +110,11 @@ class SIMCOPTERREMAKE_API USimCopterEffectExposureSubsystem : public UWorldSubsy
 	GENERATED_BODY()
 
 public:
+	// The view extension is the only public way to the exposure readback: ULocalPlayer keeps its
+	// view states private, and FSceneView's accessors are ENGINE_API but only reachable from a view.
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual void Deinitialize() override;
+
 	/** Nits for an unlit effect card this frame. Cheap to call repeatedly; recomputed once a frame. */
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Effects")
 	float GetEffectEmissiveNits();
@@ -88,6 +122,13 @@ public:
 	/** Ground illuminance from the world's key light, in lux. Zero if there is no directional light. */
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Effects")
 	float GetKeyIlluminanceLux();
+
+	/**
+	 * Average scene luminance the auto exposure metered last frame, in nits, or 0 when no view state
+	 * has reported one yet (a headless run, a scene capture, the first frames of a level).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "SimCopter|Effects")
+	float GetMeasuredSceneLuminanceNits();
 
 	/** Convenience for call sites that only have a world; null-safe, returns the daylight default. */
 	static float GetEffectEmissiveNitsForWorld(const UWorld* World);
@@ -129,12 +170,19 @@ private:
 	/** Re-resolves the key light if the cached one has gone away. */
 	UDirectionalLightComponent* ResolveKeyLight();
 
+	/** Last average scene luminance the view extension saw, in nits; 0 when it has seen nothing. */
+	float ReadAverageSceneLuminanceNits() const;
+
+	/** Registered for this world's lifetime; records the exposure readback off each frame's view. */
+	TSharedPtr<FSimCopterExposureViewExtension, ESPMode::ThreadSafe> ExposureViewExtension;
+
 	/** Brightest directional light in the world, cached across frames. */
 	TWeakObjectPtr<UDirectionalLightComponent> KeyLight;
 
 	/** Frame the cached value was computed on, so one scan serves every effect component. */
 	uint64 CachedFrame = 0;
 	float CachedIlluminanceLux = 0.0f;
+	float CachedSceneLuminanceNits = 0.0f;
 	float CachedEmissiveNits = 0.0f;
 	bool bHasCachedValue = false;
 

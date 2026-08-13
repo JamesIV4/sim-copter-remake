@@ -72,6 +72,34 @@ the flatten sweep and drops out of `bGroundHuggingObjectTile` (it now takes the 
 building instead of the bilinear surface sample). The trees either side of it in the band genuinely
 are foliage and still follow the slope - which is why this is the one id, not the range.
 
+## Only the helicopter collides with a tree (2026-08-12)
+
+The trees carry their own collision object channel, `ECC_GameTraceChannel1` / **"SimCopterFoliage"**
+(declared in `Config/DefaultEngine.ini`, named in `Public/SimCopterCollisionChannels.h`). The small
+park keeps `ECC_WorldStatic`, because LP13 is a slab people stand on top of, not cover.
+
+**Why a channel and not a response.** The airframe still has to hit a tree — `FUN_0048ad50` answers
+any object on the aircraft's tile with damage and a bounce — while nobody on foot may. But the
+helicopter's collider and every pedestrian capsule are *both* `ECC_Pawn`, so no response set on the
+tree's side can separate them: it takes both or neither. Giving the tree its own **object type**
+does, with `ASimCopterGroundAgent` and `ASimCopterOnFootPawn` ignoring that channel and the
+helicopter — which blocks everything — unaffected.
+
+**That is only half of it, and the other half is the one that was actually stopping people.** A
+pedestrian meets a tree through two different mechanisms:
+
+- the **object type** stops capsules (above);
+- the **response to `ECC_Camera`** stops the *probes*, and those are what make a tree an obstacle in
+  practice. `TryGetWalkSurfaceZAt` was finding a canopy and calling it the walked surface,
+  `IsPedestrianStepBlockedByGeometry` was refusing a facing at a trunk, and
+  `IsPedestrianSpawnLocationOpen` was refusing to put anybody under one. Trace queries ignore object
+  type entirely, so this half has to be `SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore)`.
+
+Knock-on effects, all deliberate: the camera booms (both pawns probe on `ECC_Camera`) no longer pull
+in on a tree, the helicopter's ground/landing probes no longer treat a canopy as ground, and the
+traffic system's vehicle Z traces no longer see one. `ECC_Visibility` is untouched, so weapons,
+water particles and tear gas still hit trees.
+
 ## The debug portrait on the signs (2026-08-07)
 
 **SIM3D page 2 cell 0 is a digitised photograph of a face** - a Maxis test image the shipped game

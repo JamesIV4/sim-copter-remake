@@ -231,8 +231,14 @@ The remake had this effectively inverted. Its ambient branch is gated on `EBhavA
 (+0x168) and **nothing in the C++ ever writes that attribute**, so every walker fell into the
 non-ambient branch — whose "safety net" is the *union* of the state row (`DAT_0058d750`, which does
 contain 7) and the ambient row. Net effect: the whole population was free to wander down the middle
-of the road. (The VM's expression engine can write any attribute from data, so a shipped BHAV could
-still set +0x168; whether one does was not determined.)
+of the road.
+
+**The open question at the end of this paragraph is answered: the DATA writes it (2026-08-12).**
+`BHAV 600 'Ambient initbhav'` rec[6] is `attr20 := 1`, and `BHAV 1401 'Cop foot'` rec[1] and
+`BHAV 1400 'Cop aerial'` rec[0] are `attr20 := 0` — the shipped programs set and clear +0x168
+themselves through the ordinary expression opcode, exactly as suspected, so nothing in C++ has to.
+`Rioter flee tree` (287) even saves and restores it around its flee. The port now honours the
+attribute first and falls back to the ownership test, which agrees with it.
 
 `IsPedestrianRoadStepAllowed` now applies the road half of the rule to the branch that actually runs,
 in both directions: a road step is refused whatever the rows said, unless this walker's **jaywalk
@@ -244,6 +250,13 @@ is left entirely to the rows.
 is jaywalking at any moment, on individually staggered clocks (the first window is seeded to a random
 fraction, or the whole city would re-roll on one frame). Chance 1 is the old free-for-all, 0
 reproduces the executable.
+
+**SUPERSEDED IN PART, 2026-08-12 — read [[simcopter-people-move-core-cell-rules]].** Everything
+above is right about *which* rules exist, and wrong about *when* they run: `FUN_004c9470` brackets
+the whole block in "did this step change cell", and this port was testing it on every 5 cm step. The
+`bAlreadyOnRoad` hatch below was that bug found from one end and patched for one tile class; the gate
+is fixed at the source now, and the class rows apply to the ambient street population only, as the
+`+0x168` split above says they should.
 
 **THE TRAP, and it is not hypothetical — it shipped for an afternoon.** A walk step is
 `MoveSpeed/12` original units, i.e. **about 8 cm against a 400 cm tile**, so every one of the eight

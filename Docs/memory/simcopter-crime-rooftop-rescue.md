@@ -194,6 +194,25 @@ roof has no medevac service at all.
 
 ### Robber, Arsonist, and Mugger
 
+**They stood still and did nothing, and it was the move core, not the graph (2026-08-12).** The
+criminal was running BHAV 1300 -> 1174 the whole time — idle, random turn, `Walk-30` — with every
+one of the eight facings refused on every tick, because the remake tested the tile-class rows on
+each ~5 cm step and the mission placer had set them down on a cell no row admits. Full decode and
+fix in [[simcopter-people-move-core-cell-rules]]; the short version is that `FUN_004c9470` only
+consults those rules when the step actually leaves its cell, and mission walkers are not subject to
+them at all. The same fault is behind the "arsonist throws from the same spot" note below.
+
+**And they froze again on the way back to the police car, for a different reason (2026-08-12).**
+BHAV 1060 'Rx: criminal-caught' and BHAV 1150's tail both end the same way: set movespeed 15, find
+a police car within 10 tiles, `local0 := 100`, op 38, and on arrival op 40. Three faults, all in
+[[simcopter-people-move-core-cell-rules]]: `FUN_004ca940` fails a walk on the first blocked step and
+the port reported "still moving" for the whole 100-tick budget; the arrival gate's vertical half was
+measured against a vehicle's 33.75 cm traffic capsule and could never pass; and outcome 9 did not
+mark the criminal's mission resolution, so op 40 would have reset them into BHAV 1300, whose rec[7]
+clears CriminalCaught. Note what is NOT a fault: the false edge of that walk is
+`heli within 10 tiles ? Idle-20 : despawn`, so a pair that cannot reach the car stands still while
+you hover and leaves when you go. That is shipped.
+
 The shared criminal graph watches for the helicopter, foot police, and police cars within four
 tiles, then runs through BHAVs 1171-1173. A cop catches a criminal by selecting class 6, walking
 within two tiles, and pushing BHAV 1060 `Rx: criminal-caught` onto that person. BHAV 1060 posts

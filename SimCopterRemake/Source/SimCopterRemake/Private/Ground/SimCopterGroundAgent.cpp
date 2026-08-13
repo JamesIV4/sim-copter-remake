@@ -40,6 +40,7 @@
 #include "ProceduralMeshComponent.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
+#include "SimCopterCollisionChannels.h"
 #include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimCopterGroundAgent, Log, All);
@@ -209,6 +210,11 @@ ASimCopterGroundAgent::ASimCopterGroundAgent()
 	CollisionComponent->SetCollisionObjectType(ECC_Pawn);
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	// Trees are not obstacles to anybody on foot - only to the airframe. See
+	// SimCopterCollision::Foliage: the tree instances carry their own object type precisely so
+	// this line can exist, because the helicopter's collider is ECC_Pawn too and a response on
+	// the tree's side would take both or neither.
+	CollisionComponent->SetCollisionResponseToChannel(SimCopterCollision::Foliage, ECR_Ignore);
 	CollisionComponent->SetCanEverAffectNavigation(false);
 	SetRootComponent(CollisionComponent);
 
@@ -967,16 +973,65 @@ bool ASimCopterGroundAgent::AdvanceRoadJaywalkWindow(
 	return true;
 }
 
-bool ASimCopterGroundAgent::IsSubjectToRoadRule() const
+bool ASimCopterGroundAgent::ArePedestrianCellRulesEvaluated(
+	const int32 FromTileX,
+	const int32 FromTileY,
+	const int32 ToTileX,
+	const int32 ToTileY)
 {
-	// Ambient street population only, which is the same distinction the executable draws: the
-	// DAT_0058ec00 row test is on the +0x168 arm of FUN_004c9470, and the arm everybody else takes
-	// has no tile-class test in it at all. A paramedic crossing to a casualty, a fare walking to the
-	// helicopter or a cop mid-chase were all sent somewhere by their program, and a kerb that
-	// refused them four times in five would strand the mission that sent them.
+	// FUN_004c9470 wraps its entire per-cell rule block - the water test, the DAT_0058ec00 class
+	// row, the occupancy cap and the leaving-a-road case - in
+	//     if (person+0x12a != newCellX || person+0x12c != newCellY)
+	// and falls straight through to writing the new position when the step stays put. That guard
+	// is not an optimisation, it is what makes those rules survivable: one walk tick moves
+	// MoveSpeed/12 original units - Walk-30 is 10/12, about 5 cm - against a 400 cm tile, so all
+	// eight facings land in the cell the walker is already standing in.
 	//
-	// BHAV 308's escape is honoured for the same reason every other gate here honours it: a walker
-	// it has given up on is allowed through.
+	// Evaluate them per step instead and "the cell I am on is not one my row allows" becomes
+	// permanent: every facing is refused, every tick, forever. That is the frozen Robber - and the
+	// arsonist that throws from one spot, and a rioter seeded off the road.
+	return FromTileX != ToTileX || FromTileY != ToTileY;
+}
+
+bool ASimCopterGroundAgent::IsStandingOnRaisedDeck() const
+{
+	// FUN_004c9cc0's water escape: FUN_004c82c0(current position) - FUN_004ae7a0(current terrain)
+	// greater than 0x140000, i.e. the walker is standing on an object more than 20 original units
+	// above the ground under them. A bridge deck or a pier, in other words - the only way a person
+	// is allowed over water.
+	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
+	if (TrafficSystem == nullptr)
+	{
+		return false;
+	}
+
+	float TerrainZ = 0.0f;
+	if (!TrafficSystem->TryGetTerrainWorldZAtWorldLocation(GetActorLocation(), TerrainZ))
+	{
+		return false;
+	}
+
+	const float FeetZ = GetActorLocation().Z - GetCapsuleHalfHeightCm();
+	return FeetZ - TerrainZ > WaterCrossingDeckClearanceOriginalUnits *
+		TrafficSystem->GetPeopleWorldCmPerOriginalUnit();
+}
+
+bool ASimCopterGroundAgent::IsAmbientStreetWalker() const
+{
+	// The +0x168 arm of FUN_004c9470, and the only walkers its tile-class rules bind. The arm
+	// everybody else takes has no tile-class test in it at all: a paramedic crossing to a casualty,
+	// a fare walking to the helicopter, a cop mid-chase or a criminal on BHAV 1174 were all put
+	// where they are by their own program, and rows that refused them would strand the mission
+	// that sent them.
+	//
+	// The attribute itself is checked first for completeness - nothing in the remake writes +0x168
+	// yet, so in practice this is the ownership test below. BHAV 308's escape is honoured for the
+	// same reason every other gate here honours it: a walker it has given up on is allowed through.
+	if (BehaviorContext.Attributes[EBhavAttr::AmbientFlag] != 0)
+	{
+		return true;
+	}
+
 	return MissionEventId == INDEX_NONE &&
 		!IsEmergencyCrewMember() &&
 		!bPersistentHospitalRoofCrew &&
@@ -1215,7 +1270,6 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	// FUN_004c9300 retries clockwise up to 8 extra facings only while +0x16a is set.
 	const int32 MaxAttempts = Context.Attributes[EBhavAttr::AutoTurn] != 0 ? 8 : 1;
 	const bool bMoveThroughWalls = Context.Attributes[EBhavAttr::MoveThroughWalls] != 0;
-	const bool bAmbient = Context.Attributes[EBhavAttr::AmbientFlag] != 0;
 	const int32 BehaviorClass = Context.Attributes[EBhavAttr::BehaviorClass];
 
 	// Resolved once for the whole retry loop: which side of the kerb this walker is starting from.
@@ -1223,6 +1277,17 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	// to be able to walk out of it.
 	const bool bStartingOnRoad =
 		FSimCopterPeopleCityRules::IsRoadTileClass(GetCurrentTileClass());
+
+	// Which cell they are in now. FUN_004c9470 tests it against the step's cell and runs the whole
+	// per-cell rule block only when the two differ - see ArePedestrianCellRulesEvaluated.
+	int32 CurrentTileX = INDEX_NONE;
+	int32 CurrentTileY = INDEX_NONE;
+	TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(GetActorLocation(), CurrentTileX, CurrentTileY);
+
+	// FUN_004c9cc0's escape, resolved once because it asks about where the walker IS, not where the
+	// step lands: a person may enter a water cell only while standing on something more than 20
+	// original units clear of the terrain, i.e. a bridge deck or a pier.
+	const bool bStandingOnRaisedDeck = IsStandingOnRaisedDeck();
 
 	int32 LastBlockResult = 0;
 	ASimCopterGroundAgent* BumpedPerson = nullptr;
@@ -1276,35 +1341,60 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 			return true;
 		}
 
-		// FUN_004c9470: ambient people (+0x168) may only enter tile classes from their
-		// behavior-class row (DAT_0058ec00); result 3 otherwise. Non-ambient movement keeps
-		// the pre-VM rows as a safety net (missions steer via goto-object opcodes instead).
-		//
-		// The exemption is remake-only and is documented on SetIgnoresTileClassRules: the airport
-		// is class 1, which no row accepts, and the level-complete band has to be able to walk
-		// about on it. The climb gate below still keeps them out of buildings.
-		if (!bIgnoresTileClassRules)
+		// Everything from here to the climb gate is FUN_004c9470's per-cell block, and the whole of
+		// it lives inside `if (person+0x12a != newCellX || person+0x12c != newCellY)`. A step that
+		// does not leave the cell it started in is written straight through. See
+		// ArePedestrianCellRulesEvaluated for why that guard is load-bearing rather than an
+		// optimisation.
+		int32 TargetTileX = INDEX_NONE;
+		int32 TargetTileY = INDEX_NONE;
+		TrafficSystem->TryGetPeopleTileCoordinateAtWorldLocation(TargetLocation, TargetTileX, TargetTileY);
+		if (!bIgnoresTileClassRules &&
+			ArePedestrianCellRulesEvaluated(CurrentTileX, CurrentTileY, TargetTileX, TargetTileY))
 		{
-			bool bTileClassAllowed = bAmbient
-				? FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass)
-				: (IsTileClassAllowedForState(BehaviorClass, TargetTileClass) ||
-					FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass));
-
-			// ...and then the road on top of it, in both directions. No DAT_0058ec00 row contains
-			// class 7, so in the executable an ambient walker never steps off the kerb; the safety
-			// net above, which is what actually runs here, does admit roads and had the whole
-			// population wandering down the middle of them. This restores the rule to the branch
-			// that runs and opens the one hole in it - see RoadJaywalkChance.
-			if (IsSubjectToRoadRule())
-			{
-				bTileClassAllowed = IsPedestrianRoadStepAllowed(
-					bTileClassAllowed, TargetTileClass, bRoadJaywalkWindowOpen, bStartingOnRoad);
-			}
-
-			if (!bTileClassAllowed)
+			// FUN_004c9cc0, ahead of the ambient split and therefore binding on everybody: a water
+			// cell is refused (move result 0xb) unless the walker is already up on a deck. Without
+			// it, dropping the class rows below for mission people would walk them into the sea -
+			// water and bare ground are both people class 2, so the rows had been doing this job
+			// by accident.
+			if (!bStandingOnRaisedDeck &&
+				TrafficSystem->IsWaterTile(TargetTileX, TargetTileY))
 			{
 				LastBlockResult = 3;
 				continue;
+			}
+
+			// FUN_004c9470's +0x168 arm: an ambient walker may only enter tile classes from its
+			// behavior-class row (DAT_0058ec00). The arm everybody else takes has NO tile-class
+			// test in it at all, which is the point - a criminal walking BHAV 1174, a medic
+			// crossing to a casualty or a fare walking to the helicopter were all put where they
+			// are by their program, and the rows would strand them. Applying the rows to those
+			// people is what left a Robber standing on the spot, because the mission placer will
+			// happily set one down on bare ground (class 2) or a park (5) beside its building.
+			//
+			// The IgnoresTileClassRules exemption above is remake-only and documented on
+			// SetIgnoresTileClassRules: the airport is class 1, which no row accepts, and the
+			// level-complete band has to be able to walk about on it.
+			if (IsAmbientStreetWalker())
+			{
+				bool bTileClassAllowed =
+					FSimCopterPeopleCityRules::GetAmbientStateTileClasses(BehaviorClass).Contains(TargetTileClass) ||
+					IsTileClassAllowedForState(BehaviorClass, TargetTileClass);
+
+				// ...and then the road on top of it, in both directions. No DAT_0058ec00 row
+				// contains class 7, so in the executable an ambient walker never steps off the
+				// kerb; the safety net above, which is what actually runs here, does admit roads
+				// and had the whole population wandering down the middle of them. This restores
+				// the rule to the branch that runs and opens the one hole in it - see
+				// RoadJaywalkChance.
+				bTileClassAllowed = IsPedestrianRoadStepAllowed(
+					bTileClassAllowed, TargetTileClass, bRoadJaywalkWindowOpen, bStartingOnRoad);
+
+				if (!bTileClassAllowed)
+				{
+					LastBlockResult = 3;
+					continue;
+				}
 			}
 		}
 
@@ -1369,6 +1459,7 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 		// snap performs the original's per-step warp onto the walked surface).
 		Context.Attributes[EBhavAttr::Facing] = uint16(Facing);
 		Context.PendingAnimMnemonic = SpeedMnemonic;
+		LastMoveStepBlockResult = 0;
 		const FVector FlatDelta(TargetLocation.X - GetActorLocation().X, TargetLocation.Y - GetActorLocation().Y, 0.0f);
 		BehaviorStepVelocityCmPerSec = FlatDelta * BehaviorTickRate;
 		BehaviorStepTimeRemainingSeconds = 1.25f / FMath::Max(BehaviorTickRate, 1.0f);
@@ -1379,6 +1470,10 @@ bool ASimCopterGroundAgent::MoveStep(FSimCopterPersonContext& Context)
 	// exactly like the single post-move call after FUN_004c9300's retry loop.
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
 	BehaviorStepTimeRemainingSeconds = 0.0f;
+	// Kept for the trace only. A goto-object walk that stalls says nothing about *what* stopped it
+	// otherwise, and "1 = something solid, 3 = a cell it may not enter, 5 = another body" is the
+	// whole difference between a geometry bug and a crowd standing in the way.
+	LastMoveStepBlockResult = LastBlockResult;
 	if (LastBlockResult == 5 && BumpedPerson != nullptr)
 	{
 		// Result 5: the street conversation. Both halves of it - we turn to them and gab, and they
@@ -2177,7 +2272,23 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	{
 		if (const AActor* TargetActor = Context.SelectedObject.Get())
 		{
-			TargetReferenceZ -= TargetActor->GetSimpleCollisionHalfHeight();
+			// The RENDERED body's underside where there is one, for the same reason the horizontal
+			// half of this test stopped using the capsule (see GetSelectionContactGapCm): a car's
+			// traffic capsule is a 33.75 cm radius picked for lane separation, and
+			// GetSimpleCollisionHalfHeight clamps up to it. Subtracting that from an actor origin
+			// that already sits on the road puts the "doorsill" 33.75 cm UNDERGROUND, against a
+			// gate of 31.25 - so the walk arrived, was told it had not, and stood at the door until
+			// its budget ran out. A knife-edge either side of a 2.5 cm margin is not a gate.
+			float BodyBottomZ = 0.0f;
+			const ASimCopterGroundAgent* TargetAgent = Cast<ASimCopterGroundAgent>(TargetActor);
+			if (TargetAgent != nullptr && TargetAgent->TryGetBodyBottomWorldZ(BodyBottomZ))
+			{
+				TargetReferenceZ = BodyBottomZ;
+			}
+			else
+			{
+				TargetReferenceZ -= TargetActor->GetSimpleCollisionHalfHeight();
+			}
 		}
 	}
 	const float MyFeetZ = GetActorLocation().Z - GetCapsuleHalfHeightCm();
@@ -2193,13 +2304,55 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 	FaceSelectedObject(Context);
 	bBehaviorStepTouchedSelection = false;
 	bBehaviorStepSeekingSelection = true;
-	MoveStep(Context);
+	const bool bStepped = MoveStep(Context);
 	bBehaviorStepSeekingSelection = false;
 	if (bHeightGatePassed && bBehaviorStepTouchedSelection)
 	{
 		return ESimCopterBehaviorStepResult::Arrived;
 	}
+
+	// `bVar5 = -(moveResult == 0) & 2` - the walk continues only on a clean step. Anything else
+	// (result 1/2 climb or drop, 3 a cell it may not enter, 4 an object, 5 another body) ends the
+	// goto there, and the caller's false edge takes over. This used to report Moving whatever
+	// happened, so a walker stopped by the first thing in its path stood against it in silence for
+	// the rest of its budget - up to 100 ticks, near seven seconds - before the program was told.
+	// With autoturn clear, which is the shipped default (BHAV 600 rec[28] even sets it explicitly),
+	// FUN_004c9300 makes exactly ONE attempt along the bearing to the target, so "the first thing
+	// in its path" includes the other person walking to the same car.
+	if (!bStepped)
+	{
+		// `log LogSimCopterGroundAgent Verbose` when a goto-object walk stalls: this names what
+		// refused it and how far off the target still was, which is the difference between a
+		// geometry problem, a tile-rule problem and a queue of people in a doorway.
+		UE_LOG(LogSimCopterGroundAgent, Verbose,
+			TEXT("'%s' (state %d, BHAV %d) goto-object blocked: move result %d, gap %.0f cm, ")
+			TEXT("height gate %s (target sill %.0f, feet %.0f)"),
+			*GetName(),
+			int32(Context.Attributes[EBhavAttr::State]),
+			Context.Stack.Num() > 0 ? Context.Stack.Last().ProgramId : INDEX_NONE,
+			LastMoveStepBlockResult,
+			GetSelectionContactGapCm(Context, GetActorLocation()),
+			bHeightGatePassed ? TEXT("passed") : TEXT("REFUSED"),
+			TargetReferenceZ,
+			MyFeetZ);
+		return ESimCopterBehaviorStepResult::Blocked;
+	}
 	return ESimCopterBehaviorStepResult::Moving;
+}
+
+bool ASimCopterGroundAgent::TryGetBodyBottomWorldZ(float& OutWorldZ) const
+{
+	FBox LocalBounds(ForceInit);
+	if (!TryGetBodyLocalBoundsCm(LocalBounds))
+	{
+		return false;
+	}
+
+	// The body box is already in the actor's frame, so its lowest corner in world space is the
+	// underside of what is drawn - a car's sills, a person's feet.
+	const FBox WorldBounds = LocalBounds.TransformBy(GetActorTransform());
+	OutWorldZ = static_cast<float>(WorldBounds.Min.Z);
+	return true;
 }
 
 float ASimCopterGroundAgent::ComputeContactGapCm(
@@ -3243,7 +3396,14 @@ void ASimCopterGroundAgent::PostMissionOutcome(FSimCopterPersonContext& Context,
 	// completed on barely a third of its crowd having actually left.
 	//
 	// Leaving the riot IS this person's resolution, so record it and let the despawn happen.
-	if (OutcomeCode == 4 || OutcomeCode == 5)
+	//
+	// Outcome 9 is the FOURTH instance of that same trap (hospital medic, ambulance medic, rioter,
+	// now this one). BHAV 1060 'Rx: criminal-caught' posts it, walks the arrested criminal to the
+	// police car and ends on op 40; the despawn refusal would ResetToState(10) them back into BHAV
+	// 1300, whose rec[7] is `attr23 := 0` - it CLEARS CriminalCaught, so an arrested robber would
+	// stand back up as an uncaught one and the arrest could be made twice. Being caught is that
+	// person's resolution.
+	if (OutcomeCode == 4 || OutcomeCode == 5 || OutcomeCode == 9)
 	{
 		bMissionResolutionReported = true;
 	}

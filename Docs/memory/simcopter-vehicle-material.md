@@ -29,6 +29,28 @@ parameter existed, because `SetScalarParameterValue` on a name a material does n
 **silently ignored, not an error**. If a slider in the debug panel appears dead, check the
 material for the parameter name before debugging the C++.
 
+**`EmissiveNits` was added 2026-08-12, DEFAULT 0**, for the dispatch pylons — the AICON / PICON /
+FICON beacons a responding unit hangs over its destination, which now carry a low emissive so they
+stay legible in shadow and after dark. Two things make it safe on a material this widely shared:
+
+- **The default is zero**, unlike `M_SimCopterSpriteTexture`'s sunlit one. Anything that does not
+  write the parameter — the whole untextured city, every vehicle, the hangar shell — renders exactly
+  as before.
+- **It is ADDED to the existing emissive, not connected over it.** That pin already carries
+  `BaseColor * SelfIllum`, the city's readability floor for shadowed faces, and the first attempt at
+  this re-pointed the pin at a parameter defaulting to 0 — which silently takes that floor away from
+  every untextured building and every car at once. The graph is
+  `SelfIllum * BaseColor + VertexColor * EmissiveNits` now. When adding to an emissive pin in this
+  project, read what is on it first.
+
+`USimCopterDispatchMarkerComponent` writes it through **its own** MID (not the subsystem's fleet
+instance, which belongs to the vehicles), at `SimCopter.Dispatch.MarkerEmissive` — default 0.12 —
+times the current effect-card emissive, so it tracks the sun like everything else rather than being
+a constant that is invisible by day or a lamp by night.
+
+The upgrade lives in `upgrade_lit_vertex_color_emissive()` in `CreateSimCopterMaterials.py` and is
+an in-place edit, not a delete-and-recreate: half the project holds this asset as a parent.
+
 ## Debug panel knobs added at the same time
 
 * **METALLIC** (0..1) — the subsystem's scalar. 0 is the faithful look; the original had no PBR.

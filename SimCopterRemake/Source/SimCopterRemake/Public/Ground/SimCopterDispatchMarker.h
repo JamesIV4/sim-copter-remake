@@ -8,6 +8,7 @@
 
 #include "SimCopterDispatchMarker.generated.h"
 
+class UMaterialInstanceDynamic;
 class UMaterialInterface;
 
 // The in-world waypoint marker a dispatched emergency vehicle hangs over its destination -
@@ -76,9 +77,26 @@ public:
 	bool IsMarkerShown() const { return bShown; }
 	const FString& GetLastLoadError() const { return LastLoadError; }
 
+	/**
+	 * How much of an effect card's emissive a pylon carries - "very low", and a fraction rather than
+	 * a number of nits on purpose.
+	 *
+	 * The scene runs a physically scaled sun (120,000 lux at noon), so any constant emissive is
+	 * either invisible by day or a lamp at night; every other authored brightness in the project is
+	 * therefore derived from the light in the scene, and this is the same. Live on
+	 * `SimCopter.Dispatch.MarkerEmissive`.
+	 */
+	static float GetMarkerEmissiveFraction();
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInterface> VertexColorMaterial;
+
+	// The pylon's own instance of the shared lit vertex-colour material. It has to be an instance:
+	// that material is also the untextured city and every vehicle, and EmissiveNits defaults to 0
+	// there precisely so raising it here lights the pylon and nothing else.
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> MarkerMaterial;
 
 	// Which service's object is currently built, so a redispatch of the same kind is free.
 	SimCopterDispatch::EService BuiltService = SimCopterDispatch::EService::Count;
