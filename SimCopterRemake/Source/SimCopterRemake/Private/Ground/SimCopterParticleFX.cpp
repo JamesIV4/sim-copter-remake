@@ -6,6 +6,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterEffectExposure.h"
+#include "Replay/SimCopterReplayTypes.h"
 #include "Engine/World.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterWaterGameplay.h"
@@ -999,7 +1000,11 @@ void USimCopterParticleFXComponent::TickComponent(float DeltaTime, ELevelTick Ti
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	UpdateSlots(DeltaTime);
+
+	// Presentation time: a replay review freezes the world, and these particles are the clip's fire,
+	// water, dust and rotor wash. Frozen, the replay shows a city where nothing is happening.
+	const float Delta = SimCopterReplay::GetPresentationDeltaSeconds(DeltaTime);
+	UpdateSlots(Delta);
 	RebuildMesh(GetCameraLocation());
 }
 

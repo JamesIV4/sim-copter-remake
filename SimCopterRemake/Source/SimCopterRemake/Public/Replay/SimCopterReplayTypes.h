@@ -100,6 +100,13 @@ enum class EReplayEventKind : uint8
 	SoundStart,
 	/** The matching stop, so a recorded loop does not run forever on playback. */
 	SoundStop,
+	/**
+	 * Where a positional loop moved to. The rotor is one sound started once and then re-aimed every
+	 * tick by the sim (`FUN_0042a1f0` calls SetPosition unconditionally), so a clip that recorded
+	 * only the start would pin the helicopter's engine to wherever it was when the take began -
+	 * which is why it sounded like it was next to the listener no matter where the aircraft flew.
+	 */
+	SoundMove,
 };
 
 SIMCOPTERREMAKE_API const TCHAR* GetActorKindName(EReplayActorKind Kind);
@@ -240,7 +247,9 @@ struct SIMCOPTERREMAKE_API FReplayEvent
 
 	bool IsSound() const
 	{
-		return Kind == EReplayEventKind::SoundStart || Kind == EReplayEventKind::SoundStop;
+		return Kind == EReplayEventKind::SoundStart
+			|| Kind == EReplayEventKind::SoundStop
+			|| Kind == EReplayEventKind::SoundMove;
 	}
 };
 
@@ -349,7 +358,9 @@ struct SIMCOPTERREMAKE_API FRecordedEvent
 
 	bool IsSound() const
 	{
-		return Kind == EReplayEventKind::SoundStart || Kind == EReplayEventKind::SoundStop;
+		return Kind == EReplayEventKind::SoundStart
+			|| Kind == EReplayEventKind::SoundStop
+			|| Kind == EReplayEventKind::SoundMove;
 	}
 };
 
@@ -380,4 +391,26 @@ private:
 
 /** The actor the innermost `FScopedEventSource` names, or null. */
 SIMCOPTERREMAKE_API const AActor* GetCurrentEventSource();
+
+// ---------------------------------------------------------------------------------------------
+// Presentation time
+//
+// A review freezes the world with near-zero global time dilation, so every delta the engine hands
+// out during one is ~0. That is right for the simulation - it must not advance - and wrong for
+// anything whose only job is to LOOK right: the particle pools, the tracers, the gas. Those are
+// presentation, they carry the clip's fire and water and rotor wash, and a replay without them is
+// a replay of a city where nothing is happening.
+// ---------------------------------------------------------------------------------------------
+
+/** Game thread only. Set by the recorder while a clip is being reviewed. */
+extern SIMCOPTERREMAKE_API bool GReviewFreezeActive;
+
+inline bool IsReviewFreezeActive() { return GReviewFreezeActive; }
+
+/**
+ * The delta a presentation-only system should advance by: the world's own outside a review, and
+ * real elapsed time inside one. Every caller in a frame gets the same value, so two particle pools
+ * cannot disagree about how much time passed.
+ */
+SIMCOPTERREMAKE_API float GetPresentationDeltaSeconds(float WorldDeltaSeconds);
 }

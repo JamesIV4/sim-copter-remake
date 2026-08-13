@@ -5,6 +5,7 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Audio/SimCopterSoundTable.h"
 #include "City/SimCity2000CityActor.h"
+#include "Replay/SimCopterReplayTypes.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "Flight/SimCopterWaterGameplay.h"
@@ -353,7 +354,10 @@ void USimCopterTearGasPoolComponent::TickComponent(
 		return;
 	}
 
-	StepAccumulator1616 += FMath::RoundToInt(DeltaTime * 65536.0f);
+	// Presentation time: a replay review freezes the world, and a frozen gas cloud is a replay of
+	// nothing happening.
+	StepAccumulator1616 +=
+		FMath::RoundToInt(SimCopterReplay::GetPresentationDeltaSeconds(DeltaTime) * 65536.0f);
 	int32 Steps = 0;
 	while (StepAccumulator1616 >= SimulationStep1616 && Steps < MaxStepsPerTick)
 	{

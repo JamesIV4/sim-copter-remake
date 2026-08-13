@@ -252,6 +252,13 @@ public:
 	 */
 	void SilenceForReplayReview();
 
+	/**
+	 * Every positional slot that is currently making a sound, with where it is. The replay recorder
+	 * samples this once per recorded frame: a loop is started once and then re-aimed every tick, so
+	 * without the moves a clip would pin the rotor to wherever the aircraft was when it started.
+	 */
+	void GetActivePositionalSounds(TArray<TPair<int32, FVector>>& OutSounds) const;
+
 	/** True once the original sound folder was found and at least one clip loaded. */
 	bool AreSoundsAvailable() const { return bSoundsAvailable; }
 

@@ -1102,6 +1102,26 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 	return true;
 }
 
+void USimCopterAudioSubsystem::GetActivePositionalSounds(
+	TArray<TPair<int32, FVector>>& OutSounds) const
+{
+	OutSounds.Reset();
+	for (int32 Id = 0; Id < SimCopterSound::NumSlots; ++Id)
+	{
+		const FSlot& Slot = Slots[Id];
+		if (!Slot.bPositional || !IsPlaying(Id))
+		{
+			continue;
+		}
+		const UAudioComponent* Component = SlotComponents.IsValidIndex(Id) ? SlotComponents[Id].Get() : nullptr;
+		if (Component == nullptr)
+		{
+			continue;
+		}
+		OutSounds.Emplace(Id, Component->GetComponentLocation());
+	}
+}
+
 void USimCopterAudioSubsystem::SilenceForReplayReview()
 {
 	// Every table slot: the rotor loop, the sirens, the fire, the dispatcher. These are the loops

@@ -173,8 +173,31 @@ already-playing early-out, so a clip only carries the plays that actually made a
 position is the marker for a 2D play** — that is what playback reads to choose between `Play2D` and
 `Play3D`.
 
+**A loop is started once and then re-aimed every tick** (`FUN_0042a1f0` calls `SetPosition`
+unconditionally), so start events alone pin the rotor to wherever the aircraft was when the take
+began — which is why the helicopter sounded like it was next to the listener for the whole replay.
+Every recorded frame therefore also snapshots each active positional slot as a `SoundMove`. Those
+never appear in the panel's event list or on the timeline: they fire every frame and would bury
+both.
+
 Playback fires them only on **forward, continuous** motion of the playhead. Scrubbing re-anchors
 silently: replaying two seconds of a busy city's effects in one frame is a noise, not a replay.
+
+## Presentation time: what must keep running while the world is frozen
+
+`SimCopterReplay::GetPresentationDeltaSeconds(WorldDelta)` returns real elapsed time during a
+review and the world's own delta otherwise, cached per frame so two pools cannot disagree about how
+much time passed. The particle pool, the tear gas and the Apache tracers all advance on it —
+they are presentation, they carry the clip's fire, water, dust and rotor wash, and frozen they make
+the replay a city where nothing is happening.
+
+The **world systems** go the other way: `SuspendLiveWorld` explicitly disables the tick on the
+mission, traffic and ambient-vehicle actors. The dilation already reduces their delta to nothing,
+but this makes it certain that no callout, dispatch or scheduler roll lands in the middle of a
+review. They carry `bIsWorldSystem` so the restore only re-enables their tick — applying a recorded
+transform to a system actor would move the whole system to the origin. The mission markers and
+message log are hidden for the length of a review whatever Hide HUD says: the layer is suspended, so
+they are a countdown that is not counting and a callout for a job that is not happening.
 
 ## The event track — where the "decisions" come from
 
@@ -237,7 +260,7 @@ pauses the whole sim, and the panel has to work in the helicopter, on foot, or i
 | Tab | panel up/down — **a running take survives it** (`SimReplay` is the console equivalent) |
 | H | hide HUD — **deliberately inert while the panel is down**, so the HUD cannot be hidden with no way back |
 | C | cycles Chase → Orbit → Rescue → Cockpit → **Free** → Chase |
-| Space | play/pause, except in free cam where it is "up" |
+| P | play/pause — **not Space**, which is reserved for the free camera's "up" and the collective |
 | ← → | one recorded frame |
 | M | drop a timeline marker |
 
