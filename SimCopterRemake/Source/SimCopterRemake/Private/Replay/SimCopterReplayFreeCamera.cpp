@@ -170,7 +170,22 @@ void ASimCopterReplayFreeCamera::Tick(const float DeltaSeconds)
 
 	// --- field of view ---
 
-	CurrentFovDegrees = FMath::FInterpTo(CurrentFovDegrees, TargetFovDegrees, Delta, FovInterpSpeed);
+	// Interpolated in LOG space, matching how AddFovInput steps it: a linear chase covers the wide
+	// end of a 10-180 degree sweep in a fraction of the time it takes to crawl through the narrow
+	// end, which reads as the zoom slamming and then stalling. In log space the perceived rate is
+	// constant, and with smoothing on the whole move becomes a long even glide.
+	const float FovInterpSpeed = bSmoothingEnabled ? SmoothFovInterpSpeed : RoughFovInterpSpeed;
+	const float LogCurrent = FMath::Loge(FMath::Max(CurrentFovDegrees, MinFovDegrees));
+	const float LogTarget = FMath::Loge(FMath::Max(TargetFovDegrees, MinFovDegrees));
+	CurrentFovDegrees = FMath::Exp(FMath::FInterpTo(LogCurrent, LogTarget, Delta, FovInterpSpeed));
+
+	// Snap once it is within a twentieth of a degree, or the exponential tail leaves the field of
+	// view creeping for seconds after the wheel has stopped.
+	if (FMath::Abs(CurrentFovDegrees - TargetFovDegrees) < 0.05f)
+	{
+		CurrentFovDegrees = TargetFovDegrees;
+	}
+
 	if (CameraComponent != nullptr)
 	{
 		CameraComponent->SetFieldOfView(CurrentFovDegrees);

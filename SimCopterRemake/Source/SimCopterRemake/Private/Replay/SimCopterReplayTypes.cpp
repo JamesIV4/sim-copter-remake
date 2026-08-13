@@ -169,7 +169,10 @@ bool FReplayActorState::DiffersFrom(const FReplayActorState& Other) const
 {
 	// The discrete fields first: they are the cheap comparisons and the ones that must never be
 	// smoothed away, because a pose swap or a despawn is a step change by definition.
-	if (ClipId != Other.ClipId || ClipFrame != Other.ClipFrame || Flags != Other.Flags)
+	if (ClipId != Other.ClipId
+		|| ClipFrame != Other.ClipFrame
+		|| Flags != Other.Flags
+		|| RopeNode != Other.RopeNode)
 	{
 		return true;
 	}
@@ -495,6 +498,7 @@ bool FReplayClip::Serialize(FArchive& Archive, FString& OutError)
 			Archive << Key.State.ClipId;
 			Archive << Key.State.ClipFrame;
 			Archive << Key.State.Flags;
+			Archive << Key.State.RopeNode;
 		}
 	}
 

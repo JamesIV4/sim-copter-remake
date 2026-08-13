@@ -245,5 +245,24 @@ audibly slowing.
 - `Automation RunTests SimCopter.Passengers` — 5 passed.
 - Not verified on screen; the cursor anchoring and return animation need an attended drag check.
 
+### The doropn cue is a TRANSITION, not a call (2026-08-13)
+
+`BoardCarrier`'s early-out only catches an *exactly matching* re-board (same carrier, same harness
+flag). A caller that toggles the harness flag — opcode 12 (`BoardSelection`) selecting the rope end
+on one tick and the cabin on the next — falls straight through it and tears the passenger seat down
+and rebuilds it every tick: re-notifying the mission layer, resetting the seat portrait, and
+**re-firing people voice event 60**. That is the "get-in sound played over and over when I boarded
+with a patient carried" report; the audible cue was the only visible symptom of a per-tick seat
+churn.
+
+Two fixes, both in `ASimCopterGroundAgent`:
+
+- the cue is gated on `!bAlreadyInThisCabin` — somebody already sitting in that cabin has not opened
+  a door, however many times a caller re-runs the board;
+- `BoardSelection` refuses a **harness** board for somebody already seated in the cabin. Nobody
+  climbs out of the cabin onto the rope; `TransferFromHarnessToCabin` owns the only legitimate
+  cabin/harness move, and it goes inward.
+
 Related: [[simcopter-people-logic-next]], [[simcopter-paramedic-handoffs]], [[simcopter-sound]],
-[[simcopter-population-rendering]], [[simcopter-ue-figure-component]], [[simcopter-checkup-menu]].
+[[simcopter-population-rendering]], [[simcopter-ue-figure-component]], [[simcopter-checkup-menu]],
+[[simcopter-replay-clips]].

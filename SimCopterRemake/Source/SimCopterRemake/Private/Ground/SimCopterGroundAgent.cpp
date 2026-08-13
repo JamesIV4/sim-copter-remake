@@ -3733,6 +3733,14 @@ bool ASimCopterGroundAgent::BoardCarrier(
 		}
 	}
 
+	// Whether this person is ALREADY in this carrier's cabin. The early-out above only catches an
+	// exactly-matching re-board; a caller that toggles the harness flag (op 12 selecting the rope
+	// end on one tick and the cabin on the next) falls through it and tears the seat down and
+	// rebuilds it, which re-notifies the mission layer, resets the seat portrait, and re-fires the
+	// door cue below - the "get in sound over and over" while boarding with a patient.
+	const bool bAlreadyInThisCabin =
+		BehaviorCarrier.Get() == NewCarrier && !bRidingHarness && bClaimedPassengerSeat;
+
 	// Relinquish the old carrier before taking the new one. This is deliberately attachment-only:
 	// snapping a harness rider to the ground for the instant it transfers into the cabin produces
 	// a visible teleport and can select a roof far below it.
@@ -3785,7 +3793,12 @@ bool ASimCopterGroundAgent::BoardCarrier(
 
 	BehaviorCarrier = NewCarrier;
 	bRidingHarness = bAsHarnessRider;
-	if (Helicopter != nullptr && Helicopter == ResolvePlayerHelicopter() && !bAsHarnessRider)
+	// `!bAlreadyInThisCabin`, because the cue belongs to the TRANSITION into the cabin: somebody who
+	// was already sitting in it has not opened a door, however many times a caller re-runs this.
+	if (Helicopter != nullptr &&
+		Helicopter == ResolvePlayerHelicopter() &&
+		!bAsHarnessRider &&
+		!bAlreadyInThisCabin)
 	{
 		// SCHOOK: PersonSetCarrier 0x004c6360. Assigning the player's helicopter invokes
 		// FUN_004c5210(0x3c, 1, 0, 1): people voice event 60, whose sole clip is doropn.
@@ -4095,6 +4108,17 @@ bool ASimCopterGroundAgent::BoardSelection(FSimCopterPersonContext& Context)
 		return false;
 	}
 	const bool bHarness = Context.bSelectionIsHarness;
+
+	// Nobody climbs OUT of the cabin onto the rope. Without this, a program that selects the rope
+	// end on one tick and the cabin on the next drives a full teardown-and-rebuild of the seat
+	// every tick - re-notifying the mission layer, resetting the seat portrait and re-firing the
+	// door cue. The only legitimate cabin/harness move is inward, and TransferFromHarnessToCabin
+	// owns it.
+	if (bHarness && BehaviorCarrier.Get() == Target && !bRidingHarness && bClaimedPassengerSeat)
+	{
+		return false;
+	}
+
 	return BoardCarrier(Target, bHarness);
 }
 

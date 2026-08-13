@@ -286,6 +286,14 @@ public:
 	 */
 	void UpdateCameraForReplay(float DeltaSeconds);
 
+	/**
+	 * Puts the winch where the clip says it was and re-anchors the rope, bucket and harness to the
+	 * replayed airframe. `UpdateRopeVisuals` places those in WORLD space from the rope nodes every
+	 * tick, so with the pawn's tick off for a review they otherwise stay where the take ended while
+	 * the aircraft flies away from them.
+	 */
+	void ApplyReplayWinchState(uint8 FirstActiveNode, bool bDeployed, bool bHarnessEnd);
+
 	/** The replay panel's Hide HUD button and the H key. Collapses the cockpit overlays. */
 	void SetHudHiddenForReplay(bool bHide);
 

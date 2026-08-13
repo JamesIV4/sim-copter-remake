@@ -292,6 +292,8 @@ private:
 
 	/** Channel name -> the particle component that owns it, rebuilt when a review starts. */
 	TMap<FString, TWeakObjectPtr<class USimCopterParticleFXComponent>> EffectChannelComponents;
+	/** The gas pool is its own spawner and needs its own lookup. */
+	TMap<FString, TWeakObjectPtr<class USimCopterTearGasPoolComponent>> TearGasChannelComponents;
 	void RebuildEffectChannelMap();
 
 	// --- playback ---

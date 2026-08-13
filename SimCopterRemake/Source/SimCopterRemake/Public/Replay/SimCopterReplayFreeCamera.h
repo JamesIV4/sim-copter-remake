@@ -89,8 +89,14 @@ private:
 	float RoughInterpSpeed = 22.0f;
 	float SmoothMoveInterpSpeed = 2.2f;
 	float SmoothLookInterpSpeed = 3.0f;
-	/** The FOV lerp is deliberately the same either way: the wheel should always feel geared. */
-	float FovInterpSpeed = 9.0f;
+	/**
+	 * Field-of-view chase rates. Rough is a quick, geared response to the wheel; Smooth is a long
+	 * glide, because a zoom is the one camera move you almost never want to see arrive - and it is
+	 * what the smooth toggle is for. Both interpolate in LOG space (see Tick), so the zoom's
+	 * perceived rate is even across a 10-180 degree sweep rather than crawling at the wide end.
+	 */
+	float RoughFovInterpSpeed = 9.0f;
+	float SmoothFovInterpSpeed = 1.6f;
 
 	bool bSmoothingEnabled = false;
 	bool bBoostActive = false;

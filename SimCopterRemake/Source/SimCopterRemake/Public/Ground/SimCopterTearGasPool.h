@@ -54,6 +54,9 @@ public:
 		int32 ForwardSpeed1616,
 		int32 MissionEventId);
 
+	/** Identifies this pool in a replay clip; see USimCopterParticleFXComponent's channel name. */
+	const FString& GetReplayChannelName() const;
+
 	// Slots still in the air (fuse burning) and slots that have burst into gas.
 	int32 GetActiveCanisterCount() const;
 	int32 GetActiveCloudCount() const;
@@ -86,6 +89,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USimCopterParticleFXComponent> Effects;
+
+	/** Cached; only used while recording, and it never changes. */
+	mutable FString ReplayChannelName;
 
 	TWeakObjectPtr<ASimCity2000CityActor> CachedCityActor;
 

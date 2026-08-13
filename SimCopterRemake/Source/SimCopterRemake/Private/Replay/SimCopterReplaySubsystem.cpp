@@ -13,6 +13,7 @@
 #include "Ground/SimCopterAmbientVehicles.h"
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterParticleFX.h"
+#include "Ground/SimCopterTearGasPool.h"
 #include "Ground/SimCopterTrafficSystemActor.h"
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
@@ -734,6 +735,17 @@ void USimCopterReplaySubsystem::RebuildEffectChannelMap()
 		}
 		EffectChannelComponents.Add(Component->GetReplayChannelName(), Component);
 	}
+
+	TearGasChannelComponents.Reset();
+	for (TObjectIterator<USimCopterTearGasPoolComponent> It; It; ++It)
+	{
+		USimCopterTearGasPoolComponent* Component = *It;
+		if (Component == nullptr || Component->GetWorld() != World)
+		{
+			continue;
+		}
+		TearGasChannelComponents.Add(Component->GetReplayChannelName(), Component);
+	}
 }
 
 void USimCopterReplaySubsystem::FireEffectSpawnsForPlayhead(
@@ -766,16 +778,28 @@ void USimCopterReplaySubsystem::FireEffectSpawnsForPlayhead(
 			continue;
 		}
 
-		const TWeakObjectPtr<USimCopterParticleFXComponent>* Found =
-			EffectChannelComponents.Find(Clip.EffectChannels[Spawn.ChannelId]);
+		const FString& Channel = Clip.EffectChannels[Spawn.ChannelId];
+		const FVector Location(Spawn.LocationCm);
+		const FVector Velocity(Spawn.VelocityCmPerSec);
+
+		if (Spawn.Kind == SimCopterReplay::EReplayEffectSpawn::TearGasLaunch)
+		{
+			// The gas pool is its own component with its own channel map entry.
+			const TWeakObjectPtr<USimCopterTearGasPoolComponent>* FoundPool =
+				TearGasChannelComponents.Find(Channel);
+			if (USimCopterTearGasPoolComponent* Pool = FoundPool != nullptr ? FoundPool->Get() : nullptr)
+			{
+				Pool->Launch(Location, Velocity, Spawn.TypeValue, Spawn.CellX);
+			}
+			continue;
+		}
+
+		const TWeakObjectPtr<USimCopterParticleFXComponent>* Found = EffectChannelComponents.Find(Channel);
 		USimCopterParticleFXComponent* Effects = Found != nullptr ? Found->Get() : nullptr;
 		if (Effects == nullptr)
 		{
 			continue;
 		}
-
-		const FVector Location(Spawn.LocationCm);
-		const FVector Velocity(Spawn.VelocityCmPerSec);
 		switch (Spawn.Kind)
 		{
 		case SimCopterReplay::EReplayEffectSpawn::Effect:
@@ -1085,6 +1109,15 @@ void USimCopterReplaySubsystem::ApplyPlayhead()
 	FireEffectSpawnsForPlayhead(LastEffectFrame, Frame);
 	LastEffectFrame = Frame;
 
+	// Two passes, because the player's helicopter and on-foot pawn are BORROWED and one live actor
+	// can back several tracks: boarding destroys the on-foot pawn and leaving spawns a new one, so a
+	// take with one round trip in it has two on-foot tracks that both bind to whichever pawn exists
+	// now. With a single pass the dead track hides the actor the live one just placed, and which
+	// wins is down to track order - the "pilot is invisible in replays" fault. Driving first and
+	// hiding only what nothing drove removes the race.
+	TSet<AActor*> DrivenThisFrame;
+	DrivenThisFrame.Reserve(Clip.Tracks.Num());
+
 	for (int32 TrackIndex = 0; TrackIndex < Clip.Tracks.Num(); ++TrackIndex)
 	{
 		if (!Puppets.IsValidIndex(TrackIndex))
@@ -1105,11 +1138,25 @@ void USimCopterReplaySubsystem::ApplyPlayhead()
 		SimCopterReplay::FReplayActorState SampledState;
 		if (!Clip.Tracks[TrackIndex].Sample(Frame, SampledState))
 		{
-			// Before the actor spawned or after it despawned.
-			Puppet->SetActorHiddenInGame(true);
 			continue;
 		}
 		Recordable->ApplyReplayState(Mnemonics, SampledState);
+		DrivenThisFrame.Add(Puppet);
+	}
+
+	for (int32 TrackIndex = 0; TrackIndex < Clip.Tracks.Num(); ++TrackIndex)
+	{
+		if (!Puppets.IsValidIndex(TrackIndex))
+		{
+			break;
+		}
+		AActor* Puppet = Puppets[TrackIndex];
+		if (Puppet == nullptr || Puppet->IsActorBeingDestroyed() || DrivenThisFrame.Contains(Puppet))
+		{
+			continue;
+		}
+		// Nothing placed this one at the playhead: it had not spawned yet, or it has despawned.
+		Puppet->SetActorHiddenInGame(true);
 	}
 }
 

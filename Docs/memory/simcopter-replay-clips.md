@@ -109,6 +109,14 @@ without breaking saved clips.
   `CameraMode` is still whatever it was when the operator switched away, so `ApplyCameraView` calls
   `RefreshCrosshairVisibility` on every view change.
 
+- **One live actor can back SEVERAL tracks, and a dead track must not hide it.** The helicopter and
+  the on-foot pawn are borrowed rather than spawned, and boarding *destroys* the on-foot pawn while
+  leaving spawns a new one — so a take with one round trip has two on-foot tracks, both binding to
+  whichever pawn exists now. `ApplyPlayhead` therefore runs two passes: drive everything that
+  samples, then hide only what nothing drove. A single pass let the dead track hide the actor the
+  live one had just placed, with track order deciding the winner — the "pilot is invisible in
+  replays" fault.
+
 - **`AActor::bHidden` exists.** A `bHidden` parameter on any actor method shadows it and the build
   fails on C4458. Both HUD setters take `bHide`.
 
@@ -208,6 +216,31 @@ viewer can tell from the take.
 A city has several particle components (the helicopter's water/wash, the mission layer's fire and
 smoke, the ambient vehicles' debris), so each spawn carries a **channel** — owner class plus
 component name, interned per clip — and playback resolves it back to the same component.
+
+## The helicopter's tools
+
+**`UpdateRopeVisuals` places the rope, the bucket and the harness in WORLD space every tick — they
+are not parented to the airframe.** With the pawn's tick off for a review they therefore stay
+exactly where the take ended while the replayed aircraft flies away from them, at the orientation
+they last had. That is the "tools aren't parented correctly" fault, and no amount of transform
+recording on the pawn fixes it.
+
+The clip records the winch state instead — first active node in `FReplayActorState::RopeNode`, plus
+the deployed and harness-selected flags — and `ApplyReplayWinchState` **rebuilds** the rope from the
+replayed anchor every frame and re-runs `UpdateRopeVisuals`. Extension (bucket/harness up and down),
+selection and orientation are all correct.
+
+It hangs straight down rather than swinging: the swing is integrated by the winch sim, which is
+exactly what a review must not run. A documented fidelity loss, and the alternative is recording
+seventeen node positions a frame.
+
+**The tear gas pool is its own spawner** and is reached by none of the particle component's
+creators, so `Launch` records a `TearGasLaunch` with the direction, the 16.16 forward speed and the
+mission event id — recorded only once the shot has taken a slot, because a refused launch put
+nothing in the air. Its channel map is separate from the particle channels.
+
+Airframe impacts already ride the effect track: they go through `SpawnHardLanding` and
+`SpawnSplashColumn` on the helicopter's own pool.
 
 ## Presentation time: what must keep running while the world is frozen
 

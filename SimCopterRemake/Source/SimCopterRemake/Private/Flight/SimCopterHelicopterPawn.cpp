@@ -5644,6 +5644,20 @@ void ASimCopterHelicopterPawn::CaptureReplayState(
 	{
 		OutState.Flags |= SimCopterReplay::FReplayActorState::FlagRotorBlurDisc;
 	}
+
+	// The winch. Its extension is sim state and the sim is frozen during a review, so without this
+	// the bucket and the harness never move - and because UpdateRopeVisuals places them in WORLD
+	// space rather than parenting them, they also stay where the take left them while the aircraft
+	// flies off without them.
+	if (bRopeDeployed)
+	{
+		OutState.Flags |= SimCopterReplay::FReplayActorState::FlagRopeDeployed;
+	}
+	if (bHarnessRopeEndSelected)
+	{
+		OutState.Flags |= SimCopterReplay::FReplayActorState::FlagHarnessRopeEnd;
+	}
+	OutState.RopeNode = static_cast<uint8>(FMath::Clamp(RopeFirstActiveNode, 0, 255));
 }
 
 void ASimCopterHelicopterPawn::ApplyReplayState(
@@ -5695,6 +5709,50 @@ void ASimCopterHelicopterPawn::ApplyReplayState(
 	{
 		HeliTailRotorMeshComponent->SetRelativeRotation(TailRotorRotation);
 	}
+
+	ApplyReplayWinchState(
+		State.RopeNode,
+		(State.Flags & SimCopterReplay::FReplayActorState::FlagRopeDeployed) != 0,
+		(State.Flags & SimCopterReplay::FReplayActorState::FlagHarnessRopeEnd) != 0);
+}
+
+void ASimCopterHelicopterPawn::ApplyReplayWinchState(
+	const uint8 FirstActiveNode,
+	const bool bDeployed,
+	const bool bHarnessEnd)
+{
+	bRopeDeployed = bDeployed;
+	bHarnessRopeEndSelected = bHarnessEnd;
+	RopeFirstActiveNode = FMath::Clamp(
+		static_cast<int32>(FirstActiveNode), 0, SimCopterWaterGameplay::RopeNodeCount - 1);
+
+	// The rope is REBUILT from the aircraft's current position rather than replayed node by node.
+	// UpdateRopeVisuals places the rope, the bucket and the harness in world space every tick from
+	// these nodes, so with the pawn's tick off they stay wherever the take ended and the aircraft
+	// flies away from them - the "tools aren't parented" fault. Rebuilding here re-anchors all of
+	// it to the replayed airframe every frame.
+	//
+	// It hangs straight down instead of swinging: the swing is integrated by the winch sim, which
+	// is exactly what a review must not run. Extension, selection and orientation are right, which
+	// is what the shot needs.
+	const float SegmentLengthCm =
+		static_cast<float>(SimCopterWaterGameplay::RopeSegmentLength1616) *
+		SimCopterEffectFX::Fixed1616ToCm;
+	const FVector Anchor = GetRopeAnchorWorldLocation();
+	RopeNodeWorldPositions.SetNum(SimCopterWaterGameplay::RopeNodeCount);
+	for (int32 NodeIndex = 0; NodeIndex < RopeNodeWorldPositions.Num(); ++NodeIndex)
+	{
+		// Nodes above the winch cursor are stowed, so they all sit on the anchor and draw nothing.
+		const int32 PaidOut = FMath::Max(NodeIndex - RopeFirstActiveNode, 0);
+		RopeNodeWorldPositions[NodeIndex] =
+			Anchor - FVector::UpVector * SegmentLengthCm * static_cast<float>(PaidOut);
+	}
+	PreviousRopeAnchorWorld = Anchor;
+	PreviousBucketWorld = RopeNodeWorldPositions.Last();
+	PreviousRopeEndDirection = -FVector::UpVector;
+	bRopeStateInitialized = true;
+
+	UpdateRopeVisuals();
 }
 
 // `bHide`, not `bHidden`: AActor already has a bHidden bitfield and shadowing it here is an error.

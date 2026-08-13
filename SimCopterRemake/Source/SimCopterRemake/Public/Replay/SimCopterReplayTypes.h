@@ -130,6 +130,10 @@ struct SIMCOPTERREMAKE_API FReplayActorState
 		FlagHidden = 1 << 0,
 		/** Helicopter only: the face-type-11 rotor blur disc was on. */
 		FlagRotorBlurDisc = 1 << 1,
+		/** Helicopter only: the winch rope was out. */
+		FlagRopeDeployed = 1 << 2,
+		/** Helicopter only: the rope end is the harness rather than the bucket. */
+		FlagHarnessRopeEnd = 1 << 3,
 	};
 
 	FVector3f LocationCm = FVector3f::ZeroVector;
@@ -159,6 +163,12 @@ struct SIMCOPTERREMAKE_API FReplayActorState
 	/** Frame within that privanim clip. */
 	uint16 ClipFrame = 0;
 	uint8 Flags = FlagNone;
+	/**
+	 * Helicopter: the winch's first active rope node (17 = stowed, 0 = fully out). This is what
+	 * makes the bucket and the harness go up and down in a replay - the rope's extension is sim
+	 * state, and the sim is frozen.
+	 */
+	uint8 RopeNode = 17;
 
 	bool IsHidden() const { return (Flags & FlagHidden) != 0; }
 
@@ -271,6 +281,13 @@ enum class EReplayEffectSpawn : uint8
 	Particle,
 	/** SpawnRing - the legacy ring entry point. */
 	Ring,
+	/**
+	 * `USimCopterTearGasPoolComponent::Launch` - a canister leaving the tube. Its own pool, not the
+	 * particle component's, and the only weapon spawner that is not reached through one of the
+	 * creators above. Velocity holds the launch direction, `TypeValue` the 16.16 forward speed and
+	 * `CellX` the mission event id.
+	 */
+	TearGasLaunch,
 };
 
 /**

@@ -203,6 +203,19 @@ UProceduralMeshComponent* USimCopterTearGasPoolComponent::EnsureCanisterMesh(con
 	return Mesh;
 }
 
+const FString& USimCopterTearGasPoolComponent::GetReplayChannelName() const
+{
+	if (ReplayChannelName.IsEmpty())
+	{
+		const AActor* Owner = GetOwner();
+		ReplayChannelName = FString::Printf(
+			TEXT("%s.%s"),
+			Owner != nullptr ? *Owner->GetClass()->GetName() : TEXT("None"),
+			*GetFName().ToString());
+	}
+	return ReplayChannelName;
+}
+
 bool USimCopterTearGasPoolComponent::Launch(
 	const FVector& LaunchWorldLocation,
 	const FVector& Direction,
@@ -229,6 +242,20 @@ bool USimCopterTearGasPoolComponent::Launch(
 		{
 			Mesh->SetWorldLocation(Slot.Position);
 			Mesh->SetVisibility(true);
+		}
+
+		// Recorded only once the shot has actually taken a slot - a refused launch put nothing in
+		// the air, and replaying it would show a canister the take never fired. The pool is its own
+		// spawner, so this is the one weapon effect the particle component's creators never see.
+		if (SimCopterReplay::IsRecordingEvents())
+		{
+			SimCopterReplay::FReplayEffectSpawn Spawn;
+			Spawn.Kind = SimCopterReplay::EReplayEffectSpawn::TearGasLaunch;
+			Spawn.LocationCm = FVector3f(LaunchWorldLocation);
+			Spawn.VelocityCmPerSec = FVector3f(Direction);
+			Spawn.TypeValue = ForwardSpeed1616;
+			Spawn.CellX = MissionEventId;
+			SimCopterReplay::RecordEffectSpawn(GetReplayChannelName(), Spawn);
 		}
 		return true;
 	}
@@ -344,6 +371,7 @@ void USimCopterTearGasPoolComponent::TickComponent(
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	bool bAnyActive = false;
+	// (see below for the presentation-time accumulator)
 	for (const FSlot& Slot : Slots)
 	{
 		bAnyActive |= Slot.bActive;
