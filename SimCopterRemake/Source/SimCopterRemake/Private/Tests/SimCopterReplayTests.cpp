@@ -230,6 +230,15 @@ bool FSimCopterReplayClipSerializationTest::RunTest(const FString& Parameters)
 	Event.WorldLocationCm = FVector3f(1.0f, 2.0f, 3.0f);
 	Event.Text = TEXT("SELECT class 5 -> 'CARPOLIC' at 3 tiles");
 
+	// A sound event carries its meaning entirely in its payload and has no text at all, so it is
+	// the one kind that would be silently dropped by a text-only round trip.
+	FReplayEvent& Sound = Written.Events.AddDefaulted_GetRef();
+	Sound.FrameIndex = 20;
+	Sound.Kind = EReplayEventKind::SoundStart;
+	Sound.PayloadA = 0x1d;   // sound table slot
+	Sound.PayloadB = 1;      // play flags
+	Sound.WorldLocationCm = FVector3f(400.0f, 800.0f, 120.0f);
+
 	TArray<uint8> Bytes;
 	{
 		FMemoryWriter Writer(Bytes);
@@ -252,7 +261,7 @@ bool FSimCopterReplayClipSerializationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Recorded time survives"), Read.RecordedAtUtc, Written.RecordedAtUtc);
 	TestEqual(TEXT("Mnemonic list survives"), Read.ClipMnemonics.Num(), 2);
 	TestEqual(TEXT("Track count survives"), Read.Tracks.Num(), 1);
-	TestEqual(TEXT("Event count survives"), Read.Events.Num(), 1);
+	TestEqual(TEXT("Event count survives"), Read.Events.Num(), 2);
 
 	if (Read.Tracks.Num() == 1)
 	{
@@ -273,10 +282,18 @@ bool FSimCopterReplayClipSerializationTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	if (Read.Events.Num() == 1)
+	if (Read.Events.Num() == 2)
 	{
-		TestEqual(TEXT("Event text survives"), Read.Events[0].Text, Event.Text);
+		TestEqual(TEXT("Event text survives"), Read.Events[0].Text, FString(TEXT("SELECT class 5 -> 'CARPOLIC' at 3 tiles")));
 		TestEqual(TEXT("Event kind survives"), static_cast<int32>(Read.Events[0].Kind), static_cast<int32>(EReplayEventKind::PersonDecision));
+
+		const FReplayEvent& ReadSound = Read.Events[1];
+		TestTrue(TEXT("A sound event reads back as a sound"), ReadSound.IsSound());
+		TestEqual(TEXT("Sound slot id survives"), ReadSound.PayloadA, 0x1d);
+		TestEqual(TEXT("Sound flags survive"), ReadSound.PayloadB, 1);
+		// The position is what decides Play3D vs Play2D on the way back out, so losing it would
+		// collapse the whole city's audio onto the listener.
+		TestEqual(TEXT("Sound position survives"), ReadSound.WorldLocationCm.Y, 800.0f);
 	}
 
 	// A clip written by a different build must be refused with a message, not read hopefully: a

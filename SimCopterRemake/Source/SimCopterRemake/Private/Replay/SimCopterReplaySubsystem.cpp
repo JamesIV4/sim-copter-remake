@@ -2,6 +2,7 @@
 
 #include "Replay/SimCopterReplaySubsystem.h"
 
+#include "Audio/SimCopterAudioSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -577,25 +578,23 @@ void USimCopterReplaySubsystem::CloseOpenTracks()
 // The event track
 // ---------------------------------------------------------------------------------------------
 
-void USimCopterReplaySubsystem::ReplayEventSink(
-	const SimCopterReplay::EReplayEventKind Kind,
-	const FString& Text,
-	const AActor* Source,
-	const int32 PersonState)
+void USimCopterReplaySubsystem::ReplayEventSink(const SimCopterReplay::FRecordedEvent& Event)
 {
 	if (ActiveRecorder != nullptr)
 	{
-		ActiveRecorder->HandleEvent(Kind, Text, Source, PersonState);
+		ActiveRecorder->HandleEvent(Event);
 	}
 }
 
-void USimCopterReplaySubsystem::HandleEvent(
-	const SimCopterReplay::EReplayEventKind Kind,
-	const FString& Text,
-	const AActor* Source,
-	const int32 PersonState)
+void USimCopterReplaySubsystem::HandleEvent(const SimCopterReplay::FRecordedEvent& Event)
 {
-	if (State != ESimCopterReplayState::Recording || Text.IsEmpty())
+	const FString EventText = Event.Text != nullptr ? *Event.Text : FString();
+	if (State != ESimCopterReplayState::Recording)
+	{
+		return;
+	}
+	// A sound carries its meaning in its payload, so it is the one kind allowed to have no text.
+	if (EventText.IsEmpty() && !Event.IsSound())
 	{
 		return;
 	}
@@ -603,31 +602,44 @@ void USimCopterReplaySubsystem::HandleEvent(
 	const int32 FrameIndex = FMath::Max(RecordFrameIndex - 1, 0);
 
 	// One riot can emit hundreds of lines in a frame. Dropping the overflow keeps the clip usable;
-	// silently blowing the memory budget on trace text would not.
-	int32 ThisFrameCount = 0;
-	for (int32 Index = Clip.Events.Num() - 1; Index >= 0; --Index)
+	// silently blowing the memory budget on trace text would not. Sounds are exempt: there are only
+	// ever a handful a frame, and a clip that drops them plays back silent.
+	if (!Event.IsSound())
 	{
-		if (Clip.Events[Index].FrameIndex != FrameIndex)
+		int32 ThisFrameCount = 0;
+		for (int32 Index = Clip.Events.Num() - 1; Index >= 0; --Index)
 		{
-			break;
-		}
-		if (++ThisFrameCount >= MaxEventsPerFrame)
-		{
-			return;
+			if (Clip.Events[Index].FrameIndex != FrameIndex)
+			{
+				break;
+			}
+			if (++ThisFrameCount >= MaxEventsPerFrame)
+			{
+				return;
+			}
 		}
 	}
 
-	SimCopterReplay::FReplayEvent& Event = Clip.Events.AddDefaulted_GetRef();
-	Event.FrameIndex = FrameIndex;
-	Event.Kind = Kind;
-	Event.PersonState = PersonState;
-	Event.Text = Text;
-	if (Source != nullptr)
+	SimCopterReplay::FReplayEvent& Recorded = Clip.Events.AddDefaulted_GetRef();
+	Recorded.FrameIndex = FrameIndex;
+	Recorded.Kind = Event.Kind;
+	Recorded.PersonState = Event.PersonState;
+	Recorded.PayloadA = Event.PayloadA;
+	Recorded.PayloadB = Event.PayloadB;
+	Recorded.Text = EventText;
+
+	if (Event.bHasWorldLocation)
 	{
-		Event.WorldLocationCm = FVector3f(Source->GetActorLocation());
-		if (const int32* TrackIndex = TrackIndexByActor.Find(TObjectKey<AActor>(const_cast<AActor*>(Source))))
+		// A sound knows exactly where it was played; nothing else should override that.
+		Recorded.WorldLocationCm = FVector3f(Event.WorldLocation);
+	}
+	else if (Event.Source != nullptr)
+	{
+		Recorded.WorldLocationCm = FVector3f(Event.Source->GetActorLocation());
+		if (const int32* TrackIndex =
+				TrackIndexByActor.Find(TObjectKey<AActor>(const_cast<AActor*>(Event.Source))))
 		{
-			Event.ActorId = Clip.Tracks.IsValidIndex(*TrackIndex) ? Clip.Tracks[*TrackIndex].ActorId : 0;
+			Recorded.ActorId = Clip.Tracks.IsValidIndex(*TrackIndex) ? Clip.Tracks[*TrackIndex].ActorId : 0;
 		}
 	}
 }
@@ -697,6 +709,16 @@ void USimCopterReplaySubsystem::EnterReview()
 	// in, so a puppet spawned into the middle of the crowd cannot be mistaken for a live agent and
 	// hidden along with it.
 	FreezeWorldForReview();
+
+	// The live mixer has nothing left to say once the world is frozen, and every loop it was
+	// holding - the rotor, the sirens, the radio, a walking voice per person - would hang there
+	// underneath the replay. The clip plays its own recorded sound events instead.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->SilenceForReplayReview();
+	}
+	LastSoundFrame = 0.0f;
+
 	SuspendLiveWorld();
 	BuildPuppets();
 	// The review may be watched with the panel hidden, and the free camera has to survive that, so
@@ -722,6 +744,14 @@ void USimCopterReplaySubsystem::LeaveReview()
 	bPlaying = false;
 	DestroyPuppets();
 	RestoreLiveWorld();
+
+	// Whatever the clip was playing stops with it; the live systems restart their own loops on
+	// their next tick, which the thaw below lets happen.
+	if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
+	{
+		Audio->SilenceForReplayReview();
+	}
+
 	ThawWorldAfterReview();
 	State = ESimCopterReplayState::Idle;
 
@@ -847,6 +877,8 @@ void USimCopterReplaySubsystem::ApplyPlayhead()
 	// Fractional, not rounded: this is what turns a 20 Hz recording into smooth motion at any frame
 	// rate and at 0.1x speed.
 	const float Frame = PlayheadSeconds / Clip.FrameIntervalSeconds;
+	FireSoundEventsForPlayhead(LastSoundFrame, Frame);
+	LastSoundFrame = Frame;
 
 	for (int32 TrackIndex = 0; TrackIndex < Clip.Tracks.Num(); ++TrackIndex)
 	{
@@ -873,6 +905,58 @@ void USimCopterReplaySubsystem::ApplyPlayhead()
 			continue;
 		}
 		Recordable->ApplyReplayState(Mnemonics, SampledState);
+	}
+}
+
+void USimCopterReplaySubsystem::FireSoundEventsForPlayhead(
+	const float PreviousFrame,
+	const float CurrentFrame)
+{
+	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
+	if (Audio == nullptr || Clip.Events.Num() == 0)
+	{
+		return;
+	}
+
+	// Forward, continuous motion only. Scrubbing across two seconds of a busy city would fire
+	// dozens of effects in one frame - a noise, not a replay - and running backwards would play
+	// them in reverse order, which is worse. Either way the sound track just re-anchors silently.
+	const float Advance = CurrentFrame - PreviousFrame;
+	const float MaxContinuousAdvanceFrames = 1.0f / (Clip.FrameIntervalSeconds * 4.0f);
+	if (Advance <= 0.0f || Advance > MaxContinuousAdvanceFrames)
+	{
+		return;
+	}
+
+	for (const SimCopterReplay::FReplayEvent& Event : Clip.Events)
+	{
+		if (!Event.IsSound())
+		{
+			continue;
+		}
+		const float EventFrame = static_cast<float>(Event.FrameIndex);
+		if (EventFrame <= PreviousFrame || EventFrame > CurrentFrame)
+		{
+			continue;
+		}
+
+		if (Event.Kind == SimCopterReplay::EReplayEventKind::SoundStop)
+		{
+			Audio->Stop(Event.PayloadA);
+			continue;
+		}
+
+		// A zero location is what RecordSoundEvent stores for a 2D play; anything else was a
+		// positioned effect and has to stay positioned, or the whole city's audio collapses onto
+		// the listener.
+		if (Event.WorldLocationCm.IsNearlyZero())
+		{
+			Audio->Play2D(Event.PayloadA, Event.PayloadB);
+		}
+		else
+		{
+			Audio->Play3D(Event.PayloadA, FVector(Event.WorldLocationCm), Event.PayloadB);
+		}
 	}
 }
 
@@ -1205,6 +1289,13 @@ void USimCopterReplaySubsystem::ApplyCameraView()
 	if (Controller == nullptr)
 	{
 		return;
+	}
+
+	// Whichever way the view just went, the crosshair has to be re-evaluated: it is hidden in free
+	// camera and restored on the way back.
+	if (ASimCopterHelicopterPawn* CrosshairOwner = ResolvePlayerHelicopter())
+	{
+		CrosshairOwner->RefreshCrosshairVisibility();
 	}
 
 	if (IsFreeCameraActive())

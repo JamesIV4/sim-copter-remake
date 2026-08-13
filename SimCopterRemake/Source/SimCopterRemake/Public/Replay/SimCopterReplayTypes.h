@@ -51,7 +51,7 @@ inline constexpr uint32 ClipFileMagic = 0x50524353u;
  * with a message rather than read hopefully - a half-understood clip plays back as a city full of
  * actors teleporting into the ground, which reads as a physics bug rather than a format one.
  */
-inline constexpr int32 ClipFileVersion = 1;
+inline constexpr int32 ClipFileVersion = 2;
 
 /**
  * 20 Hz. This is the original's own simulation period (`OriginalFrameSeconds`, 0.05 s - see
@@ -92,6 +92,14 @@ enum class EReplayEventKind : uint8
 	MissionMessage,
 	/** An operator bookmark dropped from the replay panel. */
 	Bookmark,
+	/**
+	 * A sound the sim started, recorded so the clip can play its own audio rather than whatever the
+	 * frozen live world happened to be holding. `PayloadA` is the table slot id (0x00-0x81),
+	 * `PayloadB` the play flags, and `WorldLocationCm` the 3D position - zero for a 2D play.
+	 */
+	SoundStart,
+	/** The matching stop, so a recorded loop does not run forever on playback. */
+	SoundStop,
 };
 
 SIMCOPTERREMAKE_API const TCHAR* GetActorKindName(EReplayActorKind Kind);
@@ -223,8 +231,17 @@ struct SIMCOPTERREMAKE_API FReplayEvent
 	uint32 ActorId = 0;
 	EReplayEventKind Kind = EReplayEventKind::Generic;
 	int32 PersonState = INDEX_NONE;
+	/** Kind-specific. SoundStart/SoundStop: the sound table slot id. */
+	int32 PayloadA = 0;
+	/** Kind-specific. SoundStart: the play flags (loop, etc). */
+	int32 PayloadB = 0;
 	FVector3f WorldLocationCm = FVector3f::ZeroVector;
 	FString Text;
+
+	bool IsSound() const
+	{
+		return Kind == EReplayEventKind::SoundStart || Kind == EReplayEventKind::SoundStop;
+	}
 };
 
 /**
@@ -307,13 +324,42 @@ SIMCOPTERREMAKE_API void RecordEvent(
 	int32 PersonState = INDEX_NONE);
 
 /**
- * Where `RecordEvent` sends what it collects. The recorder installs itself on start and clears
- * itself on stop; null means nothing is listening, which is the state the game is in almost all of
- * the time. A raw function pointer rather than a delegate because this is called from the
+ * A sound the sim just started or stopped. Recorded so playback can reproduce the clip's audio -
+ * a review freezes the world, so the live mixer has nothing to say and whatever it was holding
+ * when the clip opened would otherwise drone on underneath the replay.
+ */
+SIMCOPTERREMAKE_API void RecordSoundEvent(
+	EReplayEventKind Kind,
+	int32 SoundId,
+	int32 Flags,
+	const FVector& WorldLocation,
+	bool bHasWorldLocation);
+
+/** Everything one recorded event carries, so the sink signature does not grow a parameter a week. */
+struct SIMCOPTERREMAKE_API FRecordedEvent
+{
+	EReplayEventKind Kind = EReplayEventKind::Generic;
+	const FString* Text = nullptr;
+	const AActor* Source = nullptr;
+	int32 PersonState = INDEX_NONE;
+	int32 PayloadA = 0;
+	int32 PayloadB = 0;
+	FVector WorldLocation = FVector::ZeroVector;
+	bool bHasWorldLocation = false;
+
+	bool IsSound() const
+	{
+		return Kind == EReplayEventKind::SoundStart || Kind == EReplayEventKind::SoundStop;
+	}
+};
+
+/**
+ * Where the recording funnel sends what it collects. The recorder installs itself on start and
+ * clears itself on stop; null means nothing is listening, which is the state the game is in almost
+ * all of the time. A raw function pointer rather than a delegate because this is called from the
  * behaviour VM's innermost loop.
  */
-SIMCOPTERREMAKE_API void SetEventSink(
-	void (*Sink)(EReplayEventKind Kind, const FString& Text, const AActor* Source, int32 PersonState));
+SIMCOPTERREMAKE_API void SetEventSink(void (*Sink)(const FRecordedEvent& Event));
 
 /**
  * Attributes every event emitted inside the scope to one actor. `ASimCopterGroundAgent::Tick`

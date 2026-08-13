@@ -8,6 +8,7 @@
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Replay/SimCopterReplayTypes.h"
 #include "Sound/SoundAttenuation.h"
 #include "Sound/SoundWaveProcedural.h"
 
@@ -671,7 +672,20 @@ bool USimCopterAudioSubsystem::Play2D(int32 Id, int32 Flags)
 		Component->AttenuationSettings = nullptr;
 		Component->bOverrideAttenuation = false;
 	}
-	return StartSlot(Id, (Flags & SimCopterSoundFlags::Loop) != 0);
+
+	const bool bStarted = StartSlot(Id, (Flags & SimCopterSoundFlags::Loop) != 0);
+	if (bStarted && SimCopterReplay::IsRecordingEvents())
+	{
+		// A zero location is the recorded marker for "this was a 2D play", which is what playback
+		// reads to decide between Play2D and Play3D.
+		SimCopterReplay::RecordSoundEvent(
+			SimCopterReplay::EReplayEventKind::SoundStart,
+			Id,
+			Flags,
+			FVector::ZeroVector,
+			/*bHasWorldLocation=*/true);
+	}
+	return bStarted;
 }
 
 bool USimCopterAudioSubsystem::Play3D(int32 Id, const FVector& WorldLocation, int32 Flags)
@@ -708,6 +722,19 @@ bool USimCopterAudioSubsystem::Play3D(int32 Id, const FVector& WorldLocation, in
 		return false;
 	}
 	SetPosition(Id, WorldLocation);
+
+	// Recorded AFTER the audibility reject and the already-playing early-out above, so a clip only
+	// carries the plays that actually made a sound - replaying the rejects would give the review a
+	// denser soundtrack than the take had.
+	if (SimCopterReplay::IsRecordingEvents())
+	{
+		SimCopterReplay::RecordSoundEvent(
+			SimCopterReplay::EReplayEventKind::SoundStart,
+			Id,
+			Flags,
+			WorldLocation,
+			/*bHasWorldLocation=*/true);
+	}
 	return true;
 }
 
@@ -718,11 +745,24 @@ void USimCopterAudioSubsystem::Stop(int32 Id)
 		return;
 	}
 	FSlot& Slot = Slots[Id];
+	// Only worth recording when something was actually running: the codebase calls Stop freely on
+	// slots that are already silent, and a clip full of those is noise in the event list.
+	const bool bWasAudible = Slot.bLooping || Slot.OneShotEndTime > 0.0;
 	Slot.bLooping = false;
 	Slot.OneShotEndTime = 0.0;
 	if (UAudioComponent* Component = SlotComponents.IsValidIndex(Id) ? SlotComponents[Id].Get() : nullptr)
 	{
 		Component->Stop();
+	}
+
+	if (bWasAudible && SimCopterReplay::IsRecordingEvents())
+	{
+		SimCopterReplay::RecordSoundEvent(
+			SimCopterReplay::EReplayEventKind::SoundStop,
+			Id,
+			0,
+			FVector::ZeroVector,
+			/*bHasWorldLocation=*/false);
 	}
 }
 
@@ -1060,6 +1100,32 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 
 	LooseComponents.Add(Component);
 	return true;
+}
+
+void USimCopterAudioSubsystem::SilenceForReplayReview()
+{
+	// Every table slot: the rotor loop, the sirens, the fire, the dispatcher. These are the loops
+	// that would otherwise hang at whatever they were doing when the clip opened, because the
+	// systems that would stop them are frozen for the length of the review.
+	for (int32 Id = 0; Id < SimCopterSound::NumSlots; ++Id)
+	{
+		Stop(Id);
+	}
+
+	// The polyphonic movement loops are not slots, so Stop() above cannot reach them - and there is
+	// one per walking person, which is the loudest part of a frozen city.
+	for (const TObjectPtr<UAudioComponent>& Component : AttachedVoiceLoopComponents)
+	{
+		if (Component != nullptr)
+		{
+			Component->Stop();
+		}
+	}
+
+	StopStandaloneSounds();
+	StopMusic();
+	StopRadio();
+	ClearRadioVoiceQueue();
 }
 
 void USimCopterAudioSubsystem::StopStandaloneSounds()

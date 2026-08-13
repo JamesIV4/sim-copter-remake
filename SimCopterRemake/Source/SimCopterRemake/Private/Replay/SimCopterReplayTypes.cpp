@@ -21,7 +21,7 @@ const AActor* GEventSource = nullptr;
  * The recorder's callback, installed while a clip is recording. A raw function pointer rather than
  * a delegate so the trace path stays a load and a branch.
  */
-void (*GEventSink)(EReplayEventKind, const FString&, const AActor*, int32) = nullptr;
+void (*GEventSink)(const FRecordedEvent&) = nullptr;
 
 /** Half a millimetre and a twentieth of a degree - below what a close camera can resolve. */
 constexpr float LocationEpsilonCm = 0.05f;
@@ -29,7 +29,7 @@ constexpr float RotationEpsilonDeg = 0.05f;
 constexpr float AuxEpsilon = 0.05f;
 }
 
-void SetEventSink(void (*Sink)(EReplayEventKind, const FString&, const AActor*, int32))
+void SetEventSink(void (*Sink)(const FRecordedEvent&))
 {
 	GEventSink = Sink;
 }
@@ -54,6 +54,8 @@ const TCHAR* GetEventKindName(const EReplayEventKind Kind)
 	case EReplayEventKind::PersonOpcode:   return TEXT("OPCODE");
 	case EReplayEventKind::MissionMessage: return TEXT("MISSION");
 	case EReplayEventKind::Bookmark:       return TEXT("MARK");
+	case EReplayEventKind::SoundStart:     return TEXT("SOUND");
+	case EReplayEventKind::SoundStop:      return TEXT("SND-OFF");
 	default:                               return TEXT("EVENT");
 	}
 }
@@ -68,7 +70,36 @@ void RecordEvent(
 	{
 		return;
 	}
-	GEventSink(Kind, Text, Source != nullptr ? Source : GEventSource, PersonState);
+
+	FRecordedEvent Event;
+	Event.Kind = Kind;
+	Event.Text = &Text;
+	Event.Source = Source != nullptr ? Source : GEventSource;
+	Event.PersonState = PersonState;
+	GEventSink(Event);
+}
+
+void RecordSoundEvent(
+	const EReplayEventKind Kind,
+	const int32 SoundId,
+	const int32 Flags,
+	const FVector& WorldLocation,
+	const bool bHasWorldLocation)
+{
+	if (GEventSink == nullptr)
+	{
+		return;
+	}
+
+	FRecordedEvent Event;
+	Event.Kind = Kind;
+	Event.PayloadA = SoundId;
+	Event.PayloadB = Flags;
+	Event.WorldLocation = WorldLocation;
+	Event.bHasWorldLocation = bHasWorldLocation;
+	// Deliberately NOT attributed to the scoped source: a sound belongs where it was played, and
+	// the location is already exact. Borrowing the ticking agent's position would move it.
+	GEventSink(Event);
 }
 
 FScopedEventSource::FScopedEventSource(const AActor* InSource)
@@ -441,6 +472,8 @@ bool FReplayClip::Serialize(FArchive& Archive, FString& OutError)
 		Archive << EventKindByte;
 		Event.Kind = static_cast<EReplayEventKind>(EventKindByte);
 		Archive << Event.PersonState;
+		Archive << Event.PayloadA;
+		Archive << Event.PayloadB;
 		Archive << Event.WorldLocationCm;
 		Archive << Event.Text;
 	}

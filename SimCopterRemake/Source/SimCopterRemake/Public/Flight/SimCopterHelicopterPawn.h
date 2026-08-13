@@ -288,6 +288,12 @@ public:
 
 	/** The replay panel's Hide HUD button and the H key. Collapses the cockpit overlays. */
 	void SetHudHiddenForReplay(bool bHide);
+
+	/**
+	 * Re-evaluates the crosshair. Public so the replay subsystem can call it when the view changes:
+	 * the crosshair is hidden in free camera, and that is not a state the pawn can see coming.
+	 */
+	void RefreshCrosshairVisibility() { UpdateCrosshairVisibility(); }
 	bool IsHudHiddenForReplay() const { return bHudHiddenForReplay; }
 	// Every possession path lands here, not just EnterHelicopter: the initial spawn, a console
 	// command, and climbing back in after a job on foot.

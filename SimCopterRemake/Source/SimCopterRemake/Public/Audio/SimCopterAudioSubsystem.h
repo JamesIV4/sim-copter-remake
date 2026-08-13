@@ -241,6 +241,17 @@ public:
 	void SetMasterVolume(int32 Volume);
 	int32 GetMasterVolume() const { return MasterVolume; }
 
+	/**
+	 * Silences everything the live game is playing, for a replay review.
+	 *
+	 * A review freezes the world, so nothing is going to stop these normally: the rotor loop, the
+	 * sirens, a fire, the radio and every attached walking voice would all hang at whatever they
+	 * were doing when the clip opened and drone under the replay. The clip plays its own recorded
+	 * sound events instead. Live audio comes back on its own when the world thaws and the systems
+	 * that own these loops tick again.
+	 */
+	void SilenceForReplayReview();
+
 	/** True once the original sound folder was found and at least one clip loaded. */
 	bool AreSoundsAvailable() const { return bSoundsAvailable; }
 
