@@ -84,9 +84,17 @@ public:
 	// It collapses itself whenever calibration mode is off, so the host needs no visibility logic.
 	TSharedRef<SWidget> BuildCalibrationDebugPanel();
 
-	virtual bool SupportsKeyboardFocus() const override { return true; }
-	virtual FReply OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
-	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+	// NEVER focusable, and there is deliberately no key handler here either.
+	//
+	// This widget is the cockpit's right-hand column: it sits over the flying helicopter, and any
+	// widget over the viewport that accepts keyboard focus takes it away from the game viewport on
+	// a single click - at which point no gameplay axis or action binding fires at all and the keys
+	// the player is holding are released on the way out. Clicking a tool flap used to stop W, and
+	// this is why. The calibration chord (Ctrl+Alt+M) is handled application-wide by
+	// FSimCopterFlapCalibrationInputPreProcessor, which needs no focus and works from anywhere.
+	//
+	// See Docs/memory/simcopter-ui-keyboard-focus.md.
+	virtual bool SupportsKeyboardFocus() const override { return false; }
 
 	// Rebinds when possession changes so the flaps follow the controlled helicopter.
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }

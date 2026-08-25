@@ -3,10 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Game/SimCopterKeyboardFocus.h"
 #include "GameFramework/PlayerController.h"
 #include "Replay/SimCopterReplaySubsystem.h"
 #include "SimCopterPlayerController.generated.h"
 
+class IInputProcessor;
 class SWidget;
 class USimCopterHangarArt;
 enum class ESimCopterSettingsItem : uint8;
@@ -80,6 +82,20 @@ public:
 
 	bool IsSettingsOpen() const { return Screen != ESimCopterSettingsScreen::None; }
 	bool IsReplayPanelOpen() const { return ReplayPanelWidget.IsValid(); }
+
+	/** Prints who holds the keyboard and why the guard is or is not acting. For bug reports. */
+	UFUNCTION(Exec)
+	void SimInputFocus();
+
+	/**
+	 * Takes the keyboard back for the game viewport if a widget has taken it while the player is
+	 * meant to be flying. Public because the Slate pre-processor that drives it lives outside this
+	 * class: it runs BEFORE FSlateApplication resolves the focus path for the key it is handling,
+	 * so a repair here lands in time for THAT key to reach the pawn, not merely the next one.
+	 *
+	 * See Docs/memory/simcopter-ui-keyboard-focus.md.
+	 */
+	void RestoreGameViewportKeyboardFocusIfStolen();
 
 	/**
 	 * FUN_004346c0's `app+0xbc`: the pause is reference counted, because opening a sub-dialog
@@ -213,6 +229,32 @@ private:
 
 	/** Restores the input mode and cursor the pawn wants once the screen goes away. */
 	void RestoreGameInput();
+
+	// --- the keyboard focus guard ---
+	//
+	// The cockpit UI is not allowed to take the keyboard (Docs/memory/simcopter-ui-keyboard-focus.md).
+	// This is the belt for that pair of braces: whatever manages to take it anyway is only holding
+	// it until the next Slate tick or the next key, whichever comes first.
+
+	/** Registered for the life of the controller so a stray focus grab cannot outlive one frame. */
+	TSharedPtr<IInputProcessor> KeyboardFocusGuard;
+	/** Last thief reported, so a widget that re-takes focus every frame logs once, not per frame. */
+	FString LastReportedFocusThief;
+	FDelegateHandle ApplicationActivationHandle;
+
+	/** True while a widget is legitimately typing - today only the replay panel's clip-name box. */
+	bool IsTextEntryActive() const;
+
+	/** One reader of Slate and the viewport, so the guard and SimInputFocus cannot disagree. */
+	SimCopterKeyboardFocus::FFocusState GatherKeyboardFocusState(FString& OutFocusedWidgetName) const;
+
+	/**
+	 * Alt-Tab, which is the case the engine's flush-on-focus-loss was really protecting: no key-up
+	 * is delivered while the game is in the background, so a key held at that moment would stay
+	 * down forever. DefaultInput.ini turns that flush off because it also fired for every click on
+	 * the cockpit, and this puts back the half that was worth keeping.
+	 */
+	void HandleApplicationActivationChanged(bool bIsActive);
 
 	static FString ResolveOriginalGameRoot();
 };

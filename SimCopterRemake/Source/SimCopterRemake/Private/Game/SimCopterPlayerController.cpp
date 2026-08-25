@@ -7,7 +7,9 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Formats/SimCopterOriginalGamePaths.h"
+#include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Game/SimCopterKeyboardFocus.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSettings.h"
@@ -29,9 +31,12 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SOverlay.h"
+#include "Widgets/SViewport.h"
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SimCopterPlayerController"
+
+DEFINE_LOG_CATEGORY_STATIC(LogSimCopterInputFocus, Log, All);
 
 namespace
 {
@@ -62,6 +67,103 @@ const TCHAR* const TransportStepBackAction = TEXT("SimCopterReplayStepBack");
 const TCHAR* const TransportStepForwardAction = TEXT("SimCopterReplayStepForward");
 const TCHAR* const TransportGoToStartAction = TEXT("SimCopterReplayGoToStart");
 const TCHAR* const TransportBookmarkAction = TEXT("SimCopterReplayBookmark");
+
+/**
+ * The keyboard guard, as a Slate input pre-processor.
+ *
+ * A pre-processor is the only place in Slate that sees input BEFORE focus decides where it goes:
+ * FSlateApplication::ProcessKeyDownEvent and ProcessKeyUpEvent both run the pre-processors and only
+ * then read the focused user's focus path. So a widget that has stolen the keyboard costs the
+ * player nothing at all - not even the key they are pressing at that moment - as long as the
+ * keyboard is handed back here first.
+ *
+ * Nothing is ever consumed: every handler returns false. This is a repair pass, not a binding.
+ */
+class FSimCopterKeyboardFocusPreProcessor : public IInputProcessor
+{
+public:
+	explicit FSimCopterKeyboardFocusPreProcessor(TWeakObjectPtr<ASimCopterPlayerController> InController)
+		: Controller(InController)
+	{
+	}
+
+	// Covers the case with no key in it: a click that steals focus and is followed by nothing.
+	virtual void Tick(const float DeltaTime, FSlateApplication& SlateApp, TSharedRef<ICursor> Cursor) override
+	{
+		Repair();
+	}
+
+	virtual bool HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyEvent& InKeyEvent) override
+	{
+		Repair();
+		return false;
+	}
+
+	virtual bool HandleKeyUpEvent(FSlateApplication& SlateApp, const FKeyEvent& InKeyEvent) override
+	{
+		// The release matters as much as the press. A key-up delivered to a focused widget instead
+		// of the viewport is a key the pawn believes is still held - a helicopter that will not stop
+		// climbing - which is the failure the engine's flush-on-focus-loss existed to prevent.
+		Repair();
+		return false;
+	}
+
+	virtual bool HandleAnalogInputEvent(FSlateApplication& SlateApp, const FAnalogInputEvent& InAnalogInputEvent) override
+	{
+		Repair();
+		return false;
+	}
+
+	virtual const TCHAR* GetDebugName() const override
+	{
+		return TEXT("SimCopterKeyboardFocus");
+	}
+
+private:
+	void Repair() const
+	{
+		if (ASimCopterPlayerController* PlayerController = Controller.Get())
+		{
+			PlayerController->RestoreGameViewportKeyboardFocusIfStolen();
+		}
+	}
+
+	TWeakObjectPtr<ASimCopterPlayerController> Controller;
+};
+
+/**
+ * Is the keyboard held by something the game may take it back from, rather than by the editor?
+ *
+ * Two shapes count. Everything AddViewportWidgetContent puts on screen is a DESCENDANT of SViewport
+ * (the game layer manager is the viewport's content), so a cockpit panel that took focus is found
+ * by walking up from it. And an in-window dropdown is hosted in the WINDOW's popup layer rather
+ * than the viewport's, so dismissing one leaves focus on the game's own top-level window - past the
+ * viewport entirely, which is why comparing against the viewport alone is not enough.
+ *
+ * Both walks are a handful of pointer hops: the viewport sits a few widgets under its window.
+ */
+bool IsFocusReclaimableByGame(const TSharedPtr<SWidget>& Focused, const TSharedPtr<SViewport>& ViewportWidget)
+{
+	if (!Focused.IsValid() || !ViewportWidget.IsValid())
+	{
+		return false;
+	}
+
+	for (TSharedPtr<SWidget> Ancestor = Focused; Ancestor.IsValid(); Ancestor = Ancestor->GetParentWidget())
+	{
+		if (Ancestor == ViewportWidget)
+		{
+			return true;
+		}
+	}
+
+	TSharedPtr<SWidget> GameWindow = ViewportWidget;
+	for (TSharedPtr<SWidget> Ancestor = ViewportWidget; Ancestor.IsValid(); Ancestor = Ancestor->GetParentWidget())
+	{
+		GameWindow = Ancestor;
+	}
+	return Focused == GameWindow;
+}
 }
 
 ASimCopterPlayerController::ASimCopterPlayerController()
@@ -104,6 +206,20 @@ void ASimCopterPlayerController::BeginPlay()
 		ReplayStateChangedHandle = Replay->OnStateChanged().AddUObject(
 			this, &ASimCopterPlayerController::HandleReplayStateChanged);
 	}
+
+	if (FSlateApplication::IsInitialized())
+	{
+		// The keyboard belongs to the game viewport for as long as the player is meant to be flying,
+		// and the cockpit UI is not allowed to take it away by being clicked. The pre-processor is
+		// the enforcement; the rule and the reasons are in Docs/memory/simcopter-ui-keyboard-focus.md.
+		const TSharedRef<FSimCopterKeyboardFocusPreProcessor> Guard =
+			MakeShared<FSimCopterKeyboardFocusPreProcessor>(this);
+		KeyboardFocusGuard = Guard;
+		FSlateApplication::Get().RegisterInputPreProcessor(Guard);
+
+		ApplicationActivationHandle = FSlateApplication::Get().OnApplicationActivationStateChanged().AddUObject(
+			this, &ASimCopterPlayerController::HandleApplicationActivationChanged);
+	}
 }
 
 void ASimCopterPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -113,6 +229,19 @@ void ASimCopterPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReaso
 		Replay->OnStateChanged().Remove(ReplayStateChangedHandle);
 	}
 	ReplayStateChangedHandle.Reset();
+
+	// The pre-processor list is Slate's and outlives the level, so an unregistered guard here is a
+	// dangling one after travel.
+	if (FSlateApplication::IsInitialized())
+	{
+		if (KeyboardFocusGuard.IsValid())
+		{
+			FSlateApplication::Get().UnregisterInputPreProcessor(KeyboardFocusGuard);
+		}
+		FSlateApplication::Get().OnApplicationActivationStateChanged().Remove(ApplicationActivationHandle);
+	}
+	KeyboardFocusGuard.Reset();
+	ApplicationActivationHandle.Reset();
 
 	// Before CloseScreen, because closing the replay panel resumes the world it paused and that
 	// has to happen while the reference-counted pause still has a controller to answer to.
@@ -1037,6 +1166,117 @@ void ASimCopterPlayerController::RestoreGameInput()
 	InputMode.SetHideCursorDuringCapture(false);
 	SetInputMode(InputMode);
 	bShowMouseCursor = true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The keyboard focus guard
+//
+// NOT a port. Docs/memory/simcopter-ui-keyboard-focus.md has the whole chain; the short version is
+// that gameplay axis and action bindings only fire while the GAME VIEWPORT holds Slate's keyboard
+// focus, and any widget over the viewport that answers SupportsKeyboardFocus takes that focus on a
+// single click. The cockpit therefore contains no focusable widget at all, and this is what puts
+// the keyboard back if one ever appears.
+// ---------------------------------------------------------------------------------------------
+
+bool ASimCopterPlayerController::IsTextEntryActive() const
+{
+	// The replay panel's clip-name box is the only widget in the running city that may hold the
+	// keyboard, and it hands it back itself (SSimCopterReplayPanel::ReturnFocusToGame).
+	const SSimCopterReplayPanel* Panel = static_cast<const SSimCopterReplayPanel*>(ReplayPanelWidget.Get());
+	return Panel != nullptr && Panel->IsTypingClipName();
+}
+
+SimCopterKeyboardFocus::FFocusState ASimCopterPlayerController::GatherKeyboardFocusState(
+	FString& OutFocusedWidgetName) const
+{
+	SimCopterKeyboardFocus::FFocusState State;
+	OutFocusedWidgetName = TEXT("<slate not initialised>");
+	if (!FSlateApplication::IsInitialized() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return State;
+	}
+
+	FSlateApplication& Slate = FSlateApplication::Get();
+	const TSharedPtr<SWidget> Focused = Slate.GetUserFocusedWidget(0);
+	const TSharedPtr<SViewport> ViewportWidget = GEngine->GameViewport->GetGameViewportWidget();
+	OutFocusedWidgetName = Focused.IsValid() ? Focused->GetTypeAsString() : FString(TEXT("<none>"));
+
+	// IgnoreInput is exactly what FInputModeUIOnly sets, so this one flag covers the Settings pages,
+	// the hangar shell and the front end without this controller having to know about any of them.
+	State.bGameplayWantsInput = !GEngine->GameViewport->IgnoreInput();
+	State.bGameViewportHasFocus = ViewportWidget.IsValid() && Focused == ViewportWidget;
+	State.bFocusIsReclaimable = Focused.IsValid()
+		? IsFocusReclaimableByGame(Focused, ViewportWidget)
+		// Nobody holds it. In a packaged game there is nothing else that could, so it is ours; in
+		// the editor an empty focus is routinely somebody clicking in the level editor.
+		: !GIsEditor;
+	State.bMenuVisible = Slate.AnyMenusVisible();
+	State.bTextEntryActive = IsTextEntryActive();
+	return State;
+}
+
+void ASimCopterPlayerController::RestoreGameViewportKeyboardFocusIfStolen()
+{
+	FString Thief;
+	const SimCopterKeyboardFocus::FFocusState State = GatherKeyboardFocusState(Thief);
+
+	if (!SimCopterKeyboardFocus::ShouldRestoreGameViewportFocus(State))
+	{
+		if (State.bGameViewportHasFocus)
+		{
+			LastReportedFocusThief.Reset();
+		}
+		return;
+	}
+
+	// Name the offender once. A cockpit widget that takes the keyboard is a bug in that widget -
+	// this only stops it from being a bug the player experiences as "the controls died".
+	if (Thief != LastReportedFocusThief)
+	{
+		LastReportedFocusThief = Thief;
+		UE_LOG(
+			LogSimCopterInputFocus,
+			Log,
+			TEXT("Keyboard focus was on '%s' while the game viewport should own it; taking it back. ")
+			TEXT("That widget needs IsFocusable(false) or SupportsKeyboardFocus() == false."),
+			*Thief);
+	}
+
+	FSlateApplication::Get().SetAllUserFocusToGameViewport();
+}
+
+void ASimCopterPlayerController::HandleApplicationActivationChanged(const bool bIsActive)
+{
+	if (bIsActive)
+	{
+		return;
+	}
+
+	// Nothing arrives from a background window - not the key-up for whatever is being held - so this
+	// is the one case where dropping the player's keys is the right answer rather than the bug.
+	FlushPressedKeys();
+}
+
+void ASimCopterPlayerController::SimInputFocus()
+{
+	// "The controls stopped answering" is nearly always this, so print the whole decision rather
+	// than the answer: which widget has the keyboard, and which term of the rule let it keep it.
+	FString Focused;
+	const SimCopterKeyboardFocus::FFocusState State = GatherKeyboardFocusState(Focused);
+
+	UE_LOG(
+		LogSimCopterInputFocus,
+		Log,
+		TEXT("SimInputFocus: focus='%s' viewportHasFocus=%d gameplayWantsInput=%d reclaimable=%d ")
+		TEXT("menusVisible=%d typing=%d guardRegistered=%d wouldRestore=%d"),
+		*Focused,
+		State.bGameViewportHasFocus ? 1 : 0,
+		State.bGameplayWantsInput ? 1 : 0,
+		State.bFocusIsReclaimable ? 1 : 0,
+		State.bMenuVisible ? 1 : 0,
+		State.bTextEntryActive ? 1 : 0,
+		KeyboardFocusGuard.IsValid() ? 1 : 0,
+		SimCopterKeyboardFocus::ShouldRestoreGameViewportFocus(State) ? 1 : 0);
 }
 
 // ---------------------------------------------------------------------------------------------

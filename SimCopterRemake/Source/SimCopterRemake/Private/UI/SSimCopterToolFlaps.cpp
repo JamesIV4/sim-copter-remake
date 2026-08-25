@@ -431,25 +431,9 @@ void SSimCopterToolFlaps::ToggleCalibrationMode()
 	Invalidate(EInvalidateWidgetReason::Paint | EInvalidateWidgetReason::Layout);
 }
 
-FReply SSimCopterToolFlaps::OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
-{
-	if (InKeyEvent.IsControlDown() && InKeyEvent.IsAltDown() && InKeyEvent.GetKey() == EKeys::M)
-	{
-		ToggleCalibrationMode();
-		return FReply::Handled();
-	}
-	return SCompoundWidget::OnPreviewKeyDown(MyGeometry, InKeyEvent);
-}
-
-FReply SSimCopterToolFlaps::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
-{
-	if (InKeyEvent.IsControlDown() && InKeyEvent.IsAltDown() && InKeyEvent.GetKey() == EKeys::M)
-	{
-		ToggleCalibrationMode();
-		return FReply::Handled();
-	}
-	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
-}
+// The Ctrl+Alt+M handlers that used to live here are gone on purpose: they could only ever fire
+// while this widget held the keyboard, and holding the keyboard over the viewport is what killed
+// the flight controls (see SupportsKeyboardFocus). The chord is the pre-processor's job now.
 
 FVector2D SSimCopterToolFlaps::GetAuthoritativeDefaultOffset(const FString& Key)
 {

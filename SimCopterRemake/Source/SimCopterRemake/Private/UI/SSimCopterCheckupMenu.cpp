@@ -210,6 +210,10 @@ TSharedRef<SWidget> SSimCopterCheckupMenu::BuildButton(const FText& Label, FOnCl
 		? ArtObject->GetStripFrame(ShellButtonStrip, 0, ButtonFrameCount) : nullptr;
 
 	TSharedRef<SButton> Button = SNew(SButton)
+		// The check-up panel is raised over a running city with the engine still turning, so it
+		// obeys the cockpit rule: a focusable button takes the keyboard off the game viewport and
+		// every flight key with it (Docs/memory/simcopter-ui-keyboard-focus.md).
+		.IsFocusable(false)
 		.OnClicked(OnClicked)
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
