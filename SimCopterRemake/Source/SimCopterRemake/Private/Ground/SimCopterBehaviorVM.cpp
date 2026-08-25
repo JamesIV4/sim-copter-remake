@@ -356,7 +356,11 @@ EOpResult ExecOpcode(
 		Context.bRequestDespawn = true;
 		return EOpResult::Stop;
 	case 37: // FUN_004cc530: FUN_004ca4b0() then result 3 - leave the map
-		Context.bRequestDespawn = true;
+		// FUN_004ca4b0 recycles the person and marks them written off; it does not tear anything
+		// down. Requesting a despawn here ejected a dead medevac patient out of the cabin and
+		// destroyed them, when the shipped graph means them to stay in the seat until the hospital
+		// medic carries them out. Only opcode 40 (FUN_004cc5d0) actually removes a person.
+		World.LeaveTheMap(Context);
 		return EOpResult::Stop;
 	case 44: // pick the selected person up (FUN_004cc6a0)
 		World.PutSelectedPersonOnMe(Context);

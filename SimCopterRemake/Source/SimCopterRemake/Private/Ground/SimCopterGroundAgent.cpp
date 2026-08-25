@@ -637,6 +637,16 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		}
 		if (Result == EBhavStepResult::Stopped || BehaviorContext.bRequestDespawn)
 		{
+			// Opcode 37 returns the same result 3 a despawn does, but FUN_004ca4b0 has already
+			// replaced the walker's stack with the state-0 program: this person carries on next
+			// tick as an ordinary written-off pedestrian. Everything below is for people who are
+			// actually finished, and running it here is what ejected a dead medevac patient out
+			// of the cabin and destroyed them.
+			if (BehaviorContext.bProgramRestarted)
+			{
+				BehaviorContext.bProgramRestarted = false;
+				return;
+			}
 			if (IsRiotParticipant())
 			{
 				// A rioter leaving without an outcome does not shrink RiotSize, so this line
@@ -3797,9 +3807,16 @@ bool ASimCopterGroundAgent::BoardCarrier(
 
 	if (Helicopter != nullptr && !bAsHarnessRider)
 	{
-		// FUN_004c6250 copies person+0x18e into the record and seats the face at 1, so the seat
-		// window shows this passenger's own head from the moment they climb in.
-		SeatPortraitMood = 1;
+		// FUN_004c6250 copies person+0x18e into the record and seats the face at a flat 1, so the
+		// seat window shows this passenger's own head from the moment they climb in.
+		//
+		// DELIBERATE DIVERGENCE for a casualty: the shipped 1 is a placeholder that stands until
+		// BHAV 280's next pass reaches 264, and a patient who has been lying in the street losing
+		// health therefore boards showing the middle face whatever state they are really in. Seed
+		// it from BHAV 264's own rule instead, so the portrait is right on the frame they get in.
+		SeatPortraitMood = IsMedevacVictim() && int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) == 0
+			? ComputeMedevacPortraitStateFromHealth(ReadMedevacHealth(BehaviorContext))
+			: 1;
 		CabinImpactPortraitSecondsRemaining = 0.0f;
 		if (Helicopter->AddMissionPassengersForMission(
 				1, MissionEventId, GetMissionPassengerKind(), this) <= 0)
@@ -4007,6 +4024,16 @@ bool ASimCopterGroundAgent::AlightFromCarrier(const bool bPlayDoorSound)
 	// whatever is beneath and only places them once they land. Teleporting them to the ground here
 	// is what made a patient lifted out of the cabin appear on the deck with no drop at all.
 	VerticalVelocityCmPerSec = 0.0f;
+
+	// The clip clear and the upright rotation above belong to a passenger getting out under their
+	// own power. A written-off body does not stand up when the medic lifts it out of the cabin or
+	// sets it back down - in the shipped graph it never leaves BHAV 600's corpse arm, which binds
+	// 'Dead' and idles. Without this the casualty popped upright for the length of the handoff,
+	// which reads as the patient getting up and celebrating their own delivery.
+	if (bMissionPatientDead || int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) != 0)
+	{
+		SetMissionDeadPose();
+	}
 	return true;
 }
 
@@ -4035,6 +4062,44 @@ int32 ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(
 	// Reuse that exact quantum for the runtime-observed impact consequence; do not introduce a
 	// second severity scale based on Unreal impulse or centimetres.
 	return FMath::Max(0, Health - (1 + FMath::Max(0, DifficultyTier)));
+}
+
+int32 ASimCopterGroundAgent::ReadMedevacHealth(const FSimCopterPersonContext& Context)
+{
+	// `*(short *)(param_1 + 0x184)` - FUN_004c5210 and the shipped comparison opcode both sign
+	// extend this slot, and BHAV 281 leaves it negative whenever the last deterioration quantum
+	// overshoots zero.
+	return int32(int16(Context.Attributes[EBhavAttr::MedevacHealth]));
+}
+
+int32 ASimCopterGroundAgent::ComputeMedevacPortraitStateFromHealth(const int32 Health)
+{
+	// BHAV 264 rec[10] `attr34 < 1` -> face 2, rec[11] `attr34 < 50` -> face 1, else face 0. Both
+	// comparisons are signed, so a patient whose last deterioration quantum overshot zero is a
+	// casualty rather than a very healthy one.
+	return Health < 1 ? 2 : Health < 50 ? 1 : 0;
+}
+
+void ASimCopterGroundAgent::UpdateMedevacSeatPortrait()
+{
+	// BHAV 264 is the only writer of the face in the shipped graph, and BHAV 280 only reaches it
+	// once per pass - roughly every 1.5 s, and not at all on the tick a patient boards, which is
+	// why FUN_004c6250's fixed face 1 was what you saw first no matter how badly hurt they were.
+	// Applying the same rule continuously produces exactly the faces 264 would, minus the polling
+	// latency, so the portrait tracks the decay instead of stepping between whatever two values
+	// the poll happened to catch.
+	//
+	// Written off is deliberately excluded: rec[9] hands those to face 2 and stops caring, and
+	// LeaveTheMap has already latched it.
+	if (!bClaimedPassengerSeat ||
+		!IsMedevacVictim() ||
+		int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) != 0 ||
+		CabinImpactPortraitSecondsRemaining > 0.0f ||
+		Cast<ASimCopterHelicopterPawn>(BehaviorCarrier.Get()) == nullptr)
+	{
+		return;
+	}
+	SetSeatPortraitMood(ComputeMedevacPortraitStateFromHealth(ReadMedevacHealth(BehaviorContext)));
 }
 
 int32 ASimCopterGroundAgent::ComputePassengerPortraitStateFromDamageScaledSpeed(
@@ -4066,10 +4131,10 @@ void ASimCopterGroundAgent::ReactToCabinImpact()
 	}
 
 	const int32 Health = ComputeMedevacHealthAfterCabinImpact(
-		int32(BehaviorContext.Attributes[EBhavAttr::MedevacHealth]),
+		ReadMedevacHealth(BehaviorContext),
 		GetDifficultyTier());
 	BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = uint16(Health);
-	SetSeatPortraitMood(Health < 1 ? 2 : Health < 50 ? 1 : 0);
+	SetSeatPortraitMood(ComputeMedevacPortraitStateFromHealth(Health));
 
 	// FUN_004c5210 re-tunes an already-playing EKG from attr34 rather than restarting it. Calling
 	// through the same voice service here makes the pitch change land with the impact; BHAV 302
@@ -4272,9 +4337,10 @@ bool ASimCopterGroundAgent::SelectCarriedPerson(FSimCopterPersonContext& Context
 		}
 		if (Carried->IsMissionPatientDead())
 		{
-			// The original removes a dead person at opcode 66, before any later handoff. The
-			// remake deliberately retains a cabin body so the medic can visibly carry the same
-			// actor. Once opcode 51 completes that interaction, the extra lifetime is over.
+			// Retail's body is a written-off state-0 person parked on BHAV 600's endless corpse
+			// idle, and only opcode 40 ever frees the record. The remake keeps a real actor so
+			// the medic can visibly carry the same one out; once opcode 51 completes that
+			// interaction, the extra lifetime is over and the actor goes.
 			Carried->SetActorHiddenInGame(true);
 			Carried->SetLifeSpan(0.25f);
 		}
@@ -4466,6 +4532,80 @@ bool ASimCopterGroundAgent::BeginFallAndDie(FSimCopterPersonContext& Context)
 	return true;
 }
 
+// SCHOOK: PersonLeaveTheMap 0x004ca4b0 (people opcode 37, FUN_004cc530)
+void ASimCopterGroundAgent::LeaveTheMap(FSimCopterPersonContext& Context)
+{
+	// This is a RECYCLE, not a teardown:
+	//
+	//     uVar1 = person+0x152;                         // save Visible
+	//     if ((short)person+0x148 == 0) vtable+8();      // state 0: just restart the walker
+	//     else                          FUN_004c4e40();  // else: become a state-0 pedestrian
+	//     person+0x15e = 1;                             // written off
+	//     person+0x152 = uVar1;                         // put Visible back
+	//
+	// Nothing clears the carrier at +0x1a0 and nothing calls FUN_004c62e0, so the seat manifest
+	// keeps its record. That is the whole point of BHAV 312's name, 'Die without falling first':
+	// unlike BHAV 903 it skips BHAV 309 / opcode 66, so a patient whose health runs out stays
+	// exactly where they are - for a medevac victim, sitting in the player's cabin. The hospital
+	// medic's opcode 84 (FUN_004cc830) then accepts `state == 6 || written off`, and that second
+	// arm exists only because this handler has just moved them off state 6.
+	// FUN_004c7090 unconditionally writes Visible = 1, and somebody riding the player's cabin
+	// (FUN_004c6250 cleared it when they took the seat) has to stay hidden. Hence the save/restore.
+	const uint16 SavedVisible = Context.Attributes[EBhavAttr::Visible];
+
+	if (int32(Context.Attributes[EBhavAttr::State]) != 0)
+	{
+		// FUN_004c4e40 -> FUN_004c0df0(person, 0, -1). Its opening block lifts anyone who has
+		// ended up below the terrain back above it, and is gated on `+0x1a0 == 0` - a carried
+		// person is not moved at all.
+		if (!BehaviorCarrier.IsValid())
+		{
+			SnapToGroundImmediate();
+		}
+		Context.ResetToState(0);
+		// FUN_004c7090's state-0 arm clears person+0x10a and +0x15c, and FUN_004c7080(-1) writes
+		// +0x10a a second time. Whatever record owned this person no longer does - which is
+		// correct here, because the outcome that ended them (opcode 13) has already been posted.
+		MissionEventId = INDEX_NONE;
+		Context.Attributes[EBhavAttr::ReactionDepth] = 0;
+	}
+	else
+	{
+		// The state-0 arm is the bare vtable+8 call: restart the walker on the state's program.
+		Context.ResetToState(0);
+	}
+
+	Context.Attributes[EBhavAttr::WrittenOff] = 1;
+	Context.Attributes[EBhavAttr::Visible] = SavedVisible;
+	// The stack has been replaced, so the handler's result 3 ends this pass, not this person.
+	Context.bProgramRestarted = true;
+
+	// What the recycled person becomes is decided by the state-0 program itself. BHAV 600
+	// 'Ambient initbhav' rec[1] branches on exactly the flag this handler has just set:
+	//
+	//   [ 1] attr15 == 0 ?  no -> [26]
+	//   [26] am I riding something ?  yes -> [22]   no -> [27] op70 snap Z -> [22]
+	//   [22] attr39 := 10        the bandaged head
+	//   [21] op54 := 2           the casualty seat face
+	//   [18] bind-anim 'Dead'
+	//   [19] attr14 := 1
+	//   [17] l0 := 50  [16] wait l0--  -> [17]      an endless idle
+	//
+	// So a written-off person is not recycled into a walker: they lie there as a corpse for good,
+	// keeping their seat if they had one, until opcode 40 or a medic physically removes them.
+	// (rec[0]'s op85 is also a second guarantee that the EKG stops.) The remake runs the same
+	// four writes here rather than through the VM, because SetMissionDeadPose is the flag the
+	// tote/handoff machinery already keys off - and a body parked on BHAV 600's endless wait
+	// would tick forever to no purpose.
+	// rec[0] is op85 - the recycled person shuts up. For a medevac victim that is what silences
+	// the EKG: BHAV 302 rec[10] would also fall to its own op85 now attr15 is set, but this
+	// handler has already taken their program away, so nothing else is left to do it.
+	StopPersonVoice();
+	Context.Attributes[EBhavAttr::HeadImageIndex] = 10;
+	SetSeatPortraitMood(2);
+	SetMissionDeadPose();
+}
+
 bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context)
 {
 	// FUN_004ca700: person+0x170 names the emergency vehicle this person rode in on; with none,
@@ -4594,7 +4734,16 @@ void ASimCopterGroundAgent::PlayPersonVoiceEvent(
 		{
 			return;
 		}
-		const int32 Health = FMath::Clamp(int32(BehaviorContext.Attributes[EBhavAttr::MedevacHealth]), 0, 100);
+		// The clamp is in place and it is the original's:
+		//     if (100 < *(short *)(p + 0x184)) *(short *)(p + 0x184) = 100;
+		//     if (*(short *)(p + 0x184) < 0)   *(short *)(p + 0x184) = 0;
+		// Both arms read the slot SIGNED, so BHAV 281's overshoot past zero is floored AT ZERO and
+		// BHAV 280 rec[11] then kills the patient on the same pass. Reading it unsigned made that
+		// wrapped ~65534 clamp UP to 100 instead - a dying patient in the player's cabin was
+		// silently restored to full health, the seat portrait snapped back to the well face and the
+		// EKG back to 13 kHz. Only the cabin was affected, because BHAV 302 rec[8] gates the EKG on
+		// "is my carrier the player heli"; the same patient left on the pavement died correctly.
+		const int32 Health = FMath::Clamp(ReadMedevacHealth(BehaviorContext), 0, 100);
 		BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = uint16(Health);
 		const int32 Rate = VoiceEvent == SimCopterSound::VOX_EKG
 			? SimCopterSound::GetEkgFrequencyHz(Health)
@@ -4614,8 +4763,7 @@ void ASimCopterGroundAgent::PlayPersonVoiceEvent(
 	}
 	else if (VoiceEvent == SimCopterSound::VOX_EKG)
 	{
-		PitchDeltaHz = SimCopterSound::GetEkgStartPitchDeltaHz(
-			int32(BehaviorContext.Attributes[EBhavAttr::MedevacHealth]));
+		PitchDeltaHz = SimCopterSound::GetEkgStartPitchDeltaHz(ReadMedevacHealth(BehaviorContext));
 	}
 	const bool bLoop = SimCopterSound::IsLoopingVoiceEvent(VoiceEvent);
 
@@ -5098,6 +5246,9 @@ void ASimCopterGroundAgent::Tick(float DeltaSeconds)
 	// A cabin passenger is hidden and movement-suspended, but this display reaction still owns
 	// real time. Run it before both carried early returns so the frightened row cannot latch.
 	UpdateCabinImpactPortrait(DeltaSeconds);
+	// Same slot, same reason: the seat window is the only readout a casualty has, and BHAV 264
+	// only refreshes it once per pass through BHAV 280.
+	UpdateMedevacSeatPortrait();
 
 	if (AvoidanceMoveTimeRemainingSeconds > 0.0f)
 	{

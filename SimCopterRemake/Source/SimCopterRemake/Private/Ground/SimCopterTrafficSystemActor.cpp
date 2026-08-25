@@ -2879,11 +2879,16 @@ ASimCopterGroundAgent* ASimCopterTrafficSystemActor::FindMedevacPassengerAboard(
 	for (const TWeakObjectPtr<ASimCopterGroundAgent>& AgentPtr : PedestrianAgents)
 	{
 		ASimCopterGroundAgent* Agent = AgentPtr.Get();
-		// person+0x148 == 6 is the medevac victim state; the original also accepts anyone flagged
-		// injured (+0x15e), which the remake models as the injured mission pose.
+		// FUN_004cc830 walks the seat manifest and takes the first record whose person is
+		// `+0x148 == 6 || +0x15e != 0`. The second arm is not a nicety: opcode 37 recycles a
+		// patient whose health expired into a written-off state-0 person *without* taking their
+		// seat, so by the time the medic looks, a body is exactly the case that only `+0x15e`
+		// still identifies. Testing state 6 alone left the corpse in the cabin unclaimable, which
+		// is the "the paramedic won't take them" report.
 		if (Agent != nullptr && !Agent->IsActorBeingDestroyed() &&
 			Agent->GetBehaviorCarrier() == Carrier &&
-			Agent->GetBehaviorAttribute(EBhavAttr::State) == 6)
+			(Agent->GetBehaviorAttribute(EBhavAttr::State) == 6 ||
+				Agent->GetBehaviorAttribute(EBhavAttr::WrittenOff) != 0))
 		{
 			return Agent;
 		}

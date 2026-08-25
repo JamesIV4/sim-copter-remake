@@ -29,6 +29,7 @@ public:
 	bool bTryAlight = false;
 	int32 TryAlightCalls = 0;
 	int32 BeginFallAndDieCalls = 0;
+	int32 LeaveTheMapCalls = 0;
 	bool bHasHiddenState5 = false;
 	int32 SelectionRoom = INDEX_NONE;
 	bool bBeamStillFlying = false;
@@ -89,6 +90,10 @@ public:
 	{
 		++BeginFallAndDieCalls;
 		return true;
+	}
+	virtual void LeaveTheMap(FSimCopterPersonContext&) override
+	{
+		++LeaveTheMapCalls;
 	}
 	virtual bool HasHiddenPersonInState(int32 State) const override
 	{
@@ -248,6 +253,7 @@ bool FSimCopterBehaviorVMActionDelegationTest::RunTest(const FString& Parameters
 	AddBranchingProgram(Model, 1212, 12);
 	AddBranchingProgram(Model, 1273, 73);
 	AddBranchingProgram(Model, 1266, 66);
+	AddBranchingProgram(Model, 1237, 37);
 
 	{
 		FStubBehaviorWorld World;
@@ -303,6 +309,22 @@ bool FSimCopterBehaviorVMActionDelegationTest::RunTest(const FString& Parameters
 			int32(EBhavStepResult::Stopped));
 		TestEqual(TEXT("Opcode 66 delegates death exactly once"), World.BeginFallAndDieCalls, 1);
 		TestTrue(TEXT("Opcode 66 still requests population cleanup"), Context.bRequestDespawn);
+	}
+
+	{
+		// Opcode 37 is FUN_004ca4b0, a RECYCLE. It returns the walker's result 3 like opcode 66
+		// does, but it must never ask the population layer to remove anybody: BHAV 312 'Die
+		// without falling first' relies on it leaving a dead medevac patient in the seat for the
+		// hospital medic, and only opcode 40 (FUN_004cc5d0) clears the carrier and the manifest.
+		FStubBehaviorWorld World;
+		FSimCopterPersonContext Context;
+		Context.Stack.Add({1237, 0, {0, 0, 1}});
+		TestEqual(
+			TEXT("Opcode 37 stops the pass"),
+			int32(FSimCopterBehaviorVM::Tick(Context, Model, World)),
+			int32(EBhavStepResult::Stopped));
+		TestEqual(TEXT("Opcode 37 delegates the recycle exactly once"), World.LeaveTheMapCalls, 1);
+		TestFalse(TEXT("Opcode 37 never requests a despawn"), Context.bRequestDespawn);
 	}
 
 	return true;

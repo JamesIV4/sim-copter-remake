@@ -246,6 +246,37 @@ bool FSimCopterPassengerVoiceRateTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Impact trauma at tier 3"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(100, 3), 96);
 	TestEqual(TEXT("Impact trauma cannot underflow"), ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(2, 3), 0);
 
+	// attr34 is signed. BHAV 281 deteriorates in two steps (`-= 1` then `-= difficulty tier`), so
+	// the last quantum overshoots zero whenever 100 is not a multiple of `1 + tier` - health 1 at
+	// tier 2 lands on -2, which the u16 attribute slot holds as 0xfffe. FUN_004c5210's in-place
+	// clamp floors that at ZERO (`if (*(short *)(p + 0x184) < 0) ... = 0`) and BHAV 280 rec[11]
+	// kills the patient. Reading the slot unsigned clamped it UP to 100 instead, so a patient
+	// dying in the player's cabin was healed to full every time the EKG re-tuned.
+	{
+		FSimCopterPersonContext Overshot;
+		Overshot.Attributes[EBhavAttr::MedevacHealth] = uint16(int16(-2));
+		TestEqual(
+			TEXT("A patient past zero reads negative, not 65534"),
+			ASimCopterGroundAgent::ReadMedevacHealth(Overshot),
+			-2);
+		TestEqual(
+			TEXT("FUN_004c5210's clamp floors them at zero"),
+			FMath::Clamp(ASimCopterGroundAgent::ReadMedevacHealth(Overshot), 0, 100),
+			0);
+		TestEqual(
+			TEXT("An overshot patient stays a casualty after an impact"),
+			ASimCopterGroundAgent::ComputeMedevacHealthAfterCabinImpact(
+				ASimCopterGroundAgent::ReadMedevacHealth(Overshot), 2),
+			0);
+
+		FSimCopterPersonContext Healthy;
+		Healthy.Attributes[EBhavAttr::MedevacHealth] = 100;
+		TestEqual(
+			TEXT("Ordinary health is unaffected"),
+			ASimCopterGroundAgent::ReadMedevacHealth(Healthy),
+			100);
+	}
+
 	// (health * 4 + 0x78) * 0x19, the absolute rate FUN_004c5210 pushes into the buffer while the
 	// EKG loops. This is what makes the beep slow down as a patient dies.
 	TestEqual(TEXT("EKG at full health"), SimCopterSound::GetEkgFrequencyHz(100), 13000);
@@ -347,6 +378,21 @@ bool FSimCopterPassengerFaceProgramTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Failing patient shows the hurt face"), RunFaceProgram(Model, 10, 49, 0), 1);
 	TestEqual(TEXT("Patient at 1 is still hurt"), RunFaceProgram(Model, 10, 1, 0), 1);
 	TestEqual(TEXT("Dead patient shows the worst face"), RunFaceProgram(Model, 10, 0, 0), 2);
+	// BHAV 281 overshoots zero whenever 100 is not a multiple of `1 + difficulty tier`, and
+	// rec[10]'s comparison is signed, so the wrapped attribute still reads as a casualty.
+	TestEqual(TEXT("Patient past zero shows the worst face"),
+		RunFaceProgram(Model, 10, int32(uint16(int16(-2))), 0), 2);
+
+	// The remake seeds the portrait at boarding and refreshes it every tick instead of waiting for
+	// BHAV 280's next pass through 264, so the two must agree at every edge or the seat window
+	// would flicker between the polled face and the continuous one.
+	for (const int32 Health : {100, 50, 49, 1, 0, -2})
+	{
+		TestEqual(
+			FString::Printf(TEXT("Continuous portrait matches BHAV 264 at health %d"), Health),
+			ASimCopterGroundAgent::ComputeMedevacPortraitStateFromHealth(Health),
+			RunFaceProgram(Model, 10, int32(uint16(int16(Health))), 0));
+	}
 	// Written off - everyone aboard when the helicopter is destroyed - skips the health test.
 	TestEqual(TEXT("Written-off patient shows the worst face"), RunFaceProgram(Model, 10, 100, 0, /*WrittenOff*/ 1), 2);
 

@@ -165,6 +165,10 @@ struct FSimCopterPersonContext
 	// Outputs the world/agent consumes after each tick:
 	FString PendingAnimMnemonic; // op1 bind requests ("1Wal", "NoMo", "Wave", ...)
 	bool bRequestDespawn = false;
+	// Opcode 37 returns the walker's result 3 like a despawn does, but FUN_004ca4b0 has already
+	// swapped the stack for the state-0 program - result 3 ends the pass, not the person. Set by
+	// LeaveTheMap, consumed and cleared by the agent's tick.
+	bool bProgramRestarted = false;
 
 	// The walker's "current runtime object" slot (original walker record +0x04). Op 15 selects
 	// into it; ops 18/38/39 act on whatever is in it. Kept as an actor handle so the VM needs no
@@ -443,6 +447,14 @@ public:
 	// Op 66, FUN_004cbbc0: the fall-and-die handler - detach, drop to the ground, post
 	// EVT_PersonDied and bind "Dead". True when the person has finished dying.
 	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) { return false; }
+
+	// Op 37, FUN_004cc530 -> FUN_004ca4b0: "leave the map", which is emphatically NOT a despawn.
+	// It saves person+0x152, recycles any non-zero state into a plain state-0 pedestrian through
+	// FUN_004c4e40 (clearing the owning record +0x10a and the cabin/reaction counter +0x15c),
+	// sets written-off +0x15e, and puts +0x152 back. The carrier +0x1a0 is never cleared and the
+	// seat manifest is never asked for the seat back, which is how BHAV 312 'Die without falling
+	// first' leaves a dead medevac patient sitting in the player's cabin for the hospital medic.
+	virtual void LeaveTheMap(FSimCopterPersonContext& Context) {}
 
 	// Op 62, FUN_004ca700: select the emergency vehicle this person belongs to, or the player's
 	// helicopter when they belong to none.

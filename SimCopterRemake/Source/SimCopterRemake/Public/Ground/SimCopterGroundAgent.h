@@ -725,7 +725,20 @@ public:
 	// the frightened portrait; a medevac patient loses one normal deterioration quantum and its
 	// already-playing EKG is re-tuned immediately.
 	void ReactToCabinImpact();
+	// Keeps a seated casualty's portrait on the face their health says it should be, without
+	// waiting for BHAV 280's next pass through 264.
+	void UpdateMedevacSeatPortrait();
 	static int32 ComputeMedevacHealthAfterCabinImpact(int32 Health, int32 DifficultyTier);
+	// person+0x184 is read as a SIGNED short everywhere the original touches it - FUN_004c5210's
+	// clamp, BHAV 280 rec[11]'s `attr34 < 1` and BHAV 264 rec[10]/[11] all compare it signed.
+	// BHAV 281 deteriorates in two steps (`attr34 -= 1` then `attr34 -= difficulty tier`), so it
+	// routinely steps past zero, and reading the u16 attribute slot unsigned turns that into
+	// ~65534. Every read of attr34 goes through here.
+	static int32 ReadMedevacHealth(const FSimCopterPersonContext& Context);
+	// BHAV 264's casualty arm, rec[10]/[11]: `attr34 < 1 -> face 2`, `attr34 < 50 -> face 1`,
+	// otherwise face 0. The shipped program only reaches it once per pass through BHAV 280, so
+	// the remake also applies it at boarding and on every behaviour tick - see UpdateMedevacSeatPortrait.
+	static int32 ComputeMedevacPortraitStateFromHealth(int32 Health);
 	// BHAV 264's non-casualty branch. Exposed for the portrait regression test and used when the
 	// impact flinch expires, so the VM and the remake-only immediate reaction converge on one face.
 	static int32 ComputePassengerPortraitStateFromDamageScaledSpeed(int32 DamageScaledSpeed);
@@ -1613,6 +1626,7 @@ protected:
 	virtual bool HasHiddenPersonInState(int32 State) const override;
 	virtual void ThrowProjectileAtSelection(FSimCopterPersonContext& Context, bool bAtSelection, bool bIncendiary) override;
 	virtual bool BeginFallAndDie(FSimCopterPersonContext& Context) override;
+	virtual void LeaveTheMap(FSimCopterPersonContext& Context) override;
 	virtual bool FaceSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool FaceAwayFromSelectedObject(FSimCopterPersonContext& Context) override;
 	virtual bool FaceInteractionSource(FSimCopterPersonContext& Context, bool bFaceToward) override;
