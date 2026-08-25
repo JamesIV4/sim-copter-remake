@@ -4026,13 +4026,17 @@ bool ASimCopterGroundAgent::AlightFromCarrier(const bool bPlayDoorSound)
 	VerticalVelocityCmPerSec = 0.0f;
 
 	// The clip clear and the upright rotation above belong to a passenger getting out under their
-	// own power. A written-off body does not stand up when the medic lifts it out of the cabin or
-	// sets it back down - in the shipped graph it never leaves BHAV 600's corpse arm, which binds
-	// 'Dead' and idles. Without this the casualty popped upright for the length of the handoff,
-	// which reads as the patient getting up and celebrating their own delivery.
-	if (bMissionPatientDead || int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) != 0)
+	// own power. Somebody opcode 37 has already finished with does not stand up when the medic
+	// lifts them out of the cabin or sets them back down - in the shipped graph they never leave
+	// BHAV 600's written-off arm, which holds one pose and idles. Without this a casualty popped
+	// upright for the length of the handoff, which reads as the patient getting up.
+	if (bMissionPatientDead)
 	{
 		SetMissionDeadPose();
+	}
+	else if (int32(BehaviorContext.Attributes[EBhavAttr::WrittenOff]) != 0)
+	{
+		SetMissionRetiredAlivePose();
 	}
 	return true;
 }
@@ -4549,6 +4553,15 @@ void ASimCopterGroundAgent::LeaveTheMap(FSimCopterPersonContext& Context)
 	// exactly where they are - for a medevac victim, sitting in the player's cabin. The hospital
 	// medic's opcode 84 (FUN_004cc830) then accepts `state == 6 || written off`, and that second
 	// arm exists only because this handler has just moved them off state 6.
+	// Whether this person was ALREADY written off when opcode 37 ran is what separates the two
+	// ways a program reaches it, and the shipped graphs are unambiguous about it:
+	//
+	//   died      BHAV 312 rec[9] and BHAV 903 rec[9] are `attr15 := 1`, and only then rec[2] op37
+	//   survived  BHAV 282 (delivery) and BHAV 1173 rec[13] (criminal caught) never touch attr15
+	//
+	// op 37 sets attr15 itself, so it has to be sampled here, before the handler runs.
+	const bool bDiedBeforeLeaving = int32(Context.Attributes[EBhavAttr::WrittenOff]) != 0;
+
 	// FUN_004c7090 unconditionally writes Visible = 1, and somebody riding the player's cabin
 	// (FUN_004c6250 cleared it when they took the seat) has to stay hidden. Hence the save/restore.
 	const uint16 SavedVisible = Context.Attributes[EBhavAttr::Visible];
@@ -4601,9 +4614,21 @@ void ASimCopterGroundAgent::LeaveTheMap(FSimCopterPersonContext& Context)
 	// the EKG: BHAV 302 rec[10] would also fall to its own op85 now attr15 is set, but this
 	// handler has already taken their program away, so nothing else is left to do it.
 	StopPersonVoice();
-	Context.Attributes[EBhavAttr::HeadImageIndex] = 10;
-	SetSeatPortraitMood(2);
-	SetMissionDeadPose();
+	if (bDiedBeforeLeaving)
+	{
+		Context.Attributes[EBhavAttr::HeadImageIndex] = 10;
+		SetSeatPortraitMood(2);
+		SetMissionDeadPose();
+	}
+	else
+	{
+		// DELIBERATE DIVERGENCE from BHAV 600 rec[22]/[21]/[18]. The shipped corpse arm gives every
+		// written-off person the bandaged head, the casualty seat face and the 'Dead' clip, so in
+		// retail a patient you successfully handed to the medic cheers ('Whoa') and then lies down
+		// as a corpse. That is the data, and it is wrong on screen: 'Dead' is the pose for the
+		// dead. A survivor gets the down-but-not-gone pose instead, and keeps their own face.
+		SetMissionRetiredAlivePose();
+	}
 }
 
 bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context)
@@ -6691,7 +6716,30 @@ void ASimCopterGroundAgent::SetMissionInjuredPose()
 
 void ASimCopterGroundAgent::SetMissionDeadPose()
 {
-	bMissionPatientDead = true;
+	// "Dead" is the corpse, and it is for the dead only. BHAV 310 'Medevac animate' - which BHAV
+	// 280 rec[13] runs on every pass - is the authority on what a LIVING casualty holds:
+	// rec[2] binds 'Inju' on the ground and rec[3] binds 'Slum' while riding. BHAV 800 rec[0]'s
+	// 'Dead' is only the spawn-time bind and 280 overwrites it on its first pass, so it is not
+	// evidence that live victims use the corpse pose. See SetMissionRetiredAlivePose.
+	SetMissionFinishedPose(TEXT("Dead"), /*bDeceased=*/true);
+}
+
+void ASimCopterGroundAgent::SetMissionRetiredAlivePose()
+{
+	// Opcode 37 has finished with this person, but they did not die: a patient handed over alive
+	// (BHAV 282's ending), or a criminal caught from the air (BHAV 1173 rec[13]). BHAV 600's
+	// written-off arm binds 'Dead' for both, which is a DELIBERATE DIVERGENCE to overrule - a
+	// corpse pose on somebody who was just saved reads as them dying on the hospital step.
+	//
+	// 'Inju' is the pose the remake already uses for a person who is down but not gone: the
+	// knockdown's Prone phase and BeginPassengerFall both bind it, and it is what BHAV 310 rec[2]
+	// gives a live medevac victim lying in the street waiting for you.
+	SetMissionFinishedPose(TEXT("Inju"), /*bDeceased=*/false);
+}
+
+void ASimCopterGroundAgent::SetMissionFinishedPose(const TCHAR* ClipMnemonic, const bool bDeceased)
+{
+	bMissionPatientDead = bDeceased;
 	bMissionStationary = true;
 	bMissionCarried = false;
 	BehaviorStepVelocityCmPerSec = FVector::ZeroVector;
@@ -6712,7 +6760,7 @@ void ASimCopterGroundAgent::SetMissionDeadPose()
 		CollisionComponent->SetCollisionEnabled(
 			bAboardCabin ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryAndPhysics);
 	}
-	SetForcedPedestrianFigureClip(TEXT("Dead"));
+	SetForcedPedestrianFigureClip(ClipMnemonic);
 
 	if (!bUsingPedestrianFigure && VisualRoot != nullptr)
 	{

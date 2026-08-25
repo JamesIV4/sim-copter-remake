@@ -250,6 +250,9 @@ public:
 	// pose stops their VM without relinquishing their seat; the state-5 medic may still remove
 	// that same body through BHAV 263's ordinary carrier interactions.
 	void SetMissionDeadPose();
+	// Opcode 37 retired this person while they were still alive - a patient handed over, a
+	// criminal caught. 'Inju', the knockdown/passenger-fall pose, not the corpse.
+	void SetMissionRetiredAlivePose();
 
 	// Mission-required roof staff are outside the disposable ambient-population budget. A medic
 	// may be far across the city while the player collects a patient and still has to be present
@@ -315,6 +318,8 @@ public:
 	// "Wave" is the panic gesture the rioter and Rxn: Ouch programs use.
 	void SetMissionAwaitingRescue(bool bAwaiting) { bMissionWavesWhenIdle = bAwaiting; }
 	void ClearMissionPose();
+	// Shared body of the two poses above: stop the person for good and hold one authored clip.
+	void SetMissionFinishedPose(const TCHAR* ClipMnemonic, bool bDeceased);
 	void ResumeNormalPedestrianBehavior();
 	// Continue the exact VM stack that was paused by SetMissionScriptedMover.
 	void ResumeSuspendedPedestrianBehavior();

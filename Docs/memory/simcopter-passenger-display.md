@@ -432,3 +432,65 @@ Three things the build above got wrong on screen, all now fixed:
   arm, which binds 'Dead' and never leaves it.
 
 The medic coming for the body at all is correct and stays - `FUN_004cc830`'s `|| +0x15e` arm.
+
+### 'Dead' is for the dead. A live casualty holds 'Inju' (corrected 2026-08-25)
+
+**This supersedes a wrong claim written here earlier the same day**, that `'Dead'` was a generic
+prone-casualty pose because `BHAV 800 'Medevac initbhav'` rec[0] binds it for a live victim. That
+bind is only the spawn-time one and BHAV 280 overwrites it on its very first pass. The authority is
+**`BHAV 310 'Medevac animate'`**, which BHAV 280 rec[13] runs every pass:
+
+```
+[0] CALL 261 'idle a bit'
+[1] op63 am I riding something ?  yes -> [3]   no -> [2]
+[2] bind-anim 'Inju'        waiting on the ground
+[3] bind-anim 'Slum'        in the cabin
+```
+
+So the three casualty poses are distinct and mean different things:
+
+| clip | vertical span | horizontal | used by |
+| --- | --- | --- | --- |
+| `1Wal` | 68 | 37 x 24 | standing (reference) |
+| `Whoa` | 70 | 14 x 48 | standing, arms above the head - BHAV 282's ending, and the knockdown tumble |
+| `Inju` | 34 | 57 x 33 | **down but not gone** - BHAV 310 rec[2], `BeginPassengerFall`, the knockdown's Prone phase |
+| `Slum` | 37 | 23 x 62 | BHAV 310 rec[3] and BHAV 802, riding |
+| `Dead` | **8** | **75** x 39 | fully prone. **The corpse, and nothing else.** |
+
+(Spans measured from privanim's SUIT figure, frame 0; see `Docs/scratchpad/classify_arlu_clips.py`.)
+
+### The op-37 ending, and the one place the remake overrules it
+
+`BHAV 282 'Medevac test for finished'` once the medic has set the patient down (rec[6]'s `op63`
+loops on Idle-20 while they are still being carried):
+
+```
+[17] rand 1 in 2 ? -> [12] : [8]
+[12] rand 1 in 6 ? -> [13] : [8]
+[13] rand 1 in 6 ? -> [14] : [8]
+[14] 'Whoa' -> sound 59 -> Idle-20 -> [16] op40 tear down      1 in 72
+[ 8] 'Whoa' -> sound  6 -> Idle-20 -> [ 4] op37 leave the map  71 in 72
+```
+
+Both arms bind 'Whoa', so the arms-up gesture always happens; only the ending is a roll. op 37 sets
+attr15, and BHAV 600's written-off arm then gives **every** such person the bandaged head, seat
+face 2 and `'Dead'`. In retail a patient you successfully delivered therefore cheers and then lies
+down as a corpse. That is genuinely what the data does, and it is wrong on screen.
+
+**`ASimCopterGroundAgent::LeaveTheMap` splits on how op 37 was reached**, which the shipped graphs
+make unambiguous because op 37 sets attr15 itself and must be sampled before it runs:
+
+- **died** - `BHAV 312 rec[9]` and `BHAV 903 rec[9]` are `attr15 := 1` and only then rec[2] op 37.
+  Keeps BHAV 600's arm verbatim: head 10, seat face 2, `SetMissionDeadPose()` (`'Dead'`).
+- **survived** - `BHAV 282` (delivery) and `BHAV 1173 rec[13]` (criminal caught from the air) never
+  touch attr15. `SetMissionRetiredAlivePose()` binds **`'Inju'`** and leaves
+  `bMissionPatientDead` false. DELIBERATE DIVERGENCE, and the reason is one line: a corpse pose on
+  somebody who was just saved reads as them dying on the hospital step.
+
+`SetMissionFinishedPose(clip, bDeceased)` is the shared body. `AlightFromCarrier` re-applies
+whichever of the two applies when a written-off person is set down, because its clip clear and
+upright rotation belong to a passenger getting out under their own power - without that the
+casualty popped upright for the length of the medic's handoff.
+
+Related: [[simcopter-vehicle-knockdown]] (the knockdown Prone phase picked `'Inju'` for exactly this
+reason, and got there first).
