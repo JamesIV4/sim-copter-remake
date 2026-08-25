@@ -2022,3 +2022,261 @@ bool FSimCopterRooftopRescueAlignmentTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// FUN_004a73e0's passenger arms each test TWICE against two different counters, and the decompile's
+// `if / else if` disguises it. +0xa4 (VictimsPickedUp) gates the map marker and the nag; the
+// per-type delivered counter gates completion. So the pressure is on the player only while somebody
+// is still WAITING: once the last person is aboard the marker clears, the nagging stops, and the
+// record sits open - costing nothing - until they are put down. The assembly is unambiguous, an
+// unconditional JMP hopping the nag block at 004a7678 (rescue) and 004a7829 (transport).
+//
+// No timer in the mission layer ever fails a passenger record. The transport timeout players
+// remember lives in the people VM instead: BHAV 290 'Transport increment boredom, possibly
+// disappear' rolls 1-in-5 for `attr35 += 1 + tier` on a WAITING fare and at >100 posts outcome 11
+// (EVT_PassengerLost) and despawns them. It cannot touch a seated fare, because in the original
+// opcode 12 is the only door into a cabin and taking it is what hands BHAV 750 off to 292, which
+// has no boredom roll.
+//
+// These tests pin that contract: carrying people is silent and free, waiting people nag at -10 a
+// period, medevac never nags at all, a lost or dead bystander leaves the record open for whoever is
+// still aboard, and the record closes - negatively, when that is what happened - only once every
+// spawned person has resolved.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterPassengersAboardNeverFailMissionTest,
+	"SimCopter.Missions.PassengersAboardNeverFailMission",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterPassengersAboardNeverFailMissionTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 NagPointsPenalty = 10;
+	auto CountNagMessages = [](const TArray<FSimCopterMissionUiMessage>& Messages, int32 TextId)
+	{
+		int32 Count = 0;
+		for (const FSimCopterMissionUiMessage& Message : Messages)
+		{
+			if (Message.Kind == 8 && Message.TextId == TextId)
+			{
+				Count++;
+			}
+		}
+		return Count;
+	};
+	auto HasCompletionMessage = [](const TArray<FSimCopterMissionUiMessage>& Messages)
+	{
+		for (const FSimCopterMissionUiMessage& Message : Messages)
+		{
+			if (Message.Kind == 6)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	// ---- A: everyone aboard - silent, free, and open indefinitely ----------------------
+	{
+		FSimCopterCareerCity City;
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		System.RestoreSessionState(1000, 1000, City);
+		const int32 EventId = System.CreateEventAt(64, 64, TYPE_RooftopRescue);
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		if (!TestNotNull(TEXT("Rescue record exists"), Record))
+		{
+			return false;
+		}
+		// Tier 1 spawns exactly one survivor; the retail counter event makes it two so an
+		// "all aboard" state is distinguishable from "the mission is trivially one person".
+		System.PostEvent(EVT_RescueVictimAdded, EventId, 1);
+		Record = System.FindRecord(EventId);
+		TestEqual(TEXT("The rescue wants two survivors"), Record->RescueVictims, 2);
+
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		World.RadioVoiceCalls.Reset();
+		World.UiMessages.Reset();
+
+		// Many nag periods' worth of flying around with both survivors aboard.
+		for (int32 Second = 0; Second < 1000; ++Second)
+		{
+			System.Tick(1.0f);
+		}
+		Record = System.FindRecord(EventId);
+		TestTrue(TEXT("An all-aboard rescue never closes, however long it takes"), Record != nullptr && Record->bActive);
+		TestFalse(TEXT("No completion message was posted"), HasCompletionMessage(World.UiMessages));
+		TestEqual(TEXT("No radio line played - there is no expiry voice"), World.RadioVoiceCalls.Num(), 0);
+		// The whole point: nobody is waiting, so the walker takes the marker-clear branch and the
+		// JMP at 004a7678 carries it past the nag. Carrying survivors is not a penalty.
+		TestEqual(TEXT("Nagging stops once the last survivor is aboard"),
+			CountNagMessages(World.UiMessages, 0x3b3), 0);
+		TestEqual(TEXT("Carrying survivors costs no points"), System.GetScore(), 1000);
+		if (Record != nullptr)
+		{
+			TestTrue(TEXT("The primary marker cleared while still airborne"),
+				Record->TileX == -1 && Record->TileY == -1);
+		}
+	}
+
+	// ---- A2: somebody still waiting - the nag IS the pressure, at -10 a period ----------
+	{
+		FSimCopterCareerCity City;
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		System.RestoreSessionState(1000, 1000, City);
+		const int32 EventId = System.CreateEventAt(64, 64, TYPE_RooftopRescue);
+		System.PostEvent(EVT_RescueVictimAdded, EventId, 1);
+		// Two survivors, one aboard, one still on the roof.
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		World.UiMessages.Reset();
+
+		int32 NagCount = 0;
+		for (int32 Second = 0; Second < 4000 && NagCount < 4; ++Second)
+		{
+			System.Tick(1.0f);
+			NagCount = CountNagMessages(World.UiMessages, 0x3b3);
+		}
+		TestTrue(TEXT("A survivor still waiting keeps the SOS nag firing"), NagCount >= 4);
+		TestEqual(TEXT("Each nag docks exactly ten points"),
+			1000 - System.GetScore(), NagCount * NagPointsPenalty);
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		if (TestNotNull(TEXT("Rescue record still open"), Record))
+		{
+			TestFalse(TEXT("The marker stays up while anyone is still waiting"),
+				Record->TileX == -1 && Record->TileY == -1);
+		}
+	}
+
+	// ---- A3: medevac has no nag arm at all, waiting patient or not ----------------------
+	{
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		// CreateEventOfType keeps the mask to 0x20 alone; building this out of a rooftop rescue
+		// would carry 0x10 too and the rescue arm's own nag would answer for it.
+		const int32 EventId = System.CreateEventOfType(TYPE_Medevac);
+		if (!TestTrue(TEXT("Medevac mission created"), EventId != INDEX_NONE))
+		{
+			return false;
+		}
+		World.UiMessages.Reset();
+
+		for (int32 Second = 0; Second < 1000; ++Second)
+		{
+			System.Tick(1.0f);
+		}
+		// Mask 0x20's block at 004a7611 reads no timer and calls no sink: a patient lying on the
+		// ground applies no score pressure whatsoever.
+		TestEqual(TEXT("A waiting medevac patient never nags"),
+			CountNagMessages(World.UiMessages, 0x3b3), 0);
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		TestTrue(TEXT("The medevac record stays open"), Record != nullptr && Record->bActive);
+	}
+
+	// ---- B/C: the last WAITING person dies; the aboard survivors stay deliverable ------
+	{
+		FSimCopterCareerCity City;
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		System.RestoreSessionState(1000, 1000, City);
+		const int32 EventId = System.CreateEventAt(64, 64, TYPE_RooftopRescue);
+		System.PostEvent(EVT_RescueVictimAdded, EventId, 1);
+		System.PostEvent(EVT_RescueVictimAdded, EventId, 1);
+
+		// Two aboard, one still waiting out there.
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		// The extra person still waiting dies (fire, traffic, whatever). That is a valid loss -
+		// but the two in the cabin are unresolved, so the mission must stay open.
+		System.PostEvent(EVT_PersonDied, EventId, 1);
+
+		for (int32 Second = 0; Second < 100; ++Second)
+		{
+			System.Tick(1.0f);
+		}
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		TestTrue(TEXT("Losing the last waiting person does not close the mission"),
+			Record != nullptr && Record->bActive);
+		if (Record != nullptr)
+		{
+			TestEqual(TEXT("The casualty counted"), Record->Casualties, 1);
+			TestEqual(TEXT("Nothing was delivered yet"), Record->RescueDelivered, 0);
+		}
+
+		// Delivering both survivors resolves the record, and 2 delivered + 1 casualty earns a
+		// positive FUN_004aabf0 award (2*100 - 1*100 > 0), so the success voice plays.
+		World.RadioVoiceCalls.Reset();
+		System.PostEvent(EVT_RescueDelivered, EventId, 1);
+		System.PostEvent(EVT_RescueDelivered, EventId, 1);
+		System.Tick(1.0f);
+		Record = System.FindRecord(EventId);
+		TestTrue(TEXT("Delivering the cabin survivors closes the mission"),
+			Record == nullptr || !Record->bActive);
+		TestTrue(TEXT("A positive completion plays the land-rescue voice, not the failure line"),
+			World.RadioVoiceCalls.Contains(0x67) && !World.RadioVoiceCalls.Contains(0x60));
+	}
+
+	// ---- D: everyone aboard dies - the one "failure while aboard" the original has -------
+	{
+		FSimCopterCareerCity City;
+		FSimCopterTestMissionWorld World;
+		FSimCopterMissionSystem System;
+		System.Initialize(&World, 1);
+		System.RestoreSessionState(1000, 1000, City);
+		const int32 EventId = System.CreateEventAt(64, 64, TYPE_RooftopRescue);
+		System.PostEvent(EVT_RescueVictimAdded, EventId, 1);
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+
+		// FUN_004c0ba0 writes off every occupant of a destroyed airframe; each posts
+		// EVT_PersonDied. With nobody waiting, casualties reach the total at once.
+		System.PostEvent(EVT_PersonDied, EventId, 1);
+		System.PostEvent(EVT_PersonDied, EventId, 1);
+		System.Tick(1.0f);
+
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		TestTrue(TEXT("All casualties resolve the record"),
+			Record == nullptr || !Record->bActive);
+		TestTrue(TEXT("That resolution is the net-negative failure voice"),
+			World.RadioVoiceCalls.Contains(0x60));
+	}
+
+	// ---- E: transport - losing a waiting fare leaves the boarded one deliverable --------
+	{
+		FSimCopterCrimeTestWorld City;
+		City.bAnyBuildings = true;
+		FSimCopterMissionSystem System;
+		System.Initialize(&City, 1);
+		const int32 EventId = System.CreateEventOfType(TYPE_Transport);
+		if (!TestTrue(TEXT("Transport mission created"), EventId != INDEX_NONE))
+		{
+			return false;
+		}
+		const FSimCopterMissionRecord* Record = System.FindRecord(EventId);
+		if (!TestNotNull(TEXT("Transport record exists"), Record))
+		{
+			return false;
+		}
+		while (Record->TransportPassengers < 2)
+		{
+			System.PostEvent(EVT_TransportPassengerAdded, EventId, 1);
+			Record = System.FindRecord(EventId);
+		}
+
+		System.PostEvent(EVT_VictimPickedUp, EventId, 1);
+		// The fare still waiting is lost (the retail EVT_PassengerLost path behind a dropped
+		// party member). One fare lost, one aboard: the record must stay open.
+		System.PostEvent(EVT_PassengerLost, EventId, 1);
+		for (int32 Second = 0; Second < 160; ++Second)
+		{
+			System.Tick(1.0f);
+		}
+		Record = System.FindRecord(EventId);
+		TestTrue(TEXT("A transport with a fare aboard stays open after another fare is lost"),
+			Record != nullptr && Record->bActive);
+	}
+
+	return true;
+}
+

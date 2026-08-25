@@ -2270,6 +2270,35 @@ ESimCopterBehaviorStepResult ASimCopterGroundAgent::StepTowardSelectedObject(FSi
 		return ESimCopterBehaviorStepResult::NoTarget;
 	}
 
+	// Already riding the very thing this walk is trying to reach, so it has arrived by definition.
+	// Without this the walk can never finish: BoardCarrier set bBehaviorMoveSuspended and the seat
+	// transform owns the position, so no step closes any gap, and the height gate below measures a
+	// SEATED body against the airframe's underside across a 5-unit (~31 cm) window - a coin flip.
+	//
+	// That mattered because the remake has a second way aboard. In the original, opcode 12 is the
+	// only door into a cabin, and its success is what makes BHAV 291 return so BHAV 750 hands off to
+	// 292 'Transport wait to get off' - a program with no boredom roll. Here
+	// PickUpMissionPeopleNear claims the seat through BoardCarrier directly, leaving the passenger
+	// parked in 291's wave/Idle-5 arm, which calls BHAV 290 'Transport increment boredom, possibly
+	// disappear' every cycle. Boredom crossed 100, posted outcome 11 (EVT_PassengerLost) and ran
+	// opcode 16 - a fare giving up and leaving the cabin in mid-flight, which retail cannot do.
+	//
+	// Reporting arrival lets opcode 12 call BoardSelection, whose BoardCarrier early-out answers
+	// true for an existing seat, so the program advances exactly as a walked-in boarding would.
+	// The harness flag has to match for the same reason BoardSelection guards it: a cabin passenger
+	// whose program selects the rope end must NOT short-circuit, or the seat is torn down and
+	// rebuilt every tick.
+	if (Context.SelectedObject.Get() != nullptr &&
+		Context.SelectedObject.Get() == BehaviorCarrier.Get() &&
+		bRidingHarness == Context.bSelectionIsHarness)
+	{
+		SIMCOPTER_PEOPLE_TRACE(GetTracedPersonState(),
+			TEXT("%-18s GOTO   '%s' already aboard -> arrived"),
+			*GetPersonTraceName(),
+			*Context.SelectedObject->GetName());
+		return ESimCopterBehaviorStepResult::Arrived;
+	}
+
 	// A moving target (and the spotlight is the most mobile of the lot) has to be re-read every
 	// step or the chase walks to where it used to be.
 	if (const AActor* Target = Context.SelectedObject.Get())

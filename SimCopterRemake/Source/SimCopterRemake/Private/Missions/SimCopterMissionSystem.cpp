@@ -1685,37 +1685,67 @@ void FSimCopterMissionSystem::UpdateLifecycle()
 		{
 			bComplete = false;
 		}
-		if ((Rec.TypeMask & TYPE_Medevac) != 0 && Rec.MedevacDelivered + Rec.Casualties < Rec.MedevacVictims)
+		// Every passenger arm of FUN_004a73e0 tests TWICE, against two DIFFERENT counters, and the
+		// decompile renders the pair as `if / else if` so it reads like one test with a spare
+		// branch. It is not. +0xa4 (VictimsPickedUp) answers "is anyone still standing out there
+		// waiting for me" and gates the map marker and the nag; the per-type delivered counter
+		// (+0x98 rescue, +0x9c transport, +0xa0 medevac) answers "is this record finished".
+		//
+		// So once the last person is aboard the marker clears and the nagging STOPS - the record
+		// then sits open, costing nothing, until they are put down. The assembly settles it: an
+		// unconditional JMP hops the whole nag block at 004a7678 (rescue) and 004a7829 (transport).
+		// Keying both tests off "delivered" charged the player 10 points every nag interval for the
+		// crime of still carrying the survivors, and left the marker burning on the map.
+		if ((Rec.TypeMask & TYPE_Medevac) != 0)
 		{
-			bComplete = false;
+			// 004a7611: medevac clears its marker on the same pickedUp test, and has NO nag arm at
+			// all - there is no 0057f998 read and no sink call anywhere in mask 0x20's block.
+			if (Rec.VictimsPickedUp + Rec.Casualties >= Rec.MedevacVictims)
+			{
+				Rec.TileX = -1;
+				Rec.TileY = -1;
+			}
+			if (Rec.MedevacDelivered + Rec.Casualties < Rec.MedevacVictims)
+			{
+				bComplete = false;
+			}
 		}
-		const bool bRescueIncomplete =
-			(Rec.TypeMask & TYPE_RescuePeople) != 0 &&
-			Rec.RescueDelivered + Rec.Casualties < Rec.RescueVictims;
-		if (bRescueIncomplete)
+		if ((Rec.TypeMask & TYPE_RescuePeople) != 0)
 		{
-			bComplete = false;
-			if (Rec.TimeAccum > NagInterval)
+			if (Rec.VictimsPickedUp + Rec.Casualties >= Rec.RescueVictims)
+			{
+				// 004a766a clears the PRIMARY pair. Secondary/Tertiary were already -1 here.
+				Rec.TileX = -1;
+				Rec.TileY = -1;
+			}
+			else if (Rec.TimeAccum > NagInterval)
 			{
 				PostNag(Rec, EVT_NagSos);
 			}
+			if (Rec.RescueDelivered + Rec.Casualties < Rec.RescueVictims)
+			{
+				bComplete = false;
+			}
 		}
-		else if ((Rec.TypeMask & TYPE_RescuePeople) != 0)
+		if ((Rec.TypeMask & TYPE_Transport) != 0)
 		{
-			// The retail walker clears the primary marker as soon as every survivor is delivered
-			// or lost. Secondary/Tertiary were already -1 for Rooftop Rescue.
-			Rec.TileX = -1;
-			Rec.TileY = -1;
-		}
-		const bool bTransportIncomplete =
-			(Rec.TypeMask & TYPE_Transport) != 0 &&
-			Rec.TransportDelivered + Rec.Casualties + Rec.PassengersLost < Rec.TransportPassengers;
-		if (bTransportIncomplete)
-		{
-			bComplete = false;
-			if (Rec.TimeAccum > NagInterval)
+			// A fare who gave up (BHAV 290's boredom clock) counts as accounted for on both sides:
+			// nobody is waiting for the player any more, and the record can resolve without them.
+			const int32 TransportAccounted = Rec.Casualties + Rec.PassengersLost;
+			if (Rec.VictimsPickedUp + TransportAccounted >= Rec.TransportPassengers)
+			{
+				// 004a781b clears the TERTIARY pair, not the primary one - transport's pickup
+				// marker is a different dot from the destination the primary coords carry.
+				Rec.TertiaryX = -1;
+				Rec.TertiaryY = -1;
+			}
+			else if (Rec.TimeAccum > NagInterval)
 			{
 				PostNag(Rec, EVT_NagPeopleWaiting);
+			}
+			if (Rec.TransportDelivered + TransportAccounted < Rec.TransportPassengers)
+			{
+				bComplete = false;
 			}
 		}
 		const bool bRiotIncomplete =
