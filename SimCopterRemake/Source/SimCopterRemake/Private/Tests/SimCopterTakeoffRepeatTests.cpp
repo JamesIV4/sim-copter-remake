@@ -224,6 +224,87 @@ bool FSimCopterEngineHoldArbitrationTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterCollectiveEngineHoldTest,
+	"SimCopter.Flight.CollectiveDrivesEngine",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+// The collective axis is the engine control: the SimCopterEngineStart / SimCopterEngineShutdown
+// action mappings are gone, so raising the collective has to hold the starter by itself or the
+// helicopter never spools at all.
+bool FSimCopterCollectiveEngineHoldTest::RunTest(const FString& Parameters)
+{
+	bool bStart = false;
+	bool bShutdown = false;
+
+	ASimCopterHelicopterPawn::ResolveCollectiveEngineHolds(1.0f, bStart, bShutdown);
+	TestTrue(TEXT("collective up holds the starter"), bStart);
+	TestFalse(TEXT("collective up does not shut down"), bShutdown);
+
+	ASimCopterHelicopterPawn::ResolveCollectiveEngineHolds(-1.0f, bStart, bShutdown);
+	TestFalse(TEXT("collective down does not start"), bStart);
+	TestTrue(TEXT("collective down holds the shutdown"), bShutdown);
+
+	ASimCopterHelicopterPawn::ResolveCollectiveEngineHolds(0.0f, bStart, bShutdown);
+	TestFalse(TEXT("neutral holds neither"), bStart);
+	TestFalse(TEXT("neutral holds neither, the other way"), bShutdown);
+
+	// The starter must not engage on a reading BuildFlightInputs is still treating as neutral, or
+	// the engine can be running while ClimbCommand is zero - which is a rotor spinning up under a
+	// stick the player has barely touched.
+	ASimCopterHelicopterPawn::ResolveCollectiveEngineHolds(0.2f, bStart, bShutdown);
+	TestFalse(TEXT("a reading below the digital-key threshold is still neutral"), bStart);
+	ASimCopterHelicopterPawn::ResolveCollectiveEngineHolds(-0.2f, bStart, bShutdown);
+	TestFalse(TEXT("and the same going down"), bShutdown);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterTakeoffPromptTest,
+	"SimCopter.Flight.TakeoffPrompt",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+// Remake addition: a player who gets in and is still on the ground after five seconds is told which
+// key to hold. One prompt per boarding, and never in the air.
+bool FSimCopterTakeoffPromptTest::RunTest(const FString& Parameters)
+{
+	constexpr float Delay = 5.0f;
+	const auto Show = [](float Seconds, bool bLanded = true, bool bTakenOff = false)
+	{
+		return ASimCopterHelicopterPawn::ShouldShowTakeoffPrompt(bLanded, bTakenOff, Seconds, Delay);
+	};
+
+	TestFalse(TEXT("silent the moment the player gets in"), Show(0.0f));
+	TestFalse(TEXT("still silent a second short of the delay"), Show(Delay - 1.0f));
+	TestTrue(TEXT("prompts once the delay is up"), Show(Delay));
+	TestTrue(TEXT("and stays up while they sit there"), Show(Delay + 30.0f));
+
+	// Airborne is the answer to "how do I take off", so the prompt has nothing left to say.
+	TestFalse(TEXT("never in the air"), Show(Delay + 30.0f, /*bLanded=*/false));
+
+	// And it does not come back on a later landing: the player has demonstrably found the control,
+	// and a helicopter sat on a pad is parked on purpose.
+	TestFalse(TEXT("retired once this boarding has flown"), Show(Delay + 30.0f, true, /*bTakenOff=*/true));
+
+	// A zero delay is a valid tuning value and must not divide, wrap or hold the prompt off.
+	TestTrue(TEXT("a zero delay prompts immediately"),
+		ASimCopterHelicopterPawn::ShouldShowTakeoffPrompt(true, false, 0.0f, 0.0f));
+
+	// Both named keys come from the live bindings, with the shipped key as the fallback, so whatever
+	// they resolve to they must be sayable - an empty one leaves the line reading "Hold the  to take
+	// off". The exit half matters as much as the takeoff half: sitting on the ground is also what
+	// somebody who boarded the wrong machine is doing, and nothing else on screen names Interact.
+	TestFalse(
+		TEXT("the prompt can name the takeoff key"),
+		ASimCopterHelicopterPawn::GetCollectiveUpKeyDisplayName().IsEmpty());
+	TestFalse(
+		TEXT("the prompt can name the way out"),
+		ASimCopterHelicopterPawn::GetExitHelicopterKeyDisplayName().IsEmpty());
+
+	return true;
+}
+
 class FTestExitHelicopterPawn : public ASimCopterHelicopterPawn
 {
 public:

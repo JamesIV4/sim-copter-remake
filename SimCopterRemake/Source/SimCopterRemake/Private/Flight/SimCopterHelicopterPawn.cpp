@@ -36,6 +36,7 @@
 #include "Game/SimCopterSettings.h"
 #include "Game/SimCopterVehicleMaterialSubsystem.h"
 #include "Debug/SSimCopterHelicopterDebugPanel.h"
+#include "GameFramework/InputSettings.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Ground/SimCopterAmbientVehicles.h"
@@ -90,6 +91,23 @@ namespace
 constexpr float MaxSubstepSeconds = 1.0f / 60.0f;
 constexpr float MaxTickSeconds = 0.1f;
 constexpr int32 MaxTweakControls = 64;
+
+// How far an analogue axis has to travel before it counts as one of the original's digital keys.
+// Shared by BuildFlightInputs and the collective's engine derivation so the starter can never
+// engage on a reading the flight model is still treating as neutral.
+constexpr float KeyAxisThreshold = 0.25f;
+
+// The two mappings the takeoff prompt names: the axis whose positive direction raises the
+// collective - and, since the dedicated engine keys were retired, starts the engine - and the
+// action that puts the pilot back on their feet.
+const FName CollectiveAxisName(TEXT("SimCopterCollective"));
+const FName ExitHelicopterActionName(TEXT("SimCopterInteract"));
+
+// The takeoff prompt's own trim: how far its panel clears the top of the instrument panel, and how
+// big its one line of text is. Screen pixels, unscaled - it is a HUD message, not cockpit art.
+constexpr float TakeoffPromptGapPx = 16.0f;
+constexpr int32 TakeoffPromptFontHeight = 20;
+
 constexpr TCHAR CameraDebugConfigSection[] = TEXT("SimCopter.CameraViews");
 constexpr TCHAR RotorDiscConfigSection[] = TEXT("SimCopter.RotorDisc");
 constexpr TCHAR CockpitViewConfigSection[] = TEXT("SimCopter.CockpitView");
@@ -963,6 +981,7 @@ void ASimCopterHelicopterPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	RemoveCrosshairWidget();
 	RemoveControllerOverlayWidget();
 	RemoveHelicopterDebugPanel();
+	RemoveTakeoffPromptWidget();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -994,6 +1013,9 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 	UpdateSpotlightTarget(DeltaSeconds);
 	UpdateCamera(DeltaSeconds);
 	UpdateCrosshairWorldLocation();
+	// After the substeps: bIsLanded is written by SimulateFlightStep, and the prompt's whole
+	// question is whether this frame is still on the ground.
+	UpdateTakeoffPrompt(DeltaSeconds);
 }
 
 void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -1025,10 +1047,7 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindAction(TEXT("SimCopterBucketDump"), IE_Released, this, &ASimCopterHelicopterPawn::StopBucketDump);
 	PlayerInputComponent->BindAction(TEXT("SimCopterWaterCannon"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartWaterCannon);
 	PlayerInputComponent->BindAction(TEXT("SimCopterWaterCannon"), IE_Released, this, &ASimCopterHelicopterPawn::StopWaterCannon);
-	PlayerInputComponent->BindAction(TEXT("SimCopterEngineStart"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartEngineHold);
-	PlayerInputComponent->BindAction(TEXT("SimCopterEngineStart"), IE_Released, this, &ASimCopterHelicopterPawn::StopEngineHold);
-	PlayerInputComponent->BindAction(TEXT("SimCopterEngineShutdown"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartEngineShutdownHold);
-	PlayerInputComponent->BindAction(TEXT("SimCopterEngineShutdown"), IE_Released, this, &ASimCopterHelicopterPawn::StopEngineShutdownHold);
+	// No engine start/shutdown bindings: the collective axis above is both. See MoveCollective.
 	PlayerInputComponent->BindAction(TEXT("SimCopterInteract"), IE_Pressed, this, &ASimCopterHelicopterPawn::Interact);
 	PlayerInputComponent->BindAction(TEXT("SimCopterCameraDrag"), IE_Pressed, this, &ASimCopterHelicopterPawn::StartCameraDrag);
 	PlayerInputComponent->BindAction(TEXT("SimCopterCameraDrag"), IE_Released, this, &ASimCopterHelicopterPawn::StopCameraDrag);
@@ -2651,6 +2670,12 @@ void ASimCopterHelicopterPawn::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 	FlushStuckKeys(NewController);
 	ResetTransientInputState();
+	// Every way into the cockpit lands here, so this is where the takeoff prompt's clock restarts.
+	// The latch is seeded by the first update instead, which is the first place bIsLanded is known
+	// to be this frame's answer.
+	TakeoffPromptSecondsOnGround = 0.0f;
+	bTakenOffSinceBoarding = false;
+	bTakeoffPromptNeedsSeeding = true;
 	if (Cast<APlayerController>(NewController) != nullptr)
 	{
 		if (USimCopterRadioSubsystem* Radio = USimCopterRadioSubsystem::Get(this))
@@ -3109,6 +3134,9 @@ void ASimCopterHelicopterPawn::RebuildCockpitOverlays()
 	RemoveMapWidget();
 	RemoveWaterControlsWidget();
 	RemoveToolFlapsWidget();
+	// The prompt's clearance is measured off the dashboard's height at build time, so a scale change
+	// leaves it stale. Nothing re-creates it here on purpose: the next update does, at the new scale.
+	RemoveTakeoffPromptWidget();
 
 	if (bHadDashboard)      { EnsureDashboardWidget(); }
 	if (bHadMap)            { EnsureMapWidget(); }
@@ -3391,6 +3419,187 @@ void ASimCopterHelicopterPawn::RemoveCrosshairWidget()
 		CrosshairComponent->SetSlateWidget(nullptr);
 	}
 	CrosshairWidget.Reset();
+}
+
+// --- the takeoff prompt -------------------------------------------------------------------------
+//
+// REMAKE ADDITION. There is no FUN_004xxxxx behind this: the original tells the player nothing, on
+// the reasonable 1996 assumption that they had the manual. Two things about taking off are not
+// discoverable from the screen - which key lifts the aircraft, and that it has to be HELD, because
+// the rotor climbs at 100/s to the 300 gate and only then produces lift (three seconds of nothing
+// visible if you tap it). A player who gets in and is still sat on the ground after
+// TakeoffPromptDelaySeconds gets told once, naming whatever key the collective is currently bound to.
+//
+// It names the way OUT as well. Sitting on the ground is also what somebody who got into the wrong
+// machine, or who meant to walk, is doing - and Interact is the only way back onto your feet, with
+// nothing on screen saying so. The prompt is only ever up while landed, which is exactly when
+// CanExitHelicopter is satisfied, so the offer is never one the player cannot take.
+
+namespace
+{
+// A key worth printing: one the player could actually be pressing at a keyboard. Pad bindings are
+// skipped because the controller has its own on-screen overlay and its own routing - naming one
+// here would tell a pad player to press something that is not what moves their helicopter.
+bool IsNameableKey(const FKey& Key)
+{
+	return Key.IsValid() && !Key.IsGamepadKey();
+}
+
+// Both lookups read the LIVE UInputSettings rather than DefaultInput.ini: the Controls page writes
+// rebinds straight into it, and a prompt naming a key the player has moved is worse than no prompt.
+// `Fallback` is the shipped binding, for the case where the mapping has been unbound entirely.
+FText ResolveActionKeyDisplayName(const FName ActionName, const FKey& Fallback)
+{
+	if (const UInputSettings* Settings = UInputSettings::GetInputSettings())
+	{
+		for (const FInputActionKeyMapping& Mapping : Settings->GetActionMappings())
+		{
+			if (Mapping.ActionName == ActionName && IsNameableKey(Mapping.Key))
+			{
+				return Mapping.Key.GetDisplayName();
+			}
+		}
+	}
+	return Fallback.GetDisplayName();
+}
+
+FText ResolvePositiveAxisKeyDisplayName(const FName AxisName, const FKey& Fallback)
+{
+	if (const UInputSettings* Settings = UInputSettings::GetInputSettings())
+	{
+		for (const FInputAxisKeyMapping& Mapping : Settings->GetAxisMappings())
+		{
+			if (Mapping.AxisName == AxisName && Mapping.Scale > 0.0f && IsNameableKey(Mapping.Key))
+			{
+				return Mapping.Key.GetDisplayName();
+			}
+		}
+	}
+	return Fallback.GetDisplayName();
+}
+} // namespace
+
+bool ASimCopterHelicopterPawn::ShouldShowTakeoffPrompt(
+	const bool bLanded,
+	const bool bTakenOff,
+	const float SecondsOnGround,
+	const float DelaySeconds)
+{
+	// Once this boarding has been off the ground the player has demonstrably found the control, and
+	// a helicopter that has landed and is sitting there is parked on purpose - a prompt on every
+	// touchdown would be nagging, not teaching.
+	if (bTakenOff || !bLanded)
+	{
+		return false;
+	}
+	return SecondsOnGround >= FMath::Max(0.0f, DelaySeconds);
+}
+
+FText ASimCopterHelicopterPawn::GetCollectiveUpKeyDisplayName()
+{
+	// Gamepad collective does not come through this axis at all - UpdateControllerInput routes the
+	// left stick itself - which is the other reason the pad filter above is right here.
+	return ResolvePositiveAxisKeyDisplayName(CollectiveAxisName, EKeys::SpaceBar);
+}
+
+FText ASimCopterHelicopterPawn::GetExitHelicopterKeyDisplayName()
+{
+	return ResolveActionKeyDisplayName(ExitHelicopterActionName, EKeys::F);
+}
+
+void ASimCopterHelicopterPawn::UpdateTakeoffPrompt(const float DeltaSeconds)
+{
+	if (bTakeoffPromptNeedsSeeding)
+	{
+		bTakeoffPromptNeedsSeeding = false;
+		// Getting in is not always a takeoff waiting to happen: a save restored in mid-air possesses
+		// this pawn while it is flying, and that player needs no prompt.
+		bTakenOffSinceBoarding = !bIsLanded;
+	}
+	else if (!bIsLanded)
+	{
+		bTakenOffSinceBoarding = true;
+	}
+
+	TakeoffPromptSecondsOnGround = bIsLanded
+		? TakeoffPromptSecondsOnGround + FMath::Max(0.0f, DeltaSeconds)
+		: 0.0f;
+
+	// A helicopter nobody is flying still ticks, and its HUD belongs to whoever is in the cockpit.
+	const bool bPlayerControlled = Cast<APlayerController>(GetController()) != nullptr;
+	const bool bShow =
+		bPlayerControlled &&
+		!bHudHiddenForReplay &&
+		ShouldShowTakeoffPrompt(
+			bIsLanded,
+			bTakenOffSinceBoarding,
+			TakeoffPromptSecondsOnGround,
+			TakeoffPromptDelaySeconds);
+
+	if (bShow)
+	{
+		EnsureTakeoffPromptWidget();
+	}
+	else
+	{
+		RemoveTakeoffPromptWidget();
+	}
+}
+
+void ASimCopterHelicopterPawn::EnsureTakeoffPromptWidget()
+{
+	if (TakeoffPromptWidget.IsValid() || GEngine == nullptr || GEngine->GameViewport == nullptr)
+	{
+		return;
+	}
+
+	// Centred horizontally and sitting on top of the instrument panel. The dashboard is bottom-right
+	// and the map bottom-left, so this strip is the one part of the lower screen the cockpit does not
+	// already own, and the message reads next to the gauges it is about. Measuring the clearance off
+	// the dashboard rather than hard-coding it keeps the two apart at every HUD Scale.
+	const float BottomPadding =
+		SSimCopterDashboard::GetPanelScreenHeight(GetCockpitScale()) + TakeoffPromptGapPx;
+
+	TakeoffPromptWidget =
+		SNew(SOverlay)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.0f, 0.0f, 0.0f, BottomPadding))
+		[
+			// Monochrome on purpose. The cockpit overlays each carry their own tint, and one more
+			// coloured panel among them reads as another instrument rather than as a message; plain
+			// white on half-transparent black sits over any city, at any time of day, without
+			// claiming to belong to the dashboard underneath it.
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+			.BorderBackgroundColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.5f))
+			.Padding(FMargin(20.0f, 10.0f))
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Center)
+				.ColorAndOpacity(FLinearColor::White)
+				.ShadowOffset(FVector2D(1.0f, 1.0f))
+				.ShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.9f))
+				.Font(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), TakeoffPromptFontHeight))
+				.Text(FText::FromString(FString::Printf(
+					TEXT("Hold the %s to take off, or press %s to get out"),
+					*GetCollectiveUpKeyDisplayName().ToString(),
+					*GetExitHelicopterKeyDisplayName().ToString())))
+			]
+		];
+
+	// Above the dashboard's own layer (25) so the panel cannot be drawn over by it.
+	GEngine->GameViewport->AddViewportWidgetContent(TakeoffPromptWidget.ToSharedRef(), 26);
+}
+
+void ASimCopterHelicopterPawn::RemoveTakeoffPromptWidget()
+{
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && TakeoffPromptWidget.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(TakeoffPromptWidget.ToSharedRef());
+	}
+	TakeoffPromptWidget.Reset();
 }
 
 void ASimCopterHelicopterPawn::EnsureControllerOverlayWidget()
@@ -3840,6 +4049,7 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 	RemoveCrosshairWidget();
 	RemoveControllerOverlayWidget();
 	RemoveHelicopterDebugPanel();
+	RemoveTakeoffPromptWidget();
 
 	// The pilot steps out of the cabin door, not onto a spot two and a half metres off the skid.
 	// Measure the offset from the rendered fuselage's own box (the same source boarding uses in
@@ -3923,6 +4133,15 @@ void ASimCopterHelicopterPawn::MoveYaw(float Value)
 void ASimCopterHelicopterPawn::MoveCollective(float Value)
 {
 	CollectiveInput = FMath::Clamp(Value, -1.0f, 1.0f);
+
+	// The collective is the engine control too. There used to be a separate SimCopterEngineStart /
+	// SimCopterEngineShutdown pair, bound by default to the very keys the collective already used,
+	// so the Controls page showed four rows for two keys and a rebind could put the two halves on
+	// different keys - hold the one labelled "Engine Start" and nothing spools, because the flight
+	// model reads the collective. Deriving both from this one axis makes that impossible to get
+	// wrong, and matches what the gamepad has always done (UpdateControllerInput takes the same two
+	// bools off its own collective command).
+	ResolveCollectiveEngineHolds(CollectiveInput, bEngineStartHeld, bEngineShutdownHeld);
 }
 
 void ASimCopterHelicopterPawn::LookYaw(float Value)
@@ -4805,28 +5024,17 @@ void ASimCopterHelicopterPawn::SetWinchHeldInput(const bool bHarness, const int3
 	RefreshWaterControlsWidget();
 }
 
-void ASimCopterHelicopterPawn::StartEngineHold()
+void ASimCopterHelicopterPawn::ResolveCollectiveEngineHolds(
+	const float CollectiveValue,
+	bool& bOutStartHeld,
+	bool& bOutShutdownHeld)
 {
-	bEngineStartHeld = true;
-}
-
-void ASimCopterHelicopterPawn::StopEngineHold()
-{
-	bEngineStartHeld = false;
-	EngineStartHoldElapsed = 0.0f;
-	EngineStartHoldAlpha = 0.0f;
-}
-
-void ASimCopterHelicopterPawn::StartEngineShutdownHold()
-{
-	bEngineShutdownHeld = true;
-}
-
-void ASimCopterHelicopterPawn::StopEngineShutdownHold()
-{
-	bEngineShutdownHeld = false;
-	EngineShutdownHoldElapsed = 0.0f;
-	EngineShutdownHoldAlpha = 0.0f;
+	// The same threshold BuildFlightInputs uses to turn an axis back into the original's digital
+	// keys, so the frame the collective starts climbing is the frame the starter is engaged. The
+	// hold timers themselves are cleared by UpdateEngineState whenever its input goes away, which
+	// is why releasing the key needs nothing here.
+	bOutStartHeld = CollectiveValue > KeyAxisThreshold;
+	bOutShutdownHeld = CollectiveValue < -KeyAxisThreshold;
 }
 
 void ASimCopterHelicopterPawn::Interact()
@@ -5782,6 +5990,13 @@ void ASimCopterHelicopterPawn::SetHudHiddenForReplay(const bool bHide)
 		{
 			Widget->SetVisibility(HudVisibility);
 		}
+	}
+
+	// The takeoff prompt is torn down rather than collapsed - it is one line of text with no state
+	// worth preserving, and UpdateTakeoffPrompt puts it back on the next tick if it still applies.
+	if (bHide)
+	{
+		RemoveTakeoffPromptWidget();
 	}
 
 	// The crosshair is a world component with its own rule (it is only up in the views that aim a
@@ -6825,7 +7040,7 @@ FSimCopterFlightInputs ASimCopterHelicopterPawn::BuildFlightInputs() const
 		return Inputs; // controls dead; the rotor spools down in the model
 	}
 
-	constexpr float KeyThreshold = 0.25f;
+	constexpr float KeyThreshold = KeyAxisThreshold;
 	Inputs.bPitchForwardKey = PitchInput > KeyThreshold;
 	Inputs.bPitchBackKey = PitchInput < -KeyThreshold;
 	Inputs.bTurnRightKey = RollInput > KeyThreshold;

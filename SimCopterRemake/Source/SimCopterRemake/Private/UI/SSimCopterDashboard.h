@@ -51,6 +51,12 @@ public:
 
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
 
+	/**
+	 * Screen height of the instrument panel at `Scale`, i.e. what a HUD element has to clear to sit
+	 * above it. The seat window beside it is shorter, so the panel is the whole block's height.
+	 */
+	static float GetPanelScreenHeight(float Scale);
+
 	/** SCHOOK: DashRadioVolumeMarker 0x004520a0 - stored volume to DASH4 page-space Y. */
 	static int32 RadioVolumeToMarkerY(int32 Volume);
 	/** SCHOOK: DashRadioInput 0x00451e30 - DASH4 page-space Y to stored volume; zero is off. */

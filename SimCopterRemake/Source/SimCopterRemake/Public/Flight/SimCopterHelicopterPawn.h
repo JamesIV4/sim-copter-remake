@@ -1027,6 +1027,11 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.5", ClampMax = "6.0"))
 	float ToolFlapScale = 1.768292f;
 
+	// How long a newly boarded pilot may sit on the ground before the takeoff prompt names the key
+	// to hold. Long enough that a player who knows the controls never sees it.
+	UPROPERTY(EditAnywhere, Category = "SimCopter|UI", meta = (ClampMin = "0.0"))
+	float TakeoffPromptDelaySeconds = 5.0f;
+
 	// USimCopterSettings::OnHudScaleChanged, so the Settings screen's HUD Scale row rebuilds the
 	// cockpit while the player is looking at it.
 	FDelegateHandle HudScaleHandle;
@@ -1751,6 +1756,23 @@ private:
 	TSharedPtr<SWidget> DashboardWidget;
 	TSharedPtr<class SSimCopterDashboard> DashboardPanel;
 
+	// --- takeoff prompt -------------------------------------------------------------------------
+	//
+	// Remake-only; the original prompts the player for nothing. Nothing on screen says which key
+	// lifts the helicopter, and the answer is a HOLD (the rotor needs three seconds to reach the
+	// lift gate at 300), so a new player who taps the key sees the machine sit there.
+	//
+	// Seconds the player has been sat on the ground since getting in. Only accumulates while the
+	// prompt could still appear.
+	float TakeoffPromptSecondsOnGround = 0.0f;
+	// Latched by the first airborne frame of this boarding, which retires the prompt until the next.
+	bool bTakenOffSinceBoarding = false;
+	// PossessedBy cannot seed the latch itself: bIsLanded is written by SimulateFlightStep, so on
+	// the possession frame it may still hold whatever the previous tick left. The first update after
+	// a possession seeds it from a value that is known fresh.
+	bool bTakeoffPromptNeedsSeeding = true;
+	TSharedPtr<SWidget> TakeoffPromptWidget;
+
 	TSharedPtr<SWidget> MapWidget;
 	TSharedPtr<class SSimCopterMapPanel> MapPanel;
 	// The Check-up panel, up only while the player is being served.
@@ -1782,10 +1804,6 @@ private:
 	void ZoomCamera(float Value);
 	void AdjustRope(float Value);
 	void ToggleRope();
-	void StartEngineHold();
-	void StopEngineHold();
-	void StartEngineShutdownHold();
-	void StopEngineShutdownHold();
 	void Interact();
 	void ToggleGamePause();
 
@@ -1893,6 +1911,36 @@ public:
 	 */
 	enum class EEngineHoldAction : uint8 { None, Start, Shutdown };
 	static EEngineHoldAction ResolveEngineHoldAction(bool bStartInput, bool bShutdownInput);
+
+	/**
+	 * The collective axis IS the engine control: raising it holds the starter, lowering it holds the
+	 * shutdown. The remake used to carry a separate SimCopterEngineStart / SimCopterEngineShutdown
+	 * pair bound to the same keys, which the Controls page listed as four rows for two keys and which
+	 * a rebind could split onto different keys entirely. Pure so the derivation can be tested.
+	 */
+	static void ResolveCollectiveEngineHolds(float CollectiveValue, bool& bOutStartHeld, bool& bOutShutdownHeld);
+
+	/**
+	 * The takeoff prompt's whole rule, pulled out so it can be tested without a viewport: a player
+	 * who has got in and is still on the ground after `DelaySeconds` is told which key to hold. One
+	 * prompt per boarding - once the aircraft has been off the ground the player knows how, and a
+	 * helicopter that lands and sits there is parked on purpose.
+	 */
+	static bool ShouldShowTakeoffPrompt(
+		bool bLanded,
+		bool bTakenOffSinceBoarding,
+		float SecondsOnGround,
+		float DelaySeconds);
+
+	/**
+	 * Display names of the two keys the takeoff prompt offers: the one that raises the collective
+	 * (and so starts the engine), and the one that puts the pilot back on their feet. Both read the
+	 * live UInputSettings so a rebind on the Controls page is reflected, and both fall back to the
+	 * shipped binding when the mapping has been unbound. Pad bindings are skipped - the controller
+	 * has its own overlay and its own routing.
+	 */
+	static FText GetCollectiveUpKeyDisplayName();
+	static FText GetExitHelicopterKeyDisplayName();
 
 private:
 	void SimulateFlightStep(float DeltaSeconds);
@@ -2059,6 +2107,11 @@ private:
 	void RefreshWaterControlsWidget();
 	void EnsureCrosshairWidget();
 	void RemoveCrosshairWidget();
+	// Runs the takeoff prompt's clock and puts its panel up or takes it down. Called from Tick after
+	// the flight substeps, so bIsLanded is this frame's answer rather than last frame's.
+	void UpdateTakeoffPrompt(float DeltaSeconds);
+	void EnsureTakeoffPromptWidget();
+	void RemoveTakeoffPromptWidget();
 	void EnsureControllerOverlayWidget();
 	void RemoveControllerOverlayWidget();
 	void RefreshControllerOverlayRadials();

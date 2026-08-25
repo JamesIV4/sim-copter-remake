@@ -334,18 +334,33 @@ bool FSimCopterControlSettingsTest::RunTest(const FString& Parameters)
 
 		bool bFoundSettingsKey = false;
 		bool bFoundAxis = false;
+		bool bFoundCollectiveUp = false;
+		bool bFoundRetiredEngineRow = false;
 		for (const FSimCopterBinding& Binding : Defaults)
 		{
 			TestTrue(TEXT("Every default names a mapping"), !Binding.Name.IsNone());
 			TestTrue(TEXT("Every default names a key"), Binding.Key.IsValid());
 			bFoundSettingsKey |= Binding.Name == FName(TEXT("SimCopterSettingsMenu"));
 			bFoundAxis |= Binding.bIsAxis;
+			bFoundCollectiveUp |=
+				Binding.bIsAxis && Binding.Name == FName(TEXT("SimCopterCollective")) && Binding.Scale > 0.0f;
+			bFoundRetiredEngineRow |=
+				Binding.Name == FName(TEXT("SimCopterEngineStart")) ||
+				Binding.Name == FName(TEXT("SimCopterEngineShutdown"));
 		}
 
 		// The Settings screen is unreachable without its binding, and an axis-free parse would
 		// mean only half the ini was read.
 		TestTrue(TEXT("The Settings key is bound"), bFoundSettingsKey);
 		TestTrue(TEXT("Axis mappings were read too"), bFoundAxis);
+
+		// The collective's positive direction is now the only engine start there is, and the takeoff
+		// prompt names its key - an unbound one leaves a helicopter with no way up at all.
+		TestTrue(TEXT("Collective up is bound"), bFoundCollectiveUp);
+
+		// The dedicated engine rows are retired: they shipped on the very keys the collective used,
+		// so the page listed four rows for two keys and a rebind could split one control in half.
+		TestFalse(TEXT("No engine start/shutdown rows survive"), bFoundRetiredEngineRow);
 	}
 
 	return true;

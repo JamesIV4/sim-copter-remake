@@ -33,6 +33,19 @@ const FLinearColor ArmedText(0.10f, 0.42f, 0.10f, 1.0f);
 const FLinearColor ConflictText(0.60f, 0.08f, 0.08f, 1.0f);
 
 const TCHAR* const InputSection = TEXT("/Script/Engine.InputSettings");
+
+const FName CollectiveAxis(TEXT("SimCopterCollective"));
+
+// Mappings the game no longer binds to anything. The collective axis drives engine start and
+// shutdown itself now (ASimCopterHelicopterPawn::MoveCollective), so these two shipped on the very
+// keys the collective already used - four rows for two keys, and a rebind could put the halves of
+// one control on different keys. A player's saved Input.ini still carries them, so the page filters
+// them out on the way in; accepting it then writes the list back without them for good.
+bool IsRetiredMapping(const FName Name)
+{
+	return Name == FName(TEXT("SimCopterEngineStart")) ||
+		Name == FName(TEXT("SimCopterEngineShutdown"));
+}
 }
 
 FText FSimCopterBinding::GetDisplayLabel() const
@@ -42,6 +55,16 @@ FText FSimCopterBinding::GetDisplayLabel() const
 
 FText SSimCopterControlSettings::MakeDisplayLabel(const FName MappingName, const bool bIsAxis, const float Scale)
 {
+	// The collective is the one row whose spaced-out identifier does not describe what the key does:
+	// it is also the engine control, and "Collective (+)" tells a player neither that nor that the
+	// key has to be held. Naming both halves here is the whole point of retiring the engine rows.
+	if (MappingName == CollectiveAxis && bIsAxis)
+	{
+		return Scale >= 0.0f
+			? LOCTEXT("CollectiveUp", "Collective Up / Start Engine")
+			: LOCTEXT("CollectiveDown", "Collective Down / Stop Engine");
+	}
+
 	FString Raw = MappingName.ToString();
 	Raw.RemoveFromStart(TEXT("SimCopter"));
 
@@ -83,10 +106,18 @@ void SSimCopterControlSettings::ReadBindings(TArray<FSimCopterBinding>& OutBindi
 
 	for (const FInputActionKeyMapping& Mapping : Settings->GetActionMappings())
 	{
+		if (IsRetiredMapping(Mapping.ActionName))
+		{
+			continue;
+		}
 		OutBindings.Add(FSimCopterBinding{ Mapping.ActionName, /*bIsAxis=*/false, 1.0f, Mapping.Key });
 	}
 	for (const FInputAxisKeyMapping& Mapping : Settings->GetAxisMappings())
 	{
+		if (IsRetiredMapping(Mapping.AxisName))
+		{
+			continue;
+		}
 		OutBindings.Add(FSimCopterBinding{ Mapping.AxisName, /*bIsAxis=*/true, Mapping.Scale, Mapping.Key });
 	}
 }
@@ -154,7 +185,8 @@ bool SSimCopterControlSettings::ReadDefaultBindings(TArray<FSimCopterBinding>& O
 	{
 		FInputActionKeyMapping Mapping;
 		if (FInputActionKeyMapping::StaticStruct()->ImportText(
-				*Value.GetValue(), &Mapping, nullptr, PPF_None, nullptr, TEXT("ActionMappings")) != nullptr)
+				*Value.GetValue(), &Mapping, nullptr, PPF_None, nullptr, TEXT("ActionMappings")) != nullptr &&
+			!IsRetiredMapping(Mapping.ActionName))
 		{
 			OutBindings.Add(FSimCopterBinding{ Mapping.ActionName, /*bIsAxis=*/false, 1.0f, Mapping.Key });
 		}
@@ -166,7 +198,8 @@ bool SSimCopterControlSettings::ReadDefaultBindings(TArray<FSimCopterBinding>& O
 	{
 		FInputAxisKeyMapping Mapping;
 		if (FInputAxisKeyMapping::StaticStruct()->ImportText(
-				*Value.GetValue(), &Mapping, nullptr, PPF_None, nullptr, TEXT("AxisMappings")) != nullptr)
+				*Value.GetValue(), &Mapping, nullptr, PPF_None, nullptr, TEXT("AxisMappings")) != nullptr &&
+			!IsRetiredMapping(Mapping.AxisName))
 		{
 			OutBindings.Add(FSimCopterBinding{ Mapping.AxisName, /*bIsAxis=*/true, Mapping.Scale, Mapping.Key });
 		}

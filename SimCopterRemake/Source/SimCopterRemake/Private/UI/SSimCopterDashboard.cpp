@@ -858,6 +858,13 @@ int32 SSimCopterDashboard::RadioMarkerYToVolume(const int32 PageY)
 		USimCopterSettings::VolumeMax);
 }
 
+float SSimCopterDashboard::GetPanelScreenHeight(const float Scale)
+{
+	// Construct clamps its scale the same way, so a caller asking where the top of the panel is gets
+	// the height the panel is actually built at.
+	return DashboardHeight * FMath::Max(0.5f, Scale);
+}
+
 void SSimCopterDashboard::Construct(const FArguments& InArgs)
 {
 	Pawn = InArgs._Pawn;
