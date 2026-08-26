@@ -1977,14 +1977,6 @@ private:
 	//   FUN_00487160  CHOPSTAR / CHOPSTOP / SOFTBMP2 around the Parked state and touchdown.
 	void UpdateHelicopterAudio(float DeltaSeconds);
 
-	// Remake-only, and outside the ported function above on purpose: a helicopter left idling goes
-	// on being audible after the pilot gets out, as the airframe's own positional emitter rather
-	// than the 2D cockpit voice. See the definition.
-	void UpdateUnattendedEngineLoopAudio();
-	// Latched by the first player possession. Tells this helicopter from any other once it has no
-	// controller to ask.
-	bool bWasPlayerFlown = false;
-
 	// One-shots from this step's FSimCopterFlightEvents: EXPLODE, DOUSE, BLDEXPL, SOFTBMP2,
 	// MOTOROLD, FIREDMG and GASOUT (FUN_00484d20 / FUN_00489800 / FUN_00489ac0).
 	void PlayFlightEventAudio(const FSimCopterFlightEvents& Events);

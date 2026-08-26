@@ -93,14 +93,6 @@ struct SIMCOPTERREMAKE_API FSimCopterFlightInputs
 
 	// DAT_0051ac58 debug turbo (speed/climb x10). Off in normal play.
 	bool bTurbo = false;
-
-	// REMAKE DIVERGENCE. Not a control - machine state, mirrored in from the pawn's bEngineRunning,
-	// and read only by StepRotor's parked branch. Retail winds a parked rotor all the way to a dead
-	// stop; with this set it settles to RotorIdleSpeed instead. Default false, so a hand-built input
-	// (every automation test) gets retail behaviour unless it opts in. There is precedent for a
-	// machine-derived value arriving through this struct: FUN_00485f50's last statement forces
-	// ClimbCommand to -1 on a dry tank.
-	bool bEngineRunning = false;
 };
 
 // What the simulation needs to know about the city under the helicopter.
@@ -390,17 +382,6 @@ struct SIMCOPTERREMAKE_API FSimCopterFlightModel
 
 	static constexpr int32 RotorLiftGate = 0x12c0000;   // 300.0: lift + blur disc
 	static constexpr int32 RotorTopSpeed = 0x1680000;   // 360.0 in flight
-
-	// REMAKE DIVERGENCE: ground idle. Retail has none - a parked rotor decays to zero - but the
-	// engine loop does not go quiet with it, because the pitch law is clamped (see
-	// USimCopterAudioSubsystem's GMinPitchMultiplier) and holds a slow swish from about 250 all the
-	// way down to the loop's own cut-off at 30. So an idling helicopter SOUNDED like one and stood
-	// there with dead blades. The value has to sit inside three bounds at once: clear of the 30
-	// cut-off so the loop can never flicker off at the boundary, far below the 300 lift gate so an
-	// idling helicopter can never lift off on its own, and under about 250 so the note is the steady
-	// clamped idle rather than a pitch that drifts as the rotor settles. Within that band it is a
-	// look-and-feel choice; 75.0 draws at roughly two turns a second.
-	static constexpr int32 RotorIdleSpeed = 0x4b0000;   // 75.0 parked, engine running
 	static constexpr int32 CeilingAboveTerrain = 0x3200000; // DAT_0050404c: 800.0 units
 
 	int32 NextRand(); // MSVC LCG, returns 0..0x7fff

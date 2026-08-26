@@ -108,15 +108,6 @@ const FName ExitHelicopterActionName(TEXT("SimCopterInteract"));
 constexpr float TakeoffPromptGapPx = 16.0f;
 constexpr int32 TakeoffPromptFontHeight = 20;
 
-// FUN_00488fd0's `0x1dffff < heli[0x56]`, i.e. the engine loop runs once the rotor passes 30. File
-// scope because the unattended idle emitter answers the same question outside the ported function.
-constexpr int32 RotorSoundGate1616 = 0x1e0000;
-
-// How much smaller than the audio subsystem's shared 1920-unit reach a helicopter left idling is
-// heard at - 2 is half the range, 4 a quarter. Applied by feeding the shared distance law a scaled
-// distance and culling at the scaled radius, never by retuning AudibleRangeUnits or the attenuation
-// asset - every 3D sound in the game is on those.
-constexpr float UnattendedIdleAudioRangeDivisor = 4.0f;
 
 constexpr TCHAR CameraDebugConfigSection[] = TEXT("SimCopter.CameraViews");
 constexpr TCHAR RotorDiscConfigSection[] = TEXT("SimCopter.RotorDisc");
@@ -1013,9 +1004,6 @@ void ASimCopterHelicopterPawn::Tick(float DeltaSeconds)
 	UpdateVisuals(DeltaSeconds);
 	UpdateRotorWash(DeltaSeconds);
 	UpdateHelicopterAudio(DeltaSeconds);
-	// After it, not inside it: the ported function returns at the cockpit door, and this is the
-	// idle the player has walked away from.
-	UpdateUnattendedEngineLoopAudio();
 	UpdateCheckupOffer();
 	// Only the GEO fuselage carries blink markers; the placeholder body has none to show.
 	if (FlashingLightsComponent != nullptr && bUsingOriginalMesh && GetWorld() != nullptr)
@@ -2563,20 +2551,6 @@ void ASimCopterHelicopterPawn::EnterHelicopter(APlayerController* PlayerControll
 		}
 	}
 
-	// Take the engine loop back off the airframe. If the helicopter was left idling, the slot is
-	// still running as a positional emitter (UpdateUnattendedEngineLoopAudio), and Play2D leaves an
-	// already-playing slot completely alone - the positional flag included - unless it is told to
-	// restart. Without this the cockpit would keep hearing its own engine spatialised and
-	// distance-attenuated from the boom camera.
-	if (USimCopterAudioSubsystem* Audio = GetHelicopterAudio())
-	{
-		if (Audio->IsPlaying(SimCopterSound::SND_COPLOOP))
-		{
-			Audio->Play2D(
-				SimCopterSound::SND_COPLOOP,
-				SimCopterSoundFlags::Loop | SimCopterSoundFlags::Restart);
-		}
-	}
 	if (bBlendView)
 	{
 		BlendPossessionViewTarget(
@@ -2706,10 +2680,6 @@ void ASimCopterHelicopterPawn::PossessedBy(AController* NewController)
 	bTakeoffPromptNeedsSeeding = true;
 	if (Cast<APlayerController>(NewController) != nullptr)
 	{
-		// Latched, never cleared: it is what lets the unattended idle emitter tell the player's own
-		// helicopter from any other, once the player has stepped out and this pawn has no controller
-		// left to ask.
-		bWasPlayerFlown = true;
 		if (USimCopterRadioSubsystem* Radio = USimCopterRadioSubsystem::Get(this))
 		{
 			Radio->SetPlayerInHelicopter(true);
@@ -4071,17 +4041,16 @@ void ASimCopterHelicopterPawn::ExitHelicopter()
 		Audio->Stop(SimCopterSound::SND_WINCHLP);
 		Audio->Stop(SimCopterSound::SND_WATERCAN);
 		Audio->Stop(SimCopterSound::SND_MACHGUN1);
-		// COPLOOP is deliberately NOT stopped: an idling helicopter goes on idling after the pilot
-		// gets out, audibly. UpdateUnattendedEngineLoopAudio takes it over from here and re-aims it
-		// onto the airframe so it stays where the helicopter is instead of riding around in the
-		// player's head.
+		// And the engine loop, which is the one that could otherwise run for ever. UpdateHelicopterAudio
+		// is what normally stops it - at the rotor's 30 gate - but it returns early the moment the pawn
+		// stops being locally controlled, so nothing is left watching. Getting out with the rotor still
+		// turning (CanExitHelicopter only wants the skids down, not a stopped rotor) therefore stranded
+		// a 2D loop at full volume that followed the player around the city for the rest of the session.
+		// The blades themselves still wind down on their own: the pawn goes on ticking, the engine is
+		// already off, and FUN_00487740's parked branch takes the rotor to a stop.
+		Audio->Stop(SimCopterSound::SND_COPLOOP);
 	}
 
-	// Stepping out does NOT shut the engine down. Only the shutdown hold does - holding the
-	// collective down while landed for EngineShutdownHoldSeconds - so a pilot who lands, gets out
-	// and walks away leaves the rotor turning over at idle, and it is still turning when they come
-	// back. Clearing bEngineRunning here made the blades stop dead on the way out, which is the one
-	// thing the ground idle exists to prevent.
 	AActor* OutgoingViewTarget = PlayerController->GetViewTarget();
 	RemoveDashboardWidget();
 	RemoveMapWidget();
@@ -6855,16 +6824,13 @@ void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 		EngineStartHoldAlpha = 0.0f;
 	}
 
-	// A LANDED HELICOPTER KEEPS IDLING. Touchdown used to clear bEngineRunning outright, which wound
-	// the rotor down to a dead stop over about seven seconds - while the engine loop went on swishing,
-	// because its pitch law is clamped and holds a steady idle note from ~250 rpm down to the loop's
-	// own cut-off at 30 (FSimCopterFlightModel::RotorIdleSpeed has the numbers). The sound said
-	// "idling" and the blades said "off". They agree now: parked with the engine running holds the
-	// rotor at idle, and shutting it down stops the loop and the blades together.
-	//
-	// That branch was also what made this one dead code - it always won, so EngineShutdownHoldSeconds
-	// could never elapse. Holding the collective down while landed is the shutdown again.
-	if (bAnyEngineShutdownHeld && bEngineRunning && bIsLanded)
+	if (bIsLanded && !bAnyEngineStartHeld)
+	{
+		bEngineRunning = false;
+		EngineShutdownHoldElapsed = 0.0f;
+		EngineShutdownHoldAlpha = 0.0f;
+	}
+	else if (bAnyEngineShutdownHeld && bEngineRunning && bIsLanded)
 	{
 		EngineShutdownHoldElapsed += DeltaSeconds;
 		EngineShutdownHoldAlpha = EngineShutdownHoldSeconds > 0.0f ? FMath::Clamp(EngineShutdownHoldElapsed / EngineShutdownHoldSeconds, 0.0f, 1.0f) : 1.0f;
@@ -6875,20 +6841,10 @@ void ASimCopterHelicopterPawn::UpdateEngineState(float DeltaSeconds)
 			EngineShutdownHoldAlpha = 0.0f;
 		}
 	}
-	else
+	else if (!bAnyEngineShutdownHeld || !bIsLanded)
 	{
 		EngineShutdownHoldElapsed = 0.0f;
 		EngineShutdownHoldAlpha = 0.0f;
-	}
-
-	// A dry or wrecked engine stops wherever it stands. The flight model already forces the
-	// collective down on an empty tank (FUN_00485f50's last statement) and COPLOOP refuses to start
-	// below one gallon, so without this the idle floor would be the one thing still turning the
-	// blades on a helicopter with nothing to burn - silently, which is the exact mismatch this
-	// change exists to remove.
-	if (CurrentFuelGallons <= 0.01f || CurrentDamage >= static_cast<float>(HelicopterTuning.MaxDamage))
-	{
-		bEngineRunning = false;
 	}
 }
 
@@ -7093,11 +7049,6 @@ FSimCopterFlightInputs ASimCopterHelicopterPawn::BuildFlightInputs() const
 	{
 		return Inputs; // controls dead; the rotor spools down in the model
 	}
-
-	// The rotor's parked branch is the only reader: it holds idle instead of stopping. Set above the
-	// control reads so it survives every early-out below, and left default-false on the path above,
-	// which is exactly the "engine off, wind all the way down" case.
-	Inputs.bEngineRunning = true;
 
 	constexpr float KeyThreshold = KeyAxisThreshold;
 	Inputs.bPitchForwardKey = PitchInput > KeyThreshold;
@@ -8351,6 +8302,8 @@ void ASimCopterHelicopterPawn::UpdateHelicopterAudio(float DeltaSeconds)
 	}
 	RotorAudioAccumulator = 0.0f;
 
+	// `0x1dffff < heli[0x56]`, i.e. the loop starts once the rotor passes 30.
+	constexpr int32 RotorSoundGate1616 = 0x1e0000;
 	if (FlightModel.RotorSpeed < RotorSoundGate1616)
 	{
 		Audio->Stop(SimCopterSound::SND_COPLOOP);
@@ -8394,75 +8347,6 @@ void ASimCopterHelicopterPawn::UpdateHelicopterAudio(float DeltaSeconds)
 	// FUN_0042a360(0, (rpm - 0x168) / 4). Only about -80 across the whole range: the rotor's
 	// audible character is carried by pitch, and volume barely moves.
 	Audio->SetVolumeAdjust(SimCopterSound::SND_COPLOOP, (Rpm - 0x168) / 4);
-}
-
-// REMAKE ADDITION. UpdateHelicopterAudio above is the port and it stops at the cockpit door: every
-// 2D helicopter sound in the original is gated on `heli[8] & 1`, the aircraft the player is flying,
-// which is what GetHelicopterAudio and that function's IsLocallyControlled early-out reproduce.
-//
-// The ground idle outlives the pilot - only the shutdown hold stops the engine, not stepping out -
-// so the engine loop has to outlive them too, or a helicopter with its rotor visibly turning stands
-// there in silence. It cannot simply be left running: Play2D put it in the player's head, and a 2D
-// loop nobody updates follows them across the city at full volume for ever.
-//
-// So it becomes the airframe's own emitter. Play3D re-aims an already-playing slot rather than
-// restarting it (FUN_0042a1f0 calls SetPosition after Play unconditionally), so the handover is
-// seamless: the same voice carries on, now attenuating with distance from the helicopter and
-// hard-rejected past the original's 1920-unit octagon. EnterHelicopter puts it back to 2D.
-void ASimCopterHelicopterPawn::UpdateUnattendedEngineLoopAudio()
-{
-	// Only ours, and only once the player is out of it. While they are aboard the ported path owns
-	// this slot entirely and must not be second-guessed from here.
-	if (IsLocallyControlled() || !bWasPlayerFlown)
-	{
-		return;
-	}
-
-	USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this);
-	if (Audio == nullptr)
-	{
-		return;
-	}
-
-	// Half the subsystem's normal reach. A parked helicopter ticking over is not a siren, and on the
-	// shared 1920-unit law it carried most of the way across a city block.
-	const float RangeUnits =
-		USimCopterAudioSubsystem::AudibleRangeUnits / UnattendedIdleAudioRangeDivisor;
-	const float DistanceUnits =
-		static_cast<float>(FVector::Dist(GetActorLocation(), Audio->GetListenerLocation())) /
-		USimCopterAudioSubsystem::OriginalUnitToCm;
-
-	// The same three conditions the ported loop uses - past the rotor gate, and fuel in the tank
-	// (`heli[0xcc] < 1`, a dry helicopter windmills silently) - plus the halved cull, which stands in
-	// for FUN_0042a1f0's own 1920-unit reject. Walking back into range restarts the loop; on a rotor
-	// loop that is inaudible.
-	if (bEngineRunning &&
-		FlightModel.RotorSpeed >= RotorSoundGate1616 &&
-		FlightModel.Fuel >= 1 &&
-		DistanceUnits < RangeUnits)
-	{
-		Audio->Play3D(SimCopterSound::SND_COPLOOP, GetActorLocation(), SimCopterSoundFlags::Loop);
-
-		const int32 Rpm = FlightModel.RotorSpeed >> 16;
-		Audio->AddFrequency(SimCopterSound::SND_COPLOOP, (Rpm * 4 - 0x5a0) * 0xf);
-
-		// Volume LAST, and only here. Play3D -> SetPosition has just written this slot's index off
-		// the shared full-range law; feeding the same law a doubled distance reproduces its exact
-		// curve over half the distance, so the idle fades out at RangeUnits instead of at 1920. It
-		// has to be retuning this one emitter rather than AudibleRangeUnits or the attenuation asset,
-		// because every 3D sound in the game shares those.
-		//
-		// The mission layer's sirens already drive their own volume through this same law
-		// (ASimCopterMissionSystemActor::DriveSiren), so the shape is not new.
-		Audio->SetVolumeAdjust(
-			SimCopterSound::SND_COPLOOP,
-			USimCopterAudioSubsystem::DistanceVolumeIndex(
-				DistanceUnits * UnattendedIdleAudioRangeDivisor) - 10000);
-	}
-	else if (Audio->IsPlaying(SimCopterSound::SND_COPLOOP))
-	{
-		Audio->Stop(SimCopterSound::SND_COPLOOP);
-	}
 }
 
 // SCHOOK: HelicopterImpactSounds 0x00484d20 / 0x00489800 / 0x00489ac0 / 0x0048a8b0

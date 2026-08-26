@@ -749,19 +749,7 @@ void FSimCopterFlightModel::StepRotor(int32 Dt, const FSimCopterFlightInputs& In
 	{
 		if (Inputs.ClimbCommand < 1)
 		{
-			// Retail: `RotorSpeed -= Mul(0x320000, Dt)` - spool down at 50/s to a dead stop.
-			//
-			// REMAKE DIVERGENCE (see RotorIdleSpeed): with the engine still running the rotor
-			// settles to idle instead of stopping, at the original's own 50/s. Converging on a
-			// target rather than clamping after the subtraction is what keeps it from SNAPPING to
-			// idle in the one case where the rotor is below it with the engine on - a save restored
-			// on a parked, running helicopter. With the engine off the target is zero and this is
-			// arithmetically the original line, since RotorSpeed is floored at zero just below.
-			const int32 Target = Inputs.bEngineRunning ? RotorIdleSpeed : 0;
-			const int32 SpoolStep = Mul(0x320000, Dt);
-			RotorSpeed = RotorSpeed > Target
-				? FMath::Max(RotorSpeed - SpoolStep, Target)
-				: FMath::Min(RotorSpeed + SpoolStep, Target);
+			RotorSpeed -= Mul(0x320000, Dt); // spool down at 50/s
 		}
 	}
 	else if (RotorSpeed < RotorTopSpeed)
