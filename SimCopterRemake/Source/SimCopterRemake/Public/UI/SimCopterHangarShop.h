@@ -105,6 +105,10 @@ struct SIMCOPTERREMAKE_API FRowState
 
 SIMCOPTERREMAKE_API int32 GetCurrentFunds(const FContext& Context);
 
+// The lowest "New Cost" across the catalog rows - what selling the last airframe has to leave
+// the player enough to buy again. 0 when the prices have not been loaded.
+SIMCOPTERREMAKE_API int32 GetCheapestHelicopterPrice(const FContext& Context);
+
 // The helicopter catalog row that is on the books plus what its buttons can do.
 SIMCOPTERREMAKE_API FRowState GetHelicopterRowState(const FContext& Context, int32 CatalogRow);
 SIMCOPTERREMAKE_API FRowState GetUpgradeRowState(const FContext& Context, int32 UpgradeRow);
@@ -114,8 +118,9 @@ SIMCOPTERREMAKE_API FRowState GetUpgradeRowState(const FContext& Context, int32 
 SIMCOPTERREMAKE_API bool BuyHelicopter(const FContext& Context, int32 CatalogRow, FString& OutMessage);
 
 // FUN_0042d9f0's helicopter half: bank the trade-in, clear the bit, and move the player onto
-// whatever else is on the books. The last airframe cannot be sold - the original has nothing to
-// fly afterwards either.
+// whatever else is on the books. Any airframe can be sold - the starting Schweizer included -
+// as long as the sale leaves enough money to buy the cheapest chopper back. Selling the last
+// airframe leaves the player in it until the replacement is bought; Buy switches them over.
 SIMCOPTERREMAKE_API bool SellHelicopter(const FContext& Context, int32 CatalogRow, FString& OutMessage);
 
 // FUN_0042d840's equipment half, tear gas rounds included.

@@ -222,6 +222,26 @@ int32 GetCurrentFunds(const FContext& Context)
 	return Missions != nullptr ? Missions->GetSessionCash() : 0;
 }
 
+int32 GetCheapestHelicopterPrice(const FContext& Context)
+{
+	const USimCopterCareerSubsystem* Career = GetCareer(Context);
+	if (Career == nullptr)
+	{
+		return 0;
+	}
+
+	int32 Cheapest = 0;
+	for (int32 Row = 0; Row < SimCopterHangarLayout::CatalogTabCount; ++Row)
+	{
+		const int32 Price = Career->GetHelicopterPrice(SimCopterHangarLayout::GetTypeIndexForCatalogRow(Row));
+		if (Price > 0 && (Cheapest == 0 || Price < Cheapest))
+		{
+			Cheapest = Price;
+		}
+	}
+	return Cheapest;
+}
+
 FRowState GetHelicopterRowState(const FContext& Context, const int32 CatalogRow)
 {
 	FRowState State;
@@ -239,11 +259,21 @@ FRowState GetHelicopterRowState(const FContext& Context, const int32 CatalogRow)
 
 	if (State.bOwned)
 	{
-		// The original never lets the books empty: something has to be on the pad.
-		State.bCanSell = Career->GetOwnedHelicopterCount() > 1;
-		if (!State.bCanSell)
+		// Any airframe on the books can be sold, the starting Schweizer included - trading up is
+		// the point of the page. The one guard: a sale that empties the books has to leave the
+		// player enough to buy the cheapest chopper back, or there is nothing left to fly.
+		if (Career->GetOwnedHelicopterCount() > 1)
 		{
-			State.Reason = TEXT("You cannot sell your only helicopter.");
+			State.bCanSell = true;
+		}
+		else
+		{
+			const int32 Cheapest = GetCheapestHelicopterPrice(Context);
+			State.bCanSell = Cheapest > 0 && GetCurrentFunds(Context) + State.ItemValue >= Cheapest;
+			if (!State.bCanSell)
+			{
+				State.Reason = TEXT("Selling your last helicopter must leave enough to buy another.");
+			}
 		}
 	}
 	else

@@ -3,11 +3,15 @@
 #include "City/SimCopterAirport.h"
 #include "City/SimCopterHangar.h"
 #include "CoreMinimal.h"
+#include "Engine/GameInstance.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
+#include "Formats/SimCopterOriginalGamePaths.h"
+#include "Game/SimCopterCareerSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "UI/SimCopterHangarArt.h"
 #include "UI/SimCopterHangarShop.h"
+#include "UObject/Package.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterHangarPlacementTest,
@@ -219,6 +223,83 @@ bool FSimCopterHangarCatalogTest::RunTest(const FString& Parameters)
 			FString(SimCopterHangarShop::GetMissionTypeLogName(TYPE_TrainRescue)), FString(TEXT("Train Rescue")));
 		TestEqual(TEXT("An unnamed mask falls back to Unknown"),
 			FString(SimCopterHangarShop::GetMissionTypeLogName(0)), FString(TEXT("Unknown")));
+	}
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FSimCopterHangarShopSellGateTest,
+	"SimCopter.UI.HangarShopSellGate",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FSimCopterHangarShopSellGateTest::RunTest(const FString& Parameters)
+{
+	// The subsystem insists on a GameInstance outer, so hang it off a throwaway one rather than
+	// the editor's - none of the shop paths touch the instance itself.
+	UGameInstance* GameInstance = NewObject<UGameInstance>(GEngine);
+	USimCopterCareerSubsystem* Career = NewObject<USimCopterCareerSubsystem>(GameInstance);
+	Career->EnsurePricesLoaded(SimCopterOriginalGame::ResolveRoot());
+
+	SimCopterHangarShop::FContext Shop;
+	Shop.Career = Career;
+
+	const int32 SchweizerType = USimCopterCareerSubsystem::StartingHelicopterTypeIndex;
+	if (Career->GetHelicopterPrice(SchweizerType) <= 0)
+	{
+		// The reference install is optional on a machine; without heli.twk there is nothing to
+		// gate against, and SimCopterOriginalGamePathsTests already covers the resolution rules.
+		AddWarning(TEXT("heli.twk prices unavailable; the sell-gate cases were skipped."));
+		return true;
+	}
+
+	Career->BeginCareer();
+
+	// GetCheapestHelicopterPrice is the floor over the eight catalog rows.
+	{
+		int32 ExpectedCheapest = 0;
+		for (int32 Row = 0; Row < SimCopterHangarLayout::CatalogTabCount; ++Row)
+		{
+			const int32 Price =
+				Career->GetHelicopterPrice(SimCopterHangarLayout::GetTypeIndexForCatalogRow(Row));
+			if (Price > 0 && (ExpectedCheapest == 0 || Price < ExpectedCheapest))
+			{
+				ExpectedCheapest = Price;
+			}
+		}
+		TestEqual(TEXT("The cheapest price is the row minimum"),
+			SimCopterHangarShop::GetCheapestHelicopterPrice(Shop), ExpectedCheapest);
+		TestTrue(TEXT("The starting Schweizer is the cheapest chopper"),
+			Career->GetHelicopterPrice(SchweizerType) == ExpectedCheapest);
+	}
+
+	// A fresh career owns only the starting Schweizer, undepreciated - its trade-in is the full
+	// price, which covers the cheapest chopper, so the starting airframe can be sold.
+	{
+		const SimCopterHangarShop::FRowState Row0 = SimCopterHangarShop::GetHelicopterRowState(Shop, 0);
+		TestTrue(TEXT("Row 0 is the owned starting chopper"), Row0.bOwned);
+		TestTrue(TEXT("The starting helicopter can be sold"), Row0.bCanSell);
+		TestTrue(TEXT("A sellable row carries no reason"), Row0.Reason.IsEmpty());
+	}
+
+	// Depreciation floors the trade-in at half price - below any chopper in the catalog - so
+	// with no cash on top the sale of the last airframe has to be refused.
+	{
+		Career->AddHelicopterDepreciation(SchweizerType, Career->GetHelicopterPrice(SchweizerType));
+		const SimCopterHangarShop::FRowState Depreciated = SimCopterHangarShop::GetHelicopterRowState(Shop, 0);
+		TestFalse(TEXT("A sale that leaves too little to buy back in is refused"), Depreciated.bCanSell);
+		TestFalse(TEXT("The refusal explains itself"), Depreciated.Reason.IsEmpty());
+	}
+
+	// Owning a second airframe lifts the money guard: whatever happens, there is one left to fly.
+	{
+		Career->SetHelicopterOwned(SimCopterHangarLayout::GetTypeIndexForCatalogRow(1), true);
+		const SimCopterHangarShop::FRowState TwoOwned = SimCopterHangarShop::GetHelicopterRowState(Shop, 0);
+		TestTrue(TEXT("One of two airframes sells regardless of funds"), TwoOwned.bCanSell);
+
+		Career->SetHelicopterOwned(SimCopterHangarLayout::GetTypeIndexForCatalogRow(1), false);
+		const SimCopterHangarShop::FRowState BackToOne = SimCopterHangarShop::GetHelicopterRowState(Shop, 0);
+		TestFalse(TEXT("The guard returns once the last airframe is at stake again"), BackToOne.bCanSell);
 	}
 
 	return true;
