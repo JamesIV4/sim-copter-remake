@@ -365,7 +365,7 @@ EOpResult ExecOpcode(
 	case 44: // pick the selected person up (FUN_004cc6a0)
 		World.PutSelectedPersonOnMe(Context);
 		return EOpResult::True; // the original returns 1 whether or not anything was selected
-	case 46: // select the person I am carrying (FUN_004cc7d0 -> FUN_004ca650)
+	case 46: // transfer my carried person to the selection, then select them (FUN_004cc7d0)
 		return World.SelectCarriedPerson(Context, /*bAlsoDropThem*/ false) ? EOpResult::True : EOpResult::False;
 	case 47: // put the selected person down (FUN_004cc8d0)
 		// FUN_004cc8d0 always answers 1. The remake propagates the interaction layer's result

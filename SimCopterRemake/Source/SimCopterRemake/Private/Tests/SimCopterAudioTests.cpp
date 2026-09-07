@@ -5,6 +5,72 @@
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Audio/SimCopterSoundTable.h"
 #include "Misc/AutomationTest.h"
+#include "Components/AudioComponent.h"
+#include "Engine/World.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterAudioOverlapTest,
+	"SimCopter.Sound.IndependentPlayback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterAudioOverlapTest::RunTest(const FString& Parameters)
+{
+	const UWorld::InitializationValues Init = UWorld::InitializationValues()
+		.AllowAudioPlayback(false).CreatePhysicsScene(false).CreateNavigation(false).CreateAISystem(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true,
+		ERHIFeatureLevel::Num, &Init);
+	USimCopterAudioSubsystem* Audio = World->GetSubsystem<USimCopterAudioSubsystem>();
+	Audio->bSoundsAvailable = true;
+	FSimCopterPcmClip Clip;
+	Clip.SampleRate = 22050;
+	Clip.Channels = 1;
+	Clip.Duration = 2.0f;
+	Clip.Pcm16.SetNumZeroed(88200);
+	const int32 EffectId = SimCopterSound::SND_ADROPEN;
+	Audio->Slots[EffectId].Clip = Clip;
+	Audio->Slots[EffectId].bLoadAttempted = true;
+	TestTrue(TEXT("First effect starts"), Audio->Play3D(EffectId, FVector::ZeroVector));
+	UAudioComponent* First = Audio->SlotComponents[EffectId];
+	TestTrue(TEXT("Second effect starts while first is active"), Audio->Play3D(EffectId, FVector(100, 0, 0)));
+	TestEqual(TEXT("First play retains its own component"), Audio->OneShots.Num(), 1);
+	TestTrue(TEXT("First component preserved"), Audio->OneShots[0].Component == First);
+	TestTrue(TEXT("Second play has a different component"), Audio->SlotComponents[EffectId] != First);
+	TestTrue(TEXT("Second emitter does not move first sound"), First->GetComponentLocation().IsNearlyZero());
+	Audio->Stop(EffectId);
+	TestEqual(TEXT("Stopping current slot leaves previous effect intact"), Audio->OneShots.Num(), 1);
+
+	const int32 LoopSlot = Audio->AcquireVoiceSlot();
+	Audio->Slots[LoopSlot].Clip = Clip;
+	Audio->Slots[LoopSlot].bLoadAttempted = true;
+	Audio->Play2D(LoopSlot, SimCopterSoundFlags::Loop);
+	UAudioComponent* Loop = Audio->SlotComponents[LoopSlot];
+	Audio->Play2D(LoopSlot, SimCopterSoundFlags::Loop);
+	TestTrue(TEXT("Repeated loop update retains its component"), Audio->SlotComponents[LoopSlot] == Loop);
+	while (Audio->AcquireVoiceSlot() != INDEX_NONE) {}
+	TestTrue(TEXT("Speech starts with all loop slots occupied"), Audio->PlayVoiceEvent(INDEX_NONE,
+		SimCopterSound::VOX_DOOR_OPEN, FVector::ZeroVector, 0, true));
+	TestTrue(TEXT("Another line starts independently"), Audio->PlayVoiceEvent(INDEX_NONE,
+		SimCopterSound::VOX_DOOR_OPEN, FVector::ZeroVector, 0, true));
+	TestEqual(TEXT("Both finite voices and effect remain independently owned"), Audio->OneShots.Num(), 3);
+	TestTrue(TEXT("Speech preserves continuous voice"), Audio->SlotComponents[LoopSlot] == Loop && Audio->IsPlaying(LoopSlot));
+	Audio->ReleaseVoiceSlot(LoopSlot);
+	TestEqual(TEXT("Releasing a person's loop cannot cut off their finite speech"), Audio->OneShots.Num(), 3);
+	Audio->SetMasterVolume(5000);
+	TestEqual(TEXT("Overlapping sounds follow master volume"), Audio->OneShots[1].Component->VolumeMultiplier,
+		USimCopterAudioSubsystem::VolumeIndexToGain(5000));
+	Audio->StopStandaloneSounds();
+	TestEqual(TEXT("Menu cleanup cannot stop gameplay voices"), Audio->OneShots.Num(), 3);
+	for (FSimCopterAudioOneShot& Sound : Audio->OneShots) Sound.EndTime = 0.0;
+	Audio->Tick(0.0f);
+	TestEqual(TEXT("Finished procedural voices release their sources"), Audio->OneShots.Num(), 0);
+	TestTrue(TEXT("Standalone effect starts"), Audio->PlayFile2D(TEXT("button"), SimCopterSound::ESoundDir::Root));
+	for (auto& Entry : Audio->LooseEndTimes) Entry.Value = 0.0;
+	Audio->Tick(0.0f);
+	TestEqual(TEXT("Finished standalone source is retired"), Audio->LooseComponents.Num(), 0);
+	Audio->PlayIndependentVoice(Clip, FVector::ZeroVector, 0, true);
+	Audio->SilenceForReplayReview();
+	TestEqual(TEXT("Replay silence stops independent voices too"), Audio->OneShots.Num(), 0);
+	World->DestroyWorld(false);
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FSimCopterSoundTableTest,

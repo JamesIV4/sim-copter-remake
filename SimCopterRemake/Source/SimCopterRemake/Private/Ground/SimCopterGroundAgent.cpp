@@ -3744,7 +3744,8 @@ bool ASimCopterGroundAgent::BoardCarrier(
 	}
 	if (Helicopter != nullptr && !bAsHarnessRider)
 	{
-		if (int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 &&
+		if (bHasHospitalRoofPost && bPersistentHospitalRoofCrew &&
+			int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 &&
 			MissionEventId == INDEX_NONE)
 		{
 			// Shipped BHAV 263 first looks for a medevac patient aboard. Only its no-patient arm
@@ -3752,6 +3753,9 @@ bool ASimCopterGroundAgent::BoardCarrier(
 			// BHAV 263 has removed the last patient, that same test is
 			// also true, so the stable action boundary must distinguish "go help retrieve one"
 			// from "the delivery just finished."
+			// This restriction belongs only to a worker still posted on the hospital roof.
+			// BoardCarrier clears that post when they join the crew: BHAV 262 -> 269 must
+			// then let them return even with the victim they just retrieved already aboard.
 			const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
 				UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass()));
 			if (Missions == nullptr ||
@@ -4311,12 +4315,27 @@ bool ASimCopterGroundAgent::DropSelectedPerson(FSimCopterPersonContext& Context)
 
 bool ASimCopterGroundAgent::SelectCarriedPerson(FSimCopterPersonContext& Context, const bool bAlsoDropThem)
 {
+	// SCHOOK: TransferTotedPersonToSelection 0x004cc7d0. Opcode 46 does more than
+	// FUN_004ca650's lookup: it calls FUN_004c6360 on the patient with the OLD selection
+	// as carrier. BHAV 275 relies on that transfer to put the victim in the helicopter.
+	// On failure retain both the selection and the medic's hold, as the original does.
+	if (!bAlsoDropThem && !Context.SelectedObject.IsValid())
+	{
+		return false;
+	}
 	// FUN_004ca650 scans the person array for whoever's carrier is me.
 	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
 	ASimCopterGroundAgent* Carried = TrafficSystem != nullptr ? TrafficSystem->FindPersonCarriedBy(*this) : nullptr;
 	if (Carried == nullptr)
 	{
-		Context.ClearSelection();
+		if (bAlsoDropThem)
+		{
+			Context.ClearSelection();
+		}
+		return false;
+	}
+	if (!bAlsoDropThem && !Carried->BoardCarrier(Context.SelectedObject.Get(), Context.bSelectionIsHarness))
+	{
 		return false;
 	}
 	const AActor* PreviousSelection = Context.SelectedObject.Get();
@@ -4644,7 +4663,8 @@ bool ASimCopterGroundAgent::SelectOwningVehicle(FSimCopterPersonContext& Context
 		return true;
 	}
 
-	if (int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5)
+	if (bHasHospitalRoofPost && bPersistentHospitalRoofCrew &&
+		int32(BehaviorContext.Attributes[EBhavAttr::State]) == 5 && MissionEventId == INDEX_NONE)
 	{
 		const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
 		const ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
@@ -4730,6 +4750,20 @@ void ASimCopterGroundAgent::PlayPersonVoiceEvent(
 		return;
 	}
 
+	const int32 VoiceSet = int32(BehaviorContext.Attributes[EBhavAttr::VoiceSet]);
+	if (!SimCopterSound::IsLoopingVoiceEvent(VoiceEvent) && VoiceSet != VoiceEvent)
+	{
+		// Short effects and dialogue are independent plays. They must neither replace this
+		// person's EKG nor disappear because fourteen other people already own voice slots.
+		int32 PitchDeltaHz = int32(int16(BehaviorContext.Attributes[EBhavAttr::VoicePitch]));
+		if (SimCopterSound::IsWalkPacedVoiceEvent(VoiceEvent))
+		{
+			PitchDeltaHz = SimCopterSound::GetWalkPacedPitchDeltaHz(int32(BehaviorContext.Attributes[EBhavAttr::MoveSpeed]));
+		}
+		Audio->PlayVoiceEvent(INDEX_NONE, VoiceEvent, GetActorLocation(), PitchDeltaHz, bNonPositional);
+		return;
+	}
+
 	if (VoiceSlotId == INDEX_NONE)
 	{
 		// param_3 == 0 means "only speak if I already have a slot"; the original returns without
@@ -4747,7 +4781,6 @@ void ASimCopterGroundAgent::PlayPersonVoiceEvent(
 		VoiceCurrentEvent = INDEX_NONE;
 	}
 
-	const int32 VoiceSet = int32(BehaviorContext.Attributes[EBhavAttr::VoiceSet]);
 	if (VoiceCurrentEvent == VoiceEvent && Audio->IsPlaying(VoiceSlotId))
 	{
 		// Already saying this. A looping sound that is also this person's own voice event gets

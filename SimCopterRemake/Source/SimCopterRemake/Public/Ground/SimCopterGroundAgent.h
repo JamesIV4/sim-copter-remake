@@ -1153,6 +1153,7 @@ public:
 	TObjectPtr<UMaterialInstanceDynamic> FigureHeadMaterialInstance;
 
 private:
+	friend class FSimCopterParamedicCabinHandoffTest;
 	FVector MoveTargetLocation = FVector::ZeroVector;
 	FVector CurrentVelocityCmPerSec = FVector::ZeroVector;
 	FVector ExternalVelocityCmPerSec = FVector::ZeroVector;

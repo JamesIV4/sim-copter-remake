@@ -13,15 +13,9 @@
 //   FUN_0042a100(id, name)           SetFile         swap the WAV in a slot
 //   FUN_0042a3b0(_, id, _)           queued play with a completion list
 //
-// Three consequences of "one buffer per id" that the port has to keep, because gameplay code
-// leans on all of them:
-//
-//   * Playing an id that is already playing is a NO-OP. Every shipped call site passes flags
-//     0 or 1, and FUN_0042a2a0 turns that into mode 2 ("if playing, return"). That is why the
-//     original never stacks a second BOOM1 over the first, and why so many call sites are
-//     written `if (!IsPlaying(id)) Play(id)` - the guard is redundant, not load-bearing.
-//   * Stop(id) is global for that sound. There is no per-emitter handle to stop.
-//   * A looping 3D sound is kept in place by the owner calling SetPosition every frame.
+// Deliberate overlap divergence: finite effects retain independent components when their id
+// plays again, and short people voices do not borrow the loop bank. Loops remain idempotent
+// and controlled by Stop/SetPosition; starting speech cannot replace an EKG or another line.
 //
 // See Docs/memory/simcopter-sound.md for the decode notes.
 
@@ -60,6 +54,17 @@ struct FSimCopterPcmClip
 	float Duration = 0.0f;
 
 	bool IsValid() const { return Pcm16.Num() > 0 && SampleRate > 0 && Channels > 0; }
+};
+
+/** Independent finite playback; procedural waves require explicit retirement after PCM drains. */
+USTRUCT()
+struct FSimCopterAudioOneShot
+{
+	GENERATED_BODY()
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> Component = nullptr;
+	double EndTime = 0.0;
+	int32 VolumeIndex = 10000;
 };
 
 /**
@@ -152,13 +157,14 @@ public:
 	void ReleaseVoiceSlot(int32 Id);
 
 	/**
-	 * Play one people-voice event (the `switch (param_2)` of FUN_004c5210) out of Slot. Picks
+	 * Play one people-voice event (the `switch (param_2)` of FUN_004c5210). Picks
 	 * uniformly from the event's clips and SetFile()s the winner in. PitchDeltaHz is the
 	 * original's per-person AddFrequency argument.
 	 *
 	 * bNonPositional is the handler's param_4: zero plays 3D at WorldLocation (FUN_0042a1f0),
 	 * non-zero plays 2D (FUN_0042a2a0) so the sound is heard wherever the listener is - that is
 	 * how an injured passenger's EKG reaches the cockpit. Flags carries the loop bit.
+	 * Only loops require Slot; finite voices play independently, including with INDEX_NONE.
 	 */
 	bool PlayVoiceEvent(
 		int32 Slot,
@@ -294,6 +300,7 @@ public:
 	static constexpr float OriginalUnitToCm = 6.25f;
 
 private:
+	friend class FSimCopterAudioOverlapTest;
 	/** Runtime state of one of the 130 slots. The UAudioComponent lives in SlotComponents. */
 	struct FSlot
 	{
@@ -357,6 +364,15 @@ private:
 	/** Components spawned by PlayFile2D, reaped when they finish. */
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAudioComponent>> LooseComponents;
+	TMap<UAudioComponent*, double> LooseEndTimes;
+
+	/** Speech and overlapping effect tails must outlive changes to their original slot/owner. */
+	UPROPERTY(Transient)
+	TArray<FSimCopterAudioOneShot> OneShots;
+	void PreserveOneShot(int32 Id);
+	void StopOneShots();
+	bool PlayIndependentVoice(const FSimCopterPcmClip& Clip, const FVector& Location,
+		int32 PitchDeltaHz, bool bNonPositional);
 
 	/** Polyphonic movement loops; separate so front-end standalone cleanup cannot stop them. */
 	UPROPERTY(Transient)

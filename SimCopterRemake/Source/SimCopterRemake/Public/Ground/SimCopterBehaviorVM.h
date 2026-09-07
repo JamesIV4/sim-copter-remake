@@ -382,8 +382,8 @@ public:
 	// Op 47, FUN_004cc8d0: clear the selected person's carrier - put them down.
 	virtual bool DropSelectedPerson(FSimCopterPersonContext& Context) { return false; }
 
-	// Op 46, FUN_004cc7d0 / op 51, FUN_004ca570: FUN_004ca650 finds the person whose carrier is
-	// me - the one I am toting - and selects them. Op 51 also sets them down first.
+	// FUN_004ca650 finds the person I am toting. Op 46 (FUN_004cc7d0) transfers them to
+	// the current selection through FUN_004c6360; op 51 sets them down. Then select that person.
 	virtual bool SelectCarriedPerson(FSimCopterPersonContext& Context, bool bAlsoDropThem) { return false; }
 
 	// Op 71, FUN_004cbaa0: am I carrying anyone.

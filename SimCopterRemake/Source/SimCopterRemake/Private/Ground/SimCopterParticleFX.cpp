@@ -1020,12 +1020,14 @@ void USimCopterParticleFXComponent::AdvanceWaterTrajectoryStep(
 
 		// SCHOOK: WaterImpactSound 0x00490690 - SPLISH where the water douses, DOUSE where it
 		// hits the surface. Both are one-shots on a shared slot, so the hundreds of droplets a
-		// cannon throws collapse into one continuous hiss instead of machine-gunning: Play is a
-		// no-op while the slot is already sounding, which is the whole reason the original gets
-		// away with playing this per particle.
+		// cannon throws collapse into one continuous hiss instead of machine-gunning. Keep that
+		// coalescing here now that ordinary finite effects can overlap in the mixer.
 		if (USimCopterAudioSubsystem* Audio = USimCopterAudioSubsystem::Get(this))
 		{
-			Audio->Play3D(Result.SoundId, Impact);
+			if (!Audio->IsPlaying(Result.SoundId))
+			{
+				Audio->Play3D(Result.SoundId, Impact);
+			}
 		}
 
 		if (Result.bDouse)

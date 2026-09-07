@@ -93,6 +93,7 @@ void USimCopterAudioSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void USimCopterAudioSubsystem::Deinitialize()
 {
+	StopOneShots();
 	for (int32 Id = 0; Id < SimCopterSound::NumSlots; ++Id)
 	{
 		if (UAudioComponent* Component = SlotComponents.IsValidIndex(Id) ? SlotComponents[Id].Get() : nullptr)
@@ -144,6 +145,19 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 
 	const double Now = FPlatformTime::Seconds();
+	for (int32 Index = OneShots.Num() - 1; Index >= 0; --Index)
+	{
+		FSimCopterAudioOneShot& Sound = OneShots[Index];
+		if (Sound.Component == nullptr || Now >= Sound.EndTime)
+		{
+			if (Sound.Component != nullptr)
+			{
+				Sound.Component->Stop();
+				Sound.Component->DestroyComponent();
+			}
+			OneShots.RemoveAtSwap(Index);
+		}
+	}
 
 	// One-shots: a procedural wave keeps its source alive after the queue drains, so the port
 	// retires the slot on its own deadline. IsPlaying() reads the same field, which is what the
@@ -165,12 +179,15 @@ void USimCopterAudioSubsystem::Tick(float DeltaSeconds)
 	for (int32 Index = LooseComponents.Num() - 1; Index >= 0; --Index)
 	{
 		UAudioComponent* Component = LooseComponents[Index].Get();
-		if (Component == nullptr || !Component->IsPlaying())
+		const double* EndTime = LooseEndTimes.Find(Component);
+		if (Component == nullptr || (EndTime != nullptr && Now >= *EndTime))
 		{
 			if (Component != nullptr)
 			{
+				Component->Stop();
 				Component->DestroyComponent();
 			}
+			LooseEndTimes.Remove(Component);
 			LooseComponents.RemoveAtSwap(Index);
 		}
 	}
@@ -583,6 +600,69 @@ bool USimCopterAudioSubsystem::StartSlot(int32 Id, bool bLoop)
 	return true;
 }
 
+void USimCopterAudioSubsystem::PreserveOneShot(int32 Id)
+{
+	FSlot& Slot = Slots[Id];
+	if (Slot.bLooping || !IsPlaying(Id) || !SlotComponents.IsValidIndex(Id) || SlotComponents[Id] == nullptr)
+	{
+		return;
+	}
+	// Keep the original component, wave, pitch and position until this particular play ends.
+	// Reusing the slot may now start another effect without stopping or moving the first one.
+	FSimCopterAudioOneShot& Sound = OneShots.AddDefaulted_GetRef();
+	Sound.Component = SlotComponents[Id];
+	Sound.EndTime = Slot.OneShotEndTime;
+	Sound.VolumeIndex = Slot.VolumeIndex;
+	SlotComponents[Id] = nullptr;
+	Slot.OneShotEndTime = 0.0;
+}
+
+void USimCopterAudioSubsystem::StopOneShots()
+{
+	for (const FSimCopterAudioOneShot& Sound : OneShots)
+	{
+		if (Sound.Component != nullptr)
+		{
+			Sound.Component->Stop();
+			Sound.Component->DestroyComponent();
+		}
+	}
+	OneShots.Reset();
+}
+
+bool USimCopterAudioSubsystem::PlayIndependentVoice(const FSimCopterPcmClip& Clip,
+	const FVector& Location, int32 PitchDeltaHz, bool bNonPositional)
+{
+	if (GetWorld() == nullptr || !Clip.IsValid())
+	{
+		return false;
+	}
+	const FVector Delta = (Location - ListenerLocation) / OriginalUnitToCm;
+	if (!bNonPositional && OctagonalNorm1616(int32(Delta.X * 65536.0f),
+		int32(Delta.Y * 65536.0f), int32(Delta.Z * 65536.0f)) >= int32(AudibleRangeUnits) * 65536)
+	{
+		return false;
+	}
+	UAudioComponent* Component = NewObject<UAudioComponent>(this);
+	Component->bAutoActivate = false;
+	Component->bAutoDestroy = false;
+	Component->bAllowSpatialization = !bNonPositional;
+	Component->AttenuationSettings = bNonPositional ? nullptr : SpatialAttenuation;
+	Component->SetWorldLocation(Location);
+	const float Pitch = FMath::Clamp(float(FMath::Clamp(Clip.SampleRate + PitchDeltaHz,
+		GMinFrequencyHz, GMaxFrequencyHz)) / Clip.SampleRate, GMinPitchMultiplier, GMaxPitchMultiplier);
+	Component->SetPitchMultiplier(Pitch);
+	Component->SetSound(MakeWave(Clip, false, this));
+	Component->RegisterComponentWithWorld(GetWorld());
+	FSimCopterAudioOneShot& Sound = OneShots.AddDefaulted_GetRef();
+	Sound.Component = Component;
+	Sound.EndTime = FPlatformTime::Seconds() + Clip.Duration / Pitch;
+	Sound.VolumeIndex = bNonPositional ? 10000 : DistanceVolumeIndex(Delta.Size());
+	Component->SetVolumeMultiplier(VolumeIndexToGain((MasterVolume * Sound.VolumeIndex) / 10000));
+	Component->Play();
+	return true;
+}
+
 void USimCopterAudioSubsystem::ApplySlotVolume(int32 Id)
 {
 	UAudioComponent* Component = SlotComponents.IsValidIndex(Id) ? SlotComponents[Id].Get() : nullptr;
@@ -654,13 +734,14 @@ bool USimCopterAudioSubsystem::Play2D(int32 Id, int32 Flags)
 	}
 
 	// FUN_0042a2a0 turns the flag word into the buffer's play mode: bit1 set means mode 1
-	// (rewind if already playing), clear means mode 2 (leave it alone and return). Every
-	// shipped call site leaves it clear, which is why the original never stacks a sound.
+	// (rewind if already playing), clear means mode 2 (leave it alone and return). Keep this
+	// idempotence for continuous sounds; finite effects deliberately overlap in the remake.
 	const bool bRestart = (Flags & SimCopterSoundFlags::Restart) != 0;
-	if (!bRestart && IsPlaying(Id))
+	if (!bRestart && IsPlaying(Id) && (Slots[Id].bLooping || (Flags & SimCopterSoundFlags::Loop) != 0))
 	{
 		return true;
 	}
+	PreserveOneShot(Id);
 
 	FSlot& Slot = Slots[Id];
 	Slot.bPositional = false;
@@ -709,7 +790,7 @@ bool USimCopterAudioSubsystem::Play3D(int32 Id, const FVector& WorldLocation, in
 	}
 
 	const bool bRestart = (Flags & SimCopterSoundFlags::Restart) != 0;
-	if (!bRestart && IsPlaying(Id))
+	if (!bRestart && IsPlaying(Id) && (Slots[Id].bLooping || (Flags & SimCopterSoundFlags::Loop) != 0))
 	{
 		// Still true to the original: FUN_0042a1f0 calls SetPosition after Play unconditionally,
 		// so an already-playing looper is re-aimed at the new emitter.
@@ -717,6 +798,7 @@ bool USimCopterAudioSubsystem::Play3D(int32 Id, const FVector& WorldLocation, in
 		return true;
 	}
 
+	PreserveOneShot(Id);
 	if (!StartSlot(Id, (Flags & SimCopterSoundFlags::Loop) != 0))
 	{
 		return false;
@@ -877,6 +959,7 @@ bool USimCopterAudioSubsystem::SetFile(int32 Id, const FString& WavName, SimCopt
 
 	// SCHOOK: SoundSetFile 0x0042a100 - the original destroys and rebuilds the buffer, so
 	// anything playing in the slot ends.
+	PreserveOneShot(Id);
 	Stop(Id);
 	Slot.Clip = *Clip;
 	Slot.LoadedWav = WavName;
@@ -905,6 +988,13 @@ void USimCopterAudioSubsystem::SetMasterVolume(int32 Volume)
 		ApplySlotVolume(Id);
 	}
 	ApplyRadioVolume();
+	for (const FSimCopterAudioOneShot& Sound : OneShots)
+	{
+		if (Sound.Component != nullptr)
+		{
+			Sound.Component->SetVolumeMultiplier(VolumeIndexToGain((MasterVolume * Sound.VolumeIndex) / 10000));
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -943,7 +1033,7 @@ bool USimCopterAudioSubsystem::PlayVoiceEvent(
 	bool bNonPositional,
 	int32 Flags)
 {
-	if (!SimCopterSound::IsVoiceBankSlot(Slot) || !bSoundsAvailable)
+	if (!bSoundsAvailable)
 	{
 		return false;
 	}
@@ -956,6 +1046,17 @@ bool USimCopterAudioSubsystem::PlayVoiceEvent(
 	// FUN_004c5210 picks with FUN_004cea00(N), its own small-range RNG. The people simulation's
 	// LFSR is not shared with it, so an engine random here is not a parity loss.
 	const int32 Pick = FMath::RandRange(0, Event->Clips.Num() - 1);
+	// Deliberate divergence from FUN_004c5210's single buffer per person: a door effect,
+	// moan or spoken line cannot replace speech or an EKG, or exhaust the fourteen loop slots.
+	if ((Flags & SimCopterSoundFlags::Loop) == 0)
+	{
+		const FSimCopterPcmClip* Clip = LoadClip(Event->Clips[Pick], SimCopterSound::ESoundDir::Root);
+		return Clip != nullptr && PlayIndependentVoice(*Clip, WorldLocation, PitchDeltaHz, bNonPositional);
+	}
+	if (!SimCopterSound::IsVoiceBankSlot(Slot))
+	{
+		return false;
+	}
 	if (!SetFile(Slot, Event->Clips[Pick], SimCopterSound::ESoundDir::Root))
 	{
 		return false;
@@ -1099,6 +1200,7 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 	Component->Play();
 
 	LooseComponents.Add(Component);
+	LooseEndTimes.Add(Component, FPlatformTime::Seconds() + Clip->Duration);
 	return true;
 }
 
@@ -1124,6 +1226,7 @@ void USimCopterAudioSubsystem::GetActivePositionalSounds(
 
 void USimCopterAudioSubsystem::SilenceForReplayReview()
 {
+	StopOneShots();
 	// Every table slot: the rotor loop, the sirens, the fire, the dispatcher. These are the loops
 	// that would otherwise hang at whatever they were doing when the clip opened, because the
 	// systems that would stop them are frozen for the length of the review.
@@ -1159,6 +1262,7 @@ void USimCopterAudioSubsystem::StopStandaloneSounds()
 		}
 	}
 	LooseComponents.Reset();
+	LooseEndTimes.Reset();
 }
 
 bool USimCopterAudioSubsystem::PlayMusicFile2D(

@@ -777,6 +777,7 @@ protected:
 	int32 ActivePedestrianCount = 0;
 
 private:
+	friend class FSimCopterParamedicCabinHandoffTest;
 	TArray<FSimCopterGroundRouteNode> RoadNodes;
 	TArray<FSimCopterGroundRouteNode> PedestrianNodes;
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
