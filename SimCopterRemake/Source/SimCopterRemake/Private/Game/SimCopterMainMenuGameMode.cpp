@@ -8,6 +8,7 @@
 #include "Formats/SimCopterOriginalGamePaths.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Game/SimCopterCareerProgression.h"
+#include "Game/SimCopterCareerSubsystem.h"
 #include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "GameFramework/PlayerController.h"
@@ -89,6 +90,7 @@ TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFron
 	case ESimCopterFrontEndScreen::CareerSelect:
 	{
 		TArray<int32> Choices;
+		bool bAdvancingCareer = false;
 		if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 			: nullptr)
@@ -97,18 +99,31 @@ TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFron
 			{
 				SimCopterCareerProgression::GetSuccessors(Session->GetCompletedCareerCityIndex(), Choices);
 				Session->ClearCompletedCareerCity();
+				bAdvancingCareer = Choices.Num() > 0;
 			}
 		}
 
 		if (Choices.Num() == 0)
 		{
+			// City 29 (Metropolis, Final Level) has an all -1 successor trio, so finishing it
+			// leaves nothing to advance into and this is a brand new career, not a continuation:
+			// drop the completed city's carried money and fleet before offering {0, 1, 2}.
+			if (USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+				? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+				: nullptr)
+			{
+				Career->ClearPendingCityTransfer();
+			}
 			SimCopterCareerProgression::GetNewCareerChoices(Choices);
 		}
 
+		// FUN_00457c90: Cancel exists only for a NEW career (`screen[0x2e]`); an advancement gets
+		// one centred OK and its Esc does nothing. That is not decoration - backing out of an
+		// advancement drops the player at the main menu with a career they can no longer re-enter.
 		return SNew(SSimCopterCareerSelect)
 			.Art(Art)
 			.Cities(Choices)
-			.AllowCancel(true)
+			.AllowCancel(!bAdvancingCareer)
 			.OnAccepted(FOnSimCopterCareerCityChosen::CreateUObject(
 				this, &ASimCopterMainMenuGameMode::HandleCareerCityChosen))
 			.OnCancelled(FSimpleDelegate::CreateLambda([this]()

@@ -223,4 +223,8 @@ private:
 	USimCopterSaveGame* CaptureCurrentGame(const UObject* WorldContextObject, const FString& DisplayName, FString& OutError) const;
 	static USimCopterSaveGame* ReadSaveSlot(const FString& SlotName);
 	static bool IsManagedSlotName(const FString& SlotName);
+
+	// Both entry points that replace the career block outright - a new game and a loaded slot -
+	// drop any career-advancement state a completed city left behind.
+	void ClearPendingCareerCityTransfer();
 };

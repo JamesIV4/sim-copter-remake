@@ -174,11 +174,26 @@ void USimCopterSaveSubsystem::BeginNewGame()
 	CurrentDisplayName.Reset();
 	PendingLoadedGame = nullptr;
 	bPendingMissionStateApplied = false;
+	// FUN_0044c710 item 0 sets the "new career" flag `app+0xb0`, which is what makes the career
+	// screen's OK take FUN_00407f30 rather than FUN_00408210. Abandoning a completed city's
+	// advancement here is the remake's version of that: a new game starts on $1000 and the
+	// Schweizer even if the player reached this menu by finishing a level and cancelling.
+	ClearPendingCareerCityTransfer();
 	if (USimCopterSettings* Settings = GetGameInstance() != nullptr
 			? GetGameInstance()->GetSubsystem<USimCopterSettings>()
 			: nullptr)
 	{
 		Settings->ResetSessionTimeOfDaySettings();
+	}
+}
+
+void USimCopterSaveSubsystem::ClearPendingCareerCityTransfer()
+{
+	if (USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+			? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+			: nullptr)
+	{
+		Career->ClearPendingCityTransfer();
 	}
 }
 
@@ -520,6 +535,9 @@ bool USimCopterSaveSubsystem::LoadGame(
 		OutError = TEXT("The saved city file is not available in the configured original-game folder.");
 		return false;
 	}
+
+	// A save carries its own career block, so an unconsumed advancement must not also apply.
+	ClearPendingCareerCityTransfer();
 
 	PendingLoadedGame = Save;
 	bPendingMissionStateApplied = false;

@@ -371,6 +371,16 @@ public:
 		float DamageFraction,
 		int32 SelectedToolIndex);
 
+	// SCHOOK: HelicopterPlaceOnPad 0x00484790. The aircraft half of a career advancing into its
+	// next city: the airframe the player was flying, its fittings (career + 0x48) and its tear-gas
+	// magazine (career + 0x54) all come across, but the machine itself arrives serviced, because
+	// FUN_0047a240 re-places every owned aircraft and FUN_00484790 writes heli[0x34] back to the
+	// per-type maximum hit points and heli[0xcc] to a full tank.
+	void ApplyCareerCityTransfer(
+		int32 TypeIndex,
+		int32 CareerEquipmentMask,
+		int32 CareerTearGasRounds);
+
 	// Exact live-aircraft half of the original BOMB payload: transform, fixed-point flight
 	// integrator, camera, winch/bucket, tool state and the seat manifest. The normal career
 	// restore selects/loads the airframe first; this resumes the in-world state on that model.

@@ -534,6 +534,11 @@ public:
 	// Opens a fresh session: score 0, cash SessionStartingCash.
 	void BeginSession();
 
+	// FUN_00408210's session half, for a career advancing into its next city. The one field the
+	// original clears at city entry is the score (block +0x50); the money at +0x40 carries over,
+	// so it is passed back in rather than reset to SessionStartingCash.
+	void ContinueSession(int32 InCash);
+
 	// Restores the serializable CINF/UINF + CSET portion after a normal city session has opened.
 	// Live mission records and fires belong to the original's separate BOMB world payload and are
 	// deliberately not synthesized here.

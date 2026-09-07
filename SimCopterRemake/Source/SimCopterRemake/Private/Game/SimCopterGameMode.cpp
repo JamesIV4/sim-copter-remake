@@ -6,6 +6,7 @@
 #include "City/SimCopterAirport.h"
 #include "City/SimCopterHangar.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Game/SimCopterCareerSubsystem.h"
 #include "Game/SimCopterPlayerController.h"
 #include "Game/SimCopterSaveSubsystem.h"
 #include "Game/SimCopterSessionSubsystem.h"
@@ -150,10 +151,7 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 		// No on-foot pawn to stand anywhere, but the hangar still belongs beside the airport;
 		// face it at the helicopter's pad.
 		PlaceHangar(Traffic, PlayerHelicopterPad);
-		if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
-		{
-			Saves->ApplyPendingAircraftState(World);
-		}
+		ApplyPendingAircraftRestores(World);
 		return;
 	}
 
@@ -168,10 +166,53 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 	// This is deliberately last. The city-entry pad pass, default on-foot placement and hangar
 	// demolition all happen first; only then may version-2 BOMB state put the aircraft/player,
 	// mission people, fires and mutable city objects back on their saved frame.
+	ApplyPendingAircraftRestores(World);
+}
+
+void ASimCopterGameMode::ApplyPendingAircraftRestores(UWorld* World)
+{
 	if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this); Saves != nullptr)
 	{
 		Saves->ApplyPendingAircraftState(World);
 	}
+
+	USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+		? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+		: nullptr;
+	if (Career == nullptr || !Career->HasPendingCityTransfer())
+	{
+		return;
+	}
+
+	// SCHOOK: SessionPlaceHelicopters 0x0047a240. The original walks the owned mask and hands each
+	// airframe a pad; the remake models the one the player flies, so the transfer names it and the
+	// rest stay on the books. This runs after the pad pass so the switch lands on a placed pawn.
+	const FSimCopterCareerCityTransfer Transfer = Career->GetPendingCityTransfer();
+
+	TArray<AActor*> Helicopters;
+	UGameplayStatics::GetAllActorsOfClass(World, ASimCopterHelicopterPawn::StaticClass(), Helicopters);
+	Helicopters.Sort([](const AActor& Left, const AActor& Right)
+	{
+		return Left.GetName() < Right.GetName();
+	});
+	if (Helicopters.Num() == 0)
+	{
+		// Nothing to hand it to. Leave it pending rather than throwing the player's aircraft away;
+		// the next city that does have one will pick it up.
+		UE_LOG(LogTemp, Warning,
+			TEXT("SimCopter career: no helicopter in this map to carry the advancing career onto."));
+		return;
+	}
+
+	if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Helicopters[0]))
+	{
+		Helicopter->ApplyCareerCityTransfer(
+			Transfer.ActiveHelicopterTypeIndex,
+			Transfer.CareerEquipmentMask,
+			Transfer.CareerTearGasRounds);
+	}
+
+	Career->ClearPendingCityTransfer();
 }
 
 void ASimCopterGameMode::PlaceHangar(ASimCopterTrafficSystemActor* Traffic, const FVector& PlayerStandLocation)

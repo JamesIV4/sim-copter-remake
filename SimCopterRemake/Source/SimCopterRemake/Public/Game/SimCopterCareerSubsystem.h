@@ -49,6 +49,47 @@ enum class ESimCopterCareerLogKind : uint8
 	Purchase,
 };
 
+// The career block as it crosses the travel between two cities of the same career.
+//
+// SCHOOK: CareerEnterCity 0x00408210 vs CareerNewGame 0x00407f30. The career-select page's OK
+// (FUN_0044bf70, control 0x7d7) branches on the "new career" flag `app+0xb0`: a brand new career
+// runs FUN_00407f30, which writes $1000, mask 0x10 (the Schweizer), equipment 3 and 0 tear gas
+// rounds; an *advancement* runs FUN_00408210, which adopts the next city's record and clears
+// exactly one field - the score at career + 0x50. Money (+0x40), the fleet (+0x44), the fittings
+// (+0x48) and the tear-gas magazine (+0x54) are untouched.
+//
+// The original can leave those in static memory. The remake travels through /Game/MainMenu and
+// back, which destroys the mission system actor that holds the cash and the helicopter pawn that
+// holds the fittings, so the fields ride across on the game instance in here.
+USTRUCT()
+struct SIMCOPTERREMAKE_API FSimCopterCareerCityTransfer
+{
+	GENERATED_BODY()
+
+	// False until a completed career city hands one over; a new game never sets it.
+	UPROPERTY()
+	bool bValid = false;
+
+	// career + 0x40. The end-of-level award has already been paid in.
+	UPROPERTY()
+	int32 Cash = 0;
+
+	// Which of the owned airframes the player was flying. The original parks every owned
+	// helicopter on its own pad (FUN_0047a240); the remake models one, so the active one comes
+	// across and the rest stay on the books through the owned mask. Defaults to the Schweizer -
+	// FUN_00407f30's mask 0x10 - which is USimCopterCareerSubsystem::StartingHelicopterTypeIndex,
+	// declared below and asserted equal in the .cpp.
+	UPROPERTY()
+	int32 ActiveHelicopterTypeIndex = 4;
+
+	// career + 0x48 and career + 0x54.
+	UPROPERTY()
+	int32 CareerEquipmentMask = 0;
+
+	UPROPERTY()
+	int32 CareerTearGasRounds = 0;
+};
+
 USTRUCT()
 struct SIMCOPTERREMAKE_API FSimCopterCareerLogEntry
 {
@@ -123,8 +164,26 @@ public:
 	// lines growing without bound over a long session.
 	static constexpr int32 MaxLogEntries = 256;
 
-	// Clears the log and puts the books back to a new career. Called when a session opens.
+	// FUN_00407f30. Clears the log and puts the books back to a new career. Called when a session
+	// opens that is NOT a career advancing into its next city.
 	void BeginCareer();
+
+	// FUN_00408210. Entering the next city of a career keeps the fleet and the log; only the
+	// depreciation goes, because FUN_0047a240 re-places every owned airframe through
+	// FUN_00484790, which writes heli[0xcd] = 0 (and with it a full tank and full hit points).
+	void ContinueCareerIntoNextCity();
+
+	// --- the half of the career block that lives on actors the level travel destroys ---
+
+	// Handed over by the mission actor when a completed career city advances; consumed by the
+	// next city's session open (cash, fleet) and by the game mode once the aircraft is on its pad
+	// (airframe, fittings, ammunition).
+	void SetPendingCityTransfer(const FSimCopterCareerCityTransfer& Transfer);
+	bool HasPendingCityTransfer() const { return PendingCityTransfer.bValid; }
+	const FSimCopterCareerCityTransfer& GetPendingCityTransfer() const { return PendingCityTransfer; }
+
+	// Starting a new game or loading a save abandons an unconsumed advancement.
+	void ClearPendingCityTransfer();
 
 	// Restores the part of the original CINF career block owned here. Save loading happens after
 	// BeginCareer because the mission actor opens a normal city session first; keeping the restore
@@ -153,4 +212,7 @@ private:
 
 	UPROPERTY()
 	TArray<int32> HelicopterDepreciation;
+
+	UPROPERTY()
+	FSimCopterCareerCityTransfer PendingCityTransfer;
 };

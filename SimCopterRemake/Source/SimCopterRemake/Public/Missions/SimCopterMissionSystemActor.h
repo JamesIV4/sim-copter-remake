@@ -689,6 +689,12 @@ private:
 	void ProcessMedevacHospitalHandoffs(float DeltaSeconds);
 	void ProcessLevelCompleteLanding(float DeltaSeconds);
 
+	// SCHOOK: CareerEnterCity 0x00408210. Parks the career fields this actor and the helicopter
+	// pawn own on the game instance before the travel to the career-select screen destroys both,
+	// so the next city opens on the same money, fleet, fittings and ammunition.
+	void CaptureCareerCityTransfer();
+	ASimCopterHelicopterPawn* ResolveCareerHelicopterPawn() const;
+
 	// SCHOOK: FireworksInit 0x004916e0 / TubaLeader 443 / TubaInit 444 (march.wav 0x26 sound)
 	void SpawnMarchingBandAtAirport();
 	void UpdateFireworksFX(float DeltaSeconds);
@@ -705,6 +711,9 @@ private:
 	float NextFireworksInterval = 0.5f;
 	TArray<FSimCopterActiveFireworkRocket> ActiveFireworkRockets;
 	bool bLevelCompletePromptDisplayed = false;
+	// Latched when the player accepts the advance, so the queued OpenLevel cannot pay the city's
+	// end-of-level award twice on its way out.
+	bool bLevelCompleteAdvanceRequested = false;
 	float PromptRefreshTimer = 0.0f;
 
 	float LevelCompleteLandingTimer = 0.0f;

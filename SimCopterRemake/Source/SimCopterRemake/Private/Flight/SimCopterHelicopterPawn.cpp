@@ -2089,6 +2089,35 @@ void ASimCopterHelicopterPawn::RestoreSavedCareerState(
 	RefreshWaterControlsWidget();
 }
 
+void ASimCopterHelicopterPawn::ApplyCareerCityTransfer(
+	const int32 TypeIndex,
+	const int32 CareerEquipmentMask,
+	const int32 CareerTearGasRounds)
+{
+	// A refused model switch leaves the aircraft it already has; the fittings below are still the
+	// player's and still belong on whatever is being flown.
+	SwitchHelicopterModel(TypeIndex);
+
+	EquipmentState.CareerEquipmentMask =
+		CareerEquipmentMask & SimCopterHelicopterRegistry::AllCareerEquipmentBits;
+	EquipmentState.CareerTearGasRounds = FMath::Clamp(
+		CareerTearGasRounds, 0, SimCopterHelicopterRegistry::TearGasCapacity);
+	EquipmentState.ClearDebugOverlay();
+
+	// FUN_00484790: heli[0x34] = DAT_0050412c[type] and heli[0xcc] = DAT_00504120[type]. Every
+	// owned airframe is re-placed on a pad at city entry, so it arrives repaired and refuelled.
+	// SwitchHelicopterModel carries the old fractions over, which is why this comes after it.
+	CurrentFuelGallons = HelicopterTuning.FuelGallons;
+	CurrentDamage = 0.0f;
+	FlightModel.Fuel = SimCopterFixed::FromFloat(CurrentFuelGallons);
+	FlightModel.HitPoints = FMath::Max(0, HelicopterTuning.MaxDamage);
+
+	bWaterCannonInstalled = IsToolAvailable(ESimCopterHelicopterTool::WaterCannon);
+	RecomputeActiveToolFallback();
+	RefreshDashboardSeats();
+	RefreshWaterControlsWidget();
+}
+
 bool ASimCopterHelicopterPawn::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 {
 	OutData.Reset();

@@ -34,6 +34,11 @@ bool ReadNewCostControl(const FSimCopterTweakSection& Section, int32& OutDollars
 }
 }
 
+static_assert(
+	FSimCopterCareerCityTransfer().ActiveHelicopterTypeIndex ==
+		USimCopterCareerSubsystem::StartingHelicopterTypeIndex,
+	"An empty transfer must fall back to the same airframe a new career starts on.");
+
 void USimCopterCareerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -192,6 +197,31 @@ void USimCopterCareerSubsystem::BeginCareer()
 		Value = 0;
 	}
 	bCareerOpen = true;
+}
+
+void USimCopterCareerSubsystem::ContinueCareerIntoNextCity()
+{
+	// FUN_00408210 touches none of this: the books and the log carry straight over. Only the
+	// depreciation resets, and not here - FUN_0047a240 re-places every owned airframe and
+	// FUN_00484790 zeroes each one's heli[0xcd], which is the accrual FUN_0048b070 subtracts
+	// from the trade-in price.
+	for (int32& Value : HelicopterDepreciation)
+	{
+		Value = 0;
+	}
+	bCareerOpen = true;
+}
+
+void USimCopterCareerSubsystem::SetPendingCityTransfer(const FSimCopterCareerCityTransfer& Transfer)
+{
+	PendingCityTransfer = Transfer;
+	PendingCityTransfer.bValid = true;
+	PendingCityTransfer.Cash = FMath::Max(0, PendingCityTransfer.Cash);
+}
+
+void USimCopterCareerSubsystem::ClearPendingCityTransfer()
+{
+	PendingCityTransfer = FSimCopterCareerCityTransfer();
 }
 
 void USimCopterCareerSubsystem::RestoreCareerState(

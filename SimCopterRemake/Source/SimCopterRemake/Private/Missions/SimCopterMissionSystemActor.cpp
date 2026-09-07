@@ -839,21 +839,48 @@ void ASimCopterMissionSystemActor::BeginSession(
 		MissionSystem.SetCareerCity(City);
 	}
 
-	// FUN_004080c0 / FUN_00407f30: $1000 and no points.
-	MissionSystem.BeginSession();
+	USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+		? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+		: nullptr;
+
+	// FUN_0044bf70's career-select OK picks between the two openings on the "new career" flag
+	// `app+0xb0`: FUN_00408210 when a career is advancing into its next city, FUN_00407f30 when
+	// the player asked for a new one. The advancement keeps the whole career block and clears
+	// only the score, so it must not run either reset below.
+	const bool bContinuingCareer =
+		Mode == ESimCopterMissionSessionMode::CityJobs &&
+		Career != nullptr &&
+		Career->HasPendingCityTransfer();
+
+	if (bContinuingCareer)
+	{
+		// FUN_00408210: the money at career + 0x40 comes across with the player.
+		MissionSystem.ContinueSession(Career->GetPendingCityTransfer().Cash);
+	}
+	else
+	{
+		// FUN_004080c0 / FUN_00407f30: $1000 and no points.
+		MissionSystem.BeginSession();
+	}
 
 	SessionMode = Mode;
 	bSessionSelectionHeld = false;
 	SessionElapsedSeconds = 0.0f;
 
 	// The career record opens with the session: an empty log and the starter airframe on the
-	// books. The prices the catalog quotes come from the same heli.twk the flight model reads.
-	if (USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
-			? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
-			: nullptr)
+	// books, unless this is the same career arriving in its next city. The prices the catalog
+	// quotes come from the same heli.twk the flight model reads.
+	if (Career != nullptr)
 	{
 		Career->EnsurePricesLoaded(ResolveOriginalGameRootDir());
-		Career->BeginCareer();
+		if (bContinuingCareer)
+		{
+			Career->ContinueCareerIntoNextCity();
+		}
+		else
+		{
+			Career->BeginCareer();
+		}
 
 		// 534 "Entered City: %s, %s" - the original prints the city's name and the date it was
 		// entered. The remake has neither: the hardcoded per-city map names in FUN_00408370 are
@@ -4560,8 +4587,13 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 		PC->WasInputKeyJustPressed(EKeys::Virtual_Gamepad_Accept) ||
 		PC->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Bottom)));
 
-	if (bAdvancing)
+	if (bAdvancing && !bLevelCompleteAdvanceRequested)
 	{
+		// OpenLevel only queues the travel, so this actor can tick again before the map changes.
+		// The end-of-level award is now carried into the next city, which makes paying it twice
+		// a real duplicate rather than something the old session reset swallowed.
+		bLevelCompleteAdvanceRequested = true;
+
 		const SimCopterMissions::FSimCopterCareerCity& CurCity = MissionSystem.GetCareerCity();
 		MissionSystem.AddCash(CurCity.MoneyEarned);
 
@@ -4574,7 +4606,75 @@ void ASimCopterMissionSystemActor::ProcessLevelCompleteLanding(float DeltaTime)
 			Session->SetCompletedCareerCityIndex(CompletedIndex);
 		}
 
+		// The travel through /Game/MainMenu destroys this actor and the helicopter pawn, so the
+		// half of the career block they hold is parked on the game instance before it goes.
+		// FUN_00408210 keeps all of it; the next city's BeginSession puts it back.
+		CaptureCareerCityTransfer();
+
 		UGameplayStatics::OpenLevel(this, FName(USimCopterSessionSubsystem::GetMainMenuLevelName()));
 	}
+}
+
+void ASimCopterMissionSystemActor::CaptureCareerCityTransfer()
+{
+	USimCopterCareerSubsystem* Career = GetGameInstance() != nullptr
+		? GetGameInstance()->GetSubsystem<USimCopterCareerSubsystem>()
+		: nullptr;
+	if (Career == nullptr)
+	{
+		return;
+	}
+
+	FSimCopterCareerCityTransfer Transfer;
+	Transfer.Cash = MissionSystem.GetCash();
+
+	// The airframe and its fittings, from whichever helicopter this career is flying. Fuel and
+	// damage are deliberately absent: FUN_0047a240 re-places every owned aircraft through
+	// FUN_00484790, which writes heli[0x34] back to the per-type maximum hit points and
+	// heli[0xcc] to a full tank, so an aircraft always arrives in a new city serviced.
+	if (const ASimCopterHelicopterPawn* Helicopter = ResolveCareerHelicopterPawn())
+	{
+		const FSimCopterEquipmentState& Equipment = Helicopter->GetEquipmentState();
+		Transfer.ActiveHelicopterTypeIndex = Helicopter->GetHelicopterTypeIndex();
+		Transfer.CareerEquipmentMask = Equipment.CareerEquipmentMask;
+		Transfer.CareerTearGasRounds = Equipment.CareerTearGasRounds;
+	}
+	else
+	{
+		Transfer.ActiveHelicopterTypeIndex = USimCopterCareerSubsystem::StartingHelicopterTypeIndex;
+		Transfer.CareerEquipmentMask = SimCopterHelicopterRegistry::StartingCareerEquipmentBits;
+	}
+
+	Career->SetPendingCityTransfer(Transfer);
+
+	UE_LOG(LogTemp, Display,
+		TEXT("SimCopter career: advancing out of city %d with %d Bucks, runtime type %d, "
+			 "equipment 0x%02x, %d tear gas rounds."),
+		MissionSystem.GetCareerCityIndex(),
+		Transfer.Cash,
+		Transfer.ActiveHelicopterTypeIndex,
+		Transfer.CareerEquipmentMask,
+		Transfer.CareerTearGasRounds);
+}
+
+ASimCopterHelicopterPawn* ASimCopterMissionSystemActor::ResolveCareerHelicopterPawn() const
+{
+	// The one the player is in wins; otherwise the level's single career aircraft. Sorted so the
+	// choice is stable if a map ever holds more than one, matching the game mode's pad pass.
+	if (const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0))
+	{
+		if (ASimCopterHelicopterPawn* Possessed = Cast<ASimCopterHelicopterPawn>(PlayerController->GetPawn()))
+		{
+			return Possessed;
+		}
+	}
+
+	TArray<AActor*> Helicopters;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASimCopterHelicopterPawn::StaticClass(), Helicopters);
+	Helicopters.Sort([](const AActor& Left, const AActor& Right)
+	{
+		return Left.GetName() < Right.GetName();
+	});
+	return Helicopters.Num() > 0 ? Cast<ASimCopterHelicopterPawn>(Helicopters[0]) : nullptr;
 }
 

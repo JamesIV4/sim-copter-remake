@@ -105,6 +105,12 @@ void FSimCopterMissionSystem::BeginSession()
 	Cash = SessionStartingCash;
 }
 
+void FSimCopterMissionSystem::ContinueSession(const int32 InCash)
+{
+	Score = 0;
+	Cash = FMath::Max(0, InCash);
+}
+
 void FSimCopterMissionSystem::RestoreSessionState(
 	const int32 InScore,
 	const int32 InCash,

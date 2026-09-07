@@ -91,4 +91,10 @@ private:
 	// Stands the hangar beside the airport, doors toward PlayerStandLocation. Called from
 	// PlaceSessionOnAirportPads once the pads are known.
 	void PlaceHangar(ASimCopterTrafficSystemActor* Traffic, const FVector& PlayerStandLocation);
+
+	// The two restores that may only run once the aircraft is on its pad: a loaded save, and the
+	// aircraft half of a career advancing into its next city (the money and the fleet half were
+	// applied by the mission actor's BeginSession). At most one of them ever has anything to do -
+	// starting a new game or loading a save abandons a pending advancement.
+	void ApplyPendingAircraftRestores(UWorld* World);
 };
