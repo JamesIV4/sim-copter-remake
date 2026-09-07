@@ -2123,25 +2123,29 @@ bool ASimCopterGroundAgent::EvaluateProximityTest(const FSimCopterPersonContext&
 	{
 		return false;
 	}
-
-	const ASimCopterTrafficSystemActor* TrafficSystem = Cast<ASimCopterTrafficSystemActor>(GetOwner());
-	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(
-		UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
-	if (TrafficSystem == nullptr || Helicopter == nullptr)
-	{
-		// On foot there is no helicopter to hover, so nothing is being set down on anyone.
-		return false;
-	}
-
-	const FVector HelicopterLocation = Helicopter->GetActorLocation();
-	float TerrainZ = 0.0f;
-	if (!TrafficSystem->TryGetTerrainWorldZAtWorldLocation(HelicopterLocation, TerrainZ))
+	// Deliberate divergence: BHAV 1053 rec[9] uses FUN_004caaf0's landed probe to
+	// loop through Idle-10 -> face helicopter -> WvNo until the player takes off.
+	// A deployed aerial cop should start work while the helicopter remains landed.
+	// Take this record's false edge to rec[3], the nearby-criminal search. Keep the
+	// actual height test for station boarding (1051), riding (1052), and returning (1054).
+	if (Context.GetStateIndex() == 7 && !IsRidingCarrier(Context) &&
+		Context.Stack.Num() > 0 && Context.Stack.Last().ProgramId == 1053 &&
+		Context.Stack.Last().RecordIndex == 9)
 	{
 		return false;
 	}
 
-	const float GateCm = TrafficSystem->GetPeopleWorldCmPerOriginalUnit() * 4.0f;
-	return FMath::Abs(HelicopterLocation.Z - TerrainZ) <= GateCm;
+	const ASimCopterHelicopterPawn* Helicopter = ResolvePlayerHelicopter();
+	if (Helicopter == nullptr)
+	{
+		return false;
+	}
+	// FUN_004caaf0 case 1 compares helicopter Y against the player's surface datum at +0x164,
+	// not the city's bare terrain. Actor Z also includes the collision capsule's half-height.
+	// Using it above street terrain left BHAV 1051/1054 waving forever on a station roof.
+	// Preserve the original shift BEFORE the <=4 comparison (positive clearances below 5 units).
+	return FMath::Abs(FMath::FloorToInt(Helicopter->GetLandingSurfaceClearanceCm() /
+		USimCopterAudioSubsystem::OriginalUnitToCm)) <= 4;
 }
 
 bool ASimCopterGroundAgent::FaceSelectedObject(FSimCopterPersonContext& Context)

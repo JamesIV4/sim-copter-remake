@@ -482,6 +482,8 @@ public:
 	/** May somebody climb IN here? Looser than the alight, exactly as the original's is. */
 	UFUNCTION(BlueprintCallable, Category = "SimCopter|Missions")
 	bool CanBoardMissionPassengers() const;
+	/** Clearance above the current landing surface, including building roofs. */
+	float GetLandingSurfaceClearanceCm() const { return GroundClearanceCm; }
 
 	/**
 	 * How long the aircraft has been continuously inside the alight clearance, in seconds.
@@ -1581,6 +1583,7 @@ protected:
 	TObjectPtr<UMaterialInstanceDynamic> RotorDiscMaterialInstance;
 
 private:
+	friend class FSimCopterPoliceRoofBoardingTest;
 	// The decompiled original flight simulation; the pawn feeds it inputs and
 	// city geometry and mirrors its position/attitude onto the actor.
 	FSimCopterFlightModel FlightModel;

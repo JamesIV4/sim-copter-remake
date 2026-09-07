@@ -8783,6 +8783,18 @@ bool ASimCopterTrafficSystemActor::TrySpawnOriginalPersonAtTile(
 	PedestrianAgents.Add(Agent);
 	if (bPlaceOnBuildingRoof)
 	{
+		// Keep the aerial cop available like the hospital crew. Its BHAV 1051 begins with a
+		// run and can retire while waiting; the shared persistent roof post prevents walking
+		// off the station or vanishing. BoardCarrier relinquishes confinement when it boards.
+		if (InitialState == 7)
+		{
+			FVector RoofCenter;
+			float RoofHalfExtentCm = 0.0f;
+			if (TryGetBuildingRoofPost(TileX, TileY, RoofCenter, RoofHalfExtentCm))
+			{
+				Agent->SetHospitalRoofPost(RoofCenter, RoofHalfExtentCm);
+			}
+		}
 		// The ground snap above is what used to undo this placement, so the height it settled at
 		// is the thing worth seeing: this must read well above the node's street-level Z.
 		UE_LOG(LogSimCopterTrafficSystem, Display,

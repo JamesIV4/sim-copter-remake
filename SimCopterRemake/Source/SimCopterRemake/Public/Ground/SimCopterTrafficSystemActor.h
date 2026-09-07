@@ -778,6 +778,7 @@ protected:
 
 private:
 	friend class FSimCopterParamedicCabinHandoffTest;
+	friend class FSimCopterPoliceRoofBoardingTest;
 	TArray<FSimCopterGroundRouteNode> RoadNodes;
 	TArray<FSimCopterGroundRouteNode> PedestrianNodes;
 	TMap<FIntPoint, int32> RoadNodeIndexByTile;
