@@ -13,9 +13,9 @@
 //   FUN_0042a100(id, name)           SetFile         swap the WAV in a slot
 //   FUN_0042a3b0(_, id, _)           queued play with a completion list
 //
-// Deliberate overlap divergence: finite effects retain independent components when their id
-// plays again, and short people voices do not borrow the loop bank. Loops remain idempotent
-// and controlled by Stop/SetPosition; starting speech cannot replace an EKG or another line.
+// Each sound id remains a single playback slot: repeated play requests do not duplicate it.
+// Short people voices play independently of the loop bank, with one active play per event,
+// so different speech and effects can coexist without replacing an EKG or another line.
 //
 // See Docs/memory/simcopter-sound.md for the decode notes.
 
@@ -65,6 +65,7 @@ struct FSimCopterAudioOneShot
 	TObjectPtr<UAudioComponent> Component = nullptr;
 	double EndTime = 0.0;
 	int32 VolumeIndex = 10000;
+	int32 VoiceEvent = INDEX_NONE;
 };
 
 /**
@@ -365,6 +366,7 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UAudioComponent>> LooseComponents;
 	TMap<UAudioComponent*, double> LooseEndTimes;
+	TMap<FString, TWeakObjectPtr<UAudioComponent>> LooseFiles;
 
 	/** Speech and overlapping effect tails must outlive changes to their original slot/owner. */
 	UPROPERTY(Transient)
@@ -372,7 +374,7 @@ private:
 	void PreserveOneShot(int32 Id);
 	void StopOneShots();
 	bool PlayIndependentVoice(const FSimCopterPcmClip& Clip, const FVector& Location,
-		int32 PitchDeltaHz, bool bNonPositional);
+		int32 PitchDeltaHz, bool bNonPositional, int32 VoiceEvent = INDEX_NONE);
 
 	/** Polyphonic movement loops; separate so front-end standalone cleanup cannot stop them. */
 	UPROPERTY(Transient)

@@ -29,13 +29,27 @@ bool FSimCopterAudioOverlapTest::RunTest(const FString& Parameters)
 	Audio->Slots[EffectId].bLoadAttempted = true;
 	TestTrue(TEXT("First effect starts"), Audio->Play3D(EffectId, FVector::ZeroVector));
 	UAudioComponent* First = Audio->SlotComponents[EffectId];
-	TestTrue(TEXT("Second effect starts while first is active"), Audio->Play3D(EffectId, FVector(100, 0, 0)));
-	TestEqual(TEXT("First play retains its own component"), Audio->OneShots.Num(), 1);
-	TestTrue(TEXT("First component preserved"), Audio->OneShots[0].Component == First);
-	TestTrue(TEXT("Second play has a different component"), Audio->SlotComponents[EffectId] != First);
-	TestTrue(TEXT("Second emitter does not move first sound"), First->GetComponentLocation().IsNearlyZero());
+	const double FirstEndTime = Audio->Slots[EffectId].OneShotEndTime;
+	TestTrue(TEXT("Repeated effect request succeeds without duplication"), Audio->Play3D(EffectId, FVector(100, 0, 0)));
+	TestEqual(TEXT("Repeated effect creates no extra playback"), Audio->OneShots.Num(), 0);
+	TestTrue(TEXT("Repeated effect retains its component"), Audio->SlotComponents[EffectId] == First);
+	TestEqual(TEXT("Repeated effect does not restart its deadline"), Audio->Slots[EffectId].OneShotEndTime, FirstEndTime);
 	Audio->Stop(EffectId);
-	TestEqual(TEXT("Stopping current slot leaves previous effect intact"), Audio->OneShots.Num(), 1);
+	TestFalse(TEXT("Stopping effect stops its only play"), Audio->IsPlaying(EffectId));
+	for (const int32 Id : {SimCopterSound::SND_CHOPSTAR, SimCopterSound::SND_COPLOOP})
+	{
+		Audio->Slots[Id].Clip = Clip;
+		Audio->Slots[Id].bLoadAttempted = true;
+		const int32 Flags = Id == SimCopterSound::SND_COPLOOP ? SimCopterSoundFlags::Loop : 0;
+		Audio->Play2D(Id, Flags);
+		UAudioComponent* Original = Audio->SlotComponents[Id];
+		const double OriginalEnd = Audio->Slots[Id].OneShotEndTime;
+		Audio->Play2D(Id, Flags);
+		TestTrue(TEXT("Takeoff and rotor retain one component"), Audio->SlotComponents[Id] == Original);
+		TestEqual(TEXT("Takeoff and rotor are not restarted"), Audio->Slots[Id].OneShotEndTime, OriginalEnd);
+	}
+	TestTrue(TEXT("Different helicopter sounds can coexist"), Audio->IsPlaying(SimCopterSound::SND_CHOPSTAR) &&
+		Audio->IsPlaying(SimCopterSound::SND_COPLOOP));
 
 	const int32 LoopSlot = Audio->AcquireVoiceSlot();
 	Audio->Slots[LoopSlot].Clip = Clip;
@@ -47,21 +61,25 @@ bool FSimCopterAudioOverlapTest::RunTest(const FString& Parameters)
 	while (Audio->AcquireVoiceSlot() != INDEX_NONE) {}
 	TestTrue(TEXT("Speech starts with all loop slots occupied"), Audio->PlayVoiceEvent(INDEX_NONE,
 		SimCopterSound::VOX_DOOR_OPEN, FVector::ZeroVector, 0, true));
-	TestTrue(TEXT("Another line starts independently"), Audio->PlayVoiceEvent(INDEX_NONE,
+	TestTrue(TEXT("Repeated voice request is accepted"), Audio->PlayVoiceEvent(INDEX_NONE,
 		SimCopterSound::VOX_DOOR_OPEN, FVector::ZeroVector, 0, true));
-	TestEqual(TEXT("Both finite voices and effect remain independently owned"), Audio->OneShots.Num(), 3);
+	TestEqual(TEXT("Same voice event cannot duplicate"), Audio->OneShots.Num(), 1);
+	TestTrue(TEXT("Different voice plays independently"), Audio->PlayVoiceEvent(INDEX_NONE, 20, FVector::ZeroVector, 0, true));
+	TestEqual(TEXT("Different finite voices coexist"), Audio->OneShots.Num(), 2);
 	TestTrue(TEXT("Speech preserves continuous voice"), Audio->SlotComponents[LoopSlot] == Loop && Audio->IsPlaying(LoopSlot));
 	Audio->ReleaseVoiceSlot(LoopSlot);
-	TestEqual(TEXT("Releasing a person's loop cannot cut off their finite speech"), Audio->OneShots.Num(), 3);
+	TestEqual(TEXT("Releasing a person's loop cannot cut off their finite speech"), Audio->OneShots.Num(), 2);
 	Audio->SetMasterVolume(5000);
 	TestEqual(TEXT("Overlapping sounds follow master volume"), Audio->OneShots[1].Component->VolumeMultiplier,
 		USimCopterAudioSubsystem::VolumeIndexToGain(5000));
 	Audio->StopStandaloneSounds();
-	TestEqual(TEXT("Menu cleanup cannot stop gameplay voices"), Audio->OneShots.Num(), 3);
+	TestEqual(TEXT("Menu cleanup cannot stop gameplay voices"), Audio->OneShots.Num(), 2);
 	for (FSimCopterAudioOneShot& Sound : Audio->OneShots) Sound.EndTime = 0.0;
 	Audio->Tick(0.0f);
 	TestEqual(TEXT("Finished procedural voices release their sources"), Audio->OneShots.Num(), 0);
 	TestTrue(TEXT("Standalone effect starts"), Audio->PlayFile2D(TEXT("button"), SimCopterSound::ESoundDir::Root));
+	Audio->PlayFile2D(TEXT("button"), SimCopterSound::ESoundDir::Root);
+	TestEqual(TEXT("Standalone effect cannot duplicate"), Audio->LooseComponents.Num(), 1);
 	for (auto& Entry : Audio->LooseEndTimes) Entry.Value = 0.0;
 	Audio->Tick(0.0f);
 	TestEqual(TEXT("Finished standalone source is retired"), Audio->LooseComponents.Num(), 0);

@@ -631,8 +631,19 @@ void USimCopterAudioSubsystem::StopOneShots()
 }
 
 bool USimCopterAudioSubsystem::PlayIndependentVoice(const FSimCopterPcmClip& Clip,
-	const FVector& Location, int32 PitchDeltaHz, bool bNonPositional)
+	const FVector& Location, int32 PitchDeltaHz, bool bNonPositional, int32 VoiceEvent)
 {
+	if (VoiceEvent != INDEX_NONE)
+	{
+		for (const FSimCopterAudioOneShot& Sound : OneShots)
+		{
+			if (Sound.VoiceEvent == VoiceEvent && Sound.Component != nullptr &&
+				FPlatformTime::Seconds() < Sound.EndTime)
+			{
+				return true;
+			}
+		}
+	}
 	if (GetWorld() == nullptr || !Clip.IsValid())
 	{
 		return false;
@@ -657,6 +668,7 @@ bool USimCopterAudioSubsystem::PlayIndependentVoice(const FSimCopterPcmClip& Cli
 	FSimCopterAudioOneShot& Sound = OneShots.AddDefaulted_GetRef();
 	Sound.Component = Component;
 	Sound.EndTime = FPlatformTime::Seconds() + Clip.Duration / Pitch;
+	Sound.VoiceEvent = VoiceEvent;
 	Sound.VolumeIndex = bNonPositional ? 10000 : DistanceVolumeIndex(Delta.Size());
 	Component->SetVolumeMultiplier(VolumeIndexToGain((MasterVolume * Sound.VolumeIndex) / 10000));
 	Component->Play();
@@ -735,13 +747,12 @@ bool USimCopterAudioSubsystem::Play2D(int32 Id, int32 Flags)
 
 	// FUN_0042a2a0 turns the flag word into the buffer's play mode: bit1 set means mode 1
 	// (rewind if already playing), clear means mode 2 (leave it alone and return). Keep this
-	// idempotence for continuous sounds; finite effects deliberately overlap in the remake.
+	// idempotence for both continuous sounds and finite effects.
 	const bool bRestart = (Flags & SimCopterSoundFlags::Restart) != 0;
-	if (!bRestart && IsPlaying(Id) && (Slots[Id].bLooping || (Flags & SimCopterSoundFlags::Loop) != 0))
+	if (!bRestart && IsPlaying(Id))
 	{
 		return true;
 	}
-	PreserveOneShot(Id);
 
 	FSlot& Slot = Slots[Id];
 	Slot.bPositional = false;
@@ -790,7 +801,7 @@ bool USimCopterAudioSubsystem::Play3D(int32 Id, const FVector& WorldLocation, in
 	}
 
 	const bool bRestart = (Flags & SimCopterSoundFlags::Restart) != 0;
-	if (!bRestart && IsPlaying(Id) && (Slots[Id].bLooping || (Flags & SimCopterSoundFlags::Loop) != 0))
+	if (!bRestart && IsPlaying(Id))
 	{
 		// Still true to the original: FUN_0042a1f0 calls SetPosition after Play unconditionally,
 		// so an already-playing looper is re-aimed at the new emitter.
@@ -798,7 +809,6 @@ bool USimCopterAudioSubsystem::Play3D(int32 Id, const FVector& WorldLocation, in
 		return true;
 	}
 
-	PreserveOneShot(Id);
 	if (!StartSlot(Id, (Flags & SimCopterSoundFlags::Loop) != 0))
 	{
 		return false;
@@ -1051,7 +1061,7 @@ bool USimCopterAudioSubsystem::PlayVoiceEvent(
 	if ((Flags & SimCopterSoundFlags::Loop) == 0)
 	{
 		const FSimCopterPcmClip* Clip = LoadClip(Event->Clips[Pick], SimCopterSound::ESoundDir::Root);
-		return Clip != nullptr && PlayIndependentVoice(*Clip, WorldLocation, PitchDeltaHz, bNonPositional);
+		return Clip != nullptr && PlayIndependentVoice(*Clip, WorldLocation, PitchDeltaHz, bNonPositional, VoiceEvent);
 	}
 	if (!SimCopterSound::IsVoiceBankSlot(Slot))
 	{
@@ -1173,6 +1183,15 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 		return false;
 	}
 
+	const FString FileKey = ResolveWavPath(WavName, Dir).ToLower();
+	if (const TWeakObjectPtr<UAudioComponent>* Existing = LooseFiles.Find(FileKey))
+	{
+		const double* EndTime = LooseEndTimes.Find(Existing->Get());
+		if (Existing->IsValid() && EndTime != nullptr && FPlatformTime::Seconds() < *EndTime)
+		{
+			return true;
+		}
+	}
 	const FSimCopterPcmClip* Clip = LoadClip(WavName, Dir);
 	if (Clip == nullptr)
 	{
@@ -1201,6 +1220,7 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 
 	LooseComponents.Add(Component);
 	LooseEndTimes.Add(Component, FPlatformTime::Seconds() + Clip->Duration);
+	LooseFiles.Add(FileKey, Component);
 	return true;
 }
 
@@ -1263,6 +1283,7 @@ void USimCopterAudioSubsystem::StopStandaloneSounds()
 	}
 	LooseComponents.Reset();
 	LooseEndTimes.Reset();
+	LooseFiles.Reset();
 }
 
 bool USimCopterAudioSubsystem::PlayMusicFile2D(
