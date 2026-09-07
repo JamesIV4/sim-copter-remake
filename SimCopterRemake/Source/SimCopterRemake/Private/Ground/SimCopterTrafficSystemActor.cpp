@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "City/SimCopterTunnel.h"
+#include "Algo/Count.h"
 
 #include "Algo/Reverse.h"
 #include "Audio/SimCopterAudioSubsystem.h"
@@ -34,7 +36,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSimCopterTrafficSystem, Log, All);
 namespace
 {
 constexpr uint32 TrafficRuntimeSaveMagic = 0x54524146; // 'TRAF'
-constexpr int32 TrafficRuntimeSaveVersion = 1;
+constexpr int32 TrafficRuntimeSaveVersion = 2;
 
 void SerializeTrafficBool(FArchive& Archive, bool& Value)
 {
@@ -114,6 +116,10 @@ enum ERoadOpeningMask : int32
 
 int32 GetRoadOpeningMask(uint8 BuildingId)
 {
+	if (SimCopterTunnel::IsPortal(BuildingId))
+	{
+		return SimCopterTunnel::IsNorthSouth(BuildingId) ? RoadOpenNorth | RoadOpenSouth : RoadOpenEast | RoadOpenWest;
+	}
 	switch (BuildingId)
 	{
 	case 0x1D:
@@ -833,6 +839,14 @@ bool ASimCopterTrafficSystemActor::CaptureRuntimeSaveState(TArray<uint8>& OutDat
 			Writer << ParamedicName << Vehicle.MarkerTile;
 		}
 	}
+	int32 TransitCount = Algo::CountIf(TunnelTransits, [](const FTunnelTransit& Trip) { return Trip.Agent.IsValid(); });
+	Writer << TransitCount;
+	for (FTunnelTransit& Trip : TunnelTransits)
+	{
+		if (!Trip.Agent.IsValid()) continue;
+		FName Identity = Trip.Agent->GetRuntimeSaveIdentityName();
+		Writer << Identity << Trip.ExitNode << Trip.ExitRoadNode << Trip.RemainingSeconds << Trip.HeightOffset;
+	}
 	return !Writer.IsError();
 }
 
@@ -847,7 +861,7 @@ bool ASimCopterTrafficSystemActor::RestoreRuntimeSaveState(
 	int32 RandomInitial = 0;
 	int32 RandomCurrent = 0;
 	Reader << Magic << Version << RandomInitial << RandomCurrent << PeopleRandomState;
-	if (Magic != TrafficRuntimeSaveMagic || Version != TrafficRuntimeSaveVersion) return false;
+	if (Magic != TrafficRuntimeSaveMagic || Version < 1 || Version > TrafficRuntimeSaveVersion) return false;
 	RandomStream.Initialize(RandomCurrent);
 	Reader << WholeMapSimAccumulatorSeconds << SpawnThinkAccumulatorSeconds;
 	Reader << LastAmbientScanTileX << LastAmbientScanTileY << SpotlightChaseTile;
@@ -936,6 +950,7 @@ bool ASimCopterTrafficSystemActor::RestoreRuntimeSaveState(
 	for (ASimCopterGroundAgent* Agent : Existing) Agent->Destroy();
 	PedestrianAgents.Reset();
 	VehicleAgents.Reset();
+	TunnelTransits.Reset();
 	VehicleTrafficStates.Reset();
 	CriminalCars.Reset();
 
@@ -1002,6 +1017,26 @@ bool ASimCopterTrafficSystemActor::RestoreRuntimeSaveState(
 			Vehicle.DeployedOfficer = Cast<ASimCopterGroundAgent>(SavedActorMap.FindRef(OfficerName));
 			Vehicle.DeployedParamedic = Cast<ASimCopterGroundAgent>(SavedActorMap.FindRef(ParamedicName));
 			Vehicle.Marker.Reset();
+		}
+	}
+	if (Version >= 2)
+	{
+		int32 Count = 0;
+		Reader << Count;
+		if (Count < 0 || Count > AgentCount) return false;
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			FName Identity;
+			FTunnelTransit Trip;
+			Reader << Identity << Trip.ExitNode << Trip.ExitRoadNode << Trip.RemainingSeconds << Trip.HeightOffset;
+			Trip.Agent = Cast<ASimCopterGroundAgent>(SavedActorMap.FindRef(Identity));
+			if (!Trip.Agent.IsValid() || !RoadNodes.IsValidIndex(Trip.ExitNode) || !RoadNodes.IsValidIndex(Trip.ExitRoadNode) ||
+				!FMath::IsFinite(Trip.RemainingSeconds) || !FMath::IsFinite(Trip.HeightOffset)) return false;
+			Trip.Agent->SetActorHiddenInGame(true);
+			Trip.Agent->SetActorEnableCollision(false);
+			Trip.Agent->SetActorTickEnabled(false);
+			VehicleAgents.Remove(Trip.Agent);
+			TunnelTransits.Add(Trip);
 		}
 	}
 	if (Reader.IsError() || Reader.Tell() != Reader.TotalSize()) return false;
@@ -3254,6 +3289,11 @@ bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 	LastLoadError.Reset();
 	LastCitySource.Reset();
 	RoadNodes.Reset();
+	for (const FTunnelTransit& Trip : TunnelTransits)
+	{
+		if (Trip.Agent.IsValid()) Trip.Agent->Destroy();
+	}
+	TunnelTransits.Reset();
 	PedestrianNodes.Reset();
 	RoadNodeIndexByTile.Reset();
 	PedestrianNodeIndexByTile.Reset();
@@ -3616,37 +3656,58 @@ bool ASimCopterTrafficSystemActor::TryPlanRoadRoute(
 		return true;
 	}
 
-	// Breadth-first over the road-tile graph. The original searched its coarser
-	// intersection graph with Dijkstra (FUN_004bef30) and every edge there is a whole
-	// road segment; over per-tile nodes with unit edges BFS gives the same shortest path.
+	// FUN_004bef30 uses weighted shortest paths. Price tunnel links by their tile
+	// span, so a long underground connection is not mistaken for a single road tile.
 	TArray<int32> Parent;
 	Parent.Init(INDEX_NONE, RoadNodes.Num());
 	TBitArray<> Visited(false, RoadNodes.Num());
-
-	TArray<int32> Queue;
-	Queue.Reserve(RoadNodes.Num());
-	Queue.Add(Start);
-	Visited[Start] = true;
-
-	int32 Head = 0;
+	TArray<float> Costs;
+	Costs.Init(TNumericLimits<float>::Max(), RoadNodes.Num());
+	Costs[Start] = 0;
+	struct FRouteCandidate { float Cost; int32 Node; };
+	TArray<FRouteCandidate> Queue;
+	const auto Earlier = [](const FRouteCandidate& A, const FRouteCandidate& B) { return A.Cost < B.Cost; };
+	Queue.HeapPush({0, Start}, Earlier);
 	bool bFound = false;
-	while (Head < Queue.Num())
+	while (Queue.Num() > 0)
 	{
-		const int32 Current = Queue[Head++];
+		FRouteCandidate Candidate;
+		Queue.HeapPop(Candidate, Earlier, EAllowShrinking::No);
+		const int32 Current = Candidate.Node;
+		if (Visited[Current]) continue;
+		Visited[Current] = true;
 		if (Current == Goal)
 		{
 			bFound = true;
 			break;
 		}
-		for (const int32 Neighbor : RoadNodes[Current].Neighbors)
+		auto Visit = [&](int32 Neighbor, float Cost)
 		{
 			if (!RoadNodes.IsValidIndex(Neighbor) || Visited[Neighbor])
 			{
-				continue;
+				return;
 			}
-			Visited[Neighbor] = true;
-			Parent[Neighbor] = Current;
-			Queue.Add(Neighbor);
+			const float NewCost = Costs[Current] + Cost;
+			if (NewCost < Costs[Neighbor])
+			{
+				Costs[Neighbor] = NewCost;
+				Parent[Neighbor] = Current;
+				Queue.HeapPush({NewCost, Neighbor}, Earlier);
+			}
+		};
+		for (const int32 Neighbor : RoadNodes[Current].Neighbors) Visit(Neighbor, 1.0f);
+		if (SimCopterTunnel::IsPortal(RoadNodes[Current].BuildingId))
+		{
+			for (const int32 Approach : RoadNodes[Current].Neighbors)
+			{
+				int32 Exit, ExitRoad;
+				if (FindLinkedTunnelExit(Current, Approach, Exit, ExitRoad))
+				{
+					const int32 Tiles = FMath::Abs(RoadNodes[Current].FileX - RoadNodes[Exit].FileX) +
+						FMath::Abs(RoadNodes[Current].FileY - RoadNodes[Exit].FileY);
+					Visit(Exit, float(Tiles));
+				}
+			}
 		}
 	}
 
@@ -4720,6 +4781,7 @@ void ASimCopterTrafficSystemActor::UpdateCriminalCars(const float DeltaSeconds)
 	for (int32 Index = CriminalCars.Num() - 1; Index >= 0; --Index)
 	{
 		ASimCopterGroundAgent* Car = CriminalCars[Index].Get();
+		if (IsInTunnelTransit(Car)) continue;
 		if (Car == nullptr)
 		{
 			CriminalCars.RemoveAt(Index);
@@ -5155,6 +5217,7 @@ void ASimCopterTrafficSystemActor::UpdateOneDispatchVehicle(SimCopterDispatch::E
 	{
 		return;
 	}
+	if (IsInTunnelTransit(Vehicle.Agent.Get())) return;
 	if (!Vehicle.Agent.IsValid())
 	{
 		// The agent was destroyed under us; free the station slot so the service does not
@@ -5743,6 +5806,17 @@ bool ASimCopterTrafficSystemActor::TryGetVehicleRoadSurfaceZ(
 
 	if (const ASimCity2000CityActor* CityActor = GetCityActor())
 	{
+		const int32 RouteTarget = Vehicle.GetRouteTargetNode();
+		const int32 RoutePrevious = Vehicle.GetRoutePrevNode();
+		const int32 Target = RoadNodes.IsValidIndex(RouteTarget) && SimCopterTunnel::IsPortal(RoadNodes[RouteTarget].BuildingId)
+			? RouteTarget : RoutePrevious;
+		if (RoadNodes.IsValidIndex(Target) && SimCopterTunnel::IsPortal(RoadNodes[Target].BuildingId) &&
+			CityActor->TryGetRoadSurfaceWorldZ(RoadNodes[Target].Location, OutSurfaceZ))
+		{
+			// Hold the interior floor all the way behind the cap, even when the vehicle's
+			// centre crosses into the hill tile during its last concealed movement.
+			return true;
+		}
 		if (CityActor->TryGetRoadSurfaceWorldZ(WorldLocation, OutSurfaceZ))
 		{
 			// The cached profile is already the asphalt plane and deliberately excludes bridge
@@ -5799,14 +5873,13 @@ bool ASimCopterTrafficSystemActor::TryGetVehicleRoadSurfaceZ(
 bool ASimCopterTrafficSystemActor::UsesVehicleRoadMeshSurface(uint8 BuildingId)
 {
 	// SCHOOK: FUN_0047c0c0 dispatches 0x1f..0x22 to the four dedicated surface-ramp meshes
-	// RD31..RD34 and 0x3f..0x42 to the raised-span ramp meshes 0x178..0x17b. Their rendered
-	// wedge, not a centre-to-centre graph interpolation, is the authoritative road plane.
+	// RD31..RD34. Their rendered wedge is the authoritative road plane. The hollow
+	// TL63..TL66 portals (0x3f..0x42) use their cached floor and must never trace their roof.
 	// Keep bridge pieces 0x49..0x59 graph-driven: their composite meshes include towers and
 	// supports above/below the straight deck, so a highest-hit trace would warp cars onto them.
 	// Keep 0x43/0x44 out as well; those are power-line-over-road crossings whose wires must not
 	// become drivable.
 	return (BuildingId >= 0x1f && BuildingId <= 0x22) ||
-		(BuildingId >= 0x3f && BuildingId <= 0x42) ||
 		(BuildingId >= 0x5d && BuildingId <= 0x6b);
 }
 
@@ -6118,6 +6191,7 @@ FVector ASimCopterTrafficSystemActor::GetPopulationFocusLocation() const
 
 void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 {
+	UpdateTunnelTransits(DeltaSeconds);
 	const FVector FocusLocation = GetPopulationFocusLocation();
 	PruneAgentArray(VehicleAgents, FocusLocation);
 	PruneAgentArray(PedestrianAgents, FocusLocation);
@@ -6126,6 +6200,23 @@ void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 	{
 		if (ASimCopterGroundAgent* Agent = AgentPtr.Get())
 		{
+			const int32 Target = Agent->GetRouteTargetNode();
+			const int32 Previous = Agent->GetRoutePrevNode();
+			if (RoadNodes.IsValidIndex(Target) && RoadNodes.IsValidIndex(Previous) &&
+				SimCopterTunnel::IsPortal(RoadNodes[Target].BuildingId))
+			{
+				const FVector Inward = (RoadNodes[Target].Location - RoadNodes[Previous].Location).GetSafeNormal2D();
+				if (SimCopterTunnel::IsBehindCap(Agent->GetActorLocation() - RoadNodes[Target].Location,
+					Inward, ActiveTileSize, ActiveTileSize * 0.3f))
+				{
+					if (!BeginTunnelTransit(*Agent, Target, Previous)) Agent->Destroy();
+				}
+				else
+				{
+					Agent->SetMoveTarget(MakeVehicleRouteTargetLocation(RoadNodes, Target, Previous, INDEX_NONE, INDEX_NONE));
+				}
+				continue;
+			}
 			if (!Agent->HasMoveTarget() || Agent->IsNearMoveTarget())
 			{
 				AssignNextTarget(*Agent, RoadNodes);
@@ -6133,6 +6224,10 @@ void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 		}
 	}
 
+	VehicleAgents.RemoveAll([this](const TWeakObjectPtr<ASimCopterGroundAgent>& Agent)
+	{
+		return IsInTunnelTransit(Agent.Get());
+	});
 	SpawnThinkAccumulatorSeconds += DeltaSeconds;
 	if (SpawnThinkAccumulatorSeconds < SpawnThinkIntervalSeconds)
 	{
@@ -6143,7 +6238,7 @@ void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 	SpawnThinkAccumulatorSeconds = 0.0f;
 
 	int32 SpawnAttemptsRemaining = MaxSpawnAttemptsPerThink;
-	while (VehicleAgents.Num() < MaxVehicleAgents && SpawnAttemptsRemaining-- > 0)
+	while (VehicleAgents.Num() + TunnelTransits.Num() < MaxVehicleAgents && SpawnAttemptsRemaining-- > 0)
 	{
 		if (!TrySpawnAgent(true, FocusLocation))
 		{
@@ -6159,6 +6254,120 @@ void ASimCopterTrafficSystemActor::UpdateAgentPool(float DeltaSeconds)
 
 	ActiveVehicleCount = VehicleAgents.Num();
 	ActivePedestrianCount = PedestrianAgents.Num();
+}
+
+bool ASimCopterTrafficSystemActor::IsInTunnelTransit(const ASimCopterGroundAgent* Agent) const
+{
+	return Agent != nullptr && TunnelTransits.ContainsByPredicate(
+		[Agent](const FTunnelTransit& Trip) { return Trip.Agent.Get() == Agent; });
+}
+
+bool ASimCopterTrafficSystemActor::FindLinkedTunnelExit(int32 EntryNode, int32 ApproachNode,
+	int32& OutExitNode, int32& OutRoadNode) const
+{
+	OutExitNode = OutRoadNode = INDEX_NONE;
+	if (!RoadNodes.IsValidIndex(EntryNode) || !RoadNodes.IsValidIndex(ApproachNode)) return false;
+	const auto& Entry = RoadNodes[EntryNode];
+	if (!SimCopterTunnel::IsPortal(Entry.BuildingId)) return false;
+	const auto& Approach = RoadNodes[ApproachNode];
+	const FIntPoint Step(Entry.FileX - Approach.FileX, Entry.FileY - Approach.FileY);
+	if (FMath::Abs(Step.X) + FMath::Abs(Step.Y) != 1 ||
+		(SimCopterTunnel::IsNorthSouth(Entry.BuildingId) ? Step.X != 0 : Step.Y != 0)) return false;
+	for (int32 Distance = 1; Distance < FSimCity2000City::MapSize; ++Distance)
+	{
+		const FIntPoint Tile(Entry.FileX + Step.X * Distance, Entry.FileY + Step.Y * Distance);
+		if (Tile.X < 0 || Tile.Y < 0 || Tile.X >= FSimCity2000City::MapSize || Tile.Y >= FSimCity2000City::MapSize) break;
+		const int32* Candidate = RoadNodeIndexByTile.Find(Tile);
+		if (Candidate == nullptr || !RoadNodes.IsValidIndex(*Candidate)) continue;
+		const auto& Exit = RoadNodes[*Candidate];
+		if (!SimCopterTunnel::IsPortal(Exit.BuildingId)) continue;
+		const int32* Road = RoadNodeIndexByTile.Find(Tile + Step);
+		if (SimCopterTunnel::IsNorthSouth(Entry.BuildingId) != SimCopterTunnel::IsNorthSouth(Exit.BuildingId) ||
+			FMath::Abs(Entry.LocalLocation.Z - Exit.LocalLocation.Z) > ActiveTileSize * 0.05f ||
+			Road == nullptr || !RoadNodes.IsValidIndex(*Road) ||
+			SimCopterTunnel::IsPortal(RoadNodes[*Road].BuildingId) || !Exit.Neighbors.Contains(*Road)) return false;
+		OutExitNode = *Candidate;
+		OutRoadNode = *Road;
+		return true;
+	}
+	return false;
+}
+
+bool ASimCopterTrafficSystemActor::BeginTunnelTransit(ASimCopterGroundAgent& Agent, int32 EntryNode, int32 ApproachNode)
+{
+	if (IsInTunnelTransit(&Agent)) return true;
+	int32 ExitNode, RoadNode;
+	if (!FindLinkedTunnelExit(EntryNode, ApproachNode, ExitNode, RoadNode)) return false;
+	FTunnelTransit& Trip = TunnelTransits.AddDefaulted_GetRef();
+	Trip.Agent = &Agent;
+	Trip.ExitNode = ExitNode;
+	Trip.ExitRoadNode = RoadNode;
+	Trip.HeightOffset = Agent.GetActorLocation().Z - RoadNodes[EntryNode].Location.Z;
+	const int32 Distance = FMath::Abs(RoadNodes[EntryNode].FileX - RoadNodes[ExitNode].FileX) +
+		FMath::Abs(RoadNodes[EntryNode].FileY - RoadNodes[ExitNode].FileY);
+	// Requested approximation: three tiles per second underground. The real actor retains
+	// its appearance, mission identity and dispatch ownership throughout the hidden trip.
+	Trip.RemainingSeconds = SimCopterTunnel::TravelSeconds(Distance);
+	Agent.ClearMoveTarget();
+	Agent.SetActorHiddenInGame(true);
+	Agent.SetActorEnableCollision(false);
+	Agent.SetActorTickEnabled(false);
+	return true;
+}
+
+void ASimCopterTrafficSystemActor::UpdateTunnelTransits(float DeltaSeconds)
+{
+	for (int32 Index = TunnelTransits.Num() - 1; Index >= 0; --Index)
+	{
+		FTunnelTransit& Trip = TunnelTransits[Index];
+		ASimCopterGroundAgent* Agent = Trip.Agent.Get();
+		if (Agent == nullptr || Agent->IsActorBeingDestroyed()) { TunnelTransits.RemoveAtSwap(Index); continue; }
+		Trip.RemainingSeconds -= FMath::Max(0.0f, DeltaSeconds);
+		if (Trip.RemainingSeconds > 0) continue;
+		if (!RoadNodes.IsValidIndex(Trip.ExitNode) || !RoadNodes.IsValidIndex(Trip.ExitRoadNode))
+		{
+			Agent->Destroy();
+			TunnelTransits.RemoveAtSwap(Index);
+			continue;
+		}
+		const FVector Outward = (RoadNodes[Trip.ExitRoadNode].Location - RoadNodes[Trip.ExitNode].Location).GetSafeNormal2D();
+		FVector Position = MakeRoutePointLocation(RoadNodes, Trip.ExitNode, INDEX_NONE, Trip.ExitRoadNode, true) - Outward * (ActiveTileSize * 0.8f);
+		Position.Z = RoadNodes[Trip.ExitNode].Location.Z + Trip.HeightOffset;
+		const bool bExitOccupied = VehicleAgents.ContainsByPredicate([&](const TWeakObjectPtr<ASimCopterGroundAgent>& Other)
+		{
+			return Other.IsValid() && FVector::DistSquared2D(Other->GetActorLocation(), Position) < FMath::Square(ActiveTileSize * 0.4f);
+		});
+		if (bExitOccupied) continue;
+		const int32 Next = ChooseNextRouteNode(RoadNodes, Trip.ExitRoadNode, Trip.ExitNode, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized);
+		Agent->SetActorLocation(Position, false, nullptr, ETeleportType::TeleportPhysics);
+		Agent->SetActorRotation(Outward.Rotation());
+		Agent->SetRouteState(Trip.ExitRoadNode, Trip.ExitNode, Next);
+		Agent->SetMoveTarget(MakeVehicleRouteTargetLocation(RoadNodes, Trip.ExitRoadNode, Trip.ExitNode, INDEX_NONE, Next));
+		Agent->SetActorHiddenInGame(false);
+		Agent->SetActorEnableCollision(true);
+		Agent->SetActorTickEnabled(true);
+		Agent->SetTrafficSpeedScale(1.0f);
+		VehicleAgents.AddUnique(Agent);
+		if (FSimCopterVehicleTrafficState* State = VehicleTrafficStates.Find(TObjectKey<ASimCopterGroundAgent>(Agent)))
+		{
+			State->bInitialized = false;
+			State->BlockedSeconds = 0;
+		}
+		for (auto& Fleet : DispatchVehicles)
+		for (FSimCopterDispatchVehicle& Vehicle : Fleet)
+		{
+			if (Vehicle.Agent.Get() == Agent)
+			{
+				// Finish emerging onto the road before any reroute can send this vehicle
+				// back through the tunnel (its destination may have changed during transit).
+				if (!TryPlanRoadRoute(FIntPoint(RoadNodes[Trip.ExitRoadNode].FileX, RoadNodes[Trip.ExitRoadNode].FileY), Vehicle.DestinationTile, Vehicle.RouteNodes))
+					Vehicle.RouteNodes = {Trip.ExitRoadNode};
+				Vehicle.RouteNodes.Insert(Trip.ExitNode, 0);
+				Vehicle.RouteCursor = 1;
+			}
+		}
+		TunnelTransits.RemoveAtSwap(Index);
+	}
 }
 
 void ASimCopterTrafficSystemActor::PruneAgentArray(TArray<TWeakObjectPtr<ASimCopterGroundAgent>>& Agents, const FVector& FocusLocation)
@@ -8108,7 +8317,9 @@ bool ASimCopterTrafficSystemActor::TryMakeVehicleLaneGuidanceTarget(
 	bOutTraversingDiagonalRoad = DoesVehicleRouteTouchDiagonalRoadTile(TargetIndex, PreviousIndex, NextIndex);
 
 	const FVector SegmentStart = MakeRoutePointLocation(RoadNodes, PreviousIndex, INDEX_NONE, TargetIndex, true);
-	const FVector SegmentEnd = MakeRoutePointLocation(RoadNodes, TargetIndex, PreviousIndex, NextIndex, true);
+	const FVector SegmentEnd = SimCopterTunnel::IsPortal(RoadNodes[TargetIndex].BuildingId)
+		? MakeVehicleRouteTargetLocation(RoadNodes, TargetIndex, PreviousIndex, INDEX_NONE, INDEX_NONE)
+		: MakeRoutePointLocation(RoadNodes, TargetIndex, PreviousIndex, NextIndex, true);
 	FVector Segment = SegmentEnd - SegmentStart;
 	Segment.Z = 0.0f;
 	const float SegmentLength = Segment.Size();
@@ -8838,6 +9049,11 @@ bool ASimCopterTrafficSystemActor::TrySpawnAgent(bool bVehicle, const FVector& F
 		{
 			return false;
 		}
+		if (bVehicle && SimCopterTunnel::IsPortal(Nodes[CandidateNodeIndex].BuildingId))
+		{
+			// Portals consume inbound traffic; do not materialize cars behind their cap.
+			continue;
+		}
 
 		const int32 CandidateNextIndex = bVehicle ? ChooseNextRouteNode(Nodes, CandidateNodeIndex, INDEX_NONE, RandomStream, TrafficAiMode == ESimCopterTrafficAiMode::Modernized) : INDEX_NONE;
 		const int32 CandidateBehaviorClass = bVehicle
@@ -9002,6 +9218,14 @@ FVector ASimCopterTrafficSystemActor::MakeVehicleRouteTargetLocation(
 	int32 ApproachIndex,
 	int32 LookAheadIndex) const
 {
+	if (Nodes.IsValidIndex(TargetIndex) && Nodes.IsValidIndex(PreviousIndex) &&
+		SimCopterTunnel::IsPortal(Nodes[TargetIndex].BuildingId))
+	{
+		const FVector Inward = (Nodes[TargetIndex].Location - Nodes[PreviousIndex].Location).GetSafeNormal2D();
+		FVector Target = MakeRoutePointLocation(Nodes, TargetIndex, PreviousIndex, INDEX_NONE, true);
+		Target += Inward * (ActiveTileSize * 1.1f);
+		return Target;
+	}
 	const int32 BaseLookAheadIndex = Nodes.IsValidIndex(TargetIndex) && IsAdjacentRoadCornerTile(Nodes[TargetIndex].BuildingId)
 		? LookAheadIndex
 		: INDEX_NONE;

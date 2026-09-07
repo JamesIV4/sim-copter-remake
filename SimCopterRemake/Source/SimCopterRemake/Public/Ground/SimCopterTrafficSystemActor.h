@@ -777,6 +777,20 @@ protected:
 	int32 ActivePedestrianCount = 0;
 
 private:
+	friend class FSimCopterTunnelTransitTest;
+	struct FTunnelTransit
+	{
+		TWeakObjectPtr<ASimCopterGroundAgent> Agent;
+		int32 ExitNode = INDEX_NONE;
+		int32 ExitRoadNode = INDEX_NONE;
+		float RemainingSeconds = 0.0f;
+		float HeightOffset = 0.0f;
+	};
+	TArray<FTunnelTransit> TunnelTransits;
+	bool IsInTunnelTransit(const ASimCopterGroundAgent* Agent) const;
+	bool FindLinkedTunnelExit(int32 EntryNode, int32 ApproachNode, int32& OutExitNode, int32& OutRoadNode) const;
+	bool BeginTunnelTransit(ASimCopterGroundAgent& Agent, int32 EntryNode, int32 ApproachNode);
+	void UpdateTunnelTransits(float DeltaSeconds);
 	friend class FSimCopterParamedicCabinHandoffTest;
 	friend class FSimCopterPoliceRoofBoardingTest;
 	TArray<FSimCopterGroundRouteNode> RoadNodes;

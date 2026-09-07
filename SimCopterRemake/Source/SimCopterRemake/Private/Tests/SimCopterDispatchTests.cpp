@@ -317,8 +317,8 @@ bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameter
 
 	// FUN_0047c0c0 maps these four pieces to dedicated raised-span ramp meshes 0x178..0x17b.
 	// Sampling those meshes is what keeps both vehicle Z and pitch on the visible wedge.
-	TestTrue(TEXT("0x3f begins the raised-span ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x3f));
-	TestTrue(TEXT("0x42 ends the raised-span ramp range"), FTraffic::UsesVehicleRoadMeshSurface(0x42));
+	TestFalse(TEXT("0x3f tunnel cannot use a highest-mesh trace"), FTraffic::UsesVehicleRoadMeshSurface(0x3f));
+	TestFalse(TEXT("0x42 tunnel cannot use a highest-mesh trace"), FTraffic::UsesVehicleRoadMeshSurface(0x42));
 
 	// Bridges use the road graph's straight deck height. Their combined meshes include towers
 	// and supports which a vertical highest-hit trace must never treat as driving surfaces.
@@ -338,8 +338,8 @@ bool FSimCopterVehicleRoadMeshSurfaceRulesTest::RunTest(const FString& Parameter
 	// The graph itself owns the safe, flat top across composite bridge meshes. Both the raised
 	// cap and bridge band sit one ALTM step above their tile origin; adjacent surface ramps and
 	// rail bridges are different families.
-	TestTrue(TEXT("0x3f raised cap starts the one-step road deck"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x3f));
-	TestTrue(TEXT("0x42 raised cap ends the one-step road deck"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x42));
+	TestFalse(TEXT("0x3f tunnel floor has no raised-deck offset"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x3f));
+	TestFalse(TEXT("0x42 tunnel floor has no raised-deck offset"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x42));
 	TestTrue(TEXT("0x49 starts the one-step road bridge band"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x49));
 	TestTrue(TEXT("0x59 ends the one-step road bridge band"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x59));
 	TestFalse(TEXT("surface ramp is not a flat raised cap"), ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(0x1f));

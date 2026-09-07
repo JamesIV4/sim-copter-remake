@@ -719,15 +719,53 @@ EBhavStepResult FSimCopterBehaviorVM::Tick(
 
 		// Advance along the true/false edge, popping returns (port of FUN_004ce8f0).
 		bool bEdge = Result == EOpResult::True;
+		bool bReturnedFromChild = false;
 		for (;;)
 		{
 			FSimCopterPersonContext::FFrame& Top = Context.Stack.Last();
 			const FBhavProgram* TopProgram = Model.FindProgram(Top.ProgramId);
 			const FBhavRecord* TopRecord = TopProgram != nullptr && TopProgram->Records.IsValidIndex(Top.RecordIndex)
 				? &TopProgram->Records[Top.RecordIndex] : nullptr;
-			const int8 Next = TopRecord != nullptr
+			// FUN_004ce8f0: after popping, advance the parent only when its current
+			// token is a BHAV call (>0xff). A primitive underneath a pushed reaction
+			// was interrupted, not completed. In particular, a cop returning to its
+			// car on 1150[18] must resume op 38 after a bump's 916/914 finishes,
+			// rather than taking the walk's success edge to message/despawn in the street.
+			if (bReturnedFromChild && TopRecord != nullptr && TopRecord->Token < 0x100)
+			{
+				break;
+			}
+			int8 Next = TopRecord != nullptr
 				? (bEdge ? TopRecord->TrueNext : TopRecord->FalseNext)
 				: int8(-1);
+			// Deliberate return-to-car improvement over shipped people.df: after the
+			// 100-step return walk fails, 1150 (officer) and 1060 (arrested criminal)
+			// wait in Idle-20 while the helicopter remains nearby, but never retry the
+			// car. Reconnect the end of that delay to each program's police-car search.
+			// Keep the delay, fresh 100-step budget, and actual-arrival retirement path.
+			if (TopRecord != nullptr && TopRecord->Token == 38 && !bEdge)
+			{
+				// Retry a known car even if the player has already flown away.
+				if (Top.ProgramId == 1150 && Top.RecordIndex == 18 && Next == 12)
+				{
+					Next = 19;
+				}
+				else if (Top.ProgramId == 1060 && Top.RecordIndex == 13 && Next == 7)
+				{
+					Next = 11;
+				}
+			}
+			if (TopRecord != nullptr && TopRecord->Token == 1102)
+			{
+				if (Top.ProgramId == 1150 && Top.RecordIndex == 19 && Next == 12)
+				{
+					Next = 16;
+				}
+				else if (Top.ProgramId == 1060 && Top.RecordIndex == 11 && Next == 7)
+				{
+					Next = 10;
+				}
+			}
 			if (Next >= 0)
 			{
 				Top.RecordIndex = Next;
@@ -735,6 +773,7 @@ EBhavStepResult FSimCopterBehaviorVM::Tick(
 			}
 			bEdge = Next == -2; // -2 = return TRUE, -1 (and anything else) = return FALSE
 			Context.Stack.Pop();
+			bReturnedFromChild = true;
 			if (Context.Stack.Num() == 0)
 			{
 				return EBhavStepResult::Completed;

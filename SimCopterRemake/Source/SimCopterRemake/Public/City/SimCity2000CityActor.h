@@ -115,7 +115,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "SimCopter|City")
 	float GetEffectiveTerrainHeightScale() const;
 
-	// The raised road caps (TL63..TL66) and road bridge band place their driving plane exactly
+	// The road bridge band places its driving plane exactly
 	// one original terrain-height step above the owning tile's terrain origin. Kept public so the
 	// city markings and traffic graph use the same decoded surface rule.
 	static bool IsOneStepRaisedRoadDeckTile(uint8 BuildingId);

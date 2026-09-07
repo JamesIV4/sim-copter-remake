@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "City/SimCity2000CityActor.h"
+#include "City/SimCopterTunnel.h"
 
 #include "Algo/Count.h"
 #include "City/SimCopterAirport.h"
@@ -2590,8 +2591,7 @@ void AppendRoadMarkingsForTile(
 	// SCHOOK: FUN_004c82c0 returns the placed object's road top, not the tmap below it. The asphalt
 	// plane extracted from that same placed object is therefore the surface to draw on, and it is
 	// what carries the dashes up a ramp instead of leaving them on the terrain wedge beneath it.
-	// The TL63..TL66 raised caps keep an explicit fallback: their top face is one altitude step
-	// above TileOrigin, which is where the dashes belong if no plane could be extracted.
+	// Tunnel markings share the interior floor profile; the roof is not a road surface.
 	FRoadMarkingSurface Surface;
 	Surface.RoadSurface = RoadSurface;
 	Surface.TerrainZOffset = TerrainZOffset;
@@ -2906,13 +2906,14 @@ bool TryBuildPlacedRoadSurfaceProfile(
 		: TileOrigin;
 	const FVector2D ReferenceXY(LineReference.X, LineReference.Y);
 	const float MaxCandidateZ = LinePointCount > 0 ? LineReference.Z + 1.0f : TNumericLimits<float>::Max();
+	const bool bTunnel = MeshObject.Header.Id >= 0x178 && MeshObject.Header.Id <= 0x17b;
 	bool bFoundSurface = false;
 	float BestZ = -TNumericLimits<float>::Max();
 	FVector2D BestGradient = FVector2D::ZeroVector;
 
 	// Face type 15 / palette 48 is the authored asphalt. Select its highest plane below the yellow
-	// line. The upper bound rejects BR86's overhead slab while retaining the deck directly beneath
-	// its marking; TL63..TL66 have no line and simply select their highest asphalt face.
+	// line. The upper bound rejects BR86's overhead slab. TL63..TL66 have no authored line;
+	// their floor is at the object origin, so exclude the equally asphalt-colored roof.
 	for (const FMaxisMeshFace& Face : MeshObject.Faces)
 	{
 		if (Face.FaceType != 15 || Face.MaterialIndex != 48 || Face.VertexIndices.Num() < 3)
@@ -2944,6 +2945,7 @@ bool TryBuildPlacedRoadSurfaceProfile(
 			FVector2D CandidateGradient = FVector2D::ZeroVector;
 			if (TryEvaluateTrianglePlaneAtXY(A, B, C, ReferenceXY, CandidateZ, CandidateGradient) &&
 				CandidateZ <= MaxCandidateZ &&
+				(!bTunnel || CandidateZ <= TileOrigin.Z + 1.0f) &&
 				CandidateZ > BestZ)
 			{
 				BestZ = CandidateZ;
@@ -3760,6 +3762,47 @@ void ASimCity2000CityActor::RebuildCity()
 
 	// SimCopter selects each ground tile's TILED1 atlas cell from a per-tile terrain type code
 	// (the type IS the cell index). Reproduce that grid once for the whole map.
+	struct FTunnelPlacement
+	{
+		float FloorZ = 0;
+		FVector Inward;
+		FBox Bounds = FBox(ForceInit);
+	};
+	TMap<int32, FTunnelPlacement> TunnelPlacements;
+	TArray<float> TunnelTerrainCorners;
+	TunnelTerrainCorners.Init(-TNumericLimits<float>::Max(), ConditionedTerrainCorners.Num());
+	if (bRenderOriginalMeshes && bOriginalMeshLibraryLoaded)
+	{
+		constexpr int32 N = FSimCity2000City::MapSize;
+		for (int32 Y = 0; Y < N; ++Y)
+		for (int32 X = 0; X < N; ++X)
+		{
+			const uint8 Id = City.Tiles[Y * N + X].Building;
+			if (!SimCopterTunnel::IsPortal(Id)) continue;
+			const FMaxisMeshObject* Mesh = MeshLibrary.FindObjectByObjectId(0x178 + Id - 0x3f);
+			if (Mesh == nullptr) continue;
+			const FIntPoint Axis = SimCopterTunnel::IsNorthSouth(Id) ? FIntPoint(0, 1) : FIntPoint(1, 0);
+			const FIntPoint Minus(FMath::Clamp(X - Axis.X, 0, N - 1), FMath::Clamp(Y - Axis.Y, 0, N - 1));
+			const FIntPoint Plus(FMath::Clamp(X + Axis.X, 0, N - 1), FMath::Clamp(Y + Axis.Y, 0, N - 1));
+			const auto& A = City.Tiles[Minus.Y * N + Minus.X];
+			const auto& B = City.Tiles[Plus.Y * N + Plus.X];
+			const FIntPoint Mouth = SimCopterTunnel::EntranceOffset(Id, A.Building, B.Building,
+				GetTerrainSurfaceZ(A, EffectiveTerrainHeightScale), GetTerrainSurfaceZ(B, EffectiveTerrainHeightScale));
+			const FIntPoint Entrance(FMath::Clamp(X + Mouth.X, 0, N - 1), FMath::Clamp(Y + Mouth.Y, 0, N - 1));
+			FTunnelPlacement& Portal = TunnelPlacements.Add(Y * N + X);
+			Portal.FloorZ = GetTerrainSurfaceZ(City.Tiles[Entrance.Y * N + Entrance.X], EffectiveTerrainHeightScale) + OriginalMeshZOffset;
+			Portal.Inward = SimCopterTunnel::InwardDirection(Mouth);
+			for (const FMaxisMeshVertex& V : Mesh->Vertices)
+				Portal.Bounds += ConvertPlacedCityMeshVertex(V, FVector::ZeroVector, OriginalMeshUnitsPerCentimeter, OriginalMeshScale);
+			// Only the back edge meets the roof. The mouth stays unrestricted above,
+			// and the approach road's entire terrain tile is flat at its normal road level.
+			const auto& EntranceTile = City.Tiles[Entrance.Y * N + Entrance.X];
+			SimCopterTunnel::ApplyTerrainConstraints(ConditionedTerrainCorners, TunnelTerrainCorners,
+				N + 1, FIntPoint(X, Y), Mouth, Portal.FloorZ + Portal.Bounds.Max.Z,
+				SimCopterTunnel::IsRoad(EntranceTile.Building) && !SimCopterTunnel::IsPortal(EntranceTile.Building),
+				int16(GetTerrainHeightMapSample(EntranceTile)));
+		}
+	}
 	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City, ConditionedTerrainCorners);
 
 	// SCHOOK: SampleWaterGameplaySurface 0x004ae7a0
@@ -4362,7 +4405,7 @@ void ASimCity2000CityActor::RebuildCity()
 				|| bRubbleTile
 				|| (Tile.Building >= 0x0E && Tile.Building <= 0x1C);
 
-			if (bRenderTerrain)
+			if (bRenderTerrain && !TunnelPlacements.Contains(TileIndex))
 			{
 				const uint8 TerrainType = TerrainTypeGrid[TileIndex];
 				const bool bUseHighPageForTile = TerrainType >= SimCopterHighTerrainTypeBase && bUseHighTerrainAtlas;
@@ -4371,13 +4414,19 @@ void ASimCity2000CityActor::RebuildCity()
 					: static_cast<int32>(TerrainType & 0x3f);
 				// Water is always a low-page (TILED1) cell, so it never conflicts with the high page.
 				const bool bWaterTile = bAnimateWater && IsWaterTerrainBase(TerrainType);
-				AppendTerrainTile(
-					ConditionedTerrainCorners,
+				auto SurfaceCorner = [&](int32 GX, int32 GY)
+				{
+					const float OriginalZ = GetTerrainGridVertexZ(ConditionedTerrainCorners, GX, GY, EffectiveTerrainHeightScale);
+					const float TunnelZ = TunnelTerrainCorners[GY * (FSimCity2000City::MapSize + 1) + GX];
+					return !bRoadLikeTile && !bBuildingLikeTile && TunnelZ > -TNumericLimits<float>::Max() ? TunnelZ : OriginalZ;
+				};
+				AppendTerrainTileWithHeights(
 					FileX,
 					FileY,
 					TileSize,
-					EffectiveTerrainHeightScale,
 					HalfMapSize,
+					SurfaceCorner(FileX, FileY), SurfaceCorner(FileX + 1, FileY),
+					SurfaceCorner(FileX + 1, FileY + 1), SurfaceCorner(FileX, FileY + 1),
 					TerrainAtlasTileIndex,
 					bWaterTile ? TerrainWaterSection : (bUseHighPageForTile ? TerrainPage0DSection : TerrainPage14Section));
 				if (bWaterTile)
@@ -4495,7 +4544,30 @@ void ASimCity2000CityActor::RebuildCity()
 								static_cast<float>(FileY) + static_cast<float>(Footprint.Y) * 0.5f,
 								EffectiveTerrainHeightScale)
 							: GetAverageTerrainSurfaceZ(City, FileX, FileY, Footprint.X, Footprint.Y, EffectiveTerrainHeightScale);
-						const FVector TileOrigin(MeshWorldX, MeshWorldY, MeshTerrainTopZ + OriginalMeshZOffset);
+						const FTunnelPlacement* Tunnel = TunnelPlacements.Find(TileIndex);
+						const FVector TileOrigin(MeshWorldX, MeshWorldY, Tunnel != nullptr ? Tunnel->FloorZ : MeshTerrainTopZ + OriginalMeshZOffset);
+						if (Tunnel != nullptr)
+						{
+							// A black, double-sided rear wall hides the deliberately finite portal.
+							const FBox& B = Tunnel->Bounds;
+							FVector Center = B.GetCenter();
+							const bool AlongX = FMath::Abs(Tunnel->Inward.X) > 0.5f;
+							if (AlongX) Center.X = Tunnel->Inward.X > 0 ? B.Max.X : B.Min.X;
+							else Center.Y = Tunnel->Inward.Y > 0 ? B.Max.Y : B.Min.Y;
+							const FVector Side = AlongX ? FVector(0, B.GetExtent().Y, 0) : FVector(B.GetExtent().X, 0, 0);
+							const FVector Up(0, 0, B.GetExtent().Z);
+							const int32 Start = RoadMarkingSection.Vertices.Num();
+							for (const FVector& V : {Center - Side - Up, Center + Side - Up, Center + Side + Up, Center - Side + Up})
+							{
+								RoadMarkingSection.Vertices.Add(TileOrigin + V);
+								RoadMarkingSection.Normals.Add(-Tunnel->Inward);
+								RoadMarkingSection.UVs.Add(FVector2D::ZeroVector);
+								RoadMarkingSection.VertexColors.Add(FLinearColor::Black);
+								RoadMarkingSection.Tangents.Add(FProcMeshTangent(Side.GetSafeNormal(), false));
+							}
+							for (int32 I : {0, 1, 2, 0, 2, 3, 2, 1, 0, 3, 2, 0}) RoadMarkingSection.Triangles.Add(Start + I);
+							RoadMarkingSection.TriangleCount += 4;
+						}
 
 						if (IsVehicleRoadSurfaceTile(Tile.Building) && RoadSurfaceProfiles.IsValidIndex(TileIndex))
 						{
@@ -4706,7 +4778,7 @@ void ASimCity2000CityActor::RebuildCity()
 								TileOrigin,
 								OriginalMeshUnitsPerCentimeter,
 								OriginalMeshScale,
-								bRenderOriginalMeshBackfaces,
+								Tunnel != nullptr || bRenderOriginalMeshBackfaces,
 								bOriginalTexturesLoaded,
 								AvailableOriginalTextureKeys,
 								AvailableBakedAtlasPageIds,
@@ -5475,11 +5547,9 @@ float ASimCity2000CityActor::GetEffectiveTerrainHeightScale() const
 
 bool ASimCity2000CityActor::IsOneStepRaisedRoadDeckTile(const uint8 BuildingId)
 {
-	// SCHOOK: FUN_0047c0c0 places TL63..TL66 for 0x3f..0x42 and the road bridge objects for
-	// 0x49..0x59. Their drivable top is 0x20 original tmap units (one ALTM step) above the
-	// scene-cell origin; FUN_004c82c0 returns that object top to ground movers.
-	return (BuildingId >= 0x3f && BuildingId <= 0x42) ||
-		(BuildingId >= 0x49 && BuildingId <= 0x59);
+	// Road bridges have raised decks. TL63..TL66 are hollow tunnel portals: their
+	// traffic belongs on the floor, not on the one-step-high roof.
+	return BuildingId >= 0x49 && BuildingId <= 0x59;
 }
 
 bool ASimCity2000CityActor::TryGetRoadSurfaceWorldZ(
@@ -6148,3 +6218,69 @@ bool ASimCity2000CityActor::IsBuildingLikeTile(uint8 BuildingId)
 {
 	return BuildingId >= 0x70;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+#include "Misc/AutomationTest.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterTunnelGeometryTest,
+	"SimCopter.Traffic.TunnelGeometry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterTunnelGeometryTest::RunTest(const FString& Parameters)
+{
+	FMaxisMeshFile Meshes;
+	FString Error;
+	const FString Path = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(),
+		TEXT("../Reference/SimCopterOriginalGame/geo/sim3d1.max")));
+	if (!TestTrue(TEXT("Read original tunnel geometry"), FMaxisMeshReader::LoadMeshFileFromFile(Path, Meshes, Error))) return false;
+	TArray<int16> Corners;
+	Corners.Init(64, 129 * 129); // terrain above the road must not dictate the lines
+	for (uint8 Id = 0x3f; Id <= 0x42; ++Id)
+	{
+		const FMaxisMeshObject* Mesh = Meshes.FindObjectById(0x178 + Id - 0x3f);
+		if (!TestNotNull(TEXT("Portal mesh is present"), Mesh)) continue;
+		const FVector Origin(0, 0, 200);
+		FSimCopterRoadSurfaceProfile Profile;
+		TestTrue(TEXT("Portal has an interior road plane"), TryBuildPlacedRoadSurfaceProfile(*Mesh,
+			Origin, 2621.44f, 0.25f, Profile));
+		TestTrue(TEXT("Cars use the floor, not the roof"), FMath::IsNearlyEqual(Profile.ReferenceZ, 200.0f, 0.1f));
+		TestTrue(TEXT("Tunnel floor is level"), Profile.Gradient.IsNearlyZero());
+		FOriginalMeshSectionData Lines;
+		AppendRoadMarkingsForTile(Lines, Corners, Id, 64, 64, 400, 25600, 200,
+			200, &Profile, 0, 1, 4, FLinearColor::Yellow);
+		TestTrue(TEXT("Tunnel contains road markings"), Lines.Vertices.Num() > 0);
+		for (const FVector& V : Lines.Vertices)
+			TestTrue(TEXT("Every marking vertex lies on interior floor"), FMath::IsNearlyEqual(V.Z, 201.0f, 0.1f));
+		for (const bool NegativeEntrance : {false, true})
+		{
+			const FIntPoint Entrance = SimCopterTunnel::EntranceOffset(Id,
+				NegativeEntrance ? 0x1d : 0, NegativeEntrance ? 0 : 0x1d, 200, 200);
+			const FVector Inward = SimCopterTunnel::InwardDirection(Entrance);
+			TestTrue(TEXT("Portal travel follows its authored open axis"),
+				SimCopterTunnel::IsNorthSouth(Id) ? Inward.X == 0 : Inward.Y == 0);
+			TestFalse(TEXT("Car remains visible inside the portal"), SimCopterTunnel::IsBehindCap(Inward * 190, Inward, 400, 120));
+			TestTrue(TEXT("Car disappears only once its whole body clears the rear cap"), SimCopterTunnel::IsBehindCap(Inward * 321, Inward, 400, 120));
+			TestFalse(TEXT("Approaching the mouth cannot despawn a car"), SimCopterTunnel::IsBehindCap(-Inward * 321, Inward, 400, 120));
+			TArray<int16> GroundCorners;
+			GroundCorners.Init(96, 9 * 9);
+			TArray<float> RoofCorners;
+			const float Unclamped = -TNumericLimits<float>::Max();
+			RoofCorners.Init(Unclamped, 9 * 9);
+			const FIntPoint PortalTile(4, 4);
+			SimCopterTunnel::ApplyTerrainConstraints(GroundCorners, RoofCorners, 9,
+				PortalTile, Entrance, 400, true, 32);
+			TestEqual(TEXT("Only the two back corners clamp to the roof"),
+				int32(Algo::CountIf(RoofCorners, [Unclamped](float Z) { return Z != Unclamped; })), 2);
+			for (int32 DY = 0; DY <= 1; ++DY)
+			for (int32 DX = 0; DX <= 1; ++DX)
+			{
+				const float TowardMouth = (DX - 0.5f) * Entrance.X + (DY - 0.5f) * Entrance.Y;
+				TestEqual(TEXT("Front edge has no roof clamp; back edge meets roof"),
+					RoofCorners[(4 + DY) * 9 + 4 + DX], TowardMouth > 0 ? Unclamped : 400.0f);
+				TestEqual(TEXT("All approach-road corners are flat at road height"),
+					int32(GroundCorners[(4 + Entrance.Y + DY) * 9 + 4 + Entrance.X + DX]), 32);
+			}
+		}
+	}
+	return true;
+}
+#endif

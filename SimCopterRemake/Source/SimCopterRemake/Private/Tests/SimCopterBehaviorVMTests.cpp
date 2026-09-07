@@ -993,4 +993,118 @@ bool FSimCopterBehaviorVMHospitalMedicRetireTest::RunTest(const FString& Paramet
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterPoliceReturnInterruptTest,
+	"SimCopter.Behavior.VM.PoliceReturnInterrupt",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterPoliceReturnInterruptTest::RunTest(const FString& Parameters)
+{
+	FPeopleBehaviorModel Model;
+	FString Error;
+	const FString Root = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	if (!TestTrue(TEXT("Load original cop and bump programs"), FSimCopterPeopleReader::LoadFromFile(
+		FSimCopterPeopleReader::ResolvePeoplePath(Root), Model, Error))) return false;
+	bool bExercisedNestedBump = false;
+	for (uint16 Seed = 1; Seed <= 16; ++Seed)
+	{
+		FSimCopterPersonContext Context;
+		Context.ResetToState(8);
+		Context.Lfsr = Seed;
+		Context.Stack.Reset();
+		Context.Stack.Add({1150, 18, {100}}); // walking to police car after arrest
+		Context.bHasSelection = true;
+		Context.SelectedLocation = FVector(1000, 0, 0);
+		FStubBehaviorWorld World;
+		World.StepResult = ESimCopterBehaviorStepResult::Moving;
+		TestTrue(TEXT("Cop accepts bump reaction during return"), Context.PushReactionProgram(916));
+		if (Seed == 1)
+		{
+			// Exercise 916's nested-914 arm explicitly; low LFSR seeds need not choose it.
+			Context.Stack.Last().RecordIndex = 4;
+			Context.Attributes[EBhavAttr::ReactionDepth] = 1;
+		}
+		EBhavStepResult Result = EBhavStepResult::Ran;
+		for (int32 Tick = 0; Tick < 1000 && Context.Stack.Num() > 1 && Result == EBhavStepResult::Ran; ++Tick)
+		{
+			Result = FSimCopterBehaviorVM::Tick(Context, Model, World);
+			bExercisedNestedBump |= Context.Stack.ContainsByPredicate(
+				[](const FSimCopterPersonContext::FFrame& Frame) { return Frame.ProgramId == 914; });
+		}
+		TestEqual(TEXT("Bump returns to unfinished movement"), int32(Result), int32(EBhavStepResult::Ran));
+		TestFalse(TEXT("Bump completion cannot despawn returning officer"), Context.bRequestDespawn);
+		if (TestEqual(TEXT("Reaction and ordinary helper calls unwind"), Context.Stack.Num(), 1))
+		{
+			TestEqual(TEXT("Officer still executes return program"), Context.Stack.Last().ProgramId, 1150);
+			TestEqual(TEXT("Interrupted walk remains current instruction"), Context.Stack.Last().RecordIndex, 18);
+			TestEqual(TEXT("Only resumed movement consumes its walk budget"), int32(Context.Stack.Last().Locals[0]), 99);
+		}
+		TestEqual(TEXT("Walk really resumes after the interruption"), World.StepTowardCalls, 1);
+		TestTrue(TEXT("Return destination survives bump helpers"), Context.SelectedLocation == FVector(1000, 0, 0));
+		World.StepResult = ESimCopterBehaviorStepResult::Arrived;
+		Result = FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Actual arrival reaches original retirement"), int32(Result), int32(EBhavStepResult::Stopped));
+		TestTrue(TEXT("Only arrival permits officer retirement"), Context.bRequestDespawn);
+	}
+	TestTrue(TEXT("Includes nested 916 -> 914 bump return"), bExercisedNestedBump);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterPoliceReturnBudgetTest,
+	"SimCopter.Behavior.VM.PoliceReturnBudget",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterPoliceReturnBudgetTest::RunTest(const FString& Parameters)
+{
+	FPeopleBehaviorModel Model;
+	FString Error;
+	const FString Root = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	if (!TestTrue(TEXT("Load original return programs"), FSimCopterPeopleReader::LoadFromFile(
+		FSimCopterPeopleReader::ResolvePeoplePath(Root), Model, Error))) return false;
+	class FReturnWorld : public FStubBehaviorWorld
+	{
+	public:
+		int32 HelicopterProbes = 0;
+		int32 CarProbes = 0;
+		virtual bool SelectObjectOfClass(FSimCopterPersonContext& Context, int32 ObjectClass, int32& OutDistance) override
+		{
+			HelicopterProbes += ObjectClass == 2;
+			CarProbes += ObjectClass == 11;
+			Context.bHasSelection = ObjectClass == 11; // player has flown away; car remains
+			OutDistance = 1;
+			return Context.bHasSelection;
+		}
+	};
+	for (const FIntPoint Site : {FIntPoint(1150, 17), FIntPoint(1060, 12)})
+	{
+		FSimCopterPersonContext Context;
+		Context.ResetToState(Site.X == 1150 ? 8 : 10);
+		Context.Stack.Reset();
+		Context.Stack.Add({Site.X, Site.Y, {}});
+		Context.bHasSelection = true;
+		FReturnWorld World;
+		World.StepResult = ESimCopterBehaviorStepResult::Moving;
+		for (int32 Tick = 0; Tick < 1000; ++Tick)
+		{
+			if (FSimCopterBehaviorVM::Tick(Context, Model, World) != EBhavStepResult::Ran) break;
+		}
+		TestTrue(TEXT("Unobstructed return continues beyond the 100-step budget"), World.StepTowardCalls > 100);
+		TestEqual(TEXT("Return retries do not depend on the helicopter staying nearby"), World.HelicopterProbes, 0);
+		TestTrue(TEXT("Both return programs repeatedly reacquire the police car"), World.CarProbes > 1);
+		TestFalse(TEXT("Budget exhaustion cannot retire either character"), Context.bRequestDespawn);
+		const int32 ProbesBeforeBlock = World.CarProbes;
+		World.StepResult = ESimCopterBehaviorStepResult::Blocked;
+		for (int32 Tick = 0; Tick < 200; ++Tick)
+		{
+			if (FSimCopterBehaviorVM::Tick(Context, Model, World) != EBhavStepResult::Ran) break;
+		}
+		TestTrue(TEXT("A temporarily blocked return also retries after the delay"), World.CarProbes > ProbesBeforeBlock);
+		TestFalse(TEXT("Temporary blockage cannot retire either character"), Context.bRequestDespawn);
+		World.StepResult = ESimCopterBehaviorStepResult::Arrived;
+		EBhavStepResult Result = EBhavStepResult::Ran;
+		for (int32 Tick = 0; Tick < 100 && Result == EBhavStepResult::Ran; ++Tick)
+			Result = FSimCopterBehaviorVM::Tick(Context, Model, World);
+		TestEqual(TEXT("Actual arrival completes the return"), int32(Result), int32(EBhavStepResult::Stopped));
+		TestTrue(TEXT("Arrival still permits original retirement"), Context.bRequestDespawn);
+	}
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
