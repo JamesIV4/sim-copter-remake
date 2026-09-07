@@ -42,6 +42,7 @@
 /re-agent-progress.tmp
 
 # Build output and temporary files
+/Tools/.figure-editor-venv/
 *.claude
 *.codex
 *.log

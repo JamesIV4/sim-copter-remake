@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterPopulationFigure.h"
+#include "Ground/SimCopterFigureAdjustments.h"
 
 #include "Formats/MaxisMeshReader.h"
 #include "Misc/Paths.h"
@@ -464,6 +465,7 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 	}
 
 	MeshComponent->ClearAllMeshSections();
+	const auto* FigureAdjustments = FSimCopterFigureAdjustments::Get().Figures.Find(Figure.Name);
 
 	// Model units -> world, with the global chunkiness dial folded in. Every primitive below is
 	// sized from the part's own ARCP dimensions through this.
@@ -484,6 +486,11 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 		for (int32 PartIndex = 0; PartIndex < Clip.PartCount; ++PartIndex)
 		{
 			const FPrivAnimPart& Part = Figure.Parts[PartIndex];
+			if (FigureAdjustments != nullptr)
+			{
+				const auto* Adjustment = FigureAdjustments->Find(Part.Name);
+				if (Adjustment != nullptr && !Adjustment->bVisible) continue;
+			}
 			if (Part.Type == EPrivAnimPartType::None || (Part.LodMask & Params.LodBit) == 0)
 			{
 				continue;
@@ -501,6 +508,8 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 			const float PainterBias = float(PartIndex) * PainterBiasStep;
 			const float RoundUnits = FMath::Max(Part.Dims.X, MinSizeUnits);
 			const float StrokeHalf = FMath::Max(Part.Dims.Y, MinSizeUnits) * 0.5f * SizeScale + PainterBias;
+			const int32 BodyStart = Body.Vertices.Num();
+			const int32 HeadStart = Head.Vertices.Num();
 
 			switch (Part.Type)
 			{
@@ -544,6 +553,36 @@ bool FSimCopterPopulationFigure::BuildClipSections(
 				// Unknown draw type - keep the segment visible as a stroke.
 				AppendStroke(Body, A, B, StrokeHalf, StrokeHalf, Color, DepthRatio);
 				break;
+			}
+
+			// Remake-only manual art correction, after the decoded primitive has been built.
+			// Scale in the primitive's own basis, without moving child/skeleton endpoints.
+			if (FigureAdjustments != nullptr)
+			{
+				if (const auto* Adjustment = FigureAdjustments->Find(Part.Name))
+				{
+					const bool bRoundOrPixel = Part.Type == EPrivAnimPartType::HeadSprite
+						|| Part.Type == EPrivAnimPartType::DotStyle0 || Part.Type == EPrivAnimPartType::DotStyle1
+						|| Part.Type == EPrivAnimPartType::DotStyle2 || Part.Type == EPrivAnimPartType::Pixel;
+					const FSimCopterFigurePieceAxes Axes = bRoundOrPixel ? FSimCopterFigurePieceAxes()
+						: FSimCopterFigurePieceAxes::Stroke(A, B, DepthRatio);
+					auto Apply = [&](FMeshArrays& Mesh, int32 Start)
+					{
+						if (Start == Mesh.Vertices.Num()) return;
+						FBox Bounds(ForceInit);
+						for (int32 I = Start; I < Mesh.Vertices.Num(); ++I) Bounds += Axes.ToLocal(Mesh.Vertices[I]);
+						const FVector Center = Axes.ToFigure(Bounds.GetCenter());
+						for (int32 I = Start; I < Mesh.Vertices.Num(); ++I)
+						{
+							Mesh.Vertices[I] = Adjustment->Apply(Mesh.Vertices[I], Center, Calibration.ScaleCmPerUnit, Axes);
+							Mesh.Normals[I] = Axes.ScaleNormal(Mesh.Normals[I], Adjustment->Scale);
+							const FVector Tangent(Mesh.Tangents[I].TangentX);
+							Mesh.Tangents[I] = FProcMeshTangent(Axes.ToFigure(Axes.ToLocal(Tangent) * Adjustment->Scale).GetSafeNormal(), false);
+						}
+					};
+					Apply(Body, BodyStart);
+					Apply(Head, HeadStart);
+				}
 			}
 		}
 

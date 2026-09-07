@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "figures": {
+    "pilot": {
+      "New ": {
+        "offset": [
+          2.5,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          0.5,
+          1.5
+        ],
+        "visible": true
+      }
+    }
+  }
+}
