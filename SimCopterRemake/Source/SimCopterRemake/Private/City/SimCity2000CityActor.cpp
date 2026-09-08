@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "City/SimCity2000CityActor.h"
+#include "Game/SimCopterLoadingSubsystem.h"
 #include "City/SimCopterTunnel.h"
 
 #include "Algo/Count.h"
@@ -3505,6 +3506,7 @@ void ASimCity2000CityActor::BeginPlay()
 
 void ASimCity2000CityActor::RebuildCity()
 {
+	USimCopterLoadingSubsystem::SetStage(this, 1);
 	WaterTextureFramesPerSecond = SanitizeWaterTextureFramesPerSecond(WaterTextureFramesPerSecond);
 	LastLoadError.Reset();
 	LastLoadedCityName.Reset();
@@ -3803,6 +3805,7 @@ void ASimCity2000CityActor::RebuildCity()
 				int16(GetTerrainHeightMapSample(EntranceTile)));
 		}
 	}
+	USimCopterLoadingSubsystem::SetStage(this, 5);
 	const TArray<uint8> TerrainTypeGrid = BuildTerrainTextureTypeGrid(City, ConditionedTerrainCorners);
 
 	// SCHOOK: SampleWaterGameplaySurface 0x004ae7a0

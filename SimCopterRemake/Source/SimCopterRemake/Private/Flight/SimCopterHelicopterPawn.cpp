@@ -5837,6 +5837,13 @@ void ASimCopterHelicopterPawn::SetCameraMode(const ESimCopterCameraMode NewMode)
 // NOT a port - the original has no replay. See Docs/memory/simcopter-replay-clips.md.
 // ---------------------------------------------------------------------------------------------
 
+void ASimCopterHelicopterPawn::ResetStartupCamera()
+{
+	bCameraViewSmoothingInitialized = false;
+	UpdateCameraAnchorFromVisibleBody();
+	UpdateCamera(0.0f);
+}
+
 void ASimCopterHelicopterPawn::UpdateCameraForReplay(const float DeltaSeconds)
 {
 	UpdateCamera(DeltaSeconds);

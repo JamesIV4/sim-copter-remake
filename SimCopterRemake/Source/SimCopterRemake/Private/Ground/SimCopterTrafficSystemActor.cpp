@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Ground/SimCopterTrafficSystemActor.h"
+#include "Game/SimCopterLoadingSubsystem.h"
 #include "City/SimCopterTunnel.h"
 #include "Algo/Count.h"
 
@@ -3286,6 +3287,7 @@ ASimCity2000CityActor* ASimCopterTrafficSystemActor::ResolveSourceCityActor() co
 
 bool ASimCopterTrafficSystemActor::RebuildSpawnData()
 {
+	USimCopterLoadingSubsystem::SetStage(this, 9);
 	LastLoadError.Reset();
 	LastCitySource.Reset();
 	RoadNodes.Reset();

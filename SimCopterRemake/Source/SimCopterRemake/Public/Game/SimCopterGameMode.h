@@ -21,6 +21,7 @@ public:
 	ASimCopterGameMode();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// The Settings panel's "Leave City" (help/English/38ref.htm): back to the main menu.
 	UFUNCTION(Exec)
@@ -70,6 +71,10 @@ protected:
 	TSubclassOf<ASimCopterHangar> HangarClass;
 
 private:
+	friend class FSimCopterStartupCameraTest;
+	void FinishStartupCamera();
+	bool bStartupWorldHidden = false;
+
 	TWeakObjectPtr<ASimCopterMissionSystemActor> MissionSystemActor;
 
 	// Caches (and, when needed, finds) the map's mission system actor; logs and returns null when

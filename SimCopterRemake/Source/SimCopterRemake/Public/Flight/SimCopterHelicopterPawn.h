@@ -285,6 +285,7 @@ public:
 	 * view would stay wherever the aircraft was when the clip was opened.
 	 */
 	void UpdateCameraForReplay(float DeltaSeconds);
+	void ResetStartupCamera();
 
 	/**
 	 * Puts the winch where the clip says it was and re-anchors the rope, bucket and harness to the

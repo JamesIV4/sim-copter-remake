@@ -1,6 +1,11 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Game/SimCopterGameMode.h"
+#include "Game/SimCopterLoadingSubsystem.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Engine/GameViewportClient.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Misc/ScopeExit.h"
 
 #include "City/SimCity2000CityActor.h"
 #include "City/SimCopterAirport.h"
@@ -30,6 +35,17 @@ ASimCopterGameMode::ASimCopterGameMode()
 
 void ASimCopterGameMode::BeginPlay()
 {
+	if (GetGameInstance() != nullptr)
+	{
+		GetGameInstance()->GetSubsystem<USimCopterLoadingSubsystem>()->Show();
+	}
+	// Remake presentation: airport placement and save restoration run on the next tick.
+	// Never expose the temporary map spawn or the camera's journey from it.
+	if (GetWorld() != nullptr && GetWorld()->GetGameViewport() != nullptr)
+	{
+		GetWorld()->GetGameViewport()->bDisableWorldRendering = true;
+		bStartupWorldHidden = true;
+	}
 	Super::BeginPlay();
 
 	if (GetWorld() == nullptr)
@@ -71,6 +87,9 @@ void ASimCopterGameMode::BeginPlay()
 
 void ASimCopterGameMode::PlaceSessionOnAirportPads()
 {
+	USimCopterLoadingSubsystem::SetStage(this, 14);
+	// Also release the presentation gate for maps without airport/aircraft placement.
+	ON_SCOPE_EXIT { FinishStartupCamera(); };
 	UWorld* World = GetWorld();
 	if (World == nullptr)
 	{
@@ -167,6 +186,56 @@ void ASimCopterGameMode::PlaceSessionOnAirportPads()
 	// demolition all happen first; only then may version-2 BOMB state put the aircraft/player,
 	// mission people, fires and mutable city objects back on their saved frame.
 	ApplyPendingAircraftRestores(World);
+}
+
+void ASimCopterGameMode::FinishStartupCamera()
+{
+	UWorld* World = GetWorld();
+	APlayerController* Controller = World != nullptr ? UGameplayStatics::GetPlayerController(World, 0) : nullptr;
+	APawn* Pawn = Controller != nullptr ? Controller->GetPawn() : nullptr;
+	if (Pawn != nullptr)
+	{
+		if (ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(Pawn))
+		{
+			Helicopter->ResetStartupCamera();
+		}
+		TInlineComponentArray<USpringArmComponent*> Arms(Pawn);
+		for (USpringArmComponent* Arm : Arms)
+		{
+			// A teleport alone leaves SpringArm's PreviousDesiredLoc at the old spawn.
+			const bool bLocationLag = Arm->bEnableCameraLag;
+			const bool bRotationLag = Arm->bEnableCameraRotationLag;
+			Arm->bEnableCameraLag = false;
+			Arm->bEnableCameraRotationLag = false;
+			Arm->TickComponent(0.0f, LEVELTICK_All, nullptr);
+			Arm->bEnableCameraLag = bLocationLag;
+			Arm->bEnableCameraRotationLag = bRotationLag;
+		}
+		Controller->SetViewTargetWithBlend(Pawn, 0.0f);
+		if (Controller->PlayerCameraManager != nullptr)
+		{
+			Controller->PlayerCameraManager->SetGameCameraCutThisFrame();
+			Controller->PlayerCameraManager->UpdateCamera(0.0f);
+		}
+	}
+	if (bStartupWorldHidden && World != nullptr && World->GetGameViewport() != nullptr)
+	{
+		World->GetGameViewport()->bDisableWorldRendering = false;
+	}
+	bStartupWorldHidden = false;
+	if (GetGameInstance() != nullptr)
+	{
+		GetGameInstance()->GetSubsystem<USimCopterLoadingSubsystem>()->Finish();
+	}
+}
+
+void ASimCopterGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (bStartupWorldHidden && GetWorld() != nullptr && GetWorld()->GetGameViewport() != nullptr)
+	{
+		GetWorld()->GetGameViewport()->bDisableWorldRendering = false;
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 void ASimCopterGameMode::ApplyPendingAircraftRestores(UWorld* World)
