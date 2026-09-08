@@ -3,6 +3,7 @@
 #include "City/SimCity2000CityActor.h"
 #include "Game/SimCopterLoadingSubsystem.h"
 #include "City/SimCopterTunnel.h"
+#include "City/SimCopterTreeGrounding.h"
 
 #include "Algo/Count.h"
 #include "City/SimCopterAirport.h"
@@ -4249,6 +4250,32 @@ void ASimCity2000CityActor::RebuildCity()
 	const bool bUseInstancedNaturalObjects =
 		bRenderOriginalMeshes && bOriginalMeshLibraryLoaded && bInstanceNaturalObjectMeshes;
 	TMap<int32, int32> NaturalObjectComponentIndices;
+	// CPU alpha data is required even when the materials use baked GPU textures.
+	if (bOriginalMeshLibraryLoaded && OriginalTextures.Images.IsEmpty())
+	{
+		if (const TArray<FColor>* Palette = MeshLibrary.GetSharedColorMap())
+		{
+			FString TreeTextureError;
+			FMaxisTextureReader::LoadCompositeBitmapFromFile(
+				FPaths::Combine(ResolveOriginalGameRoot(), TEXT("BMP/SIM3D.BMP")), *Palette, OriginalTextures, TreeTextureError);
+		}
+	}
+	struct FTreeModel
+	{
+		FMaxisMeshObject Mesh;
+		TArray<FVector> BottomSamples;
+		int32 Key = 0;
+	};
+	TMap<int32, TArray<FTreeModel>> TreeModels;
+	struct FPendingTreeGrounding
+	{
+		FVector Origin;
+		TArray<FVector> Samples;
+		int32 ComponentIndex = INDEX_NONE;
+		int32 InstanceIndex = INDEX_NONE;
+		TMap<int32, FIntPoint> VertexRanges;
+	};
+	TArray<FPendingTreeGrounding> PendingTreeGrounding;
 	auto ResolveNaturalObjectComponent =
 		[this, &NaturalObjectComponentIndices, &ResolveBuildingSectionMaterial](
 			int32 ObjectId,
@@ -4707,7 +4734,73 @@ void ASimCity2000CityActor::RebuildCity()
 						// Trees and the park instance too, but by their own path: no building record,
 						// so a placement is nothing but an AddInstance.
 						int32 NaturalComponentIndex = INDEX_NONE;
-						if (bUseInstancedNaturalObjects && bNaturalObjectTile && NaturalObjectId != INDEX_NONE)
+						const bool bGroundTrees = bNaturalObjectTile && !IsOriginalParkTile(Tile.Building) && !OriginalTextures.Images.IsEmpty();
+						if (bGroundTrees)
+						{
+							// TREE7..12 contain multiple trees. Each face becomes one cached crossed
+							// pair, so neighbours can follow different slopes without splitting a tree.
+							if (!TreeModels.Contains(NaturalObjectId))
+							{
+								TArray<FTreeModel>& Models = TreeModels.Add(NaturalObjectId);
+								for (int32 FaceIndex = 0; FaceIndex < MeshObject->Faces.Num(); ++FaceIndex)
+								{
+									const FMaxisMeshFace& Face = MeshObject->Faces[FaceIndex];
+									if (!IsMaxisSpriteCardFace(Face) || !MeshObject->Vertices.IsValidIndex(Face.VertexIndices[0]) ||
+										!MeshObject->Vertices.IsValidIndex(Face.VertexIndices[1])) continue;
+									FTreeModel& Model = Models.AddDefaulted_GetRef();
+									Model.Key = 0x100000 + NaturalObjectId * 32 + FaceIndex;
+									Model.Mesh = *MeshObject;
+									Model.Mesh.Faces = {Face};
+									const FMaxisMeshVertex& Center = MeshObject->Vertices[Face.VertexIndices[0]];
+									const FMaxisMeshVertex& Corner = MeshObject->Vertices[Face.VertexIndices[1]];
+									FVector LocalCenter = FMaxisMeshReader::ConvertMaxisVertexToUnreal(Center, OriginalMeshUnitsPerCentimeter) * OriginalMeshScale;
+									LocalCenter.X *= -1;
+									LocalCenter.Y *= -1;
+									if (const FMaxisTextureImage* Image = OriginalTextures.FindImage(Face.MaterialIndex))
+									{
+										Model.BottomSamples = SimCopterTreeGrounding::BuildBottomSamples(*Image, LocalCenter,
+											FMath::Abs(Corner.X - Center.X) / OriginalMeshUnitsPerCentimeter * OriginalMeshScale,
+											FMath::Abs(Corner.Y - Center.Y) / OriginalMeshUnitsPerCentimeter * OriginalMeshScale);
+									}
+								}
+							}
+							for (const FTreeModel& Model : TreeModels[NaturalObjectId])
+							{
+								FVector TreeOrigin = TileOrigin;
+								FPendingTreeGrounding& Pending = PendingTreeGrounding.AddDefaulted_GetRef();
+								Pending.Origin = TreeOrigin;
+								Pending.Samples = Model.BottomSamples;
+								const int32 Component = bUseInstancedNaturalObjects ? ResolveNaturalObjectComponent(
+									Model.Key, Model.Mesh, ColorMap, bRenderOriginalMeshBackfaces, bOriginalTexturesLoaded,
+									AvailableOriginalTextureKeys, AvailableBakedAtlasPageIds, AvailableBakedDirectImageIds,
+									OriginalTexturedFaceFallbackColor, OriginalMeshUnitsPerCentimeter, OriginalMeshScale,
+									bEnableOriginalMeshCollision, true) : INDEX_NONE;
+								if (Component != INDEX_NONE)
+								{
+									// The solved height lives in the instance transform for the life of the city.
+									Pending.ComponentIndex = Component;
+									Pending.InstanceIndex = NaturalObjectInstanceComponents[Component]->AddInstance(FTransform(TreeOrigin), false);
+									++LastNaturalObjectInstanceCount;
+								}
+								else
+								{
+									TMap<int32, int32> Starts;
+									for (const auto& Section : OriginalMeshSections) Starts.Add(Section.Key, Section.Value.Vertices.Num());
+									OriginalMeshTriangleCount += AppendMaxisMeshObject(Model.Mesh, ColorMap, TreeOrigin,
+										OriginalMeshUnitsPerCentimeter, OriginalMeshScale, bRenderOriginalMeshBackfaces,
+										bOriginalTexturesLoaded, AvailableOriginalTextureKeys, AvailableBakedAtlasPageIds,
+										AvailableBakedDirectImageIds, OriginalTexturedFaceFallbackColor, bBuildVectorLines,
+										PrimaryRoadFaceFilter, OriginalMeshSections, LastOriginalTexturedTriangleCount);
+									for (const auto& Section : OriginalMeshSections)
+									{
+										const int32 Start = Starts.FindRef(Section.Key);
+										if (Section.Value.Vertices.Num() > Start)
+											Pending.VertexRanges.Add(Section.Key, FIntPoint(Start, Section.Value.Vertices.Num()));
+									}
+								}
+							}
+						}
+						if (!bGroundTrees && bUseInstancedNaturalObjects && bNaturalObjectTile && NaturalObjectId != INDEX_NONE)
 						{
 							NaturalComponentIndex = ResolveNaturalObjectComponent(
 								NaturalObjectId,
@@ -4737,7 +4830,11 @@ void ASimCity2000CityActor::RebuildCity()
 							PlacedComponentIndex = ResolveBuildingModelComponent(ModelKey, *MeshObject, ColorMap);
 						}
 
-						if (NaturalComponentIndex != INDEX_NONE)
+						if (bGroundTrees)
+						{
+							++LastOriginalMeshTileCount;
+						}
+						else if (NaturalComponentIndex != INDEX_NONE)
 						{
 							NaturalObjectInstanceComponents[NaturalComponentIndex]->AddInstance(
 								FTransform(TileOrigin), /*bWorldSpace*/ false);
@@ -5121,6 +5218,8 @@ void ASimCity2000CityActor::RebuildCity()
 	}
 
 	int32 TerrainMeshSectionIndex = 0;
+	const bool bTerrainAsyncCooking = TerrainMeshComponent->bUseAsyncCooking;
+	TerrainMeshComponent->bUseAsyncCooking = false; // load-time grounding needs completed collision
 	auto CreateTerrainSurfaceSection = [&](const FOriginalMeshSectionData& TerrainSection, UMaterialInterface* SurfaceMaterial, UTexture2D* SurfaceTexture)
 	{
 		if (TerrainSection.Vertices.Num() == 0)
@@ -5300,6 +5399,27 @@ void ASimCity2000CityActor::RebuildCity()
 			TerrainWaterSection.Tangents,
 			bEnableTerrainCollision);
 	}
+
+	// Terrain sections and their synchronous collision cook now exist. Cache one
+	// engine-derived offset per tree before revealing the city; never trace in Tick.
+	for (const FPendingTreeGrounding& Pending : PendingTreeGrounding)
+	{
+		float Offset = 0;
+		if (!SimCopterTreeGrounding::TracePlacementOffset(*TerrainMeshComponent, Pending.Samples, Pending.Origin, Offset)) continue;
+		if (Pending.ComponentIndex != INDEX_NONE)
+		{
+			NaturalObjectInstanceComponents[Pending.ComponentIndex]->UpdateInstanceTransform(
+				Pending.InstanceIndex, FTransform(Pending.Origin + FVector(0, 0, Offset)), false, false, true);
+		}
+		else
+		{
+			for (const auto& Range : Pending.VertexRanges)
+				for (int32 Vertex = Range.Value.X; Vertex < Range.Value.Y; ++Vertex)
+					OriginalMeshSections[Range.Key].Vertices[Vertex].Z += Offset;
+		}
+	}
+	for (UInstancedStaticMeshComponent* Component : NaturalObjectInstanceComponents) Component->MarkRenderStateDirty();
+	TerrainMeshComponent->bUseAsyncCooking = bTerrainAsyncCooking;
 
 	if (RoadMarkingSection.Vertices.Num() > 0)
 	{
