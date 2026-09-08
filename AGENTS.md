@@ -39,6 +39,17 @@ The script ends in `pause`, so feed it empty stdin or it hangs. PowerShell 5.1 r
 which is why the redirect lives inside the `cmd /c` string. A clean build is ~60 s and ends with
 `Result: Succeeded`. Engine: `C:\GameDev\UE_5.8`. Details in `Docs/memory/build-and-run.md`.
 
+**In a workspace-write agent sandbox, run the wrapper with `sandbox_permissions:
+"require_escalated"` on the FIRST build invocation.** Use the normal tool approval mechanism;
+do not run a sandboxed build first just to discover the same permission failure. UE 5.8's
+UnrealBuildTool rotates `%LOCALAPPDATA%\UnrealBuildTool\Trace.uba` before its exception handler
+and before parsing log options. The sandbox denies that write, causing an unhandled
+`UnauthorizedAccessException` and exit code `-532462766` before compilation. Builds also use
+user-level Unreal caches and `%ProgramData%\Epic\UnrealBuildAccelerator`. This is a build-process
+permission requirement, not a broken .NET installation or a C++ error. Do not reinstall .NET,
+delete the user's trace history, or weaken the workspace sandbox to fix it. See
+[Build troubleshooting](Docs/BuildTroubleshooting.md) for the verified diagnosis.
+
 ## 3. Testing
 
 Automation tests live in `Source/SimCopterRemake/Private/Tests/` (20 files) and are named

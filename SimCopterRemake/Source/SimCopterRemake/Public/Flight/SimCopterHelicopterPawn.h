@@ -1139,10 +1139,10 @@ protected:
 	float PassengerDropProbeDepthCm = 1800.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
-	float PassengerDropSideOffsetCm = 175.0f;
+	float PassengerDropSideOffsetCm = 75.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
-	float PassengerDropForwardOffsetCm = 35.0f;
+	float PassengerDropForwardOffsetCm = 20.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
 	float PassengerDropVerticalOffsetCm = 55.0f;

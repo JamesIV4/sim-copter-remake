@@ -3068,9 +3068,11 @@ FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex)
 		? AirframeBounds.GetCenter()
 		: FVector::ZeroVector;
 
-	// Place on the left side 50 cm to the left of the midpoint of the chopper frame,
+	// FUN_004c6360 leaves released riders at their carrier's position. Keep the remake's
+	// small visual offset close to the cabin so it is easy to follow somebody stepping out.
+	// Place on the left side 35 cm to the left of the midpoint of the chopper frame,
 	// at the same vertical position as the helicopter frame's midpoint. Do NOT test for ground.
-	const FVector DropLocal = FVector(MidpointLocal.X, MidpointLocal.Y - 50.0f, MidpointLocal.Z);
+	const FVector DropLocal = FVector(MidpointLocal.X, MidpointLocal.Y - 35.0f, MidpointLocal.Z);
 
 	return GetActorLocation() +
 		YawFrame.GetUnitAxis(EAxis::X) * DropLocal.X +
@@ -3126,7 +3128,7 @@ FVector ASimCopterHelicopterPawn::GetPassengerAirDropWorldLocation(int32 SlotInd
 
 	return GetActorLocation() +
 		YawFrame.GetUnitAxis(EAxis::Y) * (PassengerDropSideOffsetCm * SlotSide) -
-		YawFrame.GetUnitAxis(EAxis::X) * (PassengerDropForwardOffsetCm + float(SideIndex) * 32.0f) -
+		YawFrame.GetUnitAxis(EAxis::X) * (PassengerDropForwardOffsetCm + float(SideIndex) * 16.0f) -
 		FVector::UpVector * PassengerDropVerticalOffsetCm;
 }
 
