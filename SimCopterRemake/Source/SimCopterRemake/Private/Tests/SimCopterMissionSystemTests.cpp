@@ -9,6 +9,10 @@
 #include "Missions/SimCopterMissionSystemActor.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
+#include "Engine/World.h"
+#include "Ground/SimCopterGroundAgent.h"
+#include "Formats/SimCity2000Reader.h"
+#include "Formats/SimCopterPeopleReader.h"
 
 using namespace SimCopterMissions;
 
@@ -169,6 +173,96 @@ int32 CountActiveMissionsOfType(const FSimCopterMissionSystem& System, int32 Typ
 	}
 	return Count;
 }
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterSafePassengerLandingTest, "SimCopter.Missions.SafePassengerLanding",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterSafePassengerLandingTest::RunTest(const FString& Parameters)
+{
+	TSharedPtr<FPeopleBehaviorModel> Model = MakeShared<FPeopleBehaviorModel>();
+	FString Error;
+	const FString Root = FPaths::ConvertRelativePathToFull(FPaths::Combine(FPaths::ProjectDir(), TEXT("../Reference/SimCopterOriginalGame")));
+	if (!TestTrue(TEXT("Load passenger behavior"), FSimCopterPeopleReader::LoadFromFile(
+		FSimCopterPeopleReader::ResolvePeoplePath(Root), *Model, Error))) return false;
+	const UWorld::InitializationValues Init = UWorld::InitializationValues()
+		.AllowAudioPlayback(false).CreatePhysicsScene(false).CreateNavigation(false).CreateAISystem(false);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, false, NAME_None, nullptr, true, ERHIFeatureLevel::Num, &Init);
+	ASimCopterTrafficSystemActor* Traffic = World->SpawnActor<ASimCopterTrafficSystemActor>();
+	Traffic->PeopleTileClasses.Init(7, FSimCity2000City::TileCount);
+	Traffic->TileCenterWorldZ.Init(0, FSimCity2000City::TileCount);
+	Traffic->WaterTileFlags.Init(0, FSimCity2000City::TileCount);
+	Traffic->XbldTileIds.Init(0x1d, FSimCity2000City::TileCount);
+	Traffic->ActiveTileSize = 400;
+	ASimCopterMissionSystemActor* Missions = World->SpawnActor<ASimCopterMissionSystemActor>();
+	FSimCopterTestMissionWorld MissionWorld;
+	Missions->MissionSystem.Initialize(&MissionWorld, 1);
+	auto CreatePerson = [&](int32 State, int32 EventId, const FIntPoint& Tile)
+	{
+		ASimCopterGroundAgent* Person = World->SpawnActor<ASimCopterGroundAgent>();
+		Person->SetOwner(Traffic);
+		Person->InitialPersonState = State;
+		Person->MissionEventId = EventId;
+		Person->BehaviorModel = Model;
+		Person->bBehaviorActive = true;
+		Person->BehaviorContext.ResetToState(State);
+		Person->BehaviorHomeTile = FIntPoint(10, 10);
+		Person->SetMissionPickupCreditAwarded(true);
+		Person->SetMissionPickupCounted(false); // count was returned when dropped from the cabin
+		Person->SetActorLocation(FVector((Tile.X - 64) * 400 + 200, -(Tile.Y - 64) * 400 - 200, Person->GetCapsuleHalfHeightCm()));
+		Traffic->PedestrianAgents.Add(Person);
+		return Person;
+	};
+	for (const bool AtDestination : {false, true})
+	{
+		const int32 Event = Missions->MissionSystem.CreateEventAt(10, 10, TYPE_Transport);
+		const auto* Record = Missions->MissionSystem.FindRecord(Event);
+		if (!TestNotNull(TEXT("Transport event exists"), Record)) continue;
+		FIntPoint Landing(Record->SecondaryX, Record->SecondaryY);
+		if (!AtDestination) Landing.X += Landing.X >= 5 ? -5 : 5;
+		ASimCopterGroundAgent* Person = CreatePerson(4, Event, Landing);
+		Person->BeginPassengerFall(Event, 200);
+		Person->FinishPassengerFall(10);
+		TestEqual(TEXT("Only transport within destination range completes"), Person->HasMissionResolutionReported(), AtDestination);
+		TestTrue(TEXT("Safely landed passenger behavior resumes"), Person->IsBehaviorActive());
+		if (!AtDestination)
+		{
+			TestEqual(TEXT("Undelivered transport restarts boarding program"), Person->BehaviorContext.Stack[0].ProgramId, 750);
+			TestEqual(TEXT("Undelivered transport keeps mission identity"), Person->MissionEventId, Event);
+			TestFalse(TEXT("Undelivered passenger is not counted aboard"), Person->IsMissionPickupCounted());
+		}
+		else
+		{
+			TestEqual(TEXT("Exactly one passenger delivered"), Missions->MissionSystem.FindRecord(Event)->TransportDelivered, 1);
+			TestEqual(TEXT("Safe landing restores pickup count once"), Missions->MissionSystem.FindRecord(Event)->VictimsPickedUp, 1);
+			TestFalse(TEXT("Landing cannot credit delivery twice"), Missions->TryCompleteSafelyDroppedPassenger(Person));
+		}
+	}
+	for (const bool OnHomeTile : {true, false})
+	{
+		const int32 Event = Missions->MissionSystem.CreateEventAt(10, 10, TYPE_RooftopRescue);
+		if (!TestTrue(TEXT("Rooftop rescue event exists"), Event != INDEX_NONE)) continue;
+		ASimCopterGroundAgent* Person = CreatePerson(2, Event, FIntPoint(OnHomeTile ? 10 : 11, 10));
+		Person->BeginPassengerFall(Event, 200);
+		Person->FinishPassengerFall(10);
+		TestEqual(TEXT("Roof rescue delivered only away from pickup tile"), Person->HasMissionResolutionReported(), !OnHomeTile);
+		if (OnHomeTile) TestTrue(TEXT("Original rescue home tile survives safe drop"), Person->IsAtBehaviorHomeTile());
+	}
+	const int32 MedicalEvent = Missions->MissionSystem.CreateEventAt(12, 10, TYPE_Medevac);
+	ASimCopterGroundAgent* Patient = CreatePerson(6, MedicalEvent, FIntPoint(12, 10));
+	Patient->BehaviorContext.Attributes[EBhavAttr::MedevacHealth] = 37;
+	Patient->BeginPassengerFall(MedicalEvent, 200);
+	Patient->FinishPassengerFall(10);
+	TestTrue(TEXT("Dropped patient's medical behavior resumes"), Patient->IsBehaviorActive());
+	TestEqual(TEXT("Existing patient health is preserved"), int32(Patient->GetBehaviorAttribute(EBhavAttr::MedevacHealth)), 37);
+	TestFalse(TEXT("Dropping a patient does not deliver them"), Patient->HasMissionResolutionReported());
+	ASimCopterGroundAgent* Medic = CreatePerson(5, INDEX_NONE, FIntPoint(12, 10));
+	TestTrue(TEXT("Paramedic can find the safely dropped patient"), Traffic->FindNearestBehaviorPerson(*Medic, -2, 6) == Patient);
+	Medic->BehaviorContext.SelectedObject = Patient;
+	ISimCopterBehaviorWorld& MedicActions = *Medic;
+	TestTrue(TEXT("Paramedic can pick up that same patient"), MedicActions.PutSelectedPersonOnMe(Medic->BehaviorContext));
+	TestTrue(TEXT("Patient is carried by medic"), Patient->GetBehaviorCarrier() == Medic);
+	World->DestroyWorld(false);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterMissionSystemPRNGTest, "SimCopter.Missions.PRNGParity", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

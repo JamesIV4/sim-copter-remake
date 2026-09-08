@@ -777,6 +777,7 @@ protected:
 	int32 ActivePedestrianCount = 0;
 
 private:
+	friend class FSimCopterSafePassengerLandingTest;
 	friend class FSimCopterTunnelTransitTest;
 	struct FTunnelTransit
 	{

@@ -185,6 +185,8 @@ public:
 	// counters.
 	bool NotifyMissionPersonBoarded(ASimCopterGroundAgent* Person);
 	bool NotifyMissionPersonDelivered(ASimCopterGroundAgent* Person);
+	/** Evaluate a surviving seat-window drop at its actual landing point. Patients remain for medics. */
+	bool TryCompleteSafelyDroppedPassenger(ASimCopterGroundAgent* Person);
 	bool NotifyMissionPersonDied(ASimCopterGroundAgent* Person);
 	// FUN_004c9bc0 accepts an ordinary passenger's release only within six original units of
 	// terrain. The remake's rendered roofs are walkable surfaces too, so using the generic walk
@@ -452,6 +454,7 @@ public:
 	static bool IsHelicopterSettledForAlight(const ASimCopterHelicopterPawn& Helicopter);
 
 private:
+	friend class FSimCopterSafePassengerLandingTest;
 	UPROPERTY(EditInstanceOnly, Category = "SimCopter|Traffic")
 	TObjectPtr<ASimCopterTrafficSystemActor> SourceTrafficSystem;
 

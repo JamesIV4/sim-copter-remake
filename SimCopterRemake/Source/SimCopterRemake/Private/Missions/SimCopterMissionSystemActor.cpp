@@ -2331,6 +2331,54 @@ bool ASimCopterMissionSystemActor::NotifyMissionPersonDied(ASimCopterGroundAgent
 	return true;
 }
 
+bool ASimCopterMissionSystemActor::TryCompleteSafelyDroppedPassenger(ASimCopterGroundAgent* Person)
+{
+	if (Person == nullptr || Person->HasMissionResolutionReported() || Person->IsMissionPatientDead() ||
+		Person->HasClaimedPassengerSeat() || Person->GetBehaviorCarrier() != nullptr ||
+		!Person->HasMissionPickupCreditAwarded()) return false;
+	const auto* Record = MissionSystem.FindRecord(Person->MissionEventId);
+	if (Record == nullptr || !Record->bActive) return false;
+	const ESimCopterMissionPassengerKind Kind = Person->GetMissionPassengerKind();
+	// A dropped patient is still a state-6 medical casualty, not a delivered passenger.
+	// BHAV 262/263 and the existing paramedic interaction service own that handoff.
+	if (Kind == ESimCopterMissionPassengerKind::Medevac) return false;
+	const FVector Feet = Person->GetActorLocation() - FVector(0, 0, Person->GetCapsuleHalfHeightCm());
+	if (!IsPassengerDeliveryLocationAllowed(Kind, Feet)) return false;
+	if (Kind == ESimCopterMissionPassengerKind::Rescue &&
+		Person->GetBehaviorAttribute(EBhavAttr::State) == 2 && Person->IsAtBehaviorHomeTile()) return false;
+	if (Kind == ESimCopterMissionPassengerKind::Transport)
+	{
+		int32 X, Y;
+		const auto* Traffic = ResolveTrafficSystem();
+		// BHAV 292 rec[3]: destination selection within four tiles (Chebyshev range).
+		if (Traffic == nullptr || !Traffic->TryGetPeopleTileCoordinateAtWorldLocation(Feet, X, Y) ||
+			!IsValidMissionTile(Record->SecondaryX, Record->SecondaryY) ||
+			FMath::Max(FMath::Abs(X - Record->SecondaryX), FMath::Abs(Y - Record->SecondaryY)) > 4) return false;
+	}
+	// The drop returned the onboard count immediately. A safe delivery restores that count
+	// silently, then uses the same idempotent delivery action as an ordinary cabin exit.
+	const bool bRestoreCount = !Person->IsMissionPickupCounted();
+	if (bRestoreCount)
+	{
+		MissionSystem.AdjustVictimsPickedUp(Person->MissionEventId, 1);
+		Person->SetMissionPickupCounted(true);
+	}
+	if (!NotifyMissionPersonDelivered(Person))
+	{
+		if (bRestoreCount)
+		{
+			MissionSystem.AdjustVictimsPickedUp(Person->MissionEventId, -1);
+			Person->SetMissionPickupCounted(false);
+		}
+		return false;
+	}
+	Person->MissionEventId = INDEX_NONE;
+	Person->InitialPersonState = 0;
+	Person->ClearMissionPose();
+	Person->ResumeNormalPedestrianBehavior();
+	return true;
+}
+
 void ASimCopterMissionSystemActor::NotifyPassengerDroppedFromHelicopter(
 	int32 EventId,
 	ESimCopterMissionPassengerKind Kind,

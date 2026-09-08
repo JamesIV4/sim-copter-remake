@@ -7443,15 +7443,25 @@ void ASimCopterGroundAgent::FinishPassengerFall(float FallDistanceCm)
 {
 	const int32 SourceEventId = PassengerFallSourceEventId;
 	const bool bInjuredByFall = FallDistanceCm >= PassengerFallInjuryDistanceCm;
+	const bool bWasPatient = GetMissionPassengerKind() == ESimCopterMissionPassengerKind::Medevac || InitialPersonState == 6;
 	bPassengerFallActive = false;
 	bPassengerFallStarted = false;
 	PassengerFallSourceEventId = INDEX_NONE;
 
 	ClearForcedPedestrianFigureClip();
-	if (bInjuredByFall)
+	if (SourceEventId != INDEX_NONE) MissionEventId = SourceEventId;
+	if (bMissionPatientDead)
+	{
+		SetMissionDeadPose();
+		return;
+	}
+	// BeginPassengerFall suspended the VM. Resume its context rather than restarting
+	// spawn initialization, which would overwrite a roof survivor's original home tile.
+	ResumeSuspendedPedestrianBehavior();
+	if (bInjuredByFall || bWasPatient)
 	{
 		SetMissionInjuredPose();
-		if (InitialPersonState != 6)
+		if (!bWasPatient)
 		{
 			if (UWorld* World = GetWorld())
 			{
@@ -7463,18 +7473,18 @@ void ASimCopterGroundAgent::FinishPassengerFall(float FallDistanceCm)
 			}
 		}
 	}
-	else if (InitialPersonState == 6)
-	{
-		SetMissionInjuredPose();
-	}
 	else
 	{
-		if (SourceEventId != INDEX_NONE)
-		{
-			MissionEventId = SourceEventId;
-		}
 		ClearMissionPose();
-		ResumeNormalPedestrianBehavior();
+		if (ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
+			UGameplayStatics::GetActorOfClass(GetWorld(), ASimCopterMissionSystemActor::StaticClass())))
+		{
+			if (Missions->TryCompleteSafelyDroppedPassenger(this)) return;
+		}
+		// Away from a valid delivery point, re-enter the passenger's pickup program.
+		// Preserve mission identity, original home tile, health and first-pickup credit.
+		BehaviorContext.ClearSelection();
+		BehaviorContext.ResetToState(BehaviorContext.GetStateIndex());
 	}
 }
 
