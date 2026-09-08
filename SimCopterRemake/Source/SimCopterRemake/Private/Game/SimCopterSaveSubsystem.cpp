@@ -437,23 +437,42 @@ bool USimCopterSaveSubsystem::SaveCurrentGame(
 	const UObject* WorldContextObject,
 	FString& OutError)
 {
-	if (CurrentSlotName.IsEmpty() || CurrentDisplayName.IsEmpty())
-	{
-		OutError = TEXT("This game has not been named yet.");
-		return false;
-	}
+	return SaveReservedGame(WorldContextObject, false, OutError);
+}
 
-	USimCopterSaveGame* Save = CaptureCurrentGame(WorldContextObject, CurrentDisplayName, OutError);
+bool USimCopterSaveSubsystem::SaveExitGame(const UObject* WorldContextObject, FString& OutError)
+{
+	return SaveReservedGame(WorldContextObject, true, OutError);
+}
+
+bool USimCopterSaveSubsystem::SaveReservedGame(const UObject* WorldContextObject, bool bExitSave, FString& OutError)
+{
+	// Requested remake behavior: Save Game updates Quick Save, while Save Game As
+	// owns named checkpoints. Loading a named checkpoint must not make it writable here.
+	USimCopterSaveGame* Save = CaptureCurrentGame(WorldContextObject, bExitSave ? TEXT("Exit Save") : TEXT("Quick Save"), OutError);
 	if (Save == nullptr)
 	{
 		return false;
 	}
-	if (!UGameplayStatics::SaveGameToSlot(Save, CurrentSlotName, SaveUserIndex))
+	const FString SlotName = bExitSave ? MakeExitSaveSlotName(Save->Kind) : MakeQuickSaveSlotName(Save->Kind);
+	if (!UGameplayStatics::SaveGameToSlot(Save, SlotName, SaveUserIndex))
 	{
 		OutError = TEXT("The saved-game file could not be written.");
 		return false;
 	}
 	return true;
+}
+
+FString USimCopterSaveSubsystem::MakeQuickSaveSlotName(ESimCopterSessionKind Kind)
+{
+	// Named slots always include a display-name hash, so even a manual save named
+	// "Quick Save" cannot collide with either reserved slot.
+	return Kind == ESimCopterSessionKind::Career ? TEXT("SimCopter_C_QuickSave") : TEXT("SimCopter_U_QuickSave");
+}
+
+FString USimCopterSaveSubsystem::MakeExitSaveSlotName(ESimCopterSessionKind Kind)
+{
+	return Kind == ESimCopterSessionKind::Career ? TEXT("SimCopter_C_ExitSave") : TEXT("SimCopter_U_ExitSave");
 }
 
 bool USimCopterSaveSubsystem::SaveCurrentGameAs(

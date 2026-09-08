@@ -195,7 +195,9 @@ public:
 	// Starts a genuinely new career/user game rather than a loaded slot.
 	void BeginNewGame();
 
+	// Quick Save uses a reserved slot per session kind; named saves are never overwritten here.
 	bool SaveCurrentGame(const UObject* WorldContextObject, FString& OutError);
+	bool SaveExitGame(const UObject* WorldContextObject, FString& OutError);
 	bool SaveCurrentGameAs(const UObject* WorldContextObject, const FString& DisplayName, FString& OutError);
 	bool LoadGame(const FString& SlotName, ESimCopterSessionKind ExpectedKind, FString& OutError);
 
@@ -211,8 +213,11 @@ public:
 	static FString NormalizeDisplayName(const FString& DisplayName);
 	static bool IsDisplayNameValid(const FString& DisplayName, FString& OutError);
 	static FString MakeSlotName(ESimCopterSessionKind Kind, const FString& DisplayName);
+	static FString MakeQuickSaveSlotName(ESimCopterSessionKind Kind);
+	static FString MakeExitSaveSlotName(ESimCopterSessionKind Kind);
 
 private:
+	bool SaveReservedGame(const UObject* WorldContextObject, bool bExitSave, FString& OutError);
 	UPROPERTY()
 	TObjectPtr<USimCopterSaveGame> PendingLoadedGame;
 

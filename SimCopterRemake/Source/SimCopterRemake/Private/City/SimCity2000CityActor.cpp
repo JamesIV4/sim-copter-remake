@@ -4,6 +4,7 @@
 #include "Game/SimCopterLoadingSubsystem.h"
 #include "City/SimCopterTunnel.h"
 #include "City/SimCopterTreeGrounding.h"
+#include "City/SimCopterPowerLinePlacement.h"
 
 #include "Algo/Count.h"
 #include "City/SimCopterAirport.h"
@@ -3876,6 +3877,17 @@ void ASimCity2000CityActor::RebuildCity()
 	};
 
 	TArray<uint8> ResolvedPowerLineMeshIds;
+	TMap<int32, FMaxisMeshObject> TerrainRelativePowerLineMeshes;
+	auto ResolveTerrainRelativePowerLineMesh = [&](const FMaxisMeshObject* Mesh) -> const FMaxisMeshObject*
+	{
+		if (Mesh == nullptr || Mesh->Header.Id < 0x57 || Mesh->Header.Id > 0x5a) return Mesh;
+		if (!TerrainRelativePowerLineMeshes.Contains(Mesh->Header.Id))
+		{
+			FMaxisMeshObject& Corrected = TerrainRelativePowerLineMeshes.Add(Mesh->Header.Id, *Mesh);
+			SimCopterPowerLinePlacement::NormalizeTerrainRelativePole(Corrected);
+		}
+		return &TerrainRelativePowerLineMeshes[Mesh->Header.Id];
+	};
 	ResolvedPowerLineMeshIds.SetNumUninitialized(FSimCity2000City::TileCount);
 	for (int32 FileY = 0; FileY < FSimCity2000City::MapSize; ++FileY)
 	{
@@ -4554,6 +4566,7 @@ void ASimCity2000CityActor::RebuildCity()
 					const FMaxisMeshObject* MeshObject = (PrimaryObjectId != INDEX_NONE)
 						? MeshLibrary.FindObjectByObjectId(PrimaryObjectId, &ColorMap)
 						: MeshLibrary.FindObjectByTileId(MeshTileId, &ColorMap);
+					MeshObject = ResolveTerrainRelativePowerLineMesh(MeshObject);
 					if (MeshObject != nullptr)
 					{
 						const float MeshWorldX = GetWorldTileCenterCoordinate(static_cast<float>(FileX) + (static_cast<float>(Footprint.X) - 1.0f) * 0.5f, TileSize, HalfMapSize);
@@ -4969,7 +4982,7 @@ void ASimCity2000CityActor::RebuildCity()
 		for (int32 BuildingId = 0x0E; BuildingId <= 0x1C; ++BuildingId)
 		{
 			const TArray<FColor>* ColorMap = nullptr;
-			const FMaxisMeshObject* MeshObject = MeshLibrary.FindObjectByTileId(BuildingId, &ColorMap);
+			const FMaxisMeshObject* MeshObject = ResolveTerrainRelativePowerLineMesh(MeshLibrary.FindObjectByTileId(BuildingId, &ColorMap));
 			if (MeshObject == nullptr)
 			{
 				continue;

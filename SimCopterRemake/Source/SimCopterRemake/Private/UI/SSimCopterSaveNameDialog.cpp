@@ -6,6 +6,7 @@
 #include "InputCoreTypes.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SimCopterSaveNameDialog"
@@ -17,7 +18,6 @@ namespace
 const TCHAR* const DialogPage = TEXT("MENU4.BMP");
 constexpr float PageWidth = 510.0f;
 constexpr float PageHeight = 436.0f;
-constexpr FRect TitleRect{ 88.0f, 38.0f, 410.0f, 70.0f };
 constexpr FRect PromptRect{ 82.0f, 130.0f, 428.0f, 160.0f };
 constexpr FRect NameRect{ 92.0f, 178.0f, 418.0f, 216.0f };
 constexpr float ButtonY = 366.0f;
@@ -43,12 +43,16 @@ void SSimCopterSaveNameDialog::Construct(const FArguments& InArgs)
 
 	AddAt(Canvas, FRect{ PageX, PageY, PageX + PageWidth, PageY + PageHeight },
 		MakePageImage(ArtObject, DialogPage));
-	AddAtPage(TitleRect,
-		SNew(STextBlock)
-		.Text(LOCTEXT("Title", "Save A SimCopter Game"))
-		.Justification(ETextJustify::Center)
-		.Font(PageFont(22, /*bBold=*/true))
-		.ColorAndOpacity(FSlateColor(TitleText)));
+	AddAtPage(Menu4PickerTitleRect,
+		SNew(SBox)
+		.VAlign(VAlign_Center)
+		[
+			SNew(STextBlock)
+			.Text(LOCTEXT("Title", "Save A SimCopter Game"))
+			.Justification(ETextJustify::Center)
+			.Font(PageFont(22, /*bBold=*/true))
+			.ColorAndOpacity(FSlateColor(TitleText))
+		]);
 	AddAtPage(PromptRect,
 		SNew(STextBlock)
 		.Text(LOCTEXT("Prompt", "Name this saved game:"))
@@ -122,4 +126,3 @@ FReply SSimCopterSaveNameDialog::OnKeyDown(
 }
 
 #undef LOCTEXT_NAMESPACE
-

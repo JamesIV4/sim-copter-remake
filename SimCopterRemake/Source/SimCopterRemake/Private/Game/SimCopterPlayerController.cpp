@@ -1310,15 +1310,7 @@ void ASimCopterPlayerController::HandleSettingsItem(const ESimCopterSettingsItem
 		return;
 
 	case ESimCopterSettingsItem::SaveGame:
-		if (USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
-			Saves != nullptr && Saves->HasCurrentSave())
-		{
-			SaveToCurrentSlot();
-		}
-		else
-		{
-			OpenSaveNameDialog(/*bLeaveAfterSave=*/false);
-		}
+		SaveToCurrentSlot();
 		return;
 
 	case ESimCopterSettingsItem::SaveGameAs:
@@ -1373,7 +1365,7 @@ bool ASimCopterPlayerController::SaveToCurrentSlot()
 		return false;
 	}
 
-	ShowMessage(LOCTEXT("GameSaved", "Game saved!")); // STRINGTABLE 48
+	ShowMessage(LOCTEXT("QuickGameSaved", "Quick save updated!"));
 	return true;
 }
 
@@ -1406,10 +1398,10 @@ void ASimCopterPlayerController::ConfirmLeaveCity()
 void ASimCopterPlayerController::HandleSaveBeforeLeave()
 {
 	USimCopterSaveSubsystem* Saves = USimCopterSaveSubsystem::Get(this);
-	if (Saves != nullptr && Saves->HasCurrentSave())
+	if (Saves != nullptr)
 	{
 		FString Error;
-		if (Saves->SaveCurrentGame(this, Error))
+		if (Saves->SaveExitGame(this, Error))
 		{
 			LeaveCity();
 			return;
@@ -1417,7 +1409,7 @@ void ASimCopterPlayerController::HandleSaveBeforeLeave()
 		ShowMessage(FText::FromString(Error.IsEmpty() ? TEXT("The game could not be saved.") : Error));
 		return;
 	}
-	OpenSaveNameDialog(/*bLeaveAfterSave=*/true);
+	ShowMessage(LOCTEXT("SaveUnavailable", "The saved-game service is unavailable."));
 }
 
 void ASimCopterPlayerController::SimSaveGame(const FString& SaveName)

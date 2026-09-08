@@ -8,6 +8,7 @@
 #include "Game/SimCopterSaveSubsystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
 #include "Missions/SimCopterMissionSystem.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -36,6 +37,20 @@ bool FSimCopterSaveNameTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Career slots carry their kind"), CareerSlot.StartsWith(TEXT("SimCopter_C_")));
 	TestTrue(TEXT("User slots carry their kind"), UserSlot.StartsWith(TEXT("SimCopter_U_")));
 	TestNotEqual(TEXT("Career and user files cannot collide"), CareerSlot, UserSlot);
+	const FString CareerQuick = USimCopterSaveSubsystem::MakeQuickSaveSlotName(ESimCopterSessionKind::Career);
+	const FString UserQuick = USimCopterSaveSubsystem::MakeQuickSaveSlotName(ESimCopterSessionKind::User);
+	TestNotEqual(TEXT("Career and user quick saves are separate"), CareerQuick, UserQuick);
+	TestNotEqual(TEXT("Quick Save does not overwrite the current named career save"), CareerQuick, CareerSlot);
+	TestNotEqual(TEXT("Quick Save does not overwrite the current named user save"), UserQuick, UserSlot);
+	for (ESimCopterSessionKind Kind : {ESimCopterSessionKind::Career, ESimCopterSessionKind::User})
+	{
+		TestNotEqual(TEXT("Exit save cannot overwrite quick save"),
+			USimCopterSaveSubsystem::MakeExitSaveSlotName(Kind), USimCopterSaveSubsystem::MakeQuickSaveSlotName(Kind));
+		TestNotEqual(TEXT("A manual save named Exit Save remains protected"),
+			USimCopterSaveSubsystem::MakeExitSaveSlotName(Kind), USimCopterSaveSubsystem::MakeSlotName(Kind, TEXT("Exit Save")));
+		TestNotEqual(TEXT("A manual save named Quick Save remains protected"),
+			USimCopterSaveSubsystem::MakeQuickSaveSlotName(Kind), USimCopterSaveSubsystem::MakeSlotName(Kind, TEXT("Quick Save")));
+	}
 
 	return true;
 }
@@ -191,6 +206,49 @@ bool FSimCopterSaveRestoreStateTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Career log restores"), Career->GetLogEntries().Num(), 1);
 	TestTrue(TEXT("Restored career is open"), Career->IsCareerOpen());
 
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterQuickSavePersistenceTest,
+	"SimCopter.SaveGame.QuickSavePersistence", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FSimCopterQuickSavePersistenceTest::RunTest(const FString& Parameters)
+{
+	// Unique test-only slots; never overwrite the player's real Quick Save or checkpoints.
+	const FString Token = FGuid::NewGuid().ToString(EGuidFormats::Digits);
+	const FString ManualSlot = USimCopterSaveSubsystem::MakeSlotName(ESimCopterSessionKind::Career, TEXT("Test ") + Token);
+	const FString QuickSlot = USimCopterSaveSubsystem::MakeQuickSaveSlotName(ESimCopterSessionKind::Career) + TEXT("_") + Token;
+	ON_SCOPE_EXIT {
+		UGameplayStatics::DeleteGameInSlot(ManualSlot, 0);
+		UGameplayStatics::DeleteGameInSlot(QuickSlot, 0);
+	};
+	USimCopterSaveGame* Save = NewObject<USimCopterSaveGame>();
+	Save->FormatVersion = 1;
+	Save->Kind = ESimCopterSessionKind::Career;
+	Save->DisplayName = TEXT("Manual checkpoint");
+	Save->CityWeights.Init(1.0f, 7);
+	Save->Cash = 100;
+	TestTrue(TEXT("Write manual checkpoint"), UGameplayStatics::SaveGameToSlot(Save, ManualSlot, 0));
+	TArray<uint8> ManualBefore;
+	TestTrue(TEXT("Read manual checkpoint bytes"), UGameplayStatics::LoadDataFromSlot(ManualBefore, ManualSlot, 0));
+	Save->DisplayName = TEXT("Quick Save");
+	Save->Cash = 200;
+	TestTrue(TEXT("Create quick save file"), UGameplayStatics::SaveGameToSlot(Save, QuickSlot, 0));
+	Save->Cash = 300;
+	TestTrue(TEXT("Update the same quick save file"), UGameplayStatics::SaveGameToSlot(Save, QuickSlot, 0));
+	USimCopterSaveGame* Reloaded = Cast<USimCopterSaveGame>(UGameplayStatics::LoadGameFromSlot(QuickSlot, 0));
+	if (TestNotNull(TEXT("Quick save reloads from disk"), Reloaded))
+		TestEqual(TEXT("Quick save contains newest state"), Reloaded->Cash, 300);
+	TArray<uint8> ManualAfter;
+	UGameplayStatics::LoadDataFromSlot(ManualAfter, ManualSlot, 0);
+	TestTrue(TEXT("Manual checkpoint remains byte-for-byte unchanged"), ManualBefore == ManualAfter);
+	USimCopterSaveSubsystem* Saves = NewObject<USimCopterSaveSubsystem>(NewObject<UGameInstance>());
+	TArray<FSimCopterSaveSummary> Summaries;
+	Saves->GetSaveSummaries(ESimCopterSessionKind::Career, Summaries);
+	TestTrue(TEXT("Quick save appears in Load Game list"), Summaries.ContainsByPredicate(
+		[&](const FSimCopterSaveSummary& Item) { return Item.SlotName == QuickSlot; }));
+	TestTrue(TEXT("Manual checkpoint remains in Load Game list"), Summaries.ContainsByPredicate(
+		[&](const FSimCopterSaveSummary& Item) { return Item.SlotName == ManualSlot; }));
 	return true;
 }
 
