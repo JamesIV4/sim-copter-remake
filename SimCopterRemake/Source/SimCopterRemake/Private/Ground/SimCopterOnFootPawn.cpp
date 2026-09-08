@@ -459,9 +459,9 @@ void ASimCopterOnFootPawn::ControllerLookYaw(float Value)
 
 void ASimCopterOnFootPawn::ControllerLookPitch(float Value)
 {
-	// The existing camera subtracts its look input. Invert the raw gamepad axis so stick-up
-	// raises the view, matching the old Gamepad_RightY mapping.
-	ControllerLookPitchInput = FMath::Clamp(-Value, -1.0f, 1.0f);
+	// FSceneViewport already negates Gamepad_RightY, so stick-up arrives negative.
+	// UpdateCamera subtracts this input to raise the view; do not invert it again here.
+	ControllerLookPitchInput = FMath::Clamp(Value, -1.0f, 1.0f);
 }
 
 void ASimCopterOnFootPawn::Interact()

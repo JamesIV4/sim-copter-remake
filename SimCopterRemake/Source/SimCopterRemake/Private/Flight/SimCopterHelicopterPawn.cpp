@@ -1619,6 +1619,31 @@ void ASimCopterHelicopterPawn::ApplyPreparedModelMeshes(const FSimCopterPrepared
 		HeliBodyMeshComponent->SetRelativeLocation(FVector(0.0f, 0.0f, VerticalOffset));
 	}
 
+	// FUN_004883a0 anchors the chain to the body node. Our body is shifted relative to
+	// ModelPivot, so a fixed pivot offset can leave the cable hanging in empty space.
+	// Find the actual centreline belly surface, then tuck the cable tip inside it.
+	const FMaxisMeshSection& BodySection = Prepared.BodySection;
+	const FVector BellyProbeStart(0.0, 0.0, BodySection.LocalBounds.Min.Z - 1.0);
+	const FVector BellyProbeEnd(0.0, 0.0, BodySection.LocalBounds.Max.Z + 1.0);
+	double BellyZ = TNumericLimits<double>::Max();
+	for (int32 Index = 0; Index + 2 < BodySection.Triangles.Num(); Index += 3)
+	{
+		FVector Intersection;
+		FVector Normal;
+		if (FMath::SegmentTriangleIntersection(
+			BellyProbeStart, BellyProbeEnd,
+			BodySection.Vertices[BodySection.Triangles[Index]],
+			BodySection.Vertices[BodySection.Triangles[Index + 1]],
+			BodySection.Vertices[BodySection.Triangles[Index + 2]],
+			Intersection, Normal))
+		{
+			BellyZ = FMath::Min(BellyZ, Intersection.Z);
+		}
+	}
+	RopeAnchorOffsetCm = FVector(0.0, 0.0, VerticalOffset +
+		(BellyZ < TNumericLimits<double>::Max()
+			? BellyZ + RopeRadiusCm : BodySection.LocalBounds.GetCenter().Z));
+
 	// The nose, in ModelPivot's frame. FUN_00484d20 launches every emitter from the body node
 	// lifted 3.0 units, but the remake's ModelPivot is the *capsule* centre and the fuselage is
 	// pushed down from it so the skids meet the ground - so "pivot + 3 units up" comes out level
@@ -8116,8 +8141,10 @@ void ASimCopterHelicopterPawn::UpdateRopeVisuals()
 			continue;
 		}
 
+		// Keep the attached end on the rendered airframe, including restored/replayed frames.
 		const FVector Start = RopeTransform.InverseTransformPosition(
-			RopeNodeWorldPositions[SegmentIndex]);
+			SegmentIndex == RopeFirstActiveNode
+				? GetRopeAnchorWorldLocation() : RopeNodeWorldPositions[SegmentIndex]);
 		const FVector End = RopeTransform.InverseTransformPosition(
 			RopeNodeWorldPositions[SegmentIndex + 1]);
 		const FVector Tangent = End - Start;
