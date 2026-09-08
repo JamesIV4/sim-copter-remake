@@ -44,6 +44,8 @@ class SIMCOPTERREMAKE_API ASimCopterPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+	bool IsUsingGamepadInput() const { return bLastInputWasGamepad; }
+	void NoteInputDevice(bool bGamepad) { bLastInputWasGamepad = bGamepad; }
 	ASimCopterPlayerController();
 
 	virtual void BeginPlay() override;
@@ -238,6 +240,7 @@ private:
 
 	/** Registered for the life of the controller so a stray focus grab cannot outlive one frame. */
 	TSharedPtr<IInputProcessor> KeyboardFocusGuard;
+	bool bLastInputWasGamepad = false;
 	/** Last thief reported, so a widget that re-takes focus every frame logs once, not per frame. */
 	FString LastReportedFocusThief;
 	FDelegateHandle ApplicationActivationHandle;

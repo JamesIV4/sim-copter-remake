@@ -1,16 +1,39 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterControllerInput.h"
+#include "Ground/SimCopterDispatch.h"
 
 namespace SimCopterControllerInput
 {
+FDispatchSelection GetDispatchSelection(const int32 Slot)
+{
+	using SimCopterDispatch::EService;
+	static const FDispatchSelection Entries[DispatchSlotCount] = {
+		{static_cast<int32>(EService::FireTruck), false, TEXT("Fire Truck")},
+		{static_cast<int32>(EService::Police), false, TEXT("Police")},
+		{static_cast<int32>(EService::Ambulance), false, TEXT("Ambulance")},
+		{static_cast<int32>(EService::Police), true, TEXT("Police (Chase)")},
+	};
+	return Slot >= 0 && Slot < DispatchSlotCount ? Entries[Slot] : FDispatchSelection{INDEX_NONE, false, TEXT("")};
+}
+
+bool UpdateAnalogActivity(const float Value, float& LastActiveValue)
+{
+	const bool bActive = FMath::Abs(Value) > 0.25f && FMath::Abs(Value - LastActiveValue) > 0.1f;
+	// Accumulate small movements against the last meaningful position, not the previous frame.
+	if (bActive || FMath::Abs(Value) < 0.15f) LastActiveValue = Value;
+	return bActive;
+}
+
 FFlightRouting ResolveFlightRouting(
 	const float LeftStickX,
 	const float LeftStickY,
 	const float RightStickY,
 	const bool bCameraAdjustHeld,
-	const bool bRightShoulderHeld,
-	const float RightTriggerValue)
+	const float LeftTriggerValue,
+	const float RightTriggerValue,
+	const bool bClimbHeld,
+	const bool bDescendHeld)
 {
 	FFlightRouting Routing;
 	const float ClampedLeftX = FMath::Clamp(LeftStickX, -1.0f, 1.0f);
@@ -32,7 +55,8 @@ FFlightRouting ResolveFlightRouting(
 	const bool bRightTriggerHeld =
 		FMath::Clamp(RightTriggerValue, 0.0f, 1.0f) > TriggerPressedThreshold;
 	const int32 VerticalCommand =
-		(bRightShoulderHeld ? 1 : 0) - (bRightTriggerHeld ? 1 : 0);
+		((bRightTriggerHeld || bClimbHeld) ? 1 : 0) -
+		((FMath::Clamp(LeftTriggerValue, 0.0f, 1.0f) > TriggerPressedThreshold || bDescendHeld) ? 1 : 0);
 
 	if (bCameraAdjustHeld)
 	{
@@ -45,6 +69,14 @@ FFlightRouting ResolveFlightRouting(
 	}
 
 	return Routing;
+}
+
+FVector2D GetRadialSlotDirection(const int32 Index, const int32 SlotCount)
+{
+	if (SlotCount <= 0) return FVector2D::ZeroVector;
+	const float Angle = 2.0f * UE_PI * static_cast<float>(Index) / SlotCount;
+	// Slate Y is down; physical gamepad Y is up. Painting and picking share this layout.
+	return FVector2D(FMath::Sin(Angle), -FMath::Cos(Angle));
 }
 
 int32 ResolveRadialIndex(
@@ -61,14 +93,21 @@ int32 ResolveRadialIndex(
 	const int32 SafeCurrent = FMath::Clamp(CurrentIndex, 0, SlotCount - 1);
 	if (Stick.SizeSquared() < FMath::Square(FMath::Max(0.0f, DeadZone)))
 	{
-		return SafeCurrent;
+		return INDEX_NONE;
 	}
 
-	// atan2(X,Y) puts zero at twelve o'clock. Positive angles travel clockwise in Slate/gamepad
-	// screen space: right is one quarter-turn after up.
-	const float Angle = FMath::Atan2(Stick.X, Stick.Y);
-	const float SlotFloat = Angle * static_cast<float>(SlotCount) / (2.0f * UE_PI);
-	const int32 Slot = FMath::RoundToInt(SlotFloat);
-	return (Slot % SlotCount + SlotCount) % SlotCount;
+	const FVector2D ScreenDirection(Stick.X, -Stick.Y);
+	int32 BestIndex = SafeCurrent;
+	double BestDot = -TNumericLimits<double>::Max();
+	for (int32 Index = 0; Index < SlotCount; ++Index)
+	{
+		const double Dot = FVector2D::DotProduct(ScreenDirection, GetRadialSlotDirection(Index, SlotCount));
+		if (Dot > BestDot)
+		{
+			BestDot = Dot;
+			BestIndex = Index;
+		}
+	}
+	return BestIndex;
 }
 }

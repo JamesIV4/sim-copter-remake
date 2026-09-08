@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Game/SimCopterPlayerController.h"
+#include "Flight/SimCopterControllerInput.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Audio/SimCopterRadio.h"
@@ -95,6 +96,10 @@ public:
 
 	virtual bool HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyEvent& InKeyEvent) override
 	{
+		if (!InKeyEvent.IsRepeat())
+		{
+			if (auto* PC = Controller.Get()) PC->NoteInputDevice(InKeyEvent.GetKey().IsGamepadKey());
+		}
 		Repair();
 		return false;
 	}
@@ -108,9 +113,31 @@ public:
 		return false;
 	}
 
-	virtual bool HandleAnalogInputEvent(FSlateApplication& SlateApp, const FAnalogInputEvent& InAnalogInputEvent) override
+	virtual bool HandleAnalogInputEvent(FSlateApplication& SlateApp, const FAnalogInputEvent& Event) override
 	{
+		const float Value = Event.GetAnalogValue();
+		float& Previous = AnalogValues.FindOrAdd(Event.GetKey());
+		// Ignore neutral noise and a held stick's repeated reports after a keyboard press.
+		if (Event.GetKey().IsGamepadKey() && SimCopterControllerInput::UpdateAnalogActivity(Value, Previous))
+		{
+			if (auto* PC = Controller.Get()) PC->NoteInputDevice(true);
+		}
 		Repair();
+		return false;
+	}
+
+	virtual bool HandleMouseButtonDownEvent(FSlateApplication&, const FPointerEvent&) override
+	{
+		if (auto* PC = Controller.Get()) PC->NoteInputDevice(false);
+		return false;
+	}
+
+	virtual bool HandleMouseMoveEvent(FSlateApplication&, const FPointerEvent& Event) override
+	{
+		if (Event.GetCursorDelta().SizeSquared() > 4.0f)
+		{
+			if (auto* PC = Controller.Get()) PC->NoteInputDevice(false);
+		}
 		return false;
 	}
 
@@ -129,6 +156,7 @@ private:
 	}
 
 	TWeakObjectPtr<ASimCopterPlayerController> Controller;
+	TMap<FKey, float> AnalogValues;
 };
 
 /**

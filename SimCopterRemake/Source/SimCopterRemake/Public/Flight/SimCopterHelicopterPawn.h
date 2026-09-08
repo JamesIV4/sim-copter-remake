@@ -1585,6 +1585,7 @@ protected:
 
 private:
 	friend class FSimCopterPoliceRoofBoardingTest;
+	friend class FSimCopterControllerContextsTest;
 	// The decompiled original flight simulation; the pawn feeds it inputs and
 	// city geometry and mirrors its position/attitude onto the actor.
 	FSimCopterFlightModel FlightModel;
@@ -1642,7 +1643,9 @@ private:
 	float ControllerRightYInput = 0.0f;
 	float ControllerRightTriggerInput = 0.0f;
 	bool bControllerCameraAdjustHeld = false;
-	bool bControllerRightShoulderHeld = false;
+	float ControllerLeftTriggerInput = 0.0f;
+	bool bControllerClimbHeld = false;
+	bool bControllerDescendHeld = false;
 	bool bControllerDPadUpHeld = false;
 	bool bControllerDPadDownHeld = false;
 	bool bControllerDPadLeftHeld = false;
@@ -1812,6 +1815,7 @@ private:
 	void ControllerRightX(float Value);
 	void ControllerRightY(float Value);
 	void ControllerRightTrigger(float Value);
+	void ControllerLeftTrigger(float Value);
 	void StartCameraDrag();
 	void StopCameraDrag();
 	void StartCameraPanDrag();
@@ -1826,16 +1830,17 @@ private:
 	// right-stick Y and RB/RT; passenger mode owns X/A/B and D-pad left/right.
 	void ControllerDispatchWheelPressed();
 	void ControllerDispatchWheelReleased();
+	void DispatchControllerSelection();
 	void ControllerToolWheelPressed();
 	void ControllerToolWheelReleased();
 	void ControllerCameraAdjustPressed();
 	void ControllerCameraAdjustReleased();
-	void ControllerRightShoulderPressed();
-	void ControllerRightShoulderReleased();
+
 	void ControllerPrimaryPressed();
 	void ControllerPrimaryReleased();
 	void ControllerPassengerPressed();
 	void ControllerCancelPressed();
+	void ControllerCancelReleased();
 	void ControllerEnterExitPressed();
 	void ControllerBackPressed();
 	void ControllerSearchLightPressed();
@@ -1948,14 +1953,11 @@ public:
 		float DelaySeconds);
 
 	/**
-	 * Display names of the two keys the takeoff prompt offers: the one that raises the collective
-	 * (and so starts the engine), and the one that puts the pilot back on their feet. Both read the
-	 * live UInputSettings so a rebind on the Controls page is reflected, and both fall back to the
-	 * shipped binding when the mapping has been unbound. Pad bindings are skipped - the controller
-	 * has its own overlay and its own routing.
+	 * All live alternatives for the chosen input device, plus fixed controller shortcuts.
+	 * No fallback to unbound keys; the hint switches device without rebuilding the widget.
 	 */
-	static FText GetCollectiveUpKeyDisplayName();
-	static FText GetExitHelicopterKeyDisplayName();
+	static FText GetCollectiveUpKeyDisplayName(bool bGamepad = false);
+	static FText GetExitHelicopterKeyDisplayName(bool bGamepad = false);
 
 private:
 	void SimulateFlightStep(float DeltaSeconds);

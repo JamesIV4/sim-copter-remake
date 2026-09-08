@@ -9,8 +9,20 @@
 // and camera adjustment during the same frame.
 namespace SimCopterControllerInput
 {
+constexpr int32 DispatchSlotCount = 4;
+struct FDispatchSelection
+{
+	int32 ServiceIndex;
+	bool bChaseSpotlight;
+	const TCHAR* Label;
+};
+SIMCOPTERREMAKE_API FDispatchSelection GetDispatchSelection(int32 Slot);
+
 constexpr float RadialDeadZone = 0.45f;
 constexpr float TriggerPressedThreshold = 0.25f;
+
+// Detect deliberate analog movement; neutral noise and held reports are not new device use.
+SIMCOPTERREMAKE_API bool UpdateAnalogActivity(float Value, float& LastActiveValue);
 
 struct SIMCOPTERREMAKE_API FFlightRouting
 {
@@ -34,17 +46,21 @@ struct SIMCOPTERREMAKE_API FFlightRouting
 
 // Left stick is the analog equivalent of WASD. R3 is also the missing lateral-slide modifier:
 // while held, left X feeds the original joystick slide axis instead of the coordinated turn
-// axis. RB is up and RT is down; with R3 held that same pair adjusts framing instead of lift.
+// axis. RT is up and LT is down; with R3 held that same pair adjusts framing instead of lift.
 SIMCOPTERREMAKE_API FFlightRouting ResolveFlightRouting(
 	float LeftStickX,
 	float LeftStickY,
 	float RightStickY,
 	bool bCameraAdjustHeld,
-	bool bRightShoulderHeld,
-	float RightTriggerValue);
+	float LeftTriggerValue,
+	float RightTriggerValue,
+	bool bClimbHeld = false,
+	bool bDescendHeld = false);
+
+SIMCOPTERREMAKE_API FVector2D GetRadialSlotDirection(int32 Index, int32 SlotCount);
 
 // Radial slot zero is at twelve o'clock and the remaining slots proceed clockwise. Returning
-// CurrentIndex inside the dead zone keeps a wheel from jumping when it first opens.
+// INDEX_NONE inside the dead zone removes the highlight: release from centre cancels.
 SIMCOPTERREMAKE_API int32 ResolveRadialIndex(
 	const FVector2D& Stick,
 	int32 SlotCount,
