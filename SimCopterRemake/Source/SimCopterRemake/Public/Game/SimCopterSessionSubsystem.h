@@ -31,6 +31,9 @@ class SIMCOPTERREMAKE_API USimCopterSessionSubsystem : public UGameInstanceSubsy
 	GENERATED_BODY()
 
 public:
+	// Session-only: returning from a city must not replay startup movies.
+	bool bStartupIntrosShown = false;
+
 	// --- what the menu requests ---
 
 	// Career city 0..29: plays cities/career/city<N>.sc2 with that city's difficulty and weights.

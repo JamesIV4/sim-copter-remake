@@ -21,6 +21,12 @@
 #include "UI/SSimCopterUserCityPicker.h"
 #include "UI/SimCopterHangarArt.h"
 #include "Widgets/SOverlay.h"
+#include "UI/SSimCopterIntro.h"
+#include "MediaPlayer.h"
+#include "MediaTexture.h"
+#include "MediaSoundComponent.h"
+#include "Misc/App.h"
+#include "HAL/PlatformTime.h"
 
 #define LOCTEXT_NAMESPACE "SimCopterMainMenuGameMode"
 
@@ -28,6 +34,7 @@ ASimCopterMainMenuGameMode::ASimCopterMainMenuGameMode()
 {
 	// The front end has nothing to possess; the shell is the whole level.
 	DefaultPawnClass = nullptr;
+	PrimaryActorTick.bCanEverTick = true;
 }
 
 void ASimCopterMainMenuGameMode::BeginPlay()
@@ -43,6 +50,7 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 	}
 
 	bool bOpenCareerSelect = false;
+	bool bShowIntros = false;
 	if (USimCopterSessionSubsystem* Session = GetGameInstance() != nullptr
 			? GetGameInstance()->GetSubsystem<USimCopterSessionSubsystem>()
 			: nullptr)
@@ -51,6 +59,8 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 		{
 			bOpenCareerSelect = true;
 		}
+		bShowIntros = !Session->bStartupIntrosShown && !bOpenCareerSelect && FApp::CanEverRender();
+		Session->bStartupIntrosShown = true;
 		Session->ClearPendingSession();
 	}
 
@@ -62,7 +72,12 @@ void ASimCopterMainMenuGameMode::BeginPlay()
 	Art = NewObject<USimCopterHangarArt>(this, TEXT("FrontEndArt"));
 	Art->SetOriginalGameRoot(ResolveOriginalGameRoot());
 
-	if (bOpenCareerSelect)
+	if (bShowIntros)
+	{
+		EnterScreen(ESimCopterFrontEndScreen::Intro);
+		PlayNextIntro();
+	}
+	else if (bOpenCareerSelect)
 	{
 		EnterScreen(ESimCopterFrontEndScreen::CareerSelect);
 	}
@@ -87,6 +102,27 @@ TSharedRef<SWidget> ASimCopterMainMenuGameMode::BuildScreen(const ESimCopterFron
 {
 	switch (NewScreen)
 	{
+	case ESimCopterFrontEndScreen::Intro:
+		IntroPlayer = NewObject<UMediaPlayer>(this);
+		IntroPlayer->PlayOnOpen = true;
+		IntroPlayer->SetLooping(false);
+		IntroPlayer->OnEndReached.AddDynamic(this, &ASimCopterMainMenuGameMode::RequestIntroAdvance);
+		IntroPlayer->OnMediaOpenFailed.AddDynamic(this, &ASimCopterMainMenuGameMode::IntroOpenFailed);
+		IntroTexture = NewObject<UMediaTexture>(this);
+		IntroTexture->AutoClear = true;
+		IntroTexture->ClearColor = FLinearColor::Black;
+		IntroTexture->NewStyleOutput = true;
+		IntroTexture->SetMediaPlayer(IntroPlayer);
+		IntroTexture->UpdateResource();
+		IntroSound = NewObject<UMediaSoundComponent>(this);
+		IntroSound->bIsUISound = true;
+		IntroSound->SetMediaPlayer(IntroPlayer);
+		IntroSound->RegisterComponent();
+		IntroSound->Start();
+		IntroBrush.SetResourceObject(IntroTexture);
+		IntroBrush.ImageSize = FVector2D(640, 280);
+		return SNew(SSimCopterIntro).MovieBrush(&IntroBrush)
+			.OnSkip(FSimpleDelegate::CreateUObject(this, &ASimCopterMainMenuGameMode::RequestIntroAdvance));
 	case ESimCopterFrontEndScreen::CareerSelect:
 	{
 		TArray<int32> Choices;
@@ -234,6 +270,20 @@ void ASimCopterMainMenuGameMode::EnterScreen(const ESimCopterFrontEndScreen NewS
 
 void ASimCopterMainMenuGameMode::CloseScreen()
 {
+	bAdvanceIntro = false;
+	if (IntroPlayer)
+	{
+		IntroPlayer->OnEndReached.RemoveAll(this);
+		IntroPlayer->OnMediaOpenFailed.RemoveAll(this);
+		IntroPlayer->Close();
+	}
+	if (IntroSound)
+	{
+		IntroSound->Stop();
+		IntroSound->DestroyComponent();
+		IntroSound = nullptr;
+	}
+
 	if (Art != nullptr)
 	{
 		Art->StopMenuSkyMovie();
@@ -250,6 +300,9 @@ void ASimCopterMainMenuGameMode::CloseScreen()
 		GEngine->GameViewport->RemoveViewportWidgetContent(ScreenWidget.ToSharedRef());
 	}
 	ScreenWidget.Reset();
+	IntroBrush.SetResourceObject(nullptr);
+	IntroTexture = nullptr;
+	IntroPlayer = nullptr;
 	Screen = ESimCopterFrontEndScreen::None;
 }
 
@@ -448,6 +501,48 @@ void ASimCopterMainMenuGameMode::SimLoadGame(const FString& SlotName)
 		return;
 	}
 	StartPendingSession();
+}
+
+void ASimCopterMainMenuGameMode::RequestIntroAdvance()
+{
+	if (Screen == ESimCopterFrontEndScreen::Intro) bAdvanceIntro = true;
+}
+
+void ASimCopterMainMenuGameMode::IntroOpenFailed(FString Url)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Could not play intro: %s"), *Url);
+	RequestIntroAdvance();
+}
+
+void ASimCopterMainMenuGameMode::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (Screen != ESimCopterFrontEndScreen::Intro || !IntroPlayer) return;
+	// Defer transitions out of Slate/media callbacks; coalesce presses in the same frame.
+	// A failed backend must never strand startup on a black screen.
+	if (bAdvanceIntro || IntroPlayer->HasError() ||
+		(IntroPlayer->IsPreparing() && FPlatformTime::Seconds() - IntroOpenedAt > 15.0))
+	{
+		PlayNextIntro();
+	}
+}
+
+void ASimCopterMainMenuGameMode::PlayNextIntro()
+{
+	// SCHOOK: LoadIntroMovies 0x0044cbb0 - INTRO1 then INTRO2, second at (0,100)
+	// in a 640x280 display rectangle. Both are centred within the 640x480 screen.
+	IntroPlayer->Close();
+	bAdvanceIntro = false;
+	++IntroIndex;
+	if (IntroIndex > 2)
+	{
+		EnterScreen(ESimCopterFrontEndScreen::MainMenu);
+		return;
+	}
+	IntroOpenedAt = FPlatformTime::Seconds();
+	const FString Path = FPaths::ConvertRelativePathToFull(FPaths::ProjectContentDir() /
+		FString::Printf(TEXT("Generated/Movies/Intro/INTRO%d.mp4"), IntroIndex));
+	if (!IntroPlayer->OpenFile(Path)) IntroOpenFailed(Path);
 }
 
 #undef LOCTEXT_NAMESPACE

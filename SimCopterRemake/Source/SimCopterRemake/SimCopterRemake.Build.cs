@@ -29,7 +29,7 @@ public class SimCopterRemake : ModuleRules
 		// ApplicationCore for FDisplayMetrics, which seeds the first run's resolution from the
 		// monitor the game opened on; RHI for IsRayTracingEnabled, which decides whether the
 		// Settings page may offer Hardware Lumen.
-		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "RenderCore", "RHI", "ApplicationCore", "MediaAssets", "MoviePlayer", "DaySequence", "CelestialVault", "Json", "JsonUtilities" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore", "UMG", "RenderCore", "RHI", "ApplicationCore", "MediaAssets", "AudioMixer", "MoviePlayer", "DaySequence", "CelestialVault", "Json", "JsonUtilities" });
 
 		// The Graphics page replaces the original's render.bmp options with Unreal's, so it drives
 		// NVIDIA's blueprint libraries directly rather than poking console variables. All three
@@ -48,6 +48,16 @@ public class SimCopterRemake : ModuleRules
 		// Editor targets deliberately skip this 237 MB copy; they read Reference directly.
 		if (Target.Type == TargetType.Game)
 		{
+			for (int IntroIndex = 1; IntroIndex <= 2; ++IntroIndex)
+			{
+				string IntroMovie = Path.GetFullPath(Path.Combine(ModuleDirectory,
+					"..", "..", "Content", "Generated", "Movies", "Intro", $"INTRO{IntroIndex}.mp4"));
+				if (!File.Exists(IntroMovie))
+				{
+					throw new BuildException("Missing original intro movie. Run python Tools/Unreal/BakeIntroMovies.py before packaging.");
+				}
+				RuntimeDependencies.Add(IntroMovie, StagedFileType.NonUFS);
+			}
 			string LoadingAtlas = Path.GetFullPath(Path.Combine(ModuleDirectory,
 				"..", "..", "Content", "Generated", "Loading", "HRGLASS.png"));
 			if (!File.Exists(LoadingAtlas))

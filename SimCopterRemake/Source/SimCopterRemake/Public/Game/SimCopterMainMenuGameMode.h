@@ -5,9 +5,13 @@
 #include "CoreMinimal.h"
 #include "Game/SimCopterSessionSubsystem.h"
 #include "GameFramework/GameModeBase.h"
+#include "Styling/SlateBrush.h"
 #include "SimCopterMainMenuGameMode.generated.h"
 
 class SWidget;
+class UMediaPlayer;
+class UMediaTexture;
+class UMediaSoundComponent;
 class USimCopterHangarArt;
 enum class ESimCopterMainMenuItem : uint8;
 
@@ -18,6 +22,7 @@ UENUM()
 enum class ESimCopterFrontEndScreen : uint8
 {
 	None,
+	Intro,
 	MainMenu,       // state 4, page 0x7d2, main1.bmp
 	CareerSelect,   // state 5, page 0x7d7, career.bmp
 	UserCityPicker, // stands in for FUN_00406400's GetOpenFileName
@@ -43,6 +48,7 @@ public:
 	ASimCopterMainMenuGameMode();
 
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// Console equivalents of the menu items, so the front end can also be driven headlessly.
@@ -54,6 +60,17 @@ public:
 	void SimLoadGame(const FString& SlotName);
 
 private:
+	UPROPERTY(Transient) TObjectPtr<UMediaPlayer> IntroPlayer;
+	UPROPERTY(Transient) TObjectPtr<UMediaTexture> IntroTexture;
+	UPROPERTY(Transient) TObjectPtr<UMediaSoundComponent> IntroSound;
+	FSlateBrush IntroBrush;
+	int32 IntroIndex = 0;
+	bool bAdvanceIntro = false;
+	double IntroOpenedAt = 0;
+	void PlayNextIntro();
+	UFUNCTION() void RequestIntroAdvance();
+	UFUNCTION() void IntroOpenFailed(FString Url);
+
 	// The original's artwork, shared by every front-end screen.
 	UPROPERTY(Transient)
 	TObjectPtr<USimCopterHangarArt> Art = nullptr;
