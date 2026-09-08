@@ -61,6 +61,30 @@ bool FSimCopterControllerContextsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Later RB release remains outside dispatch context"),
 		Pawn->ControllerMode == ESimCopterControllerMode::None);
 	Pawn->ControllerPrimaryReleased();
+	Pawn->GroundClearanceCm = 0;
+	Pawn->bIsLanded = false;
+	TestFalse(TEXT("Exit hint eligibility requires landed, even at zero clearance"), Pawn->CanExitHelicopter());
+	Pawn->bIsLanded = true;
+	TestTrue(TEXT("Landed helicopter can offer exit"), Pawn->CanExitHelicopter());
+	Pawn->ControllerMode = ESimCopterControllerMode::None;
+	Pawn->bSpotlightTargetFrozen = true; // Test aim accumulation without a city trace.
+	Pawn->SpotlightAimPitchInput = Pawn->SpotlightAimYawInput = 0;
+	Pawn->SpotlightAimPitch1616 = Pawn->SpotlightAimYaw1616 = 0;
+	for (bool bCamera : {false, true})
+	{
+		Pawn->bControllerCameraAdjustHeld = bCamera;
+		Pawn->ControllerDPadUpPressed();
+		Pawn->ControllerDPadRightPressed();
+		Pawn->UpdateControllerToolManipulation();
+		Pawn->UpdateSpotlightTarget(0.05f);
+		TestEqual(TEXT("D-pad never changes spotlight pitch"), Pawn->SpotlightAimPitch1616, 0);
+		TestEqual(TEXT("D-pad never changes spotlight yaw"), Pawn->SpotlightAimYaw1616, 0);
+		Pawn->ControllerDPadUpReleased();
+		Pawn->ControllerDPadRightReleased();
+	}
+	Pawn->SpotlightAimPitchInput = 1;
+	Pawn->UpdateSpotlightTarget(0.05f);
+	TestTrue(TEXT("Keyboard spotlight input still adjusts aim"), Pawn->SpotlightAimPitch1616 != 0);
 	World->DestroyWorld(false);
 
 	// The hint must retain every keyboard alternative as well as the controller shortcut.

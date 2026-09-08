@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SSimCopterToolFlaps.h"
+#include "SSimCopterToolGlow.h"
 
 #include "Brushes/SlateColorBrush.h"
 #include "Dom/JsonObject.h"
@@ -1122,14 +1123,18 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildToolFlap(const FFlap& Flap)
 	return SNew(SBox)
 		.Visibility(TAttribute<EVisibility>::CreateSP(this, &SSimCopterToolFlaps::GetFlapVisibility, EquipmentMask))
 		[
-			MakePanel(static_cast<float>(PageWidth), Canvas)
+			SNew(SSimCopterToolGlow).Active_Lambda([this, EquipmentMask]
+			{
+				const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+				return Helicopter && Helicopter->IsToolAvailable(Helicopter->GetActiveTool()) &&
+					(EquipmentMask & SimCopterHelicopterRegistry::GetToolCareerBit(Helicopter->GetActiveTool())) != 0;
+			})[MakePanel(static_cast<float>(PageWidth), Canvas)]
 		];
 }
 
 void SSimCopterToolFlaps::AddFlapButton(SConstraintCanvas& Canvas, const FButton& Button)
 {
 	const EAction Action = Button.Action;
-	const ESimCopterHelicopterTool Tool = Button.Tool;
 
 	// The hit box. Nothing is drawn for it: the unpressed button is part of the page.
 	TSharedRef<SButton> Hotspot = SNew(SButton)
@@ -1591,7 +1596,12 @@ TSharedRef<SWidget> SSimCopterToolFlaps::BuildApacheFlap()
 	return SNew(SBox)
 		.Visibility(TAttribute<EVisibility>::CreateSP(this, &SSimCopterToolFlaps::GetApacheFlapVisibility))
 		[
-			MakePanel(ApachePageWidth, Canvas)
+			SNew(SSimCopterToolGlow).Active_Lambda([this]
+			{
+				const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+				return Helicopter && (Helicopter->GetActiveTool() == ESimCopterHelicopterTool::ApacheMachineGun ||
+					Helicopter->GetActiveTool() == ESimCopterHelicopterTool::ApacheMissile);
+			})[MakePanel(ApachePageWidth, Canvas)]
 		];
 }
 

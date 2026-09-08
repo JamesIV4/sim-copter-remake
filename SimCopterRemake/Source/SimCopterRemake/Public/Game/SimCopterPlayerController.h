@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Game/SimCopterKeyboardFocus.h"
+#include "UI/SimCopterControllerHelp.h"
 #include "GameFramework/PlayerController.h"
 #include "Replay/SimCopterReplaySubsystem.h"
 #include "SimCopterPlayerController.generated.h"
@@ -46,6 +47,11 @@ class SIMCOPTERREMAKE_API ASimCopterPlayerController : public APlayerController
 public:
 	bool IsUsingGamepadInput() const { return bLastInputWasGamepad; }
 	void NoteInputDevice(bool bGamepad) { bLastInputWasGamepad = bGamepad; }
+	void NoteGamepadDevice(FInputDeviceId Device);
+	SimCopterControllerHelp::EStyle GetControllerIconStyle() const { return ControllerIconStyle; }
+	bool IsControllerHelpExpanded() const { return bControllerHelpExpanded; }
+	void ToggleControllerHelp() { bControllerHelpExpanded = !bControllerHelpExpanded; }
+
 	ASimCopterPlayerController();
 
 	virtual void BeginPlay() override;
@@ -241,6 +247,8 @@ private:
 	/** Registered for the life of the controller so a stray focus grab cannot outlive one frame. */
 	TSharedPtr<IInputProcessor> KeyboardFocusGuard;
 	bool bLastInputWasGamepad = false;
+	bool bControllerHelpExpanded = false;
+	SimCopterControllerHelp::EStyle ControllerIconStyle = SimCopterControllerHelp::EStyle::Xbox;
 	/** Last thief reported, so a widget that re-takes focus every frame logs once, not per frame. */
 	FString LastReportedFocusThief;
 	FDelegateHandle ApplicationActivationHandle;

@@ -40,6 +40,7 @@
 #include "Serialization/MemoryWriter.h"
 #include "SimCopterCollisionChannels.h"
 #include "UI/SSimCopterControllerOverlay.h"
+#include "UI/SSimCopterControllerHelp.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Widgets/SOverlay.h"
 
@@ -493,7 +494,9 @@ void ASimCopterOnFootPawn::EnsureControllerOverlayWidget()
 		[
 			SNew(SSimCopterControllerOverlay)
 				.Pawn(nullptr)
-		];
+		]
+		+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(FMargin(16))
+		[SSimCopterControllerHelp::ForPawn(this)];
 	GEngine->GameViewport->AddViewportWidgetContent(ControllerOverlayWidget.ToSharedRef(), 60);
 }
 

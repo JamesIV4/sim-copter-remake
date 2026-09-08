@@ -559,6 +559,7 @@ public:
 
 	// Read-only controller presentation state consumed by the radial/passenger Slate layer.
 	ESimCopterControllerMode GetControllerMode() const { return ControllerMode; }
+	bool IsControllerCameraAdjustHeld() const { return bControllerCameraAdjustHeld; }
 	int32 GetControllerRadialIndex() const { return ControllerRadialIndex; }
 	const TArray<ESimCopterHelicopterTool>& GetControllerToolWheelTools() const { return ControllerToolWheelTools; }
 	int32 GetControllerPassengerSlot() const { return ControllerPassengerSlot; }
@@ -1710,8 +1711,6 @@ private:
 	int32 SpotlightAimYaw1616 = 0;
 	float SpotlightAimPitchInput = 0.0f;
 	float SpotlightAimYawInput = 0.0f;
-	float ControllerSpotlightAimPitchInput = 0.0f;
-	float ControllerSpotlightAimYawInput = 0.0f;
 
 	// DAT_00504430: the smoothed march distance the band selection reads.
 	int32 SpotlightDistance1616 = 0;
@@ -1799,6 +1798,7 @@ private:
 
 	TSharedPtr<SWidget> MapWidget;
 	TSharedPtr<class SSimCopterMapPanel> MapPanel;
+	TSharedPtr<SWidget> ControllerHelpPanel;
 	// The Check-up panel, up only while the player is being served.
 	TSharedPtr<SWidget> CheckupWidget;
 	TSharedPtr<SWidget> ControllerOverlayWidget;
@@ -1849,7 +1849,6 @@ private:
 	void ControllerCancelReleased();
 	void ControllerEnterExitPressed();
 	void ControllerBackPressed();
-	void ControllerSearchLightPressed();
 	void ControllerDPadUpPressed();
 	void ControllerDPadUpReleased();
 	void ControllerDPadDownPressed();

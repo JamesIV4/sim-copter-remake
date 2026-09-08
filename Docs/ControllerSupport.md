@@ -14,7 +14,7 @@ the existing keyboard and mouse controls.
 | `Y` | Exit the helicopter when it is safely landed |
 | View / Back | Cycle camera view |
 | Menu / Start | Pause or resume |
-| `L3` | Toggle the spotlight |
+| `L3` | Show / hide contextual button help |
 | `R3` + left-stick X | Dedicated lateral slide, equivalent to `Q` / `E` |
 
 ### Camera adjustment
@@ -25,7 +25,7 @@ Hold `R3` to enter camera-adjust mode:
 | --- | --- |
 | Right-stick Y | Zoom in/out |
 | `RT` / `LT` (or `A` / `B`) | Move the helicopter up/down in the framing of exterior camera views |
-| D-pad | Aim the spotlight on both axes |
+| `X` (Square on PlayStation) | Toggle the spotlight |
 
 Flight collective is suppressed while `R3` is held so camera framing cannot accidentally change
 altitude. Left-stick forward/back remains analog flight input; left/right becomes the lateral
@@ -58,9 +58,6 @@ highlighted installed tool. Press `B` before releasing `LB` to cancel without ch
 | D-pad up/down with bucket selected | Raise/lower the bucket |
 | D-pad up/down with rescue harness selected | Raise/lower the harness |
 | D-pad up/down with megaphone selected | Select the previous/next message |
-| D-pad left/right | Aim the spotlight left/right |
-| D-pad up/down with another tool selected | Aim the spotlight up/down |
-| `R3` + D-pad | Aim the spotlight on both axes regardless of the selected tool |
 
 The radial only contains tools installed on and available to the current helicopter.
 
@@ -140,3 +137,34 @@ live keyboard binding for climb and exit; controller activity shows the controll
 alternatives (RT / A for takeoff, Y for exit by default). It updates while visible,
 filters out the other device, and is hidden while a wheel or passenger menu is open.
 Neutral stick noise, repeated held-axis reports and releases do not change device.
+
+## Tool cards and contextual button help
+
+The entire card containing the active tool has a broad, soft gold halo. The shared
+water card glows for either the bucket or cannon, and the Apache card glows for either
+weapon. Individual buttons do not receive selection borders.
+
+Controller help sits at the bottom left immediately above the map, with 16 HUD-scaled
+pixels of padding below it. It starts collapsed. Clicking the left stick toggles the
+contextual rows; the stick-click icon and Show help / Hide help row always remain.
+The setting lasts across helicopter and on-foot possession for the current session.
+
+Expanded help uses imported Kenney Input Prompts icons, and only includes actions for
+the current tool, wheel, passenger selection, camera adjustment or on-foot context.
+Exit helicopter appears only while landed and safe to exit.
+The megaphone's broadcast row includes the current message; the D-pad icon explains
+how to change it without broadcasting. X / Square broadcasts. No top-of-screen tool
+help panel is shown. Wheel and passenger control hints live in this list too.
+
+L3 is no longer spotlight toggle. Hold R3 and press X / Square to toggle the spotlight.
+D-pad spotlight aiming has been removed in both flight and camera-adjust mode.
+Keyboard spotlight aiming remains unchanged.
+
+The active input event's Unreal device descriptor selects Xbox or PlayStation glyphs,
+including DualShock, DualSense and Sony identifiers. Switching controllers switches
+icons. Unknown and XInput descriptors use Xbox glyphs; a remapping driver that exposes
+a PlayStation pad only as a virtual Xbox pad hides the physical brand from Unreal.
+
+Icons: [Kenney Input Prompts](https://kenney.nl/assets/input-prompts), CC0. The selected
+PNG files and license are in Content/Slate/ControllerIcons and staged loose for Slate
+in packaged builds. No engine plugin or external runtime dependency was added.

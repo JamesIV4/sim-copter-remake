@@ -57,6 +57,7 @@ public:
 	// Backed by the character movement velocity (used by nearby NPCs to gauge the player's speed).
 	FVector GetCurrentVelocityCmPerSec() const { return GetVelocity(); }
 	float GetWalkSpeedCmPerSec() const { return WalkSpeedCmPerSec; }
+	bool CanBoardNearbyHelicopter() const { return FindHelicopterWithinReach(HelicopterInteractionReachCm) != nullptr; }
 	bool IsCarryingMissionPerson() const { return CarriedMissionPerson.IsValid(); }
 	int32 GetCarriedMissionEventId() const { return CarriedMissionEventId; }
 	bool PickUpMissionPerson(ASimCopterGroundAgent* MissionPerson);

@@ -46,7 +46,6 @@ void SSimCopterControllerOverlay::Construct(const FArguments& InArgs)
 	ChildSlot
 	[
 		SNew(SOverlay)
-
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
@@ -199,7 +198,7 @@ TSharedRef<SWidget> SSimCopterControllerOverlay::BuildRadialWheel(
 	[
 		SNew(SBox).WidthOverride(560).HeightOverride(600)
 		[
-			SAssignNew(Wheel, SSimCopterRadialWheel).Labels(Labels).Title(Title).Instructions(Instructions)
+			SAssignNew(Wheel, SSimCopterRadialWheel).Labels(Labels).Title(Title).Instructions(FText::GetEmpty())
 			.SelectedIndex_Lambda([WeakPawn]()
 			{
 				const ASimCopterHelicopterPawn* Helicopter = WeakPawn.Get();
@@ -284,7 +283,7 @@ FText SSimCopterControllerOverlay::GetPassengerBody() const
 		return NSLOCTEXT(
 			"SimCopterController",
 			"NoPassengers",
-			"NO PASSENGERS\nB / X  EXIT");
+			"NO PASSENGERS");
 	}
 
 	const FString PassengerLine = FString::Printf(
@@ -297,14 +296,14 @@ FText SSimCopterControllerOverlay::GetPassengerBody() const
 	{
 		const bool bDropSelected = Helicopter->GetControllerPassengerConfirmChoice() == 0;
 		return FText::FromString(FString::Printf(
-			TEXT("%s\n\n%s A  DROP     %s A  CANCEL\nB  BACK"),
+			TEXT("%s\n\n%s DROP     %s CANCEL"),
 			*PassengerLine,
 			bDropSelected ? TEXT(">") : TEXT(" "),
 			bDropSelected ? TEXT(" ") : TEXT(">")));
 	}
 
 	return FText::FromString(FString::Printf(
-		TEXT("%s\nDPAD LEFT / RIGHT  SELECT     A  ACTION\nB / X  EXIT"),
+		TEXT("%s"),
 		*PassengerLine));
 }
 

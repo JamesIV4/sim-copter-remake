@@ -126,7 +126,8 @@ bool FSimCopterMenuRoutedInputTest::RunTest(const FString&)
 	Slate.ProcessKeyDownEvent(FKeyEvent(EKeys::Gamepad_DPad_Left, FModifierKeysState(), 0, false, 0, 0));
 	Slate.ProcessKeyDownEvent(FKeyEvent(EKeys::Gamepad_FaceButton_Bottom, FModifierKeysState(), 0, false, 0, 0));
 	TestEqual(TEXT("Actual D-pad shares spatial routing"), Menu->Clicked, 0);
-	Slate.SetUserFocus(0, PreviousFocus, EFocusCause::SetDirectly);
+	if (PreviousFocus) Slate.SetUserFocus(0, PreviousFocus, EFocusCause::SetDirectly);
+	else Slate.ClearUserFocus(0, EFocusCause::SetDirectly);
 	Slate.UnregisterVirtualWindow(Window);
 	return true;
 }

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Game/SimCopterPlayerController.h"
+#include "GenericPlatform/InputDeviceRegistry.h"
 #include "Flight/SimCopterControllerInput.h"
 #include "Flight/SimCopterHelicopterPawn.h"
 
@@ -79,7 +80,8 @@ const TCHAR* const TransportBookmarkAction = TEXT("SimCopterReplayBookmark");
  * player nothing at all - not even the key they are pressing at that moment - as long as the
  * keyboard is handed back here first.
  *
- * Nothing is ever consumed: every handler returns false. This is a repair pass, not a binding.
+ * Normal input continues after repair. L3 is consumed in gameplay to toggle the contextual
+ * help list without reaching pawn actions.
  */
 class FSimCopterKeyboardFocusPreProcessor : public IInputProcessor
 {
@@ -99,9 +101,22 @@ public:
 	{
 		if (!InKeyEvent.IsRepeat())
 		{
-			if (auto* PC = Controller.Get()) PC->NoteInputDevice(InKeyEvent.GetKey().IsGamepadKey());
+			if (auto* PC = Controller.Get())
+			{
+				PC->NoteInputDevice(InKeyEvent.GetKey().IsGamepadKey());
+				if (InKeyEvent.GetKey().IsGamepadKey()) PC->NoteGamepadDevice(InKeyEvent.GetInputDeviceId());
+			}
 		}
 		Repair();
+		if (InKeyEvent.GetKey() == EKeys::Gamepad_LeftThumbstick && GEngine && GEngine->GameViewport &&
+			!GEngine->GameViewport->IgnoreInput())
+		{
+			if (auto* PC = Controller.Get(); PC && PC->GetPawn() && !PC->IsPaused())
+			{
+				if (!InKeyEvent.IsRepeat()) PC->ToggleControllerHelp();
+				return true;
+			}
+		}
 		return false;
 	}
 
@@ -121,7 +136,7 @@ public:
 		// Ignore neutral noise and a held stick's repeated reports after a keyboard press.
 		if (Event.GetKey().IsGamepadKey() && SimCopterControllerInput::UpdateAnalogActivity(Value, Previous))
 		{
-			if (auto* PC = Controller.Get()) PC->NoteInputDevice(true);
+			if (auto* PC = Controller.Get()) { PC->NoteInputDevice(true); PC->NoteGamepadDevice(Event.GetInputDeviceId()); }
 		}
 		Repair();
 		return false;
@@ -1465,3 +1480,11 @@ void ASimCopterPlayerController::SimSaveGame(const FString& SaveName)
 }
 
 #undef LOCTEXT_NAMESPACE
+
+void ASimCopterPlayerController::NoteGamepadDevice(FInputDeviceId Device)
+{
+	FString Identity;
+	if (const TOptional<FInputDeviceDescriptor> Descriptor = FInputDeviceRegistry::FindDescriptor(Device))
+		Identity = Descriptor->InputDeviceName.ToString() + TEXT(" ") + Descriptor->HardwareDeviceIdentifier.ToString();
+	ControllerIconStyle = SimCopterControllerHelp::DetectStyle(Identity);
+}

@@ -73,6 +73,8 @@
 #include "UI/SSimCopterControllerOverlay.h"
 #include "UI/SSimCopterDashboard.h"
 #include "UI/SSimCopterMapPanel.h"
+#include "UI/SSimCopterControllerHelp.h"
+#include "Widgets/SBoxPanel.h"
 #include "UI/SSimCopterCheckupMenu.h"
 #include "UI/SSimCopterToolFlaps.h"
 #include "UObject/ConstructorHelpers.h"
@@ -1083,7 +1085,7 @@ void ASimCopterHelicopterPawn::SetupPlayerInputComponent(UInputComponent* Player
 	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Right, IE_Released, this, &ASimCopterHelicopterPawn::ControllerCancelReleased);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerEnterExitPressed);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_Special_Left, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerBackPressed);
-	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftThumbstick, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerSearchLightPressed);
+	// L3 is owned by the player controller: show/hide contextual help.
 
 	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Up, IE_Pressed, this, &ASimCopterHelicopterPawn::ControllerDPadUpPressed);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_DPad_Up, IE_Released, this, &ASimCopterHelicopterPawn::ControllerDPadUpReleased);
@@ -1916,8 +1918,6 @@ void ASimCopterHelicopterPawn::ResetAircraft()
 	SetWinchHeldInput(/*bHarness=*/false, /*Direction=*/0);
 	ControllerAppliedWinchDirection = 0;
 	bControllerAppliedWinchHarness = false;
-	ControllerSpotlightAimPitchInput = 0.0f;
-	ControllerSpotlightAimYawInput = 0.0f;
 	ToolCooldownSeconds = 0.0f;
 	bIsLanded = false;
 	SetActorRotation(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
@@ -3155,6 +3155,10 @@ void ASimCopterHelicopterPawn::AppendMissionMarkerAvoidanceWidgets(TArray<TShare
 	{
 		OutWidgets.Add(MapPanel);
 	}
+	if (ControllerHelpPanel.IsValid() && ControllerHelpPanel->GetVisibility().IsVisible())
+	{
+		OutWidgets.Add(ControllerHelpPanel);
+	}
 	if (WaterControlsPanel.IsValid())
 	{
 		OutWidgets.Add(WaterControlsPanel);
@@ -3270,6 +3274,7 @@ void ASimCopterHelicopterPawn::EnsureMapWidget()
 		.Art(FlapArt)
 		.Scale(GetCockpitScale());
 	MapPanel = Map;
+	ControllerHelpPanel = SSimCopterControllerHelp::ForPawn(this, GetCockpitHudScale());
 
 	// Anchor the map itself directly to the lower-left corner.
 	MapWidget =
@@ -3278,7 +3283,11 @@ void ASimCopterHelicopterPawn::EnsureMapWidget()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Bottom)
 		[
-			Map
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(FMargin(16, 0, 0, 16) * GetCockpitHudScale())
+			[ControllerHelpPanel.ToSharedRef()]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
+			[Map]
 		];
 
 	GEngine->GameViewport->AddViewportWidgetContent(MapWidget.ToSharedRef(), 25);
@@ -3292,6 +3301,7 @@ void ASimCopterHelicopterPawn::RemoveMapWidget()
 	}
 
 	MapPanel.Reset();
+	ControllerHelpPanel.Reset();
 	MapWidget.Reset();
 }
 
@@ -4371,6 +4381,12 @@ void ASimCopterHelicopterPawn::ControllerPrimaryReleased()
 
 void ASimCopterHelicopterPawn::ControllerPassengerPressed()
 {
+	if (ControllerMode == ESimCopterControllerMode::None && bControllerCameraAdjustHeld)
+	{
+		ToggleSearchLight();
+		return;
+	}
+
 	if (ControllerMode == ESimCopterControllerMode::DispatchWheel)
 	{
 		return;
@@ -4444,14 +4460,6 @@ void ASimCopterHelicopterPawn::ControllerBackPressed()
 	if (ControllerMode == ESimCopterControllerMode::None)
 	{
 		CycleCameraMode();
-	}
-}
-
-void ASimCopterHelicopterPawn::ControllerSearchLightPressed()
-{
-	if (ControllerMode == ESimCopterControllerMode::None)
-	{
-		ToggleSearchLight();
 	}
 }
 
@@ -4618,39 +4626,14 @@ void ASimCopterHelicopterPawn::UpdateControllerToolManipulation()
 {
 	int32 WinchDirection = 0;
 	bool bHarness = false;
-	float SpotlightPitch = 0.0f;
-	float SpotlightYaw = 0.0f;
-
-	if (ControllerMode == ESimCopterControllerMode::None)
+	// Controller D-pad belongs only to tool manipulation and menu selection, never spotlight aim.
+	if (ControllerMode == ESimCopterControllerMode::None && !bControllerCameraAdjustHeld)
 	{
-		const int32 VerticalDPad =
-			(bControllerDPadUpHeld ? 1 : 0) -
-			(bControllerDPadDownHeld ? 1 : 0);
-		const int32 HorizontalDPad =
-			(bControllerDPadRightHeld ? 1 : 0) -
-			(bControllerDPadLeftHeld ? 1 : 0);
-
-		if (bControllerCameraAdjustHeld)
+		const ESimCopterHelicopterTool Tool = GetActiveTool();
+		if (Tool == ESimCopterHelicopterTool::WaterBucket || Tool == ESimCopterHelicopterTool::RescueHarness)
 		{
-			// R3+D-pad retains full two-axis spotlight aim even when the selected tool normally
-			// consumes D-pad up/down for a winch or megaphone sub-selection.
-			SpotlightPitch = static_cast<float>(VerticalDPad);
-			SpotlightYaw = static_cast<float>(HorizontalDPad);
-		}
-		else
-		{
-			const ESimCopterHelicopterTool Tool = GetActiveTool();
-			if (Tool == ESimCopterHelicopterTool::WaterBucket ||
-				Tool == ESimCopterHelicopterTool::RescueHarness)
-			{
-				WinchDirection = VerticalDPad;
-				bHarness = Tool == ESimCopterHelicopterTool::RescueHarness;
-			}
-			else if (Tool != ESimCopterHelicopterTool::Megaphone)
-			{
-				SpotlightPitch = static_cast<float>(VerticalDPad);
-			}
-			SpotlightYaw = static_cast<float>(HorizontalDPad);
+			WinchDirection = (bControllerDPadUpHeld ? 1 : 0) - (bControllerDPadDownHeld ? 1 : 0);
+			bHarness = Tool == ESimCopterHelicopterTool::RescueHarness;
 		}
 	}
 
@@ -4661,8 +4644,6 @@ void ASimCopterHelicopterPawn::UpdateControllerToolManipulation()
 		ControllerAppliedWinchDirection = WinchDirection;
 		bControllerAppliedWinchHarness = bHarness;
 	}
-	ControllerSpotlightAimPitchInput = SpotlightPitch;
-	ControllerSpotlightAimYawInput = SpotlightYaw;
 }
 
 void ASimCopterHelicopterPawn::RebuildControllerToolWheel()
@@ -6725,11 +6706,11 @@ void ASimCopterHelicopterPawn::UpdateSpotlightTarget(float DeltaSeconds)
 {
 	// Aim accumulation first, so the march uses this frame's direction.
 	const float CombinedPitchInput = FMath::Clamp(
-		SpotlightAimPitchInput + ControllerSpotlightAimPitchInput,
+		SpotlightAimPitchInput,
 		-1.0f,
 		1.0f);
 	const float CombinedYawInput = FMath::Clamp(
-		SpotlightAimYawInput + ControllerSpotlightAimYawInput,
+		SpotlightAimYawInput,
 		-1.0f,
 		1.0f);
 	if (!FMath::IsNearlyZero(CombinedPitchInput) || !FMath::IsNearlyZero(CombinedYawInput))

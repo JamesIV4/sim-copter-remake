@@ -11,7 +11,7 @@ class SBox;
 class SSimCopterRadialWheel;
 
 // Controller-only interaction presentation. Mouse/keyboard cockpit art remains untouched; this
-// layer appears only while a held radial, passenger action, or pause state needs an explicit
+// layer appears while a radial, passenger action or pause needs an explicit
 // controller-visible affordance.
 class SSimCopterControllerOverlay : public SCompoundWidget
 {
