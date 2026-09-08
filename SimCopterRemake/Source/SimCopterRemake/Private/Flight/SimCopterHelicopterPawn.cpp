@@ -7909,7 +7909,18 @@ bool ASimCopterHelicopterPawn::StepRopeState()
 	}
 
 	WinchState.Command = Command;
-	const bool bRopeEndChanged = SimCopterWinch::StepWinch(WinchState);
+	// Requested remake pacing: pay out/retract at one-quarter speed for both
+	// attachments. Keep rope physics, collisions and bucket filling at their normal rate.
+	bool bRopeEndChanged = false;
+	if (Command == SimCopterWinch::CommandIdle)
+	{
+		WinchRateCounter = 0;
+	}
+	else if (++WinchRateCounter >= 4)
+	{
+		WinchRateCounter = 0;
+		bRopeEndChanged = SimCopterWinch::StepWinch(WinchState);
+	}
 	if (bRopeEndChanged)
 	{
 		bHarnessRopeEndSelected = WinchState.RopeEnd == SimCopterWinch::ERopeEnd::Harness;

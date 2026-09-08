@@ -1684,6 +1684,7 @@ private:
 	// heli[0x6f]..heli[0x72]. RopeFirstActiveNode/bRopeDeployed above are derived from this
 	// each frame so the existing rope simulation and visuals keep working unchanged.
 	SimCopterWinch::FWinchState WinchState;
+	int32 WinchRateCounter = 0;
 
 	// One-shot winch command issued by ToggleRope / the debug panel; held until the winch
 	// reaches its limit.
