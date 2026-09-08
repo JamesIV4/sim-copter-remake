@@ -80,6 +80,19 @@ bool FSimCopterAudioOverlapTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Standalone effect starts"), Audio->PlayFile2D(TEXT("button"), SimCopterSound::ESoundDir::Root));
 	Audio->PlayFile2D(TEXT("button"), SimCopterSound::ESoundDir::Root);
 	TestEqual(TEXT("Standalone effect cannot duplicate"), Audio->LooseComponents.Num(), 1);
+	UAudioComponent* FirstMenuSound = Audio->LooseComponents[0];
+	const double FirstMenuEnd = Audio->LooseEndTimes.FindChecked(FirstMenuSound);
+	for (int32 Selection = 0; Selection < 3; ++Selection)
+	{
+		TestTrue(TEXT("Menu feedback overlaps while earlier clips are still playing"),
+			Audio->PlayFile2D(TEXT("button"), SimCopterSound::ESoundDir::Root, 1.0f, true));
+	}
+	TestEqual(TEXT("Each menu selection has independent playback"), Audio->LooseComponents.Num(), 4);
+	TestTrue(TEXT("Earlier menu playback is retained"), Audio->LooseComponents[0] == FirstMenuSound);
+	TestEqual(TEXT("Earlier menu playback is not restarted"),
+		Audio->LooseEndTimes.FindChecked(FirstMenuSound), FirstMenuEnd);
+	TestTrue(TEXT("Overlapping selections have separate PCM sources"),
+		Audio->LooseComponents[0]->Sound != Audio->LooseComponents[1]->Sound);
 	for (auto& Entry : Audio->LooseEndTimes) Entry.Value = 0.0;
 	Audio->Tick(0.0f);
 	TestEqual(TEXT("Finished standalone source is retired"), Audio->LooseComponents.Num(), 0);

@@ -1175,7 +1175,7 @@ void USimCopterAudioSubsystem::StopAttachedVoiceLoop(UAudioComponent* Component)
 // Standalone files (the front end's own sound objects)
 // ---------------------------------------------------------------------------------------------
 
-bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier)
+bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier, bool bAllowOverlap)
 {
 	UWorld* World = GetWorld();
 	if (World == nullptr || !bSoundsAvailable)
@@ -1184,14 +1184,18 @@ bool USimCopterAudioSubsystem::PlayFile2D(const FString& WavName, SimCopterSound
 	}
 
 	const FString FileKey = ResolveWavPath(WavName, Dir).ToLower();
-	if (const TWeakObjectPtr<UAudioComponent>* Existing = LooseFiles.Find(FileKey))
+	if (!bAllowOverlap)
 	{
-		const double* EndTime = LooseEndTimes.Find(Existing->Get());
-		if (Existing->IsValid() && EndTime != nullptr && FPlatformTime::Seconds() < *EndTime)
+		if (const TWeakObjectPtr<UAudioComponent>* Existing = LooseFiles.Find(FileKey))
 		{
-			return true;
+			const double* EndTime = LooseEndTimes.Find(Existing->Get());
+			if (Existing->IsValid() && EndTime != nullptr && FPlatformTime::Seconds() < *EndTime)
+			{
+				return true;
+			}
 		}
 	}
+	// Each overlapping menu selection owns fresh PCM playback; earlier sounds finish normally.
 	const FSimCopterPcmClip* Clip = LoadClip(WavName, Dir);
 	if (Clip == nullptr)
 	{

@@ -96,7 +96,9 @@ int32 ResolveRadialIndex(
 		return INDEX_NONE;
 	}
 
-	const FVector2D ScreenDirection(Stick.X, -Stick.Y);
+	// FSceneViewport::OnAnalogValueChanged already negates Gamepad_RightY.
+	// The pawn receives screen-space Y (up is negative), just like the painted wheel.
+	const FVector2D ScreenDirection = Stick;
 	int32 BestIndex = SafeCurrent;
 	double BestDot = -TNumericLimits<double>::Max();
 	for (int32 Index = 0; Index < SlotCount; ++Index)

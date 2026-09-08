@@ -15,6 +15,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSimCopterControllerWheelPresentationTest,
 
 bool FSimCopterControllerWheelPresentationTest::RunTest(const FString& Parameters)
 {
+	TestEqual(TEXT("Wheel starts fully visible"), SSimCopterRadialWheel::ReleaseOpacity(0, false), 1.0f);
+	TestEqual(TEXT("Wheel is gone after a quarter second"), SSimCopterRadialWheel::ReleaseOpacity(0.25, false), 0.0f);
+	TestEqual(TEXT("Confirmed sector is half visible at 0.375 seconds"), SSimCopterRadialWheel::ReleaseOpacity(0.375, true), 0.5f);
+	TestEqual(TEXT("Confirmed sector is gone at 0.75 seconds"), SSimCopterRadialWheel::ReleaseOpacity(0.75, true), 0.0f);
 	for (bool bTools : {false, true})
 	{
 		const TArray<FString> Labels = bTools
@@ -23,7 +27,7 @@ bool FSimCopterControllerWheelPresentationTest::RunTest(const FString& Parameter
 		TSharedRef<SSimCopterRadialWheel> Widget = SNew(SSimCopterRadialWheel)
 			.Labels(Labels).Title(FText::FromString(bTools ? TEXT("SELECT TOOL") : TEXT("DISPATCH")))
 			.Instructions(FText::FromString(bTools ? TEXT("RELEASE LB  EQUIP     B  CANCEL\nX  PASSENGERS")
-				: TEXT("RELEASE RB  DISPATCH     B  CANCEL\nA  DISPATCH     Y  RECALL ALL")))
+				: TEXT("RELEASE RB  DISPATCH\nB  CANCEL     Y  RECALL ALL")))
 			.SelectedIndex(1);
 		Widget->SlatePrepass();
 		TestTrue(TEXT("Wheel cannot steal flight focus"), !Widget->SupportsKeyboardFocus());

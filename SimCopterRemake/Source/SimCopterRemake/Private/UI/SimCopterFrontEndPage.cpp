@@ -283,7 +283,7 @@ void PlayScreenSound(const TCHAR* WavName)
 {
 	if (USimCopterAudioSubsystem* Audio = GetAudio())
 	{
-		Audio->PlayFile2D(WavName, SimCopterSound::ESoundDir::Root);
+		Audio->PlayFile2D(WavName, SimCopterSound::ESoundDir::Root, 1.0f, /*bAllowOverlap=*/true);
 	}
 }
 

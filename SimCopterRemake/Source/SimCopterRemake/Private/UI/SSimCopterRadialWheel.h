@@ -13,10 +13,16 @@ public:
 		SLATE_ATTRIBUTE(int32, SelectedIndex)
 	SLATE_END_ARGS()
 	void Construct(const FArguments& Args);
+	void BeginRelease(int32 ActivatedIndex);
+	bool IsReleaseVisible() const;
+	static float ReleaseOpacity(double Elapsed, bool bActivated);
+	virtual bool ComputeVolatility() const override { return true; }
 	virtual FVector2D ComputeDesiredSize(float) const override { return FVector2D(560, 600); }
 	virtual int32 OnPaint(const FPaintArgs&, const FGeometry&, const FSlateRect&,
 		FSlateWindowElementList&, int32, const FWidgetStyle&, bool) const override;
 private:
+	double ReleaseStart = -1.0;
+	int32 ReleasedIndex = INDEX_NONE;
 	TArray<FString> Labels;
 	FText Title;
 	FText Instructions;

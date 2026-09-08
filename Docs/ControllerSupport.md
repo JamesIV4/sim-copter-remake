@@ -38,7 +38,6 @@ stick.
 
 | Control while `RB` is held | Action |
 | --- | --- |
-| `A` | Dispatch the selected service to the spotlight target |
 | `B` | Cancel and close without dispatching |
 | `Y` | Recall every active dispatch and chase vehicle, then close |
 | Release `RB` | Dispatch only if a segment is highlighted; otherwise just close |
@@ -104,15 +103,17 @@ The main menu and every hangar page acquire controller focus when opened or rebu
 
 The wheels use a compact segmented ring with a clear selected rim and a central title.
 They scale down to fit small viewports. Slot zero is above the hub and slots proceed
-clockwise. Painting and selection share `GetRadialSlotDirection`; physical stick Y
-is converted to Slate's downward Y exactly once. The former constraint-canvas labels
+clockwise. Painting and selection share `GetRadialSlotDirection`; Unreal's viewport converts physical right-stick Y
+to downward Y before the pawn receives it, so selection uses that value directly. The former constraint-canvas labels
 were offset twice because slots default to centre alignment, so the visible labels
 were displaced from their selection directions.
 
 Police (Chase) is a separate fourth segment, using the police service in spotlight-chase mode.
-Both wheels commit on shoulder release only with a highlighted segment. Centring the stick
-clears the highlight, so release from centre cancels. Dispatch A sends immediately and Y recalls all; each closes the wheel so release cannot send a second
-request. B always cancels a wheel. A and B retain select/confirm and back/cancel in
+Both wheels commit on shoulder release only with a highlighted segment. The wheel fades out over
+0.25 seconds; the activated segment turns gold and fades over 0.75 seconds. Actions take effect
+immediately, and the fading wheel never captures input. Centring the stick
+clears the highlight, so release from centre cancels. Y recalls all and closes the wheel so release cannot send a second
+request. A is ignored while either wheel is open. B always cancels a wheel. A and B retain select/confirm and back/cancel in
 the passenger menu and never become altitude commands when closing it. A/B flight
 holds are cleared when entering a wheel and require a fresh press after leaving it.
 Triggers remain available for altitude while using wheels. On foot, A remains jump.

@@ -208,7 +208,7 @@ public:
 	 * hangar.wav, button.wav, MBoxCht.wav, blast.wav). Unlike a slot, these are polyphonic -
 	 * there is no shared buffer to collide over.
 	 */
-	bool PlayFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier = 1.0f);
+	bool PlayFile2D(const FString& WavName, SimCopterSound::ESoundDir Dir, float VolumeMultiplier = 1.0f, bool bAllowOverlap = false);
 
 	/** Stop and discard all one-shot standalone sounds owned by the current front-end screen. */
 	void StopStandaloneSounds();

@@ -61,9 +61,9 @@ bool FSimCopterControllerRadialSelectionTest::RunTest(const FString& Parameters)
 	using namespace SimCopterControllerInput;
 
 	TestEqual(TEXT("centring the stick clears the highlight"), ResolveRadialIndex(FVector2D(0.1f, 0.1f), 4, 2), INDEX_NONE);
-	TestEqual(TEXT("up selects slot zero"), ResolveRadialIndex(FVector2D(0.0f, 1.0f), 4, 2), 0);
+	TestEqual(TEXT("up selects slot zero"), ResolveRadialIndex(FVector2D(0.0f, -1.0f), 4, 2), 0);
 	TestEqual(TEXT("right proceeds clockwise"), ResolveRadialIndex(FVector2D(1.0f, 0.0f), 4, 0), 1);
-	TestEqual(TEXT("down selects opposite slot"), ResolveRadialIndex(FVector2D(0.0f, -1.0f), 4, 0), 2);
+	TestEqual(TEXT("down selects opposite slot"), ResolveRadialIndex(FVector2D(0.0f, 1.0f), 4, 0), 2);
 	TestEqual(TEXT("left wraps to final slot"), ResolveRadialIndex(FVector2D(-1.0f, 0.0f), 4, 0), 3);
 	TestEqual(TEXT("empty radial has no selection"), ResolveRadialIndex(FVector2D(0.0f, 1.0f), 0, 0), INDEX_NONE);
 	const auto Police = GetDispatchSelection(1);
@@ -90,7 +90,7 @@ bool FSimCopterControllerRadialSelectionTest::RunTest(const FString& Parameters)
 		{
 			const FVector2D Painted = GetRadialSlotDirection(Index, Count);
 			TestEqual(TEXT("Physical stick points at the painted label"),
-				ResolveRadialIndex(FVector2D(Painted.X, -Painted.Y), Count, 0), Index);
+				ResolveRadialIndex(Painted, Count, 0), Index);
 		}
 	}
 	TestTrue(TEXT("Slot zero is painted above the hub"), GetRadialSlotDirection(0, 4).Equals(FVector2D(0, -1)));

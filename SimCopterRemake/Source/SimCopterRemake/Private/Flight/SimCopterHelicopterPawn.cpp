@@ -4296,6 +4296,8 @@ void ASimCopterHelicopterPawn::ControllerDispatchWheelReleased()
 	{
 		UpdateControllerRadialSelection();
 		DispatchControllerSelection();
+		if (ControllerOverlayPanel.IsValid())
+			ControllerOverlayPanel->ReleaseRadial(true, ControllerRadialIndex);
 		ControllerMode = ESimCopterControllerMode::None;
 		RefreshDashboardSeats();
 	}
@@ -4322,6 +4324,8 @@ void ASimCopterHelicopterPawn::ControllerToolWheelReleased()
 	{
 		SetSelectedTool(ControllerToolWheelTools[ControllerRadialIndex]);
 	}
+	if (ControllerOverlayPanel.IsValid())
+		ControllerOverlayPanel->ReleaseRadial(false, ControllerToolWheelTools.IsValidIndex(ControllerRadialIndex) ? ControllerRadialIndex : INDEX_NONE);
 	ControllerMode = ESimCopterControllerMode::None;
 	RefreshDashboardSeats();
 }
@@ -4341,9 +4345,7 @@ void ASimCopterHelicopterPawn::ControllerPrimaryPressed()
 	switch (ControllerMode)
 	{
 	case ESimCopterControllerMode::DispatchWheel:
-		UpdateControllerRadialSelection();
-		DispatchControllerSelection();
-		CloseControllerMode();
+		// Commit on RB release so the thumb can stay on the selection stick.
 		break;
 	case ESimCopterControllerMode::PassengerSelect:
 		if (MissionPassengerSlots.IsValidIndex(ControllerPassengerSlot))

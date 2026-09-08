@@ -15,10 +15,30 @@ void SSimCopterRadialWheel::Construct(const FArguments& Args)
 	SetVisibility(EVisibility::HitTestInvisible);
 }
 
+void SSimCopterRadialWheel::BeginRelease(int32 ActivatedIndex)
+{
+	ReleasedIndex = Labels.IsValidIndex(ActivatedIndex) ? ActivatedIndex : INDEX_NONE;
+	ReleaseStart = FPlatformTime::Seconds();
+}
+
+float SSimCopterRadialWheel::ReleaseOpacity(double Elapsed, bool bActivated)
+{
+	return FMath::Clamp(1.0f - static_cast<float>(Elapsed / (bActivated ? 0.75 : 0.25)), 0.0f, 1.0f);
+}
+
+bool SSimCopterRadialWheel::IsReleaseVisible() const
+{
+	return ReleaseStart >= 0.0 && ReleaseOpacity(FPlatformTime::Seconds() - ReleaseStart, ReleasedIndex != INDEX_NONE) > 0.0f;
+}
+
 int32 SSimCopterRadialWheel::OnPaint(const FPaintArgs&, const FGeometry& Geometry,
 	const FSlateRect&, FSlateWindowElementList& Out, int32 Layer,
 	const FWidgetStyle& Style, bool) const
 {
+	const bool bReleased = ReleaseStart >= 0.0;
+	const double Elapsed = bReleased ? FPlatformTime::Seconds() - ReleaseStart : 0.0;
+	const float WheelOpacity = bReleased ? ReleaseOpacity(Elapsed, false) : 1.0f;
+	float PaintOpacity = WheelOpacity;
 	const FVector2f Centre(280, 260);
 	const FLinearColor Amber(1.0f, 0.67f, 0.23f);
 	const FLinearColor Ink(0.025f, 0.035f, 0.045f, 0.96f);
@@ -32,6 +52,7 @@ int32 SSimCopterRadialWheel::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 		const int32 Steps = FMath::Max(2, FMath::CeilToInt((End - Start) * 32));
 		// Slate's custom-vertex shader performs the output gamma conversion. Pre-encoding
 		// these solid colors as sRGB washes a charcoal wheel out to light grey.
+		Color.A *= PaintOpacity;
 		const FColor Tint = (Color * Style.GetColorAndOpacityTint()).ToFColor(false);
 		for (int32 Step = 0; Step <= Steps; ++Step)
 		{
@@ -54,6 +75,7 @@ int32 SSimCopterRadialWheel::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 	};
 	const auto Text = [&](const FString& String, FVector2f Position, int32 Size, FLinearColor Color, bool Bold)
 	{
+		Color.A *= PaintOpacity;
 		const FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle(Bold ? "Bold" : "Regular", Size);
 		const FVector2f Extent(Renderer->GetFontMeasureService()->Measure(String, Font));
 		FSlateDrawElement::MakeText(Out, Layer + 1,
@@ -62,14 +84,17 @@ int32 SSimCopterRadialWheel::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 	};
 
 	Ring(0, 246, 0, 2 * UE_PI, FLinearColor(0, 0, 0, 0.4f));
-	const int32 Selected = SelectedIndex.Get(INDEX_NONE);
+	const int32 Selected = bReleased ? ReleasedIndex : SelectedIndex.Get(INDEX_NONE);
 	for (int32 Index = 0; Index < Labels.Num(); ++Index)
 	{
 		const float Angle = 2 * UE_PI * Index / Labels.Num();
 		const float Half = UE_PI / Labels.Num();
 		const bool bSelected = Index == Selected;
+		const bool bConfirmed = bReleased && bSelected;
+		PaintOpacity = bConfirmed ? ReleaseOpacity(Elapsed, true) : WheelOpacity;
 		Ring(108, 239, Angle - Half + 0.015f, Angle + Half - 0.015f,
-			bSelected ? FLinearColor(0.22f, 0.14f, 0.055f, 0.98f) : Ink);
+			bConfirmed ? FLinearColor(0.72f, 0.43f, 0.045f, 0.98f) :
+			(bSelected ? FLinearColor(0.22f, 0.14f, 0.055f, 0.98f) : Ink));
 		Ring(236, 239, Angle - Half + 0.015f, Angle + Half - 0.015f,
 			bSelected ? Amber : FLinearColor(0.25f, 0.29f, 0.30f, 0.8f));
 		const FVector2f Position = Centre + FVector2f(SimCopterControllerInput::GetRadialSlotDirection(Index, Labels.Num())) * 174;
@@ -86,6 +111,7 @@ int32 SSimCopterRadialWheel::OnPaint(const FPaintArgs&, const FGeometry& Geometr
 		Text(First, Position - FVector2f(0, Second.IsEmpty() ? 0 : 10), 13, bSelected ? Amber : White, true);
 		if (!Second.IsEmpty()) Text(Second, Position + FVector2f(0, 10), 13, bSelected ? Amber : White, true);
 	}
+	PaintOpacity = WheelOpacity;
 	Ring(0, 99, 0, 2 * UE_PI, Ink);
 	Ring(98, 100, 0, 2 * UE_PI, FLinearColor(0.30f, 0.34f, 0.34f));
 	Text(Title.ToString(), Centre - FVector2f(0, 15), 16, Amber, true);

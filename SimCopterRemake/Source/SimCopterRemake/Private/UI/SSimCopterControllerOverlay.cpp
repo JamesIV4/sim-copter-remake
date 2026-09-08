@@ -150,7 +150,7 @@ void SSimCopterControllerOverlay::RefreshRadials()
 	}
 }
 
-TSharedRef<SWidget> SSimCopterControllerOverlay::BuildDispatchWheel() const
+TSharedRef<SWidget> SSimCopterControllerOverlay::BuildDispatchWheel()
 {
 	TArray<FString> Labels;
 	for (int32 Slot = 0; Slot < SimCopterControllerInput::DispatchSlotCount; ++Slot)
@@ -161,10 +161,10 @@ TSharedRef<SWidget> SSimCopterControllerOverlay::BuildDispatchWheel() const
 		NSLOCTEXT(
 			"SimCopterController",
 			"DispatchInstructions",
-			"RELEASE RB  DISPATCH     B  CANCEL\nA  DISPATCH     Y  RECALL ALL"));
+			"RELEASE RB  DISPATCH\nB  CANCEL     Y  RECALL ALL"), DispatchWheel);
 }
 
-TSharedRef<SWidget> SSimCopterControllerOverlay::BuildToolWheel() const
+TSharedRef<SWidget> SSimCopterControllerOverlay::BuildToolWheel()
 {
 	TArray<FString> Labels;
 	if (const ASimCopterHelicopterPawn* Helicopter = Pawn.Get())
@@ -186,20 +186,20 @@ TSharedRef<SWidget> SSimCopterControllerOverlay::BuildToolWheel() const
 		NSLOCTEXT(
 			"SimCopterController",
 			"ToolInstructions",
-			"RELEASE LB  EQUIP     B  CANCEL\nX  PASSENGERS"));
+			"RELEASE LB  EQUIP     B  CANCEL\nX  PASSENGERS"), ToolWheel);
 }
 
 TSharedRef<SWidget> SSimCopterControllerOverlay::BuildRadialWheel(
 	const TArray<FString>& Labels,
 	const FText& Title,
-	const FText& Instructions) const
+	const FText& Instructions, TSharedPtr<SSimCopterRadialWheel>& Wheel)
 {
 	const TWeakObjectPtr<ASimCopterHelicopterPawn> WeakPawn = Pawn;
 	return SNew(SScaleBox).Stretch(EStretch::ScaleToFit).StretchDirection(EStretchDirection::DownOnly)
 	[
 		SNew(SBox).WidthOverride(560).HeightOverride(600)
 		[
-			SNew(SSimCopterRadialWheel).Labels(Labels).Title(Title).Instructions(Instructions)
+			SAssignNew(Wheel, SSimCopterRadialWheel).Labels(Labels).Title(Title).Instructions(Instructions)
 			.SelectedIndex_Lambda([WeakPawn]()
 			{
 				const ASimCopterHelicopterPawn* Helicopter = WeakPawn.Get();
@@ -209,11 +209,18 @@ TSharedRef<SWidget> SSimCopterControllerOverlay::BuildRadialWheel(
 	];
 }
 
+void SSimCopterControllerOverlay::ReleaseRadial(bool bDispatch, int32 ActivatedIndex)
+{
+	const auto& Wheel = bDispatch ? DispatchWheel : ToolWheel;
+	if (Wheel.IsValid()) Wheel->BeginRelease(ActivatedIndex);
+}
+
 EVisibility SSimCopterControllerOverlay::GetDispatchWheelVisibility() const
 {
 	const ASimCopterHelicopterPawn* Helicopter = Pawn.Get();
 	return Helicopter != nullptr &&
-		Helicopter->GetControllerMode() == ESimCopterControllerMode::DispatchWheel
+		(Helicopter->GetControllerMode() == ESimCopterControllerMode::DispatchWheel ||
+			(DispatchWheel.IsValid() && DispatchWheel->IsReleaseVisible()))
 			? EVisibility::Visible
 			: EVisibility::Collapsed;
 }
@@ -222,7 +229,8 @@ EVisibility SSimCopterControllerOverlay::GetToolWheelVisibility() const
 {
 	const ASimCopterHelicopterPawn* Helicopter = Pawn.Get();
 	return Helicopter != nullptr &&
-		Helicopter->GetControllerMode() == ESimCopterControllerMode::ToolWheel
+		(Helicopter->GetControllerMode() == ESimCopterControllerMode::ToolWheel ||
+			(ToolWheel.IsValid() && ToolWheel->IsReleaseVisible()))
 			? EVisibility::Visible
 			: EVisibility::Collapsed;
 }

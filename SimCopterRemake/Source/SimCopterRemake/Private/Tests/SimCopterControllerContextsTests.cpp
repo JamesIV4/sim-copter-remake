@@ -42,7 +42,7 @@ bool FSimCopterControllerContextsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Cancel plus release leaves dispatch closed"), Pawn->ControllerMode == ESimCopterControllerMode::None);
 	Pawn->ControllerDispatchWheelPressed();
 	TestEqual(TEXT("Wheel opens with no implicit dispatch"), Pawn->ControllerRadialIndex, INDEX_NONE);
-	Pawn->ControllerRightY(1.0f);
+	Pawn->ControllerRightY(-1.0f);
 	Pawn->UpdateControllerRadialSelection();
 	TestEqual(TEXT("Pointing up highlights Fire Truck"), Pawn->ControllerRadialIndex, 0);
 	Pawn->ControllerRightY(0.0f);
@@ -52,10 +52,10 @@ bool FSimCopterControllerContextsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Unhighlighted release closes without selecting a command"),
 		Pawn->ControllerMode == ESimCopterControllerMode::None);
 	Pawn->ControllerDispatchWheelPressed();
-	Pawn->ControllerRightY(1.0f);
+	Pawn->ControllerRightY(-1.0f);
 	Pawn->ControllerPrimaryPressed();
-	TestTrue(TEXT("A dismisses dispatch immediately before either button is released"),
-		Pawn->ControllerMode == ESimCopterControllerMode::None);
+	TestTrue(TEXT("A leaves dispatch open for shoulder-release selection"),
+		Pawn->ControllerMode == ESimCopterControllerMode::DispatchWheel);
 	TestFalse(TEXT("Held dispatch A does not become climb"), Pawn->bControllerClimbHeld);
 	Pawn->ControllerDispatchWheelReleased();
 	TestTrue(TEXT("Later RB release remains outside dispatch context"),
