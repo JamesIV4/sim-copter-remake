@@ -6,7 +6,7 @@
 #include "InputCoreTypes.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 #include "Widgets/Views/SListView.h"
 
 class STextBlock;
@@ -73,7 +73,7 @@ struct FSimCopterBinding
 
 DECLARE_DELEGATE(FOnSimCopterControlSettingsClosed);
 
-class SSimCopterControlSettings : public SCompoundWidget
+class SSimCopterControlSettings : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterControlSettings) {}
@@ -103,6 +103,9 @@ public:
 
 	/** Strips the project prefix and spaces the camel case: "SimCopterLookYaw" -> "Look Yaw". */
 	static FText MakeDisplayLabel(FName MappingName, bool bIsAxis, float Scale);
+
+protected:
+	virtual bool IsCapturingControllerBinding() const override { return RebindIndex != INDEX_NONE; }
 
 private:
 	TObjectPtr<USimCopterHangarArt> Art;

@@ -459,6 +459,7 @@ public:
 		int32 SlotIndex,
 		float ClearanceCm,
 		const FVector2D& FallbackDoorOffsetCm);
+	static FVector ComputePassengerExitFeetLocation(const FBox& LocalBoundsCm, const FTransform& BodyFrame);
 
 	// Is a body at WorldLocation touching the airframe, within ToleranceCm of its skin? Measured
 	// against the mesh, never against a radius about the actor origin: the collision capsule is a
@@ -1139,10 +1140,10 @@ protected:
 	float PassengerDropProbeDepthCm = 1800.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
-	float PassengerDropSideOffsetCm = 75.0f;
+	float PassengerDropSideOffsetCm = 175.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
-	float PassengerDropForwardOffsetCm = 20.0f;
+	float PassengerDropForwardOffsetCm = 35.0f;
 
 	UPROPERTY(EditAnywhere, Category = "SimCopter|Missions", meta = (ClampMin = "0.0"))
 	float PassengerDropVerticalOffsetCm = 55.0f;

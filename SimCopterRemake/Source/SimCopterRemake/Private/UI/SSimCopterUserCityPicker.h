@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 #include "Widgets/Views/SListView.h"
 
 class USimCopterHangarArt;
@@ -48,7 +48,7 @@ struct FSimCopterUserCityEntry
 	FString DisplayName;
 };
 
-class SSimCopterUserCityPicker : public SCompoundWidget
+class SSimCopterUserCityPicker : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterUserCityPicker) {}

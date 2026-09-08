@@ -58,6 +58,8 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
+	bool CanAdjust() const { return !bLocked; }
+	void AdjustForController(FVector2D Direction);
 	float GetValue() const { return Value; }
 	void SetValue(float InValue);
 

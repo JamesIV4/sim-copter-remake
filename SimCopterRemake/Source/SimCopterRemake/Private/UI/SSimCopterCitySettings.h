@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class SSimCopterCheckupSlider;
 class USimCopterHangarArt;
@@ -87,7 +87,7 @@ struct FSimCopterCitySettingsValues
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterCitySettingsAccepted, const FSimCopterCitySettingsValues&);
 
-class SSimCopterCitySettings : public SCompoundWidget
+class SSimCopterCitySettings : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterCitySettings) {}

@@ -3062,34 +3062,31 @@ void ASimCopterHelicopterPawn::ReactPassengersToDamagingImpact()
 // remaining gap - stepping out is a drop, however short.
 FVector ASimCopterHelicopterPawn::GetPassengerDropWorldLocation(int32 SlotIndex) const
 {
-	const FRotationMatrix YawFrame(FRotator(0.0f, GetActorRotation().Yaw, 0.0f));
 	FBox AirframeBounds(ForceInit);
-	const FVector MidpointLocal = TryGetAirframeLocalBoundsCm(AirframeBounds)
-		? AirframeBounds.GetCenter()
-		: FVector::ZeroVector;
+	TryGetAirframeLocalBoundsCm(AirframeBounds);
+	return ComputePassengerExitFeetLocation(AirframeBounds,
+		ModelPivot != nullptr ? ModelPivot->GetComponentTransform() : GetActorTransform());
+}
 
-	// FUN_004c6360 leaves released riders at their carrier's position. Keep the remake's
-	// small visual offset close to the cabin so it is easy to follow somebody stepping out.
-	// Place on the left side 35 cm to the left of the midpoint of the chopper frame,
-	// at the same vertical position as the helicopter frame's midpoint. Do NOT test for ground.
-	const FVector DropLocal = FVector(MidpointLocal.X, MidpointLocal.Y - 35.0f, MidpointLocal.Z);
-
-	return GetActorLocation() +
-		YawFrame.GetUnitAxis(EAxis::X) * DropLocal.X +
-		YawFrame.GetUnitAxis(EAxis::Y) * DropLocal.Y +
-		FVector::UpVector * DropLocal.Z;
+FVector ASimCopterHelicopterPawn::ComputePassengerExitFeetLocation(
+	const FBox& LocalBoundsCm, const FTransform& BodyFrame)
+{
+	// FUN_004c6360 leaves the rider at the carrier. Remake presentation puts their feet just
+	// outside the visible skin: an offset from the CENTER can still be inside a wide fuselage.
+	// These bounds belong to ModelPivot, whose translation and bank must both be applied.
+	const FVector LocalFeet = LocalBoundsCm.IsValid
+		? FVector(LocalBoundsCm.GetCenter().X,
+			FMath::Min(LocalBoundsCm.GetCenter().Y - 50.0, LocalBoundsCm.Min.Y - 12.0), LocalBoundsCm.GetCenter().Z)
+		: FVector(0.0, -50.0, 0.0);
+	return BodyFrame.TransformPosition(LocalFeet);
 }
 
 float ASimCopterHelicopterPawn::GetPassengerDropHeightOffsetCm() const
 {
-	FBox AirframeBounds(ForceInit);
-	const float MidpointZ = TryGetAirframeLocalBoundsCm(AirframeBounds)
-		? static_cast<float>(AirframeBounds.GetCenter().Z)
-		: 0.0f;
 	const float CapsuleHalfHeight = CollisionComponent != nullptr
 		? CollisionComponent->GetScaledCapsuleHalfHeight()
 		: 0.0f;
-	return MidpointZ + CapsuleHalfHeight;
+	return static_cast<float>(GetPassengerDropWorldLocation().Z - GetActorLocation().Z) + CapsuleHalfHeight;
 }
 
 FVector2D ASimCopterHelicopterPawn::ComputePassengerDoorOffsetCm(
@@ -3128,7 +3125,7 @@ FVector ASimCopterHelicopterPawn::GetPassengerAirDropWorldLocation(int32 SlotInd
 
 	return GetActorLocation() +
 		YawFrame.GetUnitAxis(EAxis::Y) * (PassengerDropSideOffsetCm * SlotSide) -
-		YawFrame.GetUnitAxis(EAxis::X) * (PassengerDropForwardOffsetCm + float(SideIndex) * 16.0f) -
+		YawFrame.GetUnitAxis(EAxis::X) * (PassengerDropForwardOffsetCm + float(SideIndex) * 32.0f) -
 		FVector::UpVector * PassengerDropVerticalOffsetCm;
 }
 
@@ -7688,16 +7685,33 @@ bool ASimCopterHelicopterPawn::OpenCheckupMenu()
 
 	// Above the dashboard and the debug panel: while it is up it is the only thing to click.
 	GEngine->GameViewport->AddViewportWidgetContent(CheckupWidget.ToSharedRef(), 70);
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(CheckupWidget);
+		Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PC->SetInputMode(Mode);
+		PC->bShowMouseCursor = true;
+	}
 	return true;
 }
 
 void ASimCopterHelicopterPawn::CloseCheckupMenu()
 {
+	const bool bWasOpen = CheckupWidget.IsValid();
 	if (GEngine != nullptr && GEngine->GameViewport != nullptr && CheckupWidget.IsValid())
 	{
 		GEngine->GameViewport->RemoveViewportWidgetContent(CheckupWidget.ToSharedRef());
 	}
 	CheckupWidget.Reset();
+	if (bWasOpen)
+	{
+		if (APlayerController* PC = Cast<APlayerController>(GetController()))
+		{
+			PC->SetInputMode(FInputModeGameOnly());
+			PC->bShowMouseCursor = false;
+		}
+	}
 }
 
 void ASimCopterHelicopterPawn::SimCheckup()

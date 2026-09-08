@@ -6,7 +6,7 @@
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 #include "Widgets/Input/SEditableTextBox.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class USimCopterHangarArt;
 struct FButtonStyle;
@@ -15,7 +15,7 @@ DECLARE_DELEGATE_OneParam(FOnSimCopterSaveNameAccepted, const FString&);
 
 // In-app Save As name entry. The original used a Win32 SaveFile dialog; this stays within the
 // same menu4.bmp shell used by the remake's other file pickers.
-class SSimCopterSaveNameDialog : public SCompoundWidget
+class SSimCopterSaveNameDialog : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterSaveNameDialog) {}

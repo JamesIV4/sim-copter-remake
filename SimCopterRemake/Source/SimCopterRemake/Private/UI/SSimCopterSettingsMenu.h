@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class USimCopterHangarArt;
 struct FButtonStyle;
@@ -92,7 +92,7 @@ enum class ESimCopterSettingsItem : uint8
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterSettingsItemChosen, ESimCopterSettingsItem);
 
-class SSimCopterSettingsMenu : public SCompoundWidget
+class SSimCopterSettingsMenu : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterSettingsMenu)
@@ -114,6 +114,9 @@ public:
 	/** Row on the page -> the command id, i.e. the descriptor's command base added back on. */
 	static ESimCopterSettingsItem GetItemForRow(int32 Row, bool bHasCitySettings);
 	static const FText& GetItemLabel(ESimCopterSettingsItem Item);
+
+protected:
+	virtual void OnControllerSelectionChanged(int32 Index) override { SetSelectedRow(Index); }
 
 private:
 	TObjectPtr<USimCopterHangarArt> Art;

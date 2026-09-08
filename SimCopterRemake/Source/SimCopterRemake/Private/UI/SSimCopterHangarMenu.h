@@ -7,7 +7,7 @@
 #include "Types/SlateEnums.h"
 #include "UI/SimCopterHangarShop.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class SConstraintCanvas;
 class USimCopterHangarArt;
@@ -32,7 +32,7 @@ struct FButtonStyle;
 // Layout is done in the original's own 640x480 page space (see SimCopterHangarLayout) and the
 // whole page is then scaled to whatever the viewport is, so the coordinates stay comparable to
 // the decompiled ones.
-class SSimCopterHangarMenu : public SCompoundWidget
+class SSimCopterHangarMenu : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterHangarMenu) {}
@@ -43,7 +43,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	TSharedPtr<SWidget> GetInitialFocusWidget() const { return InitialFocusWidget; }
+	TSharedPtr<SWidget> GetInitialFocusWidget() const { return const_cast<SSimCopterHangarMenu*>(this)->AsShared(); }
 
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 

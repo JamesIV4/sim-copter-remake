@@ -586,6 +586,23 @@ void ASimCopterGroundAgent::ResetBehaviorProgramOverride()
 
 void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 {
+	// Only healthy rescue/transport passengers become ambient after accepted delivery.
+	// Patients retain their medical lifecycle, including a transport injured after boarding.
+	// Never replace the VM stack from inside its opcode callback.
+	const auto TryBecomeAmbient = [this]()
+	{
+		const bool bPassenger = InitialPersonState == 1 || InitialPersonState == 2 ||
+			InitialPersonState == 4 || InitialPersonState == 0x13;
+		if (bPassenger && BehaviorContext.GetStateIndex() != 6 &&
+			bMissionResolutionReported && !bMissionPatientDead &&
+			!bClaimedPassengerSeat && !BehaviorCarrier.IsValid() && !bMissionCarried)
+		{
+			BecomeAmbientPedestrian();
+			return true;
+		}
+		return false;
+	};
+	if (TryBecomeAmbient()) return;
 	// The people VM only ever drives pedestrians; vehicles keep the road-route movement.
 	if (!bBehaviorActive || !BehaviorModel.IsValid() || AgentKind != ESimCopterGroundAgentKind::Pedestrian)
 	{
@@ -614,6 +631,7 @@ void ASimCopterGroundAgent::UpdateOriginalBehavior(float DeltaSeconds)
 		// DAT_00506448, incremented once per behaviour tick by FUN_004c5fb0. Opcode 79 reads it.
 		++BehaviorTickCounter;
 		const EBhavStepResult Result = FSimCopterBehaviorVM::Tick(BehaviorContext, *BehaviorModel, *this);
+		if (TryBecomeAmbient()) return;
 
 		// Agitation is data-driven - BHAV 907/908/901/852 all reach it through the generic
 		// attribute writes - so the only place that sees every cause is here, after the tick.
@@ -6829,6 +6847,22 @@ void ASimCopterGroundAgent::ClearMissionPose()
 		VisualRoot->SetRelativeRotation(FRotator::ZeroRotator);
 		SetVisualRootRelativeLocation(FVector::ZeroVector);
 	}
+}
+
+void ASimCopterGroundAgent::BecomeAmbientPedestrian()
+{
+	// Intentional divergence from BHAV 292's Disappear: keep the same actor and appearance,
+	// but retire mission ownership before starting BHAV 600's ordinary ambient program.
+	MissionEventId = INDEX_NONE;
+	InitialPersonState = 0;
+	bMissionPickupCounted = false;
+	bMissionPickupCreditAwarded = false;
+	bAmbulanceHandoffPending = false;
+	bBehaviorMoveSuspended = false;
+	SetLifeSpan(0.0f);
+	SetActorHiddenInGame(false);
+	ClearMissionPose();
+	ResumeNormalPedestrianBehavior();
 }
 
 void ASimCopterGroundAgent::ResumeNormalPedestrianBehavior()

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class USimCopterHangarArt;
 struct FButtonStyle;
@@ -38,7 +38,7 @@ constexpr float LeftButtonX = 194.0f;
 constexpr float RightButtonX = 294.0f;
 }
 
-class SSimCopterMessageBox : public SCompoundWidget
+class SSimCopterMessageBox : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterMessageBox)

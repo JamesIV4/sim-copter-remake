@@ -292,3 +292,13 @@ void SSimCopterCheckupMenu::RefreshReadouts()
 		FundsText->SetText(FText::FromString(FormatDollars(State.Funds)));
 	}
 }
+
+FReply SSimCopterCheckupMenu::OnKeyDown(const FGeometry&, const FKeyEvent& Event)
+{
+	if (Event.GetKey() == EKeys::Escape)
+	{
+		OnCancelled.ExecuteIfBound();
+		return FReply::Handled();
+	}
+	return FReply::Unhandled();
+}

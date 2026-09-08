@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class SSimCopterCheckupSlider;
 class STextBlock;
@@ -87,7 +87,7 @@ struct FSimCopterSoundSettingsValues
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterSoundSettingsAccepted, const FSimCopterSoundSettingsValues&);
 
-class SSimCopterSoundSettings : public SCompoundWidget
+class SSimCopterSoundSettings : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterSoundSettings)

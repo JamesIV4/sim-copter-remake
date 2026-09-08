@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class STextBlock;
 class USimCopterHangarArt;
@@ -85,7 +85,7 @@ int32 GetNavigationTarget(EPanelNavigation Navigation, int32 Selected, int32 Cou
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterCareerCityChosen, int32);
 
-class SSimCopterCareerSelect : public SCompoundWidget
+class SSimCopterCareerSelect : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterCareerSelect) {}
@@ -105,6 +105,9 @@ public:
 	virtual void Tick(const FGeometry& AllottedGeometry, const double CurrentTime, const float DeltaTime) override;
 
 	int32 GetSelectedPanel() const { return SelectedPanel; }
+
+protected:
+	virtual void OnControllerSelectionChanged(int32 Index) override { if (Index < Cities.Num()) SetSelectedPanel(Index); }
 
 private:
 	TObjectPtr<USimCopterHangarArt> Art;

@@ -130,6 +130,19 @@ bool FSimCopterPassengerDoorOffsetTest::RunTest(const FString& Parameters)
 	const FVector2D HeadlessFallback = FHeli::ComputePassengerDoorOffsetCm(
 		FBox(ForceInit), 0, 40.0f, Fallback);
 	TestEqual(TEXT("A headless frame retains the authored fallback"), HeadlessFallback, Fallback);
+
+	// The mesh origin is not the actor origin. A translated/banked ModelPivot must carry the
+	// exit point with it, and even a wide fuselage must leave the passenger outside its skin.
+	const FBox WideBody(FVector(-120, -90, -220), FVector(120, 90, -120));
+	const FTransform BodyFrame(FRotator(10, 90, 15), FVector(1000, 2000, 500));
+	const FVector ExitFeet = FHeli::ComputePassengerExitFeetLocation(WideBody, BodyFrame);
+	const FVector LocalExit = BodyFrame.InverseTransformPosition(ExitFeet);
+	TestTrue(TEXT("Exit feet clear the wide fuselage"), LocalExit.Y < WideBody.Min.Y);
+	TestTrue(TEXT("Exit follows model pivot height and attitude"),
+		ExitFeet.Equals(BodyFrame.TransformPosition(FVector(0, -102, -170)), 0.01));
+	TestTrue(TEXT("Exit remains above the example landing surface"), ExitFeet.Z > 200.0);
+	const FVector NarrowExit = FHeli::ComputePassengerExitFeetLocation(Box, FTransform::Identity);
+	TestEqual(TEXT("Normal exit restores the original 50 cm midpoint spacing"), NarrowExit.Y, -50.0, 0.01);
 	return true;
 }
 

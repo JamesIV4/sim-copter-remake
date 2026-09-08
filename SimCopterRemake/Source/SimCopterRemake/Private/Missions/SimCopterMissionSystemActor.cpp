@@ -2372,10 +2372,7 @@ bool ASimCopterMissionSystemActor::TryCompleteSafelyDroppedPassenger(ASimCopterG
 		}
 		return false;
 	}
-	Person->MissionEventId = INDEX_NONE;
-	Person->InitialPersonState = 0;
-	Person->ClearMissionPose();
-	Person->ResumeNormalPedestrianBehavior();
+	Person->BecomeAmbientPedestrian();
 	return true;
 }
 

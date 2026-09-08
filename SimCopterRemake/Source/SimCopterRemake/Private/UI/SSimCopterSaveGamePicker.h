@@ -6,7 +6,7 @@
 #include "Game/SimCopterSaveSubsystem.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 #include "Widgets/Views/SListView.h"
 
 class USimCopterHangarArt;
@@ -30,7 +30,7 @@ DECLARE_DELEGATE_OneParam(FOnSimCopterSaveGameChosen, const FString&);
 
 // In-app replacement for the original Win32 *.scc/*.scu open dialog. The remake saves its own
 // versioned archive, so this lists only compatible slots and keeps career/user files separate.
-class SSimCopterSaveGamePicker : public SCompoundWidget
+class SSimCopterSaveGamePicker : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterSaveGamePicker)

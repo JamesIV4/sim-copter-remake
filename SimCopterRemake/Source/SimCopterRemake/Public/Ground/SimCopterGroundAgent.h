@@ -321,6 +321,7 @@ public:
 	// Shared body of the two poses above: stop the person for good and hold one authored clip.
 	void SetMissionFinishedPose(const TCHAR* ClipMnemonic, bool bDeceased);
 	void ResumeNormalPedestrianBehavior();
+	void BecomeAmbientPedestrian();
 	// Continue the exact VM stack that was paused by SetMissionScriptedMover.
 	void ResumeSuspendedPedestrianBehavior();
 	void SetCarriedBy(USceneComponent* CarryParentComponent, const FVector& RelativeLocation, const FRotator& RelativeRotation);

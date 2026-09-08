@@ -212,6 +212,45 @@ bool FSimCopterSafePassengerLandingTest::RunTest(const FString& Parameters)
 		Traffic->PedestrianAgents.Add(Person);
 		return Person;
 	};
+	{
+		ASimCopterHelicopterPawn* Helicopter = World->SpawnActor<ASimCopterHelicopterPawn>();
+		ASimCopterGroundAgent* Person = CreatePerson(4, INDEX_NONE, FIntPoint(10, 10));
+		Helicopter->SetActorLocation(Person->GetActorLocation() + FVector(0, 0, 150));
+		TestTrue(TEXT("Passenger boards real cabin"), Person->BoardCarrier(Helicopter, false));
+		TestTrue(TEXT("Cabin passenger is hidden"), Person->IsHidden());
+		TestTrue(TEXT("Passenger exits real cabin"), Person->AlightFromCarrier());
+		TestFalse(TEXT("Exiting passenger is visible"), Person->IsHidden());
+		TestTrue(TEXT("Exit uses feet plus passenger capsule height"), Person->GetActorLocation().Equals(
+			Helicopter->GetPassengerDropWorldLocation() + FVector::UpVector * Person->GetCapsuleHalfHeightCm(), 0.01));
+
+		// Execute the shipped transport program's immediate post-delivery Disappear record.
+		Person->BehaviorContext.Stack.Reset();
+		Person->BehaviorContext.Stack.Add({292, 6, {}});
+		Person->SetMissionResolutionReported(true);
+		Person->UpdateOriginalBehavior(0.1f);
+		TestFalse(TEXT("Delivery disappearance cannot hide the exit on the same frame"), Person->IsHidden());
+		TestTrue(TEXT("Delivered passenger runs ambient behavior"), Person->IsBehaviorActive());
+		TestEqual(TEXT("Delivered passenger uses ambient state"), Person->BehaviorContext.GetStateIndex(), 0);
+		TestEqual(TEXT("Delivered passenger starts ambient program"), Person->BehaviorContext.Stack[0].ProgramId, 600);
+		TestEqual(TEXT("Delivered passenger has no disappearance timer"), Person->GetLifeSpan(), 0.0f);
+		TestFalse(TEXT("Ambient passenger has no stale despawn request"), Person->BehaviorContext.bRequestDespawn);
+		Person->UpdateGroundSnap(1.0f);
+		TestTrue(TEXT("Released passenger feet do not end up underground"),
+			Person->GetActorLocation().Z - Person->GetCapsuleHalfHeightCm() >= 0.0f);
+		Helicopter->Destroy();
+	}
+	// Both an original patient and a transport passenger subsequently injured stay medical.
+	for (const int32 InitialState : {6, 4})
+	{
+		const int32 Event = Missions->MissionSystem.CreateEventAt(10, 10, TYPE_Medevac);
+		ASimCopterGroundAgent* Patient = CreatePerson(InitialState, Event, FIntPoint(10, 10));
+		Patient->SetMissionInjuredPose();
+		Patient->SetMissionResolutionReported(true);
+		Patient->UpdateOriginalBehavior(0.0f);
+		TestEqual(TEXT("Dropped-off patient retains medical state"), Patient->BehaviorContext.GetStateIndex(), 6);
+		TestEqual(TEXT("Dropped-off patient retains medical ownership"), Patient->MissionEventId, Event);
+		TestTrue(TEXT("Dropped-off patient retains patient pose"), Patient->bMissionStationary);
+	}
 	for (const bool AtDestination : {false, true})
 	{
 		const int32 Event = Missions->MissionSystem.CreateEventAt(10, 10, TYPE_Transport);
@@ -235,6 +274,10 @@ bool FSimCopterSafePassengerLandingTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Exactly one passenger delivered"), Missions->MissionSystem.FindRecord(Event)->TransportDelivered, 1);
 			TestEqual(TEXT("Safe landing restores pickup count once"), Missions->MissionSystem.FindRecord(Event)->VictimsPickedUp, 1);
 			TestFalse(TEXT("Landing cannot credit delivery twice"), Missions->TryCompleteSafelyDroppedPassenger(Person));
+			TestEqual(TEXT("Safe delivery clears mission ownership"), Person->MissionEventId, INDEX_NONE);
+			TestEqual(TEXT("Safe delivery becomes ambient"), Person->BehaviorContext.GetStateIndex(), 0);
+			TestFalse(TEXT("Safe delivery remains visible"), Person->IsHidden());
+			TestEqual(TEXT("Safe delivery has no disappearance timer"), Person->GetLifeSpan(), 0.0f);
 		}
 	}
 	for (const bool OnHomeTile : {true, false})

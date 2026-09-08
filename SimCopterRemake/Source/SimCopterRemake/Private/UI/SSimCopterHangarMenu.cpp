@@ -189,7 +189,7 @@ void SSimCopterHangarMenu::RebuildPage()
 		InitialFocusWidget = ControllerFocusableWidgets[FocusIndex];
 		if (FSlateApplication::IsInitialized())
 		{
-			FSlateApplication::Get().SetAllUserFocus(InitialFocusWidget, EFocusCause::Navigation);
+			FSlateApplication::Get().SetAllUserFocus(SharedThis(this), EFocusCause::Navigation);
 		}
 	}
 	else

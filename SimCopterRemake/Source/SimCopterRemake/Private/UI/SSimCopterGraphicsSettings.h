@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class SSimCopterCheckupSlider;
 class STextBlock;
@@ -55,7 +55,7 @@ constexpr int32 HeadingFontHeight = 18;
 
 DECLARE_DELEGATE(FOnSimCopterGraphicsSettingsClosed);
 
-class SSimCopterGraphicsSettings : public SCompoundWidget
+class SSimCopterGraphicsSettings : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterGraphicsSettings) {}

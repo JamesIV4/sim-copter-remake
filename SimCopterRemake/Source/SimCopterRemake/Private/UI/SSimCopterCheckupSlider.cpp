@@ -188,3 +188,12 @@ FReply SSimCopterCheckupSlider::OnMouseMove(const FGeometry& MyGeometry, const F
 	ApplyMouse(MyGeometry, MouseEvent);
 	return FReply::Handled();
 }
+
+void SSimCopterCheckupSlider::AdjustForController(FVector2D Direction)
+{
+	if (!bLocked)
+	{
+		const float Step = Orientation == Orient_Horizontal ? Direction.X : -Direction.Y;
+		SetValue(GetValue() + Step * 0.05f);
+	}
+}

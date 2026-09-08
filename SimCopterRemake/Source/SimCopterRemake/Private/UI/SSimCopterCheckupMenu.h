@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Game/SimCopterCheckup.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class ASimCopterHelicopterPawn;
 class SSimCopterCheckupSlider;
@@ -124,7 +124,7 @@ constexpr int32 BodyFontSize = 11;
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterCheckupAccepted, FSimCopterCheckupOrder);
 
-class SSimCopterCheckupMenu : public SCompoundWidget
+class SSimCopterCheckupMenu : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterCheckupMenu) {}
@@ -135,6 +135,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	virtual FReply OnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
 
 private:
 	// Slider positions are normalised 0..1; these turn them into the original's units.

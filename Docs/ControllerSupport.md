@@ -90,14 +90,26 @@ Hold `LB` and press `X` to enter passenger-selection mode; you can then release 
 
 Mission-person pickup remains proximity-driven, as in the existing on-foot mission flow.
 
-## Front end and hangar
+## Menus
 
-The main menu and every hangar page acquire controller focus when opened or rebuilt:
+The front end, city and save pickers, pause/settings pages, confirmation dialogs,
+hangar pages and airport check-up use spatial controller navigation:
 
-- D-pad or left stick navigates focus.
-- `A` activates the focused button or hotspot.
-- `B` returns from a city-selection or hangar subpage; on the main hangar page it closes the
-  hangar.
+- Left stick or D-pad moves the gold outline toward the control in that direction,
+  using its on-screen position. Disabled controls are skipped; focus stops at the edge.
+- `A` activates the outlined button, hotspot or checkbox.
+- On a slider, list, dropdown or text field, `A` enters the control. The outline turns
+  green while adjusting. Use the stick or D-pad to adjust sliders or select list entries,
+  then `A` to confirm. Text entry itself uses the platform's text input.
+- `B` first leaves an active control, then cancels or goes back one page. On the root
+  main menu it stays on the menu; choose Quit and press `A` to exit.
+- Hangar catalog tabs and equipment hotspots are included. Settings scroll to reveal
+  the selected control. The original main-menu lamps and city preview selection follow
+  controller navigation.
+
+The controller hint appears with the selection outline. Keyboard and mouse retain
+their existing controls. The check-up panel owns UI input while open and returns it
+to flight when closed.
 
 ## Wheel layout and input contexts
 

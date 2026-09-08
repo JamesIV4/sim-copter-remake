@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "SimCopterFrontEndPage.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
-#include "Widgets/SCompoundWidget.h"
+#include "SSimCopterNavigableMenu.h"
 
 class USimCopterHangarArt;
 struct FButtonStyle;
@@ -153,7 +153,7 @@ enum class ESimCopterMainMenuItem : uint8
 
 DECLARE_DELEGATE_OneParam(FOnSimCopterMainMenuItemChosen, ESimCopterMainMenuItem);
 
-class SSimCopterMainMenu : public SCompoundWidget
+class SSimCopterMainMenu : public SSimCopterNavigableMenu
 {
 public:
 	SLATE_BEGIN_ARGS(SSimCopterMainMenu) {}
@@ -167,6 +167,9 @@ public:
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
 
 	int32 GetSelectedIndex() const { return SelectedIndex; }
+
+protected:
+	virtual void OnControllerSelectionChanged(int32 Index) override { SetSelectedIndex(Index); }
 
 private:
 	TObjectPtr<USimCopterHangarArt> Art;
