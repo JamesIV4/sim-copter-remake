@@ -13,6 +13,7 @@
 #include "EngineUtils.h"
 #include "Engine/Texture2D.h"
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Flight/SimCopterHelicopterParking.h"
 #include "Formats/MaxisMeshReader.h"
 #include "Formats/MaxisTextureReader.h"
 #include "Formats/SimCopterOriginalGamePaths.h"
@@ -711,10 +712,10 @@ void ASimCopterHangar::OpenShell(APlayerController* PlayerController)
 	Art->SetOriginalGameRoot(ResolveOriginalGameRoot());
 
 	SimCopterHangarShop::FContext Context;
+	Context.Hangar = this;
 	Context.Missions = Cast<ASimCopterMissionSystemActor>(
 		UGameplayStatics::GetActorOfClass(World, ASimCopterMissionSystemActor::StaticClass()));
-	Context.Helicopter = Cast<ASimCopterHelicopterPawn>(
-		UGameplayStatics::GetActorOfClass(World, ASimCopterHelicopterPawn::StaticClass()));
+	Context.Helicopter = SimCopterHelicopterParking::ResolveCurrentAircraft(World);
 
 	if (UGameInstance* GameInstance = World->GetGameInstance())
 	{

@@ -401,6 +401,9 @@ public:
 	// visible aircraft, rotors excluded - what "next to the helicopter" has to mean for anyone
 	// walking up to it. False before any body geometry has been built.
 	bool TryGetAirframeLocalBoundsCm(FBox& OutLocalBoundsCm) const;
+	FBox GetParkingWorldBounds() const;
+	FName GetRuntimeSaveIdentityName() const { return RuntimeSaveIdentityName.IsNone() ? GetFName() : RuntimeSaveIdentityName; }
+	void SetRuntimeSaveIdentityName(FName Name) { RuntimeSaveIdentityName = Name; }
 
 	// Gap in centimetres from a world point to that box; zero when the point is inside it.
 	// bHorizontalOnly measures across the deck only, which is what a walker standing on the same
@@ -639,6 +642,7 @@ public:
 	void DebugRefillTearGas();
 
 	// --- Debug appearance knobs (SSimCopterHelicopterDebugPanel) ---
+	bool IsTypingDebugMoney() const;
 
 	// Metallic on the shared vehicle material: the fuselage, the cars and the ambient
 	// planes/trains/boats all move together, and the city's buildings deliberately do not.
@@ -1565,6 +1569,7 @@ protected:
 	// seats, the tail-rotor mount, and the Apache armament flag.
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	int32 ActiveHelicopterTypeIndex = 0;
+	FName RuntimeSaveIdentityName;
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SimCopter|Runtime")
 	FString LastModelSwitchStatus;

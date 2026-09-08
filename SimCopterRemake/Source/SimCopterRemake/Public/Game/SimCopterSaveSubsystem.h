@@ -12,6 +12,18 @@
 
 class ASimCopterMissionSystemActor;
 
+USTRUCT()
+struct FSimCopterParkedAircraftSave
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	int32 TypeIndex = INDEX_NONE;
+	UPROPERTY()
+	FName Identity;
+	UPROPERTY()
+	TArray<uint8> RuntimeState;
+};
+
 // Versioned remake save payload.
 //
 // SCHOOK: SaveGame 0x004200e0 writes CPTR plus a CRER/USER header, CFILE, CINF/UINF, CSET,
@@ -25,7 +37,7 @@ class SIMCOPTERREMAKE_API USimCopterSaveGame : public USaveGame
 	GENERATED_BODY()
 
 public:
-	static constexpr int32 CurrentFormatVersion = 3;
+	static constexpr int32 CurrentFormatVersion = 4;
 	static const TCHAR* GetFormatMagic() { return TEXT("SimCopterRemakeSave"); }
 
 	UPROPERTY()
@@ -145,6 +157,12 @@ public:
 
 	UPROPERTY()
 	TArray<uint8> AircraftRuntimeState;
+	UPROPERTY()
+	FName ActiveAircraftIdentity;
+
+	// Version 4: the other airframes remain physical aircraft after loading.
+	UPROPERTY()
+	TArray<FSimCopterParkedAircraftSave> ParkedAircraft;
 
 	UPROPERTY()
 	TArray<FIntPoint> DemolishedBuildingOrigins;

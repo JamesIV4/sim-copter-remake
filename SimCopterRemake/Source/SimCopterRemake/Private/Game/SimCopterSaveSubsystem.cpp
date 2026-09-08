@@ -3,6 +3,7 @@
 #include "Game/SimCopterSaveSubsystem.h"
 
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Flight/SimCopterHelicopterParking.h"
 #include "Flight/SimCopterHelicopterRegistry.h"
 #include "City/SimCopterDayNight.h"
 #include "City/SimCity2000CityActor.h"
@@ -25,27 +26,7 @@ const TCHAR* const ManagedSlotPrefix = TEXT("SimCopter_");
 
 ASimCopterHelicopterPawn* ResolveCareerHelicopter(const UObject* WorldContextObject)
 {
-	if (WorldContextObject == nullptr)
-	{
-		return nullptr;
-	}
-
-	if (const APlayerController* PlayerController = UGameplayStatics::GetPlayerController(WorldContextObject, 0))
-	{
-		if (ASimCopterHelicopterPawn* Possessed = Cast<ASimCopterHelicopterPawn>(PlayerController->GetPawn()))
-		{
-			return Possessed;
-		}
-	}
-
-	TArray<AActor*> Helicopters;
-	UGameplayStatics::GetAllActorsOfClass(
-		WorldContextObject, ASimCopterHelicopterPawn::StaticClass(), Helicopters);
-	Helicopters.Sort([](const AActor& Left, const AActor& Right)
-	{
-		return Left.GetName() < Right.GetName();
-	});
-	return Helicopters.Num() > 0 ? Cast<ASimCopterHelicopterPawn>(Helicopters[0]) : nullptr;
+	return WorldContextObject != nullptr ? SimCopterHelicopterParking::ResolveCurrentAircraft(WorldContextObject) : nullptr;
 }
 }
 
@@ -138,6 +119,14 @@ bool USimCopterSaveGame::IsStructurallyValid(
 	{
 		OutError = TEXT("The save contains an invalid aircraft record.");
 		return false;
+	}
+	for (const FSimCopterParkedAircraftSave& Parked : ParkedAircraft)
+	{
+		if (Parked.TypeIndex < 0 || Parked.TypeIndex >= SimCopterHelicopterRegistry::GetDefinitionCount() || Parked.RuntimeState.IsEmpty())
+		{
+			OutError = TEXT("The save contains an invalid parked aircraft.");
+			return false;
+		}
 	}
 	if (FormatVersion >= 2 && bHasRuntimeWorldState &&
 		(!bHasAircraftState || MissionRuntimeState.IsEmpty() || TrafficRuntimeState.IsEmpty() ||
@@ -379,6 +368,7 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 		const FSimCopterEquipmentState& Equipment = Helicopter->GetEquipmentState();
 		Save->bHasAircraftState = true;
 		Save->ActiveHelicopterTypeIndex = Helicopter->GetHelicopterTypeIndex();
+		Save->ActiveAircraftIdentity = Helicopter->GetRuntimeSaveIdentityName();
 		Save->CareerEquipmentMask = Equipment.CareerEquipmentMask;
 		Save->CareerTearGasRounds = Equipment.CareerTearGasRounds;
 		Save->SelectedToolIndex = static_cast<int32>(Helicopter->GetSelectedTool());
@@ -426,6 +416,21 @@ USimCopterSaveGame* USimCopterSaveSubsystem::CaptureCurrentGame(
 		return nullptr;
 	}
 
+	TArray<AActor*> Fleet;
+	UGameplayStatics::GetAllActorsOfClass(WorldContextObject, ASimCopterHelicopterPawn::StaticClass(), Fleet);
+	for (AActor* Actor : Fleet)
+	{
+		ASimCopterHelicopterPawn* Other = CastChecked<ASimCopterHelicopterPawn>(Actor);
+		if (Other == Helicopter) continue;
+		FSimCopterParkedAircraftSave& Record = Save->ParkedAircraft.AddDefaulted_GetRef();
+		Record.TypeIndex = Other->GetHelicopterTypeIndex();
+		Record.Identity = Other->GetRuntimeSaveIdentityName();
+		if (!Other->CaptureRuntimeSaveState(Record.RuntimeState))
+		{
+			OutError = TEXT("A parked helicopter could not be saved.");
+			return nullptr;
+		}
+	}
 	if (!Save->IsStructurallyValid(Save->Kind, OutError))
 	{
 		return nullptr;
@@ -715,6 +720,7 @@ bool USimCopterSaveSubsystem::ApplyPendingAircraftState(UWorld* World)
 		return false;
 	}
 
+	Helicopter->SetRuntimeSaveIdentityName(PendingLoadedGame->ActiveAircraftIdentity);
 	Helicopter->RestoreSavedCareerState(
 		PendingLoadedGame->ActiveHelicopterTypeIndex,
 		PendingLoadedGame->CareerEquipmentMask,
@@ -724,6 +730,36 @@ bool USimCopterSaveSubsystem::ApplyPendingAircraftState(UWorld* World)
 		PendingLoadedGame->SelectedToolIndex);
 
 	bool bApplySucceeded = true;
+	// Recreate the other aircraft before restoring people and their cabin-seat references.
+	TArray<AActor*> ExistingFleet;
+	UGameplayStatics::GetAllActorsOfClass(World, ASimCopterHelicopterPawn::StaticClass(), ExistingFleet);
+	for (AActor* Actor : ExistingFleet)
+	{
+		if (Actor != Helicopter) Actor->Destroy();
+	}
+	for (const FSimCopterParkedAircraftSave& Record : PendingLoadedGame->ParkedAircraft)
+	{
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Params.bDeferConstruction = true;
+		ASimCopterHelicopterPawn* Other = World->SpawnActor<ASimCopterHelicopterPawn>(
+			Helicopter->GetClass(), FVector::ZeroVector, FRotator::ZeroRotator, Params);
+		if (Other == nullptr)
+		{
+			bApplySucceeded = false;
+			break;
+		}
+		Other->AutoPossessPlayer = EAutoReceiveInput::Disabled;
+		Other->AutoPossessAI = EAutoPossessAI::Disabled;
+		Other->FinishSpawning(Other->GetActorTransform());
+		Other->SetRuntimeSaveIdentityName(Record.Identity);
+		if (!Other->SwitchHelicopterModel(Record.TypeIndex) || !Other->RestoreRuntimeSaveState(Record.RuntimeState))
+		{
+			Other->Destroy();
+			bApplySucceeded = false;
+			break;
+		}
+	}
 	if (PendingLoadedGame->bHasRuntimeWorldState)
 	{
 		ASimCopterMissionSystemActor* Missions = Cast<ASimCopterMissionSystemActor>(
@@ -739,7 +775,7 @@ bool USimCopterSaveSubsystem::ApplyPendingAircraftState(UWorld* World)
 				UGameplayStatics::GetActorOfClass(World, ASimCity2000CityActor::StaticClass()));
 		}
 
-		bool bRuntimeRestored = Missions != nullptr && Traffic != nullptr && Ambient != nullptr && City != nullptr;
+		bool bRuntimeRestored = bApplySucceeded && Missions != nullptr && Traffic != nullptr && Ambient != nullptr && City != nullptr;
 		if (bRuntimeRestored)
 		{
 			TArray<FIntPoint> ClearedTiles;
@@ -768,6 +804,7 @@ bool USimCopterSaveSubsystem::ApplyPendingAircraftState(UWorld* World)
 					if (ASimCopterOnFootPawn* OnFoot = Cast<ASimCopterOnFootPawn>(PlayerController->GetPawn()))
 					{
 						bRuntimeRestored = OnFoot->RestoreRuntimeSaveState(PendingLoadedGame->OnFootRuntimeState);
+						OnFoot->SetOwner(Helicopter);
 					}
 					else
 					{

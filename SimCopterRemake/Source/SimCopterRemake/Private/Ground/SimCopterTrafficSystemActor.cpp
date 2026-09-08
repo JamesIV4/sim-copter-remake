@@ -956,6 +956,11 @@ bool ASimCopterTrafficSystemActor::RestoreRuntimeSaveState(
 	CriminalCars.Reset();
 
 	TMap<FName, AActor*> SavedActorMap;
+	// Every cabin can contain saved passengers now that purchases create separate aircraft.
+	for (TActorIterator<ASimCopterHelicopterPawn> It(GetWorld()); It; ++It)
+	{
+		SavedActorMap.Add(It->GetRuntimeSaveIdentityName(), *It);
+	}
 	TArray<ASimCopterGroundAgent*> RestoredAgents;
 	for (FSavedAgentEntry& Entry : SavedAgents)
 	{

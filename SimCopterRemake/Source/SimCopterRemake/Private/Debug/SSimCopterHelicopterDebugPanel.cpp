@@ -9,6 +9,9 @@
 #include "Ground/SimCopterGroundAgent.h"
 #include "Ground/SimCopterTearGasPool.h"
 #include "Missions/SimCopterMissionSystem.h"
+#include "Missions/SimCopterMissionSystemActor.h"
+#include "Kismet/GameplayStatics.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Styling/CoreStyle.h"
 #include "UI/SimCopterMissionCatalog.h"
 #include "UI/SSimCopterToolFlaps.h"
@@ -45,6 +48,43 @@ TSharedRef<SWidget> MakeArrow(const FText& Label, FOnClicked OnClicked)
 			]
 		];
 }
+}
+
+ASimCopterMissionSystemActor* SSimCopterHelicopterDebugPanel::GetMoneyMissionSystem() const
+{
+	const ASimCopterHelicopterPawn* Helicopter = GetPawn();
+	return Helicopter != nullptr
+		? Cast<ASimCopterMissionSystemActor>(UGameplayStatics::GetActorOfClass(
+			Helicopter, ASimCopterMissionSystemActor::StaticClass()))
+		: nullptr;
+}
+
+TOptional<int32> SSimCopterHelicopterDebugPanel::GetPlayerMoney() const
+{
+	const ASimCopterMissionSystemActor* Missions = GetMoneyMissionSystem();
+	return Missions != nullptr ? TOptional<int32>(Missions->GetSessionCash()) : TOptional<int32>();
+}
+
+bool SSimCopterHelicopterDebugPanel::IsTypingMoney() const
+{
+	return MoneyEntry.IsValid() && (MoneyEntry->HasKeyboardFocus() || MoneyEntry->HasFocusedDescendants());
+}
+
+void SSimCopterHelicopterDebugPanel::HandlePlayerMoneyCommitted(int32 Value, ETextCommit::Type CommitType)
+{
+	if (CommitType == ETextCommit::OnCleared)
+	{
+		return;
+	}
+	if (ASimCopterMissionSystemActor* Missions = GetMoneyMissionSystem())
+	{
+		// Edit the live balance used by purchases, the dashboard and saves, only on commit.
+		Missions->AddSessionCash(FMath::Max(0, Value) - Missions->GetSessionCash());
+	}
+	if (CommitType == ETextCommit::OnEnter && FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetAllUserFocusToGameViewport();
+	}
 }
 
 void SSimCopterHelicopterDebugPanel::SelectTab(ETab Tab)
@@ -159,6 +199,33 @@ TSharedRef<SWidget> SSimCopterHelicopterDebugPanel::BuildGeneralTabContent()
 	return SNew(SVerticalBox)
 
 				// --- HELICOPTER ---
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.0f, 0.0f, 0.0f, 4.0f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+					[
+						SNew(SBox).WidthOverride(86.0f)
+						[
+							SNew(STextBlock)
+							.Text(NSLOCTEXT("SimCopterDebug", "PlayerMoney", "MONEY ($)"))
+							.ColorAndOpacity(LabelColor)
+							.Font(PanelFont(10, true))
+						]
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.0f)
+					[
+						SAssignNew(MoneyEntry, SNumericEntryBox<int32>)
+						.AllowSpin(false)
+						.MinValue(0)
+						.MaxValue(MAX_int32)
+						.IsEnabled_Lambda([this]() { return GetMoneyMissionSystem() != nullptr; })
+						.ToolTipText(NSLOCTEXT("SimCopterDebug", "PlayerMoneyHelp", "Set your money balance. Press Enter or leave the field to apply."))
+						.Value(this, &SSimCopterHelicopterDebugPanel::GetPlayerMoney)
+						.OnValueCommitted(this, &SSimCopterHelicopterDebugPanel::HandlePlayerMoneyCommitted)
+					]
+				]
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				[

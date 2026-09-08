@@ -2395,6 +2395,23 @@ float ASimCopterHelicopterPawn::GetAirspeedDialKnots() const
 	return SimCopterFixed::ToFloat(FlightModel.HorizontalSpeed);
 }
 
+FBox ASimCopterHelicopterPawn::GetParkingWorldBounds() const
+{
+	FBox Bounds(ForceInit);
+	// Parking clearance includes the rotor sweep, unlike the fuselage-only boarding bounds.
+	const USceneComponent* Components[] = {
+		bUsingOriginalMesh ? static_cast<const USceneComponent*>(HeliBodyMeshComponent.Get()) : BodyMeshComponent.Get(),
+		HeliMainRotorMeshComponent.Get(), HeliTailRotorMeshComponent.Get()};
+	for (const USceneComponent* Component : Components)
+	{
+		if (Component != nullptr)
+		{
+			Bounds += Component->CalcBounds(Component->GetComponentTransform()).GetBox();
+		}
+	}
+	return Bounds;
+}
+
 bool ASimCopterHelicopterPawn::TryGetAirframeLocalBoundsCm(FBox& OutLocalBoundsCm) const
 {
 	// Same source as UpdateCameraAnchorFromVisibleBody: whichever fuselage is on screen, measured
@@ -3852,6 +3869,13 @@ void ASimCopterHelicopterPawn::RefreshWaterControlsWidget()
 		Controls += LastToolStatus;
 	}
 	WaterControlsText->SetText(FText::FromString(Controls));
+}
+
+bool ASimCopterHelicopterPawn::IsTypingDebugMoney() const
+{
+	const SSimCopterHelicopterDebugPanel* Panel =
+		static_cast<const SSimCopterHelicopterDebugPanel*>(HelicopterDebugPanel.Get());
+	return Panel != nullptr && Panel->IsTypingMoney();
 }
 
 void ASimCopterHelicopterPawn::EnsureHelicopterDebugPanel()

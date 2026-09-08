@@ -3,6 +3,9 @@
 #include "UI/SimCopterHangarShop.h"
 
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "Flight/SimCopterHelicopterParking.h"
+#include "City/SimCopterHangar.h"
+#include "Kismet/GameplayStatics.h"
 #include "Game/SimCopterCareerSubsystem.h"
 #include "Missions/SimCopterMissionSystem.h"
 #include "Missions/SimCopterMissionSystemActor.h"
@@ -336,16 +339,12 @@ bool BuyHelicopter(const FContext& Context, const int32 CatalogRow, FString& Out
 		return false;
 	}
 
+	if (SimCopterHelicopterParking::SpawnOnFreePad(Context.Hangar.Get(), Helicopter, TypeIndex, OutMessage) == nullptr)
+	{
+		return false;
+	}
 	Missions->AddSessionCash(-State.ItemValue);
 	Career->SetHelicopterOwned(TypeIndex, true);
-
-	// FUN_0048b1a0 also makes the new airframe the active one.
-	if (Helicopter != nullptr && !Helicopter->SwitchHelicopterModel(TypeIndex))
-	{
-		UE_LOG(LogTemp, Warning, TEXT("SimCopter hangar: bought %s but could not switch to it - %s"),
-			GetModelDisplayName(TypeIndex),
-			*Helicopter->GetLastModelSwitchStatus());
-	}
 
 	OutMessage = FString::Printf(TEXT("Bought %s for %d Bucks."), GetModelDisplayName(TypeIndex), State.ItemValue);
 	return true;
@@ -355,7 +354,6 @@ bool SellHelicopter(const FContext& Context, const int32 CatalogRow, FString& Ou
 {
 	USimCopterCareerSubsystem* Career = GetCareer(Context);
 	ASimCopterMissionSystemActor* Missions = Context.Missions.Get();
-	ASimCopterHelicopterPawn* Helicopter = Context.Helicopter.Get();
 	const int32 TypeIndex = SimCopterHangarLayout::GetTypeIndexForCatalogRow(CatalogRow);
 
 	const FRowState State = GetHelicopterRowState(Context, CatalogRow);
@@ -365,12 +363,24 @@ bool SellHelicopter(const FContext& Context, const int32 CatalogRow, FString& Ou
 		return false;
 	}
 
-	// Move off the airframe first: switching after the books are updated would have nothing to
-	// move to if this was the one being flown.
-	const int32 Replacement = Career->FindFirstOwnedHelicopterTypeIndex(TypeIndex);
-	if (Helicopter != nullptr && Helicopter->GetHelicopterTypeIndex() == TypeIndex && Replacement != INDEX_NONE)
+	TArray<AActor*> Aircraft;
+	UGameplayStatics::GetAllActorsOfClass(Missions, ASimCopterHelicopterPawn::StaticClass(), Aircraft);
+	for (AActor* Actor : Aircraft)
 	{
-		Helicopter->SwitchHelicopterModel(Replacement);
+		ASimCopterHelicopterPawn* Sold = CastChecked<ASimCopterHelicopterPawn>(Actor);
+		if (Sold->GetHelicopterTypeIndex() != TypeIndex) continue;
+		if (Sold->GetController() != nullptr || Sold->GetPassengerCount() > 0 || Sold->HasHarnessRider())
+		{
+			OutMessage = TEXT("Empty and park the helicopter before selling it.");
+			return false;
+		}
+	}
+	for (AActor* Actor : Aircraft)
+	{
+		if (CastChecked<ASimCopterHelicopterPawn>(Actor)->GetHelicopterTypeIndex() == TypeIndex)
+		{
+			Actor->Destroy();
+		}
 	}
 
 	Missions->AddSessionCash(State.ItemValue);

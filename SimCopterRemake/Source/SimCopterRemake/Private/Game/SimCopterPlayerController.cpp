@@ -2,6 +2,7 @@
 
 #include "Game/SimCopterPlayerController.h"
 #include "Flight/SimCopterControllerInput.h"
+#include "Flight/SimCopterHelicopterPawn.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "Audio/SimCopterRadio.h"
@@ -1208,8 +1209,13 @@ void ASimCopterPlayerController::RestoreGameInput()
 
 bool ASimCopterPlayerController::IsTextEntryActive() const
 {
-	// The replay panel's clip-name box is the only widget in the running city that may hold the
-	// keyboard, and it hands it back itself (SSimCopterReplayPanel::ReturnFocusToGame).
+	// Deliberate text entry keeps focus until committed; ordinary HUD controls still cannot
+	// steal it. Numeric entries focus their inner editable text, so inspect descendants too.
+	const ASimCopterHelicopterPawn* Helicopter = Cast<ASimCopterHelicopterPawn>(GetPawn());
+	if (Helicopter != nullptr && Helicopter->IsTypingDebugMoney())
+	{
+		return true;
+	}
 	const SSimCopterReplayPanel* Panel = static_cast<const SSimCopterReplayPanel*>(ReplayPanelWidget.Get());
 	return Panel != nullptr && Panel->IsTypingClipName();
 }

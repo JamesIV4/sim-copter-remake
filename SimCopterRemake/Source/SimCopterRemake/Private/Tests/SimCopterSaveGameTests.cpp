@@ -95,6 +95,10 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 	Source->TrafficRuntimeState = { 0x54, 0x52, 0x41, 0x46 };
 	Source->AmbientVehicleRuntimeState = { 0x41, 0x4d, 0x42, 0x49 };
 	Source->AircraftRuntimeState = { 0x48, 0x45, 0x4c, 0x49 };
+	FSimCopterParkedAircraftSave& Parked = Source->ParkedAircraft.AddDefaulted_GetRef();
+	Parked.TypeIndex = 1;
+	Parked.Identity = TEXT("BoughtHelicopter");
+	Parked.RuntimeState = { 0x48, 0x45, 0x4c, 0x49, 1 };
 	Source->DemolishedBuildingOrigins = { FIntPoint(12, 34), FIntPoint(56, 78) };
 	Source->bPlayerWasInHelicopter = false;
 	Source->bHasOnFootTransform = true;
@@ -154,6 +158,13 @@ bool FSimCopterSaveArchiveRoundTripTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Traffic blob survives"), Loaded->TrafficRuntimeState, Source->TrafficRuntimeState);
 	TestEqual(TEXT("Ambient blob survives"), Loaded->AmbientVehicleRuntimeState, Source->AmbientVehicleRuntimeState);
 	TestEqual(TEXT("Aircraft blob survives"), Loaded->AircraftRuntimeState, Source->AircraftRuntimeState);
+	TestEqual(TEXT("Parked fleet survives"), Loaded->ParkedAircraft.Num(), 1);
+	if (Loaded->ParkedAircraft.Num() == 1)
+	{
+		TestEqual(TEXT("Parked model survives"), Loaded->ParkedAircraft[0].TypeIndex, 1);
+		TestEqual(TEXT("Parked identity survives"), Loaded->ParkedAircraft[0].Identity, FName(TEXT("BoughtHelicopter")));
+		TestEqual(TEXT("Parked state survives"), Loaded->ParkedAircraft[0].RuntimeState, Source->ParkedAircraft[0].RuntimeState);
+	}
 	TestEqual(TEXT("Demolished buildings survive"), Loaded->DemolishedBuildingOrigins, Source->DemolishedBuildingOrigins);
 	TestTrue(TEXT("On-foot transform survives"), Loaded->OnFootTransform.Equals(Source->OnFootTransform));
 	TestEqual(TEXT("On-foot blob survives"), Loaded->OnFootRuntimeState, Source->OnFootRuntimeState);

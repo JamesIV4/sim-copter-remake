@@ -98,6 +98,10 @@ public:
 
 	// Where the world tag hangs - above the ridge.
 	FVector GetTagWorldLocation() const;
+	FVector GetDoorWorldLocation() const
+	{
+		return GetActorLocation() + GetActorForwardVector() * (SimCopterHangarPlacement::DepthTiles * 0.5f * TileSizeCm);
+	}
 
 	// True while the shell is up. The mission layer holds new jobs back while it is
 	// (ISimCopterMissionWorld::IsModalUiActive).

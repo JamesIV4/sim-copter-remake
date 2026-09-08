@@ -6,6 +6,7 @@
 #include "Flight/SimCopterHelicopterRegistry.h"
 
 class ASimCopterHelicopterPawn;
+class ASimCopterHangar;
 class ASimCopterMissionSystemActor;
 class USimCopterCareerSubsystem;
 
@@ -86,6 +87,7 @@ struct SIMCOPTERREMAKE_API FContext
 	TWeakObjectPtr<USimCopterCareerSubsystem> Career;
 	TWeakObjectPtr<ASimCopterMissionSystemActor> Missions;
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Helicopter;
+	TWeakObjectPtr<ASimCopterHangar> Hangar;
 
 	bool IsUsable() const;
 };
@@ -113,14 +115,12 @@ SIMCOPTERREMAKE_API int32 GetCheapestHelicopterPrice(const FContext& Context);
 SIMCOPTERREMAKE_API FRowState GetHelicopterRowState(const FContext& Context, int32 CatalogRow);
 SIMCOPTERREMAKE_API FRowState GetUpgradeRowState(const FContext& Context, int32 UpgradeRow);
 
-// FUN_0042d840's helicopter half: pay the price, set career + 0x44's bit, and put the player in
-// the new airframe. Returns false with a reason when the money or the row is not there.
+// Buy a separate parked aircraft. Money and ownership change only after placement succeeds;
+// the current aircraft and possession are preserved.
 SIMCOPTERREMAKE_API bool BuyHelicopter(const FContext& Context, int32 CatalogRow, FString& OutMessage);
 
-// FUN_0042d9f0's helicopter half: bank the trade-in, clear the bit, and move the player onto
-// whatever else is on the books. Any airframe can be sold - the starting Schweizer included -
-// as long as the sale leaves enough money to buy the cheapest chopper back. Selling the last
-// airframe leaves the player in it until the replacement is bought; Buy switches them over.
+// Bank the trade-in, clear ownership and remove the sold parked airframe. The last-aircraft
+// affordability guard still applies.
 SIMCOPTERREMAKE_API bool SellHelicopter(const FContext& Context, int32 CatalogRow, FString& OutMessage);
 
 // FUN_0042d840's equipment half, tear gas rounds included.

@@ -7,6 +7,7 @@
 #include "Widgets/SCompoundWidget.h"
 
 class ASimCopterHelicopterPawn;
+class ASimCopterMissionSystemActor;
 
 // Non-shipping developer panel for cycling helicopter models, tools, and calibrating element layout during play.
 class SSimCopterHelicopterDebugPanel : public SCompoundWidget
@@ -23,6 +24,7 @@ public:
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
+	bool IsTypingMoney() const;
 
 	// Rebinds when possession changes so the panel follows the controlled helicopter.
 	void SetPawn(TWeakObjectPtr<ASimCopterHelicopterPawn> InPawn) { Pawn = InPawn; }
@@ -32,9 +34,13 @@ public:
 
 private:
 	TWeakObjectPtr<ASimCopterHelicopterPawn> Pawn;
+	TSharedPtr<SWidget> MoneyEntry;
 	ETab ActiveTab = ETab::General;
 
 	ASimCopterHelicopterPawn* GetPawn() const { return Pawn.Get(); }
+	ASimCopterMissionSystemActor* GetMoneyMissionSystem() const;
+	TOptional<int32> GetPlayerMoney() const;
+	void HandlePlayerMoneyCommitted(int32 Value, ETextCommit::Type CommitType);
 
 	TSharedRef<SWidget> BuildTabHeader();
 	TSharedRef<SWidget> BuildGeneralTabContent();

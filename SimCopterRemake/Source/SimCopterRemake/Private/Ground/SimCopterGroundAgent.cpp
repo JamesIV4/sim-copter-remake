@@ -5505,6 +5505,10 @@ bool ASimCopterGroundAgent::CaptureRuntimeSaveState(TArray<uint8>& OutData)
 		{
 			return Agent->GetRuntimeSaveIdentityName();
 		}
+		if (const ASimCopterHelicopterPawn* Aircraft = Cast<ASimCopterHelicopterPawn>(Actor))
+		{
+			return Aircraft->GetRuntimeSaveIdentityName();
+		}
 		return Actor != nullptr ? Actor->GetFName() : NAME_None;
 	};
 	AActor* SavedCarrier = BehaviorCarrier.Get();
@@ -5760,7 +5764,7 @@ void ASimCopterGroundAgent::ResolveRuntimeSaveReferences(
 	auto ResolveActor = [&SavedActors, Helicopter](const FName Name) -> AActor*
 	{
 		if (Name.IsNone()) return nullptr;
-		if (Helicopter != nullptr && Helicopter->GetFName() == Name) return Helicopter;
+		if (Helicopter != nullptr && Helicopter->GetRuntimeSaveIdentityName() == Name) return Helicopter;
 		if (AActor* const* Found = SavedActors.Find(Name)) return *Found;
 		return nullptr;
 	};
