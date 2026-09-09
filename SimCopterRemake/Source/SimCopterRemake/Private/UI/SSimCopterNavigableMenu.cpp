@@ -150,12 +150,9 @@ void SSimCopterNavigableMenu::Activate(uint32 UserIndex)
 	const TSharedPtr<SWidget> Selected = ResolveSelection();
 	if (!Selected) return;
 	const FString Type = Selected->GetTypeAsString();
-	if (Type == TEXT("SButton"))
+	if (Type == TEXT("SButton") || Type == TEXT("SCheckBox"))
 	{
-		StaticCastSharedPtr<SButton>(Selected)->SimulateClick();
-	}
-	else if (Type == TEXT("SCheckBox"))
-	{
+		// Use the runtime accept path: SButton::SimulateClick is excluded from Shipping.
 		Selected->OnKeyDown(Selected->GetCachedGeometry(), KeyEvent(EKeys::SpaceBar, UserIndex));
 		Selected->OnKeyUp(Selected->GetCachedGeometry(), KeyEvent(EKeys::SpaceBar, UserIndex));
 	}
