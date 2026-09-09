@@ -85,6 +85,18 @@ bool FSimCopterControllerContextsTest::RunTest(const FString& Parameters)
 	Pawn->SpotlightAimPitchInput = 1;
 	Pawn->UpdateSpotlightTarget(0.05f);
 	TestTrue(TEXT("Keyboard spotlight input still adjusts aim"), Pawn->SpotlightAimPitch1616 != 0);
+	Pawn->bControllerCameraAdjustHeld = false;
+	Pawn->SelectedTool = ESimCopterHelicopterTool::Megaphone;
+	Pawn->SelectedMegaphoneMessage = static_cast<ESimCopterMegaphoneMessage>(0);
+	Pawn->ControllerDPadUpPressed();
+	Pawn->ControllerDPadDownPressed();
+	TestEqual(TEXT("Vertical D-pad does not change megaphone message"), static_cast<int32>(Pawn->SelectedMegaphoneMessage), 0);
+	Pawn->ControllerDPadRightPressed();
+	TestEqual(TEXT("Right selects next message"), static_cast<int32>(Pawn->SelectedMegaphoneMessage), 1);
+	Pawn->ControllerDPadLeftPressed();
+	TestEqual(TEXT("Left selects previous message"), static_cast<int32>(Pawn->SelectedMegaphoneMessage), 0);
+	Pawn->ControllerDPadLeftPressed();
+	TestEqual(TEXT("Left wraps to last message"), static_cast<int32>(Pawn->SelectedMegaphoneMessage), static_cast<int32>(ESimCopterMegaphoneMessage::Count) - 1);
 	World->DestroyWorld(false);
 
 	// The hint must retain every keyboard alternative as well as the controller shortcut.

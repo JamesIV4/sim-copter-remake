@@ -1802,6 +1802,7 @@ private:
 	// The Check-up panel, up only while the player is being served.
 	TSharedPtr<SWidget> CheckupWidget;
 	TSharedPtr<SWidget> ControllerOverlayWidget;
+	TSharedPtr<class SSimCopterMegaphoneCarousel> MegaphoneCarousel;
 	TSharedPtr<SSimCopterControllerOverlay> ControllerOverlayPanel;
 
 	// Loads the cockpit flap bitmaps out of the original's BMP folder.

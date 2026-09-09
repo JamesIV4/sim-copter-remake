@@ -55,7 +55,7 @@ TArray<FPrompt> BuildPrompts(const FState& State)
 			if (State.bHasTool)
 			{
 				Add(TEXT("x"), State.bMegaphone ? FString(TEXT("Broadcast: ")) + State.Message : State.ToolAction);
-				if (State.bMegaphone) Add(TEXT("vertical"), TEXT("Change message"));
+				if (State.bMegaphone) Add(TEXT("horizontal"), TEXT("Change message"));
 				else if (State.bRope) Add(TEXT("vertical"), TEXT("Raise / lower"));
 				Add(TEXT("lb"), TEXT("Hold to change tool"));
 			}

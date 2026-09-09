@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Flight/SimCopterHelicopterPawn.h"
+#include "UI/SSimCopterMegaphoneCarousel.h"
 #include "Game/SimCopterPlayerController.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
@@ -3720,6 +3721,11 @@ void ASimCopterHelicopterPawn::EnsureControllerOverlayWidget()
 
 void ASimCopterHelicopterPawn::RemoveControllerOverlayWidget()
 {
+	if (GEngine != nullptr && GEngine->GameViewport != nullptr && MegaphoneCarousel.IsValid())
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(MegaphoneCarousel.ToSharedRef());
+	}
+	MegaphoneCarousel.Reset();
 	if (GEngine != nullptr && GEngine->GameViewport != nullptr && ControllerOverlayWidget.IsValid())
 	{
 		GEngine->GameViewport->RemoveViewportWidgetContent(ControllerOverlayWidget.ToSharedRef());
@@ -4495,12 +4501,6 @@ void ASimCopterHelicopterPawn::ControllerDPadUpPressed()
 	{
 		ControllerPassengerConfirmChoice = 0;
 	}
-	else if (ControllerMode == ESimCopterControllerMode::None &&
-		!bControllerCameraAdjustHeld &&
-		GetActiveTool() == ESimCopterHelicopterTool::Megaphone)
-	{
-		CycleMegaphoneMessage(-1);
-	}
 }
 
 void ASimCopterHelicopterPawn::ControllerDPadUpReleased()
@@ -4514,12 +4514,6 @@ void ASimCopterHelicopterPawn::ControllerDPadDownPressed()
 	if (ControllerMode == ESimCopterControllerMode::PassengerConfirm)
 	{
 		ControllerPassengerConfirmChoice = 1;
-	}
-	else if (ControllerMode == ESimCopterControllerMode::None &&
-		!bControllerCameraAdjustHeld &&
-		GetActiveTool() == ESimCopterHelicopterTool::Megaphone)
-	{
-		CycleMegaphoneMessage(1);
 	}
 }
 
@@ -4540,6 +4534,12 @@ void ASimCopterHelicopterPawn::ControllerDPadLeftPressed()
 		ControllerPassengerConfirmChoice =
 			(ControllerPassengerConfirmChoice + 1) % 2;
 	}
+	else if (ControllerMode == ESimCopterControllerMode::None &&
+		!bControllerCameraAdjustHeld &&
+		GetActiveTool() == ESimCopterHelicopterTool::Megaphone)
+	{
+		CycleMegaphoneMessage(-1);
+	}
 }
 
 void ASimCopterHelicopterPawn::ControllerDPadLeftReleased()
@@ -4558,6 +4558,12 @@ void ASimCopterHelicopterPawn::ControllerDPadRightPressed()
 	{
 		ControllerPassengerConfirmChoice =
 			(ControllerPassengerConfirmChoice + 1) % 2;
+	}
+	else if (ControllerMode == ESimCopterControllerMode::None &&
+		!bControllerCameraAdjustHeld &&
+		GetActiveTool() == ESimCopterHelicopterTool::Megaphone)
+	{
+		CycleMegaphoneMessage(1);
 	}
 }
 
@@ -5088,14 +5094,33 @@ void ASimCopterHelicopterPawn::CycleMegaphoneMessage(int32 Delta)
 		return;
 	}
 	const int32 Index = ((static_cast<int32>(SelectedMegaphoneMessage) + Delta) % Count + Count) % Count;
-	SelectedMegaphoneMessage = static_cast<ESimCopterMegaphoneMessage>(Index);
+	SetSelectedMegaphoneMessage(static_cast<ESimCopterMegaphoneMessage>(Index));
 }
 
 void ASimCopterHelicopterPawn::SetSelectedMegaphoneMessage(const ESimCopterMegaphoneMessage Message)
 {
-	if (Message < ESimCopterMegaphoneMessage::Count)
+	if (Message < ESimCopterMegaphoneMessage::Count && Message != SelectedMegaphoneMessage)
 	{
+		const int32 Previous = static_cast<int32>(SelectedMegaphoneMessage);
 		SelectedMegaphoneMessage = Message;
+		const ASimCopterPlayerController* InputController = Cast<ASimCopterPlayerController>(GetController());
+		if (IsLocallyControlled() && InputController != nullptr && InputController->IsUsingGamepadInput() &&
+			GEngine != nullptr && GEngine->GameViewport != nullptr)
+		{
+			if (!MegaphoneCarousel.IsValid())
+			{
+				MegaphoneCarousel = SNew(SSimCopterMegaphoneCarousel);
+				MegaphoneCarousel->SetVisibility(TAttribute<EVisibility>::CreateLambda(
+					[WeakPawn = TWeakObjectPtr<ASimCopterHelicopterPawn>(this)]()
+					{
+						const ASimCopterPlayerController* PC = WeakPawn.IsValid()
+							? Cast<ASimCopterPlayerController>(WeakPawn->GetController()) : nullptr;
+						return PC != nullptr && PC->IsUsingGamepadInput() ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+					}));
+				GEngine->GameViewport->AddViewportWidgetContent(MegaphoneCarousel.ToSharedRef(), 28);
+			}
+			MegaphoneCarousel->ShowSelection(Previous, static_cast<int32>(Message));
+		}
 	}
 }
 

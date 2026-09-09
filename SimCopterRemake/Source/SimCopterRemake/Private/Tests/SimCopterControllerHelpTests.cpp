@@ -45,7 +45,7 @@ bool FSimCopterHelpContextsTest::RunTest(const FString&)
 	State.bExpanded = true;
 	auto Rows = BuildPrompts(State);
 	TestEqual(TEXT("Megaphone broadcast displays the actual message"), Rows[0].Label, FString(TEXT("Broadcast: Evacuate")));
-	TestEqual(TEXT("Message changes use the vertical D-pad icon"), Rows[1].Icon, FString(TEXT("vertical")));
+	TestEqual(TEXT("Message changes use the horizontal D-pad icon"), Rows[1].Icon, FString(TEXT("horizontal")));
 	TestFalse(TEXT("Airborne help omits exit"), Rows.ContainsByPredicate([](const FPrompt& Row) { return Row.Icon == TEXT("y"); }));
 	State.bCanExit = true;
 	Rows = BuildPrompts(State);
