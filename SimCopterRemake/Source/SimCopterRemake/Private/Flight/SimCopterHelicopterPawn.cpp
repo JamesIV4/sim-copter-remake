@@ -7800,11 +7800,11 @@ void ASimCopterHelicopterPawn::UpdateForwardProbe()
 	}
 }
 
-void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float)
+void ASimCopterHelicopterPawn::UpdateRopeAndBucket(float DeltaSeconds)
 {
 	InitializeRopeState();
 	const bool bCollisionSpill = StepRopeState();
-	UpdateRopeVisuals();
+	UpdateRopeVisuals(DeltaSeconds);
 
 	const FVector BucketWorld = RopeNodeWorldPositions.Last();
 	const FVector EndDirection =
@@ -8112,8 +8112,23 @@ bool ASimCopterHelicopterPawn::StepRopeState()
 	return bBucketCollision;
 }
 
-void ASimCopterHelicopterPawn::UpdateRopeVisuals()
+void ASimCopterHelicopterPawn::UpdateRopeVisuals(float DeltaSeconds)
 {
+	if (RopeNodeWorldPositions.IsEmpty()) return;
+	const FVector Anchor = GetRopeAnchorWorldLocation();
+	const bool bSnap = DeltaSeconds <= 0.0f || !bRopeDeployed || SmoothedRopeOffsets.Num() != RopeNodeWorldPositions.Num();
+	SmoothedRopeOffsets.SetNum(RopeNodeWorldPositions.Num());
+	// Smooth the entire rendered rope and its attachment together. Anchor-relative
+	// offsets keep helicopter travel from dragging the rope's mount behind the airframe.
+	// Exponential lerp gives the same response at different frame/substep rates.
+	const float Alpha = bSnap ? 1.0f : 1.0f - FMath::Exp(-12.0f * DeltaSeconds);
+	TArray<FVector, TInlineAllocator<20>> RenderNodes;
+	for (int32 Index = 0; Index < RopeNodeWorldPositions.Num(); ++Index)
+	{
+		const FVector TargetOffset = RopeNodeWorldPositions[Index] - Anchor;
+		SmoothedRopeOffsets[Index] = bSnap ? TargetOffset : FMath::Lerp(SmoothedRopeOffsets[Index], TargetOffset, Alpha);
+		RenderNodes.Add(Anchor + SmoothedRopeOffsets[Index]);
+	}
 	if (RopeMeshComponent != nullptr)
 	{
 		RopeMeshComponent->SetVisibility(false);
@@ -8144,9 +8159,9 @@ void ASimCopterHelicopterPawn::UpdateRopeVisuals()
 		// Keep the attached end on the rendered airframe, including restored/replayed frames.
 		const FVector Start = RopeTransform.InverseTransformPosition(
 			SegmentIndex == RopeFirstActiveNode
-				? GetRopeAnchorWorldLocation() : RopeNodeWorldPositions[SegmentIndex]);
+				? Anchor : RenderNodes[SegmentIndex]);
 		const FVector End = RopeTransform.InverseTransformPosition(
-			RopeNodeWorldPositions[SegmentIndex + 1]);
+			RenderNodes[SegmentIndex + 1]);
 		const FVector Tangent = End - Start;
 		SegmentComponent->SetStartScale(FVector2D(RopeSegmentScale, RopeSegmentScale), false);
 		SegmentComponent->SetEndScale(FVector2D(RopeSegmentScale, RopeSegmentScale), false);
@@ -8161,10 +8176,10 @@ void ASimCopterHelicopterPawn::UpdateRopeVisuals()
 			SimCopterWaterGameplay::RopeNodeCount - 1 - RopeFirstActiveNode) *
 		SegmentLengthCm;
 
-	const FVector BucketAttachmentWorld = RopeNodeWorldPositions.Last();
+	const FVector BucketAttachmentWorld = RenderNodes.Last();
 	const FVector EndDirection =
-		(RopeNodeWorldPositions.Last() -
-			RopeNodeWorldPositions[SimCopterWaterGameplay::RopeNodeCount - 2])
+		(RenderNodes.Last() -
+			RenderNodes[SimCopterWaterGameplay::RopeNodeCount - 2])
 		.GetSafeNormal(SMALL_NUMBER, -FVector::UpVector);
 	const FQuat BucketRotation = FQuat::FindBetweenNormals(-FVector::UpVector, EndDirection);
 

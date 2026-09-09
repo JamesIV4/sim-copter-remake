@@ -1979,7 +1979,8 @@ private:
 	void UpdateRopeAndBucket(float DeltaSeconds);
 	void InitializeRopeState();
 	bool StepRopeState();
-	void UpdateRopeVisuals();
+	void UpdateRopeVisuals(float DeltaSeconds = 0.0f);
+	TArray<FVector> SmoothedRopeOffsets;
 	FVector GetRopeAnchorWorldLocation() const;
 	void EmitBucketWaterFrame(bool bCollisionSpill);
 	void EmitWaterCannonFrame();
