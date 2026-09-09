@@ -110,6 +110,10 @@ void SSimCopterCitySettings::Construct(const FArguments& InArgs)
 		TSharedRef<SSimCopterCheckupSlider> Slider = SNew(SSimCopterCheckupSlider)
 			.ThumbBrush(ArtObject != nullptr ? ArtObject->GetBitmap(ThumbBitmap, /*bColorKeyed=*/false) : nullptr)
 			.ThumbScale(ThumbScale)
+			.ValueTooltipText_Lambda([this, Index]()
+			{
+				return FText::AsNumber(GetValueForSlider(Values, Index));
+			})
 			.OnValueChanged_Lambda([this, Index](const float Alpha)
 			{
 				SetValueForSlider(Values, Index, FMath::RoundToInt(Alpha * static_cast<float>(GetSliderMax(Index))));
@@ -121,7 +125,7 @@ void SSimCopterCitySettings::Construct(const FArguments& InArgs)
 
 		AddAtPage(Track, Slider);
 
-		// The original prints only the name in each well; the thumb position is the sole value display.
+		// The original prints only the name in each well; the dragging value bubble is a remake addition.
 		const FRect& LabelRect = Labels[Index].Rect;
 
 		AddAtPage(

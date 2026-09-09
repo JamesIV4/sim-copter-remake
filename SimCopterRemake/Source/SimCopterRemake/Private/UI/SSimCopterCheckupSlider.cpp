@@ -4,6 +4,10 @@
 
 #include "Rendering/DrawElements.h"
 #include "Styling/SlateBrush.h"
+#include "Styling/CoreStyle.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
+#include "Rendering/SlateRenderer.h"
 
 namespace
 {
@@ -20,8 +24,20 @@ void SSimCopterCheckupSlider::Construct(const FArguments& InArgs)
 	bLocked = InArgs._Locked;
 	Orientation = InArgs._Orientation;
 	OnValueChanged = InArgs._OnValueChanged;
+	ValueTooltipText = InArgs._ValueTooltipText;
 
-	SetCanTick(false);
+	SetCanTick(ValueTooltipText.IsSet());
+}
+
+void SSimCopterCheckupSlider::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	SLeafWidget::Tick(AllottedGeometry, InCurrentTime, InDeltaTime);
+	if (ValueTooltipOpacity > 0.0f)
+	{
+		// Slate time keeps the one-second fade running while the settings menu pauses the game.
+		ValueTooltipOpacity = HasMouseCapture() ? 1.0f : FMath::Max(0.0f, ValueTooltipOpacity - InDeltaTime);
+		Invalidate(EInvalidateWidgetReason::Paint);
+	}
 }
 
 FVector2f SSimCopterCheckupSlider::GetThumbSize() const
@@ -100,7 +116,7 @@ int32 SSimCopterCheckupSlider::OnPaint(
 	const FWidgetStyle& InWidgetStyle,
 	const bool bParentEnabled) const
 {
-	if (ThumbBrush == nullptr && TrackBrush == nullptr)
+	if (ThumbBrush == nullptr && TrackBrush == nullptr && ValueTooltipOpacity <= 0.0f)
 	{
 		return LayerId;
 	}
@@ -137,6 +153,27 @@ int32 SSimCopterCheckupSlider::OnPaint(
 			ThumbBrush->GetTint(InWidgetStyle) * InWidgetStyle.GetColorAndOpacityTint());
 	}
 
+	if (ValueTooltipOpacity > 0.0f && ValueTooltipText.IsSet())
+	{
+		const FText Text = ValueTooltipText.Get();
+		const FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Bold", 12);
+		const FVector2f TextSize(FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Text, Font));
+		const FVector2f ThumbSize = GetThumbSize();
+		const FVector2f ThumbPosition = GetThumbTopLeft(AllottedGeometry.GetLocalSize(), ThumbSize, Value, Orientation);
+		const FVector2f Padding(5.0f, 3.0f);
+		const FVector2f BubbleSize = TextSize + Padding * 2.0f;
+		const FVector2f BubblePosition(ThumbPosition.X + ThumbSize.X + 3.0f,
+			ThumbPosition.Y + (ThumbSize.Y - BubbleSize.Y) * 0.5f);
+		const FLinearColor Tint = InWidgetStyle.GetColorAndOpacityTint() * FLinearColor(1, 1, 1, ValueTooltipOpacity);
+		FSlateDrawElement::MakeBox(OutDrawElements, ++CurrentLayer,
+			AllottedGeometry.ToPaintGeometry(BubbleSize, FSlateLayoutTransform(BubblePosition)),
+			FCoreStyle::Get().GetBrush("WhiteBrush"), ESlateDrawEffect::None,
+			FLinearColor(0.04f, 0.04f, 0.04f, 0.95f) * Tint);
+		FSlateDrawElement::MakeText(OutDrawElements, ++CurrentLayer,
+			AllottedGeometry.ToPaintGeometry(TextSize, FSlateLayoutTransform(BubblePosition + Padding)),
+			Text, Font, ESlateDrawEffect::None, Tint);
+	}
+
 	return CurrentLayer;
 }
 
@@ -167,6 +204,11 @@ FReply SSimCopterCheckupSlider::OnMouseButtonDown(const FGeometry& MyGeometry, c
 	}
 
 	ApplyMouse(MyGeometry, MouseEvent);
+	if (ValueTooltipText.IsSet())
+	{
+		ValueTooltipOpacity = 1.0f;
+		Invalidate(EInvalidateWidgetReason::Paint);
+	}
 	return FReply::Handled().CaptureMouse(SharedThis(this));
 }
 
@@ -195,5 +237,10 @@ void SSimCopterCheckupSlider::AdjustForController(FVector2D Direction)
 	{
 		const float Step = Orientation == Orient_Horizontal ? Direction.X : -Direction.Y;
 		SetValue(GetValue() + Step * 0.05f);
+		if (!FMath::IsNearlyZero(Step) && ValueTooltipText.IsSet())
+		{
+			ValueTooltipOpacity = 1.0f;
+			Invalidate(EInvalidateWidgetReason::Paint);
+		}
 	}
 }

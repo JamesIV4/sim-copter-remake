@@ -54,6 +54,8 @@ public:
 		SLATE_ARGUMENT(bool, Locked)
 		SLATE_ARGUMENT(EOrientation, Orientation)
 		SLATE_EVENT(FOnFloatValueChanged, OnValueChanged)
+		// Remake-only value bubble, enabled by City Settings.
+		SLATE_ATTRIBUTE(FText, ValueTooltipText)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -93,6 +95,7 @@ public:
 	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FReply OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FReply OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	virtual void Tick(const FGeometry& AllottedGeometry, double InCurrentTime, float InDeltaTime) override;
 
 private:
 	const FSlateBrush* ThumbBrush = nullptr;
@@ -102,6 +105,8 @@ private:
 	EOrientation Orientation = Orient_Vertical;
 	float Value = 0.0f;
 	FOnFloatValueChanged OnValueChanged;
+	TAttribute<FText> ValueTooltipText;
+	float ValueTooltipOpacity = 0.0f;
 
 	FVector2f GetThumbSize() const;
 	void ApplyMouse(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent);
