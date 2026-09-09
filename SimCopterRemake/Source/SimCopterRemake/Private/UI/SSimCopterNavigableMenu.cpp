@@ -1,4 +1,6 @@
 #include "SSimCopterNavigableMenu.h"
+#include "SimCopterMenuFocusOutline.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
@@ -8,7 +10,6 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SComboButton.h"
-#include "Styling/CoreStyle.h"
 #include "Widgets/Layout/SScrollBox.h"
 
 namespace
@@ -256,20 +257,19 @@ int32 SSimCopterNavigableMenu::OnPaint(const FPaintArgs& Args, const FGeometry& 
 	const TSharedPtr<SWidget> Selected = SelectedControl.Pin();
 	if (!bShowControllerSelection || !Selected || !Selected->GetVisibility().IsVisible()) return Layer;
 	const FGeometry& Target = Selected->GetCachedGeometry();
-	const FVector2D TL = Geometry.AbsoluteToLocal(Target.LocalToAbsolute(FVector2D::ZeroVector));
-	const FVector2D BR = Geometry.AbsoluteToLocal(Target.LocalToAbsolute(Target.GetLocalSize()));
-	TArray<FVector2D> Points{TL, FVector2D(BR.X, TL.Y), BR, FVector2D(TL.X, BR.Y), TL};
-	FSlateDrawElement::MakeLines(Elements, ++Layer, Geometry.ToPaintGeometry(), Points,
-		ESlateDrawEffect::None, bEditingControl ? FLinearColor(0.2f, 1, 0.8f) : FLinearColor(1, 0.8f, 0.15f), true, 3.0f);
-	const FString Hint = bEditingControl
-		? TEXT("LS / D-pad  Adjust     A  Confirm     B  Back")
-		: TEXT("LS / D-pad  Move     A  Confirm     B  Back");
-	const FVector2f HintPosition(16, FMath::Max(0.0f, Geometry.GetLocalSize().Y - 28.0f));
+	const FVector2D TargetSize = Target.GetLocalSize();
+	const auto Outline = Selected->GetMetaData<FSimCopterMenuFocusOutline>();
+	const FSlateRect Local = Outline ? Outline->GetLocalBounds(TargetSize)
+		: FSlateRect(0, 0, TargetSize.X, TargetSize.Y);
+	const FVector2D TL = Geometry.AbsoluteToLocal(Target.LocalToAbsolute(FVector2D(Local.Left, Local.Top)));
+	const FVector2D BR = Geometry.AbsoluteToLocal(Target.LocalToAbsolute(FVector2D(Local.Right, Local.Bottom)));
+	const float Radius = Outline ? Outline->RadiusPerHeight *
+		(Geometry.AbsoluteToLocal(Target.LocalToAbsolute(FVector2D(0, TargetSize.Y))) -
+		 Geometry.AbsoluteToLocal(Target.LocalToAbsolute(FVector2D::ZeroVector))).Size() : 3.0f;
+	const FSlateRoundedBoxBrush Brush(FLinearColor::Transparent, Radius,
+		bEditingControl ? FLinearColor(0.2f, 1, 0.8f) : FLinearColor(1, 0.8f, 0.15f), 2.0f);
 	FSlateDrawElement::MakeBox(Elements, ++Layer,
-		Geometry.ToPaintGeometry(FVector2f(410, 24), FSlateLayoutTransform(HintPosition - FVector2f(6, 3))),
-		FCoreStyle::Get().GetBrush("WhiteBrush"), ESlateDrawEffect::None, FLinearColor(0, 0, 0, 0.85f));
-	FSlateDrawElement::MakeText(Elements, ++Layer,
-		Geometry.ToPaintGeometry(FVector2f(410, 24), FSlateLayoutTransform(HintPosition)),
-		Hint, FCoreStyle::GetDefaultFontStyle("Regular", 11), ESlateDrawEffect::None, FLinearColor::White);
+		Geometry.ToPaintGeometry(FVector2f(BR - TL), FSlateLayoutTransform(FVector2f(TL))),
+		&Brush, ESlateDrawEffect::None, FLinearColor::Transparent);
 	return Layer;
 }

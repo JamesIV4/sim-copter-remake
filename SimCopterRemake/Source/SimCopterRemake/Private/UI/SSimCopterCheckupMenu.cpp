@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SSimCopterCheckupMenu.h"
+#include "SimCopterMenuFocusOutline.h"
 
 #include "SSimCopterCheckupSlider.h"
 #include "Styling/CoreStyle.h"
@@ -242,6 +243,8 @@ TSharedRef<SWidget> SSimCopterCheckupMenu::BuildButton(const FText& Label, FOnCl
 		Button->SetButtonStyle(&Style.Get());
 	}
 
+	Button->AddMetadata(MakeShared<FSimCopterMenuFocusOutline>(FSlateRect(0, 0, 1, 1),
+		FSlateRect(0, 0, 1, 1), 0.10f));
 	return Button;
 }
 

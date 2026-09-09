@@ -94,6 +94,9 @@ hangar pages and airport check-up use spatial controller navigation:
 
 - Left stick or D-pad moves the gold outline toward the control in that direction,
   using its on-screen position. Disabled controls are skipped; focus stops at the edge.
+  Outlines follow the visible artwork: the main and pause menus use their recessed
+  label bezels, city previews use rounded openings, and dialog buttons follow their
+  frames. These visual bounds scale with the page without changing mouse hit regions.
 - `A` activates the outlined button, hotspot or checkbox.
 - On a slider, list, dropdown or text field, `A` enters the control. The outline turns
   green while adjusting. Use the stick or D-pad to adjust sliders or select list entries,
@@ -104,8 +107,8 @@ hangar pages and airport check-up use spatial controller navigation:
   the selected control. The original main-menu lamps and city preview selection follow
   controller navigation.
 
-The controller hint appears with the selection outline. Keyboard and mouse retain
-their existing controls. The check-up panel owns UI input while open and returns it
+Menus show the selection outline without a button-help text strip. Keyboard and mouse
+retain their existing controls. The check-up panel owns UI input while open and returns it
 to flight when closed.
 
 ## Wheel layout and input contexts

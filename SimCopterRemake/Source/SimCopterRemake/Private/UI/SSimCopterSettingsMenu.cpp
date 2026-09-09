@@ -91,7 +91,7 @@ void SSimCopterSettingsMenu::Construct(const FArguments& InArgs)
 					return FReply::Handled();
 				}),
 				FSimpleDelegate::CreateLambda([this, Row]() { SetSelectedRow(Row); }),
-				ButtonStyles));
+				ButtonStyles, MakeFocusOutline(Hit, GetRowFocusRect(Row, bHasCitySettings), 8.0f)));
 	}
 
 	ChildSlot

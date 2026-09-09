@@ -77,6 +77,14 @@ constexpr FRect GetItemHitRect(const int32 Index)
 		FirstItemY + ItemStride * static_cast<float>(Index) + static_cast<float>(ItemFontHeight) };
 }
 
+// Remake focus contour measured from MAIN1-upscaled's five recessed label bezels.
+// The retail hit band spans the lever and lamp as well and is intentionally kept unchanged.
+constexpr FRect GetItemFocusRect(int32 Index)
+{
+	const float Top = 39.0f + ItemStride * Index;
+	return FRect{110.5f, Top, 344.5f, Top + 35.0f};
+}
+
 // Descriptor +0x28/+0x2c. The Settings menu writes the same pair, so they live in the shared
 // scaffolding.
 using SimCopterFrontEnd::ItemColor;

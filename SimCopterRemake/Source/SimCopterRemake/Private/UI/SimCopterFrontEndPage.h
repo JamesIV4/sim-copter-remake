@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Framework/SlateDelegates.h"
 #include "Styling/SlateTypes.h"
+#include "SimCopterMenuFocusOutline.h"
 
 class SConstraintCanvas;
 class SWidget;
@@ -99,7 +100,14 @@ TSharedRef<SWidget> MakeButton(
 TSharedRef<SWidget> MakeInvisibleHitButton(
 	FOnClicked OnClicked,
 	FSimpleDelegate OnHovered,
-	TArray<TSharedRef<FButtonStyle>>& StyleKeepAlive);
+	TArray<TSharedRef<FButtonStyle>>& StyleKeepAlive,
+	TSharedPtr<FSimCopterMenuFocusOutline> FocusOutline = nullptr);
+
+inline TSharedRef<FSimCopterMenuFocusOutline> MakeFocusOutline(const FRect& Hit, const FRect& Art, float Radius)
+{
+	return MakeShared<FSimCopterMenuFocusOutline>(FSlateRect(Hit.Left, Hit.Top, Hit.Right, Hit.Bottom),
+		FSlateRect(Art.Left, Art.Top, Art.Right, Art.Bottom), Radius);
+}
 
 // The two text colours every list page writes into its descriptor, a byte at a time, as
 // `80 85 4a` and `ea ef 9a` - Win32 COLORREF, so the low byte is red. An olive that reads as

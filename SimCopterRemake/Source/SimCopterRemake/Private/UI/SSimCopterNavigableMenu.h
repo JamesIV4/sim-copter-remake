@@ -16,6 +16,9 @@ public:
 	static int32 FindSpatialTarget(const TArray<FSlateRect>& Rects, int32 Current, FVector2D Direction);
 
 protected:
+	// This full-screen input host paints its own control-level highlight. Slate's default
+	// focus brush would outline the entire viewport when navigation restores focus here.
+	virtual const FSlateBrush* GetFocusBrush() const override { return nullptr; }
 	virtual void OnControllerSelectionChanged(int32 Index) {}
 	virtual bool IsCapturingControllerBinding() const { return false; }
 

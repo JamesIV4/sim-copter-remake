@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SimCopterFrontEndPage.h"
+#include "SimCopterMenuFocusOutline.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "InputCoreTypes.h"
@@ -211,13 +212,16 @@ TSharedRef<SWidget> MakeButton(
 	StyleKeepAlive.Add(Style);
 	Button->SetButtonStyle(&Style.Get());
 
+	Button->AddMetadata(MakeShared<FSimCopterMenuFocusOutline>(FSlateRect(0, 0, 1, 1),
+		FSlateRect(0, 0, 1, 1), 0.10f));
 	return Button;
 }
 
 TSharedRef<SWidget> MakeInvisibleHitButton(
 	FOnClicked OnClicked,
 	FSimpleDelegate OnHovered,
-	TArray<TSharedRef<FButtonStyle>>& StyleKeepAlive)
+	TArray<TSharedRef<FButtonStyle>>& StyleKeepAlive,
+	TSharedPtr<FSimCopterMenuFocusOutline> FocusOutline)
 {
 	TSharedRef<FButtonStyle> Style = MakeShared<FButtonStyle>();
 	Style->SetNormal(FSlateNoResource());
@@ -228,11 +232,13 @@ TSharedRef<SWidget> MakeInvisibleHitButton(
 	Style->SetPressedPadding(FMargin(0.0f));
 	StyleKeepAlive.Add(Style);
 
-	return SNew(SButton)
+	TSharedRef<SButton> Button = SNew(SButton)
 		.ButtonStyle(&Style.Get())
 		.ContentPadding(FMargin(0.0f))
 		.OnClicked(OnClicked)
 		.OnHovered(OnHovered);
+	if (FocusOutline) Button->AddMetadata(FocusOutline.ToSharedRef());
+	return Button;
 }
 
 int32 GetNavigationTarget(const ENavigation Navigation, const int32 Selected, const int32 Count)

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SSimCopterHangarMenu.h"
+#include "SimCopterMenuFocusOutline.h"
 
 #include "Audio/SimCopterAudioSubsystem.h"
 #include "City/SimCopterDayNight.h"
@@ -280,6 +281,8 @@ TSharedRef<SWidget> SSimCopterHangarMenu::MakeArtButton(
 	{
 		ControllerFocusableWidgets.Add(Button);
 	}
+	Button->AddMetadata(MakeShared<FSimCopterMenuFocusOutline>(FSlateRect(0, 0, 1, 1),
+		FSlateRect(0, 0, 1, 1), 0.10f));
 	return Button;
 }
 

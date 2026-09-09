@@ -388,7 +388,7 @@ void SSimCopterCareerSelect::Construct(const FArguments& InArgs)
 					return FReply::Handled();
 				}),
 				FSimpleDelegate::CreateLambda([this, Panel]() { SetSelectedPanel(Panel); }),
-				ButtonStyles));
+				ButtonStyles, MakeFocusOutline(PanelRect[Panel], PanelRect[Panel], PreviewCornerRadius)));
 	}
 
 	AddAt(Canvas, CityNameRect,

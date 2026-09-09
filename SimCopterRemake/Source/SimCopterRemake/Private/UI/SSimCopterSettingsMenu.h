@@ -75,6 +75,14 @@ constexpr FRect GetRowHitRect(const int32 Row, const bool bHasCitySettings)
 	const float Top = GetRowTop(Row, bHasCitySettings);
 	return FRect{ HitLeft, Top, HitRight, Top + static_cast<float>(ItemFontHeight) };
 }
+
+// PLAYMENU.BMP's recessed label plates, excluding the separate lever strip at the left.
+constexpr FRect GetRowFocusRect(int32 Row, bool bHasCitySettings)
+{
+	const float Top = GetRowTop(Row, bHasCitySettings) - 3.0f;
+	return FRect{90.0f, Top, 300.0f, Top + 33.0f};
+}
+
 }
 
 // The command ids FUN_0044c9e0 switches on, which are also STRINGTABLE 60..67 in order.

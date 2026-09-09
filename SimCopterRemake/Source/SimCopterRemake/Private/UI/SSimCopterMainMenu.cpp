@@ -424,7 +424,7 @@ void SSimCopterMainMenu::Construct(const FArguments& InArgs)
 					// FUN_0045f210: moving over an item selects it.
 					SetSelectedIndex(Index);
 				}),
-				ButtonStyles));
+				ButtonStyles, MakeFocusOutline(Hit, GetItemFocusRect(Index), 4.0f)));
 	}
 
 	ChildSlot
